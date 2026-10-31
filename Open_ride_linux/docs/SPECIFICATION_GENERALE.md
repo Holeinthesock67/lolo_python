@@ -103,7 +103,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | --- | --- | --- | --- | --- |
 | 1.0-MAT-1 | Pilotage FTMS du trainer en SIM et en ERG, une procédure à la fois, reprise du contrôle | §4.1 | C, M1, audit FTMS | Livré |
 | 1.0-MAT-2 | Cardio : pont du trainer ou ceinture Bluetooth, fréquence figée écartée | §4.1 | M2, Q5 | Livré (M2 ; Q5, PR #195) |
-| 1.0-MAT-3 | Zwift Click V2 (deux boîtiers), B lu comme « − », boîtier gauche bridé | §4.2 | K8, Q6 | Livré (K8 ; Q6, PR #193 ; essai du boîtier gauche sur le PC à faire) |
+| 1.0-MAT-3 | Zwift Click V2 (deux boîtiers), B lu comme « − », boîtier gauche redémarré quand Zwift le verrouille | §4.2 | K8, Q6 | Livré (K8 ; Q6, PR #193 ; redémarrage `0x18`, PR #595, #607, #609 : − et flèches du gauche reçus sur le PC le 30 octobre) |
 | 1.0-MAT-4 | Bluetooth simulé et mode mock : tout se développe sans le vélo | §12 | H3, M5, M6 | Livré |
 | 1.0-PHY-1 | Physique à 50 Hz par bilan d'énergie, 250 W à plat ≈ 10,2 m/s | §5 | — | Livré |
 | 1.0-PHY-2 | 24 braquets virtuels de 0,65 à 2,00, pente effective bornée | §4.3 | — | Livré |
@@ -284,7 +284,7 @@ Les sections de `~/OpenRide/config.toml` de la 1.0 sont dans la SRS §11. Ajouts
 
 Demande du propriétaire du 26 octobre (point C7) : chaque bouton garde le même **type** d'action d'un mode à l'autre, pour qu'on n'ait jamais à se demander « ici, Y fait quoi ? ». Plan validé le 26 octobre, puis réécrit le 27 octobre sans aucune exception, menus compris (principe du propriétaire : « on évite les exceptions »). **Ce tableau est la seule référence** : la SRS, les plans et les cahiers y renvoient au lieu de le recopier.
 
-Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches (bridé sans déblocage Zwift, SRS §4.2). B double toujours « − », et rien d'indispensable n'est mis sur le seul boîtier gauche. Appui court : moins de 0,5 s ; appui long : 0,9 s ou plus ; entre les deux, rien ne se passe et l'écran le dit (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`).
+Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches. Les deux boîtiers répondent ; Zwift verrouille le gauche environ une minute après la connexion et OpenRide le redémarre alors tout seul, d'où environ 4 s sans boutons à gauche chaque minute (SRS §4.2). B double donc toujours « − », et rien d'indispensable n'est mis sur le seul boîtier gauche : les flèches sont des raccourcis. Appui court : moins de 0,5 s ; appui long : 0,9 s ou plus ; entre les deux, rien ne se passe et l'écran le dit (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`).
 
 | Bouton | Famille | Menus | Classique SIM | ERG | Cyber-Rogue | Monde ouvert |
 | --- | --- | --- | --- | --- | --- | --- |
