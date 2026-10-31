@@ -19,10 +19,11 @@ const NAME_GRID := "profile_name"   # grille du nom d'un profil (profiles_view_m
 const QWK := "workout_qwk"
 const QWK_ENTRIES := [
 	{"keys": ["A"], "hold": true, "text": "Valider", "main": true, "kb": []},
+	{"keys": ["+", "A"], "hold": false, "text": "Suivant", "main": false, "kb": []},
+	{"keys": ["B"], "hold": false, "text": "Précédent", "main": false, "kb": []},
 	{"keys": [], "hold": false, "text": "Écrire", "main": true, "kb": ["touches"]},
-	{"keys": [], "hold": false, "text": "Nouvelle ligne, valider", "main": false, "kb": ["Entrée"]},
-	{"keys": ["+", "A"], "hold": false, "text": "Suivant", "main": false, "kb": ["→"]},
-	{"keys": ["B"], "hold": false, "text": "Précédent", "main": false, "kb": ["←"]},
+	{"keys": [], "hold": false, "text": "Ligne, valider", "main": false, "kb": ["Entrée"]},
+	{"keys": [], "hold": false, "text": "Déplacer", "main": false, "kb": ["←", "→"]},
 	{"keys": [], "hold": false, "text": "Effacer", "main": false, "kb": ["Retour arrière"]},
 	{"keys": ["Y"], "hold": false, "text": "Retour", "main": false, "kb": ["Échap"]},
 ]

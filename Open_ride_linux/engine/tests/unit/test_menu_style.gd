@@ -97,7 +97,7 @@ func _test_button_help() -> void:
 			kb_ok = kb_ok and e["kb"].size() >= 1 and e["kb"].all(func(k): return k in ["A", "+", "−", "Entrée", "Échap"])
 	_check(kb_ok, "chaque entrée de l'aide a sa touche du clavier (A maintenu = Entrée, B = −, Y = Échap)")
 	var qwk := ButtonHelp.text(ButtonHelp.QWK)
-	_check(qwk == "A maintenir : Valider · + A : Suivant · B : Précédent · Y : Retour · Clavier — touches : Écrire · Entrée : Nouvelle ligne, valider · → : Suivant · ← : Précédent · Retour arrière : Effacer · Échap : Retour",
+	_check(qwk == "A maintenir : Valider · + A : Suivant · B : Précédent · Y : Retour · Clavier — touches : Écrire · Entrée : Ligne, valider · ← → : Déplacer · Retour arrière : Effacer · Échap : Retour",
 		"saisie du QWKcode (lot O21) : au clavier, les touches écrivent, ← → passent d'une ligne à l'autre : %s" % qwk)
 
 
