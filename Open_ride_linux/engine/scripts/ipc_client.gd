@@ -26,6 +26,10 @@ signal settings_received(msg: Dictionary)
 ## comme routes) et entraînement écrit par le core (create_workout, import_workout).
 signal imports_received(items: Array, msg: Dictionary)
 signal workout_saved_received(msg: Dictionary)
+## Traces importées depuis le menu des parcours (lot O23, contrat 1.5) : traces importables
+## (list_route_imports, en parties comme routes) et avancement de l'import (import_route).
+signal route_imports_received(items: Array, msg: Dictionary)
+signal route_import_status_received(msg: Dictionary)
 ## Plans d'entraînement et suivi du plan actif (lot O12, contrat v1.3) : réponse à list_plans,
 ## start_plan et stop_plan, en un seul datagramme.
 signal plans_received(msg: Dictionary)
@@ -99,6 +103,7 @@ const LIST_MAX_RETRIES := 3
 var _pending_list_routes: Dictionary = {}
 var _pending_list_workouts: Dictionary = {}
 var _pending_list_imports: Dictionary = {}
+var _pending_list_route_imports: Dictionary = {}
 var _hello_acked := false
 ## Hello demandés au fil d'horloge (contrat §5) ; _hello_now : envoyer dès son prochain tour.
 var _hello_lock := Mutex.new()
@@ -230,6 +235,8 @@ func _process(delta: float) -> void:
 		"Aucune réponse pour la liste des entraînements après 3 tentatives", delta)
 	_tick_list(_pending_list_imports, "list_imports", "imports",
 		"Aucune réponse pour les fichiers à importer après 3 tentatives", delta)
+	_tick_list(_pending_list_route_imports, "list_route_imports", "route_imports",
+		"Aucune réponse pour les traces à importer après 3 tentatives", delta)
 
 	_resend_pending(now)
 
@@ -285,6 +292,10 @@ func _poll_incoming() -> void:
 				_on_list_part(_pending_list_imports, "imports", json_obj)
 			"workout_saved":
 				workout_saved_received.emit(json_obj)
+			"route_imports":
+				_on_list_part(_pending_list_route_imports, "route_imports", json_obj)
+			"route_import_status":
+				route_import_status_received.emit(json_obj)
 			"plans":
 				plans_received.emit(json_obj)
 			"world_status":
@@ -519,6 +530,19 @@ func import_workout(path: String) -> int:
 	return send_command("import_workout", {"path": path})
 
 
+## Traces importables depuis le menu des parcours (lot O23, contrat 1.5). Réponse : signal route_imports_received.
+func list_route_imports() -> int:
+	var cmd_id := send_command("list_route_imports", {})
+	_reset_list_request(_pending_list_route_imports, cmd_id)
+	return cmd_id
+
+
+## Copie et compilation par le core d'une trace de la dernière réponse `route_imports` (lot O23).
+## Réponses : route_import_status (compiling, puis done ou failed), ou error (route_invalid, busy).
+func import_route(path: String) -> int:
+	return send_command("import_route", {"path": path})
+
+
 ## Réglages du menu (lots O3 et O4, contrat v1.3).
 func list_settings() -> int:
 	return send_command("list_settings", {})
@@ -610,6 +634,8 @@ func _on_list_part(req: Dictionary, list_name: String, msg: Dictionary) -> void:
 			routes_received.emit(items, whole)
 		"imports":
 			imports_received.emit(items, whole)
+		"route_imports":
+			route_imports_received.emit(items, whole)
 		_:
 			workouts_received.emit(items, whole)
 

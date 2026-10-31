@@ -593,11 +593,13 @@ func _test_library() -> void:
 		"triés par dénivelé (%s)" % str(_ids(f)))
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")    # Ajouter un parcours
-	# Aide des parcours (lot O22) : la carte de la ligne dit où déposer la trace, A maintenu ouvre l'aide.
+	# Aide des parcours (lot O22) : la carte de la ligne explique l'ajout ; A maintenu ouvre l'import (lot O23).
 	_check(_focus_id(f) == "_add_route" and f.state()["card"].get("name") == "Ajouter une trace"
-		and str(f.state()["card"]["lines"][0]).contains("~/OpenRide/GPX/"), "« Ajouter un parcours » : carte du dépôt de trace")
-	_check(f.handle("A_LONG") == {} and f.state()["screen"] == "route_help" and _focus_id(f) == "help:add",
-		"« Ajouter un parcours » ouvre l'aide sur son sujet")
+		and str(f.state()["card"]["lines"][0]).contains("Téléchargements"), "« Ajouter un parcours » : carte de l'import")
+	_test_route_import(f)
+	f.menu.focus_item("_route_help")
+	f.handle("A_LONG")
+	f.menu.focus_item("help:add")
 	f.handle("PLUS_SHORT")
 	_check(f.state()["card"].get("name") == "Fiche d'un parcours (.toml)" and f.handle("A_LONG") == {}
 		and f.state()["screen"] == "route_help", "aide : carte du sujet suivant, A maintenu ne fait rien")
@@ -630,6 +632,60 @@ func _test_library() -> void:
 	v.update_display(st, {"session_state": "IDLE"}, {}, false)
 	_check(v.card.visible and v.card.text().contains("Distance 10,0 km"), "vue : fiche affichée (%s)" % v.card.text())
 	v.free()
+
+## Trace importée depuis le menu (lot O23) : liste, choix, avancement, refus, puis parcours prêt sous le
+## focus, sans relancer. Part de la liste des parcours, focus sur « Ajouter un parcours », et y revient.
+func _test_route_import(f) -> void:
+	_check(f.handle("A_LONG") == {"action": "list_route_imports"} and f.state()["screen"] == "route_import"
+		and f.state()["items"][0]["label"] == "Recherche des traces…", "« Ajouter un parcours » : list_route_imports")
+	f.list_failed("route_imports")
+	_check(f.state()["items"][0]["label"] == "Traces à importer indisponibles", "traces sans réponse")
+	f.set_route_import_candidates([])
+	_check(f.state()["items"][0]["label"] == "Aucune trace .gpx, .fit ou .tcx" and not f.state()["items"][0]["enabled"],
+		"aucune trace : ligne désactivée qui dit où chercher")
+	f.set_route_import_candidates([
+		{"path": "/x/Téléchargements/Mon col.gpx", "file": "Mon col.gpx", "source": "Téléchargements", "imported": false},
+		{"path": "/x/Bureau/casse.fit", "file": "casse.fit", "source": "Bureau", "imported": true}])
+	var st: Dictionary = f.state()
+	_check(st["items"][1]["detail"] == "Bureau, déjà importée" and st["card"]["name"] == "Mon col.gpx"
+		and st["card"]["lines"][0] == "Dossier : Téléchargements"
+		and str(st["card"]["lines"]).contains("pas besoin de relancer"),
+		"traces : dossier, déjà importée, carte explicite (%s)" % str(st["card"]))
+	# Trace refusée : raison sur la ligne d'état, rien d'ajouté.
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "import_route", "path": "/x/Bureau/casse.fit"}, "import_route")
+	_check(f.state()["status"].begins_with("Compilation de casse.fit… 0 s"), "compilation annoncée (%s)" % f.state()["status"])
+	f.on_error("busy", "Une trace est déjà en cours de compilation.")
+	_check(f.state()["status"] == "Échec : Une trace est déjà en cours de compilation." and f.state()["status_error"],
+		"une seule compilation à la fois : refus du core affiché")
+	f.on_route_import_status({"request_cmd_id": 7, "state": "compiling", "file": "casse.fit", "elapsed_s": 12})
+	_check(f.state()["status"].begins_with("Compilation de casse.fit… 12 s"), "avancement (%s)" % f.state()["status"])
+	_check(not f.on_route_import_status({"request_cmd_id": 7, "state": "failed", "file": "casse.fit",
+		"message": "casse.fit : aucun point de trace exploitable"}), "échec : pas de nouvelle liste")
+	_check(f.state()["status"] == "Échec : casse.fit : aucun point de trace exploitable" and f.state()["status_error"]
+		and f.state()["screen"] == "route_import", "échec : raison affichée, on reste sur l'écran")
+	f.on_error("busy", "Traces importables seulement hors séance.")
+	_check(f.state()["status"] == "Échec : Traces importables seulement hors séance.", "refus du core sur la ligne d'état")
+	# Trace acceptée : retour à la liste, puis focus sur le nouveau parcours quand la liste arrive.
+	f.handle("MINUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "import_route", "path": "/x/Téléchargements/Mon col.gpx"}, "seconde trace")
+	_check(f.on_route_import_status({"request_cmd_id": 9, "state": "done", "file": "Mon col.gpx", "route_id": "mon-col",
+		"name": "Mon col", "created": true}), "parcours prêt : nouvelle liste demandée")
+	_check(not f.on_route_import_status({"request_cmd_id": 9, "state": "done", "file": "Mon col.gpx", "route_id": "mon-col"}),
+		"réponse en double ignorée")
+	_check(f.state()["screen"] == "routes" and f.state()["status"] == "Parcours ajouté : Mon col" and not f.state()["status_error"],
+		"retour à la liste avec « Parcours ajouté » (%s)" % f.state()["status"])
+	var lib: Array = f.routes_raw.duplicate()
+	lib.append({"id": "mon-col", "name": "Mon col", "length_m": 8000.0, "status": "ready", "stats": {"distance_m": 8000.0,
+		"gain_m": 1500.0, "max_grade_pct": 11.0, "duration_s": 3600.0, "difficulty": 5, "main_climb": null},
+		"library": {"description": "", "region": "", "tags": ["col"]}})
+	f.set_routes(lib)
+	_check(_focus_id(f) == "mon-col", "focus sur le parcours importé (%s)" % _focus_id(f))
+	f.menu.focus_item("_add_route")
+	f.handle("A_LONG")
+	_check(f.state()["status"] == "", "nouvel import : ligne d'état remise à zéro")
+	f.handle("Y_SHORT")
+
 
 ## Bots choisis sur l'écran Prêt (lot O7) : `start` avec l'argument `bots`.
 func _test_bots_menu() -> void:

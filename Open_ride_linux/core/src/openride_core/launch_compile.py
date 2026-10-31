@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -34,7 +35,14 @@ def default_notify(message: str, title: str = "OpenRide") -> None:
 
 
 def find_compiler_cmd() -> list[str] | None:
-    """Trouve la commande pour invoquer openride-compiler build-all."""
+    """Trouve la commande pour invoquer openride-compiler build-all.
+
+    `OPENRIDE_COMPILER` (commande, découpée comme en shell) remplace le compilateur : réservé aux bancs
+    d'essai (doublure sans réseau du banc des menus, lot O23).
+    """
+    override = os.environ.get("OPENRIDE_COMPILER", "").strip()
+    if override:
+        return [*shlex.split(override), "build-all"]
     if shutil.which("openride-compiler"):
         return ["openride-compiler", "build-all"]
     if importlib.util.find_spec("openride_compiler") is not None:
