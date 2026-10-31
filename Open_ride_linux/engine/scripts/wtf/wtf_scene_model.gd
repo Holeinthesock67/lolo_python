@@ -48,8 +48,9 @@ static func view(wtf: Variant, t: float, quality := "medium") -> Dictionary:
 		_event(ev, t, n, out, props)
 	var kata = wtf.get("kata", null)
 	if typeof(kata) == TYPE_DICTIONARY:
-		var size := float(kata.get("size", 1.0))
-		props.append(_prop("ball", 2.0, 0.0, KATA_BALL_M * size, size, t * 4.0))
+		var size := minf(float(kata.get("size", 1.0)), KATA_SHOW_MAX)
+		props.append(_prop("ball", 2.0 + KATA_BALL_M * size, KATA_LATERAL_M + KATA_BALL_M * size,
+			KATA_BALL_M * size, size, t * 4.0))
 		var nxt = kata.get("next", [])
 		if typeof(nxt) == TYPE_ARRAY:
 			for o in nxt:

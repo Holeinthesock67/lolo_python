@@ -104,6 +104,9 @@ func _run() -> void:
 	var worst: Dictionary = WtfHudModel.view({"points": 5, "event": {"id": "gravity", "planet": "jupiter", "left_s": 30},
 		"kata": {"size": 3.1, "count": 87, "last": "church"}, "clock_h": 21.5, "fish": true})
 	view.update_view(worst)
+	await process_frame   # largeur des cartes posée : hauteur des textes à la ligne connue
+	await process_frame
+	view.update_view(worst)
 	info = view.test_info()
 	_check(info["stack_bottom"] > WtfView.SIDE_TOP and info["stack_bottom"] <= 720.0 * WtfView.STACK_MAX_FRAC,
 		"vue : la pile de gauche s'arrête au-dessus du bas de l'écran (%d px sur 720)" % int(info["stack_bottom"]))
