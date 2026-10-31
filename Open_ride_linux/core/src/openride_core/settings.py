@@ -71,12 +71,14 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("rider.hr_max_bpm", "FC max", "rider", 1, "bpm"),
     Setting("bike.mass_kg", "Poids du vélo", "rider", 1, "kg"),
     # Séance ; bonus et niveau des bots du mode classique (série T, lots T7, T10 et T13)
-    Setting("trainer.difficulty_pct", "Difficulté en SIM", "ride", 10, "%"),
+    Setting("trainer.difficulty_pct", "Difficulté", "ride", 10, "%",
+            help="Part de la pente envoyée au trainer en SIM : à 50 %, une côte de 6 % se roule à 3 %. "
+                 "Sans effet en ERG."),
     Setting("gearing.start_gear", "Braquet de départ", "ride", 1),
     Setting("powerups.mode", "Bonus", "ride"),
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
     # Option « gravel » (lot U16, partie gravel) : coupée par défaut, roulement du core et rendu de l'engine
-    Setting("gravel.mode", "Chemins de terre (gravel)", "ride",
+    Setting("gravel.mode", "Gravel", "ride",
             help="Coupé : bitume partout. Chemins réels : seules les portions non revêtues du parcours. "
                  "Chemin compact, gravier ou terre : toute la route. Roulement 2 à 3 fois plus dur, "
                  "sous le plafond du vent."),

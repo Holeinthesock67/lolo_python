@@ -236,7 +236,7 @@ func _test_args() -> void:
 
 
 func _test_menu_setting() -> void:
-	var it := {"key": "gravel.mode", "label": "Chemins de terre (gravel)", "group": "ride", "type": "choice",
+	var it := {"key": "gravel.mode", "label": "Gravel", "group": "ride", "type": "choice",
 		"value": "off", "choices": RoadSurface.MODES.duplicate(), "applies": "next_session",
 		"help": "Coupé : bitume partout. Chemins réels : seules les portions non revêtues du parcours."}
 	var texts := []
@@ -249,6 +249,12 @@ func _test_menu_setting() -> void:
 	var lines: Array = vm.sheet("gravel.mode")["lines"]
 	_check(lines.size() == 3 and str(lines[1]) == it["help"] and str(lines[2]) == "S'applique à la séance suivante",
 		"carte de détail : choix, légende, séance suivante")
+	vm.begin("gravel.mode")
+	vm.step(+1)
+	vm.step(+1)
+	_check(str(vm.sheet("gravel.mode")["tiles"][0]["value"]) == "chemin compact", "en modification : la carte suit la valeur de la rangée")
+	vm.cancel()
+	_check(str(vm.sheet("gravel.mode")["tiles"][0]["value"]) == "coupé", "modification annulée : valeur enregistrée")
 	it.erase("help")
 	_check(vm.sheet("gravel.mode")["lines"].size() == 2, "sans légende : pas de ligne de plus")
 

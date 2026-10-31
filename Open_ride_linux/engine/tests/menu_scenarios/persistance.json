@@ -48,7 +48,7 @@
     {"ecran": "settings_group", "groupe": "rider", "contient": ["FTP — 255 W"]},
     {"appui": "Y_SHORT"},
     {"choisir": "group:ride"},
-    {"ecran": "settings_group", "groupe": "ride", "contient": ["Difficulté en SIM — 40 %", "Niveau des bots — 95 %"]},
+    {"ecran": "settings_group", "groupe": "ride", "contient": ["Difficulté — 40 %", "Niveau des bots — 95 %"]},
     {"appui": "Y_SHORT"},
     {"choisir": "group:sound"},
     {"ecran": "settings_group", "groupe": "sound", "contient": ["Volume général — 90 %"]},

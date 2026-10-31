@@ -184,13 +184,14 @@ func menu_items(group: String) -> Array:
 	return out
 
 
-## Carte de détail d'un réglage (clé sans « set: ») : valeur, plage ou choix, légende (`help` du core, lot
-## U16) quand il y en a une, moment où il s'applique.
+## Carte de détail d'un réglage (clé sans « set: ») : valeur (celle en cours de modification, comme la rangée),
+## plage ou choix, légende (`help` du core, lot U16) quand il y en a une, moment où il s'applique.
 func sheet(key: String) -> Dictionary:
 	var it := item(key)
 	if it.is_empty():
 		return {}
-	var tiles: Array = [{"label": "Valeur", "value": value_text(it, it.get("value")), "unit": ""}]
+	var value = editing.get("value") if str(editing.get("key", "")) == key else it.get("value")
+	var tiles: Array = [{"label": "Valeur", "value": value_text(it, value), "unit": ""}]
 	var lines: Array = []
 	if str(it.get("type", "")) == "choice":
 		var texts: Array = []
