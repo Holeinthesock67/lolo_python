@@ -68,10 +68,16 @@ func _init() -> void:
 	_check(menu.state()["focus"] == 1, "menu routes : avance sur index 1 (galibier)")
 
 	menu.handle("PLUS_SHORT")
-	_check(menu.state()["focus"] == 0, "menu routes : boucle sur index 0 en sautant les 2 désactivés")
+	_check(menu.state()["items"][menu.state()["focus"]]["id"] == "_add_route",
+		"menu routes : saute les 2 désactivés jusqu'à « Ajouter un parcours » (lot O22)")
+	menu.handle("PLUS_SHORT")
+	menu.handle("PLUS_SHORT")
+	_check(menu.state()["focus"] == 0, "menu routes : boucle sur index 0 après l'aide de fin de liste")
 
 	menu.handle("MINUS_SHORT")
-	_check(menu.state()["focus"] == 1, "menu routes : recule sur index 1 en sautant les 2 désactivés")
+	menu.handle("MINUS_SHORT")
+	menu.handle("MINUS_SHORT")
+	_check(menu.state()["focus"] == 1, "menu routes : recule sur index 1 en sautant l'aide et les 2 désactivés")
 
 	# 3. Vérification de workout_items : tri par durée croissante
 	var w_items: Array = cat.workout_items(raw_workouts)
@@ -80,6 +86,15 @@ func _init() -> void:
 	_check(w_items[0]["detail"] == "balise <workout> absente", "1er entraînement : detail d'erreur présent")
 	_check(w_items[1]["id"] == "recup" and "30 min" in w_items[1]["label"], "2e entraînement : recup (30 min)")
 	_check(w_items[2]["id"] == "sweet_spot" and "60 min" in w_items[2]["label"], "3e entraînement : sweet_spot (60 min)")
+
+	# 3b. Fiche de la pause (N20 §4.3) : chiffres de la séance en cours
+	var ps: Dictionary = CatalogModel.pause_sheet(754.0, 5230.0, 187.4)
+	var tv: Array = ps["tiles"].map(func(t): return "%s=%s%s" % [t["label"], t["value"], (" " + t["unit"]) if t["unit"] != "" else ""])
+	_check(tv == ["Durée=12:34", "Distance=5,2 km", "Puissance moy.=187 W"], "fiche de la pause : %s" % str(tv))
+	var ph: Dictionary = CatalogModel.pause_sheet(3725.0, 0.0, 0.0)
+	_check(ph["tiles"][0]["value"] == "1:02:05" and ph["tiles"][2]["value"] == "0", "pause : heures affichées, 0 W gardé")
+	var pn: Dictionary = CatalogModel.pause_sheet(NAN, NAN, -1.0)
+	_check(pn["tiles"][0]["value"] == "—" and pn["tiles"][1]["unit"] == "" and pn["tiles"][2]["value"] == "—", "pause sans données : tuiles « — », sans unité seule")
 
 	# 4. Performance : aucun nœud créé
 	var nodes_after := Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
