@@ -1,5 +1,10 @@
 # Lot O33 – Vider le profil d'essai et restaurer un profil supprimé depuis le menu
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Profils : « Vider le profil d'essai » et « Restaurer un profil supprimé » dans « Gérer un profil » (commandes `clear_trial_profile`, `restore_profile`, corbeille dans `profiles`) | Python + GDScript | MJ7, MJ8 (livrés) | Petite | Audit des options du 31 octobre, accepté par le propriétaire ; en PR |
+
 ## 1. Objectif
 
 Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, §7), accepté par le propriétaire le 31 octobre. Deux gestes des profils demandaient encore le terminal ou le gestionnaire de fichiers :

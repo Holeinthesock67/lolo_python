@@ -1,5 +1,10 @@
 # Lot X30 – Tableau de recette 1.0
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Tableau de recette 1.0 relié aux rapports des outils | Python | O8 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x30`) ; issue #228 |
+
 ## 1. Objectif
 
 Les 25 lignes de la recette 1.0 (cahier O8) se cochent dans un fichier Markdown, sans lien vers les journaux des outils qui les mesurent.

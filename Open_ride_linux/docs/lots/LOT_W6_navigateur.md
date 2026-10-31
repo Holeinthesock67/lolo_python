@@ -1,5 +1,10 @@
 # Lot W6 – Navigateur : balade, destination, boucle de X km
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Navigateur : balade, destination, boucle de X km | Python | W4 | Moyenne | Oui, après W4 (issue #260) |
+
 ## 1. Objectif
 
 Choisir la branche par défaut à chaque carrefour quand le cycliste ne touche à rien (plan §2.4 et §5.4), selon trois modes : balade (garder le cap en préférant les petites routes), vers une destination, ou boucle de X km qui revient au départ.

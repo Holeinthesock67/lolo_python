@@ -1,5 +1,10 @@
 # Lot X52 – CI plus rapide sur les demandes de fusion
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : CI plus rapide sur les PR : plus de nombre de tests écrit dans la doc (compte par `recompte_tests.py`, affiché dans le résumé du run), une seule colonne Python (3.14) sur les PR et les deux sur `main`, filet de compilation 3.11 | YAML + Python | X34 | Petite | En PR (30 octobre) |
+
 ## 1. Objectif
 
 Le 30 octobre, la file de la CI était saturée et chaque fusion forçait à remettre à jour toutes les PR ouvertes. Le propriétaire a validé deux changements, avec un filet sur `main`.

@@ -1,5 +1,10 @@
 # Lot X20 – Non-régression visuelle, version 2
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Non-régression visuelle v2 : SSIM, scènes figées, références par moteur et préréglage | Python + GDScript | S1 (`compare_captures.py`) | Moyenne | Oui ; issue #218 ; complément Z3 du 31 octobre (`vitrine_compare.py` : SSIM, comptes du CSV, planche avant/après) |
+
 ## 1. Objectif
 
 `visual_check.py` compare des images pixel à pixel sous Xvfb, en `1280×720` `low` seulement dans `run_engine_tests.sh`, sans images de référence ; les captures « caméra par défaut » et « mouvement » sont prises à des instants qui varient d'un passage à l'autre, ce qui rend la comparaison de deux branches impossible. Propositions des fils (28 octobre) : vue fixe déterministe par préréglage (Y13), captures `1024×600` et `1920×1080` des menus avec références (menus), décor coupé (`living=false`) comparé aux images de la 1.0 (décor vivant), capture juste après la bascule de caméra sans trou sous l'horizon (S1).

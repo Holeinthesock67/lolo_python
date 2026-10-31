@@ -1,5 +1,10 @@
 # Lot P7 – Jour et nuit : heure de la journée, coucher de soleil, nuit (sans affichage, version 2.0)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Jour et nuit : heure, coucher de soleil, nuit étoilée (sans affichage) | GDScript | P1, P17 | Petite | Oui, **version 2.0** (issue #131) |
+
 ## 1. Objectif
 
 **Version 2.0** (décision du propriétaire, 25 octobre : saisons et jour/nuit en 2.0). Le soleil est aujourd'hui fixe (élévation du thème, azimut constant). Ce lot calcule la lumière d'une heure donnée : position du soleil selon la latitude du parcours, couleur et intensité de la lumière, teinte du ciel et du brouillard, avec un vrai coucher de soleil orangé, une heure bleue et une **nuit** lisible (ciel étoilé, clair de lune). L'heure est fixe, réelle (horloge du PC) ou accélérée (une journée en 1 h de séance), selon `sky.time_of_day` du thème 1.2. Le modèle est pur et testé sans écran ; P19 l'applique à la scène.

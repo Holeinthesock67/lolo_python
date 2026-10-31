@@ -1,5 +1,10 @@
 # Lot Y8 – Habillage des bâtiments : toits à pans, façades et styles par région et par biome
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Habillage : toits à pans et façades procédurales, styles par variante régionale et par biome (U1, U0), puis arbres et petit mobilier (étalonnage dans Y13, décalques de route dans Y11) | GDScript + shader | Y3, P20 | Grande | En partie ; issue #364 |
+
 **Statut : étape 1 livrée le 28 octobre** (bâtiments, PR #470), mesurée sur la GTX 1060 (§5), en attente de l'avis du propriétaire sur l'aspect. Ce cahier remplace la première version du 28 octobre (PR #462) ; les écarts sont au §7. Étape 2 (arbres) en PR le 28 octobre (§8). Étapes 3 et 4 (panneaux, poteaux, bornes, éoliennes) au §9. L'étalonnage d'Y8 est passé dans Y13.
 
 ## 1. Objectif

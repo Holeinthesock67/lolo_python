@@ -1,5 +1,10 @@
 # Lot O11 – Plans d'entraînement sur plusieurs semaines, côté core
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Plans d'entraînement sur plusieurs semaines, séance du jour et suivi, import d'un dossier | Python | O9 ; O10 pour les jours de test | Moyenne | **Livré le 26 octobre** (issue #155) |
+
 ## 1. Objectif
 
 Suivre un plan : « semaine 3, mardi : sweet spot 3 × 10 ». Ce lot ajoute des plans d'entraînement faits d'entraînements existants (`.zwo`, `.erg`, `.mrc`, tests de FTP), rangés par semaine et par jour, avec le suivi de ce qui a été fait d'après l'historique des séances. Comme GoldenCheetah, OpenRide gère une **bibliothèque d'entraînements** dans un dossier ; un plan n'est qu'une liste ordonnée de ces entraînements. On peut aussi importer un dossier d'entraînements numérotés (forme habituelle des plans téléchargés) comme un plan.

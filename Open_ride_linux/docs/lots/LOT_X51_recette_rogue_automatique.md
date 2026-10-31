@@ -1,5 +1,10 @@
 # Lot X51 – Partie automatique de la recette du Cyber-Rogue
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : partie automatique de la recette du Cyber-Rogue : `rogue_recette` (calendrier, IF et FIT ; abandon ; Click coupé 30 s ; core tué puis relancé), niveaux et aigus des sons (`test_rogue_sound_levels.gd`, sons ramenés sous le vent), page d'écoute `rogue_ecoute.py`, galerie low/medium/high `rogue_galerie.py` | Python, GDScript | X40, X41, R14, R18 | Petite | Demande du 30 octobre ; en PR |
+
 ## 1. Objectif
 
 Demande du propriétaire du 30 octobre : automatiser une partie de la recette du mode Cyber-Rogue (fiche R14, écoute R18, contrôle visuel R10 à R13, charte R17). Ce lot fait vérifier par des bancs, sans vélo, tout ce qui ne demande ni le ressenti ni le vrai matériel. Il prépare aussi deux pages qui réduisent l'écoute et le regard du propriétaire à quelques minutes. Ce qui touche à la consigne et à la résistance du trainer reste à la main sur le vélo (règle du propriétaire du 29 octobre), comme le délai du frein R0.

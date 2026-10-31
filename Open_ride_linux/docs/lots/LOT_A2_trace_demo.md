@@ -1,5 +1,10 @@
 # Lot A2 – Tracé de démonstration sans recouvrement
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Tracé de démonstration sans recouvrement (lacet) | Python | A (livré) | Petite | **Livré le 23 octobre** |
+
 ## 1. Objectif
 
 Le parcours de démonstration (`demo_world.build_route`) repassait sur lui-même : ses deux épingles tournaient dans le même sens, la route faisait demi-tour complet et sa dernière partie recouvrait la première. Pour la démo de 5 000 m, les tronçons s ≈ 860–1 410 m et s ≈ 3 490–4 010 m sont à moins de 3 m l'un de l'autre en plan, avec environ 68 m d'écart d'altitude. Aucun terrain ne peut suivre les deux passages (constat du lot E1).

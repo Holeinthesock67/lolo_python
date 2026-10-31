@@ -1,5 +1,10 @@
 # Lot M2 – Ceinture cardio réelle : mesure complète, choix de l'appareil, batterie
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Ceinture cardio réelle : mesure complète, contact, choix de l'appareil, batterie | Python | — | Petite | **Livré le 24 octobre** (issue #79) |
+
 ## 1. Objectif
 
 `hr_monitor.py` sait se connecter à une ceinture Bluetooth (service Heart Rate 0x180D), mais il ne lit que la fréquence et prend le premier appareil qui annonce le service. Sur le PC cible, une montre Garmin qui diffuse sa fréquence cardiaque peut passer avant la ceinture, et une ceinture mal mouillée envoie des valeurs fausses avec le bit « contact absent ». Ce lot rend la ceinture réelle utilisable en séance : mesure complète, contact du capteur, choix explicite de l'appareil, batterie et diagnostic au journal.

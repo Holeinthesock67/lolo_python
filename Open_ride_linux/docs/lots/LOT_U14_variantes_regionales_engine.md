@@ -1,5 +1,10 @@
 # Lot U14 – Engine : variantes régionales des roches, terres et bâtiments
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : variantes régionales des roches, terres, murs et toits | GDScript + shader | U4, U6 | Moyenne | Oui, après U6, **version 3.0** (issue #344) |
+
 ## 1. Objectif
 
 **Version 3.0.** Appliquer la variante régionale de chaque tuile (U4) par-dessus le biome : couleur et texture des roches et des terres (grès rose, calcaire blanc, granite, schiste, basalte, latérite, craie), murs et toits des bâtiments OSM (tuiles rondes ocre, ardoise, tuiles plates, pierre sèche, toits plats blancs, bois), formes de toit qui vont avec (toits plats en zone aride, pentes fortes en montagne).
