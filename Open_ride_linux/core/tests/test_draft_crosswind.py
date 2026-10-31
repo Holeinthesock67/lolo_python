@@ -96,15 +96,13 @@ def _echelon(cross: float, n: int = 5, gap: float = 1.0, seconds: float = 20.0) 
 
 # --- critère 5 : éventail et bordure --------------------------------------------------------
 
-@pytest.mark.parametrize("cross", [LEFT_45, -LEFT_45, 1.3 * LEFT_45])
+@pytest.mark.parametrize("cross", [LEFT_45, -LEFT_45, 1.2 * LEFT_45, -1.2 * LEFT_45])
 def test_group_of_five_echelon_is_bounded_by_the_lane(cross):
     drafts = _echelon(cross)
     sheltered = [a for a in drafts[1:] if a >= 0.15]
-    assert len(sheltered) <= 2                           # au plus 2 à 3 coureurs dans l'éventail, meneur compris
+    assert 2 <= len(sheltered) <= 3                      # 3 à 4 coureurs dans l'éventail, meneur compris
     assert all(a < 0.15 for a in drafts[1 + len(sheltered):])   # les suivants, en file au bord, exposés
     assert drafts[0] == 0.0
-    if cross > 0.0:                                      # vent de droite : l'éventail a toute la voie vers l'axe
-        assert len(sheltered) == 2
 
 
 def test_group_without_wind_stays_in_line():
@@ -126,3 +124,12 @@ def test_session_rider_moves_into_the_diagonal(tmp_path, monkeypatch):
     assert s._lane.m > leader.lane.m + 0.25    # à droite du bot : sous le vent
     assert d.LANE_MIN_M <= s._lane.m <= d.LANE_MAX_M
     assert s._draft > 0.1 and s._draft_bot == "b1", (s._draft, leader.s - s.physics.s)
+
+
+@pytest.mark.parametrize("cross,edge", [(LEFT_45, d.LANE_MIN_M), (-LEFT_45, d.LANE_MAX_M)])
+def test_leader_goes_to_the_windward_edge(cross, edge):
+    leader = d.Lane(d.BOT_LANE_M, d.BOT_LANE_M)
+    behind_him = [(-(d.BIKE_LENGTH_M + 1.0), V, d.Lane(d.BOT_LANE_M, d.BOT_LANE_M))]
+    assert d.lane_target(0.0, V, leader, behind_him, cross_mps=cross)[0] == edge
+    assert d.lane_target(0.0, V, leader, [], cross_mps=cross)[0] == d.BOT_LANE_M          # seul : sa place
+    assert d.lane_target(0.0, V, leader, behind_him, cross_mps=0.1 * cross)[0] == d.BOT_LANE_M   # vent faible

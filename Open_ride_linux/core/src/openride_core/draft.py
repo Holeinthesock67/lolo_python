@@ -22,7 +22,7 @@ et en simulation numérique de Blocken et coll. (2013 à 2018) :
   automatique (`update_lanes`) range chaque coureur dans la roue du coureur devant et l'en sort pour
   doubler ; deux coureurs qui se chevauchent gardent au moins `SIDE_CLEAR_M` d'écart latéral ;
 - lot AS3 : par vent de travers, le placement vise la diagonale sous le vent (`echelon_lane`), bornée à
-  la voie de droite. Derrière un groupe, chacun vise la diagonale de celui qui le précède : l'éventail
+  la voie de droite ; le meneur d'un groupe passe au bord de la voie côté vent. Derrière un groupe, chacun vise la diagonale de celui qui le précède : l'éventail
   s'arrête au bord de la voie, les suivants roulent en file au bord, exposés (la bordure).
 
 `gap` est l'écart entre la roue arrière du bot et la roue avant du cycliste : la différence de
@@ -61,6 +61,7 @@ LATERAL_HALF_M = 0.6      # moitié de l'abri vers 0,6 m
 LATERAL_CUTOFF_M = 1.0    # plus d'abri au-delà de 1,0 m
 RIDER_LANE_M = 1.2        # place du cycliste sans placement (RoadBuilder.RIDER_LATERAL_M)
 BOT_LANE_M = 2.1          # place des bots seuls (RoadBuilder.BOT_LATERAL_M), 0,9 m à droite du cycliste
+ECHELON_LEAD_SHIFT_M = 0.3   # lot AS3 : meneur côté vent dès que la zone glisse de 0,3 m à 1 m d'écart (~17°)
 LANE_MIN_M = 0.3          # hors dépassement, jamais plus près de l'axe (circulation à droite)
 LANE_MAX_M = 2.6          # bord de la voie de droite (chaussée de 6 m, 0,4 m du bord)
 PASS_LANE_MIN_M = -1.5    # dépassement : jamais plus loin dans la voie d'en face
@@ -310,7 +311,9 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
     Placement automatique (`lane.auto`) : à moins de `FOLLOW_LOOK_M` derrière un coureur plus lent ou à
     la même vitesse, sa ligne, ou par vent de travers la diagonale sous le vent bornée à la voie (lot AS3,
     `echelon_lane` ; `head_mps`, `cross_mps` : vent au coureur) ; pour doubler (plus de `PASS_SPEED_MPS` plus vite à moins de `PASS_GAP_M`),
-    `PASS_OFFSET_M` à sa gauche ; sinon `lane.home`. Puis le couloir : chaque coureur côte à côte (roues
+    `PASS_OFFSET_M` à sa gauche ; sinon `lane.home`, ou par vent de travers, s'il mène un coureur à moins
+    de `FOLLOW_LOOK_M` derrière lui, le bord de la voie côté vent (lot AS3, décision du propriétaire du
+    31 octobre : l'éventail a toute la voie). Puis le couloir : chaque coureur côte à côte (roues
     qui se chevauchent, ou qui se toucheront dans `SIDE_LOOK_S`, devant comme derrière) borne la cible
     à `SIDE_CLEAR_M` de lui, du côté où l'on est déjà ; à écart égal, celui de derrière (à la même place,
     celui de plus grand `rank` ; face à un coureur figé, toujours soi) passe à gauche. Coincé entre deux coureurs trop proches : le milieu du couloir.
@@ -321,8 +324,10 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
     target, passing = lane.home, False
     left_bound, right_bound = PASS_LANE_MIN_M, LANE_MAX_M
     lead: tuple[float, float, Lane] | None = None
+    leads = False
     for o_s, o_v, o_lane in others:
         d = ahead_distance(s, o_s, length_m, is_loop)
+        leads = leads or -BIKE_LENGTH_M - FOLLOW_LOOK_M <= d < 0.0
         if 0.0 < d <= BIKE_LENGTH_M + FOLLOW_LOOK_M and (lead is None or d < lead[0]):
             lead = (d, o_v, o_lane)
         gap = abs(d) - BIKE_LENGTH_M                 # roue à roue, qu'il soit devant ou derrière
@@ -342,6 +347,10 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
             target, passing = o_lane.m - PASS_OFFSET_M, True
         elif o_v <= v + FOLLOW_SPEED_TOL_MPS:
             target = echelon_lane(o_lane.m, gap, v, head_mps, cross_mps)
+    elif leads:
+        shift = crosswind_shift_m(1.0, v, head_mps, cross_mps)
+        if abs(shift) >= ECHELON_LEAD_SHIFT_M:
+            target = LANE_MIN_M if shift > 0.0 else LANE_MAX_M      # la zone glisse à droite : vent de gauche
     if not passing:
         target = max(target, LANE_MIN_M)
     if left_bound > right_bound:

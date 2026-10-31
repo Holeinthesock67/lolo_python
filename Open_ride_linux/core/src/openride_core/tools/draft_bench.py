@@ -36,8 +36,8 @@ libre ne reçoit jamais d'abri ou ne va pas plus loin que seul ; (AS2) si la mis
 ne donne pas l'abri plein, si l'abri placement coupé dépasse 15 % de l'abri dans la roue, si le dépassement
 laisse moins de 0,9 m sur le côté, passe à gauche de l'axe hors dépassement, sort de la route ou ne revient
 pas à 1,2 m, ou si le groupe libre a des contacts plus de 1 % du temps ; (AS3) si l'abri en diagonale est sous
-0,8 × l'abri sans vent, si l'abri resté dans la roue dépasse 0,4 × l'abri sans vent, si l'éventail compte plus de
-3 coureurs, si un coureur après l'éventail reçoit 0,15 ou plus, ou si un coureur sort de la voie de droite.
+0,8 × l'abri sans vent, si l'abri resté dans la roue dépasse 0,4 × l'abri sans vent, si l'éventail compte moins de 2 ou plus de
+4 coureurs, si un coureur après l'éventail reçoit 0,15 ou plus, ou si un coureur sort de la voie de droite.
 """
 
 from __future__ import annotations
@@ -86,6 +86,7 @@ ECHELON_BOTS = 5
 ECHELON_GAP_M = 1.0
 ECHELON_S = 40.0
 ECHELON_MIN = 0.15             # abri compté dans l'éventail
+ECHELON_MAX = 4                # meneur côté vent (31 octobre) : 2,3 m de voie utile, 1 m de décalage par coureur à 45°
 TOL = 1e-3
 
 
@@ -433,9 +434,9 @@ def run(power_w: float = 250.0, group_w: list[float] | None = None, rider_w: flo
         while n_in < len(drafts) and drafts[n_in] >= ECHELON_MIN:
             n_in += 1
         rest = drafts[n_in:]
-        checks.append((n_in <= 2 and all(a < ECHELON_MIN for a in rest),
+        checks.append((2 <= n_in + 1 <= ECHELON_MAX and all(a < ECHELON_MIN for a in rest),
                        f"éventail, vent de {'gauche' if side == 'left' else 'droite'} : {n_in + 1} coureur(s) dans "
-                       f"l'éventail, meneur compris (au plus 3), les {len(rest)} suivants à moins de {ECHELON_MIN:g}"))
+                       f"l'éventail, meneur compris (2 à {ECHELON_MAX}), les {len(rest)} suivants à moins de {ECHELON_MIN:g}"))
         checks.append((ech["lane_min_m"] >= draft_mod.LANE_MIN_M - 0.01 and ech["lane_max_m"] <= draft_mod.LANE_MAX_M + 0.01,
                        f"éventail, vent de {'gauche' if side == 'left' else 'droite'} : de {ech['lane_min_m']} à "
                        f"{ech['lane_max_m']} m de l'axe (voie de droite)"))

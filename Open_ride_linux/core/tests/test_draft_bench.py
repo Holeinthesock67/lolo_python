@@ -50,9 +50,10 @@ def test_crosswind_diagonal_wheel_and_echelon(out):
     assert 40.0 < cw["yaw_deg"] < 50.0 and cw["shift_m"] == d.CROSSWIND_SHIFT_MAX_M
     assert cw["diagonal"]["dx_m"] > 1.0 and cw["diagonal"]["ratio"] >= 0.8   # sous le vent, à droite
     assert cw["wheel"]["ratio"] <= 0.4
-    right = [r["draft"] for r in cw["echelon_right"]["riders"]]
-    assert right[1] >= 0.15 and right[2] >= 0.15                # vent de droite : éventail de 3 vers l'axe
-    assert all(a < 0.15 for a in right[3:])                      # les suivants en file au bord, exposés
+    for side in ("left", "right"):                               # meneur côté vent : même éventail des deux côtés
+        drafts = [r["draft"] for r in cw[f"echelon_{side}"]["riders"]]
+        assert drafts[1] >= 0.15 and drafts[2] >= 0.15           # au moins 3 dans l'éventail, meneur compris
+        assert all(a < 0.15 for a in drafts[4:])                 # les suivants en file au bord, exposés
 
 
 def test_cli_json_and_invalid_arguments(capsys, monkeypatch):
