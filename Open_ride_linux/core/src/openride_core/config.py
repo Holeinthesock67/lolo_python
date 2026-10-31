@@ -62,7 +62,7 @@ class TrainerConfig:
     trace_ftms: bool = False          # trace horodatée de chaque échange Control Point FTMS (lot Q3)
     hr_relay_freeze_s: float = 15.0   # détection cardio relayée figée (lot Q5)
     resend_s: float = 2.0             # la consigne SIM/ERG est renvoyée au moins toutes les resend_s secondes (30 octobre : essai à 10–15 s contre le pompage)
-    control: str = "sim"              # pilotage hors ERG : "sim" (pente 0x11, le trainer simule) ou "resistance" (force calculée par le core, niveau 0x04, lots RC2-RC3)
+    control: str = "sim"              # pilotage hors ERG : "sim" (pente 0x11, le trainer simule), "resistance" (force calculée par le core, niveau 0x04, lots RC2-RC3) ou "power" (force × vitesse du volant en consigne ERG 0x05, pour comparer)
     resistance_n_per_pct: float = 2.0 # force du frein par % de résistance au départ (N), corrigée en roulant puis par l'étalonnage RC1
 
 
@@ -329,7 +329,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("drivers", "hr"): ("none", "ble", "sim"),
     ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
     ("wind", "feel"): ("grade", "ftms"),
-    ("trainer", "control"): ("sim", "resistance"),
+    ("trainer", "control"): ("sim", "resistance", "power"),
     ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),
     ("powerups", "mode"): ("on", "off"),
 }

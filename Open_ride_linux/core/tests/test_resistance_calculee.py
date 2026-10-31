@@ -138,3 +138,24 @@ def test_bench_on_the_realistic_simulated_trainer_sends_levels_only():
     levels = [c.payload for c in world.trainer.commands if c.op == ftms.OP_SET_TARGET_RESISTANCE]
     first, last = (struct.unpack_from("<h", p, 1)[0] for p in (levels[0], levels[-1]))
     assert last > first   # 6 % : frein plus fort qu'à plat
+
+
+def test_power_control_sends_road_force_times_flywheel_speed():
+    """Variante « power » (31 octobre) : la force de la route × la vitesse du volant, en consigne ERG."""
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(control="power"), BikeConfig(), clock=lambda: now[0])
+    drv.road_mass_kg = 80.0
+    drv._on_ibd(None, _ibd(36.0, 95, 400))
+    drv.set_sim_grade(2.0)
+    watts = round(drv.road_force_n(2.0, 10.0) * 10.0)
+    assert _flush(drv) == [ftms.cmd_set_target_power(watts)]
+    drv._on_ibd(None, _ibd(43.2, 110, 600))   # sprint : le volant accélère, la consigne suit
+    assert drv._road_value("erg", 2.0) == round(drv.road_force_n(2.0, 12.0) * 12.0) > watts
+
+
+def test_power_control_falls_back_to_sim_without_erg():
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(control="power"), BikeConfig(), clock=lambda: now[0])
+    drv.supports_erg = False
+    drv.set_sim_grade(2.0)
+    assert _flush(drv)[0][0] == ftms.OP_SET_SIM_PARAMS

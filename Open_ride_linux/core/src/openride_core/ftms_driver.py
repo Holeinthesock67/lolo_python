@@ -391,17 +391,27 @@ class FtmsDriver:
         self._want = _Want("resistance", resistance_level(pct, *self.resistance_range))
         return True
 
-    def _road_control(self) -> bool:
-        """Vrai si la pente SIM part en résistance calculée ([trainer] control = "resistance")."""
-        if self.cfg.control != "resistance":
-            return False
-        if not self.supports_resistance:
+    def _road_control(self) -> str | None:
+        """Mode d'envoi de la pente SIM : "resistance" (niveau calculé), "erg" (puissance calculée,
+        [trainer] control = "power") ou None (pente 0x11, SIM du trainer)."""
+        mode = {"resistance": "resistance", "power": "erg"}.get(self.cfg.control)
+        if mode is None:
+            return None
+        if not (self.supports_resistance if mode == "resistance" else self.supports_erg):
             if not self._road_fallback_warned:
-                log.warning("Trainer : résistance calculée demandée mais consigne de résistance non annoncée, "
-                            "pilotage SIM gardé")
+                log.warning("Trainer : pilotage %s demandé mais consigne non annoncée, pilotage SIM gardé",
+                            self.cfg.control)
                 self._road_fallback_warned = True
-            return False
-        return True
+            return None
+        return mode
+
+    def _road_value(self, mode: str, grade_pct: float) -> float:
+        """Consigne calculée pour la pente : niveau de résistance ou puissance (force × vitesse du volant)."""
+        if mode == "resistance":
+            return self._road_level(grade_pct)
+        speed = (self._trainer_speed_kmh or 0.0) / 3.6
+        lo, hi = self.power_range
+        return float(round(min(max(self.road_force_n(grade_pct, speed) * speed, lo), hi)))
 
     def road_force_n(self, grade_pct: float, speed_mps: float) -> float:
         """Force que le trainer appliquerait en SIM à la vitesse du volant : même formule, masse du profil."""
@@ -421,7 +431,8 @@ class FtmsDriver:
         speed = None if self._trainer_speed_kmh is None else self._trainer_speed_kmh / 3.6
         prev, self._road_speed = self._road_speed, (None if speed is None else (now, speed))
         sent = self._last_sent
-        if speed is None or prev is None or sent is None or sent[0] != "resistance" or not self._road_control():
+        if (speed is None or prev is None or sent is None or sent[0] != "resistance"
+                or self._road_control() != "resistance"):
             return
         dt = now - prev[0]
         lo, hi, _ = self.resistance_range
@@ -744,9 +755,11 @@ class FtmsDriver:
                 feats = ftms.parse_features(bytes(await client.read_gatt_char(ftms.FEATURE)))
                 self.supports_sim, self.supports_erg = feats.supports_sim, feats.supports_erg
                 self.supports_resistance = feats.supports_resistance
-                if self.cfg.control == "resistance":
-                    log.info("Trainer : pilotage par résistance calculée%s",
-                             "" if self.supports_resistance else " impossible (consigne non annoncée), SIM gardé")
+                if self.cfg.control != "sim":
+                    ok = self.supports_resistance if self.cfg.control == "resistance" else self.supports_erg
+                    log.info("Trainer : pilotage par %s calculée%s",
+                             "résistance" if self.cfg.control == "resistance" else "puissance",
+                             "" if ok else " impossible (consigne non annoncée), SIM gardé")
                 log.info("Trainer : fonctions FTMS : %s ; consignes : %s",
                          ", ".join(feats.machine) or "aucune", ", ".join(feats.target) or "aucune")
             if services.get_characteristic(ftms.SUPPORTED_RESISTANCE_RANGE) is not None:
@@ -872,8 +885,9 @@ class FtmsDriver:
         if now - self._last_sent_at < MIN_SEND_INTERVAL_S or now < self._busy_retry_at:
             return
         mode, value = self._want.mode, self._want.value
-        if mode == "sim" and self._road_control():
-            mode, value = "resistance", self._road_level(value)
+        road = self._road_control() if mode == "sim" else None
+        if road is not None:
+            mode, value = road, self._road_value(road, value)
         prev = self._last_sent
         eps = {"sim": GRADE_EPSILON_PCT, "resistance": max(RESISTANCE_EPSILON, self.resistance_range[2])}.get(
             mode, ERG_EPSILON_W)
@@ -895,8 +909,8 @@ class FtmsDriver:
         def build() -> bytes:
             nonlocal sent
             want = self._want   # au renvoi : la consigne la plus récente, du même mode
-            if want.mode == "sim" and mode == "resistance":   # résistance calculée : la pente la plus récente
-                want = _Want(mode, self._road_level(want.value))
+            if want.mode == "sim" and road is not None:   # consigne calculée : la pente la plus récente
+                want = _Want(mode, self._road_value(mode, want.value))
             elif want.mode != mode:
                 want = _Want(mode, value)
             sent = (want.mode, want.value)
