@@ -252,6 +252,80 @@ func _test_renderer(route) -> void:
 	await process_frame
 
 
+## Lot AS6 : mêmes véhicules tirés (case, sorte, couleur, sens, vitesse) que traffic.py du core, sur le parcours
+## d'essai de 20 km de tests/data/traffic_slots_vectors.json (python -m openride_core.tools.traffic_vectors).
+func _test_core_vectors() -> void:
+	var doc = JSON.parse_string(FileAccess.get_file_as_string("res://tests/data/traffic_slots_vectors.json"))
+	if typeof(doc) != TYPE_DICTIONARY:
+		_check(false, "vecteurs de circulation du core lisibles")
+		return
+	var r = RouteDataScript.new()
+	r.load_route_dict(doc["route"])
+	var pois := []
+	for v in doc["villages"]:
+		pois.append({"kind": "village", "x": float(v["x"]), "z": float(v["z"])})
+	var theme := {"terrain": {"snow_line_m": float(doc["snow_line_m"])}}
+	var same := 0
+	var total := 0
+	var diffs := []
+	for c in doc["cases"]:
+		var tm = TrafficModel.new()
+		tm.configure(r, theme, pois, 8, int(c["seed"]))
+		var got := []
+		for k in range(int(r.length_m / TrafficModel.SLOT_M) + 1):
+			var ev: Dictionary = tm.slot_event(k)
+			if not ev.is_empty():
+				got.append(ev)
+		total += (c["events"] as Array).size()
+		for i in range(mini(got.size(), (c["events"] as Array).size())):
+			var want: Dictionary = c["events"][i]
+			var ev: Dictionary = got[i]
+			if int(ev["slot"]) == int(want["slot"]) and str(ev["kind"]) == str(want["kind"]) and int(ev["color"]) == int(want["color"]) \
+					and int(ev["dir"]) == int(want["dir"]) and absf(float(ev["cruise_mps"]) - float(want["cruise_mps"])) < 1e-5:
+				same += 1
+			elif diffs.size() < 3:
+				diffs.append([int(c["seed"]), ev, want])
+		if got.size() != (c["events"] as Array).size():
+			diffs.append([int(c["seed"]), "nombre", got.size(), (c["events"] as Array).size()])
+	_check(total > 0 and same == total and diffs.is_empty(),
+		"lot AS6 : mêmes véhicules que traffic.py du core sur 20 km et %d graines (%d sur %d) %s" % [
+			(doc["cases"] as Array).size(), same, total, str(diffs)])
+
+
+## Lot AS6 : liste `vehicles` du core reprise une fois par trame ; véhicule du core extrapolé, hors budget ; ceux de
+## l'engine à moins de NEAR_M absents de la liste retirés, ceux plus loin gardés ; sorti de la liste : décor.
+func _test_sync_core(route) -> void:
+	var tm = TrafficModel.new()
+	tm.configure(route, {}, [], 1, 7)
+	tm.update(5000.0, 8.0, 0.1)
+	tm.place_for_test(5000.0, 8.0, "car_a", -1, 400.0, 50.0)      # loin : décor de l'engine
+	tm.place_for_test(5000.0, 8.0, "car_b", -1, 80.0, 50.0)       # près, inconnu du core : retiré
+	var tractor := {"id": "v40", "kind": "tractor", "color": 2, "s": 5020.0, "dir": 1, "v": 6.0, "lane_m": 1.5}
+	tm.sync_core([tractor], 10, 5000.0)
+	var ids := []
+	for v in tm.vehicles:
+		ids.append(str(v["id"]))
+	_check(ids.has("v40") and ids.size() == 2 and not ids.has("v%d" % (1000000 + 1)),
+		"liste du core : tracteur ajouté, véhicule proche inconnu du core retiré, véhicule lointain gardé (%s)" % str(ids))
+	tm.update(5000.0, 8.0, 0.5)
+	var t40: Dictionary = {}
+	for v in tm.vehicles:
+		if str(v["id"]) == "v40":
+			t40 = v
+	_check(not t40.is_empty() and absf(float(t40["s"]) - 5023.0) < 1e-6 and float(t40["lateral"]) == 1.5,
+		"véhicule du core extrapolé à sa vitesse entre deux listes (%s)" % str(t40.get("s")))
+	tm.sync_core([], 10, 5000.0)
+	_check(tm.vehicles.size() == 2, "même trame reprise deux fois : rien ne change")
+	_check(tm._own_count() == 1, "budget : le véhicule du core ne compte pas")
+	tm.sync_core([tractor.merged({"s": 5200.0}, true)], 11, 5000.0)
+	tm.sync_core([], 12, 5000.0)
+	var kept := false
+	for v in tm.vehicles:
+		if str(v["id"]) == "v40":
+			kept = not v.has("core")
+	_check(kept, "sorti de la liste à plus de 150 m : gardé au décor de l'engine")
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -337,6 +411,8 @@ func _run() -> void:
 	for i in range(50):
 		tm.update(s, 0.0, 0.1, true)
 	_check(not tm.vehicles.is_empty() and str(tm.vehicles) == before, "pause : véhicules figés")
+	_test_core_vectors()
+	_test_sync_core(route)
 	await _test_renderer(route)
 	print("test_traffic_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

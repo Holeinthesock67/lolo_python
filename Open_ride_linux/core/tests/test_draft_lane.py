@@ -173,6 +173,7 @@ def test_session_auto_draft_off_keeps_the_rider_at_home(tmp_path, monkeypatch):
 
 def test_no_bot_no_lane_field(tmp_path, monkeypatch):
     s, _ = make_session(tmp_path, monkeypatch, 6088, 250.0, [])
+    s.cfg.render.living = False        # sans décor vivant, pas de circulation (lot AS6) : rien à placer
     s._on_command("start", {}, 2)
     run(s, 1.0)
     assert "lane_m" not in s.state.to_dict()

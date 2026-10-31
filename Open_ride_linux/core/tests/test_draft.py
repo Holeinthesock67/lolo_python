@@ -183,6 +183,7 @@ def test_no_bot_no_draft_and_schema(tmp_path, monkeypatch):
     validator = jsonschema.Draft202012Validator(
         json.loads((IPC_DIR / "state.schema.json").read_text(encoding="utf-8")))
     s, _ = make_session(tmp_path, monkeypatch, 5982, 250.0, [])
+    s.cfg.render.living = False        # sans décor vivant, pas de circulation (lot AS6) : aucun abri
     s._on_command("start", {}, 2)
     run(s, 10.0)
     frame = s.state.to_dict()

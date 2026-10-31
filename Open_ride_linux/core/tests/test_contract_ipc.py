@@ -295,7 +295,7 @@ def test_v1_3_wind_and_draft_are_optional_and_fit():
     assert_valid({**state, "mode": "ERG", "erg": erg, "bots": bots,
                   "wind": wind, "draft": 0.45, "draft_bot": "bot0xyz"})
     validator = jsonschema.Draft202012Validator(schema("state"))
-    assert list(validator.iter_errors({**state, "draft": 0.5}))
+    assert list(validator.iter_errors({**state, "draft": 0.65}))       # 0,60 au plus (lot AS6 : derrière un véhicule)
     assert list(validator.iter_errors({**state, "wind": {**wind, "gust": 1.5}}))
     assert list(validator.iter_errors({**state, "wind": {"speed_mps": 3.0}}))
 
