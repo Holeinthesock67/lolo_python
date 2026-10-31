@@ -603,7 +603,8 @@ func _count_contacts(others: Array) -> void:
 			if absf(float(a["s"]) - float(b["s"])) < float(a["half_len"]) + float(b["half_len"]) \
 					and absf(float(a["lateral"]) - float(b["lateral"])) < float(a["half_width"]) + float(b["half_width"]):
 				contacts += 1
-				last_contact = "%s / %s à %.0f m" % [a["name"], b["name"], float(a["s"]) - _cam_s]
+				last_contact = "%s / %s à %.0f m (écarts à l'axe %.1f et %.1f m)" % [a["name"], b["name"],
+					float(a["s"]) - _cam_s, float(a["lateral"]), float(b["lateral"])]
 
 
 func test_info(cam: Camera3D) -> Dictionary:

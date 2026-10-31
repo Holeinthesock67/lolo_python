@@ -114,7 +114,7 @@ func update_view(view: Array, route) -> void:
 		var pos := Vector3(smp["x"], smp["y"], smp["z"])
 		var h := deg_to_rad(float(smp["heading_deg"]))
 		var right := Vector3(cos(h), 0.0, sin(h))
-		var before := route.wrap_s(float(b["s"])) - float(b["s"])   # grille de départ derrière le départ (lot AS2)
+		var before: float = route.wrap_s(float(b["s"])) - float(b["s"])   # grille de départ derrière le départ (lot AS2)
 		if before > 0.0:
 			pos -= Vector3(sin(h), 0.0, -cos(h)) * before
 		var lane := float(b.get("lane_m", RoadBuilder.BOT_LATERAL_M))
