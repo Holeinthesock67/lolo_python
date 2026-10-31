@@ -99,8 +99,8 @@ Révision : la première libre à la fusion de DS2 (la 1.6 est réservée à la 
 - `state.survivor`, dans chaque trame de la course :
 
 ```json
-{"arch": 2, "arches": 4, "d_m": 650.0, "alive": ["b2", "me", "b4"], "last": "b4",
- "gap_last_s": 1.8, "out": [["b1", 1], ["b3", 1]], "me_out": null}
+{"arch": 3, "arches": 4, "d_m": 650.0, "alive": ["b2", "me", "b4"], "last": "b4",
+ "gap_last_s": 1.8, "out": [["b1", 1], ["b3", 2]], "me_out": null, "winner": null}
 ```
 
   `alive` dans l'ordre de course ; `out` = paires (bot, arche) ; `me_out` = arche de l'élimination du joueur ou `null`. Environ 150 octets avec 4 bots, environ 300 avec 11 : la trame la plus chargée reste sous la limite de 4 096 octets (à vérifier par `python -m openride_core.ipc_budget`). Chaque élément de `bots` gagne `out` (arche de l'élimination) quand le bot est éliminé.
