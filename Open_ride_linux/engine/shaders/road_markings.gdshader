@@ -19,8 +19,6 @@ shader_type spatial;
 // thème avec a = 1 − part non revêtue, et UV2.x = demi-largeur de la chaussée (ruban plus étroit, bords
 // irréguliers). Sans ces tableaux (COLOR blanc opaque, UV2 nul) : la chaussée d'avant U22. Pas de peinture sur
 // la terre ni le gravier ; grain plus gros (gravillons de 3 cm et cailloux de 12 cm) et teinte de la surface.
-// COLOR arrive tel qu'écrit par road_builder.gd (couleur sRGB du thème) : convertie en linéaire comme les
-// uniformes `source_color`, sinon la terre sort délavée, presque blanche (mesure 7bz-bis, lot U16).
 #include "res://shaders/surface_detail.gdshaderinc"
 uniform vec3 road_color : source_color = vec3(0.29, 0.29, 0.30);
 uniform vec3 line_color : source_color = vec3(0.95, 0.95, 0.95);
@@ -67,10 +65,6 @@ float digit_mask(int d, vec2 uv) {
 	if ((m & 32) != 0) o = max(o, box(uv, vec2(0.0, 0.5), vec2(t, 1.0)));
 	if ((m & 64) != 0) o = max(o, box(uv, vec2(0.0, 0.5 - t * 0.5), vec2(1.0, 0.5 + t * 0.5)));
 	return o;
-}
-
-vec3 to_linear(vec3 c) {   // même approximation que building.gdshader
-	return pow(c, vec3(2.2));
 }
 
 void fragment() {
@@ -137,7 +131,7 @@ void fragment() {
 	vec2 grit = sd_pebbles(p / 0.03);
 	float gravel_vis = sd_visible(p, 0.03);
 	float cobble = sd_noise(p / 0.12);
-	vec3 unpaved_col = to_linear(COLOR.rgb) * (1.0 + (grit.y - 0.5) * 0.3 * gravel_vis + (cobble - 0.5) * 0.12 + macro * 0.15);
+	vec3 unpaved_col = COLOR.rgb * (1.0 + (grit.y - 0.5) * 0.3 * gravel_vis + (cobble - 0.5) * 0.12 + macro * 0.15);
 	asphalt = mix(asphalt, unpaved_col, unpaved);
 	vec3 base = mix(verge, asphalt, on_road);
 	ALBEDO = mix(base, line_color, paint) * (1.0 - 0.45 * wetness);
