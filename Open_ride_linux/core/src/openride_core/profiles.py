@@ -22,6 +22,9 @@ Lot MJ7 : liste, création (identifiant tiré du nom), renommage et mise à la c
 profil par défaut `[profils] dernier` de `config.toml` (profil `joueur` seulement), sinon le seul
 profil joueur, sinon `principal` ; `~/OpenRide/.profil_actif` dit au lanceur quel profil relancer
 après un plantage du core.
+
+Lot O33 : le profil d'essai se vide et un profil de la corbeille se restaure depuis le menu
+(`clear`, `trash_entries`, `restore`).
 """
 
 from __future__ import annotations
@@ -49,7 +52,7 @@ TRIAL_ID = "_essai"
 MAIN_ID = "principal"          # joueur d'avant les profils, après la migration (lot MJ5)
 MIGRATION_FILE = ".migration"  # étapes de la migration, dans `Profils/` (lot MJ5)
 MIGRATION_DONE = "fini"
-TRASH_DIRNAME = ".corbeille"   # profils supprimés, récupérables à la main (lot MJ7)
+TRASH_DIRNAME = ".corbeille"   # profils supprimés, restaurables depuis « Gérer un profil » (lots MJ7, O33)
 ACTIVE_FILE = ".profil_actif"  # dans `~/OpenRide/` : profil de la séance en cours (lot MJ7)
 MAX_PROFILES = 8               # profils de joueur au plus (message `profiles` d'un datagramme)
 NAME_MAX = 16
@@ -410,6 +413,52 @@ def delete(profile_id: str, active_id: str | None, base: Path | None = None,
     dest.parent.mkdir(parents=True, exist_ok=True)
     os.replace(ctx.root, dest)
     return dest
+
+
+TRASH_SHOWN = 5   # profils de la corbeille proposés à la restauration (message `profiles`, lot O33)
+_TRASH_RE = re.compile(r"^(?P<id>[a-z0-9][a-z0-9-]{0,31})_(?P<stamp>\d{8}-\d{6})$")
+
+
+def trash_entries(base: Path | None = None) -> list[dict[str, str]]:
+    """Profils de la corbeille, les plus récents d'abord : `{id, name, deleted}` (`id` = dossier de la
+    corbeille, `deleted` = date de la suppression `AAAA-MM-JJ`) ; les dossiers illisibles sont sautés."""
+    trash = (base if base is not None else profiles_dir()) / TRASH_DIRNAME
+    out: list[dict[str, str]] = []
+    if not trash.is_dir():
+        return out
+    for d in sorted(trash.iterdir(), key=lambda p: p.name.rsplit("_", 1)[-1], reverse=True):
+        m = _TRASH_RE.match(d.name)
+        if not m or not d.is_dir():
+            continue
+        try:
+            desc = read_description(d, m["id"])
+        except ProfileContextError:
+            continue
+        stamp = m["stamp"]
+        out.append({"id": d.name, "name": str(desc["nom"]),
+                    "deleted": f"{stamp[:4]}-{stamp[4:6]}-{stamp[6:8]}"})
+    return out
+
+
+def restore(entry: Any, base: Path | None = None) -> ProfileContext:
+    """Remet un profil de la corbeille (lot O33) ; refusé si son identifiant ou son nom est repris
+    entre-temps, ou au-delà de huit profils. Lève `ProfileContextError`."""
+    base = base if base is not None else profiles_dir()
+    m = _TRASH_RE.match(entry) if isinstance(entry, str) else None
+    src = base / TRASH_DIRNAME / entry if m else None
+    if src is None or not src.is_dir():
+        raise ProfileContextError(f"profil introuvable dans la corbeille : « {entry} »")
+    profile_id = m["id"]
+    name = str(read_description(src, profile_id)["nom"])
+    existing = list_contexts(base)
+    if (base / profile_id).exists():
+        raise ProfileContextError(f"un profil « {profile_id} » existe déjà : renommer ou supprimer l'autre d'abord")
+    if any(c.name.casefold() == name.casefold() for c in existing):
+        raise ProfileContextError(f"le nom « {name} » est déjà pris : renommer l'autre profil d'abord")
+    if sum(not c.is_trial for c in existing) >= MAX_PROFILES:
+        raise ProfileContextError(f"{MAX_PROFILES} profils au plus : en supprimer un d'abord")
+    os.replace(src, base / profile_id)
+    return ProfileContext.for_id(profile_id, base)
 
 
 def _existing(profile_id: Any, existing: list[ProfileContext]) -> ProfileContext:

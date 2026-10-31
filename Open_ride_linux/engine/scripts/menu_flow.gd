@@ -195,6 +195,8 @@ func _init() -> void:
 		"on_back": ProfilesViewModel.SCREEN, "items": []})
 	menu.add_screen({"id": ProfilesViewModel.MANAGE, "title": "Gérer", "on_back": ProfilesViewModel.MANAGE_LIST,
 		"items": []})
+	menu.add_screen({"id": ProfilesViewModel.RESTORE, "title": "Restaurer un profil supprimé",
+		"on_back": ProfilesViewModel.MANAGE_LIST, "items": []})
 	_refresh_plans()
 	_refresh_builder()
 	_refresh_pairing()
@@ -835,6 +837,11 @@ func handle(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
+		"clear_trial_profile":   # confirmation acceptée (lot O33)
+			profiles.message = "Vidage du profil d'essai…"
+			profiles.done_message = "Profil d'essai vidé"
+			_refresh_profiles()
+			return act
 		"start_run":   # confirmation du premier lancement acceptée (lot R13) : l'avertissement n'est plus redemandé
 			rogue.mark_warned()
 			return _launch_rogue(act)
@@ -1052,6 +1059,7 @@ func _refresh_profiles() -> void:
 	menu.set_screen_items(ProfilesViewModel.SCREEN, profiles.who_items(), "Qui roule ?")
 	menu.set_screen_items(ProfilesViewModel.MANAGE_LIST, profiles.manage_list_items(), "Gérer un profil")
 	menu.set_screen_items(ProfilesViewModel.MANAGE, profiles.manage_items(), profiles.manage_title())
+	menu.set_screen_items(ProfilesViewModel.RESTORE, profiles.restore_items())
 	menu.set_screen_items(ProfilesViewModel.NAME, profiles.grid_items(), profiles.name_title())
 
 
@@ -1072,9 +1080,23 @@ func _handle_profiles(screen: String, item_id: String) -> Dictionary:
 					profiles.message = "Changement de profil…"
 					act = {"action": "select_profile", "id": id}
 		ProfilesViewModel.MANAGE_LIST:
-			profiles.manage_id = item_id.substr(2)
-			_refresh_profiles()
-			menu.push_screen(ProfilesViewModel.MANAGE)
+			if item_id == ProfilesViewModel.CLEAR_TRIAL_ID:   # lot O33
+				profiles.message = ""
+				menu.confirm("Vider le profil d'essai ? (séances, pièces et records d'essai effacés)",
+					{"action": "clear_trial_profile"})
+			elif item_id == ProfilesViewModel.RESTORE_ID:
+				profiles.message = ""
+				_refresh_profiles()
+				menu.push_screen(ProfilesViewModel.RESTORE)
+			else:
+				profiles.manage_id = item_id.substr(2)
+				_refresh_profiles()
+				menu.push_screen(ProfilesViewModel.MANAGE)
+		ProfilesViewModel.RESTORE:
+			if item_id.begins_with("t:"):
+				profiles.message = "Restauration…"
+				profiles.done_message = "Profil restauré : " + profiles.trash_name(item_id.substr(2))
+				act = {"action": "restore_profile", "id": item_id.substr(2)}
 		ProfilesViewModel.MANAGE:
 			if item_id == "rename":
 				profiles.begin_rename(profiles.manage_id)
@@ -1151,6 +1173,8 @@ func on_profiles(msg: Dictionary) -> void:
 		menu.open_screen(ProfilesViewModel.SCREEN)   # renommé : retour à la liste
 	elif menu.current_screen() == ProfilesViewModel.MANAGE and profiles._find(profiles.manage_id).is_empty():
 		menu.open_screen(ProfilesViewModel.SCREEN)   # supprimé
+	elif menu.current_screen() == ProfilesViewModel.RESTORE and profiles.message.begins_with("Profil restauré"):
+		menu.handle("Y_SHORT")   # restauré : retour à « Gérer un profil », message gardé
 	_refresh_profiles()
 
 
