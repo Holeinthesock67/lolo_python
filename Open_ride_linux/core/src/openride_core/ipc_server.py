@@ -32,7 +32,7 @@ MAX_LIST_DATAGRAM_SIZE = 60000
 # Messages en parties (`part`, `parts`), `plans` et `settings` : 60 000 octets au plus par datagramme (contrat §2,
 # même liste que le contrat ; `garage` et `room` depuis la révision 1.4, le monde ouvert depuis la 1.5,
 # `settings` depuis le 30 octobre : 26 réglages et les thèmes installés passaient 4 096 octets).
-LIST_MESSAGE_TYPES = ("routes", "workouts", "imports", "plans", "settings", "garage", "room",
+LIST_MESSAGE_TYPES = ("routes", "workouts", "imports", "plans", "settings", "garage", "room", "contents",
                       "places", "world_map", "world_regions")
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
 
@@ -347,7 +347,7 @@ class IpcServer:
             # Requêtes : réponse à chaque copie reçue, la réponse a pu se perdre (contrat §4). La création et
             # l'import d'entraînement sont idempotents (même fichier, même identifiant), lot N16.
             is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "import_workout",
-                                "world_search", "world_map", "world_regions")
+                                "world_search", "world_map", "world_regions", "list_contents")
             if cmd_id > self.last_cmd_id or is_query:
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)

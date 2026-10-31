@@ -1,5 +1,10 @@
 # Lot N14 – Lancement sans terminal : premier démarrage, erreurs affichées, mise à jour depuis l'icône
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Lancement sans terminal : premier démarrage, erreurs dans une fenêtre, « Libérer le trainer » et « Mettre à jour » depuis le bureau, installation en une commande | Python + shell | L8 (livré), N11 | Moyenne | **Livré le 25 octobre** (issue #114, PR #178) |
+
 ## 1. Objectif
 
 Demande du propriétaire du 25 octobre : pouvoir lancer le jeu sans passer par des lignes de commande. La série N couvre déjà l'essentiel :

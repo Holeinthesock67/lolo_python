@@ -1,5 +1,10 @@
 # Lot I6 – Logique de l'entraînement ERG côté Godot
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Logique de l'entraînement ERG côté Godot (bandeau, bip, histogramme, sans affichage) | GDScript | F (livré), E1 fusionné | Petite | **Livré le 23 octobre** (PR #25) |
+
 ## 1. Objectif
 
 Préparer l'affichage des entraînements ERG dans l'engine (sprint 4 de la SRS : bandeau, bip à T − 3 s, histogramme des blocs) en livrant d'abord la **logique**, testée sans écran : ce qu'il faut afficher et quand biper, calculé à partir de l'objet `erg` des trames `state`. Le dessin à l'écran et le branchement dans `main.gd` viendront dans un lot F2, avec un contrôle visuel.

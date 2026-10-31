@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideContentsMessage",
+  "description": "Révision 1.5 (lots O25 et O29) : contenus installables depuis « Réglages › Contenus ».",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "busy",
+    "message",
+    "items"
+  ],
+  "properties": {
+    "type": {
+      "const": "contents"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "busy": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "message": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "detail",
+          "state",
+          "network",
+          "size_mb",
+          "progress_pct"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "missing",
+              "partial",
+              "installed",
+              "installing"
+            ]
+          },
+          "network": {
+            "type": "boolean"
+          },
+          "size_mb": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "progress_pct": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      }
+    },
+    "disk_free_mb": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "themes_mb": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "themes_max_mb": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    }
+  }
+}

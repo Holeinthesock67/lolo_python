@@ -1,5 +1,10 @@
 # Lot P2 – Vent physique côté core
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Vent physique côté core : rafales, composante de face, vitesse virtuelle et résistance ressentie en SIM | Python | P1 | Moyenne | **Livré le 26 octobre** (issue #126) |
+
 ## 1. Objectif
 
 La formule de la SRS §5 contient déjà le vent (`wind_mps` de `physics.py`), mais il vaut toujours 0. Ce lot calcule dans le core un vent réglable (calme, fixe ou en rafales), le projette sur le cap de la route, l'applique à la vitesse virtuelle et, en SIM, à la résistance ressentie. Il publie le champ `wind` de la trame `state` (contrat v1.3 du lot P1), que l'engine utilise pour l'indicateur du HUD et l'animation du décor.

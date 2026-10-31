@@ -358,6 +358,43 @@
       "type": "string",
       "minLength": 1
     },
+    "texture_levels": {
+      "type": "array",
+      "description": "Niveaux de textures du pack (lot P20) : chaque chemin de texture est cherché d'abord dans le dossier du niveau retenu, puis dans ceux des niveaux inférieurs, puis à la racine du thème. Liste vide : une seule taille.",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "max_px",
+          "dir"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "max_px": {
+            "type": "integer",
+            "enum": [
+              64,
+              128,
+              256,
+              512,
+              1024,
+              2048,
+              4096,
+              8192
+            ]
+          },
+          "dir": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$)).+$"
+          }
+        }
+      }
+    },
     "terrain": {
       "type": "object",
       "additionalProperties": true,

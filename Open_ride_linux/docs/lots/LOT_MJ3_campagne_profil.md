@@ -1,5 +1,10 @@
 # Lot MJ3 – Campagne simulée accélérée sur le profil d'essai
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série MJ : campagne simulée accélérée (`campagne_profil`) et garde-fou d'empreinte du vrai profil | Python | MJ2 | Moyenne | **Livré le 29 octobre** (branche `claude/project-thread-grv91v-mj3`) |
+
 Série MJ, plan `docs/2.0/PLAN_SERIE_MJ.md` §4.3 et §4.4.
 
 ## 1. Objectif

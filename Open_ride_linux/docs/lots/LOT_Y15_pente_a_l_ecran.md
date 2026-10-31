@@ -1,5 +1,10 @@
 # Lot Y15 – Pente encore plus marquée à l'écran
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Pente encore plus marquée à l'écran : relief affiché ×2,5 par défaut porté par la route (tout le décor suit), regard qui ne suit que la moitié de la pente, champ de vision qui respire avec elle ; décor décidé sur le vrai relief | GDScript + shader | Q2, V12 | Petite | **Livré le 28 octobre**, séance sur le PC à faire (demande du 28 octobre) |
+
 **Statut : livré le 28 octobre (branche `claude/project-thread-mo1aek`)**, en attente de la séance sur le PC (montée de 8 % et descente, quatre vues de caméra, images par seconde).
 
 ## 1. Objectif

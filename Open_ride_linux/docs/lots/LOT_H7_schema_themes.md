@@ -1,5 +1,10 @@
 # Lot H7 – Schéma, validateur et thème par défaut
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Schéma, validateur et thème par défaut (prépare E2) | Python + JSON | — | Petite | **Livré le 23 octobre** (PR #17) |
+
 ## 1. Objectif
 
 Préparer le lot E2 (shader triplanaire et chargeur de thèmes dans Godot) sans toucher à Godot :

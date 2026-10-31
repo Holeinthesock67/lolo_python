@@ -1,5 +1,10 @@
 # Lot H1 – Intégration continue (GitHub Actions)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Intégration continue GitHub Actions et fichier de contraintes (audit F6) | YAML | — | Petite | **Livré le 23 octobre** (PR #11) |
+
 ## 1. Objectif
 
 Lancer automatiquement toutes les suites de tests d'OpenRide à chaque envoi et à chaque demande de fusion qui touche `Open_ride_linux/` :

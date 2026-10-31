@@ -78,6 +78,41 @@ func _init() -> void:
 		"cap 90°, balade, graine, rien d'autre")
 	_check(m.state == "loading" and m.is_loading(), "préchargement")
 
+	# Recherche au Click (lot O31) : Z ouvre la grille, + et − changent de case, Z écrit, A maintenu montre
+	# les résultats, Y revient à la grille puis efface ; texte vide, Y revient au globe.
+	m = Model.new()
+	m.handle("Z_SHORT")
+	_check(m.state == "search" and m.typing and m.entry.cell == 0, "Z sur le globe : grille de saisie")
+	for i in range(21):
+		m.handle("PLUS_SHORT")   # case V (rang 21)
+	act = m.handle("Z_SHORT")
+	_check(m.query == "V" and act.is_empty(), "Z écrit V, en majuscule (début de mot) ; rien demandé à une lettre")
+	m.handle("PLUS_LONG")    # une ligne plus bas : case ê (rang 31) → ô
+	m.handle("MINUS_LONG")
+	m.entry.cell = 4         # E
+	act = m.handle("Z_SHORT")
+	_check(m.query == "Ve" and act == {"action": "world_search", "query": "Ve"}, "deux lettres : recherche demandée (%s)" % str(act))
+	m.handle("A_LONG")
+	_check(m.typing, "A maintenu sans résultat : la grille garde la main")
+	m.on_places([{"name": "Mont Ventoux", "kind": "peak", "lat": 44.174, "lon": 5.2788, "cached": false, "source": "embedded"}])
+	m.handle("A_LONG")
+	_check(not m.typing and m.help_screen() == "search_results", "A maintenu : la liste des résultats a la main")
+	m.handle("Z_SHORT")
+	_check(m.typing and m.state == "search", "Z : retour à la grille")
+	act = m.handle("Y_SHORT")
+	_check(m.query == "V" and act.is_empty(), "Y efface la dernière lettre")
+	m.handle("Y_SHORT")
+	m.handle("Y_SHORT")
+	_check(m.state == "globe", "texte vide : Y revient au globe")
+	m.handle("Z_SHORT")
+	m.entry.cell = m.entry.grid_items().size() - 1   # Valider
+	m.handle("Z_SHORT")
+	_check(m.typing and m.help_screen() == "search", "Valider sans résultat : rien")
+	m.type_text("ve")
+	m.on_places([{"name": "Mont Ventoux", "kind": "peak", "lat": 44.174, "lon": 5.2788, "cached": false, "source": "embedded"}])
+	m.handle("Y_SHORT")
+	_check(m.state == "globe", "clavier : la liste a la main, Échap revient au globe comme avant")
+
 	# Boucle et destination.
 	m = Model.new()
 	m.handle("A_SHORT")

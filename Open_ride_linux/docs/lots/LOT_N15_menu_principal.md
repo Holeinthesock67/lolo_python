@@ -1,5 +1,10 @@
 # Lot N15 – Menu principal : monde, session libre, session ERG, session simulée
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Menu principal : monde, session libre, session ERG, session simulée (relance sans matériel) | GDScript + Python | N6, N13 | Moyenne | **Livré le 26 octobre** (interne, demande du propriétaire) |
+
 ## 1. Objectif
 
 Demande du propriétaire du 26 octobre : après l'écran de connexion des appareils (lot N13), arriver sur un menu qui permet de modifier les options, de lancer une vraie session, une vraie session en mode ERG ou une session simulée, et de choisir le monde (la carte). Ce lot réorganise l'accueil du menu du lot N6.

@@ -1,5 +1,10 @@
 # Lot N20 – Présentation des menus, étape 4 : records, bilan, pause, confirmation, couleurs du HUD et du globe
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Présentation des menus, étape 4 : records, bilan, pause, confirmation ; couleurs du HUD et du globe ramenées au thème | GDScript | N19 | Moyenne | Non : interne (menus, captures sur le PC) |
+
 ## 1. Objectif
 
 Dernière étape de la présentation des menus (demande du propriétaire du 27 octobre, `docs/PRESENTATION_MENUS.md`). Après N19, il reste des écrans en lignes de texte et des couleurs écrites en dur hors du thème commun :

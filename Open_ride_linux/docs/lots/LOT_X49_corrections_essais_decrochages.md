@@ -1,5 +1,10 @@
 # Lot X49 – Corrections après les essais sur le PC des outils de décrochage (X43 à X47)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : corrections après les essais PC du 30 octobre : `decrochages` n'accuse le trainer que sur preuve (relâchements du cycliste à part), modèle simulé comparé seulement aux paliers établis, `trainer_steps --renvoi S` | Python | X43–X47 | Petite | Essais du 30 octobre ; en PR |
+
 ## 1. Objectif
 
 Les essais du 30 octobre sur le PC (file 7an) ont relevé trois défauts dans les outils des lots X43 à X47.

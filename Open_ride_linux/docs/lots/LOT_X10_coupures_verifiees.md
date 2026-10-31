@@ -1,5 +1,10 @@
 # Lot X10 – Coupures volontaires, attendu contre obtenu
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Coupures volontaires, attendu contre obtenu au journal | Python | — | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x10`), essai sur le vélo ; issue #208 |
+
 ## 1. Objectif
 
 `essais/coupures.sh` (essai 69) n'a jamais été lancé, et ses effets se lisent à la main. Ce lot en fait un outil officiel : chaque coupure est horodatée, puis l'outil vérifie au journal la réaction attendue et son délai.

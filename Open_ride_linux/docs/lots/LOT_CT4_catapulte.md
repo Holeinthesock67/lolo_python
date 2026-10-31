@@ -1,5 +1,10 @@
 # Lot CT4 – Catapulte cinétique : charge dans la roue et déclenchement
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série CT : catapulte cinétique : charge dans la roue et déclenchement | Python | AS2, CT2 | Moyenne | Prêt (version 5.0) |
+
 Série CT (version 5.0, mode « Course tactique »). Plan de la série : `docs/5.0/PLAN_SERIE_CT.md`.
 
 ## 1. Objectif

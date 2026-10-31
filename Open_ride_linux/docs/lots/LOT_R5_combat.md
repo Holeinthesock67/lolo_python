@@ -1,5 +1,10 @@
 # Lot R5 – Combat : bouclier, adrénaline, dégâts, fenêtres de timing, Perfect Shift, surchauffe
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Combat : bouclier, adrénaline, dégâts, fenêtres de timing, Perfect Shift, surchauffe | Python | R0, R2, R3, R4 | Moyenne | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
+
 ## 1. Objectif
 
 Les règles d'une salle de combat, en module pur : à chaque pas, à partir de la puissance, de la cadence, de la posture, du braquet, des boutons et des marqueurs de la salle, calculer les dégâts infligés à l'ennemi, le bouclier, l'adrénaline, l'or et les événements de jeu. Toutes les valeurs sont **des valeurs de départ**, rangées dans `RogueBalance` et calibrées par la run simulée (R7).

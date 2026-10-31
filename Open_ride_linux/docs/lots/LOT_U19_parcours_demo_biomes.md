@@ -1,5 +1,10 @@
 # Lot U19 – Parcours de démonstration fictifs, un par biome
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Parcours de démonstration fictifs, un par biome, portions non revêtues et côte | Python | U1 | Petite | Oui, après U1, **version 3.0** (issue #349) |
+
 ## 1. Objectif
 
 **Version 3.0.** Fournir des parcours `.world` fictifs, générés par code, qui couvrent chaque biome du premier jalon et quelques transitions, pour tester tous les lots de rendu sans trace réelle et pour la recette U18 (risque 5 du plan : biomes invisibles sur des traces françaises). Le même générateur produit des portions non revêtues pour l'option « gravel ».

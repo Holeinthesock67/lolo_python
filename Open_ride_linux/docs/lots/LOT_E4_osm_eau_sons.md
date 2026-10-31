@@ -1,5 +1,10 @@
 # Lot E4 – Bâtiments, forêts OSM, eau et sons du parcours
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Bâtiments, forêts OSM, eau et sons du parcours | GDScript | E3, K3, K4, L1, L2, L5 (livrés) | Grande | **Livré le 24 octobre** (PR #91, recette visuelle et sonore sur la GTX 1060 à faire) |
+
 ## 1. Objectif
 
 Afficher les couches facultatives du `.world` qui viennent d'OpenStreetMap (SRS §8 « Modules ajoutés ensuite », §10, §13 sprints 5 et 6) : bâtiments extrudés, forêts et vergers, rivières et lacs, et faire entendre le vent, la roue libre et les points d'intérêt. Les calculs sont déjà faits sans affichage par K3, K4, L1, L2 et L5 : ce lot les **branche dans la scène**, par tronçons, sans à-coups et dans le budget de la GTX 1060.
