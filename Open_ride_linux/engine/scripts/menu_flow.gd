@@ -58,6 +58,7 @@ const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
+const HistoryViewModel := preload("res://scripts/history_view_model.gd")
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
@@ -82,8 +83,7 @@ const FTP_TESTS := [
 		"test de FTP (rampe)"]]
 const FTP_HINT := "Sur une boucle : l'arrivée d'un parcours arrête le test"
 ## Avertissements du test de FTP (summary.ftp_test.warnings), comme `openride-core ftp-test`.
-const FTP_WARNINGS := {"too_short": "test trop court", "erratic_cadence": "cadence erratique",
-	"trainer_dropout": "coupure du trainer pendant l'effort", "paused": "pause pendant l'effort"}
+const FTP_WARNINGS := HistoryViewModel.FTP_WARNINGS
 const SUMMARY_BASE_IDS := ["new_session", "details", "quit"]
 ## Ligne d'état de l'écran de pause selon `state.pause_reason` (contrat IPC) : le HUD est caché pendant
 ## un menu, la raison de la pause s'affiche donc sous le titre. Pause demandée (`user`) : rien.
@@ -176,6 +176,8 @@ var _record_bonus := false
 var pause_reason := ""
 ## Profils de joueurs (série MJ, lot MJ8) : « Qui roule ? », nom du profil, gestion.
 var profiles = ProfilesViewModel.new()
+## Historique (lot O28) : séances, cumul par semaine, tests de FTP et bilan d'une séance passée.
+var history = HistoryViewModel.new()
 
 
 func _init() -> void:
@@ -194,6 +196,13 @@ func _init() -> void:
 	menu.add_screen({"id": PLAN, "title": "Plan", "on_back": PLANS, "items": []})
 	menu.add_screen({"id": FTP_TEST, "title": "Test de FTP", "on_back": MenuModel.HOME, "items": []})
 	_refresh_ftp_test()
+	menu.add_screen({"id": HistoryViewModel.SCREEN, "title": "Historique", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": HistoryViewModel.WEEKS, "title": "Cumul par semaine", "on_back": HistoryViewModel.SCREEN,
+		"items": []})
+	menu.add_screen({"id": HistoryViewModel.FTP, "title": "Tests de FTP", "on_back": HistoryViewModel.SCREEN,
+		"items": []})
+	menu.add_screen({"id": HistoryViewModel.SESSION, "title": "Séance", "on_back": HistoryViewModel.SCREEN,
+		"items": HistoryViewModel.session_items()})
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
 	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
@@ -421,6 +430,9 @@ func on_error(code: String, text: String) -> void:
 	if menu.current_screen() in ProfilesViewModel.SCREENS and profiles.on_error(code, text):
 		_refresh_profiles()
 		return
+	if menu.current_screen() in HistoryViewModel.SCREENS and code == "bad_args":
+		history.message = "Échec : " + text
+		return
 	if code == "bot_invalid" and menu.current_screen() == MenuModel.READY:
 		ready_message = "Échec : " + text
 		return
@@ -469,6 +481,7 @@ func set_routes(raw: Array) -> void:
 			route_names[str(r["id"])] = str(r.get("name", r["id"]))
 	if menu.world_id != "" and route_names.has(menu.world_id):
 		menu.set_world(menu.world_id, route_names[menu.world_id])
+	_refresh_history()   # noms des parcours des séances de l'historique
 
 
 func set_workouts(raw: Array) -> void:
@@ -547,7 +560,7 @@ func card(st: Dictionary) -> Dictionary:
 			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
 	if screen == MenuModel.PAUSE:
 		return CatalogModel.pause_sheet(_run_t, _run_s, _power_sum / _power_n if _power_n > 0 else -1.0)
-	if screen == SUMMARY:
+	if screen in [SUMMARY, HistoryViewModel.SESSION]:
 		return {"title": "Bilan de la séance"}
 	if screen == RECORDS:
 		return records.sheet_segment(menu.world_id, focused.substr(4)) if focused.begins_with("seg:") else {}
@@ -913,6 +926,11 @@ func handle(event: String) -> Dictionary:
 		if str(act["id"]) == "ftp":
 			menu.push_screen(FTP_TEST)
 			return {}
+		if str(act["id"]) == "history":
+			history.begin()
+			_refresh_history()
+			menu.push_screen(HistoryViewModel.SCREEN)
+			return {"action": "list_history"}
 		if not plan_day_session().is_empty():
 			return _handle_plan_item(PLANS, "today")
 		plan_message = ""
@@ -920,6 +938,8 @@ func handle(event: String) -> Dictionary:
 		return {"action": "list_plans"}
 	if act.get("action", "") == "item" and act.get("screen", "") in GarageViewModel.SCREENS:
 		return _handle_garage(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") in HistoryViewModel.SCREENS:
+		return _handle_history(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
 		if str(act["id"]) in ROUTE_HELP_TOPICS:
 			menu.push_screen(ROUTE_HELP)
@@ -1242,6 +1262,51 @@ func garage_preview(st: Dictionary) -> Dictionary:
 	return {}
 
 
+## Historique (lot O28) : réponse `history` à `list_history` ; noms des parcours de la dernière liste.
+func on_history(msg: Dictionary) -> void:
+	history.on_history(msg)
+	_refresh_history()
+
+
+## Bilan d'une séance passée (`history_session`) : ouvert dans le panneau du bilan de fin de séance.
+func on_history_session(msg: Dictionary) -> void:
+	if not history.on_session(msg) or menu.current_screen() != HistoryViewModel.SCREEN:
+		return
+	show_details = false
+	_refresh_history()
+	menu.push_screen(HistoryViewModel.SESSION)
+
+
+func _refresh_history() -> void:
+	menu.set_screen_items(HistoryViewModel.SCREEN, history.items(route_names))
+	menu.set_screen_items(HistoryViewModel.WEEKS, history.week_items())
+	menu.set_screen_items(HistoryViewModel.FTP, history.ftp_items())
+	menu.set_screen_items(HistoryViewModel.SESSION, HistoryViewModel.session_items(), history.session_title(route_names))
+
+
+func _handle_history(screen: String, item_id: String) -> Dictionary:
+	if screen == HistoryViewModel.SCREEN:
+		if item_id == "weeks":
+			menu.push_screen(HistoryViewModel.WEEKS)
+		elif item_id == "ftp":
+			menu.push_screen(HistoryViewModel.FTP)
+		else:
+			var sid: String = history.request(item_id)
+			if sid != "":
+				return {"action": "history_session", "id": sid}
+	elif screen == HistoryViewModel.SESSION:
+		if item_id == "details":
+			show_details = not show_details
+		elif item_id == "back":
+			menu.handle("Y_SHORT")
+	return {}
+
+
+## Bilan affiché par le panneau du bilan : celui de la séance qui vient de finir, ou d'une séance de l'historique.
+func shown_summary() -> Dictionary:
+	return history.detail if menu.current_screen() == HistoryViewModel.SESSION else summary
+
+
 ## Écrans des records (lot T10) : « Records du parcours » (écran Prêt) relit le fichier et liste les
 ## segments ; un segment ouvre sa table « sans bonus » ; « A : voir les temps avec bonus » bascule.
 func _handle_records(screen: String, item_id: String) -> void:
@@ -1393,6 +1458,9 @@ func state() -> Dictionary:
 		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
 	elif st["screen"] in GarageViewModel.SCREENS:
 		st["status"] = garage.message
+	elif st["screen"] in HistoryViewModel.SCREENS:
+		st["status"] = history.message
+		st["status_error"] = history.message.begins_with("Échec")
 	elif st["screen"] in ProfilesViewModel.SCREENS:
 		st["status"] = profiles.message
 		st["status_error"] = profiles.message.begins_with("Nom refusé") or profiles.message.begins_with("Nom vide")

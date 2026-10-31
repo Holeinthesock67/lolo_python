@@ -138,7 +138,7 @@ openride-core release-trainer          # libère le trainer resté réservé apr
 openride-core summary --ftp 250        # bilan du dernier journal (ou d'un .jsonl/.fit) : NP, IF, TSS, zones ; --json
 openride-core session-report           # analyse du dernier journal (lot X12) : ~/OpenRide/rapports/<séance>/rapport.html ; --log, --engine-log
 openride-core fit-check SEANCE.fit --journal JOURNAL.jsonl   # contrôle local d'un FIT réel (SDK Garmin) avant import ; --json
-openride-core history --weeks 8        # historique des séances et cumul par semaine ISO ; --json
+openride-core history --weeks 8        # historique des séances et cumul par semaine ISO ; --json ; au menu : « Historique » (lot O28, mêmes calculs)
 
 # Diagnostic matériel
 openride-core devices                  # appareils classés (trainer, Click, ceinture) et bloc [drivers] à recopier ; --json ; --save : écrit dans ~/OpenRide/config.toml (pairing.py, lot N12)
