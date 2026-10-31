@@ -1375,6 +1375,42 @@
           "type": "boolean"
         }
       }
+    },
+    "start_wait": {
+      "type": "object",
+      "description": "Facultatif, révision 1.5 (lot O36) : départ au pédalage en attente, en READY après start. Absent sinon.",
+      "required": [
+        "phase",
+        "cadence_rpm",
+        "hold_s",
+        "held_s",
+        "waited_s"
+      ],
+      "properties": {
+        "phase": {
+          "enum": [
+            "decor",
+            "trainer",
+            "pedalage"
+          ]
+        },
+        "cadence_rpm": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hold_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "held_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "waited_s": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
     }
   },
   "$defs": {

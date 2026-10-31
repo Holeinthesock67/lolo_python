@@ -85,6 +85,7 @@ class IpcState:
     bot_behind: str | None = None
     rogue: dict[str, Any] | None = None    # révision 1.4 (série R, lot R8) : présent seulement en mode ROGUE
     wtf: dict[str, Any] | None = None      # révision 1.5 (lot WTF2) : présent seulement en mode WTF
+    start_wait: dict[str, Any] | None = None   # révision 1.5 (lot O36) : départ au pédalage en attente (READY)
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -110,7 +111,7 @@ class IpcState:
             d.pop("draft_bot", None)
         if self.open_world is None or self.devices is not None:
             d.pop("open_world", None)
-        for key in ("segment", "powerup", "jerseys", "rogue", "wtf"):
+        for key in ("segment", "powerup", "jerseys", "rogue", "wtf", "start_wait"):
             if d[key] is None:
                 d.pop(key)
         if self.bots is None:

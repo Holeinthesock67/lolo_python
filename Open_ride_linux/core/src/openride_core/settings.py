@@ -81,6 +81,8 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("gearing.start_gear", "Braquet de départ", "ride", 1),
     Setting("powerups.mode", "Bonus", "ride"),
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
+    Setting("depart.mode", "Départ", "ride"),   # lot O36 : au pédalage ou immédiat
+    Setting("depart.cadence_rpm", "Cadence de départ", "ride", 5, "tr/min"),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20
