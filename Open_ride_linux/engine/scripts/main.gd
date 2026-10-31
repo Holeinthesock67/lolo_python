@@ -400,6 +400,14 @@ func _ready() -> void:
 	ipc.imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
 		menu_flow.set_import_candidates(items)
 		_refresh_menu())
+	ipc.route_imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
+		menu_flow.set_route_import_candidates(items)
+		_refresh_menu())
+	ipc.route_import_status_received.connect(func(msg: Dictionary) -> void:
+		ipc.test_log("route_import_status state=%s route=%s" % [str(msg.get("state", "")), str(msg.get("route_id", ""))])
+		if menu_flow.on_route_import_status(msg):
+			ipc.list_routes()   # parcours prêt : nouvelle liste, focus dessus à son arrivée
+		_refresh_menu())
 	ipc.workout_saved_received.connect(func(msg: Dictionary) -> void:
 		ipc.test_log("workout_saved id=%s" % str(msg.get("workout_id", "")))
 		if menu_flow.on_workout_saved(msg):
@@ -632,6 +640,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.set_setting(str(act["key"]), act["value"])
 		"list_imports":
 			ipc.list_imports()
+		"list_route_imports":
+			ipc.list_route_imports()
+		"import_route":
+			ipc.import_route(str(act["path"]))
 		"list_plans":
 			ipc.list_plans()
 		"list_wtf_rules":
@@ -1492,7 +1504,7 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
-	if cmd_name in ["list_routes", "list_workouts", "list_imports"]:
+	if cmd_name in ["list_routes", "list_workouts", "list_imports", "list_route_imports"]:
 		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
 

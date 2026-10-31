@@ -2,8 +2,9 @@ extends RefCounted
 
 ## Aide de la liste des parcours (lot O22, demande du propriétaire du 31 octobre : « Le menu est
 ## explicite avec des légendes pour ces fonctions ? »), sans nœud. En fin de liste des parcours,
-## « Ajouter un parcours » montre dans la carte de droite comment ajouter une trace, et « Comment ça
-## marche ? » ouvre l'écran « Aide parcours » : un sujet par ligne, son explication dans la carte de
+## « Ajouter un parcours » montre dans la carte de droite comment ajouter une trace et ouvre l'écran
+## « Importer une trace » (lot O23), et « Comment ça marche ? » ouvre l'écran « Aide parcours » : un
+## sujet par ligne, son explication dans la carte de
 ## détail (même carte que les fiches, menu_flow.card()). Textes alignés sur docs/GUIDE_UTILISATION.md
 ## §4 et §4 bis, et sur le core (config.py : GPX_DIR ; catalog.py : fiche `<trace>.toml` ;
 ## open_world_save.py : balade enregistrée en GPX au-delà de 500 m).
@@ -21,9 +22,10 @@ const TOPICS := [
 		"Un parcours illisible reste grisé, avec son erreur.",
 	]],
 	["add", "Ajouter une trace", [
-		"Dépose la trace dans le dossier ~/OpenRide/GPX/ : un .gpx, ou l'export de Garmin Connect tel quel (.fit, .tcx, .fit.gz, .tcx.gz, .zip).",
-		"Quitte OpenRide, puis relance-le avec son icône : la trace est compilée au démarrage et une notification le dit.",
-		"Le parcours apparaît ensuite dans cette liste. Un fichier illisible est signalé au lancement.",
+		"A maintenu sur « Ajouter un parcours » liste les traces de Téléchargements, Bureau et ~/OpenRide/Import.",
+		"Formats : .gpx, ou l'export de Garmin Connect tel quel (.fit, .tcx, .fit.gz, .tcx.gz, .zip).",
+		"Choisis-en une : OpenRide la copie dans ~/OpenRide/GPX/ et la compile tout de suite, sans relancer ; le parcours arrive sous le focus.",
+		"Une trace illisible affiche son erreur et n'est pas ajoutée. Une trace déposée à la main dans ~/OpenRide/GPX/ est compilée au lancement suivant.",
 	]],
 	["sheet", "Fiche d'un parcours (.toml)", [
 		"À côté de la trace, un petit fichier du même nom en .toml rend la fiche plus parlante.",

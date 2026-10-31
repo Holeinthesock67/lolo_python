@@ -39,7 +39,9 @@ En-tête d'un scénario : `description`, `voies` (défaut : les trois), `apparei
 `config` ({clé: valeur} écrite dans config.toml avant le lancement), `entrainement` (vrai : `erg_court.zwo`
 dans ~/OpenRide/Workouts), `telechargements` ({fichier: nom de l'entraînement} dans ~/Téléchargements), `plans`
 (vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `fichiers` ({chemin dans le
-HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29).
+HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
+(`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
+réseau, en quelques secondes : import de traces du lot O23).
 
 Rapport dans `--out` : `rapport.html` (tableau scénario × voie, vérifications, captures), `resultats.json`
 et `resume.txt`. Une capture est prise à chaque échec, avec l'état du menu. Code de sortie : 0 si toutes les
@@ -54,6 +56,7 @@ import html
 import json
 import os
 import re
+import shlex
 import shutil
 import signal
 import socket
@@ -125,7 +128,8 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "duree_s", "ecran", "monde", "titre", "groupe", "contient", "absent", "focus", "elements", "statut", "edition",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "capture", "relancer", "delai", "voies", "note"}
-HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives", "etapes"}
+HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
+             "compilateur", "etapes"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -477,8 +481,10 @@ class Run:
         a = self.args
         env = {**os.environ, "HOME": str(self.home), "PYTHONUNBUFFERED": "1",
                "PYTHONPATH": os.pathsep.join([str(REPO / "core" / "src"), str(REPO / "compiler" / "src")])}
-        for k in ("XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME"):
+        for k in ("XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "OPENRIDE_COMPILER"):
             env.pop(k, None)
+        if self.doc.get("compilateur") == "doublure":
+            env["OPENRIDE_COMPILER"] = shlex.join([sys.executable, str(REPO / "core" / "tests" / "data" / "stub_compiler.py")])
         suffix = f"_{n}" if n else ""
         argv = [sys.executable, "-m", "openride_core", "run", "--config", str(self.config), "--trainer", "sim",
                 "--input", "sim", "--hr", "sim", "--sim-scenario", str(self.tmp / "scenario.json")]
