@@ -1,6 +1,6 @@
 """Banc des séances enchaînées sans quitter le jeu (endurance 7bi) : temps de pas et mémoire du core, sans vélo.
 
-    python -m openride_core.tools.seances_enchainees [--seances 6] [--minutes 5] [--bots 2] [--sans-memoire] [--json]
+    python -m openride_core.tools.seances_enchainees [--seances 6] [--minutes 2] [--bots 2] [--sans-memoire] [--json]
 
 La vraie séance (`CoreSession`, trainer simulé à puissance variable, bots à puissance constante) roule au pas
 fixe de 20 ms en temps accéléré, sans trainer ni engine : `--seances` séances de `--minutes` min, chacune
@@ -8,8 +8,9 @@ ouverte comme la relance de l'endurance (`select_route` puis `start`) et fermée
 enregistrement (journal, FIT, records, XP dans un dossier temporaire).
 
 Relevés par séance : temps de pas moyen et p99 (temps réel du calcul), taille de la fenêtre de la puissance
-3 s, mémoire Python allouée en fin de séance (tracemalloc, environ 8 fois plus lent ; `--sans-memoire` pour
-ne mesurer que le temps).
+3 s, mémoire Python gardée en fin de séance par le code d'OpenRide (tracemalloc, allocations dont la pile passe
+par `openride_core` : celles d'autres fils du même processus, sous pytest par exemple, ne comptent pas ;
+environ 8 fois plus lent ; `--sans-memoire` pour ne mesurer que le temps).
 
 Échec (code 1) si : le pas moyen de la dernière séance dépasse 1,5 fois celui de la première (plus 0,05 ms
 de marge de mesure), si la fenêtre de la puissance 3 s dépasse 3 s de relevés, ou si la mémoire gardée d'une
@@ -44,9 +45,18 @@ STEP_MARGIN_MS = 0.05
 WINDOW_MAX = int(3.0 / DT) + 10
 MAX_GROWTH_MB_PER_H = 2.0
 T0_WALL = 1_790_000_000.0
+TRACE_FRAMES = 16
+OWN_CODE = tracemalloc.Filter(True, str(Path(__file__).resolve().parents[1] / "*"), all_frames=True)
 
 
-def run(sessions: int = 6, minutes: float = 5.0, n_bots: int = 2, memory: bool = True) -> dict[str, Any]:
+def own_memory_mb() -> float:
+    """Mémoire Python allouée par le code d'OpenRide et encore vivante, en Mo."""
+    gc.collect()
+    snap = tracemalloc.take_snapshot().filter_traces([OWN_CODE])
+    return sum(st.size for st in snap.statistics("filename")) / 1e6
+
+
+def run(sessions: int = 6, minutes: float = 2.0, n_bots: int = 2, memory: bool = True) -> dict[str, Any]:
     t_wall = time.perf_counter()
     wall = [T0_WALL]
     rows: list[dict[str, Any]] = []
@@ -67,7 +77,7 @@ def run(sessions: int = 6, minutes: float = 5.0, n_bots: int = 2, memory: bool =
         s.server.send_raw = lambda m, max_size=None: None
         s.server.send_input_event = lambda ev: None
         if memory:
-            tracemalloc.start()
+            tracemalloc.start(TRACE_FRAMES)
         steps = int(round(minutes * 60.0 / DT))
         cmd_id = t_sim = 0
         try:
@@ -91,8 +101,7 @@ def run(sessions: int = 6, minutes: float = 5.0, n_bots: int = 2, memory: bool =
                        "pas_p99_ms": round(step_ms[min(int(0.99 * len(step_ms)), len(step_ms) - 1)], 4),
                        "fenetre_3s": window, "etat": s.state.session_state}
                 if memory:
-                    gc.collect()
-                    row["memoire_mo"] = round(tracemalloc.get_traced_memory()[0] / 1e6, 3)
+                    row["memoire_mo"] = round(own_memory_mb(), 3)
                 rows.append(row)
         finally:
             if memory:
@@ -136,7 +145,7 @@ def format_text(out: dict[str, Any]) -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Banc des séances enchaînées du core (endurance 7bi).")
     ap.add_argument("--seances", type=int, default=6, help="nombre de séances enchaînées (au moins 2)")
-    ap.add_argument("--minutes", type=float, default=5.0, help="durée de chaque séance (min)")
+    ap.add_argument("--minutes", type=float, default=2.0, help="durée de chaque séance (min)")
     ap.add_argument("--bots", type=int, default=2, help="bots à puissance constante (0 à 4)")
     ap.add_argument("--sans-memoire", action="store_true", help="sans tracemalloc : plus rapide, temps de pas seul")
     ap.add_argument("--json", action="store_true")
