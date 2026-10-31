@@ -25,7 +25,6 @@ LOT_RE = re.compile(r"^[A-Z]{1,3}\d+$")
 # Commandes que le guide d'utilisation peut citer : raison, ou lot qui les remplace par un menu (le lot
 # retire alors la commande du guide et la ligne d'ici).
 GUIDE_COMMANDS: dict[str, str] = {
-    "openride-core profil essai --vider": "O33",
     "openride-core recover": "O34",
     "openride --profil": "raccourci facultatif : l'écran « Qui roule ? » fait la même chose",
     "openride-core profil list": "facultatif : les profils sont listés à l'écran « Qui roule ? »",
