@@ -572,6 +572,15 @@ func road_users(within_m: float = 300.0) -> Array:
 	return out
 
 
+## Véhicules de la route (dernière image), {s, dir}, pour que les bots serrent à droite à leur approche
+## (bots_view_model.gd, `vehicles`).
+func vehicle_places() -> Array:
+	var out: Array = []
+	for v in traffic.vehicles:
+		out.append({"s": float(v["s"]), "dir": int(v["dir"])})
+	return out
+
+
 ## Lot P32 : compte les paires qui se touchent à cette image (carrosseries et cyclistes de moins de CONTACT_M de
 ## la caméra) : véhicules entre eux, véhicule et cycliste, cyclistes de groupes différents, bots et cycliste
 ## compris. `others` : cyclistes du décor et bots, comme traffic_model.gd les reçoit.
@@ -619,6 +628,7 @@ func test_info(cam: Camera3D) -> Dictionary:
 		"sounds": sounds_heard.duplicate(),
 		"frozen_sig": frozen_signature(),
 		"road_users": road_users(),
+		"bot_places": bot_places.map(func(b): return {"rel_m": float(b["s"]) - _cam_s, "lateral": float(b["lateral"])}),
 		"rider_lateral": _cam_lateral,
 		"contacts": contacts, "last_contact": last_contact,
 		"sign": {},

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Circulation à droite : le cycliste dans la voie de droite, véhicules et cyclistes du décor à droite dans leur sens, outil de test `decor_place` et scène `voies` | GDScript + Python | P25, P28 | Petite | **Livré le 29 octobre** (demande du 29 octobre : « roulent à droite de la route et pas au milieu ») ; complément du 31 octobre : bots côte à côte en peloton, plus de superposition (trouvée par `course_bots`) |
+| Circulation à droite : le cycliste dans la voie de droite, véhicules et cyclistes du décor à droite dans leur sens, outil de test `decor_place` et scène `voies` | GDScript + Python | P25, P28 | Petite | **Livré le 29 octobre** (demande du 29 octobre : « roulent à droite de la route et pas au milieu ») ; complément du 31 octobre : bots côte à côte en peloton, plus de superposition (trouvée par `course_bots`) ; véhicules face au peloton : bots qui serrent à droite, véhicules qui restent sur la route |
 
 ## 1. Objectif
 
@@ -66,3 +66,11 @@ Défaut trouvé par le scénario `course_bots` du banc (lot Z2, X33) : tous les 
 - **Tests** : `test_bots_view_model.gd` (peloton de quatre au départ : quatre places, aucun contact ; le premier garde le bord ; près du cycliste, aucun bot ne se rabat sur lui ; glissement sans saut ; peloton étiré : retour au bord). `test_road_cyclists_model.gd` et `test_traffic_model.gd` passent des places.
 - **Banc** : `sim_bench.py --scenario course_bots` en low, medium et high : 0 contact sur 11 captures dans chaque qualité (24 avant la correction). Planche avant/après du peloton au départ dans le dossier du projet (`bots-peloton/`).
 
+
+## 11. Complément : véhicules face au peloton (31 octobre)
+
+Question du propriétaire le 31 octobre : « Et si véhicule en face ? ». Essai : cinq bots de front au départ, une voiture en face. Elle évitait les bots sans les toucher, mais roulait à moitié dans l'herbe (bord extérieur à 5,1 m de l'axe, route de 3 m). Une voiture qui rattrapait le peloton faisait de même. Correction demandée le même jour.
+
+- **Bots qui serrent à droite** (`bots_view_model.gd`, champ `vehicles` posé par `main.gd` depuis `living_decor.vehicle_places()`) : quand un véhicule d'en face les croisera dans les 250 m, ou qu'un véhicule les rattrape à moins de 80 m, les bots n'ont droit qu'aux deux places les plus à droite (`KEEP_RIGHT_SLOTS`), donc deux de front au plus. Les autres se rangent en file, une ou plusieurs longueurs (2 m) derrière. Ce retrait ne change que l'image : les écarts du HUD restent ceux du core. Un bot recule d'abord dans sa ligne, puis glisse en travers. Au retour, il glisse d'abord, puis remonte quand sa ligne est libre. Un bot qui apparaît se pose directement à sa place.
+- **Véhicules qui restent sur la route** (`traffic_model.gd`) : un véhicule ne s'écarte plus au-delà de la chaussée et de son accotement, à 0,25 m d'herbe près (`VERGE_M`). Sans la place, il attend : derrière ceux qu'il rattrape, ou devant ceux qu'il croise. Le dépassant vise maintenant la place que les bots lui laissent, et non plus seulement sa voie de gauche ; sinon, il restait derrière le peloton serré sans jamais doubler.
+- **Tests** : `test_traffic_model.gd`, peloton de cinq bots de front 6 m devant le cycliste, sur 16 graines à 30 km/h, puis cycliste arrêté à 4 et 2 images par seconde : aucun contact, aucun véhicule hors de la route, aucun bot dans la voie d'en face au croisement, des véhicules qui doublent quand même le peloton serré, une file de 8 m au plus. Nouvelle scène `peloton_face` de `visual_check.py` : peloton de front, puis voiture posée en face (`decor_place`). La voiture reste sur la chaussée, les bots sont à droite au croisement, sans contact. Les positions des bots sont lues dans `bot_places` des infos du décor.
