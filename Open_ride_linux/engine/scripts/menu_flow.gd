@@ -37,7 +37,9 @@ extends RefCounted
 ##   « Choisir un plan » ; la séance du jour démarre par `start` avec plan_day ; l'écran « Plans »
 ##   (action list_plans à l'ouverture) montre le suivi du plan actif et la liste, l'écran d'un plan
 ##   le démarre (start_plan, remplacement confirmé) ou l'arrête (stop_plan, confirmé) ; réponse `plans`
-##   par on_plans(), erreur plan_invalid sur la ligne d'état ;
+##   par on_plans(), erreur plan_invalid sur la ligne d'état ; « Créer un plan », en fin de liste, compose
+##   un plan maison (plan_builder.gd, lot O30 : jours, entraînements, durée) envoyé par create_plan, puis
+##   ouvre l'écran du plan créé ;
 ## - « Test de FTP » : la rampe (seul test depuis le lot O19), puis écran Prêt, `start` avec ftp_test ; au bilan,
 ##   « Accepter » (accept_ftp ; résultat douteux : confirmation puis accept_ftp avec force) ou « Garder » ;
 ## - parcours : tri et filtre par étiquette en cycle en fin de liste, fiche du parcours sur l'écran Prêt ;
@@ -54,6 +56,7 @@ const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
+const PlanBuilder := preload("res://scripts/plan_builder.gd")
 const WorkoutHelp := preload("res://scripts/workout_help.gd")
 const RouteHelp := preload("res://scripts/route_help.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
@@ -61,6 +64,7 @@ const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
+const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
@@ -139,6 +143,8 @@ var _all_ok_since := -1.0
 ## Noms des parcours de la dernière liste, par id (monde affiché à l'accueil).
 var route_names := {}
 var builder = WorkoutBuilder.new()
+## Plan maison en cours de composition (lot O30).
+var plan_builder = PlanBuilder.new()
 ## Fichiers proposés à l'import : [{path, file, source, imported}] (message `imports` du core).
 var import_candidates: Array = []
 ## Ligne d'état de la liste des entraînements (créé, importé, erreur).
@@ -183,6 +189,8 @@ var _record_bonus := false
 var pause_reason := ""
 ## Profils de joueurs (série MJ, lot MJ8) : « Qui roule ? », nom du profil, gestion.
 var profiles = ProfilesViewModel.new()
+## Contenus installables (lot O25) : écran « Réglages › Contenus ».
+var contents = ContentsViewModel.new()
 
 
 func _init() -> void:
@@ -191,6 +199,7 @@ func _init() -> void:
 	menu.add_screen({"id": PAIRING, "title": "Appareils", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": SETTINGS_GROUP, "title": "Réglages", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": SETTING_EDIT, "title": "Réglage", "on_back": MenuModel.SETTINGS, "items": []})
+	menu.add_screen({"id": ContentsViewModel.SCREEN, "title": "Contenus", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": WORKOUT_CREATE, "title": "Créer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
 	menu.add_screen({"id": WORKOUT_IMPORT, "title": "Importer un entraînement", "on_back": MenuModel.WORKOUTS,
@@ -201,6 +210,10 @@ func _init() -> void:
 		"items": RouteHelp.items()})
 	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
 	menu.add_screen({"id": PLAN, "title": "Plan", "on_back": PLANS, "items": []})
+	menu.add_screen({"id": PlanBuilder.SCREEN, "title": "Créer un plan", "on_back": PLANS, "items": []})
+	for screen in [[PlanBuilder.DAYS_SCREEN, "Jours du plan"], [PlanBuilder.WORKOUTS_SCREEN, "Entraînements du plan"],
+			[PlanBuilder.WEEKS_SCREEN, "Durée du plan"]]:
+		menu.add_screen({"id": screen[0], "title": screen[1], "on_back": PlanBuilder.SCREEN, "items": []})
 	menu.add_screen({"id": FTP_TEST, "title": "Test de FTP", "on_back": MenuModel.HOME, "items": []})
 	_refresh_ftp_test()
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
@@ -367,7 +380,8 @@ func _refresh_pairing() -> void:
 ## Écran « Réglages » : Appareils (lot N13), puis un sous-écran par groupe des réglages reçus du core
 ## (lot O4) ; le sous-écran ouvert est mis à jour avec la liste.
 func _refresh_settings() -> void:
-	var items: Array = [{"id": "devices", "label": "Appareils : rechercher et appairer"}]
+	var items: Array = [{"id": "devices", "label": "Appareils : rechercher et appairer"},
+		{"id": "contents", "label": "Contenus : entraînements, plans, parcours"}]
 	items.append_array(settings.group_items())
 	if settings.items.is_empty():
 		items.append({"id": "none", "label": "Réglages : en attente du core", "enabled": false})
@@ -430,6 +444,10 @@ func on_error(code: String, text: String) -> void:
 	if menu.current_screen() in ProfilesViewModel.SCREENS and profiles.on_error(code, text):
 		_refresh_profiles()
 		return
+	if code in ["content_invalid", "content_failed"] or (code == "busy" and menu.current_screen() == ContentsViewModel.SCREEN):
+		contents.on_error(code, text)
+		_refresh_contents()
+		return
 	if code == "bot_invalid" and menu.current_screen() == MenuModel.READY:
 		ready_message = "Échec : " + text
 		return
@@ -483,6 +501,7 @@ func set_routes(raw: Array) -> void:
 func set_workouts(raw: Array) -> void:
 	_workouts_raw = raw
 	menu.set_items(MenuModel.WORKOUTS, catalog.workout_items(raw, _ftp_w()))
+	_refresh_plan_builder()
 	if _focus_workout != "" and menu.current_screen() == MenuModel.WORKOUTS:
 		menu.focus_item(_focus_workout)
 		_focus_workout = ""
@@ -545,6 +564,8 @@ func card(st: Dictionary) -> Dictionary:
 		return _plan_card(focused)
 	if screen == PLAN:
 		return _plan_card("plan:" + _plan_shown)
+	if screen in PlanBuilder.SCREENS:
+		return plan_builder.sheet(PlanBuilder.names_of(_workouts_raw), PlanBuilder.plan_name(_plan_ids()))
 	if screen == FTP_TEST:
 		for t in FTP_TESTS:
 			if t[0] == focused:
@@ -552,6 +573,8 @@ func card(st: Dictionary) -> Dictionary:
 		return {}
 	if screen == PAIRING:
 		return pairing.sheet(focused)
+	if screen == ContentsViewModel.SCREEN:
+		return contents.sheet(focused)
 	if screen == SETTINGS_GROUP:
 		return settings.sheet(focused.substr(4)) if focused.begins_with("set:") else {}
 	if screen == WORKOUT_CREATE:
@@ -584,10 +607,12 @@ func _sheet(raw: Array, id: String, make: Callable) -> Dictionary:
 
 # --- plans et test de FTP (lot O12) -----------------------------------------------------------
 
-## Réponse `plans` du core (list_plans, start_plan, stop_plan).
+## Réponse `plans` du core (list_plans, start_plan, stop_plan, create_plan) ; un plan créé (lot O30)
+## s'ouvre sur sa page, prêt à démarrer.
 func on_plans(msg: Dictionary) -> void:
 	plans = msg
 	var active = msg.get("active", null)
+	var created = msg.get("created", null)
 	match _plan_request:
 		"start":
 			if active is Dictionary:
@@ -595,8 +620,19 @@ func on_plans(msg: Dictionary) -> void:
 		"stop":
 			if active == null:
 				plan_message = "Plan arrêté"
+		"create":
+			if created is Dictionary:
+				plan_message = "Plan créé : " + str(created.get("name", ""))
 	_plan_request = ""
 	_refresh_plans()
+	if created is Dictionary and menu.current_screen() in PlanBuilder.SCREENS:
+		for i in range(PlanBuilder.SCREENS.size()):
+			if menu.current_screen() == PLANS:
+				break
+			menu.handle("Y_SHORT")
+		_plan_shown = str(created.get("id", ""))
+		_refresh_plan_screen()
+		menu.push_screen(PLAN)
 
 
 ## Séance que lance `start` avec plan_day ({} sans plan actif ou sans séance à faire).
@@ -690,6 +726,8 @@ func _refresh_plans() -> void:
 	elif plans.get("items", []).is_empty():
 		items.append({"id": "none", "label": "Aucun plan", "enabled": false,
 			"detail": "fichiers .toml dans ~/OpenRide/Plans"})
+	if not plans.is_empty():
+		items.append({"id": "create", "label": "Créer un plan", "detail": "jours et entraînements au choix"})
 	menu.set_screen_items(PLANS, items)
 	if _plan_shown != "":
 		_refresh_plan_screen()
@@ -783,6 +821,12 @@ func _handle_plan_item(screen: String, item_id: String) -> Dictionary:
 		var name := str(active.get("name", "")) if active is Dictionary else ""
 		menu.confirm("Arrêter le plan %s ?" % name, {"action": "stop_plan"})
 		return {}
+	if screen == PLANS and item_id == "create":
+		plan_builder.reset()
+		plan_message = ""
+		_refresh_plan_builder()
+		menu.push_screen(PlanBuilder.SCREEN)
+		return {}
 	if screen == PLANS and item_id.begins_with("plan:"):
 		_plan_shown = item_id.substr(5)
 		_refresh_plan_screen()
@@ -796,6 +840,38 @@ func _handle_plan_item(screen: String, item_id: String) -> Dictionary:
 			return {}
 		return _send_plan_request(act)
 	return {}
+
+
+## Choix sur un écran de « Créer un plan » (lot O30) ; renvoie `create_plan` pour main.gd.
+func _handle_plan_builder(screen: String, item_id: String) -> Dictionary:
+	var act: Dictionary = plan_builder.handle(screen, item_id)
+	if act.has("push"):
+		_refresh_plan_builder()
+		menu.push_screen(str(act["push"]))
+		return {}
+	if act.get("back", false):
+		menu.handle("Y_SHORT")
+	_refresh_plan_builder()
+	if act.get("action", "") == "create_plan":
+		_plan_request = "create"
+		plan_message = "Création du plan…"
+		return act
+	return {}
+
+
+func _refresh_plan_builder() -> void:
+	menu.set_screen_items(PlanBuilder.SCREEN, plan_builder.menu_items())
+	menu.set_screen_items(PlanBuilder.DAYS_SCREEN, plan_builder.day_items())
+	menu.set_screen_items(PlanBuilder.WORKOUTS_SCREEN, plan_builder.workout_items(_workouts_raw))
+	menu.set_screen_items(PlanBuilder.WEEKS_SCREEN, plan_builder.week_items())
+
+
+func _plan_ids() -> Array:
+	var ids: Array = []
+	for p in plans.get("items", []):
+		if p is Dictionary:
+			ids.append(str(p.get("id", "")))
+	return ids
 
 
 ## Commande start_plan ou stop_plan (après confirmation éventuelle) : retour à la liste des plans.
@@ -944,6 +1020,8 @@ func handle(event: String) -> Dictionary:
 		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") in [PLANS, PLAN]:
 		return _handle_plan_item(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") in PlanBuilder.SCREENS:
+		return _handle_plan_builder(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == FTP_TEST:
 		for t in FTP_TESTS:
 			if t[0] == str(act["id"]):
@@ -953,11 +1031,22 @@ func handle(event: String) -> Dictionary:
 		var item_id := str(act["id"])
 		if item_id == "devices":
 			return _open_pairing()
+		if item_id == "contents":
+			_refresh_contents()
+			menu.push_screen(ContentsViewModel.SCREEN)
+			return {"action": "list_contents"}
 		if item_id.begins_with("group:"):
 			settings_group = item_id.substr(6)
 			_refresh_settings()
 			menu.push_screen(SETTINGS_GROUP)
 		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == ContentsViewModel.SCREEN:
+		var choice: Dictionary = contents.handle(str(act["id"]))
+		_refresh_contents()
+		if choice.has("confirm"):
+			menu.confirm(str(choice["confirm"]), choice["action"])
+			return {}
+		return choice
 	if act.get("action", "") == "item" and act.get("screen", "") == SETTINGS_GROUP:
 		var item_id := str(act["id"])
 		if item_id.begins_with("set:") and settings.begin(item_id.substr(4)):
@@ -1110,6 +1199,22 @@ func _handle_garage(screen: String, item_id: String) -> Dictionary:
 				menu.confirm(str(todo["title"]), {"action": "buy", "item_id": todo["item_id"]})
 	_refresh_garage()
 	return act
+
+
+# --- contenus installables (lot O25) -----------------------------------------------------------
+
+func _refresh_contents() -> void:
+	menu.set_screen_items(ContentsViewModel.SCREEN, contents.menu_items())
+
+
+## Message `contents` du core ; renvoie l'action « list » (parcours, entraînements, réglages, plans) quand
+## une installation vient de se terminer, sinon {}.
+func on_contents(msg: Dictionary) -> Dictionary:
+	var finished: bool = contents.on_contents(msg)
+	_refresh_contents()
+	if finished:
+		return {"action": "list", "route_id": menu.world_id} if menu.world_id != "" else {"action": "list"}
+	return {}
 
 
 # --- profils de joueurs (série MJ, lot MJ8) ----------------------------------------------------
@@ -1401,7 +1506,7 @@ func state() -> Dictionary:
 		st["status_error"] = pairing.message_error
 	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT]:
 		st["status"] = workout_message
-	elif st["screen"] in [PLANS, PLAN]:
+	elif st["screen"] in [PLANS, PLAN] or st["screen"] in PlanBuilder.SCREENS:
 		st["status"] = plan_message
 	elif st["screen"] == FTP_TEST:
 		st["status"] = FTP_HINT
@@ -1411,6 +1516,9 @@ func state() -> Dictionary:
 		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
 	elif st["screen"] in GarageViewModel.SCREENS:
 		st["status"] = garage.message
+	elif st["screen"] == ContentsViewModel.SCREEN:
+		st["status"] = contents.message
+		st["status_error"] = contents.message.begins_with("Échec")
 	elif st["screen"] in ProfilesViewModel.SCREENS:
 		st["status"] = profiles.message
 		st["status_error"] = profiles.message.begins_with("Nom refusé") or profiles.message.begins_with("Nom vide")

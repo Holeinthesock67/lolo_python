@@ -191,8 +191,9 @@ class LogRotation:
 
 
 CONFIG_TEMPLATE = Path(__file__).resolve().parents[3] / "scripts" / "config.example.toml"
-FIRST_RUN_INFO = ("Bienvenue dans OpenRide. Configurez vos appareils : openride-core devices --save "
-                  "(la section « Appareils » du menu viendra plus tard).")
+FIRST_RUN_INFO = ("Bienvenue dans OpenRide. Au premier écran, « Rechercher et appairer » relie le home "
+                  "trainer, le Zwift Click et la ceinture cardio. Les entraînements, deux plans et des "
+                  "parcours de démonstration s'installent pendant ce temps (Réglages › Contenus).")
 PORT_IN_USE_RE = re.compile(r"Impossible de démarrer l'IPC UDP.*(Address already in use|déjà utilisée|Errno 98)")
 TRAINER_REFUSED_RE = re.compile(r"Le trainer refuse le contrôle FTMS")
 
