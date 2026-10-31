@@ -72,6 +72,8 @@
         "list_contents",
         "install_content",
         "create_plan",
+        "clear_trial_profile",
+        "restore_profile",
         "recover_session"
       ]
     },
