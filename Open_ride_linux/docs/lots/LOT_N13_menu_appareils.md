@@ -1,5 +1,10 @@
 # Lot N13 – Section « Appareils » du menu : rechercher et appairer le matériel
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Section « Appareils » du menu : rechercher et appairer le matériel | GDScript + Python | N6, N12 | Moyenne | **Livré le 26 octobre** (interne, PR #197) |
+
 ## 1. Objectif
 
 Demande du propriétaire du 25 octobre : dans les menus, une section pour découvrir et appairer le matériel (home trainer, Zwift Click, ceinture cardio) et garder sur le PC les paramètres trouvés (nom, adresse Bluetooth). Ce lot ajoute cette section au menu piloté au Click et au clavier. Le core fait la recherche et l'écriture (lot N12) ; l'engine affiche et choisit.

@@ -1,5 +1,10 @@
 # Lot N10 – Packs de thèmes : liste et installation (`theme-list`, `theme-install`)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Packs de thèmes : `theme-list` et `theme-install` | Python | H7, M7 (livrés) | Petite | **Livré le 25 octobre** (issue #107, PR #164) |
+
 ## 1. Objectif
 
 Les thèmes sont des dossiers `~/OpenRide/Themes/<nom>/` (SRS §10) que l'on crée aujourd'hui à la main, puis qu'on vérifie par `openride-compiler theme-check`. Ce lot ajoute de quoi lister les thèmes installés et installer un pack de textures depuis un dossier ou une archive `.zip`, avec contrôle complet avant copie. C'est la partie outillage de l'item « Thèmes avec packs de textures » du suivi.

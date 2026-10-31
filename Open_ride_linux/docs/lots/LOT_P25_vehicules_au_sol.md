@@ -1,5 +1,10 @@
 # Lot P25 – Véhicules au sol : voitures détaillées, camions, autocars, motos, routes voisines, tracteurs aux champs, phares
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Véhicules au sol : voitures détaillées, utilitaires, camions, autocars et motos, circulation des routes voisines, tracteurs qui hersent les champs, phares dans la brume, sous la pluie ou au soleil bas | GDScript + shader | P13, P17, P22, Y14 | Moyenne | **Livré le 28 octobre**, séance sur le PC à faire |
+
 ## 1. Objectif
 
 Demande du propriétaire du 27 octobre (« ça manque de vie : animaux, oiseaux, véhicules sur terre et dans le ciel »), quatrième lot de la deuxième vague du décor vivant (P22 à P27). Les véhicules de P13 sont des pavés posés sur des cylindres, de trois sortes seulement, et ne roulent que sur la route du cycliste (remarque du propriétaire du 27 octobre : « véhicules trop simplistes »). Ce lot :

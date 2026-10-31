@@ -1,5 +1,10 @@
 # Lot Y2 – Migration de Godot 4.3 vers 4.7.x
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Migration de Godot 4.3 vers 4.7.x (moteur, tests, banc, lanceur, recette visuelle) | GDScript | Y1, X2, X13 ; fin de projet | Moyenne | Non : interne (PC cible) ; issue #358 |
+
 ## 1. Objectif
 
 Décision du propriétaire du 27 octobre (`docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §0, question 5) : migrer directement vers Godot 4.7.x au début de la phase finale, **avant** les autres optimisations de la série Y, pour que leurs mesures partent de la bonne base. La migration apporte sans travail les ubershaders et la précompilation des pipelines (moins de saccades à la première apparition d'un objet, 4.4), l'interpolation physique en 3D (4.4), des LOD générés plus propres et un SSR plus rapide (4.6), un tampon de constantes par passe (4.7), et rend possibles le SMAA (4.5) et la tonalité AgX (4.4).

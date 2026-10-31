@@ -1,5 +1,10 @@
 # Lot X3 – Rapport d'instabilité et de durée des tests
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Rapport d'instabilité et de durée des tests (JUnit, tests lents ou instables) | Python + Bash | X2 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x3`) ; passages longs sur le PC ; issue #201 |
+
 ## 1. Objectif
 
 Les suites prennent bien plus longtemps sur GitHub que la durée annoncée, et certains tests échouent selon la machine ou la charge (`test_tree_renderer` sur le PC, `test_workout_chart_model` au cloud, `test_vegetation_placer` sous charge). Personne ne sait quels tests sont lents ni lesquels échouent une fois sur dix. Ce lot donne ce tableau et reprend la fin du lot J5 (rapports JUnit).

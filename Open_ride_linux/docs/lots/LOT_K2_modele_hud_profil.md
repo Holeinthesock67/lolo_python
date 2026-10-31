@@ -1,5 +1,10 @@
 # Lot K2 – Modèle de vue du HUD et profil d'altitude (sans affichage)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Modèle de vue du HUD et profil d'altitude, sans affichage (prépare E3) | GDScript | K1 | Petite | **Livré le 24 octobre** (PR #39) |
+
 ## 1. Objectif
 
 Préparer le HUD final du lot E3 (SRS §13) sans toucher au rendu : toute la logique (valeurs affichées, unités, lissage, profil d'altitude devant le cycliste, prochaine montée) dans un script GDScript pur, testé sans écran, comme `erg_view_model.gd` (lot I6). E3 n'aura plus qu'à dessiner ce que ce modèle calcule.

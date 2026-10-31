@@ -1,5 +1,10 @@
 # Lot W13 – Tuiles vectorielles OpenFreeMap : partout dans le monde, préchargées autour des départs habituels
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Tuiles vectorielles OpenFreeMap : au fil de la balade et préchargées autour des départs habituels | Python | W2, W7 (W0) | Moyenne | Oui, après W7 (issue #268) |
+
 ## 1. Objectif
 
 Rouler n'importe où sans extrait régional (décision W-Q4) : les tuiles vectorielles OpenFreeMap (zoom 14) sont téléchargées pendant la balade et préchargées à l'avance autour des lieux de départ de l'historique du joueur (les plus fréquents et les plus récents d'abord), toujours dans la limite du cache de 5 Go. Elles remplissent la **même** base locale que l'extrait régional (schéma de W3), si bien que graphe et générateur ne voient aucune différence.

@@ -1,5 +1,10 @@
 # Lot W7 – Générateur de carrés de 1 km : terrain fondu avec toutes les routes, couches par carré
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Générateur de carrés de 1 km : terrain fondu avec toutes les routes, couches par carré, file de priorités | Python | W2, W3, W5 | Grande | Oui, après W5 (issue #261) |
+
 ## 1. Objectif
 
 Produire, pour un carré de 1 km de la grille fixe de la zone UTM, tout ce que l'engine affiche : grille proche fondue avec **toutes** les routes du carré, couches bâtiments, végétation, eau et points d'intérêt, et les tuiles lointaines de 5 km. Les carrés vont dans le cache (W2) et se réutilisent d'une séance à l'autre.

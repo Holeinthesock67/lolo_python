@@ -1,5 +1,10 @@
 # Lot X27 – Cycliste virtuel et course accélérée
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Cycliste virtuel (cadence, pente, rampe, sprint, W′bal) et course contre les bots accélérée | Python | T12 pour `bots_race` | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x27`) ; issue #225 |
+
 ## 1. Objectif
 
 Le Bluetooth simulé pédale à puissance constante (un peu plus en montée) et le trainer simulé plafonne vers 21 km/h. Le test de FTP (O10), les plans (O11), le combat Cyber-Rogue (R5, R7) et les bots à profil (T12, T13) ont besoin d'un cycliste qui réagit. Le fil de la série T (28 octobre) demande en plus une course contre les bots en temps accéléré, sans écran.

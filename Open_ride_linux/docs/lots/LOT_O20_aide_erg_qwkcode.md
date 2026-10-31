@@ -1,5 +1,10 @@
 # Lot O20 – Aide du menu ERG et QWKcode de GoldenCheetah (`.qwk`)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Aide du menu ERG (« Comment ça marche ? » : créer, QWKcode, importer, écrire à la main, séance) et QWKcode de GoldenCheetah en fichier `.qwk` ; « Créer » ne remplace plus un autre entraînement | Python + GDScript | N16, O19 (livrés) | Moyenne | Demande du propriétaire du 30 octobre ; en PR |
+
 ## 1. Objectif
 
 Demandes du propriétaire du 30 octobre : « Faudra expliquer cela dans le menu erg », « Le menu erg devra expliquer les moyens de saisie et d'import », et « J'aimerais avoir la possibilité d'utiliser la syntaxe GoldenCheetah pour créer un entraînement ». Sur la carte de décision (saisie au Click), le propriétaire a choisi « Les deux » : d'abord un fichier `.qwk` importé (ce lot), puis un champ de saisie au clavier branché sur le même analyseur (lot suivant, O21).

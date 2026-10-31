@@ -1,5 +1,10 @@
 # Lot Y3 – Villages au loin en un seul bloc (HLOD) et niveaux de détail des bâtiments
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| HLOD des villages et niveaux de détail des bâtiments | GDScript | Y2, S1 | Moyenne | Oui ; issue #359 |
+
 ## 1. Objectif
 
 Série Y (fin de projet, `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §4, techniques T3 et T9). Aujourd'hui chaque bâtiment OSM d'un tronçon est dessiné de près comme de loin jusqu'à `visibility_range_end` (1,5 / 2,5 / 4 km selon le préréglage), puis disparaît d'un coup ; un village lointain coûte autant d'objets que de près. Ce lot :

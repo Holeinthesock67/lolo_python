@@ -1,5 +1,10 @@
 # Lot H6 – Analyseur du journal de séance
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Analyseur du journal de séance (`run_trainer.log`) | Python | — | Petite | **Livré le 23 octobre** (PR #16) |
+
 ## 1. Objectif
 
 Après chaque essai sur le vélo, le propriétaire colle des extraits de `~/run_trainer.log` pour qu'on les analyse. Ce lot fournit un outil qui produit directement le résumé utile :

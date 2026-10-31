@@ -1,5 +1,10 @@
 # Lot M8 – Journal du lanceur sans terminal
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Journal du lanceur sans terminal (sortie de Godot, rotation) | Python | — | Petite | **Livré le 24 octobre** (issue #85) |
+
 ## 1. Objectif
 
 Lancé par le raccourci de bureau (lot L8, `Terminal=false`), le lanceur `openride` n'a pas de terminal : ses propres messages (relance de Godot, arrêt forcé, rappel de `recover`) et la sortie de Godot (non redirigée) sont perdus, et `~/run_trainer.log` est écrasé à chaque lancement : le journal de la séance précédente disparaît, alors que c'est souvent lui qu'on veut relire après une panne. Ce lot donne au lanceur un journal complet et tournant, signalé à faire lors du lot L8.
