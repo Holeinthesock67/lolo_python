@@ -276,6 +276,7 @@ func _ready() -> void:
 	atmosphere_view.living_decor = living_decor
 	living_decor.set_fog_base(world_env.environment)
 	bots_view = BotsView.new()
+	bots_view.set_quality(_quality_name)
 	add_child(bots_view)
 	draft_gauge = DraftGauge.new()
 	add_child(draft_gauge)
@@ -403,6 +404,14 @@ func _ready() -> void:
 	ipc.imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
 		menu_flow.set_import_candidates(items)
 		_refresh_menu())
+	ipc.route_imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
+		menu_flow.set_route_import_candidates(items)
+		_refresh_menu())
+	ipc.route_import_status_received.connect(func(msg: Dictionary) -> void:
+		ipc.test_log("route_import_status state=%s route=%s" % [str(msg.get("state", "")), str(msg.get("route_id", ""))])
+		if menu_flow.on_route_import_status(msg):
+			ipc.list_routes()   # parcours prêt : nouvelle liste, focus dessus à son arrivée
+		_refresh_menu())
 	ipc.workout_saved_received.connect(func(msg: Dictionary) -> void:
 		ipc.test_log("workout_saved id=%s" % str(msg.get("workout_id", "")))
 		if menu_flow.on_workout_saved(msg):
@@ -450,6 +459,7 @@ func _on_settings(msg: Dictionary) -> void:
 		load_guard.reset(QualityPresets.image(_quality_name), _forward_plus())
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
+		bots_view.set_quality(_quality_name)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
 		if streamer.osm_streamer != null:
@@ -636,6 +646,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.set_setting(str(act["key"]), act["value"])
 		"list_imports":
 			ipc.list_imports()
+		"list_route_imports":
+			ipc.list_route_imports()
+		"import_route":
+			ipc.import_route(str(act["path"]))
 		"list_plans":
 			ipc.list_plans()
 		"list_wtf_rules":
@@ -1238,6 +1252,7 @@ func _test_menu_state(req: String) -> Dictionary:
 	if world["visible"]:
 		world["state"] = str(world_menu_view.vm.state)
 		world["help"] = world_menu_view.help_label.text
+		world["body"] = world_menu_view.body_label.text
 		world["hint"] = world_menu_view.hint_text()
 	return {"req": req, "visible": menu_view.visible, "screen": st["screen"], "title": st["title"],
 		"status": st["status"], "focus": focus, "focus_id": items[focus]["id"] if focus >= 0 and focus < items.size() else "",
@@ -1517,7 +1532,7 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
-	if cmd_name in ["list_routes", "list_workouts", "list_imports"]:
+	if cmd_name in ["list_routes", "list_workouts", "list_imports", "list_route_imports"]:
 		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
 
@@ -1664,6 +1679,7 @@ func _feed_chart(state: Dictionary, running: bool, previous_state: String) -> vo
 
 ## Bots (lot O7) : encart du HUD et silhouettes sur la route, aux positions affichées à l'instant.
 func _show_bots(rider_s: float, rider_v: float) -> void:
+	bots_model.vehicles = living_decor.vehicle_places() if living_decor != null else []
 	var view: Array = bots_model.view(rider_s, rider_v, Time.get_ticks_usec())
 	if hud != null and hud.has_method("update_bots"):
 		hud.update_bots(view, bots_model.race())
