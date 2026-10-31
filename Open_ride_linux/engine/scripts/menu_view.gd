@@ -286,7 +286,7 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	var sheet: Dictionary = menu.get("card", {})
 	card.visible = not sheet.is_empty()
 	card.update_display(sheet)
-	summary.visible = screen == "summary"
+	summary.visible = screen in ["summary", "history_session"]   # bilan d'une séance de l'historique : lot O28
 	card.custom_minimum_size.x = UiTheme.SUMMARY_CARD_W if summary.visible else UiTheme.CARD_W
 	var garage_preview: Dictionary = menu.get("preview", {})
 	preview.visible = not garage_preview.is_empty()

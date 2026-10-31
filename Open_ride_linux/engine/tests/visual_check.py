@@ -1348,7 +1348,7 @@ def _menu_scenes(s: Session) -> None:
         m = info["widgets"]["menu"]
         s.check("menu_accueil", "menu en plein écran, HUD de séance caché", m["rect"][2] >= 0.99 * s.width
                 and m["rect"][3] >= 0.99 * s.height and not info["widgets"]["power"]["visible"], f"rectangle {m['rect']}")
-        s.check_texts("menu_accueil", info, {"menu": "Réglages | Quitter"}, contains=True)
+        s.check_texts("menu_accueil", info, {"menu": "Test de FTP | Historique — séances, semaines, tests de FTP | Session simulée | Garage | Réglages"}, contains=True)
         focus = fraction(img, rect_box(m["rect"]), lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
         s.check("menu_accueil", "sélection très visible (cadre cyan)", focus >= 0.003, f"{focus:.2%} de pixels cyan")
     # Appui long sur A du Click relayé par le core : liste des parcours.

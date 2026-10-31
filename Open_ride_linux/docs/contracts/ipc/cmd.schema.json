@@ -73,7 +73,9 @@
         "install_content",
         "create_plan",
         "clear_trial_profile",
-        "restore_profile"
+        "restore_profile",
+        "list_history",
+        "history_session"
       ]
     },
     "args": {
