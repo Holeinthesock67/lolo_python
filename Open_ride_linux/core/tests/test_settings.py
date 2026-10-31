@@ -183,6 +183,27 @@ def test_wind_settings_lot_p16():
     assert settings.step(cfg, "wind.speed_kmh", 20, +1) == 25
 
 
+def test_gravel_setting_lot_u16(tmp_path: Path):
+    """Lot U16 (partie gravel) : `gravel.mode` dans Séance, coupé par défaut, avec sa légende ; écrit dans
+    config.toml, porté par `hello_ack.config.gravel` ; refusé pendant une séance."""
+    items = {i["key"]: i for i in settings.current(Config())}
+    g = items["gravel.mode"]
+    assert (g["group"], g["value"], g["applies"]) == ("ride", "off", "next_session")
+    assert g["choices"] == ["off", "auto", "compacted", "gravel", "dirt"]
+    assert "Chemins réels" in g["help"] and "plafond du vent" in g["help"]
+    assert "help" not in items["wind.mode"]
+    path = tmp_path / "config.toml"
+    path.write_text(START, encoding="utf-8")
+    s, _, errors = _session(tmp_path, path)
+    assert s.server.hello_config["gravel"] == "off"
+    s._on_command("set_setting", {"key": "gravel.mode", "value": "gravel"}, 2)
+    assert not errors and s.cfg.gravel.mode == "gravel" and s.server.hello_config["gravel"] == "gravel"
+    assert tomllib.loads(path.read_text(encoding="utf-8"))["gravel"]["mode"] == "gravel"
+    s.state.session_state = "RUNNING"
+    s._on_command("set_setting", {"key": "gravel.mode", "value": "dirt"}, 3)
+    assert errors[-1][0] == "busy" and s.cfg.gravel.mode == "gravel"
+
+
 def test_settings_with_installed_themes_is_sent(tmp_path: Path):
     """Les thèmes installés allongent la liste des choix : `settings` passe 4 096 octets et part quand
     même, en un seul datagramme (60 000 octets au plus comme `plans`, contrat §2, depuis le 30 octobre)."""

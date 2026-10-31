@@ -84,6 +84,11 @@
           "unit": {
             "type": "string"
           },
+          "help": {
+            "type": "string",
+            "maxLength": 300,
+            "description": "Légende facultative, montrée sur la carte de détail du réglage (lot U16)."
+          },
           "applies": {
             "enum": [
               "next_session",

@@ -20,6 +20,7 @@ const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
+const RoadSurface := preload("res://scripts/road_surface.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
 const FpsCounter := preload("res://scripts/fps_counter.gd")
@@ -462,6 +463,7 @@ func _on_settings(msg: Dictionary) -> void:
 			camera_views.set_view(cam)
 			print("Vue de caméra : ", cam)
 		_camera_setting = cam
+	_apply_gravel(str(menu_flow.settings.item("gravel.mode").get("value", "")))
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp
@@ -1426,6 +1428,15 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
 	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
 	menu_flow.set_versions(ipc.engine_version, ipc.core_version)
+	_apply_gravel(str(ipc.core_config.get("gravel", "")))
+
+
+## Option « gravel » (lot U16) : mode du core, `hello_ack.config.gravel` puis réglage `gravel.mode` changé au
+## menu ; un core sans la clé laisse le mode de `--gravel=` (bitume par défaut). Ruban reconstruit.
+func _apply_gravel(mode: String) -> void:
+	if mode != "" and mode != streamer.gravel_mode and mode in RoadSurface.MODES:
+		streamer.set_gravel_mode(mode)
+		print("Gravel : ", mode)
 
 
 func _on_core_error(code: String, message: String) -> void:

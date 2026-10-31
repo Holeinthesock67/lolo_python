@@ -287,7 +287,7 @@ class CoreSession:
             on_engine_returned=lambda: log.info("Engine connecté."),
             hello_config={"ftp_w": cfg.rider.ftp_w, "hr_max_bpm": cfg.rider.hr_max_bpm, "gears_total": self.gearing.n_gears,
                           "theme": cfg.render.theme, "chart": cfg.render.chart,
-                          "difficulty_pct": round(self.difficulty_pct),
+                          "difficulty_pct": round(self.difficulty_pct), "gravel": cfg.gravel.mode,
                           "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances")})
         self._publish_progression()
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
@@ -1035,7 +1035,8 @@ class CoreSession:
         self.difficulty_pct = float(self.cfg.trainer.difficulty_pct)
         self.state.difficulty_pct = round(self.difficulty_pct)
         self.server.hello_config.update(ftp_w=self.cfg.rider.ftp_w, hr_max_bpm=self.cfg.rider.hr_max_bpm, theme=self.cfg.render.theme,
-                                        chart=self.cfg.render.chart, difficulty_pct=round(self.difficulty_pct))
+                                        chart=self.cfg.render.chart, difficulty_pct=round(self.difficulty_pct),
+                                        gravel=self.cfg.gravel.mode)
         self._send_settings(cmd_id)
 
     # --- appairage depuis le menu (lot N13, contrat IPC révision 1.3) -------------------------

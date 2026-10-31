@@ -34,6 +34,7 @@ const RIDE_MODES := ["sim", "erg", "cadence"]
 ## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on` / `detail` ; jauge d'abri
 ## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
+## Option « gravel » (lot U16, road_surface.gd) : `gravel.mode` prend `off` / `auto` / `compacted` / `gravel` / `dirt`.
 const CHOICE_TEXTS := {
 	"powerups.mode": {"on": "oui", "off": "non"},
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
@@ -41,6 +42,8 @@ const CHOICE_TEXTS := {
 	"render.fps": {"off": "non", "on": "oui", "detail": "détaillé"},
 	"render.draft_gauge": {"off": "non", "on": "oui"},
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
+	"gravel.mode": {"off": "coupé", "auto": "chemins réels", "compacted": "chemin compact", "gravel": "gravier",
+		"dirt": "terre"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
 
@@ -173,7 +176,8 @@ func menu_items(group: String) -> Array:
 	return out
 
 
-## Carte de détail d'un réglage (clé sans « set: ») : valeur, plage ou choix, moment où il s'applique.
+## Carte de détail d'un réglage (clé sans « set: ») : valeur, plage ou choix, légende (`help` du core, lot
+## U16) quand il y en a une, moment où il s'applique.
 func sheet(key: String) -> Dictionary:
 	var it := item(key)
 	if it.is_empty():
@@ -189,6 +193,8 @@ func sheet(key: String) -> Dictionary:
 		var unit := str(it.get("unit", ""))
 		tiles.append({"label": "Plage", "value": "%d à %d" % [int(it["min"]), int(it["max"])], "unit": unit})
 		tiles.append({"label": "Pas", "value": str(int(it.get("step", 1))), "unit": unit})
+	if str(it.get("help", "")) != "":
+		lines.append(str(it["help"]))
 	lines.append("S'applique tout de suite" if str(it.get("applies", "")) == "now" else "S'applique à la séance suivante")
 	return {"title": "Réglage", "name": str(it.get("label", key)), "tiles": tiles, "lines": lines}
 

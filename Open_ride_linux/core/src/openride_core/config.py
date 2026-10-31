@@ -338,6 +338,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("gearing", "start_gear"),
     ("powerups", "mode"),
     ("bots", "level_pct"),
+    ("gravel", "mode"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
     ("wind", "max_grade_offset_pct"),
     ("render", "camera"), ("render", "chart"),

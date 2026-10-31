@@ -11,7 +11,8 @@ dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
      "max": 600, "step": 5, "unit": "W", "applies": "next_session"}
 
 `group` range le réglage dans un sous-écran de « Réglages » (`GROUPS` : cycliste, séance, graphisme,
-son, vent) ; l'engine donne les titres.
+son, vent) ; l'engine donne les titres. `help` (facultatif) : légende d'un réglage dont les choix ne se
+comprennent pas seuls, montrée par l'engine sur la carte de détail (option « gravel », lot U16).
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
 la séance suivante, sans relancer) ou `now` (qualité, thème, mode d'affichage, courbes, images/s, jauge d'abri et volumes :
@@ -47,6 +48,7 @@ class Setting:
     step: float = 1
     unit: str = ""
     applies: str = "next_session"
+    help: str = ""
 
     @property
     def section(self) -> str:
@@ -73,6 +75,11 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("gearing.start_gear", "Braquet de départ", "ride", 1),
     Setting("powerups.mode", "Bonus", "ride"),
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
+    # Option « gravel » (lot U16, partie gravel) : coupée par défaut, roulement du core et rendu de l'engine
+    Setting("gravel.mode", "Chemins de terre (gravel)", "ride",
+            help="Coupé : bitume partout. Chemins réels : seules les portions non revêtues du parcours. "
+                 "Chemin compact, gravier ou terre : toute la route. Roulement 2 à 3 fois plus dur, "
+                 "sous le plafond du vent."),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.theme", "Thème", "graphics", applies="now"),
@@ -143,6 +150,8 @@ def current(cfg: config_mod.Config, themes_dir: Path | None = None) -> list[dict
     for s in SETTINGS:
         item: dict[str, Any] = {"key": s.key, "label": s.label, "group": s.group, "value": _value(cfg, s),
                                 "applies": s.applies}
+        if s.help:
+            item["help"] = s.help
         ch = choices(s, themes_dir)
         if ch is not None:
             item.update(type="choice", choices=ch)

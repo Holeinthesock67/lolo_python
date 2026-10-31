@@ -2,7 +2,8 @@ extends SceneTree
 
 ## Tests unitaires de l'option « gravel » dans l'engine (lot U22) : colonne `surface` de route_data.gd,
 ## surface effective (road_surface.gd), ruban de road_builder.gd, poussière (weather_particles.gd), crissement
-## (sound_model.gd), argument `--gravel=` (engine_args.gd).
+## (sound_model.gd), argument `--gravel=` (engine_args.gd) ; réglage `gravel.mode` du menu (lot U16 :
+## textes des choix et légende de la carte de détail, settings_view_model.gd).
 ##
 ## Critères du cahier (docs/lots/LOT_U22_gravel_rendu_engine.md §7) :
 ## - 2 : route sans colonne en `auto`, ou option coupée : tableaux du ruban identiques à ceux d'avant U22 ;
@@ -18,6 +19,7 @@ const WeatherModel := preload("res://scripts/weather_model.gd")
 const SoundModel := preload("res://scripts/sound_model.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 
 var _failures := 0
 var _checked := 0
@@ -233,6 +235,24 @@ func _test_args() -> void:
 	_check(EngineArgs.parse(PackedStringArray(["--gravel=dirt"]))["gravel"] == "dirt", "--gravel=dirt lu")
 
 
+func _test_menu_setting() -> void:
+	var it := {"key": "gravel.mode", "label": "Chemins de terre (gravel)", "group": "ride", "type": "choice",
+		"value": "off", "choices": RoadSurface.MODES.duplicate(), "applies": "next_session",
+		"help": "Coupé : bitume partout. Chemins réels : seules les portions non revêtues du parcours."}
+	var texts := []
+	for m in RoadSurface.MODES:
+		texts.append(SettingsViewModel.format_value(it, m))
+	_check(texts == ["coupé", "chemins réels", "chemin compact", "gravier", "terre"], "choix du menu en français : %s" % [texts])
+	var vm := SettingsViewModel.new()
+	vm.on_settings({"items": [it]})
+	_check(SettingsViewModel.group_of(it) == "ride", "rangé dans « Séance »")
+	var lines: Array = vm.sheet("gravel.mode")["lines"]
+	_check(lines.size() == 3 and str(lines[1]) == it["help"] and str(lines[2]) == "S'applique à la séance suivante",
+		"carte de détail : choix, légende, séance suivante")
+	it.erase("help")
+	_check(vm.sheet("gravel.mode")["lines"].size() == 2, "sans légende : pas de ligne de plus")
+
+
 func _run() -> void:
 	_test_route_column()
 	_test_effective()
@@ -241,5 +261,6 @@ func _run() -> void:
 	_test_dust()
 	_test_sound()
 	_test_args()
+	_test_menu_setting()
 	print("test_road_surface : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

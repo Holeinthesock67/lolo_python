@@ -63,6 +63,10 @@
           "minimum": 0,
           "maximum": 100
         },
+        "gravel": {
+          "enum": ["off", "auto", "compacted", "gravel", "dirt"],
+          "description": "Option « gravel » (révision 1.6 provisoire, lot U16) : `[gravel] mode` du core ; absente : l'engine garde `--gravel=`."
+        },
         "modes": {
           "type": "array",
           "items": {
