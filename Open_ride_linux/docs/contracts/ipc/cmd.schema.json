@@ -71,7 +71,9 @@
         "delete_profile",
         "list_contents",
         "install_content",
-        "create_plan"
+        "create_plan",
+        "clear_trial_profile",
+        "restore_profile"
       ]
     },
     "args": {

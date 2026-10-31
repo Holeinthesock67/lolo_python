@@ -83,7 +83,8 @@ DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" /
 
 CONTENT_COMMANDS = ("list_contents", "install_content")   # lot O25
 CONTENT_PROGRESS_PERIOD_S = 1.0   # message `contents` pendant une installation, une fois par seconde au plus
-PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile")   # lot MJ7
+PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile",
+                    "clear_trial_profile", "restore_profile")   # lots MJ7 et O33
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
 XP_RESULT_PERIOD_S = 1.0
@@ -595,7 +596,9 @@ class CoreSession:
         workouts = workout_duration_finder(self.workouts_dir)
         items = [profile_summary(c, workouts) for c in profiles.list_contexts(self.profiles_base)
                  if not c.is_trial or c.id == self.profile_ctx.id][:profiles.MAX_PROFILES]
-        return {"type": "profiles", "v": 1, "request_cmd_id": cmd_id, "active": self.profile_ctx.id, "items": items}
+        trash = profiles.trash_entries(self.profiles_base)[:profiles.TRASH_SHOWN]   # lot O33
+        return {"type": "profiles", "v": 1, "request_cmd_id": cmd_id, "active": self.profile_ctx.id, "items": items,
+                "trash": trash}
 
     def _send_profiles(self, cmd_id: int) -> None:
         try:
@@ -637,11 +640,18 @@ class CoreSession:
                     self.profile_ctx = ctx
                     self._publish_profile()
                 self._send_profiles(cmd_id)
-            else:
+            elif name == "delete_profile":
                 dest = profiles.delete(args.get("id"), self.profile_ctx.id, base)
                 log.info("Profil mis à la corbeille : %s.", dest)
                 self._publish_profile()
                 self._send_profiles(cmd_id)
+            elif name == "restore_profile":
+                ctx = profiles.restore(args.get("id"), base)
+                log.info("Profil restauré depuis la corbeille : %s (%s).", ctx.name, ctx.id)
+                self._publish_profile()
+                self._send_profiles(cmd_id)
+            else:
+                self._clear_trial(cmd_id)
         except profiles.ProfileNameError as exc:
             log.warning("Profil : %s refusé : %s", name, exc)
             self.server.send_error("name_invalid", str(exc))
@@ -649,27 +659,45 @@ class CoreSession:
             log.warning("Profil : %s refusé : %s", name, exc)
             self.server.send_error("profile_invalid", str(exc))
 
-    def _select_profile(self, ctx: profiles.ProfileContext, cmd_id: int) -> None:
+    def _clear_trial(self, cmd_id: int) -> None:
+        """`clear_trial_profile` (lot O33) : vide le profil d'essai comme `openride-core profil essai --vider` ;
+        en cours, il est rechargé (progression, records, plan à zéro) et un `hello_ack` complet suit."""
+        trial = profiles.ProfileContext.for_id(profiles.TRIAL_ID, self.profiles_base)
+        if trial.id == self.profile_ctx.id:
+            removed = profiles.clear(trial)   # verrou déjà tenu par cette séance
+            self._select_profile(trial, cmd_id, reload=True)
+        elif not trial.root.is_dir():
+            removed = []
+        else:
+            with profiles.ProfileLock(trial):   # pas pendant une séance d'essai d'un autre OpenRide
+                removed = profiles.clear(trial)
+        log.info("Profil d'essai vidé : %s.", ", ".join(removed) or "déjà vide")
+        self._send_profiles(cmd_id)
+
+    def _select_profile(self, ctx: profiles.ProfileContext, cmd_id: int, reload: bool = False) -> None:
         """Change de profil sans relancer : configuration effective, progression, records, plan et
         dossier des séances rechargés ; liaison du trainer et du Click gardée ; `hello_ack` complet,
         puis `settings` et `progression`. Lève `ProfileContextError` (rien n'a changé)."""
         from . import config as config_mod
 
         old_ctx, old_lock = self.profile_ctx, self.profile_lock
-        if ctx.id == old_ctx.id:
+        same = ctx.id == old_ctx.id
+        if same and not reload:
             self._send_profile_reload(cmd_id)
             return
-        lock = profiles.ProfileLock(ctx)
-        lock.acquire()   # profil déjà utilisé par une autre séance : ProfileContextError
+        lock = old_lock if same else profiles.ProfileLock(ctx)
+        if not same:
+            lock.acquire()   # profil déjà utilisé par une autre séance : ProfileContextError
         profiles.activate(ctx)
         try:
             profiles.ensure_description(ctx)
             cfg = config_mod.load(self.config_path)
         except (config_mod.ConfigError, OSError) as exc:
             profiles.activate(old_ctx)
-            lock.release()
+            if not same:
+                lock.release()
             raise profiles.ProfileContextError(f"profil « {ctx.label} » illisible : {exc}") from None
-        if old_lock is not None:
+        if old_lock is not None and not same:
             old_lock.release()
         self.profile_lock = lock
         self.profile_ctx = ctx

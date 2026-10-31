@@ -696,8 +696,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("install_content", {"id": str(act["id"])})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
-		"select_profile", "delete_profile":
+		"select_profile", "delete_profile", "restore_profile":
 			ipc.send_command(name, {"id": str(act["id"])})
+		"clear_trial_profile":   # lot O33
+			ipc.send_command(name, {})
 		"create_profile":
 			ipc.send_command("create_profile", {"name": str(act["name"])})
 		"rename_profile":
