@@ -40,6 +40,7 @@ const CHOICE_TEXTS := {
 	"render.camera": {"subjective": "subjective", "follow_near": "suivi proche", "follow_far": "suivi éloigné", "side": "latérale"},
 	"render.fps": {"off": "non", "on": "oui", "detail": "détaillé"},
 	"render.draft_gauge": {"off": "non", "on": "oui"},
+	"ride.auto_draft": {"on": "oui", "off": "non"},
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }

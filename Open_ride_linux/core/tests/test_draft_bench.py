@@ -1,4 +1,4 @@
-"""Banc de l'abri derrière les bots (lot X50) : vraie séance au pas de 20 ms, sans vélo ni engine."""
+"""Banc de l'abri derrière les bots (lots X50 et AS2) : vraie séance au pas de 20 ms, sans vélo ni engine."""
 
 import json
 
@@ -54,5 +54,24 @@ def test_cli_json_and_invalid_arguments(capsys, monkeypatch):
     code = db.main(["--duree", "60", "--json"])
     data = json.loads(capsys.readouterr().out)
     assert code in (0, 1) and len(data["positions"]) == 6 and len(data["group"]["rows"]) == 4
+    assert {"wheel", "overtake", "group_off"} <= set(data)
     assert db.main(["--groupe", "abc"]) == 2
     assert db.main(["--duree", "0"]) == 2
+
+
+# --- lot AS2 : placement dans la roue et dépassement ------------------------------------------------
+
+def test_as2_wheel_and_overtake(out):
+    w, o = out["wheel"], out["overtake"]
+    assert w["on"]["settle_s"] < 3.0 and w["on"]["draft"] >= 0.95 * w["full"]
+    assert w["off"]["lane_m"] == d.RIDER_LANE_M and w["off"]["draft"] < 0.15 * w["full"]
+    assert o["side_min_m"] >= d.SIDE_CLEAR_M - 0.01 and o["left_of_axis_m"] >= 0.0 and o["passes"] >= 1
+    assert o["end_lane_m"] == pytest.approx(d.RIDER_LANE_M, abs=0.05)
+
+
+def test_as2_placement_shelters_the_rider_in_the_group(out):
+    on = {r["name"]: r for r in out["group"]["rows"]}
+    off = {r["name"]: r for r in out["group_off"]["rows"]}
+    # placement coupé : le cycliste reste à 1,2 m, les bots à 2,1 m, il ne prend presque jamais leur roue
+    assert on["cycliste"]["draft_mean"] > 2 * off["cycliste"]["draft_mean"]
+    assert len(out["group"]["starts_m"]) == 3 and len(on["cycliste"]["shelter_each"]) == 3

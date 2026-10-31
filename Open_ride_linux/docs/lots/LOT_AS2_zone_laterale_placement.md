@@ -48,3 +48,30 @@ Champ `lane_m` facultatif dans `state` et dans les éléments de `bots` ; régla
 ## 8. Hors périmètre
 
 Bordure par vent de travers (AS3), groupes larges (AS4).
+
+## 9. Livraison (31 octobre 2026)
+
+- **Core.** `draft.py` : `Lane` (écart à l'axe, vitesse latérale, place `home`), `lateral_factor`, `lane_target`, `step_lane`, `update_lanes`, `start_grid` ; constantes de voie en tête du module, recopiées de `road_builder.gd` (cycliste 1,2 m, bots 2,1 m). Les bots portent `lane` et publient `lane_m` ; le fantôme reste à 2,1 m. Réglage `[ride] auto_draft` (`on` ou `off`, choix comme les autres oui/non des menus).
+- **Côte à côte.** Deux coureurs dont les roues se chevauchent, ou se toucheront dans la seconde (`SIDE_LOOK_S`), devant comme derrière, gardent 0,9 m d'écart latéral, chacun du côté où il est déjà ; à écart égal, celui de derrière passe à gauche ; coincé entre deux, le milieu.
+- **Grille de départ.** Les bots du menu sont recréés à la place du cycliste : ils se rangent par deux, à 2,1 m et 0,3 m, un rang tous les 2,7 m derrière lui (avant la ligne de départ s'il le faut, l'engine les montant dans l'axe de la route), pour que personne ne parte empilé ni devant le cycliste : un rang devant faussait le calibrage des bots du lot T13 (sprinteur 2,3 % en avance sur 1,5 km).
+- **Engine.** `bots_view.gd` pose chaque bot à son `lane_m` ; l'avatar suit `lane_m` du cycliste (au plus 1 m/s entre deux trames), la caméra le suit avec 0,5 s de lissage (`camera_follow.gd`) ; le décor vivant évite cycliste et bots à leur vraie place (poussière, compteur de contacts, véhicules qui doublent).
+- **Banc.** `draft_bench` (lot X50) gagne la partie 3 (mise en roue, dépassement) et le groupe libre placement coupé, sur trois départs.
+
+### Mesures du 31 octobre (cloud, `python -m openride_core.tools.draft_bench`)
+
+| Mesure | Valeur |
+| --- | --- |
+| Mise en roue, bot 2 m devant et 0,9 m à droite | ligne du bot en 1,7 s, abri 0,278 (0,262 dans la roue d'un bot seul, file du banc à vitesse imposée) |
+| Même bot, placement coupé | le cycliste reste à 1,2 m, abri 0,011 (4 % de l'abri dans la roue) |
+| Dépassement à + 1 m/s | 0,91 m sur le côté au plus près, au plus à 0,2 m de l'axe, retour à 1,2 m |
+
+Groupe libre, bots à 230, 240 et 250 W et cycliste à 240 W, 10 min, moyenne de trois départs :
+
+| Coureur | À l'abri, placement activé | À l'abri, placement coupé |
+| --- | --- | --- |
+| Bot 230 W | 29 % | 41 % |
+| Bot 240 W | 25 % | 30 % |
+| Bot 250 W | 11 % | 11 % |
+| Cycliste 240 W | 28 % | 5 % |
+
+Placement coupé, le cycliste, à 0,9 m des bots, ne reçoit presque plus d'abri : c'est le prix du réalisme latéral, et ce que le placement automatique rattrape. Placement activé, il retrouve à peu près la part du lot X50 (27 % en une dimension) : un cycliste à puissance constante ne peut pas rester dans une roue plus rapide que lui ni freiner derrière une plus lente, alors que sur le vélo (53 % à l'essai du bloc 7af) on dose sa puissance. La course d'un groupe libre est chaotique : un seul départ donne de 23 à 46 % pour le cycliste, d'où la moyenne de trois départs. Contacts (roues qui se chevauchent à moins de 0,6 m sur le côté) : 3,4 s sur 30 min, sous la borne de 1 % du temps du banc.

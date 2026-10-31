@@ -11,6 +11,9 @@
 - lot AS1 : les bots `constant` s'abritent (`draft`, posé par `draft.update_bots`) ; un bot à profil
   garde la roue du coureur devant lui (`wheel`) au lieu de le doubler. Cahier :
   `docs/lots/LOT_AS1_abri_entre_bots.md`.
+- lot AS2 : chaque bot a un écart à l'axe (`lane`, `draft.Lane`, publié en `lane_m`), placé par
+  `draft.update_lanes` dans la roue du coureur devant ou pour le doubler ; le fantôme reste à
+  `draft.BOT_LANE_M` et ne se place pas. Cahier : `docs/lots/LOT_AS2_zone_laterale_placement.md`.
 """
 
 from __future__ import annotations
@@ -19,12 +22,14 @@ import bisect
 from dataclasses import replace
 from datetime import datetime
 import math
+import zlib
 from pathlib import Path
 from typing import Any
 
 from dataclasses import dataclass
 
 from .config import BOUNDS
+from .draft import BOT_LANE_M, Lane
 from .physics import G, V_FLOOR, V_MAX, PhysicsParams, RiderPhysics, air_density, resistive_force
 from .rogue.wbal import WbalState, wbal_initial, wbal_step
 from .route import Route
@@ -68,6 +73,8 @@ class ConstantPowerBot:
         self.wheel: tuple[float, float] | None = None   # roue suivie : écart (m) et vitesse du coureur devant
         self.push = 0.0                        # poussée du coureur qui suit de près
         self.power_factor = 1.0                # mamie à l'attaque du mode WTF (lot WTF2)
+        # Écart à l'axe (lot AS2), posé par draft.update_lanes ; départage stable des bots partis côte à côte
+        self.lane = Lane(BOT_LANE_M, BOT_LANE_M, rank=1 + zlib.crc32(self.id.encode()) % 65536)
 
     @property
     def s(self) -> float:
@@ -107,6 +114,7 @@ class ConstantPowerBot:
             "s": round(self.physics.s, 2),
             "v": round(self.physics.v, 3),
             "kind": self.kind,
+            "lane_m": round(self.lane.m, 2),
         }
 
 
@@ -140,6 +148,7 @@ class GhostBot:
         self.t = 0.0
         self.s = self.distances[0]
         self.v = self.speeds[0] if self.speeds else 0.0
+        self.lane = Lane(BOT_LANE_M, BOT_LANE_M, auto=False)   # fixe : le fantôme passe à travers (lot AS2)
 
     @staticmethod
     def _extract_series(
@@ -233,6 +242,7 @@ class GhostBot:
             "s": round(self.s, 2),
             "v": round(self.v, 3),
             "kind": self.kind,
+            "lane_m": round(self.lane.m, 2),
         }
 
 

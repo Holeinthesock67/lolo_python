@@ -101,7 +101,7 @@ func _test_nodes() -> void:
 	_check(bv.get_child_count() == 2, "une silhouette par bot visible (%d)" % bv.get_child_count())
 	var node: Node3D = bv.get_child(0)
 	var label: Label3D = node.get_node("Name")
-	_check(absf(node.position.x - 1000.0) < 1.0 and absf(node.position.z - BotsView.LATERAL_M) < 0.1 and BotsView.LATERAL_M > RoadBuilder.RIDER_LATERAL_M, "posée sur la route, à droite du cycliste (lot P32) (%s)" % str(node.position))
+	_check(absf(node.position.x - 1000.0) < 1.0 and absf(node.position.z - RoadBuilder.BOT_LATERAL_M) < 0.1 and RoadBuilder.BOT_LATERAL_M > RoadBuilder.RIDER_LATERAL_M, "sans lane_m : posée sur la route, à droite du cycliste (lot P32) (%s)" % str(node.position))
 	_check(label.visible, "nom affiché à moins de 50 m")
 	# Lot Y14 : coureur et vélo de people_mesh.gd, pédalier qui suit la distance, fantôme translucide
 	var rider: MultiMeshInstance3D = node.get_node("Rider")
@@ -117,6 +117,19 @@ func _test_nodes() -> void:
 	var g_mat: ShaderMaterial = (ghost.get_node("Rider") as MultiMeshInstance3D).material_override
 	_check(g_mat.shader.resource_path.ends_with("bot_ghost.gdshader") and float(g_mat.get_shader_parameter("ghost_alpha")) < 1.0,
 		"fantôme translucide (bot_ghost.gdshader)")
+	# Lot AS2 : écart à l'axe `lane_m` du core (dans la roue du cycliste, en dépassement à gauche de l'axe)
+	var lanes := _bots()
+	lanes[0]["lane_m"] = RoadBuilder.RIDER_LATERAL_M
+	lanes[1]["lane_m"] = -0.4
+	m.push(lanes, 0)
+	var placed: Array = m.view(1000.0, 7.0, 0)
+	_check(placed.any(func(b): return is_equal_approx(float(b["lane_m"]), -0.4)), "lane_m repris par la vue")
+	bv.update_view(placed, route)
+	var zs := []
+	for c in bv.get_children():
+		zs.append(snappedf((c as Node3D).position.z, 0.01))
+	zs.sort()
+	_check(zs == [-0.4, RoadBuilder.RIDER_LATERAL_M], "posées à leur lane_m (%s)" % str(zs))
 	bv.update_view([], route)
 	_check(bv.get_child_count() == 0, "sans bot : aucune silhouette")
 	bv.free()

@@ -2,8 +2,9 @@ extends Node3D
 
 ## Bots sur la route (Lot O7) : coureur casqué et vélo de people_mesh.gd (lot Y14, comme les cyclistes du
 ## décor), pédalier animé par crowd.gdshader, maillot à la couleur du bot (bots_view_model.gd) ; fantôme translucide
-## (bot_ghost.gdshader), posée à `s` avec le cap de route_data.gd et décalée de
-## LATERAL_M vers la droite (à droite du cycliste, vers le bord : road_builder.gd, lot P32) ; nom au-dessus à moins de
+## (bot_ghost.gdshader), posée à `s` avec le cap de route_data.gd et décalée vers la droite de son `lane_m`
+## (écart à l'axe donné par le core, lot AS2 : placement dans la roue et dépassements ; sans lui, BOT_LATERAL_M
+## de road_builder.gd, lot P32) ; nom au-dessus à moins de
 ## NAME_M. Une silhouette par bot visible (moins de 300 m), maillages et matériaux partagés ;
 ## sans bot, aucun nœud. Ne décide rien : affiche la sortie de bots_view_model.view().
 ## Pas de class_name : charger par preload("res://scripts/bots_view.gd").
@@ -15,7 +16,6 @@ const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
 const GhostShader := preload("res://shaders/bot_ghost.gdshader")
 
-const LATERAL_M := RoadBuilder.BOT_LATERAL_M
 const NAME_HEIGHT_M := 2.1
 const GHOST_ALPHA := 0.55
 
@@ -114,7 +114,12 @@ func update_view(view: Array, route) -> void:
 		var pos := Vector3(smp["x"], smp["y"], smp["z"])
 		var h := deg_to_rad(float(smp["heading_deg"]))
 		var right := Vector3(cos(h), 0.0, sin(h))
-		node.position = pos + right * LATERAL_M
+		var before := route.wrap_s(float(b["s"])) - float(b["s"])   # grille de départ derrière le départ (lot AS2)
+		if before > 0.0:
+			pos -= Vector3(sin(h), 0.0, -cos(h)) * before
+		var lane := float(b.get("lane_m", RoadBuilder.BOT_LATERAL_M))
+		node.position = pos + right * lane
+		node.set_meta("lane_m", lane)
 		node.rotation = Vector3(0.0, -h, 0.0)
 		var label: Label3D = node.get_node("Name")
 		label.text = str(b["name"])
@@ -136,17 +141,19 @@ func anchor_of(id: String) -> Variant:
 	return null
 
 
-## Pour les tests graphiques : silhouettes affichées et celles dans le champ de la caméra.
+## Pour les tests graphiques : silhouettes affichées, celles dans le champ de la caméra et leur écart à l'axe (lot AS2).
 func test_info(camera: Camera3D) -> Dictionary:
 	var shown := 0
 	var in_view := 0
+	var lanes := {}
 	for key in _nodes:
 		var n: Node3D = _nodes[key]
 		if n.visible:
 			shown += 1
+			lanes[str(key).get_slice(":", 0)] = float(n.get_meta("lane_m", RoadBuilder.BOT_LATERAL_M))
 			if camera != null and _on_screen(camera, n.global_position + Vector3(0.0, 1.0, 0.0)):
 				in_view += 1
-	return {"shown": shown, "in_view": in_view}
+	return {"shown": shown, "in_view": in_view, "lanes": lanes}
 
 
 ## Devant la caméra et dans l'image (comme les panneaux de col de living_decor.gd).

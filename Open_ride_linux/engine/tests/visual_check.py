@@ -714,7 +714,9 @@ def _scenes(s: Session) -> None:
                 f"{b}")
         s.check_layout("bots", info)
     _draft_gauge_scene(s)
-    core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=None, draft_bot=None)
+    _lane_scene(s)
+    core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=None, draft_bot=None,
+                   lane_m=None)
     time.sleep(SETTLE_S)
     shot = s.capture("sans_bot")
     if shot:
@@ -1404,6 +1406,35 @@ def _draft_gauge_scene(s: Session) -> None:
     if shot:
         g = shot[1].get("draft_gauge", {})
         s.check("jauge_abri_retiree", "réglage recoupé : jauge cachée", g.get("visible") is False, f"{g}")
+
+
+def _lane_scene(s: Session) -> None:
+    """Lot AS2 : placement dans la roue puis dépassement, vus par la caméra de contrôle derrière l'avatar. Dans la
+    roue : `lane_m` du cycliste à 2,1 m, celui du bot (3 m devant) aussi, avatar et bot sur la même ligne ; en
+    dépassement : cycliste à 1,1 m, bot à sa hauteur à 2,1 m, côte à côte à 1 m l'un de l'autre."""
+    core = s.core
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
+    for tag, rider_lane, ahead_m in (("abri_dans_la_roue", 2.1, 3.0 + 1.7), ("abri_depassement", 1.1, 0.4)):
+        s_now = core.current_s()
+        if tag == "abri_depassement":   # comme au core : on se décale d'abord, puis on arrive à la hauteur du bot
+            core.set_scene(speed=0.0, lane_m=rider_lane)
+            time.sleep(SETTLE_S + 1.5)
+        core.set_scene(speed=0.0, lane_m=rider_lane, bots=[
+            {"id": "bot1", "name": "Bot 250 W", "s": s_now + ahead_m, "v": 0.0, "kind": "constant", "lane_m": 2.1}],
+            bot_ahead="bot1", bot_behind=None, jerseys=None, draft=0.2 if tag == "abri_dans_la_roue" else 0.0,
+            draft_bot="bot1" if tag == "abri_dans_la_roue" else None)
+        time.sleep(SETTLE_S + 1.5)   # l'avatar va à sa ligne à 1 m/s au plus, la caméra le suit en 0,5 s
+        shot = s.capture(tag)
+        if not shot:
+            continue
+        av, b = shot[1].get("avatar", {}), shot[1].get("bots", {})
+        s.check(tag, f"avatar à {rider_lane:g} m de l'axe", abs(float(av.get("lane_m", 0.0)) - rider_lane) < 0.05, f"{av.get('lane_m')}")
+        s.check(tag, "caméra sur la ligne de l'avatar", abs(float(av.get("camera_lane_m", 0.0)) - rider_lane) < 0.1,
+                f"{av.get('camera_lane_m')}")
+        s.check(tag, "bot à 2,1 m de l'axe et dans l'image", abs(float(b.get("lanes", {}).get("bot1", 0.0)) - 2.1) < 0.01
+                and b.get("in_view", 0) >= 1, f"{b}")
+        s.check(tag, "avatar dans l'image", av.get("visible") and av.get("on_screen"), f"{av}")
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
 
 
 def _camera_scenes(s: Session) -> None:

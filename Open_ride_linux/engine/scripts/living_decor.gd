@@ -120,6 +120,7 @@ var _sound_at := -INF
 
 var _route = null
 var _road_width_m := RoadBuilder.ROAD_WIDTH_M
+var _rider_lane_m := RoadBuilder.RIDER_LATERAL_M   # écart à l'axe du cycliste de la dernière trame (lot AS2)
 var _cam_s := 0.0                  # dernière abscisse du cycliste reçue par step (placements des tests, lot P32)
 var _rider_v := 0.0
 var _cam_lateral := 0.0            # écart de la caméra à l'axe, mesuré (positif à droite), pour les tests
@@ -439,7 +440,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	# Gravel (U22) : surface sous la roue, poussière derrière elle par temps sec et crissement des pneus
 	surface_here = world_streamer.surface_at(cam_s) if world_streamer != null and world_streamer.has_method("surface_at") else "paved"
 	var back := Vector3(-sin(h), 0.0, cos(h))
-	var wheel: Vector3 = _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * RoadBuilder.RIDER_LATERAL_M
+	_rider_lane_m = _lane_of(state, RoadBuilder.RIDER_LATERAL_M)   # placement dans la roue (lot AS2)
+	var wheel: Vector3 = _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * _rider_lane_m
 	particles.update_dust(wheel, back, 0.0 if paused else rider_v, surface_here)
 	if sound_player != null and sound_player.get("model") != null:
 		sound_player.model.set_surface(surface_here)
@@ -468,12 +470,14 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	# Bots de l'état du core, lus une fois : cyclistes du décor (P28) et spectateurs (P15)
 	var bots: Array = []
 	var bots_s := []
+	var bots_lane := []
 	var bots_raw = state.get("bots", [])
 	if typeof(bots_raw) == TYPE_ARRAY:
 		bots = bots_raw
 		for b in bots:
 			if typeof(b) == TYPE_DICTIONARY and typeof(b.get("s")) in [TYPE_INT, TYPE_FLOAT]:
 				bots_s.append(float(b["s"]))
+				bots_lane.append(_lane_of(b, RoadBuilder.BOT_LATERAL_M))
 	var t_wave2 := Time.get_ticks_usec()
 	# Cyclistes du décor (P28), figés en pause, qui laissent la place aux bots
 	cyclists.update(cam_s, rider_v, dt_s, paused, bots_s)
@@ -481,8 +485,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
 	headlights = TrafficModel.headlights(weather_eval, _sun_elevation_deg)
 	var others: Array = cyclists.riders()
-	for b in bots_s:
-		others.append({"s": float(b), "lateral": RoadBuilder.BOT_LATERAL_M, "dir": 1})
+	for i in range(bots_s.size()):
+		others.append({"s": float(bots_s[i]), "lateral": float(bots_lane[i]), "dir": 1})
 	traffic.update(cam_s, rider_v, dt_s, paused, others)
 	if not paused:
 		_count_contacts(others)
@@ -584,7 +588,7 @@ func _count_contacts(others: Array) -> void:
 			var k: Dictionary = TrafficModel.KINDS[v["kind"]]
 			items.append({"name": str(v["kind"]), "s": float(v["s"]), "lateral": float(v["lateral"]),
 				"half_len": float(k["length"]) * 0.5, "half_width": float(k["half_width"]), "group": v})
-	var you := {"s": _cam_s, "lateral": RoadBuilder.RIDER_LATERAL_M, "name": "cycliste"}
+	var you := {"s": _cam_s, "lateral": _rider_lane_m, "name": "cycliste"}
 	for o in others + [you]:
 		if absf(float(o["s"]) - _cam_s) <= CONTACT_M:
 			items.append({"name": str(o["group"]["case"]) if o.has("group") else str(o.get("name", "bot")),
@@ -652,3 +656,9 @@ func test_info(cam: Camera3D) -> Dictionary:
 
 func _exit_tree() -> void:
 	_wait_job()
+
+
+## Écart à l'axe `lane_m` d'une trame ou d'un bot (lot AS2) ; `fallback` sans lui (core d'avant AS2, pas de bot).
+static func _lane_of(d: Dictionary, fallback: float) -> float:
+	var v = d.get("lane_m", null)
+	return float(v) if (v is float or v is int) else fallback

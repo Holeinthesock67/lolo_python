@@ -24,6 +24,8 @@ const NAME_M := 50.0
 const MAX_LINES := 5
 const MAX_EXTRAPOLATION_S := 1.0
 const MIN_SPEED_MPS := 1.0
+## Écart à l'axe d'un bot sans champ `lane_m` (core d'avant le lot AS2) : sa place de P32.
+const DEFAULT_LANE_M := 2.1   # RoadBuilder.BOT_LATERAL_M
 ## Couleur par `kind` : bot à puissance constante orange, fantôme bleu pâle ; inconnu gris. Un bot à
 ## profil (T12, `kind` = `constant` avec `profile`, contrat 1.4) est jaune. Teintes claires : les noms de
 ## l'encart des bots gardent au moins 3:1 sur le panneau au-dessus d'un ciel clair (lot X22).
@@ -72,7 +74,8 @@ func push(bots, t_us: int) -> void:
 		var gap = b.get("gap_s", null)
 		var item := {"id": str(b["id"]), "name": str(b.get("name", b["id"])), "kind": str(b.get("kind", "")),
 			"s": float(b["s"]), "v": float(b.get("v", 0.0)) if (b.get("v") is float or b.get("v") is int) else 0.0,
-			"gap_s": float(gap) if (gap is float or gap is int) else null, "t_us": t_us}
+			"gap_s": float(gap) if (gap is float or gap is int) else null, "t_us": t_us,
+			"lane_m": float(b["lane_m"]) if (b.get("lane_m") is float or b.get("lane_m") is int) else DEFAULT_LANE_M}
 		for key in PROFILE_FIELDS:
 			item[key] = b.get(key, null)
 		_bots.append(item)
@@ -99,7 +102,7 @@ static func color_of(kind: String, profile = null) -> Color:
 	return COLORS.get(kind, OTHER_COLOR)
 
 
-## Bots à l'instant now_us vus du cycliste (s et v affichés) : [{id, name, kind, s, gap_m, gap_s,
+## Bots à l'instant now_us vus du cycliste (s et v affichés) : [{id, name, kind, s, lane_m, gap_m, gap_s,
 ## visible, show_name, color, profile, cp_w, mass_kg, wbal_pct, jersey}], du plus loin devant au plus
 ## loin derrière.
 func view(rider_s: float, rider_v: float, now_us: int) -> Array:
@@ -111,7 +114,7 @@ func view(rider_s: float, rider_v: float, now_us: int) -> Array:
 			s = fposmod(s, loop_length_m)
 		var gm := gap_m(rider_s, s, loop_length_m)
 		var gs: float = b["gap_s"] if b["gap_s"] != null else gap_seconds(gm, rider_v, b["v"])
-		var item := {"id": b["id"], "name": b["name"], "kind": b["kind"], "s": s, "gap_m": gm, "gap_s": gs,
+		var item := {"id": b["id"], "name": b["name"], "kind": b["kind"], "s": s, "lane_m": b["lane_m"], "gap_m": gm, "gap_s": gs,
 			"visible": absf(gm) < VISIBLE_M, "show_name": absf(gm) < NAME_M, "color": color_of(b["kind"], b["profile"])}
 		for key in PROFILE_FIELDS:
 			item[key] = b[key]
