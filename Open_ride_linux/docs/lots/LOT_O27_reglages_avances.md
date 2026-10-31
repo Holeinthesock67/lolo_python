@@ -8,7 +8,7 @@ Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, déci
 
 | # | Règle |
 | --- | --- |
-| O27-1 | Réglages › Avancé (groupe `advanced`, dernier sous-écran) : « Télécharger les cartes » (`open_world.network`, oui / non, hors ligne : cache seulement), « Cache du monde ouvert » (`open_world.cache_max_gb`, Go), « Place pour les thèmes » (`render.theme_library_gb`, Go), « Progression et Garage » (`progression.enabled`, oui / non, sans Garage). |
+| O27-1 | Réglages › Avancé (groupe `advanced`, dernier sous-écran) : « Télécharger les cartes » (`open_world.network`, oui / non, hors ligne : cache seulement), « Cache du monde » (`open_world.cache_max_gb`, Go), « Place pour les thèmes » (`render.theme_library_gb`, Go), « Progression et Garage » (`progression.enabled`, oui / non, sans Garage). |
 | O27-2 | Prise en compte : le téléchargement s'applique à la prochaine recherche ou carte du monde ouvert, sans relancer, et les plafonds à la prochaine écriture du cache ou à la prochaine installation de thème. La progression est lue au démarrage du core : `applies` = `relaunch`, avec la ligne « Relancer OpenRide maintenant » du lot O26. |
 | O27-3 | Règles générales, sans cas par clé : tout booléen sans légende propre s'affiche oui / non. Les bornes d'un nombre sont arrondies vers l'intérieur (cache de 0,5 à 500 Go → 1 à 500). |
 | O27-4 | `settings` en parties de 60 000 octets au plus (`part`, `parts`, `truncated`), découpées par `chunk_list_message` comme `routes`. L'engine réunit les parties avec la fonction qui sert au menu du monde ouvert. Un message en une partie, même envoyé sans demande, est livré tel quel. Le plafond de 32 réglages disparaît. |

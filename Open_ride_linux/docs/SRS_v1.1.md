@@ -411,7 +411,7 @@ godot = ""           # chemin de Godot 4.3, gardé par scripts/install.sh (vide 
 
 [open_world]         # monde ouvert de la 2.0 (série W, docs/contracts/worldgen_v1.md §6)
 cache_dir = "~/OpenRide/Cache/monde"
-cache_max_gb = 5.0   # menu : Avancé, « Cache du monde ouvert » (lot O27)
+cache_max_gb = 5.0   # menu : Avancé, « Cache du monde » (lot O27)
 horizon_m = 3000.0   # route engagée devant le cycliste
 offer_m = 300.0      # carrefour proposé à cette distance
 lock_m = 30.0        # choix verrouillé à cette distance du carrefour

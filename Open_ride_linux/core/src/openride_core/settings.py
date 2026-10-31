@@ -106,7 +106,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("wind.feel", "Ressenti du vent", "wind"),   # lot O26
     # Avancé (lot O27) : monde ouvert hors ligne, plafonds de disque, progression du Garage
     Setting("open_world.network", "Télécharger les cartes", "advanced"),
-    Setting("open_world.cache_max_gb", "Cache du monde ouvert", "advanced", 1, "Go"),
+    Setting("open_world.cache_max_gb", "Cache du monde", "advanced", 1, "Go"),
     Setting("render.theme_library_gb", "Place pour les thèmes", "advanced", 1, "Go"),
     Setting("progression.enabled", "Progression et Garage", "advanced", applies="relaunch"),
 )

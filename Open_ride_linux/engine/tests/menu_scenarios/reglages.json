@@ -47,7 +47,7 @@
     {"note": "Lot O27 : sous-écran Avancé ; monde ouvert hors ligne pris sans relancer, progression au prochain lancement",
      "choisir": "group:advanced"},
     {"ecran": "settings_group", "groupe": "advanced", "titre": "Réglages › Avancé",
-     "contient": ["Télécharger les cartes — oui", "Cache du monde ouvert — 5 Go", "Place pour les thèmes — 5 Go", "Progression et Garage — oui"]},
+     "contient": ["Télécharger les cartes — oui", "Cache du monde — 5 Go", "Place pour les thèmes — 5 Go", "Progression et Garage — oui"]},
     {"choisir": "set:open_world.network"},
     {"appui": ["PLUS_SHORT", "A_LONG"]},
     {"ecran": "settings_group", "edition": false, "contient": ["Télécharger les cartes — non (hors ligne)"]},
