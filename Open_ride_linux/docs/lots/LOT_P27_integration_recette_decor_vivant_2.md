@@ -1,5 +1,10 @@
 # Lot P27 – Intégration et recette de la deuxième vague du décor vivant
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Intégration et recette de la deuxième vague du décor vivant : mesure de toute la série, budgets, fiche de recette, documentation | GDScript + doc | P22 à P26, P28, P29 | Moyenne | **Livré le 28 octobre** : branchement relu, enveloppe tenue, banc `decor_vivant_2` ; recette sur le PC à faire ([RECETTE_P27.md](../RECETTE_P27.md)) |
+
 ## 1. Objectif
 
 Dernier lot de la deuxième vague du décor vivant (P22 à P27, demande du propriétaire du 27 octobre : « ça manque de vie »). Chaque lot P22 à P26, P28 (cyclistes) et P29 (bateaux) a été testé seul ; ce lot vérifie qu'ensemble ils restent dans les budgets de la GTX 1060, règle les parts et les densités sur l'avis du propriétaire, et met la documentation à jour :

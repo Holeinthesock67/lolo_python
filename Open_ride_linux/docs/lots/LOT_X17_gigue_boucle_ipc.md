@@ -1,5 +1,10 @@
 # Lot X17 – Gigue de la boucle physique et de l'IPC
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Gigue de la boucle physique et des trames `state`, sous charge | Python + GDScript | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x17`) ; issue #215 |
+
 ## 1. Objectif
 
 Critère de la série W : gigue de la boucle à 50 Hz sous 5 ms pendant la génération du monde. Jamais mesurée, même en 1.0.

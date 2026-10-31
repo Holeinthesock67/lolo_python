@@ -1,5 +1,10 @@
 # Lot P16 – Intégration, première vague : vent ressenti et affiché, arbres, nuages, sons
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Intégration, première vague : vent ressenti et affiché, arbres, nuages, sons ; recette sur la GTX 1060 | GDScript | P2, P4, P5, P6, P9, P10 | Moyenne | **Livré le 27 octobre**, recette sur le PC à faire (issue #140) |
+
 ## 1. Objectif
 
 Brancher dans la scène principale les lots les plus rentables de la série P, ceux qui changent le plus l'impression pour le moindre coût sur la GTX 1060 :

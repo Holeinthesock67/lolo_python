@@ -173,7 +173,7 @@ python -m openride_core.tools.rogue_sim [--objective threshold] [--duration 45] 
 python -m openride_core.tools.workouts install                   # copie les 7 entraînements de référence (5 .zwo, un .erg, un .mrc)
 python -m openride_core.tools.workouts install --erg-relative    # idem, .erg convertis en .mrc (% de la FTP de leur en-tête)
 python -m openride_core.tools.workouts list                      # liste les entraînements de ~/OpenRide/Workouts/
-python -m openride_core.tools.workouts check FICHIER.zwo --ftp 250   # vérifie un fichier .zwo, .erg ou .mrc et estime NP/IF/TSS
+python -m openride_core.tools.workouts check FICHIER.zwo --ftp 250   # vérifie un fichier .zwo, .erg, .mrc ou .qwk et estime NP/IF/TSS
 ```
 
 ### Plans d'entraînement (lot O11)

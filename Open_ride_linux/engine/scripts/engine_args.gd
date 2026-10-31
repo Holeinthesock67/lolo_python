@@ -7,6 +7,7 @@ extends RefCounted
 ##   --routes-dir=CHEMIN      dossier des parcours (défaut : ~/.local/share/openride/routes)
 ##   --quality=low|medium|high préréglage de qualité graphique (défaut : low, lot L4)
 ##   --theme=NOM              thème visuel actif (défaut : default, lot L4)
+##   --texture-level=auto|low|medium|high  niveau des textures du décor imposé (défaut : auto, lot P20)
 ##   --biome=ID|auto          biome forcé sur tout le parcours, pour les essais (défaut : auto ; série U, lot U5)
 ##   --gravel=off|auto|compacted|gravel|dirt  rendu des routes non revêtues (défaut : off ; série U, lot U22)
 ##   --visual-grade=K         exagération visuelle du relief de 1.0 à 3.0 (défaut : 2.5, lots Q2 et Y15)
@@ -28,6 +29,7 @@ const DEFAULT_VISUAL_GRADE := 2.5
 const MIN_VISUAL_GRADE := 1.0
 const MAX_VISUAL_GRADE := 3.0
 const VALID_QUALITIES := ["low", "medium", "high"]
+const VALID_TEXTURE_LEVELS := ["auto", "low", "medium", "high"]
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
@@ -44,7 +46,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, biome, gravel, visual_grade, living, culling, load_guard, display, camera, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, texture_level, biome, gravel, visual_grade, living, culling, load_guard, display, camera, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -53,6 +55,7 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"routes_dir": default_routes_dir(),
 		"quality": DEFAULT_QUALITY,
 		"theme": DEFAULT_THEME,
+		"texture_level": "auto",
 		"biome": "auto",
 		"gravel": "off",
 		"visual_grade": DEFAULT_VISUAL_GRADE,
@@ -80,6 +83,8 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["quality"] = _quality(arg, DEFAULT_QUALITY)
 		elif arg.begins_with("--theme="):
 			out["theme"] = _theme(arg, DEFAULT_THEME)
+		elif arg.begins_with("--texture-level="):
+			out["texture_level"] = _texture_level(arg, "auto")
 		elif arg.begins_with("--biome="):
 			out["biome"] = _biome(arg, "auto")
 		elif arg.begins_with("--gravel="):
@@ -126,6 +131,15 @@ static func _quality(arg: String, fallback: String) -> String:
 	if not (val in VALID_QUALITIES):
 		last_error = "Argument ignoré (qualité invalide) : " + arg
 		printerr("Argument ignoré (qualité invalide) : ", arg)
+		return fallback
+	return val
+
+
+static func _texture_level(arg: String, fallback: String) -> String:
+	var val := arg.get_slice("=", 1).strip_edges()
+	if not (val in VALID_TEXTURE_LEVELS):
+		last_error = "Argument ignoré (niveau des textures : auto, low, medium ou high) : " + arg
+		printerr("Argument ignoré (niveau des textures : auto, low, medium ou high) : ", arg)
 		return fallback
 	return val
 

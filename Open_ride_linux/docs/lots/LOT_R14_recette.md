@@ -1,5 +1,10 @@
 # Lot R14 – Recette du mode Cyber-Rogue sur le PC et le vélo
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Recette du mode Cyber-Rogue sur le PC et le vélo | — | R8, R9, R10 à R13, R15, R16 | Moyenne | Non : propriétaire, **version 2.0** |
+
 ## 1. Objectif
 
 Vérifier par le propriétaire, sur le PC cible (GTX 1060) et sur le vélo, que le mode Cyber-Rogue est jouable, lisible, sûr et fidèle à l'objectif choisi. Lot du propriétaire ; Claude prépare la fiche et lit les journaux.

@@ -1,5 +1,10 @@
 # Lot MJ7 – Core : choisir, créer, renommer et supprimer un profil
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série MJ : core, choisir, créer, renommer, supprimer un profil sans relancer | Python | MJ4, MJ6 | Moyenne | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj7b`, après MJ5 et MJ6) |
+
 Série MJ, plan `docs/2.0/PLAN_SERIE_MJ.md` §3.2, §3.3 et §6.
 
 ## 1. Objectif

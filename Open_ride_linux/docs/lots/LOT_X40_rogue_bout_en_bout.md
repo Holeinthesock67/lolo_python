@@ -1,5 +1,10 @@
 # Lot X40 – Run Cyber-Rogue de bout en bout dans la séance du core
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Run Cyber-Rogue de bout en bout dans la séance du core (`rogue_bout_en_bout`), pause, resynchronisation, trace pour le banc visuel | Python | R8, R7 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x40`) ; issue #543 |
+
 ## 1. Objectif
 
 Les tests de la série R valident chaque module (moteur de run, combat, couloirs, équilibrage simulé de R7), et `test_rogue_session.py` fait courir une run dans la séance à puissance fixe. Il manquait une run jouée comme au vélo : un cycliste qui suit les salles, pousse ses boutons au Click, choisit ses cartes et ses portes, met en pause, puis va jusqu'au bilan, en relevant tout ce que la séance envoie à l'engine. Le fil de la série R a proposé cet outil le 28 octobre (outil 1).

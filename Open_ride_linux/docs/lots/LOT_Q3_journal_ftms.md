@@ -1,5 +1,10 @@
 # Lot Q3 – Journal des commandes FTMS et des accusés du trainer
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Journal des commandes FTMS et des accusés du trainer, délais dans `log_report` | Python | — | Petite | Oui ; issue #170 |
+
 ## 1. Objectif
 
 Essai du 25 octobre, marches de pente 0 / 7 % : environ 22 s ressenties avant que la résistance se relâche. Le core met 4 à 5 s à changer la pente envoyée, et le trainer durcit en 2 à 3 s, mais ne relâche qu'au bout de 10 à 15 s. Le journal ne contient ni les écritures au Control Point FTMS ni les accusés du trainer : on ne peut pas dire si le retard vient du core, du Bluetooth ou du trainer. Ce lot ajoute une trace horodatée de chaque échange et une mesure du délai dans `log_report`. En fin de séance, le journal a aussi signalé « consignes remises à zéro par un tiers (Reset), renvoi » : la trace doit permettre de dire si ce Reset était le nôtre, revenu en écho.

@@ -1,5 +1,10 @@
 # Lot O19 – Aucune roue libre en ERG : consigne minimale de 50 W, test de FTP par la rampe seule
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Aucune roue libre en ERG : consigne minimale de 50 W (FreeRide = palier à 50 W), test de FTP par la rampe seule (20 min retiré) | Python + GDScript | O10, O18 (livrés) | Moyenne | Décision du propriétaire du 29 octobre ; en PR |
+
 ## 1. Objectif
 
 Décision du propriétaire du 29 octobre : « aucune roue libre en ERG ». La matrice des boutons (X42) avait trouvé un cas sans règle : un bloc de roue libre au milieu d'un entraînement ERG, où la séance repassait en SIM. Le propriétaire a tranché. Une roue libre n'a pas de sens en ERG. Un bloc FreeRide d'un fichier est un cas de robustesse : il faut une consigne minimale de 50 W. Le test de FTP se fait par paliers croissants jusqu'à ce que le cycliste ne suive plus : c'est la rampe. Le test de 20 minutes, qui imposait 20 min de roue libre, est retiré (choix sur la carte de décision).

@@ -1,5 +1,10 @@
 # Lot CT9 – Charte graphique cartoon de la Course tactique et maquettes
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série CT : charte graphique cartoon de la Course tactique et maquettes | Documentation et maquettes | CT1 | Moyenne | **Maquettes validées le 29 octobre (22 h 12)** : charte `docs/5.0/CHARTE_CARTOON_CT9.md`, 6 scènes en low, medium et high (PR #585) |
+
 Série CT (version 5.0, mode « Course tactique »). Plan de la série : `docs/5.0/PLAN_SERIE_CT.md`.
 
 ## 1. Objectif

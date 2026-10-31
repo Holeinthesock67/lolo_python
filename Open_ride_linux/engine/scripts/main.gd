@@ -217,6 +217,7 @@ func _ready() -> void:
 	streamer.culling = bool(cfg.get("culling", false))
 	streamer.test_log = bool(cfg["test_mode"])
 	streamer.forced_biome = str(cfg.get("biome", "auto"))
+	streamer.texture_level = str(cfg.get("texture_level", "auto"))
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
 		tree_rend.name = "TreeRenderer"
@@ -356,6 +357,7 @@ func _ready() -> void:
 	menu_view = MenuView.new()
 	menu_layer.add_child(menu_view)
 	banner.reparent(menu_layer)   # le bandeau reste lisible au-dessus du menu, HUD caché ou non
+	world_menu_view.reparent(menu_layer)   # menu du globe plein écran, HUD caché derrière lui (lot O22)
 	menu_view.item_clicked.connect(func(item_id: String) -> void:
 		# Clic sur un élément : focus dessus puis validation, comme un appui long sur A.
 		print("Souris : clic sur ", item_id)
@@ -417,8 +419,8 @@ static func _quality_from_cli() -> bool:
 	return false
 
 
-## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de
-## suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s et jauge d'abri montrés ou cachés.
+## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, niveau des textures, thème et mode d'affichage
+## appliqués tout de suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s et jauge d'abri montrés ou cachés.
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
 	AudioMix.apply_settings(menu_flow.settings.items)
@@ -439,6 +441,9 @@ func _on_settings(msg: Dictionary) -> void:
 		_report_quality(q, "reglage")
 	elif q != _quality_name:
 		_report_quality(q, "reglage")   # valeur inconnue : la qualité appliquée ne change pas, et le journal le dit
+	var tl := str(menu_flow.settings.item("render.texture_level").get("value", streamer.texture_level))
+	if tl in EngineArgs.VALID_TEXTURE_LEVELS:
+		streamer.texture_level = tl   # niveau des textures imposé (lot P20) ; rien n'est rechargé s'il ne change pas
 	var th := str(menu_flow.settings.item("render.theme").get("value", _theme_name))
 	if th != _theme_name:
 		_apply_theme(th)
@@ -760,12 +765,17 @@ func _sync_hud(menu_shown: bool) -> void:
 		overlay_layer.visible = not menu_shown
 
 
+## Un menu plein écran est affiché : liste des menus ou globe du monde ouvert (lot O22).
+func _full_screen_menu() -> bool:
+	return menu_view.visible or (world_menu_view != null and world_menu_view.visible)
+
+
 func _refresh_menu() -> void:
 	if menu_view == null:
 		return
 	var shown: bool = menu_flow.is_visible() and not (world_menu_view != null and world_menu_view.visible)
 	menu_view.visible = shown
-	_sync_hud(shown)
+	_sync_hud(_full_screen_menu())
 	if shown:
 		var st: Dictionary = menu_flow.state()
 		if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
@@ -1199,6 +1209,8 @@ func _test_menu_state(req: String) -> Dictionary:
 	var world := {"visible": world_menu_view != null and world_menu_view.visible}
 	if world["visible"]:
 		world["state"] = str(world_menu_view.vm.state)
+		world["help"] = world_menu_view.help_label.text
+		world["hint"] = world_menu_view.hint_text()
 	return {"req": req, "visible": menu_view.visible, "screen": st["screen"], "title": st["title"],
 		"status": st["status"], "focus": focus, "focus_id": items[focus]["id"] if focus >= 0 and focus < items.size() else "",
 		"group": menu_flow.settings_group, "editing": st["editing"], "items": items, "rows": rows,
@@ -1548,7 +1560,7 @@ func _on_state_received(state: Dictionary) -> void:
 			_quality_name, float(Time.get_ticks_msec()) / 1000.0):
 		ipc.request_rogue_resync()
 	if menu_view != null:
-		_sync_hud(menu_view.visible)   # entrée et sortie de la run dans la même trame
+		_sync_hud(_full_screen_menu())   # entrée et sortie de la run dans la même trame
 
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0

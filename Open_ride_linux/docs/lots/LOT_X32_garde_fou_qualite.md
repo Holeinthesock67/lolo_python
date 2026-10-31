@@ -1,5 +1,10 @@
 # Lot X32 – Garde-fou de la qualité réellement appliquée dans les bancs
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Garde-fou de la qualité réellement appliquée dans les bancs et les vitrines | Python + GDScript | #481 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x32`) |
+
 ## 1. Objectif
 
 Le 28 octobre, on a découvert que `sim_bench.py` passait `--quality` à l'engine sans l'écrire dans la configuration du core : le core renvoyait `[render] quality = "low"` au démarrage et l'engine repassait en `low`. Toutes les mesures « medium » et « high » d'avant la PR #481 mesuraient donc du `low`, sans qu'aucun outil le voie. #481 corrige la cause, pas le risque : un autre chemin (réglage du menu, `config.toml` du PC, nouvel outil) peut refaire la même erreur.
