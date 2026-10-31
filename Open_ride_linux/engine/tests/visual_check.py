@@ -1301,21 +1301,25 @@ def _peloton_face_scene(s: Session) -> None:
         near = [b for b in shot[1].get("decor", {}).get("bot_places", []) if 0.0 < b["rel_m"] < 30.0]
         s.check("peloton_large", "peloton au départ : cinq bots de front, devant le cycliste", len(set(lats)) == 5 and len(near) == 5,
                 f"{lats}, {len(near)} à moins de 30 m")
-    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 70.0, "kmh": 40.0})
+    # Posée assez près pour croiser le peloton même quand le décor avance lentement (Xvfb, --fige) : les bots
+    # serrent à droite dès qu'elle est là, elle attend devant eux s'ils ne lui laissent pas encore la place.
+    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 45.0, "kmh": 40.0})
     shot = None
     t0 = now()
     while now() - t0 < PASS_WAIT_S:
         time.sleep(0.5)
         shot = s.capture("peloton_face")
-        users = shot[1].get("decor", {}).get("road_users", []) if shot else []
-        if any(u["what"] == "vehicle" and u["dir"] < 0 and u["rel_m"] < 20.0 for u in users):
+        dec = shot[1].get("decor", {}) if shot else {}
+        near = [u for u in dec.get("road_users", []) if u["what"] == "vehicle" and u["dir"] < 0 and u["rel_m"] < 50.0]
+        bots = dec.get("bot_places", [])
+        if near and bots and all(b["lateral"] >= 0.0 for b in bots):
             break
     caps = [c for c in s.report.captures if c.config == s.name and c.scene == "peloton_face"]
     for c in caps[:-1]:
         s.report.captures.remove(c)
     if shot:
         dec = shot[1].get("decor", {})
-        cars = [u for u in dec.get("road_users", []) if u["what"] == "vehicle" and u["dir"] < 0 and u["rel_m"] < 30.0]
+        cars = [u for u in dec.get("road_users", []) if u["what"] == "vehicle" and u["dir"] < 0 and u["rel_m"] < 50.0]
         bots = dec.get("bot_places", [])
         edge = ROAD_HALF_WIDTH_M + SHOULDER_M + VERGE_M
         s.check("peloton_face", "voiture d'en face sur la chaussée", bool(cars) and all(abs(u["lateral"]) + u["half_width"] <= edge + 1e-3 for u in cars),
@@ -1325,6 +1329,7 @@ def _peloton_face_scene(s: Session) -> None:
         _check_contacts(s, "peloton_face", shot[1])
     core.set_scene(bots=None)
     time.sleep(1.0)
+
 
 def _menu_scenes(s: Session) -> None:
     """Lot N6 : accueil avec l'état des appareils, liste des parcours au Click, bilan de fin ; menus en plein

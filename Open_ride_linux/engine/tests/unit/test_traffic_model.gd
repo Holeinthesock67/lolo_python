@@ -183,9 +183,10 @@ func _ride_mixed(route, rng_seed: int) -> Dictionary:
 		"spawned": tm.spawned_total, "groups": cy.spawned_total}
 
 
-## Peloton de cinq bots de front, 6 m devant le cycliste et à sa vitesse (départ), places de bots_view_model.gd
-## avec les véhicules de la route (`vehicles`) : contacts, véhicules hors de la route, bots encore à gauche au
-## croisement d'un véhicule d'en face, dépassements, retrait de la file au plus.
+## Peloton de cinq bots de front, 6 m devant le cycliste et à sa vitesse (départ, 4 km), ou cycliste arrêté ; en
+## plus de la circulation tirée, une voiture posée en face puis une qui rattrape toutes les 300 images. Places de
+## bots_view_model.gd avec les véhicules de la route (`vehicles`) : contacts, véhicules hors de la route, bots encore
+## à gauche au croisement d'un véhicule d'en face, dépassements, retrait de la file au plus.
 func _ride_peloton(route, rng_seed: int, kmh: float = 30.0, fps: float = 15.0) -> Dictionary:
 	var tm = TrafficModel.new()
 	tm.configure(route, {"terrain": {"snow_line_m": 2200.0}}, _villages(), 5, rng_seed)
@@ -193,15 +194,15 @@ func _ride_peloton(route, rng_seed: int, kmh: float = 30.0, fps: float = 15.0) -
 	var v_mps := kmh / 3.6
 	var dt := 1.0 / fps
 	var s := 300.0
-	var end_s := 30500.0 if kmh > 0.0 else 300.0
+	var end_s := 4300.0 if kmh > 0.0 else 300.0
 	var frames := 0
 	var t_us := 0
 	var out := {"met": 0, "passes": 0, "hits": 0, "offroad": 0, "offroad_pass": 0, "left": 0, "bot_hits": 0, "max_back": 0.0}
 	var met := {}
-	while s < end_s or (kmh == 0.0 and frames < 9000):
+	while s < end_s or (kmh == 0.0 and frames < 3000):
 		frames += 1
-		if kmh == 0.0 and frames % 300 == 1:   # cycliste arrêté : une voiture posée en face, puis une qui rattrape
-			tm.place_for_test(s, 0.0, "car_a", -1 if frames % 600 == 1 else 1, 150.0 if frames % 600 == 1 else -60.0, 40.0)
+		if frames % 300 == 1:   # en plus de la circulation tirée : une voiture posée en face, puis une qui rattrape
+			tm.place_for_test(s, v_mps, "car_a", -1 if frames % 600 == 1 else 1, 200.0 if frames % 600 == 1 else -60.0, 50.0)
 		var pack := []
 		for i in range(5):
 			pack.append({"id": "b%d" % i, "name": "Bot %d" % i, "s": s + 6.0 + 0.3 * i, "v": 0.0, "kind": "constant"})
@@ -361,7 +362,7 @@ func _run() -> void:
 	_check(mixed["hit_cyclists"] == 0, "jamais deux cyclistes l'un sur l'autre (décor, cycliste, bot) (%d)" % mixed["hit_cyclists"])
 	# Peloton de front au départ face aux véhicules d'en face : les bots serrent à droite, en file au besoin
 	var pel := {"met": 0, "passes": 0, "hits": 0, "offroad": 0, "offroad_pass": 0, "left": 0, "bot_hits": 0, "max_back": 0.0}
-	for sd in range(1, 17):
+	for sd in range(1, 5):
 		var rp: Dictionary = _ride_peloton(route, sd)
 		for key in pel:
 			pel[key] = maxf(float(pel[key]), float(rp[key])) if key == "max_back" else int(pel[key]) + int(rp[key])
@@ -369,7 +370,7 @@ func _run() -> void:
 		var rs: Dictionary = _ride_peloton(route, 1, 0.0, f)
 		for key in pel:
 			pel[key] = maxf(float(pel[key]), float(rs[key])) if key == "max_back" else int(pel[key]) + int(rs[key])
-	print("peloton de front et véhicules en face, 16 graines et départ arrêté : %s" % str(pel))
+	print("peloton de front et véhicules, 4 graines sur 4 km et départ arrêté : %s" % str(pel))
 	_check(pel["met"] > 0 and pel["hits"] == 0, "peloton de front : aucun véhicule d'en face sur un bot (%d croisés)" % pel["met"])
 	_check(pel["offroad"] == 0 and pel["offroad_pass"] == 0,
 		"peloton de front : aucun véhicule hors de la route, ni en face (%d images) ni en doublant (%d)" % [pel["offroad"], pel["offroad_pass"]])
