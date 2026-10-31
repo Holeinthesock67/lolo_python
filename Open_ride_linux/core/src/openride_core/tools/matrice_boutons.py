@@ -21,8 +21,8 @@ compris. Puis, à chaque phase où la séance roule (aucun menu affiché), chaqu
 est envoyé par le chemin du clavier (`input_event`, comme l'engine) et doit avoir l'effet de la case du plan.
 Menu affiché (prêt, pause, bilan) : l'engine traite la touche sans le core ; c'est le banc des menus.
 
-**Boîtier gauche.** Il peut se taire (verrou Zwift, SRS §4.2) et « rien d'indispensable n'est mis sur le seul
-boîtier gauche » (§7.1). À chaque phase où la séance roule, l'effet de chaque flèche doit aussi être obtenu par
+**Boîtier gauche.** Il répond (flèches et −), mais OpenRide le redémarre environ une fois par minute (verrou
+Zwift, SRS §4.2) : environ 4 s sans boutons. D'où « rien d'indispensable n'est mis sur le seul boîtier gauche » (§7.1). À chaque phase où la séance roule, l'effet de chaque flèche doit aussi être obtenu par
 un bouton du boîtier droit, sauf la vue de caméra (confort) ; le décodeur doit lire B comme « − ».
 
 **Réglages.** Chaque réglage du menu (`settings.SETTINGS`) est changé d'un pas à chaque phase : accueil, prêt

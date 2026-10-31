@@ -20,41 +20,47 @@ const Y_DEFAULT := "Retour"
 ## chaque touche double un bouton du Click). Titres des deux lignes.
 const CLICK_TITLE := "Click"
 const KEYBOARD_TITLE := "Clavier"
-## Touche du clavier de chaque bouton du Click (key_map.gd) : A maintenu = Entrée, B = « − », Y = Échap.
-const KEYBOARD_KEYS := {"A": ["A"], "A_HOLD": ["Entrée"], "+": ["+"], "B": ["−"], "Y": ["Échap"]}
+## Boutons du Click qui avancent et reculent d'un élément (§7.1) : + et A, flèche droite du boîtier gauche ;
+## − du boîtier gauche, B du boîtier droit (il double « − ») et flèche gauche.
+const NEXT_KEYS := ["+", "A", "→"]
+const PREV_KEYS := ["−", "B", "←"]
+## Touche du clavier de chaque bouton du Click (key_map.gd) : A maintenu = Entrée, B = « − » (pas de touche
+## propre), Y = Échap, flèches = flèches.
+const KEYBOARD_KEYS := {"A": ["A"], "A_HOLD": ["Entrée"], "+": ["+"], "−": ["−"], "B": ["−"], "Y": ["Échap"],
+	"→": ["→"], "←": ["←"]}
 ## Menu « Monde ouvert » (world_menu_view.gd, lot O22) : une aide par état de world_menu_model.gd, clé
 ## WORLD_PREFIX + état. Au clavier, les lettres tapées sur le globe et dans la recherche cherchent un
 ## lieu (main._world_menu_key) : A et Y n'y sont donc pas des boutons, d'où des touches données une à
 ## une (`kb`). Une entrée sans bouton du Click (`keys` vide) ou sans touche (`kb` vide) n'est montrée que
-## sur l'autre ligne.
+## sur l'autre ligne. Mêmes pastilles que les autres menus : flèches ← → du boîtier gauche, − à côté de B.
 const WORLD_PREFIX := "world_"
 const WORLD := {
 	"globe": [
 		{"keys": ["A"], "hold": false, "text": "Carte", "main": true, "kb": []},
 		{"keys": ["Z"], "hold": false, "text": "Chercher", "main": true, "kb": ["lettres"]},
-		{"keys": ["◀", "▶"], "hold": false, "text": "Tourner", "main": false, "kb": ["←", "→"]},
-		{"keys": ["+", "B"], "hold": true, "text": "Incliner", "main": false, "kb": ["Page haut", "Page bas"]},
+		{"keys": ["←", "→"], "hold": false, "text": "Tourner", "main": false, "kb": ["←", "→"]},
+		{"keys": ["+", "−", "B"], "hold": true, "text": "Incliner", "main": false, "kb": ["Page haut", "Page bas"]},
 		{"keys": ["A"], "hold": true, "text": "Épingler", "main": false, "kb": ["Entrée"]},
 		{"keys": ["Y"], "hold": false, "text": "Quitter", "main": false, "kb": ["Échap"]},
 	],
 	"search_results": [
 		{"keys": ["A"], "hold": false, "text": "Choisir le lieu", "main": true, "kb": ["Entrée"]},
-		{"keys": ["+", "B"], "hold": false, "text": "Lieu suivant, précédent", "main": false, "kb": ["+", "−"]},
+		{"keys": ["+", "−", "B"], "hold": false, "text": "Lieu suivant, précédent", "main": false, "kb": ["+", "−"]},
 		{"keys": ["Z"], "hold": false, "text": "Écrire", "main": false, "kb": ["lettres"]},
 		{"keys": [], "hold": false, "text": "Effacer", "main": false, "kb": ["Retour arrière"]},
 		{"keys": ["Y"], "hold": false, "text": "Retour", "main": false, "kb": ["Échap"]},
 	],
 	"map": [
 		{"keys": ["A"], "hold": false, "text": "Départ ici", "main": true, "kb": ["Entrée"]},
-		{"keys": ["◀", "▶"], "hold": false, "text": "Ouest, est", "main": false, "kb": ["←", "→"]},
-		{"keys": ["B", "+"], "hold": false, "text": "Nord, sud", "main": false, "kb": ["−", "+"]},
-		{"keys": ["B", "+"], "hold": true, "text": "Nord, sud 500 m", "main": false, "kb": ["Page bas", "Page haut"]},
+		{"keys": ["←", "→"], "hold": false, "text": "Ouest, est", "main": false, "kb": ["←", "→"]},
+		{"keys": ["−", "B", "+"], "hold": false, "text": "Nord, sud", "main": false, "kb": ["−", "+"]},
+		{"keys": ["−", "B", "+"], "hold": true, "text": "Nord, sud 500 m", "main": false, "kb": ["Page bas", "Page haut"]},
 		{"keys": ["Y"], "hold": false, "text": "Retour", "main": false, "kb": ["Échap"]},
 	],
 	"setup": [
 		{"keys": ["A"], "hold": false, "text": "Démarrer", "main": true, "kb": ["Entrée"]},
-		{"keys": ["+", "B"], "hold": false, "text": "Ligne suivante, précédente", "main": false, "kb": ["+", "−"]},
-		{"keys": ["◀", "▶"], "hold": false, "text": "Changer la valeur", "main": false, "kb": ["←", "→"]},
+		{"keys": ["+", "−", "B"], "hold": false, "text": "Ligne suivante, précédente", "main": false, "kb": ["+", "−"]},
+		{"keys": ["←", "→"], "hold": false, "text": "Changer la valeur", "main": false, "kb": ["←", "→"]},
 		{"keys": ["Y"], "hold": false, "text": "Retour", "main": false, "kb": ["Échap"]},
 	],
 	"loading": [
@@ -74,14 +80,14 @@ static func entries(screen: String) -> Array:
 		return (WORLD.get(screen.substr(WORLD_PREFIX.length()), []) as Array).duplicate(true)
 	var out: Array = [
 		{"keys": ["A"], "hold": true, "text": "Valider", "main": true},
-		{"keys": ["+", "A"], "hold": false, "text": "Suivant", "main": false},
-		{"keys": ["B"], "hold": false, "text": "Précédent", "main": false},
+		{"keys": NEXT_KEYS, "hold": false, "text": "Suivant", "main": false},
+		{"keys": PREV_KEYS, "hold": false, "text": "Précédent", "main": false},
 	]
 	if screen == EDIT:
 		out = [
 			{"keys": ["A"], "hold": true, "text": "Enregistrer", "main": true},
-			{"keys": ["+", "A"], "hold": false, "text": "Augmenter", "main": false},
-			{"keys": ["B"], "hold": false, "text": "Diminuer", "main": false},
+			{"keys": NEXT_KEYS, "hold": false, "text": "Augmenter", "main": false},
+			{"keys": PREV_KEYS, "hold": false, "text": "Diminuer", "main": false},
 		]
 	var y := str(Y_LABELS.get(screen, Y_DEFAULT))
 	if y != "":
@@ -95,8 +101,8 @@ static func entries(screen: String) -> Array:
 static func text_grid(validate_text: String) -> Array:
 	var out: Array = [
 		{"keys": ["A"], "hold": true, "text": validate_text, "main": true},
-		{"keys": ["+", "A"], "hold": false, "text": "Lettre suivante", "main": false},
-		{"keys": ["B"], "hold": false, "text": "Précédente", "main": false},
+		{"keys": NEXT_KEYS, "hold": false, "text": "Lettre suivante", "main": false},
+		{"keys": PREV_KEYS, "hold": false, "text": "Précédente", "main": false},
 		{"keys": ["Z"], "hold": false, "text": "Écrire", "main": false},
 		{"keys": ["Y"], "hold": false, "text": "Effacer", "main": false},
 	]
@@ -107,16 +113,19 @@ static func text_grid(validate_text: String) -> Array:
 	return out
 
 
-## Touches du clavier qui doublent `keys` (boutons du Click) : A maintenu = Entrée, B = « − », Y = Échap.
+## Touches du clavier qui doublent `keys` (boutons du Click), chacune une fois : A maintenu = Entrée,
+## − et B = « − », Y = Échap.
 static func keyboard_keys(keys: Array, hold: bool) -> Array:
 	var out: Array = []
 	for k in keys:
-		out.append_array(KEYBOARD_KEYS["A_HOLD"] if (k == "A" and hold) else KEYBOARD_KEYS.get(k, [k]))
+		for kb in (KEYBOARD_KEYS["A_HOLD"] if (k == "A" and hold) else KEYBOARD_KEYS.get(k, [k])):
+			if not kb in out:
+				out.append(kb)
 	return out
 
 
-## Aide en une ligne (tests et journal) : « A maintenir : Valider · + A : Suivant · … · Clavier — Entrée :
-## Valider · + A : Suivant · − : Précédent · Échap : Retour ».
+## Aide en une ligne (tests et journal) : « A maintenir : Valider · + A → : Suivant · − B ← : Précédent · … ·
+## Clavier — Entrée : Valider · + A → : Suivant · − ← : Précédent · Échap : Retour ».
 static func text(screen: String) -> String:
 	var click: Array[String] = []
 	var keyboard: Array[String] = []

@@ -50,9 +50,11 @@ Mesurés à la résolution native de l'écran, en plein écran ou fenêtre maxim
 
 | Préréglage | Images/s | p99 du temps d'image | Temps GPU médian | Enveloppe de ce lot |
 | --- | --- | --- | --- | --- |
-| `low` | ≥ 55 (spécification) | < 25 ms | ≤ 4 ms | +0,5 ms au plus |
+| `low` | ≥ 55 (spécification) | < 25 ms | ≤ 6 ms (4 ms jusqu'au 31/10, voir ci-dessous) | +0,5 ms au plus |
 | `medium` | ≥ 58 | < 25 ms | ≤ 12 ms, Y11 et Y12 compris | +4,5 ms au plus |
 | `high` | ≥ 55 | < 25 ms | ≤ 14 ms | +6 ms au plus |
+
+Budget `low` relevé de 4 à 6 ms le 31 octobre (décision du propriétaire après l'endurance 7bi) : depuis l'herbe Y14, le `low` mesure 4,7 à 5,7 ms à 1680 × 1050 sur la GTX 1060 (5,4 ms sur l'heure de 7bi), toujours à 60 images/s ; l'herbe reste telle quelle.
 
 Le plafond de 12 ms en `medium` garde environ 30 % de marge pour les scènes chargées (villages, pluie, foules) et laisse l'enveloppe de +2,5 ms déjà accordée à Y11 et Y12.
 

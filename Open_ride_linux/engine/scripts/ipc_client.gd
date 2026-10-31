@@ -48,6 +48,8 @@ signal progression_received(msg: Dictionary)
 ## Série R (lot R10, contrat 1.4) : salle du mode Cyber-Rogue (une partie) et butin proposé en couloir.
 signal room_received(msg: Dictionary)
 signal loot_received(msg: Dictionary)
+## Règles du mode « What the fuck » (révision 1.5, lot WTF2) : réponse à list_wtf_rules et set_wtf_rule.
+signal wtf_rules_received(msg: Dictionary)
 ## Profils de joueurs (lot MJ8, contrat 1.5) : réponse à list_profiles, create_profile, rename_profile,
 ## delete_profile (un seul datagramme).
 signal profiles_received(msg: Dictionary)
@@ -314,6 +316,8 @@ func _poll_incoming() -> void:
 				room_received.emit(json_obj)
 			"loot":
 				loot_received.emit(json_obj)
+			"wtf_rules":
+				wtf_rules_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
