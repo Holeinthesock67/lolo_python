@@ -272,6 +272,7 @@ func _ready() -> void:
 	atmosphere_view.living_decor = living_decor
 	living_decor.set_fog_base(world_env.environment)
 	bots_view = BotsView.new()
+	bots_view.set_quality(_quality_name)
 	add_child(bots_view)
 	draft_gauge = DraftGauge.new()
 	add_child(draft_gauge)
@@ -446,6 +447,7 @@ func _on_settings(msg: Dictionary) -> void:
 		load_guard.reset(QualityPresets.image(_quality_name), _forward_plus())
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
+		bots_view.set_quality(_quality_name)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
 		if streamer.osm_streamer != null:
