@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série AS : vent de travers, zone abritée décalée sous le vent, bordure limitée par la voie | Python | AS2, P2 | Moyenne | Prêt (version 2.0) |
+| Série AS : vent de travers, zone abritée décalée sous le vent, bordure limitée par la voie, meneur côté vent | Python | AS2, P2 | Moyenne | En PR (31 octobre, #654 sur AS2) ; reste l'essai sur le vélo |
 
 Série AS, version 2.0 (décision du propriétaire du 29 octobre 2026).
 
