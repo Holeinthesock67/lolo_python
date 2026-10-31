@@ -1,5 +1,10 @@
 # Lot R4 – Firewall : cycliste virtuel à une fraction de la FTP, écart au joueur
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Firewall : cycliste virtuel à une fraction de la FTP, écart au joueur | Python | R3 | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
+
 ## 1. Objectif
 
 Le Firewall (mur de décompilation) poursuit le joueur sur la piste. C'est un cycliste virtuel qui roule le profil de la salle à la puissance du `firewall_plan` (fraction de la FTP du joueur), avec la même physique que le joueur. Si l'effort du joueur baisse, le mur le rattrape et entame son bouclier et son or.

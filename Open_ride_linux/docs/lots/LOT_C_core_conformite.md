@@ -1,5 +1,10 @@
 # Lot C – Mise en conformité du core avec le contrat IPC
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Mise en conformité du core avec le contrat IPC (défauts de l'audit) | Python | — | Petite | **Livré le 23 octobre** |
+
 ## 1. Objectif
 
 Corriger dans `openride-core` les écarts au contrat relevés par l'audit du 23 octobre 2026 (`docs/AUDIT_2026-10-23.md`) : E1, E2, M1, M2, M4, M5, la partie IPC de M6, M7 et F7. Ajouter les tests de contrat qui empêcheront ces écarts de revenir.

@@ -1,5 +1,10 @@
 # Lot W3 – Extrait régional OpenStreetMap converti en base locale SQLite
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Extrait régional Geofabrik converti en base SQLite indexée (schéma commun avec W13) | Python | W2 | Moyenne | Oui, après W2 (issue #257) |
+
 ## 1. Objectif
 
 Télécharger une fois un extrait régional Geofabrik (`.osm.pbf`) et le convertir en une base SQLite compacte et indexée, qui ne garde que ce dont le monde ouvert a besoin. La même base, remplie par les tuiles vectorielles (W13), est la seule source de routes et de décor pour le graphe (W4) et le générateur (W7).

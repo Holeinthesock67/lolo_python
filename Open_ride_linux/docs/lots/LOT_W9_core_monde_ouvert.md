@@ -1,5 +1,10 @@
 # Lot W9 – Core : séance en monde ouvert, route qui s'allonge, choix et verrouillage
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Core : séance en monde ouvert, route qui s'allonge, choix au Click et verrouillage, pause `world_data` | Python | W1, W8 (W15 pour commencer) | Moyenne | Non : interne (séance du core) (issue #264) |
+
 ## 1. Objectif
 
 Brancher le monde ouvert dans la séance du core : lancer le générateur, suivre la route engagée qui s'allonge, publier le prochain carrefour dans `state`, appliquer le choix du cycliste jusqu'au verrouillage, mettre en pause si la route connue ne suffit plus, et journaliser la balade.

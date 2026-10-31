@@ -1,5 +1,10 @@
 # Lot P9 – Sons d'ambiance selon le décor
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Sons d'ambiance selon le décor (forêt, champs, eau, village, altitude) | GDScript | P1, P4 | Moyenne | **Livré le 27 octobre** (issue #133) |
+
 ## 1. Objectif
 
 Les sons actuels (E4, L5) sont le vent, la roue libre et quatre sources ponctuelles sur les points d'intérêt (cloche, rivière, bétail, village). Ce lot ajoute un **fond d'ambiance** qui dépend de ce qui entoure le cycliste : oiseaux en forêt, insectes et alouettes dans les champs, ruissellement près de l'eau, rumeur et cloches au village, vent plus marqué en altitude, silence relatif la nuit quand l'heure sera simulée (P7, version 2.0). Les fondus sont lents, pour qu'on sente le changement de paysage sans l'entendre basculer.

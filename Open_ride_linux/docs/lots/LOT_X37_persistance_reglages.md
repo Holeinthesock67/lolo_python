@@ -1,5 +1,10 @@
 # Lot X37 – Persistance de tous les réglages
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Persistance de tous les réglages après un redémarrage | Python | banc des menus | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x37`) |
+
 ## 1. Objectif
 
 Le 28 octobre, la difficulté réglée depuis l'écran de pause ne survivait pas à un redémarrage, et aucun test ne l'a vu. Ce lot vérifie que **chaque** réglage de la liste `settings` survit à un redémarrage complet (core et engine), qu'il soit changé depuis les Réglages ou depuis la pause.

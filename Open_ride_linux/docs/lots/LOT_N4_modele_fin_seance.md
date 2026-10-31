@@ -1,5 +1,10 @@
 # Lot N4 – Modèle de l'écran de fin de séance (sans affichage)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Modèle de l'écran de fin de séance, sans affichage | GDScript | K1, K5 (livrés) | Petite | **Livré le 25 octobre** (issue #103, PR #161) |
+
 ## 1. Objectif
 
 Quand `session_state` passe à `FINISHED`, l'engine doit afficher un bilan lisible et proposer la suite (nouvelle séance, quitter). Ce lot écrit le **modèle de vue** de cet écran, sans affichage : textes, unités, arrondis, cas des champs absents, et l'écran de menu associé. L'affichage viendra avec N6.

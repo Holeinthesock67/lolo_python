@@ -1,5 +1,10 @@
 # Lot K4 – Lecture des couches OpenStreetMap dans l'engine (sans affichage)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Lecture des couches OSM dans l'engine, sans affichage (prépare E4) | GDScript + Python | K1, I3, I4 (livrés) | Moyenne | **Livré le 24 octobre** (PR #41) |
+
 ## 1. Objectif
 
 Le compilateur produit les couches `buildings`, `vegetation`, `poi` et `water` (lots I3 et I4), mais l'engine ne sait pas les lire. Ce lot écrit le lecteur GDScript, testé sans écran contre des `.world` produits par le vrai compilateur. Le rendu (bâtiments extrudés, forêts, eau, sons des points d'intérêt) reste au lot E4.

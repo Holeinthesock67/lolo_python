@@ -4,8 +4,9 @@
 Règle du projet : les tests tournent sur le PC cible, pas sur GitHub Actions. Ce script enchaîne
 les suites, garde chaque journal et écrit un résumé, comparé au passage précédent :
 
-    scripts/recette_pc.py                    # tout : core, compilateur, engine, bout en bout, graphiques, menus, confidentialité
-    scripts/recette_pc.py --rapide           # core sans les tests lents, sans tests graphiques ni banc des menus
+    scripts/recette_pc.py                    # tout : core, compilateur, engine, bout en bout, graphiques, menus,
+                                             # séances simulées (série T, boutons ERG, course), confidentialité
+    scripts/recette_pc.py --rapide           # core sans les tests lents, sans tests graphiques, banc des menus ni séances
     scripts/recette_pc.py --seulement core,engine
     scripts/recette_pc.py --sans visual
     scripts/recette_pc.py --seulement deps    # étape facultative : audit des dépendances (lot X24), réseau
@@ -38,8 +39,9 @@ sys.path.insert(0, str(PROJECT / "core" / "src"))
 from openride_core.tools.guide import Guide  # noqa: E402  (bibliothèque standard seulement)
 
 DEFAULT_OUT = Path.home() / "OpenRide" / "recettes"
-STEPS = ("core", "compiler", "engine", "e2e", "visual", "menus", "privacy", "deps")
+STEPS = ("core", "compiler", "engine", "e2e", "visual", "menus", "seances", "privacy", "deps")
 OPTIONAL_STEPS = ("deps",)    # lancées seulement si nommées dans --seulement
+SEANCES = ("serie_t", "erg_boutons", "course_bots")   # scénarios du banc (engine/tests/sim_bench_scenarios/)
 EXIT_SKIPPED = 75             # code d'une étape impossible ici (sans réseau) : SAUTÉ
 
 
@@ -68,6 +70,9 @@ def step_commands(rapide: bool, out: Path) -> dict[str, tuple[list[str], Path]]:
         "e2e": (["bash", str(PROJECT / "engine" / "tests" / "run_e2e.sh")], PROJECT),
         "visual": (["bash", str(PROJECT / "engine" / "tests" / "run_visual_tests.sh")], PROJECT),
         "menus": ([py, str(PROJECT / "engine" / "tests" / "menu_bench.py"), "--out", str(out / "menus")], PROJECT),
+        # Séances simulées de la recette T11 et de l'essai J7 (lots X33 et Z2) : ce qui se vérifie sans pédaler.
+        "seances": ([py, str(PROJECT / "engine" / "tests" / "sim_bench.py")]
+                    + [arg for name in SEANCES for arg in ("--scenario", name)] + ["--out", str(out / "seances")], PROJECT),
         "privacy": ([py, str(PROJECT / "scripts" / "privacy" / "privacy_scan.py"), "--all"], REPO),
         "deps": ([py, str(PROJECT / "scripts" / "audit_dependances.py"), "--out", str(out / "deps")], PROJECT),
     }
@@ -83,6 +88,7 @@ def detail_of(name: str, text: str) -> str:
         "e2e": r"^(RÉSULTAT.*|.*vérifications.*)$",
         "visual": r"^(.*vérifications réussies.*|RÉSULTAT.*)$",
         "menus": r"^(OK|\d+ passage\(s\) en échec.*|xvfb-run introuvable.*)$",
+        "seances": r"^(RÉSULTAT : .*)$",
         "privacy": r"^(privacy_scan : .*)$",
         "deps": r"^(Vulnérabilités connues : .*|Actions GitHub : .*|audit_dependances : .*)$",
     }
@@ -146,7 +152,7 @@ def parse_steps(value: str) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Recette du PC en une commande (lot X4).")
     ap.add_argument("--out", type=Path, help=f"dossier de sortie (défaut : {DEFAULT_OUT}/<date>)")
-    ap.add_argument("--rapide", action="store_true", help="core sans les tests lents, sans tests graphiques")
+    ap.add_argument("--rapide", action="store_true", help="core sans les tests lents, sans tests graphiques, banc des menus ni séances simulées")
     ap.add_argument("--seulement", type=parse_steps, help=f"étapes à lancer parmi {','.join(STEPS)}")
     ap.add_argument("--sans", type=parse_steps, default=[], help="étapes à sauter")
     ap.add_argument("--perf-strict", action="store_true", help="un budget de temps dépassé fait échouer l'engine")
@@ -162,6 +168,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.rapide and not args.seulement:
         wanted.remove("visual")
         wanted.remove("menus")
+        wanted.remove("seances")
     wanted = [s for s in wanted if s not in args.sans]
 
     env = dict(os.environ)

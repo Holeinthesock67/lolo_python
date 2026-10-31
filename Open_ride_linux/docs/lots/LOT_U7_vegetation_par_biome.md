@@ -1,5 +1,10 @@
 # Lot U7 – Engine : végétation par biome (nouvelles espèces, densités, limites)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : végétation par biome (dix-huit espèces construites par code, densités, limites) | GDScript | U5, O1 | Grande | Oui, après U5, **version 3.0** (issue #337) |
+
 ## 1. Objectif
 
 **Version 3.0.** Peupler chaque biome de ses espèces : conifères, palmiers, acacias, baobabs, cactus, oliviers, cyprès, pins parasols, fougères arborescentes, roseaux, arbustes nains, vignes en rangs, avec les densités et les limites (limite des arbres, oasis) du thème 2.0.

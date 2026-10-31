@@ -1,5 +1,10 @@
 # Lot O13 – Courbes de la séance façon GoldenCheetah : modèle sans affichage
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle sans affichage | GDScript | K1 (livré) ; N3 utile | Petite | **Livré le 26 octobre** (issue #156 ; tests Godot à lancer sur le PC) |
+
 ## 1. Objectif
 
 En mode entraînement, GoldenCheetah montre le profil des watts cibles de toute la séance et, par-dessus, les courbes de la puissance, de la fréquence cardiaque et de la cadence, qui se dessinent au fur et à mesure. Le propriétaire veut la même vue dans OpenRide. Ce lot écrit le **modèle** de ce graphique, sans affichage et testé sans écran : séries échantillonnées, échelles, géométrie des courbes et du profil. Le dessin dans la scène est le lot O14.

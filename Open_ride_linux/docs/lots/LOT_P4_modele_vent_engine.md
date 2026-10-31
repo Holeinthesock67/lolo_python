@@ -1,5 +1,10 @@
 # Lot P4 – Engine : modèle du vent, indicateur du HUD et budgets du décor vivant (sans affichage)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : modèle du vent, indicateur du vent (favorable ou non, intensité) et de l'abri, budgets du décor vivant par préréglage (sans affichage) | GDScript | P1 | Petite | **Livré le 26 octobre** (issue #128) |
+
 ## 1. Objectif
 
 Socle de la série P côté engine, sans nœud ni affichage :

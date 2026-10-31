@@ -1,5 +1,10 @@
 # Lot O14 – Courbes de la séance à l'écran (puissance, cible, FC, cadence)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Courbes de la séance à l'écran | GDScript | O13, N7 | Moyenne | **Livré le 27 octobre** (interne ; essais Godot sur le PC à faire) |
+
 ## 1. Objectif
 
 Afficher pendant la séance le graphique du lot O13, « comme GoldenCheetah » : profil des watts cibles et courbes de puissance, de fréquence cardiaque et de cadence. Il doit rester lisible à 2 m sans masquer la route.

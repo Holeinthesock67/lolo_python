@@ -1,5 +1,10 @@
 # Lot W16 – Recette du monde ouvert sur le PC et le vélo
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Recette sur le PC et le vélo : une heure de monde ouvert, retour sans téléchargement | — | W9 à W12 (W13) | Moyenne | Non : propriétaire (matériel) (issue #271) |
+
 ## 1. Objectif
 
 Vérifier sur le matériel réel (PC cible avec GTX 1060, HomeTrainer, Click) qu'une heure de monde ouvert se roule sans accroc, et que le cache tient sa promesse : revenir au même endroit sans rien télécharger.

@@ -19,7 +19,9 @@ dependencies = [
 [project.optional-dependencies]
 # openride-core sert aux tests seulement (vérification croisée avec load_world) :
 # l'installer à part avec `pip install -e ../core`.
-dev = ["pytest>=8", "hypothesis>=6.100"]
+dev = ["pytest>=8", "hypothesis>=6.100", "Pillow>=10"]
+# Niveaux de textures des packs de thème (lot P20) : `theme-pack` et contrôle du raccord des images.
+textures = ["Pillow>=10"]
 # Monde ouvert (série W) : lecture des extraits régionaux .osm.pbf (lot W3).
 worldgen = ["osmium>=4.0"]
 

@@ -1,5 +1,10 @@
 # Lot X9 – Recette de la fréquence cardiaque
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Recette guidée de la fréquence cardiaque (gel, retrait, retour) | Python | Q5 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x9`), essai sur le vélo ; issue #207 |
+
 ## 1. Objectif
 
 La ceinture du propriétaire est ANT+ seule : sa fréquence arrive par le trainer, et une ceinture retirée a donné une valeur figée (105 bpm pendant 42 s le 25 octobre). Le lot Q5 traite le gel ; ce lot le vérifie automatiquement, sur le vélo et au cloud.

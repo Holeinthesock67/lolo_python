@@ -1,5 +1,10 @@
 # Lot M1 – Erreur d'écriture du Control Point : renvoyer la commande au lieu de reconnecter
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Erreur d'écriture du Control Point (ATT 0x80) : renvoyer la commande au lieu de reconnecter | Python | — | Petite | **Livré le 24 octobre** (issue #78) |
+
 ## 1. Objectif
 
 Le 24 octobre, une écriture du Control Point FTMS a échoué sur le HomeTrainer avec l'erreur ATT 0x80 (« Application Error »). Aujourd'hui, toute exception levée par `ControlPoint.call` remonte jusqu'à `FtmsDriver.run` : le pilote coupe la liaison, attend, recherche le trainer et se reconnecte, soit plusieurs secondes sans consigne pour une seule écriture ratée. Ce lot fait **renvoyer la commande** après une erreur ATT ponctuelle, sans toucher à la liaison ; la reconnexion ne reste que pour les vraies pannes (liaison coupée, erreurs répétées).
