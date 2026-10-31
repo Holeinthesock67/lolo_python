@@ -458,8 +458,8 @@ func _test_erg_submenu() -> void:
 	# Import.
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Changer d'entraînement
-	f.handle("MINUS_SHORT")
-	f.handle("MINUS_SHORT")
+	_check(_focus_id(f) == "intervalles_7x240s_105", "liste ouverte sur le dernier entraînement choisi (lot O32)")
+	f.menu.focus_item("_import")
 	_check(_focus_id(f) == "_import", "focus sur Importer")
 	_check(f.handle("A_LONG") == {"action": "list_imports"} and f.state()["screen"] == "workout_import", "list_imports")
 	f.set_import_candidates([])
@@ -789,7 +789,7 @@ func _test_bots_menu() -> void:
 	_check(g.handle("A_LONG") == {"action": "start", "args": {"ftp_test": "ramp", "bots": [{"kind": "constant", "power_w": 250}]}},
 		"test de FTP et bot : arguments réunis")
 	g.menu.reset()
-	_check(g.menu.bot_choice == 0 and not g.menu.ghost, "nouvelle séance : bots remis à zéro")
+	_check(g.menu.bot_choice == 2 and not g.menu.ghost, "nouvelle séance : le bot de la séance lancée reste choisi (lot O32)")
 	# Bots à profil (lot T13) : après les bots constants, chaque profil à 90, 100 et 110 % de la FTP.
 	var labels: Array = []
 	for c in MenuModel.BOT_CHOICES:

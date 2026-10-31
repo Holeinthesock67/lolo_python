@@ -75,6 +75,7 @@ SCENARIOS_DIR = TESTS_DIR / "menu_scenarios"
 sys.path.insert(0, str(TESTS_DIR))
 sys.path.insert(0, str(REPO / "core" / "src"))
 
+from openride_core.input_providers import ClickPair  # noqa: E402
 from openride_core.launcher import ENGINE_DONE, ENGINE_SHUTDOWN_S, build_supervisor  # noqa: E402
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
@@ -97,6 +98,10 @@ ENGINE_SILENT_S = 60.0
 SILENCE_GAP_S = 1.0
 WAIT_SLICE_S = 0.5
 COURT_S, LONG_S, FLOU_S = 0.15, 1.1, 0.7
+# Écart entre le relâchement d'un appui au Click et l'appui suivant : le core ignore un même événement
+# revenu dans les ClickPair.DEDUP_S (relais du boîtier « − », 5 à 40 ms plus tard) ; en dessous, deux
+# « + » enchaînés n'en font qu'un.
+CLICK_GAP_S = ClickPair.DEDUP_S + 0.1
 
 # Un seul tableau bouton → geste : événement du Click -> (bouton du Click V2 simulé, durée en s),
 # (touche Godot, Maj, durée en ms), geste de souris (None : pas de geste, repli au clavier). « − » au Click : bouton
@@ -262,6 +267,7 @@ class Run:
         self.last: dict[str, Any] = {}
         self.silent_s = 0.0   # silences de l'engine comptés depuis le début du passage (wait_engine)
         self.duration_s = 0.0
+        self._click_free = 0.0   # instant où le Click simulé peut recevoir l'appui suivant (CLICK_GAP_S)
 
     # --- dialogue avec l'engine -------------------------------------------------------------
 
@@ -346,8 +352,11 @@ class Run:
         t = now()
         if voie == "click":
             button, hold = g["click"]
+            time.sleep(max(self._click_free - now(), 0.0))
+            t = now()
             with self.control.open("a", encoding="utf-8") as f:
                 f.write(json.dumps({"action": "press", "button": button, "duration_s": hold}) + "\n")
+            self._click_free = t + hold + CLICK_GAP_S
         elif voie == "clavier":
             key, shift, hold_ms = g["clavier"]
             hold = hold_ms / 1000.0
