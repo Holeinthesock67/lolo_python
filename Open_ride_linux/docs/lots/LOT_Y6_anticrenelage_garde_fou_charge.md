@@ -1,5 +1,10 @@
 # Lot Y6 – Anticrénelage SMAA en `low` et garde-fou de charge, à résolution native
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Réécrit le 28 octobre après la consigne « résolution native » : SMAA en `low` et garde-fou qui coupe les effets les plus chers quand le GPU sature, sans baisser la résolution | GDScript | Y2, X13 ; Y13 étape 1 | Petite | Oui (forme gardée par le propriétaire le 28 octobre) ; issue #362. Étape 1 (SMAA en `low`) et étape 2 (garde-fou de charge, `load_guard.gd`) en PR le 30 octobre |
+
 ## 1. Objectif
 
 Le lot Y6 prévu le 27 octobre (`docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §8 : résolution 3D par préréglage, résolution adaptative avec FSR 1.0, FXAA ou SMAA en `low`) a été rattrapé le même soir par une consigne du propriétaire (27 octobre, 19 h 35, cahier Y13 de la PR #446 §1) : **la résolution reste la résolution maximale de l'écran**, sans mise à l'échelle 3D, sans FSR ni résolution adaptative. Le FXAA de `low` est déjà fait par l'étape 1 de Y13.

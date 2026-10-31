@@ -1,5 +1,10 @@
 # Lot R17 – Direction artistique du mode Cyber-Rogue : charte néon, matériaux, shaders et catalogue des objets graphiques
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Direction artistique du mode : charte néon, matériaux et shaders partagés, catalogue des objets graphiques et des effets, planche de démonstration | GDScript + shader | T1 | Moyenne | Modèles et shaders oui ; charte validée par le propriétaire ; **Livré le 27 octobre** (données, matériaux, shaders et planche ; captures et accord du propriétaire à venir), **version 2.0** |
+
 ## 1. Objectif
 
 Demande du propriétaire du 27 octobre : ne pas oublier le graphisme du Cyber-Rogue, avec des objets graphiques de style néon vectoriel (lignes lumineuses sur fond sombre, motos et murs de lumière). Les lots R10 à R13 disaient **où** dessiner (ruban, ennemis, HUD, menus) mais pas **à quoi tout cela ressemble** : ni palette commune, ni matériaux partagés, ni portes, ni cartes, ni vélo du joueur, ni post-traitement chiffré, ni liste complète des effets.

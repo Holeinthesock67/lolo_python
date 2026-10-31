@@ -1,5 +1,10 @@
 # Lot T11 – Recette de la série T sur le PC et le vélo
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : recette sur le PC et le vélo (sprint, montée réelle, chaque bonus, course contre 4 bots à profil) | Essai | T3 à T10, T12 à T15 | Moyenne | Non : propriétaire ; cahier du 27 octobre (issue #401) |
+
 ## 1. Objectif
 
 Valider ensemble, sur le PC et le home trainer du propriétaire, tout ce qui a été codé sans maquette (décision du 27 octobre : « code d'abord, on validera ensemble avec le reste ») : un sprint, une montée réelle, chaque bonus, une course contre 4 bots à profil.

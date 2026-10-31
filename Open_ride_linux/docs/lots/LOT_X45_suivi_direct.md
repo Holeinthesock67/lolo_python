@@ -1,5 +1,10 @@
 # Lot X45 – Fenêtre de suivi en direct d'un essai, qui reste ouverte
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : fenêtre de suivi en direct d'un essai guidé, qui reste ouverte après la fin (`suivi_direct`, `trainer_steps --fenetre`) | Python | X43, X44 | Petite | Séance du 29 octobre ; en PR |
+
 ## 1. Objectif
 
 Séance du 29 octobre : le banc du trainer a été lancé à distance, sans terminal visible pour le cycliste. Il ne voyait donc ni le palier, ni le compte à rebours, ni la puissance. Et l'écran de guidage disparaissait à la fin de l'essai. Il faut une fenêtre à part, lisible de loin, qui reste ouverte après la fin.

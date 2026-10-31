@@ -1,5 +1,10 @@
 # Lot L7 – Historique des séances : `openride-core history`
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Historique des séances : `openride-core history` | Python | — | Petite | **Livré le 24 octobre** (PR #70, issue #59) |
+
 ## 1. Objectif
 
 Après plusieurs séances, rien ne permet de les retrouver ni de voir sa charge d'entraînement sans ouvrir chaque fichier. Ce lot ajoute une commande qui liste les séances enregistrées et cumule leurs chiffres par semaine, en réutilisant le bilan du lot K7. Elle servira aussi d'écran « Historique » au futur menu (G).

@@ -1,7 +1,8 @@
 """Gestion et installation des packs de thèmes (Lot N10, SRS §10 et §11 ; adresses et bibliothèque : lot U15).
 
 Commandes :
-- `openride-compiler theme-list [--themes-dir D] [--json]` : taille et dernière utilisation de chaque pack ;
+- `openride-compiler theme-list [--themes-dir D] [--json]` : taille, dernière utilisation et niveaux de textures
+  (lot P20) de chaque pack ;
 - `openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]` : SOURCE est un dossier,
   une archive .zip ou une adresse `https://` d'archive .zip (téléchargée dans un dossier temporaire, contrôlée
   par `theme-check` avant toute copie ; HTTPS seulement, jamais pendant une séance).
@@ -31,6 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from .errors import CompileError
+from .texture_levels import level_sizes
 from .theme import DEFAULT_THEME_DIR, check_theme
 
 MAX_THEME_UNCOMPRESSED_BYTES = 500 * 1024 * 1024  # 500 Mo
@@ -143,6 +145,7 @@ def list_themes(
         "size_text": _format_size(def_size),
         "path": str(DEFAULT_THEME_DIR),
         "last_used": uses.get("default", ""),
+        "levels": [],
         "issues": []
     })
 
@@ -165,6 +168,11 @@ def list_themes(
                 status = "avertissements"
 
             size_bytes, textures = _dir_size_and_textures(d)
+            levels: list[dict[str, Any]] = []
+            try:
+                levels = level_sizes(d, json.loads((d / "theme.json").read_text(encoding="utf-8")))
+            except (OSError, ValueError):
+                pass
 
             out.append({
                 "name": d.name,
@@ -176,6 +184,7 @@ def list_themes(
                 "size_text": _format_size(size_bytes),
                 "path": str(d),
                 "last_used": uses.get(d.name, ""),
+                "levels": [{**lv, "size_text": _format_size(lv["size_bytes"])} for lv in levels],
                 "issues": [{"severity": i.severity, "message": i.message} for i in issues]
             })
 
@@ -193,6 +202,8 @@ def format_themes_text(themes: list[dict[str, Any]]) -> str:
             f"{t['textures_count']} texture(s), {t['size_text']}, "
             f"dernière utilisation : {used[:10] if used else 'jamais'}"
         )
+        for lv in t.get("levels", []):
+            lines.append(f"    niveau {lv['name']} ({lv['max_px']} px) : {lv['size_text']}")
     return "\n".join(lines)
 
 

@@ -1,5 +1,10 @@
 # Lot T2 – Détection automatique des montées et des sprints
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : détection automatique des montées et des sprints (module pur) | Python | — | Petite | **Livré le 27 octobre** (PR #247, module pur ; branché sur le `.world` par T3) |
+
 ## 1. Objectif
 
 Premier lot de la série T (`docs/2.0/PLAN_SERIE_T.md`) : trouver sur le profil d'un parcours les **montées** à chronométrer et proposer des **zones de sprint**, dans un module pur du core, sans contrat ni engine. Les lots suivants s'en servent : T3 (couche `segments` du `.world` et segments déclarés à la main), T4 (chronométrage), T12 (stratégie des bots) et T14 (points des maillots).

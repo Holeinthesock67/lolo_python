@@ -1,5 +1,10 @@
 # Lot J2 – Robustesse du serveur IPC face aux messages malformés
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Robustesse du serveur IPC face aux messages malformés | Python | — | Petite | **Livré le 23 octobre** (fait directement) |
+
 ## 1. Objectif
 
 Le contrat IPC §6 dit : « Datagramme illisible : ignoré, compteur incrémenté ». Aujourd'hui, seul un JSON invalide est ignoré. Un JSON valide mais mal formé fait tomber la boucle du core (audit J du 23 octobre, constat J-M2, prouvé par script) :
