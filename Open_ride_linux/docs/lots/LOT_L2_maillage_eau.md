@@ -1,5 +1,10 @@
 # Lot L2 – Maillage de l'eau : rivières en ruban et lacs avec îles (sans affichage)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Maillage de l'eau : rivières en ruban et lacs avec îles, sans affichage | GDScript | K1 (livré) | Petite | **Livré le 24 octobre** (PR #65, issue #54) |
+
 ## 1. Objectif
 
 Préparer l'eau du sprint 6 (SRS §13) : transformer les éléments de `water/chunk_<k>.json` (format `.world` §8) en tableaux de maillage, sans affichage. Les cours d'eau deviennent des rubans qui suivent leur polyligne ; les plans d'eau, des surfaces planes à `level_y`, îles comprises.

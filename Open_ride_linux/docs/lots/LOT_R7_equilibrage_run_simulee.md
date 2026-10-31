@@ -1,5 +1,10 @@
 # Lot R7 – Table d'équilibrage en données et run simulée avec cyclistes types
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Table d'équilibrage en données et run simulée avec cyclistes types | Python | R6, R15 | Moyenne | **Livré le 27 octobre** (rapport : `docs/2.0/RAPPORT_EQUILIBRAGE_R7.md`), **version 2.0** |
+
 ## 1. Objectif
 
 Sortir toutes les valeurs du jeu dans un fichier de données modifiable (décision Q4), puis jouer des runs complètes avec des cyclistes simulés pour vérifier que l'équilibrage tient ses cibles. Ce lot produit un rapport et propose des valeurs ; il ne change pas les règles.

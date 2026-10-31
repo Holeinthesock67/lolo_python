@@ -1,5 +1,10 @@
 # Lot P20 – Packs de textures selon les performances (version 2.0)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Packs de textures à plusieurs niveaux, choisis selon le préréglage et la mémoire vidéo | Python + GDScript | N10, O3, P17 | Moyenne | Oui, **version 2.0** (issue #147) |
+
 ## 1. Objectif
 
 **Version 2.0** (demande du propriétaire, 25 octobre). Un thème peut aujourd'hui fournir des textures (lot N10 pour l'installer), mais il n'en a qu'une taille, quelle que soit la carte graphique. Ce lot permet à un pack de thème de fournir **plusieurs niveaux de textures** (par exemple 512, 1 024 et 2 048 px) et à OpenRide de choisir le bon niveau selon le préréglage de qualité et la mémoire vidéo disponible, pour garder 55 images/s ou plus sur la GTX 1060. Le choix est automatique et peut être imposé dans les réglages.

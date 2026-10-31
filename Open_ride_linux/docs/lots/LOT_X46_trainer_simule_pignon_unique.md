@@ -1,5 +1,10 @@
 # Lot X46 – Trainer simulé : braquet réel à pignon unique et décrochages du frein
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : trainer simulé à braquet réel (pignon unique, grand plateau), action `brake_loss` (décrochage du frein), scénarios `pignon_unique` et `decrochage_trainer`, `trainer_steps --scenario` | Python | X43, X44 | Petite | Séance du 29 octobre ; en PR |
+
 ## 1. Objectif
 
 Séance du 29 octobre : le cycliste roulait sur le grand plateau, sur un trainer à entraînement direct à pignon unique. Le volant tournait vite et l'effort de la route en SIM était lourd même sur le plat. Après une relance, la puissance annoncée tombait vers 0 W en moins de 2 s alors que la cadence restait la même. Le trainer simulé ne savait reproduire ni l'un ni l'autre : son cycliste tenait la vitesse de son effort sur le plat, sans braquet.

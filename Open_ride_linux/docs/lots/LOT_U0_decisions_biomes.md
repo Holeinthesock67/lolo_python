@@ -1,5 +1,10 @@
 # Lot U0 – Décisions de la série U et liste définitive des biomes (version 3.0)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Décisions de la série U (U-Q1 à U-Q5, U-G1, U-G2) et liste définitive des seize biomes avec leurs identifiants | — | — | Petite | **Livré le 25 octobre** (décisions du propriétaire ; cahier rédigé le 27 octobre), **version 3.0** |
+
 ## 1. Objectif
 
 **Version 3.0.** Consigner, avant tout code, les décisions du propriétaire qui fixent la série U (biomes, textures régionales, saisons par biome, option « gravel ») et la liste définitive des biomes, pour que le contrat U1 et les lots suivants n'aient plus rien à trancher.

@@ -1,5 +1,10 @@
 # Lot B1 – Compilateur : GPX vers `.world` (couche route)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Compilateur : GPX vers `.world` (couche route) | Python | Aucune (A, livré, sert à la vérification croisée) | Moyenne | **Livré le 23 octobre** (fusionné ; 53 tests revérifiés le 23 octobre) |
+
 ## 1. Objectif
 
 Créer le programme `openride-compiler`, qui transforme une trace GPX en dossier `.world` contenant le manifeste et la couche route. Le terrain fera l'objet du lot B2.

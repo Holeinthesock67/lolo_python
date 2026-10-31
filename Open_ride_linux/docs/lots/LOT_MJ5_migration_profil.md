@@ -1,5 +1,10 @@
 # Lot MJ5 – Migration du profil actuel
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série MJ : migration du profil actuel vers `Profils/principal/`, séances simulées vers `_essai`, contrôle X39 | Python | MJ2, MJ4 | Moyenne | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj5b`), migration réelle dans MJ10 |
+
 Série MJ, plan `docs/2.0/PLAN_SERIE_MJ.md` §5 et §10 (réponse 4).
 
 ## 1. Objectif

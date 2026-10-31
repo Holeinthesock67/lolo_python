@@ -21,7 +21,7 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
 - `docs/contracts/ipc_v1.md` et schémas `docs/contracts/ipc/*.schema.json` : messages core ↔ engine.
 - `docs/contracts/world_format_v1.md` et `docs/contracts/world/` : format des parcours `.world`, schémas et vecteurs de test de la route.
 - `docs/SUIVI_AVANCEMENT.md` : état, tests faits, reste à faire.
-- `docs/lots/00_INDEX.md` : lots de travail (cahiers des charges autonomes) et leur statut ; les séries H, I, J et K sont faites pour être confiées à une autre IA.
+- `docs/lots/00_INDEX.md` : règles communes des lots de travail (cahiers des charges autonomes) ; le tableau des lots et de leur statut se calcule avec `python3 scripts/index_lots.py` (lot X54) ; les séries H, I, J et K sont faites pour être confiées à une autre IA.
 - `docs/AUDIT_2026-10-23.md` : audit et suivi des constats (complété le soir du 23 octobre, §8 et §9).
 - `docs/VERIFICATION_2026-10-24.md`, `docs/AUDIT_FTMS_2026-10-24.md`, `docs/REVUE_CODE_2026-10-24.md` : vérification, audit FTMS et revue de code du 24 octobre (constats ouverts : §5 de la revue).
 - `docs/spikes.md` : faits mesurés sur le matériel.
@@ -197,5 +197,5 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
 
 - Il teste sur le vrai vélo et colle les journaux dans la conversation. Pour un problème, demander les lignes utiles : `grep -E "WARNING|ERROR|Perf|Click" ~/run_trainer.log | tail -30`.
 - Lui donner des commandes complètes, à copier-coller, en partant de `/home/utilisateur/Games/lolo_python`.
-- Après chaque étape livrée : mettre à jour `docs/SUIVI_AVANCEMENT.md`, le statut dans `docs/lots/00_INDEX.md` (avec une section « Livraison » dans le lot) et `README.md` si les commandes changent. Ne pas écrire de nombre de tests dans le `README.md` ni dans le suivi (lot X52) : `python3 scripts/recompte_tests.py` les compte et la CI les affiche dans le résumé de chaque run ; `core/tests/test_docs_coherence.py` refuse un nombre écrit en dur.
+- Après chaque étape livrée : mettre à jour `docs/SUIVI_AVANCEMENT.md`, la ligne d'index du lot, sous le titre de son cahier (avec une section « Livraison » dans le lot ; plus de tableau dans `docs/lots/00_INDEX.md` depuis le lot X54, `python3 scripts/index_lots.py` le calcule) et `README.md` si les commandes changent. Ne pas écrire de nombre de tests dans le `README.md` ni dans le suivi (lot X52) : `python3 scripts/recompte_tests.py` les compte et la CI les affiche dans le résumé de chaque run ; `core/tests/test_docs_coherence.py` refuse un nombre écrit en dur.
 - Les lots de `docs/lots/` peuvent être réalisés directement ou confiés à une autre IA (modèle de message dans `00_INDEX.md` §4).

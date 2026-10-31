@@ -1,5 +1,10 @@
 # Lot WTF1 – Règles du mode WTF dans le core
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série WTF : règles du mode « What the fuck » dans le core (13 règles désactivables, surprise du chef) | Python | — | Moyenne | **Livré le 29 octobre** (version 2.0) |
+
 Série WTF (mode « What the fuck », demande du propriétaire du 29 octobre 2026). Plan de la série : `docs/2.0/PLAN_SERIE_WTF.md`.
 
 ## 1. Objectif

@@ -95,6 +95,11 @@ jobs:
         if: matrix.python-version == '3.14'
         run: python3 scripts/recompte_tests.py --resume "$GITHUB_STEP_SUMMARY"
 
+      # Lot X54 : le tableau des lots n'est plus écrit dans 00_INDEX.md ; les nombres par série sont donnés ici.
+      - name: Lots par série (résumé du run)
+        if: matrix.python-version == '3.14'
+        run: python3 scripts/index_lots.py --resume "$GITHUB_STEP_SUMMARY"
+
       # Rapports JUnit gardés (lot X3) : durée et statut de chaque test, lus par scripts/stabilite_tests.py.
       - name: Rapports JUnit
         if: ${{ !cancelled() }}

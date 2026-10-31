@@ -1,5 +1,10 @@
 # Lot W0 – Mesures du monde ouvert : volumes, temps de génération, débit
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Monde ouvert : mesures des volumes, des temps de génération et du débit (script exécuté sur le PC), décodeur de tuiles vectorielles | Python | — | Petite | **Livré le 27 octobre** (PR #279, issue #254) ; exécution sur le PC par le propriétaire |
+
 ## 1. Objectif
 
 Le plan de la série W (`docs/2.0/PLAN_SERIE_W.md` §3) repose sur des estimations : taille d'un extrait régional, nombre et poids des tuiles vectorielles, temps de calcul d'un carré de 1 km. Ce lot écrit un script de mesure, exécuté ensuite sur le PC cible par le propriétaire, qui remplace ces estimations par des chiffres avant de figer le contrat (W1). Il livre aussi un décodeur minimal de tuiles vectorielles (MVT), réutilisé par W13.

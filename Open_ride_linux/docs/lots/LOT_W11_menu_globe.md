@@ -1,5 +1,10 @@
 # Lot W11 – Engine : menu globe, recherche de lieu, carte régionale, écran de préchargement
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : menu globe, recherche de lieu, carte régionale, régions en cache, écran de préchargement | GDScript + Python | W1, W3 (W2) | Grande | Non : interne (menu, contrôle visuel) (issue #266) |
+
 ## 1. Objectif
 
 Choisir le départ d'un monde ouvert « comme dans un simulateur de vol » (plan §2.1) : un globe qu'on fait tourner au clavier ou au Click, une recherche de lieu, une carte régionale pour poser le départ sur une route et choisir le cap, les régions en cache mises en évidence, puis un écran de préchargement.

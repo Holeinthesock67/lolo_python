@@ -1,5 +1,10 @@
 # Lot R13 – Engine : lancement du mode depuis le menu, écran de départ, couloirs et cartes, pause, fin de run
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : lancement depuis l'accueil, écran de départ, couloirs et cartes, pause, fin de run | GDScript | T1, R8, R10, R11, N6, O4 | Moyenne | Non : interne (`main.gd`, menu) ; **Livré le 28 octobre** (sauf contrôle à l'écran), **version 2.0** |
+
 ## 1. Objectif
 
 Rendre le mode Cyber-Rogue jouable de bout en bout depuis le menu, au Click seul : entrée « Cyber-Rogue » à l'accueil, écran de départ (objectif, durée, W', châssis), écran « Prêt », run, couloirs avec cartes et portes, pause par Y comme dans les autres modes, bilan et retour à l'accueil. Lot interne : il touche `main.gd` et le menu.

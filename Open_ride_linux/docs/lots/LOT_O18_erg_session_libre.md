@@ -1,5 +1,10 @@
 # Lot O18 – ERG dans une session libre : bascule et cadence verrouillée
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| ERG dans une session libre : bascule SIM, ERG libre et ERG à cadence verrouillée (± 15 %) depuis l'écran de pause | Python + GDScript | O17 (livré) | Moyenne | **Livré le 29 octobre** (PR #550, demande du propriétaire du 28 octobre), essai sur le vélo à faire |
+
 ## 1. Objectif
 
 Demande du propriétaire du 28 octobre : pendant une session libre (SIM), pouvoir passer en ERG depuis le menu, puis revenir en SIM ; et un ERG particulier où la cadence est verrouillée dans une plage de ± 15 % autour d'une cadence cible, le logiciel adaptant la puissance pour y rester.
