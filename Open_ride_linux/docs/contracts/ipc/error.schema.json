@@ -44,7 +44,9 @@
         "world_unavailable",
         "wtf_rule_invalid",
         "profile_invalid",
-        "name_invalid"
+        "name_invalid",
+        "content_invalid",
+        "content_failed"
       ]
     },
     "message": {

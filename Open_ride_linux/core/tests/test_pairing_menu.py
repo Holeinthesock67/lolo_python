@@ -87,6 +87,29 @@ def test_scan_identify_then_pair_in_simulated_bluetooth(tmp_path: Path, monkeypa
     d = tomllib.loads(text)
     assert d["drivers"]["click_address"] == PLUS_ADDRESS and d["drivers"]["click_minus_address"] == MINUS_ADDRESS
     assert d["drivers"]["hr_address"] and d["trainer"]["device_name"]
+    assert d["drivers"]["hr"] == "ble", "ceinture appairée mais pas activée (lot O24)"
+
+
+def test_forget_devices_with_empty_address(tmp_path: Path):
+    """Lot O24 : une chaîne vide oublie l'appareil du rôle ; la ceinture est coupée, null garde la valeur."""
+    from openride_core import config as config_mod
+
+    cfg_path = tmp_path / "config.toml"
+    cfg_path.write_text('[trainer]\ndevice_name = "Trainer 0001"\n[drivers]\nhr = "ble"\n'
+                        f'trainer_address = "C1:1C:00:00:00:01"\nclick_address = "{PLUS_ADDRESS}"\n'
+                        f'click_minus_address = "{MINUS_ADDRESS}"\nhr_address = "C1:1C:00:00:00:09"\n'
+                        'hr_name = "Ceinture"\n', encoding="utf-8")
+    paired = pairing.paired_from_args({"trainer": "", "click_plus": None, "click_minus": "", "hr": ""}, [])
+    assert paired.forget == ("trainer", "click_minus", "hr")
+    pairing.save(paired, cfg_path)
+    d = tomllib.loads(cfg_path.read_text(encoding="utf-8"))
+    assert d["drivers"]["hr"] == "none" and d["drivers"]["hr_address"] == "" and d["drivers"]["hr_name"] == ""
+    assert d["drivers"]["trainer_address"] == "" and d["drivers"]["click_minus_address"] == ""
+    assert d["trainer"]["device_name"] == config_mod.TrainerConfig().device_name
+    assert d["drivers"]["click_address"] == PLUS_ADDRESS
+    assert config_mod.load(cfg_path, None).drivers.hr == "none"
+    with pytest.raises(pairing.PairingError):
+        pairing.paired_from_args({"hr": 3}, [])
 
 
 def _session(tmp_path: Path, **kwargs) -> tuple[CoreSession, list[dict]]:

@@ -81,7 +81,7 @@ func _ride(route, budget: int, rng_seed: int, traffic = null) -> Dictionary:
 	while s < FLAT_M + 10000.0:
 		var v := 30.0 / 3.6 if s < FLAT_M else 14.0 / 3.6
 		bot += (32.0 if bot < FLAT_M else 15.0) / 3.6 * dt
-		m.update(s, v, dt, false, [bot])
+		m.update(s, v, dt, false, [{"s": bot, "lateral": Model.BOT_LATERAL_M}])
 		if not m.last_event.is_empty():
 			salut += 1
 		max_riders = maxi(max_riders, m.rider_count())

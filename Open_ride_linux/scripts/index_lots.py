@@ -11,7 +11,7 @@ propre cahier, juste sous le titre, et le tableau complet se calcule ici :
     python3 scripts/index_lots.py --stats                 # nombre de lots et de lots livrés par série
     python3 scripts/index_lots.py --resume fichier.md     # ajoute ces nombres en Markdown (résumé de la CI)
     python3 scripts/index_lots.py --verifier              # code 1 si un cahier n'a pas de ligne valide
-    python3 scripts/index_lots.py --migrer                # déplace dans leur cahier les lignes restées dans 00_INDEX.md
+    python3 scripts/index_lots.py --migrer                # fusion de main dans une PR d'avant X54 (voir migrate)
 
 Ligne d'un lot, dans `docs/lots/LOT_<id>_<sujet>.md`, sous le titre `# …` :
 
@@ -28,7 +28,9 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -171,30 +173,82 @@ def write_lot_line(path: Path, cells: list[str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def migrate(lots_dir: Path = LOTS_DIR) -> list[str]:
-    """Déplace dans leur cahier les lignes de lot restées dans 00_INDEX.md (rebase d'une PR d'avant X54).
+def _without_rows(text: str) -> str:
+    return "".join(line for line in text.splitlines(keepends=True) if not OLD_ROW_RE.match(line.strip()))
 
-    Une ligne restée dans l'index remplace celle du cahier : c'est la plus récente. Renvoie les erreurs
-    (cahier absent, identifiant différent du nom de fichier) ; ces lignes restent alors dans l'index.
+
+def _merge_text(ours: str, base: str, theirs: str) -> tuple[str, bool]:
+    """Fusion à trois du texte de 00_INDEX.md (`git merge-file`) ; vrai si elle laisse un conflit."""
+    with tempfile.TemporaryDirectory() as tmp:
+        paths = []
+        for name, text in (("branche", ours), ("base", base), ("main", theirs)):
+            path = Path(tmp) / name
+            path.write_text(text, encoding="utf-8")
+            paths.append(str(path))
+        proc = subprocess.run(["git", "merge-file", "-p", "-L", "branche", "-L", "base", "-L", "main", *paths],
+                              capture_output=True, text=True)
+    if proc.returncode < 0 or proc.returncode > 127:
+        raise RuntimeError(f"git merge-file a échoué : {proc.stderr}")
+    return proc.stdout, proc.returncode != 0
+
+
+def migrate(lots_dir: Path, base_text: str, main_text: str) -> list[str]:
+    """Fusion de main dans une PR ouverte avant X54 : range ses lignes de lot dans leur cahier.
+
+    `00_INDEX.md` doit être la version de la branche (conflit résolu par `git checkout --ours`).
+    `base_text` est l'index du dernier `main` d'avant X54 que la branche contient, `main_text` celui
+    de `main` aujourd'hui. Seules les lignes que la branche a ajoutées ou modifiées par rapport à
+    `base_text` vont dans leur cahier : les autres sont d'anciennes copies de `main`, et les cahiers
+    de `main` sont plus récents. Le reste du texte (introduction, séries, graphe) est fusionné à
+    trois : les changements de `main` et ceux de la branche sont gardés. Tout ou rien : en cas
+    d'erreur, aucun fichier n'est modifié.
     """
     index = lots_dir / INDEX_NAME
-    kept: list[str] = []
+    current = index.read_text(encoding="utf-8")
+    if re.search(r"^(<{7}|={7}|>{7})( |$)", current, flags=re.MULTILINE):
+        return [f"{INDEX_NAME} : conflit non résolu ; prendre d'abord la version de la branche "
+                f"(git checkout --ours -- docs/lots/{INDEX_NAME}), puis relancer --migrer"]
+    base_rows = {line.strip() for line in old_rows(base_text)}
+    moves: list[tuple[Path, list[str]]] = []
     errors: list[str] = []
-    for line in index.read_text(encoding="utf-8").splitlines():
-        m = OLD_ROW_RE.match(line.strip())
-        if not m:
-            kept.append(line)
-            continue
-        lot_id, filename, rest = m.groups()
+    for line in old_rows(current):
+        if line.strip() in base_rows:
+            continue                                   # ligne que la branche n'a pas touchée
+        lot_id, filename, rest = OLD_ROW_RE.match(line.strip()).groups()
         cells = split_row(rest)
         path = lots_dir / filename
         if not path.is_file() or lot_id_of(filename) != lot_id or len(cells) != len(COLUMNS):
             errors.append(f"{INDEX_NAME} : ligne non déplacée (cahier absent ou ligne mal formée) : {line[:80]}")
-            kept.append(line)
-            continue
+        else:
+            moves.append((path, cells))
+    merged, conflict = _merge_text(_without_rows(current), _without_rows(base_text), main_text)
+    if conflict:
+        errors.append(f"{INDEX_NAME} : le texte hors tableau a changé des deux côtés ; fusion à faire à la main")
+    if errors:
+        return errors
+    for path, cells in moves:
         write_lot_line(path, cells)
-    index.write_text("\n".join(kept) + "\n", encoding="utf-8")
-    return errors
+    index.write_text(merged, encoding="utf-8")
+    return []
+
+
+def _git(*args: str) -> str:
+    proc = subprocess.run(["git", "-C", str(PROJECT), *args], capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args)} : {proc.stderr.strip()}")
+    return proc.stdout
+
+
+def git_texts(main_ref: str, base_ref: str | None) -> tuple[str, str]:
+    """(index de la base, index de `main_ref`). Base par défaut : dernier `main` d'avant X54 que HEAD contient."""
+    if base_ref is None:
+        x54 = _git("log", "--first-parent", "--diff-filter=A", "--format=%H", main_ref, "--",
+                   "scripts/index_lots.py").split()
+        if not x54:
+            raise RuntimeError(f"fusion du lot X54 introuvable dans {main_ref} (git fetch origin main ?)")
+        base_ref = _git("merge-base", "HEAD", f"{x54[-1]}^1").strip()
+    show = lambda ref: _git("show", f"{ref}:./docs/lots/{INDEX_NAME}")   # noqa: E731
+    return show(base_ref), show(main_ref)
 
 
 def main(argv: list[str] | None = None, lots_dir: Path = LOTS_DIR) -> int:
@@ -204,12 +258,22 @@ def main(argv: list[str] | None = None, lots_dir: Path = LOTS_DIR) -> int:
     parser.add_argument("--resume", type=Path, help="ajouter les nombres par série à ce fichier Markdown")
     parser.add_argument("--verifier", action="store_true", help="code 1 si un cahier n'a pas de ligne valide")
     parser.add_argument("--migrer", action="store_true",
-                        help="déplacer dans leur cahier les lignes de lot restées dans 00_INDEX.md")
+                        help="ranger dans leur cahier les lignes que la branche a changées dans 00_INDEX.md")
+    parser.add_argument("--main", default="origin/main", help="référence de main pour --migrer (origin/main)")
+    parser.add_argument("--base", help="index de départ de la branche pour --migrer (défaut : calculé)")
     args = parser.parse_args(argv)
 
     if args.migrer:
-        for err in migrate(lots_dir):
+        try:
+            base_text, main_text = git_texts(args.main, args.base)
+        except RuntimeError as exc:
+            print(exc, file=sys.stderr)
+            return 1
+        migrate_errors = migrate(lots_dir, base_text, main_text)
+        for err in migrate_errors:
             print(err, file=sys.stderr)
+        if migrate_errors:
+            return 1
     errors = check(lots_dir)
     if args.verifier or args.migrer:
         for err in errors:

@@ -21,13 +21,14 @@ import signal
 import threading
 import time
 import zlib
+from collections import deque
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from typing import Any, Callable
 
 from .classic import ClassicRace, GainJob
-from .config import GPX_DIR, OPENRIDE_HOME, WORKOUTS_DIR, Config
+from .config import GPX_DIR, OPENRIDE_HOME, PLANS_DIR, WORKOUTS_DIR, Config
 from .equipment import segment_time_gain
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
@@ -80,6 +81,8 @@ WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révisio
 DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" / "default" / "theme.json"
 
 
+CONTENT_COMMANDS = ("list_contents", "install_content")   # lot O25
+CONTENT_PROGRESS_PERIOD_S = 1.0   # message `contents` pendant une installation, une fois par seconde au plus
 PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile")   # lot MJ7
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
@@ -142,8 +145,11 @@ def build_sim_world(cfg: Config) -> Any:
 def build_driver(cfg: Config, sim: Any = None) -> Any:
     if cfg.drivers.trainer in ("ftms", "sim"):
         from .ftms_driver import FtmsDriver
-        if cfg.drivers.trainer == "sim":   # vrai pilote, radio simulée
-            return FtmsDriver(cfg.trainer, cfg.bike, None, device_finder=sim.find_device,
+        if cfg.drivers.trainer == "sim":
+            # Vrai pilote, radio simulée. Le trainer simulé est cherché sous son propre nom : celui de
+            # config.toml est souvent le nom du vrai trainer, écrit par l'appairage (lot N12), qui le cachait.
+            trainer = replace(cfg.trainer, device_name=sim.trainer.name) if sim.trainer else cfg.trainer
+            return FtmsDriver(trainer, cfg.bike, None, device_finder=sim.find_device,
                               client_factory=sim.client_factory)
         return FtmsDriver(cfg.trainer, cfg.bike, cfg.drivers.trainer_address or None)
     replay = None
@@ -299,7 +305,7 @@ class CoreSession:
 
         self._t_session = 0.0
         self._grade_sent = 0.0
-        self._power_window: list[tuple[float, float]] = []
+        self._power_window: deque[tuple[float, float]] = deque()   # (temps de séance, W) des 3 dernières s
         self._rec: SessionRecorder | None = None
         self.dropout_marks = 0   # repères « décrochage » posés au Z long (§7.1, lot X47)
         self._device_up: dict[str, bool] = {}   # dernier état écrit au journal (lignes `device`)
@@ -321,12 +327,20 @@ class CoreSession:
         self._frame_count = 0
         self._last_devices: dict[str, Any] | None = None
         self._bg_tasks: set[asyncio.Task[Any]] = set()
+        self._contents = None   # contenus du menu (lot O25), créés à la première commande
+        self.themes_dir = OPENRIDE_HOME / "Themes"   # thèmes installés, listés dans « Contenus » (lot O29)
+        self.first_run = False  # premier lancement (`run --first-run`) : contenus de départ installés seuls
         # Appairage depuis le menu (lot N13) : dernière recherche et identification du « + » en cours.
         self._scan_items: list[dict[str, Any]] = []
         # Menu ERG (lot N16, décision D4 de l'audit IPC) : dossier personnel fouillé par list_imports
         # et chemins proposés à l'engine, seuls acceptés par import_workout.
         self.import_home = Path.home()
         self._import_offer: set[str] = set()
+        # Traces importées depuis le menu des parcours (lot O23), dans `gpx_dir` : chemins proposés par
+        # list_route_imports (seuls acceptés par import_route) et import en cours ({} sans import).
+        self._route_import_offer: set[str] = set()
+        self._route_import: dict[str, Any] = {}
+        self.route_compiler_cmd: list[str] | None = None   # préfixe du compilateur (essais)
         self._scanning = False
         self._identify: dict[str, Any] | None = None
         # Monde ouvert (lot W9) : générateur et route engagée ; `worldgen_cmd` remplace la commande (essais).
@@ -334,7 +348,7 @@ class CoreSession:
         self.worldgen_cmd: list[str] | None = None
         self.worldmenu: Any = None                 # WorldMenu du lot W11, créé à la première demande ; remplaçable (essais)
         self.worldgen_args: list[str] = []
-        self.gpx_dir: Path | None = None        # balades enregistrées (défaut ~/OpenRide/GPX ; essais)
+        self.gpx_dir: Path | None = None        # traces : balades, import du menu (défaut ~/OpenRide/GPX ; essais)
         self._ow_previous = "IDLE"
         # Mode Cyber-Rogue (lot R8) : run en cours ; `rogue_provider()` rend (table des châssis, statistiques,
         # vies) d'après la progression de la série V (lot R9) ; progression coupée : seul le châssis standard.
@@ -485,16 +499,79 @@ class CoreSession:
             self._send_settings(cmd_id)
         elif name == "set_setting":
             self._set_setting(args, cmd_id)
-        elif name in ("list_plans", "start_plan", "stop_plan"):
+        elif name in ("list_plans", "start_plan", "stop_plan", "create_plan"):
             self._on_plan_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name == "accept_ftp":
             self._accept_ftp(args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_imports", "create_workout", "import_workout"):
             self._on_workout_menu_command(name, args, cmd_id)
+        elif name in ("list_route_imports", "import_route"):
+            self._on_route_import_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_garage", "equip", "buy", "set_avatar"):
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in PROFILE_COMMANDS:
             self._on_profile_command(name, args if isinstance(args, dict) else {}, cmd_id)
+        elif name in CONTENT_COMMANDS:
+            self._on_content_command(name, args if isinstance(args, dict) else {}, cmd_id)
+
+    # --- contenus installables depuis le menu (lot O25, contrat IPC révision 1.5) ---------------
+
+    def _content_service(self):
+        from .contents import ContentDirs, ContentService
+
+        if self._contents is None:
+            plans_dir = self.plans_dir if self.plans_dir is not None else PLANS_DIR
+            self._contents = ContentService(ContentDirs(
+                self.workouts_dir, plans_dir, self.routes_root, gpx=GPX_DIR, themes=self.themes_dir,
+                home=self.import_home, themes_max_gb=self.cfg.render.theme_library_gb))
+        return self._contents
+
+    def _send_contents(self, cmd_id: int) -> None:
+        svc = self._content_service()
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : calcul sur place
+            self.server.send_raw(svc.message(cmd_id))
+            return
+
+        async def send() -> None:
+            self.server.send_raw(await asyncio.to_thread(svc.message, cmd_id))
+
+        self._spawn(send())
+
+    def _on_content_command(self, name: str, args: dict, cmd_id: int) -> None:
+        from .contents import ContentError
+
+        if name == "list_contents":
+            self._send_contents(cmd_id)
+            return
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "Contenus installables seulement hors séance (terminer d'abord).")
+            return
+        try:
+            job = self._content_service().start(str(args.get("id") or ""))
+        except ContentError as exc:
+            self.server.send_error("content_invalid", f"Contenu refusé : {exc}")
+            return
+        log.info("Installation du contenu « %s ».", job.id)
+        self._spawn(self._install_content(job, cmd_id))
+
+    async def _install_content(self, job, cmd_id: int) -> None:
+        """Installation dans un fil ; message `contents` au départ, chaque seconde puis à la fin."""
+        svc = self._content_service()
+        self.server.send_raw(svc.message(cmd_id))
+        work = asyncio.create_task(asyncio.to_thread(svc.run, job))
+        last = -1
+        while not work.done():
+            await asyncio.wait({work}, timeout=CONTENT_PROGRESS_PERIOD_S)
+            if not work.done() and job.progress_pct != last:
+                last = job.progress_pct
+                self.server.send_raw(svc.message(cmd_id))
+        await work
+        log.info("Contenu « %s » : %s", job.id, job.message)
+        if job.failed:
+            self.server.send_error("content_failed", job.message)
+        self.server.send_raw(await asyncio.to_thread(svc.message, cmd_id))
 
     # --- profils de joueurs (série MJ, lot MJ7, contrat IPC révision 1.5) ------------------------
 
@@ -828,10 +905,7 @@ class CoreSession:
         self._grade_sent, shifted = rg.target_grade(cfg.grade_rate_up_pct_per_s, cfg.grade_rate_down_pct_per_s, dt)
         self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
         self._rogue_dist += self.physics.v * dt
-        self._power_window.append((self._t_session, m.power_w))
-        while self._power_window and self._power_window[0][0] < self._t_session - 3.0:
-            self._power_window.pop(0)
-        p3 = sum(p for _, p in self._power_window) / len(self._power_window)
+        p3 = self._power_3s(m.power_w)
         st = self.state
         st.t, st.s, st.v = self._t_session, self._rogue_dist, self.physics.v
         st.grade, st.grade_sent = round(out.grade_enemy, 2), round(self._grade_sent, 2)
@@ -898,6 +972,7 @@ class CoreSession:
     def _on_plan_command(self, name: str, args: dict, cmd_id: int) -> None:
         from . import plans
 
+        created = None
         if name != "list_plans":
             if self.state.session_state in ("RUNNING", "PAUSED"):
                 self.server.send_error("busy", "Plan impossible à changer pendant une séance.")
@@ -908,20 +983,31 @@ class CoreSession:
                     start = date.fromisoformat(raw) if isinstance(raw, str) and raw else None
                     plans.start_plan(str(args.get("id") or ""), start, self.plans_dir, self.workouts_dir,
                                      self.plan_state_path)
+                elif name == "create_plan":   # plan maison composé dans le menu (lot O30)
+                    workouts, days, weeks = args.get("workouts"), args.get("days"), args.get("weeks")
+                    if not isinstance(workouts, list) or not isinstance(days, list) or not (
+                            weeks is None or (isinstance(weeks, int) and not isinstance(weeks, bool))):
+                        raise plans.PlanError("arguments attendus : workouts, days (listes), weeks (entier ou null)")
+                    plan = plans.create_from_library(workouts, days, weeks, args.get("name") or None,
+                                                     self.plans_dir, self.workouts_dir)
+                    created = {"id": plan.id, "name": plan.name}
                 else:
                     plans.stop_plan(self.plan_state_path)
-            except (plans.PlanError, ValueError) as exc:
+            except (plans.PlanError, ValueError, TypeError) as exc:
                 self.server.send_error("plan_invalid", f"Plan refusé : {exc}")
                 return
-            log.info("Plan %s.", f"« {args.get('id')} » démarré" if name == "start_plan" else "arrêté")
-        self._spawn(self._send_plans(cmd_id))
+            log.info("Plan %s.", {"start_plan": f"« {args.get('id')} » démarré", "stop_plan": "arrêté",
+                                  "create_plan": f"« {created and created['id']} » créé"}[name])
+        self._spawn(self._send_plans(cmd_id, created))
 
-    async def _send_plans(self, cmd_id: int) -> None:
+    async def _send_plans(self, cmd_id: int, created: dict[str, str] | None = None) -> None:
         from .ipc_lists import build_plans_message
 
         try:
             msg = await asyncio.to_thread(build_plans_message, cmd_id, self.cfg.rider.ftp_w, self.plans_dir,
                                           self.workouts_dir, self.plan_state_path, self.activities_dir)
+            if created:
+                msg["created"] = created
         except Exception:
             log.exception("Erreur lors de la préparation de plans (cmd_id=%d)", cmd_id)
             return
@@ -979,13 +1065,131 @@ class CoreSession:
         except Exception:
             log.exception("Erreur pendant %s (cmd_id=%d)", name, cmd_id)
 
+    # --- traces importées depuis le menu des parcours (lot O23) -----------------------------------
+
+    def _on_route_import_command(self, name: str, args: dict, cmd_id: int) -> None:
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "Traces importables seulement hors séance.")
+            return
+        if name == "list_route_imports":
+            self._spawn(self._list_route_imports(cmd_id))
+            return
+        path = args.get("path")
+        if not isinstance(path, str) or path not in self._route_import_offer:
+            self.server.send_error("route_invalid", "Trace non proposée par list_route_imports : redemander la liste.")
+            return
+        current = self._route_import
+        if current.get("state") == "compiling":
+            if current.get("source") == path:   # copie renvoyée de la même commande : état en cours
+                self._send_route_import_status(cmd_id)
+            else:
+                self.server.send_error("busy", "Une trace est déjà en cours de compilation.")
+            return
+        self._route_import = {"source": path, "state": "compiling", "file": Path(path).name,
+                              "started": time.monotonic(), "cmd_id": cmd_id}
+        self._spawn(self._import_route(Path(path), cmd_id))
+
+    async def _list_route_imports(self, cmd_id: int) -> None:
+        from . import route_import
+        from .ipc_lists import chunk_list_message, MAX_DATAGRAM_BYTES
+
+        try:
+            items = await asyncio.to_thread(route_import.import_candidates, self.import_home,
+                                            self.gpx_dir or GPX_DIR)
+            self._route_import_offer = {it["path"] for it in items}
+            for m in chunk_list_message("route_imports", cmd_id, items, False, MAX_DATAGRAM_BYTES):
+                self.server.send_raw(m)
+        except Exception:
+            log.exception("Erreur pendant list_route_imports (cmd_id=%d)", cmd_id)
+
+    def _send_route_import_status(self, cmd_id: int | None = None) -> None:
+        """Message `route_import_status` : `compiling` (toutes les 2 s), puis `done` ou `failed`."""
+        cur = self._route_import
+        msg: dict[str, Any] = {"type": "route_import_status", "v": 1,
+                               "request_cmd_id": cmd_id if cmd_id is not None else cur.get("cmd_id", 0),
+                               "state": cur.get("state", "failed"), "file": cur.get("file", ""),
+                               "elapsed_s": int(time.monotonic() - cur.get("started", time.monotonic()))}
+        for key in ("route_id", "name", "created", "message"):
+            if key in cur:
+                msg[key] = cur[key]
+        self.server.send_raw(msg)
+
+    async def _import_route(self, src: Path, cmd_id: int) -> None:
+        """Copie de la trace puis compilation dans un processus à part (invariant A3)."""
+        from . import route_import
+
+        cur = self._route_import
+        copied: dict[str, Any] = {}
+        try:
+            copied = await asyncio.to_thread(route_import.copy_track, src, self.gpx_dir or GPX_DIR,
+                                           self.routes_root)
+            track = Path(copied["path"])
+            cur.update(file=copied["file"], created=copied["created"])
+            log.info("Trace %s : %s (%s)", "importée" if copied["created"] else "déjà présente", track.name, src)
+            plan, entry = await asyncio.to_thread(route_import.compile_plan, track, self.gpx_dir or GPX_DIR,
+                                                  self.routes_root)
+            if plan != "ready":
+                await self._compile_route(track, force=(plan == "rebuild"))
+                plan, entry = await asyncio.to_thread(route_import.compile_plan, track, self.gpx_dir or GPX_DIR,
+                                                      self.routes_root)
+                if plan != "ready":
+                    raise route_import.RouteImportError(
+                        "route_invalid", (entry.error if entry is not None and entry.error else
+                                          f"{track.name} : parcours introuvable après la compilation"))
+            cur.update(state="done", route_id=entry.id, name=entry.name)
+            log.info("Parcours prêt depuis le menu : %s", entry.id)
+        except route_import.RouteImportError as exc:
+            log.warning("Import de trace refusé : %s", exc)
+            cur.update(state="failed", message=str(exc))
+        except Exception as exc:
+            log.exception("Erreur pendant l'import de %s", src)
+            cur.update(state="failed", message=f"erreur interne : {exc}")
+        if cur["state"] == "failed" and copied.get("created"):
+            Path(copied["path"]).unlink(missing_ok=True)   # trace refusée : rien n'est ajouté à la liste
+        self._send_route_import_status(cmd_id)
+
+    async def _compile_route(self, track: Path, force: bool) -> None:
+        """`openride-compiler build` de la trace ; état `compiling` envoyé toutes les 2 s pendant l'attente."""
+        from . import route_import
+
+        prefix = self.route_compiler_cmd or route_import.compiler_prefix()
+        if not prefix:
+            raise route_import.RouteImportError("route_invalid", "compilateur absent (openride-compiler non installé)")
+        cmd = route_import.build_cmd(prefix, track, self.routes_root, force)
+        log.info("Compilation depuis le menu : %s", " ".join(cmd))
+        proc = await asyncio.create_subprocess_exec(*cmd, stdin=asyncio.subprocess.DEVNULL,
+                                                    stdout=asyncio.subprocess.PIPE,
+                                                    stderr=asyncio.subprocess.STDOUT)
+        out_task = asyncio.ensure_future(proc.communicate())
+        deadline = time.monotonic() + route_import.COMPILE_TIMEOUT_S
+        try:
+            while not out_task.done():
+                self._send_route_import_status()
+                if time.monotonic() > deadline:
+                    proc.kill()
+                    await out_task
+                    raise route_import.RouteImportError(
+                        "route_invalid", f"délai de compilation dépassé ({route_import.COMPILE_TIMEOUT_S:.0f} s)")
+                await asyncio.wait({out_task}, timeout=2.0)
+        except asyncio.CancelledError:
+            if proc.returncode is None:
+                proc.kill()
+            raise
+        output = (out_task.result()[0] or b"").decode("utf-8", "replace")
+        for line in output.splitlines():
+            log.info("[compilateur] %s", line)
+        if proc.returncode != 0:
+            raise route_import.RouteImportError("route_invalid", route_import.last_error_line(output))
+
     # --- réglages depuis le menu (lots O3 et O4, contrat IPC révision 1.3) -----------------------
 
     def _send_settings(self, cmd_id: int) -> None:
         from . import settings
 
-        self.server.send_raw({"type": "settings", "v": 1, "request_cmd_id": cmd_id,
-                              "items": settings.current(self.cfg)})
+        from .ipc_lists import chunk_list_message
+
+        for m in chunk_list_message("settings", cmd_id, settings.current(self.cfg), False):   # en parties (lot O27)
+            self.server.send_raw(m)
 
     def _save_difficulty(self, pct: int) -> None:
         """Difficulté choisie à la pause gardée dans `config.toml` pour la séance suivante (tout réglage du menu persiste)."""
@@ -1147,11 +1351,11 @@ class CoreSession:
         return task
 
     async def _handle_list_routes(self, cmd_id: int) -> None:
-        from .config import GPX_DIR
         from .ipc_lists import build_routes_messages
 
         try:
-            msgs = await asyncio.to_thread(build_routes_messages, cmd_id, self.routes_root, GPX_DIR,
+            msgs = await asyncio.to_thread(build_routes_messages, cmd_id, self.routes_root,
+                                           self.gpx_dir or GPX_DIR,
                                            ftp_w=self.cfg.rider.ftp_w)
             for m in msgs:
                 self.server.send_raw(m)
@@ -1176,6 +1380,7 @@ class CoreSession:
         if self.worldmenu is None:
             self.worldmenu = WorldMenu(self.cfg.open_world.network, self.config_path)
         wm = self.worldmenu
+        wm.network = self.cfg.open_world.network   # réglage Avancé (lot O27) pris sans relancer
         try:
             if name == "world_search":
                 msgs = await asyncio.to_thread(wm.search, cmd_id, args.get("query"))
@@ -1238,7 +1443,7 @@ class CoreSession:
                 self.state.route_id = f"ow:{ow.id}"
                 self.state.route_length_m = ow.route.length_m
                 self.physics.s = self.physics.v = 0.0
-                self._t_session = 0.0
+                self._set_session_clock(0.0)
                 log.info("Monde ouvert prêt : %.0f m de route engagée.", ow.route.length_m)
                 self._set_state("READY")
             return
@@ -1255,6 +1460,20 @@ class CoreSession:
         elif st == "PAUSED" and self.state.pause_reason == "world_data" and ow.can_resume(s):
             log.info("Route de nouveau connue (%.0f m) : reprise.", ow.known_ahead(s))
             self._set_state("RUNNING")
+
+    def _set_session_clock(self, t: float) -> None:
+        """Remet le temps de séance (nouveau parcours, reprise d'un journal) ; la fenêtre de la puissance 3 s
+        repart de zéro : gardée, ses relevés datés de l'ancienne séance ne sortaient plus jamais (endurance 7bi)."""
+        self._t_session = t
+        self._power_window.clear()
+
+    def _power_3s(self, power_w: float) -> float:
+        """Ajoute la puissance du pas et renvoie la moyenne des 3 dernières secondes de la séance."""
+        w = self._power_window
+        w.append((self._t_session, power_w))
+        while w[0][0] < self._t_session - 3.0:
+            w.popleft()
+        return sum(p for _, p in w) / len(w)
 
     def _select_route(self, route_id: str, previous: str) -> None:
         """LOADING, lecture de la couche route du .world, puis READY (contrat §7, étape 6)."""
@@ -1277,7 +1496,7 @@ class CoreSession:
         self.state.route_id = route_id
         self.state.route_length_m = world.route.length_m
         self.physics.s = self.physics.v = 0.0
-        self._t_session = 0.0
+        self._set_session_clock(0.0)
         log.info("Parcours « %s » chargé : %.0f m, type %s", route_id, world.route.length_m,
                  world.route.type)
         self._set_state("READY")
@@ -2037,10 +2256,7 @@ class CoreSession:
             for line in wtf.take_journal():
                 self._rec.game({**line, "ts": round(time.time(), 3)})
 
-        self._power_window.append((self._t_session, m.power_w))
-        while self._power_window and self._power_window[0][0] < self._t_session - 3.0:
-            self._power_window.pop(0)
-        p3 = sum(p for _, p in self._power_window) / len(self._power_window)
+        p3 = self._power_3s(m.power_w)
 
         st = self.state
         st.t, st.s, st.v = self._t_session, self.physics.s, self.physics.v
@@ -2170,7 +2386,7 @@ class CoreSession:
             if self._workout is None:
                 raise ResumeError(f"entraînement « {rs.workout_id} » du journal introuvable")
 
-        self._t_session = rs.t
+        self._set_session_clock(rs.t)
         self.physics.s, self.physics.v = rs.s, 0.0
         if rs.gear is not None and 1 <= int(rs.gear) <= self.gearing.n_gears:
             self.gearing.k = int(rs.gear)
@@ -2305,6 +2521,8 @@ class CoreSession:
             if workout_id:
                 self._on_command("select_workout", {"workout_id": workout_id}, 0)
             self._on_command("start", {}, 0)
+        if self.first_run:
+            self._on_command("install_content", {"id": "starter"}, 0)
         log.info("Core démarré (trainer=%s, entrées=%s).", self.cfg.drivers.trainer,
                  self.cfg.drivers.input)   # format lu par tools/log_report.py
         if self.hr is not None:
