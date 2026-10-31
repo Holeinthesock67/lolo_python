@@ -74,6 +74,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("powerups.mode", "Bonus", "ride"),
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
     Setting("ride.auto_draft", "Placement dans la roue", "ride"),   # lot AS2
+    Setting("ride.vehicle_draft", "Abri derrière les véhicules", "ride"),   # lot AS6
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.theme", "Thème", "graphics", applies="now"),

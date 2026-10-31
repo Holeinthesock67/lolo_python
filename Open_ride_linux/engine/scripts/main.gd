@@ -30,6 +30,7 @@ const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
 const DraftGaugeModel := preload("res://scripts/draft_gauge_model.gd")
 const DraftGauge := preload("res://scripts/draft_gauge.gd")
+const VEHICLE_PREFIX := "veh:"   # `draft_bot` d'un véhicule de la route (lot AS6, traffic.py du core)
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
@@ -1615,10 +1616,18 @@ func _show_bots(rider_s: float, rider_v: float) -> void:
 		bots_view.update_view(view, route)
 
 
-## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste.
+## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste,
+## ou au-dessus du véhicule quand `draft_bot` vaut `veh:<id>` (lot AS6).
 func _show_draft_gauge() -> void:
 	var view := DraftGaugeModel.view(_draft_gauge_on, _draft["draft"], _draft["draft_bot"], _quality_name)
-	draft_gauge.update_view(view, bots_view.anchor_of(str(view["bot"])) if view["visible"] else null)
+	var anchor = null
+	if view["visible"]:
+		var who := str(view["bot"])
+		if who.begins_with(VEHICLE_PREFIX):
+			anchor = living_decor.vehicle_anchor(who.substr(VEHICLE_PREFIX.length())) if living_decor != null else null
+		else:
+			anchor = bots_view.anchor_of(who)
+	draft_gauge.update_view(view, anchor)
 
 
 ## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur, avec les

@@ -71,18 +71,23 @@ SIDE_CLEAR_M = 0.9        # deux coureurs qui se chevauchent : au moins 0,9 m d'
 SIDE_LOOK_S = 1.0         # on se décale dès qu'on toucherait la roue (devant ou derrière) dans 1 s
 START_ROW_M = BIKE_LENGTH_M + 1.0   # grille de départ : un rang de deux bots tous les 2,7 m derrière le cycliste
 RIDER_WIDTH_M = 0.6       # largeur d'un coureur (2 × RIDER_HALF_WIDTH_M de traffic_model.gd) : contact en dessous
+SIDE_EXTRA_MARGIN = 1.5    # lot AS6 : on commence à doubler un véhicule assez tôt pour avoir fini de se décaler
 
 
 @dataclass
 class Lane:
     """Écart à l'axe d'un coureur (lot AS2) : position `m`, vitesse latérale `rate`, place `home` sans
     roue à prendre ; `auto` faux : le coureur garde `home` (placement coupé) et les autres l'évitent ;
-    `rank` départage deux coureurs à la même place (départ groupé) : le plus grand passe à gauche."""
+    `rank` départage deux coureurs à la même place (départ groupé) : le plus grand passe à gauche.
+    Lot AS6 : `half_width` et `length` d'un véhicule de la circulation (ceux d'un vélo par défaut) ; on
+    le suit dans sa ligne, on le double et on le longe à la même distance de sa carrosserie qu'un vélo."""
 
     m: float
     home: float
     auto: bool = True
     rank: int = 0
+    half_width: float = RIDER_WIDTH_M / 2.0
+    length: float = BIKE_LENGTH_M
     rate: float = 0.0
     target: float = 0.0
     passing: bool = False
@@ -270,6 +275,18 @@ def update_bots(bots: list[Any], rider: Source | None, dt: float, length_m: floa
         b.push = push
 
 
+def _wider(lane: Lane) -> float:
+    """Demi-largeur en plus de celle d'un vélo (lot AS6 : véhicule de la circulation)."""
+    return lane.half_width - RIDER_WIDTH_M / 2.0
+
+
+def _side_time(lane: Lane, other: Lane) -> float:
+    """Temps en plus pour se décaler de la largeur en plus d'un véhicule (lot AS6), marge d'accélération
+    comprise ; 0 entre deux vélos."""
+    extra = _wider(lane) + _wider(other)
+    return 0.0 if extra <= 0.0 else SIDE_EXTRA_MARGIN * (PASS_OFFSET_M + extra) / LANE_RATE_MPS
+
+
 def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, float, Lane]],
                 length_m: float | None = None, is_loop: bool = False) -> tuple[float, bool]:
     """Écart à l'axe visé par un coureur (lot AS2) et vrai s'il double.
@@ -289,23 +306,26 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
     lead: tuple[float, float, Lane] | None = None
     for o_s, o_v, o_lane in others:
         d = ahead_distance(s, o_s, length_m, is_loop)
-        if 0.0 < d <= BIKE_LENGTH_M + FOLLOW_LOOK_M and (lead is None or d < lead[0]):
-            lead = (d, o_v, o_lane)
-        gap = abs(d) - BIKE_LENGTH_M                 # roue à roue, qu'il soit devant ou derrière
+        reach = 0.5 * (lane.length + o_lane.length)  # BIKE_LENGTH_M entre deux vélos
+        if 0.0 < d <= reach + FOLLOW_LOOK_M and (lead is None or d - reach < lead[0] - lead[3]):
+            lead = (d, o_v, o_lane, reach)
+        gap = abs(d) - reach                         # roue à roue, qu'il soit devant ou derrière
         closing = (v - o_v) if d > 0.0 else (o_v - v)   # > 0 : on se rapproche
-        if not (gap < 0.0 or closing > 0.0 and gap < max(PASS_TOUCH_GAP_M, closing * SIDE_LOOK_S)):
+        look_s = SIDE_LOOK_S + _side_time(lane, o_lane)
+        if not (gap < 0.0 or closing > 0.0 and gap < max(PASS_TOUCH_GAP_M, closing * look_s)):
             continue
         dx = lane.m - o_lane.m
         tie_left = d > 0.0 or (d == 0.0 and lane.rank > o_lane.rank) or not o_lane.auto
+        clear = SIDE_CLEAR_M + _wider(lane) + _wider(o_lane)
         if dx < -0.05 or (abs(dx) <= 0.05 and tie_left):
-            right_bound = min(right_bound, o_lane.m - SIDE_CLEAR_M)   # il est à ma droite
+            right_bound = min(right_bound, o_lane.m - clear)   # il est à ma droite
         else:
-            left_bound = max(left_bound, o_lane.m + SIDE_CLEAR_M)
+            left_bound = max(left_bound, o_lane.m + clear)
     if lead is not None:
-        d, o_v, o_lane = lead
-        gap, dv = d - BIKE_LENGTH_M, v - lead[1]
-        if dv > PASS_SPEED_MPS and gap < PASS_GAP_M:
-            target, passing = o_lane.m - PASS_OFFSET_M, True
+        d, o_v, o_lane, reach = lead
+        gap, dv = d - reach, v - o_v
+        if dv > PASS_SPEED_MPS and gap < PASS_GAP_M + dv * _side_time(lane, o_lane):
+            target, passing = o_lane.m - PASS_OFFSET_M - _wider(lane) - _wider(o_lane), True
         elif o_v <= v + FOLLOW_SPEED_TOL_MPS:
             target = o_lane.m
     if not passing:
