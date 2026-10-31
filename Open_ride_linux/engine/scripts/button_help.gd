@@ -13,6 +13,19 @@ const Y_LABELS := {"home": "", "pause": "Reprendre", "confirm": "Annuler", "edit
 ## clé d'aide donnée par menu_view.gd ; A maintenu enregistre, + et B règlent (menu_flow._handle_edit).
 const EDIT := "edit"
 const NAME_GRID := "profile_name"   # grille du nom d'un profil (profiles_view_model.gd, lot MJ8)
+## Saisie du QWKcode (qwk_editor.gd, lot O21) : au clavier, les touches écrivent (main._qwk_key), donc + A
+## et − n'y sont pas des boutons ; les flèches ← → passent d'une ligne à l'autre, Entrée change de ligne
+## ou choisit « Enregistrer » / « Tout effacer ». Touches données une à une (`kb`), comme le monde ouvert.
+const QWK := "workout_qwk"
+const QWK_ENTRIES := [
+	{"keys": ["A"], "hold": true, "text": "Valider", "main": true, "kb": []},
+	{"keys": [], "hold": false, "text": "Écrire", "main": true, "kb": ["touches"]},
+	{"keys": [], "hold": false, "text": "Nouvelle ligne, valider", "main": false, "kb": ["Entrée"]},
+	{"keys": ["+", "A"], "hold": false, "text": "Suivant", "main": false, "kb": ["→"]},
+	{"keys": ["B"], "hold": false, "text": "Précédent", "main": false, "kb": ["←"]},
+	{"keys": [], "hold": false, "text": "Effacer", "main": false, "kb": ["Retour arrière"]},
+	{"keys": ["Y"], "hold": false, "text": "Retour", "main": false, "kb": ["Échap"]},
+]
 const Y_DEFAULT := "Retour"
 ## Double légende : une ligne pour les boutons du Click, une pour les touches du clavier (key_map.gd :
 ## chaque touche double un bouton du Click). Titres des deux lignes.
@@ -66,6 +79,8 @@ const WORLD := {
 static func entries(screen: String) -> Array:
 	if screen.begins_with(WORLD_PREFIX):
 		return (WORLD.get(screen.substr(WORLD_PREFIX.length()), []) as Array).duplicate(true)
+	if screen == QWK:
+		return QWK_ENTRIES.duplicate(true)
 	var out: Array = [
 		{"keys": ["A"], "hold": true, "text": "Valider", "main": true},
 		{"keys": ["+", "A"], "hold": false, "text": "Suivant", "main": false},
