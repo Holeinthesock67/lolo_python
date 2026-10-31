@@ -1059,8 +1059,10 @@ class CoreSession:
     def _send_settings(self, cmd_id: int) -> None:
         from . import settings
 
-        self.server.send_raw({"type": "settings", "v": 1, "request_cmd_id": cmd_id,
-                              "items": settings.current(self.cfg)})
+        from .ipc_lists import chunk_list_message
+
+        for m in chunk_list_message("settings", cmd_id, settings.current(self.cfg), False):   # en parties (lot O27)
+            self.server.send_raw(m)
 
     def _save_difficulty(self, pct: int) -> None:
         """Difficulté choisie à la pause gardée dans `config.toml` pour la séance suivante (tout réglage du menu persiste)."""
@@ -1251,6 +1253,7 @@ class CoreSession:
         if self.worldmenu is None:
             self.worldmenu = WorldMenu(self.cfg.open_world.network, self.config_path)
         wm = self.worldmenu
+        wm.network = self.cfg.open_world.network   # réglage Avancé (lot O27) pris sans relancer
         try:
             if name == "world_search":
                 msgs = await asyncio.to_thread(wm.search, cmd_id, args.get("query"))
