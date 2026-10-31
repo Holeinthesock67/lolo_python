@@ -86,6 +86,7 @@ class RenderConfig:
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
     draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
+    biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des seize de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
 
 
@@ -312,6 +313,13 @@ ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
 ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 
 # Valeurs permises des champs textuels à choix fermé.
+# Les seize biomes de la série U (lot U0, Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
+BIOMES: tuple[str, ...] = (
+    "temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
+    "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
+    "wetland", "coast", "volcanic",
+)
+
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "quality"): ("low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
@@ -325,6 +333,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
     ("wind", "feel"): ("grade", "ftms"),
     ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),
+    ("render", "biome"): ("auto", *BIOMES),
     ("powerups", "mode"): ("on", "off"),
 }
 

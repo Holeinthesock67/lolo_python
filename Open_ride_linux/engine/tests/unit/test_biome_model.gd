@@ -11,6 +11,7 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
+const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 
 var _failures := 0
 var _checked := 0
@@ -204,6 +205,14 @@ func _init() -> void:
 			model.weights_at(float(st["k"] % 2000), float(st["k"] % 997))
 			st["k"] += 1, 5, 1)
 	_check(PerfBudget.check("biome_weights_at", ms / 1000.0), "weights_at : %.2f µs par appel (5 µs indicatif)" % ms)
+
+	# Lot U16 : réglage « Biome du décor », chaque biome a son nom français au menu, tous différents
+	var texts: Dictionary = SettingsViewModel.CHOICE_TEXTS["render.biome"]
+	var names := {}
+	for id in ["auto"] + BiomeIds.BIOMES:
+		names[str(texts.get(id, ""))] = true
+	_check(texts.size() == 17 and names.size() == 17 and not names.has(""), "render.biome : 17 noms français distincts")
+	_check(SettingsViewModel.format_value({"key": "render.biome"}, "savanna") == "savane", "render.biome : savanna = savane")
 
 	print("test_biome_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

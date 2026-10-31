@@ -34,7 +34,8 @@ const RIDE_MODES := ["sim", "erg", "cadence"]
 ## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on` / `detail` ; jauge d'abri
 ## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
-## Option « gravel » (lot U16, road_surface.gd) : `gravel.mode` prend `off` / `auto` / `compacted` / `gravel` / `dirt`.
+## Option « gravel » (lot U16, road_surface.gd) : `gravel.mode` prend `off` / `auto` / `compacted` / `gravel` / `dirt` ;
+## biome du décor (lot U16, biome_ids.gd) : `render.biome` prend `auto` ou un des seize biomes, noms du plan U §2.
 const CHOICE_TEXTS := {
 	"powerups.mode": {"on": "oui", "off": "non"},
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
@@ -44,6 +45,11 @@ const CHOICE_TEXTS := {
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
 	"gravel.mode": {"off": "coupé", "auto": "chemins réels", "compacted": "chemin compact", "gravel": "gravier",
 		"dirt": "terre"},
+	"render.biome": {"auto": "automatique", "temperate_grassland": "prairie tempérée", "temperate_forest": "forêt tempérée",
+		"farmland": "vignobles et cultures", "boreal_forest": "forêt boréale", "alpine": "haute montagne",
+		"tundra": "toundra", "polar": "polaire", "mediterranean": "méditerranéen", "steppe": "steppe",
+		"savanna": "savane", "sand_desert": "désert de sable", "rock_desert": "désert de roche", "jungle": "jungle",
+		"wetland": "zones humides", "coast": "littoral", "volcanic": "volcanique"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
 

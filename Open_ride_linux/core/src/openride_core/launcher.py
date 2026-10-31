@@ -858,6 +858,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--visual-grade={cfg.render.visual_grade_scale}",
             f"--camera={cfg.render.camera}",
             f"--gravel={cfg.gravel.mode}",
+            f"--biome={cfg.render.biome}",
             f"--living={'on' if cfg.render.living else 'off'}",
             f"--load-guard={'on' if cfg.render.load_guard else 'off'}",
             f"--display={env.get('OPENRIDE_DISPLAY') or cfg.render.display}",

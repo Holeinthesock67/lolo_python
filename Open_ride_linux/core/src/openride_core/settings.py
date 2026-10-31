@@ -15,8 +15,8 @@ son, vent) ; l'engine donne les titres. `help` (facultatif) : légende d'un rég
 comprennent pas seuls, montrée par l'engine sur la carte de détail (option « gravel », lot U16).
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
-la séance suivante, sans relancer) ou `now` (qualité, thème, mode d'affichage, courbes, images/s, jauge d'abri et volumes :
-l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le thème et le mode d'affichage à
+la séance suivante, sans relancer) ou `now` (qualité, thème, biome, mode d'affichage, courbes, images/s, jauge d'abri et volumes :
+l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le thème, le biome, le gravel et le mode d'affichage à
 l'engine aux lancements suivants).
 `apply(cfg, changes, path)` valide, écrit chaque réglage dans son fichier (commentaires et reste du
 fichier gardés, copie `.bak`) puis met à jour `cfg` en mémoire.
@@ -88,6 +88,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.fps", "Afficher les images/s", "graphics", applies="now"),
     Setting("render.draft_gauge", "Jauge d'abri des bots", "graphics", applies="now"),
     Setting("render.camera", "Vue de caméra", "graphics", applies="now"),
+    Setting("render.biome", "Biome du décor", "graphics", applies="now",   # lot U16
+            help="Automatique : les biomes du parcours (prairie tempérée sans données). Un autre choix met "
+                 "ce biome sur tout le parcours : sol, végétation, faune et ciel."),
     # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
     Setting("audio.master_pct", "Volume général", "sound", 10, "%", "now"),
     Setting("audio.ride_pct", "Volume vent et roue libre", "sound", 10, "%", "now"),
