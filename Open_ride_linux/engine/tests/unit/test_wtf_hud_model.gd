@@ -100,6 +100,17 @@ func _run() -> void:
 	info = view.test_info()
 	_check(info["card"] == "Œufs intacts" and info["card_top"] == WtfView.SIDE_TOP and info["kata_top"] > info["card_top"]
 		and info["clock_top"] > info["kata_top"], "vue : carte du gag à gauche, au-dessus du Katamari et de l'horloge")
+	_check(info["kata_compact"], "vue : pendant un gag à carte, Katamari réduit à une ligne")
+	var worst: Dictionary = WtfHudModel.view({"points": 5, "event": {"id": "gravity", "planet": "jupiter", "left_s": 30},
+		"kata": {"size": 3.1, "count": 87, "last": "church"}, "clock_h": 21.5, "fish": true})
+	view.update_view(worst)
+	info = view.test_info()
+	_check(info["stack_bottom"] > WtfView.SIDE_TOP and info["stack_bottom"] <= 720.0 * WtfView.STACK_MAX_FRAC,
+		"vue : la pile de gauche s'arrête au-dessus du bas de l'écran (%d px sur 720)" % int(info["stack_bottom"]))
+	view.update_view(reveal)
+	_check(view.test_info()["prompt_top"] < 720.0 * 0.35, "vue : invite du chef sous le bandeau, pas sur le cycliste")
+	view.update_view(amb)
+	_check(not view.test_info()["kata_compact"], "vue : sans gag, Katamari complet")
 	view.update_view(WtfHudModel.view(null))
 	_check(not view.test_info()["visible"], "vue cachée hors mode WTF")
 	view.queue_free()
