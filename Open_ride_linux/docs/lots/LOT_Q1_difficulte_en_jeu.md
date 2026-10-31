@@ -1,5 +1,10 @@
 # Lot Q1 – Difficulté du trainer réglable pendant la séance
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Difficulté du trainer : défaut 50 %, commande `set_difficulty` pendant la séance, HUD (curseur dans O4) | Python + GDScript | — | Petite | Oui (contrat IPC v1.2 accepté le 25 octobre) ; issue #168 |
+
 ## 1. Objectif
 
 Essai du 25 octobre sur le HomeTrainer (circuit `essai-69`) : séance jugée trop dure, presque toujours sur les petits braquets. Le core sait déjà réduire la pente envoyée au trainer (`[trainer] difficulty_pct`, 0 à 100 %, défaut 100, appliqué par `Gearing.effective_grade`), comme le réglage « difficulté du trainer » de Zwift, mais seulement en éditant `config.toml` avant la séance. Ce lot passe la valeur par défaut à 50 % comme Zwift, permet de la changer **pendant** la séance par une commande IPC et l'affiche dans le HUD. Le curseur qui envoie cette commande est dans le menu des réglages et l'écran de pause (lots O3 et O4) ; il n'y a ni bouton du Click ni touche dédiée (décision du propriétaire du 25 octobre).

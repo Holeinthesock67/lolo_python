@@ -1,5 +1,10 @@
 # Lot J3 – Configuration validée et erreurs lisibles
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Configuration validée (types, bornes) et erreurs lisibles | Python | — | Petite | **Livré le 23 octobre** (fait directement) |
+
 ## 1. Objectif
 
 `config.py` convertit chaque valeur de `~/OpenRide/config.toml` vers le type par défaut, sans contrôle (audit J, constat J-F1) :

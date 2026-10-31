@@ -1,5 +1,10 @@
 # Lot K1 – Tests Godot sans écran lancés par découverte
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Tests Godot sans écran lancés par découverte (`engine/tests/unit/`) | Bash + GDScript | E1 fusionné | Petite | **Livré le 24 octobre** (PR #38) |
+
 ## 1. Objectif
 
 Chaque lot Godot (A, E1, I5, I6) a ajouté sa propre étape à `engine/tests/run_engine_tests.sh`. Le fichier est devenu un point de conflit : la PR #7 (E1) a dû être réconciliée à la main avec I5 et I6 (audit J, constat J-M4). Les lots K2 à K5 ajoutent chacun un test GDScript : ils ne doivent plus toucher ce script.

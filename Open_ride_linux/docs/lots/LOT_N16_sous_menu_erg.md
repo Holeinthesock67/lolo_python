@@ -1,5 +1,10 @@
 # Lot N16 – Sous-menu ERG : choisir, créer ou importer un entraînement
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Sous-menu ERG : choisir, créer (intervalles) ou importer un entraînement `.zwo`, `.erg`, `.mrc` | GDScript + Python | N15, O4 ; core de la décision D4 (audit IPC, PR #288) | Petite | **Livré le 27 octobre** (engine PR #249, core PR #288) ; essai au Click réel à faire |
+
 ## 1. Objectif
 
 Demande du propriétaire du 26 octobre : « Si on choisit le mode ERG il faudra un sous-menu pour configurer ou importer un exercice. » Ce lot complète « Session ERG » du menu principal (lot N15), au Click et au clavier, sans clavier complet ni souris.

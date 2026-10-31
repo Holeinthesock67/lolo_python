@@ -1,5 +1,10 @@
 # Lot U1 – Contrat : couche `biome`, côte et mer, surface de la route, thème 2.0 en pack de biomes, configuration et IPC (version 3.0)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Contrat : couche `biome`, variante régionale, mer et couche `coast`, colonne `surface` (gravel), thème 2.0 en pack de biomes, `[render] biome`, `[gravel]`, IPC 1.6 provisoire | Markdown + JSON | U0, P1, P20, W1 | Petite | Non : interne (décision du propriétaire), **version 3.0** (issue #331) ; partie format livrée le 28 octobre (`.world` 1.6, thème 2.0), partie IPC et configuration reportée à U16 |
+
 ## 1. Objectif
 
 **Version 3.0.** Fixer, avant tout code de la série U, les ajouts au format `.world`, au format des thèmes, à la configuration et à l'IPC que les autres lots implémentent : poids de biome par tuile, variante régionale, mer et côte, surface de la route (option « gravel »), thème 2.0 décrit comme un pack de biomes, réglages `[render] biome` et `[gravel]`. C'est une décision du propriétaire, comme N1, P1 et W1 : le lot rédige les ajouts, le propriétaire les valide en fusionnant.

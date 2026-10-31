@@ -1,5 +1,10 @@
 # Lot X6 – Trainer simulé réaliste
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Trainer simulé réaliste : frein du 1er ordre à retard, volant d'inertie, gigue des notifications | Python | X5 | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x6`, sur X35) ; issue #204 |
+
 ## 1. Objectif
 
 Le trainer simulé de `ble_sim.py` répond presque tout de suite : la puissance suit la consigne ERG avec une constante de temps de 1,5 s, et en SIM la pente ne change rien à la résistance ressentie. Les tests au cloud ne voient donc ni le relâchement du frein (10 à 15 s mesurés à l'essai 69), ni l'inertie du volant, ni le retard des notifications. Les séries T et R (fenêtres de timing de 1,5 s) en ont besoin.

@@ -1,5 +1,10 @@
 # Lot K3 – Placement déterministe de la végétation (sans affichage)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Placement déterministe de la végétation, sans affichage (prépare E3 et E4) | GDScript | K1 | Petite | **Livré le 24 octobre** (PR #40) |
+
 ## 1. Objectif
 
 Préparer les arbres du lot E3 et les forêts d'E4 : calculer **où** poser les arbres, de façon déterministe, à partir des polygones `vegetation` du `.world` ou, à défaut, d'un bruit de densité sous la limite des arbres du thème (format `.world` §7). L'affichage (`MultiMeshInstance3D`, modèles d'arbres) reste à E3/E4.

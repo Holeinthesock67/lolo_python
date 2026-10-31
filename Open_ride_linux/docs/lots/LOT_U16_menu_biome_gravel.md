@@ -1,5 +1,10 @@
 # Lot U16 – Choix du biome et option « gravel » au menu
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Choix du biome et option « gravel » dans les réglages du menu | Python + GDScript | U1, U2, O4 (U5) | Petite | Non : interne (menu), **version 3.0** (issue #346) |
+
 ## 1. Objectif
 
 **Version 3.0.** Permettre de forcer le biome du rendu (U-Q1) et d'activer l'option « gravel » (U-G1) depuis la section « Réglages » du menu, au Click ou au clavier, sans recompiler.

@@ -1,5 +1,10 @@
 # Lot MJ6 – Contrat IPC des profils
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série MJ : contrat IPC des profils (ajouts compatibles) | doc, JSON | MJ0 | Petite | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj6`), validé par le propriétaire et fusionné le 30 octobre (PR #611) |
+
 Série MJ, plan `docs/2.0/PLAN_SERIE_MJ.md` §6.
 
 ## 1. Objectif

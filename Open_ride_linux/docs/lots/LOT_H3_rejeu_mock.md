@@ -1,5 +1,10 @@
 # Lot H3 – Rejeu d'une séance réelle dans le simulateur
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Rejeu d'une séance réelle (JSONL ou FIT) dans le simulateur | Python | — | Petite | **Livré le 23 octobre** (PR #13) |
+
 ## 1. Objectif
 
 Permettre au `MockDriver` de rejouer une séance enregistrée (journal JSONL ou fichier FIT) : puissance, cadence et fréquence cardiaque suivent alors la vraie séance, seconde par seconde. On peut ainsi développer et déboguer avec des données réalistes, sans le vélo, comme le prévoit la SRS §12 (« rejeu d'un FIT ou d'un journal »).

@@ -1,5 +1,10 @@
 # Lot X41 – Banc visuel du mode Cyber-Rogue
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Banc visuel du mode Cyber-Rogue (`rogue_bench.py`), run X40 rejouée dans la vraie scène, captures aux moments clés et planche HTML | Python, GDScript | X40, R10–R13 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x41`) ; issue #544 |
+
 ## 1. Objectif
 
 Les tests de la série R vérifient la scène du mode par morceaux (modèles sans écran, `test_rogue_host.gd`, rendu de la charte R17). Aucun test ne regardait une run entière telle que l'engine la dessine, de l'échauffement au bilan. Le fil de la série R a proposé cet outil le 28 octobre (outil 2). Le banc rejoue la trace d'une vraie run du core (lot X40) dans la vraie scène, prend des captures aux moments clés et vérifie l'image et ce que la scène affiche. Les captures servent aussi au contrôle visuel des lots R10 à R13 sur le PC.

@@ -1,5 +1,10 @@
 # Lot P17 – Intégration, deuxième vague : abri, météo, animaux, objets mobiles, bord de route
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Intégration, deuxième vague : abri, météo, animaux, objets mobiles, bord de route | GDScript | P16, P3, P8, P11 à P15, O7 | Grande | **Livré le 27 octobre** (sans l'affichage des bots d'O7), recette sur le PC à faire (issue #141) |
+
 ## 1. Objectif
 
 Brancher le reste de la série P dans la scène principale et le recetter sur le matériel :

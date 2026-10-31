@@ -1,5 +1,10 @@
 # Lot T9 – Engine : HUD des segments et des bonus
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : engine, HUD segment (approche, chrono, écart au record, résultat) et HUD bonus, coin supérieur droit | GDScript | T1, P16 (livrés) ; T7 | Moyenne | Non : interne (HUD) ; **codé le 27 octobre** (issue #399) ; tests Godot à passer sur le PC, validation à la recette T11 |
+
 ## 1. Objectif
 
 Afficher, dans le coin supérieur droit laissé libre par P16, le bloc segment (approche, chrono, écart au record, résultat à l'arrivée) et le bloc bonus (bonus en réserve, bonus actif et compte à rebours), d'après les champs `segment`, `powerup` et le message `segment_result` du contrat 1.4. Décision du 27 octobre : **code d'abord, sans maquette**, validation ensemble à la recette T11.

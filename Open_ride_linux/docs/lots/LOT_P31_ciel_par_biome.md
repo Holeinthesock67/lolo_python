@@ -1,5 +1,10 @@
 # Lot P31 – Ciel par biome : montgolfières et parapentes variés, paramoteurs des pays plats
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Ciel par biome : parapentes et montgolfières selon le biome, paramoteurs des pays plats (seuls ou en duo, bourdonnement), quatre motifs d'enveloppe des montgolfières | GDScript | P26, U5 | Petite | **Livré le 28 octobre**, séance sur le PC à faire (demande du 28 octobre : « des montgolfières et parapentes ») |
+
 ## 1. Objectif
 
 Demande du propriétaire du 28 octobre : « Des montgolfières et parapentes seraient cool ». Le lot P26 en dessine déjà, mais on en voit peu :

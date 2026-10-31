@@ -1,5 +1,10 @@
 # Lot P22 – Format .world 1.5 : prés, champs et routes voisines
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Format `.world` 1.5 : prés, champs et prairies dans la végétation, couche facultative des routes voisines | Python + GDScript | I3, I4, K4, T1 | Moyenne | **Livré le 27 octobre** (deuxième vague du décor vivant ; affichage par P24 et P25) |
+
 ## 1. Objectif
 
 Demande du propriétaire du 27 octobre (« ça manque de vie : animaux, oiseaux, véhicules sur terre et dans le ciel »), deuxième lot de la deuxième vague du décor vivant (P22 à P27, dossier du 27 octobre, validé le même soir). Le format `.world` ne connaît que les forêts, les broussailles et les vergers, et seulement la route du parcours : les animaux (P24) n'ont pas de pré où paître, les tracteurs (P25) pas de champ, et les voitures, camions et bus (P25) pas d'autre route que celle du cycliste. Ce lot ajoute au format, sans rien afficher de neuf :

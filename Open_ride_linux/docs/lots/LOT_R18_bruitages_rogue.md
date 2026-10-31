@@ -1,5 +1,10 @@
 # Lot R18 – Bruitages et musique du mode Cyber-Rogue : sons de jeu synthétisés, musique d'ambiance par couches, volumes réglables
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Bruitages et musique du mode : 24 sons synthétisés, musique par couches, volumes réglables | GDScript | R8, R17 | Moyenne | Non : interne (sons du moteur) ; **Livré le 28 octobre** (sauf écoute), **version 2.0** |
+
 ## 1. Objectif
 
 Demande du propriétaire du 27 octobre : penser aux bruitages du mode Cyber-Rogue. Les cahiers R n'en prévoient que quatre (R11 §4.2 : bip de Perfect Shift, impact, parade, alarme du Firewall, plus l'échec de la salle manquée) et R12 renvoie les sons des ennemis « après la recette R14 ». Ce lot dresse la liste complète des sons du mode, les génère par synthèse (comme les autres sons du projet : aucun fichier audio dans le dépôt, aucune œuvre ni marque), règle leur budget et les rend réglables en volume.
