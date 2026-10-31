@@ -1482,6 +1482,10 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
 	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
+	# Derniers choix du profil (lot O32) : bot, fantôme, entraînement, départ du monde ouvert.
+	var last = ipc.core_config.get("last_choices")
+	menu_flow.menu.set_last_choices(last)
+	world_menu_view.vm.set_last_start(last.get("open_world") if last is Dictionary else null)
 	menu_flow.set_versions(ipc.engine_version, ipc.core_version)
 
 
