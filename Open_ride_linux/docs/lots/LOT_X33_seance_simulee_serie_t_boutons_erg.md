@@ -63,3 +63,10 @@ Livré le 28 octobre (branche `claude/project-thread-818r6t-x33`).
 - **Écran « Records du parcours »** : le banc vérifie `records.json`. L'écran lui-même est couvert par le scénario `records` du banc des menus.
 - **Tests** : `core/tests/test_sim_bench_scenarios.py` (31 tests). Il vérifie que les scénarios sont lisibles et que leurs clés sont connues. Il joue les vérifications sur des journaux fabriqués, avec les cas négatifs : clavier coupé, mauvais rapport, échantillon absent, bloc changé, touche non jouée.
 
+## 9. Complément Z2 (31 octobre)
+
+Audit de couverture des tests du 28 octobre, lot Z2 accepté par le propriétaire le 31 octobre.
+
+- **Repassé sur `main`** (après O18, O19 et P32), au cloud sous Xvfb : `serie_t` et `erg_boutons` passent entièrement (segments, records, arches et bonus, jingles ; biais, bloc suivant, pause et reprise au Click et au clavier ; aucune ligne `powerup` en ERG). `course_bots` échoue sur une seule vérification, celle du décor ajoutée par P32 : « aucun contact sur la route : 24 (dernier : bot / bot à 3 m) ». Les quatre bots partent ensemble et sont tous posés à `RoadBuilder.BOT_LATERAL_M` : dans les premières secondes, deux bots à moins d'une longueur de vélo l'un de l'autre se superposent à l'écran. Défaut réel trouvé par le banc, à corriger dans un lot à part (placement latéral des bots en groupe, captures à valider) ; la vérification reste stricte.
+- **Recette du PC** : nouvelle étape `seances` de `scripts/recette_pc.py`, qui lance `sim_bench.py` avec les trois scénarios (rapport dans `seances/` du passage), sautée par `--rapide`. Test : `core/tests/test_recette_pc.py`.
+

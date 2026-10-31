@@ -27,7 +27,7 @@ Version du 29 octobre 2026 au soir. Ce document dit **quoi tester, où, comment 
 | Banc simulé | Séances complètes sur Bluetooth simulé dans la vraie scène, captures et images/s | `python3 engine/tests/sim_bench.py --scenario NOM [--native --probe]` | PC (file des mesures) | 2 à 60 min | Contrôles OK ; images/s et p99 dans les budgets |
 | Vitrines | Rendu, biomes, sols, comparés à une référence | `engine/tests/vitrine_rendu.gd`, `engine/tests/vitrine_biomes.gd`, `engine/tests/vitrine_sols.gd` | PC | 1 à 5 min | Pas de sol surexposé ; écarts sous `--max-diff` |
 | Confidentialité | Données interdites dans les fichiers et les commits | `scripts/privacy/privacy_scan.py` | Cloud (chaque PR), crochet pre-commit | < 10 s | Aucune donnée trouvée |
-| Recette PC | Toutes les suites d'un coup, comparées au passage précédent | `python3 scripts/recette_pc.py` | PC | ~25 min | Toutes les étapes OK |
+| Recette PC | Toutes les suites d'un coup, comparées au passage précédent | `python3 scripts/recette_pc.py` | PC | ~40 min | Toutes les étapes OK |
 | Pré-vol | Tout ce qui se vérifie sans pédaler avant une séance | `python3 scripts/pre_vol.py --seance NOM` | PC | ~3 min | « PRÊT À ROULER » |
 | Vélo | Ressenti, matériel réel, recettes guidées | outils du §4.3 | Vélo | 10 min par étape | Cases cochées dans le protocole |
 
@@ -155,7 +155,7 @@ Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot
 
 ### 4.1 Recette du PC en une commande (X4)
 
-`python3 scripts/recette_pc.py` enchaîne core, compilateur, engine, bout en bout, tests graphiques, banc des menus et confidentialité ; journal par étape dans `~/OpenRide/recettes/<date>_<heure>/` avec `resume.txt`, `resume.json` et `perf.csv`, comparés au passage précédent. `--rapide` saute les tests lents, les tests graphiques et le banc des menus ; `--seulement core,engine` restreint.
+`python3 scripts/recette_pc.py` enchaîne core, compilateur, engine, bout en bout, tests graphiques, banc des menus, séances simulées de T11 et J7 (`serie_t`, `erg_boutons`, `course_bots`, lot Z2) et confidentialité ; journal par étape dans `~/OpenRide/recettes/<date>_<heure>/` avec `resume.txt`, `resume.json` et `perf.csv`, comparés au passage précédent. `--rapide` saute les tests lents, les tests graphiques, le banc des menus et les séances simulées ; `--seulement core,engine` restreint.
 
 ### 4.2 Pré-vol avant une séance sur le vélo (X36)
 
