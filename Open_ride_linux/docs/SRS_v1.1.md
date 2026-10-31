@@ -362,6 +362,8 @@ grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
 trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce nombre de secondes (lot Q5)
 resend_s = 2.0               # la consigne est renvoyée au moins toutes les resend_s secondes ; une valeur plus grande (10 à 15) limite les écritures SIM_PARAMS quand la pente dérive peu
+control = "sim"              # "sim" (pente 0x11, le trainer simule l'élan) ou "resistance" (le core calcule la force de la route au volant et envoie un niveau 0x04, lots RC1-RC3, en essai)
+resistance_n_per_pct = 2.0   # force du frein par % de résistance au départ (N), corrigée en roulant
 
 [gearing]
 n_gears = 24
