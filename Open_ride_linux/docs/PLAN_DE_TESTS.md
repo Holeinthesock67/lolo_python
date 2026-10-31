@@ -25,7 +25,7 @@ Version du 29 octobre 2026 au soir. Ce document dit **quoi tester, où, comment 
 | Menus | Tous les menus au Click simulé, au clavier et à la souris | `python3 engine/tests/menu_bench.py` | Cloud (`--rotation`), PC (trois voies) | 10 à 25 min | Chaque scénario OK sur chaque voie |
 | Graphique | Scène principale, HUD, lisibilité, débordements, qualité appliquée | `engine/tests/run_visual_tests.sh`, `engine/tests/hud_galerie.py` | PC | ~2 min | Contrôles OK, captures rendues |
 | Banc simulé | Séances complètes sur Bluetooth simulé dans la vraie scène, captures et images/s | `python3 engine/tests/sim_bench.py --scenario NOM [--native --probe]` | PC (file des mesures) | 2 à 60 min | Contrôles OK ; images/s et p99 dans les budgets |
-| Vitrines | Rendu, biomes, sols, comparés à une référence | `engine/tests/vitrine_rendu.gd`, `engine/tests/vitrine_biomes.gd`, `engine/tests/vitrine_sols.gd` | PC | 1 à 5 min | Pas de sol surexposé ; écarts sous `--max-diff` |
+| Vitrines | Rendu, biomes, sols, comparés à une référence | `engine/tests/vitrine_rendu.gd`, `engine/tests/vitrine_biomes.gd`, `engine/tests/vitrine_sols.gd` | PC | 1 à 5 min | Pas de sol surexposé ; captures au-dessus de `--seuil-ssim`, comptes du CSV à `--tolerance` près |
 | Confidentialité | Données interdites dans les fichiers et les commits | `scripts/privacy/privacy_scan.py` | Cloud (chaque PR), crochet pre-commit | < 10 s | Aucune donnée trouvée |
 | Recette PC | Toutes les suites d'un coup, comparées au passage précédent | `python3 scripts/recette_pc.py` | PC | ~25 min | Toutes les étapes OK |
 | Pré-vol | Tout ce qui se vérifie sans pédaler avant une séance | `python3 scripts/pre_vol.py --seance NOM` | PC | ~3 min | « PRÊT À ROULER » |
@@ -145,7 +145,7 @@ Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot
 
 ### 3.10 Vitrines de rendu
 
-`vitrine_rendu.gd` (route, herbe, personnages, animaux par préréglage), `vitrine_biomes.gd` (16 biomes × 4 vues) et `vitrine_sols.gd` (huit paires de biomes) produisent des PNG et un CSV (triangles, appels de dessin, objets). Avec `--compare REF`, comparaison image par image à une série de référence (`compare_captures.py`, images des écarts, seuil `--max-diff`) ; sol surexposé au-delà de 5 % de pixels saturés : échec. Ces vitrines servent d'avant/après à toute retouche graphique ; les planches sont montrées au propriétaire.
+`vitrine_rendu.gd` (route, herbe, personnages, animaux par préréglage), `vitrine_biomes.gd` (16 biomes × 4 vues) et `vitrine_sols.gd` (huit paires de biomes) produisent des PNG et un CSV (triangles, appels de dessin, objets). Avec `--compare REF`, avant/après à une série de référence par `vitrine_compare.py` (lot Z3 : SSIM de chaque capture, comptes du CSV avec tolérance, qualité appliquée identique, planche avant/après générée) ; sol surexposé au-delà de 5 % de pixels saturés : échec. Ces vitrines servent d'avant/après à toute retouche graphique ; les planches sont montrées au propriétaire.
 
 ### 3.11 Confidentialité
 
@@ -214,7 +214,7 @@ Rien de ce tableau n'est sur `main`. À la fusion, chaque PR met à jour le cata
 - **Objectifs :** au moins 55 images/s en `low` et p99 de la durée d'image sous 25 ms ; en `medium`, environ 10,8 ms de GPU à 1680×1050 sur la GTX 1060 (mesure Y13 du 28 octobre).
 - **Endurance (X16) :** `sim_bench.py --native --scenario endurance` : une heure, images/s et mémoire sans dérive.
 - **Budgets de temps des tests :** `engine/tests/perf_budgets.json` (budget du PC, seuil de la CI), remplaçables par machine dans `~/OpenRide/perf_budgets.json`.
-- **Comparer avant et après :** `compare_captures.py AVANT APRES --out ECARTS` pour les images ; pour les chiffres, `fps.csv` et `sonde.csv` des deux bancs.
+- **Comparer avant et après :** `vitrine_compare.py AVANT APRES` pour les vitrines (captures, comptes et planche), `compare_captures.py AVANT APRES --out ECARTS` pour les captures du banc ; pour les chiffres, `fps.csv` et `sonde.csv` des deux bancs.
 - Toujours vérifier la ligne de qualité appliquée (§3.7) : avant la PR #481, les bancs medium et high mesuraient du `low`.
 
 ## 8. Écrire un test
