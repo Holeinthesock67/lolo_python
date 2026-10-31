@@ -5,7 +5,7 @@ extends RefCounted
 ## « Ajouter un parcours » montre dans la carte de droite comment ajouter une trace, et « Comment ça
 ## marche ? » ouvre l'écran « Aide parcours » : un sujet par ligne, son explication dans la carte de
 ## détail (même carte que les fiches, menu_flow.card()). Textes alignés sur docs/GUIDE_UTILISATION.md
-## §4 et §4 bis, et sur le core (config.py : GPX_DIR ; catalog.py : fiche `<trace>.toml` ;
+## §4 et §4 bis, et sur le core (config.py : GPX_DIR ; route_import.py, lot O23 ; catalog.py : fiche `<trace>.toml` ;
 ## open_world_save.py : balade enregistrée en GPX au-delà de 500 m).
 ## Pas de class_name : charger par preload("res://scripts/route_help.gd").
 
@@ -21,9 +21,10 @@ const TOPICS := [
 		"Un parcours illisible reste grisé, avec son erreur.",
 	]],
 	["add", "Ajouter une trace", [
-		"Dépose la trace dans le dossier ~/OpenRide/GPX/ : un .gpx, ou l'export de Garmin Connect tel quel (.fit, .tcx, .fit.gz, .tcx.gz, .zip).",
-		"Quitte OpenRide, puis relance-le avec son icône : la trace est compilée au démarrage et une notification le dit.",
-		"Le parcours apparaît ensuite dans cette liste. Un fichier illisible est signalé au lancement.",
+		"« Ajouter un parcours » liste les traces de Téléchargements, du Bureau et de ~/OpenRide/Import : un .gpx, ou l'export de Garmin Connect tel quel (.fit, .tcx, .fit.gz, .tcx.gz, .zip).",
+		"A maintenu copie la trace dans ~/OpenRide/GPX/ et la compile, sans relancer : quelques secondes, ou plusieurs minutes la première fois dans une région (relief et cartes téléchargés).",
+		"Le parcours arrive ensuite dans la liste, sous le focus. Une trace illisible affiche son erreur.",
+		"Autre moyen : déposer la trace dans ~/OpenRide/GPX/ puis relancer OpenRide, qui la compile au démarrage.",
 	]],
 	["sheet", "Fiche d'un parcours (.toml)", [
 		"À côté de la trace, un petit fichier du même nom en .toml rend la fiche plus parlante.",

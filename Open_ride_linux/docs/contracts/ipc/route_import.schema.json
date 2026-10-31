@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideRouteImportMessage",
+  "description": "Réponse à cmd import_route (révision 1.5, lot O23) : `compiling` quand la compilation commence (absent si le parcours est déjà prêt), puis `done` avec le parcours ; un refus arrive en `error` `route_invalid` ou `busy`. Datagramme de 4 096 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "phase",
+    "file",
+    "created"
+  ],
+  "properties": {
+    "type": {
+      "const": "route_import"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "phase": {
+      "enum": [
+        "compiling",
+        "done"
+      ]
+    },
+    "file": {
+      "type": "string",
+      "description": "Nom de la trace dans le dossier des traces (suffixe _2, _3… éventuel)."
+    },
+    "created": {
+      "type": "boolean",
+      "description": "Faux si une trace identique était déjà là (rien n'a été copié)."
+    },
+    "route_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Phase done : parcours à passer à select_route."
+    },
+    "name": {
+      "type": "string",
+      "description": "Phase done : nom du parcours."
+    }
+  },
+  "if": {
+    "properties": {
+      "phase": {
+        "const": "done"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "route_id",
+      "name"
+    ]
+  }
+}

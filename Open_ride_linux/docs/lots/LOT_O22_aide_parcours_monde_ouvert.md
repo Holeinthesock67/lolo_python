@@ -8,7 +8,7 @@ Question du propriétaire du 31 octobre : « Le menu est explicite avec des lég
 
 | # | Règle |
 | --- | --- |
-| O22-1 | La liste **Parcours** se termine, après le tri et le filtre, par « Ajouter un parcours » et « Comment ça marche ? ». Leur carte de détail donne l'explication de leur sujet. A maintenu ouvre l'écran **Aide parcours** sur ce sujet. |
+| O22-1 | La liste **Parcours** se termine, après le tri et le filtre, par « Ajouter un parcours » et « Comment ça marche ? ». Leur carte de détail donne l'explication de leur sujet. A maintenu ouvre l'écran **Aide parcours** sur ce sujet. Depuis le lot O23, « Ajouter un parcours » ouvre l'écran **Importer une trace**. |
 | O22-2 | L'écran **Aide parcours** a un sujet par ligne : Choisir un parcours, Ajouter une trace, Fiche d'un parcours (`.toml`), Sans trace : le monde ouvert. L'explication du sujet sous le focus est dans la carte de droite, au Click comme au clavier. A maintenu ne fait rien. Y revient à la liste. |
 | O22-3 | Une liste vide montre « Aucun parcours », désactivé, avec « dépose une trace dans ~/OpenRide/GPX/ », puis les deux lignes d'aide. Si la liste arrive pendant l'affichage, le focus passe au premier parcours. |
 | O22-4 | L'entrée **Monde ouvert** de l'accueil porte la ligne « route créée en roulant ». |

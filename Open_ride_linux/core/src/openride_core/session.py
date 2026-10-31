@@ -326,6 +326,11 @@ class CoreSession:
         # et chemins proposés à l'engine, seuls acceptés par import_workout.
         self.import_home = Path.home()
         self._import_offer: set[str] = set()
+        # Traces importées depuis le menu des parcours (lot O23) : chemins proposés par list_route_imports,
+        # seuls acceptés par import_route ; une seule compilation à la fois.
+        self._route_import_offer: set[str] = set()
+        self._route_import_task: asyncio.Task[Any] | None = None
+        self.compiler_cmd: list[str] | None = None   # commande build-all (défaut : launch_compile ; essais)
         self._scanning = False
         self._identify: dict[str, Any] | None = None
         # Monde ouvert (lot W9) : générateur et route engagée ; `worldgen_cmd` remplace la commande (essais).
@@ -489,6 +494,8 @@ class CoreSession:
             self._accept_ftp(args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_imports", "create_workout", "import_workout"):
             self._on_workout_menu_command(name, args, cmd_id)
+        elif name in ("list_route_imports", "import_route"):
+            self._on_route_import_command(name, args, cmd_id)
         elif name in ("list_garage", "equip", "buy", "set_avatar"):
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in PROFILE_COMMANDS:
@@ -974,6 +981,79 @@ class CoreSession:
             self.server.send_error(exc.code, str(exc))
         except Exception:
             log.exception("Erreur pendant %s (cmd_id=%d)", name, cmd_id)
+
+    # --- traces importées depuis le menu des parcours (lot O23, contrat IPC révision 1.5) ---------
+
+    def _on_route_import_command(self, name: str, args: Any, cmd_id: int) -> None:
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "Parcours importables seulement hors séance.")
+            return
+        if name == "import_route" and self._route_import_task is not None and not self._route_import_task.done():
+            self.server.send_error("busy", "Une trace est déjà en cours de compilation.")
+            return
+        task = self._spawn(self._route_import(name, args if isinstance(args, dict) else {}, cmd_id))
+        if name == "import_route":
+            self._route_import_task = task
+
+    async def _route_import(self, name: str, args: dict, cmd_id: int) -> None:
+        from . import route_import
+        from .config import GPX_DIR
+        from .ipc_lists import chunk_list_message, MAX_DATAGRAM_BYTES
+        from .launch_compile import find_compiler_cmd
+
+        gpx_dir = self.gpx_dir or GPX_DIR
+        try:
+            if name == "list_route_imports":
+                items = await asyncio.to_thread(route_import.import_candidates, self.import_home, gpx_dir)
+                self._route_import_offer = {it["path"] for it in items}
+                for m in chunk_list_message("route_imports", cmd_id, items, False, MAX_DATAGRAM_BYTES):
+                    self.server.send_raw(m)
+                return
+            path = args.get("path")
+            if not isinstance(path, str) or path not in self._route_import_offer:
+                raise route_import.RouteImportError(
+                    "route_invalid", "Fichier non proposé par list_route_imports : redemander la liste.")
+            copied = await asyncio.to_thread(route_import.copy_track, Path(path), gpx_dir)
+            track = Path(copied["path"])
+            reply = {"type": "route_import", "v": 1, "request_cmd_id": cmd_id, "file": copied["file"],
+                     "created": copied["created"]}
+            known = await asyncio.to_thread(route_import.route_for, track, self.routes_root, gpx_dir)
+            output = ""
+            if known is None or known.status != "ready":
+                base = self.compiler_cmd or find_compiler_cmd()
+                if not base:
+                    raise route_import.RouteImportError(
+                        "route_invalid", "Compilateur absent : la trace est copiée, relance OpenRide pour la compiler.")
+                self.server.send_raw({**reply, "phase": "compiling"})
+                output = await self._run_compiler(route_import.compile_command(base, self.routes_root, gpx_dir),
+                                                  route_import.COMPILE_TIMEOUT_S)
+            res = await asyncio.to_thread(route_import.route_after_compile, track, self.routes_root, gpx_dir, output)
+            log.info("Trace importée : %s → parcours %s (%s)", copied["file"], res["route_id"],
+                     "nouvelle" if copied["created"] else "déjà présente")
+            self.server.send_raw({**reply, "phase": "done", **res})
+        except route_import.RouteImportError as exc:
+            log.warning("Import de trace : %s refusé : %s", name, exc)
+            self.server.send_error(exc.code, str(exc))
+        except Exception:
+            log.exception("Erreur pendant %s (cmd_id=%d)", name, cmd_id)
+            self.server.send_error("route_invalid", "Import de la trace impossible : voir le journal.")
+
+    async def _run_compiler(self, cmd: list[str], timeout_s: float) -> str:
+        """Compilateur dans son propre processus (invariant A3) ; sa sortie va au journal et est renvoyée."""
+        from . import route_import
+
+        proc = await asyncio.create_subprocess_exec(*cmd, stdin=asyncio.subprocess.DEVNULL,
+                                                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+        try:
+            out, _ = await asyncio.wait_for(proc.communicate(), timeout_s)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            raise route_import.RouteImportError("route_invalid", f"compilation trop longue (plus de {timeout_s:.0f} s)")
+        text = out.decode("utf-8", "replace")
+        for line in text.splitlines()[-20:]:
+            log.info("[compilateur] %s", line)
+        return text
 
     # --- réglages depuis le menu (lots O3 et O4, contrat IPC révision 1.3) -----------------------
 

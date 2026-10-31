@@ -595,12 +595,41 @@ func _test_library() -> void:
 	f.handle("PLUS_SHORT")    # Ajouter un parcours
 	# Aide des parcours (lot O22) : la carte de la ligne dit où déposer la trace, A maintenu ouvre l'aide.
 	_check(_focus_id(f) == "_add_route" and f.state()["card"].get("name") == "Ajouter une trace"
-		and str(f.state()["card"]["lines"][0]).contains("~/OpenRide/GPX/"), "« Ajouter un parcours » : carte du dépôt de trace")
-	_check(f.handle("A_LONG") == {} and f.state()["screen"] == "route_help" and _focus_id(f) == "help:add",
-		"« Ajouter un parcours » ouvre l'aide sur son sujet")
+		and str(f.state()["card"]["lines"]).contains("~/OpenRide/GPX/"), "« Ajouter un parcours » : carte du dépôt de trace")
+	# Import d'une trace (lot O23) : liste demandée au core, choix, compilation, retour sur le nouveau parcours.
+	_check(f.handle("A_LONG") == {"action": "list_route_imports"} and f.state()["screen"] == "route_import"
+		and f.state()["card"].get("name") == "Ajouter une trace", "« Ajouter un parcours » : écran Importer une trace")
+	f.set_route_import_candidates([])
+	_check(_ids(f) == ["none"] and f.state()["items"][0]["label"].contains(".gpx"), "aucune trace : formats et dossiers")
+	f.set_route_import_candidates([{"path": "/h/Téléchargements/col.gpx", "file": "col.gpx", "source": "Téléchargements", "imported": false},
+		{"path": "/h/Bureau/sortie.fit", "file": "sortie.fit", "source": "Bureau", "imported": true}])
+	_check(_ids(f) == ["file:0", "file:1"] and f.state()["items"][1]["detail"] == "Bureau, déjà importée", "traces proposées")
+	_check(f.handle("A_LONG") == {"action": "import_route", "path": "/h/Téléchargements/col.gpx"}
+		and f.state()["status"].begins_with("Copie de col.gpx"), "choix : import_route, ligne d'état")
+	_check(f.handle("A_LONG") == {}, "une compilation à la fois")
+	_check(not f.on_route_import({"phase": "compiling", "file": "col.gpx", "created": true})
+		and f.state()["status"].begins_with("Compilation de col.gpx"), "compilation annoncée")
+	_check(f.on_route_import({"phase": "done", "file": "col.gpx", "created": true, "route_id": "col", "name": "Col"})
+		and f.state()["screen"] == "routes" and f.state()["status"] == "Parcours ajouté : Col", "prêt : retour à la liste")
+	_check(not f.on_route_import({"phase": "done", "file": "col.gpx", "created": true, "route_id": "col", "name": "Col"}),
+		"réponse en double ignorée")
+	f.set_routes(lib + [{"id": "col", "name": "Col", "length_m": 7000.0, "status": "ready"}])
+	_check(_focus_id(f) == "col" and f.route_tag == "", "focus sur le parcours importé, filtre d'étiquette levé")
+	f.route_tag = "col"
+	f.set_routes(lib)
+	f.menu.focus_item("_add_route")
+	f.handle("A_LONG")
+	f.set_route_import_candidates([{"path": "/h/x.gpx", "file": "x.gpx", "source": "Bureau", "imported": false}])
+	f.handle("A_LONG")
+	f.on_error("route_invalid", "x.gpx : trace sans points")
+	_check(f.state()["status"] == "Échec : x.gpx : trace sans points" and f.state()["status_error"]
+		and f.state()["screen"] == "route_import", "échec : raison sur la ligne d'état")
+	f.handle("Y_SHORT")
+	f.menu.focus_item("_route_help")
+	f.handle("A_LONG")
+	_check(f.state()["screen"] == "route_help" and _focus_id(f) == "help:choose", "« Comment ça marche ? » ouvre l'aide")
 	f.handle("PLUS_SHORT")
-	_check(f.state()["card"].get("name") == "Fiche d'un parcours (.toml)" and f.handle("A_LONG") == {}
-		and f.state()["screen"] == "route_help", "aide : carte du sujet suivant, A maintenu ne fait rien")
+	f.handle("PLUS_SHORT")
 	f.handle("Y_SHORT")
 	_check(f.state()["screen"] == "routes", "Y : retour à la liste")
 	f.menu.focus_item("_route_help")

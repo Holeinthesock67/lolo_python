@@ -1,0 +1,57 @@
+{
+  "description": "Import d'une trace depuis le menu des parcours (lot O23) : « Ajouter un parcours » liste la trace posée dans les Téléchargements, A maintenu la copie et la compile sans relancer, puis le nouveau parcours est sous le focus de la liste.",
+  "voies": [
+    "clavier",
+    "click"
+  ],
+  "fichiers": {
+    "Téléchargements/col_essai.gpx": "<?xml version=\"1.0\"?>\n<gpx version=\"1.1\" creator=\"menu_bench\"><trk><name>Col d essai</name><trkseg><trkpt lat=\"45.0000\" lon=\"6.0000\"><ele>500</ele></trkpt><trkpt lat=\"45.0005\" lon=\"6.0000\"><ele>502</ele></trkpt><trkpt lat=\"45.0010\" lon=\"6.0000\"><ele>504</ele></trkpt><trkpt lat=\"45.0015\" lon=\"6.0000\"><ele>506</ele></trkpt><trkpt lat=\"45.0020\" lon=\"6.0000\"><ele>508</ele></trkpt><trkpt lat=\"45.0025\" lon=\"6.0000\"><ele>510</ele></trkpt><trkpt lat=\"45.0030\" lon=\"6.0000\"><ele>512</ele></trkpt><trkpt lat=\"45.0035\" lon=\"6.0000\"><ele>514</ele></trkpt><trkpt lat=\"45.0040\" lon=\"6.0000\"><ele>516</ele></trkpt><trkpt lat=\"45.0045\" lon=\"6.0000\"><ele>518</ele></trkpt><trkpt lat=\"45.0050\" lon=\"6.0000\"><ele>520</ele></trkpt><trkpt lat=\"45.0055\" lon=\"6.0000\"><ele>522</ele></trkpt><trkpt lat=\"45.0060\" lon=\"6.0000\"><ele>524</ele></trkpt><trkpt lat=\"45.0065\" lon=\"6.0000\"><ele>526</ele></trkpt><trkpt lat=\"45.0070\" lon=\"6.0000\"><ele>528</ele></trkpt><trkpt lat=\"45.0075\" lon=\"6.0000\"><ele>530</ele></trkpt><trkpt lat=\"45.0080\" lon=\"6.0000\"><ele>532</ele></trkpt><trkpt lat=\"45.0085\" lon=\"6.0000\"><ele>534</ele></trkpt><trkpt lat=\"45.0090\" lon=\"6.0000\"><ele>536</ele></trkpt><trkpt lat=\"45.0095\" lon=\"6.0000\"><ele>538</ele></trkpt><trkpt lat=\"45.0100\" lon=\"6.0000\"><ele>540</ele></trkpt><trkpt lat=\"45.0105\" lon=\"6.0000\"><ele>542</ele></trkpt><trkpt lat=\"45.0110\" lon=\"6.0000\"><ele>544</ele></trkpt><trkpt lat=\"45.0115\" lon=\"6.0000\"><ele>546</ele></trkpt><trkpt lat=\"45.0120\" lon=\"6.0000\"><ele>548</ele></trkpt><trkpt lat=\"45.0125\" lon=\"6.0000\"><ele>550</ele></trkpt><trkpt lat=\"45.0130\" lon=\"6.0000\"><ele>552</ele></trkpt><trkpt lat=\"45.0135\" lon=\"6.0000\"><ele>554</ele></trkpt><trkpt lat=\"45.0140\" lon=\"6.0000\"><ele>556</ele></trkpt><trkpt lat=\"45.0145\" lon=\"6.0000\"><ele>558</ele></trkpt><trkpt lat=\"45.0150\" lon=\"6.0000\"><ele>560</ele></trkpt><trkpt lat=\"45.0155\" lon=\"6.0000\"><ele>562</ele></trkpt><trkpt lat=\"45.0160\" lon=\"6.0000\"><ele>564</ele></trkpt><trkpt lat=\"45.0165\" lon=\"6.0000\"><ele>566</ele></trkpt><trkpt lat=\"45.0170\" lon=\"6.0000\"><ele>568</ele></trkpt><trkpt lat=\"45.0175\" lon=\"6.0000\"><ele>570</ele></trkpt><trkpt lat=\"45.0180\" lon=\"6.0000\"><ele>572</ele></trkpt><trkpt lat=\"45.0185\" lon=\"6.0000\"><ele>574</ele></trkpt><trkpt lat=\"45.0190\" lon=\"6.0000\"><ele>576</ele></trkpt><trkpt lat=\"45.0195\" lon=\"6.0000\"><ele>578</ele></trkpt></trkseg></trk></gpx>\n"
+  },
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15
+    },
+    {
+      "choisir": "world"
+    },
+    {
+      "ecran": "routes",
+      "elements": [
+        "demo",
+        "_add_route",
+        "_route_help"
+      ]
+    },
+    {
+      "choisir": "_add_route"
+    },
+    {
+      "ecran": "route_import",
+      "titre": "Importer une trace",
+      "elements": [
+        "file:0"
+      ],
+      "contient": [
+        "col_essai.gpx — Téléchargements",
+        "Ajouter une trace"
+      ],
+      "delai": 8
+    },
+    {
+      "choisir": "file:0"
+    },
+    {
+      "ecran": "routes",
+      "focus": "col-essai",
+      "statut": "Parcours ajouté",
+      "delai": 240
+    },
+    {
+      "appui": "Y_SHORT"
+    },
+    {
+      "ecran": "home"
+    }
+  ]
+}

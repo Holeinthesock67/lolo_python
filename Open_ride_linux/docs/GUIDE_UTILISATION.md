@@ -43,7 +43,7 @@ Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/O
 
 ## 4. Rouler un parcours
 
-**Ajouter un parcours.** Déposez une trace dans le dossier `~/OpenRide/GPX/` : un fichier `.gpx`, ou l'export de Garmin Connect tel quel (`.fit`, `.tcx`, `.fit.gz`, `.tcx.gz` ou `.zip`). OpenRide compile les nouvelles traces à chaque démarrage (une notification s'affiche) : fermez-le et relancez-le avec son icône, le parcours apparaît ensuite dans la liste. Pour que la fiche d'un parcours soit plus parlante, posez à côté de la trace un petit fichier du même nom en `.toml` (nom, description, région, étiquettes). Le menu le rappelle : en bas de la liste des parcours, **Ajouter un parcours** montre où déposer la trace, et **Comment ça marche ?** ouvre l'écran **Aide parcours** (choisir un parcours, ajouter une trace, fiche `.toml`, monde ouvert), dont chaque sujet s'explique dans la carte de droite.
+**Ajouter un parcours.** En bas de la liste des parcours, **Ajouter un parcours** ouvre l'écran **Importer une trace** : il liste les traces de Téléchargements, du Bureau et de `~/OpenRide/Import`, un fichier `.gpx` ou l'export de Garmin Connect tel quel (`.fit`, `.tcx`, `.fit.gz`, `.tcx.gz` ou `.zip`). Choisissez-en une : OpenRide la copie dans `~/OpenRide/GPX/` et la compile sans relancer, en quelques secondes, ou plusieurs minutes la première fois dans une région (relief et cartes téléchargés). Le parcours arrive ensuite dans la liste, sous le focus ; une trace illisible affiche son erreur. Autre moyen : déposez la trace dans `~/OpenRide/GPX/` et relancez OpenRide, qui compile les nouvelles traces à chaque démarrage (une notification s'affiche). Pour que la fiche d'un parcours soit plus parlante, posez à côté de la trace un petit fichier du même nom en `.toml` (nom, description, région, étiquettes). En bas de la liste, **Comment ça marche ?** ouvre l'écran **Aide parcours** (choisir un parcours, ajouter une trace, fiche `.toml`, monde ouvert), dont chaque sujet s'explique dans la carte de droite.
 
 **Lancer une séance.**
 
@@ -183,7 +183,7 @@ Pour relire les chiffres d'une séance : `openride-core summary` (dernier bilan)
 
 **Écran noir, lent ou saccadé.** Passez la qualité graphique en `low` (**Réglages**). Vérifiez que le pilote de la carte graphique est installé. Les courbes de la séance en « masquées » libèrent aussi un peu de puissance.
 
-**Un parcours n'apparaît pas.** Vérifiez que le fichier est bien dans `~/OpenRide/GPX/` et relancez OpenRide : la compilation se fait au lancement. Un fichier illisible est signalé au lancement.
+**Un parcours n'apparaît pas.** Importez-le depuis **Ajouter un parcours**, ou vérifiez que le fichier est bien dans `~/OpenRide/GPX/` et relancez OpenRide : la compilation se fait alors au lancement. Un fichier illisible est signalé au lancement.
 
 **Une fenêtre d'erreur s'affiche au lancement.** Elle donne la cause (Godot introuvable, configuration invalide, port occupé, trainer réservé, plantages répétés) et le chemin du journal.
 

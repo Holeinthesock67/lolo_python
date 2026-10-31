@@ -389,6 +389,14 @@ func _ready() -> void:
 	ipc.imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
 		menu_flow.set_import_candidates(items)
 		_refresh_menu())
+	ipc.route_imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
+		menu_flow.set_route_import_candidates(items)
+		_refresh_menu())
+	ipc.route_import_received.connect(func(msg: Dictionary) -> void:
+		ipc.test_log("route_import phase=%s route=%s" % [str(msg.get("phase", "")), str(msg.get("route_id", ""))])
+		if menu_flow.on_route_import(msg):
+			ipc.list_routes()
+		_refresh_menu())
 	ipc.workout_saved_received.connect(func(msg: Dictionary) -> void:
 		ipc.test_log("workout_saved id=%s" % str(msg.get("workout_id", "")))
 		if menu_flow.on_workout_saved(msg):
@@ -630,6 +638,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.create_workout(act["args"])
 		"import_workout":
 			ipc.import_workout(str(act["path"]))
+		"list_route_imports":
+			ipc.list_route_imports()
+		"import_route":
+			ipc.import_route(str(act["path"]))
 		"set_difficulty":
 			ipc.send_set_difficulty(int(act["pct"]))
 		"set_ride_mode":   # session libre : SIM, ERG ou ERG cadence depuis la pause (lot O18)
@@ -1463,7 +1475,7 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
-	if cmd_name in ["list_routes", "list_workouts", "list_imports"]:
+	if cmd_name in ["list_routes", "list_workouts", "list_imports", "list_route_imports"]:
 		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
 
