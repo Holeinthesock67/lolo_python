@@ -894,6 +894,7 @@ class CoreSession:
                 self._rec.game(line)
         cfg = self.cfg.rogue
         self._grade_sent, shifted = rg.target_grade(cfg.grade_rate_up_pct_per_s, cfg.grade_rate_down_pct_per_s, dt)
+        self._feed_road_mass()
         self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
         self._rogue_dist += self.physics.v * dt
         p3 = self._power_3s(m.power_w)
@@ -1061,6 +1062,12 @@ class CoreSession:
 
         self.server.send_raw({"type": "settings", "v": 1, "request_cmd_id": cmd_id,
                               "items": settings.current(self.cfg)})
+
+    def _feed_road_mass(self) -> None:
+        """Résistance calculée (lots RC2-RC3) : le pilote calcule la force avec la masse du profil et de
+        l'équipement en cours (Cyber-Rogue, WTF et course compris)."""
+        if hasattr(self.driver, "road_mass_kg"):
+            self.driver.road_mass_kg = self.physics.p.mass_kg
 
     def _save_difficulty(self, pct: int) -> None:
         """Difficulté choisie à la pause gardée dans `config.toml` pour la séance suivante (tout réglage du menu persiste)."""
@@ -2098,6 +2105,7 @@ class CoreSession:
                 self._grade_sent = target
             else:
                 self._grade_sent += min(max(target - self._grade_sent, -max_delta), max_delta)
+            self._feed_road_mass()
             self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
 
         power_used = race.power(m.power_w) if race else m.power_w
