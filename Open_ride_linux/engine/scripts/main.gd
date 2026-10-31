@@ -217,6 +217,7 @@ func _ready() -> void:
 	streamer.culling = bool(cfg.get("culling", false))
 	streamer.test_log = bool(cfg["test_mode"])
 	streamer.forced_biome = str(cfg.get("biome", "auto"))
+	streamer.texture_level = str(cfg.get("texture_level", "auto"))
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
 		tree_rend.name = "TreeRenderer"
@@ -424,8 +425,8 @@ static func _quality_from_cli() -> bool:
 	return false
 
 
-## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de
-## suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s et jauge d'abri montrés ou cachés.
+## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, niveau des textures, thème et mode d'affichage
+## appliqués tout de suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s et jauge d'abri montrés ou cachés.
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
 	AudioMix.apply_settings(menu_flow.settings.items)
@@ -446,6 +447,9 @@ func _on_settings(msg: Dictionary) -> void:
 		_report_quality(q, "reglage")
 	elif q != _quality_name:
 		_report_quality(q, "reglage")   # valeur inconnue : la qualité appliquée ne change pas, et le journal le dit
+	var tl := str(menu_flow.settings.item("render.texture_level").get("value", streamer.texture_level))
+	if tl in EngineArgs.VALID_TEXTURE_LEVELS:
+		streamer.texture_level = tl   # niveau des textures imposé (lot P20) ; rien n'est rechargé s'il ne change pas
 	var th := str(menu_flow.settings.item("render.theme").get("value", _theme_name))
 	if th != _theme_name:
 		_apply_theme(th)

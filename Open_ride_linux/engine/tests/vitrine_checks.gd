@@ -1,12 +1,14 @@
 extends RefCounted
 
-## Contrôles automatiques des vitrines de la série U (vitrine_biomes.gd, vitrine_sols.gd) : exposition du sol
-## (part de pixels saturés, luminance moyenne) et comparaison des captures à un dossier de référence par
-## compare_captures.py. Pas de class_name : charger par preload("res://tests/vitrine_checks.gd").
+## Contrôles automatiques des vitrines (vitrine_biomes.gd, vitrine_sols.gd, vitrine_rendu.gd) : exposition du sol
+## (part de pixels saturés, luminance moyenne) et comparaison à un dossier de référence par vitrine_compare.py
+## (lot Z3 : SSIM des captures, comptes du CSV, planche avant/après). Pas de class_name : charger par
+## preload("res://tests/vitrine_checks.gd").
 ##
 ## Options communes des vitrines :
-##   --compare REF          compare chaque capture à celle de même nom dans REF (images des écarts dans DOSSIER_ecarts/)
-##   --max-diff N           écart moyen admis par compare_captures.py (0 à 255, 3 par défaut)
+##   --compare REF          compare la sortie à celle de REF (écarts, planche et rapport dans DOSSIER_ecarts/)
+##   --seuil-ssim S         SSIM minimale d'une capture (0,97 par défaut, comme les références de visual_check.py)
+##   --tolerance PCT        écart admis sur les comptes du CSV : triangles, appels de dessin, objets… (10 % par défaut)
 ##   --max-saturated PCT    part de pixels saturés admise dans la zone du sol (5 % par défaut)
 ## Code de sortie de la vitrine : 0 si tout passe, 1 si une capture dépasse un seuil ou s'écarte de la référence.
 
@@ -15,20 +17,21 @@ const QualityPresets := preload("res://scripts/quality_presets.gd")
 ## Pixel saturé : sa composante la plus claire atteint ce niveau (sol « brûlé », détail perdu).
 const SATURATED := 0.985
 const DEFAULT_MAX_SATURATED_PCT := 5.0   # marquages blancs de la route : environ 3 % de la vue `route`
-const DEFAULT_MAX_DIFF := 3.0
+const DEFAULT_SSIM := 0.97
+const DEFAULT_TOLERANCE_PCT := 10.0
 const STEP := 2   # un pixel sur deux dans chaque sens : assez pour une part et une moyenne
 
 var compare_dir := ""
-var max_diff := DEFAULT_MAX_DIFF
+var ssim_min := DEFAULT_SSIM
+var tolerance_pct := DEFAULT_TOLERANCE_PCT
 var max_saturated_pct := DEFAULT_MAX_SATURATED_PCT
 var failures := PackedStringArray()
 
 
-## Préréglage réellement appliqué pour le nom demandé (même règle que QualityPresets.preset : nom inconnu → low ;
-## QualityPresets.applied_name du lot X32 une fois fusionné). Écrit aussi la ligne de contrôle du garde-fou X32.
+## Préréglage réellement appliqué pour le nom demandé (QualityPresets.applied_name : nom inconnu → low).
+## Écrit aussi la ligne de contrôle du garde-fou X32.
 static func applied_quality(requested: String, tool_name: String) -> String:
-	var key := requested.strip_edges()
-	var applied: String = key if QualityPresets.PRESETS.has(key) else QualityPresets.DEFAULT_PRESET
+	var applied := QualityPresets.applied_name(requested)
 	print("[%s] Qualité appliquée : %s (demandée %s, source vitrine)" % [tool_name, applied, requested])
 	return applied
 
@@ -39,8 +42,10 @@ func parse_args(args: PackedStringArray) -> void:
 		match args[i]:
 			"--compare":
 				compare_dir = args[i + 1]
-			"--max-diff":
-				max_diff = float(args[i + 1])
+			"--seuil-ssim":
+				ssim_min = float(args[i + 1])
+			"--tolerance":
+				tolerance_pct = float(args[i + 1])
 			"--max-saturated":
 				max_saturated_pct = float(args[i + 1])
 
@@ -69,16 +74,17 @@ func exposure(img: Image, name: String, box: Rect2 = Rect2(0.0, 0.6, 1.0, 0.4)) 
 	return out
 
 
-## Compare out_dir à compare_dir (si donné) avec compare_captures.py ; images des écarts dans out_dir + "_ecarts"
-## (hors du dossier des captures, qui peut servir de référence à son tour).
+## Compare out_dir à compare_dir (si donné) avec vitrine_compare.py ; écarts, planche et rapport dans
+## out_dir + "_ecarts" (hors du dossier des captures, qui peut servir de référence à son tour).
 func compare(out_dir: String) -> void:
 	if compare_dir == "":
 		return
-	var script := ProjectSettings.globalize_path("res://tests/compare_captures.py")
+	var script := ProjectSettings.globalize_path("res://tests/vitrine_compare.py")
 	var out := ProjectSettings.globalize_path(out_dir)
 	var output := []
 	var code := OS.execute("python3", [script, ProjectSettings.globalize_path(compare_dir), out,
-		"--out", out.trim_suffix("/") + "_ecarts", "--max-diff", str(max_diff)], output, true)
+		"--out", out.trim_suffix("/") + "_ecarts", "--seuil-ssim", str(ssim_min), "--tolerance", str(tolerance_pct)],
+		output, true)
 	for block in output:
 		print(str(block).strip_edges())
 	if code != 0:

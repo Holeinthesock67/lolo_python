@@ -1,5 +1,10 @@
 # Lot O28 – Historique dans le menu
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Historique dans le menu : séances (date, parcours, durée, NP, TSS) et leur bilan, cumul par semaine, tests de FTP ; mêmes calculs que `history`, `summary` et `ftp-test --history` | Python + GDScript | O12, L7 (livrés) | Moyenne | Audit des options du 31 octobre accepté par le propriétaire ; en PR |
+
 ## 1. Objectif
 
 Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, §7), accepté par le propriétaire le 31 octobre. Relire ses séances demandait le terminal : `openride-core history`, `summary` et `ftp-test --history`. Seul le bilan de la séance qui vient de finir s'affichait à l'écran.

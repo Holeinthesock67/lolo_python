@@ -1,5 +1,10 @@
 # Lot U15 – Packs de biomes : thème 2.0 par défaut et pack de textures libres téléchargeable
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Packs de biomes : thème 2.0 par défaut en couleurs unies, `theme-install` depuis une adresse, bibliothèque de 5 Go | Python + JSON | U1, N10, P20 | Moyenne | Oui, après U1, **version 3.0** (issue #345) ; thème par défaut 2.0 à seize biomes livré le 28 octobre, reste `theme-install` depuis une adresse et la bibliothèque |
+
 ## 1. Objectif
 
 **Version 3.0.** Fournir le thème 2.0 par défaut, en couleurs unies, qui décrit les seize biomes, et permettre d'installer depuis Internet des packs de textures CC0 par `theme-install`, rangés dans une bibliothèque locale plafonnée à 5 Go (U-Q3).

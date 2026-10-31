@@ -1,5 +1,10 @@
 # Lot N5 – Modèle de l'écran d'état des appareils (sans affichage)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Modèle de l'écran d'état des appareils et de ses alertes, sans affichage | GDScript | N1, K1 (livrés) | Petite | **Livré le 25 octobre** (issue #104, PR #162) |
+
 ## 1. Objectif
 
 Avant de rouler, il faut voir d'un coup d'œil si le trainer, les deux boîtiers du Click et la ceinture cardio sont prêts, et pendant la séance être prévenu d'une batterie faible ou d'un boîtier perdu. Ce lot écrit le modèle de vue de l'écran d'état des appareils et de ses alertes, à partir de l'objet `devices` du contrat v1.1 (lot N1), avec repli sur les champs v1 `trainer_status` et `input_status`.

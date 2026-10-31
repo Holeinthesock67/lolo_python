@@ -1,5 +1,10 @@
 # Lot V3 – Catalogue d'équipement, effets bornés et temps gagné par l'équipement
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Catalogue d'équipement, effets bornés sur `PhysicsParams`, conseil par terrain, temps gagné par l'équipement | Python | V2 | Moyenne | **Livré le 27 octobre** (PR #278, issue #241) ; branchement par V11 |
+
 ## 1. Objectif
 
 Décrire l'équipement de la série V dans un fichier de données, appliquer les effets de masse et de CdA aux `PhysicsParams` dans des bornes strictes, conseiller l'équipement selon le terrain et compter le temps gagné ou perdu grâce à l'équipement. Module pur, testé en pytest ; le branchement dans la séance vient avec V11.

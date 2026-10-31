@@ -1,5 +1,10 @@
 # Lot P21 – Passants dans les villages et le long de la route
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Passants dans les villages et le long de la route : gestes au passage, voix et aboiements | GDScript + shader | P15 | Petite | **Livré le 27 octobre** (issue #183) |
+
 ## 1. Objectif
 
 Demande du propriétaire du 25 octobre, pendant les essais simulés : un peu de vie au bord de la route **en dehors des cols**. P15 met une foule dans le dernier kilomètre des grandes montées ; ce lot ajoute, partout ailleurs, quelques personnes isolées avec des gestes et des sons simples :

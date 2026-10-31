@@ -1,5 +1,10 @@
 # Lot V9 – Fin de séance : expérience, pièces, temps gagné par l'équipement, niveau et déblocages
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Fin de séance : expérience, pièces, temps gagné, niveau, déblocages | GDScript | T1, V11, N4 | Petite | **Livré le 27 octobre** ; relecture sur le PC |
+
 ## 1. Objectif
 
 Montrer à la fin de chaque séance ce qu'elle a rapporté : expérience par source, pièces, temps gagné ou perdu grâce à l'équipement, passage de niveau, pièces débloquées et défis réussis.

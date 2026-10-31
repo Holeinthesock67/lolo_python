@@ -1,5 +1,10 @@
 # Lot N6 – Affichage des menus, de l'état des appareils et du bilan ; fin de `--autostart` obligatoire
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Affichage des menus, de l'état des appareils et du bilan ; lanceur sans `--autostart` par défaut | GDScript | E3, E4 (livrés), N2 à N5 | Grande | **Livré le 25 octobre** (interne, PR #185) |
+
 ## 1. Objectif
 
 Lancer OpenRide depuis l'icône du bureau, choisir un parcours et un entraînement au Click, rouler, mettre en pause, terminer et lire son bilan, **sans terminal ni `--autostart`**. Ce lot affiche les modèles déjà écrits (K5, N3, N4, N5) dans la scène principale et les raccorde au core v1.1 (N2).

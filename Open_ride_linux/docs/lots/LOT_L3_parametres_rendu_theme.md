@@ -1,5 +1,10 @@
 # Lot L3 – Paramètres de rendu tirés du thème : terrain, route, ciel (sans affichage)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Paramètres de rendu tirés du thème et fonction de référence du mélange herbe, roche, neige (prépare E2) | GDScript | K1, I5 (livrés) | Petite | **Livré le 24 octobre** (PR #66, issue #55) |
+
 ## 1. Objectif
 
 Préparer E2 (shader triplanaire et thèmes) et le ciel d'E3 : convertir un thème chargé par `theme_loader.gd` (lot I5) en paramètres de rendu prêts à l'emploi, et écrire en GDScript la **fonction de référence** du mélange herbe / roche / neige du SRS §8.1. Le futur shader d'E2 reproduira cette fonction, et ses tests serviront de vecteurs de vérification. Aucun shader, aucun matériau, aucun nœud ici.
