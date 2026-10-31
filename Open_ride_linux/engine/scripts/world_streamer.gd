@@ -752,8 +752,7 @@ func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
 	_road_width_m = float(r_params["width_m"])
 	var maps := ThemeLoader.decor_texture_count(theme_dict) if theme_dir != "" else 0
 	decor_textures = TextureLevels.choose(theme_dict, quality_preset, texture_level, maps)
-	if maps > 0:
-		print(TextureLevels.log_line("décor", decor_textures, maps))
+	print(TextureLevels.log_line("décor", decor_textures, maps))   # toujours écrite : niveau vérifiable au banc
 	var road_tex: Texture2D = ThemeLoader.texture_for(theme_dict, theme_dir, "road.texture", decor_textures) if theme_dir != "" else null
 	_road_color = r_params["color"]
 	_preview_material = null

@@ -66,6 +66,9 @@ func _test_without_levels() -> void:
 	var c_huge := TextureLevels.choose({}, "high", "auto", 2000)
 	_check(c_huge["px"] == 0, "au-delà du budget même à 512 px : couleurs unies (%s)" % c_huge["reason"])
 	_check(TextureLevels.choose({}, "high", "auto", 0)["px"] == 0, "aucune texture : couleurs unies")
+	var none_line := TextureLevels.log_line("décor", TextureLevels.choose({}, "medium", "auto", 0), 0)
+	_check(none_line.begins_with("[textures] décor : 0 cartes") and none_line.ends_with("préréglage medium"),
+		"aucune texture : la ligne de journal dit quand même le préréglage (%s)" % none_line)
 	var forced := TextureLevels.choose({}, "low", "high", 4)
 	_check(forced["px"] == 2048 and forced["reason"] == "imposé (high)", "texture_level = high en low : 2 048 px (%s)" % forced["reason"])
 	_check(TextureLevels.choose({}, "high", "low", 4)["px"] == 1024, "texture_level = low en high : 1 024 px")

@@ -56,7 +56,7 @@ static func choose(theme: Dictionary, preset: String, forced: String, maps: int)
 	var levels := levels_of(theme)
 	var why := "imposé (%s)" % gov if gov != preset else "préréglage %s" % gov
 	if maps == 0:
-		return {"name": "", "px": 0, "dir": "", "bytes": 0, "reason": "aucune texture", "levels": levels}
+		return {"name": "", "px": 0, "dir": "", "bytes": 0, "reason": "aucune texture, %s" % why, "levels": levels}
 	var candidates: Array[Dictionary] = []
 	if levels.is_empty():
 		for px in DEFAULT_SIZES:
