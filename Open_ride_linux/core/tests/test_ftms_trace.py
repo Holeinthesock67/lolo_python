@@ -519,18 +519,35 @@ def test_momentum_brake_ignores_an_isolated_zero_cadence(caplog):
     assert not any("pédalage arrêté" in r.getMessage() for r in caplog.records)
 
 
-def test_momentum_brake_released_when_the_flywheel_slows_down():
-    """Le volant passe sous 20 km/h : pédalage arrêté, même si la cadence lue reste haute."""
+def test_momentum_brake_released_when_the_rider_really_stops():
+    """Volant sous 20 km/h qui ralentit encore et plus de puissance : pédalage arrêté."""
     now = [100.0]
     got = []
     drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
     drv.event_sink = got.append
     drv.set_sim_grade(0.5)
-    for t, speed, rpm, power in [(0.0, 34.0, 99, 600), (1.0, 30.0, 90, 100), (2.0, 19.0, 90, 50)]:
+    for t, speed, rpm, power in [(0.0, 34.0, 99, 600), (1.0, 30.0, 90, 100), (2.0, 19.0, 0, 5)]:
         now[0] = 100.0 + t
         drv._on_ibd(None, bytearray(_ibd(speed, rpm, power)))
     assert _sent_grade(drv) == pytest.approx(0.5)
     assert got[-1]["event"] == "momentum_end" and got[-1]["why"] == "pédalage arrêté"
+
+
+@pytest.mark.parametrize("frames, why", [
+    ([(4.0, 18.0, 70, 60)], "P6 frein 1 : 60 W sous le frein à 6 %"),
+    ([(5.3, 17.0, 85, 101)], "P6 frein 2 : 101 W"),
+    ([(3.5, 19.5, 60, 50), (4.0, 19.5, 0, 0)], "0 W mais le volant ne ralentit plus"),
+    ([(4.0, 25.0, 0, 0)], "0 W, volant encore au-dessus de 20 km/h : la phase que le frein couvre"),
+])
+def test_momentum_brake_kept_while_the_rider_still_pedals(frames, why):
+    """Grille 7bk-bis (31 octobre) : relâché à tort sur « pédalage arrêté » à 60 et 101 W."""
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(momentum_brake_pct=6.0, momentum_brake_s=8.0), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(0.5)
+    for t, speed, rpm, power in [(0.0, 38.0, 100, 600), (1.0, 34.0, 95, 150), (3.0, 22.0, 80, 40), *frames]:
+        now[0] = 100.0 + t
+        drv._on_ibd(None, bytearray(_ibd(speed, rpm, power)))
+    assert drv.momentum_brakes == 1 and drv._momentum_at is not None, why
 
 
 def test_momentum_brake_without_flywheel_speed_needs_a_lasting_low_cadence():

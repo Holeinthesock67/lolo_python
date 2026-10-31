@@ -58,9 +58,9 @@ BRAKE_BACK_WINDOW_S = 15.0
 # Essai vélo 7bk (31 octobre) : la phase « plus facile mais pas libre » dure 5 à 6 s, et le frein, tenu
 # au plus 3 s, se coupait souvent après 1,5 s sur une cadence lue à 0 isolée alors que le cycliste
 # pédalait encore (elle remonte à 60–99 tr/min 1 à 2 s plus tard). Le frein est donc tenu
-# momentum_brake_s (6 s par défaut, réglable pour comparer les passes) et « pédalage arrêté » se juge
-# sur le volant (sous MOMENTUM_MIN_KMH) ; la cadence ne sert que si le trainer n'annonce pas la vitesse
-# du volant, et seulement basse depuis MOMENTUM_STOPPED_S.
+# momentum_brake_s (6 s par défaut, réglable pour comparer les passes). « Pédalage arrêté » (grille
+# 7bk-bis) : puissance sous MOMENTUM_STOPPED_W, volant sous MOMENTUM_MIN_KMH et qui ralentit encore ;
+# la cadence ne sert que si le trainer n'annonce pas la vitesse du volant, basse depuis MOMENTUM_STOPPED_S.
 MOMENTUM_FROM_W = 250.0
 MOMENTUM_WINDOW_S = 3.0
 MOMENTUM_DROP_RATIO = 0.4
@@ -68,6 +68,7 @@ MOMENTUM_BACK_RATIO = 0.6
 MOMENTUM_MIN_KMH = 20.0
 MOMENTUM_MIN_RPM = 40.0
 MOMENTUM_STOPPED_S = 2.0   # sans vitesse du volant : cadence basse depuis ce temps = pédalage arrêté
+MOMENTUM_STOPPED_W = 20.0  # pédalage arrêté seulement sous cette puissance (7bk-bis : relâché à tort à 60 et 101 W)
 MOMENTUM_COOLDOWN_S = 5.0
 ERG_EPSILON_W = 1.0
 RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (arrêt jamais bloqué)
@@ -311,6 +312,7 @@ class FtmsDriver:
         self._momentum_peak_w = 0.0
         self._momentum_end_at = float("-inf")
         self._cadence_low_since: float | None = None   # cadence lue sous MOMENTUM_MIN_RPM depuis cet instant
+        self._momentum_prev_kmh: float | None = None   # vitesse du volant à la notification précédente
         self.momentum_brakes = 0   # interventions du frein d'élan
         self._hr_ibd: int | None = None
         self._hr_service: int | None = None
@@ -520,22 +522,29 @@ class FtmsDriver:
         while peaks and peaks[-1][1] <= power_w:
             peaks.pop()
         peaks.append((now, power_w))   # peaks[0] : pointe de la fenêtre
-        speed = self._trainer_speed_kmh
+        speed, prev_speed = self._trainer_speed_kmh, self._momentum_prev_kmh
+        self._momentum_prev_kmh = speed
         if self._cadence >= MOMENTUM_MIN_RPM:
             self._cadence_low_since = None
         elif self._cadence_low_since is None:
             self._cadence_low_since = now
+        cadence_stopped = self._cadence_low_since is not None and now - self._cadence_low_since >= MOMENTUM_STOPPED_S
         if speed is not None:   # le volant fait foi : une cadence lue à 0 isolée ne compte pas (7bk)
             moving = speed >= MOMENTUM_MIN_KMH
+            # 7bk-bis : relâché à tort à 60 et 101 W, le volant passé sous 20 km/h sous le frein à 6 %.
+            # Arrêt = plus de puissance, volant lent ET qui ralentit encore.
+            stopped = (power_w < MOMENTUM_STOPPED_W and speed < MOMENTUM_MIN_KMH
+                       and prev_speed is not None and speed < prev_speed)
         else:
-            moving = self._cadence_low_since is None or now - self._cadence_low_since < MOMENTUM_STOPPED_S
+            moving = not cadence_stopped
+            stopped = cadence_stopped and power_w < MOMENTUM_STOPPED_W
         if self._momentum_at is not None:
             elapsed = now - self._momentum_at
             if power_w >= MOMENTUM_BACK_RATIO * self._momentum_peak_w:
                 why = "puissance revenue"
             elif elapsed >= self.cfg.momentum_brake_s:
                 why = "durée maximale"
-            elif not moving:
+            elif stopped:
                 why = "pédalage arrêté"
             else:
                 return
