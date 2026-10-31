@@ -487,7 +487,7 @@ class CoreSession:
             self._on_plan_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name == "accept_ftp":
             self._accept_ftp(args if isinstance(args, dict) else {}, cmd_id)
-        elif name in ("list_imports", "create_workout", "import_workout"):
+        elif name in ("list_imports", "create_workout", "create_workout_qwk", "import_workout"):
             self._on_workout_menu_command(name, args, cmd_id)
         elif name in ("list_garage", "equip", "buy", "set_avatar"):
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
@@ -960,13 +960,15 @@ class CoreSession:
                 return
             if name == "create_workout":
                 res = await asyncio.to_thread(workout_menu.create_interval_workout, self.workouts_dir, args)
+            elif name == "create_workout_qwk":
+                res = await asyncio.to_thread(workout_menu.create_qwk_workout, self.workouts_dir, args)
             else:
                 path = args.get("path") if isinstance(args, dict) else None
                 if not isinstance(path, str) or path not in self._import_offer:
                     raise workout_menu.WorkoutMenuError(
                         "workout_invalid", "Fichier non proposé par list_imports : redemander la liste.")
                 res = await asyncio.to_thread(workout_menu.import_file, Path(path), self.workouts_dir)
-            log.info("Entraînement %s : %s (%s)", "créé" if name == "create_workout" else "importé",
+            log.info("Entraînement %s : %s (%s)", "importé" if name == "import_workout" else "créé",
                      res["workout_id"], "nouveau" if res["created"] else "déjà présent")
             self.server.send_raw({"type": "workout_saved", "v": 1, "request_cmd_id": cmd_id, **res})
         except workout_menu.WorkoutMenuError as exc:

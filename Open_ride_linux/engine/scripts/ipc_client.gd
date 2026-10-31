@@ -513,6 +513,12 @@ func create_workout(args: Dictionary) -> int:
 	return send_command("create_workout", args)
 
 
+## QWKcode saisi au clavier (lot O21), relu et écrit en `.qwk` par le core. Réponse : workout_saved, ou
+## error (bad_args, workout_invalid avec le numéro de ligne, busy, workout_write_failed).
+func create_workout_qwk(text: String) -> int:
+	return send_command("create_workout_qwk", {"text": text})
+
+
 ## Copie par le core d'un fichier de la dernière réponse `imports` (lot N16). Réponse : workout_saved,
 ## ou error (workout_invalid, busy, workout_write_failed).
 func import_workout(path: String) -> int:

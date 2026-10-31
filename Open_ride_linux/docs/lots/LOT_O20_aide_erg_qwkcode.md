@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Aide du menu ERG (« Comment ça marche ? » : créer, QWKcode, importer, écrire à la main, séance) et QWKcode de GoldenCheetah en fichier `.qwk` ; « Créer » ne remplace plus un autre entraînement | Python + GDScript | N16, O19 (livrés) | Moyenne | Demande du propriétaire du 30 octobre ; en PR |
+| Aide du menu ERG (« Comment ça marche ? » : créer, QWKcode, importer, écrire à la main, séance) et QWKcode de GoldenCheetah en fichier `.qwk` ; « Créer » ne remplace plus un autre entraînement | Python + GDScript | N16, O19 (livrés) | Moyenne | **Livré le 31 octobre** (PR #629) |
 
 ## 1. Objectif
 
@@ -31,3 +31,7 @@ Le contrat IPC est inchangé. L'import passe par `list_imports` / `import_workou
 - Engine : `workout_help.gd` (sujets de l'aide), `menu_model.gd` (ligne « Comment ça marche ? »), `menu_flow.gd` (écran et cartes).
 - Docs : `GUIDE_UTILISATION.md` §5.
 - Tests : `core/tests/test_workout_qwk.py`, `core/tests/test_workout_menu.py`, `engine/tests/unit/test_menu_flow.gd`, banc des menus `engine/tests/menu_scenarios/erg.json`.
+
+## 5. Livraison
+
+Livré le 31 octobre 2026 (PR #629). Les captures de l'écran « Aide ERG » ont été validées par le propriétaire le 31 octobre. La saisie du QWKcode au clavier, deuxième moitié du choix « Les deux », est le lot O21.

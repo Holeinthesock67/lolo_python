@@ -343,7 +343,8 @@ class IpcServer:
             self.last_heartbeat_time = time.monotonic()
             # Requêtes : réponse à chaque copie reçue, la réponse a pu se perdre (contrat §4). La création et
             # l'import d'entraînement sont idempotents (même fichier, même identifiant), lot N16.
-            is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "import_workout",
+            is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "create_workout_qwk",
+                                "import_workout",
                                 "world_search", "world_map", "world_regions")
             if cmd_id > self.last_cmd_id or is_query:
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)

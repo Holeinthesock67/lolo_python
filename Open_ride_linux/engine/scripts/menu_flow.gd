@@ -55,6 +55,7 @@ const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const WorkoutHelp := preload("res://scripts/workout_help.gd")
+const QwkEditor := preload("res://scripts/qwk_editor.gd")
 const RouteHelp := preload("res://scripts/route_help.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
@@ -71,6 +72,7 @@ const SETTINGS_GROUP := "settings_group"
 const WORKOUT_CREATE := WorkoutBuilder.SCREEN
 const WORKOUT_IMPORT := "workout_import"
 const WORKOUT_HELP := WorkoutHelp.SCREEN
+const WORKOUT_QWK := QwkEditor.SCREEN
 const ROUTE_HELP := RouteHelp.SCREEN
 ## Lignes de la liste des parcours dont la carte est un sujet de l'aide des parcours (lot O22).
 const ROUTE_HELP_TOPICS := {MenuModel.ADD_ROUTE_ID: "add", MenuModel.HELP_ROUTES_ID: "choose"}
@@ -97,7 +99,7 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 	"world_data": "Route devant toi en cours de chargement : reprise automatique"}
 ## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
 const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create", MenuModel.IMPORT_WORKOUT_ID: "import",
-	MenuModel.HELP_WORKOUT_ID: "choose"}
+	MenuModel.HELP_WORKOUT_ID: "choose", MenuModel.QWK_WORKOUT_ID: "qwk"}
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -139,6 +141,8 @@ var _all_ok_since := -1.0
 ## Noms des parcours de la dernière liste, par id (monde affiché à l'accueil).
 var route_names := {}
 var builder = WorkoutBuilder.new()
+## Texte QWKcode en cours de saisie (lot O21) : gardé en sortant de l'écran, vidé après l'enregistrement.
+var qwk = QwkEditor.new()
 ## Fichiers proposés à l'import : [{path, file, source, imported}] (message `imports` du core).
 var import_candidates: Array = []
 ## Ligne d'état de la liste des entraînements (créé, importé, erreur).
@@ -197,6 +201,8 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": WORKOUT_HELP, "title": WorkoutHelp.TITLE, "on_back": MenuModel.WORKOUTS,
 		"items": WorkoutHelp.items()})
+	menu.add_screen({"id": WORKOUT_QWK, "title": QwkEditor.TITLE, "on_back": MenuModel.WORKOUTS,
+		"items": qwk.menu_items()})
 	menu.add_screen({"id": ROUTE_HELP, "title": RouteHelp.TITLE, "on_back": MenuModel.ROUTES,
 		"items": RouteHelp.items()})
 	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
@@ -437,7 +443,7 @@ func on_error(code: String, text: String) -> void:
 		_plan_request = ""
 		plan_message = "Échec : " + text
 		return
-	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_IMPORT] \
+	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_IMPORT, WORKOUT_QWK] \
 			and code in ["bad_args", "busy", "workout_invalid", "workout_write_failed"]:
 		workout_failed("Échec : " + text)
 		return
@@ -541,6 +547,8 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
 	if screen == WORKOUT_HELP:
 		return WorkoutHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
+	if screen == WORKOUT_QWK:
+		return WorkoutHelp.sheet("qwk")
 	if screen == PLANS:
 		return _plan_card(focused)
 	if screen == PLAN:
@@ -833,6 +841,9 @@ func on_workout_saved(msg: Dictionary) -> bool:
 		return false
 	_last_saved_cmd_id = rid
 	var name := str(msg.get("name", msg.get("workout_id", "")))
+	if _workout_request == "qwk":
+		qwk.clear()
+		_refresh_qwk()
 	var text := ("Importé : " if _workout_request == "import" else "Créé : ") + name
 	if not msg.get("created", true):
 		text += " (déjà présent)"
@@ -853,6 +864,52 @@ func workout_added(workout_id: String, message: String) -> void:
 
 func workout_failed(message: String) -> void:
 	workout_message = message
+
+
+# --- saisie du QWKcode au clavier (lot O21) -----------------------------------------------------
+
+func _refresh_qwk() -> void:
+	menu.set_screen_items(WORKOUT_QWK, qwk.menu_items())
+
+
+## Élément choisi (A maintenu, Entrée sur « Enregistrer » ou « Tout effacer », clic) sur l'écran de saisie.
+func _qwk_item(item_id: String) -> Dictionary:
+	if item_id == QwkEditor.SAVE_ID and not qwk.is_empty():
+		workout_message = "Enregistrement…"
+		_workout_request = "qwk"
+		return {"action": "create_workout_qwk", "text": qwk.text()}
+	if item_id == QwkEditor.CLEAR_ID:
+		qwk.clear()
+		workout_message = ""
+		_refresh_qwk()
+		menu.focus_item(qwk.last_line_id())
+	return {}
+
+
+## Touche du clavier sur l'écran de saisie : vrai si elle a servi. Un caractère imprimable s'écrit (même
+## « + », « - », « a » ou « y », utiles au QWKcode) ; Entrée commence une ligne, ou choisit
+## « Enregistrer » ou « Tout effacer » sous le focus ; Retour arrière efface. Flèches et Échap restent
+## des boutons (key_map.gd).
+func qwk_key(ch: String, enter: bool, backspace: bool) -> Dictionary:
+	if menu.current_screen() != WORKOUT_QWK:
+		return {"used": false}
+	var focused := _focused_id()
+	if enter and focused in [QwkEditor.SAVE_ID, QwkEditor.CLEAR_ID]:
+		return {"used": true, "action": _qwk_item(focused)}
+	var used := true
+	if enter:
+		qwk.new_line()
+	elif backspace:
+		qwk.backspace()
+	elif ch != "":
+		qwk.type_char(ch)
+	else:
+		used = false
+	if used:
+		workout_message = ""
+		_refresh_qwk()
+		menu.focus_item(qwk.last_line_id())
+	return {"used": used, "action": {}}
 
 
 ## Liste indisponible (trois demandes sans réponse) : un élément désactivé qui le dit.
@@ -972,10 +1029,17 @@ func handle(event: String) -> Dictionary:
 		if str(act["id"]) == MenuModel.HELP_WORKOUT_ID:
 			menu.push_screen(WORKOUT_HELP)
 			return {}
+		if str(act["id"]) == MenuModel.QWK_WORKOUT_ID:
+			_refresh_qwk()
+			menu.push_screen(WORKOUT_QWK)
+			menu.focus_item(qwk.last_line_id())
+			return {}
 		import_candidates = []
 		menu.set_screen_items(WORKOUT_IMPORT, [{"id": "none", "label": "Recherche des fichiers…", "enabled": false}])
 		menu.push_screen(WORKOUT_IMPORT)
 		return {"action": "list_imports"}
+	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_QWK:
+		return _qwk_item(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_HELP:
 		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_CREATE:
@@ -1399,7 +1463,7 @@ func state() -> Dictionary:
 	if st["screen"] == PAIRING:
 		st["status"] = pairing.message
 		st["status_error"] = pairing.message_error
-	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT]:
+	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT, WORKOUT_QWK]:
 		st["status"] = workout_message
 	elif st["screen"] in [PLANS, PLAN]:
 		st["status"] = plan_message

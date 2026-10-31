@@ -6,7 +6,7 @@ extends RefCounted
 ## les fiches, menu_flow.card()). Les lignes « Créer » et « Importer » de la liste montrent aussi
 ## l'explication de leur sujet. Textes alignés sur docs/GUIDE_UTILISATION.md §5 et sur le core
 ## (workout.py : ERG_MIN_W, biais 80–120 % ; workout_menu.py : IMPORT_SOURCES ; workout_formats.py :
-## syntaxe QWKcode, lot O20).
+## syntaxe QWKcode, lot O20 ; saisie au clavier, qwk_editor.gd, lot O21).
 ## Pas de class_name : charger par preload("res://scripts/workout_help.gd").
 
 const SCREEN := "workout_help"
@@ -18,7 +18,7 @@ const TOPICS := [
 		"La liste montre les entraînements de ~/OpenRide/Workouts/, du plus court au plus long.",
 		"A maintenu (Entrée au clavier) choisit l'entraînement ; Démarrer, sur l'écran Prêt, lance la séance.",
 		"Un fichier invalide reste grisé, avec son erreur.",
-		"Quatre façons d'en ajouter : Créer, QWKcode, Importer, ou écrire un fichier à la main.",
+		"Quatre façons d'en ajouter : Créer, QWKcode (au clavier ou en fichier .qwk), Importer, ou un fichier écrit à la main.",
 	]],
 	["create", "Créer des intervalles", [
 		"Échauffement, répétitions effort et récupération (durée et % de la FTP), retour au calme.",
@@ -27,10 +27,11 @@ const TOPICS := [
 		"Mêmes réglages : pas de doublon. Aucun entraînement n'est remplacé : un nom déjà pris reçoit _2, _3…",
 	]],
 	["qwk", "Saisie QWKcode (GoldenCheetah)", [
-		"Un fichier texte .qwk, une ligne par segment : [Nx] durée@puissance[-puissance] [rdurée@puissance].",
+		"Une ligne par segment : [Nx] durée@puissance[-puissance] [rdurée@puissance].",
 		"Durée en h, m ou s (1m30s). Puissance en watts, ou en % de la FTP avec % (50-75%).",
 		"10m@130-220 : rampe de 130 à 220 W.   4x 5m@280 r3m@140 : 4 × (5 min à 280 W, 3 min à 140 W).",
-		"Une ligne # en tête donne le nom. Enregistre-le dans Téléchargements, puis Importer un fichier.",
+		"Une ligne # en tête donne le nom. « Saisir du QWKcode » : tape au clavier, Entrée change de ligne, flèches ← → jusqu'à Enregistrer.",
+		"Ou écris un fichier .qwk dans Téléchargements, puis Importer un fichier.",
 	]],
 	["import", "Importer un fichier", [
 		"Fichiers .zwo, .erg, .mrc et .qwk trouvés dans Téléchargements, sur le Bureau ou dans ~/OpenRide/Import.",
