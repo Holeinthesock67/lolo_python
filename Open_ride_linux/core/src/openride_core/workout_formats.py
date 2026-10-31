@@ -33,7 +33,7 @@ import math
 import re
 from itertools import pairwise
 
-from .workout import MAX_POWER_FRAC, Block, Workout, WorkoutError
+from .workout import MAX_POWER_FRAC, MAX_REPEAT, Block, Workout, WorkoutError
 
 log = logging.getLogger("workout")
 
@@ -197,3 +197,87 @@ def to_mrc(workout: Workout, ftp_w: float) -> str:
         lines += [f"{ts:g}\t{txt}\t{dur:g}" for ts, txt, dur in workout.texts]
         lines.append("[END COURSE TEXT]")
     return "\n".join(lines) + "\n"
+
+
+# --- QWKcode de GoldenCheetah (`.qwk`, lot O20) ----------------------------------------------
+#
+# Une ligne par segment, `[Nx] durée@puissance[-puissance] [rdurée@puissance[-puissance]]` :
+#     10m@130-220            rampe de 130 à 220 W en 10 min
+#     5m@180                 palier
+#     4x 5m@280 r3m@140      4 × (5 min à 280 W, 3 min à 140 W)
+#     8x 30s@120% r30s@50%   puissances en % de la FTP (suffixe %)
+# Durée : nombres suivis de h, m ou s, combinables (`1m30s`, `1.5m`). Puissance en watts, ou en %
+# de la FTP avec `%` (`50-75%` : le `%` vaut pour les deux bornes). Lignes vides ignorées ; `#`
+# commence un commentaire, et le premier commentaire avant tout segment donne le nom.
+
+_QWK_DUR = r"(?:\d+(?:[.,]\d+)?\s*[hms]\s*)+"
+_QWK_POW = r"\d+(?:[.,]\d+)?\s*%?"
+_QWK_SEG = rf"({_QWK_DUR})@\s*({_QWK_POW})(?:\s*-\s*({_QWK_POW}))?"
+_QWK_LINE_RE = re.compile(rf"^(?:(\d+)\s*x\s*)?{_QWK_SEG}(?:\s*r\s*{_QWK_SEG})?$", re.IGNORECASE)
+_QWK_DUR_PART_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*([hms])", re.IGNORECASE)
+_QWK_UNIT_S = {"h": 3600.0, "m": 60.0, "s": 1.0}
+QWK_SYNTAX = "[Nx] durée@puissance[-puissance] [rdurée@puissance[-puissance]]"
+
+
+def _qwk_duration(text: str, lineno: int) -> float:
+    seconds = sum(float(v.replace(",", ".")) * _QWK_UNIT_S[u.lower()] for v, u in _QWK_DUR_PART_RE.findall(text))
+    if seconds <= 0:
+        raise WorkoutError(f"ligne {lineno} : durée nulle ({text.strip()!r})")
+    return seconds
+
+
+def _qwk_target(lo: str, hi: str | None, lineno: int) -> tuple[float, float, bool]:
+    """(début, fin, en %) ; un `%` sur une borne vaut pour les deux."""
+    percent = lo.rstrip().endswith("%") or (hi is not None and hi.rstrip().endswith("%"))
+    a = float(lo.rstrip(" %").replace(",", "."))
+    z = float(hi.rstrip(" %").replace(",", ".")) if hi is not None else a
+    limit = MAX_POWER_FRAC * 100.0 if percent else MAX_WATTS
+    for v in (a, z):
+        if v > limit:
+            unit = "% de la FTP" if percent else "W"
+            raise WorkoutError(f"ligne {lineno} : cible {v:g} {unit} au-delà de {limit:g} {unit}")
+    return a, z, percent
+
+
+def _qwk_block(kind: str, duration: float, target: tuple[float, float, bool]) -> Block:
+    a, z, percent = target
+    if kind == "steady" and a != z:
+        kind = "ramp"
+    if percent:
+        return Block(kind, duration, a / 100.0, z / 100.0)
+    return Block(kind, duration, None, None, a, z)
+
+
+def parse_qwk(text: str, workout_id: str, source: str = "<qwk>") -> Workout:
+    """Lit du QWKcode de GoldenCheetah. Lève `WorkoutError` avec le numéro de ligne s'il est invalide."""
+    name = ""
+    blocks: list[Block] = []
+    for lineno, raw in enumerate(text.splitlines(), start=1):
+        line, _, comment = raw.partition("#")
+        line = line.strip()
+        if not line:
+            if comment.strip() and not blocks and not name:
+                name = comment.strip()
+            continue
+        m = _QWK_LINE_RE.match(line)
+        if not m:
+            raise WorkoutError(f"ligne {lineno} : « {line} » ne suit pas la syntaxe {QWK_SYNTAX} "
+                               "(exemple : 4x 5m@280 r3m@140)")
+        reps_txt, on_dur, on_lo, on_hi, off_dur, off_lo, off_hi = m.groups()
+        reps = int(reps_txt) if reps_txt is not None else 1
+        if not 1 <= reps <= MAX_REPEAT:
+            raise WorkoutError(f"ligne {lineno} : {reps} répétitions (de 1 à {MAX_REPEAT})")
+        on = (_qwk_duration(on_dur, lineno), _qwk_target(on_lo, on_hi, lineno))
+        off = (_qwk_duration(off_dur, lineno), _qwk_target(off_lo, off_hi, lineno)) if off_dur else None
+        interval = reps > 1 or off is not None
+        for _ in range(reps):
+            blocks.append(_qwk_block("interval_on" if interval else "steady", *on))
+            if off is not None:
+                blocks.append(_qwk_block("interval_off", *off))
+        if sum(b.duration_s for b in blocks) > MAX_DURATION_S:
+            raise WorkoutError(f"ligne {lineno} : la séance dépasse la durée maximale de "
+                               f"{MAX_DURATION_S / 3600:g} h")
+    if not blocks:
+        raise WorkoutError(f"aucun segment : écrire une ligne par segment, {QWK_SYNTAX}")
+    log.debug("%s : %d blocs lus.", source, len(blocks))
+    return Workout(id=workout_id, name=name or workout_id, blocks=tuple(blocks))

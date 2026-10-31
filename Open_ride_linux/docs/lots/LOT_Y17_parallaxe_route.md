@@ -1,5 +1,10 @@
 # Lot Y17 – Relief du gravier de la route par parallaxe (high)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Relief du gravier de la route par parallaxe en high (essai) | GDShader + GDScript | Y11, Y13 | Petite | **Abandonné le 30 octobre** : +3,8 ms GPU en high sur la GTX 1060 (17,45 ms pour un budget de 14 ms), PR #603 fermée |
+
 **Statut : abandonné le 30 octobre** par le propriétaire, sur les mesures du PC. Le code de l'essai reste sur la branche de la PR #603, fermée sans fusion.
 
 ## 1. Objectif

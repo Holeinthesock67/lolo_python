@@ -1,5 +1,10 @@
 # Lot Y4 – Ombres : ce qui en porte, jusqu'où, et à quel coût
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Ombres : objets qui en portent, distance et répartition des cascades par préréglage (la qualité des ombres est dans Y13) | GDScript | Y2 | Petite | Oui ; issue #360 |
+
 ## 1. Objectif
 
 Série Y (fin de projet, `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §4, technique T4). Avec PSSM, un objet présent dans plusieurs cascades est dessiné une fois par cascade pour les ombres, plus une fois pour l'image. La **qualité** des ombres (atlas, filtre, nombre de cascades) est réglée par l'étape 1 du cahier Y13 (PR #446) ; ce lot s'occupe du **coût** :

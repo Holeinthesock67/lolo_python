@@ -1,5 +1,10 @@
 # Lot P23 – Oiseaux de la campagne : rapaces, volées en V, corneilles qui s'envolent
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Oiseaux de la campagne : rapace en cercle, volées en V, corneilles qui s'envolent au passage, cris | GDScript + shader | P11, P17, P21 | Moyenne | **Livré le 27 octobre**, séance sur le PC à faire (deuxième vague du décor vivant, demandée le 27 octobre) |
+
 ## 1. Objectif
 
 Demande du propriétaire du 27 octobre (« ça manque de vie : animaux, oiseaux, véhicules sur terre et dans le ciel »). Premier lot de la deuxième vague du décor vivant (P22 à P27, dossier du 27 octobre). P11 ne fait voler des oiseaux qu'au-dessus des forêts d'au moins 2 ha : en plaine, le ciel reste vide. Ce lot ajoute, près de la route de chaque tronçon :

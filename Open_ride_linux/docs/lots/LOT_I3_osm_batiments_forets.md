@@ -1,5 +1,10 @@
 # Lot I3 – Compilateur : couches OpenStreetMap bâtiments et végétation
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Compilateur : couches OSM bâtiments et végétation | Python | B2 (livré) | Moyenne | **Livré le 23 octobre** (PR #22) |
+
 ## 1. Objectif
 
 Ajouter au compilateur les couches facultatives `buildings` et `vegetation` du format `.world`, tirées d'OpenStreetMap par l'API Overpass, avec un cache brut réutilisable. C'est la partie compilateur du sprint 5 de la SRS ; le rendu (triangulation, arbres) viendra dans un lot engine.

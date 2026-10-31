@@ -1,5 +1,10 @@
 # Lot T17 – Engine : jingles des événements du parcours
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : engine, jingles des événements du parcours (sommet, fin de sprint, arche, fin de séance) | GDScript | T8, T9 (codés) ; T7 | Petite | Non : interne (son) ; **codé le 27 octobre** ; tests Godot à passer sur le PC, validation à la recette T11 |
+
 ## 1. Objectif
 
 Marquer par un court jingle les moments forts d'une séance en mode classique : le sommet d'une montée, la fin d'un sprint, le passage sous une arche de bonus et la fin de la séance (demande du propriétaire du 27 octobre). Les sons sont synthétisés par l'engine, comme le vent et les bips ERG, et remplaçables par un fichier OGG.

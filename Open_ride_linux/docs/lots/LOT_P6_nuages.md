@@ -1,5 +1,10 @@
 # Lot P6 – Nuages qui défilent
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Nuages qui défilent avec le vent | GDScript + shader | P4 | Petite | **Livré le 26 octobre** (issue #130) |
+
 ## 1. Objectif
 
 Le ciel actuel est uni (ciel physique, ou ciel procédural en moteur Compatibility). Ce lot ajoute des nuages qui défilent dans le sens du vent (modèle P4), avec une couverture tirée du thème 1.2 (`sky.clouds`), et leur ombre douce sur le terrain en qualité haute. Coût visé : un seul passage de shader plein écran à l'horizon, sans volume.

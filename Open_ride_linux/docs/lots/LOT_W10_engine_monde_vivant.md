@@ -1,5 +1,10 @@
 # Lot W10 – Engine : lecture du monde vivant, amorces de branches, recentrage de l'origine
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : lecture du monde vivant, amorces de branches, recentrage tous les 10 km | GDScript | W1 (W15 pour les tests) | Grande | Non : interne (rendu) (issue #265) |
+
 ## 1. Objectif
 
 Afficher un monde ouvert avec le même rendu qu'un parcours compilé : route lue par parties qui s'ajoutent ou se remplacent, terrain et couches rangés par carré, amorces de 500 m des branches aux carrefours, et recentrage de l'origine tous les 10 km pour garder la précision des flottants 32 bits.

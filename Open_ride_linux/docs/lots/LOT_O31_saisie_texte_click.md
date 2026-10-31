@@ -1,5 +1,10 @@
 # Lot O31 – Saisie de texte partagée au Click
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Saisie de texte partagée au Click (text_entry.gd) : nom d'un profil et recherche d'un lieu du monde ouvert ; prête pour le QWKcode (O21) | GDScript | MJ8, W11 (livrés) | Petite | Audit des options du 31 octobre, validé par le propriétaire ; en PR |
+
 ## 1. Objectif
 
 Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, validé par le propriétaire) : la recherche d'un lieu du monde ouvert ne se faisait qu'au clavier. Avec le Click seul, impossible de chercher un lieu ni de choisir une destination. Seul le nom d'un profil (lot MJ8) avait une grille de lettres pensée pour le Click. Ce lot en fait un composant unique, partagé par tous les champs de texte.

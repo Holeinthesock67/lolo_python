@@ -1,5 +1,10 @@
 # Lot X38 – Couleurs du thème : aucune couleur en dur dans le HUD et le globe
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Couleurs du thème : aucune couleur en dur dans le HUD et le globe | GDScript | N20 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x38`) |
+
 ## 1. Objectif
 
 L'étape 4 de la présentation des menus (N20) ramène les couleurs du HUD et du globe au thème. Sans contrôle, une couleur écrite en dur (`Color(…)`, `Color.html("#…")`) revient à la première retouche (proposition du fil des menus, 28 octobre).

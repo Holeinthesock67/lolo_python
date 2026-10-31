@@ -1,5 +1,10 @@
 # Lot D – Mise en conformité de l'engine Godot avec le contrat IPC
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Mise en conformité de l'engine avec le contrat IPC | GDScript | A (livré) | Moyenne | **Livré le 23 octobre** (tests sans écran 8/8 revérifiés) |
+
 ## 1. Objectif
 
 Faire respecter par `openride-engine` tout ce que le contrat IPC v1 lui demande, rendre la caméra fluide (extrapolation) et ajouter des tests automatiques sans écran.

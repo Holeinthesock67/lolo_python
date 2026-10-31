@@ -1,5 +1,10 @@
 # Lot R0 – Mesure du délai du frein du trainer (marches de pente et de braquet)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Mesure du délai du frein du trainer (marches de pente et de braquet) : script et essai sur le vélo | Python | Q3, Q4 | Petite | Script oui (même outil que X5) ; essai par le propriétaire ; **version 2.0** |
+
 ## 1. Objectif
 
 Le mode Cyber-Rogue (version 2.0, [plan de la série R](../2.0/PLAN_SERIE_R.md)) repose sur des changements de résistance rapides : bosses de 15 s du Puncheur, fenêtre de 1,5 s du Perfect Shift, grand pas de −3 vitesses (appui long sur B). Le temps de réponse du frein n'a jamais été mesuré ; l'essai 69 du 25 octobre a montré un retard d'environ 22 s sur des marches de 0 à 7 %, surtout au relâchement. Ce lot mesure ce délai sur le trainer du propriétaire et en tire les réglages du mode : vitesse de variation de la pente envoyée, durée minimale d'une bosse, avance des arches.

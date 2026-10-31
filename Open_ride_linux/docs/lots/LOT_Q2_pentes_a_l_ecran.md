@@ -1,5 +1,10 @@
 # Lot Q2 – Pentes plus lisibles à l'écran (caméra et relief)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Pentes plus lisibles à l'écran : caméra inclinée et relief exagéré à l'affichage | GDScript | — | Moyenne | Oui (valeur par défaut choisie par le propriétaire sur la GTX 1060) ; issue #169 |
+
 ## 1. Objectif
 
 Essai du 25 octobre : « la pente affichée par Godot semble plus faible visuellement que la consigne ». La valeur du HUD est juste, et le relief est construit avec les vraies altitudes. Mais la caméra reste horizontale à 1,4 m (champ de vision vertical de 65°) : une pente de 7 % ne fait que 4°, et elle paraît presque plate. Ce lot fait regarder la caméra le long de la route et ajoute une exagération **visuelle** du relief, réglable. La physique et les consignes envoyées au trainer ne changent pas.

@@ -1,5 +1,10 @@
 # Lot P15 – Spectateurs et encouragements dans les dernières côtes
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Spectateurs et encouragements dans les dernières côtes | GDScript + shader | P9, P14 | Petite | **Livré le 27 octobre** (issue #139) |
+
 ## 1. Objectif
 
 Dans le dernier kilomètre des montées repérées par P14, des spectateurs se tiennent au bord de la route, plus nombreux près du sommet ; ils s'animent au passage du cycliste (bras levés, drapeaux), et une clameur monte quand il approche, plus forte s'il accélère ou s'il dépasse un bot. Effet de « grand col » sans coût notable : silhouettes en `MultiMesh`, animation dans le shader.

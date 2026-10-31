@@ -1,5 +1,10 @@
 # Lot X50 – Banc de l'abri derrière les bots, sans vélo
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : banc de l'abri derrière les bots sans vélo (`draft_bench`) : gain en W par écart derrière 1 à 3 bots, part du temps à l'abri de chacun dans un groupe libre (abri des bots entre eux) | Python | P3, AS1 | Petite | En PR (30 octobre) |
+
 ## 1. Objectif
 
 Le propriétaire a demandé le 30 octobre de faire les tests de l'abri (aspiration) en automatique, sans vélo. L'essai sur le vélo du bloc 7af (lot AS1) a montré le cycliste à l'abri 53 % du temps, mais pas l'abri des bots entre eux. Le test X48-2 vérifie déjà que chacun reçoit l'abri ; ce lot donne les chiffres : gain en watts par position derrière une file, et part du temps à l'abri de chaque coureur d'un groupe libre.

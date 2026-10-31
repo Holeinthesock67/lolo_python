@@ -1,5 +1,10 @@
 # Lot E2 – Shader triplanaire et application du thème (terrain, route, soleil)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
+
 ## 1. Objectif
 
 Remplacer les couleurs de sommet provisoires d'E1 par le shader triplanaire du SRS §8.1, piloté par le thème actif (lots I5 et L3) : herbe, roche et neige selon la pente et l'altitude, textures projetées en mètres sans UV. Appliquer aussi le thème à la route (couleur, texture, largeur) et à l'orientation du soleil. Changer de thème ne demande ni recompilation ni modification du `.world`.
