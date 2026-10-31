@@ -92,6 +92,12 @@ var menu = MenuModel.new()
 var catalog = CatalogModel.new()
 var summary_model = SummaryViewModel.new()
 var session_state: String = ""
+## Chiffres de la séance en cours pour la carte de la pause : durée (t), distance (s) de la dernière trame et
+## moyenne de la puissance mesurée en roulant (le core n'envoie pas de moyenne dans la trame d'état).
+var _run_t := NAN
+var _run_s := NAN
+var _power_sum := 0.0
+var _power_n := 0
 ## Dernier bilan reçu (objet `summary` de la trame en FINISHED).
 var summary: Dictionary = {}
 ## « Voir le bilan détaillé » : blocs ERG en plus des lignes.
@@ -208,10 +214,33 @@ func is_visible() -> bool:
 
 ## Trame `state` reçue ; renvoie les actions à exécuter (liste, éventuellement vide). `now_s` : horloge
 ## en secondes pour l'attente de l'écran de connexion (négatif : passage à l'accueil sans attente).
+func _track_run(st: String, state: Dictionary) -> void:
+	if st in ["IDLE", "READY"]:
+		_run_t = NAN
+		_run_s = NAN
+		_power_sum = 0.0
+		_power_n = 0
+		return
+	var t = state.get("t", null)
+	var s = state.get("s", null)
+	if (t is int or t is float) and not is_nan(_run_t) and float(t) + 1.0 < _run_t:   # nouvelle séance : le temps repart de zéro
+		_power_sum = 0.0
+		_power_n = 0
+	if t is int or t is float:
+		_run_t = float(t)
+	if s is int or s is float:
+		_run_s = float(s)
+	var p = state.get("power", null)
+	if st == "RUNNING" and (p is int or p is float) and float(p) >= 0.0 and float(p) < 3000.0:
+		_power_sum += float(p)
+		_power_n += 1
+
+
 func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
+	_track_run(st, state)
 	if state.get("devices") is Dictionary:
 		devices = state["devices"]
 	var diff = state.get("difficulty_pct", null)
@@ -504,6 +533,8 @@ func card(st: Dictionary) -> Dictionary:
 		var blocks: Array = builder.profile()
 		return CatalogModel.workout_sheet({"id": builder.workout_id(), "name": builder.workout_name(),
 			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
+	if screen == MenuModel.PAUSE:
+		return CatalogModel.pause_sheet(_run_t, _run_s, _power_sum / _power_n if _power_n > 0 else -1.0)
 	if screen == SUMMARY:
 		return {"title": "Bilan de la séance"}
 	if screen == RECORDS:
