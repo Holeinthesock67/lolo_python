@@ -1,5 +1,10 @@
 # Lot X44 – Décrochage du trainer ou fatigue, statuts FTMS, analyse du pompage
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : décrochage du trainer ou fatigue (puissance et cadence image par image), statuts FTMS à côté, analyse du pompage, pour le banc et les journaux de séance (`decrochages`) | Python | X43, PR #580 | Petite | Séance du 29 octobre ; en PR |
+
 ## 1. Objectif
 
 Séance du 29 octobre : la puissance est passée de 449 W à 0 W en 2 s, et le cycliste a dit « on dirait que ça pompe ». Pour juger, il fallait lire la trace à la main, puissance et cadence ensemble, à côté de ce que le trainer annonce. Ce lot le fait automatiquement, pour le banc `trainer_steps` (lot X43) comme pour un journal de séance.

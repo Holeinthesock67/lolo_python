@@ -79,6 +79,7 @@ GOLDEN_MASKS = ("status", "distance", "time", "erg_remaining", "chart_sim", "cha
 FREEZE_SETTLE_S = 8.0             # --fige : attente du chargement complet des tuiles et du décor avant la vue fixe
 ROUTE_TIMEOUT_S = 20.0
 SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
+PENDING_RETRIES = 15              # scènes de référence : captures reprises (1 s d'écart) tant que des tuiles manquent
 SPEED_MPS = 8.0
 # Scènes reproductibles (s fixé, rien ne bouge) : les seules comparées aux images de référence.
 # Records de la scène « records » : la montée a deux temps sans bonus et un avec bonus, le sprint aucun.
@@ -370,14 +371,27 @@ class Session:
 
     def capture(self, scene: str) -> tuple[Image, dict[str, Any]] | None:
         png = self.out_dir / f"{self.name}_{scene}.png"
-        mark = self.core.log.mark()
-        self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
-                            "path": str(png), "tag": scene})
-        hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0, mark)
+        # Scène de référence : capture reprise tant que des tuiles voulues manquent (`streaming_pending`, comme le
+        # tour visuel X21). Une attente fixe ne suffisait pas : `vue_fixe` en low sur le PC (31 octobre) sortait
+        # sans terrain ni arbres, sol brun et personnage en l'air, et la SSIM variait d'un passage à l'autre.
+        tries = PENDING_RETRIES if scene in GOLDEN_SCENES else 1
+        for attempt in range(tries):
+            mark = self.core.log.mark()
+            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
+                                "path": str(png), "tag": scene})
+            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0, mark)
+            if hit is None or int(json.loads(hit[1].group(1)).get("streaming_pending", 0)) == 0:
+                break
+            if attempt < tries - 1:
+                time.sleep(1.0)
         if not self.check(scene, "capture enregistrée", hit is not None and png.exists(),
                           "" if hit else "aucune ligne « screenshot » dans le journal de l'engine"):
             return None
         info = json.loads(hit[1].group(1))
+        if scene in GOLDEN_SCENES:
+            pending = int(info.get("streaming_pending", 0))
+            self.check(scene, "tuiles du terrain toutes affichées", pending == 0,
+                       f"{pending} tuile(s) encore en attente après {tries} capture(s)")
         img = read_png(png)
         cap = Capture(self.name, scene, png, info)
         self.report.captures.append(cap)
@@ -974,7 +988,10 @@ def _scenes(s: Session) -> None:
         s.check_texts("pause", info, {"menu_title": "Pause", "menu": "[Reprendre] | Terminer et enregistrer"}, contains=True)
         s.check_texts("pause", info, {"menu": "Trainer perdu : reconnexion en cours…"}, contains=True)
         s.check("pause", "HUD de séance caché derrière le menu", not info["widgets"]["power"]["visible"])
+        s.check_texts("pause", info, {"menu": "Séance en cours"}, contains=True)
+        s.check_texts("pause", info, {"menu": "Puissance moy."}, contains=True)
         s.check_layout("pause", info)
+    _confirmation_scene(s)
 
     # 6. Core muet : bandeau, caméra extrapolée puis figée.
     core.set_scene(speed=SPEED_MPS, session_state="RUNNING", pause_reason=None, trainer_status="CONNECTED",
@@ -1315,6 +1332,32 @@ def _menu_scenes(s: Session) -> None:
     _progress_scenes(s)
 
 
+def _confirmation_scene(s: Session) -> None:
+    """Étape 4d des menus : « Abandonner » depuis la pause ouvre une petite carte centrée sur le voile ; la question
+    est en texte courant, « Non » est sélectionné d'office et « Oui » (qui perd la séance) est en rouge ; Y revient à la pause."""
+    core = s.core
+    for event in ("PLUS_SHORT", "PLUS_SHORT", "A_LONG"):
+        core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+        time.sleep(0.3)
+    time.sleep(0.6)
+    shot = s.capture("confirmation")
+    if shot:
+        img, info = shot
+        card = info["widgets"]["confirm_card"]
+        s.check_texts("confirmation", info, {"confirm_question": "Abandonner la séance ?", "menu": "[Non] | Oui"}, contains=True)
+        w, h = info["size"]
+        cx = card["rect"][0] + card["rect"][2] / 2
+        s.check("confirmation", "carte visible, étroite et centrée",
+                card["visible"] and card["rect"][2] <= 0.6 * w and abs(cx - w / 2) <= 0.05 * w,
+                f"rectangle {card['rect']}")
+        s.check("confirmation", "détail de la liste caché", not info["widgets"]["menu_card"]["visible"])
+        danger = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 200 and p[1] < 110 and p[2] < 110, step=1)
+        s.check("confirmation", "« Oui » en rouge (danger)", danger >= 0.0005, f"{danger:.2%} de pixels rouges")
+        s.check_layout("confirmation", info)
+    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "Y_SHORT"})
+    time.sleep(0.6)
+
+
 def _records_scene(s: Session) -> None:
     """Étape 4c des menus : écran Records du parcours (depuis l'écran Prêt) avec la carte du record en or,
     puis la table des temps d'une montée ; retour à l'écran Prêt."""
@@ -1365,6 +1408,70 @@ def _menus_only(s: Session) -> None:
     s.check("menus", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
     time.sleep(SETTLE_S)
     _menu_scenes(s)
+
+
+def _quality_guard_scenes(s: Session) -> None:
+    """`--garde-qualite` (lot X32, garde-fou de régression) : la qualité demandée par `--quality` est appliquée au
+    démarrage et à la première capture ; un réglage `render.quality` absent ou égal ne change rien ; une autre
+    valeur est appliquée tout de suite (source `reglage`) ; une valeur inconnue est notée sans rien changer ;
+    revenu à la qualité demandée, la dernière capture la porte. Le contrôle final de run_config vérifie le tout."""
+    core = s.core
+    wanted = s.name.split("_")[1]   # 1280x720_medium[_k2.5]
+    other = "high" if wanted != "high" else "medium"
+    started = core.log.wait_for(r"^quality applied=(\w+) requested=(\S+) source=(\w+)", 20.0)
+    s.check("garde_qualite", "qualité du démarrage", started is not None and started[1].groups() == (wanted, wanted, "cli"),
+            started[1].string if started else "aucune ligne « quality applied »")
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="RUNNING", power=200.0, mode="SIM", erg=None, pause_reason=None,
+                   trainer_status="CONNECTED", input_status="CONNECTED")
+    core.auto_hello_ack = True
+    core.catalog_data = MENU_CATALOG
+    core.streaming = True
+    loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
+    s.check("garde_qualite", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    time.sleep(SETTLE_S)
+    shot = s.capture("garde_qualite_depart")
+    if shot:
+        s.check("garde_qualite_depart", "qualité portée par la capture", shot[1].get("quality") == wanted,
+                f"{shot[1].get('quality')!r}, attendu {wanted!r}")
+
+    def send_quality(value: str | None) -> list[str]:
+        """Réglages du core avec `render.quality` à `value` (absent si None) ; lignes « quality » qui suivent.
+        `current` : qualité appliquée d'après le journal (aucune ligne attendue si `value` l'est déjà)."""
+        items = [{"key": "render.fps", "label": "Afficher les images/s", "group": "graphics", "type": "choice",
+                  "value": "off", "choices": ["off", "on", "detail"], "applies": "now"}]
+        if value is not None:
+            items.append({"key": "render.quality", "label": "Qualité graphique", "group": "graphics", "type": "choice",
+                          "value": value, "choices": ["low", "medium", "high"], "applies": "now"})
+        mark = core.log.mark()
+        core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": items})
+        # Un préréglage plus lourd se met en place en plusieurs secondes sous Xvfb (rendu logiciel).
+        core.log.wait_for(r"^quality applied=", 1.5 if value in (None, current[0]) else 15.0, mark)
+        time.sleep(0.3)
+        lines = [line for _, line in core.log.since(mark) if line.startswith("quality applied=")]
+        if lines:
+            current[0] = lines[-1].split()[1].split("=")[1]
+        return lines
+
+    current = [wanted]
+
+    lines = send_quality(None)
+    s.check("garde_qualite", "réglage sans render.quality : qualité inchangée", not lines, " | ".join(lines) or "aucune ligne")
+    lines = send_quality(wanted)
+    s.check("garde_qualite", f"réglage {wanted} (déjà appliquée) : rien à refaire", not lines, " | ".join(lines) or "aucune ligne")
+    lines = send_quality(other)
+    s.check("garde_qualite", f"réglage {other} : appliquée tout de suite",
+            lines == [f"quality applied={other} requested={other} source=reglage"], " | ".join(lines) or "aucune ligne")
+    lines = send_quality("ultra")
+    s.check("garde_qualite", "réglage inconnu : noté, qualité inchangée",
+            lines == [f"quality applied={other} requested=ultra source=reglage"], " | ".join(lines) or "aucune ligne")
+    lines = send_quality(wanted)
+    s.check("garde_qualite", f"retour à {wanted}",
+            lines == [f"quality applied={wanted} requested={wanted} source=reglage"], " | ".join(lines) or "aucune ligne")
+    time.sleep(SETTLE_S)
+    shot = s.capture("garde_qualite_fin")
+    if shot:
+        s.check("garde_qualite_fin", "qualité portée par la capture", shot[1].get("quality") == wanted,
+                f"{shot[1].get('quality')!r}, attendu {wanted!r}")
 
 
 def _draft_gauge_scene(s: Session) -> None:
@@ -1604,7 +1711,7 @@ def _garage_scenes(s: Session) -> None:
     press("A_LONG", wait=0.5)   # achat : confirmation
     shot = s.capture("garage_confirmation")
     if shot:
-        s.check_texts("garage_confirmation", shot[1], {"menu_title": "Acheter Profilé pour 150 pièces ? Solde après : 60"})
+        s.check_texts("garage_confirmation", shot[1], {"confirm_question": "Acheter Profilé pour 150 pièces ? Solde après : 60"})
     press("PLUS_SHORT", "A_LONG", wait=0.5)   # Oui
     time.sleep(1.2)
     shot = s.capture("garage_achat")
@@ -1669,6 +1776,8 @@ def main() -> int:
                     help=f"scène figée : décor vivant, nuages, herbe et personnages arrêtés à l'instant T (défaut {FREEZE_T:g} s)")
     ap.add_argument("--decor-vivant", choices=("on", "off"), default="on",
                     help="off : décor vivant coupé, rendu de la 1.0 (références dans <préréglage>_sans_vivant)")
+    ap.add_argument("--garde-qualite", action="store_true",
+                    help="seulement le garde-fou de la qualité appliquée (démarrage, réglages du core, lot X32)")
     ap.add_argument("--lisibilite", action="store_true",
                     help="hauteur des chiffres et contraste des textes du HUD sur chaque capture (lot X22)")
     args = ap.parse_args()
@@ -1705,7 +1814,8 @@ def main() -> int:
         shutil.copytree(osm_work / f"{OSM_ROUTE_ID}.world", routes_dir / f"{OSM_ROUTE_ID}.world")
         shutil.rmtree(osm_work, ignore_errors=True)
         for config in [c.strip() for c in args.configs.split(",") if c.strip()]:
-            run_config(config, args, routes_dir, out_dir, report, _menus_only if args.menus else None)
+            scenes = _quality_guard_scenes if args.garde_qualite else _menus_only if args.menus else None
+            run_config(config, args, routes_dir, out_dir, report, scenes)
     finally:
         shutil.rmtree(routes_dir, ignore_errors=True)
     if args.update_golden:

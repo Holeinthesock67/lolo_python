@@ -49,7 +49,7 @@ record() {  # record <nom> <0 si réussi> [détail]
   if [ "$2" -eq 0 ]; then SUMMARY+=("OK     $1${3:+ : $3}"); else SUMMARY+=("ÉCHEC  $1${3:+ : $3}"); status=1; fi
   local now
   now="$(date +%s.%N)"
-  JUNIT_CASES+=("$1"$'\t'"$2"$'\t'"$(awk -v a="$JUNIT_LAST" -v b="$now" 'BEGIN { printf "%.3f", b - a }')"$'\t'"${3:-}")
+  JUNIT_CASES+=("$1"$'\t'"$2"$'\t'"$(LC_ALL=C awk -v a="$JUNIT_LAST" -v b="$now" 'BEGIN { printf "%.3f", b - a }')"$'\t'"${3:-}")
   JUNIT_LAST="$now"
 }
 
@@ -62,7 +62,7 @@ write_junit() {
   [ -n "${ENGINE_JUNIT:-}" ] || return 0
   local failures=0 total name rc secs detail
   for c in "${JUNIT_CASES[@]}"; do [ "$(cut -f2 <<<"$c")" = 0 ] || failures=$((failures + 1)); done
-  total="$(awk -v a="$JUNIT_START" -v b="$(date +%s.%N)" 'BEGIN { printf "%.3f", b - a }')"
+  total="$(LC_ALL=C awk -v a="$JUNIT_START" -v b="$(date +%s.%N)" 'BEGIN { printf "%.3f", b - a }')"
   mkdir -p "$(dirname "$ENGINE_JUNIT")"
   {
     echo '<?xml version="1.0" encoding="utf-8"?>'
@@ -219,6 +219,17 @@ elif command -v xvfb-run >/dev/null 2>&1; then
   echo "$VISUAL_OUT" | grep -E "^\[ÉCHEC\]|^Tests graphiques|introuvable" || true
   if [ "$visual_rc" -eq 0 ]; then rm -rf "$VISUAL_DIR"; else echo "Captures, journaux et rapport gardés : $VISUAL_DIR/rapport.html"; fi
   record "tests graphiques ($VISUAL_CONFIGS)" "$visual_rc" "$(echo "$VISUAL_OUT" | grep -E "^Tests graphiques" | tail -1 | sed 's/^Tests graphiques : //')"
+  # Garde-fou de la qualité appliquée (lot X32) en medium et en high (le low est vérifié ci-dessus) : préréglage du
+  # démarrage, réglages du core absents, égaux, autres et inconnus ; une capture en medium doit être du medium.
+  for gq_config in 1280x720:medium 1280x720:high; do
+    GQ_DIR="$(mktemp -d -t openride-quality.XXXXXX)"
+    GQ_OUT="$(timeout -k 5 300 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
+      --configs "$gq_config" --out "$GQ_DIR" --garde-qualite 2>&1)"
+    gq_rc=$?
+    echo "$GQ_OUT" | grep -E "^\[ÉCHEC\]|^Tests graphiques|introuvable" || true
+    if [ "$gq_rc" -eq 0 ]; then rm -rf "$GQ_DIR"; else echo "Captures, journaux et rapport gardés : $GQ_DIR/rapport.html"; fi
+    record "garde-fou qualité ($gq_config)" "$gq_rc" "$(echo "$GQ_OUT" | grep -E "^Tests graphiques" | tail -1 | sed 's/^Tests graphiques : //')"
+  done
 elif [ "${REQUIRE_RENDER:-0}" = "1" ]; then
   record "tests graphiques" 1 "xvfb-run introuvable alors que REQUIRE_RENDER=1"
 else
@@ -239,6 +250,15 @@ stream_ok=0
 if [ "$stream_status" -ne 0 ] || grep -q -E "SCRIPT ERROR|ERROR:|WARNING:" "$STREAM_LOG"; then stream_ok=1; fi
 record "test_world_streamer (rendu E1)" "$stream_ok"
 rm -f "$STREAM_LOG"
+
+echo "== Cohérence du terrain proche et lointain (relief réel et relief de séance) =="
+# Pipeline des tuiles de world_streamer.gd rejoué sur la démo : lointain sous le proche, tuiles jointives, lointain pas trop creusé.
+TERRAIN_OUT="$(timeout -k 5 "$UNIT_TIMEOUT" "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_terrain_coherence.gd -- "$ROUTES_DIR/demo.world" 2>&1)"
+terrain_rc=$?
+echo "$TERRAIN_OUT" | grep -v "^Godot Engine" || true
+terrain_count="$(echo "$TERRAIN_OUT" | grep -E "^test_terrain_coherence : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
+if [ -z "$terrain_count" ] || echo "$TERRAIN_OUT" | grep -q -E "SCRIPT ERROR|ERROR:"; then terrain_rc=1; fi
+record "test_terrain_coherence (terrain proche et lointain)" "$terrain_rc" "${terrain_count#*: }"
 
 echo "== Coutures du sol multi-biome en scène réelle (série U) =="
 # Démo ci-dessus avec une couche biome prairie → sable ; world_streamer.gd charge les tuiles (Xvfb).

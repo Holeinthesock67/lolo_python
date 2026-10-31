@@ -113,7 +113,7 @@ func _run() -> void:
 	var verts_t15: PackedVector3Array = arr_t_k15[Mesh.ARRAY_VERTEX]
 	var terrain_k15_ok := true
 	var max_err_terrain := 0.0
-	for i in range(verts_t1.size()):
+	for i in range(TerrainTiles.SAMPLES * TerrainTiles.SAMPLES):   # grille ; les jupes suivent, à SKIRT_M sous le bord
 		var y1 := verts_t1[i].y
 		var y15 := verts_t15[i].y
 		var expected := alt_orig + (y1 - alt_orig) * 1.5

@@ -28,7 +28,9 @@ extends Node3D
 ##   FOG_PERIOD_S, chaussée mouillée, pluie dans l'ambiance), oiseaux et animaux, éoliennes et drapeaux,
 ##   reflets de l'eau ; puis, une fois le parcours préparé, dans cet ordre (lot P27) : cyclistes du décor,
 ##   véhicules de la route, véhicules lointains, ciel et bateaux (figés en pause), spectateurs (clameur
-##   selon la puissance et les bots doublés) et passants. La météo évaluée (`weather_eval`), le vent
+##   selon la puissance et les bots doublés) et passants. Option « gravel » (U22) : `surface_here` (surface
+##   effective sous le cycliste), poussière derrière la roue (weather_particles.update_dust) et crissement des
+##   pneus (sound_model.set_surface). La météo évaluée (`weather_eval`), le vent
 ##   (`wind_eval`) et les bots de `state` sont lus une seule fois par image et passés à chacun ;
 ##   `wave2_us` / `wave2_frames` : temps moyen des lots P23 à P26, P28 et P29 (enveloppe de P27).
 ## Panneaux et animaux suivent les tronçons d'osm_streamer.gd (`chunk_loaded` / `chunk_freed`) : au plus
@@ -122,8 +124,10 @@ var _cam_s := 0.0                  # dernière abscisse du cycliste reçue par s
 var _rider_v := 0.0
 var _cam_lateral := 0.0            # écart de la caméra à l'axe, mesuré (positif à droite), pour les tests
 const CONTACT_M := 300.0
+var surface_here := "paved"        # lot U22 : surface effective sous le cycliste (world_streamer.surface_at)
 var contacts := 0                  # lot P32 : contacts vus sur la route (images × paires), doit rester à 0
 var last_contact := ""             # lot P32 : qui touchait qui la dernière fois, pour le rapport des tests
+var bot_places: Array = []         # places affichées des bots [{s, lateral}] (bots_view_model.places(), lot Z2)
 var _job: Dictionary = {}
 var _generation := 0
 var _loaded_chunks: Dictionary = {}  # k -> true (tronçons OSM affichés)
@@ -433,6 +437,13 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	# Météo (P8)
 	weather_eval = WeatherModel.evaluate(weather, alt_m, _valley_alt_at(cam_s), wind_eval)
 	particles.update(cam_pos, weather_eval)
+	# Gravel (U22) : surface sous la roue, poussière derrière elle par temps sec et crissement des pneus
+	surface_here = world_streamer.surface_at(cam_s) if world_streamer != null and world_streamer.has_method("surface_at") else "paved"
+	var back := Vector3(-sin(h), 0.0, cos(h))
+	var wheel: Vector3 = _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * RoadBuilder.RIDER_LATERAL_M
+	particles.update_dust(wheel, back, 0.0 if paused else rider_v, surface_here)
+	if sound_player != null and sound_player.get("model") != null:
+		sound_player.model.set_surface(surface_here)
 	if world_streamer != null and world_streamer.has_method("set_road_wetness"):
 		world_streamer.set_road_wetness(float(weather_eval.get("wetness", 0.0)))
 	if living_world != null:
@@ -455,24 +466,21 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		WaterMesh.update_shimmer(osm_streamer.water_material(), wind_eval, dt_s)
 	if not prepared:
 		return
-	# Bots de l'état du core, lus une fois : cyclistes du décor (P28) et spectateurs (P15)
+	# Bots de l'état du core, lus une fois : spectateurs (P15) ; leurs places affichées (bot_places, posées par
+	# main.gd depuis bots_view_model.places()) : cyclistes du décor (P28), véhicules et contacts (P32)
 	var bots: Array = []
-	var bots_s := []
 	var bots_raw = state.get("bots", [])
 	if typeof(bots_raw) == TYPE_ARRAY:
 		bots = bots_raw
-		for b in bots:
-			if typeof(b) == TYPE_DICTIONARY and typeof(b.get("s")) in [TYPE_INT, TYPE_FLOAT]:
-				bots_s.append(float(b["s"]))
 	var t_wave2 := Time.get_ticks_usec()
 	# Cyclistes du décor (P28), figés en pause, qui laissent la place aux bots
-	cyclists.update(cam_s, rider_v, dt_s, paused, bots_s)
+	cyclists.update(cam_s, rider_v, dt_s, paused, bot_places)
 	cyclists_view.update(dt_s, paused)
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
 	headlights = TrafficModel.headlights(weather_eval, _sun_elevation_deg)
 	var others: Array = cyclists.riders()
-	for b in bots_s:
-		others.append({"s": float(b), "lateral": RoadBuilder.BOT_LATERAL_M, "dir": 1})
+	for b in bot_places:
+		others.append({"s": float(b["s"]), "lateral": float(b["lateral"]), "dir": 1})
 	traffic.update(cam_s, rider_v, dt_s, paused, others)
 	if not paused:
 		_count_contacts(others)

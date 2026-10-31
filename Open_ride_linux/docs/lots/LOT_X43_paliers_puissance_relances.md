@@ -1,5 +1,10 @@
 # Lot X43 – Banc du trainer : paliers SIM à puissance cible, plafond, relances courtes, vitesse du volant
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : banc du trainer, paliers SIM à puissance cible (plateau et pignon réels), plafond qui coupe le palier, relances courtes, vitesse du volant et résistance (`trainer_steps`) | Python | X5, X6 | Petite | Séance du 29 octobre ; en PR |
+
 ## 1. Objectif
 
 Séance du 29 octobre : le banc `trainer_steps` (lot X5) envoyait des paliers de pente fixes. Le palier à 6 % demandait environ 600 W pendant 40 s. Il était intenable, et le lâcher venait alors du cycliste (la cadence baissait d'abord). Il ne prouvait donc rien sur le trainer. Le protocole revu (`/mnt/project-files/plans/PROTOCOLE_PALIERS_RETARD_TRAINER.md`, fil FTMS) demande :

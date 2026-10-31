@@ -35,15 +35,17 @@ Pour mettre à jour, cliquez sur l'icône **OpenRide – Mettre à jour**. La mi
 
 ## 3. Premier démarrage et appairage
 
-Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/OpenRide/` (parcours, entraînements, séances, réglages) et ouvre l'écran **Connexion des appareils**.
+Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/OpenRide/` (parcours, entraînements, séances, réglages), installe les contenus de départ (les entraînements livrés, deux plans et quatre parcours de démonstration des biomes, sans rien télécharger) et ouvre l'écran **Connexion des appareils**.
 
 1. Allumez le trainer (pédalez un peu pour le réveiller) et les boîtiers du Click.
 2. L'écran cherche les appareils. Quand tout est relié, il passe seul au menu. Avec un seul boîtier du Click, ou sans Click, choisissez **Passer**.
-3. Pour changer de matériel plus tard : **Réglages**, puis **Appareils : rechercher et appairer**. Appuyez sur le bouton « + » du Click quand l'écran le demande pour reconnaître ce boîtier. Les appareils trouvés sont enregistrés dans `~/OpenRide/config.toml`, puis **Relancer OpenRide** prend en compte le nouveau matériel.
+3. Pour changer de matériel plus tard : **Réglages**, puis **Appareils : rechercher et appairer**. Appuyez sur le bouton « + » du Click quand l'écran le demande pour reconnaître ce boîtier. Valider **Trainer** ou **Ceinture** passe à l'appareil suivant, puis à « aucun » pour l'oublier ; **Oublier le Click** retire les deux boîtiers. Une ceinture choisie est utilisée dès le lancement suivant. Les appareils trouvés sont enregistrés dans `~/OpenRide/config.toml`, puis **Relancer OpenRide** prend en compte le nouveau matériel.
 
 ## 4. Rouler un parcours
 
-**Ajouter un parcours.** Déposez une trace dans le dossier `~/OpenRide/GPX/` : un fichier `.gpx`, ou l'export de Garmin Connect tel quel (`.fit`, `.tcx`, `.fit.gz`, `.tcx.gz` ou `.zip`). OpenRide compile les nouvelles traces à chaque démarrage (une notification s'affiche) : fermez-le et relancez-le avec son icône, le parcours apparaît ensuite dans la liste. Pour que la fiche d'un parcours soit plus parlante, posez à côté de la trace un petit fichier du même nom en `.toml` (nom, description, région, étiquettes).
+**Ajouter un parcours.** Déposez une trace dans le dossier `~/OpenRide/GPX/` : un fichier `.gpx`, ou l'export de Garmin Connect tel quel (`.fit`, `.tcx`, `.fit.gz`, `.tcx.gz` ou `.zip`). OpenRide compile les nouvelles traces à chaque démarrage (une notification s'affiche) : fermez-le et relancez-le avec son icône, le parcours apparaît ensuite dans la liste. Pour que la fiche d'un parcours soit plus parlante, posez à côté de la trace un petit fichier du même nom en `.toml` (nom, description, région, étiquettes). Le menu le rappelle : en bas de la liste des parcours, **Ajouter un parcours** montre où déposer la trace, et **Comment ça marche ?** ouvre l'écran **Aide parcours** (choisir un parcours, ajouter une trace, fiche `.toml`, monde ouvert), dont chaque sujet s'explique dans la carte de droite.
+
+**Packs de parcours.** **Réglages**, **Contenus**, **Pack « Cols célèbres »** construit seize montées célèbres (Alpe d'Huez, Ventoux, Teide, Vosges, Japon…) depuis OpenStreetMap : il faut le réseau, l'écran demande confirmation, montre l'avancement col par col, puis compile les parcours, qui arrivent dans la liste sans relancer. Un pack de parcours reçu en archive `.zip` (avec son `pack.toml`) s'installe du même écran quand il est dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`.
 
 **Lancer une séance.**
 
@@ -56,11 +58,43 @@ Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/O
 
 **Fin de séance.** À l'arrivée d'un parcours ou avec **Terminer et enregistrer**, le bilan affiche la durée, la distance, les puissances (NP, IF, TSS) et les zones. La séance est enregistrée dans `~/OpenRide/Activities/` (section 8).
 
+**Mode WTF (« What the fuck »).** **Mode WTF** à l'accueil ouvre la liste des treize règles absurdes : gravité de la Lune ou de Jupiter, monde à l'envers, route qui s'effondre derrière vous, fromage géant dans les descentes, Katamari, peloton déguisé, micro-défis, livraison d'œufs, horloge réglée par votre cadence, vélo minuscule, tornade de vaches, caméras improbables et **Surprise du chef**. Chaque ligne s'allume ou se coupe (A maintenu ou Entrée) ; **Tout allumer** les rallume toutes ; le choix est gardé dans `~/OpenRide/wtf.toml`. **Lancer une séance WTF** ouvre l'écran **Prêt** (parcours, bot, fantôme), puis **Démarrer**. Un gag à la fois, toutes les 45 à 90 s : le bandeau du haut donne son nom, le temps restant et vos points, la carte dessous ce qu'il faut faire. Quand le chef révèle son plat, **Z** court (touche `Z` au clavier) répond « Non merci, chef ! » dans les 5 secondes ; le chef vexé sert alors du piment la fois suivante. Le mode WTF se roule en SIM seulement : la pente ressentie reste entre −6 et +10 %, et la puissance enregistrée dans le FIT est toujours votre puissance mesurée. Pas de records ni de bonus ; le bilan donne les points, les gags joués et la taille du Katamari.
+
+## 4 bis. Monde ouvert
+
+Le **Monde ouvert** de l'accueil crée la route en roulant, d'après les cartes OpenStreetMap et le relief Copernicus, sans trace à préparer. Il faut Internet la première fois dans une région ; ensuite, la région est en cache (`~/OpenRide/Cache/monde/`, 5 Go au plus) et rien n'est retéléchargé au même endroit.
+
+1. **Globe.** Faites-le tourner jusqu'à votre région (flèches, ou « + » et « − »), ou tapez un nom de lieu au clavier : la recherche s'ouvre (liste fournie avec OpenRide, puis OpenStreetMap si Internet répond). Les régions en cache sont surlignées. A maintenu épingle la région sous le centre : une région épinglée reste toujours dans le cache. A ouvre la carte autour du centre.
+2. **Carte.** Le curseur reste accroché à la route la plus proche ; A pose le départ.
+3. **Cap et navigation.** Choisissez le cap, puis **Balade** (le jeu garde le cap et préfère les petites routes), **Destination** (A cherche le lieu) ou **Boucle** (retour au départ après la longueur choisie). A démarre le préchargement.
+4. **En roulant.** Un panneau annonce chaque carrefour : les flèches ou A choisissent la branche, A maintenu la valide, jusqu'à 30 m avant ; sinon la navigation choisit. Le monde ouvert marche aussi en ERG.
+5. **Garder la balade.** **Terminer et enregistrer** écrit la route parcourue (au-delà de 500 m) en GPX dans `~/OpenRide/GPX/` : elle devient un parcours de la liste au démarrage suivant.
+
+Chaque écran du globe explique ce qu'il fait, et le bandeau du bas donne les boutons du Click et les touches du clavier. Au clavier, les lettres tapées sur le globe ouvrent la recherche d'un lieu ; ensuite, Entrée valide (recherche, carte, cap) et Échap revient.
+
 ## 5. Entraînements ERG, plans et test de FTP
 
 En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pente de la route ne compte plus.
 
-**Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, ou **Importer un fichier** `.zwo`, `.erg` ou `.mrc` trouvé dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`. Une première série d'entraînements s'installe avec `python -m openride_core.tools.workouts install` (depuis `core/`, environnement activé).
+**Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, **Importer un fichier** `.zwo`, `.erg`, `.mrc` ou `.qwk` trouvé dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`, et **Comment ça marche ?**, l'aide à l'écran qui reprend tout ce qui suit (un sujet par ligne, l'explication dans la carte de droite). Les entraînements livrés sont installés au premier démarrage ; sur une installation plus ancienne, **Réglages**, **Contenus**, **Contenus de départ** les ajoute (A maintenu), sans jamais remplacer un fichier existant.
+
+**Ajouter un entraînement.** Quatre façons :
+
+- **Créer** : échauffement, répétitions d'effort et de récupération (durée et % de la FTP), retour au calme, réglés au Click ; **Enregistrer et choisir** écrit un `.zwo` et le choisit. Les mêmes réglages ne font pas de doublon, et aucun entraînement n'est remplacé : un nom déjà pris reçoit `_2`, `_3`…
+- **QWKcode de GoldenCheetah** : un fichier texte `.qwk`, une ligne par segment, `[Nx] durée@puissance[-puissance] [rdurée@puissance[-puissance]]`. Durée en `h`, `m` ou `s`, combinables (`1m30s`, `1.5m`) ; puissance en watts, ou en % de la FTP avec `%` (`50-75%`). Une ligne `#` avant le premier segment donne le nom ; `#` ailleurs commence un commentaire. Exemple :
+
+  ```
+  # Seuil 4 × 5 min
+  10m@130-220
+  5m@180
+  4x 5m@280 r3m@140
+  8x 30s@120% r30s@50%
+  10m@130
+  ```
+
+  `10m@130-220` est une rampe de 130 à 220 W ; `4x 5m@280 r3m@140` fait 4 fois 5 min à 280 W puis 3 min à 140 W. Une erreur donne le numéro de la ligne. Enregistre le fichier dans Téléchargements, puis **Importer un fichier**.
+- **Importer** : le fichier est vérifié, puis copié dans `~/OpenRide/Workouts/` ; un fichier déjà importé n'est pas recopié, un autre du même nom reçoit `_2`.
+- **À la main** : un fichier posé directement dans `~/OpenRide/Workouts/` apparaît dans la liste. `.zwo` (Zwift) et `.mrc` : puissances en % de la FTP ; `.erg` : watts fixes ; `.qwk` : watts ou %. Un bloc `FreeRide` devient un palier à 50 W. Exemples dans `core/workouts/`.
 
 **Pendant l'ERG.** Le bandeau du bas montre le bloc en cours, le temps restant, la cible et le bloc suivant. Les appuis courts sur « + » et « − » règlent l'intensité de ± 2 %, les appuis longs de ± 10 % ; **Z** passe au bloc suivant et **Y** met la séance en pause. Le détail est dans la section 6.
 
@@ -74,7 +108,7 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
 
 **Jauge d'abri des bots.** **Réglages**, **Graphisme**, **Jauge d'abri des bots** : oui affiche un petit arc bleu au-dessus du bot qui t'abrite, rempli selon l'abri que tu reçois (le même pourcentage que la pastille « Abri » du HUD). Elle apparaît dans la roue d'un bot, dès que la pastille « Abri » apparaît (jusqu'à 15 m environ derrière lui), et disparaît quand tu en sors. En medium et high, le pourcentage s'affiche sous l'arc ; en high, l'arc a un léger halo. Coupée par défaut. Seuls les bots abritent : ni le fantôme, ni les cyclistes du décor, ni les véhicules.
 
-**Plans d'entraînement.** L'accueil affiche **Séance du jour** quand un plan est en cours, sinon **Choisir un plan**. Un plan range des entraînements par semaine et par jour ; il garde en mémoire ce qui est fait et ce qui est en retard. `openride-core plan install` copie deux plans de départ (« Reprise 4 semaines » et « FTP 6 semaines »).
+**Plans d'entraînement.** L'accueil affiche **Séance du jour** quand un plan est en cours, sinon **Choisir un plan**. Un plan range des entraînements par semaine et par jour ; il garde en mémoire ce qui est fait et ce qui est en retard. Deux plans de départ (« Reprise 4 semaines » et « FTP 6 semaines ») font partie des contenus de départ (**Réglages**, **Contenus**). **Créer un plan**, en bas de la liste des plans, compose votre propre plan : **Jours** (oui ou non pour chaque jour, mardi, jeudi et samedi au départ), **Entraînements** (ceux de la bibliothèque et le test de FTP ; chaque choix prend le numéro suivant, un second choix le retire), **Durée** (automatique : les entraînements une fois chacun ; plus de semaines : la suite recommence, 12 semaines au plus), puis **Créer le plan**. La carte de droite montre les premières semaines. Le plan s'appelle « Mon plan » (puis « Mon plan 2 »…) et s'ouvre sur sa page : **Démarrer ce plan aujourd'hui** le lance.
 
 **Test de FTP.** **Test de FTP** à l'accueil lance la rampe : paliers d'une minute, +20 W, jusqu'à ce que tu ne puisses plus suivre. Roulez-la de préférence sur une boucle, car un parcours avec arrivée termine la séance. Au bilan, **Accepter** écrit la nouvelle FTP dans la configuration ; **Garder** conserve l'ancienne.
 
@@ -134,11 +168,11 @@ Le clavier double le Click touche pour touche, en menu comme en séance, avec le
 
 Les lettres se lisent comme imprimées sur la touche (AZERTY comme QWERTY). Les flèches haut et bas ne changent pas le braquet : en séance, elles changent la vue de caméra.
 
-Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîtier gauche ne répond pas (section 9). Le boîtier gauche (« − » et flèches) est redémarré tout seul environ une fois par minute et reste alors 4 s environ sans boutons ; tout ce qu'il fait existe aussi sur le boîtier droit ou au clavier. Chaque type d'appui a son bip, ce qui permet de savoir ce qui a été compris sans regarder l'écran.
+Le boîtier gauche porte « − » et les quatre flèches : gauche et droite choisissent l'élément précédent ou suivant (menus, couloirs et cartes du Cyber-Rogue, branches d'un carrefour), haut et bas changent de vue en séance. Il est redémarré tout seul environ une fois par minute et reste alors 4 s environ sans boutons ; le bouton **B** du boîtier droit fait aussi « − », et tout ce que fait le gauche existe aussi sur le boîtier droit ou au clavier. Chaque type d'appui a son bip, ce qui permet de savoir ce qui a été compris sans regarder l'écran.
 
 ## 7. Réglages, thèmes et sons
 
-**Réglages** (menu principal) : **Appareils**, puis un sous-écran par thème. **Cycliste** : FTP, poids, poids du vélo. **Séance** : difficulté en SIM (part de la pente ressentie, de 0 à 100 %, aussi sur l'écran de pause, où elle est gardée pour la séance suivante), braquet de départ, bonus. **Graphisme** : qualité graphique (low, medium ou high), thème, courbes de la séance, mode d'affichage, images/s. **Son** : les quatre volumes. **Vent** : vent, force, direction (par 45°, avec le point cardinal), rafales et plafond. Pour changer une valeur, choisissez le réglage et maintenez A : la valeur s'écrit entre deux flèches (`◀ 75 % ▶`) ; + et B la règlent (appui long : cinq pas), A maintenu l'enregistre et Y annule. Les réglages sont écrits dans `~/OpenRide/config.toml` ; ceux qui touchent la séance en cours s'appliquent tout de suite, les autres à la séance suivante.
+**Réglages** (menu principal) : **Appareils**, **Contenus** (contenus de départ : entraînements, plans et parcours de démonstration ; pack « Cols célèbres », construit depuis OpenStreetMap après confirmation ; archives de thèmes, de biomes ou de parcours trouvées dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import` ; thèmes installés et place libre ; état « installé », « en partie installé » ou « à installer » ; A maintenu installe ce qui manque, sans rien écraser), puis un sous-écran par thème. **Cycliste** : FTP, poids, poids du vélo. **Séance** : difficulté en SIM (part de la pente ressentie, de 0 à 100 %, aussi sur l'écran de pause, où elle est gardée pour la séance suivante), braquet de départ, bonus. **Graphisme** : qualité graphique (low, medium ou high), thème, courbes de la séance, mode d'affichage, images/s. **Son** : les quatre volumes. **Vent** : vent, force, direction (par 45°, avec le point cardinal), rafales et plafond. Pour changer une valeur, choisissez le réglage et maintenez A : la valeur s'écrit entre deux flèches (`◀ 75 % ▶`) ; + et B la règlent (appui long : cinq pas), A maintenu l'enregistre et Y annule. Les réglages sont écrits dans `~/OpenRide/config.toml` ; ceux qui touchent la séance en cours s'appliquent tout de suite, les autres à la séance suivante.
 
 **Qualité graphique.** Trois préréglages : `low`, `medium`, `high`. Si l'image saccade, passez en `low`.
 
@@ -149,9 +183,13 @@ Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîti
 living = false
 ```
 
-**Thèmes.** Un thème change l'apparence de la route, du terrain et du ciel. Les thèmes ajoutés se placent dans `~/OpenRide/Themes/` avec `openride-compiler theme-install DOSSIER` (ou une archive `.zip`, ou son adresse `https://…`), et `theme-list` montre ceux qui sont installés, avec leur taille et leur dernière utilisation ; ils se choisissent dans **Réglages**. La bibliothèque est plafonnée à 5 Go (`[render] theme_library_gb`) : au-delà, l'installation retire le pack utilisé le moins récemment, jamais le thème choisi. Recette d'un pack de textures libres pour les biomes : [3.0/PACK_BIOMES_CC0.md](3.0/PACK_BIOMES_CC0.md).
+**Thèmes.** Un thème change l'apparence de la route, du terrain et du ciel. Pour en ajouter un, déposez son archive `.zip` (thème ou pack de textures des biomes) dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`, puis **Réglages**, **Contenus** : l'archive y apparaît avec sa taille ; A maintenu l'installe. Le même écran liste les thèmes installés, avec leur taille et leur dernière utilisation, et la place libre sur le disque ; un thème se choisit ensuite dans **Réglages**, **Graphisme**. La bibliothèque est plafonnée à 5 Go (`[render] theme_library_gb`) : au-delà, l'installation retire le pack utilisé le moins récemment, jamais le thème choisi. Recette d'un pack de textures libres pour les biomes : [3.0/PACK_BIOMES_CC0.md](3.0/PACK_BIOMES_CC0.md). **Textures du décor** (dans **Réglages**, `[render] texture_level`) : « selon la qualité » par défaut ; un pack qui fournit plusieurs tailles d'images (`theme-pack`) donne alors 1 024 px en basse et moyenne qualité, 2 048 px en haute, sous un budget de mémoire vidéo ; « hautes » impose 2 048 px quelle que soit la qualité.
 
 **Sons.** OpenRide génère lui-même les sons du parcours (vent, roue libre, cloches, rivières). Un fichier OGG déposé dans `~/OpenRide/Sounds/` sous le nom du son (`wind.ogg`, `freewheel.ogg`, `church_bell.ogg`, `river.ogg`, `livestock.ogg`, `village.ogg`) le remplace. En mode classique, un court jingle marque le sommet d'une montée, la fin d'un sprint, le passage sous une arche de bonus et la fin de la séance ; il se remplace de la même façon (`jingle_summit.ogg`, `jingle_summit_pr.ogg` pour un record, `jingle_sprint.ogg`, `jingle_sprint_pr.ogg`, `jingle_arch.ogg`, `jingle_finish.ogg`).
+
+**Profils de joueurs.** Chaque cycliste a son profil : réglages du cycliste et de la séance (FTP, poids, FC max, difficulté, braquet de départ, bonus, niveau des bots, vent, vue de caméra, courbes, ceinture cardio), progression, Garage, records, plan et séances, dans `~/OpenRide/Profils/<profil>/`. Le reste (graphisme, affichage, volumes, trainer, Click) appartient au PC et reste dans `~/OpenRide/config.toml`. Au premier lancement de cette version, votre profil actuel devient « Cycliste 1 » (`Profils/principal/`) après une sauvegarde dans `~/OpenRide/Sauvegardes/` ; les séances simulées ou rejouées passent dans le profil d'essai. Avec au moins deux profils, l'écran **Qui roule ?** s'ouvre après la connexion des appareils : le dernier profil est présélectionné, A maintenu le choisit. La ligne **Profil** de l'accueil y ramène pour changer de profil sans relancer. **Nouveau profil** propose « Cycliste N » ; pour écrire un autre nom au Click, + et B passent à la lettre suivante ou précédente (maintenus : une ligne), Z écrit la lettre, Y efface, A maintenu valide ; au clavier, tapez le nom puis Entrée ; à la souris, cliquez les lettres puis « Valider ». **Gérer un profil** permet de le renommer ou de le supprimer (il part dans `Profils/.corbeille/`, récupérable à la main) ; le profil en cours et le dernier profil ne se suppriment pas. Pour ouvrir directement un profil : `openride --profil cycliste-2` (l'identifiant est le nom en minuscules, sans accents) ; `openride-core profil list` liste les profils.
+
+**Profil d'essai.** « Session simulée » roule sur le profil d'essai (`Profils/_essai/`), signalé par « PROFIL D'ESSAI » dans le titre et le bandeau « ESSAI » : ses séances, ses pièces et ses records ne touchent jamais votre profil. `openride-core profil essai --vider` le remet à zéro.
 
 ## 8. Retrouver ses séances
 
@@ -163,7 +201,7 @@ Pour relire les chiffres d'une séance : `openride-core summary` (dernier bilan)
 
 **Le trainer ne répond plus ou reste « réservé ».** Une autre application (Zwift, le téléphone) le tient peut-être, ou OpenRide s'est arrêté sans le rendre. Fermez l'autre application, puis cliquez sur l'icône **OpenRide – Libérer le trainer**. En terminal : `openride-core release-trainer`. Éteindre et rallumer le trainer règle aussi la plupart des cas. Si le trainer reste réservé malgré cela, débranchez-le quelques secondes, puis relancez OpenRide ; s'il ne se connecte toujours pas, joignez le journal à une demande d'aide (voir plus bas).
 
-**Le Click ne répond plus.** Appuyez sur un bouton pour le réveiller. Sinon, déconnectez-le d'abord (`bluetoothctl disconnect` suivi de son adresse) puis rappuyez. Si seul le boîtier gauche (« − ») est muet, utilisez le bouton **B** du boîtier droit : sans passage récent par l'application Zwift (moins de 24 heures), le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion. OpenRide le redémarre alors tout seul (environ 4 s sans boutons, puis il répond de nouveau) ; un appui fait pendant ces quelques secondes est perdu. Ce n'est pas une panne d'OpenRide. Pour le laisser muet à la place : `click_reset_locked = false` dans `[drivers]`.
+**Le Click ne répond plus.** Appuyez sur un bouton pour le réveiller. Sinon, déconnectez-le d'abord (`bluetoothctl disconnect` suivi de son adresse) puis rappuyez. Si le boîtier gauche (« − » et flèches) ne répond pas pendant quelques secondes, c'est son redémarrage : sans passage récent par l'application Zwift (moins de 24 heures), Zwift le verrouille environ une minute après la connexion et OpenRide le redémarre tout seul (environ 4 s sans boutons, puis il répond de nouveau) ; un appui fait pendant ces quelques secondes est perdu, **B** du boîtier droit fait « − » en attendant. Ce n'est pas une panne d'OpenRide. Pour le laisser muet à la place : `click_reset_locked = false` dans `[drivers]`.
 
 **Écran noir, lent ou saccadé.** Passez la qualité graphique en `low` (**Réglages**). Vérifiez que le pilote de la carte graphique est installé. Les courbes de la séance en « masquées » libèrent aussi un peu de puissance.
 

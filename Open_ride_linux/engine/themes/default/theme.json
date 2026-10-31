@@ -1,6 +1,7 @@
 {
   "version": "2.0",
   "name": "Alpes été",
+  "texture_levels": [],
   "terrain": {
     "grass": {
       "texture": null,
@@ -388,48 +389,34 @@
       "ground": {
         "layers": [
           {
-            "name": "pelouse rase",
+            "name": "herbe du parcours de démonstration",
             "role": "flat",
-            "color": "#7f8f5a",
+            "color": "#6f9a4a",
             "texture": null,
             "scale_m": 6.0
           },
           {
-            "name": "éboulis et rocher",
+            "name": "roche du parcours de démonstration",
             "role": "steep",
-            "color": "#8c8a86",
+            "color": "#9a9488",
             "texture": null,
             "scale_m": 12.0
           },
           {
-            "name": "neige et glacier",
+            "name": "neige du parcours de démonstration",
             "role": "high",
-            "color": "#f4f7fa",
+            "color": "#f2f5f8",
             "texture": null,
             "scale_m": 8.0
           }
         ],
-        "slope_threshold_deg": 28,
+        "slope_threshold_deg": 22,
         "blend_sharpness": 4.0,
-        "high_line_m": 2400
+        "high_line_m": 2200
       },
       "vegetation": {
-        "species": [
-          {
-            "kind": "larch",
-            "weight": 4
-          },
-          {
-            "kind": "pine",
-            "weight": 3
-          },
-          {
-            "kind": "spruce",
-            "weight": 2
-          }
-        ],
-        "max_density_per_ha": 250,
-        "treeline_m": 2100
+        "max_density_per_ha": 400,
+        "treeline_m": 2000
       },
       "water": {
         "color": "#3a7d8f",

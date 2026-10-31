@@ -1,5 +1,10 @@
 # Lot N7 – Entraînement ERG à l'écran : bandeau, histogramme des blocs et bip à T − 3 s (ancien F2)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Entraînement ERG à l'écran : bandeau, histogramme et bip à T − 3 s (ancien F2) | GDScript | E3, I6 (livrés) | Moyenne | **Livré le 25 octobre** (interne, PR #116) |
+
 ## 1. Objectif
 
 Le core pilote déjà l'ERG (lot F) et le HUD affiche la cible, le bloc et le temps restant en texte (PR #73). Il manque ce que la SRS demande au sprint 4 : le bandeau d'entraînement, l'histogramme des blocs avec la position courante, et le bip trois secondes avant chaque changement de bloc. La logique existe et est testée sans écran (`erg_view_model.gd`, lot I6) : ce lot l'affiche et la fait entendre.

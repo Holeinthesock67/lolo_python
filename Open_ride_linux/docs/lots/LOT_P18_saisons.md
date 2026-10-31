@@ -1,5 +1,10 @@
 # Lot P18 – Saisons (sans affichage et shaders, version 2.0)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Saisons : feuillages, arbres dénudés, neige, vergers en fleurs, feuilles qui tombent | GDScript + shader | P5, P8, P9, P17 ; P7 | Moyenne | Oui, **version 2.0** (issue #142) |
+
 ## 1. Objectif
 
 **Version 2.0** (décision du propriétaire, 25 octobre). Faire changer le paysage avec la saison, choisie par le thème 1.2 (`season`) ou tirée de la date du PC :

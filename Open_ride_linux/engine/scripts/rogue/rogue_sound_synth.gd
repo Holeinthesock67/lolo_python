@@ -13,7 +13,15 @@ const MUSIC_BARS := 8
 const BEATS_PER_BAR := 4
 ## Progression de la boucle (une note fondamentale par mesure, en Hz) : la mineur, fa, do, sol, deux mesures chacun.
 const MUSIC_ROOTS := [110.0, 110.0, 87.31, 87.31, 130.81, 130.81, 98.0, 98.0]
-const MUSIC_LAYERS := ["bass", "pulse", "arp"]
+const MUSIC_LAYERS := ["bass", "pulse", "arp", "chip"]
+## Mélodie du thème 8 bits par double-croches : degré de l'accord (0 fondamentale, 1 tierce, 2 quinte, 3 octave),
+## -1 silence. Première et seconde mesure de chaque accord, puis la montée de la dernière mesure.
+const CHIP_DRIVE := 2.5
+const CHIP_MOTIFS := [
+	[3, -1, 2, 3, 1, -1, 2, -1, 0, 1, 2, -1, 3, 2, 1, -1],
+	[2, 2, -1, 1, 2, -1, 3, -1, 2, -1, 1, 0, 1, -1, -1, -1],
+	[0, 1, 2, 3, 1, 2, 3, 4, 2, 3, 4, 5, 3, -1, 5, -1],
+]
 
 ## Nom du son -> [durée en secondes, en boucle].
 const SOUNDS := {
@@ -154,10 +162,12 @@ static func render(sound: String) -> PackedFloat32Array:
 		"rogue_firewall_hum":
 			for i in b.size():
 				var t := float(i) / RATE
-				b[i] = (sin(TAU * 50.0 * t) + 0.5 * sin(TAU * 100.0 * t)) * (1.0 + 0.3 * sin(TAU * 0.5 * t))
+				# Fondamentale à 50 Hz et harmoniques jusqu'à 200 Hz : le ronflement reste grave mais s'entend sur des enceintes de PC.
+				b[i] = (sin(TAU * 50.0 * t) + 0.6 * sin(TAU * 100.0 * t) + 0.5 * sin(TAU * 150.0 * t) + 0.35 * sin(TAU * 200.0 * t)) \
+						* (1.0 + 0.3 * sin(TAU * 0.5 * t))
 		"rogue_hack":
 			for q in 4:
-				_noise(b, 0.1 * q, 0.06, 0.6, 0.5, 3.0, 777 + q)
+				_noise(b, 0.1 * q, 0.06, 0.6, 0.15, 3.0, 777 + q)
 		"rogue_purge":
 			_note(b, 0.0, 1200.0, 300.0, 0.20, 0.6, 1.0)
 			_note(b, 0.20, G5, G5, 0.15, 0.7, 4.0)
@@ -169,7 +179,7 @@ static func render(sound: String) -> PackedFloat32Array:
 			_noise(b, 0.0, 0.30, 0.2, 0.08, -1.5)
 		"rogue_reroll":
 			for q in 3:
-				_noise(b, 0.06 * q, 0.015, 0.5, 0.6, 2.0, 99 + q)
+				_noise(b, 0.06 * q, 0.015, 0.5, 0.15, 2.0, 99 + q)
 		"rogue_room_won":
 			_note(b, 0.0, C5, C5, 0.20, 0.6, 3.0, 0.2)
 			_note(b, 0.15, E5, E5, 0.20, 0.6, 3.0, 0.2)
@@ -210,6 +220,8 @@ static func render(sound: String) -> PackedFloat32Array:
 ## Une couche de la musique (« bass », « pulse » ou « arp ») : 8 mesures à 96 bpm, boucle sans coupure
 ## (chaque note s'éteint avant la mesure suivante). Les quatre accords sont rendus une fois et recopiés.
 static func render_music(layer: String) -> PackedFloat32Array:
+	if layer == "chip":
+		return _render_chip()
 	var beat := 60.0 / TEMPO_BPM
 	var bars: Dictionary = {}
 	var out := PackedFloat32Array()
@@ -231,6 +243,87 @@ static func render_music(layer: String) -> PackedFloat32Array:
 			bars[root] = b
 		out.append_array(bars[root])
 	return _normalize(out)
+
+
+## Thème du boss façon console 8 bits (lot R20) : même grille d'accords, même tempo et même boucle que les autres
+## couches, joué seul pendant le boss. Mélodie en onde carrée (rapport cyclique 25 %, puis 50 % sur la seconde
+## mesure de chaque accord), basse en onde triangle par croches, batterie de bruit (grosse caisse, caisse claire,
+## charleston). Volumes en paliers de 1/16, comme les puces sonores ; un passe-bas doux garde les aigus sous la
+## limite du mode (test_rogue_sound_levels.gd).
+static func _render_chip() -> PackedFloat32Array:
+	var beat := 60.0 / TEMPO_BPM
+	var step := beat / 4.0
+	var out := _buf(music_duration_s())
+	for bar in MUSIC_BARS:
+		var root: float = MUSIC_ROOTS[bar]
+		var t0 := bar * bar_duration_s()
+		var tones: Array = _chord(root)
+		var motif: Array = CHIP_MOTIFS[bar % 2]
+		if bar == MUSIC_BARS - 1:
+			motif = CHIP_MOTIFS[2]                  # dernière mesure : montée qui relance la boucle
+		var duty := 0.25 if bar % 2 == 0 else 0.5
+		for q in motif.size():
+			var deg: int = motif[q]
+			if deg >= 0:
+				var f: float = root * 4.0 * float(tones[deg % 3]) * (2.0 if deg >= 3 else 1.0)
+				_square(out, t0 + q * step, f, step * 0.9, 0.30, duty)
+		for q in BEATS_PER_BAR * 2:                  # basse triangle : fondamentale puis octave, par croches
+			var fb := root * (1.0 if q % 2 == 0 else 2.0)
+			_triangle(out, t0 + q * beat * 0.5, fb, beat * 0.5 - 0.01, 0.45)
+		for q in BEATS_PER_BAR:
+			if q % 2 == 0:
+				_note(out, t0 + q * beat, 120.0, 45.0, 0.12, 0.35, 2.0)          # grosse caisse
+			else:
+				_noise(out, t0 + q * beat, 0.10, 0.22, 0.35, 5.0, 4242 + bar)    # caisse claire
+			_noise(out, t0 + q * beat + beat * 0.5, 0.03, 0.06, 0.6, 6.0, 9090 + q)  # charleston
+	_lowpass(out, 0.9)
+	var peak := 0.0
+	for v in out:
+		peak = maxf(peak, absf(v))
+	for i in out.size():                         # compression douce : le thème tient le niveau des autres phases
+		out[i] = tanh(CHIP_DRIVE * out[i] / maxf(peak, 1e-6))
+	return _normalize(out)
+
+
+## Rapports de fréquence de l'accord de la mesure (fondamentale, tierce, quinte) : mineur sur la, majeur sinon.
+static func _chord(root: float) -> Array:
+	if is_equal_approx(root, MUSIC_ROOTS[0]):
+		return [1.0, 1.2, 1.5]
+	return [1.0, 1.25, 1.5]
+
+
+## Onde carrée à volume en paliers de 1/16 (attaque nette, déclin court), ajoutée dans `b`.
+static func _square(b: PackedFloat32Array, start: float, f: float, duration: float, level: float, duty: float) -> void:
+	var i0 := int(start * RATE)
+	var n := mini(int(duration * RATE), b.size() - i0)
+	var ph := 0.0
+	for j in n:
+		var k := float(j) / n
+		var env := floorf(16.0 * (1.0 - 0.6 * k)) / 16.0
+		ph = fmod(ph + f / RATE, 1.0)
+		b[i0 + j] += (1.0 if ph < duty else -1.0) * env * level * minf(1.0, float(n - j) / (0.003 * RATE))
+
+
+## Onde triangle (la basse des consoles), fondu de 3 ms aux bords.
+static func _triangle(b: PackedFloat32Array, start: float, f: float, duration: float, level: float) -> void:
+	var i0 := int(start * RATE)
+	var n := mini(int(duration * RATE), b.size() - i0)
+	var ph := 0.0
+	for j in n:
+		ph = fmod(ph + f / RATE, 1.0)
+		var edge := minf(1.0, minf(float(j), float(n - j)) / (0.003 * RATE))
+		b[i0 + j] += (4.0 * absf(ph - 0.5) - 1.0) * level * edge
+
+
+## Passe-bas à un pôle sur toute la boucle, réamorcé sur la fin pour un raccord sans saut.
+static func _lowpass(b: PackedFloat32Array, alpha: float) -> PackedFloat32Array:
+	var y := b[b.size() - 1] if b.size() > 0 else 0.0
+	for _pass in 2:
+		for i in b.size():
+			y += alpha * (b[i] - y)
+			if _pass == 1:
+				b[i] = y
+	return b
 
 
 ## Octets PCM 16 bits mono d'une forme d'onde (pour AudioStreamWAV).

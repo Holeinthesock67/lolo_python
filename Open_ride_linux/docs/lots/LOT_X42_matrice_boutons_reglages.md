@@ -1,5 +1,10 @@
 # Lot X42 – Matrice des boutons et des réglages, par mode et par phase
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Matrice des boutons du Click, des touches du clavier et des réglages par mode et par phase (`matrice_boutons`), secours du boîtier gauche, plan des boutons §7.1 lu comme référence | Python | X40, §7.1 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x42`) |
+
 ## 1. Objectif
 
 Le propriétaire a fait cette demande le 28 octobre : « Dans les cas de test il faut essayer les divers boutons dans tous les modes et phase de jeu. Il faut également tester l'effet de chaque option dans chaque phase. Par exemple en fin de mode ERG. »
@@ -85,7 +90,7 @@ Le tableau du clavier du §7.1 est lu lui aussi.
 
 ### Boîtier gauche
 
-Le boîtier gauche peut se taire (verrou Zwift, SRS §4.2). Le §7.1 dit : « rien d'indispensable n'est mis sur le seul boîtier gauche ».
+Le boîtier gauche répond, mais il est redémarré environ une fois par minute (verrou Zwift, SRS §4.2) : environ 4 s sans boutons. Le §7.1 dit : « rien d'indispensable n'est mis sur le seul boîtier gauche ».
 
 - À chaque phase où la séance roule, l'effet de chaque flèche doit aussi être obtenu par un bouton du boîtier droit (+, A, B, Y, Z).
 - La vue de caméra n'est jamais indispensable. Si elle n'est qu'à gauche, elle est notée « confort », sans échec.

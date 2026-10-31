@@ -1,5 +1,10 @@
 # Lot O10 – Test de FTP : test par paliers (rampe) et test de 20 minutes, côté core
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Test de FTP (rampe et 20 min) côté core, nouvelle FTP proposée puis enregistrée | Python | O3 ; O9 utile | Moyenne | **Livré le 27 octobre** (issue #154) |
+
 > **Mise à jour du 29 octobre (lot O19)** : le test de 20 minutes est retiré, à la demande du propriétaire (aucune roue libre en ERG). Le test de FTP est la rampe seule. Ce cahier garde la description d'origine.
 
 ## 1. Objectif

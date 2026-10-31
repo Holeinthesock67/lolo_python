@@ -305,14 +305,16 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     sup = launcher.build_supervisor(["--trainer", "mock", "--config", str(cfg)], env)
     assert sup.core_cmd[-5:] == ["run", "--trainer", "mock", "--config", str(cfg)]
     assert sup.engine_cmd[0] == str(godot) and "--verbose" in sup.engine_cmd
-    assert sup.engine_cmd[-8:] == [
+    assert sup.engine_cmd[-10:] == [
         "--ipc-state-port=6005",
         "--ipc-cmd-port=6006",
         "--quality=high",
         "--theme=alpes",
+        "--texture-level=auto",
         "--visual-grade=2.5",
         "--camera=follow_near",
         "--living=on",
+        "--load-guard=on",
         "--display=fullscreen",
     ]
     assert sup.release_cmd[-3:] == ["release-trainer", "--config", str(cfg)]
@@ -323,14 +325,16 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     no_cfg = launcher.build_supervisor([], {**env})
     assert no_cfg.core_cmd[-(len(launcher.DEFAULT_CORE_ARGS) + 1):] == ["run", *launcher.DEFAULT_CORE_ARGS]
     assert "--autostart" not in launcher.DEFAULT_CORE_ARGS   # menus de l'engine (lot N6)
-    assert no_cfg.engine_cmd[-8:] == [
+    assert no_cfg.engine_cmd[-10:] == [
         "--ipc-state-port=5005",
         "--ipc-cmd-port=5006",
         "--quality=low",
         "--theme=default",
+        "--texture-level=auto",
         "--visual-grade=2.5",
         "--camera=follow_near",
         "--living=on",
+        "--load-guard=on",
         "--display=fullscreen",
     ]
     probe = launcher.build_supervisor([], {**env, "OPENRIDE_PERF_PROBE": str(tmp_path / "sonde.csv")})
@@ -490,12 +494,12 @@ def test_openride_log_file_is_written_without_link(fake, tmp_path):
 
 def test_engine_gets_living_off(tmp_path: Path):
     cfg = tmp_path / "config.toml"
-    cfg.write_text("[render]\nliving = false\n")
+    cfg.write_text("[render]\nliving = false\nload_guard = false\n")
     godot = tmp_path / "godot"
     godot.write_text("#!/bin/sh\n")
     godot.chmod(0o755)
     sup = launcher.build_supervisor(["--config", str(cfg)], {"GODOT": str(godot), "OPENRIDE_LOG": str(tmp_path / "x.log")})
-    assert sup.engine_cmd[-2:] == ["--living=off", "--display=fullscreen"]
+    assert sup.engine_cmd[-3:] == ["--living=off", "--load-guard=off", "--display=fullscreen"]   # lot Y6
 
 
 def test_engine_display_from_config_or_environment(tmp_path: Path):

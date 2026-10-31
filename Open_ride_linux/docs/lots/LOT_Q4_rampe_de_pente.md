@@ -1,5 +1,10 @@
 # Lot Q4 – Rampe de pente plus rapide, surtout à la descente
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Rampe de pente plus rapide, vitesses distinctes à la montée et à la descente | Python | Q1 (`session.py`) | Petite | Oui ; issue #171 |
+
 ## 1. Objectif
 
 Essai du 25 octobre, marches 0 / 7 % : le core met 4 à 5 s pour passer d'une pente à l'autre (`grade_rate_pct_per_s` = 2 %/s), en partie compensés par l'anticipation de 0,8 s (`latency_tau_s`). Le trainer ajoute ensuite son propre retard, surtout quand la pente baisse. Ce lot rend la rampe du core plus rapide, avec une vitesse distincte pour la montée et la descente de la pente envoyée, pour que le core ne s'ajoute plus au retard du trainer.

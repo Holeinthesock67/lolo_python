@@ -19,7 +19,7 @@ const VEGETATION_KINDS := ["wood", "scrub", "orchard", "meadow", "farmland", "gr
 const VEGETATION_OPEN_KINDS := ["meadow", "farmland", "grassland"]
 const POI_KINDS := ["church_bell", "river", "livestock", "village", "viewpoint", "wind_turbine", "flag"]   # 1.2 : P12
 const WATER_LINE_KINDS := ["river", "stream", "canal"]
-const WATER_AREA_KINDS := ["lake", "pond", "reservoir"]
+const WATER_AREA_KINDS := ["lake", "pond", "reservoir", "sea"]   # 1.6 : sea (lot U1)
 const ROAD_KINDS := ["motorway", "trunk", "primary", "secondary", "tertiary", "unclassified", "residential", "track"]   # 1.5 : P22
 
 

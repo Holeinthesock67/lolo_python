@@ -23,6 +23,8 @@ const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
 const FpsCounter := preload("res://scripts/fps_counter.gd")
+const WtfView := preload("res://scripts/wtf/wtf_view.gd")
+const WtfHudModel := preload("res://scripts/wtf/wtf_hud_model.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -39,6 +41,8 @@ const MenuModel := preload("res://scripts/menu_model.gd")
 const KeyMap := preload("res://scripts/key_map.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
+const LoadGuard := preload("res://scripts/load_guard.gd")
+const QualityPresets := preload("res://scripts/quality_presets.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
 const AtmosphereView := preload("res://scripts/atmosphere_view.gd")
@@ -100,6 +104,10 @@ var erg_view = ErgViewModel.new()
 var erg_panel = null
 ## Compteur d'images/s du HUD (réglage `render.fps`, caché par défaut).
 var fps_counter = null
+## Habillage du mode « What the fuck » (lot WTF7) : bandeau, cartes, Katamari, horloge.
+var wtf_view = null
+## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
+var load_guard = LoadGuard.new({}, false)
 var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
 var _beep_player: AudioStreamPlayer
 var sound_player = null
@@ -201,7 +209,7 @@ func _ready() -> void:
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
-	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)))
+	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)), -1.0, "--camera")
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
 	print("Mode d'affichage : ", _display_name)
@@ -213,6 +221,7 @@ func _ready() -> void:
 	streamer.culling = bool(cfg.get("culling", false))
 	streamer.test_log = bool(cfg["test_mode"])
 	streamer.forced_biome = str(cfg.get("biome", "auto"))
+	streamer.texture_level = str(cfg.get("texture_level", "auto"))
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
 		tree_rend.name = "TreeRenderer"
@@ -230,6 +239,10 @@ func _ready() -> void:
 		if streamer.osm_streamer != null:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+	load_guard = LoadGuard.new(QualityPresets.image(_quality_name), bool(cfg["load_guard"]), _forward_plus())
+	if load_guard.enabled:   # temps GPU de la vue lu à chaque image
+		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+	print("Garde-fou de charge : ", "actif" if load_guard.enabled else "coupé")
 	streamer.osm_streamer.set_preset(_quality_name)
 	atmosphere_view.name = "AtmosphereView"
 	add_child(atmosphere_view)
@@ -278,6 +291,12 @@ func _ready() -> void:
 	ipc.garage_received.connect(_on_garage)
 	ipc.xp_result_received.connect(_on_xp_result)
 	ipc.progression_received.connect(_on_progression)
+	ipc.profiles_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_profiles(msg)
+		_refresh_menu())
+	ipc.contents_received.connect(func(msg: Dictionary) -> void:
+		_run_menu_action(menu_flow.on_contents(msg))
+		_refresh_menu())
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
 	ipc.core_lost.connect(_on_core_lost)
@@ -335,6 +354,8 @@ func _ready() -> void:
 	add_child(overlay_layer)
 	fps_counter = FpsCounter.new()
 	overlay_layer.add_child(fps_counter)
+	wtf_view = WtfView.new()
+	hud.add_child(wtf_view)
 	ipc.world_menu_received.connect(_on_world_menu_received)
 	ipc.world_status_received.connect(func(msg: Dictionary) -> void: _world_menu_status(msg))
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
@@ -345,12 +366,14 @@ func _ready() -> void:
 	menu_view = MenuView.new()
 	menu_layer.add_child(menu_view)
 	banner.reparent(menu_layer)   # le bandeau reste lisible au-dessus du menu, HUD caché ou non
+	world_menu_view.reparent(menu_layer)   # menu du globe plein écran, HUD caché derrière lui (lot O22)
 	menu_view.item_clicked.connect(func(item_id: String) -> void:
 		# Clic sur un élément : focus dessus puis validation, comme un appui long sur A.
 		print("Souris : clic sur ", item_id)
 		if menu_flow.is_visible() and menu_flow.menu.focus_item(item_id):
-			_play_tones(BEEPS["A_LONG"], BEEP_LEVEL)
-			_menu_event("A_LONG"))
+			var ev: String = menu_flow.click_event()   # grille du nom du profil : le clic écrit la lettre (MJ8)
+			_play_tones(BEEPS[ev], BEEP_LEVEL)
+			_menu_event(ev))
 	menu_view.mouse_event.connect(func(ev: String) -> void:
 		print("Souris : ", ev)
 		if menu_flow.is_visible():
@@ -384,6 +407,9 @@ func _ready() -> void:
 	ipc.plans_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_plans(msg)
 		_refresh_menu())
+	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_wtf_rules(msg)
+		_refresh_menu())
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
 		_refresh_menu())
@@ -405,18 +431,20 @@ static func _quality_from_cli() -> bool:
 	return false
 
 
-## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de
-## suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s et jauge d'abri montrés ou cachés.
+## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, niveau des textures, thème et mode d'affichage
+## appliqués tout de suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s et jauge d'abri montrés ou cachés.
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
 	AudioMix.apply_settings(menu_flow.settings.items)
-	fps_counter.probe_active = _probe.is_open()
+	fps_counter.measure_kept = _probe.is_open() or load_guard.enabled
 	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
 	_draft_gauge_on = str(menu_flow.settings.item(DraftGaugeModel.SETTING_KEY).get("value", "off")) == "on"
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
 	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
 		_quality_name = q
 		RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+		load_guard.reset(QualityPresets.image(_quality_name), _forward_plus())
+		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
@@ -425,6 +453,9 @@ func _on_settings(msg: Dictionary) -> void:
 		_report_quality(q, "reglage")
 	elif q != _quality_name:
 		_report_quality(q, "reglage")   # valeur inconnue : la qualité appliquée ne change pas, et le journal le dit
+	var tl := str(menu_flow.settings.item("render.texture_level").get("value", streamer.texture_level))
+	if tl in EngineArgs.VALID_TEXTURE_LEVELS:
+		streamer.texture_level = tl   # niveau des textures imposé (lot P20) ; rien n'est rechargé s'il ne change pas
 	var th := str(menu_flow.settings.item("render.theme").get("value", _theme_name))
 	if th != _theme_name:
 		_apply_theme(th)
@@ -445,8 +476,7 @@ func _on_settings(msg: Dictionary) -> void:
 	var cam := str(menu_flow.settings.item("render.camera").get("value", ""))
 	if CameraViews.is_valid(cam):
 		if _camera_setting != "" and cam != _camera_setting and cam != camera_views.current:
-			camera_views.set_view(cam)
-			print("Vue de caméra : ", cam)
+			camera_views.set_view(cam, -1.0, "réglage render.camera")
 		_camera_setting = cam
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
@@ -540,16 +570,13 @@ func _camera_event(event_name: String) -> bool:
 	if event_name.begins_with("A_") and junction_view != null and junction_view.vm.is_visible():
 		return false
 	var now_s := Time.get_ticks_usec() / 1000000.0
-	var changed := false
 	match event_name:
 		"A_SHORT", "UP_SHORT":
-			changed = camera_views.next_view(now_s)
+			camera_views.next_view(now_s, event_name)
 		"DOWN_SHORT":
-			changed = camera_views.previous_view(now_s)
+			camera_views.previous_view(now_s, event_name)
 		"A_LONG":
-			changed = camera_views.reset_default(now_s)
-	if changed:
-		print("Vue de caméra : ", camera_views.current)
+			camera_views.reset_default(now_s, event_name)
 	return true
 
 
@@ -605,10 +632,17 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_imports()
 		"list_plans":
 			ipc.list_plans()
+		"list_wtf_rules":
+			ipc.send_command("list_wtf_rules", {})
+		"set_wtf_rules":   # une commande set_wtf_rule par règle basculée (lot WTF3)
+			for r in act.get("list", []):
+				ipc.send_command("set_wtf_rule", {"id": str(r["id"]), "on": bool(r["on"])})
 		"start_plan":
 			ipc.start_plan(str(act["id"]), act.get("start_date", null))
 		"stop_plan":
 			ipc.stop_plan()
+		"create_plan":
+			ipc.create_plan(act["workouts"], act["days"], act.get("weeks", null))
 		"accept_ftp":
 			ipc.accept_ftp(bool(act.get("force", false)))
 		"create_workout":
@@ -640,6 +674,18 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("buy", {"item_id": str(act["item_id"])})
 		"set_avatar":
 			ipc.send_command("set_avatar", {"avatar": act["avatar"]})
+		"list_contents":   # contenus installables (lot O25, contrat 1.5)
+			ipc.send_command("list_contents", {})
+		"install_content":
+			ipc.send_command("install_content", {"id": str(act["id"])})
+		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
+			ipc.send_command("list_profiles", {})
+		"select_profile", "delete_profile":
+			ipc.send_command(name, {"id": str(act["id"])})
+		"create_profile":
+			ipc.send_command("create_profile", {"name": str(act["name"])})
+		"rename_profile":
+			ipc.send_command("rename_profile", {"id": str(act["id"]), "name": str(act["name"])})
 
 
 # --- menu « Monde ouvert » (lot W11) -----------------------------------------------------
@@ -702,6 +748,34 @@ func _world_menu_key(event: InputEventKey) -> bool:
 	return false
 
 
+## Nom d'un profil au clavier (lot MJ8) : la touche écrit au lieu d'agir comme un bouton du Click.
+func _profile_name_key(event: InputEventKey) -> bool:
+	var ch := char(event.unicode) if event.unicode > 31 else ""
+	var enter := event.keycode in [KEY_ENTER, KEY_KP_ENTER]
+	var res: Dictionary = menu_flow.name_key(ch, enter, event.keycode == KEY_BACKSPACE)
+	if not res.get("used", false):
+		return false
+	_run_menu_action(res.get("action", {}))
+	_refresh_menu()
+	return true
+
+
+## Profil en cours (`hello_ack.config.profile`, lot MJ8) : accueil, titre de la fenêtre, bandeau ESSAI ; la
+## liste des profils est demandée pour « Qui roule ? ».
+func _apply_profile() -> void:
+	var block = ipc.core_config.get("profile", {})
+	menu_flow.on_hello_profile(block)
+	DisplayServer.window_set_title(menu_flow.profiles.home_title())
+	_set_trial_badge(menu_flow.profiles.is_trial())
+	if menu_flow.profiles.enabled():
+		ipc.send_command("list_profiles", {})
+
+
+## Bandeau « ESSAI » en haut du HUD sur le profil d'essai (maquette D, lot MJ8) : dessiné par le HUD.
+func _set_trial_badge(on: bool) -> void:
+	hud.set_trial_badge(on)
+
+
 ## Menu plein écran : rien du HUD de séance derrière lui. Run Cyber-Rogue : la scène du mode a son HUD
 ## diégétique (lot R11), le HUD classique (panneaux, profil, courbes) est caché ; le compteur d'images/s reste.
 func _sync_hud(menu_shown: bool) -> void:
@@ -710,12 +784,17 @@ func _sync_hud(menu_shown: bool) -> void:
 		overlay_layer.visible = not menu_shown
 
 
+## Un menu plein écran est affiché : liste des menus ou globe du monde ouvert (lot O22).
+func _full_screen_menu() -> bool:
+	return menu_view.visible or (world_menu_view != null and world_menu_view.visible)
+
+
 func _refresh_menu() -> void:
 	if menu_view == null:
 		return
 	var shown: bool = menu_flow.is_visible() and not (world_menu_view != null and world_menu_view.visible)
 	menu_view.visible = shown
-	_sync_hud(shown)
+	_sync_hud(_full_screen_menu())
 	if shown:
 		var st: Dictionary = menu_flow.state()
 		if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
@@ -761,6 +840,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if key.pressed:
 		if world_menu_view != null and world_menu_view.visible and _world_menu_key(key):
 			return   # saisie de la recherche du monde ouvert : la touche est une lettre, pas un bouton
+		if menu_flow.is_visible() and _profile_name_key(key):
+			return   # saisie du nom d'un profil (lot MJ8) : lettres, Entrée valide, Retour arrière efface
 		key_map.press(key.keycode, key.shift_pressed, now_s)
 		return
 	var ev: String = key_map.release(key.keycode, now_s)
@@ -787,8 +868,12 @@ func _process(delta: float) -> void:
 	_record_frame_perf(delta)
 	fps_counter.add_frame(delta)
 	_probe.frame(delta, streamer)
+	_step_load_guard(delta)
 	var now := Time.get_ticks_usec()
 	_remember_camera_view(now / 1000000.0)
+	var camera_log: String = camera_views.log_line()   # tout changement de la vue affichée, quelle qu'en soit l'origine
+	if camera_log != "":
+		print(camera_log)
 	# Personnages et animaux (anim_clock.gd) : figés avec le décor quand le core ne répond plus.
 	if not banner.has_message("core_lost"):
 		AnimClock.advance(delta)
@@ -1043,7 +1128,7 @@ func _on_test_message(msg: Dictionary) -> void:
 		"menu_state":
 			ipc.test_log("menu_state " + JSON.stringify(_test_menu_state(str(msg.get("req", "")))))
 		"camera_view":   # vue de caméra imposée, sans transition (tour visuel, lot X21)
-			camera_views.set_view(str(msg.get("view", "")))
+			camera_views.set_view(str(msg.get("view", "")), -1.0, "message de test")
 			ipc.test_log("camera_view done=" + camera_views.effective())
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
@@ -1146,6 +1231,8 @@ func _test_menu_state(req: String) -> Dictionary:
 	var world := {"visible": world_menu_view != null and world_menu_view.visible}
 	if world["visible"]:
 		world["state"] = str(world_menu_view.vm.state)
+		world["help"] = world_menu_view.help_label.text
+		world["hint"] = world_menu_view.hint_text()
 	return {"req": req, "visible": menu_view.visible, "screen": st["screen"], "title": st["title"],
 		"status": st["status"], "focus": focus, "focus_id": items[focus]["id"] if focus >= 0 and focus < items.size() else "",
 		"group": menu_flow.settings_group, "editing": st["editing"], "items": items, "rows": rows,
@@ -1175,7 +1262,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
 		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
 		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
-		"menu_card": menu_view.card, "garage_preview": menu_view.preview, "button_bar": menu_view.button_bar,
+		"menu_card": menu_view.card, "confirm_card": menu_view.confirm_card, "confirm_question": menu_view._confirm_question, "garage_preview": menu_view.preview, "button_bar": menu_view.button_bar,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
@@ -1355,6 +1442,7 @@ func _apply_equipment() -> void:
 
 func _on_hello_ack(_ack: Dictionary) -> void:
 	_configure_avatar()
+	_apply_profile()
 	var prog = ipc.core_config.get("progression", {})
 	menu_flow.on_hello_progression(prog)
 	var eq = prog.get("equipped") if prog is Dictionary else null
@@ -1475,6 +1563,7 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.hr_max_bpm = float(ipc.core_config.get("hr_max_bpm", 0.0))
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
+		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
 			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
@@ -1494,7 +1583,7 @@ func _on_state_received(state: Dictionary) -> void:
 			_quality_name, float(Time.get_ticks_msec()) / 1000.0):
 		ipc.request_rogue_resync()
 	if menu_view != null:
-		_sync_hud(menu_view.visible)   # entrée et sortie de la run dans la même trame
+		_sync_hud(_full_screen_menu())   # entrée et sortie de la run dans la même trame
 
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0
@@ -1552,6 +1641,8 @@ func _show_bots(rider_s: float, rider_v: float) -> void:
 		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route)
+	if living_decor != null:
+		living_decor.bot_places = bots_model.places()
 
 
 ## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste.
@@ -1583,3 +1674,24 @@ func _exit_tree() -> void:
 	if not _route_job.is_empty():
 		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
 	_probe.close()
+
+
+## Garde-fou de charge (load_guard.gd), une fois par image : coupe ou rend un effet du préréglage selon le
+## temps GPU de la vue. En pause pendant le Cyber-Rogue, qui a son propre Environment.
+func _step_load_guard(delta: float) -> void:
+	if not load_guard.enabled or rogue_host.is_active():
+		return
+	var change: Dictionary = load_guard.step(
+		RenderingServer.viewport_get_measured_render_time_gpu(get_viewport().get_viewport_rid()), delta)
+	var t_s := Time.get_ticks_msec() / 1000.0
+	if not load_guard.gain_measured.is_empty():
+		print(LoadGuard.log_line(load_guard.gain_measured, t_s))
+	if change.is_empty():
+		return
+	load_guard.apply(QualityPresets.image(_quality_name), world_env.environment, get_viewport(), _forward_plus())
+	fps_counter.shed = load_guard.shed_text()
+	print(LoadGuard.log_line(change, t_s))
+
+
+static func _forward_plus() -> bool:
+	return RenderingServer.get_rendering_device() != null

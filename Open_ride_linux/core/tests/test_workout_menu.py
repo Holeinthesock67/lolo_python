@@ -126,3 +126,34 @@ def test_session_commands_answer_with_schema_valid_messages(tmp_path: Path):
 
     asyncio.run(scenario())
     assert sorted(p.name for p in (tmp_path / "Workouts").iterdir()) == ["intervalles_5x240s_105.zwo", "seuil.erg"]
+
+
+def test_create_interval_workout_never_replaces_another(tmp_path: Path):
+    """Lot O20 : même nom mais autre récupération, un second fichier `_2` ; le premier reste intact."""
+    first = workout_menu.create_interval_workout(tmp_path, PARAMS)
+    before = (tmp_path / "intervalles_5x240s_105.zwo").read_bytes()
+    other = workout_menu.create_interval_workout(tmp_path, {**PARAMS, "off_s": 120})
+    assert other["workout_id"] == "intervalles_5x240s_105_2" and other["created"] is True
+    assert (tmp_path / "intervalles_5x240s_105.zwo").read_bytes() == before
+    assert load_workout(tmp_path / "intervalles_5x240s_105_2.zwo").duration_s == pytest.approx(600 + 5 * 360 + 600)
+    # Les mêmes réglages retrouvent leur fichier, sans troisième copie.
+    assert workout_menu.create_interval_workout(tmp_path, {**PARAMS, "off_s": 120}) == {**other, "created": False}
+    assert workout_menu.create_interval_workout(tmp_path, PARAMS) == {**first, "created": False}
+    assert len(list(tmp_path.iterdir())) == 2
+
+
+def test_import_qwk_file(tmp_path: Path):
+    """Lot O20 : un `.qwk` (QWKcode de GoldenCheetah) s'importe et se lit comme les autres formats."""
+    dl = tmp_path / "Téléchargements"
+    dl.mkdir()
+    (dl / "seuil.qwk").write_text("# Seuil 4 × 5\n10m@130-220\n4x 5m@280 r3m@140\n10m@130\n", encoding="utf-8")
+    wdir = tmp_path / "OpenRide" / "Workouts"
+    cands = workout_menu.import_candidates(tmp_path, wdir)
+    assert [c["file"] for c in cands] == ["seuil.qwk"]
+    res = workout_menu.import_file(dl / "seuil.qwk", wdir)
+    assert res == {"workout_id": "seuil", "name": "Seuil 4 × 5", "created": True}
+    [info] = list_workouts(wdir)
+    assert info.selectable and info.duration_s == pytest.approx(600 + 4 * 480 + 600)
+    (dl / "faux.qwk").write_text("4x 5m280\n", encoding="utf-8")
+    with pytest.raises(workout_menu.WorkoutMenuError, match="ligne 1"):
+        workout_menu.import_file(dl / "faux.qwk", wdir)

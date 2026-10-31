@@ -1,5 +1,10 @@
 # Lot U3 – Compilateur : côte, mer et plages
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Compilateur : côte, mer et plages | Python | U1 | Moyenne | Oui, après U1, **version 3.0** (issue #333) |
+
 ## 1. Objectif
 
 **Version 3.0.** Écrire la mer (sorte d'eau `sea`) et la couche `coast` du contrat U1 pour les parcours qui longent la côte : polygones de mer fermés à partir des lignes de côte OSM, sorte du rivage et plages.

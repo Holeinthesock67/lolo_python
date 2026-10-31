@@ -8,13 +8,15 @@ extends SceneTree
 ##
 ##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
 ##     --audio-driver Dummy --script res://tests/vitrine_rendu.gd -- --out DOSSIER [--quality low,medium,high] \
-##     [--size 1920x1080] [--views ciel,ciel_proche,panneau_col,borne,portes]
+##     [--size 1920x1080] [--views ciel,ciel_proche,panneau_col,borne,portes] [--compare REF] [--seuil-ssim 0.97]
+##     [--tolerance 10]
 ##
 ## Le préréglage demandé est appliqué comme dans la scène principale (render_quality.gd : image, ombres,
 ## brouillard ; lot X32) ; avant, la vitrine n'en appliquait aucun et ne montrait pas les effets de Y13.
 ## Écrit DOSSIER/<vue>_<préréglage>.png et DOSSIER/vitrine.csv (vue ; préréglage ; qualité appliquée ;
 ## triangles ; appels de dessin ; objets). Les temps du processeur graphique se mesurent sur le PC cible (perf_probe.py),
-## pas ici : le rendu logiciel de Xvfb ne dit rien de la GTX 1060.
+## pas ici : le rendu logiciel de Xvfb ne dit rien de la GTX 1060. `--compare REF` : avant/après par vitrine_compare.py
+## (lot Z3, options de vitrine_checks.gd) ; code de sortie 1 si une capture ou un compte s'écarte de la référence.
 
 const GrassTufts := preload("res://scripts/grass_tufts.gd")
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
@@ -33,6 +35,7 @@ const SkyTrafficRenderer := preload("res://scripts/sky_traffic_renderer.gd")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
 const RoadsideProps := preload("res://scripts/roadside_props.gd")
 const WindTurbines := preload("res://scripts/wind_turbines.gd")
+const VitrineChecks := preload("res://tests/vitrine_checks.gd")
 
 const DEFAULT_SIZE := Vector2i(1280, 720)
 const ROAD_WIDTH_M := 6.0
@@ -171,6 +174,7 @@ var _out_dir := "user://vitrine"
 var _presets := ["low", "medium", "high"]
 var _size := DEFAULT_SIZE
 var _views: Array = VIEWS.keys()
+var _checks = VitrineChecks.new()
 
 
 func _init() -> void:
@@ -185,6 +189,7 @@ func _init() -> void:
 			_size = Vector2i(int(wh[0]), int(wh[1]))
 		elif args[i] == "--views":
 			_views = Array(args[i + 1].split(","))
+	_checks.parse_args(args)
 	call_deferred("_run")
 
 
@@ -213,7 +218,8 @@ func _run() -> void:
 		vp.queue_free()
 		await process_frame
 	csv.close()
-	quit(0)
+	_checks.compare(_out_dir)
+	quit(_checks.exit_code("vitrine_rendu"))
 
 
 ## Monde de la vitrine pour un préréglage : ciel, soleil, sol au shader du terrain, route, touffes,

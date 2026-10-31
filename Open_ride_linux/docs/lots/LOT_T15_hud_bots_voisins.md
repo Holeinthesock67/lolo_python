@@ -1,5 +1,10 @@
 # Lot T15 – Engine : HUD des bots et encart des deux voisins
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : engine, HUD des bots (maillot, profil, FTP en W et W/kg, écart, jauge W') et encart des deux voisins | GDScript | O7, T9, T16, T7 ; champs de profil avec T12 | Moyenne | Non : interne (HUD) ; cahier et code du 27 octobre (issue #402) |
+
 ## 1. Objectif
 
 Afficher, pour chaque bot, son maillot, son profil, sa FTP en W et en W/kg, son écart en temps de passage et sa jauge de réserve W', et l'encart permanent des deux voisins immédiats (« ▲ Grimpeur +8,4 s », « ▼ Diesel −3,1 s »), d'après les champs du contrat 1.4. Décision du 27 octobre : **code d'abord, sans maquette**, validation à la recette T11.

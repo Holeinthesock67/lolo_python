@@ -126,7 +126,7 @@ func _play(sound: String) -> void:
 	var p := voices[_voice_next]
 	_voice_next = (_voice_next + 1) % voices.size()
 	p.stream = streams[sound]
-	p.volume_db = 0.0
+	p.volume_db = Model.MODE_DB
 	if is_inside_tree():
 		p.play()
 
@@ -145,13 +145,13 @@ func _process(delta: float) -> void:
 	var levels: Dictionary = model.music()
 	for layer in Synth.MUSIC_LAYERS:
 		var lv := float(levels[layer])
-		music_players[layer].volume_db = Model.SILENCE_DB if lv <= 0.001 else linear_to_db(lv)
+		music_players[layer].volume_db = Model.SILENCE_DB if lv <= 0.001 else linear_to_db(lv) + Model.MODE_DB
 
 
 func _set_loop(p: AudioStreamPlayer, db: float) -> void:
 	if p.stream == null:
 		return
-	p.volume_db = db
+	p.volume_db = db + Model.MODE_DB
 	if db > Model.SILENCE_DB + 0.5 and not p.playing and is_inside_tree():
 		p.play()
 	elif db <= Model.SILENCE_DB + 0.5 and p.playing:

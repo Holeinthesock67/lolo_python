@@ -1,5 +1,10 @@
 # Lot W8 – Processus `openride-worldgen` : horizon de 3 km, branches, préchargement, hors ligne
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Processus `openride-worldgen` : horizon de 3 km, amorces de branches, relief en avance, hors ligne | Python | W6, W7 | Grande | Oui, après W7 (issue #263) |
+
 ## 1. Objectif
 
 Assembler graphe, navigateur, profils et carrés dans un processus séparé, piloté par le core selon le dialogue de W1 (`docs/contracts/worldgen_v1.md`) : il prépare la zone de départ, tient au moins 3 km de route engagée devant le cycliste, calcule les amorces de branches, télécharge le relief en avance et se comporte proprement sans réseau.

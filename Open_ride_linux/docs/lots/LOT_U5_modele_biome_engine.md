@@ -1,5 +1,10 @@
 # Lot U5 – Engine : modèle de biome sans affichage (poids, transitions, saison, variante)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : modèle de biome sans affichage (poids, transitions, forçage, thème 2.0) | GDScript | U1, P18 | Moyenne | Oui, après U1, **version 3.0** (issue #335) |
+
 ## 1. Objectif
 
 **Version 3.0.** Un modèle pur, sans nœud ni affichage, qui répond pour tout point du monde : quels biomes, avec quels poids, et quels paramètres de rendu (sol, végétation, eau, ciel, sons, faune) pour la saison et la variante du moment. Tous les lots de rendu U6 à U14 s'appuient sur lui.

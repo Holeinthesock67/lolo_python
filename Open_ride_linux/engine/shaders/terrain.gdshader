@@ -31,21 +31,23 @@ void vertex() {
 
 void fragment() {
 	vec3 n = normalize(v_world_normal);
+	vec3 dpdx = dFdx(v_world_pos);
+	vec3 dpdy = dFdy(v_world_pos);
 	vec3 tri_weights = triplanar_weights(n, blend_sharpness);
 	vec3 w = layer_weights(n, v_world_pos.y, slope_threshold_deg, snow_line_m, blend_sharpness);
 
 	// Échantillonnage des seules couches visibles, ou repli sur couleur unie
 	vec3 grass_c = vec3(0.0);
 	if (w.x > MIN_LAYER_WEIGHT) {
-		grass_c = (has_grass_texture ? sample_triplanar(grass_texture, v_world_pos, grass_inv_scale, tri_weights) : grass_color).rgb;
+		grass_c = (has_grass_texture ? sample_triplanar(grass_texture, v_world_pos, grass_inv_scale, tri_weights, dpdx, dpdy) : grass_color).rgb;
 	}
 	vec3 rock_c = vec3(0.0);
 	if (w.y > MIN_LAYER_WEIGHT) {
-		rock_c = (has_rock_texture ? sample_triplanar(rock_texture, v_world_pos, rock_inv_scale, tri_weights) : rock_color).rgb;
+		rock_c = (has_rock_texture ? sample_triplanar(rock_texture, v_world_pos, rock_inv_scale, tri_weights, dpdx, dpdy) : rock_color).rgb;
 	}
 	vec3 snow_c = vec3(0.0);
 	if (w.z > MIN_LAYER_WEIGHT) {
-		snow_c = (has_snow_texture ? sample_triplanar(snow_texture, v_world_pos, snow_inv_scale, tri_weights) : snow_color).rgb;
+		snow_c = (has_snow_texture ? sample_triplanar(snow_texture, v_world_pos, snow_inv_scale, tri_weights, dpdx, dpdy) : snow_color).rgb;
 	}
 	vec3 normal_out;
 	ALBEDO = shade_layers(grass_c, rock_c, snow_c, w, n, tri_weights, 0.0, VERTEX, VIEW_MATRIX, normal_out);

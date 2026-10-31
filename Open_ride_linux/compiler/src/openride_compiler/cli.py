@@ -6,6 +6,7 @@
                                 [--manual FICHIER.segments.toml]
     openride-compiler list | build-all [--layers ...] [--dry-run] [--offline]
     openride-compiler theme-check <dossier du thème>
+    openride-compiler theme-pack <dossier du thème> [--levels 512,1024,2048] [--fix-seams]   (lot P20, Pillow)
     openride-compiler theme-list [--themes-dir D] [--json]
     openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]   (SOURCE : dossier, .zip ou https://)
     openride-compiler cache-info [--json] | cache-clean [--generated | --all] [--yes]
@@ -35,6 +36,7 @@ from .errors import EXIT_INPUT, EXIT_INTERNAL, EXIT_OK, CompileError
 from .frame import LocalFrame
 from .track_formats import read_track, scan_tracks, track_stem
 from .osm import OverpassClient
+from .surface import apply_surface, surface_summary
 from .osm_layers import (
     build_osm_layers,
     buildings_manifest,
@@ -109,6 +111,8 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--force", action="store_true", help="remplace un .world existant")
     b.add_argument("--layers", type=parse_layers, default=DEFAULT_LAYERS,
                    help="couches à produire, séparées par des virgules (défaut : route,terrain,segments)")
+    b.add_argument("--no-surface", action="store_true",
+                   help="ne cherche pas la surface de la route dans OSM (pas de colonne surface, avant U20)")
     b.add_argument("--offline", action="store_true",
                    help="interdit le réseau : les tuiles d'altitude et OSM doivent être en cache")
 
@@ -139,6 +143,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     tc = sub.add_parser("theme-check", help="contrôle un dossier de thème visuel")
     tc.add_argument("theme_dir", type=Path)
+    tp = sub.add_parser("theme-pack", help="fabrique les niveaux de textures d'un pack de thème (lot P20, Pillow)")
+    tp.add_argument("theme_dir", type=Path, help="dossier du pack (images d'origine à la racine)")
+    tp.add_argument("--levels", default="512,1024,2048",
+                    help="côtés des niveaux en pixels, séparés par des virgules (défaut : 512,1024,2048)")
+    tp.add_argument("--fix-seams", action="store_true",
+                    help="raccorde d'abord les images tileable de provenance.toml (fondu des bords opposés)")
 
     default_gpx = Path.home() / "OpenRide" / "GPX"
     ls = sub.add_parser("list", help="liste les parcours (.world et traces .gpx, .fit, .tcx, .fit.gz, .tcx.gz, .zip) et leur statut")
@@ -285,6 +295,11 @@ def cmd_build(args: argparse.Namespace) -> int:
             manifest["layers"]["water"] = water_manifest(osm_res)
         if "roads" in args.layers:
             manifest["layers"]["roads"] = roads_manifest(osm_res)
+        if not args.no_surface:   # surface de la route (lot U20), avec les couches OSM
+            values = apply_surface(compiled.route, manifest, osm_client, frame)
+            print(surface_summary(values), file=sys.stderr)
+            if values is not None:
+                manifest["stats"] = compute_stats(compiled.route)
 
     def extra(folder: Path) -> None:
         if segments is not None:
@@ -519,6 +534,17 @@ def cmd_theme_check(args: argparse.Namespace) -> int:
         return EXIT_INPUT
     print(f"{args.theme_dir} : valide")
     return EXIT_OK
+
+
+def cmd_theme_pack(args: argparse.Namespace) -> int:
+    from .texture_levels import build_levels
+    try:
+        sizes = tuple(int(x) for x in args.levels.split(",") if x.strip())
+    except ValueError:
+        raise CompileError(f"--levels : côtés en pixels séparés par des virgules ({args.levels})") from None
+    levels = build_levels(args.theme_dir, sizes, seams=args.fix_seams)
+    print(f"{args.theme_dir} : {len(levels)} niveau(x) " + ", ".join(lv["name"] for lv in levels))
+    return cmd_theme_check(argparse.Namespace(theme_dir=args.theme_dir))
 
 
 DEFAULT_PACK_WORK_DIR = Path.home() / ".cache" / "openride" / "route_packs"
@@ -791,6 +817,7 @@ def cmd_build_all(args: argparse.Namespace) -> int:
                 force=True,
                 layers=args.layers,
                 offline=args.offline,
+                no_surface=False,
             )
             cmd_build(sub_args)
             compiled_count += 1
@@ -817,6 +844,7 @@ COMMANDS = {
     "info": cmd_info,
     "compare-garmin": cmd_compare_garmin,
     "theme-check": cmd_theme_check,
+    "theme-pack": cmd_theme_pack,
     "theme-list": cmd_theme_list,
     "theme-install": cmd_theme_install,
     "list": cmd_list,

@@ -1,5 +1,10 @@
 # Lot P32 – Circulation à droite : le cycliste dans la voie de droite, chacun à droite dans son sens
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Circulation à droite : le cycliste dans la voie de droite, véhicules et cyclistes du décor à droite dans leur sens, outil de test `decor_place` et scène `voies` | GDScript + Python | P25, P28 | Petite | **Livré le 29 octobre** (demande du 29 octobre : « roulent à droite de la route et pas au milieu ») ; complément du 31 octobre : bots côte à côte en peloton, plus de superposition (trouvée par `course_bots`) |
+
 ## 1. Objectif
 
 Demande du propriétaire du 29 octobre : « les véhicules dont les cyclistes roulent à droite de la route et pas au milieu ». Jusqu'ici, le cycliste (caméra, avatar) roulait sur la ligne médiane et tout le décor de la route se plaçait par rapport à lui : la voiture en face passait près du bord gauche, celle qui double se rabattait devant lui au milieu, les cyclistes du décor se partageaient les bords autour de l'axe.
@@ -52,3 +57,12 @@ Le cycliste ne se déporte pas pour doubler (sa place est fixe) ; les places ne 
 - `visual_check.py` en `1280x720:low` dans le cloud : 543/543 vérifications, dont la scène `voies` (cycliste à +1,20 m de l'axe ; voiture en face à −1,63 m, cycliste en face à −2,50 m ; deux cyclistes devant à +2,50 m ; utilitaire qui double à −1,72 m, 1,50 m d'écart). Captures avant et après : `voies_face`, `voies_depassement`.
 - Collisions (29 octobre, après validation des voies) : roulage mêlé de `test_traffic_model.gd`, 16 graines de 30 km : 0 contact (véhicules, cyclistes du décor, bot, cycliste), 0 dépassement à moins de 1,5 m, 281 attentes derrière un cycliste du décor ; `visual_check.py` en low, medium et high : l'utilitaire attend derrière tant que la voiture arrive en face, puis double à 1,50 m ; compteur de contacts à 0 dans `decor_vivant` et `voies`. Captures : `voies_attente`, `voies_depassement`.
 - Images de référence de `run_visual_tests.sh` sur le PC : la caméra a bougé de 1,2 m, relancer une fois avec `--update-golden`.
+
+## 10. Complément : bots côte à côte (31 octobre)
+
+Défaut trouvé par le scénario `course_bots` du banc (lot Z2, X33) : tous les bots étaient posés à `BOT_LATERAL_M`. Quatre bots partis avec le cycliste se superposaient à l'écran (24 contacts comptés). Le propriétaire a demandé la correction le 31 octobre.
+
+- **Places en travers** (`bots_view_model.gd`) : chaque bot vise une des `LATERAL_SLOTS`, espacées de 0,9 m : +2,1 m (sa place habituelle), puis vers l'axe et la voie d'en face. Il ne prend jamais la ligne du cycliste. Il choisit la première place libre, sans autre bot à moins de 2 m devant ou derrière. Il ne traverse pas la ligne de quelqu'un pour changer de place (le cycliste compte jusqu'à 10 m). Il garde sa place tant qu'elle reste libre et revient vers le bord dès que c'est possible, en glissant à 1,2 m/s au plus. Le champ `lateral` de `view()` sert à `bots_view.gd`. `places()` sert à `living_decor.gd`, qui les passe aux cyclistes du décor (`road_cyclists_model.gd` reçoit maintenant des places `{s, lateral}` et non plus des abscisses), aux véhicules et au compte des contacts.
+- **Tests** : `test_bots_view_model.gd` (peloton de quatre au départ : quatre places, aucun contact ; le premier garde le bord ; près du cycliste, aucun bot ne se rabat sur lui ; glissement sans saut ; peloton étiré : retour au bord). `test_road_cyclists_model.gd` et `test_traffic_model.gd` passent des places.
+- **Banc** : `sim_bench.py --scenario course_bots` en low, medium et high : 0 contact sur 11 captures dans chaque qualité (24 avant la correction). Planche avant/après du peloton au départ dans le dossier du projet (`bots-peloton/`).
+

@@ -198,6 +198,7 @@ def test_patterns_match_exact_core_source_format_strings() -> None:
         "click_not_found": (),
         "journal_write_error": ("No space left on device",),
         "fit_export_error": ("fichier invalide",),
+        "gravel_summary": (1200.0, 3600.0, 0.58, "auto"),
     }
 
     for key, (filename, raw_fmt) in CORE_FORMAT_STRINGS.items():

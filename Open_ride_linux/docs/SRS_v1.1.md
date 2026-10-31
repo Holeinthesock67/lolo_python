@@ -101,17 +101,17 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 | Boîtier | Bouton | Bit (0 = appuyé) | Action OpenRide |
 | --- | --- | --- | --- |
 | gauche | − | 8 | « − » |
-| gauche | flèche gauche | 0 | réservé : raccourci de choix (spécification générale §7.1) |
-| gauche | flèche haut | 1 | réservé : vue de caméra (2.0, spécification générale §7.1) |
-| gauche | flèche droite | 2 | réservé : raccourci de choix (spécification générale §7.1) |
-| gauche | flèche bas | 3 | réservé : vue de caméra (2.0, spécification générale §7.1) |
+| gauche | flèche gauche | 0 | choix précédent : élément, couloir ou carte, branche (spécification générale §7.1) |
+| gauche | flèche haut | 1 | vue de caméra suivante en séance (spécification générale §7.1) |
+| gauche | flèche droite | 2 | choix suivant : élément, couloir ou carte, branche (spécification générale §7.1) |
+| gauche | flèche bas | 3 | vue de caméra précédente en séance (spécification générale §7.1) |
 | droit | + | 12 | « + » |
 | droit | A | 4 | choisir (court) et valider (long) dans les menus (spécification générale §7.1) |
-| droit | B | 5 | « − » (sans déblocage Zwift) |
+| droit | B | 5 | « − » (double le − du boîtier gauche) |
 | droit | Y | 6 | pause et reprise (lot N6) |
-| droit | Z | 7 | action du mode : bloc suivant en ERG (§4.4) |
+| droit | Z | 7 | action du mode (spécification générale §7.1) |
 
-- **Bridage du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion ; la liaison reste active (batterie toutes les 5 s) et renvoyer `RideOn` n'y change rien. Le boîtier droit n'est pas concerné, d'où le bouton B lu comme « − ». Même constat publié par BikeControl et zwiftboard.
+- **Verrou du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche se verrouille environ une minute après la connexion (message d'état `ff 05 00 ea 05`) et n'envoie plus ses boutons ; renvoyer `RideOn` n'y change rien. OpenRide le redémarre alors (octet `0x18`, `[drivers] click_reset_locked`, vrai par défaut) : il se reconnecte en 4 s environ et envoie de nouveau − et les flèches (essais sur le PC du 30 octobre 2026 : 20 « − » sur 21, 46 flèches sur 4 redémarrages). Le boîtier droit n'est pas concerné ; B y double « − » pour les quelques secondes de chaque redémarrage. Même verrou publié par BikeControl, zwiftboard et OpenRadlr (docs/RECHERCHE_CLICK_GAUCHE.md).
 - Événements normalisés (contrat IPC révision 1.3) : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`, `A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : sans effet, signalé pour + et − (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`) et expliqué à l'écran. Y et les flèches n'ont qu'un événement, quelle que soit la durée. Rôle de chaque bouton : spécification générale §7.1, seule référence. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
 - Repli : le clavier produit les mêmes événements, touche pour touche et avec les mêmes seuils, selon le tableau du clavier de la spécification générale §7.1 (décision D6, lot O17) : `engine/scripts/key_map.gd` dans la fenêtre de l'engine, `TERMINAL_KEYS` (`input_providers.py`) dans le terminal du core, qui ne mesure pas la durée et prend les synonymes pour les appuis longs.
 
@@ -168,7 +168,7 @@ F_{res}(v) = \tfrac{1}{2}\rho\, C_dA\,(1-\alpha_{draft})\,(v+v_{vent})\,|v+v_{ve
 - La vitesse peut être plafonnée (80 m/s) pour éviter les valeurs aberrantes.
 - Le coefficient d'aspiration `alpha_draft` vaut 0 sans bot ; il n'intervient qu'avec les bots (de 0 à 0,45 selon la distance derrière un bot). **Courbe (lot P3, `draft.py`) :** `α = 0,40 · exp(−(écart − 0,3) / 4)` pour un écart roue à roue de 0,3 à 15 m (0,38 à 0,5 m, 0,13 à 5 m, environ 0,035 à 10 m), 0 au-delà et devant le bot ; derrière une file de bots espacés de moins de 3 m, × 1,12 au deuxième et × 1,18 au troisième, plafonné à 0,45 ; réduit jusqu'à moitié par un vent de travers apparent de 45° ; suivi par une constante de temps de 1 s. Un bot suivi à moins de 1 m perd 2,5 % de résistance aérodynamique (poussée vers l'avant). L'abri multiplie tout le terme aérodynamique, vent compris.
 - **Vent (lots P1 et P2).** `v_vent` est la composante de face du vent le long du cap de la route à `s` (positive de face) ; elle vaut 0 quand le vent est coupé (`[wind] mode = "off"`, défaut des versions 1.x). Le vent de travers ne compte pas.
-- **Ressenti du vent et de l'aspiration.** En SIM, l'écart de résistance dû au vent et à l'aspiration est transmis au trainer comme un **supplément de pente** (`[wind] feel = "grade"`, défaut), borné à ± `max_grade_offset_pct` (4 points par défaut, réglable dans les réglages du menu), ou dans le champ vent de la commande FTMS 0x11 (`feel = "ftms"`, à essayer sur le matériel). En ERG, la puissance demandée ne change jamais : seule la vitesse virtuelle tient compte du vent et de l'aspiration.
+- **Ressenti du vent et de l'aspiration.** En SIM, l'écart de résistance dû au vent et à l'aspiration est transmis au trainer comme un **supplément de pente** (`[wind] feel = "grade"`, défaut), borné à ± `max_grade_offset_pct` (4 points par défaut, réglable dans les réglages du menu), ou dans le champ vent de la commande FTMS 0x11 (`feel = "ftms"`, à essayer sur le matériel). En ERG, la puissance demandée ne change jamais : seule la vitesse virtuelle tient compte du vent et de l'aspiration. **Gravel (lot U21).** Avec `[gravel] mode` différent de `"off"`, le roulement des portions non revêtues (colonne `surface` du parcours en `"auto"`, ou toute la route dans la surface imposée) est multiplié par `factor_compacted`, `factor_gravel` ou `factor_dirt` ; en SIM, l'écart devient un supplément de pente `(facteur − 1) × crr × cos θ × 100` (0,6 point sur le plat pour un crr de 0,004 et un facteur de 2,5), ajouté à celui du vent et de l'aspiration sous la même borne `max_grade_offset_pct`, avec une transition de 20 m entre deux surfaces ; en ERG, seule la vitesse virtuelle baisse.
 - Seuls les bots à puissance constante abritent ; le fantôme n'abrite pas.
 - **Abri des bots (lot AS1).** Les bots `constant` (profils compris) s'abritent avec la même courbe, le même effet de file, le même vent de travers et le même lissage, derrière les autres bots et derrière le cycliste (`draft.update_bots`), sur les positions du pas précédent : l'ordre des bots ne compte pas. La poussée vers l'avant vaut aussi pour un bot suivi par un autre bot. Un bot à profil à moins de 3 m derrière un coureur garde sa roue : il vise la vitesse de la roue corrigée de l'écart (0,5 m visé), sans dépasser la puissance de sa stratégie ni descendre sous 60 % de sa CP ; il repart pour une attaque en montée, un sprint ou si la roue roule sous 85 % de sa vitesse de croisière seul. Le fantôme ne donne ni ne reçoit d'abri. `draft` et `draft_bot` restent ceux du cycliste ; la commande ERG ne change pas.
 
@@ -395,11 +395,13 @@ quality = "low"      # low, medium, high
 theme = "default"
 visual_grade_scale = 2.5   # exagération visuelle du relief, de 1,0 à 3,0 (lots Q2 et Y15 ; physique et HUD inchangés)
 living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
+load_guard = true    # garde-fou de charge (lot Y6) : coupe SSIL, SSAO, glow puis MSAA quand le GPU sature, sans baisser la résolution ; false pour les mesures
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
 fps = "off"          # compteur d'images/s du HUD : off, on, detail (+ temps CPU et GPU, essais) (« Afficher les images/s » dans Réglages)
 draft_gauge = "off"  # jauge d'abri au-dessus du bot qui t'abrite : off, on (« Jauge d'abri des bots »)
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
+texture_level = "auto"   # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high (« Textures du décor »)
 theme_library_gb = 5 # plafond des packs de thèmes de ~/OpenRide/Themes, de 1 à 50 Go (lot U15) : theme-install retire le moins récemment utilisé
 
 [ipc]
@@ -428,6 +430,11 @@ gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme" ; r
 seed = 0                     # graine des rafales, pour rejouer une séance
 feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11)
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
+[gravel]
+mode = "off"                 # "off" (défaut), "auto" (surface du parcours), "compacted", "gravel" ou "dirt" (tout le parcours)
+factor_compacted = 2.0       # roulement multiplié sur les portions compactées, 1 à 3
+factor_gravel = 2.5          # sur le gravier, 1 à 3
+factor_dirt = 3.0            # sur la terre, 1 à 3
 [progression]
 enabled = true               # niveau, pièces, équipement et Garage (série V) ; false : comme avant la 2.0
 [avatar]

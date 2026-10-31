@@ -1,5 +1,10 @@
 # Lot MJ10 – Recette des profils sur le PC
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série MJ : recette sur le PC (migration réelle, deux profils, séance de 10 min) | — | MJ5, MJ9 | Petite | Non : propriétaire |
+
 Série MJ, plan `docs/2.0/PLAN_SERIE_MJ.md` §8.
 
 ## 1. Objectif

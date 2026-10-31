@@ -46,7 +46,8 @@ const PRESETS := {
 
 ## Qualité d'image par préréglage (lot Y13), toujours à la résolution native de l'écran (décision du
 ## propriétaire du 27 octobre : ni mise à l'échelle ni suréchantillonnage) :
-## - `msaa` : MSAA 3D (0, 2, 4 ou 8) ; `fxaa` : anticrénelage d'écran, pour `low` qui n'a pas de MSAA.
+## - `msaa` : MSAA 3D (0, 2, 4 ou 8) ; `screen_aa` : anticrénelage d'écran `off`, `fxaa` ou `smaa`, pour `low`
+##   qui n'a pas de MSAA (SMAA 1× depuis Godot 4.5, lot Y6 : bords plus nets que le FXAA, sans flou des textures).
 ## - `ssao`, `ssil` : occlusion ambiante et lumière indirecte d'écran, `off`, `low`, `medium` ou `high`
 ##   (Forward+ seulement) ; `ao_half_size` : calcul en demi-résolution.
 ## - `fog_volumetric` : brume volumétrique de près, `off`, `light` ou `full` (Forward+ seulement ;
@@ -62,7 +63,7 @@ const IMAGE := {
 	"low": {
 		"anisotropy": 4,
 		"msaa": 0,
-		"fxaa": true,
+		"screen_aa": "smaa",
 		"ssao": "off",
 		"ssil": "off",
 		"ao_half_size": true,
@@ -77,7 +78,7 @@ const IMAGE := {
 	"medium": {
 		"anisotropy": 8,
 		"msaa": 4,
-		"fxaa": false,
+		"screen_aa": "off",
 		"ssao": "medium",
 		"ssil": "low",
 		"ao_half_size": true,
@@ -92,7 +93,7 @@ const IMAGE := {
 	"high": {
 		"anisotropy": 16,
 		"msaa": 4,
-		"fxaa": false,
+		"screen_aa": "off",
 		"ssao": "high",
 		"ssil": "medium",
 		"ao_half_size": true,
@@ -181,17 +182,29 @@ static func max_biomes(name: String) -> int:
 	return MAX_BIOMES.get(key, MAX_BIOMES[DEFAULT_PRESET])
 
 
-## Côté des textures de sol des biomes en pixels (série U, décision U-Q4 ; lot U6).
-const GROUND_TEXTURE_PX := {
+## Côté des textures du décor en pixels (sols des biomes, textures 1.x du thème) et budget de mémoire vidéo
+## de chaque jeu de textures (lot P20, texture_levels.gd ; série U, décision U-Q4). Le budget de `high`
+## reste à 1 Go comme celui de U-Q4 (recette U18 : textures du décor sous 1 Go en high).
+const TEXTURE_PX := {
 	"low": 1024,
 	"medium": 1024,
 	"high": 2048,
 }
+const TEXTURE_BUDGET_MB := {
+	"low": 512,
+	"medium": 1024,
+	"high": 1024,
+}
 
 
-static func ground_texture_px(name: String) -> int:
+static func texture_px(name: String) -> int:
 	var key := name.strip_edges()
-	return GROUND_TEXTURE_PX.get(key, GROUND_TEXTURE_PX[DEFAULT_PRESET])
+	return TEXTURE_PX.get(key, TEXTURE_PX[DEFAULT_PRESET])
+
+
+static func texture_budget_bytes(name: String) -> int:
+	var key := name.strip_edges()
+	return int(TEXTURE_BUDGET_MB.get(key, TEXTURE_BUDGET_MB[DEFAULT_PRESET])) << 20
 
 
 ## Budgets du décor vivant de la série P selon le préréglage (Lot P4), lus par les lots P5 à P15 et P21.

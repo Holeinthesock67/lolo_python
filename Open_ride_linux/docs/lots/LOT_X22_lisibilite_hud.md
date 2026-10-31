@@ -1,5 +1,10 @@
 # Lot X22 – Lisibilité du HUD à 2 m et débordements
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Lisibilité du HUD à 2 m (hauteur, contraste) et débordements (4 bots à 720 px) | Python | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x22`) ; issue #220 |
+
 ## 1. Objectif
 
 Le critère « lisible à 2 m » n'est vérifié qu'à l'œil. Le fil de la série T (28 octobre) ajoute un besoin : vérifier que l'encart des bots (T15) ne déborde pas quand les blocs segment et bonus sont affichés en même temps, jusqu'à la plus petite fenêtre (720 px de haut).

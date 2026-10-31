@@ -1,5 +1,10 @@
 # Lot P14 – Bord de route : panneaux de col, bornes kilométriques, marquages au sol
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Bord de route : panneaux de col, bornes kilométriques, marquages au sol | GDScript + shader | P4 | Moyenne | **Livré le 27 octobre** (issue #138) |
+
 ## 1. Objectif
 
 Donner des repères au cycliste, comme sur une vraie route :
