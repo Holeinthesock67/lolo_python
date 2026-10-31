@@ -44,7 +44,7 @@ Sans action manuelle : `visual_check.py` lance la vraie scène (`main.tscn`) sou
 | `nuages` | Lot P16 : ciel de P6 du thème par défaut, pixels de nuage au-dessus de l'horizon, entre les panneaux du HUD |
 | `mouvement_1`, `mouvement_2` | 8 m/s : vitesse 28.8 km/h, distance qui avance, caméra à 8 m/s ± 25 % (temps de l'engine), sol qui défile |
 | `vent` | Lot P16 : vent de face de 26 km/h dans la trame : indicateur visible sous la colonne de gauche, « km/h face », « fort », pastille rouge « Vent défavorable », mise en page sans chevauchement |
-| `abri` | Lot P17 : aspiration de 13,5 % dans la trame : pastille « Abri 30 % » sous l'indicateur du vent, mise en page sans chevauchement |
+| `abri` | Lot P17 : aspiration de 16,5 % dans la trame (échelle 0,55, lot AS4) : pastille « Abri 30 % » sous l'indicateur du vent, mise en page sans chevauchement |
 | `pluie` | Lot P17 : pluie imposée par le message de test `weather` : particules actives, chaussée mouillée, ciel en haut et sol en bas |
 | `col` | Lots P17 et T8 : arrêt à 25 m du panneau du sommet de la démo (sommet de `climb1` de la couche `segments`, à 1 500 m) : panneau « Sommet » devant la caméra, lettres d'au moins 6 px en 720p, aucun spectateur (montée de moins de 3 km) |
 | `erg` | Ligne ERG visible, cible dans la ligne de puissance, pente « trainer en ERG », mise en page |
