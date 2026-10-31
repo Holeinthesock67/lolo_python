@@ -194,6 +194,15 @@ class BotsConfig:
 
 
 @dataclass
+class SurvivorConfig:
+    """Mode « Dernier survivant » (série DS, lot DS2) : plateau et arches, réglés au menu."""
+    opponents: int = 4             # adversaires (2 à 4 ; 11 avec le peloton, lot DS8) : une arche chacun
+    spacing_km: int = 2            # écart entre deux arches (1 à 3 km)
+    spread: str = "normal"         # écart de niveau des bots : tight (± 3 %), normal (± 8 %), wide (± 15 %)
+    after_out: str = "ride"        # cycliste éliminé : ride (continuer à rouler) ou end (bilan tout de suite)
+
+
+@dataclass
 class AudioConfig:
     """Volumes du menu Réglages, en % (0 : coupé), un par catégorie de docs/AUDIO.md ; appliqués tout de
     suite par l'engine sur ses bus audio (audio_mix.gd)."""
@@ -233,6 +242,7 @@ class Config:
     rogue: RogueConfig = field(default_factory=RogueConfig)
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
     bots: BotsConfig = field(default_factory=BotsConfig)
+    survivor: SurvivorConfig = field(default_factory=SurvivorConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     log: LogConfig = field(default_factory=LogConfig)
     profils: ProfilsConfig = field(default_factory=ProfilsConfig)
@@ -300,6 +310,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("rogue", "grade_rate_up_pct_per_s"): (0.1, 100),
     ("rogue", "grade_rate_down_pct_per_s"): (0.1, 100),
     ("bots", "level_pct"): (50, 150),
+    ("survivor", "opponents"): (2, 4),          # 4 : limite des bots du core (MAX_CONSTANT_BOTS)
+    ("survivor", "spacing_km"): (1, 3),
     ("audio", "master_pct"): (0, 100),
     ("audio", "ride_pct"): (0, 100),
     ("audio", "ambience_pct"): (0, 100),
@@ -328,6 +340,8 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("wind", "feel"): ("grade", "ftms"),
     ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),
     ("powerups", "mode"): ("on", "off"),
+    ("survivor", "spread"): ("tight", "normal", "wide"),
+    ("survivor", "after_out"): ("ride", "end"),
 }
 
 
@@ -340,6 +354,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("gearing", "start_gear"),
     ("powerups", "mode"),
     ("bots", "level_pct"),
+    ("survivor", "opponents"), ("survivor", "spacing_km"), ("survivor", "spread"), ("survivor", "after_out"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
     ("wind", "max_grade_offset_pct"),
     ("render", "camera"), ("render", "chart"),

@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .classic import ClassicRace, GainJob
-from .config import GPX_DIR, OPENRIDE_HOME, PLANS_DIR, WORKOUTS_DIR, Config
+from .config import BOUNDS as CONFIG_BOUNDS, GPX_DIR, OPENRIDE_HOME, PLANS_DIR, WORKOUTS_DIR, Config
 from .equipment import segment_time_gain
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
@@ -55,6 +55,8 @@ from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import draft as draft_mod
 from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
+from . import survivor as survivor_mod
+from .survivor import ME as SURVIVOR_ME, SurvivorError, SurvivorRace
 from .wtf import rules as wtf_rules
 from .wtf.events import WtfInput
 from .wtf.mode import WtfMode
@@ -84,6 +86,9 @@ CONTENT_COMMANDS = ("list_contents", "install_content")   # lot O25
 CONTENT_PROGRESS_PERIOD_S = 1.0   # message `contents` pendant une installation, une fois par seconde au plus
 PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile")   # lot MJ7
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
+SURVIVOR_RETIRED_MPS = 15.0 / 3.6   # bot éliminé : il se range à 15 km/h (lot DS2)
+SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
+SURVIVOR_RETIRED_S = 10.0          # s : bot éliminé retiré de la séance
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
 XP_RESULT_PERIOD_S = 1.0
 
@@ -282,6 +287,9 @@ class CoreSession:
         self.powerups_path: Path = powerups_path or powerups_mod.POWERUPS_FILE  # lot T6
         self.wtf_path: Path = wtf_path or wtf_rules.WTF_FILE   # règles du mode WTF (lot WTF2)
         self.wtf: WtfMode | None = None
+        self.survivor: SurvivorRace | None = None   # mode « Dernier survivant » (lot DS2)
+        self._survivor_out: dict[str, float] = {}   # bot éliminé → instant de l'élimination (il se range)
+        self._survivor_end_pending = False
         self._records_writable = True
         self.difficulty_pct: float = float(cfg.trainer.difficulty_pct)
         self.state = IpcState(session_state="IDLE", gears_total=self.gearing.n_gears,
@@ -422,16 +430,22 @@ class CoreSession:
             self._set_wtf_rule(args if isinstance(args, dict) else {})
         elif name == "start" and st == "READY":
             game_mode = (args if isinstance(args, dict) else {}).get("mode")
-            if game_mode not in (None, "ride", "wtf"):
-                self.server.send_error("bad_args", "start : 'mode' vaut ride ou wtf")
+            if game_mode not in (None, "ride", "wtf", "survivor"):
+                self.server.send_error("bad_args", "start : 'mode' vaut ride, wtf ou survivor")
                 return
             if game_mode == "wtf" and self._workout is not None:
                 # Mode WTF : SIM seulement, comme la Course tactique (plan de la série WTF §1).
                 self.server.send_error("bad_args", "Le mode WTF se joue sans entraînement ERG.")
                 return
-            if not self._choose_start_workout(args if isinstance(args, dict) else {}):
+            if game_mode == "survivor":
+                # Dernier survivant (lot DS2) : SIM seulement, plateau composé par le core.
+                field = self._survivor_field(args if isinstance(args, dict) else {})
+                if field is None:
+                    return
+                self._set_bots(field)
+            elif not self._choose_start_workout(args if isinstance(args, dict) else {}):
                 return
-            if not self._choose_start_bots(args if isinstance(args, dict) else {}):
+            elif not self._choose_start_bots(args if isinstance(args, dict) else {}):
                 return
             self._open_journal()
             if self._workout:
@@ -442,7 +456,9 @@ class CoreSession:
                 self._sync_erg_state()
             if game_mode == "wtf":
                 self._start_wtf()
-            self._new_race(classic=self.wtf is None)
+            self._new_race(classic=self.wtf is None and game_mode != "survivor")
+            if game_mode == "survivor":
+                self._start_survivor()
             self._set_state("RUNNING")
         elif name == "skip_block" and self._workout_erg() and st in ("RUNNING", "PAUSED"):
             self._skip_block()
@@ -1417,6 +1433,9 @@ class CoreSession:
         if self.wtf is not None and args.get("mode") != "sim":
             self.server.send_error("busy", "Le mode WTF se joue en SIM seulement.")
             return
+        if self.survivor is not None and args.get("mode") != "sim":
+            self.server.send_error("busy", "Le Dernier survivant se joue en SIM seulement.")
+            return
         mode = args.get("mode")
         if mode not in ("sim", "erg", "cadence"):
             self.server.send_error("bad_args", "set_ride_mode attend 'mode' : sim, erg ou cadence")
@@ -1561,6 +1580,9 @@ class CoreSession:
         race, self.race = self.race, None
         wtf, self.wtf = self.wtf, None
         self.state.wtf = None
+        survivor, self.survivor = self.survivor, None
+        self.state.survivor = None
+        self._end_survivor_bots()
         self._log_gravel()
         if race and self._rec:
             for line in race.take_journal() + race.jersey_lines():
@@ -1570,6 +1592,10 @@ class CoreSession:
                 self._rec.game({**line, "ts": round(time.time(), 3)})
             self._rec.game({"kind": "wtf_summary", "ts": round(time.time(), 3), **wtf.summary()})
             self.physics.p = self._base_params
+        if survivor is not None and self._rec:   # lot DS2 : éliminations et bilan au journal
+            for line in survivor.take_journal():
+                self._rec.game(line)
+            self._rec.game({"kind": "survivor_summary", "ts": round(time.time(), 3), **survivor.summary()})
             for bot in self.bots:
                 if hasattr(bot, "power_factor"):
                     bot.power_factor = 1.0
@@ -1601,6 +1627,8 @@ class CoreSession:
                 summary["rogue"] = rogue_summary
             if wtf is not None:   # lot WTF2 : points et événements joués
                 summary["wtf"] = wtf.summary()
+            if survivor is not None:   # lot DS2 : place, éliminations, vainqueur
+                summary["survivor"] = survivor.summary()
             segments = race.summary() if race else None
             if segments is not None:   # série T (lot T7, révision 1.4)
                 summary["segments"] = segments
@@ -1679,6 +1707,124 @@ class CoreSession:
             st.wtf = None
             return
         st.wtf = self.wtf.frame(self._t_session, self.physics.s)
+
+    # --- mode « Dernier survivant » (série DS, lot DS2) ------------------------------------
+
+    def _survivor_course(self) -> tuple[float | None, bool]:
+        """Longueur du parcours et boucle, pour placer les arches (None : monde ouvert, sans fin)."""
+        if self.openworld is not None or self.route is None:
+            return None, False
+        return self.route.length_m, self.route.is_loop
+
+    def _survivor_field(self, args: dict) -> list[Any] | None:
+        """Plateau du mode d'après les réglages `[survivor]` ; None (rien ne démarre, `bad_args`) si
+        un entraînement ERG est choisi, si `bots` est donné ou si le parcours est trop court."""
+        from .bots import MAX_CONSTANT_BOTS, ProfileBot, profile_bot_names
+
+        sc = self.cfg.survivor
+        if self._workout is not None or args.get("ftp_test") or args.get("plan_day"):
+            self.server.send_error("bad_args", "Le Dernier survivant se joue sans entraînement ERG.")
+            return None
+        if args.get("bots") is not None:
+            self.server.send_error("bad_args", "Le Dernier survivant compose lui-même ses adversaires.")
+            return None
+        try:
+            survivor_mod.check_settings(sc.opponents, sc.spacing_km, sc.spread, sc.after_out,
+                                        max_opponents=MAX_CONSTANT_BOTS)
+            length, loop = self._survivor_course()
+            survivor_mod.arch_positions(sc.opponents, sc.spacing_km, self.physics.s, self._segments, length, loop)
+        except SurvivorError as exc:
+            self.server.send_error("bad_args", f"Dernier survivant : {exc}")
+            return None
+        plan = survivor_mod.plan_field(sc.opponents, float(self.cfg.bots.level_pct), sc.spread,
+                                       CONFIG_BOUNDS[("bots", "level_pct")])
+        names = profile_bot_names([p for p, _ in plan])
+        params = PhysicsParams.from_config(self.cfg)
+        return [ProfileBot(p, bot_id=f"bot{i + 1}", name=n, params=params, bike_mass_kg=self.cfg.bike.mass_kg,
+                           s=self.physics.s, level_pct=lv)
+                for i, ((p, lv), n) in enumerate(zip(plan, names))]
+
+    def _start_survivor(self) -> None:
+        """Arches et course de la séance qui commence (bots déjà calibrés par `_new_race`)."""
+        sc = self.cfg.survivor
+        length, loop = self._survivor_course()
+        arches = survivor_mod.arch_positions(sc.opponents, sc.spacing_km, self.physics.s, self._segments,
+                                             length, loop)
+        self.survivor = SurvivorRace(arches, [(b.id, b.name, float(b.level_pct or 0.0)) for b in self.bots],
+                                     float(sc.spacing_km), seed=int(time.time()))
+        self._survivor_out = {}
+        self.survivor.start(self._t_session, self._survivor_positions())
+        if self._rec:
+            self._rec.game({"kind": "survivor_start", "ts": round(time.time(), 3), "opponents": sc.opponents,
+                            "spacing_km": sc.spacing_km, "spread": sc.spread,
+                            "arches": [round(a, 1) for a in arches]})
+        log.info("Dernier survivant : %d adversaires, une arche tous les %d km.", sc.opponents, sc.spacing_km)
+
+    def _survivor_positions(self) -> dict[str, tuple[float, float]]:
+        pos = {b.id: (b.s, b.v) for b in self.bots}
+        pos[SURVIVOR_ME] = (self.physics.s, self.physics.v)
+        return pos
+
+    def _racing_bots(self) -> list[Any]:
+        """Bots qui comptent pour l'abri : tous, sauf les éliminés du Dernier survivant."""
+        if not self._survivor_out:
+            return self.bots
+        return [b for b in self.bots if b.id not in self._survivor_out]
+
+    def _survivor_before_bots(self) -> None:
+        """Consignes de survie des bots (lot DS3) avant leur pas."""
+        hints = self.survivor.survival_hints() if self.survivor is not None else {}
+        for bot in self.bots:
+            if hasattr(bot, "survival"):
+                bot.survival = hints.get(bot.id)
+
+    def _step_retired_bot(self, bot: Any, dt: float) -> None:
+        """Bot éliminé : il se range et ralentit jusqu'à 15 km/h, sans physique de course."""
+        v = max(SURVIVOR_RETIRED_MPS, bot.physics.v - SURVIVOR_RETIRED_DECEL * dt)
+        bot.physics.v = v
+        bot.physics.s += v * dt
+        bot.t += dt
+
+    def _survivor_after_bots(self) -> None:
+        """Passages des arches, éliminations, messages `elimination`, bots éliminés retirés après 10 s."""
+        sv = self.survivor
+        if sv is None:
+            return
+        for rid in sv.step(self._t_session, self._survivor_positions()):
+            if rid == SURVIVOR_ME:
+                log.info("Dernier survivant : éliminé à l'arche %d.", sv.racers[rid].out_arch)
+                if self.cfg.survivor.after_out == "end":
+                    self._survivor_end_pending = True
+            else:
+                self._survivor_out[rid] = self._t_session
+        gone = {rid for rid, t0 in self._survivor_out.items() if self._t_session - t0 >= SURVIVOR_RETIRED_S}
+        if gone:   # retirés sans toucher à l'abri en cours (pas de `_set_bots`, qui le remet à 0)
+            self.bots = [b for b in self.bots if b.id not in gone]
+            self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
+            for rid in gone:
+                self._survivor_out.pop(rid)
+        for msg in sv.due_results(self._t_session):
+            self.server.send_raw(msg)
+        if self._rec:
+            for line in sv.take_journal():
+                self._rec.game(line)
+
+    def _end_survivor_bots(self) -> None:
+        self._survivor_out = {}
+        self._survivor_end_pending = False
+        for bot in self.bots:
+            if hasattr(bot, "survival"):
+                bot.survival = None
+
+    def _fill_survivor_frame(self) -> None:
+        st = self.state
+        if self.survivor is None or st.session_state not in ("RUNNING", "PAUSED"):
+            st.survivor = None
+            return
+        st.survivor = self.survivor.frame()
+        if st.bots:
+            st.bots = [{**b, "out": self.survivor.racers[b["id"]].out_arch}
+                       if b["id"] in self._survivor_out else b for b in st.bots]
 
     # --- mode classique de la série T (lot T7) ------------------------------------------
 
@@ -2097,11 +2243,18 @@ class CoreSession:
             self._gravel_stats[1] += ridden
             if self._gravel_factor > 1.0:
                 self._gravel_stats[0] += ridden
+        if self.survivor is not None:
+            self._survivor_before_bots()
         for bot in self.bots:
+            if bot.id in self._survivor_out:
+                self._step_retired_bot(bot, dt)
+                continue
             params = getattr(bot, "params", None)   # bots à puissance constante : même vent (lot P2)
             if self.wind.active and params is not None and route:
                 params.wind_mps = head_component(self._wind_sample, route.sample(bot.s).heading_deg)
             bot.step(dt, route)
+        if self.survivor is not None:
+            self._survivor_after_bots()
 
         if race:
             race.step(self._t_session, dt, self.physics.s, m.power_w, self.bots)
@@ -2154,6 +2307,9 @@ class CoreSession:
         if route and not route.is_loop and self.openworld is None and st.s >= route.length_m:   # ni une boucle, ni le monde ouvert
             log.info("Arrivée atteinte.")
             self._finish(True)
+        elif self._survivor_end_pending:   # éliminé, réglage « terminer la séance » (lot DS2)
+            self._survivor_end_pending = False
+            self._finish(True)
 
     def _gravel_factor_at(self, route: Route | None, s: float) -> float:
         """Facteur de roulement en s (lot U21) : colonne `surface` lissée sur 20 m en `auto`, surface imposée
@@ -2187,9 +2343,10 @@ class CoreSession:
             return ws.speed_mps * math.sin(math.radians(ws.from_deg - heading)) if ws else 0.0
 
         cross = cross_at(heading_deg)
-        draft_mod.update_bots(self.bots, draft_mod.Source(self.physics.s, self.physics.v), dt, length, is_loop,
+        racing = self._racing_bots()   # un bot éliminé (Dernier survivant) n'abrite plus personne
+        draft_mod.update_bots(racing, draft_mod.Source(self.physics.s, self.physics.v), dt, length, is_loop,
                               (lambda b: cross_at(route.sample(b.s).heading_deg)) if ws and route else None)
-        target, bot_id = draft_mod.best_draft(self.physics.s, self.bots, length, is_loop,
+        target, bot_id = draft_mod.best_draft(self.physics.s, racing, length, is_loop,
                                               self.physics.v, self._head_mps, cross)
         self._draft = draft_mod.smooth(self._draft, target, dt)
         if bot_id is not None:
@@ -2428,6 +2585,7 @@ class CoreSession:
                 self._fill_race_frame()
                 self._fill_wind_frame()
                 self._fill_wtf_frame()
+                self._fill_survivor_frame()
                 self.server.send_state(self.state)
             if now >= next_stats:
                 next_stats = now + STATS_PERIOD_S

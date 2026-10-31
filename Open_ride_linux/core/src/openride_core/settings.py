@@ -73,6 +73,11 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("gearing.start_gear", "Braquet de départ", "ride", 1),
     Setting("powerups.mode", "Bonus", "ride"),
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
+    # Dernier survivant (série DS, lot DS2) ; écran du mode au lot DS7
+    Setting("survivor.opponents", "Survivant : adversaires", "ride"),
+    Setting("survivor.spacing_km", "Survivant : écart des arches", "ride", 1, "km"),
+    Setting("survivor.spread", "Survivant : écart de niveau", "ride"),
+    Setting("survivor.after_out", "Survivant : si éliminé", "ride"),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20
