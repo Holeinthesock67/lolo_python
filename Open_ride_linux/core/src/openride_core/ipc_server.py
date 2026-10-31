@@ -27,7 +27,7 @@ MAX_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
 CONTRACT_REV = "1.5"
 # Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
-CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf")   # monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2
+CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor")   # monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2
 MAX_LIST_DATAGRAM_SIZE = 60000
 # Messages en parties (`part`, `parts`), `plans` et `settings` : 60 000 octets au plus par datagramme (contrat §2,
 # même liste que le contrat ; `garage` et `room` depuis la révision 1.4, le monde ouvert depuis la 1.5,
@@ -85,6 +85,7 @@ class IpcState:
     bot_behind: str | None = None
     rogue: dict[str, Any] | None = None    # révision 1.4 (série R, lot R8) : présent seulement en mode ROGUE
     wtf: dict[str, Any] | None = None      # révision 1.5 (lot WTF2) : présent seulement en mode WTF
+    survivor: dict[str, Any] | None = None  # révision 1.5 (lot DS2) : présent seulement en Dernier survivant
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -110,7 +111,7 @@ class IpcState:
             d.pop("draft_bot", None)
         if self.open_world is None or self.devices is not None:
             d.pop("open_world", None)
-        for key in ("segment", "powerup", "jerseys", "rogue", "wtf"):
+        for key in ("segment", "powerup", "jerseys", "rogue", "wtf", "survivor"):
             if d[key] is None:
                 d.pop(key)
         if self.bots is None:

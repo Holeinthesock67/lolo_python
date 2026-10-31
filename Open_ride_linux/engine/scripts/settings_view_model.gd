@@ -35,6 +35,7 @@ const RIDE_MODES := ["sim", "erg", "cadence"]
 ## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
 ## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
+## Dernier survivant (lot DS2) : écart de niveau des bots et suite donnée à l'élimination du cycliste.
 const CHOICE_TEXTS := {
 	"powerups.mode": {"on": "oui", "off": "non"},
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
@@ -43,6 +44,8 @@ const CHOICE_TEXTS := {
 	"render.draft_gauge": {"off": "non", "on": "oui"},
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
 	"render.texture_level": {"auto": "selon la qualité", "low": "basses (1 024 px)", "medium": "moyennes (1 024 px)", "high": "hautes (2 048 px)"},
+	"survivor.spread": {"tight": "serré (± 3 %)", "normal": "normal (± 8 %)", "wide": "large (± 15 %)"},
+	"survivor.after_out": {"ride": "continuer à rouler", "end": "terminer la séance"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
 

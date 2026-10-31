@@ -107,7 +107,8 @@ OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen", "erg
 
 # Lignes de jeu de la série T (lot T7), lues par les records (T5) et la progression (V5).
 GAME_KINDS = ("powerup", "segment", "jersey", "rogue", "rogue_run", "rogue_snapshot",   # R8 : run Cyber-Rogue
-              "wtf_start", "wtf", "wtf_summary")   # lot WTF2 : mode « What the fuck »
+              "wtf_start", "wtf", "wtf_summary",   # lot WTF2 : mode « What the fuck »
+              "survivor_start", "survivor", "survivor_summary")   # lot DS2 : Dernier survivant
 
 def record_line(rec: Record) -> dict:
     # Dictionnaire construit sans ces clés (un `del` ne réduirait pas sa table en mémoire).

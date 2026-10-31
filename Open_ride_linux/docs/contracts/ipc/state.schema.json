@@ -593,6 +593,75 @@
               "type": "integer"
             }
           }
+        },
+        "survivor": {
+          "type": "object",
+          "description": "Révision 1.5 (lot DS2) : bilan du Dernier survivant.",
+          "required": [
+            "place",
+            "of",
+            "arches",
+            "spacing_km",
+            "eliminated",
+            "winner"
+          ],
+          "properties": {
+            "place": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "description": "Place du cycliste ; null si la séance s'arrête avant sa fin de course."
+            },
+            "of": {
+              "type": "integer",
+              "minimum": 3
+            },
+            "arches": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "spacing_km": {
+              "type": "number"
+            },
+            "eliminated": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "minItems": 4,
+                "maxItems": 4,
+                "prefixItems": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "string",
+                    "maxLength": 8
+                  },
+                  {
+                    "type": "string",
+                    "maxLength": 16
+                  },
+                  {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "description": "[arche, id, nom, retard en s sur l'avant-dernier], dans l'ordre des arches."
+            },
+            "winner": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 8
+            }
+          }
         }
       },
       "required": [
@@ -807,6 +876,11 @@
           "gap_s": {
             "type": "number",
             "description": "Révision 1.4 : écart en temps de passage (T16), positif si le bot est devant."
+          },
+          "out": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Révision 1.5 (lot DS2) : Dernier survivant, arche de l'élimination du bot ; présent pendant les 10 s où il se range."
           }
         }
       }
@@ -1373,6 +1447,99 @@
         },
         "fish": {
           "type": "boolean"
+        }
+      }
+    },
+    "survivor": {
+      "type": "object",
+      "description": "Facultatif, révision 1.5 (lot DS2) : présent seulement en Dernier survivant.",
+      "required": [
+        "arch",
+        "arches",
+        "d_m",
+        "alive",
+        "last",
+        "gap_last_s",
+        "out",
+        "me_out",
+        "winner"
+      ],
+      "properties": {
+        "arch": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Arche à départager (1 à arches)."
+        },
+        "arches": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 11
+        },
+        "d_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Distance du cycliste à l'arche ; null s'il est éliminé ou la course finie."
+        },
+        "alive": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "maxLength": 8
+          },
+          "description": "Coureurs en course, du premier au dernier sur la route ; « me » pour le cycliste."
+        },
+        "last": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 8
+        },
+        "gap_last_s": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Écart avec le dernier ; avec celui qui le précède si le cycliste est dernier."
+        },
+        "out": {
+          "type": "array",
+          "maxItems": 11,
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "string",
+                "maxLength": 8
+              },
+              {
+                "type": "integer",
+                "minimum": 1
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Bots éliminés et arche de leur élimination."
+        },
+        "me_out": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "winner": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 8
         }
       }
     }
