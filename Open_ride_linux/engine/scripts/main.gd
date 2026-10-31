@@ -23,6 +23,8 @@ const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
 const FpsCounter := preload("res://scripts/fps_counter.gd")
+const WtfView := preload("res://scripts/wtf/wtf_view.gd")
+const WtfHudModel := preload("res://scripts/wtf/wtf_hud_model.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -102,6 +104,8 @@ var erg_view = ErgViewModel.new()
 var erg_panel = null
 ## Compteur d'images/s du HUD (réglage `render.fps`, caché par défaut).
 var fps_counter = null
+## Habillage du mode « What the fuck » (lot WTF7) : bandeau, cartes, Katamari, horloge.
+var wtf_view = null
 ## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
 var load_guard = LoadGuard.new({}, false)
 var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
@@ -350,6 +354,8 @@ func _ready() -> void:
 	add_child(overlay_layer)
 	fps_counter = FpsCounter.new()
 	overlay_layer.add_child(fps_counter)
+	wtf_view = WtfView.new()
+	hud.add_child(wtf_view)
 	ipc.world_menu_received.connect(_on_world_menu_received)
 	ipc.world_status_received.connect(func(msg: Dictionary) -> void: _world_menu_status(msg))
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
@@ -400,6 +406,9 @@ func _ready() -> void:
 		_refresh_menu())
 	ipc.plans_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_plans(msg)
+		_refresh_menu())
+	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_wtf_rules(msg)
 		_refresh_menu())
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
@@ -623,6 +632,11 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_imports()
 		"list_plans":
 			ipc.list_plans()
+		"list_wtf_rules":
+			ipc.send_command("list_wtf_rules", {})
+		"set_wtf_rules":   # une commande set_wtf_rule par règle basculée (lot WTF3)
+			for r in act.get("list", []):
+				ipc.send_command("set_wtf_rule", {"id": str(r["id"]), "on": bool(r["on"])})
 		"start_plan":
 			ipc.start_plan(str(act["id"]), act.get("start_date", null))
 		"stop_plan":
@@ -1549,6 +1563,7 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.hr_max_bpm = float(ipc.core_config.get("hr_max_bpm", 0.0))
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
+		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
 			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
