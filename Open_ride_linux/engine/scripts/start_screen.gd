@@ -4,7 +4,8 @@ extends Control
 ## chargement avec une image sympa du type start your engine »). Dessiné par le code, sans texture : titre
 ## « START YOUR ENGINES », cinq feux de départ (allumés selon start_wait_model.gd), barre du pédalage,
 ## cadence mesurée, étape en cours et « Y : annuler ». Voile opaque tant que le décor se charge, plus léger
-## pendant le pédalage pour voir la route du départ ; feux verts « GO ! » à l'ouverture du départ.
+## pendant le pédalage pour voir la route du départ ; feux verts « GO ! » à l'ouverture du départ, sans
+## le titre (le bandeau du rappel des commandes s'affiche alors en haut de l'écran).
 ## Ne décide rien : affiche ce que `show_wait` et `show_go` lui donnent (main.gd).
 ## Pas de class_name : charger par preload("res://scripts/start_screen.gd").
 
@@ -84,7 +85,9 @@ func _draw() -> void:
 			if (i + row) % 2 == 0:
 				draw_rect(Rect2(i * 20.0, 60.0 + row * 10.0, 20.0, 10.0), Color(UiTheme.TEXT, 0.5))
 				draw_rect(Rect2(i * 20.0, 640.0 + row * 10.0, 20.0, 10.0), Color(UiTheme.TEXT, 0.5))
-	_centered(font, StartWaitModel.TITLE, 190.0, TITLE_SIZE, UiTheme.GOLD if go else UiTheme.FOCUS)
+	if not go:
+		# Au départ, le rappel des commandes du Click (banner.gd) prend le haut de l'écran : pas de titre.
+		_centered(font, StartWaitModel.TITLE, 190.0, TITLE_SIZE, UiTheme.FOCUS)
 	# Feux de départ sur leur portique.
 	var n := StartWaitModel.LIGHTS
 	var x0 := BASE.x * 0.5 - LIGHT_GAP * (n - 1) * 0.5

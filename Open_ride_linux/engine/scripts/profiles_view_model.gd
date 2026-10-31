@@ -7,11 +7,8 @@ extends RefCounted
 ##   premier focus ; A maintenu sur un profil le choisit (`select_profile`) ; puis « Nouveau profil »
 ##   (moins de huit profils) et « Gérer un profil ». Ouvert au démarrage avec au moins deux profils joueur,
 ##   et depuis la ligne « Profil : … » de l'accueil.
-## - « Nom du profil » (NAME) : grille de lettres pensée pour le Click. + et − passent à la case suivante
-##   ou précédente, + et − maintenus sautent d'une ligne, Z écrit la lettre, Y efface la dernière (nom vide :
-##   retour), A maintenu valide (`create_profile` ou `rename_profile`). Au clavier on tape le nom (Entrée
-##   valide, Retour arrière efface) ; à la souris, un clic écrit la lettre, « Effacer » et « Valider » en
-##   fin de grille. Nom proposé à la création : « Cycliste N ».
+## - « Nom du profil » (NAME) : saisie de texte partagée (text_entry.gd, lot O31) ; A maintenu valide
+##   (`create_profile` ou `rename_profile`). Nom proposé à la création : « Cycliste N ».
 ## - « Gérer » (MANAGE_LIST puis MANAGE) : Renommer, Supprimer (confirmation, « Non » par défaut ; le
 ##   profil en cours et le dernier profil joueur ne se suppriment pas).
 ## - Profil d'essai : titre « OpenRide — PROFIL D'ESSAI » et bandeau « ESSAI » au HUD (`is_trial()`).
@@ -25,15 +22,10 @@ const MANAGE := "profile_manage"
 const SCREENS := [SCREEN, NAME, MANAGE_LIST, MANAGE]
 const MAX_PROFILES := 8
 const NAME_MAX := 16
-const GRID_COLUMNS := 10
-## Cases de la grille, dans l'ordre (les lettres s'écrivent en minuscules, une majuscule en début de mot).
-const GRID := ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
-	"K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
-	"U", "V", "W", "X", "Y", "Z", "é", "è", "ê", "à",
-	"ç", "ô", "ï", "ü", "-", " ", "0", "1", "2", "3",
-	"4", "5", "6", "7", "8", "9"]
-const ERASE := "erase"
-const VALIDATE := "validate"
+const TextEntry := preload("res://scripts/text_entry.gd")
+const GRID_COLUMNS := TextEntry.GRID_COLUMNS
+const ERASE := TextEntry.ERASE
+const VALIDATE := TextEntry.VALIDATE
 const TRIAL_TITLE := "PROFIL D'ESSAI"
 
 ## Dernier message `profiles` : profil en cours et éléments {id, name, type, level, last_ride, kit_primary}.
@@ -42,7 +34,12 @@ var active := ""
 ## `hello_ack.config.profile` : {id, name, type, count} ({} : core sans profils, rien n'est affiché).
 var profile: Dictionary = {}
 ## Saisie du nom en cours : texte, « create » ou « rename » et profil renommé.
-var name_text := ""
+var entry = TextEntry.new(NAME_MAX)
+var name_text: String:
+	get:
+		return entry.text
+	set(value):
+		entry.text = value
 var name_mode := ""
 var rename_id := ""
 ## Profil ouvert dans « Gérer ».
@@ -204,61 +201,26 @@ func name_title() -> String:
 
 
 func grid_items() -> Array:
-	var out: Array = []
-	for i in range(GRID.size()):
-		var ch: String = GRID[i]
-		out.append({"id": "c:%d" % i, "label": "␣" if ch == " " else ch, "enabled": true, "detail": ""})
-	out.append({"id": ERASE, "label": "Effacer", "enabled": true, "detail": ""})
-	out.append({"id": VALIDATE, "label": "Valider", "enabled": true, "detail": ""})
-	return out
-
-
-## Lettre à écrire pour la case `index` : majuscule en début de mot, sinon minuscule.
-func _char_for(ch: String) -> String:
-	var start := name_text == "" or name_text.ends_with(" ") or name_text.ends_with("-")
-	return ch.to_upper() if start else ch.to_lower()
-
-
-func type_char(ch: String) -> void:
-	if ch == "" or name_text.length() >= NAME_MAX:
-		return
-	if ch == " " and (name_text == "" or name_text.ends_with(" ")):
-		return   # pas d'espace en tête ni deux de suite
-	name_text += ch
-	message = ""
+	return entry.grid_items()
 
 
 func backspace() -> bool:
-	if name_text == "":
+	if not entry.backspace():
 		return false
-	name_text = name_text.substr(0, name_text.length() - 1)
 	message = ""
 	return true
 
 
 ## Case de la grille activée (Z, ou clic) ; renvoie une action pour le core ou {}.
 func press_cell(item_id: String) -> Dictionary:
-	if item_id == ERASE:
-		backspace()
-		return {}
-	if item_id == VALIDATE:
-		return validate()
-	if item_id.begins_with("c:"):
-		var i := int(item_id.substr(2))
-		if i >= 0 and i < GRID.size():
-			var ch: String = GRID[i]
-			type_char(ch if ch == " " or ch == "-" or ch.is_valid_int() else _char_for(ch))
-	return {}
+	message = ""
+	return validate() if entry.press_cell(item_id) == TextEntry.VALIDATE else {}
 
 
 ## Saisie au clavier : lettres (accents compris), chiffres, espace et tiret ; le reste est ignoré.
 func type_text(ch: String) -> bool:
-	if ch.length() != 1:
-		return false
-	if ch.to_lower() != ch.to_upper() or ch.is_valid_int() or ch == " " or ch == "-":
-		type_char(ch)
-		return true
-	return false
+	message = ""
+	return entry.type_text(ch)
 
 
 func validate() -> Dictionary:

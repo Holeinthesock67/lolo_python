@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Tests sans écran du modèle de l'écran « Appareils » `pairing_view_model.gd` (Lot N13).
+## Tests sans écran du modèle de l'écran « Appareils » `pairing_view_model.gd` (Lot N13 ; oublis du lot O24).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_pairing_view_model.gd
 
 const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
@@ -50,6 +50,9 @@ func _init() -> void:
 	m.handle("trainer")
 	_check(m.choice["trainer"] == "AA:00:00:00:00:02", "valider Trainer : trainer suivant")
 	m.handle("trainer")
+	_check(m.choice["trainer"] == "" and _item(m, "trainer")["detail"] == "aucun (oublié)" and m.changes()["trainer"] == "",
+			"puis « aucun » : le trainer enregistré sera oublié (lot O24)")
+	m.handle("trainer")
 	_check(m.choice["trainer"] == "AA:00:00:00:00:01", "et retour au premier (boucle)")
 	m.handle("identify")
 	_check(m.identifying and not _item(m, "identify")["enabled"] and not _item(m, "save")["enabled"],
@@ -69,7 +72,20 @@ func _init() -> void:
 	m.handle("save")
 	m.on_pair_acked()
 	_check(m.saved and not _item(m, "relaunch").is_empty(), "accusé sans erreur : Relancer proposé")
+	# Lot O24 : oublier la ceinture et le Click
+	m.handle("hr")
+	_check(m.choice["hr"] == "" and _item(m, "hr")["detail"] == "aucune (oubliée)", "Ceinture : « aucune » après la seule ceinture")
+	m.handle("forget_click")
+	_check(m.choice["click_plus"] == "" and m.choice["click_minus"] == "" and not _item(m, "forget_click")["enabled"],
+			"Oublier le Click : les deux boîtiers")
+	var forget: Dictionary = m.handle("save")
+	_check(forget["args"]["hr"] == "" and forget["args"]["click_plus"] == "" and "l'oubli de la ceinture" in forget["title"]
+			and "l'oubli du Click" in forget["title"], "Enregistrer les oublis : %s" % str(forget))
+	m.on_pair_acked()
+	_check(m.configured["hr"] == "" and _item(m, "hr")["detail"] == "aucune" and not m.has_changes(),
+			"oubli enregistré : plus rien à écrire")
 	m.handle("scan")
+	_check(not _item(m, "forget_click")["enabled"] and not _item(m, "hr")["enabled"], "recherche : rôles inactifs")
 	m.on_error("scan_failed", "Bluetooth éteint")
 	_check(not m.scanning and m.message == "Bluetooth éteint", "scan_failed : recherche arrêtée et raison")
 	_check(m.handle("back") == {"action": "back"} and m.handle("relaunch") == {"action": "relaunch"}, "Retour et Relancer")

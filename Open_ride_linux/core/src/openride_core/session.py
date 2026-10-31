@@ -344,6 +344,11 @@ class CoreSession:
         # et chemins proposés à l'engine, seuls acceptés par import_workout.
         self.import_home = Path.home()
         self._import_offer: set[str] = set()
+        # Traces importées depuis le menu des parcours (lot O23), dans `gpx_dir` : chemins proposés par
+        # list_route_imports (seuls acceptés par import_route) et import en cours ({} sans import).
+        self._route_import_offer: set[str] = set()
+        self._route_import: dict[str, Any] = {}
+        self.route_compiler_cmd: list[str] | None = None   # préfixe du compilateur (essais)
         self._scanning = False
         self._identify: dict[str, Any] | None = None
         # Monde ouvert (lot W9) : générateur et route engagée ; `worldgen_cmd` remplace la commande (essais).
@@ -351,7 +356,7 @@ class CoreSession:
         self.worldgen_cmd: list[str] | None = None
         self.worldmenu: Any = None                 # WorldMenu du lot W11, créé à la première demande ; remplaçable (essais)
         self.worldgen_args: list[str] = []
-        self.gpx_dir: Path | None = None        # balades enregistrées (défaut ~/OpenRide/GPX ; essais)
+        self.gpx_dir: Path | None = None        # traces : balades, import du menu (défaut ~/OpenRide/GPX ; essais)
         self._ow_previous = "IDLE"
         # Mode Cyber-Rogue (lot R8) : run en cours ; `rogue_provider()` rend (table des châssis, statistiques,
         # vies) d'après la progression de la série V (lot R9) ; progression coupée : seul le châssis standard.
@@ -572,6 +577,8 @@ class CoreSession:
             self._accept_ftp(args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_imports", "create_workout", "import_workout"):
             self._on_workout_menu_command(name, args, cmd_id)
+        elif name in ("list_route_imports", "import_route"):
+            self._on_route_import_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_garage", "equip", "buy", "set_avatar"):
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in PROFILE_COMMANDS:
@@ -1128,13 +1135,131 @@ class CoreSession:
         except Exception:
             log.exception("Erreur pendant %s (cmd_id=%d)", name, cmd_id)
 
+    # --- traces importées depuis le menu des parcours (lot O23) -----------------------------------
+
+    def _on_route_import_command(self, name: str, args: dict, cmd_id: int) -> None:
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "Traces importables seulement hors séance.")
+            return
+        if name == "list_route_imports":
+            self._spawn(self._list_route_imports(cmd_id))
+            return
+        path = args.get("path")
+        if not isinstance(path, str) or path not in self._route_import_offer:
+            self.server.send_error("route_invalid", "Trace non proposée par list_route_imports : redemander la liste.")
+            return
+        current = self._route_import
+        if current.get("state") == "compiling":
+            if current.get("source") == path:   # copie renvoyée de la même commande : état en cours
+                self._send_route_import_status(cmd_id)
+            else:
+                self.server.send_error("busy", "Une trace est déjà en cours de compilation.")
+            return
+        self._route_import = {"source": path, "state": "compiling", "file": Path(path).name,
+                              "started": time.monotonic(), "cmd_id": cmd_id}
+        self._spawn(self._import_route(Path(path), cmd_id))
+
+    async def _list_route_imports(self, cmd_id: int) -> None:
+        from . import route_import
+        from .ipc_lists import chunk_list_message, MAX_DATAGRAM_BYTES
+
+        try:
+            items = await asyncio.to_thread(route_import.import_candidates, self.import_home,
+                                            self.gpx_dir or GPX_DIR)
+            self._route_import_offer = {it["path"] for it in items}
+            for m in chunk_list_message("route_imports", cmd_id, items, False, MAX_DATAGRAM_BYTES):
+                self.server.send_raw(m)
+        except Exception:
+            log.exception("Erreur pendant list_route_imports (cmd_id=%d)", cmd_id)
+
+    def _send_route_import_status(self, cmd_id: int | None = None) -> None:
+        """Message `route_import_status` : `compiling` (toutes les 2 s), puis `done` ou `failed`."""
+        cur = self._route_import
+        msg: dict[str, Any] = {"type": "route_import_status", "v": 1,
+                               "request_cmd_id": cmd_id if cmd_id is not None else cur.get("cmd_id", 0),
+                               "state": cur.get("state", "failed"), "file": cur.get("file", ""),
+                               "elapsed_s": int(time.monotonic() - cur.get("started", time.monotonic()))}
+        for key in ("route_id", "name", "created", "message"):
+            if key in cur:
+                msg[key] = cur[key]
+        self.server.send_raw(msg)
+
+    async def _import_route(self, src: Path, cmd_id: int) -> None:
+        """Copie de la trace puis compilation dans un processus à part (invariant A3)."""
+        from . import route_import
+
+        cur = self._route_import
+        copied: dict[str, Any] = {}
+        try:
+            copied = await asyncio.to_thread(route_import.copy_track, src, self.gpx_dir or GPX_DIR,
+                                           self.routes_root)
+            track = Path(copied["path"])
+            cur.update(file=copied["file"], created=copied["created"])
+            log.info("Trace %s : %s (%s)", "importée" if copied["created"] else "déjà présente", track.name, src)
+            plan, entry = await asyncio.to_thread(route_import.compile_plan, track, self.gpx_dir or GPX_DIR,
+                                                  self.routes_root)
+            if plan != "ready":
+                await self._compile_route(track, force=(plan == "rebuild"))
+                plan, entry = await asyncio.to_thread(route_import.compile_plan, track, self.gpx_dir or GPX_DIR,
+                                                      self.routes_root)
+                if plan != "ready":
+                    raise route_import.RouteImportError(
+                        "route_invalid", (entry.error if entry is not None and entry.error else
+                                          f"{track.name} : parcours introuvable après la compilation"))
+            cur.update(state="done", route_id=entry.id, name=entry.name)
+            log.info("Parcours prêt depuis le menu : %s", entry.id)
+        except route_import.RouteImportError as exc:
+            log.warning("Import de trace refusé : %s", exc)
+            cur.update(state="failed", message=str(exc))
+        except Exception as exc:
+            log.exception("Erreur pendant l'import de %s", src)
+            cur.update(state="failed", message=f"erreur interne : {exc}")
+        if cur["state"] == "failed" and copied.get("created"):
+            Path(copied["path"]).unlink(missing_ok=True)   # trace refusée : rien n'est ajouté à la liste
+        self._send_route_import_status(cmd_id)
+
+    async def _compile_route(self, track: Path, force: bool) -> None:
+        """`openride-compiler build` de la trace ; état `compiling` envoyé toutes les 2 s pendant l'attente."""
+        from . import route_import
+
+        prefix = self.route_compiler_cmd or route_import.compiler_prefix()
+        if not prefix:
+            raise route_import.RouteImportError("route_invalid", "compilateur absent (openride-compiler non installé)")
+        cmd = route_import.build_cmd(prefix, track, self.routes_root, force)
+        log.info("Compilation depuis le menu : %s", " ".join(cmd))
+        proc = await asyncio.create_subprocess_exec(*cmd, stdin=asyncio.subprocess.DEVNULL,
+                                                    stdout=asyncio.subprocess.PIPE,
+                                                    stderr=asyncio.subprocess.STDOUT)
+        out_task = asyncio.ensure_future(proc.communicate())
+        deadline = time.monotonic() + route_import.COMPILE_TIMEOUT_S
+        try:
+            while not out_task.done():
+                self._send_route_import_status()
+                if time.monotonic() > deadline:
+                    proc.kill()
+                    await out_task
+                    raise route_import.RouteImportError(
+                        "route_invalid", f"délai de compilation dépassé ({route_import.COMPILE_TIMEOUT_S:.0f} s)")
+                await asyncio.wait({out_task}, timeout=2.0)
+        except asyncio.CancelledError:
+            if proc.returncode is None:
+                proc.kill()
+            raise
+        output = (out_task.result()[0] or b"").decode("utf-8", "replace")
+        for line in output.splitlines():
+            log.info("[compilateur] %s", line)
+        if proc.returncode != 0:
+            raise route_import.RouteImportError("route_invalid", route_import.last_error_line(output))
+
     # --- réglages depuis le menu (lots O3 et O4, contrat IPC révision 1.3) -----------------------
 
     def _send_settings(self, cmd_id: int) -> None:
         from . import settings
 
-        self.server.send_raw({"type": "settings", "v": 1, "request_cmd_id": cmd_id,
-                              "items": settings.current(self.cfg)})
+        from .ipc_lists import chunk_list_message
+
+        for m in chunk_list_message("settings", cmd_id, settings.current(self.cfg), False):   # en parties (lot O27)
+            self.server.send_raw(m)
 
     def _save_difficulty(self, pct: int) -> None:
         """Difficulté choisie à la pause gardée dans `config.toml` pour la séance suivante (tout réglage du menu persiste)."""
@@ -1296,11 +1421,11 @@ class CoreSession:
         return task
 
     async def _handle_list_routes(self, cmd_id: int) -> None:
-        from .config import GPX_DIR
         from .ipc_lists import build_routes_messages
 
         try:
-            msgs = await asyncio.to_thread(build_routes_messages, cmd_id, self.routes_root, GPX_DIR,
+            msgs = await asyncio.to_thread(build_routes_messages, cmd_id, self.routes_root,
+                                           self.gpx_dir or GPX_DIR,
                                            ftp_w=self.cfg.rider.ftp_w)
             for m in msgs:
                 self.server.send_raw(m)
@@ -1325,6 +1450,7 @@ class CoreSession:
         if self.worldmenu is None:
             self.worldmenu = WorldMenu(self.cfg.open_world.network, self.config_path)
         wm = self.worldmenu
+        wm.network = self.cfg.open_world.network   # réglage Avancé (lot O27) pris sans relancer
         try:
             if name == "world_search":
                 msgs = await asyncio.to_thread(wm.search, cmd_id, args.get("query"))
