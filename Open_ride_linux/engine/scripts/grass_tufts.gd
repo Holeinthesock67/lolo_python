@@ -14,18 +14,25 @@ extends Node3D
 ##   de `CHUNK_M` mètres, `CHUNKS_BEHIND` derrière et `CHUNKS_AHEAD` devant.
 ## - Pas de touffe sur la route, dans un bâtiment ou dans l'eau (polygones `exclusions`, x et z) ;
 ##   densité réduite avec la pente du terrain (`height_at`, facultatif).
+## - Garde-fou de la chaussée : une touffe est toujours à `ROAD_CLEAR_M` au moins du bord de la route,
+##   mesuré sur TOUT le parcours (road_clearance.gd) et pas seulement au point qui l'a posée : dans une
+##   épingle, au creux d'un virage serré ou là où le parcours repasse près de lui-même, l'herbe tombait
+##   sur l'autre portion de route.
 ## - Nombre de touffes jamais au-dessus du budget (`living(preset).grass_tufts`, 0 en `low` : nœud vide).
 ## - Coût lissé : un tronçon qui entre dans la fenêtre est rempli `MAX_PER_FRAME` places par image.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
+const RoadClearance := preload("res://scripts/road_clearance.gd")
 
 const CHUNK_M := 40.0
 const CHUNKS_BEHIND := 1
 const CHUNKS_AHEAD := 4
 const BAND_MIN_M := 2.0
 const BAND_MAX_M := 15.0
+## Écart minimal entre une touffe et le bord de la chaussée, sur tout le parcours (rayon et pointe penchée compris).
+const ROAD_CLEAR_M := 1.0
 const MAX_SLOPE := 0.7          # pente (tan) au-delà de laquelle il n'y a plus de touffe
 const MAX_PER_FRAME := 120
 const STATION_STEP_M := 4.0
@@ -51,6 +58,7 @@ var tuft_seed := 0
 var exclusions: Array = []           # Array[PackedVector2Array] : bâtiments et plans d'eau (x, z)
 var height_at: Callable = Callable() # (x, z) -> hauteur du terrain ; vide : hauteur de la route
 
+var _road: RoadClearance = null       # distance à la route sur tout le parcours
 var _budget := 0
 var _per_chunk := 0
 var _mm: MultiMesh = null
@@ -77,8 +85,10 @@ func configure(budget: int, route_data, road_width_m: float = 6.0, seed_value: i
 		_mmi.queue_free()
 		_mmi = null
 		_mm = null
+	_road = null
 	if _per_chunk <= 0:
 		return
+	_road = RoadClearance.new(route)
 	_material = TreeRenderer.sway_material(true)
 	_material.set_shader_parameter("use_local_wind", true)
 	_material.set_shader_parameter("sway_height_m", TUFT_HEIGHT_M)
@@ -219,6 +229,8 @@ func tuft_transform(k: int, slot: int, stations: PackedVector4Array = PackedVect
 	var off := road_half_width_m + lat
 	var px: float = st.x + right.x * off * side
 	var pz: float = st.z + right.z * off * side
+	if _road != null and not _road.is_clear(px, pz, road_half_width_m + ROAD_CLEAR_M):
+		return null
 	var p2 := Vector2(px, pz)
 	for poly in exclusions:
 		if Geometry2D.is_point_in_polygon(p2, poly):
