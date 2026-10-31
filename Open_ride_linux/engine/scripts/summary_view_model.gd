@@ -18,6 +18,8 @@ const KEY_AVG_HR := "avg_hr_bpm"
 const KEY_MAX_POWER := "max_power_w"
 const KEY_BLOCKS := "blocks"
 const KEY_FIT_PATH := "fit_path"
+const KEY_DRAFT_TIME := "draft_time_s"   # lot AS5 : temps dans la roue, énergie économisée à l'abri
+const KEY_DRAFT_KJ := "draft_kj"
 
 const COLOR_GREEN := "vert"
 const COLOR_ORANGE := "orange"
@@ -139,6 +141,15 @@ func lines(summary: Dictionary, _mode: String = "", _ftp_w: int = 0) -> Array:
 			"value": _format_fr_round(max_p),
 			"unit": "W"
 		})
+
+	# 11. Abri (lot AS5) : « 12 min dans la roue, 9 kJ économisés », seulement après un passage dans la roue
+	var wheel_s = summary.get(KEY_DRAFT_TIME, null)
+	if wheel_s != null and float(wheel_s) >= 1.0:
+		var wheel_text := ("%d min" % int(round(float(wheel_s) / 60.0))) if float(wheel_s) >= 60.0 \
+			else ("%d s" % int(round(float(wheel_s))))
+		out.append({"label": "Dans la roue", "value": wheel_text, "unit": ""})
+		if summary.get(KEY_DRAFT_KJ, null) != null:
+			out.append({"label": "Énergie économisée", "value": _format_fr_round(summary[KEY_DRAFT_KJ]), "unit": "kJ"})
 
 	if summary.get("rogue") is Dictionary:
 		out.append_array(rogue_lines(summary["rogue"]))

@@ -296,7 +296,7 @@
 | [AS2](LOT_AS2_zone_laterale_placement.md) | Série AS : zone d'abri en deux dimensions (écart latéral `lane_m`) et placement automatique dans la roue, activé par défaut | Python + GDScript | AS1, P32 | Grande | Prêt (version 2.0) |
 | [AS3](LOT_AS3_bordure_vent_travers.md) | Série AS : vent de travers, zone abritée décalée sous le vent, bordure limitée par la voie | Python | AS2, P2 | Moyenne | Prêt (version 2.0) |
 | [AS4](LOT_AS4_groupes_pelotons.md) | Série AS : abri dans un groupe (sources devant et sur les côtés), plafond de 55 % | Python | AS2 | Moyenne | Prêt (version 2.0) |
-| [AS5](LOT_AS5_ressenti_abri.md) | Série AS : ressentir l'abri (souffle plus faible, watts économisés au HUD, temps et énergie au bilan) | Python + GDScript | P3, P10, P17 | Moyenne | Prêt (version 2.0) |
+| [AS5](LOT_AS5_ressenti_abri.md) | Série AS : ressentir l'abri (souffle plus faible, watts économisés au HUD, temps et énergie au bilan) | Python + GDScript | P3, P10, P17 | Moyenne | En PR le 31 octobre (version 2.0) ; captures à valider, essai sur le vélo |
 | [AS6](LOT_AS6_abri_vehicules.md) | Série AS : circulation calculée par le core, abri derrière un véhicule lent (activé par défaut, réglable), aspiration au dépassement | Python + GDScript | AS2 | Grande | Prêt (version 2.0) |
 | [AS7](LOT_AS7_abri_cyclistes_decor.md) | Série AS : groupes de cyclistes du décor calculés par le core et sources d'abri | Python + GDScript | AS2, AS6 (AS4 conseillé) | Grande | Prêt (version 2.0) |
 | [MJ0](../2.0/PLAN_SERIE_MJ.md) | Série MJ (profils de joueurs et profil d'essai) : cahiers MJ1 à MJ10, plan de la série, lignes 2.0-PRF de la spécification | doc | étude du 29 octobre | Petite | **Livré le 29 octobre** |

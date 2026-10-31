@@ -43,6 +43,9 @@ Les deux dernières catégories sont plus basses par défaut (confort, lot R18) 
   sur 3 s à 11 025 Hz, chacun décalé dans un bruit commun : un bruit figé d'une seconde se répétait et faisait une
   pulsation régulière d'une seconde (mesure du 30/10, autocorrélation 0,98 à 1 s). Un son joué une fois (`ONE_SHOT_KINDS` : corne, cloche) n'est
   jamais relancé par les points sonores : la cloche ne sonne qu'aux coups de l'heure pleine.
+- Abri (lot AS5) : dans la roue d'un bot, le vent (`sound_model.gd`) suit la vitesse de l'air ressentie,
+  `va × (1 − draft)^0,5`, avec `draft` déjà lissé à 1 s par le core : − 3,7 dB à 0,35 d'abri, à vitesse égale.
+  La variation reste bornée à 12 dB/s comme tout volume : pas de saut, donc pas de « tac-tac ».
 
 Tests : `engine/tests/unit/test_audio_mix.gd` (bus, courbe, lecteurs), `test_sound_player.gd`
 (`_test_seamless_loops`, raccords ; `_test_steady_levels`, niveau stable sur trois tours de boucle) et `core/tests/test_settings.py`

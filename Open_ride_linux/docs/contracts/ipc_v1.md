@@ -80,6 +80,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `wind` | objet, facultatif | Révision 1.3 : vent ressenti au point `s`, voir ci-dessous ; envoyé 2 fois par seconde (une trame sur quinze, jamais avec `devices`) et absent quand le vent est coupé |
 | `draft` | nombre, facultatif | Révision 1.3 : coefficient d'aspiration appliqué au cycliste, de 0 à 0,45 (SRS §5) ; absent sans bot |
 | `draft_bot` | chaîne, facultatif | Révision 1.3 : `id` du bot qui abrite le cycliste ; absent quand `draft` vaut 0 ou manque |
+| `draft_w` | entier, facultatif | Révision 1.5 (lot AS5) : puissance aérodynamique économisée à l'abri, en W arrondis : sans abri moins avec abri, à la vitesse et au vent de face du moment (0 quand l'air pousse) ; absent sous 0,02 d'abri et sans bot. L'engine l'affiche sous la pastille « Abri » en medium et high |
 | `open_world` | objet, facultatif | Monde ouvert seulement : révision du monde, prochain carrefour, état des données (§4, « Monde ouvert ») |
 | `last_cmd_id` | entier | Dernier `cmd_id` traité par le core (§4) |
 
@@ -117,6 +118,8 @@ Mêmes définitions que `openride-core summary` (lot K7). Chaque champ vaut `nul
 | `max_power_w` | nombre ou `null` | Puissance maximale |
 | `blocks` | liste ou `null` | En ERG seulement : au plus 24 triplets `[index, puissance moyenne, cible moyenne ou null]`, index compté à partir de 1 ; au-delà, les premiers 24 et `blocks_truncated` vrai |
 | `blocks_truncated` | booléen | Vrai si `blocks` a été coupé |
+| `draft_time_s` | nombre, facultatif | Révision 1.5 (lot AS5) : secondes passées dans la roue (abri d'au moins 5 % de l'abri maximal, relevés à 1 Hz) ; absent sans bot |
+| `draft_kj` | nombre, facultatif | Révision 1.5 (lot AS5) : énergie économisée à l'abri, en kJ au dixième (somme des `draft_w` du journal) ; absent sans bot |
 
 **Objet `devices`**
 
@@ -582,3 +585,4 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.5) | 29 octobre 2026 | Ajouts compatibles (lot WTF2, mode « What the fuck », demande du propriétaire du 29 octobre) : argument `mode` de `start` ; valeur `"wtf"` de `hello_ack.config.modes` ; objet facultatif `wtf` dans `state` et `summary.wtf` ; commandes `list_wtf_rules` et `set_wtf_rule`, message `wtf_rules`, code d'erreur `wtf_rule_invalid` ; `set_ride_mode` vers l'ERG refusé (`busy`) pendant une séance WTF |
 | 1 (révision 1.5) | 30 octobre 2026 | Ajouts compatibles (fin de la série R, demande du propriétaire du 30 octobre) : réglages `audio.rogue_sfx_pct` et `audio.rogue_music_pct` (`applies` = `now`, défauts 70 et 40, docs/AUDIO.md) dans `settings`, liste portée à 32 éléments au plus et rangée avec `plans` parmi les messages de 60 000 octets au plus (§2 ; avec les thèmes installés, 26 réglages dépassaient 4 096 octets, l'engine lit déjà ces tailles) ; champ facultatif `last` de `hello_ack.config.rogue` (dernière run : objectif et durée) ; `chassis.selected` donne le châssis de la dernière run |
 | 1 (révision 1.5) | 30 octobre 2026 | Ajouts compatibles (lot MJ6, profils de joueurs, plan de la série MJ validé par le propriétaire le 29 octobre) : commandes `list_profiles`, `select_profile`, `create_profile`, `rename_profile` et `delete_profile`, message `profiles` (8 profils au plus, moins de 1 000 octets), objet facultatif `profile` de `hello_ack.config`, `hello_ack` renvoyé en cours de route après un changement de profil (§5), codes d'erreur `profile_invalid` et `name_invalid` |
+| 1 (révision 1.5) | 31 octobre 2026 | Ajouts compatibles (lot AS5, ressentir l'abri, série AS de la 2.0) : champ facultatif `draft_w` (watts économisés à l'abri) dans `state` ; champs facultatifs `draft_time_s` et `draft_kj` dans `summary` ; aussi `draft_w` en champ facultatif du journal |
