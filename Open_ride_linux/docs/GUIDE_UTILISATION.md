@@ -35,7 +35,7 @@ Pour mettre à jour, cliquez sur l'icône **OpenRide – Mettre à jour**. La mi
 
 ## 3. Premier démarrage et appairage
 
-Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/OpenRide/` (parcours, entraînements, séances, réglages) et ouvre l'écran **Connexion des appareils**.
+Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/OpenRide/` (parcours, entraînements, séances, réglages), installe les contenus de départ (les entraînements livrés, deux plans et quatre parcours de démonstration des biomes, sans rien télécharger) et ouvre l'écran **Connexion des appareils**.
 
 1. Allumez le trainer (pédalez un peu pour le réveiller) et les boîtiers du Click.
 2. L'écran cherche les appareils. Quand tout est relié, il passe seul au menu. Avec un seul boîtier du Click, ou sans Click, choisissez **Passer**.
@@ -72,7 +72,7 @@ Chaque écran du globe explique ce qu'il fait, et le bandeau du bas donne les bo
 
 En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pente de la route ne compte plus.
 
-**Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, **Importer un fichier** `.zwo`, `.erg`, `.mrc` ou `.qwk` trouvé dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`, et **Comment ça marche ?**, l'aide à l'écran qui reprend tout ce qui suit (un sujet par ligne, l'explication dans la carte de droite). Une première série d'entraînements s'installe avec `python -m openride_core.tools.workouts install` (depuis `core/`, environnement activé).
+**Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, **Importer un fichier** `.zwo`, `.erg`, `.mrc` ou `.qwk` trouvé dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`, et **Comment ça marche ?**, l'aide à l'écran qui reprend tout ce qui suit (un sujet par ligne, l'explication dans la carte de droite). Les entraînements livrés sont installés au premier démarrage ; sur une installation plus ancienne, **Réglages**, **Contenus**, **Contenus de départ** les ajoute (A maintenu), sans jamais remplacer un fichier existant.
 
 **Ajouter un entraînement.** Quatre façons :
 
@@ -104,7 +104,7 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
 
 **Jauge d'abri des bots.** **Réglages**, **Graphisme**, **Jauge d'abri des bots** : oui affiche un petit arc bleu au-dessus du bot qui t'abrite, rempli selon l'abri que tu reçois (le même pourcentage que la pastille « Abri » du HUD). Elle apparaît dans la roue d'un bot, dès que la pastille « Abri » apparaît (jusqu'à 15 m environ derrière lui), et disparaît quand tu en sors. En medium et high, le pourcentage s'affiche sous l'arc ; en high, l'arc a un léger halo. Coupée par défaut. Seuls les bots abritent : ni le fantôme, ni les cyclistes du décor, ni les véhicules.
 
-**Plans d'entraînement.** L'accueil affiche **Séance du jour** quand un plan est en cours, sinon **Choisir un plan**. Un plan range des entraînements par semaine et par jour ; il garde en mémoire ce qui est fait et ce qui est en retard. `openride-core plan install` copie deux plans de départ (« Reprise 4 semaines » et « FTP 6 semaines »).
+**Plans d'entraînement.** L'accueil affiche **Séance du jour** quand un plan est en cours, sinon **Choisir un plan**. Un plan range des entraînements par semaine et par jour ; il garde en mémoire ce qui est fait et ce qui est en retard. Deux plans de départ (« Reprise 4 semaines » et « FTP 6 semaines ») font partie des contenus de départ (**Réglages**, **Contenus**).
 
 **Test de FTP.** **Test de FTP** à l'accueil lance la rampe : paliers d'une minute, +20 W, jusqu'à ce que tu ne puisses plus suivre. Roulez-la de préférence sur une boucle, car un parcours avec arrivée termine la séance. Au bilan, **Accepter** écrit la nouvelle FTP dans la configuration ; **Garder** conserve l'ancienne.
 
@@ -168,7 +168,7 @@ Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîti
 
 ## 7. Réglages, thèmes et sons
 
-**Réglages** (menu principal) : **Appareils**, puis un sous-écran par thème. **Cycliste** : FTP, poids, poids du vélo. **Séance** : difficulté en SIM (part de la pente ressentie, de 0 à 100 %, aussi sur l'écran de pause, où elle est gardée pour la séance suivante), braquet de départ, bonus. **Graphisme** : qualité graphique (low, medium ou high), thème, courbes de la séance, mode d'affichage, images/s. **Son** : les quatre volumes. **Vent** : vent, force, direction (par 45°, avec le point cardinal), rafales et plafond. Pour changer une valeur, choisissez le réglage et maintenez A : la valeur s'écrit entre deux flèches (`◀ 75 % ▶`) ; + et B la règlent (appui long : cinq pas), A maintenu l'enregistre et Y annule. Les réglages sont écrits dans `~/OpenRide/config.toml` ; ceux qui touchent la séance en cours s'appliquent tout de suite, les autres à la séance suivante.
+**Réglages** (menu principal) : **Appareils**, **Contenus** (contenus de départ : entraînements, plans et parcours de démonstration, état « installé », « en partie installé » ou « à installer » ; A maintenu installe ce qui manque, sans rien écraser), puis un sous-écran par thème. **Cycliste** : FTP, poids, poids du vélo. **Séance** : difficulté en SIM (part de la pente ressentie, de 0 à 100 %, aussi sur l'écran de pause, où elle est gardée pour la séance suivante), braquet de départ, bonus. **Graphisme** : qualité graphique (low, medium ou high), thème, courbes de la séance, mode d'affichage, images/s. **Son** : les quatre volumes. **Vent** : vent, force, direction (par 45°, avec le point cardinal), rafales et plafond. Pour changer une valeur, choisissez le réglage et maintenez A : la valeur s'écrit entre deux flèches (`◀ 75 % ▶`) ; + et B la règlent (appui long : cinq pas), A maintenu l'enregistre et Y annule. Les réglages sont écrits dans `~/OpenRide/config.toml` ; ceux qui touchent la séance en cours s'appliquent tout de suite, les autres à la séance suivante.
 
 **Qualité graphique.** Trois préréglages : `low`, `medium`, `high`. Si l'image saccade, passez en `low`.
 

@@ -61,6 +61,7 @@ const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
+const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
@@ -183,6 +184,8 @@ var _record_bonus := false
 var pause_reason := ""
 ## Profils de joueurs (série MJ, lot MJ8) : « Qui roule ? », nom du profil, gestion.
 var profiles = ProfilesViewModel.new()
+## Contenus installables (lot O25) : écran « Réglages › Contenus ».
+var contents = ContentsViewModel.new()
 
 
 func _init() -> void:
@@ -191,6 +194,7 @@ func _init() -> void:
 	menu.add_screen({"id": PAIRING, "title": "Appareils", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": SETTINGS_GROUP, "title": "Réglages", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": SETTING_EDIT, "title": "Réglage", "on_back": MenuModel.SETTINGS, "items": []})
+	menu.add_screen({"id": ContentsViewModel.SCREEN, "title": "Contenus", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": WORKOUT_CREATE, "title": "Créer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
 	menu.add_screen({"id": WORKOUT_IMPORT, "title": "Importer un entraînement", "on_back": MenuModel.WORKOUTS,
@@ -367,7 +371,8 @@ func _refresh_pairing() -> void:
 ## Écran « Réglages » : Appareils (lot N13), puis un sous-écran par groupe des réglages reçus du core
 ## (lot O4) ; le sous-écran ouvert est mis à jour avec la liste.
 func _refresh_settings() -> void:
-	var items: Array = [{"id": "devices", "label": "Appareils : rechercher et appairer"}]
+	var items: Array = [{"id": "devices", "label": "Appareils : rechercher et appairer"},
+		{"id": "contents", "label": "Contenus : entraînements, plans, parcours"}]
 	items.append_array(settings.group_items())
 	if settings.items.is_empty():
 		items.append({"id": "none", "label": "Réglages : en attente du core", "enabled": false})
@@ -429,6 +434,10 @@ func on_error(code: String, text: String) -> void:
 		return
 	if menu.current_screen() in ProfilesViewModel.SCREENS and profiles.on_error(code, text):
 		_refresh_profiles()
+		return
+	if code in ["content_invalid", "content_failed"] or (code == "busy" and menu.current_screen() == ContentsViewModel.SCREEN):
+		contents.on_error(code, text)
+		_refresh_contents()
 		return
 	if code == "bot_invalid" and menu.current_screen() == MenuModel.READY:
 		ready_message = "Échec : " + text
@@ -552,6 +561,8 @@ func card(st: Dictionary) -> Dictionary:
 		return {}
 	if screen == PAIRING:
 		return pairing.sheet(focused)
+	if screen == ContentsViewModel.SCREEN:
+		return contents.sheet(focused)
 	if screen == SETTINGS_GROUP:
 		return settings.sheet(focused.substr(4)) if focused.begins_with("set:") else {}
 	if screen == WORKOUT_CREATE:
@@ -953,11 +964,22 @@ func handle(event: String) -> Dictionary:
 		var item_id := str(act["id"])
 		if item_id == "devices":
 			return _open_pairing()
+		if item_id == "contents":
+			_refresh_contents()
+			menu.push_screen(ContentsViewModel.SCREEN)
+			return {"action": "list_contents"}
 		if item_id.begins_with("group:"):
 			settings_group = item_id.substr(6)
 			_refresh_settings()
 			menu.push_screen(SETTINGS_GROUP)
 		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == ContentsViewModel.SCREEN:
+		var choice: Dictionary = contents.handle(str(act["id"]))
+		_refresh_contents()
+		if choice.has("confirm"):
+			menu.confirm(str(choice["confirm"]), choice["action"])
+			return {}
+		return choice
 	if act.get("action", "") == "item" and act.get("screen", "") == SETTINGS_GROUP:
 		var item_id := str(act["id"])
 		if item_id.begins_with("set:") and settings.begin(item_id.substr(4)):
@@ -1110,6 +1132,22 @@ func _handle_garage(screen: String, item_id: String) -> Dictionary:
 				menu.confirm(str(todo["title"]), {"action": "buy", "item_id": todo["item_id"]})
 	_refresh_garage()
 	return act
+
+
+# --- contenus installables (lot O25) -----------------------------------------------------------
+
+func _refresh_contents() -> void:
+	menu.set_screen_items(ContentsViewModel.SCREEN, contents.menu_items())
+
+
+## Message `contents` du core ; renvoie l'action « list » (parcours, entraînements, réglages, plans) quand
+## une installation vient de se terminer, sinon {}.
+func on_contents(msg: Dictionary) -> Dictionary:
+	var finished: bool = contents.on_contents(msg)
+	_refresh_contents()
+	if finished:
+		return {"action": "list", "route_id": menu.world_id} if menu.world_id != "" else {"action": "list"}
+	return {}
 
 
 # --- profils de joueurs (série MJ, lot MJ8) ----------------------------------------------------
@@ -1411,6 +1449,9 @@ func state() -> Dictionary:
 		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
 	elif st["screen"] in GarageViewModel.SCREENS:
 		st["status"] = garage.message
+	elif st["screen"] == ContentsViewModel.SCREEN:
+		st["status"] = contents.message
+		st["status_error"] = contents.message.begins_with("Échec")
 	elif st["screen"] in ProfilesViewModel.SCREENS:
 		st["status"] = profiles.message
 		st["status_error"] = profiles.message.begins_with("Nom refusé") or profiles.message.begins_with("Nom vide")
