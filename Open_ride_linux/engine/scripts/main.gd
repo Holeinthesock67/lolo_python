@@ -23,6 +23,8 @@ const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
 const FpsCounter := preload("res://scripts/fps_counter.gd")
+const WtfView := preload("res://scripts/wtf/wtf_view.gd")
+const WtfHudModel := preload("res://scripts/wtf/wtf_hud_model.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -102,6 +104,8 @@ var erg_view = ErgViewModel.new()
 var erg_panel = null
 ## Compteur d'images/s du HUD (réglage `render.fps`, caché par défaut).
 var fps_counter = null
+## Habillage du mode « What the fuck » (lot WTF7) : bandeau, cartes, Katamari, horloge.
+var wtf_view = null
 ## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
 var load_guard = LoadGuard.new({}, false)
 var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
@@ -205,7 +209,7 @@ func _ready() -> void:
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
-	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)))
+	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)), -1.0, "--camera")
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
 	print("Mode d'affichage : ", _display_name)
@@ -291,6 +295,9 @@ func _ready() -> void:
 	ipc.profiles_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_profiles(msg)
 		_refresh_menu())
+	ipc.contents_received.connect(func(msg: Dictionary) -> void:
+		_run_menu_action(menu_flow.on_contents(msg))
+		_refresh_menu())
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
 	ipc.core_lost.connect(_on_core_lost)
@@ -348,6 +355,8 @@ func _ready() -> void:
 	add_child(overlay_layer)
 	fps_counter = FpsCounter.new()
 	overlay_layer.add_child(fps_counter)
+	wtf_view = WtfView.new()
+	hud.add_child(wtf_view)
 	ipc.world_menu_received.connect(_on_world_menu_received)
 	ipc.world_status_received.connect(func(msg: Dictionary) -> void: _world_menu_status(msg))
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
@@ -398,6 +407,9 @@ func _ready() -> void:
 		_refresh_menu())
 	ipc.plans_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_plans(msg)
+		_refresh_menu())
+	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_wtf_rules(msg)
 		_refresh_menu())
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
@@ -466,8 +478,7 @@ func _on_settings(msg: Dictionary) -> void:
 	var cam := str(menu_flow.settings.item("render.camera").get("value", ""))
 	if CameraViews.is_valid(cam):
 		if _camera_setting != "" and cam != _camera_setting and cam != camera_views.current:
-			camera_views.set_view(cam)
-			print("Vue de caméra : ", cam)
+			camera_views.set_view(cam, -1.0, "réglage render.camera")
 		_camera_setting = cam
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
@@ -561,16 +572,13 @@ func _camera_event(event_name: String) -> bool:
 	if event_name.begins_with("A_") and junction_view != null and junction_view.vm.is_visible():
 		return false
 	var now_s := Time.get_ticks_usec() / 1000000.0
-	var changed := false
 	match event_name:
 		"A_SHORT", "UP_SHORT":
-			changed = camera_views.next_view(now_s)
+			camera_views.next_view(now_s, event_name)
 		"DOWN_SHORT":
-			changed = camera_views.previous_view(now_s)
+			camera_views.previous_view(now_s, event_name)
 		"A_LONG":
-			changed = camera_views.reset_default(now_s)
-	if changed:
-		print("Vue de caméra : ", camera_views.current)
+			camera_views.reset_default(now_s, event_name)
 	return true
 
 
@@ -626,10 +634,17 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_imports()
 		"list_plans":
 			ipc.list_plans()
+		"list_wtf_rules":
+			ipc.send_command("list_wtf_rules", {})
+		"set_wtf_rules":   # une commande set_wtf_rule par règle basculée (lot WTF3)
+			for r in act.get("list", []):
+				ipc.send_command("set_wtf_rule", {"id": str(r["id"]), "on": bool(r["on"])})
 		"start_plan":
 			ipc.start_plan(str(act["id"]), act.get("start_date", null))
 		"stop_plan":
 			ipc.stop_plan()
+		"create_plan":
+			ipc.create_plan(act["workouts"], act["days"], act.get("weeks", null))
 		"accept_ftp":
 			ipc.accept_ftp(bool(act.get("force", false)))
 		"create_workout":
@@ -661,6 +676,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("buy", {"item_id": str(act["item_id"])})
 		"set_avatar":
 			ipc.send_command("set_avatar", {"avatar": act["avatar"]})
+		"list_contents":   # contenus installables (lot O25, contrat 1.5)
+			ipc.send_command("list_contents", {})
+		"install_content":
+			ipc.send_command("install_content", {"id": str(act["id"])})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
 		"select_profile", "delete_profile":
@@ -854,6 +873,9 @@ func _process(delta: float) -> void:
 	_step_load_guard(delta)
 	var now := Time.get_ticks_usec()
 	_remember_camera_view(now / 1000000.0)
+	var camera_log: String = camera_views.log_line()   # tout changement de la vue affichée, quelle qu'en soit l'origine
+	if camera_log != "":
+		print(camera_log)
 	# Personnages et animaux (anim_clock.gd) : figés avec le décor quand le core ne répond plus.
 	if not banner.has_message("core_lost"):
 		AnimClock.advance(delta)
@@ -1108,7 +1130,7 @@ func _on_test_message(msg: Dictionary) -> void:
 		"menu_state":
 			ipc.test_log("menu_state " + JSON.stringify(_test_menu_state(str(msg.get("req", "")))))
 		"camera_view":   # vue de caméra imposée, sans transition (tour visuel, lot X21)
-			camera_views.set_view(str(msg.get("view", "")))
+			camera_views.set_view(str(msg.get("view", "")), -1.0, "message de test")
 			ipc.test_log("camera_view done=" + camera_views.effective())
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
@@ -1543,6 +1565,7 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.hr_max_bpm = float(ipc.core_config.get("hr_max_bpm", 0.0))
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
+		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
 			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
@@ -1620,6 +1643,8 @@ func _show_bots(rider_s: float, rider_v: float) -> void:
 		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route)
+	if living_decor != null:
+		living_decor.bot_places = bots_model.places()
 
 
 ## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste.

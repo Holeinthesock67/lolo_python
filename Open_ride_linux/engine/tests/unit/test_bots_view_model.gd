@@ -116,7 +116,7 @@ func _test_nodes() -> void:
 	_check(bv.get_child_count() == 2, "une silhouette par bot visible (%d)" % bv.get_child_count())
 	var node: Node3D = bv.get_child(0)
 	var label: Label3D = node.get_node("Name")
-	_check(absf(node.position.x - 1000.0) < 1.0 and absf(node.position.z - BotsView.LATERAL_M) < 0.1 and BotsView.LATERAL_M > RoadBuilder.RIDER_LATERAL_M, "posée sur la route, à droite du cycliste (lot P32) (%s)" % str(node.position))
+	_check(absf(node.position.x - 1000.0) < 1.0 and absf(node.position.z - RoadBuilder.BOT_LATERAL_M) < 0.1 and RoadBuilder.BOT_LATERAL_M > RoadBuilder.RIDER_LATERAL_M, "posée sur la route, à droite du cycliste (lot P32) (%s)" % str(node.position))
 	_check(label.visible, "nom affiché à moins de 50 m")
 	# Lot Y18 : le même cycliste que l'avatar du joueur, habillé d'après le bot ; pédalier calé sur la distance
 	var av = bv.avatar_of("bot1")
@@ -198,11 +198,71 @@ func _test_look() -> void:
 	_check(QualityPresets.bot_lod("medium", 36.0, 1) == 2, "moins de détail sans attendre en s'éloignant")
 
 
+## Lot Z2 (suite de P32) : quatre bots partis avec le cycliste se rangent côte à côte, sans se superposer ni
+## toucher le cycliste ; un bot seul garde sa place vers le bord ; un bot écarté y revient en glissant.
+func _test_laterals() -> void:
+	var m = BotsViewModel.new()
+	var pack := []
+	for i in range(4):
+		pack.append({"id": "b%d" % i, "name": "Bot %d" % i, "s": 0.5 * i, "v": 0.0, "kind": "constant", "profile": "rouleur"})
+	m.push(pack, 0)
+	var v: Array = []
+	for k in range(60):   # 3 s à 20 images/s
+		v = m.view(0.0, 0.0, k * 50000)
+	var slots := {}
+	var touching := 0
+	for a in v:
+		slots[snappedf(float(a["lateral"]), 0.01)] = true
+		if absf(float(a["lateral"]) - RoadBuilder.RIDER_LATERAL_M) < 0.6 and absf(float(a["gap_m"])) < BotsViewModel.SLOT_CLEAR_M:
+			touching += 1
+		for b in v:
+			if a != b and absf(float(a["lateral"]) - float(b["lateral"])) < 0.6 and absf(float(a["gap_m"]) - float(b["gap_m"])) < BotsViewModel.SLOT_CLEAR_M:
+				touching += 1
+	_check(slots.size() == 4 and touching == 0, "peloton au départ : quatre places différentes, aucun contact (%s)" % str(slots.keys()))
+	_check(m.places().size() == 4 and m.places()[0].has("lateral"), "places() : une place par bot pour le décor")
+	var first: Dictionary = v[0]
+	_check(is_equal_approx(float(first["lateral"]), RoadBuilder.BOT_LATERAL_M), "le premier garde sa place vers le bord")
+	# Le peloton s'étire et le cycliste est lâché : chacun revient vers le bord, en glissant (au plus
+	# LATERAL_SPEED_MPS) ; près du cycliste, celui qui roule de l'autre côté ne se rabat pas sur lui
+	var spread := []
+	for i in range(4):
+		spread.append({"id": "b%d" % i, "name": "Bot %d" % i, "s": 30.0 * i, "v": 0.0, "kind": "constant"})
+	m.push(spread, 3000000)
+	var before: Dictionary = {}
+	for a in v:
+		before[a["id"]] = float(a["lateral"])
+	var near_rider: Array = m.view(0.0, 0.0, 3000000)   # 50 ms après la dernière vue
+	var crossing := 0
+	for k in range(100):
+		near_rider = m.view(0.0, 0.0, 3050000 + k * 50000)
+		for a in near_rider:
+			if absf(float(a["gap_m"])) < BotsViewModel.RIDER_CLEAR_M and absf(float(a["lateral"]) - RoadBuilder.RIDER_LATERAL_M) < BotsViewModel.TOUCH_LATERAL_M:
+				crossing += 1
+	_check(crossing == 0, "près du cycliste, aucun bot ne se rabat sur lui (%d)" % crossing)
+	m.push(spread, 3000000)
+	for a in near_rider:
+		before[a["id"]] = float(a["lateral"])
+	var step: Array = m.view(-200.0, 0.0, 8050000)   # cycliste lâché, 50 ms après la dernière vue
+	var jump := 0.0
+	for a in step:
+		jump = maxf(jump, absf(float(a["lateral"]) - float(before[a["id"]])))
+	_check(jump <= BotsViewModel.LATERAL_SPEED_MPS * 0.05 + 1e-4, "glisse vers sa place, sans saut (%.3f m en 50 ms)" % jump)
+	for k in range(100):
+		step = m.view(-200.0, 0.0, 8100000 + k * 50000)
+	var all_edge := true
+	for a in step:
+		all_edge = all_edge and is_equal_approx(float(a["lateral"]), RoadBuilder.BOT_LATERAL_M)
+	_check(all_edge, "peloton étiré : tous revenus à leur place vers le bord")
+	m.push([], 14000000)
+	_check(m.view(0.0, 0.0, 14000000).is_empty() and m.places().is_empty(), "sans bot : aucune place")
+
+
 func _init() -> void:
 	_test_gaps()
 	_test_view()
 	_test_hud()
 	_test_nodes()
 	_test_look()
+	_test_laterals()
 	print("test_bots_view_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

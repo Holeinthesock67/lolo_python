@@ -4,8 +4,9 @@ extends Node3D
 ## (avatar_view.gd : corps effilé, maillot à motif, casque à aérations, vélo de route, roues et pédalier qui
 ## tournent), habillé d'après le bot (bot_look.gd : maillot à la couleur du bot, maillot vert ou à pois de la
 ## séance, corps et équipement variés) ; le fantôme est le même cycliste translucide, sans ombre. Posé à `s`
-## avec le cap et la pente de route_data.gd (relief exagéré comme la caméra), décalé de LATERAL_M vers la
-## droite (à droite du cycliste, vers le bord : road_builder.gd, lot P32) ; nom au-dessus à moins de NAME_M.
+## avec le cap et la pente de route_data.gd (relief exagéré comme la caméra), décalé de sa place en travers
+## `lateral` (bots_view_model.gd : à droite du cycliste vers le bord, côte à côte en peloton ; lot P32) ; nom
+## au-dessus à moins de NAME_M.
 ##
 ## - Niveau de détail selon la distance à la caméra et le préréglage (quality_presets.gd bot_lod) : niveau 0
 ##   (celui du joueur) de près en medium et high, 1 à moyenne distance, 2 (allégé) au-delà. Un avatar par
@@ -23,10 +24,8 @@ const AvatarView := preload("res://scripts/avatar_view.gd")
 const AvatarMesh := preload("res://scripts/avatar_mesh.gd")
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
-const RoadBuilder := preload("res://scripts/road_builder.gd")
 const RoadCyclistsModel := preload("res://scripts/road_cyclists_model.gd")
 
-const LATERAL_M := RoadBuilder.BOT_LATERAL_M
 const NAME_HEIGHT_M := 2.1
 const GHOST_ALPHA := 0.55
 const SLOPE_PROBE_M := 1.5          # pente du vélo : points de la route à ± cette distance
@@ -141,7 +140,7 @@ func update_view(view: Array, route) -> void:
 		var c: Dictionary = route.sample(route.wrap_s(s + SLOPE_PROBE_M))
 		var run := Vector2(float(c["x"]) - float(a["x"]), float(c["z"]) - float(a["z"])).length()
 		var pitch := atan2(float(c["y"]) - float(a["y"]), run) if run > 0.01 else 0.0
-		node.position = pos + right * LATERAL_M
+		node.position = pos + right * float(b["lateral"])
 		node.rotation = Vector3(pitch, -h, 0.0)
 		var lod := QualityPresets.bot_lod(quality, _distance(b, node.position), int(node.get_meta("lod")))
 		node.set_meta("lod", lod)

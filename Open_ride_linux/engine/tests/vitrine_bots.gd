@@ -93,7 +93,7 @@ func _run() -> void:
 			for b in v[3]:
 				var kind: String = b[1]
 				items.append({"id": b[0], "name": "Fantôme" if kind == "ghost" else "Bot %s" % b[0], "kind": kind,
-					"s": float(b[2]), "gap_m": float(b[2]), "visible": true, "show_name": float(b[2]) < BotsViewModel.NAME_M,
+					"s": float(b[2]), "gap_m": float(b[2]), "lateral": RoadBuilder.BOT_LATERAL_M, "visible": true, "show_name": float(b[2]) < BotsViewModel.NAME_M,
 					"color": BotsViewModel.color_of(kind), "jersey": b[3]})
 			for f in range(SETTLE_FRAMES):
 				bots.update_view(items, route)
