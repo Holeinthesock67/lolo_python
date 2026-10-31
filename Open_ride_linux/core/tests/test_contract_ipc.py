@@ -71,7 +71,7 @@ def test_all_message_schemas_exist():
                  "routes", "workouts", "scan_results", "settings", "imports", "workout_saved",
                  "route_imports", "route_import_status",
                  "segment_result", "room", "loot", "garage", "progression", "xp_result", "plans", "profiles",
-                 "contents"):
+                 "contents", "interrupted"):
         jsonschema.Draft202012Validator.check_schema(schema(name))
 
 

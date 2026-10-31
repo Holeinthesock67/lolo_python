@@ -258,6 +258,33 @@ def desktop_message(message: str, error: bool = True) -> None:
         _run_dialog(["notify-send", "-u", "critical" if error else "normal", title, message])
 
 
+def desktop_question(question: str) -> bool:
+    """Question oui ou non dans une fenêtre (zenity, sinon kdialog) ; faux sans l'un des deux ou sur « Non »."""
+    import shutil
+
+    if os.environ.get("OPENRIDE_NO_GUI") == "1":
+        return False
+    if shutil.which("zenity"):
+        cmd = ["zenity", "--question", "--no-wrap", "--title=OpenRide", f"--text={question}",
+               "--ok-label=Oui", "--cancel-label=Non"]
+    elif shutil.which("kdialog"):
+        cmd = ["kdialog", "--title", "OpenRide", "--yesno", question]
+    else:
+        return False
+    try:
+        return subprocess.run(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL, check=False).returncode == 0
+    except OSError:
+        return False
+
+
+def terminal_question(question: str) -> bool:
+    try:
+        return input(f"openride : {question} [o/N] ").strip().lower() in ("o", "oui", "y", "yes")
+    except EOFError:
+        return False
+
+
 def ensure_first_run(home: Path | None = None, template: Path | None = None) -> bool:
     """Premier démarrage : crée la configuration et les dossiers ; vrai si la configuration manquait."""
     from . import config as config_mod
@@ -935,8 +962,12 @@ def release_trainer_from_desktop(args: list[str], notify: Callable[[str, bool], 
     return 0 if code == 0 else 1
 
 
-def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | None = None) -> int:
-    """`openride` ; `message(texte, erreur)` affiche une fenêtre (défaut : sans terminal seulement)."""
+def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | None = None,
+         ask: Callable[[str], bool] | None = None) -> int:
+    """`openride` ; `message(texte, erreur)` affiche une fenêtre (défaut : sans terminal seulement) ;
+    `ask(question)` pose une question oui ou non (fenêtre, ou terminal quand il y en a un)."""
+    from . import config as config_mod
+    from . import config_repair
     from .config import ConfigError
 
     args = list(sys.argv[1:] if argv is None else argv)
@@ -948,6 +979,8 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
         return 0
     if message is None:
         message = (lambda text, error: None) if _default_echo() else desktop_message
+    if ask is None:
+        ask = terminal_question if _default_echo() else desktop_question
     if "--release-trainer" in args:
         args.remove("--release-trainer")
         return release_trainer_from_desktop(args, message)
@@ -969,14 +1002,27 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
         if warning:
             print(f"openride : {warning}", file=sys.stderr)
             message(warning, True)
-    try:
-        sup = build_supervisor(args)
-    except ConfigError as exc:
-        return fail(f"configuration invalide : {exc}")
-    except ValueError as exc:
-        return fail(str(exc))
-    except FileNotFoundError as exc:
-        return fail(str(exc))
+    for _ in range(config_repair.MAX_REPAIRS + 1):
+        try:
+            sup = build_supervisor(args)
+            break
+        except ConfigError as exc:
+            # Lot O34 : valeur invalide remise par défaut (ou fichier illisible remis à neuf) sur accord.
+            config_path = _config_arg(args) or config_mod.DEFAULT_CONFIG_PATH
+            fix = config_repair.proposal(exc, Path(config_path).expanduser(), config_mod.active_profile_file(),
+                                         CONFIG_TEMPLATE)
+            if fix is None or not ask(fix.question):
+                return fail(f"configuration invalide : {exc}")
+            try:
+                print(f"openride : {fix.apply()}", flush=True)
+            except OSError as err:
+                return fail(f"configuration invalide : {exc} (réparation impossible : {err})")
+        except ValueError as exc:
+            return fail(str(exc))
+        except FileNotFoundError as exc:
+            return fail(str(exc))
+    else:
+        return fail("configuration invalide : trop de valeurs à réparer, voir ~/OpenRide/config.toml")
     sup.alert = lambda text: message(text, True)
     if first_run:
         sup.core_cmd.append("--first-run")

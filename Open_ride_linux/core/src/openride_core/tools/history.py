@@ -7,7 +7,7 @@ sous-dossier `.journal/` (journaux `.jsonl`), de la plus récente à la plus anc
 - une séance présente à la fois en `.fit` et en `.jsonl` (heure de début à ± 60 s) n'apparaît
   qu'une seule fois, le `.fit` faisant foi ;
 - un journal `.jsonl` sans `.fit` correspondant (séance interrompue non récupérée) est listé
-  avec la mention « à récupérer : openride-core recover » ;
+  avec la mention « à récupérer : proposée à l'accueil d'OpenRide » (lot O34) ;
 - un fichier illisible ou tronqué apparaît avec son erreur sans arrêter la commande (code 0) ;
 - les bilans sont mis en cache dans `~/.cache/openride/history.json` (clé : chemin résolu,
   taille, `mtime_ns`, FTP) ; un cache absent ou corrompu est recalculé sans erreur.
@@ -42,7 +42,7 @@ from .session_summary import SummaryError, _hms, compute_summary, load_session
 
 CACHE_PATH = Path.home() / ".cache" / "openride" / "history.json"
 MATCH_TOLERANCE_S = 60.0
-RECOVER_NOTE = "à récupérer : openride-core recover"
+RECOVER_NOTE = "à récupérer : proposée à l'accueil d'OpenRide"   # lot O34
 _STAMP_ROUTE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}[_T]\d{2}-\d{2}(?:-\d{2})?_(.+)$")
 
 
