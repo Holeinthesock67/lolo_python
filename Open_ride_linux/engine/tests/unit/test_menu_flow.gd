@@ -657,9 +657,9 @@ func _test_bots_menu() -> void:
 	f.set_routes(ROUTES)
 	f.handle("PLUS_SHORT")   # Session libre
 	f.handle("A_LONG")
-	_check(f.state()["screen"] == "ready" and _ids(f) == ["start", "workout", "change_route", "bot", "ghost", "records"],
+	_check(f.state()["screen"] == "ready" and _ids(f) == ["start", "workout", "change_route", "bot1", "ghost", "records"],
 		"écran Prêt : bot et fantôme avant les records (%s)" % str(_ids(f)))
-	_check(f.state()["items"][3]["label"] == "Bot : aucun" and f.state()["items"][4]["label"] == "Fantôme de la dernière séance : non",
+	_check(f.state()["items"][3]["label"] == "Bot 1 : aucun" and f.state()["items"][4]["label"] == "Fantôme de la dernière séance : non",
 		"par défaut : aucun bot, pas de fantôme")
 	_check(f.handle("A_LONG") == {"action": "start"}, "sans bot : start sans argument (les bots de la ligne de commande restent)")
 	f.handle("MINUS_SHORT")   # Records (boucle depuis Démarrer)
@@ -668,14 +668,15 @@ func _test_bots_menu() -> void:
 	f.handle("MINUS_SHORT")   # Bot
 	for i in range(4):
 		f.handle("A_LONG")
-	_check(f.state()["items"][3]["label"] == "Bot : 90 % de la FTP" and f.state()["screen"] == "ready", "A long : bot suivant (%s)" % f.state()["items"][3]["label"])
+	_check(f.state()["items"][3]["label"] == "Bot 1 : 90 % de la FTP" and f.state()["screen"] == "ready", "A long : bot suivant (%s)" % f.state()["items"][3]["label"])
+	_check(_ids(f) == ["start", "workout", "change_route", "bot1", "bot2", "ghost", "records"]
+		and f.state()["items"][4]["label"] == "Bot 2 : aucun", "lot O35 : un bot choisi ouvre la ligne « Bot 2 » (%s)" % str(_ids(f)))
+	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")
-	_check(f.state()["items"][4]["label"] == "Fantôme de la dernière séance : oui", "fantôme demandé")
-	f.handle("MINUS_SHORT")
-	f.handle("MINUS_SHORT")
-	f.handle("MINUS_SHORT")
-	f.handle("MINUS_SHORT")
+	_check(f.state()["items"][5]["label"] == "Fantôme de la dernière séance : oui", "fantôme demandé")
+	for i in range(5):
+		f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "start", "retour sur Démarrer")
 	var act: Dictionary = f.handle("A_LONG")
 	_check(act == {"action": "start", "args": {"bots": [{"kind": "constant", "ftp_pct": 90}, {"kind": "ghost"}]}},
@@ -690,12 +691,12 @@ func _test_bots_menu() -> void:
 	g.on_state({"session_state": "IDLE", "route_id": "vosges"})
 	g.set_routes(ROUTES)
 	g.menu.prepare_start("test de FTP (rampe)", {"ftp_test": "ramp"})
-	g.menu.bot_choice = 2
+	g.menu.bot_choices.assign([2])
 	g.menu._refresh_home()
 	_check(g.handle("A_LONG") == {"action": "start", "args": {"ftp_test": "ramp", "bots": [{"kind": "constant", "power_w": 250}]}},
 		"test de FTP et bot : arguments réunis")
 	g.menu.reset()
-	_check(g.menu.bot_choice == 2 and not g.menu.ghost, "nouvelle séance : le bot de la séance lancée reste choisi (lot O32)")
+	_check(g.menu.bot_choices == [2] and not g.menu.ghost, "nouvelle séance : le bot de la séance lancée reste choisi (lot O32)")
 	# Bots à profil (lot T13) : après les bots constants, chaque profil à 90, 100 et 110 % de la FTP.
 	var labels: Array = []
 	for c in MenuModel.BOT_CHOICES:
@@ -703,9 +704,39 @@ func _test_bots_menu() -> void:
 	_check(labels.slice(7) == ["Grimpeur 90 %", "Grimpeur 100 %", "Grimpeur 110 %", "Rouleur 90 %", "Rouleur 100 %",
 		"Rouleur 110 %", "Sprinteur 90 %", "Sprinteur 100 %", "Sprinteur 110 %", "Diesel 90 %", "Diesel 100 %", "Diesel 110 %"],
 		"profils et niveaux au menu (%s)" % str(labels))
-	g.menu.bot_choice = 9
+	g.menu.bot_choices.assign([9])
 	_check(g.menu._start_args() == {"bots": [{"kind": "profile", "profile": "climber", "level_pct": 110}]},
 		"start avec un grimpeur à 110 %% (%s)" % str(g.menu._start_args()))
+	_test_four_bots()
+
+
+## Quatre bots et le fantôme (lot O35) : la limite du core (MAX_CONSTANT_BOTS), une ligne par bot, « aucun »
+## retire le bot et remonte les suivants.
+func _test_four_bots() -> void:
+	var m = MenuModel.new()
+	m.set_world("vosges", "Vosges")
+	m.focus_item("ride")
+	m.handle("A_LONG")   # écran Prêt
+	for n in range(MenuModel.MAX_BOTS):
+		m.focus_item("bot%d" % (n + 1))
+		for i in range(n + 1):
+			m.handle("A_LONG")   # Bot n+1 : 200 W, 250 W, 300 W, 90 % de la FTP
+	var ids: Array = []
+	for it in m.state()["items"]:
+		ids.append(it["id"])
+	_check(ids == ["start", "workout", "change_route", "bot1", "bot2", "bot3", "bot4", "ghost", "records"],
+		"quatre bots : pas de cinquième ligne (%s)" % str(ids))
+	_check(m.state()["items"][6]["label"] == "Bot 4 : 90 % de la FTP", "libellé du 4e bot (%s)" % m.state()["items"][6]["label"])
+	m.ghost = true
+	_check(m._start_args() == {"bots": [{"kind": "constant", "power_w": 200}, {"kind": "constant", "power_w": 250},
+		{"kind": "constant", "power_w": 300}, {"kind": "constant", "ftp_pct": 90}, {"kind": "ghost"}]},
+		"start avec quatre bots et le fantôme (%s)" % str(m._start_args()))
+	# Bot 2 remis à « aucun » (fin du cycle) : retiré, Bot 3 et Bot 4 remontent, une ligne vide revient.
+	m.focus_item("bot2")
+	for i in range(MenuModel.BOT_CHOICES.size() - 2):
+		m.handle("A_LONG")
+	_check(m.bot_choices == [1, 3, 4], "bot 2 retiré, les suivants remontent (%s)" % str(m.bot_choices))
+	_check(m.state()["items"][6]["label"] == "Bot 4 : aucun", "ligne « Bot 4 : aucun » revenue")
 
 
 func _init() -> void:

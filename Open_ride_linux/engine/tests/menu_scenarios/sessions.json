@@ -12,7 +12,7 @@
     {"choisir": "demo"},
     {"ecran": "home", "focus": "world", "contient": ["Parcours : demo"]},
     {"choisir": "ride"},
-    {"ecran": "ready", "titre": "Prêt : session libre — demo", "focus": "start", "elements": ["start", "workout", "change_route", "bot", "ghost", "records"]},
+    {"ecran": "ready", "titre": "Prêt : session libre — demo", "focus": "start", "elements": ["start", "workout", "change_route", "bot1", "ghost", "records"]},
     {"choisir": "start"},
     {"journal": "core", "motif": "-> RUNNING", "delai": 10},
     {"menu_cache": true},
