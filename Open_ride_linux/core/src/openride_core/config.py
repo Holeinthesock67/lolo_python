@@ -205,6 +205,24 @@ class AudioConfig:
     rogue_music_pct: int = 40      # Cyber-Rogue : musique (lot R18, bus RogueMusic)
 
 
+# Valeur livrée de `[depart] mode` et valeur par défaut en cours ; la suite de tests met la seconde à
+# « immediat » (conftest.py) pour que `start` passe tout de suite en RUNNING, comme avant le lot O36,
+# sauf dans les tests du départ et ceux qui comparent la documentation aux valeurs livrées.
+DEPART_MODE_SHIPPED = "pedalage"
+DEPART_MODE_DEFAULT = DEPART_MODE_SHIPPED
+
+
+@dataclass
+class DepartConfig:
+    """Départ d'une séance (lot O36, `start_gate.py`) : `pedalage` attend le décor du départ, le trainer
+    et quelques secondes de pédalage avant de lancer chrono, distance, ERG et bots ; `immediat` part à
+    la commande `start`, comme avant."""
+    mode: str = field(default_factory=lambda: DEPART_MODE_DEFAULT)
+    cadence_rpm: int = 30          # cadence à tenir pour partir (ou 40 W si le trainer ne donne pas la cadence)
+    duree_s: int = 3               # secondes de pédalage cumulées, à-coups de moins de 2 s tolérés
+    attente_decor_s: int = 60      # au plus : l'engine n'a pas dit son décor prêt (ancien engine, sans engine)
+
+
 @dataclass
 class LogConfig:
     latence: bool = False   # journal de latence des appuis du Click, `[latence]` (lot X7, docs/OUTILS_DE_TEST.md)
@@ -234,6 +252,7 @@ class Config:
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
     bots: BotsConfig = field(default_factory=BotsConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
+    depart: DepartConfig = field(default_factory=DepartConfig)
     log: LogConfig = field(default_factory=LogConfig)
     profils: ProfilsConfig = field(default_factory=ProfilsConfig)
 
@@ -306,6 +325,9 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("audio", "events_pct"): (0, 100),
     ("audio", "rogue_sfx_pct"): (0, 100),
     ("audio", "rogue_music_pct"): (0, 100),
+    ("depart", "cadence_rpm"): (10, 90),
+    ("depart", "duree_s"): (0, 10),
+    ("depart", "attente_decor_s"): (0, 600),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
@@ -328,6 +350,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("wind", "feel"): ("grade", "ftms"),
     ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),
     ("powerups", "mode"): ("on", "off"),
+    ("depart", "mode"): ("pedalage", "immediat"),
 }
 
 
@@ -340,6 +363,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("gearing", "start_gear"),
     ("powerups", "mode"),
     ("bots", "level_pct"),
+    ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
     ("wind", "max_grade_offset_pct"),
     ("render", "camera"), ("render", "chart"),

@@ -35,7 +35,9 @@ const RIDE_MODES := ["sim", "erg", "cadence"]
 ## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
 ## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
+## Départ de la séance (lot O36) : `depart.mode` prend `pedalage` / `immediat`.
 const CHOICE_TEXTS := {
+	"depart.mode": {"pedalage": "au pédalage", "immediat": "immédiat"},
 	"powerups.mode": {"on": "oui", "off": "non"},
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
 	"render.camera": {"subjective": "subjective", "follow_near": "suivi proche", "follow_far": "suivi éloigné", "side": "latérale"},

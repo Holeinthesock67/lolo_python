@@ -69,7 +69,8 @@
         "delete_profile",
         "list_contents",
         "install_content",
-        "create_plan"
+        "create_plan",
+        "scene_ready"
       ]
     },
     "args": {
