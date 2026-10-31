@@ -1,5 +1,5 @@
 {
-  "description": "Un seul boîtier du Click : « Passer » ; Réglages → Appareils : recherche, enregistrement confirmé dans config.toml, « Relancer » (code 64).",
+  "description": "Un seul boîtier du Click : « Passer » ; Réglages → Appareils : recherche, enregistrement confirmé dans config.toml (ceinture activée, lot O24), « Relancer » (code 64).",
   "appareils": "unilateral",
   "etapes": [
     {"ecran": "connect", "titre": "Connexion des appareils", "focus": "continue", "contient": ["Click − : recherche"], "delai": 15},
@@ -9,7 +9,7 @@
     {"choisir": "devices"},
     {"ecran": "pairing", "titre": "Appareils"},
     {"journal": "engine", "motif": "scan_results done=true items=([3-9])", "delai": 20},
-    {"ecran": "pairing", "contient": ["Trainer — HomeTrainer", "Ceinture —", "appareil(s) trouvé(s)"], "elements": ["scan", "trainer", "identify", "hr", "save", "back"]},
+    {"ecran": "pairing", "contient": ["Trainer — HomeTrainer", "Ceinture —", "appareil(s) trouvé(s)"], "elements": ["scan", "trainer", "identify", "forget_click", "hr", "save", "back"]},
     {"choisir": "save"},
     {"ecran": "confirm", "focus": "no", "elements": ["no", "yes"]},
     {"note": "Non : rien n'est écrit", "choisir": "no"},
@@ -18,7 +18,7 @@
     {"choisir": "save"},
     {"ecran": "confirm", "focus": "no"},
     {"choisir": "yes"},
-    {"config": {"drivers.trainer_address": "*", "drivers.hr_address": "*"}, "delai": 5},
+    {"config": {"drivers.trainer_address": "*", "drivers.hr_address": "*", "drivers.hr": "ble"}, "delai": 5},
     {"ecran": "pairing", "contient": ["Relancer OpenRide maintenant", "Enregistré"]},
     {"choisir": "relaunch"},
     {"sortie": 64}
