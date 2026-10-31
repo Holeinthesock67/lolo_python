@@ -672,8 +672,8 @@ def _scenes(s: Session) -> None:
         left = w["power"]["rect"]
         s.check("vent", "indicateur sous la colonne de gauche", w["wind"]["rect"][0] < s.width * 0.35
                 and w["wind"]["rect"][1] > left[1] + left[3], f"rectangle {w['wind']['rect']}")
-    # 3 ter. Abri (lot P17) : aspiration de 13,5 % derrière un bot, « Abri 30 % » sous l'indicateur du vent.
-    core.set_scene(draft=0.135)
+    # 3 ter. Abri (lot P17) : aspiration de 16,5 % derrière un bot (échelle 0,55, lot AS4), « Abri 30 % » sous l'indicateur du vent.
+    core.set_scene(draft=0.165)
     time.sleep(1.0)
     shot = s.capture("abri")
     if shot:
@@ -1370,7 +1370,7 @@ def _menus_only(s: Session) -> None:
 
 
 def _draft_gauge_scene(s: Session) -> None:
-    """Jauge d'abri (maquette C validée le 29 octobre) : un bot à 6 m devant donne 13,5 % d'abri (« Abri 30 % ») ;
+    """Jauge d'abri (maquette C validée le 29 octobre) : un bot à 3,8 m devant donne 16,5 % d'abri (« Abri 30 % ») ;
     réglage `render.draft_gauge` coupé par défaut, rien au-dessus du bot ; à « on », arc au-dessus du bot, dans le
     champ de la caméra, avec « 30 % » en medium et high ; coupé à nouveau, plus rien."""
     core = s.core
@@ -1383,7 +1383,7 @@ def _draft_gauge_scene(s: Session) -> None:
 
     s_now = core.current_s()
     core.set_scene(speed=0.0, bots=[{"id": "bot1", "name": "Bot 250 W", "s": s_now + 6.0, "v": 0.0, "kind": "constant"}],
-                   bot_ahead="bot1", bot_behind=None, jerseys=None, draft=0.135, draft_bot="bot1")
+                   bot_ahead="bot1", bot_behind=None, jerseys=None, draft=0.165, draft_bot="bot1")
     time.sleep(SETTLE_S)
     shot = s.capture("jauge_abri_coupee")
     if shot:

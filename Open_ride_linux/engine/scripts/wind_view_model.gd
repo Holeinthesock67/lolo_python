@@ -15,7 +15,7 @@ extends RefCounted
 ## - intensité `level` de 0 à 4 (calme sous 5 km/h, faible 5 à 15, modéré 15 à 25, fort 25 à 40, très
 ##   fort au-delà), hystérésis de 2 km/h, et un niveau ne change qu'après `LEVEL_DWELL_S` (une rafale
 ##   isolée de moins d'une seconde ne compte pas) ; `speed_text` est la vitesse lissée sur 2 s ;
-## - `draft_text` : « Abri 30 % » (`draft / 0,45` arrondi à 5 %), vide sous 5 % ;
+## - `draft_text` : « Abri 30 % » (`draft / 0,55` arrondi à 5 %, lot AS4), vide sous 5 % ;
 ## - `visible` faux sans vent (pas de `wind` depuis 2 s) ni abri.
 
 const WIRE_TIMEOUT_S := 2.0
@@ -28,7 +28,7 @@ const LEVEL_THRESHOLDS_KMH := [5.0, 15.0, 25.0, 40.0]
 const LEVEL_HYSTERESIS_KMH := 2.0
 const LEVEL_DWELL_S := 1.0
 const LEVEL_TEXTS := ["calme", "faible", "modéré", "fort", "très fort"]
-const DRAFT_MAX := 0.45
+const DRAFT_MAX := 0.55   # plafond de l'abri au cœur d'un groupe (lot AS4, choix du propriétaire du 31 octobre)
 const VERDICTS := {
 	"favorable": ["Vent favorable", "good"],
 	"defavorable": ["Vent défavorable", "bad"],
