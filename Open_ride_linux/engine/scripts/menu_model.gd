@@ -66,7 +66,7 @@ const NO_WORKOUT_ID := "_sim"
 ## liste que le core annoncera dans hello_ack.config (2.0, PLAN_SERIE_R §6) ; absente : DEFAULT_MODES.
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
 const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert",
-	"rogue": "Cyber-Rogue"}
+	"rogue": "Cyber-Rogue", "wtf": "Mode WTF"}
 const DEFAULT_MODES := ["ride", "erg"]
 ## Ligne d'explication d'un mode de l'accueil (lot O22), à droite de son libellé.
 const HOME_DETAILS := {"open_world": "route créée en roulant"}
@@ -105,7 +105,8 @@ var _workouts_return: String = ROUTES
 ## Parcours choisi : id et nom ; "" tant qu'aucun n'est choisi.
 var world_id := ""
 var world_name := ""
-## Mode de la séance préparée : "free" (session libre, SIM) ou "erg".
+## Mode de la séance préparée : "free" (session libre, SIM), "erg", "rogue" ou "wtf" (mode « What the fuck »,
+## SIM seulement, lot WTF3).
 var mode := "free"
 ## Engine lancé en session simulée (--sim-session) : l'accueil propose de revenir au matériel réel.
 var sim_session := false
@@ -189,6 +190,12 @@ func _refresh_home() -> void:
 			_item("rogue_change", "Changer les choix")]
 		_screens[READY]["title"] = "Prêt : Cyber-Rogue"
 		return
+	if mode == "wtf":
+		_screens[READY]["items"] = [_item("start", "Démarrer"), _item("wtf_rules", "Changer les règles"),
+			_item("change_route", "Changer de parcours"), _item("bot", "Bot : " + BOT_CHOICES[bot_choice][0]),
+			_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non"))]
+		_screens[READY]["title"] = "Prêt : mode WTF" + ("" if world_name == "" else " — " + world_name)
+		return
 	_screens[READY]["items"] = [
 		_item("start", "Démarrer"),
 		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
@@ -243,6 +250,20 @@ func prepare_start(name: String, args: Dictionary) -> Dictionary:
 	return state()
 
 
+## Séance du mode WTF (lot WTF3) : session libre en SIM avec `mode` « wtf » au `start` ; ouvre l'écran
+## Prêt, ou les parcours d'abord sans monde choisi.
+func prepare_wtf() -> Dictionary:
+	_clear_start()
+	mode = "wtf"
+	_refresh_home()
+	if world_id == "":
+		_routes_return = READY
+		_open(ROUTES)
+	else:
+		_open(READY)
+	return state()
+
+
 func _clear_start() -> void:
 	start_name = ""
 	start_args = {}
@@ -251,6 +272,8 @@ func _clear_start() -> void:
 ## Arguments de `start` : séance préparée (plan_day, ftp_test) et bots choisis ({} si rien).
 func _start_args() -> Dictionary:
 	var out := start_args.duplicate()
+	if mode == "wtf":
+		out["mode"] = "wtf"
 	var bots: Array = []
 	if bot_choice > 0:
 		bots.append(BOT_CHOICES[bot_choice][1].duplicate())
@@ -336,7 +359,7 @@ func reset() -> void:
 	_clear_start()
 	bot_choice = last_bot
 	ghost = last_ghost
-	if mode == "rogue":
+	if mode in ["rogue", "wtf"]:
 		mode = "free"
 	_refresh_home()
 	_open(HOME, false)
@@ -632,7 +655,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "rogue", "garage", "profile":
+				"plan", "ftp", "rogue", "garage", "profile", "wtf":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
@@ -686,7 +709,7 @@ func _validate() -> Dictionary:
 				"change_route":
 					_routes_return = READY
 					_open(ROUTES)
-				"rogue_change":
+				"rogue_change", "wtf_rules":
 					return {"action": "item", "screen": READY, "id": id}
 				"records":   # écran « Records » (série T, lot T10), traité par menu_flow.gd
 					return {"action": "item", "screen": READY, "id": id}

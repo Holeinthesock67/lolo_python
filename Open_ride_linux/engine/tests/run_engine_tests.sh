@@ -219,6 +219,17 @@ elif command -v xvfb-run >/dev/null 2>&1; then
   echo "$VISUAL_OUT" | grep -E "^\[ÉCHEC\]|^Tests graphiques|introuvable" || true
   if [ "$visual_rc" -eq 0 ]; then rm -rf "$VISUAL_DIR"; else echo "Captures, journaux et rapport gardés : $VISUAL_DIR/rapport.html"; fi
   record "tests graphiques ($VISUAL_CONFIGS)" "$visual_rc" "$(echo "$VISUAL_OUT" | grep -E "^Tests graphiques" | tail -1 | sed 's/^Tests graphiques : //')"
+  # Garde-fou de la qualité appliquée (lot X32) en medium et en high (le low est vérifié ci-dessus) : préréglage du
+  # démarrage, réglages du core absents, égaux, autres et inconnus ; une capture en medium doit être du medium.
+  for gq_config in 1280x720:medium 1280x720:high; do
+    GQ_DIR="$(mktemp -d -t openride-quality.XXXXXX)"
+    GQ_OUT="$(timeout -k 5 300 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
+      --configs "$gq_config" --out "$GQ_DIR" --garde-qualite 2>&1)"
+    gq_rc=$?
+    echo "$GQ_OUT" | grep -E "^\[ÉCHEC\]|^Tests graphiques|introuvable" || true
+    if [ "$gq_rc" -eq 0 ]; then rm -rf "$GQ_DIR"; else echo "Captures, journaux et rapport gardés : $GQ_DIR/rapport.html"; fi
+    record "garde-fou qualité ($gq_config)" "$gq_rc" "$(echo "$GQ_OUT" | grep -E "^Tests graphiques" | tail -1 | sed 's/^Tests graphiques : //')"
+  done
 elif [ "${REQUIRE_RENDER:-0}" = "1" ]; then
   record "tests graphiques" 1 "xvfb-run introuvable alors que REQUIRE_RENDER=1"
 else
