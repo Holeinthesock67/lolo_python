@@ -123,6 +123,16 @@ var ghost := false
 var rogue_ready := ""
 ## Garage (lot V8) : l'accueil gagne « Garage » quand le core annonce une progression (set_garage).
 var garage := false
+## Profil de joueur (série MJ, lot MJ8) : ligne « Profil : … » en tête de l'accueil ("" : aucune) et
+## titre de l'accueil (« OpenRide — Cycliste A »).
+var profile_label := ""
+var home_title := "OpenRide"
+
+
+func set_profile(label: String, title: String) -> void:
+	profile_label = label
+	home_title = title
+	_refresh_home()
 
 
 func _init() -> void:
@@ -148,6 +158,9 @@ func _init() -> void:
 func _refresh_home() -> void:
 	var world := world_name if world_name != "" else "à choisir"
 	var items := [_item("world", "Parcours : " + world)]
+	if profile_label != "":
+		items.push_front(_item("profile", profile_label))
+	_screens[HOME]["title"] = home_title
 	for m in HOME_MODES:
 		if m in modes:
 			items.append(_item(m, HOME_MODES[m]))
@@ -557,7 +570,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "rogue", "garage":
+				"plan", "ftp", "rogue", "garage", "profile":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID]:

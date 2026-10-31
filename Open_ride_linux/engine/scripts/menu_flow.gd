@@ -57,6 +57,7 @@ const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
+const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
@@ -98,6 +99,12 @@ var menu = MenuModel.new()
 var catalog = CatalogModel.new()
 var summary_model = SummaryViewModel.new()
 var session_state: String = ""
+## Chiffres de la séance en cours pour la carte de la pause : durée (t), distance (s) de la dernière trame et
+## moyenne de la puissance mesurée en roulant (le core n'envoie pas de moyenne dans la trame d'état).
+var _run_t := NAN
+var _run_s := NAN
+var _power_sum := 0.0
+var _power_n := 0
 ## Dernier bilan reçu (objet `summary` de la trame en FINISHED).
 var summary: Dictionary = {}
 ## « Voir le bilan détaillé » : blocs ERG en plus des lignes.
@@ -168,6 +175,8 @@ var _record_segment := ""
 var _record_bonus := false
 ## Raison de la dernière pause (`state.pause_reason`), "" hors pause.
 var pause_reason := ""
+## Profils de joueurs (série MJ, lot MJ8) : « Qui roule ? », nom du profil, gestion.
+var profiles = ProfilesViewModel.new()
 
 
 func _init() -> void:
@@ -194,6 +203,13 @@ func _init() -> void:
 	menu.add_screen({"id": GarageViewModel.SCREEN, "title": "Garage", "on_back": MenuModel.HOME, "items": []})
 	for screen in [GarageViewModel.BIKE, GarageViewModel.OUTFIT, GarageViewModel.AVATAR]:
 		menu.add_screen({"id": screen, "title": "Garage", "on_back": GarageViewModel.SCREEN, "items": []})
+	menu.add_screen({"id": ProfilesViewModel.SCREEN, "title": "Qui roule ?", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": ProfilesViewModel.NAME, "title": "Nom du profil", "on_back": ProfilesViewModel.SCREEN,
+		"items": []})
+	menu.add_screen({"id": ProfilesViewModel.MANAGE_LIST, "title": "Gérer un profil",
+		"on_back": ProfilesViewModel.SCREEN, "items": []})
+	menu.add_screen({"id": ProfilesViewModel.MANAGE, "title": "Gérer", "on_back": ProfilesViewModel.MANAGE_LIST,
+		"items": []})
 	_refresh_plans()
 	_refresh_builder()
 	_refresh_pairing()
@@ -207,10 +223,33 @@ func is_visible() -> bool:
 
 ## Trame `state` reçue ; renvoie les actions à exécuter (liste, éventuellement vide). `now_s` : horloge
 ## en secondes pour l'attente de l'écran de connexion (négatif : passage à l'accueil sans attente).
+func _track_run(st: String, state: Dictionary) -> void:
+	if st in ["IDLE", "READY"]:
+		_run_t = NAN
+		_run_s = NAN
+		_power_sum = 0.0
+		_power_n = 0
+		return
+	var t = state.get("t", null)
+	var s = state.get("s", null)
+	if (t is int or t is float) and not is_nan(_run_t) and float(t) + 1.0 < _run_t:   # nouvelle séance : le temps repart de zéro
+		_power_sum = 0.0
+		_power_n = 0
+	if t is int or t is float:
+		_run_t = float(t)
+	if s is int or s is float:
+		_run_s = float(s)
+	var p = state.get("power", null)
+	if st == "RUNNING" and (p is int or p is float) and float(p) >= 0.0 and float(p) < 3000.0:
+		_power_sum += float(p)
+		_power_n += 1
+
+
 func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
+	_track_run(st, state)
 	if state.get("devices") is Dictionary:
 		devices = state["devices"]
 	var diff = state.get("difficulty_pct", null)
@@ -307,6 +346,10 @@ func _update_connect(state: Dictionary, now_s: float) -> void:
 func _leave_connect() -> void:
 	connect_done = true
 	menu.reset()
+	if profiles.should_ask():   # au moins deux profils joueur : « Qui roule ? » d'abord (plan MJ §3.1)
+		profiles.asked = true
+		_refresh_profiles()
+		menu.push_screen(ProfilesViewModel.SCREEN)
 
 
 func _refresh_pairing() -> void:
@@ -375,6 +418,9 @@ func on_error(code: String, text: String) -> void:
 		return
 	if menu.current_screen() in GarageViewModel.SCREENS and garage.on_error(code, text):
 		_refresh_garage()
+		return
+	if menu.current_screen() in ProfilesViewModel.SCREENS and profiles.on_error(code, text):
+		_refresh_profiles()
 		return
 	if code == "bot_invalid" and menu.current_screen() == MenuModel.READY:
 		ready_message = "Échec : " + text
@@ -500,6 +546,8 @@ func card(st: Dictionary) -> Dictionary:
 		var blocks: Array = builder.profile()
 		return CatalogModel.workout_sheet({"id": builder.workout_id(), "name": builder.workout_name(),
 			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
+	if screen == MenuModel.PAUSE:
+		return CatalogModel.pause_sheet(_run_t, _run_s, _power_sum / _power_n if _power_n > 0 else -1.0)
 	if screen == SUMMARY:
 		return {"title": "Bilan de la séance"}
 	if screen == RECORDS:
@@ -815,6 +863,8 @@ func handle(event: String) -> Dictionary:
 		if menu.current_screen() in [SETTING_EDIT, MenuModel.PAUSE, SETTINGS_GROUP, WORKOUT_CREATE]:
 			return _handle_edit(event)
 		settings.cancel()   # menu quitté pendant un réglage (séance lancée, perte du core…)
+	if menu.current_screen() == ProfilesViewModel.NAME:
+		return _handle_name(event)
 	if menu.current_screen() == RECORD_TABLE and event == "A_SHORT":   # A court : bascule de table (T10)
 		_handle_records(RECORD_TABLE, "toggle")
 		return {}
@@ -848,7 +898,14 @@ func handle(event: String) -> Dictionary:
 		_refresh_rogue()
 		menu.open_screen(RogueMenuModel.SCREEN)
 		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") in ProfilesViewModel.SCREENS:
+		return _handle_profiles(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME:
+		if str(act["id"]) == "profile":
+			profiles.message = ""
+			_refresh_profiles()
+			menu.push_screen(ProfilesViewModel.SCREEN)
+			return {"action": "list_profiles"}
 		if str(act["id"]) == "garage":
 			garage.message = ""
 			_refresh_garage()
@@ -1037,6 +1094,123 @@ func _handle_garage(screen: String, item_id: String) -> Dictionary:
 	return act
 
 
+# --- profils de joueurs (série MJ, lot MJ8) ----------------------------------------------------
+
+func _refresh_profiles() -> void:
+	menu.set_profile(profiles.home_label(), profiles.home_title())
+	menu.set_screen_items(ProfilesViewModel.SCREEN, profiles.who_items(), "Qui roule ?")
+	menu.set_screen_items(ProfilesViewModel.MANAGE_LIST, profiles.manage_list_items(), "Gérer un profil")
+	menu.set_screen_items(ProfilesViewModel.MANAGE, profiles.manage_items(), profiles.manage_title())
+	menu.set_screen_items(ProfilesViewModel.NAME, profiles.grid_items(), profiles.name_title())
+
+
+func _handle_profiles(screen: String, item_id: String) -> Dictionary:
+	var act := {}
+	match screen:
+		ProfilesViewModel.SCREEN:
+			if item_id == "new":
+				profiles.begin_create()
+				_open_name()
+			elif item_id == "manage":
+				menu.push_screen(ProfilesViewModel.MANAGE_LIST)
+			elif item_id.begins_with("p:"):
+				var id := item_id.substr(2)
+				if id == profiles.active:
+					menu.reset()   # profil déjà en cours : retour à l'accueil
+				else:
+					profiles.message = "Changement de profil…"
+					act = {"action": "select_profile", "id": id}
+		ProfilesViewModel.MANAGE_LIST:
+			profiles.manage_id = item_id.substr(2)
+			_refresh_profiles()
+			menu.push_screen(ProfilesViewModel.MANAGE)
+		ProfilesViewModel.MANAGE:
+			if item_id == "rename":
+				profiles.begin_rename(profiles.manage_id)
+				_open_name()
+			elif item_id == "delete":
+				menu.confirm(profiles.delete_question(), {"action": "delete_profile", "id": profiles.manage_id})
+	_refresh_profiles()
+	return act
+
+
+func _open_name() -> void:
+	_refresh_profiles()
+	menu.push_screen(ProfilesViewModel.NAME)
+	menu.focus_item("c:0")
+
+
+## Saisie du nom (maquette E) : Z écrit la lettre, Y efface (nom vide : retour), A maintenu valide,
+## + et − maintenus sautent d'une ligne de la grille.
+func _handle_name(event: String) -> Dictionary:
+	var act := {}
+	match event:
+		"Z_SHORT":
+			act = profiles.press_cell(_focused_id())
+		"A_LONG":
+			act = profiles.validate()
+		"Y_SHORT":
+			if not profiles.backspace():
+				menu.handle("Y_SHORT")
+		"PLUS_LONG", "MINUS_LONG":
+			_move_grid(ProfilesViewModel.GRID_COLUMNS * (1 if event == "PLUS_LONG" else -1))
+		_:
+			menu.handle(event)
+	_refresh_profiles()
+	return act
+
+
+func _focused_id() -> String:
+	var st: Dictionary = menu.state()
+	var i := int(st["focus"])
+	return str(st["items"][i]["id"]) if i >= 0 and i < st["items"].size() else ""
+
+
+func _move_grid(step: int) -> void:
+	var st: Dictionary = menu.state()
+	var n: int = st["items"].size()
+	menu.focus_item(str(st["items"][clampi(int(st["focus"]) + step, 0, n - 1)]["id"]))
+
+
+## Événement d'un clic sur un élément : écrire la lettre sur la grille du nom, valider ailleurs.
+func click_event() -> String:
+	return "Z_SHORT" if menu.current_screen() == ProfilesViewModel.NAME else "A_LONG"
+
+
+## Saisie du nom au clavier : vrai si la touche a servi (lettre, chiffre, espace, tiret, Entrée, Retour arrière).
+func name_key(ch: String, enter: bool, backspace: bool) -> Dictionary:
+	if menu.current_screen() != ProfilesViewModel.NAME:
+		return {"used": false}
+	var act := {}
+	var used := true
+	if enter:
+		act = profiles.validate()
+	elif backspace:
+		profiles.backspace()
+	else:
+		used = profiles.type_text(ch)
+	_refresh_profiles()
+	return {"used": used, "action": act}
+
+
+func on_profiles(msg: Dictionary) -> void:
+	var waiting: bool = profiles.message == "Enregistrement…"
+	profiles.on_profiles(msg)
+	if waiting and menu.current_screen() == ProfilesViewModel.NAME and profiles.name_mode == "rename":
+		menu.open_screen(ProfilesViewModel.SCREEN)   # renommé : retour à la liste
+	elif menu.current_screen() == ProfilesViewModel.MANAGE and profiles._find(profiles.manage_id).is_empty():
+		menu.open_screen(ProfilesViewModel.SCREEN)   # supprimé
+	_refresh_profiles()
+
+
+## `hello_ack.config.profile` (démarrage ou changement de profil) : accueil du nouveau profil.
+func on_hello_profile(block) -> void:
+	var changed: bool = profiles.on_hello(block)
+	if changed and menu.current_screen() in ProfilesViewModel.SCREENS:
+		menu.reset()
+	_refresh_profiles()
+
+
 ## Garage : `garage` du core (liste complète), `progression` (après chaque réussite) et hello_ack.
 func on_garage(list: Array) -> void:
 	garage.on_garage(list)
@@ -1219,6 +1393,11 @@ func state() -> Dictionary:
 		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
 	elif st["screen"] in GarageViewModel.SCREENS:
 		st["status"] = garage.message
+	elif st["screen"] in ProfilesViewModel.SCREENS:
+		st["status"] = profiles.message
+		st["status_error"] = profiles.message.begins_with("Nom refusé") or profiles.message.begins_with("Nom vide")
+	if st["screen"] == ProfilesViewModel.NAME:
+		st["grid"] = {"columns": ProfilesViewModel.GRID_COLUMNS, "text": profiles.name_text}
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
 	st["card"] = card(st)

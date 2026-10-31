@@ -51,3 +51,7 @@ Aucune.
 ## 8. Hors périmètre
 
 - Nouvelles cartes, nouveaux archétypes (après la 2.0).
+
+## 9. Partie automatique (lot X51, 30 octobre)
+
+Les essais 2, 3, 4 (calendrier et IF), 6 (Click coupé 30 s), 7 (core tué), 8 (abandon) et 10 (FIT lu par le SDK de Garmin, un tour par salle) passent dans la vraie séance du core avec `python -m openride_core.tools.rogue_recette`, sans vélo. L'essai 5 est couvert pour la logique par la matrice des boutons (X42), et l'essai 9 par `rogue_bench.py --native` sur la GTX 1060. Restent au propriétaire : le ressenti (surchauffe, bosses, tenue du seuil, dont l'IF simulé est au bas de la plage), les vrais appuis sur le Click, l'import du FIT dans Garmin Connect et GoldenCheetah, le regard sur `engine/tests/rogue_galerie.py` et l'écoute sur `engine/tests/rogue_ecoute.py`.

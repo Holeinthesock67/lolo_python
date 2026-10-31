@@ -129,6 +129,7 @@ var gear_val: Label
 var erg_label: Label
 var climb_label: Label
 var status_label: Label
+var trial_badge: Label = null   # bandeau « ESSAI » du profil d'essai (série MJ, lot MJ8)
 var profile_panel: Control
 var alt_min_label: Label
 var alt_max_label: Label
@@ -868,3 +869,23 @@ func _on_profile_draw() -> void:
 		var my := h - clampf((float(alts[marker_idx]) - alt_min) / alt_range, 0.05, 0.95) * h
 		profile_panel.draw_circle(Vector2(mx, my), 6.0, UiTheme.INK)
 		profile_panel.draw_circle(Vector2(mx, my), 3.0, UiTheme.INK_EDGE)
+
+
+## Bandeau « ESSAI » centré en haut du HUD tant que le profil d'essai est en cours (maquette D, lot MJ8).
+func set_trial_badge(on: bool) -> void:
+	if trial_badge == null:
+		if not on:
+			return
+		trial_badge = UiTheme.label(22, UiTheme.TEXT, "ESSAI")
+		var style := StyleBoxFlat.new()
+		style.bg_color = UiTheme.DANGER
+		style.set_corner_radius_all(6)
+		style.content_margin_left = 14
+		style.content_margin_right = 14
+		trial_badge.add_theme_stylebox_override("normal", style)
+		trial_badge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+		trial_badge.name = "TrialBadge"
+		add_child(trial_badge)
+	# sous le panneau du haut, pour ne rien cacher de la pente ni du profil
+	trial_badge.position.y = (panel_center.offset_bottom if panel_center != null else 0.0) + 6.0
+	trial_badge.visible = on

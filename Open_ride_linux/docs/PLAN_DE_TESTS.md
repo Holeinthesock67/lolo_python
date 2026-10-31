@@ -10,7 +10,7 @@ Version du 29 octobre 2026 au soir. Ce document dit **quoi tester, où, comment 
 - **Aucun seuil de temps en dur** dans un test : il passe par `engine/tests/perf_budgets.json` (budget du PC et seuil de la CI) et `PerfBudget.check` ; `OPENRIDE_PERF=strict` fait échouer un dépassement.
 - **Essai graphique = captures.** Tout essai de qualité graphique rend ses captures et ses chiffres (images/s, p99, GPU) au propriétaire, et la qualité réellement appliquée est contrôlée (§3.7).
 - **Données privées.** Aucun nom, aucune position précise, aucune adresse Bluetooth réelle, aucun réglage personnel ni aucune trace réelle dans un test ou un rapport versionné (scanner du §3.11).
-- **Résultat attendu partout :** code de sortie 0, aucune ligne `[ÉCHEC]`, aucune erreur ni avertissement Godot hors tolérances connues, nombres de tests égaux à ceux du README (`python3 scripts/recompte_tests.py --verifier`).
+- **Résultat attendu partout :** code de sortie 0, aucune ligne `[ÉCHEC]`, aucune erreur ni avertissement Godot hors tolérances connues, aucun nombre de tests écrit en dur dans la doc (`python3 scripts/recompte_tests.py --verifier`).
 
 ## 2. Niveaux de test
 
@@ -229,7 +229,7 @@ Rien de ce tableau n'est sur `main`. À la fusion, chaque PR met à jour le cata
 | Scène graphique | Fonction de scène de `engine/tests/visual_check.py` (capture, `check_texts`, `check_layout`) | Rendue dans la qualité demandée |
 | Changement de contrat | Schéma de `docs/contracts/ipc/`, ligne au journal du contrat, exemple au §7 et test dans `test_contract_ipc.py` | Ajout compatible seulement ; tableau des révisions de la [spécification générale](SPECIFICATION_GENERALE.md#61-révisions-du-contrat-ipc) |
 
-Après l'ajout : `python3 scripts/recompte_tests.py` (nombres du README et du suivi), puis `(cd core && pytest -q tests/test_docs_coherence.py)` (liens, chemins cités, lots).
+Après l'ajout : `python3 scripts/recompte_tests.py` (nombre de tests de chaque suite, rien à réécrire), puis `(cd core && pytest -q tests/test_docs_coherence.py)` (liens, chemins cités, lots).
 
 ## 9. Couverture au 29 octobre face à l'audit du 28 octobre
 
