@@ -27,7 +27,7 @@ signal settings_received(msg: Dictionary)
 signal imports_received(items: Array, msg: Dictionary)
 signal workout_saved_received(msg: Dictionary)
 ## Plans d'entraînement et suivi du plan actif (lot O12, contrat v1.3) : réponse à list_plans,
-## start_plan et stop_plan, en un seul datagramme.
+## start_plan, stop_plan et create_plan (lot O30), en un seul datagramme.
 signal plans_received(msg: Dictionary)
 
 ## Monde ouvert (lot W10, contrat 1.5) : avancement de la préparation du monde (`world_status`).
@@ -51,6 +51,8 @@ signal loot_received(msg: Dictionary)
 ## Profils de joueurs (lot MJ8, contrat 1.5) : réponse à list_profiles, create_profile, rename_profile,
 ## delete_profile (un seul datagramme).
 signal profiles_received(msg: Dictionary)
+## Contenus installables (lot O25, contrat 1.5) : réponse à list_contents et install_content (un seul datagramme).
+signal contents_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -304,6 +306,8 @@ func _poll_incoming() -> void:
 				progression_received.emit(json_obj)
 			"profiles":
 				profiles_received.emit(json_obj)
+			"contents":
+				contents_received.emit(json_obj)
 			"xp_result":
 				xp_result_received.emit(json_obj)
 			"room":
@@ -540,6 +544,12 @@ func start_plan(plan_id: String, start_date = null) -> int:
 
 func stop_plan() -> int:
 	return send_command("stop_plan", {})
+
+
+## Plan maison (lot O30, révision 1.5) : entraînements dans l'ordre, jours, semaines (null : autant qu'il
+## en faut). Réponse : plans avec `created`, ou error plan_invalid.
+func create_plan(workouts: Array, days: Array, weeks = null) -> int:
+	return send_command("create_plan", {"workouts": workouts, "days": days, "weeks": weeks, "name": null})
 
 
 ## Écrit la FTP du dernier test (summary.ftp_test) ; `force` pour un résultat douteux. Réponse : settings,

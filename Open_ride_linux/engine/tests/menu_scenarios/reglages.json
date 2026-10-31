@@ -3,7 +3,7 @@
   "etapes": [
     {"ecran": "home", "delai": 15},
     {"choisir": "settings"},
-    {"ecran": "settings", "titre": "Réglages", "elements": ["devices", "group:rider", "group:ride", "group:graphics", "group:sound", "group:wind", "version"]},
+    {"ecran": "settings", "titre": "Réglages", "elements": ["devices", "contents", "group:rider", "group:ride", "group:graphics", "group:sound", "group:wind", "version"]},
     {"choisir": "group:rider"},
     {"ecran": "settings_group", "groupe": "rider", "titre": "Réglages › Cycliste", "contient": ["FTP — 250 W"]},
     {"choisir": "set:rider.ftp_w"},
