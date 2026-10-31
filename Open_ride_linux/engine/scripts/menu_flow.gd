@@ -44,7 +44,13 @@ extends RefCounted
 ##   « Accepter » (accept_ftp ; résultat douteux : confirmation puis accept_ftp avec force) ou « Garder » ;
 ## - parcours : tri et filtre par étiquette en cycle en fin de liste, fiche du parcours sur l'écran Prêt ;
 ##   puis « Ajouter un parcours » et « Comment ça marche ? » (lot O22) : leur carte et l'écran « Aide
-##   parcours » (route_help.gd) expliquent où déposer une trace et le monde ouvert ;
+##   parcours » (route_help.gd) expliquent l'ajout d'une trace et le monde ouvert ;
+## - « Ajouter un parcours » (lot O23, contrat 1.5) ouvre « Importer une trace » : action
+##   list_route_imports, réponse `route_imports` par set_route_import_candidates() ; un choix renvoie
+##   import_route {path}, le core copie la trace dans ~/OpenRide/GPX/ et la compile sans relancer.
+##   Avancement `route_import_status` par on_route_import_status() sur la ligne d'état ; parcours prêt :
+##   retour à la liste, redemandée par main.gd, focus sur le nouveau parcours à son arrivée ; trace
+##   refusée (route_invalid, busy) : raison sur la ligne d'état ;
 ## - bots (lot O7) : « Bot : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
 ##   core (bot_invalid) sur la ligne d'état de l'écran Prêt ;
 ## - entraînements en watts (.erg, .mrc) : « watts fixes » et la puissance maximale.
@@ -80,10 +86,18 @@ const SETTING_EDIT := SettingsViewModel.EDIT_SCREEN
 const SETTINGS_GROUP := "settings_group"
 const WORKOUT_CREATE := WorkoutBuilder.SCREEN
 const WORKOUT_IMPORT := "workout_import"
+const ROUTE_IMPORT := "route_import"
+## Ligne d'état pendant la compilation d'une trace importée (lot O23) : secondes écoulées.
+const ROUTE_COMPILING := "Compilation de %s… %d s (la 1re fois dans une région, l'altitude se télécharge)"
 const WORKOUT_HELP := WorkoutHelp.SCREEN
 const ROUTE_HELP := RouteHelp.SCREEN
 ## Lignes de la liste des parcours dont la carte est un sujet de l'aide des parcours (lot O22).
 const ROUTE_HELP_TOPICS := {MenuModel.ADD_ROUTE_ID: "add", MenuModel.HELP_ROUTES_ID: "choose"}
+## Carte de l'écran « Importer une trace » (lot O23).
+const ROUTE_IMPORT_CARD := ["Les traces des dossiers Téléchargements, Bureau et ~/OpenRide/Import, les plus récentes d'abord.",
+	"Formats : .gpx, et l'export de Garmin Connect tel quel (.fit, .tcx, .fit.gz, .tcx.gz, .zip).",
+	"A maintenu (Entrée au clavier) copie la trace dans ~/OpenRide/GPX/ et la compile : pas besoin de relancer OpenRide.",
+	"Compter une à quelques minutes ; le parcours apparaît ensuite dans la liste, sous le focus."]
 const PLANS := "plans"
 const PLAN := "plan"
 const FTP_TEST := "ftp_test"
@@ -156,6 +170,16 @@ var import_candidates: Array = []
 ## Ligne d'état de la liste des entraînements (créé, importé, erreur).
 var workout_message := ""
 var _focus_workout := ""
+## Traces proposées à l'import (message `route_imports`, lot O23) : [{path, file, source, imported}].
+var route_import_candidates: Array = []
+## Ligne d'état de la liste des parcours et de l'écran d'import (compilation, ajouté, erreur).
+var route_message := ""
+var route_message_error := false
+## Compilation annoncée (la ligne d'état la suit), dernière réponse finale traitée (request_cmd_id : le core
+## répond à chaque copie de la commande) et parcours à mettre sous le focus.
+var _route_compiling := false
+var _route_import_done := -1
+var _focus_route := ""
 ## Dernière demande au core (« create » ou « import ») et dernier request_cmd_id traité : le core
 ## répond à chaque copie renvoyée d'une commande, une seule réponse compte.
 var _workout_request := ""
@@ -212,6 +236,7 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": WORKOUT_IMPORT, "title": "Importer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
+	menu.add_screen({"id": ROUTE_IMPORT, "title": "Importer une trace", "on_back": MenuModel.ROUTES, "items": []})
 	menu.add_screen({"id": WORKOUT_HELP, "title": WorkoutHelp.TITLE, "on_back": MenuModel.WORKOUTS,
 		"items": WorkoutHelp.items()})
 	menu.add_screen({"id": ROUTE_HELP, "title": RouteHelp.TITLE, "on_back": MenuModel.ROUTES,
@@ -465,6 +490,11 @@ func on_error(code: String, text: String) -> void:
 		_plan_request = ""
 		plan_message = "Échec : " + text
 		return
+	if menu.current_screen() in [ROUTE_IMPORT, MenuModel.ROUTES] and code in ["route_invalid", "busy"]:
+		_route_compiling = false
+		route_message = "Échec : " + text
+		route_message_error = true
+		return
 	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_IMPORT] \
 			and code in ["bad_args", "busy", "workout_invalid", "workout_write_failed"]:
 		workout_failed("Échec : " + text)
@@ -506,6 +536,9 @@ func set_routes(raw: Array) -> void:
 			route_names[str(r["id"])] = str(r.get("name", r["id"]))
 	if menu.world_id != "" and route_names.has(menu.world_id):
 		menu.set_world(menu.world_id, route_names[menu.world_id])
+	if _focus_route != "" and menu.current_screen() == MenuModel.ROUTES and route_names.has(_focus_route):
+		menu.focus_item(_focus_route)
+		_focus_route = ""
 
 
 func set_workouts(raw: Array) -> void:
@@ -564,6 +597,8 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(routes_raw, focused, func(r): return CatalogModel.route_sheet(r))
 	if screen == ROUTE_HELP:
 		return RouteHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
+	if screen == ROUTE_IMPORT:
+		return _route_import_card(focused)
 	if screen == MenuModel.WORKOUTS:
 		if focused in WORKOUT_HELP_TOPICS:
 			return WorkoutHelp.sheet(WORKOUT_HELP_TOPICS[focused])
@@ -897,6 +932,93 @@ func _refresh_builder() -> void:
 	menu.set_screen_items(WORKOUT_CREATE, builder.menu_items())
 
 
+## « Ajouter un parcours » (lot O23) : écran « Importer une trace », liste demandée au core.
+func _open_route_import() -> Dictionary:
+	if not _route_compiling:
+		route_message = ""
+		route_message_error = false
+	route_import_candidates = []
+	menu.set_screen_items(ROUTE_IMPORT, [{"id": "none", "label": "Recherche des traces…", "enabled": false}])
+	menu.push_screen(ROUTE_IMPORT)
+	return {"action": "list_route_imports"}
+
+
+## Trace choisie : import_route. Une seule compilation à la fois (O23-4) : le core refuse la suivante (busy).
+func _choose_route_import(item_id: String) -> Dictionary:
+	var idx := int(item_id.substr(5))
+	if not item_id.begins_with("file:") or idx >= route_import_candidates.size():
+		return {}
+	var c: Dictionary = route_import_candidates[idx]
+	if not _route_compiling:
+		route_message = ROUTE_COMPILING % [str(c["file"]), 0]
+		route_message_error = false
+	_route_compiling = true
+	return {"action": "import_route", "path": c["path"]}
+
+
+## Traces importables (message `route_imports` du core, réponse à list_route_imports).
+func set_route_import_candidates(found: Array) -> void:
+	route_import_candidates = found
+	var items: Array = []
+	for i in range(found.size()):
+		var c: Dictionary = found[i]
+		items.append({"id": "file:%d" % i, "label": str(c["file"]),
+			"detail": str(c["source"]) + (", déjà importée" if c.get("imported", false) else "")})
+	if items.is_empty():
+		items.append({"id": "none", "label": "Aucune trace .gpx, .fit ou .tcx", "enabled": false,
+			"detail": "dans Téléchargements, Bureau ou ~/OpenRide/Import"})
+	menu.set_screen_items(ROUTE_IMPORT, items)
+
+
+## Carte de l'écran d'import : la trace sous le focus (dossier, déjà importée) puis le mode d'emploi.
+func _route_import_card(focused: String) -> Dictionary:
+	var lines: Array = []
+	var idx := int(focused.substr(5)) if focused.begins_with("file:") else -1
+	var name := "Importer une trace"
+	if idx >= 0 and idx < route_import_candidates.size():
+		var c: Dictionary = route_import_candidates[idx]
+		name = str(c["file"])
+		lines.append("Dossier : " + str(c["source"]))
+		if c.get("imported", false):
+			lines.append("Déjà dans ~/OpenRide/GPX/ : la choisir de nouveau la recompile si besoin, sans copie.")
+	lines.append_array(ROUTE_IMPORT_CARD)
+	return {"title": "Ajouter un parcours", "name": name, "lines": lines}
+
+
+## Avancement de l'import (`route_import_status`, lot O23) ; vrai quand le parcours vient d'être prêt
+## (main.gd redemande alors la liste des parcours). Retour à la liste, focus sur le parcours à son arrivée.
+func on_route_import_status(msg: Dictionary) -> bool:
+	var rid := int(msg.get("request_cmd_id", -1))
+	var file := str(msg.get("file", ""))
+	match str(msg.get("state", "")):
+		"compiling":
+			if rid == _route_import_done:
+				return false
+			_route_compiling = true
+			route_message = ROUTE_COMPILING % [file, int(msg.get("elapsed_s", 0))]
+			route_message_error = false
+		"done":
+			if rid == _route_import_done:
+				return false
+			_route_import_done = rid
+			_route_compiling = false
+			var name := str(msg.get("name", msg.get("route_id", file)))
+			route_message = ("Parcours ajouté : " if msg.get("created", true) else "Parcours déjà présent : ") + name
+			route_message_error = false
+			_focus_route = str(msg.get("route_id", ""))
+			if menu.current_screen() == ROUTE_IMPORT:
+				menu.handle("Y_SHORT")
+			return true
+		"failed":
+			if rid == _route_import_done:
+				return false
+			_route_import_done = rid
+			_route_compiling = false
+			route_message = "Échec : " + str(msg.get("message", file))
+			route_message_error = true
+	return false
+
+
 ## Fichiers importables (message `imports` du core, réponse à list_imports).
 func set_import_candidates(found: Array) -> void:
 	import_candidates = found
@@ -943,6 +1065,10 @@ func workout_failed(message: String) -> void:
 
 ## Liste indisponible (trois demandes sans réponse) : un élément désactivé qui le dit.
 func list_failed(list_name: String) -> void:
+	if list_name == "route_imports":
+		menu.set_screen_items(ROUTE_IMPORT, [{"id": "none", "label": "Traces à importer indisponibles",
+			"enabled": false, "detail": "core sans réponse"}])
+		return
 	if list_name == "imports":
 		menu.set_screen_items(WORKOUT_IMPORT, [{"id": "none", "label": "Fichiers à importer indisponibles",
 			"enabled": false, "detail": "core sans réponse"}])
@@ -1030,6 +1156,8 @@ func handle(event: String) -> Dictionary:
 	if act.get("action", "") == "item" and act.get("screen", "") in GarageViewModel.SCREENS:
 		return _handle_garage(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
+		if str(act["id"]) == MenuModel.ADD_ROUTE_ID:
+			return _open_route_import()
 		if str(act["id"]) in ROUTE_HELP_TOPICS:
 			menu.push_screen(ROUTE_HELP)
 			menu.focus_item("help:" + str(ROUTE_HELP_TOPICS[act["id"]]))
@@ -1038,6 +1166,8 @@ func handle(event: String) -> Dictionary:
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == ROUTE_HELP:
 		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
+	if act.get("action", "") == "item" and act.get("screen", "") == ROUTE_IMPORT:
+		return _choose_route_import(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in [PLANS, PLAN]:
 		return _handle_plan_item(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in PlanBuilder.SCREENS:
@@ -1071,6 +1201,8 @@ func handle(event: String) -> Dictionary:
 		var item_id := str(act["id"])
 		if item_id.begins_with("set:") and settings.begin(item_id.substr(4)):
 			_refresh_edit()
+		if item_id == SettingsViewModel.RELAUNCH:
+			return {"action": "relaunch"}   # lot O26 : décor vivant ou relief changés
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.WORKOUTS:
 		workout_message = ""
@@ -1544,6 +1676,9 @@ func state() -> Dictionary:
 	if st["screen"] == PAIRING:
 		st["status"] = pairing.message
 		st["status_error"] = pairing.message_error
+	elif st["screen"] in [MenuModel.ROUTES, ROUTE_IMPORT]:
+		st["status"] = route_message
+		st["status_error"] = route_message_error
 	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT]:
 		st["status"] = workout_message
 	elif st["screen"] in [PLANS, PLAN] or st["screen"] in PlanBuilder.SCREENS:

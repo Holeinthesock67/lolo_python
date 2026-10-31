@@ -30,8 +30,8 @@ const MAX_RESULTS := 8
 ## Explication de chaque état, sous ses lignes (lot O22). Textes alignés sur docs/GUIDE_UTILISATION.md
 ## §4 bis et sur le plan W (cache, épinglage, Nominatim, carrefours).
 const STATE_HELP := {
-	Model.GLOBE: "Le monde ouvert crée la route en roulant, d'après les cartes OpenStreetMap. Fais tourner le globe jusqu'à ta région, ou tape un nom de lieu au clavier. Les régions en cache, déjà téléchargées, sont surlignées ; une région épinglée reste toujours dans le cache.",
-	Model.SEARCH: "Lieux de la liste fournie avec OpenRide, puis d'OpenStreetMap quand Internet répond.",
+	Model.GLOBE: "Le monde ouvert crée la route en roulant, d'après les cartes OpenStreetMap. Fais tourner le globe jusqu'à ta région, ou cherche un lieu par son nom (Z, ou au clavier). Les régions en cache, déjà téléchargées, sont surlignées ; une région épinglée reste toujours dans le cache.",
+	Model.SEARCH: "Écris le nom avec la grille (ou au clavier). Lieux de la liste fournie avec OpenRide, puis d'OpenStreetMap quand Internet répond.",
 	Model.MAP: "Le curseur reste accroché à la route la plus proche : c'est le point de départ.",
 	Model.SETUP: "En roulant, un panneau annonce chaque carrefour : ◀ ▶ ou A choisissent la branche, A maintenu la valide, jusqu'à 30 m avant ; sinon la navigation choisit.",
 	Model.LOADING: "Le monde se télécharge et se prépare autour du départ. Au même endroit la prochaine fois, rien n'est retéléchargé.",
@@ -250,7 +250,7 @@ func update_display() -> void:
 	body_label.text = _body_text()
 	help_label.text = _help_text()
 	hint_label.text = Model.ATTRIBUTIONS if vm.state == Model.LOADING else ""
-	button_bar.update_display(ButtonHelp.WORLD_PREFIX + str(vm.state))
+	button_bar.update_display(ButtonHelp.WORLD_PREFIX + vm.help_screen())
 	_canvas.queue_redraw()
 
 
@@ -264,9 +264,12 @@ func _body_text() -> String:
 			return "\n".join(lines)
 		Model.SEARCH:
 			var lines := ["Recherche : " + vm.query + "_"]
+			if vm.typing:
+				lines.append_array(grid_lines())
 			for i in range(mini(vm.places.size(), MAX_RESULTS)):
 				var p: Dictionary = vm.places[i]
-				lines.append("%s %s%s" % ["▶" if i == vm.place_index else "  ", p.get("name", "?"), "  (en cache)" if p.get("cached", false) else ""])
+				var mark := "▶" if i == vm.place_index and not vm.typing else "  "
+				lines.append("%s %s%s" % [mark, p.get("name", "?"), "  (en cache)" if p.get("cached", false) else ""])
 			if vm.places.is_empty() and vm.query.length() >= 2:
 				lines.append("  aucun résultat")
 			return "\n".join(lines)
@@ -282,6 +285,21 @@ func _body_text() -> String:
 		Model.LOADING:
 			return vm.loading_text()
 	return ""
+
+
+## Grille de saisie au Click (lot O31), une ligne par rangée de la grille, case en focus entre crochets.
+func grid_lines() -> Array:
+	var items: Array = vm.entry.grid_items()
+	var lines: Array = []
+	var row: Array = []
+	for i in range(items.size()):
+		var label := str(items[i]["label"])
+		row.append("[%s]" % label if i == vm.entry.cell else " %s " % label)
+		var actions := i >= items.size() - 2
+		if (not actions and row.size() == Model.TextEntry.GRID_COLUMNS) or i == items.size() - 3 or i == items.size() - 1:
+			lines.append("".join(row))
+			row = []
+	return lines
 
 
 func _extra_text() -> String:
@@ -303,7 +321,7 @@ func _help_text() -> String:
 
 ## Aide des boutons en une ligne (tests graphiques, journal).
 func hint_text() -> String:
-	return ButtonHelp.text(ButtonHelp.WORLD_PREFIX + str(vm.state))
+	return ButtonHelp.text(ButtonHelp.WORLD_PREFIX + vm.help_screen())
 
 
 func _draw_canvas() -> void:

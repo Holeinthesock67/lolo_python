@@ -26,6 +26,10 @@ signal settings_received(msg: Dictionary)
 ## comme routes) et entraînement écrit par le core (create_workout, import_workout).
 signal imports_received(items: Array, msg: Dictionary)
 signal workout_saved_received(msg: Dictionary)
+## Traces importées depuis le menu des parcours (lot O23, contrat 1.5) : traces importables
+## (list_route_imports, en parties comme routes) et avancement de l'import (import_route).
+signal route_imports_received(items: Array, msg: Dictionary)
+signal route_import_status_received(msg: Dictionary)
 ## Plans d'entraînement et suivi du plan actif (lot O12, contrat v1.3) : réponse à list_plans,
 ## start_plan, stop_plan et create_plan (lot O30), en un seul datagramme.
 signal plans_received(msg: Dictionary)
@@ -103,6 +107,7 @@ const LIST_MAX_RETRIES := 3
 var _pending_list_routes: Dictionary = {}
 var _pending_list_workouts: Dictionary = {}
 var _pending_list_imports: Dictionary = {}
+var _pending_list_route_imports: Dictionary = {}
 var _hello_acked := false
 ## Hello demandés au fil d'horloge (contrat §5) ; _hello_now : envoyer dès son prochain tour.
 var _hello_lock := Mutex.new()
@@ -234,6 +239,8 @@ func _process(delta: float) -> void:
 		"Aucune réponse pour la liste des entraînements après 3 tentatives", delta)
 	_tick_list(_pending_list_imports, "list_imports", "imports",
 		"Aucune réponse pour les fichiers à importer après 3 tentatives", delta)
+	_tick_list(_pending_list_route_imports, "list_route_imports", "route_imports",
+		"Aucune réponse pour les traces à importer après 3 tentatives", delta)
 
 	_resend_pending(now)
 
@@ -289,6 +296,10 @@ func _poll_incoming() -> void:
 				_on_list_part(_pending_list_imports, "imports", json_obj)
 			"workout_saved":
 				workout_saved_received.emit(json_obj)
+			"route_imports":
+				_on_list_part(_pending_list_route_imports, "route_imports", json_obj)
+			"route_import_status":
+				route_import_status_received.emit(json_obj)
 			"plans":
 				plans_received.emit(json_obj)
 			"world_status":
@@ -299,7 +310,7 @@ func _poll_incoming() -> void:
 			"scan_results":
 				scan_results_received.emit(json_obj)
 			"settings":
-				settings_received.emit(json_obj)
+				_on_settings_part(json_obj)
 			"segment_result":
 				segment_result_received.emit(json_obj)
 			"garage":
@@ -379,34 +390,52 @@ func _on_state(msg: Dictionary) -> void:
 	state_received.emit(msg)
 
 
-var _world_parts: Dictionary = {}     # type -> {rid, parts, got, done}
+var _parts: Dictionary = {}     # type -> {rid, parts, got, done}
 
 
-## Réunit les parties d'une réponse du menu du monde ouvert ; une réponse déjà livrée (la commande est
-## renvoyée tant qu'elle n'est pas acquittée) n'est pas livrée deux fois.
+## Menu du monde ouvert : réponse émise quand toutes ses parties sont là.
 func _on_world_part(kind: String, msg: Dictionary) -> void:
+	var whole := _assemble_parts(kind, msg, "roads" if kind == "world_map" else "items")
+	if not whole.is_empty():
+		world_menu_received.emit(kind, whole)
+
+
+## Réglages du menu, en parties depuis le lot O27.
+func _on_settings_part(msg: Dictionary) -> void:
+	var whole := _assemble_parts("settings", msg, "items")
+	if not whole.is_empty():
+		settings_received.emit(whole)
+
+
+## Réunit les parties d'une réponse (`places`, `world_map`, `world_regions` ; `settings` depuis le lot O27) :
+## le message entier, liste `key` complète, quand la dernière partie arrive, sinon {}. Une réponse en
+## plusieurs parties déjà livrée (la commande est renvoyée tant qu'elle n'est pas acquittée) n'est pas
+## livrée deux fois ; une réponse en une partie, ou sans `part` ni `parts` (core d'avant le lot O27, ou
+## `settings` envoyé sans demande), est livrée telle quelle.
+func _assemble_parts(kind: String, msg: Dictionary, key: String) -> Dictionary:
 	var rid := int(msg.get("request_cmd_id", -1))
 	var parts := maxi(1, int(msg.get("parts", 1)))
 	var part := int(msg.get("part", 1))
 	if part < 1 or part > parts:
-		return
-	var slot: Dictionary = _world_parts.get(kind, {})
-	if int(slot.get("rid", -2)) != rid:
+		return {}
+	if parts == 1:
+		return msg
+	var slot: Dictionary = _parts.get(kind, {})
+	if int(slot.get("rid", -2)) != rid or int(slot.get("parts", 0)) != parts:
 		slot = {"rid": rid, "parts": parts, "got": {}, "done": false}
 	if slot["done"]:
-		return
+		return {}
 	slot["got"][part] = msg
-	_world_parts[kind] = slot
+	_parts[kind] = slot
 	if slot["got"].size() < parts:
-		return
+		return {}
 	slot["done"] = true
-	var key := "roads" if kind == "world_map" else "items"
 	var whole: Dictionary = (slot["got"][1] as Dictionary).duplicate()
 	var all := []
 	for i in range(1, parts + 1):
 		all.append_array(slot["got"][i].get(key, []))
 	whole[key] = all
-	world_menu_received.emit(kind, whole)
+	return whole
 
 
 
@@ -527,6 +556,19 @@ func import_workout(path: String) -> int:
 	return send_command("import_workout", {"path": path})
 
 
+## Traces importables depuis le menu des parcours (lot O23, contrat 1.5). Réponse : signal route_imports_received.
+func list_route_imports() -> int:
+	var cmd_id := send_command("list_route_imports", {})
+	_reset_list_request(_pending_list_route_imports, cmd_id)
+	return cmd_id
+
+
+## Copie et compilation par le core d'une trace de la dernière réponse `route_imports` (lot O23).
+## Réponses : route_import_status (compiling, puis done ou failed), ou error (route_invalid, busy).
+func import_route(path: String) -> int:
+	return send_command("import_route", {"path": path})
+
+
 ## Réglages du menu (lots O3 et O4, contrat v1.3).
 func list_settings() -> int:
 	return send_command("list_settings", {})
@@ -624,6 +666,8 @@ func _on_list_part(req: Dictionary, list_name: String, msg: Dictionary) -> void:
 			routes_received.emit(items, whole)
 		"imports":
 			imports_received.emit(items, whole)
+		"route_imports":
+			route_imports_received.emit(items, whole)
 		_:
 			workouts_received.emit(items, whole)
 

@@ -7,10 +7,15 @@ extends RefCounted
 ## `on_status`. Pas de class_name (charger par preload).
 ##
 ## Touches : globe — gauche et droite (ou − et +) tournent, appui long sur + ou − incline, A valide le centre
-## du globe, appui long sur A épingle la région sous le centre, taper un nom ouvre la recherche, Y ferme.
-## Recherche — − et + choisissent, A valide. Carte — gauche, droite, − (nord) et + (sud) déplacent le curseur
+## du globe, appui long sur A épingle la région sous le centre, Z (ou taper un nom) ouvre la recherche, Y ferme.
+## Recherche (lot O31) — saisie partagée (text_entry.gd) : + et − changent de case, maintenus de ligne, Z
+## écrit, Y efface (texte vide : retour), A maintenu passe aux résultats ; résultats — − et + choisissent,
+## A valide, Z revient à la grille, Y quitte la recherche. Au clavier, on tape le nom et la liste garde la main. Carte — gauche, droite, − (nord) et + (sud) déplacent le curseur
 ## de 100 m (appui long : 500 m), accroché à la route la plus proche, A valide. Cap — − et + changent de ligne
 ## (cap, navigation, longueur), gauche et droite changent la valeur, A démarre. Y revient d'un écran.
+
+const TextEntry := preload("res://scripts/text_entry.gd")
+const QUERY_MAX := 40
 
 const GLOBE := "globe"
 const SEARCH := "search"
@@ -38,8 +43,15 @@ var state := GLOBE
 ## Centre du globe (degrés) et inclinaison.
 var globe_lon := 6.0
 var globe_lat := 45.0
-## Recherche : texte, résultats (`places`), ligne choisie ; `search_for_target` : la recherche choisit la destination.
-var query := ""
+## Recherche : texte saisi (`entry`, `query`), résultats (`places`), ligne choisie ; `typing` : la saisie a la
+## main, sinon la liste des résultats ; `search_for_target` : la recherche choisit la destination.
+var entry = TextEntry.new(QUERY_MAX, ["'"])
+var query: String:
+	get:
+		return entry.text
+	set(value):
+		entry.text = value
+var typing := true
 var places: Array = []
 var place_index := 0
 var search_for_target := false
@@ -74,6 +86,8 @@ func set_last_start(start: Variant) -> void:
 func reset() -> void:
 	state = GLOBE
 	query = ""
+	entry.cell = 0
+	typing = true
 	places = []
 	place_index = 0
 	search_for_target = false
@@ -100,7 +114,7 @@ func reset() -> void:
 # --- événements ------------------------------------------------------------------------------
 
 func handle(event: String) -> Dictionary:
-	if event == "Y_SHORT":
+	if event == "Y_SHORT" and state != SEARCH:
 		return _back()
 	match state:
 		GLOBE:
@@ -142,6 +156,8 @@ func _on_globe(event: String) -> Dictionary:
 			globe_lat = clampf(globe_lat + TILT_STEP_DEG, -MAX_TILT_DEG, MAX_TILT_DEG)
 		"A_SHORT":
 			return _open_map(globe_lat, globe_lon)
+		"Z_SHORT":
+			_open_search(false)
 		"A_LONG":
 			var r := region_at(globe_lat, globe_lon)
 			if not r.is_empty():
@@ -149,8 +165,24 @@ func _on_globe(event: String) -> Dictionary:
 	return {}
 
 
+func _open_search(for_target: bool) -> void:
+	state = SEARCH
+	search_for_target = for_target
+	query = ""
+	entry.cell = 0
+	typing = true
+	places = []
+	place_index = 0
+
+
 func _on_search(event: String) -> Dictionary:
+	if typing:
+		return _on_typing(event)
 	match event:
+		"Y_SHORT":
+			return _back()
+		"Z_SHORT":
+			typing = true
 		"MINUS_SHORT", "LEFT_SHORT":
 			place_index = maxi(0, place_index - 1)
 		"PLUS_SHORT", "RIGHT_SHORT":
@@ -167,6 +199,37 @@ func _on_search(event: String) -> Dictionary:
 				globe_lon = float(p["lon"])
 				return _open_map(globe_lat, globe_lon)
 	return {}
+
+
+## Saisie du nom au Click : comme le nom d'un profil (text_entry.gd) ; Valider passe aux résultats.
+func _on_typing(event: String) -> Dictionary:
+	match event:
+		"PLUS_SHORT", "RIGHT_SHORT", "A_SHORT":
+			entry.move(1)
+		"MINUS_SHORT", "LEFT_SHORT":
+			entry.move(-1)
+		"PLUS_LONG", "MINUS_LONG":
+			entry.move(TextEntry.GRID_COLUMNS * (1 if event == "PLUS_LONG" else -1))
+		"Z_SHORT":
+			match entry.press_cell(entry.cell_id()):
+				TextEntry.VALIDATE:
+					_show_results()
+				"changed":
+					return _search_action()
+		"A_LONG":
+			_show_results()
+		"Y_SHORT":
+			if entry.backspace():
+				return _search_action()
+			return _back()
+	return {}
+
+
+## Résultats : la liste prend la main s'il y en a.
+func _show_results() -> void:
+	if not places.is_empty():
+		typing = false
+		place_index = 0
 
 
 func _on_map(event: String) -> Dictionary:
@@ -207,11 +270,7 @@ func _on_setup(event: String) -> Dictionary:
 			_change_field(1)
 		"A_SHORT", "A_LONG":
 			if nav == "destination" and target == null:
-				search_for_target = true
-				query = ""
-				places = []
-				place_index = 0
-				state = SEARCH
+				_open_search(true)
 				return {}
 			return _start()
 	return {}
@@ -233,20 +292,18 @@ func _change_field(direction: int) -> void:
 ## Saisie de texte (clavier) : sur le globe, ouvre la recherche ; en recherche, complète le nom.
 func type_text(text: String) -> Dictionary:
 	if state == GLOBE:
-		state = SEARCH
-		query = ""
-		places = []
-		place_index = 0
+		_open_search(false)
 	if state != SEARCH:
 		return {}
-	query += text
+	typing = false   # au clavier, la liste garde la main : − et + choisissent, A valide
+	for ch in text:
+		entry.type_text(ch)
 	return _search_action()
 
 
 func backspace() -> Dictionary:
-	if state != SEARCH or query == "":
+	if state != SEARCH or not entry.backspace():
 		return {}
-	query = query.left(query.length() - 1)
 	return _search_action()
 
 
@@ -358,6 +415,11 @@ func cursor_latlon() -> Vector2:
 
 
 ## Ligne de l'écran de préchargement : « 12 Mo / 45 Mo », « 3 / 9 carrés » ou le message du générateur.
+## Écran de l'aide des boutons (button_help.gd) : l'état, ou `search_results` quand la liste a la main.
+func help_screen() -> String:
+	return "search_results" if state == SEARCH and not typing else state
+
+
 func loading_text() -> String:
 	if status.is_empty():
 		return "Préparation du monde…"
