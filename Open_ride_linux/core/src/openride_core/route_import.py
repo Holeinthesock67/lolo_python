@@ -177,10 +177,9 @@ def compile_plan(track: Path, gpx_dir: Path, routes_root: Path) -> tuple[str, An
 
 def compiler_prefix() -> list[str] | None:
     """Commande du compilateur, sans sous-commande ; None s'il n'est pas installé."""
-    from .launch_compile import find_compiler_cmd
+    from .launch_compile import compiler_base_cmd
 
-    cmd = find_compiler_cmd()
-    return cmd[:-1] if cmd else None
+    return compiler_base_cmd()
 
 
 def build_cmd(prefix: list[str], track: Path, routes_root: Path, force: bool) -> list[str]:

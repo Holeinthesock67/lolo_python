@@ -4,6 +4,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_menu_flow.gd
 
 const MenuFlow := preload("res://scripts/menu_flow.gd")
+const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 
@@ -269,6 +270,42 @@ func _test_pairing_screen() -> void:
 	_check(not f.pairing.saved and "refusé" in f.pairing.message, "pairing_failed affiché")
 
 
+## Lot O26 : réglage pris au prochain lancement (décor vivant) : légende, carte, ligne « Relancer ».
+func _test_relaunch_setting() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE", "difficulty_pct": 50})
+	var living := {"key": "render.living", "label": "Décor vivant", "group": "graphics", "type": "choice", "value": "on",
+		"choices": ["on", "off"], "applies": "relaunch"}
+	var feel := {"key": "wind.feel", "label": "Ressenti du vent", "group": "wind", "type": "choice", "value": "grade",
+		"choices": ["grade", "ftms"], "applies": "next_session"}
+	f.on_settings({"type": "settings", "request_cmd_id": 2, "items": [living, feel]})
+	f.settings_group = "graphics"
+	f._refresh_settings()
+	f.menu.push_screen(f.SETTINGS_GROUP)
+	var rows: Array = f.state()["items"]
+	_check(rows.size() == 1 and rows[0]["detail"] == "oui", "décor vivant affiché « oui », pas de relance (%s)" % str(rows))
+	_check(f.state()["card"]["lines"] == ["Choix : oui, non (rendu de la 1.0)", "S'applique au prochain lancement d'OpenRide"],
+		"carte : choix en français et prochain lancement (%s)" % str(f.state()["card"]))
+	f.on_settings({"type": "settings", "request_cmd_id": 3, "items": [living.merged({"value": "off"}, true), feel]})
+	rows = f.state()["items"]
+	_check(rows.size() == 2 and rows[1]["id"] == "relaunch" and rows[1]["detail"] == "pour appliquer : Décor vivant",
+		"valeur changée : « Relancer OpenRide maintenant » (%s)" % str(rows))
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "relaunch"}, "Relancer : action relaunch (code 64)")
+	f.on_settings({"type": "settings", "request_cmd_id": 4, "items": [living, feel]})
+	_check(f.state()["items"].size() == 1, "valeur du lancement remise : plus de relance")
+	_check(SettingsViewModel.format_value(feel, "ftms") == "par le trainer (essai)"
+		and SettingsViewModel.format_value({"key": "wind.mode"}, "gusty") == "en rafales"
+		and SettingsViewModel.format_value({"key": "render.theme"}, "default") == "par défaut",
+		"légendes du vent et du thème en français")
+	var bool_it := {"key": "futur.interrupteur", "type": "choice", "choices": ["on", "off"]}
+	_check(SettingsViewModel.format_value(bool_it, "on") == "oui" and SettingsViewModel.format_value(bool_it, "off") == "non"
+		and SettingsViewModel.format_value({"key": "open_world.network", "choices": ["on", "off"]}, "off") == "non (hors ligne)"
+		and SettingsViewModel.group_title("advanced") == "Avancé",
+		"lot O27 : tout booléen en oui / non, légende du hors ligne, sous-écran Avancé")
+
+
 func _test_settings_screen() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
@@ -288,9 +325,9 @@ func _test_settings_screen() -> void:
 	f.handle("MINUS_SHORT")
 	f.handle("A_LONG")   # Réglages
 	var labels: Array = f.state()["items"].map(func(it): return it["label"])
-	_check(labels == ["Appareils : rechercher et appairer", "Cycliste", "Séance", "Graphisme", "Vent",
+	_check(labels == ["Appareils : rechercher et appairer", "Contenus : entraînements, plans, parcours", "Cycliste", "Séance", "Graphisme", "Vent",
 			"Autres réglages", "OpenRide " + f.engine_version], "réglages rangés en sous-écrans : %s" % str(labels))
-	_check(f.state()["items"][1]["detail"] == "FTP", "détail d'un sous-écran : ses réglages")
+	_check(f.state()["items"][2]["detail"] == "FTP", "détail d'un sous-écran : ses réglages")
 	_check(f.state()["items"][-1]["enabled"] == false, "ligne de version non sélectionnable")
 	# Version du core différente : alerte discrète dans le détail de la ligne (lots O2 et O4).
 	f.set_versions("0.9.0", "0.9.0")
@@ -301,6 +338,7 @@ func _test_settings_screen() -> void:
 			"versions différentes : %s" % str(f.state()["items"][-1]["detail"]))
 	f.set_versions("0.9.0", "")
 	_check(f.state()["items"][-1]["detail"] == "", "core pas encore connu : pas d'alerte")
+	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Cycliste
 	_check(f.state()["screen"] == "settings_group" and f.state()["title"] == "Réglages › Cycliste"
@@ -466,7 +504,7 @@ func _test_plans() -> void:
 	_check(f.handle("A_LONG") == {"action": "list_plans"} and f.state()["screen"] == "plans", "écran Plans, list_plans")
 	_check(f.state()["items"][0]["label"] == "Recherche des plans…", "en attendant la réponse")
 	f.on_plans(_plans_msg(null))
-	_check(_ids(f) == ["plan:casse", "plan:essai"] and _focus_id(f) == "plan:essai",
+	_check(_ids(f) == ["plan:casse", "plan:essai", "create"] and _focus_id(f) == "plan:essai",
 		"liste des plans, plan invalide désactivé (%s)" % str(_ids(f)))
 	_check(f.state()["items"][1]["detail"] == "4 semaines, 8 séances", "plan : semaines et séances")
 	f.handle("A_LONG")
@@ -479,7 +517,7 @@ func _test_plans() -> void:
 		"done": 0, "total": 8, "done_pct": 0.0, "today": [DAY], "late": [], "next": NEXT, "plan_day": "ss"}
 	f.on_plans(_plans_msg(active))
 	_check(f.state()["status"] == "Plan démarré : Essai", "plan démarré (%s)" % f.state()["status"])
-	_check(_ids(f) == ["today", "progress", "next", "stop", "plan:casse", "plan:essai"], "suivi du plan actif (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["today", "progress", "next", "stop", "plan:casse", "plan:essai", "create"], "suivi du plan actif (%s)" % str(_ids(f)))
 	_check(f.state()["items"][1]["detail"] == "semaine 1 / 4, 0 % fait (0 / 8)", "progression : %s" % f.state()["items"][1]["detail"])
 	f.menu.focus_item("today")
 	_check(f.state()["card"]["title"] == "Séance du jour" and f.state()["card"]["name"] == "Sweet spot"
@@ -773,6 +811,7 @@ func _init() -> void:
 	_test_settings_screen()
 	_test_connect_screen()
 	_test_pairing_screen()
+	_test_relaunch_setting()
 	_test_full_session()
 	_test_abandon_and_summary_quit()
 	_test_view()

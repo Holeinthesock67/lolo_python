@@ -70,7 +70,8 @@ def test_all_message_schemas_exist():
     for name in ("state", "cmd", "hello", "hello_ack", "heartbeat", "input", "error", "shutdown", "bye",
                  "routes", "workouts", "scan_results", "settings", "imports", "workout_saved",
                  "route_imports", "route_import_status",
-                 "segment_result", "room", "loot", "garage", "progression", "xp_result", "plans", "profiles"):
+                 "segment_result", "room", "loot", "garage", "progression", "xp_result", "plans", "profiles",
+                 "contents"):
         jsonschema.Draft202012Validator.check_schema(schema(name))
 
 

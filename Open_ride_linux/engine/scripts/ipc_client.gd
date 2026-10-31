@@ -31,7 +31,7 @@ signal workout_saved_received(msg: Dictionary)
 signal route_imports_received(items: Array, msg: Dictionary)
 signal route_import_status_received(msg: Dictionary)
 ## Plans d'entraînement et suivi du plan actif (lot O12, contrat v1.3) : réponse à list_plans,
-## start_plan et stop_plan, en un seul datagramme.
+## start_plan, stop_plan et create_plan (lot O30), en un seul datagramme.
 signal plans_received(msg: Dictionary)
 
 ## Monde ouvert (lot W10, contrat 1.5) : avancement de la préparation du monde (`world_status`).
@@ -52,9 +52,13 @@ signal progression_received(msg: Dictionary)
 ## Série R (lot R10, contrat 1.4) : salle du mode Cyber-Rogue (une partie) et butin proposé en couloir.
 signal room_received(msg: Dictionary)
 signal loot_received(msg: Dictionary)
+## Règles du mode « What the fuck » (révision 1.5, lot WTF2) : réponse à list_wtf_rules et set_wtf_rule.
+signal wtf_rules_received(msg: Dictionary)
 ## Profils de joueurs (lot MJ8, contrat 1.5) : réponse à list_profiles, create_profile, rename_profile,
 ## delete_profile (un seul datagramme).
 signal profiles_received(msg: Dictionary)
+## Contenus installables (lot O25, contrat 1.5) : réponse à list_contents et install_content (un seul datagramme).
+signal contents_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -306,7 +310,7 @@ func _poll_incoming() -> void:
 			"scan_results":
 				scan_results_received.emit(json_obj)
 			"settings":
-				settings_received.emit(json_obj)
+				_on_settings_part(json_obj)
 			"segment_result":
 				segment_result_received.emit(json_obj)
 			"garage":
@@ -315,12 +319,16 @@ func _poll_incoming() -> void:
 				progression_received.emit(json_obj)
 			"profiles":
 				profiles_received.emit(json_obj)
+			"contents":
+				contents_received.emit(json_obj)
 			"xp_result":
 				xp_result_received.emit(json_obj)
 			"room":
 				room_received.emit(json_obj)
 			"loot":
 				loot_received.emit(json_obj)
+			"wtf_rules":
+				wtf_rules_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
@@ -382,34 +390,52 @@ func _on_state(msg: Dictionary) -> void:
 	state_received.emit(msg)
 
 
-var _world_parts: Dictionary = {}     # type -> {rid, parts, got, done}
+var _parts: Dictionary = {}     # type -> {rid, parts, got, done}
 
 
-## Réunit les parties d'une réponse du menu du monde ouvert ; une réponse déjà livrée (la commande est
-## renvoyée tant qu'elle n'est pas acquittée) n'est pas livrée deux fois.
+## Menu du monde ouvert : réponse émise quand toutes ses parties sont là.
 func _on_world_part(kind: String, msg: Dictionary) -> void:
+	var whole := _assemble_parts(kind, msg, "roads" if kind == "world_map" else "items")
+	if not whole.is_empty():
+		world_menu_received.emit(kind, whole)
+
+
+## Réglages du menu, en parties depuis le lot O27.
+func _on_settings_part(msg: Dictionary) -> void:
+	var whole := _assemble_parts("settings", msg, "items")
+	if not whole.is_empty():
+		settings_received.emit(whole)
+
+
+## Réunit les parties d'une réponse (`places`, `world_map`, `world_regions` ; `settings` depuis le lot O27) :
+## le message entier, liste `key` complète, quand la dernière partie arrive, sinon {}. Une réponse en
+## plusieurs parties déjà livrée (la commande est renvoyée tant qu'elle n'est pas acquittée) n'est pas
+## livrée deux fois ; une réponse en une partie, ou sans `part` ni `parts` (core d'avant le lot O27, ou
+## `settings` envoyé sans demande), est livrée telle quelle.
+func _assemble_parts(kind: String, msg: Dictionary, key: String) -> Dictionary:
 	var rid := int(msg.get("request_cmd_id", -1))
 	var parts := maxi(1, int(msg.get("parts", 1)))
 	var part := int(msg.get("part", 1))
 	if part < 1 or part > parts:
-		return
-	var slot: Dictionary = _world_parts.get(kind, {})
-	if int(slot.get("rid", -2)) != rid:
+		return {}
+	if parts == 1:
+		return msg
+	var slot: Dictionary = _parts.get(kind, {})
+	if int(slot.get("rid", -2)) != rid or int(slot.get("parts", 0)) != parts:
 		slot = {"rid": rid, "parts": parts, "got": {}, "done": false}
 	if slot["done"]:
-		return
+		return {}
 	slot["got"][part] = msg
-	_world_parts[kind] = slot
+	_parts[kind] = slot
 	if slot["got"].size() < parts:
-		return
+		return {}
 	slot["done"] = true
-	var key := "roads" if kind == "world_map" else "items"
 	var whole: Dictionary = (slot["got"][1] as Dictionary).duplicate()
 	var all := []
 	for i in range(1, parts + 1):
 		all.append_array(slot["got"][i].get(key, []))
 	whole[key] = all
-	world_menu_received.emit(kind, whole)
+	return whole
 
 
 
@@ -564,6 +590,12 @@ func start_plan(plan_id: String, start_date = null) -> int:
 
 func stop_plan() -> int:
 	return send_command("stop_plan", {})
+
+
+## Plan maison (lot O30, révision 1.5) : entraînements dans l'ordre, jours, semaines (null : autant qu'il
+## en faut). Réponse : plans avec `created`, ou error plan_invalid.
+func create_plan(workouts: Array, days: Array, weeks = null) -> int:
+	return send_command("create_plan", {"workouts": workouts, "days": days, "weeks": weeks, "name": null})
 
 
 ## Écrit la FTP du dernier test (summary.ftp_test) ; `force` pour un résultat douteux. Réponse : settings,

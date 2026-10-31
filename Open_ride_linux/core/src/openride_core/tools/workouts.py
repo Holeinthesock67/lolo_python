@@ -152,31 +152,34 @@ def cmd_check(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_install(args: argparse.Namespace) -> int:
-    target_dir = Path(args.dir).expanduser()
+def install_builtin_workouts(target_dir: Path, erg_relative: bool = False) -> tuple[list[str], list[str]]:
+    """Copie les entraînements de référence sans rien écraser ; renvoie `(copiés, conservés)`.
+    Avec `erg_relative`, les `.erg` arrivent convertis en `.mrc` (% de la FTP de leur en-tête).
+    Lève WorkoutError si un `.erg` ne se convertit pas. Aussi utilisé par le menu (lot O25)."""
     target_dir.mkdir(parents=True, exist_ok=True)
-
-    sources = sorted(p for p in BUILTIN_WORKOUTS_DIR.iterdir() if p.suffix.lower() in WORKOUT_SUFFIXES)
     copied: list[str] = []
     skipped: list[str] = []
-
-    for src in sources:
-        convert = getattr(args, "erg_relative", False) and src.suffix.lower() == ".erg"
+    for src in sorted(p for p in BUILTIN_WORKOUTS_DIR.iterdir() if p.suffix.lower() in WORKOUT_SUFFIXES):
+        convert = erg_relative and src.suffix.lower() == ".erg"
         dst = target_dir / (src.stem + ".mrc" if convert else src.name)
         if dst.exists():
             skipped.append(dst.name)
             continue
         if convert:
-            try:
-                w = load_workout(src, erg_relative=True)
-            except WorkoutError as exc:
-                print(f"Erreur ({src.name}) : {exc}", file=sys.stderr)
-                return 1
-            dst.write_text(to_mrc(w, 1.0), encoding="utf-8")
+            dst.write_text(to_mrc(load_workout(src, erg_relative=True), 1.0), encoding="utf-8")
         else:
             shutil.copy2(src, dst)
         copied.append(dst.name)
+    return copied, skipped
 
+
+def cmd_install(args: argparse.Namespace) -> int:
+    target_dir = Path(args.dir).expanduser()
+    try:
+        copied, skipped = install_builtin_workouts(target_dir, getattr(args, "erg_relative", False))
+    except WorkoutError as exc:
+        print(f"Erreur : {exc}", file=sys.stderr)
+        return 1
     print(
         f"Installation dans {target_dir} : "
         f"{len(copied)} copié(s) ({', '.join(copied) or 'aucun'}), "
