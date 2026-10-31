@@ -14,7 +14,7 @@ python3 scripts/index_lots.py --verifier         # code 1 si un cahier n'a pas s
 
 - **Nouveau lot :** créer `LOT_<id>_<sujet>.md` avec, sous le titre, le bloc ci-dessous ; rien à ajouter dans ce fichier.
 - **Changement de statut :** modifier la ligne dans le cahier du lot (avec sa section « Livraison » quand le lot est livré).
-- **PR d'avant X54 qui modifie encore le tableau :** au rebase, garder ses lignes de tableau dans ce fichier, puis lancer `python3 scripts/index_lots.py --migrer`, qui les déplace dans leur cahier.
+- **PR d'avant X54 qui modifie encore le tableau :** fusionner `main` ; au conflit sur ce fichier, reprendre la version de la branche (`git checkout --ours -- docs/lots/00_INDEX.md`), puis lancer `python3 scripts/index_lots.py --migrer`. Seules les lignes que la branche a ajoutées ou modifiées vont dans leur cahier ; l'introduction et les changements de `main` sont gardés.
 
 ```markdown
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
