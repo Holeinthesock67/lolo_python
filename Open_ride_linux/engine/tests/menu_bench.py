@@ -75,6 +75,7 @@ sys.path.insert(0, str(REPO / "core" / "src"))
 from openride_core.launcher import build_supervisor  # noqa: E402
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
+import quality_guard  # noqa: E402
 
 VOIES = ("click", "clavier", "souris")
 MAX_FAILURES = 5   # au-delà, le passage s'arrête : les échecs suivants ne seraient que des conséquences
@@ -454,7 +455,18 @@ class Run:
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
         ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
         self.report.check(ok, "engine relié au core", "hello_ack")
+        if ok:
+            self.check_quality()
         return ok
+
+    def check_quality(self) -> None:
+        """Qualité réellement appliquée au départ (lot X32) : celle de config.toml, réglages du core reçus."""
+        assert self.engine is not None
+        wanted = str({**BASE_CONFIG, **self.doc.get("config", {})}.get("render.quality", "low"))
+        time.sleep(1.0)   # réglages envoyés par le core après le hello_ack
+        seq = [m.group(0) for _, m in self.engine.matching(quality_guard.APPLIED.pattern)]
+        ok, msg = quality_guard.check("\n".join(seq), wanted)
+        self.report.check(bool(ok), "qualité réellement appliquée au départ", msg)
 
     def stop(self) -> None:
         if self.engine is not None and self.engine.p.poll() is None:

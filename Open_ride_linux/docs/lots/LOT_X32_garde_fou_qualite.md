@@ -48,3 +48,10 @@ Livré le 28 octobre (branche `claude/project-thread-818r6t-x32`).
 - `menu_bench.py` : l'attente « Qualité graphique : medium » devient « Qualité appliquée : medium » (même événement, nouveau libellé) ; le contrôle complet du banc des menus viendra avec sa réécriture (fil du banc des menus).
 - Essai au cloud : `sim_bench.py --quality medium --scenario nominal --probe` passe ; en retirant la ligne `[render]` écrite par #481, il échoue sur « qualité réellement appliquée : qualité demandée medium, appliquée low (3/3 capture(s)) » et « qualité notée par la sonde : mesurée en medium, puis low ».
 - Écart : pas de scène dédiée « faux core qui renvoie une autre qualité » dans `run_engine_tests.sh` ; le contrôle de `visual_check.py` et les tests de `core/tests/test_quality_guard.py` (9 tests, cas négatifs compris) couvrent le même défaut.
+
+## 9. Complément Z1 (31 octobre)
+
+Audit de couverture des tests du 28 octobre, lot Z1 accepté par le propriétaire le 31 octobre : les deux écarts de la livraison sont comblés.
+
+- **Garde-fou de régression en CI** : `visual_check.py --garde-qualite` lance la vraie scène face au faux core et vérifie, dans l'ordre : la ligne du démarrage (`source=cli`), une capture dans la qualité demandée, des réglages du core sans `render.quality` puis avec la même valeur (aucune ligne), une autre valeur (appliquée, `source=reglage`), une valeur inconnue (notée, rien ne change), le retour à la qualité demandée et une dernière capture. `run_engine_tests.sh` le lance en `1280x720:medium` et `1280x720:high` (le low est vérifié par les tests graphiques habituels). Cas négatif essayé au cloud : avec `_on_settings` qui n'applique plus la qualité reçue, trois vérifications échouent.
+- **Banc des menus** : à chaque départ (et après chaque `relancer`), `menu_bench.py` vérifie avec `quality_guard` que la qualité appliquée est celle de `config.toml`, réglages du core reçus. Nouveau scénario `qualite` (clavier) : `config.toml` en high, vérifié au départ et après une relance.

@@ -1,0 +1,13 @@
+{
+  "description": "Qualité réellement appliquée au départ (lot X32) : config.toml en high, la scène démarre en high et y reste après les réglages du core ; après une relance, toujours high.",
+  "voies": ["clavier"],
+  "config": {"render.quality": "high"},
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"journal": "engine", "motif": "Qualité appliquée : high \\(demandée high"},
+    {"relancer": true},
+    {"ecran": "home", "delai": 15},
+    {"journal": "engine", "motif": "Qualité appliquée : high \\(demandée high"},
+    {"config": {"render.quality": "high"}}
+  ]
+}
