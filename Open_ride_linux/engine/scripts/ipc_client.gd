@@ -295,7 +295,7 @@ func _poll_incoming() -> void:
 			"scan_results":
 				scan_results_received.emit(json_obj)
 			"settings":
-				settings_received.emit(json_obj)
+				_on_settings_part(json_obj)
 			"segment_result":
 				segment_result_received.emit(json_obj)
 			"garage":
@@ -371,34 +371,52 @@ func _on_state(msg: Dictionary) -> void:
 	state_received.emit(msg)
 
 
-var _world_parts: Dictionary = {}     # type -> {rid, parts, got, done}
+var _parts: Dictionary = {}     # type -> {rid, parts, got, done}
 
 
-## Réunit les parties d'une réponse du menu du monde ouvert ; une réponse déjà livrée (la commande est
-## renvoyée tant qu'elle n'est pas acquittée) n'est pas livrée deux fois.
+## Menu du monde ouvert : réponse émise quand toutes ses parties sont là.
 func _on_world_part(kind: String, msg: Dictionary) -> void:
+	var whole := _assemble_parts(kind, msg, "roads" if kind == "world_map" else "items")
+	if not whole.is_empty():
+		world_menu_received.emit(kind, whole)
+
+
+## Réglages du menu, en parties depuis le lot O27.
+func _on_settings_part(msg: Dictionary) -> void:
+	var whole := _assemble_parts("settings", msg, "items")
+	if not whole.is_empty():
+		settings_received.emit(whole)
+
+
+## Réunit les parties d'une réponse (`places`, `world_map`, `world_regions` ; `settings` depuis le lot O27) :
+## le message entier, liste `key` complète, quand la dernière partie arrive, sinon {}. Une réponse en
+## plusieurs parties déjà livrée (la commande est renvoyée tant qu'elle n'est pas acquittée) n'est pas
+## livrée deux fois ; une réponse en une partie, ou sans `part` ni `parts` (core d'avant le lot O27, ou
+## `settings` envoyé sans demande), est livrée telle quelle.
+func _assemble_parts(kind: String, msg: Dictionary, key: String) -> Dictionary:
 	var rid := int(msg.get("request_cmd_id", -1))
 	var parts := maxi(1, int(msg.get("parts", 1)))
 	var part := int(msg.get("part", 1))
 	if part < 1 or part > parts:
-		return
-	var slot: Dictionary = _world_parts.get(kind, {})
-	if int(slot.get("rid", -2)) != rid:
+		return {}
+	if parts == 1:
+		return msg
+	var slot: Dictionary = _parts.get(kind, {})
+	if int(slot.get("rid", -2)) != rid or int(slot.get("parts", 0)) != parts:
 		slot = {"rid": rid, "parts": parts, "got": {}, "done": false}
 	if slot["done"]:
-		return
+		return {}
 	slot["got"][part] = msg
-	_world_parts[kind] = slot
+	_parts[kind] = slot
 	if slot["got"].size() < parts:
-		return
+		return {}
 	slot["done"] = true
-	var key := "roads" if kind == "world_map" else "items"
 	var whole: Dictionary = (slot["got"][1] as Dictionary).duplicate()
 	var all := []
 	for i in range(1, parts + 1):
 		all.append_array(slot["got"][i].get(key, []))
 	whole[key] = all
-	world_menu_received.emit(kind, whole)
+	return whole
 
 
 

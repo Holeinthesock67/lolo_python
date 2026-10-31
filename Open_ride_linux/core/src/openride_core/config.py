@@ -372,6 +372,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("trainer", "grade_rate_up_pct_per_s"): "rampe de pente du trainer",
     ("trainer", "grade_rate_down_pct_per_s"): "rampe de pente du trainer",
     ("trainer", "hr_relay_freeze_s"): "détection de la FC relayée figée",
+    ("trainer", "resend_s"): "renvoi de la consigne, essais contre le pompage (lot O27 : ira dans Avancé si l'essai la garde réglable)",
     ("gearing", "n_gears"): "boîte de vitesses virtuelle",
     ("gearing", "ratio_min"): "boîte de vitesses virtuelle",
     ("gearing", "ratio_max"): "boîte de vitesses virtuelle",
@@ -418,11 +419,6 @@ DEV_KEYS: dict[tuple[str, str], str] = {
 # Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
 PENDING_KEYS: dict[tuple[str, str], str] = {
     ("gravel", "mode"): "U16",
-    ("trainer", "resend_s"): "O27",
-    ("render", "theme_library_gb"): "O27",
-    ("open_world", "cache_max_gb"): "O27",
-    ("open_world", "network"): "O27",
-    ("progression", "enabled"): "O27",
 }
 
 

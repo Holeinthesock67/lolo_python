@@ -298,6 +298,11 @@ func _test_relaunch_setting() -> void:
 		and SettingsViewModel.format_value({"key": "wind.mode"}, "gusty") == "en rafales"
 		and SettingsViewModel.format_value({"key": "render.theme"}, "default") == "par défaut",
 		"légendes du vent et du thème en français")
+	var bool_it := {"key": "futur.interrupteur", "type": "choice", "choices": ["on", "off"]}
+	_check(SettingsViewModel.format_value(bool_it, "on") == "oui" and SettingsViewModel.format_value(bool_it, "off") == "non"
+		and SettingsViewModel.format_value({"key": "open_world.network", "choices": ["on", "off"]}, "off") == "non (hors ligne)"
+		and SettingsViewModel.group_title("advanced") == "Avancé",
+		"lot O27 : tout booléen en oui / non, légende du hors ligne, sous-écran Avancé")
 
 
 func _test_settings_screen() -> void:

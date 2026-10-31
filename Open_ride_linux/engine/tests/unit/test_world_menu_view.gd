@@ -90,6 +90,17 @@ func _init() -> void:
 	_check(_received.size() == 2 and _received[1][0] == "places" and _received[1][1]["items"].size() == 1, "places : une partie")
 	ipc._on_world_part("world_map", part.call(1, 1, 9, [{"c": "t", "xz": [0, 0, 5, 5]}]))
 	_check(_received.size() == 3, "nouvelle demande : livrée")
+	var got_settings := []
+	ipc.settings_received.connect(func(m: Dictionary) -> void: got_settings.append(m))
+	var setting := func(i: int, n: int, key: String) -> Dictionary:
+		return {"type": "settings", "v": 1, "request_cmd_id": 11, "part": i, "parts": n, "items": [{"key": key}]}
+	ipc._on_settings_part(setting.call(1, 2, "rider.ftp_w"))
+	_check(got_settings.is_empty(), "settings : une partie sur deux, rien")
+	ipc._on_settings_part(setting.call(2, 2, "progression.enabled"))
+	_check(got_settings.size() == 1 and got_settings[0]["items"].size() == 2, "settings en parties réunies (lot O27)")
+	ipc._on_settings_part({"type": "settings", "v": 1, "request_cmd_id": 0, "items": [{"key": "render.fps"}]})
+	ipc._on_settings_part({"type": "settings", "v": 1, "request_cmd_id": 0, "items": [{"key": "render.fps"}]})
+	_check(got_settings.size() == 3, "settings sans parties : chaque message livré")
 	ipc._track_open_world({"route_id": "ow:x", "open_world": {"rev": 3}})
 	ipc._track_open_world({"route_id": "ow:x"})
 	_check(ipc.open_world.get("rev") == 3, "open_world gardé quand une trame l'omet")
