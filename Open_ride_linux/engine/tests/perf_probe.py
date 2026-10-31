@@ -18,6 +18,9 @@ Usage, avec le vrai jeu :
 fermé), `--duration` ou Ctrl+C, puis écrit le rapport dans `~/OpenRide/sonde/<date>_<heure>/`.
 `report DOSSIER` refait le rapport d'un dossier déjà mesuré. Le banc simulé l'utilise aussi :
 `sim_bench.py --probe` (rapport dans le dossier du scénario).
+`chauffe DOSSIER [--tranche-min 10]` donne, par tranche, les médianes du temps GPU de la vue, de la charge, de
+la température et de la fréquence du GPU : un temps GPU qui monte avec la fréquence qui baisse est une
+chauffe de la carte (endurance 7bi : `chauffe <scénario>/sonde`).
 Budgets du préréglage (lot X14) : `sonde.txt` juge images/s, p99, GPU de la vue et GPU saturé face à
 `perf_targets.json`, pour le préréglage noté par l'engine ; avec `--budgets`, un budget dépassé donne le
 code de sortie 1 (`report --xvfb` : rendu logiciel, budgets en INFO).
@@ -382,6 +385,66 @@ def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
     return out
 
 
+# --- chauffe du GPU dans la durée (enquête 7bi) ------------------------------------------------
+
+HEAT_COLUMNS = (("gpu_ms", "GPU ms"), ("gpu_util_pct", "charge %"), ("gpu_temp_c", "temp °C"),
+                ("gpu_clock_mhz", "fréq. MHz"), ("fps", "i/s"), ("core_cpu_pct", "CPU core %"))
+
+
+def heat_windows(rows: list[dict[str, Any]], window_s: float = 600.0,
+                 warmup_s: float = 60.0) -> list[dict[str, Any]]:
+    """Médianes par tranche de `window_s` (temps GPU de la vue, charge, température, fréquence, images/s,
+    CPU du core) et part des secondes à plus de 95 % de charge : un temps GPU qui monte quand la fréquence
+    baisse est une chauffe de la carte, pas une scène plus lourde."""
+    ts = values(rows, "t_s")
+    if not ts:
+        return []
+    start = min(ts) + warmup_s
+    groups: dict[int, list[dict[str, Any]]] = {}
+    for r in rows:
+        t = r.get("t_s")
+        if isinstance(t, (int, float)) and t >= start:
+            groups.setdefault(int((t - start) // window_s), []).append(r)
+    out = []
+    for k in sorted(groups):
+        g = groups[k]
+        w: dict[str, Any] = {"debut_min": round((start - min(ts) + k * window_s) / 60.0, 1), "secondes": len(g)}
+        for key, _ in HEAT_COLUMNS:
+            v = values(g, key)
+            w[key] = round(statistics.median(v), 2) if v else None
+        util = values(g, "gpu_util_pct")
+        w["busy95_pct"] = round(100.0 * sum(u > 95.0 for u in util) / len(util), 1) if util else None
+        out.append(w)
+    return out
+
+
+def heat_text(windows: list[dict[str, Any]]) -> str:
+    """Tableau des tranches et lecture : écart du temps GPU et de la fréquence entre la première et la dernière."""
+    if not windows:
+        return "Aucune mesure après la mise en route.\n"
+    head = f"{'début':>7}  " + "  ".join(f"{lab:>10}" for _, lab in HEAT_COLUMNS) + f"  {'>95 %':>6}"
+    lines = [head]
+    for w in windows:
+        cells = "  ".join(f"{w[k]:>10.2f}" if w[k] is not None else f"{'-':>10}" for k, _ in HEAT_COLUMNS)
+        busy = f"{w['busy95_pct']:>5.1f}%" if w["busy95_pct"] is not None else f"{'-':>6}"
+        lines.append(f"{w['debut_min']:>5.0f} m  {cells}  {busy}")
+    a, b = windows[0], windows[-1]
+    if len(windows) > 1 and a["gpu_ms"] and b["gpu_ms"]:
+        d_gpu = (b["gpu_ms"] / a["gpu_ms"] - 1.0) * 100.0
+        msg = f"GPU {a['gpu_ms']:.2f} → {b['gpu_ms']:.2f} ms ({d_gpu:+.0f} %)"
+        if a["gpu_clock_mhz"] and b["gpu_clock_mhz"]:
+            d_clk = (b["gpu_clock_mhz"] / a["gpu_clock_mhz"] - 1.0) * 100.0
+            msg += f", fréquence {a['gpu_clock_mhz']:.0f} → {b['gpu_clock_mhz']:.0f} MHz ({d_clk:+.0f} %)"
+            if a["gpu_temp_c"] and b["gpu_temp_c"]:
+                msg += f", température {a['gpu_temp_c']:.0f} → {b['gpu_temp_c']:.0f} °C"
+            if d_gpu > 3.0 and d_clk < -3.0:
+                msg += " : la carte ralentit en chauffant (temps GPU qui monte avec la fréquence qui baisse)"
+            elif d_gpu > 3.0:
+                msg += " : fréquence stable, le temps GPU monte pour une autre raison (scène, pilote)"
+        lines += ["", msg]
+    return "\n".join(lines) + "\n"
+
+
 # --- budgets par préréglage (lot X14) ---------------------------------------------------------
 
 TARGETS_FILE = Path(__file__).resolve().parent / "perf_targets.json"
@@ -668,6 +731,9 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--quality", help="préréglage voulu : échec si une seconde a été mesurée dans un autre (lot X32)")
     r.add_argument("--budgets", action="store_true", help="code 1 si un budget de perf_targets.json est dépassé (lot X14)")
     r.add_argument("--xvfb", action="store_true", help="mesure sous Xvfb : budgets en INFO")
+    c = sub.add_parser("chauffe", help="temps GPU, charge, température et fréquence par tranche (dossier ou sonde.csv)")
+    c.add_argument("source", type=Path)
+    c.add_argument("--tranche-min", type=float, default=10.0, help="durée d'une tranche en minutes (défaut 10)")
     args = ap.parse_args(argv)
     if args.cmd == "watch":
         out = args.out or DEFAULT_OUT / datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -677,6 +743,9 @@ def main(argv: list[str] | None = None) -> int:
     if not rows:
         print(f"Aucune mesure dans {src}")
         return 1
+    if args.cmd == "chauffe":
+        print(heat_text(heat_windows(rows, args.tranche_min * 60.0)), end="")
+        return 0
     out = args.out or (args.source if args.source.is_dir() else args.source.parent)
     summary = write_report(rows, out, real_window=not args.xvfb, engine_dir=src.parent)
     print((out / "sonde.txt").read_text(encoding="utf-8"), end="")
