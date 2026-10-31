@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série DS : règles du mode « Dernier survivant » dans le core (arches, passages, éliminations, égalités, bilan) | Python | T12, T13, AS1 | Moyenne | Prêt (version 3.0 proposée) |
+| Série DS : règles du mode « Dernier survivant » dans le core (arches, passages, éliminations, égalités, bilan) | Python | T12, T13, AS1 | Moyenne | **Livré le 31 octobre** (version 3.0) |
 
 Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/3.0/PLAN_SERIE_DS.md`.
 
@@ -28,3 +28,11 @@ Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 
 1. Tests positifs et négatifs pour chaque règle du §2 du plan : nombre et position des arches, calage, circuit, élimination immédiate d'un coureur loin derrière, égalité, pause.
 2. Course simulée de 4 et de 11 bots : exactement une élimination par arche, places de 1 à N + 1 sans doublon, trame `survivor` sous 400 octets.
 3. Même graine, même course.
+
+## Livraison
+
+Livré le 31 octobre 2026 (branche `claude/project-thread-ewr5b6-ds1`) : `core/src/openride_core/survivor.py` et `core/tests/test_survivor.py`. Rien n'est encore branché sur la séance (lot DS2).
+
+- `arch_positions`, `fits`, `course_length_m`, `check_settings`, `plan_field` : préparation de la course et du plateau (profils tournants, niveaux étalés dans les bornes de `bots.level_pct`).
+- `SurvivorRace` : passages de toutes les arches enregistrés (un coureur de tête peut passer l'arche suivante avant que la précédente soit départagée), élimination immédiate, égalité sous 1 ms (si le dernier est à moins de 1 ms de l'arche, la décision attend le pas suivant), trame `survivor` (avec `winner` en plus du plan), messages `elimination`, lignes `survivor` du journal, bilan.
+- Courses simulées de 4 et 11 bots à puissance constante : une élimination par arche, places 1 à N + 1, trame sous 400 octets, même graine même course.
