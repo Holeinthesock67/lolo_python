@@ -3,9 +3,10 @@ extends Control
 ## Habillage du mode « What the fuck » dans le HUD (série WTF, lot WTF7), d'après les maquettes validées
 ## le 30 octobre : style cartoon (aplats, bord encre épais, ombre portée décalée).
 ## - bandeau du gag centré sous le panneau central du HUD : nom, temps restant, points ;
-## - carte du gag dessous : titre, valeur, jauge, note (cachée quand le gag n'en a pas) ;
+## - carte du gag à gauche, sous l'indicateur du vent : titre, valeur, jauge, note (cachée quand le gag n'en a
+##   pas) ; hors du centre de l'image pour laisser voir le gag (essai PC 7cn du 31 octobre) ;
 ## - invite d'un bouton (« Z : NON MERCI, CHEF ! ») au milieu de l'écran, le temps de la révélation ;
-## - Katamari et horloge à gauche, sous l'indicateur du vent.
+## - Katamari et horloge à gauche, sous la carte du gag ; les trois cartes s'empilent sans trou.
 ## Ne décide rien : affiche la sortie de wtf_hud_model.gd (update_view). Enfant du HUD : caché avec lui
 ## quand un menu plein écran est ouvert. Pas de class_name : preload("res://scripts/wtf/wtf_view.gd").
 
@@ -17,9 +18,9 @@ const RADIUS := 18
 const SHADOW := 5
 const BANNER_TOP := 125.0     # sous le panneau central du HUD (TOP_MARGIN 20 + CENTER_H 89 + marge)
 const BANNER_W := 560.0
-const CARD_W := 380.0
 const SIDE_LEFT := 20.0
 const SIDE_TOP := 330.0       # sous le vent et l'abri du panneau de gauche
+const SIDE_GAP := 12.0
 const SIDE_W := 243.0         # largeur du panneau de gauche (hud_view.gd COLUMN_W)
 const TITLE_SIZE := 30
 const TEXT_SIZE := 18
@@ -72,15 +73,14 @@ func _build() -> void:
 		row.add_child(l)
 
 	_card = _panel(Color.WHITE)
-	_card.anchor_left = 0.5
-	_card.anchor_right = 0.5
-	_card.offset_left = -CARD_W / 2.0
-	_card.offset_right = CARD_W / 2.0
-	_card.offset_top = BANNER_TOP + 70.0
+	_card.offset_left = SIDE_LEFT
+	_card.offset_right = SIDE_LEFT + SIDE_W
+	_card.offset_top = SIDE_TOP
 	var col := _vbox(_card)
 	_card_title = _label(TEXT_SIZE, INK)
 	_card_value = _label(VALUE_SIZE, INK)
 	_card_bar = _bar(WtfHudModel.PINK)
+	_card_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_card_note = _label(TEXT_SIZE - 3, INK)
 	_card_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	for c in [_card_title, _card_value, _card_bar, _card_note]:
@@ -100,7 +100,6 @@ func _build() -> void:
 	_kata = _panel(Color.WHITE)
 	_kata.offset_left = SIDE_LEFT
 	_kata.offset_right = SIDE_LEFT + SIDE_W
-	_kata.offset_top = SIDE_TOP
 	var kcol := _vbox(_kata)
 	_kata_title = _label(TEXT_SIZE + 2, INK)
 	_kata_line = _label(TEXT_SIZE - 4, INK)
@@ -112,7 +111,6 @@ func _build() -> void:
 	_clock = _panel(WtfHudModel.CYAN)
 	_clock.offset_left = SIDE_LEFT
 	_clock.offset_right = SIDE_LEFT + SIDE_W
-	_clock.offset_top = SIDE_TOP + 120.0
 	_clock_text = _label(TEXT_SIZE + 2, INK)
 	_clock.add_child(_clock_text)
 
@@ -157,7 +155,11 @@ func update_view(view: Dictionary) -> void:
 	_clock.visible = not h.is_empty()
 	if _clock.visible:
 		_clock_text.text = str(h.get("text", "")) + ("  · poissons volants !" if h.get("fish", false) else "")
-	_clock.offset_top = SIDE_TOP + (_kata.get_combined_minimum_size().y + 12.0 if _kata.visible else 0.0)
+	var y := SIDE_TOP
+	for panel in [_card, _kata, _clock]:
+		if panel.visible:
+			panel.offset_top = y
+			y += panel.get_combined_minimum_size().y + SIDE_GAP
 
 
 ## Pour les tests graphiques et le banc des menus : textes affichés.
@@ -166,7 +168,8 @@ func test_info() -> Dictionary:
 		"card": _card_title.text if visible and _card.visible else "",
 		"prompt": _prompt_text.text if visible and _prompt.visible else "",
 		"kata": _kata_title.text if visible and _kata.visible else "",
-		"clock": _clock_text.text if visible and _clock.visible else ""}
+		"clock": _clock_text.text if visible and _clock.visible else "",
+		"card_top": _card.offset_top, "kata_top": _kata.offset_top, "clock_top": _clock.offset_top}
 
 
 static func _style(fill: Color) -> StyleBoxFlat:

@@ -131,8 +131,8 @@ static func _make(kind: String) -> MeshInstance3D:
 			color = Color(0.55, 0.55, 0.62, 0.45)
 		"ball":
 			var s := SphereMesh.new()
-			s.radius = 1.0
-			s.height = 2.0
+			s.radius = WtfSceneModel.KATA_BALL_M   # × scale = taille de la boule (posée au sol, sans s'y enfoncer)
+			s.height = 2.0 * WtfSceneModel.KATA_BALL_M
 			mesh = s
 			color = WtfHudModel.PINK
 		"fish":

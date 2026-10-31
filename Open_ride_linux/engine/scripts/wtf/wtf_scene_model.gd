@@ -24,8 +24,11 @@ const COUNTS := {"low": {"cows": 8, "fish": 6, "chunks": 4}, "medium": {"cows": 
 	"high": {"cows": 24, "fish": 20, "chunks": 8}}
 const CHUNK_M := 6.0
 const CHEESE_RADIUS_M := 1.5
-const STORM_AHEAD_M := 45.0
+const STORM_AHEAD_M := 28.0   # assez près pour voir les vaches (essai PC 7cn : à 45 m, quelques points)
+const COW_SCALE := 2.5         # vaches cartoon, plus grosses que nature
 const KATA_BALL_M := 0.45     # rayon de la boule à la taille 1
+const KATA_SHOW_MAX := 3.0     # la boule affichée cesse de grossir à × 3 (1,35 m) : le décor reste visible
+const KATA_LATERAL_M := 1.2    # poussée un peu à droite du cycliste, hors du centre de l'image
 const KITCHEN := [["plate", 25.0, -9.0, 30.0], ["fork", 60.0, 10.0, 28.0], ["cup", 110.0, -12.0, 35.0],
 	["plate", 160.0, 11.0, 30.0], ["fork", 210.0, -10.0, 28.0]]
 const KATA_SCALES := {"apple": 0.3, "sign": 1.0, "cow": 1.4, "car": 1.8, "house": 4.0, "church": 7.0}
@@ -90,7 +93,7 @@ static func _event(ev: Dictionary, t: float, n: Dictionary, out: Dictionary, pro
 			for i in cows:
 				var a := t * 2.0 + i * TAU / maxf(cows, 1)
 				var r := 5.0 + (i % 3) * 3.0
-				props.append(_prop("cow", STORM_AHEAD_M + r * sin(a), r * cos(a), fposmod(i * 1.3 + t, 14.0), 1.0, a))
+				props.append(_prop("cow", STORM_AHEAD_M + r * sin(a), r * cos(a), fposmod(i * 1.3 + t, 14.0), COW_SCALE, a))
 			props.append(_prop("tornado", STORM_AHEAD_M, 0.0, 0.0, 1.0, t * 2.0))
 		"tiny":
 			out["camera"] = "tiny"

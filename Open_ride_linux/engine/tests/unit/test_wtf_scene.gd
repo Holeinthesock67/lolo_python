@@ -70,6 +70,8 @@ func _run() -> void:
 	var storm_high := _ev({"id": "storm", "pushback_m": 3.0, "cows": 40, "left_s": 30}, "high")
 	_check(_kinds(storm_low)["cow"] == 8 and _kinds(storm_high)["cow"] == 24, "tornade : 8 vaches en low, 24 en high")
 	_check(_kinds(_ev({"id": "storm", "cows": 3}, "high"))["cow"] == 3, "la tornade se remplit peu à peu")
+	var cow: Dictionary = storm_low["props"].filter(func(p): return p["kind"] == "cow")[0]
+	_check(cow["scale"] == M.COW_SCALE and absf(cow["ds"]) < 40.0, "vaches cartoon assez grosses et assez près pour être vues")
 	_check(storm_low["tint"] == M.TINT_STORM, "tempête : ciel sombre")
 	var tiny := _ev({"id": "tiny", "scale": 0.025, "set": "kitchen", "left_s": 30})
 	_check(tiny["camera"] == "tiny" and _kinds(tiny).has("plate") and _kinds(tiny).has("cup"), "vélo minuscule : cuisine géante")
@@ -88,6 +90,9 @@ func _run() -> void:
 	_check(k.get("ball", 0) == 1 and k.get("kata_car", 0) == 1 and k.get("kata_church", 0) == 1, "Katamari : boule et objets à venir")
 	var ball: Dictionary = amb["props"].filter(func(p): return p["kind"] == "ball")[0]
 	_check(is_equal_approx(ball["scale"], 3.0) and is_equal_approx(ball["up"], 3.0 * M.KATA_BALL_M), "la boule grossit")
+	_check(ball["lateral"] > 0.0, "boule poussée à droite, hors du centre de l'image")
+	var big: Dictionary = M.view({"points": 0, "event": null, "kata": {"size": 6.0}}, 0.0)["props"][0]
+	_check(is_equal_approx(big["scale"], M.KATA_SHOW_MAX), "la boule affichée cesse de grossir à × 3")
 	_check(k.get("fish", 0) == 6, "pluie de poissons : 6 en low")
 	_check(is_equal_approx(amb["sun_hour"], 2.0), "heure ramenée à 0–24 h")
 	_check(amb["skins"] == {"b1": "whale"} and amb["attack"] == "b1", "costumes et attaque transmis")
