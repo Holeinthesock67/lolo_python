@@ -1,5 +1,10 @@
 # Lot U9 – Engine : mer animée et plages
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : mer animée, écume et plages | GDScript + shader | U3, U6 | Moyenne | Oui, après U3 et U6, **version 3.0** (issue #339) |
+
 ## 1. Objectif
 
 **Version 3.0.** Afficher la mer écrite par U3 : surface animée simple jusqu'à l'horizon, couleur selon le biome (turquoise sous les tropiques, gris-vert au nord), écume le long du rivage, plages de sable ou de galets, falaises.

@@ -1,5 +1,10 @@
 # Lot I1 – Tests de cohérence entre la documentation et le code
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Tests de cohérence entre la documentation et le code | Python | — | Petite | **Livré le 23 octobre** (PR #20) |
+
 ## 1. Objectif
 
 Faire échouer les tests dès que la documentation s'écarte du code, au lieu de le découvrir lors d'un audit. Trois dérives ont été constatées le 23 octobre : modules et commandes absents de `CLAUDE.md`, tâche déjà faite encore listée « à faire », exemple de configuration qui peut diverger des valeurs par défaut.

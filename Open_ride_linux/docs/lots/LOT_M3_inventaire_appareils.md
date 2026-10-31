@@ -1,5 +1,10 @@
 # Lot M3 – Inventaire des appareils : `openride-core devices`
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Inventaire des appareils Bluetooth : `openride-core devices` | Python | — | Petite | **Livré le 24 octobre** (issue #80) |
+
 ## 1. Objectif
 
 Pour remplir `trainer_address`, `click_address` ou `hr_address` dans `config.toml`, il faut aujourd'hui lancer `openride-ble-diag scan` (liste brute du sprint 0) et deviner quel appareil est quoi. Ce lot ajoute une commande qui recherche les appareils utiles à OpenRide, les **classe** (trainer FTMS, boîtier Zwift Click, ceinture ou montre cardio), signale ceux que BlueZ garde connectés, et affiche les lignes de configuration à copier.

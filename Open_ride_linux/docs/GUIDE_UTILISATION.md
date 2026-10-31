@@ -72,7 +72,25 @@ Chaque écran du globe explique ce qu'il fait, et le bandeau du bas donne les bo
 
 En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pente de la route ne compte plus.
 
-**Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, ou **Importer un fichier** `.zwo`, `.erg` ou `.mrc` trouvé dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`. Une première série d'entraînements s'installe avec `python -m openride_core.tools.workouts install` (depuis `core/`, environnement activé).
+**Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, **Importer un fichier** `.zwo`, `.erg`, `.mrc` ou `.qwk` trouvé dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`, et **Comment ça marche ?**, l'aide à l'écran qui reprend tout ce qui suit (un sujet par ligne, l'explication dans la carte de droite). Une première série d'entraînements s'installe avec `python -m openride_core.tools.workouts install` (depuis `core/`, environnement activé).
+
+**Ajouter un entraînement.** Quatre façons :
+
+- **Créer** : échauffement, répétitions d'effort et de récupération (durée et % de la FTP), retour au calme, réglés au Click ; **Enregistrer et choisir** écrit un `.zwo` et le choisit. Les mêmes réglages ne font pas de doublon, et aucun entraînement n'est remplacé : un nom déjà pris reçoit `_2`, `_3`…
+- **QWKcode de GoldenCheetah** : un fichier texte `.qwk`, une ligne par segment, `[Nx] durée@puissance[-puissance] [rdurée@puissance[-puissance]]`. Durée en `h`, `m` ou `s`, combinables (`1m30s`, `1.5m`) ; puissance en watts, ou en % de la FTP avec `%` (`50-75%`). Une ligne `#` avant le premier segment donne le nom ; `#` ailleurs commence un commentaire. Exemple :
+
+  ```
+  # Seuil 4 × 5 min
+  10m@130-220
+  5m@180
+  4x 5m@280 r3m@140
+  8x 30s@120% r30s@50%
+  10m@130
+  ```
+
+  `10m@130-220` est une rampe de 130 à 220 W ; `4x 5m@280 r3m@140` fait 4 fois 5 min à 280 W puis 3 min à 140 W. Une erreur donne le numéro de la ligne. Enregistre le fichier dans Téléchargements, puis **Importer un fichier**.
+- **Importer** : le fichier est vérifié, puis copié dans `~/OpenRide/Workouts/` ; un fichier déjà importé n'est pas recopié, un autre du même nom reçoit `_2`.
+- **À la main** : un fichier posé directement dans `~/OpenRide/Workouts/` apparaît dans la liste. `.zwo` (Zwift) et `.mrc` : puissances en % de la FTP ; `.erg` : watts fixes ; `.qwk` : watts ou %. Un bloc `FreeRide` devient un palier à 50 W. Exemples dans `core/workouts/`.
 
 **Pendant l'ERG.** Le bandeau du bas montre le bloc en cours, le temps restant, la cible et le bloc suivant. Les appuis courts sur « + » et « − » règlent l'intensité de ± 2 %, les appuis longs de ± 10 % ; **Z** passe au bloc suivant et **Y** met la séance en pause. Le détail est dans la section 6.
 
@@ -156,7 +174,7 @@ Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîti
 
 **Décor vivant.** Le paysage s'anime autour du parcours : pluie, neige légère ou brume selon le thème, rapaces, volées d'oiseaux et corneilles, troupeaux dans les prés, moutons sur les pentes, lièvres dans les champs, éoliennes et drapeaux qui suivent le vent, voitures, camions et motos sur la route, circulation sur les routes voisines et tracteurs aux champs, cyclistes seuls ou en groupe (certains doublent en disant « Salut ! »), avions de ligne, parapentes au-dessus des montées et montgolfières par vent faible, bateaux sur les lacs, les canaux et les rivières, spectateurs au sommet des cols et passants dans les villages. Les phares s'allument dans la brume, sous la pluie ou au soleil bas. En pause, les véhicules, les cyclistes, le ciel et les bateaux se figent ; les animaux et les oiseaux continuent. La quantité dépend de la qualité graphique (moins d'objets en `low`). Les routes voisines, les prés et les champs viennent des couches OpenStreetMap du parcours (format `.world` 1.5 : recompilez un parcours plus ancien pour les avoir). Pour tout couper et retrouver le rendu de la version 1.0 : **Réglages › Graphisme › Décor vivant** sur « non », puis **Relancer OpenRide maintenant**.
 
-**Thèmes.** Un thème change l'apparence de la route, du terrain et du ciel. Les thèmes ajoutés se placent dans `~/OpenRide/Themes/` avec `openride-compiler theme-install DOSSIER` (ou une archive `.zip`, ou son adresse `https://…`), et `theme-list` montre ceux qui sont installés, avec leur taille et leur dernière utilisation ; ils se choisissent dans **Réglages**. La bibliothèque est plafonnée à 5 Go (`[render] theme_library_gb`) : au-delà, l'installation retire le pack utilisé le moins récemment, jamais le thème choisi. Recette d'un pack de textures libres pour les biomes : [3.0/PACK_BIOMES_CC0.md](3.0/PACK_BIOMES_CC0.md).
+**Thèmes.** Un thème change l'apparence de la route, du terrain et du ciel. Les thèmes ajoutés se placent dans `~/OpenRide/Themes/` avec `openride-compiler theme-install DOSSIER` (ou une archive `.zip`, ou son adresse `https://…`), et `theme-list` montre ceux qui sont installés, avec leur taille et leur dernière utilisation ; ils se choisissent dans **Réglages**. La bibliothèque est plafonnée à 5 Go (`[render] theme_library_gb`) : au-delà, l'installation retire le pack utilisé le moins récemment, jamais le thème choisi. Recette d'un pack de textures libres pour les biomes : [3.0/PACK_BIOMES_CC0.md](3.0/PACK_BIOMES_CC0.md). **Textures du décor** (dans **Réglages**, `[render] texture_level`) : « selon la qualité » par défaut ; un pack qui fournit plusieurs tailles d'images (`theme-pack`) donne alors 1 024 px en basse et moyenne qualité, 2 048 px en haute, sous un budget de mémoire vidéo ; « hautes » impose 2 048 px quelle que soit la qualité.
 
 **Sons.** OpenRide génère lui-même les sons du parcours (vent, roue libre, cloches, rivières). Un fichier OGG déposé dans `~/OpenRide/Sounds/` sous le nom du son (`wind.ogg`, `freewheel.ogg`, `church_bell.ogg`, `river.ogg`, `livestock.ogg`, `village.ogg`) le remplace. En mode classique, un court jingle marque le sommet d'une montée, la fin d'un sprint, le passage sous une arche de bonus et la fin de la séance ; il se remplace de la même façon (`jingle_summit.ogg`, `jingle_summit_pr.ogg` pour un record, `jingle_sprint.ogg`, `jingle_sprint_pr.ogg`, `jingle_arch.ogg`, `jingle_finish.ogg`).
 

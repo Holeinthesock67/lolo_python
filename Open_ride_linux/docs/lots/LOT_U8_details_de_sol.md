@@ -1,5 +1,10 @@
 # Lot U8 – Engine : détails de sol (dunes, rides de sable, rochers épars, herbes hautes)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : détails de sol (dunes et rides par normales, rochers épars, herbes hautes) | GDScript + shader | U6 (U7 utile) | Moyenne | Oui, après U6, **version 3.0** (issue #338) |
+
 ## 1. Objectif
 
 **Version 3.0.** Ajouter ce qui fait reconnaître un biome au premier coup d'œil, sans changer le relief du MNT : rides de sable et dunes par cartes de normales, rochers épars, herbes hautes de savane, touffes de steppe, termitières.

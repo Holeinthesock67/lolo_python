@@ -1,5 +1,10 @@
 # Lot O12 – Menu : plans d'entraînement, test de FTP et bibliothèque de parcours
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Menu : plans, test de FTP et bibliothèque de parcours (ajouts au contrat IPC) | GDScript + Python | N6, O4, O10, O11, O15 | Grande | **Livré le 27 octobre** (interne, PR #395 et PR #396) |
+
 ## 1. Objectif
 
 Rendre accessibles depuis le menu, au Click et au clavier, les ajouts côté core de la série O : la séance du jour d'un plan (O11), le test de FTP avec l'acceptation de la nouvelle FTP (O10), et la bibliothèque de parcours avec ses fiches, tris et filtres (O15). Les entraînements `.erg` et `.mrc` (O9) apparaissent dans la liste existante.

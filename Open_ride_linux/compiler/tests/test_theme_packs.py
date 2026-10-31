@@ -134,7 +134,8 @@ def test_install_zipped_make_texture_theme(tmp_path: Path) -> None:
     themes = list_themes(themes_dir=themes_dir)
     found = [t for t in themes if t["name"] == "essai-textures-64"]
     assert len(found) == 1
-    assert found[0]["status"] == "ok"
+    assert found[0]["status"] == "avertissements"   # sans provenance.toml (lot P20)
+    assert [i["message"] for i in found[0]["issues"]] == ["provenance.toml absent : provenance des images non déclarée"]
     assert found[0]["textures_count"] == 3
 
 

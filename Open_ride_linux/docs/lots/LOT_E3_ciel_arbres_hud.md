@@ -1,5 +1,10 @@
 # Lot E3 – Ciel, arbres par bruit et HUD final avec profil d'altitude
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75), K2, K3, L3, L4 (livrés) | Grande | **Livré le 24 octobre** (PR #91, recette visuelle sur la GTX 1060 à faire) |
+
 ## 1. Objectif
 
 Terminer le MVP visuel du sprint 3 (SRS §8 « MVP visuel », §13 sprint 3) : ciel physique et soleil fixe, brouillard qui masque vraiment la limite du terrain, arbres instanciés selon un bruit de densité sous la limite des arbres, HUD final lisible depuis le vélo avec le profil d'altitude. Ce lot **branche et affiche** ce que les lots K2, K3, L3 et L4 ont préparé sans affichage ; il ne réécrit pas leurs calculs.
@@ -135,7 +140,9 @@ Aucune. Les couleurs des arbres et l'azimut du soleil ne sont pas dans le format
 ## 9. Livraison (24 octobre 2026, branche lot-e3-e4)
 
 - **Ciel physique et brouillard** : PhysicalSkyMaterial avec 
-adiance_size = 1 dans engine/scenes/main.tscn et main.gd ; brouillard de profondeur avec og_density = 1.0 et og_depth_end = 12000.0 (teinte d'horizon) ; brouillard volumétrique activé uniquement en préréglage high avec la densité du thème (
+adiance_size = 1 dans engine/scenes/main.tscn et main.gd ; brouillard de profondeur avec 
+og_density = 1.0 et 
+og_depth_end = 12000.0 (teinte d'horizon) ; brouillard volumétrique activé uniquement en préréglage high avec la densité du thème (
 ender_quality.gd).
 - **Variation du terrain** : modulation procédurale de l'herbe par bruit (+- 8 %) et facettes de la roche dans engine/shaders/terrain.gdshader et 	errain_material.gd (detail_strength = 1.0, 
 ock_facet_strength = 0.6).

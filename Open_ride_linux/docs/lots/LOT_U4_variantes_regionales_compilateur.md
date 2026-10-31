@@ -1,5 +1,10 @@
 # Lot U4 – Compilateur : variante régionale par tuile (géologie et architecture simplifiées)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Compilateur : variante régionale par tuile (table de géologie et d'architecture à grosse maille) | Python | U1 (U2 utile) | Petite | Oui, après U1, **version 3.0** (issue #334) |
+
 ## 1. Objectif
 
 **Version 3.0.** Donner à chaque tuile une variante régionale (couleur des roches et des terres, matériaux des toits et des murs) tirée d'une table d'ébauche à grosse maille, modifiable par le thème, sans aucune coordonnée précise dans le dépôt.

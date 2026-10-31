@@ -1,5 +1,10 @@
 # Lot Y10 – Comportement des bots dans le core : groupes, relais, attaques et fatigue
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Comportement des bots dans le core (profils, attaques, abri) | Python | Y9, séries T et R | Moyenne | Oui ; issue #366 |
+
 ## 1. Objectif
 
 Décision du propriétaire du 27 octobre (`docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §0, question 12) : **bots réalistes**, avec attaques dans les montées, fatigue et abri, calculés dans le core, qui reste le maître de l'état. Le lot T12 donne déjà à chaque bot du mode classique un profil (CP, W′, masse, pic), une stratégie par segment et une réserve W′bal ; T13 les met à l'échelle de la FTP du cycliste. Il manque ce qui fait une course :

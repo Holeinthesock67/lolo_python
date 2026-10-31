@@ -1,5 +1,10 @@
 # Lot J7 – Cohérence de la documentation, deuxième passe
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Cohérence de la documentation, deuxième passe (caractères, liens, nombres de tests) | Python | — | Petite | **Livré le 23 octobre** (fait directement) |
+
 ## 1. Objectif
 
 Le lot I1 a ajouté des tests qui comparent la documentation au code. L'audit J du 23 octobre a trouvé trois dérives qu'ils ne voient pas (constats J-D1 à J-D3) :

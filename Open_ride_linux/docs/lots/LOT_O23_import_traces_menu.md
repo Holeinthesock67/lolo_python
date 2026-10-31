@@ -1,5 +1,10 @@
 # Lot O23 – Importer une trace depuis le menu, sans relancer
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Importer une trace (GPX, FIT, TCX) depuis le menu et la compiler sans relancer | Python + GDScript | O22, N11 (livré) | Moyenne | Choix du propriétaire du 31 octobre ; spécifié |
+
 ## 1. Objectif
 
 Suite du lot O22, choisie par le propriétaire le 31 octobre (« Aide puis import de traces »). Aujourd'hui, ajouter un parcours demande de déposer la trace dans `~/OpenRide/GPX/` et de relancer OpenRide, qui la compile au démarrage (lot N11). Comme pour les entraînements (lot N16), le menu doit proposer les traces de Téléchargements, du Bureau et de `~/OpenRide/Import`, puis les compiler sans relancer.

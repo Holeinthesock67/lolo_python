@@ -1,5 +1,10 @@
 # Lot M9 – Petite dette des vérifications du 24 octobre (R3 et S2)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Petite dette des vérifications du 24 octobre (R3 et S2) | Python | — | Petite | **Livré le 24 octobre** (issue #86) |
+
 ## 1. Objectif
 
 La vérification du 24 octobre (`docs/VERIFICATION_2026-10-24.md`) a laissé deux constats ouverts « à traiter au fil de l'eau ». Aucun ne touche une séance aujourd'hui, mais chacun peut piéger un futur appelant ou une installation. Ce lot les ferme, avec un test chacun.

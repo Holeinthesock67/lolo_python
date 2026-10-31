@@ -1,5 +1,10 @@
 # Lot X53 – Garde-fou des options hors menu
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Garde-fou des options : toute clé de `config.toml`, tout argument de l'engine et toute commande du guide a un menu ou une raison écrite | Python | O24 | Petite | Audit des options du 31 octobre, validé par le propriétaire ; en PR |
+
 ## 1. Objectif
 
 Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, validé par le propriétaire) : le gravel et la ceinture cardio étaient lus par le code sans être réglables dans un menu, et rien ne l'a signalé. Principe du propriétaire : à la fin, le jeu s'utilise sans ligne de commande ni fichier à modifier à la main. Ce lot ajoute un test qui échoue dès qu'une option arrive sans menu ni raison écrite.

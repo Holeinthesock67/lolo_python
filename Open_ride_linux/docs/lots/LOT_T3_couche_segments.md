@@ -1,5 +1,10 @@
 # Lot T3 – Compilateur : couche `segments` du `.world`
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : compilateur, couche `segments` du `.world`, fichier `<parcours>.segments.toml` | Python | T1, T2 (livrés) | Moyenne | **Livré le 27 octobre** (PR #394 : compilateur, `add-layer … segments`, `verify`, `info`, parcours de démonstration) |
+
 ## 1. Objectif
 
 Écrire dans le `.world` la couche facultative `segments` (plan de la série T §3.1 et §3.5) : montées et sprints détectés par T2, plus les segments déclarés à la main dans un fichier posé à côté du GPX (décision du 27 octobre). L'engine lit cette couche lui-même pour dessiner les lignes et les panneaux (T8) ; le core la lit pour chronométrer (T4).
