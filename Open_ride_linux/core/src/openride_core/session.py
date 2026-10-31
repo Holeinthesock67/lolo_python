@@ -518,6 +518,8 @@ class CoreSession:
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in PROFILE_COMMANDS:
             self._on_profile_command(name, args if isinstance(args, dict) else {}, cmd_id)
+        elif name in ("list_history", "history_session"):
+            self._spawn(self._send_history(name, args if isinstance(args, dict) else {}, cmd_id))
         elif name in CONTENT_COMMANDS:
             self._on_content_command(name, args if isinstance(args, dict) else {}, cmd_id)
 
@@ -1081,6 +1083,32 @@ class CoreSession:
             log.exception("Erreur lors de la préparation de plans (cmd_id=%d)", cmd_id)
             return
         self._plan_day = msg["active"]["plan_day"] if msg["active"] else None
+        self.server.send_raw(msg)
+
+    async def _send_history(self, name: str, args: dict, cmd_id: int) -> None:
+        """Historique du menu (lot O28) : `list_history` -> `history`, `history_session` -> bilan d'une séance."""
+        from .ipc_lists import HistoryError, build_history_message, build_history_session, history_file
+
+        activities = self.journal_dir.parent   # `Activities/` du profil en cours (journaux dans `.journal/`)
+        ftp_w = self.cfg.rider.ftp_w
+        if name == "list_history":
+            try:
+                msg = await asyncio.to_thread(build_history_message, cmd_id, ftp_w, activities)
+            except Exception:
+                log.exception("Erreur lors de la préparation de l'historique (cmd_id=%d)", cmd_id)
+                return
+            self.server.send_raw(msg)
+            return
+        sid = args.get("id")
+        path = await asyncio.to_thread(history_file, activities, sid) if isinstance(sid, str) and sid else None
+        if path is None:
+            self.server.send_error("bad_args", f"Séance inconnue : {sid!r}.")
+            return
+        try:
+            msg = await asyncio.to_thread(build_history_session, cmd_id, sid, path, ftp_w)
+        except HistoryError as exc:
+            self.server.send_error("bad_args", f"Bilan impossible : {exc}")
+            return
         self.server.send_raw(msg)
 
     def _accept_ftp(self, args: dict, cmd_id: int) -> None:

@@ -13,7 +13,7 @@ const ITEM_ICONS := {
 	"continue": "play", "records": "trophy", "end_save": "flag", "abandon": "cross", "no": "cross",
 	"yes": "check", "difficulty": "slope", "ride_mode": "bars", "target_w": "bolt", "cadence_rpm": "bike", "bot": "rider", "ghost": "ghost",
 	"rogue": "rider", "rogue_change": "gear", "objective": "flag", "duration": "calendar", "wprime": "bolt",
-	"chassis": "bike", "launch": "play",
+	"chassis": "bike", "launch": "play", "history": "list",
 	"garage": "bike", "bike": "bike", "outfit": "rider", "avatar": "rider", "save": "check", "cancel": "cross",
 }
 ## Formes connues de draw() ; un nom inconnu ne dessine rien.

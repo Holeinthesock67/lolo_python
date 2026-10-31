@@ -192,7 +192,7 @@ Le boîtier gauche porte « − » et les quatre flèches : gauche et droite cho
 
 Chaque séance est écrite dans `~/OpenRide/Activities/` au format FIT, un fichier par séance, nommé avec la date. Ces fichiers s'importent tels quels dans **Garmin Connect** (Importer des données) ou dans **GoldenCheetah**. Si le core plante pendant une séance, OpenRide le relance et la séance reprend en pause au même endroit. Après un arrêt brutal du PC, `openride-core recover` transforme le dernier journal en FIT.
 
-Pour relire les chiffres d'une séance : `openride-core summary` (dernier bilan) et `openride-core history` (cumul par semaine).
+Pour relire ses séances, ouvrez **Historique** depuis l'accueil. Les séances y sont listées de la plus récente à la plus ancienne, avec la date, le parcours, la durée, la distance, la NP et le TSS ; A maintenu ouvre le bilan d'une séance, comme en fin de séance. **Cumul par semaine** donne les totaux des 8 dernières semaines où vous avez roulé, et **Tests de FTP** tous vos tests de rampe.
 
 ## 9. Dépannage
 

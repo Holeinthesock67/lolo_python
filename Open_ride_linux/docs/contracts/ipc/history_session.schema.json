@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideHistorySessionMessage",
+  "description": "Réponse à cmd history_session (révision 1.5, lot O28) : bilan d'une séance de l'historique, de la même forme que le bilan de fin de séance (state.summary), calculé comme openride-core summary.",
+  "type": "object",
+  "required": ["type", "v", "request_cmd_id", "id", "summary"],
+  "properties": {
+    "type": {"const": "history_session"},
+    "v": {"type": "integer", "const": 1},
+    "request_cmd_id": {"type": "integer", "minimum": 0},
+    "id": {"type": "string", "minLength": 1},
+    "summary": {
+      "type": "object",
+      "required": ["duration_s", "distance_m", "avg_power_w", "fit_path", "np_w", "intensity_factor", "tss",
+                   "elevation_gain_m"],
+      "properties": {
+        "duration_s": {"type": "number", "minimum": 0},
+        "distance_m": {"type": "number", "minimum": 0},
+        "avg_power_w": {"type": "number", "minimum": 0},
+        "fit_path": {"type": ["string", "null"]},
+        "np_w": {"type": ["number", "null"]},
+        "intensity_factor": {"type": ["number", "null"]},
+        "tss": {"type": ["number", "null"]},
+        "elevation_gain_m": {"type": ["number", "null"]}
+      }
+    }
+  }
+}

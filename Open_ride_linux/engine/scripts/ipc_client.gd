@@ -33,6 +33,9 @@ signal route_import_status_received(msg: Dictionary)
 ## Plans d'entraînement et suivi du plan actif (lot O12, contrat v1.3) : réponse à list_plans,
 ## start_plan, stop_plan et create_plan (lot O30), en un seul datagramme.
 signal plans_received(msg: Dictionary)
+## Historique (lot O28, contrat 1.5) : réponse à list_history et bilan d'une séance (history_session).
+signal history_received(msg: Dictionary)
+signal history_session_received(msg: Dictionary)
 
 ## Monde ouvert (lot W10, contrat 1.5) : avancement de la préparation du monde (`world_status`).
 signal world_status_received(msg: Dictionary)
@@ -302,6 +305,10 @@ func _poll_incoming() -> void:
 				route_import_status_received.emit(json_obj)
 			"plans":
 				plans_received.emit(json_obj)
+			"history":
+				history_received.emit(json_obj)
+			"history_session":
+				history_session_received.emit(json_obj)
 			"world_status":
 				world_status = json_obj
 				world_status_received.emit(json_obj)
@@ -581,6 +588,16 @@ func set_setting(key: String, value) -> int:
 ## Plans d'entraînement (lot O12, contrat v1.3). Réponse : signal plans_received.
 func list_plans() -> int:
 	return send_command("list_plans", {})
+
+
+## Historique du profil en cours (lot O28, contrat 1.5). Réponse : signal history_received.
+func list_history() -> int:
+	return send_command("list_history", {})
+
+
+## Bilan d'une séance de l'historique (`id` du message `history`). Réponse : history_session_received, ou error bad_args.
+func history_session(session_id: String) -> int:
+	return send_command("history_session", {"id": session_id})
 
 
 ## Rend un plan actif ; `start_date` "AAAA-MM-JJ" ou null (aujourd'hui). Réponse : plans, ou error plan_invalid.
