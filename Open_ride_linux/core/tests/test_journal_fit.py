@@ -83,3 +83,22 @@ def test_fake_world_matches_contract():
     m = build_manifest("t", route)
     assert m["format"] == "openride-world" and m["route"]["n"] == n
     json.dumps(m)
+
+
+def test_finish_gives_the_fit_export_memory_back(tmp_path: Path, monkeypatch):
+    """Après l'export FIT, la mémoire libérée est rendue au système (`malloc_trim`), même si l'export échoue."""
+    from openride_core import recorder
+    calls = []
+    monkeypatch.setattr(recorder, "release_heap", lambda: calls.append(1))
+    rec = recorder.SessionRecorder(tmp_path, "demo", fit_dir=tmp_path)
+    rec.event("start", 1.7e9)
+    for i in range(20):
+        rec.record(Record(ts=1.7e9 + i, t=float(i), distance=i * 8.0, speed=8.0, power=220.0))
+    fit_path, _summary, error = rec.finish(save=True, ts=1.7e9 + 20.0)
+    assert error is None and fit_path is not None and fit_path.is_file() and calls == [1]
+    monkeypatch.setattr(recorder, "write_fit", lambda *a, **k: (_ for _ in ()).throw(ValueError("disque plein")))
+    rec = recorder.SessionRecorder(tmp_path, "demo", fit_dir=tmp_path)
+    rec.record(Record(ts=1.7e9, t=0.0))
+    assert rec.finish(save=True)[2] == "disque plein" and calls == [1, 1]
+    monkeypatch.undo()
+    recorder.release_heap()   # sans erreur, avec ou sans glibc

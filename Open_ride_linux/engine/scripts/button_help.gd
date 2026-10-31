@@ -20,11 +20,52 @@ const CLICK_TITLE := "Click"
 const KEYBOARD_TITLE := "Clavier"
 ## Touche du clavier de chaque bouton du Click (key_map.gd) : A maintenu = Entrée, B = « − », Y = Échap.
 const KEYBOARD_KEYS := {"A": ["A"], "A_HOLD": ["Entrée"], "+": ["+"], "B": ["−"], "Y": ["Échap"]}
+## Menu « Monde ouvert » (world_menu_view.gd, lot O22) : une aide par état de world_menu_model.gd, clé
+## WORLD_PREFIX + état. Au clavier, les lettres tapées sur le globe et dans la recherche cherchent un
+## lieu (main._world_menu_key) : A et Y n'y sont donc pas des boutons, d'où des touches données une à
+## une (`kb`). Une entrée sans bouton du Click (`keys` vide) ou sans touche (`kb` vide) n'est montrée que
+## sur l'autre ligne.
+const WORLD_PREFIX := "world_"
+const WORLD := {
+	"globe": [
+		{"keys": ["A"], "hold": false, "text": "Carte", "main": true, "kb": []},
+		{"keys": [], "hold": false, "text": "Chercher", "main": true, "kb": ["lettres"]},
+		{"keys": ["◀", "▶"], "hold": false, "text": "Tourner", "main": false, "kb": ["←", "→"]},
+		{"keys": ["+", "B"], "hold": true, "text": "Incliner", "main": false, "kb": ["Page haut", "Page bas"]},
+		{"keys": ["A"], "hold": true, "text": "Épingler", "main": false, "kb": ["Entrée"]},
+		{"keys": ["Y"], "hold": false, "text": "Quitter", "main": false, "kb": ["Échap"]},
+	],
+	"search": [
+		{"keys": ["A"], "hold": false, "text": "Choisir le lieu", "main": true, "kb": ["Entrée"]},
+		{"keys": ["+", "B"], "hold": false, "text": "Lieu suivant, précédent", "main": false, "kb": ["+", "−"]},
+		{"keys": [], "hold": false, "text": "Écrire", "main": false, "kb": ["lettres"]},
+		{"keys": [], "hold": false, "text": "Effacer", "main": false, "kb": ["Retour arrière"]},
+		{"keys": ["Y"], "hold": false, "text": "Retour", "main": false, "kb": ["Échap"]},
+	],
+	"map": [
+		{"keys": ["A"], "hold": false, "text": "Départ ici", "main": true, "kb": ["Entrée"]},
+		{"keys": ["◀", "▶"], "hold": false, "text": "Ouest, est", "main": false, "kb": ["←", "→"]},
+		{"keys": ["B", "+"], "hold": false, "text": "Nord, sud", "main": false, "kb": ["−", "+"]},
+		{"keys": ["B", "+"], "hold": true, "text": "Nord, sud 500 m", "main": false, "kb": ["Page bas", "Page haut"]},
+		{"keys": ["Y"], "hold": false, "text": "Retour", "main": false, "kb": ["Échap"]},
+	],
+	"setup": [
+		{"keys": ["A"], "hold": false, "text": "Démarrer", "main": true, "kb": ["Entrée"]},
+		{"keys": ["+", "B"], "hold": false, "text": "Ligne suivante, précédente", "main": false, "kb": ["+", "−"]},
+		{"keys": ["◀", "▶"], "hold": false, "text": "Changer la valeur", "main": false, "kb": ["←", "→"]},
+		{"keys": ["Y"], "hold": false, "text": "Retour", "main": false, "kb": ["Échap"]},
+	],
+	"loading": [
+		{"keys": ["Y"], "hold": false, "text": "Annuler", "main": false, "kb": ["Échap"]},
+	],
+}
 
 
 ## Entrées de l'aide de l'écran `screen`, dans l'ordre d'affichage :
 ## [{keys: [boutons du Click], hold: appui long, kb: [touches du clavier], text: action, main: action principale}].
 static func entries(screen: String) -> Array:
+	if screen.begins_with(WORLD_PREFIX):
+		return (WORLD.get(screen.substr(WORLD_PREFIX.length()), []) as Array).duplicate(true)
 	var out: Array = [
 		{"keys": ["A"], "hold": true, "text": "Valider", "main": true},
 		{"keys": ["+", "A"], "hold": false, "text": "Suivant", "main": false},
@@ -71,6 +112,8 @@ static func text(screen: String) -> String:
 	var click: Array[String] = []
 	var keyboard: Array[String] = []
 	for e in entries(screen):
-		click.append("%s%s : %s" % [" ".join(PackedStringArray(e["keys"])), " maintenir" if e["hold"] else "", e["text"]])
-		keyboard.append("%s : %s" % [" ".join(PackedStringArray(e["kb"])), e["text"]])
+		if not (e["keys"] as Array).is_empty():
+			click.append("%s%s : %s" % [" ".join(PackedStringArray(e["keys"])), " maintenir" if e["hold"] else "", e["text"]])
+		if not (e["kb"] as Array).is_empty():
+			keyboard.append("%s : %s" % [" ".join(PackedStringArray(e["kb"])), e["text"]])
 	return " · ".join(click) + " · " + KEYBOARD_TITLE + " — " + " · ".join(keyboard)

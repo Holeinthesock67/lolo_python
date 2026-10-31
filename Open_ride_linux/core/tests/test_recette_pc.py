@@ -54,6 +54,22 @@ def test_step_selection(tmp_path, monkeypatch):
     assert steps["core"] == "OK" and steps["engine"] == "SAUTÉ" and steps["visual"] == steps["menus"] == "SAUTÉ"
 
 
+def test_seances_step_runs_the_simulated_sessions(tmp_path):
+    """Séances simulées de la recette T11 et de l'essai J7 (lots X33 et Z2) dans la recette du PC."""
+    cmd, _ = rp.step_commands(False, tmp_path)["seances"]
+    assert cmd[1].endswith("engine/tests/sim_bench.py") and cmd[-2:] == ["--out", str(tmp_path / "seances")]
+    assert [cmd[i + 1] for i, a in enumerate(cmd) if a == "--scenario"] == ["serie_t", "erg_boutons", "course_bots"]
+    assert rp.detail_of("seances", "[OK] x\nRÉSULTAT : ÉCHEC (1 vérification(s))\n") == "RÉSULTAT : ÉCHEC (1 vérification(s))"
+
+
+def test_rapide_skips_menus_and_simulated_sessions(tmp_path, monkeypatch):
+    monkeypatch.setattr(rp, "step_commands", fake_commands({}))
+    out = tmp_path / "r"
+    assert rp.main(["--out", str(out), "--rapide"]) == 0
+    steps = {s["name"]: s["status"] for s in json.loads((out / "resume.json").read_text())["steps"]}
+    assert steps["visual"] == steps["menus"] == steps["seances"] == "SAUTÉ" and steps["core"] == "OK"
+
+
 def test_rapide_skips_visual_and_slow_tests(tmp_path):
     cmds = rp.step_commands(True, tmp_path)
     assert cmds["core"][0][-2:] == ["-m", "not slow"]

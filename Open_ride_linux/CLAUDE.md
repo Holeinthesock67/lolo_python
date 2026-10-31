@@ -133,6 +133,7 @@ openride-compiler add-layer <nom>.world terrain|buildings|vegetation|poi|water|r
 openride-compiler theme-check ~/OpenRide/Themes/<nom>  # contrôle un thème (défaut : engine/themes/default/)
 openride-compiler theme-list          # liste les thèmes installés et intégrés ; --json
 openride-compiler theme-install SOURCE # installe un thème depuis un dossier ou .zip ; --force
+openride-compiler theme-pack DOSSIER --levels 512,1024,2048   # niveaux de textures d'un pack (lot P20, Pillow) ; --fix-seams
 openride-core recover                  # FIT depuis le dernier journal après un plantage
 openride-core release-trainer          # libère le trainer resté réservé après un arrêt brutal
 openride-core summary --ftp 250        # bilan du dernier journal (ou d'un .jsonl/.fit) : NP, IF, TSS, zones ; --json

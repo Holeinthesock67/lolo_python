@@ -974,6 +974,8 @@ def _scenes(s: Session) -> None:
         s.check_texts("pause", info, {"menu_title": "Pause", "menu": "[Reprendre] | Terminer et enregistrer"}, contains=True)
         s.check_texts("pause", info, {"menu": "Trainer perdu : reconnexion en cours…"}, contains=True)
         s.check("pause", "HUD de séance caché derrière le menu", not info["widgets"]["power"]["visible"])
+        s.check_texts("pause", info, {"menu": "Séance en cours"}, contains=True)
+        s.check_texts("pause", info, {"menu": "Puissance moy."}, contains=True)
         s.check_layout("pause", info)
     _confirmation_scene(s)
 
