@@ -25,6 +25,8 @@ const AudioMix := preload("res://scripts/audio_mix.gd")
 const FpsCounter := preload("res://scripts/fps_counter.gd")
 const WtfView := preload("res://scripts/wtf/wtf_view.gd")
 const WtfHudModel := preload("res://scripts/wtf/wtf_hud_model.gd")
+const WtfScene := preload("res://scripts/wtf/wtf_scene.gd")
+const WtfSceneModel := preload("res://scripts/wtf/wtf_scene_model.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -106,6 +108,8 @@ var erg_panel = null
 var fps_counter = null
 ## Habillage du mode « What the fuck » (lot WTF7) : bandeau, cartes, Katamari, horloge.
 var wtf_view = null
+## Gags en 3D du mode « What the fuck » (lots WTF5 et WTF6) : objets sur la route, voile, caméras, soleil.
+var wtf_scene = null
 ## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
 var load_guard = LoadGuard.new({}, false)
 var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
@@ -356,6 +360,8 @@ func _ready() -> void:
 	overlay_layer.add_child(fps_counter)
 	wtf_view = WtfView.new()
 	hud.add_child(wtf_view)
+	wtf_scene = WtfScene.new()
+	add_child(wtf_scene)
 	ipc.world_menu_received.connect(_on_world_menu_received)
 	ipc.world_status_received.connect(func(msg: Dictionary) -> void: _world_menu_status(msg))
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
@@ -901,7 +907,13 @@ func _process(delta: float) -> void:
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
 		camera.global_transform = camera_views.step(delta, camera_views.goal(pos, heading, pitch_deg))
 		camera.fov = CameraViews.fov_deg(_base_fov, pitch_deg)   # respire avec la pente (lot Y15)
-		avatar_view.set_visible_for_view(_avatar_view_name())
+		# Mode WTF (lots WTF5 et WTF6) : gags posés sur la route, puis roulis et vues imposées de la caméra.
+		wtf_scene.step(WtfSceneModel.view(_last_state.get("wtf", null), now / 1000000.0, _quality_name), route, s_route,
+			bots_view.anchor_of, sun)
+		wtf_scene.apply_camera(camera, pos, heading, delta)
+		pos += Vector3.UP * wtf_scene.hop_m()   # bonds du vélo sur la Lune
+		# Vue imposée par un gag WTF : le cycliste reste visible, même depuis la vue subjective.
+		avatar_view.set_visible_for_view("follow_near" if wtf_scene.forced_camera() else _avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		_step_avatar(pos, heading, now, pitch_deg)
 		_probe.distance_m = s_route
@@ -1316,6 +1328,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"avatar": _avatar_info(),
 		"garage": _garage_info(),
 		"rogue": rogue_host.test_info(),
+		"wtf": wtf_scene.test_info(),
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 
@@ -1564,6 +1577,8 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
+		if not state.has("wtf") and wtf_scene.is_active():   # séance WTF finie : rien ne reste derrière le menu
+			wtf_scene.step({}, null, 0.0, Callable(), sun)
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
 			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
