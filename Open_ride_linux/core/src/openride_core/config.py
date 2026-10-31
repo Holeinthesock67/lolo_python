@@ -87,6 +87,7 @@ class RenderConfig:
     draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
+    texture_level: str = "auto"    # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high
 
 
 @dataclass
@@ -322,6 +323,7 @@ ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 # Valeurs permises des champs textuels à choix fermé.
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "quality"): ("low", "medium", "high"),
+    ("render", "texture_level"): ("auto", "low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
     ("render", "fps"): ("off", "on", "detail"),
     ("render", "draft_gauge"): ("off", "on"),
@@ -355,6 +357,82 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("drivers", "hr"), ("drivers", "hr_address"), ("drivers", "hr_name"),
 )
 PROFILE_SECTION = "profil"   # identité du profil dans `profil.toml` (profiles.py), pas un réglage
+
+# Clés hors du menu Réglages (`settings.SETTINGS`), chacune avec sa raison (lot X53, audit des options
+# du 31 octobre) : `core/tests/test_options_menus.py` échoue si une clé de `Config` n'est ni au menu
+# ni rangée ici, ou si elle est rangée deux fois. Une clé ajoutée au menu sort de ces listes.
+# Réglées par un autre écran que Réglages (vérifié dans le test : écran Appareils, choix du profil).
+OTHER_SCREEN_KEYS: dict[tuple[str, str], str] = {
+    ("trainer", "device_name"): "écran Appareils",
+    ("drivers", "trainer_address"): "écran Appareils",
+    ("drivers", "click_address"): "écran Appareils",
+    ("drivers", "click_minus_address"): "écran Appareils",
+    ("drivers", "hr"): "écran Appareils (lot O24)",
+    ("drivers", "hr_address"): "écran Appareils",
+    ("drivers", "hr_name"): "écran Appareils",
+    ("profils", "dernier"): "écran « Qui roule ? » (lot MJ7)",
+}
+# Réglages fins, gardés dans le fichier et documentés (SRS §11) : aucun n'est nécessaire pour jouer.
+EXPERT_KEYS: dict[tuple[str, str], str] = {
+    ("bike", "cda_m2"): "modèle physique",
+    ("bike", "crr"): "modèle physique",
+    ("bike", "drivetrain_efficiency"): "modèle physique",
+    ("trainer", "latency_tau_s"): "anticipation de la pente",
+    ("trainer", "grade_min_pct"): "bornes de la pente envoyée",
+    ("trainer", "grade_max_pct"): "bornes de la pente envoyée",
+    ("trainer", "power_smooth_tau_s"): "lissage de la puissance",
+    ("trainer", "grade_rate_pct_per_s"): "ancien réglage, remplacé par up et down",
+    ("trainer", "grade_rate_up_pct_per_s"): "rampe de pente du trainer",
+    ("trainer", "grade_rate_down_pct_per_s"): "rampe de pente du trainer",
+    ("trainer", "hr_relay_freeze_s"): "détection de la FC relayée figée",
+    ("trainer", "resend_s"): "renvoi de la consigne, essais contre le pompage (lot O27 : ira dans Avancé si l'essai la garde réglable)",
+    ("gearing", "n_gears"): "boîte de vitesses virtuelle",
+    ("gearing", "ratio_min"): "boîte de vitesses virtuelle",
+    ("gearing", "ratio_max"): "boîte de vitesses virtuelle",
+    ("gearing", "g_base_pct"): "boîte de vitesses virtuelle",
+    ("gearing", "long_press_gears"): "boîte de vitesses virtuelle",
+    ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
+    ("drivers", "click_short_max_s"): "seuils d'appui du Click",
+    ("drivers", "click_long_min_s"): "seuils d'appui du Click",
+    ("drivers", "click_mute_after_s"): "alerte de boîtier muet",
+    ("drivers", "click_rehandshake_s"): "reprise d'un boîtier muet",
+    ("drivers", "click_reset_locked"): "boîtier gauche verrouillé par Zwift",
+    ("open_world", "cache_dir"): "emplacement du cache du monde ouvert",
+    ("open_world", "horizon_m"): "génération du monde ouvert",
+    ("open_world", "offer_m"): "génération du monde ouvert",
+    ("open_world", "lock_m"): "génération du monde ouvert",
+    ("open_world", "preview_m"): "génération du monde ouvert",
+    ("open_world", "recenter_m"): "génération du monde ouvert",
+    ("open_world", "prefetch_history"): "préchargement du monde ouvert",
+    ("open_world", "prefetch_radius_km"): "préchargement du monde ouvert",
+    ("gravel", "factor_compacted"): "roulement des routes non revêtues",
+    ("gravel", "factor_gravel"): "roulement des routes non revêtues",
+    ("gravel", "factor_dirt"): "roulement des routes non revêtues",
+    ("avatar", "standing_grade_pct"): "seuil de la danseuse",
+    ("avatar", "standing_power_pct"): "seuil de la danseuse",
+    ("rogue", "w_prime_j"): "valeur de départ ; le menu du Cyber-Rogue choisit W' de chaque run",
+    ("rogue", "cp_w"): "puissance critique du Cyber-Rogue",
+    ("rogue", "grade_rate_up_pct_per_s"): "rampe de pente du Cyber-Rogue",
+    ("rogue", "grade_rate_down_pct_per_s"): "rampe de pente du Cyber-Rogue",
+}
+# Outils de développement et d'essai, ou valeurs posées par le lanceur et l'installation.
+DEV_KEYS: dict[tuple[str, str], str] = {
+    ("trainer", "trace_ftms"): "trace FTMS de diagnostic",
+    ("drivers", "trainer"): "posé par le lanceur (session simulée : menu)",
+    ("drivers", "input"): "posé par le lanceur (session simulée : menu)",
+    ("drivers", "click_trace_raw"): "trace brute du Click",
+    ("drivers", "mock_replay"): "rejeu d'un journal",
+    ("drivers", "sim_scenario"): "Bluetooth simulé",
+    ("ipc", "port_state"): "ports de l'IPC",
+    ("ipc", "port_commands"): "ports de l'IPC",
+    ("engine", "godot"): "écrit par scripts/install.sh",
+    ("wind", "seed"): "graine des rafales",
+    ("log", "latence"): "journal de latence du Click",
+}
+# Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
+PENDING_KEYS: dict[tuple[str, str], str] = {
+    ("gravel", "mode"): "U16",
+}
 
 
 def is_profile_key(section: str, key: str) -> bool:

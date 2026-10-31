@@ -22,6 +22,9 @@ extends RefCounted
 ##   `pitch_deg` vient de camera_follow.gd, déjà lissé (0,5 s) : pas de saut d'une image à l'autre.
 ## - `remember_due(now_s)` : vrai une fois, REMEMBER_DELAY_S après le dernier changement, pour écrire la vue dans
 ##   `[render] camera` sans écrire le fichier à chaque appui.
+## - `log_line()` : ligne de journal « Vue de caméra : <vue affichée> (<origine>) » quand la vue affichée a changé
+##   depuis l'appel précédent, quelle qu'en soit l'origine (Click ou clavier, réglage, message de test, arrivée ou
+##   perte de l'avatar), sinon "". main.gd l'écrit à chaque image : chaque changement de vue est vérifiable au journal.
 ## Pas de class_name : charger par preload("res://scripts/camera_views.gd").
 
 const VIEWS := ["subjective", "follow_near", "follow_far", "side"]
@@ -51,6 +54,9 @@ const TARGET_HEIGHT_M := 1.0
 var current := DEFAULT_VIEW
 ## Vrai quand l'avatar existe (message `progression` du core) : sinon seule la vue subjective s'affiche.
 var has_avatar := true
+## Origine du dernier changement de vue, pour le journal (`log_line`).
+var cause := "départ"
+var _logged := ""
 
 var _from := Transform3D.IDENTITY
 var _last := Transform3D.IDENTITY
@@ -69,37 +75,48 @@ func effective() -> String:
 
 
 ## Choisit une vue (réglage ou configuration) ; faux si elle est inconnue ou déjà courante.
-func set_view(view: String, now_s := -1.0) -> bool:
+func set_view(view: String, now_s := -1.0, origin := "réglage") -> bool:
 	if not is_valid(view) or view == current:
 		return false
-	_begin_change(view, now_s)
+	_begin_change(view, now_s, origin)
 	return true
 
 
-func next_view(now_s := -1.0) -> bool:
-	return _cycle(1, now_s)
+func next_view(now_s := -1.0, origin := "vue suivante") -> bool:
+	return _cycle(1, now_s, origin)
 
 
-func previous_view(now_s := -1.0) -> bool:
-	return _cycle(-1, now_s)
+func previous_view(now_s := -1.0, origin := "vue précédente") -> bool:
+	return _cycle(-1, now_s, origin)
 
 
 ## A long : retour à la vue par défaut ; faux sans avatar ou si c'est déjà elle.
-func reset_default(now_s := -1.0) -> bool:
+func reset_default(now_s := -1.0, origin := "vue par défaut") -> bool:
 	if not has_avatar:
 		return false
-	return set_view(DEFAULT_VIEW, now_s)
+	return set_view(DEFAULT_VIEW, now_s, origin)
 
 
-func _cycle(direction: int, now_s: float) -> bool:
+func _cycle(direction: int, now_s: float, origin: String) -> bool:
 	if not has_avatar:
 		return false
 	var i := VIEWS.find(current)
-	_begin_change(VIEWS[posmod(i + direction, VIEWS.size())], now_s)
+	_begin_change(VIEWS[posmod(i + direction, VIEWS.size())], now_s, origin)
 	return true
 
 
-func _begin_change(view: String, now_s: float) -> void:
+## Ligne de journal si la vue affichée a changé depuis l'appel précédent (toutes origines), sinon "".
+func log_line() -> String:
+	var view := effective()
+	if view == _logged:
+		return ""
+	_logged = view
+	var origin := cause if has_avatar else "sans avatar"
+	return "Vue de caméra : %s (%s)" % [view, origin]
+
+
+func _begin_change(view: String, now_s: float, origin: String) -> void:
+	cause = origin
 	current = view
 	_from = _last
 	_t = 0.0 if _has_last else 1.0

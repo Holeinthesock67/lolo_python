@@ -1,5 +1,10 @@
 # Lot P1 – Contrat : vent, aspiration et décor vivant (IPC révision 1.3, thème 1.2, configuration `[wind]`)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Contrat : vent et aspiration dans `state` (IPC révision 1.3), configuration `[wind]`, thème 1.2 (nuages, météo, ambiance, faune, saison, heure), points d'intérêt `wind_turbine` et `flag` | Markdown + JSON | O8 | Petite | **Livré le 26 octobre** (issue #125) |
+
 ## 1. Objectif
 
 La série P anime le décor après la 1.0 (vent, nuages, météo, sons, animaux, objets mobiles, bord de route ; jour, nuit et saisons en 2.0) et rend le vent et l'aspiration **physiques**. Le core reste le maître : il calcule le vent et l'abri derrière un bot, et l'engine affiche ce qu'il reçoit (arbres, nuages, sons et indicateur du HUD suivent le même vent que les jambes). Ce lot fixe, **avant tout code**, les ajouts compatibles aux trois contrats concernés. C'est une décision du propriétaire, comme N1.

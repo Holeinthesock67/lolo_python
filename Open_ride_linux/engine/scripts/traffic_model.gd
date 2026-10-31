@@ -58,6 +58,8 @@ const CYCLIST_GAP_M := 0.5
 const CYCLIST_LOOK_M := 40.0
 const CYCLIST_HALF_LENGTH_M := 0.9
 const LANE_FREE_M := 150.0
+## Au-delà de l'accotement, les roues d'un véhicule mordent l'herbe de VERGE_M au plus.
+const VERGE_M := 0.25
 const HOLD_GAP_M := 5.0
 const NEAR_M := 150.0                       # lot AS6 : véhicules calculés par le core (liste `vehicles`)
 const CORE_MARGIN_M := 10.0                 # un véhicule qui vient de sortir de la liste n'est pas retiré
@@ -285,11 +287,14 @@ func _move_overtaker(v: Dictionary, rel: float, rider_v: float, dt_s: float) -> 
 		v["committed"] = true
 	var spd := cruise
 	var target_lat := RIGHT_LANE_M
+	var goal := NAN
 	if committed and rel < PASS_ZONE_M.y:
 		spd = pass_mps
 		target_lat = left if rel >= PASS_ZONE_M.x else RIGHT_LANE_M
-		# Pas sur la voie de gauche à temps : il ne s'approche pas plus du cycliste
-		if absf(float(v["lateral"]) - left) > 0.05 and rel > -FOLLOW_GAP_M:
+		# Pas sur la voie de gauche à temps (ou plus à gauche, pour laisser la place aux bots et aux cyclistes du
+		# décor) : il ne s'approche pas plus du cycliste
+		goal = _clear_of_others(v, left)
+		if absf(float(v["lateral"]) - minf(left, goal)) > 0.05 and rel > -FOLLOW_GAP_M:
 			spd = minf(spd, rider_v)
 	elif not committed:
 		if rel >= PASS_ZONE_M.x - 40.0:
@@ -315,7 +320,9 @@ func _others_clear_at(s: float) -> bool:
 ## Écart à l'axe visé `target`, décalé pour ne toucher aucun cycliste du décor ni aucun bot sur sa longueur et
 ## CYCLIST_LOOK_M devant lui. Ceux du même sens sont doublés à LATERAL_CLEARANCE_M de carrosserie, seulement si
 ## la voie d'en face est libre (`_lane_free`) et une fois écarté ; sinon le véhicule attend derrière (`hold_s`,
-## appliqué par `_hold`). Ceux d'en face sont croisés à CYCLIST_GAP_M.
+## appliqué par `_hold`). Ceux d'en face sont croisés à CYCLIST_GAP_M. Le véhicule reste sur la chaussée et ses
+## accotements (RoadBuilder.ROAD_WIDTH_M, SHOULDER_WIDTH_M, VERGE_M) : sans la place, il attend (les bots serrent
+## à droite à l'approche d'un véhicule, bots_view_model.gd).
 func _clear_of_others(v: Dictionary, target: float) -> float:
 	var k: Dictionary = KINDS[v["kind"]]
 	var hw := float(k["half_width"])
@@ -341,6 +348,24 @@ func _clear_of_others(v: Dictionary, target: float) -> float:
 				_hold_behind(v, float(o["s"]))
 				continue
 			out = lat - room if out < lat else lat + room
+	# Jamais hors de la route : sans la place de passer sur la chaussée, il attend derrière (ou, en face, devant) le
+	# premier qu'il toucherait ; seul un dépassement déjà engagé à côté d'un cycliste qui s'écarte mord l'herbe
+	var edge := RoadBuilder.ROAD_WIDTH_M * 0.5 + RoadBuilder.SHOULDER_WIDTH_M + VERGE_M - hw
+	if absf(out) > edge:
+		var clamped := clampf(out, -edge, edge)
+		var blocked: Array = []
+		for o in _others:
+			var ahead := (float(o["s"]) - float(v["s"])) * dir
+			var gap_m := LATERAL_CLEARANCE_M if int(o["dir"]) == dir else CYCLIST_GAP_M
+			if ahead < -half_len or ahead > half_len + CYCLIST_LOOK_M \
+					or absf(clamped - float(o["lateral"])) >= RIDER_HALF_WIDTH_M + gap_m + hw:
+				continue
+			if ahead <= half_len and dir == 1:
+				return out
+			blocked.append(float(o["s"]))
+		for s_o in blocked:
+			_hold_behind(v, s_o)
+		out = clamped
 	return out
 
 

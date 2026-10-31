@@ -1,5 +1,10 @@
 # Lot J4 – Paquets installables hors du dépôt (dépendances et ressources)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Paquets installables hors du dépôt (dépendance `jsonschema`, ressources embarquées) | Python | — | Petite | Oui (dépendance `jsonschema` faite ; reste les ressources embarquées) |
+
 ## 1. Objectif
 
 Les deux paquets ne fonctionnent qu'installés en mode éditable depuis le dépôt, et l'un dépend d'une bibliothèque déclarée seulement pour les tests (audit J, constats J-M3 et J-F2) :

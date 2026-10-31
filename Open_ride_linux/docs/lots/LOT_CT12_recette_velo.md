@@ -1,5 +1,10 @@
 # Lot CT12 – Recette de la Course tactique sur le vélo
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série CT : recette de la Course tactique sur le vélo | Essai sur le vélo | CT2 à CT11 | Moyenne | Interne (propriétaire, version 5.0) |
+
 Série CT (version 5.0, mode « Course tactique »). Plan de la série : `docs/5.0/PLAN_SERIE_CT.md`.
 
 ## 1. Objectif

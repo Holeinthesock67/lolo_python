@@ -1,5 +1,10 @@
 # Lot R3 – Générateur de salles : profils des cinq archétypes et du boss, graine, marqueurs
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Générateur de salles : profils des cinq archétypes et du boss, graine, marqueurs | Python | — | Moyenne | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
+
 ## 1. Objectif
 
 Produire, à partir d'une graine, le profil de pente et les marqueurs de chaque salle du mode Cyber-Rogue. Une salle devient une route en mémoire (distance, pente), lue par la physique et l'interpolation existantes ; le moteur de jeu (R5, R6) et l'engine (message `room`, T1) lisent les marqueurs.

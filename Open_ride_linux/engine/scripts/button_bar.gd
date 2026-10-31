@@ -39,8 +39,8 @@ func update_display(screen: String) -> void:
 
 
 ## Une ligne de la double légende : titre, puis une pastille ou plus et l'action de chaque entrée. Ligne
-## du Click : boutons du boîtier, appui long marqué d'un anneau ; ligne du clavier : touches (A maintenu
-## = Entrée, B = « − », Y = Échap).
+## du Click : boutons des deux boîtiers, appui long marqué d'un anneau ; ligne du clavier : touches (A
+## maintenu = Entrée, − et B = « − », Y = Échap).
 func _line(title: String, screen: String, keyboard: bool) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 22)
@@ -49,6 +49,8 @@ func _line(title: String, screen: String, keyboard: bool) -> HBoxContainer:
 	t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(t)
 	for e in ButtonHelp.entries(screen):
+		if (e["kb"] if keyboard else e["keys"]).is_empty():
+			continue   # entrée de l'autre ligne seulement (menu du monde ouvert)
 		var group := HBoxContainer.new()
 		group.add_theme_constant_override("separation", 8)
 		for k in (e["kb"] if keyboard else e["keys"]):

@@ -4,6 +4,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_menu_flow.gd
 
 const MenuFlow := preload("res://scripts/menu_flow.gd")
+const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 
@@ -129,7 +130,8 @@ func _test_abandon_and_summary_quit() -> void:
 	g.list_failed("routes")
 	g.handle("A_LONG")
 	var items: Array = g.state()["items"]
-	_check(items.size() == 1 and not items[0]["enabled"], "liste indisponible : élément désactivé")
+	_check(items.size() == 3 and not items[0]["enabled"] and items[1]["id"] == "_add_route",
+		"liste indisponible : élément désactivé, aide de fin de liste gardée")
 	g.lists_needed()
 	_check(g.on_state({"session_state": "IDLE"}) == [{"action": "list"}], "core relancé : listes redemandées")
 
@@ -156,7 +158,7 @@ func _test_view() -> void:
 	var shown := v.items_text().split(" | ")
 	_check(shown.size() == MenuView.MAX_VISIBLE_ITEMS and v.items_text().contains("[Parcours 7"),
 			"longue liste : fenêtre autour du focus (%s)" % v.items_text())
-	_check(v.more_label.text == "8 / 12", "position dans la liste (tri en dernier) : %s" % v.more_label.text)
+	_check(v.more_label.text == "8 / 14", "position dans la liste (tri puis aide en dernier) : %s" % v.more_label.text)
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 1800.0, "distance_m": 15000.0,
 			"avg_power_w": 210.0, "fit_path": "/x/y/seance.fit", "blocks": [[1, 200.0, 200.0], [2, 260.0, 230.0]]}})
@@ -268,6 +270,42 @@ func _test_pairing_screen() -> void:
 	_check(not f.pairing.saved and "refusé" in f.pairing.message, "pairing_failed affiché")
 
 
+## Lot O26 : réglage pris au prochain lancement (décor vivant) : légende, carte, ligne « Relancer ».
+func _test_relaunch_setting() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE", "difficulty_pct": 50})
+	var living := {"key": "render.living", "label": "Décor vivant", "group": "graphics", "type": "choice", "value": "on",
+		"choices": ["on", "off"], "applies": "relaunch"}
+	var feel := {"key": "wind.feel", "label": "Ressenti du vent", "group": "wind", "type": "choice", "value": "grade",
+		"choices": ["grade", "ftms"], "applies": "next_session"}
+	f.on_settings({"type": "settings", "request_cmd_id": 2, "items": [living, feel]})
+	f.settings_group = "graphics"
+	f._refresh_settings()
+	f.menu.push_screen(f.SETTINGS_GROUP)
+	var rows: Array = f.state()["items"]
+	_check(rows.size() == 1 and rows[0]["detail"] == "oui", "décor vivant affiché « oui », pas de relance (%s)" % str(rows))
+	_check(f.state()["card"]["lines"] == ["Choix : oui, non (rendu de la 1.0)", "S'applique au prochain lancement d'OpenRide"],
+		"carte : choix en français et prochain lancement (%s)" % str(f.state()["card"]))
+	f.on_settings({"type": "settings", "request_cmd_id": 3, "items": [living.merged({"value": "off"}, true), feel]})
+	rows = f.state()["items"]
+	_check(rows.size() == 2 and rows[1]["id"] == "relaunch" and rows[1]["detail"] == "pour appliquer : Décor vivant",
+		"valeur changée : « Relancer OpenRide maintenant » (%s)" % str(rows))
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "relaunch"}, "Relancer : action relaunch (code 64)")
+	f.on_settings({"type": "settings", "request_cmd_id": 4, "items": [living, feel]})
+	_check(f.state()["items"].size() == 1, "valeur du lancement remise : plus de relance")
+	_check(SettingsViewModel.format_value(feel, "ftms") == "par le trainer (essai)"
+		and SettingsViewModel.format_value({"key": "wind.mode"}, "gusty") == "en rafales"
+		and SettingsViewModel.format_value({"key": "render.theme"}, "default") == "par défaut",
+		"légendes du vent et du thème en français")
+	var bool_it := {"key": "futur.interrupteur", "type": "choice", "choices": ["on", "off"]}
+	_check(SettingsViewModel.format_value(bool_it, "on") == "oui" and SettingsViewModel.format_value(bool_it, "off") == "non"
+		and SettingsViewModel.format_value({"key": "open_world.network", "choices": ["on", "off"]}, "off") == "non (hors ligne)"
+		and SettingsViewModel.group_title("advanced") == "Avancé",
+		"lot O27 : tout booléen en oui / non, légende du hors ligne, sous-écran Avancé")
+
+
 func _test_settings_screen() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
@@ -287,9 +325,9 @@ func _test_settings_screen() -> void:
 	f.handle("MINUS_SHORT")
 	f.handle("A_LONG")   # Réglages
 	var labels: Array = f.state()["items"].map(func(it): return it["label"])
-	_check(labels == ["Appareils : rechercher et appairer", "Cycliste", "Séance", "Graphisme", "Vent",
+	_check(labels == ["Appareils : rechercher et appairer", "Contenus : entraînements, plans, parcours", "Cycliste", "Séance", "Graphisme", "Vent",
 			"Autres réglages", "OpenRide " + f.engine_version], "réglages rangés en sous-écrans : %s" % str(labels))
-	_check(f.state()["items"][1]["detail"] == "FTP", "détail d'un sous-écran : ses réglages")
+	_check(f.state()["items"][2]["detail"] == "FTP", "détail d'un sous-écran : ses réglages")
 	_check(f.state()["items"][-1]["enabled"] == false, "ligne de version non sélectionnable")
 	# Version du core différente : alerte discrète dans le détail de la ligne (lots O2 et O4).
 	f.set_versions("0.9.0", "0.9.0")
@@ -300,6 +338,7 @@ func _test_settings_screen() -> void:
 			"versions différentes : %s" % str(f.state()["items"][-1]["detail"]))
 	f.set_versions("0.9.0", "")
 	_check(f.state()["items"][-1]["detail"] == "", "core pas encore connu : pas d'alerte")
+	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Cycliste
 	_check(f.state()["screen"] == "settings_group" and f.state()["title"] == "Réglages › Cycliste"
@@ -359,10 +398,27 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Session ERG
-	_check(_ids(f) == ["_sim", "seuil", "_create", "_import"], "sous-menu ERG : liste puis Créer et Importer (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["_sim", "seuil", "_create", "_import", "_help"],
+		"sous-menu ERG : liste puis Créer, Importer et Aide (%s)" % str(_ids(f)))
 	f.handle("MINUS_SHORT")
+	_check(_focus_id(f) == "_help" and f.state()["card"].get("name", "") == "Choisir un entraînement",
+		"focus sur Comment ça marche ? : carte de l'aide (%s)" % str(f.state()["card"]))
+	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_help"
+		and f.state()["title"] == "Aide ERG", "écran Aide ERG")
+	_check(_ids(f) == ["help:choose", "help:create", "help:qwk", "help:import", "help:write", "help:ride"],
+		"sujets de l'aide (%s)" % str(_ids(f)))
+	f.handle("PLUS_SHORT")
+	var help_card: Dictionary = f.state()["card"]
+	_check(help_card.get("name", "") == "Créer des intervalles" and help_card.get("lines", []).size() == 4,
+		"carte du sujet sous le focus (%s)" % str(help_card))
+	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_help", "A long sur un sujet : rien")
+	f.handle("Y_SHORT")
+	_check(f.state()["screen"] == "workouts" and _focus_id(f) == "_help", "Y : retour à la liste")
+	f.handle("MINUS_SHORT")
+	_check(f.state()["card"].get("name", "") == "Importer un fichier", "Importer : carte de l'aide")
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_create", "focus sur Créer un entraînement")
+	_check(f.state()["card"].get("name", "") == "Créer des intervalles", "Créer : carte de l'aide")
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_create", "écran Créer un entraînement")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Répétitions
@@ -403,10 +459,11 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Changer d'entraînement
 	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_import", "focus sur Importer")
 	_check(f.handle("A_LONG") == {"action": "list_imports"} and f.state()["screen"] == "workout_import", "list_imports")
 	f.set_import_candidates([])
-	_check(f.state()["focus"] == -1 and f.state()["items"][0]["label"] == "Aucun fichier .zwo, .erg ou .mrc", "aucun fichier")
+	_check(f.state()["focus"] == -1 and f.state()["items"][0]["label"] == "Aucun fichier .zwo, .erg, .mrc ou .qwk", "aucun fichier")
 	f.set_import_candidates([{"path": "/x/Téléchargements/vo2.zwo", "file": "vo2.zwo", "source": "Téléchargements",
 		"imported": false}, {"path": "/x/b.erg", "file": "b.erg", "source": "Bureau", "imported": true}])
 	_check(f.state()["items"][1]["detail"] == "Bureau, déjà importé", "fichier déjà importé signalé")
@@ -447,7 +504,7 @@ func _test_plans() -> void:
 	_check(f.handle("A_LONG") == {"action": "list_plans"} and f.state()["screen"] == "plans", "écran Plans, list_plans")
 	_check(f.state()["items"][0]["label"] == "Recherche des plans…", "en attendant la réponse")
 	f.on_plans(_plans_msg(null))
-	_check(_ids(f) == ["plan:casse", "plan:essai"] and _focus_id(f) == "plan:essai",
+	_check(_ids(f) == ["plan:casse", "plan:essai", "create"] and _focus_id(f) == "plan:essai",
 		"liste des plans, plan invalide désactivé (%s)" % str(_ids(f)))
 	_check(f.state()["items"][1]["detail"] == "4 semaines, 8 séances", "plan : semaines et séances")
 	f.handle("A_LONG")
@@ -460,7 +517,7 @@ func _test_plans() -> void:
 		"done": 0, "total": 8, "done_pct": 0.0, "today": [DAY], "late": [], "next": NEXT, "plan_day": "ss"}
 	f.on_plans(_plans_msg(active))
 	_check(f.state()["status"] == "Plan démarré : Essai", "plan démarré (%s)" % f.state()["status"])
-	_check(_ids(f) == ["today", "progress", "next", "stop", "plan:casse", "plan:essai"], "suivi du plan actif (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["today", "progress", "next", "stop", "plan:casse", "plan:essai", "create"], "suivi du plan actif (%s)" % str(_ids(f)))
 	_check(f.state()["items"][1]["detail"] == "semaine 1 / 4, 0 % fait (0 / 8)", "progression : %s" % f.state()["items"][1]["detail"])
 	f.menu.focus_item("today")
 	_check(f.state()["card"]["title"] == "Séance du jour" and f.state()["card"]["name"] == "Sweet spot"
@@ -574,12 +631,16 @@ func _test_library() -> void:
 	]
 	f.set_routes(lib)
 	f.handle("A_LONG")   # Parcours
-	_check(_ids(f) == ["brut", "grand_col", "petit_col", "plat", "_sort", "_filter"], "par nom, puis tri et filtre (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["brut", "grand_col", "petit_col", "plat", "_sort", "_filter", "_add_route", "_route_help"],
+		"par nom, puis tri, filtre et aide (%s)" % str(_ids(f)))
 	_check(f.state()["items"][1]["label"] == "Grand col (30,0 km, ↑ 900 m)" and f.state()["items"][1]["detail"] == "col, montagne",
 		"libellé avec dénivelé, étiquettes (%s — %s)" % [f.state()["items"][1]["label"], f.state()["items"][1]["detail"]])
+	f.handle("MINUS_SHORT")   # Comment ça marche ?
+	f.handle("MINUS_SHORT")   # Ajouter un parcours
 	f.handle("MINUS_SHORT")   # Étiquette
 	f.handle("A_LONG")
-	_check(_ids(f) == ["grand_col", "petit_col", "_sort", "_filter"] and f.state()["items"][3]["label"] == "Étiquette : col"
+	_check(_ids(f) == ["grand_col", "petit_col", "_sort", "_filter", "_add_route", "_route_help"]
+		and f.state()["items"][3]["label"] == "Étiquette : col"
 		and _focus_id(f) == "_filter", "filtre « col », focus gardé (%s)" % str(_ids(f)))
 	f.handle("MINUS_SHORT")   # Tri
 	f.handle("A_LONG")        # distance
@@ -587,6 +648,24 @@ func _test_library() -> void:
 	_check(f.state()["items"][2]["label"] == "Trier par : dénivelé" and _ids(f).slice(0, 2) == ["petit_col", "grand_col"],
 		"triés par dénivelé (%s)" % str(_ids(f)))
 	f.handle("PLUS_SHORT")
+	f.handle("PLUS_SHORT")    # Ajouter un parcours
+	# Aide des parcours (lot O22) : la carte de la ligne explique l'ajout ; A maintenu ouvre l'import (lot O23).
+	_check(_focus_id(f) == "_add_route" and f.state()["card"].get("name") == "Ajouter une trace"
+		and str(f.state()["card"]["lines"][0]).contains("Téléchargements"), "« Ajouter un parcours » : carte de l'import")
+	_test_route_import(f)
+	f.menu.focus_item("_route_help")
+	f.handle("A_LONG")
+	f.menu.focus_item("help:add")
+	f.handle("PLUS_SHORT")
+	_check(f.state()["card"].get("name") == "Fiche d'un parcours (.toml)" and f.handle("A_LONG") == {}
+		and f.state()["screen"] == "route_help", "aide : carte du sujet suivant, A maintenu ne fait rien")
+	f.handle("Y_SHORT")
+	_check(f.state()["screen"] == "routes", "Y : retour à la liste")
+	f.menu.focus_item("_route_help")
+	_check(f.state()["card"].get("name") == "Choisir un parcours" and f.handle("A_LONG") == {}
+		and _ids(f) == ["help:choose", "help:add", "help:sheet", "help:open_world"], "« Comment ça marche ? » : écran Aide parcours")
+	f.handle("Y_SHORT")
+	f.menu.focus_item("_route_help")
 	f.handle("PLUS_SHORT")    # boucle : premier parcours
 	_check(_focus_id(f) == "petit_col", "focus sur le premier")
 	_check(f.handle("A_LONG") == {"action": "select_route", "route_id": "petit_col"}, "premier parcours lancé")
@@ -609,6 +688,60 @@ func _test_library() -> void:
 	v.update_display(st, {"session_state": "IDLE"}, {}, false)
 	_check(v.card.visible and v.card.text().contains("Distance 10,0 km"), "vue : fiche affichée (%s)" % v.card.text())
 	v.free()
+
+## Trace importée depuis le menu (lot O23) : liste, choix, avancement, refus, puis parcours prêt sous le
+## focus, sans relancer. Part de la liste des parcours, focus sur « Ajouter un parcours », et y revient.
+func _test_route_import(f) -> void:
+	_check(f.handle("A_LONG") == {"action": "list_route_imports"} and f.state()["screen"] == "route_import"
+		and f.state()["items"][0]["label"] == "Recherche des traces…", "« Ajouter un parcours » : list_route_imports")
+	f.list_failed("route_imports")
+	_check(f.state()["items"][0]["label"] == "Traces à importer indisponibles", "traces sans réponse")
+	f.set_route_import_candidates([])
+	_check(f.state()["items"][0]["label"] == "Aucune trace .gpx, .fit ou .tcx" and not f.state()["items"][0]["enabled"],
+		"aucune trace : ligne désactivée qui dit où chercher")
+	f.set_route_import_candidates([
+		{"path": "/x/Téléchargements/Mon col.gpx", "file": "Mon col.gpx", "source": "Téléchargements", "imported": false},
+		{"path": "/x/Bureau/casse.fit", "file": "casse.fit", "source": "Bureau", "imported": true}])
+	var st: Dictionary = f.state()
+	_check(st["items"][1]["detail"] == "Bureau, déjà importée" and st["card"]["name"] == "Mon col.gpx"
+		and st["card"]["lines"][0] == "Dossier : Téléchargements"
+		and str(st["card"]["lines"]).contains("pas besoin de relancer"),
+		"traces : dossier, déjà importée, carte explicite (%s)" % str(st["card"]))
+	# Trace refusée : raison sur la ligne d'état, rien d'ajouté.
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "import_route", "path": "/x/Bureau/casse.fit"}, "import_route")
+	_check(f.state()["status"].begins_with("Compilation de casse.fit… 0 s"), "compilation annoncée (%s)" % f.state()["status"])
+	f.on_error("busy", "Une trace est déjà en cours de compilation.")
+	_check(f.state()["status"] == "Échec : Une trace est déjà en cours de compilation." and f.state()["status_error"],
+		"une seule compilation à la fois : refus du core affiché")
+	f.on_route_import_status({"request_cmd_id": 7, "state": "compiling", "file": "casse.fit", "elapsed_s": 12})
+	_check(f.state()["status"].begins_with("Compilation de casse.fit… 12 s"), "avancement (%s)" % f.state()["status"])
+	_check(not f.on_route_import_status({"request_cmd_id": 7, "state": "failed", "file": "casse.fit",
+		"message": "casse.fit : aucun point de trace exploitable"}), "échec : pas de nouvelle liste")
+	_check(f.state()["status"] == "Échec : casse.fit : aucun point de trace exploitable" and f.state()["status_error"]
+		and f.state()["screen"] == "route_import", "échec : raison affichée, on reste sur l'écran")
+	f.on_error("busy", "Traces importables seulement hors séance.")
+	_check(f.state()["status"] == "Échec : Traces importables seulement hors séance.", "refus du core sur la ligne d'état")
+	# Trace acceptée : retour à la liste, puis focus sur le nouveau parcours quand la liste arrive.
+	f.handle("MINUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "import_route", "path": "/x/Téléchargements/Mon col.gpx"}, "seconde trace")
+	_check(f.on_route_import_status({"request_cmd_id": 9, "state": "done", "file": "Mon col.gpx", "route_id": "mon-col",
+		"name": "Mon col", "created": true}), "parcours prêt : nouvelle liste demandée")
+	_check(not f.on_route_import_status({"request_cmd_id": 9, "state": "done", "file": "Mon col.gpx", "route_id": "mon-col"}),
+		"réponse en double ignorée")
+	_check(f.state()["screen"] == "routes" and f.state()["status"] == "Parcours ajouté : Mon col" and not f.state()["status_error"],
+		"retour à la liste avec « Parcours ajouté » (%s)" % f.state()["status"])
+	var lib: Array = f.routes_raw.duplicate()
+	lib.append({"id": "mon-col", "name": "Mon col", "length_m": 8000.0, "status": "ready", "stats": {"distance_m": 8000.0,
+		"gain_m": 1500.0, "max_grade_pct": 11.0, "duration_s": 3600.0, "difficulty": 5, "main_climb": null},
+		"library": {"description": "", "region": "", "tags": ["col"]}})
+	f.set_routes(lib)
+	_check(_focus_id(f) == "mon-col", "focus sur le parcours importé (%s)" % _focus_id(f))
+	f.menu.focus_item("_add_route")
+	f.handle("A_LONG")
+	_check(f.state()["status"] == "", "nouvel import : ligne d'état remise à zéro")
+	f.handle("Y_SHORT")
+
 
 ## Bots choisis sur l'écran Prêt (lot O7) : `start` avec l'argument `bots`.
 func _test_bots_menu() -> void:
@@ -678,6 +811,7 @@ func _init() -> void:
 	_test_settings_screen()
 	_test_connect_screen()
 	_test_pairing_screen()
+	_test_relaunch_setting()
 	_test_full_session()
 	_test_abandon_and_summary_quit()
 	_test_view()

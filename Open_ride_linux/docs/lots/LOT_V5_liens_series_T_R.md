@@ -1,5 +1,10 @@
 # Lot V5 – Liens avec les séries T et R : segments, maillots, runs, records et bots
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Liens avec les séries T et R : segments, maillots, runs, records et calibrage des bots | Python | V3b, V11, T4, T5, T13, T14, R9 | Moyenne | Oui, après les séries T et R |
+
 ## 1. Objectif
 
 Brancher la progression sur les jeux des séries T (segments, records, maillots, bots à profil) et R (runs Cyber-Rogue) : les événements de ces séries rapportent expérience et pièces, l'équipement est noté avec chaque passage de segment, et le calibrage des bots tient compte de l'équipement.

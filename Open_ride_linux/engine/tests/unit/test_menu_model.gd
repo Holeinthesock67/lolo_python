@@ -91,12 +91,14 @@ func _test_scenarios() -> void:
 	])
 	_scenario("boucler en fin et en début de liste", _routes(ROUTES_4), [
 		["A_LONG", "routes", "galibier", null],
+		["MINUS_SHORT", "routes", "_route_help", null],
+		["MINUS_SHORT", "routes", "_add_route", null],
 		["MINUS_SHORT", "routes", "demo", null],
+		["PLUS_SHORT", "routes", "_add_route", null],
+		["PLUS_SHORT", "routes", "_route_help", null],
 		["PLUS_SHORT", "routes", "galibier", null],
 		["PLUS_SHORT", "routes", "alpe", null],
 		["PLUS_SHORT", "routes", "vercors", null],
-		["PLUS_SHORT", "routes", "demo", null],
-		["PLUS_SHORT", "routes", "galibier", null],
 	])
 	_scenario("accueil : boucle sur les huit entrées", _routes(ROUTES_4), [
 		["MINUS_SHORT", "home", "quit", null],
@@ -192,18 +194,18 @@ func _test_scenarios() -> void:
 		["PLUS_SHORT", "pause", "end_save", null],
 		["A_LONG", "home", "world", {"action": "end_session", "save": true}],
 	])
-	_scenario("liste de parcours vide", _routes([]), [
-		["A_LONG", "routes", "", null],
-		["PLUS_SHORT", "routes", "", null],
-		["MINUS_SHORT", "routes", "", null],
-		["A_LONG", "routes", "", null],
+	_scenario("liste de parcours vide : seules les lignes d'aide (lot O22)", _routes([]), [
+		["A_LONG", "routes", "_add_route", null],
+		["PLUS_SHORT", "routes", "_route_help", null],
+		["MINUS_SHORT", "routes", "_add_route", null],
+		["A_LONG", "routes", "_add_route", {"action": "item", "screen": "routes", "id": "_add_route"}],
 		["Y_SHORT", "home", "world", null],
 	])
 	var all_off := [{"id": "a", "label": "A", "enabled": false, "detail": "à compiler"},
 		{"id": "b", "label": "B", "enabled": false, "detail": "à compiler"}]
 	_scenario("tous les parcours désactivés", _routes(all_off), [
-		["A_LONG", "routes", "", null],
-		["A_LONG", "routes", "", null],
+		["A_LONG", "routes", "_add_route", null],
+		["PLUS_SHORT", "routes", "_route_help", null],
 		["Y_SHORT", "home", "world", null],
 	])
 
@@ -213,8 +215,10 @@ func _test_lists_and_events() -> void:
 	m.set_items("routes", [])
 	m.handle("A_LONG")
 	var st: Dictionary = m.state()
-	_check(st["items"].size() == 1 and st["items"][0]["label"] == "Aucun parcours" and not st["items"][0]["enabled"],
-		"liste vide : un élément désactivé « Aucun parcours »")
+	_check(st["items"].size() == 3 and st["items"][0]["label"] == "Aucun parcours" and not st["items"][0]["enabled"]
+		and str(st["items"][0]["detail"]).contains("Ajouter un parcours")
+		and st["items"].slice(1).map(func(it): return it["id"]) == ["_add_route", "_route_help"],
+		"liste vide : « Aucun parcours » désactivé, renvoie à l'import, puis les lignes d'aide")
 	m.set_items("routes", ROUTES_WITH_DISABLED)
 	var st2: Dictionary = m.state()
 	_check(_focus_id(st2) == "galibier" and st2["items"][1]["detail"] == "à compiler",
@@ -238,7 +242,7 @@ func _test_lists_and_events() -> void:
 	w.handle("PLUS_SHORT")
 	w.handle("PLUS_SHORT")
 	var ws: Dictionary = w.handle("A_LONG")
-	_check(ws["items"].size() == 4 and ws["items"][1]["label"] == "Aucun entraînement" and _focus_id(ws) == "_sim",
+	_check(ws["items"].size() == 5 and ws["items"][1]["label"] == "Aucun entraînement" and _focus_id(ws) == "_sim",
 		"aucun entraînement : « Sans entraînement (SIM) » reste choisissable")
 	_check(ws["items"][2]["id"] == "_create" and ws["items"][3]["id"] == "_import",
 		"sous-menu ERG (N16) : Créer et Importer en fin de liste")
@@ -289,6 +293,8 @@ func _test_prepare_start() -> void:
 	_check(m.start_args.is_empty() and m.start_name == "", "remise à zéro (nouvelle séance) : annulée aussi")
 	m.set_items("routes", ROUTES_4 + [{"id": "_sort", "label": "Trier par : nom"}])
 	m.handle("A_LONG")
+	m.handle("MINUS_SHORT")
+	m.handle("MINUS_SHORT")
 	m.handle("MINUS_SHORT")
 	_check(m.handle("A_LONG")["action"] == {"action": "item", "screen": "routes", "id": "_sort"},
 		"tri des parcours : action pour menu_flow, pas de parcours choisi")

@@ -130,6 +130,7 @@ const GAUGE_DROP_M := -0.75         # ... et à 1,8 m du sol au lieu des 2,55 m 
 var surface_here := "paved"        # lot U22 : surface effective sous le cycliste (world_streamer.surface_at)
 var contacts := 0                  # lot P32 : contacts vus sur la route (images × paires), doit rester à 0
 var last_contact := ""             # lot P32 : qui touchait qui la dernière fois, pour le rapport des tests
+var bot_places: Array = []         # places affichées des bots [{s, lateral}] (bots_view_model.places(), lot Z2)
 var _job: Dictionary = {}
 var _generation := 0
 var _loaded_chunks: Dictionary = {}  # k -> true (tronçons OSM affichés)
@@ -469,26 +470,21 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		WaterMesh.update_shimmer(osm_streamer.water_material(), wind_eval, dt_s)
 	if not prepared:
 		return
-	# Bots de l'état du core, lus une fois : cyclistes du décor (P28) et spectateurs (P15)
+	# Bots de l'état du core, lus une fois : spectateurs (P15) ; leurs places affichées (bot_places, posées par
+	# main.gd depuis bots_view_model.places()) : cyclistes du décor (P28), véhicules et contacts (P32)
 	var bots: Array = []
-	var bots_s := []
-	var bots_lane := []
 	var bots_raw = state.get("bots", [])
 	if typeof(bots_raw) == TYPE_ARRAY:
 		bots = bots_raw
-		for b in bots:
-			if typeof(b) == TYPE_DICTIONARY and typeof(b.get("s")) in [TYPE_INT, TYPE_FLOAT]:
-				bots_s.append(float(b["s"]))
-				bots_lane.append(_lane_of(b, RoadBuilder.BOT_LATERAL_M))
 	var t_wave2 := Time.get_ticks_usec()
 	# Cyclistes du décor (P28), figés en pause, qui laissent la place aux bots
-	cyclists.update(cam_s, rider_v, dt_s, paused, bots_s)
+	cyclists.update(cam_s, rider_v, dt_s, paused, bot_places)
 	cyclists_view.update(dt_s, paused)
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
 	headlights = TrafficModel.headlights(weather_eval, _sun_elevation_deg)
 	var others: Array = cyclists.riders()
-	for i in range(bots_s.size()):
-		others.append({"s": float(bots_s[i]), "lateral": float(bots_lane[i]), "dir": 1})
+	for b in bot_places:
+		others.append({"s": float(b["s"]), "lateral": float(b["lateral"]), "dir": 1})
 	# Lot AS6 : véhicules proches calculés par le core (liste `vehicles`, une trame sur trois)
 	if typeof(state.get("vehicles")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
 		traffic.sync_core(state["vehicles"], int(state["seq"]), cam_s)
@@ -583,6 +579,15 @@ func road_users(within_m: float = 300.0) -> Array:
 	return out
 
 
+## Véhicules de la route (dernière image), {s, dir}, pour que les bots serrent à droite à leur approche
+## (bots_view_model.gd, `vehicles`).
+func vehicle_places() -> Array:
+	var out: Array = []
+	for v in traffic.vehicles:
+		out.append({"s": float(v["s"]), "dir": int(v["dir"])})
+	return out
+
+
 ## Lot P32 : compte les paires qui se touchent à cette image (carrosseries et cyclistes de moins de CONTACT_M de
 ## la caméra) : véhicules entre eux, véhicule et cycliste, cyclistes de groupes différents, bots et cycliste
 ## compris. `others` : cyclistes du décor et bots, comme traffic_model.gd les reçoit.
@@ -631,6 +636,7 @@ func test_info(cam: Camera3D) -> Dictionary:
 		"sounds": sounds_heard.duplicate(),
 		"frozen_sig": frozen_signature(),
 		"road_users": road_users(),
+		"bot_places": bot_places.map(func(b): return {"rel_m": float(b["s"]) - _cam_s, "lateral": float(b["lateral"])}),
 		"rider_lateral": _cam_lateral,
 		"contacts": contacts, "last_contact": last_contact,
 		"sign": {},

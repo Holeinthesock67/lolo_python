@@ -28,12 +28,19 @@ const PAUSE_RIDE_MODE := "pause.ride_mode"     # session libre : SIM, ERG ou ERG
 const PAUSE_TARGET_W := "pause.target_w"       # ERG libre : puissance cible
 const PAUSE_CADENCE := "pause.cadence_rpm"     # ERG cadence : cadence cible
 const RIDE_MODES := ["sim", "erg", "cadence"]
+## Ligne « Relancer OpenRide maintenant » d'un sous-écran (lot O26) : action `relaunch` (code 64).
+const RELAUNCH := "relaunch"
+## Moment où un réglage s'applique (`applies` du contrat), pour la carte de détail.
+const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'applique à la séance suivante",
+	"relaunch": "S'applique au prochain lancement d'OpenRide"}
 ## Textes des choix envoyés par le core sous une forme technique : {clé: {valeur: texte}}.
 ## Option « Bonus » du mode classique (série T, lot T10) : `on` / `off` affichés « oui » / « non ».
 ## Courbes de la séance (lot O14) : `render.chart` prend `hidden` / `reduced` / `full`.
 ## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on` / `detail` ; jauge d'abri
 ## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
+## Lot O26 : décor vivant (booléen du fichier, `on` / `off` au menu), ressenti et mode du vent, thème par défaut.
+## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
 const CHOICE_TEXTS := {
 	"powerups.mode": {"on": "oui", "off": "non"},
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
@@ -43,19 +50,32 @@ const CHOICE_TEXTS := {
 	"ride.auto_draft": {"on": "oui", "off": "non"},
 	"ride.vehicle_draft": {"on": "oui", "off": "non"},
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
+	"render.living": {"on": "oui", "off": "non (rendu de la 1.0)"},
+	"render.theme": {"default": "par défaut"},
+	"wind.mode": {"off": "coupé", "fixed": "constant", "gusty": "en rafales", "theme": "celui du thème"},
+	"wind.feel": {"grade": "par la pente", "ftms": "par le trainer (essai)"},
+	"open_world.network": {"on": "oui", "off": "non (hors ligne)"},
+	"progression.enabled": {"on": "oui", "off": "non (sans Garage)"},
+	"render.texture_level": {"auto": "selon la qualité", "low": "basses (1 024 px)", "medium": "moyennes (1 024 px)", "high": "hautes (2 048 px)"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
+
+## Tout autre booléen du fichier (choix `on` / `off`, lot O26) s'écrit oui / non (lot O27).
+const BOOL_CHOICES := ["on", "off"]
+const BOOL_TEXTS := {"on": "oui", "off": "non"}
 
 ## Sous-écrans de « Réglages » (champ `group` du message `settings`), dans l'ordre d'affichage :
 ## [groupe, titre]. Un élément sans groupe connu va dans « Autres réglages », montré seulement s'il
 ## n'est pas vide.
 const GROUPS := [["rider", "Cycliste"], ["ride", "Séance"], ["graphics", "Graphisme"], ["sound", "Son"],
-	["wind", "Vent"]]
+	["wind", "Vent"], ["advanced", "Avancé"]]
 const OTHER_GROUP := ["other", "Autres réglages"]
 ## Points cardinaux d'une direction en degrés (unité « ° »), de 45 en 45 depuis le nord.
 const COMPASS := ["nord", "nord-est", "est", "sud-est", "sud", "sud-ouest", "ouest", "nord-ouest"]
 
 var items: Array = []
+## Valeurs des réglages `applies` = `relaunch` reçues au lancement : un écart propose de relancer (lot O26).
+var launch_values := {}
 ## Modification en cours : {key, label, type, value, min, max, step, unit, choices} ; vide sinon.
 var editing: Dictionary = {}
 
@@ -63,6 +83,19 @@ var editing: Dictionary = {}
 func on_settings(msg: Dictionary) -> void:
 	var raw = msg.get("items", [])
 	items = raw if raw is Array else []
+	for it in items:
+		if it is Dictionary and str(it.get("applies", "")) == "relaunch" and not launch_values.has(str(it["key"])):
+			launch_values[str(it["key"])] = it.get("value")
+
+
+## Libellés des réglages d'un groupe changés depuis le lancement et pris au prochain lancement (lot O26).
+func pending_relaunch(group: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	for it in items:
+		if it is Dictionary and group_of(it) == group and str(it.get("applies", "")) == "relaunch" \
+				and launch_values.has(str(it["key"])) and launch_values[str(it["key"])] != it.get("value"):
+			out.append(str(it.get("label", it["key"])))
+	return out
 
 
 func item(key: String) -> Dictionary:
@@ -92,7 +125,7 @@ static func format_value(it: Dictionary, value) -> String:
 		return GarageViewModel.format_edit(str(it["key"]), int(value))
 	if it.has("format"):
 		return WorkoutBuilder.format_param(it, value)
-	var texts: Dictionary = CHOICE_TEXTS.get(str(it.get("key", "")), {})
+	var texts: Dictionary = CHOICE_TEXTS.get(str(it.get("key", "")), BOOL_TEXTS if it.get("choices", []) == BOOL_CHOICES else {})
 	if texts.has(str(value)):
 		return str(texts[str(value)])
 	var unit := str(it.get("unit", ""))
@@ -172,6 +205,9 @@ func menu_items(group: String) -> Array:
 		if not it is Dictionary or group_of(it) != group:
 			continue
 		out.append(row("set:" + str(it["key"]), it, editing if str(editing.get("key", "")) == str(it["key"]) else {}))
+	var waiting := pending_relaunch(group)
+	if not waiting.is_empty():
+		out.append({"id": RELAUNCH, "label": "Relancer OpenRide maintenant", "detail": "pour appliquer : " + ", ".join(waiting)})
 	return out
 
 
@@ -191,7 +227,7 @@ func sheet(key: String) -> Dictionary:
 		var unit := str(it.get("unit", ""))
 		tiles.append({"label": "Plage", "value": "%d à %d" % [int(it["min"]), int(it["max"])], "unit": unit})
 		tiles.append({"label": "Pas", "value": str(int(it.get("step", 1))), "unit": unit})
-	lines.append("S'applique tout de suite" if str(it.get("applies", "")) == "now" else "S'applique à la séance suivante")
+	lines.append(str(APPLIES_TEXTS.get(str(it.get("applies", "")), APPLIES_TEXTS["next_session"])))
 	return {"title": "Réglage", "name": str(it.get("label", key)), "tiles": tiles, "lines": lines}
 
 

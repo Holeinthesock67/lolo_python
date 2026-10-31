@@ -1,0 +1,24 @@
+{
+  "description": "Packs depuis Réglages › Contenus (lot O29) : pack « Cols célèbres » proposé avec confirmation (Non par défaut, rien n'est téléchargé), archive d'un thème trouvée dans Téléchargements installée par A maintenu, thème installé listé.",
+  "archives": {"Téléchargements/alpes_ete.zip": {"@dossier": "engine/themes/default"}},
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"choisir": "settings"},
+    {"choisir": "contents"},
+    {"ecran": "contents", "contient": ["Pack « Cols célèbres » — à télécharger", "Thème « Alpes été » — à installer"], "delai": 10},
+    {"aller": "content:routes:cols_celebres"},
+    {"ecran": "contents", "contient": ["Téléchargement nécessaire", "Place libre :"]},
+    {"capture": "packs_avant"},
+    {"choisir": "content:routes:cols_celebres"},
+    {"ecran": "confirm", "titre": "Pack « Cols célèbres » : télécharger et installer ?", "focus": "no"},
+    {"capture": "packs_confirmation"},
+    {"choisir": "no"},
+    {"ecran": "contents", "contient": ["Pack « Cols célèbres » — à télécharger"]},
+    {"choisir": "content:archive:0"},
+    {"ecran": "contents", "contient": ["Thème « Alpes été » installé", "Thème « Alpes été » — installé"], "delai": 30},
+    {"fichier": "OpenRide/Themes/alpes-ete/theme.json", "existe": true},
+    {"aller": "content:theme:alpes-ete"},
+    {"ecran": "contents", "contient": ["Rien n'est téléchargé"]},
+    {"capture": "packs_apres"}
+  ]
+}

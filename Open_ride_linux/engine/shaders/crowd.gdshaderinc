@@ -1,6 +1,6 @@
 global uniform float anim_time;
 
-// Corps commun de crowd.gdshader et bot_ghost.gdshader (CROWD_GHOST : fantôme translucide).
+// Corps de crowd.gdshader (les bots ont l'avatar du joueur depuis le lot Y18 : bots_view.gd).
 // Spectateurs du Lot P15 et passants du Lot P21, personnages refaits par le Lot Y14 (people_mesh.gd) :
 // animation par articulations (hanche, genou, épaule) à partir du temps global anim_time
 // (anim_clock.gd : figé avec le décor quand le core ne répond plus).
@@ -14,9 +14,6 @@ global uniform float anim_time;
 // - Données de sommet (people_mesh.gd) : CUSTOM0.x zone, CUSTOM0.y tibia, CUSTOM0.z porte-drapeau ;
 //   UV.y bras libre, UV.x poids du drapeau ; UV2.x ±1 par jambe (patte), UV2.y bras qui salue.
 // - COLOR : couleur d'instance du MultiMesh, couleur du haut (ou de la robe du chien, du bois du banc).
-#ifdef CROWD_GHOST
-uniform float ghost_alpha = 0.55;
-#endif
 uniform vec3 skin_tones[4];
 uniform vec3 hair_colors[6];
 uniform vec3 trouser_colors[6];
@@ -223,7 +220,4 @@ void fragment() {
 	ALBEDO = c;
 	ROUGHNESS = region == 1 ? 0.6 : (region == 6 ? 0.35 : 0.85);
 	METALLIC = region == 6 ? 0.8 : 0.0;
-#ifdef CROWD_GHOST
-	ALPHA = ghost_alpha;
-#endif
 }

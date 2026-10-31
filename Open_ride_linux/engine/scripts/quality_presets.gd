@@ -128,6 +128,35 @@ const BUILDING_VISIBILITY_END := {
 	"high": 4000.0,
 }
 
+## Niveau de détail des bots selon la distance à la caméra (lot Y18) : [fin, intermédiaire] en mètres ;
+## en deçà de la première distance le niveau 0 de l'avatar (celui du joueur), puis le niveau 1 jusqu'à la
+## seconde, au-delà le niveau 2 (allégé). `low` n'a jamais le niveau 0. Les ombres portées s'arrêtent au
+## niveau 1 (BOT_SHADOW_MAX_LOD). Écart de BOT_LOD_HYSTERESIS_M pour ne pas changer de niveau sans cesse
+## autour d'un seuil.
+const BOT_LOD_M := {
+	"low": [0.0, 15.0],
+	"medium": [10.0, 35.0],
+	"high": [20.0, 60.0],
+}
+const BOT_SHADOW_MAX_LOD := 1
+const BOT_LOD_HYSTERESIS_M := 2.0
+
+
+## Niveau de détail d'un bot à `dist_m` de la caméra, qui affiche aujourd'hui le niveau `current` (-1 : aucun).
+static func bot_lod(name: String, dist_m: float, current: int = -1) -> int:
+	var limits: Array = BOT_LOD_M[applied_name(name)]
+	var lod := 2
+	if dist_m < float(limits[0]):
+		lod = 0
+	elif dist_m < float(limits[1]):
+		lod = 1
+	if current < 0 or lod == current:
+		return lod
+	# Hystérésis : on ne gagne en détail qu'une fois franchement en deçà du seuil.
+	if lod < current and dist_m > float(limits[lod]) - BOT_LOD_HYSTERESIS_M:
+		return current
+	return lod
+
 
 ## Renvoie le dictionnaire du préréglage demandé (`low`, `medium`, `high`), ou `low` si le nom est inconnu.
 ## Nom du préréglage réellement appliqué pour `name` : `low` si le nom est inconnu (lot X32, vitrines).
@@ -182,17 +211,29 @@ static func max_biomes(name: String) -> int:
 	return MAX_BIOMES.get(key, MAX_BIOMES[DEFAULT_PRESET])
 
 
-## Côté des textures de sol des biomes en pixels (série U, décision U-Q4 ; lot U6).
-const GROUND_TEXTURE_PX := {
+## Côté des textures du décor en pixels (sols des biomes, textures 1.x du thème) et budget de mémoire vidéo
+## de chaque jeu de textures (lot P20, texture_levels.gd ; série U, décision U-Q4). Le budget de `high`
+## reste à 1 Go comme celui de U-Q4 (recette U18 : textures du décor sous 1 Go en high).
+const TEXTURE_PX := {
 	"low": 1024,
 	"medium": 1024,
 	"high": 2048,
 }
+const TEXTURE_BUDGET_MB := {
+	"low": 512,
+	"medium": 1024,
+	"high": 1024,
+}
 
 
-static func ground_texture_px(name: String) -> int:
+static func texture_px(name: String) -> int:
 	var key := name.strip_edges()
-	return GROUND_TEXTURE_PX.get(key, GROUND_TEXTURE_PX[DEFAULT_PRESET])
+	return TEXTURE_PX.get(key, TEXTURE_PX[DEFAULT_PRESET])
+
+
+static func texture_budget_bytes(name: String) -> int:
+	var key := name.strip_edges()
+	return int(TEXTURE_BUDGET_MB.get(key, TEXTURE_BUDGET_MB[DEFAULT_PRESET])) << 20
 
 
 ## Budgets du décor vivant de la série P selon le préréglage (Lot P4), lus par les lots P5 à P15 et P21.

@@ -1,5 +1,10 @@
 # Lot H4 – Endurance simulée : séance de 3 h en temps accéléré
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Endurance simulée : séance de 3 h en temps accéléré (audit F7) | Python | — | Petite | **Livré le 23 octobre** (PR #14) |
+
 ## 1. Objectif
 
 Vérifier automatiquement les exigences de durée de la SRS §12 sans pédaler 3 h :

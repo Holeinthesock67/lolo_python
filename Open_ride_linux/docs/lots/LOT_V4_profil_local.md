@@ -1,5 +1,10 @@
 # Lot V4 – Profil local : choix, achats et avatar, lecture et écriture sûres, migration
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Profil local (`~/OpenRide/profile.json`) : choix, achats, avatar, écriture sûre, migration | Python | V2 | Petite | **Livré le 27 octobre** (PR #276, issue #240) ; branchement par V11 |
+
 ## 1. Objectif
 
 Garder dans `~/OpenRide/profile.json` ce qui ne se recalcule pas depuis le journal : équipement choisi, achats, vies du mode Cyber-Rogue et réglages de l'avatar. L'expérience, le niveau, les défis et les pièces gagnées ne sont **pas** stockés comme vérité : ils se recalculent (V2, V3b). Le fichier s'écrit sans risque de corruption, se répare s'il est abîmé et porte un numéro de version pour les migrations.

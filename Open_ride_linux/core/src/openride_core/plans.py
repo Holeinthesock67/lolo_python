@@ -413,7 +413,7 @@ def import_folder(src: Path, name: str, days: list[str], plans_dir: Path | None 
     files = sorted((p for p in src.iterdir() if p.is_file() and p.suffix.lower() in WORKOUT_SUFFIXES),
                    key=lambda p: natural_key(p.name))
     if not files:
-        raise PlanError(f"{src} : aucun entraînement .zwo, .erg ou .mrc")
+        raise PlanError(f"{src} : aucun entraînement .zwo, .erg, .mrc ou .qwk")
     plan_id = normalize_id(name)
     target = plans_dir / f"{plan_id}.toml"
     if target.exists():
@@ -441,6 +441,60 @@ def import_folder(src: Path, name: str, days: list[str], plans_dir: Path | None 
     plans_dir.mkdir(parents=True, exist_ok=True)
     target.write_text(plan_toml(name, f"Importé de {src.name}", len(days), weeks), encoding="utf-8")
     return load_plan(plan_id, plans_dir, workouts_dir), copied
+
+
+# --- plan maison composé dans le menu (lot O30) ---------------------------------------------------
+
+MAX_HOME_PLAN_WORKOUTS = 42   # six semaines de sept jours
+MAX_HOME_PLAN_WEEKS = 12
+HOME_PLAN_NAME = "Mon plan"
+
+
+def home_plan_name(plans_dir: Path | None = None) -> str:
+    """Premier nom libre : « Mon plan », « Mon plan 2 »…"""
+    plans_dir = PLANS_DIR if plans_dir is None else plans_dir
+    n = 1
+    while (plans_dir / f"{normalize_id(home_name(n))}.toml").exists():
+        n += 1
+    return home_name(n)
+
+
+def home_name(n: int) -> str:
+    return HOME_PLAN_NAME if n == 1 else f"{HOME_PLAN_NAME} {n}"
+
+
+def create_from_library(workouts: list[str], days: list[str], weeks: int | None = None, name: str | None = None,
+                        plans_dir: Path | None = None, workouts_dir: Path | None = None) -> Plan:
+    """Plan maison fait d'entraînements de la bibliothèque (comme `plan import`, sans copie) : dans l'ordre
+    choisi, ils remplissent les jours de la semaine. Sans `weeks`, autant de semaines qu'il en faut (la
+    dernière peut être incomplète) ; avec `weeks`, la suite recommence jusqu'à remplir ces semaines."""
+    plans_dir = PLANS_DIR if plans_dir is None else plans_dir
+    workouts_dir = config_mod.WORKOUTS_DIR if workouts_dir is None else workouts_dir
+    if not days or any(d not in WEEKDAYS for d in days) or len(set(days)) != len(days):
+        raise PlanError("jours : de un à sept jours distincts, de lundi à dimanche")
+    days = sorted(days, key=WEEKDAYS.index)
+    if not workouts or len(workouts) > MAX_HOME_PLAN_WORKOUTS:
+        raise PlanError(f"entraînements : de 1 à {MAX_HOME_PLAN_WORKOUTS}")
+    if not all(isinstance(w, str) and w for w in workouts):
+        raise PlanError("entraînement sans identifiant")
+    for wid in set(workouts):
+        workout_duration(wid, workouts_dir)
+    needed = -(-len(workouts) // len(days))
+    if weeks is not None and not needed <= weeks <= MAX_HOME_PLAN_WEEKS:
+        raise PlanError(f"durée : de {needed} à {MAX_HOME_PLAN_WEEKS} semaines pour {len(workouts)} séance(s) "
+                        f"et {len(days)} jour(s) par semaine")
+    name = (name or "").strip() or home_plan_name(plans_dir)
+    plan_id = normalize_id(name)
+    target = plans_dir / f"{plan_id}.toml"
+    if target.exists():
+        raise PlanError(f"le plan « {plan_id} » existe déjà")
+    total = len(workouts) if weeks is None else weeks * len(days)
+    seq = [workouts[i % len(workouts)] for i in range(total)]
+    plan_weeks = [("", [(days[k], w) for k, w in enumerate(seq[i:i + len(days)])])
+                  for i in range(0, total, len(days))]
+    plans_dir.mkdir(parents=True, exist_ok=True)
+    target.write_text(plan_toml(name, "Composé dans le menu", len(days), plan_weeks), encoding="utf-8")
+    return load_plan(plan_id, plans_dir, workouts_dir)
 
 
 def install_builtin(plans_dir: Path | None = None, workouts_dir: Path | None = None) -> tuple[list[str], list[str]]:

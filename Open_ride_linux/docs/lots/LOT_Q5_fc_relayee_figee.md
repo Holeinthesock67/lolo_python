@@ -1,5 +1,10 @@
 # Lot Q5 – Fréquence cardiaque relayée par le trainer figée
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Fréquence cardiaque relayée par le trainer figée : écrite comme absente | Python | Q3 (`ftms_driver.py`) | Petite | Oui ; issue #172 |
+
 ## 1. Objectif
 
 Essai du 25 octobre : la ceinture cardio était appairée au trainer, qui relayait la fréquence cardiaque dans ses données FTMS. Quand la ceinture a été retirée, le trainer a continué à envoyer la dernière valeur : 105 bpm sans changer pendant 42 s. Cette fausse FC est passée dans le `.jsonl`, le FIT et les moyennes. Ce lot détecte une FC relayée qui ne bouge plus et l'écrit comme absente.

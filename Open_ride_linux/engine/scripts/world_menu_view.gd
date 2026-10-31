@@ -2,10 +2,14 @@ extends Control
 
 ## Affichage du menu « Monde ouvert » (lot W11) : globe en SphereMesh texturée avec côtes, régions du cache
 ## en surbrillance et régions épinglées marquées, recherche, carte régionale 2D, réglage du cap, écran de
-## préchargement. Dessine ce que `world_menu_model.gd` décrit ; ne reçoit pas la souris.
+## préchargement. Dessine ce que `world_menu_model.gd` décrit ; ne reçoit pas la souris. Lot O22 : chaque
+## état explique ce qu'il fait (STATE_HELP, NAV_HELP) et le bandeau des boutons des autres menus
+## (button_bar.gd, aide de button_help.gd) donne en bas les boutons du Click et les touches du clavier.
 ## Pas de class_name (charger par preload).
 
 const UiTheme := preload("res://scripts/ui_theme.gd")
+const ButtonBar := preload("res://scripts/button_bar.gd")
+const ButtonHelp := preload("res://scripts/button_help.gd")
 const Model := preload("res://scripts/world_menu_model.gd")
 
 const GLOBE_DIR := "res://assets/globe/"
@@ -23,6 +27,20 @@ const ROAD_COLORS := {"p": UiTheme.ROAD_P, "s": UiTheme.ROAD_S, "t": UiTheme.PAL
 ## Rotation de la sphère qui amène la longitude 0 face à la caméra (réglée sur le rendu, tests/render).
 const TEXTURE_LON_OFFSET_DEG := 180.0
 const MAX_RESULTS := 8
+## Explication de chaque état, sous ses lignes (lot O22). Textes alignés sur docs/GUIDE_UTILISATION.md
+## §4 bis et sur le plan W (cache, épinglage, Nominatim, carrefours).
+const STATE_HELP := {
+	Model.GLOBE: "Le monde ouvert crée la route en roulant, d'après les cartes OpenStreetMap. Fais tourner le globe jusqu'à ta région, ou cherche un lieu par son nom (Z, ou au clavier). Les régions en cache, déjà téléchargées, sont surlignées ; une région épinglée reste toujours dans le cache.",
+	Model.SEARCH: "Écris le nom avec la grille (ou au clavier). Lieux de la liste fournie avec OpenRide, puis d'OpenStreetMap quand Internet répond.",
+	Model.MAP: "Le curseur reste accroché à la route la plus proche : c'est le point de départ.",
+	Model.SETUP: "En roulant, un panneau annonce chaque carrefour : ◀ ▶ ou A choisissent la branche, A maintenu la valide, jusqu'à 30 m avant ; sinon la navigation choisit.",
+	Model.LOADING: "Le monde se télécharge et se prépare autour du départ. Au même endroit la prochaine fois, rien n'est retéléchargé.",
+}
+const NAV_HELP := {
+	"ride": "Balade : le jeu garde le cap et préfère les petites routes.",
+	"destination": "Destination : la navigation te mène au lieu choisi (A le cherche).",
+	"loop": "Boucle : retour au départ après la longueur choisie.",
+}
 
 var vm := Model.new()
 var globe_viewport: SubViewport
@@ -31,6 +49,8 @@ var globe_view: TextureRect
 var title_label: Label
 var body_label: Label
 var hint_label: Label
+var help_label: Label
+var button_bar: PanelContainer
 var _marker_signature := ""
 var _markers: Node3D
 var _canvas: Control
@@ -55,11 +75,23 @@ func _init() -> void:
 	body_label = _label(24, TEXT, Vector2(40.0, 90.0))
 	body_label.custom_minimum_size = Vector2(440.0, 0.0)
 	body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint_label = _label(18, DIM, Vector2(40.0, 0.0))
+	help_label = _label(UiTheme.HELP_SIZE, DIM, Vector2(40.0, 0.0))
+	help_label.custom_minimum_size = Vector2(440.0, 0.0)
+	help_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# Attributions (préchargement), au-dessus du bandeau des boutons.
+	hint_label = _label(UiTheme.SMALL_SIZE, DIM, Vector2(40.0, 0.0))
 	hint_label.anchor_top = 1.0
 	hint_label.anchor_bottom = 1.0
-	hint_label.offset_top = -44.0
-	hint_label.offset_bottom = -10.0
+	hint_label.offset_top = -UiTheme.HELP_H - 40.0
+	hint_label.offset_bottom = -UiTheme.HELP_H - 12.0
+	button_bar = ButtonBar.new()
+	button_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button_bar.anchor_left = 0.0
+	button_bar.anchor_right = 1.0
+	button_bar.anchor_top = 1.0
+	button_bar.anchor_bottom = 1.0
+	button_bar.offset_top = -UiTheme.HELP_H
+	add_child(button_bar)
 
 
 func _label(size: int, color: Color, pos: Vector2) -> Label:
@@ -216,7 +248,9 @@ func update_display() -> void:
 	globe_view.visible = show_globe
 	title_label.text = "Monde ouvert"
 	body_label.text = _body_text()
-	hint_label.text = _hint_text()
+	help_label.text = _help_text()
+	hint_label.text = Model.ATTRIBUTIONS if vm.state == Model.LOADING else ""
+	button_bar.update_display(ButtonHelp.WORLD_PREFIX + vm.help_screen())
 	_canvas.queue_redraw()
 
 
@@ -227,13 +261,15 @@ func _body_text() -> String:
 			var lines := ["Centre : %.1f°, %.1f°" % [vm.globe_lat, vm.globe_lon]]
 			if not r.is_empty():
 				lines.append("Région en cache : %s%s" % [r.get("name", r.get("id", "")), "  (épinglée)" if r.get("pinned", false) else ""])
-			lines.append("Taper un nom de lieu pour le chercher.")
 			return "\n".join(lines)
 		Model.SEARCH:
 			var lines := ["Recherche : " + vm.query + "_"]
+			if vm.typing:
+				lines.append_array(grid_lines())
 			for i in range(mini(vm.places.size(), MAX_RESULTS)):
 				var p: Dictionary = vm.places[i]
-				lines.append("%s %s%s" % ["▶" if i == vm.place_index else "  ", p.get("name", "?"), "  (en cache)" if p.get("cached", false) else ""])
+				var mark := "▶" if i == vm.place_index and not vm.typing else "  "
+				lines.append("%s %s%s" % [mark, p.get("name", "?"), "  (en cache)" if p.get("cached", false) else ""])
 			if vm.places.is_empty() and vm.query.length() >= 2:
 				lines.append("  aucun résultat")
 			return "\n".join(lines)
@@ -251,28 +287,41 @@ func _body_text() -> String:
 	return ""
 
 
+## Grille de saisie au Click (lot O31), une ligne par rangée de la grille, case en focus entre crochets.
+func grid_lines() -> Array:
+	var items: Array = vm.entry.grid_items()
+	var lines: Array = []
+	var row: Array = []
+	for i in range(items.size()):
+		var label := str(items[i]["label"])
+		row.append("[%s]" % label if i == vm.entry.cell else " %s " % label)
+		var actions := i >= items.size() - 2
+		if (not actions and row.size() == Model.TextEntry.GRID_COLUMNS) or i == items.size() - 3 or i == items.size() - 1:
+			lines.append("".join(row))
+			row = []
+	return lines
+
+
 func _extra_text() -> String:
 	match vm.nav:
 		"loop":
 			return "Longueur : %d km" % int(vm.loop_km)
 		"destination":
 			return "Destination : " + ("à choisir (A)" if vm.target == null else "%.3f°, %.3f°" % [vm.target["lat"], vm.target["lon"]])
-	return "Le jeu garde le cap et préfère les petites routes"
+	return "Cap gardé, petites routes"
 
 
-func _hint_text() -> String:
-	match vm.state:
-		Model.GLOBE:
-			return "◀ ▶ tourner   PgDn/PgUp incliner   A valider le centre   appui long A épingler la région   Y quitter"
-		Model.SEARCH:
-			return "taper le nom   − + choisir   A valider   Y retour"
-		Model.MAP:
-			return "◀ ▶ − + déplacer le curseur   A valider   Y retour"
-		Model.SETUP:
-			return "− + ligne   ◀ ▶ valeur   A démarrer   Y retour"
-		Model.LOADING:
-			return Model.ATTRIBUTIONS + "   Y annuler"
-	return ""
+## Explication de l'état affiché, sous les lignes (au réglage du cap, aussi celle de la navigation).
+func _help_text() -> String:
+	var text := str(STATE_HELP.get(vm.state, ""))
+	if vm.state == Model.SETUP:
+		text = str(NAV_HELP.get(vm.nav, "")) + "\n" + text
+	return text
+
+
+## Aide des boutons en une ligne (tests graphiques, journal).
+func hint_text() -> String:
+	return ButtonHelp.text(ButtonHelp.WORLD_PREFIX + vm.help_screen())
 
 
 func _draw_canvas() -> void:
@@ -287,6 +336,11 @@ func _draw_canvas() -> void:
 			body_label.position = Vector2(size.x * 0.2, size.y * 0.5 - 48.0)
 	if vm.state != Model.LOADING:
 		body_label.position = Vector2(40.0, 90.0)
+	# Explication sous les lignes, sans déborder sur la carte (qui commence à 40 % de la largeur).
+	var help_w := minf(440.0, size.x * 0.40 - 60.0) if vm.state != Model.LOADING else size.x * 0.6
+	help_label.custom_minimum_size.x = help_w
+	help_label.size.x = help_w
+	help_label.position = body_label.position + Vector2(0.0, body_label.get_combined_minimum_size().y + 18.0)
 
 
 ## Carte régionale : routes en mètres depuis le centre (x est, z sud), curseur et flèche du cap.

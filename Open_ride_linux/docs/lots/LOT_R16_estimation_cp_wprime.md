@@ -1,5 +1,10 @@
 # Lot R16 – Estimation de CP et W' à partir des séances passées
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Estimation de CP et W' à partir des séances passées | Python | — | Petite | **Livré le 27 octobre** (outil pur ; le core l'appellera au lancement, R8), **version 2.0** |
+
 ## 1. Objectif
 
 Décision Q5 : W' vaut 20 kJ par défaut, se règle dans `config.toml` et dans les menus, et **s'estime à partir des séances passées**. Ce lot estime CP et W' depuis la courbe de puissance de l'historique, avec une mesure de confiance, et propose la valeur au joueur sans jamais écraser sa configuration.

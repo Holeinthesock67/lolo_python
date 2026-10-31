@@ -1,5 +1,10 @@
 # Lot N3 – Engine : client des listes v1.1 et branchement au modèle de menu (sans affichage)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : client des listes v1.1 et branchement au modèle de menu, sans affichage | GDScript + Python | N1, K5 (livrés) | Petite | **Livré le 25 octobre** (issue #102, PR #163) |
+
 ## 1. Objectif
 
 Côté Godot, demander les listes de parcours et d'entraînements au core (contrat v1.1, lot N1), les convertir en éléments du modèle de menu (`menu_model.gd`, lot K5) et produire les commandes à envoyer quand l'utilisateur choisit. Tout reste sans affichage, testable sans écran contre `fake_core.py`.
