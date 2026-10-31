@@ -43,6 +43,7 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## Pilotage du trainer (lots RC1-RC3) : `trainer.control` prend `resistance` / `sim`.
 ## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
 ## Départ de la séance (lot O36) : `depart.mode` prend `pedalage` / `immediat`.
+## Dernier survivant (lot DS2) : écart de niveau des bots et suite donnée à l'élimination du cycliste.
 const CHOICE_TEXTS := {
 	"depart.mode": {"pedalage": "au pédalage", "immediat": "immédiat"},
 	"powerups.mode": {"on": "oui", "off": "non"},
@@ -61,6 +62,8 @@ const CHOICE_TEXTS := {
 	"progression.enabled": {"on": "oui", "off": "non (sans Garage)"},
 	"render.texture_level": {"auto": "selon la qualité", "low": "basses (1 024 px)", "medium": "moyennes (1 024 px)", "high": "hautes (2 048 px)"},
 	"trainer.control": {"resistance": "résistance calculée", "sim": "SIM du trainer"},
+	"survivor.spread": {"tight": "serré (± 3 %)", "normal": "normal (± 8 %)", "wide": "large (± 15 %)"},
+	"survivor.after_out": {"ride": "continuer à rouler", "end": "terminer la séance"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
 

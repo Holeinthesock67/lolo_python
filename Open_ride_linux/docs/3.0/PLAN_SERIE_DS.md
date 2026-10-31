@@ -93,7 +93,7 @@ Style : celui du classique, et l'arche gonflable commune à tous les portiques (
 
 ## 6. Champ `survivor` proposé (contrat : lot DS2)
 
-Révision : la première libre à la fusion de DS2 (la 1.6 est réservée à la série U, la suivante à TT1). Ajouts compatibles :
+Révision : ajouts compatibles rangés dans la révision 1.5, comme ceux du Mode WTF (lot WTF2) et des bots à profil (lot T12), plutôt qu'une nouvelle révision : la 1.6 reste réservée à la série U (choix du lot DS2).
 
 - `start` : `mode` gagne la valeur `survivor` ; avec un entraînement ERG, un argument `bots`, un fantôme ou un parcours trop court (hors circuit et monde ouvert) : `bad_args`, rien ne démarre.
 - `state.survivor`, dans chaque trame de la course :

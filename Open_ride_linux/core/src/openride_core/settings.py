@@ -88,6 +88,11 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("depart.cadence_rpm", "Cadence de départ", "ride", 5, "tr/min"),
     Setting("ride.auto_draft", "Placement dans la roue", "ride"),   # lot AS2
     Setting("ride.vehicle_draft", "Abri derrière les véhicules", "ride"),   # lot AS6
+    # Dernier survivant (série DS, lot DS2) ; écran du mode au lot DS7
+    Setting("survivor.opponents", "Survivant : adversaires", "ride"),
+    Setting("survivor.spacing_km", "Survivant : écart des arches", "ride", 1, "km"),
+    Setting("survivor.spread", "Survivant : écart de niveau", "ride"),
+    Setting("survivor.after_out", "Survivant : si éliminé", "ride"),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20
