@@ -218,9 +218,9 @@ func _test_lists_and_events() -> void:
 	m.handle("A_LONG")
 	var st: Dictionary = m.state()
 	_check(st["items"].size() == 3 and st["items"][0]["label"] == "Aucun parcours" and not st["items"][0]["enabled"]
-		and str(st["items"][0]["detail"]).contains("~/OpenRide/GPX/")
+		and str(st["items"][0]["detail"]).contains("Ajouter un parcours")
 		and st["items"].slice(1).map(func(it): return it["id"]) == ["_add_route", "_route_help"],
-		"liste vide : « Aucun parcours » désactivé, dit où déposer la trace, puis les lignes d'aide")
+		"liste vide : « Aucun parcours » désactivé, renvoie à l'import, puis les lignes d'aide")
 	m.set_items("routes", ROUTES_WITH_DISABLED)
 	var st2: Dictionary = m.state()
 	_check(_focus_id(st2) == "galibier" and st2["items"][1]["detail"] == "à compiler",
