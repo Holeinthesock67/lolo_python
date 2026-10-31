@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideContentsMessage",
-  "description": "Révision 1.5 (lot O25) : contenus installables depuis « Réglages › Contenus ».",
+  "description": "Révision 1.5 (lots O25 et O29) : contenus installables depuis « Réglages › Contenus ».",
   "type": "object",
   "required": [
     "type",
@@ -91,6 +91,27 @@
           }
         }
       }
+    },
+    "disk_free_mb": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "themes_mb": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "themes_max_mb": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
     }
   }
 }
