@@ -53,15 +53,21 @@ BRAKE_BACK_WINDOW_S = 15.0
 # fabricant : 6 km/h/s, aucune chute). Puissance tombée sous MOMENTUM_DROP_RATIO de la pointe des
 # MOMENTUM_WINDOW_S dernières secondes (pointe ≥ MOMENTUM_FROM_W), volant et pédales encore en
 # mouvement : la pente envoyée gagne [trainer] momentum_brake_pct le temps que la puissance remonte à
-# MOMENTUM_BACK_RATIO de la pointe, au plus MOMENTUM_MAX_S. La cadence lue par le trainer a ~2 s de
-# retard (30 octobre) : la détection se fait sur la puissance et le volant, pas sur la cadence.
+# MOMENTUM_BACK_RATIO de la pointe, au plus [trainer] momentum_brake_s. La cadence lue par le trainer
+# a ~2 s de retard (30 octobre) : la détection se fait sur la puissance et le volant, pas sur la cadence.
+# Essai vélo 7bk (31 octobre) : la phase « plus facile mais pas libre » dure 5 à 6 s, et le frein, tenu
+# au plus 3 s, se coupait souvent après 1,5 s sur une cadence lue à 0 isolée alors que le cycliste
+# pédalait encore (elle remonte à 60–99 tr/min 1 à 2 s plus tard). Le frein est donc tenu
+# momentum_brake_s (6 s par défaut, réglable pour comparer les passes) et « pédalage arrêté » se juge
+# sur le volant (sous MOMENTUM_MIN_KMH) ; la cadence ne sert que si le trainer n'annonce pas la vitesse
+# du volant, et seulement basse depuis MOMENTUM_STOPPED_S.
 MOMENTUM_FROM_W = 250.0
 MOMENTUM_WINDOW_S = 3.0
 MOMENTUM_DROP_RATIO = 0.4
 MOMENTUM_BACK_RATIO = 0.6
 MOMENTUM_MIN_KMH = 20.0
 MOMENTUM_MIN_RPM = 40.0
-MOMENTUM_MAX_S = 3.0
+MOMENTUM_STOPPED_S = 2.0   # sans vitesse du volant : cadence basse depuis ce temps = pédalage arrêté
 MOMENTUM_COOLDOWN_S = 5.0
 ERG_EPSILON_W = 1.0
 RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (arrêt jamais bloqué)
@@ -249,6 +255,14 @@ class _Want:
     value: float = 0.0
 
 
+def momentum_summary(count: int, boost_pct: float, hold_s: float) -> str:
+    """Ligne compteur du frein d'élan écrite dans core.log à la fin de la séance, toujours présente
+    (même à 0 ou réglage coupé) pour qu'un relevé distingue « aucune intervention » d'un core ancien."""
+    if boost_pct <= 0.0:
+        return f"Trainer : momentum_brakes = {count} (frein d'élan coupé, momentum_brake_pct = 0)."
+    return f"Trainer : momentum_brakes = {count} (frein d'élan +{boost_pct:.1f} %, tenu {hold_s:g} s au plus)."
+
+
 class FtmsDriver:
     def __init__(
         self,
@@ -296,6 +310,7 @@ class FtmsDriver:
         self._momentum_at: float | None = None   # frein d'élan en cours depuis cet instant
         self._momentum_peak_w = 0.0
         self._momentum_end_at = float("-inf")
+        self._cadence_low_since: float | None = None   # cadence lue sous MOMENTUM_MIN_RPM depuis cet instant
         self.momentum_brakes = 0   # interventions du frein d'élan
         self._hr_ibd: int | None = None
         self._hr_service: int | None = None
@@ -506,12 +521,19 @@ class FtmsDriver:
             peaks.pop()
         peaks.append((now, power_w))   # peaks[0] : pointe de la fenêtre
         speed = self._trainer_speed_kmh
-        moving = self._cadence >= MOMENTUM_MIN_RPM and (speed is None or speed >= MOMENTUM_MIN_KMH)
+        if self._cadence >= MOMENTUM_MIN_RPM:
+            self._cadence_low_since = None
+        elif self._cadence_low_since is None:
+            self._cadence_low_since = now
+        if speed is not None:   # le volant fait foi : une cadence lue à 0 isolée ne compte pas (7bk)
+            moving = speed >= MOMENTUM_MIN_KMH
+        else:
+            moving = self._cadence_low_since is None or now - self._cadence_low_since < MOMENTUM_STOPPED_S
         if self._momentum_at is not None:
             elapsed = now - self._momentum_at
             if power_w >= MOMENTUM_BACK_RATIO * self._momentum_peak_w:
                 why = "puissance revenue"
-            elif elapsed >= MOMENTUM_MAX_S:
+            elif elapsed >= self.cfg.momentum_brake_s:
                 why = "durée maximale"
             elif not moving:
                 why = "pédalage arrêté"
@@ -530,8 +552,9 @@ class FtmsDriver:
             self._momentum_at, self._momentum_peak_w = now, peak
             self.momentum_brakes += 1
             self._immediate = True   # envoyé sans attendre le renvoi
-            log.info("Trainer : frein d'élan (%.0f W puis %.0f W, volant %s) : pente +%.1f %%",
-                     peak, power_w, "—" if speed is None else f"{speed:.0f} km/h", self.cfg.momentum_brake_pct)
+            log.info("Trainer : frein d'élan n° %d (%.0f W puis %.0f W, volant %s) : pente +%.1f %%",
+                     self.momentum_brakes, peak, power_w, "—" if speed is None else f"{speed:.0f} km/h",
+                     self.cfg.momentum_brake_pct)
             self._emit("momentum_brake", from_w=round(peak), to_w=round(power_w),
                        cadence_rpm=round(self._cadence), speed_kmh=speed,
                        boost_pct=self.cfg.momentum_brake_pct)
@@ -681,6 +704,7 @@ class FtmsDriver:
                      self.reconnect_count, self.att_retries)
         if self.brake_losses:
             log.info("Trainer : %d perte(s) de frein détectée(s).", self.brake_losses)
+        log.info(momentum_summary(self.momentum_brakes, self.cfg.momentum_brake_pct, self.cfg.momentum_brake_s))
         if self.busy_deferrals:
             log.info("Control Point occupé : %d consigne(s) reportée(s), liaison gardée.",
                      self.busy_deferrals)

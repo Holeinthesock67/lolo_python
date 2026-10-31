@@ -363,6 +363,7 @@ trace_ftms = false           # trace horodatée de chaque échange Control Point
 hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce nombre de secondes (lot Q5)
 resend_s = 2.0               # la consigne est renvoyée au moins toutes les resend_s secondes ; une valeur plus grande (10 à 15) limite les écritures SIM_PARAMS quand la pente dérive peu
 momentum_brake_pct = 3.0     # frein d'élan : pente ajoutée en SIM quand le volant garde l'élan d'une relance (0 à 10, 0 = coupé)
+momentum_brake_s = 6.0       # frein d'élan tenu au plus ce temps (2 à 10 s), sauf si la puissance remonte à 60 % de la pointe
 
 [gearing]
 n_gears = 24

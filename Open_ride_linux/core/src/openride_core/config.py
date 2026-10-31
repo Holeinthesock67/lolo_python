@@ -63,6 +63,7 @@ class TrainerConfig:
     hr_relay_freeze_s: float = 15.0   # détection cardio relayée figée (lot Q5)
     resend_s: float = 2.0             # la consigne SIM/ERG est renvoyée au moins toutes les resend_s secondes (30 octobre : essai à 10–15 s contre le pompage)
     momentum_brake_pct: float = 3.0   # frein d'élan : pente ajoutée en SIM quand le volant garde l'élan d'une relance (0 = coupé)
+    momentum_brake_s: float = 6.0     # frein d'élan tenu au plus ce temps, sauf si la puissance remonte (essai 7bk : phase à 0 W de 5–6 s)
 
 
 @dataclass
@@ -267,6 +268,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("trainer", "hr_relay_freeze_s"): (5, 120),
     ("trainer", "resend_s"): (0.5, 60),
     ("trainer", "momentum_brake_pct"): (0, 10),
+    ("trainer", "momentum_brake_s"): (2, 10),
     ("gearing", "n_gears"): (2, 40),
     ("gearing", "start_gear"): (1, 40),
     ("gearing", "ratio_min"): (0.1, 5),
@@ -376,6 +378,8 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("trainer", "grade_rate_up_pct_per_s"): "rampe de pente du trainer",
     ("trainer", "grade_rate_down_pct_per_s"): "rampe de pente du trainer",
     ("trainer", "hr_relay_freeze_s"): "détection de la FC relayée figée",
+    ("trainer", "momentum_brake_pct"): "frein d'élan après une relance (réglage en essai)",
+    ("trainer", "momentum_brake_s"): "frein d'élan après une relance (réglage en essai)",
     ("gearing", "n_gears"): "boîte de vitesses virtuelle",
     ("gearing", "ratio_min"): "boîte de vitesses virtuelle",
     ("gearing", "ratio_max"): "boîte de vitesses virtuelle",
