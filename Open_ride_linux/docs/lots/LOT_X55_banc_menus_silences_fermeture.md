@@ -37,3 +37,9 @@ Rotation du banc des menus sur le PC, `main` 12bafacc (31 octobre) : 20 scénari
 ## 5. Passage PC du 31 octobre (7cs, branche ca1ad8fe + main)
 
 3 passages sur 4 OK (`appareils` click et souris, `quitter` click), plus aucun « engine sans réponse » : l'échec `appareils` est corrigé. `quitter` à la souris ne sort toujours pas en 10 s ; dernière étape : « scène libérée, arrêt des serveurs de Godot », 154 ms après la demande. Le blocage est donc dans l'arrêt de Godot lui-même (serveurs, affichage X11), après tout le code du jeu, et seulement sur la voie souris. Seul effet propre à la souris hors du jeu : le survol d'une rangée change la forme du curseur X11 (`CURSOR_POINTING_HAND`, `menu_view.gd`). Hypothèse non prouvée ; la liste des fils de Godot au prochain passage dira lequel attend.
+
+## 6. Passage PC 7cs-bis (f7faaf09) et contournement
+
+Sous Xvfb, tout sort en 0,6 à 0,8 s. À l'écran réel (`--native`, GTX 1060, pilote NVIDIA), seul `quitter` à la souris bloque, 151 ms après la demande, après « scène libérée, arrêt des serveurs de Godot » ; tous les fils attendent, fils du pilote compris (`[vkcf]`, `[vkrt]`, `[vkps]`, `cuda-EvtHandlr`). Le blocage est dans l'arrêt de Godot ou du pilote, pas dans le code du jeu.
+
+Contournement (X55-5) : `_quit` coupe d'abord le suivi de la souris par l'interface (`gui_disable_input`), remet le curseur visible et en flèche, puis quitte ; journal « Fermeture : curseur rendu à la flèche ». La fermeture suit ainsi le même chemin quelle que soit l'entrée. Écartée : une sortie forcée du processus après la libération de la scène, qui perdrait le code de sortie (64 et 65 relancent OpenRide) et cacherait le blocage. À confirmer en natif sur le PC ; si le blocage reste, le curseur est hors de cause et le lot suivant visera l'arrêt du rendu Vulkan.

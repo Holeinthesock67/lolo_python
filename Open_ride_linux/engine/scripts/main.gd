@@ -1677,8 +1677,15 @@ func _give_cues(state: Dictionary) -> void:
 
 ## Fermeture de l'engine avec le code `code` (0 : quitter, EXIT_RELAUNCH, EXIT_SIM). Le journal date ensuite chaque
 ## étape depuis la demande (« Fermeture : … ») : une fermeture lente dit où elle attend (banc des menus, 31 octobre).
+## Avant de quitter, l'interface ne suit plus la souris et le curseur reprend la flèche du système. Sur le PC (écran
+## réel, pilote NVIDIA), après un clic de souris sur « Oui », l'arrêt de Godot restait bloqué après la libération de
+## la scène ; au Click ou au clavier, il sortait (lot X55). Seul écart connu : la main du survol des rangées.
 func _quit(code: int) -> void:
 	_quit_ms = Time.get_ticks_msec()
+	get_viewport().gui_disable_input = true   # plus de survol : la forme du curseur ne change plus
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	DisplayServer.cursor_set_shape(DisplayServer.CURSOR_ARROW)
+	_quit_step("curseur rendu à la flèche")
 	get_tree().quit(code)
 
 
