@@ -205,7 +205,7 @@ func _ready() -> void:
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
-	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)))
+	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)), -1.0, "--camera")
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
 	print("Mode d'affichage : ", _display_name)
@@ -289,6 +289,9 @@ func _ready() -> void:
 	ipc.progression_received.connect(_on_progression)
 	ipc.profiles_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_profiles(msg)
+		_refresh_menu())
+	ipc.contents_received.connect(func(msg: Dictionary) -> void:
+		_run_menu_action(menu_flow.on_contents(msg))
 		_refresh_menu())
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
@@ -464,8 +467,7 @@ func _on_settings(msg: Dictionary) -> void:
 	var cam := str(menu_flow.settings.item("render.camera").get("value", ""))
 	if CameraViews.is_valid(cam):
 		if _camera_setting != "" and cam != _camera_setting and cam != camera_views.current:
-			camera_views.set_view(cam)
-			print("Vue de caméra : ", cam)
+			camera_views.set_view(cam, -1.0, "réglage render.camera")
 		_camera_setting = cam
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
@@ -559,16 +561,13 @@ func _camera_event(event_name: String) -> bool:
 	if event_name.begins_with("A_") and junction_view != null and junction_view.vm.is_visible():
 		return false
 	var now_s := Time.get_ticks_usec() / 1000000.0
-	var changed := false
 	match event_name:
 		"A_SHORT", "UP_SHORT":
-			changed = camera_views.next_view(now_s)
+			camera_views.next_view(now_s, event_name)
 		"DOWN_SHORT":
-			changed = camera_views.previous_view(now_s)
+			camera_views.previous_view(now_s, event_name)
 		"A_LONG":
-			changed = camera_views.reset_default(now_s)
-	if changed:
-		print("Vue de caméra : ", camera_views.current)
+			camera_views.reset_default(now_s, event_name)
 	return true
 
 
@@ -628,6 +627,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.start_plan(str(act["id"]), act.get("start_date", null))
 		"stop_plan":
 			ipc.stop_plan()
+		"create_plan":
+			ipc.create_plan(act["workouts"], act["days"], act.get("weeks", null))
 		"accept_ftp":
 			ipc.accept_ftp(bool(act.get("force", false)))
 		"create_workout":
@@ -659,6 +660,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("buy", {"item_id": str(act["item_id"])})
 		"set_avatar":
 			ipc.send_command("set_avatar", {"avatar": act["avatar"]})
+		"list_contents":   # contenus installables (lot O25, contrat 1.5)
+			ipc.send_command("list_contents", {})
+		"install_content":
+			ipc.send_command("install_content", {"id": str(act["id"])})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
 		"select_profile", "delete_profile":
@@ -852,6 +857,9 @@ func _process(delta: float) -> void:
 	_step_load_guard(delta)
 	var now := Time.get_ticks_usec()
 	_remember_camera_view(now / 1000000.0)
+	var camera_log: String = camera_views.log_line()   # tout changement de la vue affichée, quelle qu'en soit l'origine
+	if camera_log != "":
+		print(camera_log)
 	# Personnages et animaux (anim_clock.gd) : figés avec le décor quand le core ne répond plus.
 	if not banner.has_message("core_lost"):
 		AnimClock.advance(delta)
@@ -1106,7 +1114,7 @@ func _on_test_message(msg: Dictionary) -> void:
 		"menu_state":
 			ipc.test_log("menu_state " + JSON.stringify(_test_menu_state(str(msg.get("req", "")))))
 		"camera_view":   # vue de caméra imposée, sans transition (tour visuel, lot X21)
-			camera_views.set_view(str(msg.get("view", "")))
+			camera_views.set_view(str(msg.get("view", "")), -1.0, "message de test")
 			ipc.test_log("camera_view done=" + camera_views.effective())
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:

@@ -39,7 +39,7 @@ En-tête d'un scénario : `description`, `voies` (défaut : les trois), `apparei
 `config` ({clé: valeur} écrite dans config.toml avant le lancement), `entrainement` (vrai : `erg_court.zwo`
 dans ~/OpenRide/Workouts), `telechargements` ({fichier: nom de l'entraînement} dans ~/Téléchargements), `plans`
 (vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `fichiers` ({chemin dans le
-HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…).
+HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29).
 
 Rapport dans `--out` : `rapport.html` (tableau scénario × voie, vérifications, captures), `resultats.json`
 et `resume.txt`. Une capture est prise à chaque échec, avec l'état du menu. Code de sortie : 0 si toutes les
@@ -119,7 +119,7 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "duree_s", "ecran", "monde", "titre", "groupe", "contient", "absent", "focus", "elements", "statut", "edition",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "capture", "relancer", "delai", "voies", "note"}
-HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "etapes"}
+HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives", "etapes"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -138,6 +138,25 @@ def descendants(pid: int) -> list[int]:
             out.append(child)
             todo.append(child)
     return out[::-1]
+
+
+def write_archive(path: Path, members: dict[str, Any]) -> None:
+    """Archive `.zip` d'un scénario (`archives`) : `"@dossier": "chemin/du/dépôt"` y range ce dossier (sous son
+    nom), les autres clés sont des fichiers texte (ou JSON) qui remplacent ceux du dossier."""
+    import zipfile
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+        folder = members.get("@dossier")
+        texts = {k: v for k, v in members.items() if k != "@dossier"}
+        if folder:
+            src = ENGINE_DIR.parent / folder
+            for f in sorted(src.rglob("*")):
+                arc = f"{src.name}/{f.relative_to(src)}"
+                if f.is_file() and arc not in texts:
+                    zf.write(f, arc)
+        for arc, content in texts.items():
+            zf.writestr(arc, content if isinstance(content, str) else json.dumps(content, ensure_ascii=False))
 
 
 class ScenarioError(Exception):
@@ -428,6 +447,8 @@ class Run:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content if isinstance(content, str) else json.dumps(content, ensure_ascii=False),
                             encoding="utf-8")
+        for rel, members in doc.get("archives", {}).items():
+            write_archive(self.home / rel, members)
         self.state_port, self.cmd_port = free_udp_ports(2)
         self.config = self.tmp / "config.toml"
         self.config.write_text(f"[ipc]\nport_state = {self.state_port}\nport_commands = {self.cmd_port}\n"
