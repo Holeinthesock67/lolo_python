@@ -1,5 +1,10 @@
 # Lot O29 – Thèmes, packs de biomes et packs de parcours depuis « Réglages › Contenus »
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Thèmes, packs de biomes et packs de parcours depuis « Réglages › Contenus » : pack « Cols célèbres » construit et compilé avec avancement, archives `.zip` de Téléchargements, thèmes installés, place disque | Python + GDScript | O25, O16, U15 | Moyenne | Audit des options du 31 octobre, accepté par le propriétaire ; en PR (après O25) |
+
 ## 1. Objectif
 
 Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, §3.4 et §5), accepté par le propriétaire le 31 octobre : plus de `theme-install`, `theme-list`, `route-pack-install` ni `route-pack-build` à taper. Le lot complète l'écran « Réglages › Contenus » du lot O25 : même message `contents`, mêmes règles (jamais d'écrasement, une installation à la fois, hors séance).

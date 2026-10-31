@@ -1,5 +1,10 @@
 # Lot O7 – Bots à l'écran : silhouettes, écarts et choix au menu (facultatif pour la 1.0)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Bots à l'écran : silhouettes, écarts, choix au menu (facultatif pour la 1.0) | GDScript | N6, N9 | Moyenne | **Livré le 27 octobre** (interne, PR #407 ; essais Godot sur le PC à faire) |
+
 ## 1. Objectif
 
 Le lot N9 calcule dans le core des bots à puissance constante et un fantôme d'une séance passée, publiés dans le champ `bots` de la trame `state`. Rien ne les montre encore. Ce lot les affiche (silhouette sur la route, écart en secondes dans le HUD, position sur le profil d'altitude) et permet de les choisir au menu avant une séance. La SRS classe les bots en « optionnel » : la 1.0 peut sortir sans ce lot.

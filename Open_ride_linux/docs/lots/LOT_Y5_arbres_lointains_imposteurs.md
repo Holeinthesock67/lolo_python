@@ -1,5 +1,10 @@
 # Lot Y5 – Arbres lointains en imposteurs, écrits par nous
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Arbres lointains en imposteurs (notre propre version, sans extension), feuillage en alpha scissor | GDScript + shader | O1, Y2 | Moyenne | Oui (aspect validé par le propriétaire) ; issue #361 |
+
 ## 1. Objectif
 
 Série Y (fin de projet, `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §4, techniques T5 et T10). Aujourd'hui (`tree_renderer.gd`), un arbre est un modèle bas poly avec ombre jusqu'à 300 m (LOD 0), deux quadrilatères croisés sans ombre jusqu'à 1 500 m (LOD 1), puis plus rien : au-delà de 1,5 km, les forêts disparaissent alors que le brouillard ne se ferme qu'à 4, 6 ou 9 km (Y1). Ce lot ajoute un troisième niveau :

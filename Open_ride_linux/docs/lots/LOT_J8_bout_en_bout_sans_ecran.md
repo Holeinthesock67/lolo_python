@@ -1,5 +1,10 @@
 # Lot J8 – Essai de bout en bout sans écran : vrai core et vrai engine
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Essai de bout en bout sans écran : vrai core et vrai engine | Bash + Python | J5 (`openride.yml`) | Moyenne | **Livré le 23 octobre** (fait directement) |
+
 ## 1. Objectif
 
 Les tests actuels vérifient chaque programme face à une doublure : l'engine face à `engine/tests/fake_core.py`, le core face à de faux clients UDP. Aucun test ne fait dialoguer **le vrai core et le vrai engine** (audit J, recommandation J-R1). Une dérive entre `fake_core.py` et `ipc_server.py`, ou une régression d'intégration comme celle du 23 octobre, passerait inaperçue jusqu'à l'essai sur le PC.

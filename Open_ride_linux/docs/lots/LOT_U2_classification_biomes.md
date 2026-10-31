@@ -1,5 +1,10 @@
 # Lot U2 – Compilateur : classification des biomes (WorldCover en cache, OSM, altitude, latitude) et option `--biome`
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Compilateur : classification des biomes (WorldCover en cache, OSM, altitude, latitude), option `--biome` | Python | U1 | Grande | Oui, après U1, **version 3.0** (issue #332) |
+
 ## 1. Objectif
 
 **Version 3.0.** Écrire la couche `biome` du contrat U1 pour chaque parcours compilé : poids des biomes sur la grille 17 × 17 de chaque tuile, à partir de l'occupation du sol ESA WorldCover (10 m), des couches OSM, de l'altitude et d'une zone climatique approchée par la latitude ; ou un biome imposé à tout le parcours par `--biome`.

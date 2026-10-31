@@ -1,5 +1,10 @@
 # Lot T10 – Menu : records par parcours et option bonus
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : menu, écran « Records » par parcours et option « Bonus » | GDScript | T5, N6 (livrés) ; T7 | Moyenne | Non : interne (menu) ; **codé le 27 octobre** (issue #400) ; tests Godot à passer sur le PC, validation à la recette T11 |
+
 ## 1. Objectif
 
 Dans le menu de l'engine : un écran « Records » par parcours (pour chaque segment, les 10 meilleurs temps avec leur date, tables « sans bonus » et « avec bonus ») et l'option « Bonus » (oui ou non) dans les réglages. Décision du 27 octobre : **code d'abord, sans maquette**, validation à la recette T11.

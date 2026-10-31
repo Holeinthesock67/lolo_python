@@ -191,7 +191,7 @@ def cmd_install(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m openride_core.tools.workouts",
-        description="Outils de gestion et vérification des entraînements ERG (.zwo, .erg, .mrc).",
+        description="Outils de gestion et vérification des entraînements ERG (.zwo, .erg, .mrc, .qwk).",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -203,8 +203,8 @@ def main(argv: list[str] | None = None) -> int:
         help=f"Dossier des entraînements (défaut : {WORKOUTS_DIR})",
     )
 
-    p_check = sub.add_parser("check", help="valide et détaille un fichier .zwo, .erg ou .mrc")
-    p_check.add_argument("file", type=Path, help="Fichier .zwo, .erg ou .mrc à vérifier")
+    p_check = sub.add_parser("check", help="valide et détaille un fichier .zwo, .erg, .mrc ou .qwk")
+    p_check.add_argument("file", type=Path, help="Fichier .zwo, .erg, .mrc ou .qwk à vérifier")
     p_check.add_argument("--ftp", type=float, default=None, help="FTP en watts (défaut : config.toml)")
 
     p_install = sub.add_parser("install", help="copie la bibliothèque d'entraînements de référence")

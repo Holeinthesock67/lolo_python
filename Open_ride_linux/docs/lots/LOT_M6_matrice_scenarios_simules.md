@@ -1,5 +1,10 @@
 # Lot M6 – Recette sans matériel : chaque scénario simulé joué en séance complète
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Recette sans matériel : chaque scénario simulé joué en séance complète | Python | — | Petite | **Livré le 24 octobre** (issue #83) |
+
 ## 1. Objectif
 
 `test_ble_sim.py` teste les comportements du simulateur par de courts cas isolés, et une seule séance `CoreSession` complète. Les sept scénarios intégrés (`demo`, `nominal`, `reveil_tardif`, `erreur_0x80`, `connexions_retardees`, `coupures`, `controle_refuse`) ne sont jamais joués **de bout en bout** avec la vraie boucle de séance, le journal et l'export FIT. Ce lot ajoute cette matrice : chaque scénario donne une séance dont on vérifie les invariants (pas de plantage, FIT valide, relâche du trainer, état final attendu).

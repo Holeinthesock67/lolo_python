@@ -79,6 +79,7 @@ GOLDEN_MASKS = ("status", "distance", "time", "erg_remaining", "chart_sim", "cha
 FREEZE_SETTLE_S = 8.0             # --fige : attente du chargement complet des tuiles et du décor avant la vue fixe
 ROUTE_TIMEOUT_S = 20.0
 SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
+PENDING_RETRIES = 15              # scènes de référence : captures reprises (1 s d'écart) tant que des tuiles manquent
 SPEED_MPS = 8.0
 # Scènes reproductibles (s fixé, rien ne bouge) : les seules comparées aux images de référence.
 # Records de la scène « records » : la montée a deux temps sans bonus et un avec bonus, le sprint aucun.
@@ -370,14 +371,27 @@ class Session:
 
     def capture(self, scene: str) -> tuple[Image, dict[str, Any]] | None:
         png = self.out_dir / f"{self.name}_{scene}.png"
-        mark = self.core.log.mark()
-        self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
-                            "path": str(png), "tag": scene})
-        hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0, mark)
+        # Scène de référence : capture reprise tant que des tuiles voulues manquent (`streaming_pending`, comme le
+        # tour visuel X21). Une attente fixe ne suffisait pas : `vue_fixe` en low sur le PC (31 octobre) sortait
+        # sans terrain ni arbres, sol brun et personnage en l'air, et la SSIM variait d'un passage à l'autre.
+        tries = PENDING_RETRIES if scene in GOLDEN_SCENES else 1
+        for attempt in range(tries):
+            mark = self.core.log.mark()
+            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
+                                "path": str(png), "tag": scene})
+            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0, mark)
+            if hit is None or int(json.loads(hit[1].group(1)).get("streaming_pending", 0)) == 0:
+                break
+            if attempt < tries - 1:
+                time.sleep(1.0)
         if not self.check(scene, "capture enregistrée", hit is not None and png.exists(),
                           "" if hit else "aucune ligne « screenshot » dans le journal de l'engine"):
             return None
         info = json.loads(hit[1].group(1))
+        if scene in GOLDEN_SCENES:
+            pending = int(info.get("streaming_pending", 0))
+            self.check(scene, "tuiles du terrain toutes affichées", pending == 0,
+                       f"{pending} tuile(s) encore en attente après {tries} capture(s)")
         img = read_png(png)
         cap = Capture(self.name, scene, png, info)
         self.report.captures.append(cap)
@@ -974,6 +988,8 @@ def _scenes(s: Session) -> None:
         s.check_texts("pause", info, {"menu_title": "Pause", "menu": "[Reprendre] | Terminer et enregistrer"}, contains=True)
         s.check_texts("pause", info, {"menu": "Trainer perdu : reconnexion en cours…"}, contains=True)
         s.check("pause", "HUD de séance caché derrière le menu", not info["widgets"]["power"]["visible"])
+        s.check_texts("pause", info, {"menu": "Séance en cours"}, contains=True)
+        s.check_texts("pause", info, {"menu": "Puissance moy."}, contains=True)
         s.check_layout("pause", info)
     _confirmation_scene(s)
 

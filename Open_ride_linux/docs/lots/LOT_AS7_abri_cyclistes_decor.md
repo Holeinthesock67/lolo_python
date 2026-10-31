@@ -1,5 +1,10 @@
 # Lot AS7 – Abri derrière les groupes de cyclistes du décor
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série AS : groupes de cyclistes du décor calculés par le core et sources d'abri | Python + GDScript | AS2, AS6 (AS4 conseillé) | Grande | Prêt (version 2.0) |
+
 Série AS, version 2.0. Demande du propriétaire du 29 octobre 2026 (« abri derrière véhicules ou groupes à intégrer »).
 
 ## 1. Objectif

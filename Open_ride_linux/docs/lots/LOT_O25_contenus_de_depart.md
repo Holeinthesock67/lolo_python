@@ -1,5 +1,10 @@
 # Lot O25 – Contenus de départ sans terminal : premier lancement et « Réglages › Contenus »
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Contenus de départ sans terminal : entraînements, deux plans et parcours de démonstration installés au premier lancement, écran « Réglages › Contenus », message de bienvenue réécrit (contrat 1.5 : `list_contents`, `install_content`, `contents`) | Python + GDScript | O11, O16, U19 (livrés) | Petite | Audit des options du 31 octobre, accepté par le propriétaire ; en PR |
+
 ## 1. Objectif
 
 Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, §6.2), accepté par le propriétaire le 31 octobre : le joueur ne tape plus aucune commande pour avoir des entraînements, des plans et des parcours. Au premier lancement, tout ce qui est livré avec OpenRide et ne demande aucun téléchargement s'installe seul ; sur une installation existante, la même action est dans le menu. Le message de bienvenue ne renvoie plus vers `openride-core devices --save`.
