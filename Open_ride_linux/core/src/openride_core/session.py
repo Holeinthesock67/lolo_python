@@ -49,7 +49,7 @@ from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
 from .records import RecordBook, RecordsError
 from .recorder import SessionRecorder
-from .resume import ResumeError, ResumeState, load_resume_state
+from .resume import ResumeError, ResumeState, close_interrupted, interrupted_sessions, load_resume_state
 from .rogue import mode as rogue_mode
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
@@ -350,6 +350,7 @@ class CoreSession:
         self.active_profile_path: Path | None = None   # None : ~/OpenRide/.profil_actif
         self._last_create: tuple[int, Any] | None = None   # dernier create_profile traité (copies ignorées)
         self._publish_profile()
+        self._resumed_journal: Path | None = None   # journal repris par `--resume`, jamais proposé (lot O34)
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -493,6 +494,8 @@ class CoreSession:
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in PROFILE_COMMANDS:
             self._on_profile_command(name, args if isinstance(args, dict) else {}, cmd_id)
+        elif name == "recover_session":
+            self._recover_session(args if isinstance(args, dict) else {}, cmd_id)
 
     # --- profils de joueurs (série MJ, lot MJ7, contrat IPC révision 1.5) ------------------------
 
@@ -626,10 +629,47 @@ class CoreSession:
 
     def _send_profile_reload(self, cmd_id: int) -> None:
         self._publish_profile()
+        self._publish_interrupted()
         self.server.send_hello_ack(self.server.hello_config)
         self._send_settings(cmd_id)
         if self.progress_svc.enabled and self.progress_svc.progression_dict() is not None:
             self.server.send_raw(self.progress_svc.progression_message(cmd_id))
+
+    # --- séance interrompue d'un lancement précédent (lot O34, contrat IPC révision 1.5) -------------
+
+    def _publish_interrupted(self) -> None:
+        """`hello_ack.config.interrupted` : séances interrompues du profil sans FIT (absent s'il n'y en a pas)."""
+        items = interrupted_sessions(self.journal_dir, skip=self._resumed_journal)
+        if items:
+            self.server.hello_config["interrupted"] = items
+        else:
+            self.server.hello_config.pop("interrupted", None)
+
+    def _recover_session(self, args: dict, cmd_id: int) -> None:
+        """`recover_session` : enregistre (FIT) ou non une séance interrompue, puis la retire de la liste ;
+        réponse `interrupted`. Hors séance seulement, comme les profils."""
+        if self.state.session_state not in ("IDLE", "READY", "FINISHED", "ERROR"):
+            self.server.send_error("busy", "Séance interrompue : à traiter hors séance.")
+            return
+        known = [it["id"] for it in self.server.hello_config.get("interrupted", [])]
+        sid, save = args.get("id"), args.get("save")
+        if sid not in known or not isinstance(save, bool):
+            self.server.send_error("bad_args", "recover_session : 'id' d'une séance proposée et 'save' booléen")
+            return
+        try:
+            fit = close_interrupted(self.journal_dir / sid, save)
+        except ResumeError as exc:
+            self.server.send_error("bad_args", str(exc))
+            return
+        except (OSError, ValueError) as exc:
+            log.error("Séance interrompue %s non enregistrée : %s", sid, exc)
+            self.server.send_error("recording_failed", f"Séance non enregistrée : {exc}")
+            return
+        log.info("Séance interrompue %s %s.", sid, f"enregistrée : {fit}" if fit else "terminée sans FIT")
+        self._publish_interrupted()
+        self.server.send_raw({"type": "interrupted", "v": 1, "request_cmd_id": cmd_id, "id": sid, "saved": fit is not None,
+                              "fit_path": str(fit) if fit else None,
+                              "items": self.server.hello_config.get("interrupted", [])})
 
     def _note_profile(self) -> None:
         """`.profil_actif` pour le lanceur ; `[profils] dernier` pour un profil de joueur seulement."""
@@ -2263,6 +2303,8 @@ class CoreSession:
         # W' estimé (lot R16) : attendu au plus 3 s avant d'ouvrir les ports, pour être dans le premier hello_ack ;
         # au-delà, il arrive au hello_ack suivant (engine relancé ou reconnecté).
         await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
+        self._resumed_journal = resume
+        self._publish_interrupted()   # lot O34 : dans le premier hello_ack
         self.server.start()
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
                  for p in self._services() if hasattr(p, "run")]  # trainer prioritaire

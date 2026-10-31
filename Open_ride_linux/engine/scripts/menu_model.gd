@@ -125,6 +125,15 @@ var garage := false
 ## titre de l'accueil (« OpenRide — Cycliste A »).
 var profile_label := ""
 var home_title := "OpenRide"
+## Séance interrompue d'un lancement précédent (lot O34) : ligne en tête de l'accueil ("" : aucune).
+var interrupted_label := ""
+var interrupted_detail := ""
+
+
+func set_interrupted(label: String, detail: String) -> void:
+	interrupted_label = label
+	interrupted_detail = detail
+	_refresh_home()
 
 
 func set_profile(label: String, title: String) -> void:
@@ -158,6 +167,8 @@ func _refresh_home() -> void:
 	var items := [_item("world", "Parcours : " + world)]
 	if profile_label != "":
 		items.push_front(_item("profile", profile_label))
+	if interrupted_label != "":
+		items.push_front(_item("interrupted", interrupted_label, true, interrupted_detail))
 	_screens[HOME]["title"] = home_title
 	for m in HOME_MODES:
 		if m in modes:
@@ -567,7 +578,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "rogue", "garage", "profile":
+				"plan", "ftp", "rogue", "garage", "profile", "interrupted":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID]:

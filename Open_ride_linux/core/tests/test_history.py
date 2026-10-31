@@ -100,7 +100,7 @@ def test_history_deduplicates_fit_and_marks_orphan_journal(tmp_path: Path, monke
     assert core_main(["history", "--dir", str(act), "--ftp", "250"]) == 0
     out_lines = [ln for ln in capsys.readouterr().out.splitlines() if ln and not ln.startswith(("Cumul", "  "))]
     assert len(out_lines) == 4
-    assert "à récupérer : openride-core recover" in out_lines[0]
+    assert "à récupérer : proposée à l'accueil" in out_lines[0]
 
 
 def test_weekly_iso_rollup_matches_summary_totals(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

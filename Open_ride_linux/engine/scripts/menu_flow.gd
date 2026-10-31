@@ -67,6 +67,9 @@ const WORKOUT_IMPORT := "workout_import"
 const PLANS := "plans"
 const PLAN := "plan"
 const FTP_TEST := "ftp_test"
+## Séance interrompue d'un lancement précédent (lot O34) : ligne en tête de l'accueil, écran « Enregistrer » ou
+## « Ne pas l'enregistrer » (confirmé), commande recover_session ; liste dans hello_ack.config.interrupted.
+const INTERRUPTED := "interrupted"
 ## Records du parcours (série T, lot T10) : liste des segments, puis table d'un segment.
 const RECORDS := "records"
 const RECORD_TABLE := "record_table"
@@ -129,6 +132,9 @@ var _focus_workout := ""
 ## répond à chaque copie renvoyée d'une commande, une seule réponse compte.
 var _workout_request := ""
 var _last_saved_cmd_id := -1
+## Séances interrompues proposées (`hello_ack.config.interrupted`, puis réponse `interrupted`) et ligne d'état.
+var interrupted: Array = []
+var interrupted_message := ""
 ## Dernière réponse `plans` du core ({} avant la première) ; plan affiché sur l'écran d'un plan.
 var plans: Dictionary = {}
 var _plan_shown := ""
@@ -180,6 +186,7 @@ func _init() -> void:
 	menu.add_screen({"id": PLAN, "title": "Plan", "on_back": PLANS, "items": []})
 	menu.add_screen({"id": FTP_TEST, "title": "Test de FTP", "on_back": MenuModel.HOME, "items": []})
 	_refresh_ftp_test()
+	menu.add_screen({"id": INTERRUPTED, "title": "Séance interrompue", "on_back": MenuModel.HOME, "items": []})
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
 	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
@@ -381,6 +388,9 @@ func on_error(code: String, text: String) -> void:
 	if menu.current_screen() in GarageViewModel.SCREENS and garage.on_error(code, text):
 		_refresh_garage()
 		return
+	if menu.current_screen() == INTERRUPTED and code in ["bad_args", "busy", "recording_failed"]:
+		interrupted_message = "Échec : " + text
+		return
 	if menu.current_screen() in ProfilesViewModel.SCREENS and profiles.on_error(code, text):
 		_refresh_profiles()
 		return
@@ -432,6 +442,7 @@ func set_routes(raw: Array) -> void:
 			route_names[str(r["id"])] = str(r.get("name", r["id"]))
 	if menu.world_id != "" and route_names.has(menu.world_id):
 		menu.set_world(menu.world_id, route_names[menu.world_id])
+	_refresh_interrupted()   # nom du parcours de la séance interrompue
 
 
 func set_workouts(raw: Array) -> void:
@@ -815,6 +826,8 @@ func handle(event: String) -> Dictionary:
 	if not is_visible():
 		return {}
 	ready_message = ""
+	if menu.current_screen() == MenuModel.HOME:
+		interrupted_message = ""   # résultat de recover_session : affiché jusqu'à l'appui suivant
 	if not settings.editing.is_empty():
 		if menu.current_screen() in [SETTING_EDIT, MenuModel.PAUSE, SETTINGS_GROUP, WORKOUT_CREATE]:
 			return _handle_edit(event)
@@ -856,7 +869,14 @@ func handle(event: String) -> Dictionary:
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") in ProfilesViewModel.SCREENS:
 		return _handle_profiles(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") == INTERRUPTED:
+		return _handle_interrupted(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME:
+		if str(act["id"]) == "interrupted":
+			interrupted_message = ""
+			_refresh_interrupted()
+			menu.push_screen(INTERRUPTED)
+			return {}
 		if str(act["id"]) == "profile":
 			profiles.message = ""
 			_refresh_profiles()
@@ -980,6 +1000,67 @@ func handle(event: String) -> Dictionary:
 				show_details = not show_details
 				return {}
 	return act
+
+
+# --- séance interrompue d'un lancement précédent (lot O34) ---------------------------------------
+
+## Liste `hello_ack.config.interrupted` (absente : aucune séance à rattraper).
+func on_hello_interrupted(list) -> void:
+	interrupted = list.duplicate() if list is Array else []
+	_refresh_interrupted()
+
+
+## Réponse `interrupted` à recover_session : séance traitée, séances restantes ; plus aucune : retour à l'accueil.
+func on_interrupted(msg: Dictionary) -> void:
+	var rest = msg.get("items", [])
+	interrupted = rest.duplicate() if rest is Array else []
+	interrupted_message = "Séance enregistrée dans tes séances" if bool(msg.get("saved", false)) \
+		else "Séance non enregistrée"
+	_refresh_interrupted()
+	if interrupted.is_empty() and menu.current_screen() in [INTERRUPTED, MenuModel.CONFIRM]:
+		menu.open_screen(MenuModel.HOME)
+
+
+## Ligne de l'accueil et écran de la plus récente : date, parcours, distance, durée.
+func _refresh_interrupted() -> void:
+	if interrupted.is_empty() or not interrupted[0] is Dictionary:
+		menu.set_interrupted("", "")
+		menu.set_screen_items(INTERRUPTED, [{"id": "none", "label": "Aucune séance à rattraper", "enabled": false}])
+		return
+	var detail := interrupted_detail(interrupted[0], route_names)
+	var more := interrupted.size() - 1
+	menu.set_interrupted("Séance interrompue à enregistrer" + ("" if more == 0 else " (+%d)" % more), detail)
+	menu.set_screen_items(INTERRUPTED, [
+		{"id": "save", "label": "Enregistrer la séance", "detail": detail},
+		{"id": "discard", "label": "Ne pas l'enregistrer"}])
+
+
+## « 30/10 à 18:05 · Vosges · 12,3 km · 32 min » d'un élément {start, route_id, distance_m, duration_s}.
+static func interrupted_detail(item: Dictionary, names: Dictionary) -> String:
+	var start := str(item.get("start", ""))
+	var parts: Array = []
+	if start.length() >= 16:
+		parts.append("%s/%s à %s" % [start.substr(8, 2), start.substr(5, 2), start.substr(11, 5)])
+	var rid = item.get("route_id")
+	if rid != null and str(rid) != "":
+		parts.append(str(names.get(str(rid), rid)))
+	parts.append(("%.1f km" % (float(item.get("distance_m", 0.0)) / 1000.0)).replace(".", ","))
+	parts.append("%d min" % int(round(float(item.get("duration_s", 0.0)) / 60.0)))
+	return " · ".join(parts)
+
+
+func _handle_interrupted(item_id: String) -> Dictionary:
+	if interrupted.is_empty():
+		return {}
+	var sid := str(interrupted[0].get("id", ""))
+	interrupted_message = ""
+	if item_id == "save":
+		interrupted_message = "Enregistrement…"
+		return {"action": "recover_session", "id": sid, "save": true}
+	if item_id == "discard":
+		menu.confirm("Ne pas enregistrer cette séance ? Elle ne sera plus proposée",
+			{"action": "recover_session", "id": sid, "save": false})
+	return {}
 
 
 ## Écran de départ du Cyber-Rogue (lot R13) : les trois premiers éléments font défiler leur valeur, « Lancer »
@@ -1344,6 +1425,8 @@ func state() -> Dictionary:
 		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
 	elif st["screen"] in GarageViewModel.SCREENS:
 		st["status"] = garage.message
+	elif st["screen"] in [INTERRUPTED, MenuModel.HOME]:
+		st["status"] = interrupted_message
 	elif st["screen"] in ProfilesViewModel.SCREENS:
 		st["status"] = profiles.message
 		st["status_error"] = profiles.message.begins_with("Nom refusé") or profiles.message.begins_with("Nom vide")

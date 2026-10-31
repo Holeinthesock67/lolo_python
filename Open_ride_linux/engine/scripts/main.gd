@@ -289,6 +289,9 @@ func _ready() -> void:
 	ipc.profiles_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_profiles(msg)
 		_refresh_menu())
+	ipc.interrupted_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_interrupted(msg)
+		_refresh_menu())
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
 	ipc.core_lost.connect(_on_core_lost)
@@ -660,6 +663,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command(name, {"id": str(act["id"])})
 		"create_profile":
 			ipc.send_command("create_profile", {"name": str(act["name"])})
+		"recover_session":   # séance interrompue d'un lancement précédent (lot O34)
+			ipc.send_command("recover_session", {"id": str(act["id"]), "save": bool(act["save"])})
 		"rename_profile":
 			ipc.send_command("rename_profile", {"id": str(act["id"]), "name": str(act["name"])})
 
@@ -1424,6 +1429,7 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		chart_mode = ch
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
+	menu_flow.on_hello_interrupted(ipc.core_config.get("interrupted"))   # lot O34
 	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
 	menu_flow.set_versions(ipc.engine_version, ipc.core_version)
 

@@ -242,7 +242,15 @@ class Config:
 
 
 class ConfigError(Exception):
-    """Configuration invalide ; le message est lisible par l'utilisateur."""
+    """Configuration invalide ; le message est lisible par l'utilisateur.
+
+    `section` et `key` désignent la valeur fautive quand elle est connue, `path` le fichier illisible
+    (TOML mal formé) : le lanceur propose alors de remettre la valeur par défaut (lot O34, `config_repair`)."""
+
+    def __init__(self, message: str, *, section: str | None = None, key: str | None = None,
+                 path: Path | None = None) -> None:
+        super().__init__(message)
+        self.section, self.key, self.path = section, key, path
 
 
 # Bornes (inclusives) des valeurs numériques : (section, clé) -> (minimum, maximum).
@@ -409,7 +417,10 @@ def _merge(dc: Any, data: dict[str, Any], source: str = "config.toml", section: 
                 raise ConfigError(f"{source}, [{f.name}] : section attendue, reçu {value!r}")
             _merge(current, value, source, f.name)
         else:
-            setattr(dc, f.name, _convert(current, value, f"{source}, [{section}] {f.name}"))
+            try:
+                setattr(dc, f.name, _convert(current, value, f"{source}, [{section}] {f.name}"))
+            except ConfigError as exc:
+                raise ConfigError(str(exc), section=section, key=f.name) from None
     if section == "trainer" and "grade_rate_pct_per_s" in data:
         if "grade_rate_up_pct_per_s" not in data and "grade_rate_down_pct_per_s" not in data:
             log.warning(
@@ -427,32 +438,39 @@ def validate(cfg: Config, source: str = "config.toml") -> Config:
     for (sec, key), (lo, hi) in BOUNDS.items():
         value = getattr(getattr(cfg, sec), key)
         if not lo <= value <= hi:
-            raise ConfigError(f"{source}, [{sec}] {key} : {value:g} hors de {lo:g} à {hi:g}")
+            raise ConfigError(f"{source}, [{sec}] {key} : {value:g} hors de {lo:g} à {hi:g}", section=sec, key=key)
     for (sec, key), allowed in CHOICES.items():
         value = getattr(getattr(cfg, sec), key)
         if value not in allowed:
-            raise ConfigError(f"{source}, [{sec}] {key} : {value!r} n'est pas parmi {', '.join(allowed)}")
+            raise ConfigError(f"{source}, [{sec}] {key} : {value!r} n'est pas parmi {', '.join(allowed)}",
+                              section=sec, key=key)
     for sec, key in ADDRESS_KEYS:
         value = getattr(getattr(cfg, sec), key)
         if value and not ADDRESS_RE.match(value):
             raise ConfigError(f"{source}, [{sec}] {key} : adresse Bluetooth {value!r} mal formée "
-                              "(attendu AA:BB:CC:DD:EE:FF)")
+                              "(attendu AA:BB:CC:DD:EE:FF)", section=sec, key=key)
     g, t, ipc = cfg.gearing, cfg.trainer, cfg.ipc
     if not 1 <= g.start_gear <= g.n_gears:
-        raise ConfigError(f"{source}, [gearing] start_gear : {g.start_gear} hors de 1 à n_gears ({g.n_gears})")
+        raise ConfigError(f"{source}, [gearing] start_gear : {g.start_gear} hors de 1 à n_gears ({g.n_gears})",
+                          section="gearing", key="start_gear")
     if g.ratio_min >= g.ratio_max:
-        raise ConfigError(f"{source}, [gearing] ratio_min : doit être inférieur à ratio_max")
+        raise ConfigError(f"{source}, [gearing] ratio_min : doit être inférieur à ratio_max",
+                          section="gearing", key="ratio_min")
     if t.grade_min_pct >= t.grade_max_pct:
-        raise ConfigError(f"{source}, [trainer] grade_min_pct : doit être inférieur à grade_max_pct")
+        raise ConfigError(f"{source}, [trainer] grade_min_pct : doit être inférieur à grade_max_pct",
+                          section="trainer", key="grade_min_pct")
     ow = cfg.open_world
     if not ow.cache_dir.strip():
-        raise ConfigError(f"{source}, [open_world] cache_dir : dossier vide")
+        raise ConfigError(f"{source}, [open_world] cache_dir : dossier vide", section="open_world", key="cache_dir")
     if ow.lock_m >= ow.offer_m:
-        raise ConfigError(f"{source}, [open_world] lock_m : doit être inférieur à offer_m")
+        raise ConfigError(f"{source}, [open_world] lock_m : doit être inférieur à offer_m",
+                          section="open_world", key="lock_m")
     if ow.preview_m > ow.horizon_m:
-        raise ConfigError(f"{source}, [open_world] preview_m : ne doit pas dépasser horizon_m")
+        raise ConfigError(f"{source}, [open_world] preview_m : ne doit pas dépasser horizon_m",
+                          section="open_world", key="preview_m")
     if ipc.port_state == ipc.port_commands:
-        raise ConfigError(f"{source}, [ipc] port_commands : doit différer de port_state")
+        raise ConfigError(f"{source}, [ipc] port_commands : doit différer de port_state",
+                          section="ipc", key="port_commands")
     return cfg
 
 
@@ -475,7 +493,7 @@ def _read(path: Path) -> dict[str, Any]:
         with path.open("rb") as fh:
             return tomllib.load(fh)
     except tomllib.TOMLDecodeError as exc:
-        raise ConfigError(f"{path} : TOML invalide : {exc}") from None
+        raise ConfigError(f"{path} : TOML invalide : {exc}", path=path) from None
     except OSError as exc:
         raise ConfigError(f"{path} : lecture impossible : {exc}") from None
 
