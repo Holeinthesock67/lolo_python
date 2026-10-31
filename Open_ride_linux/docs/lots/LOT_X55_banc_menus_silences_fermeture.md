@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : toutes les attentes du banc des menus tolèrent les silences de l'engine ; étapes de la fermeture de l'engine datées dans le journal | Python, GDScript | N13 | Petite | Passage du banc sur le PC à faire (branche `claude/project-thread-svx7ij`) |
+| Série X (outils de test) : toutes les attentes du banc des menus tolèrent les silences de l'engine ; étapes de la fermeture de l'engine datées dans le journal | Python, GDScript | N13 | Petite | **Livré le 31 octobre** (PR #680) ; cause du blocage de Godot à la souris à trouver après la 1.0 |
 
 ## 1. Objectif
 
@@ -51,6 +51,15 @@ Premier essai (8297eff9), abandonné : curseur remis en flèche et survol coupé
 | --- | --- |
 | X55-5 | La dernière ligne de l'engine donne le code de sortie : « Fermeture : scène libérée, arrêt des serveurs de Godot (code N) ». À ce moment, tout le travail du jeu est fait (séance, `bye` au core, fichiers fermés). Le lanceur (`launcher.py`, `ENGINE_DONE`, `ENGINE_SHUTDOWN_S` = 3 s) : si Godot ne sort pas 3 s après cette ligne, il arrête le processus et retient le code annoncé ; 0 ferme OpenRide, 64 et 65 relancent comme d'habitude, sans compter de plantage. Le banc des menus applique la même règle à l'étape `sortie` et le note (INFO « arrêt de Godot bloqué… », avec les fils de Godot). |
 
-Ce n'est pas la correction de la cause, qui reste dans l'arrêt de Godot ou du pilote NVIDIA. Prochaine mesure : la pile `gdb` (`thread apply all bt`) du processus bloqué, prise par le fil de fusion après 7cr-bis ; selon le fil en cause, rapport à Godot ou réglage du pilote.
+Ce n'est pas la correction de la cause, qui reste dans l'arrêt de Godot ou du pilote NVIDIA (voir « Livraison »).
 
 Écarté : une sortie forcée depuis l'engine (un fil GDScript ne survit pas à l'arrêt des langages de script, qui précède celui du rendu) ; `OS.kill` sur soi-même, qui perd le code de sortie.
+
+## Livraison
+
+Livré le 31 octobre 2026 (PR #680, branche `claude/project-thread-svx7ij`).
+
+- PC, 7cs-5 sur 0921c015, en natif : `quitter` OK sur les deux voies. Souris : code 0, avec l'INFO « arrêt de Godot bloqué… processus arrêté après 3 s » ; Click : sortie en 0,8 s. `appareils` OK au Click et à la souris depuis 7cs.
+- Cloud : banc des menus `--rotation` OK ; `test_launcher.py` (Godot bloqué après sa ligne de fin, codes 0 et 64).
+
+**Cause non résolue, à reprendre après la 1.0.** En natif sur le PC (GTX 1060, pilote NVIDIA, Vulkan), quand on quitte à la souris, l'arrêt de Godot reste bloqué une fois la scène libérée. Tous les fils attendent, ceux du pilote compris. Le cas est reproductible (3 fois sur 3), sans lien avec la forme du curseur, et n'arrive ni sous Xvfb ni au Click. Il faut une pile `gdb -p PID -batch -ex "thread apply all bt"` du processus bloqué : ptrace est refusé sans `sudo` (Yama), donc à prendre avec `sudo`, ou en lançant Godot sous gdb. Selon le fil en cause : rapport à Godot, réglage du pilote, ou retrait du contournement X55-5.
