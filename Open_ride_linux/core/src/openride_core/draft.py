@@ -4,8 +4,11 @@ Module pur (aucune E/S), en une dimension le long de la route, d'après les mesu
 et en simulation numérique de Blocken et coll. (2013 à 2018) :
 - courbe exponentielle `α = ALPHA_MAX · exp(−(gap − GAP_MIN_M) / DECAY_M)`, coupée à 0 au-delà de
   `GAP_CUTOFF_M` et devant le bot ; il reste un abri résiduel de quelques pour cent jusqu'à 10 m ;
-- effet de file : derrière des bots espacés de moins de `LINE_GAP_M`, l'abri croît avec le rang
-  (`LINE_FACTORS`), plafonné à `ALPHA_CAP` (0,45, SRS §5) ;
+- abri de groupe (lot AS4, remplace l'effet de file de P3) : chaque coureur devant à moins de 15 m et à
+  moins de `GROUP_SIDE_M` sur le côté donne un abri `α_i` ; l'abri total vaut `1 − Π(1 − k_i·α_i)`, `k_i`
+  = 1 pour la source la plus forte, `K_GROUP` pour les autres, `K_LINE` pour une source cachée derrière
+  un coureur plus proche sur sa ligne ; plafonné à `ALPHA_GROUP_CAP` (0,55, décision du propriétaire du
+  29 octobre ; jusqu'à 90 % au cœur d'un grand peloton chez Blocken et coll., 2018) ;
 - vent de travers : l'abri baisse avec l'angle du vent apparent, jusqu'à − 50 % à 45° ;
 - poussée vers l'avant : un bot suivi de près gagne `PUSH_FROM_BEHIND` de résistance en moins ;
 - le fantôme n'abrite pas (décision du propriétaire du 25 octobre) : seuls les bots `constant` comptent ;
@@ -32,13 +35,10 @@ from dataclasses import dataclass
 from typing import Any, NamedTuple
 
 ALPHA_MAX = 0.40          # roue dans la roue
-ALPHA_CAP = 0.45          # plafond de la SRS §5, file comprise
 GAP_MIN_M = 0.3
 DECAY_M = 4.0
 GAP_CUTOFF_M = 15.0
 BIKE_LENGTH_M = 1.7       # d'un axe à l'autre plus les demi-roues : écart s entre deux vélos collés
-LINE_GAP_M = 3.0          # écart maximal entre deux bots d'une même file
-LINE_FACTORS = (1.00, 1.12, 1.18)   # derrière un, deux, trois bots ou plus
 CROSSWIND_FULL_DEG = 45.0
 CROSSWIND_MAX_LOSS = 0.5
 PUSH_FROM_BEHIND = 0.025  # résistance aérodynamique en moins pour un bot suivi à moins de 1 m
@@ -48,6 +48,15 @@ SMOOTH_TAU_S = 1.0        # lissage de l'abri ressenti
 SMOOTH_MIN_RATE = 0.1     # vitesse minimale de la fin du lissage (par seconde)
 WHEEL_GAP_M = 3.0         # lot AS1 : un bot à profil à moins de 3 m derrière un coureur prend sa roue
 RIDER_ID = "rider"
+
+# Lot AS4 : abri dans un groupe (constantes à recaler sur les mesures publiées)
+ALPHA_GROUP_CAP = 0.55    # plafond au cœur d'un groupe (SRS §5)
+GROUP_SIDE_M = 1.5        # au-delà de 1,5 m sur le côté, une source ne compte pas
+K_GROUP = 0.6             # part de l'abri d'une source après la plus forte, sur une autre ligne
+K_LINE = 0.3              # même chose cachée derrière un coureur plus proche : file de P3 à ±0,02 (1,12, 1,18)
+FLANK_ALPHA = 0.05        # coureur côte à côte (roues qui se chevauchent) : un peu d'abri de flanc
+CDA_REF_M2 = 0.32         # CdA de référence (PhysicsParams.cda_m2 par défaut)
+SIZE_MIN, SIZE_MAX = 0.85, 1.15   # gabarit : abri × (CdA_source / CdA_réf)^0,5, borné
 
 # Lot AS2 : position sur la route, écart à l'axe positif à droite (constantes de voie de road_builder.gd, lot P32)
 LATERAL_FULL_M = 0.3      # abri entier jusqu'à 0,3 m d'écart latéral
@@ -99,6 +108,7 @@ class Source(NamedTuple):
     id: str = RIDER_ID
     kind: str = "constant"
     lane_m: float | None = None
+    cda_m2: float | None = None
 
 
 def lane_of(runner: Any) -> float | None:
@@ -119,18 +129,28 @@ def lateral_factor(dx_m: float) -> float:
         return 1.0
     if dx >= LATERAL_CUTOFF_M:
         return 0.0
-    k = math.log(2.0) / (LATERAL_HALF_M - LATERAL_FULL_M) ** 2
-
-    def bell(x: float) -> float:
-        return math.exp(-k * (x - LATERAL_FULL_M) ** 2)
-
-    floor = bell(LATERAL_CUTOFF_M)
-    return (bell(dx) - floor) / (1.0 - floor)
+    return (math.exp(-_BELL_K * (dx - LATERAL_FULL_M) ** 2) - _BELL_FLOOR) / (1.0 - _BELL_FLOOR)
 
 
-def _lateral(lane_m: float | None, other: Any) -> float:
-    other_m = lane_of(other)
-    return 1.0 if lane_m is None or other_m is None else lateral_factor(lane_m - other_m)
+_BELL_K = math.log(2.0) / (LATERAL_HALF_M - LATERAL_FULL_M) ** 2   # cloche de lateral_factor, calculée une fois
+_BELL_FLOOR = math.exp(-_BELL_K * (LATERAL_CUTOFF_M - LATERAL_FULL_M) ** 2)
+
+
+def size_factor(source: Any) -> float:
+    """Gabarit d'une source (lot AS4) : `(CdA / CDA_REF_M2)^0,5` borné à [`SIZE_MIN`, `SIZE_MAX`]. CdA :
+    `cda_m2` (le cycliste) ou celui de sa physique sans la poussée du pas précédent (bots) ; 1 sans CdA."""
+    cda = getattr(source, "cda_m2", None)
+    if cda is None:
+        params = getattr(source, "params", None)
+        if params is None:
+            return 1.0
+        cda = params.cda_m2 / (1.0 - getattr(source, "push", 0.0))
+    return min(max(math.sqrt(max(cda, 0.0) / CDA_REF_M2), SIZE_MIN), SIZE_MAX)
+
+
+def _shelters(sources: Iterable[Any]) -> list[tuple[float, Any, float | None, float]]:
+    """Sources qui abritent (bots `constant`, cycliste) : (s, objet, écart à l'axe, gabarit)."""
+    return [(b.s, b, lane_of(b), size_factor(b)) for b in sources if getattr(b, "kind", "constant") == "constant"]
 
 
 def draft_coefficient(gap_m: float) -> float:
@@ -159,43 +179,57 @@ def ahead_distance(rider_s: float, bot_s: float, length_m: float | None, is_loop
     return d
 
 
+def _group_draft(rider_s: float, lane_m: float | None, shelters: list[tuple[float, Any, float | None, float]],
+                 length_m: float | None, is_loop: bool, skip: Any = None) -> tuple[float, str | None]:
+    """Abri de groupe (lot AS4) avant vent de travers, et `id` de la source la plus forte."""
+    found: list[tuple[float, float, float | None, str]] = []   # (α_i, distance devant, écart à l'axe, id)
+    for s, b, b_lane, size in shelters:
+        if b is skip:
+            continue
+        d = ahead_distance(rider_s, s, length_m, is_loop)
+        if d <= 0.0 or d > GAP_CUTOFF_M + BIKE_LENGTH_M + 1.0:   # au-delà, draft_coefficient vaut 0
+            continue
+        dx = None if lane_m is None or b_lane is None else abs(lane_m - b_lane)
+        if dx is not None and dx > GROUP_SIDE_M:
+            continue
+        if d >= BIKE_LENGTH_M:
+            alpha = draft_coefficient(d - BIKE_LENGTH_M) * (1.0 if dx is None else lateral_factor(dx))
+        else:   # roues qui se chevauchent : flanc seulement, et seulement côte à côte (en une dimension, rien)
+            alpha = FLANK_ALPHA if dx is not None else 0.0
+        if alpha > 0.0:
+            found.append((alpha * size, d, b_lane, b.id))
+    if not found:
+        return 0.0, None
+    top = max(found, key=lambda f: (f[0], -f[1]))
+    keep = 1.0 - top[0]
+    for f in found:
+        if f is top:
+            continue
+        hidden = 0.0   # caché derrière un coureur plus proche sur sa ligne : K_LINE au lieu de K_GROUP
+        for g in found:
+            if g[1] < f[1]:
+                hidden = max(hidden, 1.0 if g[2] is None or f[2] is None else lateral_factor(f[2] - g[2]))
+                if hidden >= 1.0:
+                    break
+        keep *= 1.0 - (K_GROUP - (K_GROUP - K_LINE) * hidden) * f[0]
+    return min(1.0 - keep, ALPHA_GROUP_CAP), top[3]
+
+
 def draft_for(rider_s: float, sources: Iterable[Any], length_m: float | None = None, is_loop: bool = False,
               rider_v: float = 0.0, head_mps: float = 0.0, cross_mps: float = 0.0, skip: Any = None,
               lane_m: float | None = None) -> tuple[float, str | None]:
-    """Abri le plus fort devant un coureur à `rider_s` et `id` de la source qui le donne (la plus
-    proche de la file). Sert au cycliste comme aux bots (lot AS1).
+    """Abri d'un coureur à `rider_s` dans le groupe devant lui et `id` de la source la plus forte. Sert au
+    cycliste comme aux bots (lot AS1).
 
     `sources` : objets avec `s`, `id` et `kind` (bots de N9, `Source` du cycliste) ; seuls les
     `constant` abritent ; `skip` (le coureur lui-même) est ignoré. `lane_m` : écart à l'axe du
     coureur (lot AS2) ; l'abri de chaque source est multiplié par `lateral_factor` de l'écart latéral.
+    Lot AS4 : abri de toutes les sources devant et sur les côtés, combinées (`_group_draft`).
     """
-    ahead: list[tuple[float, str, float]] = []
-    for b in sources:
-        if b is skip or getattr(b, "kind", "constant") != "constant":
-            continue
-        d = ahead_distance(rider_s, b.s, length_m, is_loop)
-        if 0.0 < d <= GAP_CUTOFF_M + BIKE_LENGTH_M + LINE_GAP_M * 3:
-            ahead.append((d, b.id, _lateral(lane_m, b)))
-    if not ahead:
-        return 0.0, None
-    ahead.sort(key=lambda a: a[0])
-    best, best_id = 0.0, None
-    for i, (d, bot_id, side) in enumerate(ahead):
-        base = draft_coefficient(d - BIKE_LENGTH_M) * side
-        if base <= 0.0:
-            continue
-        # File : bots suivants espacés de moins de LINE_GAP_M devant celui-ci
-        rank, prev = 1, d
-        for d2, _, _ in ahead[i + 1:]:
-            if d2 - prev - BIKE_LENGTH_M > LINE_GAP_M:
-                break
-            rank, prev = rank + 1, d2
-        alpha = min(base * LINE_FACTORS[min(rank, len(LINE_FACTORS)) - 1], ALPHA_CAP)
-        if alpha > best:
-            best, best_id = alpha, bot_id
+    alpha, best_id = _group_draft(rider_s, lane_m, _shelters(sources), length_m, is_loop, skip)
     if best_id is None:
         return 0.0, None
-    return best * crosswind_factor(rider_v, head_mps, cross_mps), best_id
+    return alpha * crosswind_factor(rider_v, head_mps, cross_mps), best_id
 
 
 def best_draft(rider_s: float, bots: Iterable[Any], length_m: float | None = None, is_loop: bool = False,
@@ -249,6 +283,7 @@ def update_bots(bots: list[Any], rider: Source | None, dt: float, length_m: floa
     sources: list[Any] = [b for b in bots if getattr(b, "kind", "constant") == "constant"]
     if rider is not None:
         sources.append(rider)
+    shelters = _shelters(sources)   # positions, voies et gabarits lus une fois par pas (lot AS4)
     for b in sources:
         if b is rider:
             continue
@@ -256,17 +291,18 @@ def update_bots(bots: list[Any], rider: Source | None, dt: float, length_m: floa
         head = params.wind_mps if params is not None else 0.0
         cross = cross_of(b) if cross_of else 0.0
         me = lane_of(b)
-        target, _ = draft_for(b.s, sources, length_m, is_loop, b.v, head, cross, skip=b, lane_m=me)
+        target, src = _group_draft(b.s, me, shelters, length_m, is_loop, skip=b)
+        if src is not None:
+            target *= crosswind_factor(b.v, head, cross)
         b.draft = smooth(getattr(b, "draft", 0.0), target, dt)
         wheel = wheel_ahead(b.s, sources, length_m, is_loop, skip=b)
         b.wheel = None if wheel is None else (wheel[0], wheel[1].v)
         push = 0.0
         if PUSH_ENABLED:
-            for f in sources:
-                if f is not b:
-                    other = lane_of(f)
+            for s, f, other, _ in shelters:
+                if f is not b and 0.0 <= ahead_distance(s, b.s, length_m, is_loop) - BIKE_LENGTH_M < PUSH_GAP_M:
                     dx = 0.0 if me is None or other is None else other - me
-                    push = max(push, push_bonus(f.s, b.s, length_m, is_loop, dx))
+                    push = max(push, PUSH_FROM_BEHIND * lateral_factor(dx))
         b.push = push
 
 

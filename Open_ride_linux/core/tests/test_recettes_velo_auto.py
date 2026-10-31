@@ -134,4 +134,4 @@ def test_7af_three_bots_230_240_250_and_a_rider_at_240_w():
     weakest = bots[0]
     assert weakest.s > solo.s + 2.0, f"230 W dans le groupe {weakest.s:.1f} m, seul {solo.s:.1f} m"
     for b in [*bots, rider.bot]:
-        assert 0.0 <= b.draft <= d.ALPHA_CAP and 5.0 < b.v < 15.0
+        assert 0.0 <= b.draft <= d.ALPHA_GROUP_CAP and 5.0 < b.v < 15.0

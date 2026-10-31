@@ -2121,8 +2121,8 @@ class CoreSession:
             return ws.speed_mps * math.sin(math.radians(ws.from_deg - heading)) if ws else 0.0
 
         cross = cross_at(heading_deg)
-        draft_mod.update_bots(self.bots, draft_mod.Source(self.physics.s, self.physics.v, lane_m=self._lane.m),
-                              dt, length, is_loop,
+        rider = draft_mod.Source(self.physics.s, self.physics.v, lane_m=self._lane.m, cda_m2=self.physics.p.cda_m2)
+        draft_mod.update_bots(self.bots, rider, dt, length, is_loop,
                               (lambda b: cross_at(route.sample(b.s).heading_deg)) if ws and route else None)
         target, bot_id = draft_mod.best_draft(self.physics.s, self.bots, length, is_loop,
                                               self.physics.v, self._head_mps, cross, lane_m=self._lane.m)

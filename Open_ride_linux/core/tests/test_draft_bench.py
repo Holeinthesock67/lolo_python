@@ -1,4 +1,4 @@
-"""Banc de l'abri derrière les bots (lots X50 et AS2) : vraie séance au pas de 20 ms, sans vélo ni engine."""
+"""Banc de l'abri derrière les bots (lots X50, AS2 et AS4) : vraie séance au pas de 20 ms, sans vélo ni engine."""
 
 import json
 
@@ -40,7 +40,7 @@ def test_free_group_shelters_every_racer(out):
     rows = {r["name"]: r for r in out["group"]["rows"]}
     assert set(rows) == {"bot 230 W", "bot 240 W", "bot 250 W", "cycliste"}
     for r in rows.values():
-        assert r["shelter_pct"] > 0.0 and 0.0 < r["draft_max"] <= d.ALPHA_CAP + 1e-9 and r["ahead_m"] > 0.0
+        assert r["shelter_pct"] > 0.0 and 0.0 < r["draft_max"] <= d.ALPHA_GROUP_CAP + 1e-9 and r["ahead_m"] > 0.0
     # le plus faible gagne le plus à rester dans le groupe
     assert rows["bot 230 W"]["gain_w"] > rows["bot 250 W"]["gain_w"]
 
@@ -54,7 +54,7 @@ def test_cli_json_and_invalid_arguments(capsys, monkeypatch):
     code = db.main(["--duree", "60", "--json"])
     data = json.loads(capsys.readouterr().out)
     assert code in (0, 1) and len(data["positions"]) == 6 and len(data["group"]["rows"]) == 4
-    assert {"wheel", "overtake", "group_off"} <= set(data)
+    assert {"wheel", "overtake", "group_off", "core"} <= set(data)
     assert db.main(["--groupe", "abc"]) == 2
     assert db.main(["--duree", "0"]) == 2
 
@@ -75,3 +75,11 @@ def test_as2_placement_shelters_the_rider_in_the_group(out):
     # placement coupé : le cycliste reste à 1,2 m, les bots à 2,1 m, il ne prend presque jamais leur roue
     assert on["cycliste"]["draft_mean"] > 2 * off["cycliste"]["draft_mean"]
     assert len(out["group"]["starts_m"]) == 3 and len(on["cycliste"]["shelter_each"]) == 3
+
+
+# --- lot AS4 : cœur d'un groupe ----------------------------------------------------------------------
+
+def test_as4_heart_of_a_group(out):
+    c = out["core"]
+    assert 0.45 <= c["draft"] <= c["draft_max"] <= d.ALPHA_GROUP_CAP
+    assert c["gain_w"] > row(out, 1, 0.5)["gain_w"] + 5.0
