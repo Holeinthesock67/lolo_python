@@ -13,6 +13,8 @@ const Y_LABELS := {"home": "", "pause": "Reprendre", "confirm": "Annuler", "edit
 ## clé d'aide donnée par menu_view.gd ; A maintenu enregistre, + et B règlent (menu_flow._handle_edit).
 const EDIT := "edit"
 const NAME_GRID := "profile_name"   # grille du nom d'un profil (profiles_view_model.gd, lot MJ8)
+## Saisie de texte partagée (text_entry.gd, lot O31) : nom d'un profil et recherche du monde ouvert.
+const WORLD_SEARCH_GRID := "world_search"
 const Y_DEFAULT := "Retour"
 ## Double légende : une ligne pour les boutons du Click, une pour les touches du clavier (key_map.gd :
 ## chaque touche double un bouton du Click). Titres des deux lignes.
@@ -29,16 +31,16 @@ const WORLD_PREFIX := "world_"
 const WORLD := {
 	"globe": [
 		{"keys": ["A"], "hold": false, "text": "Carte", "main": true, "kb": []},
-		{"keys": [], "hold": false, "text": "Chercher", "main": true, "kb": ["lettres"]},
+		{"keys": ["Z"], "hold": false, "text": "Chercher", "main": true, "kb": ["lettres"]},
 		{"keys": ["◀", "▶"], "hold": false, "text": "Tourner", "main": false, "kb": ["←", "→"]},
 		{"keys": ["+", "B"], "hold": true, "text": "Incliner", "main": false, "kb": ["Page haut", "Page bas"]},
 		{"keys": ["A"], "hold": true, "text": "Épingler", "main": false, "kb": ["Entrée"]},
 		{"keys": ["Y"], "hold": false, "text": "Quitter", "main": false, "kb": ["Échap"]},
 	],
-	"search": [
+	"search_results": [
 		{"keys": ["A"], "hold": false, "text": "Choisir le lieu", "main": true, "kb": ["Entrée"]},
 		{"keys": ["+", "B"], "hold": false, "text": "Lieu suivant, précédent", "main": false, "kb": ["+", "−"]},
-		{"keys": [], "hold": false, "text": "Écrire", "main": false, "kb": ["lettres"]},
+		{"keys": ["Z"], "hold": false, "text": "Écrire", "main": false, "kb": ["lettres"]},
 		{"keys": [], "hold": false, "text": "Effacer", "main": false, "kb": ["Retour arrière"]},
 		{"keys": ["Y"], "hold": false, "text": "Retour", "main": false, "kb": ["Échap"]},
 	],
@@ -64,6 +66,10 @@ const WORLD := {
 ## Entrées de l'aide de l'écran `screen`, dans l'ordre d'affichage :
 ## [{keys: [boutons du Click], hold: appui long, kb: [touches du clavier], text: action, main: action principale}].
 static func entries(screen: String) -> Array:
+	if screen == NAME_GRID:
+		return text_grid("Valider le nom")
+	if screen == WORLD_SEARCH_GRID:
+		return text_grid("Voir les résultats")
 	if screen.begins_with(WORLD_PREFIX):
 		return (WORLD.get(screen.substr(WORLD_PREFIX.length()), []) as Array).duplicate(true)
 	var out: Array = [
@@ -77,24 +83,27 @@ static func entries(screen: String) -> Array:
 			{"keys": ["+", "A"], "hold": false, "text": "Augmenter", "main": false},
 			{"keys": ["B"], "hold": false, "text": "Diminuer", "main": false},
 		]
-	if screen == NAME_GRID:   # nom d'un profil (lot MJ8) : Z écrit, Y efface ; au clavier, on tape le nom
-		out = [
-			{"keys": ["A"], "hold": true, "text": "Valider le nom", "main": true},
-			{"keys": ["+", "A"], "hold": false, "text": "Lettre suivante", "main": false},
-			{"keys": ["B"], "hold": false, "text": "Précédente", "main": false},
-			{"keys": ["Z"], "hold": false, "text": "Écrire", "main": false},
-			{"keys": ["Y"], "hold": false, "text": "Effacer", "main": false},
-		]
-		for e in out:
-			e["kb"] = keyboard_keys(e["keys"], bool(e["hold"]))
-		out[3]["kb"] = ["lettres"]
-		out[4]["kb"] = ["Retour arrière"]
-		return out
 	var y := str(Y_LABELS.get(screen, Y_DEFAULT))
 	if y != "":
 		out.append({"keys": ["Y"], "hold": false, "text": y, "main": false})
 	for e in out:
 		e["kb"] = keyboard_keys(e["keys"], bool(e["hold"]))
+	return out
+
+
+## Grille de saisie (text_entry.gd) : Z écrit, Y efface, A maintenu valide ; au clavier, on tape le texte.
+static func text_grid(validate_text: String) -> Array:
+	var out: Array = [
+		{"keys": ["A"], "hold": true, "text": validate_text, "main": true},
+		{"keys": ["+", "A"], "hold": false, "text": "Lettre suivante", "main": false},
+		{"keys": ["B"], "hold": false, "text": "Précédente", "main": false},
+		{"keys": ["Z"], "hold": false, "text": "Écrire", "main": false},
+		{"keys": ["Y"], "hold": false, "text": "Effacer", "main": false},
+	]
+	for e in out:
+		e["kb"] = keyboard_keys(e["keys"], bool(e["hold"]))
+	out[3]["kb"] = ["lettres"]
+	out[4]["kb"] = ["Retour arrière"]
 	return out
 
 

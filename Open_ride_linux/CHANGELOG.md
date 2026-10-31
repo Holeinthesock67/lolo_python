@@ -19,6 +19,7 @@ Première version complète avant la 1.0 : tout ce que contient `main` au 26 oct
 ### Zwift Click et appareils
 - Zwift Click V2 (paire de boîtiers) et Zwift Cog, appuis courts et longs ; le clavier double le Click touche pour touche, mêmes durées d'appui (lot O17).
 - Inventaire des appareils (`openride-core devices`), appairage depuis la ligne de commande et depuis le menu.
+- Monde ouvert : la recherche d'un lieu se fait aussi au Click, avec la grille de lettres du nom d'un profil (Z sur le globe), sans clavier (lot O31).
 - Réglages : sous-écran **Avancé** (monde ouvert sans téléchargement, plafonds du cache et des thèmes installés, progression et Garage) ; tout interrupteur s'affiche oui / non ; la liste des réglages part en plusieurs datagrammes si besoin (lot O27).
 - Réglages : décor vivant et relief exagéré dans Graphisme (pris au lancement suivant, avec « Relancer OpenRide maintenant »), ressenti du vent dans Vent ; mode du vent et thème par défaut affichés en français (lot O26).
 - Écran Appareils : la ceinture choisie est vraiment utilisée (avant, elle était enregistrée sans être activée) ; « aucun » oublie le trainer ou la ceinture, « Oublier le Click » retire les deux boîtiers (lot O24).
