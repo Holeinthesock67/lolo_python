@@ -52,7 +52,7 @@ extends RefCounted
 ##   Avancement `route_import_status` par on_route_import_status() sur la ligne d'état ; parcours prêt :
 ##   retour à la liste, redemandée par main.gd, focus sur le nouveau parcours à son arrivée ; trace
 ##   refusée (route_invalid, busy) : raison sur la ligne d'état ;
-## - bots (lot O7) : « Bot : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
+## - bots (lots O7 et O35) : « Bot 1 : … » à « Bot 4 : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
 ##   core (bot_invalid) sur la ligne d'état de l'écran Prêt ;
 ## - entraînements en watts (.erg, .mrc) : « watts fixes » et la puissance maximale.
 ##

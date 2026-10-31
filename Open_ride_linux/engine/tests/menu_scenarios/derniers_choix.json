@@ -9,10 +9,10 @@
     {"choisir": "world"},
     {"choisir": "demo"},
     {"choisir": "ride"},
-    {"ecran": "ready", "contient": ["Bot : aucun"]},
-    {"choisir": "bot"},
-    {"choisir": "bot"},
-    {"ecran": "ready", "contient": ["Bot : 250 W"]},
+    {"ecran": "ready", "contient": ["Bot 1 : aucun"]},
+    {"choisir": "bot1"},
+    {"choisir": "bot1"},
+    {"ecran": "ready", "contient": ["Bot 1 : 250 W"]},
     {"choisir": "start"},
     {"journal": "core", "motif": "-> RUNNING", "delai": 10},
     {"commande": "end_session", "args": {"save": false}},
@@ -22,7 +22,7 @@
     {"ecran": "home", "contient": ["Parcours : demo"], "delai": 20},
     {"capture": "accueil_dernier_parcours"},
     {"choisir": "ride"},
-    {"ecran": "ready", "titre": "Prêt : session libre — demo", "contient": ["Bot : 250 W"]},
+    {"ecran": "ready", "titre": "Prêt : session libre — demo", "contient": ["Bot 1 : 250 W"]},
     {"capture": "pret_dernier_bot"}
   ]
 }

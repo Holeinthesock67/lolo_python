@@ -659,4 +659,12 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
             out.append(GhostBot(path))
         else:
             raise BotError(f"genre de bot inconnu : {kind!r} (constant, profile ou ghost)")
+    # Lot O35 : deux bots constants de même puissance (« Bot 200 W ») deviennent « Bot 200 W » et
+    # « Bot 200 W 2 », comme les profils (profile_bot_names), pour rester distincts au HUD.
+    seen: dict[str, int] = {}
+    for b in out:
+        if isinstance(b, ConstantPowerBot):
+            seen[b.name] = seen.get(b.name, 0) + 1
+            if seen[b.name] > 1:
+                b.name = f"{b.name} {seen[b.name]}"[:16]
     return out

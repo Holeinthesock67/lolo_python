@@ -38,9 +38,11 @@ extends RefCounted
 ## libre l'annule. La liste des parcours finit par le tri et le filtre par étiquette (SORT_ROUTES_ID,
 ## FILTER_ROUTES_ID), traités par menu_flow.gd.
 ##
-## Bots (lot O7) : l'écran Prêt gagne « Bot : … » (A long change : aucun, 200, 250, 300 W, 90, 100,
-## 110 % de la FTP) et « Fantôme de la dernière séance : non/oui » ; `start` les transmet dans l'argument
-## `bots` (contrat 1.3) quand l'un des deux est choisi, sinon n'envoie rien. Un nouvel accueil les remet à zéro.
+## Bots (lots O7 et O35) : l'écran Prêt gagne « Bot 1 : … » (A long change : aucun, 200, 250, 300 W, 90,
+## 100, 110 % de la FTP, profils) et « Fantôme de la dernière séance : non/oui » ; `start` les transmet dans
+## l'argument `bots` (contrat 1.3) quand l'un d'eux est choisi, sinon n'envoie rien. Jusqu'à MAX_BOTS bots
+## (lot O35, la limite du core) : la ligne « Bot n+1 : aucun » n'apparaît que quand « Bot n » est choisi ;
+## remettre un bot à « aucun » le retire et remonte les suivants. Un nouvel accueil les remet à zéro.
 ## Records (série T, lot T10) : l'écran Prêt finit par « Records du parcours », qui renvoie une action
 ## « item » de l'écran Prêt (écrans des records ouverts par menu_flow.gd).
 ##
@@ -75,7 +77,9 @@ const CREATE_WORKOUT_ID := "_create"
 const IMPORT_WORKOUT_ID := "_import"
 ## Dernière ligne de la liste : « Comment ça marche ? » ouvre l'aide du sous-menu ERG (workout_help.gd).
 const HELP_WORKOUT_ID := "_help"
-## Bot de l'écran Prêt (lot O7), dans l'ordre du cycle : libellé et élément de l'argument `bots` de `start`.
+## Nombre de bots de l'écran Prêt, fantôme en plus (lot O35) : MAX_CONSTANT_BOTS du core (bots.py).
+const MAX_BOTS := 4
+## Bots de l'écran Prêt (lots O7 et O35), dans l'ordre du cycle : libellé et élément de l'argument `bots` de `start`.
 ## Bots à profil (lots T12 et T13) : chaque profil à 90, 100 et 110 % de ta FTP, calibré par le core.
 const BOT_CHOICES := [["aucun", {}], ["200 W", {"kind": "constant", "power_w": 200}],
 	["250 W", {"kind": "constant", "power_w": 250}], ["300 W", {"kind": "constant", "power_w": 300}],
@@ -128,11 +132,12 @@ var plan_detail := ""
 ## Séance préparée par prepare_start() : nom affiché sur l'écran Prêt et arguments de `start` ({} sinon).
 var start_name := ""
 var start_args: Dictionary = {}
-## Bot choisi (index de BOT_CHOICES) et fantôme demandé, pour la séance préparée (lot O7).
-var bot_choice := 0
+## Bots choisis (index de BOT_CHOICES, jamais 0, au plus MAX_BOTS, dans l'ordre des lignes) et fantôme
+## demandé, pour la séance préparée (lots O7 et O35).
+var bot_choices: Array[int] = []
 var ghost := false
-## Derniers choix du profil (lot O32) : bot et fantôme remis par reset(), entraînement mis sous le focus.
-var last_bot := 0
+## Derniers choix du profil (lot O32) : bots et fantôme remis par reset(), entraînement mis sous le focus.
+var last_bots: Array[int] = []
 var last_ghost := false
 var last_workout := ""
 ## Cyber-Rogue (lot R13) : rappel des choix affiché sur l'écran Prêt quand `mode` vaut « rogue ».
@@ -204,15 +209,15 @@ func _refresh_home() -> void:
 		return
 	if mode == "wtf":
 		_screens[READY]["items"] = [_item("start", "Démarrer"), _item("wtf_rules", "Changer les règles"),
-			_item("change_route", "Changer de parcours"), _item("bot", "Bot : " + BOT_CHOICES[bot_choice][0]),
-			_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non"))]
+			_item("change_route", "Changer de parcours")] + _bot_items() \
+			+ [_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non"))]
 		_screens[READY]["title"] = "Prêt : mode WTF" + ("" if world_name == "" else " — " + world_name)
 		return
 	_screens[READY]["items"] = [
 		_item("start", "Démarrer"),
 		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
 		_item("change_route", "Changer de parcours"),
-		_item("bot", "Bot : " + BOT_CHOICES[bot_choice][0]),
+	] + _bot_items() + [
 		_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non")),
 		_item("records", "Records du parcours")]
 	var what := "session ERG" if mode == "erg" else "session libre"
@@ -287,8 +292,8 @@ func _start_args() -> Dictionary:
 	if mode == "wtf":
 		out["mode"] = "wtf"
 	var bots: Array = []
-	if bot_choice > 0:
-		bots.append(BOT_CHOICES[bot_choice][1].duplicate())
+	for c in bot_choices:
+		bots.append(BOT_CHOICES[c][1].duplicate())
 	if ghost:
 		bots.append({"kind": "ghost"})
 	if not bots.is_empty():
@@ -319,19 +324,19 @@ func set_pause_rows(rows: Array) -> void:
 
 
 ## Derniers choix du profil (`hello_ack.config.last_choices`, lot O32 ; null ou absent : aucun). Un bot
-## inconnu de BOT_CHOICES (ligne de commande, ancienne liste) revient à « aucun ».
+## inconnu de BOT_CHOICES (ligne de commande, ancienne liste) est sauté ; MAX_BOTS bots au plus (lot O35).
 func set_last_choices(choices) -> void:
 	var c: Dictionary = choices if choices is Dictionary else {}
 	last_workout = str(c["workout_id"]) if c.get("workout_id") is String else ""
-	last_bot = 0
+	last_bots = []
 	last_ghost = false
 	var bots = c.get("bots", [])
 	for b in (bots if bots is Array else []):
 		if b is Dictionary and str(b.get("kind", "")) == "ghost":
 			last_ghost = true
-		elif b is Dictionary and last_bot == 0:
-			last_bot = bot_index(b)
-	bot_choice = last_bot
+		elif b is Dictionary and last_bots.size() < MAX_BOTS and bot_index(b) > 0:
+			last_bots.append(bot_index(b))
+	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	_refresh_home()
 
@@ -354,6 +359,30 @@ static func bot_index(bot: Dictionary) -> int:
 	return 0
 
 
+## A long sur « Bot n » (lot O35) : choix suivant de BOT_CHOICES ; « aucun » retire le bot, les suivants
+## remontent d'une ligne. La ligne vide (après le dernier bot) en ajoute un.
+## Lignes « Bot 1 » à « Bot n+1 » de l'écran Prêt (lot O35, séance libre, ERG et mode WTF) : une ligne vide
+## sous le dernier bot choisi, au plus MAX_BOTS.
+func _bot_items() -> Array:
+	var out: Array = []
+	for i in range(mini(bot_choices.size() + 1, MAX_BOTS)):
+		var label: String = BOT_CHOICES[bot_choices[i]][0] if i < bot_choices.size() else BOT_CHOICES[0][0]
+		out.append(_item("bot%d" % (i + 1), "Bot %d : %s" % [i + 1, label]))
+	return out
+
+
+func _cycle_bot(i: int) -> void:
+	var next := (bot_choices[i] if i < bot_choices.size() else 0) + 1
+	next %= BOT_CHOICES.size()
+	if i >= bot_choices.size():
+		bot_choices.append(next)
+	elif next == 0:
+		bot_choices.remove_at(i)
+	else:
+		bot_choices[i] = next
+	_refresh_home()
+
+
 func set_sim_session(on: bool) -> void:
 	sim_session = on
 	_screens[HOME]["title"] = "OpenRide — session simulée" if on else "OpenRide"
@@ -369,7 +398,7 @@ func reset() -> void:
 	_focus_stack.clear()
 	_pending = {}
 	_clear_start()
-	bot_choice = last_bot
+	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	if mode in ["rogue", "wtf"]:
 		mode = "free"
@@ -703,15 +732,14 @@ func _validate() -> Dictionary:
 			match id:
 				"start":
 					if mode != "rogue":   # bots de la séance notés aussi par le core (lot O32)
-						last_bot = bot_choice
+						last_bots = bot_choices.duplicate()
 						last_ghost = ghost
 					var args := _start_args()
 					if args.is_empty():
 						return {"action": "start"}
 					return {"action": "start", "args": args}
-				"bot":
-					bot_choice = (bot_choice + 1) % BOT_CHOICES.size()
-					_refresh_home()
+				"bot1", "bot2", "bot3", "bot4":
+					_cycle_bot(int(id.substr(3)) - 1)
 				"ghost":
 					ghost = not ghost
 					_refresh_home()
