@@ -1,5 +1,10 @@
 # Lot V11 – Core : progression branchée dans la séance et commandes du Garage
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Core : progression branchée dans la séance et commandes du Garage | Python | T1, V2, V3, V3b, V4 | Moyenne | **Livré le 27 octobre** (issue #406) ; essai sur le PC |
+
 ## 1. Objectif
 
 Le plan V ne prévoyait aucun lot pour brancher les modules purs (V2, V3, V3b, V4) dans la séance et répondre aux messages du contrat T1. Ce lot le fait : équipement appliqué à la vitesse virtuelle, équipement noté au journal, `progression` dans `hello_ack`, bilan `xp_result` en fin de séance, commandes `list_garage`, `equip`, `buy` et `set_avatar`.

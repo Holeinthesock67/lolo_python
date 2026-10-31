@@ -1,5 +1,10 @@
 # Lot U11 – Engine : sons d'ambiance par biome (extension de P9)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : sons d'ambiance par biome (extension de P9) | GDScript | U5, P9 (U9 utile) | Moyenne | Oui, après U5, **version 3.0** (issue #341) |
+
 ## 1. Objectif
 
 **Version 3.0.** Donner à chaque biome son ambiance sonore, synthétisée comme celle de P9 : cigales en méditerranéen, chorus d'insectes et d'oiseaux en jungle, vent dans les résineux en taïga, sonnailles en montagne, vagues et mouettes au littoral, grenouilles en zone humide, sable qui siffle au désert.

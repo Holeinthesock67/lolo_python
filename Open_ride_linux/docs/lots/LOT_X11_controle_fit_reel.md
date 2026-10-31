@@ -1,5 +1,10 @@
 # Lot X11 – Contrôle d'un FIT de séance réelle
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Contrôle d'un FIT de séance réelle, en local | Python | H5 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x11`) ; issue #209 |
+
 ## 1. Objectif
 
 Ligne 21 de la recette 1.0 : le FIT d'une vraie séance doit s'importer dans Garmin Connect et GoldenCheetah. H5 valide les FIT de test, pas ceux d'une séance réelle (pauses, coupures, FC figée). Ce lot vérifie un FIT réel **en local** : les fichiers ne quittent jamais le PC et ne vont jamais dans le dépôt.

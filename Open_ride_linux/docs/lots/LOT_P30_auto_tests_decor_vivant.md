@@ -1,5 +1,10 @@
 # Lot P30 – Auto-tests du décor vivant : comptes par sorte au banc, sons entendus, pause dans la vraie scène
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Auto-tests du décor vivant : objets par sorte et sons au banc simulé, sons du décor relevés, pause vérifiée dans la vraie scène | Python + GDScript | P27 | Petite | **Livré le 28 octobre** |
+
 ## 1. Objectif
 
 Demande du propriétaire du 28 octobre : utiliser les outils d'auto-test quand ils existent et dire lesquels manquent. Pour le décor vivant (P22 à P29), trois manques relevés pendant P27, propres au décor (les autres propositions vont à la série X : vitesse imposée du banc dans X35, `living = false` comparé aux références 1.0 dans X20, lignes `ERROR` des tests unitaires et seuils de temps en dur dans X34) :

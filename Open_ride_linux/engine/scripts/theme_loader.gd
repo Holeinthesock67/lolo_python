@@ -13,9 +13,12 @@ extends RefCounted
 ## Pas de class_name : charger par preload("res://scripts/theme_loader.gd").
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
+const TextureLevels := preload("res://scripts/texture_levels.gd")
 
 const DEFAULT_THEME_DIR := "res://themes/default"
 const DEFAULT_THEME_PATH := "res://themes/default/theme.json"
+## Textures 1.x du thème (terrain et route), comptées pour le budget de mémoire vidéo du lot P20.
+const DECOR_TEXTURES: Array[String] = ["terrain.grass", "terrain.rock", "terrain.snow", "road.texture"]
 
 
 static func _home_dir() -> String:
@@ -196,6 +199,9 @@ static func _validate_schema(data: Dictionary, errors: PackedStringArray) -> voi
 		if typeof(data["name"]) != TYPE_STRING or str(data["name"]).length() < 1:
 			errors.append("name : doit être une chaîne non vide")
 
+	if data.has("texture_levels"):
+		_validate_texture_levels(data["texture_levels"], errors)
+
 	if data.has("terrain"):
 		if typeof(data["terrain"]) != TYPE_DICTIONARY:
 			errors.append("terrain : doit être un objet")
@@ -262,6 +268,34 @@ static func _validate_schema(data: Dictionary, errors: PackedStringArray) -> voi
 			if sk.has("fog_density"):
 				if not _is_number(sk["fog_density"]) or float(sk["fog_density"]) < 0.0:
 					errors.append("sky.fog_density : doit être >= 0")
+
+
+## Niveaux de textures du pack (lot P20) : [{name, max_px puissance de 2, dir relatif au thème}], noms et
+## côtés distincts.
+static func _validate_texture_levels(v: Variant, errors: PackedStringArray) -> void:
+	if typeof(v) != TYPE_ARRAY:
+		errors.append("texture_levels : doit être un tableau")
+		return
+	var names := {}
+	var sizes := {}
+	for i in range((v as Array).size()):
+		var l = v[i]
+		var label := "texture_levels[%d]" % i
+		if typeof(l) != TYPE_DICTIONARY:
+			errors.append(label + " : doit être un objet")
+			continue
+		if typeof(l.get("name", null)) != TYPE_STRING or str(l["name"]) == "" or names.has(l["name"]):
+			errors.append(label + ".name : chaîne non vide, distincte des autres niveaux")
+		else:
+			names[l["name"]] = true
+		var px = l.get("max_px", null)
+		if not _is_number(px) or float(px) != floorf(float(px)) or not _is_power_of_two(int(px)) or int(px) < 64 or int(px) > 8192 or sizes.has(int(px)):
+			errors.append(label + ".max_px : puissance de 2 entre 64 et 8 192, distincte des autres niveaux")
+		else:
+			sizes[int(px)] = true
+		var d = l.get("dir", null)
+		if typeof(d) != TYPE_STRING or str(d).strip_edges() == "" or str(d).begins_with("/") or ".." in str(d).split("/"):
+			errors.append(label + ".dir : dossier relatif au thème, sans « .. »")
 
 
 ## Clés du thème 2.0 absentes du thème par défaut tant qu'il est en 1.x.
@@ -543,26 +577,15 @@ static func load_named(name: String) -> Dictionary:
 
 ## Renvoie la Texture2D associée à un chemin de matériau (ex. "terrain.grass" ou "road.texture"),
 ## ou null si la texture est absente / null / invalide (l'appelant utilise alors la couleur unie).
-static func texture_for(theme: Dictionary, theme_dir: String, key_path: String) -> Texture2D:
-	var parts := key_path.split(".", false)
-	var cur: Variant = theme
-	for p in parts:
-		if typeof(cur) == TYPE_DICTIONARY and (cur as Dictionary).has(p):
-			cur = (cur as Dictionary)[p]
-		else:
-			return null
-
-	var rel_tex: Variant = cur
-	if typeof(cur) == TYPE_DICTIONARY:
-		rel_tex = (cur as Dictionary).get("texture", null)
-
-	if rel_tex == null or typeof(rel_tex) != TYPE_STRING:
-		return null
-	var s: String = rel_tex
-	if s.strip_edges() == "":
+## `choice` : niveau des textures retenu par TextureLevels.choose (lot P20) : fichier cherché dans le dossier
+## du niveau, puis des niveaux inférieurs, puis à la racine, et image réduite au côté du niveau ; px = 0 :
+## couleurs unies (budget de mémoire vidéo). Vide : racine du thème, taille du fichier.
+static func texture_for(theme: Dictionary, theme_dir: String, key_path: String, choice: Dictionary = {}) -> Texture2D:
+	var s := texture_path(theme, key_path)
+	if s == "" or (not choice.is_empty() and int(choice.get("px", 0)) <= 0):
 		return null
 
-	var full := _resolve_tex_path(theme_dir, s)
+	var full := TextureLevels.resolve(theme_dir, s, choice) if not choice.is_empty() else _resolve_tex_path(theme_dir, s)
 	if full == "" or not FileAccess.file_exists(full):
 		return null
 
@@ -573,8 +596,36 @@ static func texture_for(theme: Dictionary, theme_dir: String, key_path: String) 
 	var img := Image.load_from_file(full)
 	if img == null or img.is_empty():
 		return null
+	var px := int(choice.get("px", 0))
+	if px > 0 and (img.get_width() > px or img.get_height() > px):
+		if img.is_compressed():
+			img.decompress()
+		img.resize(mini(img.get_width(), px), mini(img.get_height(), px), Image.INTERPOLATE_LANCZOS)
 	# Sans mipmaps, le filtrage anisotrope du shader n'a rien à lire : scintillement au loin
 	# et lectures de texture coûteuses sur les tuiles lointaines.
 	if not img.has_mipmaps():
 		img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)
+
+
+## Chemin relatif de la texture d'un matériau (ex. "terrain.grass" ou "road.texture") ; "" sans texture.
+static func texture_path(theme: Dictionary, key_path: String) -> String:
+	var cur: Variant = theme
+	for p in key_path.split(".", false):
+		if typeof(cur) == TYPE_DICTIONARY and (cur as Dictionary).has(p):
+			cur = (cur as Dictionary)[p]
+		else:
+			return ""
+	if typeof(cur) == TYPE_DICTIONARY:
+		cur = (cur as Dictionary).get("texture", null)
+	if cur == null or typeof(cur) != TYPE_STRING:
+		return ""
+	return (cur as String).strip_edges()
+
+
+static func decor_texture_count(theme: Dictionary) -> int:
+	var n := 0
+	for k in DECOR_TEXTURES:
+		if texture_path(theme, k) != "":
+			n += 1
+	return n

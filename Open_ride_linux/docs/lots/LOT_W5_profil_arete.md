@@ -1,5 +1,10 @@
 # Lot W5 – Profil d'arête : altitude, ponts et tunnels, lissage, pente bornée
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Profil d'arête : altitude, ponts et tunnels interpolés, lissage, pente bornée, indépendant du chemin | Python | W4 | Petite | Oui, après W4 (issue #259) |
+
 ## 1. Objectif
 
 Donner à chaque arête du graphe (W4) un profil identique à celui d'une route compilée (pas de 10 m, altitude lissée, pente bornée, cap), **indépendant du chemin choisi** : le même profil sert à la route engagée et au fondu du terrain de tous les carrés (W7), si bien que le terrain ne dépend pas de la route prise.

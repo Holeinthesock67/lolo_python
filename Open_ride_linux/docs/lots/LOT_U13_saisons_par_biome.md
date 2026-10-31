@@ -1,5 +1,10 @@
 # Lot U13 – Engine : calendriers de saisons par biome
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : calendriers de saisons par biome (sèche et des pluies, polaire, aucune) | GDScript | U5, P18 | Petite | Oui, après U5, **version 3.0** (issue #343) |
+
 ## 1. Objectif
 
 **Version 3.0.** Remplacer les quatre saisons uniformes de P18 par un calendrier propre à chaque biome : quatre saisons plus longues ou plus courtes (hiver de la taïga, été court de la toundra), été sec et jaune en méditerranéen et en steppe, saison sèche et saison des pluies en savane et en jungle, presque aucun changement au désert et en polaire ; hémisphère sud inversé.

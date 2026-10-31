@@ -1,5 +1,10 @@
 # Lot Y13 – Qualité d'image par préréglage (consommer la marge du GPU)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Qualité d'image par préréglage à résolution native : rendu des tons et étalonnage, anticrénelage, SSAO/SSIL, glow, ombres, filtrage ; puis densités et brume (demande du 27 octobre) | GDScript | Y1 | Moyenne | Interne ; étape 1 en prototype, mesure sur le PC et accord du propriétaire avant les étapes suivantes |
+
 ## 1. Objectif
 
 Demande du propriétaire du 27 octobre (19 h 33) : « augmenter la qualité graphique générale vu la marge ». Sur la GTX 1060 du PC cible, la carte graphique travaille environ 5 ms par image en `medium` sur les 16,7 ms d'une image à 60 Hz : il reste de quoi rendre l'image plus belle sans repasser sous les budgets.

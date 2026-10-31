@@ -129,7 +129,8 @@ func _test_abandon_and_summary_quit() -> void:
 	g.list_failed("routes")
 	g.handle("A_LONG")
 	var items: Array = g.state()["items"]
-	_check(items.size() == 1 and not items[0]["enabled"], "liste indisponible : élément désactivé")
+	_check(items.size() == 3 and not items[0]["enabled"] and items[1]["id"] == "_add_route",
+		"liste indisponible : élément désactivé, aide de fin de liste gardée")
 	g.lists_needed()
 	_check(g.on_state({"session_state": "IDLE"}) == [{"action": "list"}], "core relancé : listes redemandées")
 
@@ -156,7 +157,7 @@ func _test_view() -> void:
 	var shown := v.items_text().split(" | ")
 	_check(shown.size() == MenuView.MAX_VISIBLE_ITEMS and v.items_text().contains("[Parcours 7"),
 			"longue liste : fenêtre autour du focus (%s)" % v.items_text())
-	_check(v.more_label.text == "8 / 12", "position dans la liste (tri en dernier) : %s" % v.more_label.text)
+	_check(v.more_label.text == "8 / 14", "position dans la liste (tri puis aide en dernier) : %s" % v.more_label.text)
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 1800.0, "distance_m": 15000.0,
 			"avg_power_w": 210.0, "fit_path": "/x/y/seance.fit", "blocks": [[1, 200.0, 200.0], [2, 260.0, 230.0]]}})
@@ -360,10 +361,27 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Session ERG
-	_check(_ids(f) == ["_sim", "seuil", "_create", "_import"], "sous-menu ERG : liste puis Créer et Importer (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["_sim", "seuil", "_create", "_import", "_help"],
+		"sous-menu ERG : liste puis Créer, Importer et Aide (%s)" % str(_ids(f)))
 	f.handle("MINUS_SHORT")
+	_check(_focus_id(f) == "_help" and f.state()["card"].get("name", "") == "Choisir un entraînement",
+		"focus sur Comment ça marche ? : carte de l'aide (%s)" % str(f.state()["card"]))
+	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_help"
+		and f.state()["title"] == "Aide ERG", "écran Aide ERG")
+	_check(_ids(f) == ["help:choose", "help:create", "help:qwk", "help:import", "help:write", "help:ride"],
+		"sujets de l'aide (%s)" % str(_ids(f)))
+	f.handle("PLUS_SHORT")
+	var help_card: Dictionary = f.state()["card"]
+	_check(help_card.get("name", "") == "Créer des intervalles" and help_card.get("lines", []).size() == 4,
+		"carte du sujet sous le focus (%s)" % str(help_card))
+	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_help", "A long sur un sujet : rien")
+	f.handle("Y_SHORT")
+	_check(f.state()["screen"] == "workouts" and _focus_id(f) == "_help", "Y : retour à la liste")
+	f.handle("MINUS_SHORT")
+	_check(f.state()["card"].get("name", "") == "Importer un fichier", "Importer : carte de l'aide")
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_create", "focus sur Créer un entraînement")
+	_check(f.state()["card"].get("name", "") == "Créer des intervalles", "Créer : carte de l'aide")
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_create", "écran Créer un entraînement")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Répétitions
@@ -404,10 +422,11 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Changer d'entraînement
 	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_import", "focus sur Importer")
 	_check(f.handle("A_LONG") == {"action": "list_imports"} and f.state()["screen"] == "workout_import", "list_imports")
 	f.set_import_candidates([])
-	_check(f.state()["focus"] == -1 and f.state()["items"][0]["label"] == "Aucun fichier .zwo, .erg ou .mrc", "aucun fichier")
+	_check(f.state()["focus"] == -1 and f.state()["items"][0]["label"] == "Aucun fichier .zwo, .erg, .mrc ou .qwk", "aucun fichier")
 	f.set_import_candidates([{"path": "/x/Téléchargements/vo2.zwo", "file": "vo2.zwo", "source": "Téléchargements",
 		"imported": false}, {"path": "/x/b.erg", "file": "b.erg", "source": "Bureau", "imported": true}])
 	_check(f.state()["items"][1]["detail"] == "Bureau, déjà importé", "fichier déjà importé signalé")
@@ -575,12 +594,16 @@ func _test_library() -> void:
 	]
 	f.set_routes(lib)
 	f.handle("A_LONG")   # Parcours
-	_check(_ids(f) == ["brut", "grand_col", "petit_col", "plat", "_sort", "_filter"], "par nom, puis tri et filtre (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["brut", "grand_col", "petit_col", "plat", "_sort", "_filter", "_add_route", "_route_help"],
+		"par nom, puis tri, filtre et aide (%s)" % str(_ids(f)))
 	_check(f.state()["items"][1]["label"] == "Grand col (30,0 km, ↑ 900 m)" and f.state()["items"][1]["detail"] == "col, montagne",
 		"libellé avec dénivelé, étiquettes (%s — %s)" % [f.state()["items"][1]["label"], f.state()["items"][1]["detail"]])
+	f.handle("MINUS_SHORT")   # Comment ça marche ?
+	f.handle("MINUS_SHORT")   # Ajouter un parcours
 	f.handle("MINUS_SHORT")   # Étiquette
 	f.handle("A_LONG")
-	_check(_ids(f) == ["grand_col", "petit_col", "_sort", "_filter"] and f.state()["items"][3]["label"] == "Étiquette : col"
+	_check(_ids(f) == ["grand_col", "petit_col", "_sort", "_filter", "_add_route", "_route_help"]
+		and f.state()["items"][3]["label"] == "Étiquette : col"
 		and _focus_id(f) == "_filter", "filtre « col », focus gardé (%s)" % str(_ids(f)))
 	f.handle("MINUS_SHORT")   # Tri
 	f.handle("A_LONG")        # distance
@@ -588,6 +611,22 @@ func _test_library() -> void:
 	_check(f.state()["items"][2]["label"] == "Trier par : dénivelé" and _ids(f).slice(0, 2) == ["petit_col", "grand_col"],
 		"triés par dénivelé (%s)" % str(_ids(f)))
 	f.handle("PLUS_SHORT")
+	f.handle("PLUS_SHORT")    # Ajouter un parcours
+	# Aide des parcours (lot O22) : la carte de la ligne dit où déposer la trace, A maintenu ouvre l'aide.
+	_check(_focus_id(f) == "_add_route" and f.state()["card"].get("name") == "Ajouter une trace"
+		and str(f.state()["card"]["lines"][0]).contains("~/OpenRide/GPX/"), "« Ajouter un parcours » : carte du dépôt de trace")
+	_check(f.handle("A_LONG") == {} and f.state()["screen"] == "route_help" and _focus_id(f) == "help:add",
+		"« Ajouter un parcours » ouvre l'aide sur son sujet")
+	f.handle("PLUS_SHORT")
+	_check(f.state()["card"].get("name") == "Fiche d'un parcours (.toml)" and f.handle("A_LONG") == {}
+		and f.state()["screen"] == "route_help", "aide : carte du sujet suivant, A maintenu ne fait rien")
+	f.handle("Y_SHORT")
+	_check(f.state()["screen"] == "routes", "Y : retour à la liste")
+	f.menu.focus_item("_route_help")
+	_check(f.state()["card"].get("name") == "Choisir un parcours" and f.handle("A_LONG") == {}
+		and _ids(f) == ["help:choose", "help:add", "help:sheet", "help:open_world"], "« Comment ça marche ? » : écran Aide parcours")
+	f.handle("Y_SHORT")
+	f.menu.focus_item("_route_help")
 	f.handle("PLUS_SHORT")    # boucle : premier parcours
 	_check(_focus_id(f) == "petit_col", "focus sur le premier")
 	_check(f.handle("A_LONG") == {"action": "select_route", "route_id": "petit_col"}, "premier parcours lancé")

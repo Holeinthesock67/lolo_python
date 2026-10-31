@@ -1,5 +1,10 @@
 # Lot O30 – Plan maison depuis le menu
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Plan maison depuis le menu : « Plans d'entraînement › Créer un plan » (jours, entraînements de la bibliothèque dans l'ordre choisi, durée), commande `create_plan` | Python + GDScript | O12, O25 | Petite | Audit des options du 31 octobre, accepté par le propriétaire ; en PR (après O29) |
+
 ## 1. Objectif
 
 Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, §5), accepté par le propriétaire le 31 octobre : composer un plan d'entraînement sans `plan import` ni fichier `.toml` écrit à la main. Le plan se fait avec les entraînements déjà dans la bibliothèque (`~/OpenRide/Workouts/`) ; `plan import DOSSIER` reste la voie pour un dossier d'entraînements venu d'ailleurs.

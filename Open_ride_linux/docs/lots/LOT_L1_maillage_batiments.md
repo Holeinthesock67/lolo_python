@@ -1,5 +1,10 @@
 # Lot L1 – Maillage des bâtiments extrudés (sans affichage)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Maillage des bâtiments extrudés, sans affichage (prépare E4) | GDScript | K1 (livré) | Petite | **Livré le 24 octobre** (PR #64, issue #53) |
+
 ## 1. Objectif
 
 Préparer le rendu des bâtiments du lot E4 (SRS §8, « Bâtiments ») : transformer les bâtiments d'un tronçon `buildings/chunk_<k>.json` en tableaux de maillage (sommets, normales, indices, couleurs) prêts pour un `ArrayMesh`, dans un script GDScript pur testé sans écran. E4 n'aura plus qu'à créer le nœud et le matériau.
