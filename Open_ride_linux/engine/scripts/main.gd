@@ -1637,6 +1637,7 @@ func _feed_chart(state: Dictionary, running: bool, previous_state: String) -> vo
 
 ## Bots (lot O7) : encart du HUD et silhouettes sur la route, aux positions affichées à l'instant.
 func _show_bots(rider_s: float, rider_v: float) -> void:
+	bots_model.vehicles = living_decor.vehicle_places() if living_decor != null else []
 	var view: Array = bots_model.view(rider_s, rider_v, Time.get_ticks_usec())
 	if hud != null and hud.has_method("update_bots"):
 		hud.update_bots(view, bots_model.race())
