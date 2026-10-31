@@ -413,7 +413,7 @@ def import_folder(src: Path, name: str, days: list[str], plans_dir: Path | None 
     files = sorted((p for p in src.iterdir() if p.is_file() and p.suffix.lower() in WORKOUT_SUFFIXES),
                    key=lambda p: natural_key(p.name))
     if not files:
-        raise PlanError(f"{src} : aucun entraînement .zwo, .erg ou .mrc")
+        raise PlanError(f"{src} : aucun entraînement .zwo, .erg, .mrc ou .qwk")
     plan_id = normalize_id(name)
     target = plans_dir / f"{plan_id}.toml"
     if target.exists():

@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Sols multi-biomes (lot U6, `biome_textures.gd`) : budget de mémoire vidéo et niveau retenu, couches de
+## Sols multi-biomes (lot U6, `biome_textures.gd`) : couches de
 ## sol des 16 biomes, biomes en usage, poids d'une tuile (3 biomes en low, 4 sinon, forçage, tuile absente).
 
 const BiomeTextures := preload("res://scripts/biome_textures.gd")
@@ -43,18 +43,7 @@ func _tile4(biomes: Array, parts: Array) -> Dictionary:
 
 
 func _run() -> void:
-	# 1. Budget (U-Q4 : 1 Go) et niveau retenu (règle de P20 : tailles décompressées, mipmaps comprises)
-	_check(BiomeTextures.estimate_bytes(1, 1024) == int(1024 * 1024 * 4 * 4.0 / 3.0), "estimation : 1 carte de 1 024 px = 5,3 Mo")
-	var six := 6 * 3 * 2
-	var c6 := BiomeTextures.choose_size(six, 2048)
-	_check(c6["px"] == 2048, "6 biomes texturés (36 cartes) en high : 2 048 px, %.0f Mo" % (c6["bytes"] / 1048576.0))
-	var c9 := BiomeTextures.choose_size(9 * 3 * 2, 2048)
-	_check(c9["px"] == 1024 and c9["reason"] == "budget de 1 Go", "9 biomes (54 cartes) en high : %.0f Mo à 2 048 px, niveau 1 024 retenu (%s)" % [BiomeTextures.estimate_bytes(54, 2048) / 1048576.0, c9["reason"]])
-	_check(BiomeTextures.choose_size(six, 1024)["px"] == 1024, "low et medium : 1 024 px")
-	var c_huge := BiomeTextures.choose_size(200, 2048)
-	_check(c_huge["px"] == 0, "au-delà du budget même à 1 024 px : couleurs unies (%s)" % c_huge["reason"])
-	_check(BiomeTextures.choose_size(0, 2048)["px"] == 0, "aucune texture : couleurs unies")
-
+	# 1. Budget et niveau retenu : test_texture_levels.gd (lot P20)
 	# 2. Couches de sol du thème par défaut 2.0 : les 16 biomes, 3 couches chacun, sans doublon
 	var theme: Dictionary = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
 	var model := BiomeModel.new(theme, BiomeLayer.new())

@@ -1,5 +1,10 @@
 # Lot WTF7 – Engine : HUD des défis, surprise du chef, bilan et sons
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série WTF : engine, HUD des défis, surprise du chef, bilan et sons | GDScript | WTF2, WTF4 | Moyenne | Prêt (version 2.0) |
+
 Série WTF (mode « What the fuck », demande du propriétaire du 29 octobre 2026). Plan de la série : `docs/2.0/PLAN_SERIE_WTF.md`.
 
 ## 1. Objectif

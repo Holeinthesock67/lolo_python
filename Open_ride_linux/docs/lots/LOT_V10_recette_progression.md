@@ -1,5 +1,10 @@
 # Lot V10 – Recette de la série V sur le PC et le vélo du propriétaire
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Recette de la série V sur le PC et le vélo du propriétaire | — | V2 à V9, V11 | Moyenne | Non : propriétaire |
+
 ## 1. Objectif
 
 Vérifier sur le matériel réel que la progression est juste, que l'équipement se sent sans fausser les temps et que l'avatar s'affiche dans le budget de rendu.

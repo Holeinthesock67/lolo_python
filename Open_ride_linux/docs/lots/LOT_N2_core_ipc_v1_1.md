@@ -1,5 +1,10 @@
 # Lot N2 – Core : messages du contrat IPC v1.1 (listes, appareils, bilan enrichi)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Core : messages du contrat IPC v1.1 (listes, appareils, bilan enrichi) | Python | N1, E3, E4, M2, M4 (livrés) | Moyenne | **Livré le 25 octobre** (issue #101, PR #174) |
+
 ## 1. Objectif
 
 Faire parler le core selon le contrat IPC v1.1 rédigé dans le lot N1 : répondre à `list_routes` et `list_workouts`, publier l'objet `devices` dans la trame `state` et enrichir `summary` en fin de séance. Le menu de l'engine pourra alors se passer de `--autostart`.

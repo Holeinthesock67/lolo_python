@@ -1,5 +1,10 @@
 # Lot P13 – Véhicules croisés : voitures et tracteurs sur la route du parcours
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Véhicules croisés sur la route du parcours | GDScript | P4, P9 | Petite | **Livré le 27 octobre** (issue #137) |
+
 ## 1. Objectif
 
 De temps en temps, une voiture ou un tracteur croise le cycliste en sens inverse sur la route du parcours, ou le double prudemment, avec le bruit de son passage. Rare (quelques véhicules par dizaine de kilomètres), plus fréquent près des villages, jamais dans les cols de haute montagne. Les routes voisines ne sont pas dans le format `.world` : elles restent hors périmètre.

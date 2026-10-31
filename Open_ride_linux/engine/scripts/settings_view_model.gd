@@ -34,6 +34,7 @@ const RIDE_MODES := ["sim", "erg", "cadence"]
 ## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on` / `detail` ; jauge d'abri
 ## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
+## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
 const CHOICE_TEXTS := {
 	"powerups.mode": {"on": "oui", "off": "non"},
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
@@ -42,6 +43,7 @@ const CHOICE_TEXTS := {
 	"render.draft_gauge": {"off": "non", "on": "oui"},
 	"ride.auto_draft": {"on": "oui", "off": "non"},
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
+	"render.texture_level": {"auto": "selon la qualité", "low": "basses (1 024 px)", "medium": "moyennes (1 024 px)", "high": "hautes (2 048 px)"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
 

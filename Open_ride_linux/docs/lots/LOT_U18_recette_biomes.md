@@ -1,5 +1,10 @@
 # Lot U18 – Recette de la série U sur le PC et le vélo
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Recette sur le PC et le vélo : biomes du premier jalon, performances, mémoire vidéo, gravel | — | U17, U19 à U22 | Moyenne | Non : propriétaire (matériel), **version 3.0** (issue #348) |
+
 ## 1. Objectif
 
 **Version 3.0.** Vérifier sur le PC cible (GTX 1060) et sur le vélo que les biomes du premier jalon et l'option « gravel » sont beaux, justes et assez rapides : un parcours par biome, performances, mémoire vidéo, ressenti du gravel.

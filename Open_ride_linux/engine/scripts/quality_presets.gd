@@ -182,17 +182,29 @@ static func max_biomes(name: String) -> int:
 	return MAX_BIOMES.get(key, MAX_BIOMES[DEFAULT_PRESET])
 
 
-## Côté des textures de sol des biomes en pixels (série U, décision U-Q4 ; lot U6).
-const GROUND_TEXTURE_PX := {
+## Côté des textures du décor en pixels (sols des biomes, textures 1.x du thème) et budget de mémoire vidéo
+## de chaque jeu de textures (lot P20, texture_levels.gd ; série U, décision U-Q4). Le budget de `high`
+## reste à 1 Go comme celui de U-Q4 (recette U18 : textures du décor sous 1 Go en high).
+const TEXTURE_PX := {
 	"low": 1024,
 	"medium": 1024,
 	"high": 2048,
 }
+const TEXTURE_BUDGET_MB := {
+	"low": 512,
+	"medium": 1024,
+	"high": 1024,
+}
 
 
-static func ground_texture_px(name: String) -> int:
+static func texture_px(name: String) -> int:
 	var key := name.strip_edges()
-	return GROUND_TEXTURE_PX.get(key, GROUND_TEXTURE_PX[DEFAULT_PRESET])
+	return TEXTURE_PX.get(key, TEXTURE_PX[DEFAULT_PRESET])
+
+
+static func texture_budget_bytes(name: String) -> int:
+	var key := name.strip_edges()
+	return int(TEXTURE_BUDGET_MB.get(key, TEXTURE_BUDGET_MB[DEFAULT_PRESET])) << 20
 
 
 ## Budgets du décor vivant de la série P selon le préréglage (Lot P4), lus par les lots P5 à P15 et P21.

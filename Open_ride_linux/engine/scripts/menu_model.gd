@@ -64,9 +64,13 @@ const NO_WORKOUT_ID := "_sim"
 const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert",
 	"rogue": "Cyber-Rogue"}
 const DEFAULT_MODES := ["ride", "erg"]
+## Ligne d'explication d'un mode de l'accueil (lot O22), à droite de son libellé.
+const HOME_DETAILS := {"open_world": "route créée en roulant"}
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer ou importer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
 const IMPORT_WORKOUT_ID := "_import"
+## Dernière ligne de la liste : « Comment ça marche ? » ouvre l'aide du sous-menu ERG (workout_help.gd).
+const HELP_WORKOUT_ID := "_help"
 ## Bot de l'écran Prêt (lot O7), dans l'ordre du cycle : libellé et élément de l'argument `bots` de `start`.
 ## Bots à profil (lots T12 et T13) : chaque profil à 90, 100 et 110 % de ta FTP, calibré par le core.
 const BOT_CHOICES := [["aucun", {}], ["200 W", {"kind": "constant", "power_w": 200}],
@@ -80,6 +84,10 @@ const BOT_CHOICES := [["aucun", {}], ["200 W", {"kind": "constant", "power_w": 2
 ## Fin de la liste des parcours (bibliothèque, lot O12) : tri et filtre par étiquette, en cycle.
 const SORT_ROUTES_ID := "_sort"
 const FILTER_ROUTES_ID := "_filter"
+## Fin de la liste des parcours (lot O22) : « Ajouter un parcours » (sa carte dit où déposer la trace)
+## et « Comment ça marche ? », qui ouvrent l'aide des parcours (route_help.gd).
+const ADD_ROUTE_ID := "_add_route"
+const HELP_ROUTES_ID := "_route_help"
 
 var _screens: Dictionary = {}
 var _stack: Array[String] = []      # écrans précédents, pour le retour
@@ -161,7 +169,7 @@ func _refresh_home() -> void:
 	_screens[HOME]["title"] = home_title
 	for m in HOME_MODES:
 		if m in modes:
-			items.append(_item(m, HOME_MODES[m]))
+			items.append(_item(m, HOME_MODES[m], true, str(HOME_DETAILS.get(m, ""))))
 	items.append_array([_item("plan", plan_label, true, plan_detail), _item("ftp", "Test de FTP"),
 		_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée")])
 	if garage:
@@ -304,16 +312,25 @@ func set_items(screen_id: String, items: Array) -> void:
 			continue
 		clean.append(_item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
 			str(it.get("detail", ""))))
-	if screen_id == ROUTES and clean.is_empty():
-		clean.append(_item("empty", "Aucun parcours", false))
+	if screen_id == ROUTES:
+		if clean.is_empty():
+			clean.append(_item("empty", "Aucun parcours", false, "dépose une trace dans ~/OpenRide/GPX/"))
+		clean.append(_item(ADD_ROUTE_ID, "Ajouter un parcours"))
+		clean.append(_item(HELP_ROUTES_ID, "Comment ça marche ?"))
 	elif screen_id == WORKOUTS:
 		if clean.size() == 1:
 			clean.append(_item("empty", "Aucun entraînement", false))
 		clean.append(_item(CREATE_WORKOUT_ID, "Créer un entraînement (intervalles)"))
-		clean.append(_item(IMPORT_WORKOUT_ID, "Importer un fichier (.zwo, .erg, .mrc)"))
+		clean.append(_item(IMPORT_WORKOUT_ID, "Importer un fichier"))
+		clean.append(_item(HELP_WORKOUT_ID, "Comment ça marche ?"))
 	var focused_id := ""
 	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
 		focused_id = _screens[screen_id]["items"][_focus]["id"]
+	# Liste des parcours arrivée pendant l'affichage d'une liste vide : le focus, posé faute de mieux sur
+	# l'aide de fin de liste (lot O22), passe au premier parcours.
+	if screen_id == ROUTES and focused_id in [ADD_ROUTE_ID, HELP_ROUTES_ID] \
+			and _screens[screen_id]["items"].all(func(it): return not it["enabled"] or it["id"] in [ADD_ROUTE_ID, HELP_ROUTES_ID]):
+		focused_id = ""
 	_screens[screen_id]["items"] = clean
 	if _screen == screen_id:
 		_focus = _first_enabled_from(_index_of(focused_id), 1)
@@ -570,7 +587,7 @@ func _validate() -> Dictionary:
 				"plan", "ftp", "rogue", "garage", "profile":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
-			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID]:
+			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
 				return {"action": "item", "screen": ROUTES, "id": id}
 			var label := id
 			for it in _items():
@@ -583,7 +600,7 @@ func _validate() -> Dictionary:
 				_back()
 			return {"action": "select_route", "route_id": id}
 		WORKOUTS:
-			if id in [CREATE_WORKOUT_ID, IMPORT_WORKOUT_ID]:
+			if id in [CREATE_WORKOUT_ID, IMPORT_WORKOUT_ID, HELP_WORKOUT_ID]:
 				return {"action": "item", "screen": WORKOUTS, "id": id}
 			var workout = null if id == NO_WORKOUT_ID else id
 			mode = "free" if workout == null else "erg"

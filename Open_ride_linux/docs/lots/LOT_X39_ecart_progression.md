@@ -1,5 +1,10 @@
 # Lot X39 – Écart de progression avant/après une PR (`openride-core xp --compare`)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Écart de progression avant/après une PR (`openride-core xp --compare`) | Python | V2, V3b | Petite | Oui |
+
 ## 1. Objectif
 
 L'expérience, les pièces et les défis sont recalculés depuis les journaux des séances (lots V2 et V3b). Une PR qui touche à `progression.py`, `coins.py`, `data/progression.toml` ou au journal peut changer, sans le dire, ce que vaut l'historique déjà roulé. Proposition du fil V5 (28 octobre) : rejouer le recalcul sur un même dossier de journaux avant et après une PR, et sortir l'écart séance par séance. L'outil sert aussi sur le PC, avec les vrais journaux, sans rien publier.

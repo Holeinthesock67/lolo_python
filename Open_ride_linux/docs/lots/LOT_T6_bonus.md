@@ -1,5 +1,10 @@
 # Lot T6 – Bonus : légèreté, aérodynamique, puissance
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : bonus légèreté, aéro et puissance (obtention, activation, effets, fichier de valeurs, ERG) | Python | — | Moyenne | **Livré le 27 octobre** (PR #262, module pur ; bouton Z branché par T7) |
+
 ## 1. Objectif
 
 Les bonus du mode classique (plan de la série T §3.3, décisions T-Q2 à T-Q4) dans un module pur du core : types et valeurs, obtention (fin de segment, arche tous les 5 km), réserve unique, activation, durée, effets sur la physique, désactivation en ERG et fichier de valeurs modifiable. Le branchement dans la séance (bouton Z, champ `powerup` de `state`) vient avec le contrat T1.

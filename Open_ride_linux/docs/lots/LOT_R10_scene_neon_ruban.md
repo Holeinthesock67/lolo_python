@@ -1,5 +1,10 @@
 # Lot R10 – Engine : scène néon, ruban 3D, shader de pente, arches et zones
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : scène néon, ruban 3D, shader de pente, arches et zones | GDScript + shader | T1 | Grande | Non : interne (rendu, contrôle visuel) ; **Livré le 28 octobre** (sauf contrôle visuel), **version 2.0** |
+
 ## 1. Objectif
 
 La scène Godot du mode Cyber-Rogue : une piste suspendue dans le vide (le « ruban tactique »), construite depuis le message `room`, colorée selon la pente, avec ses arches, zones et balises, dans un décor néon (grille, glow, particules) et le Firewall derrière le joueur. Elle est séparée de la scène du mode classique et partage le client IPC, le menu et le HUD de base. Lot interne : contrôle visuel.

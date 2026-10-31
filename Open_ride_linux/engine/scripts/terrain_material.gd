@@ -9,15 +9,16 @@ const TERRAIN_SHADER := preload("res://shaders/terrain.gdshader")
 
 
 ## Crée un nouveau ShaderMaterial configuré selon le thème et son dossier.
-static func create_material(theme: Dictionary = {}, theme_dir: String = "") -> ShaderMaterial:
+static func create_material(theme: Dictionary = {}, theme_dir: String = "", choice: Dictionary = {}) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = TERRAIN_SHADER
-	apply_to_material(mat, theme, theme_dir)
+	apply_to_material(mat, theme, theme_dir, choice)
 	return mat
 
 
-## Applique les paramètres du thème au ShaderMaterial donné.
-static func apply_to_material(mat: ShaderMaterial, theme: Dictionary = {}, theme_dir: String = "") -> void:
+## Applique les paramètres du thème au ShaderMaterial donné ; `choice` : niveau des textures (lot P20,
+## ThemeLoader.texture_for).
+static func apply_to_material(mat: ShaderMaterial, theme: Dictionary = {}, theme_dir: String = "", choice: Dictionary = {}) -> void:
 	if mat == null or mat.shader == null:
 		return
 
@@ -39,9 +40,9 @@ static func apply_to_material(mat: ShaderMaterial, theme: Dictionary = {}, theme
 	var tex_snow: Texture2D = null
 
 	if theme_dir != "":
-		tex_grass = ThemeLoader.texture_for(theme, theme_dir, "terrain.grass")
-		tex_rock = ThemeLoader.texture_for(theme, theme_dir, "terrain.rock")
-		tex_snow = ThemeLoader.texture_for(theme, theme_dir, "terrain.snow")
+		tex_grass = ThemeLoader.texture_for(theme, theme_dir, "terrain.grass", choice)
+		tex_rock = ThemeLoader.texture_for(theme, theme_dir, "terrain.rock", choice)
+		tex_snow = ThemeLoader.texture_for(theme, theme_dir, "terrain.snow", choice)
 
 	if tex_grass != null:
 		mat.set_shader_parameter("grass_texture", tex_grass)

@@ -1,5 +1,10 @@
 # Lot W14 – Enregistrer la balade comme parcours de la bibliothèque
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Enregistrer la balade comme parcours de la bibliothèque (GPX puis `.world`) | Python | W9 | Petite | Oui, après W9 (issue #269) |
+
 ## 1. Objectif
 
 À la fin d'une séance en monde ouvert, proposer d'enregistrer la balade comme un parcours ordinaire (plan §2.5), pour la refaire plus tard en mode classique avec bots et segments.
