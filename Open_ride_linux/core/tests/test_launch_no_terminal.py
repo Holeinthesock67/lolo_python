@@ -94,7 +94,7 @@ def test_first_run_creates_config_and_folders_then_not_again(home: Path, monkeyp
     assert "ftp_w = " not in cfg.read_text(encoding="utf-8")
     assert (home / "GPX").is_dir() and (home / "Workouts").is_dir()
     assert runs[0].core_cmd[-1] == "--first-run"
-    assert any("devices --save" in text and not error for text, error in messages)
+    assert any("Rechercher et appairer" in text and not error for text, error in messages)
 
     before = cfg.stat().st_mtime_ns
     assert launcher.main(["--trainer", "mock"], message=say) == 0

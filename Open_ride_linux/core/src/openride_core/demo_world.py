@@ -173,10 +173,8 @@ def ensure_demo_world(routes_root: Path) -> Path:
     return world
 
 
-def write_biome_demo_worlds(out_dir: Path, engine_dir: Path | None = None) -> list[dict]:
-    """Écrit les quatre parcours de démonstration des biomes (lot U19) dans `out_dir` : tour des six biomes,
-    même tour avec un tiers de gravel, côte avec la mer, alpin. Renvoie le résumé de chacun.
-    Lève ImportError sans le compilateur, FileNotFoundError sans le générateur de l'engine."""
+def _biome_demo_module(engine_dir: Path | None = None):
+    """Générateur `engine/tests/make_biome_world.py` (lot U19) ; FileNotFoundError s'il manque."""
     import importlib.util
     import os
 
@@ -186,9 +184,22 @@ def write_biome_demo_worlds(out_dir: Path, engine_dir: Path | None = None) -> li
     script = engine / "tests" / "make_biome_world.py"
     if not script.is_file():
         raise FileNotFoundError(f"générateur introuvable : {script} (définir OPENRIDE_ENGINE)")
-    import openride_compiler  # noqa: F401  (ImportError explicite si le compilateur manque)
     spec = importlib.util.spec_from_file_location("make_biome_world", script)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
+    return module
+
+
+def biome_demo_names(engine_dir: Path | None = None) -> list[str]:
+    """Noms des parcours écrits par `write_biome_demo_worlds` (contenus de départ, lot O25)."""
+    return [name for name, *_ in _biome_demo_module(engine_dir).DEMO_SET]
+
+
+def write_biome_demo_worlds(out_dir: Path, engine_dir: Path | None = None) -> list[dict]:
+    """Écrit les quatre parcours de démonstration des biomes (lot U19) dans `out_dir` : tour des six biomes,
+    même tour avec un tiers de gravel, côte avec la mer, alpin. Renvoie le résumé de chacun.
+    Lève ImportError sans le compilateur, FileNotFoundError sans le générateur de l'engine."""
+    module = _biome_demo_module(engine_dir)
+    import openride_compiler  # noqa: F401  (ImportError explicite si le compilateur manque)
     return module.write_demo_set(Path(out_dir))

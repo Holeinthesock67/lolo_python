@@ -90,7 +90,7 @@ Le tableau du clavier du §7.1 est lu lui aussi.
 
 ### Boîtier gauche
 
-Le boîtier gauche peut se taire (verrou Zwift, SRS §4.2). Le §7.1 dit : « rien d'indispensable n'est mis sur le seul boîtier gauche ».
+Le boîtier gauche répond, mais il est redémarré environ une fois par minute (verrou Zwift, SRS §4.2) : environ 4 s sans boutons. Le §7.1 dit : « rien d'indispensable n'est mis sur le seul boîtier gauche ».
 
 - À chaque phase où la séance roule, l'effet de chaque flèche doit aussi être obtenu par un bouton du boîtier droit (+, A, B, Y, Z).
 - La vue de caméra n'est jamais indispensable. Si elle n'est qu'à gauche, elle est notée « confort », sans échec.

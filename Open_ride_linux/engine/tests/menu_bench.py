@@ -39,7 +39,7 @@ En-tête d'un scénario : `description`, `voies` (défaut : les trois), `apparei
 `config` ({clé: valeur} écrite dans config.toml avant le lancement), `entrainement` (vrai : `erg_court.zwo`
 dans ~/OpenRide/Workouts), `telechargements` ({fichier: nom de l'entraînement} dans ~/Téléchargements), `plans`
 (vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `fichiers` ({chemin dans le
-HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…).
+HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29).
 
 Rapport dans `--out` : `rapport.html` (tableau scénario × voie, vérifications, captures), `resultats.json`
 et `resume.txt`. Une capture est prise à chaque échec, avec l'état du menu. Code de sortie : 0 si toutes les
@@ -75,6 +75,7 @@ sys.path.insert(0, str(REPO / "core" / "src"))
 from openride_core.launcher import build_supervisor  # noqa: E402
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
+import quality_guard  # noqa: E402
 
 VOIES = ("click", "clavier", "souris")
 MAX_FAILURES = 5   # au-delà, le passage s'arrête : les échecs suivants ne seraient que des conséquences
@@ -83,6 +84,11 @@ MAX_FAILURES = 5   # au-delà, le passage s'arrête : les échecs suivants ne se
 # vérification, en redemandant l'état : sinon « écran home : engine sans réponse » sur le PC, jamais dans le cloud.
 ENGINE_READY_S = 60.0
 ENGINE_READY_ASK_S = 3.0   # délai de chaque demande d'état pendant cette attente
+# L'engine peut aussi se taire un moment APRÈS sa première réponse (PC, 31 octobre : prêt en 0,7 s puis « écran home :
+# engine sans réponse », sans doute la compilation des shaders du premier écran avec un HOME neuf). Une vérification
+# d'écran ne compte donc pas ce silence dans son délai : elle redemande l'état jusqu'à ENGINE_SILENT_S de silence,
+# et note la durée du silence dans le rapport.
+ENGINE_SILENT_S = 60.0
 COURT_S, LONG_S, FLOU_S = 0.15, 1.1, 0.7
 
 # Un seul tableau bouton → geste : événement du Click -> (bouton du Click V2 simulé, durée en s),
@@ -119,7 +125,7 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "duree_s", "ecran", "monde", "titre", "groupe", "contient", "absent", "focus", "elements", "statut", "edition",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "capture", "relancer", "delai", "voies", "note"}
-HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "etapes"}
+HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives", "etapes"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -138,6 +144,25 @@ def descendants(pid: int) -> list[int]:
             out.append(child)
             todo.append(child)
     return out[::-1]
+
+
+def write_archive(path: Path, members: dict[str, Any]) -> None:
+    """Archive `.zip` d'un scénario (`archives`) : `"@dossier": "chemin/du/dépôt"` y range ce dossier (sous son
+    nom), les autres clés sont des fichiers texte (ou JSON) qui remplacent ceux du dossier."""
+    import zipfile
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+        folder = members.get("@dossier")
+        texts = {k: v for k, v in members.items() if k != "@dossier"}
+        if folder:
+            src = ENGINE_DIR.parent / folder
+            for f in sorted(src.rglob("*")):
+                arc = f"{src.name}/{f.relative_to(src)}"
+                if f.is_file() and arc not in texts:
+                    zf.write(f, arc)
+        for arc, content in texts.items():
+            zf.writestr(arc, content if isinstance(content, str) else json.dumps(content, ensure_ascii=False))
 
 
 class ScenarioError(Exception):
@@ -365,17 +390,27 @@ class Run:
 
     def wait_screen(self, step: dict[str, Any]) -> None:
         deadline = now() + float(step.get("delai", 5.0))
+        silent_since: float | None = None
+        silent_s = 0.0
         while True:
-            st = self.state()
+            st = self.state(ENGINE_READY_ASK_S)
+            if st:
+                silent_since = None
+            else:
+                silent_since = silent_since if silent_since is not None else now() - ENGINE_READY_ASK_S
+                silent_s = max(silent_s, now() - silent_since)
             bad = self._screen_ok(st, step)
-            if not bad or now() >= deadline:
+            # Délai de l'étape pour un écran qui répond ; silence de l'engine toléré jusqu'à ENGINE_SILENT_S.
+            limit = deadline if st else max(deadline, silent_since + ENGINE_SILENT_S)
+            if not bad or now() >= limit or self.engine.p.poll() is not None:
                 break
             time.sleep(0.15)
         what = step.get("ecran") or ("menu caché" if step.get("menu_cache") else
                                      f"monde ouvert {step['monde']}" if "monde" in step else "menu visible")
         detail = ", ".join(f"{k}={step[k]!r}" for k in ("titre", "groupe", "focus", "contient", "elements") if k in step)
+        silence = f" (engine muet {silent_s:.1f} s)" if silent_s else ""
         self.check(not bad, f"écran {what}" + (f" ({detail})" if detail else ""),
-                   "; ".join(bad) if bad else f"« {st.get('title', '')} »")
+                   ("; ".join(bad) if bad else f"« {st.get('title', '')} »") + silence)
 
     def wait_config(self, want: dict[str, Any], delay: float) -> None:
         deadline = now() + delay
@@ -428,6 +463,8 @@ class Run:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content if isinstance(content, str) else json.dumps(content, ensure_ascii=False),
                             encoding="utf-8")
+        for rel, members in doc.get("archives", {}).items():
+            write_archive(self.home / rel, members)
         self.state_port, self.cmd_port = free_udp_ports(2)
         self.config = self.tmp / "config.toml"
         self.config.write_text(f"[ipc]\nport_state = {self.state_port}\nport_commands = {self.cmd_port}\n"
@@ -460,6 +497,8 @@ class Run:
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
         ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
         self.report.check(ok, "engine relié au core", "hello_ack")
+        if ok:
+            self.check_quality("au départ")
         return ok and self.wait_engine_ready()
 
     def wait_engine_ready(self) -> bool:
@@ -471,8 +510,22 @@ class Run:
         return self.report.check(ok, "engine prêt (première réponse à menu_state)",
                                  f"{now() - t0:.1f} s" if ok else f"sans réponse en {ENGINE_READY_S:.0f} s")
 
+    def check_quality(self, when: str) -> None:
+        """Qualité réellement appliquée (lot X32) : celle que config.toml demande à cet instant (au départ : celle
+        passée par le lanceur ; à l'arrêt : celle d'un réglage changé au menu et enregistré)."""
+        assert self.engine is not None
+        try:
+            data = tomllib.loads(self.config.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError):
+            data = {}
+        wanted = str(config_get(data, "render.quality") or "low")
+        seq = [m.group(0) for _, m in self.engine.matching(quality_guard.APPLIED.pattern)]
+        ok, msg = quality_guard.check("\n".join(seq), wanted)
+        self.report.check(bool(ok), f"qualité réellement appliquée {when}", msg)
+
     def stop(self) -> None:
         if self.engine is not None and self.engine.p.poll() is None:
+            self.check_quality("à l'arrêt")
             # xvfb-run ne transmet pas SIGTERM à Godot : le moteur et son Xvfb sont arrêtés d'abord.
             for pid in descendants(self.engine.p.pid):
                 with contextlib.suppress(ProcessLookupError):
