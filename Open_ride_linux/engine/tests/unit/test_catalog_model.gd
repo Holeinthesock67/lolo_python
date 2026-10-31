@@ -68,10 +68,16 @@ func _init() -> void:
 	_check(menu.state()["focus"] == 1, "menu routes : avance sur index 1 (galibier)")
 
 	menu.handle("PLUS_SHORT")
-	_check(menu.state()["focus"] == 0, "menu routes : boucle sur index 0 en sautant les 2 désactivés")
+	_check(menu.state()["items"][menu.state()["focus"]]["id"] == "_add_route",
+		"menu routes : saute les 2 désactivés jusqu'à « Ajouter un parcours » (lot O22)")
+	menu.handle("PLUS_SHORT")
+	menu.handle("PLUS_SHORT")
+	_check(menu.state()["focus"] == 0, "menu routes : boucle sur index 0 après l'aide de fin de liste")
 
 	menu.handle("MINUS_SHORT")
-	_check(menu.state()["focus"] == 1, "menu routes : recule sur index 1 en sautant les 2 désactivés")
+	menu.handle("MINUS_SHORT")
+	menu.handle("MINUS_SHORT")
+	_check(menu.state()["focus"] == 1, "menu routes : recule sur index 1 en sautant l'aide et les 2 désactivés")
 
 	# 3. Vérification de workout_items : tri par durée croissante
 	var w_items: Array = cat.workout_items(raw_workouts)
