@@ -29,6 +29,8 @@ extends RefCounted
 ## réponse `imports` arrive par set_import_candidates() et un choix renvoie import_workout {path}.
 ## Réponse `workout_saved` : on_workout_saved(), retour à la liste, focus sur le nouvel entraînement à
 ## son arrivée ; erreur du core (bad_args, busy, workout_invalid, workout_write_failed) sur la ligne d'état.
+## « Comment ça marche ? » ouvre l'écran « Aide ERG » (workout_help.gd) : un sujet par ligne, son
+## explication dans la carte ; « Créer » et « Importer » de la liste montrent aussi la leur.
 ##
 ## Plans, test de FTP et bibliothèque (lot O12, contrat 1.3) :
 ## - accueil : « Séance du jour » (nom, durée, TSS) quand le plan actif en a une, sinon « Plan : … » ou
@@ -39,6 +41,8 @@ extends RefCounted
 ## - « Test de FTP » : la rampe (seul test depuis le lot O19), puis écran Prêt, `start` avec ftp_test ; au bilan,
 ##   « Accepter » (accept_ftp ; résultat douteux : confirmation puis accept_ftp avec force) ou « Garder » ;
 ## - parcours : tri et filtre par étiquette en cycle en fin de liste, fiche du parcours sur l'écran Prêt ;
+##   puis « Ajouter un parcours » et « Comment ça marche ? » (lot O22) : leur carte et l'écran « Aide
+##   parcours » (route_help.gd) expliquent où déposer une trace et le monde ouvert ;
 ## - bots (lot O7) : « Bot : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
 ##   core (bot_invalid) sur la ligne d'état de l'écran Prêt ;
 ## - entraînements en watts (.erg, .mrc) : « watts fixes » et la puissance maximale.
@@ -50,6 +54,8 @@ const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
+const WorkoutHelp := preload("res://scripts/workout_help.gd")
+const RouteHelp := preload("res://scripts/route_help.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
@@ -65,6 +71,10 @@ const SETTING_EDIT := SettingsViewModel.EDIT_SCREEN
 const SETTINGS_GROUP := "settings_group"
 const WORKOUT_CREATE := WorkoutBuilder.SCREEN
 const WORKOUT_IMPORT := "workout_import"
+const WORKOUT_HELP := WorkoutHelp.SCREEN
+const ROUTE_HELP := RouteHelp.SCREEN
+## Lignes de la liste des parcours dont la carte est un sujet de l'aide des parcours (lot O22).
+const ROUTE_HELP_TOPICS := {MenuModel.ADD_ROUTE_ID: "add", MenuModel.HELP_ROUTES_ID: "choose"}
 const PLANS := "plans"
 const PLAN := "plan"
 const FTP_TEST := "ftp_test"
@@ -86,6 +96,9 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 	"engine_lost": "Affichage relancé : reprends quand tu veux", "core_restarted": "OpenRide a redémarré : séance retrouvée",
 	"recording_failed": "Enregistrement impossible : la séance reste en mémoire",
 	"world_data": "Route devant toi en cours de chargement : reprise automatique"}
+## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
+const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create", MenuModel.IMPORT_WORKOUT_ID: "import",
+	MenuModel.HELP_WORKOUT_ID: "choose"}
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -93,6 +106,12 @@ var menu = MenuModel.new()
 var catalog = CatalogModel.new()
 var summary_model = SummaryViewModel.new()
 var session_state: String = ""
+## Chiffres de la séance en cours pour la carte de la pause : durée (t), distance (s) de la dernière trame et
+## moyenne de la puissance mesurée en roulant (le core n'envoie pas de moyenne dans la trame d'état).
+var _run_t := NAN
+var _run_s := NAN
+var _power_sum := 0.0
+var _power_n := 0
 ## Dernier bilan reçu (objet `summary` de la trame en FINISHED).
 var summary: Dictionary = {}
 ## « Voir le bilan détaillé » : blocs ERG en plus des lignes.
@@ -180,6 +199,10 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": WORKOUT_IMPORT, "title": "Importer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
+	menu.add_screen({"id": WORKOUT_HELP, "title": WorkoutHelp.TITLE, "on_back": MenuModel.WORKOUTS,
+		"items": WorkoutHelp.items()})
+	menu.add_screen({"id": ROUTE_HELP, "title": RouteHelp.TITLE, "on_back": MenuModel.ROUTES,
+		"items": RouteHelp.items()})
 	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
 	menu.add_screen({"id": PLAN, "title": "Plan", "on_back": PLANS, "items": []})
 	menu.add_screen({"id": FTP_TEST, "title": "Test de FTP", "on_back": MenuModel.HOME, "items": []})
@@ -212,10 +235,33 @@ func is_visible() -> bool:
 
 ## Trame `state` reçue ; renvoie les actions à exécuter (liste, éventuellement vide). `now_s` : horloge
 ## en secondes pour l'attente de l'écran de connexion (négatif : passage à l'accueil sans attente).
+func _track_run(st: String, state: Dictionary) -> void:
+	if st in ["IDLE", "READY"]:
+		_run_t = NAN
+		_run_s = NAN
+		_power_sum = 0.0
+		_power_n = 0
+		return
+	var t = state.get("t", null)
+	var s = state.get("s", null)
+	if (t is int or t is float) and not is_nan(_run_t) and float(t) + 1.0 < _run_t:   # nouvelle séance : le temps repart de zéro
+		_power_sum = 0.0
+		_power_n = 0
+	if t is int or t is float:
+		_run_t = float(t)
+	if s is int or s is float:
+		_run_s = float(s)
+	var p = state.get("power", null)
+	if st == "RUNNING" and (p is int or p is float) and float(p) >= 0.0 and float(p) < 3000.0:
+		_power_sum += float(p)
+		_power_n += 1
+
+
 func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
+	_track_run(st, state)
 	if state.get("devices") is Dictionary:
 		devices = state["devices"]
 	var diff = state.get("difficulty_pct", null)
@@ -493,9 +539,17 @@ func card(st: Dictionary) -> Dictionary:
 	if screen == MenuModel.READY:
 		return _sheet(routes_raw, menu.world_id, func(r): return CatalogModel.route_sheet(r))
 	if screen == MenuModel.ROUTES:
+		if focused in ROUTE_HELP_TOPICS:
+			return RouteHelp.sheet(ROUTE_HELP_TOPICS[focused])
 		return _sheet(routes_raw, focused, func(r): return CatalogModel.route_sheet(r))
+	if screen == ROUTE_HELP:
+		return RouteHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
 	if screen == MenuModel.WORKOUTS:
+		if focused in WORKOUT_HELP_TOPICS:
+			return WorkoutHelp.sheet(WORKOUT_HELP_TOPICS[focused])
 		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
+	if screen == WORKOUT_HELP:
+		return WorkoutHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
 	if screen == PLANS:
 		return _plan_card(focused)
 	if screen == PLAN:
@@ -515,6 +569,8 @@ func card(st: Dictionary) -> Dictionary:
 		var blocks: Array = builder.profile()
 		return CatalogModel.workout_sheet({"id": builder.workout_id(), "name": builder.workout_name(),
 			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
+	if screen == MenuModel.PAUSE:
+		return CatalogModel.pause_sheet(_run_t, _run_s, _power_sum / _power_n if _power_n > 0 else -1.0)
 	if screen == SUMMARY:
 		return {"title": "Bilan de la séance"}
 	if screen == RECORDS:
@@ -775,7 +831,7 @@ func set_import_candidates(found: Array) -> void:
 		items.append({"id": "file:%d" % i, "label": str(c["file"]),
 			"detail": str(c["source"]) + (", déjà importé" if c.get("imported", false) else "")})
 	if items.is_empty():
-		items.append({"id": "none", "label": "Aucun fichier .zwo, .erg ou .mrc", "enabled": false,
+		items.append({"id": "none", "label": "Aucun fichier .zwo, .erg, .mrc ou .qwk", "enabled": false,
 			"detail": "dans Téléchargements, Bureau ou ~/OpenRide/Import"})
 	menu.set_screen_items(WORKOUT_IMPORT, items)
 
@@ -889,8 +945,14 @@ func handle(event: String) -> Dictionary:
 	if act.get("action", "") == "item" and act.get("screen", "") in GarageViewModel.SCREENS:
 		return _handle_garage(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
+		if str(act["id"]) in ROUTE_HELP_TOPICS:
+			menu.push_screen(ROUTE_HELP)
+			menu.focus_item("help:" + str(ROUTE_HELP_TOPICS[act["id"]]))
+			return {}
 		_cycle_routes(str(act["id"]))
 		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == ROUTE_HELP:
+		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") in [PLANS, PLAN]:
 		return _handle_plan_item(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == FTP_TEST:
@@ -929,10 +991,15 @@ func handle(event: String) -> Dictionary:
 			_refresh_builder()
 			menu.push_screen(WORKOUT_CREATE)
 			return {}
+		if str(act["id"]) == MenuModel.HELP_WORKOUT_ID:
+			menu.push_screen(WORKOUT_HELP)
+			return {}
 		import_candidates = []
 		menu.set_screen_items(WORKOUT_IMPORT, [{"id": "none", "label": "Recherche des fichiers…", "enabled": false}])
 		menu.push_screen(WORKOUT_IMPORT)
 		return {"action": "list_imports"}
+	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_HELP:
+		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_CREATE:
 		var item_id := str(act["id"])
 		if item_id == "save":
