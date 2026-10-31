@@ -14,10 +14,15 @@ Règles :
   derrière ; égalité (écart sous 1 ms) : un bot avant le cycliste, puis le niveau le plus bas, puis
   l'identifiant le plus grand ;
 - éliminé à l'arche k avec N bots, un coureur finit (N + 2 − k)e ; le dernier en course gagne.
+
+Lot DS3 : `survival_hints` donne à chaque bot en course sa situation avant l'arche (menacé, à l'abri)
+et la distance où il lance son sprint de survie ; `ProfileBot` en tire sa puissance (`bots.py`).
+Aucun élastique : un bot ne ralentit jamais à cause de l'écart avec le cycliste en tant que tel.
 """
 
 from __future__ import annotations
 
+import random
 import time
 from dataclasses import dataclass, field
 from typing import Iterable, Mapping
@@ -34,6 +39,11 @@ SNAP_M = 300.0                               # calage sur une ligne de sprint ou
 TIE_S = 0.001                                # écart de passage sous lequel deux coureurs sont à égalité
 RESULT_REPEAT = 3                            # message `elimination` répété 3 fois, à 1 s d'intervalle
 V_FLOOR = 1.0                                # m/s : vitesse plancher pour les écarts en temps
+# Lot DS3 : tactique de survie des bots
+DANGER_LAST = 2                              # menacé : parmi les deux derniers en course…
+DANGER_GAP_S = 2.0                           # … ou à moins de 2 s du dernier
+SAFE_GAP_S = 5.0                             # à l'abri : à plus de 5 s du dernier
+SPRINT_FROM_M = (250.0, 400.0)               # distance de l'arche où part le sprint, tirée par arche et par bot
 
 
 class SurvivorError(ValueError):
@@ -150,6 +160,7 @@ class SurvivorRace:
     arches: list[float]
     bots: list[tuple[str, str, float]]
     spacing_km: float = 2.0
+    seed: int = 0
     journal: list[dict] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -279,6 +290,41 @@ class SurvivorRace:
                 item.left -= 1
                 item.at = t + 1.0
         self._pending = [i for i in self._pending if i.left > 0]
+        return out
+
+    # --- tactique des bots (lot DS3) ---
+
+    def sprint_from_m(self, rider_id: str, arch: int) -> float:
+        """Distance de l'arche `arch` (index) où `rider_id` lance son sprint : tirée, rejouable."""
+        rnd = random.Random(f"{self.seed}:{rider_id}:{arch}")
+        return rnd.uniform(*SPRINT_FROM_M)
+
+    def survival_hints(self) -> dict[str, tuple[float, bool, bool, float]]:
+        """Pour chaque bot en course : (distance à sa prochaine arche, menacé, à l'abri, début du sprint).
+
+        Un bot qui a déjà passé l'arche en cours vise la suivante ; son classement est celui de la route.
+        Menacé : parmi les deux derniers en course ou à moins de 2 s du dernier ; à l'abri : à plus de 5 s
+        du dernier. Le cycliste compte comme un coureur parmi les autres (pas d'élastique)."""
+        if self.finished:
+            return {}
+        order = self._order()
+        last = order[-1] if order else None
+        s_last = self._pos.get(last, (0.0, 0.0))[0] if last else 0.0
+        out: dict[str, tuple[float, bool, bool, float]] = {}
+        for rank, rid in enumerate(order):
+            if rid == ME or rid not in self._pos:
+                continue
+            s, v = self._pos[rid]
+            nxt = self.arch
+            while nxt < len(self.arches) - 1 and rid in self.crossings[nxt]:
+                nxt += 1
+            if rid in self.crossings[nxt]:
+                continue   # a passé la dernière arche : plus rien à défendre
+            d_m = max(self.arches[nxt] - s, 0.0)
+            gap_s = (s - s_last) / max(v, V_FLOOR)
+            danger = rank >= len(order) - DANGER_LAST or gap_s < DANGER_GAP_S
+            safe = not danger and gap_s > SAFE_GAP_S
+            out[rid] = (round(d_m, 2), danger, safe, self.sprint_from_m(rid, nxt))
         return out
 
     # --- trame, journal, bilan ---
