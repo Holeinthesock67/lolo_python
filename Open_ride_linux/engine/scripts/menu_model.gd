@@ -76,6 +76,8 @@ const HOME_DETAILS := {"open_world": "route créée en roulant"}
 const CREATE_WORKOUT_ID := "_create"
 const IMPORT_WORKOUT_ID := "_import"
 ## Dernière ligne de la liste : « Comment ça marche ? » ouvre l'aide du sous-menu ERG (workout_help.gd).
+## « Saisir du QWKcode (clavier) » ouvre la saisie du QWKcode de GoldenCheetah (qwk_editor.gd, lot O21).
+const QWK_WORKOUT_ID := "_qwk"
 const HELP_WORKOUT_ID := "_help"
 ## Nombre de bots de l'écran Prêt, fantôme en plus (lot O35) : MAX_CONSTANT_BOTS du core (bots.py).
 const MAX_BOTS := 4
@@ -429,6 +431,7 @@ func set_items(screen_id: String, items: Array) -> void:
 		if clean.size() == 1:
 			clean.append(_item("empty", "Aucun entraînement", false))
 		clean.append(_item(CREATE_WORKOUT_ID, "Créer un entraînement (intervalles)"))
+		clean.append(_item(QWK_WORKOUT_ID, "Saisir du QWKcode (clavier)"))
 		clean.append(_item(IMPORT_WORKOUT_ID, "Importer un fichier"))
 		clean.append(_item(HELP_WORKOUT_ID, "Comment ça marche ?"))
 	var focused_id := ""
@@ -712,7 +715,7 @@ func _validate() -> Dictionary:
 				_back()
 			return {"action": "select_route", "route_id": id}
 		WORKOUTS:
-			if id in [CREATE_WORKOUT_ID, IMPORT_WORKOUT_ID, HELP_WORKOUT_ID]:
+			if id in [CREATE_WORKOUT_ID, IMPORT_WORKOUT_ID, QWK_WORKOUT_ID, HELP_WORKOUT_ID]:
 				return {"action": "item", "screen": WORKOUTS, "id": id}
 			var workout = null if id == NO_WORKOUT_ID else id
 			mode = "free" if workout == null else "erg"

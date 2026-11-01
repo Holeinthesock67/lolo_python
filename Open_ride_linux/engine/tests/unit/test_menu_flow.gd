@@ -422,7 +422,7 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Session ERG
-	_check(_ids(f) == ["_sim", "seuil", "_create", "_import", "_help"],
+	_check(_ids(f) == ["_sim", "seuil", "_create", "_qwk", "_import", "_help"],
 		"sous-menu ERG : liste puis Créer, Importer et Aide (%s)" % str(_ids(f)))
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_help" and f.state()["card"].get("name", "") == "Choisir un entraînement",
@@ -440,6 +440,8 @@ func _test_erg_submenu() -> void:
 	_check(f.state()["screen"] == "workouts" and _focus_id(f) == "_help", "Y : retour à la liste")
 	f.handle("MINUS_SHORT")
 	_check(f.state()["card"].get("name", "") == "Importer un fichier", "Importer : carte de l'aide")
+	f.handle("MINUS_SHORT")
+	_check(f.state()["card"].get("name", "") == "Saisie QWKcode (GoldenCheetah)", "QWKcode : carte de l'aide")
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_create", "focus sur Créer un entraînement")
 	_check(f.state()["card"].get("name", "") == "Créer des intervalles", "Créer : carte de l'aide")
@@ -857,7 +859,65 @@ func _test_four_bots() -> void:
 	_check(m.state()["items"][6]["label"] == "Bot 4 : aucun", "ligne « Bot 4 : aucun » revenue")
 
 
+## Lot O21 : QWKcode saisi au clavier, envoyé au core par create_workout_qwk.
+func _test_qwk_entry() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE", "route_id": "vosges"})
+	f.set_workouts([{"id": "seuil", "name": "Seuil", "duration_s": 3600}])
+	_check(not f.qwk_key("a", false, false)["used"], "hors de l'écran de saisie : la touche reste un bouton")
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_SHORT")
+	f.handle("A_LONG")   # Session ERG
+	f.menu.focus_item("_qwk")
+	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_qwk"
+		and f.state()["title"] == "Saisir du QWKcode", "écran Saisir du QWKcode")
+	_check(_ids(f) == ["line:0", "save", "clear"] and not f.state()["items"][1]["enabled"],
+		"texte vide : une ligne, Enregistrer désactivé (%s)" % str(_ids(f)))
+	_check(f.state()["card"].get("name", "") == "Saisie QWKcode (GoldenCheetah)", "carte : syntaxe du QWKcode")
+	for ch in "# Seuil":
+		f.qwk_key(ch, false, false)
+	f.qwk_key("", true, false)
+	for ch in "4x 5m@280 r3m@1400":
+		_check(f.qwk_key(ch, false, false)["used"], "« %s » écrit" % ch)
+	f.qwk_key("", false, true)   # Retour arrière : 1400 → 140
+	var items: Array = f.state()["items"]
+	_check(items[0]["label"] == "# Seuil" and items[1]["label"] == "4x 5m@280 r3m@140▌" and _focus_id(f) == "line:1",
+		"deux lignes, curseur en fin de la dernière (%s)" % str(items.map(func(it): return it["label"])))
+	_check(items[2]["enabled"] and items[2]["detail"] == "1 segment", "Enregistrer : 1 segment")
+	f.qwk_key("", true, false)
+	f.qwk_key("", true, false)   # pas deux lignes vides
+	_check(_ids(f) == ["line:0", "line:1", "line:2", "save", "clear"], "une seule ligne vide en fin")
+	f.qwk_key("", false, true)
+	_check(_ids(f).size() == 4 and f.state()["items"][1]["label"].ends_with("▌"), "Retour arrière remonte d'une ligne")
+	f.menu.focus_item("save")
+	var act: Dictionary = f.qwk_key("", true, false)
+	_check(act.get("action", {}) == {"action": "create_workout_qwk", "text": "# Seuil\n4x 5m@280 r3m@140"},
+		"Entrée sur Enregistrer : create_workout_qwk (%s)" % str(act))
+	f.on_error("workout_invalid", "ligne 2 : cible trop haute")
+	_check(f.state()["screen"] == "workout_qwk" and f.state()["status"] == "Échec : ligne 2 : cible trop haute",
+		"erreur du core sur l'écran de saisie, texte gardé")
+	f.handle("Y_SHORT")
+	f.menu.focus_item("_qwk")
+	f.handle("A_LONG")
+	_check(f.state()["items"][0]["label"] == "# Seuil", "texte gardé en revenant sur l'écran")
+	f.menu.focus_item("save")
+	_check(f.handle("A_LONG") == {"action": "create_workout_qwk", "text": "# Seuil\n4x 5m@280 r3m@140"},
+		"A maintenu sur Enregistrer : même commande")
+	f.on_workout_saved({"type": "workout_saved", "request_cmd_id": 21, "workout_id": "seuil_2", "name": "Seuil",
+		"created": true})
+	_check(f.state()["screen"] == "workouts" and f.state()["status"] == "Créé : Seuil", "retour à la liste")
+	f.menu.focus_item("_qwk")
+	f.handle("A_LONG")
+	_check(_ids(f) == ["line:0", "save", "clear"], "texte vidé après l'enregistrement")
+	f.qwk_key("x", false, false)
+	f.menu.focus_item("clear")
+	f.handle("A_LONG")
+	_check(f.state()["items"][0]["label"] == "▌", "Tout effacer")
+
+
 func _init() -> void:
+	_test_qwk_entry()
 	_test_bots_menu()
 	_test_plans()
 	_test_ftp_flow()
