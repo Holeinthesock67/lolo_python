@@ -8,6 +8,7 @@ extends SceneTree
 const TrafficModel := preload("res://scripts/traffic_model.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const RoadCyclistsModel := preload("res://scripts/road_cyclists_model.gd")
+const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const TrafficRenderer := preload("res://scripts/traffic_renderer.gd")
 const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
@@ -137,7 +138,7 @@ func _ride_mixed(route, rng_seed: int) -> Dictionary:
 	var met := 0
 	var waited := 0
 	while s < 30500.0:
-		cy.update(s, v_mps, dt, false, [bot])
+		cy.update(s, v_mps, dt, false, [{"s": bot, "lateral": RoadBuilder.BOT_LATERAL_M}])
 		var others: Array = cy.riders()
 		others.append({"s": bot, "lateral": RoadBuilder.BOT_LATERAL_M, "dir": 1})
 		tm.update(s, v_mps, dt, false, others)
@@ -180,6 +181,67 @@ func _ride_mixed(route, rng_seed: int) -> Dictionary:
 		bot += 31.0 / 3.6 * dt
 	return {"hits": hits, "hit_vehicles": hit_vehicles, "hit_cyclists": hit_cyclists, "close_pass": close_pass, "met": met, "waited": waited,
 		"spawned": tm.spawned_total, "groups": cy.spawned_total}
+
+
+## Peloton de cinq bots de front, 6 m devant le cycliste et à sa vitesse (départ, 4 km), ou cycliste arrêté ; en
+## plus de la circulation tirée, une voiture posée en face puis une qui rattrape toutes les 300 images. Places de
+## bots_view_model.gd avec les véhicules de la route (`vehicles`) : contacts, véhicules hors de la route, bots encore
+## à gauche au croisement d'un véhicule d'en face, dépassements, retrait de la file au plus.
+func _ride_peloton(route, rng_seed: int, kmh: float = 30.0, fps: float = 15.0) -> Dictionary:
+	var tm = TrafficModel.new()
+	tm.configure(route, {"terrain": {"snow_line_m": 2200.0}}, _villages(), 5, rng_seed)
+	var bm = BotsViewModel.new()
+	var v_mps := kmh / 3.6
+	var dt := 1.0 / fps
+	var s := 300.0
+	var end_s := 4300.0 if kmh > 0.0 else 300.0
+	var frames := 0
+	var t_us := 0
+	var out := {"met": 0, "passes": 0, "hits": 0, "offroad": 0, "offroad_pass": 0, "left": 0, "bot_hits": 0, "max_back": 0.0}
+	var met := {}
+	while s < end_s or (kmh == 0.0 and frames < 3000):
+		frames += 1
+		if frames % 300 == 1:   # en plus de la circulation tirée : une voiture posée en face, puis une qui rattrape
+			tm.place_for_test(s, v_mps, "car_a", -1 if frames % 600 == 1 else 1, 200.0 if frames % 600 == 1 else -60.0, 50.0)
+		var pack := []
+		for i in range(5):
+			pack.append({"id": "b%d" % i, "name": "Bot %d" % i, "s": s + 6.0 + 0.3 * i, "v": 0.0, "kind": "constant"})
+		bm.push(pack, t_us)
+		var near := []
+		for veh in tm.vehicles:
+			near.append({"s": float(veh["s"]), "dir": int(veh["dir"])})
+		bm.vehicles = near
+		var view: Array = bm.view(s, v_mps, t_us)
+		var others := []
+		for b in bm.places():
+			others.append({"s": float(b["s"]), "lateral": float(b["lateral"]), "dir": 1})
+			out["max_back"] = maxf(float(out["max_back"]), s + 6.0 - float(b["s"]))
+		tm.update(s, v_mps, dt, false, others)
+		for veh in tm.vehicles:
+			var k: Dictionary = TrafficModel.KINDS[veh["kind"]]
+			var hw := float(k["half_width"])
+			if absf(float(veh["lateral"])) + hw > RoadBuilder.ROAD_WIDTH_M * 0.5 + RoadBuilder.SHOULDER_WIDTH_M + TrafficModel.VERGE_M + 0.01:
+				out["offroad" if int(veh["dir"]) == -1 else "offroad_pass"] += 1
+			for o in others:
+				if absf(float(o["s"]) - float(veh["s"])) < float(k["length"]) * 0.5 + TrafficModel.CYCLIST_HALF_LENGTH_M:
+					if int(veh["dir"]) == -1:
+						met[veh["id"]] = true
+						if float(o["lateral"]) < 0.0:
+							out["left"] += 1
+					if absf(float(o["lateral"]) - float(veh["lateral"])) < hw + TrafficModel.RIDER_HALF_WIDTH_M:
+						out["hits"] += 1
+		var everyone: Array = others.duplicate()
+		everyone.append({"s": s, "lateral": RoadBuilder.RIDER_LATERAL_M})
+		for i in range(everyone.size()):
+			for j in range(i + 1, everyone.size()):
+				if absf(float(everyone[i]["s"]) - float(everyone[j]["s"])) < 2.0 * TrafficModel.CYCLIST_HALF_LENGTH_M \
+						and absf(float(everyone[i]["lateral"]) - float(everyone[j]["lateral"])) < 2.0 * TrafficModel.RIDER_HALF_WIDTH_M:
+					out["bot_hits"] += 1
+		s += v_mps * dt
+		t_us += int(dt * 1e6)
+	out["met"] = met.size()
+	out["passes"] = tm.overtakes_total
+	return out
 
 
 func _test_renderer(route) -> void:
@@ -298,6 +360,25 @@ func _run() -> void:
 	_check(mixed["met"] > 0 and mixed["hits"] == 0, "jamais un véhicule sur un cycliste du décor ou le bot (%d croisements)" % mixed["met"])
 	_check(mixed["hit_vehicles"] == 0, "jamais deux véhicules l'un sur l'autre, cyclistes du décor présents")
 	_check(mixed["hit_cyclists"] == 0, "jamais deux cyclistes l'un sur l'autre (décor, cycliste, bot) (%d)" % mixed["hit_cyclists"])
+	# Peloton de front au départ face aux véhicules d'en face : les bots serrent à droite, en file au besoin
+	var pel := {"met": 0, "passes": 0, "hits": 0, "offroad": 0, "offroad_pass": 0, "left": 0, "bot_hits": 0, "max_back": 0.0}
+	for sd in range(1, 5):
+		var rp: Dictionary = _ride_peloton(route, sd)
+		for key in pel:
+			pel[key] = maxf(float(pel[key]), float(rp[key])) if key == "max_back" else int(pel[key]) + int(rp[key])
+	for f in [4.0, 2.0]:   # cycliste arrêté au départ, peu d'images par seconde (Xvfb)
+		var rs: Dictionary = _ride_peloton(route, 1, 0.0, f)
+		for key in pel:
+			pel[key] = maxf(float(pel[key]), float(rs[key])) if key == "max_back" else int(pel[key]) + int(rs[key])
+	print("peloton de front et véhicules, 4 graines sur 4 km et départ arrêté : %s" % str(pel))
+	_check(pel["met"] > 0 and pel["hits"] == 0, "peloton de front : aucun véhicule d'en face sur un bot (%d croisés)" % pel["met"])
+	_check(pel["offroad"] == 0 and pel["offroad_pass"] == 0,
+		"peloton de front : aucun véhicule hors de la route, ni en face (%d images) ni en doublant (%d)" % [pel["offroad"], pel["offroad_pass"]])
+	_check(pel["passes"] > 0, "peloton de front : des véhicules doublent quand même le peloton rangé (%d)" % pel["passes"])
+	_check(pel["left"] == 0, "peloton de front : aucun bot dans la voie d'en face au croisement (%d)" % pel["left"])
+	_check(pel["bot_hits"] == 0, "peloton de front : bots et cycliste jamais l'un sur l'autre en se rangeant (%d)" % pel["bot_hits"])
+	_check(float(pel["max_back"]) <= BotsViewModel.MAX_BACK_ROWS * BotsViewModel.SLOT_CLEAR_M + 1.0,
+		"peloton de front : file de %.1f m au plus" % float(pel["max_back"]))
 	_check(mixed["close_pass"] == 0, "cyclistes du décor et bot doublés à 1,5 m au moins (%d écarts)" % mixed["close_pass"])
 	# Lot P25 : les sept sortes, d'après leurs parts
 	var drawn := {}

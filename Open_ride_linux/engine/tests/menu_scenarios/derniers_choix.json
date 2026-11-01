@@ -1,0 +1,28 @@
+{
+  "description": "Derniers choix (lot O32) : parcours et bot de la dernière séance repris au lancement suivant, pour le profil en cours.",
+  "fichiers": {
+    "OpenRide/Profils/.migration": "fini\n",
+    "OpenRide/Profils/cycliste-a/profil.toml": "[profil]\nid = \"cycliste-a\"\nnom = \"Cycliste A\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 200\n"
+  },
+  "etapes": [
+    {"ecran": "home", "contient": ["Parcours : à choisir"], "delai": 20},
+    {"choisir": "world"},
+    {"choisir": "demo"},
+    {"choisir": "ride"},
+    {"ecran": "ready", "contient": ["Bot : aucun"]},
+    {"choisir": "bot"},
+    {"choisir": "bot"},
+    {"ecran": "ready", "contient": ["Bot : 250 W"]},
+    {"choisir": "start"},
+    {"journal": "core", "motif": "-> RUNNING", "delai": 10},
+    {"commande": "end_session", "args": {"save": false}},
+    {"ecran": "summary", "delai": 15},
+    {"fichier": "OpenRide/Profils/cycliste-a/derniers_choix.json"},
+    {"note": "lancement suivant : tout doit être relu", "relancer": true},
+    {"ecran": "home", "contient": ["Parcours : demo"], "delai": 20},
+    {"capture": "accueil_dernier_parcours"},
+    {"choisir": "ride"},
+    {"ecran": "ready", "titre": "Prêt : session libre — demo", "contient": ["Bot : 250 W"]},
+    {"capture": "pret_dernier_bot"}
+  ]
+}
