@@ -8,7 +8,7 @@ config_version=5
 
 config/name="OpenRide Engine"
 config/description="Simulateur cycliste 3D - Moteur de rendu et HUD"
-config/version="1.0.0"
+config/version="1.0.1"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
