@@ -374,13 +374,15 @@ class Session:
         # Scène de référence : capture reprise tant que des tuiles voulues manquent (`streaming_pending`, comme le
         # tour visuel X21). Une attente fixe ne suffisait pas : `vue_fixe` en low sur le PC (31 octobre) sortait
         # sans terrain ni arbres, sol brun et personnage en l'air, et la SSIM variait d'un passage à l'autre.
+        # Même reprise tant que le rappel des commandes du départ (10 s) est affiché : présent sur une capture et pas
+        # sur l'autre, il faisait tomber `vue_fixe` à SSIM 0,96 face à sa référence (PC, 1er novembre).
         tries = PENDING_RETRIES if scene in GOLDEN_SCENES else 1
         for attempt in range(tries):
             mark = self.core.log.mark()
             self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
                                 "path": str(png), "tag": scene})
             hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0, mark)
-            if hit is None or int(json.loads(hit[1].group(1)).get("streaming_pending", 0)) == 0:
+            if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
                 break
             if attempt < tries - 1:
                 time.sleep(1.0)
@@ -518,6 +520,15 @@ class Session:
 ## image à l'autre sur le grain fin de la route et du terrain (Y11), environ 0,1 niveau ; un défilement à
 ## 8 m/s donne environ 3 niveaux.
 GROUND_SCROLL_LEVEL = 0.2
+
+
+def capture_unsettled(info: dict[str, Any]) -> bool:
+    """Capture d'une scène de référence à reprendre : tuiles du terrain en attente, ou rappel des commandes du
+    départ de séance encore affiché (il s'efface seul au bout de 10 s)."""
+    if int(info.get("streaming_pending", 0)) > 0:
+        return True
+    b = info.get("widgets", {}).get("banner", {})
+    return bool(b.get("visible")) and str(b.get("text", "")).startswith(CONTROLS_HINT_PREFIX)
 
 
 def ground_box(s: Session, info: dict[str, Any]) -> tuple[int, int, int, int]:
