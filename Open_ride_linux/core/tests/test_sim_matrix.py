@@ -145,6 +145,7 @@ def play(name: str, spec: dict, mode: str, port: int, workdir: str) -> dict[str,
     root.setLevel(logging.INFO)
 
     cfg = Config()
+    cfg.depart.mode = "immediat"   # processus à part (conftest absent), sans engine ni cycliste (lot O36)
     cfg.rider.ftp_w = FTP_W
     cfg.drivers.trainer = cfg.drivers.input = cfg.drivers.hr = "sim"
     cfg.drivers.sim_scenario = name

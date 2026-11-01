@@ -87,6 +87,7 @@ class IpcState:
     wtf: dict[str, Any] | None = None      # révision 1.5 (lot WTF2) : présent seulement en mode WTF
     # Révision 1.5 (invite de fin de séance, 1er novembre) : entraînement fini, séance pas encore terminée.
     workout_done: dict[str, Any] | None = None
+    start_wait: dict[str, Any] | None = None   # révision 1.5 (lot O36) : départ au pédalage en attente (READY)
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -112,7 +113,7 @@ class IpcState:
             d.pop("draft_bot", None)
         if self.open_world is None or self.devices is not None:
             d.pop("open_world", None)
-        for key in ("segment", "powerup", "jerseys", "rogue", "wtf", "workout_done"):
+        for key in ("segment", "powerup", "jerseys", "rogue", "wtf", "workout_done", "start_wait"):
             if d[key] is None:
                 d.pop(key)
         if self.bots is None:

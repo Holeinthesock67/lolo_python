@@ -61,6 +61,7 @@ from .wtf.events import WtfInput
 from .wtf.mode import WtfMode
 from .free_erg import CadenceLock, FreeErg, start_cadence, start_power
 from .ftp_test import KINDS as FTP_TEST_KINDS
+from .start_gate import StartGate
 from .ftp_test import FtpResult, RampWatch, cooldown_index, estimate_ftp
 from .ftp_test import kind_of as ftp_test_kind
 from .ftp_test import workout_for as ftp_test_workout
@@ -73,6 +74,9 @@ DT_PHYSICS = 0.02        # 50 Hz
 SCAN_ATTEMPTS = 3        # recherche du menu Appareils : essais si BlueZ répond « InProgress »
 DT_STATE = 1.0 / 30.0    # 30 Hz
 STATS_PERIOD_S = 60.0
+# Commandes qui annulent un départ au pédalage en attente (lot O36) ; un nouveau `start` le remplace.
+START_CANCEL_COMMANDS = ("pause", "end_session", "select_workout", "start_run", "start_open_world",
+                         "select_profile")
 SHUTDOWN_GRACE_S = 5.0   # délai laissé aux pilotes pour relâcher le trainer et se déconnecter
 MAX_STEP_S = 0.1         # un pas plus long (gel du processus) est borné
 # Biais ERG par appui de + ou − (§7.1) : petit pas ± 2 %, grand pas ± 10 % (cinq pas de BIAS_STEP_PCT).
@@ -319,6 +323,11 @@ class CoreSession:
         # Contrôleur ERG de la séance : entraînement en cours, ou ERG d'une session libre (lot O18).
         self.erg: ErgController | FreeErg | None = None
         self._ramp_watch: RampWatch | None = None   # fin de la rampe d'un test de FTP (lot O10)
+        # Départ au pédalage (lot O36) : attente entre `start` et RUNNING, mode de jeu du départ demandé,
+        # et parcours dont l'engine a dit le décor du départ prêt (`scene_ready`).
+        self._start_gate: StartGate | None = None
+        self._start_mode: str | None = None
+        self._scene_route: str | None = None
         self._ftp_result: FtpResult | None = None   # dernier test de FTP, pour `accept_ftp` (lot O12)
         self._plan_day: str | None = None           # séance du jour du dernier message `plans` (lot O12)
         self.plans_dir: Path | None = None          # dossiers des plans (défauts de plans.py ; tests)
@@ -372,6 +381,8 @@ class CoreSession:
 
     def _set_state(self, new: str, reason: str | None = None) -> None:
         old = self.state.session_state
+        if new != old:
+            self._clear_start_gate()   # tout changement d'état met fin à un départ en attente (lot O36)
         self.state.session_state, self.state.pause_reason = new, reason
         log.info("Séance : %s -> %s%s", old, new, f" ({reason})" if reason else "")
         now = time.time()
@@ -399,6 +410,11 @@ class CoreSession:
     def _on_command(self, name: str, args: dict, cmd_id: int) -> None:
         log.info("Commande %s %s (id=%d)", name, args, cmd_id)
         st = self.state.session_state
+        if self._start_gate is not None and name in START_CANCEL_COMMANDS:
+            # Y (pause) ou autre choix pendant l'attente du départ (lot O36) : retour à l'écran Prêt.
+            self._cancel_start()
+            if name in ("pause", "end_session"):
+                return
         if name == "start_run":
             self._start_run(args if isinstance(args, dict) else {}, st)
         elif name == "rogue_resync":
@@ -449,26 +465,84 @@ class CoreSession:
                 return
             if not self._choose_start_bots(args if isinstance(args, dict) else {}):
                 return
-            self._open_journal()
-            if self._workout:
-                self.erg = ErgController(self._workout, self.cfg.rider.ftp_w)
-                log.info("Entraînement « %s » démarré : %d blocs, %.0f s.", self._workout.name,
-                         len(self._workout.blocks), self._workout.duration_s)
-                self._watch_ramp()
-                self._sync_erg_state()
-            if game_mode == "wtf":
-                self._start_wtf()
-            self._new_race(classic=self.wtf is None)
-            self._set_state("RUNNING")
             if self.rogue is None:   # une run a ses propres ennemis : les bots de la séance libre restent
                 self._remember("bots", (args if isinstance(args, dict) else {}).get("bots") or [], cmd_id)
+            self._request_start(game_mode)
+        elif name == "scene_ready":   # révision 1.5 (lot O36) : décor du départ prêt dans l'engine
+            rid = (args if isinstance(args, dict) else {}).get("route_id")
+            self._scene_route = str(rid) if rid not in (None, "") else None
         elif name == "skip_block" and self._workout_erg() and st in ("RUNNING", "PAUSED"):
             self._skip_block()
         elif name == "set_ride_mode":
             self._set_ride_mode(args if isinstance(args, dict) else {}, st)
         elif name == "pause" and st == "RUNNING":
             self._set_state("PAUSED", "user")
-        elif name == "resume" and st == "PAUSED":
+        else:
+            self._on_command_more(name, args, cmd_id, st)
+
+    # --- départ au pédalage (lot O36, start_gate.py) -----------------------------------------
+
+    def _request_start(self, game_mode: str | None) -> None:
+        """`start` accepté : départ tout de suite (`[depart] mode = "immediat"`) ou attente en READY."""
+        dep = self.cfg.depart
+        gate = StartGate(float(dep.cadence_rpm), float(dep.duree_s), float(dep.attente_decor_s),
+                         immediate=dep.mode == "immediat")
+        if gate.open:
+            self._begin_session(game_mode)
+            return
+        self._start_gate, self._start_mode = gate, game_mode
+        self.state.start_wait = gate.to_dict()
+        log.info("Départ au pédalage : attente du décor, du trainer puis de %d s à %d tr/min.",
+                 dep.duree_s, dep.cadence_rpm)
+
+    def _clear_start_gate(self) -> None:
+        self._start_gate = self._start_mode = None
+        self.state.start_wait = None
+
+    def _cancel_start(self) -> None:
+        log.info("Départ annulé pendant l'attente (%s).", self._start_gate.phase if self._start_gate else "?")
+        self._clear_start_gate()
+
+    def _step_start_gate(self, dt: float, m: Any) -> None:
+        """Un pas de l'attente du départ : mesures affichées, rien ne compte ; ouvre la séance au bon moment."""
+        gate = self._start_gate
+        assert gate is not None
+        st = self.state
+        st.power, st.cadence, st.hr = m.power_w, m.cadence_rpm, m.hr_bpm
+        st.power_3s = round(m.power_w, 1)
+        scene = self.server.engine_connected and self._scene_route is not None \
+            and self._scene_route == str(st.route_id)
+        was = gate.phase
+        opened = gate.update(dt, scene_ready=scene, trainer_connected=bool(m.connected),
+                             cadence_rpm=m.cadence_rpm, power_w=m.power_w)
+        if gate.phase != was:
+            log.info("Départ : étape %s -> %s%s (%.1f s)", was, gate.phase,
+                     " (décor non signalé par l'engine)" if gate.decor_timeout and was == "decor" else "",
+                     gate.waited_s)
+        if opened:
+            mode = self._start_mode
+            self._clear_start_gate()
+            self._begin_session(mode)
+        else:
+            st.start_wait = gate.to_dict()
+
+    def _begin_session(self, game_mode: str | None) -> None:
+        """Départ effectif : journal, ERG, mode WTF, segments et bots, puis RUNNING."""
+        self._open_journal()
+        if self._workout:
+            self.erg = ErgController(self._workout, self.cfg.rider.ftp_w)
+            log.info("Entraînement « %s » démarré : %d blocs, %.0f s.", self._workout.name,
+                     len(self._workout.blocks), self._workout.duration_s)
+            self._watch_ramp()
+            self._sync_erg_state()
+        if game_mode == "wtf":
+            self._start_wtf()
+        self._new_race(classic=self.wtf is None)
+        self._set_state("RUNNING")
+
+    def _on_command_more(self, name: str, args: dict, cmd_id: int, st: str) -> None:
+        """Suite de `_on_command` : séance en cours, réglages, listes et menus."""
+        if name == "resume" and st == "PAUSED":
             if self._rec and self._rec.failed and not self._rec.reopen():
                 self.server.send_error("recording_failed",
                                        "Journal toujours impossible à écrire : séance en pause.")
@@ -1740,6 +1814,7 @@ class CoreSession:
         self.state.erg = erg.to_dict() if erg else None
 
     def _on_engine_lost(self) -> None:
+        self._scene_route = None   # engine relancé : son décor est à recharger (départ au pédalage, lot O36)
         if self.state.session_state == "RUNNING":
             log.warning("Engine perdu : pause automatique.")
             self._set_state("PAUSED", "engine_lost")
@@ -2145,8 +2220,8 @@ class CoreSession:
     def _handle_input(self, ev: InputEvent) -> None:
         # Rôle des boutons : spécification générale §7.1. Y en séance : pause, sans relais ; ailleurs
         # (menus, écran de pause), l'engine en fait « écran précédent » ou « reprendre ».
-        if ev == InputEvent.Y_SHORT and self.state.session_state == "RUNNING":
-            self._on_command("pause", {}, 0)
+        if ev == InputEvent.Y_SHORT and (self.state.session_state == "RUNNING" or self._start_gate is not None):
+            self._on_command("pause", {}, 0)   # en attente du départ (lot O36) : annule le départ
             return
         # Relayé à l'engine : menus hors séance, retour sonore (bips) et explications pendant la séance.
         self.server.send_input_event(ev.value)
@@ -2247,6 +2322,9 @@ class CoreSession:
                     (reason == "engine_lost" and self.server.engine_connected) or \
                     (reason == "core_restarted" and m.connected and self.server.engine_connected):
                 self._on_command("resume", {}, 0)   # essais sans menu : reprise automatique
+        if self._start_gate is not None and self.state.session_state == "READY":
+            self._step_start_gate(dt, m)
+            return
         if self.state.session_state != "RUNNING":
             return
         if not m.connected:

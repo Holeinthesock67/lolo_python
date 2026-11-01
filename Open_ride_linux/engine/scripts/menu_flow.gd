@@ -17,6 +17,9 @@ extends RefCounted
 ## (select_route, select_workout, start, resume, end_session), « list » (demander les deux listes) et
 ## « quit ». Pas de class_name : charger par preload("res://scripts/menu_flow.gd").
 ##
+## Départ au pédalage (lot O36) : pendant l'attente du départ (`start_wait` de la trame en READY), le menu
+## est masqué ; il revient sur l'écran Prêt si le départ est annulé (Y).
+##
 ## Connexion au démarrage (lot N13) : au premier état hors séance, l'écran « Connexion des appareils »
 ## s'ouvre avant l'accueil. Il passe seul à l'accueil quand tout est relié depuis CONNECT_HOLD_S
 ## (trainer, boîtiers du Click, ceinture si configurée) ; « Passer » y va tout de suite, même avec un
@@ -231,6 +234,9 @@ var _record_bonus := false
 var pause_reason := ""
 ## Entraînement fini, séance pas encore terminée (`state.workout_done`, contrat IPC 1.5).
 var workout_done := false
+## Départ au pédalage en attente (lot O36) : objet `start_wait` de la dernière trame, {} sinon ; le menu
+## est masqué pendant l'attente, le bandeau dit l'étape (start_wait_model.gd).
+var start_wait: Dictionary = {}
 ## Profils de joueurs (série MJ, lot MJ8) : « Qui roule ? », nom du profil, gestion.
 var profiles = ProfilesViewModel.new()
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
@@ -289,7 +295,7 @@ func _init() -> void:
 
 
 func is_visible() -> bool:
-	return session_state != "" and session_state != "RUNNING"
+	return session_state != "" and session_state != "RUNNING" and start_wait.is_empty()
 
 
 ## Trame `state` reçue ; renvoie les actions à exécuter (liste, éventuellement vide). `now_s` : horloge
@@ -321,6 +327,7 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
 	workout_done = state.get("workout_done", null) is Dictionary
+	start_wait = state["start_wait"] if st == "READY" and state.get("start_wait") is Dictionary else {}
 	_track_run(st, state)
 	if state.get("devices") is Dictionary:
 		devices = state["devices"]
