@@ -53,6 +53,10 @@ class Ctx:
     params: PhysicsParams
 
 
+# Durée maximale d'un événement : aucun gag ne doit occuper une séance à lui seul.
+EVENT_MAX_S = 150.0
+
+
 class Event:
     """Base : `step` à chaque pas, `apply` pour les effets, `frame` pour la trame `state`."""
 
@@ -353,12 +357,13 @@ class Micro(Event):
 
 
 class Eggs(Event):
-    """Six œufs à livrer à 3 km : un écart de puissance de plus de 35 % de la FTP d'une seconde
+    """Six œufs à livrer à 1 km en 2 min 30 au plus (8 min pour 3 km occupaient presque toute une séance de
+    10 min, essai PC 7cn du 31 octobre) : un écart de puissance de plus de 35 % de la FTP d'une seconde
     à l'autre en casse un (une casse toutes les 2 s au plus, rien pendant une coupure)."""
 
     id = "eggs"
-    duration_s = 480.0
-    DISTANCE_M = 3000.0
+    duration_s = 150.0
+    DISTANCE_M = 1000.0
     EGGS = 6
     JERK_FRAC = 0.35
     COOLDOWN_S = 2.0
