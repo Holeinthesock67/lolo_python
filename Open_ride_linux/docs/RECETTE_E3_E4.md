@@ -14,7 +14,7 @@ Machine cible : PC du propriétaire (GPU NVIDIA GeForce GTX 1060 6 Go, écran 1 
 ### Lot E3 : Ciel physique, brouillard, arbres par bruit et HUD final
 - **Shader de terrain** : modulation procédurale de l'herbe par bruit ($\pm 8\%$) et normales à facettes configurables sur la roche.
 - **Atmosphère & Horizon** : ciel physique `PhysicalSkyMaterial`, brouillard de profondeur calé sur la teinte d'horizon (densité 1.0, fin à 4 / 6 / 9 km en `low` / `medium` / `high` depuis le lot Y1), brouillard volumétrique activé uniquement en mode `high` avec la densité du thème.
-- **Arbres par bruit** : double niveau de détail LOD0 (0–300 m avec ombres $\le 120$ tris) et LOD1 (300–1 500 m sans ombre 4 tris), partitionnement en cases de 250 m, hauteur exacte du relief, respect strict du budget d'instances (20 000 en `low`, 50 000 en `medium`, 100 000 en `high`).
+- **Arbres par bruit** : double niveau de détail LOD0 (0–450 m avec ombres $\le 120$ tris) et LOD1 (450–1 500 m sans ombre 4 tris), partitionnement en cases de 250 m, hauteur exacte du relief, respect strict du budget d'instances (20 000 en `low`, 50 000 en `medium`, 100 000 en `high`).
 - **Préréglages unifiés** : pilotage centralisé (`quality_presets.gd` / `render_quality.gd`) des ombres, du budget d'arbres et de la visibilité des bâtiments.
 - **HUD final** : typographie agrandie ($\ge 48$ px pour les valeurs, $\ge 24$ px pour les libellés), profil altimétrique 120 colonnes coloré par `grade_class`, prochaine montée et temps écoulé.
 - **Télémétrie de performance** : mesure périodique émise toutes les 30 secondes via la ligne de log `[perf-rendu]`.
@@ -63,7 +63,7 @@ Points de contrôle à valider :
    - La coupure du terrain lointain (fin du brouillard du préréglage plus une tuile, lot Y1) est parfaitement invisible, fondue dans la couleur d'horizon par le brouillard de profondeur.
 3. **Arbres et niveau de détail (Lot E3)** :
    - Aucun arbre flottant au-dessus du sol ou planté dans le ruban d'asphalte (couloir de sécurité de $\ge 7$ m de l'axe respecté).
-   - Observer la transition à 300 m : pas de pop brusque ni de saut visuel géométrique gênant entre LOD0 (modèle ombré) et LOD1 (croix 4 triangles).
+   - Observer la transition à 450 m : pas de pop brusque ni de saut visuel géométrique gênant entre LOD0 (modèle ombré) et LOD1 (croix 4 triangles).
 4. **Lisibilité du HUD (Lot E3)** :
    - Les valeurs numériques (puissance, cadence, FC, vitesse) sont immédiatement lisibles sans se pencher sur l'écran.
    - Le profil d'altitude en bas de l'écran avance de manière fluide et ses colonnes adoptent les teintes attendues (vert pour plat, jaune/orange/rouge pour les pourcentages de montée).

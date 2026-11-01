@@ -5,8 +5,8 @@ extends Node3D
 ##
 ## Découpe chaque tuile proche de 1 000 m en 16 cases de 250 m × 250 m.
 ## Chaque case avec arbres possède deux MultiMeshInstance3D :
-## - LOD 0 (0 à 300 m) : modèle polygonal bas (tronc + cônes, <= 120 triangles), ombres actives.
-## - LOD 1 (300 à 1 500 m) : quadrilatères croisés (4 triangles), sans ombre.
+## - LOD 0 (0 à 450 m) : modèle polygonal bas (tronc + cônes, <= 120 triangles), ombres actives.
+## - LOD 1 (450 à 1 500 m) : quadrilatères croisés (4 triangles), sans ombre.
 ## Le budget global d'instances (QualityPresets.tree_budget) est respecté en éliminant les cases
 ## les plus éloignées en cas de dépassement.
 ## Vent (Lot P5) : quand `QualityPresets.living(preset).tree_sway` est vrai, les deux LOD utilisent le
@@ -26,7 +26,8 @@ const LOD1_SWAY_FACTOR := 0.6   # amplitude réduite des panneaux croisés du LO
 
 const CELL_SIZE_M := 250.0
 const CELLS_PER_TILE := 4   # 4 x 4 = 16 cases par tuile de 1000 m
-const LOD0_MAX_DIST_M := 300.0
+## Bascule LOD 0 → LOD 1 éloignée de 300 à 450 m (demande user 01/11 : simplification trop proche).
+const LOD0_MAX_DIST_M := 450.0
 const LOD1_MAX_DIST_M := 1500.0
 ## Lot S1 : distance ajoutée au rang d'une case hors du champ, pour qu'elle passe avant toute case visible.
 const OUT_OF_VIEW_RANK_M := 1.0e6
