@@ -98,7 +98,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `paused` | booléen | ERG en pause : séance en pause (Y), seule pause depuis le lot O17 |
 | `kind` | chaîne, facultatif | Révision 1.5 (lot O18) : `workout` (entraînement), `free` (ERG libre d'une session libre) ou `cadence` (ERG à cadence verrouillée) ; absent : `workout` |
 | `cadence_target_rpm` | entier, facultatif | `cadence` seulement : cadence cible, biais compris (`bias_pct` s'applique à la cadence, pas à la puissance) |
-| `cadence_low_rpm`, `cadence_high_rpm` | nombres, facultatifs | `cadence` seulement : bornes de la plage (cible ± 15 %) |
+| `cadence_low_rpm`, `cadence_high_rpm` | nombres, facultatifs | `cadence` seulement : bornes de la plage (cible ± 10 %, ± 15 % avant le 1er novembre) |
 | `cadence_zone` | chaîne, facultatif | `cadence` seulement : `low` (sous la plage, la puissance baisse), `in`, `high` (au-dessus, la puissance monte) |
 
 ERG d'une session libre (`free`, `cadence`, lot O18) : un seul bloc `steady` sans durée (`block_index` = `block_count` = 1, `block_remaining_s` = `block_total_s` = 0, `next_target_w` = `null`) ; `mode` vaut `ERG`.
@@ -253,7 +253,7 @@ Tailles mesurées par `python -m openride_core.ipc_budget` avec les longueurs ma
 | `world_search` | `{ "query": chaîne }` | Monde ouvert, menu : recherche de lieu ; réponse `places` |
 | `world_map` | `{ "lat", "lon", "radius_m" }` | Monde ouvert, menu : routes autour d'un point ; réponse `world_map` |
 | `world_regions` | `{}` | Monde ouvert, menu : régions du cache local ; réponse `world_regions` |
-| `set_ride_mode` | `{ "mode": "sim" ou "erg" ou "cadence", "target_w": nombre (facultatif), "cadence_rpm": nombre (facultatif) }` | Révision 1.5 (lot O18) : pendant une session libre (`RUNNING` ou `PAUSED`, sans entraînement ni run), passe en SIM, en ERG libre (cible `target_w`, 50 à 1 000 W) ou en ERG à cadence verrouillée (cadence cible `cadence_rpm`, 50 à 120 tr/min, plage ± 15 %, puissance adaptée entre 50 W et 150 % de la FTP). Sans `target_w` : la cible en cours, sinon la puissance des 3 dernières secondes arrondie à 5 W (60 % de la FTP si elle manque) ; sans `cadence_rpm` : la cadence cible en cours, sinon la cadence mesurée arrondie à 5 (85 tr/min si elle manque) ; valeurs hors bornes ramenées aux bornes ; le biais repart à 100 %. Hors séance : `error` `busy` ; pendant un entraînement ou une run : `busy` ; vers l'ERG pendant une séance WTF : `busy` ; `mode` inconnu ou nombre mal typé : `bad_args` |
+| `set_ride_mode` | `{ "mode": "sim" ou "erg" ou "cadence", "target_w": nombre (facultatif), "cadence_rpm": nombre (facultatif) }` | Révision 1.5 (lot O18) : pendant une session libre (`RUNNING` ou `PAUSED`, sans entraînement ni run), passe en SIM, en ERG libre (cible `target_w`, 50 à 1 000 W) ou en ERG à cadence verrouillée (cadence cible `cadence_rpm`, 50 à 120 tr/min, plage ± 10 %, puissance adaptée entre 50 W et 150 % de la FTP). Sans `target_w` : la cible en cours, sinon la puissance des 3 dernières secondes arrondie à 5 W (60 % de la FTP si elle manque) ; sans `cadence_rpm` : la cadence cible en cours, sinon la cadence mesurée arrondie à 5 (85 tr/min si elle manque) ; valeurs hors bornes ramenées aux bornes ; le biais repart à 100 %. Hors séance : `error` `busy` ; pendant un entraînement ou une run : `busy` ; vers l'ERG pendant une séance WTF : `busy` ; `mode` inconnu ou nombre mal typé : `bad_args` |
 | `list_wtf_rules` | `{}` | Révision 1.5 (lot WTF2) : demande les treize règles du mode WTF ; réponse `wtf_rules` |
 | `set_wtf_rule` | `{ "id": chaîne, "on": booléen }` | Révision 1.5 (lot WTF2) : allume ou coupe une règle (écrit `~/OpenRide/wtf.toml`), à tout moment, prise en compte tout de suite pendant une séance WTF ; réponse `wtf_rules` ; règle inconnue : `error` `wtf_rule_invalid` ; arguments mal typés : `bad_args` |
 | `world_pin` | `{ "region_id": chaîne, "pinned": booléen }` | Monde ouvert, menu : épingle ou libère une région du cache ; réponse `world_regions` |
@@ -515,7 +515,7 @@ Le core ne démarre jamais une séance (`RUNNING`) sans avoir reçu un `hello` v
 **Objet `erg` d'une session libre en ERG à cadence verrouillée** (révision 1.5, lot O18 ; le cycliste tourne au-dessus de la plage, la puissance monte)
 
 ```json
-{"kind":"cadence","workout_name":"ERG cadence","block_index":1,"block_count":1,"block_type":"steady","block_remaining_s":0.0,"block_total_s":0.0,"target_w":207,"next_target_w":null,"bias_pct":100,"paused":false,"cadence_target_rpm":90,"cadence_low_rpm":76.5,"cadence_high_rpm":103.5,"cadence_zone":"high"}
+{"kind":"cadence","workout_name":"ERG cadence","block_index":1,"block_count":1,"block_type":"steady","block_remaining_s":0.0,"block_total_s":0.0,"target_w":207,"next_target_w":null,"bias_pct":100,"paused":false,"cadence_target_rpm":90,"cadence_low_rpm":81.0,"cadence_high_rpm":99.0,"cadence_zone":"high"}
 ```
 
 **Bascule de mode d'une session libre** (révision 1.5, lot O18)
@@ -636,4 +636,5 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.5) | 31 octobre 2026 | Ajouts compatibles (lot O33, audit des options du 31 octobre) : commandes `clear_trial_profile` et `restore_profile`, champ facultatif `trash` du message `profiles` (moins de 1 600 octets) |
 | 1 (révision 1.5) | 31 octobre 2026 | Ajout compatible (lot O32, audit des options du 31 octobre) : objet facultatif `last_choices` de `hello_ack.config` (derniers choix du menu du profil en cours) ; dernier parcours rechargé par le core au démarrage et au changement de profil (§5) |
 | 1 (révision 1.5) | 31 octobre 2026 | Ajouts compatibles (lot O34, audit des options du 31 octobre) : liste facultative `interrupted` de `hello_ack.config`, commande `recover_session`, message `interrupted` (§4, §5) |
+| 1 (révision 1.5) | 1er novembre 2026 | Valeur, sans changement de forme (lot O18, choix du propriétaire après l'essai sur le vélo) : plage de l'ERG à cadence verrouillée ramenée à ± 10 % (`cadence_low_rpm`, `cadence_high_rpm`) |
 | 1 (révision 1.5) | 1er novembre 2026 | Ajout compatible (invite de fin de séance, constat du vélo du 1er novembre : en fin de séance d'un plan, rien ne disait de terminer) : objet facultatif `workout_done` de `state` (`{workout_name}`), entraînement fini et séance pas encore terminée |

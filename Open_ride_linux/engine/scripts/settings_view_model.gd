@@ -40,6 +40,7 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
 ## Lot O26 : décor vivant (booléen du fichier, `on` / `off` au menu), ressenti et mode du vent, thème par défaut.
+## Pilotage du trainer (lots RC1-RC3) : `trainer.control` prend `resistance` / `sim`.
 ## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
 const CHOICE_TEXTS := {
 	"powerups.mode": {"on": "oui", "off": "non"},
@@ -55,6 +56,7 @@ const CHOICE_TEXTS := {
 	"open_world.network": {"on": "oui", "off": "non (hors ligne)"},
 	"progression.enabled": {"on": "oui", "off": "non (sans Garage)"},
 	"render.texture_level": {"auto": "selon la qualité", "low": "basses (1 024 px)", "medium": "moyennes (1 024 px)", "high": "hautes (2 048 px)"},
+	"trainer.control": {"resistance": "résistance calculée", "sim": "SIM du trainer"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
 
