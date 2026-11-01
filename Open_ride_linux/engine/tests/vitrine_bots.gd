@@ -46,6 +46,10 @@ class StraightRoute:
 	func wrap_s(s: float) -> float:
 		return s
 
+	## Route plate : pas de tangage (route_data.gd `display_pitch`).
+	func display_pitch(_s: float, _probe_m: float = 1.5) -> float:
+		return 0.0
+
 	func sample(s: float) -> Dictionary:
 		return {"x": 0.0, "y": 0.0, "z": -s, "heading_deg": 0.0, "grade_pct": 0.0}
 

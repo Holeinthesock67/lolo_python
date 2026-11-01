@@ -559,7 +559,7 @@ func world_position(g: Dictionary, m: Dictionary) -> Vector3:
 	return world_transform(float(g["s"]) - float(g["dir"]) * float(m["dl"]), float(m["lateral"]), int(g["dir"])).origin
 
 
-## Position et cap d'un cycliste (face vers +z local, comme people_mesh.gd) à `s`, `lateral`, dans le sens `dir`.
+## Position, cap et tangage (pente de la route affichée) d'un cycliste (face vers +z local, comme people_mesh.gd) à `s`, `lateral`, dans le sens `dir`.
 func world_transform(s: float, lateral: float, dir: int) -> Transform3D:
 	var smp: Dictionary = route.sample(clampf(s, 0.0, route.length_m))
 	var h := deg_to_rad(float(smp["heading_deg"]))
@@ -567,7 +567,9 @@ func world_transform(s: float, lateral: float, dir: int) -> Transform3D:
 	var right := Vector3(cos(h), 0.0, sin(h))
 	var pos := Vector3(float(smp["x"]), float(smp["y"]), float(smp["z"])) + right * lateral
 	var facing := fwd * float(dir)
-	return Transform3D(Basis(Vector3.UP, atan2(facing.x, facing.z)), pos)
+	# Tangage selon la pente affichée dans le sens de marche (avant vers +z local : rotation −x = nez levé)
+	var pitch: float = route.display_pitch(s) * float(dir)
+	return Transform3D(Basis(Vector3.UP, atan2(facing.x, facing.z)) * Basis(Vector3.RIGHT, -pitch), pos)
 
 
 ## Cadence (tr/min) à `v` (m/s) avec le développement DEVELOPMENT_M ; roue libre au-delà de 55 km/h.
