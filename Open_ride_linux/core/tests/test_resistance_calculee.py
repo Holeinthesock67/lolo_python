@@ -178,10 +178,10 @@ def test_inertia_is_added_while_the_flywheel_accelerates():
     drv, now = _driver(resistance_inertia_pct=100.0)
     drv.road_mass_kg = 84.0
     steady, now0 = _driver(resistance_inertia_pct=0.0)
-    _accelerate(drv, now, [30.0 + 0.9 * i for i in range(16)])   # 3,6 km/h/s = 1 m/s²
-    _accelerate(steady, now0, [30.0 + 0.9 * i for i in range(16)])
+    _accelerate(drv, now, [30.0 + 0.9 * i for i in range(24)])   # 3,6 km/h/s = 1 m/s² pendant 6 s
+    _accelerate(steady, now0, [30.0 + 0.9 * i for i in range(24)])
     assert drv._accel_mps2 == pytest.approx(1.0, abs=0.1)
-    assert drv.inertia_force_n() == pytest.approx(84.0, abs=9.0)
+    assert drv.inertia_force_n() == pytest.approx(84.0 * 0.6, abs=8.0)   # part au-dessus du seuil de 0,4 m/s²
     assert steady.inertia_force_n() == 0.0
     assert drv._road_level(0.0) > steady._road_level(0.0) + 15
 
@@ -191,17 +191,64 @@ def test_inertia_dose_is_a_share_of_m_a(pct):
     drv, now = _driver(resistance_inertia_pct=pct)
     drv.road_mass_kg = 80.0
     drv._accel_mps2 = 1.2
-    assert drv.inertia_force_n() == pytest.approx(pct / 100.0 * 80.0 * 1.2)
+    drv._trainer_speed_kmh = 40.0
+    assert drv.inertia_target_n() == pytest.approx(pct / 100.0 * 80.0 * (1.2 - 0.4))
+    drv._trainer_speed_kmh = 25.0   # entre 20 et 30 km/h : montée progressive
+    assert drv.inertia_target_n() == pytest.approx(0.5 * pct / 100.0 * 80.0 * (1.2 - 0.4))
+    drv._trainer_speed_kmh = 18.0
+    assert drv.inertia_target_n() == 0.0
+
+
+def test_inertia_force_changes_gradually():
+    """7rc3 : plus de saut de niveau d'une trame à l'autre, la force d'inertie varie d'au plus 60 N/s."""
+    drv, now = _driver(resistance_inertia_pct=100.0)
+    prev, jumps = 0.0, []
+    for i in range(24):
+        now[0] += 0.25
+        drv._on_ibd(None, _ibd(30.0 + 2.0 * i, 110, 900))   # relance brutale : 2,2 m/s²
+        jumps.append(drv.inertia_force_n() - prev)
+        prev = drv.inertia_force_n()
+    assert max(jumps) <= 60.0 * 0.25 + 1e-9 and prev > 50.0
+
+
+def test_low_speed_wobble_adds_no_inertia():
+    """Relevé 7rc3 (chargement du jeu, 12 à 22 km/h, ±2 m/s² d'une trame à l'autre) : aucune inertie."""
+    drv, now = _driver(resistance_inertia_pct=100.0)
+    for v in [19.9, 15.3, 18.0, 12.0, 21.0, 14.0, 19.0, 4.7, 16.0, 22.0, 13.0, 18.5] * 3:
+        now[0] += 1.0
+        drv._on_ibd(None, _ibd(v, 60, 120))
+    assert drv.inertia_force_n() == 0.0
+
+
+def test_brake_k_frozen_while_inertia_acts():
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
+    drv._last_sent = ("resistance", 40.0)
+    drv._inertia_n = 20.0   # décroît de 15 N par trame : encore active aux trois premières
+    for i in range(3):
+        now[0] = 100.0 + i * 0.25
+        drv._on_ibd(None, _ibd(30.0, 85, 2000))
+    assert drv.k_road == 0.036
 
 
 def test_inertia_is_never_given_back_when_slowing_down():
     """Après le sprint, le volant ralentit : aucune force retirée (pas de trou), seulement la route."""
     drv, now = _driver(resistance_inertia_pct=100.0)
-    _accelerate(drv, now, [45.0 - 0.9 * i for i in range(16)], power=150, rpm=80)
+    _accelerate(drv, now, [45.0 - 0.9 * i for i in range(24)], power=150, rpm=80)
     assert drv._accel_mps2 < -0.5
     assert drv.inertia_force_n() == 0.0
     road = max(drv.road_force_n(0.0, drv._trainer_speed_kmh / 3.6), 0.0)
     assert drv._road_level(0.0) == pytest.approx(round(road / (0.036 * drv._trainer_speed_kmh)), abs=1.0)
+
+
+def test_inertia_ignores_pedal_stroke_ripple():
+    """7rc3 : vitesse du volant qui oscille de ±0,5 km/h à chaque trame en roulant stable : aucune inertie."""
+    drv, now = _driver(resistance_inertia_pct=100.0)
+    forces = []
+    for i in range(80):
+        now[0] += 0.25
+        drv._on_ibd(None, _ibd(32.0 + (0.5 if i % 2 else -0.5), 90, 250))
+        forces.append(drv.inertia_force_n())
+    assert max(forces[8:]) == 0.0
 
 
 def test_inertia_config_bounds():
