@@ -59,7 +59,8 @@ def isoler_environnement() -> tuple[Path, Path]:
     muets = Path(tempfile.mkdtemp(prefix="openride-tests-bin-"))
     for nom in DIALOGUES:
         prog = muets / nom
-        prog.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        # Une question (réparer la configuration, lot O34) reçoit « Non » ; le reste réussit sans rien afficher.
+        prog.write_text('#!/bin/sh\ncase "$*" in *--question*|*--yesno*) exit 1;; esac\nexit 0\n', encoding="utf-8")
         prog.chmod(0o755)
     os.environ["PATH"] = f"{muets}{os.pathsep}{os.environ.get('PATH', '')}"
     return home, muets

@@ -43,6 +43,8 @@
         "list_imports",
         "create_workout",
         "import_workout",
+        "list_route_imports",
+        "import_route",
         "start_run",
         "rogue_resync",
         "list_garage",
@@ -69,7 +71,10 @@
         "delete_profile",
         "list_contents",
         "install_content",
-        "create_plan"
+        "create_plan",
+        "clear_trial_profile",
+        "restore_profile",
+        "recover_session"
       ]
     },
     "args": {

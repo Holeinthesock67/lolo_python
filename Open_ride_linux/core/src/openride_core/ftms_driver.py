@@ -811,11 +811,9 @@ class FtmsDriver:
                 feats = ftms.parse_features(bytes(await client.read_gatt_char(ftms.FEATURE)))
                 self.supports_sim, self.supports_erg = feats.supports_sim, feats.supports_erg
                 self.supports_resistance = feats.supports_resistance
-                if self.cfg.control != "sim":
-                    ok = self.supports_resistance if self.cfg.control == "resistance" else self.supports_erg
-                    log.info("Trainer : pilotage par %s calculée%s",
-                             "résistance" if self.cfg.control == "resistance" else "puissance",
-                             "" if ok else " impossible (consigne non annoncée), SIM gardé")
+                if self.cfg.control == "resistance":
+                    log.info("Trainer : pilotage par résistance calculée%s",
+                             "" if self.supports_resistance else " impossible (consigne non annoncée), SIM gardé")
                 log.info("Trainer : fonctions FTMS : %s ; consignes : %s",
                          ", ".join(feats.machine) or "aucune", ", ".join(feats.target) or "aucune")
             if services.get_characteristic(ftms.SUPPORTED_RESISTANCE_RANGE) is not None:

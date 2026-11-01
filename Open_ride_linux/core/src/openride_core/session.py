@@ -35,7 +35,7 @@ from .hr_monitor import HeartRateProvider
 from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
-from . import latency_log
+from . import last_choices, latency_log
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import Record
@@ -50,7 +50,7 @@ from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
 from .records import RecordBook, RecordsError
 from .recorder import SessionRecorder
-from .resume import ResumeError, ResumeState, load_resume_state
+from .resume import ResumeError, ResumeState, close_interrupted, interrupted_sessions, load_resume_state
 from .rogue import mode as rogue_mode
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
@@ -83,7 +83,8 @@ DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" /
 
 CONTENT_COMMANDS = ("list_contents", "install_content")   # lot O25
 CONTENT_PROGRESS_PERIOD_S = 1.0   # message `contents` pendant une installation, une fois par seconde au plus
-PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile")   # lot MJ7
+PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile",
+                    "clear_trial_profile", "restore_profile")   # lots MJ7 et O33
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
 XP_RESULT_PERIOD_S = 1.0
@@ -335,6 +336,11 @@ class CoreSession:
         # et chemins proposés à l'engine, seuls acceptés par import_workout.
         self.import_home = Path.home()
         self._import_offer: set[str] = set()
+        # Traces importées depuis le menu des parcours (lot O23), dans `gpx_dir` : chemins proposés par
+        # list_route_imports (seuls acceptés par import_route) et import en cours ({} sans import).
+        self._route_import_offer: set[str] = set()
+        self._route_import: dict[str, Any] = {}
+        self.route_compiler_cmd: list[str] | None = None   # préfixe du compilateur (essais)
         self._scanning = False
         self._identify: dict[str, Any] | None = None
         # Monde ouvert (lot W9) : générateur et route engagée ; `worldgen_cmd` remplace la commande (essais).
@@ -342,7 +348,7 @@ class CoreSession:
         self.worldgen_cmd: list[str] | None = None
         self.worldmenu: Any = None                 # WorldMenu du lot W11, créé à la première demande ; remplaçable (essais)
         self.worldgen_args: list[str] = []
-        self.gpx_dir: Path | None = None        # balades enregistrées (défaut ~/OpenRide/GPX ; essais)
+        self.gpx_dir: Path | None = None        # traces : balades, import du menu (défaut ~/OpenRide/GPX ; essais)
         self._ow_previous = "IDLE"
         # Mode Cyber-Rogue (lot R8) : run en cours ; `rogue_provider()` rend (table des châssis, statistiques,
         # vies) d'après la progression de la série V (lot R9) ; progression coupée : seul le châssis standard.
@@ -359,6 +365,8 @@ class CoreSession:
         self.active_profile_path: Path | None = None   # None : ~/OpenRide/.profil_actif
         self._last_create: tuple[int, Any] | None = None   # dernier create_profile traité (copies ignorées)
         self._publish_profile()
+        self._resumed_journal: Path | None = None   # journal repris par `--resume`, jamais proposé (lot O34)
+        self._publish_last_choices()
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -400,18 +408,23 @@ class CoreSession:
             reset = getattr(self.driver, "reset_control", None)
             if reset:
                 reset()   # sortie de ERROR : nouvelle prise de contrôle du trainer
-            self._select_route(str(args.get("route_id") or "demo"), previous=st)
+            route_id = str(args.get("route_id") or "demo")
+            self._select_route(route_id, previous=st)
+            if self.state.session_state == "READY" and self.state.route_id == route_id:
+                self._remember("route_id", route_id, cmd_id)
         elif name == "select_workout":
             # Accepté aussi après une séance (FINISHED, ERROR) : le menu choisit l'entraînement avant
             # le parcours, et le core reste en FINISHED jusqu'au select_route suivant.
             if st in ("IDLE", "READY", "FINISHED", "ERROR"):
                 self._drop_rogue()
                 self._select_workout(args.get("workout_id"))
+                if self._workout_id is not None and not ftp_test_kind(self._workout_id):
+                    self._remember("workout_id", self._workout_id, cmd_id)
             else:
                 log.warning("Entraînement « %s » refusé : séance %s.", args.get("workout_id"), st)
                 self.server.send_error("busy", "Choix de l'entraînement impossible pendant une séance.")
         elif name == "start_open_world":
-            self._start_open_world(args, st)
+            self._start_open_world(args, st, cmd_id)
         elif name == "choose_branch":
             if self.openworld is None:
                 self.server.send_error("unknown_junction", "Pas de monde ouvert en cours.")
@@ -445,6 +458,8 @@ class CoreSession:
                 self._start_wtf()
             self._new_race(classic=self.wtf is None)
             self._set_state("RUNNING")
+            if self.rogue is None:   # une run a ses propres ennemis : les bots de la séance libre restent
+                self._remember("bots", (args if isinstance(args, dict) else {}).get("bots") or [], cmd_id)
         elif name == "skip_block" and self._workout_erg() and st in ("RUNNING", "PAUSED"):
             self._skip_block()
         elif name == "set_ride_mode":
@@ -498,10 +513,14 @@ class CoreSession:
             self._accept_ftp(args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_imports", "create_workout", "import_workout"):
             self._on_workout_menu_command(name, args, cmd_id)
+        elif name in ("list_route_imports", "import_route"):
+            self._on_route_import_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_garage", "equip", "buy", "set_avatar"):
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in PROFILE_COMMANDS:
             self._on_profile_command(name, args if isinstance(args, dict) else {}, cmd_id)
+        elif name == "recover_session":
+            self._recover_session(args if isinstance(args, dict) else {}, cmd_id)
         elif name in CONTENT_COMMANDS:
             self._on_content_command(name, args if isinstance(args, dict) else {}, cmd_id)
 
@@ -588,7 +607,9 @@ class CoreSession:
         workouts = workout_duration_finder(self.workouts_dir)
         items = [profile_summary(c, workouts) for c in profiles.list_contexts(self.profiles_base)
                  if not c.is_trial or c.id == self.profile_ctx.id][:profiles.MAX_PROFILES]
-        return {"type": "profiles", "v": 1, "request_cmd_id": cmd_id, "active": self.profile_ctx.id, "items": items}
+        trash = profiles.trash_entries(self.profiles_base)[:profiles.TRASH_SHOWN]   # lot O33
+        return {"type": "profiles", "v": 1, "request_cmd_id": cmd_id, "active": self.profile_ctx.id, "items": items,
+                "trash": trash}
 
     def _send_profiles(self, cmd_id: int) -> None:
         try:
@@ -630,11 +651,18 @@ class CoreSession:
                     self.profile_ctx = ctx
                     self._publish_profile()
                 self._send_profiles(cmd_id)
-            else:
+            elif name == "delete_profile":
                 dest = profiles.delete(args.get("id"), self.profile_ctx.id, base)
                 log.info("Profil mis à la corbeille : %s.", dest)
                 self._publish_profile()
                 self._send_profiles(cmd_id)
+            elif name == "restore_profile":
+                ctx = profiles.restore(args.get("id"), base)
+                log.info("Profil restauré depuis la corbeille : %s (%s).", ctx.name, ctx.id)
+                self._publish_profile()
+                self._send_profiles(cmd_id)
+            else:
+                self._clear_trial(cmd_id)
         except profiles.ProfileNameError as exc:
             log.warning("Profil : %s refusé : %s", name, exc)
             self.server.send_error("name_invalid", str(exc))
@@ -642,27 +670,45 @@ class CoreSession:
             log.warning("Profil : %s refusé : %s", name, exc)
             self.server.send_error("profile_invalid", str(exc))
 
-    def _select_profile(self, ctx: profiles.ProfileContext, cmd_id: int) -> None:
+    def _clear_trial(self, cmd_id: int) -> None:
+        """`clear_trial_profile` (lot O33) : vide le profil d'essai comme `openride-core profil essai --vider` ;
+        en cours, il est rechargé (progression, records, plan à zéro) et un `hello_ack` complet suit."""
+        trial = profiles.ProfileContext.for_id(profiles.TRIAL_ID, self.profiles_base)
+        if trial.id == self.profile_ctx.id:
+            removed = profiles.clear(trial)   # verrou déjà tenu par cette séance
+            self._select_profile(trial, cmd_id, reload=True)
+        elif not trial.root.is_dir():
+            removed = []
+        else:
+            with profiles.ProfileLock(trial):   # pas pendant une séance d'essai d'un autre OpenRide
+                removed = profiles.clear(trial)
+        log.info("Profil d'essai vidé : %s.", ", ".join(removed) or "déjà vide")
+        self._send_profiles(cmd_id)
+
+    def _select_profile(self, ctx: profiles.ProfileContext, cmd_id: int, reload: bool = False) -> None:
         """Change de profil sans relancer : configuration effective, progression, records, plan et
         dossier des séances rechargés ; liaison du trainer et du Click gardée ; `hello_ack` complet,
         puis `settings` et `progression`. Lève `ProfileContextError` (rien n'a changé)."""
         from . import config as config_mod
 
         old_ctx, old_lock = self.profile_ctx, self.profile_lock
-        if ctx.id == old_ctx.id:
+        same = ctx.id == old_ctx.id
+        if same and not reload:
             self._send_profile_reload(cmd_id)
             return
-        lock = profiles.ProfileLock(ctx)
-        lock.acquire()   # profil déjà utilisé par une autre séance : ProfileContextError
+        lock = old_lock if same else profiles.ProfileLock(ctx)
+        if not same:
+            lock.acquire()   # profil déjà utilisé par une autre séance : ProfileContextError
         profiles.activate(ctx)
         try:
             profiles.ensure_description(ctx)
             cfg = config_mod.load(self.config_path)
         except (config_mod.ConfigError, OSError) as exc:
             profiles.activate(old_ctx)
-            lock.release()
+            if not same:
+                lock.release()
             raise profiles.ProfileContextError(f"profil « {ctx.label} » illisible : {exc}") from None
-        if old_lock is not None:
+        if old_lock is not None and not same:
             old_lock.release()
         self.profile_lock = lock
         self.profile_ctx = ctx
@@ -688,6 +734,7 @@ class CoreSession:
         self._note_profile()
         log.info("Profil de joueur : %s (%s)%s.", ctx.id, ctx.root, " — PROFIL D'ESSAI" if ctx.is_trial else "")
         self._send_profile_reload(cmd_id)
+        self._preselect_last_route()
         try:
             asyncio.get_running_loop()
             self._spawn(self._publish_w_prime_estimate())   # W' du nouveau profil, au hello_ack suivant
@@ -696,10 +743,82 @@ class CoreSession:
 
     def _send_profile_reload(self, cmd_id: int) -> None:
         self._publish_profile()
+        self._publish_interrupted()
+        self._publish_last_choices()
         self.server.send_hello_ack(self.server.hello_config)
         self._send_settings(cmd_id)
         if self.progress_svc.enabled and self.progress_svc.progression_dict() is not None:
             self.server.send_raw(self.progress_svc.progression_message(cmd_id))
+
+    # --- séance interrompue d'un lancement précédent (lot O34, contrat IPC révision 1.5) -------------
+
+    def _publish_interrupted(self) -> None:
+        """`hello_ack.config.interrupted` : séances interrompues du profil sans FIT (absent s'il n'y en a pas)."""
+        items = interrupted_sessions(self.journal_dir, skip=self._resumed_journal)
+        if items:
+            self.server.hello_config["interrupted"] = items
+        else:
+            self.server.hello_config.pop("interrupted", None)
+
+    def _recover_session(self, args: dict, cmd_id: int) -> None:
+        """`recover_session` : enregistre (FIT) ou non une séance interrompue, puis la retire de la liste ;
+        réponse `interrupted`. Hors séance seulement, comme les profils."""
+        if self.state.session_state not in ("IDLE", "READY", "FINISHED", "ERROR"):
+            self.server.send_error("busy", "Séance interrompue : à traiter hors séance.")
+            return
+        known = [it["id"] for it in self.server.hello_config.get("interrupted", [])]
+        sid, save = args.get("id"), args.get("save")
+        if sid not in known or not isinstance(save, bool):
+            self.server.send_error("bad_args", "recover_session : 'id' d'une séance proposée et 'save' booléen")
+            return
+        try:
+            fit = close_interrupted(self.journal_dir / sid, save)
+        except ResumeError as exc:
+            self.server.send_error("bad_args", str(exc))
+            return
+        except (OSError, ValueError) as exc:
+            log.error("Séance interrompue %s non enregistrée : %s", sid, exc)
+            self.server.send_error("recording_failed", f"Séance non enregistrée : {exc}")
+            return
+        log.info("Séance interrompue %s %s.", sid, f"enregistrée : {fit}" if fit else "terminée sans FIT")
+        self._publish_interrupted()
+        self.server.send_raw({"type": "interrupted", "v": 1, "request_cmd_id": cmd_id, "id": sid, "saved": fit is not None,
+                              "fit_path": str(fit) if fit else None,
+                              "items": self.server.hello_config.get("interrupted", [])})
+    # --- derniers choix du menu, par profil (lot O32) ---------------------------------------------
+
+    def _publish_last_choices(self) -> None:
+        """`hello_ack.config.last_choices` : choix gardés du profil en cours ; absent sans profil, comme `profile`."""
+        ctx = self.profile_ctx
+        if ctx.id is None:
+            self.server.hello_config.pop("last_choices", None)
+        else:
+            self.server.hello_config["last_choices"] = last_choices.load(last_choices.path_for(ctx.root))
+
+    def _remember(self, key: str, value: Any, cmd_id: int) -> None:
+        """Note un choix fait au menu (commande de l'engine) et accepté ; pas les commandes de la ligne de
+        commande (`cmd_id` 0) ; rien sans profil ni pour les essais simulés sans configuration, comme
+        `[profils] dernier`."""
+        if cmd_id <= 0 or self.profile_ctx.id is None or (self.sim is not None and self.config_path is None):
+            return
+        try:
+            choices = last_choices.remember(last_choices.path_for(self.profile_ctx.root), key, value)
+        except OSError as exc:
+            log.warning("Dernier choix non enregistré (%s) : %s", key, exc)
+            return
+        self.server.hello_config["last_choices"] = choices
+
+    def _preselect_last_route(self) -> None:
+        """Hors séance, recharge le dernier parcours du profil s'il existe encore ; sinon rien."""
+        route_id = self.server.hello_config.get("last_choices", {}).get("route_id")
+        st = self.state.session_state
+        if not route_id or st not in ("IDLE", "READY") or route_id == self.state.route_id:
+            return
+        if route_id != "demo" and not find_world(route_id, self.routes_root).is_dir():
+            log.info("Dernier parcours « %s » introuvable : aucun parcours choisi.", route_id)
+            return
+        log.info("Dernier parcours du profil : %s.", route_id)
+        self._select_route(route_id, previous=st)
 
     def _note_profile(self) -> None:
         """`.profil_actif` pour le lanceur ; `[profils] dernier` pour un profil de joueur seulement."""
@@ -1055,13 +1174,131 @@ class CoreSession:
         except Exception:
             log.exception("Erreur pendant %s (cmd_id=%d)", name, cmd_id)
 
+    # --- traces importées depuis le menu des parcours (lot O23) -----------------------------------
+
+    def _on_route_import_command(self, name: str, args: dict, cmd_id: int) -> None:
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "Traces importables seulement hors séance.")
+            return
+        if name == "list_route_imports":
+            self._spawn(self._list_route_imports(cmd_id))
+            return
+        path = args.get("path")
+        if not isinstance(path, str) or path not in self._route_import_offer:
+            self.server.send_error("route_invalid", "Trace non proposée par list_route_imports : redemander la liste.")
+            return
+        current = self._route_import
+        if current.get("state") == "compiling":
+            if current.get("source") == path:   # copie renvoyée de la même commande : état en cours
+                self._send_route_import_status(cmd_id)
+            else:
+                self.server.send_error("busy", "Une trace est déjà en cours de compilation.")
+            return
+        self._route_import = {"source": path, "state": "compiling", "file": Path(path).name,
+                              "started": time.monotonic(), "cmd_id": cmd_id}
+        self._spawn(self._import_route(Path(path), cmd_id))
+
+    async def _list_route_imports(self, cmd_id: int) -> None:
+        from . import route_import
+        from .ipc_lists import chunk_list_message, MAX_DATAGRAM_BYTES
+
+        try:
+            items = await asyncio.to_thread(route_import.import_candidates, self.import_home,
+                                            self.gpx_dir or GPX_DIR)
+            self._route_import_offer = {it["path"] for it in items}
+            for m in chunk_list_message("route_imports", cmd_id, items, False, MAX_DATAGRAM_BYTES):
+                self.server.send_raw(m)
+        except Exception:
+            log.exception("Erreur pendant list_route_imports (cmd_id=%d)", cmd_id)
+
+    def _send_route_import_status(self, cmd_id: int | None = None) -> None:
+        """Message `route_import_status` : `compiling` (toutes les 2 s), puis `done` ou `failed`."""
+        cur = self._route_import
+        msg: dict[str, Any] = {"type": "route_import_status", "v": 1,
+                               "request_cmd_id": cmd_id if cmd_id is not None else cur.get("cmd_id", 0),
+                               "state": cur.get("state", "failed"), "file": cur.get("file", ""),
+                               "elapsed_s": int(time.monotonic() - cur.get("started", time.monotonic()))}
+        for key in ("route_id", "name", "created", "message"):
+            if key in cur:
+                msg[key] = cur[key]
+        self.server.send_raw(msg)
+
+    async def _import_route(self, src: Path, cmd_id: int) -> None:
+        """Copie de la trace puis compilation dans un processus à part (invariant A3)."""
+        from . import route_import
+
+        cur = self._route_import
+        copied: dict[str, Any] = {}
+        try:
+            copied = await asyncio.to_thread(route_import.copy_track, src, self.gpx_dir or GPX_DIR,
+                                           self.routes_root)
+            track = Path(copied["path"])
+            cur.update(file=copied["file"], created=copied["created"])
+            log.info("Trace %s : %s (%s)", "importée" if copied["created"] else "déjà présente", track.name, src)
+            plan, entry = await asyncio.to_thread(route_import.compile_plan, track, self.gpx_dir or GPX_DIR,
+                                                  self.routes_root)
+            if plan != "ready":
+                await self._compile_route(track, force=(plan == "rebuild"))
+                plan, entry = await asyncio.to_thread(route_import.compile_plan, track, self.gpx_dir or GPX_DIR,
+                                                      self.routes_root)
+                if plan != "ready":
+                    raise route_import.RouteImportError(
+                        "route_invalid", (entry.error if entry is not None and entry.error else
+                                          f"{track.name} : parcours introuvable après la compilation"))
+            cur.update(state="done", route_id=entry.id, name=entry.name)
+            log.info("Parcours prêt depuis le menu : %s", entry.id)
+        except route_import.RouteImportError as exc:
+            log.warning("Import de trace refusé : %s", exc)
+            cur.update(state="failed", message=str(exc))
+        except Exception as exc:
+            log.exception("Erreur pendant l'import de %s", src)
+            cur.update(state="failed", message=f"erreur interne : {exc}")
+        if cur["state"] == "failed" and copied.get("created"):
+            Path(copied["path"]).unlink(missing_ok=True)   # trace refusée : rien n'est ajouté à la liste
+        self._send_route_import_status(cmd_id)
+
+    async def _compile_route(self, track: Path, force: bool) -> None:
+        """`openride-compiler build` de la trace ; état `compiling` envoyé toutes les 2 s pendant l'attente."""
+        from . import route_import
+
+        prefix = self.route_compiler_cmd or route_import.compiler_prefix()
+        if not prefix:
+            raise route_import.RouteImportError("route_invalid", "compilateur absent (openride-compiler non installé)")
+        cmd = route_import.build_cmd(prefix, track, self.routes_root, force)
+        log.info("Compilation depuis le menu : %s", " ".join(cmd))
+        proc = await asyncio.create_subprocess_exec(*cmd, stdin=asyncio.subprocess.DEVNULL,
+                                                    stdout=asyncio.subprocess.PIPE,
+                                                    stderr=asyncio.subprocess.STDOUT)
+        out_task = asyncio.ensure_future(proc.communicate())
+        deadline = time.monotonic() + route_import.COMPILE_TIMEOUT_S
+        try:
+            while not out_task.done():
+                self._send_route_import_status()
+                if time.monotonic() > deadline:
+                    proc.kill()
+                    await out_task
+                    raise route_import.RouteImportError(
+                        "route_invalid", f"délai de compilation dépassé ({route_import.COMPILE_TIMEOUT_S:.0f} s)")
+                await asyncio.wait({out_task}, timeout=2.0)
+        except asyncio.CancelledError:
+            if proc.returncode is None:
+                proc.kill()
+            raise
+        output = (out_task.result()[0] or b"").decode("utf-8", "replace")
+        for line in output.splitlines():
+            log.info("[compilateur] %s", line)
+        if proc.returncode != 0:
+            raise route_import.RouteImportError("route_invalid", route_import.last_error_line(output))
+
     # --- réglages depuis le menu (lots O3 et O4, contrat IPC révision 1.3) -----------------------
 
     def _send_settings(self, cmd_id: int) -> None:
         from . import settings
 
-        self.server.send_raw({"type": "settings", "v": 1, "request_cmd_id": cmd_id,
-                              "items": settings.current(self.cfg)})
+        from .ipc_lists import chunk_list_message
+
+        for m in chunk_list_message("settings", cmd_id, settings.current(self.cfg), False):   # en parties (lot O27)
+            self.server.send_raw(m)
 
     def _feed_road_mass(self) -> None:
         """Résistance calculée (lots RC2-RC3) : le pilote calcule la force avec la masse du profil et de
@@ -1229,11 +1466,11 @@ class CoreSession:
         return task
 
     async def _handle_list_routes(self, cmd_id: int) -> None:
-        from .config import GPX_DIR
         from .ipc_lists import build_routes_messages
 
         try:
-            msgs = await asyncio.to_thread(build_routes_messages, cmd_id, self.routes_root, GPX_DIR,
+            msgs = await asyncio.to_thread(build_routes_messages, cmd_id, self.routes_root,
+                                           self.gpx_dir or GPX_DIR,
                                            ftp_w=self.cfg.rider.ftp_w)
             for m in msgs:
                 self.server.send_raw(m)
@@ -1258,6 +1495,7 @@ class CoreSession:
         if self.worldmenu is None:
             self.worldmenu = WorldMenu(self.cfg.open_world.network, self.config_path)
         wm = self.worldmenu
+        wm.network = self.cfg.open_world.network   # réglage Avancé (lot O27) pris sans relancer
         try:
             if name == "world_search":
                 msgs = await asyncio.to_thread(wm.search, cmd_id, args.get("query"))
@@ -1272,7 +1510,7 @@ class CoreSession:
 
     # --- monde ouvert (lot W9, contrat IPC révision 1.5) ------------------------------------------
 
-    def _start_open_world(self, args: Any, st: str) -> None:
+    def _start_open_world(self, args: Any, st: str, cmd_id: int = 0) -> None:
         if st not in ("IDLE", "READY", "FINISHED", "ERROR"):
             self.server.send_error("busy", "Monde ouvert impossible pendant une séance.")
             return
@@ -1292,6 +1530,7 @@ class CoreSession:
             return
         self.openworld = ow
         log.info("Monde ouvert : préparation de %s.", ow.folder)
+        self._remember("open_world", args, cmd_id)
 
     def _close_open_world(self, wait: bool = False) -> None:
         """Fin du générateur ; en séance, dans un fil pour ne pas retenir la boucle à 50 Hz."""
@@ -2361,6 +2600,8 @@ class CoreSession:
         # W' estimé (lot R16) : attendu au plus 3 s avant d'ouvrir les ports, pour être dans le premier hello_ack ;
         # au-delà, il arrive au hello_ack suivant (engine relancé ou reconnecté).
         await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
+        self._resumed_journal = resume
+        self._publish_interrupted()   # lot O34 : dans le premier hello_ack
         self.server.start()
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
                  for p in self._services() if hasattr(p, "run")]  # trainer prioritaire
@@ -2387,6 +2628,8 @@ class CoreSession:
             if workout_id:
                 self._on_command("select_workout", {"workout_id": workout_id}, 0)
             self._on_command("start", {}, 0)
+        else:
+            self._preselect_last_route()   # lot O32 : le menu s'ouvre sur le dernier parcours du profil
         if self.first_run:
             self._on_command("install_content", {"id": "starter"}, 0)
         log.info("Core démarré (trainer=%s, entrées=%s).", self.cfg.drivers.trainer,
