@@ -73,7 +73,7 @@ def test_free_erg_bias_like_a_workout():
 def test_cadence_lock_band_and_direction():
     lock = CadenceLock(90, 200, FTP)
     assert lock.low_rpm == pytest.approx(90 * (1 - CADENCE_BAND_PCT / 100))
-    assert lock.high_rpm == pytest.approx(103.5)
+    assert lock.high_rpm == pytest.approx(99.0)
     ride(lock, 95.0, 10.0)                       # dans la plage : la puissance ne bouge pas
     assert lock.target_w == 200 and lock.zone == "in"
     ride(lock, 112.0, 5.0)                       # trop vite : la puissance monte

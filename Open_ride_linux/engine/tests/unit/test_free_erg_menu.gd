@@ -16,7 +16,7 @@ const FREE := {"kind": "free", "workout_name": "ERG libre", "block_index": 1, "b
 const CADENCE := {"kind": "cadence", "workout_name": "ERG cadence", "block_index": 1, "block_count": 1,
 	"block_type": "steady", "block_remaining_s": 0.0, "block_total_s": 0.0, "target_w": 215,
 	"next_target_w": null, "bias_pct": 100, "paused": false, "cadence_target_rpm": 90,
-	"cadence_low_rpm": 76.5, "cadence_high_rpm": 103.5, "cadence_zone": "high"}
+	"cadence_low_rpm": 81.0, "cadence_high_rpm": 99.0, "cadence_zone": "high"}
 const WORKOUT := {"workout_name": "Seuil", "block_index": 2, "block_count": 5, "block_type": "steady",
 	"block_remaining_s": 120.0, "block_total_s": 300.0, "target_w": 250, "next_target_w": 150,
 	"bias_pct": 100, "paused": true}

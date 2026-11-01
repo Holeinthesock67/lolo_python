@@ -32,7 +32,7 @@ DEFAULT_FTP_FRAC = 0.6            # cible de départ sans puissance mesurée : 6
 CADENCE_MIN_RPM, CADENCE_MAX_RPM = 50, 120
 CADENCE_DEFAULT_RPM = 85          # cadence cible de départ sans cadence mesurée
 CADENCE_ROUND_RPM = 5
-CADENCE_BAND_PCT = 15             # plage de cadence : ± 15 % autour de la cible
+CADENCE_BAND_PCT = 10             # plage de cadence : ± 10 % (choix du propriétaire, 1er novembre)
 CADENCE_TAU_S = 2.0               # lissage de la cadence mesurée
 GAIN_W_PER_S_PER_RPM = 1.5        # vitesse de correction par tr/min hors plage
 RATE_MAX_W_PER_S = 10.0
@@ -118,7 +118,7 @@ class FreeErg:
 
 
 class CadenceLock(FreeErg):
-    """Puissance adaptée pour garder la cadence dans la plage cible ± 15 %."""
+    """Puissance adaptée pour garder la cadence dans la plage cible ± 10 %."""
 
     kind = "cadence"
     name = CADENCE_NAME
