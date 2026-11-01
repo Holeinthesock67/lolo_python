@@ -83,3 +83,10 @@ Les fusions viendront ensuite : #683, puis #684 repointée sur main, après vali
 | SIM2 | 3 | Lâcher du frein sur 4 sprints sur 5 (200 à 352 W après 819 à 945 W), 5 à 14 s à 0 W. |
 
 Ressenti du propriétaire : « ça ne change pas grand-chose, ça repousse le décrochage à des puissances plus élevées ». Lecture : sans inertie, le mode résistance supprime le trou d'après le sprint mais allège la relance (sur la route, accélérer 84 kg à 1 m/s² demande 84 N, plus que l'air à 45 km/h). Choix du propriétaire (1er novembre) : le mode « power » est retiré, et le mode résistance ajoute l'inertie m × a quand le volant accélère, jamais rendue au ralentissement (`resistance_inertia_pct`), à essayer à 50 et 100 %.
+
+## 6. Inertie (7rc3) et choix final (1er novembre)
+
+- Premier essai à 100 % : variations de résistance, dues au bruit de la vitesse du volant (±1 à 2,75 m/s² d'une trame à l'autre à 12–22 km/h) ; corrigé (lissage 1 s, seuil 0,4 m/s², rien sous 20 km/h, variation bornée à 60 N/s, k gelé).
+- R-I50 : 3,5, « non linéarité de résistance dans phase de sprint (devient plus dur pendant le sprint) puis parfois résistance en retard », décrochage sauf au dernier sprint.
+- Le propriétaire juge les essais manuels trop longs et demande de conclure sur l'ensemble des journaux. Bilan : seul le mode résistance sans inertie supprime le lâcher de façon mesurable (aucun 0 W sur ses sprints, contre 4 sprints sur 5 en SIM), avec des notes de 3 à 4.
+- **Choix du propriétaire : résistance calculée sans inertie par défaut pour la 1.0**, SIM au menu (« Pilotage du trainer »).

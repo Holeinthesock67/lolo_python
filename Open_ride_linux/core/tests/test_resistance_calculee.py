@@ -88,14 +88,34 @@ def test_downhill_sends_the_lowest_level():
     assert _flush(drv) == [ftms.cmd_set_target_resistance(0.0)]
 
 
-def test_default_control_stays_sim():
-    """Le SIM reste le pilotage par défaut jusqu'aux essais réels (31 octobre)."""
+def test_default_control_is_the_computed_resistance():
+    """Choix du propriétaire (1er novembre, après les essais 7rc2-7rc3) : résistance calculée sans inertie."""
     now = [100.0]
     drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
     drv.supports_resistance = True
+    drv._on_ibd(None, _ibd(30.0, 85, 200))
     drv.set_sim_grade(3.0)
     sent = _flush(drv)
-    assert TrainerConfig().control == "sim" and sent and sent[0][0] == ftms.OP_SET_SIM_PARAMS
+    assert TrainerConfig().control == "resistance" and TrainerConfig().resistance_inertia_pct == 0.0
+    assert sent and sent[0][0] == ftms.OP_SET_TARGET_RESISTANCE
+
+
+def test_sim_control_still_sends_the_grade():
+    """« Pilotage du trainer » sur SIM : la pente part en 0x11, comme avant."""
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(control="sim"), BikeConfig(), clock=lambda: now[0])
+    drv.supports_resistance = True
+    drv.set_sim_grade(3.0)
+    sent = _flush(drv)
+    assert sent and sent[0][0] == ftms.OP_SET_SIM_PARAMS
+
+
+def test_pilotage_is_a_menu_setting():
+    from openride_core import settings
+    item = next(it for it in settings.current(config.Config()) if it["key"] == "trainer.control")
+    assert item["label"] == "Pilotage du trainer" and item["group"] == "ride"
+    assert item["value"] == "resistance" and item["choices"] == ["sim", "resistance"]
+    assert settings.get("trainer.control").scope == "machine"
 
 
 def test_falls_back_to_sim_when_resistance_is_not_announced(caplog):
@@ -252,7 +272,7 @@ def test_inertia_ignores_pedal_stroke_ripple():
 
 
 def test_inertia_config_bounds():
-    assert config.Config().trainer.resistance_inertia_pct == 100.0
+    assert config.Config().trainer.resistance_inertia_pct == 0.0   # coupée par défaut (choix du 1er novembre)
     assert config.from_dict({"trainer": {"resistance_inertia_pct": 50.0}}).trainer.resistance_inertia_pct == 50.0
     for bad in (-1.0, 101.0):
         with pytest.raises(config.ConfigError):
