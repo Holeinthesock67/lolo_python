@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Graphe routier local : arêtes, carrefours, classes, ponts et tunnels, impasses, ronds-points | Python | W3 | Moyenne | Oui, après W3 (issue #258) |
+| Graphe routier local : arêtes, carrefours, classes, ponts et tunnels, impasses, ronds-points | Python | W3 | Moyenne | Livré le 27 octobre (PR #303) |
 
 ## 1. Objectif
 
@@ -56,3 +56,7 @@ Aucune.
 ## 8. Hors périmètre
 
 Altitude et profil (W5), choix de branche (W6).
+
+## Livraison
+
+PR #303, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, après W3 (issue #258) ».

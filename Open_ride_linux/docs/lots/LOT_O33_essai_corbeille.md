@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Profils : « Vider le profil d'essai » et « Restaurer un profil supprimé » dans « Gérer un profil » (commandes `clear_trial_profile`, `restore_profile`, corbeille dans `profiles`) | Python + GDScript | MJ7, MJ8 (livrés) | Petite | Audit des options du 31 octobre, accepté par le propriétaire ; en PR |
+| Profils : « Vider le profil d'essai » et « Restaurer un profil supprimé » dans « Gérer un profil » (commandes `clear_trial_profile`, `restore_profile`, corbeille dans `profiles`) | Python + GDScript | MJ7, MJ8 (livrés) | Petite | Livré le 31 octobre (PR #661) |
 
 ## 1. Objectif
 
@@ -43,3 +43,7 @@ Révision 1.5, ajouts compatibles : commandes `clear_trial_profile` et `restore_
 ## 6. Hors périmètre
 
 Vider la corbeille pour de bon (rien n'est effacé définitivement depuis le menu) ; restaurer la sauvegarde de migration `Sauvegardes/`.
+
+## Livraison
+
+PR #661, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Audit des options du 31 octobre, accepté par le propriétaire ; en PR ».

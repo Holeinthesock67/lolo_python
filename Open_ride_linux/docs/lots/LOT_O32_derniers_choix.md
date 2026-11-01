@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Derniers choix du menu mémorisés par profil : parcours rechargé par le core, entraînement, bot et fantôme, départ du monde ouvert (`hello_ack.config.last_choices`) | Python + GDScript | MJ7 (livré) | Petite | Audit des options du 31 octobre, accepté par le propriétaire ; en PR |
+| Derniers choix du menu mémorisés par profil : parcours rechargé par le core, entraînement, bot et fantôme, départ du monde ouvert (`hello_ack.config.last_choices`) | Python + GDScript | MJ7 (livré) | Petite | Livré le 31 octobre (PR #650) |
 
 ## 1. Objectif
 
@@ -43,3 +43,7 @@ Révision 1.5, ajout compatible : objet facultatif `last_choices` de `hello_ack.
 ## 6. Hors périmètre
 
 Mémoriser l'écran du menu ouvert en dernier ; les choix des plans (plan actif déjà gardé par le lot O11) ; les réglages, déjà persistés par `config.toml` et `profil.toml`.
+
+## Livraison
+
+PR #650, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Audit des options du 31 octobre, accepté par le propriétaire ; en PR ».

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Profil d'arête : altitude, ponts et tunnels interpolés, lissage, pente bornée, indépendant du chemin | Python | W4 | Petite | Oui, après W4 (issue #259) |
+| Profil d'arête : altitude, ponts et tunnels interpolés, lissage, pente bornée, indépendant du chemin | Python | W4 | Petite | Livré le 27 octobre (PR #304) |
 
 ## 1. Objectif
 
@@ -58,3 +58,7 @@ Aucune.
 ## 8. Hors périmètre
 
 Choix des arêtes (W6), terrain (W7), RGE ALTI de l'IGN (option ultérieure).
+
+## Livraison
+
+PR #304, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, après W4 (issue #259) ».

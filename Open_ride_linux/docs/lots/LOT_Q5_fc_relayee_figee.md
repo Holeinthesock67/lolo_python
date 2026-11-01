@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Fréquence cardiaque relayée par le trainer figée : écrite comme absente | Python | Q3 (`ftms_driver.py`) | Petite | Oui ; issue #172 |
+| Fréquence cardiaque relayée par le trainer figée : écrite comme absente | Python | Q3 (`ftms_driver.py`) | Petite | Livré le 27 octobre (PR #195) |
 
 ## 1. Objectif
 
@@ -55,3 +55,7 @@ Aucune. Dans la trame `state`, `hr` vaut déjà `null` quand il n'y a pas de mes
 
 - Connexion de la ceinture directement à OpenRide quand le trainer la garde (réglage de l'appareil, essai M2).
 - Détection d'une FC aberrante qui varie (trop haute ou trop basse).
+
+## Livraison
+
+PR #195, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui ; issue #172 ».
