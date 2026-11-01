@@ -55,6 +55,7 @@ const LANE_FREE_M := 150.0
 ## Au-delà de l'accotement, les roues d'un véhicule mordent l'herbe de VERGE_M au plus.
 const VERGE_M := 0.25
 const HOLD_GAP_M := 5.0
+const SLOPE_PROBE_M := 2.5   # tangage : pente de la route à ± cette distance (environ un demi-empattement)
 ## Sortes (Lot P25) : demi-largeur et longueur hors tout de vehicle_mesh.gd (rétroviseurs compris), part des
 ## tirages et plage de vitesse.
 const KINDS := {
@@ -442,7 +443,7 @@ func place_for_test(rider_s: float, rider_v: float, kind: String, dir: int, rel_
 			v["s"] = hold_s
 
 
-## Position et cap (rad autour de y) d'un véhicule dans le monde.
+## Position, cap et tangage d'un véhicule dans le monde (il suit la pente de la route affichée).
 func world_transform(v: Dictionary) -> Transform3D:
 	var s := clampf(float(v["s"]), 0.0, route.length_m)
 	var smp: Dictionary = route.sample(s)
@@ -451,4 +452,6 @@ func world_transform(v: Dictionary) -> Transform3D:
 	var right := Vector3(cos(h), 0.0, sin(h))
 	var pos := Vector3(float(smp["x"]), float(smp["y"]), float(smp["z"])) + right * float(v["lateral"])
 	var facing := fwd * float(v["dir"])
-	return Transform3D(Basis(Vector3.UP, atan2(-facing.x, -facing.z)), pos)
+	# Tangage selon la pente affichée dans le sens de marche (avant vers -z local : rotation +x = nez levé)
+	var pitch: float = route.display_pitch(s, SLOPE_PROBE_M) * float(v["dir"])
+	return Transform3D(Basis(Vector3.UP, atan2(-facing.x, -facing.z)) * Basis(Vector3.RIGHT, pitch), pos)

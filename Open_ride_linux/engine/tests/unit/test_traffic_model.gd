@@ -3,6 +3,7 @@ extends SceneTree
 ## Tests sans écran de la circulation `traffic_model.gd` (Lot P13) : séance simulée de 30 km à 30 km/h,
 ## sécurité (écarts, dépassements), déterminisme, budget, coût par image ; affichage `traffic_renderer.gd`.
 ## Lot P25 : sept sortes et leurs vitesses, phares, affichage refait (caisse, roues, son par sorte).
+## Véhicules et cyclistes du décor inclinés selon la pente affichée de la route (route_data.display_pitch).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_traffic_model.gd
 
 const TrafficModel := preload("res://scripts/traffic_model.gd")
@@ -418,6 +419,65 @@ func _run() -> void:
 	for i in range(50):
 		tm.update(s, 0.0, 0.1, true)
 	_check(not tm.vehicles.is_empty() and str(tm.vehicles) == before, "pause : véhicules figés")
+	_test_pitch()
 	await _test_renderer(route)
 	print("test_traffic_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
+
+
+## Route droite vers l'est : plat, puis montée de 10 % (relief affiché), puis plat.
+func _ramp_route(relief_k: float):
+	var ds := 10.0
+	var n := 301
+	var cols := {"lat": [], "lon": [], "alt_m": [], "x": [], "z": [], "grade_pct": [], "heading_deg": []}
+	for i in range(n):
+		var s := i * ds
+		cols["lat"].append(48.9)
+		cols["lon"].append(7.1)
+		cols["alt_m"].append(400.0 + 0.1 * clampf(s - 1000.0, 0.0, 1000.0))
+		cols["x"].append(s)
+		cols["z"].append(0.0)
+		cols["grade_pct"].append(10.0 if s >= 1000.0 and s < 2000.0 else 0.0)
+		cols["heading_deg"].append(90.0)
+	var d := {"version": "1.0", "ds_m": ds, "n": n, "length_m": (n - 1) * ds, "type": "open"}
+	d.merge(cols)
+	var r = RouteDataScript.new()
+	r.relief_k = relief_k
+	r.load_route_dict(d)
+	return r
+
+
+## Pente de l'avant d'un repère (dy / course horizontale).
+func _slope(fwd: Vector3) -> float:
+	return fwd.y / maxf(Vector2(fwd.x, fwd.z).length(), 1e-6)
+
+
+func _test_pitch() -> void:
+	var route = _ramp_route(1.0)
+	_check(absf(route.display_pitch(500.0)) < 1e-6 and absf(tan(route.display_pitch(1500.0)) - 0.1) < 1e-3,
+		"display_pitch : 0 sur le plat, atan(0,1) dans la montée de 10 %")
+	var steep = _ramp_route(2.0)
+	_check(absf(tan(steep.display_pitch(1500.0)) - 0.2) < 1e-3, "display_pitch suit le relief exagéré (×2 : 20 %)")
+	var tm = TrafficModel.new()
+	tm.configure(route, {}, [], 3, 7)
+	var ok := true
+	var flat_ok := true
+	for dir in [1, -1]:
+		for kind in ["truck", "car_a", "bus"]:
+			var v := {"s": 1500.0, "lateral": 1.6 * dir, "dir": dir, "kind": kind}
+			var t: Transform3D = tm.world_transform(v)
+			var fwd := -t.basis.z.normalized()
+			# avant dans le sens de marche, nez levé en montée (dir 1), baissé en descente (dir −1)
+			ok = ok and absf(_slope(fwd) - 0.1 * dir) < 2e-3 and fwd.x * dir > 0.0 and t.basis.y.normalized().y > 0.99
+			var tf: Transform3D = tm.world_transform({"s": 500.0, "lateral": 1.6, "dir": dir, "kind": kind})
+			flat_ok = flat_ok and absf((-tf.basis.z).y) < 1e-6
+	_check(ok, "véhicules : tangage selon la pente de 10 % dans les deux sens, roues au sol")
+	_check(flat_ok, "véhicules : à plat sur le plat")
+	var rc = RoadCyclistsModel.new()
+	rc.route = route
+	var cyc_ok := true
+	for dir in [1, -1]:
+		var t: Transform3D = rc.world_transform(1500.0, 1.0, dir)
+		var fwd := t.basis.z.normalized()   # face vers +z local
+		cyc_ok = cyc_ok and absf(_slope(fwd) - 0.1 * dir) < 2e-3 and fwd.x * dir > 0.0
+	_check(cyc_ok, "cyclistes du décor : tangage selon la pente dans les deux sens")
