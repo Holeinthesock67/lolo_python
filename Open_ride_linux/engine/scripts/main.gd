@@ -1537,6 +1537,12 @@ func _on_state_received(state: Dictionary) -> void:
 		banner.show_message("trainer_busy", DevicesViewModel.TRAINER_BUSY_TEXT)
 	else:
 		banner.clear_message("trainer_busy")
+	# Invite de fin de séance (1er novembre) : entraînement fini, la séance continue jusqu'à Y puis A maintenu.
+	var done_text := HudViewModel.workout_done_text(state)
+	if done_text != "" and str(state.get("session_state", "")) == "RUNNING":
+		banner.show_message("workout_done", done_text)
+	else:
+		banner.clear_message("workout_done")
 	_check_latency(state)
 	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)

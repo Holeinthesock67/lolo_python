@@ -81,6 +81,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `draft` | nombre, facultatif | Révision 1.3 : coefficient d'aspiration appliqué au cycliste, de 0 à 0,45 (SRS §5) ; absent sans bot |
 | `draft_bot` | chaîne, facultatif | Révision 1.3 : `id` du bot qui abrite le cycliste ; absent quand `draft` vaut 0 ou manque |
 | `open_world` | objet, facultatif | Monde ouvert seulement : révision du monde, prochain carrefour, état des données (§4, « Monde ouvert ») |
+| `workout_done` | objet, facultatif | Révision 1.5 (invite de fin de séance, 1er novembre) : `{workout_name}` quand l'entraînement de la séance est fini et que la séance continue en parcours libre (`mode` = `SIM`, `erg` = `null`) ; présent en `RUNNING` et en `PAUSED` jusqu'à la fin de la séance, retiré par un `set_ride_mode` accepté ; absent sinon. L'engine affiche alors l'invite « Y puis A maintenu pour terminer et enregistrer » et ouvre la pause sur « Terminer et enregistrer » |
 | `last_cmd_id` | entier | Dernier `cmd_id` traité par le core (§4) |
 
 **Objet `erg`**
@@ -635,3 +636,4 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.5) | 31 octobre 2026 | Ajouts compatibles (lot O33, audit des options du 31 octobre) : commandes `clear_trial_profile` et `restore_profile`, champ facultatif `trash` du message `profiles` (moins de 1 600 octets) |
 | 1 (révision 1.5) | 31 octobre 2026 | Ajout compatible (lot O32, audit des options du 31 octobre) : objet facultatif `last_choices` de `hello_ack.config` (derniers choix du menu du profil en cours) ; dernier parcours rechargé par le core au démarrage et au changement de profil (§5) |
 | 1 (révision 1.5) | 31 octobre 2026 | Ajouts compatibles (lot O34, audit des options du 31 octobre) : liste facultative `interrupted` de `hello_ack.config`, commande `recover_session`, message `interrupted` (§4, §5) |
+| 1 (révision 1.5) | 1er novembre 2026 | Ajout compatible (invite de fin de séance, constat du vélo du 1er novembre : en fin de séance d'un plan, rien ne disait de terminer) : objet facultatif `workout_done` de `state` (`{workout_name}`), entraînement fini et séance pas encore terminée |

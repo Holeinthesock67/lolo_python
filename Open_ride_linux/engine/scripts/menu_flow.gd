@@ -7,7 +7,8 @@ extends RefCounted
 ## Règles :
 ## - menu visible dès qu'une trame `state` est reçue, sauf en RUNNING (contrat §4 : les événements
 ##   `input` ne servent alors qu'aux bips) ;
-## - PAUSED ouvre l'écran de pause, FINISHED le bilan ; une séance terminée sans bilan (IDLE ou READY
+## - PAUSED ouvre l'écran de pause (focus sur « Terminer et enregistrer » quand `state.workout_done` dit
+##   l'entraînement fini), FINISHED le bilan ; une séance terminée sans bilan (IDLE ou READY
 ##   après RUNNING ou PAUSED) ramène à l'accueil ;
 ## - les listes sont demandées au premier état reçu, même en RUNNING (`--autostart` : la liste des
 ##   entraînements donne au bandeau ERG les durées réelles de tous les blocs), puis à chaque « Nouvelle séance ».
@@ -122,6 +123,9 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 	"engine_lost": "Affichage relancé : reprends quand tu veux", "core_restarted": "OpenRide a redémarré : séance retrouvée",
 	"recording_failed": "Enregistrement impossible : la séance reste en mémoire",
 	"world_data": "Route devant toi en cours de chargement : reprise automatique"}
+## Ligne d'état de la pause quand l'entraînement est fini (`state.workout_done`, invite de fin de séance du
+## 1er novembre) : le focus est déjà sur « Terminer et enregistrer ».
+const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer et enregistrer"
 ## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
 const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create", MenuModel.IMPORT_WORKOUT_ID: "import",
 	MenuModel.HELP_WORKOUT_ID: "choose"}
@@ -225,6 +229,8 @@ var _record_segment := ""
 var _record_bonus := false
 ## Raison de la dernière pause (`state.pause_reason`), "" hors pause.
 var pause_reason := ""
+## Entraînement fini, séance pas encore terminée (`state.workout_done`, contrat IPC 1.5).
+var workout_done := false
 ## Profils de joueurs (série MJ, lot MJ8) : « Qui roule ? », nom du profil, gestion.
 var profiles = ProfilesViewModel.new()
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
@@ -314,6 +320,7 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
+	workout_done = state.get("workout_done", null) is Dictionary
 	_track_run(st, state)
 	if state.get("devices") is Dictionary:
 		devices = state["devices"]
@@ -351,6 +358,8 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 		match st:
 			"PAUSED":
 				menu.open_pause()
+				if workout_done:   # entraînement fini : Y puis A maintenu termine et enregistre
+					menu.focus_item("end_save")
 			"FINISHED":
 				show_details = false
 				ftp_offer = summary["ftp_test"] if summary.get("ftp_test") is Dictionary else {}
@@ -1808,6 +1817,8 @@ func state() -> Dictionary:
 		st["grid"] = {"columns": ProfilesViewModel.GRID_COLUMNS, "text": profiles.name_text}
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
+		if st["status"] == "" and workout_done:
+			st["status"] = PAUSE_WORKOUT_DONE
 	st["card"] = card(st)
 	st["preview"] = garage_preview(st)
 	st["progress"] = progress_view() if st["screen"] == SUMMARY else {}

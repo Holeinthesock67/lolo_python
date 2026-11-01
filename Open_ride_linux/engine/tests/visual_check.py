@@ -7,7 +7,7 @@ Usage : visual_check.py --godot CHEMIN [--configs 1280x720:low,…] [--out DOSSI
 Pour chaque configuration (résolution et préréglage de qualité), le script lance l'engine avec sa
 vraie scène (`main.tscn`) sous Xvfb (OpenGL logiciel de Mesa, moteur Compatibility), face au faux
 core de `fake_core.py`, et lui fait parcourir des scènes de séance : attente du core, vue fixe,
-mouvement, ERG, pause, core muet, reprise, erreur. À chaque étape, l'engine (en `--test-mode`)
+mouvement, ERG, fin d'un entraînement, pause, core muet, reprise, erreur. À chaque étape, l'engine (en `--test-mode`)
 enregistre l'image affichée et l'état de son HUD (textes, visibilité, rectangles à l'écran) ; le
 script vérifie alors :
 
@@ -976,6 +976,31 @@ def _scenes(s: Session) -> None:
     core.chart = None
     core.send_hello_ack()
     time.sleep(0.5)
+
+    # 4 ter. Fin d'un entraînement (constat du vélo du 1er novembre) : invite au bandeau, sans alerte rouge,
+    # puis pause ouverte sur « Terminer et enregistrer », que la ligne sous le titre rappelle.
+    core.set_scene(speed=SPEED_MPS, mode="SIM", erg=None, workout_done={"workout_name": "Sweet spot"})
+    time.sleep(SETTLE_S)
+    shot = s.capture("fin_entrainement")
+    if shot:
+        img, info = shot
+        b = info["widgets"]["banner"]
+        s.check("fin_entrainement", "invite de fin d'entraînement au bandeau",
+                b["visible"] and "« Sweet spot » terminé : Y puis A maintenu pour terminer et enregistrer" in b["text"],
+                f"« {b['text']} »")
+        s.check_layout("fin_entrainement", info)
+    core.set_scene(speed=0.0, session_state="PAUSED", pause_reason="user", power=0.0, power_3s=0.0, cadence=0.0)
+    time.sleep(SETTLE_S)
+    shot = s.capture("fin_entrainement_pause")
+    if shot:
+        img, info = shot
+        s.check_texts("fin_entrainement_pause", info, {"menu": "Reprendre | [Terminer et enregistrer]"}, contains=True)
+        s.check_texts("fin_entrainement_pause", info,
+                      {"menu": "Entraînement terminé : A maintenu pour terminer et enregistrer"}, contains=True)
+        s.check_layout("fin_entrainement_pause", info)
+    core.set_scene(speed=SPEED_MPS, session_state="RUNNING", pause_reason=None, workout_done=None,
+                   power=250.0, power_3s=248.0, cadence=90.0)
+    time.sleep(1.0)
 
     # 5. Pause : trainer perdu, raison visible sous le titre du menu de pause.
     core.set_scene(speed=0.0, s=FIXED_S, mode="SIM", erg=None, session_state="PAUSED", pause_reason="trainer_lost",

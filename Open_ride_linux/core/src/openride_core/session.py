@@ -385,6 +385,8 @@ class CoreSession:
             self._sync_erg_state()
         if self.race and new == "PAUSED" and old == "RUNNING":
             self.race.pause(reason or "user")   # pause Y : passages annulés ; coupure subie : suspendus (T4)
+        if new in ("READY", "FINISHED", "IDLE", "ERROR"):
+            self.state.workout_done = None   # l'invite de fin d'entraînement ne vit que pendant la séance
         if new in ("PAUSED", "READY", "FINISHED", "IDLE", "ERROR"):
             self._release_trainer()
 
@@ -1683,6 +1685,7 @@ class CoreSession:
         cur = self.erg
         ftp = self.cfg.rider.ftp_w
         self._ramp_watch = None   # rampe d'un test de FTP déjà terminé : plus rien à surveiller
+        self.state.workout_done = None   # mode choisi à la pause : le cycliste continue, plus d'invite
         if mode == "sim":
             self.erg = None
             self._grade_sent = 0.0   # la pente reprend depuis 0 % avec la limitation de variation
@@ -1713,12 +1716,19 @@ class CoreSession:
         self._sync_erg_state()
 
     def _sync_erg_state(self) -> None:
-        """Recalcule `mode` et l'objet `erg` ; termine l'entraînement après son dernier bloc."""
+        """Recalcule `mode` et l'objet `erg` ; termine l'entraînement après son dernier bloc.
+
+        La séance continue alors en parcours libre : `workout_done` (contrat IPC §3) demande à l'engine
+        d'afficher l'invite « Y puis A maintenu pour terminer et enregistrer » jusqu'à la fin de la
+        séance ou un changement de mode par la pause (`set_ride_mode`)."""
         erg = self.erg
         if erg and erg.finished:
             log.info("Entraînement « %s » terminé : retour au mode SIM, parcours libre.", erg.workout.name)
+            self.state.workout_done = {"workout_name": erg.workout.name}
             self.erg = erg = None
             self._grade_sent = 0.0   # la pente reprend depuis 0 % avec la limitation de variation
+        elif isinstance(erg, ErgController):
+            self.state.workout_done = None   # entraînement en cours (nouvelle séance, reprise)
         self.state.mode = "ROGUE" if self.rogue is not None else ("ERG" if erg else "SIM")
         self.state.erg = erg.to_dict() if erg else None
 
