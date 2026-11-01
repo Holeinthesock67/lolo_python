@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Démarrage robuste : séance interrompue d'un lancement précédent proposée à l'accueil (FIT ou non, commande `recover_session`), configuration invalide remise par défaut depuis une fenêtre du lanceur (copie `.bak`) | Python + GDScript | N8, MJ7 (livrés) | Petite | Audit des options du 31 octobre, accepté par le propriétaire ; en PR |
+| Démarrage robuste : séance interrompue d'un lancement précédent proposée à l'accueil (FIT ou non, commande `recover_session`), configuration invalide remise par défaut depuis une fenêtre du lanceur (copie `.bak`) | Python + GDScript | N8, MJ7 (livrés) | Petite | Livré le 31 octobre (PR #658) |
 
 ## 1. Objectif
 
@@ -45,3 +45,7 @@ Révision 1.5, ajouts compatibles : liste facultative `interrupted` de `hello_ac
 ## 6. Hors périmètre
 
 `profil.toml` illisible au point que le profil lui-même ne se lit plus (`ProfileContextError`, message seul) ; la reprise en séance d'une séance interrompue d'un lancement précédent, qui reste réservée au plantage du core pendant le même lancement (lot N8).
+
+## Livraison
+
+PR #658, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Audit des options du 31 octobre, accepté par le propriétaire ; en PR ».

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Garde-fou des options : toute clé de `config.toml`, tout argument de l'engine et toute commande du guide a un menu ou une raison écrite | Python | O24 | Petite | Audit des options du 31 octobre, validé par le propriétaire ; en PR |
+| Garde-fou des options : toute clé de `config.toml`, tout argument de l'engine et toute commande du guide a un menu ou une raison écrite | Python | O24 | Petite | Livré le 31 octobre (PR #644) |
 
 ## 1. Objectif
 
@@ -29,3 +29,7 @@ Un lot qui relie une option au menu la retire de `PENDING_KEYS`, de `ENGINE_ARGS
 
 1. Le test passe sur `main` après O24 (la ceinture est écrite par l'écran Appareils).
 2. Ajouter une clé à `Config` sans la ranger, ou un argument à l'engine, fait échouer le test avec un message qui cite la clé.
+
+## Livraison
+
+PR #644, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Audit des options du 31 octobre, validé par le propriétaire ; en PR ».

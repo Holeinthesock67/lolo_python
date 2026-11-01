@@ -3,6 +3,8 @@
 Date : 24 octobre 2026  
 Branche : `lot-e3-e4`  
 Demande de fusion (PR) : [#91](https://github.com/Holeinthesock67/lolo_python/pull/91)  
+**Mise à jour du 1er novembre :** Godot 4.7.2 depuis le lot Y2. Sans vélo : `engine/tests/sim_bench.py --native --probe --world village --display fullscreen`, le cycliste simulé roule sur un parcours avec villages, forêt, rivière et lac (le banc coupe le son) ; la bascule du LOD0 passe à 450 m si la PR #689 est fusionnée.
+
 Machine cible : PC du propriétaire (GPU NVIDIA GeForce GTX 1060 6 Go, écran 1 920 × 1 080)
 
 ---
@@ -50,7 +52,7 @@ REQUIRE_RENDER=1 engine/tests/run_engine_tests.sh
 Lancer l'engine avec les options de base :
 ```bash
 # En mode fenêtré ou plein écran 1080p
-./build/Godot_v4.3-stable_linux.x86_64 --path engine --routes-dir=~/.local/share/openride/routes --quality=low
+~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --path engine --routes-dir=~/.local/share/openride/routes --quality=low
 ```
 
 Points de contrôle à valider :
@@ -78,7 +80,7 @@ Points de contrôle à valider :
 
 Lancer une trace réelle contenant un village et un cours d'eau (ex. trace d'entraînement avec relief) :
 ```bash
-./build/Godot_v4.3-stable_linux.x86_64 --path engine --routes-dir=~/.local/share/openride/routes --quality=low
+~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --path engine --routes-dir=~/.local/share/openride/routes --quality=low
 ```
 
 Points de contrôle à valider :
@@ -99,8 +101,8 @@ Points de contrôle à valider :
 
 Tester successivement les options `--quality=medium` et `--quality=high` :
 ```bash
-./build/Godot_v4.3-stable_linux.x86_64 --path engine --quality=medium
-./build/Godot_v4.3-stable_linux.x86_64 --path engine --quality=high
+~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --path engine --quality=medium
+~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 --path engine --quality=high
 ```
 - En `medium` : ombres étendues à 300 m, densité d'arbres augmentée (jusqu'à 50 000 instances).
 - En `high` : brouillard volumétrique actif, portée des ombres à 600 m, portée des bâtiments augmentée à 1 500 m.

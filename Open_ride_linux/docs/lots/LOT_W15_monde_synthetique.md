@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Monde ouvert synthétique : relief analytique, base de routes, monde vivant et faux générateur | Python | W1 | Moyenne | Oui, après W1 (issue #270) |
+| Monde ouvert synthétique : relief analytique, base de routes, monde vivant et faux générateur | Python | W1 | Moyenne | Livré le 27 octobre (PR #314) |
 
 ## 1. Objectif
 
@@ -47,3 +47,7 @@ Aucune.
 ## 8. Hors périmètre
 
 Le vrai générateur (W8).
+
+## Livraison
+
+PR #314, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, après W1 (issue #270) ».

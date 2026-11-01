@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Saisie de texte partagée au Click (text_entry.gd) : nom d'un profil et recherche d'un lieu du monde ouvert ; prête pour le QWKcode (O21) | GDScript | MJ8, W11 (livrés) | Petite | Audit des options du 31 octobre, validé par le propriétaire ; en PR |
+| Saisie de texte partagée au Click (text_entry.gd) : nom d'un profil et recherche d'un lieu du monde ouvert ; prête pour le QWKcode (O21) | GDScript | MJ8, W11 (livrés) | Petite | Livré le 31 octobre (PR #660) |
 
 ## 1. Objectif
 
@@ -31,3 +31,7 @@ Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, valid
 1. Au Click seul : Z, quelques lettres, A maintenu, puis A sur un résultat ouvrent la carte du lieu.
 2. Le nom d'un profil se saisit comme avant (banc `profils`).
 3. La grille de la recherche est validée sur capture par le propriétaire.
+
+## Livraison
+
+PR #660, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Audit des options du 31 octobre, validé par le propriétaire ; en PR ».

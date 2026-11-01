@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Liens avec les séries T et R : segments, maillots, runs, records et calibrage des bots | Python | V3b, V11, T4, T5, T13, T14, R9 | Moyenne | Oui, après les séries T et R |
+| Liens avec les séries T et R : segments, maillots, runs, records et calibrage des bots | Python | V3b, V11, T4, T5, T13, T14, R9 | Moyenne | Livré le 29 octobre (PR #496) |
 
 ## 1. Objectif
 

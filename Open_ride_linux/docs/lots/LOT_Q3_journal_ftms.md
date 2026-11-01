@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Journal des commandes FTMS et des accusés du trainer, délais dans `log_report` | Python | — | Petite | Oui ; issue #170 |
+| Journal des commandes FTMS et des accusés du trainer, délais dans `log_report` | Python | — | Petite | Livré le 25 octobre (PR #192) |
 
 ## 1. Objectif
 
@@ -54,3 +54,7 @@ Aucune.
 
 - Changer la vitesse de la rampe (Q4) ou la façon d'envoyer les commandes.
 - Journal binaire ou capture Bluetooth complète (`btmon`).
+
+## Livraison
+
+PR #192, fusionnée le 25 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui ; issue #170 ».
