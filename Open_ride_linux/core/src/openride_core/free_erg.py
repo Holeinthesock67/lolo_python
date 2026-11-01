@@ -36,6 +36,8 @@ CADENCE_BAND_PCT = 15             # plage de cadence : ± 15 % autour de la cibl
 CADENCE_TAU_S = 2.0               # lissage de la cadence mesurée
 GAIN_W_PER_S_PER_RPM = 1.5        # vitesse de correction par tr/min hors plage
 RATE_MAX_W_PER_S = 10.0
+RESUME_GRACE_S = 15.0             # à la reprise : puissance figée tant que la cadence remonte
+RECOVER_W_PER_S = 2.0             # remontée vers la puissance de référence, cadence dans la plage
 
 FREE_NAME = "ERG libre"
 CADENCE_NAME = "ERG cadence"
@@ -128,7 +130,24 @@ class CadenceLock(FreeErg):
         super().__init__(start_w)
         self.base_w = min(self.base_w, self.max_w)
         self.base_cadence = clamp_cadence(cadence_rpm)
+        self.ref_w: float = self.base_w       # puissance de référence : la plus haute atteinte
+        self._rearm()
+
+    def _rearm(self) -> None:
+        """Enclenchement ou reprise : le cycliste repart de zéro, on ne juge pas encore sa cadence."""
         self.cadence_f: float | None = None   # cadence lissée ; None avant la première mesure
+        self.armed = False                    # vrai dès que la cadence lissée a atteint la plage
+        self.grace_s = 0.0                    # temps écoulé depuis la reprise, avant armement
+
+    @property
+    def paused(self) -> bool:
+        return self._paused
+
+    @paused.setter
+    def paused(self, value: bool) -> None:
+        if getattr(self, "_paused", False) and not value:
+            self._rearm()                     # reprise après la pause : cadence lue à 0
+        self._paused = bool(value)
 
     @property
     def cadence_target(self) -> int:
@@ -166,14 +185,23 @@ class CadenceLock(FreeErg):
         else:
             self.cadence_f += (c - self.cadence_f) * (1.0 - math.exp(-dt / CADENCE_TAU_S))
         f = self.cadence_f
+        if not self.armed:
+            self.grace_s += dt
+            if f >= self.low_rpm or self.grace_s >= RESUME_GRACE_S:
+                self.armed = True
+            else:
+                return                        # reprise : la puissance reste figée
         if f > self.high_rpm:
             excess = f - self.high_rpm
         elif f < self.low_rpm:
             excess = f - self.low_rpm
         else:
+            if f >= self.cadence_target and self.base_w < self.ref_w:
+                self.base_w = min(self.base_w + RECOVER_W_PER_S * dt, self.ref_w)
             return
         rate = min(max(GAIN_W_PER_S_PER_RPM * excess, -RATE_MAX_W_PER_S), RATE_MAX_W_PER_S)
         self.base_w = min(max(self.base_w + rate * dt, float(POWER_MIN_W)), self.max_w)
+        self.ref_w = max(self.ref_w, self.base_w)
 
     def to_dict(self) -> dict[str, Any]:
         out = super().to_dict()

@@ -20,6 +20,8 @@ from openride_core.free_erg import (
     CADENCE_DEFAULT_RPM,
     POWER_MIN_W,
     RATE_MAX_W_PER_S,
+    RECOVER_W_PER_S,
+    RESUME_GRACE_S,
     CadenceLock,
     FreeErg,
     start_cadence,
@@ -118,6 +120,83 @@ def test_cadence_lock_does_not_oscillate_with_a_rider_that_reacts():
     tail = seen[-40:]
     assert max(tail) - min(tail) <= 2           # stable après la correction
     assert lock.low_rpm <= 120.0 - (lock.target_w - 150) / 5.0 <= lock.high_rpm
+
+
+def restart(lock: CadenceLock, cadence: float, ramp_s: float = 4.0, dt: float = 0.02) -> None:
+    """Reprise réelle : la cadence lue part de 0 et remonte en `ramp_s` secondes."""
+    n = round(ramp_s / dt)
+    for i in range(n):
+        lock.step(dt, cadence * i / n)
+
+
+def test_cadence_lock_resume_from_pause_keeps_the_power():
+    """Essai sur le vélo du 1er novembre : à la reprise, la cadence lue vaut 0 et la cible perdait
+    environ 95 W en 10 s. Elle reste désormais figée tant que la cadence remonte."""
+    lock = CadenceLock(85, 200, FTP)
+    lock.paused = True
+    ride(lock, 0.0, 30.0)                        # pause : rien ne bouge
+    lock.paused = False
+    restart(lock, 88.0)
+    ride(lock, 88.0, 60.0)
+    assert lock.target_w == 200 and lock.zone == "in"
+    ride(lock, 88.0, 60.0)                       # puis plusieurs pauses et reprises de suite
+    for _ in range(3):
+        lock.paused = True
+        ride(lock, 0.0, 5.0)
+        lock.paused = False
+        restart(lock, 88.0, ramp_s=6.0)
+    ride(lock, 88.0, 10.0)
+    assert lock.target_w == 200
+
+
+def test_cadence_lock_engaged_from_pause_keeps_the_start_power():
+    """Choisie depuis l'écran de pause : la première mesure est aussi une reprise depuis 0 tr/min."""
+    lock = CadenceLock(85, 180, FTP)
+    restart(lock, 86.0, ramp_s=5.0)
+    ride(lock, 86.0, 30.0)
+    assert lock.target_w == 180
+
+
+def test_cadence_lock_resume_without_pedalling_lowers_after_the_grace():
+    """Si le cycliste ne repart pas, la baisse reprend après `RESUME_GRACE_S`, jusqu'au plancher."""
+    lock = CadenceLock(85, 200, FTP)
+    ride(lock, 0.0, RESUME_GRACE_S - 1.0)
+    assert lock.target_w == 200
+    ride(lock, 0.0, 30.0)
+    assert lock.target_w == POWER_MIN_W
+
+
+def test_cadence_lock_power_climbs_back_when_the_cadence_returns():
+    """Après une vraie baisse (cadence trop lente), la puissance remonte vers la référence quand la
+    cadence revient dans la plage, à la cible ou au-dessus ; sous la cible, elle ne bouge pas."""
+    lock = CadenceLock(85, 200, FTP)
+    ride(lock, 85.0, 2.0)
+    ride(lock, 40.0, 30.0)                       # trop lent : jusqu'au plancher
+    assert lock.target_w == POWER_MIN_W
+    ride(lock, 80.0, 30.0)                       # dans la plage, sous la cible : figée
+    assert lock.target_w <= POWER_MIN_W + 5
+    w = lock.base_w
+    ride(lock, 88.0, 20.0)                       # dans la plage, au-dessus de la cible : remonte
+    assert lock.zone == "in"
+    assert lock.base_w == pytest.approx(w + RECOVER_W_PER_S * 20.0, abs=6.0)
+    ride(lock, 88.0, 120.0)
+    assert lock.target_w == 200                  # jusqu'à la référence, pas au-delà
+
+
+def test_cadence_lock_recovery_settles_with_a_rider_that_reacts():
+    """Cycliste qui ralentit quand la puissance monte : la remontée s'arrête vers la cadence cible."""
+    lock = CadenceLock(90, 250, FTP)
+    ride(lock, 90.0, 2.0)
+    ride(lock, 50.0, 20.0)
+    seen = []
+    for i in range(round(240 / 0.02)):
+        cadence = 100.0 - (lock.base_w - 100) / 10.0   # 90 tr/min à 200 W
+        lock.step(0.02, cadence)
+        if i % 50 == 0:
+            seen.append(lock.target_w)
+    tail = seen[-40:]
+    assert max(tail) - min(tail) <= 2
+    assert 195 <= lock.target_w <= 205
 
 
 # --- séance (trainer simulé) ----------------------------------------------------------------
