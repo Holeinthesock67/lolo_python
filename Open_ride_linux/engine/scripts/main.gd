@@ -666,6 +666,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.accept_ftp(bool(act.get("force", false)))
 		"create_workout":
 			ipc.create_workout(act["args"])
+		"create_workout_qwk":
+			ipc.create_workout_qwk(str(act["text"]))
 		"import_workout":
 			ipc.import_workout(str(act["path"]))
 		"set_difficulty":
@@ -783,6 +785,18 @@ func _profile_name_key(event: InputEventKey) -> bool:
 	return true
 
 
+## QWKcode au clavier (lot O21) : la touche écrit au lieu d'agir comme un bouton du Click.
+func _qwk_key(event: InputEventKey) -> bool:
+	var ch := char(event.unicode) if event.unicode > 31 else ""
+	var enter := event.keycode in [KEY_ENTER, KEY_KP_ENTER]
+	var res: Dictionary = menu_flow.qwk_key(ch, enter, event.keycode == KEY_BACKSPACE)
+	if not res.get("used", false):
+		return false
+	_run_menu_action(res.get("action", {}))
+	_refresh_menu()
+	return true
+
+
 ## Profil en cours (`hello_ack.config.profile`, lot MJ8) : accueil, titre de la fenêtre, bandeau ESSAI ; la
 ## liste des profils est demandée pour « Qui roule ? ».
 func _apply_profile() -> void:
@@ -865,6 +879,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			return   # saisie de la recherche du monde ouvert : la touche est une lettre, pas un bouton
 		if menu_flow.is_visible() and _profile_name_key(key):
 			return   # saisie du nom d'un profil (lot MJ8) : lettres, Entrée valide, Retour arrière efface
+		if menu_flow.is_visible() and _qwk_key(key):
+			return   # saisie du QWKcode (lot O21) : caractères, Entrée nouvelle ligne, Retour arrière efface
 		key_map.press(key.keycode, key.shift_pressed, now_s)
 		return
 	var ev: String = key_map.release(key.keycode, now_s)
@@ -1173,12 +1189,14 @@ func _on_test_message(msg: Dictionary) -> void:
 			ipc.send_command(str(msg.get("name", "")), msg.get("args", {}) if msg.get("args") is Dictionary else {})
 
 
-## Touche simulée (nom de OS.find_keycode_from_string : « A », « Enter », « Escape »…) : appui, puis relâchement
-## `hold_ms` plus tard, par Input.parse_input_event : même chemin qu'une vraie touche (_unhandled_input, key_map.gd).
+## Touche simulée (nom de OS.find_keycode_from_string : « A », « Enter », « Escape »…, ou un caractère seul comme
+## « @ », dont le code Godot est le code ASCII, lot O21) : appui, puis relâchement `hold_ms` plus tard, par Input.parse_input_event : même chemin qu'une vraie touche (_unhandled_input, key_map.gd).
 ## Les deux événements sont traités tout de suite (flush_buffered_events) et l'attente bloque l'image en cours :
 ## la durée mesurée par key_map.gd est celle demandée, même à 1 image/s sous Xvfb.
 func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
 	var code := OS.find_keycode_from_string(key_name)
+	if code == KEY_NONE and key_name.length() == 1:
+		code = key_name.to_upper().unicode_at(0) as Key
 	if code == KEY_NONE:
 		ipc.test_log("key unknown=%s" % key_name)
 		return
@@ -1189,6 +1207,8 @@ func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
 	down.pressed = true
 	if key_name.length() == 1:
 		down.unicode = (key_name.to_upper() if shift else key_name.to_lower()).unicode_at(0)
+	elif code == KEY_SPACE:
+		down.unicode = 32
 	Input.parse_input_event(down)
 	Input.flush_buffered_events()
 	OS.delay_usec(maxi(hold_ms, 0) * 1000)
