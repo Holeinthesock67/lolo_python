@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Processus `openride-worldgen` : horizon de 3 km, amorces de branches, relief en avance, hors ligne | Python | W6, W7 | Grande | Oui, après W7 (issue #263) |
+| Processus `openride-worldgen` : horizon de 3 km, amorces de branches, relief en avance, hors ligne | Python | W6, W7 | Grande | Livré le 27 octobre (PR #313) |
 
 ## 1. Objectif
 
@@ -61,3 +61,7 @@ Aucune (W1 les a faites).
 ## 8. Hors périmètre
 
 Côté core (W9), côté engine (W10 à W12), tuiles vectorielles (W13).
+
+## Livraison
+
+PR #313, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, après W7 (issue #263) ».

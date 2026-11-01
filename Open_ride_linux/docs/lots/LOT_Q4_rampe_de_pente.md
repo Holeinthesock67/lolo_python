@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Rampe de pente plus rapide, vitesses distinctes à la montée et à la descente | Python | Q1 (`session.py`) | Petite | Oui ; issue #171 |
+| Rampe de pente plus rapide, vitesses distinctes à la montée et à la descente | Python | Q1 (`session.py`) | Petite | Livré le 27 octobre (PR #194) |
 
 ## 1. Objectif
 
@@ -54,3 +54,7 @@ Aucune (le format de `config.toml` gagne deux clés, l'ancienne reste lue).
 
 - Le retard propre au trainer (volant, régulation interne) : on ne peut que le mesurer (Q3).
 - Changement de `latency_tau_s` ou de la formule des braquets.
+
+## Livraison
+
+PR #194, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui ; issue #171 ».

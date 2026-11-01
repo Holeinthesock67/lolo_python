@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 2.0 série T : bots à profil (Grimpeur, Rouleur, Sprinteur, Diesel : CP, W′ de R2, masse, pic sur 10 s, stratégie par segment) | Python | N9, R2, T2, T7, T14 (livrés) ; O7 pour `start` | Moyenne | Non : interne ; cahier du 27 octobre, code du 28 octobre (issue #440) |
+| 2.0 série T : bots à profil (Grimpeur, Rouleur, Sprinteur, Diesel : CP, W′ de R2, masse, pic sur 10 s, stratégie par segment) | Python | N9, R2, T2, T7, T14 (livrés) ; O7 pour `start` | Moyenne | Livré le 28 octobre (PR #487) |
 
 ## 1. Objectif
 

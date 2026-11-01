@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : blocs vélo encore ouverts (7q, 7ae, 7af, 7ac) vérifiés sans vélo : aucune consigne ERG sous 50 W, abri de 3 bots à 230–250 W, marque `recette_sans_velo` et séances du pré-vol | Python | X36, O19, AS1 | Petite | En PR (29 octobre) |
+| Série X (outils de test) : blocs vélo encore ouverts (7q, 7ae, 7af, 7ac) vérifiés sans vélo : aucune consigne ERG sous 50 W, abri de 3 bots à 230–250 W, marque `recette_sans_velo` et séances du pré-vol | Python | X36, O19, AS1 | Petite | Livré le 29 octobre (PR #588) |
 
 ## 1. Objectif
 
@@ -28,3 +28,7 @@ Consigne ERG et pente SIM réellement appliquées par le trainer, résistance re
 
 1. `pytest -m recette_sans_velo` passe, en moins d'une minute.
 2. `scripts/pre_vol.py --liste` affiche les quatre nouvelles séances.
+
+## Livraison
+
+PR #588, fusionnée le 29 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « En PR (29 octobre) ».

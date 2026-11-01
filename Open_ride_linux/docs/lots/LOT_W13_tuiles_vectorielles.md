@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Tuiles vectorielles OpenFreeMap : au fil de la balade et préchargées autour des départs habituels | Python | W2, W7 (W0) | Moyenne | Oui, après W7 (issue #268) |
+| Tuiles vectorielles OpenFreeMap : au fil de la balade et préchargées autour des départs habituels | Python | W2, W7 (W0) | Moyenne | Livré le 27 octobre (PR #318) |
 
 ## 1. Objectif
 
@@ -54,3 +54,7 @@ Aucune.
 ## 8. Hors périmètre
 
 Hébergement d'un serveur de tuiles, zooms autres que 14.
+
+## Livraison
+
+PR #318, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, après W7 (issue #268) ».

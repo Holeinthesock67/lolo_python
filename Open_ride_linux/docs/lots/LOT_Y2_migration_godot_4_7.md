@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Migration de Godot 4.3 vers 4.7.x (moteur, tests, banc, lanceur, recette visuelle) | GDScript | Y1, X2, X13 ; fin de projet | Moyenne | Non : interne (PC cible) ; issue #358 |
+| Migration de Godot 4.3 vers 4.7.x (moteur, tests, banc, lanceur, recette visuelle) | GDScript | Y1, X2, X13 ; fin de projet | Moyenne | Livré le 30 octobre (PR #557) |
 
 ## 1. Objectif
 
@@ -70,3 +70,7 @@ Version retenue : **Godot 4.7.2-stable** (dernier correctif publié ; 4.7.3 n'ex
   - réglages chiffrés : depuis 4.4, `str()` d'un flottant entier garde « .0 » (« FTP — 250.0 W » relevé par le banc des menus en CI) ; `SettingsViewModel.number_text` rend « 250 » comme avant ; banc des menus 16/16 en 4.7.2.
 - **Résultats dans le cloud** : `run_engine_tests.sh` 126/126, `run_e2e.sh` OK, `pytest` core 1601 et compilateur 420. Captures Forward+ (`visual_check.py --native`, lavapipe, 1280×720) : image quasi identique ; couleurs un peu plus froides en 4.7 (rouge −4 à −15, bleu +5 à +10 sur 255, moyenne du bas de l'image), y compris en `low` sans glow : l'écart vient de la lumière ambiante du nouveau ciel, pas du glow. Réglages du glow inchangés (Soft Light ; l'étape 4 d'Y13 le recale avec AgX).
 - **Reste** : mesure avant et après sur le PC cible (§4.1 et §4.5) et recette du propriétaire.
+
+## Livraison
+
+PR #557, fusionnée le 30 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Non : interne (PC cible) ; issue #358 ».

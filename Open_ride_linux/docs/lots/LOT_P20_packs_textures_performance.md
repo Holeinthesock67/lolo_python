@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Packs de textures à plusieurs niveaux, choisis selon le préréglage et la mémoire vidéo | Python + GDScript | N10, O3, P17 | Moyenne | Oui, **version 2.0** (issue #147) |
+| Packs de textures à plusieurs niveaux, choisis selon le préréglage et la mémoire vidéo | Python + GDScript | N10, O3, P17 | Moyenne | Livré le 31 octobre (PR #621), **version 2.0** |
 
 ## 1. Objectif
 
@@ -64,3 +64,7 @@ Clé `texture_levels` du thème, telle que validée par le propriétaire ; `[ren
 ## 8. Hors périmètre
 
 - Téléchargement des packs depuis Internet (installation locale par `theme-install` seulement), packs de biomes (série U, 3.0), streaming de textures à la volée.
+
+## Livraison
+
+PR #621, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, **version 2.0** (issue #147) ».

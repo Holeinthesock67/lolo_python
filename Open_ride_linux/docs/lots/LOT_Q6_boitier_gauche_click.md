@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Boîtier gauche du Click muet après la connexion : trace, détection, reprise | Python | — | Moyenne | Oui pour le code et la simulation ; essai sur le matériel par le propriétaire ; issue #173 |
+| Boîtier gauche du Click muet après la connexion : trace, détection, reprise | Python | — | Moyenne | Livré le 27 octobre (PR #193) |
 
 ## 1. Objectif
 
@@ -52,3 +52,7 @@ Aucune.
 
 - Mise à jour du micrologiciel du Click ou passage par l'application Zwift.
 - Nouvelle correspondance des boutons (B = « − » reste en place).
+
+## Livraison
+
+PR #193, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui pour le code et la simulation ; essai sur le matériel par le propriétaire ; issue #173 ».

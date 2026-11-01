@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : banc de l'abri derrière les bots sans vélo (`draft_bench`) : gain en W par écart derrière 1 à 3 bots, part du temps à l'abri de chacun dans un groupe libre (abri des bots entre eux) | Python | P3, AS1 | Petite | En PR (30 octobre) |
+| Série X (outils de test) : banc de l'abri derrière les bots sans vélo (`draft_bench`) : gain en W par écart derrière 1 à 3 bots, part du temps à l'abri de chacun dans un groupe libre (abri des bots entre eux) | Python | P3, AS1 | Petite | Livré le 30 octobre (PR #619) |
 
 ## 1. Objectif
 
@@ -52,3 +52,7 @@ Groupe libre, 10 min, bots à 230, 240 et 250 W et cycliste à 240 W : tout le m
 | Cycliste 240 W | 27 % | 0,08 | + 165 m | 15 W |
 
 Les bots s'abritent bien entre eux. Le groupe se tasse vite : en une dimension, deux coureurs côte à côte (même `s`) ne s'abritent pas (limite connue d'AS1, levée par AS2). C'est pourquoi la part du temps à l'abri reste sous les 53 % de l'essai sur le vélo, où le cycliste dosait sa puissance pour rester dans la roue.
+
+## Livraison
+
+PR #619, fusionnée le 30 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « En PR (30 octobre) ».
