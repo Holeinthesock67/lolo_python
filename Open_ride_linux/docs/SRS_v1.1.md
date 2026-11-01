@@ -446,6 +446,11 @@ standing_power_pct = 150.0   # ou de cette puissance, en % de la FTP (100 à 300
 mode = "on"                  # "on" (défaut) ou "off" : bonus et arches du mode classique (série T)
 [bots]
 level_pct = 100              # niveau des bots à profil, 50 à 150 % de la FTP par pas de 5 ; réglable dans le menu (lot T13)
+[depart]                     # départ de la séance (lot O36) ; mode et cadence réglables dans le menu
+mode = "pedalage"            # pedalage : attend le décor, le trainer et le pédalage ; immediat : part à « Démarrer »
+cadence_rpm = 30             # cadence à tenir pour partir, 10 à 90 tr/min (40 W si le trainer ne donne pas la cadence)
+duree_s = 3                  # secondes de pédalage cumulées, 0 à 10 ; à-coups de moins de 2 s tolérés
+attente_decor_s = 60         # au plus, si l'engine ne dit pas son décor prêt (ancien engine, sans engine), 0 à 600
 [audio]                      # volumes en % (0 : coupé), réglables dans le menu, voir docs/AUDIO.md
 master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre

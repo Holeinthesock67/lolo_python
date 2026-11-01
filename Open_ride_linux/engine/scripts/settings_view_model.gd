@@ -42,7 +42,9 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## Lot O26 : décor vivant (booléen du fichier, `on` / `off` au menu), ressenti et mode du vent, thème par défaut.
 ## Pilotage du trainer (lots RC1-RC3) : `trainer.control` prend `resistance` / `sim`.
 ## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
+## Départ de la séance (lot O36) : `depart.mode` prend `pedalage` / `immediat`.
 const CHOICE_TEXTS := {
+	"depart.mode": {"pedalage": "au pédalage", "immediat": "immédiat"},
 	"powerups.mode": {"on": "oui", "off": "non"},
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
 	"render.camera": {"subjective": "subjective", "follow_near": "suivi proche", "follow_far": "suivi éloigné", "side": "latérale"},

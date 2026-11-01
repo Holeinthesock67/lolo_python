@@ -84,6 +84,8 @@ SETTINGS: tuple[Setting, ...] = (
     # Pilotage du trainer hors ERG (lots RC1-RC3, choix du propriétaire du 1er novembre) : résistance calculée
     # par le core (défaut, aucun lâcher après le sprint aux essais 7rc2) ou SIM du trainer
     Setting("trainer.control", "Pilotage du trainer", "ride"),
+    Setting("depart.mode", "Départ", "ride"),   # lot O36 : au pédalage ou immédiat
+    Setting("depart.cadence_rpm", "Cadence de départ", "ride", 5, "tr/min"),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20

@@ -5,14 +5,16 @@ Sous-commandes disponibles à ce stade :
     openride-core run [--trainer mock|ftms|sim] [--input click|keyboard|none|sim]
                       [--hr none|ble|sim] [--sim-scenario NOM|FICHIER] [--gear N]
                       [--autostart [--route ID] [--workout ID | --ftp-test ramp]]
-                      [--resume JOURNAL]
+                      [--resume JOURNAL] [--depart pedalage|immediat]
                                       boucle de séance (BLE, physique, IPC, journal) ; avec
                                       --autostart, parcours <routes>/<ID>.world (défaut demo) et
                                       entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM) ;
                                       « sim » : HomeTrainer, Click ou ceinture simulés (Bluetooth simulé) ;
                                       --resume : reprend en pause la séance d'un journal non terminé
                                       (relance par le lanceur après un plantage du core, lot N8) ;
-                                      --ftp-test : séance de test de FTP (lot O10)
+                                      --ftp-test : séance de test de FTP (lot O10) ;
+                                      --depart : remplace [depart] mode (lot O36 ; immediat pour
+                                      les essais sans engine ni cycliste)
     openride-core release-trainer     dépannage : annule la consigne du trainer, lui rend sa
                                       liberté et le déconnecte (après un arrêt brutal)
     openride-core summary [FICHIER] [--ftp W] [--json]
@@ -104,6 +106,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.replay:
         cfg.drivers.trainer = "mock"
         cfg.drivers.mock_replay = str(args.replay)
+    if getattr(args, "depart", None):
+        cfg.depart.mode = args.depart   # lot O36 : départ au pédalage ou immédiat
     if args.trace_ftms:
         cfg.trainer.trace_ftms = True
     if args.latence:
@@ -411,6 +415,9 @@ def build_parser() -> argparse.ArgumentParser:
                      help="avec --autostart : entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)")
     run.add_argument("--ftp-test", choices=["ramp"],
                      help="avec --autostart : séance de test de FTP (rampe par paliers)")
+    run.add_argument("--depart", choices=["pedalage", "immediat"],
+                     help="départ de la séance (lot O36) : pedalage attend le décor, le trainer et le "
+                          "pédalage ; immediat part à la commande start (défaut : [depart] mode)")
     run.add_argument("--latence", action="store_true",
                      help="journal de latence des appuis du Click, lignes [latence] (lot X7 ; [log] latence)")
     run.add_argument("--trace-ftms", action="store_true",

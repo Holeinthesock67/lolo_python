@@ -75,7 +75,8 @@
         "create_plan",
         "clear_trial_profile",
         "restore_profile",
-        "recover_session"
+        "recover_session",
+        "scene_ready"
       ]
     },
     "args": {

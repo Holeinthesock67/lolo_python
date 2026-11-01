@@ -31,6 +31,8 @@ const MenuFlow := preload("res://scripts/menu_flow.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
 const DraftGaugeModel := preload("res://scripts/draft_gauge_model.gd")
+const StartWaitModel := preload("res://scripts/start_wait_model.gd")
+const StartScreen := preload("res://scripts/start_screen.gd")
 const DraftGauge := preload("res://scripts/draft_gauge.gd")
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
@@ -126,6 +128,11 @@ var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
 ## Sonde de performance (lot X13), active avec --perf-probe=FICHIER.csv.
 var _probe = PerfProbe.new()
+## Départ au pédalage (lot O36) : décor du départ prêt, commande `scene_ready`, bandeau de l'attente.
+var _start_wait = StartWaitModel.new()
+var start_screen: Control = null   # écran d'attente « Start your engines » (start_screen.gd)
+var _was_start_waiting := false
+var _route_loaded_id := ""   # parcours affiché (chargé par _poll_route_job), "" avant le premier
 
 const BEEPS := {
 	"PLUS_SHORT": [[880.0, 0.08]],
@@ -371,6 +378,9 @@ func _ready() -> void:
 	add_child(menu_layer)
 	menu_view = MenuView.new()
 	menu_layer.add_child(menu_view)
+	start_screen = StartScreen.new()
+	start_screen.name = "StartScreen"
+	menu_layer.add_child(start_screen)
 	banner.reparent(menu_layer)   # le bandeau reste lisible au-dessus du menu, HUD caché ou non
 	world_menu_view.reparent(menu_layer)   # menu du globe plein écran, HUD caché derrière lui (lot O22)
 	menu_view.item_clicked.connect(func(item_id: String) -> void:
@@ -821,6 +831,15 @@ func _sync_hud(menu_shown: bool) -> void:
 		overlay_layer.visible = not menu_shown
 
 
+## Départ au pédalage (lot O36) : décor du départ prêt, puis `scene_ready` au core (start_wait_model.gd).
+func _step_start_wait(delta: float) -> void:
+	if _start_wait.frame(_route_loaded_id, streamer.pending_count(), delta * 1000.0):
+		print("Décor du départ prêt : %s" % _start_wait.route_id)
+		ipc.test_log("scene_ready id=%s" % _start_wait.route_id)
+	if _start_wait.should_send(Time.get_ticks_msec() / 1000.0, str(menu_flow.start_wait.get("phase", ""))):
+		ipc.send_command("scene_ready", {"route_id": _start_wait.route_id})
+
+
 ## Un menu plein écran est affiché : liste des menus ou globe du monde ouvert (lot O22).
 func _full_screen_menu() -> bool:
 	return menu_view.visible or (world_menu_view != null and world_menu_view.visible)
@@ -911,6 +930,7 @@ func _process(delta: float) -> void:
 	_record_frame_perf(delta)
 	fps_counter.add_frame(delta)
 	_probe.frame(delta, streamer)
+	_step_start_wait(delta)
 	_step_load_guard(delta)
 	var now := Time.get_ticks_usec()
 	_remember_camera_view(now / 1000000.0)
@@ -1106,6 +1126,7 @@ func _poll_route_job() -> void:
 		banner.show_message("route", "Parcours « %s » invalide : %s" % [job["id"], job["route"].load_error])
 		return
 	route = job["route"]
+	_route_loaded_id = job["id"]
 	if route.live:
 		live_world.adopt(job["path"], route)
 	else:
@@ -1361,6 +1382,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"decor": living_decor.test_info(camera) if living_decor != null else {},
 		"bots": bots_view.test_info(camera) if bots_view != null else {},
 		"draft_gauge": draft_gauge.test_info(camera) if draft_gauge != null else {},
+		"start_screen": start_screen.test_info() if start_screen != null else {},
 		"avatar": _avatar_info(),
 		"garage": _garage_info(),
 		"rogue": rogue_host.test_info(),
@@ -1566,6 +1588,15 @@ func _on_state_received(state: Dictionary) -> void:
 	_check_latency(state)
 	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)
+	# Écran « Start your engines » pendant l'attente du départ ; feux verts quand la séance part.
+	var waiting: bool = not menu_flow.start_wait.is_empty()
+	if waiting:
+		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
+	elif _was_start_waiting and str(state.get("session_state", "")) == "RUNNING":
+		start_screen.show_go()
+	else:
+		start_screen.show_wait(null, 0.0)
+	_was_start_waiting = waiting
 	_refresh_menu()
 	var new_session_state := str(state.get("session_state", ""))
 	var previous_session_state := session_state

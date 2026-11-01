@@ -74,6 +74,7 @@ def run(sessions: int = 6, minutes: float = 2.0, n_bots: int = 2, memory: bool =
         routes.mkdir()
         write_world(routes, "boucle", ROUTE_M, created="2026-10-31T00:00:00+01:00")
         cfg = Config()
+        cfg.depart.mode = "immediat"   # banc sans engine ni cycliste : départ à la commande start (lot O36)
         cfg.powerups.mode = "off"
         bots = [ConstantPowerBot(200.0 + 20.0 * i, bot_id=f"bot{i + 1}") for i in range(n_bots)]
         s = CoreSession(cfg, driver=MockDriver(base_power_w=210.0, ramp_amplitude_w=45.0, ramp_period_s=120.0),
