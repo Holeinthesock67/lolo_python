@@ -125,7 +125,7 @@ func _test_banner() -> void:
 	_check(lines["title"] == "ERG libre" and lines["next"] == "En pause" and lines["remaining"] == "",
 		"lignes du bandeau ERG libre, sans type de bloc (%s)" % str(lines))
 	ev = vm.update(CADENCE, 1.0)
-	_check(ev["title"] == "ERG cadence 90 tr/min (77–104)" and ev["target_text"] == "215 W"
+	_check(ev["title"] == "ERG cadence 90 tr/min (81–99)" and ev["target_text"] == "215 W"
 		and ev["next_text"] == "Trop vite : la puissance monte", "bandeau ERG cadence (%s)" % str(ev))
 	var low: Dictionary = CADENCE.duplicate()
 	low["cadence_zone"] = "low"
@@ -133,7 +133,7 @@ func _test_banner() -> void:
 	_check(ev["next_text"] == "Trop lent : la puissance baisse", "zone mise à jour d'une trame à l'autre")
 	_check(ErgView.is_free(CADENCE) and not ErgView.is_free(WORKOUT), "pas de blocs en session libre")
 	var hud: Dictionary = HudViewModel.session_lines({"mode": "ERG", "erg": CADENCE, "power": 210}, ev)
-	_check(hud["erg"] == "ERG: ERG cadence 90 tr/min (77–104)  |  Trop lent : la puissance baisse",
+	_check(hud["erg"] == "ERG: ERG cadence 90 tr/min (81–99)  |  Trop lent : la puissance baisse",
 		"ligne ERG du HUD sans temps restant (%s)" % hud["erg"])
 	_check("cadence cible ± 2 %" in HudViewModel.controls_text(true, "cadence")
 		and "Z = bloc suivant" not in HudViewModel.controls_text(true, "free")
