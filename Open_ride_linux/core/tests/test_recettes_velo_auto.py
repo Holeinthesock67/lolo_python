@@ -107,6 +107,38 @@ def test_7ae_free_erg_and_cadence_lock_never_send_less_than_50_w(tmp_path, monke
     assert sent and min(sent) >= ERG_MIN_W, f"consigne sous {ERG_MIN_W} W : {min(sent)} W"
 
 
+@pytest.mark.recette_sans_velo
+def test_7ae_bis_resume_in_cadence_lock_keeps_the_power(tmp_path, monkeypatch, workouts_dir):
+    """Rejeu de l'essai du 1er novembre dans la séance : ERG cadence choisi en pause, reprise, une
+    minute à 88 tr/min, pause, reprise : la consigne envoyée au trainer ne chute pas."""
+    async def scenario():
+        s, driver, errors = make_session(tmp_path, monkeypatch, workouts_dir, port=6627)
+        sent = spy_targets(driver)
+        s._on_command("select_route", {"route_id": "demo"}, 1)
+        s._on_command("start", {}, 2)
+        driver.base_cadence_rpm = 85.0
+        run(s, 3.0)
+        s._on_command("pause", {}, 3)
+        s._on_command("set_ride_mode", {"mode": "cadence", "cadence_rpm": 85}, 4)
+        w0 = s.state.erg["target_w"]
+        for i in range(2):
+            if i:
+                s._on_command("pause", {}, 10 + i)
+            driver.base_cadence_rpm = 0.0            # pause : le cycliste s'arrête
+            run(s, 20.0)
+            s._on_command("resume", {}, 20 + i)
+            run(s, 1.0)                              # cadence lue à 0 à la reprise
+            driver.base_cadence_rpm = 88.0
+            run(s, 60.0)
+            assert s.state.erg["cadence_zone"] == "in"
+            assert s.state.erg["target_w"] == w0
+        assert not errors
+        return sent, w0
+
+    sent, w0 = asyncio.run(scenario())
+    assert sent and min(sent) >= w0 - 5, f"consigne tombée à {min(sent)} W (départ {w0} W)"
+
+
 # --- 7af : abri entre bots et derrière le cycliste (lot AS1) -------------------------------------
 
 def test_7af_three_bots_230_240_250_and_a_rider_at_240_w():

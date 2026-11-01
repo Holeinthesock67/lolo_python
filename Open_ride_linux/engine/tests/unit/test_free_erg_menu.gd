@@ -16,7 +16,7 @@ const FREE := {"kind": "free", "workout_name": "ERG libre", "block_index": 1, "b
 const CADENCE := {"kind": "cadence", "workout_name": "ERG cadence", "block_index": 1, "block_count": 1,
 	"block_type": "steady", "block_remaining_s": 0.0, "block_total_s": 0.0, "target_w": 215,
 	"next_target_w": null, "bias_pct": 100, "paused": false, "cadence_target_rpm": 90,
-	"cadence_low_rpm": 76.5, "cadence_high_rpm": 103.5, "cadence_zone": "high"}
+	"cadence_low_rpm": 81.0, "cadence_high_rpm": 99.0, "cadence_zone": "high"}
 const WORKOUT := {"workout_name": "Seuil", "block_index": 2, "block_count": 5, "block_type": "steady",
 	"block_remaining_s": 120.0, "block_total_s": 300.0, "target_w": 250, "next_target_w": 150,
 	"bias_pct": 100, "paused": true}
@@ -125,7 +125,7 @@ func _test_banner() -> void:
 	_check(lines["title"] == "ERG libre" and lines["next"] == "En pause" and lines["remaining"] == "",
 		"lignes du bandeau ERG libre, sans type de bloc (%s)" % str(lines))
 	ev = vm.update(CADENCE, 1.0)
-	_check(ev["title"] == "ERG cadence 90 tr/min (77–104)" and ev["target_text"] == "215 W"
+	_check(ev["title"] == "ERG cadence 90 tr/min (81–99)" and ev["target_text"] == "215 W"
 		and ev["next_text"] == "Trop vite : la puissance monte", "bandeau ERG cadence (%s)" % str(ev))
 	var low: Dictionary = CADENCE.duplicate()
 	low["cadence_zone"] = "low"
@@ -133,7 +133,7 @@ func _test_banner() -> void:
 	_check(ev["next_text"] == "Trop lent : la puissance baisse", "zone mise à jour d'une trame à l'autre")
 	_check(ErgView.is_free(CADENCE) and not ErgView.is_free(WORKOUT), "pas de blocs en session libre")
 	var hud: Dictionary = HudViewModel.session_lines({"mode": "ERG", "erg": CADENCE, "power": 210}, ev)
-	_check(hud["erg"] == "ERG: ERG cadence 90 tr/min (77–104)  |  Trop lent : la puissance baisse",
+	_check(hud["erg"] == "ERG: ERG cadence 90 tr/min (81–99)  |  Trop lent : la puissance baisse",
 		"ligne ERG du HUD sans temps restant (%s)" % hud["erg"])
 	_check("cadence cible ± 2 %" in HudViewModel.controls_text(true, "cadence")
 		and "Z = bloc suivant" not in HudViewModel.controls_text(true, "free")
