@@ -60,10 +60,15 @@ RESISTANCE_EPSILON = 0.05   # écart de niveau en dessous duquel la consigne n'e
 # (braquet, difficulté, vent et abri compris) n'est plus envoyée en 0x11 ; le pilote calcule lui-même la
 # force que le trainer appliquerait en SIM à la vitesse de son volant, m g (sin θ + Crr cos θ) + ½ Cw v²,
 # avec la masse du profil, et l'envoie comme niveau de résistance 0x04. Le trainer ne simule plus l'élan
-# du vélo (phase à 0 W après un sprint, essais 7bk). La force par % de frein part de
-# [trainer] resistance_n_per_pct et se corrige en roulant sur la force mesurée (puissance / vitesse du
-# volant), seulement quand le volant ne prend ni ne perd de vitesse.
-ROAD_ADAPT_TAU_S = 5.0        # constante de temps de la correction de la force par %
+# du vélo (phase à 0 W après un sprint, essais 7bk). Étalonnage 7rc1 (1er novembre, 70, 85 et 100 tr/min,
+# 10 à 60 %) : le frein du trainer en mode résistance est proportionnel au niveau ET à la vitesse du
+# volant, F ≈ k × niveau (%) × v (km/h), k ≈ 0,036 N (0,0355 à 0,0363 sur tous les paliers, décalage
+# nul), soit P ≈ 0,01 × niveau × v². Une force fixe par % donnait un niveau 60 % trop fort en relance
+# au-delà de 40 km/h. Le niveau envoyé est donc F / (k × v), v borné à ROAD_MIN_KMH au départ arrêté ;
+# k part de [trainer] resistance_n_per_pct_kmh et se corrige en roulant sur la force mesurée (puissance
+# / vitesse du volant), seulement quand le volant ne prend ni ne perd de vitesse.
+ROAD_ADAPT_TAU_S = 5.0        # constante de temps de la correction de k
+ROAD_MIN_KMH = 10.0           # vitesse du volant plancher du calcul du niveau (départ arrêté : F / (k × v) diverge)
 ROAD_ADAPT_MIN_MPS = 3.0      # volant assez rapide pour mesurer la force
 ROAD_ADAPT_MIN_W = 30.0
 ROAD_ADAPT_MAX_ACCEL = 0.4    # m/s² : au-delà, la puissance accélère le volant, pas le frein
@@ -334,7 +339,7 @@ class FtmsDriver:
         self.resistance_range = DEFAULT_RESISTANCE_RANGE   # (min, max, pas), remplacée par 0x2AD6
         self.resistance_wide = True   # niveau sur un sint16 (False : uint8 de la norme, voir ftms.cmd_set_target_resistance)
         self.road_mass_kg = DEFAULT_ROAD_MASS_KG   # masse totale du profil (posée par la session)
-        self.n_per_pct = trainer.resistance_n_per_pct   # force du frein par % de résistance, corrigée en roulant
+        self.k_road = trainer.resistance_n_per_pct_kmh   # force du frein par % et par km/h du volant, corrigée en roulant
         self._road_speed: tuple[float, float] | None = None   # (instant, vitesse du volant m/s) précédents
         self._road_fallback_warned = False
         self.reconnect_count = 0
@@ -422,12 +427,12 @@ class FtmsDriver:
 
     def _road_level(self, grade_pct: float) -> float:
         """Niveau de résistance FTMS qui donne la force de la route au volant (0 en descente)."""
-        speed = (self._trainer_speed_kmh or 0.0) / 3.6
-        force = max(self.road_force_n(grade_pct, speed), 0.0)
-        return resistance_level(force / max(self.n_per_pct, 1e-3), *self.resistance_range)
+        kmh = self._trainer_speed_kmh or 0.0
+        force = max(self.road_force_n(grade_pct, kmh / 3.6), 0.0)
+        return resistance_level(force / (max(self.k_road, 1e-6) * max(kmh, ROAD_MIN_KMH)), *self.resistance_range)
 
     def _adapt_road(self, now: float, power_w: float) -> None:
-        """Corrige la force par % sur la force mesurée (puissance / vitesse du volant), volant stable."""
+        """Corrige k (force par % et par km/h) sur la force mesurée (puissance / vitesse du volant), volant stable."""
         speed = None if self._trainer_speed_kmh is None else self._trainer_speed_kmh / 3.6
         prev, self._road_speed = self._road_speed, (None if speed is None else (now, speed))
         sent = self._last_sent
@@ -440,10 +445,10 @@ class FtmsDriver:
         if (dt <= 0 or speed < ROAD_ADAPT_MIN_MPS or power_w < ROAD_ADAPT_MIN_W or pct < 2.0
                 or abs(speed - prev[1]) / dt > ROAD_ADAPT_MAX_ACCEL):
             return
-        observed = power_w / speed / pct
-        base = self.cfg.resistance_n_per_pct
-        self.n_per_pct += (observed - self.n_per_pct) * (1.0 - math.exp(-dt / ROAD_ADAPT_TAU_S))
-        self.n_per_pct = min(max(self.n_per_pct, base * ROAD_ADAPT_RANGE[0]), base * ROAD_ADAPT_RANGE[1])
+        observed = power_w / speed / (pct * speed * 3.6)
+        base = self.cfg.resistance_n_per_pct_kmh
+        self.k_road += (observed - self.k_road) * (1.0 - math.exp(-dt / ROAD_ADAPT_TAU_S))
+        self.k_road = min(max(self.k_road, base * ROAD_ADAPT_RANGE[0]), base * ROAD_ADAPT_RANGE[1])
 
     def set_sim_grade(self, grade_pct: float, immediate: bool = False) -> bool:
         """`immediate` : changement de braquet, envoyé même sous GRADE_EPSILON_PCT (sans attendre
@@ -728,8 +733,8 @@ class FtmsDriver:
         if self.brake_losses:
             log.info("Trainer : %d perte(s) de frein détectée(s).", self.brake_losses)
         if self.cfg.control == "resistance":
-            log.info("Trainer : résistance calculée, force du frein estimée %.2f N par %% (départ %.2f)",
-                     self.n_per_pct, self.cfg.resistance_n_per_pct)
+            log.info("Trainer : résistance calculée, frein estimé k = %.4f N par %% et par km/h (départ %.4f)",
+                     self.k_road, self.cfg.resistance_n_per_pct_kmh)
         if self.busy_deferrals:
             log.info("Control Point occupé : %d consigne(s) reportée(s), liaison gardée.",
                      self.busy_deferrals)

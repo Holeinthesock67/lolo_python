@@ -63,7 +63,7 @@ class TrainerConfig:
     hr_relay_freeze_s: float = 15.0   # détection cardio relayée figée (lot Q5)
     resend_s: float = 2.0             # la consigne SIM/ERG est renvoyée au moins toutes les resend_s secondes (30 octobre : essai à 10–15 s contre le pompage)
     control: str = "sim"              # pilotage hors ERG : "sim" (pente 0x11, le trainer simule), "resistance" (force calculée par le core, niveau 0x04, lots RC2-RC3) ou "power" (force × vitesse du volant en consigne ERG 0x05, pour comparer)
-    resistance_n_per_pct: float = 2.0 # force du frein par % de résistance au départ (N), corrigée en roulant puis par l'étalonnage RC1
+    resistance_n_per_pct_kmh: float = 0.036  # force du frein par % de résistance et par km/h du volant (N), étalonnage 7rc1, corrigée en roulant
 
 
 @dataclass
@@ -267,7 +267,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("trainer", "grade_rate_down_pct_per_s"): (0.1, 100),
     ("trainer", "hr_relay_freeze_s"): (5, 120),
     ("trainer", "resend_s"): (0.5, 60),
-    ("trainer", "resistance_n_per_pct"): (0.1, 50),
+    ("trainer", "resistance_n_per_pct_kmh"): (0.001, 1.0),
     ("gearing", "n_gears"): (2, 40),
     ("gearing", "start_gear"): (1, 40),
     ("gearing", "ratio_min"): (0.1, 5),
@@ -379,7 +379,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("trainer", "grade_rate_down_pct_per_s"): "rampe de pente du trainer",
     ("trainer", "hr_relay_freeze_s"): "détection de la FC relayée figée",
     ("trainer", "control"): "pilotage SIM ou résistance calculée (en essai, lots RC1-RC3)",
-    ("trainer", "resistance_n_per_pct"): "pilotage SIM ou résistance calculée (en essai, lots RC1-RC3)",
+    ("trainer", "resistance_n_per_pct_kmh"): "pilotage SIM ou résistance calculée (en essai, lots RC1-RC3)",
     ("gearing", "n_gears"): "boîte de vitesses virtuelle",
     ("gearing", "ratio_min"): "boîte de vitesses virtuelle",
     ("gearing", "ratio_max"): "boîte de vitesses virtuelle",

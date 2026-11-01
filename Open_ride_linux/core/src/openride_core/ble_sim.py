@@ -247,10 +247,10 @@ class SimClient:
 # (bit 2), de puissance (bit 3) et simulation (bit 13), comme le HomeTrainer (docs/spikes.md §4).
 FEATURE_MACHINE = (1 << 1) | (1 << 14)
 FEATURE_TARGET = (1 << 2) | (1 << 3) | (1 << 13)
-# Plage de résistance annoncée (0x2AD6, résolution 0,1) : 0 à 100 au pas de 1, et force du frein simulé
-# par niveau (lot RC1 : modèle de test, le vrai lien niveau → force sort de l'étalonnage sur le PC).
+# Plage de résistance annoncée (0x2AD6, résolution 0,1) : 0 à 100 au pas de 1, et frein simulé comme le
+# vrai trainer de l'étalonnage 7rc1 (1er novembre) : F = k × niveau (%) × vitesse du volant (km/h).
 RESISTANCE_RANGE_RAW = (0, 1000, 10)
-RESISTANCE_N_PER_LEVEL = 1.0
+RESISTANCE_N_PER_LEVEL_KMH = 0.036
 
 
 @dataclass
@@ -337,8 +337,8 @@ class TrainerResponse:
         level = rest[0] if rest else 0.0
         if mode == "erg" and target_w is not None:
             return target_w / max(v, 1.0)
-        if mode == "resistance":   # frein à force fixe par niveau, plus le roulement (modèle de test)
-            return RESISTANCE_N_PER_LEVEL * level + self.physics.mass_kg * G * self.physics.crr
+        if mode == "resistance":   # frein proportionnel au niveau et à la vitesse du volant (7rc1, décalage nul)
+            return RESISTANCE_N_PER_LEVEL_KMH * level * v * 3.6
         theta = math.atan((grade_pct if mode == "sim" else 0.0) / 100.0)
         p = self.physics
         cw = cw if cw is not None else 1.225 * p.cda_m2   # Cw FTMS = ρ · CdA

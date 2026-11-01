@@ -1,5 +1,6 @@
 """Résistance calculée par le core (lots RC2-RC3, étude du 31 octobre) : la pente SIM part en niveau de
-résistance FTMS 0x04, avec la force de la route à la vitesse du volant et la masse du profil."""
+résistance FTMS 0x04, avec la force de la route à la vitesse du volant et la masse du profil ; le frein
+du trainer suit F = k × niveau × v (étalonnage 7rc1 du 1er novembre)."""
 
 import asyncio
 import logging
@@ -52,13 +53,32 @@ def test_road_force_is_the_sim_formula_with_the_profile_mass():
 
 
 def test_sim_grade_is_sent_as_a_resistance_level():
-    drv, now = _driver(resistance_n_per_pct=2.0)
+    """Frein de l'étalonnage 7rc1 : F = k × niveau × v (km/h), donc niveau = F / (k × v)."""
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
     drv.road_mass_kg = 80.0
     drv._on_ibd(None, _ibd(30.0, 85, 200))
     drv.set_sim_grade(3.0)
-    level = round(drv.road_force_n(3.0, 30 / 3.6) / 2.0)
+    level = round(drv.road_force_n(3.0, 30 / 3.6) / (0.036 * 30.0))
     assert _flush(drv) == [ftms.cmd_set_target_resistance(level)]
     assert drv._last_sent == ("resistance", level)
+
+
+def test_level_falls_as_the_flywheel_speeds_up_on_the_same_slope():
+    """Le frein monte avec la vitesse du volant : à force égale, 40 km/h demande moins de niveau que 25 km/h."""
+    drv, _ = _driver(resistance_n_per_pct_kmh=0.036)
+    drv._wind_mps, drv._cw = 0.0, 0.0   # force de pente seule, la même aux deux vitesses
+    drv._on_ibd(None, _ibd(25.0, 85, 200))
+    slow = drv._road_level(4.0)
+    drv._on_ibd(None, _ibd(40.0, 110, 400))
+    fast = drv._road_level(4.0)
+    assert fast == pytest.approx(slow * 25.0 / 40.0, abs=1.0)
+
+
+def test_level_uses_a_speed_floor_when_starting():
+    drv, _ = _driver(resistance_n_per_pct_kmh=0.036)
+    drv._on_ibd(None, _ibd(2.0, 20, 50))
+    force = drv.road_force_n(3.0, 2.0 / 3.6)
+    assert drv._road_level(3.0) == pytest.approx(round(force / (0.036 * 10.0)), abs=1.0)
 
 
 def test_downhill_sends_the_lowest_level():
@@ -88,37 +108,38 @@ def test_falls_back_to_sim_when_resistance_is_not_announced(caplog):
     assert any("pilotage SIM gardé" in r.getMessage() for r in caplog.records)
 
 
-def test_force_per_pct_learns_the_real_brake_on_a_steady_flywheel():
-    """Frein réel à 1 N par % (le départ dit 2) : la correction rejoint 1 en une vingtaine de secondes."""
-    drv, now = _driver(resistance_n_per_pct=2.0)
+def test_brake_k_learns_the_real_brake_on_a_steady_flywheel():
+    """Frein réel à k = 0,030 (le départ dit 0,036) : la correction le rejoint en une vingtaine de secondes."""
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
     drv._last_sent = ("resistance", 40.0)
     for i in range(120):   # 4 trames par seconde, 30 s, volant à 30 km/h
         now[0] = 100.0 + i * 0.25
-        drv._on_ibd(None, _ibd(30.0, 85, round(1.0 * 40.0 * 30 / 3.6)))
-    assert drv.n_per_pct == pytest.approx(1.0, abs=0.05)
+        drv._on_ibd(None, _ibd(30.0, 85, round(0.030 * 40.0 * 30.0 * 30 / 3.6)))
+    assert drv.k_road == pytest.approx(0.030, abs=0.001)
 
 
-def test_force_per_pct_frozen_while_the_flywheel_accelerates():
-    drv, now = _driver(resistance_n_per_pct=2.0)
+def test_brake_k_frozen_while_the_flywheel_accelerates():
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
     drv._last_sent = ("resistance", 40.0)
     for i in range(20):   # sprint : +2 km/h par trame de 0,25 s (> 0,4 m/s²)
         now[0] = 100.0 + i * 0.25
         drv._on_ibd(None, _ibd(20.0 + 2 * i, 100, 900))
-    assert drv.n_per_pct == 2.0
+    assert drv.k_road == 0.036
 
 
-def test_force_per_pct_is_bounded():
-    drv, now = _driver(resistance_n_per_pct=2.0)
+def test_brake_k_is_bounded():
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
     drv._last_sent = ("resistance", 10.0)
     for i in range(400):
         now[0] = 100.0 + i * 0.25
         drv._on_ibd(None, _ibd(30.0, 85, 2000))   # force mesurée absurde
-    assert drv.n_per_pct == pytest.approx(10.0)   # 5 × la valeur de départ
+    assert drv.k_road == pytest.approx(0.18)   # 5 × la valeur de départ
 
 
 def test_config_choices_and_bounds():
-    assert config.from_dict({"trainer": {"control": "resistance", "resistance_n_per_pct": 1.5}}).trainer.control == "resistance"
-    for bad in ({"control": "erg"}, {"resistance_n_per_pct": 0.0}):
+    assert config.from_dict({"trainer": {"control": "resistance", "resistance_n_per_pct_kmh": 0.04}}).trainer.control == "resistance"
+    assert config.Config().trainer.resistance_n_per_pct_kmh == 0.036   # étalonnage 7rc1
+    for bad in ({"control": "erg"}, {"resistance_n_per_pct_kmh": 0.0}, {"resistance_n_per_pct_kmh": 2.0}):
         with pytest.raises(config.ConfigError):
             config.from_dict({"trainer": bad})
 
