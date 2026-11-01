@@ -8,6 +8,7 @@ que le core lui a donnée (`list_imports`, puis `import_workout`).
   paramètres, même fichier ; nom déjà pris par d'autres réglages : suffixe `_2`, `_3`… (lot O20).
 - `import_candidates()` : fichiers `.zwo`, `.erg`, `.mrc` et `.qwk` des dossiers habituels, sans
   sous-dossiers, les plus récents d'abord (30 au plus).
+- `create_qwk_workout()` : QWKcode saisi au clavier (lot O21), relu puis écrit en `.qwk`.
 - `import_file()` : copie validée (le core relit le fichier avant de l'écrire) ; un fichier identique
   déjà importé n'est pas recopié, un entraînement différent du même nom prend le suffixe `_2`, `_3`…
 
@@ -18,10 +19,13 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
+import unicodedata
 from pathlib import Path
 from typing import Any
 
 from .workout import WORKOUT_SUFFIXES, WorkoutError, load_workout, parse_workout
+from .workout_formats import parse_qwk
 
 # Bornes des paramètres de `create_workout` (mêmes que l'écran « Créer un entraînement » de l'engine).
 INTERVAL_PARAMS: dict[str, tuple[int, int]] = {
@@ -41,6 +45,10 @@ IMPORT_SOURCES: tuple[tuple[str, str], ...] = (
 )
 MAX_IMPORT_CANDIDATES = 30
 MAX_IMPORT_BYTES = 1_000_000   # un entraînement fait quelques kilo-octets
+# Texte QWKcode saisi au clavier (`create_workout_qwk`, lot O21) : la commande tient dans un datagramme
+# de 4 096 octets (contrat §2), avec son enveloppe JSON.
+MAX_QWK_TEXT_BYTES = 3000
+QWK_DEFAULT_STEM = "qwkcode"
 
 
 class WorkoutMenuError(Exception):
@@ -120,6 +128,35 @@ def create_interval_workout(workouts_dir: Path, args: Any) -> dict[str, Any]:
     parse_workout(text, interval_id(p))   # le fichier produit doit rester lisible par le core
     workout_id, created = _store(workouts_dir, interval_id(p), ".zwo", text.encode("utf-8"))
     return {"workout_id": workout_id, "name": interval_name(p), "created": created}
+
+
+def qwk_stem(name: str) -> str:
+    """Nom de fichier tiré du nom de la séance : « Seuil 4 × 5 » donne `seuil_4_5` ; vide : `qwkcode`."""
+    ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii").lower()
+    stem = re.sub(r"[^a-z0-9]+", "_", ascii_name).strip("_")[:40].strip("_")
+    return stem or QWK_DEFAULT_STEM
+
+
+def create_qwk_workout(workouts_dir: Path, args: Any) -> dict[str, Any]:
+    """Écrit le QWKcode saisi au clavier dans `<dossier>/<nom>.qwk` (lot O21) ; renvoie {workout_id, name, created}.
+
+    Texte relu par `parse_qwk` avant l'écriture : une erreur (avec son numéro de ligne) donne
+    `workout_invalid` et rien n'est écrit. Nom de fichier tiré de la ligne `#` du nom, sans écraser
+    un autre entraînement (`_store`)."""
+    text = args.get("text") if isinstance(args, dict) else None
+    if not isinstance(text, str):
+        raise WorkoutMenuError("bad_args", "create_workout_qwk attend « text », une chaîne")
+    text = text.replace("\r\n", "\n").strip("\n") + "\n"
+    if len(text.encode("utf-8")) > MAX_QWK_TEXT_BYTES:
+        raise WorkoutMenuError("bad_args", f"QWKcode trop long (au plus {MAX_QWK_TEXT_BYTES} octets)")
+    try:
+        workout = parse_qwk(text, QWK_DEFAULT_STEM)
+    except WorkoutError as exc:
+        raise WorkoutMenuError("workout_invalid", str(exc)) from exc
+    name = workout.name if workout.name != QWK_DEFAULT_STEM else "Séance QWKcode"
+    workout_id, created = _store(workouts_dir, qwk_stem(workout.name if workout.name != QWK_DEFAULT_STEM else ""),
+                                 ".qwk", text.encode("utf-8"))
+    return {"workout_id": workout_id, "name": name, "created": created}
 
 
 def _store(workouts_dir: Path, stem: str, suffix: str, data: bytes) -> tuple[str, bool]:

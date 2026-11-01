@@ -55,7 +55,7 @@ extends RefCounted
 ##   Avancement `route_import_status` par on_route_import_status() sur la ligne d'état ; parcours prêt :
 ##   retour à la liste, redemandée par main.gd, focus sur le nouveau parcours à son arrivée ; trace
 ##   refusée (route_invalid, busy) : raison sur la ligne d'état ;
-## - bots (lot O7) : « Bot : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
+## - bots (lots O7 et O35) : « Bot 1 : … » à « Bot 4 : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
 ##   core (bot_invalid) sur la ligne d'état de l'écran Prêt ;
 ## - entraînements en watts (.erg, .mrc) : « watts fixes » et la puissance maximale.
 ##
@@ -73,6 +73,7 @@ const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const PlanBuilder := preload("res://scripts/plan_builder.gd")
 const WorkoutHelp := preload("res://scripts/workout_help.gd")
+const QwkEditor := preload("res://scripts/qwk_editor.gd")
 const RouteHelp := preload("res://scripts/route_help.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
@@ -94,6 +95,7 @@ const ROUTE_IMPORT := "route_import"
 ## Ligne d'état pendant la compilation d'une trace importée (lot O23) : secondes écoulées.
 const ROUTE_COMPILING := "Compilation de %s… %d s (la 1re fois dans une région, l'altitude se télécharge)"
 const WORKOUT_HELP := WorkoutHelp.SCREEN
+const WORKOUT_QWK := QwkEditor.SCREEN
 const ROUTE_HELP := RouteHelp.SCREEN
 ## Lignes de la liste des parcours dont la carte est un sujet de l'aide des parcours (lot O22).
 const ROUTE_HELP_TOPICS := {MenuModel.ADD_ROUTE_ID: "add", MenuModel.HELP_ROUTES_ID: "choose"}
@@ -131,7 +133,7 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer et enregistrer"
 ## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
 const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create", MenuModel.IMPORT_WORKOUT_ID: "import",
-	MenuModel.HELP_WORKOUT_ID: "choose"}
+	MenuModel.HELP_WORKOUT_ID: "choose", MenuModel.QWK_WORKOUT_ID: "qwk"}
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -175,6 +177,8 @@ var route_names := {}
 var builder = WorkoutBuilder.new()
 ## Plan maison en cours de composition (lot O30).
 var plan_builder = PlanBuilder.new()
+## Texte QWKcode en cours de saisie (lot O21) : gardé en sortant de l'écran, vidé après l'enregistrement.
+var qwk = QwkEditor.new()
 ## Fichiers proposés à l'import : [{path, file, source, imported}] (message `imports` du core).
 var import_candidates: Array = []
 ## Ligne d'état de la liste des entraînements (créé, importé, erreur).
@@ -257,6 +261,8 @@ func _init() -> void:
 	menu.add_screen({"id": ROUTE_IMPORT, "title": "Importer une trace", "on_back": MenuModel.ROUTES, "items": []})
 	menu.add_screen({"id": WORKOUT_HELP, "title": WorkoutHelp.TITLE, "on_back": MenuModel.WORKOUTS,
 		"items": WorkoutHelp.items()})
+	menu.add_screen({"id": WORKOUT_QWK, "title": QwkEditor.TITLE, "on_back": MenuModel.WORKOUTS,
+		"items": qwk.menu_items()})
 	menu.add_screen({"id": ROUTE_HELP, "title": RouteHelp.TITLE, "on_back": MenuModel.ROUTES,
 		"items": RouteHelp.items()})
 	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
@@ -523,7 +529,7 @@ func on_error(code: String, text: String) -> void:
 		route_message = "Échec : " + text
 		route_message_error = true
 		return
-	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_IMPORT] \
+	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_IMPORT, WORKOUT_QWK] \
 			and code in ["bad_args", "busy", "workout_invalid", "workout_write_failed"]:
 		workout_failed("Échec : " + text)
 		return
@@ -634,6 +640,8 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
 	if screen == WORKOUT_HELP:
 		return WorkoutHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
+	if screen == WORKOUT_QWK:
+		return WorkoutHelp.sheet("qwk")
 	if screen == PLANS:
 		return _plan_card(focused)
 	if screen == PLAN:
@@ -1070,6 +1078,9 @@ func on_workout_saved(msg: Dictionary) -> bool:
 		return false
 	_last_saved_cmd_id = rid
 	var name := str(msg.get("name", msg.get("workout_id", "")))
+	if _workout_request == "qwk":
+		qwk.clear()
+		_refresh_qwk()
 	var text := ("Importé : " if _workout_request == "import" else "Créé : ") + name
 	if not msg.get("created", true):
 		text += " (déjà présent)"
@@ -1090,6 +1101,52 @@ func workout_added(workout_id: String, message: String) -> void:
 
 func workout_failed(message: String) -> void:
 	workout_message = message
+
+
+# --- saisie du QWKcode au clavier (lot O21) -----------------------------------------------------
+
+func _refresh_qwk() -> void:
+	menu.set_screen_items(WORKOUT_QWK, qwk.menu_items())
+
+
+## Élément choisi (A maintenu, Entrée sur « Enregistrer » ou « Tout effacer », clic) sur l'écran de saisie.
+func _qwk_item(item_id: String) -> Dictionary:
+	if item_id == QwkEditor.SAVE_ID and not qwk.is_empty():
+		workout_message = "Enregistrement…"
+		_workout_request = "qwk"
+		return {"action": "create_workout_qwk", "text": qwk.text()}
+	if item_id == QwkEditor.CLEAR_ID:
+		qwk.clear()
+		workout_message = ""
+		_refresh_qwk()
+		menu.focus_item(qwk.last_line_id())
+	return {}
+
+
+## Touche du clavier sur l'écran de saisie : vrai si elle a servi. Un caractère imprimable s'écrit (même
+## « + », « - », « a » ou « y », utiles au QWKcode) ; Entrée commence une ligne, ou choisit
+## « Enregistrer » ou « Tout effacer » sous le focus ; Retour arrière efface. Flèches et Échap restent
+## des boutons (key_map.gd).
+func qwk_key(ch: String, enter: bool, backspace: bool) -> Dictionary:
+	if menu.current_screen() != WORKOUT_QWK:
+		return {"used": false}
+	var focused := _focused_id()
+	if enter and focused in [QwkEditor.SAVE_ID, QwkEditor.CLEAR_ID]:
+		return {"used": true, "action": _qwk_item(focused)}
+	var used := true
+	if enter:
+		qwk.new_line()
+	elif backspace:
+		qwk.backspace()
+	elif ch != "":
+		qwk.type_char(ch)
+	else:
+		used = false
+	if used:
+		workout_message = ""
+		_refresh_qwk()
+		menu.focus_item(qwk.last_line_id())
+	return {"used": used, "action": {}}
 
 
 ## Liste indisponible (trois demandes sans réponse) : un élément désactivé qui le dit.
@@ -1256,10 +1313,17 @@ func handle(event: String) -> Dictionary:
 		if str(act["id"]) == MenuModel.HELP_WORKOUT_ID:
 			menu.push_screen(WORKOUT_HELP)
 			return {}
+		if str(act["id"]) == MenuModel.QWK_WORKOUT_ID:
+			_refresh_qwk()
+			menu.push_screen(WORKOUT_QWK)
+			menu.focus_item(qwk.last_line_id())
+			return {}
 		import_candidates = []
 		menu.set_screen_items(WORKOUT_IMPORT, [{"id": "none", "label": "Recherche des fichiers…", "enabled": false}])
 		menu.push_screen(WORKOUT_IMPORT)
 		return {"action": "list_imports"}
+	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_QWK:
+		return _qwk_item(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_HELP:
 		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_CREATE:
@@ -1800,7 +1864,7 @@ func state() -> Dictionary:
 	elif st["screen"] in [MenuModel.ROUTES, ROUTE_IMPORT]:
 		st["status"] = route_message
 		st["status_error"] = route_message_error
-	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT]:
+	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT, WORKOUT_QWK]:
 		st["status"] = workout_message
 	elif st["screen"] in [PLANS, PLAN] or st["screen"] in PlanBuilder.SCREENS:
 		st["status"] = plan_message

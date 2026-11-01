@@ -51,7 +51,7 @@ Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/O
 
 1. Au menu principal, **Parcours : …** ouvre la liste. Le tri et le filtre par étiquette sont en bas de la liste.
 2. Choisissez **Session libre** (la pente de la route est jouée par le trainer) ou **Session ERG** (section 5).
-3. L'écran **Prêt** montre la fiche du parcours (distance, dénivelé, montée principale, durée estimée). Il propose aussi **Bot : …** (un cycliste virtuel à puissance constante), **Fantôme de la dernière séance** et **Records du parcours**.
+3. L'écran **Prêt** montre la fiche du parcours (distance, dénivelé, montée principale, durée estimée). Il propose aussi **Bot 1 : …** (un cycliste virtuel à puissance constante ou à profil), **Fantôme de la dernière séance** et **Records du parcours**. Dès qu'un bot est choisi, une ligne **Bot 2 : aucun** apparaît en dessous, jusqu'à **Bot 4** : quatre bots et le fantôme peuvent rouler ensemble. Remettre un bot à « aucun » le retire.
 4. **Démarrer** lance la séance. Par défaut, le départ se fait au pédalage : le menu laisse place à l'écran « START YOUR ENGINES » : les feux de départ s'allument un à un (décor chargé, trainer prêt, puis pédalage) et la ligne du bas dit « Pédale pour partir : 30 tr/min ». Pédalez tranquillement : chrono, distance, entraînement ERG et bots partent après 3 secondes de pédalage, quand les feux passent au vert (un à-coup de moins de 2 secondes ne remet pas le compte à zéro). Rien n'est compté avant, et le trainer reste libre. **Y** annule et revient à l'écran **Prêt**. **Réglages**, **Séance** : **Départ** (au pédalage ou immédiat, comme avant) et **Cadence de départ** (30 tr/min par défaut).
 
 **Pendant la séance.** Le HUD montre puissance, cadence, fréquence cardiaque, vitesse, distance, pente et profil d'altitude (sous le panneau de droite, en SIM). La puissance prend la couleur de sa zone de FTP (Z1 à Z7) et la fréquence cardiaque celle de sa zone de FC (Z1 à Z5, d'après la **FC max** des réglages du cycliste). La touche **Y** du Click (ou `Y`, `Échap` au clavier) met en pause : l'écran de pause propose **Reprendre**, **Terminer et enregistrer**, **Abandonner** et le curseur de **Difficulté**.
@@ -78,12 +78,12 @@ Chaque écran du globe explique ce qu'il fait, et le bandeau du bas donne les bo
 
 En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pente de la route ne compte plus.
 
-**Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, **Importer un fichier** `.zwo`, `.erg`, `.mrc` ou `.qwk` trouvé dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`, et **Comment ça marche ?**, l'aide à l'écran qui reprend tout ce qui suit (un sujet par ligne, l'explication dans la carte de droite). Les entraînements livrés sont installés au premier démarrage ; sur une installation plus ancienne, **Réglages**, **Contenus**, **Contenus de départ** les ajoute (A maintenu), sans jamais remplacer un fichier existant.
+**Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, **Saisir du QWKcode (clavier)**, **Importer un fichier** `.zwo`, `.erg`, `.mrc` ou `.qwk` trouvé dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`, et **Comment ça marche ?**, l'aide à l'écran qui reprend tout ce qui suit (un sujet par ligne, l'explication dans la carte de droite). Les entraînements livrés sont installés au premier démarrage ; sur une installation plus ancienne, **Réglages**, **Contenus**, **Contenus de départ** les ajoute (A maintenu), sans jamais remplacer un fichier existant.
 
 **Ajouter un entraînement.** Quatre façons :
 
 - **Créer** : échauffement, répétitions d'effort et de récupération (durée et % de la FTP), retour au calme, réglés au Click ; **Enregistrer et choisir** écrit un `.zwo` et le choisit. Les mêmes réglages ne font pas de doublon, et aucun entraînement n'est remplacé : un nom déjà pris reçoit `_2`, `_3`…
-- **QWKcode de GoldenCheetah** : un fichier texte `.qwk`, une ligne par segment, `[Nx] durée@puissance[-puissance] [rdurée@puissance[-puissance]]`. Durée en `h`, `m` ou `s`, combinables (`1m30s`, `1.5m`) ; puissance en watts, ou en % de la FTP avec `%` (`50-75%`). Une ligne `#` avant le premier segment donne le nom ; `#` ailleurs commence un commentaire. Exemple :
+- **QWKcode de GoldenCheetah** : tapé au clavier dans le menu, ou écrit dans un fichier texte `.qwk`, une ligne par segment, `[Nx] durée@puissance[-puissance] [rdurée@puissance[-puissance]]`. Durée en `h`, `m` ou `s`, combinables (`1m30s`, `1.5m`) ; puissance en watts, ou en % de la FTP avec `%` (`50-75%`). Une ligne `#` avant le premier segment donne le nom ; `#` ailleurs commence un commentaire. Exemple :
 
   ```
   # Seuil 4 × 5 min
@@ -94,7 +94,9 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
   10m@130
   ```
 
-  `10m@130-220` est une rampe de 130 à 220 W ; `4x 5m@280 r3m@140` fait 4 fois 5 min à 280 W puis 3 min à 140 W. Une erreur donne le numéro de la ligne. Enregistre le fichier dans Téléchargements, puis **Importer un fichier**.
+  `10m@130-220` est une rampe de 130 à 220 W ; `4x 5m@280 r3m@140` fait 4 fois 5 min à 280 W puis 3 min à 140 W. Une erreur donne le numéro de la ligne.
+
+  **Au clavier** : **Saisir du QWKcode (clavier)** ouvre l'écran de saisie. Chaque touche s'écrit à la fin de la dernière ligne (lettres, chiffres, `@`, `-`, `%`, espace), **Entrée** commence une ligne, **Retour arrière** efface (et remonte d'une ligne sur une ligne vide). Les flèches ← → mènent à **Enregistrer et choisir** (Entrée enregistre) ou **Tout effacer** ; Échap revient à la liste en gardant le texte. Le fichier `.qwk` prend le nom de la ligne `#` (`qwkcode` sans elle) ; si le texte a une erreur, la ligne d'état la donne et rien n'est écrit. **Dans un fichier** : enregistre-le dans Téléchargements, puis **Importer un fichier**.
 - **Importer** : le fichier est vérifié, puis copié dans `~/OpenRide/Workouts/` ; un fichier déjà importé n'est pas recopié, un autre du même nom reçoit `_2`.
 - **À la main** : un fichier posé directement dans `~/OpenRide/Workouts/` apparaît dans la liste. `.zwo` (Zwift) et `.mrc` : puissances en % de la FTP ; `.erg` : watts fixes ; `.qwk` : watts ou %. Un bloc `FreeRide` devient un palier à 50 W. Exemples dans `core/workouts/`.
 

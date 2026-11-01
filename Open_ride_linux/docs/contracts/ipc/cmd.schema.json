@@ -42,6 +42,7 @@
         "set_setting",
         "list_imports",
         "create_workout",
+        "create_workout_qwk",
         "import_workout",
         "list_route_imports",
         "import_route",
