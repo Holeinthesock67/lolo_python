@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : Écart de progression avant/après une PR (`openride-core xp --compare`) | Python | V2, V3b | Petite | Oui |
+| Série X (outils de test) : Écart de progression avant/après une PR (`openride-core xp --compare`) | Python | V2, V3b | Petite | Livré le 28 octobre (PR #505) |
 
 ## 1. Objectif
 
@@ -40,3 +40,7 @@ Le scénario `sim_bench` « équipé » et les scènes `visual_check` du gain d'
 
 - `xp.run` construit toujours la sortie `--json` ; `--save` l'écrit, `--compare` la compare (`compare_snapshots`, `has_changes`, `format_diff`).
 - Tests : `core/tests/test_xp_compare.py` (4 tests : instantané sans écart, séance ajoutée et XP changée en texte et en JSON, défis et refus, instantané illisible).
+
+## Livraison
+
+PR #505, fusionnée le 28 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui ».

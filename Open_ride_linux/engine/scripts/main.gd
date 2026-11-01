@@ -23,6 +23,8 @@ const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
 const FpsCounter := preload("res://scripts/fps_counter.gd")
+const WtfView := preload("res://scripts/wtf/wtf_view.gd")
+const WtfHudModel := preload("res://scripts/wtf/wtf_hud_model.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -92,6 +94,8 @@ var junction_view = null
 var world_menu_view = null
 ## Chargement de parcours en tâche de fond : {id, route, path, ok, task}.
 var _route_job: Dictionary = {}
+var _quit_ms := -1   # heure de la demande de fermeture (_quit), pour les étapes de la fermeture dans le journal
+var _quit_code := 0
 var _test_cam_last_us := 0
 var _test_cam_last_s := NAN
 ## Scène figée des tests graphiques (message `_test` « freeze », lot X20) : instant imposé au décor, NAN sinon.
@@ -102,6 +106,8 @@ var erg_view = ErgViewModel.new()
 var erg_panel = null
 ## Compteur d'images/s du HUD (réglage `render.fps`, caché par défaut).
 var fps_counter = null
+## Habillage du mode « What the fuck » (lot WTF7) : bandeau, cartes, Katamari, horloge.
+var wtf_view = null
 ## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
 var load_guard = LoadGuard.new({}, false)
 var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
@@ -205,7 +211,7 @@ func _ready() -> void:
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
-	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)))
+	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)), -1.0, "--camera")
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
 	print("Mode d'affichage : ", _display_name)
@@ -268,6 +274,7 @@ func _ready() -> void:
 	atmosphere_view.living_decor = living_decor
 	living_decor.set_fog_base(world_env.environment)
 	bots_view = BotsView.new()
+	bots_view.set_quality(_quality_name)
 	add_child(bots_view)
 	draft_gauge = DraftGauge.new()
 	add_child(draft_gauge)
@@ -289,6 +296,12 @@ func _ready() -> void:
 	ipc.progression_received.connect(_on_progression)
 	ipc.profiles_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_profiles(msg)
+		_refresh_menu())
+	ipc.interrupted_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_interrupted(msg)
+		_refresh_menu())
+	ipc.contents_received.connect(func(msg: Dictionary) -> void:
+		_run_menu_action(menu_flow.on_contents(msg))
 		_refresh_menu())
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
@@ -347,6 +360,8 @@ func _ready() -> void:
 	add_child(overlay_layer)
 	fps_counter = FpsCounter.new()
 	overlay_layer.add_child(fps_counter)
+	wtf_view = WtfView.new()
+	hud.add_child(wtf_view)
 	ipc.world_menu_received.connect(_on_world_menu_received)
 	ipc.world_status_received.connect(func(msg: Dictionary) -> void: _world_menu_status(msg))
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
@@ -390,6 +405,14 @@ func _ready() -> void:
 	ipc.imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
 		menu_flow.set_import_candidates(items)
 		_refresh_menu())
+	ipc.route_imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
+		menu_flow.set_route_import_candidates(items)
+		_refresh_menu())
+	ipc.route_import_status_received.connect(func(msg: Dictionary) -> void:
+		ipc.test_log("route_import_status state=%s route=%s" % [str(msg.get("state", "")), str(msg.get("route_id", ""))])
+		if menu_flow.on_route_import_status(msg):
+			ipc.list_routes()   # parcours prêt : nouvelle liste, focus dessus à son arrivée
+		_refresh_menu())
 	ipc.workout_saved_received.connect(func(msg: Dictionary) -> void:
 		ipc.test_log("workout_saved id=%s" % str(msg.get("workout_id", "")))
 		if menu_flow.on_workout_saved(msg):
@@ -397,6 +420,9 @@ func _ready() -> void:
 		_refresh_menu())
 	ipc.plans_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_plans(msg)
+		_refresh_menu())
+	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_wtf_rules(msg)
 		_refresh_menu())
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
@@ -434,6 +460,7 @@ func _on_settings(msg: Dictionary) -> void:
 		load_guard.reset(QualityPresets.image(_quality_name), _forward_plus())
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
+		bots_view.set_quality(_quality_name)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
 		if streamer.osm_streamer != null:
@@ -464,8 +491,7 @@ func _on_settings(msg: Dictionary) -> void:
 	var cam := str(menu_flow.settings.item("render.camera").get("value", ""))
 	if CameraViews.is_valid(cam):
 		if _camera_setting != "" and cam != _camera_setting and cam != camera_views.current:
-			camera_views.set_view(cam)
-			print("Vue de caméra : ", cam)
+			camera_views.set_view(cam, -1.0, "réglage render.camera")
 		_camera_setting = cam
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
@@ -559,16 +585,13 @@ func _camera_event(event_name: String) -> bool:
 	if event_name.begins_with("A_") and junction_view != null and junction_view.vm.is_visible():
 		return false
 	var now_s := Time.get_ticks_usec() / 1000000.0
-	var changed := false
 	match event_name:
 		"A_SHORT", "UP_SHORT":
-			changed = camera_views.next_view(now_s)
+			camera_views.next_view(now_s, event_name)
 		"DOWN_SHORT":
-			changed = camera_views.previous_view(now_s)
+			camera_views.previous_view(now_s, event_name)
 		"A_LONG":
-			changed = camera_views.reset_default(now_s)
-	if changed:
-		print("Vue de caméra : ", camera_views.current)
+			camera_views.reset_default(now_s, event_name)
 	return true
 
 
@@ -607,11 +630,11 @@ func _run_menu_action(act: Dictionary) -> void:
 				ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"quit":
 			print("Quitter demandé depuis le menu.")
-			get_tree().quit()
+			_quit(0)
 		"relaunch", "relaunch_sim":
 			var code := EXIT_SIM if name == "relaunch_sim" else EXIT_RELAUNCH
 			print("Relance d'OpenRide demandée depuis le menu (code %d)." % code)
-			get_tree().quit(code)
+			_quit(code)
 		"scan_devices":
 			ipc.scan_devices()
 		"identify_click_plus":
@@ -622,12 +645,23 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.set_setting(str(act["key"]), act["value"])
 		"list_imports":
 			ipc.list_imports()
+		"list_route_imports":
+			ipc.list_route_imports()
+		"import_route":
+			ipc.import_route(str(act["path"]))
 		"list_plans":
 			ipc.list_plans()
+		"list_wtf_rules":
+			ipc.send_command("list_wtf_rules", {})
+		"set_wtf_rules":   # une commande set_wtf_rule par règle basculée (lot WTF3)
+			for r in act.get("list", []):
+				ipc.send_command("set_wtf_rule", {"id": str(r["id"]), "on": bool(r["on"])})
 		"start_plan":
 			ipc.start_plan(str(act["id"]), act.get("start_date", null))
 		"stop_plan":
 			ipc.stop_plan()
+		"create_plan":
+			ipc.create_plan(act["workouts"], act["days"], act.get("weeks", null))
 		"accept_ftp":
 			ipc.accept_ftp(bool(act.get("force", false)))
 		"create_workout":
@@ -659,12 +693,20 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("buy", {"item_id": str(act["item_id"])})
 		"set_avatar":
 			ipc.send_command("set_avatar", {"avatar": act["avatar"]})
+		"list_contents":   # contenus installables (lot O25, contrat 1.5)
+			ipc.send_command("list_contents", {})
+		"install_content":
+			ipc.send_command("install_content", {"id": str(act["id"])})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
-		"select_profile", "delete_profile":
+		"select_profile", "delete_profile", "restore_profile":
 			ipc.send_command(name, {"id": str(act["id"])})
+		"clear_trial_profile":   # lot O33
+			ipc.send_command(name, {})
 		"create_profile":
 			ipc.send_command("create_profile", {"name": str(act["name"])})
+		"recover_session":   # séance interrompue d'un lancement précédent (lot O34)
+			ipc.send_command("recover_session", {"id": str(act["id"]), "save": bool(act["save"])})
 		"rename_profile":
 			ipc.send_command("rename_profile", {"id": str(act["id"]), "name": str(act["name"])})
 
@@ -837,6 +879,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		key_map.reset()   # le relâchement des touches enfoncées ne viendra pas
+	elif what == NOTIFICATION_PREDELETE:
+		# Ligne lue par le lanceur et le banc (ENGINE_DONE de launcher.py) : au-delà, l'arrêt de Godot peut bloquer
+		# (pilote NVIDIA, lot X55) ; ils arrêtent alors le processus et retiennent ce code.
+		_quit_step("scène libérée, arrêt des serveurs de Godot (code %d)" % _quit_code)
 
 
 func _process(delta: float) -> void:
@@ -852,6 +898,9 @@ func _process(delta: float) -> void:
 	_step_load_guard(delta)
 	var now := Time.get_ticks_usec()
 	_remember_camera_view(now / 1000000.0)
+	var camera_log: String = camera_views.log_line()   # tout changement de la vue affichée, quelle qu'en soit l'origine
+	if camera_log != "":
+		print(camera_log)
 	# Personnages et animaux (anim_clock.gd) : figés avec le décor quand le core ne répond plus.
 	if not banner.has_message("core_lost"):
 		AnimClock.advance(delta)
@@ -1106,7 +1155,7 @@ func _on_test_message(msg: Dictionary) -> void:
 		"menu_state":
 			ipc.test_log("menu_state " + JSON.stringify(_test_menu_state(str(msg.get("req", "")))))
 		"camera_view":   # vue de caméra imposée, sans transition (tour visuel, lot X21)
-			camera_views.set_view(str(msg.get("view", "")))
+			camera_views.set_view(str(msg.get("view", "")), -1.0, "message de test")
 			ipc.test_log("camera_view done=" + camera_views.effective())
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
@@ -1210,6 +1259,7 @@ func _test_menu_state(req: String) -> Dictionary:
 	if world["visible"]:
 		world["state"] = str(world_menu_view.vm.state)
 		world["help"] = world_menu_view.help_label.text
+		world["body"] = world_menu_view.body_label.text
 		world["hint"] = world_menu_view.hint_text()
 	return {"req": req, "visible": menu_view.visible, "screen": st["screen"], "title": st["title"],
 		"status": st["status"], "focus": focus, "focus_id": items[focus]["id"] if focus >= 0 and focus < items.size() else "",
@@ -1436,6 +1486,7 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		chart_mode = ch
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
+	menu_flow.on_hello_interrupted(ipc.core_config.get("interrupted"))   # lot O34
 	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
 	# Derniers choix du profil (lot O32) : bot, fantôme, entraînement, départ du monde ouvert.
 	var last = ipc.core_config.get("last_choices")
@@ -1471,7 +1522,7 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
-	if cmd_name in ["list_routes", "list_workouts", "list_imports"]:
+	if cmd_name in ["list_routes", "list_workouts", "list_imports", "list_route_imports"]:
 		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
 
@@ -1486,6 +1537,12 @@ func _on_state_received(state: Dictionary) -> void:
 		banner.show_message("trainer_busy", DevicesViewModel.TRAINER_BUSY_TEXT)
 	else:
 		banner.clear_message("trainer_busy")
+	# Invite de fin de séance (1er novembre) : entraînement fini, la séance continue jusqu'à Y puis A maintenu.
+	var done_text := HudViewModel.workout_done_text(state)
+	if done_text != "" and str(state.get("session_state", "")) == "RUNNING":
+		banner.show_message("workout_done", done_text)
+	else:
+		banner.clear_message("workout_done")
 	_check_latency(state)
 	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)
@@ -1545,6 +1602,7 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.hr_max_bpm = float(ipc.core_config.get("hr_max_bpm", 0.0))
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
+		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
 			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
@@ -1617,11 +1675,14 @@ func _feed_chart(state: Dictionary, running: bool, previous_state: String) -> vo
 
 ## Bots (lot O7) : encart du HUD et silhouettes sur la route, aux positions affichées à l'instant.
 func _show_bots(rider_s: float, rider_v: float) -> void:
+	bots_model.vehicles = living_decor.vehicle_places() if living_decor != null else []
 	var view: Array = bots_model.view(rider_s, rider_v, Time.get_ticks_usec())
 	if hud != null and hud.has_method("update_bots"):
 		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route)
+	if living_decor != null:
+		living_decor.bot_places = bots_model.places()
 
 
 ## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste.
@@ -1649,10 +1710,25 @@ func _give_cues(state: Dictionary) -> void:
 		ipc.test_log("cue index=%d warn=%s s=%.1f" % [c["index"], str(c["warn"]), s])
 
 
+## Fermeture de l'engine avec le code `code` (0 : quitter, EXIT_RELAUNCH, EXIT_SIM). Le journal date ensuite chaque
+## étape depuis la demande (« Fermeture : … ») : une fermeture lente dit où elle attend (banc des menus, lot X55).
+func _quit(code: int) -> void:
+	_quit_ms = Time.get_ticks_msec()
+	_quit_code = code
+	get_tree().quit(code)
+
+
+func _quit_step(what: String) -> void:
+	if _quit_ms >= 0:
+		print("Fermeture : %s, %d ms après la demande." % [what, Time.get_ticks_msec() - _quit_ms])
+
+
 func _exit_tree() -> void:
+	_quit_step("nœuds de la scène sortis (décor, monde et IPC compris)")
 	if not _route_job.is_empty():
 		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
 	_probe.close()
+	_quit_step("chargement du parcours et sonde fermés")
 
 
 ## Garde-fou de charge (load_guard.gd), une fois par image : coupe ou rend un effet du préréglage selon le

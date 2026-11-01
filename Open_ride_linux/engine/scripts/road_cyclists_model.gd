@@ -18,8 +18,8 @@ extends RefCounted
 ## Vitesse : vitesse de plat tirée du cas, convertie en puissance constante (frottement, pente, air), puis
 ## vitesse sur la pente sous le groupe (dans son sens), recalculée toutes les SPEED_PERIOD_S, au plus MAX_KMH.
 ## Écart latéral : centre à centre, au moins MIN_GAP_M + 2 × RIDER_HALF_WIDTH_M du cycliste (dans la voie de
-## droite, à RIDER_LATERAL_M de l'axe, lot P32) et, à moins de BOT_LOOK_M d'un bot (posé à BOT_LATERAL_M,
-## bots_view.gd), de ce bot : le groupe `ahead` se met en file sur l'accotement. Chacun roule à droite dans
+## droite, à RIDER_LATERAL_M de l'axe, lot P32) et, à moins de BOT_LOOK_M d'un bot (à sa place en travers,
+## BOT_LATERAL_M d'habitude, côte à côte en peloton : bots_view_model.gd), de ce bot : le groupe `ahead` se met en file sur l'accotement. Chacun roule à droite dans
 ## son sens : `ahead` sur le bord droit, `oncoming` sur le bord gauche (sa droite), `overtake` passe à gauche
 ## du cycliste puis se rabat sur le bord droit. Au plus `budget` cyclistes à la fois (`living(preset).cyclists`), supprimés à plus
 ## de REMOVE_BEHIND_M derrière ou REMOVE_AHEAD_M devant. En pause, tout est figé.
@@ -93,7 +93,7 @@ var _next_slot: int = 0
 var _started := false
 var _clock := 0.0
 var _bot_groups: Array = []        # bots de l'image, comme des groupes (lot P32)
-var _last_bots_s: Array = []
+var _last_bots_s: Array = []      # abscisses des bots à l'image précédente (vitesse estimée)
 
 
 ## `climbs` : montées de living_decor.gd (`start_s`, `summit_s`) ; `pois` : seuls les `village` comptent.
@@ -225,8 +225,9 @@ func _grade_at(s: float, dir: int) -> float:
 	return float(smp["grade_pct"]) * float(dir)
 
 
-## Une image : `rider_s`, `rider_v` (m/s) du cycliste ; `bots_s` : abscisses des bots.
-func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, bots_s: Array = []) -> void:
+## Une image : `rider_s`, `rider_v` (m/s) du cycliste ; `bots` : places des bots [{s, lateral}]
+## (bots_view_model.places()).
+func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, bots: Array = []) -> void:
 	last_event = {}
 	if route == null or paused:
 		return
@@ -238,19 +239,21 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, b
 		var ev := slot_event(_next_slot)
 		_next_slot += 1
 		if not ev.is_empty() and rider_count() + int(ev["size"]) <= budget:
-			_spawn(ev, rider_s, rider_v, bots_s)
+			_spawn(ev, rider_s, rider_v, bots)
 	# Bots vus comme des groupes d'un cycliste (lot P32) : vitesse estimée d'une image à l'autre
 	_bot_groups = []
-	for i in range(bots_s.size()):
-		var b := float(bots_s[i])
+	var bots_s := []
+	for i in range(bots.size()):
+		var b := float(bots[i]["s"])
 		var v_b := rider_v
 		if i < _last_bots_s.size() and dt_s > 0.0:
 			v_b = maxf(0.0, (b - float(_last_bots_s[i])) / dt_s)
-		_bot_groups.append({"bot": true, "dir": 1, "s": b, "speed_mps": v_b, "members": [{"lateral": BOT_LATERAL_M}]})
-	_last_bots_s = bots_s.duplicate()
+		_bot_groups.append({"bot": true, "dir": 1, "s": b, "speed_mps": v_b, "members": [{"lateral": float(bots[i]["lateral"])}]})
+		bots_s.append(b)
+	_last_bots_s = bots_s
 	var kept := []
 	for g in groups:
-		_move(g, rider_s, rider_v, dt_s, bots_s)
+		_move(g, rider_s, rider_v, dt_s, bots)
 		var rel := float(g["s"]) - rider_s
 		var gone: bool = g.get("gone", false)
 		if not gone and rel >= -REMOVE_BEHIND_M and rel <= REMOVE_AHEAD_M and float(g["s"]) >= 0.0 and float(g["s"]) <= route.length_m:
@@ -258,7 +261,7 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, b
 	groups = kept
 
 
-func _spawn(ev: Dictionary, rider_s: float, rider_v: float, bots_s: Array = [], at_s: float = NAN) -> void:
+func _spawn(ev: Dictionary, rider_s: float, rider_v: float, bots: Array = [], at_s: float = NAN) -> void:
 	var case_name: String = ev["case"]
 	var dir := -1 if case_name == "oncoming" else 1
 	var s0 := rider_s
@@ -309,7 +312,7 @@ func _spawn(ev: Dictionary, rider_s: float, rider_v: float, bots_s: Array = [], 
 		"speed_mps": flat, "speed_at": -INF, "members": members, "salut": ev["salut"],
 		"behind_t": 0.0, "passed": false, "best_rel": -INF, "side": "left" if dir < 0 else "right",
 	}
-	g["bot_near"] = _bot_near(g, bots_s)
+	g["bot_near"] = _bot_near(g, bots)
 	for m in members:
 		m["lateral"] = _target_lateral(g, m)
 	groups.append(g)
@@ -327,11 +330,11 @@ func place_for_test(rider_s: float, rider_v: float, case_name: String, rel_m: fl
 
 
 ## Vrai si un bot est à moins de BOT_LOOK_M du groupe (de son dernier à son premier).
-func _bot_near(g: Dictionary, bots_s: Array) -> bool:
+func _bot_near(g: Dictionary, bots: Array) -> bool:
 	var head := float(g["s"])
 	var tail := head - float(g["dir"]) * float((g["members"] as Array).size()) * FILE_GAP_M
-	for b in bots_s:
-		if float(b) > minf(head, tail) - BOT_LOOK_M and float(b) < maxf(head, tail) + BOT_LOOK_M:
+	for b in bots:
+		if float(b["s"]) > minf(head, tail) - BOT_LOOK_M and float(b["s"]) < maxf(head, tail) + BOT_LOOK_M:
 			return true
 	return false
 
@@ -358,7 +361,7 @@ func _base_lateral(g: Dictionary, m: Dictionary) -> float:
 	return edge + col
 
 
-func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots_s: Array) -> void:
+func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Array) -> void:
 	var dir: int = g["dir"]
 	var members: Array = g["members"]
 	if _clock - float(g["speed_at"]) >= SPEED_PERIOD_S:
@@ -368,7 +371,7 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots_s: A
 			spd = maxf(rider_v + float(g["delta_mps"]), speed_on_grade(power_for(OVERTAKE_MIN_KMH / 3.6), _grade_at(float(g["s"]), dir)))
 			spd = minf(spd, MAX_KMH / 3.6)
 		g["speed_mps"] = spd
-	var near := _bot_near(g, bots_s)
+	var near := _bot_near(g, bots)
 	g["bot_near"] = near
 	var case_name := str(g["case"])
 	var spd_now := float(g["speed_mps"])
@@ -447,7 +450,7 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots_s: A
 	for m in members:
 		var lat0 := float(m["lateral"])
 		var lat1 := move_toward(lat0, _target_lateral(g, m), SIDE_SPEED_MPS * dt_s)
-		if _side_blocked(g, float(g["s"]) - float(dir) * float(m["dl"]), lat0, lat1, rider_s, bots_s):
+		if _side_blocked(g, float(g["s"]) - float(dir) * float(m["dl"]), lat0, lat1, rider_s, bots):
 			lat1 = lat0
 		m["lateral"] = lat1
 	match case_name:
@@ -495,15 +498,15 @@ func _caught_groups(g: Dictionary) -> Array:
 ## Vrai si passer de `lat0` à `lat1` à l'abscisse `s` rapprocherait un membre du groupe `g` à moins de SIDE_CLEAR_M
 ## d'un cycliste d'un autre groupe, d'un bot ou du cycliste qui roule à côté de lui (lot P32 : on ne se rabat pas
 ## sur quelqu'un, on attend qu'il soit passé).
-func _side_blocked(g: Dictionary, s: float, lat0: float, lat1: float, rider_s: float, bots_s: Array) -> bool:
+func _side_blocked(g: Dictionary, s: float, lat0: float, lat1: float, rider_s: float, bots: Array) -> bool:
 	if absf(lat1 - lat0) < 1e-6:
 		return false
 	var near := []
 	if absf(rider_s - s) < SIDE_LOOK_M:
 		near.append(RIDER_LATERAL_M)
-	for b in bots_s:
-		if absf(float(b) - s) < SIDE_LOOK_M:
-			near.append(BOT_LATERAL_M)
+	for b in bots:
+		if absf(float(b["s"]) - s) < SIDE_LOOK_M:
+			near.append(float(b["lateral"]))
 	for h in groups:
 		if is_same(h, g) or absf(float(h["s"]) - s) > SIDE_LOOK_M + float((h["members"] as Array).size()) * FILE_GAP_M:
 			continue
@@ -556,7 +559,7 @@ func world_position(g: Dictionary, m: Dictionary) -> Vector3:
 	return world_transform(float(g["s"]) - float(g["dir"]) * float(m["dl"]), float(m["lateral"]), int(g["dir"])).origin
 
 
-## Position et cap d'un cycliste (face vers +z local, comme people_mesh.gd) à `s`, `lateral`, dans le sens `dir`.
+## Position, cap et tangage (pente de la route affichée) d'un cycliste (face vers +z local, comme people_mesh.gd) à `s`, `lateral`, dans le sens `dir`.
 func world_transform(s: float, lateral: float, dir: int) -> Transform3D:
 	var smp: Dictionary = route.sample(clampf(s, 0.0, route.length_m))
 	var h := deg_to_rad(float(smp["heading_deg"]))
@@ -564,7 +567,9 @@ func world_transform(s: float, lateral: float, dir: int) -> Transform3D:
 	var right := Vector3(cos(h), 0.0, sin(h))
 	var pos := Vector3(float(smp["x"]), float(smp["y"]), float(smp["z"])) + right * lateral
 	var facing := fwd * float(dir)
-	return Transform3D(Basis(Vector3.UP, atan2(facing.x, facing.z)), pos)
+	# Tangage selon la pente affichée dans le sens de marche (avant vers +z local : rotation −x = nez levé)
+	var pitch: float = route.display_pitch(s) * float(dir)
+	return Transform3D(Basis(Vector3.UP, atan2(facing.x, facing.z)) * Basis(Vector3.RIGHT, -pitch), pos)
 
 
 ## Cadence (tr/min) à `v` (m/s) avec le développement DEVELOPMENT_M ; roue libre au-delà de 55 km/h.

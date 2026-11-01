@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Difficulté du trainer : défaut 50 %, commande `set_difficulty` pendant la séance, HUD (curseur dans O4) | Python + GDScript | — | Petite | Oui (contrat IPC v1.2 accepté le 25 octobre) ; issue #168 |
+| Difficulté du trainer : défaut 50 %, commande `set_difficulty` pendant la séance, HUD (curseur dans O4) | Python + GDScript | — | Petite | Livré le 27 octobre (PR #388) |
 
 ## 1. Objectif
 
@@ -61,3 +61,7 @@ Ajout compatible au contrat IPC (version 1.2, accepté par le propriétaire le 2
 - Bouton du Click ou touche du clavier pour la difficulté (refusé par le propriétaire).
 - Changement de la formule des braquets ou des bornes de pente.
 - La résistance que le trainer calcule lui-même sur le plat (air et roulement, d'après la vitesse de sa roue) : la difficulté ne la change pas.
+
+## Livraison
+
+PR #388, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui (contrat IPC v1.2 accepté le 25 octobre) ; issue #168 ».

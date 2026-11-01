@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Contrat : monde vivant (`live`, grille UTM, route par parties, couches par carré, `junctions.json`), IPC du monde ouvert (révision 1.5), dialogue avec `openride-worldgen` | Markdown + JSON | W0 | Petite | Non : interne (décision du propriétaire) (issue #255) |
+| Contrat : monde vivant (`live`, grille UTM, route par parties, couches par carré, `junctions.json`), IPC du monde ouvert (révision 1.5), dialogue avec `openride-worldgen` | Markdown + JSON | W0 | Petite | Livré le 27 octobre (PR #282) |
 
 ## 1. Objectif
 
@@ -94,3 +94,7 @@ Celles du §4, et elles seules : ajouts compatibles (`v` reste 1, le majeur du f
 ## 8. Hors périmètre
 
 Tout code. Les lots W2 à W15 implémentent ce contrat.
+
+## Livraison
+
+PR #282, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Non : interne (décision du propriétaire) (issue #255) ».

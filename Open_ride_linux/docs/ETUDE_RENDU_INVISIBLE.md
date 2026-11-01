@@ -8,7 +8,7 @@ Rapport du lot S1 (`docs/lots/LOT_S1_rendu_invisible.md`, issue #190) : ce qui e
 |---|---|---|---|
 | Tuiles lointaines (5 km) | à moins de la fin du brouillard plus une tuile (Y1 : 9 / 11 / 12 km) | tri de Godot sur le cadre de la caméra | derrière la caméra, environ la moitié ; peu coûteuses (maille de 50 m) |
 | Tuiles proches (1 km) | toutes à moins de 1 500 m de la caméra et du point visé 10 s plus loin, **derrière comprises** | tri de Godot sur le cadre | environ la moitié derrière la caméra, construites quand même (sommets, arbres, bâtiments exclus) |
-| Arbres | 16 cases de 250 m par tuile proche | LOD 0 jusqu'à 300 m (ombres), LOD 1 jusqu'à 1 500 m | ceux des tuiles derrière ; le budget retirait les cases les plus éloignées, **même devant** |
+| Arbres | 16 cases de 250 m par tuile proche | LOD 0 jusqu'à 450 m (ombres), LOD 1 jusqu'à 1 500 m | ceux des tuiles derrière ; le budget retirait les cases les plus éloignées, **même devant** |
 | Tronçons de route et OSM (bâtiments, eau) | de 1 tronçon derrière à 3 / 5 / 8 devant | bâtiments jusqu'à 1,5 / 2,5 / 4 km | un tronçon derrière |
 | Relief et bâtiments qui masquent | – | rien n'est masqué (pas d'occulteurs) | tout ce qui est derrière une colline ou un village |
 | Décor vivant, bots | mis à jour à chaque image | sélection des plus proches, derrière compris | ceux derrière la caméra |

@@ -7,13 +7,12 @@ extends RefCounted
 ##   premier focus ; A maintenu sur un profil le choisit (`select_profile`) ; puis « Nouveau profil »
 ##   (moins de huit profils) et « Gérer un profil ». Ouvert au démarrage avec au moins deux profils joueur,
 ##   et depuis la ligne « Profil : … » de l'accueil.
-## - « Nom du profil » (NAME) : grille de lettres pensée pour le Click. + et − passent à la case suivante
-##   ou précédente, + et − maintenus sautent d'une ligne, Z écrit la lettre, Y efface la dernière (nom vide :
-##   retour), A maintenu valide (`create_profile` ou `rename_profile`). Au clavier on tape le nom (Entrée
-##   valide, Retour arrière efface) ; à la souris, un clic écrit la lettre, « Effacer » et « Valider » en
-##   fin de grille. Nom proposé à la création : « Cycliste N ».
+## - « Nom du profil » (NAME) : saisie de texte partagée (text_entry.gd, lot O31) ; A maintenu valide
+##   (`create_profile` ou `rename_profile`). Nom proposé à la création : « Cycliste N ».
 ## - « Gérer » (MANAGE_LIST puis MANAGE) : Renommer, Supprimer (confirmation, « Non » par défaut ; le
 ##   profil en cours et le dernier profil joueur ne se suppriment pas).
+## - « Gérer un profil » finit par « Vider le profil d'essai » (confirmation, `clear_trial_profile`) et
+##   « Restaurer un profil supprimé » (RESTORE : profils de la corbeille, `restore_profile`), lot O33.
 ## - Profil d'essai : titre « OpenRide — PROFIL D'ESSAI » et bandeau « ESSAI » au HUD (`is_trial()`).
 ##
 ## Le core contrôle les noms (`name_invalid`) ; le modèle n'empêche que ce que la grille ne sait pas écrire.
@@ -22,27 +21,34 @@ const SCREEN := "profiles"
 const NAME := "profile_name"
 const MANAGE_LIST := "profile_manage_list"
 const MANAGE := "profile_manage"
-const SCREENS := [SCREEN, NAME, MANAGE_LIST, MANAGE]
+const RESTORE := "profile_restore"
+const SCREENS := [SCREEN, NAME, MANAGE_LIST, MANAGE, RESTORE]
+const CLEAR_TRIAL_ID := "clear_trial"
+const RESTORE_ID := "restore"
 const MAX_PROFILES := 8
 const NAME_MAX := 16
-const GRID_COLUMNS := 10
-## Cases de la grille, dans l'ordre (les lettres s'écrivent en minuscules, une majuscule en début de mot).
-const GRID := ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
-	"K", "L", "M", "N", "O", "P", "Q", "R", "S", "T",
-	"U", "V", "W", "X", "Y", "Z", "é", "è", "ê", "à",
-	"ç", "ô", "ï", "ü", "-", " ", "0", "1", "2", "3",
-	"4", "5", "6", "7", "8", "9"]
-const ERASE := "erase"
-const VALIDATE := "validate"
+const TextEntry := preload("res://scripts/text_entry.gd")
+const GRID_COLUMNS := TextEntry.GRID_COLUMNS
+const ERASE := TextEntry.ERASE
+const VALIDATE := TextEntry.VALIDATE
 const TRIAL_TITLE := "PROFIL D'ESSAI"
 
 ## Dernier message `profiles` : profil en cours et éléments {id, name, type, level, last_ride, kit_primary}.
 var items: Array = []
 var active := ""
+## Corbeille (`profiles.trash`, lot O33) : {id, name, deleted}, les plus récents d'abord.
+var trash: Array = []
+## Message affiché à la réponse `profiles` de la demande en cours (vider, restaurer) ; "" : aucune.
+var done_message := ""
 ## `hello_ack.config.profile` : {id, name, type, count} ({} : core sans profils, rien n'est affiché).
 var profile: Dictionary = {}
 ## Saisie du nom en cours : texte, « create » ou « rename » et profil renommé.
-var name_text := ""
+var entry = TextEntry.new(NAME_MAX)
+var name_text: String:
+	get:
+		return entry.text
+	set(value):
+		entry.text = value
 var name_mode := ""
 var rename_id := ""
 ## Profil ouvert dans « Gérer ».
@@ -96,13 +102,19 @@ func on_profiles(msg: Dictionary) -> void:
 	var raw = msg.get("items", [])
 	items = raw if raw is Array else []
 	active = str(msg.get("active", "")) if msg.get("active") != null else ""
+	var t = msg.get("trash", [])
+	trash = t if t is Array else []
 	if message == "Enregistrement…":
 		message = ""
+	if done_message != "":
+		message = done_message
+		done_message = ""
 
 
 func on_error(code: String, text: String) -> bool:
 	if code not in ["name_invalid", "profile_invalid", "busy"]:
 		return false
+	done_message = ""
 	message = ("Nom refusé : " if code == "name_invalid" else "") + text
 	return true
 
@@ -141,7 +153,8 @@ func who_items() -> Array:
 	if _players().size() < MAX_PROFILES:
 		out.append({"id": "new", "label": "Nouveau profil", "enabled": true, "detail": ""})
 	if _players().size() > 0:
-		out.append({"id": "manage", "label": "Gérer un profil", "enabled": true, "detail": "renommer, supprimer"})
+		out.append({"id": "manage", "label": "Gérer un profil", "enabled": true,
+			"detail": "renommer, supprimer, restaurer, vider l'essai"})
 	return out
 
 
@@ -150,7 +163,33 @@ func manage_list_items() -> Array:
 	for it in _players():
 		out.append({"id": "p:" + str(it["id"]), "label": str(it.get("name", it["id"])), "enabled": true,
 			"detail": ride_text(it)})
+	var room := _players().size() < MAX_PROFILES
+	out.append({"id": RESTORE_ID, "label": "Restaurer un profil supprimé", "enabled": not trash.is_empty() and room,
+		"detail": ("corbeille vide" if trash.is_empty() else ("%d dans la corbeille" % trash.size()
+			if room else "8 profils au plus"))})
+	out.append({"id": CLEAR_TRIAL_ID, "label": "Vider le profil d'essai", "enabled": true,
+		"detail": "séances, pièces et records d'essai"})
 	return out
+
+
+## Profils de la corbeille (écran RESTORE) : nom et date de la suppression.
+func restore_items() -> Array:
+	var out: Array = []
+	for it in trash:
+		var d := str(it.get("deleted", ""))
+		out.append({"id": "t:" + str(it.get("id", "")), "label": str(it.get("name", "")), "enabled": true,
+			"detail": ("supprimé le %s/%s" % [d.substr(8, 2), d.substr(5, 2)]) if d.length() == 10 else ""})
+	if out.is_empty():
+		out.append({"id": "none", "label": "Corbeille vide", "enabled": false, "detail": ""})
+	return out
+
+
+## Nom d'un profil de la corbeille (message de la restauration).
+func trash_name(entry_id: String) -> String:
+	for it in trash:
+		if str(it.get("id", "")) == entry_id:
+			return str(it.get("name", entry_id))
+	return entry_id
 
 
 func manage_items() -> Array:
@@ -204,61 +243,26 @@ func name_title() -> String:
 
 
 func grid_items() -> Array:
-	var out: Array = []
-	for i in range(GRID.size()):
-		var ch: String = GRID[i]
-		out.append({"id": "c:%d" % i, "label": "␣" if ch == " " else ch, "enabled": true, "detail": ""})
-	out.append({"id": ERASE, "label": "Effacer", "enabled": true, "detail": ""})
-	out.append({"id": VALIDATE, "label": "Valider", "enabled": true, "detail": ""})
-	return out
-
-
-## Lettre à écrire pour la case `index` : majuscule en début de mot, sinon minuscule.
-func _char_for(ch: String) -> String:
-	var start := name_text == "" or name_text.ends_with(" ") or name_text.ends_with("-")
-	return ch.to_upper() if start else ch.to_lower()
-
-
-func type_char(ch: String) -> void:
-	if ch == "" or name_text.length() >= NAME_MAX:
-		return
-	if ch == " " and (name_text == "" or name_text.ends_with(" ")):
-		return   # pas d'espace en tête ni deux de suite
-	name_text += ch
-	message = ""
+	return entry.grid_items()
 
 
 func backspace() -> bool:
-	if name_text == "":
+	if not entry.backspace():
 		return false
-	name_text = name_text.substr(0, name_text.length() - 1)
 	message = ""
 	return true
 
 
 ## Case de la grille activée (Z, ou clic) ; renvoie une action pour le core ou {}.
 func press_cell(item_id: String) -> Dictionary:
-	if item_id == ERASE:
-		backspace()
-		return {}
-	if item_id == VALIDATE:
-		return validate()
-	if item_id.begins_with("c:"):
-		var i := int(item_id.substr(2))
-		if i >= 0 and i < GRID.size():
-			var ch: String = GRID[i]
-			type_char(ch if ch == " " or ch == "-" or ch.is_valid_int() else _char_for(ch))
-	return {}
+	message = ""
+	return validate() if entry.press_cell(item_id) == TextEntry.VALIDATE else {}
 
 
 ## Saisie au clavier : lettres (accents compris), chiffres, espace et tiret ; le reste est ignoré.
 func type_text(ch: String) -> bool:
-	if ch.length() != 1:
-		return false
-	if ch.to_lower() != ch.to_upper() or ch.is_valid_int() or ch == " " or ch == "-":
-		type_char(ch)
-		return true
-	return false
+	message = ""
+	return entry.type_text(ch)
 
 
 func validate() -> Dictionary:

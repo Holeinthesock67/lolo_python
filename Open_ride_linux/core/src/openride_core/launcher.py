@@ -52,6 +52,12 @@ Relance demandée depuis le menu (lot N13) :
   relances après un plantage gardent le mode en cours, et la reprise cherche alors les journaux
   du profil d'essai.
 
+Fermeture bloquée de l'engine (lot X55) : l'engine écrit en dernier « Fermeture : scène libérée, arrêt des
+serveurs de Godot (code N) ». Sur le PC (écran réel, pilote NVIDIA), après un clic de souris sur « Quitter »,
+l'arrêt de Godot qui suit restait bloqué, tout le travail du jeu déjà fait (séance, `bye`). Passé
+`ENGINE_SHUTDOWN_S` après cette ligne, le lanceur arrête le processus et retient le code annoncé : 0 ferme
+OpenRide, 64 et 65 relancent comme d'habitude.
+
 Lancement sans terminal (lot N14) :
 - premier démarrage : sans `~/OpenRide/config.toml`, il est créé depuis
   `scripts/config.example.toml`, avec `~/OpenRide/GPX/` et `~/OpenRide/Workouts/`, et le core
@@ -96,10 +102,23 @@ MAX_LOGS_BYTES = 200 * 1024 * 1024
 DEFAULT_ENGINE_DIR = Path(__file__).resolve().parents[3] / "engine"
 # Sans --autostart depuis le lot N6 : parcours et entraînement se choisissent dans les menus de l'engine.
 DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click"]
+# Arguments de l'engine (engine/scripts/engine_args.gd) que `build_supervisor` ne tire pas de config.toml,
+# avec leur raison (lot X53) : `core/tests/test_options_menus.py` vérifie que chaque argument lu par
+# l'engine est passé ici depuis la configuration ou rangé dans cette liste, jamais les deux.
+ENGINE_ARGS_NOT_FROM_CONFIG: dict[str, str] = {
+    "--sim-session": "posé par le lanceur en session simulée (code 65)",
+    "--test-mode": "outils de test",
+    "--routes-dir": "outils de test",
+    "--culling": "essai du lot S1, aucun gain mesuré",
+    "--gravel": "à relier : lot U16",
+    "--biome": "à relier : lot U16",
+}
 
 # Code de sortie de l'engine : « tout relancer » (menu « Appareils », lot N13 ; engine/scripts/main.gd).
 EXIT_RELAUNCH = 64
 EXIT_SIM = 65
+ENGINE_DONE = re.compile(r"Fermeture : scène libérée, arrêt des serveurs de Godot \(code (\d+)\)")
+ENGINE_SHUTDOWN_S = 3.0   # attente de la sortie de Godot après sa dernière ligne (une sortie normale : < 1 s)
 # Options du core en session simulée (remplacent --trainer, --input, --hr, --sim-scenario et --profil) :
 # matériel simulé et profil d'essai (série MJ, lot MJ2).
 SIM_PROFILE = "_essai"
@@ -180,8 +199,9 @@ class LogRotation:
 
 
 CONFIG_TEMPLATE = Path(__file__).resolve().parents[3] / "scripts" / "config.example.toml"
-FIRST_RUN_INFO = ("Bienvenue dans OpenRide. Configurez vos appareils : openride-core devices --save "
-                  "(la section « Appareils » du menu viendra plus tard).")
+FIRST_RUN_INFO = ("Bienvenue dans OpenRide. Au premier écran, « Rechercher et appairer » relie le home "
+                  "trainer, le Zwift Click et la ceinture cardio. Les entraînements, deux plans et des "
+                  "parcours de démonstration s'installent pendant ce temps (Réglages › Contenus).")
 PORT_IN_USE_RE = re.compile(r"Impossible de démarrer l'IPC UDP.*(Address already in use|déjà utilisée|Errno 98)")
 TRAINER_REFUSED_RE = re.compile(r"Le trainer refuse le contrôle FTMS")
 
@@ -238,6 +258,33 @@ def desktop_message(message: str, error: bool = True) -> None:
         _run_dialog(["notify-send", "-u", "critical" if error else "normal", title, message])
 
 
+def desktop_question(question: str) -> bool:
+    """Question oui ou non dans une fenêtre (zenity, sinon kdialog) ; faux sans l'un des deux ou sur « Non »."""
+    import shutil
+
+    if os.environ.get("OPENRIDE_NO_GUI") == "1":
+        return False
+    if shutil.which("zenity"):
+        cmd = ["zenity", "--question", "--no-wrap", "--title=OpenRide", f"--text={question}",
+               "--ok-label=Oui", "--cancel-label=Non"]
+    elif shutil.which("kdialog"):
+        cmd = ["kdialog", "--title", "OpenRide", "--yesno", question]
+    else:
+        return False
+    try:
+        return subprocess.run(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL, check=False).returncode == 0
+    except OSError:
+        return False
+
+
+def terminal_question(question: str) -> bool:
+    try:
+        return input(f"openride : {question} [o/N] ").strip().lower() in ("o", "oui", "y", "yes")
+    except EOFError:
+        return False
+
+
 def ensure_first_run(home: Path | None = None, template: Path | None = None) -> bool:
     """Premier démarrage : crée la configuration et les dossiers ; vrai si la configuration manquait."""
     from . import config as config_mod
@@ -290,6 +337,7 @@ class Supervisor:
     log_path: Path
     stop_timeout_s: float = 10.0       # délai laissé au core pour relâcher le trainer
     engine_stop_timeout_s: float = 5.0
+    engine_shutdown_s: float = ENGINE_SHUTDOWN_S
     max_restarts: int = 3
     restart_window_s: float = 120.0
     restart_delay_s: float = 1.0
@@ -329,6 +377,7 @@ class Supervisor:
     _log: IO[bytes] | None = field(default=None, init=False)
     _log_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
     _readers: list[threading.Thread] = field(default_factory=list, init=False)
+    _engine_done: tuple[float, int] | None = field(default=None, init=False)   # (heure, code) de la ligne de fin
 
     # --- journal -----------------------------------------------------------------------
 
@@ -395,6 +444,9 @@ class Supervisor:
                 if not line.endswith(b"\n"):
                     line += b"\n"
                 self._write_log(b"[engine] " + line)
+                done = ENGINE_DONE.search(line.decode("utf-8", "replace"))
+                if done:
+                    self._engine_done = (time.monotonic(), int(done.group(1)))
         except (OSError, ValueError):
             pass
         finally:
@@ -467,6 +519,7 @@ class Supervisor:
             self._say(f"`openride-core recover` impossible : {exc}")
 
     def _start_engine(self) -> subprocess.Popen:
+        self._engine_done = None
         if self._log is None:
             return self._spawn(self._engine_cmd(), stdin=subprocess.DEVNULL)
         p = self._spawn(self._engine_cmd(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -508,6 +561,20 @@ class Supervisor:
                 p.wait()
         except OSError as exc:
             self._say(f"libération du trainer impossible : {exc}")
+
+    def _engine_exit(self, engine: subprocess.Popen) -> int | None:
+        """Code de sortie de l'engine, None s'il tourne. Arrêt de Godot bloqué `engine_shutdown_s` après la ligne de
+        fin (scène libérée) : processus arrêté, code annoncé par cette ligne retenu."""
+        if engine.poll() is not None:
+            return engine.returncode
+        done = self._engine_done
+        if done is None or time.monotonic() - done[0] < self.engine_shutdown_s:
+            return None
+        self._say(f"l'engine ne sort pas {self.engine_shutdown_s:.0f} s après avoir libéré sa scène (arrêt de Godot "
+                  f"bloqué) : processus arrêté, code {done[1]} retenu.")
+        engine.kill()
+        engine.wait()
+        return done[1]
 
     def _stop_engine(self, engine: subprocess.Popen | None) -> None:
         if engine is None:
@@ -617,8 +684,8 @@ class Supervisor:
                     self.core_restarts += 1
                     continue
 
-                if engine.poll() is not None:
-                    code = engine.returncode
+                code = self._engine_exit(engine)
+                if code is not None:
                     if code == 0:
                         return self._finish(core, engine, 0)
                     if code in (EXIT_RELAUNCH, EXIT_SIM):
@@ -895,8 +962,12 @@ def release_trainer_from_desktop(args: list[str], notify: Callable[[str, bool], 
     return 0 if code == 0 else 1
 
 
-def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | None = None) -> int:
-    """`openride` ; `message(texte, erreur)` affiche une fenêtre (défaut : sans terminal seulement)."""
+def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | None = None,
+         ask: Callable[[str], bool] | None = None) -> int:
+    """`openride` ; `message(texte, erreur)` affiche une fenêtre (défaut : sans terminal seulement) ;
+    `ask(question)` pose une question oui ou non (fenêtre, ou terminal quand il y en a un)."""
+    from . import config as config_mod
+    from . import config_repair
     from .config import ConfigError
 
     args = list(sys.argv[1:] if argv is None else argv)
@@ -908,6 +979,8 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
         return 0
     if message is None:
         message = (lambda text, error: None) if _default_echo() else desktop_message
+    if ask is None:
+        ask = terminal_question if _default_echo() else desktop_question
     if "--release-trainer" in args:
         args.remove("--release-trainer")
         return release_trainer_from_desktop(args, message)
@@ -929,14 +1002,27 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
         if warning:
             print(f"openride : {warning}", file=sys.stderr)
             message(warning, True)
-    try:
-        sup = build_supervisor(args)
-    except ConfigError as exc:
-        return fail(f"configuration invalide : {exc}")
-    except ValueError as exc:
-        return fail(str(exc))
-    except FileNotFoundError as exc:
-        return fail(str(exc))
+    for _ in range(config_repair.MAX_REPAIRS + 1):
+        try:
+            sup = build_supervisor(args)
+            break
+        except ConfigError as exc:
+            # Lot O34 : valeur invalide remise par défaut (ou fichier illisible remis à neuf) sur accord.
+            config_path = _config_arg(args) or config_mod.DEFAULT_CONFIG_PATH
+            fix = config_repair.proposal(exc, Path(config_path).expanduser(), config_mod.active_profile_file(),
+                                         CONFIG_TEMPLATE)
+            if fix is None or not ask(fix.question):
+                return fail(f"configuration invalide : {exc}")
+            try:
+                print(f"openride : {fix.apply()}", flush=True)
+            except OSError as err:
+                return fail(f"configuration invalide : {exc} (réparation impossible : {err})")
+        except ValueError as exc:
+            return fail(str(exc))
+        except FileNotFoundError as exc:
+            return fail(str(exc))
+    else:
+        return fail("configuration invalide : trop de valeurs à réparer, voir ~/OpenRide/config.toml")
     sup.alert = lambda text: message(text, True)
     if first_run:
         sup.core_cmd.append("--first-run")

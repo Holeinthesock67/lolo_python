@@ -7,7 +7,7 @@ Usage : visual_check.py --godot CHEMIN [--configs 1280x720:low,…] [--out DOSSI
 Pour chaque configuration (résolution et préréglage de qualité), le script lance l'engine avec sa
 vraie scène (`main.tscn`) sous Xvfb (OpenGL logiciel de Mesa, moteur Compatibility), face au faux
 core de `fake_core.py`, et lui fait parcourir des scènes de séance : attente du core, vue fixe,
-mouvement, ERG, pause, core muet, reprise, erreur. À chaque étape, l'engine (en `--test-mode`)
+mouvement, ERG, fin d'un entraînement, pause, core muet, reprise, erreur. À chaque étape, l'engine (en `--test-mode`)
 enregistre l'image affichée et l'état de son HUD (textes, visibilité, rectangles à l'écran) ; le
 script vérifie alors :
 
@@ -374,13 +374,15 @@ class Session:
         # Scène de référence : capture reprise tant que des tuiles voulues manquent (`streaming_pending`, comme le
         # tour visuel X21). Une attente fixe ne suffisait pas : `vue_fixe` en low sur le PC (31 octobre) sortait
         # sans terrain ni arbres, sol brun et personnage en l'air, et la SSIM variait d'un passage à l'autre.
+        # Même reprise tant que le rappel des commandes du départ (10 s) est affiché : présent sur une capture et pas
+        # sur l'autre, il faisait tomber `vue_fixe` à SSIM 0,96 face à sa référence (PC, 1er novembre).
         tries = PENDING_RETRIES if scene in GOLDEN_SCENES else 1
         for attempt in range(tries):
             mark = self.core.log.mark()
             self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
                                 "path": str(png), "tag": scene})
             hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0, mark)
-            if hit is None or int(json.loads(hit[1].group(1)).get("streaming_pending", 0)) == 0:
+            if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
                 break
             if attempt < tries - 1:
                 time.sleep(1.0)
@@ -518,6 +520,15 @@ class Session:
 ## image à l'autre sur le grain fin de la route et du terrain (Y11), environ 0,1 niveau ; un défilement à
 ## 8 m/s donne environ 3 niveaux.
 GROUND_SCROLL_LEVEL = 0.2
+
+
+def capture_unsettled(info: dict[str, Any]) -> bool:
+    """Capture d'une scène de référence à reprendre : tuiles du terrain en attente, ou rappel des commandes du
+    départ de séance encore affiché (il s'efface seul au bout de 10 s)."""
+    if int(info.get("streaming_pending", 0)) > 0:
+        return True
+    b = info.get("widgets", {}).get("banner", {})
+    return bool(b.get("visible")) and str(b.get("text", "")).startswith(CONTROLS_HINT_PREFIX)
 
 
 def ground_box(s: Session, info: dict[str, Any]) -> tuple[int, int, int, int]:
@@ -977,6 +988,31 @@ def _scenes(s: Session) -> None:
     core.send_hello_ack()
     time.sleep(0.5)
 
+    # 4 ter. Fin d'un entraînement (constat du vélo du 1er novembre) : invite au bandeau, sans alerte rouge,
+    # puis pause ouverte sur « Terminer et enregistrer », que la ligne sous le titre rappelle.
+    core.set_scene(speed=SPEED_MPS, mode="SIM", erg=None, workout_done={"workout_name": "Sweet spot"})
+    time.sleep(SETTLE_S)
+    shot = s.capture("fin_entrainement")
+    if shot:
+        img, info = shot
+        b = info["widgets"]["banner"]
+        s.check("fin_entrainement", "invite de fin d'entraînement au bandeau",
+                b["visible"] and "« Sweet spot » terminé : Y puis A maintenu pour terminer et enregistrer" in b["text"],
+                f"« {b['text']} »")
+        s.check_layout("fin_entrainement", info)
+    core.set_scene(speed=0.0, session_state="PAUSED", pause_reason="user", power=0.0, power_3s=0.0, cadence=0.0)
+    time.sleep(SETTLE_S)
+    shot = s.capture("fin_entrainement_pause")
+    if shot:
+        img, info = shot
+        s.check_texts("fin_entrainement_pause", info, {"menu": "Reprendre | [Terminer et enregistrer]"}, contains=True)
+        s.check_texts("fin_entrainement_pause", info,
+                      {"menu": "Entraînement terminé : A maintenu pour terminer et enregistrer"}, contains=True)
+        s.check_layout("fin_entrainement_pause", info)
+    core.set_scene(speed=SPEED_MPS, session_state="RUNNING", pause_reason=None, workout_done=None,
+                   power=250.0, power_3s=248.0, cadence=90.0)
+    time.sleep(1.0)
+
     # 5. Pause : trainer perdu, raison visible sous le titre du menu de pause.
     core.set_scene(speed=0.0, s=FIXED_S, mode="SIM", erg=None, session_state="PAUSED", pause_reason="trainer_lost",
                    trainer_status="RECONNECTING", power=0.0, power_3s=0.0, cadence=0.0)
@@ -1039,6 +1075,7 @@ def _scenes(s: Session) -> None:
     _pentes_scenes(s)
     _decor_vivant_scene(s)
     _voies_scene(s)
+    _peloton_face_scene(s)
     fps = [c.info.get("fps", 0) for c in s.report.captures if c.config == s.name]
     s.check("journal", "rendu actif (images par seconde)", bool(fps) and max(fps) >= 1, f"fps relevés : {fps}")
 
@@ -1123,6 +1160,9 @@ def _pentes_scenes(s: Session) -> None:
 ## Avec la graine 0 de traffic_model.gd, la case de 1 500 à 1 750 m porte un utilitaire qui double.
 OSM_ROUTE_ID = "osm-test"
 DECOR_S = 1480.0
+ROAD_HALF_WIDTH_M = 3.0   # RoadBuilder.ROAD_WIDTH_M / 2, SHOULDER_WIDTH_M et TrafficModel.VERGE_M (peloton_face)
+SHOULDER_M = 0.5
+VERGE_M = 0.25
 DECOR_WAIT_S = 30.0
 DECOR_PAUSE_S = 2.0
 DECOR_KINDS = {"animals": "troupeau", "birds": "oiseaux", "vehicles": "véhicule croisé",
@@ -1272,6 +1312,61 @@ def _voies_scene(s: Session) -> None:
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
 
 
+
+def _peloton_face_scene(s: Session) -> None:
+    """Demande du 31 octobre (« et si véhicule en face ? ») : cinq bots de front devant le cycliste arrêté
+    (peloton au départ), puis une voiture posée en face (`decor_place`). Les bots serrent à droite, deux de front
+    au plus, en file derrière au besoin (bots_view_model.gd) ; la voiture croise sur la chaussée, sans contact."""
+    core = s.core
+    s_now = core.current_s() + 400.0   # loin des véhicules des scènes précédentes
+    core.set_scene(speed=0.0, s=s_now, bots=[
+        {"id": f"p{i}", "name": f"Bot {i + 1}", "s": s_now + 12.0 + 0.3 * i, "v": 0.0, "kind": "constant"}
+        for i in range(5)])
+    shot = None
+    t0 = now()
+    while now() - t0 < PASS_WAIT_S:   # la caméra rejoint le saut de s à son rythme
+        time.sleep(SETTLE_S)
+        shot = s.capture("peloton_large")
+        if shot and any(0.0 < b["rel_m"] < 30.0 for b in shot[1].get("decor", {}).get("bot_places", [])):
+            break
+    caps = [c for c in s.report.captures if c.config == s.name and c.scene == "peloton_large"]
+    for c in caps[:-1]:
+        s.report.captures.remove(c)
+    if shot:
+        lats = sorted(round(b["lateral"], 1) for b in shot[1].get("decor", {}).get("bot_places", []))
+        near = [b for b in shot[1].get("decor", {}).get("bot_places", []) if 0.0 < b["rel_m"] < 30.0]
+        s.check("peloton_large", "peloton au départ : cinq bots de front, devant le cycliste", len(set(lats)) == 5 and len(near) == 5,
+                f"{lats}, {len(near)} à moins de 30 m")
+    # Posée assez près pour croiser le peloton même quand le décor avance lentement (Xvfb, --fige) : les bots
+    # serrent à droite dès qu'elle est là, elle attend devant eux s'ils ne lui laissent pas encore la place.
+    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 45.0, "kmh": 40.0})
+    shot = None
+    t0 = now()
+    while now() - t0 < PASS_WAIT_S:
+        time.sleep(0.5)
+        shot = s.capture("peloton_face")
+        dec = shot[1].get("decor", {}) if shot else {}
+        near = [u for u in dec.get("road_users", []) if u["what"] == "vehicle" and u["dir"] < 0 and u["rel_m"] < 50.0]
+        bots = dec.get("bot_places", [])
+        if near and bots and all(b["lateral"] >= 0.0 for b in bots):
+            break
+    caps = [c for c in s.report.captures if c.config == s.name and c.scene == "peloton_face"]
+    for c in caps[:-1]:
+        s.report.captures.remove(c)
+    if shot:
+        dec = shot[1].get("decor", {})
+        cars = [u for u in dec.get("road_users", []) if u["what"] == "vehicle" and u["dir"] < 0 and u["rel_m"] < 50.0]
+        bots = dec.get("bot_places", [])
+        edge = ROAD_HALF_WIDTH_M + SHOULDER_M + VERGE_M
+        s.check("peloton_face", "voiture d'en face sur la chaussée", bool(cars) and all(abs(u["lateral"]) + u["half_width"] <= edge + 1e-3 for u in cars),
+                ", ".join(f"{u['lateral']:+.2f} m" for u in cars) or "aucune près des bots")
+        s.check("peloton_face", "bots serrés à droite, deux de front au plus", bool(bots) and all(b["lateral"] >= 0.0 for b in bots),
+                ", ".join(f"{b['lateral']:+.2f} m à {b['rel_m']:+.1f} m" for b in bots))
+        _check_contacts(s, "peloton_face", shot[1])
+    core.set_scene(bots=None)
+    time.sleep(1.0)
+
+
 def _menu_scenes(s: Session) -> None:
     """Lot N6 : accueil avec l'état des appareils, liste des parcours au Click, bilan de fin ; menus en plein
     écran du lot « présentation des menus » : accueil entier, sélection en cyan, HUD caché ; étape 2 : carte
@@ -1408,6 +1503,70 @@ def _menus_only(s: Session) -> None:
     s.check("menus", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
     time.sleep(SETTLE_S)
     _menu_scenes(s)
+
+
+def _quality_guard_scenes(s: Session) -> None:
+    """`--garde-qualite` (lot X32, garde-fou de régression) : la qualité demandée par `--quality` est appliquée au
+    démarrage et à la première capture ; un réglage `render.quality` absent ou égal ne change rien ; une autre
+    valeur est appliquée tout de suite (source `reglage`) ; une valeur inconnue est notée sans rien changer ;
+    revenu à la qualité demandée, la dernière capture la porte. Le contrôle final de run_config vérifie le tout."""
+    core = s.core
+    wanted = s.name.split("_")[1]   # 1280x720_medium[_k2.5]
+    other = "high" if wanted != "high" else "medium"
+    started = core.log.wait_for(r"^quality applied=(\w+) requested=(\S+) source=(\w+)", 20.0)
+    s.check("garde_qualite", "qualité du démarrage", started is not None and started[1].groups() == (wanted, wanted, "cli"),
+            started[1].string if started else "aucune ligne « quality applied »")
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="RUNNING", power=200.0, mode="SIM", erg=None, pause_reason=None,
+                   trainer_status="CONNECTED", input_status="CONNECTED")
+    core.auto_hello_ack = True
+    core.catalog_data = MENU_CATALOG
+    core.streaming = True
+    loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
+    s.check("garde_qualite", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    time.sleep(SETTLE_S)
+    shot = s.capture("garde_qualite_depart")
+    if shot:
+        s.check("garde_qualite_depart", "qualité portée par la capture", shot[1].get("quality") == wanted,
+                f"{shot[1].get('quality')!r}, attendu {wanted!r}")
+
+    def send_quality(value: str | None) -> list[str]:
+        """Réglages du core avec `render.quality` à `value` (absent si None) ; lignes « quality » qui suivent.
+        `current` : qualité appliquée d'après le journal (aucune ligne attendue si `value` l'est déjà)."""
+        items = [{"key": "render.fps", "label": "Afficher les images/s", "group": "graphics", "type": "choice",
+                  "value": "off", "choices": ["off", "on", "detail"], "applies": "now"}]
+        if value is not None:
+            items.append({"key": "render.quality", "label": "Qualité graphique", "group": "graphics", "type": "choice",
+                          "value": value, "choices": ["low", "medium", "high"], "applies": "now"})
+        mark = core.log.mark()
+        core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": items})
+        # Un préréglage plus lourd se met en place en plusieurs secondes sous Xvfb (rendu logiciel).
+        core.log.wait_for(r"^quality applied=", 1.5 if value in (None, current[0]) else 15.0, mark)
+        time.sleep(0.3)
+        lines = [line for _, line in core.log.since(mark) if line.startswith("quality applied=")]
+        if lines:
+            current[0] = lines[-1].split()[1].split("=")[1]
+        return lines
+
+    current = [wanted]
+
+    lines = send_quality(None)
+    s.check("garde_qualite", "réglage sans render.quality : qualité inchangée", not lines, " | ".join(lines) or "aucune ligne")
+    lines = send_quality(wanted)
+    s.check("garde_qualite", f"réglage {wanted} (déjà appliquée) : rien à refaire", not lines, " | ".join(lines) or "aucune ligne")
+    lines = send_quality(other)
+    s.check("garde_qualite", f"réglage {other} : appliquée tout de suite",
+            lines == [f"quality applied={other} requested={other} source=reglage"], " | ".join(lines) or "aucune ligne")
+    lines = send_quality("ultra")
+    s.check("garde_qualite", "réglage inconnu : noté, qualité inchangée",
+            lines == [f"quality applied={other} requested=ultra source=reglage"], " | ".join(lines) or "aucune ligne")
+    lines = send_quality(wanted)
+    s.check("garde_qualite", f"retour à {wanted}",
+            lines == [f"quality applied={wanted} requested={wanted} source=reglage"], " | ".join(lines) or "aucune ligne")
+    time.sleep(SETTLE_S)
+    shot = s.capture("garde_qualite_fin")
+    if shot:
+        s.check("garde_qualite_fin", "qualité portée par la capture", shot[1].get("quality") == wanted,
+                f"{shot[1].get('quality')!r}, attendu {wanted!r}")
 
 
 def _draft_gauge_scene(s: Session) -> None:
@@ -1712,6 +1871,8 @@ def main() -> int:
                     help=f"scène figée : décor vivant, nuages, herbe et personnages arrêtés à l'instant T (défaut {FREEZE_T:g} s)")
     ap.add_argument("--decor-vivant", choices=("on", "off"), default="on",
                     help="off : décor vivant coupé, rendu de la 1.0 (références dans <préréglage>_sans_vivant)")
+    ap.add_argument("--garde-qualite", action="store_true",
+                    help="seulement le garde-fou de la qualité appliquée (démarrage, réglages du core, lot X32)")
     ap.add_argument("--lisibilite", action="store_true",
                     help="hauteur des chiffres et contraste des textes du HUD sur chaque capture (lot X22)")
     args = ap.parse_args()
@@ -1748,7 +1909,8 @@ def main() -> int:
         shutil.copytree(osm_work / f"{OSM_ROUTE_ID}.world", routes_dir / f"{OSM_ROUTE_ID}.world")
         shutil.rmtree(osm_work, ignore_errors=True)
         for config in [c.strip() for c in args.configs.split(",") if c.strip()]:
-            run_config(config, args, routes_dir, out_dir, report, _menus_only if args.menus else None)
+            scenes = _quality_guard_scenes if args.garde_qualite else _menus_only if args.menus else None
+            run_config(config, args, routes_dir, out_dir, report, scenes)
     finally:
         shutil.rmtree(routes_dir, ignore_errors=True)
     if args.update_golden:

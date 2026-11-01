@@ -141,3 +141,34 @@ def test_endurance_checks_pass_and_fail():
     assert by_label["endurance : images/s"] is None                    # rendu logiciel : indicatif
     assert by_label["endurance : croissance de la mémoire de Godot"] is False   # la mémoire compte partout
     assert pp.endurance_checks([], real_window=True)[0][0] is False
+
+
+def heat_rows(n: int, hot_after_s: float) -> list[dict]:
+    """Une ligne par seconde : la carte passe de 1900 à 1700 MHz et le temps GPU monte d'autant."""
+    rows = []
+    for i in range(n):
+        hot = i >= hot_after_s
+        rows.append({"t_s": float(i), "gpu_ms": 11.0 * (1900.0 / 1700.0 if hot else 1.0), "fps": 60.0,
+                     "gpu_util_pct": 97.0 if hot else 80.0, "gpu_temp_c": 83.0 if hot else 65.0,
+                     "gpu_clock_mhz": 1700.0 if hot else 1900.0, "core_cpu_pct": 3.0})
+    return rows
+
+
+def test_heat_windows_medians_per_slice():
+    w = pp.heat_windows(heat_rows(1860, hot_after_s=1260), window_s=600.0, warmup_s=60.0)
+    assert [x["debut_min"] for x in w] == [1.0, 11.0, 21.0]
+    assert w[0]["gpu_clock_mhz"] == 1900.0 and w[0]["busy95_pct"] == 0.0
+    assert w[-1]["gpu_clock_mhz"] == 1700.0 and w[-1]["busy95_pct"] == 100.0
+    assert w[-1]["gpu_ms"] > w[0]["gpu_ms"]
+    assert pp.heat_windows([]) == []
+
+
+def test_heat_text_names_thermal_slowdown(tmp_path):
+    text = pp.heat_text(pp.heat_windows(heat_rows(1860, hot_after_s=1260)))
+    assert "la carte ralentit en chauffant" in text
+    steady = [{**r, "gpu_clock_mhz": 1900.0} for r in heat_rows(1860, hot_after_s=1260)]
+    assert "fréquence stable" in pp.heat_text(pp.heat_windows(steady))
+    pp.write_csv(heat_rows(1300, hot_after_s=700), tmp_path / "sonde.csv")
+    r = subprocess.run([sys.executable, str(SCRIPT), "chauffe", str(tmp_path), "--tranche-min", "5"],
+                       capture_output=True, text=True, check=True)
+    assert "fréq. MHz" in r.stdout and "GPU" in r.stdout

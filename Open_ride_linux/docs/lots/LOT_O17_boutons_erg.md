@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Boutons de l'ERG et clavier selon le plan commun : ± long = biais ± 10 %, Z = bloc suivant, Y = pause ; clavier touche pour touche (décision D6) | Python + GDScript | PR #287 (boutons décodés, révision 1.3) | Petite | Oui, avant la 1.0 (décision D3 du 27 octobre, issue #367 ; plan des boutons des menus livré par la PR #287) ; livré le 28 octobre, essai J7 sur le PC à faire |
+| Boutons de l'ERG et clavier selon le plan commun : ± long = biais ± 10 %, Z = bloc suivant, Y = pause ; clavier touche pour touche (décision D6) | Python + GDScript | PR #287 (boutons décodés, révision 1.3) | Petite | Livré le 28 octobre (PR #471) |
 
 ## 1. Objectif
 

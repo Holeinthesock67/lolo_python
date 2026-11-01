@@ -1,0 +1,27 @@
+{
+  "description": "Mode « What the fuck » (lots WTF3 et WTF7) : entrée de l'accueil, écran des treize règles, une règle coupée (wtf.toml écrit par le core), « Tout allumer », lancement sur le parcours de démo, départ en mode WTF, fin sans enregistrement et bilan.",
+  "etapes": [
+    {"ecran": "home", "delai": 15, "elements": ["wtf"]},
+    {"choisir": "world"},
+    {"ecran": "routes", "elements": ["demo"]},
+    {"choisir": "demo"},
+    {"ecran": "home", "contient": ["Parcours : demo"]},
+    {"choisir": "wtf"},
+    {"ecran": "wtf_rules", "titre": "Mode WTF : 13 règles sur 13", "elements": ["rule:gravity", "rule:chef", "all_on", "launch"], "delai": 5},
+    {"choisir": "rule:camera"},
+    {"ecran": "wtf_rules", "titre": "Mode WTF : 12 règles sur 13", "contient": ["Caméras improbables : non"]},
+    {"fichier": "OpenRide/wtf.toml"},
+    {"choisir": "all_on"},
+    {"ecran": "wtf_rules", "titre": "Mode WTF : 13 règles sur 13", "contient": ["Caméras improbables : oui"]},
+    {"choisir": "rule:camera"},
+    {"choisir": "launch"},
+    {"ecran": "ready", "titre": "Prêt : mode WTF — demo", "focus": "start", "elements": ["start", "wtf_rules", "change_route", "bot1", "ghost"], "absent": ["Changer d'entraînement", "Passer en session ERG"]},
+    {"choisir": "start"},
+    {"journal": "core", "motif": "Mode WTF : 12 règle", "delai": 10},
+    {"menu_cache": true},
+    {"commande": "end_session", "args": {"save": false}},
+    {"note": "lignes du bilan WTF vérifiées par test_wtf_hud_model.gd (vue du bilan, pas éléments du menu)", "ecran": "summary", "titre": "Fin de séance", "delai": 10},
+    {"choisir": "new_session"},
+    {"ecran": "home"}
+  ]
+}

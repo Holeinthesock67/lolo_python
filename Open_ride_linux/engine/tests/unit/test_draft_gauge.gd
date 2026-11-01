@@ -10,6 +10,7 @@ extends SceneTree
 const DraftGaugeModel := preload("res://scripts/draft_gauge_model.gd")
 const DraftGauge := preload("res://scripts/draft_gauge.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
+const RoadBuilder := preload("res://scripts/road_builder.gd")
 const WindViewModel := preload("res://scripts/wind_view_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 
@@ -51,7 +52,7 @@ func _test_view() -> void:
 	var bots = BotsView.new()
 	root.add_child(bots)
 	var route = FlatRoute.new()
-	bots.update_view([{"id": "bot1", "name": "Bot 250 W", "kind": "constant", "s": 20.0, "visible": true,
+	bots.update_view([{"id": "bot1", "name": "Bot 250 W", "kind": "constant", "s": 20.0, "lateral": RoadBuilder.BOT_LATERAL_M, "visible": true,
 		"show_name": true}], route)
 	var gauge = DraftGauge.new()
 	root.add_child(gauge)
@@ -72,10 +73,14 @@ func _test_view() -> void:
 	bots.queue_free()
 
 
-## Route droite le long de x pour poser les silhouettes (route_data.gd réduit à sample/wrap_s).
+## Route droite le long de x pour poser les silhouettes (route_data.gd réduit à sample/wrap_s/display_pitch).
 class FlatRoute:
 	func wrap_s(s: float) -> float:
 		return s
+
+	## Route plate : pas de tangage (route_data.gd `display_pitch`).
+	func display_pitch(_s: float, _probe_m: float = 1.5) -> float:
+		return 0.0
 
 	func sample(s: float) -> Dictionary:
 		return {"x": s, "y": 0.0, "z": 0.0, "heading_deg": 0.0}

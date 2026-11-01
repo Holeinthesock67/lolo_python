@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : menu globe, recherche de lieu, carte régionale, régions en cache, écran de préchargement | GDScript + Python | W1, W3 (W2) | Grande | Non : interne (menu, contrôle visuel) (issue #266) |
+| Engine : menu globe, recherche de lieu, carte régionale, régions en cache, écran de préchargement | GDScript + Python | W1, W3 (W2) | Grande | Livré le 27 octobre (PR #426) |
 
 ## 1. Objectif
 
@@ -48,3 +48,7 @@ Aucune.
 ## 8. Hors périmètre
 
 HUD de séance (W12).
+
+## Livraison
+
+PR #426, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Non : interne (menu, contrôle visuel) (issue #266) ».

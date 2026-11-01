@@ -1375,6 +1375,20 @@
           "type": "boolean"
         }
       }
+    },
+    "workout_done": {
+      "type": "object",
+      "description": "Facultatif, révision 1.5 (invite de fin de séance, 1er novembre) : l'entraînement de la séance est fini et la séance continue en parcours libre ; absent hors de ce cas. L'engine affiche l'invite « Y puis A maintenu pour terminer et enregistrer ».",
+      "required": [
+        "workout_name"
+      ],
+      "properties": {
+        "workout_name": {
+          "type": "string",
+          "description": "Nom de l'entraînement terminé."
+        }
+      },
+      "additionalProperties": false
     }
   },
   "$defs": {

@@ -32,6 +32,7 @@ def sim_config(scenario: str = "nominal") -> Config:
     cfg = Config()
     cfg.drivers.trainer = cfg.drivers.input = cfg.drivers.hr = "sim"
     cfg.drivers.sim_scenario = scenario
+    cfg.trainer.control = "sim"   # ces tests suivent le protocole SIM (0x11) ; résistance calculée : test_resistance_calculee.py
     return cfg
 
 
@@ -81,6 +82,20 @@ class Rig:
 
 
 # --- trainer FTMS simulé ----------------------------------------------------------------
+
+def test_sim_trainer_found_despite_paired_name():
+    """30/10 : `[trainer] device_name` porte le nom du vrai trainer après l'appairage ; le trainer simulé
+    reste trouvé (sous son propre nom), avec le Click simulé comme avec le vrai Click."""
+    async def scenario():
+        cfg = sim_config()
+        cfg.trainer.device_name = "Velo appaire"
+        rig = Rig(READY, cfg).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED")
+        assert rig.driver.cfg.device_name == ble_sim.TRAINER_NAME
+        assert cfg.trainer.device_name == "Velo appaire"   # la configuration n'est pas modifiée
+        await rig.stop()
+    asyncio.run(scenario())
+
 
 def test_control_point_rules():
     """0xFD sans indications, 0x05 sans contrôle, 0xFE pendant une procédure, Reset = contrôle rendu."""

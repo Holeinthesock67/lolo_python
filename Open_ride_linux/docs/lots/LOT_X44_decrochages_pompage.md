@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : décrochage du trainer ou fatigue (puissance et cadence image par image), statuts FTMS à côté, analyse du pompage, pour le banc et les journaux de séance (`decrochages`) | Python | X43, PR #580 | Petite | Séance du 29 octobre ; en PR |
+| Série X (outils de test) : décrochage du trainer ou fatigue (puissance et cadence image par image), statuts FTMS à côté, analyse du pompage, pour le banc et les journaux de séance (`decrochages`) | Python | X43, PR #580 | Petite | Livré le 29 octobre (PR #584) |
 
 ## 1. Objectif
 
@@ -40,3 +40,7 @@ Séance du 29 octobre : la puissance est passée de 449 W à 0 W en 2 s, et le c
 ## 5. Hors périmètre
 
 Les lignes `ftms` elles-mêmes (PR #580, fil FTMS) et le repère `decrochage` en séance (lot X47).
+
+## Livraison
+
+PR #584, fusionnée le 29 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Séance du 29 octobre ; en PR ».

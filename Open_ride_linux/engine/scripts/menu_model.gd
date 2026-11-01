@@ -68,7 +68,7 @@ const NO_WORKOUT_ID := "_sim"
 ## liste que le core annoncera dans hello_ack.config (2.0, PLAN_SERIE_R §6) ; absente : DEFAULT_MODES.
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
 const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert",
-	"rogue": "Cyber-Rogue"}
+	"rogue": "Cyber-Rogue", "wtf": "Mode WTF"}
 const DEFAULT_MODES := ["ride", "erg"]
 ## Ligne d'explication d'un mode de l'accueil (lot O22), à droite de son libellé.
 const HOME_DETAILS := {"open_world": "route créée en roulant"}
@@ -92,8 +92,9 @@ const BOT_CHOICES := [["aucun", {}], ["200 W", {"kind": "constant", "power_w": 2
 ## Fin de la liste des parcours (bibliothèque, lot O12) : tri et filtre par étiquette, en cycle.
 const SORT_ROUTES_ID := "_sort"
 const FILTER_ROUTES_ID := "_filter"
-## Fin de la liste des parcours (lot O22) : « Ajouter un parcours » (sa carte dit où déposer la trace)
-## et « Comment ça marche ? », qui ouvrent l'aide des parcours (route_help.gd).
+## Fin de la liste des parcours (lot O22) : « Ajouter un parcours » (sa carte explique l'ajout, A
+## maintenu ouvre l'écran « Importer une trace », lot O23) et « Comment ça marche ? » (aide des parcours,
+## route_help.gd).
 const ADD_ROUTE_ID := "_add_route"
 const HELP_ROUTES_ID := "_route_help"
 
@@ -109,7 +110,8 @@ var _workouts_return: String = ROUTES
 ## Parcours choisi : id et nom ; "" tant qu'aucun n'est choisi.
 var world_id := ""
 var world_name := ""
-## Mode de la séance préparée : "free" (session libre, SIM) ou "erg".
+## Mode de la séance préparée : "free" (session libre, SIM), "erg", "rogue" ou "wtf" (mode « What the fuck »,
+## SIM seulement, lot WTF3).
 var mode := "free"
 ## Engine lancé en session simulée (--sim-session) : l'accueil propose de revenir au matériel réel.
 var sim_session := false
@@ -146,6 +148,15 @@ var garage := false
 ## titre de l'accueil (« OpenRide — Cycliste A »).
 var profile_label := ""
 var home_title := "OpenRide"
+## Séance interrompue d'un lancement précédent (lot O34) : ligne en tête de l'accueil ("" : aucune).
+var interrupted_label := ""
+var interrupted_detail := ""
+
+
+func set_interrupted(label: String, detail: String) -> void:
+	interrupted_label = label
+	interrupted_detail = detail
+	_refresh_home()
 
 
 func set_profile(label: String, title: String) -> void:
@@ -179,6 +190,8 @@ func _refresh_home() -> void:
 	var items := [_item("world", "Parcours : " + world)]
 	if profile_label != "":
 		items.push_front(_item("profile", profile_label))
+	if interrupted_label != "":
+		items.push_front(_item("interrupted", interrupted_label, true, interrupted_detail))
 	_screens[HOME]["title"] = home_title
 	for m in HOME_MODES:
 		if m in modes:
@@ -194,17 +207,19 @@ func _refresh_home() -> void:
 			_item("rogue_change", "Changer les choix")]
 		_screens[READY]["title"] = "Prêt : Cyber-Rogue"
 		return
+	if mode == "wtf":
+		_screens[READY]["items"] = [_item("start", "Démarrer"), _item("wtf_rules", "Changer les règles"),
+			_item("change_route", "Changer de parcours")] + _bot_items() \
+			+ [_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non"))]
+		_screens[READY]["title"] = "Prêt : mode WTF" + ("" if world_name == "" else " — " + world_name)
+		return
 	_screens[READY]["items"] = [
 		_item("start", "Démarrer"),
 		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
 		_item("change_route", "Changer de parcours"),
-	]
-	for i in range(mini(bot_choices.size() + 1, MAX_BOTS)):
-		var label: String = BOT_CHOICES[bot_choices[i]][0] if i < bot_choices.size() else BOT_CHOICES[0][0]
-		_screens[READY]["items"].append(_item("bot%d" % (i + 1), "Bot %d : %s" % [i + 1, label]))
-	_screens[READY]["items"].append_array([
+	] + _bot_items() + [
 		_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non")),
-		_item("records", "Records du parcours")])
+		_item("records", "Records du parcours")]
 	var what := "session ERG" if mode == "erg" else "session libre"
 	if start_name != "":
 		what = start_name
@@ -252,6 +267,20 @@ func prepare_start(name: String, args: Dictionary) -> Dictionary:
 	return state()
 
 
+## Séance du mode WTF (lot WTF3) : session libre en SIM avec `mode` « wtf » au `start` ; ouvre l'écran
+## Prêt, ou les parcours d'abord sans monde choisi.
+func prepare_wtf() -> Dictionary:
+	_clear_start()
+	mode = "wtf"
+	_refresh_home()
+	if world_id == "":
+		_routes_return = READY
+		_open(ROUTES)
+	else:
+		_open(READY)
+	return state()
+
+
 func _clear_start() -> void:
 	start_name = ""
 	start_args = {}
@@ -260,6 +289,8 @@ func _clear_start() -> void:
 ## Arguments de `start` : séance préparée (plan_day, ftp_test) et bots choisis ({} si rien).
 func _start_args() -> Dictionary:
 	var out := start_args.duplicate()
+	if mode == "wtf":
+		out["mode"] = "wtf"
 	var bots: Array = []
 	for c in bot_choices:
 		bots.append(BOT_CHOICES[c][1].duplicate())
@@ -330,6 +361,16 @@ static func bot_index(bot: Dictionary) -> int:
 
 ## A long sur « Bot n » (lot O35) : choix suivant de BOT_CHOICES ; « aucun » retire le bot, les suivants
 ## remontent d'une ligne. La ligne vide (après le dernier bot) en ajoute un.
+## Lignes « Bot 1 » à « Bot n+1 » de l'écran Prêt (lot O35, séance libre, ERG et mode WTF) : une ligne vide
+## sous le dernier bot choisi, au plus MAX_BOTS.
+func _bot_items() -> Array:
+	var out: Array = []
+	for i in range(mini(bot_choices.size() + 1, MAX_BOTS)):
+		var label: String = BOT_CHOICES[bot_choices[i]][0] if i < bot_choices.size() else BOT_CHOICES[0][0]
+		out.append(_item("bot%d" % (i + 1), "Bot %d : %s" % [i + 1, label]))
+	return out
+
+
 func _cycle_bot(i: int) -> void:
 	var next := (bot_choices[i] if i < bot_choices.size() else 0) + 1
 	next %= BOT_CHOICES.size()
@@ -359,7 +400,7 @@ func reset() -> void:
 	_clear_start()
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
-	if mode == "rogue":
+	if mode in ["rogue", "wtf"]:
 		mode = "free"
 	_refresh_home()
 	_open(HOME, false)
@@ -381,7 +422,7 @@ func set_items(screen_id: String, items: Array) -> void:
 			str(it.get("detail", ""))))
 	if screen_id == ROUTES:
 		if clean.is_empty():
-			clean.append(_item("empty", "Aucun parcours", false, "dépose une trace dans ~/OpenRide/GPX/"))
+			clean.append(_item("empty", "Aucun parcours", false, "« Ajouter un parcours » importe une trace"))
 		clean.append(_item(ADD_ROUTE_ID, "Ajouter un parcours"))
 		clean.append(_item(HELP_ROUTES_ID, "Comment ça marche ?"))
 	elif screen_id == WORKOUTS:
@@ -655,7 +696,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "rogue", "garage", "profile":
+				"plan", "ftp", "rogue", "garage", "profile", "wtf", "interrupted":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
@@ -708,7 +749,7 @@ func _validate() -> Dictionary:
 				"change_route":
 					_routes_return = READY
 					_open(ROUTES)
-				"rogue_change":
+				"rogue_change", "wtf_rules":
 					return {"action": "item", "screen": READY, "id": id}
 				"records":   # écran « Records » (série T, lot T10), traité par menu_flow.gd
 					return {"action": "item", "screen": READY, "id": id}

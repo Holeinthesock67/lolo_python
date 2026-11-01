@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 2.0 série T : équilibrage des bots à profil (niveau 90, 100, 110 % ou libre, calibrage par simulation du parcours, profils au menu) | Python, GDScript | T12, O7 | Moyenne | Non : interne ; cahier du 27 octobre, code du 28 octobre (issue #441) |
+| 2.0 série T : équilibrage des bots à profil (niveau 90, 100, 110 % ou libre, calibrage par simulation du parcours, profils au menu) | Python, GDScript | T12, O7 | Moyenne | Livré le 28 octobre (PR #488) |
 
 ## 1. Objectif
 

@@ -1,0 +1,107 @@
+{
+  "description": "Lot O23 : « Ajouter un parcours » liste les traces de Téléchargements, refuse une trace illisible, importe celle choisie et la compile sans relancer ; le parcours arrive sous le focus. Compilateur doublure (sans réseau).",
+  "voies": [
+    "clavier",
+    "click"
+  ],
+  "compilateur": "doublure",
+  "fichiers": {
+    "Téléchargements/essai_import.gpx": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"menu_bench\"><trk><name>Essai import</name><trkseg><trkpt lat=\"45.09000\" lon=\"6.06000\"><ele>720</ele></trkpt><trkpt lat=\"45.09090\" lon=\"6.06040\"><ele>724</ele></trkpt><trkpt lat=\"45.09180\" lon=\"6.06080\"><ele>728</ele></trkpt><trkpt lat=\"45.09270\" lon=\"6.06120\"><ele>732</ele></trkpt><trkpt lat=\"45.09360\" lon=\"6.06160\"><ele>736</ele></trkpt><trkpt lat=\"45.09450\" lon=\"6.06200\"><ele>740</ele></trkpt><trkpt lat=\"45.09540\" lon=\"6.06240\"><ele>744</ele></trkpt><trkpt lat=\"45.09630\" lon=\"6.06280\"><ele>748</ele></trkpt><trkpt lat=\"45.09720\" lon=\"6.06320\"><ele>752</ele></trkpt><trkpt lat=\"45.09810\" lon=\"6.06360\"><ele>756</ele></trkpt><trkpt lat=\"45.09900\" lon=\"6.06400\"><ele>760</ele></trkpt><trkpt lat=\"45.09990\" lon=\"6.06440\"><ele>764</ele></trkpt><trkpt lat=\"45.10080\" lon=\"6.06480\"><ele>768</ele></trkpt><trkpt lat=\"45.10170\" lon=\"6.06520\"><ele>772</ele></trkpt><trkpt lat=\"45.10260\" lon=\"6.06560\"><ele>776</ele></trkpt><trkpt lat=\"45.10350\" lon=\"6.06600\"><ele>780</ele></trkpt><trkpt lat=\"45.10440\" lon=\"6.06640\"><ele>784</ele></trkpt><trkpt lat=\"45.10530\" lon=\"6.06680\"><ele>788</ele></trkpt><trkpt lat=\"45.10620\" lon=\"6.06720\"><ele>792</ele></trkpt><trkpt lat=\"45.10710\" lon=\"6.06760\"><ele>796</ele></trkpt><trkpt lat=\"45.10800\" lon=\"6.06800\"><ele>800</ele></trkpt><trkpt lat=\"45.10890\" lon=\"6.06840\"><ele>804</ele></trkpt><trkpt lat=\"45.10980\" lon=\"6.06880\"><ele>808</ele></trkpt><trkpt lat=\"45.11070\" lon=\"6.06920\"><ele>812</ele></trkpt><trkpt lat=\"45.11160\" lon=\"6.06960\"><ele>816</ele></trkpt></trkseg></trk></gpx>\n",
+    "Téléchargements/casse.gpx": "pas une trace\n"
+  },
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15
+    },
+    {
+      "choisir": "world"
+    },
+    {
+      "ecran": "routes",
+      "elements": [
+        "demo",
+        "_add_route",
+        "_route_help"
+      ]
+    },
+    {
+      "aller": "_add_route"
+    },
+    {
+      "ecran": "routes",
+      "contient": [
+        "Ajouter une trace",
+        "Téléchargements"
+      ]
+    },
+    {
+      "choisir": "_add_route"
+    },
+    {
+      "ecran": "route_import",
+      "titre": "Importer une trace",
+      "contient": [
+        "essai_import.gpx",
+        "casse.gpx",
+        "pas besoin de relancer"
+      ],
+      "delai": 10
+    },
+    {
+      "capture": "o23_import_liste"
+    },
+    {
+      "aller": "file:0"
+    },
+    {
+      "choisir": "file:0"
+    },
+    {
+      "ecran": "route_import",
+      "statut": "^Échec : casse\\.gpx",
+      "delai": 30
+    },
+    {
+      "capture": "o23_import_echec"
+    },
+    {
+      "fichier": "OpenRide/GPX/casse.gpx",
+      "existe": false
+    },
+    {
+      "choisir": "file:1"
+    },
+    {
+      "ecran": "route_import",
+      "statut": "^Compilation de essai_import\\.gpx",
+      "delai": 10
+    },
+    {
+      "capture": "o23_import_compilation"
+    },
+    {
+      "journal": "core",
+      "motif": "Parcours prêt depuis le menu : essai-import",
+      "delai": 60
+    },
+    {
+      "ecran": "routes",
+      "focus": "essai-import",
+      "statut": "^Parcours ajouté : ",
+      "delai": 15
+    },
+    {
+      "capture": "o23_import_ajoute"
+    },
+    {
+      "choisir": "essai-import"
+    },
+    {
+      "ecran": "home",
+      "contient": [
+        "Parcours : "
+      ]
+    }
+  ]
+}
