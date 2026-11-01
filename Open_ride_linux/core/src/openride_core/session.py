@@ -510,8 +510,9 @@ class CoreSession:
         st = self.state
         st.power, st.cadence, st.hr = m.power_w, m.cadence_rpm, m.hr_bpm
         st.power_3s = round(m.power_w, 1)
-        scene = self.server.engine_connected and self._scene_route is not None \
-            and self._scene_route == str(st.route_id)
+        # Run Cyber-Rogue : `route_id` nul, scène du mode sans tuiles à charger, rien à attendre du décor.
+        scene = self.server.engine_connected and (st.route_id is None or (
+            self._scene_route is not None and self._scene_route == str(st.route_id)))
         was = gate.phase
         opened = gate.update(dt, scene_ready=scene, trainer_connected=bool(m.connected),
                              cadence_rpm=m.cadence_rpm, power_w=m.power_w)
