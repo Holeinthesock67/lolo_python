@@ -139,9 +139,7 @@ def test_brake_k_is_bounded():
 def test_config_choices_and_bounds():
     assert config.from_dict({"trainer": {"control": "resistance", "resistance_n_per_pct_kmh": 0.04}}).trainer.control == "resistance"
     assert config.Config().trainer.resistance_n_per_pct_kmh == 0.036   # étalonnage 7rc1
-    assert config.Config().trainer.flywheel_kmh_per_rpm == 0.355   # 7rc1-7rc2, braquet constant
-    for bad in ({"control": "erg"}, {"resistance_n_per_pct_kmh": 0.0}, {"resistance_n_per_pct_kmh": 2.0},
-                {"flywheel_kmh_per_rpm": 0.0}):
+    for bad in ({"control": "erg"}, {"resistance_n_per_pct_kmh": 0.0}, {"resistance_n_per_pct_kmh": 2.0}):
         with pytest.raises(config.ConfigError):
             config.from_dict({"trainer": bad})
 
@@ -163,56 +161,52 @@ def test_bench_on_the_realistic_simulated_trainer_sends_levels_only():
     assert last > first   # 6 % : frein plus fort qu'à plat
 
 
-def test_power_control_sends_road_force_times_cadence_speed():
-    """Variante « power » : la force de la route × la vitesse cadence × rapport du volant, en consigne ERG."""
-    now = [100.0]
-    drv = FtmsDriver(TrainerConfig(control="power", flywheel_kmh_per_rpm=0.36), BikeConfig(), clock=lambda: now[0])
+def test_power_control_is_no_longer_offered():
+    """Le mode « power » des essais 7rc2 est retiré (1er novembre, PWR2 noté 2,5)."""
+    with pytest.raises(config.ConfigError):
+        config.from_dict({"trainer": {"control": "power"}})
+
+
+def _accelerate(drv, now, speeds, dt=0.25, power=600, rpm=105):
+    for v in speeds:
+        now[0] += dt
+        drv._on_ibd(None, _ibd(v, rpm, power))
+
+
+def test_inertia_is_added_while_the_flywheel_accelerates():
+    """Sprint : +1 m/s² au volant ; 100 % ajoute m × a à la force de la route, donc un niveau plus haut."""
+    drv, now = _driver(resistance_inertia_pct=100.0)
+    drv.road_mass_kg = 84.0
+    steady, now0 = _driver(resistance_inertia_pct=0.0)
+    _accelerate(drv, now, [30.0 + 0.9 * i for i in range(16)])   # 3,6 km/h/s = 1 m/s²
+    _accelerate(steady, now0, [30.0 + 0.9 * i for i in range(16)])
+    assert drv._accel_mps2 == pytest.approx(1.0, abs=0.1)
+    assert drv.inertia_force_n() == pytest.approx(84.0, abs=9.0)
+    assert steady.inertia_force_n() == 0.0
+    assert drv._road_level(0.0) > steady._road_level(0.0) + 15
+
+
+@pytest.mark.parametrize("pct", [50.0, 100.0])
+def test_inertia_dose_is_a_share_of_m_a(pct):
+    drv, now = _driver(resistance_inertia_pct=pct)
     drv.road_mass_kg = 80.0
-    drv._on_ibd(None, _ibd(36.0, 100, 400))
-    drv.set_sim_grade(2.0)
-    watts = round(drv.road_force_n(2.0, 10.0) * 10.0)   # 100 tr/min × 0,36 = 36 km/h = 10 m/s
-    assert _flush(drv) == [ftms.cmd_set_target_power(watts)]
-    drv._on_ibd(None, _ibd(43.2, 120, 600))   # sprint : la cadence monte, la consigne suit
-    assert drv._road_value("erg", 2.0) == round(drv.road_force_n(2.0, 12.0) * 12.0) > watts
+    drv._accel_mps2 = 1.2
+    assert drv.inertia_force_n() == pytest.approx(pct / 100.0 * 80.0 * 1.2)
 
 
-def test_power_target_drops_with_the_cadence_not_with_a_spinning_flywheel():
-    """7rc2 PWR1 : après le sprint, volant encore lancé mais cadence qui tombe : la consigne baisse."""
-    now = [100.0]
-    drv = FtmsDriver(TrainerConfig(control="power"), BikeConfig(), clock=lambda: now[0])
-    drv._on_ibd(None, _ibd(42.0, 115, 700))
-    high = drv._road_value("erg", 0.0)
-    drv._on_ibd(None, _ibd(41.0, 77, 320))   # volant à peine ralenti, jambes relâchées
-    eased = drv._road_value("erg", 0.0)
-    assert eased < 0.4 * high
+def test_inertia_is_never_given_back_when_slowing_down():
+    """Après le sprint, le volant ralentit : aucune force retirée (pas de trou), seulement la route."""
+    drv, now = _driver(resistance_inertia_pct=100.0)
+    _accelerate(drv, now, [45.0 - 0.9 * i for i in range(16)], power=150, rpm=80)
+    assert drv._accel_mps2 < -0.5
+    assert drv.inertia_force_n() == 0.0
+    road = max(drv.road_force_n(0.0, drv._trainer_speed_kmh / 3.6), 0.0)
+    assert drv._road_level(0.0) == pytest.approx(round(road / (0.036 * drv._trainer_speed_kmh)), abs=1.0)
 
 
-def test_power_speed_ignores_a_false_flywheel_reading_but_not_a_missing_cadence():
-    now = [100.0]
-    drv = FtmsDriver(TrainerConfig(control="power"), BikeConfig(), clock=lambda: now[0])
-    drv._on_ibd(None, _ibd(4.9, 71, 150))   # lecture fausse du volant en ERG (7rc2)
-    assert drv.power_speed_kmh() == pytest.approx(71 * 0.355)
-    drv._on_ibd(None, _ibd(30.0, 0, 150))   # cadence lue à 0 isolée : le volant
-    assert drv.power_speed_kmh() == 30.0
-
-
-def test_flywheel_ratio_is_learned_on_steady_riding_and_ignores_outliers():
-    now = [100.0]
-    drv = FtmsDriver(TrainerConfig(control="power", flywheel_kmh_per_rpm=0.30), BikeConfig(), clock=lambda: now[0])
-    for i in range(120):   # 30 s à 85 tr/min et 30,6 km/h : rapport réel 0,36
-        now[0] = 100.0 + i * 0.25
-        drv._on_ibd(None, _ibd(30.6, 85, 200))
-    assert drv.kmh_per_rpm == pytest.approx(0.36, abs=0.005)
-    now[0] += 0.25
-    drv._on_ibd(None, _ibd(30.6, 85, 200))
-    now[0] += 0.25
-    drv._on_ibd(None, _ibd(30.6, 400, 200))   # cadence aberrante : ignorée
-    assert drv.kmh_per_rpm == pytest.approx(0.36, abs=0.005)
-
-
-def test_power_control_falls_back_to_sim_without_erg():
-    now = [100.0]
-    drv = FtmsDriver(TrainerConfig(control="power"), BikeConfig(), clock=lambda: now[0])
-    drv.supports_erg = False
-    drv.set_sim_grade(2.0)
-    assert _flush(drv)[0][0] == ftms.OP_SET_SIM_PARAMS
+def test_inertia_config_bounds():
+    assert config.Config().trainer.resistance_inertia_pct == 100.0
+    assert config.from_dict({"trainer": {"resistance_inertia_pct": 50.0}}).trainer.resistance_inertia_pct == 50.0
+    for bad in (-1.0, 101.0):
+        with pytest.raises(config.ConfigError):
+            config.from_dict({"trainer": {"resistance_inertia_pct": bad}})

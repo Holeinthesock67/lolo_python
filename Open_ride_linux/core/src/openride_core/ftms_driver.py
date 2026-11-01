@@ -74,17 +74,14 @@ ROAD_ADAPT_MIN_W = 30.0
 ROAD_ADAPT_MAX_ACCEL = 0.4    # m/s² : au-delà, la puissance accélère le volant, pas le frein
 ROAD_ADAPT_RANGE = (0.2, 5.0) # bornes de la correction (× la valeur de départ)
 DEFAULT_ROAD_MASS_KG = 84.0   # masse sans profil (PhysicsParams), remplacée par la session
-# Variante « power » (essai 7rc2 bloc 1, 1er novembre : PWR1 noté 4, « frein un peu trop long ou en
-# retard », léger décrochage) : avec la vitesse du volant, la consigne suivait un volant encore lancé
-# après le sprint (692 W à +0,8 s, 300 W jusqu'à +5 s pendant que la cadence tombait de 115 à 77), et
-# s'effondrait sur des lectures fausses du volant en ERG (4,9 km/h à 71 tr/min au lieu de ~25). La
-# vitesse de ce mode est donc cadence × rapport du volant ([trainer] flywheel_kmh_per_rpm, 0,355 km/h
-# par tr/min mesuré à braquet constant en 7rc1 et 7rc2), rapport appris en roulant sur un volant et une
-# cadence stables ; sous POWER_MIN_RPM (cadence absente ou 0 isolé), la vitesse du volant.
-POWER_MIN_RPM = 30.0
-POWER_RATIO_MIN_KMH = 15.0          # volant assez rapide pour apprendre le rapport
-POWER_RATIO_MIN_RPM = 50.0
-POWER_RATIO_RANGE = (0.5, 2.0)      # bornes du rapport appris (× la valeur de départ)
+# Inertie en accélération (séance de 9 sprints du 1er novembre, choix du propriétaire) : sans inertie,
+# le mode résistance supprime le trou après le sprint (R100 : aucun lâcher, SIM : 4 sprints sur 5) mais
+# allège la relance (« ça repousse le décrochage à des puissances plus élevées ») : sur la route,
+# accélérer la masse du profil demande m × a (84 N à 1 m/s², plus que l'air à 45 km/h), que le SIM
+# du trainer simule (~74 N mesurés en sprint) puis rend après le sprint (la phase à 0 W). La force
+# ajoutée est [trainer] resistance_inertia_pct % de m × a quand le volant accélère, jamais rendue au
+# ralentissement ; a est la dérivée de la vitesse du volant, lissée sur INERTIA_TAU_S.
+INERTIA_TAU_S = 0.5
 ATT_RETRIES = 2          # renvois après une erreur ATT (3 essais en tout), lot M1
 ATT_RETRY_DELAY_S = 0.25   # doublé à chaque renvoi : 0,25 s puis 0,5 s
 CP_BUSY_GRACE_S = 0.5    # procédure précédente restée sans réponse : attente de plus avant d'écrire
@@ -352,8 +349,8 @@ class FtmsDriver:
         self.road_mass_kg = DEFAULT_ROAD_MASS_KG   # masse totale du profil (posée par la session)
         self.k_road = trainer.resistance_n_per_pct_kmh   # force du frein par % et par km/h du volant, corrigée en roulant
         self._road_speed: tuple[float, float] | None = None   # (instant, vitesse du volant m/s) précédents
-        self.kmh_per_rpm = trainer.flywheel_kmh_per_rpm   # rapport volant / cadence, appris en roulant (mode power)
-        self._ratio_speed: tuple[float, float] | None = None   # (instant, vitesse du volant km/h) précédents
+        self._accel_mps2 = 0.0   # accélération du volant, lissée (inertie du mode résistance)
+        self._accel_speed: tuple[float, float] | None = None   # (instant, vitesse du volant m/s) précédents
         self._road_fallback_warned = False
         self.reconnect_count = 0
         self.att_retries = 0   # renvois après une erreur ATT ponctuelle (lot M1)
@@ -410,12 +407,11 @@ class FtmsDriver:
         return True
 
     def _road_control(self) -> str | None:
-        """Mode d'envoi de la pente SIM : "resistance" (niveau calculé), "erg" (puissance calculée,
-        [trainer] control = "power") ou None (pente 0x11, SIM du trainer)."""
-        mode = {"resistance": "resistance", "power": "erg"}.get(self.cfg.control)
-        if mode is None:
+        """Mode d'envoi de la pente SIM : "resistance" (niveau calculé) ou None (pente 0x11, SIM du trainer)."""
+        if self.cfg.control != "resistance":
             return None
-        if not (self.supports_resistance if mode == "resistance" else self.supports_erg):
+        mode = "resistance"
+        if not self.supports_resistance:
             if not self._road_fallback_warned:
                 log.warning("Trainer : pilotage %s demandé mais consigne non annoncée, pilotage SIM gardé",
                             self.cfg.control)
@@ -424,34 +420,22 @@ class FtmsDriver:
         return mode
 
     def _road_value(self, mode: str, grade_pct: float) -> float:
-        """Consigne calculée pour la pente : niveau de résistance ou puissance (force × vitesse du volant)."""
-        if mode == "resistance":
-            return self._road_level(grade_pct)
-        speed = self.power_speed_kmh() / 3.6
-        lo, hi = self.power_range
-        return float(round(min(max(self.road_force_n(grade_pct, speed) * speed, lo), hi)))
+        """Consigne calculée pour la pente : le niveau de résistance."""
+        return self._road_level(grade_pct)
 
-    def power_speed_kmh(self) -> float:
-        """Vitesse du mode « power » : cadence × rapport du volant ; le volant si la cadence manque."""
-        if self._cadence < POWER_MIN_RPM:
-            return self._trainer_speed_kmh or 0.0
-        return self._cadence * self.kmh_per_rpm
+    def inertia_force_n(self) -> float:
+        """Force d'inertie ajoutée quand le volant accélère (0 au ralentissement : rien n'est rendu)."""
+        return self.cfg.resistance_inertia_pct / 100.0 * self.road_mass_kg * max(self._accel_mps2, 0.0)
 
-    def _adapt_ratio(self, now: float) -> None:
-        """Apprend le rapport volant / cadence quand les deux sont stables (mode « power »)."""
+    def _track_accel(self, now: float) -> None:
+        """Accélération du volant, dérivée de sa vitesse lissée sur INERTIA_TAU_S."""
         kmh = self._trainer_speed_kmh
-        prev, self._ratio_speed = self._ratio_speed, (None if kmh is None else (now, kmh))
-        if kmh is None or prev is None or self.cfg.control != "power":
+        prev, self._accel_speed = self._accel_speed, (None if kmh is None else (now, kmh / 3.6))
+        if kmh is None or prev is None or now <= prev[0]:
             return
         dt = now - prev[0]
-        if (dt <= 0 or kmh < POWER_RATIO_MIN_KMH or self._cadence < POWER_RATIO_MIN_RPM
-                or abs(kmh - prev[1]) / 3.6 / dt > ROAD_ADAPT_MAX_ACCEL):
-            return
-        base = self.cfg.flywheel_kmh_per_rpm
-        observed = kmh / self._cadence
-        if not base * POWER_RATIO_RANGE[0] <= observed <= base * POWER_RATIO_RANGE[1]:
-            return   # lecture fausse du volant ou de la cadence : ignorée
-        self.kmh_per_rpm += (observed - self.kmh_per_rpm) * (1.0 - math.exp(-dt / ROAD_ADAPT_TAU_S))
+        raw = (kmh / 3.6 - prev[1]) / dt
+        self._accel_mps2 += (raw - self._accel_mps2) * (1.0 - math.exp(-dt / INERTIA_TAU_S))
 
     def road_force_n(self, grade_pct: float, speed_mps: float) -> float:
         """Force que le trainer appliquerait en SIM à la vitesse du volant : même formule, masse du profil."""
@@ -463,7 +447,7 @@ class FtmsDriver:
     def _road_level(self, grade_pct: float) -> float:
         """Niveau de résistance FTMS qui donne la force de la route au volant (0 en descente)."""
         kmh = self._trainer_speed_kmh or 0.0
-        force = max(self.road_force_n(grade_pct, kmh / 3.6), 0.0)
+        force = max(self.road_force_n(grade_pct, kmh / 3.6) + self.inertia_force_n(), 0.0)
         return resistance_level(force / (max(self.k_road, 1e-6) * max(kmh, ROAD_MIN_KMH)), *self.resistance_range)
 
     def _adapt_road(self, now: float, power_w: float) -> None:
@@ -579,7 +563,8 @@ class FtmsDriver:
         if d.power_w is not None:
             self._check_brake_loss(self._last_data_at, max(float(d.power_w), 0.0))
             self._adapt_road(self._last_data_at, max(float(d.power_w), 0.0))
-        self._adapt_ratio(self._last_data_at)
+        if d.speed_kmh is not None:
+            self._track_accel(self._last_data_at)
         if d.heart_rate_bpm is not None:   # absent d'une trame partielle : on garde la valeur
             self._hr_ibd = d.heart_rate_bpm or None   # 0 = pas de mesure
             self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
@@ -771,9 +756,6 @@ class FtmsDriver:
         if self.cfg.control == "resistance":
             log.info("Trainer : résistance calculée, frein estimé k = %.4f N par %% et par km/h (départ %.4f)",
                      self.k_road, self.cfg.resistance_n_per_pct_kmh)
-        elif self.cfg.control == "power":
-            log.info("Trainer : puissance calculée, rapport du volant %.3f km/h par tr/min (départ %.3f)",
-                     self.kmh_per_rpm, self.cfg.flywheel_kmh_per_rpm)
         if self.busy_deferrals:
             log.info("Control Point occupé : %d consigne(s) reportée(s), liaison gardée.",
                      self.busy_deferrals)

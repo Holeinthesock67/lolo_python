@@ -73,3 +73,13 @@ Les fusions viendront ensuite : #683, puis #684 repointée sur main, après vali
 - En SIM (0x11), OpenRide n'envoie pas le poids : le trainer prend le sien. Les modes résistance et puissance prennent la masse du profil.
 - En sprint SIM, la force réelle (puissance / vitesse du volant) atteint environ 74 N à 39 km/h, contre environ 27 N pour la route à plat dans le modèle d'OpenRide : le trainer ajoute l'inertie qu'il simule à l'accélération, et la rend après le sprint (la phase à 0 W).
 - Le plateau de cadence à 100 tr/min n'apparaît qu'en SIM (aucun en PWR1) ; cause non établie.
+
+## 5. Séance de 9 sprints (1er novembre, #684 de17726b) et choix de la suite
+
+| Passe | Note | Remarques |
+|---|---|---|
+| R100 | 3, 3,5, 4 | Aucun lâcher, aucun 0 W ; passe sous 100 W environ 9 s après la relâche ; 500 W en 2,6 à 3,5 s. k appris : 0,037 à 0,042. |
+| PWR2 | 2,5 | Consigne plus lente que PWR1 (500 W en 6 s), au-dessus de la puissance mesurée ; une fois 20 s à 0 W. |
+| SIM2 | 3 | Lâcher du frein sur 4 sprints sur 5 (200 à 352 W après 819 à 945 W), 5 à 14 s à 0 W. |
+
+Ressenti du propriétaire : « ça ne change pas grand-chose, ça repousse le décrochage à des puissances plus élevées ». Lecture : sans inertie, le mode résistance supprime le trou d'après le sprint mais allège la relance (sur la route, accélérer 84 kg à 1 m/s² demande 84 N, plus que l'air à 45 km/h). Choix du propriétaire (1er novembre) : le mode « power » est retiré, et le mode résistance ajoute l'inertie m × a quand le volant accélère, jamais rendue au ralentissement (`resistance_inertia_pct`), à essayer à 50 et 100 %.
