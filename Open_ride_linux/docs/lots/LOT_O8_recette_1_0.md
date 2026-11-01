@@ -71,7 +71,7 @@ Chaque ligne se coche dans ce cahier (section « Livraison ») avec la date et, 
 
 - Paquet `.deb` ou Flatpak, démarrage automatique (cahier N14 §8).
 
-## 7. État de la recette au 1er novembre 2026
+## 7. État de la recette au 1er novembre 2026 (version 1.0.0)
 
 Cette section est la **liste unique** de l'état des lignes du §4 ; `docs/SUIVI_AVANCEMENT.md` §3 et le protocole renvoient ici. Décisions du propriétaire datées entre parenthèses.
 
@@ -79,21 +79,21 @@ Cette section est la **liste unique** de l'état des lignes du §4 ; `docs/SUIVI
 | --- | --- |
 | 1, 2 | Faites (outil X29). |
 | 3 | **Faite le 1er novembre** : trainer, deux boîtiers du Click (bouton + identifié), relance depuis l'écran Appareils, passage seul au menu après la connexion. La ceinture du propriétaire n'émet qu'en ANT+ : elle passe par le trainer, qui relaie la fréquence cardiaque (« Ceinture : aucune » dans l'écran Appareils). « Passer » avec un seul boîtier déjà vérifié. |
-| 4 | À valider sur les journaux des séances du 1er novembre (passes SIM et résistance de plus de 10 min), relecture des mesures `Perf`. |
+| 4 | **Validée par l'usage** (1er novembre, décision du propriétaire) : heures de séances avec braquets au Click. Journaux du 1er novembre sains (aucune erreur, 94 appuis de braquet sur la passe la plus longue), passe d'affilée la plus longue 6 min. |
 | 5, 14 | **Reportées en 5.0** (1er novembre) avec la séance `.zwo` complète. |
-| 6 | Boutons largement vérifiés le 1er novembre (108 appuis, boîtiers revenus seuls à chaque redémarrage). Reste 30 min d'affilée : validée par relecture du journal de la prochaine vraie séance de 30 min ou plus, sans essai dédié. |
+| 6 | **Validée par l'usage** (1er novembre, décision du propriétaire) : heures d'appuis sur toutes les séances, 108 appuis le 1er novembre, boîtiers revenus seuls à chaque redémarrage ; plus long passage d'affilée relevé 13 min. Une coupure du Click en séance reste à signaler. |
 | 7 | **Sans objet** : pas de ceinture Bluetooth chez le propriétaire (1er novembre). |
 | 8, 9, 10 | Non bloquantes, à relire dans les journaux des séances réelles. |
 | 11 | Validée le 24 octobre ; à revérifier depuis l'icône, non bloquante. |
-| 12 | À faire : rampe FTP un jour reposé. |
+| 12 | **Reportée en 2.0** (1er novembre) : l'entrée « Test de FTP » est livrée sans recette ; en 2.0, + / − bloqués pendant la rampe. |
 | 13 | **Faite le 1er novembre** : séance courte d'un plan, comptée à 100 %. |
 | 15, 22, 23 | Non bloquantes (1.0.x). |
-| 16 | À faire : deux blocs de moins de 10 min (qualité basse, puis moyenne et haute), sans vélo. |
+| 16 | **Validée par le propriétaire** (1er novembre). |
 | 17, 19 | Faites. |
-| 18 | `low` fait le 31 octobre (60 images/s, mémoire stable) ; `medium` et `high` en cours sur le PC le 1er novembre. |
-| 20 | Avis du propriétaire attendu sur la lisibilité à 2 m. |
+| 18 | **Faite** : `low` le 31 octobre ; `medium` et `high` 1 h le 1er novembre, 60 images/s, aucun plantage, 2,2 saccades/h, mémoire stable. GPU avec le garde-fou actif (réglage du jeu) : medium 8,8 ms / 12, high 10,7 ms / 14. |
+| 20 | **Validée par le propriétaire** (1er novembre) : textes lus sans effort depuis la selle. Contraste du texte des bots sur ciel clair (2,8:1 pour 3:1) corrigé en 1.0.1. |
 | 21 | **Reportée en 3.0** (1er novembre). |
 | 24 | **Reportée en 2.0** avec le lot O28, historique au menu (1er novembre). |
-| 25 | À faire : guide suivi sans terminal. |
+| 25 | **Faite le 1er novembre** : jeu piloté au Click sans terminal (appairage, menus, séance, bilan), « OpenRide – Mettre à jour » puis lancement par l'icône sur la version finale. |
 
 Pilotage du trainer retenu pour la 1.0 (1er novembre) : « résistance calculée » par défaut (lot RC, PR #684), « SIM du trainer » au choix dans Réglages › Séance.

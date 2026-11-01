@@ -329,7 +329,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Boutons de l'ERG selon le plan commun : ± long = biais ± 10 %, Z = bloc suivant, Y = pause (seule pause) ; clavier touche pour touche comme le Click, mêmes seuils (`engine/scripts/key_map.gd`, fournisseur du terminal) (lot O17, décisions D3 et D6 du 27 octobre) ; reste `test_key_map.gd` et l'essai J7 sur le PC.
 - [x] ERG dans une session libre (lot O18, PR #550, 29 octobre) : depuis l'écran de pause, SIM, ERG libre (puissance cible) ou ERG à cadence verrouillée (± 15 %, puissance adaptée entre 50 W et 150 % de la FTP), commande `set_ride_mode` de la révision 1.5 ; reste l'essai sur le vélo (§3).
 - [ ] **Présentation des menus, étapes 3b et 4** (cahiers du 28 octobre) : Appareils et connexion, plans et test de FTP (lot N19) ; records, bilan, pause, confirmation, couleurs du HUD et du globe tirées du thème (lot N20).
-- [ ] Recette sur le matériel et publication de `v1.0.0` (lot O8, liste unique des essais du §3).
+- [x] Recette sur le matériel et publication de `v1.0.0` (lot O8, 1er novembre 2026 ; état des lignes : O8 §7).
 
 ### Retours de l'essai du 25 octobre sur le HomeTrainer (série Q rédigée le 25 octobre)
 - [x] Difficulté du trainer à 50 % par défaut, réglable pendant la séance par un curseur du menu (lot Q1, contrat IPC v1.2 accepté ; curseur dans O4). Depuis le 27 octobre, elle n'est plus affichée en permanence dans le HUD : on la lit dans les Réglages et sur l'écran de pause.

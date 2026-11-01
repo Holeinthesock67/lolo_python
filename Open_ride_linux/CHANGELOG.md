@@ -3,9 +3,9 @@
 Toutes les évolutions notables, version par version, au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh X.Y.Z` le change partout (lot O2).
 
-## 0.9.0 – Non publiée
+## 1.0.0 – 2026-11-01
 
-Première version complète avant la 1.0 : tout ce que contient `main` au 26 octobre 2026.
+Première version publiée : tout ce que contient `main` au 1er novembre 2026. État de la recette : `docs/lots/LOT_O8_recette_1_0.md` §7.
 
 ### Séance sur le home trainer
 - Pilote FTMS du HomeTrainer : mode SIM (pente) et ERG (puissance), reconnexion, renvoi des erreurs ATT, relâche du trainer à la fermeture et `openride-core release-trainer`.
