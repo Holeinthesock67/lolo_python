@@ -31,6 +31,7 @@ Première version complète avant la 1.0 : tout ce que contient `main` au 26 oct
 
 ### Affichage (Godot 4.3)
 - Route et terrain par tronçons, shader triplanaire, ciel, arbres, bâtiments, eau et sons.
+- La chaussée ne commence plus au milieu de l'herbe : sur un parcours ouvert, elle continue 100 m avant le départ et 200 m après l'arrivée, posée sur le terrain, sans arbre dessus ; distance et fiches du parcours inchangées.
 - HUD, bandeau et histogramme ERG, menus au Click (parcours, entraînements, pause, fin de séance, appareils).
 
 ### Lancement et outils
