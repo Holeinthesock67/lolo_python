@@ -24,6 +24,7 @@ extends RefCounted
 ## résultat identique au bit près. `last_profile` donne le temps de chaque étape du dernier appel.
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
+const RoadBuilder := preload("res://scripts/road_builder.gd")
 
 const KIND_FACTOR := {"wood": 1.0, "scrub": 0.4, "orchard": 0.6}   # autres kind : ignorés (§7)
 const NOISE_MAX_FRACTION := 0.5
@@ -211,6 +212,23 @@ static func _road_buckets(route, rect: Rect2, corridor: float) -> Dictionary:
 						buckets[key] = PackedVector4Array()
 					buckets[key].append(Vector4(prev.x, prev.y, cur.x, cur.y))
 			prev = cur
+	# Amorces de chaussée avant le départ et après l'arrivée (road_builder.gd) : pas d'arbre dessus non plus.
+	for seg in RoadBuilder.lead_segments(route):
+		var a: Vector2 = seg[0]
+		var b: Vector2 = seg[1]
+		var n_sub := maxi(1, ceili(a.distance_to(b) / ROAD_SUBSTEP_M))
+		for k in range(n_sub):
+			var p0 := a.lerp(b, float(k) / n_sub)
+			var p1 := a.lerp(b, float(k + 1) / n_sub)
+			var r := Rect2(p0, Vector2.ZERO).expand(p1).grow(corridor)
+			if not grown.intersects(r, true):
+				continue
+			for bx in range(int(floor(r.position.x / ROAD_BUCKET_M)), int(floor(r.end.x / ROAD_BUCKET_M)) + 1):
+				for bz in range(int(floor(r.position.y / ROAD_BUCKET_M)), int(floor(r.end.y / ROAD_BUCKET_M)) + 1):
+					var key := Vector2i(bx, bz)
+					if not buckets.has(key):
+						buckets[key] = PackedVector4Array()
+					buckets[key].append(Vector4(p0.x, p0.y, p1.x, p1.y))
 	return buckets
 
 

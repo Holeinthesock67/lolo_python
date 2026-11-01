@@ -8,6 +8,7 @@ extends SceneTree
 ## Code de sortie : 0 si tout passe, 1 sinon.
 
 const RouteDataScript := preload("res://scripts/route_data.gd")
+const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const WorldStreamer := preload("res://scripts/world_streamer.gd")
@@ -54,7 +55,13 @@ func _right(route, s_pos: float) -> Vector3:
 func _expected_keys(route, dir: String, s_pos: float) -> Array:
 	var keys := []
 	var count := RoadBuilder.chunk_count(route)
-	for k in range(count):
+	# Amorces avant le départ (k = −1) et après l'arrivée (k = count) sur un parcours ouvert : l'arrivée de la démo
+	# est à plus de 200 m du départ.
+	var start: Vector3 = route.sample_point(0.0)
+	var finish: Vector3 = route.sample_point(route.length_m)
+	var k_first := 0 if route.type == "loop" else -1
+	var k_last := count - 1 if route.type == "loop" or Vector2(finish.x - start.x, finish.z - start.z).length() <= 200.0 else count
+	for k in range(k_first, k_last + 1):
 		if k * 1000.0 < s_pos + 3000.0 and (k + 1) * 1000.0 > s_pos - 1000.0:
 			keys.append("road:%d" % k)
 	var cam := _cam(route, s_pos)
@@ -203,7 +210,7 @@ func test_no_terrain() -> void:
 		min_alt = minf(min_alt, a)
 	_check(not st.has_terrain and st.has_ground(), "sol plat présent")
 	_check(is_equal_approx(st.ground_height(), min_alt - 5.0), "sol plat 5 m sous l'altitude minimale (%.2f m)" % st.ground_height())
-	_check(st.loaded_keys() == ["road:0", "road:1", "road:2"], "ruban affiché : %s" % ", ".join(st.loaded_keys()))
+	_check(st.loaded_keys() == ["road:-1", "road:0", "road:1", "road:2"], "ruban affiché (amorce du départ comprise) : %s" % ", ".join(st.loaded_keys()))
 	st.clear()
 	st.free()
 
@@ -267,6 +274,76 @@ func measure(terrain_dir: String) -> void:
 	print("  création de l'ArrayMesh d'une tuile (fil principal) : %.1f ms" % mesh_ms)
 
 
+# --- 5. amorces de chaussée avant le départ et après l'arrivée -----------------------------------
+
+## Demande du 1er novembre (« la route qui commence nulle part ») : la chaussée continue tout droit avant le départ
+## et après l'arrivée, raccordée sans marche au ruban, posée sur le terrain affiché, sans arbre dessus.
+func test_leads(terrain_dir: String) -> void:
+	print("Test 5 – amorces avant le départ et après l'arrivée")
+	var route = _load_route(terrain_dir)
+	var st = _new_streamer(route, terrain_dir)
+	var count := RoadBuilder.chunk_count(route)
+	_check(RoadBuilder.has_chunk(route, -1) and RoadBuilder.has_chunk(route, count), "démo ouverte : deux amorces")
+	_check(not RoadBuilder.has_chunk(route, -2) and not RoadBuilder.has_chunk(route, count + 1), "pas de tronçon au-delà des amorces")
+	for spec in [[0.0, -1, 0], [route.length_m, count, count - 1]]:
+		var s_end: float = spec[0]
+		var k_lead: int = spec[1]
+		var k_road: int = spec[2]
+		st.update_window(s_end, 0.0, _cam(route, s_end))
+		st.flush()
+		var lead_mi: MeshInstance3D = st.instance("road:%d" % k_lead)
+		var road_mi: MeshInstance3D = st.instance("road:%d" % k_road)
+		if lead_mi == null or road_mi == null:
+			_check(false, "amorce road:%d et tronçon road:%d affichés" % [k_lead, k_road])
+			continue
+		var lead_v: PackedVector3Array = lead_mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		var road_v: PackedVector3Array = road_mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		var n := RoadBuilder.VERTS_PER_SECTION
+		# Coupe commune : dernière de l'amorce du départ = première du tronçon 0 ; première de l'amorce d'arrivée = dernière du dernier tronçon.
+		var lead_base := lead_v.size() - n if k_lead < 0 else 0
+		var road_base := 0 if k_lead < 0 else road_v.size() - n
+		var worst := 0.0
+		for c in range(n):
+			worst = maxf(worst, lead_v[lead_base + c].distance_to(road_v[road_base + c]))
+		_check(worst < 0.001, "road:%d : raccord au ruban sans marche (écart %.4f m)" % [k_lead, worst])
+		var rng := RoadBuilder.chunk_range(route, k_lead)
+		var far_c := (lead_v[0] + lead_v[5]) * 0.5 if k_lead < 0 else (lead_v[lead_v.size() - 6] + lead_v[lead_v.size() - 1]) * 0.5
+		var end_p: Vector3 = route.sample_point(s_end)
+		var reach := Vector2(far_c.x - end_p.x, far_c.z - end_p.z).length()
+		_check(absf(reach - (rng.y - rng.x)) < 0.5, "road:%d : %.0f m de chaussée en plus (attendu %.0f m)" % [k_lead, reach, rng.y - rng.x])
+		# Terrain affiché sous l'axe de l'amorce, au-delà du raccord : sous la chaussée, pas trop loin dessous.
+		var worst_above := -INF
+		var worst_below := -INF
+		for i in range(0, lead_v.size(), n):
+			var c := (lead_v[i + 2] + lead_v[i + 3]) * 0.5
+			var t := TerrainTiles.tile_of("near", c.x, c.z)
+			var tile_mi: MeshInstance3D = st.instance("near:%d:%d" % [t.x, t.y])
+			if tile_mi == null:
+				continue
+			var hs := _instance_heights(tile_mi)
+			var y_t := TerrainTiles.mesh_height_at(hs, "near", t.x, t.y, c.x, c.z)
+			worst_above = maxf(worst_above, y_t - c.y)
+			worst_below = maxf(worst_below, c.y - y_t)
+		_check(worst_above <= 0.0, "road:%d : terrain sous la chaussée (dépasse au plus de %.3f m)" % [k_lead, worst_above])
+		_check(worst_below < 1.0, "road:%d : chaussée posée sur le terrain (au plus %.2f m au-dessus)" % [k_lead, worst_below])
+	# Arbres : l'axe des amorces est dans le couloir de la route où vegetation_placer.gd n'en pose pas.
+	var outside := 0
+	var looked := 0
+	for seg in RoadBuilder.lead_segments(route):
+		var a: Vector2 = seg[0]
+		var b: Vector2 = seg[1]
+		var rect := Rect2(a, Vector2.ZERO).expand(b).grow(10.0)
+		var buckets := VegetationPlacer._road_buckets(route, rect, 4.0)
+		for i in range(1, 21):
+			var p := a.lerp(b, i / 20.0)
+			looked += 1
+			if not VegetationPlacer._near_road(buckets, p.x, p.y, 4.0):
+				outside += 1
+	_check(looked > 0 and outside == 0, "amorces dans le couloir sans arbre (%d points hors couloir sur %d)" % [outside, looked])
+	st.clear()
+	st.free()
+
+
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.is_empty():
@@ -278,6 +355,7 @@ func _init() -> void:
 	test_long_run(terrain_dir)
 	test_joints(terrain_dir)
 	test_no_terrain()
+	test_leads(terrain_dir)
 	test_nan_and_winding(terrain_dir)
 	measure(terrain_dir)
 	print("Rendu par tronçons : %s" % ("tous les tests passent" if failures == 0 else "%d échec(s)" % failures))
