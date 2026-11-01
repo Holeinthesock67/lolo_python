@@ -101,17 +101,17 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 | Boîtier | Bouton | Bit (0 = appuyé) | Action OpenRide |
 | --- | --- | --- | --- |
 | gauche | − | 8 | « − » |
-| gauche | flèche gauche | 0 | réservé : raccourci de choix (spécification générale §7.1) |
-| gauche | flèche haut | 1 | réservé : vue de caméra (2.0, spécification générale §7.1) |
-| gauche | flèche droite | 2 | réservé : raccourci de choix (spécification générale §7.1) |
-| gauche | flèche bas | 3 | réservé : vue de caméra (2.0, spécification générale §7.1) |
+| gauche | flèche gauche | 0 | choix précédent : élément, couloir ou carte, branche (spécification générale §7.1) |
+| gauche | flèche haut | 1 | vue de caméra suivante en séance (spécification générale §7.1) |
+| gauche | flèche droite | 2 | choix suivant : élément, couloir ou carte, branche (spécification générale §7.1) |
+| gauche | flèche bas | 3 | vue de caméra précédente en séance (spécification générale §7.1) |
 | droit | + | 12 | « + » |
 | droit | A | 4 | choisir (court) et valider (long) dans les menus (spécification générale §7.1) |
-| droit | B | 5 | « − » (sans déblocage Zwift) |
+| droit | B | 5 | « − » (double le − du boîtier gauche) |
 | droit | Y | 6 | pause et reprise (lot N6) |
-| droit | Z | 7 | action du mode : bloc suivant en ERG (§4.4) |
+| droit | Z | 7 | action du mode (spécification générale §7.1) |
 
-- **Bridage du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion ; la liaison reste active (batterie toutes les 5 s) et renvoyer `RideOn` n'y change rien. Le boîtier droit n'est pas concerné, d'où le bouton B lu comme « − ». Même constat publié par BikeControl et zwiftboard.
+- **Verrou du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche se verrouille environ une minute après la connexion (message d'état `ff 05 00 ea 05`) et n'envoie plus ses boutons ; renvoyer `RideOn` n'y change rien. OpenRide le redémarre alors (octet `0x18`, `[drivers] click_reset_locked`, vrai par défaut) : il se reconnecte en 4 s environ et envoie de nouveau − et les flèches (essais sur le PC du 30 octobre 2026 : 20 « − » sur 21, 46 flèches sur 4 redémarrages). Le boîtier droit n'est pas concerné ; B y double « − » pour les quelques secondes de chaque redémarrage. Même verrou publié par BikeControl, zwiftboard et OpenRadlr (docs/RECHERCHE_CLICK_GAUCHE.md).
 - Événements normalisés (contrat IPC révision 1.3) : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`, `A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : sans effet, signalé pour + et − (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`) et expliqué à l'écran. Y et les flèches n'ont qu'un événement, quelle que soit la durée. Rôle de chaque bouton : spécification générale §7.1, seule référence. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
 - Repli : le clavier produit les mêmes événements, touche pour touche et avec les mêmes seuils, selon le tableau du clavier de la spécification générale §7.1 (décision D6, lot O17) : `engine/scripts/key_map.gd` dans la fenêtre de l'engine, `TERMINAL_KEYS` (`input_providers.py`) dans le terminal du core, qui ne mesure pas la durée et prend les synonymes pour les appuis longs.
 
@@ -362,6 +362,9 @@ grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
 trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce nombre de secondes (lot Q5)
 resend_s = 2.0               # la consigne est renvoyée au moins toutes les resend_s secondes ; une valeur plus grande (10 à 15) limite les écritures SIM_PARAMS quand la pente dérive peu
+control = "resistance"       # menu « Pilotage du trainer » : "resistance" (défaut depuis les essais du 1er novembre : le core calcule la force de la route au volant et envoie un niveau 0x04, lots RC1-RC3) ou "sim" (pente 0x11, le trainer simule l'élan et le rend après un sprint) ; le mode « power » des essais 7rc2 est retiré
+resistance_n_per_pct_kmh = 0.036  # frein du trainer en mode résistance : force par % et par km/h du volant (N), étalonnage 7rc1 (F = k × niveau × v), corrigée en roulant
+resistance_inertia_pct = 0.0  # mode résistance : part de l'inertie m × a (masse du profil) ajoutée quand le volant accélère, 0 à 100 %, jamais rendue ; coupée par défaut (essai 7rc3 à 50 % : 3,5, durcit et retarde)
 
 [gearing]
 n_gears = 24
@@ -392,8 +395,8 @@ sim_scenario = ""            # scénario du Bluetooth simulé (vide : demo), voi
 [render]
 quality = "low"      # low, medium, high
 theme = "default"
-visual_grade_scale = 2.5   # exagération visuelle du relief, de 1,0 à 3,0 (lots Q2 et Y15 ; physique et HUD inchangés)
-living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
+visual_grade_scale = 2.5   # exagération visuelle du relief, de 1,0 à 3,0 (lots Q2 et Y15 ; physique et HUD inchangés ; menu : « Relief exagéré » en %, lot O26)
+living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0 (menu : « Décor vivant », lot O26)
 load_guard = true    # garde-fou de charge (lot Y6) : coupe SSIL, SSAO, glow puis MSAA quand le GPU sature, sans baisser la résolution ; false pour les mesures
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
@@ -401,7 +404,7 @@ fps = "off"          # compteur d'images/s du HUD : off, on, detail (+ temps CPU
 draft_gauge = "off"  # jauge d'abri au-dessus du bot qui t'abrite : off, on (« Jauge d'abri des bots »)
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 texture_level = "auto"   # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high (« Textures du décor »)
-theme_library_gb = 5 # plafond des packs de thèmes de ~/OpenRide/Themes, de 1 à 50 Go (lot U15) : theme-install retire le moins récemment utilisé
+theme_library_gb = 5 # plafond des packs de thèmes de ~/OpenRide/Themes, de 1 à 50 Go (lot U15) : theme-install retire le moins récemment utilisé ; menu : Avancé, lot O27
 
 [ipc]
 port_state = 5005
@@ -412,13 +415,13 @@ godot = ""           # chemin de Godot 4.3, gardé par scripts/install.sh (vide 
 
 [open_world]         # monde ouvert de la 2.0 (série W, docs/contracts/worldgen_v1.md §6)
 cache_dir = "~/OpenRide/Cache/monde"
-cache_max_gb = 5.0
+cache_max_gb = 5.0   # menu : Avancé, « Cache du monde » (lot O27)
 horizon_m = 3000.0   # route engagée devant le cycliste
 offer_m = 300.0      # carrefour proposé à cette distance
 lock_m = 30.0        # choix verrouillé à cette distance du carrefour
 preview_m = 500.0    # amorce calculée pour chaque branche
 recenter_m = 10000.0
-network = true       # false : cache seulement
+network = true       # false : cache seulement (menu : Avancé, lot O27)
 prefetch_history = true
 prefetch_radius_km = 10.0
 [wind]
@@ -427,7 +430,7 @@ speed_kmh = 0                # 0 à 60
 from_deg = 270               # d'où vient le vent, degrés depuis le nord (0 à 360) ; réglable dans le menu par pas de 45
 gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme" ; réglable dans le menu
 seed = 0                     # graine des rafales, pour rejouer une séance
-feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11)
+feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11) ; menu : « Ressenti du vent »
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
 [gravel]
 mode = "off"                 # "off" (défaut), "auto" (surface du parcours), "compacted", "gravel" ou "dirt" (tout le parcours)
@@ -435,7 +438,7 @@ factor_compacted = 2.0       # roulement multiplié sur les portions compactées
 factor_gravel = 2.5          # sur le gravier, 1 à 3
 factor_dirt = 3.0            # sur la terre, 1 à 3
 [progression]
-enabled = true               # niveau, pièces, équipement et Garage (série V) ; false : comme avant la 2.0
+enabled = true               # niveau, pièces, équipement et Garage (série V) ; false : comme avant la 2.0 (menu : Avancé, lot O27)
 [avatar]
 standing_grade_pct = 8.0     # l'avatar se met en danseuse au-dessus de cette pente (3 à 15 %, lot V6)
 standing_power_pct = 150.0   # ou de cette puissance, en % de la FTP (100 à 300)

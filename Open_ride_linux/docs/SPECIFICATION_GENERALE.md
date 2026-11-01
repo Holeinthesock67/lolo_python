@@ -103,7 +103,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | --- | --- | --- | --- | --- |
 | 1.0-MAT-1 | Pilotage FTMS du trainer en SIM et en ERG, une procédure à la fois, reprise du contrôle | §4.1 | C, M1, audit FTMS | Livré |
 | 1.0-MAT-2 | Cardio : pont du trainer ou ceinture Bluetooth, fréquence figée écartée | §4.1 | M2, Q5 | Livré (M2 ; Q5, PR #195) |
-| 1.0-MAT-3 | Zwift Click V2 (deux boîtiers), B lu comme « − », boîtier gauche bridé | §4.2 | K8, Q6 | Livré (K8 ; Q6, PR #193 ; essai du boîtier gauche sur le PC à faire) |
+| 1.0-MAT-3 | Zwift Click V2 (deux boîtiers), B lu comme « − », boîtier gauche redémarré quand Zwift le verrouille | §4.2 | K8, Q6 | Livré (K8 ; Q6, PR #193 ; redémarrage `0x18`, PR #595, #607, #609 : − et flèches du gauche reçus sur le PC le 30 octobre) |
 | 1.0-MAT-4 | Bluetooth simulé et mode mock : tout se développe sans le vélo | §12 | H3, M5, M6 | Livré |
 | 1.0-PHY-1 | Physique à 50 Hz par bilan d'énergie, 250 W à plat ≈ 10,2 m/s | §5 | — | Livré |
 | 1.0-PHY-2 | 24 braquets virtuels de 0,65 à 2,00, pente effective bornée | §4.3 | — | Livré |
@@ -114,7 +114,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | 1.0-ERG-3 | Test de FTP, plans sur plusieurs semaines, menu Entraînement | — | O10 à O12 | O10, O11 et O12 livrés (O12 : core PR #395, écrans de l'engine PR #396) |
 | 1.0-ERG-4 | Bandeau ERG à l'écran, histogramme, bip à T − 3 s | §6 | N7 | Livré |
 | 1.0-ERG-5 | Boutons de l'ERG selon le plan commun (§7.1) : ± court biais ± 2 %, ± long biais ± 10 %, Z bloc suivant, Y pause | §4.4 | O17 | Livré, essai sur le PC à faire (décision D3 du 27 octobre, issue #367) |
-| 1.0-ERG-6 | ERG dans une session libre depuis l'écran de pause : SIM, ERG libre (puissance cible) ou ERG à cadence verrouillée (cadence ± 15 %, puissance adaptée) ; ± = biais de la cible (puissance, ou cadence en ERG cadence), Z = bonus comme en SIM | — | O18 | Livré (PR #550, fusionnée le 29 octobre ; demande du propriétaire du 28 octobre), essai sur le vélo à faire |
+| 1.0-ERG-6 | ERG dans une session libre depuis l'écran de pause : SIM, ERG libre (puissance cible) ou ERG à cadence verrouillée (cadence ± 10 % depuis l'essai du 1er novembre, puissance adaptée) ; ± = biais de la cible (puissance, ou cadence en ERG cadence), Z = bonus comme en SIM | — | O18 | Livré (PR #550, fusionnée le 29 octobre ; demande du propriétaire du 28 octobre), essai sur le vélo à faire |
 | 1.0-CMP-1 | Compilateur GPX vers `.world` : route, terrain, OSM, caches | §7 | B1, B2, I3, I4 | Livré |
 | 1.0-CMP-2 | Traces FIT et TCX, archives Garmin, compilation au lancement | §7 | M7, N11, O5 | Livré |
 | 1.0-CMP-3 | Bibliothèque de parcours et pack de cols célèbres | — | O15, O16 | Livré (pack O16 à construire une première fois sur le PC) |
@@ -284,7 +284,7 @@ Les sections de `~/OpenRide/config.toml` de la 1.0 sont dans la SRS §11. Ajouts
 
 Demande du propriétaire du 26 octobre (point C7) : chaque bouton garde le même **type** d'action d'un mode à l'autre, pour qu'on n'ait jamais à se demander « ici, Y fait quoi ? ». Plan validé le 26 octobre, puis réécrit le 27 octobre sans aucune exception, menus compris (principe du propriétaire : « on évite les exceptions »). **Ce tableau est la seule référence** : la SRS, les plans et les cahiers y renvoient au lieu de le recopier.
 
-Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches (bridé sans déblocage Zwift, SRS §4.2). B double toujours « − », et rien d'indispensable n'est mis sur le seul boîtier gauche. Appui court : moins de 0,5 s ; appui long : 0,9 s ou plus ; entre les deux, rien ne se passe et l'écran le dit (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`).
+Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches. Les deux boîtiers répondent ; Zwift verrouille le gauche environ une minute après la connexion et OpenRide le redémarre alors tout seul, d'où environ 4 s sans boutons à gauche chaque minute (SRS §4.2). B double donc toujours « − », et rien d'indispensable n'est mis sur le seul boîtier gauche : les flèches sont des raccourcis. Appui court : moins de 0,5 s ; appui long : 0,9 s ou plus ; entre les deux, rien ne se passe et l'écran le dit (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`).
 
 | Bouton | Famille | Menus | Classique SIM | ERG | Cyber-Rogue | Monde ouvert |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -305,6 +305,7 @@ Règles communes, valables partout :
 - **Z n'a que l'action du mode** ; il ne fait rien dans un menu.
 - **Pas de roue libre en ERG** (choix du propriétaire du 29 octobre, lot O19) : la consigne ERG ne descend jamais sous 50 W, biais compris, et un bloc FreeRide d'un `.zwo` devient un palier à 50 W. Les boutons gardent donc la colonne ERG d'un bout à l'autre de l'entraînement. Le test de FTP se fait par la rampe seule.
 - **ERG d'une session libre (lot O18)** : choisi sur l'écran de pause, il garde la colonne ERG, sauf Z, qui reste le bonus de la colonne SIM (pas de blocs) ; en ERG à cadence verrouillée, le biais s'applique à la cadence cible.
+- **Fin d'un entraînement (1er novembre)** : après le dernier bloc, la séance continue en parcours libre ; le bandeau invite à « Y puis A maintenu pour terminer et enregistrer », et Y ouvre la pause avec le focus sur « Terminer et enregistrer » (Y garde son rôle, A long valide comme partout). Champ `workout_done` de `state` (contrat IPC 1.5).
 - **Repère « décrochage » (lot X47, séance du 29 octobre)** : en roulant, hors Cyber-Rogue, Z long (Maj+Z au clavier) écrit `{"kind": "event", "event": "decrochage"}` au journal quand le cycliste sent le trainer décrocher, et l'écran le confirme. L'outil `decrochages` (lot X44) met ce repère face aux chutes de puissance mesurées. Rien d'autre ne change : ni braquet, ni consigne, ni chronomètre.
 - **Le grand pas vaut dix petits pas en séance** et cinq éléments dans un menu.
 - **Clavier (décision D6 du 27 octobre) :** il double le Click touche pour touche, avec les mêmes seuils d'appui (court sous 0,5 s, long à 0,9 s ou plus, zone floue entre les deux), en menu comme en séance ; une touche n'a jamais d'autre rôle que celui de son bouton. Pas de bouton pour la difficulté (décision Q1).
