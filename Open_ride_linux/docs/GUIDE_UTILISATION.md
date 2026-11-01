@@ -51,7 +51,7 @@ Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/O
 
 1. Au menu principal, **Parcours : …** ouvre la liste. Le tri et le filtre par étiquette sont en bas de la liste.
 2. Choisissez **Session libre** (la pente de la route est jouée par le trainer) ou **Session ERG** (section 5).
-3. L'écran **Prêt** montre la fiche du parcours (distance, dénivelé, montée principale, durée estimée). Il propose aussi **Bot : …** (un cycliste virtuel à puissance constante), **Fantôme de la dernière séance** et **Records du parcours**.
+3. L'écran **Prêt** montre la fiche du parcours (distance, dénivelé, montée principale, durée estimée). Il propose aussi **Bot 1 : …** (un cycliste virtuel à puissance constante ou à profil), **Fantôme de la dernière séance** et **Records du parcours**. Dès qu'un bot est choisi, une ligne **Bot 2 : aucun** apparaît en dessous, jusqu'à **Bot 4** : quatre bots et le fantôme peuvent rouler ensemble. Remettre un bot à « aucun » le retire.
 4. **Démarrer** lance la séance : le vélo avance dès que vous pédalez.
 
 **Pendant la séance.** Le HUD montre puissance, cadence, fréquence cardiaque, vitesse, distance, pente et profil d'altitude (sous le panneau de droite, en SIM). La puissance prend la couleur de sa zone de FTP (Z1 à Z7) et la fréquence cardiaque celle de sa zone de FC (Z1 à Z5, d'après la **FC max** des réglages du cycliste). La touche **Y** du Click (ou `Y`, `Échap` au clavier) met en pause : l'écran de pause propose **Reprendre**, **Terminer et enregistrer**, **Abandonner** et le curseur de **Difficulté**.

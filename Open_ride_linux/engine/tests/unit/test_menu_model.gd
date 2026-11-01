@@ -349,7 +349,7 @@ func _test_last_choices() -> void:
 	m.set_items("workouts", WORKOUTS_2)
 	m.set_last_choices({"workout_id": "vo2", "bots": [{"kind": "profile", "profile": "rouleur", "level_pct": 100.0},
 		{"kind": "ghost"}]})
-	_check(m.bot_choice == MenuModel.bot_index({"kind": "profile", "profile": "rouleur", "level_pct": 100}) and m.ghost,
+	_check(m.bot_choices == [MenuModel.bot_index({"kind": "profile", "profile": "rouleur", "level_pct": 100})] and m.ghost,
 		"derniers choix : bot à profil (nombre du JSON en flottant) et fantôme repris")
 	m.focus_item("erg")
 	_check(_focus_id(m.handle("A_LONG")) == "vo2", "Session ERG : la liste s'ouvre sur le dernier entraînement")
@@ -360,20 +360,24 @@ func _test_last_choices() -> void:
 	m.reset()
 	m.focus_item("ride")
 	m.handle("A_LONG")   # écran Prêt
-	m.focus_item("bot")
+	m.focus_item("bot1")
 	m.handle("A_LONG")   # bot suivant
 	m.focus_item("ghost")
 	m.handle("A_LONG")   # fantôme : non
 	m.focus_item("start")
 	var act: Dictionary = m.handle("A_LONG")["action"]
-	var bot_after: int = m.bot_choice
+	var bots_after: Array[int] = m.bot_choices.duplicate()
 	m.reset()
-	_check(act.get("action", "") == "start" and m.bot_choice == bot_after and not m.ghost,
+	_check(act.get("action", "") == "start" and m.bot_choices == bots_after and bots_after.size() == 1 and not m.ghost,
 		"nouvel accueil : le bot et le fantôme de la séance lancée restent choisis")
 	m.set_last_choices({"bots": [{"kind": "constant", "power_w": 999}]})
-	_check(m.bot_choice == 0 and not m.ghost and m.last_workout == "", "bot inconnu et choix absents : valeurs par défaut")
+	_check(m.bot_choices.is_empty() and not m.ghost and m.last_workout == "", "bot inconnu et choix absents : valeurs par défaut")
 	m.set_last_choices(null)
-	_check(m.bot_choice == 0, "aucun choix gardé (core sans last_choices)")
+	_check(m.bot_choices.is_empty(), "aucun choix gardé (core sans last_choices)")
+	# Lot O35 : jusqu'à quatre bots repris dans l'ordre, un bot inconnu sauté, le cinquième ignoré.
+	var w := {"kind": "constant", "power_w": 200}
+	m.set_last_choices({"bots": [w, {"kind": "constant", "power_w": 999}, {"kind": "constant", "power_w": 300}, w, w, w]})
+	_check(m.bot_choices == [1, 3, 1, 1], "quatre bots repris au plus, bot inconnu sauté (%s)" % str(m.bot_choices))
 
 
 func _init() -> void:
