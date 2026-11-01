@@ -451,3 +451,194 @@ def test_ftms_line_is_written_by_the_recorder(tmp_path):
     lines = list(read_journal(rec.path))
     assert [ln["kind"] for ln in lines] == ["header", "event", "ftms"]
     assert rec.events == [lines[1]] and lines[2]["event"] == "brake_loss"
+
+
+# --- 8. Frein d'élan : volant en avance sur les pédales après une relance (30 octobre) ------------
+
+def _sent_grade(drv) -> float:
+    """Pente de la prochaine écriture SIM (consigne + frein d'élan), comme dans _flush_command."""
+    return min(drv._want.value + drv._momentum_boost(), drv.cfg.grade_max_pct)
+
+
+def _brake_on(**kw) -> TrainerConfig:
+    """Frein d'élan activé (option du menu, coupée par défaut) aux réglages des essais 7bk : 3 %, 6 s."""
+    return TrainerConfig(**{"momentum_brake": True, "momentum_brake_pct": 3.0, "momentum_brake_s": 6.0, **kw})
+
+
+def test_momentum_brake_raises_the_grade_until_the_pedals_catch_up(caplog):
+    """Sprint 600 W puis 150 W, volant à 30 km/h : +3 % jusqu'à ce que la puissance remonte à 60 % de la pointe."""
+    now = [100.0]
+    drv = FtmsDriver(_brake_on(), BikeConfig(), clock=lambda: now[0])
+    got = []
+    drv.event_sink = got.append
+    drv.set_sim_grade(0.5)
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        _drive(drv, now, [(0.0, 600, 95), (0.5, 580, 95), (1.0, 150, 90)])
+        assert drv.momentum_brakes == 1 and drv._immediate
+        assert _sent_grade(drv) == pytest.approx(3.5)
+        _drive(drv, now, [(1.5, 200, 85), (2.0, 380, 85)])
+    assert _sent_grade(drv) == pytest.approx(0.5) and drv._immediate
+    msgs = [r.getMessage() for r in caplog.records]
+    assert any("frein d'élan n° 1 (600 W puis 150 W, volant 30 km/h) : pente +3.0 %" in m for m in msgs)
+    assert any(m.startswith("Trainer : frein d'élan relâché après 1.0 s (puissance revenue, 380 W)") for m in msgs)
+    assert [g["event"] for g in got] == ["momentum_brake", "momentum_end"]
+    assert got[0]["from_w"] == 600 and got[0]["boost_pct"] == 3.0 and got[1]["why"] == "puissance revenue"
+
+
+def test_momentum_brake_is_bounded_in_time_and_rate():
+    """Tenu jusqu'à 6 s sans reprise (phase à 0 W de 5–6 s, essai 7bk), puis pas de nouvelle intervention avant 5 s."""
+    now = [100.0]
+    drv = FtmsDriver(_brake_on(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(1.0)
+    _drive(drv, now, [(0.0, 500, 90), (1.0, 100, 80), (2.0, 100, 80), (4.0, 0, 80), (6.5, 0, 70)])
+    assert drv.momentum_brakes == 1 and _sent_grade(drv) == pytest.approx(4.0)   # encore tenu à 5,5 s
+    _drive(drv, now, [(7.0, 0, 70)])
+    assert _sent_grade(drv) == pytest.approx(1.0)   # relâché à 6 s
+    _drive(drv, now, [(8.0, 500, 90), (9.0, 100, 80)])
+    assert drv.momentum_brakes == 1   # 2 s après le relâchement
+    _drive(drv, now, [(12.5, 500, 90), (13.0, 100, 80)])
+    assert drv.momentum_brakes == 2
+
+
+@pytest.mark.parametrize("hold_s", [4.0, 8.0])
+def test_momentum_brake_hold_time_is_configurable(hold_s):
+    """[trainer] momentum_brake_s : grille de passes 4, 6 et 8 s (fil de fusion, 31 octobre)."""
+    now = [100.0]
+    drv = FtmsDriver(_brake_on(momentum_brake_pct=6.0, momentum_brake_s=hold_s), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(0.5)
+    _drive(drv, now, [(0.0, 600, 95), (1.0, 100, 90), (1.0 + hold_s - 0.2, 0, 0)])
+    assert _sent_grade(drv) == pytest.approx(6.5)
+    _drive(drv, now, [(1.0 + hold_s, 0, 0)])
+    assert _sent_grade(drv) == pytest.approx(0.5)
+
+
+def test_momentum_brake_ignores_an_isolated_zero_cadence(caplog):
+    """7bk 12:25:07 : cadence lue à 0 1,7 s après le déclenchement, 60–99 tr/min ensuite ; le volant
+    tourne encore à 34 km/h : le frein reste tenu (avant : relâché sur « pédalage arrêté »)."""
+    now = [100.0]
+    drv = FtmsDriver(_brake_on(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(0.5)
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        _drive(drv, now, [(0.0, 546, 99), (1.0, 140, 95), (2.7, 0, 0), (3.7, 0, 0), (4.7, 20, 75), (5.7, 30, 90)])
+    assert drv.momentum_brakes == 1 and _sent_grade(drv) == pytest.approx(3.5)
+    assert not any("pédalage arrêté" in r.getMessage() for r in caplog.records)
+
+
+def test_momentum_brake_released_when_the_rider_really_stops():
+    """Volant sous 20 km/h qui ralentit encore et plus de puissance : pédalage arrêté."""
+    now = [100.0]
+    got = []
+    drv = FtmsDriver(_brake_on(), BikeConfig(), clock=lambda: now[0])
+    drv.event_sink = got.append
+    drv.set_sim_grade(0.5)
+    for t, speed, rpm, power in [(0.0, 34.0, 99, 600), (1.0, 30.0, 90, 100), (2.0, 19.0, 0, 5)]:
+        now[0] = 100.0 + t
+        drv._on_ibd(None, bytearray(_ibd(speed, rpm, power)))
+    assert _sent_grade(drv) == pytest.approx(0.5)
+    assert got[-1]["event"] == "momentum_end" and got[-1]["why"] == "pédalage arrêté"
+
+
+@pytest.mark.parametrize("frames, why", [
+    ([(4.0, 18.0, 70, 60)], "P6 frein 1 : 60 W sous le frein à 6 %"),
+    ([(5.3, 17.0, 85, 101)], "P6 frein 2 : 101 W"),
+    ([(3.5, 19.5, 60, 50), (4.0, 19.5, 0, 0)], "0 W mais le volant ne ralentit plus"),
+    ([(4.0, 25.0, 0, 0)], "0 W, volant encore au-dessus de 20 km/h : la phase que le frein couvre"),
+])
+def test_momentum_brake_kept_while_the_rider_still_pedals(frames, why):
+    """Grille 7bk-bis (31 octobre) : relâché à tort sur « pédalage arrêté » à 60 et 101 W."""
+    now = [100.0]
+    drv = FtmsDriver(_brake_on(momentum_brake_pct=6.0, momentum_brake_s=8.0), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(0.5)
+    for t, speed, rpm, power in [(0.0, 38.0, 100, 600), (1.0, 34.0, 95, 150), (3.0, 22.0, 80, 40), *frames]:
+        now[0] = 100.0 + t
+        drv._on_ibd(None, bytearray(_ibd(speed, rpm, power)))
+    assert drv.momentum_brakes == 1 and drv._momentum_at is not None, why
+
+
+def test_momentum_brake_without_flywheel_speed_needs_a_lasting_low_cadence():
+    """Trainer sans vitesse du volant : cadence basse plus de 2 s = pédalage arrêté, un 0 isolé ne suffit pas."""
+    now = [100.0]
+    drv = FtmsDriver(_brake_on(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(0.5)
+
+    def frame(t, power, rpm):
+        now[0] = 100.0 + t
+        drv._trainer_speed_kmh, drv._cadence = None, rpm
+        drv._check_momentum(now[0], power)
+    for t, power, rpm in [(0.0, 600, 95), (1.0, 100, 90), (2.0, 0, 0), (3.0, 20, 80), (4.0, 0, 0), (5.5, 0, 0)]:
+        frame(t, power, rpm)
+    assert drv.momentum_brakes == 1 and drv._momentum_at is not None   # 0 depuis 1,5 s seulement
+    frame(6.1, 0, 0)
+    assert drv._momentum_at is None
+
+
+@pytest.mark.parametrize("on, text", [
+    (True, "Trainer : momentum_brakes = 2 (frein d'élan +3.0 %, tenu 6 s au plus)."),
+    (False, "Trainer : momentum_brakes = 0 (frein d'élan coupé)."),
+])
+def test_momentum_counter_line_is_written_to_core_log(caplog, on, text):
+    """Ligne compteur à la fin de la séance, même à 0 (7bk : aucune ligne momentum_brakes dans core.log)."""
+    drv = FtmsDriver(_brake_on() if on else TrainerConfig(), BikeConfig())
+    drv.momentum_brakes = 2 if on else 0
+    drv._stop.set()
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        asyncio.run(drv.run())
+    assert text in [r.getMessage() for r in caplog.records]
+
+
+def test_momentum_brake_respects_the_grade_ceiling():
+    now = [100.0]
+    drv = FtmsDriver(_brake_on(grade_max_pct=10.0), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(9.0)
+    _drive(drv, now, [(0.0, 500, 90), (1.0, 100, 80)])
+    assert _sent_grade(drv) == pytest.approx(10.0)
+
+
+@pytest.mark.parametrize("cfg, mode, frames, why", [
+    (TrainerConfig(), "sim", [(0.0, 600, 95), (1.0, 100, 90)], "option coupée (défaut)"),
+    (_brake_on(), "erg", [(0.0, 600, 95), (1.0, 100, 90)], "ERG : le trainer tient la puissance"),
+    (_brake_on(), "sim", [(0.0, 200, 80), (1.0, 50, 80)], "pas de relance avant"),
+    (_brake_on(), "sim", [(0.0, 600, 95), (1.0, 300, 90)], "baisse modérée"),
+    (_brake_on(), "sim", [(0.0, 600, 95), (4.0, 100, 90)], "pointe trop ancienne"),
+])
+def test_no_momentum_brake_outside_a_relaunch_in_sim(cfg, mode, frames, why):
+    now = [100.0]
+    drv = FtmsDriver(cfg, BikeConfig(), clock=lambda: now[0])
+    if mode == "erg":
+        drv.set_target_power(250.0)
+    else:
+        drv.set_sim_grade(0.5)
+    _drive(drv, now, frames)
+    assert drv.momentum_brakes == 0, why
+
+
+def test_momentum_brake_skipped_when_the_flywheel_is_slow():
+    now = [100.0]
+    drv = FtmsDriver(_brake_on(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(0.5)
+    for t, power in [(0.0, 600), (1.0, 100)]:
+        now[0] = 100.0 + t
+        drv._on_ibd(None, bytearray(_ibd(15.0, 80, power)))
+    assert drv.momentum_brakes == 0
+
+
+def test_momentum_brake_grade_is_written_to_the_trainer():
+    """La pente majorée part au trainer à la notification suivante, sans attendre le renvoi."""
+    sent = []
+
+    class _Cp:
+        async def write(self, payload, **_kw):
+            sent.append(bytes(payload))
+
+    now = [100.0]
+    drv = FtmsDriver(_brake_on(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(0.5)
+    drv._last_sent, drv._last_sent_at = ("sim", 0.5), 99.9
+
+    async def _call(cp, build):
+        await cp.write(build())
+    drv._call_retrying = _call
+    _drive(drv, now, [(0.0, 600, 95), (1.0, 150, 90)])
+    asyncio.run(drv._flush_command(_Cp()))
+    assert drv._last_sent == ("sim", pytest.approx(3.5))
+    assert sent and sent[-1] == ftms.cmd_set_sim_params(3.5, drv._crr, drv._cw, 0.0)

@@ -156,3 +156,10 @@ def test_brake_back_right_after_the_control_retake_proves_the_trainer():
     assert late.kind == "indetermine" and late.back_after_s == 6.5
     alone = dc.attach(drops, [(32.7, dc.status_text({"event": "power_back", "after_s": 1.2, "power_w": 330}))], [])[0]
     assert alone.kind == "indetermine" and alone.back_after_s is None
+
+
+def test_momentum_brake_lines_are_named_and_never_count_as_brake_loss():
+    on = dc.status_text({"event": "momentum_brake", "boost_pct": 3.0, "from_w": 600, "to_w": 150, "cadence_rpm": 90})
+    off = dc.status_text({"event": "momentum_end", "after_s": 1.0, "why": "puissance revenue"})
+    assert on == "frein d'élan +3.0 % (600 → 150 W, 90 tr/min)" and dc.BRAKE_LOSS_TEXT not in on
+    assert off == "frein d'élan relâché après 1.0 s (puissance revenue)"

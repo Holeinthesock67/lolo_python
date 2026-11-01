@@ -62,6 +62,9 @@ class TrainerConfig:
     trace_ftms: bool = False          # trace horodatée de chaque échange Control Point FTMS (lot Q3)
     hr_relay_freeze_s: float = 15.0   # détection cardio relayée figée (lot Q5)
     resend_s: float = 2.0             # la consigne SIM/ERG est renvoyée au moins toutes les resend_s secondes (30 octobre : essai à 10–15 s contre le pompage)
+    momentum_brake: bool = False      # frein d'élan en SIM après une relance : option du menu, coupée par défaut (user, 1er novembre)
+    momentum_brake_pct: float = 6.0   # pente ajoutée par le frein d'élan, 3 à 6 % (grille 7bk-bis : 6 % meilleur)
+    momentum_brake_s: float = 8.0     # frein d'élan tenu au plus ce temps, 3 à 8 s, sauf si la puissance remonte (7bk-bis : 8 s)
 
 
 @dataclass
@@ -273,6 +276,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("trainer", "grade_rate_down_pct_per_s"): (0.1, 100),
     ("trainer", "hr_relay_freeze_s"): (5, 120),
     ("trainer", "resend_s"): (0.5, 60),
+    ("trainer", "momentum_brake_pct"): (3, 6),
+    ("trainer", "momentum_brake_s"): (3, 8),
     ("gearing", "n_gears"): (2, 40),
     ("gearing", "start_gear"): (1, 40),
     ("gearing", "ratio_min"): (0.1, 5),
@@ -345,6 +350,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("rider", "ftp_w"), ("rider", "mass_kg"), ("rider", "hr_max_bpm"),
     ("bike", "mass_kg"),
     ("trainer", "difficulty_pct"),
+    ("trainer", "momentum_brake"), ("trainer", "momentum_brake_pct"), ("trainer", "momentum_brake_s"),
     ("gearing", "start_gear"),
     ("powerups", "mode"),
     ("bots", "level_pct"),

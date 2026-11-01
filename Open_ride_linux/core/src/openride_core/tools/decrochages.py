@@ -294,6 +294,11 @@ def status_text(line: dict) -> str:
         return f"puissance revenue ({line.get('power_w')} W après {line.get('after_s')} s)"
     if ev == "power_not_back":
         return f"puissance pas revenue après {line.get('after_s')} s"
+    if ev == "momentum_brake":
+        return (f"frein d'élan +{line.get('boost_pct')} % ({line.get('from_w')} → {line.get('to_w')} W, "
+                f"{line.get('cadence_rpm')} tr/min)")
+    if ev == "momentum_end":
+        return f"frein d'élan relâché après {line.get('after_s')} s ({line.get('why')})"
     return str(ev)
 
 

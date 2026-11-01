@@ -254,6 +254,7 @@ class CoreSession:
         self._cli_bots = self.bots   # ceux de la ligne de commande, remis quand `start` n'a pas de `bots`
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
+        self._momentum_fed: tuple[bool, float, float] | None = None   # frein d'élan posé sur le pilote
         if hasattr(self.driver, "event_sink"):   # statuts du trainer et perte de frein au journal
             self.driver.event_sink = lambda line: self._rec.ftms(line) if self._rec else None
         self.inputs = inputs if inputs is not None else build_inputs(cfg, self.sim)
@@ -741,6 +742,18 @@ class CoreSession:
         except RuntimeError:
             pass
 
+    def _feed_momentum(self) -> None:
+        """Frein d'élan du profil en cours (option du menu, Réglages › Séance) posé sur le pilote du
+        trainer : suit un changement de profil ou de réglage sans relancer."""
+        setter = getattr(self.driver, "set_momentum_brake", None)
+        if setter is None:
+            return
+        t = self.cfg.trainer
+        wanted = (t.momentum_brake, t.momentum_brake_pct, t.momentum_brake_s)
+        if wanted != self._momentum_fed:
+            self._momentum_fed = wanted
+            setter(*wanted)
+
     def _send_profile_reload(self, cmd_id: int) -> None:
         self._publish_profile()
         self._publish_interrupted()
@@ -1013,6 +1026,7 @@ class CoreSession:
                 self._rec.game(line)
         cfg = self.cfg.rogue
         self._grade_sent, shifted = rg.target_grade(cfg.grade_rate_up_pct_per_s, cfg.grade_rate_down_pct_per_s, dt)
+        self._feed_momentum()
         self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
         self._rogue_dist += self.physics.v * dt
         p3 = self._power_3s(m.power_w)
@@ -2337,6 +2351,7 @@ class CoreSession:
                 self._grade_sent = target
             else:
                 self._grade_sent += min(max(target - self._grade_sent, -max_delta), max_delta)
+            self._feed_momentum()
             self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
 
         power_used = race.power(m.power_w) if race else m.power_w

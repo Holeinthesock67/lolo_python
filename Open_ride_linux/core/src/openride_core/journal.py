@@ -42,7 +42,9 @@ Sortes de lignes :
   "echo": bool}` : chaque Fitness Machine Status du trainer (0x02, 0x03, 0x14, 0xFF…) ; `"event":
   "training_status"` (`data`, avec `trace_ftms`) ; `"event": "brake_loss"` (`from_w`, `to_w`,
   `cadence_rpm`, `speed_kmh`), puis `"power_back"` (`after_s`, `power_w`) ou `"power_not_back"`
-  (`after_s`) : le frein lâché du 29 octobre 2026. Lignes facultatives, absentes du FIT ; les lectures
+  (`after_s`) : le frein lâché du 29 octobre 2026 ; `"momentum_brake"` (`from_w`, `to_w`, `cadence_rpm`,
+  `speed_kmh`, `boost_pct`) puis `"momentum_end"` (`after_s`, `power_w`, `why`) : le frein d'élan en SIM
+  (30 octobre 2026). Lignes facultatives, absentes du FIT ; les lectures
   qui ne connaissent pas cette sorte l'ignorent.
 `ts` est l'heure Unix (secondes, UTC).
 """

@@ -362,6 +362,9 @@ grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
 trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce nombre de secondes (lot Q5)
 resend_s = 2.0               # la consigne est renvoyée au moins toutes les resend_s secondes ; une valeur plus grande (10 à 15) limite les écritures SIM_PARAMS quand la pente dérive peu
+momentum_brake = false       # frein d'élan en SIM après une relance : option « Frein d'élan » de Réglages › Séance, coupée par défaut, réglée par profil
+momentum_brake_pct = 6.0     # pente ajoutée par le frein d'élan, 3 à 6 % (menu « Frein d'élan : pente »)
+momentum_brake_s = 8.0       # frein d'élan tenu au plus ce temps, 3 à 8 s (menu « Frein d'élan : durée »), sauf si la puissance remonte à 60 % de la pointe
 
 [gearing]
 n_gears = 24

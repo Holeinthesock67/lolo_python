@@ -81,6 +81,10 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("gearing.start_gear", "Braquet de départ", "ride", 1),
     Setting("powerups.mode", "Bonus", "ride"),
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
+    # Frein d'élan en SIM après une relance (#618, user 1er novembre) : coupé par défaut, réglé par profil
+    Setting("trainer.momentum_brake", "Frein d'élan", "ride"),
+    Setting("trainer.momentum_brake_s", "Frein d'élan : durée", "ride", 1, "s"),
+    Setting("trainer.momentum_brake_pct", "Frein d'élan : pente", "ride", 1, "%"),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20
