@@ -260,6 +260,25 @@ terrain_count="$(echo "$TERRAIN_OUT" | grep -E "^test_terrain_coherence : [0-9]+
 if [ -z "$terrain_count" ] || echo "$TERRAIN_OUT" | grep -q -E "SCRIPT ERROR|ERROR:"; then terrain_rc=1; fi
 record "test_terrain_coherence (terrain proche et lointain)" "$terrain_rc" "${terrain_count#*: }"
 
+echo "== Rien du paysage sur la chaussée, sur les parcours de démonstration (31 octobre) =="
+# demo.world ci-dessus et les quatre parcours de demo-biomes (compilateur installé) : herbe, détails de sol,
+# arbres et terrain contrôlés contre la route réelle, sur tout le parcours.
+HERBE_WORLDS=("$ROUTES_DIR/demo.world")
+HERBE_DIR="$(mktemp -d -t openride-herbe.XXXXXX)"   # à part : ROUTES_DIR sert de catalogue aux scénarios IPC
+if python3 "$ENGINE_DIR/tests/make_biome_world.py" --demo-set --out "$HERBE_DIR" >/dev/null 2>&1; then
+  for w in "$HERBE_DIR"/demo-biomes-*.world; do HERBE_WORLDS+=("$w"); done
+else
+  echo "parcours demo-biomes non produits (compilateur installé ?) : contrôle incomplet, compté en échec"
+fi
+HERBE_OUT="$(timeout -k 5 600 "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_herbe_route.gd -- "${HERBE_WORLDS[@]}" 2>&1)"
+herbe_rc=$?
+echo "$HERBE_OUT" | grep -v "^Godot Engine" || true
+herbe_count="$(echo "$HERBE_OUT" | grep -E "^test_herbe_route : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
+if [ -z "$herbe_count" ] || echo "$HERBE_OUT" | grep -q -E "SCRIPT ERROR|ERROR:"; then herbe_rc=1; fi
+if [ "${#HERBE_WORLDS[@]}" -lt 5 ]; then herbe_rc=1; fi
+record "test_herbe_route (paysage hors de la chaussée, ${#HERBE_WORLDS[@]} parcours de démo)" "$herbe_rc" "${herbe_count#*: }"
+rm -rf "$HERBE_DIR"
+
 echo "== Coutures du sol multi-biome en scène réelle (série U) =="
 # Démo ci-dessus avec une couche biome prairie → sable ; world_streamer.gd charge les tuiles (Xvfb).
 if command -v xvfb-run >/dev/null 2>&1; then
