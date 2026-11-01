@@ -58,6 +58,8 @@ Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/O
 
 **Fin de séance.** À l'arrivée d'un parcours ou avec **Terminer et enregistrer**, le bilan affiche la durée, la distance, les puissances (NP, IF, TSS) et les zones. La séance est enregistrée dans `~/OpenRide/Activities/` (section 8).
 
+**Fin d'un entraînement.** Quand le dernier bloc d'un entraînement ERG (ou de la séance du jour d'un plan) est fini, la séance ne s'arrête pas : le trainer repasse en parcours libre et le bandeau du haut affiche « Entraînement « … » terminé : Y puis A maintenu pour terminer et enregistrer » tant que vous roulez. **Y** ouvre la pause directement sur **Terminer et enregistrer** (la ligne sous le titre le rappelle) ; **A maintenu** (Échap puis Entrée au clavier) affiche le bilan et enregistre la séance. Pour continuer à rouler, **Reprendre** ; l'invite disparaît si vous choisissez un autre mode sur la ligne **Mode** de la pause.
+
 **Mode WTF (« What the fuck »).** **Mode WTF** à l'accueil ouvre la liste des treize règles absurdes : gravité de la Lune ou de Jupiter, monde à l'envers, route qui s'effondre derrière vous, fromage géant dans les descentes, Katamari, peloton déguisé, micro-défis, livraison d'œufs, horloge réglée par votre cadence, vélo minuscule, tornade de vaches, caméras improbables et **Surprise du chef**. Chaque ligne s'allume ou se coupe (A maintenu ou Entrée) ; **Tout allumer** les rallume toutes ; le choix est gardé dans `~/OpenRide/wtf.toml`. **Lancer une séance WTF** ouvre l'écran **Prêt** (parcours, bot, fantôme), puis **Démarrer**. Un gag à la fois, toutes les 45 à 90 s : le bandeau du haut donne son nom, le temps restant et vos points, la carte dessous ce qu'il faut faire. Quand le chef révèle son plat, **Z** court (touche `Z` au clavier) répond « Non merci, chef ! » dans les 5 secondes ; le chef vexé sert alors du piment la fois suivante. Le mode WTF se roule en SIM seulement : la pente ressentie reste entre −6 et +10 %, et la puissance enregistrée dans le FIT est toujours votre puissance mesurée. Pas de records ni de bonus ; le bilan donne les points, les gags joués et la taille du Katamari.
 
 ## 4 bis. Monde ouvert
@@ -96,7 +98,7 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
 - **Importer** : le fichier est vérifié, puis copié dans `~/OpenRide/Workouts/` ; un fichier déjà importé n'est pas recopié, un autre du même nom reçoit `_2`.
 - **À la main** : un fichier posé directement dans `~/OpenRide/Workouts/` apparaît dans la liste. `.zwo` (Zwift) et `.mrc` : puissances en % de la FTP ; `.erg` : watts fixes ; `.qwk` : watts ou %. Un bloc `FreeRide` devient un palier à 50 W. Exemples dans `core/workouts/`.
 
-**Pendant l'ERG.** Le bandeau du bas montre le bloc en cours, le temps restant, la cible et le bloc suivant. Les appuis courts sur « + » et « − » règlent l'intensité de ± 2 %, les appuis longs de ± 10 % ; **Z** passe au bloc suivant et **Y** met la séance en pause. Le détail est dans la section 6.
+**Pendant l'ERG.** Le bandeau du bas montre le bloc en cours, le temps restant, la cible et le bloc suivant. Les appuis courts sur « + » et « − » règlent l'intensité de ± 2 %, les appuis longs de ± 10 % ; **Z** passe au bloc suivant et **Y** met la séance en pause. Après le dernier bloc, le bandeau du haut invite à terminer : **Y** puis **A maintenu** (section 4, « Fin d'un entraînement »). Le détail est dans la section 6.
 
 **Passer en ERG pendant une session libre.** Mettez en pause (**Y**) : la ligne **Mode** de l'écran de pause passe de **SIM** à **ERG** ou à **ERG cadence** (« + » ou « − » pour changer, A maintenu pour appliquer, Y pour annuler), puis **Reprendre**. En **ERG**, la ligne **Puissance cible** règle la puissance par pas de 5 W ; elle part de votre puissance des 3 dernières secondes, et « + » et « − » règlent ensuite l'intensité de ± 2 % en roulant. En **ERG cadence**, la ligne **Cadence cible** règle la cadence à tenir (elle part de votre cadence du moment) : tant que vous restez à ± 10 % de cette cadence, la puissance ne bouge pas ; si vous tournez plus vite, elle monte peu à peu, si vous tournez moins vite, elle baisse, entre 50 W et 150 % de votre FTP. En roulant, « + » et « − » changent la cadence cible de ± 2 % (appui long ± 10 %). Le bandeau dit si vous êtes dans la plage. Revenez en **SIM** de la même façon. Pas de bascule pendant un entraînement ni en Cyber-Rogue.
 
@@ -147,6 +149,7 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Bloc suivant | Z |
 | Noter un décrochage du trainer au journal | Z long |
 | Pause et reprise | Y |
+| Entraînement fini : terminer et enregistrer | Y, puis A long |
 | Vue de caméra suivante, précédente | flèche haut (ou A court), flèche bas |
 
 **Z long** (ou `Maj+Z` au clavier) note un repère « décrochage » au journal quand vous sentez la résistance du trainer lâcher (sauf en Cyber-Rogue, où Z long joue la carte active). L'écran le confirme ; rien d'autre ne change. L'outil `decrochages` relit ces repères en face des chutes de puissance mesurées.

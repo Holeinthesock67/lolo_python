@@ -103,6 +103,30 @@ func _ids_route(items: Array, index: int) -> String:
 	return str(items[index]["id"])
 
 
+## Invite de fin de séance (1er novembre) : entraînement fini, la pause s'ouvre sur « Terminer et enregistrer »
+## et le dit sur sa ligne d'état ; une pause ordinaire garde Reprendre en premier.
+func _test_pause_after_workout_done() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "RUNNING", "mode": "SIM", "workout_done": {"workout_name": "Sweet spot"}})
+	f.on_state({"session_state": "PAUSED", "pause_reason": "user", "mode": "SIM",
+		"workout_done": {"workout_name": "Sweet spot"}})
+	_check(f.state()["screen"] == "pause" and _focus_id(f) == "end_save",
+		"entraînement fini : pause ouverte sur Terminer et enregistrer")
+	_check(f.state()["status"] == MenuFlow.PAUSE_WORKOUT_DONE, "ligne d'état : A maintenu pour terminer et enregistrer")
+	_check(f.handle("A_LONG") == {"action": "end_session", "save": true}, "Y puis A maintenu : terminer et enregistrer")
+	var g = MenuFlow.new()
+	g.connect_done = true
+	g.on_state({"session_state": "RUNNING", "mode": "ERG"})
+	g.on_state({"session_state": "PAUSED", "pause_reason": "user", "mode": "ERG"})
+	_check(_focus_id(g) == "resume" and g.state()["status"] == "", "pause ordinaire : focus sur Reprendre, pas d'invite")
+	var h = MenuFlow.new()
+	h.connect_done = true
+	h.on_state({"session_state": "RUNNING", "workout_done": {"workout_name": "x"}})
+	h.on_state({"session_state": "PAUSED", "pause_reason": "trainer_lost", "workout_done": {"workout_name": "x"}})
+	_check(h.state()["status"] == MenuFlow.PAUSE_REASONS["trainer_lost"], "pause subie : la raison passe avant l'invite")
+
+
 func _test_abandon_and_summary_quit() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true   # écran de connexion : _test_connect_screen
@@ -814,6 +838,7 @@ func _init() -> void:
 	_test_relaunch_setting()
 	_test_full_session()
 	_test_abandon_and_summary_quit()
+	_test_pause_after_workout_done()
 	_test_view()
 	print("test_menu_flow : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
