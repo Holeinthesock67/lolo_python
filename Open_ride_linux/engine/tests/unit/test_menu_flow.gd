@@ -223,6 +223,11 @@ func _test_connect_screen() -> void:
 	_check(f.with_devices({"session_state": "IDLE"}).has("devices"), "with_devices complète la trame")
 	f.handle("A_LONG")   # Passer
 	_check(f.state()["screen"] == "home" and f.connect_done, "Passer : accueil")
+	# Premières trames sans `devices` : trainer relié mais boîtiers inconnus, l'écran reste même après CONNECT_HOLD_S.
+	var e = MenuFlow.new()
+	e.on_state({"session_state": "IDLE", "trainer_status": "MOCK", "input_status": "KEYBOARD"}, 1.0)
+	e.on_state({"session_state": "IDLE", "trainer_status": "MOCK", "input_status": "KEYBOARD"}, 1.0 + MenuFlow.CONNECT_HOLD_S + 2.0)
+	_check(e.state()["screen"] == "connect", "avant le premier objet devices : pas de départ seul vers l'accueil")
 	# Tout relié : accueil seul après CONNECT_HOLD_S.
 	var g = MenuFlow.new()
 	g.on_state({"session_state": "IDLE", "trainer_status": "CONNECTED", "devices": DEV_ALL}, 5.0)

@@ -417,7 +417,10 @@ func with_devices(state: Dictionary) -> Dictionary:
 
 func _update_connect(state: Dictionary, now_s: float) -> void:
 	var c: Dictionary = devices_model.connection(state)
-	if c["all_ok"]:
+	# Départ seul seulement sur un objet `devices` reçu : avant le premier (une trame sur 30), trainer_status
+	# et input_status seuls disent « tout relié » sans voir les boîtiers du Click (banc des menus, scénario
+	# `appareils` : accueil sans écran de connexion quand l'engine démarrait lentement).
+	if c["all_ok"] and state.has("devices"):
 		if _all_ok_since < 0.0:
 			_all_ok_since = now_s
 		if now_s < 0.0 or now_s - _all_ok_since >= CONNECT_HOLD_S:
