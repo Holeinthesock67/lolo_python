@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série AS : vent de travers, zone abritée décalée sous le vent, bordure limitée par la voie | Python | AS2, P2 | Moyenne | Prêt (version 2.0) |
+| Série AS : vent de travers, zone abritée décalée sous le vent, bordure limitée par la voie, meneur côté vent | Python | AS2, P2 | Moyenne | En PR (31 octobre, #654 sur AS2) ; reste l'essai sur le vélo |
 
 Série AS, version 2.0 (décision du propriétaire du 29 octobre 2026).
 
@@ -48,3 +48,11 @@ Aucune.
 ## 8. Hors périmètre
 
 Bordure sur une route large à plusieurs voies, vent tournant au fil du parcours (déjà géré par P2 au niveau du vent).
+
+## 9. Livraison (31 octobre 2026)
+
+PR empilée sur AS2 (#649). `draft.py` : `crosswind_shift_m`, `crosswind_residual` (remplace `crosswind_factor` de P3), `echelon_lane` ; `lane_target` et `update_lanes(..., wind_at)` placent en diagonale ; `session.py` passe le vent de face et de travers de chaque coureur. Tests : `core/tests/test_draft_crosswind.py` (critères 2 à 5 et séance). Banc : partie 4 de `draft_bench` (`--vent 36`).
+
+Décision du propriétaire du 31 octobre (carte de décision du fil) : **le meneur passe côté vent.** Par vent de travers (zone décalée d'au moins 0,3 m à 1 m d'écart, environ 17° de lacet), un coureur qui en mène un autre à moins de 15 m se place au bord de la voie côté vent (0,3 m de l'axe par vent de gauche, 2,6 m par vent de droite) ; seul, il garde sa place. L'éventail est alors le même des deux côtés. Conséquence sur le critère 5 : à 45°, 1 m entre les roues, la voie utile de 2,3 m tient 3 à 4 coureurs (meneur compris), 3 au-delà de 50°, 2 vers 60° ; le banc et les tests vérifient « 2 à 4 » et les suivants sous 0,15.
+
+Mesures du banc au cloud (250 W, 38,4 km/h, vent de 36 km/h de gauche, lacet 43°) : diagonale à +1,5 m du bot, abri 0,228 = 0,87 × l'abri sans vent ; resté dans la roue : 0,00. Éventail de 5 bots, vent de gauche : 0,30 / 1,45 / 2,60 / 2,60 / 2,60 m, abri 0 / 0,27 / 0,30 / 0,15 / 0,08, cycliste 0,02 ; vent de droite : 2,60 / 1,84 / 1,08 / 0,32 / 0,30 m, abri 0 / 0,27 / 0,30 / 0,32 / 0,08, cycliste 0,04 (4 coureurs dans l'éventail des deux côtés).

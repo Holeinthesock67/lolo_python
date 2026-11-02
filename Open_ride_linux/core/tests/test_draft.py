@@ -55,8 +55,8 @@ def test_line_of_bots_and_crosswind():
     two, _ = d.best_draft(behind(0.5), line[:2])
     assert two == pytest.approx(one * 1.12)
     v = 10.0
-    cross, _ = d.best_draft(behind(0.5), [bot(100.0)], rider_v=v, cross_mps=v)   # 45° de travers
-    assert cross == pytest.approx(one * 0.5)
+    cross, _ = d.best_draft(behind(0.5), [bot(100.0)], rider_v=v, cross_mps=v)   # 45° de travers, dans la roue
+    assert cross == pytest.approx(one * d.lateral_factor(0.5) * 0.8)            # zone décalée de 0,5 m (AS3)
     head, _ = d.best_draft(behind(0.5), [bot(100.0)], rider_v=v, head_mps=5.0)
     assert head == pytest.approx(one)
     # Le fantôme n'abrite pas ; un bot derrière le cycliste non plus
