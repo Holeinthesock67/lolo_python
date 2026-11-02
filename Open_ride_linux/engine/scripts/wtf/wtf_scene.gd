@@ -136,25 +136,28 @@ static func _make(kind: String) -> MeshInstance3D:
 				[_box(Vector3(7.0, 0.05, WtfSceneModel.VOID_LENGTH_M)), Vector3(0.0, 0.03, half), Color(0.04, 0.03, 0.05)],
 				[_box(Vector3(7.2, 0.3, 0.5)), Vector3(0.0, 0.0, 0.25), EARTH]])
 		"cheese":
-			var c := CylinderMesh.new()
-			c.top_radius = WtfSceneModel.CHEESE_RADIUS_M
-			c.bottom_radius = WtfSceneModel.CHEESE_RADIUS_M
-			c.height = 1.2
+			# Meule (axe vers la droite) : pâte jaune, croûte orangée sur la tranche, trous ronds peints à plat
+			# sur les deux faces (disques plus sombres, à peine en saillie).
 			var r := WtfSceneModel.CHEESE_RADIUS_M
-			var label := CylinderMesh.new()
-			label.top_radius = r * 0.45
-			label.bottom_radius = r * 0.45
-			label.height = 1.24
+			var c := CylinderMesh.new()
+			c.top_radius = r
+			c.bottom_radius = r
+			c.height = 1.2
 			var rind := CylinderMesh.new()
 			rind.top_radius = r * 1.02
 			rind.bottom_radius = r * 1.02
 			rind.height = 1.0
-			mesh = _merge([[c, Basis(Vector3.FORWARD, PI / 2.0), WtfHudModel.YELLOW],
-				[rind, Basis(Vector3.FORWARD, PI / 2.0), Color(0.9, 0.55, 0.1)],
-				[label, Basis(Vector3.FORWARD, PI / 2.0), Color(0.85, 0.12, 0.12)],
-				[_ball(0.25), Vector3(0.5, r * 0.4, r * 0.3), Color(0.85, 0.7, 0.1)],
-				[_ball(0.2), Vector3(-0.5, -r * 0.3, r * 0.5), Color(0.85, 0.7, 0.1)],
-				[_ball(0.3), Vector3(0.5, -r * 0.5, -r * 0.2), Color(0.85, 0.7, 0.1)]])
+			var axis := Basis(Vector3.FORWARD, PI / 2.0)
+			var parts := [[c, axis, WtfHudModel.YELLOW], [rind, axis, Color(0.9, 0.55, 0.1)]]
+			for side in [-1.0, 1.0]:
+				for h in [[0.35, 0.8, 0.5], [0.22, -0.9, 0.7], [0.28, -0.3, -1.0], [0.18, 1.0, -0.6], [0.14, 0.2, -0.1]]:
+					var hole := CylinderMesh.new()
+					hole.top_radius = h[0]
+					hole.bottom_radius = h[0]
+					hole.height = 0.02
+					hole.radial_segments = 16
+					parts.append([hole, Transform3D(axis, Vector3(side * 0.605, h[1], h[2])), Color(0.82, 0.62, 0.05)])
+			mesh = _merge(parts)
 		"cow":
 			mesh = _cow_mesh()
 		"tornado":
