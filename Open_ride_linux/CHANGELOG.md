@@ -10,7 +10,7 @@ Le SIM du trainer redevient le pilotage par défaut. Cette version contient auss
 ### Séance
 - **Pilotage du trainer : « SIM du trainer » par défaut** (choix du propriétaire du 2 novembre). En « résistance calculée », le défaut de la 1.0.0 et de la 1.0.1, le pédalage tournait dans le vide au départ et à basse vitesse sur le plat (21 à 31 W à 80 tr/min, essai vélo du 2 novembre). La résistance calculée reste dans Réglages › Séance, à l'essai, en attendant sa correction.
 - Test de FTP : + et − sont bloqués pendant les paliers de la rampe, avec un rappel à l'écran (Z arrête le test).
-- Départ d'une run Cyber-Rogue : la scène du mode se prépare sous l'écran « START YOUR ENGINES », et le pédalage ne compte qu'ensuite. Il n'y a plus de gel de 3 s juste après le départ.
+- Départ d'une run Cyber-Rogue : la scène du mode se prépare sous l'écran « START YOUR ENGINES », et le pédalage ne compte qu'ensuite. Il n'y a plus de gel de 3 s juste après le départ. Les ennemis et le HUD du mode y sont aussi préparés, contre la dernière image lente (150 à 190 ms) au départ.
 
 ### Décor et son
 - Oiseaux par phrases : un chant de 1,5 à 3,5 s toutes les 9 s environ, au lieu d'un gazouillis continu.
