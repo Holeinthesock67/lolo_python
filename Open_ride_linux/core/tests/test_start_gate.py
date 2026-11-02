@@ -126,13 +126,17 @@ def test_immediate_mode_starts_at_once(tmp_path):
     assert s.state.session_state == "RUNNING" and s.state.start_wait is None
 
 
-def test_rogue_run_has_no_scene_to_wait_for(tmp_path):
-    # Run Cyber-Rogue : pas de parcours (route_id nul), la scène du mode ne charge pas de tuiles.
+def test_rogue_run_waits_for_its_scene(tmp_path):
+    # Run Cyber-Rogue : pas de parcours (route_id nul) ; l'engine préchauffe la scène du mode pendant l'attente
+    # (lot Y20) et répond scene_ready "rogue" : le pédalage ne compte qu'après.
     s = _session(tmp_path)
     s.server.engine_connected = True
     s._on_command("start_run", {"objective": "threshold", "duration_min": 45, "seed": 3}, 2)
     assert s.state.session_state == "READY" and s.state.route_id is None
     s._on_command("start", {}, 3)
+    _steps(s, 1.0)
+    assert s.state.start_wait["phase"] == "decor"
+    s._on_command("scene_ready", {"route_id": "rogue"}, 4)
     _steps(s, 1.0)
     assert s.state.start_wait["phase"] == "pedalage"
     _steps(s, 1.2)
