@@ -14,6 +14,12 @@ const WtfHudModel := preload("res://scripts/wtf/wtf_hud_model.gd")
 
 const BLEND_S := 1.0          # transitions de caméra et de roulis : 1 s au moins (cahier WTF5)
 const SKIN_HEIGHT_M := 1.2
+const INK_3D := Color(0.08, 0.08, 0.1)
+const ROAD_GREY := Color(0.42, 0.42, 0.45)
+const ASPHALT := Color(0.25, 0.25, 0.28)
+const EARTH := Color(0.45, 0.32, 0.2)
+
+static var _cache: Dictionary = {}   # maillages fusionnés partagés (vache, chef)
 
 var _view: Dictionary = {}
 var _pools: Dictionary = {}   # kind -> Array[MeshInstance3D]
@@ -24,6 +30,7 @@ var _tint: ColorRect
 var _roll := 0.0              # roulis appliqué (degrés)
 var _cam_blend := 0.0         # 0 : vue normale ; 1 : vue imposée
 var _cam_mode := ""
+var _rider_scale := 1.0
 var _sun_base := Vector3.INF  # rotation du soleil avant la règle de l'horloge
 
 
@@ -47,6 +54,11 @@ func is_active() -> bool:
 ## Bond du vélo sur la Lune (m), à ajouter à la position de l'avatar.
 func hop_m() -> float:
 	return float(_view.get("hop_m", 0.0))
+
+
+## Taille du cycliste (vélo minuscule), amenée en BLEND_S comme les vues imposées.
+func rider_scale() -> float:
+	return _rider_scale
 
 
 ## Une fois par image. `route` : route_data.gd ; `s_route` : distance du cycliste ; `bot_anchor` : Callable
@@ -104,31 +116,46 @@ func _take(kind: String) -> MeshInstance3D:
 	return pool[i]
 
 
-## Forme et couleur de chaque sorte d'objet (charte cartoon des maquettes).
+## Forme et couleur de chaque sorte d'objet (charte cartoon des maquettes). Les objets à plusieurs pièces
+## (vache, chef sur son vélo, vaisselle) sont fusionnés en un seul maillage à couleurs par sommet : un appel
+## de dessin par objet, quel que soit le nombre de pièces.
 static func _make(kind: String) -> MeshInstance3D:
 	var mesh: Mesh
 	var color := Color.WHITE
 	match kind:
 		"chunk":
-			mesh = _box(Vector3(4.0, 0.6, WtfSceneModel.CHUNK_M * 0.95))
-			color = Color(0.35, 0.35, 0.38)
+			mesh = _merge([
+				[_box(Vector3(4.0, 0.6, WtfSceneModel.CHUNK_M * 0.95)), Vector3.ZERO, ROAD_GREY],
+				[_box(Vector3(4.05, 0.05, WtfSceneModel.CHUNK_M * 0.95)), Vector3(0.0, 0.31, 0.0), ASPHALT],
+				[_box(Vector3(0.15, 0.06, WtfSceneModel.CHUNK_M * 0.6)), Vector3(0.0, 0.33, 0.0), Color.WHITE],
+				[_box(Vector3(3.6, 1.2, WtfSceneModel.CHUNK_M * 0.8)), Vector3(0.0, -0.85, 0.0), EARTH]])
+		"void":
+			# Gouffre : bande sombre posée sur la route derrière le front, bords de terre.
+			var half := WtfSceneModel.VOID_LENGTH_M * 0.5
+			mesh = _merge([
+				[_box(Vector3(7.0, 0.05, WtfSceneModel.VOID_LENGTH_M)), Vector3(0.0, 0.03, half), Color(0.04, 0.03, 0.05)],
+				[_box(Vector3(7.2, 0.3, 0.5)), Vector3(0.0, 0.0, 0.25), EARTH]])
 		"cheese":
 			var c := CylinderMesh.new()
 			c.top_radius = WtfSceneModel.CHEESE_RADIUS_M
 			c.bottom_radius = WtfSceneModel.CHEESE_RADIUS_M
 			c.height = 1.0
-			mesh = c
-			color = WtfHudModel.YELLOW
+			var r := WtfSceneModel.CHEESE_RADIUS_M
+			mesh = _merge([[c, Basis(Vector3.FORWARD, PI / 2.0), WtfHudModel.YELLOW],
+				[_ball(0.25), Vector3(0.5, r * 0.4, r * 0.3), Color(0.85, 0.7, 0.1)],
+				[_ball(0.2), Vector3(-0.5, -r * 0.3, r * 0.5), Color(0.85, 0.7, 0.1)],
+				[_ball(0.3), Vector3(0.5, -r * 0.5, -r * 0.2), Color(0.85, 0.7, 0.1)]])
 		"cow":
-			mesh = _box(Vector3(0.6, 0.7, 1.2))
-			color = Color(0.95, 0.95, 0.95)
+			mesh = _cow_mesh()
 		"tornado":
 			var c := CylinderMesh.new()
 			c.top_radius = 9.0
 			c.bottom_radius = 1.5
 			c.height = 18.0
+			c.cap_top = false
+			c.cap_bottom = false
 			mesh = c
-			color = Color(0.55, 0.55, 0.62, 0.45)
+			color = Color(0.32, 0.32, 0.4, 0.55)
 		"ball":
 			var s := SphereMesh.new()
 			s.radius = WtfSceneModel.KATA_BALL_M   # × scale = taille de la boule (posée au sol, sans s'y enfoncer)
@@ -136,34 +163,42 @@ static func _make(kind: String) -> MeshInstance3D:
 			mesh = s
 			color = WtfHudModel.PINK
 		"fish":
-			var s := SphereMesh.new()
-			s.radius = 0.25
-			s.height = 0.9
-			mesh = s
-			color = WtfHudModel.CYAN
+			mesh = _merge([[_ball(0.25, 0.9), Basis(Vector3.RIGHT, PI / 2.0), WtfHudModel.CYAN],
+				[_box(Vector3(0.05, 0.4, 0.3)), Vector3(0.0, 0.0, 0.55), WtfHudModel.ORANGE],
+				[_ball(0.06), Vector3(0.12, 0.08, -0.3), INK_3D]])
 		"plate":
+			var c := CylinderMesh.new()
+			c.top_radius = 2.6
+			c.bottom_radius = 2.0
+			c.height = 0.25
+			var rim := CylinderMesh.new()
+			rim.top_radius = 1.9
+			rim.bottom_radius = 1.9
+			rim.height = 0.05
+			mesh = _merge([[c, Vector3(0.0, 0.13, 0.0), Color.WHITE], [rim, Vector3(0.0, 0.27, 0.0), WtfHudModel.CYAN]])
+		"fork":
+			var parts := [[_box(Vector3(0.35, 0.12, 4.0)), Vector3(0.0, 0.06, 1.0), Color(0.82, 0.84, 0.9)],
+				[_box(Vector3(1.0, 0.12, 0.6)), Vector3(0.0, 0.06, -1.2), Color(0.82, 0.84, 0.9)]]
+			for i in 4:
+				parts.append([_box(Vector3(0.12, 0.12, 1.4)), Vector3(-0.42 + i * 0.28, 0.06, -2.2), Color(0.82, 0.84, 0.9)])
+			mesh = _merge(parts)
+		"cup":
 			var c := CylinderMesh.new()
 			c.top_radius = 1.0
 			c.bottom_radius = 0.8
-			c.height = 0.08
-			mesh = c
-			color = Color.WHITE
-		"fork":
-			mesh = _box(Vector3(0.08, 0.04, 1.0))
-			color = Color(0.8, 0.82, 0.86)
-		"cup":
-			var c := CylinderMesh.new()
-			c.top_radius = 0.4
-			c.bottom_radius = 0.32
-			c.height = 0.8
-			mesh = c
-			color = WtfHudModel.ORANGE
-		"chef":
-			var c := CapsuleMesh.new()
-			c.radius = 0.35
 			c.height = 1.8
-			mesh = c
-			color = Color.WHITE
+			var handle := TorusMesh.new()
+			handle.inner_radius = 0.35
+			handle.outer_radius = 0.6
+			var coffee := CylinderMesh.new()
+			coffee.top_radius = 0.92
+			coffee.bottom_radius = 0.92
+			coffee.height = 0.05
+			mesh = _merge([[c, Vector3(0.0, 0.9, 0.0), WtfHudModel.ORANGE],
+				[handle, Transform3D(Basis(Vector3.FORWARD, PI / 2.0), Vector3(1.05, 1.0, 0.0)), WtfHudModel.ORANGE],
+				[coffee, Vector3(0.0, 1.62, 0.0), Color(0.35, 0.2, 0.1)]])
+		"chef":
+			mesh = _chef_mesh()
 		_:
 			if kind.begins_with("dish_"):
 				var s := SphereMesh.new()
@@ -178,6 +213,8 @@ static func _make(kind: String) -> MeshInstance3D:
 				color = {"kata_apple": Color(0.9, 0.15, 0.15), "kata_sign": WtfHudModel.YELLOW,
 					"kata_cow": Color.WHITE, "kata_car": WtfHudModel.CYAN, "kata_house": WtfHudModel.ORANGE,
 					"kata_church": WtfHudModel.PURPLE}.get(kind, WtfHudModel.GREEN)
+				if kind == "kata_cow":
+					mesh = _cow_mesh()
 			else:
 				return null
 	var node := MeshInstance3D.new()
@@ -187,10 +224,105 @@ static func _make(kind: String) -> MeshInstance3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_VERTEX
+	if mesh is ArrayMesh and (mesh as ArrayMesh).surface_get_format(0) & Mesh.ARRAY_FORMAT_COLOR:
+		mat.vertex_color_use_as_albedo = true
 	if color.a < 1.0:
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	node.material_override = mat
 	return node
+
+
+## Vache cartoon (face vers −Z) : corps blanc à taches noires, tête, museau rose, cornes, pattes, queue.
+static func _cow_mesh() -> ArrayMesh:
+	if _cache.has("cow"):
+		return _cache["cow"]
+	var parts := [[_box(Vector3(0.7, 0.6, 1.2)), Vector3(0.0, 0.75, 0.0), Color.WHITE],
+		[_box(Vector3(0.72, 0.3, 0.35)), Vector3(0.0, 0.85, 0.2), INK_3D],
+		[_box(Vector3(0.4, 0.32, 0.3)), Vector3(0.16, 0.7, -0.3), INK_3D],
+		[_box(Vector3(0.42, 0.42, 0.42)), Vector3(0.0, 0.95, -0.75), Color.WHITE],
+		[_box(Vector3(0.38, 0.2, 0.15)), Vector3(0.0, 0.85, -1.0), Color(1.0, 0.6, 0.7)],
+		[_box(Vector3(0.06, 0.18, 0.06)), Vector3(-0.16, 1.24, -0.75), Color(1.0, 0.95, 0.8)],
+		[_box(Vector3(0.06, 0.18, 0.06)), Vector3(0.16, 1.24, -0.75), Color(1.0, 0.95, 0.8)],
+		[_box(Vector3(0.05, 0.4, 0.05)), Transform3D(Basis(Vector3.RIGHT, 0.6), Vector3(0.0, 0.85, 0.7)), INK_3D]]
+	for x in [-0.25, 0.25]:
+		for z in [-0.45, 0.45]:
+			parts.append([_box(Vector3(0.14, 0.45, 0.14)), Vector3(x, 0.225, z), Color.WHITE])
+			parts.append([_box(Vector3(0.15, 0.08, 0.15)), Vector3(x, 0.04, z), INK_3D])
+	_cache["cow"] = _merge(parts)
+	return _cache["cow"]
+
+
+## Chef cuisinier sur son vélo (face vers −Z), roulant à côté du cycliste : roues, cadre, veste blanche,
+## tête, toque haute, foulard rouge.
+static func _chef_mesh() -> ArrayMesh:
+	if _cache.has("chef"):
+		return _cache["chef"]
+	var wheel := TorusMesh.new()
+	wheel.inner_radius = 0.3
+	wheel.outer_radius = 0.36
+	var on_side := Basis(Vector3.FORWARD, PI / 2.0)
+	var body := CapsuleMesh.new()
+	body.radius = 0.24
+	body.height = 0.8
+	var hat := CylinderMesh.new()
+	hat.top_radius = 0.2
+	hat.bottom_radius = 0.13
+	hat.height = 0.42
+	var frame := Color(0.85, 0.1, 0.1)
+	_cache["chef"] = _merge([
+		[wheel, Transform3D(on_side, Vector3(0.0, 0.36, -0.55)), INK_3D],
+		[wheel, Transform3D(on_side, Vector3(0.0, 0.36, 0.55)), INK_3D],
+		[_box(Vector3(0.05, 0.05, 1.0)), Vector3(0.0, 0.62, 0.0), frame],
+		[_box(Vector3(0.05, 0.5, 0.05)), Transform3D(Basis(Vector3.RIGHT, 0.3), Vector3(0.0, 0.55, 0.2)), frame],
+		[_box(Vector3(0.05, 0.5, 0.05)), Transform3D(Basis(Vector3.RIGHT, -0.3), Vector3(0.0, 0.62, -0.45)), frame],
+		[_box(Vector3(0.5, 0.04, 0.04)), Vector3(0.0, 0.9, -0.55), INK_3D],
+		[body, Transform3D(Basis(Vector3.RIGHT, -0.35), Vector3(0.0, 1.25, -0.05)), Color.WHITE],
+		[_box(Vector3(0.1, 0.5, 0.1)), Transform3D(Basis(Vector3.RIGHT, -0.9), Vector3(-0.2, 1.25, -0.35)), Color.WHITE],
+		[_box(Vector3(0.1, 0.5, 0.1)), Transform3D(Basis(Vector3.RIGHT, -0.9), Vector3(0.2, 1.25, -0.35)), Color.WHITE],
+		[_box(Vector3(0.12, 0.55, 0.12)), Vector3(-0.12, 0.65, 0.05), INK_3D],
+		[_box(Vector3(0.12, 0.55, 0.12)), Vector3(0.12, 0.65, 0.05), INK_3D],
+		[_ball(0.17), Vector3(0.0, 1.78, -0.2), Color(0.96, 0.78, 0.62)],
+		[_box(Vector3(0.3, 0.08, 0.06)), Vector3(0.0, 1.72, -0.36), INK_3D],
+		[hat, Vector3(0.0, 2.08, -0.18), Color.WHITE],
+		[_ball(0.26, 0.3), Vector3(0.0, 2.3, -0.18), Color.WHITE],
+		[_box(Vector3(0.36, 0.1, 0.3)), Vector3(0.0, 1.58, -0.18), Color(0.9, 0.1, 0.1)]])
+	return _cache["chef"]
+
+
+## Pièces [maillage, position ou transformation ou base, couleur] fusionnées en une surface à couleurs par
+## sommet.
+static func _merge(parts: Array) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for part in parts:
+		var xf := Transform3D.IDENTITY
+		if part[1] is Vector3:
+			xf.origin = part[1]
+		elif part[1] is Basis:
+			xf.basis = part[1]
+		else:
+			xf = part[1]
+		var arrays: Array = (part[0] as Mesh).surface_get_arrays(0)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+		var col: Color = part[2]
+		var order := idx if not idx.is_empty() else PackedInt32Array(range(verts.size()))
+		for i in order:
+			st.set_color(col)
+			st.set_normal((xf.basis * normals[i]).normalized())
+			st.add_vertex(xf * verts[i])
+	return st.commit()
+
+
+static func _ball(radius: float, height := -1.0) -> SphereMesh:
+	var s := SphereMesh.new()
+	s.radius = radius
+	s.height = 2.0 * radius if height < 0.0 else height
+	s.radial_segments = 12
+	s.rings = 6
+	return s
 
 
 static func _box(size: Vector3) -> BoxMesh:
@@ -271,6 +403,8 @@ func _sun(hour: float, sun: DirectionalLight3D) -> void:
 ## Après la caméra de la séance : roulis du monde à l'envers et vues imposées (pigeon, escargot, roue, vélo
 ## minuscule), toujours amenés en BLEND_S. `pos` : point de la route sous le cycliste, `heading` en radians.
 func apply_camera(camera: Camera3D, pos: Vector3, heading: float, delta: float) -> void:
+	var want_scale := float(_view.get("rider_scale", 1.0)) if is_active() else 1.0
+	_rider_scale = move_toward(_rider_scale, want_scale, delta / BLEND_S)
 	var want_roll := float(_view.get("roll_deg", 0.0)) if is_active() else 0.0
 	_roll = move_toward(_roll, want_roll, 180.0 * delta / BLEND_S)
 	var mode := str(_view.get("camera", "")) if is_active() else ""
@@ -282,12 +416,15 @@ func apply_camera(camera: Camera3D, pos: Vector3, heading: float, delta: float) 
 		camera.global_transform = camera.global_transform.interpolate_with(goal, smoothstep(0.0, 1.0, _cam_blend))
 	elif _cam_blend <= 0.0:
 		_cam_mode = ""
+	# Bonds sur la Lune : la caméra suit la plus grande part du bond, le cycliste reste sous le bandeau du HUD.
+	camera.global_position += Vector3.UP * hop_m() * WtfSceneModel.FOLLOW_HOP
 	if absf(_roll) > 0.01:
 		camera.rotate_object_local(Vector3.FORWARD, deg_to_rad(_roll))
 
 
 ## Pose de la vue imposée : pigeon (au-dessus et derrière, qui plane), escargot (au ras du bord de la route,
-## devant), roue (contre la roue avant), vélo minuscule (à hauteur de fourmi).
+## devant), roue (contre la roue avant), vélo minuscule (à hauteur de fourmi, cycliste réduit), fuite (devant
+## le cycliste, tournée vers la route qui s'effondre derrière lui).
 static func camera_goal(mode: String, pos: Vector3, heading: float, t: float) -> Transform3D:
 	var fwd := Vector3(sin(heading), 0.0, -cos(heading))
 	var right := Vector3(cos(heading), 0.0, sin(heading))
@@ -303,8 +440,11 @@ static func camera_goal(mode: String, pos: Vector3, heading: float, t: float) ->
 			eye = pos + fwd * 0.55 + right * 0.18 + Vector3.UP * 0.4
 			look = eye + fwd * 10.0
 		"tiny":
-			eye = pos - fwd * 1.2 + Vector3.UP * 0.25
-			look = pos + fwd * 6.0 + Vector3.UP * 0.2
+			eye = pos - fwd * 1.8 + right * 0.15 + Vector3.UP * 0.5
+			look = pos + fwd * 5.0 + Vector3.UP * 0.25
+		"flee":
+			eye = pos + fwd * 5.0 + right * 1.6 + Vector3.UP * 2.6
+			look = pos - fwd * 10.0
 	return Transform3D(Basis.looking_at(look - eye, Vector3.UP), eye)
 
 

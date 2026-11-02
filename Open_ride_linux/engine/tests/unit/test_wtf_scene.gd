@@ -63,8 +63,10 @@ func _run() -> void:
 	var chunks: Array = col["props"].filter(func(p): return p["kind"] == "chunk")
 	_check(chunks.size() == 6 and chunks[0]["ds"] == -40.0 and chunks[1]["ds"] < -40.0, "effondrement : tronçons derrière")
 	_check(chunks[3]["up"] < chunks[1]["up"], "les tronçons les plus loin sont tombés plus bas")
+	_check(col["camera"] == "flee" and _kinds(col).get("void", 0) == 1, "effondrement : vue vers l'arrière, gouffre posé")
 	var cheese := _ev({"id": "cheese", "gap_m": 80.0, "squashed": false, "left_s": 30})
 	_check(_kinds(cheese) == {"cheese": 1} and cheese["props"][0]["ds"] == -80.0, "fromage : meule 80 m derrière")
+	_check(cheese["camera"] == "flee", "fromage : vue vers l'arrière, la meule se voit")
 	_check(_ev({"id": "cheese", "gap_m": 0.0, "squashed": true})["props"][0]["ds"] == 0.0, "écrasé : meule sur le cycliste")
 	var storm_low := _ev({"id": "storm", "pushback_m": 3.0, "cows": 40, "left_s": 30}, "low")
 	var storm_high := _ev({"id": "storm", "pushback_m": 3.0, "cows": 40, "left_s": 30}, "high")
@@ -75,6 +77,7 @@ func _run() -> void:
 	_check(storm_low["tint"] == M.TINT_STORM, "tempête : ciel sombre")
 	var tiny := _ev({"id": "tiny", "scale": 0.025, "set": "kitchen", "left_s": 30})
 	_check(tiny["camera"] == "tiny" and _kinds(tiny).has("plate") and _kinds(tiny).has("cup"), "vélo minuscule : cuisine géante")
+	_check(tiny["rider_scale"] == M.TINY_RIDER_SCALE and moon["rider_scale"] == 1.0, "vélo minuscule : cycliste réduit")
 	_check(_ev({"id": "camera", "view": "snail"})["camera"] == "snail", "caméra escargot")
 	var arrive := _ev({"id": "chef", "phase": "arrive", "dish": null})
 	_check(_kinds(arrive) == {"chef": 1}, "chef qui arrive : tandem, plat caché")
@@ -133,6 +136,18 @@ func _run() -> void:
 	cam.global_transform = Transform3D.IDENTITY
 	scene.apply_camera(cam, Vector3.ZERO, 0.0, 1.0)
 	_check(scene.forced_camera() and cam.global_position.y > 8.0, "vue du pigeon : caméra en hauteur")
+	scene.step(tiny, route, 100.0, Callable(), sun)
+	scene.apply_camera(cam, Vector3.ZERO, 0.0, 1.0)
+	_check(is_equal_approx(scene.rider_scale(), M.TINY_RIDER_SCALE), "cycliste réduit en 1 s")
+	scene.step(moon, route, 100.0, Callable(), sun)
+	cam.global_transform = Transform3D.IDENTITY
+	scene.apply_camera(cam, Vector3.ZERO, 0.0, 1.0)
+	_check(is_equal_approx(cam.global_position.y, 1.4 * M.FOLLOW_HOP) and is_equal_approx(scene.rider_scale(), 1.0),
+		"Lune : la caméra suit le bond, cycliste rendu à sa taille")
+	var cow_node: MeshInstance3D = WtfScene._make("cow")
+	_check(cow_node.mesh.get_surface_count() == 1 and (cow_node.material_override as StandardMaterial3D).vertex_color_use_as_albedo,
+		"vache en un seul maillage à couleurs : un appel de dessin")
+	cow_node.free()
 	var snail := WtfScene.camera_goal("snail", Vector3.ZERO, 0.0, 0.0)
 	_check(snail.origin.y < 0.5, "vue de l'escargot au ras du sol")
 

@@ -22,3 +22,9 @@ Afficher les règles permanentes et les gags de décor : boule Katamari et objet
 - Tests : `engine/tests/unit/test_wtf_scene.gd`.
 - Retouches après l'essai PC 7cn du 31 octobre : boule Katamari affichée à sa vraie taille (0,45 m de rayon par unité, elle en faisait 1 m), plafonnée à × 3 à l'écran et poussée à droite du cycliste ; vaches de la tornade × 2,5 et à 28 m devant au lieu de 45 ; carte du gag déplacée à gauche (pile carte, Katamari, horloge), hors du centre de l'image, Katamari et horloge réduits à une ligne pendant un gag à carte (pile bornée aux trois quarts de la hauteur), invite « Z : NON MERCI, CHEF ! » sous le bandeau au lieu du milieu de l'écran où elle cachait le cycliste et le chef ; côté core, livraison d'œufs ramenée à 1 km en 2 min 30 au plus, aucun gag au-delà de 2 min 30 (`EVENT_MAX_S`) et tirage « en sac » (chaque gag actif sort une fois avant qu'un autre ne revienne).
 - Reste : captures en `low`, `medium` et `high` et banc sur la GTX 1060 (file du PC).
+
+
+## Reprise du 2 novembre
+
+- Vélo minuscule : le cycliste est réduit à `TINY_RIDER_SCALE` (0,12) en 1 s, caméra à hauteur de fourmi derrière lui ; vaisselle (assiettes, tasses à anse, fourchettes) posée sur l'herbe des deux côtés, à 5 à 33 m.
+- Chef : sur son vélo rouge (roues, cadre), veste blanche, toque, foulard rouge, à côté du cycliste.

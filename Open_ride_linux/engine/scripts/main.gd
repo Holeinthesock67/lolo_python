@@ -989,6 +989,7 @@ func _process(delta: float) -> void:
 		avatar_view.set_visible_for_view("follow_near" if wtf_scene.forced_camera() else _avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		_step_avatar(pos, heading, now, pitch_deg)
+		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
 		_probe.distance_m = s_route
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))

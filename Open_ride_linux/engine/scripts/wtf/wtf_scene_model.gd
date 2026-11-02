@@ -6,7 +6,8 @@ extends RefCounted
 ## - `tint` : voile de couleur sur toute l'image (Lune grise, Jupiter rougeâtre, tempête sombre, gelée verte) ;
 ## - `roll_deg` : roulis visé de la caméra (180 en monde à l'envers ; wtf_scene.gd y va en douceur) ;
 ## - `camera` : vue imposée ("" ou pigeon, snail, wheel, tiny) ;
-## - `hop_m` : bond du vélo sur la Lune ;
+## - `hop_m` : bond du vélo sur la Lune (la caméra en suit FOLLOW_HOP, le cycliste reste sous le bandeau) ;
+## - `rider_scale` : taille du cycliste (vélo minuscule : TINY_RIDER_SCALE dans la cuisine géante) ;
 ## - `sun_hour` : heure du soleil (règle de l'horloge), −1 sans elle ;
 ## - `props` : objets à poser, {kind, ds (m le long de la route depuis le cycliste), lateral (m à droite),
 ##   up (m), scale, spin (rad)} ;
@@ -29,15 +30,20 @@ const COW_SCALE := 2.5         # vaches cartoon, plus grosses que nature
 const KATA_BALL_M := 0.45     # rayon de la boule à la taille 1
 const KATA_SHOW_MAX := 3.0     # la boule affichée cesse de grossir à × 3 (1,35 m) : le décor reste visible
 const KATA_LATERAL_M := 1.2    # poussée un peu à droite du cycliste, hors du centre de l'image
-const KITCHEN := [["plate", 25.0, -9.0, 30.0], ["fork", 60.0, 10.0, 28.0], ["cup", 110.0, -12.0, 35.0],
-	["plate", 160.0, 11.0, 30.0], ["fork", 210.0, -10.0, 28.0]]
+## Cuisine géante vue par un cycliste réduit à TINY_RIDER_SCALE (~20 cm) : vaisselle de taille normale × 10
+## environ, posée sur l'herbe des deux côtés : [sorte, devant (m), à droite (m), taille].
+const TINY_RIDER_SCALE := 0.12
+const FOLLOW_HOP := 0.8
+const KITCHEN := [["plate", 5.0, -4.0, 1.6], ["cup", 8.0, 4.0, 1.8], ["fork", 13.0, -4.2, 1.8],
+	["plate", 19.0, 4.6, 1.6], ["cup", 26.0, -4.4, 1.8], ["fork", 33.0, 4.4, 1.8]]
+const VOID_LENGTH_M := 80.0     # gouffre derrière le front de l'effondrement
 const KATA_SCALES := {"apple": 0.3, "sign": 1.0, "cow": 1.4, "car": 1.8, "house": 4.0, "church": 7.0}
 
 
 ## Vue complète ; `wtf` absent ou nul : rien. `t` : horloge de l'engine (s), pour les mouvements continus.
 static func view(wtf: Variant, t: float, quality := "medium") -> Dictionary:
 	var out := {"active": false, "tint": Color(0, 0, 0, 0), "roll_deg": 0.0, "camera": "", "hop_m": 0.0,
-		"sun_hour": -1.0, "props": [], "skins": {}, "attack": ""}
+		"sun_hour": -1.0, "props": [], "skins": {}, "attack": "", "rider_scale": 1.0}
 	if typeof(wtf) != TYPE_DICTIONARY:
 		return out
 	out["active"] = true
@@ -81,12 +87,15 @@ static func _event(ev: Dictionary, t: float, n: Dictionary, out: Dictionary, pro
 			out["roll_deg"] = 180.0
 		"collapse":
 			var gap := float(ev.get("gap_m", 0.0))
+			out["camera"] = "flee"   # vue tournée vers l'arrière : la route qui s'effondre derrière le cycliste
+			props.append(_prop("void", -gap, 0.0, 0.0, 1.0, 0.0))
 			for i in int(n["chunks"]):
 				# Le front de l'effondrement à `gap` m derrière, les tronçons plus loin déjà tombés.
 				props.append(_prop("chunk", -gap - i * CHUNK_M, 0.0, -0.6 * i * i, 1.0, 0.25 * i))
 		"cheese":
 			var gap := float(ev.get("gap_m", 0.0))
 			var squashed := bool(ev.get("squashed", false))
+			out["camera"] = "flee"   # la meule qui dévale derrière le cycliste
 			props.append(_prop("cheese", 0.0 if squashed else -gap, 0.0, CHEESE_RADIUS_M, 1.0, -t * 3.0))
 		"storm":
 			out["tint"] = TINT_STORM
@@ -98,6 +107,7 @@ static func _event(ev: Dictionary, t: float, n: Dictionary, out: Dictionary, pro
 			props.append(_prop("tornado", STORM_AHEAD_M, 0.0, 0.0, 1.0, t * 2.0))
 		"tiny":
 			out["camera"] = "tiny"
+			out["rider_scale"] = TINY_RIDER_SCALE
 			for k in KITCHEN:
 				props.append(_prop(k[0], k[1], k[2], 0.0, k[3], 0.0))
 		"camera":

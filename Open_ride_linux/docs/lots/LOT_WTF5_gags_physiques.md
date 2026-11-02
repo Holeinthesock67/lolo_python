@@ -26,3 +26,11 @@ Scène du mode chargée seulement quand `state.wtf` est présent ; un script par
 - `engine/scripts/wtf/wtf_scene.gd` : formes simples aux couleurs des maquettes, sans ombres, créées à la première utilisation puis réutilisées ; roulis et vues imposées amenés en 1 s ; rien n'existe hors mode WTF. Branché dans `main.gd` après la caméra de la séance.
 - Tests : `engine/tests/unit/test_wtf_scene.gd` (route droite factice).
 - Reste : captures en `low`, `medium` et `high` et banc sur la GTX 1060 (file du PC).
+
+
+## Reprise du 2 novembre (captures PC 7cn-bis jugées trop pauvres, choix du propriétaire « Retravailler les gags d'abord »)
+
+- Effondrement et fromage : vue « fuite » imposée (caméra devant le cycliste, tournée vers l'arrière) ; gouffre sombre derrière le front ; tronçons avec chaussée, ligne et terre.
+- Lune : la caméra suit 80 % du bond (`FOLLOW_HOP`), le cycliste ne passe plus derrière le bandeau du HUD.
+- Tornade : vaches cartoon (taches noires, tête, museau rose, cornes, pattes), entonnoir sans couvercle plus sombre ; chaque objet à pièces est fusionné en un seul maillage à couleurs par sommet (un appel de dessin).
+- Vitrine `engine/tests/vitrine_wtf.gd` pour juger les formes dans le cloud avant le banc du PC.
