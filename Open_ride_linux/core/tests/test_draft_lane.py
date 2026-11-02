@@ -202,3 +202,21 @@ def test_grouped_start_grid():
     for _ in range(int(2.0 / DT)):   # à l'arrêt, personne ne bouge vers un autre
         d.update_lanes(runners, DT)
     assert runners[0][2].m == pytest.approx(d.RIDER_LANE_M)
+
+
+def test_rider_passes_two_side_by_side_bots_on_the_left():
+    # Essai vélo du 2 novembre : « le dépassement entre deux bots au milieu est étrange, on dépasse à gauche ».
+    rider = d.Lane(d.RIDER_LANE_M, d.RIDER_LANE_M)
+    right_bot = d.Lane(d.BOT_LANE_M, d.BOT_LANE_M)
+    left_bot = d.Lane(d.LANE_MIN_M, d.BOT_LANE_M)
+    rs, bs = 0.0, d.BIKE_LENGTH_M + 8.0
+    rv, bv = 11.0, 9.5
+    alongside = []
+    for _ in range(int(30.0 / DT)):
+        d.update_lanes([(rs, rv, rider), (bs, bv, right_bot), (bs, bv, left_bot)], DT)
+        rs, bs = rs + rv * DT, bs + bv * DT
+        if abs(bs - rs) < d.BIKE_LENGTH_M:
+            alongside.append((rider.m, left_bot.m, right_bot.m))
+    assert alongside, "le dépassement n'a pas eu lieu"
+    for r_m, l_m, b_m in alongside:
+        assert r_m < min(l_m, b_m) - d.SIDE_CLEAR_M + 1e-6   # à gauche des deux, jamais entre eux

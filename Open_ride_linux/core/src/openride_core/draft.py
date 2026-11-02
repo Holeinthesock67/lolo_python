@@ -393,7 +393,7 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
     Placement automatique (`lane.auto`) : à moins de `FOLLOW_LOOK_M` derrière un coureur plus lent ou à
     la même vitesse, sa ligne, ou par vent de travers la diagonale sous le vent bornée à la voie (lot AS3,
     `echelon_lane` ; `head_mps`, `cross_mps` : vent au coureur) ; pour doubler (plus de `PASS_SPEED_MPS` plus vite à moins de `PASS_GAP_M`),
-    `PASS_OFFSET_M` à sa gauche ; sinon `lane.home`, ou par vent de travers, s'il mène un coureur à moins
+    `PASS_OFFSET_M` à gauche du plus à gauche des coureurs rattrapés (jamais entre deux, essai du 2 novembre) ; sinon `lane.home`, ou par vent de travers, s'il mène un coureur à moins
     de `FOLLOW_LOOK_M` derrière lui, le bord de la voie côté vent (lot AS3, décision du propriétaire du
     31 octobre : l'éventail a toute la voie). Puis le couloir : chaque coureur côte à côte (roues
     qui se chevauchent, ou qui se toucheront dans `SIDE_LOOK_S`, devant comme derrière) borne la cible
@@ -407,12 +407,35 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
     left_bound, right_bound = PASS_LANE_MIN_M, LANE_MAX_M
     lead: tuple[float, float, Lane, float] | None = None
     leads = False
+    others = list(others)
     for o_s, o_v, o_lane in others:
         d = ahead_distance(s, o_s, length_m, is_loop)
         reach = 0.5 * (lane.length + o_lane.length)  # BIKE_LENGTH_M entre deux vélos
         leads = leads or -reach - FOLLOW_LOOK_M <= d < 0.0
         if 0.0 < d <= reach + FOLLOW_LOOK_M and (lead is None or d - reach < lead[0] - lead[3]):
             lead = (d, o_v, o_lane, reach)
+    # Dépassement (essai vélo du 2 novembre : « on dépasse à gauche », jamais entre deux coureurs) : on double
+    # à gauche du plus à gauche des coureurs qu'on rattrape, devant ou déjà à notre hauteur.
+    # Le décalage commence assez tôt pour avoir le temps de gagner cette ligne (LANE_RATE_MPS).
+    pass_left: float | None = None
+    if lead is not None and v - lead[1] > PASS_SPEED_MPS:
+        group: list[tuple[float, float]] = []      # (écart roue à roue, ligne de dépassement) des coureurs rattrapés
+        for o_s, o_v, o_lane in others:
+            d = ahead_distance(s, o_s, length_m, is_loop)
+            reach = 0.5 * (lane.length + o_lane.length)
+            if v - o_v > PASS_SPEED_MPS and -reach < d <= reach + FOLLOW_LOOK_M:
+                group.append((d - reach, o_lane.m - PASS_OFFSET_M - _wider(lane) - _wider(o_lane)))
+        dv = v - lead[1]
+        side_s = _side_time(lane, lead[2])
+        near = [m for gap, m in group if gap < lead[0] - lead[3] + 2.0 * BIKE_LENGTH_M]   # même paquet que la roue
+        if near:
+            line = min(near)
+            need_s = side_s + max(0.0, lane.m - line) / LANE_RATE_MPS
+            if lead[0] - lead[3] < PASS_GAP_M + dv * need_s:
+                pass_left = line
+    for o_s, o_v, o_lane in others:
+        d = ahead_distance(s, o_s, length_m, is_loop)
+        reach = 0.5 * (lane.length + o_lane.length)
         gap = abs(d) - reach                         # roue à roue, qu'il soit devant ou derrière
         closing = (v - o_v) if d > 0.0 else (o_v - v)   # > 0 : on se rapproche
         look_s = SIDE_LOOK_S + _side_time(lane, o_lane)
@@ -421,16 +444,23 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
         dx = lane.m - o_lane.m
         tie_left = d > 0.0 or (d == 0.0 and lane.rank > o_lane.rank) or not o_lane.auto
         clear = SIDE_CLEAR_M + _wider(lane) + _wider(o_lane)
-        if dx < -0.05 or (abs(dx) <= 0.05 and tie_left):
+        # en dépassement, ceux qu'on double sont à notre droite, même si on est encore à leur droite
+        doubled = pass_left is not None and pass_left < o_lane.m and v - o_v > PASS_SPEED_MPS
+        # celui qui nous double (derrière, plus vite, en dépassement) passe à notre gauche : on tient sa ligne
+        # au lieu de s'écarter devant lui (bots qui « vibraient » au dépassement, essai du 2 novembre)
+        passer = d < 0.0 and o_lane.passing and o_v - v > PASS_SPEED_MPS
+        if passer:
+            left_bound = max(left_bound, o_lane.m + clear)
+        elif doubled or dx < -0.05 or (abs(dx) <= 0.05 and tie_left):
             right_bound = min(right_bound, o_lane.m - clear)   # il est à ma droite
         else:
             left_bound = max(left_bound, o_lane.m + clear)
-    if lead is not None:
+    if pass_left is not None:
+        target, passing = pass_left, True
+    elif lead is not None:
         d, o_v, o_lane, reach = lead
-        gap, dv = d - reach, v - o_v
-        if dv > PASS_SPEED_MPS and gap < PASS_GAP_M + dv * _side_time(lane, o_lane):
-            target, passing = o_lane.m - PASS_OFFSET_M - _wider(lane) - _wider(o_lane), True
-        elif o_v <= v + FOLLOW_SPEED_TOL_MPS:
+        gap = d - reach
+        if o_v <= v + FOLLOW_SPEED_TOL_MPS:
             target = echelon_lane(o_lane.m, gap, v, head_mps, cross_mps)
     elif leads:
         shift = crosswind_shift_m(1.0, v, head_mps, cross_mps)
