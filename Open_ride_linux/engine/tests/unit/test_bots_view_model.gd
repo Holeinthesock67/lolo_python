@@ -70,6 +70,17 @@ func _test_view() -> void:
 	_check(is_equal_approx(later[1]["s"], 1005.0), "extrapolé de 1 s : 1005 m")
 	later = m.view(1000.0, 7.0, 5 * US)
 	_check(is_equal_approx(later[1]["s"], 1005.0), "extrapolation bornée à 1 s")
+	# Trame suivante arrivée en retard (lot AS2) : pas de saut, l'écart est rattrapé en CORRECTION_S.
+	var smooth = BotsViewModel.new()
+	smooth.push([{"id": "b", "s": 100.0, "v": 10.0, "kind": "constant"}], 0)
+	var before: float = smooth.view(0.0, 10.0, 50000)[0]["s"]
+	smooth.push([{"id": "b", "s": 100.3, "v": 10.0, "kind": "constant"}], 50000)   # attendu 100,5 à 50 ms
+	var at: float = smooth.view(0.0, 10.0, 50000)[0]["s"]
+	_check(is_equal_approx(before, 100.5) and is_equal_approx(at, 100.5), "nouvelle trame : position affichée inchangée (%s → %s)" % [before, at])
+	var caught: float = smooth.view(0.0, 10.0, 50000 + int(BotsViewModel.CORRECTION_S * US))[0]["s"]
+	_check(is_equal_approx(caught, 100.3 + 10.0 * BotsViewModel.CORRECTION_S), "écart rattrapé en %s s (%s)" % [BotsViewModel.CORRECTION_S, caught])
+	smooth.push([{"id": "b", "s": 400.0, "v": 10.0, "kind": "constant"}], 300000)
+	_check(is_equal_approx(smooth.view(0.0, 10.0, 300000)[0]["s"], 400.0), "écart de plus de %s m : saut direct" % BotsViewModel.SNAP_M)
 	# gap_s du core (révision 1.4) prioritaire.
 	m.push([{"id": "b", "name": "Grimpeur", "s": 1100.0, "v": 5.0, "kind": "constant", "gap_s": 8.4}], 0)
 	_check(is_equal_approx(m.view(1000.0, 7.0, 0)[0]["gap_s"], 8.4), "gap_s du core utilisé")
