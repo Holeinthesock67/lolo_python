@@ -134,6 +134,7 @@ var _last_perf_log_us: int = 0
 var _probe = PerfProbe.new()
 ## Départ au pédalage (lot O36) : décor du départ prêt, commande `scene_ready`, bandeau de l'attente.
 var _start_wait = StartWaitModel.new()
+const ROGUE_SCENE_ID := "rogue"   # `scene_ready.route_id` de la scène du Cyber-Rogue (lot Y20)
 var start_screen: Control = null   # écran d'attente « Start your engines » (start_screen.gd)
 var _was_start_waiting := false
 var _bias_locked := false     # test de FTP : + et − bloqués pendant la rampe (rappel à l'entrée)
@@ -850,7 +851,10 @@ func _sync_hud(menu_shown: bool) -> void:
 
 ## Départ au pédalage (lot O36) : décor du départ prêt, puis `scene_ready` au core (start_wait_model.gd).
 func _step_start_wait(delta: float) -> void:
-	if _start_wait.frame(_route_loaded_id, streamer.pending_count(), delta * 1000.0):
+	# Cyber-Rogue : la scène du mode, préchauffée pendant l'attente (lot Y20), tient lieu de décor du départ.
+	var rogue_scene: bool = rogue_host.is_active()
+	if _start_wait.frame(ROGUE_SCENE_ID if rogue_scene else _route_loaded_id,
+			0 if rogue_scene else streamer.pending_count(), delta * 1000.0):
 		print("Décor du départ prêt : %s" % _start_wait.route_id)
 		ipc.test_log("scene_ready id=%s" % _start_wait.route_id)
 	if _start_wait.should_send(Time.get_ticks_msec() / 1000.0, str(menu_flow.start_wait.get("phase", ""))):

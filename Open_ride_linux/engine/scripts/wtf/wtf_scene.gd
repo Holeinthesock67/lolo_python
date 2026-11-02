@@ -21,13 +21,14 @@ const EARTH := Color(0.45, 0.32, 0.2)
 
 static var _cache: Dictionary = {}   # maillages fusionnés partagés (vache, chef)
 ## Préchauffage (2 novembre) : banc PC du 2 novembre, premier tirage de la tornade 776 ms et du fromage 310 ms
-## (premier dessin de leurs matériaux), tirages suivants ~50 ms. Un exemplaire de chaque sorte est dessiné,
+## (premier dessin de leurs matériaux), tirages suivants ~50 ms. Un exemplaire de ces objets est dessiné,
 ## minuscule et 2 m devant la caméra, pendant WARM_FRAMES images. main.gd l'appelle sur l'écran d'attente du
 ## départ d'une séance WTF (banc du 2 novembre : fait à RUNNING, il gelait l'image ~2 s en roulant) ; step()
 ## le fait encore au premier état actif s'il n'a pas eu lieu (départ immédiat).
-const WARM_KINDS := ["chunk", "void", "cheese", "cow", "tornado", "ball", "fish", "plate", "fork", "cup", "chef",
-	"kata_apple", "kata_cow", "dish_chili"]
-const WARM_SKINS := ["tractor"]
+## Seulement les objets dont un banc a mesuré l'à-coup (règle du préchauffage) : en préchauffer 17 gelait
+## l'écran d'attente 2 à 8 s (banc du 2 novembre), pour des gags qui ne coûtaient rien.
+const WARM_KINDS := ["cheese", "cow", "tornado"]
+const WARM_SKINS := []
 const WARM_DIST_M := 2.0
 const WARM_SCALE := 0.0005
 const WARM_FRAMES := 3
@@ -100,7 +101,7 @@ func step(view: Dictionary, route, s_route: float, bot_anchor: Callable, sun: Di
 	_sun(float(view.get("sun_hour", -1.0)) if active else -1.0, sun)
 
 
-## Dessine un exemplaire de chaque objet et costume sous `camera` (hors de vue) pour que le premier tirage d'un
+## Dessine un exemplaire des objets de WARM_KINDS sous `camera` (hors de vue) pour que le premier tirage d'un
 ## gag ne compile plus ses matériaux en pleine image. Renvoie le nombre d'exemplaires (0 sans caméra).
 func warm_up(camera: Camera3D) -> int:
 	_warmed = true

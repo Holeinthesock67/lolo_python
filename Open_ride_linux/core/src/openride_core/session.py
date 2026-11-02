@@ -52,6 +52,8 @@ from .records import RecordBook, RecordsError
 from .recorder import SessionRecorder
 from .resume import ResumeError, ResumeState, close_interrupted, interrupted_sessions, load_resume_state
 from .rogue import mode as rogue_mode
+
+ROGUE_SCENE_ID = "rogue"   # `scene_ready.route_id` de la scène du Cyber-Rogue (lot Y20)
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import draft as draft_mod
@@ -510,9 +512,10 @@ class CoreSession:
         st = self.state
         st.power, st.cadence, st.hr = m.power_w, m.cadence_rpm, m.hr_bpm
         st.power_3s = round(m.power_w, 1)
-        # Run Cyber-Rogue : `route_id` nul, scène du mode sans tuiles à charger, rien à attendre du décor.
-        scene = self.server.engine_connected and (st.route_id is None or (
-            self._scene_route is not None and self._scene_route == str(st.route_id)))
+        # Run Cyber-Rogue : `route_id` nul ; l'engine dessine la scène du mode pendant l'attente (préchauffage,
+        # lot Y20, ~3 s sur le PC) et répond `scene_ready {"route_id": "rogue"}` : le pédalage ne compte qu'après.
+        expected = ROGUE_SCENE_ID if self.rogue is not None else (None if st.route_id is None else str(st.route_id))
+        scene = self.server.engine_connected and (expected is None or self._scene_route == expected)
         was = gate.phase
         opened = gate.update(dt, scene_ready=scene, trainer_connected=bool(m.connected),
                              cadence_rpm=m.cadence_rpm, power_w=m.power_w)
