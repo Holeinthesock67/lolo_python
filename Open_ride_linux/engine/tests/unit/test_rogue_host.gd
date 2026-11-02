@@ -68,9 +68,13 @@ func _run() -> void:
 			"attente du départ : hologramme, jauges et bandeau du HUD préchauffés")
 	_check(not terrain.visible, "attente du départ : monde classique déjà masqué")
 	host.update({"mode": "ROGUE", "rogue": null}, main, classic, we, cam, "low", 91.0)
-	_check(not host.is_active() and terrain.visible, "départ annulé : scène retirée, monde classique rendu")
-	host.update(wait, main, classic, we, cam, "low", 92.0)
+	_check(host.is_active(), "fin de l'attente sans état de run : scène préchauffée gardée")
+	host.update({"mode": "ROGUE", "rogue": null}, main, classic, we, cam, "low", 91.0 + host.LEAVE_GRACE_S)
+	_check(not host.is_active() and terrain.visible, "départ annulé : scène retirée après %s s, monde classique rendu" % host.LEAVE_GRACE_S)
+	host.update(wait, main, classic, we, cam, "low", 93.0)
 	var warm_scene = host.scene
+	host.update({"mode": "ROGUE", "rogue": null}, main, classic, we, cam, "low", 93.5)   # fin de l'attente
+	_check(host.scene == warm_scene, "trame sans attente ni run juste avant le départ : même scène")
 	# entrée en mode ROGUE sans salle connue
 	var st := {"mode": "ROGUE", "rogue": _rogue("ROOM", 5, 20.0)}
 	var wanted: bool = host.update(st, main, classic, we, cam, "low", 100.0)
