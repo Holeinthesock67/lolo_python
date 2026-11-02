@@ -22,7 +22,9 @@ const EARTH := Color(0.45, 0.32, 0.2)
 static var _cache: Dictionary = {}   # maillages fusionnés partagés (vache, chef)
 ## Préchauffage (2 novembre) : banc PC du 2 novembre, premier tirage de la tornade 776 ms et du fromage 310 ms
 ## (premier dessin de leurs matériaux), tirages suivants ~50 ms. Un exemplaire de chaque sorte est dessiné,
-## minuscule et 2 m devant la caméra, pendant WARM_FRAMES images dès que le mode WTF devient actif.
+## minuscule et 2 m devant la caméra, pendant WARM_FRAMES images. main.gd l'appelle sur l'écran d'attente du
+## départ d'une séance WTF (banc du 2 novembre : fait à RUNNING, il gelait l'image ~2 s en roulant) ; step()
+## le fait encore au premier état actif s'il n'a pas eu lieu (départ immédiat).
 const WARM_KINDS := ["chunk", "void", "cheese", "cow", "tornado", "ball", "fish", "plate", "fork", "cup", "chef",
 	"kata_apple", "kata_cow", "dish_chili"]
 const WARM_SKINS := ["tractor"]
@@ -81,10 +83,8 @@ func step(view: Dictionary, route, s_route: float, bot_anchor: Callable, sun: Di
 	var active := is_active()
 	if active and not _warmed and is_inside_tree():
 		warm_up(get_viewport().get_camera_3d())
-	elif _warm_left > 0:
-		_warm_left -= 1
-		if _warm_left == 0:
-			_drop_warm()
+	else:
+		tick_warm()
 	visible = active
 	var tint: Color = view.get("tint", Color(0, 0, 0, 0))
 	_tint.color = tint
@@ -128,8 +128,20 @@ func warm_up(camera: Camera3D) -> int:
 	return _warm_nodes.size()
 
 
+func warmed() -> bool:
+	return _warmed
+
+
 func warm_count() -> int:
 	return _warm_nodes.size()
+
+
+## Une image de plus pour le préchauffage ; retiré après WARM_FRAMES images.
+func tick_warm() -> void:
+	if _warm_left > 0:
+		_warm_left -= 1
+		if _warm_left == 0:
+			_drop_warm()
 
 
 func _drop_warm() -> void:

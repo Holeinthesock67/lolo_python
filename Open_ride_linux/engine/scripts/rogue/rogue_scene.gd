@@ -63,6 +63,7 @@ var _enemy_seq := -1
 var _enemy_rogue = null
 var effects_ok := true            # faux si le préréglage `low` ne tient pas son budget d'images
 var _hud_events: Array = []
+var _warm_markers: Array = []     # repères du préchauffage (lot Y20), retirés au premier état du mode
 
 
 func _ready() -> void:
@@ -161,9 +162,32 @@ func _build_room(room_id: int) -> void:
 		markers.append({"node": node, "kind": kind, "s": float(mk["s_m"]), "len": float(mk["len_m"])})
 
 
+## Préchauffage (lot Y20), pendant l'écran d'attente du départ : un bout de ruban plat et un repère de chaque
+## sorte devant la caméra, pour compiler leurs matériaux avant RUNNING. Renvoie le nombre de repères posés.
+func warm_up() -> int:
+	ribbon.mesh = RibbonBuilder.mesh([[0.0, 0.0]], 40.0, exaggeration, adapted)
+	ribbon.visible = true
+	var i := 0
+	for kind in MarkerViews.CATALOG_OF:
+		var node: Node3D = MarkerViews.make(kind, 20.0, preset, adapted)
+		node.position = Vector3(0.0, 0.0, -10.0 - 4.0 * i)
+		markers_root.add_child(node)
+		_warm_markers.append(node)
+		i += 1
+	markers_root.visible = true
+	return _warm_markers.size()
+
+
+func warm_count() -> int:
+	return _warm_markers.size()
+
+
 ## Trame `state.rogue` : salle à afficher, position, fenêtres actives et Firewall. `now_s` : horloge de
 ## l'appelant (pour limiter les demandes de resynchronisation).
 func on_state(rogue: Dictionary, now_s: float) -> void:
+	for n in _warm_markers:
+		n.queue_free()
+	_warm_markers.clear()
 	var phase := str(rogue.get("phase", ""))
 	var rid := int(rogue.get("room_id", -1))
 	ribbon_visible = phase in RIBBON_PHASES

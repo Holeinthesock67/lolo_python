@@ -1618,6 +1618,9 @@ func _on_state_received(state: Dictionary) -> void:
 	var waiting: bool = not menu_flow.start_wait.is_empty()
 	if waiting:
 		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
+		# Préchauffage des gags WTF sous l'écran d'attente, pas à RUNNING (lot Y20) ; Cyber-Rogue : rogue_host.gd.
+		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed():
+			wtf_scene.warm_up(camera)
 	elif _was_start_waiting and str(state.get("session_state", "")) == "RUNNING":
 		start_screen.show_go()
 	else:
