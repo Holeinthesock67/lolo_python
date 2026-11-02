@@ -363,7 +363,7 @@ grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
 trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce nombre de secondes (lot Q5)
 resend_s = 2.0               # la consigne est renvoyée au moins toutes les resend_s secondes ; une valeur plus grande (10 à 15) limite les écritures SIM_PARAMS quand la pente dérive peu
-control = "resistance"       # menu « Pilotage du trainer » : "resistance" (défaut depuis les essais du 1er novembre : le core calcule la force de la route au volant et envoie un niveau 0x04, lots RC1-RC3) ou "sim" (pente 0x11, le trainer simule l'élan et le rend après un sprint) ; le mode « power » des essais 7rc2 est retiré
+control = "sim"              # menu « Pilotage du trainer » : "sim" (défaut, revenu en 1.0.2 le 2 novembre : pente 0x11, le trainer simule l'élan et le rend après un sprint) ou "resistance" (le core calcule la force de la route au volant et envoie un niveau 0x04, lots RC1-RC3 ; tournait dans le vide à basse vitesse sur le plat, essai du 2 novembre, à corriger) ; le mode « power » des essais 7rc2 est retiré
 resistance_n_per_pct_kmh = 0.036  # frein du trainer en mode résistance : force par % et par km/h du volant (N), étalonnage 7rc1 (F = k × niveau × v), corrigée en roulant
 resistance_inertia_pct = 0.0  # mode résistance : part de l'inertie m × a (masse du profil) ajoutée quand le volant accélère, 0 à 100 %, jamais rendue ; coupée par défaut (essai 7rc3 à 50 % : 3,5, durcit et retarde)
 

@@ -107,6 +107,32 @@ func _test_voices() -> void:
 	_check(most == 2, "2 voix pour 5 fonds possibles : 2 audibles (relevé %d)" % most)
 
 
+# Essai vélo du 2 novembre : « le bruit des oiseaux en continu est pénible » ; chants par phrases.
+func _test_bird_phrases() -> void:
+	var on := 0
+	var full := false
+	var rest := 0.0
+	var longest_rest := 0.0
+	var steps := 0
+	var t := 0.0
+	while t < 180.0:
+		var g := AmbienceModel.birds_gate(t)
+		steps += 1
+		if g > 0.0:
+			on += 1
+			rest = 0.0
+		else:
+			rest += 0.05
+			longest_rest = maxf(longest_rest, rest)
+		full = full or g >= 1.0
+		t += 0.05
+	var duty := float(on) / steps
+	_check(duty > 0.15 and duty < 0.45, "oiseaux : chants %.0f %% du temps (15 à 45 %%)" % (duty * 100.0))
+	_check(full and longest_rest >= 4.0, "oiseaux : phrases pleines et silences d'au moins 4 s (%.1f s)" % longest_rest)
+	_check(AmbienceModel.birds_gate(37.3) == AmbienceModel.birds_gate(37.3), "oiseaux : tirage déterministe")
+	_check(AmbienceModel.birds_phrase_db(-1.0) >= AmbienceModel.BIRD_REST_DB, "entre deux phrases : au plus 40 dB plus bas")
+
+
 # Critère 4 : passage brusque de la forêt au champ, pas plus de 3 dB en 0,5 s
 func _test_smooth() -> void:
 	var m = AmbienceModel.new()
@@ -165,6 +191,7 @@ func _test_describe_and_cost() -> void:
 
 
 func _init() -> void:
+	_test_bird_phrases()
 	_test_landscapes()
 	_test_voices()
 	_test_smooth()

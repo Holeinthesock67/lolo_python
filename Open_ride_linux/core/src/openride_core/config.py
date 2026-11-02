@@ -62,7 +62,7 @@ class TrainerConfig:
     trace_ftms: bool = False          # trace horodatée de chaque échange Control Point FTMS (lot Q3)
     hr_relay_freeze_s: float = 15.0   # détection cardio relayée figée (lot Q5)
     resend_s: float = 2.0             # la consigne SIM/ERG est renvoyée au moins toutes les resend_s secondes (30 octobre : essai à 10–15 s contre le pompage)
-    control: str = "resistance"       # pilotage hors ERG (menu « Pilotage du trainer ») : "resistance" (force calculée par le core, niveau 0x04, lots RC2-RC3, défaut depuis les essais du 1er novembre) ou "sim" (pente 0x11, le trainer simule)
+    control: str = "sim"              # pilotage hors ERG (menu « Pilotage du trainer ») : "sim" (pente 0x11, le trainer simule ; défaut revenu le 2 novembre, 1.0.2 : la résistance calculée tournait dans le vide à basse vitesse) ou "resistance" (force calculée par le core, niveau 0x04, lots RC2-RC3)
     resistance_inertia_pct: float = 0.0  # mode résistance : part de l'inertie m × a ajoutée quand le volant accélère (0 à 100 %), coupée par défaut (7rc3 : 3,5, durcit et retarde)
     resistance_n_per_pct_kmh: float = 0.036  # force du frein par % de résistance et par km/h du volant (N), étalonnage 7rc1, corrigée en roulant
 
