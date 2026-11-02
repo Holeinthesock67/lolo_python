@@ -76,7 +76,9 @@
         "clear_trial_profile",
         "restore_profile",
         "recover_session",
-        "scene_ready"
+        "scene_ready",
+        "list_history",
+        "history_session"
       ]
     },
     "args": {
