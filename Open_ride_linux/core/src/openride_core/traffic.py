@@ -522,12 +522,13 @@ def vehicle_draft(rider_s: float, rider_lane_m: float, vehicles: Iterable[Vehicl
         if v.dir != 1:
             continue
         gap = v.s - v.length * 0.5 - rider_s - draft.BIKE_LENGTH_M * 0.5
-        a = vehicle_coefficient(v.kind, gap) * vehicle_lateral_factor(v.kind, rider_lane_m - v.lateral)
+        shift = draft.crosswind_shift_m(gap, rider_v, head_mps, cross_mps)   # zone abritée sous le vent (lot AS3)
+        a = vehicle_coefficient(v.kind, gap) * vehicle_lateral_factor(v.kind, rider_lane_m - v.lateral - shift)
         if a > best:
             best, best_id = a, VEHICLE_PREFIX + v.id
     if best_id is None:
         return 0.0, None
-    return best * draft.crosswind_factor(rider_v, head_mps, cross_mps), best_id
+    return best * draft.crosswind_residual(rider_v, head_mps, cross_mps), best_id
 
 
 def suction_side_factor(clear_m: float) -> float:
