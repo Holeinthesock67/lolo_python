@@ -54,6 +54,7 @@ SMOOTH_TAU_S = 1.0        # lissage de l'abri ressenti
 SMOOTH_MIN_RATE = 0.1     # vitesse minimale de la fin du lissage (par seconde)
 WHEEL_GAP_M = 3.0         # lot AS1 : un bot à profil à moins de 3 m derrière un coureur prend sa roue
 RIDER_ID = "rider"
+SAVED_W_MIN_DRAFT = 0.02  # lot AS5 : watts économisés (`draft_w`) envoyés à partir de cet abri
 
 # Lot AS4 : abri dans un groupe (constantes à recaler sur les mesures publiées)
 ALPHA_GROUP_CAP = 0.55    # plafond au cœur d'un groupe (SRS §5)

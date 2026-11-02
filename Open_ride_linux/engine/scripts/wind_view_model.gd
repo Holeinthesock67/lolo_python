@@ -5,7 +5,7 @@ extends RefCounted
 ## Le dessin vient avec P16 (vent) et P17 (abri).
 ##
 ## `view(state, heading_deg, now_s)` rend `{visible, arrow_deg, speed_text, label, verdict, verdict_text,
-## tone, level, level_text, draft_text}` :
+## tone, level, level_text, draft_text, draft_w_text}` :
 ## - `arrow_deg` : direction d'où vient le vent par rapport au cap de la route, de 0 à 360 (0 = de face,
 ##   flèche vers le bas ; 90 = de droite ; 180 = de dos ; 270 = de gauche) ;
 ## - `label` : « face », « dos », « travers gauche », « travers droit » (secteurs de 45° autour de l'axe,
@@ -16,6 +16,8 @@ extends RefCounted
 ##   fort au-delà), hystérésis de 2 km/h, et un niveau ne change qu'après `LEVEL_DWELL_S` (une rafale
 ##   isolée de moins d'une seconde ne compte pas) ; `speed_text` est la vitesse lissée sur 2 s ;
 ## - `draft_text` : « Abri 30 % » (`draft / 0,55` arrondi à 5 %, lot AS4), vide sous 5 % ;
+## - `draft_w_text` (lot AS5) : « −48 W », watts économisés à l'abri (`draft_w`), vide sans pastille
+##   d'abri, sans `draft_w` ou sous 1 W ; le HUD ne le montre qu'en medium et high ;
 ## - `visible` faux sans vent (pas de `wind` depuis 2 s) ni abri.
 
 const WIRE_TIMEOUT_S := 2.0
@@ -173,6 +175,11 @@ func view(state: Dictionary, heading_deg: float, now_s: float) -> Dictionary:
 		if pct >= 5:
 			draft_text = "Abri %d %%" % pct
 
+	var draft_w_text := ""
+	var dw: Variant = state.get("draft_w", null)
+	if draft_text != "" and _is_number(dw) and roundi(float(dw)) >= 1:
+		draft_w_text = "−%d W" % roundi(float(dw))
+
 	var v: Array = VERDICTS[_verdict]
 	return {
 		"visible": has_wind or draft_text != "",
@@ -185,5 +192,6 @@ func view(state: Dictionary, heading_deg: float, now_s: float) -> Dictionary:
 		"level": _level,
 		"level_text": LEVEL_TEXTS[_level],
 		"draft_text": draft_text,
+		"draft_w_text": draft_w_text,
 	}
 

@@ -88,6 +88,12 @@ func _test_draft() -> void:
 	_check(vm.view({"draft": 0.01}, 0.0, 0.1)["draft_text"] == "", "draft 0,01 : rien sous 5 %")
 	_check(vm.view({"draft": 0.45}, 0.0, 0.2)["draft_text"] == "Abri 80 %", "draft 0,45 : « Abri 80 % » (lot AS4)")
 	_check(vm.view({"draft": 0.55}, 0.0, 0.3)["draft_text"] == "Abri 100 %", "draft 0,55, cœur d'un groupe : « Abri 100 % »")
+	# Lot AS5 : watts économisés sous la pastille, seulement avec elle
+	var w: Dictionary = vm.view({"draft": 0.135, "draft_w": 48}, 0.0, 0.3)
+	_check(w["draft_w_text"] == "−48 W", "draft_w 48 : « −48 W » (%s)" % w["draft_w_text"])
+	_check(vm.view({"draft": 0.135}, 0.0, 0.4)["draft_w_text"] == "", "sans draft_w : pas de watts (HUD inchangé)")
+	_check(vm.view({"draft": 0.01, "draft_w": 3}, 0.0, 0.5)["draft_w_text"] == "", "sans pastille (abri < 5 %) : pas de watts")
+	_check(vm.view({"draft": 0.135, "draft_w": 0}, 0.0, 0.6)["draft_w_text"] == "", "0 W économisé : rien")
 
 
 # Critère 7 : verdict favorable ou non

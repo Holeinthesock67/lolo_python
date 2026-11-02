@@ -91,6 +91,15 @@ func _init() -> void:
 	_check(free_blks[0]["color"] == "neutre" and free_blks[0]["delta_w"] == null, "bloc à cible null : couleur neutre, pas d'écart")
 	_check(free_blks[1]["color"] == "vert", "bloc suivant le bloc à cible null : traité normalement")
 
+	# Lot AS5 : temps dans la roue et énergie économisée, absents sans passage dans la roue
+	var wheel: Array = vm.lines({"duration_s": 1800.0, "draft_time_s": 724, "draft_kj": 9.4})
+	_check(wheel.size() == 3 and wheel[1]["label"] == "Dans la roue" and wheel[1]["value"] == "12 min",
+		"bilan avec abri : « Dans la roue 12 min »")
+	_check(wheel[2]["label"] == "Énergie économisée" and wheel[2]["value"] == "9" and wheel[2]["unit"] == "kJ",
+		"bilan avec abri : « Énergie économisée 9 kJ »")
+	_check(vm.lines({"draft_time_s": 42, "draft_kj": 0.6})[0]["value"] == "42 s", "moins d'une minute : en secondes")
+	_check(vm.lines({"duration_s": 60.0, "draft_time_s": 0, "draft_kj": 0.0}).size() == 1, "jamais dans la roue : aucune ligne d'abri")
+
 	# 4. fit_path à null / vide : « Séance non enregistrée » ; chemin absolu : nom seul
 	_check(vm.fit_line({}) == "Séance non enregistrée", "fit_line sans fit_path : « Séance non enregistrée »")
 	_check(vm.fit_line({"fit_path": null}) == "Séance non enregistrée", "fit_line avec fit_path null : « Séance non enregistrée »")

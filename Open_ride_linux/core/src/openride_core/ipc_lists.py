@@ -338,4 +338,6 @@ def summary_extras(records: list[dict[str, Any]], events: list[dict[str, Any]],
         "max_power_w": round(max(powers), 1) if powers else None,
         "blocks": blocks,
         "blocks_truncated": blocks_truncated,
+        # Lot AS5 (révision 1.5) : temps dans la roue et énergie économisée, seulement avec des bots.
+        **({k: res[k] for k in ("draft_time_s", "draft_kj")} if res and "draft_time_s" in res else {}),
     }

@@ -245,6 +245,37 @@ func _test_air_speed_wind() -> void:
 	_check(is_equal_approx(e.air_speed_kmh(15.5), 30.0), "plus d'objet wind depuis plus de 2 s : vitesse dans l'air = vitesse")
 
 
+# Lot AS5, critère 4 : dans la roue (abri 0,35), le souffle baisse d'au moins 3 dB à vitesse égale, sans
+# saut (variation bornée par SLEW_RATE_DB_PER_S) ; sans `draft`, rien ne change.
+func _test_draft_shelter() -> void:
+	var m = SoundModel.new()
+	var st := _state(40.0)
+	m.on_state(st, Vector3.ZERO, 0.0)
+	var open_db: float = m.evaluate(0.0)["wind"]["volume_db"]
+	var prev := open_db
+	var max_jump := 0.0
+	for i in range(1, 41):   # entrée dans la roue, évaluée à 20 Hz pendant 2 s
+		var t := i * 0.05
+		var sd := _state(40.0)
+		sd["draft"] = 0.35
+		m.on_state(sd, Vector3.ZERO, t)
+		var db: float = m.evaluate(t)["wind"]["volume_db"]
+		max_jump = maxf(max_jump, absf(db - prev))
+		prev = db
+	_check(open_db - prev >= 3.0, "40 km/h, abri 0,35 : souffle de %.1f à %.1f dB (baisse ≥ 3 dB)" % [open_db, prev])
+	_check(max_jump <= SoundModel.SLEW_RATE_DB_PER_S * 0.05 + 0.01, "entrée dans la roue sans saut (%.2f dB au plus par 50 ms)" % max_jump)
+	var none = SoundModel.new()
+	none.on_state(_state(40.0), Vector3.ZERO, 0.0)
+	var zero = SoundModel.new()
+	var sz := _state(40.0)
+	sz["draft"] = 0.0
+	zero.on_state(sz, Vector3.ZERO, 0.0)
+	_check(is_equal_approx(float(none.evaluate(0.0)["wind"]["volume_db"]), float(zero.evaluate(0.0)["wind"]["volume_db"])),
+		"abri nul ou absent : même souffle")
+	_check(SoundModel._target_wind_db(70.0, SoundModel.sheltered_air_kmh(70.0, 0.35), false)
+		<= SoundModel._target_wind_db(70.0, 70.0, false) - 3.0, "au-delà du plafond de 60 km/h, l'abri s'entend aussi")
+
+
 # Lot P10, critères 3 à 5 : roue libre à la cadence, rythme, « clac » de reprise
 func _test_cadence_freewheel_and_clac() -> void:
 	var sm = SoundModel.new()
@@ -320,6 +351,7 @@ func _init() -> void:
 	_test_slew_rate()
 	_test_determinism()
 	_test_air_speed_wind()
+	_test_draft_shelter()
 	_test_cadence_freewheel_and_clac()
 	print("test_sound_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
