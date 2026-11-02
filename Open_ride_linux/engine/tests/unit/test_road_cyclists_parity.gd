@@ -79,7 +79,7 @@ func _run() -> void:
 	while s < flat + 10000.0:
 		var v := 30.0 / 3.6 if s < flat else 14.0 / 3.6
 		bot += (32.0 if bot < flat else 15.0) / 3.6 * dt
-		m.update(s, v, dt, false, [bot])
+		m.update(s, v, dt, false, [{"s": bot, "lateral": Model.BOT_LATERAL_M}])   # places des bots (P32, bots_view_model)
 		for g in m.groups:
 			if not seen.has(g["id"]):
 				seen[g["id"]] = true
