@@ -313,7 +313,8 @@ func update_ambience(neigh: Dictionary, now_s: float) -> Dictionary:
 	for bed in AmbienceModel.BEDS:
 		var bp: AudioStreamPlayer = _bed_players[bed]
 		var db := float(vols[bed])
-		bp.volume_db = db
+		# oiseaux par phrases (essai vélo du 2 novembre) ; le lecteur tourne entre deux phrases, 40 dB plus bas
+		bp.volume_db = db + AmbienceModel.birds_phrase_db(now_s) if bed == "forest_birds" and db > SoundModel.SILENCE_DB else db
 		if is_inside_tree():
 			if db > SoundModel.SILENCE_DB and not bp.playing and bp.stream != null:
 				bp.play()

@@ -88,16 +88,17 @@ def test_downhill_sends_the_lowest_level():
     assert _flush(drv) == [ftms.cmd_set_target_resistance(0.0)]
 
 
-def test_default_control_is_the_computed_resistance():
-    """Choix du propriétaire (1er novembre, après les essais 7rc2-7rc3) : résistance calculée sans inertie."""
+def test_default_control_is_the_trainer_sim():
+    """Choix du propriétaire (2 novembre, essai vélo AS : « ça pédale dans le vide » à 11 km/h sur le plat en
+    résistance calculée) : SIM du trainer par défaut ; la résistance calculée reste au menu, inertie nulle."""
     now = [100.0]
     drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
     drv.supports_resistance = True
     drv._on_ibd(None, _ibd(30.0, 85, 200))
     drv.set_sim_grade(3.0)
     sent = _flush(drv)
-    assert TrainerConfig().control == "resistance" and TrainerConfig().resistance_inertia_pct == 0.0
-    assert sent and sent[0][0] == ftms.OP_SET_TARGET_RESISTANCE
+    assert TrainerConfig().control == "sim" and TrainerConfig().resistance_inertia_pct == 0.0
+    assert sent and sent[0][0] == ftms.OP_SET_SIM_PARAMS
 
 
 def test_sim_control_still_sends_the_grade():
@@ -114,7 +115,7 @@ def test_pilotage_is_a_menu_setting():
     from openride_core import settings
     item = next(it for it in settings.current(config.Config()) if it["key"] == "trainer.control")
     assert item["label"] == "Pilotage du trainer" and item["group"] == "ride"
-    assert item["value"] == "resistance" and item["choices"] == ["sim", "resistance"]
+    assert item["value"] == "sim" and item["choices"] == ["sim", "resistance"]
     assert settings.get("trainer.control").scope == "machine"
 
 

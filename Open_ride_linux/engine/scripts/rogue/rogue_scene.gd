@@ -26,6 +26,7 @@ const RIBBON_PHASES := ["ROOM", "CORRIDOR", "BOSS", "RECOVERY"]
 const CAMERA_BACK_M := 6.0
 const CAMERA_UP_M := 2.4
 const CAMERA_LOOK_AHEAD_M := 14.0
+const WARM_GLYPHS := "0123456789 %·.:'/-\nW FW Ennemi rpm\nABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz"   # glyphes du HUD préchauffés (lot Y20)
 const SMOOTH_PER_S := 12.0       # lissage de la position affichée entre deux états
 
 signal resync_wanted
@@ -63,7 +64,7 @@ var _enemy_seq := -1
 var _enemy_rogue = null
 var effects_ok := true            # faux si le préréglage `low` ne tient pas son budget d'images
 var _hud_events: Array = []
-var _warm_markers: Array = []     # repères du préchauffage (lot Y20), retirés au premier état du mode
+var _warm_markers: Array = []     # repères et ennemis du préchauffage (lot Y20), retirés au premier état du mode
 
 
 func _ready() -> void:
@@ -175,6 +176,24 @@ func warm_up() -> int:
 		_warm_markers.append(node)
 		i += 1
 	markers_root.visible = true
+	# Ennemis (un par archétype, flash et éclat compris), hologramme, jauges et bandeau du HUD : leurs matériaux
+	# et les glyphes des Label3D étaient encore compilés à la première image de RUNNING (1 image de 150-190 ms).
+	for arch in EnemyViews.OBJECT_OF:
+		var ev: Node3D = EnemyViews.new()
+		ev.preset = preset
+		ev.adapted = adapted
+		ev.position = Vector3(3.0 * (i % 3 - 1), 1.4, -12.0 - 4.0 * i)
+		add_child(ev)
+		ev.set_archetype(arch)
+		ev.flash.visible = true
+		ev.impact(true, 0.1)
+		_warm_markers.append(ev)
+		i += 1
+	hud_view.visible = true
+	hud_view.position = bike.position
+	hud_view.holo.text = WARM_GLYPHS
+	hud_view.gauges.text = WARM_GLYPHS
+	hud_view.banner.visible = true
 	return _warm_markers.size()
 
 
@@ -185,6 +204,8 @@ func warm_count() -> int:
 ## Trame `state.rogue` : salle à afficher, position, fenêtres actives et Firewall. `now_s` : horloge de
 ## l'appelant (pour limiter les demandes de resynchronisation).
 func on_state(rogue: Dictionary, now_s: float) -> void:
+	if not _warm_markers.is_empty():
+		hud_view.banner.visible = false
 	for n in _warm_markers:
 		n.queue_free()
 	_warm_markers.clear()

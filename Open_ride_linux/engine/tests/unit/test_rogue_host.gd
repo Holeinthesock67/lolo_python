@@ -62,18 +62,25 @@ func _run() -> void:
 	# préchauffage (lot Y20) : la scène entre dès l'écran d'attente du départ, ruban plat et repères devant la caméra
 	var wait := {"mode": "ROGUE", "rogue": null, "start_wait": {"phase": "cadence"}}
 	_check(not host.update(wait, main, classic, we, cam, "low", 90.0) and host.is_active(), "attente du départ : scène créée")
-	_check(host.scene.warm_count() == 8 and host.scene.ribbon.mesh != null and host.scene.ribbon.visible,
-			"attente du départ : un repère de chaque sorte et un bout de ruban (préchauffage)")
+	_check(host.scene.warm_count() == 8 + 6 and host.scene.ribbon.mesh != null and host.scene.ribbon.visible,
+			"attente du départ : un repère de chaque sorte, un ennemi par archétype et un bout de ruban (préchauffage)")
+	_check(host.scene.hud_view.visible and host.scene.hud_view.banner.visible and host.scene.hud_view.holo.text != "",
+			"attente du départ : hologramme, jauges et bandeau du HUD préchauffés")
 	_check(not terrain.visible, "attente du départ : monde classique déjà masqué")
 	host.update({"mode": "ROGUE", "rogue": null}, main, classic, we, cam, "low", 91.0)
-	_check(not host.is_active() and terrain.visible, "départ annulé : scène retirée, monde classique rendu")
-	host.update(wait, main, classic, we, cam, "low", 92.0)
+	_check(host.is_active(), "fin de l'attente sans état de run : scène préchauffée gardée")
+	host.update({"mode": "ROGUE", "rogue": null}, main, classic, we, cam, "low", 91.0 + host.LEAVE_GRACE_S)
+	_check(not host.is_active() and terrain.visible, "départ annulé : scène retirée après %s s, monde classique rendu" % host.LEAVE_GRACE_S)
+	host.update(wait, main, classic, we, cam, "low", 93.0)
 	var warm_scene = host.scene
+	host.update({"mode": "ROGUE", "rogue": null}, main, classic, we, cam, "low", 93.5)   # fin de l'attente
+	_check(host.scene == warm_scene, "trame sans attente ni run juste avant le départ : même scène")
 	# entrée en mode ROGUE sans salle connue
 	var st := {"mode": "ROGUE", "rogue": _rogue("ROOM", 5, 20.0)}
 	var wanted: bool = host.update(st, main, classic, we, cam, "low", 100.0)
 	_check(host.is_active() and wanted, "mode ROGUE : scène créée et salle inconnue demandée")
 	_check(host.scene == warm_scene and warm_scene.warm_count() == 0, "RUNNING : même scène, préchauffage retiré")
+	_check(not warm_scene.hud_view.banner.visible, "RUNNING : bandeau du préchauffage caché")
 	_check(not terrain.visible and not sun.visible, "monde classique masqué")
 	_check(we.environment != classic_env and we.environment.glow_enabled, "environnement néon en place")
 	_check(not cam.current and host.scene.camera.current, "la caméra de la scène est la caméra courante")

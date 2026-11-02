@@ -14,6 +14,9 @@ extends RefCounted
 ##   `SLEW_DB_PER_S` (4 s de `FADE_FLOOR_DB` au niveau d'un fond), jamais plus de 3 dB en 0,5 s ; un fond
 ##   ne commence à monter que s'il reste une voix libre. En pause, tout descend vite au silence.
 ## - Oiseaux réduits la nuit (24 dB) et sous la pluie ; insectes seulement en journée.
+## - Oiseaux par phrases (essai vélo du 2 novembre : « le bruit des oiseaux en continu est pénible ») : une
+##   phrase de BIRD_PHRASE_MIN_S à BIRD_PHRASE_MAX_S par tranche de BIRD_SLOT_S, puis silence (BIRD_REST_DB),
+##   fondus de BIRD_EDGE_S ; `birds_gate(t)` est déterministe (même tirage d'une partie à l'autre).
 ## - `bell_strikes(prev_hour, hour)` : coups de cloche quand l'heure pleine est franchie.
 
 const SILENCE_DB := -80.0
@@ -26,6 +29,11 @@ const RADIUS_M := 150.0
 const GRID := 9                  # points d'échantillonnage du voisinage par côté
 const NIGHT_BIRDS_GAIN := 0.063  # −24 dB la nuit
 const DEFAULT_VOICES := 4
+const BIRD_SLOT_S := 9.0         # une phrase d'oiseaux par tranche de 9 s
+const BIRD_PHRASE_MIN_S := 1.5
+const BIRD_PHRASE_MAX_S := 3.5
+const BIRD_EDGE_S := 0.3
+const BIRD_REST_DB := -40.0      # entre deux phrases : 40 dB sous la phrase (le lecteur ne s'arrête pas)
 
 const BEDS := ["forest_birds", "field_insects", "water_flow", "village_murmur", "high_wind", "rain"]
 ## Niveau de chaque fond à plein gain et volume général 1 (dB) : sous les bips du Click.
@@ -183,6 +191,25 @@ func evaluate(neigh: Dictionary, now_s: float) -> Dictionary:
 		else:
 			_db[b] = maxf(cur - step, target)
 	return _db.duplicate()
+
+
+## Écart (dB, de BIRD_REST_DB à 0) des chants d'oiseaux à l'instant `t`, appliqué par sound_player.gd au
+## niveau du fond `forest_birds` (le choix des voix et les fondus restent sur le niveau du fond).
+static func birds_phrase_db(t: float) -> float:
+	return maxf(20.0 * log(maxf(birds_gate(t), 1e-6)) / log(10.0), BIRD_REST_DB)
+
+
+## Enveloppe des chants d'oiseaux (0 à 1) à l'instant `t` (s) : une phrase par tranche de BIRD_SLOT_S.
+static func birds_gate(t: float) -> float:
+	var slot := int(floor(t / BIRD_SLOT_S))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(slot * 7919 + 17)
+	var length := rng.randf_range(BIRD_PHRASE_MIN_S, BIRD_PHRASE_MAX_S)
+	var start := rng.randf_range(0.0, BIRD_SLOT_S - length)
+	var u := t - slot * BIRD_SLOT_S - start
+	if u <= 0.0 or u >= length:
+		return 0.0
+	return minf(1.0, minf(u, length - u) / BIRD_EDGE_S)
 
 
 func audible_count() -> int:

@@ -9,6 +9,7 @@ extends RefCounted
 const RoomStore := preload("res://scripts/rogue/room_store.gd")
 const RogueEnvironment := preload("res://scripts/rogue/rogue_environment.gd")
 const SCENE := preload("res://scenes/rogue.tscn")
+const LEAVE_GRACE_S := 1.0         # mode ROGUE sans attente ni run : la scène reste ce temps avant d'être retirée
 
 var store = RoomStore.new()
 var last_loot: Dictionary = {}
@@ -20,6 +21,7 @@ var _classic_camera: Camera3D = null
 var _classic_env: Environment = null
 var _world_env: WorldEnvironment = null
 var _rogue_env: Environment = null
+var _idle_since := -1.0           # heure de la première trame ROGUE sans attente ni run (-1 : aucune)
 
 
 func is_active() -> bool:
@@ -58,11 +60,19 @@ func update(state: Dictionary, parent: Node, classic: Array, world_env: WorldEnv
 	# Préchauffage (lot Y20) : la scène entre dès l'écran d'attente du départ (`start_wait`), pour que le premier
 	# dessin de ses matériaux (~2,3 s sur le PC) tombe sous cet écran et non juste après RUNNING.
 	var waiting: bool = mode_rogue and typeof(state.get("start_wait", null)) == TYPE_DICTIONARY
+	# Entre la fin de l'attente et le premier état de la run, le core envoie quelques trames ROGUE sans
+	# `start_wait` ni `rogue` : la scène préchauffée est gardée LEAVE_GRACE_S au lieu d'être recréée au départ
+	# (banc du 2 novembre : deuxième _enter à +0,09 s de RUNNING). Un autre mode la retire tout de suite.
+	var idle: bool = mode_rogue and not in_rogue and not waiting
+	if not idle:
+		_idle_since = -1.0
+	elif _idle_since < 0.0:
+		_idle_since = now_s
 	if (in_rogue or waiting) and scene == null:
 		_enter(parent, classic, world_env, camera, preset)
 		if not in_rogue:
 			scene.warm_up()
-	elif not in_rogue and not waiting and scene != null:
+	elif not in_rogue and not waiting and scene != null and (not idle or now_s - _idle_since >= LEAVE_GRACE_S):
 		_leave()
 	if scene == null or not in_rogue:
 		return false
