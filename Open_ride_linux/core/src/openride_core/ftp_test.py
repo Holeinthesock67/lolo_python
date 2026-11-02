@@ -5,6 +5,8 @@
   détectée par `RampWatch` : cadence sous 50 tr/min pendant 5 s, ou puissance sous 80 % de la cible
   pendant 10 s, ou abandon (Z, geste du bloc suivant). La séance saute alors au retour au
   calme au lieu de s'arrêter net. FTP = 75 % de la meilleure puissance moyenne sur 1 minute.
+  Pendant les paliers, + et − (biais ERG) sont bloqués (version 2.0, choix du propriétaire du
+  1er novembre) : la session les ignore et la trame `state` porte `erg.bias_locked`.
 
 Le test de 20 minutes « à fond » a été retiré (lot O19) : il imposait 20 min de roue libre, et
 un entraînement ERG n'a jamais de roue libre. Un ancien résultat `20min` du journal est ignoré.

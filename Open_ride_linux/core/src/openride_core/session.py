@@ -1764,6 +1764,11 @@ class CoreSession:
         self.erg.goto(cooldown_index(self.erg.workout))
         self._sync_erg_state()
 
+    def _bias_locked(self) -> bool:
+        """Vrai pendant les paliers de la rampe d'un test de FTP : + et − n'y changent pas la cible."""
+        wk = self._workout_erg()
+        return wk is not None and self._ramp_watch is not None and self._ramp_watch.active(wk)
+
     def _workout_erg(self) -> ErgController | None:
         """Contrôleur de l'entraînement en cours (None en SIM et en ERG d'une session libre)."""
         return self.erg if isinstance(self.erg, ErgController) else None
@@ -1843,6 +1848,8 @@ class CoreSession:
             self.state.workout_done = None   # entraînement en cours (nouvelle séance, reprise)
         self.state.mode = "ROGUE" if self.rogue is not None else ("ERG" if erg else "SIM")
         self.state.erg = erg.to_dict() if erg else None
+        if self.state.erg is not None and self._bias_locked():
+            self.state.erg["bias_locked"] = True   # test de FTP : + et − sans effet pendant la rampe
 
     def _on_engine_lost(self) -> None:
         self._scene_route = None   # engine relancé : son décor est à recharger (départ au pédalage, lot O36)
@@ -2286,6 +2293,11 @@ class CoreSession:
             return
         if ev not in BIAS_STEPS:
             return   # ni + ni − (A, flèches, appui ambigu) : rien dans le core (vues de caméra : engine, V12)
+        if self._bias_locked():
+            # Test de FTP (choix du propriétaire, 01/11) : + et − bloqués pendant les paliers de la rampe,
+            # le biais fausserait la meilleure minute ; ils reviennent au retour au calme.
+            log.info("Test de FTP : %s ignoré pendant la rampe.", ev.value)
+            return
         if erg:
             # ERG (§7.1, SRS §4.4) : ± court = biais ± 2 %, ± long = biais ± 10 % ; en cadence
             # verrouillée (lot O18), cadence cible ± 2 % et ± 10 %.
