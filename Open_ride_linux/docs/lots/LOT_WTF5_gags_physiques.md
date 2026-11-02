@@ -34,3 +34,4 @@ Scène du mode chargée seulement quand `state.wtf` est présent ; un script par
 - Lune : la caméra suit 80 % du bond (`FOLLOW_HOP`), le cycliste ne passe plus derrière le bandeau du HUD.
 - Tornade : vaches cartoon (taches noires, tête, museau rose, cornes, pattes), entonnoir sans couvercle plus sombre ; chaque objet à pièces est fusionné en un seul maillage à couleurs par sommet (un appel de dessin).
 - Vitrine `engine/tests/vitrine_wtf.gd` pour juger les formes dans le cloud avant le banc du PC.
+- Après la planche du PC (7cn-ter, validée par le propriétaire sauf le fromage, « étrange ») : la meule et l'effondrement sont montrés au plus près (10 m et 16 m, `CHEESE_SHOW_M`, `SHOW_BEHIND_M`), la vraie distance reste dans le bandeau ; meule plus grosse (rayon 2 m) avec croûte et étiquette rouge, filmée de biais depuis le bas-côté (vue « meule »).

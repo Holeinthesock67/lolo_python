@@ -139,9 +139,19 @@ static func _make(kind: String) -> MeshInstance3D:
 			var c := CylinderMesh.new()
 			c.top_radius = WtfSceneModel.CHEESE_RADIUS_M
 			c.bottom_radius = WtfSceneModel.CHEESE_RADIUS_M
-			c.height = 1.0
+			c.height = 1.2
 			var r := WtfSceneModel.CHEESE_RADIUS_M
+			var label := CylinderMesh.new()
+			label.top_radius = r * 0.45
+			label.bottom_radius = r * 0.45
+			label.height = 1.24
+			var rind := CylinderMesh.new()
+			rind.top_radius = r * 1.02
+			rind.bottom_radius = r * 1.02
+			rind.height = 1.0
 			mesh = _merge([[c, Basis(Vector3.FORWARD, PI / 2.0), WtfHudModel.YELLOW],
+				[rind, Basis(Vector3.FORWARD, PI / 2.0), Color(0.9, 0.55, 0.1)],
+				[label, Basis(Vector3.FORWARD, PI / 2.0), Color(0.85, 0.12, 0.12)],
 				[_ball(0.25), Vector3(0.5, r * 0.4, r * 0.3), Color(0.85, 0.7, 0.1)],
 				[_ball(0.2), Vector3(-0.5, -r * 0.3, r * 0.5), Color(0.85, 0.7, 0.1)],
 				[_ball(0.3), Vector3(0.5, -r * 0.5, -r * 0.2), Color(0.85, 0.7, 0.1)]])
@@ -423,7 +433,7 @@ func apply_camera(camera: Camera3D, pos: Vector3, heading: float, delta: float) 
 
 
 ## Pose de la vue imposée : pigeon (au-dessus et derrière, qui plane), escargot (au ras du bord de la route,
-## devant), roue (contre la roue avant), vélo minuscule (à hauteur de fourmi, cycliste réduit), fuite (devant
+## devant), roue (contre la roue avant), vélo minuscule (à hauteur de fourmi, cycliste réduit), meule (de biais, depuis le bas-côté gauche), fuite (devant
 ## le cycliste, tournée vers la route qui s'effondre derrière lui).
 static func camera_goal(mode: String, pos: Vector3, heading: float, t: float) -> Transform3D:
 	var fwd := Vector3(sin(heading), 0.0, -cos(heading))
@@ -442,6 +452,9 @@ static func camera_goal(mode: String, pos: Vector3, heading: float, t: float) ->
 		"tiny":
 			eye = pos - fwd * 1.8 + right * 0.15 + Vector3.UP * 0.5
 			look = pos + fwd * 5.0 + Vector3.UP * 0.25
+		"cheese":
+			eye = pos + fwd * 3.0 - right * 6.0 + Vector3.UP * 2.4
+			look = pos - fwd * 4.0 + Vector3.UP * 1.0
 		"flee":
 			eye = pos + fwd * 5.0 + right * 1.6 + Vector3.UP * 2.6
 			look = pos - fwd * 10.0

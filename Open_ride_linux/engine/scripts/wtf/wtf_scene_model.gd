@@ -24,7 +24,8 @@ const TINT_CHILI := Color(1.0, 0.25, 0.1, 0.16)
 const COUNTS := {"low": {"cows": 8, "fish": 6, "chunks": 4}, "medium": {"cows": 16, "fish": 12, "chunks": 6},
 	"high": {"cows": 24, "fish": 20, "chunks": 8}}
 const CHUNK_M := 6.0
-const CHEESE_RADIUS_M := 1.5
+const CHEESE_RADIUS_M := 2.0
+const CHEESE_SHOW_M := 10.0   # meule montrée à 10 m au plus, filmée de biais (vue « meule ») : de face, une tranche jaune (PC 7cn-ter)
 const STORM_AHEAD_M := 28.0   # assez près pour voir les vaches (essai PC 7cn : à 45 m, quelques points)
 const COW_SCALE := 2.5         # vaches cartoon, plus grosses que nature
 const KATA_BALL_M := 0.45     # rayon de la boule à la taille 1
@@ -36,6 +37,9 @@ const TINY_RIDER_SCALE := 0.12
 const FOLLOW_HOP := 0.8
 const KITCHEN := [["plate", 5.0, -4.0, 1.6], ["cup", 8.0, 4.0, 1.8], ["fork", 13.0, -4.2, 1.8],
 	["plate", 19.0, 4.6, 1.6], ["cup", 26.0, -4.4, 1.8], ["fork", 33.0, 4.4, 1.8]]
+## Effondrement et meule : ce qui poursuit le cycliste est montré à SHOW_BEHIND_M au plus derrière lui (la
+## vraie distance est dans le bandeau du HUD) ; plus loin, la vue « fuite » n'en montrait qu'un point (PC 7cn-ter).
+const SHOW_BEHIND_M := 16.0
 const VOID_LENGTH_M := 80.0     # gouffre derrière le front de l'effondrement
 const KATA_SCALES := {"apple": 0.3, "sign": 1.0, "cow": 1.4, "car": 1.8, "house": 4.0, "church": 7.0}
 
@@ -86,16 +90,16 @@ static func _event(ev: Dictionary, t: float, n: Dictionary, out: Dictionary, pro
 		"upside_down":
 			out["roll_deg"] = 180.0
 		"collapse":
-			var gap := float(ev.get("gap_m", 0.0))
+			var gap := minf(float(ev.get("gap_m", 0.0)), SHOW_BEHIND_M)
 			out["camera"] = "flee"   # vue tournée vers l'arrière : la route qui s'effondre derrière le cycliste
 			props.append(_prop("void", -gap, 0.0, 0.0, 1.0, 0.0))
 			for i in int(n["chunks"]):
 				# Le front de l'effondrement à `gap` m derrière, les tronçons plus loin déjà tombés.
 				props.append(_prop("chunk", -gap - i * CHUNK_M, 0.0, -0.6 * i * i, 1.0, 0.25 * i))
 		"cheese":
-			var gap := float(ev.get("gap_m", 0.0))
+			var gap := minf(float(ev.get("gap_m", 0.0)), CHEESE_SHOW_M)
 			var squashed := bool(ev.get("squashed", false))
-			out["camera"] = "flee"   # la meule qui dévale derrière le cycliste
+			out["camera"] = "cheese"   # de biais, depuis le bas-côté : la face de la meule et le cycliste
 			props.append(_prop("cheese", 0.0 if squashed else -gap, 0.0, CHEESE_RADIUS_M, 1.0, -t * 3.0))
 		"storm":
 			out["tint"] = TINT_STORM
