@@ -170,9 +170,12 @@ func _test_ambience_and_bells() -> void:
 		vols = sp.update_ambience(neigh, i / 60.0)
 	var match_ok := true
 	for bed in AmbienceModel.BEDS:
-		match_ok = match_ok and absf(sp._bed_players[bed].volume_db - float(vols[bed])) < 0.01
+		var want := float(vols[bed])
+		if bed == "forest_birds":   # chants par phrases (2 novembre) : niveau du fond + écart de la phrase
+			want += AmbienceModel.birds_phrase_db(599 / 60.0)
+		match_ok = match_ok and absf(sp._bed_players[bed].volume_db - want) < 0.01
 	_check(match_ok and float(vols["forest_birds"]) > SoundModel.SILENCE_DB and sp.get_child_count() == n0,
-		"fonds : volumes des lecteurs égaux à ceux du modèle, aucun nœud créé")
+		"fonds : volumes des lecteurs égaux à ceux du modèle (phrases d'oiseaux comprises), aucun nœud créé")
 	sp.set_pois([{"id": "b", "kind": "church_bell", "x": 5.0, "y": 0.0, "z": 0.0, "radius_m": 80.0}])
 	var t := 0.0
 	var hour := 14.995
