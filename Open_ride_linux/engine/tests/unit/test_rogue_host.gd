@@ -102,6 +102,12 @@ func _run() -> void:
 	host.update({"mode": "ROGUE", "rogue": _rogue("WARMUP", 0, 0.0)}, main, classic, we, cam, "low", 103.0)
 	_check(not sc.ribbon.visible and not sc.firewall.visible, "échauffement : ni ruban ni Firewall")
 	_check(sc.audio != null and sc.audio.get_parent() == sc, "le noeud sonore du mode est dans la scène")
+	# préchauffage (2 novembre) : la synthèse ne bloque pas l'image du départ, les flux arrivent ensuite
+	_check(sc.audio.threaded and not sc.audio.streams_ready(), "sons : synthèse en tâche de fond, pas sur l'image du départ")
+	sc.audio.finish_now()
+	_check(sc.audio.streams_ready() and sc.audio.streams.size() == 25, "sons : 25 flux installés à la fin de la synthèse")
+	_check(sc.audio.music_players.values().all(func(mp): return mp.stream != null),
+			"musique : les couches ont leur flux à la fin de la synthèse")
 	# sortie
 	host.update({"mode": "SIM", "rogue": null}, main, classic, we, cam, "low", 104.0)
 	await process_frame

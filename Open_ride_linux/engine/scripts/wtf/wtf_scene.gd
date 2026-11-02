@@ -20,6 +20,15 @@ const ASPHALT := Color(0.25, 0.25, 0.28)
 const EARTH := Color(0.45, 0.32, 0.2)
 
 static var _cache: Dictionary = {}   # maillages fusionnés partagés (vache, chef)
+## Préchauffage (2 novembre) : banc PC du 2 novembre, premier tirage de la tornade 776 ms et du fromage 310 ms
+## (premier dessin de leurs matériaux), tirages suivants ~50 ms. Un exemplaire de chaque sorte est dessiné,
+## minuscule et 2 m devant la caméra, pendant WARM_FRAMES images dès que le mode WTF devient actif.
+const WARM_KINDS := ["chunk", "void", "cheese", "cow", "tornado", "ball", "fish", "plate", "fork", "cup", "chef",
+	"kata_apple", "kata_cow", "dish_chili"]
+const WARM_SKINS := ["tractor"]
+const WARM_DIST_M := 2.0
+const WARM_SCALE := 0.0005
+const WARM_FRAMES := 3
 
 var _view: Dictionary = {}
 var _pools: Dictionary = {}   # kind -> Array[MeshInstance3D]
@@ -32,6 +41,9 @@ var _cam_blend := 0.0         # 0 : vue normale ; 1 : vue imposée
 var _cam_mode := ""
 var _rider_scale := 1.0
 var _sun_base := Vector3.INF  # rotation du soleil avant la règle de l'horloge
+var _warm_nodes: Array = []   # exemplaires du préchauffage, sous la caméra
+var _warm_left := 0           # images restantes avant de les retirer
+var _warmed := false          # préchauffage déjà fait pour cette instance
 
 
 func _init() -> void:
@@ -67,6 +79,12 @@ func step(view: Dictionary, route, s_route: float, bot_anchor: Callable, sun: Di
 	_view = view
 	_used.clear()
 	var active := is_active()
+	if active and not _warmed and is_inside_tree():
+		warm_up(get_viewport().get_camera_3d())
+	elif _warm_left > 0:
+		_warm_left -= 1
+		if _warm_left == 0:
+			_drop_warm()
 	visible = active
 	var tint: Color = view.get("tint", Color(0, 0, 0, 0))
 	_tint.color = tint
@@ -80,6 +98,50 @@ func step(view: Dictionary, route, s_route: float, bot_anchor: Callable, sun: Di
 			pool[i].visible = false
 	_skins(view.get("skins", {}) if active else {}, str(view.get("attack", "")), bot_anchor)
 	_sun(float(view.get("sun_hour", -1.0)) if active else -1.0, sun)
+
+
+## Dessine un exemplaire de chaque objet et costume sous `camera` (hors de vue) pour que le premier tirage d'un
+## gag ne compile plus ses matériaux en pleine image. Renvoie le nombre d'exemplaires (0 sans caméra).
+func warm_up(camera: Camera3D) -> int:
+	_warmed = true
+	if camera == null:
+		return 0
+	_drop_warm()
+	var nodes: Array = []
+	for kind in WARM_KINDS:
+		nodes.append(_make(kind))
+	for skin in WARM_SKINS:
+		for lit in [false, true]:
+			var sk := _skin_mesh(skin)
+			(sk.material_override as StandardMaterial3D).emission_enabled = lit
+			sk.name = str(sk.name) + ("_attaque" if lit else "")
+			nodes.append(sk)
+	for n in nodes:
+		if n == null:
+			continue
+		n.name = "WtfWarm_" + str(n.name)
+		n.position = Vector3(0.0, 0.0, -WARM_DIST_M)
+		n.scale = Vector3.ONE * WARM_SCALE
+		camera.add_child(n)
+		_warm_nodes.append(n)
+	_warm_left = WARM_FRAMES
+	return _warm_nodes.size()
+
+
+func warm_count() -> int:
+	return _warm_nodes.size()
+
+
+func _drop_warm() -> void:
+	for n in _warm_nodes:
+		if is_instance_valid(n):
+			n.queue_free()
+	_warm_nodes.clear()
+	_warm_left = 0
+
+
+func _exit_tree() -> void:
+	_drop_warm()
 
 
 func _place(p: Dictionary, route, s_route: float) -> void:

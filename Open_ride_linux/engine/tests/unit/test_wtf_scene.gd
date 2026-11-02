@@ -152,6 +152,25 @@ func _run() -> void:
 	var snail := WtfScene.camera_goal("snail", Vector3.ZERO, 0.0, 0.0)
 	_check(snail.origin.y < 0.5, "vue de l'escargot au ras du sol")
 
+	# Préchauffage (2 novembre) : un exemplaire de chaque objet sous la caméra dès que le mode devient actif.
+	var warm = WtfScene.new()
+	root.add_child(warm)
+	cam.make_current()
+	warm.step(M.view(null, 0.0), route, 100.0, Callable(), sun)
+	_check(warm.warm_count() == 0, "préchauffage : rien hors du mode WTF")
+	warm.step(idle, route, 100.0, Callable(), sun)
+	var expected: int = WtfScene.WARM_KINDS.size() + 2 * WtfScene.WARM_SKINS.size()
+	_check(warm.warm_count() == expected, "préchauffage : %d exemplaires (%d attendus)" % [warm.warm_count(), expected])
+	var under_cam := cam.get_children().filter(func(n): return str(n.name).begins_with("WtfWarm_"))
+	_check(under_cam.size() == expected and under_cam.all(func(n): return n.scale.x < 0.01 and n.position.z < 0.0),
+		"préchauffage : exemplaires minuscules devant la caméra")
+	for _i in WtfScene.WARM_FRAMES:
+		warm.step(idle, route, 100.0, Callable(), sun)
+	_check(warm.warm_count() == 0, "préchauffage retiré après %d images" % WtfScene.WARM_FRAMES)
+	warm.step(idle, route, 100.0, Callable(), sun)
+	_check(warm.warm_count() == 0, "préchauffage fait une seule fois")
+	warm.queue_free()
+
 	scene.queue_free()
 	sun.queue_free()
 	cam.queue_free()

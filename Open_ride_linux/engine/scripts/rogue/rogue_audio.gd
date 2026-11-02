@@ -4,6 +4,9 @@ extends Node
 ## audio_mix.gd) ce que décide rogue_sound_model.gd. Huit lecteurs pour les sons de jeu, deux pour les boucles
 ## (surchauffe, ronflement du Firewall) et trois pour les couches de musique. Les flux sont synthétisés à la
 ## première utilisation (rogue_sound_synth.gd) ; `~/OpenRide/Sounds/<nom>.ogg` remplace le son du même nom.
+## Préchauffage (2 novembre) : la synthèse (~0,7 s) tourne sur un fil de WorkerThreadPool au lieu du fil
+## principal, qui gelait au départ du mode ; sons et musique arrivent dès qu'elle est finie (une fraction de
+## seconde), les sons demandés avant sont notés dans `plays` mais pas joués.
 ## Les sons de vent et de roue libre restent à sound_player.gd et continuent dans le mode.
 
 const AudioMix := preload("res://scripts/audio_mix.gd")
@@ -24,7 +27,10 @@ var _voice_next := 0
 var _beat_t := 0.0
 var music_ms := 0.0                  # durée de la synthèse de la musique (mesure)
 var _ready_streams := false
-var _music_started := false
+var threaded := true                 # false : synthèse sur le fil principal (tests)
+var _task_id := -1                   # tâche de synthèse en cours, -1 sans tâche
+var _rendered: Dictionary = {}       # rempli par la tâche : nom ou couche -> PackedByteArray PCM 16 bits
+var _customs: Dictionary = {}        # nom -> flux .ogg de l'utilisateur (chargés sur le fil principal)
 
 
 func _ready() -> void:
@@ -51,30 +57,88 @@ func _loop_player() -> AudioStreamPlayer:
 	return p
 
 
-## Synthèse des sons de jeu (une fois, au premier état du mode) ; la musique vient ensuite, couche par couche.
+## Synthèse des sons de jeu et de la musique (une fois, au premier état du mode). Avec `threaded`, elle part sur un
+## fil de travail et `_process` installe les flux quand elle est finie ; sinon tout est fait tout de suite.
 func prepare() -> void:
-	if _ready_streams:
+	if _ready_streams or _task_id >= 0:
 		return
-	_ready_streams = true
-	var t0 := Time.get_ticks_usec()
 	for sound in Synth.names():
 		var custom = _try_load_custom(sound)
-		streams[sound] = custom if custom != null else _wav(Synth.render(sound), Synth.is_loop(sound))
-	synth_ms = float(Time.get_ticks_usec() - t0) / 1000.0
+		if custom != null:
+			_customs[sound] = custom
+	if threaded:
+		_task_id = WorkerThreadPool.add_task(_render_all, false, "Synthèse des sons du Cyber-Rogue")
+	else:
+		_render_all()
+		_install()
+
+
+## Sur le fil de travail : fonctions statiques pures de rogue_sound_synth.gd, aucun nœud touché.
+func _render_all() -> void:
+	var out := {}
+	var t0 := Time.get_ticks_usec()
+	for sound in Synth.names():
+		if not _customs.has(sound):
+			out[sound] = Synth.to_pcm16(Synth.render(sound))
+	var t1 := Time.get_ticks_usec()
+	for layer in Synth.MUSIC_LAYERS:
+		out["music:" + layer] = Synth.to_pcm16(Synth.render_music(layer))
+	synth_ms = float(t1 - t0) / 1000.0
+	music_ms = float(Time.get_ticks_usec() - t1) / 1000.0
+	_rendered = out
+
+
+## Sur le fil principal : flux WAV, boucles et musique (démarrée d'un coup pour que les couches restent alignées).
+func _install() -> void:
+	_ready_streams = true
+	for sound in Synth.names():
+		streams[sound] = _customs[sound] if _customs.has(sound) \
+				else _wav(_rendered[sound], Synth.is_loop(sound))
 	overheat_player.stream = streams["rogue_overheat"]
 	hum_player.stream = streams["rogue_firewall_hum"]
+	for layer in Synth.MUSIC_LAYERS:
+		var mp: AudioStreamPlayer = music_players[layer]
+		mp.stream = _wav(_rendered["music:" + layer], true)
+		mp.volume_db = Model.SILENCE_DB
+		if is_inside_tree():
+			mp.play()
+	_rendered = {}
 
 
-func _wav(samples: PackedFloat32Array, loop: bool) -> AudioStreamWAV:
+## Vrai quand sons et musique sont prêts (tests).
+func streams_ready() -> bool:
+	return _ready_streams
+
+
+## Attend la fin de la synthèse et installe les flux (tests, sortie du mode).
+func finish_now() -> void:
+	if _task_id >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task_id)
+		_task_id = -1
+		_install()
+
+
+func _poll_task() -> void:
+	if _task_id >= 0 and WorkerThreadPool.is_task_completed(_task_id):
+		finish_now()
+
+
+func _exit_tree() -> void:
+	if _task_id >= 0:
+		WorkerThreadPool.wait_for_task_completion(_task_id)
+		_task_id = -1
+
+
+func _wav(pcm: PackedByteArray, loop: bool) -> AudioStreamWAV:
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = Synth.RATE
 	wav.stereo = false
-	wav.data = Synth.to_pcm16(samples)
+	wav.data = pcm
 	if loop:
 		wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		wav.loop_begin = 0
-		wav.loop_end = samples.size()
+		wav.loop_end = pcm.size() / 2
 	return wav
 
 
@@ -88,23 +152,6 @@ func _try_load_custom(sound: String) -> Resource:
 	return AudioStreamOggVorbis.load_from_file(path) if FileAccess.file_exists(path) else null
 
 
-## Musique : les trois couches sont rendues d'un coup (à l'entrée du mode, pendant l'écran Prêt) et démarrées
-## ensemble pour rester alignées ; ensuite seul leur volume change.
-func prepare_music() -> void:
-	if _music_started:
-		return
-	_music_started = true
-	var t0 := Time.get_ticks_usec()
-	for layer in Synth.MUSIC_LAYERS:
-		var mp: AudioStreamPlayer = music_players[layer]
-		mp.stream = _wav(Synth.render_music(layer), true)
-		mp.volume_db = Model.SILENCE_DB
-	music_ms = float(Time.get_ticks_usec() - t0) / 1000.0
-	if is_inside_tree():
-		for layer in Synth.MUSIC_LAYERS:
-			music_players[layer].play()
-
-
 func on_loot(msg: Dictionary, now_s: float) -> void:
 	model.on_loot(msg, now_s)
 
@@ -113,7 +160,6 @@ func on_loot(msg: Dictionary, now_s: float) -> void:
 func on_state(rogue: Variant, gear: int, seq: int, now_s: float, result: String = "") -> void:
 	if typeof(rogue) == TYPE_DICTIONARY:
 		prepare()
-		prepare_music()
 	model.update(rogue, gear, seq, now_s, result)
 	for sound in model.take_plays():
 		_play(sound)
@@ -133,6 +179,7 @@ func _play(sound: String) -> void:
 
 ## Appelé à chaque image : volume des boucles (battement de l'alarme à 2 Hz) et couches de musique.
 func _process(delta: float) -> void:
+	_poll_task()
 	if not _ready_streams:
 		return
 	var loops: Dictionary = model.loops()
