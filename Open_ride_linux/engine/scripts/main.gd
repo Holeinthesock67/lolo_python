@@ -431,6 +431,12 @@ func _ready() -> void:
 	ipc.plans_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_plans(msg)
 		_refresh_menu())
+	ipc.history_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_history(msg)
+		_refresh_menu())
+	ipc.history_session_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_history_session(msg)
+		_refresh_menu())
 	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_wtf_rules(msg)
 		_refresh_menu())
@@ -661,6 +667,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.import_route(str(act["path"]))
 		"list_plans":
 			ipc.list_plans()
+		"list_history":
+			ipc.list_history()
+		"history_session":
+			ipc.history_session(str(act["id"]))
 		"list_wtf_rules":
 			ipc.send_command("list_wtf_rules", {})
 		"set_wtf_rules":   # une commande set_wtf_rule par règle basculée (lot WTF3)
@@ -855,7 +865,7 @@ func _refresh_menu() -> void:
 		var st: Dictionary = menu_flow.state()
 		if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
 			st["card"]["profile"] = _route_profile["profile"]
-		menu_view.update_display(st, _last_state, menu_flow.summary, menu_flow.show_details)
+		menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
 
 
 ## Jingle d'événement (lot T17), joué par SoundPlayer sur le bus « Events » ; nom vide : rien.

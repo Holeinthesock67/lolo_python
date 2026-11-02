@@ -199,6 +199,7 @@ func _refresh_home() -> void:
 		if m in modes:
 			items.append(_item(m, HOME_MODES[m], true, str(HOME_DETAILS.get(m, ""))))
 	items.append_array([_item("plan", plan_label, true, plan_detail), _item("ftp", "Test de FTP"),
+		_item("history", "Historique", true, "séances, semaines, tests de FTP"),
 		_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée")])
 	if garage:
 		items.append(_item("garage", "Garage"))
@@ -699,7 +700,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "rogue", "garage", "profile", "wtf", "interrupted":
+				"plan", "ftp", "history", "rogue", "garage", "profile", "wtf", "interrupted":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:

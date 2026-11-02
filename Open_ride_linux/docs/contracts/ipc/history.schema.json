@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideHistoryMessage",
+  "description": "Réponse à cmd list_history (révision 1.5, lot O28) : séances du profil en cours, de la plus récente à la plus ancienne, cumul par semaine ISO et tests de FTP, calculés comme openride-core history et ftp-test --history ; un seul datagramme de 60 000 octets au plus.",
+  "type": "object",
+  "required": ["type", "v", "request_cmd_id", "sessions", "truncated", "unreadable", "weeks", "ftp_tests"],
+  "properties": {
+    "type": {"const": "history"},
+    "v": {"type": "integer", "const": 1},
+    "request_cmd_id": {"type": "integer", "minimum": 0},
+    "truncated": {"type": "boolean"},
+    "unreadable": {"type": "integer", "minimum": 0},
+    "sessions": {
+      "type": "array",
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "required": ["id", "date", "route", "duration_s", "distance_m", "elevation_gain_m", "avg_power_w",
+                     "np_w", "if", "tss", "status", "workout"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "date": {"type": "string"},
+          "route": {"type": "string"},
+          "duration_s": {"type": "number", "minimum": 0},
+          "distance_m": {"type": "number", "minimum": 0},
+          "elevation_gain_m": {"type": "number", "minimum": 0},
+          "avg_power_w": {"type": "number", "minimum": 0},
+          "np_w": {"type": "number", "minimum": 0},
+          "if": {"type": "number", "minimum": 0},
+          "tss": {"type": "number", "minimum": 0},
+          "status": {"enum": ["ok", "recover"]},
+          "workout": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "weeks": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["week", "start_date", "count", "duration_s", "distance_m", "elevation_gain_m", "tss"],
+        "properties": {
+          "week": {"type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$"},
+          "start_date": {"type": "string"},
+          "count": {"type": "integer", "minimum": 1},
+          "duration_s": {"type": "number", "minimum": 0},
+          "distance_m": {"type": "number", "minimum": 0},
+          "elevation_gain_m": {"type": "number", "minimum": 0},
+          "tss": {"type": "number", "minimum": 0}
+        }
+      }
+    },
+    "ftp_tests": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["date", "ftp_w", "previous_ftp_w", "warnings", "reliable"],
+        "properties": {
+          "date": {"type": ["string", "null"]},
+          "ftp_w": {"type": ["integer", "null"]},
+          "previous_ftp_w": {"type": ["integer", "null"]},
+          "warnings": {"type": "array", "items": {"type": "string"}},
+          "reliable": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}
