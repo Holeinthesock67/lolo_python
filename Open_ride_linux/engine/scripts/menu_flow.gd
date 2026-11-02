@@ -1599,7 +1599,7 @@ func _handle_profiles(screen: String, item_id: String) -> Dictionary:
 				menu.push_screen(ProfilesViewModel.MANAGE_LIST)
 			elif item_id.begins_with("p:"):
 				var id := item_id.substr(2)
-				if id == profiles.active:
+				if id == profiles.current_id():
 					menu.reset()   # profil déjà en cours : retour à l'accueil
 				else:
 					profiles.message = "Changement de profil…"
