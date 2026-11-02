@@ -188,6 +188,7 @@ class Campaign:
         self.sent: list[dict] = []
         self.cmd_id = 0
         self.cfg = Config()
+        self.cfg.depart.mode = "immediat"   # campagne simulée sans engine : départ à la commande start (lot O36)
         self.cfg.rider.ftp_w = FTP_W
         self.driver = MockDriver(base_power_w=0.0, ramp_amplitude_w=0.0)
         self.session = self._new_session()

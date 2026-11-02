@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : lecture du monde vivant, amorces de branches, recentrage tous les 10 km | GDScript | W1 (W15 pour les tests) | Grande | Non : interne (rendu) (issue #265) |
+| Engine : lecture du monde vivant, amorces de branches, recentrage tous les 10 km | GDScript | W1 (W15 pour les tests) | Grande | Livré le 27 octobre (PR #422) |
 
 ## 1. Objectif
 
@@ -50,3 +50,7 @@ Aucune.
 ## 8. Hors périmètre
 
 Menu globe (W11), HUD du carrefour (W12).
+
+## Livraison
+
+PR #422, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Non : interne (rendu) (issue #265) ».

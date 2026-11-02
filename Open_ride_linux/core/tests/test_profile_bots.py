@@ -143,6 +143,13 @@ def test_menu_profile_bots_and_unknown_profile():
     assert bots[0].segments and bots[2].segments
 
 
+def test_menu_four_constant_bots_get_distinct_names():
+    # Lot O35 : le menu envoie jusqu'à 4 bots, parfois de même puissance ; leurs noms restent distincts au HUD.
+    bots = bots_from_menu([{"kind": "constant", "power_w": 200}] * 3 + [{"kind": "constant", "ftp_pct": 90}],
+                          PhysicsParams(), 250.0, None, None)
+    assert [b.name for b in bots] == ["Bot 200 W", "Bot 200 W 2", "Bot 200 W 3", "Bot 90 % FTP"]
+
+
 def test_start_with_profile_bots_frame_and_refusal(tmp_path, monkeypatch):
     async def scenario():
         s, cap = make_session(tmp_path, monkeypatch, port=6150)

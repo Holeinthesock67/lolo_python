@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Core : séance en monde ouvert, route qui s'allonge, choix au Click et verrouillage, pause `world_data` | Python | W1, W8 (W15 pour commencer) | Moyenne | Non : interne (séance du core) (issue #264) |
+| Core : séance en monde ouvert, route qui s'allonge, choix au Click et verrouillage, pause `world_data` | Python | W1, W8 (W15 pour commencer) | Moyenne | Livré le 27 octobre (PR #413) |
 
 ## 1. Objectif
 
@@ -53,3 +53,7 @@ Aucune.
 ## 8. Hors périmètre
 
 Affichage (W10 à W12), enregistrement en parcours (W14).
+
+## Livraison
+
+PR #413, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Non : interne (séance du core) (issue #264) ».

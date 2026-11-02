@@ -42,6 +42,7 @@ var z: PackedFloat64Array = PackedFloat64Array()
 var grade_pct: PackedFloat64Array = PackedFloat64Array()
 var heading_deg: PackedFloat64Array = PackedFloat64Array()
 var surface := PackedStringArray()  # colonne facultative `surface` (format 1.6, lot U22) ; vide : tout en paved
+const SLOPE_PROBE_M := 1.5          # display_pitch : points de la route à ± cette distance (vélo)
 var relief_k := 1.0                 # exagération visuelle du relief (`--visual-grade`), 1,0 : relief réel
 
 var segments: Array = []            # couche segments (série T) ; vide sans couche
@@ -448,6 +449,17 @@ func sample_point(pos: float) -> Vector3:
 
 func sample_heading_deg(pos: float) -> float:
 	return sample(pos)["heading_deg"]
+
+
+## Tangage de la route affichée en `pos` (radians, > 0 en montée dans le sens des s croissants) : pente de la
+## corde entre les points à ± `probe_m`, à la hauteur affichée (relief exagéré compris, comme le sol dessiné).
+## Sert à incliner les vélos et les véhicules posés sur la route (bots_view.gd, road_cyclists_model.gd,
+## traffic_model.gd).
+func display_pitch(pos: float, probe_m: float = SLOPE_PROBE_M) -> float:
+	var a := sample(wrap_s(pos - probe_m))
+	var c := sample(wrap_s(pos + probe_m))
+	var run := Vector2(float(c["x"]) - float(a["x"]), float(c["z"]) - float(a["z"])).length()
+	return atan2(float(c["y"]) - float(a["y"]), run) if run > 0.01 else 0.0
 
 
 func sample_grade(pos: float) -> float:

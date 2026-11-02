@@ -104,6 +104,9 @@ func _test_button_help() -> void:
 		prev_ok = prev_ok and es[1]["keys"] == ["+", "A", "→"] and es[2]["keys"] == ["−", "B", "←"] \
 			and es[2]["kb"] == ["−", "←"]
 	_check(prev_ok, "flèches du boîtier gauche et − à côté de B dans l'aide (Click gauche fonctionnel, 31 octobre)")
+	var qwk := ButtonHelp.text(ButtonHelp.QWK)
+	_check(qwk == "A maintenir : Valider · + A → : Suivant · − B ← : Précédent · Y : Retour · Clavier — touches : Écrire · Entrée : Ligne, valider · ← → : Déplacer · Retour arrière : Effacer · Échap : Retour",
+		"saisie du QWKcode (lot O21) : au clavier, les touches écrivent, ← → passent d'une ligne à l'autre : %s" % qwk)
 
 
 func _test_icons() -> void:

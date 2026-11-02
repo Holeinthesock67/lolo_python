@@ -391,7 +391,9 @@ def check_json_schemas(contracts_dir: Path = CONTRACTS_DIR) -> list[str]:
 
 # === Tests positifs et négatifs ======================================================
 
-def test_srs_config_matches_defaults_and_negative() -> None:
+def test_srs_config_matches_defaults_and_negative(monkeypatch) -> None:
+    from openride_core import config as config_mod
+    monkeypatch.setattr(config_mod, "DEPART_MODE_DEFAULT", config_mod.DEPART_MODE_SHIPPED)   # valeur livrée (lot O36)
     srs_text = SRS_PATH.read_text(encoding="utf-8")
     assert check_srs_config_example(srs_text) == []
 

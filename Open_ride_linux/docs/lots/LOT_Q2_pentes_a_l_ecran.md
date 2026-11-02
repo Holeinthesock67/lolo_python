@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Pentes plus lisibles à l'écran : caméra inclinée et relief exagéré à l'affichage | GDScript | — | Moyenne | Oui (valeur par défaut choisie par le propriétaire sur la GTX 1060) ; issue #169 |
+| Pentes plus lisibles à l'écran : caméra inclinée et relief exagéré à l'affichage | GDScript | — | Moyenne | Livré le 27 octobre (PR #191) |
 
 ## 1. Objectif
 
@@ -56,3 +56,7 @@ Aucune.
 
 - Mouvement de la tête, roulis dans les virages, vue à la troisième personne.
 - Changement de la pente envoyée au trainer (voir Q1).
+
+## Livraison
+
+PR #191, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui (valeur par défaut choisie par le propriétaire sur la GTX 1060) ; issue #169 ».

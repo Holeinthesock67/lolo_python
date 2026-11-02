@@ -328,6 +328,15 @@ func _test_difficulty() -> void:
 				"difficulté à %d %% : absente du HUD" % pct)
 
 
+func _test_workout_done_invite() -> void:
+	var text := HudViewModel.workout_done_text({"workout_done": {"workout_name": "Sweet spot"}})
+	_check(text.contains("« Sweet spot » terminé") and text.contains("Y puis A maintenu pour terminer et enregistrer")
+		and text.contains("Échap puis Entrée"), "invite de fin d'entraînement : nom, Y puis A maintenu, clavier")
+	_check(HudViewModel.workout_done_text({"workout_done": {"workout_name": ""}}).begins_with("Entraînement terminé :")
+		and HudViewModel.workout_done_text({}) == "" and HudViewModel.workout_done_text({"workout_done": null}) == "",
+		"invite : sans nom, texte générique ; sans workout_done, rien")
+
+
 func _test_controls_help() -> void:
 	var sim: String = HudViewModel.controls_text(false)
 	var erg: String = HudViewModel.controls_text(true)
@@ -339,6 +348,9 @@ func _test_controls_help() -> void:
 	_check(sim.contains("↑ / ↓ = vue") and erg.contains("↑ / ↓ = vue")
 		and HudViewModel.controls_text(false, "workout", true).contains("↑ / ↓ = vue"),
 		"rappel : flèches haut et bas du boîtier gauche = vue (essai PC du 30/10)")
+	var locked: String = HudViewModel.bias_locked_text()
+	_check(locked.contains("Test de FTP") and locked.contains("bloqués") and locked.contains("Z = arrêter"),
+		"test de FTP : rappel de + / − bloqués pendant la rampe")
 	var rogue: String = HudViewModel.controls_text(false, "workout", true)
 	_check(rogue.contains("Y = pause") and rogue.contains("Z = attaque") and rogue.contains("long = carte active")
 		and not rogue.contains("braquet"), "rappel en Cyber-Rogue : colonne du mode (§7.1), pas de braquet")
@@ -356,6 +368,7 @@ func _test_controls_help() -> void:
 
 func _init() -> void:
 	_test_controls_help()
+	_test_workout_done_invite()
 	_test_texts()
 	_test_session_lines()
 	_test_distance_on_loop()

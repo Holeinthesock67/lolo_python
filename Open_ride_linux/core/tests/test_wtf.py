@@ -13,7 +13,7 @@ from openride_core.wtf.chef import Chef
 from openride_core.wtf.events import (JUPITER_G, MOON_G, Cheese, Collapse, Ctx, Effects, Eggs, Gravity, Micro,
                                       Storm, WtfInput)
 from openride_core.wtf.mode import (DRAFT_CAP, FEEL_MAX_PCT, FEEL_MIN_PCT, FEEL_OFFSET_MAX_PCT, KATA_KG_MAX,
-                                    WtfMode)
+                                    DRAWN, WtfMode)
 from openride_core.wtf.rules import (DEFAULT_TABLE, EVENT_IDS, RULE_IDS, WtfError, WtfTable, dump_table,
                                      load_table, save_table)
 
@@ -292,8 +292,26 @@ def test_eggs_break_on_jerks_not_on_dropouts():
     assert ev.eggs < 6
     smooth = Eggs(random.Random(0), CTX, Rider().inp())
     rider = Rider()
-    ride(smooth, rider, 400, power=200.0, v=10.0)
+    ride(smooth, rider, 120, power=200.0, v=10.0)
     assert smooth.outcome == "delivered" and smooth.points == 300
+    slow = Eggs(random.Random(0), CTX, Rider().inp())
+    ride(slow, Rider(), 160, power=200.0, v=4.0)          # 640 m en 2 min 30 : en retard
+    assert slow.outcome == "late" and slow.points == 60
+
+
+def test_no_event_lasts_longer_than_the_cap():
+    from openride_core.wtf.events import EVENT_MAX_S
+    from openride_core.wtf.mode import EVENT_CLASSES
+    assert all(cls.duration_s <= EVENT_MAX_S for cls in EVENT_CLASSES.values())
+
+
+def test_draw_takes_every_gag_before_repeating():
+    mode = WtfMode(seed=3)
+    drawn = [mode._draw() for _ in range(3 * len(DRAWN))]
+    n = len(DRAWN)
+    for k in range(3):
+        assert sorted(drawn[k * n:(k + 1) * n]) == sorted(DRAWN)
+    assert all(a != b for a, b in zip(drawn, drawn[1:]))
 
 
 # --- surprise du chef -------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Gravel : résistance au roulement dans le core, supplément de pente sous le plafond du vent | Python | U1, P2 | Petite | Oui, après U1, **version 3.0** (issue #351) |
+| Gravel : résistance au roulement dans le core, supplément de pente sous le plafond du vent | Python | U1, P2 | Petite | Livré le 30 octobre (PR #625), **version 3.0** |
 
 ## 1. Objectif
 
@@ -51,3 +51,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Rendu et sons du gravel (U22), crevaisons, adhérence.
+
+## Livraison
+
+PR #625, fusionnée le 30 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, après U1, **version 3.0** (issue #351) ».

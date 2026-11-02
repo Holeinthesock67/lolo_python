@@ -361,7 +361,8 @@ def run_sim(chosen: list[Action], args: argparse.Namespace, out: Path) -> list[d
                                 "hr": {"appear_at": 0.5, "connect_delay_s": 0.2}, "events": events}),
                     encoding="utf-8")
     core_cmd = [sys.executable, "-m", "openride_core", "run", "--config", str(cfg), "--trainer", "sim",
-                "--input", "sim", "--hr", "sim", "--autostart", "--route", "demo", "--sim-scenario", str(scen)]
+                "--input", "sim", "--hr", "sim", "--autostart", "--depart", "immediat", "--route", "demo",
+                "--sim-scenario", str(scen)]
     log_path = out / "lanceur.log"
     stop = threading.Event()
     t0_box: list[float] = []

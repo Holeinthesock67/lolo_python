@@ -311,6 +311,7 @@ class Harness:
         self.n += 1
         d = self.tmp / f"s{self.n}"
         cfg = Config()
+        cfg.depart.mode = "immediat"   # banc sans engine ni cycliste : départ à la commande start (lot O36)
         cfg.ipc.port_state, cfg.ipc.port_commands = 0, 0
         cfg.open_world.cache_dir = str(d / "cache")
         s = CoreSession(cfg, driver=MockDriver(base_power_w=power, ramp_amplitude_w=0.0), inputs=[NullProvider()],

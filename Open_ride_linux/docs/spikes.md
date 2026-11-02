@@ -10,7 +10,7 @@ Valider les hypothèses techniques critiques avant le développement des modules
 ---
 
 ## 1. Export FIT & Journal de Session (Validé)
-- **Outil** : [fit_demo.py](file:///d:/Sauvegarde/Documents/utilisateur/lolo_python/Open_ride_linux/core/src/openride_core/tools/fit_demo.py) et [fit_export.py](file:///d:/Sauvegarde/Documents/utilisateur/lolo_python/Open_ride_linux/core/src/openride_core/fit_export.py)
+- **Outil** : [fit_demo.py](../core/src/openride_core/tools/fit_demo.py) et [fit_export.py](../core/src/openride_core/fit_export.py)
 - **Résultats** :
   - Simulation complète 10 minutes avec variations de puissance, pente, cadence, FC et une pause de 30 secondes.
   - Génération continue du journal JSONL (avec `fsync` à chaque écriture pour résister aux crashs).
@@ -21,7 +21,7 @@ Valider les hypothèses techniques critiques avant le développement des modules
 ---
 
 ## 2. Outils de Diagnostic BLE (Prêts pour exécution matérielle)
-- **Outil** : [ble_diag.py](file:///d:/Sauvegarde/Documents/utilisateur/lolo_python/Open_ride_linux/core/src/openride_core/tools/ble_diag.py) (`openride-ble-diag`)
+- **Outil** : [ble_diag.py](../core/src/openride_core/tools/ble_diag.py) (`openride-ble-diag`)
 - **Commandes à lancer sur le PC Linux connecté au Home Trainer / Click** :
   ```bash
   # Scanner l'environnement Bluetooth
@@ -41,8 +41,8 @@ Valider les hypothèses techniques critiques avant le développement des modules
 ---
 
 ## 3. Générateur de Monde Synthétique (Sprint 0 / Godot MVP)
-- **Outil** : [fake_world.py](file:///d:/Sauvegarde/Documents/utilisateur/lolo_python/Open_ride_linux/core/src/openride_core/tools/fake_world.py)
-- Produit un dossier `.world` conforme au contrat [world_format_v1.md](file:///d:/Sauvegarde/Documents/utilisateur/lolo_python/Open_ride_linux/docs/contracts/world_format_v1.md) (`manifest.json` + `route.json`) pour tester l'affichage de la route dans Godot.
+- **Outil** : [fake_world.py](../core/src/openride_core/tools/fake_world.py)
+- Produit un dossier `.world` conforme au contrat [world_format_v1.md](../docs/contracts/world_format_v1.md) (`manifest.json` + `route.json`) pour tester l'affichage de la route dans Godot.
 
 ---
 

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Aucune roue libre en ERG : consigne minimale de 50 W (FreeRide = palier à 50 W), test de FTP par la rampe seule (20 min retiré) | Python + GDScript | O10, O18 (livrés) | Moyenne | Décision du propriétaire du 29 octobre ; en PR |
+| Aucune roue libre en ERG : consigne minimale de 50 W (FreeRide = palier à 50 W), test de FTP par la rampe seule (20 min retiré) | Python + GDScript | O10, O18 (livrés) | Moyenne | Livré le 29 octobre (PR #569) |
 
 ## 1. Objectif
 
@@ -49,3 +49,7 @@ Décision du propriétaire du 29 octobre : « aucune roue libre en ERG ». La ma
 ## 6. Hors périmètre
 
 Réglage de la consigne minimale (fixe à 50 W) ; réécriture des anciens journaux contenant un test de 20 minutes.
+
+## Livraison
+
+PR #569, fusionnée le 29 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Décision du propriétaire du 29 octobre ; en PR ».

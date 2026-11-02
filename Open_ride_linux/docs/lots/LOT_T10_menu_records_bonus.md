@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 2.0 série T : menu, écran « Records » par parcours et option « Bonus » | GDScript | T5, N6 (livrés) ; T7 | Moyenne | Non : interne (menu) ; **codé le 27 octobre** (issue #400) ; tests Godot à passer sur le PC, validation à la recette T11 |
+| 2.0 série T : menu, écran « Records » par parcours et option « Bonus » | GDScript | T5, N6 (livrés) ; T7 | Moyenne | Livré le 27 octobre (PR #414) |
 
 ## 1. Objectif
 

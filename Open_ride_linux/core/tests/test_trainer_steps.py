@@ -202,3 +202,60 @@ def test_unsettled_steps_are_not_compared_to_the_model():
     checks = ts.model_checks(results, Model(), 0.25, skip)
     assert [ok for ok, _ in checks] == [False, None, None, None, None]
     assert "pas comparé" in checks[1][1]
+
+
+# --- lot RC1 : étalonnage du mode résistance -----------------------------------------------
+
+def test_resistance_level_follows_the_announced_range():
+    from openride_core.ftms_driver import resistance_level
+    assert resistance_level(32.0, 0.0, 100.0, 1.0) == 32.0
+    assert resistance_level(32.0, 0.0, 20.0, 0.5) == 6.5      # 6,4 arrondi au pas de 0,5
+    assert resistance_level(150.0, 1.0, 10.0, 0.1) == 10.0    # borné à 100 % de la plage
+    assert resistance_level(-5.0, 1.0, 10.0, 0.1) == 1.0
+
+
+def test_resistance_protocol_is_valid_and_bounded(tmp_path):
+    steps = ts.load_protocol("etalonnage_resistance")
+    assert {s.mode for s in steps} == {"res"} and 32.0 in [s.value for s in steps]
+    assert sum(s.hold_s for s in steps) <= 300   # un bloc de 5 min par cadence
+    assert ts.step_label(steps[3]) == "résistance 32 %"
+    custom = tmp_path / "p.json"
+    custom.write_text('{"steps": [{"mode": "res", "value": 120, "hold_s": 20}]}', encoding="utf-8")
+    with pytest.raises(ValueError):
+        ts.load_protocol(str(custom))
+
+
+def test_resistance_bench_on_simulated_trainer(caplog):
+    """Le banc envoie l'opcode 0x04 au trainer simulé, qui annonce la cible et la plage 0 à 100."""
+    import logging
+    from openride_core import ftms
+    world = build_world(load_scenario("nominal"), "nominal", click=False, hr=False)
+    steps = [ts.Step("res", 10, 4), ts.Step("res", 32, 4)]
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        rec = asyncio.run(ts.run_bench(steps, config.Config(), sim_world=world, lead_in_s=0))
+    sent = [c.payload for c in world.trainer.commands if c.op == ftms.OP_SET_TARGET_RESISTANCE]
+    assert ftms.cmd_set_target_resistance(10.0) in sent and sent[-1] == ftms.cmd_set_target_resistance(32.0)
+    assert all(c.result == 0x01 for c in world.trainer.commands if c.op == ftms.OP_SET_TARGET_RESISTANCE)
+    assert world.trainer.resistance_level == 0.0   # Reset du relâchement à la fin
+    assert ("config", "résistance sur sint16") in [e[1:] for e in rec.events]
+    msgs = [r.getMessage() for r in caplog.records]
+    assert any("consignes : " in m and "resistance_target" in m for m in msgs)
+    assert "Plage de résistance du trainer : 0 à 100, pas de 1" in msgs
+    assert world.trainer.released and not any(e[1] == "refused" for e in rec.events)
+
+
+def test_resistance_uint8_reaches_the_simulated_trainer():
+    world = build_world(load_scenario("nominal"), "nominal", click=False, hr=False)
+    asyncio.run(ts.run_bench([ts.Step("res", 20, 4)], config.Config(), sim_world=world, lead_in_s=0,
+                             resistance_wide=False))
+    from openride_core import ftms
+    sent = [c.payload for c in world.trainer.commands if c.op == ftms.OP_SET_TARGET_RESISTANCE]
+    assert sent and set(sent) == {bytes([0x04, 200])}   # 20 % de 0–100 = niveau 20,0 sur un uint8 (renvois compris)
+
+
+def test_resistance_step_refused_when_not_announced():
+    from openride_core.ftms_driver import FtmsDriver
+    drv = FtmsDriver(config.TrainerConfig(), config.BikeConfig())
+    assert not drv.set_resistance_pct(32.0) and drv._want.mode == "sim"
+    drv.supports_resistance = True
+    assert drv.set_resistance_pct(32.0) and (drv._want.mode, drv._want.value) == ("resistance", 32.0)

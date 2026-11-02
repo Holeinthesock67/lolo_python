@@ -77,7 +77,7 @@ def test_format_cp_write_erg_and_control():
 def test_trace_disabled_produces_no_ftms_trace_lines(caplog):
     async def scenario():
         world = build_world(READY, hr=False, click=False)
-        cfg = TrainerConfig(trace_ftms=False, latency_tau_s=0.0)
+        cfg = TrainerConfig(trace_ftms=False, latency_tau_s=0.0, control="sim")
         drv = FtmsDriver(
             cfg,
             BikeConfig(),
@@ -111,7 +111,7 @@ def test_trace_active_with_simulated_trainer(caplog):
     async def scenario():
         world = build_world(READY, hr=False, click=False)
         # cp_latency_s = 0.05 -> réponse en ~50 ms
-        cfg = TrainerConfig(trace_ftms=True, latency_tau_s=0.0)
+        cfg = TrainerConfig(trace_ftms=True, latency_tau_s=0.0, control="sim")
         drv = FtmsDriver(
             cfg,
             BikeConfig(),
@@ -193,7 +193,7 @@ def test_reset_third_party_vs_echo(caplog):
         world = build_world(READY, hr=False, click=False)
         trainer = world.trainer
         assert trainer is not None
-        cfg = TrainerConfig(trace_ftms=True)
+        cfg = TrainerConfig(trace_ftms=True, control="sim")
         drv = FtmsDriver(
             cfg,
             BikeConfig(),
@@ -289,7 +289,7 @@ def test_trace_rate_limit_under_3_lines_per_second(caplog):
     ligne de mesures (une par notification Indoor Bike Data, soit environ 1 par seconde)."""
     async def scenario():
         world = build_world(READY, hr=False, click=False)
-        cfg = TrainerConfig(trace_ftms=True)
+        cfg = TrainerConfig(trace_ftms=True, control="sim")   # pente SIM stable : aucune commande à renvoyer
         drv = FtmsDriver(
             cfg,
             BikeConfig(),

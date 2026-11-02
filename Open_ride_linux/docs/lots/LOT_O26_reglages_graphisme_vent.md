@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Réglages manquants : décor vivant, relief exagéré (pris au lancement suivant, ligne « Relancer »), ressenti du vent ; légendes du vent et du thème en français | Python + GDScript | O24, X53 | Petite | Audit des options du 31 octobre, validé par le propriétaire ; en PR |
+| Réglages manquants : décor vivant, relief exagéré (pris au lancement suivant, ligne « Relancer »), ressenti du vent ; légendes du vent et du thème en français | Python + GDScript | O24, X53 | Petite | Livré le 31 octobre (PR #660) |
 
 ## 1. Objectif
 
@@ -35,3 +35,7 @@ Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, valid
 1. `settings` contient les trois réglages ; écrire « non » met `living = false`, écrire 150 % met `visual_grade_scale = 1.5`.
 2. Après un changement de décor vivant, « Relancer OpenRide maintenant » apparaît, et le relancement applique la valeur.
 3. Sur le PC (fil de fusion) : relief à 100 % puis 250 % sur une montée, captures en low, medium et high à valider.
+
+## Livraison
+
+PR #660, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Audit des options du 31 octobre, validé par le propriétaire ; en PR ».

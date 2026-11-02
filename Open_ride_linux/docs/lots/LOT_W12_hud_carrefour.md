@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : HUD du carrefour (branches, pente, choix, verrouillage) et attributions | GDScript | W1 | Petite | Non : interne (rendu) (issue #267) |
+| Engine : HUD du carrefour (branches, pente, choix, verrouillage) et attributions | GDScript | W1 | Petite | Livré le 27 octobre (PR #423) |
 
 ## 1. Objectif
 
@@ -47,3 +47,7 @@ Aucune.
 ## 8. Hors périmètre
 
 Amorces 3D des branches (W10).
+
+## Livraison
+
+PR #423, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Non : interne (rendu) (issue #267) ».

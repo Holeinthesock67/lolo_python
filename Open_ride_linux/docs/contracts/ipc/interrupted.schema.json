@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideInterruptedMessage",
+  "description": "Réponse à cmd recover_session (révision 1.5, lot O34) : séance traitée et séances interrompues restantes ; datagramme de 4 096 octets au plus (contrat §2).",
+  "type": "object",
+  "required": ["type", "v", "request_cmd_id", "id", "saved", "fit_path", "items"],
+  "properties": {
+    "type": {"const": "interrupted"},
+    "v": {"type": "integer", "const": 1},
+    "request_cmd_id": {"type": "integer", "minimum": 0},
+    "id": {"type": "string", "minLength": 1},
+    "saved": {"type": "boolean", "description": "Vrai si un FIT a été produit."},
+    "fit_path": {"type": ["string", "null"]},
+    "items": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["id", "start", "route_id", "distance_m", "duration_s"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "description": "Nom du journal, à passer à recover_session."},
+          "start": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$"},
+          "route_id": {"type": ["string", "null"]},
+          "distance_m": {"type": "number", "minimum": 0},
+          "duration_s": {"type": "number", "minimum": 0}
+        }
+      }
+    }
+  }
+}

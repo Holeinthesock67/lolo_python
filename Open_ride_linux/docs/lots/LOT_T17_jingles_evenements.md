@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 2.0 série T : engine, jingles des événements du parcours (sommet, fin de sprint, arche, fin de séance) | GDScript | T8, T9 (codés) ; T7 | Petite | Non : interne (son) ; **codé le 27 octobre** ; tests Godot à passer sur le PC, validation à la recette T11 |
+| 2.0 série T : engine, jingles des événements du parcours (sommet, fin de sprint, arche, fin de séance) | GDScript | T8, T9 (codés) ; T7 | Petite | Livré le 28 octobre (PR #450) |
 
 ## 1. Objectif
 

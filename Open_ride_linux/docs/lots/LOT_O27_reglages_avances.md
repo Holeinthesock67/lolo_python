@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Sous-écran « Avancé » : monde ouvert hors ligne, plafonds du cache et des thèmes, progression ; `settings` en parties ; renvoi de la consigne laissé aux essais | Python + GDScript | O26 | Petite | Audit des options du 31 octobre, décision 2 validée par le propriétaire ; en PR |
+| Sous-écran « Avancé » : monde ouvert hors ligne, plafonds du cache et des thèmes, progression ; `settings` en parties ; renvoi de la consigne laissé aux essais | Python + GDScript | O26 | Petite | Livré le 31 octobre (PR #660) |
 
 ## 1. Objectif
 
@@ -35,3 +35,7 @@ Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, déci
 1. Le sous-écran Avancé montre les quatre réglages, et les écrire met à jour `config.toml` (`network = false`, `cache_max_gb = 20`, `enabled = false`).
 2. Avec la progression coupée, « Relancer OpenRide maintenant » apparaît. Après le relancement, le Garage n'est plus proposé.
 3. Une liste `settings` découpée en plusieurs parties est réunie par l'engine, dans l'ordre.
+
+## Livraison
+
+PR #660, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Audit des options du 31 octobre, décision 2 validée par le propriétaire ; en PR ».

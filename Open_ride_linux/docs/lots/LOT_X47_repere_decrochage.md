@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : repère « décrochage » au journal par Z long au Click (§7.1, SIM, ERG, monde ouvert) et `Maj+Z` au clavier, confirmé à l'écran, relu par `decrochages` | Python, GDScript | X42, X44 | Petite | Séance du 29 octobre ; en PR |
+| Série X (outils de test) : repère « décrochage » au journal par Z long au Click (§7.1, SIM, ERG, monde ouvert) et `Maj+Z` au clavier, confirmé à l'écran, relu par `decrochages` | Python, GDScript | X42, X44 | Petite | Livré le 29 octobre (PR #591) |
 
 ## 1. Objectif
 
@@ -37,3 +37,7 @@ Séance du 29 octobre : le cycliste sentait la résistance du trainer lâcher ap
 2. La matrice des boutons (X42) est verte, Click et clavier, sur les cases Z long.
 3. Tests Godot : le texte de confirmation n'apparaît qu'en roulant, hors Cyber-Rogue et hors menu.
 4. Sur le PC (via le fil de fusion), en séance : Z long au Click (boîtier droit) et `Maj+Z` au clavier. Le bandeau s'affiche et `decrochages` relit le repère dans le journal.
+
+## Livraison
+
+PR #591, fusionnée le 29 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Séance du 29 octobre ; en PR ».

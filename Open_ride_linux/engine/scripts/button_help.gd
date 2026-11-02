@@ -15,6 +15,20 @@ const EDIT := "edit"
 const NAME_GRID := "profile_name"   # grille du nom d'un profil (profiles_view_model.gd, lot MJ8)
 ## Saisie de texte partagée (text_entry.gd, lot O31) : nom d'un profil et recherche du monde ouvert.
 const WORLD_SEARCH_GRID := "world_search"
+## Saisie du QWKcode (qwk_editor.gd, lot O21) : au clavier, les touches écrivent (main._qwk_key), donc + A
+## et − n'y sont pas des boutons du clavier (boutons du Click : mêmes pastilles que les autres menus) ; les flèches ← → passent d'une ligne à l'autre, Entrée change de ligne
+## ou choisit « Enregistrer » / « Tout effacer ». Touches données une à une (`kb`), comme le monde ouvert.
+const QWK := "workout_qwk"
+const QWK_ENTRIES := [
+	{"keys": ["A"], "hold": true, "text": "Valider", "main": true, "kb": []},
+	{"keys": NEXT_KEYS, "hold": false, "text": "Suivant", "main": false, "kb": []},
+	{"keys": PREV_KEYS, "hold": false, "text": "Précédent", "main": false, "kb": []},
+	{"keys": [], "hold": false, "text": "Écrire", "main": true, "kb": ["touches"]},
+	{"keys": [], "hold": false, "text": "Ligne, valider", "main": false, "kb": ["Entrée"]},
+	{"keys": [], "hold": false, "text": "Déplacer", "main": false, "kb": ["←", "→"]},
+	{"keys": [], "hold": false, "text": "Effacer", "main": false, "kb": ["Retour arrière"]},
+	{"keys": ["Y"], "hold": false, "text": "Retour", "main": false, "kb": ["Échap"]},
+]
 const Y_DEFAULT := "Retour"
 ## Double légende : une ligne pour les boutons du Click, une pour les touches du clavier (key_map.gd :
 ## chaque touche double un bouton du Click). Titres des deux lignes.
@@ -78,6 +92,8 @@ static func entries(screen: String) -> Array:
 		return text_grid("Voir les résultats")
 	if screen.begins_with(WORLD_PREFIX):
 		return (WORLD.get(screen.substr(WORLD_PREFIX.length()), []) as Array).duplicate(true)
+	if screen == QWK:
+		return QWK_ENTRIES.duplicate(true)
 	var out: Array = [
 		{"keys": ["A"], "hold": true, "text": "Valider", "main": true},
 		{"keys": NEXT_KEYS, "hold": false, "text": "Suivant", "main": false},

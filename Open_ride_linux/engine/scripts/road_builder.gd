@@ -36,10 +36,114 @@ static func chunk_count(route) -> int:
 	return maxi(1, ceili(route.length_m / CHUNK_LENGTH_M))
 
 
+## Amorces de chaussée (demande du 1er novembre : « la route qui commence nulle part c'est étrange ») : sur un
+## parcours ouvert, la chaussée continue tout droit LEAD_IN_M avant le départ (tronçon k = −1) et LEAD_OUT_M après
+## l'arrivée (tronçon k = chunk_count). Décor seulement : le parcours, sa longueur et ses fiches ne changent pas
+## (s reste dans [0, longueur] pour le core). Pas d'amorce sur une boucle ; pas d'amorce d'arrivée quand
+## l'arrivée est à moins de LEAD_OUT_M du départ (aller-retour : l'amorce du départ couvre déjà le lieu).
+## Hauteur : celle du terrain affiché (`height_at`) + LEAD_CLEAR_M, raccordée à la route sur LEAD_BLEND_M.
+const LEAD_IN_M := 100.0
+const LEAD_OUT_M := 200.0
+const LEAD_BLEND_M := 30.0
+const LEAD_CLEAR_M := 0.05
+
+
+static func has_lead_in(route) -> bool:
+	return route != null and route.n >= 2 and not route.is_loop()
+
+
+static func has_lead_out(route) -> bool:
+	if not has_lead_in(route):
+		return false
+	var a: Vector3 = route.sample_point(0.0)
+	var b: Vector3 = route.sample_point(route.length_m)
+	return Vector2(b.x - a.x, b.z - a.z).length() > LEAD_OUT_M
+
+
+## Le tronçon k existe-t-il (k de −1 à chunk_count, amorces comprises) ?
+static func has_chunk(route, k: int) -> bool:
+	var count := chunk_count(route)
+	if k >= 0 and k < count:
+		return true
+	if k == -1:
+		return has_lead_in(route)
+	if k == count:
+		return has_lead_out(route)
+	return false
+
+
+## Bornes [s0, s1] du tronçon k ; amorces : [−LEAD_IN_M, 0] et [longueur, longueur + LEAD_OUT_M].
+static func chunk_range(route, k: int) -> Vector2:
+	if k < 0:
+		return Vector2(-LEAD_IN_M, 0.0)
+	if k >= chunk_count(route):
+		return Vector2(route.length_m, route.length_m + LEAD_OUT_M)
+	return Vector2(k * CHUNK_LENGTH_M, minf((k + 1) * CHUNK_LENGTH_M, route.length_m))
+
+
+## Axe des amorces (x, z) : [[a, b], …] segments droits du départ vers l'arrière et de l'arrivée vers l'avant
+## (arbres tenus à l'écart, vegetation_placer.gd).
+static func lead_segments(route) -> Array:
+	var out := []
+	if has_lead_in(route):
+		var a := axis_sample(route, 0.0)
+		var b := axis_sample(route, -LEAD_IN_M)
+		out.append([Vector2(a["x"], a["z"]), Vector2(b["x"], b["z"])])
+	if has_lead_out(route):
+		var a := axis_sample(route, route.length_m)
+		var b := axis_sample(route, route.length_m + LEAD_OUT_M)
+		out.append([Vector2(a["x"], a["z"]), Vector2(b["x"], b["z"])])
+	return out
+
+
+## Point de l'axe en s, amorces comprises : dans [0, longueur], route.sample ; au-delà, droite prolongée au cap du
+## bout le plus proche, à sa hauteur, pente nulle.
+static func axis_sample(route, s_pos: float) -> Dictionary:
+	if route.is_loop() or (s_pos >= 0.0 and s_pos <= route.length_m):
+		return route.sample(s_pos)
+	var end_s: float = 0.0 if s_pos < 0.0 else route.length_m
+	var smp: Dictionary = route.sample(end_s).duplicate()
+	var h := deg_to_rad(float(smp["heading_deg"]))
+	var d: float = s_pos - end_s
+	smp["x"] = float(smp["x"]) + sin(h) * d
+	smp["z"] = float(smp["z"]) - cos(h) * d
+	smp["grade_pct"] = 0.0
+	return smp
+
+
+## Hauteurs du centre de la chaussée aux coupes `s_values` d'une amorce : terrain affiché sous toute la largeur
+## (bas-côtés compris, le plus haut des trois points) + LEAD_CLEAR_M, l'écart avec la route au bout étant
+## résorbé sur LEAD_BLEND_M. Sans `height_at` : hauteur du bout de la route.
+static func lead_heights(route, s_values: PackedFloat64Array, outer: float, height_at: Callable) -> PackedFloat64Array:
+	var out := PackedFloat64Array()
+	var end_s: float = 0.0 if s_values[0] < 0.0 else route.length_m
+	var y_end: float = route.sample(end_s)["y"]
+	if not height_at.is_valid():
+		for s_cut in s_values:
+			out.append(y_end)
+		return out
+	var ground := func(s_cut: float) -> float:
+		var smp := axis_sample(route, s_cut)
+		var h := deg_to_rad(float(smp["heading_deg"]))
+		var right := Vector2(cos(h), sin(h))
+		var c := Vector2(smp["x"], smp["z"])
+		var best := -INF
+		for off in [-outer, 0.0, outer]:
+			var p: Vector2 = c + right * float(off)
+			best = maxf(best, float(height_at.call(p.x, p.y)))
+		return best + LEAD_CLEAR_M
+	var gap: float = y_end - float(ground.call(end_s))
+	for s_cut in s_values:
+		var w := 1.0 - smoothstep(0.0, LEAD_BLEND_M, absf(s_cut - end_s))
+		out.append(float(ground.call(s_cut)) + gap * w)
+	return out
+
+
 ## Positions s des coupes du tronçon k : tous les 2 m, plus la fin exacte du tronçon.
 static func section_s(route, k: int) -> PackedFloat64Array:
-	var s0 := k * CHUNK_LENGTH_M
-	var s1 := minf((k + 1) * CHUNK_LENGTH_M, route.length_m)
+	var rng := chunk_range(route, k)
+	var s0 := rng.x
+	var s1 := rng.y
 	var out := PackedFloat64Array()
 	var count := ceili((s1 - s0) / SECTION_STEP_M - 1e-9)
 	for j in range(count):
@@ -56,7 +160,10 @@ static func section_s(route, k: int) -> PackedFloat64Array:
 ## de sa surface (bords irréguliers, biseau de 5 m), COLOR = couleur de la surface avec a = 1 − part non revêtue,
 ## UV2.x = demi-largeur de la chaussée à cette coupe ; UV.x reste rapporté à la largeur du bitume (le shader des
 ## marquages retrouve l'écart à l'axe en mètres).
-static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M, gravel: Dictionary = {}) -> Array:
+## Amorces (k = −1 ou chunk_count) : même coupe, axe prolongé (axis_sample), hauteurs lead_heights (`height_at` :
+## (x, z) -> hauteur affichée du terrain, vide sans terrain).
+static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M, gravel: Dictionary = {},
+		height_at: Callable = Callable()) -> Array:
 	var half := road_width_m * 0.5
 	var outer := half + SHOULDER_WIDTH_M
 	# Décalages en travers (m, vers la droite) et descente de chaque sommet de la coupe.
@@ -75,7 +182,10 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 	var uv2s := PackedVector2Array()
 	var colors := PackedColorArray()
 	var relief_k: float = route.relief_k
-	for s_cut in s_values:
+	var is_lead := k < 0 or k >= chunk_count(route)
+	var lead_y := lead_heights(route, s_values, outer, height_at) if is_lead else PackedFloat64Array()
+	for i_cut in range(s_values.size()):
+		var s_cut: float = s_values[i_cut]
 		if unpaved_on:
 			var sec := RoadSurface.section(route, s_cut, mode, surfaces, road_width_m)
 			var l: float = sec["left_m"]
@@ -86,12 +196,17 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 			for v in range(VERTS_PER_SECTION):
 				colors.append(col)
 				uv2s.append(Vector2(0.5 * (l + r), 0.0))
-		var smp: Dictionary = route.sample(s_cut)
+		var smp: Dictionary = axis_sample(route, s_cut) if is_lead else route.sample(s_cut)
 		var center := Vector3(smp["x"], smp["y"], smp["z"])
 		var h := deg_to_rad(float(smp["heading_deg"]))
 		# Cap horaire depuis le nord (−z) : avant = (sin h, 0, −cos h), droite = (cos h, 0, sin h).
 		var right := Vector3(cos(h), 0.0, sin(h))
 		var grade := (float(smp["grade_pct"]) / 100.0) * relief_k
+		if is_lead:
+			center.y = lead_y[i_cut]
+			var i_a := maxi(i_cut - 1, 0)
+			var i_b := mini(i_cut + 1, s_values.size() - 1)
+			grade = (lead_y[i_b] - lead_y[i_a]) / maxf(s_values[i_b] - s_values[i_a], 1e-6)
 		var forward := Vector3(sin(h), grade, -cos(h))
 		var up_road := right.cross(forward).normalized()
 		var left_shoulder := (right * SHOULDER_WIDTH_M + Vector3.UP * SHOULDER_DROP_M).cross(forward).normalized()

@@ -169,6 +169,35 @@ def test_session_skip_during_ramp_is_abandon(tmp_path, monkeypatch, workouts_dir
     asyncio.run(scenario())
 
 
+def test_session_plus_minus_locked_during_ramp(tmp_path, monkeypatch, workouts_dir):  # noqa: F811
+    """+ et − bloqués pendant les paliers de la rampe (choix du propriétaire du 01/11), libres avant et après."""
+    from openride_core.zwift_click import InputEvent
+
+    async def scenario():
+        s, _, _ = make_session(tmp_path, monkeypatch, workouts_dir, port=5978)
+        s._on_command("select_route", {"route_id": "demo"}, 1)
+        s.route.type = "loop"
+        s._on_command("select_workout", {"workout_id": "ftp_test:ramp"}, 2)
+        s._on_command("start", {}, 3)
+        base = s.erg.bias_pct
+        assert "bias_locked" not in s.state.erg     # échauffement
+        s._handle_input(InputEvent.PLUS_SHORT)    # échauffement : biais permis
+        assert s.erg.bias_pct > base
+        s._handle_input(InputEvent.MINUS_SHORT)
+        s._on_command("skip_block", {}, 4)        # premier palier
+        run(s, 5.0, dt=0.1)
+        target = s.erg.target_w
+        assert s.state.erg.get("bias_locked") is True
+        for ev in (InputEvent.PLUS_SHORT, InputEvent.PLUS_LONG, InputEvent.MINUS_SHORT, InputEvent.MINUS_LONG):
+            s._handle_input(ev)
+        assert s.erg.bias_pct == base and s.erg.target_w == target
+        s._on_command("skip_block", {}, 5)        # abandon : retour au calme, + et − rendus
+        assert s.erg.block.type == "cooldown" and "bias_locked" not in s.state.erg
+        s._handle_input(InputEvent.MINUS_SHORT)
+        assert s.erg.bias_pct < base
+    asyncio.run(scenario())
+
+
 def test_session_refuses_the_old_twenty_minutes(tmp_path, monkeypatch, workouts_dir):  # noqa: F811
     async def scenario():
         s, _, _ = make_session(tmp_path, monkeypatch, workouts_dir, port=5974)

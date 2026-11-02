@@ -11,6 +11,8 @@ extends RefCounted
 ##   (`create_profile` ou `rename_profile`). Nom proposé à la création : « Cycliste N ».
 ## - « Gérer » (MANAGE_LIST puis MANAGE) : Renommer, Supprimer (confirmation, « Non » par défaut ; le
 ##   profil en cours et le dernier profil joueur ne se suppriment pas).
+## - « Gérer un profil » finit par « Vider le profil d'essai » (confirmation, `clear_trial_profile`) et
+##   « Restaurer un profil supprimé » (RESTORE : profils de la corbeille, `restore_profile`), lot O33.
 ## - Profil d'essai : titre « OpenRide — PROFIL D'ESSAI » et bandeau « ESSAI » au HUD (`is_trial()`).
 ##
 ## Le core contrôle les noms (`name_invalid`) ; le modèle n'empêche que ce que la grille ne sait pas écrire.
@@ -19,7 +21,10 @@ const SCREEN := "profiles"
 const NAME := "profile_name"
 const MANAGE_LIST := "profile_manage_list"
 const MANAGE := "profile_manage"
-const SCREENS := [SCREEN, NAME, MANAGE_LIST, MANAGE]
+const RESTORE := "profile_restore"
+const SCREENS := [SCREEN, NAME, MANAGE_LIST, MANAGE, RESTORE]
+const CLEAR_TRIAL_ID := "clear_trial"
+const RESTORE_ID := "restore"
 const MAX_PROFILES := 8
 const NAME_MAX := 16
 const TextEntry := preload("res://scripts/text_entry.gd")
@@ -31,6 +36,10 @@ const TRIAL_TITLE := "PROFIL D'ESSAI"
 ## Dernier message `profiles` : profil en cours et éléments {id, name, type, level, last_ride, kit_primary}.
 var items: Array = []
 var active := ""
+## Corbeille (`profiles.trash`, lot O33) : {id, name, deleted}, les plus récents d'abord.
+var trash: Array = []
+## Message affiché à la réponse `profiles` de la demande en cours (vider, restaurer) ; "" : aucune.
+var done_message := ""
 ## `hello_ack.config.profile` : {id, name, type, count} ({} : core sans profils, rien n'est affiché).
 var profile: Dictionary = {}
 ## Saisie du nom en cours : texte, « create » ou « rename » et profil renommé.
@@ -93,13 +102,19 @@ func on_profiles(msg: Dictionary) -> void:
 	var raw = msg.get("items", [])
 	items = raw if raw is Array else []
 	active = str(msg.get("active", "")) if msg.get("active") != null else ""
+	var t = msg.get("trash", [])
+	trash = t if t is Array else []
 	if message == "Enregistrement…":
 		message = ""
+	if done_message != "":
+		message = done_message
+		done_message = ""
 
 
 func on_error(code: String, text: String) -> bool:
 	if code not in ["name_invalid", "profile_invalid", "busy"]:
 		return false
+	done_message = ""
 	message = ("Nom refusé : " if code == "name_invalid" else "") + text
 	return true
 
@@ -138,7 +153,8 @@ func who_items() -> Array:
 	if _players().size() < MAX_PROFILES:
 		out.append({"id": "new", "label": "Nouveau profil", "enabled": true, "detail": ""})
 	if _players().size() > 0:
-		out.append({"id": "manage", "label": "Gérer un profil", "enabled": true, "detail": "renommer, supprimer"})
+		out.append({"id": "manage", "label": "Gérer un profil", "enabled": true,
+			"detail": "renommer, supprimer, restaurer, vider l'essai"})
 	return out
 
 
@@ -147,7 +163,33 @@ func manage_list_items() -> Array:
 	for it in _players():
 		out.append({"id": "p:" + str(it["id"]), "label": str(it.get("name", it["id"])), "enabled": true,
 			"detail": ride_text(it)})
+	var room := _players().size() < MAX_PROFILES
+	out.append({"id": RESTORE_ID, "label": "Restaurer un profil supprimé", "enabled": not trash.is_empty() and room,
+		"detail": ("corbeille vide" if trash.is_empty() else ("%d dans la corbeille" % trash.size()
+			if room else "8 profils au plus"))})
+	out.append({"id": CLEAR_TRIAL_ID, "label": "Vider le profil d'essai", "enabled": true,
+		"detail": "séances, pièces et records d'essai"})
 	return out
+
+
+## Profils de la corbeille (écran RESTORE) : nom et date de la suppression.
+func restore_items() -> Array:
+	var out: Array = []
+	for it in trash:
+		var d := str(it.get("deleted", ""))
+		out.append({"id": "t:" + str(it.get("id", "")), "label": str(it.get("name", "")), "enabled": true,
+			"detail": ("supprimé le %s/%s" % [d.substr(8, 2), d.substr(5, 2)]) if d.length() == 10 else ""})
+	if out.is_empty():
+		out.append({"id": "none", "label": "Corbeille vide", "enabled": false, "detail": ""})
+	return out
+
+
+## Nom d'un profil de la corbeille (message de la restauration).
+func trash_name(entry_id: String) -> String:
+	for it in trash:
+		if str(it.get("id", "")) == entry_id:
+			return str(it.get("name", entry_id))
+	return entry_id
 
 
 func manage_items() -> Array:

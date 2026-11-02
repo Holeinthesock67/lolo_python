@@ -53,12 +53,18 @@ func on_loot(msg: Dictionary) -> void:
 func update(state: Dictionary, parent: Node, classic: Array, world_env: WorldEnvironment, camera: Camera3D,
 		preset: String, now_s: float) -> bool:
 	var rogue = state.get("rogue", null)
-	var in_rogue: bool = str(state.get("mode", "")) == "ROGUE" and typeof(rogue) == TYPE_DICTIONARY
-	if in_rogue and scene == null:
+	var mode_rogue := str(state.get("mode", "")) == "ROGUE"
+	var in_rogue: bool = mode_rogue and typeof(rogue) == TYPE_DICTIONARY
+	# Préchauffage (lot Y20) : la scène entre dès l'écran d'attente du départ (`start_wait`), pour que le premier
+	# dessin de ses matériaux (~2,3 s sur le PC) tombe sous cet écran et non juste après RUNNING.
+	var waiting: bool = mode_rogue and typeof(state.get("start_wait", null)) == TYPE_DICTIONARY
+	if (in_rogue or waiting) and scene == null:
 		_enter(parent, classic, world_env, camera, preset)
-	elif not in_rogue and scene != null:
+		if not in_rogue:
+			scene.warm_up()
+	elif not in_rogue and not waiting and scene != null:
 		_leave()
-	if scene == null:
+	if scene == null or not in_rogue:
 		return false
 	scene.resync_requested = false
 	scene.on_state(rogue, now_s)

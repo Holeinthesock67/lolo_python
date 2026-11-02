@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Générateur de carrés de 1 km : terrain fondu avec toutes les routes, couches par carré, file de priorités | Python | W2, W3, W5 | Grande | Oui, après W5 (issue #261) |
+| Générateur de carrés de 1 km : terrain fondu avec toutes les routes, couches par carré, file de priorités | Python | W2, W3, W5 | Grande | Livré le 27 octobre (PR #310) |
 
 ## 1. Objectif
 
@@ -55,3 +55,7 @@ Aucune.
 ## 8. Hors périmètre
 
 Processus et horizon (W8), tuiles vectorielles (W13).
+
+## Livraison
+
+PR #310, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, après W5 (issue #261) ».

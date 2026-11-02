@@ -167,6 +167,7 @@ def run(objective: str = "threshold", duration_min: int = 30, seed: int = 5, pro
 def new_session(tmp: Path, prof: Any, inputs: list | None = None) -> tuple[CoreSession, MockDriver, list]:
     """Vraie séance du core sur un trainer simulé, journal et profil dans `tmp`, messages vers l'engine relevés."""
     cfg = Config()
+    cfg.depart.mode = "immediat"   # banc sans engine ni cycliste : départ à la commande start (lot O36)
     cfg.rider.ftp_w = prof.ftp_w
     cfg.rogue.w_prime_j = prof.w_prime_j
     driver = MockDriver(base_power_w=0.0, ramp_amplitude_w=0.0)

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 2.0 série T : engine, HUD des bots (maillot, profil, FTP en W et W/kg, écart, jauge W') et encart des deux voisins | GDScript | O7, T9, T16, T7 ; champs de profil avec T12 | Moyenne | Non : interne (HUD) ; cahier et code du 27 octobre (issue #402) |
+| 2.0 série T : engine, HUD des bots (maillot, profil, FTP en W et W/kg, écart, jauge W') et encart des deux voisins | GDScript | O7, T9, T16, T7 ; champs de profil avec T12 | Moyenne | Livré le 28 octobre (PR #453) |
 
 ## 1. Objectif
 

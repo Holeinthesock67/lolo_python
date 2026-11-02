@@ -60,6 +60,14 @@ if mode.startswith("seq:"):                # seq:A,B : code de sortie du n-ième
     time.sleep(0.2)
     n = len((marks / f"{role}_start").read_text().split())
     sys.exit(codes[n - 1] if n <= len(codes) else 0)
+if mode.startswith("hang:"):               # hang:CODE : ligne de fin de l'engine (code annoncé) puis arrêt bloqué
+    print(f"Fermeture : scène libérée, arrêt des serveurs de Godot (code {mode[5:]}), 150 ms après la demande.",
+          flush=True)
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    if len((marks / f"{role}_start").read_text().split()) > 1:
+        sys.exit(0)                         # relancé : se ferme normalement
+    while True:
+        time.sleep(0.05)
 if mode.startswith("exit0"):              # exit0:T : se ferme normalement au bout de T s
     time.sleep(float(mode.split(":")[1]))
     sys.exit(0)
@@ -150,6 +158,17 @@ def test_engine_relaunch_code_restarts_core_and_engine(fake):
     assert count(fake.marks, "core_SIGINT") == 3       # chaque core arrêté proprement (trainer relâché)
     assert count(fake.marks, "release_start") == 0
     assert sum("relance demandée depuis le menu" in m for m in said) == 2
+    assert_no_orphans(sup)
+
+
+@pytest.mark.parametrize("code", [0, launcher.EXIT_RELAUNCH])
+def test_engine_stuck_after_its_last_line_is_stopped_with_announced_code(fake, code):
+    # Lot X55 : sur le PC (pilote NVIDIA), l'arrêt de Godot bloquait après « scène libérée » ; le code annoncé compte.
+    sup, said = fake(engine=f"hang:{code}", engine_shutdown_s=0.5)
+    assert sup.run() == 0
+    assert any("arrêt de Godot bloqué" in m and f"code {code} retenu" in m for m in said)
+    assert sup.relaunches == (1 if code else 0) and sup.restarts == 0   # ni plantage, ni relance perdue
+    assert count(fake.marks, "engine_start") == (2 if code else 1)
     assert_no_orphans(sup)
 
 

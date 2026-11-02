@@ -39,6 +39,10 @@ class StraightRoute:
 	var segments: Array = SEGMENTS
 	func is_loop() -> bool:
 		return false
+	## Route plate : pas de tangage (route_data.gd `display_pitch`).
+	func display_pitch(_s: float, _probe_m: float = 1.5) -> float:
+		return 0.0
+
 	func sample(s: float) -> Dictionary:
 		return {"x": 0.0, "y": 0.0, "z": -s, "heading_deg": 0.0, "alt_m": 200.0 + maxf(0.0, minf(s, 500.0) - 350.0) * 0.06}
 

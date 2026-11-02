@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Écran Appareils : la ceinture choisie active `drivers.hr`, « aucun » oublie le trainer ou la ceinture, « Oublier le Click » | Python + GDScript | N13 (livré) | Petite | Audit des options du 31 octobre (docs/AUDIT_OPTIONS_MENUS_2026-10-31.md), validé par le propriétaire ; en PR |
+| Écran Appareils : la ceinture choisie active `drivers.hr`, « aucun » oublie le trainer ou la ceinture, « Oublier le Click » | Python + GDScript | N13 (livré) | Petite | Livré le 31 octobre (PR #643) |
 
 ## 1. Objectif
 
@@ -34,3 +34,7 @@ Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, valid
 1. Banc des menus, scénario `appareils` : après Enregistrer, `config.toml` contient `drivers.hr = "ble"`, sur les trois voies.
 2. `pair_devices` avec `""` pour le trainer, le boîtier « − » et la ceinture : les clés de la règle O24-2 sont écrites, le reste du fichier est gardé.
 3. Sur le PC (fil de fusion) : appairer la vraie ceinture, relancer, la FC s'affiche dans le HUD.
+
+## Livraison
+
+PR #643, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Audit des options du 31 octobre (docs/AUDIT_OPTIONS_MENUS_2026-10-31.md), validé par le propriétaire ; en PR ».

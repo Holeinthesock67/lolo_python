@@ -75,6 +75,8 @@ class WtfMode:
         self.journal: list[dict] = []
         self.vexed = False
         self._desc_t = 0.0
+        self._bag: list[str] = []          # gags pas encore sortis de ce tour (tirage en sac)
+        self._last_drawn: str | None = None
         # Katamari
         self.kata_size = 1.0
         self.kata_count = 0
@@ -115,11 +117,26 @@ class WtfMode:
             self._open("cheese", inp)
             return
         if inp.t >= self.next_event_t:
-            pool = [k for k in DRAWN if on(k)]
-            if pool:
-                self._open(self.rng.choice(pool), inp)
+            kind = self._draw()
+            if kind is not None:
+                self._open(kind, inp)
             else:
                 self.next_event_t = math.inf
+
+    def _draw(self) -> str | None:
+        """Tirage « en sac » : chaque gag actif sort une fois avant qu'un autre ne revienne, et jamais deux
+        fois de suite à la recharge du sac (essai PC 7cn : deux livraisons d'œufs en 13 min)."""
+        pool = [k for k in DRAWN if self.table.on(k)]
+        if not pool:
+            return None
+        self._bag = [k for k in self._bag if k in pool]
+        if not self._bag:
+            self._bag = pool[:]
+            self.rng.shuffle(self._bag)
+            if len(self._bag) > 1 and self._bag[-1] == self._last_drawn:
+                self._bag[0], self._bag[-1] = self._bag[-1], self._bag[0]
+        self._last_drawn = self._bag.pop()
+        return self._last_drawn
 
     def _open(self, kind: str, inp: WtfInput) -> None:
         cls = EVENT_CLASSES[kind]
