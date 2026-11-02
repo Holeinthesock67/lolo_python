@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série AS : circulation calculée par le core, abri derrière un véhicule lent (activé par défaut, réglable), aspiration au dépassement | Python + GDScript | AS2 | Grande | Prêt (version 2.0) |
+| Série AS : circulation calculée par le core, abri derrière un véhicule lent (activé par défaut, réglable), aspiration au dépassement | Python + GDScript | AS2 | Grande | En PR (31 octobre, PR #663, sur AS2 ; version 2.0) |
 
 Série AS, version 2.0. Demande du propriétaire du 29 octobre 2026 (« abri derrière véhicules ou groupes à intégrer ») ; décision du même jour : **abri derrière un véhicule lent activé par défaut, désactivable dans le menu**.
 
@@ -58,3 +58,25 @@ Liste facultative `vehicles` dans `state` ; `draft_bot` peut valoir `veh:<id>` ;
 ## 8. Hors périmètre
 
 Véhicules qui réagissent au cycliste (klaxon, freinage), règles de sécurité routière.
+
+## 9. Livraison (31 octobre 2026, PR empilée sur AS2)
+
+- **Core.** `traffic.py` : portage de `traffic_model.gd` (cases de 250 m, mêmes sortes et parts, même tirage `hash3`, graine 0 comme l'engine, villages de la couche `poi` par tronçons de 1 km, limite de neige du thème), budget fixe de 8 véhicules (celui du préréglage high) quel que soit le préréglage. Liste `vehicles` : les 4 plus proches à moins de 150 m, une trame sur trois. Pas de circulation sans décor vivant (`[render] living`), puisque l'engine n'en affiche pas.
+- **Véhicule lent devant.** Tracteur, ou utilitaire dans une montée de plus de 6 % (18 à 26 km/h), tiré dans le même sens et plus lent que le cycliste : posé 150 à 300 m devant, voie de droite. Il garde sa ligne face aux coureurs qui le doublent (ce sont eux qui s'écartent) et ne double jamais un coureur. Une fois doublé, il suit les règles des autres véhicules, sans jamais s'engager à doubler plus vite qu'il ne roule.
+- **Placement (AS2).** `draft.Lane` gagne `half_width` et `length` (ceux d'un vélo par défaut, rien ne change entre vélos) : un véhicule du même sens est un coureur que l'on suit dans sa ligne, que l'on double à 1 m de sa carrosserie et que l'on longe comme un vélo ; on commence à le doubler assez tôt pour avoir fini de se décaler (`SIDE_EXTRA_MARGIN`). Les bots aussi l'évitent. Les véhicules évitent le cycliste à sa vraie place (`lane_m`).
+- **Abri et aspiration.** Courbe et constantes en tête de `traffic.py` plutôt que dans `draft.py`, pour ne pas toucher le fichier qu'AS3 et AS5 modifient en même temps ; `draft.py` ne gagne que les deux champs de `Lane`. Le plus fort de l'abri des bots et de celui des véhicules s'applique ; l'aspiration s'ajoute sans lissage, total plafonné à 0,60 (`draft` de la trame compris, jauge et pastille à 100 % au-delà de 0,45).
+- **Engine.** `traffic_model.gd` : `sync_core` reprend la liste `vehicles` une fois par trame (`seq`), remplace ses véhicules de même `id`, retire ceux à moins de 140 m absents de la liste, extrapole ceux du core entre deux listes ; un véhicule qui sort de la liste reste au décor. Le budget du préréglage ne compte plus que le décor lointain. Les véhicules lents ne viennent que du core : les cyclistes du décor de l'engine ne savent pas les doubler (AS7). Jauge d'abri au-dessus d'un véhicule (`living_decor.vehicle_anchor`, juste au-dessus du toit).
+- **Vecteurs partagés.** `python -m openride_core.tools.traffic_vectors` écrit `engine/tests/data/traffic_slots_vectors.json` (parcours d'essai de 20 km, six graines, trois villages, une rampe à 10 %, un col enneigé) ; `test_traffic.py` et `test_traffic_model.gd` y trouvent les mêmes 47 véhicules (case, sorte, couleur, sens, vitesse).
+- **Hors de ce lot.** Les bots ne s'abritent pas derrière les véhicules ; les cyclistes du décor ne sont pas encore des obstacles pour la circulation du core (AS7).
+
+### Mesures du 31 octobre (cloud)
+
+| Critère | Valeur |
+| --- | --- |
+| 2 : mêmes véhicules que l'engine sur 20 km | 47 sur 47, six graines (Godot 4.7.2 sans écran) |
+| 3 : tracteur à 25 km/h, 3 m derrière, placement activé | abri 0,45 dans sa ligne (0,45 aussi à 1,2 m de l'axe, derrière la carrosserie) ; réglage coupé : 0 |
+| 4 : camion qui double à 1,8 m | pic 0,24 quand l'arrière passe le cycliste, retour sous 0,005 en moins d'une seconde ; rien à 2,6 m |
+| 5 : trame la plus lourde, 4 véhicules et 5 bots | 2 841 octets avec `devices`, 2 734 sans (limite 4 096) |
+| 6 : coût du core, 4 véhicules et 5 bots | 0,011 ms par pas (borne 0,2 ms) |
+
+Restent sur le PC (fil de fusion) : `visual_check.py` et banc sim en low, medium et high (scènes `abri_tracteur` et `abri_tracteur_parti`), captures à montrer au propriétaire avant la fusion ; sur le vélo : suivre un tracteur en montée, le doubler, se faire doubler par un camion.

@@ -198,8 +198,9 @@ class BotsConfig:
 
 @dataclass
 class RideConfig:
-    """Séance avec des bots (série AS, lot AS2)."""
+    """Séance : placement avec les bots (série AS, lot AS2), abri derrière les véhicules (lot AS6)."""
     auto_draft: str = "on"         # placement dans la roue : on (rangé derrière le coureur devant, sorti pour doubler) ou off (1,2 m de l'axe)
+    vehicle_draft: str = "on"      # abri derrière un véhicule lent (lot AS6) : on ou off ; l'aspiration d'un véhicule qui double reste
 
 
 @dataclass
@@ -373,6 +374,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("powerups", "mode"): ("on", "off"),
     ("ride", "auto_draft"): ("on", "off"),
     ("depart", "mode"): ("pedalage", "immediat"),
+    ("ride", "vehicle_draft"): ("on", "off"),
 }
 
 
@@ -385,7 +387,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("gearing", "start_gear"),
     ("powerups", "mode"),
     ("bots", "level_pct"),
-    ("ride", "auto_draft"),
+    ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
     ("wind", "max_grade_offset_pct"),

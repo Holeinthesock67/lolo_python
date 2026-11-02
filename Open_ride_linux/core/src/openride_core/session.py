@@ -55,6 +55,7 @@ from .rogue import mode as rogue_mode
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import draft as draft_mod
+from . import traffic as traffic_mod
 from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
 from .wtf import rules as wtf_rules
 from .wtf.events import WtfInput
@@ -82,6 +83,8 @@ MAX_STEP_S = 0.1         # un pas plus long (gel du processus) est borné
 # Biais ERG par appui de + ou − (§7.1) : petit pas ± 2 %, grand pas ± 10 % (cinq pas de BIAS_STEP_PCT).
 BIAS_STEPS = {InputEvent.PLUS_SHORT: +1, InputEvent.MINUS_SHORT: -1, InputEvent.PLUS_LONG: +5, InputEvent.MINUS_LONG: -5}
 WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révision 1.3)
+VEHICLES_FRAME_EVERY = 3   # liste `vehicles` 10 fois par seconde (lot AS6), extrapolée par l'engine
+TRAFFIC_SEED = 0         # graine de la circulation : celle de traffic_model.gd (lot AS6)
 DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" / "default" / "theme.json"
 
 
@@ -226,17 +229,22 @@ def build_hr(cfg: Config, sim: Any = None) -> HeartRateProvider | None:
 ROUTE_ID_RE = re.compile(r"^[^/\\.][^/\\]*$")   # un nom de dossier simple, comme les entraînements
 
 
-def theme_wind(theme: str, themes_dir: Path | None = None) -> dict | None:
-    """Objet `wind` du thème 1.2 choisi (`[render] theme`), sinon du thème par défaut ; None s'il manque."""
+def theme_section(theme: str, key: str, themes_dir: Path | None = None) -> dict | None:
+    """Objet `key` du thème choisi (`[render] theme`), sinon du thème par défaut ; None s'il manque."""
     candidates = [(themes_dir or OPENRIDE_HOME / "Themes") / theme / "theme.json", DEFAULT_THEME_JSON]
     for path in candidates:
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if isinstance(data, dict) and isinstance(data.get("wind"), dict):
-            return data["wind"]
+        if isinstance(data, dict) and isinstance(data.get(key), dict):
+            return data[key]
     return None
+
+
+def theme_wind(theme: str, themes_dir: Path | None = None) -> dict | None:
+    """Objet `wind` du thème 1.2 choisi (`[render] theme`), sinon du thème par défaut ; None s'il manque."""
+    return theme_section(theme, "wind", themes_dir)
 
 
 class AutostartError(Exception):
@@ -281,6 +289,9 @@ class CoreSession:
         self._draft = 0.0             # abri lissé derrière un bot (lot P3)
         self._draft_bot: str | None = None
         self._lane = self._rider_lane()   # écart à l'axe du cycliste (lot AS2)
+        self.traffic: traffic_mod.Traffic | None = None   # circulation de la route (lot AS6)
+        self._world_src: tuple[Route, Path, dict] | None = None   # route, dossier et manifeste du .world choisi
+        self._suction = 0.0           # aspiration d'un véhicule qui double (lot AS6)
         self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
         self.route: Route | None = None
         self._segments: tuple = ()               # couche segments du parcours (série T)
@@ -1689,6 +1700,7 @@ class CoreSession:
             self._set_state(previous)
             return
         self.route = world.route
+        self._world_src = (world.route, world.path, world.manifest)
         self._segments = world.segments
         self.erg = None
         self._sync_erg_state()
@@ -2038,6 +2050,8 @@ class CoreSession:
         `classic` faux (mode WTF) : pas de segments, de records ni de bonus, seulement les bots calibrés."""
         route = self.route
         self.race = None
+        self.traffic = None           # circulation retirée à chaque départ (lot AS6)
+        self._suction = 0.0
         if route is None:
             return
         try:
@@ -2401,9 +2415,13 @@ class CoreSession:
                 if setter:
                     setter(self._head_mps)
         self._wind_offset = 0.0
-        if self.bots:
-            self._update_draft(dt, route, here.heading_deg if here else 0.0)
+        traffic = self._traffic_for(route)
+        self._suction = 0.0
+        if self.bots or traffic is not None:
+            self._update_draft(dt, route, here.heading_deg if here else 0.0, traffic)
         draft = wtf.draft(self._draft_bot, self._draft) if wtf is not None else self._draft   # baleine volante
+        if self._suction > 0.0:      # aspiration au dépassement (lot AS6), sans lissage : 1 à 2 s
+            draft = min(draft + self._suction, traffic_mod.VEHICLE_ALPHA_CAP)
 
         if erg and erg.target_active:
             # ERG : cible de puissance, aucune pente envoyée ; la physique garde la pente du terrain.
@@ -2477,10 +2495,12 @@ class CoreSession:
         st.gear = self.gearing.k
         if here:
             st.lat, st.lon, st.alt = here.lat, here.lon, alt
-        if self.bots:
-            st.draft = round(self._draft, 3)
+        if self.bots or self.traffic is not None:
+            st.draft = round(min(self._draft + self._suction, traffic_mod.VEHICLE_ALPHA_CAP), 3)
             st.draft_bot = self._draft_bot if st.draft > 0.0 else None
             st.lane_m = round(self._lane.m, 2)
+        else:
+            st.draft = st.draft_bot = st.lane_m = None
 
         if self._rec and self._t_session >= self._next_record:
             self._next_record += 1.0
@@ -2533,13 +2553,37 @@ class CoreSession:
         return draft_mod.Lane(draft_mod.RIDER_LANE_M, draft_mod.RIDER_LANE_M,
                               auto=self.cfg.ride.auto_draft == "on")
 
-    def _update_draft(self, dt: float, route: Route | None, heading_deg: float) -> None:
+    def _traffic_for(self, route: Route | None) -> traffic_mod.Traffic | None:
+        """Circulation de la route (lot AS6), créée au premier pas sur une route ; aucune sans décor vivant
+        (`[render] living`, l'engine n'affiche alors aucun véhicule). Villages de la couche `poi` du .world
+        choisi, limite de neige du thème, graine de l'engine."""
+        if route is None or not self.cfg.render.living:
+            return None
+        if self.traffic is None or self.traffic.route is not route:
+            src = self._world_src
+            villages = traffic_mod.load_villages(src[1], src[2], route.length_m) if src and src[0] is route else []
+            self.traffic = traffic_mod.Traffic(
+                route=route, seed=TRAFFIC_SEED, villages=villages,
+                snow_line_m=traffic_mod.snow_line({"terrain": theme_section(self.cfg.render.theme, "terrain")}))
+        return self.traffic
+
+    def _update_draft(self, dt: float, route: Route | None, heading_deg: float,
+                      traffic: traffic_mod.Traffic | None = None) -> None:
         """Abri derrière les bots (lot P3) : cible de `draft.best_draft`, lissée à 1 s ; abri, roue suivie et
         poussée des bots (lot AS1, `draft.update_bots`), tous sur les positions du pas précédent. Avant eux,
         placement sur la route du cycliste et des bots (lot AS2, `draft.update_lanes`), en diagonale sous un
-        vent de travers (lot AS3)."""
+        vent de travers (lot AS3). Lot AS6 : la
+        circulation avance d'abord ; ses véhicules proches dans le même sens sont des obstacles du
+        placement, abritent le cycliste (`[ride] vehicle_draft`) et l'aspirent en le doublant."""
         length = route.length_m if route else None
         is_loop = bool(route and route.is_loop)
+        near: list[traffic_mod.Vehicle] = []
+        if traffic is not None:
+            others = [traffic_mod.Other(b.s, draft_mod.BOT_LANE_M if draft_mod.lane_of(b) is None else draft_mod.lane_of(b))
+                      for b in self.bots]
+            others.append(traffic_mod.Other(self.physics.s, self._lane.m))
+            traffic.update(self.physics.s, self.physics.v, dt, others=others)
+            near = traffic.near(self.physics.s)
         ws = self._wind_sample if self.wind.active else None
 
         def cross_at(heading: float) -> float:
@@ -2552,6 +2596,8 @@ class CoreSession:
         runners = [(self.physics.s, self.physics.v, self._lane)]
         runners += [(b.s, b.v, b.lane) for b in self.bots
                     if getattr(b, "kind", "constant") == "constant" and getattr(b, "lane", None) is not None]
+        runners += [(v.s, v.speed_mps, draft_mod.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width,
+                                                       length=v.length)) for v in near if v.dir == 1]
         draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None)
 
         cross = cross_at(heading_deg)
@@ -2560,6 +2606,12 @@ class CoreSession:
                               (lambda b: cross_at(route.sample(b.s).heading_deg)) if ws and route else None)
         target, bot_id = draft_mod.best_draft(self.physics.s, self.bots, length, is_loop,
                                               self.physics.v, self._head_mps, cross, lane_m=self._lane.m)
+        if near and self.cfg.ride.vehicle_draft == "on":
+            v_alpha, v_id = traffic_mod.vehicle_draft(self.physics.s, self._lane.m, near, self.physics.v,
+                                                      self._head_mps, cross)
+            if v_alpha > target:
+                target, bot_id = v_alpha, v_id
+        self._suction = traffic_mod.pass_suction(self.physics.s, self.physics.v, self._lane.m, near)
         self._draft = draft_mod.smooth(self._draft, target, dt)
         if bot_id is not None:
             self._draft_bot = bot_id
@@ -2569,6 +2621,13 @@ class CoreSession:
             base = self._bot_cda.get(id(bot))
             if base is not None:
                 bot.params.cda_m2 = base * (1.0 - getattr(bot, "push", 0.0))
+
+    def _fill_vehicles_frame(self) -> None:
+        """Liste `vehicles` une trame sur trois (10 Hz, lot AS6) : au plus 4 véhicules à moins de 150 m."""
+        traffic = self.traffic
+        self.state.vehicles = None
+        if traffic is not None and self._frame_count % VEHICLES_FRAME_EVERY == 0:
+            self.state.vehicles = traffic_mod.state_list(traffic.near(self.physics.s))
 
     def _fill_wind_frame(self) -> None:
         """Champ `wind` une trame sur quinze, jamais dans la trame qui porte `devices` (taille de la trame)."""
@@ -2800,6 +2859,7 @@ class CoreSession:
                     self.state.bots = None
                 self._fill_race_frame()
                 self._fill_wind_frame()
+                self._fill_vehicles_frame()
                 self._fill_wtf_frame()
                 self.server.send_state(self.state)
             if now >= next_stats:

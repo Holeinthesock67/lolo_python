@@ -849,19 +849,84 @@
     "draft": {
       "type": "number",
       "minimum": 0,
-      "maximum": 0.55,
-      "description": "Facultatif, révision 1.3 (lot P1) : coefficient d'aspiration appliqué au cycliste (SRS §5), absent sans bot ; jusqu'à 0,55 au cœur d'un groupe (lot AS4, 2.0)."
+      "maximum": 0.6,
+      "description": "Facultatif, révision 1.3 (lot P1) : coefficient d'aspiration appliqué au cycliste (SRS §5), absent sans bot ; jusqu'à 0,55 au cœur d'un groupe (lot AS4, 2.0). Révision 1.5 (lot AS6) : jusqu'à 0,60 derrière un véhicule ou avec l'aspiration d'un véhicule qui double ; présent aussi sans bot quand la circulation roule."
     },
     "draft_bot": {
       "type": "string",
-      "maxLength": 8,
-      "description": "Facultatif, révision 1.3 (lot P1) : id du bot (kind constant) qui abrite le cycliste."
+      "maxLength": 16,
+      "description": "Facultatif, révision 1.3 (lot P1) : id du bot (kind constant) qui abrite le cycliste. Révision 1.5 (lot AS6) : `veh:<id>` quand c'est un véhicule de la liste `vehicles`."
     },
     "lane_m": {
       "type": "number",
       "minimum": -3,
       "maximum": 3,
-      "description": "Facultatif, révision 1.5 (lot AS2) : écart du cycliste à l'axe de la route en m, positif à droite, au centimètre ; absent sans bot (l'engine le place alors à 1,2 m)."
+      "description": "Facultatif, révision 1.5 (lot AS2) : écart du cycliste à l'axe de la route en m, positif à droite, au centimètre ; absent sans bot ni circulation (l'engine le place alors à 1,2 m)."
+    },
+    "vehicles": {
+      "type": "array",
+      "maxItems": 4,
+      "description": "Facultatif, révision 1.5 (lot AS6) : véhicules de la route à moins de 150 m du cycliste, calculés par le core (au plus 4, du plus proche au plus loin), envoyés une trame sur trois (10 Hz) et extrapolés par l'engine entre deux ; absent des autres trames et sans circulation.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "color",
+          "s",
+          "dir",
+          "v",
+          "lane_m"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 12,
+            "description": "`v<case>` : le même que traffic_model.gd pour la même case."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "car_a",
+              "car_b",
+              "van",
+              "truck",
+              "bus",
+              "moto",
+              "tractor"
+            ]
+          },
+          "color": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 7
+          },
+          "s": {
+            "type": "number",
+            "description": "Position du milieu du véhicule le long de la route (m)."
+          },
+          "dir": {
+            "type": "integer",
+            "enum": [
+              -1,
+              1
+            ],
+            "description": "1 : même sens que le cycliste ; -1 : en face."
+          },
+          "v": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Vitesse (m/s), dans le sens `dir`."
+          },
+          "lane_m": {
+            "type": "number",
+            "minimum": -4,
+            "maximum": 4,
+            "description": "Écart à l'axe (m), positif à droite du sens du parcours."
+          }
+        }
+      }
     },
     "segment": {
       "type": "object",

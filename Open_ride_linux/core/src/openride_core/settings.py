@@ -87,6 +87,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("depart.mode", "Départ", "ride"),   # lot O36 : au pédalage ou immédiat
     Setting("depart.cadence_rpm", "Cadence de départ", "ride", 5, "tr/min"),
     Setting("ride.auto_draft", "Placement dans la roue", "ride"),   # lot AS2
+    Setting("ride.vehicle_draft", "Abri derrière les véhicules", "ride"),   # lot AS6
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20

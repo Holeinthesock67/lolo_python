@@ -740,8 +740,9 @@ def _scenes(s: Session) -> None:
         s.check_layout("bots", info)
     _draft_gauge_scene(s)
     _lane_scene(s)
+    _vehicle_draft_scene(s)
     core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=None, draft_bot=None,
-                   lane_m=None)
+                   lane_m=None, vehicles=None)
     time.sleep(SETTLE_S)
     shot = s.capture("sans_bot")
     if shot:
@@ -1581,7 +1582,7 @@ def _draft_gauge_scene(s: Session) -> None:
         core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
             {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
              "value": value, "choices": ["off", "on"], "applies": "now"}]})
-        time.sleep(0.6)
+        time.sleep(1.5)   # rendu lent en medium et high sous Xvfb : réglage appliqué avant la capture
 
     s_now = core.current_s()
     core.set_scene(speed=0.0, bots=[{"id": "bot1", "name": "Bot 250 W", "s": s_now + 6.0, "v": 0.0, "kind": "constant"}],
@@ -1638,6 +1639,59 @@ def _lane_scene(s: Session) -> None:
         s.check(tag, "bot à 2,1 m de l'axe et dans l'image", abs(float(b.get("lanes", {}).get("bot1", 0.0)) - 2.1) < 0.01
                 and b.get("in_view", 0) >= 1, f"{b}")
         s.check(tag, "avatar dans l'image", av.get("visible") and av.get("on_screen"), f"{av}")
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
+
+
+VEHICLE_AHEAD_M = 6.5   # écart voulu entre le cycliste affiché et le tracteur (relevé `rel_m` du décor)
+
+
+def _vehicle_draft_scene(s: Session) -> None:
+    """Lot AS6 : tracteur envoyé par le core dans `vehicles`, d'abord à 20 m (« abri_tracteur_approche »), puis
+    ramené à 6,5 m devant le cycliste affiché : la caméra, qui ne recule jamais, a pu prendre de l'avance sur `s`
+    de la scène (rendu lent en medium et high), l'écart mesuré sur la première capture corrige la position et
+    aucun contact n'est compté. Le cycliste dans sa ligne (1,5 m) reçoit
+    42 % d'abri (`draft_bot` = `veh:v77`) ; jauge au-dessus du tracteur, dans l'image, vue de la caméra de contrôle.
+    Puis liste vide : le tracteur quitte la route (le core dit qu'il n'y est plus)."""
+    core = s.core
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
+        {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
+         "value": "on", "choices": ["off", "on"], "applies": "now"}]})
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
+    s_now = core.current_s()
+    tractor = {"id": "v77", "kind": "tractor", "color": 1, "s": round(s_now + 1.9 + 0.85 + 20.0, 2), "dir": 1, "v": 0.0,
+               "lane_m": 1.5}
+    core.set_scene(speed=0.0, lane_m=1.5, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=0.0,
+                   draft_bot=None, vehicles=[tractor])
+    time.sleep(SETTLE_S + 1.5)
+    shot = s.capture("abri_tracteur_approche")
+    users = shot[1].get("decor", {}).get("road_users", []) if shot else []
+    rel = [float(u["rel_m"]) for u in users if u.get("kind") == "tractor" and abs(float(u.get("lateral", 0.0)) - 1.5) < 0.05]
+    if rel:
+        tractor = dict(tractor, s=round(tractor["s"] - rel[0] + VEHICLE_AHEAD_M, 2))
+    core.set_scene(speed=0.0, draft=0.42, draft_bot="veh:v77", vehicles=[tractor])
+    time.sleep(SETTLE_S)
+    shot = s.capture("abri_tracteur")
+    if shot:
+        img, info = shot
+        g = info.get("draft_gauge", {})
+        s.check("abri_tracteur", "jauge sur l'arrière du tracteur, dans l'image, sous le bandeau du haut",
+                g.get("visible") and g.get("bot") == "veh:v77" and g.get("on_screen")
+                and float((g.get("point") or [0.0, 0.0])[1]) > 0.15 * img.height, f"{g}")
+        users = info.get("decor", {}).get("road_users", [])
+        s.check("abri_tracteur", "tracteur du core sur la route, 4 à 9 m devant, à 1,5 m de l'axe",
+                any(u.get("kind") == "tractor" and abs(float(u.get("lateral", 0.0)) - 1.5) < 0.05
+                    and 4.0 <= float(u.get("rel_m", 0.0)) <= 9.0 for u in users), f"{users}")
+        s.check_layout("abri_tracteur", info)
+    core.set_scene(speed=0.0, draft=0.0, draft_bot=None, vehicles=[])
+    time.sleep(SETTLE_S)
+    shot = s.capture("abri_tracteur_parti")
+    if shot:
+        users = shot[1].get("decor", {}).get("road_users", [])
+        s.check("abri_tracteur_parti", "liste vide : plus de tracteur près du cycliste",
+                not any(u.get("kind") == "tractor" and abs(float(u.get("rel_m", 999.0))) < 140.0 for u in users), f"{users}")
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
+        {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
+         "value": "off", "choices": ["off", "on"], "applies": "now"}]})
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
 
 
