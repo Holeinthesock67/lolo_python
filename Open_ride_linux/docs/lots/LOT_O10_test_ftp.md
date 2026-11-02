@@ -76,3 +76,7 @@ Livré le 27 octobre 2026 (issue #154), thread « Développer les lots O restant
 - Plans (lot O11) : le TSS d'une journée de test vient de `planned_workout`.
 - Tests : `core/tests/test_ftp_test.py` (critères 2 à 6, cycliste simulé qui lâche après 340 W, 20 min à 260 W donnant 247 W, ligne de commande).
 - Sur le PC : une rampe complète sur le HomeTrainer, sur une boucle.
+
+## Mise à jour du 2 novembre (version 2.0) : + et − bloqués pendant la rampe
+
+Choix du propriétaire du 1er novembre : pendant les paliers de la rampe, + et − (biais ERG ± 2 % et ± 10 %) ne changent plus la cible. Un biais fausserait la meilleure minute, donc la FTP. La session les ignore et l'écrit au journal ; la trame `state` porte `erg.bias_locked` (contrat IPC révision 1.5, ajout compatible). À l'entrée dans la rampe, l'engine affiche « Test de FTP : + / − bloqués pendant la rampe · Z = arrêter le test ». + et − restent libres pendant l'échauffement et le retour au calme. Z garde son rôle d'abandon. Test : `test_session_plus_minus_locked_during_ramp`. Reste : la rampe sur le vélo, un jour reposé (ligne 12 de la recette).

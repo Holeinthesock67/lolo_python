@@ -132,6 +132,7 @@ var _probe = PerfProbe.new()
 var _start_wait = StartWaitModel.new()
 var start_screen: Control = null   # écran d'attente « Start your engines » (start_screen.gd)
 var _was_start_waiting := false
+var _bias_locked := false     # test de FTP : + et − bloqués pendant la rampe (rappel à l'entrée)
 var _route_loaded_id := ""   # parcours affiché (chargé par _poll_route_job), "" avant le premier
 
 const BEEPS := {
@@ -1620,6 +1621,12 @@ func _on_state_received(state: Dictionary) -> void:
 					str(state.get("mode", "")) == "ROGUE"), CONTROLS_HINT_S)
 		else:
 			banner.clear_message("controls")
+	# Test de FTP : rappel affiché à l'entrée dans la rampe, où + et − sont bloqués.
+	var locked: bool = state.get("erg", null) is Dictionary and bool(state["erg"].get("bias_locked", false))
+	if locked and not _bias_locked:
+		banner.show_message("controls", HudViewModel.bias_locked_text(), CONTROLS_HINT_S)
+	_bias_locked = locked
+	if new_session_state != previous_session_state:
 		# Une erreur reste au moins 5 s ; au-delà, elle reste tant que la séance est en ERROR.
 		if banner.has_message("error"):
 			banner.set_sticky("error", session_state == "ERROR")

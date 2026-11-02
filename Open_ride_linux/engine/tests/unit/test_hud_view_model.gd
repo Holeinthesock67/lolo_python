@@ -348,6 +348,9 @@ func _test_controls_help() -> void:
 	_check(sim.contains("↑ / ↓ = vue") and erg.contains("↑ / ↓ = vue")
 		and HudViewModel.controls_text(false, "workout", true).contains("↑ / ↓ = vue"),
 		"rappel : flèches haut et bas du boîtier gauche = vue (essai PC du 30/10)")
+	var locked: String = HudViewModel.bias_locked_text()
+	_check(locked.contains("Test de FTP") and locked.contains("bloqués") and locked.contains("Z = arrêter"),
+		"test de FTP : rappel de + / − bloqués pendant la rampe")
 	var rogue: String = HudViewModel.controls_text(false, "workout", true)
 	_check(rogue.contains("Y = pause") and rogue.contains("Z = attaque") and rogue.contains("long = carte active")
 		and not rogue.contains("braquet"), "rappel en Cyber-Rogue : colonne du mode (§7.1), pas de braquet")
