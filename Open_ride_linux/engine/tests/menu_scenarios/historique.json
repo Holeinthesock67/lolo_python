@@ -1,0 +1,32 @@
+{
+  "description": "Historique (lot O28) : une séance enregistrée apparaît dans « Historique » de l'accueil, avec le cumul de la semaine ; son bilan s'ouvre dans le panneau du bilan, puis retour à la liste.",
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"choisir": "world"},
+    {"choisir": "demo"},
+    {"choisir": "ride"},
+    {"choisir": "start"},
+    {"journal": "core", "motif": "-> RUNNING", "delai": 10},
+    {"attendre": 30},
+    {"commande": "end_session", "args": {"save": true}},
+    {"ecran": "summary", "delai": 15},
+    {"fichier": "OpenRide/Activities/*.fit"},
+    {"choisir": "new_session"},
+    {"ecran": "home"},
+    {"choisir": "history"},
+    {"ecran": "history", "titre": "Historique", "contient": ["Cumul par semaine — 1 semaine", "Tests de FTP — aucun test", "demo"], "delai": 10},
+    {"capture": "historique"},
+    {"choisir": "weeks"},
+    {"ecran": "history_weeks", "titre": "Cumul par semaine", "contient": ["1 séance"]},
+    {"capture": "historique_semaines"},
+    {"appui": "Y_SHORT"},
+    {"ecran": "history", "focus": "weeks"},
+    {"appui": ["PLUS_SHORT", "A_LONG"]},
+    {"ecran": "history_session", "contient": ["Bilan de la séance"], "delai": 10},
+    {"capture": "historique_bilan"},
+    {"choisir": "back"},
+    {"ecran": "history"},
+    {"appui": "Y_SHORT"},
+    {"ecran": "home", "focus": "history"}
+  ]
+}
