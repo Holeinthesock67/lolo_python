@@ -78,7 +78,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `devices` | objet, facultatif | État détaillé des appareils, voir ci-dessous ; envoyé une trame sur 30 (une fois par seconde) et dans la trame qui suit un changement, absent des autres trames |
 | `bots` | liste, facultatif | Concurrents virtuels, voir ci-dessous |
 | `wind` | objet, facultatif | Révision 1.3 : vent ressenti au point `s`, voir ci-dessous ; envoyé 2 fois par seconde (une trame sur quinze, jamais avec `devices`) et absent quand le vent est coupé |
-| `draft` | nombre, facultatif | Révision 1.3 : coefficient d'aspiration appliqué au cycliste, de 0 à 0,45 (SRS §5) ; absent sans bot |
+| `draft` | nombre, facultatif | Révision 1.3 : coefficient d'aspiration appliqué au cycliste, de 0 à 0,45, jusqu'à 0,55 au cœur d'un groupe depuis le lot AS4 (2.0) (SRS §5) ; absent sans bot |
 | `draft_bot` | chaîne, facultatif | Révision 1.3 : `id` du bot qui abrite le cycliste ; absent quand `draft` vaut 0 ou manque |
 | `lane_m` | nombre, facultatif | Révision 1.5 (lot AS2) : écart du cycliste à l'axe de la route, en m au centimètre, positif à droite (1,2 m sans placement ; placement dans la roue d'un bot et dépassement à gauche, voir « Liste `bots` ») ; présent avec les bots comme `draft`, absent sinon : l'engine place alors le cycliste à 1,2 m |
 | `open_world` | objet, facultatif | Monde ouvert seulement : révision du monde, prochain carrefour, état des données (§4, « Monde ouvert ») |

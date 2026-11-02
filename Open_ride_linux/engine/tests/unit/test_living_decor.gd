@@ -359,7 +359,7 @@ func _run() -> void:
 	var hud = HudView.new()
 	root.add_child(hud)
 	var wv = WindViewModel.new()
-	var wstate := {"wind": {"speed_mps": 5.0, "from_deg": 90.0, "gust": 0.0, "head_mps": 5.0}, "draft": 0.135}
+	var wstate := {"wind": {"speed_mps": 5.0, "from_deg": 90.0, "gust": 0.0, "head_mps": 5.0}, "draft": 0.165}   # 30 % de l'échelle 0,55 (lot AS4)
 	var view: Dictionary = {}
 	for i in range(60):
 		view = wv.view(wstate, 90.0, 100.0 + i * 0.05)

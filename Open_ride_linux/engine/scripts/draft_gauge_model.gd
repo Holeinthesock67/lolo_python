@@ -5,7 +5,7 @@ extends RefCounted
 ##
 ## La jauge reprend ce que le core calcule (contrat IPC révision 1.3 §3) : `draft`, l'abri lissé que le
 ## cycliste ressent, et `draft_bot`, le bot qui le donne. Rien n'est recalculé ici : la jauge dit la même
-## chose que la pastille « Abri 30 % » du HUD (wind_view_model.gd), même échelle (`draft / 0,45`) et même
+## chose que la pastille « Abri 30 % » du HUD (wind_view_model.gd), même échelle (`draft / 0,55`, lot AS4) et même
 ## seuil (cachée sous 5 %). Seuls les bots `constant` abritent (draft.py) : ni le fantôme, ni les cyclistes
 ## du décor n'ont de jauge.
 ##

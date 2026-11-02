@@ -1,11 +1,11 @@
-"""Banc de l'abri derrière les bots (lots X50, AS2 et AS3) : gain par position, abri dans un groupe libre,
-placement dans la roue et dépassement, vent de travers et bordure, sans vélo.
+"""Banc de l'abri derrière les bots (lots X50, AS2, AS3 et AS4) : gain par position, abri dans un groupe libre,
+placement dans la roue et dépassement, vent de travers et bordure, cœur d'un groupe, sans vélo.
 
     python -m openride_core.tools.draft_bench [--puissance 250] [--groupe 230,240,250] \\
         [--cycliste 240] [--duree 600] [--vent 36] [--json]
 
-La vraie séance (`CoreSession`, abri P3, AS1 et AS2, lissage de 1 s) tourne au pas fixe de 20 ms sur un plat de
-20 km, sans trainer ni engine, en trois parties :
+La vraie séance (`CoreSession`, abri P3, AS1, AS2 et AS4, lissage de 1 s) tourne au pas fixe de 20 ms sur un plat de
+20 km, sans trainer ni engine, en quatre parties :
 
 1. **Gain par position.** Une file de 1, 2 ou 3 bots roule à vitesse imposée, celle d'un cycliste seul à
    `--puissance` W, roue dans la roue (0,5 m entre les bots). Le cycliste garde un écart fixe derrière le
@@ -29,15 +29,20 @@ La vraie séance (`CoreSession`, abri P3, AS1 et AS2, lissage de 1 s) tourne au 
    Dans la roue : placement coupé, bot sur la ligne du cycliste. Éventail : 5 bots à vitesse imposée qui se
    placent (1 m entre les roues), le cycliste 1 m derrière le dernier ; écart à l'axe et abri de chacun, vent
    de gauche puis de droite.
+5. **Cœur d'un groupe (lot AS4).** Cinq bots à vitesse imposée autour du cycliste (placement coupé, 1,2 m) :
+   deux devant dans sa roue (0,5 m), deux en diagonale (0,6 m de chaque côté, même écart), un à côté
+   (0,9 m, roues qui se chevauchent). Le cycliste garde 0,5 m derrière le premier au régulateur : abri et
+   gain en W, comparés à la roue d'un seul bot.
 
 Échec (code 1) si : l'abri ou le gain n'est pas décroissant avec l'écart, s'il ne croît pas avec le nombre de
-bots devant, s'il dépasse le plafond de la SRS (0,45), s'il reste au-delà de 15 m, ou si un coureur du groupe
+bots devant, s'il dépasse le plafond de la SRS (0,55 en groupe, lot AS4), s'il reste au-delà de 15 m, ou si un coureur du groupe
 libre ne reçoit jamais d'abri ou ne va pas plus loin que seul ; (AS2) si la mise en roue prend plus de 3 s ou
 ne donne pas l'abri plein, si l'abri placement coupé dépasse 15 % de l'abri dans la roue, si le dépassement
 laisse moins de 0,9 m sur le côté, passe à gauche de l'axe hors dépassement, sort de la route ou ne revient
 pas à 1,2 m, ou si le groupe libre a des contacts plus de 1 % du temps ; (AS3) si l'abri en diagonale est sous
 0,8 × l'abri sans vent, si l'abri resté dans la roue dépasse 0,4 × l'abri sans vent, si l'éventail compte moins de 2 ou plus de
-4 coureurs, si un coureur après l'éventail reçoit 0,15 ou plus, ou si un coureur sort de la voie de droite.
+4 coureurs, si un coureur après l'éventail reçoit 0,15 ou plus, ou si un coureur sort de la voie de droite ; (AS4) si l'abri au cœur du groupe
+n'est pas entre 0,45 et 0,55 ou ne fait pas gagner plus que la roue d'un seul bot.
 """
 
 from __future__ import annotations
@@ -78,6 +83,8 @@ WHEEL_S = 10.0                 # ... pendant 10 s
 PASS_DV_MPS = 1.0              # dépassement : 1 m/s plus vite que le bot
 PASS_S = 60.0
 START_GAPS_M = (1.5, 2.5, 3.5)   # départs du groupe libre (m entre les roues), moyennés
+CORE_GAP_M = 0.5               # lot AS4 : cœur du groupe, 0,5 m derrière le premier bot
+CORE_DIAG_M = 0.6              # diagonales : 0,6 m de chaque côté
 CONTACT_MAX_SHARE = 0.01       # groupe libre : contacts passagers tolérés (bots à puissance constante, sans frein)
 CROSS_WIND_KMH = 36.0          # lot AS3 : vent de travers « fort » (25 à 40 km/h), lacet ~45° à 36 km/h
 CROSS_S = 20.0                 # durée d'une mesure de vent de travers
@@ -362,6 +369,40 @@ class Bench:
             s._finish(save=False)
         return out
 
+    def core(self, power_w: float) -> dict[str, Any]:
+        """Cœur d'un groupe de cinq (lot AS4) : deux devant, deux en diagonale, un à côté ; placement coupé,
+        le cycliste garde `CORE_GAP_M` derrière le premier au régulateur."""
+        probe = self.session(power_w, [])
+        p, route = probe.physics.p, probe.route
+        probe._finish(save=False)
+        alt = route.sample(0.0).alt_m
+        v0 = steady_speed(power_w, 0.0, p, alt)
+        p_free = free_power(v0, p, alt)
+        me, bl = draft_mod.RIDER_LANE_M, draft_mod.BIKE_LENGTH_M
+        first = 50.0 + bl + CORE_GAP_M
+        bots = [PacedBot("a1", first, v0, me), PacedBot("a2", first + bl + CORE_GAP_M, v0, me),
+                PacedBot("g1", first, v0, me - CORE_DIAG_M), PacedBot("g2", first, v0, me + CORE_DIAG_M),
+                PacedBot("c1", 50.0 + CORE_GAP_M, v0, me + draft_mod.SIDE_CLEAR_M)]
+        s = self.session(p_free, bots, "off")
+        s.physics.s, s.physics.v = 50.0, v0
+        lead = bots[0]
+        integral, powers, drafts, t = 0.0, [], [], 0.0
+        while t < HOLD_S - 1e-9:
+            err = (lead.s - bl - CORE_GAP_M) - s.physics.s
+            integral += err * DT
+            s.driver.base_power_w = max(0.0, p_free + KP_W_PER_M * err + KD_W_PER_MPS * (lead.v - s.physics.v)
+                                        + KI_W_PER_MS * integral)
+            s._step(DT, time.monotonic())
+            t += DT
+            if t > HOLD_S - MEASURE_S:
+                powers.append(s.driver.base_power_w)
+                drafts.append(s._draft)
+        s._finish(save=False)
+        mean_p = sum(powers) / len(powers)
+        return {"speed_kmh": round(v0 * 3.6, 2), "free_w": round(p_free, 1), "power_w": round(mean_p, 1),
+                "gain_w": round(p_free - mean_p, 1) + 0.0, "gain_pct": round((p_free - mean_p) / p_free * 100.0, 1) + 0.0,
+                "draft": round(sum(drafts) / len(drafts), 3), "draft_max": round(max(drafts), 3)}
+
     def solo(self, power_w: float, params: PhysicsParams, seconds: float, route: Any) -> float:
         """Distance d'un bot seul à la même puissance, même départ à 9 m/s, même physique et même parcours."""
         b = ConstantPowerBot(power_w, bot_id="solo", params=params, s=100.0, v=9.0)
@@ -383,6 +424,7 @@ def run(power_w: float = 250.0, group_w: list[float] | None = None, rider_w: flo
         wheel = bench.wheel(power_w)
         passing = bench.overtake(power_w)
         crosswind = bench.crosswind(power_w, wind_kmh)
+        core = bench.core(power_w)
     checks = []
     for n in (1, 2, 3):
         line = [r for r in positions if r["bots"] == n]
@@ -394,7 +436,7 @@ def run(power_w: float = 250.0, group_w: list[float] | None = None, rider_w: flo
             inc = all(b["draft"] >= a["draft"] - TOL for a, b in zip(col, col[1:]))
             checks.append((inc, f"à {g:g} m : abri qui croît avec le nombre de bots devant"))
     top = max(r["draft"] for r in positions)
-    checks.append((top <= draft_mod.ALPHA_CAP + TOL, f"abri le plus fort {top:.3f} (plafond {draft_mod.ALPHA_CAP})"))
+    checks.append((top <= draft_mod.ALPHA_GROUP_CAP + TOL, f"abri le plus fort {top:.3f} (plafond {draft_mod.ALPHA_GROUP_CAP})"))
     far = [r for r in positions if r["gap_m"] > draft_mod.GAP_CUTOFF_M]
     if far:
         checks.append((all(r["draft"] <= TOL for r in far), f"aucun abri au-delà de {draft_mod.GAP_CUTOFF_M:g} m"))
@@ -441,8 +483,14 @@ def run(power_w: float = 250.0, group_w: list[float] | None = None, rider_w: flo
         checks.append((ech["lane_min_m"] >= draft_mod.LANE_MIN_M - 0.01 and ech["lane_max_m"] <= draft_mod.LANE_MAX_M + 0.01,
                        f"éventail, vent de {'gauche' if side == 'left' else 'droite'} : de {ech['lane_min_m']} à "
                        f"{ech['lane_max_m']} m de l'axe (voie de droite)"))
+    single = next((r for r in positions if r["bots"] == 1 and r["gap_m"] == CORE_GAP_M), None)
+    checks.append((0.45 - TOL <= core["draft"] and core["draft_max"] <= draft_mod.ALPHA_GROUP_CAP + TOL,
+                   f"cœur d'un groupe de cinq : abri {core['draft']:.3f} (entre 0,45 et {draft_mod.ALPHA_GROUP_CAP:g})"))
+    if single is not None:
+        checks.append((core["gain_w"] > single["gain_w"],
+                       f"cœur d'un groupe : {core['gain_w']:g} W gagnés, plus que dans la roue d'un bot ({single['gain_w']:g} W)"))
     return {"power_w": power_w, "positions": positions, "group": group, "group_off": group_off,
-            "wheel": wheel, "overtake": passing, "crosswind": crosswind,
+            "wheel": wheel, "overtake": passing, "crosswind": crosswind, "core": core,
             "checks": [{"ok": ok, "text": txt} for ok, txt in checks], "wall_s": round(time.perf_counter() - t_wall, 1)}
 
 
@@ -484,7 +532,10 @@ def format_text(out: dict[str, Any]) -> str:
         ech = c[f"echelon_{side}"]
         cells = "  ".join(f"{r['id']} {r['lane_m']:.2f} m {r['draft']:.2f}" for r in ech["riders"])
         lines.append(f"  éventail, vent de {'gauche' if side == 'left' else 'droite'} : {cells}")
-    lines.append("")
+    c = out["core"]
+    lines += ["", f"5. Cœur d'un groupe de cinq (lot AS4) : deux devant, deux en diagonale, un à côté, {c['speed_kmh']:.1f} km/h",
+              f"  abri {c['draft']:.3f} (max {c['draft_max']:.3f}), {c['power_w']:.0f} W au lieu de {c['free_w']:.0f} W seul : "
+              f"{c['gain_w']:g} W gagnés ({c['gain_pct']:g} %)", ""]
     lines += [f"[{'OK' if c['ok'] else 'ÉCHEC'}] {c['text']}" for c in out["checks"]]
     lines.append(f"Calcul en {out['wall_s']:.1f} s")
     return "\n".join(lines) + "\n"
