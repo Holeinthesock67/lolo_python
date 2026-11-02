@@ -218,6 +218,9 @@
         "paused": {
           "type": "boolean"
         },
+        "bias_locked": {
+          "type": "boolean"
+        },
         "kind": {
           "type": "string",
           "enum": [

@@ -52,6 +52,8 @@ from .records import RecordBook, RecordsError
 from .recorder import SessionRecorder
 from .resume import ResumeError, ResumeState, close_interrupted, interrupted_sessions, load_resume_state
 from .rogue import mode as rogue_mode
+
+ROGUE_SCENE_ID = "rogue"   # `scene_ready.route_id` de la scène du Cyber-Rogue (lot Y20)
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import draft as draft_mod
@@ -523,9 +525,10 @@ class CoreSession:
         st = self.state
         st.power, st.cadence, st.hr = m.power_w, m.cadence_rpm, m.hr_bpm
         st.power_3s = round(m.power_w, 1)
-        # Run Cyber-Rogue : `route_id` nul, scène du mode sans tuiles à charger, rien à attendre du décor.
-        scene = self.server.engine_connected and (st.route_id is None or (
-            self._scene_route is not None and self._scene_route == str(st.route_id)))
+        # Run Cyber-Rogue : `route_id` nul ; l'engine dessine la scène du mode pendant l'attente (préchauffage,
+        # lot Y20, ~3 s sur le PC) et répond `scene_ready {"route_id": "rogue"}` : le pédalage ne compte qu'après.
+        expected = ROGUE_SCENE_ID if self.rogue is not None else (None if st.route_id is None else str(st.route_id))
+        scene = self.server.engine_connected and (expected is None or self._scene_route == expected)
         was = gate.phase
         opened = gate.update(dt, scene_ready=scene, trainer_connected=bool(m.connected),
                              cadence_rpm=m.cadence_rpm, power_w=m.power_w)
@@ -1782,6 +1785,11 @@ class CoreSession:
         self.erg.goto(cooldown_index(self.erg.workout))
         self._sync_erg_state()
 
+    def _bias_locked(self) -> bool:
+        """Vrai pendant les paliers de la rampe d'un test de FTP : + et − n'y changent pas la cible."""
+        wk = self._workout_erg()
+        return wk is not None and self._ramp_watch is not None and self._ramp_watch.active(wk)
+
     def _workout_erg(self) -> ErgController | None:
         """Contrôleur de l'entraînement en cours (None en SIM et en ERG d'une session libre)."""
         return self.erg if isinstance(self.erg, ErgController) else None
@@ -1861,6 +1869,8 @@ class CoreSession:
             self.state.workout_done = None   # entraînement en cours (nouvelle séance, reprise)
         self.state.mode = "ROGUE" if self.rogue is not None else ("ERG" if erg else "SIM")
         self.state.erg = erg.to_dict() if erg else None
+        if self.state.erg is not None and self._bias_locked():
+            self.state.erg["bias_locked"] = True   # test de FTP : + et − sans effet pendant la rampe
 
     def _on_engine_lost(self) -> None:
         self._scene_route = None   # engine relancé : son décor est à recharger (départ au pédalage, lot O36)
@@ -2306,6 +2316,11 @@ class CoreSession:
             return
         if ev not in BIAS_STEPS:
             return   # ni + ni − (A, flèches, appui ambigu) : rien dans le core (vues de caméra : engine, V12)
+        if self._bias_locked():
+            # Test de FTP (choix du propriétaire, 01/11) : + et − bloqués pendant les paliers de la rampe,
+            # le biais fausserait la meilleure minute ; ils reviennent au retour au calme.
+            log.info("Test de FTP : %s ignoré pendant la rampe.", ev.value)
+            return
         if erg:
             # ERG (§7.1, SRS §4.4) : ± court = biais ± 2 %, ± long = biais ± 10 % ; en cadence
             # verrouillée (lot O18), cadence cible ± 2 % et ± 10 %.

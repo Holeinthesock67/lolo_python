@@ -3,9 +3,9 @@ extends RefCounted
 ## Habillage du mode « What the fuck » (série WTF, lot WTF7), sans nœud : traduit l'objet `wtf` de la trame
 ## `state` (contrat 1.5) en ce que wtf_view.gd affiche, d'après les maquettes validées le 30 octobre :
 ## - `banner` : bandeau du gag en haut au centre (texte, couleur, temps restant, points) ;
-## - `card` : carte du gag à droite (titre, valeur, jauge de 0 à 1 ou −1 sans jauge, note) ;
+## - `card` : carte du gag à gauche, au-dessus du Katamari (titre, valeur, jauge de 0 à 1 ou −1 sans jauge, note) ;
 ## - `prompt` : invite d'un bouton (Z : « Non merci, chef ! ») ;
-## - `kata`, `clock` : cartes des règles permanentes (Katamari à gauche, horloge sous lui).
+## - `kata`, `clock` : cartes des règles permanentes (Katamari, horloge sous lui).
 ## Pas de class_name : preload("res://scripts/wtf/wtf_hud_model.gd").
 
 const PINK := Color(1.0, 0.31, 0.6)

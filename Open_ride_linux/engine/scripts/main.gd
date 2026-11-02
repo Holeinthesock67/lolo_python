@@ -25,6 +25,8 @@ const AudioMix := preload("res://scripts/audio_mix.gd")
 const FpsCounter := preload("res://scripts/fps_counter.gd")
 const WtfView := preload("res://scripts/wtf/wtf_view.gd")
 const WtfHudModel := preload("res://scripts/wtf/wtf_hud_model.gd")
+const WtfScene := preload("res://scripts/wtf/wtf_scene.gd")
+const WtfSceneModel := preload("res://scripts/wtf/wtf_scene_model.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -111,6 +113,8 @@ var erg_panel = null
 var fps_counter = null
 ## Habillage du mode « What the fuck » (lot WTF7) : bandeau, cartes, Katamari, horloge.
 var wtf_view = null
+## Gags en 3D du mode « What the fuck » (lots WTF5 et WTF6) : objets sur la route, voile, caméras, soleil.
+var wtf_scene = null
 ## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
 var load_guard = LoadGuard.new({}, false)
 var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
@@ -131,8 +135,10 @@ var _last_perf_log_us: int = 0
 var _probe = PerfProbe.new()
 ## Départ au pédalage (lot O36) : décor du départ prêt, commande `scene_ready`, bandeau de l'attente.
 var _start_wait = StartWaitModel.new()
+const ROGUE_SCENE_ID := "rogue"   # `scene_ready.route_id` de la scène du Cyber-Rogue (lot Y20)
 var start_screen: Control = null   # écran d'attente « Start your engines » (start_screen.gd)
 var _was_start_waiting := false
+var _bias_locked := false     # test de FTP : + et − bloqués pendant la rampe (rappel à l'entrée)
 var _route_loaded_id := ""   # parcours affiché (chargé par _poll_route_job), "" avant le premier
 
 const BEEPS := {
@@ -370,6 +376,8 @@ func _ready() -> void:
 	overlay_layer.add_child(fps_counter)
 	wtf_view = WtfView.new()
 	hud.add_child(wtf_view)
+	wtf_scene = WtfScene.new()
+	add_child(wtf_scene)
 	ipc.world_menu_received.connect(_on_world_menu_received)
 	ipc.world_status_received.connect(func(msg: Dictionary) -> void: _world_menu_status(msg))
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
@@ -844,7 +852,10 @@ func _sync_hud(menu_shown: bool) -> void:
 
 ## Départ au pédalage (lot O36) : décor du départ prêt, puis `scene_ready` au core (start_wait_model.gd).
 func _step_start_wait(delta: float) -> void:
-	if _start_wait.frame(_route_loaded_id, streamer.pending_count(), delta * 1000.0):
+	# Cyber-Rogue : la scène du mode, préchauffée pendant l'attente (lot Y20), tient lieu de décor du départ.
+	var rogue_scene: bool = rogue_host.is_active()
+	if _start_wait.frame(ROGUE_SCENE_ID if rogue_scene else _route_loaded_id,
+			0 if rogue_scene else streamer.pending_count(), delta * 1000.0):
 		print("Décor du départ prêt : %s" % _start_wait.route_id)
 		ipc.test_log("scene_ready id=%s" % _start_wait.route_id)
 	if _start_wait.should_send(Time.get_ticks_msec() / 1000.0, str(menu_flow.start_wait.get("phase", ""))):
@@ -979,9 +990,16 @@ func _process(delta: float) -> void:
 		camera.global_transform = camera_views.step(delta, camera_views.goal(_rider_point(s_route, heading, follow.camera_lane_m),
 			heading, pitch_deg))
 		camera.fov = CameraViews.fov_deg(_base_fov, pitch_deg)   # respire avec la pente (lot Y15)
-		avatar_view.set_visible_for_view(_avatar_view_name())
+		# Mode WTF (lots WTF5 et WTF6) : gags posés sur la route, puis roulis et vues imposées de la caméra.
+		wtf_scene.step(WtfSceneModel.view(_last_state.get("wtf", null), now / 1000000.0, _quality_name), route, s_route,
+			bots_view.anchor_of, sun)
+		wtf_scene.apply_camera(camera, pos, heading, delta)
+		pos += Vector3.UP * wtf_scene.hop_m()   # bonds du vélo sur la Lune
+		# Vue imposée par un gag WTF : le cycliste reste visible, même depuis la vue subjective.
+		avatar_view.set_visible_for_view("follow_near" if wtf_scene.forced_camera() else _avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		_step_avatar(pos, heading, now, pitch_deg)
+		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
 		_probe.distance_m = s_route
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
@@ -1161,6 +1179,7 @@ func _poll_route_job() -> void:
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
+	segment_markers.warm_up(camera)   # premier dessin des portiques au chargement, pas à 400 m d'eux
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)
@@ -1403,6 +1422,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"avatar": _avatar_info(),
 		"garage": _garage_info(),
 		"rogue": rogue_host.test_info(),
+		"wtf": wtf_scene.test_info(),
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 
@@ -1610,6 +1630,9 @@ func _on_state_received(state: Dictionary) -> void:
 	var waiting: bool = not menu_flow.start_wait.is_empty()
 	if waiting:
 		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
+		# Préchauffage des gags WTF sous l'écran d'attente, pas à RUNNING (lot Y20) ; Cyber-Rogue : rogue_host.gd.
+		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed():
+			wtf_scene.warm_up(camera)
 	elif _was_start_waiting and str(state.get("session_state", "")) == "RUNNING":
 		start_screen.show_go()
 	else:
@@ -1627,6 +1650,12 @@ func _on_state_received(state: Dictionary) -> void:
 					str(state.get("mode", "")) == "ROGUE"), CONTROLS_HINT_S)
 		else:
 			banner.clear_message("controls")
+	# Test de FTP : rappel affiché à l'entrée dans la rampe, où + et − sont bloqués.
+	var locked: bool = state.get("erg", null) is Dictionary and bool(state["erg"].get("bias_locked", false))
+	if locked and not _bias_locked:
+		banner.show_message("controls", HudViewModel.bias_locked_text(), CONTROLS_HINT_S)
+	_bias_locked = locked
+	if new_session_state != previous_session_state:
 		# Une erreur reste au moins 5 s ; au-delà, elle reste tant que la séance est en ERROR.
 		if banner.has_message("error"):
 			banner.set_sticky("error", session_state == "ERROR")
@@ -1672,6 +1701,8 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
+		if not state.has("wtf") and wtf_scene.is_active():   # séance WTF finie : rien ne reste derrière le menu
+			wtf_scene.step({}, null, 0.0, Callable(), sun)
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
 			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)

@@ -82,6 +82,11 @@ static func controls_text(erg: bool, kind := "workout", rogue := false) -> Strin
 	return "Click : Y = pause · + / − = braquet · appui long = 10 braquets · ↑ / ↓ = vue   (clavier : mêmes touches)"
 
 
+## Test de FTP (2.0) : `erg.bias_locked` vrai pendant les paliers de la rampe, + et − n'y font rien.
+static func bias_locked_text() -> String:
+	return "Test de FTP : + / − bloqués pendant la rampe · Z = arrêter le test   (clavier : mêmes touches)"
+
+
 ## Invite de fin de séance (1er novembre) : `state.workout_done` (contrat IPC 1.5) dit que l'entraînement est
 ## fini et que la séance continue en parcours libre ; Y ouvre la pause, focus déjà sur « Terminer et
 ## enregistrer », A maintenu valide (Échap puis Entrée au clavier, key_map.gd). Texte vide sans invite.
