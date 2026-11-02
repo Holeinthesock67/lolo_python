@@ -95,7 +95,17 @@ func on_hello(block) -> bool:
 	var old := str(profile.get("id", ""))
 	profile = block if block is Dictionary else {}
 	message = ""
+	if str(profile.get("id", "")) != "":
+		active = str(profile["id"])
 	return str(profile.get("id", "")) != old
+
+
+## Profil en cours : le dernier annoncé, par `hello_ack` (renvoyé dès un changement de profil) ou par `active`
+## du message `profiles`. Le message `profiles` arrive après l'ouverture de « Qui roule ? » : avec `active`
+## seul, l'écran ouvert juste après un changement de profil mettait le focus sur l'ancien profil (banc des
+## menus, scénario `profils`, échecs intermittents du 31 octobre au 2 novembre).
+func current_id() -> String:
+	return active
 
 
 func on_profiles(msg: Dictionary) -> void:
@@ -144,8 +154,8 @@ func who_items() -> Array:
 	var rest: Array = []
 	for it in items:
 		var row := {"id": "p:" + str(it["id"]), "label": str(it.get("name", it["id"])), "enabled": true,
-			"detail": ride_text(it) + (" · en cours" if str(it["id"]) == active else "")}
-		if str(it["id"]) == active:
+			"detail": ride_text(it) + (" · en cours" if str(it["id"]) == current_id() else "")}
+		if str(it["id"]) == current_id():
 			out.append(row)
 		else:
 			rest.append(row)
@@ -194,8 +204,8 @@ func trash_name(entry_id: String) -> String:
 
 func manage_items() -> Array:
 	var it := _find(manage_id)
-	var can_delete := manage_id != active and _players().size() > 1
-	var why := "profil en cours" if manage_id == active else ("dernier profil" if not can_delete else "")
+	var can_delete := manage_id != current_id() and _players().size() > 1
+	var why := "profil en cours" if manage_id == current_id() else ("dernier profil" if not can_delete else "")
 	return [{"id": "rename", "label": "Renommer", "enabled": true, "detail": str(it.get("name", ""))},
 		{"id": "delete", "label": "Supprimer", "enabled": can_delete, "detail": why}]
 
