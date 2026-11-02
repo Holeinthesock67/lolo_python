@@ -3,16 +3,33 @@
 Toutes les évolutions notables, version par version, au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh X.Y.Z` le change partout (lot O2).
 
-## 0.9.0 – Non publiée
+## 1.0.1 – 2026-11-01
 
-Première version complète avant la 1.0 : tout ce que contient `main` au 26 octobre 2026.
+Corrections, et trois petites options de menu mises de côté pendant le gel de la 1.0.
+
+### Séance
+- Départ au pédalage (lot O36) : après « Démarrer », l'écran « START YOUR ENGINES » attend le décor du départ, le trainer puis 3 secondes de pédalage à 30 tr/min avant de lancer chrono, distance, ERG et bots ; Y annule. Réglages › Séance : **Départ** (au pédalage ou immédiat) et **Cadence de départ**. Une run Cyber-Rogue n'attend pas de décor.
+- Quatre bots et le fantôme ensemble (lot O35) : l'écran Prêt propose « Bot 1 » à « Bot 4 », chaque ligne apparaissant dès que la précédente est choisie ; les derniers choix reprennent jusqu'à quatre bots.
+
+### Menus
+- QWKcode saisi au clavier (lot O21) : « Saisir du QWKcode (clavier) » dans la liste des entraînements ERG.
+- Texte des bots lisible sur ciel clair : orange, bleu du fantôme et gris éclaircis, contraste d'au moins 3:1.
+
+### Ménage
+- Fichiers `.uid` des vitrines `vitrine_amorces` et `vitrine_vehicules_pente` ajoutés.
+
+## 1.0.0 – 2026-11-01
+
+Première version publiée : tout ce que contient `main` au 1er novembre 2026. État de la recette : `docs/lots/LOT_O8_recette_1_0.md` §7.
 
 ### Séance sur le home trainer
 - Pilote FTMS du HomeTrainer : mode SIM (pente) et ERG (puissance), reconnexion, renvoi des erreurs ATT, relâche du trainer à la fermeture et `openride-core release-trainer`.
 - Physique à 50 Hz, 24 braquets virtuels, pente anticipée et lissée, difficulté réglable pendant la séance (50 % par défaut).
 - Entraînements ERG `.zwo`, `.erg` et `.mrc` (GoldenCheetah), biais ± 2 % (appui court) et ± 10 % (appui long), bloc suivant par Z et pause par Y au Click, bip avant chaque bloc (lot O17 : même plan de boutons que les autres modes).
-- ERG dans une session libre, choisi sur l'écran de pause : ERG à puissance cible, ou ERG à cadence verrouillée (± 15 % autour de la cadence cible, puissance adaptée progressivement), et retour en SIM (lot O18).
+- ERG dans une session libre, choisi sur l'écran de pause : ERG à puissance cible, ou ERG à cadence verrouillée (± 10 % autour de la cadence cible, puissance adaptée progressivement, puissance gardée à la reprise après une pause), et retour en SIM (lot O18).
+- Pilotage du trainer en « résistance calculée » par défaut : OpenRide calcule la force de la route et règle le frein du trainer, sans trou de résistance après un sprint ; le mode SIM du trainer reste au choix dans Réglages › Séance (lot RC).
 - Aucune roue libre en ERG : consigne jamais sous 50 W, bloc FreeRide d'un `.zwo` roulé à 50 W ; test de FTP par la rampe seule, le test de 20 minutes est retiré (lot O19).
+- Fin d'un entraînement ERG ou de la séance du jour d'un plan : le bandeau du haut invite à « Y puis A maintenu pour terminer et enregistrer », et la pause s'ouvre directement sur « Terminer et enregistrer » (champ `workout_done` de `state`, constat du vélo du 1er novembre).
 - Bots à puissance constante et fantôme d'une séance passée ; reprise d'une séance après un plantage du core.
 - Ceinture cardio Bluetooth facultative.
 
@@ -29,8 +46,9 @@ Première version complète avant la 1.0 : tout ce que contient `main` au 26 oct
 - Compilateur `openride-compiler` : traces GPX, FIT et TCX vers `.world`, relief Copernicus GLO-30, couches OpenStreetMap (bâtiments, végétation, points d'intérêt, eau).
 - Compilation des nouvelles traces au lancement, packs de thèmes (`theme-list`, `theme-install`).
 
-### Affichage (Godot 4.3)
+### Affichage (Godot 4.7)
 - Route et terrain par tronçons, shader triplanaire, ciel, arbres, bâtiments, eau et sons.
+- La chaussée ne commence plus au milieu de l'herbe : sur un parcours ouvert, elle continue 100 m avant le départ et 200 m après l'arrivée, posée sur le terrain, sans arbre dessus ; distance et fiches du parcours inchangées.
 - HUD, bandeau et histogramme ERG, menus au Click (parcours, entraînements, pause, fin de séance, appareils).
 
 ### Lancement et outils

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Extrait régional Geofabrik converti en base SQLite indexée (schéma commun avec W13) | Python | W2 | Moyenne | Oui, après W2 (issue #257) |
+| Extrait régional Geofabrik converti en base SQLite indexée (schéma commun avec W13) | Python | W2 | Moyenne | Livré le 27 octobre (PR #302) |
 
 ## 1. Objectif
 
@@ -64,3 +64,7 @@ Aucune (la base est interne au générateur).
 ## 8. Hors périmètre
 
 Graphe (W4), tuiles vectorielles (W13), mise à jour automatique.
+
+## Livraison
+
+PR #302, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, après W2 (issue #257) ».

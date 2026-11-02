@@ -7,7 +7,7 @@ Usage : visual_check.py --godot CHEMIN [--configs 1280x720:low,…] [--out DOSSI
 Pour chaque configuration (résolution et préréglage de qualité), le script lance l'engine avec sa
 vraie scène (`main.tscn`) sous Xvfb (OpenGL logiciel de Mesa, moteur Compatibility), face au faux
 core de `fake_core.py`, et lui fait parcourir des scènes de séance : attente du core, vue fixe,
-mouvement, ERG, pause, core muet, reprise, erreur. À chaque étape, l'engine (en `--test-mode`)
+mouvement, ERG, fin d'un entraînement, pause, core muet, reprise, erreur. À chaque étape, l'engine (en `--test-mode`)
 enregistre l'image affichée et l'état de son HUD (textes, visibilité, rectangles à l'écran) ; le
 script vérifie alors :
 
@@ -374,13 +374,15 @@ class Session:
         # Scène de référence : capture reprise tant que des tuiles voulues manquent (`streaming_pending`, comme le
         # tour visuel X21). Une attente fixe ne suffisait pas : `vue_fixe` en low sur le PC (31 octobre) sortait
         # sans terrain ni arbres, sol brun et personnage en l'air, et la SSIM variait d'un passage à l'autre.
+        # Même reprise tant que le rappel des commandes du départ (10 s) est affiché : présent sur une capture et pas
+        # sur l'autre, il faisait tomber `vue_fixe` à SSIM 0,96 face à sa référence (PC, 1er novembre).
         tries = PENDING_RETRIES if scene in GOLDEN_SCENES else 1
         for attempt in range(tries):
             mark = self.core.log.mark()
             self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
                                 "path": str(png), "tag": scene})
             hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0, mark)
-            if hit is None or int(json.loads(hit[1].group(1)).get("streaming_pending", 0)) == 0:
+            if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
                 break
             if attempt < tries - 1:
                 time.sleep(1.0)
@@ -518,6 +520,15 @@ class Session:
 ## image à l'autre sur le grain fin de la route et du terrain (Y11), environ 0,1 niveau ; un défilement à
 ## 8 m/s donne environ 3 niveaux.
 GROUND_SCROLL_LEVEL = 0.2
+
+
+def capture_unsettled(info: dict[str, Any]) -> bool:
+    """Capture d'une scène de référence à reprendre : tuiles du terrain en attente, ou rappel des commandes du
+    départ de séance encore affiché (il s'efface seul au bout de 10 s)."""
+    if int(info.get("streaming_pending", 0)) > 0:
+        return True
+    b = info.get("widgets", {}).get("banner", {})
+    return bool(b.get("visible")) and str(b.get("text", "")).startswith(CONTROLS_HINT_PREFIX)
 
 
 def ground_box(s: Session, info: dict[str, Any]) -> tuple[int, int, int, int]:
@@ -978,6 +989,31 @@ def _scenes(s: Session) -> None:
     core.chart = None
     core.send_hello_ack()
     time.sleep(0.5)
+
+    # 4 ter. Fin d'un entraînement (constat du vélo du 1er novembre) : invite au bandeau, sans alerte rouge,
+    # puis pause ouverte sur « Terminer et enregistrer », que la ligne sous le titre rappelle.
+    core.set_scene(speed=SPEED_MPS, mode="SIM", erg=None, workout_done={"workout_name": "Sweet spot"})
+    time.sleep(SETTLE_S)
+    shot = s.capture("fin_entrainement")
+    if shot:
+        img, info = shot
+        b = info["widgets"]["banner"]
+        s.check("fin_entrainement", "invite de fin d'entraînement au bandeau",
+                b["visible"] and "« Sweet spot » terminé : Y puis A maintenu pour terminer et enregistrer" in b["text"],
+                f"« {b['text']} »")
+        s.check_layout("fin_entrainement", info)
+    core.set_scene(speed=0.0, session_state="PAUSED", pause_reason="user", power=0.0, power_3s=0.0, cadence=0.0)
+    time.sleep(SETTLE_S)
+    shot = s.capture("fin_entrainement_pause")
+    if shot:
+        img, info = shot
+        s.check_texts("fin_entrainement_pause", info, {"menu": "Reprendre | [Terminer et enregistrer]"}, contains=True)
+        s.check_texts("fin_entrainement_pause", info,
+                      {"menu": "Entraînement terminé : A maintenu pour terminer et enregistrer"}, contains=True)
+        s.check_layout("fin_entrainement_pause", info)
+    core.set_scene(speed=SPEED_MPS, session_state="RUNNING", pause_reason=None, workout_done=None,
+                   power=250.0, power_3s=248.0, cadence=90.0)
+    time.sleep(1.0)
 
     # 5. Pause : trainer perdu, raison visible sous le titre du menu de pause.
     core.set_scene(speed=0.0, s=FIXED_S, mode="SIM", erg=None, session_state="PAUSED", pause_reason="trainer_lost",

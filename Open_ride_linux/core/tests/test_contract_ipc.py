@@ -71,7 +71,7 @@ def test_all_message_schemas_exist():
                  "routes", "workouts", "scan_results", "settings", "imports", "workout_saved",
                  "route_imports", "route_import_status",
                  "segment_result", "room", "loot", "garage", "progression", "xp_result", "plans", "profiles",
-                 "contents"):
+                 "contents", "interrupted"):
         jsonschema.Draft202012Validator.check_schema(schema(name))
 
 
@@ -420,12 +420,16 @@ def test_v1_5_profiles_examples_are_valid():
         {"id": f"cycliste-{i}-abcdefghijklmnopqrstu", "name": f"Cycliste N° {i} éèê", "type": "joueur",
          "level": 50, "last_ride": "2026-10-30", "kit_primary": 15} for i in range(8)]}
     assert_valid(full) and len(encode(full)) < 1000
+    trash = [{"id": f"cycliste-{i}-abcdefghijklmnopqrstu_20261031-235959", "name": f"Cycliste N° {i} éèê",
+              "deleted": "2026-10-31"} for i in range(5)]
+    assert_valid({**full, "trash": trash}) and len(encode({**full, "trash": trash})) < 1600   # lot O33
     validator = jsonschema.Draft202012Validator(schema("profiles"))
     assert list(validator.iter_errors({**full, "items": full["items"] + full["items"][:1]}))   # 9 profils
     assert list(validator.iter_errors({**profiles_msg, "items": [{**profiles_msg["items"][0], "type": "admin"}]}))
     for code in ("profile_invalid", "name_invalid"):
         assert_valid({"type": "error", "v": 1, "code": code, "message": "refusé"})
-    for name in ("list_profiles", "create_profile", "rename_profile", "delete_profile"):
+    for name in ("list_profiles", "create_profile", "rename_profile", "delete_profile", "clear_trial_profile",
+                 "restore_profile"):
         assert_valid({"type": "cmd", "v": 1, "cmd_id": 1, "name": name, "args": {}})
 
 

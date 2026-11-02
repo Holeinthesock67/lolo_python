@@ -74,6 +74,13 @@ var regions: Array = []
 ## Préchargement (`world_status`).
 var status: Dictionary = {}
 var last_error := ""
+## Dernier départ du profil (lot O32, `hello_ack.config.last_choices.open_world`, puis chaque départ lancé) :
+## reset() centre le globe dessus et reprend le cap, la navigation, la destination et la longueur de boucle.
+var last_start: Dictionary = {}
+
+
+func set_last_start(start: Variant) -> void:
+	last_start = start.duplicate(true) if start is Dictionary else {}
 
 
 func reset() -> void:
@@ -92,6 +99,16 @@ func reset() -> void:
 	field_index = 0
 	status = {}
 	last_error = ""
+	var ls := last_start
+	if (ls.get("lat") is float or ls.get("lat") is int) and (ls.get("lon") is float or ls.get("lon") is int):
+		globe_lat = clampf(float(ls["lat"]), -MAX_TILT_DEG, MAX_TILT_DEG)
+		globe_lon = _wrap_lon(float(ls["lon"]))
+		heading_deg = fposmod(float(ls.get("heading_deg", heading_deg)), 360.0)
+		nav = str(ls.get("nav", "ride")) if str(ls.get("nav", "ride")) in NAVS else "ride"
+		loop_km = clampf(float(ls.get("loop_km", loop_km)), LOOP_MIN_KM, LOOP_MAX_KM)
+		target = ls["target"].duplicate() if ls.get("target") is Dictionary else null
+		if nav == "destination" and target == null:
+			nav = "ride"
 
 
 # --- événements ------------------------------------------------------------------------------
@@ -318,6 +335,7 @@ func _start() -> Dictionary:
 		args["target"] = target
 	state = LOADING
 	status = {}
+	set_last_start(args)   # noté aussi par le core (lot O32)
 	return {"action": "start_open_world", "args": args}
 
 

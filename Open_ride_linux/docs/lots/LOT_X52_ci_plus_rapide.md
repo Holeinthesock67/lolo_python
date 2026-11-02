@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : CI plus rapide sur les PR : plus de nombre de tests écrit dans la doc (compte par `recompte_tests.py`, affiché dans le résumé du run), une seule colonne Python (3.14) sur les PR et les deux sur `main`, filet de compilation 3.11 | YAML + Python | X34 | Petite | En PR (30 octobre) |
+| Série X (outils de test) : CI plus rapide sur les PR : plus de nombre de tests écrit dans la doc (compte par `recompte_tests.py`, affiché dans le résumé du run), une seule colonne Python (3.14) sur les PR et les deux sur `main`, filet de compilation 3.11 | YAML + Python | X34 | Petite | Livré le 30 octobre (PR #630) |
 
 ## 1. Objectif
 
@@ -38,3 +38,7 @@ Le 30 octobre, la file de la CI était saturée et chaque fusion forçait à rem
 ## 5. Gain attendu
 
 Temps machine d'une PR : environ 78 min (28 + 28 + 22) ramené à environ 50 min, soit un tiers de moins dans la file. La durée d'une PR seule reste fixée par la colonne Python la plus longue (environ 28 min). Le vrai gain est la fin des remises à jour en chaîne : jusqu'ici, chaque fusion relançait la CI de toutes les PR ouvertes, uniquement pour recompter les tests.
+
+## Livraison
+
+PR #630, fusionnée le 30 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « En PR (30 octobre) ».

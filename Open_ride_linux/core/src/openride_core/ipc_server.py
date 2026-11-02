@@ -86,6 +86,9 @@ class IpcState:
     bot_behind: str | None = None
     rogue: dict[str, Any] | None = None    # révision 1.4 (série R, lot R8) : présent seulement en mode ROGUE
     wtf: dict[str, Any] | None = None      # révision 1.5 (lot WTF2) : présent seulement en mode WTF
+    # Révision 1.5 (invite de fin de séance, 1er novembre) : entraînement fini, séance pas encore terminée.
+    workout_done: dict[str, Any] | None = None
+    start_wait: dict[str, Any] | None = None   # révision 1.5 (lot O36) : départ au pédalage en attente (READY)
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -113,7 +116,7 @@ class IpcState:
             d.pop("lane_m", None)
         if self.open_world is None or self.devices is not None:
             d.pop("open_world", None)
-        for key in ("segment", "powerup", "jerseys", "rogue", "wtf"):
+        for key in ("segment", "powerup", "jerseys", "rogue", "wtf", "workout_done", "start_wait"):
             if d[key] is None:
                 d.pop(key)
         if self.bots is None:
@@ -346,8 +349,8 @@ class IpcServer:
             self.last_heartbeat_time = time.monotonic()
             # Requêtes : réponse à chaque copie reçue, la réponse a pu se perdre (contrat §4). La création et
             # l'import d'entraînement sont idempotents (même fichier, même identifiant), lot N16.
-            is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "import_workout",
-                                "list_route_imports", "import_route",
+            is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "create_workout_qwk",
+                                "import_workout", "list_route_imports", "import_route",
                                 "world_search", "world_map", "world_regions", "list_contents")
             if cmd_id > self.last_cmd_id or is_query:
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)

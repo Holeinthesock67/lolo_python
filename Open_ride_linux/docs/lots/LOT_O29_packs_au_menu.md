@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Thèmes, packs de biomes et packs de parcours depuis « Réglages › Contenus » : pack « Cols célèbres » construit et compilé avec avancement, archives `.zip` de Téléchargements, thèmes installés, place disque | Python + GDScript | O25, O16, U15 | Moyenne | Audit des options du 31 octobre, accepté par le propriétaire ; en PR (après O25) |
+| Thèmes, packs de biomes et packs de parcours depuis « Réglages › Contenus » : pack « Cols célèbres » construit et compilé avec avancement, archives `.zip` de Téléchargements, thèmes installés, place disque | Python + GDScript | O25, O16, U15 | Moyenne | Livré le 31 octobre (PR #656) |
 
 ## 1. Objectif
 
@@ -40,3 +40,7 @@ Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, §3.4
 3. Captures de l'écran montrées au propriétaire avant la fusion.
 
 **Sur le PC (via le fil de fusion, réseau nécessaire) :** installer le pack « Cols célèbres » depuis le menu, vérifier l'avancement, l'Alpe d'Huez dans la liste des parcours sans relancer.
+
+## Livraison
+
+PR #656, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Audit des options du 31 octobre, accepté par le propriétaire ; en PR (après O25) ».

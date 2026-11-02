@@ -128,15 +128,15 @@ func _test_tree_generation_and_determinism() -> void:
 			valid_lods = false
 		var mmi0: MultiMeshInstance3D = info["parts"][0]["lod0"]
 		var mmi1: MultiMeshInstance3D = info["parts"][0]["lod1"]
-		if mmi0.visibility_range_begin != 0.0 or mmi0.visibility_range_end != 300.0:
+		if mmi0.visibility_range_begin != 0.0 or mmi0.visibility_range_end != 450.0:
 			valid_lods = false
-		if mmi1.visibility_range_begin != 300.0 or mmi1.visibility_range_end != 1500.0:
+		if mmi1.visibility_range_begin != 450.0 or mmi1.visibility_range_end != 1500.0:
 			valid_lods = false
 		if mmi0.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_ON:
 			valid_lods = false
 		if mmi1.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
 			valid_lods = false
-	_check(valid_lods, "chaque case possède ses 2 MultiMeshInstance3D avec LOD0 (0-300m ombre) et LOD1 (300-1500m sans ombre)")
+	_check(valid_lods, "chaque case possède ses 2 MultiMeshInstance3D avec LOD0 (0-450m ombre) et LOD1 (450-1500m sans ombre)")
 
 	# Libération
 	renderer.remove_tile(Vector2i(0, 0))

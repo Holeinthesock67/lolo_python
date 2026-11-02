@@ -27,8 +27,6 @@ LOT_RE = re.compile(r"^[A-Z]{1,3}\d+$")
 GUIDE_COMMANDS: dict[str, str] = {
     "openride-core summary": "O28",
     "openride-core history": "O28",
-    "openride-core profil essai --vider": "O33",
-    "openride-core recover": "O34",
     "openride --profil": "raccourci facultatif : l'écran « Qui roule ? » fait la même chose",
     "openride-core profil list": "facultatif : les profils sont listés à l'écran « Qui roule ? »",
     "openride-core release-trainer": "secours en terminal : l'icône « Libérer le trainer » fait la même chose",

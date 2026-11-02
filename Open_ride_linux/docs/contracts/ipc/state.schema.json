@@ -1387,6 +1387,56 @@
           "type": "boolean"
         }
       }
+    },
+    "workout_done": {
+      "type": "object",
+      "description": "Facultatif, révision 1.5 (invite de fin de séance, 1er novembre) : l'entraînement de la séance est fini et la séance continue en parcours libre ; absent hors de ce cas. L'engine affiche l'invite « Y puis A maintenu pour terminer et enregistrer ».",
+      "required": [
+        "workout_name"
+      ],
+      "properties": {
+        "workout_name": {
+          "type": "string",
+          "description": "Nom de l'entraînement terminé."
+        }
+      },
+      "additionalProperties": false
+    },
+    "start_wait": {
+      "type": "object",
+      "description": "Facultatif, révision 1.5 (lot O36) : départ au pédalage en attente, en READY après start. Absent sinon.",
+      "required": [
+        "phase",
+        "cadence_rpm",
+        "hold_s",
+        "held_s",
+        "waited_s"
+      ],
+      "properties": {
+        "phase": {
+          "enum": [
+            "decor",
+            "trainer",
+            "pedalage"
+          ]
+        },
+        "cadence_rpm": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "hold_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "held_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "waited_s": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
     }
   },
   "$defs": {

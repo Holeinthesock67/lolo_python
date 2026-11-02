@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Aide des parcours (« Ajouter un parcours », « Comment ça marche ? ») et du menu du globe (explication par écran, boutons du Click et touches du clavier) | GDScript | O15, W11 (livrés) | Petite | Demande du propriétaire du 31 octobre ; en PR |
+| Aide des parcours (« Ajouter un parcours », « Comment ça marche ? ») et du menu du globe (explication par écran, boutons du Click et touches du clavier) | GDScript | O15, W11 (livrés) | Petite | Livré le 31 octobre (PR #641) |
 
 ## 1. Objectif
 
@@ -36,3 +36,7 @@ Le contrat IPC est inchangé : tout se passe dans l'engine.
 - Engine : `route_help.gd` (nouveau, sujets de l'aide des parcours), `menu_model.gd` (lignes de fin de liste, focus, ligne de l'accueil), `menu_flow.gd` (écran et cartes), `button_help.gd` et `button_bar.gd` (aide du globe), `world_menu_view.gd` (explications, bandeau), `main.gd` (aide du globe dans l'état de test).
 - Docs : `GUIDE_UTILISATION.md` §4 et §4 bis.
 - Tests : `engine/tests/unit/test_menu_model.gd`, `test_menu_flow.gd`, `test_world_menu_view.gd`, et le banc des menus (`menu_scenarios/sessions.json`, `monde_ouvert.json`, avec l'aide du globe dans le texte comparé par `menu_bench.py`).
+
+## Livraison
+
+PR #641, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Demande du propriétaire du 31 octobre ; en PR ».

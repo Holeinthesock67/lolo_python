@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Gravel : ruban de terre et de gravier, poussière et sons | GDScript | U1, U19, P10 | Petite | Oui, après U19, **version 3.0** (issue #352) |
+| Gravel : ruban de terre et de gravier, poussière et sons | GDScript | U1, U19, P10 | Petite | Livré le 30 octobre (PR #626), **version 3.0** |
 
 ## 1. Objectif
 
@@ -46,3 +46,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Ornières en relief, flaques, boue qui salit le vélo.
+
+## Livraison
+
+PR #626, fusionnée le 30 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, après U19, **version 3.0** (issue #352) ».

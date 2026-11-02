@@ -31,7 +31,6 @@ const RoadCyclistsModel := preload("res://scripts/road_cyclists_model.gd")
 
 const NAME_HEIGHT_M := 2.1
 const GHOST_ALPHA := 0.55
-const SLOPE_PROBE_M := 1.5          # pente du vélo : points de la route à ± cette distance
 const STANDING_GRADE_PCT: float = AvatarModel.DEFAULTS["standing_grade_pct"]
 
 var quality := QualityPresets.DEFAULT_PRESET
@@ -159,10 +158,7 @@ func update_view(view: Array, route) -> void:
 		var pos := Vector3(smp["x"], smp["y"], smp["z"])
 		var h := deg_to_rad(float(smp["heading_deg"]))
 		var right := Vector3(cos(h), 0.0, sin(h))
-		var a: Dictionary = route.sample(route.wrap_s(s - SLOPE_PROBE_M))
-		var c: Dictionary = route.sample(route.wrap_s(s + SLOPE_PROBE_M))
-		var run := Vector2(float(c["x"]) - float(a["x"]), float(c["z"]) - float(a["z"])).length()
-		var pitch := atan2(float(c["y"]) - float(a["y"]), run) if run > 0.01 else 0.0
+		var pitch: float = route.display_pitch(s)
 		var before: float = route.wrap_s(s) - s   # grille de départ derrière le départ (lot AS2)
 		if before > 0.0:
 			pos -= Vector3(sin(h), 0.0, -cos(h)) * before

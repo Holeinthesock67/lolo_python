@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Cache local du monde : arborescence, versions, plafond de 5 Go, éviction, épinglage, `cache-info`, `cache-clean` | Python | W1 | Moyenne | Oui, après W1 (issue #256) |
+| Cache local du monde : arborescence, versions, plafond de 5 Go, éviction, épinglage, `cache-info`, `cache-clean` | Python | W1 | Moyenne | Livré le 27 octobre (PR #285) |
 
 ## 1. Objectif
 
@@ -37,7 +37,7 @@ W1 livré (arborescence et section `[open_world]` validées).
 ## 5. Fichiers concernés
 
 - **Nouveaux :** `compiler/src/openride_compiler/worldgen/store.py`, `compiler/tests/test_world_store.py`.
-- **Modifiés :** `compiler/src/openride_compiler/cli.py` (`cache-info`, `cache-clean`), `core/src/openride_core/config.py`, `core/tests/test_config.py` (ou un nouveau test), `docs/SRS_v1.1.md` §11 si W1 ne l'a pas complété, `docs/SUIVI_AVANCEMENT.md`.
+- **Modifiés :** `compiler/src/openride_compiler/cli.py` (`cache-info`, `cache-clean`), `core/src/openride_core/config.py`, `core/tests/test_config_validation.py`, `docs/SRS_v1.1.md` §11 si W1 ne l'a pas complété, `docs/SUIVI_AVANCEMENT.md`.
 - **Interdits :** l'engine, les contrats.
 
 ## 6. Modifications de contrat autorisées
@@ -57,3 +57,7 @@ Aucune.
 ## 8. Hors périmètre
 
 Téléchargements (W3, W13), génération (W7), menu des régions (W11).
+
+## Livraison
+
+PR #285, fusionnée le 27 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, après W1 (issue #256) ».

@@ -31,6 +31,8 @@ const MenuFlow := preload("res://scripts/menu_flow.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
 const DraftGaugeModel := preload("res://scripts/draft_gauge_model.gd")
+const StartWaitModel := preload("res://scripts/start_wait_model.gd")
+const StartScreen := preload("res://scripts/start_screen.gd")
 const DraftGauge := preload("res://scripts/draft_gauge.gd")
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
@@ -94,6 +96,8 @@ var junction_view = null
 var world_menu_view = null
 ## Chargement de parcours en tâche de fond : {id, route, path, ok, task}.
 var _route_job: Dictionary = {}
+var _quit_ms := -1   # heure de la demande de fermeture (_quit), pour les étapes de la fermeture dans le journal
+var _quit_code := 0
 var _test_cam_last_us := 0
 var _test_cam_last_s := NAN
 ## Scène figée des tests graphiques (message `_test` « freeze », lot X20) : instant imposé au décor, NAN sinon.
@@ -124,6 +128,11 @@ var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
 ## Sonde de performance (lot X13), active avec --perf-probe=FICHIER.csv.
 var _probe = PerfProbe.new()
+## Départ au pédalage (lot O36) : décor du départ prêt, commande `scene_ready`, bandeau de l'attente.
+var _start_wait = StartWaitModel.new()
+var start_screen: Control = null   # écran d'attente « Start your engines » (start_screen.gd)
+var _was_start_waiting := false
+var _route_loaded_id := ""   # parcours affiché (chargé par _poll_route_job), "" avant le premier
 
 const BEEPS := {
 	"PLUS_SHORT": [[880.0, 0.08]],
@@ -295,6 +304,9 @@ func _ready() -> void:
 	ipc.profiles_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_profiles(msg)
 		_refresh_menu())
+	ipc.interrupted_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_interrupted(msg)
+		_refresh_menu())
 	ipc.contents_received.connect(func(msg: Dictionary) -> void:
 		_run_menu_action(menu_flow.on_contents(msg))
 		_refresh_menu())
@@ -366,6 +378,9 @@ func _ready() -> void:
 	add_child(menu_layer)
 	menu_view = MenuView.new()
 	menu_layer.add_child(menu_view)
+	start_screen = StartScreen.new()
+	start_screen.name = "StartScreen"
+	menu_layer.add_child(start_screen)
 	banner.reparent(menu_layer)   # le bandeau reste lisible au-dessus du menu, HUD caché ou non
 	world_menu_view.reparent(menu_layer)   # menu du globe plein écran, HUD caché derrière lui (lot O22)
 	menu_view.item_clicked.connect(func(item_id: String) -> void:
@@ -625,11 +640,11 @@ func _run_menu_action(act: Dictionary) -> void:
 				ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"quit":
 			print("Quitter demandé depuis le menu.")
-			get_tree().quit()
+			_quit(0)
 		"relaunch", "relaunch_sim":
 			var code := EXIT_SIM if name == "relaunch_sim" else EXIT_RELAUNCH
 			print("Relance d'OpenRide demandée depuis le menu (code %d)." % code)
-			get_tree().quit(code)
+			_quit(code)
 		"scan_devices":
 			ipc.scan_devices()
 		"identify_click_plus":
@@ -661,6 +676,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.accept_ftp(bool(act.get("force", false)))
 		"create_workout":
 			ipc.create_workout(act["args"])
+		"create_workout_qwk":
+			ipc.create_workout_qwk(str(act["text"]))
 		"import_workout":
 			ipc.import_workout(str(act["path"]))
 		"set_difficulty":
@@ -694,10 +711,14 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("install_content", {"id": str(act["id"])})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
-		"select_profile", "delete_profile":
+		"select_profile", "delete_profile", "restore_profile":
 			ipc.send_command(name, {"id": str(act["id"])})
+		"clear_trial_profile":   # lot O33
+			ipc.send_command(name, {})
 		"create_profile":
 			ipc.send_command("create_profile", {"name": str(act["name"])})
+		"recover_session":   # séance interrompue d'un lancement précédent (lot O34)
+			ipc.send_command("recover_session", {"id": str(act["id"]), "save": bool(act["save"])})
 		"rename_profile":
 			ipc.send_command("rename_profile", {"id": str(act["id"]), "name": str(act["name"])})
 
@@ -774,6 +795,18 @@ func _profile_name_key(event: InputEventKey) -> bool:
 	return true
 
 
+## QWKcode au clavier (lot O21) : la touche écrit au lieu d'agir comme un bouton du Click.
+func _qwk_key(event: InputEventKey) -> bool:
+	var ch := char(event.unicode) if event.unicode > 31 else ""
+	var enter := event.keycode in [KEY_ENTER, KEY_KP_ENTER]
+	var res: Dictionary = menu_flow.qwk_key(ch, enter, event.keycode == KEY_BACKSPACE)
+	if not res.get("used", false):
+		return false
+	_run_menu_action(res.get("action", {}))
+	_refresh_menu()
+	return true
+
+
 ## Profil en cours (`hello_ack.config.profile`, lot MJ8) : accueil, titre de la fenêtre, bandeau ESSAI ; la
 ## liste des profils est demandée pour « Qui roule ? ».
 func _apply_profile() -> void:
@@ -796,6 +829,15 @@ func _sync_hud(menu_shown: bool) -> void:
 	hud.visible = not menu_shown and not rogue_host.is_active()
 	if overlay_layer != null:
 		overlay_layer.visible = not menu_shown
+
+
+## Départ au pédalage (lot O36) : décor du départ prêt, puis `scene_ready` au core (start_wait_model.gd).
+func _step_start_wait(delta: float) -> void:
+	if _start_wait.frame(_route_loaded_id, streamer.pending_count(), delta * 1000.0):
+		print("Décor du départ prêt : %s" % _start_wait.route_id)
+		ipc.test_log("scene_ready id=%s" % _start_wait.route_id)
+	if _start_wait.should_send(Time.get_ticks_msec() / 1000.0, str(menu_flow.start_wait.get("phase", ""))):
+		ipc.send_command("scene_ready", {"route_id": _start_wait.route_id})
 
 
 ## Un menu plein écran est affiché : liste des menus ou globe du monde ouvert (lot O22).
@@ -856,6 +898,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			return   # saisie de la recherche du monde ouvert : la touche est une lettre, pas un bouton
 		if menu_flow.is_visible() and _profile_name_key(key):
 			return   # saisie du nom d'un profil (lot MJ8) : lettres, Entrée valide, Retour arrière efface
+		if menu_flow.is_visible() and _qwk_key(key):
+			return   # saisie du QWKcode (lot O21) : caractères, Entrée nouvelle ligne, Retour arrière efface
 		key_map.press(key.keycode, key.shift_pressed, now_s)
 		return
 	var ev: String = key_map.release(key.keycode, now_s)
@@ -870,6 +914,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		key_map.reset()   # le relâchement des touches enfoncées ne viendra pas
+	elif what == NOTIFICATION_PREDELETE:
+		# Ligne lue par le lanceur et le banc (ENGINE_DONE de launcher.py) : au-delà, l'arrêt de Godot peut bloquer
+		# (pilote NVIDIA, lot X55) ; ils arrêtent alors le processus et retiennent ce code.
+		_quit_step("scène libérée, arrêt des serveurs de Godot (code %d)" % _quit_code)
 
 
 func _process(delta: float) -> void:
@@ -882,6 +930,7 @@ func _process(delta: float) -> void:
 	_record_frame_perf(delta)
 	fps_counter.add_frame(delta)
 	_probe.frame(delta, streamer)
+	_step_start_wait(delta)
 	_step_load_guard(delta)
 	var now := Time.get_ticks_usec()
 	_remember_camera_view(now / 1000000.0)
@@ -1081,6 +1130,7 @@ func _poll_route_job() -> void:
 		banner.show_message("route", "Parcours « %s » invalide : %s" % [job["id"], job["route"].load_error])
 		return
 	route = job["route"]
+	_route_loaded_id = job["id"]
 	if route.live:
 		live_world.adopt(job["path"], route)
 	else:
@@ -1164,12 +1214,14 @@ func _on_test_message(msg: Dictionary) -> void:
 			ipc.send_command(str(msg.get("name", "")), msg.get("args", {}) if msg.get("args") is Dictionary else {})
 
 
-## Touche simulée (nom de OS.find_keycode_from_string : « A », « Enter », « Escape »…) : appui, puis relâchement
-## `hold_ms` plus tard, par Input.parse_input_event : même chemin qu'une vraie touche (_unhandled_input, key_map.gd).
+## Touche simulée (nom de OS.find_keycode_from_string : « A », « Enter », « Escape »…, ou un caractère seul comme
+## « @ », dont le code Godot est le code ASCII, lot O21) : appui, puis relâchement `hold_ms` plus tard, par Input.parse_input_event : même chemin qu'une vraie touche (_unhandled_input, key_map.gd).
 ## Les deux événements sont traités tout de suite (flush_buffered_events) et l'attente bloque l'image en cours :
 ## la durée mesurée par key_map.gd est celle demandée, même à 1 image/s sous Xvfb.
 func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
 	var code := OS.find_keycode_from_string(key_name)
+	if code == KEY_NONE and key_name.length() == 1:
+		code = key_name.to_upper().unicode_at(0) as Key
 	if code == KEY_NONE:
 		ipc.test_log("key unknown=%s" % key_name)
 		return
@@ -1180,6 +1232,8 @@ func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
 	down.pressed = true
 	if key_name.length() == 1:
 		down.unicode = (key_name.to_upper() if shift else key_name.to_lower()).unicode_at(0)
+	elif code == KEY_SPACE:
+		down.unicode = 32
 	Input.parse_input_event(down)
 	Input.flush_buffered_events()
 	OS.delay_usec(maxi(hold_ms, 0) * 1000)
@@ -1334,6 +1388,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"decor": living_decor.test_info(camera) if living_decor != null else {},
 		"bots": bots_view.test_info(camera) if bots_view != null else {},
 		"draft_gauge": draft_gauge.test_info(camera) if draft_gauge != null else {},
+		"start_screen": start_screen.test_info() if start_screen != null else {},
 		"avatar": _avatar_info(),
 		"garage": _garage_info(),
 		"rogue": rogue_host.test_info(),
@@ -1480,7 +1535,12 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		chart_mode = ch
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
+	menu_flow.on_hello_interrupted(ipc.core_config.get("interrupted"))   # lot O34
 	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
+	# Derniers choix du profil (lot O32) : bot, fantôme, entraînement, départ du monde ouvert.
+	var last = ipc.core_config.get("last_choices")
+	menu_flow.menu.set_last_choices(last)
+	world_menu_view.vm.set_last_start(last.get("open_world") if last is Dictionary else null)
 	menu_flow.set_versions(ipc.engine_version, ipc.core_version)
 
 
@@ -1526,9 +1586,24 @@ func _on_state_received(state: Dictionary) -> void:
 		banner.show_message("trainer_busy", DevicesViewModel.TRAINER_BUSY_TEXT)
 	else:
 		banner.clear_message("trainer_busy")
+	# Invite de fin de séance (1er novembre) : entraînement fini, la séance continue jusqu'à Y puis A maintenu.
+	var done_text := HudViewModel.workout_done_text(state)
+	if done_text != "" and str(state.get("session_state", "")) == "RUNNING":
+		banner.show_message("workout_done", done_text)
+	else:
+		banner.clear_message("workout_done")
 	_check_latency(state)
 	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)
+	# Écran « Start your engines » pendant l'attente du départ ; feux verts quand la séance part.
+	var waiting: bool = not menu_flow.start_wait.is_empty()
+	if waiting:
+		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
+	elif _was_start_waiting and str(state.get("session_state", "")) == "RUNNING":
+		start_screen.show_go()
+	else:
+		start_screen.show_wait(null, 0.0)
+	_was_start_waiting = waiting
 	_refresh_menu()
 	var new_session_state := str(state.get("session_state", ""))
 	var previous_session_state := session_state
@@ -1693,10 +1768,25 @@ func _give_cues(state: Dictionary) -> void:
 		ipc.test_log("cue index=%d warn=%s s=%.1f" % [c["index"], str(c["warn"]), s])
 
 
+## Fermeture de l'engine avec le code `code` (0 : quitter, EXIT_RELAUNCH, EXIT_SIM). Le journal date ensuite chaque
+## étape depuis la demande (« Fermeture : … ») : une fermeture lente dit où elle attend (banc des menus, lot X55).
+func _quit(code: int) -> void:
+	_quit_ms = Time.get_ticks_msec()
+	_quit_code = code
+	get_tree().quit(code)
+
+
+func _quit_step(what: String) -> void:
+	if _quit_ms >= 0:
+		print("Fermeture : %s, %d ms après la demande." % [what, Time.get_ticks_msec() - _quit_ms])
+
+
 func _exit_tree() -> void:
+	_quit_step("nœuds de la scène sortis (décor, monde et IPC compris)")
 	if not _route_job.is_empty():
 		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
 	_probe.close()
+	_quit_step("chargement du parcours et sonde fermés")
 
 
 ## Garde-fou de charge (load_guard.gd), une fois par image : coupe ou rend un effet du préréglage selon le

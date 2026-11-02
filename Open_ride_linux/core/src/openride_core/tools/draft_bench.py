@@ -118,6 +118,7 @@ class Bench:
         self.n += 1
         run = self.tmp / f"run{self.n}"
         cfg = Config()
+        cfg.depart.mode = "immediat"   # banc sans engine ni cycliste : départ à la commande start (lot O36)
         cfg.powerups.mode = "off"
         cfg.ride.auto_draft = auto_draft
         s = CoreSession(cfg, driver=MockDriver(base_power_w=power_w, ramp_amplitude_w=0.0),

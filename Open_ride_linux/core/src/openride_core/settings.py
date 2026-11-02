@@ -81,6 +81,11 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("gearing.start_gear", "Braquet de départ", "ride", 1),
     Setting("powerups.mode", "Bonus", "ride"),
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
+    # Pilotage du trainer hors ERG (lots RC1-RC3, choix du propriétaire du 1er novembre) : résistance calculée
+    # par le core (défaut, aucun lâcher après le sprint aux essais 7rc2) ou SIM du trainer
+    Setting("trainer.control", "Pilotage du trainer", "ride"),
+    Setting("depart.mode", "Départ", "ride"),   # lot O36 : au pédalage ou immédiat
+    Setting("depart.cadence_rpm", "Cadence de départ", "ride", 5, "tr/min"),
     Setting("ride.auto_draft", "Placement dans la roue", "ride"),   # lot AS2
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Importer une trace (GPX, FIT, TCX) depuis le menu et la compiler sans relancer | Python + GDScript | O22, N11 (livré) | Moyenne | Choix du propriétaire du 31 octobre ; en PR |
+| Importer une trace (GPX, FIT, TCX) depuis le menu et la compiler sans relancer | Python + GDScript | O22, N11 (livré) | Moyenne | Livré le 31 octobre (PR #645) |
 
 ## 1. Objectif
 
@@ -31,3 +31,7 @@ Demande du propriétaire, 31 octobre : « L'ajout de trace n'est pas pratique, i
 - Une trace déposée à la main dans `~/OpenRide/GPX/` reste compilée au lancement (N11).
 - Tests : `core/tests/test_route_import.py` (doublure `tests/data/stub_compiler.py`), `test_menu_flow.gd` (`_test_route_import`), banc des menus `parcours_import`.
 - Reste : tests Godot, banc des menus et captures sur le PC (file du fil de fusion), validation des captures par le propriétaire, puis essai avec un vrai export Garmin.
+
+## Livraison
+
+PR #645, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Choix du propriétaire du 31 octobre ; en PR ».

@@ -7,7 +7,8 @@ extends RefCounted
 ## Règles :
 ## - menu visible dès qu'une trame `state` est reçue, sauf en RUNNING (contrat §4 : les événements
 ##   `input` ne servent alors qu'aux bips) ;
-## - PAUSED ouvre l'écran de pause, FINISHED le bilan ; une séance terminée sans bilan (IDLE ou READY
+## - PAUSED ouvre l'écran de pause (focus sur « Terminer et enregistrer » quand `state.workout_done` dit
+##   l'entraînement fini), FINISHED le bilan ; une séance terminée sans bilan (IDLE ou READY
 ##   après RUNNING ou PAUSED) ramène à l'accueil ;
 ## - les listes sont demandées au premier état reçu, même en RUNNING (`--autostart` : la liste des
 ##   entraînements donne au bandeau ERG les durées réelles de tous les blocs), puis à chaque « Nouvelle séance ».
@@ -15,6 +16,9 @@ extends RefCounted
 ## `on_state()` et `handle()` renvoient des actions à exécuter par main.gd : commandes du contrat
 ## (select_route, select_workout, start, resume, end_session), « list » (demander les deux listes) et
 ## « quit ». Pas de class_name : charger par preload("res://scripts/menu_flow.gd").
+##
+## Départ au pédalage (lot O36) : pendant l'attente du départ (`start_wait` de la trame en READY), le menu
+## est masqué ; il revient sur l'écran Prêt si le départ est annulé (Y).
 ##
 ## Connexion au démarrage (lot N13) : au premier état hors séance, l'écran « Connexion des appareils »
 ## s'ouvre avant l'accueil. Il passe seul à l'accueil quand tout est relié depuis CONNECT_HOLD_S
@@ -51,7 +55,7 @@ extends RefCounted
 ##   Avancement `route_import_status` par on_route_import_status() sur la ligne d'état ; parcours prêt :
 ##   retour à la liste, redemandée par main.gd, focus sur le nouveau parcours à son arrivée ; trace
 ##   refusée (route_invalid, busy) : raison sur la ligne d'état ;
-## - bots (lot O7) : « Bot : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
+## - bots (lots O7 et O35) : « Bot 1 : … » à « Bot 4 : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
 ##   core (bot_invalid) sur la ligne d'état de l'écran Prêt ;
 ## - entraînements en watts (.erg, .mrc) : « watts fixes » et la puissance maximale.
 ##
@@ -69,6 +73,7 @@ const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const PlanBuilder := preload("res://scripts/plan_builder.gd")
 const WorkoutHelp := preload("res://scripts/workout_help.gd")
+const QwkEditor := preload("res://scripts/qwk_editor.gd")
 const RouteHelp := preload("res://scripts/route_help.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
@@ -90,6 +95,7 @@ const ROUTE_IMPORT := "route_import"
 ## Ligne d'état pendant la compilation d'une trace importée (lot O23) : secondes écoulées.
 const ROUTE_COMPILING := "Compilation de %s… %d s (la 1re fois dans une région, l'altitude se télécharge)"
 const WORKOUT_HELP := WorkoutHelp.SCREEN
+const WORKOUT_QWK := QwkEditor.SCREEN
 const ROUTE_HELP := RouteHelp.SCREEN
 ## Lignes de la liste des parcours dont la carte est un sujet de l'aide des parcours (lot O22).
 const ROUTE_HELP_TOPICS := {MenuModel.ADD_ROUTE_ID: "add", MenuModel.HELP_ROUTES_ID: "choose"}
@@ -101,6 +107,9 @@ const ROUTE_IMPORT_CARD := ["Les traces des dossiers Téléchargements, Bureau e
 const PLANS := "plans"
 const PLAN := "plan"
 const FTP_TEST := "ftp_test"
+## Séance interrompue d'un lancement précédent (lot O34) : ligne en tête de l'accueil, écran « Enregistrer » ou
+## « Ne pas l'enregistrer » (confirmé), commande recover_session ; liste dans hello_ack.config.interrupted.
+const INTERRUPTED := "interrupted"
 ## Records du parcours (série T, lot T10) : liste des segments, puis table d'un segment.
 const RECORDS := "records"
 const RECORD_TABLE := "record_table"
@@ -119,9 +128,12 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 	"engine_lost": "Affichage relancé : reprends quand tu veux", "core_restarted": "OpenRide a redémarré : séance retrouvée",
 	"recording_failed": "Enregistrement impossible : la séance reste en mémoire",
 	"world_data": "Route devant toi en cours de chargement : reprise automatique"}
+## Ligne d'état de la pause quand l'entraînement est fini (`state.workout_done`, invite de fin de séance du
+## 1er novembre) : le focus est déjà sur « Terminer et enregistrer ».
+const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer et enregistrer"
 ## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
 const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create", MenuModel.IMPORT_WORKOUT_ID: "import",
-	MenuModel.HELP_WORKOUT_ID: "choose"}
+	MenuModel.HELP_WORKOUT_ID: "choose", MenuModel.QWK_WORKOUT_ID: "qwk"}
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -165,6 +177,8 @@ var route_names := {}
 var builder = WorkoutBuilder.new()
 ## Plan maison en cours de composition (lot O30).
 var plan_builder = PlanBuilder.new()
+## Texte QWKcode en cours de saisie (lot O21) : gardé en sortant de l'écran, vidé après l'enregistrement.
+var qwk = QwkEditor.new()
 ## Fichiers proposés à l'import : [{path, file, source, imported}] (message `imports` du core).
 var import_candidates: Array = []
 ## Ligne d'état de la liste des entraînements (créé, importé, erreur).
@@ -184,6 +198,9 @@ var _focus_route := ""
 ## répond à chaque copie renvoyée d'une commande, une seule réponse compte.
 var _workout_request := ""
 var _last_saved_cmd_id := -1
+## Séances interrompues proposées (`hello_ack.config.interrupted`, puis réponse `interrupted`) et ligne d'état.
+var interrupted: Array = []
+var interrupted_message := ""
 ## Dernière réponse `plans` du core ({} avant la première) ; plan affiché sur l'écran d'un plan.
 var plans: Dictionary = {}
 var _plan_shown := ""
@@ -219,6 +236,11 @@ var _record_segment := ""
 var _record_bonus := false
 ## Raison de la dernière pause (`state.pause_reason`), "" hors pause.
 var pause_reason := ""
+## Entraînement fini, séance pas encore terminée (`state.workout_done`, contrat IPC 1.5).
+var workout_done := false
+## Départ au pédalage en attente (lot O36) : objet `start_wait` de la dernière trame, {} sinon ; le menu
+## est masqué pendant l'attente, le bandeau dit l'étape (start_wait_model.gd).
+var start_wait: Dictionary = {}
 ## Profils de joueurs (série MJ, lot MJ8) : « Qui roule ? », nom du profil, gestion.
 var profiles = ProfilesViewModel.new()
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
@@ -239,6 +261,8 @@ func _init() -> void:
 	menu.add_screen({"id": ROUTE_IMPORT, "title": "Importer une trace", "on_back": MenuModel.ROUTES, "items": []})
 	menu.add_screen({"id": WORKOUT_HELP, "title": WorkoutHelp.TITLE, "on_back": MenuModel.WORKOUTS,
 		"items": WorkoutHelp.items()})
+	menu.add_screen({"id": WORKOUT_QWK, "title": QwkEditor.TITLE, "on_back": MenuModel.WORKOUTS,
+		"items": qwk.menu_items()})
 	menu.add_screen({"id": ROUTE_HELP, "title": RouteHelp.TITLE, "on_back": MenuModel.ROUTES,
 		"items": RouteHelp.items()})
 	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
@@ -249,6 +273,7 @@ func _init() -> void:
 		menu.add_screen({"id": screen[0], "title": screen[1], "on_back": PlanBuilder.SCREEN, "items": []})
 	menu.add_screen({"id": FTP_TEST, "title": "Test de FTP", "on_back": MenuModel.HOME, "items": []})
 	_refresh_ftp_test()
+	menu.add_screen({"id": INTERRUPTED, "title": "Séance interrompue", "on_back": MenuModel.HOME, "items": []})
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
 	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
@@ -266,6 +291,8 @@ func _init() -> void:
 		"on_back": ProfilesViewModel.SCREEN, "items": []})
 	menu.add_screen({"id": ProfilesViewModel.MANAGE, "title": "Gérer", "on_back": ProfilesViewModel.MANAGE_LIST,
 		"items": []})
+	menu.add_screen({"id": ProfilesViewModel.RESTORE, "title": "Restaurer un profil supprimé",
+		"on_back": ProfilesViewModel.MANAGE_LIST, "items": []})
 	_refresh_plans()
 	_refresh_builder()
 	_refresh_pairing()
@@ -274,7 +301,7 @@ func _init() -> void:
 
 
 func is_visible() -> bool:
-	return session_state != "" and session_state != "RUNNING"
+	return session_state != "" and session_state != "RUNNING" and start_wait.is_empty()
 
 
 ## Trame `state` reçue ; renvoie les actions à exécuter (liste, éventuellement vide). `now_s` : horloge
@@ -305,6 +332,8 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
+	workout_done = state.get("workout_done", null) is Dictionary
+	start_wait = state["start_wait"] if st == "READY" and state.get("start_wait") is Dictionary else {}
 	_track_run(st, state)
 	if state.get("devices") is Dictionary:
 		devices = state["devices"]
@@ -342,6 +371,8 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 		match st:
 			"PAUSED":
 				menu.open_pause()
+				if workout_done:   # entraînement fini : Y puis A maintenu termine et enregistre
+					menu.focus_item("end_save")
 			"FINISHED":
 				show_details = false
 				ftp_offer = summary["ftp_test"] if summary.get("ftp_test") is Dictionary else {}
@@ -476,6 +507,9 @@ func on_error(code: String, text: String) -> void:
 	if menu.current_screen() in GarageViewModel.SCREENS and garage.on_error(code, text):
 		_refresh_garage()
 		return
+	if menu.current_screen() == INTERRUPTED and code in ["bad_args", "busy", "recording_failed"]:
+		interrupted_message = "Échec : " + text
+		return
 	if menu.current_screen() in ProfilesViewModel.SCREENS and profiles.on_error(code, text):
 		_refresh_profiles()
 		return
@@ -495,7 +529,7 @@ func on_error(code: String, text: String) -> void:
 		route_message = "Échec : " + text
 		route_message_error = true
 		return
-	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_IMPORT] \
+	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_IMPORT, WORKOUT_QWK] \
 			and code in ["bad_args", "busy", "workout_invalid", "workout_write_failed"]:
 		workout_failed("Échec : " + text)
 		return
@@ -536,6 +570,7 @@ func set_routes(raw: Array) -> void:
 			route_names[str(r["id"])] = str(r.get("name", r["id"]))
 	if menu.world_id != "" and route_names.has(menu.world_id):
 		menu.set_world(menu.world_id, route_names[menu.world_id])
+	_refresh_interrupted()   # nom du parcours de la séance interrompue
 	if _focus_route != "" and menu.current_screen() == MenuModel.ROUTES and route_names.has(_focus_route):
 		menu.focus_item(_focus_route)
 		_focus_route = ""
@@ -605,6 +640,8 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
 	if screen == WORKOUT_HELP:
 		return WorkoutHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
+	if screen == WORKOUT_QWK:
+		return WorkoutHelp.sheet("qwk")
 	if screen == PLANS:
 		return _plan_card(focused)
 	if screen == PLAN:
@@ -1041,6 +1078,9 @@ func on_workout_saved(msg: Dictionary) -> bool:
 		return false
 	_last_saved_cmd_id = rid
 	var name := str(msg.get("name", msg.get("workout_id", "")))
+	if _workout_request == "qwk":
+		qwk.clear()
+		_refresh_qwk()
 	var text := ("Importé : " if _workout_request == "import" else "Créé : ") + name
 	if not msg.get("created", true):
 		text += " (déjà présent)"
@@ -1063,6 +1103,52 @@ func workout_failed(message: String) -> void:
 	workout_message = message
 
 
+# --- saisie du QWKcode au clavier (lot O21) -----------------------------------------------------
+
+func _refresh_qwk() -> void:
+	menu.set_screen_items(WORKOUT_QWK, qwk.menu_items())
+
+
+## Élément choisi (A maintenu, Entrée sur « Enregistrer » ou « Tout effacer », clic) sur l'écran de saisie.
+func _qwk_item(item_id: String) -> Dictionary:
+	if item_id == QwkEditor.SAVE_ID and not qwk.is_empty():
+		workout_message = "Enregistrement…"
+		_workout_request = "qwk"
+		return {"action": "create_workout_qwk", "text": qwk.text()}
+	if item_id == QwkEditor.CLEAR_ID:
+		qwk.clear()
+		workout_message = ""
+		_refresh_qwk()
+		menu.focus_item(qwk.last_line_id())
+	return {}
+
+
+## Touche du clavier sur l'écran de saisie : vrai si elle a servi. Un caractère imprimable s'écrit (même
+## « + », « - », « a » ou « y », utiles au QWKcode) ; Entrée commence une ligne, ou choisit
+## « Enregistrer » ou « Tout effacer » sous le focus ; Retour arrière efface. Flèches et Échap restent
+## des boutons (key_map.gd).
+func qwk_key(ch: String, enter: bool, backspace: bool) -> Dictionary:
+	if menu.current_screen() != WORKOUT_QWK:
+		return {"used": false}
+	var focused := _focused_id()
+	if enter and focused in [QwkEditor.SAVE_ID, QwkEditor.CLEAR_ID]:
+		return {"used": true, "action": _qwk_item(focused)}
+	var used := true
+	if enter:
+		qwk.new_line()
+	elif backspace:
+		qwk.backspace()
+	elif ch != "":
+		qwk.type_char(ch)
+	else:
+		used = false
+	if used:
+		workout_message = ""
+		_refresh_qwk()
+		menu.focus_item(qwk.last_line_id())
+	return {"used": used, "action": {}}
+
+
 ## Liste indisponible (trois demandes sans réponse) : un élément désactivé qui le dit.
 func list_failed(list_name: String) -> void:
 	if list_name == "route_imports":
@@ -1083,6 +1169,8 @@ func handle(event: String) -> Dictionary:
 	if not is_visible():
 		return {}
 	ready_message = ""
+	if menu.current_screen() == MenuModel.HOME:
+		interrupted_message = ""   # résultat de recover_session : affiché jusqu'à l'appui suivant
 	if not settings.editing.is_empty():
 		if menu.current_screen() in [SETTING_EDIT, MenuModel.PAUSE, SETTINGS_GROUP, WORKOUT_CREATE]:
 			return _handle_edit(event)
@@ -1103,6 +1191,11 @@ func handle(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
+		"clear_trial_profile":   # confirmation acceptée (lot O33)
+			profiles.message = "Vidage du profil d'essai…"
+			profiles.done_message = "Profil d'essai vidé"
+			_refresh_profiles()
+			return act
 		"start_run":   # confirmation du premier lancement acceptée (lot R13) : l'avertissement n'est plus redemandé
 			rogue.mark_warned()
 			return _launch_rogue(act)
@@ -1134,7 +1227,14 @@ func handle(event: String) -> Dictionary:
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") in ProfilesViewModel.SCREENS:
 		return _handle_profiles(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") == INTERRUPTED:
+		return _handle_interrupted(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME:
+		if str(act["id"]) == "interrupted":
+			interrupted_message = ""
+			_refresh_interrupted()
+			menu.push_screen(INTERRUPTED)
+			return {}
 		if str(act["id"]) == "profile":
 			profiles.message = ""
 			_refresh_profiles()
@@ -1213,10 +1313,17 @@ func handle(event: String) -> Dictionary:
 		if str(act["id"]) == MenuModel.HELP_WORKOUT_ID:
 			menu.push_screen(WORKOUT_HELP)
 			return {}
+		if str(act["id"]) == MenuModel.QWK_WORKOUT_ID:
+			_refresh_qwk()
+			menu.push_screen(WORKOUT_QWK)
+			menu.focus_item(qwk.last_line_id())
+			return {}
 		import_candidates = []
 		menu.set_screen_items(WORKOUT_IMPORT, [{"id": "none", "label": "Recherche des fichiers…", "enabled": false}])
 		menu.push_screen(WORKOUT_IMPORT)
 		return {"action": "list_imports"}
+	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_QWK:
+		return _qwk_item(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_HELP:
 		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_CREATE:
@@ -1288,6 +1395,67 @@ func handle(event: String) -> Dictionary:
 				show_details = not show_details
 				return {}
 	return act
+
+
+# --- séance interrompue d'un lancement précédent (lot O34) ---------------------------------------
+
+## Liste `hello_ack.config.interrupted` (absente : aucune séance à rattraper).
+func on_hello_interrupted(list) -> void:
+	interrupted = list.duplicate() if list is Array else []
+	_refresh_interrupted()
+
+
+## Réponse `interrupted` à recover_session : séance traitée, séances restantes ; plus aucune : retour à l'accueil.
+func on_interrupted(msg: Dictionary) -> void:
+	var rest = msg.get("items", [])
+	interrupted = rest.duplicate() if rest is Array else []
+	interrupted_message = "Séance enregistrée dans tes séances" if bool(msg.get("saved", false)) \
+		else "Séance non enregistrée"
+	_refresh_interrupted()
+	if interrupted.is_empty() and menu.current_screen() in [INTERRUPTED, MenuModel.CONFIRM]:
+		menu.open_screen(MenuModel.HOME)
+
+
+## Ligne de l'accueil et écran de la plus récente : date, parcours, distance, durée.
+func _refresh_interrupted() -> void:
+	if interrupted.is_empty() or not interrupted[0] is Dictionary:
+		menu.set_interrupted("", "")
+		menu.set_screen_items(INTERRUPTED, [{"id": "none", "label": "Aucune séance à rattraper", "enabled": false}])
+		return
+	var detail := interrupted_detail(interrupted[0], route_names)
+	var more := interrupted.size() - 1
+	menu.set_interrupted("Séance interrompue à enregistrer" + ("" if more == 0 else " (+%d)" % more), detail)
+	menu.set_screen_items(INTERRUPTED, [
+		{"id": "save", "label": "Enregistrer la séance", "detail": detail},
+		{"id": "discard", "label": "Ne pas l'enregistrer"}])
+
+
+## « 30/10 à 18:05 · Vosges · 12,3 km · 32 min » d'un élément {start, route_id, distance_m, duration_s}.
+static func interrupted_detail(item: Dictionary, names: Dictionary) -> String:
+	var start := str(item.get("start", ""))
+	var parts: Array = []
+	if start.length() >= 16:
+		parts.append("%s/%s à %s" % [start.substr(8, 2), start.substr(5, 2), start.substr(11, 5)])
+	var rid = item.get("route_id")
+	if rid != null and str(rid) != "":
+		parts.append(str(names.get(str(rid), rid)))
+	parts.append(("%.1f km" % (float(item.get("distance_m", 0.0)) / 1000.0)).replace(".", ","))
+	parts.append("%d min" % int(round(float(item.get("duration_s", 0.0)) / 60.0)))
+	return " · ".join(parts)
+
+
+func _handle_interrupted(item_id: String) -> Dictionary:
+	if interrupted.is_empty():
+		return {}
+	var sid := str(interrupted[0].get("id", ""))
+	interrupted_message = ""
+	if item_id == "save":
+		interrupted_message = "Enregistrement…"
+		return {"action": "recover_session", "id": sid, "save": true}
+	if item_id == "discard":
+		menu.confirm("Ne pas enregistrer cette séance ? Elle ne sera plus proposée",
+			{"action": "recover_session", "id": sid, "save": false})
+	return {}
 
 
 ## Écran de départ du Cyber-Rogue (lot R13) : les trois premiers éléments font défiler leur valeur, « Lancer »
@@ -1396,6 +1564,7 @@ func _refresh_profiles() -> void:
 	menu.set_screen_items(ProfilesViewModel.SCREEN, profiles.who_items(), "Qui roule ?")
 	menu.set_screen_items(ProfilesViewModel.MANAGE_LIST, profiles.manage_list_items(), "Gérer un profil")
 	menu.set_screen_items(ProfilesViewModel.MANAGE, profiles.manage_items(), profiles.manage_title())
+	menu.set_screen_items(ProfilesViewModel.RESTORE, profiles.restore_items())
 	menu.set_screen_items(ProfilesViewModel.NAME, profiles.grid_items(), profiles.name_title())
 
 
@@ -1416,9 +1585,23 @@ func _handle_profiles(screen: String, item_id: String) -> Dictionary:
 					profiles.message = "Changement de profil…"
 					act = {"action": "select_profile", "id": id}
 		ProfilesViewModel.MANAGE_LIST:
-			profiles.manage_id = item_id.substr(2)
-			_refresh_profiles()
-			menu.push_screen(ProfilesViewModel.MANAGE)
+			if item_id == ProfilesViewModel.CLEAR_TRIAL_ID:   # lot O33
+				profiles.message = ""
+				menu.confirm("Vider le profil d'essai ? (séances, pièces et records d'essai effacés)",
+					{"action": "clear_trial_profile"})
+			elif item_id == ProfilesViewModel.RESTORE_ID:
+				profiles.message = ""
+				_refresh_profiles()
+				menu.push_screen(ProfilesViewModel.RESTORE)
+			else:
+				profiles.manage_id = item_id.substr(2)
+				_refresh_profiles()
+				menu.push_screen(ProfilesViewModel.MANAGE)
+		ProfilesViewModel.RESTORE:
+			if item_id.begins_with("t:"):
+				profiles.message = "Restauration…"
+				profiles.done_message = "Profil restauré : " + profiles.trash_name(item_id.substr(2))
+				act = {"action": "restore_profile", "id": item_id.substr(2)}
 		ProfilesViewModel.MANAGE:
 			if item_id == "rename":
 				profiles.begin_rename(profiles.manage_id)
@@ -1495,6 +1678,8 @@ func on_profiles(msg: Dictionary) -> void:
 		menu.open_screen(ProfilesViewModel.SCREEN)   # renommé : retour à la liste
 	elif menu.current_screen() == ProfilesViewModel.MANAGE and profiles._find(profiles.manage_id).is_empty():
 		menu.open_screen(ProfilesViewModel.SCREEN)   # supprimé
+	elif menu.current_screen() == ProfilesViewModel.RESTORE and profiles.message.begins_with("Profil restauré"):
+		menu.handle("Y_SHORT")   # restauré : retour à « Gérer un profil », message gardé
 	_refresh_profiles()
 
 
@@ -1679,7 +1864,7 @@ func state() -> Dictionary:
 	elif st["screen"] in [MenuModel.ROUTES, ROUTE_IMPORT]:
 		st["status"] = route_message
 		st["status_error"] = route_message_error
-	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT]:
+	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT, WORKOUT_QWK]:
 		st["status"] = workout_message
 	elif st["screen"] in [PLANS, PLAN] or st["screen"] in PlanBuilder.SCREENS:
 		st["status"] = plan_message
@@ -1691,6 +1876,8 @@ func state() -> Dictionary:
 		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
 	elif st["screen"] in GarageViewModel.SCREENS:
 		st["status"] = garage.message
+	elif st["screen"] in [INTERRUPTED, MenuModel.HOME]:
+		st["status"] = interrupted_message
 	elif st["screen"] == ContentsViewModel.SCREEN:
 		st["status"] = contents.message
 		st["status_error"] = contents.message.begins_with("Échec")
@@ -1701,6 +1888,8 @@ func state() -> Dictionary:
 		st["grid"] = {"columns": ProfilesViewModel.GRID_COLUMNS, "text": profiles.name_text}
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
+		if st["status"] == "" and workout_done:
+			st["status"] = PAUSE_WORKOUT_DONE
 	st["card"] = card(st)
 	st["preview"] = garage_preview(st)
 	st["progress"] = progress_view() if st["screen"] == SUMMARY else {}

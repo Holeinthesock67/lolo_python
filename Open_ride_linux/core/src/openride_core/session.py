@@ -35,7 +35,7 @@ from .hr_monitor import HeartRateProvider
 from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
-from . import latency_log
+from . import last_choices, latency_log
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import Record
@@ -50,7 +50,7 @@ from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
 from .records import RecordBook, RecordsError
 from .recorder import SessionRecorder
-from .resume import ResumeError, ResumeState, load_resume_state
+from .resume import ResumeError, ResumeState, close_interrupted, interrupted_sessions, load_resume_state
 from .rogue import mode as rogue_mode
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
@@ -61,6 +61,7 @@ from .wtf.events import WtfInput
 from .wtf.mode import WtfMode
 from .free_erg import CadenceLock, FreeErg, start_cadence, start_power
 from .ftp_test import KINDS as FTP_TEST_KINDS
+from .start_gate import StartGate
 from .ftp_test import FtpResult, RampWatch, cooldown_index, estimate_ftp
 from .ftp_test import kind_of as ftp_test_kind
 from .ftp_test import workout_for as ftp_test_workout
@@ -73,6 +74,9 @@ DT_PHYSICS = 0.02        # 50 Hz
 SCAN_ATTEMPTS = 3        # recherche du menu Appareils : essais si BlueZ répond « InProgress »
 DT_STATE = 1.0 / 30.0    # 30 Hz
 STATS_PERIOD_S = 60.0
+# Commandes qui annulent un départ au pédalage en attente (lot O36) ; un nouveau `start` le remplace.
+START_CANCEL_COMMANDS = ("pause", "end_session", "select_workout", "start_run", "start_open_world",
+                         "select_profile")
 SHUTDOWN_GRACE_S = 5.0   # délai laissé aux pilotes pour relâcher le trainer et se déconnecter
 MAX_STEP_S = 0.1         # un pas plus long (gel du processus) est borné
 # Biais ERG par appui de + ou − (§7.1) : petit pas ± 2 %, grand pas ± 10 % (cinq pas de BIAS_STEP_PCT).
@@ -83,7 +87,8 @@ DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" /
 
 CONTENT_COMMANDS = ("list_contents", "install_content")   # lot O25
 CONTENT_PROGRESS_PERIOD_S = 1.0   # message `contents` pendant une installation, une fois par seconde au plus
-PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile")   # lot MJ7
+PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile",
+                    "clear_trial_profile", "restore_profile")   # lots MJ7 et O33
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
 XP_RESULT_PERIOD_S = 1.0
@@ -319,6 +324,11 @@ class CoreSession:
         # Contrôleur ERG de la séance : entraînement en cours, ou ERG d'une session libre (lot O18).
         self.erg: ErgController | FreeErg | None = None
         self._ramp_watch: RampWatch | None = None   # fin de la rampe d'un test de FTP (lot O10)
+        # Départ au pédalage (lot O36) : attente entre `start` et RUNNING, mode de jeu du départ demandé,
+        # et parcours dont l'engine a dit le décor du départ prêt (`scene_ready`).
+        self._start_gate: StartGate | None = None
+        self._start_mode: str | None = None
+        self._scene_route: str | None = None
         self._ftp_result: FtpResult | None = None   # dernier test de FTP, pour `accept_ftp` (lot O12)
         self._plan_day: str | None = None           # séance du jour du dernier message `plans` (lot O12)
         self.plans_dir: Path | None = None          # dossiers des plans (défauts de plans.py ; tests)
@@ -365,11 +375,15 @@ class CoreSession:
         self.active_profile_path: Path | None = None   # None : ~/OpenRide/.profil_actif
         self._last_create: tuple[int, Any] | None = None   # dernier create_profile traité (copies ignorées)
         self._publish_profile()
+        self._resumed_journal: Path | None = None   # journal repris par `--resume`, jamais proposé (lot O34)
+        self._publish_last_choices()
 
     # --- machine à états ---------------------------------------------------------------
 
     def _set_state(self, new: str, reason: str | None = None) -> None:
         old = self.state.session_state
+        if new != old:
+            self._clear_start_gate()   # tout changement d'état met fin à un départ en attente (lot O36)
         self.state.session_state, self.state.pause_reason = new, reason
         log.info("Séance : %s -> %s%s", old, new, f" ({reason})" if reason else "")
         now = time.time()
@@ -383,6 +397,8 @@ class CoreSession:
             self._sync_erg_state()
         if self.race and new == "PAUSED" and old == "RUNNING":
             self.race.pause(reason or "user")   # pause Y : passages annulés ; coupure subie : suspendus (T4)
+        if new in ("READY", "FINISHED", "IDLE", "ERROR"):
+            self.state.workout_done = None   # l'invite de fin d'entraînement ne vit que pendant la séance
         if new in ("PAUSED", "READY", "FINISHED", "IDLE", "ERROR"):
             self._release_trainer()
 
@@ -395,6 +411,11 @@ class CoreSession:
     def _on_command(self, name: str, args: dict, cmd_id: int) -> None:
         log.info("Commande %s %s (id=%d)", name, args, cmd_id)
         st = self.state.session_state
+        if self._start_gate is not None and name in START_CANCEL_COMMANDS:
+            # Y (pause) ou autre choix pendant l'attente du départ (lot O36) : retour à l'écran Prêt.
+            self._cancel_start()
+            if name in ("pause", "end_session"):
+                return
         if name == "start_run":
             self._start_run(args if isinstance(args, dict) else {}, st)
         elif name == "rogue_resync":
@@ -406,18 +427,23 @@ class CoreSession:
             reset = getattr(self.driver, "reset_control", None)
             if reset:
                 reset()   # sortie de ERROR : nouvelle prise de contrôle du trainer
-            self._select_route(str(args.get("route_id") or "demo"), previous=st)
+            route_id = str(args.get("route_id") or "demo")
+            self._select_route(route_id, previous=st)
+            if self.state.session_state == "READY" and self.state.route_id == route_id:
+                self._remember("route_id", route_id, cmd_id)
         elif name == "select_workout":
             # Accepté aussi après une séance (FINISHED, ERROR) : le menu choisit l'entraînement avant
             # le parcours, et le core reste en FINISHED jusqu'au select_route suivant.
             if st in ("IDLE", "READY", "FINISHED", "ERROR"):
                 self._drop_rogue()
                 self._select_workout(args.get("workout_id"))
+                if self._workout_id is not None and not ftp_test_kind(self._workout_id):
+                    self._remember("workout_id", self._workout_id, cmd_id)
             else:
                 log.warning("Entraînement « %s » refusé : séance %s.", args.get("workout_id"), st)
                 self.server.send_error("busy", "Choix de l'entraînement impossible pendant une séance.")
         elif name == "start_open_world":
-            self._start_open_world(args, st)
+            self._start_open_world(args, st, cmd_id)
         elif name == "choose_branch":
             if self.openworld is None:
                 self.server.send_error("unknown_junction", "Pas de monde ouvert en cours.")
@@ -440,25 +466,86 @@ class CoreSession:
                 return
             if not self._choose_start_bots(args if isinstance(args, dict) else {}):
                 return
-            self._open_journal()
-            if self._workout:
-                self.erg = ErgController(self._workout, self.cfg.rider.ftp_w)
-                log.info("Entraînement « %s » démarré : %d blocs, %.0f s.", self._workout.name,
-                         len(self._workout.blocks), self._workout.duration_s)
-                self._watch_ramp()
-                self._sync_erg_state()
-            if game_mode == "wtf":
-                self._start_wtf()
-            self._new_race(classic=self.wtf is None)
-            self._lane = self._rider_lane()   # réglage « Placement dans la roue » lu à chaque départ
-            self._set_state("RUNNING")
+            if self.rogue is None:   # une run a ses propres ennemis : les bots de la séance libre restent
+                self._remember("bots", (args if isinstance(args, dict) else {}).get("bots") or [], cmd_id)
+            self._request_start(game_mode)
+        elif name == "scene_ready":   # révision 1.5 (lot O36) : décor du départ prêt dans l'engine
+            rid = (args if isinstance(args, dict) else {}).get("route_id")
+            self._scene_route = str(rid) if rid not in (None, "") else None
         elif name == "skip_block" and self._workout_erg() and st in ("RUNNING", "PAUSED"):
             self._skip_block()
         elif name == "set_ride_mode":
             self._set_ride_mode(args if isinstance(args, dict) else {}, st)
         elif name == "pause" and st == "RUNNING":
             self._set_state("PAUSED", "user")
-        elif name == "resume" and st == "PAUSED":
+        else:
+            self._on_command_more(name, args, cmd_id, st)
+
+    # --- départ au pédalage (lot O36, start_gate.py) -----------------------------------------
+
+    def _request_start(self, game_mode: str | None) -> None:
+        """`start` accepté : départ tout de suite (`[depart] mode = "immediat"`) ou attente en READY."""
+        dep = self.cfg.depart
+        gate = StartGate(float(dep.cadence_rpm), float(dep.duree_s), float(dep.attente_decor_s),
+                         immediate=dep.mode == "immediat")
+        if gate.open:
+            self._begin_session(game_mode)
+            return
+        self._start_gate, self._start_mode = gate, game_mode
+        self.state.start_wait = gate.to_dict()
+        log.info("Départ au pédalage : attente du décor, du trainer puis de %d s à %d tr/min.",
+                 dep.duree_s, dep.cadence_rpm)
+
+    def _clear_start_gate(self) -> None:
+        self._start_gate = self._start_mode = None
+        self.state.start_wait = None
+
+    def _cancel_start(self) -> None:
+        log.info("Départ annulé pendant l'attente (%s).", self._start_gate.phase if self._start_gate else "?")
+        self._clear_start_gate()
+
+    def _step_start_gate(self, dt: float, m: Any) -> None:
+        """Un pas de l'attente du départ : mesures affichées, rien ne compte ; ouvre la séance au bon moment."""
+        gate = self._start_gate
+        assert gate is not None
+        st = self.state
+        st.power, st.cadence, st.hr = m.power_w, m.cadence_rpm, m.hr_bpm
+        st.power_3s = round(m.power_w, 1)
+        # Run Cyber-Rogue : `route_id` nul, scène du mode sans tuiles à charger, rien à attendre du décor.
+        scene = self.server.engine_connected and (st.route_id is None or (
+            self._scene_route is not None and self._scene_route == str(st.route_id)))
+        was = gate.phase
+        opened = gate.update(dt, scene_ready=scene, trainer_connected=bool(m.connected),
+                             cadence_rpm=m.cadence_rpm, power_w=m.power_w)
+        if gate.phase != was:
+            log.info("Départ : étape %s -> %s%s (%.1f s)", was, gate.phase,
+                     " (décor non signalé par l'engine)" if gate.decor_timeout and was == "decor" else "",
+                     gate.waited_s)
+        if opened:
+            mode = self._start_mode
+            self._clear_start_gate()
+            self._begin_session(mode)
+        else:
+            st.start_wait = gate.to_dict()
+
+    def _begin_session(self, game_mode: str | None) -> None:
+        """Départ effectif : journal, ERG, mode WTF, segments et bots, puis RUNNING."""
+        self._open_journal()
+        if self._workout:
+            self.erg = ErgController(self._workout, self.cfg.rider.ftp_w)
+            log.info("Entraînement « %s » démarré : %d blocs, %.0f s.", self._workout.name,
+                     len(self._workout.blocks), self._workout.duration_s)
+            self._watch_ramp()
+            self._sync_erg_state()
+        if game_mode == "wtf":
+            self._start_wtf()
+        self._new_race(classic=self.wtf is None)
+        self._lane = self._rider_lane()   # réglage « Placement dans la roue » lu à chaque départ (lot AS2)
+        self._set_state("RUNNING")
+
+    def _on_command_more(self, name: str, args: dict, cmd_id: int, st: str) -> None:
+        """Suite de `_on_command` : séance en cours, réglages, listes et menus."""
+        if name == "resume" and st == "PAUSED":
             if self._rec and self._rec.failed and not self._rec.reopen():
                 self.server.send_error("recording_failed",
                                        "Journal toujours impossible à écrire : séance en pause.")
@@ -503,7 +590,7 @@ class CoreSession:
             self._on_plan_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name == "accept_ftp":
             self._accept_ftp(args if isinstance(args, dict) else {}, cmd_id)
-        elif name in ("list_imports", "create_workout", "import_workout"):
+        elif name in ("list_imports", "create_workout", "create_workout_qwk", "import_workout"):
             self._on_workout_menu_command(name, args, cmd_id)
         elif name in ("list_route_imports", "import_route"):
             self._on_route_import_command(name, args if isinstance(args, dict) else {}, cmd_id)
@@ -511,6 +598,8 @@ class CoreSession:
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in PROFILE_COMMANDS:
             self._on_profile_command(name, args if isinstance(args, dict) else {}, cmd_id)
+        elif name == "recover_session":
+            self._recover_session(args if isinstance(args, dict) else {}, cmd_id)
         elif name in CONTENT_COMMANDS:
             self._on_content_command(name, args if isinstance(args, dict) else {}, cmd_id)
 
@@ -597,7 +686,9 @@ class CoreSession:
         workouts = workout_duration_finder(self.workouts_dir)
         items = [profile_summary(c, workouts) for c in profiles.list_contexts(self.profiles_base)
                  if not c.is_trial or c.id == self.profile_ctx.id][:profiles.MAX_PROFILES]
-        return {"type": "profiles", "v": 1, "request_cmd_id": cmd_id, "active": self.profile_ctx.id, "items": items}
+        trash = profiles.trash_entries(self.profiles_base)[:profiles.TRASH_SHOWN]   # lot O33
+        return {"type": "profiles", "v": 1, "request_cmd_id": cmd_id, "active": self.profile_ctx.id, "items": items,
+                "trash": trash}
 
     def _send_profiles(self, cmd_id: int) -> None:
         try:
@@ -639,11 +730,18 @@ class CoreSession:
                     self.profile_ctx = ctx
                     self._publish_profile()
                 self._send_profiles(cmd_id)
-            else:
+            elif name == "delete_profile":
                 dest = profiles.delete(args.get("id"), self.profile_ctx.id, base)
                 log.info("Profil mis à la corbeille : %s.", dest)
                 self._publish_profile()
                 self._send_profiles(cmd_id)
+            elif name == "restore_profile":
+                ctx = profiles.restore(args.get("id"), base)
+                log.info("Profil restauré depuis la corbeille : %s (%s).", ctx.name, ctx.id)
+                self._publish_profile()
+                self._send_profiles(cmd_id)
+            else:
+                self._clear_trial(cmd_id)
         except profiles.ProfileNameError as exc:
             log.warning("Profil : %s refusé : %s", name, exc)
             self.server.send_error("name_invalid", str(exc))
@@ -651,27 +749,45 @@ class CoreSession:
             log.warning("Profil : %s refusé : %s", name, exc)
             self.server.send_error("profile_invalid", str(exc))
 
-    def _select_profile(self, ctx: profiles.ProfileContext, cmd_id: int) -> None:
+    def _clear_trial(self, cmd_id: int) -> None:
+        """`clear_trial_profile` (lot O33) : vide le profil d'essai comme `openride-core profil essai --vider` ;
+        en cours, il est rechargé (progression, records, plan à zéro) et un `hello_ack` complet suit."""
+        trial = profiles.ProfileContext.for_id(profiles.TRIAL_ID, self.profiles_base)
+        if trial.id == self.profile_ctx.id:
+            removed = profiles.clear(trial)   # verrou déjà tenu par cette séance
+            self._select_profile(trial, cmd_id, reload=True)
+        elif not trial.root.is_dir():
+            removed = []
+        else:
+            with profiles.ProfileLock(trial):   # pas pendant une séance d'essai d'un autre OpenRide
+                removed = profiles.clear(trial)
+        log.info("Profil d'essai vidé : %s.", ", ".join(removed) or "déjà vide")
+        self._send_profiles(cmd_id)
+
+    def _select_profile(self, ctx: profiles.ProfileContext, cmd_id: int, reload: bool = False) -> None:
         """Change de profil sans relancer : configuration effective, progression, records, plan et
         dossier des séances rechargés ; liaison du trainer et du Click gardée ; `hello_ack` complet,
         puis `settings` et `progression`. Lève `ProfileContextError` (rien n'a changé)."""
         from . import config as config_mod
 
         old_ctx, old_lock = self.profile_ctx, self.profile_lock
-        if ctx.id == old_ctx.id:
+        same = ctx.id == old_ctx.id
+        if same and not reload:
             self._send_profile_reload(cmd_id)
             return
-        lock = profiles.ProfileLock(ctx)
-        lock.acquire()   # profil déjà utilisé par une autre séance : ProfileContextError
+        lock = old_lock if same else profiles.ProfileLock(ctx)
+        if not same:
+            lock.acquire()   # profil déjà utilisé par une autre séance : ProfileContextError
         profiles.activate(ctx)
         try:
             profiles.ensure_description(ctx)
             cfg = config_mod.load(self.config_path)
         except (config_mod.ConfigError, OSError) as exc:
             profiles.activate(old_ctx)
-            lock.release()
+            if not same:
+                lock.release()
             raise profiles.ProfileContextError(f"profil « {ctx.label} » illisible : {exc}") from None
-        if old_lock is not None:
+        if old_lock is not None and not same:
             old_lock.release()
         self.profile_lock = lock
         self.profile_ctx = ctx
@@ -697,6 +813,7 @@ class CoreSession:
         self._note_profile()
         log.info("Profil de joueur : %s (%s)%s.", ctx.id, ctx.root, " — PROFIL D'ESSAI" if ctx.is_trial else "")
         self._send_profile_reload(cmd_id)
+        self._preselect_last_route()
         try:
             asyncio.get_running_loop()
             self._spawn(self._publish_w_prime_estimate())   # W' du nouveau profil, au hello_ack suivant
@@ -705,10 +822,82 @@ class CoreSession:
 
     def _send_profile_reload(self, cmd_id: int) -> None:
         self._publish_profile()
+        self._publish_interrupted()
+        self._publish_last_choices()
         self.server.send_hello_ack(self.server.hello_config)
         self._send_settings(cmd_id)
         if self.progress_svc.enabled and self.progress_svc.progression_dict() is not None:
             self.server.send_raw(self.progress_svc.progression_message(cmd_id))
+
+    # --- séance interrompue d'un lancement précédent (lot O34, contrat IPC révision 1.5) -------------
+
+    def _publish_interrupted(self) -> None:
+        """`hello_ack.config.interrupted` : séances interrompues du profil sans FIT (absent s'il n'y en a pas)."""
+        items = interrupted_sessions(self.journal_dir, skip=self._resumed_journal)
+        if items:
+            self.server.hello_config["interrupted"] = items
+        else:
+            self.server.hello_config.pop("interrupted", None)
+
+    def _recover_session(self, args: dict, cmd_id: int) -> None:
+        """`recover_session` : enregistre (FIT) ou non une séance interrompue, puis la retire de la liste ;
+        réponse `interrupted`. Hors séance seulement, comme les profils."""
+        if self.state.session_state not in ("IDLE", "READY", "FINISHED", "ERROR"):
+            self.server.send_error("busy", "Séance interrompue : à traiter hors séance.")
+            return
+        known = [it["id"] for it in self.server.hello_config.get("interrupted", [])]
+        sid, save = args.get("id"), args.get("save")
+        if sid not in known or not isinstance(save, bool):
+            self.server.send_error("bad_args", "recover_session : 'id' d'une séance proposée et 'save' booléen")
+            return
+        try:
+            fit = close_interrupted(self.journal_dir / sid, save)
+        except ResumeError as exc:
+            self.server.send_error("bad_args", str(exc))
+            return
+        except (OSError, ValueError) as exc:
+            log.error("Séance interrompue %s non enregistrée : %s", sid, exc)
+            self.server.send_error("recording_failed", f"Séance non enregistrée : {exc}")
+            return
+        log.info("Séance interrompue %s %s.", sid, f"enregistrée : {fit}" if fit else "terminée sans FIT")
+        self._publish_interrupted()
+        self.server.send_raw({"type": "interrupted", "v": 1, "request_cmd_id": cmd_id, "id": sid, "saved": fit is not None,
+                              "fit_path": str(fit) if fit else None,
+                              "items": self.server.hello_config.get("interrupted", [])})
+    # --- derniers choix du menu, par profil (lot O32) ---------------------------------------------
+
+    def _publish_last_choices(self) -> None:
+        """`hello_ack.config.last_choices` : choix gardés du profil en cours ; absent sans profil, comme `profile`."""
+        ctx = self.profile_ctx
+        if ctx.id is None:
+            self.server.hello_config.pop("last_choices", None)
+        else:
+            self.server.hello_config["last_choices"] = last_choices.load(last_choices.path_for(ctx.root))
+
+    def _remember(self, key: str, value: Any, cmd_id: int) -> None:
+        """Note un choix fait au menu (commande de l'engine) et accepté ; pas les commandes de la ligne de
+        commande (`cmd_id` 0) ; rien sans profil ni pour les essais simulés sans configuration, comme
+        `[profils] dernier`."""
+        if cmd_id <= 0 or self.profile_ctx.id is None or (self.sim is not None and self.config_path is None):
+            return
+        try:
+            choices = last_choices.remember(last_choices.path_for(self.profile_ctx.root), key, value)
+        except OSError as exc:
+            log.warning("Dernier choix non enregistré (%s) : %s", key, exc)
+            return
+        self.server.hello_config["last_choices"] = choices
+
+    def _preselect_last_route(self) -> None:
+        """Hors séance, recharge le dernier parcours du profil s'il existe encore ; sinon rien."""
+        route_id = self.server.hello_config.get("last_choices", {}).get("route_id")
+        st = self.state.session_state
+        if not route_id or st not in ("IDLE", "READY") or route_id == self.state.route_id:
+            return
+        if route_id != "demo" and not find_world(route_id, self.routes_root).is_dir():
+            log.info("Dernier parcours « %s » introuvable : aucun parcours choisi.", route_id)
+            return
+        log.info("Dernier parcours du profil : %s.", route_id)
+        self._select_route(route_id, previous=st)
 
     def _note_profile(self) -> None:
         """`.profil_actif` pour le lanceur ; `[profils] dernier` pour un profil de joueur seulement."""
@@ -903,6 +1092,7 @@ class CoreSession:
                 self._rec.game(line)
         cfg = self.cfg.rogue
         self._grade_sent, shifted = rg.target_grade(cfg.grade_rate_up_pct_per_s, cfg.grade_rate_down_pct_per_s, dt)
+        self._feed_road_mass()
         self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
         self._rogue_dist += self.physics.v * dt
         p3 = self._power_3s(m.power_w)
@@ -1050,13 +1240,15 @@ class CoreSession:
                 return
             if name == "create_workout":
                 res = await asyncio.to_thread(workout_menu.create_interval_workout, self.workouts_dir, args)
+            elif name == "create_workout_qwk":
+                res = await asyncio.to_thread(workout_menu.create_qwk_workout, self.workouts_dir, args)
             else:
                 path = args.get("path") if isinstance(args, dict) else None
                 if not isinstance(path, str) or path not in self._import_offer:
                     raise workout_menu.WorkoutMenuError(
                         "workout_invalid", "Fichier non proposé par list_imports : redemander la liste.")
                 res = await asyncio.to_thread(workout_menu.import_file, Path(path), self.workouts_dir)
-            log.info("Entraînement %s : %s (%s)", "créé" if name == "create_workout" else "importé",
+            log.info("Entraînement %s : %s (%s)", "importé" if name == "import_workout" else "créé",
                      res["workout_id"], "nouveau" if res["created"] else "déjà présent")
             self.server.send_raw({"type": "workout_saved", "v": 1, "request_cmd_id": cmd_id, **res})
         except workout_menu.WorkoutMenuError as exc:
@@ -1190,6 +1382,12 @@ class CoreSession:
 
         for m in chunk_list_message("settings", cmd_id, settings.current(self.cfg), False):   # en parties (lot O27)
             self.server.send_raw(m)
+
+    def _feed_road_mass(self) -> None:
+        """Résistance calculée (lots RC2-RC3) : le pilote calcule la force avec la masse du profil et de
+        l'équipement en cours (Cyber-Rogue, WTF et course compris)."""
+        if hasattr(self.driver, "road_mass_kg"):
+            self.driver.road_mass_kg = self.physics.p.mass_kg
 
     def _save_difficulty(self, pct: int) -> None:
         """Difficulté choisie à la pause gardée dans `config.toml` pour la séance suivante (tout réglage du menu persiste)."""
@@ -1395,7 +1593,7 @@ class CoreSession:
 
     # --- monde ouvert (lot W9, contrat IPC révision 1.5) ------------------------------------------
 
-    def _start_open_world(self, args: Any, st: str) -> None:
+    def _start_open_world(self, args: Any, st: str, cmd_id: int = 0) -> None:
         if st not in ("IDLE", "READY", "FINISHED", "ERROR"):
             self.server.send_error("busy", "Monde ouvert impossible pendant une séance.")
             return
@@ -1415,6 +1613,7 @@ class CoreSession:
             return
         self.openworld = ow
         log.info("Monde ouvert : préparation de %s.", ow.folder)
+        self._remember("open_world", args, cmd_id)
 
     def _close_open_world(self, wait: bool = False) -> None:
         """Fin du générateur ; en séance, dans un fil pour ne pas retenir la boucle à 50 Hz."""
@@ -1574,6 +1773,7 @@ class CoreSession:
         cur = self.erg
         ftp = self.cfg.rider.ftp_w
         self._ramp_watch = None   # rampe d'un test de FTP déjà terminé : plus rien à surveiller
+        self.state.workout_done = None   # mode choisi à la pause : le cycliste continue, plus d'invite
         if mode == "sim":
             self.erg = None
             self._grade_sent = 0.0   # la pente reprend depuis 0 % avec la limitation de variation
@@ -1604,16 +1804,24 @@ class CoreSession:
         self._sync_erg_state()
 
     def _sync_erg_state(self) -> None:
-        """Recalcule `mode` et l'objet `erg` ; termine l'entraînement après son dernier bloc."""
+        """Recalcule `mode` et l'objet `erg` ; termine l'entraînement après son dernier bloc.
+
+        La séance continue alors en parcours libre : `workout_done` (contrat IPC §3) demande à l'engine
+        d'afficher l'invite « Y puis A maintenu pour terminer et enregistrer » jusqu'à la fin de la
+        séance ou un changement de mode par la pause (`set_ride_mode`)."""
         erg = self.erg
         if erg and erg.finished:
             log.info("Entraînement « %s » terminé : retour au mode SIM, parcours libre.", erg.workout.name)
+            self.state.workout_done = {"workout_name": erg.workout.name}
             self.erg = erg = None
             self._grade_sent = 0.0   # la pente reprend depuis 0 % avec la limitation de variation
+        elif isinstance(erg, ErgController):
+            self.state.workout_done = None   # entraînement en cours (nouvelle séance, reprise)
         self.state.mode = "ROGUE" if self.rogue is not None else ("ERG" if erg else "SIM")
         self.state.erg = erg.to_dict() if erg else None
 
     def _on_engine_lost(self) -> None:
+        self._scene_route = None   # engine relancé : son décor est à recharger (départ au pédalage, lot O36)
         if self.state.session_state == "RUNNING":
             log.warning("Engine perdu : pause automatique.")
             self._set_state("PAUSED", "engine_lost")
@@ -2019,8 +2227,8 @@ class CoreSession:
     def _handle_input(self, ev: InputEvent) -> None:
         # Rôle des boutons : spécification générale §7.1. Y en séance : pause, sans relais ; ailleurs
         # (menus, écran de pause), l'engine en fait « écran précédent » ou « reprendre ».
-        if ev == InputEvent.Y_SHORT and self.state.session_state == "RUNNING":
-            self._on_command("pause", {}, 0)
+        if ev == InputEvent.Y_SHORT and (self.state.session_state == "RUNNING" or self._start_gate is not None):
+            self._on_command("pause", {}, 0)   # en attente du départ (lot O36) : annule le départ
             return
         # Relayé à l'engine : menus hors séance, retour sonore (bips) et explications pendant la séance.
         self.server.send_input_event(ev.value)
@@ -2121,6 +2329,9 @@ class CoreSession:
                     (reason == "engine_lost" and self.server.engine_connected) or \
                     (reason == "core_restarted" and m.connected and self.server.engine_connected):
                 self._on_command("resume", {}, 0)   # essais sans menu : reprise automatique
+        if self._start_gate is not None and self.state.session_state == "READY":
+            self._step_start_gate(dt, m)
+            return
         if self.state.session_state != "RUNNING":
             return
         if not m.connected:
@@ -2228,6 +2439,7 @@ class CoreSession:
                 self._grade_sent = target
             else:
                 self._grade_sent += min(max(target - self._grade_sent, -max_delta), max_delta)
+            self._feed_road_mass()
             self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
 
         power_used = race.power(m.power_w) if race else m.power_w
@@ -2495,6 +2707,8 @@ class CoreSession:
         # W' estimé (lot R16) : attendu au plus 3 s avant d'ouvrir les ports, pour être dans le premier hello_ack ;
         # au-delà, il arrive au hello_ack suivant (engine relancé ou reconnecté).
         await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
+        self._resumed_journal = resume
+        self._publish_interrupted()   # lot O34 : dans le premier hello_ack
         self.server.start()
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
                  for p in self._services() if hasattr(p, "run")]  # trainer prioritaire
@@ -2521,6 +2735,8 @@ class CoreSession:
             if workout_id:
                 self._on_command("select_workout", {"workout_id": workout_id}, 0)
             self._on_command("start", {}, 0)
+        else:
+            self._preselect_last_route()   # lot O32 : le menu s'ouvre sur le dernier parcours du profil
         if self.first_run:
             self._on_command("install_content", {"id": "starter"}, 0)
         log.info("Core démarré (trainer=%s, entrées=%s).", self.cfg.drivers.trainer,

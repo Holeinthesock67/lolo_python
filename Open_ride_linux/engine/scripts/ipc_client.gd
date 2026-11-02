@@ -57,6 +57,8 @@ signal wtf_rules_received(msg: Dictionary)
 ## Profils de joueurs (lot MJ8, contrat 1.5) : réponse à list_profiles, create_profile, rename_profile,
 ## delete_profile (un seul datagramme).
 signal profiles_received(msg: Dictionary)
+## Séance interrompue d'un lancement précédent (lot O34, contrat 1.5) : réponse à recover_session.
+signal interrupted_received(msg: Dictionary)
 ## Contenus installables (lot O25, contrat 1.5) : réponse à list_contents et install_content (un seul datagramme).
 signal contents_received(msg: Dictionary)
 
@@ -319,6 +321,8 @@ func _poll_incoming() -> void:
 				progression_received.emit(json_obj)
 			"profiles":
 				profiles_received.emit(json_obj)
+			"interrupted":
+				interrupted_received.emit(json_obj)
 			"contents":
 				contents_received.emit(json_obj)
 			"xp_result":
@@ -548,6 +552,12 @@ func list_imports() -> int:
 ## Réponse : workout_saved, ou error (bad_args, busy, workout_write_failed).
 func create_workout(args: Dictionary) -> int:
 	return send_command("create_workout", args)
+
+
+## QWKcode saisi au clavier (lot O21), relu et écrit en `.qwk` par le core. Réponse : workout_saved, ou
+## error (bad_args, workout_invalid avec le numéro de ligne, busy, workout_write_failed).
+func create_workout_qwk(text: String) -> int:
+	return send_command("create_workout_qwk", {"text": text})
 
 
 ## Copie par le core d'un fichier de la dernière réponse `imports` (lot N16). Réponse : workout_saved,

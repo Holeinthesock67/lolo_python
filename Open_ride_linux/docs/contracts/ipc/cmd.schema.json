@@ -42,6 +42,7 @@
         "set_setting",
         "list_imports",
         "create_workout",
+        "create_workout_qwk",
         "import_workout",
         "list_route_imports",
         "import_route",
@@ -71,7 +72,11 @@
         "delete_profile",
         "list_contents",
         "install_content",
-        "create_plan"
+        "create_plan",
+        "clear_trial_profile",
+        "restore_profile",
+        "recover_session",
+        "scene_ready"
       ]
     },
     "args": {

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Thème 8 bits du boss : couche `chip` (onde carrée, triangle, bruit) jouée seule pendant le boss | GDScript | R18, X51 | Petite | Non : interne ; demande et écoute validée du 30 octobre, **version 2.0** |
+| Thème 8 bits du boss : couche `chip` (onde carrée, triangle, bruit) jouée seule pendant le boss | GDScript | R18, X51 | Petite | Livré le 30 octobre (PR #632), **version 2.0** |
 
 ## 1. Objectif
 
@@ -33,3 +33,7 @@ Demande du propriétaire du 30 octobre : une musique « genre 8 bits » pendant 
 ## 5. Fichiers
 
 Modifiés : `engine/scripts/rogue/rogue_sound_synth.gd`, `rogue_sound_model.gd`, `engine/tests/unit/test_rogue_sound_synth.gd`, `test_rogue_sound_model.gd`, `test_rogue_sound_levels.gd`, `engine/tests/rogue_sound_export.gd`, `rogue_ecoute.py`, `docs/lots/00_INDEX.md`, `docs/SUIVI_AVANCEMENT.md`.
+
+## Livraison
+
+PR #632, fusionnée le 30 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Non : interne ; demande et écoute validée du 30 octobre, **version 2.0** ».
