@@ -18,6 +18,10 @@ extends Node3D
 ## damier, arche de bonus violette et lumineuse. Toute arrivée (fin de sprint, sommet, arrivée, ligne
 ## d'une boucle) a une frise en damier sous le bandeau et une ligne en damier au sol ; tout départ, une
 ## ligne blanche. Panneaux à gauche de la route, face au cycliste qui arrive. Aucune ombre portée.
+## - `warm_up(camera)` après `set_route` (préchauffage, 02/11) : un exemplaire de chaque sorte de marque du
+##   parcours, minuscule et collé devant la caméra pendant WARM_FRAMES images, pour que le premier dessin
+##   (pipelines des matériaux, textures, glyphes des Label3D) se fasse au chargement et non en roulant
+##   (banc 7bx : à-coups de ~130 ms au premier portique et à la première arrivée, 400 m avant eux).
 
 const Model := preload("res://scripts/segment_markers_model.gd")
 
@@ -74,6 +78,12 @@ var _box: ArrayMesh = null
 var _tube: ArrayMesh = null
 var _tube_width_m := -1.0
 var _mats: Dictionary = {}
+var _warm: Node3D = null            # exemplaires du préchauffage, retirés après WARM_FRAMES appels à update
+var _warm_frames := 0
+
+const WARM_FRAMES := 3
+const WARM_SCALE := 0.0005          # un portique de 8 m tient dans 4 mm : rien de visible à l'écran
+const WARM_DIST_M := 2.0
 
 
 func _init() -> void:
@@ -204,12 +214,17 @@ func set_route(route, arch_every_m: float = Model.DEFAULT_ARCH_EVERY_M, p_road_w
 
 
 func clear() -> void:
+	_drop_warm()
 	for i in _nodes:
 		(_nodes[i] as Node3D).queue_free()
 	_nodes.clear()
 
 
 func update(cam_s: float, arches_on: bool) -> void:
+	if _warm != null:
+		_warm_frames -= 1
+		if _warm_frames <= 0:
+			_drop_warm()
 	if _route == null or marks.is_empty():
 		return
 	var want := {}
@@ -227,6 +242,41 @@ func update(cam_s: float, arches_on: bool) -> void:
 			_place(node, marks[i])
 			add_child(node)
 			_nodes[i] = node
+
+
+## Préchauffage : une marque de chaque sorte (panneau, ou portique d'un style donné) du parcours, construite
+## comme en séance, sous `camera` à WARM_DIST_M devant elle et réduite à WARM_SCALE. Sans caméra ou sans
+## marque : rien. Retourne le nombre d'exemplaires.
+func warm_up(camera: Node3D) -> int:
+	_drop_warm()
+	if camera == null or marks.is_empty():
+		return 0
+	var seen := {}
+	_warm = Node3D.new()
+	_warm.name = "SegmentMarkersWarm"
+	_warm.position = Vector3(0.0, 0.0, -WARM_DIST_M)
+	_warm.scale = Vector3.ONE * WARM_SCALE
+	for m in marks:
+		var key := "%s/%s" % [m["kind"], m.get("style", "")]
+		if seen.has(key):
+			continue
+		seen[key] = true
+		_warm.add_child(build_mark(m))
+	camera.add_child(_warm)
+	_warm_frames = WARM_FRAMES
+	return seen.size()
+
+
+## Exemplaires du préchauffage encore en scène (tests).
+func warm_count() -> int:
+	return 0 if _warm == null else _warm.get_child_count()
+
+
+func _drop_warm() -> void:
+	if _warm != null:
+		_warm.queue_free()
+	_warm = null
+	_warm_frames = 0
 
 
 ## Marques en scène (tests).

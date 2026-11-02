@@ -143,6 +143,16 @@ def test_endurance_checks_pass_and_fail():
     assert pp.endurance_checks([], real_window=True)[0][0] is False
 
 
+def test_short_run_stutters_counted_over_one_hour():
+    """7bx (02/11) : 2 à-coups en 15 min (un seul premier passage) ne sont pas 8 par heure."""
+    def saccades(rows):
+        return {label: (ok, m) for ok, label, m in pp.endurance_checks(rows, real_window=True)}["endurance : saccades"]
+    ok, measure = saccades(endurance_rows(15, stutters=2))
+    assert ok is True and "moins d'une heure" in measure, measure
+    assert saccades(endurance_rows(15, stutters=10))[0] is False      # plus que le seuil d'une heure entière
+    assert saccades(endurance_rows(120, stutters=10))[0] is True      # 5 par heure sur 2 h : sous le seuil
+
+
 def heat_rows(n: int, hot_after_s: float) -> list[dict]:
     """Une ligne par seconde : la carte passe de 1900 à 1700 MHz et le temps GPU monte d'autant."""
     rows = []
