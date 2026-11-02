@@ -5,7 +5,8 @@ extends Node3D
 ## tournent), habillé d'après le bot (bot_look.gd : maillot à la couleur du bot, maillot vert ou à pois de la
 ## séance, corps et équipement variés) ; le fantôme est le même cycliste translucide, sans ombre. Posé à `s`
 ## avec le cap et la pente de route_data.gd (relief exagéré comme la caméra), décalé de sa place en travers
-## `lateral` (bots_view_model.gd : à droite du cycliste vers le bord, côte à côte en peloton ; lot P32) ; nom
+## `lateral` (bots_view_model.gd : `lane_m` du core, lot AS2, sinon à droite du cycliste vers le bord, côte à côte
+## en peloton ; lots P32 et Z2) ; un bot de la grille de départ (s < 0) est posé derrière le départ ; nom
 ## au-dessus à moins de NAME_M.
 ##
 ## - Niveau de détail selon la distance à la caméra et le préréglage (quality_presets.gd bot_lod) : niveau 0
@@ -158,7 +159,11 @@ func update_view(view: Array, route) -> void:
 		var h := deg_to_rad(float(smp["heading_deg"]))
 		var right := Vector3(cos(h), 0.0, sin(h))
 		var pitch: float = route.display_pitch(s)
+		var before: float = route.wrap_s(s) - s   # grille de départ derrière le départ (lot AS2)
+		if before > 0.0:
+			pos -= Vector3(sin(h), 0.0, -cos(h)) * before
 		node.position = pos + right * float(b["lateral"])
+		node.set_meta("lateral", float(b["lateral"]))
 		node.rotation = Vector3(pitch, -h, 0.0)
 		var lod := QualityPresets.bot_lod(quality, _distance(b, node.position), int(node.get_meta("lod")))
 		node.set_meta("lod", lod)
@@ -212,20 +217,22 @@ func anchor_of(id: String) -> Variant:
 	return null
 
 
-## Pour les tests graphiques : silhouettes affichées, celles dans le champ de la caméra, et nombre par niveau
-## de détail affiché.
+## Pour les tests graphiques : silhouettes affichées, celles dans le champ de la caméra, nombre par niveau
+## de détail affiché et écart à l'axe de chacune (lot AS2).
 func test_info(camera: Camera3D) -> Dictionary:
 	var shown := 0
 	var in_view := 0
 	var lods := [0, 0, 0]
+	var lanes := {}
 	for key in _nodes:
 		var n: Node3D = _nodes[key]
 		if n.visible:
 			shown += 1
 			lods[int(n.get_meta("shown_lod"))] += 1
+			lanes[str(key).get_slice(":", 0)] = float(n.get_meta("lateral", 0.0))
 			if camera != null and _on_screen(camera, n.global_position + Vector3(0.0, 1.0, 0.0)):
 				in_view += 1
-	return {"shown": shown, "in_view": in_view, "lods": lods}
+	return {"shown": shown, "in_view": in_view, "lods": lods, "lanes": lanes}
 
 
 ## Devant la caméra et dans l'image (comme les panneaux de col de living_decor.gd).

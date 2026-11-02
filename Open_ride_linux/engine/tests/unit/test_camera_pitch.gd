@@ -99,3 +99,19 @@ func _run() -> void:
 	# 4. Route nulle gérée sans crash
 	follow.reset()
 	_check(follow.pitch_deg(null, 0.0, 0.0) == 0.0, "route nulle gérée sans crash")
+
+	# 5. Lot AS2 : l'avatar suit `lane_m` sans marche, la caméra le suit avec 0,5 s de lissage
+	follow.reset()
+	_check(follow.lane_m == follow.DEFAULT_LANE_M and follow.camera_lane_m == follow.DEFAULT_LANE_M,
+		"écart à l'axe par défaut : %.1f m" % follow.DEFAULT_LANE_M)
+	var max_step := 0.0
+	for _i in range(60):   # 1 s à 60 images/s vers 2,1 m
+		var before: float = follow.lane_m
+		follow.update_lane(2.1, 1.0 / 60.0)
+		max_step = maxf(max_step, absf(follow.lane_m - before))
+	_check(max_step <= follow.LANE_FOLLOW_MPS / 60.0 + 1e-6, "avatar : au plus %.1f m/s (pas de %.3f m)" % [follow.LANE_FOLLOW_MPS, max_step])
+	_check(absf(follow.lane_m - 2.1) < 0.01, "avatar sur la ligne visée en 1 s : %.2f m" % follow.lane_m)
+	_check(follow.camera_lane_m < follow.lane_m - 0.1, "caméra en retard sur l'avatar : %.2f m" % follow.camera_lane_m)
+	for _i in range(120):
+		follow.update_lane(2.1, 1.0 / 60.0)
+	_check(absf(follow.camera_lane_m - 2.1) < 0.05, "caméra rejoint l'avatar : %.2f m" % follow.camera_lane_m)

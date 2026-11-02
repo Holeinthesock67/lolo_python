@@ -1,8 +1,10 @@
 shader_type spatial;
 // Jauge d'abri au-dessus d'un bot (draft_gauge.gd) : arc de 140° tourné vers le haut, fond sombre et partie
 // remplie de gauche à droite selon `fill` ; `glow` ajoute un halo doux autour de la partie remplie (high).
-// Un seul quad toujours face à la caméra, sans lumière ni ombre ni brouillard.
-render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, shadows_disabled, fog_disabled;
+// Un seul quad toujours face à la caméra, sans lumière ni ombre ni brouillard, dessiné par-dessus la scène
+// (depth_test_disabled) : ni la tête du cycliste vue de la caméra de suivi, ni la caisse d'un véhicule (lot AS6)
+// ne le cachent, comme un repère du HUD.
+render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, depth_test_disabled, shadows_disabled, fog_disabled;
 
 uniform float fill : hint_range(0.0, 1.0) = 0.0;
 uniform float glow : hint_range(0.0, 1.0) = 0.0;

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série AS : ressentir l'abri (souffle plus faible, watts économisés au HUD, temps et énergie au bilan) | Python + GDScript | P3, P10, P17 | Moyenne | Prêt (version 2.0) |
+| Série AS : ressentir l'abri (souffle plus faible, watts économisés au HUD, temps et énergie au bilan) | Python + GDScript | P3, P10, P17 | Moyenne | En PR le 31 octobre (#640, version 2.0) : captures à valider, essai sur le vélo |
 
 Série AS, version 2.0 (décision du propriétaire du 29 octobre 2026).
 

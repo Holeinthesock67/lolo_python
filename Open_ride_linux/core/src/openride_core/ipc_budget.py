@@ -91,6 +91,7 @@ STATE_DEGRADATION: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("devices", _drop("devices")),
     ("summary", _drop("summary")),
     ("bots", _drop("bots")),
+    ("vehicles", _drop("vehicles")),      # lot AS6 : extrapolés par l'engine, ils reviennent 100 ms plus tard
     ("open_world", _drop("open_world")),
     ("erg", _drop("erg")),
 ]
@@ -183,6 +184,9 @@ def _extras_1_5(d: dict[str, Any]) -> None:
                        "next": {"id": "j" + "9" * 23, "d_m": 2999.9, "default": 3, "chosen": 3, "locked": True,
                                 "b": [[-179, "p", -99.9], [-90, "s", 99.9], [90, "m", -12.3], [179, "k", 12.3]]},
                        "data": "downloading"}
+    # Lot AS6 : au plus 4 véhicules proches, chacun au plus long (identifiant de case, sorte la plus longue)
+    d["vehicles"] = [{"id": "v1000099", "kind": "tractor", "color": 7, "s": 123_456.79 + i, "dir": -1,
+                      "v": 22.22, "lane_m": -2.33} for i in range(4)]
 
 
 # Une entrée par révision : chaque révision hérite des ajouts des précédentes.

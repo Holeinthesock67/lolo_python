@@ -197,6 +197,13 @@ class BotsConfig:
 
 
 @dataclass
+class RideConfig:
+    """Séance : placement avec les bots (série AS, lot AS2), abri derrière les véhicules (lot AS6)."""
+    auto_draft: str = "on"         # placement dans la roue : on (rangé derrière le coureur devant, sorti pour doubler) ou off (1,2 m de l'axe)
+    vehicle_draft: str = "on"      # abri derrière un véhicule lent (lot AS6) : on ou off ; l'aspiration d'un véhicule qui double reste
+
+
+@dataclass
 class AudioConfig:
     """Volumes du menu Réglages, en % (0 : coupé), un par catégorie de docs/AUDIO.md ; appliqués tout de
     suite par l'engine sur ses bus audio (audio_mix.gd)."""
@@ -254,6 +261,7 @@ class Config:
     rogue: RogueConfig = field(default_factory=RogueConfig)
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
     bots: BotsConfig = field(default_factory=BotsConfig)
+    ride: RideConfig = field(default_factory=RideConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     depart: DepartConfig = field(default_factory=DepartConfig)
     log: LogConfig = field(default_factory=LogConfig)
@@ -364,7 +372,9 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("trainer", "control"): ("sim", "resistance"),
     ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),
     ("powerups", "mode"): ("on", "off"),
+    ("ride", "auto_draft"): ("on", "off"),
     ("depart", "mode"): ("pedalage", "immediat"),
+    ("ride", "vehicle_draft"): ("on", "off"),
 }
 
 
@@ -377,6 +387,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("gearing", "start_gear"),
     ("powerups", "mode"),
     ("bots", "level_pct"),
+    ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
     ("wind", "max_grade_offset_pct"),

@@ -1,10 +1,11 @@
-"""Banc de l'abri derrière les bots (lot X50) : gain par position et abri dans un groupe libre, sans vélo.
+"""Banc de l'abri derrière les bots (lots X50, AS2, AS3 et AS4) : gain par position, abri dans un groupe libre,
+placement dans la roue et dépassement, vent de travers et bordure, cœur d'un groupe, sans vélo.
 
     python -m openride_core.tools.draft_bench [--puissance 250] [--groupe 230,240,250] \\
-        [--cycliste 240] [--duree 600] [--json]
+        [--cycliste 240] [--duree 600] [--vent 36] [--json]
 
-La vraie séance (`CoreSession`, abri P3 et AS1, lissage de 1 s) tourne au pas fixe de 20 ms sur un plat de
-20 km, sans trainer ni engine, en deux parties :
+La vraie séance (`CoreSession`, abri P3, AS1, AS2 et AS4, lissage de 1 s) tourne au pas fixe de 20 ms sur un plat de
+20 km, sans trainer ni engine, en quatre parties :
 
 1. **Gain par position.** Une file de 1, 2 ou 3 bots roule à vitesse imposée, celle d'un cycliste seul à
    `--puissance` W, roue dans la roue (0,5 m entre les bots). Le cycliste garde un écart fixe derrière le
@@ -12,19 +13,43 @@ La vraie séance (`CoreSession`, abri P3 et AS1, lissage de 1 s) tourne au pas f
    puissance moyenne des 60 dernières secondes (sur 120 s), comparée à celle de l'air libre, donne le gain en W et en %
    pour chaque écart (0,5 à 15 m).
 2. **Groupe libre.** Des bots à puissance constante (`--groupe`) et le cycliste (`--cycliste` W), départ
-   groupé, `--duree` s : part du temps passé à l'abri (> 0,01) pour chacun, abri moyen et maximal, distance
+   groupé, `--duree` s, moyenne de trois départs (1,5, 2,5 et 3,5 m entre les roues) : part du temps passé à l'abri (> 0,01) pour chacun, abri moyen et maximal, distance
    gagnée sur le même coureur seul et watts gagnés (puissance qu'il faudrait seul pour la vitesse moyenne
-   du groupe, moins la sienne). Les bots s'abritent entre eux et derrière le cycliste (lot AS1).
+   du groupe, moins la sienne). Les bots s'abritent entre eux et derrière le cycliste (lot AS1). Deux
+   passages : placement dans la roue du cycliste activé (`ride.auto_draft = on`, défaut) puis coupé ; nombre
+   de dépassements de chacun et contacts (deux coureurs qui se chevauchent à moins d'une largeur de coureur,
+   0,6 m, sur le côté ; au plus 1 % du temps : les bots à puissance constante ne freinent pas).
+3. **Placement et dépassement (lot AS2).** Mise en roue : un bot à vitesse imposée 2 m devant, 0,9 m à
+   droite ; temps pour que le cycliste soit à 0,1 m de sa ligne et abri obtenu, comparés à l'abri dans la
+   roue et à l'abri placement coupé. Dépassement : le cycliste roule 1 m/s plus vite que le bot ; écart
+   latéral minimal pendant le chevauchement, écart à l'axe le plus à gauche, retour à 1,2 m.
+4. **Vent de travers et bordure (lot AS3).** Vent fixe de `--vent` km/h venant de gauche, perpendiculaire
+   au parcours. Diagonale : bot à vitesse imposée 2 m devant, à 1,0 m de l'axe ; le cycliste (placement
+   activé) garde l'écart au régulateur ; écart latéral pris sous le vent et abri, comparés à l'abri sans vent.
+   Dans la roue : placement coupé, bot sur la ligne du cycliste. Éventail : 5 bots à vitesse imposée qui se
+   placent (1 m entre les roues), le cycliste 1 m derrière le dernier ; écart à l'axe et abri de chacun, vent
+   de gauche puis de droite.
+5. **Cœur d'un groupe (lot AS4).** Cinq bots à vitesse imposée autour du cycliste (placement coupé, 1,2 m) :
+   deux devant dans sa roue (0,5 m), deux en diagonale (0,6 m de chaque côté, même écart), un à côté
+   (0,9 m, roues qui se chevauchent). Le cycliste garde 0,5 m derrière le premier au régulateur : abri et
+   gain en W, comparés à la roue d'un seul bot.
 
 Échec (code 1) si : l'abri ou le gain n'est pas décroissant avec l'écart, s'il ne croît pas avec le nombre de
-bots devant, s'il dépasse le plafond de la SRS (0,45), s'il reste au-delà de 15 m, ou si un coureur du groupe
-libre ne reçoit jamais d'abri ou ne va pas plus loin que seul.
+bots devant, s'il dépasse le plafond de la SRS (0,55 en groupe, lot AS4), s'il reste au-delà de 15 m, ou si un coureur du groupe
+libre ne reçoit jamais d'abri ou ne va pas plus loin que seul ; (AS2) si la mise en roue prend plus de 3 s ou
+ne donne pas l'abri plein, si l'abri placement coupé dépasse 15 % de l'abri dans la roue, si le dépassement
+laisse moins de 0,9 m sur le côté, passe à gauche de l'axe hors dépassement, sort de la route ou ne revient
+pas à 1,2 m, ou si le groupe libre a des contacts plus de 1 % du temps ; (AS3) si l'abri en diagonale est sous
+0,8 × l'abri sans vent, si l'abri resté dans la roue dépasse 0,4 × l'abri sans vent, si l'éventail compte moins de 2 ou plus de
+4 coureurs, si un coureur après l'éventail reçoit 0,15 ou plus, ou si un coureur sort de la voie de droite ; (AS4) si l'abri au cœur du groupe
+n'est pas entre 0,45 et 0,55 ou ne fait pas gagner plus que la roue d'un seul bot.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import tempfile
 import time
@@ -41,6 +66,7 @@ from ..input_providers import NullProvider
 from ..mock_driver import MockDriver
 from ..physics import PhysicsParams, resistive_force, steady_speed
 from ..session import CoreSession
+from ..wind import WindModel
 
 DT = 0.02
 ROUTE_M = 20000.0
@@ -52,6 +78,22 @@ KP_W_PER_M = 60.0              # régulateur de l'écart (W par m d'écart, W pa
 KD_W_PER_MPS = 1500.0
 KI_W_PER_MS = 15.0
 SHELTER_MIN = 0.01             # abri compté dans la part du temps à l'abri
+WHEEL_GAP_M = 2.0              # lot AS2 : mise en roue derrière un bot à 2 m...
+WHEEL_S = 10.0                 # ... pendant 10 s
+PASS_DV_MPS = 1.0              # dépassement : 1 m/s plus vite que le bot
+PASS_S = 60.0
+START_GAPS_M = (1.5, 2.5, 3.5)   # départs du groupe libre (m entre les roues), moyennés
+CORE_GAP_M = 0.5               # lot AS4 : cœur du groupe, 0,5 m derrière le premier bot
+CORE_DIAG_M = 0.6              # diagonales : 0,6 m de chaque côté
+CONTACT_MAX_SHARE = 0.01       # groupe libre : contacts passagers tolérés (bots à puissance constante, sans frein)
+CROSS_WIND_KMH = 36.0          # lot AS3 : vent de travers « fort » (25 à 40 km/h), lacet ~45° à 36 km/h
+CROSS_S = 20.0                 # durée d'une mesure de vent de travers
+CROSS_LEAD_LANE_M = 1.0        # bot de la diagonale : la diagonale (au plus 1,5 m) tient dans la voie
+ECHELON_BOTS = 5
+ECHELON_GAP_M = 1.0
+ECHELON_S = 40.0
+ECHELON_MIN = 0.15             # abri compté dans l'éventail
+ECHELON_MAX = 4                # meneur côté vent (31 octobre) : 2,3 m de voie utile, 1 m de décalage par coureur à 45°
 TOL = 1e-3
 
 
@@ -60,10 +102,12 @@ class PacedBot:
 
     kind = "constant"
 
-    def __init__(self, bot_id: str, s: float, v: float) -> None:
+    def __init__(self, bot_id: str, s: float, v: float, lane_m: float = draft_mod.RIDER_LANE_M,
+                 auto: bool = False, rank: int = 0) -> None:
         self.id, self.name = bot_id, f"File {bot_id}"
         self._s, self._v = s, v
         self.draft, self.wheel, self.push = 0.0, None, 0.0
+        self.lane = draft_mod.Lane(lane_m, lane_m, auto=auto, rank=rank)   # ligne figée (lot AS2) sauf `auto`
 
     @property
     def s(self) -> float:
@@ -77,7 +121,8 @@ class PacedBot:
         self._s += self._v * dt
 
     def to_dict(self) -> dict[str, Any]:
-        return {"id": self.id, "name": self.name, "s": round(self._s, 2), "v": round(self._v, 3), "kind": self.kind}
+        return {"id": self.id, "name": self.name, "s": round(self._s, 2), "v": round(self._v, 3), "kind": self.kind,
+                "lane_m": round(self.lane.m, 2)}
 
 
 def free_power(v: float, p: PhysicsParams, alt_m: float) -> float:
@@ -95,12 +140,13 @@ class Bench:
         write_world(self.routes, "plat", ROUTE_M, created="2026-10-30T00:00:00+01:00", grade=lambda s: 0.0)
         self.n = 0
 
-    def session(self, power_w: float, bots: list[Any]) -> CoreSession:
+    def session(self, power_w: float, bots: list[Any], auto_draft: str = "on") -> CoreSession:
         self.n += 1
         run = self.tmp / f"run{self.n}"
         cfg = Config()
         cfg.depart.mode = "immediat"   # banc sans engine ni cycliste : départ à la commande start (lot O36)
         cfg.powerups.mode = "off"
+        cfg.ride.auto_draft = auto_draft
         s = CoreSession(cfg, driver=MockDriver(base_power_w=power_w, ramp_amplitude_w=0.0),
                         inputs=[NullProvider()], journal_dir=run / "journal", routes_root=self.routes,
                         workouts_dir=run / "workouts", bots=bots, records_path=run / "records.json",
@@ -145,27 +191,51 @@ class Bench:
                 "gain_pct": round((p_free - mean_p) / p_free * 100.0, 1) + 0.0,
                 "draft": round(sum(drafts) / len(drafts), 3), "gap_mean_m": round(sum(gaps) / len(gaps), 2)}
 
-    def group(self, powers: list[float], rider_w: float, seconds: float) -> dict[str, Any]:
-        """Départ groupé (1,5 m entre les roues), le cycliste derrière le dernier bot."""
-        pitch = draft_mod.BIKE_LENGTH_M + 1.5
+    def groups(self, powers: list[float], rider_w: float, seconds: float, auto_draft: str = "on") -> dict[str, Any]:
+        """Groupe libre moyenné sur les départs de `START_GAPS_M` : la course d'un groupe est chaotique, un
+        seul départ ne dit pas grand-chose de la part du temps à l'abri (lot AS2)."""
+        runs = [self.group(powers, rider_w, seconds, auto_draft, g) for g in START_GAPS_M]
+        rows = []
+        for i, r0 in enumerate(runs[0]["rows"]):
+            each = [run["rows"][i] for run in runs]
+            row = {k: round(sum(r[k] for r in each) / len(each), 3 if k.startswith("draft") else 1)
+                   for k in r0 if isinstance(r0[k], float)}
+            row.update(name=r0["name"], power_w=r0["power_w"], passes=sum(r["passes"] for r in each),
+                       shelter_each=[r["shelter_pct"] for r in each])
+            rows.append(row)
+        return {"seconds": seconds, "auto_draft": auto_draft, "starts_m": list(START_GAPS_M), "rows": rows,
+                "contacts_s": round(sum(run["contacts_s"] for run in runs), 2)}
+
+    def group(self, powers: list[float], rider_w: float, seconds: float, auto_draft: str = "on",
+              start_gap_m: float = 1.5) -> dict[str, Any]:
+        """Départ groupé (`start_gap_m` entre les roues), le cycliste derrière le dernier bot."""
+        pitch = draft_mod.BIKE_LENGTH_M + start_gap_m
         bots = [ConstantPowerBot(w, bot_id=f"b{i + 1}", s=100.0 + pitch * (len(powers) - i), v=9.0)
                 for i, w in enumerate(powers)]
-        s = self.session(rider_w, bots)
+        s = self.session(rider_w, bots, auto_draft)
         s.physics.s, s.physics.v = 100.0, 9.0
         racers: list[tuple[str, float, Any]] = [(f"bot {w:g} W", w, b) for w, b in zip(powers, bots)]
-        stats = {name: {"on": 0, "sum": 0.0, "max": 0.0, "start": 0.0} for name, _, _ in racers + [("cycliste", 0, None)]}
+        stats = {name: {"on": 0, "sum": 0.0, "max": 0.0, "start": 0.0, "passes": 0}
+                 for name, _, _ in racers + [("cycliste", 0, None)]}
         for name, _, b in racers:
             stats[name]["start"] = b.s
         stats["cycliste"]["start"] = s.physics.s
         steps = int(round(seconds / DT))
+        contacts = 0
         for _ in range(steps):
+            was = {name: (s._lane if b is None else b.lane).passing for name, _, b in racers + [("cycliste", 0, None)]}
             s._step(DT, time.monotonic())
+            lanes = [(s.physics.s, s._lane.m)] + [(b.s, b.lane.m) for b in bots]
+            contacts += any(abs(a[0] - b[0]) < draft_mod.BIKE_LENGTH_M and abs(a[1] - b[1]) < draft_mod.RIDER_WIDTH_M
+                            for i, a in enumerate(lanes) for b in lanes[i + 1:])
             for name, _, b in racers + [("cycliste", rider_w, None)]:
                 a = s._draft if b is None else b.draft
                 st = stats[name]
                 st["on"] += a > SHELTER_MIN
                 st["sum"] += a
                 st["max"] = max(st["max"], a)
+                lane = s._lane if b is None else b.lane
+                st["passes"] += lane.passing and not was[name]
         p_rider, route = s.physics.p, s.route
         ends = {name: b.s for name, _, b in racers}
         ends["cycliste"] = s.physics.s
@@ -180,9 +250,158 @@ class Bench:
             rows.append({"name": name, "power_w": w, "shelter_pct": round(st["on"] / steps * 100.0, 1),
                          "draft_mean": round(st["sum"] / steps, 3), "draft_max": round(st["max"], 3),
                          "dist_m": round(dist, 1), "solo_m": round(solo, 1), "ahead_m": round(dist - solo, 1),
-                         "speed_kmh": round(v_mean * 3.6, 2),
+                         "speed_kmh": round(v_mean * 3.6, 2), "passes": st["passes"],
                          "gain_w": round(free_power(v_mean, params, route.sample(ends[name]).alt_m) - w, 1)})
-        return {"seconds": seconds, "rows": rows}
+        return {"seconds": seconds, "auto_draft": auto_draft, "rows": rows, "contacts_s": round(contacts * DT, 2)}
+
+    def wheel(self, power_w: float) -> dict[str, Any]:
+        """Mise en roue (lot AS2) : bot à vitesse imposée 2 m devant et 0,9 m à droite du cycliste, qui garde
+        l'écart au régulateur ; placement activé puis coupé."""
+        probe = self.session(power_w, [])
+        p, route = probe.physics.p, probe.route
+        probe._finish(save=False)
+        alt = route.sample(0.0).alt_m
+        v0 = steady_speed(power_w, 0.0, p, alt)
+        out: dict[str, Any] = {"speed_kmh": round(v0 * 3.6, 2), "gap_m": WHEEL_GAP_M,
+                               "full": round(draft_mod.draft_coefficient(WHEEL_GAP_M), 3)}
+        for auto in ("on", "off"):
+            lead = PacedBot("w1", 50.0 + draft_mod.BIKE_LENGTH_M + WHEEL_GAP_M, v0, draft_mod.BOT_LANE_M)
+            s = self.session(free_power(v0, p, alt), [lead], auto)
+            s.physics.s, s.physics.v = 50.0, v0
+            settle, t, integral = None, 0.0, 0.0
+            while t < WHEEL_S - 1e-9:
+                err = (lead.s - draft_mod.BIKE_LENGTH_M - WHEEL_GAP_M) - s.physics.s
+                integral += err * DT
+                s.driver.base_power_w = max(0.0, free_power(v0, p, alt) + KP_W_PER_M * err
+                                            + KD_W_PER_MPS * (lead.v - s.physics.v) + KI_W_PER_MS * integral)
+                s._step(DT, time.monotonic())
+                t += DT
+                if settle is None and abs(s._lane.m - lead.lane.m) < 0.1:
+                    settle = t
+            out[auto] = {"settle_s": None if settle is None else round(settle, 2), "lane_m": round(s._lane.m, 2),
+                         "draft": round(s._draft, 3)}
+            s._finish(save=False)
+        return out
+
+    def overtake(self, power_w: float) -> dict[str, Any]:
+        """Dépassement (lot AS2) : le cycliste, 1 m/s plus vite, rattrape un bot à vitesse imposée sur sa ligne."""
+        probe = self.session(power_w, [])
+        p, route = probe.physics.p, probe.route
+        probe._finish(save=False)
+        alt = route.sample(0.0).alt_m
+        v0 = steady_speed(power_w, 0.0, p, alt)
+        lead = PacedBot("o1", 50.0 + draft_mod.BIKE_LENGTH_M + 8.0, v0, draft_mod.RIDER_LANE_M)
+        s = self.session(free_power(v0 + PASS_DV_MPS, p, alt), [lead])
+        s.physics.s, s.physics.v = 50.0, v0 + PASS_DV_MPS
+        side, leftmost, off_axis, passes, was = [], 9.0, 0.0, 0, False
+        for _ in range(int(round(PASS_S / DT))):
+            s.driver.base_power_w = free_power(v0 + PASS_DV_MPS, p, alt) + KD_W_PER_MPS * (v0 + PASS_DV_MPS - s.physics.v)
+            s._step(DT, time.monotonic())
+            lane = s._lane
+            if abs(lead.s - s.physics.s) < draft_mod.BIKE_LENGTH_M:
+                side.append(abs(lane.m - lead.lane.m))
+            leftmost = min(leftmost, lane.m)
+            if not lane.passing:
+                off_axis = min(off_axis, lane.m)
+            passes += lane.passing and not was
+            was = lane.passing
+        out = {"dv_mps": PASS_DV_MPS, "side_min_m": round(min(side), 2) if side else None,
+               "leftmost_m": round(leftmost, 2), "left_of_axis_m": round(off_axis, 2), "passes": passes,
+               "end_lane_m": round(s._lane.m, 2), "ahead_m": round(s.physics.s - lead.s, 1)}
+        s._finish(save=False)
+        return out
+
+    def held(self, s: CoreSession, lead: Any, gap_m: float, v0: float, p_free: float, seconds: float) -> None:
+        """Le cycliste garde `gap_m` (roue à roue) derrière `lead` au régulateur pendant `seconds`."""
+        integral, t = 0.0, 0.0
+        while t < seconds - 1e-9:
+            err = (lead.s - draft_mod.BIKE_LENGTH_M - gap_m) - s.physics.s
+            integral += err * DT
+            s.driver.base_power_w = max(0.0, p_free + KP_W_PER_M * err + KD_W_PER_MPS * (lead.v - s.physics.v)
+                                        + KI_W_PER_MS * integral)
+            s._step(DT, time.monotonic())
+            t += DT
+
+    def crosswind(self, power_w: float, wind_kmh: float) -> dict[str, Any]:
+        """Vent de travers et bordure (lot AS3) : diagonale, roue gardée placement coupé, éventail de 5 bots."""
+        probe = self.session(power_w, [])
+        p, route = probe.physics.p, probe.route
+        probe._finish(save=False)
+        alt, heading = route.sample(50.0).alt_m, route.sample(50.0).heading_deg
+        v0 = steady_speed(power_w, 0.0, p, alt)
+        p_free = free_power(v0, p, alt)
+        cross = -wind_kmh / 3.6                        # venant de gauche (wind.py : vitesse · sin(provenance − cap))
+        yaw = math.degrees(math.atan2(abs(cross), v0))
+        calm = draft_mod.draft_coefficient(WHEEL_GAP_M)
+        out: dict[str, Any] = {"wind_kmh": wind_kmh, "yaw_deg": round(yaw, 1), "speed_kmh": round(v0 * 3.6, 2),
+                               "gap_m": WHEEL_GAP_M, "calm": round(calm, 3),
+                               "shift_m": round(draft_mod.crosswind_shift_m(WHEEL_GAP_M, v0, 0.0, cross), 2)}
+
+        def windy(s: CoreSession, from_deg: float) -> CoreSession:
+            s.wind = WindModel("fixed", wind_kmh, from_deg % 360.0)
+            return s
+
+        for case, auto, lane in (("diagonal", "on", CROSS_LEAD_LANE_M), ("wheel", "off", draft_mod.RIDER_LANE_M)):
+            lead = PacedBot("x1", 50.0 + draft_mod.BIKE_LENGTH_M + WHEEL_GAP_M, v0, lane)
+            s = windy(self.session(p_free, [lead], auto), heading - 90.0)
+            s.physics.s, s.physics.v = 50.0, v0
+            self.held(s, lead, WHEEL_GAP_M, v0, p_free, CROSS_S)
+            out[case] = {"lead_lane_m": lane, "lane_m": round(s._lane.m, 2), "dx_m": round(s._lane.m - lane, 2),
+                         "draft": round(s._draft, 3), "ratio": round(s._draft / calm, 2)}
+            s._finish(save=False)
+        for side, from_deg in (("left", heading - 90.0), ("right", heading + 90.0)):
+            pitch = draft_mod.BIKE_LENGTH_M + ECHELON_GAP_M
+            head = 50.0 + (draft_mod.BIKE_LENGTH_M + ECHELON_GAP_M) * ECHELON_BOTS
+            bots = [PacedBot(f"e{i + 1}", head - pitch * i, v0, draft_mod.BOT_LANE_M, auto=True, rank=i)
+                    for i in range(ECHELON_BOTS)]
+            s = windy(self.session(p_free, bots), from_deg)
+            s.physics.s, s.physics.v = 50.0, v0
+            lanes_seen: list[float] = []
+            t = 0.0
+            while t < ECHELON_S - 1e-9:
+                self.held(s, bots[-1], ECHELON_GAP_M, v0, p_free, DT)
+                t += DT
+                lanes_seen += [s._lane.m] + [b.lane.m for b in bots]
+            riders = [(b.id, b.lane.m, b.draft) for b in bots] + [("cycliste", s._lane.m, s._draft)]
+            out[f"echelon_{side}"] = {
+                "riders": [{"id": i, "lane_m": round(m, 2), "draft": round(a, 3)} for i, m, a in riders],
+                "lane_min_m": round(min(lanes_seen), 2), "lane_max_m": round(max(lanes_seen), 2)}
+            s._finish(save=False)
+        return out
+
+    def core(self, power_w: float) -> dict[str, Any]:
+        """Cœur d'un groupe de cinq (lot AS4) : deux devant, deux en diagonale, un à côté ; placement coupé,
+        le cycliste garde `CORE_GAP_M` derrière le premier au régulateur."""
+        probe = self.session(power_w, [])
+        p, route = probe.physics.p, probe.route
+        probe._finish(save=False)
+        alt = route.sample(0.0).alt_m
+        v0 = steady_speed(power_w, 0.0, p, alt)
+        p_free = free_power(v0, p, alt)
+        me, bl = draft_mod.RIDER_LANE_M, draft_mod.BIKE_LENGTH_M
+        first = 50.0 + bl + CORE_GAP_M
+        bots = [PacedBot("a1", first, v0, me), PacedBot("a2", first + bl + CORE_GAP_M, v0, me),
+                PacedBot("g1", first, v0, me - CORE_DIAG_M), PacedBot("g2", first, v0, me + CORE_DIAG_M),
+                PacedBot("c1", 50.0 + CORE_GAP_M, v0, me + draft_mod.SIDE_CLEAR_M)]
+        s = self.session(p_free, bots, "off")
+        s.physics.s, s.physics.v = 50.0, v0
+        lead = bots[0]
+        integral, powers, drafts, t = 0.0, [], [], 0.0
+        while t < HOLD_S - 1e-9:
+            err = (lead.s - bl - CORE_GAP_M) - s.physics.s
+            integral += err * DT
+            s.driver.base_power_w = max(0.0, p_free + KP_W_PER_M * err + KD_W_PER_MPS * (lead.v - s.physics.v)
+                                        + KI_W_PER_MS * integral)
+            s._step(DT, time.monotonic())
+            t += DT
+            if t > HOLD_S - MEASURE_S:
+                powers.append(s.driver.base_power_w)
+                drafts.append(s._draft)
+        s._finish(save=False)
+        mean_p = sum(powers) / len(powers)
+        return {"speed_kmh": round(v0 * 3.6, 2), "free_w": round(p_free, 1), "power_w": round(mean_p, 1),
+                "gain_w": round(p_free - mean_p, 1) + 0.0, "gain_pct": round((p_free - mean_p) / p_free * 100.0, 1) + 0.0,
+                "draft": round(sum(drafts) / len(drafts), 3), "draft_max": round(max(drafts), 3)}
 
     def solo(self, power_w: float, params: PhysicsParams, seconds: float, route: Any) -> float:
         """Distance d'un bot seul à la même puissance, même départ à 9 m/s, même physique et même parcours."""
@@ -193,14 +412,19 @@ class Bench:
 
 
 def run(power_w: float = 250.0, group_w: list[float] | None = None, rider_w: float = 240.0,
-        seconds: float = 600.0, gaps: tuple[float, ...] = GAPS_M) -> dict[str, Any]:
+        seconds: float = 600.0, gaps: tuple[float, ...] = GAPS_M, wind_kmh: float = CROSS_WIND_KMH) -> dict[str, Any]:
     group_w = group_w or [230.0, 240.0, 250.0]
     t_wall = time.perf_counter()
     with tempfile.TemporaryDirectory(prefix="openride-draft-bench-") as tmp_s, \
             mock.patch.object(fit_export, "ACTIVITIES_DIR", Path(tmp_s) / "Activities"):
         bench = Bench(Path(tmp_s))
         positions = [bench.hold(n, g, power_w) for n in (1, 2, 3) for g in gaps]
-        group = bench.group(group_w, rider_w, seconds)
+        group = bench.groups(group_w, rider_w, seconds)
+        group_off = bench.groups(group_w, rider_w, seconds, "off")
+        wheel = bench.wheel(power_w)
+        passing = bench.overtake(power_w)
+        crosswind = bench.crosswind(power_w, wind_kmh)
+        core = bench.core(power_w)
     checks = []
     for n in (1, 2, 3):
         line = [r for r in positions if r["bots"] == n]
@@ -212,7 +436,7 @@ def run(power_w: float = 250.0, group_w: list[float] | None = None, rider_w: flo
             inc = all(b["draft"] >= a["draft"] - TOL for a, b in zip(col, col[1:]))
             checks.append((inc, f"à {g:g} m : abri qui croît avec le nombre de bots devant"))
     top = max(r["draft"] for r in positions)
-    checks.append((top <= draft_mod.ALPHA_CAP + TOL, f"abri le plus fort {top:.3f} (plafond {draft_mod.ALPHA_CAP})"))
+    checks.append((top <= draft_mod.ALPHA_GROUP_CAP + TOL, f"abri le plus fort {top:.3f} (plafond {draft_mod.ALPHA_GROUP_CAP})"))
     far = [r for r in positions if r["gap_m"] > draft_mod.GAP_CUTOFF_M]
     if far:
         checks.append((all(r["draft"] <= TOL for r in far), f"aucun abri au-delà de {draft_mod.GAP_CUTOFF_M:g} m"))
@@ -221,7 +445,52 @@ def run(power_w: float = 250.0, group_w: list[float] | None = None, rider_w: flo
     for r in group["rows"]:
         checks.append((r["draft_max"] > 0.05 and r["ahead_m"] > 0.0,
                        f"groupe libre, {r['name']} : à l'abri {r['shelter_pct']:g} % du temps, {r['ahead_m']:+.0f} m sur seul"))
-    return {"power_w": power_w, "positions": positions, "group": group,
+    for grp in (group, group_off):
+        checks.append((grp["contacts_s"] <= CONTACT_MAX_SHARE * grp["seconds"] * len(grp["starts_m"]),
+                       f"groupe libre, placement {grp['auto_draft']} : "
+                       f"{grp['contacts_s']:g} s de contact (chevauchement à moins de {draft_mod.RIDER_WIDTH_M:g} m sur le côté ; "
+                       f"au plus {CONTACT_MAX_SHARE:.0%} du temps)"))
+    on, off = wheel["on"], wheel["off"]
+    checks.append((on["settle_s"] is not None and on["settle_s"] < 3.0,
+                   f"mise en roue : à 0,1 m de la ligne du bot en {on['settle_s']} s (moins de 3 s)"))
+    checks.append((on["draft"] >= 0.95 * wheel["full"], f"mise en roue : abri {on['draft']:.3f} (dans la roue {wheel['full']:.3f})"))
+    checks.append((off["draft"] < 0.15 * wheel["full"],
+                   f"placement coupé, bot 0,9 m à droite : abri {off['draft']:.3f}, moins de 15 % de l'abri dans la roue"))
+    checks.append((passing["side_min_m"] is not None and passing["side_min_m"] >= draft_mod.SIDE_CLEAR_M - 0.01,
+                   f"dépassement : {passing['side_min_m']} m sur le côté au plus près (au moins {draft_mod.SIDE_CLEAR_M:g} m)"))
+    checks.append((passing["left_of_axis_m"] >= 0.0 and passing["leftmost_m"] > -3.0,
+                   f"dépassement : jamais à gauche de l'axe hors dépassement, au plus à {passing['leftmost_m']} m"))
+    checks.append((abs(passing["end_lane_m"] - draft_mod.RIDER_LANE_M) < 0.05 and passing["ahead_m"] > 0.0,
+                   f"dépassement : revenu à {passing['end_lane_m']} m de l'axe, {passing['ahead_m']:g} m devant le bot"))
+    cw = crosswind
+    diag, kept = cw["diagonal"], cw["wheel"]
+    checks.append((diag["ratio"] >= 0.8 - TOL and diag["dx_m"] * cw["shift_m"] > 0.0,
+                   f"vent de travers à {cw['yaw_deg']:g}° : diagonale à {diag['dx_m']:+.2f} m du bot, abri "
+                   f"{diag['draft']:.3f} = {diag['ratio']:.2f} × l'abri sans vent (au moins 0,8)"))
+    checks.append((kept["ratio"] <= 0.4 + TOL,
+                   f"vent de travers, resté dans la roue : abri {kept['draft']:.3f} = {kept['ratio']:.2f} × l'abri sans vent "
+                   f"(au plus 0,4)"))
+    for side in ("left", "right"):
+        ech = cw[f"echelon_{side}"]
+        drafts = [r["draft"] for r in ech["riders"][1:]]
+        n_in = 0
+        while n_in < len(drafts) and drafts[n_in] >= ECHELON_MIN:
+            n_in += 1
+        rest = drafts[n_in:]
+        checks.append((2 <= n_in + 1 <= ECHELON_MAX and all(a < ECHELON_MIN for a in rest),
+                       f"éventail, vent de {'gauche' if side == 'left' else 'droite'} : {n_in + 1} coureur(s) dans "
+                       f"l'éventail, meneur compris (2 à {ECHELON_MAX}), les {len(rest)} suivants à moins de {ECHELON_MIN:g}"))
+        checks.append((ech["lane_min_m"] >= draft_mod.LANE_MIN_M - 0.01 and ech["lane_max_m"] <= draft_mod.LANE_MAX_M + 0.01,
+                       f"éventail, vent de {'gauche' if side == 'left' else 'droite'} : de {ech['lane_min_m']} à "
+                       f"{ech['lane_max_m']} m de l'axe (voie de droite)"))
+    single = next((r for r in positions if r["bots"] == 1 and r["gap_m"] == CORE_GAP_M), None)
+    checks.append((0.45 - TOL <= core["draft"] and core["draft_max"] <= draft_mod.ALPHA_GROUP_CAP + TOL,
+                   f"cœur d'un groupe de cinq : abri {core['draft']:.3f} (entre 0,45 et {draft_mod.ALPHA_GROUP_CAP:g})"))
+    if single is not None:
+        checks.append((core["gain_w"] > single["gain_w"],
+                       f"cœur d'un groupe : {core['gain_w']:g} W gagnés, plus que dans la roue d'un bot ({single['gain_w']:g} W)"))
+    return {"power_w": power_w, "positions": positions, "group": group, "group_off": group_off,
+            "wheel": wheel, "overtake": passing, "crosswind": crosswind, "core": core,
             "checks": [{"ok": ok, "text": txt} for ok, txt in checks], "wall_s": round(time.perf_counter() - t_wall, 1)}
 
 
@@ -235,24 +504,50 @@ def format_text(out: dict[str, Any]) -> str:
             r = next(x for x in pos if x["bots"] == n and x["gap_m"] == g)
             cells.append(f"{r['draft']:.2f}  {r['gain_w']:5.1f} W {r['gain_pct']:4.1f} %")
         lines.append(f"  {g:5g} m  " + "  ".join(f"{c:>22}" for c in cells))
-    grp = out["group"]
-    lines += ["", f"2. Groupe libre, départ groupé, {grp['seconds']:g} s sur le plat", "",
-              f"  {'coureur':<12} {'à l’abri':>9} {'abri moy.':>9} {'max':>5} {'distance':>9} {'seul':>8} {'gagné':>7} {'vitesse':>10} {'gain':>7}"]
-    for r in grp["rows"]:
-        lines.append(f"  {r['name']:<12} {r['shelter_pct']:7.1f} % {r['draft_mean']:9.3f} {r['draft_max']:5.2f} "
-                     f"{r['dist_m']:7.0f} m {r['solo_m']:6.0f} m {r['ahead_m']:+5.0f} m {r['speed_kmh']:6.1f} km/h {r['gain_w']:5.1f} W")
-    lines.append("")
+    for grp in (out["group"], out["group_off"]):
+        starts = ", ".join(f"{g:g}" for g in grp["starts_m"])
+        lines += ["", f"2{'a' if grp['auto_draft'] == 'on' else 'b'}. Groupe libre, {grp['seconds']:g} s sur le plat, placement dans la roue {grp['auto_draft']} : "
+                  f"moyenne de {len(grp['starts_m'])} départs ({starts} m entre les roues)", "",
+                  f"  {'coureur':<12} {'à l’abri':>9} {'abri moy.':>9} {'max':>5} {'distance':>9} {'seul':>8} {'gagné':>7} "
+                  f"{'vitesse':>10} {'gain':>7} {'dépass.':>7}"]
+        for r in grp["rows"]:
+            lines.append(f"  {r['name']:<12} {r['shelter_pct']:7.1f} % {r['draft_mean']:9.3f} {r['draft_max']:5.2f} "
+                         f"{r['dist_m']:7.0f} m {r['solo_m']:6.0f} m {r['ahead_m']:+5.0f} m {r['speed_kmh']:6.1f} km/h "
+                         f"{r['gain_w']:5.1f} W {r['passes']:7d}")
+    w, o = out["wheel"], out["overtake"]
+    lines += ["", f"3. Placement (lot AS2) : bot à {w['gap_m']:g} m devant, 0,9 m à droite, {w['speed_kmh']:.1f} km/h",
+              f"  placement activé : ligne du bot en {w['on']['settle_s']} s, abri {w['on']['draft']:.3f} "
+              f"(dans la roue {w['full']:.3f})",
+              f"  placement coupé  : reste à {w['off']['lane_m']} m de l'axe, abri {w['off']['draft']:.3f}",
+              f"  dépassement à +{o['dv_mps']:g} m/s : {o['side_min_m']} m sur le côté au plus près, au plus à "
+              f"{o['leftmost_m']} m de l'axe, retour à {o['end_lane_m']} m"]
+    c = out["crosswind"]
+    lines += ["", f"4. Vent de travers (lot AS3) : {c['wind_kmh']:g} km/h venant de gauche, lacet {c['yaw_deg']:g}°, "
+              f"{c['speed_kmh']:.1f} km/h, bot à {c['gap_m']:g} m devant (abri sans vent {c['calm']:.3f}, zone décalée de "
+              f"{c['shift_m']:+.2f} m)",
+              f"  diagonale (placement activé) : {c['diagonal']['dx_m']:+.2f} m du bot, abri {c['diagonal']['draft']:.3f} "
+              f"({c['diagonal']['ratio']:.2f} ×)",
+              f"  dans la roue (placement coupé) : abri {c['wheel']['draft']:.3f} ({c['wheel']['ratio']:.2f} ×)"]
+    for side in ("left", "right"):
+        ech = c[f"echelon_{side}"]
+        cells = "  ".join(f"{r['id']} {r['lane_m']:.2f} m {r['draft']:.2f}" for r in ech["riders"])
+        lines.append(f"  éventail, vent de {'gauche' if side == 'left' else 'droite'} : {cells}")
+    c = out["core"]
+    lines += ["", f"5. Cœur d'un groupe de cinq (lot AS4) : deux devant, deux en diagonale, un à côté, {c['speed_kmh']:.1f} km/h",
+              f"  abri {c['draft']:.3f} (max {c['draft_max']:.3f}), {c['power_w']:.0f} W au lieu de {c['free_w']:.0f} W seul : "
+              f"{c['gain_w']:g} W gagnés ({c['gain_pct']:g} %)", ""]
     lines += [f"[{'OK' if c['ok'] else 'ÉCHEC'}] {c['text']}" for c in out["checks"]]
     lines.append(f"Calcul en {out['wall_s']:.1f} s")
     return "\n".join(lines) + "\n"
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="Banc de l'abri derrière les bots (lot X50).")
+    ap = argparse.ArgumentParser(description="Banc de l'abri derrière les bots (lots X50, AS2 et AS3).")
     ap.add_argument("--puissance", type=float, default=250.0, help="puissance de la file imposée (W)")
     ap.add_argument("--groupe", default="230,240,250", help="puissances des bots du groupe libre (W)")
     ap.add_argument("--cycliste", type=float, default=240.0, help="puissance du cycliste du groupe libre (W)")
     ap.add_argument("--duree", type=float, default=600.0, help="durée du groupe libre (s)")
+    ap.add_argument("--vent", type=float, default=CROSS_WIND_KMH, help="vent de travers de la partie 4 (km/h)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
     try:
@@ -260,10 +555,10 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError:
         print(f"puissances invalides : {args.groupe}", file=sys.stderr)
         return 2
-    if not group or min(group) <= 0 or args.puissance <= 0 or args.cycliste <= 0 or args.duree <= 0:
+    if not group or min(group) <= 0 or args.puissance <= 0 or args.cycliste <= 0 or args.duree <= 0 or args.vent <= 0:
         print("puissances et durée doivent être positives", file=sys.stderr)
         return 2
-    out = run(args.puissance, group, args.cycliste, args.duree)
+    out = run(args.puissance, group, args.cycliste, args.duree, wind_kmh=args.vent)
     print(json.dumps(out, ensure_ascii=False, indent=2) if args.json else format_text(out), end="" if not args.json else "\n")
     return 0 if all(c["ok"] for c in out["checks"]) else 1
 

@@ -7,6 +7,9 @@ extends RefCounted
 ##   de la nouvelle trame est rattrapé linéairement en 150 ms, sans saut.
 ## - Pendant RUNNING la position ne recule jamais ; hors RUNNING elle se cale sur s sans extrapolation.
 ## - Boucle : les s reçus sont « déroulés » (passage de la longueur à 0) ; l'appelant applique wrap_s.
+## - Écart à l'axe (lot AS2) : l'avatar suit `lane_m` du core (placement dans la roue, dépassements) sans
+##   marche d'escalier entre deux trames (au plus LANE_FOLLOW_MPS), la caméra suit l'avatar avec un lissage de
+##   LANE_SMOOTH_TAU_S ; sans `lane_m` (pas de bot), DEFAULT_LANE_M (RoadBuilder.RIDER_LATERAL_M, lot P32).
 ## Les temps sont en microsecondes de Time.get_ticks_usec(). Pas de class_name (charger par preload).
 
 const MAX_EXTRAPOLATION_S := 1.0
@@ -15,6 +18,9 @@ const PITCH_LOOKAHEAD_NOMINAL_M := 20.0
 const PITCH_LOOKAHEAD_MIN_M := 15.0
 const PITCH_LOOKAHEAD_MAX_M := 30.0
 const PITCH_SMOOTH_TAU_S := 0.5
+const DEFAULT_LANE_M := 1.2      # RoadBuilder.RIDER_LATERAL_M
+const LANE_FOLLOW_MPS := 1.0     # un peu plus que les 0,8 m/s du core : l'avatar ne prend pas de retard
+const LANE_SMOOTH_TAU_S := 0.5
 const PITCH_MAX_DEG := 18.0   # 12° jusqu'au lot Y15 : avec le relief ×2, une pente de 16 % réelle reste suivie
 
 ## Longueur de la boucle (0 si le parcours n'est pas une boucle) : sert à dérouler s.
@@ -32,6 +38,10 @@ var _has_frame := false
 var _current_pitch_deg := 0.0
 var _last_pitch_time_us := -1
 var _has_pitch := false
+## Écart à l'axe affiché de l'avatar et de la caméra (lot AS2).
+var lane_m := DEFAULT_LANE_M
+var camera_lane_m := DEFAULT_LANE_M
+var _last_lane_time_us := -1
 
 
 func reset() -> void:
@@ -44,6 +54,9 @@ func reset() -> void:
 	_last_pitch_time_us = -1
 	_has_pitch = false
 	_has_frame = false
+	lane_m = DEFAULT_LANE_M
+	camera_lane_m = DEFAULT_LANE_M
+	_last_lane_time_us = -1
 
 
 func has_frame() -> bool:
@@ -134,3 +147,16 @@ func pitch_deg(route, s: float, v: float, dt_s: float = -1.0) -> float:
 		_current_pitch_deg = lerpf(_current_pitch_deg, target_pitch_deg, alpha)
 
 	return clampf(_current_pitch_deg, -PITCH_MAX_DEG, PITCH_MAX_DEG)
+
+
+## Avance l'écart à l'axe affiché vers `target` (champ `lane_m` de la dernière trame, lot AS2) : avatar au plus
+## LANE_FOLLOW_MPS, caméra lissée sur LANE_SMOOTH_TAU_S derrière l'avatar. `dt_s` négatif : temps réel écoulé
+## depuis l'appel précédent (`now_us`, comme pitch_deg), pour suivre le core même quand le rendu rame.
+func update_lane(target: float, dt_s: float, now_us: int = -1) -> void:
+	if dt_s < 0.0:
+		dt_s = 0.0 if _last_lane_time_us < 0 else clampf((now_us - _last_lane_time_us) / 1e6, 0.0, 1.0)
+		_last_lane_time_us = now_us
+	if dt_s <= 0.0:
+		return
+	lane_m = move_toward(lane_m, target, LANE_FOLLOW_MPS * dt_s)
+	camera_lane_m = lerpf(camera_lane_m, lane_m, 1.0 - exp(-dt_s / LANE_SMOOTH_TAU_S))

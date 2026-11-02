@@ -203,7 +203,7 @@ def test_state_schema_with_and_without_bots(tmp_path: Path):
 
     # Vérification des champs requis dans chaque bot
     for b_dict in d_bots["bots"]:
-        assert set(b_dict.keys()) == {"id", "name", "s", "v", "kind"}
+        assert set(b_dict.keys()) == {"id", "name", "s", "v", "kind", "lane_m"}   # lane_m : lot AS2
         assert len(b_dict["id"]) <= 8
         assert len(b_dict["name"]) <= 16
         assert b_dict["kind"] == "constant"

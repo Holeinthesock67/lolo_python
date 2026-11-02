@@ -24,6 +24,13 @@ const COLUMNS := 2
 const COLUMN_GAP := 24
 ## Plus petite police des lignes du bilan quand `fit` le compacte (celle des autres lignes suit, 2 de moins).
 const MIN_FONT_SIZE := 16
+## Écarts entre les lignes (grilles du bilan et de la progression, blocs) ; `fit` passe aux écarts serrés quand
+## la plus petite police ne suffit pas (bilan détaillé avec abri, blocs ERG et progression en 720p, lot AS5).
+const ROW_SEP := 6
+const ROW_SEP_TIGHT := 1
+const BOX_SEP := 4
+const PROGRESS_SEP := 3
+const BOX_SEP_TIGHT := 1
 ## Bloc « Progression » (lot V9) : durée de l'animation de la barre d'expérience, hauteur de la barre.
 const BAR_ANIM_S := 1.2
 const BAR_H := 12
@@ -47,8 +54,8 @@ var _bar_key := ""
 
 
 func _init() -> void:
-	add_theme_constant_override("separation", 4)
-	lines_grid = _grid(6)
+	add_theme_constant_override("separation", BOX_SEP)
+	lines_grid = _grid(ROW_SEP)
 	add_child(lines_grid)
 	fit_label = UiTheme.label(BLOCK_FONT_SIZE, UiTheme.DIM)
 	fit_label.clip_text = true
@@ -56,11 +63,11 @@ func _init() -> void:
 	blocks_box = VBoxContainer.new()
 	add_child(blocks_box)
 	progress_box = VBoxContainer.new()
-	progress_box.add_theme_constant_override("separation", 3)
+	progress_box.add_theme_constant_override("separation", PROGRESS_SEP)
 	progress_box.visible = false
 	add_child(progress_box)
 	progress_box.add_child(UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM, "Progression"))
-	progress_grid = _grid(3)
+	progress_grid = _grid(PROGRESS_SEP)
 	progress_box.add_child(progress_grid)
 	bar_label = UiTheme.label(BLOCK_FONT_SIZE, UiTheme.DIM)
 	bar_label.clip_text = true
@@ -77,14 +84,26 @@ func _init() -> void:
 
 
 ## Réduit les polices de 2 en 2, depuis FONT_SIZE, jusqu'à ce que chaque ligne tienne dans sa colonne
-## (width : largeur du bilan) et que `fits` (hauteur de la carte) réponde vrai, ou jusqu'à MIN_FONT_SIZE.
+## (width : largeur du bilan) et que `fits` (hauteur de la carte) réponde vrai, ou jusqu'à MIN_FONT_SIZE ;
+## à MIN_FONT_SIZE, resserre encore les écarts entre les lignes si la carte ne tient toujours pas.
 func fit(width: float, fits: Callable) -> void:
+	_set_separations(false)
 	var size := FONT_SIZE
 	while true:
 		_set_fonts(size)
-		if size <= MIN_FONT_SIZE or (_cells_fit(width) and fits.call()):
+		if _cells_fit(width) and fits.call():
+			return
+		if size <= MIN_FONT_SIZE:
+			_set_separations(true)
 			return
 		size -= 2
+
+
+func _set_separations(tight: bool) -> void:
+	add_theme_constant_override("separation", BOX_SEP_TIGHT if tight else BOX_SEP)
+	lines_grid.add_theme_constant_override("v_separation", ROW_SEP_TIGHT if tight else ROW_SEP)
+	progress_grid.add_theme_constant_override("v_separation", ROW_SEP_TIGHT if tight else PROGRESS_SEP)
+	progress_box.add_theme_constant_override("separation", ROW_SEP_TIGHT if tight else PROGRESS_SEP)
 
 
 func _set_fonts(size: int) -> void:

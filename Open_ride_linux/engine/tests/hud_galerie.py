@@ -36,7 +36,7 @@ THUMB_W = 640
 
 SIM = {"session_state": "RUNNING", "mode": "SIM", "erg": None, "power": 250.0, "power_3s": 248.0, "cadence": 90.0,
        "hr": 142, "grade": 4.5, "grade_sent": 4.5, "gear": 12, "gears_total": 24, "pause_reason": None,
-       "trainer_status": "CONNECTED", "input_status": "CONNECTED", "wind": None, "draft": 0.0, "bots": None,
+       "trainer_status": "CONNECTED", "input_status": "CONNECTED", "wind": None, "draft": 0.0, "draft_w": None, "bots": None,
        "bot_ahead": None, "bot_behind": None, "jerseys": None, "segment": None, "powerup": None}
 
 
@@ -76,8 +76,9 @@ CAS: list[dict[str, Any]] = [
     {"name": "zones_seuil_vo2", "state": {"power": 330.0, "power_3s": 330.0, "hr": 120},
      "zones": {"power": 6, "hr": 2}},
     {"name": "sim_vent_abri", "state": {"wind": {"speed_mps": 26.0 / 3.6, "from_deg": 100.0, "gust": 0.0,
-                                                 "head_mps": 26.0 / 3.6, "grade_pct": 1.2}, "draft": 0.135},
-     "shown": ["wind", "draft"]},
+                                                 "head_mps": 26.0 / 3.6, "grade_pct": 1.2}, "draft": 0.165,
+                                       "draft_w": 48},
+     "texts": {"draft": "Abri 30 %", "draft_w": "−48 W"}, "shown": ["wind", "draft", "draft_w"]},
     {"name": "sim_bots_segment_bonus", "bots": True,
      "state": {"bot_ahead": "b2", "bot_behind": "b3", "jerseys": {"sprint": "b3", "kom": "b1"},
                "segment": {"id": "climb1", "kind": "climb", "category": "4", "d_to_start_m": 0.0,

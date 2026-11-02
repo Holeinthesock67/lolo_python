@@ -261,6 +261,30 @@ func _test_laterals() -> void:
 	_check(m.view(0.0, 0.0, 14000000).is_empty() and m.places().is_empty(), "sans bot : aucune place")
 
 
+## Lot AS2 : écart à l'axe `lane_m` du core (dans la roue du cycliste, en dépassement à gauche de l'axe) : affiché
+## tel quel, sans place visée ni retrait ; un bot sans `lane_m` garde les places de Z2.
+func _test_core_lanes() -> void:
+	var m := BotsViewModel.new()
+	var bots := _bots()
+	bots[0]["lane_m"] = RoadBuilder.RIDER_LATERAL_M
+	bots[1]["lane_m"] = -0.4
+	m.push(bots, 0)
+	var lat := {}
+	for b in m.view(1000.0, 7.0, 0):
+		lat[b["id"]] = float(b["lateral"])
+	_check(is_equal_approx(lat["bot1"], RoadBuilder.RIDER_LATERAL_M) and is_equal_approx(lat["ghost"], -0.4),
+		"lane_m du core affiché tel quel (%s)" % str(lat))
+	_check(is_equal_approx(lat["bot2"], RoadBuilder.BOT_LATERAL_M), "sans lane_m : place de Z2 vers le bord")
+	_check(m.places().any(func(p): return is_equal_approx(float(p["lateral"]), -0.4)), "places() : celles du core pour le décor")
+	var route = ClimbTest.make_route(2000.0, func(_s): return 0.0)
+	var bv = BotsView.new()
+	bv.update_view(m.view(1000.0, 7.0, 0), route)
+	var lanes: Dictionary = bv.test_info(null)["lanes"]
+	_check(is_equal_approx(float(lanes.get("ghost", 0.0)), -0.4), "silhouette posée à son lane_m (%s)" % str(lanes))
+	bv.update_view([], route)
+	bv.free()
+
+
 func _init() -> void:
 	_test_gaps()
 	_test_view()
@@ -268,5 +292,6 @@ func _init() -> void:
 	_test_nodes()
 	_test_look()
 	_test_laterals()
+	_test_core_lanes()
 	print("test_bots_view_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

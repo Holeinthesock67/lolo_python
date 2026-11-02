@@ -34,6 +34,7 @@ const DraftGaugeModel := preload("res://scripts/draft_gauge_model.gd")
 const StartWaitModel := preload("res://scripts/start_wait_model.gd")
 const StartScreen := preload("res://scripts/start_screen.gd")
 const DraftGauge := preload("res://scripts/draft_gauge.gd")
+const VEHICLE_PREFIX := "veh:"   # `draft_bot` d'un véhicule de la route (lot AS6, traffic.py du core)
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
@@ -959,10 +960,14 @@ func _process(delta: float) -> void:
 		var s_route: float = route.wrap_s(s_disp)
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
-		var pos := _rider_point(s_route, heading)
+		# Écart à l'axe (lot AS2) : l'avatar suit `lane_m` du core, la caméra le suit avec 0,5 s de lissage.
+		var lane = _last_state.get("lane_m", null)
+		follow.update_lane(float(lane) if (lane is float or lane is int) else RoadBuilder.RIDER_LATERAL_M, -1.0, now)
+		var pos := _rider_point(s_route, heading, follow.lane_m)
 		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
-		camera.global_transform = camera_views.step(delta, camera_views.goal(pos, heading, pitch_deg))
+		camera.global_transform = camera_views.step(delta, camera_views.goal(_rider_point(s_route, heading, follow.camera_lane_m),
+			heading, pitch_deg))
 		camera.fov = CameraViews.fov_deg(_base_fov, pitch_deg)   # respire avec la pente (lot Y15)
 		avatar_view.set_visible_for_view(_avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
@@ -1316,6 +1321,8 @@ func _avatar_info() -> Dictionary:
 	var info: Dictionary = avatar_view.test_info()
 	info["standing"] = avatar_model.standing
 	info["crank"] = avatar_model.crank_angle
+	info["lane_m"] = follow.lane_m            # écart à l'axe affiché (lot AS2)
+	info["camera_lane_m"] = follow.camera_lane_m
 	info["on_screen"] = avatar_view.visible and not camera.is_position_behind(avatar_view.global_position + Vector3(0.0, 1.0, 0.0)) \
 		and get_viewport().get_visible_rect().has_point(camera.unproject_position(avatar_view.global_position + Vector3(0.0, 1.0, 0.0)))
 	return info
@@ -1345,7 +1352,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"grade_caption": hud.grade_val.get_meta("caption"),
 		"target_caption": hud.target_val.get_meta("caption"), "gear": hud.gear_val, "time": hud.time_val,
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
-		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
+		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label, "draft_w": hud.draft_w_label,
 	}
 	# Rectangles en pixels de l'image : la mise à l'échelle canvas_items (base 1280×720) est appliquée.
 	var to_pixels := get_viewport().get_final_transform()
@@ -1421,10 +1428,11 @@ func _configure_avatar() -> void:
 	avatar_view.set_visible_for_view(_avatar_view_name())
 
 
-## Place du cycliste à `s` : dans la voie de droite, à RoadBuilder.RIDER_LATERAL_M de l'axe (lot P32) ; `heading`
-## en radians. La caméra, l'avatar et la vue des menus en partent.
-func _rider_point(s: float, heading: float) -> Vector3:
-	return route.sample_point(s) + Vector3(cos(heading), 0.0, sin(heading)) * RoadBuilder.RIDER_LATERAL_M
+## Place du cycliste à `s` : dans la voie de droite, à `lateral` de l'axe (RoadBuilder.RIDER_LATERAL_M, lot P32 ;
+## en séance avec des bots, `lane_m` du core, lot AS2) ; `heading` en radians. La caméra, l'avatar et la vue des
+## menus en partent.
+func _rider_point(s: float, heading: float, lateral: float = RoadBuilder.RIDER_LATERAL_M) -> Vector3:
+	return route.sample_point(s) + Vector3(cos(heading), 0.0, sin(heading)) * lateral
 
 
 ## Vue de caméra courante (l'avatar est masqué en subjective) ; une caméra de contrôle de test prend le pas.
@@ -1666,7 +1674,7 @@ func _on_state_received(state: Dictionary) -> void:
 		living_world.on_state(state, wind_now_s)
 		var heading_deg: float = route.sample_heading_deg(route.wrap_s(float(state.get("s", 0.0)))) if route != null else 0.0
 		if hud != null and hud.has_method("update_wind"):
-			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s))
+			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s), _quality_name != "low")
 
 	rogue_host.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if rogue_host.update(state, self, [streamer, sun, living_decor, segment_markers], world_env, camera,
@@ -1736,10 +1744,18 @@ func _show_bots(rider_s: float, rider_v: float) -> void:
 		living_decor.bot_places = bots_model.places()
 
 
-## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste.
+## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste,
+## ou au-dessus du véhicule quand `draft_bot` vaut `veh:<id>` (lot AS6).
 func _show_draft_gauge() -> void:
 	var view := DraftGaugeModel.view(_draft_gauge_on, _draft["draft"], _draft["draft_bot"], _quality_name)
-	draft_gauge.update_view(view, bots_view.anchor_of(str(view["bot"])) if view["visible"] else null)
+	var anchor = null
+	if view["visible"]:
+		var who := str(view["bot"])
+		if who.begins_with(VEHICLE_PREFIX):
+			anchor = living_decor.vehicle_anchor(who.substr(VEHICLE_PREFIX.length())) if living_decor != null else null
+		else:
+			anchor = bots_view.anchor_of(who)
+	draft_gauge.update_view(view, anchor)
 
 
 ## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur, avec les

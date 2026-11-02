@@ -417,7 +417,9 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 ### Aspiration plus fine (série AS rédigée le 29 octobre)
 - [ ] Jauge d'abri au-dessus du bot qui abrite (réglage « Jauge d'abri des bots », coupée par défaut, maquette C validée le 29 octobre, PR #566) ; reste la mesure sur le PC en low, medium et high.
 - [x] AS1 (1.x) : les bots s'abritent entre eux et derrière le cycliste, un bot à profil garde la roue puis attaque en montée ou au sprint (`draft.update_bots`, 29 octobre) ; reste la séance de 10 min sur le vélo avec 3 bots à 230, 240 et 250 W.
-- [ ] AS2 à AS7 (2.0) : zone latérale et placement automatique, bordure, groupes (plafond 55 %), ressenti, abri derrière les véhicules (activé par défaut) et les cyclistes du décor (`docs/lots/00_INDEX.md`, série AS).
+- [ ] AS3 (2.0) vent de travers et bordure : livré en PR (31 octobre, empilée sur AS2), reste l'essai sur le vélo (vent « fort » derrière 3 bots).
+- [x] AS4 (2.0) : abri dans un groupe, sources devant, en diagonale et à côté combinées, gabarit de la source, plafond 0,55 (`draft._group_draft`, banc `draft_bench` partie 4, 31 octobre) ; l'effet de file de P3 disparaît au profit du calcul de groupe.
+- [ ] AS2, AS3, AS5 à AS7 (2.0) : zone latérale et placement automatique, bordure, groupes (plafond 55 %), ressenti, abri derrière les véhicules (activé par défaut) et les cyclistes du décor (`docs/lots/00_INDEX.md`, série AS).
 - [ ] CT0 à CT12 (5.0) : mode « Course tactique » (W′ et Burnout, catapulte, capacités payées par les relais, virages, circuits à variantes, effets cartoon ; `docs/5.0/PLAN_SERIE_CT.md`, série CT).
 
 ### Version 2.0 : profils de joueurs et profil d'essai (série MJ rédigée le 29 octobre)
