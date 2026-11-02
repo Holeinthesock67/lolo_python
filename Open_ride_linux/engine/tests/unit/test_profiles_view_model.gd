@@ -42,6 +42,12 @@ func _test_model() -> void:
 	_check(_ids(who) == ["p:cycliste-a", "p:cycliste-b", "new", "manage"], "profil en cours d'abord, puis création et gestion")
 	_check(str(who[0]["detail"]).contains("niveau 7") and str(who[0]["detail"]).contains("29/10"), "niveau et dernière séance")
 	_check(str(who[1]["detail"]).contains("aucune séance"), "profil sans séance")
+	# changement de profil : hello_ack arrive avant le message `profiles` ; « Qui roule ? » ouvert entre les deux
+	m.on_hello({"id": "cycliste-b", "name": "Cycliste B", "type": "joueur", "count": 2})
+	who = m.who_items()
+	_check(m.current_id() == "cycliste-b" and _ids(who)[0] == "p:cycliste-b" and str(who[0]["detail"]).contains("en cours"),
+			"nouveau profil en premier dès hello_ack, avant le message profiles (%s)" % str(_ids(who)))
+	m.on_hello(HELLO_A)
 	m.on_hello({"id": "_essai", "name": "Profil d'essai", "type": "essai", "count": 2})
 	_check(m.is_trial() and m.home_title() == "OpenRide — PROFIL D'ESSAI" and not m.should_ask(), "profil d'essai signalé, jamais proposé")
 	# huit profils joueur : plus de création
