@@ -180,6 +180,7 @@ var bots_view: Node3D
 ## Jauge d'abri au-dessus du bot qui abrite le cycliste (réglage `render.draft_gauge`, coupée par défaut).
 var draft_gauge: Node3D
 var _draft_gauge_on := false
+var _bots_frame := -10             # dernière image où _process a placé les bots (s lissé de la caméra)
 var _draft := {"draft": null, "draft_bot": null}   # champs `draft` et `draft_bot` de la dernière trame en séance
 ## Avatar du cycliste (lot V6) : modèle sans nœud (pédalier, danseuse) et vue ; caché en vue subjective, la
 ## seule caméra du jeu avant le lot V12. `_avatar_cam` : caméra de contrôle du banc visuel (« follow »,
@@ -1005,6 +1006,7 @@ func _process(delta: float) -> void:
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		if bots_model.count() > 0:
 			_show_bots(s_route, float(follow.last_frame["v"]))
+			_bots_frame = Engine.get_process_frames()
 		_show_draft_gauge()
 		# Arches de bonus seulement quand le core en donne (champ `powerup` : SIM, option « Bonus »).
 		segment_markers.update(s_route, _last_state.has("powerup"))
@@ -1706,7 +1708,11 @@ func _on_state_received(state: Dictionary) -> void:
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
 			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
-	_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)))
+	# Bots placés depuis la trame seulement quand l'image ne l'a pas fait (menu, pause, bots retirés) : en séance,
+	# _process les place avec le s lissé de la caméra. Deux placements par image, l'un avec le s brut, faisaient
+	# avancer les bots par à-coups (rejeu du 2 novembre, lot AS2).
+	if Engine.get_process_frames() - _bots_frame > 1 or bots_model.count() == 0:
+		_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)))
 	if living_decor != null:
 		living_decor.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if living_world != null:
