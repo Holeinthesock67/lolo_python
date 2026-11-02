@@ -142,7 +142,8 @@ def _catch_group(route: Route, case: str, rider_kmh: float, group_kmh: float, si
 
 def test_ahead_group_gives_draft_behind_its_last_rider(route: Route) -> None:
     """Critère 3 : groupe `ahead` de 3 cyclistes à 24 km/h rattrapé à 25 km/h : abri derrière le dernier
-    entre 0,30 et 0,45 (en une dimension avant AS2 : l'écart latéral est vérifié après AS2)."""
+    entre 0,30 et le plafond de groupe 0,55 (lot AS4) (en une dimension avant AS2 : l'écart latéral est vérifié
+    après AS2)."""
     m, s = _catch_group(route, "ahead", 25.0, 24.0, 3)
     v = 25.0 / 3.6
     dt = 1.0 / 15.0
@@ -157,7 +158,7 @@ def test_ahead_group_gives_draft_behind_its_last_rider(route: Route) -> None:
         if last - s <= draft.BIKE_LENGTH_M + 1.0:
             best, best_id = max(best, a), src
         s += v * dt
-    assert 0.30 <= best <= 0.45
+    assert 0.30 <= best <= draft.ALPHA_GROUP_CAP
     assert rc.is_source_id(best_id) and best_id.startswith("rider:c")
 
 
