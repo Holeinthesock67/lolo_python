@@ -203,4 +203,27 @@ func _render() -> void:
 	_check(_summary(view.shown()) == ["arch@5000"], "arche de bonus à 5 000 m")
 	var arch: Node3D = view.get_children().filter(func(n): return not n.is_queued_for_deletion())[0]
 	_check(absf(arch.global_position.x - float(long.sample(5000.0)["x"])) < 0.01, "arche posée sur la route")
+	# Préchauffage (02/11) : une marque de chaque sorte sous la caméra, retirée après WARM_FRAMES images.
+	var cam := Camera3D.new()
+	root.add_child(cam)
+	_check(view.warm_up(null) == 0 and view.warm_count() == 0, "préchauffage sans caméra : rien")
+	var kinds := {}
+	for m in view.marks:
+		kinds["%s/%s" % [m["kind"], m.get("style", "")]] = true
+	var n: int = view.warm_up(cam)
+	_check(n == kinds.size() and n > 0 and view.warm_count() == n,
+		"préchauffage : %d exemplaires, un par sorte de marque (%d)" % [n, kinds.size()])
+	var warm: Node3D = cam.get_child(0)
+	_check(warm.scale.x < 0.001 and warm.position.z < 0.0, "exemplaires minuscules, devant la caméra")
+	var before: int = view.active_node_count()
+	for i in SegmentMarkers.WARM_FRAMES - 1:
+		view.update(4800.0, true)
+	_check(view.warm_count() == n and view.active_node_count() == before,
+		"exemplaires gardés %d images, hors budget des marques" % SegmentMarkers.WARM_FRAMES)
+	view.update(4800.0, true)
+	_check(view.warm_count() == 0 and warm.is_queued_for_deletion(), "exemplaires retirés ensuite")
+	view.warm_up(cam)
+	view.set_route(long, 5000.0, 6.0)
+	_check(view.warm_count() == 0, "nouveau parcours : préchauffage précédent retiré")
+	cam.queue_free()
 	view.queue_free()

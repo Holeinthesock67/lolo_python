@@ -369,9 +369,13 @@ def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
         hours = max((max(ts) - warm) / 3600.0, 1e-6)
         rate = stutters / hours
         shots = sum(w > lim["stutter_ms"] for w in values(steady, "capture_max_ms"))
-        out.append((rate <= lim["max_stutters_per_h"] if real_window else None, "endurance : saccades",
+        # Essai de moins d'une heure : seuil compté sur une heure, pas extrapolé (7bx, 02/11 : 2 à-coups en
+        # 15 min ne font pas 8 par heure, ils viennent d'un seul premier passage).
+        allowed = lim["max_stutters_per_h"] * max(hours, 1.0)
+        out.append((stutters <= allowed if real_window else None, "endurance : saccades",
                     f"{stutters} seconde(s) avec une image de plus de {lim['stutter_ms']:.0f} ms, {rate:.1f} par heure"
-                    f" (seuil {lim['max_stutters_per_h']:.0f})"
+                    f" (seuil {lim['max_stutters_per_h']:.0f}"
+                    + (f", soit {allowed:.0f} sur un essai de moins d'une heure)" if hours < 1.0 else ")")
                     + (f" ; {shots} autre(s) due(s) aux captures d'écran, non comptée(s)" if shots else "")))
     long_enough = max(ts) - warm >= lim["min_slope_span_s"]
     labels = {k: lab for k, lab, _ in SUMMARY}
