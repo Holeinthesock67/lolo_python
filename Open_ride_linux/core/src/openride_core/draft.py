@@ -213,8 +213,8 @@ def _source_alpha(d: float, lane_m: float | None, b_lane: float | None, size: fl
     """Abri `α_i` d'une source à `d` m devant (lot AS4) : courbe de P3 × `lateral_factor` × gabarit ; 0 au-delà
     de `GROUP_SIDE_M` sur le côté. L'écart est pris au centre de la zone abritée, décalé de `shift_m` sous le
     vent de travers (lot AS3). Roues qui se chevauchent (côte à côte) : rien, comme P3 (cahier AS4, § 9)."""
-    if lane_m is None or b_lane is None:
-        return draft_coefficient(d - BIKE_LENGTH_M) * size
+    if lane_m is None or b_lane is None:   # écart inconnu : on est dans la roue de la source (lot AS3)
+        return draft_coefficient(d - BIKE_LENGTH_M) * lateral_factor(shift_m) * size
     dx = abs(lane_m - b_lane - shift_m)
     if dx > GROUP_SIDE_M:
         return 0.0
