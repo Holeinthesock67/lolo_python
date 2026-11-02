@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Historique dans le menu : séances (date, parcours, durée, NP, TSS) et leur bilan, cumul par semaine, tests de FTP ; mêmes calculs que `history`, `summary` et `ftp-test --history` | Python + GDScript | O12, L7 (livrés) | Moyenne | Audit des options du 31 octobre accepté par le propriétaire ; en PR |
+| Historique dans le menu : séances (date, parcours, durée, NP, TSS) et leur bilan, cumul par semaine, tests de FTP ; mêmes calculs que `history`, `summary` et `ftp-test --history` | Python + GDScript | O12, L7 (livrés) | Moyenne | Audit des options du 31 octobre accepté par le propriétaire ; version 2.0 (choix du 1er novembre) ; en PR |
 
 ## 1. Objectif
 
