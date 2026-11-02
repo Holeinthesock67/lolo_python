@@ -1,9 +1,9 @@
 {
-  "_doc": "Budgets de performance par préréglage (lot X14), tirés du cahier Y13 §3 : images/s médianes au moins fps_median_min, p99 du temps d'image (médiane des p99 de chaque seconde) sous p99_ms_max, temps GPU médian de la vue sous gpu_ms_median_max, part des secondes où nvidia-smi voit le GPU chargé à plus de 95 % sous gpu_busy95_pct_max. Les warmup_s premières secondes (chargement, premières tuiles) sont ignorées. Lus par perf_probe.py (rapport de la sonde) et sim_bench.py --probe ; sous Xvfb, en INFO seulement.",
+  "_doc": "Budgets de performance par préréglage (lot X14), tirés du cahier Y13 §3 (GPU du low relevé de 4 à 6 ms le 31/10 par le propriétaire : 4 ms n'est plus tenu depuis l'herbe Y14, gardée telle quelle) : images/s médianes au moins fps_median_min, p99 du temps d'image (médiane des p99 de chaque seconde) sous p99_ms_max, temps GPU médian de la vue sous gpu_ms_median_max, part des secondes où nvidia-smi voit le GPU chargé à plus de 95 % sous gpu_busy95_pct_max. Les warmup_s premières secondes (chargement, premières tuiles) sont ignorées. Lus par perf_probe.py (rapport de la sonde) et sim_bench.py --probe ; sous Xvfb, en INFO seulement.",
   "warmup_s": 20,
   "busy_pct": 95,
   "presets": {
-    "low":    {"fps_median_min": 55, "p99_ms_max": 25, "gpu_ms_median_max": 4,  "gpu_busy95_pct_max": 5},
+    "low":    {"fps_median_min": 55, "p99_ms_max": 25, "gpu_ms_median_max": 6,  "gpu_busy95_pct_max": 5},
     "medium": {"fps_median_min": 58, "p99_ms_max": 25, "gpu_ms_median_max": 12, "gpu_busy95_pct_max": 5},
     "high":   {"fps_median_min": 55, "p99_ms_max": 25, "gpu_ms_median_max": 14, "gpu_busy95_pct_max": 5}
   }

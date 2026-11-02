@@ -270,3 +270,28 @@ def test_endurance_state_frame_size_under_limit(tmp_path: Path, monkeypatch: pyt
     print(f"\n[H4 F7] Taille maximale de la trame state observée sur 3 h (avec ERG) : "
           f"{max_size} octets (limite : {MAX_DATAGRAM_BYTES} octets)")
     assert 0 < max_size <= MAX_DATAGRAM_BYTES
+
+
+def test_power_window_reset_between_chained_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Séances enchaînées sans quitter le jeu (endurance 7bi) : la fenêtre de la puissance 3 s repart de zéro.
+
+    Le temps de séance revient à 0 à chaque parcours chargé ; la fenêtre gardait les relevés de la séance
+    précédente (horodatés plus tard), ne se vidait plus et grossissait de 50 relevés par seconde : +23 Mo/h
+    et un pas du core de plus en plus long (somme de toute la fenêtre à chaque pas)."""
+    s, wall = make_endurance_session(tmp_path, monkeypatch, port=6150)
+    step = 0
+    cmd_id = 0
+    for _ in range(3):
+        cmd_id += 1
+        s._on_command("select_route", {"route_id": "boucle_10km"}, cmd_id)
+        cmd_id += 1
+        s._on_command("start", {}, cmd_id)
+        for _ in range(int(300.0 / DT)):
+            step += 1
+            wall[0] = T0_WALL + step * DT
+            s._step(DT, step * DT)
+        assert len(s._power_window) <= 160
+        assert s.state.power_3s == pytest.approx(s.state.power, abs=60.0)
+        cmd_id += 1
+        s._on_command("end_session", {"save": False}, cmd_id)
+        assert s.state.session_state == "FINISHED"

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideRouteImportStatusMessage",
+  "description": "Réponse à cmd import_route (révision 1.5, lot O23) : `compiling` toutes les 2 s pendant la copie et la compilation, puis `done` (parcours prêt, l'engine redemande list_routes) ou `failed` (raison dans `message`) ; datagramme de 4 096 octets au plus (contrat §2).",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "state",
+    "file",
+    "elapsed_s"
+  ],
+  "properties": {
+    "type": {
+      "const": "route_import_status"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "state": {
+      "enum": [
+        "compiling",
+        "done",
+        "failed"
+      ]
+    },
+    "file": {
+      "type": "string",
+      "description": "Nom de la trace (dans ~/OpenRide/GPX/ une fois copiée, suffixe _2, _3… éventuel)."
+    },
+    "elapsed_s": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Secondes depuis le début de l'import."
+    },
+    "created": {
+      "type": "boolean",
+      "description": "Faux si une trace identique était déjà là (rien n'a été copié)."
+    },
+    "route_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "`done` : identifiant du parcours, à passer à select_route."
+    },
+    "name": {
+      "type": "string",
+      "description": "`done` : nom du parcours."
+    },
+    "message": {
+      "type": "string",
+      "description": "`failed` : raison (trace illisible, refusée par le compilateur, délai dépassé…)."
+    }
+  }
+}

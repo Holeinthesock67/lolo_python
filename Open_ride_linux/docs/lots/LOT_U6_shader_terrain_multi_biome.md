@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : shader de terrain multi-biome à tableaux de textures, budget de mémoire vidéo | GDScript + shader | U5, P20 | Grande | Oui (tests de rendu), recette visuelle interne, **version 3.0** (issue #336) |
+| Engine : shader de terrain multi-biome à tableaux de textures, budget de mémoire vidéo | GDScript + shader | U5, P20 | Grande | Livré le 28 octobre (PR #485), **version 3.0** |
 
 ## 1. Objectif
 
@@ -50,3 +50,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Détails de sol (U8), mer (U9), variantes (U14), sols déformés (le relief reste celui du MNT).
+
+## Livraison
+
+PR #485, fusionnée le 28 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui (tests de rendu), recette visuelle interne, **version 3.0** (issue #336) ».

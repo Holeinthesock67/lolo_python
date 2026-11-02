@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Branchement final : châssis, vies et W' estimé dans la séance, dernière run reprise au menu, volumes du mode dans Réglages | Python, GDScript | R9, R13, R16, R18 | Petite | Non : interne ; **En revue le 30 octobre**, **version 2.0** |
+| Branchement final : châssis, vies et W' estimé dans la séance, dernière run reprise au menu, volumes du mode dans Réglages | Python, GDScript | R9, R13, R16, R18 | Petite | Livré le 30 octobre (PR #597), **version 2.0** |
 
 Série R (version 2.0). Demande du propriétaire du 30 octobre : « terminer le mode rogue ». Ce lot ferme les
 écarts laissés par R9, R13, R16 et R18 côté code ; il ne change aucune règle de jeu.
@@ -71,3 +71,7 @@ Série R (version 2.0). Demande du propriétaire du 30 octobre : « terminer le 
 - Banc visuel dans le cloud en `high` : les deux premières captures sortent sombres (OpenGL logiciel), comme
   sur `main` ; à confirmer sur la GTX 1060.
 - Achat d'une vie depuis le Garage : `coins.buy_life` existe, aucune commande ne l'appelle.
+
+## Livraison
+
+PR #597, fusionnée le 30 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Non : interne ; **En revue le 30 octobre**, **version 2.0** ».

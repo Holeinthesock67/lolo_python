@@ -21,6 +21,7 @@ extends Node3D
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
+const RoadClearance := preload("res://scripts/road_clearance.gd")
 
 const CHUNK_M := 60.0
 const CHUNKS_BEHIND := 1
@@ -62,7 +63,7 @@ var _layers: Array[Dictionary] = []
 var _slot_chunk := PackedInt64Array()
 var _queue: Array = []               # [groupe, tronçon, indice de couche, place suivante, stations]
 var _grass_material: ShaderMaterial = null
-var _grid := {}                      # Vector2i -> PackedInt32Array (indices des points de la route)
+var _road: RoadClearance = null      # distance à la route sur tout le parcours (road_clearance.gd)
 var _placed := {}                    # couche -> PackedVector3Array des positions placées (tests)
 var _rock_colors := {}
 
@@ -79,7 +80,7 @@ func configure(budgets: Dictionary, route_data, model, road_width_m: float = 6.0
 	_queue.clear()
 	_placed.clear()
 	_rock_colors.clear()
-	_grid.clear()
+	_road = null
 	if route == null or biome_model == null:
 		return
 	var groups := CHUNKS_BEHIND + CHUNKS_AHEAD + 1
@@ -111,7 +112,7 @@ func configure(budgets: Dictionary, route_data, model, road_width_m: float = 6.0
 			on.resize(mm.instance_count)
 			_layers.append({"kind": kind, "shape": shape, "mm": mm, "per_chunk": per_chunk, "pos": pos, "on": on})
 	if not _layers.is_empty():
-		_build_grid()
+		_road = RoadClearance.new(route, GRID_M)
 
 
 func get_capacity(kind: String) -> int:
@@ -302,33 +303,10 @@ func rock_color(biome: String, x: float, z: float) -> Color:
 	return _rock_colors[key]
 
 
-## Distance horizontale du point à l'axe de la route, exacte jusqu'à GRID_M − ds (au-delà : INF ou plus).
-## Un segment à moins de cette distance a un bout dans la case du point ou une case voisine.
+## Distance horizontale du point à l'axe de la route, exacte jusqu'à GRID_M (au-delà : INF ou plus),
+## toute la route comprise (road_clearance.gd).
 func road_distance(x: float, z: float) -> float:
-	var c := Vector2i(floori(x / GRID_M), floori(z / GRID_M))
-	var best := INF
-	var p := Vector2(x, z)
-	for dz in range(-1, 2):
-		for dx in range(-1, 2):
-			var ids: PackedInt32Array = _grid.get(c + Vector2i(dx, dz), PackedInt32Array())
-			for i in ids:
-				if i + 1 >= route.n:
-					continue
-				var a := Vector2(route.x[i], route.z[i])
-				var b := Vector2(route.x[i + 1], route.z[i + 1])
-				best = minf(best, p.distance_to(Geometry2D.get_closest_point_to_segment(p, a, b)))
-	return best
-
-
-## Grille des segments de la route (cases de GRID_M) : chaque segment est rangé dans les cases de ses deux bouts.
-func _build_grid() -> void:
-	for i in range(route.n):
-		var c := Vector2i(floori(route.x[i] / GRID_M), floori(route.z[i] / GRID_M))
-		var ids: PackedInt32Array = _grid.get(c, PackedInt32Array())
-		ids.append(i)
-		if i > 0:
-			ids.append(i - 1)
-		_grid[c] = ids
+	return INF if _road == null else _road.distance(x, z)
 
 
 func _mesh_for(kind: String, shape: int) -> Mesh:

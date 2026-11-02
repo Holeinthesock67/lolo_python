@@ -1,0 +1,116 @@
+{
+  "description": "Lot O21 : QWKcode tapé au clavier dans Session ERG, enregistré par le core en .qwk puis choisi.",
+  "voies": [
+    "clavier"
+  ],
+  "entrainement": true,
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15
+    },
+    {
+      "choisir": "erg"
+    },
+    {
+      "aller": "_qwk"
+    },
+    {
+      "choisir": "_qwk"
+    },
+    {
+      "ecran": "workout_qwk",
+      "titre": "Saisir du QWKcode",
+      "contient": [
+        "Saisie QWKcode (GoldenCheetah)"
+      ]
+    },
+    {
+      "touche": "1"
+    },
+    {
+      "touche": "0"
+    },
+    {
+      "touche": "M"
+    },
+    {
+      "touche": "@"
+    },
+    {
+      "touche": "2"
+    },
+    {
+      "touche": "0"
+    },
+    {
+      "touche": "0"
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "touche": "2"
+    },
+    {
+      "touche": "X"
+    },
+    {
+      "touche": "Space"
+    },
+    {
+      "touche": "1"
+    },
+    {
+      "touche": "M"
+    },
+    {
+      "touche": "@"
+    },
+    {
+      "touche": "3"
+    },
+    {
+      "touche": "0"
+    },
+    {
+      "touche": "0"
+    },
+    {
+      "touche": "Backspace"
+    },
+    {
+      "touche": "0"
+    },
+    {
+      "ecran": "workout_qwk",
+      "contient": [
+        "10m@200",
+        "2x 1m@300▌",
+        "Enregistrer et choisir — 2 segments"
+      ]
+    },
+    {
+      "capture": "saisie_qwkcode"
+    },
+    {
+      "aller": "save"
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "fichier": "OpenRide/Workouts/qwkcode.qwk"
+    },
+    {
+      "ecran": "workouts",
+      "statut": "Créé : Séance QWKcode"
+    },
+    {
+      "appui": "Y_SHORT"
+    },
+    {
+      "ecran": "home"
+    }
+  ]
+}

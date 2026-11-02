@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 2.0 série T : engine, HUD segment (approche, chrono, écart au record, résultat) et HUD bonus, coin supérieur droit | GDScript | T1, P16 (livrés) ; T7 | Moyenne | Non : interne (HUD) ; **codé le 27 octobre** (issue #399) ; tests Godot à passer sur le PC, validation à la recette T11 |
+| 2.0 série T : engine, HUD segment (approche, chrono, écart au record, résultat) et HUD bonus, coin supérieur droit | GDScript | T1, P16 (livrés) ; T7 | Moyenne | Livré le 27 octobre (PR #409) |
 
 ## 1. Objectif
 

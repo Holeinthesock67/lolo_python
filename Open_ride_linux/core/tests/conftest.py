@@ -18,8 +18,11 @@ import pytest  # noqa: E402
 @pytest.fixture(autouse=True)
 def records_and_powerups_in_tmp(tmp_path, monkeypatch):
     """Série T : `records.json` et `powerups.toml` de la séance dans le dossier temporaire du test.
-    Série MJ : aucun profil de joueur ne reste actif d'un test à l'autre (le lanceur en active un)."""
-    from openride_core import powerups, profiles, records
+    Série MJ : aucun profil de joueur ne reste actif d'un test à l'autre (le lanceur en active un).
+    Lot O36 : `start` part tout de suite (`[depart] mode = "immediat"`), sauf dans les tests du départ
+    au pédalage, qui posent `cfg.depart.mode` eux-mêmes."""
+    from openride_core import config, powerups, profiles, records
+    monkeypatch.setattr(config, "DEPART_MODE_DEFAULT", "immediat")
     monkeypatch.setattr(profiles, "_active", None)
     monkeypatch.setattr(records, "RECORDS_FILE", tmp_path / "OpenRide" / "records.json")
     monkeypatch.setattr(powerups, "POWERUPS_FILE", tmp_path / "OpenRide" / "powerups.toml")

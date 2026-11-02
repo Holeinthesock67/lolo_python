@@ -243,10 +243,14 @@ class SimClient:
 
 # --- home trainer FTMS --------------------------------------------------------------------
 
-# Fitness Machine Feature : cadence (bit 1) et puissance (bit 14) mesurées ; cibles de puissance
-# (bit 3) et simulation (bit 13), comme le HomeTrainer.
+# Fitness Machine Feature : cadence (bit 1) et puissance (bit 14) mesurées ; cibles de résistance
+# (bit 2), de puissance (bit 3) et simulation (bit 13), comme le HomeTrainer (docs/spikes.md §4).
 FEATURE_MACHINE = (1 << 1) | (1 << 14)
-FEATURE_TARGET = (1 << 3) | (1 << 13)
+FEATURE_TARGET = (1 << 2) | (1 << 3) | (1 << 13)
+# Plage de résistance annoncée (0x2AD6, résolution 0,1) : 0 à 100 au pas de 1, et frein simulé comme le
+# vrai trainer de l'étalonnage 7rc1 (1er novembre) : F = k × niveau (%) × vitesse du volant (km/h).
+RESISTANCE_RANGE_RAW = (0, 1000, 10)
+RESISTANCE_N_PER_LEVEL_KMH = 0.036
 
 
 @dataclass
@@ -326,12 +330,15 @@ class TrainerResponse:
         self.power_w = 0.0
         self.t = 0.0
         self._commands: collections.deque = collections.deque()   # (t, consigne) en attente du retard
-        self._applied: tuple = (None, None, 0.0, None, None, 0.0)
+        self._applied: tuple = (None, None, 0.0, None, None, 0.0, 0.0)
 
     def _command_force(self, cmd: tuple, v: float) -> float:
-        mode, target_w, grade_pct, crr, cw, wind = cmd
+        mode, target_w, grade_pct, crr, cw, wind, *rest = cmd   # niveau de résistance en 7e, facultatif
+        level = rest[0] if rest else 0.0
         if mode == "erg" and target_w is not None:
             return target_w / max(v, 1.0)
+        if mode == "resistance":   # frein proportionnel au niveau et à la vitesse du volant (7rc1, décalage nul)
+            return RESISTANCE_N_PER_LEVEL_KMH * level * v * 3.6
         theta = math.atan((grade_pct if mode == "sim" else 0.0) / 100.0)
         p = self.physics
         cw = cw if cw is not None else 1.225 * p.cda_m2   # Cw FTMS = ρ · CdA
@@ -340,7 +347,8 @@ class TrainerResponse:
         return p.mass_kg * G * (math.sin(theta) + crr * math.cos(theta)) + 0.5 * cw * va * abs(va)
 
     def step(self, dt: float, cmd: tuple, v_ride: float, rider_max_w: float) -> float:
-        """Avance de `dt` s avec la consigne courante `cmd` (mode, cible W, pente %, Crr, Cw, vent m/s) ;
+        """Avance de `dt` s avec la consigne courante `cmd` (mode, cible W, pente %, Crr, Cw, vent m/s,
+        niveau de résistance) ;
         renvoie la puissance mesurée."""
         if not self._commands or self._commands[-1][1] != cmd:
             self._commands.append((self.t, cmd))
@@ -367,7 +375,8 @@ class TrainerResponse:
 
 
 class SimTrainer(SimDevice):
-    uuids = (ftms.FTMS_SERVICE, ftms.FEATURE, ftms.SUPPORTED_POWER_RANGE, ftms.INDOOR_BIKE_DATA,
+    uuids = (ftms.FTMS_SERVICE, ftms.FEATURE, ftms.SUPPORTED_POWER_RANGE, ftms.SUPPORTED_RESISTANCE_RANGE,
+             ftms.INDOOR_BIKE_DATA,
              ftms.CONTROL_POINT, ftms.MACHINE_STATUS)
 
     def __init__(self, world: "SimWorld", name: str = TRAINER_NAME,
@@ -413,9 +422,10 @@ class SimTrainer(SimDevice):
             int(relayed_hr) if isinstance(relayed_hr, (int, float)) and not isinstance(relayed_hr, bool) else None
         )
         # État de la machine (survit aux connexions, comme un vrai trainer)
-        self.mode: str | None = None          # "sim", "erg" ou None (aucune consigne)
+        self.mode: str | None = None          # "sim", "erg", "resistance" ou None (aucune consigne)
         self.target_w: float | None = None
         self.grade_pct = 0.0
+        self.resistance_level = 0.0           # niveau FTMS reçu (opcode 0x04)
         self.started = False
         self.power_w = 0.0
         # État de la liaison
@@ -454,6 +464,8 @@ class SimTrainer(SimDevice):
             return struct.pack("<II", FEATURE_MACHINE, FEATURE_TARGET)
         if uuid == ftms.SUPPORTED_POWER_RANGE:
             return struct.pack("<hhH", *self.power_range)
+        if uuid == ftms.SUPPORTED_RESISTANCE_RANGE:
+            return struct.pack("<hhH", *RESISTANCE_RANGE_RAW)
         return super().read(uuid)
 
     def subscribed(self, uuid: str) -> None:
@@ -508,6 +520,7 @@ class SimTrainer(SimDevice):
             return refused
         if op == ftms.OP_RESET:
             self.mode, self.target_w, self.grade_pct, self.started = None, None, 0.0, False
+            self.resistance_level = 0.0
             self.control = False   # FTMS §4.16.2.2 : le Reset rend le contrôle
             # Pas d'état 0x01 : on ignore si le HomeTrainer l'envoie pour un Reset du client lui-même,
             # et le pilote le lit comme un Reset venu d'un tiers.
@@ -532,7 +545,14 @@ class SimTrainer(SimDevice):
             self.crr, self.cw = data[5] / 10000.0, data[6] / 100.0
             self._status(bytes([0x12]) + data[1:7])
             return ok
-        if op in (ftms.OP_SET_TARGET_POWER, ftms.OP_SET_SIM_PARAMS):
+        if op == ftms.OP_SET_TARGET_RESISTANCE and len(data) >= 2:
+            lo, hi, _ = RESISTANCE_RANGE_RAW
+            self.mode, self.target_w = "resistance", None
+            raw = struct.unpack_from("<h", data, 1)[0] if len(data) >= 3 else data[1]   # sint16 ou uint8
+            self.resistance_level = min(max(raw, lo), hi) / 10.0
+            self._status(bytes([0x07]) + data[1:])
+            return ok
+        if op in (ftms.OP_SET_TARGET_POWER, ftms.OP_SET_SIM_PARAMS, ftms.OP_SET_TARGET_RESISTANCE):
             return 0x03   # paramètre invalide (trame trop courte)
         return 0x02       # opcode non pris en charge
 
@@ -565,7 +585,8 @@ class SimTrainer(SimDevice):
     def _step_power(self, t: float, dt: float, rider: RiderOutput) -> float:
         """Puissance mesurée après `dt` s, et vitesse affichée en km/h."""
         if self.model is not None:
-            cmd = (self.mode, self.target_w, self.grade_pct, self.crr, self.cw, self.wind_mps)
+            cmd = (self.mode, self.target_w, self.grade_pct, self.crr, self.cw, self.wind_mps,
+                   self.resistance_level)
             cap = self.rider_max_w if self.rider_max_w is not None else RIDER_RESERVE * max(rider.power_w, 1.0)
             self.power_w = self.model.step(dt, cmd, self._ride_speed(rider), cap)
             return 3.6 * self.model.v

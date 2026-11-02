@@ -2,6 +2,8 @@ extends RefCounted
 
 ## Écran « Appareils » du menu (Lot N13, contrat IPC révision 1.2), sans nœud : recherche des appareils,
 ## choix du trainer et de la ceinture, identification du boîtier « + » du Click, enregistrement.
+## Oublier un appareil (lot O24, révision 1.5) : le trainer et la ceinture passent aussi par « aucun »
+## dans leur cycle, « Oublier le Click » retire les deux boîtiers ; `pair_devices` reçoit alors "".
 ##
 ## Le core cherche et écrit (`scan_devices`, `identify_click_plus`, `pair_devices`) ; ce modèle garde le
 ## dernier `scan_results`, les choix en cours et une ligne d'état, et fabrique les éléments de l'écran.
@@ -13,6 +15,8 @@ extends RefCounted
 
 const SCREEN := "pairing"
 const ROLES := ["trainer", "click_plus", "click_minus", "hr"]
+## Choix « aucun » d'un rôle : l'appareil enregistré est oublié (lot O24).
+const FORGET := ""
 
 ## Derniers appareils trouvés : [{role, name, address, rssi, configured}].
 var items: Array = []
@@ -21,7 +25,7 @@ var scanned := false
 var identifying := false
 ## request_cmd_id attendu pour la fin de l'identification du « + » (0 : celui de n'importe quelle réponse).
 var identify_cmd_id := 0
-## Adresses choisies par rôle (null : rien de choisi, la valeur de config.toml reste).
+## Adresses choisies par rôle (null : rien de choisi, la valeur de config.toml reste ; FORGET : oublié).
 var choice := {"trainer": null, "click_plus": null, "click_minus": null, "hr": null}
 ## Adresses déjà dans config.toml, d'après `configured` des éléments trouvés.
 var configured := {"trainer": null, "click_plus": null, "click_minus": null, "hr": null}
@@ -45,7 +49,7 @@ func _of_role(role: String) -> Array:
 
 
 func _name_of(address) -> String:
-	if address == null:
+	if address == null or str(address) == FORGET:
 		return ""
 	for it in items:
 		if it is Dictionary and str(it.get("address", "")) == str(address):
@@ -129,8 +133,8 @@ func menu_items() -> Array:
 	out.append({"id": "scan", "label": "Recherche en cours…" if scanning else "Rechercher les appareils",
 		"enabled": not scanning and not identifying})
 	var trainers := _of_role("trainer")
-	out.append({"id": "trainer", "label": "Trainer", "detail": _name_of(choice["trainer"]) if choice["trainer"] != null else "aucun",
-		"enabled": trainers.size() > 1})
+	out.append({"id": "trainer", "label": "Trainer", "detail": _choice_text("trainer", "aucun"),
+		"enabled": (not trainers.is_empty() or choice["trainer"] != null) and not scanning and not identifying})
 	var clicks := _of_role("click")
 	var click_label := "Click : identifier le bouton +"
 	if identifying:
@@ -138,14 +142,27 @@ func menu_items() -> Array:
 	elif choice["click_plus"] != null:
 		click_label = "Click : + reconnu" + ("" if choice["click_minus"] == null else ", − trouvé")
 	out.append({"id": "identify", "label": click_label, "enabled": not clicks.is_empty() and not identifying and not scanning})
+	out.append({"id": "forget_click", "label": "Oublier le Click",
+		"detail": "à l'enregistrement" if choice["click_plus"] == FORGET else "",
+		"enabled": choice["click_plus"] != FORGET and not scanning and not identifying})
 	var straps := _of_role("hr_strap")
-	out.append({"id": "hr", "label": "Ceinture", "detail": _name_of(choice["hr"]) if choice["hr"] != null else "aucune",
-		"enabled": straps.size() > 1})
+	out.append({"id": "hr", "label": "Ceinture", "detail": _choice_text("hr", "aucune"),
+		"enabled": (not straps.is_empty() or choice["hr"] != null) and not scanning and not identifying})
 	out.append({"id": "save", "label": "Enregistrer", "enabled": has_changes() and not scanning and not identifying})
 	if saved:
 		out.append({"id": "relaunch", "label": "Relancer OpenRide maintenant"})
 	out.append({"id": "back", "label": "Retour"})
 	return out
+
+
+## Texte du choix d'un rôle : nom de l'appareil, `none` (« aucun ») sans choix ni appareil, ou oubli.
+func _choice_text(role: String, none: String) -> String:
+	var c = choice[role]
+	if c == null:
+		return none
+	if str(c) == FORGET:
+		return none + (" (oublié)" if role == "trainer" else " (oubliée)") if configured[role] != FORGET else none
+	return _name_of(c)
 
 
 ## Barres de force du signal (dBm) : 4 au-dessus de −55, 3 jusqu'à −65, 2 jusqu'à −75, 1 en dessous.
@@ -169,9 +186,12 @@ func sheet(item_id: String) -> Dictionary:
 			if str(it.get("address", "")) == str(address):
 				dev = it
 		var lines: Array = []
-		if found.size() > 1:
-			lines.append("%d appareils trouvés : valider pour passer au suivant" % found.size())
-		elif found.is_empty():
+		if address != null and str(address) == FORGET:
+			lines.append("Enregistrer oublie l'appareil" + (" : OpenRide cherchera un trainer par son nom" if item_id == "trainer" else " : plus de ceinture cardio"))
+		if not found.is_empty():
+			var pl := "s" if found.size() > 1 else ""
+			lines.append("%d appareil%s trouvé%s, puis « aucun » : valider pour passer au suivant" % [found.size(), pl, pl])
+		else:
 			lines.append("Aucun appareil trouvé : lancer la recherche")
 		var tiles: Array = []
 		if not dev.is_empty():
@@ -182,21 +202,23 @@ func sheet(item_id: String) -> Dictionary:
 	if item_id == "identify":
 		return {"title": "Click", "name": "Reconnaître le boîtier +",
 			"lines": ["Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche"]}
+	if item_id == "forget_click":
+		return {"title": "Click", "name": "Oublier les deux boîtiers",
+			"lines": ["Enregistrer retire les boîtiers « + » et « − » ; le clavier reste utilisable"]}
 	if item_id == "save":
 		return {"title": "Enregistrement", "name": "Changements à écrire",
 			"lines": ["Écrits dans ~/OpenRide/config.toml ; relancer OpenRide ensuite"] if has_changes() else ["Rien à enregistrer"]}
 	return {}
 
 
+## Appareil suivant du rôle : les appareils trouvés, puis « aucun » (FORGET), puis le premier à nouveau.
 func _cycle(role: String, scan_role: String) -> void:
-	var found := _of_role(scan_role)
-	if found.is_empty():
-		return
-	var idx := -1
-	for i in range(found.size()):
-		if str(found[i]["address"]) == str(choice[role]):
-			idx = i
-	choice[role] = str(found[(idx + 1) % found.size()]["address"])
+	var options: Array = []
+	for it in _of_role(scan_role):
+		options.append(str(it["address"]))
+	options.append(FORGET)
+	var idx := options.find(str(choice[role])) if choice[role] != null else -1
+	choice[role] = options[(idx + 1) % options.size()]
 
 
 func handle(item_id: String) -> Dictionary:
@@ -210,6 +232,9 @@ func handle(item_id: String) -> Dictionary:
 			_cycle("trainer", "trainer")
 		"hr":
 			_cycle("hr", "hr_strap")
+		"forget_click":
+			choice["click_plus"] = FORGET
+			choice["click_minus"] = FORGET
 		"identify":
 			identifying = true
 			identify_cmd_id = 0
@@ -219,11 +244,13 @@ func handle(item_id: String) -> Dictionary:
 			var c := changes()
 			var parts: Array[String] = []
 			if c["trainer"] != null:
-				parts.append("trainer " + _name_of(c["trainer"]))
-			if c["click_plus"] != null or c["click_minus"] != null:
+				parts.append("l'oubli du trainer" if c["trainer"] == FORGET else "trainer " + _name_of(c["trainer"]))
+			if c["click_plus"] == FORGET:
+				parts.append("l'oubli du Click")
+			elif c["click_plus"] != null or c["click_minus"] != null:
 				parts.append("Click")
 			if c["hr"] != null:
-				parts.append("ceinture " + _name_of(c["hr"]))
+				parts.append("l'oubli de la ceinture" if c["hr"] == FORGET else "ceinture " + _name_of(c["hr"]))
 			_pair_failed = false
 			return {"action": "confirm_pair", "title": "Enregistrer %s ?" % ", ".join(parts), "args": c}
 		"relaunch":

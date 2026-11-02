@@ -7,7 +7,8 @@ extends RefCounted
 ## Règles :
 ## - menu visible dès qu'une trame `state` est reçue, sauf en RUNNING (contrat §4 : les événements
 ##   `input` ne servent alors qu'aux bips) ;
-## - PAUSED ouvre l'écran de pause, FINISHED le bilan ; une séance terminée sans bilan (IDLE ou READY
+## - PAUSED ouvre l'écran de pause (focus sur « Terminer et enregistrer » quand `state.workout_done` dit
+##   l'entraînement fini), FINISHED le bilan ; une séance terminée sans bilan (IDLE ou READY
 ##   après RUNNING ou PAUSED) ramène à l'accueil ;
 ## - les listes sont demandées au premier état reçu, même en RUNNING (`--autostart` : la liste des
 ##   entraînements donne au bandeau ERG les durées réelles de tous les blocs), puis à chaque « Nouvelle séance ».
@@ -15,6 +16,9 @@ extends RefCounted
 ## `on_state()` et `handle()` renvoient des actions à exécuter par main.gd : commandes du contrat
 ## (select_route, select_workout, start, resume, end_session), « list » (demander les deux listes) et
 ## « quit ». Pas de class_name : charger par preload("res://scripts/menu_flow.gd").
+##
+## Départ au pédalage (lot O36) : pendant l'attente du départ (`start_wait` de la trame en READY), le menu
+## est masqué ; il revient sur l'écran Prêt si le départ est annulé (Y).
 ##
 ## Connexion au démarrage (lot N13) : au premier état hors séance, l'écran « Connexion des appareils »
 ## s'ouvre avant l'accueil. Il passe seul à l'accueil quand tout est relié depuis CONNECT_HOLD_S
@@ -44,8 +48,14 @@ extends RefCounted
 ##   « Accepter » (accept_ftp ; résultat douteux : confirmation puis accept_ftp avec force) ou « Garder » ;
 ## - parcours : tri et filtre par étiquette en cycle en fin de liste, fiche du parcours sur l'écran Prêt ;
 ##   puis « Ajouter un parcours » et « Comment ça marche ? » (lot O22) : leur carte et l'écran « Aide
-##   parcours » (route_help.gd) expliquent où déposer une trace et le monde ouvert ;
-## - bots (lot O7) : « Bot : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
+##   parcours » (route_help.gd) expliquent l'ajout d'une trace et le monde ouvert ;
+## - « Ajouter un parcours » (lot O23, contrat 1.5) ouvre « Importer une trace » : action
+##   list_route_imports, réponse `route_imports` par set_route_import_candidates() ; un choix renvoie
+##   import_route {path}, le core copie la trace dans ~/OpenRide/GPX/ et la compile sans relancer.
+##   Avancement `route_import_status` par on_route_import_status() sur la ligne d'état ; parcours prêt :
+##   retour à la liste, redemandée par main.gd, focus sur le nouveau parcours à son arrivée ; trace
+##   refusée (route_invalid, busy) : raison sur la ligne d'état ;
+## - bots (lots O7 et O35) : « Bot 1 : … » à « Bot 4 : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
 ##   core (bot_invalid) sur la ligne d'état de l'écran Prêt ;
 ## - entraînements en watts (.erg, .mrc) : « watts fixes » et la puissance maximale.
 ##
@@ -63,6 +73,7 @@ const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const PlanBuilder := preload("res://scripts/plan_builder.gd")
 const WorkoutHelp := preload("res://scripts/workout_help.gd")
+const QwkEditor := preload("res://scripts/qwk_editor.gd")
 const RouteHelp := preload("res://scripts/route_help.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
@@ -70,6 +81,7 @@ const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 const WtfRulesModel := preload("res://scripts/wtf/wtf_rules_model.gd")
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
+const HistoryViewModel := preload("res://scripts/history_view_model.gd")
 const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
 
 const SUMMARY := "summary"
@@ -80,13 +92,25 @@ const SETTING_EDIT := SettingsViewModel.EDIT_SCREEN
 const SETTINGS_GROUP := "settings_group"
 const WORKOUT_CREATE := WorkoutBuilder.SCREEN
 const WORKOUT_IMPORT := "workout_import"
+const ROUTE_IMPORT := "route_import"
+## Ligne d'état pendant la compilation d'une trace importée (lot O23) : secondes écoulées.
+const ROUTE_COMPILING := "Compilation de %s… %d s (la 1re fois dans une région, l'altitude se télécharge)"
 const WORKOUT_HELP := WorkoutHelp.SCREEN
+const WORKOUT_QWK := QwkEditor.SCREEN
 const ROUTE_HELP := RouteHelp.SCREEN
 ## Lignes de la liste des parcours dont la carte est un sujet de l'aide des parcours (lot O22).
 const ROUTE_HELP_TOPICS := {MenuModel.ADD_ROUTE_ID: "add", MenuModel.HELP_ROUTES_ID: "choose"}
+## Carte de l'écran « Importer une trace » (lot O23).
+const ROUTE_IMPORT_CARD := ["Les traces des dossiers Téléchargements, Bureau et ~/OpenRide/Import, les plus récentes d'abord.",
+	"Formats : .gpx, et l'export de Garmin Connect tel quel (.fit, .tcx, .fit.gz, .tcx.gz, .zip).",
+	"A maintenu (Entrée au clavier) copie la trace dans ~/OpenRide/GPX/ et la compile : pas besoin de relancer OpenRide.",
+	"Compter une à quelques minutes ; le parcours apparaît ensuite dans la liste, sous le focus."]
 const PLANS := "plans"
 const PLAN := "plan"
 const FTP_TEST := "ftp_test"
+## Séance interrompue d'un lancement précédent (lot O34) : ligne en tête de l'accueil, écran « Enregistrer » ou
+## « Ne pas l'enregistrer » (confirmé), commande recover_session ; liste dans hello_ack.config.interrupted.
+const INTERRUPTED := "interrupted"
 ## Records du parcours (série T, lot T10) : liste des segments, puis table d'un segment.
 const RECORDS := "records"
 const RECORD_TABLE := "record_table"
@@ -96,8 +120,7 @@ const FTP_TESTS := [
 		"test de FTP (rampe)"]]
 const FTP_HINT := "Sur une boucle : l'arrivée d'un parcours arrête le test"
 ## Avertissements du test de FTP (summary.ftp_test.warnings), comme `openride-core ftp-test`.
-const FTP_WARNINGS := {"too_short": "test trop court", "erratic_cadence": "cadence erratique",
-	"trainer_dropout": "coupure du trainer pendant l'effort", "paused": "pause pendant l'effort"}
+const FTP_WARNINGS := HistoryViewModel.FTP_WARNINGS
 const SUMMARY_BASE_IDS := ["new_session", "details", "quit"]
 ## Ligne d'état de l'écran de pause selon `state.pause_reason` (contrat IPC) : le HUD est caché pendant
 ## un menu, la raison de la pause s'affiche donc sous le titre. Pause demandée (`user`) : rien.
@@ -105,9 +128,12 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 	"engine_lost": "Affichage relancé : reprends quand tu veux", "core_restarted": "OpenRide a redémarré : séance retrouvée",
 	"recording_failed": "Enregistrement impossible : la séance reste en mémoire",
 	"world_data": "Route devant toi en cours de chargement : reprise automatique"}
+## Ligne d'état de la pause quand l'entraînement est fini (`state.workout_done`, invite de fin de séance du
+## 1er novembre) : le focus est déjà sur « Terminer et enregistrer ».
+const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer et enregistrer"
 ## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
 const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create", MenuModel.IMPORT_WORKOUT_ID: "import",
-	MenuModel.HELP_WORKOUT_ID: "choose"}
+	MenuModel.HELP_WORKOUT_ID: "choose", MenuModel.QWK_WORKOUT_ID: "qwk"}
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -151,15 +177,30 @@ var route_names := {}
 var builder = WorkoutBuilder.new()
 ## Plan maison en cours de composition (lot O30).
 var plan_builder = PlanBuilder.new()
+## Texte QWKcode en cours de saisie (lot O21) : gardé en sortant de l'écran, vidé après l'enregistrement.
+var qwk = QwkEditor.new()
 ## Fichiers proposés à l'import : [{path, file, source, imported}] (message `imports` du core).
 var import_candidates: Array = []
 ## Ligne d'état de la liste des entraînements (créé, importé, erreur).
 var workout_message := ""
 var _focus_workout := ""
+## Traces proposées à l'import (message `route_imports`, lot O23) : [{path, file, source, imported}].
+var route_import_candidates: Array = []
+## Ligne d'état de la liste des parcours et de l'écran d'import (compilation, ajouté, erreur).
+var route_message := ""
+var route_message_error := false
+## Compilation annoncée (la ligne d'état la suit), dernière réponse finale traitée (request_cmd_id : le core
+## répond à chaque copie de la commande) et parcours à mettre sous le focus.
+var _route_compiling := false
+var _route_import_done := -1
+var _focus_route := ""
 ## Dernière demande au core (« create » ou « import ») et dernier request_cmd_id traité : le core
 ## répond à chaque copie renvoyée d'une commande, une seule réponse compte.
 var _workout_request := ""
 var _last_saved_cmd_id := -1
+## Séances interrompues proposées (`hello_ack.config.interrupted`, puis réponse `interrupted`) et ligne d'état.
+var interrupted: Array = []
+var interrupted_message := ""
 ## Dernière réponse `plans` du core ({} avant la première) ; plan affiché sur l'écran d'un plan.
 var plans: Dictionary = {}
 var _plan_shown := ""
@@ -195,8 +236,15 @@ var _record_segment := ""
 var _record_bonus := false
 ## Raison de la dernière pause (`state.pause_reason`), "" hors pause.
 var pause_reason := ""
+## Entraînement fini, séance pas encore terminée (`state.workout_done`, contrat IPC 1.5).
+var workout_done := false
+## Départ au pédalage en attente (lot O36) : objet `start_wait` de la dernière trame, {} sinon ; le menu
+## est masqué pendant l'attente, le bandeau dit l'étape (start_wait_model.gd).
+var start_wait: Dictionary = {}
 ## Profils de joueurs (série MJ, lot MJ8) : « Qui roule ? », nom du profil, gestion.
 var profiles = ProfilesViewModel.new()
+## Historique (lot O28) : séances, cumul par semaine, tests de FTP et bilan d'une séance passée.
+var history = HistoryViewModel.new()
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
 var contents = ContentsViewModel.new()
 
@@ -212,8 +260,11 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": WORKOUT_IMPORT, "title": "Importer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
+	menu.add_screen({"id": ROUTE_IMPORT, "title": "Importer une trace", "on_back": MenuModel.ROUTES, "items": []})
 	menu.add_screen({"id": WORKOUT_HELP, "title": WorkoutHelp.TITLE, "on_back": MenuModel.WORKOUTS,
 		"items": WorkoutHelp.items()})
+	menu.add_screen({"id": WORKOUT_QWK, "title": QwkEditor.TITLE, "on_back": MenuModel.WORKOUTS,
+		"items": qwk.menu_items()})
 	menu.add_screen({"id": ROUTE_HELP, "title": RouteHelp.TITLE, "on_back": MenuModel.ROUTES,
 		"items": RouteHelp.items()})
 	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
@@ -224,6 +275,14 @@ func _init() -> void:
 		menu.add_screen({"id": screen[0], "title": screen[1], "on_back": PlanBuilder.SCREEN, "items": []})
 	menu.add_screen({"id": FTP_TEST, "title": "Test de FTP", "on_back": MenuModel.HOME, "items": []})
 	_refresh_ftp_test()
+	menu.add_screen({"id": INTERRUPTED, "title": "Séance interrompue", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": HistoryViewModel.SCREEN, "title": "Historique", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": HistoryViewModel.WEEKS, "title": "Cumul par semaine", "on_back": HistoryViewModel.SCREEN,
+		"items": []})
+	menu.add_screen({"id": HistoryViewModel.FTP, "title": "Tests de FTP", "on_back": HistoryViewModel.SCREEN,
+		"items": []})
+	menu.add_screen({"id": HistoryViewModel.SESSION, "title": "Séance", "on_back": HistoryViewModel.SCREEN,
+		"items": HistoryViewModel.session_items()})
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
 	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
@@ -241,6 +300,8 @@ func _init() -> void:
 		"on_back": ProfilesViewModel.SCREEN, "items": []})
 	menu.add_screen({"id": ProfilesViewModel.MANAGE, "title": "Gérer", "on_back": ProfilesViewModel.MANAGE_LIST,
 		"items": []})
+	menu.add_screen({"id": ProfilesViewModel.RESTORE, "title": "Restaurer un profil supprimé",
+		"on_back": ProfilesViewModel.MANAGE_LIST, "items": []})
 	_refresh_plans()
 	_refresh_builder()
 	_refresh_pairing()
@@ -249,7 +310,7 @@ func _init() -> void:
 
 
 func is_visible() -> bool:
-	return session_state != "" and session_state != "RUNNING"
+	return session_state != "" and session_state != "RUNNING" and start_wait.is_empty()
 
 
 ## Trame `state` reçue ; renvoie les actions à exécuter (liste, éventuellement vide). `now_s` : horloge
@@ -280,6 +341,8 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
 	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
+	workout_done = state.get("workout_done", null) is Dictionary
+	start_wait = state["start_wait"] if st == "READY" and state.get("start_wait") is Dictionary else {}
 	_track_run(st, state)
 	if state.get("devices") is Dictionary:
 		devices = state["devices"]
@@ -317,6 +380,8 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 		match st:
 			"PAUSED":
 				menu.open_pause()
+				if workout_done:   # entraînement fini : Y puis A maintenu termine et enregistre
+					menu.focus_item("end_save")
 			"FINISHED":
 				show_details = false
 				ftp_offer = summary["ftp_test"] if summary.get("ftp_test") is Dictionary else {}
@@ -451,8 +516,14 @@ func on_error(code: String, text: String) -> void:
 	if menu.current_screen() in GarageViewModel.SCREENS and garage.on_error(code, text):
 		_refresh_garage()
 		return
+	if menu.current_screen() == INTERRUPTED and code in ["bad_args", "busy", "recording_failed"]:
+		interrupted_message = "Échec : " + text
+		return
 	if menu.current_screen() in ProfilesViewModel.SCREENS and profiles.on_error(code, text):
 		_refresh_profiles()
+		return
+	if menu.current_screen() in HistoryViewModel.SCREENS and code == "bad_args":
+		history.message = "Échec : " + text
 		return
 	if code in ["content_invalid", "content_failed"] or (code == "busy" and menu.current_screen() == ContentsViewModel.SCREEN):
 		contents.on_error(code, text)
@@ -465,7 +536,12 @@ func on_error(code: String, text: String) -> void:
 		_plan_request = ""
 		plan_message = "Échec : " + text
 		return
-	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_IMPORT] \
+	if menu.current_screen() in [ROUTE_IMPORT, MenuModel.ROUTES] and code in ["route_invalid", "busy"]:
+		_route_compiling = false
+		route_message = "Échec : " + text
+		route_message_error = true
+		return
+	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_IMPORT, WORKOUT_QWK] \
 			and code in ["bad_args", "busy", "workout_invalid", "workout_write_failed"]:
 		workout_failed("Échec : " + text)
 		return
@@ -506,6 +582,11 @@ func set_routes(raw: Array) -> void:
 			route_names[str(r["id"])] = str(r.get("name", r["id"]))
 	if menu.world_id != "" and route_names.has(menu.world_id):
 		menu.set_world(menu.world_id, route_names[menu.world_id])
+	_refresh_interrupted()   # nom du parcours de la séance interrompue
+	_refresh_history()   # noms des parcours des séances de l'historique
+	if _focus_route != "" and menu.current_screen() == MenuModel.ROUTES and route_names.has(_focus_route):
+		menu.focus_item(_focus_route)
+		_focus_route = ""
 
 
 func set_workouts(raw: Array) -> void:
@@ -564,12 +645,16 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(routes_raw, focused, func(r): return CatalogModel.route_sheet(r))
 	if screen == ROUTE_HELP:
 		return RouteHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
+	if screen == ROUTE_IMPORT:
+		return _route_import_card(focused)
 	if screen == MenuModel.WORKOUTS:
 		if focused in WORKOUT_HELP_TOPICS:
 			return WorkoutHelp.sheet(WORKOUT_HELP_TOPICS[focused])
 		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
 	if screen == WORKOUT_HELP:
 		return WorkoutHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
+	if screen == WORKOUT_QWK:
+		return WorkoutHelp.sheet("qwk")
 	if screen == PLANS:
 		return _plan_card(focused)
 	if screen == PLAN:
@@ -593,7 +678,7 @@ func card(st: Dictionary) -> Dictionary:
 			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
 	if screen == MenuModel.PAUSE:
 		return CatalogModel.pause_sheet(_run_t, _run_s, _power_sum / _power_n if _power_n > 0 else -1.0)
-	if screen == SUMMARY:
+	if screen in [SUMMARY, HistoryViewModel.SESSION]:
 		return {"title": "Bilan de la séance"}
 	if screen == RECORDS:
 		return records.sheet_segment(menu.world_id, focused.substr(4)) if focused.begins_with("seg:") else {}
@@ -897,6 +982,93 @@ func _refresh_builder() -> void:
 	menu.set_screen_items(WORKOUT_CREATE, builder.menu_items())
 
 
+## « Ajouter un parcours » (lot O23) : écran « Importer une trace », liste demandée au core.
+func _open_route_import() -> Dictionary:
+	if not _route_compiling:
+		route_message = ""
+		route_message_error = false
+	route_import_candidates = []
+	menu.set_screen_items(ROUTE_IMPORT, [{"id": "none", "label": "Recherche des traces…", "enabled": false}])
+	menu.push_screen(ROUTE_IMPORT)
+	return {"action": "list_route_imports"}
+
+
+## Trace choisie : import_route. Une seule compilation à la fois (O23-4) : le core refuse la suivante (busy).
+func _choose_route_import(item_id: String) -> Dictionary:
+	var idx := int(item_id.substr(5))
+	if not item_id.begins_with("file:") or idx >= route_import_candidates.size():
+		return {}
+	var c: Dictionary = route_import_candidates[idx]
+	if not _route_compiling:
+		route_message = ROUTE_COMPILING % [str(c["file"]), 0]
+		route_message_error = false
+	_route_compiling = true
+	return {"action": "import_route", "path": c["path"]}
+
+
+## Traces importables (message `route_imports` du core, réponse à list_route_imports).
+func set_route_import_candidates(found: Array) -> void:
+	route_import_candidates = found
+	var items: Array = []
+	for i in range(found.size()):
+		var c: Dictionary = found[i]
+		items.append({"id": "file:%d" % i, "label": str(c["file"]),
+			"detail": str(c["source"]) + (", déjà importée" if c.get("imported", false) else "")})
+	if items.is_empty():
+		items.append({"id": "none", "label": "Aucune trace .gpx, .fit ou .tcx", "enabled": false,
+			"detail": "dans Téléchargements, Bureau ou ~/OpenRide/Import"})
+	menu.set_screen_items(ROUTE_IMPORT, items)
+
+
+## Carte de l'écran d'import : la trace sous le focus (dossier, déjà importée) puis le mode d'emploi.
+func _route_import_card(focused: String) -> Dictionary:
+	var lines: Array = []
+	var idx := int(focused.substr(5)) if focused.begins_with("file:") else -1
+	var name := "Importer une trace"
+	if idx >= 0 and idx < route_import_candidates.size():
+		var c: Dictionary = route_import_candidates[idx]
+		name = str(c["file"])
+		lines.append("Dossier : " + str(c["source"]))
+		if c.get("imported", false):
+			lines.append("Déjà dans ~/OpenRide/GPX/ : la choisir de nouveau la recompile si besoin, sans copie.")
+	lines.append_array(ROUTE_IMPORT_CARD)
+	return {"title": "Ajouter un parcours", "name": name, "lines": lines}
+
+
+## Avancement de l'import (`route_import_status`, lot O23) ; vrai quand le parcours vient d'être prêt
+## (main.gd redemande alors la liste des parcours). Retour à la liste, focus sur le parcours à son arrivée.
+func on_route_import_status(msg: Dictionary) -> bool:
+	var rid := int(msg.get("request_cmd_id", -1))
+	var file := str(msg.get("file", ""))
+	match str(msg.get("state", "")):
+		"compiling":
+			if rid == _route_import_done:
+				return false
+			_route_compiling = true
+			route_message = ROUTE_COMPILING % [file, int(msg.get("elapsed_s", 0))]
+			route_message_error = false
+		"done":
+			if rid == _route_import_done:
+				return false
+			_route_import_done = rid
+			_route_compiling = false
+			var name := str(msg.get("name", msg.get("route_id", file)))
+			route_message = ("Parcours ajouté : " if msg.get("created", true) else "Parcours déjà présent : ") + name
+			route_message_error = false
+			_focus_route = str(msg.get("route_id", ""))
+			if menu.current_screen() == ROUTE_IMPORT:
+				menu.handle("Y_SHORT")
+			return true
+		"failed":
+			if rid == _route_import_done:
+				return false
+			_route_import_done = rid
+			_route_compiling = false
+			route_message = "Échec : " + str(msg.get("message", file))
+			route_message_error = true
+	return false
+
+
 ## Fichiers importables (message `imports` du core, réponse à list_imports).
 func set_import_candidates(found: Array) -> void:
 	import_candidates = found
@@ -919,6 +1091,9 @@ func on_workout_saved(msg: Dictionary) -> bool:
 		return false
 	_last_saved_cmd_id = rid
 	var name := str(msg.get("name", msg.get("workout_id", "")))
+	if _workout_request == "qwk":
+		qwk.clear()
+		_refresh_qwk()
 	var text := ("Importé : " if _workout_request == "import" else "Créé : ") + name
 	if not msg.get("created", true):
 		text += " (déjà présent)"
@@ -941,8 +1116,58 @@ func workout_failed(message: String) -> void:
 	workout_message = message
 
 
+# --- saisie du QWKcode au clavier (lot O21) -----------------------------------------------------
+
+func _refresh_qwk() -> void:
+	menu.set_screen_items(WORKOUT_QWK, qwk.menu_items())
+
+
+## Élément choisi (A maintenu, Entrée sur « Enregistrer » ou « Tout effacer », clic) sur l'écran de saisie.
+func _qwk_item(item_id: String) -> Dictionary:
+	if item_id == QwkEditor.SAVE_ID and not qwk.is_empty():
+		workout_message = "Enregistrement…"
+		_workout_request = "qwk"
+		return {"action": "create_workout_qwk", "text": qwk.text()}
+	if item_id == QwkEditor.CLEAR_ID:
+		qwk.clear()
+		workout_message = ""
+		_refresh_qwk()
+		menu.focus_item(qwk.last_line_id())
+	return {}
+
+
+## Touche du clavier sur l'écran de saisie : vrai si elle a servi. Un caractère imprimable s'écrit (même
+## « + », « - », « a » ou « y », utiles au QWKcode) ; Entrée commence une ligne, ou choisit
+## « Enregistrer » ou « Tout effacer » sous le focus ; Retour arrière efface. Flèches et Échap restent
+## des boutons (key_map.gd).
+func qwk_key(ch: String, enter: bool, backspace: bool) -> Dictionary:
+	if menu.current_screen() != WORKOUT_QWK:
+		return {"used": false}
+	var focused := _focused_id()
+	if enter and focused in [QwkEditor.SAVE_ID, QwkEditor.CLEAR_ID]:
+		return {"used": true, "action": _qwk_item(focused)}
+	var used := true
+	if enter:
+		qwk.new_line()
+	elif backspace:
+		qwk.backspace()
+	elif ch != "":
+		qwk.type_char(ch)
+	else:
+		used = false
+	if used:
+		workout_message = ""
+		_refresh_qwk()
+		menu.focus_item(qwk.last_line_id())
+	return {"used": used, "action": {}}
+
+
 ## Liste indisponible (trois demandes sans réponse) : un élément désactivé qui le dit.
 func list_failed(list_name: String) -> void:
+	if list_name == "route_imports":
+		menu.set_screen_items(ROUTE_IMPORT, [{"id": "none", "label": "Traces à importer indisponibles",
+			"enabled": false, "detail": "core sans réponse"}])
+		return
 	if list_name == "imports":
 		menu.set_screen_items(WORKOUT_IMPORT, [{"id": "none", "label": "Fichiers à importer indisponibles",
 			"enabled": false, "detail": "core sans réponse"}])
@@ -957,6 +1182,8 @@ func handle(event: String) -> Dictionary:
 	if not is_visible():
 		return {}
 	ready_message = ""
+	if menu.current_screen() == MenuModel.HOME:
+		interrupted_message = ""   # résultat de recover_session : affiché jusqu'à l'appui suivant
 	if not settings.editing.is_empty():
 		if menu.current_screen() in [SETTING_EDIT, MenuModel.PAUSE, SETTINGS_GROUP, WORKOUT_CREATE]:
 			return _handle_edit(event)
@@ -977,6 +1204,11 @@ func handle(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
+		"clear_trial_profile":   # confirmation acceptée (lot O33)
+			profiles.message = "Vidage du profil d'essai…"
+			profiles.done_message = "Profil d'essai vidé"
+			_refresh_profiles()
+			return act
 		"start_run":   # confirmation du premier lancement acceptée (lot R13) : l'avertissement n'est plus redemandé
 			rogue.mark_warned()
 			return _launch_rogue(act)
@@ -1008,7 +1240,14 @@ func handle(event: String) -> Dictionary:
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") in ProfilesViewModel.SCREENS:
 		return _handle_profiles(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") == INTERRUPTED:
+		return _handle_interrupted(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME:
+		if str(act["id"]) == "interrupted":
+			interrupted_message = ""
+			_refresh_interrupted()
+			menu.push_screen(INTERRUPTED)
+			return {}
 		if str(act["id"]) == "profile":
 			profiles.message = ""
 			_refresh_profiles()
@@ -1022,6 +1261,11 @@ func handle(event: String) -> Dictionary:
 		if str(act["id"]) == "ftp":
 			menu.push_screen(FTP_TEST)
 			return {}
+		if str(act["id"]) == "history":
+			history.begin()
+			_refresh_history()
+			menu.push_screen(HistoryViewModel.SCREEN)
+			return {"action": "list_history"}
 		if not plan_day_session().is_empty():
 			return _handle_plan_item(PLANS, "today")
 		plan_message = ""
@@ -1029,7 +1273,11 @@ func handle(event: String) -> Dictionary:
 		return {"action": "list_plans"}
 	if act.get("action", "") == "item" and act.get("screen", "") in GarageViewModel.SCREENS:
 		return _handle_garage(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") in HistoryViewModel.SCREENS:
+		return _handle_history(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
+		if str(act["id"]) == MenuModel.ADD_ROUTE_ID:
+			return _open_route_import()
 		if str(act["id"]) in ROUTE_HELP_TOPICS:
 			menu.push_screen(ROUTE_HELP)
 			menu.focus_item("help:" + str(ROUTE_HELP_TOPICS[act["id"]]))
@@ -1038,6 +1286,8 @@ func handle(event: String) -> Dictionary:
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == ROUTE_HELP:
 		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
+	if act.get("action", "") == "item" and act.get("screen", "") == ROUTE_IMPORT:
+		return _choose_route_import(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in [PLANS, PLAN]:
 		return _handle_plan_item(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in PlanBuilder.SCREENS:
@@ -1071,6 +1321,8 @@ func handle(event: String) -> Dictionary:
 		var item_id := str(act["id"])
 		if item_id.begins_with("set:") and settings.begin(item_id.substr(4)):
 			_refresh_edit()
+		if item_id == SettingsViewModel.RELAUNCH:
+			return {"action": "relaunch"}   # lot O26 : décor vivant ou relief changés
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.WORKOUTS:
 		workout_message = ""
@@ -1081,10 +1333,17 @@ func handle(event: String) -> Dictionary:
 		if str(act["id"]) == MenuModel.HELP_WORKOUT_ID:
 			menu.push_screen(WORKOUT_HELP)
 			return {}
+		if str(act["id"]) == MenuModel.QWK_WORKOUT_ID:
+			_refresh_qwk()
+			menu.push_screen(WORKOUT_QWK)
+			menu.focus_item(qwk.last_line_id())
+			return {}
 		import_candidates = []
 		menu.set_screen_items(WORKOUT_IMPORT, [{"id": "none", "label": "Recherche des fichiers…", "enabled": false}])
 		menu.push_screen(WORKOUT_IMPORT)
 		return {"action": "list_imports"}
+	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_QWK:
+		return _qwk_item(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_HELP:
 		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_CREATE:
@@ -1156,6 +1415,67 @@ func handle(event: String) -> Dictionary:
 				show_details = not show_details
 				return {}
 	return act
+
+
+# --- séance interrompue d'un lancement précédent (lot O34) ---------------------------------------
+
+## Liste `hello_ack.config.interrupted` (absente : aucune séance à rattraper).
+func on_hello_interrupted(list) -> void:
+	interrupted = list.duplicate() if list is Array else []
+	_refresh_interrupted()
+
+
+## Réponse `interrupted` à recover_session : séance traitée, séances restantes ; plus aucune : retour à l'accueil.
+func on_interrupted(msg: Dictionary) -> void:
+	var rest = msg.get("items", [])
+	interrupted = rest.duplicate() if rest is Array else []
+	interrupted_message = "Séance enregistrée dans tes séances" if bool(msg.get("saved", false)) \
+		else "Séance non enregistrée"
+	_refresh_interrupted()
+	if interrupted.is_empty() and menu.current_screen() in [INTERRUPTED, MenuModel.CONFIRM]:
+		menu.open_screen(MenuModel.HOME)
+
+
+## Ligne de l'accueil et écran de la plus récente : date, parcours, distance, durée.
+func _refresh_interrupted() -> void:
+	if interrupted.is_empty() or not interrupted[0] is Dictionary:
+		menu.set_interrupted("", "")
+		menu.set_screen_items(INTERRUPTED, [{"id": "none", "label": "Aucune séance à rattraper", "enabled": false}])
+		return
+	var detail := interrupted_detail(interrupted[0], route_names)
+	var more := interrupted.size() - 1
+	menu.set_interrupted("Séance interrompue à enregistrer" + ("" if more == 0 else " (+%d)" % more), detail)
+	menu.set_screen_items(INTERRUPTED, [
+		{"id": "save", "label": "Enregistrer la séance", "detail": detail},
+		{"id": "discard", "label": "Ne pas l'enregistrer"}])
+
+
+## « 30/10 à 18:05 · Vosges · 12,3 km · 32 min » d'un élément {start, route_id, distance_m, duration_s}.
+static func interrupted_detail(item: Dictionary, names: Dictionary) -> String:
+	var start := str(item.get("start", ""))
+	var parts: Array = []
+	if start.length() >= 16:
+		parts.append("%s/%s à %s" % [start.substr(8, 2), start.substr(5, 2), start.substr(11, 5)])
+	var rid = item.get("route_id")
+	if rid != null and str(rid) != "":
+		parts.append(str(names.get(str(rid), rid)))
+	parts.append(("%.1f km" % (float(item.get("distance_m", 0.0)) / 1000.0)).replace(".", ","))
+	parts.append("%d min" % int(round(float(item.get("duration_s", 0.0)) / 60.0)))
+	return " · ".join(parts)
+
+
+func _handle_interrupted(item_id: String) -> Dictionary:
+	if interrupted.is_empty():
+		return {}
+	var sid := str(interrupted[0].get("id", ""))
+	interrupted_message = ""
+	if item_id == "save":
+		interrupted_message = "Enregistrement…"
+		return {"action": "recover_session", "id": sid, "save": true}
+	if item_id == "discard":
+		menu.confirm("Ne pas enregistrer cette séance ? Elle ne sera plus proposée",
+			{"action": "recover_session", "id": sid, "save": false})
+	return {}
 
 
 ## Écran de départ du Cyber-Rogue (lot R13) : les trois premiers éléments font défiler leur valeur, « Lancer »
@@ -1264,6 +1584,7 @@ func _refresh_profiles() -> void:
 	menu.set_screen_items(ProfilesViewModel.SCREEN, profiles.who_items(), "Qui roule ?")
 	menu.set_screen_items(ProfilesViewModel.MANAGE_LIST, profiles.manage_list_items(), "Gérer un profil")
 	menu.set_screen_items(ProfilesViewModel.MANAGE, profiles.manage_items(), profiles.manage_title())
+	menu.set_screen_items(ProfilesViewModel.RESTORE, profiles.restore_items())
 	menu.set_screen_items(ProfilesViewModel.NAME, profiles.grid_items(), profiles.name_title())
 
 
@@ -1284,9 +1605,23 @@ func _handle_profiles(screen: String, item_id: String) -> Dictionary:
 					profiles.message = "Changement de profil…"
 					act = {"action": "select_profile", "id": id}
 		ProfilesViewModel.MANAGE_LIST:
-			profiles.manage_id = item_id.substr(2)
-			_refresh_profiles()
-			menu.push_screen(ProfilesViewModel.MANAGE)
+			if item_id == ProfilesViewModel.CLEAR_TRIAL_ID:   # lot O33
+				profiles.message = ""
+				menu.confirm("Vider le profil d'essai ? (séances, pièces et records d'essai effacés)",
+					{"action": "clear_trial_profile"})
+			elif item_id == ProfilesViewModel.RESTORE_ID:
+				profiles.message = ""
+				_refresh_profiles()
+				menu.push_screen(ProfilesViewModel.RESTORE)
+			else:
+				profiles.manage_id = item_id.substr(2)
+				_refresh_profiles()
+				menu.push_screen(ProfilesViewModel.MANAGE)
+		ProfilesViewModel.RESTORE:
+			if item_id.begins_with("t:"):
+				profiles.message = "Restauration…"
+				profiles.done_message = "Profil restauré : " + profiles.trash_name(item_id.substr(2))
+				act = {"action": "restore_profile", "id": item_id.substr(2)}
 		ProfilesViewModel.MANAGE:
 			if item_id == "rename":
 				profiles.begin_rename(profiles.manage_id)
@@ -1363,6 +1698,8 @@ func on_profiles(msg: Dictionary) -> void:
 		menu.open_screen(ProfilesViewModel.SCREEN)   # renommé : retour à la liste
 	elif menu.current_screen() == ProfilesViewModel.MANAGE and profiles._find(profiles.manage_id).is_empty():
 		menu.open_screen(ProfilesViewModel.SCREEN)   # supprimé
+	elif menu.current_screen() == ProfilesViewModel.RESTORE and profiles.message.begins_with("Profil restauré"):
+		menu.handle("Y_SHORT")   # restauré : retour à « Gérer un profil », message gardé
 	_refresh_profiles()
 
 
@@ -1403,6 +1740,51 @@ func garage_preview(st: Dictionary) -> Dictionary:
 	if screen in GarageViewModel.SCREENS:
 		return garage.preview(screen, focused)
 	return {}
+
+
+## Historique (lot O28) : réponse `history` à `list_history` ; noms des parcours de la dernière liste.
+func on_history(msg: Dictionary) -> void:
+	history.on_history(msg)
+	_refresh_history()
+
+
+## Bilan d'une séance passée (`history_session`) : ouvert dans le panneau du bilan de fin de séance.
+func on_history_session(msg: Dictionary) -> void:
+	if not history.on_session(msg) or menu.current_screen() != HistoryViewModel.SCREEN:
+		return
+	show_details = false
+	_refresh_history()
+	menu.push_screen(HistoryViewModel.SESSION)
+
+
+func _refresh_history() -> void:
+	menu.set_screen_items(HistoryViewModel.SCREEN, history.items(route_names))
+	menu.set_screen_items(HistoryViewModel.WEEKS, history.week_items())
+	menu.set_screen_items(HistoryViewModel.FTP, history.ftp_items())
+	menu.set_screen_items(HistoryViewModel.SESSION, HistoryViewModel.session_items(), history.session_title(route_names))
+
+
+func _handle_history(screen: String, item_id: String) -> Dictionary:
+	if screen == HistoryViewModel.SCREEN:
+		if item_id == "weeks":
+			menu.push_screen(HistoryViewModel.WEEKS)
+		elif item_id == "ftp":
+			menu.push_screen(HistoryViewModel.FTP)
+		else:
+			var sid: String = history.request(item_id)
+			if sid != "":
+				return {"action": "history_session", "id": sid}
+	elif screen == HistoryViewModel.SESSION:
+		if item_id == "details":
+			show_details = not show_details
+		elif item_id == "back":
+			menu.handle("Y_SHORT")
+	return {}
+
+
+## Bilan affiché par le panneau du bilan : celui de la séance qui vient de finir, ou d'une séance de l'historique.
+func shown_summary() -> Dictionary:
+	return history.detail if menu.current_screen() == HistoryViewModel.SESSION else summary
 
 
 ## Écrans des records (lot T10) : « Records du parcours » (écran Prêt) relit le fichier et liste les
@@ -1544,7 +1926,10 @@ func state() -> Dictionary:
 	if st["screen"] == PAIRING:
 		st["status"] = pairing.message
 		st["status_error"] = pairing.message_error
-	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT]:
+	elif st["screen"] in [MenuModel.ROUTES, ROUTE_IMPORT]:
+		st["status"] = route_message
+		st["status_error"] = route_message_error
+	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT, WORKOUT_QWK]:
 		st["status"] = workout_message
 	elif st["screen"] in [PLANS, PLAN] or st["screen"] in PlanBuilder.SCREENS:
 		st["status"] = plan_message
@@ -1556,6 +1941,11 @@ func state() -> Dictionary:
 		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
 	elif st["screen"] in GarageViewModel.SCREENS:
 		st["status"] = garage.message
+	elif st["screen"] in [INTERRUPTED, MenuModel.HOME]:
+		st["status"] = interrupted_message
+	elif st["screen"] in HistoryViewModel.SCREENS:
+		st["status"] = history.message
+		st["status_error"] = history.message.begins_with("Échec")
 	elif st["screen"] == ContentsViewModel.SCREEN:
 		st["status"] = contents.message
 		st["status_error"] = contents.message.begins_with("Échec")
@@ -1566,6 +1956,8 @@ func state() -> Dictionary:
 		st["grid"] = {"columns": ProfilesViewModel.GRID_COLUMNS, "text": profiles.name_text}
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
+		if st["status"] == "" and workout_done:
+			st["status"] = PAUSE_WORKOUT_DONE
 	st["card"] = card(st)
 	st["preview"] = garage_preview(st)
 	st["progress"] = progress_view() if st["screen"] == SUMMARY else {}

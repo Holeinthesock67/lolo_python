@@ -81,6 +81,7 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
         routes.mkdir()
         route_id = prepare_route(route, routes)
         cfg = Config()
+        cfg.depart.mode = "immediat"   # banc sans engine ni cycliste : départ à la commande start (lot O36)
         cfg.rider.ftp_w = ftp_w
         cfg.bots.level_pct = round(level)
         cfg.powerups.mode = "off"            # course sans bonus : seuls la physique et les stratégies jouent

@@ -3,11 +3,12 @@ extends Label
 ## Bandeau en haut de l'écran : plusieurs messages peuvent être actifs, chacun sous une clé
 ## (core_lost, shutdown, error, route, command…), avec ou sans durée. Caché quand aucun n'est actif.
 ## Rouge tant qu'une alerte est active, sinon sombre et transparent comme les panneaux du HUD (clés de
-## INFO_KEYS : rappel des boutons, appui ambigu, consigne, niveau gagné ; 28/10, le rouge était agressif).
+## INFO_KEYS : rappel des boutons, appui ambigu, consigne, niveau gagné, invite de fin d'entraînement ;
+## 28/10, le rouge était agressif).
 ## Pas de class_name (script attaché dans main.tscn).
 
 const UiTheme := preload("res://scripts/ui_theme.gd")
-const INFO_KEYS := ["controls", "press", "cue", "level_up"]
+const INFO_KEYS := ["controls", "press", "cue", "level_up", "workout_done"]
 
 signal changed(text: String)
 

@@ -82,6 +82,18 @@ static func controls_text(erg: bool, kind := "workout", rogue := false) -> Strin
 	return "Click : Y = pause · + / − = braquet · appui long = 10 braquets · ↑ / ↓ = vue   (clavier : mêmes touches)"
 
 
+## Invite de fin de séance (1er novembre) : `state.workout_done` (contrat IPC 1.5) dit que l'entraînement est
+## fini et que la séance continue en parcours libre ; Y ouvre la pause, focus déjà sur « Terminer et
+## enregistrer », A maintenu valide (Échap puis Entrée au clavier, key_map.gd). Texte vide sans invite.
+static func workout_done_text(state: Dictionary) -> String:
+	var done = state.get("workout_done", null)
+	if not (done is Dictionary):
+		return ""
+	var name := str(done.get("workout_name", "")).strip_edges()
+	var what := "Entraînement « %s » terminé" % name if name != "" else "Entraînement terminé"
+	return what + " : Y puis A maintenu pour terminer et enregistrer · sinon, la balade continue   (clavier : Échap puis Entrée)"
+
+
 ## Explication d'un appui ni court ni long (PLUS_UNCLEAR ou MINUS_UNCLEAR), menu affiché ou en séance.
 static func unclear_press_text(event_name: String, in_menu: bool) -> String:
 	var plus := event_name == "PLUS_UNCLEAR"

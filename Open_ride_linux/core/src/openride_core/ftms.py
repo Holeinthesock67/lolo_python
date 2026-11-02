@@ -33,6 +33,7 @@ DEVICE_INFO_SERVICE = uuid16(0x180A)
 # Opcodes du Control Point
 OP_REQUEST_CONTROL = 0x00
 OP_RESET = 0x01
+OP_SET_TARGET_RESISTANCE = 0x04
 OP_SET_TARGET_POWER = 0x05
 OP_START_RESUME = 0x07
 OP_STOP_PAUSE = 0x08
@@ -97,6 +98,10 @@ class Features:
     def supports_erg(self) -> bool:
         return "power_target" in self.target
 
+    @property
+    def supports_resistance(self) -> bool:
+        return "resistance_target" in self.target
+
 
 def parse_features(data: bytes) -> Features:
     machine, target = struct.unpack_from("<II", data, 0)
@@ -115,6 +120,19 @@ class PowerRange:
 
 def parse_power_range(data: bytes) -> PowerRange:
     return PowerRange(*struct.unpack_from("<hhH", data, 0))
+
+
+@dataclass
+class ResistanceRange:
+    """Supported Resistance Level Range (0x2AD6, FTMS §4.13) : niveaux sans unité, résolution 0,1."""
+    min_level: float
+    max_level: float
+    increment: float
+
+
+def parse_resistance_range(data: bytes) -> ResistanceRange:
+    lo, hi, inc = struct.unpack_from("<hhH", data, 0)
+    return ResistanceRange(lo / 10.0, hi / 10.0, inc / 10.0)
 
 
 def parse_machine_status(data: bytes) -> tuple[int, str] | None:
@@ -284,6 +302,16 @@ def _sint16(value: float) -> int:
 def cmd_set_target_power(watts: float) -> bytes:
     """Opcode 0x05 : sint16 en watts, résolution 1 W."""
     return struct.pack("<Bh", OP_SET_TARGET_POWER, _sint16(watts))
+
+
+def cmd_set_target_resistance(level: float, wide: bool = True) -> bytes:
+    """Opcode 0x04 : niveau de résistance sans unité, résolution 0,1. FTMS 1.0 §4.16.2.5 le donne sur un
+    uint8 (25,5 au plus), trop court pour une plage annoncée de 0 à 100 (0x2AD6, sint16) : la plupart des
+    applications l'écrivent sur un sint16 (`wide`, défaut). `wide=False` : uint8 de la norme."""
+    raw = int(round(level * 10))
+    if wide:
+        return struct.pack("<Bh", OP_SET_TARGET_RESISTANCE, _sint16(raw))
+    return struct.pack("<BB", OP_SET_TARGET_RESISTANCE, max(0, min(255, raw)))
 
 
 def cmd_set_sim_params(grade_pct: float, crr: float = 0.004, cw_kg_m: float = 0.39,

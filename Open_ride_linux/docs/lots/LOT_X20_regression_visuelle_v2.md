@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : Non-régression visuelle v2 : SSIM, scènes figées, références par moteur et préréglage | Python + GDScript | S1 (`compare_captures.py`) | Moyenne | Oui ; issue #218 ; complément Z3 du 31 octobre (`vitrine_compare.py` : SSIM, comptes du CSV, planche avant/après) |
+| Série X (outils de test) : Non-régression visuelle v2 : SSIM, scènes figées, références par moteur et préréglage | Python + GDScript | S1 (`compare_captures.py`) | Moyenne | Livré le 29 octobre (PR #508) |
 
 ## 1. Objectif
 
@@ -61,3 +61,6 @@ Audit de couverture des tests du 28 octobre, lot Z3 accepté par le propriétair
 - Tests : `core/tests/test_vitrine_compare.py` (vitrines identiques et planche, objet déplacé, comptes dans et hors tolérance, petits comptes, qualité appliquée changée, capture ou ligne disparue, clé des CSV, rien à comparer).
 - Références natives des vitrines sur la GTX 1060 : à faire sur le PC (sortie d'une vitrine sur `main` gardée comme `REF`), via la file des mesures.
 
+## Livraison
+
+PR #508, fusionnée le 29 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui ; issue #218 ; complément Z3 du 31 octobre (`vitrine_compare.py` : SSIM, comptes du CSV, planche avant/après) ».

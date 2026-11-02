@@ -148,6 +148,35 @@ func _test_flow() -> void:
 	f.on_profiles({"active": "cycliste-a", "items": [PROFILES["items"][0]]})
 	_check(f.menu.current_screen() == ProfilesViewModel.SCREEN, "profil supprimé : retour à la liste")
 	_check(ButtonHelp.text(ProfilesViewModel.NAME).contains("Z : Écrire"), "aide des boutons de la grille")
+	_test_trash_and_trial(f)
+
+
+## Lot O33 : « Restaurer un profil supprimé » et « Vider le profil d'essai » à la fin de « Gérer un profil ».
+func _test_trash_and_trial(f) -> void:
+	var trashed := {"id": "cycliste-b_20261030-210500", "name": "Cycliste B", "deleted": "2026-10-30"}
+	f.on_profiles({"active": "cycliste-a", "items": [PROFILES["items"][0]], "trash": [trashed]})
+	f.menu.focus_item("manage")
+	f.handle("A_LONG")
+	_check(_ids(f.state()["items"]).slice(-2) == ["restore", "clear_trial"], "gestion : restaurer et vider l'essai en fin de liste")
+	f.menu.focus_item("restore")
+	f.handle("A_LONG")
+	_check(f.menu.current_screen() == ProfilesViewModel.RESTORE and f.state()["items"][0]["detail"] == "supprimé le 30/10",
+		"corbeille : nom et date de la suppression")
+	_check(f.handle("A_LONG") == {"action": "restore_profile", "id": trashed["id"]}, "A maintenu : restore_profile")
+	f.on_profiles(PROFILES.merged({"trash": []}, true))
+	_check(f.menu.current_screen() == ProfilesViewModel.MANAGE_LIST and f.state()["status"] == "Profil restauré : Cycliste B",
+		"restauré : retour à la gestion, message")
+	_check(not f.state()["items"][_ids(f.state()["items"]).find("restore")]["enabled"], "corbeille vide : ligne grisée")
+	f.menu.focus_item("clear_trial")
+	f.handle("A_LONG")
+	_check(f.menu.current_screen() == MenuModel.CONFIRM and f.state()["focus"] == 0, "vider l'essai : confirmation, « Non » d'abord")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "clear_trial_profile"}, "« Oui » : clear_trial_profile")
+	f.on_profiles(PROFILES)
+	_check(f.state()["status"] == "Profil d'essai vidé", "réponse du core : profil d'essai vidé")
+	f.menu.focus_item("restore")
+	f.on_error("profile_invalid", "le nom « Cycliste B » est déjà pris")
+	_check(f.state()["status"].contains("déjà pris"), "refus du core sur la ligne d'état")
 
 
 func _init() -> void:

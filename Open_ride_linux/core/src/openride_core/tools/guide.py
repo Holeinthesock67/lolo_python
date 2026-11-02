@@ -111,7 +111,7 @@ TRIALS: dict[str, Trial] = {
         ("les deux boîtiers Click, piles chargées",
          "le jeu fermé : l'outil tient seul le Click",
          "le son du PC allumé : un bip à chaque étape et à chaque appui reçu"),
-        ("17 appuis demandés tour à tour, le boîtier gauche d'abord, flèches en tête (il se tait environ une minute après la connexion)",
+        ("17 appuis demandés tour à tour, le boîtier gauche d'abord, flèches en tête (avant son premier redémarrage automatique, environ 50 s après la connexion)",
          "chaque appui reçu s'affiche avec son action dans chaque mode (spécification générale §7.1)")),
     "recette_v10": Trial(
         "Recette de la série V : progression, équipement, avatar (lot V10)", "environ 30 min, dont 2 × 10 min de vélo",

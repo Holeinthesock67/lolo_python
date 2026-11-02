@@ -4,12 +4,14 @@ Construit les réponses aux commandes `list_routes` et `list_workouts`, avec lim
 à 200 éléments au plus, découpage en datagrammes de 60 000 octets au plus et profils
 ERG limités à 30 triplets. Révision 1.3 (lot O12) : fiche des parcours (`stats`, `library`),
 `unit` des entraînements, message `plans` (réponse à `list_plans`, `start_plan`, `stop_plan`).
+Révision 1.5 (lot O28) : messages `history` et `history_session` (historique du menu).
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Any
 
@@ -339,3 +341,69 @@ def summary_extras(records: list[dict[str, Any]], events: list[dict[str, Any]],
         "blocks": blocks,
         "blocks_truncated": blocks_truncated,
     }
+
+
+# --- historique (lot O28, révision 1.5) ------------------------------------------------------
+
+MAX_HISTORY_SESSIONS = 60
+MAX_HISTORY_WEEKS = 8
+MAX_HISTORY_FTP_TESTS = 20
+HISTORY_SESSION_KEYS = ("date", "route", "duration_s", "distance_m", "elevation_gain_m", "avg_power_w",
+                        "np_w", "if", "tss", "status", "workout")
+
+
+def build_history_message(request_cmd_id: int, ftp_w: float, activities_dir: Path) -> dict[str, Any]:
+    """Réponse à `list_history` : séances, cumul par semaine et tests de FTP, calculés comme
+    `openride-core history` et `ftp-test --history` (mêmes arrondis, même cache)."""
+    from . import ftp_test
+    from .tools.history import compute_history
+
+    hist = compute_history(activities_dir, ftp=ftp_w, weeks=MAX_HISTORY_WEEKS)
+    sessions = [{"id": s["filename"], **{k: s[k] for k in HISTORY_SESSION_KEYS}}
+                for s in hist["sessions"] if s["status"] != "error"]
+    unreadable = sum(1 for s in hist["sessions"] if s["status"] == "error")
+    tests = []
+    for _path, r in reversed(ftp_test.find_results(activities_dir / ".journal")):
+        tests.append({"date": time.strftime("%Y-%m-%d %H:%M", time.localtime(r.ts)) if r.ts else None,
+                      "ftp_w": r.ftp_w, "previous_ftp_w": r.previous_ftp_w,
+                      "warnings": list(r.warnings), "reliable": r.reliable})
+    weeks = [{k: w[k] for k in ("week", "start_date", "count", "duration_s", "distance_m",
+                                "elevation_gain_m", "tss")} for w in hist["weeks"]]
+    return {"type": "history", "v": 1, "request_cmd_id": request_cmd_id,
+            "sessions": sessions[:MAX_HISTORY_SESSIONS],
+            "truncated": len(sessions) > MAX_HISTORY_SESSIONS, "unreadable": unreadable,
+            "weeks": weeks, "ftp_tests": tests[:MAX_HISTORY_FTP_TESTS]}
+
+
+def history_file(activities_dir: Path, session_id: str) -> Path | None:
+    """Fichier d'une séance de l'historique (`id` du message `history`) ; None s'il n'y en a pas."""
+    from .tools.history import _discover_files
+
+    fits, jsonls = _discover_files(activities_dir)
+    return next((p for p in fits + jsonls if p.name == session_id), None)
+
+
+class HistoryError(Exception):
+    """Séance de l'historique illisible (fichier devenu vide, tronqué ou effacé)."""
+
+
+def build_history_session(request_cmd_id: int, session_id: str, path: Path, ftp_w: float) -> dict[str, Any]:
+    """Réponse à `history_session` : le bilan d'une séance passée, de la forme du bilan de fin de séance
+    (`state.summary`), calculé comme `openride-core summary` (lève HistoryError)."""
+    from .fit_export import summarize
+    from .tools.session_summary import SummaryError, load_session
+
+    try:
+        session = load_session(path)
+    except SummaryError as exc:
+        raise HistoryError(str(exc)) from exc
+    s = summarize(session.records, session.events)
+    summary = {
+        "duration_s": round(s.timer_s, 1),
+        "distance_m": round(s.distance_m, 1),
+        "avg_power_w": round(s.avg_power or 0.0, 1),
+        "fit_path": str(path) if session.fmt == "fit" else None,
+        **summary_extras(session.records, session.events, ftp_w),
+    }
+    return {"type": "history_session", "v": 1, "request_cmd_id": request_cmd_id, "id": session_id,
+            "summary": summary}

@@ -2,7 +2,7 @@
 
     python -m openride_core.tools.gigue_charge [--duree 120] [--charge compilation|cpu|aucune] [--strict]
 
-Lance une séance simulée sans engine (`openride-core run --trainer sim --input none --autostart`, HOME
+Lance une séance simulée sans engine (`openride-core run --trainer sim --input none --autostart --depart immediat`, HOME
 temporaire, parcours de démonstration) pendant qu'une charge tourne :
 - `compilation` (défaut) : `openride-compiler build` d'une trace fabriquée de 40 km, sans réseau
   (couches route, terrain et segments ; MNT vide, altitude 0), relancée en boucle ;
@@ -114,7 +114,8 @@ def run(duration: float, charge: str, out: Path) -> dict:
     try:
         with log_path.open("wb") as fh:
             core = subprocess.Popen([sys.executable, "-m", "openride_core", "run", "--trainer", "sim", "--input",
-                                     "none", "--autostart", "--route", "demo", "--sim-scenario", "nominal"],
+                                     "none", "--autostart", "--depart", "immediat", "--route", "demo",
+                                     "--sim-scenario", "nominal"],
                                     env=env, stdout=fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
             time.sleep(duration)
             core.send_signal(signal.SIGTERM)

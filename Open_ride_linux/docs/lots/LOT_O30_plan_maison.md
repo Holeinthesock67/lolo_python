@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Plan maison depuis le menu : « Plans d'entraînement › Créer un plan » (jours, entraînements de la bibliothèque dans l'ordre choisi, durée), commande `create_plan` | Python + GDScript | O12, O25 | Petite | Audit des options du 31 octobre, accepté par le propriétaire ; en PR (après O29) |
+| Plan maison depuis le menu : « Plans d'entraînement › Créer un plan » (jours, entraînements de la bibliothèque dans l'ordre choisi, durée), commande `create_plan` | Python + GDScript | O12, O25 | Petite | Livré le 31 octobre (PR #664) |
 
 ## 1. Objectif
 
@@ -30,3 +30,7 @@ Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, §5),
 - Engine : `plan_builder.gd` (nouveau, modèle sans nœud des quatre écrans), `menu_flow.gd` (écrans, plan créé ouvert), `ipc_client.gd` et `main.gd` (commande).
 - Tests : `core/tests/test_plan_maison.py`, `engine/tests/unit/test_plan_builder.gd`, `test_menu_flow.gd` (ligne « Créer un plan »), scénario `engine/tests/menu_scenarios/plan_maison.json` du banc des menus.
 - Docs : contrat, guide d'utilisation (§5, plans), README.
+
+## Livraison
+
+PR #664, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Audit des options du 31 octobre, accepté par le propriétaire ; en PR (après O29) ».

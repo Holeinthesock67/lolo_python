@@ -105,13 +105,13 @@ def test_muted_unit_detected_from_notification_rate():
         rec.raw("BB", bytes([0x15]))
         clock.now += 0.1
     assert bc.muted_units(rec, ["AA", "BB"]) == []
-    for _ in range(20):                     # puis 10 s : AA toutes les 2,5 s (bridage), BB normal
+    for _ in range(20):                     # puis 10 s : AA toutes les 2,5 s (muet), BB normal
         if round(clock.now * 10) % 25 == 0:
             rec.raw("AA", bytes([0x15]))
         rec.raw("BB", bytes([0x15]))
         clock.now += 0.5
     assert bc.muted_units(rec, ["AA", "BB"]) == ["AA"]
-    assert bc.muted_units(rec, ["BB"]) == []      # un boîtier coupé n'est pas « bridé »
+    assert bc.muted_units(rec, ["BB"]) == []      # un boîtier coupé n'est pas « muet »
 
 
 def run_sim(spec: dict, timeout: float = 5.0) -> tuple[dict, gd.Guide]:
@@ -154,8 +154,8 @@ def test_silent_left_unit_is_reported():
     report, guide = run_sim(spec, timeout=1.5)
     steps = {s["key"]: s for s in report["steps"]}
     left = [s for s in report["steps"] if next(x for x in bc.STEPS if x.key == s["key"]).left]
-    assert all(not s["ok"] for s in left) and "bridé" in steps["moins"]["detail"]
+    assert all(not s["ok"] for s in left) and "muet" in steps["moins"]["detail"]
     assert steps["plus"]["ok"] and steps["b"]["ok"]
     assert not report["ok"] and "moins" in report["missed_left"]
-    assert "bridage connu" in bc.report_text(report) and "echec" in guide.sound.played
-    assert any("bridé" in line for line in guide.out.getvalue().splitlines())   # alerte à l'écran
+    assert "click_reset_locked" in bc.report_text(report) and "echec" in guide.sound.played
+    assert any("muet" in line for line in guide.out.getvalue().splitlines())   # alerte à l'écran

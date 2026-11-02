@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : atmosphère par biome (brume de chaleur, humidité, lumière polaire) | GDScript + shader | U5, P7 | Petite | Oui, après U5, **version 3.0** (issue #340) |
+| Engine : atmosphère par biome (brume de chaleur, humidité, lumière polaire) | GDScript + shader | U5, P7 | Petite | Livré le 30 octobre (PR #596), **version 3.0** |
 
 ## 1. Objectif
 
@@ -12,7 +12,7 @@
 ## 2. À lire
 
 1. `docs/3.0/PLAN_SERIE_U.md` §2 et §6, `docs/lots/LOT_U1_contrat_biomes.md` §4.5 (`sky`), `docs/lots/LOT_U5_modele_biome_engine.md`, `docs/lots/LOT_P7_heure_soleil.md`, `docs/lots/LOT_P8_meteo_legere.md`.
-2. Code : `engine/scripts/theme_render_params.gd`, `engine/scripts/daylight_model.gd` (P7), `engine/scripts/weather_model.gd` (P8).
+2. Code : `engine/scripts/theme_render_params.gd`, `daylight_model.gd` du lot P7 (pas encore livré), `engine/scripts/weather_model.gd` (P8).
 
 ## 3. Prérequis
 
@@ -45,3 +45,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Ciel volumétrique, tempêtes de sable.
+
+## Livraison
+
+PR #596, fusionnée le 30 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, après U5, **version 3.0** (issue #340) ».

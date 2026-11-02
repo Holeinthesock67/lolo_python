@@ -3,7 +3,7 @@
   "voies": ["clavier"],
   "etapes": [
     {"ecran": "connect", "titre": "Connexion des appareils", "delai": 15},
-    {"ecran": "home", "titre": "OpenRide", "elements": ["world", "ride", "erg", "plan", "ftp", "sim", "settings", "quit"], "delai": 15},
+    {"ecran": "home", "titre": "OpenRide", "elements": ["world", "ride", "erg", "plan", "ftp", "history", "sim", "settings", "quit"], "delai": 15},
     {"ecran": "home", "contient": ["Parcours : à choisir"]}
   ]
 }

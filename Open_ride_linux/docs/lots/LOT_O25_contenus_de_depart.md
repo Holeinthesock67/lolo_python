@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Contenus de départ sans terminal : entraînements, deux plans et parcours de démonstration installés au premier lancement, écran « Réglages › Contenus », message de bienvenue réécrit (contrat 1.5 : `list_contents`, `install_content`, `contents`) | Python + GDScript | O11, O16, U19 (livrés) | Petite | Audit des options du 31 octobre, accepté par le propriétaire ; en PR |
+| Contenus de départ sans terminal : entraînements, deux plans et parcours de démonstration installés au premier lancement, écran « Réglages › Contenus », message de bienvenue réécrit (contrat 1.5 : `list_contents`, `install_content`, `contents`) | Python + GDScript | O11, O16, U19 (livrés) | Petite | Livré le 31 octobre (PR #651) |
 
 ## 1. Objectif
 
@@ -43,3 +43,7 @@ Le pack « cols célèbres » (lot O16) se construit depuis OpenStreetMap : il d
 4. Captures de l'écran avant et après installation montrées au propriétaire avant la fusion.
 
 **Sur le PC (via le fil de fusion) :** banc des menus `contenus` (HOME temporaire, rien n'est écrit dans le vrai `~/OpenRide`).
+
+## Livraison
+
+PR #651, fusionnée le 31 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Audit des options du 31 octobre, accepté par le propriétaire ; en PR ».

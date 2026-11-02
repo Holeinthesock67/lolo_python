@@ -137,7 +137,8 @@ def test_route_axis_distance_between_vertices():
 
 
 def test_blend_in_tiles(world):
-    """Sur le ruban, le terrain suit la route (− 5 cm) ; à plus de 25 m du ruban, le MNT."""
+    """Sur le ruban, le terrain suit la route (− 5 cm), ou un peu plus bas là où le garde-fou de la chaussée
+    abaisse un sommet (triangle qui remontait sur la chaussée côté flanc) ; à plus de 25 m du ruban, le MNT."""
     _, route = load(world)
     axis = RouteAxis(route["x"], route["z"], route["alt_m"])
     on_road = far_off = 0
@@ -148,7 +149,9 @@ def test_blend_in_tiles(world):
         g = grid.ravel().astype(float)
         mnt = default_relief(gx.ravel(), gz.ravel())
         near = d <= 4.0
-        assert np.all(np.abs(g[near] - (y_route[near] - 0.05)) < 0.01)
+        diff = g[near] - (y_route[near] - 0.05)
+        assert np.all(diff < 0.01) and np.all(diff > -0.5)
+        assert diff.size == 0 or np.median(diff) > -0.05
         ring = (d >= 27.0) & (d <= 33.0)
         assert np.all(np.abs(g[ring] - mnt[ring]) < 0.01)
         on_road += int(near.sum())
@@ -363,3 +366,66 @@ def test_build_terrain_direct():
     assert g.dtype == np.dtype("<f4") and g.shape == (101, 101)
     assert g[0, 0] == pytest.approx(4.95)            # sur l'axe : route − 5 cm
     assert g[100, 100] == pytest.approx(7.0)         # loin de la route : MNT
+
+
+# --- garde-fou de la chaussée (31 octobre : l'herbe ne passe pas par-dessus la route) -----------
+
+def _hairpin(grade: float = 0.08, leg_m: float = 300.0, radius_m: float = 8.0) -> dict:
+    """Épingle sur un flanc : montée vers le nord en x = 0, demi-tour de `radius_m`, montée vers le
+    sud en x = 2 × radius_m (route d'en haut à 10 m de bord à bord de celle d'en bas)."""
+    pts = [(0.0, -float(d)) for d in np.arange(0.0, leg_m, C.DS_M / 2)]
+    for a in np.linspace(math.pi, 0.0, 9)[1:]:
+        pts.append((radius_m + radius_m * math.cos(a), -leg_m - radius_m * math.sin(a)))
+    pts += [(2.0 * radius_m, -leg_m + float(d)) for d in np.arange(C.DS_M / 2, leg_m, C.DS_M / 2)]
+    x = np.array([p[0] for p in pts])
+    z = np.array([p[1] for p in pts])
+    s = np.concatenate(([0.0], np.cumsum(np.hypot(np.diff(x), np.diff(z)))))
+    return {"x": x.tolist(), "z": z.tolist(), "alt_m": (500.0 + grade * s).tolist()}
+
+
+def _flank(x, z):
+    """Flanc qui monte vers l'est (0,8 m par mètre), comme le versant d'une épingle."""
+    return 500.0 + 0.8 * np.asarray(x, dtype=float) + 0.0 * np.asarray(z, dtype=float)
+
+
+def test_road_samples_cover_carriageway():
+    from openride_compiler.terrain import road_samples
+    px, pz, pa = road_samples([0.0, 0.0], [0.0, -10.0], [100.0, 101.0])
+    assert len(px) == 11 * 7                               # 11 points le long, 7 en travers (−3 … +3 m)
+    assert px.min() == pytest.approx(-C.ROAD_HALF_WIDTH_M) and px.max() == pytest.approx(C.ROAD_HALF_WIDTH_M)
+    assert pa.min() == pytest.approx(100.0) and pa.max() == pytest.approx(101.0)
+
+
+def test_hairpin_terrain_never_above_road(monkeypatch):
+    """Sans garde-fou, le fondu laisse le terrain de la route haute recouvrir la route basse dans l'épingle ;
+    avec, aucun point de la chaussée n'a de terrain au-dessus de la route moins 5 cm."""
+    from openride_compiler import terrain
+    route = _hairpin()
+    frame = LocalFrame.at(*ORIGIN)
+    prov = SyntheticProvider(*ORIGIN, _flank)
+    monkeypatch.setattr(terrain, "clear_road", lambda *a, **k: 0)
+    raw = terrain.build_level(route, frame, prov, NEAR, log=lambda m: None)
+    before, _, _ = terrain.terrain_excess(raw, route["x"], route["z"], route["alt_m"])
+    assert before.max() > 0.5                              # le défaut existe bien sans garde-fou
+    monkeypatch.undo()
+    logs = []
+    tiles = terrain.build_level(route, frame, prov, NEAR, log=logs.append)
+    after, _, _ = terrain.terrain_excess(tiles, route["x"], route["z"], route["alt_m"])
+    assert after.max() <= 1e-3
+    assert any("abaissé" in m for m in logs)
+    # bords communs des tuiles toujours identiques
+    for (ix, iz), g in tiles.items():
+        if (ix + 1, iz) in tiles:
+            assert np.array_equal(g[:, -1], tiles[(ix + 1, iz)][:, 0])
+        if (ix, iz + 1) in tiles:
+            assert np.array_equal(g[-1, :], tiles[(ix, iz + 1)][0, :])
+
+
+def test_straight_road_untouched():
+    """Route droite : le fondu suffit, le garde-fou ne change rien."""
+    from openride_compiler import terrain
+    route = {"x": [0.0, 0.0, 0.0], "z": [0.0, -10.0, -20.0], "alt_m": [5.0, 5.5, 6.0]}
+    frame = LocalFrame.at(*ORIGIN)
+    tiles = {k: g.copy() for k, g in terrain.build_level(
+        route, frame, SyntheticProvider(*ORIGIN, lambda x, z: 0 * x + 9.0), NEAR, log=lambda m: None).items()}
+    assert terrain.clear_road(tiles, route["x"], route["z"], route["alt_m"]) == 0

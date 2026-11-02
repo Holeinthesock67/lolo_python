@@ -9,8 +9,9 @@ départ à chaque étape, consigne en grand avec compte à rebours, puis étape 
 demandé est reçu et lu (`--lecture`, 4 s), ou au bout de `--delai` secondes (30). Chaque appui reçu, demandé ou non, s'affiche dans
 un encadré : événement décodé par le core, bouton et boîtier, et l'action qu'il commande dans chaque
 mode (menus, SIM, ERG, Cyber-Rogue, monde ouvert) ; il bipe avec les notes du jeu (court, long, ou
-appui ni court ni long). Le boîtier gauche passe d'abord : sans déblocage par l'appli Zwift, il se
-tait environ une minute après la connexion (SRS §4.2).
+appui ni court ni long). Le boîtier gauche (−, flèches) passe d'abord, avant que Zwift ne le verrouille
+(environ 50 s après la connexion) ; comme dans le core, l'outil le redémarre alors tout seul
+(`[drivers] click_reset_locked`, SRS §4.2) et il répond de nouveau après environ 4 s.
 
 Mêmes fournisseurs que le core (deux boîtiers, comme la recette X8 `click_recette`). Écrit
 `rapport.txt`, `rapport.json` et `guide.jsonl` dans `~/OpenRide/boutons_click/<date>_<heure>/` ;
@@ -39,8 +40,8 @@ from .guide import Guide
 DEFAULT_OUT = Path.home() / "OpenRide" / "boutons_click"
 STEP_TIMEOUT_S = 30.0
 NEXT_STEP_S = 4.0        # temps de lecture de l'encadré avant l'étape suivante
-MUTED_WINDOW_S = 5        # boîtier bridé : moins de MUTED_MAX notifications sur cette fenêtre
-MUTED_MAX = 5            # (normal : 10 par seconde ; bridé : une toutes les 2 ou 3 s)
+MUTED_WINDOW_S = 5        # boîtier muet : moins de MUTED_MAX notifications sur cette fenêtre
+MUTED_MAX = 5            # (normal : 10 par seconde ; muet : une toutes les 2 ou 3 s)
 SIM_THINK_S = 3.0        # --sim : le cycliste simulé lit la consigne avant d'appuyer
 
 # --- plan des boutons (spécification générale §7.1, seule référence) -------------------------
@@ -137,7 +138,7 @@ class ButtonStep:
 
 SHORT, LONG, MEDIUM = 0.12, 1.1, 0.7
 STEPS = (
-    # Boîtier gauche d'abord, flèches en tête : il se tait environ une minute après la connexion.
+    # Boîtier gauche d'abord, flèches en tête : avant son premier redémarrage (verrou Zwift, environ 50 s).
     ButtonStep("gauche", "Appuie sur la flèche gauche (boîtier gauche)", InputEvent.LEFT_SHORT, "LEFT", SHORT),
     ButtonStep("droite", "Appuie sur la flèche droite (boîtier gauche)", InputEvent.RIGHT_SHORT, "RIGHT", SHORT),
     ButtonStep("haut", "Appuie sur la flèche haut (boîtier gauche)", InputEvent.UP_SHORT, "UP", SHORT),
@@ -206,7 +207,7 @@ def _new_key(rec: Recorder, before: dict[str, dict[str, int]], wanted: str | Non
 
 
 def muted_units(rec: Recorder, connected: list[str]) -> list[str]:
-    """Boîtiers reliés depuis un moment qui n'envoient presque plus rien (bridage du boîtier gauche)."""
+    """Boîtiers reliés depuis un moment qui n'envoient presque plus rien (gauche verrouillé et non redémarré)."""
     now = int(rec.t())
     out = []
     for address in connected:
@@ -252,7 +253,7 @@ async def run_steps(providers: list[TracedClickProvider], rec: Recorder, guide: 
     muted_since: dict[str, float] = {}
 
     def watch_muted() -> bool:
-        """Vrai si un boîtier est bridé ; le signale une fois à l'écran avec l'heure."""
+        """Vrai si un boîtier est muet ; le signale une fois à l'écran avec l'heure."""
         up = [p.unit_address for i, p in enumerate(providers) if link.get(i)]
         muted = muted_units(rec, up)
         for address in muted:
@@ -260,7 +261,7 @@ async def run_steps(providers: list[TracedClickProvider], rec: Recorder, guide: 
                 muted_since[address] = rec.t()
                 u = rec.unit(address)
                 since = rec.t() - (u.connects[-1] if u.connects else 0.0)
-                g.alert(f"Boîtier {u.side} bridé : plus de touches depuis environ {rec.t():.0f} s "
+                g.alert(f"Boîtier {u.side} muet : plus de touches depuis environ {rec.t():.0f} s "
                         f"({since:.0f} s après sa connexion)")
         for address in list(muted_since):
             if address not in muted:
@@ -296,7 +297,7 @@ async def run_steps(providers: list[TracedClickProvider], rec: Recorder, guide: 
                 watch_links()
                 if step.left and watch_muted() and not rec.events[seen:]:
                     res = StepResult(step.key, step.prompt, step.event.value, False, None, received, "gauche",
-                                     "boîtier gauche bridé, étape sautée (B fait « − »)")
+                                     "boîtier gauche muet, étape sautée (click_reset_locked coupé ?)")
                     g.sound.play("echec")
                     break
                 g.tick()
@@ -349,8 +350,8 @@ def report_text(report: dict[str, Any]) -> str:
         side = f", boîtier {s['side']}" if s["side"] and s["side"] != "?" else ""
         lines.append(f"  {'OK ' if s['ok'] else 'NON'} {s['prompt']} : {s['detail']}{side}{delay}")
     if report["missed_left"]:
-        lines += ["", "Boîtier gauche : appuis manqués. S'il s'est tu après environ une minute, c'est le",
-                  "bridage connu sans déblocage Zwift (docs/DIAG_CLICK_GAUCHE.md) ; B du boîtier droit fait « − »."]
+        lines += ["", "Boîtier gauche : appuis manqués. Un appui fait pendant un redémarrage (environ 4 s par minute)",
+                  "est perdu ; s'il reste muet, vérifier [drivers] click_reset_locked = true (docs/DIAG_CLICK_GAUCHE.md)."]
     return "\n".join(lines) + "\n"
 
 

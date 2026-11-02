@@ -27,7 +27,7 @@ Couleurs (charte R17 en version sobre, une couleur par rôle) : fond `void` #050
 
 Tailles en unités de la base 1280 × 720 : titre 40, entrée 28, détail et carte 22, bandeau 21, pastilles 18, rien sous 16. Marges de 64, rangées de 46, rayon 10.
 
-Le menu occupe tout l'écran sur un voile sombre ; il est sur sa propre couche au-dessus du HUD, qui est caché tant qu'un menu est affiché (`main.gd`). Le bandeau d'alerte reste au-dessus de tout. Sur l'écran de pause, la raison de la pause (`state.pause_reason`) s'écrit sous le titre (`menu_flow.gd`, `PAUSE_REASONS`).
+Le menu occupe tout l'écran sur un voile sombre ; il est sur sa propre couche au-dessus du HUD, qui est caché tant qu'un menu est affiché (`main.gd`). Le bandeau d'alerte reste au-dessus de tout. Sur l'écran de pause, la raison de la pause (`state.pause_reason`) s'écrit sous le titre (`menu_flow.gd`, `PAUSE_REASONS`). Après la fin d'un entraînement (`state.workout_done`), la pause s'ouvre sur « Terminer et enregistrer » et la ligne sous le titre dit « Entraînement terminé : A maintenu pour terminer et enregistrer » (`PAUSE_WORKOUT_DONE`), sauf pause subie, dont la raison passe en premier.
 
 La carte de détail (étape 2) suit l'écran et le focus (`menu_flow.card()`, fiches de `catalog_model.gd`) :
 

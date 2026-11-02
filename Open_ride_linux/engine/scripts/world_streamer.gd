@@ -433,7 +433,7 @@ func road_window(s_pos: float, v: float) -> Array:
 		var kk := k
 		if route.is_loop():
 			kk = posmod(k, count)
-		elif k < 0 or k >= count:
+		elif not RoadBuilder.has_chunk(route, k):   # amorces k = −1 et k = count comprises
 			continue
 		if not out.has(kk):
 			out.append(kk)
@@ -582,8 +582,12 @@ func _build_job(job: Dictionary) -> void:
 	var alt_orig: float = r.alt_m[0] if r != null and r.n > 0 else 0.0
 	match spec["kind"]:
 		"road":
-			job["arrays"] = RoadBuilder.build_chunk_arrays(r, spec["k"], float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)),
-				job.get("gravel", {}))
+			var k_road: int = spec["k"]
+			var height_at := Callable()
+			if (k_road < 0 or k_road >= RoadBuilder.chunk_count(r)) and has_terrain:
+				height_at = _display_height_fn(job["world_dir"], r)
+			job["arrays"] = RoadBuilder.build_chunk_arrays(r, k_road, float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)),
+				job.get("gravel", {}), height_at)
 		"near", "far":
 			var t: Vector2i = spec["tile"]
 			var heights := TerrainTiles.load_filled(job["world_dir"], spec["kind"], t.x, t.y, r)
@@ -626,6 +630,20 @@ func _build_job(job: Dictionary) -> void:
 	var st: Array = build_stats.get(spec["kind"], [0, 0])
 	build_stats[spec["kind"]] = [st[0] + 1, st[1] + dt]
 	_stats_mutex.unlock()
+
+
+## Hauteur affichée du terrain proche en (x, z) (relief exagéré du lot Q2 compris), pour poser les amorces de
+## chaussée : tuiles `near` du parcours (cache par tuile), repli sur l'altitude de la route la plus proche.
+## Utilisable dans une tâche de fond.
+static func _display_height_fn(w_dir: String, r) -> Callable:
+	var cache := {}
+	return func(x: float, z: float) -> float:
+		var t := TerrainTiles.tile_of("near", x, z)
+		if not cache.has(t):
+			cache[t] = TerrainTiles.load_filled(w_dir, "near", t.x, t.y, r)
+		var h: PackedFloat32Array = cache[t]
+		var raw := TerrainTiles.nearest_route_alt(r, x, z) if h.is_empty() else TerrainTiles.mesh_height_at(h, "near", t.x, t.y, x, z)
+		return r.display_y(raw)
 
 
 func _poll_jobs(wait: bool) -> void:

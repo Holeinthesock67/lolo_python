@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
@@ -35,6 +35,14 @@ CONFIG_TARGETS: dict[str, tuple[str, str]] = {
     "hr_name": ("drivers", "hr_name"),
     "hr_address": ("drivers", "hr_address"),
 }
+# Rôles de la commande `pair_devices` -> lignes écrites pour « oublier » l'appareil (chaîne vide,
+# lot O24) : le trainer revient à la recherche par le nom par défaut, la ceinture est coupée.
+FORGET_VALUES: dict[str, list[tuple[str, str, object]]] = {
+    "trainer": [("drivers", "trainer_address", ""), ("trainer", "device_name", config_mod.TrainerConfig().device_name)],
+    "click_plus": [("drivers", "click_address", "")],
+    "click_minus": [("drivers", "click_minus_address", "")],
+    "hr": [("drivers", "hr", "none"), ("drivers", "hr_address", ""), ("drivers", "hr_name", "")],
+}
 
 PlusWaiter = Callable[[list[str], float], Awaitable[str | None]]
 
@@ -51,9 +59,10 @@ class PairedDevices:
     click_minus_address: str = ""
     hr_name: str = ""
     hr_address: str = ""
+    forget: tuple[str, ...] = ()   # rôles de FORGET_VALUES à oublier (lot O24)
 
     def items(self) -> list[tuple[str, str]]:
-        return [(f.name, getattr(self, f.name)) for f in fields(self)]
+        return [(name, getattr(self, name)) for name in CONFIG_TARGETS]
 
 
 def _rssi(d: dict[str, Any]) -> int:
@@ -93,8 +102,14 @@ def from_inventory(inventory: dict[str, Any], plus_address: str | None = None) -
 
 # --- écriture de config.toml ------------------------------------------------------------------
 
-def _values(paired: PairedDevices) -> list[tuple[str, str, str]]:
-    return [(*CONFIG_TARGETS[name], value) for name, value in paired.items() if value]
+def _values(paired: PairedDevices) -> list[tuple[str, str, object]]:
+    """Lignes à écrire : appareils choisis (une ceinture choisie active aussi `drivers.hr`), puis oublis."""
+    out: list[tuple[str, str, object]] = [(*CONFIG_TARGETS[name], value) for name, value in paired.items() if value]
+    if paired.hr_address:
+        out.append(("drivers", "hr", "ble"))
+    for role in paired.forget:
+        out += FORGET_VALUES[role]
+    return out
 
 
 def plan(paired: PairedDevices, text: str) -> tuple[str, list[str]]:
@@ -221,7 +236,8 @@ def scan_results_message(request_cmd_id: int, items: list[dict[str, Any]], done:
 
 
 def paired_from_args(args: dict[str, Any], items: list[dict[str, Any]]) -> PairedDevices:
-    """Commande `pair_devices` : adresses choisies (null : valeur actuelle gardée) et noms trouvés."""
+    """Commande `pair_devices` : adresses choisies (null : valeur actuelle gardée, chaîne vide : appareil
+    oublié, lot O24) et noms trouvés."""
     names = {it["address"]: it.get("name", "") for it in items}
     out = PairedDevices()
     for key, field_name in (("trainer", "trainer_address"), ("click_plus", "click_plus_address"),
@@ -230,7 +246,10 @@ def paired_from_args(args: dict[str, Any], items: list[dict[str, Any]]) -> Paire
         if value is None:
             continue
         if not isinstance(value, str):
-            raise PairingError(f"pair_devices : « {key} » doit être une adresse ou null")
+            raise PairingError(f"pair_devices : « {key} » doit être une adresse, une chaîne vide ou null")
+        if value == "":
+            out.forget += (key,)
+            continue
         setattr(out, field_name, value.upper())
     if out.trainer_address and names.get(out.trainer_address):
         out.trainer_name = names[out.trainer_address]

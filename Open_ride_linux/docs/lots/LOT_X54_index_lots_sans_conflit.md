@@ -21,7 +21,7 @@ Depuis que le lot X52 a retiré les nombres de tests de la doc, le dernier fichi
 | X54-1 | La ligne d'un lot (titre, langage, dépendances, taille, statut) est écrite dans son cahier, juste sous le titre, derrière un commentaire repère. L'identifiant est celui du nom de fichier. |
 | X54-2 | `scripts/index_lots.py` calcule le tableau complet (trié par série puis numéro), le nombre de lots et de lots livrés par série (`--stats`, `--resume F`), et vérifie les cahiers (`--verifier`). |
 | X54-3 | `00_INDEX.md` garde les règles communes, les paragraphes des séries et le graphe des dépendances, mais plus aucune ligne de lot. |
-| X54-4 | `--migrer` déplace dans leur cahier les lignes de lot restées dans `00_INDEX.md` : c'est la résolution d'un rebase pour une PR ouverte avant ce lot. |
+| X54-4 | `--migrer` résout la fusion de `main` dans une PR ouverte avant ce lot : `00_INDEX.md` repris de la branche, seules les lignes changées par la branche depuis son dernier `main` d'avant X54 vont dans leur cahier, le reste du texte est fusionné à trois avec `main`. Tout ou rien. |
 | X54-5 | `core/tests/test_docs_coherence.py` refuse un cahier sans ligne, une ligne revenue dans `00_INDEX.md`, et un lot « Livré » sans section « Livraison ». |
 | X54-6 | La colonne 3.14 de la CI ajoute le tableau des lots par série au résumé du run. |
 
@@ -45,4 +45,6 @@ Livré le 31 octobre 2026 (branche `claude/project-thread-47k1h1`).
 
 - `scripts/index_lots.py` et `core/tests/test_index_lots.py` (lecture, tri, nombres, cahier sans ligne, identifiant en double, migration).
 - `core/tests/test_docs_coherence.py` : contrôles 4 et 10 lus dans les cahiers.
-- Rebase des PR ouvertes avant ce lot : garder leurs lignes de tableau dans `00_INDEX.md` en résolvant le conflit, puis `python3 scripts/index_lots.py --migrer` et commit.
+- Fusion de `main` dans les PR ouvertes avant ce lot : `git checkout --ours -- docs/lots/00_INDEX.md`, puis `python3 scripts/index_lots.py --migrer` et commit.
+
+Correction du 31 octobre (retour du fil AS2) : la première version de `--migrer` recopiait dans les cahiers **toutes** les lignes de la branche, donc d'anciens statuts d'autres lots (X11, X20, X33), et pouvait perdre l'introduction venue de `main`. Elle compare maintenant les lignes à l'index du dernier `main` d'avant X54 contenu dans la branche, et fusionne le texte à trois (`git merge-file`). Essai sur la PR #649 : seul le cahier AS2 change, `00_INDEX.md` est identique à `main`.

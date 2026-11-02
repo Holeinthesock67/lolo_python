@@ -32,6 +32,7 @@ def sim_config(scenario: str = "nominal") -> Config:
     cfg = Config()
     cfg.drivers.trainer = cfg.drivers.input = cfg.drivers.hr = "sim"
     cfg.drivers.sim_scenario = scenario
+    cfg.trainer.control = "sim"   # ces tests suivent le protocole SIM (0x11) ; résistance calculée : test_resistance_calculee.py
     return cfg
 
 

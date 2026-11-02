@@ -222,3 +222,7 @@ après, liaison coupée 0,3 s plus tard, reconnexion en 3,8 à 7,1 s, mode 0 rel
 environ 4,5 s sur chaque cycle de 56 s (8 %) ; un appui fait pendant la coupure est perdu (20 « − »
 reçus sur 21 bips). Le droit est resté connecté tout du long. Le redémarrage est donc activé par défaut ;
 rien d'indispensable ne doit dépendre du seul boîtier gauche (le droit couvre tout, B = « − »).
+
+Un troisième essai (4 min) a reçu les quatre flèches du gauche avant et après chacun des 4 redémarrages
+(46 flèches, reconnexion en 3,8 à 8,1 s ; haut et bas changent bien la vue). Les aides à l'écran montrent
+depuis le 31 octobre « − » et les flèches à côté de B (bandeau des menus : « + A → » suivant, « − B ← » précédent).

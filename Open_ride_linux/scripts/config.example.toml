@@ -26,14 +26,14 @@ click_trace_raw = false       # trace brute des notifications Click dans le jour
 click_mute_after_s = 60       # délai avant d'alerter si un boîtier ne transmet plus d'appui (s)
 click_rehandshake_s = 0       # intervalle de tentative de reprise (s, 0 = désactivé)
 click_reset_locked = true     # redémarrer le boîtier gauche quand Zwift le verrouille (voir docs/RECHERCHE_CLICK_GAUCHE.md)
-hr = "none"                   # ceinture cardio : "none" ou "ble"
+hr = "none"                   # ceinture cardio : "none" ou "ble" (écrit par l'écran Appareils)
 hr_address = ""
 hr_name = ""
 
 [render]
 quality = "low"               # low, medium, high
 theme = "default"
-living = true                 # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
+living = true                 # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0 (réglable dans le menu)
 load_guard = true             # garde-fou de charge : coupe des effets quand la carte graphique sature (false : mesures)
 chart = "reduced"             # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"        # vue de caméra : subjective, follow_near, follow_far ou side (la dernière vue choisie y est écrite)

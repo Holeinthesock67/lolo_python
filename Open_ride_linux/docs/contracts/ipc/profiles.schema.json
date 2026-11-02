@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideProfilesMessage",
-  "description": "Réponse à cmd list_profiles, create_profile, rename_profile ou delete_profile (révision 1.5, lot MJ6) : profils de joueurs, un seul datagramme de moins de 1 000 octets.",
+  "description": "Réponse à cmd list_profiles, create_profile, rename_profile, delete_profile, clear_trial_profile ou restore_profile (révision 1.5, lots MJ6 et O33) : profils de joueurs et corbeille, un seul datagramme de moins de 1 600 octets.",
   "type": "object",
   "required": ["type", "v", "request_cmd_id", "active", "items"],
   "properties": {
@@ -22,6 +22,20 @@
           "level": {"type": "integer", "minimum": 1, "maximum": 50},
           "last_ride": {"type": ["string", "null"], "format": "date", "description": "Date de la dernière séance, null sans séance."},
           "kit_primary": {"type": "integer", "minimum": 0, "maximum": 15}
+        }
+      }
+    },
+    "trash": {
+      "type": "array",
+      "maxItems": 5,
+      "description": "Facultatif, lot O33 : profils de la corbeille, les plus récents d'abord ; id = dossier de la corbeille, à passer à restore_profile.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "deleted"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,31}_[0-9]{8}-[0-9]{6}$"},
+          "name": {"type": "string", "minLength": 1, "maxLength": 32},
+          "deleted": {"type": "string", "format": "date"}
         }
       }
     }

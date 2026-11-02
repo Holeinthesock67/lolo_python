@@ -39,7 +39,9 @@ En-tête d'un scénario : `description`, `voies` (défaut : les trois), `apparei
 `config` ({clé: valeur} écrite dans config.toml avant le lancement), `entrainement` (vrai : `erg_court.zwo`
 dans ~/OpenRide/Workouts), `telechargements` ({fichier: nom de l'entraînement} dans ~/Téléchargements), `plans`
 (vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `fichiers` ({chemin dans le
-HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29).
+HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
+(`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
+réseau, en quelques secondes : import de traces du lot O23).
 
 Rapport dans `--out` : `rapport.html` (tableau scénario × voie, vérifications, captures), `resultats.json`
 et `resume.txt`. Une capture est prise à chaque échec, avec l'état du menu. Code de sortie : 0 si toutes les
@@ -54,6 +56,7 @@ import html
 import json
 import os
 import re
+import shlex
 import shutil
 import signal
 import socket
@@ -72,9 +75,11 @@ SCENARIOS_DIR = TESTS_DIR / "menu_scenarios"
 sys.path.insert(0, str(TESTS_DIR))
 sys.path.insert(0, str(REPO / "core" / "src"))
 
-from openride_core.launcher import build_supervisor  # noqa: E402
+from openride_core.input_providers import ClickPair  # noqa: E402
+from openride_core.launcher import ENGINE_DONE, ENGINE_SHUTDOWN_S, build_supervisor  # noqa: E402
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
+import quality_guard  # noqa: E402
 
 VOIES = ("click", "clavier", "souris")
 MAX_FAILURES = 5   # au-delà, le passage s'arrête : les échecs suivants ne seraient que des conséquences
@@ -83,7 +88,20 @@ MAX_FAILURES = 5   # au-delà, le passage s'arrête : les échecs suivants ne se
 # vérification, en redemandant l'état : sinon « écran home : engine sans réponse » sur le PC, jamais dans le cloud.
 ENGINE_READY_S = 60.0
 ENGINE_READY_ASK_S = 3.0   # délai de chaque demande d'état pendant cette attente
+# L'engine peut aussi se taire un moment APRÈS sa première réponse (PC, 31 octobre : prêt en 0,7 s puis « écran home :
+# engine sans réponse » ; puis un A_LONG au Click traité plus de 11 s après l'appui, « Bip : A_LONG » manqué alors que
+# l'écran avait bien changé). Toute attente d'une ligne de l'engine (Run.wait_engine : réponse à menu_state, bip d'un
+# geste, clic de souris, journal) ne compte donc pas ses silences dans son délai, jusqu'à ENGINE_SILENT_S de silence,
+# et le rapport note la durée du silence. Silence : aucune ligne du journal de l'engine depuis SILENCE_GAP_S (en
+# --test-mode, il écrit une ligne par trame `state` du core, plusieurs fois par seconde).
+ENGINE_SILENT_S = 60.0
+SILENCE_GAP_S = 1.0
+WAIT_SLICE_S = 0.5
 COURT_S, LONG_S, FLOU_S = 0.15, 1.1, 0.7
+# Écart entre le relâchement d'un appui au Click et l'appui suivant : le core ignore un même événement
+# revenu dans les ClickPair.DEDUP_S (relais du boîtier « − », 5 à 40 ms plus tard) ; en dessous, deux
+# « + » enchaînés n'en font qu'un.
+CLICK_GAP_S = ClickPair.DEDUP_S + 0.1
 
 # Un seul tableau bouton → geste : événement du Click -> (bouton du Click V2 simulé, durée en s),
 # (touche Godot, Maj, durée en ms), geste de souris (None : pas de geste, repli au clavier). « − » au Click : bouton
@@ -119,7 +137,8 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "duree_s", "ecran", "monde", "titre", "groupe", "contient", "absent", "focus", "elements", "statut", "edition",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "capture", "relancer", "delai", "voies", "note"}
-HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives", "etapes"}
+HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
+             "compilateur", "etapes"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -138,6 +157,22 @@ def descendants(pid: int) -> list[int]:
             out.append(child)
             todo.append(child)
     return out[::-1]
+
+
+def threads_of(pid: int) -> list[str]:
+    """Fils d'un processus lus dans /proc, sans débogueur (ptrace refusé hors des ancêtres) : « nom (état, attente
+    dans le noyau) », regroupés avec leur nombre. Dit où un processus bloqué attend (fermeture de l'engine)."""
+    counts: dict[str, int] = {}
+    for task in sorted(Path(f"/proc/{pid}/task").glob("[0-9]*")):
+        try:
+            name = (task / "comm").read_text().strip()
+            state = (task / "stat").read_text().rsplit(")", 1)[1].split()[0]
+            wchan = (task / "wchan").read_text().strip() or "-"
+        except (OSError, IndexError):
+            continue
+        key = f"{name} ({state}, {wchan if wchan != '0' else '-'})"
+        counts[key] = counts.get(key, 0) + 1
+    return [f"{k} ×{n}" if n > 1 else k for k, n in counts.items()]
 
 
 def write_archive(path: Path, members: dict[str, Any]) -> None:
@@ -230,13 +265,34 @@ class Run:
         self.tmp = self.home = self.config = self.control = self.routes = Path()
         self._req = 0
         self.last: dict[str, Any] = {}
+        self.silent_s = 0.0   # silences de l'engine comptés depuis le début du passage (wait_engine)
         self.duration_s = 0.0
+        self._click_free = 0.0   # instant où le Click simulé peut recevoir l'appui suivant (CLICK_GAP_S)
 
     # --- dialogue avec l'engine -------------------------------------------------------------
 
     def _send(self, msg: dict[str, Any]) -> None:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.sendto(json.dumps(msg).encode(), ("127.0.0.1", self.state_port))
+
+    def wait_engine(self, pattern: str, delay: float, after: float) -> tuple[float, re.Match[str]] | None:
+        """Ligne du journal de l'engine écrite après `after` qui correspond à `pattern`, attendue `delay` secondes
+        sans compter les silences de l'engine (ENGINE_SILENT_S au plus) ; None si elle ne vient pas."""
+        assert self.engine is not None
+        deadline = now() + delay
+        silent = 0.0
+        while True:
+            t = now()
+            got = self.engine.wait_for(pattern, WAIT_SLICE_S, after=after)
+            if got is not None or self.engine.p.poll() is not None:
+                break
+            last = self.engine.lines[-1][0] if self.engine.lines else self.engine.t_start
+            if now() - last >= SILENCE_GAP_S:
+                silent += now() - t
+            if now() >= deadline + min(silent, ENGINE_SILENT_S):
+                break
+        self.silent_s += silent
+        return got
 
     def state(self, timeout: float = 10.0) -> dict[str, Any]:
         """État des menus (message de test `menu_state`) ; {} si l'engine ne répond pas."""
@@ -245,16 +301,20 @@ class Run:
         req = f"{self.voie}-{self._req}"
         t = now()
         self._send({"type": "_test", "action": "menu_state", "req": req})
-        got = self.engine.wait_for(r"\[test\] menu_state (\{.*\"req\":\"" + re.escape(req) + r"\".*\})$", timeout, after=t)
+        got = self.wait_engine(r"\[test\] menu_state (\{.*\"req\":\"" + re.escape(req) + r"\".*\})$", timeout, t)
         self.last = json.loads(got[1].group(1)) if got else {}
         return self.last
+
+    def silence(self, since: float) -> str:
+        """Mention du rapport pour les silences de l'engine comptés depuis `since` (valeur de self.silent_s)."""
+        return f" (engine muet {self.silent_s - since:.1f} s)" if self.silent_s - since >= SILENCE_GAP_S else ""
 
     def capture(self, tag: str, why: str = "") -> dict[str, Any]:
         assert self.engine is not None
         path = (self.out / f"{len(self.shots):02d}_{tag}.png").resolve()
         t = now()
         self._send({"type": "_test", "action": "screenshot", "path": str(path), "tag": tag})
-        ok = self.engine.wait_for(r"\[test\] screenshot \{", 8.0, after=t) is not None
+        ok = self.wait_engine(r"\[test\] screenshot \{", 8.0, t) is not None
         st = self.state()
         info = {"tag": tag, "file": path.name if ok else "", "why": why, "screen": st.get("screen", ""),
                 "title": st.get("title", ""), "rows": [r["text"] for r in st.get("rows", [])], "hint": st.get("hint", "")}
@@ -275,8 +335,10 @@ class Run:
         if not menu_shown and ev == "Y_SHORT":
             return True   # Y en séance : pause demandée par le core, sans relais à l'engine
         pattern = r"Appui ambigu : " + ev if ev.endswith("_UNCLEAR") else r"(Bip|Souris) : " + ev
-        got = self.engine.wait_for(pattern, hold_s + 10.0, after=t)
-        return got is not None or self.check(False, f"{ev} reçu par l'engine ({self.voie})", f"aucune ligne « {pattern} »")
+        since = self.silent_s
+        got = self.wait_engine(pattern, hold_s + 10.0, t)
+        return got is not None or self.check(False, f"{ev} reçu par l'engine ({self.voie})",
+                                             f"aucune ligne « {pattern} »" + self.silence(since))
 
     def gesture(self, ev: str) -> bool:
         """Joue l'événement `ev` par la voie du passage (repli au clavier sans geste de souris)."""
@@ -290,8 +352,11 @@ class Run:
         t = now()
         if voie == "click":
             button, hold = g["click"]
+            time.sleep(max(self._click_free - now(), 0.0))
+            t = now()
             with self.control.open("a", encoding="utf-8") as f:
                 f.write(json.dumps({"action": "press", "button": button, "duration_s": hold}) + "\n")
+            self._click_free = t + hold + CLICK_GAP_S
         elif voie == "clavier":
             key, shift, hold_ms = g["clavier"]
             hold = hold_ms / 1000.0
@@ -301,7 +366,7 @@ class Run:
             item = self.last.get("focus_id", "") if g["souris"] == "click" else ""
             self._send({"type": "_test", "action": "mouse", "kind": g["souris"], "item": item})
             if g["souris"] == "click":
-                got = self.engine.wait_for(r"Souris : clic sur|\[test\] mouse hidden", 10.0, after=t)
+                got = self.wait_engine(r"Souris : clic sur|\[test\] mouse hidden", 10.0, t)
                 self.state()
                 return (got is not None and "clic sur" in got[1].group(0)) or self.check(
                     False, f"A_LONG à la souris : clic sur « {item} »", got[1].group(0) if got else "sans réponse")
@@ -330,7 +395,7 @@ class Run:
         if self.voie == "souris" and any(r["id"] == item for r in st.get("rows", [])):
             t = now()
             self._send({"type": "_test", "action": "mouse", "kind": "click", "item": item})
-            got = self.engine.wait_for(r"Souris : clic sur " + re.escape(item) + r"$", 10.0, after=t)
+            got = self.wait_engine(r"Souris : clic sur " + re.escape(item) + r"$", 10.0, t)
             self.state()
             return got is not None
         return self.move_focus(item) and self.gesture("A_LONG")
@@ -344,7 +409,7 @@ class Run:
             return ["engine sans réponse"]
         text = " | ".join([st.get("status", "")] + [f"{it['label']} — {it['detail']}" if it["detail"] else it["label"]
                                                      for it in st.get("items", [])] + [st.get("devices", ""), st.get("card", "")]
-                         + [st.get("world_menu", {}).get(k, "") for k in ("help", "hint")])
+                         + [st.get("world_menu", {}).get(k, "") for k in ("body", "help", "hint")])
         if "menu_cache" in step:
             if st.get("visible") == bool(step["menu_cache"]):
                 bad.append(f"menu {'visible' if st.get('visible') else 'caché'}")
@@ -384,17 +449,20 @@ class Run:
 
     def wait_screen(self, step: dict[str, Any]) -> None:
         deadline = now() + float(step.get("delai", 5.0))
+        since = self.silent_s
         while True:
             st = self.state()
             bad = self._screen_ok(st, step)
-            if not bad or now() >= deadline:
+            # Délai de l'étape, silences de l'engine non comptés (wait_engine).
+            limit = deadline + min(self.silent_s - since, ENGINE_SILENT_S)
+            if not bad or now() >= limit or self.engine.p.poll() is not None:
                 break
             time.sleep(0.15)
         what = step.get("ecran") or ("menu caché" if step.get("menu_cache") else
                                      f"monde ouvert {step['monde']}" if "monde" in step else "menu visible")
         detail = ", ".join(f"{k}={step[k]!r}" for k in ("titre", "groupe", "focus", "contient", "elements") if k in step)
         self.check(not bad, f"écran {what}" + (f" ({detail})" if detail else ""),
-                   "; ".join(bad) if bad else f"« {st.get('title', '')} »")
+                   ("; ".join(bad) if bad else f"« {st.get('title', '')} »") + self.silence(since))
 
     def wait_config(self, want: dict[str, Any], delay: float) -> None:
         deadline = now() + delay
@@ -412,13 +480,47 @@ class Run:
                    "lu : " + ", ".join(f"{k} = {v!r}" for k, v in bad.items()) if bad else "OK")
 
     def wait_exit(self, code: int, delay: float) -> None:
+        """Code de sortie de l'engine, avec la règle du lanceur (lot X55) : si Godot ne sort pas ENGINE_SHUTDOWN_S
+        après sa ligne de fin (scène libérée, code annoncé), le processus est arrêté et ce code retenu ; le rapport le
+        note (INFO) avec les fils de Godot. Sans ligne de fin dans le délai : échec, avec la dernière étape de la
+        fermeture écrite par l'engine (« Fermeture : … ») et les fils de Godot, pour savoir où elle attend."""
         assert self.engine is not None
-        deadline = now() + delay
+        t0 = now()
         rc = None
-        while now() < deadline and rc is None:
+        done = None
+        while now() < t0 + delay and rc is None:
             rc = self.engine.p.poll()
+            got = self.engine.matching(ENGINE_DONE.pattern)
+            done = got[-1] if got else None
+            if rc is None and done is not None and now() - done[0] >= ENGINE_SHUTDOWN_S:
+                break
             time.sleep(0.2)
-        self.report.check(rc == code, f"l'engine sort avec le code {code}", f"code {rc}")
+        if rc is not None:
+            self.report.check(rc == code, f"l'engine sort avec le code {code}", f"code {rc} en {now() - t0:.1f} s")
+            return
+        threads = self.godot_threads()
+        if done is not None and now() - done[0] >= ENGINE_SHUTDOWN_S:
+            announced = int(done[1].group(1))
+            self.report.check(None, "arrêt de Godot bloqué après la libération de la scène",
+                              f"processus arrêté après {ENGINE_SHUTDOWN_S:.0f} s, comme par le lanceur ; fils de Godot : "
+                              + ("; ".join(threads) or "introuvables"))
+            self.report.check(announced == code, f"l'engine sort avec le code {code}", f"code {announced} annoncé")
+            self.stop_engine()
+            return
+        steps = self.engine.matching(r"Fermeture : (.*)$")
+        self.report.check(False, f"l'engine sort avec le code {code}",
+                          f"toujours en marche après {delay:.0f} s ; dernière étape : "
+                          + (steps[-1][1].group(1) if steps else "aucune ligne « Fermeture : »")
+                          + " ; fils de Godot : " + ("; ".join(threads) or "introuvables"))
+
+    def godot_threads(self) -> list[str]:
+        """Fils du processus Godot (sous xvfb-run ou non), aussi écrits dans fils_engine.txt."""
+        assert self.engine is not None
+        godot = [pid for pid in [self.engine.p.pid, *descendants(self.engine.p.pid)]
+                 if Path(f"/proc/{pid}/comm").is_file() and Path(f"/proc/{pid}/comm").read_text().startswith("Godot")]
+        threads = threads_of(godot[0]) if godot else []
+        (self.out / "fils_engine.txt").write_text("\n".join(threads) + "\n", encoding="utf-8")
+        return threads
 
     # --- lancement -------------------------------------------------------------------------
 
@@ -461,8 +563,10 @@ class Run:
         a = self.args
         env = {**os.environ, "HOME": str(self.home), "PYTHONUNBUFFERED": "1",
                "PYTHONPATH": os.pathsep.join([str(REPO / "core" / "src"), str(REPO / "compiler" / "src")])}
-        for k in ("XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME"):
+        for k in ("XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "OPENRIDE_COMPILER"):
             env.pop(k, None)
+        if self.doc.get("compilateur") == "doublure":
+            env["OPENRIDE_COMPILER"] = shlex.join([sys.executable, str(REPO / "core" / "tests" / "data" / "stub_compiler.py")])
         suffix = f"_{n}" if n else ""
         argv = [sys.executable, "-m", "openride_core", "run", "--config", str(self.config), "--trainer", "sim",
                 "--input", "sim", "--hr", "sim", "--sim-scenario", str(self.tmp / "scenario.json")]
@@ -481,6 +585,8 @@ class Run:
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
         ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
         self.report.check(ok, "engine relié au core", "hello_ack")
+        if ok:
+            self.check_quality("au départ")
         return ok and self.wait_engine_ready()
 
     def wait_engine_ready(self) -> bool:
@@ -492,13 +598,31 @@ class Run:
         return self.report.check(ok, "engine prêt (première réponse à menu_state)",
                                  f"{now() - t0:.1f} s" if ok else f"sans réponse en {ENGINE_READY_S:.0f} s")
 
+    def check_quality(self, when: str) -> None:
+        """Qualité réellement appliquée (lot X32) : celle que config.toml demande à cet instant (au départ : celle
+        passée par le lanceur ; à l'arrêt : celle d'un réglage changé au menu et enregistré)."""
+        assert self.engine is not None
+        try:
+            data = tomllib.loads(self.config.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError):
+            data = {}
+        wanted = str(config_get(data, "render.quality") or "low")
+        seq = [m.group(0) for _, m in self.engine.matching(quality_guard.APPLIED.pattern)]
+        ok, msg = quality_guard.check("\n".join(seq), wanted)
+        self.report.check(bool(ok), f"qualité réellement appliquée {when}", msg)
+
+    def stop_engine(self) -> None:
+        assert self.engine is not None
+        # xvfb-run ne transmet pas SIGTERM à Godot : le moteur et son Xvfb sont arrêtés d'abord.
+        for pid in descendants(self.engine.p.pid):
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(pid, signal.SIGTERM)
+        self.engine.stop(signal.SIGTERM, timeout=5.0)
+
     def stop(self) -> None:
         if self.engine is not None and self.engine.p.poll() is None:
-            # xvfb-run ne transmet pas SIGTERM à Godot : le moteur et son Xvfb sont arrêtés d'abord.
-            for pid in descendants(self.engine.p.pid):
-                with contextlib.suppress(ProcessLookupError):
-                    os.kill(pid, signal.SIGTERM)
-            self.engine.stop(signal.SIGTERM, timeout=5.0)
+            self.check_quality("à l'arrêt")
+            self.stop_engine()
         if self.core is not None:
             rc = self.core.stop(signal.SIGINT, timeout=15.0)
             self.report.check(rc == 0, "arrêt du core", f"code de sortie {rc}")
@@ -528,7 +652,7 @@ class Run:
             t = now()
             self._send({"type": "_test", "action": "key", "key": step["touche"], "shift": bool(step.get("maj")),
                         "hold_ms": int(step.get("duree_ms", 150))})
-            self.engine.wait_for(r"\[test\] key ", int(step.get("duree_ms", 150)) / 1000.0 + 10.0, after=t)
+            self.wait_engine(r"\[test\] key ", int(step.get("duree_ms", 150)) / 1000.0 + 10.0, t)
             time.sleep(0.2)
         elif "souris" in step:
             item = step.get("element", "")
@@ -540,7 +664,7 @@ class Run:
             t = now()
             self._send({"type": "_test", "action": "mouse", "kind": step["souris"], "item": step.get("element", ""),
                         "at": step.get("point", [])})
-            got = self.engine.wait_for(r"\[test\] mouse (done|hidden)", 10.0, after=t)
+            got = self.wait_engine(r"\[test\] mouse (done|hidden)", 10.0, t)
             self.check(got is not None and got[1].group(1) == "done", f"souris {step['souris']} "
                        f"{step.get('element', step.get('point', ''))}", got[1].group(0) if got else "sans réponse")
             time.sleep(0.2)
@@ -554,8 +678,8 @@ class Run:
         elif "config" in step:
             self.wait_config(step["config"], delay if "delai" in step else 3.0)
         elif "journal" in step:
-            proc = self.core if step["journal"] == "core" else self.engine
-            got = proc.wait_for(step["motif"], delay)
+            got = (self.core.wait_for(step["motif"], delay) if step["journal"] == "core"
+                   else self.wait_engine(step["motif"], delay, 0.0))
             self.check(got is not None, f"journal du {step['journal']} : « {step['motif']} »",
                        got[1].group(0) if got else f"absent après {delay:.0f} s")
         elif "fichier" in step:

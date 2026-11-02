@@ -116,3 +116,84 @@ def load_resume_state(path: Path) -> ResumeState:
                      if r.get("erg_bias_pct") is not None), None)
         state.erg_bias_pct = bias
     return state
+
+
+# --- séance interrompue d'un lancement précédent (lot O34) --------------------------------------
+
+INTERRUPTED_SCAN = 10   # journaux les plus récents examinés au démarrage (lecture complète de chacun)
+INTERRUPTED_MAX = 3     # séances proposées au plus
+
+
+def _summary_of(lines: list[dict]):
+    from .fit_export import summarize
+
+    records = [ln for ln in lines if ln.get("kind") == "record"]
+    events = [ln for ln in lines if ln.get("kind") == "event"]
+    if not records:
+        return records, None
+    stop = {"kind": "event", "event": "stop", "ts": max(r["ts"] for r in records)}
+    return records, summarize(records, [*events, stop])
+
+
+def interrupted_sessions(journal_dir: Path, skip: Path | None = None) -> list[dict]:
+    """Séances commencées que rien n'a terminées (arrêt brutal du PC ou du core), sans FIT, les plus
+    récentes d'abord : `{id, start, route_id, distance_m, duration_s}` (`id` = nom du journal).
+    `skip` : journal repris par la séance en cours (`--resume`), jamais proposé."""
+    from datetime import datetime
+
+    from .fit_export import default_fit_path
+
+    try:
+        files = sorted(journal_dir.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
+    except OSError:
+        return []
+    found: list[dict] = []
+    for path in files[:INTERRUPTED_SCAN]:
+        if skip is not None and path.resolve() == skip.resolve():
+            continue
+        try:
+            lines = list(read_journal(path))
+        except (OSError, UnicodeDecodeError):
+            continue
+        events = _timer_events(lines)
+        if not events or events[-1]["event"] == "stop":
+            continue
+        header = next((ln for ln in lines if ln.get("kind") == "header"), {})
+        records, summary = _summary_of(lines)
+        if summary is None or default_fit_path(records[0]["ts"], header.get("route_id")).exists():
+            continue   # rien d'enregistré, ou déjà rattrapée par `recover` (lanceur, lot N8)
+        last = records[-1]   # temps chronométré et distance du dernier relevé (comme la reprise, lot N8)
+        found.append({"id": path.name, "start": datetime.fromtimestamp(summary.start_ts).strftime("%Y-%m-%dT%H:%M"),
+                      "route_id": header.get("route_id"), "distance_m": round(float(last.get("distance") or 0.0)),
+                      "duration_s": round(float(last.get("t") or 0.0))})
+        if len(found) >= INTERRUPTED_MAX:
+            break
+    return found
+
+
+def close_interrupted(path: Path, save: bool) -> Path | None:
+    """Termine une séance interrompue : FIT si `save` (comme `recover`), puis événement `stop` (raison
+    `interrupted`) ajouté au journal, qui n'est plus proposé. Renvoie le FIT ou None.
+    Lève `ResumeError` (journal illisible, déjà terminé, sans relevé) ou `OSError` (écriture)."""
+    import json
+
+    from .fit_export import journal_to_fit
+
+    try:
+        lines = list(read_journal(path))
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ResumeError(f"journal illisible ({path.name}) : {exc}") from exc
+    events = _timer_events(lines)
+    records, summary = _summary_of(lines)
+    if not events or events[-1]["event"] == "stop" or summary is None:
+        raise ResumeError(f"{path.name} : aucune séance interrompue à terminer")
+    fit = journal_to_fit(path)[0] if save else None
+    with path.open("rb") as fh:
+        size = fh.seek(0, 2)
+        if size:
+            fh.seek(-1, 2)
+        ends_cleanly = size == 0 or fh.read(1) == b"\n"
+    stop = {"kind": "event", "event": "stop", "ts": summary.end_ts, "reason": "interrupted"}
+    with path.open("a", encoding="utf-8") as fh:   # dernière ligne tronquée : laissée seule sur sa ligne
+        fh.write(("" if ends_cleanly else "\n") + json.dumps(stop, ensure_ascii=False) + "\n")
+    return fit

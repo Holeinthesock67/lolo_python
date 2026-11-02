@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : fenêtre de suivi en direct d'un essai guidé, qui reste ouverte après la fin (`suivi_direct`, `trainer_steps --fenetre`) | Python | X43, X44 | Petite | Séance du 29 octobre ; en PR |
+| Série X (outils de test) : fenêtre de suivi en direct d'un essai guidé, qui reste ouverte après la fin (`suivi_direct`, `trainer_steps --fenetre`) | Python | X43, X44 | Petite | Livré le 29 octobre (PR #587) |
 
 ## 1. Objectif
 
@@ -35,3 +35,7 @@ Séance du 29 octobre : le banc du trainer a été lancé à distance, sans term
 ## 5. Hors périmètre
 
 `--fenetre` pour les autres outils guidés (`click_recette`, `coupures`, `boutons_click`, `fc_recette`) : même mécanisme, à brancher outil par outil si le besoin se présente.
+
+## Livraison
+
+PR #587, fusionnée le 29 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Séance du 29 octobre ; en PR ».

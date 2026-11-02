@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : banc du trainer, paliers SIM à puissance cible (plateau et pignon réels), plafond qui coupe le palier, relances courtes, vitesse du volant et résistance (`trainer_steps`) | Python | X5, X6 | Petite | Séance du 29 octobre ; en PR |
+| Série X (outils de test) : banc du trainer, paliers SIM à puissance cible (plateau et pignon réels), plafond qui coupe le palier, relances courtes, vitesse du volant et résistance (`trainer_steps`) | Python | X5, X6 | Petite | Livré le 29 octobre (PR #583) |
 
 ## 1. Objectif
 
@@ -40,3 +40,7 @@ Il faut aussi savoir à quelle vitesse tourne le volant. En entraînement direct
 ## 5. Hors périmètre
 
 Distinguer un décrochage du trainer de la fatigue, statuts FTMS et analyse du pompage : lot X44. Fenêtre de suivi qui reste ouverte : lot X45.
+
+## Livraison
+
+PR #583, fusionnée le 29 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Séance du 29 octobre ; en PR ».

@@ -122,11 +122,13 @@ const GLOBE_PANEL := Color(0.07, 0.1, 0.15)
 # Traits des repères (curseurs, marqueurs, flèches teintées par `modulate`) et leur liseré
 const INK := Color(1, 1, 1)
 const INK_EDGE := Color(0, 0, 0)
-# Adversaires (bots_view_model.gd) : puissance constante, fantôme, profil T12, inconnu
-const BOT_CONSTANT := Color(1.00, 0.68, 0.30)
-const BOT_GHOST := Color(0.60, 0.75, 1.00)
+# Adversaires (bots_view_model.gd) : puissance constante, fantôme, profil T12, inconnu. Texte de l'encart
+# des bots au moins 3:1 sur le panneau à 60 % devant un ciel clair (1.0.1 : 2,8:1 avant d'éclaircir
+# l'orange, le bleu et le gris, luminance relative ≥ 0,63).
+const BOT_CONSTANT := Color(1.00, 0.78, 0.40)
+const BOT_GHOST := Color(0.72, 0.84, 1.00)
 const BOT_PROFILE := Color(0.95, 0.85, 0.30)
-const BOT_OTHER := Color(0.75, 0.75, 0.75)
+const BOT_OTHER := Color(0.85, 0.85, 0.85)
 const DATA := {
 	"grade_descent": GRADE_DESCENT,
 	"grade_flat": GRADE_FLAT,

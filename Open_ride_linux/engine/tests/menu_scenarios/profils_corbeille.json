@@ -1,0 +1,98 @@
+{
+  "description": "Profils (lot O33) : « Gérer un profil » restaure un profil de la corbeille et vide le profil d'essai après confirmation (« Non » par défaut).",
+  "fichiers": {
+    "OpenRide/Profils/.migration": "fini\n",
+    "OpenRide/Profils/cycliste-a/profil.toml": "[profil]\nid = \"cycliste-a\"\nnom = \"Cycliste A\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 200\n",
+    "OpenRide/Profils/cycliste-b/profil.toml": "[profil]\nid = \"cycliste-b\"\nnom = \"Cycliste B\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 300\n",
+    "OpenRide/Profils/.corbeille/cycliste-c_20261030-210500/profil.toml": "[profil]\nid = \"cycliste-c\"\nnom = \"Cycliste C\"\ntype = \"joueur\"\n\n[rider]\nftp_w = 250\n",
+    "OpenRide/Profils/_essai/records.json": "{}"
+  },
+  "etapes": [
+    {
+      "ecran": "profiles",
+      "titre": "Qui roule ?",
+      "delai": 20
+    },
+    {
+      "choisir": "p:cycliste-a"
+    },
+    {
+      "ecran": "home",
+      "titre": "OpenRide — Cycliste A",
+      "delai": 10
+    },
+    {
+      "choisir": "profile"
+    },
+    {
+      "ecran": "profiles",
+      "delai": 10
+    },
+    {
+      "choisir": "manage"
+    },
+    {
+      "ecran": "profile_manage_list",
+      "contient": [
+        "Restaurer un profil supprimé — 1 dans la corbeille",
+        "Vider le profil d'essai"
+      ]
+    },
+    {
+      "capture": "gerer_profils"
+    },
+    {
+      "choisir": "restore"
+    },
+    {
+      "ecran": "profile_restore",
+      "contient": [
+        "Cycliste C — supprimé le 30/10"
+      ]
+    },
+    {
+      "capture": "corbeille"
+    },
+    {
+      "choisir": "t:cycliste-c_20261030-210500"
+    },
+    {
+      "ecran": "profile_manage_list",
+      "contient": [
+        "Profil restauré : Cycliste C",
+        "corbeille vide"
+      ],
+      "delai": 10
+    },
+    {
+      "fichier": "OpenRide/Profils/cycliste-c/profil.toml"
+    },
+    {
+      "capture": "profil_restaure"
+    },
+    {
+      "choisir": "clear_trial"
+    },
+    {
+      "ecran": "confirm",
+      "focus": "no"
+    },
+    {
+      "capture": "vider_essai_confirmation"
+    },
+    {
+      "choisir": "yes"
+    },
+    {
+      "ecran": "profile_manage_list",
+      "contient": [
+        "Profil d'essai vidé"
+      ],
+      "delai": 10
+    },
+    {
+      "fichier": "OpenRide/Profils/_essai/records.json",
+      "existe": false
+    }
+  ]
+}

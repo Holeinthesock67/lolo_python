@@ -122,7 +122,8 @@ def test_pairing_puts_the_heart_rate_strap_in_the_profile(home):
     machine = home / "config.toml"
     a = player("cycliste-a", "Cycliste A")
     profiles.activate(a)
-    pairing.save({"trainer_address": "AA:00:00:00:00:01", "hr_address": "BB:00:00:00:00:02"}, machine)
+    pairing.save(pairing.PairedDevices(trainer_address="AA:00:00:00:00:01", hr_address="BB:00:00:00:00:02"), machine)
     assert "trainer_address" in machine.read_text(encoding="utf-8")
     assert "hr_address" not in machine.read_text(encoding="utf-8")
     assert 'hr_address = "BB:00:00:00:00:02"' in (a.root / profiles.FILE_NAME).read_text(encoding="utf-8")
+    assert 'hr = "ble"' in (a.root / profiles.FILE_NAME).read_text(encoding="utf-8")   # lot O24 : ceinture activée

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : trainer simulé à braquet réel (pignon unique, grand plateau), action `brake_loss` (décrochage du frein), scénarios `pignon_unique` et `decrochage_trainer`, `trainer_steps --scenario` | Python | X43, X44 | Petite | Séance du 29 octobre ; en PR |
+| Série X (outils de test) : trainer simulé à braquet réel (pignon unique, grand plateau), action `brake_loss` (décrochage du frein), scénarios `pignon_unique` et `decrochage_trainer`, `trainer_steps --scenario` | Python | X43, X44 | Petite | Livré le 29 octobre (PR #590) |
 
 ## 1. Objectif
 
@@ -46,3 +46,7 @@ Le passage à ½ · Cw · v² (Cw = ρ · CdA) dans le trainer simulé est fait 
 
 - La formule de l'effort aérodynamique : #582 (fil FTMS).
 - La détection du décrochage dans le pilote FTMS : #580 (fil FTMS). Ces scénarios servent à la tester.
+
+## Livraison
+
+PR #590, fusionnée le 29 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Séance du 29 octobre ; en PR ».

@@ -172,3 +172,16 @@ def test_a_and_z_buttons_short_and_long():
     assert c.feed(ClickButtons(False, False), 4.2) == [InputEvent.Z_SHORT]
     c.feed(ClickButtons(False, False, z_pressed=True), 5.0)
     assert c.feed(ClickButtons(False, False), 6.0) == [InputEvent.Z_LONG]
+
+
+def test_resistance_target_feature_range_and_command():
+    """Lot RC1 : consigne de résistance (bit 2 des cibles, 0x2AD6, opcode 0x04, résolution 0,1)."""
+    f = ftms.parse_features(struct.pack("<II", 0, (1 << 2) | (1 << 13)))
+    assert f.supports_resistance and f.supports_sim and not f.supports_erg
+    assert not ftms.parse_features(struct.pack("<II", 0, 1 << 3)).supports_resistance
+    rr = ftms.parse_resistance_range(struct.pack("<hhH", 0, 1000, 10))
+    assert (rr.min_level, rr.max_level, rr.increment) == (0.0, 100.0, 1.0)
+    assert ftms.cmd_set_target_resistance(32.0) == bytes([0x04]) + struct.pack("<h", 320)   # sint16 (défaut)
+    assert ftms.cmd_set_target_resistance(3.2, wide=False) == bytes([0x04, 32])         # uint8 de la norme
+    assert ftms.cmd_set_target_resistance(32.0, wide=False) == bytes([0x04, 255])       # uint8 : borné à 25,5
+    assert ftms.cmd_set_target_resistance(-1.0, wide=False) == bytes([0x04, 0])

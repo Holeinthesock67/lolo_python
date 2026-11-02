@@ -241,7 +241,7 @@ Commandes de référence (plan des boutons, spécification générale §7.1, PR 
 - [ ] Pause et reprise par Y
 - [ ] Arrêt propre, FIT et bilan
 - **Journaux :** lignes `[essai]` du journal du lanceur (`grep "\[essai\]" ~/run_trainer.log`) ; `python -m openride_core.tools.log_report` (dernier journal), `openride-core summary`, mesures `Perf` du journal.
-- **Si échec :** pour un boîtier muet, noter l'heure (problème du boîtier gauche, essai du lot Q6 en J5) et continuer avec B. Aucune consigne à l'écran : vérifier `~/OpenRide/Essais/recette-velo.consignes.json` et la ligne `[essai] … consignes chargées` du journal.
+- **Si échec :** pour un boîtier muet plus de 10 s, noter l'heure (boîtier gauche : redémarrage raté, essai du lot Q6 en J5) et continuer avec B. Aucune consigne à l'écran : vérifier `~/OpenRide/Essais/recette-velo.consignes.json` et la ligne `[essai] … consignes chargées` du journal.
 
 ### D2. Session simulée et retour au matériel réel (N15)
 
@@ -366,7 +366,7 @@ Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = inten
 
 - **Prérequis :** les deux boîtiers, piles chargées (une CR2032 de secours), jeu fermé.
 - **Étapes :** essai à blanc `python -m openride_core.tools.click_recette --sim` ; puis `python -m openride_core.tools.click_recette --minutes 30 --rappel 5`, en pédalant ou non : appuyer sur chaque bouton demandé, puis un appui à chaque rappel.
-- **Attendu :** chaque bouton (+, − du boîtier gauche, B et Y du boîtier droit, appuis longs) coché avec le bon boîtier ; sur 30 min, silences, coupures et reprises de chaque boîtier relevés. Défaut connu : le boîtier gauche peut se taire 35 à 60 s après la connexion (B du boîtier droit sert de « − ») ; l'outil dira à quelle minute.
+- **Attendu :** chaque bouton (+, − du boîtier gauche, B et Y du boîtier droit, appuis longs) coché avec le bon boîtier ; sur 30 min, silences, coupures et reprises de chaque boîtier relevés. Le boîtier gauche est redémarré tout seul environ une fois par minute (verrou Zwift, `click_reset_locked`) : environ 4 s sans boutons à chaque fois, relevées par l'outil.
 - [ ] Essai à blanc OK
 - [ ] Tous les boutons reconnus
 - [ ] 30 min : aucune coupure non reprise (sinon heure du silence notée)
@@ -375,7 +375,7 @@ Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = inten
 ### G3. Test guidé des boutons du Click, 5 min (plan des boutons, spécification générale §7.1)
 
 - **Prérequis :** les deux boîtiers, piles chargées, jeu fermé, son du PC allumé (`python -m openride_core.tools.guide bips` pour régler le volume). Pas besoin de pédaler.
-- **Étapes :** essai à blanc `python -m openride_core.tools.boutons_click --sim` (3 min, sans matériel : un cycliste simulé fait les appuis, on regarde seulement) ; puis `python -m openride_core.tools.boutons_click`. Réveiller les deux boîtiers, puis faire les 17 appuis demandés un par un : boîtier gauche d'abord (flèches gauche, droite, haut, bas ; puis − court, long, moyen d'environ 0,7 s), sans traîner : il se tait environ 70 s après sa connexion (essai du 27 octobre, firmware 1.0.2 avant mise à jour ; l'outil l'annonce « bridé » et saute ses étapes), puis le droit (+ court, long, moyen ; B court et long ; A court et long ; Y ; Z court et long). Chaque étape commence par un bip et passe seule à la suivante 4 s après l'appui reconnu, le temps de lire l'encadré (`--lecture` pour changer) ; 30 s au plus pour appuyer (`--delai`).
+- **Étapes :** essai à blanc `python -m openride_core.tools.boutons_click --sim` (3 min, sans matériel : un cycliste simulé fait les appuis, on regarde seulement) ; puis `python -m openride_core.tools.boutons_click`. Réveiller les deux boîtiers, puis faire les 17 appuis demandés un par un : boîtier gauche d'abord (flèches gauche, droite, haut, bas ; puis − court, long, moyen d'environ 0,7 s), sans traîner : Zwift le verrouille environ 50 s après sa connexion et l'outil le redémarre alors (environ 4 s sans boutons, comme dans le jeu ; s'il reste muet, l'outil l'annonce « muet » et saute ses étapes), puis le droit (+ court, long, moyen ; B court et long ; A court et long ; Y ; Z court et long). Chaque étape commence par un bip et passe seule à la suivante 4 s après l'appui reconnu, le temps de lire l'encadré (`--lecture` pour changer) ; 30 s au plus pour appuyer (`--delai`).
 - **Attendu :** chaque appui reçu s'affiche dans un encadré, vert si c'est celui demandé, jaune sinon : événement décodé (`A_LONG`…), touche et boîtier, puis l'action de l'appui dans chaque mode (menus, SIM, ERG, Cyber-Rogue, monde ouvert) telle que l'écrit le tableau §7.1 ; un bip d'appui (court : une note, long : deux notes montantes, ni court ni long : une note grave) ; un verdict à la fin, « 17/17 appuis reconnus ». L'encadré montre le plan des boutons, celui du code depuis O17 (ERG : ± long = biais ± 10 %, Z = bloc suivant ; essai J7).
 - [ ] Essai à blanc OK
 - [ ] Boîtier gauche : 7 appuis reconnus (sinon minute du silence notée, voir J5)

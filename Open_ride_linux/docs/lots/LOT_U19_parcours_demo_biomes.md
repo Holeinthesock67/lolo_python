@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Parcours de démonstration fictifs, un par biome, portions non revêtues et côte | Python | U1 | Petite | Oui, après U1, **version 3.0** (issue #349) |
+| Parcours de démonstration fictifs, un par biome, portions non revêtues et côte | Python | U1 | Petite | Livré le 30 octobre (PR #623), **version 3.0** |
 
 ## 1. Objectif
 
@@ -46,3 +46,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Biomes lointains (ajout ultérieur, simple option), parcours réels.
+
+## Livraison
+
+PR #623, fusionnée le 30 octobre 2026. Statut remis à jour par la passe documentaire du 1er novembre, d'après les PR fusionnées ; statut précédent : « Oui, après U1, **version 3.0** (issue #349) ».
