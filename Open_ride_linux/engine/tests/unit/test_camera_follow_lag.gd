@@ -65,3 +65,8 @@ func _run() -> void:
 		_check(w["lag"] < 0.5, "%s : retard au plus %.2f m (< 0,5 m)" % [case[3], w["lag"]])
 		_check(w["back"] <= 0.0001, "%s : jamais de recul" % case[3])
 		_check(w["jump"] < 1.0, "%s : pas de saut (%.2f m par image au plus)" % [case[3], w["jump"]])
+	# main.gd : bots placés avant le décor vivant, qui compte les contacts avec les places de cette image.
+	var main_code := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var bots_at := main_code.find("_show_bots(s_route,")
+	var living_at := main_code.find("_step_living(delta, s_route,")
+	_check(bots_at > 0 and living_at > bots_at, "main.gd : bots placés avant le décor vivant dans la même image")
