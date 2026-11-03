@@ -289,6 +289,7 @@ static func make_preview_material(road_color: Color = ROAD_COLOR) -> StandardMat
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = road_color
 	mat.vertex_color_use_as_albedo = true
+	mat.vertex_color_is_srgb = true   # couleurs de sommet sRGB (couleur_srgb.gdshaderinc)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.roughness = 0.9
 	return mat

@@ -332,6 +332,7 @@ func _material_for(kind: String) -> Material:
 		return _grass_material
 	var m := StandardMaterial3D.new()
 	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true   # couleurs de sommet sRGB (couleur_srgb.gdshaderinc)
 	m.roughness = 0.95
 	return m
 

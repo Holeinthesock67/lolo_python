@@ -314,6 +314,7 @@ static func _make(kind: String) -> MeshInstance3D:
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_VERTEX
 	if mesh is ArrayMesh and (mesh as ArrayMesh).surface_get_format(0) & Mesh.ARRAY_FORMAT_COLOR:
 		mat.vertex_color_use_as_albedo = true
+		mat.vertex_color_is_srgb = true   # couleurs de sommet sRGB (couleur_srgb.gdshaderinc)
 	if color.a < 1.0:
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.cull_mode = BaseMaterial3D.CULL_DISABLED

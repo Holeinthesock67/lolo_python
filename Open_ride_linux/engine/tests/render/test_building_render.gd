@@ -5,7 +5,7 @@ extends SceneTree
 ## - Aucun point parasite sur les façades et les toits éclairés, relief en marche (detecteur speckle.gd) ;
 ## - fenêtres dessinées sur chaque façade (part de pixels sombres du vitrage) ;
 ## - teinte du toit propre au style : tuiles rondes chaudes, ardoise grise, toit plat blanc clair.
-##   xvfb-run -a godot --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a godot --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/render/test_building_render.gd
 
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
@@ -126,7 +126,8 @@ func _run() -> void:
 		var r_r := Speckle.isolated_ratio(roof)
 		_check(r_f <= MAX_ISOLATED and r_r <= MAX_ISOLATED,
 			"%s : pas de points parasites (façade %.4f, toit %.4f, seuil %.3f)" % [st, r_f, r_r, MAX_ISOLATED])
-		# Vitrage : pixels sombres de la façade sans éclairage (albédo), entre 1 % et 40 %
+		# Vitrage : pixels sombres de la façade sans éclairage (albédo), entre 0,5 % et 40 % (de 1 à 2,5 % en
+		# Forward+, le rendu du jeu ; le moteur Compatibility assombrissait aussi le mur, jusqu'à 15 %)
 		var albedo: Image = await _shot(flat, Vector3(xc, 3.0, 12.0), Vector3(xc, 3.0, 0.0))
 		var dark := 0
 		for y in range(SIZE):
@@ -135,7 +136,7 @@ func _run() -> void:
 				if c.r + c.g + c.b < 0.6 and c.b >= c.r - 0.02:
 					dark += 1
 		var share := float(dark) / float(SIZE * SIZE)
-		_check(share > 0.01 and share < 0.4, "%s : fenêtres dessinées sur la façade (%.1f %% de vitrage)" % [st, share * 100.0])
+		_check(share > 0.005 and share < 0.4, "%s : fenêtres dessinées sur la façade (%.1f %% de vitrage)" % [st, share * 100.0])
 		# Teinte du toit vue d'en haut, dans le pan arrière (z = -6 m)
 		var top: Image = await _shot(flat, Vector3(xc, 40.0, -6.0), Vector3(xc, 0.0, -6.0), 6.0)
 		var sum := Color(0, 0, 0)

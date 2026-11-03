@@ -75,10 +75,12 @@ func _init_materials() -> void:
 		return
 	_lod0_material = StandardMaterial3D.new()
 	_lod0_material.vertex_color_use_as_albedo = true
+	_lod0_material.vertex_color_is_srgb = true   # couleurs de sommet sRGB (couleur_srgb.gdshaderinc)
 	_lod0_material.roughness = 0.85
 
 	_lod1_material = StandardMaterial3D.new()
 	_lod1_material.vertex_color_use_as_albedo = true
+	_lod1_material.vertex_color_is_srgb = true   # couleurs de sommet sRGB (couleur_srgb.gdshaderinc)
 	_lod1_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_lod1_material.roughness = 0.85
 

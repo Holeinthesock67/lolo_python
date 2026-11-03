@@ -140,7 +140,8 @@ class Bench:
         png = (self.out / f"{len(self.report.captures):02d}_{scene}.png").resolve()
         mark = core.log.mark()
         core.send({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot", "path": str(png), "tag": scene})
-        hit = core.log.wait_for(r"^screenshot (\{.*\})$", 10.0, mark)
+        hit = core.log.wait_for(r"^screenshot (\{.*\})$",
+                                10.0 * rendu_jeu.slowdown(core.log.path.read_text(errors="replace")), mark)
         if not self.check(scene, "capture enregistrée", hit is not None and png.exists(),
                           "" if hit else "aucune ligne « screenshot » dans le journal de l'engine"):
             return None

@@ -37,6 +37,8 @@ const float DUNE_H_M = 1.2;
 const float RIPPLE_H_M = 0.012;
 
 #include "res://shaders/terrain_shade.gdshaderinc"
+// layer_color : couleurs sRGB des couches (Vector4), converties en linéaire comme les textures `ground_a`.
+#include "res://shaders/couleur_srgb.gdshaderinc"
 
 void vertex() {
 	v_world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -140,7 +142,7 @@ void fragment() {
 			int l = int(biome_layers[b][r]);
 			vec4 lc = layer_color[l];
 			vec4 maps = layer_maps[l];
-			vec4 a = maps.x >= 0.0 ? sample_layer_a(maps.x, v_world_pos, lc.w, tri_weights, dpdx, dpdy) : vec4(lc.rgb, roughness);
+			vec4 a = maps.x >= 0.0 ? sample_layer_a(maps.x, v_world_pos, lc.w, tri_weights, dpdx, dpdy) : vec4(lineaire(lc.rgb), roughness);
 			col[r] += a.rgb * lw[r];
 			rough += a.a * lw[r];
 			if (maps.y >= 0.0) {

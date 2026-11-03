@@ -17,6 +17,7 @@ render_mode cull_back;
 // (herbe, anciens maillages) : couleur unie comme avant.
 
 #include "res://shaders/surface_detail.gdshaderinc"
+#include "res://shaders/couleur_srgb.gdshaderinc"
 
 global uniform vec3 wind_dir;
 global uniform float wind_strength;
@@ -87,7 +88,7 @@ void fragment() {
 		NORMAL = -NORMAL;
 	}
 	int code = int(floor(COLOR.a * 16.0 + 0.5));
-	vec3 col = COLOR.rgb * foliage_tint;
+	vec3 col = COLOR.rgb * srgb(foliage_tint);   // teinte en sRGB, convertie à l'écriture
 	float rough = roughness_value;
 	float through = 0.0;   // part de lumière qui traverse les feuilles
 	vec3 p = v_obj + v_shift;
@@ -161,10 +162,10 @@ void fragment() {
 		// Houppier vu comme un volume : normale tirée vers le haut (dessous moins noir), lumière à travers
 		vec3 up_view = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
 		NORMAL = normalize(mix(NORMAL, up_view, 0.35));
-		BACKLIGHT = col * through;
+		BACKLIGHT = lineaire(col) * through;
 		// Lumière du ciel diffusée par les feuilles : un houppier à l'ombre reste vert, pas noir
-		EMISSION = col * through * 0.15;
+		EMISSION = lineaire(col) * through * 0.15;
 	}
-	ALBEDO = col;
+	ALBEDO = lineaire(col);
 	ROUGHNESS = rough;
 }

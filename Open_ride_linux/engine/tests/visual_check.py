@@ -370,6 +370,10 @@ class Session:
     def check(self, scene: str, name: str, ok: bool, detail: str = "") -> bool:
         return self.report.check(self.name, scene, name, ok, detail)
 
+    def slowdown(self) -> float:
+        """Attentes allongées sous Vulkan logiciel (rendu_jeu.slowdown)."""
+        return rendu_jeu.slowdown(self.core.log.path.read_text(errors="replace"))
+
     def capture(self, scene: str) -> tuple[Image, dict[str, Any]] | None:
         png = self.out_dir / f"{self.name}_{scene}.png"
         # Scène de référence : capture reprise tant que des tuiles voulues manquent (`streaming_pending`, comme le
@@ -382,7 +386,7 @@ class Session:
             mark = self.core.log.mark()
             self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
                                 "path": str(png), "tag": scene})
-            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0, mark)
+            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0 * self.slowdown(), mark)
             if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
                 break
             if attempt < tries - 1:
@@ -1552,7 +1556,8 @@ def _quality_guard_scenes(s: Session) -> None:
         mark = core.log.mark()
         core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": items})
         # Un préréglage plus lourd se met en place en plusieurs secondes sous Xvfb (rendu logiciel).
-        core.log.wait_for(r"^quality applied=", 1.5 if value in (None, current[0]) else 15.0, mark)
+        core.log.wait_for(r"^quality applied=", (1.5 if value in (None, current[0]) else 15.0)
+                          * rendu_jeu.slowdown(core.log.path.read_text(errors="replace")), mark)
         time.sleep(0.3)
         lines = [line for _, line in core.log.since(mark) if line.startswith("quality applied=")]
         if lines:
@@ -1712,7 +1717,7 @@ def _camera_scenes(s: Session) -> None:
 
     def press(event: str, wait: float = 1.2) -> None:
         core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
-        time.sleep(wait)
+        time.sleep(wait * (2.0 if s.slowdown() > 1.0 else 1.0))   # transition de 0,4 s à 1-3 images/s
 
     core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=37.0)
     time.sleep(0.8)

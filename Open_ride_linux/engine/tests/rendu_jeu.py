@@ -20,6 +20,9 @@ GODOT_ARGS = ["--rendering-driver", RENDERING_DRIVER, "--rendering-method", REND
 # Ligne d'en-tête de Godot : « Vulkan 1.4.318 - Forward+ - Using Device #0: … »
 _FORWARD_PLUS = re.compile(r"^Vulkan [0-9.]+ - Forward\+ - ", re.M)
 _FALLBACK = re.compile(r"- Compatibility - |switching to OpenGL", re.M)
+# Vulkan logiciel de Mesa (cloud, CI) : la scène complète tourne à 1 à 3 images/s, contre 60 sur le PC.
+_SOFTWARE = re.compile(r"^Vulkan [0-9.]+ - Forward\+ - .*llvmpipe", re.M)
+SOFTWARE_SLOWDOWN = 10.0
 
 
 def xvfb_cmd(cmd: list[str], width: int, height: int) -> list[str]:
@@ -39,3 +42,8 @@ def check_log(text: str) -> str | None:
     if not _FORWARD_PLUS.search(text):
         return "ligne « Vulkan … - Forward+ - » absente du journal de Godot"
     return None
+
+
+def slowdown(text: str) -> float:
+    """Facteur des attentes d'un essai : SOFTWARE_SLOWDOWN sous Vulkan logiciel (llvmpipe), 1 sur un vrai GPU."""
+    return SOFTWARE_SLOWDOWN if _SOFTWARE.search(text) else 1.0

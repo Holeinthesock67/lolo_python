@@ -17,6 +17,8 @@ global uniform float anim_time;
 // - Lot U12 : `stripes` (rayures de la robe par mètre, zèbre ; 0 = aucune), en travers du corps et des pattes ;
 //   `graze_m` : descente de la tête qui broute, à l'échelle de la bête (girafe, marmotte, flamant).
 #include "res://shaders/surface_detail.gdshaderinc"
+// DARK et HORN : constantes sRGB, converties pour se mêler aux uniformes `source_color` (couleur_srgb.gdshaderinc).
+#include "res://shaders/couleur_srgb.gdshaderinc"
 
 uniform int mode = 0;
 uniform vec3 albedo : source_color = vec3(0.3, 0.3, 0.3);
@@ -56,9 +58,9 @@ void fragment() {
 	if (region == 1) {
 		c = accent;
 	} else if (region == 2) {
-		c = DARK;
+		c = lineaire(DARK);
 	} else if (region == 3) {
-		c = HORN;
+		c = lineaire(HORN);
 	} else if (region == 4) {
 		c = light;
 	} else if (stripes > 0.0) {

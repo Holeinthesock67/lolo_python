@@ -224,7 +224,7 @@ elif command -v xvfb-run >/dev/null 2>&1; then
   # Scène figée et, en 1280x720 low, comparaison aux vignettes du dépôt (tests/golden/xvfb/low, SSIM ≥ 0,97, lot X20).
   golden_args=()
   if [ "$VISUAL_CONFIGS" = "1280x720:low" ]; then golden_args=(--golden "$ENGINE_DIR/tests/golden"); fi
-  VISUAL_OUT="$(timeout -k 5 600 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
+  VISUAL_OUT="$(timeout -k 5 1200 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
     --configs "$VISUAL_CONFIGS" --out "$VISUAL_DIR" --fige "${golden_args[@]}" 2>&1)"
   visual_rc=$?
   echo "$VISUAL_OUT" | grep -E "^\[ÉCHEC\]|^Tests graphiques|introuvable" || true
@@ -234,7 +234,7 @@ elif command -v xvfb-run >/dev/null 2>&1; then
   # démarrage, réglages du core absents, égaux, autres et inconnus ; une capture en medium doit être du medium.
   for gq_config in 1280x720:medium 1280x720:high; do
     GQ_DIR="$(mktemp -d -t openride-quality.XXXXXX)"
-    GQ_OUT="$(timeout -k 5 300 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
+    GQ_OUT="$(timeout -k 5 600 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
       --configs "$gq_config" --out "$GQ_DIR" --garde-qualite 2>&1)"
     gq_rc=$?
     echo "$GQ_OUT" | grep -E "^\[ÉCHEC\]|^Tests graphiques|introuvable" || true
