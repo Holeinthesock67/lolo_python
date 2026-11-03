@@ -310,7 +310,13 @@ func prepare_survivor() -> Dictionary:
 
 ## Réglages et ligne « Lancer » de l'écran Prêt du Dernier survivant (menu_flow.gd).
 func set_survivor_ready(rows: Array, launch: Dictionary) -> void:
-	survivor_rows = rows
+	survivor_rows = []
+	for it in rows:   # lignes de réglage (SettingsViewModel.row) remises au format des éléments du menu
+		var e := _item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)), str(it.get("detail", "")))
+		for k in ["bar", "editing"]:
+			if it.has(k):
+				e[k] = it[k]
+		survivor_rows.append(e)
 	survivor_launch = launch
 	if mode == "survivor":
 		_refresh_home()
