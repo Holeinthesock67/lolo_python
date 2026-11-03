@@ -68,7 +68,7 @@ GODOT_TOLERATED = re.compile(
 CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "time", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
-              "wind_speed", "wind_level", "wind_verdict", "draft", "bots_line1", "bots_line2",
+              "wind_speed", "wind_level", "wind_verdict", "draft", "draft_w", "bots_line1", "bots_line2",
               "bots_gap1", "bots_jerseys")   # bots_ahead, bots_behind : lignes de bots (lot X22)
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_SSIM = 0.97                # SSIM minimale face aux images de référence (lot X20, image_diff.py)
@@ -697,8 +697,9 @@ def _scenes(s: Session) -> None:
         left = w["power"]["rect"]
         s.check("vent", "indicateur sous la colonne de gauche", w["wind"]["rect"][0] < s.width * 0.35
                 and w["wind"]["rect"][1] > left[1] + left[3], f"rectangle {w['wind']['rect']}")
-    # 3 ter. Abri (lot P17) : aspiration de 13,5 % derrière un bot, « Abri 30 % » sous l'indicateur du vent.
-    core.set_scene(draft=0.135)
+    # 3 ter. Abri (lot P17) : aspiration de 16,5 % derrière un bot (échelle 0,55, lot AS4), « Abri 30 % » sous l'indicateur du vent ;
+    # lot AS5 : « −48 W » économisés sous la pastille en medium et high, pastille seule en low.
+    core.set_scene(draft=0.165, draft_w=48)
     time.sleep(1.0)
     shot = s.capture("abri")
     if shot:
@@ -709,7 +710,14 @@ def _scenes(s: Session) -> None:
         s.check_layout("abri", info)
         s.check("abri", "abri sous l'indicateur du vent", w["draft"]["rect"][1] >= w["wind"]["rect"][1] + w["wind"]["rect"][3],
                 f"rectangle {w['draft']['rect']}")
-    core.set_scene(wind=None, draft=None)
+        low = info.get("quality") == "low"
+        s.check("abri", "watts économisés montrés en medium et high, cachés en low", w["draft_w"]["visible"] != low,
+                f"qualité {info.get('quality')}, visible {w['draft_w']['visible']}")
+        if not low:
+            s.check_texts("abri", info, {"draft_w": "−48 W"})
+            s.check("abri", "watts sous la pastille", w["draft_w"]["rect"][1] >= w["draft"]["rect"][1] + w["draft"]["rect"][3],
+                    f"rectangle {w['draft_w']['rect']}")
+    core.set_scene(wind=None, draft=None, draft_w=None)
     time.sleep(2.5)
 
     # 3 ter bis. Bots (lot O7) : un bot à 20 m devant, un fantôme à 60 m derrière ; silhouettes sur la route,
@@ -739,7 +747,10 @@ def _scenes(s: Session) -> None:
                 f"{b}")
         s.check_layout("bots", info)
     _draft_gauge_scene(s)
-    core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=None, draft_bot=None)
+    _lane_scene(s)
+    _vehicle_draft_scene(s)
+    core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=None, draft_bot=None,
+                   lane_m=None, vehicles=None)
     time.sleep(SETTLE_S)
     shot = s.capture("sans_bot")
     if shot:
@@ -1570,7 +1581,7 @@ def _quality_guard_scenes(s: Session) -> None:
 
 
 def _draft_gauge_scene(s: Session) -> None:
-    """Jauge d'abri (maquette C validée le 29 octobre) : un bot à 6 m devant donne 13,5 % d'abri (« Abri 30 % ») ;
+    """Jauge d'abri (maquette C validée le 29 octobre) : un bot à 3,8 m devant donne 16,5 % d'abri (« Abri 30 % ») ;
     réglage `render.draft_gauge` coupé par défaut, rien au-dessus du bot ; à « on », arc au-dessus du bot, dans le
     champ de la caméra, avec « 30 % » en medium et high ; coupé à nouveau, plus rien."""
     core = s.core
@@ -1579,11 +1590,11 @@ def _draft_gauge_scene(s: Session) -> None:
         core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
             {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
              "value": value, "choices": ["off", "on"], "applies": "now"}]})
-        time.sleep(0.6)
+        time.sleep(1.5)   # rendu lent en medium et high sous Xvfb : réglage appliqué avant la capture
 
     s_now = core.current_s()
     core.set_scene(speed=0.0, bots=[{"id": "bot1", "name": "Bot 250 W", "s": s_now + 6.0, "v": 0.0, "kind": "constant"}],
-                   bot_ahead="bot1", bot_behind=None, jerseys=None, draft=0.135, draft_bot="bot1")
+                   bot_ahead="bot1", bot_behind=None, jerseys=None, draft=0.165, draft_bot="bot1")
     time.sleep(SETTLE_S)
     shot = s.capture("jauge_abri_coupee")
     if shot:
@@ -1606,6 +1617,90 @@ def _draft_gauge_scene(s: Session) -> None:
     if shot:
         g = shot[1].get("draft_gauge", {})
         s.check("jauge_abri_retiree", "réglage recoupé : jauge cachée", g.get("visible") is False, f"{g}")
+
+
+def _lane_scene(s: Session) -> None:
+    """Lot AS2 : placement dans la roue puis dépassement, vus par la caméra de contrôle derrière l'avatar. Dans la
+    roue : `lane_m` du cycliste à 2,1 m, celui du bot (8 m devant) aussi, avatar et bot sur la même ligne ; en
+    dépassement : cycliste à 1,1 m, bot juste devant à 2,1 m, 1 m sur sa droite."""
+    core = s.core
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
+    # Bot assez loin devant : la position affichée de la caméra, qui ne recule jamais, peut avoir pris de l'avance
+    # sur `s` de la scène pendant les scènes précédentes (rendu lent sous Xvfb), et le compteur de contacts compte.
+    for tag, rider_lane, ahead_m in (("abri_dans_la_roue", 2.1, 8.0), ("abri_depassement", 1.1, 3.0)):
+        s_now = core.current_s()
+        if tag == "abri_depassement":   # comme au core : on se décale d'abord, puis on arrive à la hauteur du bot
+            core.set_scene(speed=0.0, lane_m=rider_lane)
+            time.sleep(SETTLE_S + 1.5)
+        core.set_scene(speed=0.0, lane_m=rider_lane, bots=[
+            {"id": "bot1", "name": "Bot 250 W", "s": s_now + ahead_m, "v": 0.0, "kind": "constant", "lane_m": 2.1}],
+            bot_ahead="bot1", bot_behind=None, jerseys=None, draft=0.2 if tag == "abri_dans_la_roue" else 0.0,
+            draft_bot="bot1" if tag == "abri_dans_la_roue" else None)
+        time.sleep(SETTLE_S + 1.5)   # l'avatar va à sa ligne à 1 m/s au plus, la caméra le suit en 0,5 s
+        shot = s.capture(tag)
+        if not shot:
+            continue
+        av, b = shot[1].get("avatar", {}), shot[1].get("bots", {})
+        s.check(tag, f"avatar à {rider_lane:g} m de l'axe", abs(float(av.get("lane_m", 0.0)) - rider_lane) < 0.05, f"{av.get('lane_m')}")
+        s.check(tag, "caméra sur la ligne de l'avatar", abs(float(av.get("camera_lane_m", 0.0)) - rider_lane) < 0.1,
+                f"{av.get('camera_lane_m')}")
+        s.check(tag, "bot à 2,1 m de l'axe et dans l'image", abs(float(b.get("lanes", {}).get("bot1", 0.0)) - 2.1) < 0.01
+                and b.get("in_view", 0) >= 1, f"{b}")
+        s.check(tag, "avatar dans l'image", av.get("visible") and av.get("on_screen"), f"{av}")
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
+
+
+VEHICLE_AHEAD_M = 6.5   # écart voulu entre le cycliste affiché et le tracteur (relevé `rel_m` du décor)
+
+
+def _vehicle_draft_scene(s: Session) -> None:
+    """Lot AS6 : tracteur envoyé par le core dans `vehicles`, d'abord à 20 m (« abri_tracteur_approche »), puis
+    ramené à 6,5 m devant le cycliste affiché : la caméra, qui ne recule jamais, a pu prendre de l'avance sur `s`
+    de la scène (rendu lent en medium et high), l'écart mesuré sur la première capture corrige la position et
+    aucun contact n'est compté. Le cycliste dans sa ligne (1,5 m) reçoit
+    42 % d'abri (`draft_bot` = `veh:v77`) ; jauge au-dessus du tracteur, dans l'image, vue de la caméra de contrôle.
+    Puis liste vide : le tracteur quitte la route (le core dit qu'il n'y est plus)."""
+    core = s.core
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
+        {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
+         "value": "on", "choices": ["off", "on"], "applies": "now"}]})
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
+    s_now = core.current_s()
+    tractor = {"id": "v77", "kind": "tractor", "color": 1, "s": round(s_now + 1.9 + 0.85 + 20.0, 2), "dir": 1, "v": 0.0,
+               "lane_m": 1.5}
+    core.set_scene(speed=0.0, lane_m=1.5, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=0.0,
+                   draft_bot=None, vehicles=[tractor])
+    time.sleep(SETTLE_S + 1.5)
+    shot = s.capture("abri_tracteur_approche")
+    users = shot[1].get("decor", {}).get("road_users", []) if shot else []
+    rel = [float(u["rel_m"]) for u in users if u.get("kind") == "tractor" and abs(float(u.get("lateral", 0.0)) - 1.5) < 0.05]
+    if rel:
+        tractor = dict(tractor, s=round(tractor["s"] - rel[0] + VEHICLE_AHEAD_M, 2))
+    core.set_scene(speed=0.0, draft=0.42, draft_bot="veh:v77", vehicles=[tractor])
+    time.sleep(SETTLE_S)
+    shot = s.capture("abri_tracteur")
+    if shot:
+        img, info = shot
+        g = info.get("draft_gauge", {})
+        s.check("abri_tracteur", "jauge sur l'arrière du tracteur, dans l'image, sous le bandeau du haut",
+                g.get("visible") and g.get("bot") == "veh:v77" and g.get("on_screen")
+                and float((g.get("point") or [0.0, 0.0])[1]) > 0.15 * img.height, f"{g}")
+        users = info.get("decor", {}).get("road_users", [])
+        s.check("abri_tracteur", "tracteur du core sur la route, 4 à 9 m devant, à 1,5 m de l'axe",
+                any(u.get("kind") == "tractor" and abs(float(u.get("lateral", 0.0)) - 1.5) < 0.05
+                    and 4.0 <= float(u.get("rel_m", 0.0)) <= 9.0 for u in users), f"{users}")
+        s.check_layout("abri_tracteur", info)
+    core.set_scene(speed=0.0, draft=0.0, draft_bot=None, vehicles=[])
+    time.sleep(SETTLE_S)
+    shot = s.capture("abri_tracteur_parti")
+    if shot:
+        users = shot[1].get("decor", {}).get("road_users", [])
+        s.check("abri_tracteur_parti", "liste vide : plus de tracteur près du cycliste",
+                not any(u.get("kind") == "tractor" and abs(float(u.get("rel_m", 999.0))) < 140.0 for u in users), f"{users}")
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
+        {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
+         "value": "off", "choices": ["off", "on"], "applies": "now"}]})
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
 
 
 def _camera_scenes(s: Session) -> None:
@@ -1706,14 +1801,14 @@ def _progress_scenes(s: Session) -> None:
         banner = info["widgets"]["banner"]
         s.check("progression", "bandeau « Niveau 10 ! » affiché", banner["visible"] and "Niveau 10 !" in banner.get("text", ""),
                 f"{banner.get('text')}")
-    # Bilan complet (dix chiffres, fichier FIT, quatre blocs ERG du bilan détaillé) et progression : la carte
-    # tient au-dessus du bandeau des boutons (suite X22, recette ERG du 28/10).
+    # Bilan complet (dix chiffres, abri du lot AS5, fichier FIT, quatre blocs ERG du bilan détaillé) et
+    # progression : la carte tient au-dessus du bandeau des boutons (suite X22, recette ERG du 28/10).
     core.set_scene(session_state="IDLE", summary=None)
     time.sleep(0.5)
     core.set_scene(session_state="FINISHED", summary={
         "duration_s": 516.0, "distance_m": 3210.0, "avg_power_w": 139.0, "np_w": 155.0, "intensity_factor": 0.62,
         "tss": 6.0, "elevation_gain_m": 33.0, "avg_cadence_rpm": 49.0, "avg_hr_bpm": 119.0, "max_power_w": 400.0,
-        "fit_path": "/tmp/openride/2026-10-28_17-24_essai-69.fit",
+        "draft_time_s": 724, "draft_kj": 9.4, "fit_path": "/tmp/openride/2026-10-28_17-24_essai-69.fit",
         "blocks": [[1, 91.0, 141.0], [2, 149.0, 170.0], [3, 127.0, 126.0], [4, 182.0, 183.0]]})
     time.sleep(1.0)
     for _ in range(2):
@@ -1731,6 +1826,8 @@ def _progress_scenes(s: Session) -> None:
             img, info = shot
             w = info["widgets"]
             s.check_texts(scene, info, {"menu": "Puissance max : 400 W"}, contains=True)
+            s.check_texts(scene, info, {"menu": "Dans la roue : 12 min"}, contains=True)
+            s.check_texts(scene, info, {"menu": "Énergie économisée : 9 kJ"}, contains=True)
             s.check_texts(scene, info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
             if detailed:
                 s.check_texts(scene, info, {"menu": "Bloc 4 : 182 W pour 183 W"}, contains=True)

@@ -120,10 +120,13 @@ var _sound_at := -INF
 
 var _route = null
 var _road_width_m := RoadBuilder.ROAD_WIDTH_M
+var _rider_lane_m := RoadBuilder.RIDER_LATERAL_M   # écart à l'axe du cycliste de la dernière trame (lot AS2)
 var _cam_s := 0.0                  # dernière abscisse du cycliste reçue par step (placements des tests, lot P32)
 var _rider_v := 0.0
 var _cam_lateral := 0.0            # écart de la caméra à l'axe, mesuré (positif à droite), pour les tests
 const CONTACT_M := 300.0
+const GAUGE_BEHIND_M := 0.3         # jauge d'abri d'un véhicule : 0,3 m derrière sa face arrière (lot AS6)
+const GAUGE_DROP_M := -0.75         # ... et à 1,8 m du sol au lieu des 2,55 m d'un bot : sous le bandeau du haut vue de près
 var surface_here := "paved"        # lot U22 : surface effective sous le cycliste (world_streamer.surface_at)
 var contacts := 0                  # lot P32 : contacts vus sur la route (images × paires), doit rester à 0
 var last_contact := ""             # lot P32 : qui touchait qui la dernière fois, pour le rapport des tests
@@ -440,7 +443,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	# Gravel (U22) : surface sous la roue, poussière derrière elle par temps sec et crissement des pneus
 	surface_here = world_streamer.surface_at(cam_s) if world_streamer != null and world_streamer.has_method("surface_at") else "paved"
 	var back := Vector3(-sin(h), 0.0, cos(h))
-	var wheel: Vector3 = _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * RoadBuilder.RIDER_LATERAL_M
+	_rider_lane_m = _lane_of(state, RoadBuilder.RIDER_LATERAL_M)   # placement dans la roue (lot AS2)
+	var wheel: Vector3 = _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * _rider_lane_m
 	particles.update_dust(wheel, back, 0.0 if paused else rider_v, surface_here)
 	if sound_player != null and sound_player.get("model") != null:
 		sound_player.model.set_surface(surface_here)
@@ -481,6 +485,9 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	var others: Array = cyclists.riders()
 	for b in bot_places:
 		others.append({"s": float(b["s"]), "lateral": float(b["lateral"]), "dir": 1})
+	# Lot AS6 : véhicules proches calculés par le core (liste `vehicles`, une trame sur trois)
+	if typeof(state.get("vehicles")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
+		traffic.sync_core(state["vehicles"], int(state["seq"]), cam_s)
 	traffic.update(cam_s, rider_v, dt_s, paused, others)
 	if not paused:
 		_count_contacts(others)
@@ -591,7 +598,7 @@ func _count_contacts(others: Array) -> void:
 			var k: Dictionary = TrafficModel.KINDS[v["kind"]]
 			items.append({"name": str(v["kind"]), "s": float(v["s"]), "lateral": float(v["lateral"]),
 				"half_len": float(k["length"]) * 0.5, "half_width": float(k["half_width"]), "group": v})
-	var you := {"s": _cam_s, "lateral": RoadBuilder.RIDER_LATERAL_M, "name": "cycliste"}
+	var you := {"s": _cam_s, "lateral": _rider_lane_m, "name": "cycliste"}
 	for o in others + [you]:
 		if absf(float(o["s"]) - _cam_s) <= CONTACT_M:
 			items.append({"name": str(o["group"]["case"]) if o.has("group") else str(o.get("name", "bot")),
@@ -606,7 +613,8 @@ func _count_contacts(others: Array) -> void:
 			if absf(float(a["s"]) - float(b["s"])) < float(a["half_len"]) + float(b["half_len"]) \
 					and absf(float(a["lateral"]) - float(b["lateral"])) < float(a["half_width"]) + float(b["half_width"]):
 				contacts += 1
-				last_contact = "%s / %s à %.0f m" % [a["name"], b["name"], float(a["s"]) - _cam_s]
+				last_contact = "%s / %s à %.0f m (écarts à l'axe %.1f et %.1f m)" % [a["name"], b["name"],
+					float(a["s"]) - _cam_s, float(a["lateral"]), float(b["lateral"])]
 
 
 func test_info(cam: Camera3D) -> Dictionary:
@@ -660,3 +668,24 @@ func test_info(cam: Camera3D) -> Dictionary:
 
 func _exit_tree() -> void:
 	_wait_job()
+
+
+## Point d'ancrage de la jauge d'abri au-dessus du véhicule `id` de la route (lot AS6, `draft_bot` = `veh:<id>`) :
+## juste derrière son arrière et plus bas que pour un bot : la jauge (draft_gauge.gd) se pose sur la face arrière du
+## véhicule, là où le cycliste qui le suit la voit (au-dessus du toit, elle passerait sous le bandeau du haut) ;
+## null s'il n'est pas sur la route.
+func vehicle_anchor(id: String) -> Variant:
+	if traffic.route == null:
+		return null
+	for v in traffic.vehicles:
+		if str(v["id"]) == id:
+			var xf: Transform3D = traffic.world_transform(v)
+			var back := -xf.basis.z * (float(TrafficModel.KINDS[v["kind"]]["length"]) * 0.5)
+			return xf.origin - back * (1.0 + GAUGE_BEHIND_M / maxf(back.length(), 0.01)) + Vector3.UP * GAUGE_DROP_M
+	return null
+
+
+## Écart à l'axe `lane_m` d'une trame ou d'un bot (lot AS2) ; `fallback` sans lui (core d'avant AS2, pas de bot).
+static func _lane_of(d: Dictionary, fallback: float) -> float:
+	var v = d.get("lane_m", null)
+	return float(v) if (v is float or v is int) else fallback

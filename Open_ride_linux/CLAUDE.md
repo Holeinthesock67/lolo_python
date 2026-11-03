@@ -66,6 +66,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `world_menu.py` : menu du monde ouvert (lot W11, 2.0) : réponses aux commandes `world_search` (liste embarquée `data/places.json`, puis bases locales, puis Nominatim si `[open_world] network`, à la demande et une requête par seconde au plus), `world_map`, `world_regions` et `world_pin` ; les requêtes sur les bases locales passent par `python -m openride_compiler.worldgen.menu_query` (sous-processus, le core ne dépend pas du compilateur) ; réponses en parties de 60 000 octets (`ipc_lists.build_world_messages`) ;
 - `open_world_save.py` : balade du monde ouvert enregistrée en GPX dans `~/OpenRide/GPX/` à la fin d'une séance de plus de 500 m, et commande `openride-core open-world-save <id>` (lot W14) ;
 - `bots.py` : bots à puissance constante et fantôme d'une séance passée (.fit ou .jsonl) (lot N9) ;
+- `traffic.py` : circulation de la route calculée par le core (lot AS6, 2.0, module pur) : portage de `traffic_model.gd` (même tirage, vecteurs partagés `engine/tests/data/traffic_slots_vectors.json`, `tools/traffic_vectors.py`), véhicule lent devant, abri derrière un véhicule et aspiration au dépassement, liste `vehicles` de `state` ;
 - `progression.py` : expérience, niveaux et défis de la série V recalculés depuis le journal, tables dans `data/progression.toml` (lot V2) ;
 - `profile.py` : profil local `~/OpenRide/profile.json` (équipement choisi, achats, vies, avatar), écriture sûre et migration (lot V4) ;
 - `last_choices.py` : derniers choix du menu par profil (`derniers_choix.json` : parcours, entraînement, bots, départ du monde ouvert), publiés dans `hello_ack.config.last_choices` ; dernier parcours rechargé par le core (lot O32) ;
@@ -87,6 +88,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `surface_physics.py` : option « gravel », roulement multiplié des routes non revêtues (`[gravel]`, colonne `surface` du parcours ou surface imposée), supplément de pente en SIM sous la borne du vent, transition de 20 m, module pur (lot U21).
 - `wind.py` : vent réglable (calme, fixe, en rafales ou du thème), composante de face et supplément de pente en SIM, module pur (lot P2).
 - `draft.py` : aspiration derrière les bots (courbe exponentielle, effet de file, vent de travers, poussée du bot suivi), module pur (lot P3).
+- `road_cyclists.py` : cyclistes du décor proches calculés par le core (portage de `road_cyclists_model.gd`, même graine), sources d'abri `rider:<id>` et liste `riders` de `state`, module pur (lot AS7).
 
 **Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `segments_layer.py` (couche `segments` et fichier `<trace>.segments.toml`, série T, lot T3), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
 

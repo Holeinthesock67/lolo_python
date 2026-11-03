@@ -6,7 +6,10 @@ extends RefCounted
 ## - push() garde la dernière liste reçue (au plus 5 bots {id, name, s, v, kind}) avec son heure ;
 ##   un bot absent de la trame disparaît, une trame sans `bots` (ou `bots` à null) les retire tous.
 ## - Position affichée : s + v × (maintenant − réception), bornée à MAX_EXTRAPOLATION_S comme la caméra
-##   (camera_follow.gd) ; sur une boucle (loop_length_m > 0), s est ramené dans [0, longueur[.
+##   (camera_follow.gd) ; sur une boucle (loop_length_m > 0), s est ramené dans [0, longueur[. Comme pour la
+##   caméra, l'écart entre la position affichée et celle de la nouvelle trame est rattrapé linéairement en
+##   CORRECTION_S (lot AS2, essai vélo du 2 novembre : les bots avançaient par à-coups de ~15 cm d'une image
+##   à l'autre, l'heure de réception des trames variant de quelques dizaines de ms) ; au-delà de SNAP_M, saut.
 ## - Écart en mètres : s du bot − s du cycliste, positif devant ; sur une boucle, le plus court des deux
 ##   sens (entre −L/2 et L/2). Écart en secondes : `gap_s` du core quand il le donne (révision 1.4),
 ##   sinon écart en mètres divisé par la vitesse moyenne des deux (au moins MIN_SPEED_MPS).
@@ -24,6 +27,11 @@ extends RefCounted
 ##   première libre, sinon il reste où il est ; un peloton au départ se range donc côte à côte au lieu de se
 ##   superposer. Le bot glisse vers sa place à LATERAL_SPEED_MPS au plus. bots_view.gd l'affiche ;
 ##   living_decor.gd la passe aux cyclistes du décor, aux véhicules et au compte des contacts (places()).
+## - Lot AS2 : un bot dont la trame donne `lane_m` (écart à l'axe calculé par le core : placement dans la roue,
+##   dépassements, aucun chevauchement) est affiché à cette place, sans place visée ni retrait ; les places
+##   ci-dessus et ci-dessous ne servent qu'aux bots sans `lane_m` (core d'avant AS2). Les véhicules voient ces
+##   places (places()) et attendent derrière s'ils n'ont pas la place ; l'abri derrière les véhicules et leur
+##   circulation calculée par le core viennent avec le lot AS6.
 ## - Véhicules (`vehicles`, {s, dir} posés par main.gd depuis living_decor.vehicle_places()) : un bot qu'un véhicule
 ##   d'en face croisera dans ONCOMING_LOOK_M, ou qu'un véhicule rattrape par derrière à moins de BEHIND_LOOK_M (ou
 ##   qui est encore à côté, VEHICLE_PAST_M), serre à droite, deux de front au plus (KEEP_RIGHT_SLOTS premières
@@ -39,6 +47,8 @@ const VISIBLE_M := 300.0
 const NAME_M := 50.0
 const MAX_LINES := 5
 const MAX_EXTRAPOLATION_S := 1.0
+const CORRECTION_S := 0.15       # camera_follow.gd
+const SNAP_M := 5.0
 const MIN_SPEED_MPS := 1.0
 ## Couleur par `kind` : bot à puissance constante orange, fantôme bleu pâle ; inconnu gris. Un bot à
 ## profil (T12, `kind` = `constant` avec `profile`, contrat 1.4) est jaune. Teintes claires : les noms de
@@ -113,6 +123,9 @@ func count() -> int:
 
 ## Liste `bots` d'une trame `state` reçue à t_us (horloge locale, Time.get_ticks_usec()).
 func push(bots, t_us: int) -> void:
+	var shown := {}   # position affichée de chaque bot à t_us, avant la nouvelle trame
+	for b in _bots:
+		shown[b["id"]] = _shown_s(b, t_us)
 	_bots.clear()
 	if not (bots is Array):
 		return
@@ -122,7 +135,11 @@ func push(bots, t_us: int) -> void:
 		var gap = b.get("gap_s", null)
 		var item := {"id": str(b["id"]), "name": str(b.get("name", b["id"])), "kind": str(b.get("kind", "")),
 			"s": float(b["s"]), "v": float(b.get("v", 0.0)) if (b.get("v") is float or b.get("v") is int) else 0.0,
-			"gap_s": float(gap) if (gap is float or gap is int) else null, "t_us": t_us}
+			"gap_s": float(gap) if (gap is float or gap is int) else null, "t_us": t_us, "offset": 0.0,
+			"lane_m": float(b["lane_m"]) if (b.get("lane_m") is float or b.get("lane_m") is int) else null}
+		if shown.has(item["id"]):
+			var off := gap_m(item["s"], float(shown[item["id"]]), loop_length_m)
+			item["offset"] = off if absf(off) < SNAP_M else 0.0
 		for key in PROFILE_FIELDS:
 			item[key] = b.get(key, null)
 		_bots.append(item)
@@ -155,13 +172,10 @@ static func color_of(kind: String, profile = null) -> Color:
 func view(rider_s: float, rider_v: float, now_us: int) -> Array:
 	var out: Array = []
 	for b in _bots:
-		var dt := clampf(float(now_us - int(b["t_us"])) / 1e6, 0.0, MAX_EXTRAPOLATION_S)
-		var s: float = b["s"] + b["v"] * dt
-		if loop_length_m > 0.0:
-			s = fposmod(s, loop_length_m)
+		var s := _shown_s(b, now_us)
 		var gm := gap_m(rider_s, s, loop_length_m)
 		var gs: float = b["gap_s"] if b["gap_s"] != null else gap_seconds(gm, rider_v, b["v"])
-		var item := {"id": b["id"], "name": b["name"], "kind": b["kind"], "s": s, "gap_m": gm, "gap_s": gs,
+		var item := {"id": b["id"], "name": b["name"], "kind": b["kind"], "s": s, "lane_m": b["lane_m"], "gap_m": gm, "gap_s": gs,
 			"visible": absf(gm) < VISIBLE_M, "show_name": absf(gm) < NAME_M, "color": color_of(b["kind"], b["profile"])}
 		for key in PROFILE_FIELDS:
 			item[key] = b[key]
@@ -171,6 +185,14 @@ func view(rider_s: float, rider_v: float, now_us: int) -> Array:
 	_last_view_us = now_us
 	_assign_laterals(out, dt)
 	return out
+
+
+## Position affichée du bot `b` à now_us : extrapolée de sa trame, plus l'écart à rattraper en CORRECTION_S.
+func _shown_s(b: Dictionary, now_us: int) -> float:
+	var since := float(now_us - int(b["t_us"])) / 1e6
+	var dt := clampf(since, 0.0, MAX_EXTRAPOLATION_S)
+	var s: float = b["s"] + b["v"] * dt + float(b["offset"]) * clampf(1.0 - since / CORRECTION_S, 0.0, 1.0)
+	return fposmod(s, loop_length_m) if loop_length_m > 0.0 else s
 
 
 ## Places des bots de la dernière vue, pour le décor (living_decor.gd) : [{s, lateral}].
@@ -189,6 +211,15 @@ func _assign_laterals(view: Array, dt: float) -> void:
 		var id: String = item["id"]
 		seen[id] = true
 		var gap := float(item["gap_m"])
+		if item["lane_m"] != null:   # place du core (lot AS2)
+			var lane := float(item["lane_m"])
+			_slot[id] = lane
+			_lateral[id] = lane
+			_back[id] = 0.0
+			taken.append([gap, lane, SLOT_CLEAR_M, gap, lane])
+			item["lateral"] = lane
+			_places.append({"s": item["s"], "lateral": lane})
+			continue
 		var allowed := _allowed_slots(float(item["s"]))
 		var keep_right := allowed < LATERAL_SLOTS.size()
 		var slots: Array = LATERAL_SLOTS.slice(0, allowed)

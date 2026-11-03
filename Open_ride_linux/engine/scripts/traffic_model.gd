@@ -24,6 +24,12 @@ extends RefCounted
 ## Lot P32, aucune collision : les cyclistes du décor et les bots (`others` d'update) sont évités. Un véhicule
 ## s'écarte (LATERAL_MPS) pour laisser LATERAL_CLEARANCE_M à ceux qu'il double, CYCLIST_GAP_M à ceux qu'il
 ## croise, dès CYCLIST_LOOK_M avant eux ; il ne commence pas un dépassement face à un cycliste qui arrive.
+## Lot AS6 : même tirage que core/src/openride_core/traffic.py (vecteurs partagés tests/data/traffic_slots_vectors.json).
+## Le core est l'autorité des véhicules à moins de NEAR_M du cycliste : `sync_core` reprend la liste `vehicles` de
+## `state` (10 Hz) et l'engine les extrapole entre deux trames ; le budget du préréglage ne compte que les autres
+## (décor lointain). Les véhicules lents devant le cycliste (tracteur, utilitaire en côte) ne viennent que du core :
+## il les place dès 150 à 300 m devant, et les coureurs qu'il place (AS2) s'écartent pour les doubler, ce que les
+## cyclistes du décor de l'engine ne savent pas faire. Un véhicule que le core ne suit plus reste au décor.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
@@ -56,6 +62,8 @@ const LANE_FREE_M := 150.0
 const VERGE_M := 0.25
 const HOLD_GAP_M := 5.0
 const SLOPE_PROBE_M := 2.5   # tangage : pente de la route à ± cette distance (environ un demi-empattement)
+const NEAR_M := 150.0                       # lot AS6 : véhicules calculés par le core (liste `vehicles`)
+const CORE_MARGIN_M := 10.0                 # un véhicule qui vient de sortir de la liste n'est pas retiré
 ## Sortes (Lot P25) : demi-largeur et longueur hors tout de vehicle_mesh.gd (rétroviseurs compris), part des
 ## tirages et plage de vitesse.
 const KINDS := {
@@ -83,6 +91,7 @@ var _snow_line_m: float = DEFAULT_SNOW_LINE_M
 var _next_slot: int = 0
 var _last_rider_s: float = NAN
 var _others: Array = []            # cyclistes du décor et bots de la dernière image : {s, lateral, dir}
+var _core_seq: int = -1            # dernière trame `state` dont la liste `vehicles` a été reprise (lot AS6)
 
 
 ## `theme` fusionné (theme_loader.gd), `pois` les points d'intérêt (seuls les `village` comptent).
@@ -111,8 +120,20 @@ func reset() -> void:
 
 func set_budget(vehicle_budget: int) -> void:
 	budget = maxi(0, vehicle_budget)
-	while vehicles.size() > budget:
-		vehicles.pop_back()
+	while _own_count() > budget:
+		for i in range(vehicles.size() - 1, -1, -1):
+			if not vehicles[i].get("core", false):
+				vehicles.remove_at(i)
+				break
+
+
+## Véhicules tirés par l'engine seul (décor lointain), ceux du core (lot AS6) exclus : ce que règle le budget.
+func _own_count() -> int:
+	var n := 0
+	for v in vehicles:
+		if not v.get("core", false):
+			n += 1
+	return n
 
 
 static func _u(h: int) -> float:
@@ -190,9 +211,10 @@ func _free_at(s: float, dir: int) -> bool:
 	return true
 
 
+## Un véhicule double le cycliste (lot AS6 : un véhicule du core devant lui, un véhicule lent, ne compte pas).
 func _overtaking() -> bool:
 	for v in vehicles:
-		if int(v["dir"]) == 1:
+		if int(v["dir"]) == 1 and not (v.get("core", false) and float(v["s"]) > _last_rider_s):
 			return true
 	return false
 
@@ -210,7 +232,7 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, o
 	while (_next_slot) * SLOT_M <= rider_s:
 		var ev := slot_event(_next_slot)
 		_next_slot += 1
-		if ev.is_empty() or vehicles.size() >= budget:
+		if ev.is_empty() or _own_count() >= budget:
 			continue
 		if int(ev["dir"]) == -1:
 			var s0 := rider_s + float(ev["ahead_m"])
@@ -225,7 +247,10 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, o
 	# Déplacement
 	for v in vehicles:
 		var rel := float(v["s"]) - rider_s
-		if int(v["dir"]) == -1:
+		if v.get("core", false):
+			# Lot AS6 : calculé par le core, extrapolé jusqu'à sa prochaine liste
+			v["s"] = float(v["s"]) + int(v["dir"]) * float(v["speed_mps"]) * dt_s
+		elif int(v["dir"]) == -1:
 			# Un véhicule en face plus rapide reste derrière le précédent, à MIN_SPACING_M au moins
 			var spd := float(v["cruise_mps"])
 			for o in vehicles:
@@ -237,7 +262,8 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, o
 			v["lateral"] = move_toward(float(v["lateral"]), _clear_of_others(v, oncoming_lateral(v["kind"])), LATERAL_MPS * dt_s)
 		else:
 			_move_overtaker(v, rel, rider_v, dt_s)
-		_hold(v)
+		if not v.get("core", false):
+			_hold(v)
 		v["wheel"] = fposmod(float(v["wheel"]) + float(v["speed_mps"]) * dt_s / 0.33, TAU)
 	# Suppressions
 	var kept := []
@@ -256,7 +282,8 @@ func _move_overtaker(v: Dictionary, rel: float, rider_v: float, dt_s: float) -> 
 	var pass_mps := minf(cruise, maxf(PASS_SPEED_KMH / 3.6, rider_v + PASS_MARGIN_KMH / 3.6))
 	var left := lane_lateral(v["kind"])
 	var committed: bool = v.get("committed", false)
-	if not committed and rel >= PASS_ZONE_M.x - 40.0 and rel < 0.0 and _clear_to_pass(v, rel, rider_v, pass_mps):
+	if not committed and rel >= PASS_ZONE_M.x - 40.0 and rel < 0.0 and pass_mps > rider_v \
+			and _clear_to_pass(v, rel, rider_v, pass_mps):
 		committed = true
 		v["committed"] = true
 	var spd := cruise
@@ -274,7 +301,7 @@ func _move_overtaker(v: Dictionary, rel: float, rider_v: float, dt_s: float) -> 
 		if rel >= PASS_ZONE_M.x - 40.0:
 			spd = pass_mps
 		if rel + (spd - rider_v) * dt_s >= -FOLLOW_GAP_M:
-			spd = rider_v
+			spd = minf(spd, rider_v)      # il ne s'approche pas (un véhicule lent doublé reste lent)
 	v["speed_mps"] = spd
 	v["s"] = float(v["s"]) + spd * dt_s
 	v["lateral"] = move_toward(float(v["lateral"]), _clear_of_others(v, target_lat), LATERAL_MPS * dt_s)
@@ -397,9 +424,13 @@ func _clear_to_pass(v: Dictionary, rel: float, rider_v: float, pass_mps: float) 
 
 
 func _spawn(ev: Dictionary, s: float, dir: int) -> void:
+	var id := "v%d" % int(ev["slot"])
+	for o in vehicles:
+		if str(o["id"]) == id:      # déjà là, reçu du core (lot AS6)
+			return
 	spawned_total += 1
 	vehicles.append({
-		"id": "v%d" % int(ev["slot"]),
+		"id": id,
 		"kind": ev["kind"],
 		"color": ev["color"],
 		"s": s,
@@ -410,6 +441,47 @@ func _spawn(ev: Dictionary, s: float, dir: int) -> void:
 		"wheel": 0.0,
 		"passed": false,
 	})
+
+
+## Lot AS6 : liste `vehicles` de la trame `state` numéro `seq` (au plus 4 véhicules à moins de NEAR_M, calculés
+## par le core) ; reprise une seule fois par trame. Les véhicules reçus remplacent ceux de l'engine de même `id`,
+## ceux de l'engine à moins de NEAR_M absents de la liste partent ; un véhicule qui sort de la liste reste au décor.
+func sync_core(list: Array, seq: int, rider_s: float) -> void:
+	if seq == _core_seq:
+		return
+	_core_seq = seq
+	var by_id := {}
+	for v in vehicles:
+		by_id[str(v["id"])] = v
+	var seen := {}
+	for item in list:
+		if typeof(item) != TYPE_DICTIONARY or not KINDS.has(str(item.get("kind", ""))):
+			continue
+		var id := str(item.get("id", ""))
+		seen[id] = true
+		var v: Dictionary = by_id.get(id, {})
+		if v.is_empty():
+			v = {"id": id, "wheel": 0.0, "passed": true}
+			vehicles.append(v)
+		var spd := float(item.get("v", 0.0))
+		v["kind"] = str(item["kind"])
+		v["color"] = int(item.get("color", 0))
+		v["s"] = float(item.get("s", rider_s))
+		v["dir"] = 1 if int(item.get("dir", 1)) >= 0 else -1
+		v["speed_mps"] = spd
+		v["cruise_mps"] = spd
+		v["lateral"] = float(item.get("lane_m", RIGHT_LANE_M))
+		v["core"] = true
+	var kept := []
+	for v in vehicles:
+		if seen.has(str(v["id"])):
+			kept.append(v)
+		elif absf(float(v["s"]) - rider_s) < NEAR_M - CORE_MARGIN_M:
+			continue                    # le core dit qu'il n'y est pas
+		else:
+			v.erase("core")             # sorti de la liste : décor lointain
+			kept.append(v)
+	vehicles = kept
 
 
 ## Véhicule posé par un test (lot P32 : captures et contrôle des voies) : sorte `kind`, sens `dir`, à `rel_m` du
