@@ -13,7 +13,8 @@ extends RefCounted
 const MODES := ["off", "auto", "compacted", "gravel", "dirt"]
 const UNPAVED := ["compacted", "gravel", "dirt"]
 const DEFAULT_WIDTH_M := {"compacted": 4.0, "gravel": 3.5, "dirt": 3.0}
-const DEFAULT_COLOR := {"compacted": Color(0.71, 0.65, 0.54), "gravel": Color(0.65, 0.60, 0.53),
+## Couleurs sRGB, converties en linéaire par road_markings.gdshader (Forward+) ; gris-brun, retour du propriétaire 03/11.
+const DEFAULT_COLOR := {"compacted": Color(0.60, 0.54, 0.42), "gravel": Color(0.54, 0.48, 0.38),
 	"dirt": Color(0.54, 0.44, 0.31)}
 const BEVEL_M := 5.0
 const BEVEL_SAMPLES := 11

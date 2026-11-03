@@ -43,6 +43,12 @@ const BLADES := 12
 const BLADE_WIDTH_M := 0.035
 ## Teintes d'instance (multiplient la couleur des sommets) : fraîche, sombre, jaunie, sèche.
 const TINTS := [Color(1.0, 1.0, 1.0), Color(0.78, 0.88, 0.78), Color(1.12, 1.08, 0.78), Color(1.3, 1.15, 0.72)]
+## Désert (sable ou pierre, retour du propriétaire 03/11) : herbe sèche, paille et ocre, plus clairsemée.
+## Le biome d'une touffe est tiré selon les poids du modèle de biome (`biome_model`, nul : herbe d'avant).
+const DRY_BIOMES := ["sand_desert", "rock_desert"]
+const DRY_TINTS := [Color(1.55, 0.95, 1.2), Color(1.75, 1.05, 1.15), Color(1.35, 0.8, 0.95), Color(1.9, 1.2, 1.45)]
+## Part des places gardées dans le désert (touffes plus espacées qu'en prairie).
+const DRY_KEEP := 0.45
 ## Fondu avec la distance (mètres) : éclaircissement à partir de THIN_START_M, effacement complet à FADE_END_M,
 ## avant la fin de la fenêtre de tronçons devant la caméra (CHUNKS_AHEAD × CHUNK_M).
 const THIN_START_M := 30.0
@@ -52,6 +58,8 @@ const NO_CHUNK := -(1 << 40)
 ## Place vide : échelle nulle, sous le terrain.
 static var HIDDEN := Transform3D(Basis().scaled(Vector3.ZERO), Vector3(0.0, -10000.0, 0.0))
 
+## Modèle de biome du parcours (biome_model.gd), posé par living_world.gd ; nul : herbe d'avant partout.
+var biome_model = null
 var route = null                     # route_data.gd
 var road_half_width_m := 3.0
 var tuft_seed := 0
@@ -181,8 +189,14 @@ func update(cam_s: float) -> void:
 				_visible_count -= 1 if was_visible else 0
 			else:
 				var x: Transform3D = xf
+				var dry := dry_draw(k, slot, x.origin)
+				if dry < 0:
+					_mm.set_instance_transform(idx, HIDDEN)
+					_placed[idx] = 0
+					_visible_count -= 1 if was_visible else 0
+					continue
 				_mm.set_instance_transform(idx, x)
-				_mm.set_instance_color(idx, TINTS[tint_index(k, slot)])
+				_mm.set_instance_color(idx, (DRY_TINTS if dry == 1 else TINTS)[tint_index(k, slot)])
 				_origins[idx] = x.origin
 				_placed[idx] = 1
 				_visible_count += 0 if was_visible else 1
@@ -191,6 +205,22 @@ func update(cam_s: float) -> void:
 			_queue.pop_front()
 		else:
 			job[2] = end
+
+
+## Touffe du désert ? 0 : herbe d'avant ; 1 : herbe sèche ; −1 : place laissée vide (désert clairsemé).
+func dry_draw(k: int, slot: int, origin: Vector3) -> int:
+	if biome_model == null or not biome_model.active():
+		return 0
+	var w: Dictionary = biome_model.weights_at(origin.x, origin.z)
+	var dry_w := 0.0
+	for b in DRY_BIOMES:
+		dry_w += float(w.get(b, 0.0))
+	if dry_w <= 0.0:
+		return 0
+	var h := VegetationPlacer.hash3(tuft_seed ^ 0x5D17, k, slot)
+	if float(h & 0xFFFF) / 65536.0 >= dry_w:
+		return 0
+	return 1 if float((h >> 16) & 0xFFFF) / 65536.0 < DRY_KEEP else -1
 
 
 ## Vrai quand tous les tronçons de la fenêtre sont remplis.
