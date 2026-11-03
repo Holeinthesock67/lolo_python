@@ -1009,10 +1009,13 @@ func _process(delta: float) -> void:
 		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
 		_probe.distance_m = s_route
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
-		_step_living(delta, s_route, float(follow.last_frame["v"]))
+		# Bots placés avant le décor vivant : ses cyclistes, ses véhicules et son compte des contacts lisent les
+		# places des bots de cette image. Après une image bloquée, des places de l'image d'avant, face à la
+		# caméra déjà avancée, comptaient un contact qui n'existait pas (rejeu #707, 490 ms bloquées à t = 132 s).
 		if bots_model.count() > 0:
 			_show_bots(s_route, float(follow.last_frame["v"]))
 			_bots_frame = Engine.get_process_frames()
+		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		_show_draft_gauge()
 		# Arches de bonus seulement quand le core en donne (champ `powerup` : SIM, option « Bonus »).
 		segment_markers.update(s_route, _last_state.has("powerup"))
