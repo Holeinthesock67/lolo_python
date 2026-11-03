@@ -72,6 +72,10 @@ func push_frame(t_us: int, s: float, v: float, running: bool) -> void:
 		elif s - raw_prev > 0.5 * loop_length_m:
 			_unwrap_m -= loop_length_m
 	var s_abs := s + _unwrap_m
+	# Position montrée à t_us (et non displayed_s, calculée à l'image précédente) : sinon chaque trame ajoute le
+	# chemin parcouru depuis cette image au retard, qui s'accumule quand une trame arrive avant chaque image
+	# (~15 images/s en high : jusqu'à 4 m de retard sur le core, les bots semblaient traverser le cycliste).
+	var shown := maxf(displayed_s, _target(t_us)) if _has_frame and _running else displayed_s
 	previous_frame = last_frame
 	last_frame = {"t_us": t_us, "s": s_abs, "v": v}
 	_running = running
@@ -79,8 +83,8 @@ func push_frame(t_us: int, s: float, v: float, running: bool) -> void:
 		_offset = 0.0
 		displayed_s = s_abs
 	else:
-		# Écart entre ce qui est affiché et la nouvelle référence, rattrapé en 150 ms.
-		_offset = displayed_s - s_abs
+		# Écart entre ce qui est montré maintenant et la nouvelle référence, rattrapé en 150 ms.
+		_offset = shown - s_abs
 	_has_frame = true
 
 
@@ -104,11 +108,15 @@ func update(now_us: int) -> float:
 	if not _running:
 		displayed_s = float(last_frame["s"])
 		return displayed_s
+	displayed_s = maxf(displayed_s, _target(now_us))   # jamais de recul pendant RUNNING
+	return displayed_s
+
+
+## Position extrapolée de la dernière trame à now_us, plus l'écart qui reste à rattraper.
+func _target(now_us: int) -> float:
 	var since := (now_us - int(last_frame["t_us"])) / 1e6
 	var k := clampf(1.0 - since / CORRECTION_S, 0.0, 1.0)
-	var target := extrapolated(now_us) + _offset * k
-	displayed_s = maxf(displayed_s, target)   # jamais de recul pendant RUNNING
-	return displayed_s
+	return extrapolated(now_us) + _offset * k
 
 
 ## Inclinaison de la caméra vers la route devant (Lot Q2).
