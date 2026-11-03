@@ -42,7 +42,9 @@ Appuis et attentes (lot X33, `sim_bench_inputs.py`) : section `inputs` (touche d
 séance (biais et cible ERG, bloc, pause et reprise) et une capture juste après ; `bench.expect` (lignes du
 journal de séance, motifs des journaux du core et de l'engine, éléments du HUD, fichiers du HOME), chaque
 attente avec son renvoi à l'étape de la recette ; `bench.powerups` (contenu de `~/OpenRide/powerups.toml`,
-ex. arches rapprochées) et `bench.bot_profiles` (`--bot-profile` du core).
+ex. arches rapprochées) et `bench.bot_profiles` (`--bot-profile` du core). Série DS : `bench.mode` (ou `--mode`) donne
+le mode de la séance (`start.mode`, ex. `survivor`, scénario `dernier_survivant`) et `bench.config` des sections
+ajoutées à config.toml (ex. `{"survivor": {"opponents": 2}}`).
 
 Fiabilité (lot X35) : les captures périodiques commencent après le chargement du parcours (`route_loaded`
 puis SETTLE_S) et une capture sans réponse est redemandée une fois ; seules les captures demandées après le
@@ -304,6 +306,10 @@ class Bench:
         self.expect: list[dict[str, Any]] = settings.get("expect", [])
         self.powerups: dict[str, Any] | None = settings.get("powerups")
         self.bot_profiles = [str(p) for p in settings.get("bot_profiles", [])]
+        # Série DS : mode de la séance (`start.mode`, ex. survivor) et sections ajoutées à config.toml
+        # (`bench.config`, ex. {"survivor": {"opponents": 2}}) ; --mode l'emporte sur `bench.mode`.
+        self.mode = str(getattr(args, "mode", None) or settings.get("mode") or "")
+        self.config: dict[str, Any] = settings.get("config", {}) or {}
         self.rows: list[dict[str, Any]] = []      # journal de séance entier (records, jeu, événements)
         self.home: Path | None = None
         # Lot S1 : captures tous les N mètres de route (même endroit d'un essai à l'autre) au lieu de toutes
@@ -353,12 +359,16 @@ class Bench:
         cfg_lines.append(f'[render]\nquality = "{a.quality}"\n')
         if self.difficulty is not None:
             cfg_lines.append(f"[trainer]\ndifficulty_pct = {float(self.difficulty)}\n")
+        if self.config:
+            cfg_lines.append(toml_text(self.config))
         cfg = tmp / "config.toml"
         cfg.write_text("\n".join(cfg_lines), encoding="utf-8")
         argv = [sys.executable, "-m", "openride_core", "run", "--config", str(cfg), "--trainer", "sim",
                 "--input", "sim", "--hr", "sim", "--autostart", "--route", route_id]
         for prof in self.bot_profiles:
             argv += ["--bot-profile", prof]
+        if self.mode:
+            argv += ["--mode", self.mode]
         if a.latence:
             argv.append("--latence")   # lignes [latence] du core et de l'engine (lot X7)
         if self.scenario_arg:
@@ -590,7 +600,7 @@ class Bench:
             if ready is None or self._stop_relaunch.is_set():
                 return
             cmd_id += 1
-            send_cmd(cmd_port, cmd_id, "start", {})
+            send_cmd(cmd_port, cmd_id, "start", {"mode": self.mode} if self.mode else {})
             started = core.wait_for(r"READY -> RUNNING", 10.0, after=ready[0])
             if started is not None:
                 self.laps += 1
@@ -1043,6 +1053,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--biome", help="biome forcé sur tout le parcours (lot U17, ex. sand_desert) ; "
                     "l'emporte sur le biome du scénario (scénarios biome_*)")
     ap.add_argument("--workout", help="ERG : erg_court (5 min 30 intégré) ou fichier .zwo")
+    ap.add_argument("--mode", choices=("ride", "wtf", "survivor"),
+                    help="mode de la séance (start.mode), ex. survivor ; défaut : bench.mode du scénario, sinon ride")
     ap.add_argument("--duration", type=float, help="durée de chaque séance en s (défaut : fin du scénario + 15 s)")
     ap.add_argument("--every", type=float, help="intervalle des captures en s (défaut : celui du scénario, sinon 15)")
     ap.add_argument("--difficulty", type=float, help="[trainer] difficulty_pct de la configuration")

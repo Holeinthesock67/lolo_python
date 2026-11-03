@@ -4,7 +4,7 @@ Sous-commandes disponibles à ce stade :
     openride-core recover [JOURNAL]   transforme le dernier journal (ou celui donné) en FIT
     openride-core run [--trainer mock|ftms|sim] [--input click|keyboard|none|sim]
                       [--hr none|ble|sim] [--sim-scenario NOM|FICHIER] [--gear N]
-                      [--autostart [--route ID] [--workout ID | --ftp-test ramp]]
+                      [--autostart [--route ID] [--workout ID | --ftp-test ramp] [--mode ride|wtf|survivor]]
                       [--resume JOURNAL] [--depart pedalage|immediat]
                                       boucle de séance (BLE, physique, IPC, journal) ; avec
                                       --autostart, parcours <routes>/<ID>.world (défaut demo) et
@@ -183,7 +183,7 @@ def _run_session(cfg, bots_list: list, args: argparse.Namespace, lock=None) -> i
         session._note_profile()
     try:
         asyncio.run(session.run(autostart=args.autostart, route_id=args.route or "demo",
-                                workout_id=args.workout, resume=args.resume))
+                                workout_id=args.workout, resume=args.resume, game_mode=args.mode))
     except AutostartError as exc:
         logging.getLogger("openride_core").error("Séance non lancée : %s", exc)
         print(f"openride-core : {exc}", file=sys.stderr)
@@ -415,6 +415,9 @@ def build_parser() -> argparse.ArgumentParser:
                      help="avec --autostart : entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)")
     run.add_argument("--ftp-test", choices=["ramp"],
                      help="avec --autostart : séance de test de FTP (rampe par paliers)")
+    run.add_argument("--mode", choices=["ride", "wtf", "survivor"],
+                     help="avec --autostart : mode de la séance (argument `mode` de start ; bancs du PC, "
+                          "ex. survivor pour le Dernier survivant)")
     run.add_argument("--depart", choices=["pedalage", "immediat"],
                      help="départ de la séance (lot O36) : pedalage attend le décor, le trainer et le "
                           "pédalage ; immediat part à la commande start (défaut : [depart] mode)")
@@ -529,7 +532,7 @@ def main(argv: list[str] | None = None) -> int:
         args.workout = f"ftp_test:{args.ftp_test}"   # un test de FTP se roule comme un entraînement
     if args.command == "run" and not args.autostart:
         given = [opt for opt, val in (("--route", args.route), ("--workout", args.workout and not args.ftp_test),
-                                      ("--ftp-test", args.ftp_test)) if val]
+                                      ("--ftp-test", args.ftp_test), ("--mode", args.mode)) if val]
         if given:
             print(f"openride-core run : erreur : {' et '.join(given)} demande --autostart (sans lui,"
                   " l'engine choisit le parcours et l'entraînement)", file=sys.stderr)

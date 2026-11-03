@@ -2967,8 +2967,9 @@ class CoreSession:
                 raise AutostartError(f"entraînement « {workout_id} » refusé : {exc}") from exc
 
     async def run(self, autostart: bool = False, route_id: str = "demo",
-                  workout_id: str | None = None, resume: Path | None = None) -> None:
-        """Boucle de séance. Avec `autostart` : select_route, select_workout éventuel, puis start.
+                  workout_id: str | None = None, resume: Path | None = None, game_mode: str | None = None) -> None:
+        """Boucle de séance. Avec `autostart` : select_route, select_workout éventuel, puis start (avec
+        `mode` = `game_mode` s'il est donné : `wtf` ou `survivor`, bancs du PC).
 
         Lève `AutostartError` avant d'ouvrir les ports IPC si le parcours ou l'entraînement
         demandé est refusé. Avec `resume` (lot N8) : reprise du journal donné à la place du
@@ -3007,7 +3008,7 @@ class CoreSession:
             self._on_command("select_route", {"route_id": route_id}, 0)
             if workout_id:
                 self._on_command("select_workout", {"workout_id": workout_id}, 0)
-            self._on_command("start", {}, 0)
+            self._on_command("start", {"mode": game_mode} if game_mode else {}, 0)
         else:
             self._preselect_last_route()   # lot O32 : le menu s'ouvre sur le dernier parcours du profil
         if self.first_run:

@@ -166,3 +166,18 @@ def test_expectations_on_journal_logs_screen_and_files(tmp_path: Path) -> None:
 def test_keys_done_reads_the_engine_log() -> None:
     log = "[test] key done=Equal shift=false hold_ms=150\nautre\n[test] key done=PageUp shift=false hold_ms=150\n"
     assert si.keys_done(log) == ["Equal", "PageUp"]
+
+
+def test_survivor_bench_scenario_writes_a_valid_config_and_mode() -> None:
+    """Série DS : le scénario `dernier_survivant` lance le mode (`--mode survivor` du core) avec un plateau
+    qui tient sur le parcours de démonstration (5 km), écrit dans config.toml par `bench.config`."""
+    from openride_core import survivor
+    from openride_core.__main__ import build_parser
+
+    _, _, settings, _ = sim_bench.resolve_scenario("dernier_survivant")
+    assert settings["mode"] == "survivor"
+    cfg = tomllib.loads(sim_bench.toml_text(settings["config"]))
+    sv = cfg["survivor"]
+    assert survivor.course_length_m(sv["opponents"], sv["spacing_km"]) <= 5000.0
+    args = build_parser().parse_args(["run", "--autostart", "--mode", "survivor"])
+    assert args.mode == "survivor"
