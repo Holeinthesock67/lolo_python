@@ -1271,12 +1271,12 @@
   },
   "surfaces": {
     "compacted": {
-      "color": "#9a8a6c",
+      "color": "#5c4e38",
       "texture": null,
       "width_m": 3.5
     },
     "gravel": {
-      "color": "#857560",
+      "color": "#4a3f30",
       "texture": null,
       "width_m": 3.5
     },
