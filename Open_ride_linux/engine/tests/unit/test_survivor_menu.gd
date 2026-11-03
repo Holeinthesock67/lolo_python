@@ -72,7 +72,7 @@ func _run() -> void:
 	_check(str(f.state()["title"]).begins_with("Prêt : Dernier survivant"), "titre du mode")
 	_check(_ids(f) == ["start", "change_route", "set:survivor.opponents", "set:survivor.spacing_km", "set:bots.level_pct",
 		"set:survivor.spread", "set:survivor.after_out"], "Lancer, parcours, puis les cinq réglages (%s)" % str(_ids(f)))
-	_check(_item(f, "start")["label"] == "Lancer" and _item(f, "start")["detail"] == "4 arches, 8 km" and _item(f, "start")["enabled"],
+	_check(_item(f, "start")["label"] == "Lancer" and _item(f, "start")["detail"] == "4 arches sur 8 km" and _item(f, "start")["enabled"],
 		"Lancer : longueur de course")
 	_check(_item(f, "set:survivor.opponents")["label"] == "Adversaires" and _item(f, "set:survivor.opponents")["detail"] == "4",
 		"réglage : libellé court et valeur")
@@ -86,7 +86,7 @@ func _run() -> void:
 	_check(str(_item(f, "set:survivor.spacing_km")["detail"]).contains("3 km"), "+ : 3 km affiché")
 	act = f.handle("A_LONG")
 	_check(act == {"action": "set_setting", "key": "survivor.spacing_km", "value": 3}, "A long : set_setting envoyé")
-	_check(_item(f, "start")["detail"] == "4 arches, 12 km", "longueur de course relue : 12 km")
+	_check(_item(f, "start")["detail"] == "4 arches sur 12 km", "longueur de course relue : 12 km")
 	f.menu.focus_item("set:survivor.after_out")
 	f.handle("A_LONG")
 	f.handle("PLUS_SHORT")
@@ -111,7 +111,7 @@ func _run() -> void:
 	f.menu.reset()
 	_check(f.menu.mode == "free", "retour à l'accueil : le mode ne reste pas collé")
 
-	_check(MenuFlow.survivor_launch(2, 1, {}) == {"enabled": true, "detail": "2 arches, 2 km"}, "parcours inconnu : Lancer actif")
+	_check(MenuFlow.survivor_launch(2, 1, {}) == {"enabled": true, "detail": "2 arches sur 2 km"}, "parcours inconnu : Lancer actif")
 	_check(MenuFlow.survivor_label("Niveau des bots") == "Niveau des bots", "libellé sans préfixe gardé")
 	print("test_survivor_menu : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

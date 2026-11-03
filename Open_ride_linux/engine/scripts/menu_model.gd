@@ -116,7 +116,7 @@ var world_name := ""
 ## SIM seulement, lot WTF3) ou "survivor" (Dernier survivant, SIM seulement, lot DS7).
 var mode := "free"
 ## Écran Prêt du Dernier survivant (lot DS7), posé par menu_flow.gd : rangées des réglages du mode
-## (SettingsViewModel.row, ids « set:clé ») et ligne « Lancer » ({enabled, detail} : « 4 arches, 8 km », ou
+## (SettingsViewModel.row, ids « set:clé ») et ligne « Lancer » ({enabled, detail} : « 4 arches sur 8 km », ou
 ## parcours trop court).
 var survivor_rows: Array = []
 var survivor_launch := {"enabled": true, "detail": ""}

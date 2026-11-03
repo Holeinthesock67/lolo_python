@@ -39,8 +39,9 @@ extends RefCounted
 ##   place attend derrière, traffic_model.gd). Sans place libre à sa hauteur, il se range une ou plusieurs longueurs
 ##   (SLOT_CLEAR_M) derrière (`back`, retrait affiché seulement : les écarts du HUD restent ceux du core). Il recule
 ##   d'abord (BACK_SPEED_MPS), puis glisse en travers ; au retour, il glisse d'abord, puis remonte, ligne libre.
-## - Lot DS5 : un bot de la trame avec `out` (éliminé du Dernier survivant) quitte sa place et glisse vers le
-##   bas-côté (OUT_LATERAL_M), sans compter dans les places des autres ; `out` passe tel quel dans view().
+## - Lot DS5 : un bot de la trame avec `out` (éliminé du Dernier survivant) se range sur l'accotement : le core
+##   fait glisser son `lane_m` (les autres coureurs l'évitent, aucun contact) ; sans `lane_m`, il glisse ici vers
+##   OUT_LATERAL_M, sans compter dans les places des autres ; `out` passe tel quel dans view().
 ## Pas de class_name : charger par preload("res://scripts/bots_view_model.gd").
 
 const UiTheme := preload("res://scripts/ui_theme.gd")
@@ -219,8 +220,8 @@ func _assign_laterals(view: Array, dt: float) -> void:
 		var id: String = item["id"]
 		seen[id] = true
 		var gap := float(item["gap_m"])
-		if item.get("out") != null:   # éliminé du Dernier survivant (lot DS5) : glisse vers le bas-côté
-			var from: float = _lateral.get(id, item["lane_m"] if item["lane_m"] != null else RoadBuilder.BOT_LATERAL_M)
+		if item.get("out") != null and item["lane_m"] == null:   # éliminé du Dernier survivant sans place du core
+			var from: float = _lateral.get(id, RoadBuilder.BOT_LATERAL_M)
 			var lat_out := move_toward(from, OUT_LATERAL_M, OUT_SPEED_MPS * dt)
 			_slot[id] = OUT_LATERAL_M
 			_lateral[id] = lat_out

@@ -1,5 +1,5 @@
 {
-  "description": "Dernier survivant (série DS, lots DS5 et DS6) sur le parcours de démonstration à 250 W contre 2 bots à profil, une arche tous les 2 km : portiques d'élimination, bloc SURVIVANT, liste des coureurs, bot éliminé qui se range, bandeaux ; banc GPU à faire en low, medium et high.",
+  "description": "Dernier survivant (série DS, lots DS5 et DS6) sur le parcours de démonstration à 250 W contre 2 bots à profil (niveau 100 %, écart large : 115 et 85 % de la FTP, issue nette à chaque arche quelle que soit la qualité), une arche tous les 2 km : portiques d'élimination, bloc SURVIVANT, liste des coureurs, bot éliminé qui se range, bandeaux ; banc GPU à faire en low, medium et high.",
   "trainer": {
     "appear_at": 0.3,
     "connect_delay_s": 0.3
@@ -24,7 +24,8 @@
     "config": {
       "survivor": {
         "opponents": 2,
-        "spacing_km": 2
+        "spacing_km": 2,
+        "spread": "wide"
       },
       "bots": {
         "level_pct": 100

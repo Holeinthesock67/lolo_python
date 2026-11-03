@@ -1473,7 +1473,7 @@ static func survivor_label(label: String) -> String:
 ## Ligne « Lancer » : {enabled, detail}. `route` : élément de la liste des parcours ({} : inconnu).
 static func survivor_launch(opponents: int, spacing_km: int, route: Dictionary) -> Dictionary:
 	var course_km := opponents * spacing_km
-	var detail := "%d arches, %d km" % [opponents, course_km]
+	var detail := "%d arches sur %d km" % [opponents, course_km]
 	var length = route.get("length_m", null)
 	if route.is_empty() or str(route.get("route_type", "")) == "loop" or length == null:
 		return {"enabled": true, "detail": detail}

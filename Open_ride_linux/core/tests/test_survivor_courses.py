@@ -33,6 +33,19 @@ class Course:
         self.frames: list[dict] = []
         self.names = {rid: r.name for rid, r in s.survivor.racers.items()}
         self.state_v = validator("state")
+        self.contacts: list[str] = []
+
+    def _count_contacts(self) -> None:
+        """Contacts comme le banc les compte (living_decor.gd, lot P32) : roues qui se chevauchent (moins de 1,7 m, longueur d'un vélo du core,
+        le long de la route) et moins de 2 × 0,3 m d'écart latéral, bots entre eux et cycliste."""
+        if self.s._t_session < 15.0:   # départ groupé : les bots partent côte à côte et se rangent (lot AS2)
+            return
+        riders = [("cycliste", self.s.physics.s, self.s._lane.m)]
+        riders += [(b.name, b.s, b.lane.m) for b in self.s.bots if getattr(b, "lane", None) is not None]
+        for i, (na, sa, la) in enumerate(riders):
+            for nb, sb, lb in riders[i + 1:]:
+                if abs(sa - sb) < 1.7 and abs(la - lb) < 0.6:
+                    self.contacts.append(f"{na} / {nb} à s={sa:.0f} m, ds={sa - sb:.2f} ({la:.2f} et {lb:.2f} m)")
 
     def step(self, seconds: float, every: int = 15) -> None:
         for i in range(int(round(seconds / DT))):
@@ -40,6 +53,7 @@ class Course:
                 return
             self.wall[0] += DT
             self.s._step(DT, self.wall[0])
+            self._count_contacts()
             if i % every == 0 and self.s.state.session_state in ("RUNNING", "PAUSED"):
                 d = _frame(self.s)
                 self.state_v.validate(d)
@@ -106,7 +120,7 @@ def _check_bilan(c: Course, opponents: int) -> dict:
 
 @pytest.mark.parametrize("opponents,spacing_km,port", [(2, 2, 6800), (4, 1, 6810)])
 def test_full_race_one_elimination_per_arch(course, caplog, opponents, spacing_km, port):
-    caplog.set_level(logging.WARNING, logger="openride_core")
+    caplog.set_level(logging.WARNING, logger="core")
     c = course(port, power_w=230.0, opponents=opponents, spacing_km=spacing_km, level_pct=100)
     assert len(c.s.bots) == opponents
     c.until(lambda s: s.survivor.winner is not None)
@@ -115,6 +129,7 @@ def test_full_race_one_elimination_per_arch(course, caplog, opponents, spacing_k
     alive_counts = [len(f["alive"]) for f in c.frames]
     assert alive_counts == sorted(alive_counts, reverse=True), "le plateau ne fait que diminuer"
     assert all(1 <= f["arch"] <= opponents for f in c.frames)
+    assert not c.contacts, c.contacts[:5]   # banc du 3 novembre : éliminé rangé sur l'accotement, évité
     c.s._on_command("end_session", {"save": True}, 9)
     _check_bilan(c, opponents)
     errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
@@ -135,6 +150,22 @@ def test_weak_rider_out_keeps_riding_then_clean_end(course):
     assert c.s.state.session_state == "FINISHED"
     summary = _check_bilan(c, 2)
     assert summary["place"] == 3
+    assert not c.contacts, c.contacts[:5]
+
+
+def test_eliminated_bot_pulls_over_to_the_shoulder(course, caplog):
+    """Bot éliminé : placement coupé, il glisse vers l'accotement (SURVIVOR_OUT_LANE_M) et le core le journalise."""
+    from openride_core.session import SURVIVOR_OUT_LANE_M
+    caplog.set_level(logging.INFO, logger="core")
+    c = course(6880, power_w=260.0, opponents=2, spacing_km=1, level_pct=70)
+    assert c.until(lambda s: bool(s._survivor_out))
+    rid = next(iter(c.s._survivor_out))
+    bot = next(b for b in c.s.bots if b.id == rid)
+    assert not bot.lane.auto and bot.lane.home == SURVIVOR_OUT_LANE_M
+    c.step(5.0)
+    assert bot.lane.m > 2.6, bot.lane.m
+    assert any("éliminé à l'arche 1" in r.getMessage() and bot.name in r.getMessage() for r in caplog.records)
+    assert not c.contacts, c.contacts[:5]
 
 
 def test_weak_rider_out_ends_session_with_end_setting(course):

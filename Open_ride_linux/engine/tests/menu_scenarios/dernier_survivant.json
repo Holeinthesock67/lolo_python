@@ -13,7 +13,7 @@
     {"appui": ["MINUS_SHORT", "MINUS_SHORT"]},
     {"ecran": "ready", "contient": ["Adversaires — ◀ 2 ▶"]},
     {"appui": "A_LONG"},
-    {"ecran": "ready", "edition": false, "contient": ["2 arches, 4 km"], "absent": ["parcours trop court"]},
+    {"ecran": "ready", "edition": false, "contient": ["2 arches sur 4 km"], "absent": ["parcours trop court"]},
     {"config": {"survivor.opponents": 2}},
     {"choisir": "start"},
     {"journal": "core", "motif": "Dernier survivant : 2 adversaires", "delai": 15},

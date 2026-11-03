@@ -99,6 +99,7 @@ PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 SURVIVOR_RETIRED_MPS = 15.0 / 3.6   # bot éliminé : il se range à 15 km/h (lot DS2)
 SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
+SURVIVOR_OUT_LANE_M = 2.9         # m : écart à l'axe d'un bot éliminé, au bord de la chaussée (6 m ; `lane_m` borné à 3 m par le contrat)
 SURVIVOR_RETIRED_S = 10.0          # s : bot éliminé retiré de la séance
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
 XP_RESULT_PERIOD_S = 1.0
@@ -2195,12 +2196,17 @@ class CoreSession:
         if sv is None:
             return
         for rid in sv.step(self._t_session, self._survivor_positions()):
+            racer = sv.racers[rid]
+            log.info("Dernier survivant : %s éliminé à l'arche %d.", "cycliste" if rid == SURVIVOR_ME else racer.name,
+                     racer.out_arch)
             if rid == SURVIVOR_ME:
-                log.info("Dernier survivant : éliminé à l'arche %d.", sv.racers[rid].out_arch)
                 if self.cfg.survivor.after_out == "end":
                     self._survivor_end_pending = True
             else:
                 self._survivor_out[rid] = self._t_session
+                for bot in self.bots:   # il se range au bas-côté ; les autres coureurs l'évitent (update_lanes)
+                    if bot.id == rid and getattr(bot, "lane", None) is not None:
+                        bot.lane.auto, bot.lane.home = False, SURVIVOR_OUT_LANE_M
         gone = {rid for rid, t0 in self._survivor_out.items() if self._t_session - t0 >= SURVIVOR_RETIRED_S}
         if gone:   # retirés sans toucher à l'abri en cours (pas de `_set_bots`, qui le remet à 0)
             self.bots = [b for b in self.bots if b.id not in gone]
@@ -2802,7 +2808,7 @@ class CoreSession:
 
         racing = self._racing_bots()   # un bot éliminé (Dernier survivant) n'abrite plus personne
         runners = [(self.physics.s, self.physics.v, self._lane)]
-        runners += [(b.s, b.v, b.lane) for b in racing
+        runners += [(b.s, b.v, b.lane) for b in self.bots   # éliminé : placement coupé, il glisse au bas-côté
                     if getattr(b, "kind", "constant") == "constant" and getattr(b, "lane", None) is not None]
         runners += [(v.s, v.speed_mps, draft_mod.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width,
                                                        length=v.length)) for v in near if v.dir == 1]

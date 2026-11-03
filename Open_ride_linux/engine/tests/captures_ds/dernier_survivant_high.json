@@ -7,7 +7,8 @@
     "render.quality": "high",
     "survivor.opponents": 2,
     "survivor.spacing_km": 1,
-    "bots.level_pct": 80
+    "bots.level_pct": 78,
+    "survivor.spread": "wide"
   },
   "etapes": [
     {
@@ -42,7 +43,7 @@
       "ecran": "ready",
       "titre": "Prêt : Dernier survivant — demo",
       "contient": [
-        "2 arches, 2 km"
+        "2 arches sur 2 km"
       ]
     },
     {

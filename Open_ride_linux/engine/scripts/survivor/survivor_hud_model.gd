@@ -210,9 +210,10 @@ static func summary_lines(sv: Dictionary) -> Array:
 	for e in elim:
 		if e is Array and e.size() >= 4:
 			var who := ME_NAME if str(e[1]) == ME else str(e[2])
-			var gap_text := ("éliminé à %s s" % fr1(float(e[3]))) if e[3] != null else "éliminé"
-			out.append({"label": "Arche %d · %s km" % [int(e[0]), fr1(int(e[0]) * spacing)], "value": who + " · " + gap_text, "unit": ""})
-	out.append({"label": "Records", "value": "pas de records en Dernier survivant", "unit": ""})
+			# court : la colonne du bilan coupe au-delà d'une trentaine de caractères (captures du 3 novembre)
+			var gap_text := (", à %s s" % fr1(float(e[3]))) if e[3] != null else ""
+			out.append({"label": "Arche %d (%s km)" % [int(e[0]), fr1(int(e[0]) * spacing)], "value": who + gap_text, "unit": ""})
+	out.append({"label": "Records", "value": "aucun dans ce mode", "unit": ""})
 	return out
 
 

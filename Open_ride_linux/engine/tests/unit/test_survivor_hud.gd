@@ -145,8 +145,8 @@ func _run() -> void:
 	var lines: Array = Model.summary_lines(sum)
 	_check(lines[0] == {"label": "Dernier survivant", "value": "2e sur 5", "unit": ""}, "bilan : place")
 	_check(lines[1]["label"] == "Vainqueur" and lines[1]["value"] == "Grimpeur", "bilan : vainqueur nommé")
-	_check(lines[2]["label"] == "Arche 1 · 2,0 km" and lines[2]["value"] == "Diesel · éliminé à 3,4 s", "bilan : arche 1")
-	_check(lines[5]["value"] == "Toi · éliminé à 2,2 s", "bilan : arche du joueur")
+	_check(lines[2]["label"] == "Arche 1 (2,0 km)" and lines[2]["value"] == "Diesel, à 3,4 s", "bilan : arche 1")
+	_check(lines[5]["value"] == "Toi, à 2,2 s", "bilan : arche du joueur")
 	_check(lines[-1]["value"].contains("pas de records"), "bilan : pas de records")
 	var all: Array = SummaryViewModel.new().lines({"duration_s": 1008.0, "distance_m": 8900.0, "survivor": sum})
 	_check(all.any(func(l): return l["label"] == "Dernier survivant"), "bilan général : lignes du mode")
@@ -162,8 +162,10 @@ func _run() -> void:
 	bm.push([{"id": "bot2", "name": "Sprinteur", "s": 100.0, "v": 8.0, "kind": "constant", "lane_m": 1.2}], 0)
 	var first: Array = bm.view(90.0, 8.0, 0)
 	_check(is_equal_approx(float(first[0]["lateral"]), 1.2), "en course : place du core")
-	bm.push([{"id": "bot2", "name": "Sprinteur", "s": 101.0, "v": 4.0, "kind": "constant", "lane_m": 1.2, "out": 2}], 500000)
-	var lat0 := 1.2
+	bm.push([{"id": "bot2", "name": "Sprinteur", "s": 101.0, "v": 4.0, "kind": "constant", "lane_m": 1.9, "out": 2}], 250000)
+	_check(is_equal_approx(float(bm.view(90.0, 8.0, 250000)[0]["lateral"]), 1.9), "éliminé avec lane_m : place du core (il glisse côté core)")
+	bm.push([{"id": "bot2", "name": "Sprinteur", "s": 101.0, "v": 4.0, "kind": "constant", "out": 2}], 500000)
+	var lat0 := 1.9
 	var lat := lat0
 	var kept_out := true
 	for i in range(1, 6):
@@ -171,7 +173,7 @@ func _run() -> void:
 		lat = float(vv[0]["lateral"])
 		kept_out = kept_out and vv[0]["out"] == 2
 	_check(kept_out, "champ out gardé dans la vue")
-	_check(lat > lat0 + 0.5 and lat <= BotsViewModel.OUT_LATERAL_M + 0.001, "éliminé : glisse vers le bas-côté (%.2f m)" % lat)
+	_check(lat > lat0 + 0.5 and lat <= BotsViewModel.OUT_LATERAL_M + 0.001, "éliminé sans lane_m : glisse vers le bas-côté (%.2f m)" % lat)
 	for i in range(6, 30):
 		lat = float(bm.view(90.0, 8.0, 500000 + i * 500000)[0]["lateral"])
 	_check(is_equal_approx(lat, BotsViewModel.OUT_LATERAL_M), "puis reste sur le bas-côté")
