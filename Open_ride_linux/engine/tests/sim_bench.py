@@ -10,7 +10,7 @@ Usage :
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
 simulés de `ble_sim.py`) puis la vraie scène Godot (`main.tscn`, `--test-mode`), sous Xvfb
-(OpenGL logiciel) ou, avec `--native`, dans une fenêtre sur l'écran réel pour regarder l'essai.
+(Vulkan logiciel, Forward+ comme le jeu : rendu_jeu.py) ou, avec `--native`, dans une fenêtre sur l'écran réel pour regarder l'essai.
 Le core et l'engine ont un HOME temporaire et des ports UDP libres : rien n'est écrit dans le
 vrai dossier personnel.
 
@@ -989,7 +989,7 @@ pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overfl
 <p>{html.escape(str(b.spec.get("description", "")))}<br>Parcours <b>{html.escape(b.world)}</b>,
 {f"ERG {html.escape(str(b.workout))}" if b.workout else "SIM"}, {b.duration:.0f} s,
 {f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {html.escape(b.applied_quality or "?")} (qualité appliquée ; demandée {b.args.quality})
-{f"(écran réel, affichage {b.args.display})" if b.args.native else "(Xvfb, OpenGL logiciel)"}.</p>
+{f"(écran réel, affichage {b.args.display})" if b.args.native else "(Xvfb, Vulkan logiciel, Forward+)"}.</p>
 <h2>Vérifications</h2><table>{rows}</table>
 {'<p><a href="sonde/rapport.html">Sonde de performance du moteur</a> (lot X13).</p>' if b.probe_summary else ""}
 <h2>Courbes de la séance</h2><p>Lignes orange : événements du scénario.</p>{charts}

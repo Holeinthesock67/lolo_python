@@ -7,7 +7,7 @@ Usage :
 
 Sans `--trace`, le banc joue d'abord la run dans la vraie séance du core (`rogue_bout_en_bout`, lot X40) et en garde
 la trace : chaque message que le core envoie à l'engine (`state`, `room`, `loot`, `input`). Il lance ensuite la
-vraie scène Godot (`main.tscn`, `--test-mode`), sous Xvfb (OpenGL logiciel) ou, avec `--native`, à l'écran, et la
+vraie scène Godot (`main.tscn`, `--test-mode`), sous Xvfb (Vulkan logiciel, Forward+) ou, avec `--native`, à l'écran, et la
 rejoue face à un faux core, en temps accéléré `--speed` fois. Aux moments clés (échauffement, chaque salle à
 120 m de son début, pause, couloir avec ses cartes, boss, retour au calme, résultats, bilan), le banc fige la
 trame 1,5 s, demande une capture puis vérifie :

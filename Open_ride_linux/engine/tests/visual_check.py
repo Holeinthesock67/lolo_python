@@ -5,7 +5,7 @@ Usage : visual_check.py --godot CHEMIN [--configs 1280x720:low,…] [--out DOSSI
                         [--golden DOSSIER [--update-golden]] [--keep]
 
 Pour chaque configuration (résolution et préréglage de qualité), le script lance l'engine avec sa
-vraie scène (`main.tscn`) sous Xvfb (OpenGL logiciel de Mesa, moteur Compatibility), face au faux
+vraie scène (`main.tscn`) sous Xvfb (Vulkan logiciel de Mesa, moteur Forward+ du jeu), face au faux
 core de `fake_core.py`, et lui fait parcourir des scènes de séance : attente du core, vue fixe,
 mouvement, ERG, fin d'un entraînement, pause, core muet, reprise, erreur. À chaque étape, l'engine (en `--test-mode`)
 enregistre l'image affichée et l'état de son HUD (textes, visibilité, rectangles à l'écran) ; le

@@ -246,4 +246,4 @@ La liste des mots et des zones interdits reste hors du dépôt : `~/OpenRide/pri
 
 ## 7. Ce qui demande encore le matériel
 
-Le simulateur ne dit rien des délais réels de BlueZ, de la qualité radio, de la réponse exacte du HomeTrainer (latence de la résistance, Reset), du verrou du boîtier gauche du Click et de son redémarrage, de la vraie ceinture, ni des images par seconde sur la GTX 1060 : le banc sous Xvfb rend en OpenGL logiciel (quelques images par seconde), seul `--native` sur le PC cible mesure le rendu réel.
+Le simulateur ne dit rien des délais réels de BlueZ, de la qualité radio, de la réponse exacte du HomeTrainer (latence de la résistance, Reset), du verrou du boîtier gauche du Click et de son redémarrage, de la vraie ceinture, ni des images par seconde sur la GTX 1060 : le banc sous Xvfb rend en Vulkan logiciel, Forward+ comme le jeu (1 à 3 images par seconde), seul `--native` sur le PC cible mesure le rendu réel.
