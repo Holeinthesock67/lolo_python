@@ -35,7 +35,9 @@ Clés de la sortie `--json` (stables) :
 Les puissances sont arrondies à 0,1 W, IF à 0,01, TSS à 0,1.
 
 Clé ajoutée par le lot P3, présente seulement si le journal porte `draft` (séance avec bots) :
-`draft_time_s`, secondes passées à l'abri (abri d'au moins 5 % de l'abri maximal).
+`draft_time_s`, secondes passées à l'abri (abri d'au moins 5 % de l'abri maximal) ; lot AS5 :
+`draft_kj`, énergie économisée à l'abri (kJ, au dixième), somme des `draft_w` relevés à 1 Hz (0 pour un
+journal antérieur au lot).
 
 Clés ajoutées par le lot M4, présentes seulement pour un journal qui porte ces informations
 (un journal antérieur donne exactement le même bilan qu'avant) :
@@ -288,6 +290,7 @@ def compute_summary(session: Session, ftp_w: float, source: str = "") -> dict[st
     drafts = [r["draft"] for r in recs if r.get("draft") is not None]
     if drafts:   # lot P3 : relevés à 1 Hz, abri compté à partir de 5 % (comme l'indicateur du HUD)
         out["draft_time_s"] = sum(1 for d in drafts if d >= DRAFT_MIN)
+        out["draft_kj"] = round(sum(r.get("draft_w") or 0 for r in recs) / 1000.0, 1)   # W × 1 s par relevé
     if session.ftp_tests:   # lot O10 : dernier résultat écrit
         out["ftp_test"] = {k: v for k, v in session.ftp_tests[-1].items() if k not in ("kind", "ts")}
     return out
@@ -401,6 +404,8 @@ def format_text(r: dict[str, Any]) -> str:
             lines.append(f"  ({r['erg']['note']})")
     if r.get("draft_time_s") is not None:
         lines.append(f"Temps à l'abri derrière un bot : {_hms(r['draft_time_s'])}")
+        if r.get("draft_kj") is not None:
+            lines.append(f"Énergie économisée à l'abri : {r['draft_kj']:.1f} kJ")
     if r.get("devices"):
         lines.append("Coupures des appareils :")
         for dev, d in r["devices"].items():

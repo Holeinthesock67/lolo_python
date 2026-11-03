@@ -68,6 +68,15 @@ def resistive_force(v: float, grade_pct: float, alt_m: float, p: PhysicsParams,
     return aero + gravity_rolling
 
 
+def draft_saving_w(v: float, alt_m: float, p: PhysicsParams, alpha_draft: float) -> float:
+    """Puissance aérodynamique économisée à l'abri (lot AS5) : sans abri moins avec abri, à la vitesse `v`
+    et au vent de face `p.wind_mps` du moment ; 0 quand l'air pousse (vent de dos plus rapide que le vélo)."""
+    va = v + p.wind_mps
+    if va <= 0.0 or v <= 0.0 or alpha_draft <= 0.0:
+        return 0.0
+    return 0.5 * air_density(alt_m) * p.cda_m2 * alpha_draft * va * va * v
+
+
 class RiderPhysics:
     """État du coureur sur la route : position `s` (m) et vitesse `v` (m/s)."""
 

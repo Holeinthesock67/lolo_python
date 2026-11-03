@@ -14,6 +14,9 @@ extends RefCounted
 ##   `wind.gust` (0 à 1) module le volume de
 ##   ± `GUST_DB = 3.0` dB et la hauteur de ± `GUST_PITCH = 0.05`, sur une période de `GUST_PERIOD_S`.
 ##   Sans objet `wind` depuis `WIND_TIMEOUT_S = 2.0` s (2 envois par seconde), vent coupé.
+## - Abri (lot AS5) : volume et hauteur du souffle suivent la vitesse de l'air ressentie dans la roue,
+##   `va × (1 − draft)^0,5` (`draft` de la trame, déjà lissé à 1 s par le core) : à 0,35 d'abri, − 3,7 dB à
+##   vitesse égale. Sans `draft` (pas de bot), le souffle ne change pas.
 ## - `FREEWHEEL_MIN_KMH = 5.0` : vitesse minimale d'activation de la roue libre.
 ## - `FREEWHEEL_DELAY_S = 0.5` : durée minimale sans pédaler avant roue libre. Avec un champ `cadence`
 ##   numérique, c'est la cadence qui décide (0 tr/min : roue libre possible, au-dessus de
@@ -93,6 +96,7 @@ var _clac_pending: bool = false
 var _head_mps: float = 0.0
 var _gust: float = 0.0
 var _wind_at_s: float = NAN
+var _draft: float = 0.0
 
 var _pois: Array[Dictionary] = []
 var _active_poi_ids: Dictionary = {}
@@ -123,6 +127,7 @@ func reset() -> void:
 	_head_mps = 0.0
 	_gust = 0.0
 	_wind_at_s = NAN
+	_draft = 0.0
 	_active_poi_ids.clear()
 	_pending_events.clear()
 	_last_eval_s = NAN
@@ -204,6 +209,8 @@ func on_state(state: Dictionary, rider_pos: Vector3, now_s: float) -> void:
 		_head_mps = float(wd["head_mps"]) if _is_number(wd.get("head_mps", null)) else 0.0
 		_gust = clampf(float(wd["gust"]), 0.0, 1.0) if _is_number(wd.get("gust", null)) else 0.0
 		_wind_at_s = now_s
+	var d_raw = state.get("draft", null)
+	_draft = clampf(float(d_raw), 0.0, 0.45) if _is_number(d_raw) else 0.0
 
 	# Pédalage : la cadence décide si elle est présente, sinon la puissance (L5).
 	var c_raw = state.get("cadence", null)
@@ -245,6 +252,14 @@ func on_state(state: Dictionary, rider_pos: Vector3, now_s: float) -> void:
 func air_speed_kmh(now_s: float) -> float:
 	var head := _head_mps if not is_nan(_wind_at_s) and now_s - _wind_at_s <= WIND_TIMEOUT_S else 0.0
 	return maxf(0.0, _speed_kmh + head * 3.6)
+
+
+## Vitesse de l'air ressentie dans la roue (lot AS5) : `air_kmh` (borné à `WIND_MAX_KMH`, pour que le calme
+## s'entende aussi au-delà du plafond) multiplié par `(1 − draft)^0,5`.
+static func sheltered_air_kmh(air_kmh: float, draft: float) -> float:
+	if draft <= 0.0:
+		return air_kmh
+	return minf(air_kmh, WIND_MAX_KMH) * sqrt(1.0 - clampf(draft, 0.0, 0.45))
 
 
 func _gust_now(now_s: float) -> float:
@@ -328,7 +343,7 @@ func evaluate(now_s: float) -> Dictionary:
 		max_step = SLEW_RATE_DB_PER_S * dt
 	_last_eval_s = now_s
 
-	var air_kmh := air_speed_kmh(now_s)
+	var air_kmh := sheltered_air_kmh(air_speed_kmh(now_s), _draft)
 	var g := _gust_now(now_s)
 	var target_w_db := _target_wind_db(_speed_kmh, air_kmh, _paused)
 	if target_w_db > SILENCE_DB:
