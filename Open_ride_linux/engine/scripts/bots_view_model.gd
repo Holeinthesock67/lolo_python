@@ -48,6 +48,9 @@ const UiTheme := preload("res://scripts/ui_theme.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const VISIBLE_M := 300.0
 const NAME_M := 50.0
+## Nom caché à moins de NAME_MIN_CAMERA_M de la caméra : un bot qui passe tout près (doublé, ou qui recule le long de
+## la caméra) montrait son nom en lettres géantes sur tout le haut de l'écran (captures du 3 novembre).
+const NAME_MIN_CAMERA_M := 6.0
 const MAX_LINES := 5
 const MAX_EXTRAPOLATION_S := 1.0
 const CORRECTION_S := 0.15       # camera_follow.gd
@@ -335,3 +338,8 @@ static func profile_marks(bots_view: Array, from_m: float, to_m: float) -> Array
 		if rel >= from_m and rel <= to_m:
 			out.append({"rel_m": rel, "color": b["color"]})
 	return out
+
+
+## Nom du bot affiché : `show_name` de la vue (moins de NAME_M du cycliste) et assez loin de la caméra.
+static func name_visible(show_name: bool, camera_dist_m: float) -> bool:
+	return show_name and camera_dist_m >= NAME_MIN_CAMERA_M

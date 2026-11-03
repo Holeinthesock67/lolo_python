@@ -176,7 +176,7 @@ func update_view(view: Array, route) -> void:
 			"shown_lod": int(node.get_meta("shown_lod")), "standing": standing, "settings": node.get_meta("settings"), "looks": node.get_meta("looks")}
 		var label: Label3D = node.get_node("Name")
 		label.text = str(b["name"])
-		label.visible = bool(b["show_name"])
+		label.visible = BotsViewModel.name_visible(bool(b["show_name"]), _distance(b, node.position + Vector3(0.0, NAME_HEIGHT_M, 0.0)))
 		node.visible = true
 	for key in _nodes.keys():
 		if not seen.has(str(key).get_slice(":", 0)):
