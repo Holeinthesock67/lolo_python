@@ -5,7 +5,7 @@ extends SceneTree
 ## cyclistes du décor (people_mesh.gd) pour comparer les styles, puis quatre profils à des angles de
 ## pédalier successifs pour vérifier le sens du pédalage (vu de la droite du cycliste, le vélo avance vers la droite de l'image).
 ##
-##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_avatar.gd -- --out DOSSIER [--quality medium]
 ##
 ## Écrit DOSSIER/avatar_<vue>_<préréglage>.png et DOSSIER/vitrine_avatar.csv (vue ; préréglage ; triangles de

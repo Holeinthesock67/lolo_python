@@ -35,6 +35,6 @@ Aucun sommet ni appel de dessin en plus : mêmes maillages, hauteurs multipliée
 ## 5. Livraison et vérification
 
 - Tests : `test_visual_grade_scale.gd` (relief porté par la route, terrain creusé sous la route affichée, tangage sur 8 % avec k = 2, champ de vision), `test_camera_pitch.gd` (bornes ±18°), `test_camera_views.gd` (regard à la moitié de la pente), `test_route_vectors.gd` (k = 1 inchangé), `core/tests/test_launcher.py`.
-- Vitrine : `xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/vitrine_pente.gd -- --out DOSSIER [--k 2.5]` (avant / après, montée et descente de 8 %, quatre vues, CSV des angles et du champ de vision).
+- Vitrine : `xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus --audio-driver Dummy --script res://tests/vitrine_pente.gd -- --out DOSSIER [--k 2.5]` (avant / après, montée et descente de 8 %, quatre vues, CSV des angles et du champ de vision).
 - Sur le PC (file des mesures) : `--native`, une montée d'environ 8 % et une descente en `medium`, les quatre vues, captures et `[perf-rendu]` avant / après (main contre la branche). Si `~/OpenRide/config.toml` contient déjà `visual_grade_scale`, l'enlever pour prendre la nouvelle valeur par défaut.
 - Les captures de référence `pente_0pct` et `pente_4pct` de `visual_check.py` (lancées avec `--visual-grade=1.0`) changent un peu à 4,5 % : regard à mi-pente et champ de vision resserré ; à régénérer sur le PC.

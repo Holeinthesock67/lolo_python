@@ -7,7 +7,7 @@ extends SceneTree
 ## un bois, un pré, un champ et une prairie (zones OSM de la faune d'avant la série U). Sans core ni parcours ;
 ## captures comparables d'un biome à l'autre. La vue `faune` cadre le groupe d'animaux propre au biome.
 ##
-##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_biomes.gd -- --out DOSSIER \
 ##     [--biomes alpine,savanna] [--quality low,medium,high] [--size 1680x1050] \
 ##     [--compare REF] [--seuil-ssim 0.97] [--tolerance 10] [--max-saturated 5]

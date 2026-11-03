@@ -7,7 +7,7 @@ extends SceneTree
 ## Mêmes fonctions que la scène principale : route_data.gd (`relief_k`), road_builder.gd, terrain_tiles.gd,
 ## camera_follow.gd (`pitch_deg`) et camera_views.gd (`goal`, `fov_deg`).
 ##
-##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_pente.gd -- --out DOSSIER [--k 2.0]
 ##
 ## Écrit DOSSIER/<avant|apres>_<montee|descente>_<vue>.png et DOSSIER/vitrine_pente.csv (état ; endroit ; vue ;

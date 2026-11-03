@@ -5,7 +5,7 @@ extends SceneTree
 ## de la séance, pour chaque préréglage demandé. La même vitrine lancée sur une version d'avant le lot Y18
 ## donne les captures « avant » (bots_view.gd sans set_quality : appel sauté).
 ##
-##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_bots.gd -- --out DOSSIER [--quality low,medium,high]
 ##
 ## Écrit DOSSIER/bots_<vue>_<préréglage>.png et DOSSIER/vitrine_bots.csv (vue ; préréglage ; triangles de

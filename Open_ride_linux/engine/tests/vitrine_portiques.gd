@@ -5,7 +5,7 @@ extends SceneTree
 ## réel, pour comparer avant et après une retouche (captures PNG, triangles, appels de dessin et nœuds par vue).
 ## Route droite de démonstration de 600 m : sprint de 100 à 250 m, montée de 350 à 500 m, arche à 550 m.
 ##
-##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_portiques.gd -- --out DOSSIER \
 ##     [--quality medium] [--size 1920x1080,1024x600] [--views depart,sprint_depart]
 ##

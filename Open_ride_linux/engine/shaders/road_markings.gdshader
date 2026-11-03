@@ -20,6 +20,9 @@ shader_type spatial;
 // irréguliers). Sans ces tableaux (COLOR blanc opaque, UV2 nul) : la chaussée d'avant U22. Pas de peinture sur
 // la terre ni le gravier ; grain plus gros (gravillons de 3 cm et cailloux de 12 cm) et teinte de la surface.
 #include "res://shaders/surface_detail.gdshaderinc"
+// COLOR (couleur sRGB de la surface, thème) est converti en linéaire avant d'être mêlé aux uniformes
+// `source_color` (règle de couleur_srgb.gdshaderinc).
+#include "res://shaders/couleur_srgb.gdshaderinc"
 uniform vec3 road_color : source_color = vec3(0.29, 0.29, 0.30);
 uniform vec3 line_color : source_color = vec3(0.95, 0.95, 0.95);
 uniform float road_width_m = 6.0;
@@ -65,18 +68,6 @@ float digit_mask(int d, vec2 uv) {
 	if ((m & 32) != 0) o = max(o, box(uv, vec2(0.0, 0.5), vec2(t, 1.0)));
 	if ((m & 64) != 0) o = max(o, box(uv, vec2(0.0, 0.5 - t * 0.5), vec2(1.0, 0.5 + t * 0.5)));
 	return o;
-}
-
-// Couleur de la surface (couleur de sommet, sRGB du thème) en linéaire. Le renderer de compatibilité convertit
-// déjà les couleurs de sommet ; Forward+ (le jeu) les passe telles quelles : sans cette conversion, le gravier
-// sortait pâle et gris bleuté sur le PC (planches gravier v1 à v4, 03/11) alors que le test au cloud (compatibilité)
-// était juste.
-vec3 surface_linear(vec3 c) {
-#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
-	return c;
-#else
-	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
-#endif
 }
 
 void fragment() {
@@ -143,7 +134,7 @@ void fragment() {
 	vec2 grit = sd_pebbles(p / 0.03);
 	float gravel_vis = sd_visible(p, 0.03);
 	float cobble = sd_noise(p / 0.12);
-	vec3 unpaved_col = surface_linear(COLOR.rgb) * (1.0 + (grit.y - 0.5) * 0.3 * gravel_vis + (cobble - 0.5) * 0.12 + macro * 0.15);
+	vec3 unpaved_col = lineaire(COLOR.rgb) * (1.0 + (grit.y - 0.5) * 0.3 * gravel_vis + (cobble - 0.5) * 0.12 + macro * 0.15);
 	asphalt = mix(asphalt, unpaved_col, unpaved);
 	vec3 base = mix(verge, asphalt, on_road);
 	ALBEDO = mix(base, line_color, paint) * (1.0 - 0.45 * wetness);

@@ -1,5 +1,7 @@
 // Corps commun des shaders des véhicules (vehicle.gdshader, et vehicle_far.gdshader des avions de ligne du
-// Lot P26, sans brouillard) ; zones et paramètres décrits dans vehicle.gdshader.
+// Lot P26, sans brouillard) ; zones et paramètres décrits dans vehicle.gdshader. Couleurs en sRGB, converties
+// une fois à l'écriture (couleur_srgb.gdshaderinc).
+#include "res://shaders/couleur_srgb.gdshaderinc"
 uniform vec3 paint : source_color = vec3(0.62, 0.08, 0.08);
 uniform vec3 second : source_color = vec3(0.5, 0.5, 0.5);
 uniform float lights = 0.0;
@@ -21,7 +23,7 @@ varying flat float v_lights;
 
 void vertex() {
 	v_region = CUSTOM0.x;
-	v_paint = instanced ? COLOR.rgb : paint;
+	v_paint = instanced ? COLOR.rgb : srgb(paint);
 	v_lights = instanced ? INSTANCE_CUSTOM.x : lights;
 }
 
@@ -46,16 +48,16 @@ void fragment() {
 	} else if (region == 4) {
 		c = HEAD;
 		rough = 0.1;
-		EMISSION = HEAD_GLOW * v_lights * 2.5;
+		EMISSION = lineaire(HEAD_GLOW) * v_lights * 2.5;
 	} else if (region == 5) {
 		c = TAIL;
 		rough = 0.2;
-		EMISSION = TAIL_GLOW * (0.15 + v_lights * 1.4);
+		EMISSION = lineaire(TAIL_GLOW) * (0.15 + v_lights * 1.4);
 	} else if (region == 6) {
 		c = PALE;
 		rough = 0.6;
 	} else if (region == 7) {
-		c = second;
+		c = srgb(second);
 		rough = 0.5;
 	} else if (region == 8) {
 		c = SKIN;
@@ -66,7 +68,7 @@ void fragment() {
 		rough = 0.75;
 		spec = 0.3;
 	}
-	ALBEDO = c;
+	ALBEDO = lineaire(c);
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	SPECULAR = spec;

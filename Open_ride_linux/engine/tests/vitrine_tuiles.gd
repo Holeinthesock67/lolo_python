@@ -8,7 +8,7 @@ extends SceneTree
 ## rester au moins à DETAIL_MIN_RATIO de celui du départ (avant correction : 0,26 à 2,5 km, 0,08 à 4,9 km).
 ##
 ##   python -m openride_core.tools.fake_world --demo --terrain --out DOSSIER   (dans core/, PYTHONPATH=src)
-##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_tuiles.gd -- --world DOSSIER/demo.world --out SORTIE \
 ##     [--quality low] [--size 1280x720] [--relief 2.5]
 ##

@@ -6,7 +6,7 @@ extends SceneTree
 ## - houppier dessiné (bouquets et trouées : luminance variée sans éclairage) ;
 ## - houppier à contre-jour encore vert, pas noir (lumière à travers les feuilles) ;
 ## - bouleau blanc à lenticelles sombres.
-##   xvfb-run -a godot --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a godot --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/render/test_tree_render.gd
 
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")

@@ -5,7 +5,7 @@ Usage : visual_check.py --godot CHEMIN [--configs 1280x720:low,…] [--out DOSSI
                         [--golden DOSSIER [--update-golden]] [--keep]
 
 Pour chaque configuration (résolution et préréglage de qualité), le script lance l'engine avec sa
-vraie scène (`main.tscn`) sous Xvfb (OpenGL logiciel de Mesa, moteur Compatibility), face au faux
+vraie scène (`main.tscn`) sous Xvfb (Vulkan logiciel de Mesa, moteur Forward+ du jeu), face au faux
 core de `fake_core.py`, et lui fait parcourir des scènes de séance : attente du core, vue fixe,
 mouvement, ERG, fin d'un entraînement, pause, core muet, reprise, erreur. À chaque étape, l'engine (en `--test-mode`)
 enregistre l'image affichée et l'état de son HUD (textes, visibilité, rectangles à l'écran) ; le
@@ -53,6 +53,7 @@ import hud_lisibilite  # noqa: E402
 import image_diff  # noqa: E402
 from image_diff import Image, luminance, mean_abs_diff, read_png, write_png  # noqa: E402
 import quality_guard  # noqa: E402
+import rendu_jeu  # noqa: E402
 
 ENGINE_DIR = Path(__file__).resolve().parents[1]
 CORE_SRC = ENGINE_DIR.parent / "core" / "src"
@@ -369,6 +370,10 @@ class Session:
     def check(self, scene: str, name: str, ok: bool, detail: str = "") -> bool:
         return self.report.check(self.name, scene, name, ok, detail)
 
+    def slowdown(self) -> float:
+        """Attentes allongées sous Vulkan logiciel (rendu_jeu.slowdown)."""
+        return rendu_jeu.slowdown(self.core.log.path.read_text(errors="replace"))
+
     def capture(self, scene: str) -> tuple[Image, dict[str, Any]] | None:
         png = self.out_dir / f"{self.name}_{scene}.png"
         # Scène de référence : capture reprise tant que des tuiles voulues manquent (`streaming_pending`, comme le
@@ -381,7 +386,7 @@ class Session:
             mark = self.core.log.mark()
             self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
                                 "path": str(png), "tag": scene})
-            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0, mark)
+            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0 * self.slowdown(), mark)
             if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
                 break
             if attempt < tries - 1:
@@ -551,10 +556,8 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     core.progression = copy.deepcopy(AVATAR_PROGRESSION)   # le faux core les modifie (achats, choix)
     core.garage = copy.deepcopy(AVATAR_GARAGE)
     core.start()
-    cmd = [args.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}", "--audio-driver", "Dummy"]
-    if not args.native:
-        cmd = ["xvfb-run", "-a", "-s", f"-screen 0 {width}x{height}x24"] + cmd + [
-            "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
+    cmd = rendu_jeu.godot_cmd([args.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}",
+                               "--audio-driver", "Dummy"], args.native, width, height)
     v_grade = getattr(args, "visual_grade", 1.0)
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes_dir}",
             "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}", f"--living={args.decor_vivant}",
@@ -584,6 +587,8 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     issues = [ln for ln in engine_log.read_text(errors="replace").splitlines()
               if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
     s.check("journal", "aucune erreur ni avertissement Godot", not issues, " | ".join(issues[:5]))
+    r_err = rendu_jeu.check_log(engine_log.read_text(errors="replace"))
+    s.check("journal", "rendu du jeu (Forward+)", r_err is None, r_err or "Vulkan, Forward+")
     # Qualité réellement appliquée (lot X32) : le faux core ne doit pas la ramener à une autre valeur.
     q_ok, q_msg = quality_guard.check(engine_log.read_text(errors="replace"), quality)
     s.check("journal", "qualité réellement appliquée", bool(q_ok), q_msg)
@@ -1551,7 +1556,8 @@ def _quality_guard_scenes(s: Session) -> None:
         mark = core.log.mark()
         core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": items})
         # Un préréglage plus lourd se met en place en plusieurs secondes sous Xvfb (rendu logiciel).
-        core.log.wait_for(r"^quality applied=", 1.5 if value in (None, current[0]) else 15.0, mark)
+        core.log.wait_for(r"^quality applied=", (1.5 if value in (None, current[0]) else 15.0)
+                          * rendu_jeu.slowdown(core.log.path.read_text(errors="replace")), mark)
         time.sleep(0.3)
         lines = [line for _, line in core.log.since(mark) if line.startswith("quality applied=")]
         if lines:
@@ -1711,7 +1717,7 @@ def _camera_scenes(s: Session) -> None:
 
     def press(event: str, wait: float = 1.2) -> None:
         core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
-        time.sleep(wait)
+        time.sleep(wait * (2.0 if s.slowdown() > 1.0 else 1.0))   # transition de 0,4 s à 1-3 images/s
 
     core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=37.0)
     time.sleep(0.8)
@@ -1978,7 +1984,7 @@ def main() -> int:
         print(f"Godot introuvable : {args.godot} (définir GODOT=/chemin/vers/godot)")
         return 2
     if not args.native and shutil.which("xvfb-run") is None:
-        print("xvfb-run introuvable : installer xvfb, xauth et libgl1-mesa-dri (ou lancer avec --native)")
+        print("xvfb-run introuvable : installer xvfb, xauth et mesa-vulkan-drivers (ou lancer avec --native)")
         return 2
     if args.update_golden and not args.golden:
         ap.error("--update-golden demande --golden DOSSIER")

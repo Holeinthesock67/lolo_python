@@ -388,9 +388,10 @@ def run_sim(chosen: list[Action], args: argparse.Namespace, out: Path) -> list[d
 
     if with_engine:
         godot = args.godot
+        # Rendu du jeu (Forward+), comme engine/tests/rendu_jeu.py : sous Xvfb, Vulkan logiciel de Mesa.
         engine_cmd = ["xvfb-run", "-a", "-s", "-screen 0 1024x600x24", godot, "--path", str(ENGINE_DIR),
-                      "--resolution", "1024x600", "--audio-driver", "Dummy", "--rendering-driver", "opengl3",
-                      "--rendering-method", "gl_compatibility", "--", f"--ipc-state-port={state_port}",
+                      "--resolution", "1024x600", "--audio-driver", "Dummy", "--rendering-driver", "vulkan",
+                      "--rendering-method", "forward_plus", "--", f"--ipc-state-port={state_port}",
                       f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes}", "--test-mode"]
         sup = Supervisor(core_cmd, engine_cmd, ["true"], log_path, compile_enabled=False,
                          echo=lambda: False, say=lambda _m: None, restart_delay_s=0.5)

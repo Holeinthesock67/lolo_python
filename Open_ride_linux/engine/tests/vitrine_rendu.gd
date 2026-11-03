@@ -6,7 +6,7 @@ extends SceneTree
 ## sur une route droite de démonstration ; les modèles de foule et de passants sont remplacés par des
 ## listes fixes pour que deux captures soient comparables.
 ##
-##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_rendu.gd -- --out DOSSIER [--quality low,medium,high] \
 ##     [--size 1920x1080] [--views ciel,ciel_proche,panneau_col,borne,portes] [--compare REF] [--seuil-ssim 0.97]
 ##     [--tolerance 10]

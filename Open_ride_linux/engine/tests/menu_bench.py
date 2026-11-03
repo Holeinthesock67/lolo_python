@@ -80,6 +80,7 @@ from openride_core.launcher import ENGINE_DONE, ENGINE_SHUTDOWN_S, build_supervi
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
 import quality_guard  # noqa: E402
+import rendu_jeu  # noqa: E402
 
 VOIES = ("click", "clavier", "souris")
 MAX_FAILURES = 5   # au-delà, le passage s'arrête : les échecs suivants ne seraient que des conséquences
@@ -274,6 +275,12 @@ class Run:
     def _send(self, msg: dict[str, Any]) -> None:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.sendto(json.dumps(msg).encode(), ("127.0.0.1", self.state_port))
+
+    def slowdown(self) -> float:
+        """Délais des étapes allongés sous Vulkan logiciel (rendu_jeu.slowdown : 1 à 3 images/s au cloud)."""
+        if self.engine is None:
+            return 1.0
+        return rendu_jeu.slowdown("\n".join(m.group(0) for _, m in self.engine.matching(r"^Vulkan .*$")))
 
     def wait_engine(self, pattern: str, delay: float, after: float) -> tuple[float, re.Match[str]] | None:
         """Ligne du journal de l'engine écrite après `after` qui correspond à `pattern`, attendue `delay` secondes
@@ -574,10 +581,8 @@ class Run:
         if not self.report.check(self.core.wait_for(r"Core démarré", 20.0) is not None, "démarrage du core",
                                  "« Core démarré »"):
             return False
-        cmd = [str(a.godot), "--path", str(ENGINE_DIR), "--resolution", "1280x720", "--audio-driver", "Dummy"]
-        if not a.native:
-            cmd = ["xvfb-run", "-a", "-s", "-screen 0 1280x720x24"] + cmd + [
-                "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
+        cmd = rendu_jeu.godot_cmd([str(a.godot), "--path", str(ENGINE_DIR), "--resolution", "1280x720",
+                                   "--audio-driver", "Dummy"], a.native, 1280, 720)
         # Arguments de l'engine tirés de config.toml par le vrai lanceur (qualité, caméra, mode d'affichage…).
         sup = build_supervisor(["--config", str(self.config)], env={"GODOT": str(a.godot),
                                                                      "OPENRIDE_ENGINE": str(ENGINE_DIR)})
@@ -610,6 +615,8 @@ class Run:
         seq = [m.group(0) for _, m in self.engine.matching(quality_guard.APPLIED.pattern)]
         ok, msg = quality_guard.check("\n".join(seq), wanted)
         self.report.check(bool(ok), f"qualité réellement appliquée {when}", msg)
+        r_err = rendu_jeu.check_log("\n".join(m.group(0) for _, m in self.engine.matching(r"^.*(Vulkan|OpenGL|Compatibility).*$")))
+        self.report.check(r_err is None, f"rendu du jeu (Forward+) {when}", r_err or "Vulkan, Forward+")
 
     def stop_engine(self) -> None:
         assert self.engine is not None
@@ -637,7 +644,7 @@ class Run:
     def step(self, step: dict[str, Any]) -> bool:
         """Joue une étape ; faux si le passage ne peut pas continuer (engine arrêté)."""
         assert self.engine is not None and self.core is not None
-        delay = float(step.get("delai", 5.0))
+        delay = float(step.get("delai", 5.0)) * self.slowdown()
         if "appui" in step:
             for ev in [step["appui"]] if isinstance(step["appui"], str) else step["appui"]:
                 if not self.gesture(ev):
