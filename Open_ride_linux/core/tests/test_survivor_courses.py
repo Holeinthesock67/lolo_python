@@ -248,3 +248,17 @@ def test_gears_on_the_click_during_race(course):
     c.until(lambda s: s.survivor.winner is not None)
     c.s._on_command("end_session", {"save": True}, 9)
     _check_bilan(c, 2)
+
+
+def test_contact_counter_uses_the_core_bike_length():
+    """Le compteur de contacts des bancs (living_decor.gd) prend la longueur de vélo du placement AS2
+    (draft.BIKE_LENGTH_M) : deux roues collées par le core ne sont pas un contact (banc du 3 novembre)."""
+    import re
+    from pathlib import Path
+
+    from openride_core import draft
+
+    gd = (Path(__file__).resolve().parents[2] / "engine" / "scripts" / "living_decor.gd").read_text(encoding="utf-8")
+    m = re.search(r"^const CONTACT_BIKE_HALF_M := ([0-9.]+)", gd, re.M)
+    assert m, "CONTACT_BIKE_HALF_M absente de living_decor.gd"
+    assert float(m.group(1)) * 2.0 == pytest.approx(draft.BIKE_LENGTH_M)
