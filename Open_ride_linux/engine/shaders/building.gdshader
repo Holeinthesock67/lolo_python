@@ -14,6 +14,7 @@ render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_sc
 //   + 64 × matière du toit + 512 × toit + 1024 × hauteur des murs au quart de mètre.
 
 #include "res://shaders/surface_detail.gdshaderinc"
+#include "res://shaders/couleur_srgb.gdshaderinc"
 
 // Faux relief (0 en `low` : motifs dessinés en couleur seulement)
 uniform float relief = 1.0;
@@ -48,10 +49,6 @@ varying float v_under;
 void vertex() {
 	// Dessous du débord de toit (normale vers le bas)
 	v_under = step(NORMAL.y, -0.2);
-}
-
-vec3 to_linear(vec3 c) {
-	return pow(c, vec3(2.2));
 }
 
 // 1 dans le rectangle [a, b] (mètres), bord net
@@ -500,7 +497,7 @@ void fragment() {
 	// Graine et longueur arrondies : les valeurs interpolées varient d'un pixel à l'autre au dernier chiffre
 	// près, et un hachage en ferait un tirage différent par pixel (points dans les fenêtres)
 	float seed = floor(COLOR.a * 255.0 + 0.5) / 255.0;
-	vec3 tint = to_linear(COLOR.rgb);
+	vec3 tint = COLOR.rgb;
 	vec2 uv = UV;
 	float seg = floor(UV2.x * 64.0 + 0.5) / 64.0;
 	vec3 col = tint;
@@ -572,7 +569,7 @@ void fragment() {
 		}
 	}
 
-	ALBEDO = col;
+	ALBEDO = lineaire(col);
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	// Hors de toute branche : les dérivées d'écran de sd_bump sont fausses dans un flot non uniforme

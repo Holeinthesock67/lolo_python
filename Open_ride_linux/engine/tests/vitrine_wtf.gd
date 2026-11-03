@@ -4,7 +4,7 @@ extends SceneTree
 ## comme en séance (vue de suivi), et chaque gag forcé (wtf_scene_model.gd puis wtf_scene.gd, caméra imposée
 ## et roulis compris), pour chaque préréglage demandé. Sert à juger les formes avant le banc du PC.
 ##
-##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_wtf.gd -- --out DOSSIER [--quality low,medium,high]
 ##
 ## Écrit DOSSIER/wtf_<gag>_<préréglage>.png. Les temps du GPU se mesurent sur le PC (sim_bench.py).

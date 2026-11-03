@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Rendu hors écran du relief du sable (lot U8, terrain_biomes.gdshader), éclairé (le relief ne change que
 ## la normale), même principe que test_terrain_biomes_render.gd :
-##   xvfb-run -a godot --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a godot --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/render/test_ground_details_render.gd
 ## 1. Prairie tempérée : image identique avec et sans le relief du sable (critère 3 : pas de rides hors du sable).
 ## 2. Désert de sable : le relief change l'image (rides et dunes visibles sous un soleil rasant).

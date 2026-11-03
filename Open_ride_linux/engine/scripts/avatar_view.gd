@@ -131,6 +131,7 @@ func _mat(color: Color, texture: Texture2D = null, emissive := false, metallic :
 		var m := StandardMaterial3D.new()
 		m.albedo_color = color
 		m.vertex_color_use_as_albedo = true
+		m.vertex_color_is_srgb = true   # couleurs de sommet sRGB (couleur_srgb.gdshaderinc)
 		m.roughness = roughness if roughness >= 0.0 else (0.8 if metallic == 0.0 else 0.25)
 		m.metallic = metallic
 		if texture != null:

@@ -17,9 +17,11 @@ global uniform float anim_time;
 uniform vec3 skin_tones[4];
 uniform vec3 hair_colors[6];
 uniform vec3 trouser_colors[6];
-uniform vec3 shoe_color : source_color = vec3(0.12, 0.1, 0.09);
-uniform vec3 pole_color : source_color = vec3(0.6, 0.5, 0.36);
-uniform vec3 metal_color : source_color = vec3(0.7, 0.71, 0.73);
+// Palettes posées en Vector3 sRGB (people_mesh.gd) ; teinte calculée en sRGB, convertie à l'écriture.
+#include "res://shaders/couleur_srgb.gdshaderinc"
+uniform vec3 shoe_color = vec3(0.12, 0.1, 0.09);
+uniform vec3 pole_color = vec3(0.6, 0.5, 0.36);
+uniform vec3 metal_color = vec3(0.7, 0.71, 0.73);
 uniform vec4 joints = vec4(0.92, 0.5, 1.42, 0.235);   // hanche, genou, épaule (hauteurs), écart des épaules
 uniform vec4 bike = vec4(0.3, 0.2, 0.17, 0.34);       // boîtier (hauteur, avance), manivelle, rayon des roues
 uniform vec4 axles = vec4(0.34, 0.8, 0.34, -0.21);    // axe avant (hauteur, avance), axe arrière
@@ -217,7 +219,7 @@ void fragment() {
 	} else if (region == 6) {
 		c = metal_color;
 	}
-	ALBEDO = c;
+	ALBEDO = lineaire(c);
 	ROUGHNESS = region == 1 ? 0.6 : (region == 6 ? 0.35 : 0.85);
 	METALLIC = region == 6 ? 0.8 : 0.0;
 }

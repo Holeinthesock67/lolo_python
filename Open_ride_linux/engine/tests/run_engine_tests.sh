@@ -31,6 +31,15 @@ ENGINE_LOG="${ENGINE_LOG:-$(mktemp -t openride-engine-test.XXXXXX.log)}"
 ROUTES_DIR="$(mktemp -d -t openride-routes.XXXXXX)"   # reçoit demo.world avec terrain synthétique
 UNIT_TIMEOUT="${UNIT_TIMEOUT:-120}"
 CORE_SRC="$(cd "$ENGINE_DIR/../core/src" && pwd)"
+# Rendu du jeu (Forward+ sur Vulkan) pour toute image rendue, sous Xvfb compris : Vulkan logiciel de Mesa
+# (mesa-vulkan-drivers) au cloud et en CI. Mêmes arguments que tests/rendu_jeu.py.
+RENDER_ARGS=(--rendering-driver vulkan --rendering-method forward_plus)
+# Godot repasse en silence sur OpenGL quand Vulkan manque : la sortie doit porter « Vulkan … - Forward+ - ».
+renderer_issue() {
+  if ! grep -qE "^Vulkan [0-9.]+ - Forward\+ - "; then
+    echo "rendu du jeu absent : Godot n'a pas rendu en Forward+ (Vulkan absent ? installer mesa-vulkan-drivers)"
+  fi
+}
 
 if [ ! -x "$GODOT" ]; then
   echo "Godot introuvable : $GODOT (définir GODOT=/chemin/vers/godot)"; exit 2
@@ -180,19 +189,21 @@ else
 fi
 
 echo "== Rendu hors écran du shader (tests/render/, lot E2) =="
-# Vraie image rendue (Xvfb, OpenGL logiciel de Mesa) : le shader compilé reproduit la fonction de L3.
+# Vraie image rendue (Xvfb, Vulkan logiciel de Mesa, Forward+ comme le jeu) : le shader compilé reproduit la
+# fonction de L3.
 # Sans xvfb-run, l'étape est sautée, sauf si REQUIRE_RENDER=1 (intégration continue) : elle échoue alors.
 if command -v xvfb-run >/dev/null 2>&1; then
   while IFS= read -r render_file; do
     render_name="$(basename "$render_file" .gd)"
     echo "-- $render_name"
-    RENDER_OUT="$(timeout -k 5 "$UNIT_TIMEOUT" xvfb-run -a "$GODOT" --path "$ENGINE_DIR" --rendering-driver opengl3 \
-      --rendering-method gl_compatibility --audio-driver Dummy --script "res://tests/render/$render_name.gd" 2>&1)"
+    RENDER_OUT="$(timeout -k 5 "$UNIT_TIMEOUT" xvfb-run -a "$GODOT" --path "$ENGINE_DIR" "${RENDER_ARGS[@]}" \
+      --audio-driver Dummy --script "res://tests/render/$render_name.gd" 2>&1)"
     render_rc=$?
     echo "$RENDER_OUT" | grep -v "^Godot Engine" || true
     # Avertissement connu sous Xvfb : synchronisation verticale non réglable.
     render_issues="$(echo "$RENDER_OUT" | grep -v -E "V-Sync|set_use_vsync" | godot_issues)"
     render_count="$(echo "$RENDER_OUT" | grep -E "^$render_name : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
+    render_issues="$render_issues$(echo "$RENDER_OUT" | renderer_issue)"
     if [ -n "$render_issues" ]; then echo "$render_issues"; render_rc=1; fi
     if [ -z "$render_count" ]; then render_rc=1; fi
     record "render/$render_name" "$render_rc" "${render_count#*: }"
@@ -213,7 +224,7 @@ elif command -v xvfb-run >/dev/null 2>&1; then
   # Scène figée et, en 1280x720 low, comparaison aux vignettes du dépôt (tests/golden/xvfb/low, SSIM ≥ 0,97, lot X20).
   golden_args=()
   if [ "$VISUAL_CONFIGS" = "1280x720:low" ]; then golden_args=(--golden "$ENGINE_DIR/tests/golden"); fi
-  VISUAL_OUT="$(timeout -k 5 600 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
+  VISUAL_OUT="$(timeout -k 5 1200 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
     --configs "$VISUAL_CONFIGS" --out "$VISUAL_DIR" --fige "${golden_args[@]}" 2>&1)"
   visual_rc=$?
   echo "$VISUAL_OUT" | grep -E "^\[ÉCHEC\]|^Tests graphiques|introuvable" || true
@@ -223,7 +234,7 @@ elif command -v xvfb-run >/dev/null 2>&1; then
   # démarrage, réglages du core absents, égaux, autres et inconnus ; une capture en medium doit être du medium.
   for gq_config in 1280x720:medium 1280x720:high; do
     GQ_DIR="$(mktemp -d -t openride-quality.XXXXXX)"
-    GQ_OUT="$(timeout -k 5 300 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
+    GQ_OUT="$(timeout -k 5 600 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
       --configs "$gq_config" --out "$GQ_DIR" --garde-qualite 2>&1)"
     gq_rc=$?
     echo "$GQ_OUT" | grep -E "^\[ÉCHEC\]|^Tests graphiques|introuvable" || true
@@ -282,12 +293,13 @@ rm -rf "$HERBE_DIR"
 echo "== Coutures du sol multi-biome en scène réelle (série U) =="
 # Démo ci-dessus avec une couche biome prairie → sable ; world_streamer.gd charge les tuiles (Xvfb).
 if command -v xvfb-run >/dev/null 2>&1; then
-  SEAMS_OUT="$(timeout -k 5 "$UNIT_TIMEOUT" xvfb-run -a "$GODOT" --path "$ENGINE_DIR" --rendering-driver opengl3 \
-    --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_biome_seams.gd -- "$ROUTES_DIR/demo.world" 2>&1)"
+  SEAMS_OUT="$(timeout -k 5 "$UNIT_TIMEOUT" xvfb-run -a "$GODOT" --path "$ENGINE_DIR" "${RENDER_ARGS[@]}" \
+    --audio-driver Dummy --script res://tests/test_biome_seams.gd -- "$ROUTES_DIR/demo.world" 2>&1)"
   seams_rc=$?
   echo "$SEAMS_OUT" | grep -v "^Godot Engine" || true
   seams_issues="$(echo "$SEAMS_OUT" | grep -v -E "V-Sync|set_use_vsync" | godot_issues)"
   seams_count="$(echo "$SEAMS_OUT" | grep -E "^test_biome_seams : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
+  seams_issues="$seams_issues$(echo "$SEAMS_OUT" | renderer_issue)"
   if [ -n "$seams_issues" ]; then echo "$seams_issues"; seams_rc=1; fi
   if [ -z "$seams_count" ]; then seams_rc=1; fi
   record "test_biome_seams (coutures des biomes)" "$seams_rc" "${seams_count#*: }"

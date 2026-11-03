@@ -106,6 +106,11 @@ var late_state_count := 0
 var invalid_datagram_count := 0
 
 var _peer := PacketPeerUDP.new()
+## File de réception des trames `state` (30 Hz, ~1,5 Ko) : le défaut de Godot (64 Ko) ne tient qu'environ
+## 1,5 s. Une image longue (compilation de shaders, chargement de tuiles, Vulkan logiciel des essais) la
+## remplissait et Godot jetait des trames avec « Buffer full, dropping packets! ». 1 Mo tient ~20 s ;
+## _poll_incoming lit tout à l'image suivante et garde la trame la plus récente (seq).
+const STATE_RECV_BUFFER := 1 << 20
 var _cmd_id_counter := 0
 ## Commandes en attente d'accusé : {cmd_id, name, args, first_us, last_us, sends}.
 var _pending: Array[Dictionary] = []
@@ -139,7 +144,7 @@ func _ready() -> void:
 	state_port = cfg["state_port"]
 	cmd_port = cfg["cmd_port"]
 	test_mode = cfg["test_mode"]
-	var err := _peer.bind(state_port, SERVER_HOST)
+	var err := _peer.bind(state_port, SERVER_HOST, STATE_RECV_BUFFER)
 	if err != OK:
 		# Contrat §2 : port occupé, arrêt avec un message explicite.
 		printerr("Port UDP %d indisponible (code %d) : un autre engine tourne-t-il déjà ? "
