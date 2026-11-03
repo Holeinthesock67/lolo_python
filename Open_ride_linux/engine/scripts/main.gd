@@ -20,6 +20,8 @@ const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
+const RoadSurface := preload("res://scripts/road_surface.gd")
+const BiomeIds := preload("res://scripts/biome_ids.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
 const FpsCounter := preload("res://scripts/fps_counter.gd")
@@ -36,6 +38,7 @@ const DraftGaugeModel := preload("res://scripts/draft_gauge_model.gd")
 const StartWaitModel := preload("res://scripts/start_wait_model.gd")
 const StartScreen := preload("res://scripts/start_screen.gd")
 const DraftGauge := preload("res://scripts/draft_gauge.gd")
+const VEHICLE_PREFIX := "veh:"   # `draft_bot` d'un véhicule de la route (lot AS6, traffic.py du core)
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
@@ -127,6 +130,8 @@ var _display_name: String = DisplayMode.DEFAULT   # mode d'affichage en place (-
 ## Vues de caméra (lot V12) : modèle (camera_views.gd) et dernière valeur de render.camera reçue du core.
 var camera_views = CameraViews.new()
 var _camera_setting := ""
+var _gravel_setting := ""    # dernières valeurs de gravel.mode et render.biome reçues du core (lot U16)
+var _biome_setting := ""
 var _display_setting := ""   # dernière valeur de render.display reçue du core (vide avant la première liste)
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
@@ -179,6 +184,7 @@ var bots_view: Node3D
 ## Jauge d'abri au-dessus du bot qui abrite le cycliste (réglage `render.draft_gauge`, coupée par défaut).
 var draft_gauge: Node3D
 var _draft_gauge_on := false
+var _bots_frame := -10             # dernière image où _process a placé les bots (s lissé de la caméra)
 var _draft := {"draft": null, "draft_bot": null}   # champs `draft` et `draft_bot` de la dernière trame en séance
 ## Avatar du cycliste (lot V6) : modèle sans nœud (pédalier, danseuse) et vue ; caché en vue subjective, la
 ## seule caméra du jeu avant le lot V12. `_avatar_cam` : caméra de contrôle du banc visuel (« follow »,
@@ -517,6 +523,8 @@ func _on_settings(msg: Dictionary) -> void:
 		if _camera_setting != "" and cam != _camera_setting and cam != camera_views.current:
 			camera_views.set_view(cam, -1.0, "réglage render.camera")
 		_camera_setting = cam
+	_apply_gravel(str(menu_flow.settings.item("gravel.mode").get("value", "")))
+	_apply_biome(str(menu_flow.settings.item("render.biome").get("value", "")))
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp
@@ -980,10 +988,14 @@ func _process(delta: float) -> void:
 		var s_route: float = route.wrap_s(s_disp)
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
-		var pos := _rider_point(s_route, heading)
+		# Écart à l'axe (lot AS2) : l'avatar suit `lane_m` du core, la caméra le suit avec 0,5 s de lissage.
+		var lane = _last_state.get("lane_m", null)
+		follow.update_lane(float(lane) if (lane is float or lane is int) else RoadBuilder.RIDER_LATERAL_M, -1.0, now)
+		var pos := _rider_point(s_route, heading, follow.lane_m)
 		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
-		camera.global_transform = camera_views.step(delta, camera_views.goal(pos, heading, pitch_deg))
+		camera.global_transform = camera_views.step(delta, camera_views.goal(_rider_point(s_route, heading, follow.camera_lane_m),
+			heading, pitch_deg))
 		camera.fov = CameraViews.fov_deg(_base_fov, pitch_deg)   # respire avec la pente (lot Y15)
 		# Mode WTF (lots WTF5 et WTF6) : gags posés sur la route, puis roulis et vues imposées de la caméra.
 		wtf_scene.step(WtfSceneModel.view(_last_state.get("wtf", null), now / 1000000.0, _quality_name), route, s_route,
@@ -1000,6 +1012,7 @@ func _process(delta: float) -> void:
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		if bots_model.count() > 0:
 			_show_bots(s_route, float(follow.last_frame["v"]))
+			_bots_frame = Engine.get_process_frames()
 		_show_draft_gauge()
 		# Arches de bonus seulement quand le core en donne (champ `powerup` : SIM, option « Bonus »).
 		segment_markers.update(s_route, _last_state.has("powerup"))
@@ -1345,6 +1358,8 @@ func _avatar_info() -> Dictionary:
 	var info: Dictionary = avatar_view.test_info()
 	info["standing"] = avatar_model.standing
 	info["crank"] = avatar_model.crank_angle
+	info["lane_m"] = follow.lane_m            # écart à l'axe affiché (lot AS2)
+	info["camera_lane_m"] = follow.camera_lane_m
 	info["on_screen"] = avatar_view.visible and not camera.is_position_behind(avatar_view.global_position + Vector3(0.0, 1.0, 0.0)) \
 		and get_viewport().get_visible_rect().has_point(camera.unproject_position(avatar_view.global_position + Vector3(0.0, 1.0, 0.0)))
 	return info
@@ -1374,7 +1389,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"grade_caption": hud.grade_val.get_meta("caption"),
 		"target_caption": hud.target_val.get_meta("caption"), "gear": hud.gear_val, "time": hud.time_val,
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
-		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
+		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label, "draft_w": hud.draft_w_label,
 	}
 	# Rectangles en pixels de l'image : la mise à l'échelle canvas_items (base 1280×720) est appliquée.
 	var to_pixels := get_viewport().get_final_transform()
@@ -1451,10 +1466,11 @@ func _configure_avatar() -> void:
 	avatar_view.set_visible_for_view(_avatar_view_name())
 
 
-## Place du cycliste à `s` : dans la voie de droite, à RoadBuilder.RIDER_LATERAL_M de l'axe (lot P32) ; `heading`
-## en radians. La caméra, l'avatar et la vue des menus en partent.
-func _rider_point(s: float, heading: float) -> Vector3:
-	return route.sample_point(s) + Vector3(cos(heading), 0.0, sin(heading)) * RoadBuilder.RIDER_LATERAL_M
+## Place du cycliste à `s` : dans la voie de droite, à `lateral` de l'axe (RoadBuilder.RIDER_LATERAL_M, lot P32 ;
+## en séance avec des bots, `lane_m` du core, lot AS2) ; `heading` en radians. La caméra, l'avatar et la vue des
+## menus en partent.
+func _rider_point(s: float, heading: float, lateral: float = RoadBuilder.RIDER_LATERAL_M) -> Vector3:
+	return route.sample_point(s) + Vector3(cos(heading), 0.0, sin(heading)) * lateral
 
 
 ## Vue de caméra courante (l'avatar est masqué en subjective) ; une caméra de contrôle de test prend le pas.
@@ -1565,6 +1581,28 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 	menu_flow.menu.set_last_choices(last)
 	world_menu_view.vm.set_last_start(last.get("open_world") if last is Dictionary else null)
 	menu_flow.set_versions(ipc.engine_version, ipc.core_version)
+
+
+## Option « gravel » et biome du décor choisis au menu (lot U16) : au lancement, `--gravel=` et `--biome=` décident
+## (le lanceur y met `[gravel] mode` et `[render] biome`) ; seule une valeur changée ensuite au menu change le
+## décor, pour que les bancs gardent leur gravel et leur biome forcés. Ruban, ou décor entier, reconstruit.
+func _apply_gravel(mode: String) -> void:
+	if mode in RoadSurface.MODES:
+		if _gravel_setting != "" and mode != _gravel_setting and mode != streamer.gravel_mode:
+			streamer.set_gravel_mode(mode)
+			print("Gravel : ", mode)
+		_gravel_setting = mode
+
+
+func _apply_biome(id: String) -> void:
+	if id == "auto" or BiomeIds.is_biome(id):
+		if _biome_setting != "" and id != _biome_setting and id != streamer.forced_biome:
+			streamer.forced_biome = id
+			if route != null and _route_job.is_empty():
+				streamer.set_world(route, _route_path(str(_route_id_requested)))   # décor reconstruit avec le biome
+			_apply_sky_params(_theme_dict)
+			print("Biome : ", id)
+		_biome_setting = id
 
 
 func _on_core_error(code: String, message: String) -> void:
@@ -1698,7 +1736,11 @@ func _on_state_received(state: Dictionary) -> void:
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
 			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
-	_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)))
+	# Bots placés depuis la trame seulement quand l'image ne l'a pas fait (menu, pause, bots retirés) : en séance,
+	# _process les place avec le s lissé de la caméra. Deux placements par image, l'un avec le s brut, faisaient
+	# avancer les bots par à-coups (rejeu du 2 novembre, lot AS2).
+	if Engine.get_process_frames() - _bots_frame > 1 or bots_model.count() == 0:
+		_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)))
 	if living_decor != null:
 		living_decor.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if living_world != null:
@@ -1707,7 +1749,7 @@ func _on_state_received(state: Dictionary) -> void:
 		living_world.on_state(state, wind_now_s)
 		var heading_deg: float = route.sample_heading_deg(route.wrap_s(float(state.get("s", 0.0)))) if route != null else 0.0
 		if hud != null and hud.has_method("update_wind"):
-			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s))
+			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s), _quality_name != "low")
 
 	rogue_host.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if rogue_host.update(state, self, [streamer, sun, living_decor, segment_markers], world_env, camera,
@@ -1777,10 +1819,18 @@ func _show_bots(rider_s: float, rider_v: float) -> void:
 		living_decor.bot_places = bots_model.places()
 
 
-## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste.
+## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste,
+## ou au-dessus du véhicule quand `draft_bot` vaut `veh:<id>` (lot AS6).
 func _show_draft_gauge() -> void:
 	var view := DraftGaugeModel.view(_draft_gauge_on, _draft["draft"], _draft["draft_bot"], _quality_name)
-	draft_gauge.update_view(view, bots_view.anchor_of(str(view["bot"])) if view["visible"] else null)
+	var anchor = null
+	if view["visible"]:
+		var who := str(view["bot"])
+		if who.begins_with(VEHICLE_PREFIX):
+			anchor = living_decor.vehicle_anchor(who.substr(VEHICLE_PREFIX.length())) if living_decor != null else null
+		else:
+			anchor = bots_view.anchor_of(who)
+	draft_gauge.update_view(view, anchor)
 
 
 ## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur, avec les

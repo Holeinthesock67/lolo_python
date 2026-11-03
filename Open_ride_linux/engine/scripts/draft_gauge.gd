@@ -44,6 +44,7 @@ func _init() -> void:
 	_label.outline_size = 10
 	_label.modulate = UiTheme.TEXT
 	_label.render_priority = 2
+	_label.no_depth_test = true   # comme l'arc : jamais caché par le cycliste ni par le véhicule
 	add_child(_label)
 
 

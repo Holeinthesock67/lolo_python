@@ -89,6 +89,7 @@ class RenderConfig:
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
     draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
+    biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des seize de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
     texture_level: str = "auto"    # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high
 
@@ -197,6 +198,13 @@ class BotsConfig:
 
 
 @dataclass
+class RideConfig:
+    """Séance : placement avec les bots (série AS, lot AS2), abri derrière les véhicules (lot AS6)."""
+    auto_draft: str = "on"         # placement dans la roue : on (rangé derrière le coureur devant, sorti pour doubler) ou off (1,2 m de l'axe)
+    vehicle_draft: str = "on"      # abri derrière un véhicule lent (lot AS6) : on ou off ; l'aspiration d'un véhicule qui double reste
+
+
+@dataclass
 class AudioConfig:
     """Volumes du menu Réglages, en % (0 : coupé), un par catégorie de docs/AUDIO.md ; appliqués tout de
     suite par l'engine sur ses bus audio (audio_mix.gd)."""
@@ -254,6 +262,7 @@ class Config:
     rogue: RogueConfig = field(default_factory=RogueConfig)
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
     bots: BotsConfig = field(default_factory=BotsConfig)
+    ride: RideConfig = field(default_factory=RideConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     depart: DepartConfig = field(default_factory=DepartConfig)
     log: LogConfig = field(default_factory=LogConfig)
@@ -348,6 +357,13 @@ ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
 ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 
 # Valeurs permises des champs textuels à choix fermé.
+# Les seize biomes de la série U (lot U0, Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
+BIOMES: tuple[str, ...] = (
+    "temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
+    "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
+    "wetland", "coast", "volcanic",
+)
+
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "quality"): ("low", "medium", "high"),
     ("render", "texture_level"): ("auto", "low", "medium", "high"),
@@ -363,8 +379,11 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("wind", "feel"): ("grade", "ftms"),
     ("trainer", "control"): ("sim", "resistance"),
     ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),
+    ("render", "biome"): ("auto", *BIOMES),
     ("powerups", "mode"): ("on", "off"),
+    ("ride", "auto_draft"): ("on", "off"),
     ("depart", "mode"): ("pedalage", "immediat"),
+    ("ride", "vehicle_draft"): ("on", "off"),
 }
 
 
@@ -377,6 +396,8 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("gearing", "start_gear"),
     ("powerups", "mode"),
     ("bots", "level_pct"),
+    ("gravel", "mode"),
+    ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
     ("wind", "max_grade_offset_pct"),
@@ -462,7 +483,6 @@ DEV_KEYS: dict[tuple[str, str], str] = {
 }
 # Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
 PENDING_KEYS: dict[tuple[str, str], str] = {
-    ("gravel", "mode"): "U16",
 }
 
 

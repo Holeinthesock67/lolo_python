@@ -18,6 +18,8 @@ extends CanvasLayer
 ##   du bandeau ERG en 720p ; le bloc bonus n'existe pas en ERG.
 ## - Lot P17 : « Abri 30 % » derrière un bot (`draft_text` de la même sortie), pastille bleue sous
 ##   l'indicateur du vent (à sa place quand il n'y a pas de vent) ; cachée sans abri.
+## - Lot AS5 : watts économisés à l'abri « −48 W » (`draft_w_text`) sous la pastille, en medium et high
+##   (`update_wind(view, watts)`, `watts` faux en low : la pastille reste seule).
 ## - Lot O7 : encart des bots (`update_bots`, sortie de bots_view_model.view()) sous le panneau de
 ##   droite et points colorés des bots sur le profil d'altitude ; caché sans bot.
 ## - Lot T15 : l'encart suit bot_hud_model.gd : une ligne par bot (pastille du maillot, nom et profil,
@@ -48,6 +50,7 @@ const WIND_TONES := {
 const WIND_BAR_COLOR := UiTheme.PALE
 const DRAFT_COLOR := UiTheme.DRAFT
 const DRAFT_GAP := 10.0
+const DRAFT_W_GAP := 4.0
 const WIND_BAR_OFF := UiTheme.WIND_BAR_OFF
 const SEGMENT_TONES := {"good": UiTheme.SEGMENT_GOOD, "bad": UiTheme.SEGMENT_BAD, "": UiTheme.SEGMENT_NEUTRAL}
 const BONUS_COLOR := UiTheme.BONUS   # violet des arches de bonus (lot T8)
@@ -143,6 +146,7 @@ var wind_verdict_label: Label
 var _wind_view: Dictionary = {}
 # Abri derrière un bot (Lot P17)
 var draft_label: Label
+var draft_w_label: Label   # watts économisés sous la pastille (lot AS5)
 # Encart des bots (lots O7 et T15)
 var panel_bots: Panel
 var bots_arrows: Array[Control] = []
@@ -424,7 +428,7 @@ func _fit_top_panels() -> void:
 	_place(panel_center, TOP_MARGIN, center_h)
 	panel_wind.position.y = TOP_MARGIN + left_h + DRAFT_GAP
 	if draft_label.visible:
-		draft_label.position.y = panel_wind.position.y + (panel_wind.size.y * BLOCK_SCALE + DRAFT_GAP if panel_wind.visible else 0.0)
+		_place_draft(panel_wind.position.y + (panel_wind.size.y * BLOCK_SCALE + DRAFT_GAP if panel_wind.visible else 0.0))
 	_layout_right_column()
 
 
@@ -513,6 +517,26 @@ func _build_draft_label() -> void:
 	draft_label.add_theme_stylebox_override("normal", pill)
 	draft_label.visible = false
 	add_child(draft_label)
+	draft_w_label = Label.new()
+	draft_w_label.name = "DraftWatts"
+	draft_w_label.size = Vector2(panel_wind.size.x, 38.0)
+	_shrink_block(draft_w_label, false)
+	draft_w_label.add_theme_font_size_override("font_size", 26)
+	draft_w_label.add_theme_color_override("font_color", UiTheme.TEXT)
+	draft_w_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	draft_w_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var back := StyleBoxFlat.new()
+	back.bg_color = UiTheme.PANEL_BG
+	back.set_corner_radius_all(19)
+	draft_w_label.add_theme_stylebox_override("normal", back)
+	draft_w_label.visible = false
+	add_child(draft_w_label)
+
+
+## Pastille d'abri en haut `top`, watts économisés juste dessous.
+func _place_draft(top: float) -> void:
+	draft_label.position = Vector2(panel_wind.position.x, top)
+	draft_w_label.position = Vector2(panel_wind.position.x, top + draft_label.size.y * BLOCK_SCALE + DRAFT_W_GAP)
 
 
 ## Blocs segment et bonus (Lot T9), sous le panneau de droite, même largeur, cachés au départ.
@@ -603,17 +627,20 @@ func _on_bonus_bar_draw() -> void:
 	bonus_bar.draw_rect(Rect2(Vector2.ZERO, Vector2(bonus_bar.size.x * _bonus_fraction, bonus_bar.size.y)), BONUS_COLOR)
 
 
-## Indicateur du vent (Lot P16) et de l'abri (Lot P17) : `view` est la sortie de wind_view_model.view().
-func update_wind(view: Dictionary) -> void:
+## Indicateur du vent (Lot P16) et de l'abri (Lot P17) : `view` est la sortie de wind_view_model.view() ;
+## `watts` (lot AS5) montre les watts économisés sous la pastille (faux en low).
+func update_wind(view: Dictionary, watts := true) -> void:
 	_build_ui()
 	var shown := bool(view.get("visible", false)) and str(view.get("speed_text", "")) != ""
 	panel_wind.visible = shown
 	var draft := str(view.get("draft_text", ""))
+	var draft_w := str(view.get("draft_w_text", "")) if watts else ""
 	draft_label.visible = draft != ""
+	draft_w_label.visible = draft != "" and draft_w != ""
 	if draft != "":
 		draft_label.text = draft
-		var top := panel_wind.position.y + (panel_wind.size.y * BLOCK_SCALE + DRAFT_GAP if shown else 0.0)
-		draft_label.position = Vector2(panel_wind.position.x, top)
+		draft_w_label.text = draft_w
+		_place_draft(panel_wind.position.y + (panel_wind.size.y * BLOCK_SCALE + DRAFT_GAP if shown else 0.0))
 	if not shown:
 		_wind_view = {}
 		return

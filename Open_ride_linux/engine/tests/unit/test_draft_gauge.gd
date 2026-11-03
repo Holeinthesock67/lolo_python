@@ -28,19 +28,19 @@ func _check(cond: bool, msg: String) -> void:
 
 
 func _test_model() -> void:
-	_check(not DraftGaugeModel.view(false, 0.135, "bot1", "medium")["visible"], "réglage coupé : cachée")
+	_check(not DraftGaugeModel.view(false, 0.165, "bot1", "medium")["visible"], "réglage coupé : cachée")
 	_check(not DraftGaugeModel.view(true, null, "bot1", "medium")["visible"], "sans `draft` : cachée")
-	_check(not DraftGaugeModel.view(true, 0.135, null, "medium")["visible"], "sans `draft_bot` : cachée")
+	_check(not DraftGaugeModel.view(true, 0.165, null, "medium")["visible"], "sans `draft_bot` : cachée")
 	_check(not DraftGaugeModel.view(true, 0.01, "bot1", "medium")["visible"], "abri sous 5 % : cachée, comme la pastille")
-	var v := DraftGaugeModel.view(true, 0.135, "bot1", "medium")
+	var v := DraftGaugeModel.view(true, 0.165, "bot1", "medium")
 	_check(v["visible"] and v["bot"] == "bot1" and v["pct"] == 30 and is_equal_approx(v["fill"], 0.3),
-		"abri 0,135 : 30 %% et arc rempli à 30 %% (%s)" % str(v))
-	var pill: String = WindViewModel.new().view({"draft": 0.135}, 0.0, 0.0)["draft_text"]
+		"abri 0,165 : 30 %% et arc rempli à 30 %% (%s)" % str(v))
+	var pill: String = WindViewModel.new().view({"draft": 0.165}, 0.0, 0.0)["draft_text"]
 	_check(pill == "Abri %d %%" % v["pct"], "même pourcentage que la pastille du HUD (%s)" % pill)
 	_check(v["text"] == "30 %" and not v["glow"], "medium : texte, sans halo")
-	var low := DraftGaugeModel.view(true, 0.135, "bot1", "low")
+	var low := DraftGaugeModel.view(true, 0.165, "bot1", "low")
 	_check(low["visible"] and low["text"] == "" and not low["glow"], "low : arc seul")
-	var high := DraftGaugeModel.view(true, 0.135, "bot1", "high")
+	var high := DraftGaugeModel.view(true, 0.165, "bot1", "high")
 	_check(high["text"] == "30 %" and high["glow"], "high : texte et halo")
 	_check(is_equal_approx(DraftGaugeModel.view(true, 0.6, "bot1", "low")["fill"], 1.0), "abri au-delà du plafond : arc plein")
 	var item := {"key": DraftGaugeModel.SETTING_KEY, "type": "choice", "choices": ["off", "on"]}
@@ -57,7 +57,7 @@ func _test_view() -> void:
 	var gauge = DraftGauge.new()
 	root.add_child(gauge)
 	_check(not gauge.visible, "cachée à la création")
-	var v := DraftGaugeModel.view(true, 0.135, "bot1", "high")
+	var v := DraftGaugeModel.view(true, 0.165, "bot1", "high")
 	var anchor = bots.anchor_of("bot1")
 	_check(anchor is Vector3, "position du bot affiché connue")
 	gauge.update_view(v, anchor)
@@ -67,7 +67,7 @@ func _test_view() -> void:
 	_check(bots.anchor_of("absent") == null, "bot non affiché : pas de position")
 	gauge.update_view(v, null)
 	_check(not gauge.visible, "bot non affiché : jauge cachée")
-	gauge.update_view(DraftGaugeModel.view(false, 0.135, "bot1", "high"), anchor)
+	gauge.update_view(DraftGaugeModel.view(false, 0.165, "bot1", "high"), anchor)
 	_check(not gauge.visible, "réglage coupé : jauge cachée")
 	gauge.queue_free()
 	bots.queue_free()
