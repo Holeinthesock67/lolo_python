@@ -1,5 +1,5 @@
 {
-  "description": "Captures du Dernier survivant en medium (lots DS5 à DS7, à faire valider par le propriétaire) : écran Prêt du mode, approche de la première arche (bloc SURVIVANT, portique d'élimination), élimination d'un bot (bandeau du bas, bot qui se range), fin de course (vainqueur ou cycliste éliminé), bilan. Hors du banc des menus de l'intégration continue : menu_bench.py --scenario engine/tests/captures_ds/dernier_survivant_medium.json --voies clavier --native.",
+  "description": "Captures du Dernier survivant en medium (lots DS5 à DS7, à faire valider par le propriétaire) : écran Prêt du mode, peloton au départ (un bot à l'écran), approche de la première arche (bloc SURVIVANT, portique d'élimination), élimination d'un bot (bandeau du bas ; le bot éliminé, dernier à passer l'arche, est hors champ derrière le cycliste), fin de course (vainqueur ou cycliste éliminé), bilan. Hors du banc des menus de l'intégration continue : menu_bench.py --scenario engine/tests/captures_ds/dernier_survivant_medium.json --voies clavier --native.",
   "voies": [
     "clavier"
   ],
@@ -61,11 +61,18 @@
       "menu_cache": true
     },
     {
-      "note": "≈ 0,9 km : arche 1 à une centaine de mètres (marques affichées à 400 m), Grimpeur une trentaine de mètres devant",
-      "attendre": 180
+      "note": "≈ 10 s après le départ : Grimpeur 4 à 6 m devant, à droite du cycliste (placement AS2)",
+      "attendre": 10
     },
     {
-      "capture": "ds_2_approche_medium"
+      "capture": "ds_2_peloton_medium"
+    },
+    {
+      "note": "≈ 0,9 km : arche 1 à une centaine de mètres (marques affichées à 400 m), Grimpeur une trentaine de mètres devant",
+      "attendre": 170
+    },
+    {
+      "capture": "ds_3_approche_medium"
     },
     {
       "journal": "engine",
@@ -76,13 +83,7 @@
       "attendre": 1
     },
     {
-      "capture": "ds_3_elimination_medium"
-    },
-    {
-      "attendre": 4
-    },
-    {
-      "capture": "ds_4_bot_range_medium"
+      "capture": "ds_4_elimination_medium"
     },
     {
       "journal": "engine",

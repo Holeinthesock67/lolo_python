@@ -142,6 +142,9 @@ def test_capture_scenario_is_decided_and_without_contacts(course, quality_port):
     le départ ; le Grimpeur reste assez près pour être à l'écran avant la première arche."""
     c = course(quality_port, power_w=195.0, opponents=2, spacing_km=1, level_pct=74, spread="normal")
     grimpeur = next(b for b in c.s.bots if b.id == "bot1")
+    c.until(lambda s: s._t_session >= 8.0)   # capture « peloton » : Grimpeur juste devant, à droite du cycliste
+    print("Grimpeur à 8 s :", round(grimpeur.s - c.s.physics.s, 1), "m")
+    assert 2.0 < grimpeur.s - c.s.physics.s < 10.0 and grimpeur.lane.m - c.s._lane.m > 0.6
     c.until(lambda s: s.physics.s >= 850.0)
     gap = grimpeur.s - c.s.physics.s
     print("écart du Grimpeur à 850 m :", round(gap, 1))
