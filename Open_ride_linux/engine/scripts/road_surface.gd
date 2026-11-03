@@ -13,9 +13,9 @@ extends RefCounted
 const MODES := ["off", "auto", "compacted", "gravel", "dirt"]
 const UNPAVED := ["compacted", "gravel", "dirt"]
 const DEFAULT_WIDTH_M := {"compacted": 4.0, "gravel": 3.5, "dirt": 3.0}
-## Valeurs lues telles quelles par le shader (COLOR déjà linéaire) : prendre des teintes sombres, sinon le gravier
-## sort pâle et bleuté au soleil (retour du propriétaire 03/11).
-const DEFAULT_COLOR := {"compacted": Color(0.36, 0.31, 0.22), "gravel": Color(0.29, 0.25, 0.19),
+## Teintes gris-brun assez sombres : au soleil le gravier sortait pâle et bleuté (retour du propriétaire 03/11 ;
+## le reflet du ciel est aussi coupé dans road_markings.gdshader).
+const DEFAULT_COLOR := {"compacted": Color(0.43, 0.37, 0.27), "gravel": Color(0.37, 0.31, 0.25),
 	"dirt": Color(0.54, 0.44, 0.31)}
 const BEVEL_M := 5.0
 const BEVEL_SAMPLES := 11

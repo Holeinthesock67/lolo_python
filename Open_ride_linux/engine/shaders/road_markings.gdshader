@@ -137,4 +137,7 @@ void fragment() {
 	ALBEDO = mix(base, line_color, paint) * (1.0 - 0.45 * wetness);
 	float rough = mix(0.97, mix(0.9 - 0.14 * track + 0.06 * patch, 0.97, unpaved), on_road);
 	ROUGHNESS = mix(mix(rough, 0.7, paint), 0.3, wetness);
+	// Terre et gravier sans reflet du ciel : au ras du sol, le reflet spéculaire par défaut (0,5) lavait la
+	// surface en gris bleuté quelle que soit sa couleur (planches gravier v2 et v3 du 03/11).
+	SPECULAR = mix(0.5, 0.08, unpaved * on_road * (1.0 - wetness));
 }
