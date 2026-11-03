@@ -87,9 +87,11 @@ func set_route(route, road_width_m: float = 6.0) -> void:
 		grass.configure(int(living.get("grass_tufts", 0)) if enabled else 0, route, road_width_m)
 		grass.exclusions = _exclusions()
 		grass.height_at = _terrain_height(route)
+	# Biomes du parcours : modèle actif passé par world_streamer à osm_streamer (nul : pas de détails)
+	var model = osm_streamer.biome_model if osm_streamer != null and "biome_model" in osm_streamer else null
+	if grass != null:
+		grass.biome_model = model
 	if ground_details != null:
-		# Biomes du parcours : modèle actif passé par world_streamer à osm_streamer (nul : pas de détails)
-		var model = osm_streamer.biome_model if osm_streamer != null and "biome_model" in osm_streamer else null
 		ground_details.configure({"rock": int(living.get("ground_rocks", 0)), "grass": int(living.get("ground_grass", 0)),
 			"termite": int(living.get("ground_termites", 0))}, route, model, road_width_m)
 		ground_details.exclusions = _exclusions()

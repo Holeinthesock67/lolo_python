@@ -218,11 +218,47 @@ func _test_blades_and_tints() -> void:
 	g.free()
 
 
+class _DesertModel:
+	var dry := 1.0
+	func active() -> bool:
+		return true
+	func weights_at(_x: float, _z: float) -> Dictionary:
+		return {"sand_desert": dry, "temperate_meadow": 1.0 - dry}
+
+
+## Désert (03/11) : herbe sèche (teintes DRY_TINTS) et clairsemée ; hors désert ou sans modèle, herbe d'avant.
+func _test_desert() -> void:
+	var g = GrassTufts.new()
+	_check(g.dry_draw(0, 0, Vector3.ZERO) == 0, "sans modèle de biome : herbe d'avant")
+	var m := _DesertModel.new()
+	g.biome_model = m
+	var kept := 0
+	var green_in_desert := 0
+	var n := 400
+	for slot in range(n):
+		var d: int = g.dry_draw(3, slot, Vector3.ZERO)
+		green_in_desert += 1 if d == 0 else 0
+		kept += 1 if d == 1 else 0
+	_check(green_in_desert == 0, "désert pur : jamais d'herbe verte")
+	var part := float(kept) / n
+	_check(absf(part - GrassTufts.DRY_KEEP) < 0.08, "désert : %.0f %% des places gardées (cible %.0f %%)" % [part * 100.0, GrassTufts.DRY_KEEP * 100.0])
+	m.dry = 0.0
+	var green := 0
+	for slot in range(n):
+		green += 1 if g.dry_draw(3, slot, Vector3.ZERO) == 0 else 0
+	_check(green == n, "prairie : toutes les touffes d'avant")
+	for t in GrassTufts.DRY_TINTS:
+		var c: Color = t * Color(0.4, 0.56, 0.24)
+		_check(c.r > c.g and c.g > c.b, "teinte sèche %s : paille ou ocre (rouge > vert > bleu)" % c.to_html(false))
+	g.free()
+
+
 func _init() -> void:
 	_test_blades_and_tints()
 	_test_tree_materials()
 	_test_budget_and_low()
 	_test_determinism_and_exclusions()
 	_test_cost()
+	_test_desert()
 	print("test_grass_tufts : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

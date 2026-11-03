@@ -67,6 +67,18 @@ float digit_mask(int d, vec2 uv) {
 	return o;
 }
 
+// Couleur de la surface (couleur de sommet, sRGB du thème) en linéaire. Le renderer de compatibilité convertit
+// déjà les couleurs de sommet ; Forward+ (le jeu) les passe telles quelles : sans cette conversion, le gravier
+// sortait pâle et gris bleuté sur le PC (planches gravier v1 à v4, 03/11) alors que le test au cloud (compatibilité)
+// était juste.
+vec3 surface_linear(vec3 c) {
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	return c;
+#else
+	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
+#endif
+}
+
 void fragment() {
 	float total = road_width_m + 2.0 * shoulder_m;
 	float lat = UV.x * total - total * 0.5;          // m, positif à droite
@@ -131,10 +143,13 @@ void fragment() {
 	vec2 grit = sd_pebbles(p / 0.03);
 	float gravel_vis = sd_visible(p, 0.03);
 	float cobble = sd_noise(p / 0.12);
-	vec3 unpaved_col = COLOR.rgb * (1.0 + (grit.y - 0.5) * 0.3 * gravel_vis + (cobble - 0.5) * 0.12 + macro * 0.15);
+	vec3 unpaved_col = surface_linear(COLOR.rgb) * (1.0 + (grit.y - 0.5) * 0.3 * gravel_vis + (cobble - 0.5) * 0.12 + macro * 0.15);
 	asphalt = mix(asphalt, unpaved_col, unpaved);
 	vec3 base = mix(verge, asphalt, on_road);
 	ALBEDO = mix(base, line_color, paint) * (1.0 - 0.45 * wetness);
 	float rough = mix(0.97, mix(0.9 - 0.14 * track + 0.06 * patch, 0.97, unpaved), on_road);
 	ROUGHNESS = mix(mix(rough, 0.7, paint), 0.3, wetness);
+	// Terre et gravier sans reflet du ciel : au ras du sol, le reflet spéculaire par défaut (0,5) lavait la
+	// surface en gris bleuté quelle que soit sa couleur (planches gravier v2 et v3 du 03/11).
+	SPECULAR = mix(0.5, 0.08, unpaved * on_road * (1.0 - wetness));
 }
