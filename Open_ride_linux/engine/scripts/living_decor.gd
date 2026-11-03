@@ -477,7 +477,10 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	if typeof(bots_raw) == TYPE_ARRAY:
 		bots = bots_raw
 	var t_wave2 := Time.get_ticks_usec()
-	# Cyclistes du décor (P28), figés en pause, qui laissent la place aux bots
+	# Cyclistes du décor (P28), figés en pause, qui laissent la place aux bots ; lot AS7 : cyclistes proches
+	# calculés par le core (liste `riders`, une trame sur trois)
+	if typeof(state.get("riders")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
+		cyclists.sync_core(state["riders"], int(state["seq"]), cam_s)
 	cyclists.update(cam_s, rider_v, dt_s, paused, bot_places)
 	cyclists_view.update(dt_s, paused)
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
@@ -574,7 +577,7 @@ func road_users(within_m: float = 300.0) -> Array:
 	for r in cyclists.riders():
 		var rel := float(r["s"]) - _cam_s
 		if absf(rel) <= within_m:
-			out.append({"what": "cyclist", "kind": str(r["group"]["case"]), "dir": int(r["dir"]), "lateral": float(r["lateral"]),
+			out.append({"what": "cyclist", "id": str(r["id"]), "kind": str(r["group"]["case"]), "dir": int(r["dir"]), "lateral": float(r["lateral"]),
 				"half_width": RoadCyclistsModel.RIDER_HALF_WIDTH_M, "rel_m": rel})
 	return out
 
@@ -682,6 +685,17 @@ func vehicle_anchor(id: String) -> Variant:
 			var xf: Transform3D = traffic.world_transform(v)
 			var back := -xf.basis.z * (float(TrafficModel.KINDS[v["kind"]]["length"]) * 0.5)
 			return xf.origin - back * (1.0 + GAUGE_BEHIND_M / maxf(back.length(), 0.01)) + Vector3.UP * GAUGE_DROP_M
+	return null
+
+
+## Lot AS7 : point d'appui de la jauge d'abri d'un cycliste du décor d'`id` donné (`draft_bot` = `rider:<id>`) : sa
+## place sur la route, comme le nœud d'un bot ; null s'il n'est pas sur la route.
+func cyclist_anchor(id: String) -> Variant:
+	if cyclists.route == null:
+		return null
+	for r in cyclists.riders():
+		if str(r["id"]) == id:
+			return cyclists.world_position(r["group"], r["member"])
 	return null
 
 

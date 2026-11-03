@@ -25,6 +25,10 @@ extends RefCounted
 ## de REMOVE_BEHIND_M derrière ou REMOVE_AHEAD_M devant. En pause, tout est figé.
 ## Un groupe qui double dit « Salut ! » une fois sur SALUT_EVERY en passant (`last_event`, voix des passants).
 ## `lateral` : écart à l'axe, positif à droite du sens du parcours.
+## Lot AS7 : le core fait rouler les mêmes cyclistes (core/src/openride_core/road_cyclists.py, même tirage, test
+## de parité unit/test_road_cyclists_parity.gd) et en est l'autorité à moins de NEAR_M du cycliste : `sync_core`
+## reprend sa liste `riders`, ceux qui roulent dans son sens l'abritent (`draft_bot` = `rider:<id>`) ;
+## l'engine ne garde que le décor lointain, réglé par le préréglage.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
@@ -52,6 +56,9 @@ const REMOVE_AHEAD_M := 1200.0
 const PASS_START_M := 30.0
 const MERGE_AHEAD_M := 20.0
 const GIVE_UP_S := 60.0
+const NEAR_M := 60.0                  # lot AS7 : cyclistes calculés par le core (liste `riders`)
+const CORE_MARGIN_M := 5.0            # ... un cycliste absent de la liste à moins de 55 m n'est plus sur la route
+const CORE_LIST_MAX := 6              # ... liste pleine : ceux qu'elle ne donne pas peuvent encore rouler
 const ABREAST_M := 0.6
 const FILE_GAP_M := 1.5
 const RIDER_HALF_WIDTH_M := 0.3
@@ -94,6 +101,7 @@ var _started := false
 var _clock := 0.0
 var _bot_groups: Array = []        # bots de l'image, comme des groupes (lot P32)
 var _last_bots_s: Array = []      # abscisses des bots à l'image précédente (vitesse estimée)
+var _core_seq := -1                 # trame de la dernière liste `riders` reprise (lot AS7)
 
 
 ## `climbs` : montées de living_decor.gd (`start_s`, `summit_s`) ; `pois` : seuls les `village` comptent.
@@ -124,6 +132,7 @@ func reset() -> void:
 	_next_slot = 0
 	_started = false
 	_clock = 0.0
+	_core_seq = -1
 
 
 func set_budget(cyclist_budget: int) -> void:
@@ -305,6 +314,7 @@ func _spawn(ev: Dictionary, rider_s: float, rider_v: float, bots: Array = [], at
 			"jersey": int(hi % 8),
 			"look": int((hi >> 4) & 0xFFFF),
 			"phase": _u(VegetationPlacer._mix(hi + 1)),
+			"id": "c%d-%d" % [int(ev["slot"]), i],
 		})
 	var g := {
 		"id": "c%d" % int(ev["slot"]), "case": case_name, "dir": dir, "s": s0,
@@ -364,6 +374,10 @@ func _base_lateral(g: Dictionary, m: Dictionary) -> float:
 func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Array) -> void:
 	var dir: int = g["dir"]
 	var members: Array = g["members"]
+	if str(g["case"]) == "core":
+		# Lot AS7 : calculé par le core, extrapolé jusqu'à sa prochaine liste (puis à sa dernière vitesse)
+		g["s"] = float(g["s"]) + float(dir) * float(g["speed_mps"]) * dt_s
+		return
 	if _clock - float(g["speed_at"]) >= SPEED_PERIOD_S:
 		g["speed_at"] = _clock
 		var spd := speed_on_grade(float(g["power_w"]), _grade_at(float(g["s"]), dir))
@@ -549,9 +563,79 @@ func riders() -> Array:
 	var out := []
 	for g in groups:
 		for m in g["members"]:
-			out.append({"group": g, "member": m, "s": float(g["s"]) - float(g["dir"]) * float(m["dl"]),
+			out.append({"group": g, "member": m, "id": str(m["id"]), "s": float(g["s"]) - float(g["dir"]) * float(m["dl"]),
 				"lateral": float(m["lateral"]), "dir": int(g["dir"])})
 	return out
+
+
+## Lot AS7 : liste `riders` du core (une trame sur trois, `seq` de la trame), reprise une seule fois par trame.
+## Chaque cycliste reçu devient un groupe `core` d'un cycliste, extrapolé jusqu'à la liste suivante ; le membre
+## de l'engine de même `id` lui laisse sa place (et sa tenue, son pédalier). Les cyclistes de l'engine à moins de
+## NEAR_M − CORE_MARGIN_M que la liste ne donne pas (liste qui n'est pas pleine) ne sont plus sur la route. Un
+## cycliste que le core ne suit plus reste au décor, à sa dernière vitesse, jusqu'à sortir de la fenêtre.
+func sync_core(list: Array, seq: int, rider_s: float) -> void:
+	if seq == _core_seq:
+		return
+	_core_seq = seq
+	var by_id := {}
+	for g in groups:
+		if str(g["case"]) == "core":
+			by_id[str(g["id"])] = g
+	var seen := {}
+	var added := []
+	for item in list:
+		if typeof(item) != TYPE_DICTIONARY or str(item.get("id", "")) == "":
+			continue
+		var id := str(item["id"])
+		seen[id] = true
+		var cg: Dictionary = by_id.get(id, {})
+		if cg.is_empty():
+			var cm := _take_member(id)
+			if cm.is_empty():
+				var look := int(item.get("look", 0))
+				cm = {"jersey": look % 8, "look": (look >> 4) & 0xFFFF, "phase": _u(VegetationPlacer._mix(look)), "id": id}
+			cm["dl"] = 0.0
+			cm["col"] = 0
+			cg = {"id": id, "case": "core", "dir": 1, "s": rider_s, "speed_mps": 0.0, "members": [cm], "salut": false,
+				"passed": true, "speed_at": INF, "behind_t": 0.0, "best_rel": -INF, "side": "right"}
+			added.append(cg)
+		cg["dir"] = 1 if int(item.get("dir", 1)) >= 0 else -1
+		cg["s"] = float(item.get("s", rider_s))
+		cg["speed_mps"] = float(item.get("v", 0.0))
+		cg["members"][0]["lateral"] = float(item.get("lane_m", _edge_lateral()))
+		cg["core"] = true
+	var full := list.size() >= CORE_LIST_MAX
+	var kept := []
+	for g in groups:
+		if str(g["case"]) == "core":
+			if not seen.has(str(g["id"])):
+				g.erase("core")             # sorti de la liste : décor lointain
+			kept.append(g)
+			continue
+		var members := []
+		for m in g["members"]:
+			var s_m := float(g["s"]) - float(g["dir"]) * float(m["dl"])
+			if seen.has(str(m["id"])) or (not full and absf(s_m - rider_s) < NEAR_M - CORE_MARGIN_M):
+				continue                    # le core le donne, ou dit qu'il n'y est pas
+			members.append(m)
+		if not members.is_empty():
+			g["members"] = members
+			kept.append(g)
+	groups = kept + added
+
+
+## Membre de l'engine d'identifiant `id`, retiré de son groupe (vide si l'engine ne l'a pas tiré).
+func _take_member(id: String) -> Dictionary:
+	for g in groups:
+		if str(g["case"]) == "core":
+			continue
+		var members: Array = g["members"]
+		for i in range(members.size()):
+			if str(members[i]["id"]) == id:
+				var m: Dictionary = members[i]
+				members.remove_at(i)
+				return m
+	return {}
 
 
 ## Position d'un membre dans le monde.

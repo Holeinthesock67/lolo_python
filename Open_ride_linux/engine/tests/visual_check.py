@@ -749,8 +749,9 @@ def _scenes(s: Session) -> None:
     _draft_gauge_scene(s)
     _lane_scene(s)
     _vehicle_draft_scene(s)
+    _decor_riders_draft_scene(s)
     core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=None, draft_bot=None,
-                   lane_m=None, vehicles=None)
+                   lane_m=None, vehicles=None, riders=None)
     time.sleep(SETTLE_S)
     shot = s.capture("sans_bot")
     if shot:
@@ -1651,6 +1652,59 @@ def _lane_scene(s: Session) -> None:
 
 
 VEHICLE_AHEAD_M = 6.5   # écart voulu entre le cycliste affiché et le tracteur (relevé `rel_m` du décor)
+RIDERS_AHEAD_M = 2.5    # écart voulu entre le cycliste affiché et le dernier du groupe du décor (lot AS7)
+
+
+def _decor_riders_draft_scene(s: Session) -> None:
+    """Lot AS7 : groupe de trois cyclistes du décor envoyé par le core dans `riders`, en file à 1,5 m de l'axe, le
+    dernier ramené à 2,5 m devant le cycliste affiché (même correction que pour le tracteur) ; le cycliste dans leur
+    ligne reçoit 38 % d'abri (`draft_bot` = `rider:c77-2`) : jauge au-dessus du dernier, dans l'image. Puis liste
+    vide : le groupe quitte la route."""
+    core = s.core
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
+        {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
+         "value": "on", "choices": ["off", "on"], "applies": "now"}]})
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
+    s_last = core.current_s() + 1.7 + 12.0
+
+    def group(s0: float) -> list[dict[str, Any]]:
+        return [{"id": f"c77-{2 - i}", "s": round(s0 + 1.5 * i, 2), "dir": 1, "v": 0.0, "lane_m": 1.5,
+                 "look": (37 * (i + 1) << 4) | (i + 2)} for i in range(3)]
+
+    core.set_scene(speed=0.0, lane_m=1.5, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=0.0,
+                   draft_bot=None, vehicles=None, riders=group(s_last))
+    time.sleep(SETTLE_S + 1.5)
+    shot = s.capture("abri_cyclistes_decor_approche")
+    users = shot[1].get("decor", {}).get("road_users", []) if shot else []
+    rel = [float(u["rel_m"]) for u in users if u.get("id") == "c77-2"]
+    if rel:
+        s_last = s_last - rel[0] + RIDERS_AHEAD_M
+    core.set_scene(speed=0.0, draft=0.38, draft_bot="rider:c77-2", riders=group(s_last))
+    time.sleep(SETTLE_S)
+    shot = s.capture("abri_cyclistes_decor")
+    if shot:
+        img, info = shot
+        g = info.get("draft_gauge", {})
+        s.check("abri_cyclistes_decor", "jauge au-dessus du dernier cycliste du groupe, dans l'image",
+                g.get("visible") and g.get("bot") == "rider:c77-2" and g.get("on_screen"), f"{g}")
+        users = info.get("decor", {}).get("road_users", [])
+        mine = [u for u in users if str(u.get("id", "")).startswith("c77-")]
+        s.check("abri_cyclistes_decor", "trois cyclistes du core en file à 1,5 m de l'axe, le dernier 1 à 4 m devant",
+                len(mine) == 3 and all(abs(float(u.get("lateral", 0.0)) - 1.5) < 0.05 for u in mine)
+                and any(u.get("id") == "c77-2" and 1.0 <= float(u.get("rel_m", 0.0)) <= 4.0 for u in mine), f"{mine}")
+        s.check_layout("abri_cyclistes_decor", info)
+    core.set_scene(speed=0.0, draft=0.0, draft_bot=None, riders=[])
+    time.sleep(SETTLE_S)
+    shot = s.capture("abri_cyclistes_decor_parti")
+    if shot:
+        users = shot[1].get("decor", {}).get("road_users", [])
+        s.check("abri_cyclistes_decor_parti", "liste vide : plus de groupe près du cycliste",
+                not any(str(u.get("id", "")).startswith("c77-") and abs(float(u.get("rel_m", 999.0))) < 55.0
+                        for u in users), f"{users}")
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
+        {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
+         "value": "off", "choices": ["off", "on"], "applies": "now"}]})
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
 
 
 def _vehicle_draft_scene(s: Session) -> None:

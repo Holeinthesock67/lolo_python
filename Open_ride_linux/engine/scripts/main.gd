@@ -37,6 +37,7 @@ const StartWaitModel := preload("res://scripts/start_wait_model.gd")
 const StartScreen := preload("res://scripts/start_screen.gd")
 const DraftGauge := preload("res://scripts/draft_gauge.gd")
 const VEHICLE_PREFIX := "veh:"   # `draft_bot` d'un véhicule de la route (lot AS6, traffic.py du core)
+const RIDER_PREFIX := "rider:"   # `draft_bot` d'un cycliste du décor (lot AS7, road_cyclists.py du core)
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
@@ -1800,6 +1801,8 @@ func _show_draft_gauge() -> void:
 		var who := str(view["bot"])
 		if who.begins_with(VEHICLE_PREFIX):
 			anchor = living_decor.vehicle_anchor(who.substr(VEHICLE_PREFIX.length())) if living_decor != null else null
+		elif who.begins_with(RIDER_PREFIX):
+			anchor = living_decor.cyclist_anchor(who.substr(RIDER_PREFIX.length())) if living_decor != null else null
 		else:
 			anchor = bots_view.anchor_of(who)
 	draft_gauge.update_view(view, anchor)

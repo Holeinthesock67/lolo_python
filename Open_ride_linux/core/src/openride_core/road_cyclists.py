@@ -74,10 +74,12 @@ WEIGHT_N = 785.0
 AIR_K = 0.21
 
 # Lot AS7
+SEED = 0                  # graine de living_decor.gd (`cyclists.configure(…, 0, …)`)
 CORE_BUDGET = 16          # living(high).cyclists : les groupes proches ne dépendent plus du préréglage
 NEAR_M = 60.0             # cyclistes envoyés à l'engine dans `state` (devant ou derrière)
 STATE_MAX = 6
 SOURCE_ID_PREFIX = "rider:"   # `draft_bot` d'un cycliste du décor : « rider:<id> »
+APPEARANCE_MASK = 0xFFFFF     # `look` de la liste `riders` : 20 bits bas du tirage du cycliste
 
 
 # --- hachage de vegetation_placer.gd ------------------------------------------------------------------
@@ -143,6 +145,108 @@ def cadence_rpm(v_mps: float) -> float:
     return v_mps / DEVELOPMENT_M * 60.0
 
 
+# --- montées de l'engine (climb_detector.gd, lot P14) ----------------------------------------------------
+
+CLIMB_STEP_M = 20.0
+CLIMB_SMOOTH_M = 100.0
+CLIMB_HYSTERESIS_M = 8.0
+CLIMB_MERGE_GAP_M = 300.0
+CLIMB_PLATEAU_RISE_M = 1.5
+CLIMB_MIN_LENGTH_M = 1500.0
+CLIMB_MIN_AVG_PCT = 4.0
+CLIMB_MIN_GAIN_M = 80.0
+CLIMB_REFINE_M = 150.0
+CLIMB_SNAP_M = 0.3
+
+
+def detect_climbs(route: Any) -> list[tuple[float, float]]:
+    """Montées `(début, sommet)` de `climb_detector.gd` (`detect`), celles que living_decor.gd donne aux
+    cyclistes du décor quand le parcours n'a pas de couche `segments` : mêmes pas, lissage, hystérésis,
+    fusion, seuils et recalage sur le profil brut."""
+    if route is None or route.length_m <= CLIMB_STEP_M:
+        return []
+    n = int(math.floor(route.length_m / CLIMB_STEP_M)) + 1
+    s_arr = [min(i * CLIMB_STEP_M, route.length_m) for i in range(n)]
+    raw = [route.sample(s).alt_m for s in s_arr]
+    half = int(round(CLIMB_SMOOTH_M / CLIMB_STEP_M / 2.0))
+    sm = [0.0] * n
+    acc, count = 0.0, 0
+    for i in range(min(half, n)):
+        acc += raw[i]
+        count += 1
+    for i in range(n):
+        if i + half < n:
+            acc += raw[i + half]
+            count += 1
+        if i - half - 1 >= 0:
+            acc -= raw[i - half - 1]
+            count -= 1
+        sm[i] = acc / count
+    ascents: list[list[int]] = []
+    going_up = True
+    i_min = i_max = i_rise = 0
+    for i in range(1, n):
+        if going_up:
+            if sm[i] > sm[i_max]:
+                i_max = i
+            if sm[i] > sm[i_rise] + CLIMB_PLATEAU_RISE_M:
+                i_rise = i
+            dropped = sm[i] < sm[i_max] - CLIMB_HYSTERESIS_M
+            plateau = s_arr[i] - s_arr[i_rise] >= CLIMB_MERGE_GAP_M
+            if dropped or plateau:
+                if sm[i_max] - sm[i_min] >= CLIMB_HYSTERESIS_M:
+                    ascents.append([i_min, i_max])
+                going_up = False
+                i_min = i
+        else:
+            if sm[i] <= sm[i_min]:
+                i_min = i
+            if sm[i] > sm[i_min] + CLIMB_HYSTERESIS_M:
+                going_up = True
+                i_max = i_rise = i
+    if going_up and i_max > i_min and sm[i_max] - sm[i_min] >= CLIMB_HYSTERESIS_M:
+        ascents.append([i_min, i_max])
+    merged: list[list[int]] = []
+    for a in ascents:
+        if merged and s_arr[a[0]] - s_arr[merged[-1][1]] < CLIMB_MERGE_GAP_M and sm[a[1]] >= sm[merged[-1][1]]:
+            merged[-1][1] = a[1]
+        else:
+            merged.append([a[0], a[1]])
+    r = int(CLIMB_REFINE_M / CLIMB_STEP_M)
+    out = []
+    for i_lo, i_hi in merged:
+        lo, hi = max(0, i_lo - r), min(n - 1, i_lo + r)
+        best = lo
+        for j in range(lo, hi + 1):
+            if raw[j] <= raw[best]:
+                best = j
+        i0 = next((j for j in range(hi, best - 1, -1) if raw[j] <= raw[best] + CLIMB_SNAP_M), best)
+        lo, hi = max(0, i_hi - r), min(n - 1, i_hi + r)
+        best = lo
+        for j in range(lo, hi + 1):
+            if raw[j] > raw[best]:
+                best = j
+        i1 = next((j for j in range(lo, best + 1) if raw[j] >= raw[best] - CLIMB_SNAP_M), best)
+        if i1 <= i0:
+            continue
+        length = s_arr[i1] - s_arr[i0]
+        gain = raw[i1] - raw[i0]
+        avg = gain / length * 100.0 if length > 0.0 else 0.0
+        if not ((length >= CLIMB_MIN_LENGTH_M and avg >= CLIMB_MIN_AVG_PCT) or gain >= CLIMB_MIN_GAIN_M):
+            continue
+        out.append((s_arr[i0], s_arr[i1]))
+    return out
+
+
+def climbs_for(route: Any, segments: Iterable[Any] = ()) -> list[tuple[float, float]]:
+    """Montées du décor comme living_decor.gd (`climbs_of`) : celles de la couche `segments` quand elle en a
+    (série T, `s_start`, `s_end`), sinon `detect_climbs`."""
+    segs = list(segments)
+    if segs:
+        return [(float(sg.s_start), float(sg.s_end)) for sg in segs if getattr(sg, "type", "") == "climb"]
+    return detect_climbs(route)
+
+
 # --- modèle ----------------------------------------------------------------------------------------------
 
 @dataclass
@@ -154,6 +258,7 @@ class Member:
     phase: float
     index: int
     lateral: float = 0.0
+    appearance: int = 0        # `look` du contrat : `jersey` dans les 3 bits bas, `look` à partir du bit 4
     col0: int | None = None
     dl0: float | None = None
 
@@ -204,6 +309,7 @@ class Rider(NamedTuple):
     jersey: int
     group: str
     case: str
+    appearance: int = 0
 
 
 class DraftSource(NamedTuple):
@@ -304,8 +410,9 @@ class RoadCyclists:
         return max(self.road_width_m * 0.5 - EDGE_IN_M, RIDER_LATERAL_M + MIN_CENTRE_M)
 
     def update(self, rider_s: float, rider_v: float, dt_s: float, paused: bool = False,
-               bots_s: Sequence[float] = ()) -> None:
-        """Une image : `rider_s`, `rider_v` (m/s) du cycliste ; `bots_s` : abscisses des bots."""
+               bots: Sequence[tuple[float, float]] = ()) -> None:
+        """Une image : `rider_s`, `rider_v` (m/s) du cycliste ; `bots` : places des bots `(s, lateral)`
+        (comme `bots_view_model.places()` de l'engine)."""
         self.last_event = {}
         if paused:
             return
@@ -317,20 +424,20 @@ class RoadCyclists:
             ev = self.slot_event(self._next_slot)
             self._next_slot += 1
             if ev and self.rider_count() + ev["size"] <= self.budget:
-                self._spawn(ev, rider_s, rider_v, bots_s)
+                self._spawn(ev, rider_s, rider_v, bots)
         self._bot_groups = []
-        for i, b in enumerate(bots_s):
+        for i, (b, b_lat) in enumerate(bots):
             v_b = rider_v
             if i < len(self._last_bots_s) and dt_s > 0.0:
                 v_b = max(0.0, (b - self._last_bots_s[i]) / dt_s)
             self._bot_groups.append(Group(
                 id=f"bot{i}", case="bot", dir=1, s=float(b), flat_mps=v_b, delta_mps=0.0, power_w=0.0,
                 speed_mps=v_b, salut=False, bot=True,
-                members=[Member(dl=0.0, col=0, jersey=0, look=0, phase=0.0, index=0, lateral=BOT_LATERAL_M)]))
-        self._last_bots_s = [float(b) for b in bots_s]
+                members=[Member(dl=0.0, col=0, jersey=0, look=0, phase=0.0, index=0, lateral=float(b_lat))]))
+        self._last_bots_s = [float(b) for b, _ in bots]
         kept = []
         for g in self.groups:
-            self._move(g, rider_s, rider_v, dt_s, bots_s)
+            self._move(g, rider_s, rider_v, dt_s, bots)
             rel = g.s - rider_s
             if (not g.gone and -REMOVE_BEHIND_M <= rel <= REMOVE_AHEAD_M
                     and 0.0 <= g.s <= self.route.length_m):
@@ -343,7 +450,7 @@ class RoadCyclists:
             return obj.get(key, default)
         return getattr(obj, key, default)
 
-    def _spawn(self, ev: dict[str, Any], rider_s: float, rider_v: float, bots_s: Sequence[float] = (),
+    def _spawn(self, ev: dict[str, Any], rider_s: float, rider_v: float, bots: Sequence[tuple[float, float]] = (),
                at_s: float | None = None) -> None:
         case = ev["case"]
         direction = -1 if case == "oncoming" else 1
@@ -378,11 +485,12 @@ class RoadCyclists:
             hi = mix(h + 100 + i)
             members.append(Member(
                 dl=float(i // 2 if abreast else i) * FILE_GAP_M, col=i % 2 if abreast else 0,
-                jersey=hi % 8, look=(hi >> 4) & 0xFFFF, phase=_u(mix(hi + 1)), index=i))
+                jersey=hi % 8, look=(hi >> 4) & 0xFFFF, phase=_u(mix(hi + 1)), index=i,
+                appearance=hi & APPEARANCE_MASK))
         g = Group(id=f"c{ev['slot']}", case=case, dir=direction, s=s0, flat_mps=flat,
                   delta_mps=ev["kmh"] / 3.6, power_w=power_for(flat), speed_mps=flat, members=members,
                   salut=ev["salut"], side="left" if direction < 0 else "right")
-        g.bot_near = self._bot_near(g, bots_s)
+        g.bot_near = self._bot_near(g, bots)
         for m in members:
             m.lateral = self._target_lateral(g, m)
         self.groups.append(g)
@@ -401,11 +509,11 @@ class RoadCyclists:
                     rider_s, rider_v, (), rider_s + rel_m)
         return self.groups[-1]
 
-    def _bot_near(self, g: Group, bots_s: Sequence[float]) -> bool:
+    def _bot_near(self, g: Group, bots: Sequence[tuple[float, float]]) -> bool:
         head = g.s
         tail = head - g.dir * g.size * FILE_GAP_M
         lo, hi = min(head, tail) - BOT_LOOK_M, max(head, tail) + BOT_LOOK_M
-        return any(lo < float(b) < hi for b in bots_s)
+        return any(lo < float(b) < hi for b, _ in bots)
 
     def _target_lateral(self, g: Group, m: Member) -> float:
         own = self._base_lateral(g, m)
@@ -424,7 +532,7 @@ class RoadCyclists:
             return max(edge, BOT_LATERAL_M + MIN_CENTRE_M)
         return edge + col
 
-    def _move(self, g: Group, rider_s: float, rider_v: float, dt_s: float, bots_s: Sequence[float]) -> None:
+    def _move(self, g: Group, rider_s: float, rider_v: float, dt_s: float, bots: Sequence[tuple[float, float]]) -> None:
         direction = g.dir
         members = g.members
         if self._clock - g.speed_at >= SPEED_PERIOD_S:
@@ -435,7 +543,7 @@ class RoadCyclists:
                 spd = max(rider_v + g.delta_mps, speed_on_grade(power_for(OVERTAKE_MIN_KMH / 3.6), grade))
                 spd = min(spd, MAX_KMH / 3.6)
             g.speed_mps = spd
-        near = self._bot_near(g, bots_s)
+        near = self._bot_near(g, bots)
         g.bot_near = near
         case = g.case
         spd_now = g.speed_mps
@@ -506,7 +614,7 @@ class RoadCyclists:
         for m in members:
             lat0 = m.lateral
             lat1 = _move_toward(lat0, self._target_lateral(g, m), SIDE_SPEED_MPS * dt_s)
-            if self._side_blocked(g, g.s - direction * m.dl, lat0, lat1, rider_s, bots_s):
+            if self._side_blocked(g, g.s - direction * m.dl, lat0, lat1, rider_s, bots):
                 lat1 = lat0
             m.lateral = lat1
         if case == "ahead":
@@ -551,15 +659,15 @@ class RoadCyclists:
         return out
 
     def _side_blocked(self, g: Group, s: float, lat0: float, lat1: float, rider_s: float,
-                      bots_s: Sequence[float]) -> bool:
+                      bots: Sequence[tuple[float, float]]) -> bool:
         if abs(lat1 - lat0) < 1e-6:
             return False
         near = []
         if abs(rider_s - s) < SIDE_LOOK_M:
             near.append(RIDER_LATERAL_M)
-        for b in bots_s:
+        for b, b_lat in bots:
             if abs(float(b) - s) < SIDE_LOOK_M:
-                near.append(BOT_LATERAL_M)
+                near.append(float(b_lat))
         for h in self.groups:
             if h is g or abs(h.s - s) > SIDE_LOOK_M + h.size * FILE_GAP_M:
                 continue
@@ -596,7 +704,7 @@ class RoadCyclists:
             for m in g.members:
                 out.append(Rider(id=f"{g.id}-{m.index}", s=g.s - g.dir * m.dl, v=g.speed_mps,
                                  lane_m=m.lateral, dir=g.dir, look=m.look, jersey=m.jersey,
-                                 group=g.id, case=g.case))
+                                 group=g.id, case=g.case, appearance=m.appearance))
         return out
 
     def sources(self) -> list[DraftSource]:
@@ -606,12 +714,17 @@ class RoadCyclists:
                 for r in self.riders() if r.dir == 1]
 
     def state_list(self, rider_s: float) -> list[dict[str, Any]]:
-        """Liste `riders` de `state` : au plus STATE_MAX cyclistes à moins de NEAR_M, du plus proche au plus
-        loin ; `v` est signée (négative en face) pour que l'engine extrapole `s` entre deux trames."""
-        near = sorted((r for r in self.riders() if abs(r.s - rider_s) < NEAR_M),
-                      key=lambda r: abs(r.s - rider_s))[:STATE_MAX]
-        return [{"id": r.id, "s": round(r.s, 2), "v": round(r.v * r.dir, 2), "lane_m": round(r.lane_m, 2),
-                 "look": r.look} for r in near]
+        """Liste `riders` de `state` (au centimètre, comme `vehicles` du lot AS6) : au plus STATE_MAX
+        cyclistes à moins de NEAR_M, du plus proche au plus loin, `{id, s, dir, v, lane_m, look}` ; `v` est
+        positive dans le sens `dir` ; `look` (20 bits) : maillot (`look % 8`) et tenue (`look >> 4`) de P28."""
+        return [{"id": r.id, "s": round(r.s, 2), "dir": r.dir, "v": round(r.v, 2), "lane_m": round(r.lane_m, 2),
+                 "look": r.appearance} for r in self.near(rider_s)]
+
+    def near(self, rider_s: float) -> list[Rider]:
+        """Au plus STATE_MAX cyclistes à moins de NEAR_M du cycliste, du plus proche au plus loin."""
+        close = [r for r in self.riders() if abs(r.s - rider_s) < NEAR_M]
+        close.sort(key=lambda r: abs(r.s - rider_s))
+        return close[:STATE_MAX]
 
 
 def source_id(rider_id: str) -> str:
