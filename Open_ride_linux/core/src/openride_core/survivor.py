@@ -2,7 +2,7 @@
 
 Module pur, sans entrée-sortie : la séance (lot DS2) lui donne à chaque pas la position et la
 vitesse du cycliste et des bots encore en course, et lit la trame `survivor`, les messages
-`elimination`, les lignes de journal et le bilan. Plan : `docs/3.0/PLAN_SERIE_DS.md` §2 et §6 ;
+`elimination`, les lignes de journal et le bilan. Plan : `docs/2.0/PLAN_SERIE_DS.md` §2 et §6 ;
 cahier : `docs/lots/LOT_DS1_regles_core.md`.
 
 Règles :
@@ -367,4 +367,5 @@ class SurvivorRace:
         return {"place": me.place, "of": len(self.racers), "arches": len(self.arches),
                 "spacing_km": self.spacing_km,
                 "eliminated": [[r.out_arch, r.id, r.name[:16], r.gap_s] for r in elim],
-                "winner": self.winner}
+                "winner": self.winner,
+                "winner_name": self.racers[self.winner].name[:16] if self.winner else None}

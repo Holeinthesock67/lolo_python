@@ -11,5 +11,6 @@ Documents de préparation de la version 2.0. Les séries démarrent vraiment apr
 | [PLAN_SERIE_W.md](PLAN_SERIE_W.md) | Série W : monde ouvert généré en direct (départ sur un globe, cache local ; lots W0 à W16) |
 | [PLAN_SERIE_MJ.md](PLAN_SERIE_MJ.md) | Série MJ : profils de joueurs et profil d'essai (étude, maquettes validées, lots MJ0 à MJ10) |
 | [PLAN_SERIE_WTF.md](PLAN_SERIE_WTF.md) | Série WTF : mode « What the fuck », treize règles absurdes désactivables une à une et surprise du chef (lots WTF1 à WTF8, WTF1 livré le 29 octobre) |
+| [PLAN_SERIE_DS.md](PLAN_SERIE_DS.md) | Série DS : mode « Dernier survivant », le dernier à chaque arche est éliminé (lots DS1 à DS9, avancée de la 3.0 le 3 novembre) |
 
 Ordre des contrats : la révision 1.2 de l'IPC est prise par les lots Q1, N13 et O4 (1.0) ; la série P (décor vivant, vent, aspiration) prend la 1.3 ; les séries R, T et V ajoutent ensuite la 1.4, et la série W la révision suivante (numérotation confirmée par le propriétaire le 26 octobre). Les saisons et le cycle jour et nuit de la série P sont eux aussi prévus pour la 2.0.

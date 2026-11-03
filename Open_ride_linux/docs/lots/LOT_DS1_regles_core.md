@@ -3,9 +3,9 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série DS : règles du mode « Dernier survivant » dans le core (arches, passages, éliminations, égalités, bilan) | Python | T12, T13, AS1 | Moyenne | **Livré le 31 octobre** (version 3.0) |
+| Série DS : règles du mode « Dernier survivant » dans le core (arches, passages, éliminations, égalités, bilan) | Python | T12, T13, AS1 | Moyenne | **Livré le 3 novembre** (version 2.0, PR unique DS1 à DS7) |
 
-Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/3.0/PLAN_SERIE_DS.md`.
+Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/2.0/PLAN_SERIE_DS.md`.
 
 ## 1. Objectif
 
@@ -13,7 +13,7 @@ Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 
 
 ## 2. À lire
 
-`docs/3.0/PLAN_SERIE_DS.md` §2 et §6 ; `core/src/openride_core/classic.py` (forme d'un mode branché sur la séance) ; `core/src/openride_core/bots.py` (`ProfileBot`, `calibrate_bots`) ; `core/src/openride_core/segments.py` (lignes de sprint et sommets pour le calage).
+`docs/2.0/PLAN_SERIE_DS.md` §2 et §6 ; `core/src/openride_core/classic.py` (forme d'un mode branché sur la séance) ; `core/src/openride_core/bots.py` (`ProfileBot`, `calibrate_bots`) ; `core/src/openride_core/segments.py` (lignes de sprint et sommets pour le calage).
 
 ## 3. Travail demandé
 

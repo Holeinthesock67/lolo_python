@@ -3,9 +3,9 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série DS : maquettes de l'arche d'élimination, du HUD de course, des bandeaux et du bilan, validées par le propriétaire | Maquettes | DS1 | Petite | **Livré le 31 octobre** (version 3.0), maquettes validées par le propriétaire |
+| Série DS : maquettes de l'arche d'élimination, du HUD de course, des bandeaux et du bilan, validées par le propriétaire | Maquettes | DS1 | Petite | **Livré le 31 octobre** (version 2.0), maquettes validées par le propriétaire |
 
-Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/3.0/PLAN_SERIE_DS.md`.
+Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/2.0/PLAN_SERIE_DS.md`.
 
 ## 1. Objectif
 
@@ -13,7 +13,7 @@ Montrer au propriétaire, avant tout code d'affichage, l'arche d'élimination, l
 
 ## 2. À lire
 
-`docs/3.0/PLAN_SERIE_DS.md` §5 ; `engine/scripts/segment_markers.gd` (styles d'arche) ; `engine/scripts/hud_view.gd` ; `engine/scripts/summary_view.gd`.
+`docs/2.0/PLAN_SERIE_DS.md` §5 ; `engine/scripts/segment_markers.gd` (styles d'arche) ; `engine/scripts/hud_view.gd` ; `engine/scripts/summary_view.gd`.
 
 ## 3. Travail demandé
 

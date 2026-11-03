@@ -39,6 +39,8 @@ extends RefCounted
 ##   place attend derrière, traffic_model.gd). Sans place libre à sa hauteur, il se range une ou plusieurs longueurs
 ##   (SLOT_CLEAR_M) derrière (`back`, retrait affiché seulement : les écarts du HUD restent ceux du core). Il recule
 ##   d'abord (BACK_SPEED_MPS), puis glisse en travers ; au retour, il glisse d'abord, puis remonte, ligne libre.
+## - Lot DS5 : un bot de la trame avec `out` (éliminé du Dernier survivant) quitte sa place et glisse vers le
+##   bas-côté (OUT_LATERAL_M), sans compter dans les places des autres ; `out` passe tel quel dans view().
 ## Pas de class_name : charger par preload("res://scripts/bots_view_model.gd").
 
 const UiTheme := preload("res://scripts/ui_theme.gd")
@@ -50,6 +52,11 @@ const MAX_EXTRAPOLATION_S := 1.0
 const CORRECTION_S := 0.15       # camera_follow.gd
 const SNAP_M := 5.0
 const MIN_SPEED_MPS := 1.0
+## Bot éliminé du Dernier survivant (lot DS5, champ `out` de `bots`) : il glisse jusqu'au bas-côté droit
+## (bord de la chaussée moins une demi-largeur de cycliste) à OUT_SPEED_MPS ; le core le ralentit à 15 km/h et
+## le retire de la trame au bout de 10 s.
+const OUT_LATERAL_M := RoadBuilder.ROAD_WIDTH_M / 2.0 + RoadBuilder.SHOULDER_WIDTH_M - 0.3
+const OUT_SPEED_MPS := 0.8
 ## Couleur par `kind` : bot à puissance constante orange, fantôme bleu pâle ; inconnu gris. Un bot à
 ## profil (T12, `kind` = `constant` avec `profile`, contrat 1.4) est jaune. Teintes claires : les noms de
 ## l'encart des bots gardent au moins 3:1 sur le panneau au-dessus d'un ciel clair (lot X22).
@@ -136,7 +143,8 @@ func push(bots, t_us: int) -> void:
 		var item := {"id": str(b["id"]), "name": str(b.get("name", b["id"])), "kind": str(b.get("kind", "")),
 			"s": float(b["s"]), "v": float(b.get("v", 0.0)) if (b.get("v") is float or b.get("v") is int) else 0.0,
 			"gap_s": float(gap) if (gap is float or gap is int) else null, "t_us": t_us, "offset": 0.0,
-			"lane_m": float(b["lane_m"]) if (b.get("lane_m") is float or b.get("lane_m") is int) else null}
+			"lane_m": float(b["lane_m"]) if (b.get("lane_m") is float or b.get("lane_m") is int) else null,
+			"out": int(b["out"]) if (b.get("out") is float or b.get("out") is int) else null}
 		if shown.has(item["id"]):
 			var off := gap_m(item["s"], float(shown[item["id"]]), loop_length_m)
 			item["offset"] = off if absf(off) < SNAP_M else 0.0
@@ -175,7 +183,7 @@ func view(rider_s: float, rider_v: float, now_us: int) -> Array:
 		var s := _shown_s(b, now_us)
 		var gm := gap_m(rider_s, s, loop_length_m)
 		var gs: float = b["gap_s"] if b["gap_s"] != null else gap_seconds(gm, rider_v, b["v"])
-		var item := {"id": b["id"], "name": b["name"], "kind": b["kind"], "s": s, "lane_m": b["lane_m"], "gap_m": gm, "gap_s": gs,
+		var item := {"id": b["id"], "name": b["name"], "kind": b["kind"], "s": s, "lane_m": b["lane_m"], "out": b["out"], "gap_m": gm, "gap_s": gs,
 			"visible": absf(gm) < VISIBLE_M, "show_name": absf(gm) < NAME_M, "color": color_of(b["kind"], b["profile"])}
 		for key in PROFILE_FIELDS:
 			item[key] = b[key]
@@ -211,6 +219,15 @@ func _assign_laterals(view: Array, dt: float) -> void:
 		var id: String = item["id"]
 		seen[id] = true
 		var gap := float(item["gap_m"])
+		if item.get("out") != null:   # éliminé du Dernier survivant (lot DS5) : glisse vers le bas-côté
+			var from: float = _lateral.get(id, item["lane_m"] if item["lane_m"] != null else RoadBuilder.BOT_LATERAL_M)
+			var lat_out := move_toward(from, OUT_LATERAL_M, OUT_SPEED_MPS * dt)
+			_slot[id] = OUT_LATERAL_M
+			_lateral[id] = lat_out
+			_back[id] = 0.0
+			item["lateral"] = lat_out
+			_places.append({"s": item["s"], "lateral": lat_out})
+			continue
 		if item["lane_m"] != null:   # place du core (lot AS2)
 			var lane := float(item["lane_m"])
 			_slot[id] = lane

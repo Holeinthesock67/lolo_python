@@ -63,6 +63,11 @@ extends RefCounted
 ## l'annonce) ouvre l'écran des treize règles (action list_wtf_rules, réponse par on_wtf_rules()) ; une
 ## règle validée bascule (action set_wtf_rules : une commande set_wtf_rule par règle) ; « Lancer une
 ## séance WTF » prépare l'écran Prêt (select_workout null, puis `start` avec `mode` « wtf »).
+## Dernier survivant (série DS, lot DS7, contrat 1.5) : « Dernier survivant » à l'accueil (quand le core
+## l'annonce) ouvre l'écran Prêt du mode (parcours, puis réglages `survivor.*` et « Niveau des bots » modifiés
+## en place par set_setting, puis « Lancer » avec la longueur de course, désactivé sur un parcours trop court) ;
+## `start` part avec `mode` « survivor » et sans `bots` ; un refus du core (`bad_args`) s'affiche sur la
+## ligne d'état.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
@@ -80,6 +85,9 @@ const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 const WtfRulesModel := preload("res://scripts/wtf/wtf_rules_model.gd")
+## Dernier survivant (lot DS7) : réglages de l'écran Prêt du mode, dans l'ordre du plan (§4).
+const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "survivor.spread", "survivor.after_out"]
+const SURVIVOR_PREFIX := "Survivant : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
 const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
@@ -482,6 +490,7 @@ func set_versions(engine_v: String, core_v: String) -> void:
 func on_settings(msg: Dictionary) -> void:
 	settings.on_settings(msg)
 	_refresh_settings()
+	_refresh_survivor()
 	if _ftp_pending:
 		_ftp_pending = false
 		summary_message = "FTP enregistrée : %s W" % str(settings.item("rider.ftp_w").get("value", ftp_offer.get("ftp_w")))
@@ -532,7 +541,7 @@ func on_error(code: String, text: String) -> void:
 		contents.on_error(code, text)
 		_refresh_contents()
 		return
-	if code == "bot_invalid" and menu.current_screen() == MenuModel.READY:
+	if (code == "bot_invalid" or (code == "bad_args" and menu.mode == "survivor")) and menu.current_screen() == MenuModel.READY:
 		ready_message = "Échec : " + text
 		return
 	if _plan_request != "" and code in ["plan_invalid", "busy"]:
@@ -1182,13 +1191,20 @@ func list_failed(list_name: String) -> void:
 
 ## Événement du Click ou du clavier (PLUS_SHORT…) ; renvoie l'action à exécuter ({} sinon).
 func handle(event: String) -> Dictionary:
+	var act := _handle_event(event)
+	if menu.mode == "survivor":
+		_refresh_survivor()   # parcours choisi, réglage modifié : longueur de course et rangées à jour
+	return act
+
+
+func _handle_event(event: String) -> Dictionary:
 	if not is_visible():
 		return {}
 	ready_message = ""
 	if menu.current_screen() == MenuModel.HOME:
 		interrupted_message = ""   # résultat de recover_session : affiché jusqu'à l'appui suivant
 	if not settings.editing.is_empty():
-		if menu.current_screen() in [SETTING_EDIT, MenuModel.PAUSE, SETTINGS_GROUP, WORKOUT_CREATE]:
+		if menu.current_screen() in [SETTING_EDIT, MenuModel.PAUSE, SETTINGS_GROUP, WORKOUT_CREATE, MenuModel.READY]:
 			return _handle_edit(event)
 		settings.cancel()   # menu quitté pendant un réglage (séance lancée, perte du core…)
 	if menu.current_screen() == ProfilesViewModel.NAME:
@@ -1229,6 +1245,15 @@ func handle(event: String) -> Dictionary:
 		_refresh_wtf()
 		menu.push_screen(WtfRulesModel.SCREEN)
 		return {"action": "list_wtf_rules"}
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "survivor":
+		ready_message = ""
+		menu.prepare_survivor()
+		_refresh_survivor()
+		return {"action": "select_workout", "workout_id": null}   # SIM seulement : le core refuse un entraînement ERG
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]).begins_with("set:"):
+		if settings.begin(str(act["id"]).substr(4)):
+			_refresh_edit()
+		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]) == "wtf_rules":
 		_refresh_wtf()
 		menu.push_screen(WtfRulesModel.SCREEN)
@@ -1418,6 +1443,51 @@ func handle(event: String) -> Dictionary:
 				show_details = not show_details
 				return {}
 	return act
+
+
+# --- Dernier survivant (lot DS7) -------------------------------------------------------------------
+
+## Écran Prêt du Dernier survivant : réglages du mode modifiés en place (set_setting, repris à la séance
+## suivante), puis « Lancer » avec la longueur de course, désactivé sur un parcours ouvert trop court (le
+## core le refuse aussi : `bad_args`).
+func _refresh_survivor() -> void:
+	var rows: Array = []
+	for key in SURVIVOR_KEYS:
+		var it: Dictionary = settings.item(key)
+		if it.is_empty():
+			continue
+		var editing: Dictionary = settings.editing if str(settings.editing.get("key", "")) == key else {}
+		var row: Dictionary = SettingsViewModel.row("set:" + key, it, editing)
+		row["label"] = survivor_label(str(row["label"]))
+		rows.append(row)
+	menu.set_survivor_ready(rows, survivor_launch(int(settings.item("survivor.opponents").get("value", 4)),
+		int(settings.item("survivor.spacing_km").get("value", 2)), _route_entry(menu.world_id)))
+
+
+## Libellé d'un réglage sur l'écran du mode : « Survivant : adversaires » devient « Adversaires ».
+static func survivor_label(label: String) -> String:
+	var short := label.trim_prefix(SURVIVOR_PREFIX)
+	return short.left(1).to_upper() + short.substr(1) if short != "" else label
+
+
+## Ligne « Lancer » : {enabled, detail}. `route` : élément de la liste des parcours ({} : inconnu).
+static func survivor_launch(opponents: int, spacing_km: int, route: Dictionary) -> Dictionary:
+	var course_km := opponents * spacing_km
+	var detail := "%d arches, %d km" % [opponents, course_km]
+	var length = route.get("length_m", null)
+	if route.is_empty() or str(route.get("route_type", "")) == "loop" or length == null:
+		return {"enabled": true, "detail": detail}
+	if float(length) < course_km * 1000.0:
+		return {"enabled": false, "detail": "parcours trop court : %s pour %s" % [
+			CatalogModel._format_fr_km(float(length)), detail]}
+	return {"enabled": true, "detail": detail}
+
+
+func _route_entry(route_id: String) -> Dictionary:
+	for r in routes_raw:
+		if r is Dictionary and str(r.get("id", "")) == route_id:
+			return r
+	return {}
 
 
 # --- séance interrompue d'un lancement précédent (lot O34) ---------------------------------------
@@ -1871,6 +1941,8 @@ func _refresh_edit() -> void:
 		WORKOUT_CREATE:
 			menu.set_screen_items(WORKOUT_CREATE, builder.menu_items(str(settings.editing.get("key", "")),
 				settings.editing.get("value", 0)))
+		MenuModel.READY:
+			_refresh_survivor()
 		_:
 			_refresh_settings()
 

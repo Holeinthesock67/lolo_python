@@ -5,7 +5,7 @@
 | --- | --- | --- | --- | --- |
 | Série DS : jusqu'à 11 adversaires dans le mode, après le peloton d'environ 12 bots prévu après Y18 | Python, GDScript | DS2, Y18 | Moyenne | En attente du peloton (après Y18) |
 
-Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/3.0/PLAN_SERIE_DS.md`.
+Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/2.0/PLAN_SERIE_DS.md`.
 
 ## 1. Objectif
 
@@ -13,7 +13,7 @@ Porter le plateau du mode de 4 à 11 bots une fois le peloton d'environ 12 bots 
 
 ## 2. À lire
 
-`docs/3.0/PLAN_SERIE_DS.md` §2.1 et §7 ; cahier du lot Y18 ; `core/src/openride_core/ipc_budget.py`.
+`docs/2.0/PLAN_SERIE_DS.md` §2.1 et §7 ; cahier du lot Y18 ; `core/src/openride_core/ipc_budget.py`.
 
 ## 3. Travail demandé
 

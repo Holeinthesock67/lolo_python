@@ -6,6 +6,8 @@ extends RefCounted
 ## ainsi que l'écran de menu associé, sans aucun nœud Godot.
 ## Pas de class_name : charger par preload("res://scripts/summary_view_model.gd").
 
+const SurvivorHudModel := preload("res://scripts/survivor/survivor_hud_model.gd")
+
 const KEY_DURATION := "duration_s"
 const KEY_DISTANCE := "distance_m"
 const KEY_AVG_POWER := "avg_power_w"
@@ -155,6 +157,8 @@ func lines(summary: Dictionary, _mode: String = "", _ftp_w: int = 0) -> Array:
 		out.append_array(rogue_lines(summary["rogue"]))
 	if summary.get("wtf") is Dictionary:
 		out.append_array(wtf_lines(summary["wtf"]))
+	if summary.get("survivor") is Dictionary:   # Dernier survivant (lot DS6) : place, vainqueur, arche par arche
+		out.append_array(SurvivorHudModel.summary_lines(summary["survivor"]))
 
 	return out
 

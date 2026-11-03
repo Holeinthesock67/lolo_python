@@ -486,7 +486,7 @@ La section `[powerups]` (lot T7) coupe les bonus du mode classique (`mode = "off
 
 La section `[bots]` (lot T13) donne le niveau des bots à profil : `level_pct` (50 à 150, défaut 100) est le pourcentage de ta FTP visé par le calibrage. Au départ de la séance, le core simule le parcours au pas de 0,5 s et ajuste la CP de chaque bot à profil pour qu'il finisse dans le temps d'un cycliste de ta masse roulant à ce niveau. Réglage « Niveau des bots » du menu (clé `bots.level_pct`, pas de 5) ; un bot choisi au menu à 90, 100 ou 110 % garde son propre niveau.
 
-La section `[survivor]` (lot DS2) règle le mode « Dernier survivant » (plan `docs/3.0/PLAN_SERIE_DS.md`) : nombre d'adversaires (une arche par adversaire), écart entre deux arches, écart de niveau des bots autour de `bots.level_pct` et suite donnée à l'élimination du cycliste. Réglages « Survivant : … » du menu, dans « Séance ».
+La section `[survivor]` (lot DS2) règle le mode « Dernier survivant » (plan `docs/2.0/PLAN_SERIE_DS.md`) : nombre d'adversaires (une arche par adversaire), écart entre deux arches, écart de niveau des bots autour de `bots.level_pct` et suite donnée à l'élimination du cycliste. Réglages « Survivant : … » du menu, dans « Séance ».
 
 La section `[log]` (lot X7) active avec `latence = true` (ou `openride-core run --latence`) le journal de latence des appuis du Click : une ligne `[latence]` par étage (notification, événement, envoi à l'engine, Control Point) dans le journal du core, et `recu` puis `affiche` dans celui de l'engine ; `openride-core log-report --latence` en fait la statistique (docs/OUTILS_DE_TEST.md). Sans elle, aucune ligne.
 

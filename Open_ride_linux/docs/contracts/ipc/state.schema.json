@@ -673,6 +673,14 @@
                 "null"
               ],
               "maxLength": 8
+            },
+            "winner_name": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 16,
+              "description": "Facultatif : nom du vainqueur (« Toi » côté engine quand winner vaut me)."
             }
           }
         }

@@ -68,10 +68,10 @@ const NO_WORKOUT_ID := "_sim"
 ## liste que le core annoncera dans hello_ack.config (2.0, PLAN_SERIE_R §6) ; absente : DEFAULT_MODES.
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
 const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert",
-	"rogue": "Cyber-Rogue", "wtf": "Mode WTF"}
+	"rogue": "Cyber-Rogue", "wtf": "Mode WTF", "survivor": "Dernier survivant"}
 const DEFAULT_MODES := ["ride", "erg"]
 ## Ligne d'explication d'un mode de l'accueil (lot O22), à droite de son libellé.
-const HOME_DETAILS := {"open_world": "route créée en roulant"}
+const HOME_DETAILS := {"open_world": "route créée en roulant", "survivor": "à chaque arche, le dernier sort"}
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer ou importer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
 const IMPORT_WORKOUT_ID := "_import"
@@ -112,9 +112,14 @@ var _workouts_return: String = ROUTES
 ## Parcours choisi : id et nom ; "" tant qu'aucun n'est choisi.
 var world_id := ""
 var world_name := ""
-## Mode de la séance préparée : "free" (session libre, SIM), "erg", "rogue" ou "wtf" (mode « What the fuck »,
-## SIM seulement, lot WTF3).
+## Mode de la séance préparée : "free" (session libre, SIM), "erg", "rogue", "wtf" (mode « What the fuck »,
+## SIM seulement, lot WTF3) ou "survivor" (Dernier survivant, SIM seulement, lot DS7).
 var mode := "free"
+## Écran Prêt du Dernier survivant (lot DS7), posé par menu_flow.gd : rangées des réglages du mode
+## (SettingsViewModel.row, ids « set:clé ») et ligne « Lancer » ({enabled, detail} : « 4 arches, 8 km », ou
+## parcours trop court).
+var survivor_rows: Array = []
+var survivor_launch := {"enabled": true, "detail": ""}
 ## Engine lancé en session simulée (--sim-session) : l'accueil propose de revenir au matériel réel.
 var sim_session := false
 var _routes_return := HOME
@@ -210,6 +215,11 @@ func _refresh_home() -> void:
 			_item("rogue_change", "Changer les choix")]
 		_screens[READY]["title"] = "Prêt : Cyber-Rogue"
 		return
+	if mode == "survivor":
+		_screens[READY]["items"] = [_item("start", "Lancer", bool(survivor_launch.get("enabled", true)),
+			str(survivor_launch.get("detail", ""))), _item("change_route", "Changer de parcours")] + survivor_rows
+		_screens[READY]["title"] = "Prêt : Dernier survivant" + ("" if world_name == "" else " — " + world_name)
+		return
 	if mode == "wtf":
 		_screens[READY]["items"] = [_item("start", "Démarrer"), _item("wtf_rules", "Changer les règles"),
 			_item("change_route", "Changer de parcours")] + _bot_items() \
@@ -284,6 +294,28 @@ func prepare_wtf() -> Dictionary:
 	return state()
 
 
+## Séance du Dernier survivant (lot DS7) : SIM, `mode` « survivor » au `start`, adversaires composés par le core
+## d'après les réglages `survivor.*` ; ouvre l'écran Prêt, ou les parcours d'abord sans monde choisi.
+func prepare_survivor() -> Dictionary:
+	_clear_start()
+	mode = "survivor"
+	_refresh_home()
+	if world_id == "":
+		_routes_return = READY
+		_open(ROUTES)
+	else:
+		_open(READY)
+	return state()
+
+
+## Réglages et ligne « Lancer » de l'écran Prêt du Dernier survivant (menu_flow.gd).
+func set_survivor_ready(rows: Array, launch: Dictionary) -> void:
+	survivor_rows = rows
+	survivor_launch = launch
+	if mode == "survivor":
+		_refresh_home()
+
+
 func _clear_start() -> void:
 	start_name = ""
 	start_args = {}
@@ -292,6 +324,8 @@ func _clear_start() -> void:
 ## Arguments de `start` : séance préparée (plan_day, ftp_test) et bots choisis ({} si rien).
 func _start_args() -> Dictionary:
 	var out := start_args.duplicate()
+	if mode == "survivor":   # le core compose le plateau : pas d'argument `bots`
+		return {"mode": "survivor"}
 	if mode == "wtf":
 		out["mode"] = "wtf"
 	var bots: Array = []
@@ -403,7 +437,7 @@ func reset() -> void:
 	_clear_start()
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
-	if mode in ["rogue", "wtf"]:
+	if mode in ["rogue", "wtf", "survivor"]:
 		mode = "free"
 	_refresh_home()
 	_open(HOME, false)
@@ -700,7 +734,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "history", "rogue", "garage", "profile", "wtf", "interrupted":
+				"plan", "ftp", "history", "rogue", "garage", "profile", "wtf", "survivor", "interrupted":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
@@ -735,7 +769,7 @@ func _validate() -> Dictionary:
 		READY:
 			match id:
 				"start":
-					if mode != "rogue":   # bots de la séance notés aussi par le core (lot O32)
+					if not mode in ["rogue", "survivor"]:   # bots de la séance notés aussi par le core (lot O32)
 						last_bots = bot_choices.duplicate()
 						last_ghost = ghost
 					var args := _start_args()
@@ -757,6 +791,9 @@ func _validate() -> Dictionary:
 					return {"action": "item", "screen": READY, "id": id}
 				"records":   # écran « Records » (série T, lot T10), traité par menu_flow.gd
 					return {"action": "item", "screen": READY, "id": id}
+				_:   # réglages du Dernier survivant (« set:clé », lot DS7) : modifiés en place par menu_flow.gd
+					if id.begins_with("set:"):
+						return {"action": "item", "screen": READY, "id": id}
 		CONFIRM:
 			var act := _pending
 			_pending = {}

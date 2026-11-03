@@ -3,9 +3,9 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série DS : tactique de survie des bots (sprint avant l'arche selon la réserve W′, économie quand ils sont à l'abri) | Python | DS1 | Moyenne | **Livré le 31 octobre** (version 3.0) |
+| Série DS : tactique de survie des bots (sprint avant l'arche selon la réserve W′, économie quand ils sont à l'abri) | Python | DS1 | Moyenne | **Livré le 3 novembre** (version 2.0, PR unique DS1 à DS7) |
 
-Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/3.0/PLAN_SERIE_DS.md`.
+Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/2.0/PLAN_SERIE_DS.md`.
 
 ## 1. Objectif
 
@@ -13,7 +13,7 @@ Donner aux bots à profil une règle de course à l'élimination : sprinter avan
 
 ## 2. À lire
 
-`docs/3.0/PLAN_SERIE_DS.md` §3 ; `core/src/openride_core/bots.py` (`ProfileBot`, roue suivie de l'AS1) ; `core/src/openride_core/rogue/wbal.py` ; `docs/lots/LOT_Y10_comportement_bots_core.md` (ce que Y10 ajoutera plus tard).
+`docs/2.0/PLAN_SERIE_DS.md` §3 ; `core/src/openride_core/bots.py` (`ProfileBot`, roue suivie de l'AS1) ; `core/src/openride_core/rogue/wbal.py` ; `docs/lots/LOT_Y10_comportement_bots_core.md` (ce que Y10 ajoutera plus tard).
 
 ## 3. Travail demandé
 

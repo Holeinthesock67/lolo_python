@@ -24,7 +24,8 @@ extends RefCounted
 ## - `JINGLES` : notes `[début s, fréquence Hz, durée s, niveau 0 à 1, timbre]`, timbre `tone` (note
 ##   douce, deux harmoniques) ou `bell` (cloche, partiels inharmoniques amortis). Palette commune aux
 ##   bruitages du mode Rogue (lot R18) : gamme de do majeur, notes de 523 à 2 093 Hz, au-dessus du vent
-##   et de la roue libre. Synthèse : sound_player.gd ; remplaçables par ~/OpenRide/Sounds/<nom>.ogg.
+##   et de la roue libre. `jingle_elim` et `jingle_winner` (lot DS5) : rendus par survivor_hud_model.gd à chaque
+##   message `elimination` nouveau. Synthèse : sound_player.gd ; remplaçables par ~/OpenRide/Sounds/<nom>.ogg.
 
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 
@@ -53,6 +54,10 @@ const JINGLES := {
 		[0.15, C7, 0.5, 0.4, "bell"]],
 	"jingle_finish": [[0.0, G5, 0.14, 0.55, "tone"], [0.15, G5, 0.14, 0.55, "tone"], [0.30, G5, 0.14, 0.55, "tone"],
 		[0.45, C6, 0.9, 0.6, "tone"], [0.45, E5, 0.9, 0.35, "tone"], [0.45, C7, 1.4, 0.3, "bell"]],
+	# Dernier survivant (lot DS5) : élimination, deux notes qui descendent ; victoire, arpège et cloche
+	"jingle_elim": [[0.0, G5, 0.14, 0.6, "tone"], [0.16, C5, 0.45, 0.6, "tone"]],
+	"jingle_winner": [[0.0, C6, 0.1, 0.55, "tone"], [0.11, E6, 0.1, 0.55, "tone"], [0.22, G6, 0.1, 0.55, "tone"],
+		[0.33, C7, 1.2, 0.45, "bell"], [0.33, C6, 0.9, 0.4, "tone"]],
 }
 
 var _arches := PackedFloat64Array()

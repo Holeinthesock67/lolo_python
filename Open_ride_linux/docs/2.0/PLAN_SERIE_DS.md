@@ -4,6 +4,8 @@ Demande du propriétaire du 31 octobre 2026 : « un mode dernier survivant. Le j
 
 Sources lues : `core/src/openride_core/bots.py` (bots constants, fantôme, bots à profil T12 avec réserve W′, calibrage T13, au plus 4 bots plus le fantôme), `core/src/openride_core/classic.py` (T7), `core/src/openride_core/draft.py` (AS1), `core/src/openride_core/session.py` (commande `start`, `mode` `ride` ou `wtf`), `docs/contracts/ipc_v1.md` (liste `bots`, limite de 4 096 octets, `segment_result`), `docs/2.0/PLAN_SERIE_WTF.md`, `docs/5.0/PLAN_SERIE_CT.md`, `docs/4.0/PLAN_SERIE_TT.md`, cahiers AS1, AS4, Y10 et Y18.
 
+
+**État au 3 novembre 2026 (version 2.0, choix du propriétaire)** : DS1, DS2, DS3, DS5, DS6 et DS7 livrés ensemble dans une seule branche partie de `main` (règles, séance et contrat, tactique des bots, arche d'élimination et bots qui se rangent, HUD, bandeaux et bilan, entrée au menu), avec des courses complètes simulées sans vélo (`core/tests/test_survivor_courses.py`) ; DS4 (maquettes) validé le 31 octobre. Restent les captures `low`, `medium` et `high` à faire valider (scénarios `engine/tests/captures_ds/`), puis DS9 réduit à un bloc de 10 min sur le vélo (le ressenti) ; DS8 attend le peloton.
 ---
 
 ## 1. En bref
@@ -135,7 +137,7 @@ Tous les prérequis de DS1 sont sur `main` (bots à profil, calibrage, abri entr
 
 ## 9. Questions ouvertes (réponses par défaut appliquées en attendant)
 
-1. **Version** : rangé en **3.0** (première version après la 2.0, où sont les bots à profil et l'aspiration fine). Rien n'empêche de l'avancer : ses prérequis sont déjà livrés.
+1. **Version** : rangé d'abord en 3.0, **avancé en 2.0 par le propriétaire le 3 novembre** (avant la publication de la 2.0) ; ses prérequis étaient déjà livrés.
 2. **Joueur éliminé** : continuer à rouler par défaut, terminer la séance en option.
 3. **Arches** : une par adversaire, tous les 2 km par défaut (1 à 3 km au menu), calées sur une ligne de sprint ou un sommet à moins de 300 m.
 4. **Bonus, segments, records et maillots** : coupés dans ce mode.
