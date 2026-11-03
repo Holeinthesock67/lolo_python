@@ -789,14 +789,14 @@
           {
             "name": "sable",
             "role": "flat",
-            "color": "#cbab72",
+            "color": "#a8783c",
             "texture": null,
             "scale_m": 6.0
           },
           {
             "name": "sable des dunes",
             "role": "steep",
-            "color": "#c99d62",
+            "color": "#9c6a32",
             "texture": null,
             "scale_m": 12.0
           }
