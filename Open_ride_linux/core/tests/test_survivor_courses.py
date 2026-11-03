@@ -38,8 +38,6 @@ class Course:
     def _count_contacts(self) -> None:
         """Contacts comme le banc les compte (living_decor.gd, lot P32) : roues qui se chevauchent (moins de 1,7 m, longueur d'un vélo du core,
         le long de la route) et moins de 2 × 0,3 m d'écart latéral, bots entre eux et cycliste."""
-        if self.s._t_session < 15.0:   # départ groupé : les bots partent côte à côte et se rangent (lot AS2)
-            return
         riders = [("cycliste", self.s.physics.s, self.s._lane.m)]
         riders += [(b.name, b.s, b.lane.m) for b in self.s.bots if getattr(b, "lane", None) is not None]
         for i, (na, sa, la) in enumerate(riders):
@@ -135,6 +133,25 @@ def test_full_race_one_elimination_per_arch(course, caplog, opponents, spacing_k
     errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
     assert not errors, [r.getMessage() for r in errors]
     assert not c.errors
+
+
+@pytest.mark.parametrize("quality_port", [6890])
+def test_capture_scenario_is_decided_and_without_contacts(course, quality_port):
+    """Scénario des captures (captures_ds) : ~195 W contre 2 bots à 74 % ± 8 % d'une FTP de 250 W (205 et
+    165 W), une arche par km : le Rouleur sort à l'arche 1, le cycliste à l'arche 2, sans aucun contact depuis
+    le départ ; le Grimpeur reste assez près pour être à l'écran avant la première arche."""
+    c = course(quality_port, power_w=195.0, opponents=2, spacing_km=1, level_pct=74, spread="normal")
+    grimpeur = next(b for b in c.s.bots if b.id == "bot1")
+    c.until(lambda s: s.physics.s >= 850.0)
+    gap = grimpeur.s - c.s.physics.s
+    print("écart du Grimpeur à 850 m :", round(gap, 1))
+    assert 0.0 < gap < 80.0, gap
+    c.until(lambda s: s.survivor.winner is not None)
+    c.s._on_command("end_session", {"save": True}, 9)
+    summary = _check_bilan(c, 2)
+    print("éliminations :", summary["eliminated"])
+    assert [r for _, r in c.eliminations()] == ["bot2", "me"] and summary["place"] == 2
+    assert not c.contacts, c.contacts[:5]
 
 
 def test_weak_rider_out_keeps_riding_then_clean_end(course):

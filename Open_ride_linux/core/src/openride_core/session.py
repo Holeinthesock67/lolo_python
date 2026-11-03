@@ -492,6 +492,7 @@ class CoreSession:
                 if field is None:
                     return
                 self._set_bots(field)
+                draft_mod.start_grid(self.bots, self.physics.s)   # grille de départ (lot AS2) : pas de bots empilés
             elif not self._choose_start_workout(args if isinstance(args, dict) else {}):
                 return
             elif not self._choose_start_bots(args if isinstance(args, dict) else {}):

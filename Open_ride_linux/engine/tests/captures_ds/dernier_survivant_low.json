@@ -7,8 +7,8 @@
     "render.quality": "low",
     "survivor.opponents": 2,
     "survivor.spacing_km": 1,
-    "bots.level_pct": 78,
-    "survivor.spread": "wide"
+    "bots.level_pct": 74,
+    "survivor.spread": "normal"
   },
   "etapes": [
     {
@@ -61,7 +61,8 @@
       "menu_cache": true
     },
     {
-      "attendre": 70
+      "note": "≈ 0,9 km : arche 1 à une centaine de mètres (marques affichées à 400 m), Grimpeur une trentaine de mètres devant",
+      "attendre": 180
     },
     {
       "capture": "ds_2_approche_low"
