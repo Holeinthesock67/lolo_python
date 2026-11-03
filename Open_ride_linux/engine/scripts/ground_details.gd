@@ -35,7 +35,7 @@ const ROCK_SHAPES := 3
 const KINDS: Array[String] = ["rock", "grass", "termite"]
 ## Probabilité qu'une place d'une sorte soit remplie dans un biome (0 ou absent : jamais).
 const DENSITY := {
-	"rock": {"alpine": 0.9, "rock_desert": 1.0, "tundra": 0.5, "volcanic": 1.0},
+	"rock": {"alpine": 0.9, "rock_desert": 1.0, "sand_desert": 0.5, "tundra": 0.5, "volcanic": 1.0},
 	"grass": {"savanna": 1.0, "steppe": 0.7},
 	"termite": {"savanna": 1.0},
 }
