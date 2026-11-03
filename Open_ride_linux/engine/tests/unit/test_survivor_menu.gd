@@ -57,8 +57,8 @@ func _run() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
 	f.menu.set_modes(["ride", "erg", "wtf", "survivor"])
-	f.on_settings(SETTINGS)
-	f.set_routes(ROUTES)
+	f.on_settings(SETTINGS.duplicate(true))   # const : lecture seule, le flux modifie les réglages en place
+	f.set_routes(ROUTES.duplicate(true))
 	f.on_state({"session_state": "IDLE"})
 	_check("survivor" in _ids(f), "modes avec « survivor » : entrée Dernier survivant")
 	_check(_item(f, "survivor")["label"] == "Dernier survivant" and str(_item(f, "survivor")["detail"]) != "", "libellé et explication")
