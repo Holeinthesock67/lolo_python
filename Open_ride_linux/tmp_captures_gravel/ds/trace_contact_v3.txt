@@ -1,0 +1,115 @@
+# Dernier survivant v3, tête 69ebf04e, captures menu_bench clavier. Trace locale non committée.
+# [contact] = paire vue par living_decor._count_contacts (engine) : temps, écarts, s et latéral du bot (a) et du cycliste (b), cam_s.
+# [core-bots] = état brut reçu du core (rider_s, lane du cycliste, bots avec s et lane_m) quand un bot est à moins de 4 m.
+
+===== medium (RUNNING à la ligne 936)
+1544 1907 
+[core-bots] 49.2997 rider_s 40.670 lane 1.2  | Grimpeur s 46.79 lane 2.1 v 5.508 | Rouleur s 37.2 lane 1.2 v 4.357
+[core-bots] 49.3628 rider_s 40.870 lane 1.2  | Grimpeur s 47.01 lane 2.1 v 5.513 | Rouleur s 37.38 lane 1.2 v 4.361
+[core-bots] 49.4272 rider_s 41.060 lane 1.2  | Grimpeur s 47.23 lane 2.1 v 5.518 | Rouleur s 37.55 lane 1.2 v 4.365
+[core-bots] 49.4288 rider_s 41.160 lane 1.2  | Grimpeur s 47.35 lane 2.1 v 5.52 | Rouleur s 37.64 lane 1.2 v 4.367
+[core-bots] 49.4930 rider_s 41.350 lane 1.2  | Grimpeur s 47.56 lane 2.1 v 5.525 | Rouleur s 37.81 lane 1.2 v 4.371
+[core-bots] 49.4947 rider_s 41.540 lane 1.2  | Grimpeur s 47.78 lane 2.1 v 5.53 | Rouleur s 37.99 lane 1.2 v 4.375
+[core-bots] 49.4965 rider_s 41.640 lane 1.2  | Grimpeur s 47.9 lane 2.1 v 5.532 | Rouleur s 38.08 lane 1.2 v 4.377
+[core-bots] 49.5600 rider_s 41.830 lane 1.2  | Grimpeur s 48.12 lane 2.1 v 5.537 | Rouleur s 38.25 lane 1.2 v 4.38
+[contact] 49.6235 bot cycliste ds 2.007 dl 0.000 a_s 38.287 a_lat 1.200 b_s 40.295 b_lat 1.200 cam_s 40.295
+[core-bots] 49.6244 rider_s 42.030 lane 1.2  | Grimpeur s 48.34 lane 2.1 v 5.541 | Rouleur s 38.43 lane 1.2 v 4.384
+[core-bots] 49.6261 rider_s 42.120 lane 1.2  | Grimpeur s 48.45 lane 2.1 v 5.544 | Rouleur s 38.51 lane 1.2 v 4.386
+[contact] 49.6900 bot cycliste ds 1.819 dl 0.000 a_s 38.553 a_lat 1.200 b_s 40.371 b_lat 1.200 cam_s 40.371
+[core-bots] 49.6910 rider_s 42.310 lane 1.2  | Grimpeur s 48.67 lane 2.1 v 5.548 | Rouleur s 38.69 lane 1.2 v 4.39
+[core-bots] 49.6927 rider_s 42.510 lane 1.2  | Grimpeur s 48.89 lane 2.1 v 5.553 | Rouleur s 38.87 lane 1.2 v 4.394
+[core-bots] 49.6947 rider_s 42.600 lane 1.2  | Grimpeur s 49.0 lane 2.1 v 5.555 | Rouleur s 38.95 lane 1.2 v 4.395
+[contact] 49.7598 bot cycliste ds 1.638 dl 0.000 a_s 38.821 a_lat 1.200 b_s 40.459 b_lat 1.200 cam_s 40.459
+[core-bots] 49.7608 rider_s 42.800 lane 1.2  | Grimpeur s 49.22 lane 2.1 v 5.56 | Rouleur s 39.13 lane 1.2 v 4.399
+[contact] 49.8228 bot cycliste ds 1.382 dl 0.000 a_s 39.176 a_lat 1.200 b_s 40.557 b_lat 1.200 cam_s 40.557
+[core-bots] 49.8238 rider_s 43.000 lane 1.2  | Grimpeur s 49.45 lane 2.1 v 5.564 | Rouleur s 39.31 lane 1.2 v 4.403
+[core-bots] 49.8255 rider_s 43.100 lane 1.2  | Grimpeur s 49.56 lane 2.1 v 5.566 | Rouleur s 39.4 lane 1.2 v 4.405
+[contact] 49.8859 bot cycliste ds 1.216 dl 0.000 a_s 39.433 a_lat 1.200 b_s 40.649 b_lat 1.200 cam_s 40.649
+[core-bots] 49.8869 rider_s 43.290 lane 1.2  | Grimpeur s 49.78 lane 2.1 v 5.571 | Rouleur s 39.57 lane 1.2 v 4.408
+[core-bots] 49.8886 rider_s 43.480 lane 1.2  | Grimpeur s 50.01 lane 2.1 v 5.575 | Rouleur s 39.75 lane 1.2 v 4.412
+[contact] 49.9211 bot cycliste ds 1.055 dl 0.000 a_s 39.692 a_lat 1.200 b_s 40.747 b_lat 1.200 cam_s 40.747
+[core-bots] 49.9221 rider_s 43.580 lane 1.2  | Grimpeur s 50.12 lane 2.1 v 5.578 | Rouleur s 39.83 lane 1.2 v 4.414
+[contact] 49.9270 bot cycliste ds 0.986 dl 0.000 a_s 39.857 a_lat 1.200 b_s 40.843 b_lat 1.200 cam_s 40.843
+[contact] 49.9335 bot cycliste ds 1.111 dl 0.000 a_s 39.882 a_lat 1.200 b_s 40.993 b_lat 1.200 cam_s 40.993
+[contact] 49.9440 bot cycliste ds 1.333 dl 0.000 a_s 39.909 a_lat 1.200 b_s 41.242 b_lat 1.200 cam_s 41.242
+[core-bots] 49.9449 rider_s 43.780 lane 1.2  | Grimpeur s 50.34 lane 2.1 v 5.582 | Rouleur s 40.01 lane 1.2 v 4.417
+[contact] 49.9605 bot cycliste ds 1.607 dl 0.000 a_s 39.953 a_lat 1.200 b_s 41.560 b_lat 1.200 cam_s 41.560
+[contact] 49.9772 bot cycliste ds 1.893 dl 0.000 a_s 40.032 a_lat 1.200 b_s 41.925 b_lat 1.200 cam_s 41.925
+[core-bots] 49.9782 rider_s 43.970 lane 1.2  | Grimpeur s 50.56 lane 2.1 v 5.586 | Rouleur s 40.19 lane 1.2 v 4.421
+[contact] 49.9939 bot cycliste ds 2.085 dl 0.000 a_s 40.112 a_lat 1.200 b_s 42.196 b_lat 1.200 cam_s 42.196
+[core-bots] 49.9949 rider_s 44.070 lane 1.2  | Grimpeur s 50.67 lane 2.1 v 5.588 | Rouleur s 40.28 lane 1.2 v 4.423
+[core-bots] 50.0448 rider_s 44.270 lane 1.2  | Grimpeur s 50.9 lane 2.1 v 5.593 | Rouleur s 40.46 lane 1.2 v 4.426
+[core-bots] 50.0781 rider_s 44.460 lane 1.2  | Grimpeur s 51.12 lane 2.1 v 5.597 | Rouleur s 40.63 lane 1.2 v 4.43
+[core-bots] 50.0949 rider_s 44.550 lane 1.2  | Grimpeur s 51.23 lane 2.1 v 5.599 | Rouleur s 40.72 lane 1.2 v 4.432
+
+===== high (RUNNING à la ligne 967)
+1574 2010 
+[core-bots] 50.5451 rider_s 40.700 lane 1.2  | Grimpeur s 46.89 lane 2.1 v 5.511 | Rouleur s 37.28 lane 1.2 v 4.358
+[core-bots] 50.5467 rider_s 40.890 lane 1.2  | Grimpeur s 47.12 lane 2.1 v 5.515 | Rouleur s 37.46 lane 1.2 v 4.362
+[core-bots] 50.6082 rider_s 41.080 lane 1.2  | Grimpeur s 47.34 lane 2.1 v 5.52 | Rouleur s 37.63 lane 1.2 v 4.366
+[core-bots] 50.6099 rider_s 41.180 lane 1.2  | Grimpeur s 47.45 lane 2.1 v 5.523 | Rouleur s 37.72 lane 1.2 v 4.368
+[core-bots] 50.6704 rider_s 41.370 lane 1.2  | Grimpeur s 47.67 lane 2.1 v 5.527 | Rouleur s 37.9 lane 1.2 v 4.372
+[core-bots] 50.7322 rider_s 41.570 lane 1.2  | Grimpeur s 47.89 lane 2.1 v 5.532 | Rouleur s 38.07 lane 1.2 v 4.376
+[core-bots] 50.7346 rider_s 41.670 lane 1.2  | Grimpeur s 48.01 lane 2.1 v 5.535 | Rouleur s 38.16 lane 1.2 v 4.378
+[core-bots] 50.7365 rider_s 41.860 lane 1.2  | Grimpeur s 48.22 lane 2.1 v 5.539 | Rouleur s 38.33 lane 1.2 v 4.381
+[contact] 50.7983 bot cycliste ds 2.120 dl 0.000 a_s 38.221 a_lat 1.200 b_s 40.341 b_lat 1.200 cam_s 40.341
+[core-bots] 50.7993 rider_s 42.050 lane 1.2  | Grimpeur s 48.44 lane 2.1 v 5.544 | Rouleur s 38.51 lane 1.2 v 4.385
+[core-bots] 50.8011 rider_s 42.140 lane 1.2  | Grimpeur s 48.56 lane 2.1 v 5.546 | Rouleur s 38.6 lane 1.2 v 4.387
+[contact] 50.8624 bot cycliste ds 1.874 dl 0.000 a_s 38.549 a_lat 1.200 b_s 40.422 b_lat 1.200 cam_s 40.422
+[core-bots] 50.8634 rider_s 42.340 lane 1.2  | Grimpeur s 48.78 lane 2.1 v 5.55 | Rouleur s 38.77 lane 1.2 v 4.391
+[contact] 50.9254 bot cycliste ds 1.659 dl 0.000 a_s 38.846 a_lat 1.200 b_s 40.506 b_lat 1.200 cam_s 40.506
+[core-bots] 50.9269 rider_s 42.530 lane 1.2  | Grimpeur s 49.0 lane 2.1 v 5.555 | Rouleur s 38.95 lane 1.2 v 4.395
+[core-bots] 50.9292 rider_s 42.630 lane 1.2  | Grimpeur s 49.11 lane 2.1 v 5.557 | Rouleur s 39.03 lane 1.2 v 4.396
+[contact] 50.9906 bot cycliste ds 1.514 dl 0.000 a_s 39.091 a_lat 1.200 b_s 40.605 b_lat 1.200 cam_s 40.605
+[core-bots] 50.9917 rider_s 42.820 lane 1.2  | Grimpeur s 49.33 lane 2.1 v 5.562 | Rouleur s 39.21 lane 1.2 v 4.4
+[core-bots] 50.9940 rider_s 43.020 lane 1.2  | Grimpeur s 49.55 lane 2.1 v 5.566 | Rouleur s 39.39 lane 1.2 v 4.404
+[core-bots] 50.9956 rider_s 43.110 lane 1.2  | Grimpeur s 49.66 lane 2.1 v 5.569 | Rouleur s 39.47 lane 1.2 v 4.406
+[contact] 51.0589 bot cycliste ds 1.362 dl 0.000 a_s 39.344 a_lat 1.200 b_s 40.707 b_lat 1.200 cam_s 40.707
+[core-bots] 51.0598 rider_s 43.310 lane 1.2  | Grimpeur s 49.89 lane 2.1 v 5.573 | Rouleur s 39.65 lane 1.2 v 4.409
+[contact] 51.1225 bot cycliste ds 1.123 dl 0.000 a_s 39.688 a_lat 1.200 b_s 40.811 b_lat 1.200 cam_s 40.811
+[core-bots] 51.1236 rider_s 43.510 lane 1.2  | Grimpeur s 50.11 lane 2.1 v 5.577 | Rouleur s 39.83 lane 1.2 v 4.413
+[core-bots] 51.1251 rider_s 43.600 lane 1.2  | Grimpeur s 50.23 lane 2.1 v 5.58 | Rouleur s 39.92 lane 1.2 v 4.415
+[contact] 51.1901 bot cycliste ds 0.976 dl 0.000 a_s 39.952 a_lat 1.200 b_s 40.927 b_lat 1.200 cam_s 40.927
+[core-bots] 51.1911 rider_s 43.800 lane 1.2  | Grimpeur s 50.45 lane 2.1 v 5.584 | Rouleur s 40.09 lane 1.2 v 4.418
+[core-bots] 51.1930 rider_s 43.990 lane 1.2  | Grimpeur s 50.67 lane 2.1 v 5.588 | Rouleur s 40.27 lane 1.2 v 4.422
+[core-bots] 51.1953 rider_s 44.090 lane 1.2  | Grimpeur s 50.78 lane 2.1 v 5.591 | Rouleur s 40.36 lane 1.2 v 4.424
+[contact] 51.2585 bot cycliste ds 0.842 dl 0.000 a_s 40.231 a_lat 1.200 b_s 41.074 b_lat 1.200 cam_s 41.074
+[core-bots] 51.2596 rider_s 44.290 lane 1.2  | Grimpeur s 51.01 lane 2.1 v 5.595 | Rouleur s 40.54 lane 1.2 v 4.427
+[contact] 51.3186 bot cycliste ds 0.617 dl 0.000 a_s 40.579 a_lat 1.200 b_s 41.196 b_lat 1.200 cam_s 41.196
+[core-bots] 51.3196 rider_s 44.480 lane 1.2  | Grimpeur s 51.23 lane 2.1 v 5.599 | Rouleur s 40.71 lane 1.2 v 4.431
+[core-bots] 51.3213 rider_s 44.580 lane 1.2  | Grimpeur s 51.34 lane 2.1 v 5.601 | Rouleur s 40.8 lane 1.2 v 4.433
+[contact] 51.3834 bot cycliste ds 0.496 dl 0.000 a_s 40.828 a_lat 1.200 b_s 41.325 b_lat 1.200 cam_s 41.325
+[core-bots] 51.3845 rider_s 44.780 lane 1.2  | Grimpeur s 51.57 lane 2.1 v 5.606 | Rouleur s 40.98 lane 1.2 v 4.436
+[core-bots] 51.3862 rider_s 44.970 lane 1.2  | Grimpeur s 51.79 lane 2.1 v 5.61 | Rouleur s 41.16 lane 1.2 v 4.44
+[contact] 51.4501 bot cycliste ds 0.364 dl 0.000 a_s 41.098 a_lat 1.200 b_s 41.462 b_lat 1.200 cam_s 41.462
+[core-bots] 51.4511 rider_s 45.070 lane 1.2  | Grimpeur s 51.9 lane 2.1 v 5.612 | Rouleur s 41.24 lane 1.2 v 4.441
+[core-bots] 51.4539 rider_s 45.270 lane 1.2  | Grimpeur s 52.13 lane 2.1 v 5.616 | Rouleur s 41.42 lane 1.2 v 4.445
+[contact] 51.5186 bot cycliste ds 0.194 dl 0.000 a_s 41.415 a_lat 1.200 b_s 41.609 b_lat 1.200 cam_s 41.609
+[core-bots] 51.5196 rider_s 45.460 lane 1.2  | Grimpeur s 52.35 lane 2.1 v 5.62 | Rouleur s 41.6 lane 1.2 v 4.448
+[core-bots] 51.5212 rider_s 45.570 lane 1.2  | Grimpeur s 52.47 lane 2.1 v 5.623 | Rouleur s 41.69 lane 1.2 v 4.45
+[contact] 51.5809 bot cycliste ds 0.044 dl 0.000 a_s 41.713 a_lat 1.200 b_s 41.757 b_lat 1.200 cam_s 41.757
+[core-bots] 51.5819 rider_s 45.760 lane 1.2  | Grimpeur s 52.69 lane 2.1 v 5.627 | Rouleur s 41.87 lane 1.2 v 4.453
+[core-bots] 51.5835 rider_s 45.950 lane 1.2  | Grimpeur s 52.92 lane 2.1 v 5.631 | Rouleur s 42.05 lane 1.2 v 4.457
+[contact] 51.6422 bot cycliste ds 0.065 dl 0.000 a_s 41.976 a_lat 1.200 b_s 41.912 b_lat 1.200 cam_s 41.912
+[core-bots] 51.6432 rider_s 46.050 lane 1.2  | Grimpeur s 53.03 lane 2.1 v 5.633 | Rouleur s 42.13 lane 1.2 v 4.458
+[core-bots] 51.6450 rider_s 46.250 lane 1.2  | Grimpeur s 53.25 lane 2.1 v 5.637 | Rouleur s 42.31 lane 1.2 v 4.462
+[contact] 51.7044 bot cycliste ds 0.202 dl 0.000 a_s 42.274 a_lat 1.200 b_s 42.072 b_lat 1.200 cam_s 42.072
+[core-bots] 51.7054 rider_s 46.450 lane 1.2  | Grimpeur s 53.48 lane 2.1 v 5.641 | Rouleur s 42.49 lane 1.2 v 4.465
+[core-bots] 51.7074 rider_s 46.540 lane 1.2  | Grimpeur s 53.59 lane 2.1 v 5.643 | Rouleur s 42.58 lane 1.2 v 4.467
+[contact] 51.7680 bot cycliste ds 0.323 dl 0.000 a_s 42.560 a_lat 1.200 b_s 42.237 b_lat 1.200 cam_s 42.237
+[core-bots] 51.7690 rider_s 46.740 lane 1.2  | Grimpeur s 53.82 lane 2.1 v 5.647 | Rouleur s 42.76 lane 1.2 v 4.47
+[contact] 51.8289 bot cycliste ds 0.449 dl 0.000 a_s 42.847 a_lat 1.200 b_s 42.398 b_lat 1.200 cam_s 42.398
+[contact] 51.8951 bot cycliste ds 0.504 dl 0.000 a_s 43.083 a_lat 1.200 b_s 42.579 b_lat 1.200 cam_s 42.579
+[contact] 51.9604 bot cycliste ds 0.654 dl 0.000 a_s 43.423 a_lat 1.200 b_s 42.769 b_lat 1.200 cam_s 42.769
+[contact] 52.0224 bot cycliste ds 0.781 dl 0.000 a_s 43.735 a_lat 1.200 b_s 42.955 b_lat 1.200 cam_s 42.955
+[contact] 52.0868 bot cycliste ds 0.853 dl 0.000 a_s 43.981 a_lat 1.200 b_s 43.128 b_lat 1.200 cam_s 43.128
+[contact] 52.1518 bot cycliste ds 0.911 dl 0.000 a_s 44.244 a_lat 1.200 b_s 43.333 b_lat 1.200 cam_s 43.333
+[contact] 52.1668 bot cycliste ds 1.031 dl 0.000 a_s 44.550 a_lat 1.200 b_s 43.519 b_lat 1.200 cam_s 43.519
+[contact] 52.1719 bot cycliste ds 0.608 dl 0.000 a_s 44.617 a_lat 1.200 b_s 44.009 b_lat 1.200 cam_s 44.009
+[contact] 52.1794 bot cycliste ds 0.425 dl 0.000 a_s 44.639 a_lat 1.200 b_s 44.215 b_lat 1.200 cam_s 44.215
+[contact] 52.1942 bot cycliste ds 0.067 dl 0.000 a_s 44.677 a_lat 1.200 b_s 44.744 b_lat 1.200 cam_s 44.744
+[contact] 52.2103 bot cycliste ds 0.448 dl 0.000 a_s 44.753 a_lat 1.200 b_s 45.201 b_lat 1.200 cam_s 45.201
+[contact] 52.2268 bot cycliste ds 0.928 dl 0.000 a_s 44.833 a_lat 1.200 b_s 45.761 b_lat 1.200 cam_s 45.761
+[contact] 52.2440 bot cycliste ds 1.405 dl 0.000 a_s 44.915 a_lat 1.200 b_s 46.321 b_lat 1.200 cam_s 46.321
+[contact] 52.2600 bot cycliste ds 1.654 dl 0.000 a_s 45.002 a_lat 1.200 b_s 46.655 b_lat 1.200 cam_s 46.655
+[contact] 52.2769 bot cycliste ds 1.990 dl 0.000 a_s 45.073 a_lat 1.200 b_s 47.064 b_lat 1.200 cam_s 47.064
