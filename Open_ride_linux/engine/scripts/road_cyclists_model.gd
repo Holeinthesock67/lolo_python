@@ -569,59 +569,90 @@ func riders() -> Array:
 
 
 ## Lot AS7 : liste `riders` du core (une trame sur trois, `seq` de la trame), reprise une seule fois par trame.
-## Chaque cycliste reçu devient un groupe `core` d'un cycliste, extrapolé jusqu'à la liste suivante ; le membre
-## de l'engine de même `id` lui laisse sa place (et sa tenue, son pédalier). Les cyclistes de l'engine à moins de
-## NEAR_M − CORE_MARGIN_M que la liste ne donne pas (liste qui n'est pas pleine) ne sont plus sur la route. Un
-## cycliste que le core ne suit plus reste au décor, à sa dernière vitesse, jusqu'à sortir de la fenêtre.
+## Les cyclistes reçus d'un même groupe (`c<case>-<rang>`) forment un groupe `core` de même `id` que celui de
+## l'engine, extrapolé jusqu'à la liste suivante ; le membre de l'engine de même `id` lui laisse sa place (et sa
+## tenue, son pédalier). Un cycliste, de l'engine ou du core, absent d'une liste qui n'est pas pleine à moins de
+## NEAR_M − CORE_MARGIN_M n'est plus sur la route ; plus loin, un groupe que le core ne suit plus reste au décor, à
+## sa dernière vitesse, jusqu'à sortir de la fenêtre.
 func sync_core(list: Array, seq: int, rider_s: float) -> void:
 	if seq == _core_seq:
 		return
 	_core_seq = seq
+	var full := list.size() >= CORE_LIST_MAX
 	var by_id := {}
 	for g in groups:
 		if str(g["case"]) == "core":
 			by_id[str(g["id"])] = g
-	var seen := {}
-	var added := []
+	var items_of := {}                # groupe -> cyclistes reçus
 	for item in list:
 		if typeof(item) != TYPE_DICTIONARY or str(item.get("id", "")) == "":
 			continue
-		var id := str(item["id"])
-		seen[id] = true
-		var cg: Dictionary = by_id.get(id, {})
+		var gid := str(item["id"]).get_slice("-", 0)
+		if not items_of.has(gid):
+			items_of[gid] = []
+		items_of[gid].append(item)
+	var seen := {}
+	var added := []
+	for gid in items_of:
+		var items: Array = items_of[gid]
+		var cg: Dictionary = by_id.get(gid, {})
 		if cg.is_empty():
-			var cm := _take_member(id)
+			cg = {"id": gid, "case": "core", "dir": 1, "s": rider_s, "speed_mps": 0.0, "members": [], "salut": false,
+				"passed": true, "speed_at": INF, "behind_t": 0.0, "best_rel": -INF, "side": "right"}
+			added.append(cg)
+		var dir := 1 if int(items[0].get("dir", 1)) >= 0 else -1
+		var head := -INF
+		for item in items:
+			head = maxf(head, float(item.get("s", rider_s)) * dir)
+		var own := {}
+		for m in cg["members"]:
+			own[str(m["id"])] = m
+		var members := []
+		for item in items:
+			var id := str(item["id"])
+			seen[id] = true
+			var cm: Dictionary = own.get(id, {})
+			if cm.is_empty():
+				cm = _take_member(id)
 			if cm.is_empty():
 				var look := int(item.get("look", 0))
 				cm = {"jersey": look % 8, "look": (look >> 4) & 0xFFFF, "phase": _u(VegetationPlacer._mix(look)), "id": id}
-			cm["dl"] = 0.0
+			cm["dl"] = head - float(item.get("s", rider_s)) * dir
 			cm["col"] = 0
-			cg = {"id": id, "case": "core", "dir": 1, "s": rider_s, "speed_mps": 0.0, "members": [cm], "salut": false,
-				"passed": true, "speed_at": INF, "behind_t": 0.0, "best_rel": -INF, "side": "right"}
-			added.append(cg)
-		cg["dir"] = 1 if int(item.get("dir", 1)) >= 0 else -1
-		cg["s"] = float(item.get("s", rider_s))
-		cg["speed_mps"] = float(item.get("v", 0.0))
-		cg["members"][0]["lateral"] = float(item.get("lane_m", _edge_lateral()))
+			cm["lateral"] = float(item.get("lane_m", _edge_lateral()))
+			members.append(cm)
+		for m in cg["members"]:
+			if not seen.has(str(m["id"])) and _still_on_road(cg, m, rider_s, full):
+				members.append(m)
+		cg["members"] = members
+		cg["dir"] = dir
+		cg["s"] = head * dir
+		cg["speed_mps"] = float(items[0].get("v", 0.0))
 		cg["core"] = true
-	var full := list.size() >= CORE_LIST_MAX
 	var kept := []
 	for g in groups:
-		if str(g["case"]) == "core":
-			if not seen.has(str(g["id"])):
-				g.erase("core")             # sorti de la liste : décor lointain
+		var is_core := str(g["case"]) == "core"
+		if is_core and items_of.has(str(g["id"])):
 			kept.append(g)
 			continue
 		var members := []
 		for m in g["members"]:
-			var s_m := float(g["s"]) - float(g["dir"]) * float(m["dl"])
-			if seen.has(str(m["id"])) or (not full and absf(s_m - rider_s) < NEAR_M - CORE_MARGIN_M):
-				continue                    # le core le donne, ou dit qu'il n'y est pas
-			members.append(m)
-		if not members.is_empty():
-			g["members"] = members
-			kept.append(g)
+			if not seen.has(str(m["id"])) and _still_on_road(g, m, rider_s, full):
+				members.append(m)
+		if members.is_empty():
+			continue
+		g["members"] = members
+		if is_core:
+			g.erase("core")                 # sorti de la liste : décor lointain
+		kept.append(g)
 	groups = kept + added
+
+
+## Faux si le core dit que le membre `m` du groupe `g` n'est plus sur la route : liste pas pleine et membre à moins
+## de NEAR_M − CORE_MARGIN_M du cycliste.
+func _still_on_road(g: Dictionary, m: Dictionary, rider_s: float, full: bool) -> bool:
+	var s_m := float(g["s"]) - float(g["dir"]) * float(m["dl"])
+	return full or absf(s_m - rider_s) >= NEAR_M - CORE_MARGIN_M
 
 
 ## Membre de l'engine d'identifiant `id`, retiré de son groupe (vide si l'engine ne l'a pas tiré).

@@ -76,16 +76,19 @@ func _run() -> void:
 		{"id": "c1000000-0", "s": s + 21.0, "dir": 1, "v": 6.0, "lane_m": 2.4, "look": 7},
 		{"id": "c1000000-1", "s": s + 19.5, "dir": 1, "v": 6.0, "lane_m": 2.4, "look": 7},
 		{"id": "c9-0", "s": s - 30.0, "dir": -1, "v": 8.0, "lane_m": -2.5, "look": (12 << 4) | 5},
+		{"id": "c5-0", "s": s + 58.0, "dir": 1, "v": 6.0, "lane_m": 2.5, "look": 3},
 	]
 	m.sync_core(list, 3, s)
 	var got := _by_id(m)
-	_check(got.has("c1000000-0") and got.has("c1000000-1") and got.has("c9-0") and got.has("c1000001-0"),
+	_check(got.has("c1000000-0") and got.has("c1000000-1") and got.has("c9-0") and got.has("c5-0") and got.has("c1000001-0"),
 		"cyclistes de la liste et décor lointain (300 m) gardés (%s)" % str(got.keys()))
 	_check(not got.has("c1000000-2"), "cycliste de l'engine à 17 m que la liste ne donne pas : retiré")
-	_check(got.size() == 4, "aucun doublon (%d cyclistes)" % got.size())
+	_check(got.size() == 5, "aucun doublon (%d cyclistes)" % got.size())
+	_check(not got.is_empty() and is_same(got["c1000000-0"]["group"], got["c1000000-1"]["group"]),
+		"cyclistes d'un même groupe reçus : un seul groupe (pas de contact compté entre eux)")
 	var r0: Dictionary = got.get("c1000000-0", {})
-	_check(not r0.is_empty() and absf(float(r0["s"]) - (s + 21.0)) < 1e-6 and absf(float(r0["lateral"]) - 2.4) < 1e-6,
-		"place et écart à l'axe du core repris")
+	_check(not r0.is_empty() and absf(float(r0["s"]) - (s + 21.0)) < 1e-6 and absf(float(r0["lateral"]) - 2.4) < 1e-6
+		and absf(float(got["c1000000-1"]["s"]) - (s + 19.5)) < 1e-6, "places et écarts à l'axe du core repris")
 	_check(not r0.is_empty() and int(r0["member"]["jersey"]) == jersey0, "maillot du cycliste de l'engine gardé")
 	var r9: Dictionary = got.get("c9-0", {})
 	_check(not r9.is_empty() and int(r9["dir"]) == -1 and int(r9["member"]["jersey"]) == 5 and int(r9["member"]["look"]) == 12,
@@ -95,13 +98,15 @@ func _run() -> void:
 	_check(absf(float(got["c1000000-0"]["s"]) - (s + 24.0)) < 1e-6 and absf(float(got["c9-0"]["s"]) - (s - 34.0)) < 1e-6,
 		"extrapolés entre deux listes, dans leur sens")
 	m.sync_core([], 3, s)
-	_check(_by_id(m).size() == 4, "même trame : liste reprise une seule fois")
+	_check(_by_id(m).size() == 5, "même trame : liste reprise une seule fois")
 	m.sync_core([list[0]], 6, s)
 	got = _by_id(m)
-	_check(got.has("c1000000-1") and not got["c1000000-1"]["group"].has("core"),
-		"cycliste sorti de la liste : laissé au décor, plus suivi par le core")
+	_check(got.has("c1000000-0") and not got.has("c1000000-1") and not got.has("c9-0"),
+		"cyclistes absents de la liste à moins de 55 m : plus sur la route (%s)" % str(got.keys()))
+	_check(got.has("c5-0") and not got["c5-0"]["group"].has("core"),
+		"cycliste à 61 m sorti de la liste : laissé au décor, plus suivi par le core")
 	m.update(s, 7.0, 0.5)
-	_check(absf(float(_by_id(m)["c1000000-1"]["s"]) - (s + 19.5 + 6.0)) < 1e-6, "... il garde sa dernière vitesse")
+	_check(absf(float(_by_id(m)["c5-0"]["s"]) - (s + 58.0 + 6.0)) < 1e-6, "... il garde sa dernière vitesse")
 
 	# Liste pleine : les cyclistes proches qu'elle ne donne pas peuvent encore rouler
 	var m2 = _model(route)
