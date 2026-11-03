@@ -276,6 +276,12 @@ class Run:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.sendto(json.dumps(msg).encode(), ("127.0.0.1", self.state_port))
 
+    def slowdown(self) -> float:
+        """Délais des étapes allongés sous Vulkan logiciel (rendu_jeu.slowdown : 1 à 3 images/s au cloud)."""
+        if self.engine is None:
+            return 1.0
+        return rendu_jeu.slowdown("\n".join(m.group(0) for _, m in self.engine.matching(r"^Vulkan .*$")))
+
     def wait_engine(self, pattern: str, delay: float, after: float) -> tuple[float, re.Match[str]] | None:
         """Ligne du journal de l'engine écrite après `after` qui correspond à `pattern`, attendue `delay` secondes
         sans compter les silences de l'engine (ENGINE_SILENT_S au plus) ; None si elle ne vient pas."""
@@ -638,7 +644,7 @@ class Run:
     def step(self, step: dict[str, Any]) -> bool:
         """Joue une étape ; faux si le passage ne peut pas continuer (engine arrêté)."""
         assert self.engine is not None and self.core is not None
-        delay = float(step.get("delai", 5.0))
+        delay = float(step.get("delai", 5.0)) * self.slowdown()
         if "appui" in step:
             for ev in [step["appui"]] if isinstance(step["appui"], str) else step["appui"]:
                 if not self.gesture(ev):
