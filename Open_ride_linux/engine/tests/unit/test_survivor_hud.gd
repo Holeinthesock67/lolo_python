@@ -147,7 +147,7 @@ func _run() -> void:
 	_check(lines[1]["label"] == "Vainqueur" and lines[1]["value"] == "Grimpeur", "bilan : vainqueur nommé")
 	_check(lines[2]["label"] == "Arche 1 (2,0 km)" and lines[2]["value"] == "Diesel, à 3,4 s", "bilan : arche 1")
 	_check(lines[5]["value"] == "Toi, à 2,2 s", "bilan : arche du joueur")
-	_check(lines[-1]["value"].contains("pas de records"), "bilan : pas de records")
+	_check(lines[-1]["label"] == "Records" and lines[-1]["value"] == "aucun dans ce mode", "bilan : pas de records")
 	var all: Array = SummaryViewModel.new().lines({"duration_s": 1008.0, "distance_m": 8900.0, "survivor": sum})
 	_check(all.any(func(l): return l["label"] == "Dernier survivant"), "bilan général : lignes du mode")
 	var unfinished: Array = Model.summary_lines({"place": null, "of": 5, "arches": 4, "spacing_km": 2, "winner": null, "eliminated": []})
