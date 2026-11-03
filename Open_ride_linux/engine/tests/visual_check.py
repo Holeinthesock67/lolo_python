@@ -53,6 +53,7 @@ import hud_lisibilite  # noqa: E402
 import image_diff  # noqa: E402
 from image_diff import Image, luminance, mean_abs_diff, read_png, write_png  # noqa: E402
 import quality_guard  # noqa: E402
+import rendu_jeu  # noqa: E402
 
 ENGINE_DIR = Path(__file__).resolve().parents[1]
 CORE_SRC = ENGINE_DIR.parent / "core" / "src"
@@ -551,10 +552,8 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     core.progression = copy.deepcopy(AVATAR_PROGRESSION)   # le faux core les modifie (achats, choix)
     core.garage = copy.deepcopy(AVATAR_GARAGE)
     core.start()
-    cmd = [args.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}", "--audio-driver", "Dummy"]
-    if not args.native:
-        cmd = ["xvfb-run", "-a", "-s", f"-screen 0 {width}x{height}x24"] + cmd + [
-            "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
+    cmd = rendu_jeu.godot_cmd([args.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}",
+                               "--audio-driver", "Dummy"], args.native, width, height)
     v_grade = getattr(args, "visual_grade", 1.0)
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes_dir}",
             "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}", f"--living={args.decor_vivant}",
@@ -584,6 +583,8 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     issues = [ln for ln in engine_log.read_text(errors="replace").splitlines()
               if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
     s.check("journal", "aucune erreur ni avertissement Godot", not issues, " | ".join(issues[:5]))
+    r_err = rendu_jeu.check_log(engine_log.read_text(errors="replace"))
+    s.check("journal", "rendu du jeu (Forward+)", r_err is None, r_err or "Vulkan, Forward+")
     # Qualité réellement appliquée (lot X32) : le faux core ne doit pas la ramener à une autre valeur.
     q_ok, q_msg = quality_guard.check(engine_log.read_text(errors="replace"), quality)
     s.check("journal", "qualité réellement appliquée", bool(q_ok), q_msg)
@@ -1978,7 +1979,7 @@ def main() -> int:
         print(f"Godot introuvable : {args.godot} (définir GODOT=/chemin/vers/godot)")
         return 2
     if not args.native and shutil.which("xvfb-run") is None:
-        print("xvfb-run introuvable : installer xvfb, xauth et libgl1-mesa-dri (ou lancer avec --native)")
+        print("xvfb-run introuvable : installer xvfb, xauth et mesa-vulkan-drivers (ou lancer avec --native)")
         return 2
     if args.update_golden and not args.golden:
         ap.error("--update-golden demande --golden DOSSIER")

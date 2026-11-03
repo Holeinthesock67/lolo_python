@@ -11,7 +11,9 @@ Le script renvoie 0 si tout passe et finit par un résumé (une ligne par test e
 
 ## Tests de rendu hors écran (`engine/tests/render/`, lot E2)
 
-En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'est compilé. Les tests de `engine/tests/render/` rendent donc une vraie image, sous Xvfb avec l'OpenGL logiciel de Mesa (moteur Compatibility), et lisent la couleur des pixels. Même contrat que les tests unitaires (lignes `[OK]`, ligne finale, code de sortie). Paquets : `xvfb`, `xauth`, `libgl1-mesa-dri`. Sans `xvfb-run`, `run_engine_tests.sh` saute cette étape, sauf avec `REQUIRE_RENDER=1` (intégration continue), qui la fait échouer.
+En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'est compilé. Les tests de `engine/tests/render/` rendent donc une vraie image, sous Xvfb avec le Vulkan logiciel de Mesa et le moteur Forward+ du jeu, et lisent la couleur des pixels. Même contrat que les tests unitaires (lignes `[OK]`, ligne finale, code de sortie). Paquets : `xvfb`, `xauth`, `mesa-vulkan-drivers`.
+
+**Rendu des essais = rendu du jeu (03/11).** Tous les essais qui dessinent (tests de rendu, `visual_check.py`, `tour_visuel.py`, `sim_bench.py`, `menu_bench.py`, `rogue_bench.py`, vitrines) rendent en Forward+ sur Vulkan, comme le jeu ; arguments uniques dans `tests/rendu_jeu.py` (et `RENDER_ARGS` de `run_engine_tests.sh`). Godot repasse en silence sur OpenGL quand Vulkan manque : chaque essai vérifie la ligne « Vulkan … - Forward+ - » du journal et échoue sans elle. Avant, ces essais tournaient en Compatibility (OpenGL) : ciel de secours, ni SSAO, ni lueur, ni brouillard volumétrique, et couleurs de sommet converties en linéaire par ce seul moteur (gravier juste au cloud, pâle et bleuté sur le PC). Couleurs de sommet et d'instance (`COLOR`) : sRGB, converties une seule fois par `shaders/couleur_srgb.gdshaderinc` (voir ce fichier) ; `test_couleur_sommet_render.gd` et `core/tests/test_rendu_jeu.py` gardent la règle. Sans `xvfb-run`, `run_engine_tests.sh` saute cette étape, sauf avec `REQUIRE_RENDER=1` (intégration continue), qui la fait échouer.
 
 | Fichier | Lot | Vérifie |
 | --- | --- | --- |

@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Rendu hors écran du terrain multi-biome (lot U6, terrain_biomes.gdshader), même principe que
 ## test_terrain_render.gd (E2) : Xvfb, OpenGL, rendu sans éclairage (la couleur lue est l'albédo).
-##   xvfb-run -a godot --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a godot --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/render/test_terrain_biomes_render.gd
 ## 1. Deux biomes en bandes (prairie, méditerranéen) sur deux tuiles voisines : teinte moyenne de chaque
 ##    bande à moins de 5 % de la couleur du thème, pas de marche au bord commun des tuiles (moins de 3 %).

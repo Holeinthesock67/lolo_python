@@ -4,7 +4,7 @@ extends SceneTree
 ## textes longs du catalogue et deux portes, sur un fond de la charte, pour comparer avant et après une retouche
 ## et vérifier que rien ne sort de l'écran. Une capture par focus (carte, porte de gauche, porte de droite).
 ##
-##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_couloir.gd -- --out DOSSIER [--size 1024x600]
 ##
 ## Écrit DOSSIER/couloir_<focus>_<taille>.png ; code de sortie 1 si un bloc (carte, porte, relance) dépasse

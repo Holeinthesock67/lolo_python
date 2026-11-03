@@ -145,8 +145,8 @@ jobs:
           unzip -q /tmp/Godot_v4.7.2-stable_linux.x86_64.zip -d ~/.cache/godot-4.7.2
           chmod +x ~/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64
 
-      - name: Xvfb et OpenGL logiciel (tests de rendu du shader, lot E2)
-        run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends xvfb xauth libgl1-mesa-dri
+      - name: Xvfb et Vulkan logiciel (Forward+ comme le jeu, rendu_jeu.py)
+        run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends xvfb xauth mesa-vulkan-drivers
 
       - name: Tests de l'engine sans écran
         run: |

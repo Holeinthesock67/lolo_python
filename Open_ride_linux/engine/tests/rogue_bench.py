@@ -46,6 +46,7 @@ sys.path.insert(0, str(ENGINE_DIR.parent / "core" / "src"))
 from fake_core import CONTRACT_VERSION, EngineLog, FakeCore, now  # noqa: E402
 from visual_check import (GODOT_ISSUE, GODOT_TOLERATED, Capture, Report, free_udp_ports, mean_abs_diff,  # noqa: E402
                           read_png, write_html)
+import rendu_jeu  # noqa: E402
 
 HOLD_S = 1.5                     # trame figée avant chaque capture : lissage de la position, ennemi, HUD
 FRAME_HZ = 25.0                  # trames renvoyées pendant le gel
@@ -250,10 +251,8 @@ def run(args, out: Path, report: Report) -> None:
     core = FakeCore(state_port, cmd_port, EngineLog(engine_log))
     core.auto_hello_ack = True
     core.start()
-    cmd = [args.godot, "--path", str(ENGINE_DIR), "--resolution", args.size, "--audio-driver", "Dummy"]
-    if not args.native:
-        cmd = ["xvfb-run", "-a", "-s", f"-screen 0 {bench.width}x{bench.height}x24"] + cmd + [
-            "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
+    cmd = rendu_jeu.godot_cmd([args.godot, "--path", str(ENGINE_DIR), "--resolution", args.size,
+                               "--audio-driver", "Dummy"], args.native, bench.width, bench.height)
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", "--test-mode",
             f"--quality={args.quality}"]
     print(f"== Run rejouée ×{args.speed:g} : {len(marks)} captures ==", flush=True)
@@ -290,6 +289,8 @@ def run(args, out: Path, report: Report) -> None:
     issues = [ln for ln in engine_log.read_text(errors="replace").splitlines()
               if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
     bench.check("journal", "aucune erreur ni avertissement Godot", not issues, " | ".join(issues[:5]))
+    r_err = rendu_jeu.check_log(engine_log.read_text(errors="replace"))
+    bench.check("journal", "rendu du jeu (Forward+)", r_err is None, r_err or "Vulkan, Forward+")
 
 
 def main() -> int:

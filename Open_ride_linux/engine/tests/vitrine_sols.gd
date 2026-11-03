@@ -5,7 +5,7 @@ extends SceneTree
 ## à 50 % sur ses 250 derniers mètres, la seconde du mélange à son biome. Vue aérienne oblique du bord commun,
 ## éclairée, avec le thème par défaut 2.0. Sans core ni parcours ; captures comparables d'une paire à l'autre.
 ##
-##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_sols.gd -- --out DOSSIER \
 ##     [--quality low,medium,high] [--size 1680x1050] [--compare REF] [--seuil-ssim 0.97] [--tolerance 10] [--max-saturated 5]
 ##

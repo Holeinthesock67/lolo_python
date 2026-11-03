@@ -8,7 +8,7 @@ extends SceneTree
 ## 1. pas de marche de couleur au bord (écart au bord au plus 3 fois l'écart moyen entre colonnes voisines,
 ##    et au plus 3 % en valeur absolue) ;
 ## 2. contrôle du test : une tuile volontairement fausse (tout en sable) à côté donne bien une marche.
-## Lancement (Xvfb) : xvfb-run -a godot --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+## Lancement (Xvfb) : xvfb-run -a godot --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##   --audio-driver Dummy --script res://tests/test_biome_seams.gd -- <dossier demo.world>
 ## Code de sortie : 0 si tout passe, 1 sinon.
 
