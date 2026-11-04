@@ -71,6 +71,18 @@ func _test_banner() -> void:
 	e = _erg({"paused": true})
 	l = ErgView.banner_lines(e, vm.update(e, 4.0))
 	_check(l["remaining"].ends_with("(pause)"), "pause signalée (%s)" % l["remaining"])
+	# Test de FTP (4 novembre) : FTP provisoire à côté de la consigne, absente avant la première minute.
+	e = _erg({"ftp_test": "ramp", "block_type": "steady", "target_w": 300.0, "next_target_w": 320.0,
+		"ftp_provisional_w": 214})
+	l = ErgView.banner_lines(e, vm.update(e, 5.0))
+	_check(l["next"] == "Ensuite : 320 W · FTP provisoire : 214 W", "FTP provisoire avec la cible suivante (%s)" % l["next"])
+	e = _erg({"ftp_test": "ramp", "block_type": "cooldown", "next_target_w": null, "block_index": 8,
+		"ftp_provisional_w": 231})
+	l = ErgView.banner_lines(e, vm.update(e, 6.0))
+	_check(l["next"] == "FTP provisoire : 231 W", "retour au calme : FTP provisoire seule (%s)" % l["next"])
+	e = _erg({"ftp_test": "ramp", "block_type": "steady"})
+	l = ErgView.banner_lines(e, vm.update(e, 7.0))
+	_check(not l["next"].contains("FTP"), "avant la première minute de paliers : pas de FTP provisoire")
 
 
 func _test_zones() -> void:

@@ -127,3 +127,14 @@ def test_pairing_puts_the_heart_rate_strap_in_the_profile(home):
     assert "hr_address" not in machine.read_text(encoding="utf-8")
     assert 'hr_address = "BB:00:00:00:00:02"' in (a.root / profiles.FILE_NAME).read_text(encoding="utf-8")
     assert 'hr = "ble"' in (a.root / profiles.FILE_NAME).read_text(encoding="utf-8")   # lot O24 : ceinture activée
+
+
+def test_destination_names_the_file_that_receives_the_value(home):
+    """Libellé « Réglage enregistré » (04/11) : la FTP acceptée va dans le profil, pas dans config.toml."""
+    machine = home / "config.toml"
+    assert config_edit.destination("rider", "ftp_w", machine) == machine          # sans profil
+    a = player("cycliste-a", "Cycliste A")
+    profiles.activate(a)
+    assert config_edit.destination("rider", "ftp_w", machine) == a.root / profiles.FILE_NAME
+    assert config_edit.destination("render", "quality", machine) == machine
+    assert config_edit.destination("rider", "ftp_w") == a.root / profiles.FILE_NAME

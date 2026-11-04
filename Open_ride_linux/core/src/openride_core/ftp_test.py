@@ -5,6 +5,10 @@
   détectée par `RampWatch` : cadence sous 50 tr/min pendant 5 s, ou puissance sous 80 % de la cible
   pendant 10 s, ou abandon (Z, geste du bloc suivant). La séance saute alors au retour au
   calme au lieu de s'arrêter net. FTP = 75 % de la meilleure puissance moyenne sur 1 minute.
+  **FTP provisoire** (demande du propriétaire du 4 novembre) : pendant les paliers, `RampWatch`
+  calcule la même formule sur la puissance déjà roulée (seconde par seconde, pauses exclues) ;
+  la trame `state` la porte dans `erg.ftp_provisional_w` dès la première minute de paliers, et
+  jusqu'à la fin du retour au calme (valeur figée à la fin de la rampe).
   Pendant les paliers, + et − (biais ERG) sont bloqués (version 2.0, choix du propriétaire du
   1er novembre) : la session les ignore et la trame `state` porte `erg.bias_locked`.
 
@@ -30,6 +34,7 @@ import json
 import logging
 import statistics
 import time
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -143,6 +148,12 @@ class RampWatch:
         self._low_cadence_s = 0.0
         self._low_power_s = 0.0
         self.reason: str | None = None
+        # FTP provisoire : moyennes à la seconde de la puissance des paliers, meilleure minute.
+        self._bin_w_s = 0.0           # énergie (W·s) de la seconde en cours
+        self._bin_s = 0.0             # durée accumulée de la seconde en cours
+        self._seconds: deque[float] = deque()   # 60 dernières secondes
+        self._window_sum = 0.0        # somme des 60 dernières secondes
+        self.best_minute_w: float | None = None
 
     def active(self, erg: ErgController) -> bool:
         return self.reason is None and not erg.finished and erg.index in self.steps
@@ -150,6 +161,7 @@ class RampWatch:
     def update(self, dt: float, power_w: float, cadence_rpm: float, erg: ErgController) -> str | None:
         if not self.active(erg) or erg.paused:
             return None
+        self._add_power(dt, power_w)
         self._low_cadence_s = self._low_cadence_s + dt if cadence_rpm < LOW_CADENCE_RPM else 0.0
         target = erg.target_w
         self._low_power_s = self._low_power_s + dt if target and power_w < LOW_POWER_FRAC * target else 0.0
@@ -158,6 +170,33 @@ class RampWatch:
         elif self._low_power_s >= LOW_POWER_S:
             self.reason = "power"
         return self.reason
+
+    def _add_power(self, dt: float, power_w: float) -> None:
+        """Accumule la puissance par secondes pleines, comme les relevés à 1 Hz de `estimate_ftp`."""
+        p = max(0.0, float(power_w))
+        while dt > 0.0:
+            take = min(dt, 1.0 - self._bin_s)
+            self._bin_w_s += p * take
+            self._bin_s += take
+            dt -= take
+            if self._bin_s >= 1.0 - 1e-9:
+                self._push_second(self._bin_w_s / self._bin_s)
+                self._bin_w_s = self._bin_s = 0.0
+
+    def _push_second(self, mean_w: float) -> None:
+        self._seconds.append(mean_w)
+        self._window_sum += mean_w
+        if len(self._seconds) > 60:
+            self._window_sum -= self._seconds[0]
+            self._seconds.popleft()
+        if len(self._seconds) == 60:
+            minute = self._window_sum / 60.0
+            self.best_minute_w = minute if self.best_minute_w is None else max(self.best_minute_w, minute)
+
+    @property
+    def provisional_ftp_w(self) -> int | None:
+        """FTP provisoire : 75 % de la meilleure minute roulée jusqu'ici, None avant une minute de paliers."""
+        return None if self.best_minute_w is None else round(RAMP_FACTOR * self.best_minute_w)
 
     def abandon(self, erg: ErgController) -> bool:
         """Geste de saut de bloc pendant les paliers : abandon du test (vrai si la rampe s'arrête)."""

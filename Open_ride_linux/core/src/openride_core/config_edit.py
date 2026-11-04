@@ -158,6 +158,17 @@ def remove_keys(path: Path, keys: list[tuple[str, str]], note: str) -> list[str]
 _ACTIVE = config_mod._ACTIVE
 
 
+def destination(section: str, key: str, config_path: Path | None = None,
+                profile_path: object = _ACTIVE) -> Path:
+    """Fichier où `update_layers` écrit `[section] key` : `profil.toml` du profil en cours pour une clé
+    joueur (FTP, poids…), `config.toml` sinon ou sans profil."""
+    if profile_path is _ACTIVE:
+        profile_path = config_mod.active_profile_file()
+    if profile_path is not None and config_mod.is_profile_key(section, key):
+        return Path(profile_path)  # type: ignore[arg-type]
+    return config_path or config_mod.DEFAULT_CONFIG_PATH
+
+
 def update_layers(values: list[tuple[str, str, object]], config_path: Path | None = None,
                   profile_path: object = _ACTIVE) -> list[str]:
     """Écrit chaque valeur dans son fichier : `profil.toml` du profil pour une clé joueur, sinon

@@ -221,6 +221,16 @@
         "bias_locked": {
           "type": "boolean"
         },
+        "ftp_test": {
+          "type": "string",
+          "enum": [
+            "ramp"
+          ]
+        },
+        "ftp_provisional_w": {
+          "type": "integer",
+          "minimum": 0
+        },
         "kind": {
           "type": "string",
           "enum": [

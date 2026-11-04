@@ -1677,7 +1677,9 @@ func _on_state_received(state: Dictionary) -> void:
 	if new_session_state != session_state:
 		session_state = new_session_state
 		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
-		if session_state == "RUNNING":
+		if session_state == "RUNNING" and HudViewModel.is_ftp_warmup(state.get("erg", null)):
+			banner.show_message("controls", HudViewModel.ftp_warmup_text(), CONTROLS_HINT_S)
+		elif session_state == "RUNNING":
 			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null,
 					str(state["erg"].get("kind", "workout")) if state.get("erg", null) is Dictionary else "workout",
 					str(state.get("mode", "")) == "ROGUE"), CONTROLS_HINT_S)
