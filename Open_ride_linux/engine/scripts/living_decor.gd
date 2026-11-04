@@ -125,6 +125,10 @@ var _cam_s := 0.0                  # dernière abscisse du cycliste reçue par s
 var _rider_v := 0.0
 var _cam_lateral := 0.0            # écart de la caméra à l'axe, mesuré (positif à droite), pour les tests
 const CONTACT_M := 300.0
+## Demi-longueur d'un vélo pour le compte des contacts : celle du core (draft.BIKE_LENGTH_M = 1,7 m d'un vélo à
+## l'autre quand ils se touchent), pour qu'une roue prise à 1,75 m par le placement du core (lot AS2) ne compte pas
+## comme un contact (banc du Dernier survivant, 3 novembre).
+const CONTACT_BIKE_HALF_M := 0.85
 const GAUGE_BEHIND_M := 0.3         # jauge d'abri d'un véhicule : 0,3 m derrière sa face arrière (lot AS6)
 const GAUGE_DROP_M := -0.75         # ... et à 1,8 m du sol au lieu des 2,55 m d'un bot : sous le bandeau du haut vue de près
 var surface_here := "paved"        # lot U22 : surface effective sous le cycliste (world_streamer.surface_at)
@@ -602,7 +606,7 @@ func _count_contacts(others: Array) -> void:
 	for o in others + [you]:
 		if absf(float(o["s"]) - _cam_s) <= CONTACT_M:
 			items.append({"name": str(o["group"]["case"]) if o.has("group") else str(o.get("name", "bot")),
-				"s": float(o["s"]), "lateral": float(o["lateral"]), "half_len": TrafficModel.CYCLIST_HALF_LENGTH_M,
+				"s": float(o["s"]), "lateral": float(o["lateral"]), "half_len": CONTACT_BIKE_HALF_M,
 				"half_width": TrafficModel.RIDER_HALF_WIDTH_M, "group": o.get("group", o)})
 	for i in range(items.size()):
 		for j in range(i + 1, items.size()):

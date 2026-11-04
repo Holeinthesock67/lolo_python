@@ -46,6 +46,9 @@ signal world_menu_received(kind: String, msg: Dictionary)
 signal test_message_received(msg: Dictionary)
 ## Révision 1.4 (série T, lot T9) : passage de segment terminé (message répété 3 fois par le core).
 signal segment_result_received(msg: Dictionary)
+## Dernier survivant (révision 1.5, lot DS2) : une élimination, répétée 3 fois par le core (doublons écartés par
+## survivor_hud_model.gd).
+signal elimination_received(msg: Dictionary)
 ## Garage (lots V3/V7, contrat 1.4) : `garage_received` une fois toutes les parties arrivées (éléments
 ## réunis) ; `progression_received` après chaque succès du Garage.
 signal garage_received(items: Array)
@@ -327,6 +330,8 @@ func _poll_incoming() -> void:
 				_on_settings_part(json_obj)
 			"segment_result":
 				segment_result_received.emit(json_obj)
+			"elimination":
+				elimination_received.emit(json_obj)
 			"garage":
 				_on_garage_part(json_obj)
 			"progression":

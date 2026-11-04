@@ -304,5 +304,8 @@ func _init() -> void:
 	_test_look()
 	_test_laterals()
 	_test_core_lanes()
+	_check(BotsViewModel.name_visible(true, 20.0), "nom affiché à 20 m de la caméra")
+	_check(not BotsViewModel.name_visible(true, 2.0), "nom caché tout près de la caméra (lettres géantes)")
+	_check(not BotsViewModel.name_visible(false, 20.0), "nom caché au-delà de NAME_M du cycliste")
 	print("test_bots_view_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

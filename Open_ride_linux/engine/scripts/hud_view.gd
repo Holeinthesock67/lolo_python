@@ -29,6 +29,8 @@ extends CanvasLayer
 ##   s'arrête au-dessus du profil d'altitude (ou du bandeau ERG). Lot X22 : blocs segment et bonus à la
 ##   hauteur de leur contenu ; quand la place manque, l'encart garde les deux lignes autour du cycliste
 ##   (ses voisins, avec maillot et W′), puis les maillots, puis les autres lignes.
+## - Lot DS6 : free_right_top(), haut de la place libre de la colonne de droite, pour le bloc du Dernier
+##   survivant (survivor/survivor_view.gd).
 
 const UiTheme := preload("res://scripts/ui_theme.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
@@ -412,6 +414,19 @@ func _place(p: Control, top: float, h: float) -> void:
 ## Haut des blocs de la colonne de droite : sous le panneau de droite.
 func _right_column_top() -> float:
 	return panel_right.offset_bottom + BLOCK_GAP
+
+
+## Haut de la place libre de la colonne de droite, sous le profil d'altitude et les blocs segment et bonus
+## visibles (bloc du Dernier survivant, lot DS6 : l'encart des bots est alors caché, la liste des coureurs le
+## remplace).
+func free_right_top() -> float:
+	var y := _right_column_top()
+	if profile_panel != null and profile_panel.visible:
+		y += PROFILE_H + BLOCK_GAP
+	for p in [panel_segment, panel_bonus]:
+		if p != null and p.visible:
+			y += (p.offset_bottom - p.offset_top) * BLOCK_SCALE + BLOCK_GAP
+	return y
 
 
 ## Hauteur des trois panneaux du haut ajustée à leur contenu (pas de fond vide sous les lignes), puis

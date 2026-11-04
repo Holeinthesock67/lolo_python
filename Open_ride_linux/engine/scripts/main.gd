@@ -29,6 +29,8 @@ const WtfView := preload("res://scripts/wtf/wtf_view.gd")
 const WtfHudModel := preload("res://scripts/wtf/wtf_hud_model.gd")
 const WtfScene := preload("res://scripts/wtf/wtf_scene.gd")
 const WtfSceneModel := preload("res://scripts/wtf/wtf_scene_model.gd")
+const SurvivorHudModel := preload("res://scripts/survivor/survivor_hud_model.gd")
+const SurvivorView := preload("res://scripts/survivor/survivor_view.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -117,6 +119,9 @@ var fps_counter = null
 var wtf_view = null
 ## Gags en 3D du mode « What the fuck » (lots WTF5 et WTF6) : objets sur la route, voile, caméras, soleil.
 var wtf_scene = null
+## Dernier survivant (lots DS5 et DS6) : modèle du HUD (bloc, liste, bandeaux, arches à dessiner) et sa vue.
+var survivor_hud = SurvivorHudModel.new()
+var survivor_view = null
 ## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
 var load_guard = LoadGuard.new({}, false)
 var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
@@ -333,6 +338,13 @@ func _ready() -> void:
 			print("Segment terminé : %s en %s s" % [msg.get("segment_id", "?"), msg.get("time_s", "?")])
 			ipc.test_log("segment_result id=%s" % msg.get("segment_id", "?"))
 			_play_event(event_sounds.on_segment_result(msg)))
+	ipc.elimination_received.connect(func(msg: Dictionary) -> void:
+		var jingles: Array = survivor_hud.on_elimination(msg, Time.get_ticks_msec() / 1000.0)
+		if not jingles.is_empty():
+			print("Élimination : arche %s, %s" % [msg.get("arch", "?"), msg.get("rider", "?")])
+			ipc.test_log("elimination arch=%s rider=%s" % [msg.get("arch", "?"), msg.get("rider", "?")])
+		for j in jingles:
+			_play_event(j))
 	banner.changed.connect(func(text: String) -> void:
 		ipc.test_log("banner text=" + text.replace("\n", " | ")))
 	var gen := AudioStreamGenerator.new()
@@ -381,6 +393,8 @@ func _ready() -> void:
 	overlay_layer.add_child(fps_counter)
 	wtf_view = WtfView.new()
 	hud.add_child(wtf_view)
+	survivor_view = SurvivorView.new()
+	hud.add_child(survivor_view)
 	wtf_scene = WtfScene.new()
 	add_child(wtf_scene)
 	ipc.world_menu_received.connect(_on_world_menu_received)
@@ -1190,7 +1204,8 @@ func _poll_route_job() -> void:
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
-	segment_markers.warm_up(camera)   # premier dessin des portiques au chargement, pas à 400 m d'eux
+	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)
+	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)
@@ -1436,6 +1451,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"garage": _garage_info(),
 		"rogue": rogue_host.test_info(),
 		"wtf": wtf_scene.test_info(),
+		"survivor": survivor_view.test_info() if survivor_view != null else {},
+		"survivor_arches": segment_markers.survivor_arches().size() if segment_markers != null else 0,
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 
@@ -1736,6 +1753,7 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
+		_update_survivor(state, in_session)
 		if not state.has("wtf") and wtf_scene.is_active():   # séance WTF finie : rien ne reste derrière le menu
 			wtf_scene.step({}, null, 0.0, Callable(), sun)
 	if junction_view != null:
@@ -1813,11 +1831,30 @@ func _feed_chart(state: Dictionary, running: bool, previous_state: String) -> vo
 
 
 ## Bots (lot O7) : encart du HUD et silhouettes sur la route, aux positions affichées à l'instant.
+## Dernier survivant (lots DS5 et DS6), à chaque trame : bloc, liste et bandeaux du HUD, portiques d'élimination.
+## Hors du mode, tout est retiré (et l'état du modèle remis à zéro pour la course suivante).
+func _update_survivor(state: Dictionary, in_session: bool) -> void:
+	var sv = state.get("survivor", null) if in_session else null
+	if sv == null:
+		if survivor_view.visible or not segment_markers.survivor_arches().is_empty():
+			survivor_view.update_view({"visible": false})
+			segment_markers.set_survivor_arches([])
+		if not in_session:
+			survivor_hud.reset()
+		return
+	survivor_hud.after_out = str(menu_flow.settings.item("survivor.after_out").get("value", "ride"))
+	survivor_hud.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
+	survivor_view.right_top = hud.free_right_top()
+	survivor_view.update_view(survivor_hud.view(state, Time.get_ticks_msec() / 1000.0))
+	segment_markers.set_survivor_arches(survivor_hud.arches_to_draw(state))
+
+
 func _show_bots(rider_s: float, rider_v: float) -> void:
 	bots_model.vehicles = living_decor.vehicle_places() if living_decor != null else []
 	var view: Array = bots_model.view(rider_s, rider_v, Time.get_ticks_usec())
 	if hud != null and hud.has_method("update_bots"):
-		hud.update_bots(view, bots_model.race())
+		# Dernier survivant : la liste des coureurs (survivor_view.gd) remplace l'encart des bots
+		hud.update_bots([] if _last_state.has("survivor") else view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route)
 	if living_decor != null:

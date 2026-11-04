@@ -1,0 +1,92 @@
+{
+  "description": "Écran Prêt du Dernier survivant avec les réglages par défaut sur le parcours demo (4 adversaires, 2 km : 8 km pour 5 km), essai du 4 novembre : « Lancer » grisé expliqué en entier sur la ligne d'état, puis aide des touches sur une ligne de réglage, puis Lancer de nouveau actif avec 2 adversaires. Hors CI, captures à faire valider : menu_bench.py --scenario engine/tests/captures_ds/dernier_survivant_pret_explications.json --voies clavier --native.",
+  "voies": [
+    "clavier"
+  ],
+  "config": {
+    "render.quality": "medium"
+  },
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15,
+      "elements": [
+        "survivor"
+      ]
+    },
+    {
+      "choisir": "world"
+    },
+    {
+      "ecran": "routes",
+      "elements": [
+        "demo"
+      ]
+    },
+    {
+      "choisir": "demo"
+    },
+    {
+      "ecran": "home",
+      "contient": [
+        "Parcours : demo"
+      ]
+    },
+    {
+      "choisir": "survivor"
+    },
+    {
+      "ecran": "ready",
+      "titre": "Prêt : Dernier survivant — demo",
+      "contient": [
+        "parcours trop court"
+      ],
+      "delai": 5
+    },
+    {
+      "capture": "ds_pret_1_lancer_grise"
+    },
+    {
+      "aller": "set:survivor.opponents"
+    },
+    {
+      "ecran": "ready",
+      "focus": "set:survivor.opponents"
+    },
+    {
+      "capture": "ds_pret_2_aide_touches"
+    },
+    {
+      "choisir": "set:survivor.opponents"
+    },
+    {
+      "ecran": "ready",
+      "edition": true
+    },
+    {
+      "appui": [
+        "MINUS_SHORT",
+        "MINUS_SHORT"
+      ]
+    },
+    {
+      "capture": "ds_pret_3_modification"
+    },
+    {
+      "appui": "A_LONG"
+    },
+    {
+      "ecran": "ready",
+      "edition": false,
+      "contient": [
+        "2 arches sur 4 km"
+      ],
+      "absent": [
+        "parcours trop court"
+      ]
+    },
+    {
+      "capture": "ds_pret_4_lancer_actif"
+    }
+  ]
+}

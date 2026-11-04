@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideEliminationMessage",
+  "description": "Révision 1.5 (lot DS2) : élimination au passage d'une arche du Dernier survivant ; répété 3 fois à une seconde d'intervalle, l'engine ignore les doublons de (arch, rider) ; 4 096 octets au plus (contrat §2).",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "arch",
+    "rider",
+    "name",
+    "place",
+    "gap_s",
+    "alive"
+  ],
+  "properties": {
+    "type": {
+      "const": "elimination"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "arch": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "rider": {
+      "type": "string",
+      "maxLength": 8,
+      "description": "« me » pour le cycliste, sinon l'id du bot."
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 16
+    },
+    "place": {
+      "type": "integer",
+      "minimum": 2
+    },
+    "gap_s": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Retard sur l'avant-dernier au passage de l'arche."
+    },
+    "alive": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Coureurs encore en course après l'élimination."
+    }
+  }
+}
