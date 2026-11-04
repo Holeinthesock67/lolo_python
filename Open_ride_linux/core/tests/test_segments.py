@@ -199,9 +199,28 @@ def test_demo_world_segments_layer_is_reproducible(tmp_path):
     repo_demo = Path(__file__).resolve().parents[2] / "engine" / "demo" / "demo.world"
     for name in ("manifest.json", "route.json", "segments.json"):
         assert (a / name).read_bytes() == (b / name).read_bytes() == (repo_demo / name).read_bytes()
+    # Couche terrain (4 novembre 2026) : mêmes tuiles, au bit près, que la démonstration embarquée.
+    tiles = sorted(p.relative_to(a).as_posix() for p in (a / "terrain").rglob("*.f32"))
+    assert tiles and tiles == sorted(p.relative_to(repo_demo).as_posix() for p in (repo_demo / "terrain").rglob("*.f32"))
+    assert all((a / t).read_bytes() == (repo_demo / t).read_bytes() for t in tiles)
+
     layer = json.loads((a / "segments.json").read_text(encoding="utf-8"))
     schema_dir = Path(__file__).resolve().parents[2] / "docs" / "contracts" / "world"
     jsonschema.validate(layer, json.loads((schema_dir / "segments.schema.json").read_text(encoding="utf-8")))
     jsonschema.validate(json.loads((a / "manifest.json").read_text(encoding="utf-8")),
                         json.loads((schema_dir / "manifest.schema.json").read_text(encoding="utf-8")))
     assert all(s["source"] == "auto" for s in layer["segments"]) and layer["segments"]
+
+
+def test_ensure_demo_world_copies_bundled_demo_and_upgrades_old_one(tmp_path):
+    """La démonstration du dossier des parcours est copiée de l'engine ; une ancienne sans terrain est remplacée."""
+    repo_demo = Path(__file__).resolve().parents[2] / "engine" / "demo" / "demo.world"
+    old = demo_world.write_world(tmp_path, demo_world.DEMO_NAME, demo_world.DEMO_LENGTH_M, created=demo_world.DEMO_CREATED)
+    assert not (old / "terrain").exists()
+    world = demo_world.ensure_demo_world(tmp_path)
+    assert world == old and (world / "manifest.json").read_bytes() == (repo_demo / "manifest.json").read_bytes()
+    assert len(list((world / "terrain").rglob("*.f32"))) == len(list((repo_demo / "terrain").rglob("*.f32")))
+    # Démonstration à jour, ou parcours « demo » qui n'est pas le nôtre : laissés tels quels.
+    (world / "route.json").write_text("{}", encoding="utf-8")
+    demo_world.ensure_demo_world(tmp_path)
+    assert (world / "route.json").read_text(encoding="utf-8") == "{}"

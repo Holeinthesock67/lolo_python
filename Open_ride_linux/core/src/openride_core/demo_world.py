@@ -10,7 +10,8 @@ des données factices, le compilateur utilisera UTM via pyproj).
     python -m openride_core.tools.fake_world --out ../engine/demo --length 8000
 
 Le parcours de démonstration commun au core et à l'engine (`demo`, 5 000 m) est écrit par
-`write_demo_world` avec une date de création fixe, pour être identique octet pour octet :
+`write_demo_world` avec une date de création fixe et sa couche terrain synthétique, pour être
+identique octet pour octet :
     python -m openride_core.tools.fake_world --demo --out ../engine/demo
 
 Les quatre parcours de démonstration des biomes (lot U19) sont écrits par `write_biome_demo_worlds`, qui
@@ -30,6 +31,7 @@ from pathlib import Path
 from typing import Callable
 
 from .segments import Profile, detect_segments
+from .synthetic_terrain import add_terrain_layer
 
 EARTH_R = 6_371_000.0
 DS_M = 10.0
@@ -161,15 +163,55 @@ def write_world(out_dir: Path, name: str, length_m: float, created: str | None =
 
 
 def write_demo_world(out_dir: Path) -> Path:
-    """Écrit le parcours de démonstration commun au core et à l'engine."""
-    return write_world(out_dir, DEMO_NAME, DEMO_LENGTH_M, created=DEMO_CREATED)
+    """Écrit le parcours de démonstration commun au core et à l'engine, avec sa couche terrain
+    synthétique (`synthetic_terrain.py`) : sans elle, l'engine pose un sol plat sous l'altitude la plus
+    basse et la route, qui monte de 120 m, semble léviter (constat du 4 novembre 2026)."""
+    return add_terrain_layer(write_world(out_dir, DEMO_NAME, DEMO_LENGTH_M, created=DEMO_CREATED))
 
 
-def ensure_demo_world(routes_root: Path) -> Path:
-    """Crée `<routes_root>/demo.world` s'il manque, et renvoie son chemin."""
+def _demo_needs_rewrite(world: Path) -> bool:
+    """Vrai si `world` manque, ou si c'est une ancienne démonstration écrite ici sans couche terrain."""
+    try:
+        manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return True
+    if not isinstance(manifest, dict):
+        return True
+    ours = (manifest.get("compiler") or {}).get("name") == "openride-fake-world"
+    terrain = (manifest.get("layers") or {}).get("terrain") or {}
+    return ours and not terrain.get("present", False)
+
+
+def _bundled_demo_world(engine_dir: Path | None = None) -> Path | None:
+    """Démonstration embarquée par l'engine (`engine/demo/demo.world`, identique à `write_demo_world`,
+    test_segments.py), si elle porte sa couche terrain."""
+    import os
+
+    from .launcher import DEFAULT_ENGINE_DIR
+
+    engine = Path(engine_dir or os.environ.get("OPENRIDE_ENGINE") or DEFAULT_ENGINE_DIR).expanduser()
+    world = engine / "demo" / f"{DEMO_NAME}.world"
+    return None if _demo_needs_rewrite(world) or not (world / "terrain").is_dir() else world
+
+
+def ensure_demo_world(routes_root: Path, engine_dir: Path | None = None) -> Path:
+    """Crée `<routes_root>/demo.world` s'il manque (ou le réécrit s'il date d'avant sa couche terrain),
+    et renvoie son chemin. Copie la démonstration embarquée par l'engine quand elle est là (quelques
+    millisecondes, la séance n'attend pas), sinon l'écrit (environ 2 s pour le terrain). Le manifeste
+    est copié en dernier : une copie interrompue est refaite au prochain appel."""
+    import shutil
+
     world = routes_root / f"{DEMO_NAME}.world"
-    if not (world / "manifest.json").is_file():
+    if not _demo_needs_rewrite(world):
+        return world
+    bundled = _bundled_demo_world(engine_dir)
+    if bundled is None:
         write_demo_world(routes_root)
+        return world
+    world.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(bundled / "terrain", world / "terrain", dirs_exist_ok=True)
+    for name in ("route.json", "segments.json", "manifest.json"):
+        shutil.copyfile(bundled / name, world / name)
     return world
 
 

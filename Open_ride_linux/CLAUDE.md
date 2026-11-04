@@ -50,6 +50,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `route.py`, `catalog.py` : lecture des `.world`, interpolation et catalogue des parcours (`.world` et `.gpx`) ;
 - `route_stats.py` : fiches des parcours (dénivelé, montée principale, durée, difficulté, fiche `.toml`), tri et filtres du catalogue (lot O15) ; copie exacte dans le compilateur ;
 - `demo_world.py` : parcours de démonstration ;
+- `synthetic_terrain.py` : couche terrain synthétique (démonstration et parcours d'essai) ;
 - `workout.py`, `workout_formats.py` : lecture des `.zwo`, des `.erg` et `.mrc` de GoldenCheetah (lot O9) et contrôleur ERG ; `workout_menu.py` : entraînements créés ou importés depuis le menu ERG, écrits par le core seul (sous-menu ERG, décision D4 de l'audit IPC) ;
 - `start_gate.py` : départ au pédalage (lot O36), module pur : après `start`, la séance attend en `READY` le décor du départ (commande `scene_ready` de l'engine, au plus `[depart] attente_decor_s`), le trainer, puis `[depart] duree_s` secondes à `[depart] cadence_rpm` tr/min ; objet `start_wait` de `state` ; `[depart] mode = "immediat"` ou `run --depart immediat` part tout de suite ;
 - `route_import.py` : traces importées depuis le menu des parcours (lot O23) : traces des dossiers habituels, copie dans `~/OpenRide/GPX/` sans écrasement, puis `openride-compiler build` de cette trace dans un processus à part, sans relancer (commandes `list_route_imports` et `import_route`) ;

@@ -7,6 +7,10 @@ extends RefCounted
 ##   coupe d'un tronçon est calculée au même s que la première du suivant, donc aux mêmes coordonnées.
 ## - Coupe : chaussée plate de 6 m, perpendiculaire au cap, plus deux bas-côtés de 0,5 m qui descendent
 ##   de 5 cm (ils masquent la jonction avec le terrain, posé 5 cm sous la chaussée).
+## - Talus (4 novembre 2026) : sous chaque bord, une bande qui descend de SKIRT_DROP_M en s'écartant de
+##   SKIRT_OUT_M (build_skirt_arrays, second matériau du tronçon). Enterrée là où le terrain touche la route,
+##   elle comble l'écart là où les triangles de 10 m du terrain passent sous la route (flancs raides) : la
+##   route repose sur un remblai au lieu de léviter.
 ## - UV : u en travers de 0 (bord gauche du bas-côté) à 1 (bord droit), v = s / 6 m (lot E2).
 ## - Sommets en coordonnées du monde (pas de décalage par tronçon : jointures exactes).
 ## Les tableaux se calculent dans une tâche de fond ; seule la création du maillage reste sur le
@@ -18,6 +22,8 @@ const ROAD_WIDTH_M := 6.0          # défaut, à lire plus tard dans le thème (
 const SHOULDER_WIDTH_M := 0.5
 const SHOULDER_DROP_M := 0.05
 const V_REPEAT_M := 6.0
+const SKIRT_DROP_M := 2.5
+const SKIRT_OUT_M := 1.5
 const VERTS_PER_SECTION := 6       # bas-côté gauche (2), chaussée (2), bas-côté droit (2)
 ## Places en travers de la chaussée (lot P32, demande du 29 octobre : « on roule à droite, pas au milieu ») :
 ## écart à l'axe, positif à droite du sens du parcours. Le cycliste (caméra, avatar) roule dans la voie de
@@ -236,6 +242,51 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 		arrays[Mesh.ARRAY_TEX_UV2] = uv2s
 	arrays[Mesh.ARRAY_INDEX] = indices
 	return arrays
+
+
+## Talus des deux bords d'un tronçon, d'après ses tableaux (`build_chunk_arrays`) : pour chaque coupe, du bord
+## extérieur du bas-côté jusqu'à SKIRT_DROP_M plus bas et SKIRT_OUT_M plus loin vers l'extérieur. Sommets dans le
+## même ordre que les coupes : (haut gauche, bas gauche, haut droit, bas droit). Faces des deux côtés (matériau
+## sans tri des faces) : le sens des triangles n'a pas d'importance.
+static func build_skirt_arrays(road_arrays: Array) -> Array:
+	var src: PackedVector3Array = road_arrays[Mesh.ARRAY_VERTEX]
+	var cuts := src.size() / VERTS_PER_SECTION
+	if cuts < 2:
+		return []
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	for c in range(cuts):
+		var b := c * VERTS_PER_SECTION
+		for pair in [[b, b + 1], [b + VERTS_PER_SECTION - 1, b + VERTS_PER_SECTION - 2]]:
+			var top: Vector3 = src[pair[0]]
+			var out := top - src[pair[1]]
+			out.y = 0.0
+			out = out.normalized() if out.length_squared() > 1e-9 else Vector3.RIGHT
+			var bottom := top + out * SKIRT_OUT_M - Vector3.UP * SKIRT_DROP_M
+			var n := (out * SKIRT_DROP_M + Vector3.UP * SKIRT_OUT_M).normalized()
+			vertices.append_array(PackedVector3Array([top, bottom]))
+			normals.append_array(PackedVector3Array([n, n]))
+	var indices := PackedInt32Array()
+	for c in range(cuts - 1):
+		for side in range(2):
+			var t0 := c * 4 + side * 2
+			var t1 := t0 + 4
+			indices.append_array(PackedInt32Array([t0, t1, t0 + 1, t0 + 1, t1, t1 + 1]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_INDEX] = indices
+	return arrays
+
+
+## Matériau des talus : terre herbeuse, plus sombre que le sol `ground_color`, faces des deux côtés.
+static func make_skirt_material(ground_color: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = ground_color.darkened(0.25)
+	mat.roughness = 1.0
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return mat
 
 
 ## Ruban le long d'une polyligne (amorce de branche d'un carrefour, lot W10) : chaussée de `width_m`,
