@@ -282,3 +282,24 @@ def test_contact_counter_uses_the_core_bike_length():
     m = re.search(r"^const CONTACT_BIKE_HALF_M := ([0-9.]+)", gd, re.M)
     assert m, "CONTACT_BIKE_HALF_M absente de living_decor.gd"
     assert float(m.group(1)) * 2.0 == pytest.approx(draft.BIKE_LENGTH_M)
+
+
+def test_ahead_gap_and_watts_to_catch(course):
+    """Coureur juste devant (essai du 4 novembre) : écart en secondes et puissance pour être à sa hauteur à
+    l'arche ; en roulant à cette puissance, le cycliste rattrape bien le bot avant l'arche."""
+    c = course(6900, power_w=195.0, opponents=2, spacing_km=1, level_pct=74, spread="normal")
+    c.until(lambda s: s._t_session >= 60.0)
+    ahead = c.frames[-1]["ahead"]
+    assert ahead is not None and ahead["id"] == "bot1" and ahead["gap_s"] > 0
+    need = ahead["catch_w"]
+    assert need is not None and 195 < need < 600, need
+    # à cette puissance, le cycliste reprend l'essentiel de l'écart avant l'arche ; pas tout, le calcul suppose
+    # que le bot garde son allure du moment, et il accélère à l'approche de l'arche (sprint, lot DS3)
+    c.s.driver.base_power_w = float(need)
+    arch = c.s.survivor.arches[0]
+    bot = next(b for b in c.s.bots if b.id == "bot1")
+    gap0 = bot.s - c.s.physics.s
+    c.until(lambda s: bot.s >= arch)
+    assert bot.s - c.s.physics.s < 0.4 * gap0, (bot.s - c.s.physics.s, gap0)
+    c.until(lambda s: s.survivor.winner is not None)
+    assert c.frames[-1]["ahead"] is None or c.s.survivor.winner is not None

@@ -354,6 +354,12 @@ class SurvivorRace:
                 s_o, v_o = self._pos[other]
                 behind_v = v_me if order[-1] == ME else v_o
                 out["gap_last_s"] = round(abs(s_me - s_o) / max(behind_v, V_FLOOR), 1)
+            i = order.index(ME) if ME in order else 0
+            if i > 0:   # coureur juste devant (essai du 4 novembre) ; catch_w posé par la séance (physique)
+                s_a, _ = self._pos[order[i - 1]]
+                out["ahead"] = {"id": order[i - 1], "gap_s": round(max(s_a - s_me, 0.0) / max(v_me, V_FLOOR), 1),
+                                "catch_w": None}
+        out.setdefault("ahead", None)
         return out
 
     def take_journal(self) -> list[dict]:

@@ -37,6 +37,8 @@ var _block_bar: ProgressBar
 var _block_rank: Label
 var _block_danger: Label
 var _block_last: Label
+var _block_ahead: Label
+var _block_ahead_w: Label
 var _list: PanelContainer
 var _rows: Array = []           # [HBoxContainer, nom (RichTextLabel), détail (Label), fond (StyleBoxFlat)]
 var _bottom: PanelContainer
@@ -80,7 +82,11 @@ func _build() -> void:
 	_block_last.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	last_row.add_child(_block_danger)
 	last_row.add_child(_block_last)
-	for c in [_block_arch, _block_bar, _block_rank, last_row]:
+	_block_ahead = _label(TITLE_SIZE + 1, UiTheme.INK)   # coureur devant et puissance pour le rejoindre (4 novembre)
+	_block_ahead_w = _label(TITLE_SIZE + 1, UiTheme.GOLD)
+	for l in [_block_ahead, _block_ahead_w]:
+		l.clip_text = true
+	for c in [_block_arch, _block_bar, _block_rank, last_row, _block_ahead, _block_ahead_w]:
 		col.add_child(c)
 
 	_list = _panel(UiTheme.PANEL_BG)
@@ -168,6 +174,10 @@ func update_view(view: Dictionary) -> void:
 		_block_danger.text = str(b.get("danger_text", ""))
 		_block_danger.visible = _block_danger.text != ""
 		_block_last.text = str(b.get("last", ""))
+		_block_ahead.text = str(b.get("ahead", ""))
+		_block_ahead.visible = _block_ahead.text != ""
+		_block_ahead_w.text = str(b.get("ahead_w", ""))
+		_block_ahead_w.visible = _block_ahead_w.text != ""
 		var st := _block.get_theme_stylebox("panel") as StyleBoxFlat
 		var danger := bool(b.get("danger", false))
 		st.set_border_width_all(2 if danger else 0)
@@ -218,6 +228,7 @@ func test_info() -> Dictionary:
 	return {"visible": visible, "block": _block_arch.text if visible and _block.visible else "",
 		"rank": _block_rank.text if visible and _block.visible else "",
 		"danger": _block_danger.text if visible and _block.visible and _block_danger.visible else "",
+		"ahead": (_block_ahead.text + " · " + _block_ahead_w.text) if visible and _block.visible and _block_ahead.visible else "",
 		"list": names, "bottom": _bottom_title.text if visible and _bottom.visible else "",
 		"center": _center_title.text if visible and _center.visible else "", "block_top": _block.offset_top}
 

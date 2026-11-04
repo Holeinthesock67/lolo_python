@@ -1693,6 +1693,39 @@
             "null"
           ],
           "maxLength": 8
+        },
+        "ahead": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Coureur juste devant le cycliste (essai du 4 novembre) ; null si le cycliste mène, est éliminé ou la course finie.",
+          "required": [
+            "id",
+            "gap_s",
+            "catch_w"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "maxLength": 8
+            },
+            "gap_s": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Écart en secondes, à la vitesse du cycliste."
+            },
+            "catch_w": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 3000,
+              "description": "Puissance moyenne (W) pour être à sa hauteur à l'arche ; null s'il l'a déjà passée."
+            }
+          },
+          "additionalProperties": false
         }
       }
     }

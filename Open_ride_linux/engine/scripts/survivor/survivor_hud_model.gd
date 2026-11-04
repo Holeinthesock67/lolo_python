@@ -32,6 +32,10 @@ const YELLOW := UiTheme.GOLD
 
 var names := {}                 # id du bot -> nom (gardé après sa disparition de la trame)
 var after_out := "ride"         # réglage survivor.after_out : texte du bandeau du cycliste éliminé
+## FTP du cycliste (hello_ack, posée par main.gd) : puissance « hors de portée » au-delà de REACH_FTP × FTP.
+var ftp_w := 0.0
+const REACH_FTP := 1.5
+const REACH_MAX_W := 600.0
 var _seen := {}                 # "arche:coureur" des éliminations déjà affichées
 var _bottom := {}               # bandeau du bas en cours : {title, sub, color, until}
 var _center := {}               # bandeau du milieu en cours
@@ -131,14 +135,34 @@ func view(state, now_s: float) -> Dictionary:
 				last_line = "%s à %s s" % [name_of(str(alive[alive.size() - 2])), fr1(float(gap))]
 			else:
 				last_line = "Dernier : %s à %s s" % [name_of(last), fr1(float(gap))]
+		var pw = state.get("power_3s", state.get("power", 0.0))   # puissance lissée sur 3 s : écart stable
+		var ahead := ahead_lines(sv.get("ahead", null), float(pw) if (pw is float or pw is int) else 0.0)
 		out["block"] = {"title": "SURVIVANT", "dist": "dans " + distance_text(dm), "arch": "Arche %d / %d" % [arch, arches],
 			"bar": clampf(1.0 - dm / start_d, 0.0, 1.0), "rank": "%s sur %d en course" % [place_text(rank), alive.size()],
-			"danger": danger, "danger_text": "DERNIER" if danger else "", "last": last_line}
+			"danger": danger, "danger_text": "DERNIER" if danger else "", "last": last_line,
+			"ahead": ahead[0], "ahead_w": ahead[1]}
 	if not _bottom.is_empty() and now_s < float(_bottom["until"]):
 		out["bottom"] = _bottom
 	if not _center.is_empty() and now_s < float(_center["until"]):
 		out["center"] = _center
 	return out
+
+
+## Coureur juste devant (`ahead` de la trame, essai du 4 novembre) : [« Devant : Grimpeur à 4,2 s »,
+## « 245 W (+50) pour le rejoindre à l'arche »] ; au-delà de REACH_FTP × FTP (ou REACH_MAX_W sans FTP) :
+## « hors de portée d'ici l'arche » ; sans puissance (il a passé l'arche) : seconde ligne vide. ["", ""] si personne.
+func ahead_lines(ahead, power_w: float) -> Array:
+	if not ahead is Dictionary or str(ahead.get("id", "")) == "":
+		return ["", ""]
+	var first := "Devant : %s à %s s" % [name_of(str(ahead["id"])), fr1(float(ahead.get("gap_s", 0.0)))]
+	var need = ahead.get("catch_w", null)
+	if not (need is float or need is int):
+		return [first, ""]
+	var reach := REACH_FTP * ftp_w if ftp_w > 0.0 else REACH_MAX_W
+	if float(need) > reach:
+		return [first, "hors de portée d'ici l'arche"]
+	var delta := int(round(float(need) - power_w))
+	return [first, "%d W (%s%d) pour le rejoindre à l'arche" % [int(need), "+" if delta >= 0 else "−", absi(delta)]]
 
 
 ## Lignes de la liste des coureurs : [{name, detail, me, last, out}].

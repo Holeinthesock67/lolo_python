@@ -1841,6 +1841,7 @@ func _update_survivor(state: Dictionary, in_session: bool) -> void:
 			survivor_hud.reset()
 		return
 	survivor_hud.after_out = str(menu_flow.settings.item("survivor.after_out").get("value", "ride"))
+	survivor_hud.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	survivor_view.right_top = hud.free_right_top()
 	survivor_view.update_view(survivor_hud.view(state, Time.get_ticks_msec() / 1000.0))
 	segment_markers.set_survivor_arches(survivor_hud.arches_to_draw(state))

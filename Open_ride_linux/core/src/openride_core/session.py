@@ -44,7 +44,7 @@ from .mock_driver import MockDriver
 from .garage import GarageError, ProgressionService, estimate_w_prime, workout_duration_finder
 from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
 from .open_world_save import save_ride
-from .physics import PhysicsParams, RiderPhysics, draft_saving_w
+from .physics import PhysicsParams, RiderPhysics, draft_saving_w, resistive_force
 from . import surface_physics
 from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
@@ -2235,9 +2235,35 @@ class CoreSession:
             st.survivor = None
             return
         st.survivor = self.survivor.frame()
+        ahead = st.survivor.get("ahead")
+        if ahead is not None:
+            ahead["catch_w"] = self._survivor_catch_w(ahead["id"])
         if st.bots:
             st.bots = [{**b, "out": self.survivor.racers[b["id"]].out_arch}
                        if b["id"] in self._survivor_out else b for b in st.bots]
+
+    def _survivor_catch_w(self, rid: str) -> int | None:
+        """Puissance moyenne pour être à la hauteur du coureur `rid` à la prochaine arche (essai du 4 novembre) :
+        vitesse moyenne qu'il faut pour couvrir la distance à l'arche dans le temps que `rid` met à l'atteindre à
+        sa vitesse du moment, sur la pente moyenne jusqu'à l'arche, avec l'abri, l'équipement et le vent du
+        moment, plus l'énergie pour prendre cette vitesse ; None s'il a déjà passé l'arche."""
+        sv, route = self.survivor, self.route
+        bot = next((b for b in self.bots if b.id == rid), None)
+        if sv is None or route is None or bot is None or sv.arch >= len(sv.arches):
+            return None
+        arch = sv.arches[sv.arch]
+        d_me, d_bot = arch - self.physics.s, arch - bot.s
+        if d_me <= 0.0 or d_bot <= 0.0:
+            return None
+        t = d_bot / max(bot.v, 0.5)
+        v_need = d_me / t
+        here = route.sample(self.physics.s % route.length_m if route.is_loop else self.physics.s)
+        there = route.sample(arch % route.length_m if route.is_loop else min(arch, route.length_m))
+        grade = (there.alt_m - here.alt_m) / d_me * 100.0
+        p = self.physics.p
+        work = resistive_force(v_need, grade, here.alt_m, p, self._draft) * d_me
+        work += 0.5 * p.mass_kg * (v_need * v_need - self.physics.v * self.physics.v)
+        return int(min(max(round(work / t / p.efficiency), 0), 3000))
 
     # --- mode classique de la série T (lot T7) ------------------------------------------
 
