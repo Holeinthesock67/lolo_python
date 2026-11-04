@@ -131,6 +131,8 @@ var _manifest: Variant = null
 const PREVIEW_FADE_M := 100.0
 var _previews: Dictionary = {}
 var _preview_material: Material = null
+## Talus des bords de la route (road_builder.gd build_skirt_arrays), couleur du sol : second matériau des tronçons.
+var _skirt_material: StandardMaterial3D = null
 
 ## Mesures pour le rapport de performance : clé de type -> [nombre, µs cumulées].
 var build_stats: Dictionary = {}
@@ -198,6 +200,7 @@ func _set_biome_model() -> void:
 	_make_biome_textures()
 	var ground: Dictionary = biome_model.terrain_theme(start_biome())
 	_ground_color = ThemeRenderParams.terrain_uniforms(ground)["grass_color"]
+	_update_skirt_color()
 	if _ground != null and _ground.mesh != null and _ground.mesh.material is StandardMaterial3D:
 		(_ground.mesh.material as StandardMaterial3D).albedo_color = _ground_color
 
@@ -588,6 +591,7 @@ func _build_job(job: Dictionary) -> void:
 				height_at = _display_height_fn(job["world_dir"], r)
 			job["arrays"] = RoadBuilder.build_chunk_arrays(r, k_road, float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)),
 				job.get("gravel", {}), height_at)
+			job["skirt_arrays"] = RoadBuilder.build_skirt_arrays(job["arrays"])
 		"near", "far":
 			var t: Vector2i = spec["tile"]
 			var heights := TerrainTiles.load_filled(job["world_dir"], spec["kind"], t.x, t.y, r)
@@ -657,6 +661,8 @@ func _poll_jobs(wait: bool) -> void:
 			var ready_item := {"key": key, "arrays": job["arrays"], "origin": job["origin"], "kind": job["spec"]["kind"]}
 			if job.has("trees_data"):
 				ready_item["trees_data"] = job["trees_data"]
+			if job.has("skirt_arrays"):
+				ready_item["skirt_arrays"] = job["skirt_arrays"]
 			_ready.append(ready_item)
 
 
@@ -677,6 +683,9 @@ func integrate(max_new: int) -> int:
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["arrays"])
 		mesh.surface_set_material(0, road_material_for(int((r["key"] as String).get_slice(":", 1))) if r["kind"] == "road" else _terrain_material_for(r["key"]))
+		if r["kind"] == "road" and not (r.get("skirt_arrays", []) as Array).is_empty():
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["skirt_arrays"])
+			mesh.surface_set_material(1, _skirt_material_now())
 		var mi := MeshInstance3D.new()
 		mi.name = (r["key"] as String).replace(":", "_")
 		mi.mesh = mesh
@@ -812,8 +821,21 @@ func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
 
 	var tu := ThemeRenderParams.terrain_uniforms(theme_dict)
 	_ground_color = tu["grass_color"]
+	_update_skirt_color()
 	if _ground != null and _ground.mesh != null and _ground.mesh.material is StandardMaterial3D:
 		(_ground.mesh.material as StandardMaterial3D).albedo_color = _ground_color
+
+
+func _skirt_material_now() -> StandardMaterial3D:
+	if _skirt_material == null:
+		_skirt_material = RoadBuilder.make_skirt_material(_ground_color)
+	return _skirt_material
+
+
+## Couleur du sol changée (thème, biome du départ) : talus recolorés.
+func _update_skirt_color() -> void:
+	if _skirt_material != null:
+		_skirt_material.albedo_color = _ground_color.darkened(0.25)
 
 
 func _rebuild_road_material() -> void:

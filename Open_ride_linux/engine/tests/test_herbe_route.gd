@@ -15,8 +15,11 @@ extends SceneTree
 ##   du bord ;
 ## - sol affiché sous la chaussée (_ground_fn, même choix que world_streamer.gd : tuile proche, sinon lointaine,
 ##   sinon tuile plate ; sol plat sans couche terrain) : en travers de la chaussée tous les SECTION_STEP_M mètres,
-##   jamais plus de TERRAIN_TOL_M au-dessus de la route (route enfoncée sous l'herbe ou le terrain), ni plus de
-##   FLOAT_TOL_M au-dessous (route qui lévite, constat du 4 novembre 2026 sur la démonstration sans terrain).
+##   jamais plus de TERRAIN_TOL_M au-dessus de la route (route enfoncée sous l'herbe ou le terrain) ; et la route
+##   ne lévite pas (constat du 4 novembre 2026 sur la démonstration sans terrain) : là où le sol est à plus de
+##   FLOAT_TOL_M sous la chaussée, les pieds des deux talus (road_builder.gd, SKIRT_DROP_M plus bas, SKIRT_OUT_M
+##   plus loin que le bas-côté) doivent être enterrés, sinon on voit sous la route. Les remblais plus hauts que
+##   FLOAT_TOL_M sont comptés et le plus haut est affiché.
 ##   Le sol sous la route ne dépend pas du préréglage (low, medium et high ont les mêmes tuiles proches) : un
 ##   passage par parcours et par relief suffit pour les trois.
 ## Code de sortie 1 si un contrôle échoue ; les pires points sont listés (s, x, z) pour aller les voir.
@@ -154,37 +157,53 @@ static func _ground_fn(wd: String, route) -> Callable:
 		return route.display_y(TerrainTiles.nearest_route_alt(route, c.x, c.z))
 
 
-## Sol affiché en travers de la chaussée : ni au-dessus de la route (route enfoncée), ni trop dessous (route
-## qui lévite).
+## Sol affiché en travers de la chaussée : ni au-dessus de la route (route enfoncée), ni trop dessous sans que
+## les talus touchent le sol (route qui lévite).
 func _check_terrain(tag: String, route, ground_at: Callable) -> void:
 	var above := []
-	var below := []
+	var floating := []
 	var worst_up := -INF
 	var worst_down := INF
+	var banks := 0
 	var n := 0
+	var foot_off := ROAD_HALF_M + RoadBuilder.SHOULDER_WIDTH_M + RoadBuilder.SKIRT_OUT_M
+	var foot_drop := RoadBuilder.SHOULDER_DROP_M + RoadBuilder.SKIRT_DROP_M
 	var s := 0.0
 	while s <= route.length_m:
 		var smp: Dictionary = route.sample(s)
+		var y: float = smp["y"]
 		var h := deg_to_rad(float(smp["heading_deg"]))
 		var right := Vector2(cos(h), sin(h))
+		var low := INF
+		var low_txt := ""
 		var off := -ROAD_HALF_M
 		while off <= ROAD_HALF_M + 1e-6:
 			var x: float = smp["x"] + right.x * off
 			var z: float = smp["z"] + right.y * off
-			var d: float = float(ground_at.call(x, z)) - float(smp["y"])
+			var d: float = float(ground_at.call(x, z)) - y
 			n += 1
 			worst_up = maxf(worst_up, d)
 			worst_down = minf(worst_down, d)
 			if d > TERRAIN_TOL_M:
 				above.append([d, "s = %.0f m, x = %.1f, z = %.1f : +%.2f m" % [s, x, z, d]])
-			elif d < -FLOAT_TOL_M:
-				below.append([-d, "s = %.0f m, x = %.1f, z = %.1f : %.2f m" % [s, x, z, d]])
+			if d < low:
+				low = d
+				low_txt = "s = %.0f m, x = %.1f, z = %.1f : %.2f m" % [s, x, z, d]
 			off += ACROSS_STEP_M
+		if low < -FLOAT_TOL_M:
+			banks += 1
+			var buried := true
+			for side in [-1.0, 1.0]:
+				var fx: float = smp["x"] + right.x * foot_off * side
+				var fz: float = smp["z"] + right.y * foot_off * side
+				buried = buried and float(ground_at.call(fx, fz)) >= y - foot_drop
+			if not buried:
+				floating.append([-low, low_txt])
 		s += SECTION_STEP_M
 	_check(above.is_empty(), "%s : sol jamais au-dessus de la chaussée (%d points, au plus %+.2f m, %d au-dessus)%s" % [
 		tag, n, worst_up, above.size(), "" if above.is_empty() else " — " + _worst(above)])
-	_check(below.is_empty(), "%s : route posée sur le sol, à moins de %.1f m (%d points, au plus %.2f m sous la route, %d trop bas)%s" % [
-		tag, FLOAT_TOL_M, n, -worst_down, below.size(), "" if below.is_empty() else " — " + _worst(below)])
+	_check(floating.is_empty(), "%s : route posée sur le sol ou sur ses talus (sol au plus %.2f m sous la route ; %d coupes sur remblai de plus de %.1f m, %d sans appui)%s" % [
+		tag, -worst_down, banks, FLOAT_TOL_M, floating.size(), "" if floating.is_empty() else " — " + _worst(floating)])
 
 
 func _check_tufts(tag: String, route, height_at: Callable, road: Dictionary) -> void:
