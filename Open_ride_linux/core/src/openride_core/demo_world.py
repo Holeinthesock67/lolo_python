@@ -182,12 +182,36 @@ def _demo_needs_rewrite(world: Path) -> bool:
     return ours and not terrain.get("present", False)
 
 
-def ensure_demo_world(routes_root: Path) -> Path:
+def _bundled_demo_world(engine_dir: Path | None = None) -> Path | None:
+    """Démonstration embarquée par l'engine (`engine/demo/demo.world`, identique à `write_demo_world`,
+    test_segments.py), si elle porte sa couche terrain."""
+    import os
+
+    from .launcher import DEFAULT_ENGINE_DIR
+
+    engine = Path(engine_dir or os.environ.get("OPENRIDE_ENGINE") or DEFAULT_ENGINE_DIR).expanduser()
+    world = engine / "demo" / f"{DEMO_NAME}.world"
+    return None if _demo_needs_rewrite(world) or not (world / "terrain").is_dir() else world
+
+
+def ensure_demo_world(routes_root: Path, engine_dir: Path | None = None) -> Path:
     """Crée `<routes_root>/demo.world` s'il manque (ou le réécrit s'il date d'avant sa couche terrain),
-    et renvoie son chemin."""
+    et renvoie son chemin. Copie la démonstration embarquée par l'engine quand elle est là (quelques
+    millisecondes, la séance n'attend pas), sinon l'écrit (environ 2 s pour le terrain). Le manifeste
+    est copié en dernier : une copie interrompue est refaite au prochain appel."""
+    import shutil
+
     world = routes_root / f"{DEMO_NAME}.world"
-    if _demo_needs_rewrite(world):
+    if not _demo_needs_rewrite(world):
+        return world
+    bundled = _bundled_demo_world(engine_dir)
+    if bundled is None:
         write_demo_world(routes_root)
+        return world
+    world.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(bundled / "terrain", world / "terrain", dirs_exist_ok=True)
+    for name in ("route.json", "segments.json", "manifest.json"):
+        shutil.copyfile(bundled / name, world / name)
     return world
 
 
