@@ -5,7 +5,15 @@ extends SceneTree
 ## apparaissent. L'image du préréglage low est écrite dans user:// pour contrôle visuel.
 
 const SIZE := Vector2i(640, 360)
-const SETTLE_FRAMES := 10   # images laissées au rendu avant et après la libération de la vue
+## Fin des compilations de pipelines : compteurs du serveur de rendu inchangés depuis SETTLE_S secondes et
+## SETTLE_FRAMES images, attente bornée à SETTLE_MAX_S secondes.
+const SETTLE_FRAMES := 10
+const SETTLE_S := 1.0
+const SETTLE_MAX_S := 30.0
+const PIPELINE_INFOS := [RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_CANVAS,
+	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_MESH, RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SURFACE,
+	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_DRAW,
+	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SPECIALIZATION]
 
 var _failures := 0
 var _checked := 0
@@ -33,6 +41,32 @@ func _brightest(img: Image) -> float:
 	return best
 
 
+func _pipeline_compilations() -> int:
+	var total := 0
+	for info in PIPELINE_INFOS:
+		total += RenderingServer.get_rendering_info(info)
+	return total
+
+
+func _settle_pipelines() -> void:
+	var start := Time.get_ticks_msec()
+	var last := _pipeline_compilations()
+	var since := start
+	var frames := 0
+	while Time.get_ticks_msec() - start < SETTLE_MAX_S * 1000.0:
+		await process_frame
+		var now := _pipeline_compilations()
+		if now != last:
+			last = now
+			since = Time.get_ticks_msec()
+			frames = 0
+		else:
+			frames += 1
+		if frames >= SETTLE_FRAMES and Time.get_ticks_msec() - since >= SETTLE_S * 1000.0:
+			break
+	print("compilations de pipelines : %d, attente %d ms" % [last, Time.get_ticks_msec() - start])
+
+
 func _run() -> void:
 	var vp := SubViewport.new()
 	vp.size = SIZE
@@ -57,13 +91,11 @@ func _run() -> void:
 	sheet.play_effect("perfect_shift")
 	await process_frame
 	_check(sheet.get_node("Flash").scale.x > 0.0, "un effet rejouable allume la sphère de démonstration")
-	# Sortie en ordre (Godot 4.7, Forward+) : quitter une image après avoir libéré la vue, juste après un
-	# changement de matériaux, peut bloquer Godot à la sortie (à chaque fois sur la GTX 1060, une fois sur
-	# deux au cloud avec tests/diag/rogue_exit_diag.gd). Les vérifications sont faites : on laisse le rendu finir ses images avant et après la libération.
-	for i in SETTLE_FRAMES:
-		await process_frame
+	# Sortie en ordre (Godot 4.7, Forward+) : quitter pendant que Godot compile encore des pipelines en
+	# arrière-plan bloque la sortie (sur la GTX 1060, au premier lancement, cache des shaders vide). Les
+	# vérifications sont faites : on attend la fin des compilations avant et après la libération de la vue.
+	await _settle_pipelines()
 	vp.queue_free()
-	for i in SETTLE_FRAMES:
-		await process_frame
+	await _settle_pipelines()
 	print("test_rogue_style_sheet_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
