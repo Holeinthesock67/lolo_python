@@ -94,6 +94,39 @@ def test_ramp_watch_ignores_warmup_and_pause():
         assert watch.update(0.1, 0.0, 0.0, erg) is None
 
 
+def test_ramp_watch_provisional_ftp():
+    """FTP provisoire (demande du 04/11) : 75 % de la meilleure minute des paliers, pauses exclues."""
+    watch, erg = watch_at(300)
+    for _ in range(590):                 # 59 s : pas encore de minute pleine
+        watch.update(0.1, 280.0, 90.0, erg)
+    assert watch.provisional_ftp_w is None
+    for _ in range(10):
+        watch.update(0.1, 280.0, 90.0, erg)
+    assert watch.provisional_ftp_w == 210   # 0,75 × 280
+    for _ in range(300):                 # 30 s à 320 W : minute à (30×280 + 30×320) / 60 = 300 W
+        watch.update(0.1, 320.0, 90.0, erg)
+    assert watch.provisional_ftp_w == 225
+    erg.paused = True
+    for _ in range(300):                 # pause : rien n'entre dans la meilleure minute
+        watch.update(0.1, 0.0, 0.0, erg)
+    erg.paused = False
+    for _ in range(100):                 # baisse : la meilleure minute reste acquise
+        watch.update(0.1, 200.0, 90.0, erg)
+    assert watch.provisional_ftp_w == 225
+    # Même formule que le résultat final, sur des relevés à 1 Hz équivalents.
+    recs = records(60, power=280.0) + records(30, power=280.0, t0=1060.0) + records(30, power=320.0, t0=1090.0)
+    assert estimate_ftp(recs, "ramp").ftp_w == 225
+
+
+def test_ramp_watch_provisional_uneven_ticks():
+    watch, erg = watch_at(300)
+    for dt in [0.033, 0.017, 0.25, 0.7] * 40:   # pas irréguliers : 40 s
+        watch.update(dt, 300.0, 90.0, erg)
+    for dt in [0.033, 0.017, 0.25, 0.7] * 20:
+        watch.update(dt, 300.0, 90.0, erg)
+    assert watch.provisional_ftp_w == 225
+
+
 # --- séance --------------------------------------------------------------------------------
 
 class Rider:
@@ -134,6 +167,7 @@ def test_session_ramp_detects_end_and_writes_result(tmp_path, monkeypatch, worko
         assert s._t_session - rider.gave_up_at < 10.0          # fin détectée en moins de 10 s
         run(s, 10.0, dt=0.1)
         assert s.state.erg["block_type"] == "cooldown" and s.state.erg["target_w"] == 100
+        provisional = s.state.erg["ftp_provisional_w"]   # FTP provisoire figée au retour au calme
         s._on_command("end_session", {"save": True}, 4)
         path, lines = journal_line(s, "ftp_test")
         assert len(lines) == 1
@@ -145,6 +179,7 @@ def test_session_ramp_detects_end_and_writes_result(tmp_path, monkeypatch, worko
         assert 335 <= best <= 345 and res.step_w == 360
         assert res.ftp_w == pytest.approx(0.75 * best, abs=1) and res.previous_ftp_w == 250
         assert res.reliable and res.warnings == ()
+        assert provisional == pytest.approx(res.ftp_w, abs=2)   # même formule que le résultat final
         # Ligne `ftp_test` juste avant l'arrêt, et bilan de la séance.
         kinds = [ln["kind"] for ln in read_journal(path)]
         assert kinds[-2:] == ["ftp_test", "event"]
@@ -181,6 +216,7 @@ def test_session_plus_minus_locked_during_ramp(tmp_path, monkeypatch, workouts_d
         s._on_command("start", {}, 3)
         base = s.erg.bias_pct
         assert "bias_locked" not in s.state.erg     # échauffement
+        assert s.state.erg.get("ftp_test") == "ramp" and "ftp_provisional_w" not in s.state.erg
         s._handle_input(InputEvent.PLUS_SHORT)    # échauffement : biais permis
         assert s.erg.bias_pct > base
         s._handle_input(InputEvent.MINUS_SHORT)
@@ -191,6 +227,7 @@ def test_session_plus_minus_locked_during_ramp(tmp_path, monkeypatch, workouts_d
         for ev in (InputEvent.PLUS_SHORT, InputEvent.PLUS_LONG, InputEvent.MINUS_SHORT, InputEvent.MINUS_LONG):
             s._handle_input(ev)
         assert s.erg.bias_pct == base and s.erg.target_w == target
+        assert s.state.erg.get("ftp_test") == "ramp" and "ftp_provisional_w" not in s.state.erg   # < 1 min
         s._on_command("skip_block", {}, 5)        # abandon : retour au calme, + et − rendus
         assert s.erg.block.type == "cooldown" and "bias_locked" not in s.state.erg
         s._handle_input(InputEvent.MINUS_SHORT)

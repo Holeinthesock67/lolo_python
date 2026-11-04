@@ -351,6 +351,11 @@ func _test_controls_help() -> void:
 	var locked: String = HudViewModel.bias_locked_text()
 	_check(locked.contains("Test de FTP") and locked.contains("bloqués") and locked.contains("Z = arrêter"),
 		"test de FTP : rappel de + / − bloqués pendant la rampe")
+	_check(HudViewModel.ftp_warmup_text().contains("Z = passer l'échauffement")
+		and HudViewModel.is_ftp_warmup({"ftp_test": "ramp", "block_type": "warmup"})
+		and not HudViewModel.is_ftp_warmup({"ftp_test": "ramp", "block_type": "steady"})
+		and not HudViewModel.is_ftp_warmup({"block_type": "warmup"}) and not HudViewModel.is_ftp_warmup(null),
+		"test de FTP : Z = passer l'échauffement, rappelé pendant l'échauffement du test seulement")
 	var rogue: String = HudViewModel.controls_text(false, "workout", true)
 	_check(rogue.contains("Y = pause") and rogue.contains("Z = attaque") and rogue.contains("long = carte active")
 		and not rogue.contains("braquet"), "rappel en Cyber-Rogue : colonne du mode (§7.1), pas de braquet")

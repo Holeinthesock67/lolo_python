@@ -1269,6 +1269,14 @@ class CoreSession:
             return
         self.server.send_raw(msg)
 
+    def _setting_file(self, key: str) -> Path:
+        """Fichier qui reçoit le réglage `key` : `profil.toml` du profil pour un réglage du joueur (FTP…),
+        `config.toml` pour un réglage de la machine (lot MJ4)."""
+        from . import config_edit, settings
+
+        s = settings.get(key)
+        return config_edit.destination(s.section, s.name, self.config_path)
+
     def _accept_ftp(self, args: dict, cmd_id: int) -> None:
         """Enregistre la FTP du dernier test (`[rider] ftp_w`) ; réponse `settings` comme `set_setting`."""
         if self.state.session_state in ("RUNNING", "PAUSED"):
@@ -1493,7 +1501,7 @@ class CoreSession:
             log.warning("Réglage refusé : %s", exc)
             self.server.send_error("setting_invalid", str(exc))
             return
-        log.info("Réglage enregistré (%s) : %s", self.config_path or "config.toml",
+        log.info("Réglage enregistré (%s) : %s", self._setting_file(str(key)),
                  "; ".join(changed) if changed else "inchangé")
         if in_session:
             self._send_settings(cmd_id)
@@ -1896,6 +1904,11 @@ class CoreSession:
         self.state.erg = erg.to_dict() if erg else None
         if self.state.erg is not None and self._bias_locked():
             self.state.erg["bias_locked"] = True   # test de FTP : + et − sans effet pendant la rampe
+        if self.state.erg is not None and self._ramp_watch is not None and self._workout_erg() is not None:
+            self.state.erg["ftp_test"] = "ramp"   # séance de test de FTP : rappels et FTP provisoire du HUD
+            provisional = self._ramp_watch.provisional_ftp_w
+            if provisional is not None:
+                self.state.erg["ftp_provisional_w"] = provisional   # 75 % de la meilleure minute jusqu'ici
 
     def _on_engine_lost(self) -> None:
         self._scene_route = None   # engine relancé : son décor est à recharger (départ au pédalage, lot O36)

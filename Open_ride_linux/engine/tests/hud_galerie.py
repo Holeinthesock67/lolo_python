@@ -6,7 +6,7 @@
 
 L'engine réel tourne avec le faux core de visual_check.py (Xvfb, ou l'écran avec --native) sur le parcours
 de démonstration et passe par les cas de CAS : SIM simple, vent et abri, bots avec segment et bonus, ERG
-avec une cible courte ou longue, palier de 50 W (FreeRide, lot O19), courbes réduites et complètes, teintes des
+avec une cible courte ou longue, palier de 50 W (FreeRide, lot O19), palier d'un test de FTP avec la FTP provisoire, courbes réduites et complètes, teintes des
 zones de puissance et de FC, valeurs extrêmes. Sur chaque
 capture : panneaux dans l'écran et sans chevauchement, textes dans leur colonne, hauteur et contraste des
 chiffres (hud_lisibilite.py), texte attendu des valeurs. Sortie : une capture par cas et par
@@ -91,6 +91,11 @@ CAS: list[dict[str, Any]] = [
      "hidden": ["gear", "profile"]},
     {"name": "erg_palier_50w", "state": {"mode": "ERG", "erg": _erg(50.0, 98, "steady")}, "texts": {"target": "50 W (98 %)"},
      "hidden": ["gear", "profile"]},
+    {"name": "erg_test_ftp", "state": {"mode": "ERG", "erg": _erg(300.0, 100, "steady") | {
+        "workout_name": "Test de FTP : rampe", "block_index": 12, "block_count": 33, "block_remaining_s": 40.0,
+        "block_total_s": 60.0, "next_target_w": 320.0, "bias_locked": True, "ftp_test": "ramp",
+        "ftp_provisional_w": 214}},
+     "texts": {"erg_next": "Ensuite : 320 W · FTP provisoire : 214 W"}, "hidden": ["gear", "profile"]},
     {"name": "erg_courbes_reduites", "state": {"mode": "ERG", "erg": _erg(230.0, 100)}, "chart": "reduced", "wait": 7.0,
      "shown": ["chart_erg"], "hidden": ["profile"]},
     {"name": "erg_courbes_completes", "state": {"mode": "ERG", "erg": _erg(230.0, 100)}, "chart": "full", "wait": 7.0,
