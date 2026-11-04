@@ -34,7 +34,7 @@ KEEP_MP3_DAYS = 28             # au-delà, les MP3 déjà envoyés sont supprim�
 # ---------- réglages ----------
 ENGINE = "edge"        # "edge" (edge-tts) ou "piper" (local)
 EDGE_CHUNK_CHARS = 1500  # edge-tts lit les répliques entières : meilleure intonation
-EDGE_RETRIES = 3
+EDGE_RETRIES = 5
 EDGE_TIMEOUT = 120      # secondes max pour un morceau ; au-delà, on abandonne et on réessaie
 FFMPEG_TIMEOUT = 300    # secondes max pour une conversion ffmpeg
 EDGE_MAX_PASSES = 3    # passages ratés d'edge-tts (un par heure) avant de basculer sur Piper
@@ -148,9 +148,9 @@ def edge_to_wav(text, voice, wav_path):
         except Exception as exc:   # inclut le délai dépassé (TimeoutError)
             last = f"{type(exc).__name__} {exc}".strip()
             mp3.unlink(missing_ok=True)   # fichier partiel d'un essai interrompu
-            time.sleep(5 * (attempt + 1))
+            time.sleep(10 * (attempt + 1))   # 10, 20, 30, 40 s : laisse le service se calmer
     else:
-        raise RuntimeError(f"échec après {EDGE_RETRIES} essais : {last}")
+        raise RuntimeError(f"échec après {EDGE_RETRIES} essais sur « {text[:60]} » : {last}")
     run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3),
          "-ac", "1", "-ar", "24000", "-sample_fmt", "s16", str(wav_path)],
         timeout=FFMPEG_TIMEOUT)
