@@ -101,6 +101,8 @@ func _init() -> void:
 	var per_call_us := float(Time.get_ticks_usec() - t_calls) / 10000.0
 	print("mark sans sonde : %.2f µs par appel" % per_call_us)
 	_check(PerfBudget.check("perf_probe_mark_off", per_call_us / 1000.0), "sans sonde, mark coûte moins de 20 µs (%.2f µs ; une dizaine d'appels par seconde)" % per_call_us)
+	PerfProbe.mark_since("herbe", "40", Time.get_ticks_usec() - 90_000)
+	_check(PerfProbe._steps.is_empty(), "sans sonde, mark_since ne retient rien")
 	var sc: Dictionary = PerfProbe.saccade_cause([["tuile", "near:1:2", 12.0], ["arbres", "near:1:2", 30.5]], false, 60.0)
 	_check(sc["cause"] == "arbres" and sc["steps"] == "tuile near:1:2 12.0 | arbres near:1:2 30.5",
 		"cause : l'étape la plus longue (%s)" % sc["cause"])
@@ -116,6 +118,8 @@ func _init() -> void:
 	probe.frame(0.045)                 # saccade due à la tuile
 	probe.frame(0.016)                 # étapes déjà comptées : rien à signaler
 	probe.frame(0.060)                 # saccade sans étape
+	PerfProbe.mark_since("herbe", "1240", Time.get_ticks_usec() - 90_000)   # mise à jour de chaque image (04/11)
+	probe.frame(0.110)                 # saccade due à l'herbe
 	PerfProbe.task("arbres", "1:2", 7.25)
 	for i in PerfProbe.PLAYABLE_FRAMES - 1:
 		probe.frame(0.016)
@@ -129,11 +133,13 @@ func _init() -> void:
 	probe.close()
 	_check(not PerfProbe.active, "sonde refermée : inactive")
 	var sac := FileAccess.get_file_as_string(dir.path_join("saccades.csv")).strip_edges().split("\n")
-	_check(sac.size() == 3 and sac[0] == ";".join(PerfProbe.SACCADE_COLUMNS) and probe.saccades_written == 2, "deux saccades écrites")
-	var s1 := sac[1].split(";") if sac.size() == 3 else PackedStringArray(["", "", "", "", "", ""])
+	_check(sac.size() == 4 and sac[0] == ";".join(PerfProbe.SACCADE_COLUMNS) and probe.saccades_written == 3, "trois saccades écrites")
+	var s1 := sac[1].split(";") if sac.size() == 4 else PackedStringArray(["", "", "", "", "", ""])
 	_check(s1[2] == "45.0" and s1[3] == "1234.5" and s1[4] == "tuile" and s1[5] == "tuile near:1:2 40.0",
 		"saccade 1 : 45 ms à 1234,5 m, cause tuile (%s)" % sac[1] if sac.size() > 1 else "?")
-	_check(sac.size() == 3 and sac[2].split(";")[4] == "inconnue", "saccade 2 sans étape : inconnue")
+	_check(sac.size() == 4 and sac[2].split(";")[4] == "inconnue", "saccade 2 sans étape : inconnue")
+	var s3 := sac[3].split(";") if sac.size() == 4 else PackedStringArray(["", "", "", "", "", ""])
+	_check(s3[4] == "herbe" and s3[5].begins_with("herbe 1240 "), "saccade 3 : cause herbe, notée par mark_since (%s)" % sac[-1])
 	var tasks := FileAccess.get_file_as_string(dir.path_join("taches.csv")).strip_edges().split("\n")
 	_check(tasks.size() == 2 and tasks[1].ends_with(";arbres;1:2;7.25"), "tâche de fond écrite à la seconde (%s)" % tasks[-1])
 	_check(FileAccess.get_file_as_string(dir.path_join("demarrage.txt")).begins_with("Démarrage : première image jouable à "),

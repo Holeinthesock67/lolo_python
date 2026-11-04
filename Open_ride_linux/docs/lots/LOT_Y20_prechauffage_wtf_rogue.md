@@ -41,3 +41,12 @@ Banc PC du 2 novembre (main 6f61a33e, plan « préchauffage généralisé ») :
 
 1. Cloud : `test_wtf_scene` et `test_rogue_host` passent.
 2. PC, low, medium et high : premier tirage de la tornade et du fromage sous 60 ms ; aucune image au-dessus de 100 ms dans les 5 s après RUNNING, en WTF comme en Cyber-Rogue ; les gels du préchauffage tombent pendant l'écran d'attente.
+
+## 5. Suite : à-coups au départ (relevé du 4 novembre)
+
+Défauts restants, à traiter ensemble (basse priorité, après la 1.0) :
+
+- Cyber-Rogue : une image de 154 à 186 ms environ 0,2 s après RUNNING (suivi du préchauffage, #700).
+- Séance sur route, high, demo compilée : une à deux images de 117 à 147 ms vers 23 à 24 s, cycliste encore à 0 m. Cause notée par la sonde : arbres des premières tuiles posés sur le fil principal (`arbres near:-1:0 33 ms`, `arbres near:0:0 32 ms`). Relevé du banc de #710 dans `/mnt/project-files/mesures/2026-11-04-saccades-40m/r710-fix/compilee_high_saccades.csv`.
+
+Garde-fou : la ligne « à-coups : départ » de `perf_probe.py` (#710, bloc `hitches` de `perf_targets.json`) refuse toute image de plus de 150 ms entre la fin du chargement et 30 s, en low, medium et high. Le seuil se resserrera quand ces à-coups seront corrigés.

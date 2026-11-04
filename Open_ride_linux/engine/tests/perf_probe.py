@@ -35,6 +35,7 @@ Bibliothèque standard seulement.
 from __future__ import annotations
 
 import argparse
+import bisect
 import csv
 import html
 import json
@@ -503,6 +504,91 @@ def budget_checks(rows: list[dict[str, Any]], targets: dict[str, Any] | None = N
     return out
 
 
+# --- à-coups (saccades du 04/11 : une image de 82 à 147 ms tous les 40 m, invisible au p99) ----------------
+
+def hitch_period(distances: list[float], min_m: float = 10.0, max_m: float = 1000.0, step_m: float = 0.5,
+                 tol_share: float = 0.05, min_hits: int = 4, min_score: float = 0.6) -> dict[str, float] | None:
+    """Période en distance des à-coups, ou None. Pour chaque période P de `min_m` à `max_m`, part des
+    à-coups dont la phase (distance modulo P) tombe à moins de `tol_share`·P de la phase la plus peuplée,
+    multipliée par la couverture (à-coups vus / passages de P sur la route parcourue, au plus 1) : une
+    période divisée par deux (20 m pour 40 m) perd sur la couverture, une période doublée sur la part."""
+    d = sorted(x for x in distances if isinstance(x, (int, float)))
+    if len(d) < min_hits:
+        return None
+    span = d[-1] - d[0]
+    best: dict[str, float] | None = None
+    p = min_m
+    while p <= min(max_m, span):
+        tol = tol_share * p
+        phases = sorted(x % p for x in d)
+        ring = phases + [q + p for q in phases]   # phases déroulées sur deux tours : fenêtre circulaire
+        top = 0
+        for i, ph in enumerate(phases):   # phase la plus peuplée : fenêtre de 2·tol qui commence à chaque phase
+            top = max(top, bisect.bisect_right(ring, ph + 2.0 * tol, i) - i)
+        share = top / len(d)
+        coverage = min(1.0, top / max(span / p + 1.0, 1.0))
+        score = share * coverage
+        if top >= min_hits and (best is None or score > best["score"] + 1e-9):
+            best = {"period_m": p, "share": share, "coverage": coverage, "score": score, "hits": float(top)}
+        p += step_m
+    return best if best is not None and best["score"] >= min_score else None
+
+
+def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | None = None,
+                 targets: dict[str, Any] | None = None, real_window: bool = True) -> list[tuple[bool | None, str, str]]:
+    """À-coups en régime établi (après `warmup_s` du bloc) : secondes dont la pire image dépasse `hitch_ms` (au plus
+    `max_per_min` par minute), aucune image au-delà de `freeze_ms`, et pas d'à-coups qui reviennent à
+    distance régulière (saccades.csv, captures du banc écartées) ; départ (fin du chargement à `warmup_s`
+    du bloc) : aucune image au-delà de `start_freeze_ms`. Seuils `hitches` de perf_targets.json."""
+    t = targets or load_targets()
+    lim = t.get("hitches", {})
+    hitch_ms, per_min = float(lim.get("hitch_ms", 50.0)), float(lim.get("max_per_min", 3.0))
+    freeze_ms = float(lim.get("freeze_ms", 100.0))
+    warmup_s = float(lim.get("warmup_s", t.get("warmup_s", 0)))
+    ts = values(rows, "t_s")
+    if not ts:
+        return []
+    warm = min(ts) + warmup_s
+    steady = [r for r in rows if isinstance(r.get("t_s"), (int, float)) and r["t_s"] >= warm]
+    worst = values(steady, "frame_max_ms")
+    note = "" if real_window else ", indicatif sous Xvfb"
+    out: list[tuple[bool | None, str, str]] = []
+    # Départ : après le chargement (warmup_s général), avant le régime établi ; seuil propre, plus large.
+    start_ms = float(lim.get("start_freeze_ms", 150.0))
+    loaded = min(ts) + float(t.get("warmup_s", 0))
+    start = values([r for r in rows if isinstance(r.get("t_s"), (int, float)) and loaded <= r["t_s"] < warm],
+                   "frame_max_ms")
+    if start:
+        top_start = max(start)
+        out.append(((top_start <= start_ms) if real_window else None, "à-coups : départ",
+                    f"pire image {top_start:.0f} ms de {loaded - min(ts):.0f} à {warmup_s:.0f} s "
+                    f"(au plus {start_ms:.0f} ms){note}"))
+    if worst:
+        minutes = max(len(steady) / 60.0, 1.0)
+        n = sum(w > hitch_ms for w in worst)
+        out.append(((n <= per_min * minutes) if real_window else None, "à-coups : images lentes",
+                    f"{n} seconde(s) avec une image de plus de {hitch_ms:.0f} ms en {len(steady) / 60.0:.1f} min, "
+                    f"{n / minutes:.1f} par minute (au plus {per_min:g}){note}"))
+        top = max(worst)
+        out.append(((top <= freeze_ms) if real_window else None, "à-coups : pire image",
+                    f"{top:.0f} ms (au plus {freeze_ms:.0f} ms){note}"))
+    if saccades is not None:
+        t0 = min((float(r["t_s"]) for r in saccades if isinstance(r.get("t_s"), float)), default=0.0)
+        hits = [r for r in saccades if isinstance(r.get("frame_ms"), float) and r["frame_ms"] > hitch_ms
+                and str(r.get("cause") or "") != "capture" and isinstance(r.get("distance_m"), float)
+                and isinstance(r.get("t_s"), float) and r["t_s"] >= t0 + warmup_s]
+        per = hitch_period([r["distance_m"] for r in hits])
+        if per is None:
+            out.append((True if real_window else None, "à-coups : périodicité en distance",
+                        f"aucune sur {len(hits)} image(s) de plus de {hitch_ms:.0f} ms{note}"))
+        else:
+            causes = sorted({str(r.get("cause") or "inconnue") for r in hits})
+            out.append((False if real_window else None, "à-coups : périodicité en distance",
+                        f"une image de plus de {hitch_ms:.0f} ms tous les {per['period_m']:.1f} m "
+                        f"({per['hits']:.0f} sur {len(hits)}, causes : {', '.join(causes)}){note}"))
+    return out
+
+
 def budget_text(checks: list[tuple[bool | None, str, str]]) -> str:
     return "\n".join(f"  [{'INFO' if ok is None else 'OK' if ok else 'ÉCHEC'}] {label} : {msg}"
                      for ok, label, msg in checks)
@@ -644,6 +730,11 @@ def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de p
     if summary["budgets"]:
         text += "\nBudgets du préréglage (engine/tests/perf_targets.json, lot X14) :\n" + budget_text(summary["budgets"]) + "\n"
     stalls = read_stalls(engine_dir) if engine_dir is not None else None
+    hitches = hitch_checks(rows, stalls["saccades"] if stalls is not None else None, real_window=real_window) \
+        if values(rows, "frame_max_ms") else []
+    if hitches:
+        summary["budgets"] += hitches
+        text += "\nÀ-coups (seuils « hitches » de perf_targets.json) :\n" + budget_text(hitches) + "\n"
     if stalls is not None:
         summary["stalls"] = stall_summary(stalls)
         text += "\n" + stall_text(summary["stalls"])

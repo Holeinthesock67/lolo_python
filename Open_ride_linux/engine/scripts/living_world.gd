@@ -26,6 +26,7 @@ const SkyClouds := preload("res://scripts/sky_clouds.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 const NEIGH_PERIOD_S := 0.5
 
@@ -128,11 +129,15 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	_refresh_shapes()
 	TreeRenderer.apply_wind(last_wind)
 	if grass != null:
+		var t_grass := Time.get_ticks_usec()
 		grass.set_apparent_wind(wind.apparent(rider_v, heading_deg))
 		grass.update(cam_s)
+		PerfProbe.mark_since("herbe", "%d" % int(floor(cam_s)), t_grass)
 	if ground_details != null:
+		var t_ground := Time.get_ticks_usec()
 		ground_details.set_apparent_wind(wind.apparent(rider_v, heading_deg))
 		ground_details.update(cam_s)
+		PerfProbe.mark_since("sol", "%d" % int(floor(cam_s)), t_ground)
 	SkyClouds.update(sky_material, last_wind, dt_s)
 	if terrain_material is ShaderMaterial:
 		var shadow := SkyClouds.terrain_shadow_params(sky_material, str(living.get("clouds", "off")))

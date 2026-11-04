@@ -1022,17 +1022,23 @@ func _process(delta: float) -> void:
 		_step_avatar(pos, heading, now, pitch_deg)
 		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
 		_probe.distance_m = s_route
+		var t_step := Time.get_ticks_usec()
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
+		PerfProbe.mark_since("fenetre", "", t_step)
 		# Bots placés avant le décor vivant : ses cyclistes, ses véhicules et son compte des contacts lisent les
 		# places des bots de cette image. Après une image bloquée, des places de l'image d'avant, face à la
 		# caméra déjà avancée, comptaient un contact qui n'existait pas (rejeu #707, 490 ms bloquées à t = 132 s).
 		if bots_model.count() > 0:
+			t_step = Time.get_ticks_usec()
 			_show_bots(s_route, float(follow.last_frame["v"]))
 			_bots_frame = Engine.get_process_frames()
+			PerfProbe.mark_since("bots", "", t_step)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		_show_draft_gauge()
 		# Arches de bonus seulement quand le core en donne (champ `powerup` : SIM, option « Bonus »).
+		t_step = Time.get_ticks_usec()
 		segment_markers.update(s_route, _last_state.has("powerup"))
+		PerfProbe.mark_since("arches", "", t_step)
 
 
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
@@ -1049,11 +1055,15 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 			living_world.freeze(_freeze_t)
 	var paused := session_state == "PAUSED"
 	living_world.step(now_s, delta, camera.global_position, s_route, v, float(smp["heading_deg"]),
-		float(smp["alt_m"]), paused)
+		float(smp["alt_m"]), paused)   # marque elle-même « herbe » et « sol »
+	var t_step := Time.get_ticks_usec()
 	if living_decor != null:
 		living_decor.step(now_s, delta, camera.global_position, s_route, v, float(smp["alt_m"]), paused,
 			living_world.last_wind, _last_state, now_s < _beep_until_s)
+		PerfProbe.mark_since("decor", "", t_step)
+		t_step = Time.get_ticks_usec()
 	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
+	PerfProbe.mark_since("atmosphere", "", t_step)
 
 
 ## Décor en fond des menus hors séance (accueil, choix, bilan) : la caméra avance lentement sur le

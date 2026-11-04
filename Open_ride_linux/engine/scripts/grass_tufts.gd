@@ -18,8 +18,10 @@ extends Node3D
 ##   mesuré sur TOUT le parcours (road_clearance.gd) et pas seulement au point qui l'a posée : dans une
 ##   épingle, au creux d'un virage serré ou là où le parcours repasse près de lui-même, l'herbe tombait
 ##   sur l'autre portion de route.
-## - Nombre de touffes jamais au-dessus du budget (`living(preset).grass_tufts`, 0 en `low` : nœud vide).
-## - Coût lissé : un tronçon qui entre dans la fenêtre est rempli `MAX_PER_FRAME` places par image.
+## - Nombre de touffes jamais au-dessus du budget (`living(preset).grass_tufts` : 1 500 en `low`, 8 000 en
+##   `medium`, 20 000 en `high` ; 0 quand le décor vivant est coupé : nœud vide).
+## - Coût lissé : un tronçon qui entre dans la fenêtre est rempli au plus `MAX_PER_FRAME` places et
+##   `MAX_FRAME_US` microsecondes par image.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
@@ -35,6 +37,11 @@ const BAND_MAX_M := 15.0
 const ROAD_CLEAR_M := 1.0
 const MAX_SLOPE := 0.7          # pente (tan) au-delà de laquelle il n'y a plus de touffe
 const MAX_PER_FRAME := 120
+## Temps de remplissage par image (µs) : vérifié toutes les BATCH places. Sur un parcours sans tuile de
+## terrain, chaque place coûte bien plus (hauteur lue sur la route) : 120 places faisaient 60 à 80 ms au
+## début de chaque tronçon de 40 m (saccades du 04/11).
+const MAX_FRAME_US := 1500
+const BATCH := 16
 const STATION_STEP_M := 4.0
 const STATION_COST := 40        # coût d'un échantillonnage de tronçon, compté en places
 const TUFT_HEIGHT_M := 0.45
@@ -168,7 +175,8 @@ func update(cam_s: float) -> void:
 					_queue.remove_at(i)
 			_queue.append([g, k, 0, PackedVector4Array()])
 	var budget := MAX_PER_FRAME
-	while budget > 0 and not _queue.is_empty():
+	var t_start := Time.get_ticks_usec()
+	while budget > 0 and not _queue.is_empty() and Time.get_ticks_usec() - t_start < MAX_FRAME_US:
 		var job: Array = _queue[0]
 		var g: int = job[0]
 		var k: int = job[1]
@@ -178,7 +186,7 @@ func update(cam_s: float) -> void:
 			stations = chunk_stations(k)
 			job[3] = stations
 			budget -= STATION_COST
-		var end := mini(j + maxi(budget, 1), _per_chunk)
+		var end := mini(j + mini(maxi(budget, 1), BATCH), _per_chunk)
 		for slot in range(j, end):
 			var xf: Variant = tuft_transform(k, slot, stations)
 			var idx := g * _per_chunk + slot
