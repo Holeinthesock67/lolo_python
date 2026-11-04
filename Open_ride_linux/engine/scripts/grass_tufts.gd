@@ -18,7 +18,8 @@ extends Node3D
 ##   mesuré sur TOUT le parcours (road_clearance.gd) et pas seulement au point qui l'a posée : dans une
 ##   épingle, au creux d'un virage serré ou là où le parcours repasse près de lui-même, l'herbe tombait
 ##   sur l'autre portion de route.
-## - Nombre de touffes jamais au-dessus du budget (`living(preset).grass_tufts`, 0 en `low` : nœud vide).
+## - Nombre de touffes jamais au-dessus du budget (`living(preset).grass_tufts` : 1 500 en `low`, 8 000 en
+##   `medium`, 20 000 en `high` ; 0 quand le décor vivant est coupé : nœud vide).
 ## - Coût lissé : un tronçon qui entre dans la fenêtre est rempli `MAX_PER_FRAME` places par image.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
