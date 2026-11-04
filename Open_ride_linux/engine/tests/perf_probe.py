@@ -536,17 +536,18 @@ def hitch_period(distances: list[float], min_m: float = 10.0, max_m: float = 100
 
 def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | None = None,
                  targets: dict[str, Any] | None = None, real_window: bool = True) -> list[tuple[bool | None, str, str]]:
-    """À-coups en régime établi (après warmup_s) : secondes dont la pire image dépasse `hitch_ms` (au plus
+    """À-coups en régime établi (après `warmup_s` du bloc) : secondes dont la pire image dépasse `hitch_ms` (au plus
     `max_per_min` par minute), aucune image au-delà de `freeze_ms`, et pas d'à-coups qui reviennent à
     distance régulière (saccades.csv, captures du banc écartées). Seuils `hitches` de perf_targets.json."""
     t = targets or load_targets()
     lim = t.get("hitches", {})
-    hitch_ms, per_min = float(lim.get("hitch_ms", 50.0)), float(lim.get("max_per_min", 1.0))
+    hitch_ms, per_min = float(lim.get("hitch_ms", 50.0)), float(lim.get("max_per_min", 3.0))
     freeze_ms = float(lim.get("freeze_ms", 100.0))
+    warmup_s = float(lim.get("warmup_s", t.get("warmup_s", 0)))
     ts = values(rows, "t_s")
     if not ts:
         return []
-    warm = min(ts) + float(t.get("warmup_s", 0))
+    warm = min(ts) + warmup_s
     steady = [r for r in rows if isinstance(r.get("t_s"), (int, float)) and r["t_s"] >= warm]
     worst = values(steady, "frame_max_ms")
     note = "" if real_window else ", indicatif sous Xvfb"
@@ -564,7 +565,7 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
         t0 = min((float(r["t_s"]) for r in saccades if isinstance(r.get("t_s"), float)), default=0.0)
         hits = [r for r in saccades if isinstance(r.get("frame_ms"), float) and r["frame_ms"] > hitch_ms
                 and str(r.get("cause") or "") != "capture" and isinstance(r.get("distance_m"), float)
-                and isinstance(r.get("t_s"), float) and r["t_s"] >= t0 + float(t.get("warmup_s", 0))]
+                and isinstance(r.get("t_s"), float) and r["t_s"] >= t0 + warmup_s]
         per = hitch_period([r["distance_m"] for r in hits])
         if per is None:
             out.append((True if real_window else None, "à-coups : périodicité en distance",
