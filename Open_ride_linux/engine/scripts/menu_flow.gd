@@ -86,6 +86,10 @@ const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 const WtfRulesModel := preload("res://scripts/wtf/wtf_rules_model.gd")
 ## Dernier survivant (lot DS7) : réglages de l'écran Prêt du mode, dans l'ordre du plan (§4).
+const SURVIVOR_OPPONENTS := [2, 4]      # bornes de survivor.opponents et survivor.spacing_km (config.py)
+const SURVIVOR_SPACING_KM := [1, 3]
+## Aide des touches sur une ligne de réglage de l'écran Prêt du mode (essai du 4 novembre).
+const SURVIVOR_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la valeur, A maintenu pour enregistrer, Y pour annuler."
 const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "survivor.spread", "survivor.after_out"]
 const SURVIVOR_PREFIX := "Survivant : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
@@ -1464,6 +1468,20 @@ func _refresh_survivor() -> void:
 		int(settings.item("survivor.spacing_km").get("value", 2)), _route_entry(menu.world_id)))
 
 
+## Ligne d'état de l'écran Prêt du mode : pourquoi « Lancer » est grisé et quoi changer, sinon l'aide des touches
+## quand le focus est sur une ligne de réglage.
+func _survivor_status(st: Dictionary) -> void:
+	var advice := str(menu.survivor_launch.get("advice", ""))
+	var items: Array = st.get("items", [])
+	var focus := int(st.get("focus", -1))
+	var on_setting := focus >= 0 and focus < items.size() and str(items[focus].get("id", "")).begins_with("set:")
+	if advice != "":
+		st["status"] = advice + (" " + SURVIVOR_EDIT_HELP if on_setting and settings.editing.is_empty() else "")
+		st["status_error"] = true
+	elif on_setting and settings.editing.is_empty():
+		st["status"] = SURVIVOR_EDIT_HELP
+
+
 ## Libellé d'un réglage sur l'écran du mode : « Survivant : adversaires » devient « Adversaires ».
 static func survivor_label(label: String) -> String:
 	var short := label.trim_prefix(SURVIVOR_PREFIX)
@@ -1476,11 +1494,27 @@ static func survivor_launch(opponents: int, spacing_km: int, route: Dictionary) 
 	var detail := "%d arches sur %d km" % [opponents, course_km]
 	var length = route.get("length_m", null)
 	if route.is_empty() or str(route.get("route_type", "")) == "loop" or length == null:
-		return {"enabled": true, "detail": detail}
+		return {"enabled": true, "detail": detail, "advice": ""}
 	if float(length) < course_km * 1000.0:
-		return {"enabled": false, "detail": "parcours trop court : %s pour %s" % [
-			CatalogModel._format_fr_km(float(length)), detail]}
-	return {"enabled": true, "detail": detail}
+		var km := CatalogModel._format_fr_km(float(length))
+		return {"enabled": false, "detail": "parcours trop court : %s pour %s" % [km, detail],
+			"advice": survivor_advice(opponents, spacing_km, float(length))}
+	return {"enabled": true, "detail": detail, "advice": ""}
+
+
+## Explication entière de « Lancer » grisé (ligne d'état de l'écran Prêt, essai du 4 novembre : le libellé
+## tronqué ne disait ni pourquoi ni quoi changer) : longueur de course, longueur du parcours, réglages qui tiennent.
+static func survivor_advice(opponents: int, spacing_km: int, length_m: float) -> String:
+	var fits: Array = []
+	for sp in range(SURVIVOR_SPACING_KM[0], SURVIVOR_SPACING_KM[1] + 1):
+		var n := mini(int(floor(length_m / (sp * 1000.0) + 1e-9)), SURVIVOR_OPPONENTS[1])
+		if n >= SURVIVOR_OPPONENTS[0]:
+			fits.append("%d à %d km" % [n, sp])
+	var text := "Lancer grisé : %d arches × %d km = %d km, parcours de %s. " % [
+		opponents, spacing_km, opponents * spacing_km, CatalogModel._format_fr_km(length_m)]
+	if fits.is_empty():
+		return text + "Choisis un parcours plus long ou une boucle."
+	return text + "Baisse Adversaires ou Écart des arches (" + ", ".join(fits) + ") ou change de parcours."
 
 
 func _route_entry(route_id: String) -> Dictionary:
@@ -2014,6 +2048,8 @@ func state() -> Dictionary:
 		st["status"] = summary_message
 	elif st["screen"] == MenuModel.READY:
 		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
+		if menu.mode == "survivor" and ready_message == "":
+			_survivor_status(st)
 	elif st["screen"] in GarageViewModel.SCREENS:
 		st["status"] = garage.message
 	elif st["screen"] in [INTERRUPTED, MenuModel.HOME]:

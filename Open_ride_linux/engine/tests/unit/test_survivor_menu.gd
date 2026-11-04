@@ -104,6 +104,10 @@ func _run() -> void:
 	f.handle("MINUS_SHORT")
 	_check(not _item(f, "start")["enabled"] and str(_item(f, "start")["detail"]).begins_with("parcours trop court : 5,0 km"),
 		"parcours ouvert trop court : Lancer désactivé")
+	_check(f.state()["status"].begins_with("Lancer grisé : 4 arches × 3 km = 12 km, parcours de 5,0 km.") and f.state()["status_error"],
+		"ligne d'état : pourquoi Lancer est grisé et quoi changer (%s)" % f.state()["status"])
+	f.menu.focus_item("set:survivor.opponents")
+	_check(f.state()["status"].contains("A maintenu, puis − / +"), "focus sur un réglage : aide des touches avec l'explication")
 	f.menu.set_world("boucle", "Boucle")
 	f.handle("MINUS_SHORT")
 	_check(_item(f, "start")["enabled"], "boucle : les arches continuent au tour suivant")
@@ -111,7 +115,11 @@ func _run() -> void:
 	f.menu.reset()
 	_check(f.menu.mode == "free", "retour à l'accueil : le mode ne reste pas collé")
 
-	_check(MenuFlow.survivor_launch(2, 1, {}) == {"enabled": true, "detail": "2 arches sur 2 km"}, "parcours inconnu : Lancer actif")
+	_check(MenuFlow.survivor_launch(2, 1, {}) == {"enabled": true, "detail": "2 arches sur 2 km", "advice": ""}, "parcours inconnu : Lancer actif")
+	var advice := MenuFlow.survivor_advice(4, 2, 5000.0)
+	_check(advice == "Lancer grisé : 4 arches × 2 km = 8 km, parcours de 5,0 km. Baisse Adversaires ou Écart des arches (2 à 2 km, 4 à 1 km) ou change de parcours.",
+		"explication du Lancer grisé : calcul et réglages qui tiennent (%s)" % advice)
+	_check(MenuFlow.survivor_advice(2, 1, 1500.0).ends_with("Choisis un parcours plus long ou une boucle."), "parcours trop court pour tout réglage")
 	_check(MenuFlow.survivor_label("Niveau des bots") == "Niveau des bots", "libellé sans préfixe gardé")
 	print("test_survivor_menu : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

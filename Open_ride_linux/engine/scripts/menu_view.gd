@@ -91,6 +91,9 @@ func _init() -> void:
 	status_label = UiTheme.label(UiTheme.DETAIL_SIZE, UiTheme.DIM)
 	status_label.clip_text = true
 	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# Explication longue (Lancer grisé du Dernier survivant, essai du 4 novembre) : sur deux lignes, sans couper.
+	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_label.max_lines_visible = 2
 	header.add_child(status_label)
 	var rule := ColorRect.new()
 	rule.color = UiTheme.LINE
