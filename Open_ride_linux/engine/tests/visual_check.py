@@ -777,19 +777,22 @@ def _scenes(s: Session) -> None:
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
     time.sleep(1.0)
     a = s.capture("avatar_assis")
-    # Entre deux captures, le pédalier avance de ω·Δt : Δt dépend du temps d'écriture des PNG (plus long sur
-    # le PC en fenêtre réelle) et peut tomber près d'un tour entier, d'où deux images au même angle. Δt est lu
-    # dans les captures (`ticks_ms`) : tant que l'avance attendue est à moins de 0,8 rad d'un tour entier,
-    # nouvelle capture après un demi-tour d'attente (phase décalée de π ; trois essais au plus).
+    # Avance du pédalier lue dans l'engine (`crank_turned`, sans repli à 2π, et `crank_clock_s`, instant de la
+    # pose capturée). L'estimer d'après l'heure des captures (`ticks_ms`, prise après l'écriture du PNG) était
+    # faux en Vulkan logiciel (Forward+ des essais, ~3 images/s) : 2,01 rad attendus pour 2,88 parcourus dans le
+    # cloud, et en CI 0,00 puis 0,02 rad d'écart à l'image pour 1,31 et 1,47 rad « attendus » (4 novembre).
+    # Pose trop proche d'un tour entier (moins de 0,8 rad, jambes presque à la même place) : nouvelle capture
+    # après un demi-tour d'attente, trois essais au plus.
     omega = AVATAR_CADENCE_RPM / 60.0 * TAU
-    b, expected = None, 0.0
+    b, turned, shown = None, 0.0, 0.0
     for attempt in range(3):
         time.sleep(0.37 if attempt == 0 else math.pi / omega)
         b = s.capture("avatar_assis_2")
         if not (a and b):
             break
-        expected = wrapped_angle(omega * (b[1].get("ticks_ms", 0) - a[1].get("ticks_ms", 0)) / 1000.0)
-        if abs(expected) >= 0.8:
+        turned = b[1].get("avatar", {}).get("crank_turned", 0.0) - a[1].get("avatar", {}).get("crank_turned", 0.0)
+        shown = abs(wrapped_angle(turned))
+        if shown >= 0.8:
             break
     if a and b:
         (img_a, info_a), (img_b, info_b) = a, b
@@ -799,9 +802,12 @@ def _scenes(s: Session) -> None:
         s.check("avatar_assis", "avatar assis à plat", av_a.get("standing") is False)
         s.check("avatar_assis", "avatar entier (niveau de détail 0)", av_a.get("lod") == 0 and av_a.get("triangles", 0) > 1000,
                 f"{av_a.get('triangles')} triangles")
-        turn = abs(wrapped_angle(av_b.get("crank", 0.0) - av_a.get("crank", 0.0)))
-        s.check("avatar_assis_2", "pédalier à un autre angle d'une capture à l'autre", turn > 0.15,
-                f"{turn:.2f} rad d'écart, {abs(expected):.2f} rad attendus d'après le temps entre les captures")
+        # Au plus ω·Δt entre les deux poses : le modèle borne chaque pas à MAX_STEP_S (0,25 s) quand les images sont lentes.
+        dt_pose = av_b.get("crank_clock_s", 0.0) - av_a.get("crank_clock_s", 0.0)
+        s.check("avatar_assis_2", "pédalier qui tourne d'une capture à l'autre, au plus à la cadence",
+                0.15 < turned <= omega * dt_pose + 0.01 and shown >= 0.15,
+                f"{turned:.2f} rad parcourus ({shown:.2f} rad à l'image) en {dt_pose:.2f} s, "
+                f"au plus {omega * dt_pose:.2f} rad à {AVATAR_CADENCE_RPM:.0f} tr/min")
         box = (s.width * 0.30, s.height * 0.25, s.width * 0.70, s.height * 0.95)
         d = mean_abs_diff(img_a, img_b, box)
         s.check("avatar_assis_2", "les jambes changent l'image", d >= 0.2, f"écart moyen {d:.2f} niveaux")

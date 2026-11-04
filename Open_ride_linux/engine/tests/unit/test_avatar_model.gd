@@ -59,6 +59,17 @@ func _test_crank() -> void:
 	_check(m.crank_angle == a, "en pause : pédalier figé")
 	m.update(10.0, 90.0, 200.0, 0.0, false)
 	_check(m.crank_angle - a < 90.0 / 60.0 * TAU * (AvatarModel.MAX_STEP_S + 0.01), "grand écart de temps borné (%.2f rad)" % (m.crank_angle - a))
+	# Angle cumulé sans repli (tests graphiques) : 60 tr/min pendant 2,5 s = 2,5 tours, horloge de la dernière pose.
+	m.reset()
+	_check(m.crank_turned == 0.0 and m.clock_s < 0.0, "reset : angle cumulé et horloge remis à zéro")
+	for i in range(0, 26):
+		m.update(i * 0.1, 60.0, 200.0, 0.0, false)
+	_check(absf(m.crank_turned - 2.5 * TAU) < 0.001, "angle cumulé sans repli : 2,5 tours (%.3f rad)" % m.crank_turned)
+	_check(absf(fposmod(m.crank_turned, TAU) - m.crank_angle) < 0.001, "angle affiché = angle cumulé modulo 2π")
+	_check(absf(m.clock_s - 2.5) < 0.0001, "horloge de la dernière pose (%.2f s)" % m.clock_s)
+	var turned: float = m.crank_turned
+	m.update(2.6, 60.0, 200.0, 0.0, true)
+	_check(m.crank_turned == turned, "en pause : angle cumulé figé")
 
 
 func _test_standing() -> void:
