@@ -13,8 +13,12 @@ extends SceneTree
 ##   une couche biome : le rayon de l'objet hors de la chaussée ;
 ## - arbres semés au bruit (vegetation_placer.gd) sur les tuiles que touche la route : à au moins TREE_CLEAR_M
 ##   du bord ;
-## - terrain proche affiché (tuiles `near`, comme osm_streamer.terrain_height_fn) : en travers de la chaussée
-##   tous les SECTION_STEP_M mètres, jamais plus de TERRAIN_TOL_M au-dessus de la route.
+## - sol affiché sous la chaussée (_ground_fn, même choix que world_streamer.gd : tuile proche, sinon lointaine,
+##   sinon tuile plate ; sol plat sans couche terrain) : en travers de la chaussée tous les SECTION_STEP_M mètres,
+##   jamais plus de TERRAIN_TOL_M au-dessus de la route (route enfoncée sous l'herbe ou le terrain), ni plus de
+##   FLOAT_TOL_M au-dessous (route qui lévite, constat du 4 novembre 2026 sur la démonstration sans terrain).
+##   Le sol sous la route ne dépend pas du préréglage (low, medium et high ont les mêmes tuiles proches) : un
+##   passage par parcours et par relief suffit pour les trois.
 ## Code de sortie 1 si un contrôle échoue ; les pires points sont listés (s, x, z) pour aller les voir.
 
 const RouteDataScript := preload("res://scripts/route_data.gd")
@@ -36,6 +40,9 @@ const TUFT_CLEAR_M := 0.5
 const TREE_CLEAR_M := 1.0
 ## Terrain au plus 2 cm au-dessus de la chaussée (il est posé 5 cm dessous par le compilateur).
 const TERRAIN_TOL_M := 0.02
+## Route au plus 50 cm au-dessus du sol affiché, sur toute sa largeur.
+const FLOAT_TOL_M := 0.5
+const WorldStreamer := preload("res://scripts/world_streamer.gd")
 const SECTION_STEP_M := 2.0
 const ACROSS_STEP_M := 1.0
 const WORST_SHOWN := 5
@@ -86,11 +93,12 @@ func _run(wd: String, k: float, theme: Dictionary) -> void:
 	var tag := "%s (relief ×%.1f)" % [name, k]
 	var raw := OsmStreamer.terrain_height_fn(wd, route)
 	var height_at := func(x: float, z: float) -> float: return route.display_y(float(raw.call(x, z)))
+	var ground_at := _ground_fn(wd, route)
 	# Axe réel de la route (Catmull-Rom tous les 2 m), sur tout le parcours.
 	var bounds := _route_bounds(route)
 	var corridor := ROAD_HALF_M + maxf(TUFT_CLEAR_M, TREE_CLEAR_M) + 2.0
 	var road := VegetationPlacer._road_buckets(route, bounds, corridor)
-	_check_terrain(tag, route, height_at)
+	_check_terrain(tag, route, ground_at)
 	if k != 1.0:
 		return   # placement du décor : mêmes x et z au relief de séance, seule la pente change (contrôlé à ×k)
 	_check_tufts(tag, route, height_at, road)
@@ -115,9 +123,44 @@ static func _axis_distance(road: Dictionary, x: float, z: float) -> float:
 	return best
 
 
-func _check_terrain(tag: String, route, height_at: Callable) -> void:
-	var bad := []
-	var worst := -INF
+## Hauteur affichée du sol en (x, z), relief de la route compris, telle que world_streamer.gd la dessine :
+## sans couche terrain, sol plat FLAT_GROUND_BELOW_M sous l'altitude la plus basse ; sinon tuile proche,
+## sinon tuile lointaine (abaissée de FAR_DROP_M), sinon tuile plate à l'altitude de la route la plus proche
+## de son centre.
+static func _ground_fn(wd: String, route) -> Callable:
+	var manifest: Variant = JSON.parse_string(FileAccess.get_file_as_string(wd.path_join("manifest.json")))
+	var layers: Variant = manifest.get("layers", {}) if typeof(manifest) == TYPE_DICTIONARY else {}
+	var terrain: Variant = layers.get("terrain", {}) if typeof(layers) == TYPE_DICTIONARY else {}
+	if typeof(terrain) != TYPE_DICTIONARY or not bool(terrain.get("present", false)) \
+			or (TerrainTiles.scan_index(wd, "near").is_empty() and TerrainTiles.scan_index(wd, "far").is_empty()):
+		var min_alt := INF
+		for a in route.alt_m:
+			min_alt = minf(min_alt, a)
+		var flat_y: float = route.display_y(min_alt) - WorldStreamer.FLAT_GROUND_BELOW_M
+		return func(_x: float, _z: float) -> float: return flat_y
+	var cache := {}
+	return func(x: float, z: float) -> float:
+		for level in ["near", "far"]:
+			var t := TerrainTiles.tile_of(level, x, z)
+			var key := "%s:%d:%d" % [level, t.x, t.y]
+			if not cache.has(key):
+				cache[key] = TerrainTiles.load_filled(wd, level, t.x, t.y, route)
+			var h: PackedFloat32Array = cache[key]
+			if not h.is_empty():
+				return route.display_y(TerrainTiles.mesh_height_at(h, level, t.x, t.y, x, z)) \
+					+ float(TerrainTiles.LEVELS[level]["y_offset"])
+		var c := TerrainTiles.tile_origin("near", TerrainTiles.tile_of("near", x, z).x, TerrainTiles.tile_of("near", x, z).y) \
+			+ Vector3(500.0, 0.0, 500.0)
+		return route.display_y(TerrainTiles.nearest_route_alt(route, c.x, c.z))
+
+
+## Sol affiché en travers de la chaussée : ni au-dessus de la route (route enfoncée), ni trop dessous (route
+## qui lévite).
+func _check_terrain(tag: String, route, ground_at: Callable) -> void:
+	var above := []
+	var below := []
+	var worst_up := -INF
+	var worst_down := INF
 	var n := 0
 	var s := 0.0
 	while s <= route.length_m:
@@ -128,15 +171,20 @@ func _check_terrain(tag: String, route, height_at: Callable) -> void:
 		while off <= ROAD_HALF_M + 1e-6:
 			var x: float = smp["x"] + right.x * off
 			var z: float = smp["z"] + right.y * off
-			var d: float = float(height_at.call(x, z)) - float(smp["y"])
+			var d: float = float(ground_at.call(x, z)) - float(smp["y"])
 			n += 1
-			worst = maxf(worst, d)
+			worst_up = maxf(worst_up, d)
+			worst_down = minf(worst_down, d)
 			if d > TERRAIN_TOL_M:
-				bad.append([d, "s = %.0f m, x = %.1f, z = %.1f : +%.2f m" % [s, x, z, d]])
+				above.append([d, "s = %.0f m, x = %.1f, z = %.1f : +%.2f m" % [s, x, z, d]])
+			elif d < -FLOAT_TOL_M:
+				below.append([-d, "s = %.0f m, x = %.1f, z = %.1f : %.2f m" % [s, x, z, d]])
 			off += ACROSS_STEP_M
 		s += SECTION_STEP_M
-	_check(bad.is_empty(), "%s : terrain sous la chaussée (%d points, au plus %+.2f m, %d au-dessus)%s" % [
-		tag, n, worst, bad.size(), "" if bad.is_empty() else " — " + _worst(bad)])
+	_check(above.is_empty(), "%s : sol jamais au-dessus de la chaussée (%d points, au plus %+.2f m, %d au-dessus)%s" % [
+		tag, n, worst_up, above.size(), "" if above.is_empty() else " — " + _worst(above)])
+	_check(below.is_empty(), "%s : route posée sur le sol, à moins de %.1f m (%d points, au plus %.2f m sous la route, %d trop bas)%s" % [
+		tag, FLOAT_TOL_M, n, -worst_down, below.size(), "" if below.is_empty() else " — " + _worst(below)])
 
 
 func _check_tufts(tag: String, route, height_at: Callable, road: Dictionary) -> void:

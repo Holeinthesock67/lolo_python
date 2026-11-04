@@ -10,6 +10,7 @@
 *.webp binary
 *.wav binary
 *.bin binary
+*.f32 binary
 *.stl binary
 *.xlsx binary
 *.pdf binary

@@ -13,7 +13,10 @@ const RoadBuilder := preload("res://scripts/road_builder.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const WorldStreamer := preload("res://scripts/world_streamer.gd")
 
-const PLAIN_WORLD := "res://demo/demo.world"
+const DEMO_WORLD := "res://demo/demo.world"
+## Parcours sans couche terrain (test 4) : route et segments de la démonstration, manifeste sans terrain,
+## écrit par _write_plain_world (la démonstration embarquée porte sa couche terrain depuis le 4 novembre 2026).
+const PLAIN_WORLD := "user://test_world_streamer/plain.world"
 const EYE := Vector3(0.0, 1.4, 0.0)
 
 var failures := 0
@@ -25,6 +28,19 @@ func _check(ok: bool, what: String) -> void:
 	else:
 		failures += 1
 		printerr("  [ÉCHEC] ", what)
+
+
+func _write_plain_world() -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(PLAIN_WORLD))
+	for f in ["route.json", "segments.json"]:
+		var copy := FileAccess.open(PLAIN_WORLD.path_join(f), FileAccess.WRITE)
+		copy.store_buffer(FileAccess.get_file_as_bytes(DEMO_WORLD.path_join(f)))
+		copy.close()
+	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DEMO_WORLD.path_join("manifest.json")))
+	manifest["layers"]["terrain"] = {"present": false}
+	var out := FileAccess.open(PLAIN_WORLD.path_join("manifest.json"), FileAccess.WRITE)
+	out.store_string(JSON.stringify(manifest, "  "))
+	out.close()
 
 
 func _load_route(dir: String):
@@ -351,6 +367,7 @@ func _init() -> void:
 		quit(2)
 		return
 	var terrain_dir: String = args[0]
+	_write_plain_world()
 	test_junction(terrain_dir)
 	test_long_run(terrain_dir)
 	test_joints(terrain_dir)
