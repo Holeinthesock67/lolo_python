@@ -91,9 +91,7 @@ func _init() -> void:
 	status_label = UiTheme.label(UiTheme.DETAIL_SIZE, UiTheme.DIM)
 	status_label.clip_text = true
 	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	# Explication longue (Lancer grisé du Dernier survivant, essai du 4 novembre) : sur deux lignes, sans couper.
-	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_label.max_lines_visible = 2
+	status_label.max_lines_visible = 2   # sur deux lignes quand l'état le demande (`status_wrap`)
 	header.add_child(status_label)
 	var rule := ColorRect.new()
 	rule.color = UiTheme.LINE
@@ -282,6 +280,9 @@ func hint_text() -> String:
 ## menu : état de menu_model.gd ; state : dernière trame ; summary_data : bilan (écran « summary »).
 func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionary, show_details: bool) -> void:
 	title_label.text = str(menu.get("title", ""))
+	# Explication longue (Lancer grisé du Dernier survivant, essai du 4 novembre) : sur deux lignes, sans couper ;
+	# les autres lignes d'état restent sur une ligne (images de référence des tests graphiques).
+	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if menu.get("status_wrap", false) else TextServer.AUTOWRAP_OFF
 	status_label.text = str(menu.get("status", ""))
 	status_label.visible = status_label.text != ""
 	status_label.add_theme_color_override("font_color", UiTheme.DANGER if menu.get("status_error", false) else UiTheme.DIM)

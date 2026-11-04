@@ -1478,8 +1478,10 @@ func _survivor_status(st: Dictionary) -> void:
 	if advice != "":
 		st["status"] = advice + (" " + SURVIVOR_EDIT_HELP if on_setting and settings.editing.is_empty() else "")
 		st["status_error"] = true
+		st["status_wrap"] = true
 	elif on_setting and settings.editing.is_empty():
 		st["status"] = SURVIVOR_EDIT_HELP
+		st["status_wrap"] = true
 
 
 ## Libellé d'un réglage sur l'écran du mode : « Survivant : adversaires » devient « Adversaires ».
