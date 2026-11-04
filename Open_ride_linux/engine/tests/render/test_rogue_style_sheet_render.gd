@@ -5,6 +5,7 @@ extends SceneTree
 ## apparaissent. L'image du préréglage low est écrite dans user:// pour contrôle visuel.
 
 const SIZE := Vector2i(640, 360)
+const SETTLE_FRAMES := 10   # images laissées au rendu avant et après la libération de la vue
 
 var _failures := 0
 var _checked := 0
@@ -56,7 +57,13 @@ func _run() -> void:
 	sheet.play_effect("perfect_shift")
 	await process_frame
 	_check(sheet.get_node("Flash").scale.x > 0.0, "un effet rejouable allume la sphère de démonstration")
+	# Sortie en ordre (Godot 4.7, Forward+) : quitter une image après avoir libéré la vue, juste après un
+	# changement de matériaux, peut bloquer Godot à la sortie (à chaque fois sur la GTX 1060, une fois sur
+	# deux au cloud avec tests/diag/rogue_exit_diag.gd). Les vérifications sont faites : on laisse le rendu finir ses images avant et après la libération.
+	for i in SETTLE_FRAMES:
+		await process_frame
 	vp.queue_free()
-	await process_frame
+	for i in SETTLE_FRAMES:
+		await process_frame
 	print("test_rogue_style_sheet_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
