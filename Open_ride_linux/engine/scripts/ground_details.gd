@@ -35,7 +35,7 @@ const ROCK_SHAPES := 3
 const KINDS: Array[String] = ["rock", "grass", "termite"]
 ## Probabilité qu'une place d'une sorte soit remplie dans un biome (0 ou absent : jamais).
 const DENSITY := {
-	"rock": {"alpine": 0.9, "rock_desert": 1.0, "tundra": 0.5, "volcanic": 1.0},
+	"rock": {"alpine": 0.9, "rock_desert": 1.0, "sand_desert": 0.5, "tundra": 0.5, "volcanic": 1.0},
 	"grass": {"savanna": 1.0, "steppe": 0.7},
 	"termite": {"savanna": 1.0},
 }
@@ -332,6 +332,7 @@ func _material_for(kind: String) -> Material:
 		return _grass_material
 	var m := StandardMaterial3D.new()
 	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true   # couleurs de sommet sRGB (couleur_srgb.gdshaderinc)
 	m.roughness = 0.95
 	return m
 

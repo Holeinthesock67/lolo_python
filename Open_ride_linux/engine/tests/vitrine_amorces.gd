@@ -6,7 +6,7 @@ extends SceneTree
 ## principale : world_streamer.gd (route, terrain, arbres), segment_markers.gd (portiques).
 ##
 ##   PYTHONPATH=core/src python3 -m openride_core.tools.fake_world --demo --terrain --out ROUTES
-##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_amorces.gd -- --world ROUTES/demo.world --out DOSSIER \
 ##     [--quality medium] [--size 1024x600]
 ##

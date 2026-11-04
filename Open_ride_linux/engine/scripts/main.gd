@@ -20,6 +20,8 @@ const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
+const RoadSurface := preload("res://scripts/road_surface.gd")
+const BiomeIds := preload("res://scripts/biome_ids.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
 const FpsCounter := preload("res://scripts/fps_counter.gd")
@@ -129,6 +131,8 @@ var _display_name: String = DisplayMode.DEFAULT   # mode d'affichage en place (-
 ## Vues de caméra (lot V12) : modèle (camera_views.gd) et dernière valeur de render.camera reçue du core.
 var camera_views = CameraViews.new()
 var _camera_setting := ""
+var _gravel_setting := ""    # dernières valeurs de gravel.mode et render.biome reçues du core (lot U16)
+var _biome_setting := ""
 var _display_setting := ""   # dernière valeur de render.display reçue du core (vide avant la première liste)
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
@@ -522,6 +526,8 @@ func _on_settings(msg: Dictionary) -> void:
 		if _camera_setting != "" and cam != _camera_setting and cam != camera_views.current:
 			camera_views.set_view(cam, -1.0, "réglage render.camera")
 		_camera_setting = cam
+	_apply_gravel(str(menu_flow.settings.item("gravel.mode").get("value", "")))
+	_apply_biome(str(menu_flow.settings.item("render.biome").get("value", "")))
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp
@@ -1006,10 +1012,13 @@ func _process(delta: float) -> void:
 		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
 		_probe.distance_m = s_route
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
-		_step_living(delta, s_route, float(follow.last_frame["v"]))
+		# Bots placés avant le décor vivant : ses cyclistes, ses véhicules et son compte des contacts lisent les
+		# places des bots de cette image. Après une image bloquée, des places de l'image d'avant, face à la
+		# caméra déjà avancée, comptaient un contact qui n'existait pas (rejeu #707, 490 ms bloquées à t = 132 s).
 		if bots_model.count() > 0:
 			_show_bots(s_route, float(follow.last_frame["v"]))
 			_bots_frame = Engine.get_process_frames()
+		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		_show_draft_gauge()
 		# Arches de bonus seulement quand le core en donne (champ `powerup` : SIM, option « Bonus »).
 		segment_markers.update(s_route, _last_state.has("powerup"))
@@ -1578,6 +1587,28 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 	menu_flow.menu.set_last_choices(last)
 	world_menu_view.vm.set_last_start(last.get("open_world") if last is Dictionary else null)
 	menu_flow.set_versions(ipc.engine_version, ipc.core_version)
+
+
+## Option « gravel » et biome du décor choisis au menu (lot U16) : au lancement, `--gravel=` et `--biome=` décident
+## (le lanceur y met `[gravel] mode` et `[render] biome`) ; seule une valeur changée ensuite au menu change le
+## décor, pour que les bancs gardent leur gravel et leur biome forcés. Ruban, ou décor entier, reconstruit.
+func _apply_gravel(mode: String) -> void:
+	if mode in RoadSurface.MODES:
+		if _gravel_setting != "" and mode != _gravel_setting and mode != streamer.gravel_mode:
+			streamer.set_gravel_mode(mode)
+			print("Gravel : ", mode)
+		_gravel_setting = mode
+
+
+func _apply_biome(id: String) -> void:
+	if id == "auto" or BiomeIds.is_biome(id):
+		if _biome_setting != "" and id != _biome_setting and id != streamer.forced_biome:
+			streamer.forced_biome = id
+			if route != null and _route_job.is_empty():
+				streamer.set_world(route, _route_path(str(_route_id_requested)))   # décor reconstruit avec le biome
+			_apply_sky_params(_theme_dict)
+			print("Biome : ", id)
+		_biome_setting = id
 
 
 func _on_core_error(code: String, message: String) -> void:

@@ -203,7 +203,7 @@ def main() -> int:
         print(f"Godot introuvable : {args.godot} (définir GODOT=/chemin/vers/godot)")
         return 2
     if not args.native and shutil.which("xvfb-run") is None:
-        print("xvfb-run introuvable : installer xvfb, xauth et libgl1-mesa-dri (ou lancer avec --native)")
+        print("xvfb-run introuvable : installer xvfb, xauth et mesa-vulkan-drivers (ou lancer avec --native)")
         return 2
 
     out_dir = args.out or Path(tempfile.mkdtemp(prefix="openride-hud-galerie-"))

@@ -7,7 +7,7 @@ extends "res://tests/vitrine_pente.gd"
 ## « apres » : traffic_model.world_transform et road_cyclists_model.world_transform (tangage selon
 ## route_data.display_pitch).
 ##
-##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_vehicules_pente.gd -- --out DOSSIER [--k 2.0]
 ##
 ## Écrit DOSSIER/<avant|apres>_<montee|descente>_cote.png.

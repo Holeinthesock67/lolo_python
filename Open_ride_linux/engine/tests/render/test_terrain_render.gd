@@ -3,7 +3,7 @@ extends SceneTree
 ## Rendu hors écran du shader triplanaire (lot E2, revue R4) : vérifie sur une vraie image que le shader
 ## compilé reproduit la fonction de référence ThemeRenderParams.blend_weights (lot L3).
 ## Demande un serveur d'affichage (Xvfb) et le pilote OpenGL : lancé par run_engine_tests.sh avec
-##   xvfb-run -a godot --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a godot --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/render/test_terrain_render.gd
 ## Rendu sans éclairage (Viewport.DEBUG_DRAW_UNSHADED) : la couleur lue est l'albédo du shader.
 ## Le moteur Compatibility travaille en espace sRGB : les couleurs du thème y sont mélangées telles quelles.
@@ -71,16 +71,17 @@ func _shot_image(mat: ShaderMaterial, slope_deg: float, alt: float) -> Image:
 	return img
 
 
-## Couleur attendue : mélange des couleurs du thème par les poids de blend_weights (lot L3).
+## Couleur attendue : mélange des couleurs du thème par les poids de blend_weights (lot L3). Forward+ (le jeu)
+## mêle les couleurs `source_color` en linéaire : le mélange attendu est fait en linéaire, puis ramené en sRGB.
 func _expected(theme: Dictionary, slope_deg: float, alt: float) -> Color:
 	var u := ThemeRenderParams.terrain_uniforms(theme)
 	var n := Vector3(0.0, cos(deg_to_rad(slope_deg)), sin(deg_to_rad(slope_deg)))
 	var w := ThemeRenderParams.blend_weights(n, alt, u)
-	var g: Color = u["grass_color"]
-	var r: Color = u["rock_color"]
-	var s: Color = u["snow_color"]
+	var g: Color = (u["grass_color"] as Color).srgb_to_linear()
+	var r: Color = (u["rock_color"] as Color).srgb_to_linear()
+	var s: Color = (u["snow_color"] as Color).srgb_to_linear()
 	return Color(g.r * w.x + r.r * w.y + s.r * w.z, g.g * w.x + r.g * w.y + s.g * w.z,
-		g.b * w.x + r.b * w.y + s.b * w.z)
+		g.b * w.x + r.b * w.y + s.b * w.z).linear_to_srgb()
 
 
 func _close(a: Color, b: Color) -> bool:
@@ -153,7 +154,8 @@ func _run() -> void:
 			lo = minf(lo, c.g)
 			hi = maxf(hi, c.g)
 	mean /= float(SIZE * SIZE)
-	_check(hi - lo > 0.04, "relief de l'herbe : mottes visibles (vert de %.3f à %.3f)" % [lo, hi])
+	# Écart de 0,027 en Forward+ (le jeu, captures validées sur le PC), 0,055 dans l'ancien rendu Compatibility
+	_check(hi - lo > 0.02, "relief de l'herbe : mottes visibles (vert de %.3f à %.3f)" % [lo, hi])
 	_check(absf(mean.y / want_flat.g - 1.0) <= 0.2, "relief de l'herbe : vert moyen à ± 20 %% du thème (ratio %.3f)" % (mean.y / want_flat.g))
 
 	print("test_terrain_render : %d vérifications, %d échecs" % [_checked, _failures])

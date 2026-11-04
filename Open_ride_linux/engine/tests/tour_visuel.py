@@ -310,10 +310,9 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
     core.route_id = route_id
     core.progression = copy.deepcopy(AVATAR_PROGRESSION)   # avatar présent : les quatre vues de caméra
     core.start()
-    cmd = [str(args.godot), "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}", "--audio-driver", "Dummy"]
-    if not args.native:
-        cmd = ["xvfb-run", "-a", "-s", f"-screen 0 {width}x{height}x24"] + cmd + [
-            "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
+    import rendu_jeu
+    cmd = rendu_jeu.godot_cmd([str(args.godot), "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}",
+                     "--audio-driver", "Dummy"], args.native, width, height)
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes}",
             "--test-mode", f"--quality={args.quality}", "--camera=subjective"]
     if args.visual_grade is not None:
@@ -325,6 +324,10 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
         t0 = now()
         while now() - t0 < 30.0 and "IpcClient attaché" not in log_path.read_text(errors="replace"):
             time.sleep(0.2)
+        r_err = rendu_jeu.check_log(log_path.read_text(errors="replace"))
+        if r_err is not None:   # captures sans valeur : elles ne ressembleraient pas au jeu
+            print(f"[ÉCHEC] rendu du jeu (Forward+) : {r_err}")
+            return [{**p, "file": "", "mesures": {}} for p in points]
         core.set_scene(speed=0.0, s=points[0]["s"] if points else 0.0, session_state="RUNNING", power=200.0,
                        power_3s=200.0, cadence=85.0, mode="SIM", erg=None, pause_reason=None,
                        trainer_status="CONNECTED", input_status="CONNECTED")
@@ -399,7 +402,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Godot introuvable : {args.godot} (option --godot ou variable GODOT)")
         return 2
     if not args.native and shutil.which("xvfb-run") is None:
-        print("xvfb-run introuvable : installer xvfb, xauth et libgl1-mesa-dri (ou lancer avec --native)")
+        print("xvfb-run introuvable : installer xvfb, xauth et mesa-vulkan-drivers (ou lancer avec --native)")
         return 2
     from sim_bench import prepare_world
 

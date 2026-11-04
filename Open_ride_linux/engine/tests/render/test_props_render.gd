@@ -6,7 +6,7 @@ extends SceneTree
 ## - liseré blanc autour de la face marron du panneau de col ;
 ## - poteau en acier galvanisé, pas d'un gris uni ; pied de la borne sali ;
 ## - mât d'éolienne : pied en dégradé vert, haut blanc.
-##   xvfb-run -a godot --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
+##   xvfb-run -a godot --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/render/test_props_render.gd
 
 const RoadsideProps := preload("res://scripts/roadside_props.gd")

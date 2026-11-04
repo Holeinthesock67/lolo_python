@@ -10,7 +10,7 @@ Usage :
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
 simulés de `ble_sim.py`) puis la vraie scène Godot (`main.tscn`, `--test-mode`), sous Xvfb
-(OpenGL logiciel) ou, avec `--native`, dans une fenêtre sur l'écran réel pour regarder l'essai.
+(Vulkan logiciel, Forward+ comme le jeu : rendu_jeu.py) ou, avec `--native`, dans une fenêtre sur l'écran réel pour regarder l'essai.
 Le core et l'engine ont un HOME temporaire et des ports UDP libres : rien n'est écrit dans le
 vrai dossier personnel.
 
@@ -82,6 +82,7 @@ sys.path.insert(0, str(REPO / "core" / "src"))
 from e2e_check import Proc, free_udp_ports, now, send_cmd, snapshot_home  # noqa: E402
 import perf_probe  # noqa: E402
 import quality_guard  # noqa: E402
+import rendu_jeu  # noqa: E402
 import sim_bench_inputs as inputs_mod  # noqa: E402
 from openride_core import sim_scenarios  # noqa: E402
 from openride_core.tools.guide import Guide  # noqa: E402
@@ -394,11 +395,8 @@ class Bench:
                            "« Core démarré » lu" if started else "pas de « Core démarré » en 20 s"):
                 return r
             self.t_core = started[0]
-            cmd = [a.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}",
-                   "--audio-driver", "Dummy"]
-            if not a.native:
-                cmd = ["xvfb-run", "-a", "-s", f"-screen 0 {width}x{height}x24"] + cmd + [
-                    "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
+            cmd = rendu_jeu.godot_cmd([a.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}",
+                                       "--audio-driver", "Dummy"], a.native, width, height)
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
                     f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}",
@@ -646,6 +644,8 @@ class Bench:
         log = engine_text.splitlines()
         issues = [ln for ln in log if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
         r.check(not issues, "erreurs et avertissements de Godot", "aucun" if not issues else " | ".join(issues[:3]))
+        r_err = rendu_jeu.check_log(engine_text)
+        r.check(r_err is None, "rendu du jeu (Forward+)", r_err or "Vulkan, Forward+")
         self._tile_checks(log)
         # Exceptions du core.
         core_log = (self.out / "core.log").read_text(encoding="utf-8", errors="replace")
@@ -989,7 +989,7 @@ pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overfl
 <p>{html.escape(str(b.spec.get("description", "")))}<br>Parcours <b>{html.escape(b.world)}</b>,
 {f"ERG {html.escape(str(b.workout))}" if b.workout else "SIM"}, {b.duration:.0f} s,
 {f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {html.escape(b.applied_quality or "?")} (qualité appliquée ; demandée {b.args.quality})
-{f"(écran réel, affichage {b.args.display})" if b.args.native else "(Xvfb, OpenGL logiciel)"}.</p>
+{f"(écran réel, affichage {b.args.display})" if b.args.native else "(Xvfb, Vulkan logiciel, Forward+)"}.</p>
 <h2>Vérifications</h2><table>{rows}</table>
 {'<p><a href="sonde/rapport.html">Sonde de performance du moteur</a> (lot X13).</p>' if b.probe_summary else ""}
 <h2>Courbes de la séance</h2><p>Lignes orange : événements du scénario.</p>{charts}
@@ -1076,7 +1076,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Godot introuvable : {args.godot} (option --godot ou variable GODOT)")
         return 2
     if not args.native and shutil.which("xvfb-run") is None:
-        print("xvfb-run introuvable : installer xvfb, xauth et libgl1-mesa-dri (ou lancer avec --native)")
+        print("xvfb-run introuvable : installer xvfb, xauth et mesa-vulkan-drivers (ou lancer avec --native)")
         return 2
     if args.display != "windowed" and not args.native:
         print("--display borderless ou fullscreen : à mesurer sur l'écran réel, ajouter --native")

@@ -11,7 +11,9 @@ Le script renvoie 0 si tout passe et finit par un résumé (une ligne par test e
 
 ## Tests de rendu hors écran (`engine/tests/render/`, lot E2)
 
-En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'est compilé. Les tests de `engine/tests/render/` rendent donc une vraie image, sous Xvfb avec l'OpenGL logiciel de Mesa (moteur Compatibility), et lisent la couleur des pixels. Même contrat que les tests unitaires (lignes `[OK]`, ligne finale, code de sortie). Paquets : `xvfb`, `xauth`, `libgl1-mesa-dri`. Sans `xvfb-run`, `run_engine_tests.sh` saute cette étape, sauf avec `REQUIRE_RENDER=1` (intégration continue), qui la fait échouer.
+En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'est compilé. Les tests de `engine/tests/render/` rendent donc une vraie image, sous Xvfb avec le Vulkan logiciel de Mesa et le moteur Forward+ du jeu, et lisent la couleur des pixels. Même contrat que les tests unitaires (lignes `[OK]`, ligne finale, code de sortie). Paquets : `xvfb`, `xauth`, `mesa-vulkan-drivers`.
+
+**Rendu des essais = rendu du jeu (03/11).** Tous les essais qui dessinent (tests de rendu, `visual_check.py`, `tour_visuel.py`, `sim_bench.py`, `menu_bench.py`, `rogue_bench.py`, vitrines) rendent en Forward+ sur Vulkan, comme le jeu ; arguments uniques dans `tests/rendu_jeu.py` (et `RENDER_ARGS` de `run_engine_tests.sh`). Godot repasse en silence sur OpenGL quand Vulkan manque : chaque essai vérifie la ligne « Vulkan … - Forward+ - » du journal et échoue sans elle. Avant, ces essais tournaient en Compatibility (OpenGL) : ciel de secours, ni SSAO, ni lueur, ni brouillard volumétrique, et couleurs de sommet converties en linéaire par ce seul moteur (gravier juste au cloud, pâle et bleuté sur le PC). Couleurs de sommet et d'instance (`COLOR`) : sRGB, converties une seule fois par `shaders/couleur_srgb.gdshaderinc` (voir ce fichier) ; `test_couleur_sommet_render.gd` et `core/tests/test_rendu_jeu.py` gardent la règle. Sans `xvfb-run`, `run_engine_tests.sh` saute cette étape, sauf avec `REQUIRE_RENDER=1` (intégration continue), qui la fait échouer.
 
 | Fichier | Lot | Vérifie |
 | --- | --- | --- |
@@ -35,7 +37,7 @@ En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'
 GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open
 ```
 
-Sans action manuelle : `visual_check.py` lance la vraie scène (`main.tscn`) sous Xvfb (OpenGL logiciel de Mesa, moteur Compatibility), face au faux core (`VisualCore`, dérivé de `fake_core.py`), pour chaque configuration `résolution:qualité` (défaut `1280x720:low,1920x1080:high,1024x600:medium`). Le parcours est la démo avec terrain synthétique. À chaque scène, le script envoie le message de test `{"type": "_test", "action": "screenshot", "path": …, "tag": …}` : l'engine enregistre l'image affichée en PNG et écrit une ligne `[test] screenshot {…}` (textes, visibilité et rectangles en pixels des éléments du HUD, images par seconde, maillages visibles, position de la caméra, `ticks_ms`). PNG lus et écrits avec la bibliothèque standard de Python.
+Sans action manuelle : `visual_check.py` lance la vraie scène (`main.tscn`) sous Xvfb (Vulkan logiciel de Mesa, moteur Forward+ du jeu, 1 à 3 images/s : attentes ×10 par `rendu_jeu.slowdown`), face au faux core (`VisualCore`, dérivé de `fake_core.py`), pour chaque configuration `résolution:qualité` (défaut `1280x720:low,1920x1080:high,1024x600:medium`). Le parcours est la démo avec terrain synthétique. À chaque scène, le script envoie le message de test `{"type": "_test", "action": "screenshot", "path": …, "tag": …}` : l'engine enregistre l'image affichée en PNG et écrit une ligne `[test] screenshot {…}` (textes, visibilité et rectangles en pixels des éléments du HUD, images par seconde, maillages visibles, position de la caméra, `ticks_ms`). PNG lus et écrits avec la bibliothèque standard de Python.
 
 | Scène | Vérifications |
 | --- | --- |
@@ -61,7 +63,7 @@ Images de référence (lot X20) : avec `--golden DOSSIER`, les scènes reproduct
 
 Sortie : une ligne `[OK]` ou `[ÉCHEC]` par vérification, `rapport.html` (captures, textes du HUD, mesures, tableau des vérifications) et les PNG dans le dossier `--out` (`run_visual_tests.sh` : `~/OpenRide/visual_tests/<date>`, ou `VISUAL_OUT`). Code de sortie 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque. `--native` lance l'engine sur l'écran réel avec son rendu habituel (Forward+, GTX 1060) au lieu de Xvfb : la fenêtre s'ouvre environ une minute par configuration, sans rien à faire (références distinctes à prévoir, le rendu n'étant pas celui de Mesa).
 
-`run_engine_tests.sh` lance la même vérification sur `VISUAL_CONFIGS` (défaut `1280x720:low`, environ 60 s ; `none` pour la sauter), donc aussi en intégration continue, avec `--fige` et, en `1280x720:low`, les vignettes du dépôt (`tests/golden/xvfb/low/`, lot X20).
+`run_engine_tests.sh` lance la même vérification sur `VISUAL_CONFIGS` (défaut `1280x720:low`, environ 6 min en Vulkan logiciel ; `none` pour la sauter), donc aussi en intégration continue, avec `--fige` et, en `1280x720:low`, les vignettes du dépôt (`tests/golden/xvfb/low/`, lot X20, refaites en Forward+ le 03/11).
 
 Premier défaut trouvé : le bandeau d'alerte (placé à 360 px du bord) recouvrait le HUD dès que celui-ci s'élargissait (ligne d'état, ligne ERG). Il se place désormais à droite du HUD s'il reste 360 px, sinon dessous (`banner.gd`, `layout_for`, test `unit/test_banner_layout.gd`).
 
