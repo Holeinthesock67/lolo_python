@@ -149,7 +149,7 @@ func view(state, now_s: float) -> Dictionary:
 
 
 ## Coureur juste devant (`ahead` de la trame, essai du 4 novembre) : [« Devant : Grimpeur à 4,2 s »,
-## « 245 W (+50) pour le rejoindre à l'arche »] ; au-delà de REACH_FTP × FTP (ou REACH_MAX_W sans FTP) :
+## « 245 W (+50) pour le rejoindre » (d'ici l'arche)] ; au-delà de REACH_FTP × FTP (ou REACH_MAX_W sans FTP) :
 ## « hors de portée d'ici l'arche » ; sans puissance (il a passé l'arche) : seconde ligne vide. ["", ""] si personne.
 func ahead_lines(ahead, power_w: float) -> Array:
 	if not ahead is Dictionary or str(ahead.get("id", "")) == "":
@@ -160,9 +160,9 @@ func ahead_lines(ahead, power_w: float) -> Array:
 		return [first, ""]
 	var reach := REACH_FTP * ftp_w if ftp_w > 0.0 else REACH_MAX_W
 	if float(need) > reach:
-		return [first, "hors de portée d'ici l'arche"]
+		return [first, "hors de portée"]
 	var delta := int(round(float(need) - power_w))
-	return [first, "%d W (%s%d) pour le rejoindre à l'arche" % [int(need), "+" if delta >= 0 else "−", absi(delta)]]
+	return [first, "%d W (%s%d) pour le rejoindre" % [int(need), "+" if delta >= 0 else "−", absi(delta)]]
 
 
 ## Lignes de la liste des coureurs : [{name, detail, me, last, out}].

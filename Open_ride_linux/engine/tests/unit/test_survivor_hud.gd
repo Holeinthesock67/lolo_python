@@ -198,9 +198,9 @@ func _run() -> void:
 	var a = Model.new()
 	a.remember_names([{"id": "bot1", "name": "Grimpeur"}])
 	a.ftp_w = 250.0
-	_check(a.ahead_lines({"id": "bot1", "gap_s": 4.24, "catch_w": 245}, 195.0) == ["Devant : Grimpeur à 4,2 s", "245 W (+50) pour le rejoindre à l'arche"],
+	_check(a.ahead_lines({"id": "bot1", "gap_s": 4.24, "catch_w": 245}, 195.0) == ["Devant : Grimpeur à 4,2 s", "245 W (+50) pour le rejoindre"],
 		"devant : écart et puissance (%s)" % str(a.ahead_lines({"id": "bot1", "gap_s": 4.24, "catch_w": 245}, 195.0)))
-	_check(a.ahead_lines({"id": "bot1", "gap_s": 30.0, "catch_w": 420}, 195.0)[1] == "hors de portée d'ici l'arche", "au-delà de 1,5 × FTP : hors de portée")
+	_check(a.ahead_lines({"id": "bot1", "gap_s": 30.0, "catch_w": 420}, 195.0)[1] == "hors de portée", "au-delà de 1,5 × FTP : hors de portée")
 	_check(a.ahead_lines({"id": "bot1", "gap_s": 2.0, "catch_w": null}, 195.0) == ["Devant : Grimpeur à 2,0 s", ""], "arche déjà passée par le bot : pas de puissance")
 	_check(a.ahead_lines(null, 195.0) == ["", ""], "en tête : rien")
 

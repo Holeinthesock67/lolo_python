@@ -320,6 +320,9 @@ func set_survivor_ready(rows: Array, launch: Dictionary) -> void:
 	survivor_launch = launch
 	if mode == "survivor":
 		_refresh_home()
+		# « Lancer » grisé (parcours trop court) : le focus n'y reste pas, il passe à la ligne active suivante
+		if _screen == READY and (_focus < 0 or _focus >= _items().size() or not _items()[_focus]["enabled"]):
+			_focus = _first_enabled_from(maxi(_focus, 0), 1)
 
 
 func _clear_start() -> void:

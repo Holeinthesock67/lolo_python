@@ -117,7 +117,7 @@ func _run() -> void:
 
 	_check(MenuFlow.survivor_launch(2, 1, {}) == {"enabled": true, "detail": "2 arches sur 2 km", "advice": ""}, "parcours inconnu : Lancer actif")
 	var advice := MenuFlow.survivor_advice(4, 2, 5000.0)
-	_check(advice == "Lancer grisé : 4 arches × 2 km = 8 km, parcours de 5,0 km. Baisse Adversaires ou Écart des arches (4 à 1 km, 2 à 2 km) ou change de parcours.",
+	_check(advice == "Lancer grisé : 4 arches × 2 km = 8 km, parcours de 5,0 km.\nBaisse Adversaires ou Écart des arches (4 à 1 km, 2 à 2 km) ou change de parcours.",
 		"explication du Lancer grisé : calcul et réglages qui tiennent (%s)" % advice)
 	_check(MenuFlow.survivor_advice(2, 1, 1500.0).ends_with("Choisis un parcours plus long ou une boucle."), "parcours trop court pour tout réglage")
 	_check(MenuFlow.survivor_label("Niveau des bots") == "Niveau des bots", "libellé sans préfixe gardé")

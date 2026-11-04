@@ -1476,12 +1476,10 @@ func _survivor_status(st: Dictionary) -> void:
 	var focus := int(st.get("focus", -1))
 	var on_setting := focus >= 0 and focus < items.size() and str(items[focus].get("id", "")).begins_with("set:")
 	if advice != "":
-		st["status"] = advice + (" " + SURVIVOR_EDIT_HELP if on_setting and settings.editing.is_empty() else "")
+		st["status"] = advice + ("\n" + SURVIVOR_EDIT_HELP if on_setting and settings.editing.is_empty() else "")
 		st["status_error"] = true
-		st["status_wrap"] = true
 	elif on_setting and settings.editing.is_empty():
 		st["status"] = SURVIVOR_EDIT_HELP
-		st["status_wrap"] = true
 
 
 ## Libellé d'un réglage sur l'écran du mode : « Survivant : adversaires » devient « Adversaires ».
@@ -1512,7 +1510,7 @@ static func survivor_advice(opponents: int, spacing_km: int, length_m: float) ->
 		var n := mini(int(floor(length_m / (sp * 1000.0) + 1e-9)), SURVIVOR_OPPONENTS[1])
 		if n >= SURVIVOR_OPPONENTS[0]:
 			fits.append("%d à %d km" % [n, sp])
-	var text := "Lancer grisé : %d arches × %d km = %d km, parcours de %s. " % [
+	var text := "Lancer grisé : %d arches × %d km = %d km, parcours de %s.\n" % [
 		opponents, spacing_km, opponents * spacing_km, CatalogModel._format_fr_km(length_m)]
 	if fits.is_empty():
 		return text + "Choisis un parcours plus long ou une boucle."
