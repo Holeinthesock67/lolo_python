@@ -1376,6 +1376,8 @@ func _avatar_info() -> Dictionary:
 	var info: Dictionary = avatar_view.test_info()
 	info["standing"] = avatar_model.standing
 	info["crank"] = avatar_model.crank_angle
+	info["crank_turned"] = avatar_model.crank_turned   # avance réelle, sans repli à 2π
+	info["crank_clock_s"] = avatar_model.clock_s       # instant de la pose capturée (et non de l'écriture du PNG)
 	info["lane_m"] = follow.lane_m            # écart à l'axe affiché (lot AS2)
 	info["camera_lane_m"] = follow.camera_lane_m
 	info["on_screen"] = avatar_view.visible and not camera.is_position_behind(avatar_view.global_position + Vector3(0.0, 1.0, 0.0)) \

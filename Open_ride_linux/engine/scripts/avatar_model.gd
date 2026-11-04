@@ -55,6 +55,10 @@ const BUILD_SCALE := {"slim": 0.88, "medium": 1.0, "strong": 1.14}
 var settings: Dictionary = DEFAULTS.duplicate()
 var ftp_w := 0.0
 var crank_angle := 0.0          # radians, pédale droite ; la gauche est décalée de π
+## Angle parcouru depuis reset(), sans repli à 2π, et instant (s) de la dernière mise à jour : les tests
+## graphiques mesurent l'avance réelle du pédalier entre deux captures, sans l'estimer d'après l'heure.
+var crank_turned := 0.0
+var clock_s := -1.0
 var standing := false
 var cadence_rpm := 0.0
 var _last_t := -1.0
@@ -102,9 +106,12 @@ func configure(raw_settings, ftp: float) -> void:
 func update(now_s: float, cadence, power, grade, paused: bool) -> bool:
 	var dt := 0.0 if _last_t < 0.0 else clampf(now_s - _last_t, 0.0, MAX_STEP_S)
 	_last_t = now_s
+	clock_s = now_s
 	cadence_rpm = float(cadence) if (cadence is float or cadence is int) and float(cadence) > 0.0 else 0.0
 	if not paused and cadence_rpm > 0.0:
-		crank_angle = fposmod(crank_angle + cadence_rpm / 60.0 * TAU * dt, TAU)
+		var step := cadence_rpm / 60.0 * TAU * dt
+		crank_angle = fposmod(crank_angle + step, TAU)
+		crank_turned += step
 	var was := standing
 	var g := float(grade) if (grade is float or grade is int) else 0.0
 	var p := float(power) if (power is float or power is int) else 0.0
@@ -123,6 +130,8 @@ func update(now_s: float, cadence, power, grade, paused: bool) -> bool:
 
 func reset() -> void:
 	crank_angle = 0.0
+	crank_turned = 0.0
+	clock_s = -1.0
 	standing = false
 	cadence_rpm = 0.0
 	_last_t = -1.0
