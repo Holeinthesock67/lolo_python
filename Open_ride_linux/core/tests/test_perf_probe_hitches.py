@@ -34,7 +34,7 @@ def by_label(checks):
 
 def test_targets_have_hitch_limits():
     h = pp.load_targets()["hitches"]
-    assert (h["warmup_s"], h["hitch_ms"], h["max_per_min"], h["freeze_ms"]) == (30, 50, 3, 100)
+    assert (h["warmup_s"], h["hitch_ms"], h["max_per_min"], h["freeze_ms"], h["start_freeze_ms"]) == (30, 50, 3, 100, 150)
 
 
 def test_period_of_the_40_m_chunks_found_not_its_half_or_double():
@@ -78,7 +78,11 @@ def test_warmup_ignored_and_xvfb_is_info():
     early = rows()
     early[5]["frame_max_ms"] = 900.0   # chargement du parcours
     early[25]["frame_max_ms"] = 147.0  # arbres des premières tuiles, au départ (banc #710 du 04/11)
-    assert by_label(pp.hitch_checks(early))["pire image"][0] is True
+    checks = by_label(pp.hitch_checks(early))
+    assert checks["pire image"][0] is True
+    assert checks["départ"] == (True, "pire image 147 ms de 20 à 30 s (au plus 150 ms)")
+    early[25]["frame_max_ms"] = 400.0  # départ figé : jugé à part, pas caché par le régime établi
+    assert by_label(pp.hitch_checks(early))["départ"][0] is False
     checks = pp.hitch_checks(rows(hitch_every_s=5), saccades(range(200, 1121, 40)), real_window=False)
     assert all(ok is None for ok, _, _ in checks) and "indicatif sous Xvfb" in checks[0][2]
 

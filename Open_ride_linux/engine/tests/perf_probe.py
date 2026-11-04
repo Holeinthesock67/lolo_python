@@ -538,7 +538,8 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
                  targets: dict[str, Any] | None = None, real_window: bool = True) -> list[tuple[bool | None, str, str]]:
     """À-coups en régime établi (après `warmup_s` du bloc) : secondes dont la pire image dépasse `hitch_ms` (au plus
     `max_per_min` par minute), aucune image au-delà de `freeze_ms`, et pas d'à-coups qui reviennent à
-    distance régulière (saccades.csv, captures du banc écartées). Seuils `hitches` de perf_targets.json."""
+    distance régulière (saccades.csv, captures du banc écartées) ; départ (fin du chargement à `warmup_s`
+    du bloc) : aucune image au-delà de `start_freeze_ms`. Seuils `hitches` de perf_targets.json."""
     t = targets or load_targets()
     lim = t.get("hitches", {})
     hitch_ms, per_min = float(lim.get("hitch_ms", 50.0)), float(lim.get("max_per_min", 3.0))
@@ -552,6 +553,16 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
     worst = values(steady, "frame_max_ms")
     note = "" if real_window else ", indicatif sous Xvfb"
     out: list[tuple[bool | None, str, str]] = []
+    # Départ : après le chargement (warmup_s général), avant le régime établi ; seuil propre, plus large.
+    start_ms = float(lim.get("start_freeze_ms", 150.0))
+    loaded = min(ts) + float(t.get("warmup_s", 0))
+    start = values([r for r in rows if isinstance(r.get("t_s"), (int, float)) and loaded <= r["t_s"] < warm],
+                   "frame_max_ms")
+    if start:
+        top_start = max(start)
+        out.append(((top_start <= start_ms) if real_window else None, "à-coups : départ",
+                    f"pire image {top_start:.0f} ms de {loaded - min(ts):.0f} à {warmup_s:.0f} s "
+                    f"(au plus {start_ms:.0f} ms){note}"))
     if worst:
         minutes = max(len(steady) / 60.0, 1.0)
         n = sum(w > hitch_ms for w in worst)
