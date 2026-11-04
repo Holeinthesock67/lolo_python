@@ -168,6 +168,7 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 	road_traffic.set_budget(int(living.get("distant_vehicles", 0)))
 	road_traffic_view.set_budget(int(living.get("distant_vehicles", 0)))
 	cyclists.set_budget(int(living.get("cyclists", 0)))
+	cyclists_view.set_quality(QualityPresets.applied_name(preset))
 	sky.set_budget(int(living.get("aircraft", 0)))
 	boats.set_budget(int(living.get("boats", 0)))
 	_sun_elevation_deg = float(ThemeRenderParams.sky_params(theme)["sun_elevation_deg"])
@@ -482,7 +483,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	if typeof(state.get("riders")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
 		cyclists.sync_core(state["riders"], int(state["seq"]), cam_s)
 	cyclists.update(cam_s, rider_v, dt_s, paused, bot_places)
-	cyclists_view.update(dt_s, paused)
+	cyclists_view.update(dt_s, paused, cam_s)
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
 	headlights = TrafficModel.headlights(weather_eval, _sun_elevation_deg)
 	var others: Array = cyclists.riders()

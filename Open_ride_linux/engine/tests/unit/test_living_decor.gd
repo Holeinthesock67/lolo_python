@@ -208,8 +208,10 @@ func _run() -> void:
 	_check(osm.boats_enabled and boat_kinds.has("rowboat") and boat_kinds.has("barge"),
 		"bateaux : barque sur le lac, péniches sur le canal (%s)" % str(boat_kinds.keys()))
 
-	# Nœuds de la deuxième vague (P23 à P26, P28, P29) : tous créés par `configure`
-	var wave2_views: Array = [dec.fauna, dec.traffic_view, dec.road_traffic_view, dec.cyclists_view, dec.sky_view, dec.boats_view]
+	# Nœuds de la deuxième vague (P23 à P26, P29) : tous créés par `configure` ; cyclistes du décor (P28, AS7) :
+	# un avatar par cycliste affiché, plus quelques avatars de réserve
+	var wave2_views: Array = [dec.fauna, dec.traffic_view, dec.road_traffic_view, dec.sky_view, dec.boats_view]
+	var cyclist_roots_max := 0
 	var nodes_before := _count_nodes(wave2_views)
 
 	# 2. Roule dans le village puis jusqu'au sommet, sous la pluie
@@ -247,6 +249,7 @@ func _run() -> void:
 			if absf((b["xform"] as Transform3D).origin.z) < 15.0:
 				boats_on_route += 1
 		boats_max = maxi(boats_max, dec.boats_view.visible_count())
+		cyclist_roots_max = maxi(cyclist_roots_max, dec.cyclists_view.get_child_count() - 1)   # moins la voix
 		cheer_max = maxf(cheer_max, dec.last_cheer)
 		s += 0.4
 		now += 0.05
@@ -274,6 +277,8 @@ func _run() -> void:
 	print("Décor vivant (deuxième vague) : %.3f ms par image (high)" % per_frame_ms)
 	_check(PerfBudget.check("living_decor_frame", per_frame_ms), "coût du branchement en %.3f ms par image" % per_frame_ms)
 	var nodes_after := _count_nodes(wave2_views)
+	_check(cyclist_roots_max <= dec.cyclists_view.MAX_CYCLISTS + dec.cyclists_view.SPARE_MAX + 1,
+		"cyclistes du décor : %d avatars au plus (affichés et de réserve)" % cyclist_roots_max)
 	_check(nodes_after == nodes_before, "deuxième vague : %d nœuds créés au démarrage, %d après %d images" % [nodes_before, nodes_after, frames])
 	# Enveloppe de la deuxième vague (P27) : P23 à P26, P28 et P29 ensemble en medium
 	var mid_parts := _decor("medium", true, theme, Environment.new())

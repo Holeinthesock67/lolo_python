@@ -488,6 +488,8 @@ func _on_settings(msg: Dictionary) -> void:
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
 		bots_view.set_quality(_quality_name)
+		if living_decor != null and living_decor.cyclists_view != null:
+			living_decor.cyclists_view.set_quality(_quality_name)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
 		if streamer.osm_streamer != null:
