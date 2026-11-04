@@ -11,7 +11,8 @@ extends Node3D
 ##   construit dans un fil de travail (avatar_view.gd request_parts), le cycliste garde en attendant le niveau
 ##   prêt le plus proche. Les maillages du niveau 2 des VARIANTS apparences sont demandés dès `setup`.
 ## - Au plus MAX_CYCLISTS cyclistes affichés. Un cycliste qui quitte la route laisse son avatar caché, repris
-##   par le prochain cycliste de même apparence (au plus SPARE_MAX avatars de réserve) : peu de nœuds créés.
+##   par le prochain cycliste de même apparence (au plus SPARE_MAX avatars de réserve, le plus ancien part le
+##   premier) : peu de nœuds créés.
 ## - Pédalier : l'angle est cumulé ici d'après la cadence du modèle (braquet de 50 × 17), pour qu'un changement
 ##   de vitesse ne fasse pas sauter les jambes ; roues calées sur la distance parcourue ; en danseuse au-delà
 ##   de la pente de l'avatar (8 %). Au niveau 2 (loin), la pose n'est recalculée qu'une image sur LOD2_POSE_EVERY.
@@ -41,6 +42,7 @@ var _sound = null
 var _audio: AudioStreamPlayer3D
 var _by_id := {}                 # id du cycliste → racine (Node3D) de son avatar
 var _spare := {}                 # apparence → racines cachées, prêtes à resservir
+var _spare_order: Array = []     # les mêmes, de la plus ancienne à la plus récente
 var _frame := 0
 var _shown := 0
 var _xforms: Array = []          # transformée de chaque cycliste affiché (tests)
@@ -118,6 +120,7 @@ func _take_root(variant: int) -> Node3D:
 	var pool: Array = _spare.get(variant, [])
 	if not pool.is_empty():
 		var again: Node3D = pool.pop_back()
+		_spare_order.erase(again)
 		again.set_meta("lod", -1)
 		return again
 	var root := Node3D.new()
@@ -133,17 +136,16 @@ func _take_root(variant: int) -> Node3D:
 
 func _release(root: Node3D) -> void:
 	root.visible = false
-	var spare_count := 0
-	for v in _spare:
-		spare_count += (_spare[v] as Array).size()
-	if spare_count >= SPARE_MAX:
-		remove_child(root)
-		root.queue_free()
-		return
+	if _spare_order.size() >= SPARE_MAX:   # réserve pleine : le plus ancien avatar caché s'en va
+		var old: Node3D = _spare_order.pop_front()
+		(_spare[int(old.get_meta("variant"))] as Array).erase(old)
+		remove_child(old)
+		old.queue_free()
 	var v := int(root.get_meta("variant"))
 	if not _spare.has(v):
 		_spare[v] = []
 	_spare[v].append(root)
+	_spare_order.append(root)
 
 
 ## Avatar du niveau `lod`, les autres niveaux cachés ; un niveau pas encore construit l'est dans un fil de

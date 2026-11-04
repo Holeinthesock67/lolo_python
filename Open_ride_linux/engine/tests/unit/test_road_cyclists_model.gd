@@ -137,6 +137,9 @@ func _test_renderer(route) -> void:
 	var lods := [0, 0, 0]
 	var ids := {}
 	for i in range(30 * 240):
+		if i == 1:   # un groupe devant, rattrapé et doublé de près, et un groupe en face
+			m.place_for_test(s, 30.0 / 3.6, "ahead", 40.0, 3)
+			m.place_for_test(s, 30.0 / 3.6, "oncoming", 150.0, 2)
 		var t0 := Time.get_ticks_usec()
 		m.update(s, 30.0 / 3.6, 1.0 / 30.0)
 		var t1 := Time.get_ticks_usec()
@@ -165,8 +168,25 @@ func _test_renderer(route) -> void:
 	_check(cadence_ok, "cadence de chaque cycliste affiché d'après sa vitesse")
 	_check(decor_ok, "apparence de chaque cycliste tirée de son maillot et de sa tenue")
 	_check(lods[0] > 0 and lods[2] > 0, "niveaux de détail des bots selon l'écart (%s images par niveau)" % str(lods))
-	_check(rr.created_count() < ids.size(),
-		"avatars cachés repris : %d racines créées pour %d cyclistes affichés" % [rr.created_count(), ids.size()])
+	_check(rr.created_count() <= ids.size(), "un avatar par cycliste au plus (%d pour %d)" % [rr.created_count(), ids.size()])
+	# Cyclistes qui quittent la route puis cyclistes de mêmes apparences : avatars cachés repris, aucun créé
+	m.place_for_test(s, 30.0 / 3.6, "ahead", 30.0, 3)
+	m.groups = [m.groups[m.groups.size() - 1]]
+	rr.update(1.0 / 30.0, false, s)
+	var kept: Array = m.groups.duplicate(true)
+	var created := rr.created_count()
+	m.groups = []
+	rr.update(1.0 / 30.0, false, s)
+	var hidden := rr.visible_count() == 0
+	for g in kept:
+		g["id"] = "x" + str(g["id"])
+		for mb in g["members"]:
+			if mb.has("id"):
+				mb["id"] = "x" + str(mb["id"])
+	m.groups = kept
+	rr.update(1.0 / 30.0, false, s)
+	_check(hidden and rr.visible_count() > 0 and rr.created_count() == created,
+		"avatars cachés repris par les cyclistes suivants de même apparence (%d créés, %d affichés)" % [rr.created_count() - created, rr.visible_count()])
 	var model_avg := model_usec / 1000.0 / frames
 	var view_avg := view_usec / 1000.0 / frames
 	_check(PerfBudget.check("road_cyclists_frame", model_avg), "16 cyclistes au plus : modèle en %.4f ms par image" % model_avg)
