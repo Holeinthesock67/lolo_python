@@ -15,6 +15,8 @@ extends Node3D
 ## Biomes (lot U7) : avec `biome_model` actif (couche biome ou forçage), la densité et la limite des
 ## arbres suivent les biomes de la tuile et chaque arbre reçoit une espèce (tree_species.gd) ; une case
 ## a alors une paire de MultiMeshInstance3D par espèce présente (`parts`). Sans biome : rendu inchangé.
+## Plantes basses (lot « herbe au loin », `TreeSpecies.lod0_m`, rangs de vigne à 200 m) : passage au modèle
+## lointain arbre par arbre dans le shader de balancement, ombre portée coupée au même endroit (`lod_ranges`).
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
@@ -29,6 +31,10 @@ const CELLS_PER_TILE := 4   # 4 x 4 = 16 cases par tuile de 1000 m
 ## Bascule LOD 0 → LOD 1 éloignée de 300 à 450 m (demande user 01/11 : simplification trop proche).
 const LOD0_MAX_DIST_M := 450.0
 const LOD1_MAX_DIST_M := 1500.0
+## Espèces à passage propre (`TreeSpecies.lod0_m`, rangs de vigne) : fondu en taille du passage (m) et rayon
+## d'une case vue de son centre (demi-diagonale et marge), pour les plages de visibilité des deux modèles.
+const SPECIES_LOD_BLEND_M := 6.0
+const CELL_RADIUS_M := CELL_SIZE_M * 0.7072 + 10.0
 ## Lot S1 : distance ajoutée au rang d'une case hors du champ, pour qu'elle passe avant toute case visible.
 const OUT_OF_VIEW_RANK_M := 1.0e6
 ## Distance minimale entre un tronc et le mur d'un bâtiment OSM (houppier compris).
@@ -96,8 +102,11 @@ func set_preset(preset_name: String, living_enabled: bool = true) -> void:
 			for cell_info in tile_cells.values():
 				for part in cell_info["parts"]:
 					var look := _look(int(part["species"]))
+					var ranges := lod_ranges(int(part["species"]), look["m0"] is ShaderMaterial)
 					(part["lod0"] as MultiMeshInstance3D).material_override = look["m0"]
 					(part["lod1"] as MultiMeshInstance3D).material_override = look["m1"]
+					(part["lod0"] as MultiMeshInstance3D).visibility_range_end = ranges.x
+					(part["lod1"] as MultiMeshInstance3D).visibility_range_begin = ranges.y
 
 
 func is_tree_sway() -> bool:
@@ -136,6 +145,12 @@ func _look(index: int) -> Dictionary:
 			m1 = sway_material(true)
 			for m in [m0, m1]:
 				(m as ShaderMaterial).set_shader_parameter("sway_height_m", float(built["height"]))
+				(m as ShaderMaterial).set_shader_parameter("lod_blend_m", SPECIES_LOD_BLEND_M)
+			var switch_m := TreeSpecies.lod0_m(TreeSpecies.kind_of(index))
+			if switch_m > 0.0:
+				# Passage touffe par touffe (tree_sway.gdshader) : modèle proche jusqu'à switch_m, lointain au-delà.
+				(m0 as ShaderMaterial).set_shader_parameter("lod_end_m", switch_m)
+				(m1 as ShaderMaterial).set_shader_parameter("lod_begin_m", switch_m)
 		_species[index] = {"lod0": built["lod0"], "lod1": built["lod1"], "m0": m0, "m1": m1}
 	return _species[index]
 
@@ -445,18 +460,31 @@ func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
 	mmi0.multimesh = mm0
 	mmi0.material_override = look["m0"]
 	mmi0.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	var ranges := lod_ranges(species, look["m0"] is ShaderMaterial)
 	mmi0.visibility_range_begin = 0.0
-	mmi0.visibility_range_end = LOD0_MAX_DIST_M
+	mmi0.visibility_range_end = ranges.x
 	add_child(mmi0)
 
 	var mmi1 := MultiMeshInstance3D.new()
 	mmi1.multimesh = mm1
 	mmi1.material_override = look["m1"]
 	mmi1.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mmi1.visibility_range_begin = LOD0_MAX_DIST_M
+	mmi1.visibility_range_begin = ranges.y
 	mmi1.visibility_range_end = LOD1_MAX_DIST_M
 	add_child(mmi1)
 	return {"lod0": mmi0, "lod1": mmi1, "species": species, "count": count}
+
+
+## Plages de visibilité d'une case (distance de la caméra au centre de sa boîte) : (fin du modèle proche, début
+## du lointain). Passage par case à LOD0_MAX_DIST_M ; une espèce à passage propre (`TreeSpecies.lod0_m`) avec le
+## shader de balancement passe touffe par touffe dans le shader, les plages ne font qu'écarter les cases dont
+## tous les arbres sont du même côté du passage.
+static func lod_ranges(species: int, shader_lod: bool) -> Vector2:
+	var switch_m := TreeSpecies.lod0_m(TreeSpecies.kind_of(species)) if species != TreeSpecies.GENERIC else 0.0
+	if switch_m <= 0.0 or not shader_lod:
+		return Vector2(LOD0_MAX_DIST_M, LOD0_MAX_DIST_M)
+	return Vector2(switch_m + SPECIES_LOD_BLEND_M + CELL_RADIUS_M,
+		maxf(0.0, switch_m - SPECIES_LOD_BLEND_M - CELL_RADIUS_M))
 
 
 func _free_cell(cell_info: Dictionary) -> void:

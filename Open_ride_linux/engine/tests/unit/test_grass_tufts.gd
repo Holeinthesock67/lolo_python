@@ -243,11 +243,95 @@ func _test_blades_and_tints() -> void:
 		seen[g.tint_index(3, slot)] = true
 	_check(seen.size() == GrassTufts.TINTS.size(), "les %d teintes sont tirées" % GrassTufts.TINTS.size())
 	g.configure(1000, _route())
-	var mat: ShaderMaterial = g._mmi.material_override
+	var mat: ShaderMaterial = g._near_mmi[0].material_override
 	_check(is_equal_approx(float(mat.get_shader_parameter("fade_end_m")), GrassTufts.FADE_END_M)
-		and GrassTufts.FADE_END_M <= GrassTufts.CHUNKS_AHEAD * GrassTufts.CHUNK_M and g._mm.use_colors,
+		and GrassTufts.FADE_END_M <= GrassTufts.CHUNKS_AHEAD * GrassTufts.CHUNK_M and g._near_mm[0].use_colors,
 		"fondu à %.0f m, avant la fin de la fenêtre (%.0f m) ; couleurs d'instance" % [GrassTufts.FADE_END_M, GrassTufts.CHUNKS_AHEAD * GrassTufts.CHUNK_M])
 	g.free()
+
+
+## Lot « herbe au loin » : gerbe simplifiée au-delà de LOD_SWITCH_M, un MultiMesh par tronçon et par niveau,
+## tirage du fondu partagé CPU / GPU, boîtes et plages de visibilité qui ne coupent jamais une touffe montrée.
+func _test_far_lod() -> void:
+	var far := GrassTufts.build_far_tuft_mesh()
+	var near := GrassTufts.build_tuft_mesh()
+	var fv: PackedVector3Array = far.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var nv: PackedVector3Array = near.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var top := 0.0
+	for v in fv:
+		top = maxf(top, v.y)
+	_check(fv.size() == GrassTufts.FAR_BLADES * 3 and fv.size() * 6 <= nv.size() and top > GrassTufts.TUFT_HEIGHT_M * 0.6
+		and top <= GrassTufts.TUFT_HEIGHT_M + 1e-4,
+		"gerbe lointaine : %d sommets au lieu de %d, hauteur %.2f m" % [fv.size(), nv.size(), top])
+	_check(is_equal_approx(GrassTufts.keep_at(GrassTufts.THIN_START_M), 1.0) and is_zero_approx(GrassTufts.keep_at(GrassTufts.FADE_END_M))
+		and GrassTufts.keep_at(80.0) < GrassTufts.keep_at(50.0) and GrassTufts.LOD_SWITCH_M + GrassTufts.LOD_BLEND_M < GrassTufts.FADE_END_M,
+		"courbe du fondu : 1 à %.0f m, 0 à %.0f m ; passage à %.0f m avant la fin du fondu" % [GrassTufts.THIN_START_M, GrassTufts.FADE_END_M, GrassTufts.LOD_SWITCH_M])
+	var route = _route()
+	var g = GrassTufts.new()
+	root.add_child(g)
+	g.tuft_seed = 3
+	g.configure(int(QualityPresets.living("high")["grass_tufts"]), route)
+	var groups := GrassTufts.CHUNKS_BEHIND + GrassTufts.CHUNKS_AHEAD + 1
+	var near_mat: ShaderMaterial = g._near_material
+	var far_mat: ShaderMaterial = g._far_material
+	_check(g.get_child_count() == groups * 2 and g._near_mm[0].use_custom_data and g._far_mm[0].use_custom_data
+		and bool(near_mat.get_shader_parameter("pick_from_custom")) and bool(far_mat.get_shader_parameter("pick_from_custom"))
+		and is_equal_approx(float(near_mat.get_shader_parameter("lod_end_m")), GrassTufts.LOD_SWITCH_M)
+		and is_zero_approx(float(near_mat.get_shader_parameter("lod_begin_m")))
+		and is_equal_approx(float(far_mat.get_shader_parameter("lod_begin_m")), GrassTufts.LOD_SWITCH_M)
+		and is_zero_approx(float(far_mat.get_shader_parameter("lod_end_m"))),
+		"%d MultiMesh (2 par tronçon) ; gerbe complète jusqu'à %.0f m, simplifiée au-delà" % [g.get_child_count(), GrassTufts.LOD_SWITCH_M])
+	_settle(g, 300.0)
+	var threshold := GrassTufts.keep_at(GrassTufts.LOD_SWITCH_M - GrassTufts.LOD_BLEND_M)
+	var bad_pick := 0
+	var outside := 0
+	var range_short := 0
+	var expected_far := 0
+	for gi in range(groups):
+		var k: int = g._slot_chunk[gi]
+		var mm: MultiMesh = g._near_mm[gi]
+		var fm: MultiMesh = g._far_mm[gi]
+		var box: AABB = mm.custom_aabb
+		var c := box.get_center()
+		for f in range(fm.visible_instance_count):
+			if fm.get_instance_custom_data(f).r >= threshold:
+				bad_pick += 1
+		for slot in range(g._filled[gi]):
+			if g._placed[gi * g._per_chunk + slot] != 1:
+				continue
+			var p: Vector3 = mm.get_instance_transform(slot).origin
+			var pick := mm.get_instance_custom_data(slot).r
+			if not is_equal_approx(pick, g.pick_of(k, slot)):
+				bad_pick += 1
+			expected_far += 1 if pick < threshold else 0
+			if not box.has_point(p):
+				outside += 1
+			# Une touffe encore montrée par la gerbe complète (d < passage + fondu) ne doit jamais tomber hors
+			# de la plage du MultiMesh, ni une touffe lointaine encore dans le fondu hors de celle du lointain.
+			var r := p.distance_to(c)
+			if g._near_mmi[gi].visibility_range_end < GrassTufts.LOD_SWITCH_M + GrassTufts.LOD_BLEND_M + r \
+					or g._far_mmi[gi].visibility_range_end < GrassTufts.FADE_END_M + r \
+					or g._far_mmi[gi].visibility_range_begin > maxf(0.0, GrassTufts.LOD_SWITCH_M - GrassTufts.LOD_BLEND_M - r):
+				range_short += 1
+	_check(bad_pick == 0 and expected_far == g.get_far_count() and g.get_far_count() > 0,
+		"gerbe lointaine : %d touffes, toutes celles que le fondu montre au-delà du passage (tirage CPU = GPU)" % g.get_far_count())
+	_check(outside == 0 and range_short == 0,
+		"boîtes des tronçons et plages de visibilité : aucune touffe montrée coupée (%d hors boîte, %d hors plage)" % [outside, range_short])
+	var radius := 0.0
+	for gi in range(groups):
+		radius = maxf(radius, g._near_mm[gi].custom_aabb.size.length() * 0.5)
+	_check(radius < GrassTufts.CHUNK_M,
+		"tronçon de route droite : demi-diagonale de boîte %.0f m (gerbe complète écartée à %.0f m du centre)" % [radius, GrassTufts.LOD_SWITCH_M + GrassTufts.LOD_BLEND_M + radius])
+	# Tronçon recyclé : ses anciennes touffes ne sont plus dessinées ni comptées avant d'être recalculées.
+	var before := g.get_visible_count()
+	g.update(300.0 + GrassTufts.CHUNK_M)
+	var recycled := posmod(int(floor((300.0 + GrassTufts.CHUNK_M) / GrassTufts.CHUNK_M)) + GrassTufts.CHUNKS_AHEAD, groups)
+	_check(g._near_mm[recycled].visible_instance_count <= g._filled[recycled] and g._far_mm[recycled].visible_instance_count == g._far_count[recycled]
+		and g.get_visible_count() <= before and g.get_positions().size() == g.get_visible_count(),
+		"tronçon recyclé : %d touffes comptées après le pas (avant %d), positions = compte" % [g.get_visible_count(), before])
+	_settle(g, 300.0 + GrassTufts.CHUNK_M)
+	_check(g.get_visible_count() > 0 and g.get_visible_count() <= g.get_capacity(), "fenêtre remplie de nouveau : %d touffes" % g.get_visible_count())
+	g.queue_free()
 
 
 class _DesertModel:
@@ -287,6 +371,7 @@ func _test_desert() -> void:
 
 func _init() -> void:
 	_test_blades_and_tints()
+	_test_far_lod()
 	_test_tree_materials()
 	_test_budget_and_low()
 	_test_determinism_and_exclusions()

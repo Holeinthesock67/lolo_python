@@ -14,7 +14,10 @@ const BiomeIds := preload("res://scripts/biome_ids.gd")
 const GENERIC := 255
 const SIDES := 6
 
-## Hauteur nominale (m) et feuillage caduc (saisons de P18 et U13) de chaque espèce.
+## Hauteur nominale (m) et feuillage caduc (saisons de P18 et U13) de chaque espèce ; `lod0_m` (facultatif,
+## lot « herbe au loin ») : distance du passage au modèle lointain, touffe par touffe dans le shader, pour les
+## plantes basses qui n'ont pas besoin du modèle proche jusqu'à TreeRenderer.LOD0_MAX_DIST_M (rangs de vigne
+## des cultures : 1,6 m de haut, une dizaine de pixels à 200 m). Sans `lod0_m` : passage par case, comme avant.
 const INFO := {
 	"oak": {"height": 14.0, "deciduous": true},
 	"beech": {"height": 17.0, "deciduous": true},
@@ -33,7 +36,7 @@ const INFO := {
 	"tree_fern": {"height": 6.0, "deciduous": false},
 	"reed": {"height": 2.2, "deciduous": false},
 	"dwarf_shrub": {"height": 0.8, "deciduous": false},
-	"vine_row": {"height": 1.6, "deciduous": true},
+	"vine_row": {"height": 1.6, "deciduous": true, "lod0_m": 200.0},
 }
 
 ## Matière de chaque face, portée par l'alpha de la couleur du sommet (code / 16) et dessinée par
@@ -78,6 +81,11 @@ static func kind_of(index: int) -> String:
 
 static func height_m(kind: String) -> float:
 	return float(INFO.get(kind, {"height": 5.4})["height"])
+
+
+## Distance du passage au modèle lointain propre à l'espèce (m), 0 : celle des cases de tree_renderer.gd.
+static func lod0_m(kind: String) -> float:
+	return float(INFO.get(kind, {}).get("lod0_m", 0.0))
 
 
 static func is_deciduous(kind: String) -> bool:
@@ -165,11 +173,13 @@ static func _frond(st: SurfaceTool, base: Vector3, angle: float, length: float, 
 
 ## Panneaux croisés du LOD 1 à la silhouette de l'espèce : houppier en cône (`cone`, du pied de la
 ## couronne `cy` à la cime) ou en octogone (`round`, centre `cy`, demi-hauteur `ry`) sur un tronc de largeur
-## `trunk_w` ; `box` : rectangle plein (plantes basses, cactus). 4 à 28 triangles.
+## `trunk_w` ; `box` : rectangle plein (plantes basses, cactus) ; `hedge` : haie d'un rang (`_hedge`). 4 à 28 triangles.
 static func _profile(crown: Dictionary, height: float) -> ArrayMesh:
 	var shape := str(crown.get("shape", "box"))
 	if shape == "box":
 		return _cross(float(crown["w"]), height, crown["col"])
+	if shape == "hedge":
+		return _hedge(float(crown["w"]), float(crown["ry"]) * 2.0, float(crown["cy"]), height * 0.95, crown["col"])
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var w := float(crown["w"]) * 0.5
@@ -190,6 +200,28 @@ static func _profile(crown: Dictionary, height: float) -> ArrayMesh:
 				var a0 := TAU * i / 8.0
 				var a1 := TAU * (i + 1) / 8.0
 				_tri(st, c, c + axis * cos(a0) * w + Vector3(0, sin(a0) * ry, 0), c + axis * cos(a1) * w + Vector3(0, sin(a1) * ry, 0), col, n)
+	return st.commit()
+
+
+## LOD 1 d'un rang (`hedge`, rangs de vigne) : haie pleine de `length` mètres selon x, `width` de large, de `y0`
+## à `y1` (dessus et côtés, 10 triangles), au lieu de deux panneaux croisés de la longueur du rang qui
+## barraient le rang en travers.
+static func _hedge(length: float, width: float, y0: float, y1: float, col: Color) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var l := length * 0.5
+	var w := width * 0.5
+	var side := shade(col, 0.85)
+	for sz in [-1.0, 1.0]:
+		var n := Vector3(0, 0, sz)
+		_tri(st, Vector3(-l, y0, w * sz), Vector3(l, y0, w * sz), Vector3(l, y1, w * sz), side, n)
+		_tri(st, Vector3(-l, y0, w * sz), Vector3(l, y1, w * sz), Vector3(-l, y1, w * sz), side, n)
+	for sx in [-1.0, 1.0]:
+		var n := Vector3(sx, 0, 0)
+		_tri(st, Vector3(l * sx, y0, -w), Vector3(l * sx, y0, w), Vector3(l * sx, y1, w), side, n)
+		_tri(st, Vector3(l * sx, y0, -w), Vector3(l * sx, y1, w), Vector3(l * sx, y1, -w), side, n)
+	_tri(st, Vector3(-l, y1, -w), Vector3(l, y1, -w), Vector3(l, y1, w), col, Vector3.UP)
+	_tri(st, Vector3(-l, y1, -w), Vector3(l, y1, w), Vector3(-l, y1, w), col, Vector3.UP)
 	return st.commit()
 
 
@@ -315,7 +347,7 @@ static func build(kind: String) -> Dictionary:
 				_limb(st, Vector3(x, 0, 0), Vector3(x, 1.4, 0), 0.04, 0.04, mat(Color(0.40, 0.33, 0.24), MAT_STEM), 4)
 			for i in range(3):
 				_blob(st, Vector3(-2.0 + 2.0 * i, 1.05, 0), Vector3(1.15, 0.45, 0.4), mat(Color(0.28, 0.44, 0.16), MAT_LEAVES), 3)
-			crown = {"w": 6.0, "col": mat(Color(0.28, 0.44, 0.16), MAT_LEAVES), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0}
+			crown = {"w": 6.0, "col": mat(Color(0.28, 0.44, 0.16), MAT_LEAVES), "shape": "hedge", "cy": 0.6, "ry": 0.4, "trunk_w": 0.0}
 		_:
 			return {}
 	var mesh := st.commit()
