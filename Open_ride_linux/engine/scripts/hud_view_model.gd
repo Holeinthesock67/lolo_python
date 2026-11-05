@@ -87,6 +87,15 @@ static func bias_locked_text() -> String:
 	return "Test de FTP : + / − bloqués pendant la rampe · Z = arrêter le test   (clavier : mêmes touches)"
 
 
+## Test de FTP (4 novembre) : `erg.ftp_test` présent et bloc `warmup` ; Z passe l'échauffement (bloc suivant).
+static func ftp_warmup_text() -> String:
+	return "Test de FTP : Z = passer l'échauffement · + / − = intensité · Y = pause   (clavier : mêmes touches)"
+
+
+static func is_ftp_warmup(erg: Variant) -> bool:
+	return erg is Dictionary and erg.has("ftp_test") and str(erg.get("block_type", "")) == "warmup"
+
+
 ## Invite de fin de séance (1er novembre) : `state.workout_done` (contrat IPC 1.5) dit que l'entraînement est
 ## fini et que la séance continue en parcours libre ; Y ouvre la pause, focus déjà sur « Terminer et
 ## enregistrer », A maintenu valide (Échap puis Entrée au clavier, key_map.gd). Texte vide sans invite.

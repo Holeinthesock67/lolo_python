@@ -279,6 +279,8 @@ func hint_text() -> String:
 ## menu : état de menu_model.gd ; state : dernière trame ; summary_data : bilan (écran « summary »).
 func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionary, show_details: bool) -> void:
 	title_label.text = str(menu.get("title", ""))
+	# Explication en plusieurs lignes (« \n », Lancer grisé du Dernier survivant, essai du 4 novembre) : chaque
+	# ligne est assez courte pour tenir ; les autres lignes d'état restent sur une ligne.
 	status_label.text = str(menu.get("status", ""))
 	status_label.visible = status_label.text != ""
 	status_label.add_theme_color_override("font_color", UiTheme.DANGER if menu.get("status_error", false) else UiTheme.DIM)

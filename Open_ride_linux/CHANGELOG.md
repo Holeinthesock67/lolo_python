@@ -3,6 +3,49 @@
 Toutes les évolutions notables, version par version, au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh X.Y.Z` le change partout (lot O2).
 
+## Non publié
+
+### Bots et abri (série AS)
+- Cyclistes du décor dessinés comme les bots (même cycliste, mêmes niveaux de détail), avec leurs propres maillots, unis ou de club, de couleurs qu'aucun bot ne porte, sans dossard (lot AS7, retour d'essai du 4 novembre).
+
+## 2.0.0 – 2026-11-04
+
+Un nouveau mode de course, le Dernier survivant, des bots qui roulent en groupe de façon plus réaliste, le gravier et le désert, et un rendu des essais identique à celui du jeu.
+
+### Nouveau mode : Dernier survivant (série DS)
+- Une arche d'élimination tous les 1, 2 ou 3 km : le dernier à la passer est éliminé, jusqu'au vainqueur.
+- Réglages sur l'écran Prêt : adversaires, écart des arches, niveau des bots, écart de niveau, et ce qui se passe une fois éliminé (continuer à rouler ou terminer). Quand « Lancer » est grisé, l'écran dit pourquoi et quoi changer.
+- Bloc SURVIVANT du HUD : prochaine arche, rang, écart au dernier, et le coureur de devant avec son écart en secondes et les watts qu'il faut pour le rejoindre avant l'arche.
+- Portiques d'élimination, bots éliminés rangés sur le bas-côté, bandeaux, jingles et lignes du bilan.
+
+### Bots et abri (série AS)
+- Abri de groupe, vent de travers, abri derrière les véhicules et les cyclistes du décor.
+- Placement dans la roue, dépassement toujours par la gauche du paquet.
+- Va-et-vient des bots 4 fois moindres. La caméra suit le cycliste sans retard quand les images ralentissent, et les bots sont placés avant le décor de l'image : à-coups entre bots et cycliste 2 à 3 fois plus faibles en low, medium et high.
+
+### Monde et rendu
+- Gravier et désert (lot U16) : routes en gravier gris-brun et biome du décor au choix dans le menu, désert sec avec touffes et cailloux.
+- Couleurs : le jeu affiche les couleurs du thème telles qu'elles sont écrites (sRGB), plus sombre et plus saturé là où il était délavé.
+- Démo intégrée : elle a maintenant son terrain, et la route ne flotte plus au-dessus du sol. Un talus sous les bords de la route la porte là où le terrain est raide.
+- Plus d'à-coup tous les 40 m sur un parcours sans terrain : la recherche du point de route le plus proche passe par une grille, et la pose de l'herbe est limitée à 1,5 ms par image.
+
+### Entraînement
+- Test de FTP : FTP provisoire au bandeau ERG pendant la rampe (75 % de la meilleure minute roulée), rappel « Z = passer l'échauffement » au départ, et message qui cite le bon fichier (profil.toml) quand la FTP est acceptée.
+
+### Outils de test
+- Les essais rendent en Forward+, comme le jeu.
+- Garde-fou « à-coups » aux bancs de fluidité : images lentes par minute, périodicité en distance, et départ (bloc `hitches` de `perf_targets.json`).
+- Contrôle route/sol dans les deux sens (route enfoncée ou route qui flotte), sur la démo intégrée, les parcours compilés et le monde ouvert simulé.
+- La difficulté ne change que la pente envoyée au trainer, jamais la vitesse (test ajouté).
+- Banc des menus : deux courses corrigées (focus des profils, écran de connexion des appareils).
+- Test graphique de l'avatar : avance du pédalier lue dans l'engine.
+
+### Connu, pour plus tard
+- La bannière « Montée 1 · 4e catégorie » se voit en transparence derrière le titre de certains menus.
+- Le boîtier gauche du Click se relance toutes les 52 s environ (verrou Zwift), avec environ 4 s d'absence ; le boîtier droit n'est pas touché.
+- Une image lente au départ et deux dans les premières tuiles d'arbres (lot Y20).
+- Sur la démo compilée, le GPU dépasse de peu son budget en medium (12,0 ms pour 12) et en high (14,2 ms pour 14).
+
 ## 1.0.2 – 2026-11-02
 
 Le SIM du trainer redevient le pilotage par défaut. Cette version contient aussi les premiers morceaux de la 2.0 fusionnés depuis la 1.0.1.

@@ -213,8 +213,82 @@ func load_route_dict(data: Dictionary) -> bool:
 	s.append(length_m)
 	if type == "loop" and Vector2(x[0] - x[n - 1], z[0] - z[n - 1]).length() > 1.0:
 		return _fail("boucle non fermée")
+	_build_nearest_grid()
 	load_error = ""
 	return true
+
+
+# --- point de route le plus proche (saccades du 04/11) --------------------------------------
+
+## Côté d'une case de la grille des points de route (mètres).
+const NEAREST_CELL_M := 50.0
+var _near_grid := {}          # Vector2i -> PackedInt32Array (indices des points dans la case)
+var _near_n := -1             # n au moment de la construction : grille périmée si n a changé
+var _near_lo := Vector2i.ZERO # cases extrêmes occupées
+var _near_hi := Vector2i.ZERO
+
+
+## Grille des points de la route, construite au chargement (avant toute tâche de fond qui la lit).
+func _build_nearest_grid() -> void:
+	_near_grid = {}
+	_near_n = n
+	for k in range(n):
+		var c := Vector2i(floori(x[k] / NEAREST_CELL_M), floori(z[k] / NEAREST_CELL_M))
+		if k == 0:
+			_near_lo = c
+			_near_hi = c
+		_near_lo = Vector2i(mini(_near_lo.x, c.x), mini(_near_lo.y, c.y))
+		_near_hi = Vector2i(maxi(_near_hi.x, c.x), maxi(_near_hi.y, c.y))
+		var ids: PackedInt32Array = _near_grid.get(c, PackedInt32Array())
+		ids.append(k)
+		_near_grid[c] = ids
+
+
+## Indice du point de la route le plus proche de (px, pz), à plat ; à distance égale, le plus petit indice
+## (même résultat que le parcours de tous les points). Cases parcourues en anneaux autour du point, arrêt
+## dès qu'aucun point d'un anneau plus loin ne peut être plus près : quelques dizaines de points lus au
+## lieu des n points du parcours. Sans le repli de terrain rapide, la demo intégrée sans relief lisait les
+## 501 points de la route trois fois par touffe d'herbe : 60 à 80 ms par image tous les 40 m.
+func nearest_index(px: float, pz: float) -> int:
+	if _near_n != n or _near_grid.is_empty():
+		return _nearest_index_linear(px, pz)
+	var c := Vector2i(floori(px / NEAREST_CELL_M), floori(pz / NEAREST_CELL_M))
+	var max_r := maxi(maxi(absi(c.x - _near_lo.x), absi(c.x - _near_hi.x)), maxi(absi(c.y - _near_lo.y), absi(c.y - _near_hi.y)))
+	var best := INF
+	var idx := -1
+	for r in range(max_r + 1):
+		for cz in range(c.y - r, c.y + r + 1):
+			var edge := cz == c.y - r or cz == c.y + r
+			var step := 1 if edge else 2 * r   # anneau : lignes du haut et du bas entières, colonnes extrêmes sinon
+			var cx := c.x - r
+			while cx <= c.x + r:
+				var ids: PackedInt32Array = _near_grid.get(Vector2i(cx, cz), PackedInt32Array())
+				for k in ids:
+					var dx: float = x[k] - px
+					var dz: float = z[k] - pz
+					var d := dx * dx + dz * dz
+					if d < best or (d == best and k < idx):
+						best = d
+						idx = k
+				cx += maxi(step, 1)
+		# Un point hors des anneaux 0..r est à plus de r cases du point : au moins r·NEAREST_CELL_M.
+		var reach := float(r) * NEAREST_CELL_M
+		if idx >= 0 and best < reach * reach:
+			break
+	return idx if idx >= 0 else _nearest_index_linear(px, pz)
+
+
+func _nearest_index_linear(px: float, pz: float) -> int:
+	var best := INF
+	var idx := 0
+	for k in range(n):
+		var dx: float = x[k] - px
+		var dz: float = z[k] - pz
+		var d := dx * dx + dz * dz
+		if d < best:
+			best = d
+			idx = k
+	return idx
 
 
 # --- monde vivant (lot W10, format §13) -------------------------------------------------

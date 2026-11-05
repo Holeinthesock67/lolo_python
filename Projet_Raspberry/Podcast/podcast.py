@@ -34,7 +34,9 @@ KEEP_MP3_DAYS = 28             # au-delà, les MP3 déjà envoyés sont supprim�
 # ---------- réglages ----------
 ENGINE = "edge"        # "edge" (edge-tts) ou "piper" (local)
 EDGE_CHUNK_CHARS = 1500  # edge-tts lit les répliques entières : meilleure intonation
-EDGE_RETRIES = 3
+EDGE_RETRIES = 5
+EDGE_TIMEOUT = 120      # secondes max pour un morceau ; au-delà, on abandonne et on réessaie
+FFMPEG_TIMEOUT = 300    # secondes max pour une conversion ffmpeg
 EDGE_MAX_PASSES = 3    # passages ratés d'edge-tts (un par heure) avant de basculer sur Piper
 VOICE_DIR = HOME / "piper-voices"
 VOICES = {"A": "fr_FR-siwis-medium",   # voix A de secours (Piper)
@@ -136,17 +138,22 @@ def edge_to_wav(text, voice, wav_path):
     last = None
     for attempt in range(EDGE_RETRIES):
         try:
-            asyncio.run(edge_tts.Communicate(text, voice).save(str(mp3)))
+            async def _save():
+                await asyncio.wait_for(edge_tts.Communicate(text, voice).save(str(mp3)),
+                                       timeout=EDGE_TIMEOUT)
+            asyncio.run(_save())
             if not mp3.exists() or mp3.stat().st_size == 0:
                 raise RuntimeError("fichier audio vide")
             break
-        except Exception as exc:
-            last = exc
-            time.sleep(5 * (attempt + 1))
+        except Exception as exc:   # inclut le délai dépassé (TimeoutError)
+            last = f"{type(exc).__name__} {exc}".strip()
+            mp3.unlink(missing_ok=True)   # fichier partiel d'un essai interrompu
+            time.sleep(10 * (attempt + 1))   # 10, 20, 30, 40 s : laisse le service se calmer
     else:
-        raise RuntimeError(f"échec après {EDGE_RETRIES} essais : {last}")
+        raise RuntimeError(f"échec après {EDGE_RETRIES} essais sur « {text[:60]} » : {last}")
     run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3),
-         "-ac", "1", "-ar", "24000", "-sample_fmt", "s16", str(wav_path)])
+         "-ac", "1", "-ar", "24000", "-sample_fmt", "s16", str(wav_path)],
+        timeout=FFMPEG_TIMEOUT)
     mp3.unlink()
 
 

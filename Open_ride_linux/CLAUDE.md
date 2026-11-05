@@ -50,6 +50,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `route.py`, `catalog.py` : lecture des `.world`, interpolation et catalogue des parcours (`.world` et `.gpx`) ;
 - `route_stats.py` : fiches des parcours (dénivelé, montée principale, durée, difficulté, fiche `.toml`), tri et filtres du catalogue (lot O15) ; copie exacte dans le compilateur ;
 - `demo_world.py` : parcours de démonstration ;
+- `synthetic_terrain.py` : couche terrain synthétique (démonstration et parcours d'essai) ;
 - `workout.py`, `workout_formats.py` : lecture des `.zwo`, des `.erg` et `.mrc` de GoldenCheetah (lot O9) et contrôleur ERG ; `workout_menu.py` : entraînements créés ou importés depuis le menu ERG, écrits par le core seul (sous-menu ERG, décision D4 de l'audit IPC) ;
 - `start_gate.py` : départ au pédalage (lot O36), module pur : après `start`, la séance attend en `READY` le décor du départ (commande `scene_ready` de l'engine, au plus `[depart] attente_decor_s`), le trainer, puis `[depart] duree_s` secondes à `[depart] cadence_rpm` tr/min ; objet `start_wait` de `state` ; `[depart] mode = "immediat"` ou `run --depart immediat` part tout de suite ;
 - `route_import.py` : traces importées depuis le menu des parcours (lot O23) : traces des dossiers habituels, copie dans `~/OpenRide/GPX/` sans écrasement, puis `openride-compiler build` de cette trace dans un processus à part, sans relancer (commandes `list_route_imports` et `import_route`) ;
@@ -83,6 +84,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `records.py` : records personnels par segment dans `~/OpenRide/records.json`, avec et sans bonus, classement local, recalcul depuis les journaux (série T, lot T5, module pur) ;
 - `jerseys.py` : points des sprints et des montées, maillots vert et à pois de la séance, bots compris (série T, lot T14, module pur) ;
 - `classic.py` : mode classique de la séance, réunit segments, records, bonus et bouton Z, maillots et écarts, et remplit les champs de la révision 1.4 (série T, lot T7) ;
+- `survivor.py` : mode « Dernier survivant » (série DS, lot DS1, module pur) : arches d'élimination (une par adversaire, calées sur un sprint ou un sommet proche), passages interpolés, élimination du dernier, égalités, plateau de bots, trame `survivor`, messages `elimination` et bilan ;
 - `plans.py` : plans d'entraînement sur plusieurs semaines (`~/OpenRide/Plans/`, plan actif, séance du jour, suivi d'après l'historique, import d'un dossier, plan maison composé dans le menu par `create_from_library` (lot O30) ; `openride-core plan`, format `docs/contracts/plan_format_v1.md`, lot O11).
 - `ftp_test.py` : test de FTP par rampe (entraînement `ftp_test:ramp`, le test de 20 min est retiré au lot O19, fin de la rampe, FTP proposée, ligne `ftp_test` du journal, `openride-core ftp-test`, lot O10).
 - `surface_physics.py` : option « gravel », roulement multiplié des routes non revêtues (`[gravel]`, colonne `surface` du parcours ou surface imposée), supplément de pente en SIM sous la borne du vent, transition de 20 m, module pur (lot U21).

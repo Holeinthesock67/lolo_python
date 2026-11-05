@@ -275,13 +275,13 @@ def test_add_layer_bad_world(tmp_path):
     assert run("add-layer", tmp_path / "absent.world", "terrain") == 1
 
 
-def test_add_layer_refuses_synthetic_demo_world(tmp_path, capsys):
-    write_demo_world = require_core("openride_core.demo_world").write_demo_world
+def test_add_layer_refuses_synthetic_world(tmp_path, capsys):
+    write_world = require_core("openride_core.demo_world").write_world
 
-    demo = write_demo_world(tmp_path)
-    assert run("add-layer", demo, "terrain") == 1
+    synth = write_world(tmp_path, "essai", 2000.0)
+    assert run("add-layer", synth, "terrain") == 1
     assert "UTM" in capsys.readouterr().err
-    assert not (demo / "terrain").exists()
+    assert not (synth / "terrain").exists()
 
 
 # verify : contrôles du terrain ------------------------------------------------------------------

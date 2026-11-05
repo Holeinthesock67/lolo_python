@@ -196,7 +196,19 @@ static func banner_lines(erg: Dictionary, erg_eval: Dictionary) -> Dictionary:
 	var next_w: Variant = erg.get("next_target_w", null)
 	if int(erg.get("block_index", 1)) < int(erg.get("block_count", 1)) and next_w != null:
 		next = "Ensuite : %d W" % int(round(float(next_w)))
+	var ftp := ftp_provisional_text(erg)
+	if ftp != "":
+		next = ftp if next == "" else next + " · " + ftp
 	return {"title": title, "target": str(erg_eval.get("target_text", "")), "remaining": remaining, "next": next}
+
+
+## Test de FTP (4 novembre) : « FTP provisoire : 245 W » d'après `erg.ftp_provisional_w` (75 % de la
+## meilleure minute jusqu'ici, calculée par le core) ; texte vide hors test ou avant la première minute.
+static func ftp_provisional_text(erg: Dictionary) -> String:
+	var w: Variant = erg.get("ftp_provisional_w", null)
+	if w == null:
+		return ""
+	return "FTP provisoire : %d W" % int(round(float(w)))
 
 
 ## ERG d'une session libre (lot O18) : pas de blocs.

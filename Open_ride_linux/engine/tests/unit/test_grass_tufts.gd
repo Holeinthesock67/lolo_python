@@ -10,6 +10,7 @@ const QualityPresets := preload("res://scripts/quality_presets.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const WindModel := preload("res://scripts/wind_model.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
+const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 
 var _failures := 0
 var _checked := 0
@@ -170,6 +171,37 @@ func _test_cost() -> void:
 	g.queue_free()
 
 
+# Saccades du 04/11 : sur la demo intégrée sans tuile de terrain, la hauteur d'une touffe vient de la route
+# (repli de terrain_height_fn) ; 120 places par image faisaient 60 à 80 ms au début de chaque tronçon de 40 m.
+# Pire image du remplissage, dans les trois qualités, et fenêtre toujours remplie avant d'arriver au tronçon.
+func _test_fill_without_terrain() -> void:
+	var route = RouteDataScript.new()
+	_check(route.load_world_dir("res://demo/demo.world"), "demo intégrée chargée")
+	for preset in ["low", "medium", "high"]:
+		var g = GrassTufts.new()
+		root.add_child(g)
+		g.configure(QualityPresets.living(preset)["grass_tufts"], route)
+		g.height_at = OsmStreamer.terrain_height_fn("res://demo/demo.world", route)
+		var worst := 0.0
+		var late := 0          # images où le tronçon de la caméra n'est pas encore rempli
+		var s := 50.0
+		_settle(g, s)
+		for i in range(60 * 20):   # 20 s à 60 km/h : 330 m, huit tronçons
+			var t0 := Time.get_ticks_usec()
+			g.update(s)
+			worst = maxf(worst, (Time.get_ticks_usec() - t0) / 1000.0)
+			var k := int(floor(s / GrassTufts.CHUNK_M))
+			for job in g._queue:
+				if int(job[1]) <= k:
+					late += 1
+			s += (60.0 / 3.6) / 60.0
+		PerfBudget.check("grass_tufts_fill_frame", worst)
+		# Seuil dur, quel que soit le mode des budgets : jamais une image entière à 60 images/s (avant : 60 à 80 ms).
+		_check(worst < 16.7, "%s sans terrain : pire image du remplissage %.2f ms (sous 16,7 ms)" % [preset, worst])
+		_check(late == 0, "%s sans terrain : tronçon de la caméra toujours rempli à 60 km/h (%d image(s) en retard)" % [preset, late])
+		g.queue_free()
+
+
 # Critère 3 : tree_sway faux -> StandardMaterial3D d'origine ; vrai -> shader de balancement
 func _test_tree_materials() -> void:
 	var r = TreeRenderer.new()
@@ -259,6 +291,7 @@ func _init() -> void:
 	_test_budget_and_low()
 	_test_determinism_and_exclusions()
 	_test_cost()
+	_test_fill_without_terrain()
 	_test_desert()
 	print("test_grass_tufts : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

@@ -4,6 +4,8 @@ Demande du propriétaire du 31 octobre 2026 : « un mode dernier survivant. Le j
 
 Sources lues : `core/src/openride_core/bots.py` (bots constants, fantôme, bots à profil T12 avec réserve W′, calibrage T13, au plus 4 bots plus le fantôme), `core/src/openride_core/classic.py` (T7), `core/src/openride_core/draft.py` (AS1), `core/src/openride_core/session.py` (commande `start`, `mode` `ride` ou `wtf`), `docs/contracts/ipc_v1.md` (liste `bots`, limite de 4 096 octets, `segment_result`), `docs/2.0/PLAN_SERIE_WTF.md`, `docs/5.0/PLAN_SERIE_CT.md`, `docs/4.0/PLAN_SERIE_TT.md`, cahiers AS1, AS4, Y10 et Y18.
 
+
+**État au 3 novembre 2026 (version 2.0, choix du propriétaire)** : DS1, DS2, DS3, DS5, DS6 et DS7 livrés ensemble dans une seule branche partie de `main` (règles, séance et contrat, tactique des bots, arche d'élimination et bots qui se rangent, HUD, bandeaux et bilan, entrée au menu), avec des courses complètes simulées sans vélo (`core/tests/test_survivor_courses.py`) ; DS4 (maquettes) validé le 31 octobre. Restent les captures `low`, `medium` et `high` à faire valider (scénarios `engine/tests/captures_ds/`), puis DS9 réduit à un bloc de 10 min sur le vélo (le ressenti) ; DS8 attend le peloton.
 ---
 
 ## 1. En bref
@@ -31,7 +33,7 @@ Sources lues : `core/src/openride_core/bots.py` (bots constants, fantôme, bots 
 | Nombre | Une arche par adversaire : N bots, N arches. Après l'arche k, il reste N + 1 − k coureurs ; après la dernière, le vainqueur. |
 | Espacement | Réglage « Écart entre arches » : 1, 2 ou 3 km, 2 km par défaut. Arche k à `s0 + k × écart`, `s0` étant la position au départ. |
 | Calage sur le terrain | Sur un parcours compilé, une arche qui tombe à moins de 300 m d'une ligne de sprint ou d'un sommet (couche `segments`, T3) est posée sur cette ligne : l'arche coïncide avec un vrai enjeu du terrain et les portiques ne se doublent pas (fusion sous 25 m de `segment_markers`). Jamais avant 1 km après le départ. |
-| Longueur du parcours | La course mesure N × écart. Le menu affiche « 4 arches, 8 km » et refuse un parcours trop court (sauf circuit, où les arches continuent au tour suivant, et monde ouvert, où elles suivent la distance roulée). Le reste du parcours après la dernière arche se roule librement. |
+| Longueur du parcours | La course mesure N × écart. Le menu affiche « 4 arches sur 8 km » et refuse un parcours trop court (sauf circuit, où les arches continuent au tour suivant, et monde ouvert, où elles suivent la distance roulée). Le reste du parcours après la dernière arche se roule librement. |
 | Passage | Instant interpolé entre deux pas du core (50 Hz) à partir de `s` avant et après la ligne : la précision est bien meilleure que 20 ms. |
 | Élimination | Quand tous les coureurs encore en course sauf un ont passé l'arche, le dernier est éliminé tout de suite, même s'il est loin derrière. |
 | Égalité | Écart de passage sous 1 ms : le bot est éliminé plutôt que le joueur ; entre deux bots, celui du niveau le plus bas, puis l'identifiant le plus grand. Règle fixe, rejouable avec la même graine. |
@@ -93,14 +95,14 @@ Style : celui du classique, et l'arche gonflable commune à tous les portiques (
 
 ## 6. Champ `survivor` proposé (contrat : lot DS2)
 
-Révision : la première libre à la fusion de DS2 (la 1.6 est réservée à la série U, la suivante à TT1). Ajouts compatibles :
+Révision : ajouts compatibles rangés dans la révision 1.5, comme ceux du Mode WTF (lot WTF2) et des bots à profil (lot T12), plutôt qu'une nouvelle révision : la 1.6 reste réservée à la série U (choix du lot DS2).
 
 - `start` : `mode` gagne la valeur `survivor` ; avec un entraînement ERG, un argument `bots`, un fantôme ou un parcours trop court (hors circuit et monde ouvert) : `bad_args`, rien ne démarre.
 - `state.survivor`, dans chaque trame de la course :
 
 ```json
-{"arch": 2, "arches": 4, "d_m": 650.0, "alive": ["b2", "me", "b4"], "last": "b4",
- "gap_last_s": 1.8, "out": [["b1", 1], ["b3", 1]], "me_out": null}
+{"arch": 3, "arches": 4, "d_m": 650.0, "alive": ["b2", "me", "b4"], "last": "b4",
+ "gap_last_s": 1.8, "out": [["b1", 1], ["b3", 2]], "me_out": null, "winner": null}
 ```
 
   `alive` dans l'ordre de course ; `out` = paires (bot, arche) ; `me_out` = arche de l'élimination du joueur ou `null`. Environ 150 octets avec 4 bots, environ 300 avec 11 : la trame la plus chargée reste sous la limite de 4 096 octets (à vérifier par `python -m openride_core.ipc_budget`). Chaque élément de `bots` gagne `out` (arche de l'élimination) quand le bot est éliminé.
@@ -135,7 +137,7 @@ Tous les prérequis de DS1 sont sur `main` (bots à profil, calibrage, abri entr
 
 ## 9. Questions ouvertes (réponses par défaut appliquées en attendant)
 
-1. **Version** : rangé en **3.0** (première version après la 2.0, où sont les bots à profil et l'aspiration fine). Rien n'empêche de l'avancer : ses prérequis sont déjà livrés.
+1. **Version** : rangé d'abord en 3.0, **avancé en 2.0 par le propriétaire le 3 novembre** (avant la publication de la 2.0) ; ses prérequis étaient déjà livrés.
 2. **Joueur éliminé** : continuer à rouler par défaut, terminer la séance en option.
 3. **Arches** : une par adversaire, tous les 2 km par défaut (1 à 3 km au menu), calées sur une ligne de sprint ou un sommet à moins de 300 m.
 4. **Bonus, segments, records et maillots** : coupés dans ce mode.

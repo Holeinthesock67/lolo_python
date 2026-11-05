@@ -18,6 +18,9 @@ extends Node3D
 ## damier, arche de bonus violette et lumineuse. Toute arrivée (fin de sprint, sommet, arrivée, ligne
 ## d'une boucle) a une frise en damier sous le bandeau et une ligne en damier au sol ; tout départ, une
 ## ligne blanche. Panneaux à gauche de la route, face au cycliste qui arrive. Aucune ombre portée.
+## - Lot DS5 : `set_survivor_arches(arches)` pose les portiques d'élimination du Dernier survivant (style `elim` :
+##   tube à bandes rouges et noires, bandeau rouge foncé « ÉLIMINATION », frise et ligne en damier), mis à jour
+##   par `update` comme les autres marques ; un portique de segment confondu (moins de MERGE_M) n'est pas doublé.
 ## - `warm_up(camera)` après `set_route` (préchauffage, 02/11) : un exemplaire de chaque sorte de marque du
 ##   parcours, minuscule et collé devant la caméra pendant WARM_FRAMES images, pour que le premier dessin
 ##   (pipelines des matériaux, textures, glyphes des Label3D) se fasse au chargement et non en roulant
@@ -56,6 +59,7 @@ const COLORS := {
 	"ballast": Color(0.25, 0.25, 0.27),
 	"panel": Color(0.96, 0.96, 0.94),
 	"line": Color(0.97, 0.97, 0.97),
+	"elim": Color(0.55, 0.05, 0.07),
 }
 ## Style -> matériaux : tube de l'arche, fond du bandeau, encre du texte, tissu des drapeaux ; arrivée ou non.
 const STYLES := {
@@ -67,6 +71,7 @@ const STYLES := {
 	"route_finish": {"tube": "tube_checker", "banner": "dark", "ink": "white", "flag": "flag_checker", "finish": true},
 	"route_line": {"tube": "tube_checker", "banner": "dark", "ink": "white", "flag": "flag_checker", "finish": true},
 	"arch": {"tube": "arch", "banner": "arch", "ink": "white", "flag": "", "finish": false},
+	"elim": {"tube": "tube_elim", "banner": "elim", "ink": "white", "flag": "", "finish": true},
 }
 
 var road_width_m := 6.0
@@ -80,6 +85,8 @@ var _tube_width_m := -1.0
 var _mats: Dictionary = {}
 var _warm: Node3D = null            # exemplaires du préchauffage, retirés après WARM_FRAMES appels à update
 var _warm_frames := 0
+var _elim: Array = []               # portiques d'élimination du Dernier survivant : [{s (dans le tour), arch, lines}]
+var _elim_nodes: Dictionary = {}    # arche -> Node3D
 
 const WARM_FRAMES := 3
 const WARM_SCALE := 0.0005          # un portique de 8 m tient dans 4 mm : rien de visible à l'écran
@@ -100,6 +107,7 @@ func _init() -> void:
 	_mats["arch"].emission_energy_multiplier = 0.8
 	# tube en mètres (u le long de l'arche, v autour) : motif répété tous les `tile` mètres
 	_mats["tube_sprint"] = _textured(_band_image(COLORS["green"], COLORS["white"]), Vector3(1.0 / 2.4, 1.0, 1.0))
+	_mats["tube_elim"] = _textured(_band_image(Color(0.80, 0.08, 0.08), COLORS["dark"]), Vector3(1.0 / 2.4, 1.0, 1.0))
 	_mats["tube_route"] = _textured(_band_image(COLORS["blue"], COLORS["white"]), Vector3(1.0 / 2.4, 1.0, 1.0))
 	_mats["tube_polka"] = _textured(_polka_image(), Vector3(1.0 / 1.3, 1.0 / 1.32, 1.0))
 	_mats["tube_checker"] = _textured(_checker_image(4, 4), Vector3(1.0 / 1.32, 1.0 / 1.32, 1.0))
@@ -215,6 +223,7 @@ func set_route(route, arch_every_m: float = Model.DEFAULT_ARCH_EVERY_M, p_road_w
 
 func clear() -> void:
 	_drop_warm()
+	_clear_elim()
 	for i in _nodes:
 		(_nodes[i] as Node3D).queue_free()
 	_nodes.clear()
@@ -225,12 +234,15 @@ func update(cam_s: float, arches_on: bool) -> void:
 		_warm_frames -= 1
 		if _warm_frames <= 0:
 			_drop_warm()
+	_update_elim(cam_s)
 	if _route == null or marks.is_empty():
 		return
 	var want := {}
 	for i in Model.window(_starts, cam_s, float(_route.length_m), _route.is_loop()):
 		if marks[i]["kind"] == "arch" and not arches_on:
 			continue
+		if marks[i]["kind"] in ["start", "finish"] and _near_elim(float(marks[i]["s"])):
+			continue   # fondu dans le portique d'élimination posé sur la même ligne
 		want[i] = true
 	for i in _nodes.keys():
 		if not want.has(i):
@@ -244,10 +256,89 @@ func update(cam_s: float, arches_on: bool) -> void:
 			_nodes[i] = node
 
 
+## Portiques d'élimination du Dernier survivant (lot DS5) : `arches` = [{s (cumulé), arch, lines}] de
+## survivor_hud_model.arches_to_draw() (la prochaine arche et celle qu'on vient de passer) ; [] : aucun. Un
+## portique de segment ou du parcours à moins de MERGE_M n'est pas doublé : le portique d'élimination le
+## remplace et prend son titre en sous-titre (arche calée sur une ligne de sprint ou un sommet par le core).
+func set_survivor_arches(arches: Array) -> void:
+	var next: Array = []
+	for a in arches:
+		if not a is Dictionary:
+			continue
+		var s := float(a.get("s", 0.0))
+		if _route != null:
+			s = float(_route.wrap_s(s))
+		var lines: Array = (a.get("lines", ["Élimination"]) as Array).duplicate()
+		var merged := _merged_title(s)
+		if merged != "" and lines.size() > 1:
+			lines[1] = "%s · %s" % [lines[1], merged]
+		next.append({"kind": "elim", "style": "elim", "s": s, "side": 0, "arch": int(a.get("arch", 0)), "lines": lines})
+	_elim = next
+	var keep := {}
+	for e in _elim:
+		keep[int(e["arch"])] = true
+	for k in _elim_nodes.keys():
+		if not keep.has(k):
+			(_elim_nodes[k] as Node3D).queue_free()
+			_elim_nodes.erase(k)
+
+
+## Portiques d'élimination posés (tests).
+func survivor_arches() -> Array:
+	return _elim
+
+
+func _clear_elim() -> void:
+	for k in _elim_nodes:
+		(_elim_nodes[k] as Node3D).queue_free()
+	_elim_nodes.clear()
+	_elim = []
+
+
+func _ahead_of(s: float, cam_s: float) -> float:
+	var d := s - cam_s
+	if _route != null and _route.is_loop():
+		var length := float(_route.length_m)
+		d = fposmod(d + length / 2.0, length) - length / 2.0
+	return d
+
+
+func _near_elim(s: float) -> bool:
+	for e in _elim:
+		if absf(_ahead_of(s, float(e["s"]))) < Model.MERGE_M:
+			return true
+	return false
+
+
+func _merged_title(s: float) -> String:
+	for m in marks:
+		if m["kind"] in ["start", "finish"] and absf(_ahead_of(float(m["s"]), s)) < Model.MERGE_M:
+			return str((m["lines"] as Array)[0]) if not (m["lines"] as Array).is_empty() else ""
+	return ""
+
+
+func _update_elim(cam_s: float) -> void:
+	if _route == null:
+		return
+	for e in _elim:
+		var k := int(e["arch"])
+		var d := _ahead_of(float(e["s"]), cam_s)
+		var want := d >= -Model.BEHIND_M and d <= Model.AHEAD_M
+		if want and not _elim_nodes.has(k):
+			var node := build_mark(e)
+			_place(node, e)
+			add_child(node)
+			_elim_nodes[k] = node
+		elif not want and _elim_nodes.has(k):
+			(_elim_nodes[k] as Node3D).queue_free()
+			_elim_nodes.erase(k)
+
+
 ## Préchauffage : une marque de chaque sorte (panneau, ou portique d'un style donné) du parcours, construite
-## comme en séance, sous `camera` à WARM_DIST_M devant elle et réduite à WARM_SCALE. Sans caméra ou sans
+## comme en séance, sous `camera` à WARM_DIST_M devant elle et réduite à WARM_SCALE ; avec `survivor`, aussi un
+## portique d'élimination (lot DS5). Sans caméra ou sans
 ## marque : rien. Retourne le nombre d'exemplaires.
-func warm_up(camera: Node3D) -> int:
+func warm_up(camera: Node3D, survivor := false) -> int:
 	_drop_warm()
 	if camera == null or marks.is_empty():
 		return 0
@@ -262,6 +353,10 @@ func warm_up(camera: Node3D) -> int:
 			continue
 		seen[key] = true
 		_warm.add_child(build_mark(m))
+	if survivor:   # séance du Dernier survivant préparée : le portique d'élimination aussi (lot DS5)
+		seen["elim/elim"] = true
+		_warm.add_child(build_mark({"kind": "elim", "style": "elim", "s": 0.0, "side": 0,
+			"lines": ["Élimination", "Arche 1 sur 4 · le dernier sort"]}))
 	camera.add_child(_warm)
 	_warm_frames = WARM_FRAMES
 	return seen.size()
@@ -284,6 +379,9 @@ func shown() -> Array:
 	var out: Array = []
 	for i in _nodes:
 		out.append(marks[i])
+	for e in _elim:
+		if _elim_nodes.has(int(e["arch"])):
+			out.append(e)
 	return out
 
 
@@ -292,6 +390,8 @@ func active_node_count() -> int:
 	var n := 0
 	for i in _nodes:
 		n += 1 + (_nodes[i] as Node3D).get_child_count()
+	for k in _elim_nodes:
+		n += 1 + (_elim_nodes[k] as Node3D).get_child_count()
 	return n
 
 

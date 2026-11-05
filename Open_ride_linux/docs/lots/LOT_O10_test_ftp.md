@@ -80,3 +80,14 @@ Livré le 27 octobre 2026 (issue #154), thread « Développer les lots O restant
 ## Mise à jour du 2 novembre (version 2.0) : + et − bloqués pendant la rampe
 
 Choix du propriétaire du 1er novembre : pendant les paliers de la rampe, + et − (biais ERG ± 2 % et ± 10 %) ne changent plus la cible. Un biais fausserait la meilleure minute, donc la FTP. La session les ignore et l'écrit au journal ; la trame `state` porte `erg.bias_locked` (contrat IPC révision 1.5, ajout compatible). À l'entrée dans la rampe, l'engine affiche « Test de FTP : + / − bloqués pendant la rampe · Z = arrêter le test ». + et − restent libres pendant l'échauffement et le retour au calme. Z garde son rôle d'abandon. Test : `test_session_plus_minus_locked_during_ramp`. Reste : la rampe sur le vélo, un jour reposé (ligne 12 de la recette).
+
+## Mise à jour du 4 novembre (version 2.0) : FTP provisoire et échauffement écourté
+
+Demandes du propriétaire pendant sa rampe du 4 novembre.
+
+- **FTP provisoire** : pendant les paliers, `RampWatch` fait la moyenne de la puissance seconde par seconde (pauses exclues) et garde la meilleure minute ; `provisional_ftp_w` = 75 % de cette minute, la formule du résultat final. La trame `state` la porte dans `erg.ftp_provisional_w` dès la première minute de paliers et jusqu'à la fin du retour au calme (figée à la fin de la rampe). Le bandeau ERG l'affiche à côté de la consigne : « Ensuite : 320 W · FTP provisoire : 214 W ».
+- **Échauffement écourté** : Z (bloc suivant) passait déjà l'échauffement pour aller au premier palier, sans que l'écran le dise. La trame porte maintenant `erg.ftp_test` = `ramp` pendant toute la séance de test, et l'engine affiche au départ « Test de FTP : Z = passer l'échauffement » à la place du rappel ERG habituel.
+- Contrat IPC révision 1.5, ajouts compatibles `ftp_test` et `ftp_provisional_w` de `state.erg`.
+- Tests : `test_ramp_watch_provisional_ftp`, `test_ramp_watch_provisional_uneven_ticks`, FTP provisoire comparée au résultat final dans `test_session_ramp_detects_end_and_writes_result` ; engine : `test_erg_view.gd`, `test_hud_view_model.gd`.
+- Reste : captures low, medium et high du bandeau à faire valider par le propriétaire.
+- **Libellé de la FTP acceptée** (constat du 4 novembre) : le journal disait « Réglage enregistré (config.toml) » alors que la FTP va dans `Profils/<profil>/profil.toml` (lot MJ4). `config_edit.destination` donne le fichier qui reçoit chaque réglage, et `set_setting` (donc `accept_ftp`) le cite. Tests : `test_destination_names_the_file_that_receives_the_value`, `test_accept_ftp_names_the_profile_file`.

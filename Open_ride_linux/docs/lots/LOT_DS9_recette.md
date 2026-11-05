@@ -3,9 +3,9 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série DS : recette du mode sur le vélo (étapes de 10 min) et banc `low`, `medium`, `high` | Essai sur le vélo | DS3, DS5, DS6, DS7 | Petite | Interne (propriétaire, version 3.0 proposée) |
+| Série DS : recette du mode sur le vélo (étapes de 10 min) et banc `low`, `medium`, `high` | Essai sur le vélo | DS3, DS5, DS6, DS7 | Petite | Interne (propriétaire, version 2.0) : un bloc de 10 min (le ressenti), le reste est couvert par les courses simulées |
 
-Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/3.0/PLAN_SERIE_DS.md`.
+Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/2.0/PLAN_SERIE_DS.md`.
 
 ## 1. Objectif
 
@@ -13,7 +13,7 @@ Vérifier sur le PC cible et le home trainer que la course est jouable, juste et
 
 ## 2. À lire
 
-`docs/3.0/PLAN_SERIE_DS.md` ; `docs/PLAN_DE_TESTS.md`.
+`docs/2.0/PLAN_SERIE_DS.md` ; `docs/PLAN_DE_TESTS.md`.
 
 ## 3. Travail demandé
 

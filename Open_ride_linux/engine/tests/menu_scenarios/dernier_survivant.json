@@ -1,0 +1,26 @@
+{
+  "description": "Mode « Dernier survivant » (lot DS7) : entrée de l'accueil, écran Prêt du mode sur le parcours de démo (5 km : « Lancer » désactivé avec 4 adversaires et 2 km entre arches), adversaires ramenés à 2 au Click (config.toml écrit par le core), lancement, départ du mode dans le journal du core, fin sans enregistrement et bilan.",
+  "etapes": [
+    {"ecran": "home", "delai": 15, "elements": ["survivor"]},
+    {"choisir": "world"},
+    {"ecran": "routes", "elements": ["demo"]},
+    {"choisir": "demo"},
+    {"ecran": "home", "contient": ["Parcours : demo"]},
+    {"choisir": "survivor"},
+    {"ecran": "ready", "titre": "Prêt : Dernier survivant — demo", "elements": ["start", "change_route", "set:survivor.opponents", "set:survivor.spacing_km", "set:bots.level_pct", "set:survivor.spread", "set:survivor.after_out"], "contient": ["parcours trop court"], "absent": ["Bot 1", "Fantôme de la dernière séance", "Passer en session ERG"], "delai": 5},
+    {"choisir": "set:survivor.opponents"},
+    {"ecran": "ready", "edition": true},
+    {"appui": ["MINUS_SHORT", "MINUS_SHORT"]},
+    {"ecran": "ready", "contient": ["Adversaires — ◀ 2 ▶"]},
+    {"appui": "A_LONG"},
+    {"ecran": "ready", "edition": false, "contient": ["2 arches sur 4 km"], "absent": ["parcours trop court"]},
+    {"config": {"survivor.opponents": 2}},
+    {"choisir": "start"},
+    {"journal": "core", "motif": "Dernier survivant : 2 adversaires", "delai": 15},
+    {"menu_cache": true},
+    {"commande": "end_session", "args": {"save": false}},
+    {"note": "lignes du bilan du mode vérifiées par test_survivor_hud.gd (vue du bilan, pas éléments du menu)", "ecran": "summary", "titre": "Fin de séance", "delai": 10},
+    {"choisir": "new_session"},
+    {"ecran": "home"}
+  ]
+}

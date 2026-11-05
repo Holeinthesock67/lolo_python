@@ -91,18 +91,13 @@ static func mesh_height_at(heights: PackedFloat32Array, level: String, ix: int, 
 	return d + (1.0 - u) * (c - d) + (1.0 - v) * (b - d)
 
 
-## Altitude de la route au point de route le plus proche de (x, z) (format §10, dernier recours).
+## Altitude de la route au point de route le plus proche de (x, z) (format §10, dernier recours) ; grille
+## des points de la route (route_data.gd `nearest_index`) : appelée pour chaque touffe d'herbe et chaque
+## détail du sol quand le parcours n'a pas de tuile de terrain.
 static func nearest_route_alt(route, x: float, z: float) -> float:
-	var best := INF
-	var alt := 0.0
-	for k in range(route.n):
-		var dx: float = route.x[k] - x
-		var dz: float = route.z[k] - z
-		var d := dx * dx + dz * dz
-		if d < best:
-			best = d
-			alt = route.alt_m[k]
-	return alt
+	if route == null or route.n < 1:
+		return 0.0
+	return route.alt_m[route.nearest_index(x, z)]
 
 
 ## Remplace les NaN : moyenne des voisins valides (8 voisins, valeurs d'origine) ; sans voisin

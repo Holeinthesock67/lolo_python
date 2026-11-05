@@ -15,7 +15,8 @@ extends RefCounted
 ## Lot X15, à côté du fichier de la sonde :
 ## - `saccades.csv` : une ligne par image de plus de 33 ms (heure, durée, distance) avec les étapes du fil
 ##   principal faites depuis l'image précédente (`mark` : tuile de terrain intégrée, tronçon OSM ajouté,
-##   arbres posés) et la capture du banc ; la cause est l'étape la plus longue si elle prend au moins le quart
+##   arbres posés ; `mark_since` : mises à jour de chaque image, fenêtre du streaming, bots, herbe, détails
+##   du sol, décor vivant, atmosphère, arches) et la capture du banc ; la cause est l'étape la plus longue si elle prend au moins le quart
 ##   de l'image ; Godot 4.3 ne publie pas le nombre de pipelines compilés, une image lente sans étape assez
 ##   longue est notée « inconnue » (compilation de shader, rendu lent, ramasse-miettes…) ;
 ## - `taches.csv` : durée de chaque tâche de fond (`task` : terrain, route, arbres, bâtiments, OSM d'un tronçon) ;
@@ -112,6 +113,15 @@ static func mark(kind: String, id: String, ms: float) -> void:
 	_mutex.lock()
 	_steps.append([kind, id, ms])
 	_mutex.unlock()
+
+
+## Étape du fil principal commencée à `t0_us` (Time.get_ticks_usec) et finie maintenant : comme `mark`.
+## Sert aux mises à jour faites à chaque image (décor vivant, herbe, bots…) : une saccade dont la cause était
+## « inconnue » nomme alors l'étape qui a pris le temps. Sans sonde ouverte : rien (un test de booléen).
+static func mark_since(kind: String, id: String, t0_us: int) -> void:
+	if not active:
+		return
+	mark(kind, id, (Time.get_ticks_usec() - t0_us) / 1000.0)
 
 
 ## Tâche de fond terminée (lot X15), depuis n'importe quel fil : type, identifiant du tronçon, durée en ms.

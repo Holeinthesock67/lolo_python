@@ -159,3 +159,34 @@ def test_workouts_unit(tmp_path):
     assert [(i["id"], i["unit"]) for i in items] == [("a", "ftp"), ("b", "watts")]
     assert items[1]["profile"] == [[600.0, 0.8, 0.8]]       # toujours en fraction de la FTP du core
     assert_valid(ipc_lists.chunk_list_message("workouts", 1, items, False)[0])
+
+
+def test_accept_ftp_names_the_profile_file(tmp_path, monkeypatch, caplog):
+    """FTP acceptée avec un profil en cours : écrite dans son profil.toml, et le journal le dit (04/11)."""
+    import logging
+
+    from openride_core import config, profiles
+
+    monkeypatch.setattr(config, "OPENRIDE_HOME", tmp_path / "OpenRide")
+    ctx = profiles.ProfileContext.for_id("cycliste-a")
+    ctx.root.mkdir(parents=True)
+    profile_file = ctx.root / profiles.FILE_NAME
+    profile_file.write_text('[profil]\nid = "cycliste-a"\nnom = "Cycliste A"\n', encoding="utf-8")
+    profiles.activate(profiles.ProfileContext.for_id("cycliste-a"))
+    try:
+        async def scenario():
+            s, cap = plan_session(tmp_path, monkeypatch, 5986)
+            cfg_path = tmp_path / "config.toml"
+            cfg_path.write_text("[render]\nquality = \"medium\"\n", encoding="utf-8")
+            s.config_path = cfg_path
+            s._ftp_result = FtpResult("ramp", 262, "", 349, 900, 360, (), 250)
+            with caplog.at_level(logging.INFO):
+                s._on_command("accept_ftp", {}, 1)
+                await wait_for(cap, "settings")
+            assert "ftp_w = 262" in profile_file.read_text(encoding="utf-8")
+            assert "ftp_w" not in cfg_path.read_text(encoding="utf-8")
+            line = next(r.getMessage() for r in caplog.records if r.getMessage().startswith("Réglage enregistré"))
+            assert str(profile_file) in line and "config.toml" not in line
+        asyncio.run(scenario())
+    finally:
+        profiles.activate(None)

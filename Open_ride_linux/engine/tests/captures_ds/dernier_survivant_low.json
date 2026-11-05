@@ -1,0 +1,120 @@
+{
+  "description": "Captures du Dernier survivant en low (lots DS5 à DS7, à faire valider par le propriétaire) : écran Prêt du mode, peloton au départ (un bot à l'écran), approche de la première arche (bloc SURVIVANT, portique d'élimination), élimination d'un bot (bandeau du bas ; le bot éliminé, dernier à passer l'arche, est hors champ derrière le cycliste), fin de course (vainqueur ou cycliste éliminé), bilan. Hors du banc des menus de l'intégration continue : menu_bench.py --scenario engine/tests/captures_ds/dernier_survivant_low.json --voies clavier --native.",
+  "voies": [
+    "clavier"
+  ],
+  "config": {
+    "render.quality": "low",
+    "survivor.opponents": 2,
+    "survivor.spacing_km": 1,
+    "bots.level_pct": 74,
+    "survivor.spread": "normal"
+  },
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15,
+      "elements": [
+        "survivor"
+      ]
+    },
+    {
+      "choisir": "world"
+    },
+    {
+      "ecran": "routes",
+      "elements": [
+        "demo"
+      ]
+    },
+    {
+      "choisir": "demo"
+    },
+    {
+      "ecran": "home",
+      "contient": [
+        "Parcours : demo"
+      ]
+    },
+    {
+      "choisir": "survivor"
+    },
+    {
+      "ecran": "ready",
+      "titre": "Prêt : Dernier survivant — demo",
+      "contient": [
+        "2 arches sur 2 km"
+      ]
+    },
+    {
+      "capture": "ds_1_pret_low"
+    },
+    {
+      "choisir": "start"
+    },
+    {
+      "journal": "core",
+      "motif": "Dernier survivant : 2 adversaires",
+      "delai": 30
+    },
+    {
+      "menu_cache": true
+    },
+    {
+      "note": "≈ 10 s après le départ : Grimpeur 4 à 6 m devant, à droite du cycliste (placement AS2)",
+      "attendre": 10
+    },
+    {
+      "capture": "ds_2_peloton_low"
+    },
+    {
+      "note": "≈ 0,9 km : arche 1 à une centaine de mètres (marques affichées à 400 m), Grimpeur une trentaine de mètres devant",
+      "attendre": 170
+    },
+    {
+      "capture": "ds_3_approche_low"
+    },
+    {
+      "journal": "engine",
+      "motif": "Élimination : arche 1",
+      "delai": 400
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "capture": "ds_4_elimination_low"
+    },
+    {
+      "journal": "engine",
+      "motif": "Élimination : arche 2",
+      "delai": 400
+    },
+    {
+      "attendre": 1
+    },
+    {
+      "capture": "ds_5_fin_de_course_low"
+    },
+    {
+      "commande": "end_session",
+      "args": {
+        "save": false
+      }
+    },
+    {
+      "ecran": "summary",
+      "titre": "Fin de séance",
+      "delai": 15
+    },
+    {
+      "capture": "ds_6_bilan_low"
+    },
+    {
+      "choisir": "new_session"
+    },
+    {
+      "ecran": "home"
+    }
+  ]
+}

@@ -138,6 +138,12 @@ func _distance(b: Dictionary, pos: Vector3) -> float:
 	return absf(float(b.get("gap_m", 0.0)))
 
 
+## Distance à la caméra de la scène ; INF sans caméra (tests sans écran) : rien n'est alors trop près.
+func _camera_distance(pos: Vector3) -> float:
+	var cam := get_viewport().get_camera_3d() if is_inside_tree() else null
+	return cam.global_position.distance_to(pos) if cam != null else INF
+
+
 ## `view` : sortie de bots_view_model.view() ; `route` : route_data.gd (hauteur affichée, relief exagéré comme la
 ## caméra).
 func update_view(view: Array, route) -> void:
@@ -176,7 +182,7 @@ func update_view(view: Array, route) -> void:
 			"shown_lod": int(node.get_meta("shown_lod")), "standing": standing, "settings": node.get_meta("settings"), "looks": node.get_meta("looks")}
 		var label: Label3D = node.get_node("Name")
 		label.text = str(b["name"])
-		label.visible = bool(b["show_name"])
+		label.visible = BotsViewModel.name_visible(bool(b["show_name"]), _camera_distance(node.position + Vector3(0.0, NAME_HEIGHT_M, 0.0)))
 		node.visible = true
 	for key in _nodes.keys():
 		if not seen.has(str(key).get_slice(":", 0)):
