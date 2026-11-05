@@ -7,6 +7,7 @@ extends SceneTree
 const RenderDiag := preload("res://scripts/render_diag.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const TerrainMaterial := preload("res://scripts/terrain_material.gd")
 
 var _failures := 0
 var _checked := 0
@@ -33,6 +34,15 @@ func _init() -> void:
 	_check(img["shadow_splits"] == 2 and img["ssil"] == "off" and img["fog_volumetric"] == "off" and not img["glow"],
 		"drapeaux appliqués")
 	_check(medium["msaa"] == 4 and medium["ssil"] == "low", "préréglage d'origine non modifié")
+	# Améliorations à faible coût : sans variable, uniformes à 0 (rendu inchangé)
+	var tm := TerrainMaterial.create_material()
+	_check(float(tm.get_shader_parameter("macro_variation")) == 0.0, "terrain : macro-variation à 0 sans essai")
+	var sway := load("res://shaders/tree_sway.gdshader") as Shader
+	var has_root := false
+	for u in sway.get_shader_uniform_list():
+		has_root = has_root or u["name"] == "root_darken"
+	_check(has_root, "herbe : uniforme root_darken présent")
+	_check(RenderDiag.number("soleil_brume", 0.0) == 0.0, "soleil dans la brume à 0 sans essai")
 	print("test_render_diag : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 

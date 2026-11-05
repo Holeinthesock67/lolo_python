@@ -66,6 +66,12 @@ VARIANTS: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...], str], ...] = (
     ("aniso_8", "anisotropy=8", (), ("high",), "filtrage anisotrope 8× au lieu de 16× (G5)"),
     ("godot_gratuits", "feuillage_simple,arbres_loin_simple,halo_niveaux=3,halo_lineaire,anisotropy=8,brume_ambiante",
      (), QUALITIES, "les quatre réglages Godot et la brume éclairée ensemble"),
+    # Améliorations à faible coût (5 novembre soir) : le « gain » attendu est négatif (coût), à garder près de 0.
+    ("soleil_brume", "soleil_brume=0.3", (), QUALITIES, "AJOUT : halo du soleil dans le brouillard (fog_sun_scatter)"),
+    ("terrain_macro", "terrain_macro=0.35", (), QUALITIES, "AJOUT : prés plus ou moins mûrs à l'échelle de 600 m"),
+    ("herbe_degrade", "herbe_degrade=0.35", (), QUALITIES, "AJOUT : herbe au pied plus sombre, pointe plus claire"),
+    ("embellis", "soleil_brume=0.3,terrain_macro=0.35,herbe_degrade=0.35,brume_ambiante", (), QUALITIES,
+     "AJOUT : les trois améliorations et la brume éclairée ensemble"),
 )
 NAMES = [v[0] for v in VARIANTS]
 

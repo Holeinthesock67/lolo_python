@@ -214,6 +214,8 @@ static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> voi
 		var levels := int(RenderDiag.value("halo_niveaux"))
 		for i in range(7):
 			env.set_glow_level(i, 1.0 if i < levels else 0.0)
+	if RenderDiag.value("soleil_brume") != "":
+		env.fog_sun_scatter = clampf(RenderDiag.number("soleil_brume", 0.0), 0.0, 1.0)
 	if RenderDiag.has("halo_lineaire"):
 		RenderingServer.environment_glow_set_use_bicubic_upscale(false)
 	print("Diagnostic de rendu : ", diag)

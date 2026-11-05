@@ -13,6 +13,9 @@ extends RefCounted
 ##   sans_ombres_arbres, arbres_lod0_m=M, feuillage_simple (arbres et herbe en diffuse_lambert, specular_disabled),
 ##   arbres_loin_simple (même chose et sans vent pour les arbres du LOD 1) (tree_renderer),
 ##   anisotropy=2|4|8|16, halo_niveaux=N, halo_lineaire.
+## Améliorations à faible coût (0 = rendu actuel) : soleil_brume=F (fog_sun_scatter du brouillard),
+##   terrain_macro=F (variation de l'herbe à 600 m, terrain_material), herbe_degrade=F (pied sombre, pointe claire,
+##   grass_tufts et ground_details).
 ## Pas de class_name : charger par preload("res://scripts/render_diag.gd").
 
 static var _parsed := false

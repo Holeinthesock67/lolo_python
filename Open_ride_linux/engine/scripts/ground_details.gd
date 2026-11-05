@@ -19,6 +19,7 @@ extends Node3D
 ##   à zéro quand le décor vivant est coupé.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
+const RenderDiag := preload("res://scripts/render_diag.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const RoadClearance := preload("res://scripts/road_clearance.gd")
@@ -329,6 +330,7 @@ func _material_for(kind: String) -> Material:
 			_grass_material.set_shader_parameter("thin_start_m", GRASS_THIN_START_M)
 			_grass_material.set_shader_parameter("fade_end_m", GRASS_FADE_END_M)
 			_grass_material.set_shader_parameter("normals_up_both_sides", true)
+			_grass_material.set_shader_parameter("root_darken", clampf(RenderDiag.number("herbe_degrade", 0.0), 0.0, 1.0))
 		return _grass_material
 	var m := StandardMaterial3D.new()
 	m.vertex_color_use_as_albedo = true

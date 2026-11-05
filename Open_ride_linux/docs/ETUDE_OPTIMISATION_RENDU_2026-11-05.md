@@ -62,6 +62,20 @@ Constats :
 
 Écartées : ombres en cache (Godot ne le propose pas pour le soleil), mise à l'échelle de la résolution (décision du 27 octobre), imposteurs et occlusion par le relief (gain faible ici, le rendu est limité par les pixels).
 
-## 5. Suite
+## 5. Améliorations visuelles à faible coût (demande du 5 novembre soir)
+
+Même méthode que pour les économies : une variante par idée, valeur 0 = rendu actuel, coût mesuré en trois qualités avec la capture, adoption seulement après validation des captures.
+
+| Variante (`cout_rendu.py`) | Réglage de l'essai | Ce que ça ajoute | Coût attendu |
+| --- | --- | --- | --- |
+| `brume_ambiante` | `volumetric_fog_ambient_inject = 1` | perspective atmosphérique : le lointain bleuit au lieu de noircir | ≈ 0 (mesuré) |
+| `soleil_brume` | `soleil_brume=0.3` → `fog_sun_scatter` | halo chaud du soleil dans le brouillard quand on roule face à lui | ≈ 0 (calcul par pixel déjà fait par le brouillard) |
+| `terrain_macro` | `terrain_macro=0.35` → `macro_variation` (`terrain_shade.gdshaderinc`) | prés plus ou moins mûrs sur 230 à 600 m : casse la répétition vue de loin | 2 lectures de bruit par pixel d'herbe, < 0,1 ms attendu |
+| `herbe_degrade` | `herbe_degrade=0.35` → `root_darken` (`tree_sway.gdshader`, herbe seule) | pied des touffes plus sombre, pointe plus claire : volume de l'herbe | une multiplication par pixel, ≈ 0 |
+| `embellis` | les trois et la brume éclairée | ensemble | à mesurer |
+
+Plus tard, en lot de développement : forêt jusqu'à l'horizon par imposteurs (lot Y5), coût à mesurer à part.
+
+## 6. Suite
 
 Mesures du vendredi 6 novembre, 7 h (PC) : variantes Godot de `cout_rendu.py` sur le parcours tout en cultures, puis la recette U18 complète avec les combinaisons retenues, planche avant/après en trois qualités pour le propriétaire. Le préréglage ne change dans `quality_presets.gd` et `render_quality.gd` qu'après sa validation des captures.
