@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Arbres lointains en imposteurs (notre propre version, sans extension), feuillage en alpha scissor | GDScript + shader | O1, Y2 | Moyenne | Oui (aspect validé par le propriétaire) ; issue #361 |
+| Arbres lointains en imposteurs (notre propre version, sans extension), feuillage en alpha scissor | GDScript + shader | O1, Y2 | Moyenne | **En PR** (lancé le 6 novembre) ; mesures PC low, medium et high et captures à valider par le propriétaire ; issue #361 |
 
 ## 1. Objectif
 
@@ -56,3 +56,20 @@ Aucune.
 ## 8. Hors périmètre
 
 - Nouvelles espèces d'arbres (U7, version 3.0) ; arbres en saison (P18, version 2.0) ; buissons et haies.
+
+## 9. Réalisation (6 novembre)
+
+Lancé à la demande du propriétaire le 6 novembre (« Lance aussi le lot forêt »), après l'étude `docs/ETUDE_OPTIMISATION_RENDU_2026-11-05.md` (branche de la recette U18) qui classait les imposteurs en lot de développement à mesurer à part.
+
+**Écart au §4, choisi pour le coût et l'aspect :** pas d'atlas capturé sous plusieurs angles ni d'outil de capture. Au-delà de 1,5 km un arbre fait 2 à 5 pixels de haut sur l'écran de 1680 × 1011 : les huit vues d'un atlas ne se distinguent pas, alors que leur fondu coûte deux lectures de texture par pixel et qu'un atlas peut scintiller ou « tourner ». Chaque imposteur est un **bouquet de quatre arbres** d'une espèce, dessiné sur un seul quadrilatère par une silhouette calculée dans le shader (houppiers ronds ou en cône, tronc dessous), sans texture : aucune image à générer ni à garder dans le dépôt, rien qui tourne en s'approchant.
+
+- `engine/shaders/tree_impostor.gdshader` : quadrilatère tourné vers la caméra autour de la verticale (calcul du « billboard Y » de Godot), silhouette tirée de la graine de l'instance, couleur d'instance (même écart de teinte que les arbres proches), éclairage du feuillage comme `tree_sway` (normale tirée vers le haut, lumière à travers les feuilles), `discard` hors des houppiers (pas de mélange transparent), sans ombre portée ni reçue, sans reflet. Distances par instance : entrée progressive de 1 500 à 1 750 m (chaque bouquet à son seuil, en grandissant), plus rien au-delà de `fog_end_m`. Pas de vent (invisible à cette distance).
+- `engine/scripts/forest_impostors.gd` : bouquets des **tuiles lointaines** (5 km), préparés dans la tâche de fond du terrain lointain (`world_streamer.gd`, relief réel avant l'enfoncement sous le proche, relief affiché du lot Q2). Grille de 32 m ; un bouquet est gardé avec la probabilité de couverture du sol par les houppiers, 1 − exp(−densité × surface d'un houppier), la densité étant celle des arbres proches au même endroit (biome ou thème 1.x, même bruit `density_noise`) : les forêts lointaines continuent les forêts proches. Espèce tirée comme pour les arbres proches ; plantes basses écartées ; couloir de la route, pente et limite des arbres respectés. Par case de 1 000 m, un `MultiMeshInstance3D` (tampon rempli d'un bloc, `custom_aabb`, plage de visibilité de la case).
+- `tree_species.gd` : les houppiers vus de loin de chaque espèce sont dans une table `CROWNS`, lue par les panneaux croisés du LOD 1 et par les imposteurs (une seule description).
+- `quality_presets.gd` : `FOREST_FRACTION` (part des bouquets affichés : 0,6 en low, 1 en medium et high, par `visible_instance_count`), à revoir après les mesures. La fin suit `fog_end_m` (4, 6 et 9 km).
+- `--forest=on|off` (engine, `sim_bench.py --forest`) : banc avant/après ; actif par défaut.
+- Les zones `vegetation` d'OSM ne couvrent que le couloir des tronçons de route : au loin, seul le bruit de densité place les forêts, comme les arbres proches hors de ces zones.
+
+**Tests :** `engine/tests/unit/test_forest_impostors.gd` (houppiers, placement déterministe, exclusions, biomes, affichage, budget `forest_far_tile`), `engine/tests/render/test_forest_impostor_render.gd` (forêt dessinée sur l'horizon, rien avant le début ni après la fin), `test_quality_presets.gd` (`--forest`, parts). Préparation d'une tuile lointaine : environ 75 à 115 ms au cloud, en tâche de fond.
+
+**Reste :** banc PC (GTX 1060) en low, medium et high, `--forest on` puis `off`, sur un parcours boisé (`biome_temperate_forest`) et sur la recette U18, critère du §7.4 (moins de 1 ms de GPU de plus en medium, sinon part ou distance réduites) ; captures avant/après validées par le propriétaire avant la fusion.

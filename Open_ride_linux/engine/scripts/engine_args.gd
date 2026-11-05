@@ -15,6 +15,7 @@ extends RefCounted
 ##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
 ##   --living=on|off          décor vivant de la série P (défaut : on) ; off : rendu de la 1.0 (lot P16)
 ##   --culling=on|off         tri de ce que la caméra ne voit pas (défaut : off, aucun gain mesuré ; on : essai, lot S1)
+##   --forest=on|off          forêts lointaines en imposteurs au-delà de 1,5 km (défaut : on ; off : banc avant/après, lot Y5)
 ##   --crowd=climbs|all       spectateurs sur les montées d'au moins 3 km (défaut) ou sur toutes (bancs, lot Y21)
 ##   --load-guard=on|off      garde-fou de charge (lot Y6, load_guard.gd) ; défaut : on, off avec --test-mode
 ##   --display=windowed|borderless|fullscreen  mode d'affichage (défaut : windowed ; display_mode.gd)
@@ -47,7 +48,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, texture_level, biome, gravel, visual_grade, living, culling, crowd_all_climbs, load_guard, display, camera, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, texture_level, biome, gravel, visual_grade, living, culling, forest, crowd_all_climbs, load_guard, display, camera, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -62,6 +63,7 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"visual_grade": DEFAULT_VISUAL_GRADE,
 		"living": true,
 		"culling": false,
+		"forest": true,
 		"crowd_all_climbs": false,
 		"load_guard": true,
 		"display": DisplayMode.DEFAULT,
@@ -102,6 +104,8 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["living"] = _on_off(arg, true, "décor vivant")
 		elif arg.begins_with("--culling="):
 			out["culling"] = _on_off(arg, false, "tri du visible")
+		elif arg.begins_with("--forest="):
+			out["forest"] = _on_off(arg, true, "forêts lointaines")
 		elif arg.begins_with("--crowd="):
 			out["crowd_all_climbs"] = arg.get_slice("=", 1) == "all"
 		elif arg.begins_with("--load-guard="):

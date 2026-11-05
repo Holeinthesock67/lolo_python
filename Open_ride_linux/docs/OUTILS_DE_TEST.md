@@ -94,6 +94,7 @@ python3 engine/tests/sim_bench.py --scenario coupures_village --native     # fen
 python3 engine/tests/sim_bench.py --scenario difficulte --difficulty 50 --out ~/OpenRide/sim_bench/d50
 python3 engine/tests/sim_bench.py --native --probe --scenario erg_village --display fullscreen   # mode d'affichage (protocole J10)
 python3 engine/tests/sim_bench.py --native --probe --scenario rendu_invisible --culling on    # essai du tri du visible, coupé par défaut (lot S1, docs/ETUDE_RENDU_INVISIBLE.md)
+python3 engine/tests/sim_bench.py --native --probe --scenario biome_temperate_forest --forest off   # banc avant/après des forêts lointaines en imposteurs (lot Y5, actives par défaut)
 python3 engine/tests/compare_captures.py AVANT_DOSSIER APRES_DOSSIER --out ECARTS   # captures de deux bancs comparées image par image (lot S1)
 python3 engine/tests/sim_bench.py --native --probe --scenario rendu_invisible --world ~/.local/share/openride/routes/essai-69.world --every-m 200   # --world l'emporte sur le monde du scénario ; captures tous les 200 m
 python3 engine/tests/sim_bench.py --scenario erg_village --scenario ceinture --scenario click_sommeil

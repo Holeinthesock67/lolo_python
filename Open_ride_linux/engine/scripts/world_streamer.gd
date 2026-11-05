@@ -59,6 +59,8 @@ var far_radius_m: float = FAR_RADIUS_M:
 		if _ground != null and _ground.mesh is PlaneMesh:
 			(_ground.mesh as PlaneMesh).size = Vector2(2.0 * far_radius_m, 2.0 * far_radius_m)
 var tree_renderer: Node3D = null
+## Forêts lointaines en imposteurs sur les tuiles lointaines (lot Y5, forest_impostors.gd) ; null : aucune.
+var forest_impostors: Node3D = null
 ## Lot S1 : tri des tuiles proches selon le champ de la caméra active ; rayon gardé tout autour réglé par
 ## render_quality.gd (ViewCulling.keep_radius_for, distance des ombres du préréglage).
 var culling := false
@@ -192,6 +194,8 @@ func _set_biome_model() -> void:
 	var active = biome_model if biome_model.active() else null
 	if tree_renderer != null:
 		tree_renderer.biome_model = active
+	if forest_impostors != null:
+		forest_impostors.biome_model = active
 	if osm_streamer != null:
 		osm_streamer.biome_model = active
 	biome_textures = null
@@ -406,6 +410,8 @@ func clear() -> void:
 		_free_preview(key)
 	if tree_renderer != null:
 		tree_renderer.clear()
+	if forest_impostors != null:
+		forest_impostors.clear()
 	if osm_streamer != null:
 		osm_streamer.clear()
 	if _ground != null:
@@ -600,6 +606,11 @@ func _build_job(job: Dictionary) -> void:
 			var near_index: Dictionary = job["near_index"]
 			if spec["kind"] == "far":
 				heights = TerrainTiles.carve_under_route(heights, "far", t.x, t.y, r)
+				if forest_impostors != null:
+					# Relief réel du lointain (avant l'enfoncement sous le proche) : pied des forêts lointaines (lot Y5)
+					var t_forest := Time.get_ticks_usec()
+					job["forest_data"] = forest_impostors.prepare_tile(t.x, t.y, heights, r, _theme_dict)
+					PerfProbe.task("foret", "%d:%d" % [t.x, t.y], (Time.get_ticks_usec() - t_forest) / 1000.0)
 				heights = TerrainTiles.sink_under_near(heights, t.x, t.y, near_index,
 					func(nx: int, nz: int) -> PackedFloat32Array: return TerrainTiles.load_tile(job["world_dir"], "near", nx, nz), v_scale)
 			else:
@@ -661,6 +672,8 @@ func _poll_jobs(wait: bool) -> void:
 			var ready_item := {"key": key, "arrays": job["arrays"], "origin": job["origin"], "kind": job["spec"]["kind"]}
 			if job.has("trees_data"):
 				ready_item["trees_data"] = job["trees_data"]
+			if job.has("forest_data"):
+				ready_item["forest_data"] = job["forest_data"]
 			if job.has("skirt_arrays"):
 				ready_item["skirt_arrays"] = job["skirt_arrays"]
 			_ready.append(ready_item)
@@ -697,6 +710,10 @@ func integrate(max_new: int) -> int:
 		if r.has("trees_data") and tree_renderer != null and not (r["trees_data"] as Dictionary).is_empty():
 			tree_renderer.add_tile(r["trees_data"])
 			PerfProbe.mark("arbres", r["key"], (Time.get_ticks_usec() - t1) / 1000.0)
+		if r.has("forest_data") and forest_impostors != null and not (r["forest_data"] as Dictionary).is_empty():
+			var t2 := Time.get_ticks_usec()
+			forest_impostors.add_tile(r["forest_data"])
+			PerfProbe.mark("foret", r["key"], (Time.get_ticks_usec() - t2) / 1000.0)
 		if test_log and r["kind"] == "near":
 			_test_check_tile(r["key"], r["arrays"][Mesh.ARRAY_VERTEX])
 		created += 1
@@ -798,6 +815,9 @@ func _free_instance(key: String) -> void:
 	if key.begins_with("near:") and tree_renderer != null:
 		var parts := key.split(":")
 		tree_renderer.remove_tile(Vector2i(int(parts[1]), int(parts[2])))
+	elif key.begins_with("far:") and forest_impostors != null:
+		var parts := key.split(":")
+		forest_impostors.remove_tile(Vector2i(int(parts[1]), int(parts[2])))
 
 
 ## Configure les matériaux de route et de terrain selon le thème (Lot E2).

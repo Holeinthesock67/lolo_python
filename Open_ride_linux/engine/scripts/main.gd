@@ -19,6 +19,7 @@ const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
+const ForestImpostors := preload("res://scripts/forest_impostors.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const RoadSurface := preload("res://scripts/road_surface.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
@@ -256,6 +257,13 @@ func _ready() -> void:
 		tree_rend.name = "TreeRenderer"
 		streamer.add_child(tree_rend)
 		streamer.tree_renderer = tree_rend
+	if streamer.forest_impostors == null:
+		var forest = ForestImpostors.new()
+		forest.name = "ForestImpostors"
+		forest.enabled = bool(cfg.get("forest", true))
+		streamer.add_child(forest)
+		streamer.forest_impostors = forest
+	print("Forêts lointaines : ", "actives" if streamer.forest_impostors.enabled else "coupées")
 	if streamer.osm_streamer == null:
 		var osm_st = OsmStreamer.new()
 		osm_st.name = "OsmStreamer"
