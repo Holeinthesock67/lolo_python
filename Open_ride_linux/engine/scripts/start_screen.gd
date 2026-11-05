@@ -11,7 +11,10 @@ extends Control
 ## - anneau de cadence qui se remplit pendant le pédalage, cadence lissée au centre ; touche « Y annuler ».
 ## Pendant le chargement du décor et la connexion du trainer, l'écran est figé (aucune animation, redessiné
 ## seulement à chaque trame du core) pour laisser toute l'image au chargement ; les animations ne tournent
-## qu'au pédalage et au « GO ! ». Styles des cadres créés une fois (`_styles`).
+## qu'au pédalage et au « GO ! ». Écran figé dessiné une fois dans une image en cache (SubViewport rendue à
+## chaque changement d'étape, de feux ou de texte) puis affiché en un seul dessin : au banc sous Xvfb, ses
+## quelque 45 appels de dessin par image retardaient le « décor prêt » (10 images sous 33 ms) de 7 à 16 s en
+## low. Styles des cadres créés une fois (`_styles`).
 ## Voile opaque tant que le décor se charge, plus léger pendant le pédalage pour voir la route du départ ;
 ## au « GO ! », sans voile ni bandeau : feux verts, flash bref et « GO ! » penché (le rappel des commandes et
 ## le texte du segment restent lisibles autour).
@@ -55,6 +58,7 @@ const RING_W := 14.0
 const CADENCE_SMOOTH := 8.0   # 1/s : la cadence affichée rejoint la mesure en ~0,3 s
 const GO_SIZE := 132
 const GO_FLASH_S := 0.2
+const CACHE_FRAMES := 2   # images avant d'utiliser l'image en cache, le temps qu'elle soit rendue
 
 var _wait = null          # objet start_wait de la dernière trame, null hors attente
 var _cadence := 0.0
@@ -67,12 +71,28 @@ var _title_font: FontVariation = null
 var _tag_font: FontVariation = null
 var _bold_font: FontVariation = null
 var _styles := {}         # StyleBoxFlat des cadres, par couleurs, rayon et épaisseur
+var _ci: Control = null   # cible des dessins de _paint (l'écran, ou le peintre de l'image en cache)
+var _viewport: SubViewport = null   # image en cache de l'écran figé, créée à la première attente
+var _painter: Control = null
+var _cache_key := ""
+var _cache_frames := 0    # images avant que l'image en cache soit rendue
+var _premult := CanvasItemMaterial.new()
+
+
+## Peintre de l'image en cache : dessine l'écran dans la SubViewport.
+class Painter extends Control:
+	var screen = null
+
+	func _draw() -> void:
+		if screen != null:
+			screen._paint(self)
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
+	_ci = self
 	_font = ThemeDB.fallback_font
 	_title_font = FontVariation.new()
 	_title_font.base_font = _font
@@ -85,6 +105,8 @@ func _ready() -> void:
 	_bold_font = FontVariation.new()
 	_bold_font.base_font = _font
 	_bold_font.variation_embolden = 0.6
+	# L'image en cache est rendue sur fond transparent : couleurs déjà multipliées par l'opacité.
+	_premult.blend_mode = CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA
 
 
 ## Parcours qui va être roulé (StartWaitModel.route_card) ; {} : pas de carte.
@@ -122,7 +144,12 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 	if _go_left_s <= 0.0 and not _animated():
-		return   # chargement : écran figé, redessiné par show_wait seulement
+		# Chargement : écran figé, redessiné par show_wait seulement, puis depuis l'image en cache.
+		if _cache_frames > 0:
+			_cache_frames -= 1
+			if _cache_frames == 0:
+				queue_redraw()
+		return
 	_t += delta
 	_cadence_shown = lerpf(_cadence_shown, _cadence, clampf(delta * CADENCE_SMOOTH, 0.0, 1.0))
 	if _go_left_s > 0.0:
@@ -145,15 +172,32 @@ func test_info() -> Dictionary:
 
 
 func _draw() -> void:
-	var k := size / BASE if size.x > 0.0 and size.y > 0.0 else Vector2.ONE
-	draw_set_transform(Vector2.ZERO, 0.0, k)
 	if _font == null:
 		return
+	if _go_left_s <= 0.0 and not _animated():
+		# Écran figé (décor, trainer) : une image en cache, un seul dessin par image du jeu.
+		var key := _static_key()
+		if key == _cache_key and _cache_frames <= 0 and _viewport != null:
+			material = _premult
+			draw_texture_rect(_viewport.get_texture(), Rect2(Vector2.ZERO, size), false)
+			return
+		if key != _cache_key:
+			_refresh_cache(key)
+	material = null
+	_paint(self)
+
+
+## Dessine l'écran entier sur `ci` (l'écran lui-même, ou le peintre de l'image en cache), à sa taille.
+func _paint(ci: Control) -> void:
+	_ci = ci
+	var k := ci.size / BASE if ci.size.x > 0.0 and ci.size.y > 0.0 else Vector2.ONE
+	_ci.draw_set_transform(Vector2.ZERO, 0.0, k)
 	if _go_left_s > 0.0:
 		_draw_go()
+		_ci = self
 		return
-	var pedalling := _wait is Dictionary and str(_wait.get("phase", "")) == "pedalage"
-	draw_rect(Rect2(Vector2.ZERO, BASE), Color(UiTheme.VOID, VEIL_PEDALLING if pedalling else VEIL_LOADING))
+	var pedalling := _animated()
+	_ci.draw_rect(Rect2(Vector2.ZERO, BASE), Color(UiTheme.VOID, VEIL_PEDALLING if pedalling else VEIL_LOADING))
 	_draw_title()
 	_draw_gantry(GANTRY_Y, StartWaitModel.lights(_wait), false)
 	_draw_steps()
@@ -163,6 +207,53 @@ func _draw() -> void:
 	_draw_route_card()
 	_draw_cadence_ring(pedalling)
 	_draw_keycap(Vector2(560.0, 642.0), "Y", "annuler")
+	_ci = self
+
+
+# --- Image en cache de l'écran figé ------------------------------------------------------------
+
+## Ce qui change l'écran figé : étape, feux, texte, parcours, taille.
+func _static_key() -> String:
+	var phase := str(_wait.get("phase", "")) if _wait is Dictionary else ""
+	return "%s|%d|%s|%s|%s|%d" % [phase, StartWaitModel.lights(_wait), StartWaitModel.text(_wait),
+		str(_route.get("name", "")), str(size), int(_wait.get("cadence_rpm", 0)) if _wait is Dictionary else 0]
+
+
+## Contenu figé changé : le peintre redessine l'image en cache (rendue à l'image suivante) ; en attendant
+## qu'elle soit prête (CACHE_FRAMES images), l'écran se dessine directement, sans trou.
+func _refresh_cache(key: String) -> void:
+	_cache_key = key
+	_cache_frames = CACHE_FRAMES
+	if _viewport == null:
+		_viewport = SubViewport.new()
+		_viewport.name = "StaticCache"
+		_viewport.transparent_bg = true
+		_viewport.disable_3d = true
+		_viewport.gui_disable_input = true
+		_painter = Painter.new()
+		_painter.screen = self
+		_viewport.add_child(_painter)
+		add_child(_viewport)
+	var px := Vector2i(maxi(1, int(size.x)), maxi(1, int(size.y)))
+	_viewport.size = px
+	_painter.size = Vector2(px)
+	_painter.queue_redraw()
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+
+## Écran caché : image en cache libérée (mémoire vidéo rendue).
+func _drop_cache() -> void:
+	if _viewport != null:
+		_viewport.queue_free()
+	_viewport = null
+	_painter = null
+	_cache_key = ""
+	_cache_frames = 0
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and not visible:
+		_drop_cache()
 
 
 # --- Bandeau du titre --------------------------------------------------------------------------
@@ -170,8 +261,8 @@ func _draw() -> void:
 func _draw_title() -> void:
 	var band := PackedVector2Array([Vector2(BAND_LEFT + BAND_SLANT, BAND_TOP), Vector2(BAND_RIGHT, BAND_TOP),
 		Vector2(BAND_RIGHT - BAND_SLANT, BAND_BOTTOM), Vector2(BAND_LEFT, BAND_BOTTOM)])
-	draw_colored_polygon(band, Color(UiTheme.NIGHT, 0.92))
-	draw_colored_polygon(PackedVector2Array([Vector2(BAND_LEFT, BAND_BOTTOM), Vector2(BAND_RIGHT - BAND_SLANT, BAND_BOTTOM),
+	_ci.draw_colored_polygon(band, Color(UiTheme.NIGHT, 0.92))
+	_ci.draw_colored_polygon(PackedVector2Array([Vector2(BAND_LEFT, BAND_BOTTOM), Vector2(BAND_RIGHT - BAND_SLANT, BAND_BOTTOM),
 		Vector2(BAND_RIGHT - BAND_SLANT - 4.0, BAND_BOTTOM + 8.0), Vector2(BAND_LEFT - 4.0, BAND_BOTTOM + 8.0)]), UiTheme.FOCUS)
 	# Reflet qui balaie le bandeau : bande claire penchée, coupée aux bords du bandeau.
 	var f := fmod(_t, SHEEN_PERIOD_S) / SHEEN_PERIOD_S
@@ -179,12 +270,12 @@ func _draw_title() -> void:
 	var x0 := clampf(x, BAND_LEFT + BAND_SLANT, BAND_RIGHT - BAND_SLANT)
 	var x1 := clampf(x + 60.0, BAND_LEFT + BAND_SLANT, BAND_RIGHT - BAND_SLANT)
 	if x1 > x0:
-		draw_colored_polygon(PackedVector2Array([Vector2(x0, BAND_TOP), Vector2(x1, BAND_TOP),
+		_ci.draw_colored_polygon(PackedVector2Array([Vector2(x0, BAND_TOP), Vector2(x1, BAND_TOP),
 			Vector2(x1 - BAND_SLANT, BAND_BOTTOM), Vector2(x0 - BAND_SLANT, BAND_BOTTOM)]), Color(UiTheme.FOCUS, 0.07))
 	# Traits de vitesse à gauche du bandeau.
 	for i in 3:
 		var y := 78.0 + i * 22.0
-		draw_colored_polygon(PackedVector2Array([Vector2(60.0 + i * 30.0, y), Vector2(190.0, y), Vector2(185.0, y + 10.0),
+		_ci.draw_colored_polygon(PackedVector2Array([Vector2(60.0 + i * 30.0, y), Vector2(190.0, y), Vector2(185.0, y + 10.0),
 			Vector2(55.0 + i * 30.0, y + 10.0)]), Color(UiTheme.FOCUS, 0.8 - i * 0.25))
 	_centered(_title_font, StartWaitModel.TITLE, 128.0, TITLE_SIZE, UiTheme.TEXT)
 	_centered(_tag_font, StartWaitModel.TAG, 46.0, TAG_SIZE, UiTheme.GOLD)
@@ -196,8 +287,8 @@ func _draw_gantry(top: float, lit: int, go: bool) -> void:
 	var n := StartWaitModel.LIGHTS
 	var x0 := BASE.x * 0.5 - HOUSING_GAP * (n - 1) * 0.5
 	var bar := Rect2(x0 - HOUSING_GAP * 0.5 - 20.0, top - 22.0, HOUSING_GAP * n + 40.0, 18.0)
-	draw_rect(bar, UiTheme.START_GANTRY)
-	draw_rect(Rect2(bar.position.x, top - 6.0, bar.size.x, 3.0), UiTheme.LINE)
+	_ci.draw_rect(bar, UiTheme.START_GANTRY)
+	_ci.draw_rect(Rect2(bar.position.x, top - 6.0, bar.size.x, 3.0), UiTheme.LINE)
 	var breath := 0.75 + 0.25 * sin(_t * TAU / BREATH_PERIOD_S)
 	for i in n:
 		var x := x0 + i * HOUSING_GAP
@@ -208,16 +299,16 @@ func _draw_gantry(top: float, lit: int, go: bool) -> void:
 			var col: Color = UiTheme.OK if go else UiTheme.DANGER
 			if on:
 				_glow(c, LAMP_R, col, 1.0 if go else breath)
-			draw_circle(c, LAMP_R, col if on else UiTheme.START_LAMP_OFF)
+			_ci.draw_circle(c, LAMP_R, col if on else UiTheme.START_LAMP_OFF)
 			if on:
-				draw_circle(c + Vector2(-9.0, -10.0), 8.0, UiTheme.START_LAMP_SHINE)
-			draw_arc(c, LAMP_R + 6.0, PI * 1.08, PI * 1.92, 16, UiTheme.START_HOOD, 8.0, true)
+				_ci.draw_circle(c + Vector2(-9.0, -10.0), 8.0, UiTheme.START_LAMP_SHINE)
+			_ci.draw_arc(c, LAMP_R + 6.0, PI * 1.08, PI * 1.92, 16, UiTheme.START_HOOD, 8.0, true)
 
 
 ## Halo : disques concentriques de moins en moins opaques.
 func _glow(c: Vector2, r: float, col: Color, strength: float) -> void:
 	for i in range(4, 0, -1):
-		draw_circle(c, r + i * 7.0, Color(col, strength * 0.16 * (5 - i) / 4.0))
+		_ci.draw_circle(c, r + i * 7.0, Color(col, strength * 0.16 * (5 - i) / 4.0))
 
 
 # --- Étapes, carte du parcours, anneau de cadence ---------------------------------------------
@@ -232,13 +323,13 @@ func _draw_steps() -> void:
 		_rounded(r, fill, edge, int(STEP_H * 0.5), 2)
 		var dot := r.position + Vector2(31.0, STEP_H * 0.5)
 		if st == "done":
-			draw_polyline(PackedVector2Array([dot + Vector2(-9.0, 1.0), dot + Vector2(-2.0, 8.0), dot + Vector2(11.0, -7.0)]),
+			_ci.draw_polyline(PackedVector2Array([dot + Vector2(-9.0, 1.0), dot + Vector2(-2.0, 8.0), dot + Vector2(11.0, -7.0)]),
 				UiTheme.OK, 3.0, true)
 		else:
-			draw_circle(dot, 6.0, UiTheme.FOCUS if st == "current" else UiTheme.LINE)
+			_ci.draw_circle(dot, 6.0, UiTheme.FOCUS if st == "current" else UiTheme.LINE)
 		var col: Color = UiTheme.TEXT if st == "done" else (UiTheme.FOCUS if st == "current" else UiTheme.DIM)
 		var w := _bold_font.get_string_size(steps[i]["label"], HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x
-		draw_string(_bold_font, Vector2(r.position.x + 98.0 - w * 0.5, r.position.y + 27.0), steps[i]["label"],
+		_ci.draw_string(_bold_font, Vector2(r.position.x + 98.0 - w * 0.5, r.position.y + 27.0), steps[i]["label"],
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 19, col)
 
 
@@ -247,9 +338,9 @@ func _draw_route_card() -> void:
 		return
 	_rounded(CARD, Color(UiTheme.NIGHT, 0.9), UiTheme.LINE, 10, 2)
 	var x := CARD.position.x + 22.0
-	draw_string(_tag_font, Vector2(x, CARD.position.y + 30.0), "PARCOURS", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, UiTheme.DIM)
-	draw_string(_bold_font, Vector2(x, CARD.position.y + 62.0), str(_route.get("name", "")), HORIZONTAL_ALIGNMENT_LEFT, 250.0, 24, UiTheme.TEXT)
-	draw_string(_font, Vector2(x, CARD.position.y + 90.0), str(_route.get("line", "")), HORIZONTAL_ALIGNMENT_LEFT, 250.0, SMALL_SIZE, UiTheme.GOLD)
+	_ci.draw_string(_tag_font, Vector2(x, CARD.position.y + 30.0), "PARCOURS", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, UiTheme.DIM)
+	_ci.draw_string(_bold_font, Vector2(x, CARD.position.y + 62.0), str(_route.get("name", "")), HORIZONTAL_ALIGNMENT_LEFT, 250.0, 24, UiTheme.TEXT)
+	_ci.draw_string(_font, Vector2(x, CARD.position.y + 90.0), str(_route.get("line", "")), HORIZONTAL_ALIGNMENT_LEFT, 250.0, SMALL_SIZE, UiTheme.GOLD)
 	var h: PackedFloat32Array = _route.get("heights", PackedFloat32Array())
 	if h.size() < 2:
 		return
@@ -260,17 +351,17 @@ func _draw_route_card() -> void:
 	var area := line.duplicate()
 	area.append(box.end)
 	area.append(Vector2(box.position.x, box.end.y))
-	draw_colored_polygon(area, Color(UiTheme.FOCUS, 0.18))
-	draw_polyline(line, UiTheme.FOCUS, 2.5, true)
+	_ci.draw_colored_polygon(area, Color(UiTheme.FOCUS, 0.18))
+	_ci.draw_polyline(line, UiTheme.FOCUS, 2.5, true)
 	_glow(line[0], 6.0, UiTheme.GOLD, 0.6)
-	draw_circle(line[0], 6.0, UiTheme.GOLD)
+	_ci.draw_circle(line[0], 6.0, UiTheme.GOLD)
 
 
 func _draw_cadence_ring(pedalling: bool) -> void:
-	draw_arc(RING_C, RING_R, 0.0, TAU, 64, UiTheme.LINE, RING_W, true)
+	_ci.draw_arc(RING_C, RING_R, 0.0, TAU, 64, UiTheme.LINE, RING_W, true)
 	var p := StartWaitModel.progress(_wait)
 	if p > 0.0:
-		draw_arc(RING_C, RING_R, -PI * 0.5, -PI * 0.5 + TAU * p, maxi(8, int(64 * p)), UiTheme.FOCUS, RING_W, true)
+		_ci.draw_arc(RING_C, RING_R, -PI * 0.5, -PI * 0.5 + TAU * p, maxi(8, int(64 * p)), UiTheme.FOCUS, RING_W, true)
 	var shown := int(round(_cadence_shown)) if pedalling else -1
 	_centered_at(_title_font, str(shown) if shown >= 0 else "—", RING_C + Vector2(0.0, 14.0), 44,
 		UiTheme.GOLD if shown >= 0 else UiTheme.DIM)
@@ -279,14 +370,14 @@ func _draw_cadence_ring(pedalling: bool) -> void:
 	if target > 0:
 		var label := "seuil %d" % target
 		var w := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, SMALL_SIZE).x
-		draw_string(_font, Vector2(RING_C.x - RING_R - 28.0 - w, RING_C.y + 6.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		_ci.draw_string(_font, Vector2(RING_C.x - RING_R - 28.0 - w, RING_C.y + 6.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1,
 			SMALL_SIZE, UiTheme.DIM)
 
 
 func _draw_keycap(pos: Vector2, letter: String, label: String) -> void:
 	_rounded(Rect2(pos, Vector2(36.0, 36.0)), UiTheme.KEYCAP, UiTheme.KEYCAP_EDGE, 6, 2)
 	_centered_at(_bold_font, letter, pos + Vector2(18.0, 26.0), 20, UiTheme.TEXT)
-	draw_string(_font, pos + Vector2(48.0, 26.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, UiTheme.DIM)
+	_ci.draw_string(_font, pos + Vector2(48.0, 26.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, UiTheme.DIM)
 
 
 # --- GO ! --------------------------------------------------------------------------------------
@@ -294,19 +385,19 @@ func _draw_keycap(pos: Vector2, letter: String, label: String) -> void:
 func _draw_go() -> void:
 	var elapsed := StartWaitModel.GO_S - _go_left_s
 	if elapsed < GO_FLASH_S:
-		draw_rect(Rect2(Vector2.ZERO, BASE), Color(UiTheme.OK, 0.25 * (1.0 - elapsed / GO_FLASH_S)))
+		_ci.draw_rect(Rect2(Vector2.ZERO, BASE), Color(UiTheme.OK, 0.25 * (1.0 - elapsed / GO_FLASH_S)))
 	_draw_gantry(GANTRY_Y_GO, StartWaitModel.LIGHTS, true)
 	for i in 3:
 		var y := 430.0 + i * 34.0
 		var col := Color(UiTheme.OK, 0.7 - i * 0.2)
-		draw_colored_polygon(PackedVector2Array([Vector2(260.0 + i * 40.0, y), Vector2(440.0, y), Vector2(434.0, y + 12.0),
+		_ci.draw_colored_polygon(PackedVector2Array([Vector2(260.0 + i * 40.0, y), Vector2(440.0, y), Vector2(434.0, y + 12.0),
 			Vector2(254.0 + i * 40.0, y + 12.0)]), col)
-		draw_colored_polygon(PackedVector2Array([Vector2(1020.0 - i * 40.0, y), Vector2(840.0, y), Vector2(846.0, y + 12.0),
+		_ci.draw_colored_polygon(PackedVector2Array([Vector2(1020.0 - i * 40.0, y), Vector2(840.0, y), Vector2(846.0, y + 12.0),
 			Vector2(1026.0 - i * 40.0, y + 12.0)]), col)
 	var w := _title_font.get_string_size("GO !", HORIZONTAL_ALIGNMENT_LEFT, -1, GO_SIZE).x
 	var pos := Vector2(BASE.x * 0.5 - w * 0.5, 520.0)
-	draw_string_outline(_title_font, pos, "GO !", HORIZONTAL_ALIGNMENT_LEFT, -1, GO_SIZE, 10, UiTheme.VOID)
-	draw_string(_title_font, pos, "GO !", HORIZONTAL_ALIGNMENT_LEFT, -1, GO_SIZE, UiTheme.OK)
+	_ci.draw_string_outline(_title_font, pos, "GO !", HORIZONTAL_ALIGNMENT_LEFT, -1, GO_SIZE, 10, UiTheme.VOID)
+	_ci.draw_string(_title_font, pos, "GO !", HORIZONTAL_ALIGNMENT_LEFT, -1, GO_SIZE, UiTheme.OK)
 
 
 # --- Aides de dessin ---------------------------------------------------------------------------
@@ -322,7 +413,7 @@ func _rounded(r: Rect2, fill: Color, edge: Color, radius: int, width: int) -> vo
 		sb.set_corner_radius_all(radius)
 		sb.anti_aliasing = true
 		_styles[key] = sb
-	draw_style_box(sb, r)
+	_ci.draw_style_box(sb, r)
 
 
 func _centered(font: Font, text: String, y: float, font_size: int, col: Color) -> void:
@@ -331,4 +422,4 @@ func _centered(font: Font, text: String, y: float, font_size: int, col: Color) -
 
 func _centered_at(font: Font, text: String, at: Vector2, font_size: int, col: Color) -> void:
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-	draw_string(font, Vector2(at.x - w * 0.5, at.y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, col)
+	_ci.draw_string(font, Vector2(at.x - w * 0.5, at.y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, col)
