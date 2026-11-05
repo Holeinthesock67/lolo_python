@@ -1538,6 +1538,7 @@ def _start_screen_scenes(s: Session) -> None:
     if shot:
         img, info = shot
         st = info.get("start_screen", {})
+        s.check("depart_pedalage", "HUD de séance caché pendant l'attente", not info["widgets"]["power"]["visible"])
         s.check("depart_pedalage", "quatre feux, pastille Pédalage en cours",
                 st.get("lights") == 4 and st.get("steps", [{}, {}, {}])[2].get("state") == "current", str(st))
         red = fraction(img, (0, 0, s.width, s.height // 2), lambda p: p[0] > 200 and p[1] < 110 and p[2] < 120, step=2)
@@ -1548,6 +1549,7 @@ def _start_screen_scenes(s: Session) -> None:
     if shot:
         img, info = shot
         s.check("depart_go", "feux verts « GO ! »", info.get("start_screen", {}).get("go") is True, str(info.get("start_screen")))
+        s.check("depart_go", "HUD de séance revenu au départ", info["widgets"]["power"]["visible"])
 
 
 def _menus_only(s: Session) -> None:

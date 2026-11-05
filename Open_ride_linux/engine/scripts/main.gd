@@ -870,9 +870,10 @@ func _set_trial_badge(on: bool) -> void:
 ## le sous-titre « Montée 1 · 4e catégorie » de l'arche de départ, juste au-dessus de la caméra, se lisait à
 ## travers les menus translucides). Le préchauffage des marques (warm_up) est rangé sous la caméra, il reste
 ## dessiné. Run Cyber-Rogue : la scène du mode a son HUD diégétique (lot R11), le HUD classique (panneaux,
-## profil, courbes) est caché ; le compteur d'images/s reste.
+## profil, courbes) est caché ; le compteur d'images/s reste. Attente du départ (écran « Start your engines »
+## de la 3.0) : HUD caché aussi, l'écran montre lui-même la cadence (ses panneaux passaient sous le titre).
 func _sync_hud(menu_shown: bool) -> void:
-	hud.visible = not menu_shown and not rogue_host.is_active()
+	hud.visible = not menu_shown and not rogue_host.is_active() and menu_flow.start_wait.is_empty()
 	if overlay_layer != null:
 		overlay_layer.visible = not menu_shown
 	if segment_markers != null:
