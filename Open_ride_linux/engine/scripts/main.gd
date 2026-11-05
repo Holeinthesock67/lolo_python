@@ -1143,6 +1143,18 @@ func _poll_live_world() -> void:
 		streamer.set_previews(live_world.previews(float(follow.last_frame["s"])))
 
 ## Dossier du parcours : <routes>/<route_id>.world, repli sur la démo embarquée pour « demo ».
+## Carte du parcours de l'écran d'attente du départ (StartWaitModel.route_card) : entrée de la liste des
+## parcours du core et profil du parcours chargé ; {} sans parcours (run Cyber-Rogue : `route_id` nul).
+func _start_route_card(route_id) -> Dictionary:
+	if route_id == null:
+		return {}
+	for item in menu_flow.routes_raw:
+		if item is Dictionary and str(item.get("id", "")) == str(route_id):
+			var prof: Dictionary = _route_profile.get("profile", {}) if _route_profile.get("id", "") == str(route_id) else {}
+			return StartWaitModel.route_card(item, prof)
+	return {}
+
+
 func _route_path(route_id: String) -> String:
 	if route_id.begins_with(OW_PREFIX):
 		# Monde ouvert : « ow:<id> » désigne <open_world_dir>/<id>.world (contrat IPC 1.5, hello_ack.config).
@@ -1691,6 +1703,8 @@ func _on_state_received(state: Dictionary) -> void:
 	# Écran « Start your engines » pendant l'attente du départ ; feux verts quand la séance part.
 	var waiting: bool = not menu_flow.start_wait.is_empty()
 	if waiting:
+		if not _was_start_waiting:
+			start_screen.set_route(_start_route_card(state.get("route_id", null)))
 		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
 		# Préchauffage des gags WTF sous l'écran d'attente, pas à RUNNING (lot Y20) ; Cyber-Rogue : rogue_host.gd.
 		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed():

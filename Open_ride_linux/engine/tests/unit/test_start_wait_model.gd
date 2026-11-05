@@ -82,10 +82,35 @@ func _test_screen() -> void:
 	_check(sc.test_info()["go"] and sc.visible, "ouverture : feux verts « GO ! »")
 	sc._process(StartWaitModel.GO_S + 0.1)
 	_check(not sc.visible, "écran caché après GO_S")
-	sc.show_wait({"phase": "pedalage", "hold_s": 3.0, "held_s": 1.0}, 55.0)
+	sc.set_route(StartWaitModel.route_card({"id": "demo", "name": "Démo", "stats": {"distance_m": 4000.0, "gain_m": 62.0}}, {}))
+	sc.show_wait({"phase": "pedalage", "hold_s": 3.0, "held_s": 1.0, "cadence_rpm": 30}, 55.0)
+	info = sc.test_info()
+	_check(info["route"] == "Démo" and info["route_line"] == "4,0 km · 62 m D+", "carte du parcours (%s)" % str(info))
+	_check(info["steps"][2]["state"] == "current", "pastille du pédalage en cours")
+	sc._process(0.016)
 	sc.show_wait(null, 0.0)
 	_check(not sc.visible, "départ annulé : écran caché")
 	sc.queue_free()
+
+
+func _test_steps_and_card() -> void:
+	_check(StartWaitModel.steps(null).is_empty(), "hors attente : aucune pastille")
+	var st := StartWaitModel.steps({"phase": "decor"})
+	_check(st.size() == 3 and st[0]["label"] == "Décor" and st[0]["state"] == "current" and st[1]["state"] == "todo"
+		and st[2]["state"] == "todo", "décor : première pastille en cours")
+	st = StartWaitModel.steps({"phase": "trainer"})
+	_check(st[0]["state"] == "done" and st[1]["state"] == "current" and st[2]["state"] == "todo", "trainer : décor franchi")
+	st = StartWaitModel.steps({"phase": "pedalage"})
+	_check(st[0]["state"] == "done" and st[1]["state"] == "done" and st[2]["state"] == "current", "pédalage : dernière étape")
+	_check(StartWaitModel.route_line(24630.0, 409.6) == "24,6 km · 410 m D+", "distance et dénivelé en français")
+	_check(StartWaitModel.route_line(4000.0, null) == "4,0 km", "dénivelé inconnu : distance seule")
+	_check(StartWaitModel.route_card({}, {}).is_empty(), "sans parcours (Cyber-Rogue) : pas de carte")
+	var pts := PackedVector2Array([Vector2(0, 100), Vector2(1000, 150), Vector2(2000, 120)])
+	var card := StartWaitModel.route_card({"id": "x", "length_m": 2000.0}, {"points": pts})
+	var h: PackedFloat32Array = card["heights"]
+	_check(card["name"] == "x" and card["line"] == "2,0 km" and h.size() == StartWaitModel.PROFILE_POINTS
+		and is_equal_approx(h[0], 0.0) and is_equal_approx(h[h.size() - 1], 0.4) and h[30] > 0.9, "profil ré-échantillonné de 0 à 1")
+	_check((StartWaitModel.route_card({"id": "x"}, {}) as Dictionary)["heights"].is_empty(), "sans profil : pas de courbe")
 
 
 func _test_menu_hidden() -> void:
@@ -109,6 +134,7 @@ func _run() -> void:
 	_test_texts()
 	_test_lights()
 	_test_screen()
+	_test_steps_and_card()
 	_test_menu_hidden()
 	_test_setting_text()
 	print("test_start_wait_model : %d vérifications, %d échecs" % [_checked, _failures])
