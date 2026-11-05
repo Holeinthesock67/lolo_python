@@ -42,6 +42,7 @@ VARIANTS = (
     ("B", "brume_ambiante=0.5", "brume éclairée à moitié"),
     ("C", "brume_ambiante=0.5,contraste=1.15,agx_contraste=1.35", "à moitié, contraste relevé"),
     ("D", "brume_ambiante=0.35,brume_densite=0.7,contraste=1.12", "brume plus légère et moins éclairée"),
+    ("E", "brume_ambiante=0.5,sans_glow", "brume éclairée à moitié, sans halo (−1 ms mesuré)"),
 )
 NAMES = [v[0] for v in VARIANTS]
 
@@ -131,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     la.add_argument("--out", type=Path,
                     default=Path.home() / "OpenRide" / "mesures" / time.strftime("%Y-%m-%d") / "reglage_image")
     la.add_argument("--qualites", default="medium,high")
-    la.add_argument("--variantes", default="B,C,D")
+    la.add_argument("--variantes", default="B,C,D,E")
     la.add_argument("--vitesse", type=float, default=90.0)
     la.add_argument("--size", default="1680x1011")
     la.add_argument("--godot", type=Path, default=Path(os.environ["GODOT"]) if os.environ.get("GODOT") else None)
