@@ -1,0 +1,7 @@
+[ÉCHEC] à-coups : pire image : 138 ms (au plus 100 ms)
+[OK] [T11 §8] bots à profil calibrés au départ (niveau des bots) : 1 (au moins 1 attendu)
+[OK] [T11 §8] encart des bots affiché : captures 6 (au moins 1 attendu), ex. 002_t065.png : « Grimpeur  220 W · 3,7 W/kg »
+[OK] [T11 §8] écart au bot affiché : captures 6 (au moins 1 attendu), ex. 002_t065.png : « +0,1 s »
+[OK] [T11 §8] voisin de devant (▲) dans l'encart : captures 1 (au moins 1 attendu), ex. 002_t065.png : « Grimpeur  220 W · 3,7 W/kg »
+[OK] [T11 §8] voisin de derrière (▼) dans l'encart : captures 7 (au moins 1 attendu), ex. 002_t065.png : « Rouleur  248 W · 3,4 W/kg »
+RÉSULTAT : ÉCHEC (1 vérification(s))
