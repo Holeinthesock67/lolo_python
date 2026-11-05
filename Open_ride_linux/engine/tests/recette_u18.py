@@ -3,7 +3,7 @@
 
 Usage :
     recette_u18.py lancer [--out DOSSIER] [--qualites low,medium,high] [--vitesse 60] [--size 1680x1011]
-                          [--trace DOSSIER.world | --sans-trace] [--godot CHEMIN]
+                          [--trace DOSSIER.world | --sans-trace] [--culling on|off] [--godot CHEMIN]
     recette_u18.py analyser DOSSIER
 
 `lancer` enchaîne, sans rien écrire dans le vrai dossier personnel (sim_bench.py a son HOME temporaire) :
@@ -90,7 +90,7 @@ def bench(args: argparse.Namespace, out: Path, world: Path, quality: str, durati
     out.mkdir(parents=True, exist_ok=True)
     cmd = [sys.executable, str(TESTS_DIR / "sim_bench.py"), "--native", "--probe", "--muet",
            "--quality", quality, "--size", args.size, "--world", str(world),
-           "--duration", f"{duration:.0f}", "--out", str(out)] + extra
+           "--duration", f"{duration:.0f}", "--culling", args.culling, "--out", str(out)] + extra
     if args.godot:
         cmd += ["--godot", str(args.godot)]
     return run(cmd, out / "sim_bench.txt")
@@ -379,6 +379,8 @@ def main(argv: list[str] | None = None) -> int:
     la.add_argument("--vitesse", type=float, default=60.0, help="vitesse tenue sur le tour (km/h, défaut 60)")
     la.add_argument("--size", default="1680x1011", help="fenêtre (défaut 1680x1011, comme les bancs 7v)")
     la.add_argument("--trace", type=Path, help="parcours personnel compilé (défaut : le plus gros trouvé)")
+    la.add_argument("--culling", default="off", choices=("on", "off"),
+                    help="tri de ce que la caméra ne voit pas (lot S1, sim_bench --culling ; défaut off comme le jeu)")
     la.add_argument("--sans-trace", action="store_true", help="sauter l'étape 3 (biomes forcés sur la trace)")
     la.add_argument("--godot", type=Path, default=Path(os.environ["GODOT"]) if os.environ.get("GODOT") else None)
     an = sub.add_parser("analyser", help="refaire résumé et planche d'un dossier déjà mesuré")
