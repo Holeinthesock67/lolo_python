@@ -877,7 +877,7 @@ func _step_start_wait(delta: float) -> void:
 	var rogue_scene: bool = rogue_host.is_active()
 	if _start_wait.frame(ROGUE_SCENE_ID if rogue_scene else _route_loaded_id,
 			0 if rogue_scene else streamer.pending_count(), delta * 1000.0):
-		print("Décor du départ prêt : %s" % _start_wait.route_id)
+		print("Décor du départ prêt : %s (à %d ms)" % [_start_wait.route_id, Time.get_ticks_msec()])
 		ipc.test_log("scene_ready id=%s" % _start_wait.route_id)
 	if _start_wait.should_send(Time.get_ticks_msec() / 1000.0, str(menu_flow.start_wait.get("phase", ""))):
 		ipc.send_command("scene_ready", {"route_id": _start_wait.route_id})
@@ -1245,8 +1245,8 @@ func _poll_route_job() -> void:
 		print("[essai] %d consignes chargées (%s)" % [_cues.cues.size(), CueModel.path_for(job["id"])])
 	elif _cues.load_error != "":
 		print("[essai] consignes ignorées (%s) : %s" % [CueModel.path_for(job["id"]), _cues.load_error])
-	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s)" % [job["id"], route.length_m, route.type,
-			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"]])
+	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s) (à %d ms)" % [job["id"], route.length_m, route.type,
+			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"], Time.get_ticks_msec()])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])
 	_probe.route_ready()   # démarrage : première image jouable comptée à partir d'ici (lot X15)
 

@@ -1514,9 +1514,13 @@ def _start_screen_scenes(s: Session) -> None:
     cadence, carte du parcours demo) puis « GO ! » à l'ouverture du départ."""
     core = s.core
     wait = {"cadence_rpm": 30, "hold_s": 3.0, "waited_s": 1.0}
-    core.set_scene(speed=0.0, s=0.0, session_state="READY", summary=None, cadence=0.0,
+    # Parcours demo imposé par la trame : les scènes d'avant peuvent avoir laissé un autre parcours choisi
+    # (« Vallée de test », sans fichier : bandeau rouge « introuvable » sur les captures du 5 novembre).
+    mark = core.log.mark()
+    core.set_scene(speed=0.0, s=0.0, session_state="READY", summary=None, cadence=0.0, route_id="demo",
                    start_wait=dict(wait, phase="decor", held_s=0.0))
-    time.sleep(1.0)
+    core.log.wait_for(r"^route_loaded id=demo", 20.0 * s.slowdown(), mark)
+    time.sleep(SETTLE_S)
     shot = s.capture("depart_decor")
     if shot:
         img, info = shot
@@ -1524,6 +1528,8 @@ def _start_screen_scenes(s: Session) -> None:
         s.check("depart_decor", "écran affiché, un feu, pastille Décor en cours",
                 st.get("visible") and st.get("lights") == 1 and st.get("steps", [{}])[0].get("state") == "current", str(st))
         s.check("depart_decor", "carte du parcours demo", st.get("route") == "Démo" and "4,0 km" in st.get("route_line", ""), str(st))
+        s.check("depart_decor", "écran figé pendant le chargement", st.get("animated") is False, str(st))
+        s.check_banner("depart_decor", img, info, None)
     core.set_scene(cadence=54.0, start_wait=dict(wait, phase="pedalage", held_s=1.6))
     time.sleep(1.0)
     shot = s.capture("depart_pedalage")

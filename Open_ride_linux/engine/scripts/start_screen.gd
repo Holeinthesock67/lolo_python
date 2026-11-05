@@ -9,6 +9,9 @@ extends Control
 ## - pastilles des trois étapes (décor, trainer, pédalage), texte de l'étape en cours ;
 ## - carte du parcours qui va être roulé (nom, distance, dénivelé, profil), absente sans parcours ;
 ## - anneau de cadence qui se remplit pendant le pédalage, cadence lissée au centre ; touche « Y annuler ».
+## Pendant le chargement du décor et la connexion du trainer, l'écran est figé (aucune animation, redessiné
+## seulement à chaque trame du core) pour laisser toute l'image au chargement ; les animations ne tournent
+## qu'au pédalage et au « GO ! ». Styles des cadres créés une fois (`_styles`).
 ## Voile opaque tant que le décor se charge, plus léger pendant le pédalage pour voir la route du départ ;
 ## au « GO ! », sans voile ni bandeau : feux verts, flash bref et « GO ! » penché (le rappel des commandes et
 ## le texte du segment restent lisibles autour).
@@ -63,6 +66,7 @@ var _font: Font = null
 var _title_font: FontVariation = null
 var _tag_font: FontVariation = null
 var _bold_font: FontVariation = null
+var _styles := {}         # StyleBoxFlat des cadres, par couleurs, rayon et épaisseur
 
 
 func _ready() -> void:
@@ -117,6 +121,8 @@ func show_go() -> void:
 func _process(delta: float) -> void:
 	if not visible:
 		return
+	if _go_left_s <= 0.0 and not _animated():
+		return   # chargement : écran figé, redessiné par show_wait seulement
 	_t += delta
 	_cadence_shown = lerpf(_cadence_shown, _cadence, clampf(delta * CADENCE_SMOOTH, 0.0, 1.0))
 	if _go_left_s > 0.0:
@@ -126,11 +132,16 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
+## Vrai au pédalage : seule étape de l'attente où l'écran s'anime.
+func _animated() -> bool:
+	return _wait is Dictionary and str(_wait.get("phase", "")) == "pedalage"
+
+
 ## Informations des tests visuels et unitaires.
 func test_info() -> Dictionary:
 	return {"visible": visible, "lights": StartWaitModel.lights(_wait), "go": _go_left_s > 0.0,
 		"text": StartWaitModel.text(_wait), "steps": StartWaitModel.steps(_wait),
-		"route": str(_route.get("name", "")), "route_line": str(_route.get("line", ""))}
+		"route": str(_route.get("name", "")), "route_line": str(_route.get("line", "")), "animated": _animated()}
 
 
 func _draw() -> void:
@@ -301,12 +312,16 @@ func _draw_go() -> void:
 # --- Aides de dessin ---------------------------------------------------------------------------
 
 func _rounded(r: Rect2, fill: Color, edge: Color, radius: int, width: int) -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = fill
-	sb.border_color = edge
-	sb.set_border_width_all(width)
-	sb.set_corner_radius_all(radius)
-	sb.anti_aliasing = true
+	var key := "%s|%s|%d|%d" % [fill.to_html(), edge.to_html(), radius, width]
+	var sb: StyleBoxFlat = _styles.get(key, null)
+	if sb == null:
+		sb = StyleBoxFlat.new()
+		sb.bg_color = fill
+		sb.border_color = edge
+		sb.set_border_width_all(width)
+		sb.set_corner_radius_all(radius)
+		sb.anti_aliasing = true
+		_styles[key] = sb
 	draw_style_box(sb, r)
 
 
