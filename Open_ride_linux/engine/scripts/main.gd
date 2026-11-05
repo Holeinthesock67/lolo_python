@@ -866,12 +866,17 @@ func _set_trial_badge(on: bool) -> void:
 	hud.set_trial_badge(on)
 
 
-## Menu plein écran : rien du HUD de séance derrière lui. Run Cyber-Rogue : la scène du mode a son HUD
-## diégétique (lot R11), le HUD classique (panneaux, profil, courbes) est caché ; le compteur d'images/s reste.
+## Menu plein écran : rien du HUD de séance derrière lui, ni les portiques et panneaux des segments (2.0.1 :
+## le sous-titre « Montée 1 · 4e catégorie » de l'arche de départ, juste au-dessus de la caméra, se lisait à
+## travers les menus translucides). Le préchauffage des marques (warm_up) est rangé sous la caméra, il reste
+## dessiné. Run Cyber-Rogue : la scène du mode a son HUD diégétique (lot R11), le HUD classique (panneaux,
+## profil, courbes) est caché ; le compteur d'images/s reste.
 func _sync_hud(menu_shown: bool) -> void:
 	hud.visible = not menu_shown and not rogue_host.is_active()
 	if overlay_layer != null:
 		overlay_layer.visible = not menu_shown
+	if segment_markers != null:
+		segment_markers.visible = not menu_shown and not rogue_host.is_active()   # la run les cache aussi
 
 
 ## Départ au pédalage (lot O36) : décor du départ prêt, puis `scene_ready` au core (start_wait_model.gd).
@@ -1382,7 +1387,8 @@ func _test_menu_state(req: String) -> Dictionary:
 		"group": menu_flow.settings_group, "editing": st["editing"], "items": items, "rows": rows,
 		"hint": menu_view.hint_text(), "devices": menu_view.devices.text() if menu_view.devices.visible else "",
 		"card": menu_view.card.text() if menu_view.card.visible else "", "session_state": menu_flow.session_state, "world_menu": world,
-		"rogue": rogue_host.is_active(), "hud": hud.visible, "quality": _quality_name}
+		"rogue": rogue_host.is_active(), "hud": hud.visible,
+		"markers": segment_markers != null and segment_markers.visible, "quality": _quality_name}
 
 
 func _avatar_info() -> Dictionary:
