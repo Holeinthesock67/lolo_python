@@ -121,7 +121,7 @@ func _run() -> void:
 	r.update(route.sample_point(9900.0), 0.0, 0.5)
 	_check(r.visible_count() == r.budget and r.budget == 40, "préréglage low : %d silhouettes pour un budget de 40" % r.visible_count())
 	var far_kept := 0.0
-	for m in range(2):
+	for m in range(r._sel.size()):
 		for i in r._sel[m]:
 			far_kept = maxf(far_kept, (cm.spectators[i]["pos"] as Vector3).distance_to(route.sample_point(9900.0)))
 	_check(far_kept < 60.0, "les plus proches de la caméra (le plus loin gardé à %.0f m)" % far_kept)

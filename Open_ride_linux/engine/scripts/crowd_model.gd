@@ -8,7 +8,8 @@ extends RefCounted
 ## Probabilité d'une case de DENSITY.x au début de la zone à DENSITY.y au sommet, modulée par des groupes
 ## de GROUP_M (un groupe sur trois est clairsemé) ; jusqu'à 2 spectateurs par case. Écart au bord de la
 ## chaussée de EDGE_M.x à EDGE_M.y ; aucun dans l'eau (surfaces et cours d'eau).
-## `spectators` : `[{s, side, pos, yaw, color, flag, phase, delay, group}]`, trié par `s`.
+## `spectators` : `[{s, side, pos, yaw, color, flag, sign, phase, delay, group}]`, trié par `s` ; un sur
+## quatre porte un drapeau (FLAG_SHARE), une part des autres une pancarte (SIGN_SHARE, Lot Y21).
 ##
 ## `update(rider_pos, rider_s, now_s)` : état « calme » ou « encourage » (cycliste à moins de
 ## CHEER_RADIUS_M), qui bascule après le délai propre au spectateur (0 à MAX_DELAY_S) ; seuls les
@@ -34,6 +35,8 @@ const HEAR_M := 150.0
 const PASS_BOOST := 0.35
 const PASS_BOOST_S := 5.0
 const COLORS := 8
+const FLAG_SHARE := 0.25
+const SIGN_SHARE := 0.14         # part des autres qui tiennent une pancarte (Lot Y21)
 
 var spectators: Array = []
 var groups: Array = []          # {s, count, center: Vector3}
@@ -110,7 +113,8 @@ func configure(route, climbs: Array, water: Dictionary = {}, crowd_all_climbs: b
 						"s": s, "side": side, "pos": pos, "edge_m": edge,
 						"yaw": atan2(to_road.x, to_road.z) + (_u(VegetationPlacer._mix(hk + 2)) - 0.5) * 1.2,   # face (+z) vers la route
 						"color": int(VegetationPlacer._mix(hk + 3) % COLORS),
-						"flag": _u(VegetationPlacer._mix(hk + 4)) < 0.25,
+						"flag": _u(VegetationPlacer._mix(hk + 4)) < FLAG_SHARE,
+						"sign": _u(VegetationPlacer._mix(hk + 4)) >= FLAG_SHARE and _u(VegetationPlacer._mix(hk + 7)) < SIGN_SHARE,
 						"phase": _u(VegetationPlacer._mix(hk + 5)),
 						"delay": MAX_DELAY_S * _u(VegetationPlacer._mix(hk + 6)),
 						"group": gidx,

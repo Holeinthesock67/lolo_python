@@ -1,9 +1,11 @@
 extends Node3D
 
 ## Affichage des spectateurs de crowd_model.gd (Lot P15) : personnages construits par code
-## (people_mesh.gd, Lot Y14 : corps articulé, tenue tirée par personne), en deux MultiMesh (avec et sans
-## drapeau), couleur du haut en couleur d'instance, tenue (peau, cheveux, pantalon) dans
-## INSTANCE_CUSTOM.w, animés par shaders/crowd.gdshader.
+## (people_mesh.gd, lots Y14 et Y21 : corps articulé, tenue et geste tirés par personne), en MultiMesh
+## par sorte (sans rien, porte-drapeau, porteur de pancarte) et par niveau de détail (détaillé en deçà de
+## `QualityPresets.people_lod_m`, réduit au-delà : `_loin`), couleur du haut en couleur d'instance, tenue
+## (peau, cheveux, pantalon, style, bas, coiffe, geste) dans INSTANCE_CUSTOM.w, taille et carrure tirées
+## par personne (`morph`), animés par shaders/crowd.gdshader.
 ## Pas de class_name : charger par preload("res://scripts/crowd_renderer.gd").
 ##
 ## - `set_preset(name, enabled)` : budget `living(preset).spectators`.
@@ -42,9 +44,20 @@ var budget := 40
 var sounds_played: Array = []     # sons de passants joués (tests)
 var last_update_usec := 0
 var _sound = null
-var _mmi: Array[MultiMeshInstance3D] = []   # 0 : sans drapeau, 1 : avec
-var _sel: Array = [[], []]                   # indices de spectateurs gardés, par MultiMesh
-var _shown: Array = [PackedByteArray(), PackedByteArray()]   # état écrit dans la donnée d'instance
+## Spectateurs : sorte × niveau de détail (indice `2 * sorte + lod` dans `_mmi`). Passants : personnes
+## détaillées, chiens, bancs, personnes au loin.
+const SPECTATOR_KINDS := ["plain", "flag", "sign"]
+const PASSERBY_KINDS := ["people", "dogs", "benches", "people_loin"]
+## Taille (y) et carrure (x, z) tirées par personne autour de 1.
+const MORPH_HEIGHT := Vector2(0.95, 1.05)
+const MORPH_GIRTH := Vector2(0.92, 1.12)
+const SIGN_ANIM := 9               # crowd.gdshader : porteur de pancarte tourné vers la caméra
+
+var _mmi: Array[MultiMeshInstance3D] = []
+var _sel: Array = []                         # indices de spectateurs gardés, par MultiMesh
+var _shown: Array = []                       # état écrit dans la donnée d'instance, par MultiMesh
+var _slots: Array = []                       # passants : [MultiMesh, indice] de chaque entrée affichée
+var lod_m := 25.0
 var _last_select := Vector3(INF, INF, INF)
 var _audio: AudioStreamPlayer3D
 var _meshes: Array = []
@@ -56,20 +69,31 @@ func _init(p_mode: String = "spectators") -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = CrowdShader
 	PeopleMesh.apply_palettes(mat)
-	var kinds := ["plain", "flag"] if mode == "spectators" else ["people", "dogs", "benches"]
+	var kinds := []
+	if mode == "spectators":
+		for kind in SPECTATOR_KINDS:
+			kinds.append(kind)
+			kinds.append(kind + "_loin")
+	else:
+		kinds = PASSERBY_KINDS
 	for kind in kinds:
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
 		mm.use_colors = true
 		mm.use_custom_data = true
+		var lod := 1 if str(kind).ends_with("_loin") else 0
 		var mesh: ArrayMesh
-		match kind:
+		match str(kind).trim_suffix("_loin"):
 			"dogs":
 				mesh = PeopleMesh.build_dog()
 			"benches":
 				mesh = PeopleMesh.build_bench()
+			"sign":
+				mesh = PeopleMesh.build_sign_holder(lod)
+			"flag":
+				mesh = PeopleMesh.build_person(true, false, lod)
 			_:
-				mesh = PeopleMesh.build_person(kind == "flag")
+				mesh = PeopleMesh.build_person(false, false, lod)
 		_meshes.append(mesh)
 		mm.mesh = mesh
 		var mmi := MultiMeshInstance3D.new()
@@ -91,6 +115,7 @@ func _init(p_mode: String = "spectators") -> void:
 
 func set_preset(preset_name: String, enabled: bool = true) -> void:
 	budget = int(QualityPresets.living(preset_name, enabled).get("spectators" if mode == "spectators" else "passersby", 0))
+	lod_m = QualityPresets.people_lod_m(preset_name)
 	for mmi in _mmi:
 		mmi.multimesh.instance_count = budget
 		mmi.multimesh.visible_instance_count = 0
@@ -106,8 +131,21 @@ func setup(crowd_model, sound_player = null) -> void:
 	_last_select = Vector3(INF, INF, INF)
 
 
+## Personnes affichées (spectateurs de toutes les sortes, ou passants détaillés et au loin).
 func visible_count() -> int:
-	return _mmi[0].multimesh.visible_instance_count + (_mmi[1].multimesh.visible_instance_count if mode == "spectators" else 0)
+	var n := 0
+	for k in range(_mmi.size()):
+		if mode == "spectators" or k == 0 or k == 3:
+			n += _mmi[k].multimesh.visible_instance_count
+	return n
+
+
+## Base d'une personne : orientation, taille et carrure tirées de son numéro (mêmes d'une séance à l'autre).
+static func morph(i: int, yaw: float, scale: float = 1.0) -> Basis:
+	var h := (i * 2246822519 + 374761393) & 0x7FFFFFFF
+	var sy := lerpf(MORPH_HEIGHT.x, MORPH_HEIGHT.y, float(h & 0xFF) / 255.0)
+	var sw := lerpf(MORPH_GIRTH.x, MORPH_GIRTH.y, float((h >> 8) & 0xFF) / 255.0)
+	return Basis(Vector3.UP, yaw).scaled_local(Vector3(sw, sy, sw) * scale)
 
 
 func setup_passersby(passersby_model, sound_player = null) -> void:
@@ -124,28 +162,38 @@ func update_passersby(cam_pos: Vector3, cam_s: float, now_s: float, event: Dicti
 	if model == null:
 		return
 	var list: Array = model.visible(cam_pos, cam_s, now_s, budget)
-	var people: MultiMesh = _mmi[0].multimesh
+	var near: MultiMesh = _mmi[0].multimesh
 	var dogs: MultiMesh = _mmi[1].multimesh
 	var benches: MultiMesh = _mmi[2].multimesh
-	# Nouvelle sélection : tout est réécrit ; sinon, seulement les entrées qui ont changé
-	var full := int(model.selection_serial) != _serial
+	var far: MultiMesh = _mmi[3].multimesh
+	# Nouvelle sélection : tout est réécrit et chaque entrée prend son niveau de détail ; sinon, seulement
+	# les entrées qui ont changé, à la même place
+	var full := int(model.selection_serial) != _serial or _slots.size() != list.size()
 	_serial = int(model.selection_serial)
+	if full:
+		_slots.clear()
+		var counts := [0, 0]
+		for e in list:
+			var lod := 0 if (e["pos"] as Vector3).distance_to(cam_pos) < lod_m else 1
+			_slots.append([near if lod == 0 else far, counts[lod]])
+			counts[lod] += 1
 	for k in range(list.size()):
 		var e: Dictionary = list[k]
 		if not full and not bool(e["dirty"]):
 			continue
-		var p: Dictionary = model.people[int(e["i"])]
-		var basis := Basis(Vector3.UP, float(e["yaw"]))
-		if str(p["role"]) == "kid":
-			basis = basis.scaled(Vector3.ONE * KID_SCALE)
-		people.set_instance_transform(k, Transform3D(basis, e["pos"]))
-		people.set_instance_custom_data(k, Color(float(p["phase"]), 1.0 if bool(e["wave"]) else 0.0,
-			float(PasserbyModel.ANIM[str(e["anim"])]), PeopleMesh.outfit_of(int(e["i"]))))
+		var people: MultiMesh = _slots[k][0]
+		var j: int = _slots[k][1]
+		var i := int(e["i"])
+		var p: Dictionary = model.people[i]
+		var basis := morph(i, float(e["yaw"]), KID_SCALE if str(p["role"]) == "kid" else 1.0)
+		people.set_instance_transform(j, Transform3D(basis, e["pos"]))
+		people.set_instance_custom_data(j, Color(float(p["phase"]), 1.0 if bool(e["wave"]) else 0.0,
+			float(PasserbyModel.ANIM[str(e["anim"])]), PeopleMesh.outfit_of(i)))
 		var dog: int = e["dog"]
 		if dog >= 0:
 			dogs.set_instance_transform(dog, Transform3D(Basis(Vector3.UP, float(e["dog_yaw"])), e["dog_pos"]))
 		if full:
-			people.set_instance_color(k, PALETTE[int(p["color"]) % PALETTE.size()])
+			people.set_instance_color(j, PALETTE[int(p["color"]) % PALETTE.size()])
 			if dog >= 0:
 				dogs.set_instance_color(dog, DOG_PALETTE[int(p["color"]) % DOG_PALETTE.size()])
 				dogs.set_instance_custom_data(dog, Color(fmod(float(p["phase"]) + 0.3, 1.0), 0.0, float(PasserbyModel.ANIM["dog"]), 0.0))
@@ -155,7 +203,11 @@ func update_passersby(cam_pos: Vector3, cam_s: float, now_s: float, event: Dicti
 				benches.set_instance_color(bench, BENCH_COLOR)
 				benches.set_instance_custom_data(bench, Color(0, 0, 0, 0))
 	if full:
-		people.visible_instance_count = list.size()
+		var n_near := 0
+		for sl in _slots:
+			n_near += 1 if sl[0] == near else 0
+		near.visible_instance_count = n_near
+		far.visible_instance_count = list.size() - n_near
 		dogs.visible_instance_count = int(model.dog_count)
 		benches.visible_instance_count = int(model.bench_count)
 	var kind := str(event.get("sound", ""))
@@ -172,28 +224,43 @@ func update_passersby(cam_pos: Vector3, cam_s: float, now_s: float, event: Dicti
 	last_update_usec = Time.get_ticks_usec() - t0
 
 
+## Sorte d'un spectateur (indice dans SPECTATOR_KINDS).
+static func kind_of(sp: Dictionary) -> int:
+	return 1 if bool(sp.get("flag", false)) else (2 if bool(sp.get("sign", false)) else 0)
+
+
+## Animation de crowd.gdshader des spectateurs du MultiMesh `m` : debout, ou porteur de pancarte (9).
+static func _anim_of(m: int) -> float:
+	return float(SIGN_ANIM) if m / 2 == 2 else 0.0
+
+
 func _select(cam_pos: Vector3) -> void:
 	var order := []
 	var sp: Array = model.spectators
 	for i in range(sp.size()):
 		order.append([(sp[i]["pos"] as Vector3).distance_squared_to(cam_pos), i])
 	order.sort_custom(func(a, b): return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
-	_sel = [[], []]
+	_sel = []
+	_shown = []
+	for m in range(_mmi.size()):
+		_sel.append([])
+		_shown.append(PackedByteArray())
 	for j in range(mini(budget, order.size())):
 		var i: int = order[j][1]
-		_sel[1 if bool(sp[i]["flag"]) else 0].append(i)
-	for m in range(2):
+		var lod := 0 if float(order[j][0]) < lod_m * lod_m else 1
+		_sel[2 * kind_of(sp[i]) + lod].append(i)
+	for m in range(_mmi.size()):
 		var mm: MultiMesh = _mmi[m].multimesh
 		var list: Array = _sel[m]
 		var shown := PackedByteArray()
 		shown.resize(list.size())
 		for k in range(list.size()):
 			var s: Dictionary = sp[list[k]]
-			mm.set_instance_transform(k, Transform3D(Basis(Vector3.UP, float(s["yaw"])), s["pos"]))
+			mm.set_instance_transform(k, Transform3D(morph(list[k], float(s["yaw"])), s["pos"]))
 			mm.set_instance_color(k, PALETTE[int(s["color"]) % PALETTE.size()])
 			var st = model.states.get(list[k])
 			shown[k] = 1 if st != null and bool(st["cheer"]) else 0
-			mm.set_instance_custom_data(k, Color(float(s["phase"]), float(shown[k]), 0.0, PeopleMesh.outfit_of(list[k])))
+			mm.set_instance_custom_data(k, Color(float(s["phase"]), float(shown[k]), _anim_of(m), PeopleMesh.outfit_of(list[k])))
 		_shown[m] = shown
 		mm.visible_instance_count = list.size()
 	_last_select = cam_pos
@@ -208,7 +275,7 @@ func update(cam_pos: Vector3, now_s: float, cheer: float = 0.0) -> void:
 	# Donnée d'instance réécrite seulement quand l'état d'un spectateur gardé change
 	var sp: Array = model.spectators
 	var states: Dictionary = model.states
-	for m in range(2):
+	for m in range(_sel.size()):
 		var mm: MultiMesh = _mmi[m].multimesh
 		var list: Array = _sel[m]
 		var shown: PackedByteArray = _shown[m]
@@ -218,7 +285,7 @@ func update(cam_pos: Vector3, now_s: float, cheer: float = 0.0) -> void:
 			var on := 1 if st != null and bool(st["cheer"]) else 0
 			if shown[k] != on:
 				shown[k] = on
-				mm.set_instance_custom_data(k, Color(float(sp[i]["phase"]), float(on), 0.0, PeopleMesh.outfit_of(i)))
+				mm.set_instance_custom_data(k, Color(float(sp[i]["phase"]), float(on), _anim_of(m), PeopleMesh.outfit_of(i)))
 	# Clameur sur le groupe le plus proche
 	if cheer > 0.0 and not model.groups.is_empty():
 		var gi := _nearest_group_to(cam_pos)

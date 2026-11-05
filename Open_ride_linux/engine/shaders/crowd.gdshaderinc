@@ -1,32 +1,49 @@
 global uniform float anim_time;
 
 // Corps de crowd.gdshader (les bots ont l'avatar du joueur depuis le lot Y18 : bots_view.gd).
-// Spectateurs du Lot P15 et passants du Lot P21, personnages refaits par le Lot Y14 (people_mesh.gd) :
-// animation par articulations (hanche, genou, épaule) à partir du temps global anim_time
-// (anim_clock.gd : figé avec le décor quand le core ne répond plus).
+// Spectateurs du Lot P15 et passants du Lot P21, personnages refaits par les lots Y14 et Y21
+// (people_mesh.gd) : animation par articulations (hanche, genou, épaule, coude, cou) à partir du temps
+// global anim_time (anim_clock.gd : figé avec le décor quand le core ne répond plus).
 // - INSTANCE_CUSTOM.x : phase (0 à 1) ; INSTANCE_CUSTOM.y : 0 calme, 1 encourage ou salue
 //   (crowd_renderer.gd) ; INSTANCE_CUSTOM.z : animation (passersby_model.gd ANIM) : 0 debout
 //   (spectateur), 1 marche, 2 course, 3 assis, 4 jardinage, 5 sautille, 6 chien, 7 coureur qui pédale,
-//   8 vélo (pédalier et roues qui tournent) ; pour 7 et 8, INSTANCE_CUSTOM.y = cadence / 100 tr/min ;
-//   INSTANCE_CUSTOM.w : tenue (people_mesh.gd outfit : peau + 4 × (cheveux + 6 × (pantalon + 6 × style))) ;
-//   style : bit 1 cheveux longs, bit 2 haut à bande.
-// - CUSTOM0.w : 1 cheveux longs (repliés sans le bit de style), 2 casque (aérations sombres).
-// - Données de sommet (people_mesh.gd) : CUSTOM0.x zone, CUSTOM0.y tibia, CUSTOM0.z porte-drapeau ;
-//   UV.y bras libre, UV.x poids du drapeau ; UV2.x ±1 par jambe (patte), UV2.y bras qui salue.
+//   8 vélo (pédalier et roues qui tournent), 9 porteur de pancarte (debout, tout le corps tourné vers la
+//   caméra, au plus SIGN_MAX_YAW, pour que la pancarte se lise de la route) ; pour 7 et 8, INSTANCE_CUSTOM.y = cadence / 100 tr/min ;
+//   INSTANCE_CUSTOM.w : tenue (people_mesh.gd outfit : peau + 4 × (cheveux + 6 × (pantalon + 6 × (style
+//   + 8 × (bas + 3 × (coiffe + 3 × geste)))))) ; style : bit 1 cheveux longs, bit 2 haut à bande, bit 4
+//   veste ouverte à manches longues ; bas : pantalon, short, jupe ; coiffe : rien, casquette, chapeau.
+// - Debout (animation 0) : le geste (GESTURE_* de people_mesh.gd) choisit la pose quand la personne
+//   encourage (bras levés, applaudit, poing levé, porte-voix, photo au téléphone, sautille en
+//   applaudissant, salue d'un bras, deux poings) et, `geste % 4`, l'attitude au calme (bras le long du
+//   corps, croisés, mains sur les hanches, mains jointes) ; debout, assis ou sautillant, la tête suit la
+//   caméra (le cycliste) quand elle passe à moins de HEAD_TRACK_M.
+// - CUSTOM0.w : pièces montrées selon la tenue (1 cheveux longs, 3 casquette, 4 chapeau, 5 jupe,
+//   6 téléphone : repliées dans la tête sinon), 2 casque (aérations sombres), 7 drapeau (motif), 8 pancarte
+//   (bras et pancarte balancés ensemble).
+// - Données de sommet (people_mesh.gd) : CUSTOM0.x zone, CUSTOM0.y tibia et avant-bras, CUSTOM0.z
+//   porteur (bras levé, hampe, drapeau, pancarte) ; UV.y bras libre, UV.x poids du drapeau (et abscisse de
+//   son motif) ; UV2.x ±1 par jambe (patte), UV2.y bras qui salue (ordonnée du motif sur le drapeau).
 // - COLOR : couleur d'instance du MultiMesh, couleur du haut (ou de la robe du chien, du bois du banc).
 uniform vec3 skin_tones[4];
 uniform vec3 hair_colors[6];
 uniform vec3 trouser_colors[6];
+uniform vec3 flag_colors[6];
 // Palettes posées en Vector3 sRGB (people_mesh.gd) ; teinte calculée en sRGB, convertie à l'écriture.
 #include "res://shaders/couleur_srgb.gdshaderinc"
 uniform vec3 shoe_color = vec3(0.12, 0.1, 0.09);
 uniform vec3 pole_color = vec3(0.6, 0.5, 0.36);
 uniform vec3 metal_color = vec3(0.7, 0.71, 0.73);
-uniform vec4 joints = vec4(0.92, 0.5, 1.42, 0.235);   // hanche, genou, épaule (hauteurs), écart des épaules
+uniform vec3 straw_color = vec3(0.86, 0.76, 0.5);
+uniform vec4 joints = vec4(0.92, 0.5, 1.42, 0.205);   // hanche, genou, épaule (hauteurs), écart des épaules
+uniform vec2 elbow = vec2(1.14, 0.225);               // coude : hauteur, écart
+uniform vec4 sign_rect = vec4(-0.43, 1.94, 0.43, 2.42); // pancarte : x min, y min, x max, y max
 uniform vec4 bike = vec4(0.3, 0.2, 0.17, 0.34);       // boîtier (hauteur, avance), manivelle, rayon des roues
 uniform vec4 axles = vec4(0.34, 0.8, 0.34, -0.21);    // axe avant (hauteur, avance), axe arrière
 const float ANKLE_Y = 0.08;
 const float WHEEL_TURNS_PER_CRANK = 2.6;               // braquet moyen : tours de roue par tour de pédalier
+const float HEAD_TRACK_M = 40.0;                       // la tête suit la caméra en deçà
+const float HEAD_MAX_YAW = 1.1;                        // rotation de la tête au plus (radians)
+const float SIGN_MAX_YAW = 0.9;                        // rotation du porteur de pancarte au plus (radians)
 
 // Angle du pédalier (radians) : cadence × temps, décalé par la phase
 float crank_angle(float cadence, float phase) {
@@ -37,7 +54,9 @@ varying flat float v_region;
 varying flat float v_outfit;
 varying flat float v_extra;
 varying flat float v_rider;
-varying vec3 v_local;          // position du sommet avant animation (motifs du haut et du casque)
+varying float v_shin;
+varying vec2 v_pattern;        // drapeau : (le long, de haut en bas), de 0 à 1
+varying vec3 v_local;          // position du sommet avant animation (motifs du haut, du casque, de la pancarte)
 
 // Rotation de p autour de l'axe x passant par le pivot (angle positif : le bas part vers l'arrière, -z,
 // le haut vers l'avant)
@@ -52,18 +71,77 @@ vec3 rot_z(vec3 p, vec3 pivot, float a) {
 	return pivot + vec3(d.x * cos(a) - d.y * sin(a), d.x * sin(a) + d.y * cos(a), d.z);
 }
 
+// Rotation de p autour de l'axe y passant par le pivot (angle positif : l'avant, +z, part vers +x)
+vec3 rot_y(vec3 p, vec3 pivot, float a) {
+	vec3 d = p - pivot;
+	return pivot + vec3(d.x * cos(a) + d.z * sin(a), d.y, -d.x * sin(a) + d.z * cos(a));
+}
+
+// Champs de la tenue (people_mesh.gd outfit)
+int outfit_style(int o) { return (o / 144) % 8; }
+int outfit_bottom(int o) { return (o / 1152) % 3; }
+int outfit_hat(int o) { return (o / 3456) % 3; }
+int outfit_gesture(int o) { return (o / 10368) % 8; }
+
+// Pose d'un bras (côté `s` : ±1) : (écart sur le côté, balancement avant (négatif) ou arrière, rotation
+// vers l'intérieur, flexion du coude), pour l'attitude au calme (`calm` = geste % 4) ou le geste.
+vec4 calm_arm(int calm, float s, float t, float phase) {
+	float idle = 0.03 * sin(t * 1.3 + phase);
+	if (calm == 1) {
+		return vec4(0.12, -0.28 - (s > 0.0 ? 0.08 : 0.0), 1.28, 1.95);    // bras croisés
+	} else if (calm == 2) {
+		return vec4(0.62, 0.12, 1.35, 1.25);                               // mains sur les hanches
+	} else if (calm == 3) {
+		return vec4(0.04, -0.3 + idle, 0.95, 0.95);                        // mains jointes devant
+	}
+	return vec4(0.08 + idle, 0.04 * s * sin(t * 0.9 + phase), 0.0, 0.18);   // bras le long du corps
+}
+
+vec4 cheer_arm(int g, float s, float t, float phase) {
+	float wave = sin(t * 8.0 + phase);
+	if (g == 1 || g == 5) {
+		float clap = sin(t * 13.0 + phase);
+		return vec4(0.18, -0.85, 0.75 + 0.3 * clap, 1.35);                 // applaudit
+	} else if (g == 2) {
+		if (s > 0.0) {
+			return vec4(2.85, -0.12, 0.0, 0.5 + 0.7 * max(0.0, sin(t * 7.0 + phase)));   // poing levé
+		}
+		return vec4(0.12, -0.1, 0.0, 0.3);
+	} else if (g == 3) {
+		return vec4(0.32, -0.95, 1.05, 2.25);                              // mains en porte-voix
+	} else if (g == 4) {
+		return vec4(0.22, -1.2, 0.5, 1.5);                                 // photo au téléphone
+	} else if (g == 6) {
+		if (s > 0.0) {
+			return vec4(2.45 + 0.3 * sin(t * 9.0 + phase), -0.2, 0.0, 0.35);  // salue d'un bras
+		}
+		return vec4(0.1, 0.0, 0.0, 0.2);
+	} else if (g == 7) {
+		return vec4(2.7, -0.15, 0.0, 0.55 + 0.75 * max(0.0, sin(t * 7.0 + phase + s * 1.5708)));   // deux poings
+	}
+	return vec4(2.55 + 0.25 * wave, -0.15, 0.0, 0.3 + 0.2 * wave);         // bras levés qui s'agitent
+}
+
 void vertex() {
 	v_region = CUSTOM0.x;
 	v_outfit = INSTANCE_CUSTOM.w;
 	v_extra = CUSTOM0.w;
 	v_local = VERTEX;
+	v_shin = CUSTOM0.y;
+	v_pattern = vec2(UV.x, UV2.y);
 	float phase = INSTANCE_CUSTOM.x * 6.2831853;
 	float excite = INSTANCE_CUSTOM.y;
 	int anim = int(INSTANCE_CUSTOM.z + 0.5);
+	int o = int(INSTANCE_CUSTOM.w + 0.5);
+	int style = outfit_style(o);
+	int gesture = outfit_gesture(o);
+	int extra = int(CUSTOM0.w + 0.5);
 	v_rider = anim == 7 ? 1.0 : 0.0;
-	// Cheveux longs repliés quand la tenue ne les a pas
-	int style = (int(INSTANCE_CUSTOM.w + 0.5) / 144) % 4;
-	if (int(CUSTOM0.w + 0.5) == 1 && (style & 1) == 0) {
+	// Pièces de tenue repliées dans la tête quand la tenue (ou le geste) ne les montre pas
+	bool hidden = (extra == 1 && (style & 1) == 0) || (extra == 3 && outfit_hat(o) != 1)
+		|| (extra == 4 && outfit_hat(o) != 2) || (extra == 5 && outfit_bottom(o) != 2)
+		|| (extra == 6 && !(anim == 0 && excite > 0.5 && gesture == 4));
+	if (hidden) {
 		VERTEX = vec3(0.0, 1.6, 0.0);
 	}
 	float leg = UV2.x;                       // ±1 sur une jambe, 0 ailleurs
@@ -71,7 +149,8 @@ void vertex() {
 	bool is_leg = abs(leg) > 0.5;
 	bool free_arm = UV.y > 0.5;
 	bool holder = CUSTOM0.z > 0.5;
-	bool waving = UV2.y > 0.5 && excite > 0.5 && anim < 7;
+	bool below_joint = CUSTOM0.y > 0.5;       // tibia ou avant-bras
+	bool waving = UV2.y > 0.5 && excite > 0.5 && anim != 0 && anim < 7;
 	vec3 p = VERTEX;
 	vec3 n = NORMAL;
 
@@ -80,12 +159,24 @@ void vertex() {
 	float knee = 0.0;       // tibia autour du genou (positif : plié vers l'arrière)
 	float arm_swing = 0.0;  // bras autour de l'épaule, d'avant en arrière
 	float arm_raise = 0.08; // bras écartés sur le côté (radians, symétriques)
+	float arm_twist = 0.0;  // bras tourné vers l'intérieur autour de la verticale de l'épaule
+	float arm_flex = 0.18;  // coude plié (avant-bras vers l'avant)
 	float bend = 0.0;       // buste penché vers l'avant autour de la hanche
 	float lift = 0.0;       // corps entier soulevé (m)
+	bool track = false;     // tête qui suit la caméra
 	if (anim == 0) {
-		float wave = sin(anim_time * 8.0 + phase);
-		arm_raise = mix(0.08 + 0.03 * sin(anim_time * 1.3 + phase), 2.55 + 0.25 * wave, excite);
-		lift = excite * 0.04 * max(0.0, sin(anim_time * 8.0 + phase));
+		vec4 arm = mix(calm_arm(gesture % 4, side, anim_time, phase), cheer_arm(gesture, side, anim_time, phase), excite);
+		arm_raise = arm.x;
+		arm_swing = arm.y;
+		arm_twist = arm.z;
+		arm_flex = arm.w;
+		float hop = gesture == 5 ? 0.09 : (gesture == 0 || gesture == 7 ? 0.04 : 0.0);
+		lift = excite * hop * max(0.0, sin(anim_time * 8.0 + phase));
+		bend = excite * (gesture == 3 ? 0.12 + 0.06 * sin(anim_time * 5.0 + phase) : 0.0);
+		track = true;
+	} else if (anim == 9) {
+		lift = excite * 0.03 * max(0.0, sin(anim_time * 8.0 + phase));
+		track = true;
 	} else if (anim == 1 || anim == 2) {
 		float run = anim == 2 ? 1.0 : 0.0;
 		float freq = mix(6.5, 11.0, run);
@@ -93,21 +184,28 @@ void vertex() {
 		hip = leg * sw * mix(0.38, 0.7, run);
 		knee = max(0.0, -leg * sw) * mix(0.5, 1.3, run) + run * 0.5;
 		arm_swing = -side * sw * mix(0.35, 0.8, run);
+		arm_flex = mix(0.3, 1.45, run);
 		lift = abs(sw) * mix(0.015, 0.06, run);
 		bend = run * 0.15;
 	} else if (anim == 3) {
 		hip = -1.5708;
 		knee = 1.5708;
 		lift = -(joints.x - 0.47);
-		arm_swing = -0.5;
+		arm_swing = -0.35;
+		arm_flex = 0.9;
+		arm_twist = 0.35;
+		track = true;
 	} else if (anim == 4) {
 		bend = 0.95 + 0.3 * sin(anim_time * 2.0 + phase);
 		arm_swing = -0.9 - 0.3 * sin(anim_time * 2.0 + phase);
+		arm_flex = 0.35;
 		knee = 0.25;
 		hip = -0.2;
 	} else if (anim == 5) {
 		lift = abs(sin(anim_time * 4.0 + phase)) * 0.12;
 		arm_raise = 0.5;
+		arm_flex = 0.5;
+		track = true;
 	} else if (anim == 7) {
 		// Coureur : pied sur la pédale (jambe à deux segments résolue au genou), buste penché, mains au cintre
 		float c = crank_angle(excite, phase) + (leg < 0.0 ? 3.14159265 : 0.0);
@@ -123,6 +221,7 @@ void vertex() {
 		bend = 0.8;
 		arm_swing = -1.75;
 		arm_raise = 0.0;
+		arm_flex = 0.0;
 	}
 
 	if (anim == 8) {
@@ -149,16 +248,23 @@ void vertex() {
 		if (is_leg) {
 			vec3 knee_p = vec3(VERTEX.x, joints.y, 0.0);
 			vec3 hip_p = vec3(VERTEX.x, joints.x, 0.0);
-			if (CUSTOM0.y > 0.5) {
+			if (below_joint) {
 				p = rot_x(p, knee_p, knee);
 				n = rot_x(n, vec3(0.0), knee);
 			}
 			p = rot_x(p, hip_p, hip);
 			n = rot_x(n, vec3(0.0), hip);
 		}
-		// Bras : écartés sur le côté, puis balancés
+		// Bras : coude plié, bras tourné vers l'intérieur, écarté sur le côté, puis balancé
 		vec3 shoulder = vec3(side * joints.w, joints.z, 0.0);
 		if (free_arm) {
+			if (below_joint) {
+				vec3 elbow_p = vec3(side * elbow.y, elbow.x, 0.0);
+				p = rot_x(p, elbow_p, -arm_flex);
+				n = rot_x(n, vec3(0.0), -arm_flex);
+			}
+			p = rot_y(p, shoulder, -side * arm_twist);
+			n = rot_y(n, vec3(0.0), -side * arm_twist);
 			float raise = waving ? 2.6 + 0.2 * sin(anim_time * 9.0 + phase) : arm_raise;
 			p = rot_z(p, shoulder, side * raise);
 			n = rot_z(n, vec3(0.0), side * raise);
@@ -166,11 +272,29 @@ void vertex() {
 			p = rot_x(p, shoulder, swing);
 			n = rot_x(n, vec3(0.0), swing);
 		}
-		// Porte-drapeau : le bras levé et la hampe balancent quand il encourage ; la toile ondule
-		if (holder) {
+		if (holder && extra == 8) {
+			// Pancarte : bras et pancarte balancés ensemble autour du milieu des épaules quand il encourage
+			float a = excite * 0.12 * sin(anim_time * 4.0 + phase);
+			p = rot_z(p, vec3(0.0, joints.z, 0.0), a);
+			n = rot_z(n, vec3(0.0), a);
+			p.y += excite * 0.05 * max(0.0, sin(anim_time * 8.0 + phase));
+		} else if (holder) {
+			// Porte-drapeau : le bras levé et la hampe balancent quand il encourage ; la toile ondule
 			float a = excite * 0.35 * sin(anim_time * 5.0 + phase);
 			p = rot_z(p, shoulder, a);
 			p.x += UV.x * sin(anim_time * (3.0 + 5.0 * excite) - UV.x * 4.0 + phase) * (0.06 + 0.12 * excite);
+		}
+		// Tête (cou, visage, cheveux, coiffe) tournée vers la caméra quand elle passe près ; porteur de
+		// pancarte : tout le corps d'abord (au plus SIGN_MAX_YAW), la tête fait le reste
+		bool head = !free_arm && !holder && VERTEX.y > 1.49;
+		if (track && (head || anim == 9)) {
+			vec3 cam = (inverse(MODEL_MATRIX) * vec4(CAMERA_POSITION_WORLD, 1.0)).xyz;
+			float yaw = atan(cam.x, cam.z);
+			float reach = smoothstep(HEAD_TRACK_M, HEAD_TRACK_M * 0.6, length(cam.xz)) * smoothstep(2.6, 1.8, abs(yaw));
+			float body = anim == 9 ? clamp(yaw, -SIGN_MAX_YAW, SIGN_MAX_YAW) * reach : 0.0;
+			float a = body + (head ? clamp(yaw - body, -HEAD_MAX_YAW, HEAD_MAX_YAW) * reach : 0.0);
+			p = rot_y(p, vec3(0.0), a);
+			n = rot_y(n, vec3(0.0), a);
 		}
 		// Coureur : tête relevée pour regarder la route malgré le buste penché
 		if (anim == 7 && VERTEX.y > 1.46 && !free_arm) {
@@ -189,37 +313,90 @@ void vertex() {
 	}
 }
 
+// Motif du drapeau (`pattern` : 0 tricolore vertical, 1 deux bandes, 2 croix nordique, 3 à pois) en
+// coordonnées (le long, de haut en bas) ; c1 couleur d'instance, c2 couleur d'appoint.
+vec3 flag_pattern(int pattern, vec2 q, vec3 c1, vec3 c2) {
+	if (pattern == 0) {
+		return q.x < 0.333 ? c1 : (q.x < 0.667 ? vec3(0.95) : c2);
+	} else if (pattern == 1) {
+		return q.y < 0.5 ? c1 : c2;
+	} else if (pattern == 2) {
+		bool cross = abs(q.x - 0.36) < 0.07 || abs(q.y - 0.5) < 0.1;
+		return cross ? c2 : c1;
+	}
+	vec2 cell = fract(q * vec2(5.0, 3.4)) - 0.5;
+	return length(cell) < 0.28 ? vec3(0.85, 0.08, 0.1) : vec3(0.97);
+}
+
 void fragment() {
 	int region = int(v_region + 0.5);
 	int o = int(v_outfit + 0.5);
+	int extra = int(v_extra + 0.5);
 	vec3 c = COLOR.rgb;
-	int style = (o / 144) % 4;
+	int style = outfit_style(o);
+	int bottom = outfit_bottom(o);
+	vec3 skin = skin_tones[o % 4];
+	vec3 trousers = trouser_colors[(o / 24) % 6];
 	if (region == 0) {
-		// Bande claire sur la poitrine (haut à bande, maillot du coureur), flancs sombres du maillot,
-		// aérations du casque
-		bool stripe = (style & 2) != 0 || v_rider > 0.5;
-		float band = step(1.22, v_local.y) * step(v_local.y, 1.3) * (stripe ? 1.0 : 0.0) * (v_extra > 0.5 ? 0.0 : 1.0);
-		c = mix(c, vec3(0.95), band * 0.85);
-		if (v_rider > 0.5 && v_extra < 0.5 && abs(v_local.x) > 0.15 && v_local.y > 0.98) {
-			c *= 0.35;
-		}
-		if (int(v_extra + 0.5) == 2 && v_local.y > 1.66 && fract(v_local.x * 22.0) < 0.35) {
-			c *= 0.25;
+		if (extra == 7) {
+			// Deuxième couleur prise plus loin dans la palette si elle ressemble trop à la première
+			int k = (o / 24) % 6;
+			vec3 c2 = flag_colors[k];
+			if (length(c2 - c) < 0.35) {
+				c2 = flag_colors[(k + 2) % 6];
+			}
+			c = flag_pattern((o / 4) % 4, v_pattern, c, c2);
+		} else {
+			// Bande claire sur la poitrine (haut à bande, maillot du coureur), flancs sombres du maillot,
+			// aérations du casque, veste ouverte sur un tee-shirt clair
+			bool stripe = (style & 2) != 0 || v_rider > 0.5;
+			float band = step(1.22, v_local.y) * step(v_local.y, 1.3) * (stripe ? 1.0 : 0.0) * (v_extra > 0.5 ? 0.0 : 1.0);
+			c = mix(c, vec3(0.95), band * 0.85);
+			if ((style & 4) != 0 && v_rider < 0.5 && extra == 0 && v_local.z > 0.0 && abs(v_local.x) < 0.05
+					&& v_local.y > 0.98 && v_local.y < 1.47) {
+				c = vec3(0.92, 0.92, 0.9);
+			}
+			if (v_rider > 0.5 && v_extra < 0.5 && abs(v_local.x) > 0.15 && v_local.y > 0.98) {
+				c *= 0.35;
+			}
+			if (extra == 2 && v_local.y > 1.66 && fract(v_local.x * 22.0) < 0.35) {
+				c *= 0.25;
+			}
 		}
 	} else if (region == 1) {
-		c = skin_tones[o % 4];
+		c = skin;
 	} else if (region == 2) {
 		c = hair_colors[(o / 4) % 6];
 	} else if (region == 3) {
-		c = trouser_colors[(o / 24) % 6];
+		// Short : mollets nus ; jupe : jambes nues sous la jupe
+		c = (bottom != 0 && v_shin > 0.5 && v_rider < 0.5) ? skin : trousers;
 	} else if (region == 4) {
 		c = shoe_color;
 	} else if (region == 5) {
-		c = pole_color;
+		c = extra == 4 ? straw_color : pole_color;
 	} else if (region == 6) {
 		c = metal_color;
+	} else if (region == 7) {
+		// Pancarte : fond clair, bord à la couleur du haut, deux lignes de lettres
+		vec2 q = (v_local.xy - sign_rect.xy) / (sign_rect.zw - sign_rect.xy);
+		c = vec3(0.96, 0.95, 0.9);
+		if (q.x < 0.04 || q.x > 0.96 || q.y < 0.06 || q.y > 0.94) {
+			c = COLOR.rgb;
+		} else {
+			float line = q.y > 0.52 && q.y < 0.82 ? 1.0 : (q.y > 0.2 && q.y < 0.44 ? 2.0 : 0.0);
+			float letter = fract(q.x * 7.0 + float(o % 3) * 0.37);
+			bool ink = line > 0.0 && q.x > 0.1 && q.x < 0.9 && letter > 0.12 && letter < 0.82
+				&& (fract(q.y * 18.0 + q.x * 3.0) < 0.75 || abs(letter - 0.47) < 0.12);
+			if (ink) {
+				c = line > 1.5 ? flag_colors[(o / 24) % 6] : COLOR.rgb;
+				c = length(c - vec3(0.96)) < 0.2 ? vec3(0.1) : c;
+			}
+		}
+	} else if (region == 8) {
+		// Peau du bras, manche longue avec une veste
+		c = ((style & 4) != 0 && v_rider < 0.5) ? COLOR.rgb : skin;
 	}
 	ALBEDO = lineaire(c);
-	ROUGHNESS = region == 1 ? 0.6 : (region == 6 ? 0.35 : 0.85);
+	ROUGHNESS = (region == 1 || region == 8) ? 0.6 : (region == 6 ? 0.35 : 0.85);
 	METALLIC = region == 6 ? 0.8 : 0.0;
 }

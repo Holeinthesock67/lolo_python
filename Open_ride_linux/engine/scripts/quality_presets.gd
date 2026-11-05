@@ -139,6 +139,13 @@ const BOT_LOD_M := {
 	"high": [20.0, 60.0],
 }
 const BOT_SHADOW_MAX_LOD := 1
+## Lot Y21 : spectateurs et passants détaillés en deçà de cette distance (m), maillage réduit au-delà
+## (people_mesh.gd `lod`, crowd_renderer.gd).
+const PEOPLE_LOD_M := {
+	"low": 12.0,
+	"medium": 25.0,
+	"high": 40.0,
+}
 const BOT_LOD_HYSTERESIS_M := 2.0
 
 
@@ -181,6 +188,11 @@ static func image(name: String) -> Dictionary:
 ## Distance où le brouillard de profondeur devient opaque (lot Y1), `low` si le nom est inconnu.
 static func fog_end_m(name: String) -> float:
 	return float(preset(name)["fog_end_m"])
+
+
+## Distance du niveau de détail des personnages du décor (Lot Y21) pour le préréglage `name`.
+static func people_lod_m(name: String) -> float:
+	return float(PEOPLE_LOD_M[applied_name(name)])
 
 
 static func shadow_distance_m(name: String) -> float:
