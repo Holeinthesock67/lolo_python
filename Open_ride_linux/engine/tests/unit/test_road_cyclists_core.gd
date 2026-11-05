@@ -107,7 +107,7 @@ func _run() -> void:
 	_check(got.has("c5-0") and not got["c5-0"]["group"].has("core") and str(got["c5-0"]["group"]["case"]) == "ahead",
 		"cycliste à 61 m sorti de la liste : rendu au décor de l'engine (groupe « ahead »)")
 	m.update(s, 7.0, 0.5)
-	_check(absf(float(_by_id(m)["c5-0"]["s"]) - (s + 58.0 + 6.0 * 0.5)) < 1e-3, "... à sa dernière vitesse")
+	_check(absf(float(_by_id(m)["c5-0"]["s"]) - (s + 58.0 + 6.0)) < 1e-3, "... à sa dernière vitesse (6 m/s, deux pas de 0,5 s)")
 	# Banc E1 du 5/11 : le groupe rendu au décor rattrape un groupe plus lent sur sa voie ; il le double au lieu
 	# de rouler au travers
 	m.sync_core([], 7, s)   # le core ne donne plus personne : les cyclistes du core proches quittent la route
