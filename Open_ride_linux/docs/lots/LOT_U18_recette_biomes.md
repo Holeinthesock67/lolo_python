@@ -40,3 +40,7 @@ La partie PC sans vélo (étapes 2 et 3, étape 7bt de la file du PC) tient en u
 ## 6. Livrable
 
 Un compte rendu dans la PR de recette (chiffres seulement, aucune coordonnée réelle), les captures d'écran retenues hors du dépôt, et les corrections demandées en issues.
+
+## Résultats de la partie PC (5 novembre)
+
+Étape 7bt sur main 555280f : §5.1 tenu en low (60 images/s, p99 16,7 à 16,9 ms sur les six biomes) ; §5.2 tenu (330 Mo de textures en high, mais sans le pack de sols des biomes : à refaire avec le pack) ; §5.3 frontières fondues sur la planche, à valider par le propriétaire ; budgets GPU de `perf_targets.json` dépassés en medium et high (et en low sur quatre biomes). Montagnes du fond trop sombres en medium et high. Étude et pistes : `docs/ETUDE_OPTIMISATION_RENDU_2026-11-05.md`.

@@ -8,8 +8,8 @@ Usage :
     cout_rendu.py --list
 
 Recherche d'optimisation du 5 novembre (recette U18 : GPU au-dessus du budget en medium et high sur les
-cultures et la forêt). Chaque variante relance `sim_bench.py --native --probe` sur le tour des biomes de
-démonstration (lot U19) avec un biome forcé (défaut `farmland`, le plus lourd), à 60 km/h, et une seule
+cultures et la forêt). Chaque variante relance `sim_bench.py --native --probe` sur un parcours de 6 km tout entier dans un biome
+(`make_biome_world.py --biome`, lot U19 ; défaut `farmland`, le plus lourd à la recette U18), à 60 km/h, et une seule
 différence avec le préréglage, passée à l'engine par OPENRIDE_RENDER_DIAG (`scripts/render_diag.gd`) ou par
 `--culling on`. `analyser` écrit `cout.md` et `cout.json` : temps GPU médian, images/s, p99, part des secondes où
 le GPU est saturé, et gain par rapport à `base` de la même qualité ; `planche/` garde la dernière capture de
@@ -59,6 +59,13 @@ VARIANTS: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...], str], ...] = (
     ("vegetation_50", "vegetation=0.5", (), QUALITIES, "moitié moins d'arbres"),
     ("arbres_lod0_300m", "arbres_lod0_m=300", (), QUALITIES, "arbres détaillés jusqu'à 300 m au lieu de 450"),
     ("tri_visible", "", ("--culling", "on"), QUALITIES, "tri de ce que la caméra ne voit pas (lot S1)"),
+    # Réglages propres à Godot (recherche du 5 novembre, G1 à G7) : presque sans perte visuelle attendue.
+    ("feuillage_simple", "feuillage_simple", (), QUALITIES, "herbe et arbres en diffuse_lambert, sans reflets (G1)"),
+    ("arbres_loin_simple", "arbres_loin_simple", (), QUALITIES, "arbres lointains sans vent ni reflets (G3)"),
+    ("halo_3_niveaux", "halo_niveaux=3,halo_lineaire", (), ("medium", "high"), "halo à 3 niveaux, agrandi en linéaire (G6)"),
+    ("aniso_8", "anisotropy=8", (), ("high",), "filtrage anisotrope 8× au lieu de 16× (G5)"),
+    ("godot_gratuits", "feuillage_simple,arbres_loin_simple,halo_niveaux=3,halo_lineaire,anisotropy=8,brume_ambiante",
+     (), QUALITIES, "les quatre réglages Godot et la brume éclairée ensemble"),
 )
 NAMES = [v[0] for v in VARIANTS]
 
@@ -69,15 +76,16 @@ def plan(qualities: list[str], names: list[str]) -> list[tuple[str, tuple]]:
 
 def cmd_lancer(args: argparse.Namespace) -> int:
     out: Path = args.out
+    # Pire cas (règle du métier : mesurer là où ça coûte le plus) : un parcours de 6 km tout entier dans le
+    # biome, relief et végétation du biome (make_biome_world --biome), plutôt que le premier km du tour.
     routes = out / "routes"
-    routes.mkdir(parents=True, exist_ok=True)
-    world = routes / f"{recette_u18.TOUR_WORLD}.world"
+    world = routes / f"banc-{args.biome}.world"
     if not world.is_dir():
-        env = {**os.environ, "OPENRIDE_ENGINE": str(TESTS_DIR.parent)}
-        p = subprocess.run([sys.executable, "-m", "openride_core", "demo-biomes", "--out", str(routes), "--json"],
-                           capture_output=True, text=True, env=env)
-        if p.returncode != 0 or not world.is_dir():
-            print(f"demo-biomes impossible (code {p.returncode}) : {p.stderr.strip()[-400:]}", file=sys.stderr)
+        import make_biome_world
+        try:
+            make_biome_world.generate(routes, f"banc-{args.biome}", (args.biome,) * 3)
+        except (ImportError, RuntimeError, ValueError) as exc:
+            print(f"parcours du banc impossible : {exc}", file=sys.stderr)
             return 2
     runs = plan(args.qualites, args.variantes)
     print(f"{len(runs)} bancs de {args.duree:.0f} s (≈ {len(runs) * (args.duree + 30) / 60:.0f} min)", flush=True)
@@ -86,7 +94,7 @@ def cmd_lancer(args: argparse.Namespace) -> int:
         rdir = out / q / name
         rdir.mkdir(parents=True, exist_ok=True)
         cmd = [sys.executable, str(TESTS_DIR / "sim_bench.py"), "--native", "--probe", "--muet",
-               "--quality", q, "--size", args.size, "--world", str(world), "--biome", args.biome,
+               "--quality", q, "--size", args.size, "--world", str(world),
                "--speed-kmh", "60", "--every", "30", "--duration", f"{args.duree:.0f}", "--out", str(rdir), *extra]
         if args.godot:
             cmd += ["--godot", str(args.godot)]

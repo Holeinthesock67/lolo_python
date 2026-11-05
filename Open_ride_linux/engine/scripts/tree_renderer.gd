@@ -72,7 +72,7 @@ func _init() -> void:
 func _init_materials() -> void:
 	if _tree_sway:
 		_lod0_material = sway_material(false)
-		_lod1_material = sway_material(true)
+		_lod1_material = sway_material(true, true)
 		return
 	_lod0_material = StandardMaterial3D.new()
 	_lod0_material.vertex_color_use_as_albedo = true
@@ -108,12 +108,27 @@ func is_tree_sway() -> bool:
 ## Shader des panneaux croisés (copie cull_disabled de tree_sway.gdshader), un seul pour tous les
 ## matériaux : un Shader par matériau ferait compiler autant de fois les mêmes pipelines (lot Y8 étape 2).
 static var _lod1_shader: Shader
+## Variantes des essais de coût (OPENRIDE_RENDER_DIAG, render_diag.gd), une par mode d'éclairage.
+static var _diag_shaders := {}
 
 
 ## Matériau de balancement (Lot P5) ; `lod1` : panneaux croisés vus des deux côtés, amplitude réduite.
-static func sway_material(lod1: bool) -> ShaderMaterial:
+## `far` : arbres lointains (LOD 1 des arbres, pas l'herbe), pour l'essai `arbres_loin_simple`.
+static func sway_material(lod1: bool, far: bool = false) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
-	if lod1:
+	var simple := RenderDiag.has("feuillage_simple") or (far and RenderDiag.has("arbres_loin_simple"))
+	if simple:
+		var key := "lod1" if lod1 else "lod0"
+		if not _diag_shaders.has(key):
+			var sh := Shader.new()
+			sh.code = TreeSwayShader.code.replace("render_mode cull_back;", "render_mode %s, diffuse_lambert, specular_disabled;"
+				% ("cull_disabled" if lod1 else "cull_back"))
+			_diag_shaders[key] = sh
+		mat.shader = _diag_shaders[key]
+		if lod1:
+			mat.set_shader_parameter("sway_amplitude_m", 0.0 if far and RenderDiag.has("arbres_loin_simple")
+				else 0.45 * LOD1_SWAY_FACTOR)
+	elif lod1:
 		if _lod1_shader == null:
 			_lod1_shader = Shader.new()
 			_lod1_shader.code = TreeSwayShader.code.replace("render_mode cull_back;", "render_mode cull_disabled;")
@@ -134,7 +149,7 @@ func _look(index: int) -> Dictionary:
 		var m1: Material = _lod1_material
 		if _tree_sway:
 			m0 = sway_material(false)
-			m1 = sway_material(true)
+			m1 = sway_material(true, true)
 			for m in [m0, m1]:
 				(m as ShaderMaterial).set_shader_parameter("sway_height_m", float(built["height"]))
 		_species[index] = {"lod0": built["lod0"], "lod1": built["lod1"], "m0": m0, "m1": m1}

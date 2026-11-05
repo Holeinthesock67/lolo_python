@@ -173,10 +173,10 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 ## coût de chaque effet, 5 novembre). Sans variable : `img` inchangé.
 static func diagnostic_image(img: Dictionary) -> Dictionary:
 	var out := img.duplicate(true)
-	for key in ["msaa", "ssao", "ssil", "screen_aa"]:
+	for key in ["msaa", "ssao", "ssil", "screen_aa", "anisotropy"]:
 		var v := RenderDiag.value(key)
 		if v != "":
-			out[key] = int(v) if key == "msaa" else v
+			out[key] = int(v) if key in ["msaa", "anisotropy"] else v
 	if RenderDiag.value("atlas") != "":
 		out["shadow_atlas"] = int(RenderDiag.value("atlas"))
 	if RenderDiag.value("filtre") != "":
@@ -196,7 +196,8 @@ static func diagnostic_image(img: Dictionary) -> Dictionary:
 
 ## Suite des essais (OPENRIDE_RENDER_DIAG) sur la lumière et l'environnement : `sans_ombres`, `biais_ombres`
 ## (biais plus forts, acné d'ombre), `ombres_m=M` (portée des ombres), `brume_ambiante` (lumière ambiante
-## injectée dans la brume volumétrique).
+## injectée dans la brume volumétrique), `halo_niveaux=N` (N premiers niveaux du halo), `halo_lineaire`
+## (agrandissement du halo linéaire au lieu de bicubique).
 static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> void:
 	var diag := RenderDiag.text()
 	if diag == "":
@@ -209,6 +210,12 @@ static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> voi
 	light.directional_shadow_max_distance = RenderDiag.number("ombres_m", light.directional_shadow_max_distance)
 	if RenderDiag.has("brume_ambiante"):
 		env.volumetric_fog_ambient_inject = 1.0
+	if RenderDiag.value("halo_niveaux") != "":
+		var levels := int(RenderDiag.value("halo_niveaux"))
+		for i in range(7):
+			env.set_glow_level(i, 1.0 if i < levels else 0.0)
+	if RenderDiag.has("halo_lineaire"):
+		RenderingServer.environment_glow_set_use_bicubic_upscale(false)
 	print("Diagnostic de rendu : ", diag)
 
 

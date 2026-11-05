@@ -10,7 +10,9 @@ extends RefCounted
 ##   brume_ambiante (lumière ambiante injectée dans la brume volumétrique),
 ##   msaa=0|2|4, screen_aa=off|fxaa|smaa, ssao=low|medium|high, ssil=low|medium|high, atlas=2048|4096, ombres_m=M, filtre=hard|low|medium,
 ##   vegetation=F (densité des arbres, world_streamer), herbe=F (nombre de touffes, living_world),
-##   sans_ombres_arbres, arbres_lod0_m=M (tree_renderer).
+##   sans_ombres_arbres, arbres_lod0_m=M, feuillage_simple (arbres et herbe en diffuse_lambert, specular_disabled),
+##   arbres_loin_simple (même chose et sans vent pour les arbres du LOD 1) (tree_renderer),
+##   anisotropy=2|4|8|16, halo_niveaux=N, halo_lineaire.
 ## Pas de class_name : charger par preload("res://scripts/render_diag.gd").
 
 static var _parsed := false
