@@ -41,6 +41,7 @@ const StartWaitModel := preload("res://scripts/start_wait_model.gd")
 const StartScreen := preload("res://scripts/start_screen.gd")
 const DraftGauge := preload("res://scripts/draft_gauge.gd")
 const VEHICLE_PREFIX := "veh:"   # `draft_bot` d'un véhicule de la route (lot AS6, traffic.py du core)
+const RIDER_PREFIX := "rider:"   # `draft_bot` d'un cycliste du décor (lot AS7, road_cyclists.py du core)
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
@@ -505,6 +506,8 @@ func _on_settings(msg: Dictionary) -> void:
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
 		bots_view.set_quality(_quality_name)
+		if living_decor != null and living_decor.cyclists_view != null:
+			living_decor.cyclists_view.set_quality(_quality_name)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
 		if streamer.osm_streamer != null:
@@ -1216,6 +1219,8 @@ func _poll_route_job() -> void:
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
 	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)
 	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
+	if living_decor != null:   # cyclistes du décor : avatars et matériaux préparés au chargement (lot AS7)
+		living_decor.warm_up_cyclists(camera)
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)
@@ -1882,6 +1887,8 @@ func _show_draft_gauge() -> void:
 		var who := str(view["bot"])
 		if who.begins_with(VEHICLE_PREFIX):
 			anchor = living_decor.vehicle_anchor(who.substr(VEHICLE_PREFIX.length())) if living_decor != null else null
+		elif who.begins_with(RIDER_PREFIX):
+			anchor = living_decor.cyclist_anchor(who.substr(RIDER_PREFIX.length())) if living_decor != null else null
 		else:
 			anchor = bots_view.anchor_of(who)
 	draft_gauge.update_view(view, anchor)

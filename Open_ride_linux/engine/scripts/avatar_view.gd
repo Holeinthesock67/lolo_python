@@ -59,7 +59,7 @@ var _mats := {}
 static var _parts_cache := {}
 static var _parts_tasks := {}      # clé → identifiant de tâche du WorkerThreadPool
 static var _parts_mutex := Mutex.new()
-const PARTS_CACHE_MAX := 64
+const PARTS_CACHE_MAX := 128   # joueur, bots et les 16 apparences du décor à 3 niveaux (lot AS7)
 
 
 func _init() -> void:
