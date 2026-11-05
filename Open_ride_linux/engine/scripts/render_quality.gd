@@ -95,8 +95,9 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 	light.directional_shadow_max_distance = QualityPresets.shadow_distance_m(key)
 	# SSAO, SSIL et brouillard volumétrique n'existent qu'en Forward+ (sans RenderingDevice : Compatibility).
 	var forward_plus := RenderingServer.get_rendering_device() != null
-	apply_image(QualityPresets.image(key), light, env, viewport, forward_plus)
-	apply_diagnostic(OS.get_environment("OPENRIDE_RENDER_DIAG"), light, env)
+	var diag := OS.get_environment("OPENRIDE_RENDER_DIAG")
+	apply_image(diagnostic_image(QualityPresets.image(key), diag), light, env, viewport, forward_plus)
+	apply_diagnostic(diag, light, env)
 
 	if streamer != null:
 		if "chunks_ahead" in streamer:
@@ -169,8 +170,10 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 
 ## Essais de rendu sur le PC (coutures des flancs, 29 octobre) : OPENRIDE_RENDER_DIAG, liste séparée par des
 ## virgules, coupe un effet pour trouver celui qui dessine un défaut : `sans_ombres`, `sans_ssao`, `sans_ssil`,
-## `sans_brume` (brume volumétrique) ; `biais_ombres` essaie des biais d'ombre plus forts (acné d'ombre). Vide :
-## rien ne change. Aucun réglage du joueur ne passe par là.
+## `sans_brume` (brume volumétrique) ; `biais_ombres` essaie des biais d'ombre plus forts (acné d'ombre).
+## Une entrée `clé=valeur` (2.0.1, coût GPU de la demo compilée) remplace une clé de la qualité d'image du
+## préréglage (`diagnostic_image`), pour mesurer une variante sans recompiler. Vide : rien ne change. Aucun
+## réglage du joueur ne passe par là.
 static func apply_diagnostic(diag: String, light: DirectionalLight3D, env: Environment) -> void:
 	var flags := diag.replace(" ", "").split(",", false)
 	if flags.is_empty():
@@ -187,6 +190,29 @@ static func apply_diagnostic(diag: String, light: DirectionalLight3D, env: Envir
 		light.shadow_bias = 0.3
 		light.shadow_normal_bias = 3.0
 	print("Diagnostic de rendu : ", ", ".join(flags))
+
+
+## Qualité d'image `img` avec les entrées `clé=valeur` d'OPENRIDE_RENDER_DIAG : seulement une clé déjà dans
+## `img`, valeur du même type (entier, réel, booléen `true`/`false`, sinon texte) ; une clé inconnue est
+## ignorée. Ex. « shadow_filter=low,anisotropy=8 ».
+static func diagnostic_image(img: Dictionary, diag: String) -> Dictionary:
+	var out := img.duplicate(true)
+	for flag in diag.replace(" ", "").split(",", false):
+		var cut := flag.find("=")
+		var k := flag.left(cut) if cut > 0 else ""
+		if not out.has(k):
+			continue
+		var v := flag.substr(cut + 1)
+		match typeof(out[k]):
+			TYPE_INT:
+				out[k] = v.to_int()
+			TYPE_FLOAT:
+				out[k] = v.to_float()
+			TYPE_BOOL:
+				out[k] = v == "true"
+			_:
+				out[k] = v
+	return out
 
 
 ## Distance de vue de la caméra : fin du brouillard du préréglage plus CAMERA_FAR_MARGIN.
