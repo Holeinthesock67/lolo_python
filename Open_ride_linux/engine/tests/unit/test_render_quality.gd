@@ -202,11 +202,11 @@ func _test_weather_fog() -> void:
 ## Variante de la qualité d'image pour les mesures du PC (2.0.1) : `clé=valeur` d'OPENRIDE_RENDER_DIAG.
 func _test_diagnostic_image() -> void:
 	var img := QualityPresets.image("high")
-	var out := RenderQuality.diagnostic_image(img, "sans_ssao, shadow_filter=medium,anisotropy=8,glow=false,mesh_lod_threshold=1.5,inconnue=3")
-	_check(out["shadow_filter"] == "medium" and out["anisotropy"] == 8 and typeof(out["anisotropy"]) == TYPE_INT,
+	var out := RenderQuality.diagnostic_image(img, "sans_ssao, shadow_filter=high,anisotropy=8,glow=false,mesh_lod_threshold=1.5,inconnue=3")
+	_check(out["shadow_filter"] == "high" and out["anisotropy"] == 8 and typeof(out["anisotropy"]) == TYPE_INT,
 		"clé texte et entière remplacées")
 	_check(out["glow"] == false and absf(float(out["mesh_lod_threshold"]) - 1.5) < 1e-6, "booléen et réel remplacés")
-	_check(not out.has("inconnue") and img["shadow_filter"] == "high", "clé inconnue ignorée, préréglage d'origine intact")
+	_check(not out.has("inconnue") and img["shadow_filter"] == "medium", "clé inconnue ignorée, préréglage d'origine intact")
 	_check(RenderQuality.diagnostic_image(img, "") == img, "sans diagnostic : qualité du préréglage")
 
 
