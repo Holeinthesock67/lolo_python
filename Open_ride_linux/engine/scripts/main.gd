@@ -215,6 +215,7 @@ var _theme_dict: Dictionary = {}   # thème courant, pour le décor vivant
 var _living_enabled := true
 ## Décor vivant, deuxième vague (lot P17) : météo, animaux, éoliennes, véhicules, bord de route, foule.
 var living_decor = null
+var _cfg_crowd_all_climbs := false   # --crowd=all : spectateurs sur toutes les montées (bancs, lot Y21)
 ## Ciel, brouillard et soleil, atmosphère du biome sous la caméra (atmosphere_view.gd, lots U10 et U17).
 var atmosphere_view = AtmosphereView.new()
 ## Série T (lot T8) : lignes, portiques et panneaux des segments, arches de bonus.
@@ -246,6 +247,7 @@ func _ready() -> void:
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
 	streamer.culling = bool(cfg.get("culling", false))
+	_cfg_crowd_all_climbs = bool(cfg.get("crowd_all_climbs", false))
 	streamer.test_log = bool(cfg["test_mode"])
 	streamer.forced_biome = str(cfg.get("biome", "auto"))
 	streamer.texture_level = str(cfg.get("texture_level", "auto"))
@@ -295,6 +297,7 @@ func _ready() -> void:
 	living_decor.name = "LivingDecor"
 	add_child(living_decor)
 	living_decor.living_world = living_world
+	living_decor.crowd_all_climbs = bool(_cfg_crowd_all_climbs)
 	living_decor.configure(_quality_name, _living_enabled, _theme_dict, world_env.environment, sound_player, streamer)
 	atmosphere_view.living_decor = living_decor
 	living_decor.set_fog_base(world_env.environment)
@@ -1224,8 +1227,8 @@ func _poll_route_job() -> void:
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
 	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)
 	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
-	if living_decor != null:   # cyclistes du décor : avatars et matériaux préparés au chargement (lot AS7)
-		living_decor.warm_up_cyclists(camera)
+	if living_decor != null:   # cyclistes du décor (lot AS7), spectateurs et passants (lot Y21) préparés au chargement
+		living_decor.warm_up(camera)
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)
