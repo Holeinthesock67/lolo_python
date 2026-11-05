@@ -76,6 +76,23 @@ Même méthode que pour les économies : une variante par idée, valeur 0 = rend
 
 Plus tard, en lot de développement : forêt jusqu'à l'horizon par imposteurs (lot Y5), coût à mesurer à part.
 
-## 6. Suite
+## 6. Mesures du 6 novembre (nuit, tête 2027b30)
+
+Recette U18 complète, GPU médian par biome. M1 = réglages Godot + brume éclairée + MSAA 2× ; H1 = idem en high ; H2 = H1 + SSIL « low » ; L1 = réglages Godot + brume éclairée.
+
+| Combinaison | GPU médian (ms) | Budget | Images/s |
+| --- | --- | --- | --- |
+| L1 | 5,71 (méditerranéen) à 7,92 (cultures), comme le 5 novembre | 6 | 60 partout |
+| M1 | 11,50 (méditerranéen) à 16,41 (cultures), environ −1,8 ms partout | 12 | 59 à 60 |
+| H1 | 15,38 (alpin) à 18,41 (cultures), −1,8 à −2,2 ms | 14 | 52 à 60 |
+| H2 | encore −0,2 à −0,4 ms par rapport à H1 | 14 | 53 à 60 |
+
+- Le gain vient presque entièrement du **MSAA 2×**. Les réglages Godot « presque gratuits » et les améliorations visuelles restent dans le bruit de mesure (±0,6 ms sur le banc tout en cultures).
+- Les montagnes du fond ne sont plus noires (planche avant/après validée par le propriétaire le 6 novembre, 0 h 19).
+- Retour du propriétaire : l'image est « un peu trop claire et pas assez contrastée ». Cause probable : la brume volumétrique éclairée à pleine lumière ambiante (`volumetric_fog_ambient_inject = 1`) pose un voile clair sur tout le champ. Réglage cherché avec `engine/tests/reglage_image.py` : brume éclairée à moitié, brume plus légère, contraste relevé.
+
+Préconisations suivantes (à mesurer) : medium = M1 + atlas des ombres 2048 ; high = M1 en high + SSIL coupé + atlas 2048 ; low = 70 % de l'herbe et arbres sans ombre. Les cultures resteront au-dessus du budget : le vrai remède est un lot de développement (moins de détail d'herbe et de cultures au loin).
+
+## 7. Suite
 
 Mesures du vendredi 6 novembre, 7 h (PC) : variantes Godot de `cout_rendu.py` sur le parcours tout en cultures, puis la recette U18 complète avec les combinaisons retenues, planche avant/après en trois qualités pour le propriétaire. Le préréglage ne change dans `quality_presets.gd` et `render_quality.gd` qu'après sa validation des captures.

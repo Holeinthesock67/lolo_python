@@ -16,6 +16,9 @@ extends RefCounted
 ## Améliorations à faible coût (0 = rendu actuel) : soleil_brume=F (fog_sun_scatter du brouillard),
 ##   terrain_macro=F (variation de l'herbe à 600 m, terrain_material), herbe_degrade=F (pied sombre, pointe claire,
 ##   grass_tufts et ground_details).
+## Réglage de l'image (RenderQuality.apply_diagnostic) : brume_ambiante=F (0 à 2, au lieu du drapeau = 1),
+##   brume_densite=F (facteur sur la densité de la brume volumétrique, RenderQuality.volumetric_density), contraste=F, saturation=F,
+##   agx_contraste=F, exposition=F (valeurs de LOOK remplacées).
 ## Pas de class_name : charger par preload("res://scripts/render_diag.gd").
 
 static var _parsed := false

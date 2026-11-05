@@ -210,6 +210,12 @@ static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> voi
 	light.directional_shadow_max_distance = RenderDiag.number("ombres_m", light.directional_shadow_max_distance)
 	if RenderDiag.has("brume_ambiante"):
 		env.volumetric_fog_ambient_inject = 1.0
+	if RenderDiag.value("brume_ambiante") != "":
+		env.volumetric_fog_ambient_inject = clampf(RenderDiag.number("brume_ambiante", 1.0), 0.0, 2.0)
+	env.adjustment_contrast = RenderDiag.number("contraste", env.adjustment_contrast)
+	env.adjustment_saturation = RenderDiag.number("saturation", env.adjustment_saturation)
+	env.tonemap_agx_contrast = RenderDiag.number("agx_contraste", env.tonemap_agx_contrast)
+	env.tonemap_exposure = RenderDiag.number("exposition", env.tonemap_exposure)
 	if RenderDiag.value("halo_niveaux") != "":
 		var levels := int(RenderDiag.value("halo_niveaux"))
 		for i in range(7):
@@ -256,7 +262,10 @@ static func apply_fog(env: Environment, preset_name: String, has_terrain: bool,
 ## Densité de la brume volumétrique : celle du niveau du préréglage, ou celle du thème si elle est plus forte.
 static func volumetric_density(preset_name: String, theme_fog_density: float) -> float:
 	var vol := str(QualityPresets.image(preset_name)["fog_volumetric"])
-	return maxf(float(VOLUMETRIC[vol]["density"]), theme_fog_density) if VOLUMETRIC.has(vol) else 0.0
+	if not VOLUMETRIC.has(vol):
+		return 0.0
+	var diag_factor := clampf(RenderDiag.number("brume_densite", 1.0), 0.0, 4.0)   # essais seulement
+	return maxf(float(VOLUMETRIC[vol]["density"]), theme_fog_density) * diag_factor
 
 
 ## Brume de la météo (Lot P17, `fog_boost` de weather_model.gd, 0 à 1) : rapproche le brouillard en
