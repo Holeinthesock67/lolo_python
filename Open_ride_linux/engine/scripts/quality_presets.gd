@@ -74,6 +74,7 @@ const IMAGE := {
 		"shadow_filter": "low",
 		"mesh_lod_threshold": 2.0,
 		"heat_haze": false,
+		"relief_shadow": "full",
 	},
 	"medium": {
 		"anisotropy": 8,
@@ -89,6 +90,7 @@ const IMAGE := {
 		"shadow_filter": "medium",
 		"mesh_lod_threshold": 1.0,
 		"heat_haze": true,
+		"relief_shadow": "full",
 	},
 	"high": {
 		"anisotropy": 16,
@@ -104,6 +106,7 @@ const IMAGE := {
 		"shadow_filter": "high",
 		"mesh_lod_threshold": 0.5,
 		"heat_haze": true,
+		"relief_shadow": "full",
 	},
 }
 

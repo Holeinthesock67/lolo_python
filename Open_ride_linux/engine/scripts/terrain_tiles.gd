@@ -26,6 +26,11 @@ const FAR_CARVE_MARGIN_M := 0.5
 const SKIRT_M := 3.0
 ## Largeur du raccord du terrain proche au lointain là où le proche s'arrête (blend_to_far).
 const EDGE_BLEND_M := 50.0
+## Faux relief des ombres (shadow_proxy_arrays) : un sommet sur PROXY_STEP de la grille proche (maille de 40 m),
+## posé PROXY_MARGIN_M sous le vrai relief ; jupes de PROXY_SKIRT_M aux bords de la tuile.
+const PROXY_STEP := 4
+const PROXY_MARGIN_M := 0.5
+const PROXY_SKIRT_M := 20.0
 
 ## Niveaux : dossier, maille, taille de tuile, décalage vertical au dessin.
 const LEVELS := {
@@ -455,6 +460,74 @@ static func build_arrays(heights: PackedFloat32Array, level: String, edges: Dict
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_INDEX] = indices
+	return arrays
+
+
+## Faux relief simplifié d'une tuile proche, dessiné dans les ombres seulement (WorldStreamer.relief_shadow =
+## "proxy") : la tuile dessinée (21 600 triangles avec ses jupes) ne porte plus d'ombre, ce maillage (1 450 triangles)
+## la remplace dans chaque cascade du soleil. `vertices` : sommets de build_arrays (relief exagéré et raccord au
+## lointain compris, les SAMPLES² premiers sont la grille). Un sommet sur `step`, abaissé juste ce qu'il faut pour que
+## le faux relief passe partout sous le vrai, moins `margin` : sur chaque maille grossière, plus fort dépassement de
+## l'interpolation grossière au-dessus des sommets fins (même découpage des triangles, dont la diagonale suit celles de
+## la grille fine : l'écart est linéaire sur chaque triangle fin, son maximum est à un sommet fin), puis chaque sommet
+## descend du plus fort dépassement de ses mailles voisines. Sur une pente régulière rien ne bouge (sauf `margin`) ;
+## dans un creux plus étroit que la maille, le faux relief passe sous le fond. Le vrai relief n'est donc jamais dans
+## l'ombre de son propre faux relief (pas d'acné d'ombre), et les reliefs de plus de 40 m gardent leur ombre. Deux
+## tuiles voisines peuvent abaisser différemment leur bord commun : des jupes de `skirt` mètres bouchent la fente,
+## sans quoi un trait de lumière traverserait l'ombre d'une crête. Exécutable dans une tâche de fond.
+static func shadow_proxy_arrays(vertices: PackedVector3Array, step: int = PROXY_STEP, margin: float = PROXY_MARGIN_M,
+		skirt: float = PROXY_SKIRT_M) -> Array:
+	var n := CELLS / step   # mailles grossières par côté
+	var ns := n + 1
+	var excess := PackedFloat32Array()
+	excess.resize(n * n)
+	for cj in range(n):
+		for ci in range(n):
+			var o := cj * step * SAMPLES + ci * step   # sommet fin du coin a
+			var a := vertices[o].y
+			var b := vertices[o + step].y
+			var c := vertices[o + step * SAMPLES].y
+			var d := vertices[o + step * SAMPLES + step].y
+			var e := 0.0
+			for sj in range(step + 1):
+				for si in range(step + 1):
+					var u := float(si) / step
+					var v := float(sj) / step
+					var hc := a + u * (b - a) + v * (c - a) if u + v <= 1.0 else d + (1.0 - u) * (c - d) + (1.0 - v) * (b - d)
+					e = maxf(e, hc - vertices[o + sj * SAMPLES + si].y)
+			excess[cj * n + ci] = e
+	var verts := PackedVector3Array()
+	verts.resize(ns * ns)
+	for j in range(ns):
+		for i in range(ns):
+			var drop := 0.0
+			for dj in [-1, 0]:
+				for di in [-1, 0]:
+					var ci: int = i + di
+					var cj: int = j + dj
+					if ci >= 0 and cj >= 0 and ci < n and cj < n:
+						drop = maxf(drop, excess[cj * n + ci])
+			var p := vertices[(j * step) * SAMPLES + i * step]
+			verts[j * ns + i] = Vector3(p.x, p.y - drop - margin, p.z)
+	var indices := PackedInt32Array()
+	for j in range(n):
+		for i in range(n):
+			var a := j * ns + i
+			indices.append_array(PackedInt32Array([a, a + 1, a + ns, a + 1, a + ns + 1, a + ns]))
+	# Jupes : chaque bord descend de `skirt` (une face : le matériau des ombres ne cache aucun côté)
+	for side in [range(0, ns), range(n * ns, ns * ns), range(0, ns * ns, ns), range(n, ns * ns, ns)]:
+		var top: Array = side
+		var base := verts.size()
+		for idx in top:
+			verts.append(verts[idx] - Vector3(0.0, skirt, 0.0))
+		for m in range(top.size() - 1):
+			var ta: int = top[m]
+			var tb: int = top[m + 1]
+			indices.append_array(PackedInt32Array([ta, tb, base + m, tb, base + m + 1, base + m]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_INDEX] = indices
 	return arrays
 

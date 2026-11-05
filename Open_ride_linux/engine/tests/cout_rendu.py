@@ -80,6 +80,10 @@ VARIANTS: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...], str], ...] = (
     ("sans_ombres_details", "sans_ombres_details", (), QUALITIES, "pierres et fleurs du sol sans ombre"),
     ("lod_maillage_1", "lod_maillage=1.0", (), ("high",), "niveaux de détail des maillages comme en medium"),
     ("lod_maillage_2", "lod_maillage=2.0", (), ("medium",), "niveaux de détail des maillages comme en low"),
+    # Lot des ombres simplifiées du terrain (6 novembre) : faux relief de 40 m dans les ombres, ou relief sans ombre
+    ("ombres_terrain_proxy", "ombres_terrain=proxy", (), QUALITIES,
+     "relief simplifié dans les ombres (maille 40 m), tuiles lointaines sans ombre"),
+    ("sans_ombres_terrain", "ombres_terrain=off", (), QUALITIES, "le relief ne porte aucune ombre (borne)"),
 )
 # Socle « propose » : réglages proposés le 6 novembre (étude §6), auxquels chaque variante ajoute les siens
 GODOT_FREE = "feuillage_simple,arbres_loin_simple,halo_niveaux=3,halo_lineaire,anisotropy=8,brume_ambiante"

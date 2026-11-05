@@ -22,6 +22,8 @@ extends RefCounted
 ## Pistes du 6 novembre : brume=off|light|full (grille de la brume volumétrique), lod_maillage=F (seuil des niveaux
 ##   de détail des maillages, RenderQuality.diagnostic_image), sans_ombres_details (pierres et fleurs du sol sans
 ##   ombre, ground_details).
+## Ombres simplifiées du terrain : ombres_terrain=full|proxy|off (QualityPresets.IMAGE `relief_shadow`,
+##   WorldStreamer.relief_shadow).
 ## Pas de class_name : charger par preload("res://scripts/render_diag.gd").
 
 static var _parsed := false

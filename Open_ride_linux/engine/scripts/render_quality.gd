@@ -96,7 +96,8 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 	light.directional_shadow_max_distance = QualityPresets.shadow_distance_m(key)
 	# SSAO, SSIL et brouillard volumétrique n'existent qu'en Forward+ (sans RenderingDevice : Compatibility).
 	var forward_plus := RenderingServer.get_rendering_device() != null
-	apply_image(diagnostic_image(QualityPresets.image(key)), light, env, viewport, forward_plus)
+	var img := diagnostic_image(QualityPresets.image(key))
+	apply_image(img, light, env, viewport, forward_plus)
 	apply_diagnostic(light, env)
 
 	if streamer != null:
@@ -110,6 +111,8 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 			streamer.far_radius_m = WorldStreamer.far_radius_for(QualityPresets.fog_end_m(key))
 		if "culling_keep_m" in streamer:
 			streamer.culling_keep_m = ViewCulling.keep_radius_for(QualityPresets.shadow_distance_m(key))
+		if "relief_shadow" in streamer:
+			streamer.relief_shadow = str(img["relief_shadow"])   # ombres du relief
 		if "quality_preset" in streamer:
 			streamer.quality_preset = key   # biomes par tuile et textures de sol (lot U6)
 
@@ -193,6 +196,8 @@ static func diagnostic_image(img: Dictionary) -> Dictionary:
 		out["glow"] = false
 	if RenderDiag.value("brume") != "":
 		out["fog_volumetric"] = RenderDiag.value("brume")
+	if RenderDiag.value("ombres_terrain") != "":
+		out["relief_shadow"] = RenderDiag.value("ombres_terrain")
 	out["mesh_lod_threshold"] = RenderDiag.number("lod_maillage", float(out["mesh_lod_threshold"]))
 	return out
 

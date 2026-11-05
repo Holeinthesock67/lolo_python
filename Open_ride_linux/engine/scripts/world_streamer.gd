@@ -103,6 +103,26 @@ var texture_level := TextureLevels.AUTO:
 		_reload_textures()
 ## Niveau retenu pour les textures 1.x du thème (terrain, route) : TextureLevels.choose.
 var decor_textures := {}
+## Ombres portées du relief (QualityPresets.IMAGE `relief_shadow`, réglé par render_quality.gd) :
+## - `full` : tuiles proches, lointaines et plates (et sol plat) dessinées telles quelles dans les cascades d'ombre ;
+## - `proxy` : seules les tuiles proches portent une ombre, par leur faux relief simplifié (TerrainTiles.shadow_proxy_arrays,
+##   nœud enfant `OmbreRelief` en SHADOW_CASTING_SETTING_SHADOWS_ONLY) ; tuiles dessinées, lointaines et plates sans ombre ;
+## - `off` : le relief ne porte aucune ombre.
+## Le relief reçoit toujours les ombres (arbres, bâtiments, cyclistes). Le faux relief est préparé pour chaque tuile proche
+## quel que soit le mode : changer de mode en séance ne reconstruit rien.
+const RELIEF_SHADOW_MODES := ["full", "proxy", "off"]
+const PROXY_NODE := "OmbreRelief"
+var relief_shadow := "full":
+	set(value):
+		var v := value if value in RELIEF_SHADOW_MODES else "full"
+		if v == relief_shadow:
+			return
+		relief_shadow = v
+		for key in _instances:
+			_apply_relief_shadow(key, _instances[key])
+		if _ground != null:
+			_apply_relief_shadow("ground", _ground)
+var _shadow_material: StandardMaterial3D = null
 
 var _near_index: Dictionary = {}     # Vector2i -> true
 var _far_index: Dictionary = {}
@@ -612,6 +632,8 @@ func _build_job(job: Dictionary) -> void:
 			var edges := TerrainTiles.load_neighbour_edges(job["world_dir"], spec["kind"], t.x, t.y)
 			job["arrays"] = TerrainTiles.build_arrays(heights, spec["kind"], edges, v_scale, alt_orig)
 			job["origin"] = TerrainTiles.tile_origin(spec["kind"], t.x, t.y)
+			if spec["kind"] == "near":
+				job["shadow_arrays"] = TerrainTiles.shadow_proxy_arrays(job["arrays"][Mesh.ARRAY_VERTEX])
 			if spec["kind"] == "near" and tree_renderer != null:
 				var t_trees := Time.get_ticks_usec()
 				# Hauteurs réelles : pente et limite des arbres jugées sur le vrai relief, arbres posés à la hauteur affichée.
@@ -663,6 +685,8 @@ func _poll_jobs(wait: bool) -> void:
 				ready_item["trees_data"] = job["trees_data"]
 			if job.has("skirt_arrays"):
 				ready_item["skirt_arrays"] = job["skirt_arrays"]
+			if job.has("shadow_arrays"):
+				ready_item["shadow_arrays"] = job["shadow_arrays"]
 			_ready.append(ready_item)
 
 
@@ -690,6 +714,16 @@ func integrate(max_new: int) -> int:
 		mi.name = (r["key"] as String).replace(":", "_")
 		mi.mesh = mesh
 		mi.position = r["origin"]
+		if r.has("shadow_arrays"):
+			var proxy_mesh := ArrayMesh.new()
+			proxy_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["shadow_arrays"])
+			proxy_mesh.surface_set_material(0, _shadow_material_now())
+			var proxy := MeshInstance3D.new()
+			proxy.name = PROXY_NODE
+			proxy.mesh = proxy_mesh
+			proxy.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+			mi.add_child(proxy)
+		_apply_relief_shadow(r["key"], mi)
 		add_child(mi)
 		_instances[r["key"]] = mi
 		var t1 := Time.get_ticks_usec()
@@ -791,6 +825,9 @@ func _free_instance(key: String) -> void:
 	var mi: MeshInstance3D = _instances[key]
 	_instances.erase(key)
 	remove_child(mi)
+	var proxy := mi.get_node_or_null(PROXY_NODE) as MeshInstance3D
+	if proxy != null:
+		proxy.mesh = null
 	if biome_textures != null and not key.begins_with("road:"):
 		biome_textures.release(mi.mesh.surface_get_material(0))
 	mi.mesh = null   # maillage libéré avant le nœud (évite une erreur du rendu factice sans écran)
@@ -914,7 +951,43 @@ func _make_ground() -> void:
 	_ground.name = "FlatGround"
 	_ground.mesh = plane
 	_ground.position = Vector3(0.0, min_alt - FLAT_GROUND_BELOW_M, 0.0)
+	_apply_relief_shadow("ground", _ground)
 	add_child(_ground)
+
+
+## Ombre portée d'un objet du relief selon `relief_shadow` (la route n'est pas concernée) : `ground` = sol plat.
+func _apply_relief_shadow(key: String, mi: MeshInstance3D) -> void:
+	if key.begins_with("road:"):
+		return
+	mi.cast_shadow = (GeometryInstance3D.SHADOW_CASTING_SETTING_ON if relief_shadow == "full"
+		else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	var proxy := mi.get_node_or_null(PROXY_NODE) as MeshInstance3D
+	if proxy != null:
+		proxy.visible = relief_shadow == "proxy"
+
+
+## Matériau du faux relief des ombres : le plus simple possible, aucun côté caché (jupes à une face).
+func _shadow_material_now() -> StandardMaterial3D:
+	if _shadow_material == null:
+		_shadow_material = StandardMaterial3D.new()
+		_shadow_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_shadow_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return _shadow_material
+
+
+## Tuiles de terrain qui portent une ombre, par mode (tests, sonde) : {"tiles": dessinées en ON, "proxies": faux reliefs actifs}.
+func relief_shadow_counts() -> Dictionary:
+	var out := {"tiles": 0, "proxies": 0}
+	for key in _instances:
+		if (key as String).begins_with("road:"):
+			continue
+		var mi: MeshInstance3D = _instances[key]
+		if mi.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+			out["tiles"] += 1
+		var proxy := mi.get_node_or_null(PROXY_NODE) as MeshInstance3D
+		if proxy != null and proxy.visible:
+			out["proxies"] += 1
+	return out
 
 
 # --- état, pour les tests et le journal ------------------------------------------------------

@@ -168,7 +168,7 @@ func _test_living() -> void:
 
 # Lot Y13 : qualité d'image par préréglage, croissante de low à high, toujours un anticrénelage.
 func _test_image() -> void:
-	const KEYS := ["anisotropy", "ao_half_size", "fog_volumetric", "glow", "heat_haze", "mesh_lod_threshold", "msaa", "screen_aa",
+	const KEYS := ["anisotropy", "ao_half_size", "fog_volumetric", "glow", "heat_haze", "mesh_lod_threshold", "msaa", "relief_shadow", "screen_aa",
 		"shadow_atlas", "shadow_filter", "shadow_splits", "ssao", "ssil"]
 	var fogs := ["off", "light", "full"]
 	var levels := ["off", "low", "medium", "high"]
