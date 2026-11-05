@@ -9,6 +9,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_living_decor.gd
 
 const LivingDecor := preload("res://scripts/living_decor.gd")
+const Look := preload("res://scripts/road_cyclist_look.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const WorldStreamer := preload("res://scripts/world_streamer.gd")
@@ -277,7 +278,7 @@ func _run() -> void:
 	print("Décor vivant (deuxième vague) : %.3f ms par image (high)" % per_frame_ms)
 	_check(PerfBudget.check("living_decor_frame", per_frame_ms), "coût du branchement en %.3f ms par image" % per_frame_ms)
 	var nodes_after := _count_nodes(wave2_views)
-	_check(cyclist_roots_max <= dec.cyclists_view.MAX_CYCLISTS + dec.cyclists_view.SPARE_MAX + 1,
+	_check(cyclist_roots_max <= dec.cyclists_view.MAX_CYCLISTS + Look.VARIANTS * dec.cyclists_view.SPARE_PER_VARIANT,
 		"cyclistes du décor : %d avatars au plus (affichés et de réserve)" % cyclist_roots_max)
 	_check(nodes_after == nodes_before, "deuxième vague : %d nœuds créés au démarrage, %d après %d images" % [nodes_before, nodes_after, frames])
 	# Enveloppe de la deuxième vague (P27) : P23 à P26, P28 et P29 ensemble en medium

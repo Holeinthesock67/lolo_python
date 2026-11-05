@@ -6,13 +6,18 @@ extends Node3D
 ## aux couleurs que ne portent ni les bots ni le fantôme, sans dossard), d'après son maillot et sa tenue.
 ## Pas de class_name : charger par preload("res://scripts/road_cyclists_renderer.gd").
 ##
-## - Niveau de détail comme les bots (quality_presets.gd bot_lod, BOT_SHADOW_MAX_LOD) selon la distance à la
+## - Niveau de détail comme les bots (quality_presets.gd bot_lod ; ombre au niveau 0 seulement) selon la distance à la
 ##   caméra (sans caméra : l'écart le long de la route). Un avatar par niveau déjà vu ; un niveau neuf se
 ##   construit dans un fil de travail (avatar_view.gd request_parts), le cycliste garde en attendant le niveau
 ##   prêt le plus proche. Les maillages du niveau 2 des VARIANTS apparences sont demandés dès `setup`.
+## - Préchauffage au chargement (`warm_up(camera)`, après la route, comme les portiques ; banc PC du 5/11 :
+##   pointes d'images à l'entrée des avatars dans le champ) : tous les niveaux du préréglage des VARIANTS
+##   apparences construits, une racine de réserve par apparence, montrée minuscule devant la caméra pendant
+##   WARM_FRAMES images pour que pipelines, textures et ombres se préparent au chargement et non en roulant.
 ## - Au plus MAX_CYCLISTS cyclistes affichés. Un cycliste qui quitte la route laisse son avatar caché, repris
-##   par le prochain cycliste de même apparence (au plus SPARE_MAX avatars de réserve, le plus ancien part le
-##   premier) : peu de nœuds créés.
+##   par le prochain cycliste de même apparence (SPARE_PER_VARIANT avatars de réserve par apparence) : après le
+##   préchauffage, un avatar n'est créé que si plusieurs cyclistes de même apparence roulent ensemble. Toute
+##   création en roulant est notée dans la sonde (perf_probe.gd, saccades.csv, étape « cyclistes »).
 ## - Pédalier : l'angle est cumulé ici d'après la cadence du modèle (braquet de 50 × 17), pour qu'un changement
 ##   de vitesse ne fasse pas sauter les jambes ; roues calées sur la distance parcourue ; en danseuse au-delà
 ##   de la pente de l'avatar (8 %). Au niveau 2 (loin), la pose n'est recalculée qu'une image sur LOD2_POSE_EVERY.
@@ -27,9 +32,16 @@ const AvatarMesh := preload("res://scripts/avatar_mesh.gd")
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 const MAX_CYCLISTS := 16
-const SPARE_MAX := 8
+const SPARE_PER_VARIANT := 3
+## Ombre portée au niveau 0 seulement (les bots aussi au niveau 1) : jusqu'à 16 cyclistes du décor, et la médiane
+## GPU de medium au-dessus de son budget au banc PC du 5/11.
+const SHADOW_MAX_LOD := 0
+const WARM_FRAMES := 3
+const WARM_SCALE := 0.0005          # un cycliste de 1,8 m tient dans 1 mm : rien de visible à l'écran
+const WARM_DIST_M := 2.0
 const LOD2_POSE_EVERY := 3
 const SALUT_VOLUME_DB := -6.0
 const STANDING_GRADE_PCT: float = AvatarModel.DEFAULTS["standing_grade_pct"]
@@ -42,7 +54,8 @@ var _sound = null
 var _audio: AudioStreamPlayer3D
 var _by_id := {}                 # id du cycliste → racine (Node3D) de son avatar
 var _spare := {}                 # apparence → racines cachées, prêtes à resservir
-var _spare_order: Array = []     # les mêmes, de la plus ancienne à la plus récente
+var _warm_left := 0              # images de préchauffage restantes
+var _warm_cam: Node3D = null
 var _frame := 0
 var _shown := 0
 var _xforms: Array = []          # transformée de chaque cycliste affiché (tests)
@@ -120,11 +133,19 @@ func _take_root(variant: int) -> Node3D:
 	var pool: Array = _spare.get(variant, [])
 	if not pool.is_empty():
 		var again: Node3D = pool.pop_back()
-		_spare_order.erase(again)
 		again.set_meta("lod", -1)
+		again.set_meta("shown_lod", -1)
 		return again
+	var t0 := Time.get_ticks_usec()
+	var root := _new_root(variant)
+	PerfProbe.mark_since("cyclistes", "avatar %d" % variant, t0)
+	return root
+
+
+func _new_root(variant: int) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Cyclist%d" % _created
+	root.visible = false
 	root.set_meta("variant", variant)
 	root.set_meta("settings", RoadCyclistLook.settings_for(variant))
 	root.set_meta("looks", RoadCyclistLook.looks_for(variant))
@@ -136,16 +157,96 @@ func _take_root(variant: int) -> Node3D:
 
 func _release(root: Node3D) -> void:
 	root.visible = false
-	if _spare_order.size() >= SPARE_MAX:   # réserve pleine : le plus ancien avatar caché s'en va
-		var old: Node3D = _spare_order.pop_front()
-		(_spare[int(old.get_meta("variant"))] as Array).erase(old)
-		remove_child(old)
-		old.queue_free()
 	var v := int(root.get_meta("variant"))
 	if not _spare.has(v):
 		_spare[v] = []
+	if (_spare[v] as Array).size() >= SPARE_PER_VARIANT:
+		remove_child(root)
+		root.queue_free()
+		return
 	_spare[v].append(root)
-	_spare_order.append(root)
+
+
+## Niveaux de détail que le préréglage montre (le niveau 0 seulement si bot_lod peut le donner).
+func _levels() -> Array:
+	return [1, 2] if float(QualityPresets.BOT_LOD_M[quality][0]) <= 0.0 else [0, 1, 2]
+
+
+## Avatar du niveau `n` de `root`, construit s'il manque (caché).
+func _ensure_level(root: Node3D, n: int) -> AvatarView:
+	var name_ := "Lod%d" % n
+	if root.has_node(name_):
+		return root.get_node(name_)
+	var av := AvatarView.new()
+	av.name = name_
+	av.shadow_max_lod = SHADOW_MAX_LOD
+	av.looks = (root.get_meta("looks") as Dictionary).duplicate()
+	av.configure(root.get_meta("settings"), n)
+	av.set_visible_for_view("follow")
+	av.visible = false
+	root.add_child(av)
+	return av
+
+
+## Préchauffage (après la route, au chargement) : niveaux du préréglage des VARIANTS apparences construits
+## (dans les fils de travail, attendus ici), une racine de réserve par apparence, et sans `camera` rien de
+## plus ; avec `camera`, ces racines minuscules devant elle pendant WARM_FRAMES images. Retourne le nombre
+## d'avatars prêts.
+func warm_up(camera: Node3D = null) -> int:
+	var t0 := Time.get_ticks_usec()
+	var levels := _levels()
+	for v in range(RoadCyclistLook.VARIANTS):
+		for n in levels:
+			AvatarView.request_parts(n, RoadCyclistLook.settings_for(v), RoadCyclistLook.looks_for(v))
+	AvatarView.wait_parts()
+	var count := 0
+	for v in range(RoadCyclistLook.VARIANTS):
+		if (_spare.get(v, []) as Array).is_empty():
+			_release(_new_root(v))
+		for root in _spare[v]:
+			for n in levels:
+				_ensure_level(root, n)
+				count += 1
+	_warm_cam = camera
+	_warm_left = WARM_FRAMES if camera != null else 0
+	_place_warm()
+	PerfProbe.mark_since("cyclistes", "préchauffage", t0)
+	return count
+
+
+## Racines de réserve devant la caméra, tous niveaux visibles (préchauffage), ou rangées et cachées à la fin.
+func _place_warm() -> void:
+	var on := _warm_left > 0 and is_instance_valid(_warm_cam) and _warm_cam.is_inside_tree()
+	var i := 0
+	for v in _spare:
+		for root in _spare[v]:
+			root.visible = on
+			root.set_meta("shown_lod", -1)
+			for child in root.get_children():
+				if child is AvatarView:
+					child.visible = on
+			if on:
+				var at := Vector3((i % 8 - 3.5) * 0.002, floorf(i / 8.0) * 0.002, -WARM_DIST_M)
+				root.global_transform = _warm_cam.global_transform * Transform3D(Basis().scaled(Vector3.ONE * WARM_SCALE), at)
+			i += 1
+
+
+## Cyclistes affichés par niveau de détail montré [0, 1, 2] (tests, banc visuel).
+func lod_counts() -> Array:
+	var out := [0, 0, 0]
+	for id in _by_id:
+		var root: Node3D = _by_id[id]
+		if root.visible:
+			out[clampi(int(root.get_meta("shown_lod", 2)), 0, 2)] += 1
+	return out
+
+
+## Avatars de réserve prêts (tests).
+func spare_count() -> int:
+	var n := 0
+	for v in _spare:
+		n += (_spare[v] as Array).size()
+	return n
 
 
 ## Avatar du niveau `lod`, les autres niveaux cachés ; un niveau pas encore construit l'est dans un fil de
@@ -163,13 +264,9 @@ func _avatar(root: Node3D, lod: int) -> AvatarView:
 				break
 	var name_ := "Lod%d" % shown
 	if not root.has_node(name_):
-		var av := AvatarView.new()
-		av.name = name_
-		av.shadow_max_lod = QualityPresets.BOT_SHADOW_MAX_LOD
-		av.looks = lk.duplicate()
-		av.configure(st, shown)
-		av.set_visible_for_view("follow")
-		root.add_child(av)
+		var t0 := Time.get_ticks_usec()
+		_ensure_level(root, shown)
+		PerfProbe.mark_since("cyclistes", "niveau %d" % shown, t0)
 	if int(root.get_meta("shown_lod", -1)) != shown:
 		for child in root.get_children():
 			if child is AvatarView:
@@ -191,6 +288,9 @@ func update(dt_s: float, paused: bool = false, cam_s: float = NAN) -> void:
 	_variants.clear()
 	_shown = 0
 	_frame += 1
+	if _warm_left > 0:
+		_warm_left -= 1
+		_place_warm()
 	var seen := {}
 	if model != null:
 		for r in model.riders():

@@ -633,6 +633,7 @@ func test_info(cam: Camera3D) -> Dictionary:
 		"vehicles": traffic_view.visible_count() if traffic_view != null else 0,
 		"distant_vehicles": road_traffic_view.visible_count() if road_traffic_view != null else 0,
 		"cyclists": cyclists_view.visible_count() if cyclists_view != null else 0,
+		"cyclist_lods": cyclists_view.lod_counts() if cyclists_view != null else [0, 0, 0],
 		"headlights": headlights,
 		"birds": fauna.visible_count("bird") if fauna != null else 0,
 		"animals": _animal_count(),
@@ -691,6 +692,14 @@ func vehicle_anchor(id: String) -> Variant:
 			var back := -xf.basis.z * (float(TrafficModel.KINDS[v["kind"]]["length"]) * 0.5)
 			return xf.origin - back * (1.0 + GAUGE_BEHIND_M / maxf(back.length(), 0.01)) + Vector3.UP * GAUGE_DROP_M
 	return null
+
+
+## Lot AS7 : préchauffage des cyclistes du décor au chargement (après la route, comme les portiques de
+## segment_markers.gd) ; rien sans cyclistes au préréglage ou avec `living = false`. Retourne le nombre d'avatars prêts.
+func warm_up_cyclists(camera: Node3D) -> int:
+	if cyclists_view == null or int(living.get("cyclists", 0)) <= 0:
+		return 0
+	return cyclists_view.warm_up(camera)
 
 
 ## Lot AS7 : point d'appui de la jauge d'abri d'un cycliste du décor d'`id` donné (`draft_bot` = `rider:<id>`) : sa

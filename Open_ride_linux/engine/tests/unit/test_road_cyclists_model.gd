@@ -196,6 +196,54 @@ func _test_renderer(route) -> void:
 	await process_frame
 
 
+## Préchauffage (lot AS7, banc PC du 5/11) : au chargement, les niveaux du préréglage des 16 apparences, une
+## racine de réserve chacune, montrées minuscules devant la caméra quelques images ; ensuite cachées, et les
+## cyclistes qui arrivent les reprennent sans rien créer.
+func _test_warm_up(route) -> void:
+	var cam := Camera3D.new()
+	root.add_child(cam)
+	cam.current = true
+	cam.global_position = Vector3(0.0, 50.0, 0.0)
+	var counts := {}
+	for q in ["low", "high"]:
+		var rr = Renderer.new()
+		root.add_child(rr)
+		var m = Model.new()
+		m.configure(route, CLIMBS, [], 16, 3)
+		rr.setup(m)
+		rr.set_quality(q)
+		counts[q] = rr.warm_up(cam)
+		var created := rr.created_count()
+		var tiny := true
+		var shown_all := true
+		for c in rr.get_children():
+			if c is Node3D and c.has_meta("variant"):
+				tiny = tiny and c.global_position.distance_to(cam.global_position) < 2.1 and c.global_transform.basis.get_scale().x < 0.001
+				shown_all = shown_all and c.visible
+		_check(created == Look.VARIANTS and rr.spare_count() == Look.VARIANTS and tiny and shown_all,
+			"%s : préchauffage, %d avatars de réserve minuscules devant la caméra (%d niveaux construits)" % [q, rr.spare_count(), counts[q]])
+		for i in range(Renderer.WARM_FRAMES):
+			rr.update(1.0 / 30.0, false, 1000.0)
+		var hidden := true
+		for c in rr.get_children():
+			if c is Node3D and c.has_meta("variant") and rr.spare_count() == Look.VARIANTS:
+				hidden = hidden and not c.visible
+		_check(hidden, "%s : réserve cachée après %d images" % [q, Renderer.WARM_FRAMES])
+		m.update(1000.0, 7.0, 0.0)
+		m.place_for_test(1000.0, 7.0, "ahead", 30.0, 3)
+		var distinct := {}
+		for r in m.riders():
+			distinct[Look.variant_of(int(r["member"]["jersey"]), int(r["member"]["look"]))] = true
+		rr.update(1.0 / 30.0, false, 1000.0)
+		_check(rr.visible_count() > 0 and rr.created_count() == created + (rr.visible_count() - distinct.size()),
+			"%s : cyclistes qui arrivent sur les avatars préchauffés (%d créé(s) pour %d affichés)" % [q, rr.created_count() - created, rr.visible_count()])
+		rr.queue_free()
+	_check(counts["low"] == Look.VARIANTS * 2 and counts["high"] == Look.VARIANTS * 3,
+		"niveaux préchauffés : 1 et 2 en low (%d), 0 à 2 en high (%d)" % [counts["low"], counts["high"]])
+	cam.queue_free()
+	await process_frame
+
+
 ## Garde-robe du décor (lot AS7) : couleurs que ne portent ni les bots, ni le fantôme, ni l'avatar par défaut ;
 ## sans dossard, jamais de cadre de contre-la-montre.
 func _test_decor_look() -> void:
@@ -289,5 +337,6 @@ func _run() -> void:
 	_check(not m.groups.is_empty() and str(m.groups) == before, "pause : cyclistes figés")
 	await _test_renderer(route)
 	_test_decor_look()
+	await _test_warm_up(route)
 	print("test_road_cyclists_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
