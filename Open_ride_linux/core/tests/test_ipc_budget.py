@@ -134,7 +134,7 @@ def test_revision_1_5_open_world_frame_fits_and_validates():
     path = Path(__file__).resolve().parents[2] / "docs" / "contracts" / "ipc" / "state.schema.json"
     frame = worst_state("1.5")
     validator = jsonschema.Draft202012Validator(json.loads(path.read_text(encoding="utf-8")))
-    assert revisions()[-1] == "1.5" and "devices" not in frame
+    assert "1.5" in revisions() and "devices" not in frame
     assert [e.message for e in validator.iter_errors(frame)] == []
     assert size(frame) <= ipc_budget.state_limit("1.5")
     assert fit_state(frame, ipc_budget.state_limit("1.5")) == (frame, [])

@@ -21,16 +21,34 @@ def test_bots_at_the_rider_level_finish_with_the_rider(short_routes, route):
     assert [r["profile"] for r in out["bots"]] == ["climber", "rouleur", "sprinter", "diesel"]
     for r in out["bots"]:
         assert r["finish_s"] is not None and abs(r["gap_pct"]) <= br.GAP_LIMIT_PCT, r
-    assert all(c["ok"] for c in out["checks"]) and len(out["checks"]) == 5
-    assert 0 < out["state_max_bytes"] <= 4096
+    assert all(c["ok"] for c in out["checks"]) and len(out["checks"]) == 6   # dont les contacts (lot PL1)
+    assert 0 < out["state_max_bytes"] <= 4096 and out["contacts"] == 0
 
 
 def test_stronger_bots_finish_ahead_and_are_not_judged(short_routes):
     out = br.race("col", 80.0, ["rouleur", "climber"], level_pct=110.0)
     assert all(r["gap_pct"] < -5.0 for r in out["bots"])
-    assert len(out["checks"]) == 1 and out["checks"][0]["text"].startswith("trame state la plus grande")
+    assert len(out["checks"]) == 2 and out["checks"][0]["text"].startswith("trame state la plus grande")
+    assert out["checks"][1]["text"].startswith("contacts entre coureurs")
     climber = next(r for r in out["bots"] if r["profile"] == "climber")
     assert climber["wbal_min_pct"] < 100.0   # le grimpeur attaque la montée sur sa réserve
+
+
+def test_peloton_of_eleven_bots_without_contact(short_routes):
+    """Lot PL1 : 11 bots à profil au niveau du cycliste sur le col court : aucun contact, trame sous 4 096 octets,
+    et 12 bots refusés."""
+    profiles = ["rouleur", "climber", "sprinter", "diesel"] * 2 + ["rouleur", "climber", "sprinter"]
+    out = br.race("col", 85.0, profiles)
+    assert out["contacts"] == 0 and len(out["bots"]) == 11
+    assert 0 < out["state_max_bytes"] <= 4096
+    with pytest.raises(br.RaceError, match="au plus 11"):
+        br.race("col", 85.0, profiles + ["diesel"])
+
+
+def test_contacts_are_pairs_overlapping_both_ways():
+    assert br.contacts([("a", 10.0, 1.2), ("b", 11.0, 1.5), ("c", 20.0, 1.2)]) == {("a", "b")}
+    assert br.contacts([("a", 10.0, 1.2), ("b", 11.0, 2.1)]) == set()          # côte à côte, 0,9 m d'écart
+    assert br.contacts([("a", 10.0, 1.2), ("b", 11.7, 1.2)]) == set()          # roue dans la roue, sans toucher
 
 
 def test_two_bots_of_the_same_profile_are_numbered(short_routes):

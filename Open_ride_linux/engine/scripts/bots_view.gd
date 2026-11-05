@@ -14,6 +14,9 @@ extends Node3D
 ##   niveau déjà vu, gardé caché quand il ne sert pas : changer de niveau ne reconstruit rien. Les maillages
 ##   d'un niveau neuf se construisent dans un fil de travail (aucune image perdue) ; `wait_builds()` les
 ##   attend (tests, vitrine).
+## - Peloton (lot PL1, jusqu'à 11 bots et un fantôme) : seuls les QualityPresets.bot_detail_max(préréglage) bots
+##   les plus proches de la caméra peuvent prendre les niveaux 0 et 1 (et leur ombre) ; les autres restent au
+##   niveau 2, quelle que soit leur distance. Avec 5 bots ou moins, rien ne change.
 ## - Pédalier : la phase suit la distance parcourue `s` (un tour par DEVELOPMENT_M), les roues aussi (un tour
 ##   par 2π × rayon) : jambes et roues tournent avec la vitesse du bot et s'arrêtent avec lui. En danseuse
 ##   au-delà de la pente `standing_grade_pct` de l'avatar (8 %), comme le joueur par défaut.
@@ -30,11 +33,14 @@ const QualityPresets := preload("res://scripts/quality_presets.gd")
 const RoadCyclistsModel := preload("res://scripts/road_cyclists_model.gd")
 
 const NAME_HEIGHT_M := 2.1
+## Indice d'apparence des bots dont l'id ne finit pas par un numéro (fantôme), loin de ceux du peloton.
+const OTHER_INDEX := 50
 const GHOST_ALPHA := 0.55
 const STANDING_GRADE_PCT: float = AvatarModel.DEFAULTS["standing_grade_pct"]
 
 var quality := QualityPresets.DEFAULT_PRESET
 var _nodes := {}        # id:kind → Node3D (racine du bot)
+var _next_index := 0    # bots sans numéro dans leur id (fantôme) : indices d'apparence à partir de OTHER_INDEX
 var _poses := {}        # id:kind → {phase, color, lod, standing} (tests)
 
 
@@ -148,6 +154,7 @@ func _camera_distance(pos: Vector3) -> float:
 ## caméra).
 func update_view(view: Array, route) -> void:
 	var seen := {}
+	var placed: Array = []   # [distance à la caméra, b, key, smp] des bots affichés
 	for b in view:
 		var id: String = b["id"]
 		if not b["visible"] or route == null:
@@ -155,8 +162,9 @@ func update_view(view: Array, route) -> void:
 		seen[id] = true
 		var key := id + ":" + str(b["kind"])
 		if not _nodes.has(key):
-			_nodes[key] = _make_node(b, _nodes.size())
-			_nodes[key].set_meta("index", _nodes.size() - 1)
+			var index := _index_for(id)
+			_nodes[key] = _make_node(b, index)
+			_nodes[key].set_meta("index", index)
 		var node: Node3D = _nodes[key]
 		_refresh_jersey(node, b, int(node.get_meta("index")))
 		var s := float(b["s"])
@@ -171,7 +179,20 @@ func update_view(view: Array, route) -> void:
 		node.position = pos + right * float(b["lateral"])
 		node.set_meta("lateral", float(b["lateral"]))
 		node.rotation = Vector3(pitch, -h, 0.0)
-		var lod := QualityPresets.bot_lod(quality, _distance(b, node.position), int(node.get_meta("lod")))
+		placed.append([_distance(b, node.position), b, key, smp])
+	# Peloton (lot PL1) : niveaux détaillés pour les plus proches de la caméra seulement.
+	placed.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) < float(y[0]))
+	var detail_max := QualityPresets.bot_detail_max(quality)
+	for rank in range(placed.size()):
+		var dist: float = placed[rank][0]
+		var b: Dictionary = placed[rank][1]
+		var key: String = placed[rank][2]
+		var smp: Dictionary = placed[rank][3]
+		var node: Node3D = _nodes[key]
+		var s := float(b["s"])
+		var lod := QualityPresets.bot_lod(quality, dist, int(node.get_meta("lod")))
+		if rank >= detail_max:
+			lod = 2
 		node.set_meta("lod", lod)
 		var av := _avatar(node, lod)
 		var phase := fposmod(s / RoadCyclistsModel.DEVELOPMENT_M, 1.0)
@@ -190,6 +211,20 @@ func update_view(view: Array, route) -> void:
 			_nodes[key].queue_free()
 			_nodes.erase(key)
 			_poses.erase(key)
+
+
+## Indice d'apparence (bot_look.gd) du bot `id` : son numéro moins un (« bot7 » : 6), le même à chaque fois qu'il
+## revient à l'écran et jamais celui d'un autre bot du peloton (lot PL1) ; sans numéro, OTHER_INDEX et suivants.
+func _index_for(id: String) -> int:
+	var digits := ""
+	for i in range(id.length() - 1, -1, -1):
+		if id[i] < "0" or id[i] > "9":
+			break
+		digits = id[i] + digits
+	if digits != "" and digits.length() < 4:
+		return maxi(int(digits) - 1, 0)
+	_next_index += 1
+	return OTHER_INDEX + _next_index - 1
 
 
 ## Attend les maillages en construction ; la prochaine update_view montre alors le niveau voulu.

@@ -1,0 +1,67 @@
+{
+  "description": "Peloton de 11 bots à profil (lot PL1) sur le parcours de démonstration à 250 W, bots au niveau du cycliste : départ groupé (pire cas GPU), encart à 5 lignes, aucun contact.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 250,
+    "cadence_rpm": 90
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [],
+  "bench": {
+    "world": "demo",
+    "duration_s": 180,
+    "every_s": 15,
+    "bot_profiles": [
+      "rouleur",
+      "climber",
+      "sprinter",
+      "diesel",
+      "rouleur",
+      "climber",
+      "sprinter",
+      "diesel",
+      "rouleur",
+      "climber",
+      "sprinter"
+    ],
+    "expect": [
+      {
+        "log": "core",
+        "motif": "Bots calibrés",
+        "recette": "PL1",
+        "label": "11 bots à profil calibrés au départ (niveau des bots)"
+      },
+      {
+        "widget": "bots_line1",
+        "recette": "PL1",
+        "label": "encart des bots affiché"
+      },
+      {
+        "widget": "bots_gap1",
+        "recette": "PL1",
+        "label": "écart au bot affiché"
+      },
+      {
+        "widget": "bots_ahead",
+        "recette": "PL1",
+        "label": "voisin de devant (▲) dans l'encart"
+      },
+      {
+        "widget": "bots_behind",
+        "recette": "PL1",
+        "label": "voisin de derrière (▼) dans l'encart"
+      }
+    ]
+  }
+}

@@ -3,8 +3,13 @@ extends RefCounted
 ## Bots à l'écran (Lot O7, contrat IPC v1 §3, liste `bots`), sans nœud : écarts au cycliste en mètres
 ## et en secondes, bots visibles, ordre d'affichage, repères du profil (encart du HUD : bot_hud_model.gd).
 ##
-## - push() garde la dernière liste reçue (au plus 5 bots {id, name, s, v, kind}) avec son heure ;
-##   un bot absent de la trame disparaît, une trame sans `bots` (ou `bots` à null) les retire tous.
+## - push() garde la dernière liste reçue (au plus MAX_BOTS bots {id, name, s, v, kind} : 11 et un fantôme depuis
+##   le peloton du lot PL1, révision 1.6) avec son heure ; un bot absent de la trame disparaît, une trame sans
+##   `bots` (ou `bots` à null) les retire tous.
+## - Peloton (lot PL1) : au-delà de 5 bots, le core retire `cp_w` et `mass_kg` des plus loin du cycliste
+##   (bots.light_frame) ; push() garde ceux de la dernière trame qui les portait (constants pendant la séance),
+##   pour que l'encart ne les perde pas quand un bot sort des 5 plus proches. `wbal_pct` et `gap_s`, qui changent,
+##   ne sont pas gardés : jauge cachée et écart calculé ici.
 ## - Position affichée : s + v × (maintenant − réception), bornée à MAX_EXTRAPOLATION_S comme la caméra
 ##   (camera_follow.gd) ; sur une boucle (loop_length_m > 0), s est ramené dans [0, longueur[. Comme pour la
 ##   caméra, l'écart entre la position affichée et celle de la nouvelle trame est rattrapé linéairement en
@@ -51,7 +56,10 @@ const NAME_M := 50.0
 ## Nom caché à moins de NAME_MIN_CAMERA_M de la caméra : un bot qui passe tout près (doublé, ou qui recule le long de
 ## la caméra) montrait son nom en lettres géantes sur tout le haut de l'écran (captures du 3 novembre).
 const NAME_MIN_CAMERA_M := 6.0
-const MAX_LINES := 5
+## Bots gardés d'une trame : 11 bots et un fantôme (lot PL1, révision 1.6 ; 5 jusqu'à la 2.0).
+const MAX_BOTS := 12
+## Champs constants d'un bot à profil gardés d'une trame à l'autre (lot PL1, trame allégée du peloton).
+const KEPT_FIELDS := ["cp_w", "mass_kg"]
 const MAX_EXTRAPOLATION_S := 1.0
 const CORRECTION_S := 0.15       # camera_follow.gd
 const SNAP_M := 5.0
@@ -72,7 +80,8 @@ const OTHER_COLOR := UiTheme.BOT_OTHER
 ## Places en travers des bots, par ordre de préférence : leur place du lot P32 vers le bord, puis, en sautant
 ## celle du cycliste (un bot qui le rattrape dans sa ligne le toucherait), vers l'axe et la voie d'en face
 ## (peloton au départ), écartées de 0,9 m : deux cyclistes côte à côte ne se touchent pas
-## (2 × TrafficModel.RIDER_HALF_WIDTH_M = 0,6 m). Cinq places pour cinq bots au plus (MAX_LINES).
+## (2 × TrafficModel.RIDER_HALF_WIDTH_M = 0,6 m). Cinq places : elles ne servent qu'aux bots sans `lane_m` (core
+## d'avant AS2) ; un peloton (lot PL1) a toujours `lane_m`.
 const LATERAL_SLOTS := [RoadBuilder.BOT_LATERAL_M, RoadBuilder.RIDER_LATERAL_M - 0.9, RoadBuilder.RIDER_LATERAL_M - 1.8,
 	RoadBuilder.RIDER_LATERAL_M - 2.7, RoadBuilder.RIDER_LATERAL_M - 3.6]
 ## Écart le long de la route en dessous duquel deux cyclistes sur la même place se touchent (deux demi-longueurs
@@ -102,6 +111,7 @@ var _lateral := {}       # id → place affichée (glisse vers la place visée)
 var _last_view_us := -1
 var _places: Array = []  # [{s, lateral}] de la dernière vue
 var _back := {}          # id → retrait affiché (m, glisse vers le retrait visé)
+var _kept := {}          # id → {cp_w, mass_kg} de la dernière trame qui les portait (lot PL1)
 var vehicles: Array = []  # véhicules de la route {s, dir} (posés avant chaque view())
 
 
@@ -124,6 +134,7 @@ func clear() -> void:
 	_slot.clear()
 	_lateral.clear()
 	_back.clear()
+	_kept.clear()
 	vehicles = []
 	_places = []
 
@@ -154,8 +165,15 @@ func push(bots, t_us: int) -> void:
 			item["offset"] = off if absf(off) < SNAP_M else 0.0
 		for key in PROFILE_FIELDS:
 			item[key] = b.get(key, null)
+		var kept: Dictionary = _kept.get(item["id"], {})
+		for key in KEPT_FIELDS:
+			if item[key] != null:
+				kept[key] = item[key]
+			elif kept.has(key):
+				item[key] = kept[key]
+		_kept[item["id"]] = kept
 		_bots.append(item)
-		if _bots.size() >= MAX_LINES:
+		if _bots.size() >= MAX_BOTS:
 			break
 
 

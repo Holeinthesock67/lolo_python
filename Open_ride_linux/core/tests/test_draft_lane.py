@@ -220,3 +220,25 @@ def test_rider_passes_two_side_by_side_bots_on_the_left():
     assert alongside, "le dépassement n'a pas eu lieu"
     for r_m, l_m, b_m in alongside:
         assert r_m < min(l_m, b_m) - d.SIDE_CLEAR_M + 1e-6   # à gauche des deux, jamais entre eux
+
+
+# --- Lot PL1 : coureur enfermé dans un peloton ----------------------------------------------------
+
+def test_pl1_blocked_by_a_slower_rider_in_its_line():
+    """Rattrapé dans sa ligne sans s'en écarter : enfermé (écart, vitesse du coureur devant) ; en s'écartant à temps,
+    seulement roues qui se chevauchent ; à côté (0,9 m) ou devant plus vite : libre ; placement coupé : jamais."""
+    me = d.Lane(1.2, 1.2)
+    front = (10.0 + d.BIKE_LENGTH_M + 0.5, 8.0, d.Lane(1.3, 1.3))
+    assert d.blocked_by(10.0, 9.0, me, 1.2, [front]) == pytest.approx((0.5, 8.0))
+    assert d.blocked_by(10.0, 9.0, me, 1.2 - 0.9, [front]) is None                  # il double à gauche
+    overlap = (10.0 + d.BIKE_LENGTH_M - 0.3, 8.0, d.Lane(1.3, 1.3))
+    assert d.blocked_by(10.0, 9.0, me, 1.2 - 0.9, [overlap]) == pytest.approx((-0.3, 8.0))
+    assert d.blocked_by(10.0, 9.0, me, 1.2, [(front[0], 8.0, d.Lane(2.1, 2.1))]) is None   # à côté
+    assert d.blocked_by(10.0, 9.0, me, 1.2, [(front[0], 9.5, d.Lane(1.3, 1.3))]) is None   # il s'éloigne
+    assert d.blocked_by(10.0, 9.0, d.Lane(1.2, 1.2, auto=False), 1.2, [front]) is None
+
+
+def test_pl1_update_lanes_sets_blocked_on_each_lane():
+    a, b = d.Lane(1.2, 1.2), d.Lane(1.2, 1.2)
+    d.update_lanes([(10.0, 8.3, a), (10.0 + d.BIKE_LENGTH_M + 0.4, 8.0, b)], 0.02)   # trop peu plus vite pour doubler
+    assert a.blocked is not None and a.blocked[1] == 8.0 and b.blocked is None

@@ -88,6 +88,15 @@ SIDE_LOOK_S = 1.0         # on se décale dès qu'on toucherait la roue (devant 
 START_ROW_M = BIKE_LENGTH_M + 1.0   # grille de départ : un rang de deux bots tous les 2,7 m derrière le cycliste
 RIDER_WIDTH_M = 0.6       # largeur d'un coureur (2 × RIDER_HALF_WIDTH_M de traffic_model.gd) : contact en dessous
 SIDE_EXTRA_MARGIN = 1.5    # lot AS6 : on commence à doubler un véhicule assez tôt pour avoir fini de se décaler
+# Lot PL1 (peloton) : un coureur plus rapide qu'un autre juste devant dans sa ligne (moins de BLOCK_SIDE_M d'écart
+# latéral, roue dans moins de BLOCK_MIN_GAP_M + écart de vitesse × BLOCK_LOOK_S), ou déjà à sa hauteur à moins de
+# BLOCK_SIDE_M (coincé dans un paquet), est enfermé (`Lane.blocked`, posé par update_lanes) : un bot lève le pied
+# (et freine roue contre roue) le temps que son placement le sorte de la ligne.
+BLOCK_SIDE_M = 0.75
+BLOCK_MIN_GAP_M = 0.3
+BLOCK_LOOK_S = 1.0
+BLOCKED_PASS_DV_MPS = -0.2     # enfermé : il double un coureur à peine plus lent que lui (il a levé le pied pour lui)
+BLOCK_ESCAPE_OVERLAP_M = 0.05   # en s'écartant, il n'est enfermé qu'au-delà de 5 cm de roues qui se chevauchent
 
 
 @dataclass
@@ -107,6 +116,7 @@ class Lane:
     rate: float = 0.0
     target: float = 0.0
     passing: bool = False
+    blocked: tuple[float, float] | None = None   # lot PL1 : (écart roue à roue, vitesse) du coureur qui l'enferme
 
     def __post_init__(self) -> None:
         self.target = self.m
@@ -418,12 +428,14 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
     # à gauche du plus à gauche des coureurs qu'on rattrape, devant ou déjà à notre hauteur.
     # Le décalage commence assez tôt pour avoir le temps de gagner cette ligne (LANE_RATE_MPS).
     pass_left: float | None = None
-    if lead is not None and v - lead[1] > PASS_SPEED_MPS:
+    # Lot PL1 : enfermé au pas précédent (`lane.blocked`, il a levé le pied), il double sans attendre d'aller plus vite
+    pass_dv = BLOCKED_PASS_DV_MPS if lane.blocked is not None else PASS_SPEED_MPS
+    if lead is not None and v - lead[1] > pass_dv:
         group: list[tuple[float, float]] = []      # (écart roue à roue, ligne de dépassement) des coureurs rattrapés
         for o_s, o_v, o_lane in others:
             d = ahead_distance(s, o_s, length_m, is_loop)
             reach = 0.5 * (lane.length + o_lane.length)
-            if v - o_v > PASS_SPEED_MPS and -reach < d <= reach + FOLLOW_LOOK_M:
+            if v - o_v > pass_dv and -reach < d <= reach + FOLLOW_LOOK_M:
                 group.append((d - reach, o_lane.m - PASS_OFFSET_M - _wider(lane) - _wider(o_lane)))
         dv = v - lead[1]
         side_s = _side_time(lane, lead[2])
@@ -444,8 +456,10 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
         dx = lane.m - o_lane.m
         tie_left = d > 0.0 or (d == 0.0 and lane.rank > o_lane.rank) or not o_lane.auto
         clear = SIDE_CLEAR_M + _wider(lane) + _wider(o_lane)
-        # en dépassement, ceux qu'on double sont à notre droite, même si on est encore à leur droite
-        doubled = pass_left is not None and pass_left < o_lane.m and v - o_v > PASS_SPEED_MPS
+        # en dépassement, ceux qu'on double sont à notre droite, même si on est encore à leur droite ; sauf celui qui
+        # est déjà à notre hauteur (roues qui se chevauchent) à notre gauche : on ne lui passe pas à travers (lot PL1)
+        beside_left = gap < 0.0 and dx > 0.05
+        doubled = pass_left is not None and pass_left < o_lane.m and v - o_v > pass_dv and not beside_left
         # celui qui nous double (derrière, plus vite, en dépassement) passe à notre gauche : on tient sa ligne
         # au lieu de s'écarter devant lui (bots qui « vibraient » au dépassement, essai du 2 novembre)
         passer = d < 0.0 and o_lane.passing and o_v - v > PASS_SPEED_MPS
@@ -514,6 +528,37 @@ def update_lanes(runners: list[tuple[float, float, Lane]], dt: float, length_m: 
         others = [r for j, r in enumerate(runners) if j != i]
         head, cross = wind_at(s) if wind_at else (0.0, 0.0)
         targets.append(lane_target(s, v, lane, others, length_m, is_loop, head, cross))
+    for i, (s, v, lane) in enumerate(runners):
+        others = [r for j, r in enumerate(runners) if j != i]
+        lane.blocked = blocked_by(s, v, lane, targets[i][0], others, length_m, is_loop)
     for (_, _, lane), (target, passing) in zip(runners, targets):
         lane.target, lane.passing = target, passing
         step_lane(lane, target, dt)
+
+
+def blocked_by(s: float, v: float, lane: Lane, target: float, others: Iterable[tuple[float, float, Lane]],
+               length_m: float | None = None, is_loop: bool = False) -> tuple[float, float] | None:
+    """Coureur qui enferme celui-ci (lot PL1) : (écart roue à roue, vitesse) du plus proche devant dans sa ligne
+    (moins de `BLOCK_SIDE_M` d'écart latéral, plus la largeur en plus d'un véhicule), déjà à sa hauteur (roues qui
+    se chevauchent) ou qu'il touchera dans `BLOCK_LOOK_S` (plus `BLOCK_MIN_GAP_M`) sans que sa cible `target` le sorte
+    de la ligne ; s'il s'en écarte, seulement roues qui se chevauchent de plus de `BLOCK_ESCAPE_OVERLAP_M` (il
+    double, on ne le ralentit pas) ; None sinon. Placement coupé : None."""
+    if not lane.auto:
+        return None
+    best: tuple[float, float] | None = None
+    for o_s, o_v, o_lane in others:
+        d = ahead_distance(s, o_s, length_m, is_loop)
+        side = BLOCK_SIDE_M + _wider(lane) + _wider(o_lane)
+        dx = abs(o_lane.m - lane.m)
+        if d <= 0.0 or dx >= side:
+            continue
+        gap = d - 0.5 * (lane.length + o_lane.length)
+        closing = v - o_v
+        if abs(target - o_lane.m) >= side:   # il s'écarte de sa ligne : enfermé seulement roue dans la roue
+            if gap >= -BLOCK_ESCAPE_OVERLAP_M:
+                continue
+        elif gap >= 0.0 and (closing <= 0.0 or gap >= BLOCK_MIN_GAP_M + closing * BLOCK_LOOK_S):
+            continue
+        if best is None or gap < best[0]:
+            best = (gap, o_v)
+    return best

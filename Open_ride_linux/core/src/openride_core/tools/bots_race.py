@@ -10,8 +10,10 @@ par défaut celui du cycliste : ils doivent alors finir avec lui). Les bots qui 
 continuent avec la même physique jusqu'à l'arrivée.
 
 Tableau par bot : temps d'arrivée, écart avec le cycliste, W′ le plus bas, maillots ; trame `state` la plus
-grande. Échec (code 1) si un bot calibré au niveau du cycliste finit à plus de 2 % de lui, ou si une trame
-`state` dépasse la limite du contrat (4 096 octets) ; code 2 pour un profil, un parcours ou un appel
+grande ; contacts entre coureurs (lot PL1 : deux vélos qui se chevauchent en long et en travers, comptés à chaque
+début de contact, jusqu'à l'arrivée du cycliste). Jusqu'à 11 bots (peloton du lot PL1), trame allégée comme en séance. Échec (code 1) si un bot
+calibré au niveau du cycliste finit à plus de 2 % de lui, si une trame `state` dépasse la limite du contrat
+(4 096 octets) ou s'il y a un contact ; code 2 pour un profil, un parcours ou un appel
 invalide. Parcours `plat` (20 km à 0 %) et `col` (2 km de plat puis 8 km à 7 %) : écrits à la volée.
 """
 
@@ -27,8 +29,9 @@ from pathlib import Path
 from typing import Any
 
 from .. import fit_export
-from ..bots import PROFILES, ProfileBot, profile_bot_names
+from ..bots import MAX_CONSTANT_BOTS, PROFILES, ProfileBot, profile_bot_names
 from ..config import Config
+from ..draft import BIKE_LENGTH_M, RIDER_WIDTH_M
 from ..demo_world import write_world
 from ..input_providers import NullProvider
 from ..ipc_budget import STATE_LIMIT_1_3, size
@@ -43,6 +46,21 @@ SYNTHETIC = {
     "plat": (20000.0, lambda s: 0.0),
     "col": (10000.0, lambda s: 0.0 if s < 2000.0 else 7.0),
 }
+
+
+# Contact (lot PL1) : roues qui se chevauchent de plus de 10 cm et guidons à moins d'une largeur (5 cm de marge).
+CONTACT_LONG_M = BIKE_LENGTH_M - 0.1
+CONTACT_SIDE_M = RIDER_WIDTH_M - 0.05
+
+
+def contacts(runners: list[tuple[str, float, float]]) -> set[tuple[str, str]]:
+    """Paires de coureurs (id, s, écart à l'axe) qui se touchent."""
+    out = set()
+    for i, (a, s1, m1) in enumerate(runners):
+        for b, s2, m2 in runners[i + 1:]:
+            if abs(s1 - s2) < CONTACT_LONG_M and abs(m1 - m2) < CONTACT_SIDE_M:
+                out.add((a, b))
+    return out
 
 
 class RaceError(Exception):
@@ -70,6 +88,8 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
     unknown = [p for p in profiles if p not in PROFILES]
     if unknown:
         raise RaceError(f"profil(s) de bot inconnu(s) : {', '.join(unknown)} ({', '.join(PROFILES)})")
+    if len(profiles) > MAX_CONSTANT_BOTS:
+        raise RaceError(f"au plus {MAX_CONSTANT_BOTS} bots ({len(profiles)} demandés)")
     level = float(level_pct if level_pct is not None else rider_pct)
     t_wall = time.perf_counter()
     # Tout ce que la séance écrit (journal, FIT de fin de parcours, records, progression) reste dans un
@@ -106,6 +126,9 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
         wmin = {b.id: 100.0 for b in bots}
         jerseys: Any = None
         biggest = 0
+        touching: set[tuple[str, str]] = set()
+        n_contacts = 0
+        first_contact: dict[str, Any] | None = None
         t = 0.0
         step = 0
         while t < MAX_RIDE_S and (len(finish) < len(bots) + 1):
@@ -116,6 +139,7 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
                 if step % FRAME_EVERY == 0 and s.state.session_state == "RUNNING":
                     s.state.bots = [b.to_dict() for b in s.bots]
                     s._fill_race_frame()
+                    s._lighten_bots_frame()
                     frame = s.state.to_dict()
                     biggest = max(biggest, size(frame))
                     jerseys = frame.get("jerseys") or jerseys
@@ -125,6 +149,20 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
                         b.step(dt, s.route)
             t += dt
             step += 1
+            # contacts tant que la séance tourne : après l'arrivée du cycliste, les bots n'ont plus ni abri ni placement
+            # (les bots arrivés s'arrêtent sur la ligne : hors compte)
+            runners = [(b.id, b.s, b.lane.m) for b in bots if b.id not in finish and b.s < length - 1e-6]
+            runners.append(("rider", s.physics.s, s._lane.m))
+            now_touching = contacts(runners) if "rider" not in finish else set()
+            new = now_touching - touching
+            n_contacts += len(new)
+            if new and first_contact is None:
+                where = {r[0]: (round(r[1], 2), round(r[2], 2)) for r in runners}
+                speed = {b.id: round(b.v, 2) for b in bots} | {"rider": round(s.physics.v, 2)}
+                pair = sorted(new)[0]
+                first_contact = {"t_s": round(t, 2), "pair": list(pair), "s_lane": [where[p] for p in pair],
+                                 "v": [speed[p] for p in pair]}
+            touching = now_touching
             for b in bots:
                 wmin[b.id] = min(wmin[b.id], b.wbal_pct)
                 if b.id not in finish and b.s >= length - 1e-6:
@@ -145,10 +183,12 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
             ok = r["gap_pct"] is not None and abs(r["gap_pct"]) <= GAP_LIMIT_PCT
             checks.append((ok, f"{r['name']} au niveau du cycliste : écart {r['gap_pct']} % (au plus {GAP_LIMIT_PCT:g} %)"))
     checks.append((biggest <= STATE_LIMIT_1_3, f"trame state la plus grande : {biggest} octets (limite {STATE_LIMIT_1_3})"))
+    checks.append((n_contacts == 0, f"contacts entre coureurs : {n_contacts}"
+                   + (f" (premier : {first_contact})" if first_contact else "")))
     return {"route": route, "length_m": round(length, 1), "rider_pct": rider_pct, "level_pct": level, "ftp_w": ftp_w,
             "rider_finish_s": None if rider_t is None else round(rider_t, 1), "bots": rows,
             "rider_jerseys": sorted(k for k, v in (jerseys or {}).items() if v == "me"),
-            "segment_results": len(results), "state_max_bytes": biggest,
+            "segment_results": len(results), "state_max_bytes": biggest, "contacts": n_contacts,
             "checks": [{"ok": ok, "text": txt} for ok, txt in checks],
             "wall_s": round(time.perf_counter() - t_wall, 2)}
 
