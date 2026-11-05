@@ -737,15 +737,19 @@ FULL_FRAME_BOTS = 5   # bots les plus proches du cycliste qui gardent tous leurs
 # dernière trame qui les portait) ou recalculables (`gap_s` : écart en mètres sur la vitesse) ; `wbal_pct`
 # n'est montré que dans l'encart du HUD, qui n'affiche que les voisins du cycliste.
 LIGHT_DROPPED = ("cp_w", "mass_kg", "wbal_pct", "gap_s")
+# Champs constants des autres bots envoyés à tour de rôle (un bot par trame) et gardés par l'engine entre deux
+# envois : avec les cyclistes du décor (lot AS7, `riders`), la pire trame 1.6 dépassait 4 096 octets.
+LIGHT_ROTATED = ("name", "profile")
 
 
 def light_frame(bots: list[dict[str, Any]], rider_s: float, length_m: float | None = None,
-                is_loop: bool = False) -> list[dict[str, Any]]:
+                is_loop: bool = False, frame_no: int = 0) -> list[dict[str, Any]]:
     """Liste `bots` de la trame `state` d'un peloton (lot PL1) : jusqu'à `FULL_FRAME_BOTS` bots, rien ne
     change. Au-delà, les `FULL_FRAME_BOTS` plus proches du cycliste (écart le long de la route, le plus
-    court sur une boucle) gardent tout ; les autres perdent `LIGHT_DROPPED`, et tous perdent `jersey` quand
-    il vaut `null` (absent : pas de maillot). `id`, `name`, `s`, `v`, `kind`, `lane_m`, `profile` (couleur et
-    tenue du bot), `jersey` porté et `out` restent toujours. L'ordre de la liste est gardé."""
+    court sur une boucle) gardent tout ; les autres perdent `LIGHT_DROPPED`, et `LIGHT_ROTATED` sauf l'un
+    d'eux à tour de rôle (`frame_no`, numéro de la trame : avec N bots loin, chacun les porte une trame sur N) ;
+    tous perdent `jersey` quand il vaut `null` (absent : pas de maillot). `id`, `s`, `v`, `kind`, `lane_m`,
+    `jersey` porté et `out` restent toujours. L'ordre de la liste est gardé."""
     if len(bots) <= FULL_FRAME_BOTS:
         return bots
 
@@ -756,11 +760,13 @@ def light_frame(bots: list[dict[str, Any]], rider_s: float, length_m: float | No
         return abs(d)
 
     near = {id(b) for b in sorted(bots, key=gap)[:FULL_FRAME_BOTS]}
+    far = [b for b in bots if id(b) not in near]
+    turn = id(far[frame_no % len(far)])
     out = []
     for b in bots:
         light = {k: v for k, v in b.items() if not (k == "jersey" and v is None)}
         if id(b) not in near:
-            for k in LIGHT_DROPPED:
+            for k in LIGHT_DROPPED + (() if id(b) == turn else LIGHT_ROTATED):
                 light.pop(k, None)
         out.append(light)
     return out

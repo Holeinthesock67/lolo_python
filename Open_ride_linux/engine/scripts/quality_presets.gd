@@ -59,6 +59,10 @@ const PRESETS := {
 ## - `heat_haze` : brume de chaleur au-dessus de l'horizon des déserts et de la savane (lot U10), coupée en `low`.
 ## - `anisotropy` : filtrage anisotrope des textures vues en biais (route, herbe), 2, 4, 8 ou 16×
 ##   (réglage du viewport depuis Godot 4.4, étape 4 d'Y13).
+## 2.0.1 (05/11) : la demo compilée dépassait son budget GPU sur la GTX 1060 (medium 12,6 ms pour 12, high
+## 14,6 pour 14). Ombres douces et SSIL descendent d'un cran en `medium` et `high` : mesuré séparément
+## sur le PC, ombres −0,9 / −0,7 ms, SSIL −1,9 / −0,7 ms, sans différence visible sur la planche
+## r201 du 5 novembre. L'anisotropie, moins rentable en high, ne change pas.
 const IMAGE := {
 	"low": {
 		"anisotropy": 4,
@@ -80,13 +84,13 @@ const IMAGE := {
 		"msaa": 4,
 		"screen_aa": "off",
 		"ssao": "medium",
-		"ssil": "low",
+		"ssil": "off",
 		"ao_half_size": true,
 		"fog_volumetric": "light",
 		"glow": true,
 		"shadow_atlas": 4096,
 		"shadow_splits": 4,
-		"shadow_filter": "medium",
+		"shadow_filter": "low",
 		"mesh_lod_threshold": 1.0,
 		"heat_haze": true,
 	},
@@ -95,13 +99,13 @@ const IMAGE := {
 		"msaa": 4,
 		"screen_aa": "off",
 		"ssao": "high",
-		"ssil": "medium",
+		"ssil": "low",
 		"ao_half_size": true,
 		"fog_volumetric": "full",
 		"glow": true,
 		"shadow_atlas": 4096,
 		"shadow_splits": 4,
-		"shadow_filter": "high",
+		"shadow_filter": "medium",
 		"mesh_lod_threshold": 0.5,
 		"heat_haze": true,
 	},
@@ -139,6 +143,13 @@ const BOT_LOD_M := {
 	"high": [20.0, 60.0],
 }
 const BOT_SHADOW_MAX_LOD := 1
+## Lot Y21 : spectateurs et passants détaillés en deçà de cette distance (m), maillage réduit au-delà
+## (people_mesh.gd `lod`, crowd_renderer.gd).
+const PEOPLE_LOD_M := {
+	"low": 12.0,
+	"medium": 25.0,
+	"high": 40.0,
+}
 const BOT_LOD_HYSTERESIS_M := 2.0
 ## Peloton (lot PL1) : bots au plus aux niveaux 0 et 1 (avec leur ombre), les plus proches de la caméra ; les
 ## autres restent au niveau 2. Au moins les 5 bots d'avant le peloton : rien ne change jusqu'à 5 bots. Valeurs
@@ -194,6 +205,11 @@ static func image(name: String) -> Dictionary:
 ## Distance où le brouillard de profondeur devient opaque (lot Y1), `low` si le nom est inconnu.
 static func fog_end_m(name: String) -> float:
 	return float(preset(name)["fog_end_m"])
+
+
+## Distance du niveau de détail des personnages du décor (Lot Y21) pour le préréglage `name`.
+static func people_lod_m(name: String) -> float:
+	return float(PEOPLE_LOD_M[applied_name(name)])
 
 
 static func shadow_distance_m(name: String) -> float:

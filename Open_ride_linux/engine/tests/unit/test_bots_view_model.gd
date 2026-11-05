@@ -313,11 +313,18 @@ func _test_peloton() -> void:
 		if c["id"] == "bot11":
 			c.erase("cp_w")
 			c.erase("mass_kg")
+			c.erase("name")
+			c.erase("profile")
 		light.append(c)
 	m.push(light, US)
 	var b11: Dictionary = m.view(1000.0, 10.0, US).filter(func(b): return b["id"] == "bot11")[0]
 	_check(is_equal_approx(float(b11["cp_w"]), 260.0) and is_equal_approx(float(b11["mass_kg"]), 70.0),
 		"trame allégée : FTP et masse gardées de la trame d'avant (%s)" % str(b11))
+	_check(str(b11["name"]) == "Rouleur 11" and str(b11["profile"]) == "rouleur",
+		"trame allégée : nom et profil gardés de la trame d'avant (%s)" % str(b11))
+	var fresh = BotsViewModel.new()
+	fresh.push([{"id": "bot9", "s": 1000.0, "v": 10.0, "kind": "constant"}], 0)
+	_check(str(fresh.view(1000.0, 10.0, 0)[0]["name"]) == "bot9", "nom encore inconnu : l'id en attendant")
 	var route = ClimbTest.make_route(3000.0, func(_s): return 0.0)
 	var bv = BotsView.new()
 	for q in ["low", "medium", "high"]:

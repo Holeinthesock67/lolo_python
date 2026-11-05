@@ -91,6 +91,7 @@ STATE_DEGRADATION: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("devices", _drop("devices")),
     ("summary", _drop("summary")),
     ("bots", _drop("bots")),
+    ("riders", _drop("riders")),          # lot AS7 : extrapolés par l'engine, ils reviennent 100 ms plus tard
     ("vehicles", _drop("vehicles")),      # lot AS6 : extrapolés par l'engine, ils reviennent 100 ms plus tard
     ("open_world", _drop("open_world")),
     ("erg", _drop("erg")),
@@ -187,6 +188,9 @@ def _extras_1_5(d: dict[str, Any]) -> None:
     # Lot AS6 : au plus 4 véhicules proches, chacun au plus long (identifiant de case, sorte la plus longue)
     d["vehicles"] = [{"id": "v1000099", "kind": "tractor", "color": 7, "s": 123_456.79 + i, "dir": -1,
                       "v": 22.22, "lane_m": -2.33} for i in range(4)]
+    # Lot AS7 : au plus 6 cyclistes du décor proches, identifiants de case et d'apparence au plus long
+    d["riders"] = [{"id": "c1000099-5", "s": 123_456.79 + i, "dir": -1, "v": 19.44, "lane_m": -2.33,
+                    "look": 1_048_575} for i in range(6)]
 
 
 PELOTON_BOTS = 12   # lot PL1 : 11 bots et un fantôme (bots.MAX_BOTS)
@@ -194,7 +198,8 @@ PELOTON_BOTS = 12   # lot PL1 : 11 bots et un fantôme (bots.MAX_BOTS)
 
 def _extras_1_6(d: dict[str, Any]) -> None:
     # Peloton (lot PL1, 3.0) : 12 bots. Comme `bots.light_frame`, les 5 plus proches gardent tous les champs,
-    # les autres n'ont plus `cp_w`, `mass_kg`, `wbal_pct` ni `gap_s`, et `jersey` n'est là que porté (deux
+    # les autres n'ont plus `cp_w`, `mass_kg`, `wbal_pct` ni `gap_s` (ni `name` et `profile`, sauf l'un d'eux
+    # à tour de rôle), et `jersey` n'est là que porté (deux
     # maillots au plus). Pire cas : tous avec `lane_m`, `profile` et `out` (Dernier survivant), même si `out`
     # et les maillots ne vont pas ensemble (le mode n'a pas de segments).
     from .bots import FULL_FRAME_BOTS, light_frame

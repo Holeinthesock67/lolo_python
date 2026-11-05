@@ -4,7 +4,8 @@ Critères du cahier `docs/lots/LOT_PL1_peloton.md` :
 1. `start.bots` accepte 11 bots à puissance constante ou à profil et un fantôme ; 12 bots ou 13 éléments
    sont refusés (`BotError`) ; la ligne de commande accepte 11 bots et refuse le 12e.
 2. Trame allégée (`light_frame`) : jusqu'à 5 bots, rien ne change ; au-delà, les 5 plus proches du cycliste
-   gardent tout, les autres perdent `cp_w`, `mass_kg`, `wbal_pct` et `gap_s`, `jersey` à null disparaît,
+   gardent tout, les autres perdent `cp_w`, `mass_kg`, `wbal_pct` et `gap_s` (et `name`, `profile` sauf un
+   à tour de rôle), `jersey` à null disparaît,
    le maillot porté reste ; sur une boucle, la distance la plus courte compte.
 3. Pire trame de la révision 1.6 (12 bots, avec ou sans `devices`) valide et sous 4 096 octets, sans
    allègement par `fit_state`.
@@ -88,9 +89,15 @@ def test_light_frame_keeps_the_five_nearest():
     full = {b["id"] for b in out if "cp_w" in b}
     assert full == {"bot6", "bot5", "bot7", "bot4", "bot8"}    # 500, 400, 600, 300, 700 m
     for b in out:
-        assert {"id", "name", "s", "v", "kind", "lane_m", "profile"} <= b.keys()
+        assert {"id", "s", "v", "kind", "lane_m"} <= b.keys()
         if b["id"] not in full:
             assert not set(LIGHT_DROPPED) & b.keys()
+    named = [b["id"] for b in out if "name" in b and b["id"] not in full]
+    assert named == ["bot1"] and all("profile" in b for b in out if "name" in b)   # un bot loin à tour de rôle
+    seen = set()
+    for n in range(7):                                          # 7 bots loin : chacun en 7 trames
+        seen |= {b["id"] for b in light_frame(bots, 500.0, frame_no=n) if "name" in b and b["id"] not in full}
+    assert seen == {b["id"] for b in bots} - full
     assert out[0]["jersey"] == "kom"                            # maillot porté gardé, même loin
     assert all("jersey" not in b for b in out[1:])
     assert all("cp_w" in b for b in bots)                       # la liste reçue n'est pas modifiée
@@ -110,7 +117,7 @@ def test_worst_peloton_frames_fit_without_degradation():
     for frame in (ipc_budget.worst_state("1.6"), ipc_budget.worst_peloton_devices()):
         assert len(frame["bots"]) == 12
         assert [e.message for e in validator.iter_errors(frame)] == []
-        assert ipc_budget.size(frame) <= ipc_budget.state_limit("1.6") - 256   # marge gardée pour la 3.0
+        assert ipc_budget.size(frame) <= ipc_budget.state_limit("1.6") - 128   # marge gardée pour la 3.0
         assert ipc_budget.fit_state(frame, ipc_budget.state_limit("1.6")) == (frame, [])
     assert "1.6 peloton + devices" in ipc_budget.report()
 

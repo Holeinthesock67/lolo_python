@@ -24,9 +24,11 @@ la trame `state` dépasse 4 096 octets, sans que les bots se roulent dessus, et 
   `--bot-profile`, derniers choix du menu (`last_choices.MAX_BOTS`). Le réglage `survivor.opponents` reste borné
   à 4 : il passe à 11 avec DS8.
 - Trame allégée (`bots.light_frame`, appelée par la séance avant chaque envoi) : au-delà de 5 bots, les 5 plus
-  proches du cycliste gardent tout ; les autres perdent `cp_w`, `mass_kg`, `wbal_pct` et `gap_s` ; `jersey` à
-  `null` n'est plus envoyé. Pire trame (`python -m openride_core.ipc_budget`, révision 1.6) : 3 758 octets
-  (12 bots, monde ouvert, véhicules), 3 480 avec `devices`.
+  proches du cycliste gardent tout ; les autres perdent `cp_w`, `mass_kg`, `wbal_pct` et `gap_s`, et `name`
+  et `profile` sauf l'un d'eux à tour de rôle (l'engine les garde ; `name` devient facultatif) ; `jersey` à
+  `null` n'est plus envoyé. Pire trame (`python -m openride_core.ipc_budget`, révision 1.6) : 3 949 octets
+  (12 bots, monde ouvert, véhicules, cyclistes du décor du lot AS7 arrivés sur `main` le 5 novembre), 3 162
+  avec `devices`.
 - Bot enfermé (`draft.blocked_by`, posé par `update_lanes` dans `Lane.blocked`) : un bot qui rattrape un coureur
   dans sa ligne (moins de 0,75 m de côté) sans que son placement l'en sorte, ou qui se retrouve à sa hauteur trop
   près, lève le pied (`_blocked_power`, vitesse ramenée à celle du coureur devant à 0,5 m de sa roue) et freine
@@ -59,7 +61,7 @@ la trame `state` dépasse 4 096 octets, sans que les bots se roulent dessus, et 
 
 | Mesure | Résultat |
 | --- | --- |
-| Pire trame `state` 1.6 | 3 758 octets (limite 4 096), sans allègement ; 3 480 avec `devices` |
+| Pire trame `state` 1.6 | 3 949 octets (limite 4 096) avec les cyclistes du décor (AS7), sans allègement ; 3 162 avec `devices` |
 | Course de 11 bots au niveau du cycliste (`bots_race`, demo 5 km, plat 20 km, col 10 km, demo à 100 %) | trames de 2 137 à 2 152 octets ; 0 contact partout avec la règle de l'engine (avant correction : des centaines dès 6 bots) |
 | Calibrage T13 (4 bots, plat et col courts) | écarts toujours sous 2 % |
 | Banc de l'abri (`draft_bench`) | inchangé, contacts du groupe libre sous 1 % du temps |

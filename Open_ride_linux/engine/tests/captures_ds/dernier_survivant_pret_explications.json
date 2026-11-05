@@ -39,7 +39,7 @@
       "ecran": "ready",
       "titre": "Prêt : Dernier survivant — demo",
       "contient": [
-        "parcours trop court"
+        "trop court ("
       ],
       "delai": 5
     },
@@ -82,7 +82,7 @@
         "2 arches sur 4 km"
       ],
       "absent": [
-        "parcours trop court"
+        "trop court ("
       ]
     },
     {

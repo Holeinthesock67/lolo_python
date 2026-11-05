@@ -426,6 +426,8 @@ class Run:
                 bad.append("menu caché")
             if st.get("screen") not in ([step["ecran"]] if isinstance(step["ecran"], str) else step["ecran"]):
                 bad.append(f"écran « {st.get('screen')} »")
+            if st.get("visible") and st.get("markers"):   # 2.0.1 : arche de départ lue à travers le menu
+                bad.append("portiques des segments visibles derrière le menu")
         if "monde" in step:
             world = st.get("world_menu", {})
             if bool(world.get("visible")) != bool(step["monde"]):

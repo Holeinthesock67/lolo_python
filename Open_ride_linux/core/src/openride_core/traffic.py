@@ -229,7 +229,7 @@ class Vehicle:
 
 @dataclass
 class Other:
-    """Coureur que les véhicules évitent (bot, plus tard cycliste du décor) : position, écart à l'axe, sens."""
+    """Coureur que les véhicules évitent (bot, cycliste du décor du lot AS7) : position, écart à l'axe, sens."""
 
     s: float
     lateral: float

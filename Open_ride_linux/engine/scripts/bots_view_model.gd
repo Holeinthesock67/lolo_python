@@ -58,8 +58,9 @@ const NAME_M := 50.0
 const NAME_MIN_CAMERA_M := 6.0
 ## Bots gardés d'une trame : 11 bots et un fantôme (lot PL1, révision 1.6 ; 5 jusqu'à la 2.0).
 const MAX_BOTS := 12
-## Champs constants d'un bot à profil gardés d'une trame à l'autre (lot PL1, trame allégée du peloton).
-const KEPT_FIELDS := ["cp_w", "mass_kg"]
+## Champs constants d'un bot gardés d'une trame à l'autre (lot PL1, trame allégée du peloton : `name` et
+## `profile` des bots loin du cycliste n'arrivent qu'à tour de rôle ; nom encore inconnu : l'id en attendant).
+const KEPT_FIELDS := ["cp_w", "mass_kg", "name", "profile"]
 const MAX_EXTRAPOLATION_S := 1.0
 const CORRECTION_S := 0.15       # camera_follow.gd
 const SNAP_M := 5.0
@@ -111,7 +112,7 @@ var _lateral := {}       # id → place affichée (glisse vers la place visée)
 var _last_view_us := -1
 var _places: Array = []  # [{s, lateral}] de la dernière vue
 var _back := {}          # id → retrait affiché (m, glisse vers le retrait visé)
-var _kept := {}          # id → {cp_w, mass_kg} de la dernière trame qui les portait (lot PL1)
+var _kept := {}          # id → KEPT_FIELDS de la dernière trame qui les portait (lot PL1)
 var vehicles: Array = []  # véhicules de la route {s, dir} (posés avant chaque view())
 
 
@@ -155,7 +156,10 @@ func push(bots, t_us: int) -> void:
 		if not (b is Dictionary) or str(b.get("id", "")) == "" or not (b.get("s") is float or b.get("s") is int):
 			continue
 		var gap = b.get("gap_s", null)
-		var item := {"id": str(b["id"]), "name": str(b.get("name", b["id"])), "kind": str(b.get("kind", "")),
+		var bot_name = null   # absent d'une trame allégée : gardé de la trame d'avant (KEPT_FIELDS)
+		if b.get("name") is String:
+			bot_name = b["name"]
+		var item := {"id": str(b["id"]), "name": bot_name, "kind": str(b.get("kind", "")),
 			"s": float(b["s"]), "v": float(b.get("v", 0.0)) if (b.get("v") is float or b.get("v") is int) else 0.0,
 			"gap_s": float(gap) if (gap is float or gap is int) else null, "t_us": t_us, "offset": 0.0,
 			"lane_m": float(b["lane_m"]) if (b.get("lane_m") is float or b.get("lane_m") is int) else null,
@@ -172,6 +176,8 @@ func push(bots, t_us: int) -> void:
 			elif kept.has(key):
 				item[key] = kept[key]
 		_kept[item["id"]] = kept
+		if item["name"] == null:
+			item["name"] = item["id"]
 		_bots.append(item)
 		if _bots.size() >= MAX_BOTS:
 			break

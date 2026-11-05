@@ -25,7 +25,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1] / "core" / "src"))
 
-from openride_core.road_cyclists import RoadCyclists  # noqa: E402
+from openride_core.road_cyclists import BOT_LATERAL_M, RoadCyclists  # noqa: E402
 from openride_core.route import Route  # noqa: E402
 
 OUT = HERE / "data" / "road_cyclists_parity.json"
@@ -68,7 +68,7 @@ def trace() -> dict:
     while s < FLAT_M + 10000.0:
         v = 30.0 / 3.6 if s < FLAT_M else 14.0 / 3.6
         bot += (32.0 if bot < FLAT_M else 15.0) / 3.6 * dt
-        m.update(s, v, dt, False, [bot])
+        m.update(s, v, dt, False, [(bot, BOT_LATERAL_M)])
         for g in m.groups:
             if g.id not in seen:
                 seen.add(g.id)
