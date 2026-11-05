@@ -11,6 +11,7 @@ extends RefCounted
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const WorldStreamer := preload("res://scripts/world_streamer.gd")
 const ViewCulling := preload("res://scripts/view_culling.gd")
+const RenderDiag := preload("res://scripts/render_diag.gd")
 
 const DEFAULT_PRESET := QualityPresets.DEFAULT_PRESET
 
@@ -95,8 +96,8 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 	light.directional_shadow_max_distance = QualityPresets.shadow_distance_m(key)
 	# SSAO, SSIL et brouillard volumétrique n'existent qu'en Forward+ (sans RenderingDevice : Compatibility).
 	var forward_plus := RenderingServer.get_rendering_device() != null
-	apply_image(QualityPresets.image(key), light, env, viewport, forward_plus)
-	apply_diagnostic(OS.get_environment("OPENRIDE_RENDER_DIAG"), light, env)
+	apply_image(diagnostic_image(QualityPresets.image(key)), light, env, viewport, forward_plus)
+	apply_diagnostic(light, env)
 
 	if streamer != null:
 		if "chunks_ahead" in streamer:
@@ -104,7 +105,7 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 		if "chunks_behind" in streamer:
 			streamer.chunks_behind = int(p["chunks_behind"])
 		if "vegetation_density_factor" in streamer:
-			streamer.vegetation_density_factor = float(p["vegetation_density_factor"])
+			streamer.vegetation_density_factor = RenderDiag.number("vegetation", float(p["vegetation_density_factor"]))
 		if "far_radius_m" in streamer:
 			streamer.far_radius_m = WorldStreamer.far_radius_for(QualityPresets.fog_end_m(key))
 		if "culling_keep_m" in streamer:
@@ -167,26 +168,48 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 		else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS)
 
 
-## Essais de rendu sur le PC (coutures des flancs, 29 octobre) : OPENRIDE_RENDER_DIAG, liste séparée par des
-## virgules, coupe un effet pour trouver celui qui dessine un défaut : `sans_ombres`, `sans_ssao`, `sans_ssil`,
-## `sans_brume` (brume volumétrique) ; `biais_ombres` essaie des biais d'ombre plus forts (acné d'ombre). Vide :
-## rien ne change. Aucun réglage du joueur ne passe par là.
-static func apply_diagnostic(diag: String, light: DirectionalLight3D, env: Environment) -> void:
-	var flags := diag.replace(" ", "").split(",", false)
-	if flags.is_empty():
+## Essais de rendu sur le PC (OPENRIDE_RENDER_DIAG, render_diag.gd) : qualité d'image du préréglage modifiée
+## pour mesurer le coût d'un effet ou trouver celui qui dessine un défaut (coutures des flancs, 29 octobre ;
+## coût de chaque effet, 5 novembre). Sans variable : `img` inchangé.
+static func diagnostic_image(img: Dictionary) -> Dictionary:
+	var out := img.duplicate(true)
+	for key in ["msaa", "ssao", "ssil"]:
+		var v := RenderDiag.value(key)
+		if v != "":
+			out[key] = int(v) if key == "msaa" else v
+	if RenderDiag.value("atlas") != "":
+		out["shadow_atlas"] = int(RenderDiag.value("atlas"))
+	if RenderDiag.value("filtre") != "":
+		out["shadow_filter"] = RenderDiag.value("filtre")
+	if RenderDiag.has("ombres_2_cascades"):
+		out["shadow_splits"] = 2
+	if RenderDiag.has("sans_ssao"):
+		out["ssao"] = "off"
+	if RenderDiag.has("sans_ssil"):
+		out["ssil"] = "off"
+	if RenderDiag.has("sans_brume"):
+		out["fog_volumetric"] = "off"
+	if RenderDiag.has("sans_glow"):
+		out["glow"] = false
+	return out
+
+
+## Suite des essais (OPENRIDE_RENDER_DIAG) sur la lumière et l'environnement : `sans_ombres`, `biais_ombres`
+## (biais plus forts, acné d'ombre), `ombres_m=M` (portée des ombres), `brume_ambiante` (lumière ambiante
+## injectée dans la brume volumétrique).
+static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> void:
+	var diag := RenderDiag.text()
+	if diag == "":
 		return
-	if "sans_ombres" in flags:
+	if RenderDiag.has("sans_ombres"):
 		light.shadow_enabled = false
-	if "sans_ssao" in flags:
-		env.ssao_enabled = false
-	if "sans_ssil" in flags:
-		env.ssil_enabled = false
-	if "sans_brume" in flags:
-		env.volumetric_fog_enabled = false
-	if "biais_ombres" in flags:
+	if RenderDiag.has("biais_ombres"):
 		light.shadow_bias = 0.3
 		light.shadow_normal_bias = 3.0
-	print("Diagnostic de rendu : ", ", ".join(flags))
+	light.directional_shadow_max_distance = RenderDiag.number("ombres_m", light.directional_shadow_max_distance)
+	if RenderDiag.has("brume_ambiante"):
+		env.volumetric_fog_ambient_inject = 1.0
+	print("Diagnostic de rendu : ", diag)
 
 
 ## Distance de vue de la caméra : fin du brouillard du préréglage plus CAMERA_FAR_MARGIN.

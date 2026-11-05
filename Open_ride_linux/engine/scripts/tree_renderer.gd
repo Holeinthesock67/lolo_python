@@ -22,6 +22,7 @@ const QualityPresets := preload("res://scripts/quality_presets.gd")
 const ViewCulling := preload("res://scripts/view_culling.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
+const RenderDiag := preload("res://scripts/render_diag.gd")
 const LOD1_SWAY_FACTOR := 0.6   # amplitude réduite des panneaux croisés du LOD 1
 
 const CELL_SIZE_M := 250.0
@@ -444,16 +445,19 @@ func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
 	var mmi0 := MultiMeshInstance3D.new()
 	mmi0.multimesh = mm0
 	mmi0.material_override = look["m0"]
-	mmi0.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	# Essais de coût (OPENRIDE_RENDER_DIAG, render_diag.gd) : `sans_ombres_arbres`, `arbres_lod0_m=M`.
+	var lod0_m := RenderDiag.number("arbres_lod0_m", LOD0_MAX_DIST_M)
+	mmi0.cast_shadow = (GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if RenderDiag.has("sans_ombres_arbres")
+		else GeometryInstance3D.SHADOW_CASTING_SETTING_ON)
 	mmi0.visibility_range_begin = 0.0
-	mmi0.visibility_range_end = LOD0_MAX_DIST_M
+	mmi0.visibility_range_end = lod0_m
 	add_child(mmi0)
 
 	var mmi1 := MultiMeshInstance3D.new()
 	mmi1.multimesh = mm1
 	mmi1.material_override = look["m1"]
 	mmi1.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mmi1.visibility_range_begin = LOD0_MAX_DIST_M
+	mmi1.visibility_range_begin = lod0_m
 	mmi1.visibility_range_end = LOD1_MAX_DIST_M
 	add_child(mmi1)
 	return {"lod0": mmi0, "lod1": mmi1, "species": species, "count": count}
