@@ -15,6 +15,12 @@ const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const SETTLE_FRAMES := 20
+## Détail de chaque personne des deux premiers rangs (barbe, lunettes, queue de cheval, chignon, sac,
+## écharpe…), accordé à ses cheveux longs ou courts.
+const DETAIL_ROW1 := [PeopleMesh.DETAIL_BEARD, PeopleMesh.DETAIL_PONYTAIL, PeopleMesh.DETAIL_SUNGLASSES,
+	PeopleMesh.DETAIL_SCARF, PeopleMesh.DETAIL_BUN, PeopleMesh.DETAIL_MOUSTACHE, PeopleMesh.DETAIL_BACKPACK, PeopleMesh.DETAIL_NONE]
+const DETAIL_ROW2 := [PeopleMesh.DETAIL_SCARF, PeopleMesh.DETAIL_SUNGLASSES, PeopleMesh.DETAIL_PONYTAIL, PeopleMesh.DETAIL_BEARD,
+	PeopleMesh.DETAIL_BUN, PeopleMesh.DETAIL_BACKPACK, PeopleMesh.DETAIL_PONYTAIL, PeopleMesh.DETAIL_MOUSTACHE]
 
 var _out_dir := "user://vitrine_personnages"
 var _size := Vector2i(1600, 900)
@@ -47,13 +53,13 @@ func _cast() -> Array:
 	# Premier rang : les huit gestes (encourage) ; deuxième rang : les quatre attitudes au calme, deux fois
 	for g in range(PeopleMesh.GESTURES):
 		var l: Array = looks[g]
-		out.append(["plain", -4.2 + g * 1.2, 0.0, true, PeopleMesh.outfit(l[0], l[1], l[2], l[3], l[4], l[5], g), g, 0.1 * g])
+		out.append(["plain", -4.2 + g * 1.2, 0.0, true, PeopleMesh.outfit(l[0], l[1], l[2], l[3], l[4], l[5], g, DETAIL_ROW1[g]), g, 0.1 * g])
 	for g in range(8):
 		var l: Array = looks[7 - g]
-		out.append(["plain", -4.2 + g * 1.2, -2.2, false, PeopleMesh.outfit(l[0], l[1], l[2], l[3], l[4], l[5], g % 4), 7 - g, 0.0])
-	# Fond : porte-drapeaux (motif = cheveux % 4) et porteurs de pancarte
+		out.append(["plain", -4.2 + g * 1.2, -2.2, false, PeopleMesh.outfit(l[0], l[1], l[2], l[3], l[4], l[5], g % 4, DETAIL_ROW2[g]), 7 - g, 0.0])
+	# Fond : porte-drapeaux aux quatre motifs (tirés de la phase : k / 4) et porteurs de pancarte
 	for k in range(4):
-		out.append(["flag", -4.4 + k * 1.5, -4.6, true, PeopleMesh.outfit(k, k, k + 1, 0, 0, k % 3, 0), k * 2, 0.2 * k])
+		out.append(["flag", -4.4 + k * 1.5, -4.6, true, PeopleMesh.outfit(k, k, k + 1, 0, 0, k % 3, 0), k * 2, 0.25 * k + 0.05])
 	for k in range(2):
 		out.append(["sign", 2.0 + k * 1.6, -4.6, true, PeopleMesh.outfit(k + 1, 2, k * 3 + 1, 0, k, 0, 0), 5 - k * 3, 0.3])
 	return out
@@ -112,7 +118,7 @@ func _crowd(vp: SubViewport, lod: int) -> int:
 			var c: Array = list[k]
 			mm.set_instance_transform(k, Transform3D(CrowdRenderer.morph(k * 3 + lod, 0.0), Vector3(c[1], 0.0, c[2])))
 			mm.set_instance_color(k, CrowdRenderer.PALETTE[int(c[5]) % CrowdRenderer.PALETTE.size()])
-			mm.set_instance_custom_data(k, Color(float(c[6]), 1.0 if c[3] else 0.0,
+			mm.set_instance_custom_data(k, PeopleMesh.instance_custom(float(c[6]), 1.0 if c[3] else 0.0,
 				float(CrowdRenderer.SIGN_ANIM) if kind == "sign" else 0.0, float(c[4])))
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm

@@ -4,7 +4,8 @@ extends Node3D
 ## (people_mesh.gd, lots Y14 et Y21 : corps articulé, tenue et geste tirés par personne), en MultiMesh
 ## par sorte (sans rien, porte-drapeau, porteur de pancarte) et par niveau de détail (détaillé en deçà de
 ## `QualityPresets.people_lod_m`, réduit au-delà : `_loin`), couleur du haut en couleur d'instance, tenue
-## (peau, cheveux, pantalon, style, bas, coiffe, geste) dans INSTANCE_CUSTOM.w, taille et carrure tirées
+## (peau, cheveux, pantalon, style, bas, coiffe, geste, détail) répartie dans INSTANCE_CUSTOM
+## (`PeopleMesh.instance_custom`), taille et carrure tirées
 ## par personne (`morph`), animés par shaders/crowd.gdshader.
 ## Pas de class_name : charger par preload("res://scripts/crowd_renderer.gd").
 ##
@@ -187,7 +188,7 @@ func update_passersby(cam_pos: Vector3, cam_s: float, now_s: float, event: Dicti
 		var p: Dictionary = model.people[i]
 		var basis := morph(i, float(e["yaw"]), KID_SCALE if str(p["role"]) == "kid" else 1.0)
 		people.set_instance_transform(j, Transform3D(basis, e["pos"]))
-		people.set_instance_custom_data(j, Color(float(p["phase"]), 1.0 if bool(e["wave"]) else 0.0,
+		people.set_instance_custom_data(j, PeopleMesh.instance_custom(float(p["phase"]), 1.0 if bool(e["wave"]) else 0.0,
 			float(PasserbyModel.ANIM[str(e["anim"])]), PeopleMesh.outfit_of(i)))
 		var dog: int = e["dog"]
 		if dog >= 0:
@@ -260,7 +261,7 @@ func _select(cam_pos: Vector3) -> void:
 			mm.set_instance_color(k, PALETTE[int(s["color"]) % PALETTE.size()])
 			var st = model.states.get(list[k])
 			shown[k] = 1 if st != null and bool(st["cheer"]) else 0
-			mm.set_instance_custom_data(k, Color(float(s["phase"]), float(shown[k]), _anim_of(m), PeopleMesh.outfit_of(list[k])))
+			mm.set_instance_custom_data(k, PeopleMesh.instance_custom(float(s["phase"]), float(shown[k]), _anim_of(m), PeopleMesh.outfit_of(list[k])))
 		_shown[m] = shown
 		mm.visible_instance_count = list.size()
 	_last_select = cam_pos
@@ -285,7 +286,7 @@ func update(cam_pos: Vector3, now_s: float, cheer: float = 0.0) -> void:
 			var on := 1 if st != null and bool(st["cheer"]) else 0
 			if shown[k] != on:
 				shown[k] = on
-				mm.set_instance_custom_data(k, Color(float(sp[i]["phase"]), float(on), _anim_of(m), PeopleMesh.outfit_of(i)))
+				mm.set_instance_custom_data(k, PeopleMesh.instance_custom(float(sp[i]["phase"]), float(on), _anim_of(m), PeopleMesh.outfit_of(i)))
 	# Clameur sur le groupe le plus proche
 	if cheer > 0.0 and not model.groups.is_empty():
 		var gi := _nearest_group_to(cam_pos)

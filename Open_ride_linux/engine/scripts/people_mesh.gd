@@ -32,6 +32,9 @@ const REGION_POLE := 5
 const REGION_METAL := 6
 const REGION_SIGN := 7
 const REGION_ARM := 8      # peau du bras (manche longue de la veste selon la tenue)
+const REGION_ACCESSORY := 9   # sac à dos, écharpe de supporter (couleur d'appoint, rayures)
+const REGION_EYE := 10        # blanc des yeux
+const REGION_LIPS := 11       # lèvres (peau plus rouge)
 
 ## CUSTOM0.w : pièce montrée selon la tenue (cheveux longs, coiffe, jupe, téléphone) ou motif propre
 ## (casque à aérations, drapeau, pancarte), lu par le shader.
@@ -43,6 +46,15 @@ const EXTRA_SKIRT := 5
 const EXTRA_PHONE := 6
 const EXTRA_FLAG := 7
 const EXTRA_SIGN := 8
+## Détail propre à la personne (champ `detail` de la tenue) : pièce EXTRA_DETAIL_BASE + detail.
+const EXTRA_DETAIL_BASE := 8
+const EXTRA_BEARD := 9
+const EXTRA_MOUSTACHE := 10
+const EXTRA_SUNGLASSES := 11
+const EXTRA_PONYTAIL := 12
+const EXTRA_BUN := 13
+const EXTRA_BACKPACK := 14
+const EXTRA_SCARF := 15
 ## Bits de style de la tenue : cheveux longs, haut à bande, veste ouverte à manches longues ; un coureur a
 ## toujours son maillot à bande.
 const STYLE_LONG_HAIR := 1
@@ -70,6 +82,17 @@ const GESTURE_HOP_CLAP := 5
 const GESTURE_WAVE := 6
 const GESTURE_BOTH_FISTS := 7
 const GESTURES := 8
+## Détail : rien, barbe, moustache, lunettes de soleil, queue de cheval, chignon, sac à dos, écharpe de
+## supporter (une seule pièce par personne).
+const DETAIL_NONE := 0
+const DETAIL_BEARD := 1
+const DETAIL_MOUSTACHE := 2
+const DETAIL_SUNGLASSES := 3
+const DETAIL_PONYTAIL := 4
+const DETAIL_BUN := 5
+const DETAIL_BACKPACK := 6
+const DETAIL_SCARF := 7
+const DETAILS := 8
 
 const PART_CRANK := 1
 const PART_FRONT_WHEEL := 2
@@ -84,7 +107,7 @@ const ELBOW_X := 0.225
 const LEG_X := 0.09
 const SIDES := 8
 ## Côtés des pièces selon le niveau de détail (0 de près, 1 au loin).
-const LOD_SIDES := [8, 5]
+const LOD_SIDES := [10, 5]
 
 ## Vélo, dans le repère du coureur (origine au sol sous la hanche, face vers +z) : boîtier de pédalier,
 ## manivelle, axes des roues, rayon des roues, cintre.
@@ -116,8 +139,9 @@ const FLAG_COLORS := [Color(0.95, 0.95, 0.95), Color(0.1, 0.25, 0.7), Color(0.85
 ## INSTANCE_CUSTOM.w : indices de peau, de cheveux, de pantalon, bits de style, bas, coiffe et geste dans un
 ## seul nombre entier exact (moins de 2^24, exact en flottant 32 bits).
 static func outfit(skin: int, hair: int, trousers: int, style: int = 0, bottom: int = 0, hat: int = 0,
-		gesture: int = 0) -> float:
-	var v := posmod(gesture, GESTURES)
+		gesture: int = 0, detail: int = 0) -> float:
+	var v := posmod(detail, DETAILS)
+	v = v * GESTURES + posmod(gesture, GESTURES)
 	v = v * HATS + posmod(hat, HATS)
 	v = v * BOTTOMS + posmod(bottom, BOTTOMS)
 	v = v * STYLES + posmod(style, STYLES)
@@ -127,12 +151,25 @@ static func outfit(skin: int, hair: int, trousers: int, style: int = 0, bottom: 
 	return float(v)
 
 
-## Champs relus d'une tenue (tests, outils) : `{skin, hair, trousers, style, bottom, hat, gesture}`.
+## Donnée d'instance de crowd.gdshader pour une personne : chaque composante reste un entier exact sous
+## 2 048 (sûr même si le pilote range la donnée d'instance en demi-flottants) ; x = détail + phase (0 à 1),
+## y = encourage (ou cadence), z = animation + 10 × (bas + 3 × (coiffe + 3 × geste)), w = peau, cheveux,
+## pantalon et style (moins de APPEARANCE_CODES).
+const APPEARANCE_CODES := 1152
+static func instance_custom(phase: float, excite: float, anim: float, code: float) -> Color:
+	var c := int(code)
+	var look := c % APPEARANCE_CODES
+	var pose := (c / APPEARANCE_CODES) % (BOTTOMS * HATS * GESTURES)
+	var detail := (c / (APPEARANCE_CODES * BOTTOMS * HATS * GESTURES)) % DETAILS
+	return Color(float(detail) + clampf(fposmod(phase, 1.0), 0.0, 0.999), excite, anim + 10.0 * float(pose), float(look))
+
+
+## Champs relus d'une tenue (tests, outils) : `{skin, hair, trousers, style, bottom, hat, gesture, detail}`.
 static func outfit_fields(o: float) -> Dictionary:
 	var v := int(o)
 	var out := {}
 	for f in [["skin", SKIN_TONES.size()], ["hair", HAIR_COLORS.size()], ["trousers", TROUSER_COLORS.size()],
-			["style", STYLES], ["bottom", BOTTOMS], ["hat", HATS], ["gesture", GESTURES]]:
+			["style", STYLES], ["bottom", BOTTOMS], ["hat", HATS], ["gesture", GESTURES], ["detail", DETAILS]]:
 		out[f[0]] = v % int(f[1])
 		v /= int(f[1])
 	return out
@@ -140,7 +177,8 @@ static func outfit_fields(o: float) -> Dictionary:
 
 ## Tenue tirée d'un nombre entier quelconque (numéro de personne, graine) : mêmes tenues d'une séance à
 ## l'autre. Environ 7 personnes sur 10 en pantalon, 2 en short, 1 en jupe (cheveux longs le plus souvent) ;
-## 3 sur 10 en casquette, 1 sur 8 en chapeau ; geste tiré parmi les huit.
+## 3 sur 10 en casquette, 1 sur 8 en chapeau ; geste tiré parmi les huit ; un détail pour 6 sur 10
+## (barbe et moustache seulement sans cheveux longs, queue de cheval et chignon seulement avec).
 static func outfit_of(seed_value: int) -> float:
 	var h := (seed_value * 2654435761) & 0x7FFFFFFF
 	var h2 := ((h ^ (h >> 13)) * 1103515245 + 12345) & 0x7FFFFFFF
@@ -153,7 +191,14 @@ static func outfit_of(seed_value: int) -> float:
 		style |= STYLE_LONG_HAIR
 	var rh := (h2 >> 17) % 100
 	var hat := HAT_CAP if rh < 30 else (HAT_SUN if rh < 42 else HAT_NONE)
-	return outfit(h % 7, (h >> 3) % 11, (h >> 7) % 13, style, bottom, hat, (h2 >> 22) % GESTURES)
+	var h3 := ((h2 ^ (h2 >> 11)) * 2246822519 + 3266489917) & 0x7FFFFFFF
+	var detail := DETAIL_NONE
+	var rd := (h3 >> 5) % 100
+	if rd < 60:
+		var pool := [DETAIL_SUNGLASSES, DETAIL_BACKPACK, DETAIL_SCARF]
+		pool.append_array([DETAIL_PONYTAIL, DETAIL_BUN] if style & STYLE_LONG_HAIR else [DETAIL_BEARD, DETAIL_MOUSTACHE])
+		detail = pool[(h3 >> 13) % pool.size()]
+	return outfit(h % 7, (h >> 3) % 11, (h >> 7) % 13, style, bottom, hat, (h2 >> 22) % GESTURES, detail)
 
 
 ## Palettes et pivots des articulations, à poser une fois sur le matériau de crowd.gdshader.
@@ -404,8 +449,8 @@ static func _legs_and_body(m: Builder, helmet: bool, lod: int) -> void:
 			m.prism(Vector3(x, 0.07, 0.0), Vector3(x, 0.17, 0.0), Vector2(0.044, 0.048), Vector2(0.046, 0.05))   # chaussette
 		# Tibia : cheville fine, mollet bombé en arrière, genou
 		m.region = REGION_SKIN if helmet else REGION_TROUSERS   # coureur : cuissard court, mollets nus
-		m.tube(Vector3(x, 0.07, 0.0), Vector3(x, KNEE_Y, 0.0), [[0.0, 0.036, 0.04], [0.3, 0.045, 0.054],
-			[0.62, 0.055, 0.064], [0.85, 0.052, 0.056], [1.0, 0.054, 0.056]], true)
+		m.tube(Vector3(x, 0.07, 0.0), Vector3(x, KNEE_Y, 0.0), [[0.0, 0.04, 0.044], [0.3, 0.048, 0.057],
+			[0.62, 0.058, 0.068], [0.85, 0.055, 0.059], [1.0, 0.057, 0.06]], true)
 		m.shin = 0.0
 		m.region = REGION_TROUSERS
 		m.tube(Vector3(x, KNEE_Y - 0.01, 0.0), Vector3(sx * (LEG_X + 0.008), HIP_Y, 0.0), [[0.0, 0.056, 0.06],
@@ -423,7 +468,19 @@ static func _legs_and_body(m: Builder, helmet: bool, lod: int) -> void:
 	m.tube(Vector3(0.0, 0.97, 0.0), Vector3(0.0, 1.5, 0.0), [[0.0, 0.155, 0.103], [0.12, 0.148, 0.098],
 		[0.35, 0.156, 0.104], [0.62, 0.178, 0.118], [0.8, 0.19, 0.115], [0.88, 0.178, 0.105],
 		[0.95, 0.13, 0.088], [1.0, 0.07, 0.062]], true)
+	if not helmet:
+		m.region = REGION_ACCESSORY
+		m.extra = EXTRA_BACKPACK
+		m.tube(Vector3(0.0, 1.02, -0.17), Vector3(0.0, 1.4, -0.165), [[0.0, 0.13, 0.06], [0.2, 0.15, 0.075], [0.85, 0.14, 0.07], [1.0, 0.1, 0.05]], true)   # sac à dos
+		for sx in [-1.0, 1.0]:
+			m.box(Vector3(sx * 0.1, 1.3, 0.0), Vector3(0.03, 0.3, 0.235))   # bretelles
+		m.extra = EXTRA_SCARF
+		m.tube(Vector3(0.0, 1.44, 0.0), Vector3(0.0, 1.52, 0.005), [[0.0, 0.09, 0.08], [1.0, 0.07, 0.065]], true)   # écharpe au cou
+		for sx in [-1.0, 1.0]:
+			m.box(Vector3(sx * 0.042, 1.3, 0.118), Vector3(0.062, 0.3, 0.014))   # pans qui tombent devant
+		m.extra = 0.0
 	if lod == 0 and not helmet:
+		m.region = REGION_TOP
 		m.prism(Vector3(0.0, 1.46, 0.0), Vector3(0.0, 1.505, 0.0), Vector2(0.066, 0.06), Vector2(0.06, 0.056))   # col
 		m.region = REGION_SHOES
 		m.tube(Vector3(0.0, 0.965, 0.0), Vector3(0.0, 1.005, 0.0), [[0.0, 0.158, 0.106], [1.0, 0.157, 0.105]], false)   # ceinture
@@ -444,11 +501,15 @@ static func _head(m: Builder, helmet: bool, lod: int) -> void:
 			m.box(Vector3(0.0, 1.655, 0.094), Vector3(0.17, 0.034, 0.02))   # lunettes
 		else:
 			for sx in [-1.0, 1.0]:
-				m.box(Vector3(sx * 0.032, 1.655, 0.09), Vector3(0.02, 0.013, 0.01))   # yeux
-			m.box(Vector3(0.0, 1.585, 0.093), Vector3(0.034, 0.008, 0.008))   # bouche
+				m.region = REGION_EYE
+				m.ellipsoid(Vector3(sx * 0.031, 1.655, 0.083), Vector3(0.016, 0.01, 0.01), -90.0, 3)   # blanc de l'œil
+				m.region = REGION_SHOES
+				m.box(Vector3(sx * 0.03, 1.655, 0.093), Vector3(0.009, 0.01, 0.004))   # pupille
+			m.region = REGION_LIPS
+			m.ellipsoid(Vector3(0.0, 1.588, 0.09), Vector3(0.022, 0.007, 0.008), -90.0, 3)   # lèvres
 			m.region = REGION_HAIR
 			for sx in [-1.0, 1.0]:
-				m.box(Vector3(sx * 0.034, 1.677, 0.09), Vector3(0.03, 0.008, 0.01))   # sourcils
+				m.box(Vector3(sx * 0.033, 1.676, 0.091), Vector3(0.03, 0.008, 0.01))   # sourcils
 	m.region = REGION_HAIR
 	m.ellipsoid(Vector3(0.0, 1.66, -0.01), Vector3(0.093, 0.1, 0.103), -10.0, 4 if lod == 0 else 3)   # cheveux
 	if helmet:
@@ -468,6 +529,23 @@ static func _head(m: Builder, helmet: bool, lod: int) -> void:
 	m.extra = EXTRA_SUN_HAT
 	m.tube(Vector3(0.0, 1.69, 0.0), Vector3(0.0, 1.7, 0.0), [[0.0, 0.2, 0.2], [1.0, 0.19, 0.19]], true)   # bord
 	m.tube(Vector3(0.0, 1.69, -0.005), Vector3(0.0, 1.79, -0.005), [[0.0, 0.1, 0.108], [0.7, 0.095, 0.1], [1.0, 0.07, 0.075]], true)   # calotte
+	# Détails : un seul montré par personne (champ `detail` de la tenue)
+	m.region = REGION_HAIR
+	m.extra = EXTRA_PONYTAIL
+	m.ellipsoid(Vector3(0.0, 1.68, -0.1), Vector3(0.035, 0.03, 0.03), -90.0, 3)   # attache
+	m.tube(Vector3(0.0, 1.67, -0.115), Vector3(0.0, 1.47, -0.14), [[0.0, 0.03, 0.028], [0.3, 0.04, 0.035], [1.0, 0.012, 0.012]], true, 6)
+	m.extra = EXTRA_BUN
+	m.ellipsoid(Vector3(0.0, 1.74, -0.075), Vector3(0.055, 0.05, 0.05), -90.0, 4 if lod == 0 else 3)
+	if lod == 0:
+		m.extra = EXTRA_BEARD
+		m.ellipsoid(Vector3(0.0, 1.585, 0.03), Vector3(0.074, 0.063, 0.074), -90.0, 4)   # barbe
+		m.extra = EXTRA_MOUSTACHE
+		m.box(Vector3(0.0, 1.6, 0.098), Vector3(0.05, 0.012, 0.012))
+		m.region = REGION_SHOES
+		m.extra = EXTRA_SUNGLASSES
+		for sx in [-1.0, 1.0]:
+			m.ellipsoid(Vector3(sx * 0.032, 1.655, 0.094), Vector3(0.026, 0.017, 0.008), -90.0, 3)
+		m.box(Vector3(0.0, 1.664, 0.098), Vector3(0.17, 0.007, 0.008))   # monture
 	m.extra = 0.0
 
 
@@ -480,12 +558,12 @@ static func _arm(m: Builder, sx: float, helmet: bool, lod: int, xform: Transform
 	var wrist := Vector3(sx * (ELBOW_X + 0.01), 0.915, 0.012)
 	m.region = REGION_TOP
 	m.ellipsoid(shoulder + Vector3(-sx * 0.005, -0.012, 0.0), Vector3(0.052, 0.054, 0.056), -90.0, 4 if lod == 0 else 3)   # épaule
-	m.tube(shoulder, Vector3(sx * (SHOULDER_X + 0.01), 1.28, 0.0), [[0.0, 0.054, 0.056], [1.0, 0.049, 0.05]], false)   # manche
+	m.tube(shoulder, Vector3(sx * (SHOULDER_X + 0.01), 1.28, 0.0), [[0.0, 0.058, 0.06], [0.85, 0.055, 0.057], [0.9, 0.058, 0.06], [1.0, 0.056, 0.058]], false)   # manche et ourlet
 	m.region = REGION_ARM
-	m.tube(Vector3(sx * (SHOULDER_X + 0.01), 1.29, 0.0), elbow, [[0.0, 0.044, 0.045], [1.0, 0.038, 0.04]], false)
-	m.ellipsoid(elbow, Vector3(0.038, 0.038, 0.04), -90.0, 3)   # coude
+	m.tube(Vector3(sx * (SHOULDER_X + 0.01), 1.29, 0.0), elbow, [[0.0, 0.048, 0.05], [0.5, 0.046, 0.049], [1.0, 0.041, 0.043]], false)
+	m.ellipsoid(elbow, Vector3(0.041, 0.041, 0.043), -90.0, 3)   # coude
 	m.shin = 1.0
-	m.tube(elbow, wrist, [[0.0, 0.037, 0.04], [0.35, 0.036, 0.04], [1.0, 0.026, 0.028]], false)   # avant-bras
+	m.tube(elbow, wrist, [[0.0, 0.04, 0.043], [0.3, 0.041, 0.045], [1.0, 0.029, 0.031]], false)   # avant-bras
 	m.region = REGION_SHOES if helmet else REGION_SKIN   # coureur : gants
 	m.ellipsoid(Vector3(sx * (ELBOW_X + 0.01), 0.865, 0.014), Vector3(0.024, 0.055, 0.042), -90.0, 4 if lod == 0 else 3)   # main
 	if lod == 0:
