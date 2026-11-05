@@ -37,10 +37,6 @@ const HOUSING_H := 190.0
 const GANTRY_Y := 200.0
 const GANTRY_Y_GO := 150.0
 const LAMP_R := 30.0
-const LAMP_OFF := Color(0.106, 0.133, 0.267)
-const HOUSING := Color(0.027, 0.035, 0.071)
-const HOOD := Color(0.051, 0.067, 0.141)
-const GANTRY := Color(0.082, 0.102, 0.180)
 const BREATH_PERIOD_S := 1.6
 # Étapes, texte, carte du parcours, anneau de cadence.
 const STEP_W := 160.0
@@ -189,22 +185,22 @@ func _draw_gantry(top: float, lit: int, go: bool) -> void:
 	var n := StartWaitModel.LIGHTS
 	var x0 := BASE.x * 0.5 - HOUSING_GAP * (n - 1) * 0.5
 	var bar := Rect2(x0 - HOUSING_GAP * 0.5 - 20.0, top - 22.0, HOUSING_GAP * n + 40.0, 18.0)
-	draw_rect(bar, GANTRY)
+	draw_rect(bar, UiTheme.START_GANTRY)
 	draw_rect(Rect2(bar.position.x, top - 6.0, bar.size.x, 3.0), UiTheme.LINE)
 	var breath := 0.75 + 0.25 * sin(_t * TAU / BREATH_PERIOD_S)
 	for i in n:
 		var x := x0 + i * HOUSING_GAP
-		_rounded(Rect2(x - HOUSING_W * 0.5, top, HOUSING_W, HOUSING_H), HOUSING, UiTheme.LINE, 10, 2)
+		_rounded(Rect2(x - HOUSING_W * 0.5, top, HOUSING_W, HOUSING_H), UiTheme.START_HOUSING, UiTheme.LINE, 10, 2)
 		for j in 2:
 			var c := Vector2(x, top + 50.0 + j * 90.0)
 			var on := go or i < lit
 			var col: Color = UiTheme.OK if go else UiTheme.DANGER
 			if on:
 				_glow(c, LAMP_R, col, 1.0 if go else breath)
-			draw_circle(c, LAMP_R, col if on else LAMP_OFF)
+			draw_circle(c, LAMP_R, col if on else UiTheme.START_LAMP_OFF)
 			if on:
-				draw_circle(c + Vector2(-9.0, -10.0), 8.0, Color(1.0, 1.0, 1.0, 0.35))
-			draw_arc(c, LAMP_R + 6.0, PI * 1.08, PI * 1.92, 16, HOOD, 8.0, true)
+				draw_circle(c + Vector2(-9.0, -10.0), 8.0, UiTheme.START_LAMP_SHINE)
+			draw_arc(c, LAMP_R + 6.0, PI * 1.08, PI * 1.92, 16, UiTheme.START_HOOD, 8.0, true)
 
 
 ## Halo : disques concentriques de moins en moins opaques.
