@@ -51,4 +51,6 @@ Le nuanceur de sommets fait un peu plus (coude, rotation de la tête calculée s
 
 - Tests : `tests/unit/test_people_mesh.gd` (huit champs de tenue, donnée d'instance relue comme le shader et sous 2 048, répartition des bas, coiffes et gestes, zones, pièces, articulations, triangles par niveau), `test_crowd_model.gd`, `test_passersby_model.gd`, `render/test_crowd_render.gd`.
 - Captures : `tests/vitrine_personnages.gd` (planche des gestes, tenues, drapeaux et pancartes, de près et au loin) et `vitrine_rendu.gd` (vues `foule`, `foule_pres`, `passants`, `cyclistes`) ; captures du 5 novembre dans `/mnt/project-files/captures/y21-personnages/`, à valider par le propriétaire avant la fusion.
-- Banc PC (fil de fusion) : main contre la branche, low, medium et high, scène avec spectateurs (montée de fin de parcours).
+- Banc PC (fil de fusion) : main contre la branche, low, medium et high, avec `--probe`. Aucun monde de banc n'a de montée d'au moins 3 km (démo et village : 1,5 km), donc aucun spectateur par défaut ; `--crowd all` (engine `--crowd=all`, réservé aux bancs) les place aussi sur la montée de 1,5 km du village. Sur main, l'option n'existe pas : comparer la branche avec `--crowd all` à main sans spectateurs revient à mesurer tout le coût des spectateurs, Y14 compris.
+  - Spectateurs (montée du village) : `sim_bench.py --scenario montee_descente --world village --crowd all --probe --quality Q`.
+  - Passants (deux villages, effort constant) : `sim_bench.py --scenario rendu_invisible --world village --probe --quality Q`.
