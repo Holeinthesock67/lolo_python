@@ -24,11 +24,11 @@ func _init() -> void:
 		_check(RenderDiag.number("herbe", 1.0) == 1.0, "sans variable : valeur par défaut")
 	# Essai forcé après coup (la variable est lue une seule fois) : on remplit l'état comme le ferait _load.
 	RenderDiag._parsed = true
-	var forced := RenderDiag.parse("msaa=2,ssao=low,atlas=2048,filtre=low,ombres_2_cascades,sans_ssil,sans_brume,sans_glow")
+	var forced := RenderDiag.parse("msaa=2,screen_aa=smaa,ssao=low,atlas=2048,filtre=low,ombres_2_cascades,sans_ssil,sans_brume,sans_glow")
 	RenderDiag._flags = forced["flags"]
 	RenderDiag._values = forced["values"]
 	var img := RenderQuality.diagnostic_image(medium)
-	_check(img["msaa"] == 2 and img["ssao"] == "low" and img["shadow_atlas"] == 2048 and img["shadow_filter"] == "low",
+	_check(img["msaa"] == 2 and img["screen_aa"] == "smaa" and img["ssao"] == "low" and img["shadow_atlas"] == 2048 and img["shadow_filter"] == "low",
 		"réglages appliqués : %s" % [img])
 	_check(img["shadow_splits"] == 2 and img["ssil"] == "off" and img["fog_volumetric"] == "off" and not img["glow"],
 		"drapeaux appliqués")

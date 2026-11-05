@@ -8,7 +8,7 @@ extends RefCounted
 ## Drapeaux et réglages (RenderQuality.apply_diagnostic sauf mention) :
 ##   sans_ombres, sans_ssao, sans_ssil, sans_brume, sans_glow, biais_ombres, ombres_2_cascades,
 ##   brume_ambiante (lumière ambiante injectée dans la brume volumétrique),
-##   msaa=0|2|4, ssao=low|medium|high, ssil=low|medium|high, atlas=2048|4096, ombres_m=M, filtre=hard|low|medium,
+##   msaa=0|2|4, screen_aa=off|fxaa|smaa, ssao=low|medium|high, ssil=low|medium|high, atlas=2048|4096, ombres_m=M, filtre=hard|low|medium,
 ##   vegetation=F (densité des arbres, world_streamer), herbe=F (nombre de touffes, living_world),
 ##   sans_ombres_arbres, arbres_lod0_m=M (tree_renderer).
 ## Pas de class_name : charger par preload("res://scripts/render_diag.gd").

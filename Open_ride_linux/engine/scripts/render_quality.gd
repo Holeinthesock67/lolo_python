@@ -173,7 +173,7 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 ## coût de chaque effet, 5 novembre). Sans variable : `img` inchangé.
 static func diagnostic_image(img: Dictionary) -> Dictionary:
 	var out := img.duplicate(true)
-	for key in ["msaa", "ssao", "ssil"]:
+	for key in ["msaa", "ssao", "ssil", "screen_aa"]:
 		var v := RenderDiag.value(key)
 		if v != "":
 			out[key] = int(v) if key == "msaa" else v
