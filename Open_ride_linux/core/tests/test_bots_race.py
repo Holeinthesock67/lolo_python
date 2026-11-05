@@ -48,7 +48,7 @@ def test_peloton_of_eleven_bots_without_contact(short_routes):
 def test_contacts_are_pairs_overlapping_both_ways():
     assert br.contacts([("a", 10.0, 1.2), ("b", 11.0, 1.5), ("c", 20.0, 1.2)]) == {("a", "b")}
     assert br.contacts([("a", 10.0, 1.2), ("b", 11.0, 2.1)]) == set()          # côte à côte, 0,9 m d'écart
-    assert br.contacts([("a", 10.0, 1.2), ("b", 11.7, 1.2)]) == set()          # roue dans la roue, sans toucher
+    assert br.contacts([("a", 10.0, 1.2), ("b", 11.75, 1.2)]) == set()         # roue dans la roue, sans toucher
 
 
 def test_two_bots_of_the_same_profile_are_numbered(short_routes):

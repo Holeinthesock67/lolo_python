@@ -30,11 +30,17 @@ la trame `state` dépasse 4 096 octets, sans que les bots se roulent dessus, et 
 - Bot enfermé (`draft.blocked_by`, posé par `update_lanes` dans `Lane.blocked`) : un bot qui rattrape un coureur
   dans sa ligne (moins de 0,75 m de côté) sans que son placement l'en sorte, ou qui se retrouve à sa hauteur trop
   près, lève le pied (`_blocked_power`, vitesse ramenée à celle du coureur devant à 0,5 m de sa roue) et freine
-  roue contre roue (moins de 0,2 m). En s'écartant pour doubler, il n'est ralenti que si les roues se
-  chevauchent déjà. Un bot arrivé (arrêté sur la ligne) ne compte plus dans le placement.
+  roue contre roue (moins de 0,2 m). En s'écartant pour doubler, il n'est ralenti qu'à moins de 10 cm de la roue.
+  Garde en travers (`draft.side_guard`) : à hauteur d'un coureur (roues qui se chevauchent), un bot ne se
+  rabat jamais à moins de la largeur d'un coureur plus 10 cm. Un bot arrivé (arrêté sur la ligne) ne compte
+  plus dans le placement.
 - Contrat IPC révision 1.6 : `bots` jusqu'à 12 éléments (`state`, `start`, `last_choices`), le core et l'engine
   annoncent « 1.6 ».
-- `tools/bots_race.py` compte les contacts entre coureurs (et le premier, pour l'enquête), accepte 11 bots.
+- `tools/bots_race.py` compte les contacts entre coureurs avec la règle de l'engine (`living_decor.gd` : moins
+  de 1,7 m en long et de 0,6 m en travers) et le premier, pour l'enquête ; accepte 11 bots.
+- Bancs (`perf_probe.hitch_checks`) : une seconde lente du régime établi que `saccades.csv` explique par une
+  capture du banc est écartée, par une image d'avant le premier mètre est jugée avec le départ (150 ms). Le
+  peloton se charge en 35 à 40 s, au-delà des 30 s de `warmup_s`.
 
 ### 2.2 Engine
 
@@ -53,10 +59,16 @@ la trame `state` dépasse 4 096 octets, sans que les bots se roulent dessus, et 
 | Mesure | Résultat |
 | --- | --- |
 | Pire trame `state` 1.6 | 3 758 octets (limite 4 096), sans allègement ; 3 480 avec `devices` |
-| Course de 11 bots au niveau du cycliste (`bots_race`, demo 5 km, plat 20 km à 75 %, col 10 km, demo à 100 %) | trames de 2 109 à 2 130 octets ; contacts : 0 sur demo et plat, 2 frôlements d'un demi-guidon en 10 km de col (avant correction : des centaines dès 6 bots) |
+| Course de 11 bots au niveau du cycliste (`bots_race`, demo 5 km, plat 20 km, col 10 km, demo à 100 %) | trames de 2 137 à 2 152 octets ; 0 contact partout avec la règle de l'engine (avant correction : des centaines dès 6 bots) |
 | Calibrage T13 (4 bots, plat et col courts) | écarts toujours sous 2 % |
 | Banc de l'abri (`draft_bench`) | inchangé, contacts du groupe libre sous 1 % du temps |
 | Pas de physique, 11 bots à profil | p99 sous 3 ms (test `test_peloton.py`) |
+
+Banc du PC du 5 novembre (tête bcc7741, avant la garde en travers) : GPU médian / p99 peloton low 5,16 / 5,69 ms,
+medium 8,22 / 8,97, high 9,89 / 10,83 ; course_bots low 4,94 / 5,53, medium 8,08 / 8,61, high 9,90 / 10,43 :
+budgets tenus. Échecs corrigés ensuite : 29 images de contact bot / bot vues par l'engine en medium (garde en
+travers, marge de 10 cm), pires images de 135 à 150 ms toutes au départ (0 m) ou pendant une capture (critère
+aligné ; les six bancs rejoués passent).
 
 ## 4. Critères d'acceptation
 

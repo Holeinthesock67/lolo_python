@@ -48,9 +48,9 @@ SYNTHETIC = {
 }
 
 
-# Contact (lot PL1) : roues qui se chevauchent de plus de 10 cm et guidons à moins d'une largeur (5 cm de marge).
-CONTACT_LONG_M = BIKE_LENGTH_M - 0.1
-CONTACT_SIDE_M = RIDER_WIDTH_M - 0.05
+# Contact (lot PL1) : moins d'une longueur de vélo en long et d'une largeur de coureur en travers.
+CONTACT_LONG_M = BIKE_LENGTH_M          # règle du compte des contacts de l'engine (living_decor.gd)
+CONTACT_SIDE_M = RIDER_WIDTH_M
 
 
 def contacts(runners: list[tuple[str, float, float]]) -> set[tuple[str, str]]:

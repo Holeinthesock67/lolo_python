@@ -534,12 +534,38 @@ def hitch_period(distances: list[float], min_m: float = 10.0, max_m: float = 100
     return best if best is not None and best["score"] >= min_score else None
 
 
+START_DISTANCE_M = 1.0   # image lente à moins de 1 m : le cycliste n'a pas encore roulé (départ)
+
+
+def _start_or_capture(steady: list[dict[str, Any]], saccades: list[dict[str, Any]], hitch_ms: float) -> dict[int, str]:
+    """Secondes lentes du régime établi (id de la ligne -> « départ » ou « capture ») dont la pire image de
+    saccades.csv, à moins d'une seconde, est une capture du banc ou une image d'avant le départ (moins de
+    `START_DISTANCE_M` parcourus). Les autres restent jugées."""
+    sac = [r for r in saccades if isinstance(r.get("t_s"), float) and isinstance(r.get("frame_ms"), float)]
+    out: dict[int, str] = {}
+    for row in steady:
+        ms = row.get("frame_max_ms")
+        if not isinstance(ms, (int, float)) or ms <= hitch_ms:
+            continue
+        near = [r for r in sac if abs(r["t_s"] - float(row["t_s"])) <= 1.0]
+        if not near:
+            continue
+        top = max(near, key=lambda r: r["frame_ms"])
+        if str(top.get("cause") or "") == "capture":
+            out[id(row)] = "capture"
+        elif isinstance(top.get("distance_m"), float) and top["distance_m"] < START_DISTANCE_M:
+            out[id(row)] = "départ"
+    return out
+
+
 def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | None = None,
                  targets: dict[str, Any] | None = None, real_window: bool = True) -> list[tuple[bool | None, str, str]]:
     """À-coups en régime établi (après `warmup_s` du bloc) : secondes dont la pire image dépasse `hitch_ms` (au plus
     `max_per_min` par minute), aucune image au-delà de `freeze_ms`, et pas d'à-coups qui reviennent à
     distance régulière (saccades.csv, captures du banc écartées) ; départ (fin du chargement à `warmup_s`
-    du bloc) : aucune image au-delà de `start_freeze_ms`. Seuils `hitches` de perf_targets.json."""
+    du bloc) : aucune image au-delà de `start_freeze_ms`. Une seconde lente du régime établi que saccades.csv
+    explique par une capture du banc est écartée, par une image d'avant le départ (cycliste à 0 m) jugée avec le
+    départ (lot PL1 : chargement du peloton plus long que `warmup_s`). Seuils `hitches` de perf_targets.json."""
     t = targets or load_targets()
     lim = t.get("hitches", {})
     hitch_ms, per_min = float(lim.get("hitch_ms", 50.0)), float(lim.get("max_per_min", 3.0))
@@ -550,19 +576,23 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
         return []
     warm = min(ts) + warmup_s
     steady = [r for r in rows if isinstance(r.get("t_s"), (int, float)) and r["t_s"] >= warm]
-    worst = values(steady, "frame_max_ms")
+    # Lot PL1 : une seconde lente du régime établi que saccades.csv explique par une capture du banc (déjà mise à
+    # part) ou par une image d'avant le départ (cycliste encore à 0 m : chargement plus long, peloton) n'en est pas.
+    held = _start_or_capture(steady, saccades, hitch_ms) if saccades is not None else {}
+    worst = values([r for r in steady if id(r) not in held], "frame_max_ms")
     note = "" if real_window else ", indicatif sous Xvfb"
     out: list[tuple[bool | None, str, str]] = []
     # Départ : après le chargement (warmup_s général), avant le régime établi ; seuil propre, plus large.
     start_ms = float(lim.get("start_freeze_ms", 150.0))
     loaded = min(ts) + float(t.get("warmup_s", 0))
-    start = values([r for r in rows if isinstance(r.get("t_s"), (int, float)) and loaded <= r["t_s"] < warm],
-                   "frame_max_ms")
+    start = values([r for r in rows if isinstance(r.get("t_s"), (int, float))
+                    and (loaded <= r["t_s"] < warm or held.get(id(r)) == "départ")], "frame_max_ms")
     if start:
         top_start = max(start)
         out.append(((top_start <= start_ms) if real_window else None, "à-coups : départ",
                     f"pire image {top_start:.0f} ms de {loaded - min(ts):.0f} à {warmup_s:.0f} s "
-                    f"(au plus {start_ms:.0f} ms){note}"))
+                    + ("et avant le premier mètre " if "départ" in held.values() else "")
+                    + f"(au plus {start_ms:.0f} ms){note}"))
     if worst:
         minutes = max(len(steady) / 60.0, 1.0)
         n = sum(w > hitch_ms for w in worst)

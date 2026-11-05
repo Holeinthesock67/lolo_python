@@ -242,3 +242,17 @@ def test_pl1_update_lanes_sets_blocked_on_each_lane():
     a, b = d.Lane(1.2, 1.2), d.Lane(1.2, 1.2)
     d.update_lanes([(10.0, 8.3, a), (10.0 + d.BIKE_LENGTH_M + 0.4, 8.0, b)], 0.02)   # trop peu plus vite pour doubler
     assert a.blocked is not None and a.blocked[1] == 8.0 and b.blocked is None
+
+
+def test_side_guard_never_closes_in_on_a_rider_alongside():
+    """Lot PL1 (banc PC de #716 : bots qui se chevauchaient en travers) : à hauteur d'un coureur, la cible garde
+    au moins la largeur d'un coureur plus 10 cm, du côté où l'on est ; plus loin devant ou derrière, rien ne change."""
+    from openride_core.draft import RIDER_WIDTH_M, SIDE_GUARD_M, Lane, side_guard
+    me, other = Lane(m=1.0, home=1.0), Lane(m=1.6, home=1.6)
+    clear = RIDER_WIDTH_M + SIDE_GUARD_M
+    assert side_guard(100.0, me, 1.5, [(100.5, 8.0, other)]) == pytest.approx(1.6 - clear)
+    assert side_guard(100.0, me, 0.5, [(100.5, 8.0, other)]) == 0.5           # s'en éloigner reste libre
+    assert side_guard(100.0, Lane(m=2.0, home=2.0), 1.7, [(99.0, 8.0, other)]) == pytest.approx(1.6 + clear)
+    assert side_guard(100.0, me, 1.5, [(101.75, 8.0, other)]) == 1.5         # dans la roue, sans chevauchement
+    manual = Lane(m=1.0, home=1.0, auto=False)
+    assert side_guard(100.0, manual, 1.5, [(100.5, 8.0, other)]) == 1.5

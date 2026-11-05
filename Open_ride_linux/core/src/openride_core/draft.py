@@ -96,7 +96,9 @@ BLOCK_SIDE_M = 0.75
 BLOCK_MIN_GAP_M = 0.3
 BLOCK_LOOK_S = 1.0
 BLOCKED_PASS_DV_MPS = -0.2     # enfermé : il double un coureur à peine plus lent que lui (il a levé le pied pour lui)
-BLOCK_ESCAPE_OVERLAP_M = 0.05   # en s'écartant, il n'est enfermé qu'au-delà de 5 cm de roues qui se chevauchent
+BLOCK_ESCAPE_GAP_M = 0.1        # en s'écartant, il n'est enfermé qu'à moins de 10 cm de la roue (jamais de contact)
+SIDE_GUARD_M = 0.1              # garde en travers (lot PL1) : roues qui se chevauchent, jamais plus près que la
+                                # largeur d'un coureur plus 10 cm
 
 
 @dataclass
@@ -530,10 +532,31 @@ def update_lanes(runners: list[tuple[float, float, Lane]], dt: float, length_m: 
         targets.append(lane_target(s, v, lane, others, length_m, is_loop, head, cross))
     for i, (s, v, lane) in enumerate(runners):
         others = [r for j, r in enumerate(runners) if j != i]
-        lane.blocked = blocked_by(s, v, lane, targets[i][0], others, length_m, is_loop)
+        target = side_guard(s, lane, targets[i][0], others, length_m, is_loop)
+        targets[i] = (target, targets[i][1])
+        lane.blocked = blocked_by(s, v, lane, target, others, length_m, is_loop)
     for (_, _, lane), (target, passing) in zip(runners, targets):
         lane.target, lane.passing = target, passing
         step_lane(lane, target, dt)
+
+
+def side_guard(s: float, lane: Lane, target: float, others: Iterable[tuple[float, float, Lane]],
+               length_m: float | None = None, is_loop: bool = False) -> float:
+    """Cible bornée pour ne jamais se rabattre sur un coureur à sa hauteur (lot PL1) : un coureur dont les roues
+    chevauchent les siennes garde au moins la largeur d'un coureur plus `SIDE_GUARD_M` d'écart latéral, du côté
+    où l'on est déjà ; dans sa roue (sans chevauchement), rien ne change. Placement coupé : cible inchangée."""
+    if not lane.auto:
+        return target
+    for o_s, _, o_lane in others:
+        d = ahead_distance(s, o_s, length_m, is_loop)
+        if abs(d) >= 0.5 * (lane.length + o_lane.length):
+            continue
+        clear = RIDER_WIDTH_M + SIDE_GUARD_M + _wider(lane) + _wider(o_lane)
+        if lane.m <= o_lane.m:
+            target = min(target, o_lane.m - clear)
+        else:
+            target = max(target, o_lane.m + clear)
+    return target
 
 
 def blocked_by(s: float, v: float, lane: Lane, target: float, others: Iterable[tuple[float, float, Lane]],
@@ -541,8 +564,8 @@ def blocked_by(s: float, v: float, lane: Lane, target: float, others: Iterable[t
     """Coureur qui enferme celui-ci (lot PL1) : (écart roue à roue, vitesse) du plus proche devant dans sa ligne
     (moins de `BLOCK_SIDE_M` d'écart latéral, plus la largeur en plus d'un véhicule), déjà à sa hauteur (roues qui
     se chevauchent) ou qu'il touchera dans `BLOCK_LOOK_S` (plus `BLOCK_MIN_GAP_M`) sans que sa cible `target` le sorte
-    de la ligne ; s'il s'en écarte, seulement roues qui se chevauchent de plus de `BLOCK_ESCAPE_OVERLAP_M` (il
-    double, on ne le ralentit pas) ; None sinon. Placement coupé : None."""
+    de la ligne ; s'il s'en écarte, seulement à moins de `BLOCK_ESCAPE_GAP_M` de sa roue (il double, on ne le
+    ralentit pas plus tôt) ; None sinon. Placement coupé : None."""
     if not lane.auto:
         return None
     best: tuple[float, float] | None = None
@@ -555,7 +578,7 @@ def blocked_by(s: float, v: float, lane: Lane, target: float, others: Iterable[t
         gap = d - 0.5 * (lane.length + o_lane.length)
         closing = v - o_v
         if abs(target - o_lane.m) >= side:   # il s'écarte de sa ligne : enfermé seulement roue dans la roue
-            if gap >= -BLOCK_ESCAPE_OVERLAP_M:
+            if gap >= BLOCK_ESCAPE_GAP_M:
                 continue
         elif gap >= 0.0 and (closing <= 0.0 or gap >= BLOCK_MIN_GAP_M + closing * BLOCK_LOOK_S):
             continue

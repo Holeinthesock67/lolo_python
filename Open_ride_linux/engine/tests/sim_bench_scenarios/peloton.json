@@ -20,8 +20,8 @@
   "events": [],
   "bench": {
     "world": "demo",
-    "duration_s": 180,
-    "every_s": 15,
+    "duration_s": 120,
+    "every_s": 10,
     "bot_profiles": [
       "rouleur",
       "climber",
