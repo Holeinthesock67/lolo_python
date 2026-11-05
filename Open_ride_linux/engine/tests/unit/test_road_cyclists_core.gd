@@ -3,7 +3,8 @@ extends SceneTree
 ## Cyclistes du décor proches calculés par le core (lot AS7) : `road_cyclists_model.gd` reprend la liste `riders`
 ## (`sync_core`) : cyclistes reçus à la place de ceux de l'engine (même `id`, tenue gardée), extrapolés jusqu'à la
 ## liste suivante, une seule reprise par trame, décor lointain gardé, cyclistes que le core ne donne pas retirés
-## (liste qui n'est pas pleine), cycliste sorti de la liste laissé au décor, tenue tirée de `look` sinon.
+## (liste qui n'est pas pleine), cycliste sorti de la liste rendu au décor de l'engine (il double un groupe plus
+## lent au lieu de le traverser), tenue tirée de `look` sinon.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_road_cyclists_core.gd
 
 const Model := preload("res://scripts/road_cyclists_model.gd")
@@ -103,10 +104,31 @@ func _run() -> void:
 	got = _by_id(m)
 	_check(got.has("c1000000-0") and not got.has("c1000000-1") and not got.has("c9-0"),
 		"cyclistes absents de la liste à moins de 55 m : plus sur la route (%s)" % str(got.keys()))
-	_check(got.has("c5-0") and not got["c5-0"]["group"].has("core"),
-		"cycliste à 61 m sorti de la liste : laissé au décor, plus suivi par le core")
+	_check(got.has("c5-0") and not got["c5-0"]["group"].has("core") and str(got["c5-0"]["group"]["case"]) == "ahead",
+		"cycliste à 61 m sorti de la liste : rendu au décor de l'engine (groupe « ahead »)")
 	m.update(s, 7.0, 0.5)
-	_check(absf(float(_by_id(m)["c5-0"]["s"]) - (s + 58.0 + 6.0)) < 1e-6, "... il garde sa dernière vitesse")
+	_check(absf(float(_by_id(m)["c5-0"]["s"]) - (s + 58.0 + 6.0 * 0.5)) < 1e-3, "... à sa dernière vitesse")
+	# Banc E1 du 5/11 : le groupe rendu au décor rattrape un groupe plus lent sur sa voie ; il le double au lieu
+	# de rouler au travers
+	m.sync_core([], 7, s)   # le core ne donne plus personne : les cyclistes du core proches quittent la route
+	m.place_for_test(s, 7.0, "ahead", 75.0, 1)
+	var overlap := 0
+	var closest := INF
+	for i in range(30 * 40):
+		m.update(s, 0.0, 1.0 / 30.0)
+		var rs: Array = m.riders()
+		for a in rs:
+			for b in rs:
+				if a["group"] == b["group"] or int(a["dir"]) != int(b["dir"]):
+					continue
+				var ds := absf(float(a["s"]) - float(b["s"]))
+				if ds < 2.0:
+					closest = minf(closest, absf(float(a["lateral"]) - float(b["lateral"])))
+					if absf(float(a["lateral"]) - float(b["lateral"])) < Model.MIN_CENTRE_M - 0.05:
+						overlap += 1
+	got = _by_id(m)
+	_check(overlap == 0 and got.has("c5-0") and float(got["c5-0"]["s"]) > s + 75.0 + 40.0 * 5.0 + 5.0,
+		"groupe rendu au décor : double le plus lent sans le traverser (%d images l'une dans l'autre, écart en travers %.2f m au plus près)" % [overlap, closest])
 
 	# Liste pleine : les cyclistes proches qu'elle ne donne pas peuvent encore rouler
 	var m2 = _model(route)
