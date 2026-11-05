@@ -110,6 +110,7 @@ ENGINE_ARGS_NOT_FROM_CONFIG: dict[str, str] = {
     "--test-mode": "outils de test",
     "--routes-dir": "outils de test",
     "--culling": "essai du lot S1, aucun gain mesuré",
+    "--crowd": "bancs du lot Y21 (spectateurs sur toutes les montées)",
 }
 
 # Code de sortie de l'engine : « tout relancer » (menu « Appareils », lot N13 ; engine/scripts/main.gd).

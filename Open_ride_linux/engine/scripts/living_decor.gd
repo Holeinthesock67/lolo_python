@@ -98,6 +98,7 @@ var sky_view: Node3D = null
 var boats = BoatModel.new()
 var boats_view: Node3D = null
 var props: Node3D = null
+var crowd_all_climbs := false       # --crowd=all (bancs, lot Y21) : spectateurs sur toutes les montées
 var crowd = CrowdModel.new()
 var crowd_view: Node3D = null
 var passersby = PassersbyModel.new()
@@ -284,7 +285,7 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 		return
 	var layers: Array = osm_streamer.layers_present.duplicate() if osm_streamer != null and not world_dir.is_empty() else []
 	var job := {"gen": _generation, "route": route, "world_dir": world_dir, "layers": layers,
-		"road_width_m": road_width_m, "crowd_all_climbs": false, "result": {}}
+		"road_width_m": road_width_m, "crowd_all_climbs": crowd_all_climbs, "result": {}}
 	job["task"] = WorkerThreadPool.add_task(_prepare_job.bind(job), false, "décor du parcours")
 	_job = job
 
