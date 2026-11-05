@@ -58,7 +58,7 @@ const RING_W := 14.0
 const CADENCE_SMOOTH := 8.0   # 1/s : la cadence affichée rejoint la mesure en ~0,3 s
 const GO_SIZE := 132
 const GO_FLASH_S := 0.2
-const CACHE_FRAMES := 2   # images avant d'utiliser l'image en cache, le temps qu'elle soit rendue
+const CACHE_FRAMES := 3   # images où la SubViewport se rend avant d'afficher l'image en cache
 
 var _wait = null          # objet start_wait de la dernière trame, null hors attente
 var _cadence := 0.0
@@ -148,6 +148,8 @@ func _process(delta: float) -> void:
 		if _cache_frames > 0:
 			_cache_frames -= 1
 			if _cache_frames == 0:
+				if _viewport != null:
+					_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 				queue_redraw()
 		return
 	_t += delta
@@ -219,8 +221,10 @@ func _static_key() -> String:
 		str(_route.get("name", "")), str(size), int(_wait.get("cadence_rpm", 0)) if _wait is Dictionary else 0]
 
 
-## Contenu figé changé : le peintre redessine l'image en cache (rendue à l'image suivante) ; en attendant
-## qu'elle soit prête (CACHE_FRAMES images), l'écran se dessine directement, sans trou.
+## Contenu figé changé : le peintre redessine l'image en cache, rendue pendant CACHE_FRAMES images
+## (UPDATE_ALWAYS : un seul rendu UPDATE_ONCE demandé à l'image où la SubViewport entre dans l'arbre
+## restait vide, banc du 6 novembre) puis figée (UPDATE_DISABLED) ; en attendant, l'écran se dessine
+## directement, sans trou.
 func _refresh_cache(key: String) -> void:
 	_cache_key = key
 	_cache_frames = CACHE_FRAMES
@@ -238,7 +242,7 @@ func _refresh_cache(key: String) -> void:
 	_viewport.size = px
 	_painter.size = Vector2(px)
 	_painter.queue_redraw()
-	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 
 
 ## Écran caché : image en cache libérée (mémoire vidéo rendue).

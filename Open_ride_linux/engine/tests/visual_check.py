@@ -1531,6 +1531,12 @@ def _start_screen_scenes(s: Session) -> None:
                 st.get("visible") and st.get("lights") == 1 and st.get("steps", [{}])[0].get("state") == "current", str(st))
         s.check("depart_decor", "carte du parcours demo", st.get("route") == "Démo" and "4,0 km" in st.get("route_line", ""), str(st))
         s.check("depart_decor", "écran figé pendant le chargement", st.get("animated") is False, str(st))
+        # Pixels, pas seulement l'état : l'image en cache de l'écran figé est bien affichée (6 novembre :
+        # état « un feu » mais capture sans écran, SubViewport vide). Un boîtier allumé, voile sombre.
+        red = fraction(img, (0, 0, s.width, s.height // 2), lambda p: p[0] > 200 and p[1] < 110 and p[2] < 120, step=2)
+        s.check("depart_decor", "feu rouge allumé à l'image", red >= 0.003, f"{red:.2%} de pixels rouges")
+        dark = fraction(img, (0, int(s.height * 0.6), s.width, s.height), lambda p: max(p) < 60, step=4)
+        s.check("depart_decor", "voile opaque à l'image", dark >= 0.6, f"{dark:.0%} de pixels sombres")
         s.check_banner("depart_decor", img, info, None)
     core.set_scene(cadence=54.0, start_wait=dict(wait, phase="pedalage", held_s=1.6))
     time.sleep(1.0)

@@ -83,6 +83,11 @@ func _test_screen() -> void:
 	_check(sc.get_node_or_null("StaticCache") is SubViewport, "écran figé : image en cache créée")
 	sc._refresh_cache(sc._static_key())
 	_check(sc.get_child_count() == 1, "contenu changé : même image en cache, redessinée, pas recréée")
+	var vp: SubViewport = sc.get_node("StaticCache")
+	_check(vp.render_target_update_mode == SubViewport.UPDATE_ALWAYS, "image en cache rendue pendant qu'elle se prépare")
+	for i in sc.CACHE_FRAMES:
+		sc._process(0.016)
+	_check(vp.render_target_update_mode == SubViewport.UPDATE_DISABLED, "puis figée : plus aucun rendu par image")
 	sc.show_go()
 	_check(sc.test_info()["go"] and sc.visible, "ouverture : feux verts « GO ! »")
 	sc._process(StartWaitModel.GO_S + 0.1)
