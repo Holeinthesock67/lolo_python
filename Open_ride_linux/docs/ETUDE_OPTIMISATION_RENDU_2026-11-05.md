@@ -93,6 +93,19 @@ Recette U18 complète, GPU médian par biome. M1 = réglages Godot + brume écla
 
 Préconisations suivantes (à mesurer) : medium = M1 + atlas des ombres 2048 ; high = M1 en high + SSIL coupé + atlas 2048 ; low = 70 % de l'herbe et arbres sans ombre. Les cultures resteront au-dessus du budget : le vrai remède est un lot de développement (moins de détail d'herbe et de cultures au loin).
 
+### 6.1 Pistes lancées le 6 novembre (gain de chacune seule, sur le socle proposé)
+
+Accord du propriétaire (0 h 24) : lancer les six pistes et vérifier les gains un par un. `cout_rendu.py --socle propose --repetitions 2` : chaque variante ajoute un seul réglage aux préréglages proposés, deux bancs alternés par variante, médiane gardée.
+
+1. Temps GPU de chaque passe (`passes`, option `--gpu-profile` de Godot via `sim_bench.py --gpu-profile`) : `passes.md`.
+2. Occlusion ambiante plus légère : `ssao_low` (medium, high), `ssao_medium` (high).
+3. Brume volumétrique à la grille du medium en high : `brume_light`.
+4. Pierres et fleurs du sol sans ombre : `sans_ombres_details`. L'herbe n'a déjà pas d'ombre.
+5. Niveaux de détail des maillages plus tôt : `lod_maillage_1` (high), `lod_maillage_2` (medium).
+6. Lots de développement à part : niveau de détail de l'herbe au loin (lot herbe), ombres simplifiées du terrain, forêt lointaine en imposteurs.
+
+Image : `reglage_image.py` compare au milieu de chaque biome la brume éclairée à moitié (B), le contraste relevé (C, D), sans halo (E), un étalonnage en S (F, table de couleurs 1D `adjustment_color_correction`, coût nul) et F avec les trois améliorations visuelles (G).
+
 ## 7. Suite
 
 Mesures du vendredi 6 novembre, 7 h (PC) : variantes Godot de `cout_rendu.py` sur le parcours tout en cultures, puis la recette U18 complète avec les combinaisons retenues, planche avant/après en trois qualités pour le propriétaire. Le préréglage ne change dans `quality_presets.gd` et `render_quality.gd` qu'après sa validation des captures.

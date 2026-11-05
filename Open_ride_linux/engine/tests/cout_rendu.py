@@ -3,7 +3,8 @@
 
 Usage :
     cout_rendu.py lancer [--out DOSSIER] [--qualites low,medium,high] [--biome farmland] [--duree 70]
-                         [--variantes base,sans_ombres,...] [--godot CHEMIN]
+                         [--variantes base,sans_ombres,...] [--socle aucun|propose] [--repetitions N]
+                         [--godot CHEMIN]
     cout_rendu.py analyser DOSSIER
     cout_rendu.py --list
 
@@ -72,7 +73,24 @@ VARIANTS: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...], str], ...] = (
     ("herbe_degrade", "herbe_degrade=0.35", (), QUALITIES, "AJOUT : herbe au pied plus sombre, pointe plus claire"),
     ("embellis", "soleil_brume=0.3,terrain_macro=0.35,herbe_degrade=0.35,brume_ambiante", (), QUALITIES,
      "AJOUT : les trois améliorations et la brume éclairée ensemble"),
+    # Pistes du 6 novembre, à mesurer sur le socle proposé (--socle propose) : gain de chacune seule
+    ("passes", "", ("--gpu-profile",), QUALITIES, "même réglage que base, temps GPU de chaque passe (passes.md)"),
+    ("ssao_medium", "ssao=medium", (), ("high",), "occlusion ambiante medium au lieu de high"),
+    ("brume_light", "brume=light", (), ("high",), "grille de brume volumétrique du medium"),
+    ("sans_ombres_details", "sans_ombres_details", (), QUALITIES, "pierres et fleurs du sol sans ombre"),
+    ("lod_maillage_1", "lod_maillage=1.0", (), ("high",), "niveaux de détail des maillages comme en medium"),
+    ("lod_maillage_2", "lod_maillage=2.0", (), ("medium",), "niveaux de détail des maillages comme en low"),
 )
+# Socle « propose » : réglages proposés le 6 novembre (étude §6), auxquels chaque variante ajoute les siens
+GODOT_FREE = "feuillage_simple,arbres_loin_simple,halo_niveaux=3,halo_lineaire,anisotropy=8,brume_ambiante"
+SOCLES = {
+    "aucun": {q: "" for q in QUALITIES},
+    "propose": {
+        "low": GODOT_FREE + ",herbe=0.7,sans_ombres_arbres",
+        "medium": GODOT_FREE + ",msaa=2,atlas=2048",
+        "high": GODOT_FREE + ",msaa=2,sans_ssil,atlas=2048",
+    },
+}
 NAMES = [v[0] for v in VARIANTS]
 
 
@@ -93,12 +111,18 @@ def cmd_lancer(args: argparse.Namespace) -> int:
         except (ImportError, RuntimeError, ValueError) as exc:
             print(f"parcours du banc impossible : {exc}", file=sys.stderr)
             return 2
-    runs = plan(args.qualites, args.variantes)
+    # Répétitions alternées (règle du métier : le bruit d'un banc de 70 s est d'environ ±0,5 ms) : r1 de toutes les
+    # variantes, puis r2…, la médiane des répétitions est gardée
+    one = plan(args.qualites, args.variantes)
+    runs = [(q, v, r) for r in range(1, args.repetitions + 1) for q, v in one
+            if r == 1 or v[0] != "passes"]
     print(f"{len(runs)} bancs de {args.duree:.0f} s (≈ {len(runs) * (args.duree + 30) / 60:.0f} min)", flush=True)
+    (out / "socle.txt").write_text(args.socle + "\n", encoding="utf-8")
     t0 = time.time()
-    for k, (q, (name, diag, extra, _qs, _what)) in enumerate(runs):
-        rdir = out / q / name
+    for k, (q, (name, diag, extra, _qs, _what), rep) in enumerate(runs):
+        rdir = out / q / name / f"r{rep}" if args.repetitions > 1 else out / q / name
         rdir.mkdir(parents=True, exist_ok=True)
+        diag = ",".join(x for x in (SOCLES[args.socle][q], diag) if x)
         cmd = [sys.executable, str(TESTS_DIR / "sim_bench.py"), "--native", "--probe", "--muet",
                "--quality", q, "--size", args.size, "--world", str(world),
                "--speed-kmh", "60", "--every", "30", "--duration", f"{args.duree:.0f}", "--out", str(rdir), *extra]
@@ -132,21 +156,73 @@ def measure(rdir: Path, warm_s: float) -> dict[str, Any] | None:
             "diag_vu": "Diagnostic de rendu" in engine_log, "dossier": sdir}
 
 
+def gpu_passes(log: Path, skip: int = 5) -> dict[str, float]:
+    """Médiane du temps GPU de chaque passe (blocs « GPU PROFILE » de Godot --gpu-profile, `skip` premiers ignorés)."""
+    blocks: list[dict[str, float]] = []
+    if log.is_file():
+        for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.startswith("GPU PROFILE"):
+                blocks.append({})
+            elif blocks and line.lstrip().startswith("-") and line.rstrip().endswith("ms"):
+                name, _, val = line.strip()[1:].rpartition(":")
+                try:
+                    blocks[-1][name.strip()] = float(val.strip()[:-2])
+                except ValueError:
+                    pass
+    blocks = blocks[skip:]
+    names = {n for b in blocks for n in b}
+    return {n: round(statistics.median([b.get(n, 0.0) for b in blocks]), 3) for n in names}
+
+
+def measure_reps(path: Path, warm: float) -> dict[str, Any] | None:
+    """Mesure d'une variante : médiane de ses répétitions (`r1`, `r2`…) s'il y en a."""
+    reps = sorted(p for p in path.glob("r[0-9]*") if p.is_dir())
+    if not reps:
+        return measure(path, warm)
+    ms = [m for m in (measure(r, warm) for r in reps) if m is not None]
+    if not ms:
+        return None
+    out = dict(ms[0])
+    for key in ("gpu_ms", "fps", "p99_ms", "primitives", "appels", "gpu_sature_pct"):
+        vals = [m[key] for m in ms if isinstance(m.get(key), (int, float))]
+        out[key] = round(statistics.median(vals), 2) if vals else None
+    out["gpu_ms_reps"] = [m.get("gpu_ms") for m in ms]
+    out["diag_vu"] = all(m["diag_vu"] for m in ms)
+    return out
+
+
+def write_passes(out: Path, passes: dict[str, dict[str, float]]) -> None:
+    lines = ["# Temps GPU de chaque passe de rendu (Godot --gpu-profile, médiane après chauffe)", "",
+             "Mesuré avec la variante `passes` (mêmes réglages que `base`). L'option de profil coûte un peu de temps",
+             "GPU : comparer les passes entre elles, pas le total avec `base`.", ""]
+    for q, rows in passes.items():
+        total = sum(rows.values())
+        lines += [f"## {q} (somme des passes {total:.2f} ms)", "", "| Passe | ms | part |", "| --- | --- | --- |"]
+        for name, ms in sorted(rows.items(), key=lambda kv: -kv[1]):
+            if ms >= 0.05:
+                lines.append(f"| {name} | {ms:.2f} | {100 * ms / total:.0f} % |" if total else f"| {name} | {ms:.2f} | |")
+        lines.append("")
+    (out / "passes.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def analyse(out: Path) -> int:
     targets = perf_probe.load_targets()
     warm = float(targets.get("warmup_s", 20))
     planche = out / "planche"
     planche.mkdir(parents=True, exist_ok=True)
     result: dict[str, Any] = {}
+    passes: dict[str, dict[str, float]] = {}
     for q in QUALITIES:
         base = None
         for name, diag, _extra, qs, what in VARIANTS:
             if q not in qs or not (out / q / name).is_dir():
                 continue
-            m = measure(out / q / name, warm)
+            m = measure_reps(out / q / name, warm)
             if m is None:
                 continue
             sdir = m.pop("dossier")
+            if name == "passes":
+                passes[q] = gpu_passes(sdir / "engine.log")
             shots = sorted(sdir.glob("*_t*.png"))
             if shots:
                 shutil.copy(shots[-1], planche / f"{q}_{name}.png")
@@ -158,10 +234,14 @@ def analyse(out: Path) -> int:
                       "diag_non_vu": bool(diag) and not m.pop("diag_vu")})
             m.pop("diag_vu", None)
             result.setdefault(q, {})[name] = m
+    if passes:
+        write_passes(out, passes)
     (out / "cout.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     biome = (out / "biome.txt").read_text(encoding="utf-8").strip() if (out / "biome.txt").is_file() else "?"
-    lines = [f"# Coût des effets de rendu (biome {biome}, 60 km/h)", "",
-             "Gain = GPU médian de `base` moins celui de la variante (positif : la variante coûte moins).", ""]
+    socle = (out / "socle.txt").read_text(encoding="utf-8").strip() if (out / "socle.txt").is_file() else "aucun"
+    lines = [f"# Coût des effets de rendu (biome {biome}, 60 km/h, socle {socle})", "",
+             "Gain = GPU médian de `base` moins celui de la variante (positif : la variante coûte moins).",
+             "Avec des répétitions, chaque chiffre est la médiane des répétitions (détail dans cout.json).", ""]
     for q, rows in result.items():
         budget = targets["presets"][q]["gpu_ms_median_max"]
         lines += [f"## {q} (budget GPU {budget} ms)", "",
@@ -189,6 +269,9 @@ def main(argv: list[str] | None = None) -> int:
     la.add_argument("--biome", default="farmland")
     la.add_argument("--duree", type=float, default=70.0, help="durée de chaque banc en s (défaut 70)")
     la.add_argument("--variantes", default=",".join(NAMES))
+    la.add_argument("--socle", default="aucun", choices=tuple(SOCLES),
+                    help="réglages ajoutés à toutes les variantes (propose : préréglages proposés le 6 novembre)")
+    la.add_argument("--repetitions", type=int, default=1, help="bancs par variante, alternés (défaut 1)")
     la.add_argument("--size", default="1680x1011")
     la.add_argument("--godot", type=Path, default=Path(os.environ["GODOT"]) if os.environ.get("GODOT") else None)
     an = sub.add_parser("analyser")

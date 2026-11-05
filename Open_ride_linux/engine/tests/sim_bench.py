@@ -407,6 +407,8 @@ class Bench:
             self.t_core = started[0]
             cmd = rendu_jeu.godot_cmd([a.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}",
                                        "--audio-driver", "Dummy"], a.native, width, height)
+            if getattr(a, "gpu_profile", False):   # temps GPU par passe, dans engine.log
+                cmd.append("--gpu-profile")
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
                     f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}",
@@ -1074,6 +1076,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="garde-fou de charge de l'engine (lot Y6, défaut off : préréglages mesurés tels quels)")
     ap.add_argument("--latence", action="store_true",
                     help="latence des appuis du Click jusqu'à l'image (lot X7) : core et engine avec --latence")
+    ap.add_argument("--gpu-profile", action="store_true",
+                    help="option --gpu-profile de Godot : temps GPU de chaque passe de rendu dans engine.log")
     ap.add_argument("--probe", action="store_true",
                     help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))

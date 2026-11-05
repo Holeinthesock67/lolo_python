@@ -105,7 +105,8 @@ func configure(budgets: Dictionary, route_data, model, road_width_m: float = 6.0
 			mmi.name = "%s_%d" % [kind, shape]
 			mmi.multimesh = mm
 			mmi.material_override = _material_for(kind)
-			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if kind == "grass" else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			mmi.cast_shadow = (GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				if kind == "grass" or RenderDiag.has("sans_ombres_details") else GeometryInstance3D.SHADOW_CASTING_SETTING_ON)
 			add_child(mmi)
 			var pos := PackedVector3Array()
 			pos.resize(mm.instance_count)

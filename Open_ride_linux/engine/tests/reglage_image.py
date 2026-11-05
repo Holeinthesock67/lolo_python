@@ -29,7 +29,7 @@ sys.path.insert(0, str(TESTS_DIR))
 import make_biome_world  # noqa: E402
 import recette_u18  # noqa: E402
 
-# Réglages proposés le 5 novembre (étude ETUDE_OPTIMISATION_RENDU_2026-11-05.md §4), sans la brume éclairée
+# Réglages proposés le 6 novembre (étude ETUDE_OPTIMISATION_RENDU_2026-11-05.md §4), sans la brume éclairée
 GODOT = "feuillage_simple,arbres_loin_simple,halo_niveaux=3,halo_lineaire,anisotropy=8"
 PROPOSED = {
     "low": GODOT + ",herbe=0.7,sans_ombres_arbres",
@@ -43,6 +43,9 @@ VARIANTS = (
     ("C", "brume_ambiante=0.5,contraste=1.15,agx_contraste=1.35", "à moitié, contraste relevé"),
     ("D", "brume_ambiante=0.35,brume_densite=0.7,contraste=1.12", "brume plus légère et moins éclairée"),
     ("E", "brume_ambiante=0.5,sans_glow", "brume éclairée à moitié, sans halo (−1 ms mesuré)"),
+    ("F", "brume_ambiante=0.5,courbe_s=0.35", "à moitié, étalonnage en S (ombres plus denses)"),
+    ("G", "brume_ambiante=0.5,courbe_s=0.35,soleil_brume=0.3,terrain_macro=0.35,herbe_degrade=0.35",
+     "F avec les trois améliorations visuelles"),
 )
 NAMES = [v[0] for v in VARIANTS]
 
@@ -132,7 +135,7 @@ def main(argv: list[str] | None = None) -> int:
     la.add_argument("--out", type=Path,
                     default=Path.home() / "OpenRide" / "mesures" / time.strftime("%Y-%m-%d") / "reglage_image")
     la.add_argument("--qualites", default="medium,high")
-    la.add_argument("--variantes", default="B,C,D,E")
+    la.add_argument("--variantes", default="B,C,D,E,F,G")
     la.add_argument("--vitesse", type=float, default=90.0)
     la.add_argument("--size", default="1680x1011")
     la.add_argument("--godot", type=Path, default=Path(os.environ["GODOT"]) if os.environ.get("GODOT") else None)

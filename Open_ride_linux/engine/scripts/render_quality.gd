@@ -191,6 +191,9 @@ static func diagnostic_image(img: Dictionary) -> Dictionary:
 		out["fog_volumetric"] = "off"
 	if RenderDiag.has("sans_glow"):
 		out["glow"] = false
+	if RenderDiag.value("brume") != "":
+		out["fog_volumetric"] = RenderDiag.value("brume")
+	out["mesh_lod_threshold"] = RenderDiag.number("lod_maillage", float(out["mesh_lod_threshold"]))
 	return out
 
 
@@ -216,6 +219,8 @@ static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> voi
 	env.adjustment_saturation = RenderDiag.number("saturation", env.adjustment_saturation)
 	env.tonemap_agx_contrast = RenderDiag.number("agx_contraste", env.tonemap_agx_contrast)
 	env.tonemap_exposure = RenderDiag.number("exposition", env.tonemap_exposure)
+	if RenderDiag.value("courbe_s") != "":
+		env.adjustment_color_correction = s_curve(clampf(RenderDiag.number("courbe_s", 0.0), 0.0, 1.0))
 	if RenderDiag.value("halo_niveaux") != "":
 		var levels := int(RenderDiag.value("halo_niveaux"))
 		for i in range(7):
@@ -225,6 +230,25 @@ static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> voi
 	if RenderDiag.has("halo_lineaire"):
 		RenderingServer.environment_glow_set_use_bicubic_upscale(false)
 	print("Diagnostic de rendu : ", diag)
+
+
+## Courbe en S de l'étalonnage (table de couleurs 1D, `adjustment_color_correction`) : ombres plus sombres,
+## hautes lumières plus claires, milieu de gamme inchangé ; `strength` 0 = droite (aucun effet), 1 = smoothstep.
+static func s_curve(strength: float) -> GradientTexture1D:
+	var g := Gradient.new()
+	var offsets := PackedFloat32Array()
+	var colors := PackedColorArray()
+	for i in range(17):
+		var x := i / 16.0
+		var y := lerpf(x, x * x * (3.0 - 2.0 * x), strength)
+		offsets.append(x)
+		colors.append(Color(y, y, y))
+	g.offsets = offsets
+	g.colors = colors
+	var tex := GradientTexture1D.new()
+	tex.gradient = g
+	tex.width = 256
+	return tex
 
 
 ## Distance de vue de la caméra : fin du brouillard du préréglage plus CAMERA_FAR_MARGIN.

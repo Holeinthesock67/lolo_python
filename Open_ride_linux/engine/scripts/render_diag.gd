@@ -18,7 +18,10 @@ extends RefCounted
 ##   grass_tufts et ground_details).
 ## Réglage de l'image (RenderQuality.apply_diagnostic) : brume_ambiante=F (0 à 2, au lieu du drapeau = 1),
 ##   brume_densite=F (facteur sur la densité de la brume volumétrique, RenderQuality.volumetric_density), contraste=F, saturation=F,
-##   agx_contraste=F, exposition=F (valeurs de LOOK remplacées).
+##   agx_contraste=F, exposition=F (valeurs de LOOK remplacées), courbe_s=F (étalonnage en S, 0 à 1).
+## Pistes du 6 novembre : brume=off|light|full (grille de la brume volumétrique), lod_maillage=F (seuil des niveaux
+##   de détail des maillages, RenderQuality.diagnostic_image), sans_ombres_details (pierres et fleurs du sol sans
+##   ombre, ground_details).
 ## Pas de class_name : charger par preload("res://scripts/render_diag.gd").
 
 static var _parsed := false
