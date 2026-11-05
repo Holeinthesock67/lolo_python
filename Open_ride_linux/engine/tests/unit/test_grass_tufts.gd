@@ -282,28 +282,28 @@ func _test_far_lod() -> void:
 		and is_zero_approx(float(far_mat.get_shader_parameter("lod_end_m"))),
 		"%d MultiMesh (2 par tronçon) ; gerbe complète jusqu'à %.0f m, simplifiée au-delà" % [g.get_child_count(), GrassTufts.LOD_SWITCH_M])
 	_settle(g, 300.0)
+	# Lecture côté CPU (_origins, pick_of) : sans écran, le serveur de rendu factice ne rend pas les données des
+	# instances (get_instance_transform renvoie l'identité).
 	var threshold := GrassTufts.keep_at(GrassTufts.LOD_SWITCH_M - GrassTufts.LOD_BLEND_M)
-	var bad_pick := 0
 	var outside := 0
 	var range_short := 0
 	var expected_far := 0
+	var counts_ok := true
 	for gi in range(groups):
 		var k: int = g._slot_chunk[gi]
 		var mm: MultiMesh = g._near_mm[gi]
 		var fm: MultiMesh = g._far_mm[gi]
 		var box: AABB = mm.custom_aabb
 		var c := box.get_center()
-		for f in range(fm.visible_instance_count):
-			if fm.get_instance_custom_data(f).r >= threshold:
-				bad_pick += 1
+		var group_far := 0
+		counts_ok = counts_ok and mm.visible_instance_count == g._filled[gi] and fm.visible_instance_count == g._far_count[gi] \
+			and fm.custom_aabb == box
 		for slot in range(g._filled[gi]):
-			if g._placed[gi * g._per_chunk + slot] != 1:
+			var idx: int = gi * g._per_chunk + slot
+			if g._placed[idx] != 1:
 				continue
-			var p: Vector3 = mm.get_instance_transform(slot).origin
-			var pick := mm.get_instance_custom_data(slot).r
-			if not is_equal_approx(pick, g.pick_of(k, slot)):
-				bad_pick += 1
-			expected_far += 1 if pick < threshold else 0
+			var p: Vector3 = g._origins[idx]
+			group_far += 1 if g.pick_of(k, slot) < threshold else 0
 			if not box.has_point(p):
 				outside += 1
 			# Une touffe encore montrée par la gerbe complète (d < passage + fondu) ne doit jamais tomber hors
@@ -313,8 +313,10 @@ func _test_far_lod() -> void:
 					or g._far_mmi[gi].visibility_range_end < GrassTufts.FADE_END_M + r \
 					or g._far_mmi[gi].visibility_range_begin > maxf(0.0, GrassTufts.LOD_SWITCH_M - GrassTufts.LOD_BLEND_M - r):
 				range_short += 1
-	_check(bad_pick == 0 and expected_far == g.get_far_count() and g.get_far_count() > 0,
-		"gerbe lointaine : %d touffes, toutes celles que le fondu montre au-delà du passage (tirage CPU = GPU)" % g.get_far_count())
+		counts_ok = counts_ok and group_far == g._far_count[gi]
+		expected_far += group_far
+	_check(counts_ok and expected_far == g.get_far_count() and g.get_far_count() > 0,
+		"gerbe lointaine : %d touffes, exactement celles que le fondu montre au-delà du passage" % g.get_far_count())
 	_check(outside == 0 and range_short == 0,
 		"boîtes des tronçons et plages de visibilité : aucune touffe montrée coupée (%d hors boîte, %d hors plage)" % [outside, range_short])
 	var radius := 0.0
