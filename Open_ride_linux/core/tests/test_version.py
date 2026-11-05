@@ -30,8 +30,10 @@ def versions(root: Path) -> dict[str, str]:
 
 
 def changelog_head(root: Path) -> str:
+    """Titre de la dernière version publiée : une section « ## Non publié » au-dessus est sautée
+    (`scripts/bump-version.sh` la renomme en « X.Y.Z – AAAA-MM-JJ » à la version suivante)."""
     for line in (root / "CHANGELOG.md").read_text(encoding="utf-8").splitlines():
-        if line.startswith("## "):
+        if line.startswith("## ") and line != "## Non publié":
             return line
     return ""
 
