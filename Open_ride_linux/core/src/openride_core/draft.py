@@ -543,8 +543,8 @@ def update_lanes(runners: list[tuple[float, float, Lane]], dt: float, length_m: 
 def side_guard(s: float, lane: Lane, target: float, others: Iterable[tuple[float, float, Lane]],
                length_m: float | None = None, is_loop: bool = False) -> float:
     """Cible bornée pour ne jamais se rabattre sur un coureur à sa hauteur (lot PL1) : un coureur dont les roues
-    chevauchent les siennes garde au moins la largeur d'un coureur plus `SIDE_GUARD_M` d'écart latéral, du côté
-    où l'on est déjà ; dans sa roue (sans chevauchement), rien ne change. Placement coupé : cible inchangée."""
+    chevauchent les siennes garde au moins la largeur d'un coureur plus `SIDE_GUARD_M` d'écart latéral, plus la
+    distance pour arrêter son glissement vers lui (`LANE_ACCEL_MPS2`), du côté où l'on est déjà ; dans sa roue (sans chevauchement), rien ne change. Placement coupé : cible inchangée."""
     if not lane.auto:
         return target
     for o_s, _, o_lane in others:
@@ -552,6 +552,8 @@ def side_guard(s: float, lane: Lane, target: float, others: Iterable[tuple[float
         if abs(d) >= 0.5 * (lane.length + o_lane.length):
             continue
         clear = RIDER_WIDTH_M + SIDE_GUARD_M + _wider(lane) + _wider(o_lane)
+        toward = lane.rate if lane.m <= o_lane.m else -lane.rate   # vitesse latérale vers lui
+        clear += max(toward, 0.0) ** 2 / (2.0 * LANE_ACCEL_MPS2)     # et la distance pour s'arrêter en travers
         if lane.m <= o_lane.m:
             target = min(target, o_lane.m - clear)
         else:

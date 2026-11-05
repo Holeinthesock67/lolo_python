@@ -32,7 +32,8 @@ la trame `state` dépasse 4 096 octets, sans que les bots se roulent dessus, et 
   près, lève le pied (`_blocked_power`, vitesse ramenée à celle du coureur devant à 0,5 m de sa roue) et freine
   roue contre roue (moins de 0,2 m). En s'écartant pour doubler, il n'est ralenti qu'à moins de 10 cm de la roue.
   Garde en travers (`draft.side_guard`) : à hauteur d'un coureur (roues qui se chevauchent), un bot ne se
-  rabat jamais à moins de la largeur d'un coureur plus 10 cm. Un bot arrivé (arrêté sur la ligne) ne compte
+  rabat jamais à moins de la largeur d'un coureur plus 10 cm, plus la distance pour arrêter son glissement
+  latéral. Un bot arrivé (arrêté sur la ligne) ne compte
   plus dans le placement.
 - Contrat IPC révision 1.6 : `bots` jusqu'à 12 éléments (`state`, `start`, `last_choices`), le core et l'engine
   annoncent « 1.6 ».
