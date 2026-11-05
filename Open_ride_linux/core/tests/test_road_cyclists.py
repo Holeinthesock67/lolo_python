@@ -47,7 +47,7 @@ def _ride(route: Route, budget: int, seed: int, hold: bool = True) -> dict:
     while s < FLAT_M + 10000.0:
         v = 30.0 / 3.6 if s < FLAT_M else 14.0 / 3.6
         bot += (32.0 if bot < FLAT_M else 15.0) / 3.6 * dt
-        m.update(s, v, dt, False, [bot])
+        m.update(s, v, dt, False, [(bot, rc.BOT_LATERAL_M)])
         out["salut"] += bool(m.last_event)
         out["max_riders"] = max(out["max_riders"], m.rider_count())
         for g in m.groups:
@@ -212,11 +212,14 @@ def test_state_list_is_short_and_near(route: Route) -> None:
     assert all(abs(e["s"] - s) < rc.NEAR_M for e in lst)
     d = [abs(e["s"] - s) for e in lst]
     assert d == sorted(d)
-    assert set(lst[0]) == {"id", "s", "v", "lane_m", "look"}
-    assert any(e["v"] < 0 for e in lst)       # en face : vitesse négative, dans le sens du parcours
-    assert all(isinstance(e["look"], int) and 0 <= e["look"] <= 0xFFFF for e in lst)
-    # Six cyclistes au centimètre : de quoi tenir dans la trame avec 5 bots et 4 véhicules (critère 5)
-    assert len(json.dumps(lst, separators=(",", ":"))) < 6 * 70
+    assert set(lst[0]) == {"id", "s", "dir", "v", "lane_m", "look"}
+    assert any(e["dir"] == -1 for e in lst) and all(e["v"] > 0 for e in lst)   # comme `vehicles` (AS6)
+    assert all(isinstance(e["look"], int) and 0 <= e["look"] <= rc.APPEARANCE_MASK for e in lst)
+    by_id = {r.id: r for r in m.riders()}
+    for e in lst:     # maillot et tenue de P28 retrouvés dans `look`
+        assert e["look"] % 8 == by_id[e["id"]].jersey and (e["look"] >> 4) == by_id[e["id"]].look & 0xFFFF
+    # Trame pleine (5 bots, 4 véhicules, 6 cyclistes) sous 4 096 octets : test_ipc_budget.py (critère 5)
+    assert len(json.dumps(lst, separators=(",", ":"))) < 6 * 90
 
 
 def test_sources_ids_and_draft_bot() -> None:
@@ -234,3 +237,98 @@ def test_no_spawn_on_vehicle(route: Route) -> None:
         s += 1.6
     assert m.spawned_total > 0
     assert all(g.case != "oncoming" for g in m.groups)
+
+
+# --- séance : abri derrière un groupe du décor, liste `riders` (étape 2) --------------------------
+
+def decor_session(tmp_path, monkeypatch, port, case="ahead", rel_m=12.0, size=3, kmh=24.0):
+    from test_draft import FlatRoute, make_session
+
+    s, _ = make_session(tmp_path, monkeypatch, port, 200.0, [])
+    s.route = FlatRoute()
+    s.physics.v = 25 / 3.6
+    s._on_command("start", {}, 2)
+    t = s._traffic_for(s.route)
+    t._last_rider_s = s.physics.s
+    t._next_slot = 10 ** 6                    # ni véhicule ni groupe tiré : seul le groupe posé roule
+    c = s._road_cyclists_for(s.route)
+    c._started, c._next_slot = True, 10 ** 6
+    g = c.place_for_test(s.physics.s, s.physics.v, case, rel_m, size, kmh=kmh)
+    return s, g
+
+
+def test_session_decor_group_shelters_rider(tmp_path, monkeypatch):
+    """Critère 3 dans la séance : groupe `ahead` de 3 à 24 km/h rattrapé à 25 km/h ; le placement automatique
+    range le cycliste dans sa roue et l'abri derrière le dernier monte entre 0,30 et 0,45."""
+    from test_draft import run
+
+    s, g = decor_session(tmp_path, monkeypatch, 6190, rel_m=8.0)
+    best, who = 0.0, None
+    for i in range(600):                       # 12 s, le cycliste à 25 km/h, collé au dernier sans le doubler
+        last = g.s - g.dir * g.members[-1].dl
+        s.physics.v = 25 / 3.6 if last - s.physics.s > draft.BIKE_LENGTH_M + 0.6 else g.speed_mps
+        run(s, 0.02, t0=100.0 + i * 0.02)
+        frame = s.state.to_dict()
+        if frame["draft"] > best:
+            best, who = frame["draft"], frame["draft_bot"]
+    assert 0.30 <= best <= 0.45
+    assert who is not None and who.startswith("rider:" + g.id + "-")
+    assert abs(s._lane.m - g.members[-1].lateral) < 0.3      # dans la ligne du groupe
+    s._frame_count = 0
+    s._fill_riders_frame()
+    riders = s.state.to_dict()["riders"]
+    assert len(riders) == 3 and {r["id"] for r in riders} == {f"{g.id}-{m.index}" for m in g.members}
+
+
+def test_session_oncoming_group_gives_no_draft(tmp_path, monkeypatch):
+    """Critère 4 dans la séance : un groupe en face n'abrite pas."""
+    from test_draft import run
+
+    s, g = decor_session(tmp_path, monkeypatch, 6194, case="oncoming", rel_m=40.0, kmh=25.0)
+    run(s, 2.0)
+    assert s.state.to_dict()["draft"] == 0.0
+
+
+def test_session_has_no_decor_without_living(tmp_path, monkeypatch):
+    from test_draft import FlatRoute, make_session
+
+    s, _ = make_session(tmp_path, monkeypatch, 6198, 200.0, [])
+    s.cfg.render.living = False
+    assert s._road_cyclists_for(FlatRoute()) is None
+
+
+def test_climbs_like_engine(route: Route) -> None:
+    """Montées de climb_detector.gd sur la route du test de l'engine : la montée de 10 km à 6 %."""
+    climbs = rc.detect_climbs(route)
+    assert len(climbs) == 1
+    s0, s1 = climbs[0]
+    assert abs(s0 - FLAT_M) <= 40.0 and abs(s1 - (FLAT_M + 10000.0)) <= 40.0
+
+
+def test_climbs_from_segments_layer(route: Route) -> None:
+    from types import SimpleNamespace
+
+    segs = [SimpleNamespace(type="sprint", s_start=100.0, s_end=400.0),
+            SimpleNamespace(type="climb", s_start=1000.0, s_end=2500.0)]
+    assert rc.climbs_for(route, segs) == [(1000.0, 2500.0)]
+    assert rc.climbs_for(route, ()) == rc.detect_climbs(route)
+
+
+def test_cost_per_step_with_sixteen_riders(route: Route) -> None:
+    """Pas de la boucle à 50 Hz avec le budget plein (16 cyclistes) et 5 bots : modèle, sources et liste."""
+    import time
+
+    m = rc.RoadCyclists(route, (), (), 16, 7)
+    s = 5000.0
+    for i in range(4):
+        m.place_for_test(s, 8.3, "ahead" if i % 2 == 0 else "oncoming", 20.0 + 70.0 * i, 4)
+    bots = [(s + d, rc.BOT_LATERAL_M) for d in (-3.0, 4.0, 8.0, 15.0, 30.0)]
+    n = 2000
+    t0 = time.perf_counter()
+    for _ in range(n):
+        m.update(s, 8.3, 0.02, bots=bots)
+        draft.draft_for(s, m.sources(), rider_v=8.3)
+        m.state_list(s)
+    ms = (time.perf_counter() - t0) * 1000.0 / n
+    assert m.rider_count() == 16
+    assert ms < 0.5, f"{ms:.3f} ms par pas"

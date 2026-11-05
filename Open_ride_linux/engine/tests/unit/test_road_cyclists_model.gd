@@ -2,11 +2,16 @@ extends SceneTree
 
 ## Tests sans écran des cyclistes du décor `road_cyclists_model.gd` (Lot P28) : 20 km de plaine puis 10 km de
 ## montée, nombre de groupes, écarts au cycliste et aux bots, groupes doublés et qui doublent, budget, pause,
-## vitesse en pente, cadence ; affichage `road_cyclists_renderer.gd`.
+## vitesse en pente, cadence ; affichage `road_cyclists_renderer.gd` (avatars des bots, garde-robe du décor
+## `road_cyclist_look.gd`, lot AS7).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_road_cyclists_model.gd
 
 const Model := preload("res://scripts/road_cyclists_model.gd")
 const Renderer := preload("res://scripts/road_cyclists_renderer.gd")
+const Look := preload("res://scripts/road_cyclist_look.gd")
+const BotLook := preload("res://scripts/bot_look.gd")
+const AvatarView := preload("res://scripts/avatar_view.gd")
+const AvatarModel := preload("res://scripts/avatar_model.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
@@ -116,21 +121,31 @@ func _test_renderer(route) -> void:
 	var rr = Renderer.new()
 	root.add_child(rr)
 	await process_frame
-	var n0: int = rr.get_child_count()
 	var m = Model.new()
 	m.configure(route, CLIMBS, [], 16, 3)
 	rr.setup(m, sp)
+	rr.set_quality("high")
+	AvatarView.wait_parts()
 	var s := 1000.0
 	var match_ok := true
 	var cadence_ok := true
+	var decor_ok := true
 	var max_shown := 0
-	var usec := 0
+	var model_usec := 0
+	var view_usec := 0
 	var frames := 0
+	var lods := [0, 0, 0]
+	var ids := {}
 	for i in range(30 * 240):
+		if i == 1:   # un groupe devant, rattrapé et doublé de près, et un groupe en face
+			m.place_for_test(s, 30.0 / 3.6, "ahead", 40.0, 3)
+			m.place_for_test(s, 30.0 / 3.6, "oncoming", 150.0, 2)
 		var t0 := Time.get_ticks_usec()
 		m.update(s, 30.0 / 3.6, 1.0 / 30.0)
-		rr.update(1.0 / 30.0)
-		usec += Time.get_ticks_usec() - t0
+		var t1 := Time.get_ticks_usec()
+		rr.update(1.0 / 30.0, false, s)
+		view_usec += Time.get_ticks_usec() - t1
+		model_usec += t1 - t0
 		frames += 1
 		var rs: Array = m.riders()
 		max_shown = maxi(max_shown, rr.visible_count())
@@ -141,15 +156,124 @@ func _test_renderer(route) -> void:
 				m.world_transform(float(r["s"]), float(r["lateral"]), int(r["dir"])).origin)
 			var want := Model.cadence_rpm(float(r["group"]["speed_mps"]))
 			cadence_ok = cadence_ok and absf(rr.shown_cadence(j) - want) < 1e-3
+			var v: int = rr.shown_variant(j)
+			decor_ok = decor_ok and v == Look.variant_of(int(r["member"]["jersey"]), int(r["member"]["look"]))
+			ids[str(r["id"])] = true
+			var av = rr.avatar_of(str(r["id"]))
+			match_ok = match_ok and av != null and av.is_visible_in_tree()
+			if av != null:
+				lods[int(av.lod)] += 1
 		s += 30.0 / 3.6 / 30.0
-	_check(match_ok and max_shown >= 2, "affichage : un coureur et un vélo par cycliste du modèle, à sa place (%d au plus)" % max_shown)
+	_check(match_ok and max_shown >= 2, "affichage : un avatar visible par cycliste du modèle, à sa place (%d au plus)" % max_shown)
 	_check(cadence_ok, "cadence de chaque cycliste affiché d'après sa vitesse")
-	_check(rr.get_child_count() == n0, "aucun nœud créé après le démarrage")
-	var avg := usec / 1000.0 / frames
-	_check(PerfBudget.check("road_cyclists_frame", avg), "16 cyclistes au plus : modèle et affichage en %.4f ms par image" % avg)
+	_check(decor_ok, "apparence de chaque cycliste tirée de son maillot et de sa tenue")
+	_check(lods[0] > 0 and lods[2] > 0, "niveaux de détail des bots selon l'écart (%s images par niveau)" % str(lods))
+	_check(rr.created_count() <= ids.size(), "un avatar par cycliste au plus (%d pour %d)" % [rr.created_count(), ids.size()])
+	# Cyclistes qui quittent la route puis cyclistes de mêmes apparences : avatars cachés repris, aucun créé
+	m.place_for_test(s, 30.0 / 3.6, "ahead", 30.0, 3)
+	m.groups = [m.groups[m.groups.size() - 1]]
+	rr.update(1.0 / 30.0, false, s)
+	var kept: Array = m.groups.duplicate(true)
+	var created := rr.created_count()
+	m.groups = []
+	rr.update(1.0 / 30.0, false, s)
+	var hidden := rr.visible_count() == 0
+	for g in kept:
+		g["id"] = "x" + str(g["id"])
+		for mb in g["members"]:
+			if mb.has("id"):
+				mb["id"] = "x" + str(mb["id"])
+	m.groups = kept
+	rr.update(1.0 / 30.0, false, s)
+	_check(hidden and rr.visible_count() > 0 and rr.created_count() == created,
+		"avatars cachés repris par les cyclistes suivants de même apparence (%d créés, %d affichés)" % [rr.created_count() - created, rr.visible_count()])
+	var model_avg := model_usec / 1000.0 / frames
+	var view_avg := view_usec / 1000.0 / frames
+	_check(PerfBudget.check("road_cyclists_frame", model_avg), "16 cyclistes au plus : modèle en %.4f ms par image" % model_avg)
+	_check(PerfBudget.check("road_cyclists_view_frame", view_avg), "16 avatars au plus : affichage en %.4f ms par image" % view_avg)
 	rr.queue_free()
 	sp.queue_free()
 	await process_frame
+
+
+## Préchauffage (lot AS7, banc PC du 5/11) : au chargement, les niveaux du préréglage des 16 apparences, une
+## racine de réserve chacune, montrées minuscules devant la caméra quelques images ; ensuite cachées, et les
+## cyclistes qui arrivent les reprennent sans rien créer.
+func _test_warm_up(route) -> void:
+	var cam := Camera3D.new()
+	root.add_child(cam)
+	cam.current = true
+	cam.global_position = Vector3(0.0, 50.0, 0.0)
+	var counts := {}
+	for q in ["low", "high"]:
+		var rr = Renderer.new()
+		root.add_child(rr)
+		var m = Model.new()
+		m.configure(route, CLIMBS, [], 16, 3)
+		rr.setup(m)
+		rr.set_quality(q)
+		counts[q] = rr.warm_up(cam)
+		var created := rr.created_count()
+		var tiny := true
+		var shown_all := true
+		for c in rr.get_children():
+			if c is Node3D and c.has_meta("variant"):
+				tiny = tiny and c.global_position.distance_to(cam.global_position) < 2.1 and c.global_transform.basis.get_scale().x < 0.001
+				shown_all = shown_all and c.visible
+		_check(created == Look.VARIANTS and rr.spare_count() == Look.VARIANTS and tiny and shown_all,
+			"%s : préchauffage, %d avatars de réserve minuscules devant la caméra (%d niveaux construits)" % [q, rr.spare_count(), counts[q]])
+		for i in range(Renderer.WARM_FRAMES):
+			rr.update(1.0 / 30.0, false, 1000.0)
+		var hidden := true
+		for c in rr.get_children():
+			if c is Node3D and c.has_meta("variant") and rr.spare_count() == Look.VARIANTS:
+				hidden = hidden and not c.visible
+		_check(hidden, "%s : réserve cachée après %d images" % [q, Renderer.WARM_FRAMES])
+		m.update(1000.0, 7.0, 0.0)
+		m.place_for_test(1000.0, 7.0, "ahead", 30.0, 3)
+		var distinct := {}
+		for r in m.riders():
+			distinct[Look.variant_of(int(r["member"]["jersey"]), int(r["member"]["look"]))] = true
+		rr.update(1.0 / 30.0, false, 1000.0)
+		_check(rr.visible_count() > 0 and rr.created_count() == created + (rr.visible_count() - distinct.size()),
+			"%s : cyclistes qui arrivent sur les avatars préchauffés (%d créé(s) pour %d affichés)" % [q, rr.created_count() - created, rr.visible_count()])
+		rr.queue_free()
+	_check(counts["low"] == Look.VARIANTS * 2 and counts["high"] == Look.VARIANTS * 3,
+		"niveaux préchauffés : 1 et 2 en low (%d), 0 à 2 en high (%d)" % [counts["low"], counts["high"]])
+	cam.queue_free()
+	await process_frame
+
+
+## Garde-robe du décor (lot AS7) : couleurs que ne portent ni les bots, ni le fantôme, ni l'avatar par défaut ;
+## sans dossard, jamais de cadre de contre-la-montre.
+func _test_decor_look() -> void:
+	var bot_kits := {}
+	for role in ["constant", "profile", "ghost", "other"]:
+		for i in range(12):
+			for jersey in [null, "sprint", "kom"]:
+				bot_kits[int(BotLook.settings_for(i, role, jersey)["kit_primary"])] = true
+	bot_kits[int(AvatarModel.DEFAULTS["kit_primary"])] = true
+	var distinct := true
+	var no_number := true
+	var no_tt := true
+	var seen := {}
+	for v in range(Look.VARIANTS):
+		var st: Dictionary = Look.settings_for(v)
+		var lk: Dictionary = Look.looks_for(v)
+		distinct = distinct and not bot_kits.has(int(st["kit_primary"])) and int(st["kit_primary"]) != int(st["kit_secondary"])
+		no_number = no_number and int(st["number"]) == 0
+		no_tt = no_tt and str(lk["frame"]) != "frame_tt" and str(lk["wheels"]) != "wheels_disc"
+		seen[var_to_str([st, lk])] = true
+	_check(distinct, "maillots du décor d'autres couleurs que ceux des bots et de l'avatar par défaut")
+	_check(no_number and no_tt, "sans dossard ni matériel de contre-la-montre")
+	_check(seen.size() == Look.VARIANTS, "%d apparences différentes" % seen.size())
+	var all_variants := {}
+	for jersey in range(8):
+		for look in range(4):
+			var v := Look.variant_of(jersey, look)
+			all_variants[v] = true
+	_check(all_variants.size() == Look.VARIANTS and all_variants.keys().min() == 0 and all_variants.keys().max() == Look.VARIANTS - 1,
+		"chaque maillot et chaque tenue donnent une des %d apparences" % Look.VARIANTS)
 
 
 func _init() -> void:
@@ -212,5 +336,7 @@ func _run() -> void:
 		m.update(s, 0.0, 0.1, true)
 	_check(not m.groups.is_empty() and str(m.groups) == before, "pause : cyclistes figés")
 	await _test_renderer(route)
+	_test_decor_look()
+	await _test_warm_up(route)
 	print("test_road_cyclists_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

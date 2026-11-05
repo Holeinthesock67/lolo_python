@@ -41,6 +41,7 @@ const StartWaitModel := preload("res://scripts/start_wait_model.gd")
 const StartScreen := preload("res://scripts/start_screen.gd")
 const DraftGauge := preload("res://scripts/draft_gauge.gd")
 const VEHICLE_PREFIX := "veh:"   # `draft_bot` d'un véhicule de la route (lot AS6, traffic.py du core)
+const RIDER_PREFIX := "rider:"   # `draft_bot` d'un cycliste du décor (lot AS7, road_cyclists.py du core)
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
@@ -505,6 +506,8 @@ func _on_settings(msg: Dictionary) -> void:
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
 		bots_view.set_quality(_quality_name)
+		if living_decor != null and living_decor.cyclists_view != null:
+			living_decor.cyclists_view.set_quality(_quality_name)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
 		if streamer.osm_streamer != null:
@@ -863,12 +866,17 @@ func _set_trial_badge(on: bool) -> void:
 	hud.set_trial_badge(on)
 
 
-## Menu plein écran : rien du HUD de séance derrière lui. Run Cyber-Rogue : la scène du mode a son HUD
-## diégétique (lot R11), le HUD classique (panneaux, profil, courbes) est caché ; le compteur d'images/s reste.
+## Menu plein écran : rien du HUD de séance derrière lui, ni les portiques et panneaux des segments (2.0.1 :
+## le sous-titre « Montée 1 · 4e catégorie » de l'arche de départ, juste au-dessus de la caméra, se lisait à
+## travers les menus translucides). Le préchauffage des marques (warm_up) est rangé sous la caméra, il reste
+## dessiné. Run Cyber-Rogue : la scène du mode a son HUD diégétique (lot R11), le HUD classique (panneaux,
+## profil, courbes) est caché ; le compteur d'images/s reste.
 func _sync_hud(menu_shown: bool) -> void:
 	hud.visible = not menu_shown and not rogue_host.is_active()
 	if overlay_layer != null:
 		overlay_layer.visible = not menu_shown
+	if segment_markers != null:
+		segment_markers.visible = not menu_shown and not rogue_host.is_active()   # la run les cache aussi
 
 
 ## Départ au pédalage (lot O36) : décor du départ prêt, puis `scene_ready` au core (start_wait_model.gd).
@@ -1228,6 +1236,8 @@ func _poll_route_job() -> void:
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
 	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)
 	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
+	if living_decor != null:   # cyclistes du décor : avatars et matériaux préparés au chargement (lot AS7)
+		living_decor.warm_up_cyclists(camera)
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)
@@ -1389,7 +1399,8 @@ func _test_menu_state(req: String) -> Dictionary:
 		"group": menu_flow.settings_group, "editing": st["editing"], "items": items, "rows": rows,
 		"hint": menu_view.hint_text(), "devices": menu_view.devices.text() if menu_view.devices.visible else "",
 		"card": menu_view.card.text() if menu_view.card.visible else "", "session_state": menu_flow.session_state, "world_menu": world,
-		"rogue": rogue_host.is_active(), "hud": hud.visible, "quality": _quality_name}
+		"rogue": rogue_host.is_active(), "hud": hud.visible,
+		"markers": segment_markers != null and segment_markers.visible, "quality": _quality_name}
 
 
 func _avatar_info() -> Dictionary:
@@ -1896,6 +1907,8 @@ func _show_draft_gauge() -> void:
 		var who := str(view["bot"])
 		if who.begins_with(VEHICLE_PREFIX):
 			anchor = living_decor.vehicle_anchor(who.substr(VEHICLE_PREFIX.length())) if living_decor != null else null
+		elif who.begins_with(RIDER_PREFIX):
+			anchor = living_decor.cyclist_anchor(who.substr(RIDER_PREFIX.length())) if living_decor != null else null
 		else:
 			anchor = bots_view.anchor_of(who)
 	draft_gauge.update_view(view, anchor)
