@@ -47,6 +47,8 @@ Vitrine de rendu (`vitrine_rendu.gd`, même scène, 5 novembre) :
 
 Le nuanceur de sommets fait un peu plus (coude, rotation de la tête calculée seulement pour les sommets de la tête). Temps du processeur graphique à mesurer sur la GTX 1060 (budgets 6 / 12 / 14 ms). Rappel : la démo compilée est déjà au bord du budget sur main en medium et en high. Si la mesure dépasse : réduire d'abord `PEOPLE_LOD_M`, puis les côtés de près (`LOD_SIDES`, 10 et 5).
 
+Banc PC du 5 novembre (GTX 1060, montée du village avec `--crowd all`, tête be4a2bb contre main + le commutateur) : GPU médian / p99 low 5,29 / 5,98 ms (main 5,30 / 5,89), medium 9,82 / 11,02 (9,32 / 10,88), high 12,46 / 14,06 (11,63 / 13,62). Passants sans écart mesurable. Garde-fou à-coups en défaut en high seulement : cinq images de 51 à 58 ms vers le sommet (2,1 à 2,3 km), étape « decor » à 6 à 9 ms au lieu de 1. Correctif : nouvelle sélection des spectateurs (tous les `RESELECT_M`) par tri natif (`PackedInt64Array`, clé distance² et numéro), données d'instance préparées une fois par spectateur, et une seule écriture de `MultiMesh.buffer` par sorte, soit 6 à 10 fois moins de temps au cloud (600 à 2 000 spectateurs). Chaque tri est noté dans la sonde (`saccades.csv`, étape « spectateurs »). Les MultiMesh des spectateurs et des passants sont préchauffés au chargement comme les cyclistes du décor (`living_decor.warm_up`, une personne minuscule devant la caméra pendant `WARM_FRAMES` images).
+
 ## 4. Vérification
 
 - Tests : `tests/unit/test_people_mesh.gd` (huit champs de tenue, donnée d'instance relue comme le shader et sous 2 048, répartition des bas, coiffes et gestes, zones, pièces, articulations, triangles par niveau), `test_crowd_model.gd`, `test_passersby_model.gd`, `render/test_crowd_render.gd`.

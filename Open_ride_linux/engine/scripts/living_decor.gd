@@ -695,9 +695,14 @@ func vehicle_anchor(id: String) -> Variant:
 	return null
 
 
-## Lot AS7 : préchauffage des cyclistes du décor au chargement (après la route, comme les portiques de
-## segment_markers.gd) ; rien sans cyclistes au préréglage ou avec `living = false`. Retourne le nombre d'avatars prêts.
-func warm_up_cyclists(camera: Node3D) -> int:
+## Préchauffage au chargement (après la route, comme les portiques de segment_markers.gd) : cyclistes du décor
+## (lot AS7 : avatars et matériaux) s'il y en a au préréglage, spectateurs et passants (lot Y21 : premier dessin
+## de chaque MultiMesh) ; rien avec `living = false`. Retourne le nombre d'avatars de cyclistes prêts.
+func warm_up(camera: Node3D) -> int:
+	if crowd_view != null:
+		crowd_view.warm_up(camera)
+	if passersby_view != null:
+		passersby_view.warm_up(camera)
 	if cyclists_view == null or int(living.get("cyclists", 0)) <= 0:
 		return 0
 	return cyclists_view.warm_up(camera)

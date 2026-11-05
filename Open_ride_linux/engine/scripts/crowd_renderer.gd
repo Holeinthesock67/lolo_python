@@ -26,6 +26,7 @@ extends Node3D
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 const PALETTE := [Color(0.8, 0.1, 0.1), Color(0.95, 0.8, 0.1), Color(0.1, 0.35, 0.8), Color(0.95, 0.95, 0.95),
 	Color(0.15, 0.6, 0.25), Color(0.9, 0.45, 0.1), Color(0.2, 0.2, 0.25), Color(0.6, 0.2, 0.6)]
@@ -53,6 +54,17 @@ const PASSERBY_KINDS := ["people", "dogs", "benches", "people_loin"]
 const MORPH_HEIGHT := Vector2(0.95, 1.05)
 const MORPH_GIRTH := Vector2(0.92, 1.12)
 const SIGN_ANIM := 9               # crowd.gdshader : porteur de pancarte tourné vers la caméra
+## Tampon de MultiMesh : flottants par instance (transformation 12, couleur 4, donnée 4), indice de « encourage ».
+const INSTANCE_FLOATS := 20
+const EXCITE_FLOAT := 17
+## Clé de tri des spectateurs : distance² (1/16 m²) au-dessus de KEY_SHIFT bits, numéro en dessous.
+const KEY_SHIFT := 20
+const KEY_INDEX := (1 << 20) - 1
+const KEY_MAX := (1 << 42) - 1
+## Préchauffage (comme road_cyclists_renderer.gd) : images, distance devant la caméra, échelle.
+const WARM_FRAMES := 3
+const WARM_DIST_M := 2.0
+const WARM_SCALE := 0.001
 
 var _mmi: Array[MultiMeshInstance3D] = []
 var _sel: Array = []                         # indices de spectateurs gardés, par MultiMesh
@@ -63,6 +75,9 @@ var _last_select := Vector3(INF, INF, INF)
 var _audio: AudioStreamPlayer3D
 var _meshes: Array = []
 var _serial := -1                # sélection de passersby_model.gd déjà écrite
+var _chunks: Array = []          # données d'instance préparées par spectateur (_build_chunks)
+var _warm_left := 0              # images de préchauffage restantes
+var _warm_cam: Node3D = null
 
 
 func _init(p_mode: String = "spectators") -> void:
@@ -126,6 +141,7 @@ func set_preset(preset_name: String, enabled: bool = true) -> void:
 
 func setup(crowd_model, sound_player = null) -> void:
 	model = crowd_model
+	_chunks.clear()
 	_sound = sound_player
 	if _sound != null:
 		_audio.stream = _sound.stream("crowd_cheer")
@@ -160,7 +176,7 @@ func setup_passersby(passersby_model, sound_player = null) -> void:
 ## de `passersby_model.update` (son éventuel à jouer sur la personne).
 func update_passersby(cam_pos: Vector3, cam_s: float, now_s: float, event: Dictionary = {}) -> void:
 	var t0 := Time.get_ticks_usec()
-	if model == null:
+	if _warm_step() or model == null:
 		return
 	var list: Array = model.visible(cam_pos, cam_s, now_s, budget)
 	var near: MultiMesh = _mmi[0].multimesh
@@ -236,40 +252,107 @@ static func _anim_of(m: int) -> float:
 
 
 func _select(cam_pos: Vector3) -> void:
-	var order := []
+	var t0 := Time.get_ticks_usec()
 	var sp: Array = model.spectators
+	if _chunks.size() != sp.size():
+		_build_chunks()
+	# Tri natif (banc PC du 5/11 : pointes en high) : clé = distance² au 1/16 m² près, puis numéro
+	var keys := PackedInt64Array()
+	keys.resize(sp.size())
 	for i in range(sp.size()):
-		order.append([(sp[i]["pos"] as Vector3).distance_squared_to(cam_pos), i])
-	order.sort_custom(func(a, b): return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
+		var d2 := (sp[i]["pos"] as Vector3).distance_squared_to(cam_pos)
+		keys[i] = (mini(int(d2 * 16.0), KEY_MAX) << KEY_SHIFT) | i
+	keys.sort()
 	_sel = []
 	_shown = []
 	for m in range(_mmi.size()):
 		_sel.append([])
 		_shown.append(PackedByteArray())
-	for j in range(mini(budget, order.size())):
-		var i: int = order[j][1]
-		var lod := 0 if float(order[j][0]) < lod_m * lod_m else 1
+	var lod2 := int(lod_m * lod_m * 16.0)
+	for j in range(mini(budget, keys.size())):
+		var i: int = keys[j] & KEY_INDEX
+		var lod := 0 if (keys[j] >> KEY_SHIFT) < lod2 else 1
 		_sel[2 * kind_of(sp[i]) + lod].append(i)
+	# Une écriture du tampon par MultiMesh, depuis les données d'instance préparées par spectateur
 	for m in range(_mmi.size()):
 		var mm: MultiMesh = _mmi[m].multimesh
 		var list: Array = _sel[m]
 		var shown := PackedByteArray()
 		shown.resize(list.size())
+		var buf := PackedFloat32Array()
 		for k in range(list.size()):
-			var s: Dictionary = sp[list[k]]
-			mm.set_instance_transform(k, Transform3D(morph(list[k], float(s["yaw"])), s["pos"]))
-			mm.set_instance_color(k, PALETTE[int(s["color"]) % PALETTE.size()])
+			buf.append_array(_chunks[list[k]])
+		buf.resize(mm.instance_count * INSTANCE_FLOATS)
+		for k in range(list.size()):
 			var st = model.states.get(list[k])
 			shown[k] = 1 if st != null and bool(st["cheer"]) else 0
-			mm.set_instance_custom_data(k, PeopleMesh.instance_custom(float(s["phase"]), float(shown[k]), _anim_of(m), PeopleMesh.outfit_of(list[k])))
+			buf[k * INSTANCE_FLOATS + EXCITE_FLOAT] = float(shown[k])
+		mm.buffer = buf
 		_shown[m] = shown
 		mm.visible_instance_count = list.size()
 	_last_select = cam_pos
+	PerfProbe.mark_since("spectateurs", "tri %d" % sp.size(), t0)
+
+
+## Données d'instance de chaque spectateur (transformation, couleur, donnée « au repos »), dans l'ordre du
+## tampon de MultiMesh : 12 flottants de transformation par lignes, 4 de couleur, 4 de donnée.
+func _build_chunks() -> void:
+	_chunks.clear()
+	var sp: Array = model.spectators
+	for i in range(sp.size()):
+		var s: Dictionary = sp[i]
+		var xf := Transform3D(morph(i, float(s["yaw"])), s["pos"])
+		var b := xf.basis
+		var c: Color = PALETTE[int(s["color"]) % PALETTE.size()]
+		var cu := PeopleMesh.instance_custom(float(s["phase"]), 0.0, _anim_of(2 * kind_of(s)), PeopleMesh.outfit_of(i))
+		_chunks.append(PackedFloat32Array([b.x.x, b.y.x, b.z.x, xf.origin.x, b.x.y, b.y.y, b.z.y, xf.origin.y,
+			b.x.z, b.y.z, b.z.z, xf.origin.z, c.r, c.g, c.b, c.a, cu.r, cu.g, cu.b, cu.a]))
+
+
+## Préchauffage au chargement (comme les cyclistes du décor, lot AS7) : chaque MultiMesh montre une
+## personne minuscule devant `camera` pendant WARM_FRAMES images, pour que son premier dessin se fasse au
+## chargement et non en roulant. Retourne le nombre de MultiMesh préchauffés.
+func warm_up(camera: Node3D) -> int:
+	if camera == null or budget <= 0:
+		return 0
+	var t0 := Time.get_ticks_usec()
+	_warm_cam = camera
+	_warm_left = WARM_FRAMES
+	_place_warm()
+	PerfProbe.mark_since("spectateurs" if mode == "spectators" else "passants", "préchauffage", t0)
+	return _mmi.size()
+
+
+func _place_warm() -> void:
+	var on := _warm_left > 0 and is_instance_valid(_warm_cam) and _warm_cam.is_inside_tree() and is_inside_tree()
+	for m in range(_mmi.size()):
+		var mm: MultiMesh = _mmi[m].multimesh
+		if on:
+			var at := Vector3((m - _mmi.size() * 0.5) * 0.002, 0.0, -WARM_DIST_M)
+			var xf: Transform3D = _warm_cam.global_transform * Transform3D(Basis().scaled(Vector3.ONE * WARM_SCALE), at)
+			mm.set_instance_transform(0, global_transform.affine_inverse() * xf)
+			mm.visible_instance_count = 1
+		else:
+			mm.visible_instance_count = 0
+	if not on:
+		# remise des sélections : tout est réécrit à la prochaine image
+		_last_select = Vector3(INF, INF, INF)
+		_serial = -1
+		_warm_cam = null
+
+
+## Une image de préchauffage de moins ; vrai tant que le préchauffage occupe les MultiMesh.
+func _warm_step() -> bool:
+	if _warm_left <= 0:
+		return false
+	_warm_left -= 1
+	_place_warm()
+	return _warm_left > 0
 
 
 func update(cam_pos: Vector3, now_s: float, cheer: float = 0.0) -> void:
 	var t0 := Time.get_ticks_usec()
-	if model == null:
+	if _warm_step() or model == null:
 		return
 	if cam_pos.distance_to(_last_select) > RESELECT_M:
 		_select(cam_pos)

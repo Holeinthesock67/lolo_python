@@ -125,6 +125,39 @@ func _run() -> void:
 		for i in r._sel[m]:
 			far_kept = maxf(far_kept, (cm.spectators[i]["pos"] as Vector3).distance_to(route.sample_point(9900.0)))
 	_check(far_kept < 60.0, "les plus proches de la caméra (le plus loin gardé à %.0f m)" % far_kept)
+	# Tampon écrit d'un bloc (banc PC du 5/11) : transformation par lignes, couleur, donnée, comme l'écriture
+	# instance par instance (relu dans `buffer`, seul lisible aussi sans rendu)
+	var same := 0
+	var written := 0
+	for m in range(r._sel.size()):
+		var buf: PackedFloat32Array = r._mmi[m].multimesh.buffer
+		for k in range(r._sel[m].size()):
+			var i: int = r._sel[m][k]
+			var s: Dictionary = cm.spectators[i]
+			var st = cm.states.get(i)
+			var xf := Transform3D(CrowdRenderer.morph(i, float(s["yaw"])), s["pos"])
+			var c: Color = CrowdRenderer.PALETTE[int(s["color"]) % CrowdRenderer.PALETTE.size()]
+			var cu: Color = CrowdRenderer.PeopleMesh.instance_custom(float(s["phase"]), 1.0 if st != null and bool(st["cheer"]) else 0.0,
+				CrowdRenderer._anim_of(m), CrowdRenderer.PeopleMesh.outfit_of(i))
+			var want := [xf.basis.x.x, xf.basis.y.x, xf.basis.z.x, xf.origin.x, xf.basis.x.y, xf.basis.y.y, xf.basis.z.y, xf.origin.y,
+				xf.basis.x.z, xf.basis.y.z, xf.basis.z.z, xf.origin.z, c.r, c.g, c.b, c.a, cu.r, cu.g, cu.b, cu.a]
+			var ok: bool = (m % 2 == 0) == ((s["pos"] as Vector3).distance_to(route.sample_point(9900.0)) < r.lod_m)
+			for f in range(want.size()):
+				ok = ok and absf(buf[k * CrowdRenderer.INSTANCE_FLOATS + f] - float(want[f])) <= 0.01 + 1e-5 * absf(float(want[f]))
+			written += 1
+			same += 1 if ok else 0
+	_check(written == r.budget and same == written, "tampon : transformation, couleur, donnée et niveau de détail justes (%d / %d)" % [same, written])
+	# Préchauffage : chaque MultiMesh dessiné une fois devant la caméra, puis la sélection reprend
+	var cam := Camera3D.new()
+	root.add_child(cam)
+	_check(r.warm_up(cam) == r._mmi.size() and r._mmi.all(func(x): return x.multimesh.visible_instance_count >= 1),
+		"préchauffage : %d MultiMesh montrés devant la caméra" % r._mmi.size())
+	for k in range(CrowdRenderer.WARM_FRAMES - 1):
+		r.update(route.sample_point(9900.0), 0.0, 0.0)
+	_check(r.visible_count() == r._mmi.size(), "préchauffage en cours : une personne par MultiMesh, rien d'autre")
+	r.update(route.sample_point(9900.0), 0.0, 0.0)
+	_check(r.visible_count() == r.budget, "après le préchauffage, la sélection reprend (%d)" % r.visible_count())
+	cam.queue_free()
 	r.set_preset("high", false)
 	r.update(route.sample_point(9950.0), 0.1, 0.0)
 	_check(r.visible_count() == 0, "décor vivant coupé : aucun spectateur")
