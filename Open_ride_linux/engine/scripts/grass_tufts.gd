@@ -72,6 +72,12 @@ const MAX_PER_FRAME := 120
 ## par image selon la taille du tronçon (rempli en FILL_FRAMES images au plus) et tronçons les plus proches
 ## devant la caméra remplis d'abord (`_next_job`).
 const MAX_FRAME_US := 2500
+## Rattrapage (CI du 6 novembre, main rouge après #721) : sur une machine lente, la demo sans terrain en high
+## (hauteur lue sur la route, plus chère à 80 m du bord) ne suivait plus à 60 km/h et le tronçon de la caméra
+## arrivait inachevé. Tant qu'il reste à remplir le tronçon de la caméra, celui de derrière ou le suivant, l'image a jusqu'à
+## URGENT_FRAME_US ; sur le PC, où ces tronçons sont finis bien avant, rien ne change.
+const URGENT_FRAME_US := 5000
+const URGENT_AHEAD := 1
 const FILL_FRAMES := 40
 const BATCH := 16
 const STATION_STEP_M := 4.0
@@ -295,11 +301,14 @@ func update(cam_s: float) -> void:
 	var t_start := Time.get_ticks_usec()
 	var far_min_keep := keep_at(LOD_SWITCH_M - LOD_BLEND_M)
 	var cam_k := first + CHUNKS_BEHIND
-	while budget > 0 and not _queue.is_empty() and Time.get_ticks_usec() - t_start < MAX_FRAME_US:
+	while budget > 0 and not _queue.is_empty():
 		var qi := _next_job(cam_k)
 		var job: Array = _queue[qi]
 		var g: int = job[0]
 		var k: int = job[1]
+		var urgent := k >= cam_k - CHUNKS_BEHIND and k - cam_k <= URGENT_AHEAD
+		if Time.get_ticks_usec() - t_start >= (URGENT_FRAME_US if urgent else MAX_FRAME_US):
+			break
 		var j: int = job[2]
 		var stations: PackedVector4Array = job[3]
 		if stations.is_empty():
@@ -352,8 +361,9 @@ func update(cam_s: float) -> void:
 			job[2] = end
 
 
-## Tâche à faire d'abord : le tronçon de la caméra, puis ceux de devant du plus proche au plus loin, ceux de
-## derrière en dernier. Essayé le 6 novembre : remplir chaque tronçon proche par parts (1/16 avant le suivant)
+## Tâche à faire d'abord : le tronçon de la caméra, puis celui juste derrière (la caméra est derrière le
+## cycliste, ses côtés sont à l'image), puis ceux de devant du plus proche au plus loin. CI du 6 novembre : le
+## tronçon de derrière, rangé en dernier, restait inachevé au départ quand la fenêtre n'était pas encore pleine. Essayé le 6 novembre : remplir chaque tronçon proche par parts (1/16 avant le suivant)
 ## laissait le tronçon de la caméra inachevé à son arrivée (CI, high sans terrain) ; l'ordre strict le finit
 ## d'abord, et une simulation montre qu'il n'est jamais vide même quand le remplissage ne suit pas.
 func _next_job(cam_k: int) -> int:
@@ -361,7 +371,7 @@ func _next_job(cam_k: int) -> int:
 	var best_rank := INF
 	for i in range(_queue.size()):
 		var d: int = int(_queue[i][1]) - cam_k
-		var rank := float(d) if d >= 0 else 1.0e6 - d
+		var rank := float(d) if d >= 0 else (0.5 if d >= -CHUNKS_BEHIND else 1.0e6 - d)
 		if rank < best_rank:
 			best_rank = rank
 			best = i
