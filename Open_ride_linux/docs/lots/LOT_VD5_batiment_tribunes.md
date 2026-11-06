@@ -9,7 +9,7 @@ Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026
 
 ## 1. Objectif
 
-Construire le décor du vélodrome à partir de la couche `venue`, sans terrain, végétation ni biome, sous 70 % du budget GPU en salle.
+Construire le décor unique du vélodrome, une salle couverte (décision du propriétaire du 6 novembre), sans ciel, météo, jour et nuit ni saison, à partir de la couche `venue`, sans terrain, végétation ni biome, sous 70 % du budget GPU en salle.
 
 ## 2. À lire
 

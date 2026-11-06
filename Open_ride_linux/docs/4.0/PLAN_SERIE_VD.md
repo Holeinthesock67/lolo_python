@@ -12,7 +12,7 @@ Sources lues : `docs/contracts/world_format_v1.md` (§4 couche route, `type = lo
 2. **Une seule piste : 250 m couverte en bois**, virages relevés à 42° et lignes droites à 12°, 7 m de large plus la côte d'azur (§3). Décision du propriétaire du 6 novembre : « On fera une piste de 250 m. En bois avec virages relevés. »
 3. **Le relèvement ne touche pas le trainer** : sur une piste, la pente le long de la trajectoire est nulle. La pente envoyée reste 0 % ; seuls la surface (bois, Crr plus faible), l'air sans vent et l'abri se ressentent. Le relèvement est **visuel** (ruban incliné, caméra et coureurs qui penchent) et **géométrique** (rouler plus haut allonge le tour, §4.2).
 4. **Toutes les épreuves de piste dès la première livraison** (§5, décision du propriétaire du 6 novembre) : poursuite individuelle, kilomètre et 500 m départ arrêté, 200 m lancé, scratch, course aux points, tempo, élimination (règles de DS reprises), keirin (derny, véhicule et abri d'AS6), omnium et record de l'heure.
-5. **Un bâtiment léger** : salle, tribunes, public, éclairage ; pas de terrain, de végétation, de biome ni de ciel lointain. Le vélodrome couvert doit coûter **nettement moins** que la route (§7) : c'est le parcours le plus léger du jeu.
+5. **Un décor unique, une salle couverte** (décision du propriétaire du 6 novembre : « On fera un unique décor. On considère un circuit intérieur. ») : un bâtiment léger : salle, tribunes, public, éclairage ; pas de terrain, de végétation, de biome ni de ciel lointain. Le vélodrome couvert doit coûter **nettement moins** que la route (§7) : c'est le parcours le plus léger du jeu.
 6. **Version : 4.0**, après le peloton PL1 (bots en piste) et AS2 (voies). Seul le générateur de piste (VD2) et la physique (VD3) sont des modules purs du core, faisables plus tôt si le propriétaire le veut.
 
 ## 2. Ce qui change et ce qui reste
@@ -102,14 +102,14 @@ Chaque épreuve est un module pur du paquet `track/` du core (une règle, un fic
 
 ### 7.1 Contrat (lot VD1, décision du propriétaire)
 
-- **Format `.world`, mineur libre suivant** (ajout compatible) : colonne facultative `bank_deg` dans `route.json` (relèvement en degrés, positif quand l'extérieur du virage est plus haut ; absente = 0, toutes les routes actuelles inchangées) ; valeur `wood` pour la surface ; couche facultative `venue.json` (`kind = velodrome`, `indoor`, `track_width_m`, `apron_width_m`, lignes peintes en distance depuis le bord intérieur, tribunes, toit).
+- **Format `.world`, mineur libre suivant** (ajout compatible) : colonne facultative `bank_deg` dans `route.json` (relèvement en degrés, positif quand l'extérieur du virage est plus haut ; absente = 0, toutes les routes actuelles inchangées) ; valeur `wood` pour la surface ; couche facultative `venue.json` (`kind = velodrome`, `track_width_m`, `apron_width_m`, lignes peintes en distance depuis le bord intérieur, tribunes, toit).
 - **IPC, première révision libre à la fusion de VD1** (1.6 est prise par PL1) : objet facultatif `track` dans `state` (épreuve, tour, tours restants, cloche, points, classement, éliminé) et options d'épreuve passées par les commandes génériques `list_mode_options` et `set_mode_option` proposées par la série GP (pas de commandes propres au vélodrome). Pire trame contrôlée par l'outil X25 (budget de 4 096 octets).
 
 ### 7.2 Rendu (lots VD4 et VD5)
 
 - **Ruban relevé** : `road_builder.gd` lit `bank_deg` et fait tourner la coupe autour de la ligne de mesure ; une seule coupe générique, la route classique étant le cas `bank_deg = 0` (pas de second constructeur). Lignes peintes par la texture, une coupe tous les 1 m dans les virages.
 - **Caméra, avatar et bots** penchent avec le relèvement et la vitesse (`camera_follow.gd`, `bots_view.gd`) ; la caméra garde l'horizon de la salle lisible (inclinaison de la vue limitée à la moitié du relèvement, réglable).
-- **Bâtiment** : salle procédurale (murs, toit à arcs, rampes d'éclairage émissives), tribunes en gradins, public par instances (`crowd_renderer.gd`), pelouse centrale avec bancs et home trainers d'échauffement. Pas de variante en plein air (décision du 6 novembre).
+- **Bâtiment** : salle procédurale (murs, toit à arcs, rampes d'éclairage émissives), tribunes en gradins, public par instances (`crowd_renderer.gd`), pelouse centrale avec bancs et home trainers d'échauffement. Un seul décor, intérieur, sans thème ni variante (décision du 6 novembre) : pas de ciel, de météo, de jour et nuit ni de saison sur le vélodrome.
 - **Désactivé sur le vélodrome** : terrain, végétation, biome, bâtiments OSM, eau, circulation, cyclistes du décor, faune.
 
 ### 7.3 Performances (budgets GPU : low 6 ms, medium 12 ms, high 14 ms)
