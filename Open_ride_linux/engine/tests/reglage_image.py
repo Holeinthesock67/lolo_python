@@ -3,7 +3,7 @@
 et pas assez contrastée » avec la brume éclairée par le ciel).
 
 Usage :
-    reglage_image.py lancer [--out DOSSIER] [--qualites medium,high] [--variantes A,B,…] [--vitesse 90]
+    reglage_image.py lancer [--out DOSSIER] [--qualites medium,high] [--variantes A,B,…] [--vitesse 75]
                             [--size 1680x1011] [--godot CHEMIN]
     reglage_image.py planche DOSSIER
     reglage_image.py --list
@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -66,6 +67,9 @@ def cmd_lancer(args: argparse.Namespace) -> int:
         print(f"demo-biomes impossible (code {p.returncode}) : {p.stderr.strip()[-400:]}", file=sys.stderr)
         return 2
     length = make_biome_world.Plan(make_biome_world.TOUR, False, False).length_m
+    if not 0.0 < args.vitesse <= 80.0:
+        print("--vitesse : entre 0 et 80 km/h (limite du scénario de simulation du core)", file=sys.stderr)
+        return 2
     duration = length / (args.vitesse / 3.6) + 45.0
     t0 = time.time()
     rc = 0
@@ -95,11 +99,29 @@ def middle_captures(sdir: Path) -> dict[str, Path]:
     return found
 
 
+def copy_captures(out: Path) -> int:
+    """Captures du milieu de chaque biome copiées dans `planche/<qualité>_<variante>_<biome>.png` (sans Pillow)."""
+    dest = out / "planche"
+    dest.mkdir(exist_ok=True)
+    n = 0
+    for qdir in sorted(p for p in out.iterdir() if p.is_dir() and p.name in PROPOSED):
+        for name in NAMES:
+            if (qdir / name).is_dir():
+                for biome, png in middle_captures(recette_u18.run_dir(qdir / name) or qdir / name).items():
+                    shutil.copy(png, dest / f"{qdir.name}_{name}_{biome}.png")
+                    n += 1
+    print(f"{n} captures copiées dans {dest}")
+    return n
+
+
 def cmd_planche(out: Path) -> int:
+    if copy_captures(out) == 0:
+        print("aucune capture trouvée : passages en échec ? (voir */*/sim_bench.txt)", file=sys.stderr)
+        return 1
     try:
         from PIL import Image, ImageDraw, ImageFont
     except ImportError:
-        print("Pillow absent : planche non faite (captures dans les sous-dossiers)", file=sys.stderr)
+        print("Pillow absent : planches assemblées non faites, captures dans planche/", file=sys.stderr)
         return 0
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 22)
@@ -136,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
                     default=Path.home() / "OpenRide" / "mesures" / time.strftime("%Y-%m-%d") / "reglage_image")
     la.add_argument("--qualites", default="medium,high")
     la.add_argument("--variantes", default="B,C,D,E,F,G")
-    la.add_argument("--vitesse", type=float, default=90.0)
+    la.add_argument("--vitesse", type=float, default=75.0, help="km/h, 80 au plus (limite du scénario du core)")
     la.add_argument("--size", default="1680x1011")
     la.add_argument("--godot", type=Path, default=Path(os.environ["GODOT"]) if os.environ.get("GODOT") else None)
     pl = sub.add_parser("planche")
