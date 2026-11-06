@@ -180,7 +180,7 @@ func _test_fill_without_terrain() -> void:
 	for preset in ["low", "medium", "high"]:
 		var g = GrassTufts.new()
 		root.add_child(g)
-		g.configure(QualityPresets.living(preset)["grass_tufts"], route)
+		g.configure(QualityPresets.living(preset)["grass_tufts"], route, 6.0, 0, QualityPresets.living(preset)["grass_tufts_wide"])
 		g.height_at = OsmStreamer.terrain_height_fn("res://demo/demo.world", route)
 		var worst := 0.0
 		var late := 0          # images où le tronçon de la caméra n'est pas encore rempli
@@ -336,6 +336,40 @@ func _test_far_lod() -> void:
 	g.queue_free()
 
 
+## Bande large (Y22, 6 novembre) : places en plus de 15 à 40 m du bord, dans la boîte du tronçon.
+func _test_wide_band() -> void:
+	var route = _route()
+	var g = GrassTufts.new()
+	root.add_child(g)
+	var high: Dictionary = QualityPresets.living("high")
+	g.configure(int(high["grass_tufts"]), route, 6.0, 5, int(high["grass_tufts_wide"]))
+	_settle(g, 300.0)
+	var groups := GrassTufts.CHUNKS_BEHIND + GrassTufts.CHUNKS_AHEAD + 1
+	var narrow_bad := 0
+	var wide_bad := 0
+	var wide_n := 0
+	var outside := 0
+	for gi in range(groups):
+		var box: AABB = g._near_mm[gi].custom_aabb
+		for slot in range(g._filled[gi]):
+			var idx: int = gi * g._per_chunk + slot
+			if g._placed[idx] != 1:
+				continue
+			var p: Vector3 = g._origins[idx]
+			var edge := absf(p.x - 500.0) - 3.0
+			if not box.has_point(p):
+				outside += 1
+			if slot < g._narrow_per_chunk:
+				narrow_bad += 0 if edge >= GrassTufts.BAND_MIN_M - 0.01 and edge <= GrassTufts.BAND_MAX_M + 0.01 else 1
+			else:
+				wide_n += 1
+				wide_bad += 0 if edge >= GrassTufts.BAND_MAX_M - 0.01 and edge <= GrassTufts.WIDE_BAND_MAX_M + 0.01 else 1
+	_check(g.get_capacity() <= int(high["grass_tufts"]) + int(high["grass_tufts_wide"]) and wide_n > 0 and narrow_bad == 0 and wide_bad == 0 and outside == 0,
+		"bande large : %d touffes de %.0f à %.0f m du bord, bande du bord inchangée, toutes dans la boîte du tronçon" % [
+			wide_n, GrassTufts.BAND_MAX_M, GrassTufts.WIDE_BAND_MAX_M])
+	g.queue_free()
+
+
 class _DesertModel:
 	var dry := 1.0
 	func active() -> bool:
@@ -374,6 +408,7 @@ func _test_desert() -> void:
 func _init() -> void:
 	_test_blades_and_tints()
 	_test_far_lod()
+	_test_wide_band()
 	_test_tree_materials()
 	_test_budget_and_low()
 	_test_determinism_and_exclusions()

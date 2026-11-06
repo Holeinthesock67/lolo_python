@@ -41,6 +41,10 @@ const CHUNKS_BEHIND := 1
 const CHUNKS_AHEAD := 4
 const BAND_MIN_M := 2.0
 const BAND_MAX_M := 15.0
+## Bande large (lot Y22, demande du 6 novembre : « l'herbe ne va pas assez loin ») : places en plus, de
+## BAND_MAX_M à WIDE_BAND_MAX_M du bord, budget `living(preset).grass_tufts_wide`, moins denses ; au-delà de
+## LOD_SWITCH_M elles sont dessinées en gerbe simplifiée comme les autres.
+const WIDE_BAND_MAX_M := 40.0
 ## Écart minimal entre une touffe et le bord de la chaussée, sur tout le parcours (rayon et pointe penchée compris).
 const ROAD_CLEAR_M := 1.0
 const MAX_SLOPE := 0.7          # pente (tan) au-delà de laquelle il n'y a plus de touffe
@@ -67,8 +71,8 @@ const DRY_KEEP := 0.45
 ## Fondu avec la distance (mètres) : éclaircissement à partir de THIN_START_M, effacement complet à FADE_END_M,
 ## avant la fin de la fenêtre de tronçons devant la caméra (CHUNKS_AHEAD × CHUNK_M).
 const THIN_START_M := 30.0
-## 120 m au lieu de 150 (lot « herbe au loin ») : touffes moins denses au-delà de quelques dizaines de mètres.
-const FADE_END_M := 120.0
+## Remis à 150 m (6 novembre : l'herbe n'allait pas assez loin à 120 m) ; la gerbe simplifiée rend le lointain bon marché.
+const FADE_END_M := 150.0
 ## Passage de la gerbe complète à la gerbe simplifiée (m), fondu en taille sur ± LOD_BLEND_M.
 const LOD_SWITCH_M := 40.0
 const LOD_BLEND_M := 4.0
@@ -93,6 +97,7 @@ var height_at: Callable = Callable() # (x, z) -> hauteur du terrain ; vide : hau
 var _road: RoadClearance = null       # distance à la route sur tout le parcours
 var _budget := 0
 var _per_chunk := 0
+var _narrow_per_chunk := 0   # places de la bande du bord (BAND_MIN_M à BAND_MAX_M) ; les suivantes : bande large
 ## Par groupe de places (un tronçon chacun) : gerbes complètes (proches) et simplifiées (lointaines).
 var _near_mm: Array[MultiMesh] = []
 var _far_mm: Array[MultiMesh] = []
@@ -111,14 +116,15 @@ var _origins := PackedVector3Array()   # copie côté CPU des positions (tests, 
 var _placed := PackedByteArray()
 
 
-## Budget de touffes (0 : rien n'est créé) ; à appeler avant `update`.
-func configure(budget: int, route_data, road_width_m: float = 6.0, seed_value: int = 0) -> void:
+## Budget de touffes (0 : rien n'est créé) et budget de la bande large (`wide_budget`) ; à appeler avant `update`.
+func configure(budget: int, route_data, road_width_m: float = 6.0, seed_value: int = 0, wide_budget: int = 0) -> void:
 	route = route_data
 	road_half_width_m = road_width_m * 0.5
 	tuft_seed = seed_value
 	_budget = maxi(budget, 0)
 	var groups := CHUNKS_BEHIND + CHUNKS_AHEAD + 1
-	_per_chunk = _budget / groups
+	_narrow_per_chunk = _budget / groups
+	_per_chunk = _narrow_per_chunk + (maxi(wide_budget, 0) / groups if _narrow_per_chunk > 0 else 0)
 	_queue.clear()
 	_visible_count = 0
 	for c in get_children():
@@ -332,7 +338,7 @@ func _recycle(g: int) -> void:
 
 ## Boîte de départ du tronçon : la route échantillonnée et le bord extérieur de la bande d'herbe des deux côtés.
 func _start_box(g: int, stations: PackedVector4Array) -> void:
-	var lat := road_half_width_m + BAND_MAX_M
+	var lat := road_half_width_m + (WIDE_BAND_MAX_M if _per_chunk > _narrow_per_chunk else BAND_MAX_M)
 	var box := AABB(Vector3(stations[0].x, stations[0].y, stations[0].z), Vector3.ZERO)
 	for st in stations:
 		var c := Vector3(st.x, st.y, st.z)
@@ -394,7 +400,10 @@ func tuft_transform(k: int, slot: int, stations: PackedVector4Array = PackedVect
 	var h := VegetationPlacer.hash3(tuft_seed ^ 0x6A55, k, slot)
 	var h2 := VegetationPlacer.hash3(tuft_seed ^ 0x7B66, k, slot)
 	var u := float(h & 0xFFFF) / 65536.0
-	var lat := BAND_MIN_M + float((h >> 16) & 0xFFFF) / 65536.0 * (BAND_MAX_M - BAND_MIN_M)
+	var wide := slot >= _narrow_per_chunk and _narrow_per_chunk > 0
+	var band_min := BAND_MAX_M if wide else BAND_MIN_M
+	var band_max := WIDE_BAND_MAX_M if wide else BAND_MAX_M
+	var lat := band_min + float((h >> 16) & 0xFFFF) / 65536.0 * (band_max - band_min)
 	var side := 1.0 if h2 & 1 == 0 else -1.0
 	var s_pos := (float(k) + u) * CHUNK_M
 	if not route.is_loop() and (s_pos < 0.0 or s_pos > route.length_m):

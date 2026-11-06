@@ -85,7 +85,8 @@ func configure(preset_name: String, living_enabled: bool, theme: Dictionary, env
 func set_route(route, road_width_m: float = 6.0) -> void:
 	_route = route
 	if grass != null:
-		grass.configure(int(living.get("grass_tufts", 0)) if enabled else 0, route, road_width_m)
+		grass.configure(int(living.get("grass_tufts", 0)) if enabled else 0, route, road_width_m, 0,
+			int(living.get("grass_tufts_wide", 0)) if enabled else 0)
 		grass.exclusions = _exclusions()
 		grass.height_at = _terrain_height(route)
 	# Biomes du parcours : modèle actif passé par world_streamer à osm_streamer (nul : pas de détails)
