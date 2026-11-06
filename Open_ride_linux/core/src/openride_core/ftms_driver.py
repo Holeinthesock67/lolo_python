@@ -70,9 +70,23 @@ RESISTANCE_EPSILON = 0.05   # écart de niveau en dessous duquel la consigne n'e
 ROAD_ADAPT_TAU_S = 5.0        # constante de temps de la correction de k
 ROAD_MIN_KMH = 10.0           # vitesse du volant plancher du calcul du niveau (départ arrêté : F / (k × v) diverge)
 ROAD_ADAPT_MIN_MPS = 3.0      # volant assez rapide pour mesurer la force
-ROAD_ADAPT_MIN_W = 30.0
+# Essai du 2 novembre (résistance calculée, plat, 70 à 84 tr/min) : 21 à 31 W au lieu des ~180 W de la
+# route, et k appris tombé de 0,036 à 0,0147 en 3 min. Sous 30 W la correction de k ne tournait presque
+# jamais : elle était coupée justement quand le frein ne répondait pas. Elle n'a plus de seuil de
+# puissance utile (ROAD_ADAPT_MIN_W ne sert qu'à écarter le volant libre).
+ROAD_ADAPT_MIN_W = 5.0
 ROAD_ADAPT_MAX_ACCEL = 0.4    # m/s² : au-delà, la puissance accélère le volant, pas le frein
 ROAD_ADAPT_RANGE = (0.2, 5.0) # bornes de la correction (× la valeur de départ)
+# Frein sans effet (même essai) : force mesurée (puissance / vitesse du volant) sous ROAD_WEAK_RATIO de
+# la force visée (k × niveau × v) pendant ROAD_WEAK_S, volant stable au-dessus de ROAD_WEAK_MIN_KMH et
+# niveau d'au moins ROAD_WEAK_MIN_PCT % : le contrôle est repris et le niveau renvoyé (comme après un frein
+# lâché). Après ROAD_WEAK_RETAKES reprises sans effet, le pilotage repasse en SIM du trainer pour le reste
+# de la séance : on ne laisse jamais le cycliste pédaler dans le vide.
+ROAD_WEAK_RATIO = 0.35
+ROAD_WEAK_S = 8.0
+ROAD_WEAK_MIN_KMH = 15.0
+ROAD_WEAK_MIN_PCT = 5.0
+ROAD_WEAK_RETAKES = 2
 DEFAULT_ROAD_MASS_KG = 84.0   # masse sans profil (PhysicsParams), remplacée par la session
 # Inertie en accélération (séance de 9 sprints du 1er novembre, choix du propriétaire) : sans inertie,
 # le mode résistance supprime le trou après le sprint (R100 : aucun lâcher, SIM : 4 sprints sur 5) mais
@@ -364,6 +378,9 @@ class FtmsDriver:
         self._inertia_n = 0.0    # force d'inertie ajoutée, à variation bornée
         self._accel_speed: tuple[float, float] | None = None   # (instant, vitesse du volant m/s) précédents
         self._road_fallback_warned = False
+        self.road_fallback = False   # frein sans effet en résistance calculée : SIM du trainer jusqu'à la fin de la séance
+        self._road_weak_since: float | None = None
+        self.road_weak_retakes = 0
         self.reconnect_count = 0
         self.att_retries = 0   # renvois après une erreur ATT ponctuelle (lot M1)
         # Control Point occupé (CP_BUSY_CODES) après les renvois : consigne gardée et réessayée.
@@ -420,7 +437,7 @@ class FtmsDriver:
 
     def _road_control(self) -> str | None:
         """Mode d'envoi de la pente SIM : "resistance" (niveau calculé) ou None (pente 0x11, SIM du trainer)."""
-        if self.cfg.control != "resistance":
+        if self.cfg.control != "resistance" or self.road_fallback:
             return None
         mode = "resistance"
         if not self.supports_resistance:
@@ -485,10 +502,42 @@ class FtmsDriver:
         if (dt <= 0 or speed < ROAD_ADAPT_MIN_MPS or power_w < ROAD_ADAPT_MIN_W or pct < 2.0
                 or abs(speed - prev[1]) / dt > ROAD_ADAPT_MAX_ACCEL):
             return
+        self._check_road_weak(now, power_w / speed, sent[1], pct, speed)
         observed = power_w / speed / (pct * speed * 3.6)
         base = self.cfg.resistance_n_per_pct_kmh
         self.k_road += (observed - self.k_road) * (1.0 - math.exp(-dt / ROAD_ADAPT_TAU_S))
         self.k_road = min(max(self.k_road, base * ROAD_ADAPT_RANGE[0]), base * ROAD_ADAPT_RANGE[1])
+
+    def _check_road_weak(self, now: float, force_n: float, level: float, pct: float, speed_mps: float) -> None:
+        """Frein sans effet (essai du 2 novembre) : reprise du contrôle, puis repli sur le SIM du trainer."""
+        target_n = self.cfg.resistance_n_per_pct_kmh * pct * speed_mps * 3.6   # loi de l'étalonnage 7rc1
+        weak = (speed_mps * 3.6 >= ROAD_WEAK_MIN_KMH and pct >= ROAD_WEAK_MIN_PCT
+                and force_n < ROAD_WEAK_RATIO * target_n)
+        if not weak:
+            self._road_weak_since = None
+            return
+        if self._road_weak_since is None:
+            self._road_weak_since = now
+            return
+        if now - self._road_weak_since < ROAD_WEAK_S:
+            return
+        self._road_weak_since = None
+        detail = dict(level=level, force_n=round(force_n, 1), target_n=round(target_n, 1),
+                      speed_kmh=round(speed_mps * 3.6, 1), k=round(self.k_road, 4))
+        if self.road_weak_retakes < ROAD_WEAK_RETAKES:
+            self.road_weak_retakes += 1
+            log.warning("Trainer : résistance calculée sans effet (niveau %g, %.1f N mesurés pour %.1f N visés à "
+                        "%.0f km/h) ; contrôle repris et niveau renvoyé (%d/%d)", level, force_n, target_n,
+                        speed_mps * 3.6, self.road_weak_retakes, ROAD_WEAK_RETAKES)
+            self._emit("resistance_weak", retake=self.road_weak_retakes, **detail)
+            self._forget_sent()
+            return
+        self.road_fallback = True
+        self.k_road = self.cfg.resistance_n_per_pct_kmh
+        log.warning("Trainer : résistance calculée toujours sans effet après %d reprises ; SIM du trainer "
+                    "jusqu'à la fin de la séance", ROAD_WEAK_RETAKES)
+        self._emit("resistance_fallback", **detail)
+        self._forget_sent()
 
     def set_sim_grade(self, grade_pct: float, immediate: bool = False) -> bool:
         """`immediate` : changement de braquet, envoyé même sous GRADE_EPSILON_PCT (sans attendre
@@ -634,7 +683,9 @@ class FtmsDriver:
         """Avec trace_ftms : ce que le trainer annonce lui-même (vitesse du volant, niveau de
         résistance) à côté de la consigne envoyée, pour séparer une chute de résistance du trainer
         d'une consigne trop basse du core (décrochage du 29 octobre, braquet 1 après un sprint)."""
-        if not self.cfg.trace_ftms or now - self._trace_ibd_at < TRACE_IBD_EVERY_S:
+        # Résistance calculée (à l'essai) : ligne de mesures toujours écrite, l'essai du 2 novembre était muet.
+        traced = self.cfg.trace_ftms or self.cfg.control == "resistance"
+        if not traced or now - self._trace_ibd_at < TRACE_IBD_EVERY_S:
             return
         self._trace_ibd_at = now
         sent = self._last_sent
@@ -644,7 +695,9 @@ class FtmsDriver:
         extra = ""
         if self.cfg.control == "resistance":   # 7rc3 : force calculée et part d'inertie au journal
             v = (self._trainer_speed_kmh or 0.0) / 3.6
-            extra = (f", force de la route {self.road_force_n(self._grade_for_trace(), v):.1f} N, inertie "
+            measured = self._raw_power / v if v > 0.5 else 0.0
+            extra = (f", force de la route {self.road_force_n(self._grade_for_trace(), v):.1f} N, mesurée "
+                     f"{measured:.1f} N, inertie "
                      f"{self._inertia_n:.1f} N (a = {self._accel_mps2:+.2f} m/s²), k = {self.k_road:.4f}")
         log.info("FTMS ~ mesures : puissance %.0f W, cadence %.0f tr/min, vitesse du trainer %s, "
                  "niveau de résistance %s, consigne envoyée %s%s",
@@ -784,8 +837,9 @@ class FtmsDriver:
         if self.brake_losses:
             log.info("Trainer : %d perte(s) de frein détectée(s).", self.brake_losses)
         if self.cfg.control == "resistance":
-            log.info("Trainer : résistance calculée, frein estimé k = %.4f N par %% et par km/h (départ %.4f)",
-                     self.k_road, self.cfg.resistance_n_per_pct_kmh)
+            log.info("Trainer : résistance calculée, frein estimé k = %.4f N par %% et par km/h (départ %.4f), "
+                     "%d reprise(s) pour frein sans effet%s", self.k_road, self.cfg.resistance_n_per_pct_kmh,
+                     self.road_weak_retakes, ", repli sur le SIM du trainer" if self.road_fallback else "")
         if self.busy_deferrals:
             log.info("Control Point occupé : %d consigne(s) reportée(s), liaison gardée.",
                      self.busy_deferrals)
