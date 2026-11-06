@@ -36,12 +36,16 @@ const NAME_HEIGHT_M := 2.1
 ## Indice d'apparence des bots dont l'id ne finit pas par un numéro (fantôme), loin de ceux du peloton.
 const OTHER_INDEX := 50
 const GHOST_ALPHA := 0.55
+## Avatars créés au plus par image (lot PL1, banc du 6 novembre : 10 à 19 ms de « bots » quand plusieurs bots du
+## peloton changeaient de niveau de détail à la même image) ; les autres gardent un niveau déjà construit.
+const NEW_AVATARS_PER_FRAME := 1
 const STANDING_GRADE_PCT: float = AvatarModel.DEFAULTS["standing_grade_pct"]
 
 var quality := QualityPresets.DEFAULT_PRESET
 var _nodes := {}        # id:kind → Node3D (racine du bot)
 var _next_index := 0    # bots sans numéro dans leur id (fantôme) : indices d'apparence à partir de OTHER_INDEX
 var _poses := {}        # id:kind → {phase, color, lod, standing} (tests)
+var _builds_left := NEW_AVATARS_PER_FRAME   # avatars encore permis à cette image (update_view)
 
 
 func _init() -> void:
@@ -97,8 +101,14 @@ func _avatar(root: Node3D, lod: int) -> AvatarView:
 			if n >= 0 and n <= 2 and root.has_node("Lod%d" % n):
 				shown = n
 				break
+	if not root.has_node("Lod%d" % shown) and _builds_left <= 0:   # budget de l'image épuisé
+		for n in [shown + 1, shown - 1, shown + 2, shown - 2]:
+			if n >= 0 and n <= 2 and root.has_node("Lod%d" % n):
+				shown = n
+				break
 	var name_ := "Lod%d" % shown
 	if not root.has_node(name_):
+		_builds_left -= 1   # un bot sans aucun avatar en reçoit un, même au-delà du budget
 		var av := AvatarView.new()
 		av.name = name_
 		av.shadow_max_lod = QualityPresets.BOT_SHADOW_MAX_LOD
@@ -153,6 +163,7 @@ func _camera_distance(pos: Vector3) -> float:
 ## `view` : sortie de bots_view_model.view() ; `route` : route_data.gd (hauteur affichée, relief exagéré comme la
 ## caméra).
 func update_view(view: Array, route) -> void:
+	_builds_left = NEW_AVATARS_PER_FRAME
 	var seen := {}
 	var placed: Array = []   # [distance à la caméra, b, key, smp] des bots affichés
 	for b in view:

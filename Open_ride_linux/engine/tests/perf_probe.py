@@ -606,6 +606,7 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
         t0 = min((float(r["t_s"]) for r in saccades if isinstance(r.get("t_s"), float)), default=0.0)
         hits = [r for r in saccades if isinstance(r.get("frame_ms"), float) and r["frame_ms"] > hitch_ms
                 and str(r.get("cause") or "") != "capture" and isinstance(r.get("distance_m"), float)
+                and r["distance_m"] >= START_DISTANCE_M   # avant le premier mètre : départ (lot PL1)
                 and isinstance(r.get("t_s"), float) and r["t_s"] >= t0 + warmup_s]
         per = hitch_period([r["distance_m"] for r in hits])
         if per is None:

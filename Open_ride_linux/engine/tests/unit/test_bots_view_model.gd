@@ -153,7 +153,8 @@ func _test_nodes() -> void:
 	bv.update_view(m.view(1000.0, 7.0, 0), route)
 	_check(int(bv.pose_of("bot1")["shown_lod"]) != 0, "niveau 0 construit dans un fil : en attendant, un niveau déjà construit")
 	bv.wait_builds()
-	bv.update_view(m.view(1000.0, 7.0, 0), route)
+	for _i in range(2):   # lot PL1 : un avatar créé par image (BotsView.NEW_AVATARS_PER_FRAME), le fantôme compris
+		bv.update_view(m.view(1000.0, 7.0, 0), route)
 	_check(int(bv.pose_of("bot1")["shown_lod"]) == 0, "niveau 0 montré une fois construit")
 	var lod_high := int(bv.pose_of("bot1")["lod"])
 	bv.set_quality("low")
@@ -338,6 +339,13 @@ func _test_peloton() -> void:
 		_check(detailed == QualityPresets.bot_detail_max(q),
 			"%s : %d bots détaillés au plus (%d)" % [q, QualityPresets.bot_detail_max(q), detailed])
 	_check(bv.get_child_count() == 12, "une silhouette par coureur du peloton (%d)" % bv.get_child_count())
+	var avatars := 0
+	for child in bv.get_children():
+		for sub in child.get_children():
+			if sub is AvatarView:
+				avatars += 1
+	_check(avatars <= 12 + 3 * BotsView.NEW_AVATARS_PER_FRAME,
+		"avatars créés au fil des images, %d par image au plus (%d pour 12 coureurs en 3 images)" % [BotsView.NEW_AVATARS_PER_FRAME, avatars])
 	var looks := {}
 	for i in range(11):
 		var pose: Dictionary = bv.pose_of("bot%d" % (i + 1))

@@ -101,6 +101,16 @@ def test_slow_seconds_before_the_first_metre_or_of_a_capture_are_not_steady():
     assert by_label(pp.hitch_checks(r, sac))["pire image"] == (False, "135 ms (au plus 100 ms)")
 
 
+def test_hitches_before_the_first_metre_make_no_period():
+    """Banc PC de #716 (aaf4b6ac, high) : quatre images lentes à 0 m pendant un chargement long, puis une à 305 m,
+    donnaient « tous les 76,5 m » ; celles d'avant le premier mètre sont du départ, pas une période."""
+    sac = [{"t_s": t, "frame_ms": 60.0, "distance_m": 0.0, "cause": "inconnue"} for t in (31.0, 35.0, 40.0, 50.0)]
+    sac += [{"t_s": 50.5, "frame_ms": 50.3, "distance_m": 0.2, "cause": "bots"},
+            {"t_s": 99.0, "frame_ms": 58.3, "distance_m": 304.8, "cause": "inconnue"}]
+    sac.insert(0, {"t_s": 4.0, "frame_ms": 149.0, "distance_m": 0.0, "cause": "inconnue"})
+    assert by_label(pp.hitch_checks(rows(), sac))["périodicité en distance"][0] is True
+
+
 def test_report_lists_hitches_with_budgets(tmp_path):
     d = tmp_path / "moteur"
     d.mkdir()

@@ -42,7 +42,8 @@ la trame `state` dépasse 4 096 octets, sans que les bots se roulent dessus, et 
 - `tools/bots_race.py` compte les contacts entre coureurs avec la règle de l'engine (`living_decor.gd` : moins
   de 1,7 m en long et de 0,6 m en travers) et le premier, pour l'enquête ; accepte 11 bots.
 - Bancs (`perf_probe.hitch_checks`) : une seconde lente du régime établi que `saccades.csv` explique par une
-  capture du banc est écartée, par une image d'avant le premier mètre est jugée avec le départ (150 ms). Le
+  capture du banc est écartée, par une image d'avant le premier mètre est jugée avec le départ (150 ms) et ne
+  compte pas dans la périodicité en distance. Le
   peloton se charge en 35 à 40 s, au-delà des 30 s de `warmup_s`.
 
 ### 2.2 Engine
@@ -52,6 +53,10 @@ la trame `state` dépasse 4 096 octets, sans que les bots se roulent dessus, et 
 - `bots_view.gd` : seuls les `QualityPresets.BOT_DETAIL_MAX` bots les plus proches de la caméra (low 5, medium 6,
   high 8) prennent les niveaux 0 et 1 (et leur ombre) ; les autres restent au niveau 2. Apparence tirée du numéro
   de l'id (« bot7 » : dossard 7), stable quand un bot sort de l'écran et revient.
+- `bots_view.gd` : un avatar créé au plus par image (`NEW_AVATARS_PER_FRAME`) ; les autres bots gardent un
+  niveau déjà construit (banc du 6 novembre : 10 à 19 ms de « bots » quand plusieurs bots changeaient de niveau
+  à la même image, images lentes en low). `avatar_view.gd` : sans écran (tests), les maillages des avatars se
+  construisent un à un (serveur de rendu factice, erreurs RID avec les cyclistes du décor d'AS7).
 - `bot_hud_model.gd` : l'encart garde 5 lignes au plus (`MAX_ROWS`), autour du cycliste.
 - Écran Prêt (`menu_model.gd`) : ligne « Peloton : aucun » sous le fantôme, A long : 4, 8, 11 bots à profil
   (rouleur, grimpeur, sprinteur, diesel en cycle) au « Niveau des bots » des réglages, coupé pour ne pas dépasser
