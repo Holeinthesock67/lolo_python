@@ -351,7 +351,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("rogue", "grade_rate_up_pct_per_s"): (0.1, 100),
     ("rogue", "grade_rate_down_pct_per_s"): (0.1, 100),
     ("bots", "level_pct"): (50, 150),
-    ("survivor", "opponents"): (2, 4),          # 4 : limite des bots du core (MAX_CONSTANT_BOTS)
+    ("survivor", "opponents"): (2, 4),          # 4 jusqu'au lot DS8 (11 avec le peloton du lot PL1)
     ("survivor", "spacing_km"): (1, 3),
     ("audio", "master_pct"): (0, 100),
     ("audio", "ride_pct"): (0, 100),

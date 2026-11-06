@@ -20,7 +20,8 @@ extends RefCounted
 ## maillot et son écart. Écarts au format des blocs segment : « +8,4 s », « −3,1 s ».
 ## `fit(view, height_px)` : lignes affichées dans la hauteur donnée, {first, count, jerseys}. Priorité :
 ## les deux lignes autour du cycliste (ses voisins), toujours ; puis la ligne des maillots ; puis d'autres
-## lignes, en élargissant la fenêtre autour du cycliste.
+## lignes, en élargissant la fenêtre autour du cycliste, MAX_ROWS au plus : avec un peloton (lot PL1, 11 bots),
+## l'encart garde la taille qu'il avait avec 5 bots et ne montre que les voisins du cycliste.
 
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
@@ -35,6 +36,8 @@ const BOT_ROW := 30.0
 const JERSEY_ROW := 24.0
 const PADDING := 8.0
 const MIN_ROWS := 2
+## Lignes de bots au plus dans l'encart (lot PL1) : celles des 5 bots d'avant le peloton.
+const MAX_ROWS := 5
 
 
 static func profile_name(profile) -> String:
@@ -109,7 +112,7 @@ static func fit(v: Dictionary, height_px: float) -> Dictionary:
 	var total: int = v.get("rows", []).size()
 	var count: int = mini(MIN_ROWS, total)
 	var jerseys: bool = str(v.get("jerseys_text", "")) != "" and height(count, true) <= height_px
-	while count < total and height(count + 1, jerseys) <= height_px:
+	while count < mini(total, MAX_ROWS) and height(count + 1, jerseys) <= height_px:
 		count += 1
 	return {"first": window_start(int(v.get("rider_index", 0)), count, total), "count": count, "jerseys": jerseys}
 

@@ -782,19 +782,20 @@ func _test_bots_menu() -> void:
 	f.set_routes(ROUTES)
 	f.handle("PLUS_SHORT")   # Session libre
 	f.handle("A_LONG")
-	_check(f.state()["screen"] == "ready" and _ids(f) == ["start", "workout", "change_route", "bot1", "ghost", "records"],
-		"écran Prêt : bot et fantôme avant les records (%s)" % str(_ids(f)))
+	_check(f.state()["screen"] == "ready" and _ids(f) == ["start", "workout", "change_route", "bot1", "ghost", "peloton", "records"],
+		"écran Prêt : bot, fantôme et peloton avant les records (%s)" % str(_ids(f)))
 	_check(f.state()["items"][3]["label"] == "Bot 1 : aucun" and f.state()["items"][4]["label"] == "Fantôme de la dernière séance : non",
 		"par défaut : aucun bot, pas de fantôme")
 	_check(f.handle("A_LONG") == {"action": "start"}, "sans bot : start sans argument (les bots de la ligne de commande restent)")
 	f.handle("MINUS_SHORT")   # Records (boucle depuis Démarrer)
+	f.handle("MINUS_SHORT")   # Peloton (lot PL1)
 	f.handle("MINUS_SHORT")   # Fantôme
 	_check(_focus_id(f) == "ghost", "focus sur le fantôme")
 	f.handle("MINUS_SHORT")   # Bot
 	for i in range(4):
 		f.handle("A_LONG")
 	_check(f.state()["items"][3]["label"] == "Bot 1 : 90 % de la FTP" and f.state()["screen"] == "ready", "A long : bot suivant (%s)" % f.state()["items"][3]["label"])
-	_check(_ids(f) == ["start", "workout", "change_route", "bot1", "bot2", "ghost", "records"]
+	_check(_ids(f) == ["start", "workout", "change_route", "bot1", "bot2", "ghost", "peloton", "records"]
 		and f.state()["items"][4]["label"] == "Bot 2 : aucun", "lot O35 : un bot choisi ouvre la ligne « Bot 2 » (%s)" % str(_ids(f)))
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
@@ -849,7 +850,7 @@ func _test_four_bots() -> void:
 	var ids: Array = []
 	for it in m.state()["items"]:
 		ids.append(it["id"])
-	_check(ids == ["start", "workout", "change_route", "bot1", "bot2", "bot3", "bot4", "ghost", "records"],
+	_check(ids == ["start", "workout", "change_route", "bot1", "bot2", "bot3", "bot4", "ghost", "peloton", "records"],
 		"quatre bots : pas de cinquième ligne (%s)" % str(ids))
 	_check(m.state()["items"][6]["label"] == "Bot 4 : 90 % de la FTP", "libellé du 4e bot (%s)" % m.state()["items"][6]["label"])
 	m.ghost = true
@@ -862,6 +863,39 @@ func _test_four_bots() -> void:
 		m.handle("A_LONG")
 	_check(m.bot_choices == [1, 3, 4], "bot 2 retiré, les suivants remontent (%s)" % str(m.bot_choices))
 	_check(m.state()["items"][6]["label"] == "Bot 4 : aucun", "ligne « Bot 4 : aucun » revenue")
+	_test_peloton_menu()
+
+
+## Peloton (lot PL1) : « Peloton : aucun », A long : 4, 8, 11 bots à profil sans niveau (celui du réglage), coupé
+## pour ne pas dépasser 11 bots avec ceux choisis un par un ; repris des derniers choix.
+func _test_peloton_menu() -> void:
+	var m = MenuModel.new()
+	m.set_world("vosges", "Vosges")
+	m.focus_item("ride")
+	m.handle("A_LONG")   # écran Prêt
+	m.focus_item("peloton")
+	_check(m.state()["items"][m.state()["focus"]]["label"] == "Peloton : aucun", "peloton : aucun par défaut")
+	for i in range(3):
+		m.handle("A_LONG")   # 4, 8, 11
+	_check(m.state()["items"][m.state()["focus"]]["label"] == "Peloton : 11 bots", "A long : 4, 8 puis 11 bots")
+	var args: Dictionary = m._start_args()
+	_check(args["bots"].size() == 11 and args["bots"][0] == {"kind": "profile", "profile": "rouleur"}
+		and args["bots"][1] == {"kind": "profile", "profile": "climber"}, "onze bots à profil, en cycle (%s)" % str(args["bots"].slice(0, 2)))
+	m.bot_choices.assign([1, 2, 3, 4])
+	m.ghost = true
+	m._refresh_home()
+	args = m._start_args()
+	_check(args["bots"].size() == 12 and m.peloton_size() == 7 and args["bots"][-1] == {"kind": "ghost"},
+		"quatre bots choisis : peloton coupé à 7, fantôme en plus (%d)" % args["bots"].size())
+	m.focus_item("peloton")
+	m.handle("A_LONG")
+	_check(m.peloton == 0 and not m._start_args()["bots"].any(func(b): return MenuModel._is_peloton_bot(b)), "A long après 11 : plus de peloton")
+	# Derniers choix (lot O32) : 4 bots, 7 bots de peloton et le fantôme reviennent tels quels
+	var n = MenuModel.new()
+	n.set_last_choices({"bots": args["bots"]})
+	_check(n.bot_choices == [1, 2, 3, 4] and n.peloton_size() == 7 and n.ghost, "derniers choix : peloton repris (%d)" % n.peloton_size())
+	n.set_last_choices({"bots": [{"kind": "profile", "profile": "diesel"}]})
+	_check(n.peloton == 4 and n.bot_choices.is_empty(), "un seul bot de peloton : la plus petite taille, 4")
 
 
 ## Lot O21 : QWKcode saisi au clavier, envoyé au core par create_workout_qwk.
