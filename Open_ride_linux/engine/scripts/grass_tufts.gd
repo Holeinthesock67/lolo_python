@@ -45,7 +45,7 @@ const BAND_MAX_M := 26.0
 ## Bande large (lot Y22, demande du 6 novembre : « l'herbe ne va pas assez loin ») : places en plus, de
 ## BAND_MIN_M à WIDE_BAND_MAX_M du bord, budget `living(preset).grass_tufts_wide`, moins denses ; au-delà de
 ## LOD_SWITCH_M elles sont dessinées en gerbe simplifiée comme les autres.
-const WIDE_BAND_MAX_M := 40.0
+const WIDE_BAND_MAX_M := 80.0
 ## Bord extérieur fondu (6 novembre : « la bande s'arrête brutalement ») : les places de la bande du bord sont
 ## à densité pleine jusqu'à NARROW_TAPER_M puis de moins en moins nombreuses jusqu'à BAND_MAX_M ; celles de la
 ## bande large partent de BAND_MIN_M et s'éclaircissent régulièrement jusqu'à WIDE_BAND_MAX_M (`lateral_of`).
