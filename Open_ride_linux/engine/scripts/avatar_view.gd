@@ -60,6 +60,12 @@ static var _parts_cache := {}
 static var _parts_tasks := {}      # clé → identifiant de tâche du WorkerThreadPool
 static var _parts_mutex := Mutex.new()
 const PARTS_CACHE_MAX := 128   # joueur, bots et les 16 apparences du décor à 3 niveaux (lot AS7)
+## Sans écran (--headless, tests), le serveur de rendu factice ne crée pas ses maillages en sécurité depuis
+## plusieurs fils : « Initializing already initialized RID » puis « Parameter "m" is null » quand les bots du
+## peloton (PL1) et les cyclistes du décor (AS7) construisent leurs maillages en même temps (banc du 6 novembre).
+## Les constructions y passent alors une à une ; avec un vrai rendu, elles restent parallèles.
+static var _build_mutex := Mutex.new()
+static var _serial_builds := -1   # -1 : pas encore lu (sur le fil principal), 0 : parallèles, 1 : une à une
 
 
 func _init() -> void:
@@ -249,11 +255,26 @@ static func _parts(args: Array) -> Dictionary:
 	var ready: bool = _parts_cache.has(key)
 	_parts_mutex.unlock()
 	if not ready:
-		_store(key, AvatarMesh.build(args[0], args[1], args[2], args[3]))
+		_store(key, _build(args))
 	_parts_mutex.lock()
 	var parts: Dictionary = _parts_cache[key]
 	_parts_mutex.unlock()
 	return parts
+
+
+static func _serial() -> bool:
+	if _serial_builds < 0:
+		_serial_builds = 1 if DisplayServer.get_name() == "headless" else 0
+	return _serial_builds == 1
+
+
+static func _build(args: Array) -> Dictionary:
+	if _serial_builds == 1 or (_serial_builds < 0 and _serial()):
+		_build_mutex.lock()
+		var parts := AvatarMesh.build(args[0], args[1], args[2], args[3])
+		_build_mutex.unlock()
+		return parts
+	return AvatarMesh.build(args[0], args[1], args[2], args[3])
 
 
 static func _store(key: String, parts: Dictionary) -> void:
@@ -281,7 +302,8 @@ static func request_parts(n: int, st: Dictionary, lk: Dictionary) -> void:
 	_parts_mutex.lock()
 	var skip: bool = _parts_cache.has(key) or _parts_tasks.has(key)
 	if not skip:
-		_parts_tasks[key] = WorkerThreadPool.add_task(func() -> void: _store(key, AvatarMesh.build(args[0], args[1], args[2], args[3])))
+		_serial()   # lu ici, sur le fil principal, avant le fil de travail
+		_parts_tasks[key] = WorkerThreadPool.add_task(func() -> void: _store(key, _build(args)))
 	_parts_mutex.unlock()
 
 

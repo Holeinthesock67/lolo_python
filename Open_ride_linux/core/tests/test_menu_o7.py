@@ -23,7 +23,7 @@ def test_menu_bots_replace_the_session_bots(tmp_path, monkeypatch):
             {"bots": [{"kind": "constant", "power_w": 200, "ftp_pct": 90}]},   # les deux
             {"bots": [{"kind": "constant", "power_w": True}]},
             {"bots": [{"kind": "constant", "power_w": -5}]},
-            {"bots": [{"kind": "constant", "power_w": 200}] * 5},              # 5 bots constants
+            {"bots": [{"kind": "constant", "power_w": 200}] * 12},             # 12 bots constants (lot PL1 : 11 au plus)
             {"bots": [{"kind": "rival"}]},
             {"bots": [{"kind": "ghost"}]},                                     # aucune séance passée
         ]
