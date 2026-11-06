@@ -38,6 +38,9 @@ uniform float cloud_shadow_scale_m = 2600.0;
 // (0 : herbe d'avant Y11).
 uniform float grass_relief : hint_range(0.0, 2.0) = 1.0;
 uniform vec3 grass_dry_color : source_color = vec3(0.62, 0.6, 0.32);
+// Prés plus ou moins mûrs à grande échelle (bruit de 230 et 600 m, plus clair et chaud ou plus sombre et frais),
+// lot Y22 : le sol vu de loin n'est plus d'une seule teinte là où les touffes 3D s'arrêtent ; 0 = aucune.
+uniform float macro_variation : hint_range(0.0, 1.0) = 0.0;
 global uniform vec3 wind_dir;
 global uniform float wind_strength;
 global uniform float wind_phase;
@@ -144,6 +147,11 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 		// Plaques plus sèches ou plus vertes (H2)
 		float dry = smoothstep(0.45, 0.8, sd_noise(q / 120.0 + vec2(3.7, 1.9)) * 0.7 + sd_noise(q / 40.0) * 0.3) * relief;
 		vec3 g = mix(c, c * 0.55 + grass_dry_color * 0.45, dry * 0.6);
+		if (macro_variation > 0.0) {
+			// Prés plus ou moins mûrs sur des centaines de mètres : casse la répétition vue de loin
+			float m = sd_noise(q / 600.0 + vec2(11.3, 4.1)) * 0.7 + sd_noise(q / 230.0 + vec2(5.2, 8.7)) * 0.3 - 0.5;
+			g *= 1.0 + m * macro_variation * vec3(0.55, 0.45, 0.25);
+		}
 		// Brins et mottes (H1) : relief et mouchetures, effacés au loin
 		float vis_blade = vis_blade_0 * relief;
 		float vis_clump = vis_clump_0 * relief;

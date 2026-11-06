@@ -65,6 +65,11 @@ static func apply_to_material(mat: ShaderMaterial, theme: Dictionary = {}, theme
 
 ## Paramètres communs aux shaders de terrain (terrain_shade.gdshaderinc) : constantes de la fonction de
 ## référence du lot L3 (le shader n'en recopie aucune) et décor d'E3. Aussi pour terrain_biomes.gdshader (U6).
+## Prés plus ou moins mûrs à grande échelle (lot Y22, variante « terrain_macro » de l'étude du 5 novembre,
+## ≈ 0 ms en medium) ; 0 : sol d'avant.
+const MACRO_VARIATION := 0.35
+
+
 static func apply_shared(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("snow_melt_band_m", ThemeRenderParams.SNOW_MELT_BAND_M)
 	mat.set_shader_parameter("steep_snow_start_deg", ThemeRenderParams.STEEP_SNOW_START_DEG)
@@ -73,3 +78,4 @@ static func apply_shared(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("max_slope_half_band_deg", ThemeRenderParams.MAX_SLOPE_HALF_BAND_DEG)
 	mat.set_shader_parameter("rock_facet_strength", 0.6)
 	mat.set_shader_parameter("detail_strength", 1.0)
+	mat.set_shader_parameter("macro_variation", MACRO_VARIATION)

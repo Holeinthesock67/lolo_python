@@ -150,5 +150,14 @@ func _init() -> void:
 	var flat_arrays := TerrainTiles.build_arrays(TerrainTiles.flat_heights(1000.0), "near")
 	_check(flat_arrays[Mesh.ARRAY_COLOR] == null, "tuile sans ARRAY_COLOR")
 
+	# 9. Prés plus ou moins mûrs à grande échelle (lot Y22), sur tous les matériaux de terrain
+	var shared := ShaderMaterial.new()
+	shared.shader = preload("res://shaders/terrain.gdshader")
+	TerrainMaterial.apply_shared(shared)
+	_check(TerrainMaterial.MACRO_VARIATION > 0.0 and TerrainMaterial.MACRO_VARIATION <= 0.5
+		and is_equal_approx(float(shared.get_shader_parameter("macro_variation")), TerrainMaterial.MACRO_VARIATION)
+		and "macro_variation" in FileAccess.get_file_as_string("res://shaders/terrain_shade.gdshaderinc"),
+		"variation de l'herbe à 600 m : %.2f sur le sol (terrain_shade)" % TerrainMaterial.MACRO_VARIATION)
+
 	print("test_terrain_material : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
