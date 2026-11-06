@@ -1425,7 +1425,10 @@ func _test_menu_state(req: String) -> Dictionary:
 
 ## Décor posé en plusieurs images après les tuiles : tronçons d'herbe du bord pas encore remplis (lot Y22) et
 ## forêts lointaines en attente (lot Y5). Une scène de référence est capturée quand ce compte est à 0.
+## Core non joignable : la scène est figée exprès (_process), le décor n'avancera plus, rien n'est en attente.
 func _decor_pending() -> int:
+	if banner.has_message("core_lost"):
+		return 0
 	var n := 0
 	if living_world != null and living_world.grass != null:
 		n += living_world.grass.pending_count()
