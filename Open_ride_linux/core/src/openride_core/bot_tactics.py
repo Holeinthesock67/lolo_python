@@ -193,18 +193,18 @@ class Tactics:
                     return key, at
         return None
 
-    def attack_spans(self, segments: Iterable[Any], sprint_last_m: float, peak: bool) -> list[tuple[float, float]]:
-        """Intervalles (début, fin, sur un tour) où ce bot peut attaquer : les montées, le dernier kilomètre des
-        sprints ; pour sauter `adjust` ailleurs (simulation du calibrage, lot T13)."""
-        ch, out = self.character, []
+    def attack_triggers(self, segments: Iterable[Any], sprint_last_m: float, peak: bool) -> list[float]:
+        """Points de déclenchement (sur le premier tour, triés) des attaques possibles de ce bot : un seul appel
+        de `adjust` y suffit hors attaque en cours (simulation du calibrage, lot T13)."""
         if not self.on.attacks:
-            return out
+            return []
+        out = []
         for seg in segments:
-            if seg.type == "climb" and ch.attack_chance > 0.0:
-                out.append((seg.s_start, seg.s_end))
-            elif seg.type == "sprint" and ch.sprint_attack_chance > 0.0 and not peak:
-                out.append((seg.s_end - SPRINT_ATTACK_M, seg.s_end - sprint_last_m))
-        return out
+            start = seg.s_start if seg.type == "climb" else seg.s_end - SPRINT_ATTACK_M
+            zone = self._attack_zone(start, 0, (seg,), sprint_last_m, peak)
+            if zone is not None:
+                out.append(zone[1])
+        return sorted(out)
 
     def _attack(self, bot: Any, pos: float, lap: int, t: float, reserve: float) -> float | None:
         """Puissance de l'attaque en cours ou qui part maintenant ; None sans attaque."""

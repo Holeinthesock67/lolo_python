@@ -38,7 +38,7 @@ from typing import Any
 
 from dataclasses import dataclass
 
-from .bot_tactics import DURABILITY_START_S, Character, Tactics
+from .bot_tactics import DURABILITY_FLOOR, DURABILITY_START_S, Character, Tactics
 from .config import BOUNDS
 from .draft import BOT_LANE_M, Lane
 from .physics import G, V_FLOOR, V_MAX, PhysicsParams, RiderPhysics, air_density, resistive_force
@@ -565,19 +565,28 @@ def ride_time(prof: RouteProfile, params: PhysicsParams, power_w: float = 0.0,
         cp, wp, peak = bot.cp_w, bot.w_prime_j, bot.peak_w
         w = wp
         tac = bot.tactics
-        tired = tac.on.durability
-        spans = tac.attack_spans(bot.segments, bot.spec.sprint_last_m, peak > 0)
+        tired_from = DURABILITY_START_S if tac.on.durability else math.inf   # lot Y10, mode « calibration »
+        tired_rate = tac.character.durability_pct_per_h / 100.0 / 3600.0
+        cp_day = bot.base_cp_w * tac.form
+        triggers = tac.attack_triggers(bot.segments, bot.spec.sprint_last_m, peak > 0)
+        next_trigger = triggers[0] if triggers else math.inf   # point d'attaque suivant, jugé une fois
+        k, attack_until = 0, -1.0
     s = v = t = 0.0
     while s < length and t < max_t:
         i = min(int(s / cell), n - 1)
         p = power_w
         if bot is not None:
-            if tired and t > DURABILITY_START_S:   # lot Y10 : fatigue de longue durée du mode « calibration »
-                cp = bot.cp_w = bot.base_cp_w * tac.cp_factor(t)
+            if t > tired_from:   # lot Y10 : fatigue de longue durée, relevée toutes les 10 s (0,01 % de CP)
+                cp = bot.cp_w = cp_day * max(1.0 - tired_rate * (t - DURABILITY_START_S), DURABILITY_FLOOR)
+                tired_from = t + 10.0
             reserve = 100.0 * w / wp
             p, tactical = bot._strategy(s, length, False, reserve)
-            if tac.attack_until > t or any(lo <= s < hi for lo, hi in spans):   # lot Y10 : attaques
+            if s >= next_trigger or attack_until > t:   # lot Y10 : attaque qui part ou en cours
+                if s >= next_trigger:
+                    k += 1
+                    next_trigger = triggers[k] if k < len(triggers) else math.inf
                 p, _ = tac.adjust(bot, p, tactical, t, s, length, False, reserve)
+                attack_until = tac.attack_until
             if p > cp and w <= 0.0:
                 p = cp
             if p == peak and peak > 0:
