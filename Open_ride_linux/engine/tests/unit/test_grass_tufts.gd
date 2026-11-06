@@ -349,6 +349,7 @@ func _test_wide_band() -> void:
 	var wide_bad := 0
 	var wide_n := 0
 	var outside := 0
+	var bins := PackedInt32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])   # touffes par tranche de 4 m, de 2 à 42 m
 	for gi in range(groups):
 		var box: AABB = g._near_mm[gi].custom_aabb
 		for slot in range(g._filled[gi]):
@@ -359,14 +360,28 @@ func _test_wide_band() -> void:
 			var edge := absf(p.x - 500.0) - 3.0
 			if not box.has_point(p):
 				outside += 1
+			bins[clampi(int((edge - GrassTufts.BAND_MIN_M) / 4.0), 0, 9)] += 1
 			if slot < g._narrow_per_chunk:
 				narrow_bad += 0 if edge >= GrassTufts.BAND_MIN_M - 0.01 and edge <= GrassTufts.BAND_MAX_M + 0.01 else 1
 			else:
 				wide_n += 1
-				wide_bad += 0 if edge >= GrassTufts.BAND_MAX_M - 0.01 and edge <= GrassTufts.WIDE_BAND_MAX_M + 0.01 else 1
+				wide_bad += 0 if edge >= GrassTufts.BAND_MIN_M - 0.01 and edge <= GrassTufts.WIDE_BAND_MAX_M + 0.01 else 1
 	_check(g.get_capacity() <= int(high["grass_tufts"]) + int(high["grass_tufts_wide"]) and wide_n > 0 and narrow_bad == 0 and wide_bad == 0 and outside == 0,
 		"bande large : %d touffes de %.0f à %.0f m du bord, bande du bord inchangée, toutes dans la boîte du tronçon" % [
 			wide_n, GrassTufts.BAND_MAX_M, GrassTufts.WIDE_BAND_MAX_M])
+	# Bord fondu : après le plateau du bord, chaque tranche de 4 m jusqu'à 30 m a à peu près autant ou moins de
+	# touffes que la précédente, mais pas moins du tiers (pas de marche), et la dernière tranche est clairsemée.
+	var smooth := true
+	for i in range(1, 7):
+		if float(bins[i + 1]) > float(bins[i]) * 1.1 or bins[i + 1] * 3 < bins[i]:
+			smooth = false
+	_check(smooth and bins[9] * 10 < bins[0] and bins[0] > 0,
+		"bande large : densité décroissante sans marche jusqu'à %.0f m (par tranche de 4 m : %s)" % [
+			GrassTufts.WIDE_BAND_MAX_M, str(bins)])
+	_check(is_equal_approx(GrassTufts.lateral_of(0.0, false), GrassTufts.BAND_MIN_M)
+		and absf(GrassTufts.lateral_of(0.99999, false) - GrassTufts.BAND_MAX_M) < 0.1
+		and absf(GrassTufts.lateral_of(0.99999, true) - GrassTufts.WIDE_BAND_MAX_M) < 0.3,
+		"lateral_of : de %.0f m à %.0f m (bord) et %.0f m (large)" % [GrassTufts.BAND_MIN_M, GrassTufts.BAND_MAX_M, GrassTufts.WIDE_BAND_MAX_M])
 	g.queue_free()
 
 

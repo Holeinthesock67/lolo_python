@@ -40,11 +40,17 @@ const CHUNK_M := 40.0
 const CHUNKS_BEHIND := 1
 const CHUNKS_AHEAD := 4
 const BAND_MIN_M := 2.0
-const BAND_MAX_M := 15.0
+const BAND_MAX_M := 26.0
 ## Bande large (lot Y22, demande du 6 novembre : « l'herbe ne va pas assez loin ») : places en plus, de
-## BAND_MAX_M à WIDE_BAND_MAX_M du bord, budget `living(preset).grass_tufts_wide`, moins denses ; au-delà de
+## BAND_MIN_M à WIDE_BAND_MAX_M du bord, budget `living(preset).grass_tufts_wide`, moins denses ; au-delà de
 ## LOD_SWITCH_M elles sont dessinées en gerbe simplifiée comme les autres.
 const WIDE_BAND_MAX_M := 40.0
+## Bord extérieur fondu (6 novembre : « la bande s'arrête brutalement ») : les places de la bande du bord sont
+## à densité pleine jusqu'à NARROW_TAPER_M puis de moins en moins nombreuses jusqu'à BAND_MAX_M ; celles de la
+## bande large partent de BAND_MIN_M et s'éclaircissent régulièrement jusqu'à WIDE_BAND_MAX_M (`lateral_of`).
+## La densité au sol décroît donc sans marche du bord de la route jusqu'à la fin de l'herbe ; près de la route
+## elle reste celle d'avant (plateau de même hauteur que l'ancienne bande uniforme de 2 à 15 m).
+const NARROW_TAPER_M := 4.0
 ## Écart minimal entre une touffe et le bord de la chaussée, sur tout le parcours (rayon et pointe penchée compris).
 const ROAD_CLEAR_M := 1.0
 const MAX_SLOPE := 0.7          # pente (tan) au-delà de laquelle il n'y a plus de touffe
@@ -406,9 +412,7 @@ func tuft_transform(k: int, slot: int, stations: PackedVector4Array = PackedVect
 	var h2 := VegetationPlacer.hash3(tuft_seed ^ 0x7B66, k, slot)
 	var u := float(h & 0xFFFF) / 65536.0
 	var wide := slot >= _narrow_per_chunk and _narrow_per_chunk > 0
-	var band_min := BAND_MAX_M if wide else BAND_MIN_M
-	var band_max := WIDE_BAND_MAX_M if wide else BAND_MAX_M
-	var lat := band_min + float((h >> 16) & 0xFFFF) / 65536.0 * (band_max - band_min)
+	var lat := lateral_of(float((h >> 16) & 0xFFFF) / 65536.0, wide)
 	var side := 1.0 if h2 & 1 == 0 else -1.0
 	var s_pos := (float(k) + u) * CHUNK_M
 	if not route.is_loop() and (s_pos < 0.0 or s_pos > route.length_m):
@@ -441,6 +445,22 @@ func tuft_transform(k: int, slot: int, stations: PackedVector4Array = PackedVect
 	var angle := float((h2 >> 16) & 0xFFFF) / 65536.0 * TAU
 	var scale_f := 0.7 + float((h2 >> 9) & 0x7F) / 127.0 * 0.6
 	return Transform3D(Basis(Vector3.UP, angle).scaled(Vector3.ONE * scale_f), Vector3(px, py, pz))
+
+
+## Distance au bord de la route d'une place, pour un tirage `r` dans [0, 1) : densité pleine de BAND_MIN_M à
+## NARROW_TAPER_M puis décroissante jusqu'à 0 à BAND_MAX_M (bande du bord) ; décroissante de BAND_MIN_M à
+## WIDE_BAND_MAX_M (bande large). Inverse de la fonction de répartition d'un plateau suivi d'une rampe.
+static func lateral_of(r: float, wide: bool) -> float:
+	var a := BAND_MIN_M
+	var b := BAND_MIN_M if wide else NARROW_TAPER_M
+	var c := WIDE_BAND_MAX_M if wide else BAND_MAX_M
+	var flat := b - a
+	var ramp := c - b
+	var x := r * (flat + ramp * 0.5)
+	if x < flat:
+		return a + x
+	var y := x - flat
+	return b + ramp * (1.0 - sqrt(maxf(0.0, 1.0 - 2.0 * y / ramp)))
 
 
 ## Teinte (indice dans TINTS) de la place `slot` du tronçon `k` : surtout fraîche, parfois sèche.
