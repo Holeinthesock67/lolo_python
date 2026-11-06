@@ -343,7 +343,7 @@ const LIVING := {
 		"ground_grass": 5000,
 		"ground_termites": 50,
 		"grass_tufts": 30000,
-		"grass_tufts_wide": 36000,
+		"grass_tufts_wide": 24000,
 		"clouds": "layered",
 		"weather_particles": 4000,
 		"birds": 80,
