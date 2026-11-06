@@ -21,6 +21,9 @@
   en montée et au dernier kilomètre d'un sprint, réponses aux départs, fatigue au-delà de 60 min et forme
   du jour ; caractère tactique de chaque profil dans `PROFILES` (`character`). Cahier :
   `docs/lots/LOT_Y10_comportement_bots_core.md`.
+- lot PL1 (peloton, 3.0) : jusqu'à 11 bots à puissance constante ou à profil (`MAX_CONSTANT_BOTS`) et un
+  fantôme. Au-delà de `FULL_FRAME_BOTS` bots, la trame `state` allège les plus loin du cycliste
+  (`light_frame`) pour que la pire trame tienne dans 4 096 octets. Cahier : `docs/lots/LOT_PL1_peloton.md`.
 """
 
 from __future__ import annotations
@@ -109,7 +112,10 @@ class ConstantPowerBot:
             grade = here.grade_pct
             alt = here.alt_m
 
-        self.physics.step(self.power_w * self.power_factor, grade, alt, dt, alpha_draft=self.draft)
+        power = self._blocked_power(self.power_w * self.power_factor, grade, alt)
+        self.physics.step(power, grade, alt, dt, alpha_draft=self.draft)
+        if self.lane.blocked is not None and self.lane.blocked[0] <= BRAKE_GAP_M:
+            self.physics.v = min(self.physics.v, self.lane.blocked[1])   # freine : roue contre roue, pas plus vite
         if route is not None and not route.is_loop and self.physics.s >= route.length_m:
             self.physics.s = route.length_m
             self.physics.v = 0.0
@@ -124,6 +130,20 @@ class ConstantPowerBot:
             "kind": self.kind,
             "lane_m": round(self.lane.m, 2),
         }
+
+    def _blocked_power(self, power_w: float, grade: float, alt: float) -> float:
+        """Puissance d'un bot enfermé derrière un coureur plus lent (lot PL1, `lane.blocked` posé par
+        `draft.update_lanes`) : celle qui ramène sa vitesse
+        à celle du coureur devant à `FOLLOW_GAP_M` de sa roue (comme `ProfileBot._follow_power`), sans plancher : il
+        peut cesser de pédaler. `power_w` sinon."""
+        if self.lane.blocked is None:
+            return power_w
+        gap, v_lead = self.lane.blocked
+        v = self.physics.v
+        v_want = max(v_lead + FOLLOW_GAIN * (gap - FOLLOW_GAP_M), 0.0)
+        force = resistive_force(v_want, grade, alt, self.params, self.draft)
+        need = (force * v_want + self.params.mass_kg * (v_want - v) / FOLLOW_TAU_S * v) / self.params.efficiency
+        return min(power_w, max(need, 0.0))
 
 
 class GhostBot:
@@ -302,6 +322,7 @@ FOLLOW_GAIN = 0.5           # 1/s : vitesse visée = vitesse de la roue + gain �
 FOLLOW_TAU_S = 2.0          # s : temps pour rattraper la vitesse visée
 FOLLOW_MIN_CP = 0.60        # puissance plancher dans la roue, en part de la CP
 FOLLOW_LEAVE_SPEED = 0.85   # la roue plus lente que 85 % de la vitesse de croisière seule : on repart
+BRAKE_GAP_M = 0.2           # lot PL1 : enfermé, roue à moins de 0,2 m de la roue devant : on freine
 SURVIVAL_MIN_WBAL_PCT = 10.0   # lot DS3 : pas de sprint de survie sous 10 % de réserve
 SURVIVAL_SAFE_CP = 0.95        # lot DS3 : plafond d'un bot loin du dernier, en part de la CP
 
@@ -452,9 +473,12 @@ class ProfileBot(ConstantPowerBot):
         self.cp_w = self.base_cp_w * self.tactics.cp_factor(self.t)   # lot Y10 : forme et fatigue
         power, tactical = self._strategy(self.physics.s, length, loop)
         power, tactical = self.tactics.adjust(self, power, tactical, self.t, self.physics.s, length, loop)
-        if self.wheel is not None and not tactical:
+        if (self.wheel is not None and not tactical) or self.lane.blocked is not None:
             here = route.sample(self.physics.s) if route is not None else None
-            power = self._follow_power(power, here.grade_pct if here else 0.0, here.alt_m if here else 0.0)
+            grade, alt = (here.grade_pct, here.alt_m) if here else (0.0, 0.0)
+            if self.wheel is not None and not tactical:
+                power = self._follow_power(power, grade, alt)
+            power = self._blocked_power(power, grade, alt)   # lot PL1 : enfermé, même en attaque
         if power > self.cp_w and self.wbal.w_bal_j <= 0.0:
             power = self.cp_w
         if power == self.peak_w and self.peak_w > 0:
@@ -651,7 +675,8 @@ def calibrate_bots(bots: list[Any], route: Any, rider: RefRider, level_pct: floa
 
 # --- bots choisis au menu (lot O7, contrat IPC révision 1.3) --------------------------------------
 
-MAX_CONSTANT_BOTS = 4
+MAX_CONSTANT_BOTS = 11   # lot PL1 : peloton d'environ 12 coureurs avec le cycliste (4 jusqu'à la 2.0)
+MAX_BOTS = MAX_CONSTANT_BOTS + 1   # et un fantôme
 LEVEL_BOUNDS = BOUNDS[("bots", "level_pct")]   # % de la FTP : bornes du réglage `bots.level_pct`
 
 
@@ -678,14 +703,14 @@ def last_ride(route_id: str | None, directory: Path) -> Path | None:
 def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: str | None,
                    journal_dir: Path, s: float = 0.0, bike_mass_kg: float = DEFAULT_BIKE_MASS_KG) -> list[Any]:
     """Bots de l'argument `bots` de `start` : `{kind: "constant", power_w}` ou `{kind: "constant",
-    ftp_pct}`, `{kind: "profile", profile, level_pct?}` (lots T12 et T13 ; au plus 4 bots de ces deux
-    genres en tout ; `level_pct` dans les bornes du réglage `bots.level_pct`, celui-ci sans lui) et
+    ftp_pct}`, `{kind: "profile", profile, level_pct?}` (lots T12 et T13 ; au plus `MAX_CONSTANT_BOTS` bots
+    de ces deux genres en tout, 11 depuis le lot PL1 ; `level_pct` dans les bornes du réglage `bots.level_pct`, celui-ci sans lui) et
     `{kind: "ghost"}` (dernière séance sur ce parcours, un seul).
 
     Lève BotError (rien ne démarre) si la liste est mal écrite ou si le fantôme n'a pas de séance.
     """
-    if not isinstance(items, list) or len(items) > MAX_CONSTANT_BOTS + 1:
-        raise BotError(f"liste de {MAX_CONSTANT_BOTS + 1} bots au plus attendue")
+    if not isinstance(items, list) or len(items) > MAX_BOTS:
+        raise BotError(f"liste de {MAX_BOTS} bots au plus attendue")
     out: list[Any] = []
     constant = 0
     ghost = False
@@ -737,4 +762,46 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
             seen[b.name] = seen.get(b.name, 0) + 1
             if seen[b.name] > 1:
                 b.name = f"{b.name} {seen[b.name]}"[:16]
+    return out
+
+
+# --- trame d'un peloton (lot PL1, contrat IPC révision 1.6) -----------------------------------------
+
+FULL_FRAME_BOTS = 5   # bots les plus proches du cycliste qui gardent tous leurs champs
+# Champs facultatifs retirés des autres bots : constants (`cp_w`, `mass_kg`, gardés par l'engine depuis la
+# dernière trame qui les portait) ou recalculables (`gap_s` : écart en mètres sur la vitesse) ; `wbal_pct`
+# n'est montré que dans l'encart du HUD, qui n'affiche que les voisins du cycliste.
+LIGHT_DROPPED = ("cp_w", "mass_kg", "wbal_pct", "gap_s")
+# Champs constants des autres bots envoyés à tour de rôle (un bot par trame) et gardés par l'engine entre deux
+# envois : avec les cyclistes du décor (lot AS7, `riders`), la pire trame 1.6 dépassait 4 096 octets.
+LIGHT_ROTATED = ("name", "profile")
+
+
+def light_frame(bots: list[dict[str, Any]], rider_s: float, length_m: float | None = None,
+                is_loop: bool = False, frame_no: int = 0) -> list[dict[str, Any]]:
+    """Liste `bots` de la trame `state` d'un peloton (lot PL1) : jusqu'à `FULL_FRAME_BOTS` bots, rien ne
+    change. Au-delà, les `FULL_FRAME_BOTS` plus proches du cycliste (écart le long de la route, le plus
+    court sur une boucle) gardent tout ; les autres perdent `LIGHT_DROPPED`, et `LIGHT_ROTATED` sauf l'un
+    d'eux à tour de rôle (`frame_no`, numéro de la trame : avec N bots loin, chacun les porte une trame sur N) ;
+    tous perdent `jersey` quand il vaut `null` (absent : pas de maillot). `id`, `s`, `v`, `kind`, `lane_m`,
+    `jersey` porté et `out` restent toujours. L'ordre de la liste est gardé."""
+    if len(bots) <= FULL_FRAME_BOTS:
+        return bots
+
+    def gap(b: dict[str, Any]) -> float:
+        d = float(b.get("s", 0.0)) - rider_s
+        if is_loop and length_m:
+            d = (d + length_m / 2.0) % length_m - length_m / 2.0
+        return abs(d)
+
+    near = {id(b) for b in sorted(bots, key=gap)[:FULL_FRAME_BOTS]}
+    far = [b for b in bots if id(b) not in near]
+    turn = id(far[frame_no % len(far)])
+    out = []
+    for b in bots:
+        light = {k: v for k, v in b.items() if not (k == "jersey" and v is None)}
+        if id(b) not in near:
+            for k in LIGHT_DROPPED + (() if id(b) == turn else LIGHT_ROTATED):
+                light.pop(k, None)
+        out.append(light)
     return out

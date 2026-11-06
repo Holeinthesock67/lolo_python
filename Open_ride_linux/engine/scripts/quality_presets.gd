@@ -63,6 +63,9 @@ const PRESETS := {
 ## 14,6 pour 14). Ombres douces et SSIL descendent d'un cran en `medium` et `high` : mesuré séparément
 ## sur le PC, ombres −0,9 / −0,7 ms, SSIL −1,9 / −0,7 ms, sans différence visible sur la planche
 ## r201 du 5 novembre. L'anisotropie, moins rentable en high, ne change pas.
+## Étude du rendu du 6 novembre (docs/ETUDE_OPTIMISATION_RENDU_2026-11-05.md, captures validées par le propriétaire) :
+## MSAA 2× et atlas des ombres 2048 en `medium` et `high`, SSIL coupé et anisotropie 8× en `high`. Tour des
+## six biomes : medium −2,4 ms, high −4 ms ; le `low` ne change pas (ombres des arbres et herbe gardées).
 const IMAGE := {
 	"low": {
 		"anisotropy": 4,
@@ -81,29 +84,29 @@ const IMAGE := {
 	},
 	"medium": {
 		"anisotropy": 8,
-		"msaa": 4,
+		"msaa": 2,
 		"screen_aa": "off",
 		"ssao": "medium",
 		"ssil": "off",
 		"ao_half_size": true,
 		"fog_volumetric": "light",
 		"glow": true,
-		"shadow_atlas": 4096,
+		"shadow_atlas": 2048,
 		"shadow_splits": 4,
 		"shadow_filter": "low",
 		"mesh_lod_threshold": 1.0,
 		"heat_haze": true,
 	},
 	"high": {
-		"anisotropy": 16,
-		"msaa": 4,
+		"anisotropy": 8,
+		"msaa": 2,
 		"screen_aa": "off",
 		"ssao": "high",
-		"ssil": "low",
+		"ssil": "off",
 		"ao_half_size": true,
 		"fog_volumetric": "full",
 		"glow": true,
-		"shadow_atlas": 4096,
+		"shadow_atlas": 2048,
 		"shadow_splits": 4,
 		"shadow_filter": "medium",
 		"mesh_lod_threshold": 0.5,
@@ -124,6 +127,21 @@ const TREE_BUDGETS := {
 	"medium": 70000,
 	"high": 100000,
 }
+
+## Forêts lointaines en imposteurs (lot Y5) : part des bouquets d'arbres affichés au-delà des arbres proches
+## (tirage fixe par bouquet, `MultiMesh.visible_instance_count`), de la fin des arbres proches (1 500 m)
+## jusqu'à la fin du brouillard (`fog_end_m`). 0 : aucune forêt lointaine (rendu d'avant Y5).
+const FOREST_FRACTION := {
+	"low": 0.6,
+	"medium": 1.0,
+	"high": 1.0,
+}
+
+
+static func forest_fraction(name: String) -> float:
+	var key := name.strip_edges()
+	return FOREST_FRACTION.get(key, FOREST_FRACTION[DEFAULT_PRESET])
+
 
 ## Distance d'affichage des bâtiments (Lot E4)
 const BUILDING_VISIBILITY_END := {
@@ -151,6 +169,19 @@ const PEOPLE_LOD_M := {
 	"high": 40.0,
 }
 const BOT_LOD_HYSTERESIS_M := 2.0
+## Peloton (lot PL1) : bots au plus aux niveaux 0 et 1 (avec leur ombre), les plus proches de la caméra ; les
+## autres restent au niveau 2. Au moins les 5 bots d'avant le peloton : rien ne change jusqu'à 5 bots. Valeurs
+## à confirmer par les bancs du PC (budgets GPU 6, 12 et 14 ms) ; en repli, les baisser.
+const BOT_DETAIL_MAX := {
+	"low": 5,
+	"medium": 6,
+	"high": 8,
+}
+
+
+## Nombre de bots au plus aux niveaux de détail 0 et 1 pour le préréglage `name` (lot PL1).
+static func bot_detail_max(name: String) -> int:
+	return int(BOT_DETAIL_MAX[applied_name(name)])
 
 
 ## Niveau de détail d'un bot à `dist_m` de la caméra, qui affiche aujourd'hui le niveau `current` (-1 : aucun).

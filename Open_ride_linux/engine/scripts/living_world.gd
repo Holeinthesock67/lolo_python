@@ -17,6 +17,7 @@ extends Node3D
 ##   tronçons OSM déjà chargés (osm_streamer.gd `layer_shapes`) à moins de AmbienceModel.RADIUS_M.
 
 const WindModel := preload("res://scripts/wind_model.gd")
+const RenderDiag := preload("res://scripts/render_diag.gd")
 const WindViewModel := preload("res://scripts/wind_view_model.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const GrassTufts := preload("res://scripts/grass_tufts.gd")
@@ -85,7 +86,9 @@ func configure(preset_name: String, living_enabled: bool, theme: Dictionary, env
 func set_route(route, road_width_m: float = 6.0) -> void:
 	_route = route
 	if grass != null:
-		grass.configure(int(living.get("grass_tufts", 0)) if enabled else 0, route, road_width_m)
+		# Essai de coût (OPENRIDE_RENDER_DIAG `herbe=F`, render_diag.gd) : part des touffes gardée.
+		var tufts := int(float(living.get("grass_tufts", 0)) * RenderDiag.number("herbe", 1.0))
+		grass.configure(tufts if enabled else 0, route, road_width_m)
 		grass.exclusions = _exclusions()
 		grass.height_at = _terrain_height(route)
 	# Biomes du parcours : modèle actif passé par world_streamer à osm_streamer (nul : pas de détails)

@@ -4,8 +4,8 @@
 Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|ouvert|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
-                 [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side]
-                 [--culling on|off] [--crowd climbs|all] [--load-guard on|off] [--probe] [--speed-kmh V] [--biome ID] [--out DOSSIER] [--list]
+                 [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side] [--camera-height M]
+                 [--culling on|off] [--forest on|off] [--crowd climbs|all] [--load-guard on|off] [--probe] [--speed-kmh V] [--biome ID] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
@@ -29,6 +29,7 @@ roule une heure, relance le parcours à chaque fin et vérifie images/s, saccade
 avec la sonde. `--culling on` active le tri de ce que la caméra ne voit pas (lot S1, coupé par défaut faute de gain
 mesuré) : scénario `rendu_invisible`, à comparer avec `--culling off` (défaut). `--load-guard on` laisse le garde-fou
 de charge couper des effets quand le GPU sature (lot Y6) ; coupé par défaut pour mesurer les préréglages tels quels.
+`--forest off` coupe les forêts lointaines en imposteurs (lot Y5, actives par défaut comme dans le jeu) : banc avant/après.
 
 Scénarios : ceux du core (`sim_scenarios.SCENARIOS`), ceux du banc (`sim_bench_scenarios/*.json`,
 qui peuvent fixer `world`, `biome` (lot U17), `workout`, `duration_s` et `difficulty_pct` dans une section
@@ -407,10 +408,14 @@ class Bench:
             self.t_core = started[0]
             cmd = rendu_jeu.godot_cmd([a.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}",
                                        "--audio-driver", "Dummy"], a.native, width, height)
+            if getattr(a, "gpu_profile", False):   # temps GPU par passe, dans engine.log
+                cmd.append("--gpu-profile")
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
                     f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}",
-                    f"--load-guard={a.load_guard}", f"--crowd={a.crowd}"]
+                    f"--forest={a.forest}", f"--load-guard={a.load_guard}", f"--crowd={a.crowd}"]
+            if a.camera_height is not None:   # vue follow_far plus haute (lot Y5 : voir les forêts lointaines)
+                cmd.append(f"--camera-height={a.camera_height:g}")
             if self.biome:
                 cmd.append(f"--biome={self.biome}")
             if self.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
@@ -1070,6 +1075,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="captures tous les N mètres de route au lieu de toutes les N secondes (lot S1)")
     ap.add_argument("--culling", default="off", choices=("on", "off"),
                     help="tri de ce que la caméra ne voit pas (lot S1, défaut off faute de gain mesuré ; on : essai)")
+    ap.add_argument("--camera-height", type=float,
+                    help="hauteur de la vue follow_far en m (défaut du jeu : 6 ; lot Y5 : voir par-dessus les arbres proches)")
+    ap.add_argument("--forest", default="on", choices=("on", "off"),
+                    help="forêts lointaines en imposteurs au-delà de 1,5 km (lot Y5, défaut on comme le jeu ; off : banc avant)")
     ap.add_argument("--crowd", default="climbs", choices=("climbs", "all"),
                     help="spectateurs sur les montées d'au moins 3 km (défaut, comme le jeu) ou sur toutes "
                          "(lot Y21 : la montée de 1,5 km du village pour mesurer les spectateurs)")
@@ -1077,6 +1086,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="garde-fou de charge de l'engine (lot Y6, défaut off : préréglages mesurés tels quels)")
     ap.add_argument("--latence", action="store_true",
                     help="latence des appuis du Click jusqu'à l'image (lot X7) : core et engine avec --latence")
+    ap.add_argument("--gpu-profile", action="store_true",
+                    help="option --gpu-profile de Godot : temps GPU de chaque passe de rendu dans engine.log")
     ap.add_argument("--probe", action="store_true",
                     help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))

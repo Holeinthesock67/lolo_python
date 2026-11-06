@@ -22,7 +22,7 @@ from typing import Any
 
 FILE_NAME = "derniers_choix.json"
 KEYS = ("route_id", "workout_id", "bots", "open_world")
-MAX_BOTS = 5   # 4 bots et un fantôme (contrat IPC §4, `start`)
+MAX_BOTS = 12   # 11 bots et un fantôme (contrat IPC §4, `start` ; lot PL1, 5 jusqu'à la 2.0)
 _ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 NAVS = ("ride", "destination", "loop")
 

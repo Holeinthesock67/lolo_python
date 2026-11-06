@@ -136,8 +136,8 @@ def test_menu_profile_bots_and_unknown_profile():
     assert [(b.id, b.name) for b in bots] == [("bot1", "Grimpeur"), ("bot2", "Bot 200 W"), ("bot3", "Grimpeur 2")]
     with pytest.raises(BotError, match="profil de bot inconnu"):
         bots_from_menu([{"kind": "profile", "profile": "puncheur"}], params, 250.0, None, None)
-    with pytest.raises(BotError, match="au plus 4"):
-        bots_from_menu([{"kind": "profile", "profile": "diesel"}] * 3 + [{"kind": "constant", "power_w": 200}] * 2,
+    with pytest.raises(BotError, match="au plus 11"):   # 4 jusqu'à la 2.0, 11 avec le peloton (lot PL1)
+        bots_from_menu([{"kind": "profile", "profile": "diesel"}] * 6 + [{"kind": "constant", "power_w": 200}] * 6,
                        params, 250.0, None, None)
     attach_segments(bots, (seg("climb", 0.0, 100.0),))
     assert bots[0].segments and bots[2].segments

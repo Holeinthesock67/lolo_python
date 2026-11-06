@@ -333,7 +333,7 @@ func _build_bots_panel() -> void:
 	_shrink_block(panel_bots, true)
 	panel_bots.name = "BotsPanel"
 	panel_bots.visible = false
-	for i in range(BotsViewModel.MAX_LINES):
+	for i in range(BotHudModel.MAX_ROWS):
 		var swatch := ColorRect.new()
 		swatch.size = Vector2(10.0, 18.0)
 		panel_bots.add_child(swatch)

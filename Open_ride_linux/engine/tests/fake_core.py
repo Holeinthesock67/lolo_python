@@ -359,10 +359,11 @@ def scenario_hello(core: FakeCore) -> str:
 
 def scenario_retry(core: FakeCore) -> str:
     """2. Commande ignorée trois fois : renvoyée, puis acquittée."""
-    # Les demandes de listes des menus (lot N6) ont un cmd_id plus grand : les accepter acquitterait
-    # « pause » par cumul (contrat §4) avant le 4ᵉ envoi.
-    core.accept_cmd = lambda msg, count: (count >= 4 if msg.get("name") == "pause"
-                                          else not str(msg.get("name", "")).startswith("list_"))
+    # Toute autre commande envoyée pendant l'essai a un cmd_id plus grand : l'accepter acquitterait « pause »
+    # par cumul (contrat §4) avant le 4ᵉ envoi. Demandes de listes des menus (lot N6), mais aussi
+    # « scene_ready », envoyée quand le décor du départ est prêt, parfois pendant ce scénario (chargement plus
+    # long avec les forêts lointaines du lot Y5) : refusées le temps de l'essai, l'engine les renvoie.
+    core.accept_cmd = lambda msg, count: count >= 4 if msg.get("name") == "pause" else False
     mark = core.log.mark()
     t0 = now()
     core.test_command("pause")

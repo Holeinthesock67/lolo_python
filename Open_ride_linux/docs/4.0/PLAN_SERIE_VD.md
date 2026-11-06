@@ -101,6 +101,24 @@ Chaque épreuve est un module pur du paquet `track/` du core (une règle, un fic
 - Élimination : stratégie de DS (rester devant à l'approche du sprint). Course aux points : effort réparti sur les sprints. Poursuite : bot à allure constante calée sur un temps cible.
 - Aucune règle physique propre aux bots : mêmes équations que le joueur.
 
+### 6.1 Comportements tactiques communs (décision du propriétaire du 6 novembre)
+
+Six comportements retenus, écrits **une seule fois** dans un module commun du core, `bot_tactics.py`, et non dans le paquet `track/` : chaque mode choisit lesquels il active dans une table, sans code propre (pas de second système de tactique).
+
+| Comportement | Ce que fait le bot | Vélodrome | Réutilisable dans |
+| --- | --- | --- | --- |
+| Coalitions | 2 ou 3 bots roulent ensemble pour prendre un tour ou creuser l'écart, puis redeviennent rivaux à l'approche du sprint | Scratch, points, tempo, omnium | Classique (échappées, Y10), Dernier survivant (s'unir contre le joueur), Course tactique 5.0 (pacte de relais, CT3) |
+| Marquage | Colle à la roue du coureur le plus dangereux au classement, le laisse partir s'il est loin | Points, élimination, keirin, omnium | Classique (sprints et maillots T14), Dernier survivant, Grand Prix des objets |
+| Bluff | Fausse attaque de 3 à 5 s puis se relève, pour faire sortir un adversaire trop tôt | Scratch, keirin, élimination | Classique (sprints de route), Dernier survivant (avant une arche) |
+| Gestion du classement | En fin d'épreuve, le leader surveille et ne prend plus de risque ; ceux qui sont derrière tentent le tout pour le tout | Points, omnium, élimination | Classique (maillots), Dernier survivant, Grand Prix des objets, Cyber-Rogue |
+| Fatigue visible | Réserve W′ vide : le bot se relève, décroche et le montre (haut de la piste, position assise, cadence qui baisse) | Toutes | Tous les modes à bots |
+| Personnalités | En plus du profil (grimpeur, rouleur, sprinteur, diesel), un caractère fixe par bot : attaquant, suiveur ou opportuniste, qui règle la fréquence des cinq comportements ci-dessus | Toutes | Tous les modes à bots, gardé d'une course à l'autre (même nom, même caractère) |
+
+- Chaque comportement ne change que la **puissance demandée** et la **place** du bot ; la physique, l'abri et la réserve W′ restent communs.
+- Le module prolonge le lot Y10 (attaques, relais, fatigue dans le core) au lieu de le dupliquer : si Y10 n'est pas livré avant VD7, VD7 livre `bot_tactics.py` et Y10 s'appuie dessus.
+- Réglage au menu (écran Prêt) : « Tactique des bots : aucune, simple, complète », complète par défaut sur le vélodrome ; les autres modes gardent leur réglage actuel tant que leur propre lot ne branche pas la table.
+- Comportements 7 et 8 de la liste du 6 novembre (erreurs humaines, équipier qui se sacrifie) non retenus pour l'instant.
+
 ## 7. Contrat, rendu et performances
 
 ### 7.1 Contrat (lot VD1, décision du propriétaire)
@@ -141,7 +159,7 @@ Chaque épreuve est un module pur du paquet `track/` du core (une règle, un fic
 | [VD4](../lots/LOT_VD4_ruban_releve.md) | Engine : ruban relevé, lignes peintes, caméra et coureurs qui penchent | VD2 | Moyenne |
 | [VD5](../lots/LOT_VD5_batiment_tribunes.md) | Engine : salle, tribunes, public, éclairage | VD2 | Grande |
 | [VD6](../lots/LOT_VD6_epreuves.md) | Core : toutes les épreuves de piste (paquet `track/`) | VD3, DS1, AS6 | Grande |
-| [VD7](../lots/LOT_VD7_bots_piste.md) | Bots en piste (peloton PL1) | VD3, VD6, PL1 | Moyenne |
+| [VD7](../lots/LOT_VD7_bots_piste.md) | Bots en piste (peloton PL1) et module commun `bot_tactics.py` (§6.1) | VD3, VD6, PL1 | Moyenne |
 | [VD8](../lots/LOT_VD8_maquettes.md) | Maquettes du HUD de piste, du tableau d'affichage et du bilan | VD6 | Petite |
 | [VD9](../lots/LOT_VD9_hud_sons.md) | Engine : HUD de piste, tableau d'affichage, cloche, pistolet, public | VD6, VD8 | Moyenne |
 | [VD10](../lots/LOT_VD10_menu.md) | Menu : filtre des pistes, écran Prêt et options d'épreuve | VD6 | Petite |

@@ -49,6 +49,8 @@ RESPONSE_FACTOR = 1.25         # le bot qui suit roule à 1,25 × CP...
 RESPONSE_MAX_S = 60.0          # ... au plus 60 s...
 RESPONSE_CAUGHT_S = 0.3        # ... ou jusqu'à revenir à 0,3 s (la roue suivie du lot AS1 prend le relais)
 RESPONSE_STOP_RESERVE_PCT = 20.0
+RESPONSE_WHEEL_M = 1.0         # en chasse, une roue à moins de 1 m devant : on la suit, le placement fait doubler
+RESPONSE_START_S = 30.0        # aucun départ jugé dans les 30 premières secondes (mise en route)
 RESPONSE_COOLDOWN_S = 30.0     # un même départ n'est jugé qu'une fois en 30 s
 DURABILITY_START_S = 3600.0    # fatigue de longue durée au-delà de 60 min de séance
 DURABILITY_FLOOR = 0.70        # jamais moins de 70 % de la CP (séance de plusieurs heures)
@@ -245,8 +247,13 @@ class Tactics:
                 return max(p, power_w), True
         if self.respond_to is not None:
             if t < self.respond_until and reserve > RESPONSE_STOP_RESERVE_PCT:
+                wheel = getattr(bot, "wheel", None)
+                if wheel is not None and wheel[0] < RESPONSE_WHEEL_M:
+                    return power_w, False   # roue à moins de 1 m : il la suit (lot AS1) au lieu de foncer dedans
                 return max(RESPONSE_FACTOR * bot.cp_w, power_w), True
             self.respond_to = None
+        if tactical:   # sprint ou attaque de la stratégie du T12 : les rôles du groupe n'y touchent pas
+            return power_w, True
         if self.role == "drop":
             return DROP_FACTOR * power_w, True
         if self.role in ("take", "pass"):
@@ -334,7 +341,8 @@ def update_field(field: Field, bots: list[Any], rider: tuple[float, float] | Non
     field._acc = 0.0
     t = field.t
     runners = _runners(bots, rider, length_m, is_loop)
-    for gi, grp in enumerate(groups(runners)):
+    pos = {id(r[3]): r[0] for r in runners if r[3] is not None}   # positions déroulées des bots
+    for grp in groups(runners):
         tacticians = [r for r in grp if r[3] is not None and getattr(r[3], "tactics", None) is not None]
         if not tacticians:
             continue
@@ -342,12 +350,12 @@ def update_field(field: Field, bots: list[Any], rider: tuple[float, float] | Non
         for _, v, rid, b in tacticians:
             tac = b.tactics
             tac._now_bot = b.t
-            if not tac.on.responses:
+            if not tac.on.responses or t < RESPONSE_START_S:   # départ arrêté : les écarts se font tout seuls
                 continue
             climbing = grade_at is not None and grade_at(b.s) >= FLAT_MAX_GRADE_PCT
             seen = set()
             for o_s, _, o_id, _ in runners:
-                gap = (o_s - _unrolled(b, runners)) / max(v, 1.0)
+                gap = (o_s - pos[id(b)]) / max(v, 1.0)
                 if gap <= 0.0 or gap > GROUP_GAP_S + 2 * RESPONSE_WINDOW_S:
                     continue
                 seen.add(o_id)
@@ -356,16 +364,9 @@ def update_field(field: Field, bots: list[Any], rider: tuple[float, float] | Non
                 del tac._gaps[gone]
             if tac.respond_to is not None:
                 target = next((r for r in runners if r[2] == tac.respond_to), None)
-                if target is None or (target[0] - _unrolled(b, runners)) / max(v, 1.0) <= RESPONSE_CAUGHT_S:
+                if target is None or (target[0] - pos[id(b)]) / max(v, 1.0) <= RESPONSE_CAUGHT_S:
                     tac.respond_to = None
         _relays(field, grp, t, grade_at)
-
-
-def _unrolled(bot: Any, runners: list[tuple[float, float, str, Any]]) -> float:
-    for s, _, _, b in runners:
-        if b is bot:
-            return s
-    return bot.s
 
 
 def _eligible(b: Any) -> bool:
@@ -441,8 +442,8 @@ def _hand_over(head: Any, next_up: Any, behind: list[Any], t: float) -> None:
     _shift(head, True)
     for b in behind:
         tac = getattr(b, "tactics", None) if b is not None else None
-        if tac is None or tac.role in ("drop", "rest"):
-            continue
+        if tac is None or tac.role in ("drop", "rest") or not _eligible(b):
+            continue   # sprinteur ou bot vide : il reste dans les roues
         tac.role = "take" if b is next_up else "pass"
         tac.role_until = t + DROP_MAX_S
 

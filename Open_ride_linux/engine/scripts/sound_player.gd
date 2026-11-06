@@ -753,7 +753,10 @@ static func _synthesize_voice(kind: String) -> AudioStreamWAV:
 
 ## Jingle d'événement (lot T17) : somme des notes de `EventSoundsModel.JINGLES`. Timbre `tone` : attaque
 ## de 8 ms, fondamentale et harmoniques 2 et 3 (0,3 et 0,1), décroissance douce puis fondu de 30 ms ;
-## timbre `bell` : partiels 1 ; 2,76 ; 5,40 (0,5 et 0,25) amortis en exp(−4 t / durée). Pic ramené à 0,8.
+## timbre `bell` : partiels 1 ; 2,76 ; 5,40 (0,5 et 0,25) amortis en exp(−4 t / durée) ; timbre `slide`
+## (mode WTF) : comme `tone`, la fréquence glissant en ratio constant jusqu'au 6e champ de la note ; timbre
+## `noise` (mode WTF) : bruit fixe (même graine) passé au filtre à un pôle de la fréquence de la note, attaque
+## de 2 ms, amorti en exp(−5 t / durée). Pic ramené à 0,8.
 static func _synthesize_jingle(jingle: String) -> AudioStreamWAV:
 	var notes: Array = EventSoundsModel.JINGLES[jingle]
 	var n := int(ceil(EventSoundsModel.duration_s(jingle) * MIX_RATE)) + 1
@@ -766,11 +769,25 @@ static func _synthesize_jingle(jingle: String) -> AudioStreamWAV:
 		var m := mini(int(dur * MIX_RATE), n - i0)
 		var f := float(note[1])
 		var level := float(note[3])
-		var bell: bool = note[4] == "bell"
+		var timbre := str(note[4])
+		var bell := timbre == "bell"
+		var f_end := float(note[5]) if note.size() > 5 else f
+		var phase := 0.0
+		var lp := 0.0
+		var alpha := 1.0 - exp(-TAU * f / MIX_RATE)
+		var noise := _lcg_noise(m, 7919 + int(f)) if timbre == "noise" else PackedFloat32Array()
 		for j in range(m):
 			var t := float(j) / MIX_RATE
 			var v := 0.0
-			if bell:
+			if timbre == "slide":
+				var fi := f * pow(f_end / f, t / dur)
+				phase += TAU * fi / MIX_RATE
+				var envs := minf(1.0, t / 0.008) * minf(1.0, (dur - t) / 0.03)
+				v = (sin(phase) + 0.3 * sin(2.0 * phase) + 0.1 * sin(3.0 * phase)) * envs
+			elif timbre == "noise":
+				lp += alpha * (noise[j] - lp)
+				v = lp * 2.0 * minf(1.0, t / 0.002) * exp(-5.0 * t / dur) * minf(1.0, (dur - t) / 0.01)
+			elif bell:
 				v = (sin(TAU * f * t) + 0.5 * sin(TAU * f * 2.76 * t) + 0.25 * sin(TAU * f * 5.4 * t)) \
 						* exp(-4.0 * t / dur) * minf(1.0, t / 0.002)
 			else:

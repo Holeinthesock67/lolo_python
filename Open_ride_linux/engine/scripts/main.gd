@@ -19,6 +19,7 @@ const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
+const ForestImpostors := preload("res://scripts/forest_impostors.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const RoadSurface := preload("res://scripts/road_surface.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
@@ -61,6 +62,7 @@ const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RogueHost := preload("res://scripts/rogue/rogue_host.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
+const WtfSoundModel := preload("res://scripts/wtf/wtf_sound_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
 const WorldMenuView := preload("res://scripts/world_menu_view.gd")
@@ -224,6 +226,7 @@ var segment_markers = null
 var segment_hud = SegmentHudModel.new()
 ## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
 var event_sounds = EventSoundsModel.new()
+var wtf_sounds = WtfSoundModel.new()   # sons des gags du mode WTF (lot WTF7)
 var _beep_until_s := -INF
 ## Série R (lot R10) : scène du mode Cyber-Rogue, instanciée quand `state.mode` vaut « ROGUE ».
 var rogue_host = RogueHost.new()
@@ -238,6 +241,7 @@ func _ready() -> void:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
 	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)), -1.0, "--camera")
+	camera_views.far_height_m = float(cfg.get("camera_height", CameraViews.FAR_HEIGHT_M))
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
 	print("Mode d'affichage : ", _display_name)
@@ -256,6 +260,13 @@ func _ready() -> void:
 		tree_rend.name = "TreeRenderer"
 		streamer.add_child(tree_rend)
 		streamer.tree_renderer = tree_rend
+	if streamer.forest_impostors == null:
+		var forest = ForestImpostors.new()
+		forest.name = "ForestImpostors"
+		forest.enabled = bool(cfg.get("forest", true))
+		streamer.add_child(forest)
+		streamer.forest_impostors = forest
+	print("Forêts lointaines : ", "actives" if streamer.forest_impostors.enabled else "coupées")
 	if streamer.osm_streamer == null:
 		var osm_st = OsmStreamer.new()
 		osm_st.name = "OsmStreamer"
@@ -873,9 +884,10 @@ func _set_trial_badge(on: bool) -> void:
 ## le sous-titre « Montée 1 · 4e catégorie » de l'arche de départ, juste au-dessus de la caméra, se lisait à
 ## travers les menus translucides). Le préchauffage des marques (warm_up) est rangé sous la caméra, il reste
 ## dessiné. Run Cyber-Rogue : la scène du mode a son HUD diégétique (lot R11), le HUD classique (panneaux,
-## profil, courbes) est caché ; le compteur d'images/s reste.
+## profil, courbes) est caché ; le compteur d'images/s reste. Attente du départ (écran « Start your engines »
+## de la 3.0) : HUD caché aussi, l'écran montre lui-même la cadence (ses panneaux passaient sous le titre).
 func _sync_hud(menu_shown: bool) -> void:
-	hud.visible = not menu_shown and not rogue_host.is_active()
+	hud.visible = not menu_shown and not rogue_host.is_active() and menu_flow.start_wait.is_empty()
 	if overlay_layer != null:
 		overlay_layer.visible = not menu_shown
 	if segment_markers != null:
@@ -888,7 +900,7 @@ func _step_start_wait(delta: float) -> void:
 	var rogue_scene: bool = rogue_host.is_active()
 	if _start_wait.frame(ROGUE_SCENE_ID if rogue_scene else _route_loaded_id,
 			0 if rogue_scene else streamer.pending_count(), delta * 1000.0):
-		print("Décor du départ prêt : %s" % _start_wait.route_id)
+		print("Décor du départ prêt : %s (à %d ms)" % [_start_wait.route_id, Time.get_ticks_msec()])
 		ipc.test_log("scene_ready id=%s" % _start_wait.route_id)
 	if _start_wait.should_send(Time.get_ticks_msec() / 1000.0, str(menu_flow.start_wait.get("phase", ""))):
 		ipc.send_command("scene_ready", {"route_id": _start_wait.route_id})
@@ -1039,9 +1051,12 @@ func _process(delta: float) -> void:
 		# Bots placés avant le décor vivant : ses cyclistes, ses véhicules et son compte des contacts lisent les
 		# places des bots de cette image. Après une image bloquée, des places de l'image d'avant, face à la
 		# caméra déjà avancée, comptaient un contact qui n'existait pas (rejeu #707, 490 ms bloquées à t = 132 s).
+		# Bots extrapolés au même instant `now` que le cycliste : lus plus tard dans l'image (après la fenêtre de
+		# tuiles, 3 à 25 ms), ils avançaient de v × ce délai, et un bot à 1,78 m derrière le cycliste dans le core
+		# s'affichait à moins de 1,7 m (contacts du banc course_bots, 6 novembre).
 		if bots_model.count() > 0:
 			t_step = Time.get_ticks_usec()
-			_show_bots(s_route, float(follow.last_frame["v"]))
+			_show_bots(s_route, float(follow.last_frame["v"]), now)
 			_bots_frame = Engine.get_process_frames()
 			PerfProbe.mark_since("bots", "", t_step)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
@@ -1154,6 +1169,18 @@ func _poll_live_world() -> void:
 		streamer.set_previews(live_world.previews(float(follow.last_frame["s"])))
 
 ## Dossier du parcours : <routes>/<route_id>.world, repli sur la démo embarquée pour « demo ».
+## Carte du parcours de l'écran d'attente du départ (StartWaitModel.route_card) : entrée de la liste des
+## parcours du core et profil du parcours chargé ; {} sans parcours (run Cyber-Rogue : `route_id` nul).
+func _start_route_card(route_id) -> Dictionary:
+	if route_id == null:
+		return {}
+	for item in menu_flow.routes_raw:
+		if item is Dictionary and str(item.get("id", "")) == str(route_id):
+			var prof: Dictionary = _route_profile.get("profile", {}) if _route_profile.get("id", "") == str(route_id) else {}
+			return StartWaitModel.route_card(item, prof)
+	return {}
+
+
 func _route_path(route_id: String) -> String:
 	if route_id.begins_with(OW_PREFIX):
 		# Monde ouvert : « ow:<id> » désigne <open_world_dir>/<id>.world (contrat IPC 1.5, hello_ack.config).
@@ -1229,6 +1256,8 @@ func _poll_route_job() -> void:
 	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
 	if living_decor != null:   # cyclistes du décor (lot AS7), spectateurs et passants (lot Y21) préparés au chargement
 		living_decor.warm_up(camera)
+	if streamer.forest_impostors != null:   # forêts lointaines (lot Y5) : pipeline compilé avant la première forêt
+		streamer.forest_impostors.warm_up(camera)
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)
@@ -1246,8 +1275,8 @@ func _poll_route_job() -> void:
 		print("[essai] %d consignes chargées (%s)" % [_cues.cues.size(), CueModel.path_for(job["id"])])
 	elif _cues.load_error != "":
 		print("[essai] consignes ignorées (%s) : %s" % [CueModel.path_for(job["id"]), _cues.load_error])
-	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s)" % [job["id"], route.length_m, route.type,
-			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"]])
+	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s) (à %d ms)" % [job["id"], route.length_m, route.type,
+			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"], Time.get_ticks_msec()])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])
 	_probe.route_ready()   # démarrage : première image jouable comptée à partir d'ici (lot X15)
 
@@ -1705,6 +1734,8 @@ func _on_state_received(state: Dictionary) -> void:
 	# Écran « Start your engines » pendant l'attente du départ ; feux verts quand la séance part.
 	var waiting: bool = not menu_flow.start_wait.is_empty()
 	if waiting:
+		if not _was_start_waiting:
+			start_screen.set_route(_start_route_card(state.get("route_id", null)))
 		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
 		# Préchauffage des gags WTF sous l'écran d'attente, pas à RUNNING (lot Y20) ; Cyber-Rogue : rogue_host.gd.
 		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed():
@@ -1749,13 +1780,15 @@ func _on_state_received(state: Dictionary) -> void:
 	if route_id != _route_id_requested:
 		_request_route(route_id)
 	var running := session_state == "RUNNING"
-	follow.push_frame(Time.get_ticks_usec(), float(state.get("s", 0.0)), float(state.get("v", 0.0)), running)
+	# Une seule heure de réception pour le cycliste et les bots de la trame : le core les donne au même instant.
+	var t_frame_us := Time.get_ticks_usec()
+	follow.push_frame(t_frame_us, float(state.get("s", 0.0)), float(state.get("v", 0.0)), running)
 	ipc.test_log("state seq=%d s=%.3f session=%s" % [int(state.get("seq", 0)), float(state.get("s", 0.0)), session_state])
 
 	if running and route != null:
 		_give_cues(state)
 	var in_session := running or session_state == "PAUSED"
-	bots_model.push(state.get("bots", null) if in_session else null, Time.get_ticks_usec())
+	bots_model.push(state.get("bots", null) if in_session else null, t_frame_us)
 	bots_model.set_race(state if in_session else null)
 	_draft = {"draft": state.get("draft", null) if in_session else null,
 		"draft_bot": state.get("draft_bot", null) if in_session else null}
@@ -1789,7 +1822,7 @@ func _on_state_received(state: Dictionary) -> void:
 	# _process les place avec le s lissé de la caméra. Deux placements par image, l'un avec le s brut, faisaient
 	# avancer les bots par à-coups (rejeu du 2 novembre, lot AS2).
 	if Engine.get_process_frames() - _bots_frame > 1 or bots_model.count() == 0:
-		_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)))
+		_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)), t_frame_us)
 	if living_decor != null:
 		living_decor.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if living_world != null:
@@ -1811,6 +1844,8 @@ func _on_state_received(state: Dictionary) -> void:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0
 		sound_player.update_audio(state, now_s, camera.position)
 	for jingle in event_sounds.on_state(state):
+		_play_event(jingle)
+	for jingle in wtf_sounds.on_state(state.get("wtf", null)):
 		_play_event(jingle)
 
 
@@ -1875,9 +1910,10 @@ func _update_survivor(state: Dictionary, in_session: bool) -> void:
 	segment_markers.set_survivor_arches(survivor_hud.arches_to_draw(state))
 
 
-func _show_bots(rider_s: float, rider_v: float) -> void:
+## Bots vus du cycliste à `now_us`, l'instant où `rider_s` a été calculé (même horloge que les trames).
+func _show_bots(rider_s: float, rider_v: float, now_us: int) -> void:
 	bots_model.vehicles = living_decor.vehicle_places() if living_decor != null else []
-	var view: Array = bots_model.view(rider_s, rider_v, Time.get_ticks_usec())
+	var view: Array = bots_model.view(rider_s, rider_v, now_us)
 	if hud != null and hud.has_method("update_bots"):
 		# Dernier survivant : la liste des coureurs (survivor_view.gd) remplace l'encart des bots
 		hud.update_bots([] if _last_state.has("survivor") else view, bots_model.race())
