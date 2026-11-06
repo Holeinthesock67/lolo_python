@@ -1,0 +1,17 @@
+[OK] 1280x720_low · depart_decor · capture enregistrée
+[OK] 1280x720_low · depart_decor · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · depart_decor · écran affiché, un feu, pastille Décor en cours : {'animated': False, 'go': False, 'lights': 1, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'current'}, {'label': 'Trainer', 'state': 'todo'}, {'label': 'Pédalage', 'state': 'todo'}], 'text': 'Départ : chargement du décor…  (Y : annuler)', 'visible': True}
+[OK] 1280x720_low · depart_decor · carte du parcours demo : {'animated': False, 'go': False, 'lights': 1, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'current'}, {'label': 'Trainer', 'state': 'todo'}, {'label': 'Pédalage', 'state': 'todo'}], 'text': 'Départ : chargement du décor…  (Y : annuler)', 'visible': True}
+[OK] 1280x720_low · depart_decor · écran figé pendant le chargement : {'animated': False, 'go': False, 'lights': 1, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'current'}, {'label': 'Trainer', 'state': 'todo'}, {'label': 'Pédalage', 'state': 'todo'}], 'text': 'Départ : chargement du décor…  (Y : annuler)', 'visible': True}
+[ÉCHEC] 1280x720_low · depart_decor · feu rouge allumé à l'image : 0.00% de pixels rouges
+[ÉCHEC] 1280x720_low · depart_decor · voile opaque à l'image : 0% de pixels sombres
+[OK] 1280x720_low · depart_decor · bandeau caché (hors rappel des commandes)
+[OK] 1280x720_low · depart_pedalage · capture enregistrée
+[OK] 1280x720_low · depart_pedalage · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · depart_pedalage · HUD de séance caché pendant l'attente
+[OK] 1280x720_low · depart_pedalage · quatre feux, pastille Pédalage en cours : {'animated': True, 'go': False, 'lights': 4, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'done'}, {'label': 'Trainer', 'state': 'done'}, {'label': 'Pédalage', 'state': 'current'}], 'text': 'Pédale pour partir : 30 tr/min, 1,6 s sur 3 s  (Y : annuler)', 'visible': True}
+[OK] 1280x720_low · depart_pedalage · feux rouges allumés : 4.26% de pixels rouges
+[OK] 1280x720_low · depart_go · capture enregistrée
+[OK] 1280x720_low · depart_go · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · depart_go · feux verts « GO ! » : {'animated': False, 'go': True, 'lights': 0, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [], 'text': '', 'visible': True}
+[OK] 1280x720_low · depart_go · HUD de séance revenu au départ
