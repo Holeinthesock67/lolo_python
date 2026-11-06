@@ -1,0 +1,10 @@
+main_low_1: 51.7 s (07:18:34) ; jouable 42.16 s ; attente 137 appels, 33.3 ms ; GPU 6.07 / 6.43 / 10.29 ; départ 79 ; ?
+br_low_1: 41.2 s (07:22:15) ; jouable 35.121 s ; attente 178 appels, 32.1 ms ; GPU 6.03 / 6.42 / 10.36 ; départ 64 ; aucune sur 2 image(s) de plus de 50 ms
+br_low_2: 41.7 s (07:26:07) ; jouable 33.006 s ; attente 178 appels, 29.1 ms ; GPU 5.96 / 6.37 / 9.13 ; départ 100 ; aucune sur 2 image(s) de plus de 50 ms
+main_low_2: 41.3 s (07:29:58) ; jouable 32.541 s ; attente 137 appels, 28.4 ms ; GPU 5.92 / 6.21 / 9.82 ; départ 67 ; aucune sur 2 image(s) de plus de 50 ms
+main_medium_1: 42.6 s (07:33:52) ; jouable 41.077 s ; attente 169 appels, 34.3 ms ; GPU 9.78 / 10.87 / 10.97 ; départ 99 ; ?
+br_medium_1: 47.0 s (07:37:49) ; jouable 44.53 s ; attente 210 appels, 36.7 ms ; GPU 10.15 / 10.52 / 10.81 ; départ 112 ; ?
+br_high_1: 45.0 s (07:41:40) ; jouable 46.549 s ; attente 209 appels, 39.4 ms ; GPU 10.43 / 10.76 / 11.28 ; départ 120 ; ?
+main_high_1: 48.2 s (07:45:35) ; jouable 48.708 s ; attente 168 appels, 39.2 ms ; GPU 11.31 / 11.94 / 12.15 ; départ 126 ; ?
+main_medium_2: 45.7 s (07:49:24) ; jouable 45.118 s ; attente 169 appels, 38.9 ms ; GPU 9.53 / 10.24 / 10.31 ; départ 115 ; ?
+main_high_2: 44.8 s (07:53:15) ; jouable 45.135 s ; attente 168 appels, 37.5 ms ; GPU 10.17 / 10.63 / 11.48 ; départ 67 ; ?
