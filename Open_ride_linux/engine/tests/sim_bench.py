@@ -45,7 +45,9 @@ journal de séance, motifs des journaux du core et de l'engine, éléments du HU
 attente avec son renvoi à l'étape de la recette ; `bench.powerups` (contenu de `~/OpenRide/powerups.toml`,
 ex. arches rapprochées) et `bench.bot_profiles` (`--bot-profile` du core). Série DS : `bench.mode` (ou `--mode`) donne
 le mode de la séance (`start.mode`, ex. `survivor`, scénario `dernier_survivant`) et `bench.config` des sections
-ajoutées à config.toml (ex. `{"survivor": {"opponents": 2}}`).
+ajoutées à config.toml (ex. `{"survivor": {"opponents": 2}}`). Lot AS6 : scénario `circulation_proche`
+(`[ride] traffic_bench_s`, passages forcés d'un tracteur lent puis d'un camion qui double) et `bench.vehicle_draft_expect`
+(abri derrière un véhicule reçu au journal de séance), pour mesurer le coût des véhicules proches.
 
 Fiabilité (lot X35) : les captures périodiques commencent après le chargement du parcours (`route_loaded`
 puis SETTLE_S) et une capture sans réponse est redemandée une fois ; seules les captures demandées après le
@@ -301,6 +303,7 @@ class Bench:
                               min(max(scenario_duration(spec) + 15.0, 45.0), 600.0))
         self.every = float(args.every or settings.get("every_s") or 15.0)
         self.decor_expect = [str(k) for k in settings.get("decor_expect", [])]
+        self.vehicle_draft_expect = bool(settings.get("vehicle_draft_expect"))   # lot AS6 : abri d'un véhicule reçu
         self.sounds_expect = [[str(k) for k in group] for group in settings.get("sounds_expect", [])]
         # Lot X33 : appuis joués (clavier ; ceux du Click sont déjà des événements du scénario), attentes,
         # valeurs des bonus et bots à profil.
@@ -732,6 +735,11 @@ class Bench:
         r = self.report
         recs = [x for x in self.records if x.get("kind") == "record"]
         t0 = self.t0_wall
+        if self.vehicle_draft_expect:   # lot AS6 (circulation_proche) : passages forcés, sans bot
+            sheltered = [x for x in recs if float(x.get("draft") or 0.0) >= 0.05]
+            r.check(bool(sheltered), "circulation : abri derrière un véhicule reçu",
+                    f"{len(sheltered)} s sur {len(recs)}, {max(float(x['draft']) for x in sheltered):.2f} au plus"
+                    if sheltered else f"aucun abri sur {len(recs)} s")
         devs = [x for x in self.records if x.get("kind") == "device"]
         for ev in self.spec.get("events", []):
             t = float(ev.get("t", 0))
