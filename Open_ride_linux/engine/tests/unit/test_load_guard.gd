@@ -44,7 +44,11 @@ func _feed(g, gpu_ms: float, seconds: float, t0 := 0.0) -> Array:
 
 
 func _run() -> void:
-	var high: Dictionary = QualityPresets.image("high")
+	# Préréglage high avec tous les effets que le garde-fou sait couper (depuis le 6 novembre, le high a déjà
+	# MSAA 2× et pas de SSIL : on les remet pour éprouver tout l'ordre de coupe)
+	var high: Dictionary = QualityPresets.image("high").duplicate()
+	high["ssil"] = "low"
+	high["msaa"] = 4
 	var g = LoadGuard.new(high)
 
 	# Saturation : SSIL coupé à 3 s, SSAO 3 s plus tard.

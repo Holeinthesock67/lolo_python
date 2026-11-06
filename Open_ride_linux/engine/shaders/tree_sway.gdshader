@@ -1,5 +1,6 @@
 shader_type spatial;
-render_mode cull_back;
+// Feuillage en lambert sans reflet spéculaire (étude du rendu du 6 novembre : même image, moins de calcul)
+render_mode cull_back, diffuse_lambert, specular_disabled;
 
 // Balancement des arbres et des touffes d'herbe au vent (Lot P5).
 // Le vent vient du modèle P4 (wind_model.gd) par quatre paramètres globaux, mis à jour une fois par
@@ -51,6 +52,8 @@ uniform float lod_blend_m = 4.0;
 uniform bool normals_up_both_sides = false;
 // Teinte du feuillage, neutre par défaut ; réglée par les saisons (P18, version 2.0).
 uniform vec3 foliage_tint : source_color = vec3(1.0);
+// Herbe : pied plus sombre, pointe plus claire (0 = aucun dégradé ; arbres : toujours 0)
+uniform float root_darken : hint_range(0.0, 1.0) = 0.0;
 
 // Position du sommet dans l'objet (avant le vent : les motifs suivent l'arbre) et décalage propre à l'arbre.
 varying vec3 v_obj;
@@ -185,6 +188,10 @@ void fragment() {
 		BACKLIGHT = lineaire(col) * through;
 		// Lumière du ciel diffusée par les feuilles : un houppier à l'ombre reste vert, pas noir
 		EMISSION = lineaire(col) * through * 0.15;
+	}
+	if (root_darken > 0.0) {
+		float hh = clamp(v_obj.y / sway_height_m, 0.0, 1.0);
+		col *= mix(1.0 - root_darken, 1.0 + root_darken * 0.25, hh);
 	}
 	ALBEDO = lineaire(col);
 	ROUGHNESS = rough;

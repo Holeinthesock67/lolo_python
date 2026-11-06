@@ -24,6 +24,7 @@ const QualityPresets := preload("res://scripts/quality_presets.gd")
 const ViewCulling := preload("res://scripts/view_culling.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
+const RenderDiag := preload("res://scripts/render_diag.gd")
 const LOD1_SWAY_FACTOR := 0.6   # amplitude réduite des panneaux croisés du LOD 1
 
 const CELL_SIZE_M := 250.0
@@ -77,7 +78,7 @@ func _init() -> void:
 func _init_materials() -> void:
 	if _tree_sway:
 		_lod0_material = sway_material(false)
-		_lod1_material = sway_material(true)
+		_lod1_material = sway_material(true, true)
 		return
 	_lod0_material = StandardMaterial3D.new()
 	_lod0_material.vertex_color_use_as_albedo = true
@@ -119,14 +120,15 @@ static var _lod1_shader: Shader
 
 
 ## Matériau de balancement (Lot P5) ; `lod1` : panneaux croisés vus des deux côtés, amplitude réduite.
-static func sway_material(lod1: bool) -> ShaderMaterial:
+## `far` : arbres lointains (LOD 1 des arbres, pas l'herbe) : sans vent, invisible à cette distance (6 novembre).
+static func sway_material(lod1: bool, far: bool = false) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	if lod1:
 		if _lod1_shader == null:
 			_lod1_shader = Shader.new()
-			_lod1_shader.code = TreeSwayShader.code.replace("render_mode cull_back;", "render_mode cull_disabled;")
+			_lod1_shader.code = TreeSwayShader.code.replace("render_mode cull_back,", "render_mode cull_disabled,")
 		mat.shader = _lod1_shader
-		mat.set_shader_parameter("sway_amplitude_m", 0.45 * LOD1_SWAY_FACTOR)
+		mat.set_shader_parameter("sway_amplitude_m", 0.0 if far else 0.45 * LOD1_SWAY_FACTOR)
 	else:
 		mat.shader = TreeSwayShader
 	return mat
@@ -142,7 +144,7 @@ func _look(index: int) -> Dictionary:
 		var m1: Material = _lod1_material
 		if _tree_sway:
 			m0 = sway_material(false)
-			m1 = sway_material(true)
+			m1 = sway_material(true, true)
 			for m in [m0, m1]:
 				(m as ShaderMaterial).set_shader_parameter("sway_height_m", float(built["height"]))
 				(m as ShaderMaterial).set_shader_parameter("lod_blend_m", SPECIES_LOD_BLEND_M)
@@ -459,7 +461,9 @@ func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
 	var mmi0 := MultiMeshInstance3D.new()
 	mmi0.multimesh = mm0
 	mmi0.material_override = look["m0"]
-	mmi0.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	# Essais de coût (OPENRIDE_RENDER_DIAG, render_diag.gd) : `sans_ombres_arbres`, `arbres_lod0_m=M`.
+	mmi0.cast_shadow = (GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if RenderDiag.has("sans_ombres_arbres")
+		else GeometryInstance3D.SHADOW_CASTING_SETTING_ON)
 	var ranges := lod_ranges(species, look["m0"] is ShaderMaterial)
 	mmi0.visibility_range_begin = 0.0
 	mmi0.visibility_range_end = ranges.x
@@ -482,7 +486,8 @@ func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
 static func lod_ranges(species: int, shader_lod: bool) -> Vector2:
 	var switch_m := TreeSpecies.lod0_m(TreeSpecies.kind_of(species)) if species != TreeSpecies.GENERIC else 0.0
 	if switch_m <= 0.0 or not shader_lod:
-		return Vector2(LOD0_MAX_DIST_M, LOD0_MAX_DIST_M)
+		var lod0_m := RenderDiag.number("arbres_lod0_m", LOD0_MAX_DIST_M)   # essai de coût (render_diag.gd)
+		return Vector2(lod0_m, lod0_m)
 	return Vector2(switch_m + SPECIES_LOD_BLEND_M + CELL_RADIUS_M,
 		maxf(0.0, switch_m - SPECIES_LOD_BLEND_M - CELL_RADIUS_M))
 

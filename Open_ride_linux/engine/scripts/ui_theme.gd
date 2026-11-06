@@ -27,6 +27,12 @@ const BANNER_ALERT := Color(0.6, 0.1, 0.05, 0.85)
 const BANNER_INFO_BORDER := Color(0.094, 0.941, 1.000, 0.6)
 const KEYCAP := Color(0.102, 0.137, 0.314)        # fond des touches du bandeau
 const KEYCAP_EDGE := Color(0.227, 0.278, 0.502)
+# Écran « Start your engines » (start_screen.gd, 3.0) : portique des feux de départ.
+const START_GANTRY := Color(0.082, 0.102, 0.180)    # poutre du portique
+const START_HOUSING := Color(0.027, 0.035, 0.071)   # boîtier des lampes
+const START_HOOD := Color(0.051, 0.067, 0.141)      # visière au-dessus d'une lampe
+const START_LAMP_OFF := Color(0.106, 0.133, 0.267)  # lampe éteinte
+const START_LAMP_SHINE := Color(1.0, 1.0, 1.0, 0.35)  # reflet sur une lampe allumée
 ## Voile sur la scène 3D derrière le menu : plus dense à gauche (liste), plus léger à droite.
 const VEIL_LEFT := Color(0.020, 0.024, 0.059, 0.94)
 const VEIL_RIGHT := Color(0.043, 0.063, 0.188, 0.80)

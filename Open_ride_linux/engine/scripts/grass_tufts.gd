@@ -32,6 +32,7 @@ extends Node3D
 ##   que le choix des touffes lointaines soit le même côté CPU et côté GPU.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
+const RenderDiag := preload("res://scripts/render_diag.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
 const RoadClearance := preload("res://scripts/road_clearance.gd")
@@ -187,6 +188,7 @@ func _tuft_material(lod_begin: float, lod_end: float) -> ShaderMaterial:
 	m.set_shader_parameter("lod_end_m", lod_end)
 	m.set_shader_parameter("lod_blend_m", LOD_BLEND_M)
 	m.set_shader_parameter("normals_up_both_sides", true)
+	m.set_shader_parameter("root_darken", clampf(RenderDiag.number("herbe_degrade", 0.0), 0.0, 1.0))
 	return m
 
 
