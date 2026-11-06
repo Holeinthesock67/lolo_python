@@ -22,6 +22,7 @@ Faire valider le vélodrome par le propriétaire sur le trainer.
 - Étape 3 (10 min) : élimination ou scratch avec le peloton.
 - Étape 4 (10 min) : keirin et course aux points (ou tempo) avec le peloton.
 - Étape 5 (2 séances de 10 min, ou une soirée dédiée) : omnium raccourci, poursuite contre le fantôme.
+- Étape 6 (10 min) : vitesse par équipes et poursuite par équipes, puis américaine raccourcie.
 - Notes sur 5 et retours consignés.
 
 ## 4. Critères d'acceptation

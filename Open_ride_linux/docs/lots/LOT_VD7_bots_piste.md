@@ -18,7 +18,7 @@ Faire courir le peloton d'environ 12 bots sur la piste, avec des stratégies pro
 ## 3. Travail demandé
 
 - Hauteur sur la piste par bot (corde, ligne des stayers, attaque par le haut).
-- Stratégies : élimination (DS), points et tempo (sprints), scratch, keirin (placement derrière le derny, puis sprint), omnium, poursuite à allure constante.
+- Stratégies : élimination (DS), points et tempo (sprints), scratch, keirin (placement derrière le derny, puis sprint), omnium, poursuite à allure constante ; coéquipiers des épreuves par équipes (relais réguliers, s'écarter au bon moment, relais de l'américaine avec le joueur).
 - Aucune règle physique propre aux bots.
 
 ## 4. Critères d'acceptation

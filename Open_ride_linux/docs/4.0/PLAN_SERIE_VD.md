@@ -11,7 +11,7 @@ Sources lues : `docs/contracts/world_format_v1.md` (§4 couche route, `type = lo
 1. **Un type de parcours, pas un mode à part** : le vélodrome est un `.world` en boucle (`type = loop`) que le core génère lui-même, sans GPX ni compilateur, comme le parcours de démonstration. Il apparaît dans la liste des parcours (filtre « Vélodrome ») et se roule avec tout ce qui existe déjà : séance libre, ERG, plans, bots, fantôme, abri.
 2. **Une seule piste : 250 m couverte en bois**, virages relevés à 42° et lignes droites à 12°, 7 m de large plus la côte d'azur (§3). Décision du propriétaire du 6 novembre : « On fera une piste de 250 m. En bois avec virages relevés. »
 3. **Le relèvement ne touche pas le trainer** : sur une piste, la pente le long de la trajectoire est nulle. La pente envoyée reste 0 % ; seuls la surface (bois, Crr plus faible), l'air sans vent et l'abri se ressentent. Le relèvement est **visuel** (ruban incliné, caméra et coureurs qui penchent) et **géométrique** (rouler plus haut allonge le tour, §4.2).
-4. **Toutes les épreuves de piste dès la première livraison** (§5, décision du propriétaire du 6 novembre) : poursuite individuelle, kilomètre et 500 m départ arrêté, 200 m lancé, scratch, course aux points, tempo, élimination (règles de DS reprises), keirin (derny, véhicule et abri d'AS6), omnium et record de l'heure.
+4. **Toutes les épreuves de piste dès la première livraison** (§5, décision du propriétaire du 6 novembre) : poursuite individuelle, kilomètre et 500 m départ arrêté, 200 m lancé, scratch, course aux points, tempo, élimination (règles de DS reprises), keirin (derny, véhicule et abri d'AS6), omnium et record de l'heure, plus les trois épreuves par équipes (vitesse par équipes, poursuite par équipes, américaine), ajoutées par le propriétaire le 6 novembre.
 5. **Un décor unique, une salle couverte** (décision du propriétaire du 6 novembre : « On fera un unique décor. On considère un circuit intérieur. ») : un bâtiment léger : salle, tribunes, public, éclairage ; pas de terrain, de végétation, de biome ni de ciel lointain. Le vélodrome couvert doit coûter **nettement moins** que la route (§7) : c'est le parcours le plus léger du jeu.
 6. **Version : 4.0**, après le peloton PL1 (bots en piste) et AS2 (voies). Seul le générateur de piste (VD2) et la physique (VD3) sont des modules purs du core, faisables plus tôt si le propriétaire le veut.
 
@@ -86,6 +86,9 @@ Décision du propriétaire du 6 novembre : une seule piste, `velodrome-250` (250
 | Course aux points | Sprint tous les 10 tours (5, 3, 2, 1 points, double au dernier), 20 points par tour pris | 3 à 11 bots | Maillots T14 (barème) |
 | Élimination | Le dernier sort tous les 2 tours | 3 à 11 bots | Règles et code de DS (`survivor.py`) |
 | Record de l'heure | 60 min, distance totale, tableau des tours | 0 | Records |
+| Vitesse par équipes | 3 coureurs, 3 tours départ arrêté ; chacun mène un tour puis s'écarte ; le joueur choisit sa place (1, 2 ou 3) ; contre une autre équipe de bots partie de l'autre côté | 2 coéquipiers + 3 adversaires | Poursuite, abri AS1 |
+| Poursuite par équipes | 4 coureurs, 4 km départ arrêté ; relais tous les demi-tours ou tours (réglable), le relayeur remonte et se replace en dernière position ; temps pris sur le 3e coureur | 3 coéquipiers + 4 adversaires | Poursuite, abri AS1 à AS4 |
+| Américaine | Équipes de 2, course aux points ; le joueur et son coéquipier bot se relaient environ tous les tours et demi ; pendant son repos, le joueur roule en haut de la piste à allure libre (le bot court), puis reprend la course au relais (lancer simulé : la vitesse du coureur relancé est celle du relayé) | 1 coéquipier + 6 à 10 adversaires (3 à 5 équipes) | Course aux points |
 | Keirin | Derny jusqu'à 3 tours de l'arrivée, puis sprint | 3 à 6 bots | Véhicule et abri d'AS6 |
 | Tempo | 10 tours au moins ; à partir du 5e tour, 1 point au premier de chaque tour, 20 points par tour pris | 3 à 11 bots | Course aux points |
 | Omnium | Enchaînement scratch, tempo, élimination, course aux points, classement aux points | 3 à 11 bots | Épreuves ci-dessus |
@@ -154,6 +157,6 @@ Délégables : VD2, VD3, VD6 (modules purs du core, testables sans engine ni mat
 1. **Taille** : **tranché le 6 novembre**, une seule piste de 250 m.
 2. **Virages** : **tranché le 6 novembre**, relevés (42° au sommet, 12° dans les droites).
 3. **Surface** : **tranché le 6 novembre**, bois (piste couverte).
-4. **Épreuves de la première livraison** : **tranché le 6 novembre**, toutes les épreuves du §5 (séance libre, poursuite, kilomètre et 500 m, 200 m lancé, scratch, course aux points, tempo, élimination, keirin, omnium, record de l'heure).
+4. **Épreuves de la première livraison** : **tranché le 6 novembre**, toutes les épreuves du §5 (séance libre, poursuite, kilomètre et 500 m, 200 m lancé, scratch, course aux points, tempo, élimination, keirin, omnium, record de l'heure) et les trois épreuves par équipes (vitesse par équipes, poursuite par équipes, américaine). La vitesse individuelle en duel reste à trancher.
 5. **Braquet fixe** : option facultative, coupée par défaut.
 6. **Version** : 4.0 (défaut). VD2 et VD3 peuvent être faits plus tôt sans rien changer au jeu, puisqu'aucune piste n'est listée avant VD10.

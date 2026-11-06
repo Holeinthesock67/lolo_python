@@ -17,7 +17,7 @@ Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026
 
 ## 3. Travail demandé
 
-- Paquet `track/` : `pursuit.py`, `time_trial.py` (kilomètre, 500 m, 200 m lancé), `scratch.py`, `points.py`, `tempo.py`, `elimination.py` (règles de DS, sans copie de code), `keirin.py` (derny d'AS6 qui s'écarte à 3 tours de l'arrivée), `omnium.py` (enchaîne les épreuves et additionne les points), `hour.py` ; interface commune (`start`, `step`, `frame`, `summary`).
+- Paquet `track/` : `pursuit.py`, `time_trial.py` (kilomètre, 500 m, 200 m lancé), `scratch.py`, `points.py`, `tempo.py`, `elimination.py` (règles de DS, sans copie de code), `keirin.py` (derny d'AS6 qui s'écarte à 3 tours de l'arrivée), `omnium.py` (enchaîne les épreuves et additionne les points), `hour.py`, et les épreuves par équipes (ajout du propriétaire du 6 novembre) : `team_sprint.py` (vitesse par équipes), `team_pursuit.py` (poursuite par équipes, relais et coureur qui s'écarte), `madison.py` (américaine, relais du joueur et de son coéquipier) ; notion d'équipe commune (coéquipiers bots, classement par équipe) ; interface commune (`start`, `step`, `frame`, `summary`).
 - Départ arrêté et départ lancé ; tours, cloche du dernier tour ; tours pris ; arrivée.
 - Records par piste et par épreuve ; tours dans le journal et dans le FIT (`lap`).
 - Pause et coupure du trainer figent l'épreuve.
