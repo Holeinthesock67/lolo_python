@@ -884,9 +884,10 @@ func _set_trial_badge(on: bool) -> void:
 ## le sous-titre « Montée 1 · 4e catégorie » de l'arche de départ, juste au-dessus de la caméra, se lisait à
 ## travers les menus translucides). Le préchauffage des marques (warm_up) est rangé sous la caméra, il reste
 ## dessiné. Run Cyber-Rogue : la scène du mode a son HUD diégétique (lot R11), le HUD classique (panneaux,
-## profil, courbes) est caché ; le compteur d'images/s reste.
+## profil, courbes) est caché ; le compteur d'images/s reste. Attente du départ (écran « Start your engines »
+## de la 3.0) : HUD caché aussi, l'écran montre lui-même la cadence (ses panneaux passaient sous le titre).
 func _sync_hud(menu_shown: bool) -> void:
-	hud.visible = not menu_shown and not rogue_host.is_active()
+	hud.visible = not menu_shown and not rogue_host.is_active() and menu_flow.start_wait.is_empty()
 	if overlay_layer != null:
 		overlay_layer.visible = not menu_shown
 	if segment_markers != null:
@@ -899,7 +900,7 @@ func _step_start_wait(delta: float) -> void:
 	var rogue_scene: bool = rogue_host.is_active()
 	if _start_wait.frame(ROGUE_SCENE_ID if rogue_scene else _route_loaded_id,
 			0 if rogue_scene else streamer.pending_count(), delta * 1000.0):
-		print("Décor du départ prêt : %s" % _start_wait.route_id)
+		print("Décor du départ prêt : %s (à %d ms)" % [_start_wait.route_id, Time.get_ticks_msec()])
 		ipc.test_log("scene_ready id=%s" % _start_wait.route_id)
 	if _start_wait.should_send(Time.get_ticks_msec() / 1000.0, str(menu_flow.start_wait.get("phase", ""))):
 		ipc.send_command("scene_ready", {"route_id": _start_wait.route_id})
@@ -1168,6 +1169,18 @@ func _poll_live_world() -> void:
 		streamer.set_previews(live_world.previews(float(follow.last_frame["s"])))
 
 ## Dossier du parcours : <routes>/<route_id>.world, repli sur la démo embarquée pour « demo ».
+## Carte du parcours de l'écran d'attente du départ (StartWaitModel.route_card) : entrée de la liste des
+## parcours du core et profil du parcours chargé ; {} sans parcours (run Cyber-Rogue : `route_id` nul).
+func _start_route_card(route_id) -> Dictionary:
+	if route_id == null:
+		return {}
+	for item in menu_flow.routes_raw:
+		if item is Dictionary and str(item.get("id", "")) == str(route_id):
+			var prof: Dictionary = _route_profile.get("profile", {}) if _route_profile.get("id", "") == str(route_id) else {}
+			return StartWaitModel.route_card(item, prof)
+	return {}
+
+
 func _route_path(route_id: String) -> String:
 	if route_id.begins_with(OW_PREFIX):
 		# Monde ouvert : « ow:<id> » désigne <open_world_dir>/<id>.world (contrat IPC 1.5, hello_ack.config).
@@ -1262,8 +1275,8 @@ func _poll_route_job() -> void:
 		print("[essai] %d consignes chargées (%s)" % [_cues.cues.size(), CueModel.path_for(job["id"])])
 	elif _cues.load_error != "":
 		print("[essai] consignes ignorées (%s) : %s" % [CueModel.path_for(job["id"]), _cues.load_error])
-	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s)" % [job["id"], route.length_m, route.type,
-			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"]])
+	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s) (à %d ms)" % [job["id"], route.length_m, route.type,
+			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"], Time.get_ticks_msec()])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])
 	_probe.route_ready()   # démarrage : première image jouable comptée à partir d'ici (lot X15)
 
@@ -1721,6 +1734,8 @@ func _on_state_received(state: Dictionary) -> void:
 	# Écran « Start your engines » pendant l'attente du départ ; feux verts quand la séance part.
 	var waiting: bool = not menu_flow.start_wait.is_empty()
 	if waiting:
+		if not _was_start_waiting:
+			start_screen.set_route(_start_route_card(state.get("route_id", null)))
 		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
 		# Préchauffage des gags WTF sous l'écran d'attente, pas à RUNNING (lot Y20) ; Cyber-Rogue : rogue_host.gd.
 		if menu_flow.menu.mode == "wtf" and not wtf_scene.warmed():

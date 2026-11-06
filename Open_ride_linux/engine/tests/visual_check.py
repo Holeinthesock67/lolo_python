@@ -1510,6 +1510,54 @@ def _records_scene(s: Session) -> None:
     time.sleep(0.6)
 
 
+def _start_screen_scenes(s: Session) -> None:
+    """Écran « Start your engines » de la 3.0 (maquette A « Retransmission ») : chargement du décor (voile
+    opaque, un boîtier allumé, pastille Décor en cours), pédalage (route visible, quatre boîtiers, anneau de
+    cadence, carte du parcours demo) puis « GO ! » à l'ouverture du départ."""
+    core = s.core
+    wait = {"cadence_rpm": 30, "hold_s": 3.0, "waited_s": 1.0}
+    # Parcours demo imposé par la trame : les scènes d'avant peuvent avoir laissé un autre parcours choisi
+    # (« Vallée de test », sans fichier : bandeau rouge « introuvable » sur les captures du 5 novembre).
+    mark = core.log.mark()
+    core.set_scene(speed=0.0, s=0.0, session_state="READY", summary=None, cadence=0.0, route_id="demo",
+                   start_wait=dict(wait, phase="decor", held_s=0.0))
+    core.log.wait_for(r"^route_loaded id=demo", 20.0 * s.slowdown(), mark)
+    time.sleep(SETTLE_S)
+    shot = s.capture("depart_decor")
+    if shot:
+        img, info = shot
+        st = info.get("start_screen", {})
+        s.check("depart_decor", "écran affiché, un feu, pastille Décor en cours",
+                st.get("visible") and st.get("lights") == 1 and st.get("steps", [{}])[0].get("state") == "current", str(st))
+        s.check("depart_decor", "carte du parcours demo", st.get("route") == "Démo" and "4,0 km" in st.get("route_line", ""), str(st))
+        s.check("depart_decor", "écran figé pendant le chargement", st.get("animated") is False, str(st))
+        # Pixels, pas seulement l'état : l'image en cache de l'écran figé est bien affichée (6 novembre :
+        # état « un feu » mais capture sans écran, SubViewport vide). Un boîtier allumé, voile sombre.
+        red = fraction(img, (0, 0, s.width, s.height // 2), lambda p: p[0] > 200 and p[1] < 110 and p[2] < 120, step=2)
+        s.check("depart_decor", "feu rouge allumé à l'image", red >= 0.003, f"{red:.2%} de pixels rouges")
+        dark = fraction(img, (0, int(s.height * 0.6), s.width, s.height), lambda p: max(p) < 60, step=4)
+        s.check("depart_decor", "voile opaque à l'image", dark >= 0.6, f"{dark:.0%} de pixels sombres")
+        s.check_banner("depart_decor", img, info, None)
+    core.set_scene(cadence=54.0, start_wait=dict(wait, phase="pedalage", held_s=1.6))
+    time.sleep(1.0)
+    shot = s.capture("depart_pedalage")
+    if shot:
+        img, info = shot
+        st = info.get("start_screen", {})
+        s.check("depart_pedalage", "HUD de séance caché pendant l'attente", not info["widgets"]["power"]["visible"])
+        s.check("depart_pedalage", "quatre feux, pastille Pédalage en cours",
+                st.get("lights") == 4 and st.get("steps", [{}, {}, {}])[2].get("state") == "current", str(st))
+        red = fraction(img, (0, 0, s.width, s.height // 2), lambda p: p[0] > 200 and p[1] < 110 and p[2] < 120, step=2)
+        s.check("depart_pedalage", "feux rouges allumés", red >= 0.01, f"{red:.2%} de pixels rouges")
+    core.set_scene(speed=SPEED_MPS, session_state="RUNNING", start_wait=None, cadence=85.0)
+    time.sleep(0.3)
+    shot = s.capture("depart_go")
+    if shot:
+        img, info = shot
+        s.check("depart_go", "feux verts « GO ! »", info.get("start_screen", {}).get("go") is True, str(info.get("start_screen")))
+        s.check("depart_go", "HUD de séance revenu au départ", info["widgets"]["power"]["visible"])
+
+
 def _menus_only(s: Session) -> None:
     """`--menus` : seulement les scènes des menus (accueil, parcours, Prêt, records, garage, bilan,
     progression), pour des captures de menus à chaque qualité en quelques minutes."""
@@ -1527,6 +1575,7 @@ def _menus_only(s: Session) -> None:
     s.check("menus", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
     time.sleep(SETTLE_S)
     _menu_scenes(s)
+    _start_screen_scenes(s)
 
 
 def _quality_guard_scenes(s: Session) -> None:

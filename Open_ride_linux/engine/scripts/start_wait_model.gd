@@ -11,7 +11,8 @@ extends RefCounted
 ##   `start_wait.phase` = `decor` : core relancé, datagramme perdu) ;
 ## - décrire l'écran d'attente « Start your engines » (start_screen.gd) : texte de l'étape (`text`), feux
 ##   de départ allumés (`lights`, LIGHTS feux : un par étape franchie, puis le pédalage allume les
-##   derniers), avancée du pédalage (`progress`) ; feux verts « GO ! » pendant GO_S à l'ouverture.
+##   derniers), avancée du pédalage (`progress`), pastilles des trois étapes (`steps`), carte du parcours
+##   qui va être roulé (`route_card` : nom, distance, dénivelé, profil) ; feux verts « GO ! » pendant GO_S.
 ## Le core décide seul du départ (start_gate.py) ; le menu est masqué pendant l'attente (menu_flow.gd)
 ## et Y l'annule (le core reçoit la touche comme un appui du Click).
 ## Pas de class_name : charger par preload("res://scripts/start_wait_model.gd").
@@ -23,6 +24,10 @@ const SETTLE_S := 2.0
 const LIGHTS := 5
 const GO_S := 1.2
 const TITLE := "START YOUR ENGINES"
+const TAG := "OPENRIDE · DÉPART"
+## Étapes de l'attente, dans l'ordre des pastilles de l'écran : (phase, libellé).
+const STEPS := [["decor", "Décor"], ["trainer", "Trainer"], ["pedalage", "Pédalage"]]
+const PROFILE_POINTS := 60
 
 ## Parcours dont le décor du départ est prêt ; vide tant qu'il ne l'est pas.
 var route_id := ""
@@ -102,3 +107,63 @@ static func progress(wait) -> float:
 		return 0.0
 	var hold := float(wait.get("hold_s", 0.0))
 	return 1.0 if hold <= 0.0 else clampf(float(wait.get("held_s", 0.0)) / hold, 0.0, 1.0)
+
+
+## Pastilles des étapes : [{label, state}] dans l'ordre de STEPS, `state` = `done` (franchie), `current`
+## (en cours) ou `todo` (à venir) ; vide hors attente.
+static func steps(wait) -> Array:
+	if not (wait is Dictionary):
+		return []
+	var phase := str(wait.get("phase", ""))
+	var at := -1
+	for i in STEPS.size():
+		if STEPS[i][0] == phase:
+			at = i
+	var out: Array = []
+	for i in STEPS.size():
+		out.append({"label": STEPS[i][1], "state": "done" if i < at else ("current" if i == at else "todo")})
+	return out
+
+
+## Ligne de valeurs sous le nom du parcours : « 24,6 km · 410 m D+ » (le dénivelé seulement s'il est connu).
+static func route_line(length_m: float, gain_m) -> String:
+	var line := "%s km" % ("%.1f" % (length_m / 1000.0)).replace(".", ",")
+	if gain_m != null:
+		line += " · %d m D+" % int(round(float(gain_m)))
+	return line
+
+
+## Carte du parcours de l'écran d'attente : `item` = entrée de la liste `routes` du core (id, name, length_m,
+## stats), `profile` = profil d'altitude du parcours entier (hud_view_model.profile, champ `points`).
+## Renvoie {name, line, heights} avec `heights` = PROFILE_POINTS hauteurs de 0 à 1 (vide sans profil),
+## ou {} sans parcours (run Cyber-Rogue, liste pas encore reçue).
+static func route_card(item: Dictionary, profile: Dictionary) -> Dictionary:
+	if item.is_empty():
+		return {}
+	var st = item.get("stats", null)
+	var length = st.get("distance_m", item.get("length_m", null)) if st is Dictionary else item.get("length_m", null)
+	var gain = st.get("gain_m", null) if st is Dictionary else null
+	var card := {"name": str(item.get("name", item.get("id", ""))), "line": "",
+		"heights": _heights(profile.get("points", PackedVector2Array()))}
+	if length != null:
+		card["line"] = route_line(float(length), gain)
+	return card
+
+
+## Hauteurs de 0 à 1 du profil, ré-échantillonnées sur PROFILE_POINTS points ; vide sous 2 points.
+static func _heights(points) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	if not (points is PackedVector2Array) or points.size() < 2:
+		return out
+	var lo := INF
+	var hi := -INF
+	for p in points:
+		lo = minf(lo, p.y)
+		hi = maxf(hi, p.y)
+	var span := maxf(hi - lo, 1.0)
+	for i in PROFILE_POINTS:
+		var f := float(i) / float(PROFILE_POINTS - 1) * float(points.size() - 1)
+		var k := mini(int(floor(f)), points.size() - 2)
+		var y := lerpf(points[k].y, points[k + 1].y, f - float(k))
+		out.append(clampf((y - lo) / span, 0.0, 1.0))
+	return out
