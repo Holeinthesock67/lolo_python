@@ -219,6 +219,14 @@ static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> voi
 	env.adjustment_saturation = RenderDiag.number("saturation", env.adjustment_saturation)
 	env.tonemap_agx_contrast = RenderDiag.number("agx_contraste", env.tonemap_agx_contrast)
 	env.tonemap_exposure = RenderDiag.number("exposition", env.tonemap_exposure)
+	if env.sky != null and RenderDiag.value("ciel") != "":
+		var modes := {"automatic": Sky.PROCESS_MODE_AUTOMATIC, "quality": Sky.PROCESS_MODE_QUALITY,
+			"incremental": Sky.PROCESS_MODE_INCREMENTAL, "realtime": Sky.PROCESS_MODE_REALTIME}
+		env.sky.process_mode = modes.get(RenderDiag.value("ciel"), env.sky.process_mode)
+	if env.sky != null and RenderDiag.value("ciel_radiance") != "":
+		var sizes := {"32": Sky.RADIANCE_SIZE_32, "64": Sky.RADIANCE_SIZE_64, "128": Sky.RADIANCE_SIZE_128,
+			"256": Sky.RADIANCE_SIZE_256}
+		env.sky.radiance_size = sizes.get(RenderDiag.value("ciel_radiance"), env.sky.radiance_size)
 	if RenderDiag.value("courbe_s") != "":
 		env.adjustment_color_correction = s_curve(clampf(RenderDiag.number("courbe_s", 0.0), 0.0, 1.0))
 	if RenderDiag.value("halo_niveaux") != "":
