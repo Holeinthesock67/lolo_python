@@ -67,3 +67,10 @@ def test_analyse_par_biome(tmp_path):
     assert "## Par biome du tronçon" in md
     assert "| sans_arbres | 5.00 (+0.00) | 5.50 (+1.50) |" in md
     assert "**7.00**" in md   # base au-dessus du budget low (6 ms) en gras
+
+
+def test_nom_du_banc_sans_tiret_bas():
+    # Le compilateur change « _ » en « - » dans le nom du monde compilé (premier lancement PC du 6 novembre).
+    assert cr.bench_name(TRONCON) == "banc-farmland-temperate-forest-alpine"
+    assert cr.bench_name(("temperate_grassland",)) == "banc-temperate-grassland"
+    assert "_" not in cr.bench_name(TRONCON)

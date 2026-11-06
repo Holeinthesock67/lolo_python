@@ -97,6 +97,12 @@ def plan(qualities: list[str], names: list[str]) -> list[tuple[str, tuple]]:
     return [(q, v) for q in qualities for v in VARIANTS if v[0] in names and q in v[3]]
 
 
+def bench_name(biomes: tuple[str, ...] | list[str]) -> str:
+    """Nom du parcours du banc, sans « _ » : le compilateur écrit `work/<nom>.world` avec les « _ » changés en « - »
+    (`temperate_forest` → `temperate-forest`), et make_biome_world.generate ne retrouverait pas le monde compilé."""
+    return "banc-" + "-".join(b.replace("_", "-") for b in biomes)
+
+
 def troncon_duration(biomes: tuple[str, ...], speed_kmh: float = SPEED_KMH) -> float:
     """Durée d'un banc de tronçon : tous les blocs sauf le dernier, départ et chargement compris (45 s)."""
     import make_biome_world
@@ -110,7 +116,7 @@ def cmd_lancer(args: argparse.Namespace) -> int:
     # Avec --troncon : un bloc de 2 km par biome, comme le tour (ce qui est devant la caméra compte).
     routes = out / "routes"
     biomes = tuple(args.troncon) if args.troncon else (args.biome,) * 3
-    name = "banc-" + ("-".join(args.troncon) if args.troncon else args.biome)
+    name = bench_name(biomes if args.troncon else (args.biome,))
     world = routes / f"{name}.world"
     if not world.is_dir():
         import make_biome_world
@@ -256,7 +262,7 @@ def troncon_of(out: Path) -> tuple[tuple[str, ...], float | None]:
         return (), None
     biomes = tuple(b for b in path.read_text(encoding="utf-8").strip().split(",") if b)
     try:
-        info = json.loads((out / "routes" / f"banc-{'-'.join(biomes)}.json").read_text(encoding="utf-8"))
+        info = json.loads((out / "routes" / f"{bench_name(biomes)}.json").read_text(encoding="utf-8"))
         length = float(info["length_m"])
     except (OSError, ValueError, KeyError, TypeError):
         length = None
