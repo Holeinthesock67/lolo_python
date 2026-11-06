@@ -5,7 +5,7 @@ Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|ouvert|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
                  [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side]
-                 [--culling on|off] [--load-guard on|off] [--probe] [--speed-kmh V] [--biome ID] [--out DOSSIER] [--list]
+                 [--culling on|off] [--crowd climbs|all] [--load-guard on|off] [--probe] [--speed-kmh V] [--biome ID] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
@@ -412,7 +412,7 @@ class Bench:
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
                     f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}",
-                    f"--load-guard={a.load_guard}"]
+                    f"--load-guard={a.load_guard}", f"--crowd={a.crowd}"]
             if self.biome:
                 cmd.append(f"--biome={self.biome}")
             if self.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
@@ -1072,6 +1072,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="captures tous les N mètres de route au lieu de toutes les N secondes (lot S1)")
     ap.add_argument("--culling", default="off", choices=("on", "off"),
                     help="tri de ce que la caméra ne voit pas (lot S1, défaut off faute de gain mesuré ; on : essai)")
+    ap.add_argument("--crowd", default="climbs", choices=("climbs", "all"),
+                    help="spectateurs sur les montées d'au moins 3 km (défaut, comme le jeu) ou sur toutes "
+                         "(lot Y21 : la montée de 1,5 km du village pour mesurer les spectateurs)")
     ap.add_argument("--load-guard", default="off", choices=("on", "off"),
                     help="garde-fou de charge de l'engine (lot Y6, défaut off : préréglages mesurés tels quels)")
     ap.add_argument("--latence", action="store_true",

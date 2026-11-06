@@ -1496,25 +1496,29 @@ static func survivor_launch(opponents: int, spacing_km: int, route: Dictionary) 
 	if route.is_empty() or str(route.get("route_type", "")) == "loop" or length == null:
 		return {"enabled": true, "detail": detail, "advice": ""}
 	if float(length) < course_km * 1000.0:
-		var km := CatalogModel._format_fr_km(float(length))
-		return {"enabled": false, "detail": "parcours trop court : %s pour %s" % [km, detail],
+		# Détail court (2.0.1) : la colonne de droite de « Lancer » coupait « parcours trop court : 5,0 km
+		# pour 4 arches sur 8 km » ; la ligne d'état donne l'explication entière.
+		return {"enabled": false, "detail": "trop court (%d km)" % course_km,
 			"advice": survivor_advice(opponents, spacing_km, float(length))}
 	return {"enabled": true, "detail": detail, "advice": ""}
 
 
 ## Explication entière de « Lancer » grisé (ligne d'état de l'écran Prêt, essai du 4 novembre : le libellé
-## tronqué ne disait ni pourquoi ni quoi changer) : longueur de course, longueur du parcours, réglages qui tiennent.
+## tronqué ne disait ni pourquoi ni quoi changer) : longueur de course, longueur du parcours, réglages qui
+## tiennent, nommés en clair (2.0.1 : « 4 à 1 km, 2 à 2 km » ne disait pas ce que comptaient les nombres) :
+## « Possible : 4 adversaires à 1 km d'écart ou 2 à 2 km, sinon change de parcours. »
 static func survivor_advice(opponents: int, spacing_km: int, length_m: float) -> String:
 	var fits: Array = []
 	for sp in range(SURVIVOR_SPACING_KM[0], SURVIVOR_SPACING_KM[1] + 1):
 		var n := mini(int(floor(length_m / (sp * 1000.0) + 1e-9)), SURVIVOR_OPPONENTS[1])
 		if n >= SURVIVOR_OPPONENTS[0]:
-			fits.append("%d à %d km" % [n, sp])
+			fits.append(("%d adversaires à %d km d'écart" if fits.is_empty() else "%d à %d km") % [n, sp])
 	var text := "Lancer grisé : %d arches × %d km = %d km, parcours de %s.\n" % [
 		opponents, spacing_km, opponents * spacing_km, CatalogModel._format_fr_km(length_m)]
 	if fits.is_empty():
 		return text + "Choisis un parcours plus long ou une boucle."
-	return text + "Baisse Adversaires ou Écart des arches (" + ", ".join(fits) + ") ou change de parcours."
+	var listed := str(fits[0]) if fits.size() == 1 else ", ".join(fits.slice(0, fits.size() - 1)) + " ou " + str(fits[-1])
+	return text + "Possible : " + listed + ", sinon change de parcours."
 
 
 func _route_entry(route_id: String) -> Dictionary:

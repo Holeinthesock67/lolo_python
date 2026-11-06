@@ -123,6 +123,16 @@ func _test_fit() -> void:
 	_check(Model.fit(v, 40.0) == {"first": 1, "count": 2, "jerseys": false}, "sans place : les deux voisins restent, sans maillots")
 	_check(Model.window_start(0, 2, 4) == 0 and Model.window_start(4, 2, 4) == 2 and Model.window_start(2, 1, 4) == 1,
 		"fenêtre au début, à la fin, ligne devant pour un compte impair")
+	# Lot PL1 : peloton de 11 bots, l'encart garde MAX_ROWS lignes autour du cycliste
+	var peloton: Array = []
+	for i in range(11):
+		peloton.append({"id": "bot%d" % (i + 1), "name": "Bot %d" % (i + 1), "s": 950.0 + 10.0 * i, "v": 7.0, "kind": "constant"})
+	var pv: Dictionary = Model.view(_view(peloton), {})
+	var shown: Dictionary = Model.fit(pv, 2000.0)
+	_check(pv["rows"].size() == 11 and shown["count"] == Model.MAX_ROWS and Model.MAX_ROWS == 5,
+		"peloton : %d lignes au plus dans l'encart (%s)" % [Model.MAX_ROWS, str(shown)])
+	_check(int(shown["first"]) <= int(pv["rider_index"]) and int(pv["rider_index"]) <= int(shown["first"]) + int(shown["count"]),
+		"peloton : la fenêtre entoure le cycliste (%s, cycliste après %d bots)" % [str(shown), int(pv["rider_index"])])
 
 
 func _test_hud() -> void:

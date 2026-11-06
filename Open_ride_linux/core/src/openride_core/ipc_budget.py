@@ -91,6 +91,7 @@ STATE_DEGRADATION: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("devices", _drop("devices")),
     ("summary", _drop("summary")),
     ("bots", _drop("bots")),
+    ("riders", _drop("riders")),          # lot AS7 : extrapolés par l'engine, ils reviennent 100 ms plus tard
     ("vehicles", _drop("vehicles")),      # lot AS6 : extrapolés par l'engine, ils reviennent 100 ms plus tard
     ("open_world", _drop("open_world")),
     ("erg", _drop("erg")),
@@ -187,6 +188,33 @@ def _extras_1_5(d: dict[str, Any]) -> None:
     # Lot AS6 : au plus 4 véhicules proches, chacun au plus long (identifiant de case, sorte la plus longue)
     d["vehicles"] = [{"id": "v1000099", "kind": "tractor", "color": 7, "s": 123_456.79 + i, "dir": -1,
                       "v": 22.22, "lane_m": -2.33} for i in range(4)]
+    # Lot AS7 : au plus 6 cyclistes du décor proches, identifiants de case et d'apparence au plus long
+    d["riders"] = [{"id": "c1000099-5", "s": 123_456.79 + i, "dir": -1, "v": 19.44, "lane_m": -2.33,
+                    "look": 1_048_575} for i in range(6)]
+
+
+PELOTON_BOTS = 12   # lot PL1 : 11 bots et un fantôme (bots.MAX_BOTS)
+
+
+def _extras_1_6(d: dict[str, Any]) -> None:
+    # Peloton (lot PL1, 3.0) : 12 bots. Comme `bots.light_frame`, les 5 plus proches gardent tous les champs,
+    # les autres n'ont plus `cp_w`, `mass_kg`, `wbal_pct` ni `gap_s` (ni `name` et `profile`, sauf l'un d'eux
+    # à tour de rôle), et `jersey` n'est là que porté (deux
+    # maillots au plus). Pire cas : tous avec `lane_m`, `profile` et `out` (Dernier survivant), même si `out`
+    # et les maillots ne vont pas ensemble (le mode n'a pas de segments).
+    from .bots import FULL_FRAME_BOTS, light_frame
+
+    full = d["bots"][0]
+    bots = []
+    for i in range(PELOTON_BOTS):
+        b = {**full, "id": f"bot-{i}-ab"[:MAX_TEXT["bot_id"]], "s": 123_456.79 + i, "lane_m": -2.33, "out": 11,
+             "gap_s": -3599.9, "jersey": ("sprint", "kom")[i] if i < 2 else None}
+        bots.append(b)
+    d["bots"] = light_frame(bots, 123_456.79)
+    assert sum("cp_w" in b for b in d["bots"]) == FULL_FRAME_BOTS
+    d["draft_bot"] = d["bots"][0]["id"]
+    d["jerseys"] = {"sprint": d["bots"][0]["id"], "kom": d["bots"][1]["id"]}
+    d["bot_ahead"], d["bot_behind"] = d["bots"][2]["id"], d["bots"][3]["id"]
 
 
 # Une entrée par révision : chaque révision hérite des ajouts des précédentes.
@@ -196,7 +224,16 @@ REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.3": _extras_1_3,
     "1.4": _extras_1_4,
     "1.5": _extras_1_5,
+    "1.6": _extras_1_6,
 }
+
+
+def worst_peloton_devices() -> dict[str, Any]:
+    """Trame du peloton (révision 1.6) qui porte `devices` (une sur 30) : sans `open_world`, avec ERG,
+    segment, bonus, maillots et 12 bots."""
+    d = worst_state("1.4")
+    _extras_1_6(d)
+    return d
 
 
 def revisions() -> list[str]:
@@ -284,6 +321,7 @@ def report() -> str:
     """Tableau texte : taille de la pire trame par révision (python -m openride_core.ipc_budget)."""
     lines = [f"{'révision':<22} {'octets':>6}  {'cible 1400':>10}  {'limite':>6}  marge"]
     rows = [(rev, worst_state(rev), state_limit(rev)) for rev in revisions()]
+    rows.append(("1.6 peloton + devices", worst_peloton_devices(), state_limit("1.6")))
     rows.append(("1.4 rogue", worst_rogue_state(), state_limit("1.4")))
     rows += [(f"1.4 {name}", msg, MAX_DATAGRAM_SIZE) for name, msg in worst_short_messages().items()]
     for label, msg, limit in rows:

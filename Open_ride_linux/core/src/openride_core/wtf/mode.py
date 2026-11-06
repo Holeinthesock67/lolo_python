@@ -273,7 +273,8 @@ class WtfMode:
         if self.event is None and math.isfinite(self.next_event_t):
             out["next_s"] = round(max(self.next_event_t - t, 0.0))
         if on("katamari"):
-            out["kata"] = {"size": round(self.kata_size, 2), "count": self.kata_count, "last": self.kata_last,
+            out["kata"] = {"size": round(self.kata_size, 2), "count": self.kata_count, "bonks": self.kata_bonks,
+                           "last": self.kata_last,
                            "next": [[round(o - s, 1), k] for o, k in self._kata_objs[:3]]}
         if on("peloton"):
             out["skins"] = dict(self.skins)

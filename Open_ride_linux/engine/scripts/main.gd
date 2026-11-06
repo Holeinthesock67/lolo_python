@@ -41,6 +41,7 @@ const StartWaitModel := preload("res://scripts/start_wait_model.gd")
 const StartScreen := preload("res://scripts/start_screen.gd")
 const DraftGauge := preload("res://scripts/draft_gauge.gd")
 const VEHICLE_PREFIX := "veh:"   # `draft_bot` d'un véhicule de la route (lot AS6, traffic.py du core)
+const RIDER_PREFIX := "rider:"   # `draft_bot` d'un cycliste du décor (lot AS7, road_cyclists.py du core)
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
@@ -60,6 +61,7 @@ const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RogueHost := preload("res://scripts/rogue/rogue_host.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
+const WtfSoundModel := preload("res://scripts/wtf/wtf_sound_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
 const WorldMenuView := preload("res://scripts/world_menu_view.gd")
@@ -214,6 +216,7 @@ var _theme_dict: Dictionary = {}   # thème courant, pour le décor vivant
 var _living_enabled := true
 ## Décor vivant, deuxième vague (lot P17) : météo, animaux, éoliennes, véhicules, bord de route, foule.
 var living_decor = null
+var _cfg_crowd_all_climbs := false   # --crowd=all : spectateurs sur toutes les montées (bancs, lot Y21)
 ## Ciel, brouillard et soleil, atmosphère du biome sous la caméra (atmosphere_view.gd, lots U10 et U17).
 var atmosphere_view = AtmosphereView.new()
 ## Série T (lot T8) : lignes, portiques et panneaux des segments, arches de bonus.
@@ -222,6 +225,7 @@ var segment_markers = null
 var segment_hud = SegmentHudModel.new()
 ## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
 var event_sounds = EventSoundsModel.new()
+var wtf_sounds = WtfSoundModel.new()   # sons des gags du mode WTF (lot WTF7)
 var _beep_until_s := -INF
 ## Série R (lot R10) : scène du mode Cyber-Rogue, instanciée quand `state.mode` vaut « ROGUE ».
 var rogue_host = RogueHost.new()
@@ -245,6 +249,7 @@ func _ready() -> void:
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
 	streamer.culling = bool(cfg.get("culling", false))
+	_cfg_crowd_all_climbs = bool(cfg.get("crowd_all_climbs", false))
 	streamer.test_log = bool(cfg["test_mode"])
 	streamer.forced_biome = str(cfg.get("biome", "auto"))
 	streamer.texture_level = str(cfg.get("texture_level", "auto"))
@@ -294,6 +299,7 @@ func _ready() -> void:
 	living_decor.name = "LivingDecor"
 	add_child(living_decor)
 	living_decor.living_world = living_world
+	living_decor.crowd_all_climbs = bool(_cfg_crowd_all_climbs)
 	living_decor.configure(_quality_name, _living_enabled, _theme_dict, world_env.environment, sound_player, streamer)
 	atmosphere_view.living_decor = living_decor
 	living_decor.set_fog_base(world_env.environment)
@@ -505,6 +511,8 @@ func _on_settings(msg: Dictionary) -> void:
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
 		bots_view.set_quality(_quality_name)
+		if living_decor != null and living_decor.cyclists_view != null:
+			living_decor.cyclists_view.set_quality(_quality_name)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
 		if streamer.osm_streamer != null:
@@ -863,12 +871,17 @@ func _set_trial_badge(on: bool) -> void:
 	hud.set_trial_badge(on)
 
 
-## Menu plein écran : rien du HUD de séance derrière lui. Run Cyber-Rogue : la scène du mode a son HUD
-## diégétique (lot R11), le HUD classique (panneaux, profil, courbes) est caché ; le compteur d'images/s reste.
+## Menu plein écran : rien du HUD de séance derrière lui, ni les portiques et panneaux des segments (2.0.1 :
+## le sous-titre « Montée 1 · 4e catégorie » de l'arche de départ, juste au-dessus de la caméra, se lisait à
+## travers les menus translucides). Le préchauffage des marques (warm_up) est rangé sous la caméra, il reste
+## dessiné. Run Cyber-Rogue : la scène du mode a son HUD diégétique (lot R11), le HUD classique (panneaux,
+## profil, courbes) est caché ; le compteur d'images/s reste.
 func _sync_hud(menu_shown: bool) -> void:
 	hud.visible = not menu_shown and not rogue_host.is_active()
 	if overlay_layer != null:
 		overlay_layer.visible = not menu_shown
+	if segment_markers != null:
+		segment_markers.visible = not menu_shown and not rogue_host.is_active()   # la run les cache aussi
 
 
 ## Départ au pédalage (lot O36) : décor du départ prêt, puis `scene_ready` au core (start_wait_model.gd).
@@ -1028,9 +1041,12 @@ func _process(delta: float) -> void:
 		# Bots placés avant le décor vivant : ses cyclistes, ses véhicules et son compte des contacts lisent les
 		# places des bots de cette image. Après une image bloquée, des places de l'image d'avant, face à la
 		# caméra déjà avancée, comptaient un contact qui n'existait pas (rejeu #707, 490 ms bloquées à t = 132 s).
+		# Bots extrapolés au même instant `now` que le cycliste : lus plus tard dans l'image (après la fenêtre de
+		# tuiles, 3 à 25 ms), ils avançaient de v × ce délai, et un bot à 1,78 m derrière le cycliste dans le core
+		# s'affichait à moins de 1,7 m (contacts du banc course_bots, 6 novembre).
 		if bots_model.count() > 0:
 			t_step = Time.get_ticks_usec()
-			_show_bots(s_route, float(follow.last_frame["v"]))
+			_show_bots(s_route, float(follow.last_frame["v"]), now)
 			_bots_frame = Engine.get_process_frames()
 			PerfProbe.mark_since("bots", "", t_step)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
@@ -1216,6 +1232,8 @@ func _poll_route_job() -> void:
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
 	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)
 	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
+	if living_decor != null:   # cyclistes du décor (lot AS7), spectateurs et passants (lot Y21) préparés au chargement
+		living_decor.warm_up(camera)
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)
@@ -1377,7 +1395,8 @@ func _test_menu_state(req: String) -> Dictionary:
 		"group": menu_flow.settings_group, "editing": st["editing"], "items": items, "rows": rows,
 		"hint": menu_view.hint_text(), "devices": menu_view.devices.text() if menu_view.devices.visible else "",
 		"card": menu_view.card.text() if menu_view.card.visible else "", "session_state": menu_flow.session_state, "world_menu": world,
-		"rogue": rogue_host.is_active(), "hud": hud.visible, "quality": _quality_name}
+		"rogue": rogue_host.is_active(), "hud": hud.visible,
+		"markers": segment_markers != null and segment_markers.visible, "quality": _quality_name}
 
 
 func _avatar_info() -> Dictionary:
@@ -1735,13 +1754,15 @@ func _on_state_received(state: Dictionary) -> void:
 	if route_id != _route_id_requested:
 		_request_route(route_id)
 	var running := session_state == "RUNNING"
-	follow.push_frame(Time.get_ticks_usec(), float(state.get("s", 0.0)), float(state.get("v", 0.0)), running)
+	# Une seule heure de réception pour le cycliste et les bots de la trame : le core les donne au même instant.
+	var t_frame_us := Time.get_ticks_usec()
+	follow.push_frame(t_frame_us, float(state.get("s", 0.0)), float(state.get("v", 0.0)), running)
 	ipc.test_log("state seq=%d s=%.3f session=%s" % [int(state.get("seq", 0)), float(state.get("s", 0.0)), session_state])
 
 	if running and route != null:
 		_give_cues(state)
 	var in_session := running or session_state == "PAUSED"
-	bots_model.push(state.get("bots", null) if in_session else null, Time.get_ticks_usec())
+	bots_model.push(state.get("bots", null) if in_session else null, t_frame_us)
 	bots_model.set_race(state if in_session else null)
 	_draft = {"draft": state.get("draft", null) if in_session else null,
 		"draft_bot": state.get("draft_bot", null) if in_session else null}
@@ -1775,7 +1796,7 @@ func _on_state_received(state: Dictionary) -> void:
 	# _process les place avec le s lissé de la caméra. Deux placements par image, l'un avec le s brut, faisaient
 	# avancer les bots par à-coups (rejeu du 2 novembre, lot AS2).
 	if Engine.get_process_frames() - _bots_frame > 1 or bots_model.count() == 0:
-		_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)))
+		_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)), t_frame_us)
 	if living_decor != null:
 		living_decor.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if living_world != null:
@@ -1797,6 +1818,8 @@ func _on_state_received(state: Dictionary) -> void:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0
 		sound_player.update_audio(state, now_s, camera.position)
 	for jingle in event_sounds.on_state(state):
+		_play_event(jingle)
+	for jingle in wtf_sounds.on_state(state.get("wtf", null)):
 		_play_event(jingle)
 
 
@@ -1861,9 +1884,10 @@ func _update_survivor(state: Dictionary, in_session: bool) -> void:
 	segment_markers.set_survivor_arches(survivor_hud.arches_to_draw(state))
 
 
-func _show_bots(rider_s: float, rider_v: float) -> void:
+## Bots vus du cycliste à `now_us`, l'instant où `rider_s` a été calculé (même horloge que les trames).
+func _show_bots(rider_s: float, rider_v: float, now_us: int) -> void:
 	bots_model.vehicles = living_decor.vehicle_places() if living_decor != null else []
-	var view: Array = bots_model.view(rider_s, rider_v, Time.get_ticks_usec())
+	var view: Array = bots_model.view(rider_s, rider_v, now_us)
 	if hud != null and hud.has_method("update_bots"):
 		# Dernier survivant : la liste des coureurs (survivor_view.gd) remplace l'encart des bots
 		hud.update_bots([] if _last_state.has("survivor") else view, bots_model.race())
@@ -1882,6 +1906,8 @@ func _show_draft_gauge() -> void:
 		var who := str(view["bot"])
 		if who.begins_with(VEHICLE_PREFIX):
 			anchor = living_decor.vehicle_anchor(who.substr(VEHICLE_PREFIX.length())) if living_decor != null else null
+		elif who.begins_with(RIDER_PREFIX):
+			anchor = living_decor.cyclist_anchor(who.substr(RIDER_PREFIX.length())) if living_decor != null else null
 		else:
 			anchor = bots_view.anchor_of(who)
 	draft_gauge.update_view(view, anchor)

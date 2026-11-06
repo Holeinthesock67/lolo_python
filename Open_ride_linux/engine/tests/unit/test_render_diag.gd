@@ -33,7 +33,7 @@ func _init() -> void:
 		"réglages appliqués : %s" % [img])
 	_check(img["shadow_splits"] == 2 and img["ssil"] == "off" and img["fog_volumetric"] == "off" and not img["glow"],
 		"drapeaux appliqués")
-	_check(medium["msaa"] == 4 and medium["ssil"] == "low", "préréglage d'origine non modifié")
+	_check(medium["msaa"] == 4 and medium["ssil"] == "off", "préréglage d'origine non modifié")
 	# Améliorations à faible coût : sans variable, uniformes à 0 (rendu inchangé)
 	var tm := TerrainMaterial.create_material()
 	_check(float(tm.get_shader_parameter("macro_variation")) == 0.0, "terrain : macro-variation à 0 sans essai")

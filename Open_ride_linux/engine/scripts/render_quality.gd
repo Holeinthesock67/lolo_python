@@ -170,30 +170,41 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 
 ## Essais de rendu sur le PC (OPENRIDE_RENDER_DIAG, render_diag.gd) : qualité d'image du préréglage modifiée
 ## pour mesurer le coût d'un effet ou trouver celui qui dessine un défaut (coutures des flancs, 29 octobre ;
-## coût de chaque effet, 5 novembre). Sans variable : `img` inchangé.
-static func diagnostic_image(img: Dictionary) -> Dictionary:
+## coût de chaque effet, 5 novembre). Toute entrée `clé=valeur` dont la clé est une clé de la qualité d'image
+## (`shadow_filter=high`, `glow=false`, 2.0.1) la remplace, au type de la clé ; s'y ajoutent les raccourcis
+## `atlas`, `filtre`, `brume`, `lod_maillage` et les drapeaux `sans_…`. `diag` : texte des essais (tests),
+## vide = la variable d'environnement. Sans essai : `img` inchangé.
+static func diagnostic_image(img: Dictionary, diag: String = "") -> Dictionary:
+	var d := RenderDiag.parse(diag if diag != "" else RenderDiag.text())
+	var flags: PackedStringArray = d["flags"]
+	var values: Dictionary = d["values"]
 	var out := img.duplicate(true)
-	for key in ["msaa", "ssao", "ssil", "screen_aa", "anisotropy"]:
-		var v := RenderDiag.value(key)
-		if v != "":
-			out[key] = int(v) if key in ["msaa", "anisotropy"] else v
-	if RenderDiag.value("atlas") != "":
-		out["shadow_atlas"] = int(RenderDiag.value("atlas"))
-	if RenderDiag.value("filtre") != "":
-		out["shadow_filter"] = RenderDiag.value("filtre")
-	if RenderDiag.has("ombres_2_cascades"):
+	var alias := {"atlas": "shadow_atlas", "filtre": "shadow_filter", "brume": "fog_volumetric",
+		"lod_maillage": "mesh_lod_threshold"}
+	for key in values:
+		var k: String = alias.get(key, key)
+		if not out.has(k):
+			continue
+		var v: String = values[key]
+		match typeof(out[k]):
+			TYPE_INT:
+				out[k] = v.to_int()
+			TYPE_FLOAT:
+				out[k] = v.to_float()
+			TYPE_BOOL:
+				out[k] = v == "true"
+			_:
+				out[k] = v
+	if "ombres_2_cascades" in flags:
 		out["shadow_splits"] = 2
-	if RenderDiag.has("sans_ssao"):
+	if "sans_ssao" in flags:
 		out["ssao"] = "off"
-	if RenderDiag.has("sans_ssil"):
+	if "sans_ssil" in flags:
 		out["ssil"] = "off"
-	if RenderDiag.has("sans_brume"):
+	if "sans_brume" in flags:
 		out["fog_volumetric"] = "off"
-	if RenderDiag.has("sans_glow"):
+	if "sans_glow" in flags:
 		out["glow"] = false
-	if RenderDiag.value("brume") != "":
-		out["fog_volumetric"] = RenderDiag.value("brume")
-	out["mesh_lod_threshold"] = RenderDiag.number("lod_maillage", float(out["mesh_lod_threshold"]))
 	return out
 
 

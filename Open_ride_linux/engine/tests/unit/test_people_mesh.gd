@@ -7,8 +7,9 @@ extends SceneTree
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
 
-## Triangles au plus par personnage : 160 spectateurs et 80 passants en `high` restent sous 250 000.
-const MAX_PERSON_TRIS := 1000
+## Triangles au plus par personnage, de près et au loin (Lot Y21) : 160 spectateurs et 80 passants en
+## `high`, dont les plus proches seulement détaillés.
+const MAX_PERSON_TRIS := [3300, 1200]
 
 var _failures := 0
 var _checked := 0
@@ -24,26 +25,53 @@ func _check(cond: bool, msg: String) -> void:
 
 
 func _test_outfits() -> void:
-	var ns := PeopleMesh.SKIN_TONES.size()
-	var nh := PeopleMesh.HAIR_COLORS.size()
-	var nt := PeopleMesh.TROUSER_COLORS.size()
-	var nst := PeopleMesh.STYLES
+	var sizes := {"skin": PeopleMesh.SKIN_TONES.size(), "hair": PeopleMesh.HAIR_COLORS.size(),
+		"trousers": PeopleMesh.TROUSER_COLORS.size(), "style": PeopleMesh.STYLES, "bottom": PeopleMesh.BOTTOMS,
+		"hat": PeopleMesh.HATS, "gesture": PeopleMesh.GESTURES, "detail": PeopleMesh.DETAILS}
+	var total := 1
+	for k in sizes:
+		total *= int(sizes[k])
 	var ok := true
-	for s in range(ns):
-		for h in range(nh):
-			for t in range(nt):
-				for st in range(nst):
-					var o := int(PeopleMesh.outfit(s, h, t, st))
-					ok = ok and o % ns == s and (o / ns) % nh == h and (o / (ns * nh)) % nt == t and (o / (ns * nh * nt)) % nst == st
-	_check(ok, "tenue : peau, cheveux, pantalon et style relus tels quels (%d tenues)" % (ns * nh * nt * nst))
+	var n := 0
+	for s in range(sizes["skin"]):
+		for h in range(sizes["hair"]):
+			for t in range(sizes["trousers"]):
+				for st in range(sizes["style"]):
+					for b in range(sizes["bottom"]):
+						for hat in range(sizes["hat"]):
+							for g in range(sizes["gesture"]):
+								for d in range(sizes["detail"]):
+									var f := PeopleMesh.outfit_fields(PeopleMesh.outfit(s, h, t, st, b, hat, g, d))
+									ok = ok and f["skin"] == s and f["hair"] == h and f["trousers"] == t and f["style"] == st \
+										and f["bottom"] == b and f["hat"] == hat and f["gesture"] == g and f["detail"] == d
+									n += 1
+	_check(ok and total < 1 << 24, "tenue : huit champs relus tels quels (%d tenues, exactes en flottant 32 bits)" % n)
+	# Donnée d'instance (instance_custom) relue comme crowd.gdshaderinc : entiers exacts sous 2 048
+	var ic := PeopleMesh.instance_custom(0.25, 1.0, 9.0, PeopleMesh.outfit(3, 5, 4, 6, 2, 1, 7, 5))
+	var w := int(ic.a)
+	var zq := int(ic.b)
+	var q := zq / 10
+	_check(w % 4 == 3 and (w / 4) % 6 == 5 and (w / 24) % 6 == 4 and (w / 144) % 8 == 6 and zq % 10 == 9
+		and q % 3 == 2 and (q / 3) % 3 == 1 and (q / 9) % 8 == 7 and int(floorf(ic.r)) == 5
+		and is_equal_approx(fposmod(ic.r, 1.0), 0.25), "donnée d'instance : champs relus comme le shader (%s)" % str(ic))
+	var max_c := PeopleMesh.instance_custom(0.999, 1.0, 9.0, float(total - 1))
+	_check(max_c.r < 2048.0 and max_c.b < 2048.0 and max_c.a < 2048.0, "donnée d'instance : composantes sous 2 048 (%s)" % str(max_c))
 	var seen := {}
 	var in_range := true
-	for i in range(200):
-		var o := PeopleMesh.outfit_of(i)
-		in_range = in_range and o >= 0.0 and o < float(ns * nh * nt * nst) and o == floorf(o)
-		seen[o] = true
-	_check(in_range, "outfit_of : entier dans les %d tenues" % (ns * nh * nt * nst))
-	_check(seen.size() >= 60, "200 personnes : %d tenues différentes" % seen.size())
+	var count := {"bottom": [0, 0, 0], "hat": [0, 0, 0], "gesture": [0, 0, 0, 0, 0, 0, 0, 0]}
+	for i in range(400):
+		var v := PeopleMesh.outfit_of(i)
+		in_range = in_range and v >= 0.0 and v < float(total) and v == floorf(v)
+		seen[v] = true
+		var f := PeopleMesh.outfit_fields(v)
+		for k in count:
+			count[k][int(f[k])] += 1
+	_check(in_range, "outfit_of : entier dans les %d tenues" % total)
+	_check(seen.size() >= 300, "400 personnes : %d tenues différentes" % seen.size())
+	_check(count["bottom"][0] > 200 and count["bottom"][1] > 40 and count["bottom"][2] > 15,
+		"bas : %d pantalons, %d shorts, %d jupes sur 400" % count["bottom"])
+	_check(count["hat"][1] > 70 and count["hat"][2] > 20, "coiffes : %d casquettes, %d chapeaux sur 400" % [count["hat"][1], count["hat"][2]])
+	_check(count["gesture"].min() > 25, "gestes : les huit tirés (%s)" % str(count["gesture"]))
 	_check(PeopleMesh.outfit_of(42) == PeopleMesh.outfit_of(42), "même numéro : même tenue")
 
 
@@ -51,38 +79,80 @@ func _arrays(mesh: ArrayMesh) -> Array:
 	return mesh.surface_get_arrays(0)
 
 
-func _test_person(with_flag: bool) -> void:
-	var name := "porte-drapeau" if with_flag else "personnage"
-	var a := _arrays(PeopleMesh.build_person(with_flag))
+func _test_person(kind: String, lod: int) -> void:
+	var name := "%s (niveau %d)" % [kind, lod]
+	var mesh: ArrayMesh
+	match kind:
+		"porte-drapeau":
+			mesh = PeopleMesh.build_person(true, false, lod)
+		"pancarte":
+			mesh = PeopleMesh.build_sign_holder(lod)
+		_:
+			mesh = PeopleMesh.build_person(false, false, lod)
+	var a := _arrays(mesh)
 	var verts: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
 	var custom: PackedFloat32Array = a[Mesh.ARRAY_CUSTOM0]
+	var uv: PackedVector2Array = a[Mesh.ARRAY_TEX_UV]
 	var uv2: PackedVector2Array = a[Mesh.ARRAY_TEX_UV2]
 	var tris := verts.size() / 3
-	_check(tris <= MAX_PERSON_TRIS, "%s : %d triangles (au plus %d)" % [name, tris, MAX_PERSON_TRIS])
+	_check(tris <= MAX_PERSON_TRIS[lod], "%s : %d triangles (au plus %d)" % [name, tris, MAX_PERSON_TRIS[lod]])
 	var regions := {}
+	var extras := {}
 	var lo := INF
 	var hi := -INF
-	var shin_ok := true
+	var joint_ok := true
 	var holder := 0
 	for i in range(verts.size()):
-		regions[int(custom[i * 4])] = true
-		if int(custom[i * 4]) != PeopleMesh.REGION_POLE and custom[i * 4 + 2] < 0.5:
+		var region := int(custom[i * 4])
+		var extra := int(custom[i * 4 + 3])
+		regions[region] = true
+		extras[extra] = true
+		if region != PeopleMesh.REGION_POLE and region != PeopleMesh.REGION_SIGN and custom[i * 4 + 2] < 0.5 and extra == 0:
 			lo = minf(lo, verts[i].y)
 			hi = maxf(hi, verts[i].y)
 		if custom[i * 4 + 1] > 0.5:
-			shin_ok = shin_ok and absf(uv2[i].x) > 0.5 and verts[i].y <= PeopleMesh.KNEE_Y + 1e-3
+			# Sous une articulation : tibia (sur une jambe, sous le genou) ou avant-bras (bras libre, sous le coude)
+			var shin := absf(uv2[i].x) > 0.5 and verts[i].y <= PeopleMesh.KNEE_Y + 1e-3
+			var forearm := uv[i].y > 0.5 and verts[i].y <= PeopleMesh.ELBOW_Y + 0.05
+			joint_ok = joint_ok and (shin or forearm or custom[i * 4 + 2] > 0.5)
 		holder += 1 if custom[i * 4 + 2] > 0.5 else 0
-	var expected := [PeopleMesh.REGION_TOP, PeopleMesh.REGION_SKIN, PeopleMesh.REGION_HAIR,
-		PeopleMesh.REGION_TROUSERS, PeopleMesh.REGION_SHOES, PeopleMesh.REGION_METAL]
-	if with_flag:
-		expected.append(PeopleMesh.REGION_POLE)
+	var expected := [PeopleMesh.REGION_TOP, PeopleMesh.REGION_SKIN, PeopleMesh.REGION_HAIR, PeopleMesh.REGION_TROUSERS,
+		PeopleMesh.REGION_SHOES, PeopleMesh.REGION_METAL, PeopleMesh.REGION_POLE, PeopleMesh.REGION_ARM,
+		PeopleMesh.REGION_ACCESSORY]
+	if lod == 0:
+		expected.append_array([PeopleMesh.REGION_EYE, PeopleMesh.REGION_LIPS])
+	if kind == "pancarte":
+		expected.append(PeopleMesh.REGION_SIGN)
 	var all := true
 	for r in expected:
 		all = all and regions.has(r)
 	_check(all and regions.size() == expected.size(), "%s : zones %s" % [name, str(regions.keys())])
 	_check(absf(lo) < 0.01 and hi > 1.7 and hi < 1.8, "%s : pieds au sol, %.2f m de haut" % [name, hi])
-	_check(shin_ok, "%s : tibias sous le genou et sur une jambe" % name)
-	_check((holder > 0) == with_flag, "%s : %d sommets de porte-drapeau" % [name, holder])
+	_check(joint_ok, "%s : tibias sous le genou, avant-bras sous le coude" % name)
+	_check((holder > 0) == (kind != "personnage"), "%s : %d sommets de porteur" % [name, holder])
+	var pieces := [PeopleMesh.EXTRA_LONG_HAIR, PeopleMesh.EXTRA_CAP, PeopleMesh.EXTRA_SUN_HAT, PeopleMesh.EXTRA_SKIRT,
+		PeopleMesh.EXTRA_PONYTAIL, PeopleMesh.EXTRA_BUN, PeopleMesh.EXTRA_BACKPACK, PeopleMesh.EXTRA_SCARF]
+	if lod == 0:
+		pieces.append_array([PeopleMesh.EXTRA_BEARD, PeopleMesh.EXTRA_MOUSTACHE, PeopleMesh.EXTRA_SUNGLASSES])
+	if kind == "personnage" and lod == 0:
+		pieces.append(PeopleMesh.EXTRA_PHONE)
+	if kind == "porte-drapeau":
+		pieces.append(PeopleMesh.EXTRA_FLAG)
+	if kind == "pancarte":
+		pieces.append(PeopleMesh.EXTRA_SIGN)
+	var has_all := true
+	for e in pieces:
+		has_all = has_all and extras.has(e)
+	_check(has_all, "%s : pièces de tenue %s" % [name, str(extras.keys())])
+
+
+func _test_lod() -> void:
+	for kind in [[false, "personnage"], [true, "porte-drapeau"]]:
+		var near: int = _arrays(PeopleMesh.build_person(kind[0], false, 0))[Mesh.ARRAY_VERTEX].size()
+		var far: int = _arrays(PeopleMesh.build_person(kind[0], false, 1))[Mesh.ARRAY_VERTEX].size()
+		_check(far * 2 < near, "%s : au loin %d triangles, de près %d" % [kind[1], far / 3, near / 3])
+	var r: Vector4 = PeopleMesh.sign_rect()
+	_check(r.z - r.x > 0.7 and r.y > 1.8, "pancarte au-dessus de la tête (%s)" % str(r))
 
 
 func _test_others() -> void:
@@ -111,8 +181,10 @@ func _test_others() -> void:
 
 func _init() -> void:
 	_test_outfits()
-	_test_person(false)
-	_test_person(true)
+	for lod in [0, 1]:
+		for kind in ["personnage", "porte-drapeau", "pancarte"]:
+			_test_person(kind, lod)
+	_test_lod()
 	_test_others()
 	print("test_people_mesh : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

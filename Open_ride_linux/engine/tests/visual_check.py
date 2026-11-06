@@ -754,8 +754,10 @@ def _scenes(s: Session) -> None:
     _draft_gauge_scene(s)
     _lane_scene(s)
     _vehicle_draft_scene(s)
+    _decor_riders_draft_scene(s)
+    _decor_riders_close_scene(s)
     core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=None, draft_bot=None,
-                   lane_m=None, vehicles=None)
+                   lane_m=None, vehicles=None, riders=None)
     time.sleep(SETTLE_S)
     shot = s.capture("sans_bot")
     if shot:
@@ -1479,7 +1481,7 @@ def _records_scene(s: Session) -> None:
     """Étape 4c des menus : écran Records du parcours (depuis l'écran Prêt) avec la carte du record en or,
     puis la table des temps d'une montée ; retour à l'écran Prêt."""
     core = s.core
-    for _ in range(5):   # Rouler, Entraînement, Changer de parcours, Bot, Fantôme, puis Records du parcours
+    for _ in range(6):   # Rouler, Entraînement, Changer de parcours, Bot, Fantôme, Peloton (lot PL1), puis Records
         core.send({"type": "input", "v": CONTRACT_VERSION, "event": "PLUS_SHORT"})
         time.sleep(0.2)
     core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
@@ -1663,6 +1665,114 @@ def _lane_scene(s: Session) -> None:
 
 
 VEHICLE_AHEAD_M = 6.5   # écart voulu entre le cycliste affiché et le tracteur (relevé `rel_m` du décor)
+RIDERS_AHEAD_M = 2.5    # écart voulu entre le cycliste affiché et le dernier du groupe du décor (lot AS7)
+
+
+def _decor_riders_draft_scene(s: Session) -> None:
+    """Lot AS7 : groupe de trois cyclistes du décor envoyé par le core dans `riders`, en file à 1,5 m de l'axe, le
+    dernier ramené à 2,5 m devant le cycliste affiché (même correction que pour le tracteur) ; le cycliste dans leur
+    ligne reçoit 38 % d'abri (`draft_bot` = `rider:c77-2`) : jauge au-dessus du dernier, dans l'image. Puis liste
+    vide : le groupe quitte la route."""
+    core = s.core
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
+        {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
+         "value": "on", "choices": ["off", "on"], "applies": "now"}]})
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
+    s_last = core.current_s() + 1.7 + 12.0
+
+    def group(s0: float) -> list[dict[str, Any]]:
+        return [{"id": f"c77-{2 - i}", "s": round(s0 + 1.5 * i, 2), "dir": 1, "v": 0.0, "lane_m": 1.5,
+                 "look": (37 * (i + 1) << 4) | (i + 2)} for i in range(3)]
+
+    core.set_scene(speed=0.0, lane_m=1.5, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=0.0,
+                   draft_bot=None, vehicles=None, riders=group(s_last))
+    time.sleep(SETTLE_S + 1.5)
+    shot = s.capture("abri_cyclistes_decor_approche")
+    users = shot[1].get("decor", {}).get("road_users", []) if shot else []
+    rel = [float(u["rel_m"]) for u in users if u.get("id") == "c77-2"]
+    if rel:
+        s_last = s_last - rel[0] + RIDERS_AHEAD_M
+    core.set_scene(speed=0.0, draft=0.38, draft_bot="rider:c77-2", riders=group(s_last))
+    time.sleep(SETTLE_S)
+    shot = s.capture("abri_cyclistes_decor")
+    if shot:
+        img, info = shot
+        g = info.get("draft_gauge", {})
+        s.check("abri_cyclistes_decor", "jauge au-dessus du dernier cycliste du groupe, dans l'image",
+                g.get("visible") and g.get("bot") == "rider:c77-2" and g.get("on_screen"), f"{g}")
+        users = info.get("decor", {}).get("road_users", [])
+        mine = [u for u in users if str(u.get("id", "")).startswith("c77-")]
+        s.check("abri_cyclistes_decor", "trois cyclistes du core en file à 1,5 m de l'axe, le dernier 1 à 4 m devant",
+                len(mine) == 3 and all(abs(float(u.get("lateral", 0.0)) - 1.5) < 0.05 for u in mine)
+                and any(u.get("id") == "c77-2" and 1.0 <= float(u.get("rel_m", 0.0)) <= 4.0 for u in mine), f"{mine}")
+        s.check_layout("abri_cyclistes_decor", info)
+    core.set_scene(speed=0.0, draft=0.0, draft_bot=None, riders=[])
+    time.sleep(SETTLE_S)
+    shot = s.capture("abri_cyclistes_decor_parti")
+    if shot:
+        users = shot[1].get("decor", {}).get("road_users", [])
+        s.check("abri_cyclistes_decor_parti", "liste vide : plus de groupe près du cycliste",
+                not any(str(u.get("id", "")).startswith("c77-") and abs(float(u.get("rel_m", 999.0))) < 55.0
+                        for u in users), f"{users}")
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
+        {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
+         "value": "off", "choices": ["off", "on"], "applies": "now"}]})
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
+
+
+def _decor_riders_close_scene(s: Session) -> None:
+    """Lot AS7, retour d'essai du 4 novembre : les cyclistes du décor dessinés comme les bots se voient de près
+    (niveau de détail 0 ou 1).
+    « cyclistes_decor_tenues » : caméra de côté, trois cyclistes à l'arrêt en file entre la caméra et l'avatar
+    (2,7 m de l'axe, 1,6 m d'écart), trois tenues différentes. « cyclistes_decor_double » : caméra derrière, un
+    groupe de trois qui double à gauche, côte à côte, de 1,5 à 4 m devant. Les places sont corrigées de l'écart
+    lu sur une première capture (la caméra peut avoir pris de l'avance sur `s`, comme pour le tracteur)."""
+    core = s.core
+
+    def tenues(s0: float) -> list[dict[str, Any]]:
+        return [{"id": f"c88-{i}", "s": round(s0 + 1.6 * (i - 1), 2), "dir": 1, "v": 0.0, "lane_m": 2.7,
+                 "look": ((i % 2) << 4) | (2 * i + 1)} for i in range(3)]
+
+    def doublent(s0: float) -> list[dict[str, Any]]:
+        return [{"id": f"c89-{i}", "s": round(s0 + 1.2 * i, 2), "dir": 1, "v": 0.0, "lane_m": 0.2 - 0.8 * (i % 2),
+                 "look": (((i + 1) % 2) << 4) | (2 * i + 4)} for i in range(3)]
+
+    def placed(name: str, ids: str, make, s0: float, rel_m: float):
+        core.set_scene(speed=0.0, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=0.0, draft_bot=None,
+                       vehicles=None, riders=make(s0))
+        time.sleep(SETTLE_S + 1.0)
+        shot = s.capture(name + "_approche")
+        users = shot[1].get("decor", {}).get("road_users", []) if shot else []
+        rel = [float(u["rel_m"]) for u in users if u.get("id") == ids + "-1"]
+        if rel:
+            s0 = s0 - rel[0] + rel_m
+        core.set_scene(speed=0.0, riders=make(s0))
+        time.sleep(SETTLE_S)
+        return s.capture(name), s0
+
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "side"})
+    shot, _ = placed("cyclistes_decor_tenues", "c88", tenues, core.current_s(), 0.0)
+    if shot:
+        img, info = shot
+        users = [u for u in info.get("decor", {}).get("road_users", []) if str(u.get("id", "")).startswith("c88-")]
+        s.check("cyclistes_decor_tenues", "trois cyclistes du décor à côté de l'avatar, 2,7 m de l'axe",
+                len(users) == 3 and all(abs(float(u.get("rel_m", 99.0))) < 3.0 for u in users), f"{users}")
+        lods = info.get("decor", {}).get("cyclist_lods", [0, 0, 0])
+        s.check("cyclistes_decor_tenues", "dessinés comme les bots, au niveau de détail de près",
+                lods[0] + lods[1] >= 3, f"niveaux {lods}")
+        s.check_world("cyclistes_decor_tenues", img, info)
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
+    shot, _ = placed("cyclistes_decor_double", "c89", doublent, core.current_s() + 2.7, 2.7)
+    if shot:
+        img, info = shot
+        users = [u for u in info.get("decor", {}).get("road_users", []) if str(u.get("id", "")).startswith("c89-")]
+        s.check("cyclistes_decor_double", "groupe de trois qui double à gauche, de 1 à 6 m devant",
+                len(users) == 3 and all(-1.0 <= float(u.get("rel_m", 99.0)) <= 6.0 and float(u.get("lateral", 9.0)) < 1.0
+                                        for u in users), f"{users}")
+        s.check_layout("cyclistes_decor_double", info)
+    core.set_scene(speed=0.0, riders=[])
+    time.sleep(SETTLE_S)
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
 
 
 def _vehicle_draft_scene(s: Session) -> None:

@@ -117,11 +117,11 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     bots_list = []
     if args.bot or args.bot_profile:
-        if len(args.bot or []) + len(args.bot_profile or []) > 4:
-            print("openride-core run : erreur : au plus 4 bots à puissance constante ou à profil "
+        from .bots import MAX_CONSTANT_BOTS, ConstantPowerBot, BotError, ProfileBot, profile_bot_names
+        if len(args.bot or []) + len(args.bot_profile or []) > MAX_CONSTANT_BOTS:
+            print(f"openride-core run : erreur : au plus {MAX_CONSTANT_BOTS} bots à puissance constante ou à profil "
                   "(--bot, --bot-profile)", file=sys.stderr)
             return 2
-        from .bots import ConstantPowerBot, BotError, ProfileBot, profile_bot_names
         from .physics import PhysicsParams
         phys_params = PhysicsParams.from_config(cfg)
         try:
@@ -396,11 +396,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--replay", type=Path,
                      help="rejoue une séance enregistrée (.jsonl ou .fit) avec le simulateur (force --trainer mock)")
     run.add_argument("--bot", action="append", type=float, metavar="W",
-                     help="ajoute un bot à puissance constante en watts (répétable, au plus 4 avec --bot-profile)")
+                     help="ajoute un bot à puissance constante en watts (répétable, au plus 11 avec --bot-profile, lot PL1)")
     run.add_argument("--bot-profile", action="append", choices=["climber", "rouleur", "sprinter", "diesel"],
                      metavar="PROFIL",
                      help="ajoute un bot à profil : climber (Grimpeur), rouleur, sprinter (Sprinteur) ou "
-                          "diesel (répétable, au plus 4 bots en tout avec --bot ; lot T12)")
+                          "diesel (répétable, au plus 11 bots en tout avec --bot ; lots T12 et PL1)")
     run.add_argument("--ghost", type=Path, metavar="FICHIER",
                      help="ajoute un fantôme rejouant une séance enregistrée (.jsonl ou .fit)")
     run.add_argument("--first-run", action="store_true",
