@@ -1,0 +1,161 @@
+{
+  "low": {
+    "base": {
+      "secondes": 32,
+      "gpu_ms": 5.05,
+      "fps": 58.12,
+      "p99_ms": 17.83,
+      "primitives": 538252.5,
+      "appels": 208.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        5.05,
+        5.05
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "ciel_incremental": {
+      "secondes": 29,
+      "gpu_ms": 4.92,
+      "fps": 56.45,
+      "p99_ms": 19.52,
+      "primitives": 538805.5,
+      "appels": 207.5,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        4.98,
+        4.86
+      ],
+      "enleve": "carte de rayonnement du ciel étalée sur plusieurs images",
+      "diag": "ciel=incremental",
+      "gain_gpu_ms": 0.13,
+      "diag_non_vu": false
+    },
+    "ciel_128": {
+      "secondes": 32,
+      "gpu_ms": 5.09,
+      "fps": 59.61,
+      "p99_ms": 16.67,
+      "primitives": 540181.5,
+      "appels": 208.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        5.1,
+        5.08
+      ],
+      "enleve": "carte de rayonnement du ciel en 128 au lieu de 256",
+      "diag": "ciel_radiance=128",
+      "gain_gpu_ms": -0.04,
+      "diag_non_vu": false
+    }
+  },
+  "medium": {
+    "base": {
+      "secondes": 32,
+      "gpu_ms": 9.9,
+      "fps": 59.31,
+      "p99_ms": 16.68,
+      "primitives": 1172105.0,
+      "appels": 289.5,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        9.93,
+        9.87
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "ciel_incremental": {
+      "secondes": 37,
+      "gpu_ms": 9.42,
+      "fps": 59.95,
+      "p99_ms": 16.67,
+      "primitives": 1125191.5,
+      "appels": 285.5,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        9.41,
+        9.43
+      ],
+      "enleve": "carte de rayonnement du ciel étalée sur plusieurs images",
+      "diag": "ciel=incremental",
+      "gain_gpu_ms": 0.48,
+      "diag_non_vu": false
+    },
+    "ciel_128": {
+      "secondes": 36,
+      "gpu_ms": 9.7,
+      "fps": 60.0,
+      "p99_ms": 16.67,
+      "primitives": 1159546.5,
+      "appels": 287.25,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        9.54,
+        9.87
+      ],
+      "enleve": "carte de rayonnement du ciel en 128 au lieu de 256",
+      "diag": "ciel_radiance=128",
+      "gain_gpu_ms": 0.2,
+      "diag_non_vu": false
+    }
+  },
+  "high": {
+    "base": {
+      "secondes": 38,
+      "gpu_ms": 10.71,
+      "fps": 59.75,
+      "p99_ms": 16.67,
+      "primitives": 1621386.5,
+      "appels": 299.75,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        10.78,
+        10.64
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "ciel_incremental": {
+      "secondes": 36,
+      "gpu_ms": 10.53,
+      "fps": 59.98,
+      "p99_ms": 16.67,
+      "primitives": 1619734.75,
+      "appels": 301.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        10.39,
+        10.66
+      ],
+      "enleve": "carte de rayonnement du ciel étalée sur plusieurs images",
+      "diag": "ciel=incremental",
+      "gain_gpu_ms": 0.18,
+      "diag_non_vu": false
+    },
+    "ciel_128": {
+      "secondes": 37,
+      "gpu_ms": 10.77,
+      "fps": 59.7,
+      "p99_ms": 16.67,
+      "primitives": 1619768.0,
+      "appels": 300.5,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        10.85,
+        10.7
+      ],
+      "enleve": "carte de rayonnement du ciel en 128 au lieu de 256",
+      "diag": "ciel_radiance=128",
+      "gain_gpu_ms": -0.06,
+      "diag_non_vu": false
+    }
+  }
+}
