@@ -1,0 +1,8 @@
+[ÉCHEC] à-coups : pire image : 142 ms (au plus 100 ms)
+[ÉCHEC] décor : aucun contact sur la route : 2 (dernier : bot / cycliste à -2 m (écarts à l'axe 1.2 et 1.2 m))
+[OK] [T11 §8] bots à profil calibrés au départ (niveau des bots) : 1 (au moins 1 attendu)
+[OK] [T11 §8] encart des bots affiché : captures 6 (au moins 1 attendu), ex. 002_t064.png : « Grimpeur  220 W · 3,7 W/kg »
+[OK] [T11 §8] écart au bot affiché : captures 6 (au moins 1 attendu), ex. 002_t064.png : « +0,2 s »
+[OK] [T11 §8] voisin de devant (▲) dans l'encart : captures 3 (au moins 1 attendu), ex. 002_t064.png : « Grimpeur  220 W · 3,7 W/kg »
+[OK] [T11 §8] voisin de derrière (▼) dans l'encart : captures 7 (au moins 1 attendu), ex. 002_t064.png : « Rouleur  248 W · 3,4 W/kg »
+RÉSULTAT : ÉCHEC (2 vérification(s))
