@@ -82,6 +82,11 @@ VARIANTS: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...], str], ...] = (
     ("lod_maillage_2", "lod_maillage=2.0", (), ("medium",), "niveaux de détail des maillages comme en low"),
     ("ciel_incremental", "ciel=incremental", (), QUALITIES, "carte de rayonnement du ciel étalée sur plusieurs images"),
     ("ciel_128", "ciel_radiance=128", (), QUALITIES, "carte de rayonnement du ciel en 128 au lieu de 256"),
+    ("ciel_rayon_sans_nuages", "ciel_rayonnement_sans_nuages", (), QUALITIES,
+     "nuages absents de la lumière ambiante du ciel (fond inchangé)"),
+    ("ciel_demi_res", "ciel_demi_res", (), QUALITIES, "nuages du fond calculés en demi-résolution"),
+    ("ciel_allege", "ciel_rayonnement_sans_nuages,ciel_demi_res,ciel=incremental", (), QUALITIES,
+     "les trois allègements du ciel ensemble"),
 )
 # Socle « propose » : réglages proposés le 6 novembre (étude §6), auxquels chaque variante ajoute les siens
 GODOT_FREE = "feuillage_simple,arbres_loin_simple,halo_niveaux=3,halo_lineaire,anisotropy=8,brume_ambiante"

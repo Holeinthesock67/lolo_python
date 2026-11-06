@@ -24,6 +24,8 @@ extends RefCounted
 ##   ombre, ground_details).
 ## Ciel (6 novembre, « Setup Sky » ≈ 0,8 ms par image) : ciel=automatic|quality|incremental|realtime
 ##   (Sky.process_mode, scène : realtime), ciel_radiance=32|64|128|256 (taille de la carte de rayonnement).
+##   ciel_rayonnement_sans_nuages (nuages absents de la carte de rayonnement), ciel_demi_res (bruit des nuages en
+##   demi-résolution) (sky_clouds.gd).
 ## Pas de class_name : charger par preload("res://scripts/render_diag.gd").
 
 static var _parsed := false

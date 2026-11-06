@@ -38,6 +38,9 @@ uniform vec2 cloud_offset = vec2(0.0);   // mètres (x, z), cumulés au vent
 uniform bool layered = false;
 uniform float cloud_scale_m = 2600.0;    // taille d'un motif de base
 uniform int octaves = 5;
+// Nuages dans la carte de rayonnement (lumière ambiante et reflets) : false = ciel sans nuages pour ce calcul,
+// plus léger (passe AT_CUBEMAP_PASS, 6 novembre). Le fond visible garde ses nuages.
+uniform bool clouds_in_radiance = true;
 
 float _hash21(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -81,25 +84,41 @@ float _layer(vec2 p, float evolve) {
 	return smoothstep(threshold, threshold + 0.16, d);
 }
 
+// Opacité des nuages dans la direction `eyedir` vue depuis `pos` (une ou deux couches, fondu vers l'horizon).
+float _clouds_alpha(vec3 eyedir, vec3 pos) {
+	float evolve = wind_phase * 0.004 * (0.3 + wind_strength);
+	float t = altitude_m / max(eyedir.y, 0.02);
+	vec2 p = pos.xz + eyedir.xz * t + cloud_offset;
+	float alpha = _layer(p, evolve);
+	if (layered) {
+		float t2 = (altitude_m * 1.8) / max(eyedir.y, 0.02);
+		vec2 p2 = pos.xz + eyedir.xz * t2 + cloud_offset * 1.6 + vec2(5000.0, -3100.0);
+		alpha = max(alpha, _layer(p2 * 0.7, evolve * 1.3) * 0.75);
+	}
+	// Fondu vers l'horizon (la répétition et l'aliasing se voient près de l'horizon)
+	return alpha * smoothstep(0.01, 0.14, eyedir.y) * (0.9 + 0.1 * (1.0 - wind_gust));
+}
+
 void sky() {
+#ifdef CIEL_DEMI_RES
+	// Essai (OPENRIDE_RENDER_DIAG ciel_demi_res) : bruit des nuages calculé en demi-résolution
+	if (AT_HALF_RES_PASS) {
+		// Opacité rangée dans le rouge (l'alpha de la demi-résolution n'est pas relu fidèlement)
+		COLOR = vec3((coverage > 0.0 && EYEDIR.y > 0.0) ? _clouds_alpha(EYEDIR, POSITION) : 0.0, 0.0, 0.0);
+	} else {
+#endif
 	float v_angle = clamp(EYEDIR.y, -1.0, 1.0);
 	vec3 sky = mix(sky_top_color.rgb, sky_horizon_color.rgb, clamp(pow(1.0 - v_angle, 0.6 / sky_curve), 0.0, 1.0));
 	sky *= sky_energy;
 
 	// Nuages, avant le soleil : le disque solaire reste visible à travers une couche fine seulement
 	float alpha = 0.0;
-	if (coverage > 0.0 && EYEDIR.y > 0.0) {
-		float evolve = wind_phase * 0.004 * (0.3 + wind_strength);
-		float t = altitude_m / max(EYEDIR.y, 0.02);
-		vec2 p = POSITION.xz + EYEDIR.xz * t + cloud_offset;
-		alpha = _layer(p, evolve);
-		if (layered) {
-			float t2 = (altitude_m * 1.8) / max(EYEDIR.y, 0.02);
-			vec2 p2 = POSITION.xz + EYEDIR.xz * t2 + cloud_offset * 1.6 + vec2(5000.0, -3100.0);
-			alpha = max(alpha, _layer(p2 * 0.7, evolve * 1.3) * 0.75);
-		}
-		// Fondu vers l'horizon (la répétition et l'aliasing se voient près de l'horizon)
-		alpha *= smoothstep(0.01, 0.14, EYEDIR.y) * (0.9 + 0.1 * (1.0 - wind_gust));
+	if (coverage > 0.0 && EYEDIR.y > 0.0 && (clouds_in_radiance || !AT_CUBEMAP_PASS)) {
+#ifdef CIEL_DEMI_RES
+		alpha = AT_CUBEMAP_PASS ? _clouds_alpha(EYEDIR, POSITION) : HALF_RES_COLOR.r;
+#else
+		alpha = _clouds_alpha(EYEDIR, POSITION);
+#endif
 	}
 
 	if (LIGHT0_ENABLED) {
@@ -126,4 +145,7 @@ void sky() {
 	ground *= ground_energy;
 
 	COLOR = mix(ground, sky, step(0.0, EYEDIR.y)) * exposure;
+#ifdef CIEL_DEMI_RES
+	}
+#endif
 }

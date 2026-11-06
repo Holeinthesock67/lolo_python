@@ -17,6 +17,8 @@ extends RefCounted
 
 const SkyShader := preload("res://shaders/sky_clouds.gdshader")
 const WindModel := preload("res://scripts/wind_model.gd")
+const RenderDiag := preload("res://scripts/render_diag.gd")
+static var _half_res_shader: Shader = null
 
 ## Couleurs du ciel procédural actuel (main.gd, moteur Compatibility).
 const SKY_TOP := Color(0.38, 0.65, 0.98)
@@ -43,6 +45,14 @@ static func build_material(params: Dictionary, quality: String, current: Materia
 		return current if current != null else current_sky_material()
 	var m := ShaderMaterial.new()
 	m.shader = SkyShader
+	if RenderDiag.has("ciel_demi_res"):   # essai : nuages en demi-résolution (même shader, CIEL_DEMI_RES)
+		if _half_res_shader == null:
+			_half_res_shader = Shader.new()
+			_half_res_shader.code = SkyShader.code.replace("render_mode use_debanding;",
+				"render_mode use_debanding, use_half_res_pass;\n#define CIEL_DEMI_RES")
+		m.shader = _half_res_shader
+	if RenderDiag.has("ciel_rayonnement_sans_nuages"):
+		m.set_shader_parameter("clouds_in_radiance", false)
 	m.set_shader_parameter("sky_top_color", SKY_TOP)
 	m.set_shader_parameter("sky_horizon_color", horizon)
 	m.set_shader_parameter("coverage", coverage)
@@ -56,7 +66,8 @@ static func build_material(params: Dictionary, quality: String, current: Materia
 
 
 static func is_cloud_material(material: Material) -> bool:
-	return material is ShaderMaterial and (material as ShaderMaterial).shader == SkyShader
+	return material is ShaderMaterial and ((material as ShaderMaterial).shader == SkyShader
+		or ((material as ShaderMaterial).shader == _half_res_shader and _half_res_shader != null))
 
 
 ## Défilement cumulé, en mètres (x, z) : les nuages vont vers où souffle le vent.
