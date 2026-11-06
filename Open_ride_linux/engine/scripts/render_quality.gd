@@ -11,6 +11,7 @@ extends RefCounted
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const WorldStreamer := preload("res://scripts/world_streamer.gd")
 const ViewCulling := preload("res://scripts/view_culling.gd")
+const RenderDiag := preload("res://scripts/render_diag.gd")
 
 const DEFAULT_PRESET := QualityPresets.DEFAULT_PRESET
 
@@ -48,9 +49,14 @@ const LOOK := {
 	"agx_contrast": 1.25,
 	"contrast": 1.08,
 	"saturation": 1.18,
+	# Étalonnage en S (table de couleurs 1D, coût nul), Forward+ seulement comme AgX : ombres plus denses
+	# avec la brume éclairée (variante F du réglage de l'image, 6 novembre).
+	"s_curve": 0.35,
 }
 ## Glow des préréglages qui l'activent : léger, seulement sur ce qui dépasse le blanc (ciel, soleil).
-const GLOW := {"intensity": 0.6, "strength": 1.0, "bloom": 0.0, "hdr_threshold": 1.0}
+## Trois premiers niveaux seulement, agrandis en linéaire (étude du rendu du 6 novembre : −0,45 ms en medium,
+## halo à peine moins large).
+const GLOW := {"intensity": 0.6, "strength": 1.0, "bloom": 0.0, "hdr_threshold": 1.0, "levels": 3, "bicubic": false}
 
 const AO_QUALITY := {
 	"low": RenderingServer.ENV_SSAO_QUALITY_LOW,
@@ -77,6 +83,10 @@ const VOLUMETRIC := {
 	"light": {"grid": 48, "length_m": 600.0, "density": 0.004, "anisotropy": 0.6},
 	"full": {"grid": 64, "length_m": 1200.0, "density": 0.006, "anisotropy": 0.6},
 }
+## Part de la lumière du ciel injectée dans la brume volumétrique : sans elle, la brume assombrit tout ce qui est
+## au-delà de sa portée (montagnes noires, 5 novembre) ; à 1, elle voile l'image (trop claire, 6 novembre) :
+## moitié retenue avec l'étalonnage en S (variante F de `tests/reglage_image.py`).
+const VOLUMETRIC_AMBIENT_INJECT := 0.5
 const VOLUMETRIC_DEPTH := 64
 const MSAA := {0: Viewport.MSAA_DISABLED, 2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}
 const SCREEN_AA := {"off": Viewport.SCREEN_SPACE_AA_DISABLED, "fxaa": Viewport.SCREEN_SPACE_AA_FXAA,
@@ -95,8 +105,8 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 	light.directional_shadow_max_distance = QualityPresets.shadow_distance_m(key)
 	# SSAO, SSIL et brouillard volumétrique n'existent qu'en Forward+ (sans RenderingDevice : Compatibility).
 	var forward_plus := RenderingServer.get_rendering_device() != null
-	apply_image(QualityPresets.image(key), light, env, viewport, forward_plus)
-	apply_diagnostic(OS.get_environment("OPENRIDE_RENDER_DIAG"), light, env)
+	apply_image(diagnostic_image(QualityPresets.image(key)), light, env, viewport, forward_plus)
+	apply_diagnostic(light, env)
 
 	if streamer != null:
 		if "chunks_ahead" in streamer:
@@ -104,13 +114,15 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 		if "chunks_behind" in streamer:
 			streamer.chunks_behind = int(p["chunks_behind"])
 		if "vegetation_density_factor" in streamer:
-			streamer.vegetation_density_factor = float(p["vegetation_density_factor"])
+			streamer.vegetation_density_factor = RenderDiag.number("vegetation", float(p["vegetation_density_factor"]))
 		if "far_radius_m" in streamer:
 			streamer.far_radius_m = WorldStreamer.far_radius_for(QualityPresets.fog_end_m(key))
 		if "culling_keep_m" in streamer:
 			streamer.culling_keep_m = ViewCulling.keep_radius_for(QualityPresets.shadow_distance_m(key))
 		if "quality_preset" in streamer:
 			streamer.quality_preset = key   # biomes par tuile et textures de sol (lot U6)
+		if "forest_impostors" in streamer and streamer.forest_impostors != null:
+			streamer.forest_impostors.set_preset(key)   # forêts lointaines (lot Y5)
 
 
 ## Qualité d'image (lot Y13) : anticrénelage, filtrage, occlusion ambiante, glow, ombres, LOD, et rendu
@@ -141,6 +153,7 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 		RenderingServer.environment_set_volumetric_fog_filter_active(true)
 		env.volumetric_fog_length = VOLUMETRIC[vol]["length_m"]
 		env.volumetric_fog_anisotropy = VOLUMETRIC[vol]["anisotropy"]
+		env.volumetric_fog_ambient_inject = VOLUMETRIC_AMBIENT_INJECT
 
 	env.glow_enabled = bool(img["glow"])
 	env.glow_intensity = GLOW["intensity"]
@@ -148,6 +161,9 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 	env.glow_bloom = GLOW["bloom"]
 	env.glow_hdr_threshold = GLOW["hdr_threshold"]
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	for i in range(7):
+		env.set_glow_level(i, 1.0 if i < int(GLOW["levels"]) else 0.0)
+	RenderingServer.environment_glow_set_use_bicubic_upscale(bool(GLOW["bicubic"]))
 
 	env.tonemap_mode = LOOK["tonemap"] if forward_plus else LOOK["tonemap_compatibility"]
 	env.tonemap_exposure = LOOK["exposure"]
@@ -157,6 +173,7 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 	env.adjustment_enabled = true
 	env.adjustment_contrast = LOOK["contrast"]
 	env.adjustment_saturation = LOOK["saturation"]
+	env.adjustment_color_correction = s_curve(LOOK["s_curve"]) if forward_plus else null
 
 	RenderingServer.directional_shadow_atlas_set_size(int(img["shadow_atlas"]), true)
 	# Le filtre doux de Compatibility tire un bruit différent à chaque image (grain qui scintille) :
@@ -167,26 +184,108 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 		else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS)
 
 
-## Essais de rendu sur le PC (coutures des flancs, 29 octobre) : OPENRIDE_RENDER_DIAG, liste séparée par des
-## virgules, coupe un effet pour trouver celui qui dessine un défaut : `sans_ombres`, `sans_ssao`, `sans_ssil`,
-## `sans_brume` (brume volumétrique) ; `biais_ombres` essaie des biais d'ombre plus forts (acné d'ombre). Vide :
-## rien ne change. Aucun réglage du joueur ne passe par là.
-static func apply_diagnostic(diag: String, light: DirectionalLight3D, env: Environment) -> void:
-	var flags := diag.replace(" ", "").split(",", false)
-	if flags.is_empty():
-		return
-	if "sans_ombres" in flags:
-		light.shadow_enabled = false
+## Essais de rendu sur le PC (OPENRIDE_RENDER_DIAG, render_diag.gd) : qualité d'image du préréglage modifiée
+## pour mesurer le coût d'un effet ou trouver celui qui dessine un défaut (coutures des flancs, 29 octobre ;
+## coût de chaque effet, 5 novembre). Toute entrée `clé=valeur` dont la clé est une clé de la qualité d'image
+## (`shadow_filter=high`, `glow=false`, 2.0.1) la remplace, au type de la clé ; s'y ajoutent les raccourcis
+## `atlas`, `filtre`, `brume`, `lod_maillage` et les drapeaux `sans_…`. `diag` : texte des essais (tests),
+## vide = la variable d'environnement. Sans essai : `img` inchangé.
+static func diagnostic_image(img: Dictionary, diag: String = "") -> Dictionary:
+	var d := RenderDiag.parse(diag if diag != "" else RenderDiag.text())
+	var flags: PackedStringArray = d["flags"]
+	var values: Dictionary = d["values"]
+	var out := img.duplicate(true)
+	var alias := {"atlas": "shadow_atlas", "filtre": "shadow_filter", "brume": "fog_volumetric",
+		"lod_maillage": "mesh_lod_threshold"}
+	for key in values:
+		var k: String = alias.get(key, key)
+		if not out.has(k):
+			continue
+		var v: String = values[key]
+		match typeof(out[k]):
+			TYPE_INT:
+				out[k] = v.to_int()
+			TYPE_FLOAT:
+				out[k] = v.to_float()
+			TYPE_BOOL:
+				out[k] = v == "true"
+			_:
+				out[k] = v
+	if "ombres_2_cascades" in flags:
+		out["shadow_splits"] = 2
 	if "sans_ssao" in flags:
-		env.ssao_enabled = false
+		out["ssao"] = "off"
 	if "sans_ssil" in flags:
-		env.ssil_enabled = false
+		out["ssil"] = "off"
 	if "sans_brume" in flags:
-		env.volumetric_fog_enabled = false
-	if "biais_ombres" in flags:
+		out["fog_volumetric"] = "off"
+	if "sans_glow" in flags:
+		out["glow"] = false
+	return out
+
+
+## Suite des essais (OPENRIDE_RENDER_DIAG) sur la lumière et l'environnement : `sans_ombres`, `biais_ombres`
+## (biais plus forts, acné d'ombre), `ombres_m=M` (portée des ombres), `brume_ambiante=F` (lumière ambiante
+## injectée dans la brume volumétrique), `halo_niveaux=N` (N premiers niveaux du halo), contraste, ciel
+## (liste complète dans render_diag.gd).
+static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> void:
+	var diag := RenderDiag.text()
+	if diag == "":
+		return
+	if RenderDiag.has("sans_ombres"):
+		light.shadow_enabled = false
+	if RenderDiag.has("biais_ombres"):
 		light.shadow_bias = 0.3
 		light.shadow_normal_bias = 3.0
-	print("Diagnostic de rendu : ", ", ".join(flags))
+	light.directional_shadow_max_distance = RenderDiag.number("ombres_m", light.directional_shadow_max_distance)
+	if RenderDiag.value("brume_ambiante") != "":
+		env.volumetric_fog_ambient_inject = clampf(RenderDiag.number("brume_ambiante", 1.0), 0.0, 2.0)
+	env.adjustment_contrast = RenderDiag.number("contraste", env.adjustment_contrast)
+	env.adjustment_saturation = RenderDiag.number("saturation", env.adjustment_saturation)
+	env.tonemap_agx_contrast = RenderDiag.number("agx_contraste", env.tonemap_agx_contrast)
+	env.tonemap_exposure = RenderDiag.number("exposition", env.tonemap_exposure)
+	if env.sky != null and RenderDiag.value("ciel") != "":
+		var modes := {"automatic": Sky.PROCESS_MODE_AUTOMATIC, "quality": Sky.PROCESS_MODE_QUALITY,
+			"incremental": Sky.PROCESS_MODE_INCREMENTAL, "realtime": Sky.PROCESS_MODE_REALTIME}
+		env.sky.process_mode = modes.get(RenderDiag.value("ciel"), env.sky.process_mode)
+	if env.sky != null and RenderDiag.value("ciel_radiance") != "":
+		var sizes := {"32": Sky.RADIANCE_SIZE_32, "64": Sky.RADIANCE_SIZE_64, "128": Sky.RADIANCE_SIZE_128,
+			"256": Sky.RADIANCE_SIZE_256}
+		env.sky.radiance_size = sizes.get(RenderDiag.value("ciel_radiance"), env.sky.radiance_size)
+	if RenderDiag.value("courbe_s") != "":
+		env.adjustment_color_correction = s_curve(clampf(RenderDiag.number("courbe_s", 0.0), 0.0, 1.0))
+	if RenderDiag.value("halo_niveaux") != "":
+		var levels := int(RenderDiag.value("halo_niveaux"))
+		for i in range(7):
+			env.set_glow_level(i, 1.0 if i < levels else 0.0)
+	if RenderDiag.value("soleil_brume") != "":
+		env.fog_sun_scatter = clampf(RenderDiag.number("soleil_brume", 0.0), 0.0, 1.0)
+	print("Diagnostic de rendu : ", diag)
+
+
+static var _s_curves := {}
+
+
+## Courbe en S de l'étalonnage (table de couleurs 1D, `adjustment_color_correction`) : ombres plus sombres,
+## hautes lumières plus claires, milieu de gamme inchangé ; `strength` 0 = droite (aucun effet), 1 = smoothstep.
+static func s_curve(strength: float) -> GradientTexture1D:
+	if _s_curves.has(strength):
+		return _s_curves[strength]
+	var g := Gradient.new()
+	var offsets := PackedFloat32Array()
+	var colors := PackedColorArray()
+	for i in range(17):
+		var x := i / 16.0
+		var y := lerpf(x, x * x * (3.0 - 2.0 * x), strength)
+		offsets.append(x)
+		colors.append(Color(y, y, y))
+	g.offsets = offsets
+	g.colors = colors
+	var tex := GradientTexture1D.new()
+	tex.gradient = g
+	tex.width = 256
+	_s_curves[strength] = tex
+	return tex
 
 
 ## Distance de vue de la caméra : fin du brouillard du préréglage plus CAMERA_FAR_MARGIN.
@@ -224,7 +323,10 @@ static func apply_fog(env: Environment, preset_name: String, has_terrain: bool,
 ## Densité de la brume volumétrique : celle du niveau du préréglage, ou celle du thème si elle est plus forte.
 static func volumetric_density(preset_name: String, theme_fog_density: float) -> float:
 	var vol := str(QualityPresets.image(preset_name)["fog_volumetric"])
-	return maxf(float(VOLUMETRIC[vol]["density"]), theme_fog_density) if VOLUMETRIC.has(vol) else 0.0
+	if not VOLUMETRIC.has(vol):
+		return 0.0
+	var diag_factor := clampf(RenderDiag.number("brume_densite", 1.0), 0.0, 4.0)   # essais seulement
+	return maxf(float(VOLUMETRIC[vol]["density"]), theme_fog_density) * diag_factor
 
 
 ## Brume de la météo (Lot P17, `fog_boost` de weather_model.gd, 0 à 1) : rapproche le brouillard en

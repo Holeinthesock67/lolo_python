@@ -291,7 +291,8 @@ def cmd_collect(cfg):
     clean_old_files(cfg, d)
 
 
-KEEP_DAYS = 60   # fichiers de veille gardés sur le Pi ; la compilation n'utilise que 7 jours
+KEEP_DAYS = 60
+HARD_MAX_TOTAL_CHARS = 450000   # garde-fou : au-delà, le script risque de ne plus pouvoir être écrit   # fichiers de veille gardés sur le Pi ; la compilation n'utilise que 7 jours
 
 
 def clean_old_files(cfg, d):
@@ -337,13 +338,25 @@ def cmd_build_week(cfg, days):
         log("Aucun élément cette semaine, rien à compiler.")
         return
 
-    # budget par élément pour rester sous la taille totale
-    budget = min(cfg["max_chars_per_item"], cfg["max_total_chars"] // len(items))
+    # budget par élément pour rester sous la taille totale : les textes courts gardent tout,
+    # le reste du budget est partagé entre les textes longs (et non plus divisé à parts égales)
+    total_max = cfg["max_total_chars"]
+    if total_max > HARD_MAX_TOTAL_CHARS:
+        alerte(f"[{cfg['id']}] « Caractères au total » ({total_max}) dépasse le plafond de sécurité : "
+               f"ramené à {HARD_MAX_TOTAL_CHARS}")
+        total_max = HARD_MAX_TOTAL_CHARS
+    budgets, left = {}, total_max
+    for n, k in enumerate(sorted(range(len(items)), key=lambda i: len(items[i]["text"]))):
+        b = min(len(items[k]["text"]), cfg["max_chars_per_item"], left // (len(items) - n))
+        budgets[k], left = b, left - b
+    for k, it in enumerate(items):
+        it["_budget"] = budgets[k]
     year, week, _ = today.isocalendar()
     start = today - dt.timedelta(days=days - 1)
 
+    cut = sum(1 for it in items if len(it["text"]) > it["_budget"])
     lines = [f"# Veille {cfg.get('nom', '')} — semaine {year}-S{week:02d}",
-             f"Période : du {start} au {today} — {len(items)} éléments.", "",
+             f"Période : du {start} au {today} — {len(items)} éléments, dont {cut} tronqués.", "",
              "## Sources et positions", ""]
     for src in cfg["sources"]:
         n = sum(1 for it in items if it["source"] == src["name"])
@@ -352,8 +365,9 @@ def cmd_build_week(cfg, days):
     for it in sorted(items, key=lambda x: (x["camp"], x["source"], x["date"] or "")):
         lines += [f"### [{it['camp']}] {it['source']} — {it['title']}",
                   f"Date : {(it['date'] or '?')[:10]} | Langue : {it['lang']} | Lien : {it['link']}",
-                  "", truncate(it["text"], budget), "", "---", ""]
+                  "", truncate(it["text"], it["_budget"]), "", "---", ""]
 
+    lines.append("## FIN DE LA SOURCE")   # permet de vérifier que le fichier a été lu en entier
     out = d / "weekly" / f"{year}-W{week:02d}_source.md"
     out.write_text("\n".join(lines), encoding="utf-8")
     log(f"Compilation : {len(items)} éléments, {out.stat().st_size // 1024} Ko -> {out.name}")

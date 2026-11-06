@@ -101,6 +101,8 @@ documenté) ou DEV (outil de développement ou d'essai, hors menu, documenté).
 | `--biome` | rien | non | PRÉVU (U16) |
 | `--routes-dir` | rien | non | DEV |
 | `--culling` | rien | non | DEV (lot S1, aucun gain mesuré) |
+| `--forest` | rien | non | DEV (lot Y5, banc avant/après des forêts lointaines) |
+| `--camera-height` | rien | non | DEV (lot Y5, vue follow_far plus haute pour voir les forêts lointaines au banc) |
 | `--perf-probe` | `OPENRIDE_PERF_PROBE` | non | DEV |
 | `--sim-session` | « Session simulée » | auto | OK |
 | `--test-mode` | outils de test | non | DEV |

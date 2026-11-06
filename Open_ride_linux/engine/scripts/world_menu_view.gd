@@ -117,7 +117,8 @@ func _build_globe() -> void:
 	globe_viewport.size = Vector2i(GLOBE_PX, GLOBE_PX)
 	globe_viewport.transparent_bg = true
 	globe_viewport.own_world_3d = true
-	globe_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	# Rendu seulement menu ouvert (open/close) : UPDATE_ALWAYS dessinait le globe à chaque image pendant la sortie
+	globe_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if visible else SubViewport.UPDATE_DISABLED
 	add_child(globe_viewport)
 	var cam := Camera3D.new()
 	cam.position = Vector3(0.0, 0.0, 4.2)
@@ -228,11 +229,15 @@ func _orient_globe() -> void:
 func open() -> void:
 	vm.reset()
 	visible = true
+	if globe_viewport != null:
+		globe_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	update_display()
 
 
 func close() -> void:
 	visible = false
+	if globe_viewport != null:
+		globe_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
 
 ## Met l'affichage à jour (à chaque événement ou réponse du core, et une fois par image pendant le préchargement).

@@ -3,6 +3,20 @@
 Toutes les évolutions notables, version par version, au format [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh X.Y.Z` le change partout (lot O2).
 
+## Non publié
+
+### Rendu plus léger (étude du 5 et 6 novembre)
+- Medium et high : MSAA 2× et ombres du soleil en 2048 ; high sans lumière indirecte d'écran (SSIL) et filtrage anisotrope 8×. Tour des six biomes sur la GTX 1060 : environ −2,4 ms par image en medium et −4 ms en high.
+- Feuillage et herbe éclairés plus simplement (sans reflet spéculaire), arbres lointains sans vent, halo à trois niveaux.
+- Montagnes du fond qui ne sont plus noires en medium et high : la brume volumétrique prend la lumière du ciel.
+- Ciel : nuages calculés en demi-résolution et retirés du calcul de la lumière ambiante, carte de rayonnement mise à jour par morceaux (−0,4 à −0,5 ms).
+- Le globe du menu « Monde ouvert » n'est plus dessiné pendant la sortie.
+- Image moins claire et plus contrastée : brume éclairée à moitié par le ciel et étalonnage en S (ombres plus denses), au même coût.
+- Route qui disparaissait sous l'herbe dans les longues montées (forêt, montagne) : le terrain lointain est de nouveau creusé sous la chaussée avec le relief exagéré.
+
+### Bots et abri (série AS)
+- Cyclistes du décor dessinés comme les bots (même cycliste, mêmes niveaux de détail), avec leurs propres maillots, unis ou de club, de couleurs qu'aucun bot ne porte, sans dossard (lot AS7, retour d'essai du 4 novembre).
+
 ## 2.0.0 – 2026-11-04
 
 Un nouveau mode de course, le Dernier survivant, des bots qui roulent en groupe de façon plus réaliste, le gravier et le désert, et un rendu des essais identique à celui du jeu.

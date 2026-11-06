@@ -190,7 +190,7 @@ func _run() -> void:
 	var cam := Vector3(1250.0, 1.5, 1.0)
 	r.update_passersby(cam, 1250.0, 10.0, {"sound": "voice_bonjour", "pos": Vector3(1250.0, 0.0, 5.0)})
 	var people_mm: MultiMesh = r.get_node("Passersby_people").multimesh
-	var shown := people_mm.visible_instance_count
+	var shown: int = r.visible_count()   # détaillés et au loin (Lot Y21)
 	var vis: Array = pm.visible(cam, 1250.0, 10.0, r.budget).duplicate()
 	var farthest_kept := 0.0
 	for e in vis:
@@ -211,7 +211,7 @@ func _run() -> void:
 	_check(r.sounds_played == ["voice_bonjour"], "son du passant transmis au lecteur 3D")
 	r.set_preset("high", false)
 	r.update_passersby(cam, 1250.0, 11.0)
-	_check(people_mm.visible_instance_count == 0, "décor vivant coupé : aucun passant")
+	_check(r.visible_count() == 0, "décor vivant coupé : aucun passant")
 
 	# Coût par image : 80 personnes sur 200 m (village dense, rôles du placement recopiés et décalés)
 	var long_route = ClimbTest.make_route(4000.0, Callable(self, "_flat"))

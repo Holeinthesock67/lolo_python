@@ -71,6 +71,8 @@ func _test_presets_application() -> void:
 			and absf(env.tonemap_agx_white - RenderQuality.LOOK["agx_white"]) < 1e-3
 			and env.adjustment_enabled,
 			"%s : glow %s, rendu des tons et étalonnage communs" % [name, str(img["glow"])])
+		_check((env.adjustment_color_correction != null) == fp,
+			"%s : étalonnage en S en Forward+ seulement" % name)
 		_check((light.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS) == (int(img["shadow_splits"]) == 4),
 			"%s : %d cascades d'ombre" % [name, img["shadow_splits"]])
 		var vol := str(img["fog_volumetric"])
@@ -199,7 +201,19 @@ func _test_weather_fog() -> void:
 	_check(absf(env.volumetric_fog_density - 0.004) < 1e-6, "brume nulle : brume volumétrique d'origine")
 
 
+## Variante de la qualité d'image pour les mesures du PC (2.0.1) : `clé=valeur` d'OPENRIDE_RENDER_DIAG.
+func _test_diagnostic_image() -> void:
+	var img := QualityPresets.image("high")
+	var out := RenderQuality.diagnostic_image(img, "sans_ssao, shadow_filter=high,anisotropy=8,glow=false,mesh_lod_threshold=1.5,inconnue=3")
+	_check(out["shadow_filter"] == "high" and out["anisotropy"] == 8 and typeof(out["anisotropy"]) == TYPE_INT,
+		"clé texte et entière remplacées")
+	_check(out["glow"] == false and absf(float(out["mesh_lod_threshold"]) - 1.5) < 1e-6, "booléen et réel remplacés")
+	_check(not out.has("inconnue") and img["shadow_filter"] == "medium", "clé inconnue ignorée, préréglage d'origine intact")
+	_check(RenderQuality.diagnostic_image(img, "") == img, "sans diagnostic : qualité du préréglage")
+
+
 func _init() -> void:
+	_test_diagnostic_image()
 	_test_presets_application()
 	_test_fog()
 	_test_far_tiles()

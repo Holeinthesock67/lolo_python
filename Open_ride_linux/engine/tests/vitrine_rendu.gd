@@ -47,6 +47,7 @@ const VIEWS := {
 	"herbe": [Vector3(2.6, 1.4, 0.0), Vector3(5.0, 0.4, -14.0), 70.0],
 	"herbe_loin": [Vector3(0.0, 1.4, 0.0), Vector3(0.0, 0.8, -60.0), 70.0],
 	"foule": [Vector3(1.0, 1.5, -2.0), Vector3(4.6, 1.1, -10.0), 55.0],
+	"foule_pres": [Vector3(1.2, 1.6, -38.0), Vector3(4.4, 1.2, -44.0), 50.0],
 	"cyclistes": [Vector3(-1.6, 1.5, -3.0), Vector3(1.0, 0.9, -9.5), 55.0],
 	"cycliste_profil": [Vector3(-2.5, 1.0, -7.2), Vector3(1.2, 0.9, -7.2), 45.0],
 	"passants": [Vector3(0.5, 1.5, -24.0), Vector3(5.0, 0.9, -31.0), 60.0],
@@ -139,18 +140,22 @@ class StraightRoute:
 		return {"x": 0.0, "y": 0.0, "z": -s, "heading_deg": 0.0}
 
 
-## Spectateurs fixes (forme de crowd_model.gd) : deux rangs à droite de la route, un sur deux encourage.
+## Spectateurs fixes (forme de crowd_model.gd) : deux rangs à droite de la route, un sur deux encourage ;
+## drapeaux et pancartes (Lot Y21). Les spectateurs 14 à 23, plus loin (vue `foule_pres` de face), tous
+## différents : un geste et une tenue chacun.
 class FixedCrowd:
 	var spectators := []
 	var states := {}
 	var groups := []
 	func _init() -> void:
-		for i in range(14):
+		for i in range(24):
 			var row := i % 2
 			var pos := Vector3(4.2 + row * 0.8, 0.0, -7.0 - (i / 2) * 0.9 - row * 0.4)
-			spectators.append({"s": -pos.z, "side": 1, "pos": pos, "yaw": -PI * 0.5, "color": i * 3,
-				"flag": i % 5 == 2, "phase": fmod(i * 0.37, 1.0), "delay": 0.0, "group": 0})
-			states[i] = {"cheer": i % 2 == 0}
+			if i >= 14:
+				pos = Vector3(3.9 + row * 0.9 + 0.15 * float(i % 3), 0.0, -40.0 - float(i - 14) * 0.75)
+			spectators.append({"s": -pos.z, "side": 1, "pos": pos, "yaw": -PI * 0.5 + 0.35 * sin(float(i) * 1.7), "color": i * 3,
+				"flag": i % 5 == 2, "sign": i % 7 == 4, "phase": fmod(i * 0.37, 1.0), "delay": 0.0, "group": 0})
+			states[i] = {"cheer": i % 2 == 0 or i >= 14}
 
 
 ## Passants fixes (forme de passersby_model.gd) : un exemple de chaque animation, un chien, un banc.
@@ -208,6 +213,8 @@ func _run() -> void:
 			var cam: Camera3D = vp.get_node("Camera")
 			cam.fov = v[2]
 			cam.look_at_from_position(v[0], v[1])
+			# Spectateurs gardés et niveaux de détail choisis depuis la caméra de la vue (Lot Y21)
+			(vp.get_node("Crowd") as Node).update(v[0], 0.0, 0.0)
 			for f in range(SETTLE_FRAMES):
 				await process_frame
 			var img := vp.get_texture().get_image()
@@ -276,6 +283,7 @@ func _build_world(preset: String) -> SubViewport:
 	TreeRenderer.apply_wind({"dir": Vector3(1.0, 0.0, 0.0), "strength": 0.3, "gust": 0.0, "phase": 0.0})
 	tufts.set_apparent_wind(Vector3(0.0, 0.0, 6.0))
 	var crowd = CrowdRenderer.new()
+	crowd.name = "Crowd"
 	vp.add_child(crowd)
 	crowd.set_preset(preset)
 	crowd.setup(FixedCrowd.new())

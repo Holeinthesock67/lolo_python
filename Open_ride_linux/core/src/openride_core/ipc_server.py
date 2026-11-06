@@ -25,7 +25,7 @@ CONTRACT_VERSION = 1
 # du 27 octobre ; 127.0.0.1, sans fragmentation). Une trame state plus grande est allégée, les autres jetées.
 MAX_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
-CONTRACT_REV = "1.5"
+CONTRACT_REV = "1.6"   # peloton de 11 bots et un fantôme (lot PL1, 3.0)
 # Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
 CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor")   # monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2
 MAX_LIST_DATAGRAM_SIZE = 60000
@@ -79,6 +79,7 @@ class IpcState:
     draft_bot: str | None = None
     lane_m: float | None = None            # révision 1.5 (lot AS2) : écart à l'axe du cycliste, avec les bots
     vehicles: list[dict[str, Any]] | None = None   # révision 1.5 (lot AS6) : véhicules proches, 10 Hz
+    riders: list[dict[str, Any]] | None = None     # révision 1.5 (lot AS7) : cyclistes du décor proches, 10 Hz
     draft_w: int | None = None             # révision 1.5 (lot AS5) : watts économisés, abri d'au moins 0,02
     open_world: dict[str, Any] | None = None   # révision 1.5 (lot W9) : jamais dans une trame avec devices
     # Révision 1.4 (série T, lot T7) : absents sans segment, hors bonus ou sans bot.
@@ -120,6 +121,8 @@ class IpcState:
             d.pop("lane_m", None)
         if self.vehicles is None:
             d.pop("vehicles", None)
+        if self.riders is None:
+            d.pop("riders", None)
         if self.draft_w is None:
             d.pop("draft_w", None)
         if self.open_world is None or self.devices is not None:

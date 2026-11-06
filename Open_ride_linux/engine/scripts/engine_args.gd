@@ -15,9 +15,12 @@ extends RefCounted
 ##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
 ##   --living=on|off          décor vivant de la série P (défaut : on) ; off : rendu de la 1.0 (lot P16)
 ##   --culling=on|off         tri de ce que la caméra ne voit pas (défaut : off, aucun gain mesuré ; on : essai, lot S1)
+##   --forest=on|off          forêts lointaines en imposteurs au-delà de 1,5 km (défaut : on ; off : banc avant/après, lot Y5)
+##   --crowd=climbs|all       spectateurs sur les montées d'au moins 3 km (défaut) ou sur toutes (bancs, lot Y21)
 ##   --load-guard=on|off      garde-fou de charge (lot Y6, load_guard.gd) ; défaut : on, off avec --test-mode
 ##   --display=windowed|borderless|fullscreen  mode d'affichage (défaut : windowed ; display_mode.gd)
 ##   --camera=subjective|follow_near|follow_far|side  vue de caméra de départ (défaut : follow_near ; camera_views.gd)
+##   --camera-height=M        hauteur de la vue follow_far, de 2 à 300 m (défaut : 6 m ; bancs : voir loin, lot Y5)
 ##   --test-mode              journal « [test] clé=valeur » et messages de test (engine/tests/README.md)
 ## Pas de class_name : la scène est lancée sans passer par l'éditeur (charger par preload).
 
@@ -46,7 +49,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, texture_level, biome, gravel, visual_grade, living, culling, load_guard, display, camera, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, texture_level, biome, gravel, visual_grade, living, culling, forest, crowd_all_climbs, load_guard, display, camera, camera_height, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -61,9 +64,12 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"visual_grade": DEFAULT_VISUAL_GRADE,
 		"living": true,
 		"culling": false,
+		"forest": true,
+		"crowd_all_climbs": false,
 		"load_guard": true,
 		"display": DisplayMode.DEFAULT,
 		"camera": CameraViews.DEFAULT_VIEW,
+		"camera_height": CameraViews.FAR_HEIGHT_M,
 		"test_mode": false,
 		"sim_session": false,
 		"perf_probe": "",
@@ -100,11 +106,17 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["living"] = _on_off(arg, true, "décor vivant")
 		elif arg.begins_with("--culling="):
 			out["culling"] = _on_off(arg, false, "tri du visible")
+		elif arg.begins_with("--forest="):
+			out["forest"] = _on_off(arg, true, "forêts lointaines")
+		elif arg.begins_with("--crowd="):
+			out["crowd_all_climbs"] = arg.get_slice("=", 1) == "all"
 		elif arg.begins_with("--load-guard="):
 			out["load_guard"] = _on_off(arg, true, "garde-fou de charge")
 			guard_given = true
 		elif arg.begins_with("--camera="):
 			out["camera"] = _camera(arg, CameraViews.DEFAULT_VIEW)
+		elif arg.begins_with("--camera-height="):
+			out["camera_height"] = _camera_height(arg, CameraViews.FAR_HEIGHT_M)
 		elif arg.begins_with("--display="):
 			out["display"] = _display(arg, DisplayMode.DEFAULT)
 		elif arg == "--test-mode":
@@ -151,6 +163,15 @@ static func _camera(arg: String, fallback: String) -> String:
 		printerr("Argument ignoré (vue de caméra : subjective, follow_near, follow_far ou side) : ", arg)
 		return fallback
 	return val
+
+
+static func _camera_height(arg: String, fallback: float) -> float:
+	var text := arg.get_slice("=", 1).strip_edges()
+	if not text.is_valid_float() or float(text) < CameraViews.MIN_FAR_HEIGHT_M or float(text) > CameraViews.MAX_FAR_HEIGHT_M:
+		last_error = "Argument ignoré (hauteur de caméra : de 2 à 300 m) : " + arg
+		printerr("Argument ignoré (hauteur de caméra : de 2 à 300 m) : ", arg)
+		return fallback
+	return float(text)
 
 
 static func _display(arg: String, fallback: String) -> String:

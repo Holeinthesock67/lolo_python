@@ -1,6 +1,7 @@
 {
   "_doc": "Budgets de temps des tests de l'engine (lot X2, perf_budget.gd). budget_ms : seuil du cahier pour le PC cible ; ci_ms : machines partagées de GitHub (variable CI). Mémoire (lot X19) : budget_kb et ci_kb en Ko. Remplacement par machine : ~/OpenRide/perf_budgets.json, {\"nom\": ms ou Ko}.",
   "tree_tile_high": {"budget_ms": 150, "ci_ms": 170, "lot": "E3 / O1"},
+  "forest_far_tile": {"budget_ms": 400, "ci_ms": 800, "lot": "Y5 (forêts lointaines : une tuile lointaine de 5 km, tâche de fond)"},
   "vegetation_tile_max": {"budget_ms": 50, "ci_ms": 150, "lot": "K3"},
   "building_mesh_500": {"budget_ms": 150, "ci_ms": 300, "lot": "L1 / Y8 (toits à pans, découpe par pans, habillage : maillage dans une tâche de fond)"},
   "osm_buildings_200": {"budget_ms": 20, "ci_ms": 60, "lot": "K4"},
@@ -14,6 +15,7 @@
   "road_traffic_frame": {"budget_ms": 0.15, "ci_ms": 0.45, "lot": "P25"},
   "road_traffic_view_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P25"},
   "road_cyclists_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P28"},
+  "road_cyclists_view_frame": {"budget_ms": 0.5, "ci_ms": 1.5, "lot": "AS7 (16 avatars des bots, à mesurer sur le PC cible)"},
   "sky_traffic_frame": {"budget_ms": 0.3, "ci_ms": 0.9, "lot": "P26"},
   "boats_frame": {"budget_ms": 0.15, "ci_ms": 0.45, "lot": "P29"},
   "boats_view_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P29"},
