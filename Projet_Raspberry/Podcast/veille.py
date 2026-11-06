@@ -337,8 +337,14 @@ def cmd_build_week(cfg, days):
         log("Aucun élément cette semaine, rien à compiler.")
         return
 
-    # budget par élément pour rester sous la taille totale
-    budget = min(cfg["max_chars_per_item"], cfg["max_total_chars"] // len(items))
+    # budget par élément pour rester sous la taille totale : les textes courts gardent tout,
+    # le reste du budget est partagé entre les textes longs (et non plus divisé à parts égales)
+    budgets, left = {}, cfg["max_total_chars"]
+    for n, k in enumerate(sorted(range(len(items)), key=lambda i: len(items[i]["text"]))):
+        b = min(len(items[k]["text"]), cfg["max_chars_per_item"], left // (len(items) - n))
+        budgets[k], left = b, left - b
+    for k, it in enumerate(items):
+        it["_budget"] = budgets[k]
     year, week, _ = today.isocalendar()
     start = today - dt.timedelta(days=days - 1)
 
@@ -352,7 +358,7 @@ def cmd_build_week(cfg, days):
     for it in sorted(items, key=lambda x: (x["camp"], x["source"], x["date"] or "")):
         lines += [f"### [{it['camp']}] {it['source']} — {it['title']}",
                   f"Date : {(it['date'] or '?')[:10]} | Langue : {it['lang']} | Lien : {it['link']}",
-                  "", truncate(it["text"], budget), "", "---", ""]
+                  "", truncate(it["text"], it["_budget"]), "", "---", ""]
 
     out = d / "weekly" / f"{year}-W{week:02d}_source.md"
     out.write_text("\n".join(lines), encoding="utf-8")

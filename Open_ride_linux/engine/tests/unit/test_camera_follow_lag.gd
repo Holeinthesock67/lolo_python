@@ -7,6 +7,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_camera_follow_lag.gd
 
 const CameraFollow := preload("res://scripts/camera_follow.gd")
+const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 
 var _failures := 0
 var _checked := 0
@@ -70,3 +71,42 @@ func _run() -> void:
 	var bots_at := main_code.find("_show_bots(s_route,")
 	var living_at := main_code.find("_step_living(delta, s_route,")
 	_check(bots_at > 0 and living_at > bots_at, "main.gd : bots placés avant le décor vivant dans la même image")
+	# Banc course_bots du 6 novembre : un bot à 1,78 m derrière le cycliste dans le core s'affichait à moins de
+	# 1,7 m (contacts « bot / cycliste à -2 m ») : il était extrapolé plus tard dans l'image que le cycliste.
+	var same := _bot_gap(0.0)
+	_check(absf(same["min"] + 1.78) < 0.01 and absf(same["max"] + 1.78) < 0.01,
+		"bot à 1,78 m derrière, extrapolé au même instant que le cycliste : écart affiché %.3f à %.3f m" % [same["min"], same["max"]])
+	var late := _bot_gap(20.0)
+	_check(late["max"] > -1.7, "témoin : bot lu 20 ms plus tard dans l'image, écart affiché jusqu'à %.2f m (contact)" % late["max"])
+	_check(main_code.contains("_show_bots(s_route, float(follow.last_frame[\"v\"]), now)"),
+		"main.gd : bots de l'image extrapolés à l'instant `now` du cycliste")
+	_check(main_code.contains("follow.push_frame(t_frame_us,") and main_code.contains("else null, t_frame_us)"),
+		"main.gd : cycliste et bots d'une trame reçus à la même heure")
+
+
+## Cycliste (camera_follow.gd) et bot (bots_view_model.gd) à 9,5 m/s, le bot 1,78 m derrière dans chaque trame
+## du core (30 Hz, heures de réception qui varient de 0 à 25 ms), images toutes les 33 ms ; le bot est lu
+## `late_ms` après le cycliste dans l'image. Renvoie l'écart affiché {min, max} (négatif : derrière).
+func _bot_gap(late_ms: float) -> Dictionary:
+	var f = CameraFollow.new()
+	var bots = BotsViewModel.new()
+	var v := 9.5
+	var out := {"min": INF, "max": -INF}
+	var t_core := 0.0
+	var t_img := 0.0
+	var k := 0
+	while t_img < 10.0:
+		t_img += 1.0 / 30.0
+		while t_core <= t_img - 0.03:
+			var t_us := int((t_core + 0.025 * float((k * 7) % 11) / 10.0) * 1e6)
+			f.push_frame(t_us, v * t_core, v, true)
+			bots.push([{"id": "b1", "s": v * t_core - 1.78, "v": v, "kind": "constant", "lane_m": 1.4}], t_us)
+			t_core += 1.0 / 30.0
+			k += 1
+		var now := int(t_img * 1e6)
+		var s: float = f.update(now)
+		var view: Array = bots.view(s, v, now + int(late_ms * 1000.0))
+		if t_img > 2.0:
+			out["min"] = minf(out["min"], float(view[0]["gap_m"]))
+			out["max"] = maxf(out["max"], float(view[0]["gap_m"]))
+	return out
