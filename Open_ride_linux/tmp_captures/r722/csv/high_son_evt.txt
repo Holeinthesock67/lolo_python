@@ -1,0 +1,11 @@
+[son-evt] 1793953421.627 jingle_start
+[son-evt] 1793953426.613 wtf_eggs
+[son-evt] 1793953446.316 wtf_boing
+[son-evt] 1793953457.913 wtf_boing
+[son-evt] 1793953471.880 wtf_boing
+[son-evt] 1793953486.269 wtf_boing
+[son-evt] 1793953495.346 wtf_boing
+[son-evt] 1793953502.069 wtf_pop
+[son-evt] 1793953517.231 wtf_pop
+[son-evt] 1793953535.075 wtf_boing
+[son-evt] 1793953551.058 jingle_finish

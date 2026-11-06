@@ -1,0 +1,15 @@
+[son-evt] 1793953053.895 jingle_start
+[son-evt] 1793953058.880 wtf_moon
+[son-evt] 1793953075.264 wtf_boing
+[son-evt] 1793953081.376 wtf_boing
+[son-evt] 1793953095.189 wtf_boing
+[son-evt] 1793953104.270 wtf_boing
+[son-evt] 1793953111.271 wtf_boing
+[son-evt] 1793953118.862 wtf_win
+[son-evt] 1793953121.723 wtf_boing
+[son-evt] 1793953132.330 wtf_boing
+[son-evt] 1793953133.873 wtf_tiny
+[son-evt] 1793953140.928 wtf_boing
+[son-evt] 1793953156.385 wtf_boing
+[son-evt] 1793953176.020 wtf_boing
+[son-evt] 1793953176.501 jingle_finish
