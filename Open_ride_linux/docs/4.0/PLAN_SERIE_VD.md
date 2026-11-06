@@ -158,5 +158,5 @@ Délégables : VD2, VD3, VD6 (modules purs du core, testables sans engine ni mat
 2. **Virages** : **tranché le 6 novembre**, relevés (42° au sommet, 12° dans les droites).
 3. **Surface** : **tranché le 6 novembre**, bois (piste couverte).
 4. **Épreuves de la première livraison** : **tranché le 6 novembre**, toutes les épreuves du §5 (séance libre, poursuite, kilomètre et 500 m, 200 m lancé, scratch, course aux points, tempo, élimination, keirin, omnium, record de l'heure) et les trois épreuves par équipes (vitesse par équipes, poursuite par équipes, américaine). La vitesse individuelle en duel reste à trancher.
-5. **Braquet fixe** : option facultative, coupée par défaut.
+5. **Braquet fixe** : **tranché le 6 novembre**, option « Braquet fixe » proposée dans les réglages du vélodrome (un seul rapport, sans changement de vitesse), coupée par défaut.
 6. **Version** : 4.0 (défaut). VD2 et VD3 peuvent être faits plus tôt sans rien changer au jeu, puisqu'aucune piste n'est listée avant VD10.
