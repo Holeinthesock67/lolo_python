@@ -829,13 +829,12 @@
     },
     "bots": {
       "type": "array",
-      "maxItems": 5,
-      "description": "Facultatif : concurrents virtuels (lot N9).",
+      "maxItems": 12,
+      "description": "Facultatif : concurrents virtuels (lot N9). Révision 1.6 (lot PL1) : jusqu'à 12 (11 bots et un fantôme) ; au-delà de 5, les plus loin du cycliste sans `cp_w`, `mass_kg`, `wbal_pct` ni `gap_s`, avec `name` et `profile` pour l'un d'eux à tour de rôle (gardés par l'engine, nom inconnu : l'id), et `jersey` absent quand il vaudrait null.",
       "items": {
         "type": "object",
         "required": [
           "id",
-          "name",
           "s",
           "v",
           "kind"
@@ -1574,6 +1573,9 @@
               "type": "number"
             },
             "count": {
+              "type": "integer"
+            },
+            "bonks": {
               "type": "integer"
             },
             "last": {

@@ -1481,7 +1481,7 @@ def _records_scene(s: Session) -> None:
     """Étape 4c des menus : écran Records du parcours (depuis l'écran Prêt) avec la carte du record en or,
     puis la table des temps d'une montée ; retour à l'écran Prêt."""
     core = s.core
-    for _ in range(5):   # Rouler, Entraînement, Changer de parcours, Bot, Fantôme, puis Records du parcours
+    for _ in range(6):   # Rouler, Entraînement, Changer de parcours, Bot, Fantôme, Peloton (lot PL1), puis Records
         core.send({"type": "input", "v": CONTRACT_VERSION, "event": "PLUS_SHORT"})
         time.sleep(0.2)
     core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})

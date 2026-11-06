@@ -64,6 +64,8 @@ def test_x33_scenarios_cover_the_recipes() -> None:
     assert any(x.get("journal") == "powerup" and x.get("max") == 0 for x in settings["expect"])
     _, _, settings, _ = sim_bench.resolve_scenario("course_bots")
     assert len(settings["bot_profiles"]) == 4
+    _, _, settings, _ = sim_bench.resolve_scenario("peloton")   # lot PL1 : 11 bots, la limite du core
+    assert len(settings["bot_profiles"]) == 11
 
 
 def test_powerups_table_is_valid_toml_for_the_core(tmp_path: Path) -> None:

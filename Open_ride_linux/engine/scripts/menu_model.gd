@@ -43,6 +43,10 @@ extends RefCounted
 ## l'argument `bots` (contrat 1.3) quand l'un d'eux est choisi, sinon n'envoie rien. Jusqu'à MAX_BOTS bots
 ## (lot O35, la limite du core) : la ligne « Bot n+1 : aucun » n'apparaît que quand « Bot n » est choisi ;
 ## remettre un bot à « aucun » le retire et remonte les suivants. Un nouvel accueil les remet à zéro.
+## Peloton (lot PL1, 3.0) : sous le fantôme, « Peloton : aucun » (A long : 4, 8, 11 bots) ajoute des bots à profil
+## (rouleur, grimpeur, sprinteur, diesel, en cycle) au niveau des bots du réglage `bots.level_pct` (élément
+## `{kind: "profile", profile}` sans `level_pct`), après les bots choisis un par un, sans dépasser
+## MAX_RIDER_BOTS bots en tout (la limite du core).
 ## Records (série T, lot T10) : l'écran Prêt finit par « Records du parcours », qui renvoie une action
 ## « item » de l'écran Prêt (écrans des records ouverts par menu_flow.gd).
 ##
@@ -79,8 +83,13 @@ const IMPORT_WORKOUT_ID := "_import"
 ## « Saisir du QWKcode (clavier) » ouvre la saisie du QWKcode de GoldenCheetah (qwk_editor.gd, lot O21).
 const QWK_WORKOUT_ID := "_qwk"
 const HELP_WORKOUT_ID := "_help"
-## Nombre de bots de l'écran Prêt, fantôme en plus (lot O35) : MAX_CONSTANT_BOTS du core (bots.py).
+## Lignes « Bot n » de l'écran Prêt, fantôme en plus (lot O35).
 const MAX_BOTS := 4
+## Bots en tout, peloton compris, fantôme en plus (lot PL1) : MAX_CONSTANT_BOTS du core (bots.py).
+const MAX_RIDER_BOTS := 11
+## Tailles du peloton (lot PL1), dans l'ordre du cycle, et profils de ses bots, en cycle.
+const PELOTON_CHOICES := [0, 4, 8, 11]
+const PELOTON_PROFILES := ["rouleur", "climber", "sprinter", "diesel"]
 ## Bots de l'écran Prêt (lots O7 et O35), dans l'ordre du cycle : libellé et élément de l'argument `bots` de `start`.
 ## Bots à profil (lots T12 et T13) : chaque profil à 90, 100 et 110 % de ta FTP, calibré par le core.
 const BOT_CHOICES := [["aucun", {}], ["200 W", {"kind": "constant", "power_w": 200}],
@@ -143,6 +152,9 @@ var start_args: Dictionary = {}
 ## demandé, pour la séance préparée (lots O7 et O35).
 var bot_choices: Array[int] = []
 var ghost := false
+## Taille du peloton choisie (une valeur de PELOTON_CHOICES, lot PL1) ; celle de la dernière séance.
+var peloton := 0
+var last_peloton := 0
 ## Derniers choix du profil (lot O32) : bots et fantôme remis par reset(), entraînement mis sous le focus.
 var last_bots: Array[int] = []
 var last_ghost := false
@@ -223,7 +235,7 @@ func _refresh_home() -> void:
 	if mode == "wtf":
 		_screens[READY]["items"] = [_item("start", "Démarrer"), _item("wtf_rules", "Changer les règles"),
 			_item("change_route", "Changer de parcours")] + _bot_items() \
-			+ [_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non"))]
+			+ [_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non")), _peloton_item()]
 		_screens[READY]["title"] = "Prêt : mode WTF" + ("" if world_name == "" else " — " + world_name)
 		return
 	_screens[READY]["items"] = [
@@ -232,6 +244,7 @@ func _refresh_home() -> void:
 		_item("change_route", "Changer de parcours"),
 	] + _bot_items() + [
 		_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non")),
+		_peloton_item(),
 		_item("records", "Records du parcours")]
 	var what := "session ERG" if mode == "erg" else "session libre"
 	if start_name != "":
@@ -340,6 +353,8 @@ func _start_args() -> Dictionary:
 	var bots: Array = []
 	for c in bot_choices:
 		bots.append(BOT_CHOICES[c][1].duplicate())
+	for i in range(peloton_size()):
+		bots.append({"kind": "profile", "profile": PELOTON_PROFILES[i % PELOTON_PROFILES.size()]})
 	if ghost:
 		bots.append({"kind": "ghost"})
 	if not bots.is_empty():
@@ -376,14 +391,22 @@ func set_last_choices(choices) -> void:
 	last_workout = str(c["workout_id"]) if c.get("workout_id") is String else ""
 	last_bots = []
 	last_ghost = false
+	var in_peloton := 0
 	var bots = c.get("bots", [])
 	for b in (bots if bots is Array else []):
 		if b is Dictionary and str(b.get("kind", "")) == "ghost":
 			last_ghost = true
+		elif b is Dictionary and _is_peloton_bot(b):
+			in_peloton += 1
 		elif b is Dictionary and last_bots.size() < MAX_BOTS and bot_index(b) > 0:
 			last_bots.append(bot_index(b))
+	last_peloton = 0
+	for n in PELOTON_CHOICES:   # la plus petite taille qui donne ce nombre de bots (11 coupé à 7 après 4 bots)
+		if last_peloton == 0 and in_peloton > 0 and mini(int(n), MAX_RIDER_BOTS - last_bots.size()) >= in_peloton:
+			last_peloton = int(n)
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
+	peloton = last_peloton
 	_refresh_home()
 
 
@@ -403,6 +426,23 @@ static func bot_index(bot: Dictionary) -> int:
 		if same:
 			return i
 	return 0
+
+
+## Bot du peloton (lot PL1) : bot à profil sans `level_pct` (les bots choisis un par un en ont toujours un).
+static func _is_peloton_bot(b: Dictionary) -> bool:
+	return str(b.get("kind", "")) == "profile" and not b.has("level_pct") and PELOTON_PROFILES.has(str(b.get("profile", "")))
+
+
+## Bots du peloton envoyés à `start` : la taille choisie, sans dépasser MAX_RIDER_BOTS avec les bots choisis un par un.
+func peloton_size() -> int:
+	return clampi(peloton, 0, maxi(MAX_RIDER_BOTS - bot_choices.size(), 0))
+
+
+## Ligne « Peloton : … » de l'écran Prêt (lot PL1).
+func _peloton_item() -> Dictionary:
+	var n := peloton_size()
+	var label := "Peloton : " + ("aucun" if n == 0 else "%d bots" % n)
+	return _item("peloton", label, true, "" if n == 0 else "rouleurs, grimpeurs, sprinteurs, diesels")
 
 
 ## A long sur « Bot n » (lot O35) : choix suivant de BOT_CHOICES ; « aucun » retire le bot, les suivants
@@ -446,6 +486,7 @@ func reset() -> void:
 	_clear_start()
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
+	peloton = last_peloton
 	if mode in ["rogue", "wtf", "survivor"]:
 		mode = "free"
 	_refresh_home()
@@ -781,6 +822,7 @@ func _validate() -> Dictionary:
 					if not mode in ["rogue", "survivor"]:   # bots de la séance notés aussi par le core (lot O32)
 						last_bots = bot_choices.duplicate()
 						last_ghost = ghost
+						last_peloton = peloton
 					var args := _start_args()
 					if args.is_empty():
 						return {"action": "start"}
@@ -789,6 +831,9 @@ func _validate() -> Dictionary:
 					_cycle_bot(int(id.substr(3)) - 1)
 				"ghost":
 					ghost = not ghost
+					_refresh_home()
+				"peloton":
+					peloton = PELOTON_CHOICES[(PELOTON_CHOICES.find(peloton) + 1) % PELOTON_CHOICES.size()]
 					_refresh_home()
 				"workout":
 					_workouts_return = READY

@@ -143,7 +143,27 @@ const BOT_LOD_M := {
 	"high": [20.0, 60.0],
 }
 const BOT_SHADOW_MAX_LOD := 1
+## Lot Y21 : spectateurs et passants détaillés en deçà de cette distance (m), maillage réduit au-delà
+## (people_mesh.gd `lod`, crowd_renderer.gd).
+const PEOPLE_LOD_M := {
+	"low": 12.0,
+	"medium": 25.0,
+	"high": 40.0,
+}
 const BOT_LOD_HYSTERESIS_M := 2.0
+## Peloton (lot PL1) : bots au plus aux niveaux 0 et 1 (avec leur ombre), les plus proches de la caméra ; les
+## autres restent au niveau 2. Au moins les 5 bots d'avant le peloton : rien ne change jusqu'à 5 bots. Valeurs
+## à confirmer par les bancs du PC (budgets GPU 6, 12 et 14 ms) ; en repli, les baisser.
+const BOT_DETAIL_MAX := {
+	"low": 5,
+	"medium": 6,
+	"high": 8,
+}
+
+
+## Nombre de bots au plus aux niveaux de détail 0 et 1 pour le préréglage `name` (lot PL1).
+static func bot_detail_max(name: String) -> int:
+	return int(BOT_DETAIL_MAX[applied_name(name)])
 
 
 ## Niveau de détail d'un bot à `dist_m` de la caméra, qui affiche aujourd'hui le niveau `current` (-1 : aucun).
@@ -185,6 +205,11 @@ static func image(name: String) -> Dictionary:
 ## Distance où le brouillard de profondeur devient opaque (lot Y1), `low` si le nom est inconnu.
 static func fog_end_m(name: String) -> float:
 	return float(preset(name)["fog_end_m"])
+
+
+## Distance du niveau de détail des personnages du décor (Lot Y21) pour le préréglage `name`.
+static func people_lod_m(name: String) -> float:
+	return float(PEOPLE_LOD_M[applied_name(name)])
 
 
 static func shadow_distance_m(name: String) -> float:
