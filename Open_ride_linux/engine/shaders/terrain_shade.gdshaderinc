@@ -147,14 +147,15 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 		// Plaques plus sèches ou plus vertes (H2)
 		float dry = smoothstep(0.45, 0.8, sd_noise(q / 120.0 + vec2(3.7, 1.9)) * 0.7 + sd_noise(q / 40.0) * 0.3) * relief;
 		vec3 g = mix(c, c * 0.55 + grass_dry_color * 0.45, dry * 0.6);
-		if (macro_variation > 0.0) {
+		if (macro_variation * relief > 0.0) {
 			// Prés plus ou moins mûrs (plaques de 90 à 250 m) : casse la teinte unique des collines vue de loin.
 			// La somme de deux bruits lissés reste près de 0,5 : contraste ×3 pour que les plaques se voient
 			// (premier réglage du 6 novembre, ±4 % seulement, invisible sur les captures).
 			float mn = sd_noise(q / 250.0 + vec2(11.3, 4.1)) * 0.65 + sd_noise(q / 90.0 + vec2(5.2, 8.7)) * 0.35;
 			float m = clamp((mn - 0.5) * 3.0, -0.5, 0.5);
-			// Côté mûr plus jaune et plus clair, côté frais plus sombre et plus vert
-			g *= 1.0 + m * macro_variation * vec3(0.6, 0.4, 0.1);
+			// Côté mûr plus jaune et plus clair, côté frais plus sombre et plus vert ; suit le relief de l'herbe
+			// (detail_strength = 0 : couleurs du thème inchangées, comme le reste du décor)
+			g *= 1.0 + m * macro_variation * relief * vec3(0.6, 0.4, 0.1);
 		}
 		// Brins et mottes (H1) : relief et mouchetures, effacés au loin
 		float vis_blade = vis_blade_0 * relief;
