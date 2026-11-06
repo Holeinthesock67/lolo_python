@@ -452,6 +452,7 @@ level_pct = 100              # niveau des bots à profil, 50 à 150 % de la FTP 
 [ride]
 auto_draft = "on"            # placement dans la roue (lot AS2) : "on" (rangé derrière le coureur devant, sorti pour doubler) ou "off" (1,2 m de l'axe) ; réglable dans le menu
 vehicle_draft = "on"         # abri derrière un véhicule lent (lot AS6) : "on" ou "off" ; l'aspiration d'un véhicule qui double reste ; réglable dans le menu
+traffic_bench_s = 0          # bancs seulement (sim_bench, scénario circulation_proche) : passage forcé d'un véhicule proche toutes les N s, 0 à 600 ; 0 : jamais
 [depart]                     # départ de la séance (lot O36) ; mode et cadence réglables dans le menu
 mode = "pedalage"            # pedalage : attend le décor, le trainer et le pédalage ; immediat : part à « Démarrer »
 cadence_rpm = 30             # cadence à tenir pour partir, 10 à 90 tr/min (40 W si le trainer ne donne pas la cadence)
