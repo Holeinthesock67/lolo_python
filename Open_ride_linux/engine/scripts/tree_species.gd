@@ -62,7 +62,7 @@ const PALM_TRUNK := Color(0.45, 0.40, 0.33, MAT_PALM_TRUNK / 16.0)
 
 ## Houppier de chaque espèce, vu de loin : largeur `w`, couleur `col` (matière dans l'alpha), forme `shape`
 ## (`cone` du pied de la couronne `cy` à la cime, `round` de centre `cy` et de demi-hauteur `ry`, `box` : plante
-## basse pleine, `hedge` : haie d'un rang de vigne, pied `cy - ry`, cime `cy + ry`), largeur du tronc `trunk_w`. Sert aux panneaux croisés du LOD 1 (`_profile`) et aux forêts
+## basse pleine, `hedge` : haie d'un rang de vigne, pied à `cy`, épaisse de `2 ry`), largeur du tronc `trunk_w`. Sert aux panneaux croisés du LOD 1 (`_profile`) et aux forêts
 ## lointaines en imposteurs (forest_impostors.gd, lot Y5).
 const CROWNS := {
 	"oak": {"w": 9.0, "col": Color(0.22, 0.38, 0.14, MAT_LEAVES / 16.0), "shape": "round", "cy": 8.8, "ry": 4.4, "trunk_w": 0.6},
