@@ -142,3 +142,46 @@ Captures validées par le propriétaire : medium et high (MSAA 2×, atlas 2048, 
 Contraste et brume (`reglage_image.py`, tour des six biomes à 75 km/h, passe du 6 novembre, captures dans `mesures/2026-11-06-optim2/image2/`) : le propriétaire retient la variante F, soit la brume éclairée à moitié (`VOLUMETRIC_AMBIENT_INJECT` = 0,5) et un étalonnage en S de force 0,35 (`LOOK["s_curve"]`, table de couleurs 1D, Forward+ seulement, comme AgX). Les variantes B, C, F et G coûtent toutes pareil à 0,1 ou 0,2 ms près (GPU médian du tour : low 6,60, medium 12,57, high 13,89 ms pour F).
 
 Défaut vu sur ces captures : en forêt et en montagne, la route disparaissait sous l'herbe. `carve_under_route` comparait les hauteurs réelles de la tuile lointaine à la hauteur affichée de la route (relief ×2,5). En montée, loin du départ, le seuil passait donc au-dessus du terrain et rien n'était creusé : une fois le relief exagéré, le lointain dépassait la chaussée de plusieurs mètres (5,6 m au-dessus du proche sur le tour, `test_terrain_coherence`). Le lointain se voit là où la tuile proche n'est pas encore affichée. Corrigé : le seuil est en altitude réelle. Reste 1,4 m au-dessus du proche à 130 m derrière l'arrivée, sur la route prolongée où la route ne creuse plus.
+
+## 8. Cultures et forêt encore au-dessus du budget (6 novembre soir)
+
+Passe finale U18 (`mesures/2026-11-06-final/u18/resume.md`, main 50442813) : cultures 7,83 / 14,18 / 16,52 ms et forêt 7,27 / 12,98 / 15,94 ms en low, medium et high (budgets 6, 12 et 14) ; alpin 6,89 ms en low.
+
+### 8.1 Le surcoût des cultures vient de ce qui est devant la caméra
+
+- Le banc tout en cultures (6 km d'un seul biome, § 6.2) est **sous** le budget (5,15 / 9,96 / 10,69 ms), alors que le bloc cultures du tour le dépasse de 2 à 6 ms. Le contenu des cultures (vignes, herbe, éoliennes) n'explique donc pas seul l'écart.
+- Relevé seconde par seconde du tour (variante F de `reglage_image.py`, 75 km/h, `mesures/2026-11-06-optim2/image2/csv/`, blocs de 2 km : cultures de 6 à 8 km, forêt de 8 à 10 km, alpin de 10 à 12 km) : le temps GPU saute vers 6,5 km, **au milieu du bloc cultures**, au moment où les tuiles du bloc forêt se chargent. Arbres chargés (colonne `trees`) et GPU médian par tranche de 500 m :
+
+| Tranche | low : arbres, GPU | medium : arbres, GPU | high : arbres, GPU | primitives medium |
+| --- | --- | --- | --- | --- |
+| cultures, 6 à 6,5 km | 11 900, 6,65 ms | 31 600, 12,84 ms | 39 800, 13,73 ms | 1,62 M |
+| cultures, 6,5 à 8 km | 15 400 à 16 400, 7,75 à 8,32 ms | 57 300 à 60 600, 14,67 à 15,43 ms | 71 600 à 84 900, 15,39 à 16,91 ms | 1,19 à 1,71 M |
+| forêt, 8 à 10 km | 15 000 à 16 400, 7,1 à 7,5 ms | 57 000 à 60 600, 13,7 à 14,8 ms | 80 000 à 84 900, 14,1 à 16,5 ms | 1,8 à 4,7 M |
+| alpin, 10 à 12 km | 3 300 à 8 900, 6,8 à 6,9 ms | 9 000 à 24 600, 12,3 à 12,7 ms | 11 100 à 39 800, 12,5 à 13,5 ms | 1,35 à 1,55 M |
+
+- Au saut de 6,5 km, les primitives dessinées **baissent** (1,62 → 1,19 M en medium) alors que le GPU monte de 2,6 ms ; dans la forêt elle-même, les primitives triplent (4 à 6 M) sans nouvelle hausse du GPU. Hypothèse à vérifier au banc : le coût est celui des arbres de la forêt vus de loin, 0,5 à 1,5 km devant (panneaux croisés du LOD 1, et modèle proche jusqu'à 630 m environ, car la bascule à 450 m se fait par case de 250 m, distance prise au centre de la case), des milliers de petits triangles de quelques pixels, plus chers par pixel que de grandes surfaces. Le banc tout en cultures n'a presque pas d'arbres devant lui (120 arbres/ha au plus, surtout des rangs de vigne), d'où l'écart.
+- Défaut de l'outil trouvé en passant : la variante `vegetation_50` de `cout_rendu.py` mettait la densité à 0,5 au lieu de la diviser par deux (préréglages 0,3 / 0,8 / 1) : en low elle ajoutait des arbres. Corrigé : `vegetation_x=F` multiplie la densité du préréglage (`render_quality.gd`), `vegetation_50` = `vegetation_x=0.5`.
+
+### 8.2 Banc du tronçon
+
+`cout_rendu.py lancer --troncon farmland,temperate_forest,alpine` : 2 km par biome comme le tour (même générateur `make_biome_world`), 4 km parcourus à 60 km/h (le bloc alpin ne sert qu'à ce que la caméra voit devant elle dans la forêt), sonde découpée biome par biome comme la recette U18, une capture au milieu de chaque bloc. Variantes de la première passe, une seule différence chacune :
+
+| Variante | Question posée |
+| --- | --- |
+| `base`, `passes` | référence ; temps de chaque passe dans le tronçon |
+| `sans_arbres` | borne : part des arbres proches dans le surcoût |
+| `vegetation_50` | le coût suit-il le nombre d'arbres ? |
+| `arbres_lod0_300m` | part du modèle proche entre 300 et 630 m |
+| `sans_ombres_arbres` | part des ombres des arbres |
+| `sans_imposteurs` | part des forêts lointaines (lot Y5, mesurées seulement sur un monde de prairie) |
+
+13 bancs par qualité avec `--repetitions 2` (la variante `passes` une seule fois), environ 5 min chacun : environ 3 h 30 pour low, medium et high. À lancer après la fusion de l'herbe au loin (PR #721), qui change aussi les cultures.
+
+### 8.3 Remèdes envisagés, à choisir d'après la mesure
+
+1. **Modèle intermédiaire des arbres** de 150 ou 200 m à 450 m (houppiers à moins de facettes, même silhouette 3D) : garde la bascule vers les panneaux à 450 m demandée le 1er novembre.
+2. **Panneaux du LOD 1 allégés au loin** : couronne à 4 triangles au lieu de 8 au-delà de 800 m, ou forêts en imposteurs (lot Y5) dès 1 000 m au lieu de 1 500 m.
+3. **Ombres des arbres limitées aux 200 premiers mètres** (un troisième jeu d'instances « ombre seule »), si `sans_ombres_arbres` gagne plus de 0,3 ms.
+4. Prépasse de profondeur (1,25 à 1,8 ms en medium et high) : Forward+ s'en sert pour l'occlusion ambiante et la lumière indirecte, on ne la coupe pas ; elle baisse avec le nombre de triangles des arbres (pistes 1 et 2).
+
+Chaque remède : banc du tronçon en low, medium et high, captures validées par le propriétaire avant fusion. Les budgets ne bougent pas sans décision du propriétaire.

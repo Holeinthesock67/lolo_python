@@ -217,12 +217,15 @@ def route_length(out: Path) -> float | None:
 
 
 def split_tour(rows: list[dict[str, Any]], track: list[tuple[float, float]], warm_s: float,
-               length_m: float | None = None) -> dict[str, list[dict[str, Any]]]:
-    """Secondes de la sonde rangées par biome ; la distance du journal est ramenée à l'abscisse du plan."""
-    plan = make_biome_world.Plan(make_biome_world.TOUR, False, False)
+               length_m: float | None = None,
+               biomes: tuple[str, ...] = make_biome_world.TOUR) -> dict[str, list[dict[str, Any]]]:
+    """Secondes de la sonde rangées par biome ; la distance du journal est ramenée à l'abscisse du plan.
+
+    `biomes` : blocs du parcours généré (le tour par défaut ; un tronçon pour cout_rendu.py --troncon)."""
+    plan = make_biome_world.Plan(tuple(biomes), False, False)
     scale = plan.length_m / length_m if length_m else 1.0
     t_min = min(perf_probe.values(rows, "t_s"), default=0.0) + warm_s
-    groups: dict[str, list[dict[str, Any]]] = {b: [] for b in make_biome_world.TOUR}
+    groups: dict[str, list[dict[str, Any]]] = {b: [] for b in biomes}
     groups["frontières"] = []
     for r in rows:
         if not isinstance(r.get("unix_s"), (int, float)) or r.get("t_s", 0) < t_min:
