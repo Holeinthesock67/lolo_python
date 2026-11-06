@@ -384,6 +384,11 @@ func is_settled() -> bool:
 	return _queue.is_empty()
 
 
+## Tronçons de la fenêtre pas encore remplis (captures des tests graphiques : `decor_pending`).
+func pending_count() -> int:
+	return _queue.size()
+
+
 ## Route échantillonnée tous les `STATION_STEP_M` mètres sur le tronçon `k` : (x, y, z, cap en radians).
 ## Un seul échantillonnage de la route par tronçon, au lieu d'un par touffe.
 func chunk_stations(k: int) -> PackedVector4Array:

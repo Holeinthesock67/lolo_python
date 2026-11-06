@@ -528,9 +528,10 @@ GROUND_SCROLL_LEVEL = 0.2
 
 
 def capture_unsettled(info: dict[str, Any]) -> bool:
-    """Capture d'une scène de référence à reprendre : tuiles du terrain en attente, ou rappel des commandes du
-    départ de séance encore affiché (il s'efface seul au bout de 10 s)."""
-    if int(info.get("streaming_pending", 0)) > 0:
+    """Capture d'une scène de référence à reprendre : tuiles du terrain en attente, décor encore en cours de pose
+    (herbe du bord remplie au plus 120 touffes par image, forêts lointaines : `decor_pending`), ou rappel des
+    commandes du départ de séance encore affiché (il s'efface seul au bout de 10 s)."""
+    if int(info.get("streaming_pending", 0)) > 0 or int(info.get("decor_pending", 0)) > 0:
         return True
     b = info.get("widgets", {}).get("banner", {})
     return bool(b.get("visible")) and str(b.get("text", "")).startswith(CONTROLS_HINT_PREFIX)

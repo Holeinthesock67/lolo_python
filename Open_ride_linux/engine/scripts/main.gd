@@ -1410,6 +1410,17 @@ func _test_menu_state(req: String) -> Dictionary:
 		"markers": segment_markers != null and segment_markers.visible, "quality": _quality_name}
 
 
+## Décor posé en plusieurs images après les tuiles : tronçons d'herbe du bord pas encore remplis (lot Y22) et
+## forêts lointaines en attente (lot Y5). Une scène de référence est capturée quand ce compte est à 0.
+func _decor_pending() -> int:
+	var n := 0
+	if living_world != null and living_world.grass != null:
+		n += living_world.grass.pending_count()
+	if streamer.forest_impostors != null:
+		n += streamer.forest_impostors.pending_tiles()
+	return n
+
+
 func _avatar_info() -> Dictionary:
 	if avatar_view == null:
 		return {}
@@ -1480,6 +1491,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"triangles": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
 		"streaming_pending": streamer.pending_count(),   # tuiles voulues pas encore affichées (tour visuel, X21)
+		"decor_pending": _decor_pending(),   # herbe du bord et forêts lointaines pas encore posées (lot Y22)
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
 		"camera_view": camera_views.effective(), "camera_transition": camera_views.in_transition(),
 		"widgets": widgets,
