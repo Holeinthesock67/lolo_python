@@ -51,6 +51,8 @@ const WIDE_BAND_MAX_M := 40.0
 ## La densité au sol décroît donc sans marche du bord de la route jusqu'à la fin de l'herbe ; près de la route
 ## elle reste celle d'avant (plateau de même hauteur que l'ancienne bande uniforme de 2 à 15 m).
 const NARROW_TAPER_M := 4.0
+## Taille d'une touffe au bout de l'herbe (WIDE_BAND_MAX_M) par rapport à une touffe du bord de route.
+const EDGE_SCALE := 0.55
 ## Écart minimal entre une touffe et le bord de la chaussée, sur tout le parcours (rayon et pointe penchée compris).
 const ROAD_CLEAR_M := 1.0
 const MAX_SLOPE := 0.7          # pente (tan) au-delà de laquelle il n'y a plus de touffe
@@ -444,6 +446,8 @@ func tuft_transform(k: int, slot: int, stations: PackedVector4Array = PackedVect
 			return null
 	var angle := float((h2 >> 16) & 0xFFFF) / 65536.0 * TAU
 	var scale_f := 0.7 + float((h2 >> 9) & 0x7F) / 127.0 * 0.6
+	# Bord fondu (Y22-10) : les touffes s'éclaircissent et rapetissent ensemble vers la fin de l'herbe.
+	scale_f *= lerpf(1.0, EDGE_SCALE, smoothstep(NARROW_TAPER_M, WIDE_BAND_MAX_M, lat))
 	return Transform3D(Basis(Vector3.UP, angle).scaled(Vector3.ONE * scale_f), Vector3(px, py, pz))
 
 
