@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série AS : circulation calculée par le core, abri derrière un véhicule lent (activé par défaut, réglable), aspiration au dépassement | Python + GDScript | AS2 | Grande | **Livré le 3 novembre** (PR #663, arrivée dans main avec la série AS #649 ; version 2.0) ; coût GPU de la circulation et essai sur le vélo à faire |
+| Série AS : circulation calculée par le core, abri derrière un véhicule lent (activé par défaut, réglable), aspiration au dépassement | Python + GDScript | AS2 | Grande | Livré le 3 novembre (version 2.0, #649) ; restent le coût GPU de la circulation (véhicules à l'écran) et l'essai sur le vélo |
 
 Série AS, version 2.0. Demande du propriétaire du 29 octobre 2026 (« abri derrière véhicules ou groupes à intégrer ») ; décision du même jour : **abri derrière un véhicule lent activé par défaut, désactivable dans le menu**.
 
