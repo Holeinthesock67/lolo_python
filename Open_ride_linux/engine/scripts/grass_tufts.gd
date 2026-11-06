@@ -24,6 +24,7 @@ extends Node3D
 ##   `MAX_FRAME_US` microsecondes par image.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
+const RenderDiag := preload("res://scripts/render_diag.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
 const RoadClearance := preload("res://scripts/road_clearance.gd")
@@ -112,6 +113,7 @@ func configure(budget: int, route_data, road_width_m: float = 6.0, seed_value: i
 	_material.set_shader_parameter("thin_start_m", THIN_START_M)
 	_material.set_shader_parameter("fade_end_m", FADE_END_M)
 	_material.set_shader_parameter("normals_up_both_sides", true)
+	_material.set_shader_parameter("root_darken", clampf(RenderDiag.number("herbe_degrade", 0.0), 0.0, 1.0))
 	_mm = MultiMesh.new()
 	_mm.transform_format = MultiMesh.TRANSFORM_3D
 	_mm.use_colors = true

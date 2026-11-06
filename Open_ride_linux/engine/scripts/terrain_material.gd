@@ -6,6 +6,7 @@ extends RefCounted
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const TERRAIN_SHADER := preload("res://shaders/terrain.gdshader")
+const RenderDiag := preload("res://scripts/render_diag.gd")
 
 
 ## Crée un nouveau ShaderMaterial configuré selon le thème et son dossier.
@@ -73,3 +74,4 @@ static func apply_shared(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("max_slope_half_band_deg", ThemeRenderParams.MAX_SLOPE_HALF_BAND_DEG)
 	mat.set_shader_parameter("rock_facet_strength", 0.6)
 	mat.set_shader_parameter("detail_strength", 1.0)
+	mat.set_shader_parameter("macro_variation", clampf(RenderDiag.number("terrain_macro", 0.0), 0.0, 1.0))

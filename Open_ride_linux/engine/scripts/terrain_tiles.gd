@@ -190,8 +190,11 @@ static func carve_under_route(heights: PackedFloat32Array, level: String, ix: in
 			var pz: float = lerpf(route.z[k], route.z[k1], f)
 			if px < x0 - pad or px > x0 + size + pad or pz < z0 - pad or pz > z0 + size + pad:
 				continue
-			# Hauteur affichée de la route (relief exagéré, lot Q2) : `heights` est déjà à cette échelle.
-			var alt: float = route.display_y(minf(route.alt_m[k], route.alt_m[k1])) - margin
+			# `heights` est en altitude réelle (l'exagération du relief, lot Q2, est appliquée ensuite par
+			# build_arrays) : seuil en altitude réelle, `margin` (mètres affichés) ramené à cette échelle.
+			# Comparer à la hauteur affichée laissait, en montée avec le relief ×2,5, le lointain plusieurs
+			# mètres au-dessus de la chaussée (route cachée en forêt et en montagne, recette U18, 6 novembre).
+			var alt: float = minf(route.alt_m[k], route.alt_m[k1]) - margin / maxf(route.relief_k, 0.01)
 			var i0 := clampi(floori((px - x0 - ROAD_CLEAR_HALF_M) / cell), 0, CELLS)
 			var i1 := clampi(floori((px - x0 + ROAD_CLEAR_HALF_M) / cell) + 1, 0, CELLS)
 			var j0 := clampi(floori((pz - z0 - ROAD_CLEAR_HALF_M) / cell), 0, CELLS)

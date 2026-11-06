@@ -63,6 +63,9 @@ const PRESETS := {
 ## 14,6 pour 14). Ombres douces et SSIL descendent d'un cran en `medium` et `high` : mesuré séparément
 ## sur le PC, ombres −0,9 / −0,7 ms, SSIL −1,9 / −0,7 ms, sans différence visible sur la planche
 ## r201 du 5 novembre. L'anisotropie, moins rentable en high, ne change pas.
+## Étude du rendu du 6 novembre (docs/ETUDE_OPTIMISATION_RENDU_2026-11-05.md, captures validées par le propriétaire) :
+## MSAA 2× et atlas des ombres 2048 en `medium` et `high`, SSIL coupé et anisotropie 8× en `high`. Tour des
+## six biomes : medium −2,4 ms, high −4 ms ; le `low` ne change pas (ombres des arbres et herbe gardées).
 const IMAGE := {
 	"low": {
 		"anisotropy": 4,
@@ -81,29 +84,29 @@ const IMAGE := {
 	},
 	"medium": {
 		"anisotropy": 8,
-		"msaa": 4,
+		"msaa": 2,
 		"screen_aa": "off",
 		"ssao": "medium",
 		"ssil": "off",
 		"ao_half_size": true,
 		"fog_volumetric": "light",
 		"glow": true,
-		"shadow_atlas": 4096,
+		"shadow_atlas": 2048,
 		"shadow_splits": 4,
 		"shadow_filter": "low",
 		"mesh_lod_threshold": 1.0,
 		"heat_haze": true,
 	},
 	"high": {
-		"anisotropy": 16,
-		"msaa": 4,
+		"anisotropy": 8,
+		"msaa": 2,
 		"screen_aa": "off",
 		"ssao": "high",
-		"ssil": "low",
+		"ssil": "off",
 		"ao_half_size": true,
 		"fog_volumetric": "full",
 		"glow": true,
-		"shadow_atlas": 4096,
+		"shadow_atlas": 2048,
 		"shadow_splits": 4,
 		"shadow_filter": "medium",
 		"mesh_lod_threshold": 0.5,
