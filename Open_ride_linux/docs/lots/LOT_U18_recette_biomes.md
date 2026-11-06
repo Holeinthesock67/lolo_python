@@ -27,7 +27,7 @@ U17 livré ; U19 à U22 livrés pour la partie gravel.
 4. Choisir « Gravier » au menu, rouler 10 min en SIM sur une trace habituelle (revêtue), puis 10 min en ERG ; puis « Chemins réels » sur un parcours de démonstration à portions non revêtues ou en monde ouvert.
 5. Récupérer les journaux (`~/OpenRide/Logs/`) et les lignes `[perf-rendu]`.
 
-La partie PC sans vélo (étapes 2 et 3, étape 7bt de la file du PC) tient en une commande : `python3 engine/tests/recette_u18.py lancer` (outil du 5 novembre, voir `docs/OUTILS_DE_TEST.md`). L'étape 1 attend le lot U2 (classification des biomes au compilateur), pas encore livré ; l'étape 4 est la séance vélo 7bu.
+La partie PC sans vélo (étapes 2 et 3, étape 7bt de la file du PC) tient en une commande : `python3 engine/tests/recette_u18.py lancer` (outil du 5 novembre, voir `docs/OUTILS_DE_TEST.md`). L'étape 1 demande le lot U2 (classification des biomes au compilateur, PR du 6 novembre) : `openride-compiler build <trace> --force` affiche la ligne « biomes (sources : …) » avec la part de chaque biome ; l'étape 4 est la séance vélo 7bu.
 
 ## 5. Critères
 
