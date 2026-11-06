@@ -102,7 +102,7 @@ Accord du propriétaire (0 h 24) : lancer les six pistes et vérifier les gains 
 3. Brume volumétrique à la grille du medium en high : `brume_light`.
 4. Pierres et fleurs du sol sans ombre : `sans_ombres_details`. L'herbe n'a déjà pas d'ombre.
 5. Niveaux de détail des maillages plus tôt : `lod_maillage_1` (high), `lod_maillage_2` (medium).
-6. Lots de développement à part : niveau de détail de l'herbe au loin (lot herbe), ombres simplifiées du terrain, forêt lointaine en imposteurs.
+6. Lots de développement à part : niveau de détail de l'herbe au loin (lot herbe), ombres simplifiées du terrain (écartée, voir § 6.2), forêt lointaine en imposteurs.
 
 Image : `reglage_image.py` compare au milieu de chaque biome la brume éclairée à moitié (B), le contraste relevé (C, D), sans halo (E), un étalonnage en S (F, table de couleurs 1D `adjustment_color_correction`, coût nul) et F avec les trois améliorations visuelles (G).
 
@@ -129,7 +129,9 @@ Tour des six biomes avec les préréglages proposés (GPU médian, avant le 5 no
 | medium (12) | 13,3 à 18,2 | 11,0 à 15,7 | 1 sur 7, 2 de plus à moins de 0,6 ms |
 | high (14) | 17,2 à 20,4 | 13,1 à 16,4 | 4 sur 7 |
 
-Couper 30 % de l'herbe et les ombres des arbres en low ne gagne rien : le propriétaire les garde. Les cultures et la forêt restent au-dessus du budget : lots Y22 (herbe au loin, ombres simplifiées du relief) et Y5 (forêt lointaine). Le relief alpin est aussi plus lourd que les cultures (banc de la PR #724).
+Couper 30 % de l'herbe et les ombres des arbres en low ne gagne rien : le propriétaire les garde. Les cultures et la forêt restent au-dessus du budget : lots Y22 (herbe au loin) et Y5 (forêt lointaine). Le relief alpin est aussi plus lourd que les cultures (banc de la PR #724).
+
+Ombres simplifiées du relief (lot Y22, PR #724, 6 novembre, socle proposé, 2 répétitions, cultures et alpin, trois qualités) : le relief simplifié pour les ombres (maille de 40 m) retire 35 à 45 % des primitives, mais le gain GPU va de −0,25 à +0,34 ms, dans le bruit ; le relief sans aucune ombre gagne au plus 0,3 ms ; les captures sont identiques. Les ombres du relief ne coûtent presque rien sur la GTX 1060 : piste écartée, PR fermée sans fusion (choix du propriétaire, 6 novembre). Données : `mesures/2026-11-06-ombres-relief/` (dossier partagé du projet).
 
 Revue des autres « loupés » du même genre : le globe du menu « Monde ouvert » (SubViewport de 560 px en `UPDATE_ALWAYS`) était dessiné à chaque image pendant la sortie ; corrigé, il ne l'est plus que menu ouvert.
 
