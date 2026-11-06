@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série AS : circulation calculée par le core, abri derrière un véhicule lent (activé par défaut, réglable), aspiration au dépassement | Python + GDScript | AS2 | Grande | En PR (31 octobre, PR #663, sur AS2 ; version 2.0) |
+| Série AS : circulation calculée par le core, abri derrière un véhicule lent (activé par défaut, réglable), aspiration au dépassement | Python + GDScript | AS2 | Grande | **Livré le 3 novembre** (PR #663, arrivée dans main avec la série AS #649 ; version 2.0) ; coût GPU de la circulation et essai sur le vélo à faire |
 
 Série AS, version 2.0. Demande du propriétaire du 29 octobre 2026 (« abri derrière véhicules ou groupes à intégrer ») ; décision du même jour : **abri derrière un véhicule lent activé par défaut, désactivable dans le menu**.
 
@@ -59,7 +59,7 @@ Liste facultative `vehicles` dans `state` ; `draft_bot` peut valoir `veh:<id>` ;
 
 Véhicules qui réagissent au cycliste (klaxon, freinage), règles de sécurité routière.
 
-## 9. Livraison (31 octobre 2026, PR empilée sur AS2)
+## 9. Livraison (PR #663 du 31 octobre 2026, dans main le 3 novembre avec la série AS #649)
 
 - **Core.** `traffic.py` : portage de `traffic_model.gd` (cases de 250 m, mêmes sortes et parts, même tirage `hash3`, graine 0 comme l'engine, villages de la couche `poi` par tronçons de 1 km, limite de neige du thème), budget fixe de 8 véhicules (celui du préréglage high) quel que soit le préréglage. Liste `vehicles` : les 4 plus proches à moins de 150 m, une trame sur trois. Pas de circulation sans décor vivant (`[render] living`), puisque l'engine n'en affiche pas.
 - **Véhicule lent devant.** Tracteur, ou utilitaire dans une montée de plus de 6 % (18 à 26 km/h), tiré dans le même sens et plus lent que le cycliste : posé 150 à 300 m devant, voie de droite. Il garde sa ligne face aux coureurs qui le doublent (ce sont eux qui s'écartent) et ne double jamais un coureur. Une fois doublé, il suit les règles des autres véhicules, sans jamais s'engager à doubler plus vite qu'il ne roule.
