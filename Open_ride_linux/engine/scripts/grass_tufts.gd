@@ -54,6 +54,12 @@ const WIDE_BAND_MAX_M := 80.0
 const NARROW_TAPER_M := 4.0
 ## Taille d'une touffe au bout de l'herbe (WIDE_BAND_MAX_M) par rapport à une touffe du bord de route.
 const EDGE_SCALE := 0.55
+## Teinte d'instance qui rend une touffe de la couleur du sol d'herbe (sol pâle des prés, sRGB, comme DRY_TINTS) ;
+## les touffes y glissent de GROUND_BLEND_FROM_M à WIDE_BAND_MAX_M du bord (6 novembre au soir : « encore une
+## limite nette à gauche et à droite » : des touffes vertes sur un sol pâle dessinent une lisière même clairsemées).
+const GROUND_TINT := Color(1.55, 1.22, 1.75)
+const GROUND_BLEND := 0.85
+const GROUND_BLEND_FROM_M := 15.0
 ## Écart minimal entre une touffe et le bord de la chaussée, sur tout le parcours (rayon et pointe penchée compris).
 const ROAD_CLEAR_M := 1.0
 const MAX_SLOPE := 0.7          # pente (tan) au-delà de laquelle il n'y a plus de touffe
@@ -317,6 +323,8 @@ func update(cam_s: float) -> void:
 			if dry < 0:
 				continue
 			var col: Color = (DRY_TINTS if dry == 1 else TINTS)[tint_index(k, slot)]
+			if dry == 0:   # bout de l'herbe fondu dans la teinte du sol (Y22-13)
+				col = col.lerp(GROUND_TINT, GROUND_BLEND * smoothstep(GROUND_BLEND_FROM_M, WIDE_BAND_MAX_M, lateral_at(k, slot)))
 			var pick := pick_of(k, slot)
 			var custom := Color(pick, 0.0, 0.0, 0.0)
 			near_mm.set_instance_transform(slot, x)
@@ -491,6 +499,12 @@ static func lateral_of(r: float, wide: bool) -> float:
 		return a + x
 	var y := x - flat
 	return b + ramp * (1.0 - sqrt(maxf(0.0, 1.0 - 2.0 * y / ramp)))
+
+
+## Distance au bord de la route de la place `slot` du tronçon `k` (même tirage que tuft_transform).
+func lateral_at(k: int, slot: int) -> float:
+	var h := VegetationPlacer.hash3(tuft_seed ^ 0x6A55, k, slot)
+	return lateral_of(float((h >> 16) & 0xFFFF) / 65536.0, slot >= _narrow_per_chunk and _narrow_per_chunk > 0)
 
 
 ## Teinte (indice dans TINTS) de la place `slot` du tronçon `k` : surtout fraîche, parfois sèche.
