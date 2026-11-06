@@ -1,0 +1,52 @@
+t_s;unix_s;frame_ms;distance_m;cause;steps
+3.641;1793923732.796;147.5;0.0;inconnue;
+16.055;1793923745.210;135.2;0.0;cyclistes;spectateurs préchauffage 0.0 | passants préchauffage 0.0 | cyclistes préchauffage 567.0
+20.739;1793923749.894;120.1;0.0;inconnue;route road:-1 1.2 | route road:0 0.8 | osm 0 0.1 | osm 1 0.0 | osm 2 0.0 | osm 3 0.0
+21.689;1793923750.844;133.4;0.0;inconnue;fenetre  2.5 | herbe 0 0.8 | sol 0 0.0 | decor  17.8 | atmosphere  0.0 | arches  0.5 | route road:1 0.7 | route road:2 0.7
+25.533;1793923754.688;143.6;0.0;capture;fenetre  0.8 | herbe 0 0.8 | sol 0 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0 | tuile near:-1:-1 0.9 | arbres near:-1:-1 8.9 | tuile near:-1:0 1.2 | arbres near:-1:0 10.5
+25.701;1793923754.856;120.1;0.0;capture;fenetre  0.8 | herbe 0 2.3 | sol 0 0.0 | spectateurs tri 0 0.1 | decor  1.0 | atmosphere  0.0 | arches  0.0 | tuile near:0:-1 1.0 | arbres near:0:-1 9.5 | tuile near:0:0 0.9 | arbres near:0:0 14.6
+25.825;1793923754.980;72.0;0.0;inconnue;fenetre  0.9 | herbe 0 1.6 | sol 0 0.0 | decor  0.6 | atmosphere  0.0 | arches  0.0
+25.852;1793923755.006;33.3;0.0;inconnue;fenetre  1.0 | herbe 0 1.7 | sol 0 0.0 | decor  0.6 | atmosphere  0.0 | arches  0.0
+25.896;1793923755.051;50.0;0.0;inconnue;fenetre  0.5 | herbe 0 1.7 | sol 0 0.0 | decor  0.7 | atmosphere  0.0 | arches  0.0
+31.195;1793923760.350;114.4;0.0;capture;fenetre  0.8 | herbe 0 0.0 | sol 0 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0
+33.622;1793923762.777;33.3;0.0;inconnue;fenetre  1.0 | herbe 0 0.0 | sol 0 0.0 | decor  0.9 | atmosphere  0.0 | arches  0.0
+39.823;1793923768.978;33.3;0.0;inconnue;fenetre  3.0 | herbe 0 0.1 | sol 0 0.0 | decor  3.7 | atmosphere  0.0 | arches  0.1
+41.164;1793923770.318;138.6;0.0;inconnue;fenetre  0.5 | herbe 0 0.0 | sol 0 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0
+41.429;1793923770.584;133.3;0.2;capture;fenetre  0.7 | bots  4.3 | herbe 0 0.0 | sol 0 0.0 | decor  0.9 | atmosphere  0.0 | arches  0.0 | route road:3 0.5
+41.463;1793923770.617;36.4;0.6;capture;fenetre  0.6 | bots  2.5 | herbe 0 0.0 | sol 0 0.0 | decor  0.6 | atmosphere  0.0 | arches  0.0
+42.672;1793923771.827;54.0;3.5;bots;fenetre  2.1 | bots  15.3 | herbe 3 0.1 | sol 3 0.0 | decor  3.6 | atmosphere  0.0 | arches  0.1
+43.487;1793923772.641;60.5;6.0;inconnue;fenetre  1.9 | bots  13.7 | herbe 6 0.1 | sol 6 0.0 | decor  4.1 | atmosphere  0.0 | arches  0.1
+48.891;1793923778.045;33.3;30.4;bots;fenetre  1.9 | bots  14.3 | herbe 30 0.1 | sol 30 0.0 | decor  3.2 | atmosphere  0.0 | arches  0.1
+48.910;1793923778.064;33.3;30.7;inconnue;fenetre  1.5 | bots  5.9 | herbe 30 0.0 | sol 30 0.0 | decor  1.7 | atmosphere  0.0 | arches  0.0
+51.330;1793923780.485;135.3;42.7;capture;fenetre  0.5 | bots  2.3 | herbe 42 0.0 | sol 42 0.0 | decor  1.5 | atmosphere  0.0 | arches  0.0
+51.360;1793923780.514;39.7;44.2;capture;fenetre  0.8 | bots  3.3 | herbe 44 0.0 | sol 44 0.0 | decor  1.0 | atmosphere  0.0 | arches  0.0
+52.226;1793923781.381;41.7;49.3;bots;fenetre  5.9 | bots  13.9 | herbe 49 0.0 | sol 49 0.0 | decor  2.7 | atmosphere  0.0 | arches  0.0
+53.465;1793923782.619;35.3;56.8;bots;fenetre  2.2 | bots  12.9 | herbe 56 0.0 | sol 56 0.0 | decor  2.6 | atmosphere  0.0 | arches  0.0
+61.352;1793923790.506;141.7;106.2;capture;fenetre  1.3 | bots  8.8 | herbe 106 0.0 | sol 106 0.0 | decor  1.4 | atmosphere  0.0 | arches  0.0
+61.381;1793923790.535;39.0;108.2;capture;fenetre  0.7 | bots  2.4 | herbe 108 0.0 | sol 108 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0
+61.860;1793923791.014;33.3;111.3;bots;fenetre  3.4 | bots  15.4 | herbe 111 0.1 | sol 111 0.0 | decor  3.6 | atmosphere  0.0 | arches  0.1
+63.054;1793923792.208;33.2;119.4;bots;fenetre  2.5 | bots  14.1 | herbe 119 0.0 | sol 119 0.0 | decor  3.2 | atmosphere  0.0 | arches  0.1
+67.077;1793923796.231;57.0;147.1;bots;fenetre  3.1 | bots  14.8 | herbe 147 0.0 | sol 147 0.0 | decor  2.3 | atmosphere  0.0 | arches  0.1
+67.781;1793923796.936;33.3;151.8;bots;fenetre  1.9 | bots  17.0 | herbe 151 0.0 | sol 151 0.0 | decor  4.8 | atmosphere  0.0 | arches  0.1
+68.677;1793923797.831;33.6;158.2;bots;fenetre  3.5 | bots  14.8 | herbe 158 0.1 | sol 158 0.1 | decor  3.6 | atmosphere  0.0 | arches  0.1
+70.385;1793923799.540;45.7;169.9;bots;fenetre  3.3 | bots  15.7 | herbe 169 0.1 | sol 169 0.0 | decor  2.9 | atmosphere  0.0 | arches  0.1
+71.309;1793923800.463;137.6;174.9;capture;fenetre  0.4 | bots  2.5 | herbe 174 0.0 | sol 174 0.0 | decor  1.0 | atmosphere  0.0 | arches  0.0
+71.891;1793923801.046;37.4;180.5;bots;fenetre  3.3 | bots  15.6 | herbe 180 0.1 | sol 180 0.0 | spectateurs tri 0 0.1 | decor  3.7 | atmosphere  0.0 | arches  0.0
+73.894;1793923803.048;33.3;194.3;bots;fenetre  2.5 | bots  19.4 | herbe 194 0.1 | sol 194 0.0 | decor  4.5 | atmosphere  0.0 | arches  0.1
+73.935;1793923803.089;58.3;194.7;bots;fenetre  3.2 | bots  15.9 | herbe 194 0.0 | sol 194 0.0 | decor  2.0 | atmosphere  0.0 | arches  0.1
+77.307;1793923806.461;33.3;218.1;bots;fenetre  3.1 | bots  13.6 | herbe 218 0.1 | sol 218 0.0 | decor  2.2 | atmosphere  0.0 | arches  0.0
+81.314;1793923810.468;141.7;244.3;capture;fenetre  0.4 | bots  3.3 | herbe 244 0.0 | sol 244 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0
+81.344;1793923810.498;37.9;246.1;capture;fenetre  0.9 | bots  4.1 | herbe 246 0.0 | sol 246 0.0 | decor  1.2 | atmosphere  0.0 | arches  0.0
+91.332;1793923820.486;141.7;312.7;capture;fenetre  0.5 | bots  1.9 | herbe 312 0.0 | sol 312 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0
+94.485;1793923823.639;33.4;335.5;bots;fenetre  2.9 | bots  18.6 | herbe 335 0.1 | sol 335 0.0 | decor  5.4 | atmosphere  0.0 | arches  0.1
+97.620;1793923826.774;33.3;356.7;bots;fenetre  3.4 | bots  15.6 | herbe 356 0.0 | sol 356 0.0 | decor  2.0 | atmosphere  0.0 | arches  0.0
+99.870;1793923829.024;49.9;371.7;bots;fenetre  4.0 | bots  13.7 | herbe 371 0.0 | sol 371 0.0 | decor  3.1 | atmosphere  0.0 | arches  0.1
+101.318;1793923830.472;141.7;380.1;capture;fenetre  0.5 | bots  2.2 | herbe 380 0.0 | sol 380 0.0 | decor  0.7 | atmosphere  0.0 | arches  0.0
+101.349;1793923830.503;38.7;381.8;capture;fenetre  0.4 | bots  1.9 | herbe 381 0.0 | sol 381 0.0 | spectateurs tri 0 0.0 | decor  1.0 | atmosphere  0.0 | arches  0.0
+105.166;1793923834.319;58.3;407.2;inconnue;fenetre  4.0 | bots  14.5 | herbe 407 0.1 | sol 407 0.0 | decor  4.2 | atmosphere  0.0 | arches  0.0
+106.282;1793923835.435;66.7;414.7;bots;fenetre  4.2 | bots  19.0 | herbe 414 0.1 | sol 414 0.1 | decor  6.6 | atmosphere  0.0 | arches  0.1
+106.872;1793923836.025;37.9;418.7;bots;fenetre  3.9 | bots  15.3 | herbe 418 0.0 | sol 418 0.0 | decor  3.7 | atmosphere  0.0 | arches  0.1
+107.336;1793923836.489;55.3;421.7;bots;fenetre  4.2 | bots  15.7 | herbe 421 0.1 | sol 421 0.0 | spectateurs tri 0 0.1 | decor  5.2 | atmosphere  0.0 | arches  0.1
+107.374;1793923836.527;38.2;422.0;bots;fenetre  3.3 | bots  15.6 | herbe 422 0.1 | sol 422 0.0 | decor  3.1 | atmosphere  0.0 | arches  0.1
+110.203;1793923839.357;50.0;440.8;inconnue;fenetre  0.9 | bots  3.1 | herbe 440 0.0 | sol 440 0.0 | decor  1.0 | atmosphere  0.0 | arches  0.0
+111.277;1793923840.430;91.7;440.1;capture;fenetre  0.4 | herbe 440 0.0 | sol 440 0.0 | decor  0.6 | atmosphere  0.0 | arches  0.0
