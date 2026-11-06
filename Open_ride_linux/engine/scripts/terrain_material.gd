@@ -66,8 +66,8 @@ static func apply_to_material(mat: ShaderMaterial, theme: Dictionary = {}, theme
 ## Paramètres communs aux shaders de terrain (terrain_shade.gdshaderinc) : constantes de la fonction de
 ## référence du lot L3 (le shader n'en recopie aucune) et décor d'E3. Aussi pour terrain_biomes.gdshader (U6).
 ## Prés plus ou moins mûrs à grande échelle (lot Y22, variante « terrain_macro » de l'étude du 5 novembre,
-## ≈ 0 ms en medium) ; 0 : sol d'avant.
-const MACRO_VARIATION := 0.35
+## ≈ 0 ms en medium) : jusqu'à ±18 % sur le rouge, ±12 % sur le vert ; 0 : sol d'avant.
+const MACRO_VARIATION := 0.6
 
 
 static func apply_shared(mat: ShaderMaterial) -> void:

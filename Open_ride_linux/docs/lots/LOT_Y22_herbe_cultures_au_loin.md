@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série Y (rendu) : niveau de détail de l'herbe du bord de route selon la distance (gerbe simplifiée au-delà de 40 m, un MultiMesh par tronçon écarté hors du champ, fondu fini à 120 m au lieu de 150) et des rangs de vigne des cultures (modèle lointain au-delà de 200 m, en haie d'un rang), prés plus ou moins mûrs peints sur le sol à l'échelle de 600 m | GDScript + shader | Y11, U7, P5 | Petite | **En PR** (lancé le 5 novembre) ; banc PC en low, medium et high et captures avant/après à valider |
+| Série Y (rendu) : niveau de détail de l'herbe du bord de route selon la distance (gerbe simplifiée au-delà de 40 m, un MultiMesh par tronçon écarté hors du champ, fondu fini à 120 m au lieu de 150) et des rangs de vigne des cultures (modèle lointain au-delà de 200 m, en haie d'un rang), prés plus ou moins mûrs peints sur le sol en plaques de 90 à 250 m | GDScript + shader | Y11, U7, P5 | Petite | **En PR** (lancé le 5 novembre) ; banc PC en low, medium et high et captures avant/après à valider |
 
 ## 1. Objectif
 
@@ -18,7 +18,7 @@ Le biome cultures (farmland) dépasse le budget GPU d'environ 4 ms en medium et 
 | Y22-3 | Le tirage du fondu vient de la touffe (`INSTANCE_CUSTOM.x`, `pick_of`) au lieu d'un hachage de sa position dans le shader : la gerbe lointaine ne reçoit que les touffes que le fondu montre encore au-delà du passage, même choix côté CPU et GPU. |
 | Y22-4 | Fondu de l'herbe fini à 120 m au lieu de 150 (`FADE_END_M`) : touffes moins denses au-delà de quelques dizaines de mètres (62 % gardées à 80 m avant, 42 % après). |
 | Y22-5 | Rangs de vigne des cultures (`tree_species.gd`, `lod0_m` = 200 m) : modèle lointain au-delà de 200 m au lieu de 450, arbre par arbre dans le shader ; l'ombre portée s'arrête au même endroit (distance à la caméra principale, `MAIN_CAM_INV_VIEW_MATRIX`, aussi dans la passe d'ombre). Le modèle lointain d'un rang devient une haie pleine (10 triangles) au lieu de deux panneaux croisés de 6 m qui barraient le rang en travers. Les arbres gardent le passage par case à 450 m (demande du 1er novembre). |
-| Y22-7 | Sol (demande du propriétaire, 6 novembre : « l'herbe n'est plus satisfaisante », touffes 3D seulement au bord de la route) : prés plus ou moins mûrs peints par `terrain_shade.gdshaderinc` (`macro_variation` = 0,35, bruit de 230 et 600 m, ±10 % de teinte plus claire et chaude ou plus sombre et fraîche), sur tous les matériaux de terrain (`TerrainMaterial.apply_shared`). Variante « terrain_macro » de l'étude, ≈ 0 ms en medium. |
+| Y22-7 | Sol (demande du propriétaire, 6 novembre : « l'herbe n'est plus satisfaisante », touffes 3D seulement au bord de la route) : prés plus ou moins mûrs peints par `terrain_shade.gdshaderinc` (`macro_variation` = 0,6, plaques de 90 à 250 m, jusqu'à ±18 % sur le rouge, plus claires et jaunes ou plus sombres et vertes ; le premier réglage, 0,35 sur 230 et 600 m, ne se voyait pas sur les captures du 6 novembre), sur tous les matériaux de terrain (`TerrainMaterial.apply_shared`). Variante « terrain_macro » de l'étude, ≈ 0 ms en medium. |
 | Y22-6 | Aucun réglage de préréglage changé : budgets de touffes (1 500, 8 000, 20 000) et distances d'ombre identiques. |
 
 ## 3. Fichiers

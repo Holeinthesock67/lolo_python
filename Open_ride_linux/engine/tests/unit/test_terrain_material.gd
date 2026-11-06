@@ -154,10 +154,10 @@ func _init() -> void:
 	var shared := ShaderMaterial.new()
 	shared.shader = preload("res://shaders/terrain.gdshader")
 	TerrainMaterial.apply_shared(shared)
-	_check(TerrainMaterial.MACRO_VARIATION > 0.0 and TerrainMaterial.MACRO_VARIATION <= 0.5
+	_check(TerrainMaterial.MACRO_VARIATION > 0.0 and TerrainMaterial.MACRO_VARIATION <= 1.0
 		and is_equal_approx(float(shared.get_shader_parameter("macro_variation")), TerrainMaterial.MACRO_VARIATION)
 		and "macro_variation" in FileAccess.get_file_as_string("res://shaders/terrain_shade.gdshaderinc"),
-		"variation de l'herbe à 600 m : %.2f sur le sol (terrain_shade)" % TerrainMaterial.MACRO_VARIATION)
+		"prés plus ou moins mûrs : %.2f sur le sol (terrain_shade)" % TerrainMaterial.MACRO_VARIATION)
 
 	print("test_terrain_material : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
