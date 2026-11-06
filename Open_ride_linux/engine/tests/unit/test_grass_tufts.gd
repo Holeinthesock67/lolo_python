@@ -203,8 +203,9 @@ func _test_fill_without_terrain() -> void:
 
 
 # Banc r721g du 6 novembre (high, bande à 80 m) : sur le PC, le remplissage prenait du retard et l'herbe
-# disparaissait. Hauteur du terrain lente exprès (40 µs par appel, trois appels par touffe) : le tronçon de
-# la caméra et le suivant ont toujours des touffes, parce qu'ils sont remplis avant ceux de plus loin.
+# disparaissait. Hauteur du terrain lente exprès (15 µs par appel, trois appels par touffe) : le tronçon de
+# la caméra et le suivant ont toujours des touffes : chaque tronçon proche reçoit une part de ses places
+# avant que le premier soit achevé (JOB_SPREAD).
 func _test_fill_priority_slow_terrain() -> void:
 	var route = _route()
 	var g = GrassTufts.new()
@@ -213,7 +214,7 @@ func _test_fill_priority_slow_terrain() -> void:
 	g.configure(int(high["grass_tufts"]), route, 6.0, 0, int(high["grass_tufts_wide"]))
 	g.height_at = func(_x: float, _z: float) -> float:
 		var t := Time.get_ticks_usec()
-		while Time.get_ticks_usec() - t < 40:
+		while Time.get_ticks_usec() - t < 15:
 			pass
 		return 0.0
 	var groups: int = g._slot_chunk.size()

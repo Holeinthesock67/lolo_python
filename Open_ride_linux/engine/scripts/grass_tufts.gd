@@ -73,6 +73,7 @@ const MAX_PER_FRAME := 120
 ## devant la caméra remplis d'abord (`_next_job`).
 const MAX_FRAME_US := 2500
 const FILL_FRAMES := 40
+const JOB_SPREAD := 16.0
 const BATCH := 16
 const STATION_STEP_M := 4.0
 const STATION_COST := 40        # coût d'un échantillonnage de tronçon, compté en places
@@ -352,14 +353,16 @@ func update(cam_s: float) -> void:
 			job[2] = end
 
 
-## Tâche à faire d'abord : le tronçon de la caméra, puis ceux de devant du plus proche au plus loin, ceux de
-## derrière en dernier.
+## Tâche à faire d'abord : rang = distance en tronçons devant la caméra + JOB_SPREAD × part déjà remplie ;
+## ceux de derrière en dernier. Le tronçon de la caméra reçoit 1/JOB_SPREAD de ses places (bande du bord
+## d'abord, places dans l'ordre), puis le suivant, etc. : quand le remplissage est lent, les tronçons proches ont
+## tous de l'herbe (simulation du 6 novembre : à 20 places par image en high, aucun des trois tronçons proches vide).
 func _next_job(cam_k: int) -> int:
 	var best := 0
-	var best_rank := 1 << 30
+	var best_rank := INF
 	for i in range(_queue.size()):
 		var d: int = int(_queue[i][1]) - cam_k
-		var rank := d if d >= 0 else (1 << 20) - d
+		var rank := float(d) + JOB_SPREAD * float(_queue[i][2]) / float(maxi(_per_chunk, 1)) if d >= 0 else 1.0e6 - d
 		if rank < best_rank:
 			best_rank = rank
 			best = i
