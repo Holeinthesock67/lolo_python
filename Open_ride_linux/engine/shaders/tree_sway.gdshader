@@ -1,5 +1,6 @@
 shader_type spatial;
-render_mode cull_back;
+// Feuillage en lambert sans reflet spéculaire (étude du rendu du 6 novembre : même image, moins de calcul)
+render_mode cull_back, diffuse_lambert, specular_disabled;
 
 // Balancement des arbres et des touffes d'herbe au vent (Lot P5).
 // Le vent vient du modèle P4 (wind_model.gd) par quatre paramètres globaux, mis à jour une fois par

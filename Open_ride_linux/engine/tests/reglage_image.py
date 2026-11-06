@@ -30,16 +30,11 @@ sys.path.insert(0, str(TESTS_DIR))
 import make_biome_world  # noqa: E402
 import recette_u18  # noqa: E402
 
-# Réglages proposés le 6 novembre (étude ETUDE_OPTIMISATION_RENDU_2026-11-05.md §4), sans la brume éclairée
-GODOT = "feuillage_simple,arbres_loin_simple,halo_niveaux=3,halo_lineaire,anisotropy=8"
-PROPOSED = {
-    "low": GODOT,   # validé le 6 novembre : ombres des arbres et herbe gardées (aucun gain mesuré)
-    "medium": GODOT + ",msaa=2,atlas=2048",
-    "high": GODOT + ",msaa=2,sans_ssil,atlas=2048",
-}
+# Réglages retenus le 6 novembre : ils sont dans les préréglages, rien à ajouter (variante A = préréglage)
+PROPOSED = {"low": "", "medium": "", "high": ""}
 # (nom, réglages ajoutés, description)
 VARIANTS = (
-    ("A", "brume_ambiante=1", "brume éclairée pleine (passe du 6 novembre, jugée trop claire)"),
+    ("A", "", "préréglage : brume éclairée pleine (passe du 6 novembre, jugée trop claire)"),
     ("B", "brume_ambiante=0.5", "brume éclairée à moitié"),
     ("C", "brume_ambiante=0.5,contraste=1.15,agx_contraste=1.35", "à moitié, contraste relevé"),
     ("D", "brume_ambiante=0.35,brume_densite=0.7,contraste=1.12", "brume plus légère et moins éclairée"),

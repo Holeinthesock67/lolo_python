@@ -38,9 +38,9 @@ uniform vec2 cloud_offset = vec2(0.0);   // mètres (x, z), cumulés au vent
 uniform bool layered = false;
 uniform float cloud_scale_m = 2600.0;    // taille d'un motif de base
 uniform int octaves = 5;
-// Nuages dans la carte de rayonnement (lumière ambiante et reflets) : false = ciel sans nuages pour ce calcul,
-// plus léger (passe AT_CUBEMAP_PASS, 6 novembre). Le fond visible garde ses nuages.
-uniform bool clouds_in_radiance = true;
+// Nuages dans la carte de rayonnement (lumière ambiante et reflets) : false (6 novembre) = ciel sans nuages pour
+// ce calcul, plus léger (passe AT_CUBEMAP_PASS). Le fond visible garde ses nuages.
+uniform bool clouds_in_radiance = false;
 
 float _hash21(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -101,7 +101,7 @@ float _clouds_alpha(vec3 eyedir, vec3 pos) {
 
 void sky() {
 #ifdef CIEL_DEMI_RES
-	// Essai (OPENRIDE_RENDER_DIAG ciel_demi_res) : bruit des nuages calculé en demi-résolution
+	// Forward+ (sky_clouds.gd, 6 novembre) : bruit des nuages calculé en demi-résolution
 	if (AT_HALF_RES_PASS) {
 		// Opacité rangée dans le rouge (l'alpha de la demi-résolution n'est pas relu fidèlement)
 		COLOR = vec3((coverage > 0.0 && EYEDIR.y > 0.0) ? _clouds_alpha(EYEDIR, POSITION) : 0.0, 0.0, 0.0);

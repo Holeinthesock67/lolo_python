@@ -7,25 +7,24 @@ extends RefCounted
 ##
 ## Drapeaux et réglages (RenderQuality.apply_diagnostic sauf mention) :
 ##   sans_ombres, sans_ssao, sans_ssil, sans_brume, sans_glow, biais_ombres, ombres_2_cascades,
-##   brume_ambiante (lumière ambiante injectée dans la brume volumétrique),
 ##   msaa=0|2|4, screen_aa=off|fxaa|smaa, ssao=low|medium|high, ssil=low|medium|high, atlas=2048|4096, ombres_m=M, filtre=hard|low|medium,
 ##   vegetation=F (densité des arbres, world_streamer), herbe=F (nombre de touffes, living_world),
-##   sans_ombres_arbres, arbres_lod0_m=M, feuillage_simple (arbres et herbe en diffuse_lambert, specular_disabled),
-##   arbres_loin_simple (même chose et sans vent pour les arbres du LOD 1) (tree_renderer),
-##   anisotropy=2|4|8|16, halo_niveaux=N, halo_lineaire.
+##   sans_ombres_arbres, arbres_lod0_m=M (tree_renderer), anisotropy=2|4|8|16, halo_niveaux=N,
+##   toute clé de QualityPresets.IMAGE (`shadow_filter=high`, `glow=false`).
+## Devenus réglages des préréglages le 6 novembre (plus des essais) : feuillage en lambert sans spéculaire,
+##   arbres lointains sans vent, halo à 3 niveaux en linéaire, brume éclairée, nuages hors de la carte de
+##   rayonnement et en demi-résolution, ciel en mode incrémental.
 ## Améliorations à faible coût (0 = rendu actuel) : soleil_brume=F (fog_sun_scatter du brouillard),
 ##   terrain_macro=F (variation de l'herbe à 600 m, terrain_material), herbe_degrade=F (pied sombre, pointe claire,
 ##   grass_tufts et ground_details).
-## Réglage de l'image (RenderQuality.apply_diagnostic) : brume_ambiante=F (0 à 2, au lieu du drapeau = 1),
+## Réglage de l'image (RenderQuality.apply_diagnostic) : brume_ambiante=F (0 à 2, au lieu de RenderQuality.VOLUMETRIC_AMBIENT_INJECT),
 ##   brume_densite=F (facteur sur la densité de la brume volumétrique, RenderQuality.volumetric_density), contraste=F, saturation=F,
 ##   agx_contraste=F, exposition=F (valeurs de LOOK remplacées), courbe_s=F (étalonnage en S, 0 à 1).
 ## Pistes du 6 novembre : brume=off|light|full (grille de la brume volumétrique), lod_maillage=F (seuil des niveaux
 ##   de détail des maillages, RenderQuality.diagnostic_image), sans_ombres_details (pierres et fleurs du sol sans
 ##   ombre, ground_details).
 ## Ciel (6 novembre, « Setup Sky » ≈ 0,8 ms par image) : ciel=automatic|quality|incremental|realtime
-##   (Sky.process_mode, scène : realtime), ciel_radiance=32|64|128|256 (taille de la carte de rayonnement).
-##   ciel_rayonnement_sans_nuages (nuages absents de la carte de rayonnement), ciel_demi_res (bruit des nuages en
-##   demi-résolution) (sky_clouds.gd).
+##   (Sky.process_mode, scène : incremental), ciel_radiance=32|64|128|256 (taille de la carte de rayonnement).
 ## Pas de class_name : charger par preload("res://scripts/render_diag.gd").
 
 static var _parsed := false

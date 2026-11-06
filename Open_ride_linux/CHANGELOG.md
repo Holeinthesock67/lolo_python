@@ -5,6 +5,13 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Rendu plus léger (étude du 5 et 6 novembre)
+- Medium et high : MSAA 2× et ombres du soleil en 2048 ; high sans lumière indirecte d'écran (SSIL) et filtrage anisotrope 8×. Tour des six biomes sur la GTX 1060 : environ −2,4 ms par image en medium et −4 ms en high.
+- Feuillage et herbe éclairés plus simplement (sans reflet spéculaire), arbres lointains sans vent, halo à trois niveaux.
+- Montagnes du fond qui ne sont plus noires en medium et high : la brume volumétrique prend la lumière du ciel.
+- Ciel : nuages calculés en demi-résolution et retirés du calcul de la lumière ambiante, carte de rayonnement mise à jour par morceaux (−0,4 à −0,5 ms).
+- Le globe du menu « Monde ouvert » n'est plus dessiné pendant la sortie.
+
 ### Bots et abri (série AS)
 - Cyclistes du décor dessinés comme les bots (même cycliste, mêmes niveaux de détail), avec leurs propres maillots, unis ou de club, de couleurs qu'aucun bot ne porte, sans dossard (lot AS7, retour d'essai du 4 novembre).
 

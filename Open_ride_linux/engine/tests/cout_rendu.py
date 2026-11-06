@@ -3,7 +3,7 @@
 
 Usage :
     cout_rendu.py lancer [--out DOSSIER] [--qualites low,medium,high] [--biome farmland] [--duree 70]
-                         [--variantes base,sans_ombres,...] [--socle aucun|propose] [--repetitions N]
+                         [--variantes base,sans_ombres,...] [--repetitions N]
                          [--godot CHEMIN]
     cout_rendu.py analyser DOSSIER
     cout_rendu.py --list
@@ -41,63 +41,44 @@ QUALITIES = ("low", "medium", "high")
 # (nom, OPENRIDE_RENDER_DIAG, options de sim_bench, qualités concernées, ce que la variante enlève à l'image)
 VARIANTS: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...], str], ...] = (
     ("base", "", (), QUALITIES, "préréglage tel quel"),
+    ("passes", "", ("--gpu-profile",), QUALITIES, "même réglage que base, temps GPU de chaque passe (passes.md)"),
+    # Ombres
     ("sans_ombres", "sans_ombres", (), QUALITIES, "aucune ombre portée (borne du coût des ombres)"),
     ("sans_ombres_arbres", "sans_ombres_arbres", (), QUALITIES, "arbres sans ombre portée"),
+    ("sans_ombres_details", "sans_ombres_details", (), QUALITIES, "pierres et fleurs du sol sans ombre"),
     ("ombres_2_cascades", "ombres_2_cascades", (), ("medium", "high"), "2 cascades d'ombre au lieu de 4"),
     ("ombres_200m", "ombres_m=200", (), ("medium", "high"), "ombres jusqu'à 200 m au lieu de 400 / 600"),
-    ("atlas_2048", "atlas=2048", (), ("medium", "high"), "atlas des ombres 2048 au lieu de 4096"),
-    ("filtre_low", "filtre=low", (), ("medium", "high"), "bord des ombres moins doux"),
+    ("atlas_4096", "atlas=4096", (), ("medium", "high"), "COÛT : atlas des ombres 4096 au lieu de 2048"),
+    ("filtre_low", "filtre=low", (), ("high",), "bord des ombres moins doux"),
+    # Effets d'écran
     ("sans_ssao", "sans_ssao", (), ("medium", "high"), "sans occlusion ambiante"),
     ("ssao_low", "ssao=low", (), ("medium", "high"), "occlusion ambiante basse"),
-    ("sans_ssil", "sans_ssil", (), ("medium", "high"), "sans lumière indirecte d'écran"),
+    ("ssil_low", "ssil=low", (), ("medium", "high"), "COÛT : lumière indirecte d'écran « low » (coupée au préréglage)"),
     ("sans_brume", "sans_brume", (), ("medium", "high"), "sans brume volumétrique"),
-    ("brume_ambiante", "brume_ambiante", (), ("medium", "high"), "brume éclairée par le ciel (montagnes sombres)"),
-    ("msaa2", "msaa=2", (), ("medium", "high"), "MSAA 2× au lieu de 4×"),
+    ("brume_light", "brume=light", (), ("high",), "grille de brume volumétrique du medium"),
+    ("msaa4", "msaa=4", (), ("medium", "high"), "COÛT : MSAA 4× au lieu de 2×"),
     ("msaa0", "msaa=0", (), ("medium", "high"), "sans MSAA ni SMAA (bords crénelés)"),
     ("msaa0_smaa", "msaa=0,screen_aa=smaa", (), ("medium", "high"), "SMAA à la place du MSAA (comme low)"),
     ("sans_glow", "sans_glow", (), ("medium", "high"), "sans halo"),
+    # Décor
     ("herbe_50", "herbe=0.5", (), QUALITIES, "moitié des touffes d'herbe"),
     ("vegetation_50", "vegetation=0.5", (), QUALITIES, "moitié moins d'arbres"),
     ("arbres_lod0_300m", "arbres_lod0_m=300", (), QUALITIES, "arbres détaillés jusqu'à 300 m au lieu de 450"),
+    ("lod_maillage_1", "lod_maillage=1.0", (), ("high",), "niveaux de détail des maillages comme en medium"),
+    ("lod_maillage_2", "lod_maillage=2.0", (), ("medium",), "niveaux de détail des maillages comme en low"),
     ("tri_visible", "", ("--culling", "on"), QUALITIES, "tri de ce que la caméra ne voit pas (lot S1)"),
-    # Réglages propres à Godot (recherche du 5 novembre, G1 à G7) : presque sans perte visuelle attendue.
-    ("feuillage_simple", "feuillage_simple", (), QUALITIES, "herbe et arbres en diffuse_lambert, sans reflets (G1)"),
-    ("arbres_loin_simple", "arbres_loin_simple", (), QUALITIES, "arbres lointains sans vent ni reflets (G3)"),
-    ("halo_3_niveaux", "halo_niveaux=3,halo_lineaire", (), ("medium", "high"), "halo à 3 niveaux, agrandi en linéaire (G6)"),
-    ("aniso_8", "anisotropy=8", (), ("high",), "filtrage anisotrope 8× au lieu de 16× (G5)"),
-    ("godot_gratuits", "feuillage_simple,arbres_loin_simple,halo_niveaux=3,halo_lineaire,anisotropy=8,brume_ambiante",
-     (), QUALITIES, "les quatre réglages Godot et la brume éclairée ensemble"),
-    # Améliorations à faible coût (5 novembre soir) : le « gain » attendu est négatif (coût), à garder près de 0.
+    # Ciel
+    ("ciel_temps_reel", "ciel=realtime", (), QUALITIES, "COÛT : carte de rayonnement du ciel recalculée à chaque image"),
+    ("ciel_128", "ciel_radiance=128", (), QUALITIES, "carte de rayonnement du ciel en 128 au lieu de 256"),
+    # Améliorations à faible coût (5 novembre soir) : le « gain » attendu est négatif (coût), à garder près de 0
     ("soleil_brume", "soleil_brume=0.3", (), QUALITIES, "AJOUT : halo du soleil dans le brouillard (fog_sun_scatter)"),
     ("terrain_macro", "terrain_macro=0.35", (), QUALITIES, "AJOUT : prés plus ou moins mûrs à l'échelle de 600 m"),
     ("herbe_degrade", "herbe_degrade=0.35", (), QUALITIES, "AJOUT : herbe au pied plus sombre, pointe plus claire"),
-    ("embellis", "soleil_brume=0.3,terrain_macro=0.35,herbe_degrade=0.35,brume_ambiante", (), QUALITIES,
-     "AJOUT : les trois améliorations et la brume éclairée ensemble"),
-    # Pistes du 6 novembre, à mesurer sur le socle proposé (--socle propose) : gain de chacune seule
-    ("passes", "", ("--gpu-profile",), QUALITIES, "même réglage que base, temps GPU de chaque passe (passes.md)"),
-    ("ssao_medium", "ssao=medium", (), ("high",), "occlusion ambiante medium au lieu de high"),
-    ("brume_light", "brume=light", (), ("high",), "grille de brume volumétrique du medium"),
-    ("sans_ombres_details", "sans_ombres_details", (), QUALITIES, "pierres et fleurs du sol sans ombre"),
-    ("lod_maillage_1", "lod_maillage=1.0", (), ("high",), "niveaux de détail des maillages comme en medium"),
-    ("lod_maillage_2", "lod_maillage=2.0", (), ("medium",), "niveaux de détail des maillages comme en low"),
-    ("ciel_incremental", "ciel=incremental", (), QUALITIES, "carte de rayonnement du ciel étalée sur plusieurs images"),
-    ("ciel_128", "ciel_radiance=128", (), QUALITIES, "carte de rayonnement du ciel en 128 au lieu de 256"),
-    ("ciel_rayon_sans_nuages", "ciel_rayonnement_sans_nuages", (), QUALITIES,
-     "nuages absents de la lumière ambiante du ciel (fond inchangé)"),
-    ("ciel_demi_res", "ciel_demi_res", (), QUALITIES, "nuages du fond calculés en demi-résolution"),
-    ("ciel_allege", "ciel_rayonnement_sans_nuages,ciel_demi_res,ciel=incremental", (), QUALITIES,
-     "les trois allègements du ciel ensemble"),
+    ("embellis", "soleil_brume=0.3,terrain_macro=0.35,herbe_degrade=0.35", (), QUALITIES,
+     "AJOUT : les trois améliorations ensemble"),
 )
-# Socle « propose » : réglages proposés le 6 novembre (étude §6), auxquels chaque variante ajoute les siens
-GODOT_FREE = "feuillage_simple,arbres_loin_simple,halo_niveaux=3,halo_lineaire,anisotropy=8,brume_ambiante"
-SOCLES = {
-    "aucun": {q: "" for q in QUALITIES},
-    "propose": {
-        "low": GODOT_FREE,   # ombres des arbres et herbe gardées (aucun gain, 6 novembre)
-        "medium": GODOT_FREE + ",msaa=2,atlas=2048",
-        "high": GODOT_FREE + ",msaa=2,sans_ssil,atlas=2048",
-    },
-}
+# Les réglages retenus par l'étude du 6 novembre (MSAA 2×, atlas 2048, halo à 3 niveaux, feuillage lambert, arbres
+# lointains sans vent, brume éclairée, ciel allégé, high sans SSIL) sont dans les préréglages : `base` les mesure.
 NAMES = [v[0] for v in VARIANTS]
 
 
@@ -124,12 +105,10 @@ def cmd_lancer(args: argparse.Namespace) -> int:
     runs = [(q, v, r) for r in range(1, args.repetitions + 1) for q, v in one
             if r == 1 or v[0] != "passes"]
     print(f"{len(runs)} bancs de {args.duree:.0f} s (≈ {len(runs) * (args.duree + 30) / 60:.0f} min)", flush=True)
-    (out / "socle.txt").write_text(args.socle + "\n", encoding="utf-8")
     t0 = time.time()
     for k, (q, (name, diag, extra, _qs, _what), rep) in enumerate(runs):
         rdir = out / q / name / f"r{rep}" if args.repetitions > 1 else out / q / name
         rdir.mkdir(parents=True, exist_ok=True)
-        diag = ",".join(x for x in (SOCLES[args.socle][q], diag) if x)
         cmd = [sys.executable, str(TESTS_DIR / "sim_bench.py"), "--native", "--probe", "--muet",
                "--quality", q, "--size", args.size, "--world", str(world),
                "--speed-kmh", "60", "--every", "30", "--duration", f"{args.duree:.0f}", "--out", str(rdir), *extra]
@@ -245,8 +224,8 @@ def analyse(out: Path) -> int:
         write_passes(out, passes)
     (out / "cout.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     biome = (out / "biome.txt").read_text(encoding="utf-8").strip() if (out / "biome.txt").is_file() else "?"
-    socle = (out / "socle.txt").read_text(encoding="utf-8").strip() if (out / "socle.txt").is_file() else "aucun"
-    lines = [f"# Coût des effets de rendu (biome {biome}, 60 km/h, socle {socle})", "",
+    socle = (out / "socle.txt").read_text(encoding="utf-8").strip() if (out / "socle.txt").is_file() else "préréglage"
+    lines = [f"# Coût des effets de rendu (biome {biome}, 60 km/h, socle : {socle})", "",
              "Gain = GPU médian de `base` moins celui de la variante (positif : la variante coûte moins).",
              "Avec des répétitions, chaque chiffre est la médiane des répétitions (détail dans cout.json).", ""]
     for q, rows in result.items():
@@ -276,8 +255,6 @@ def main(argv: list[str] | None = None) -> int:
     la.add_argument("--biome", default="farmland")
     la.add_argument("--duree", type=float, default=70.0, help="durée de chaque banc en s (défaut 70)")
     la.add_argument("--variantes", default=",".join(NAMES))
-    la.add_argument("--socle", default="aucun", choices=tuple(SOCLES),
-                    help="réglages ajoutés à toutes les variantes (propose : préréglages proposés le 6 novembre)")
     la.add_argument("--repetitions", type=int, default=1, help="bancs par variante, alternés (défaut 1)")
     la.add_argument("--size", default="1680x1011")
     la.add_argument("--godot", type=Path, default=Path(os.environ["GODOT"]) if os.environ.get("GODOT") else None)

@@ -51,7 +51,9 @@ const LOOK := {
 	"saturation": 1.18,
 }
 ## Glow des préréglages qui l'activent : léger, seulement sur ce qui dépasse le blanc (ciel, soleil).
-const GLOW := {"intensity": 0.6, "strength": 1.0, "bloom": 0.0, "hdr_threshold": 1.0}
+## Trois premiers niveaux seulement, agrandis en linéaire (étude du rendu du 6 novembre : −0,45 ms en medium,
+## halo à peine moins large).
+const GLOW := {"intensity": 0.6, "strength": 1.0, "bloom": 0.0, "hdr_threshold": 1.0, "levels": 3, "bicubic": false}
 
 const AO_QUALITY := {
 	"low": RenderingServer.ENV_SSAO_QUALITY_LOW,
@@ -78,6 +80,9 @@ const VOLUMETRIC := {
 	"light": {"grid": 48, "length_m": 600.0, "density": 0.004, "anisotropy": 0.6},
 	"full": {"grid": 64, "length_m": 1200.0, "density": 0.006, "anisotropy": 0.6},
 }
+## Part de la lumière du ciel injectée dans la brume volumétrique : sans elle, la brume assombrit tout ce qui est
+## au-delà de sa portée (montagnes noires, 5 novembre) ; à 1, elle voile l'image (trop claire, 6 novembre).
+const VOLUMETRIC_AMBIENT_INJECT := 1.0
 const VOLUMETRIC_DEPTH := 64
 const MSAA := {0: Viewport.MSAA_DISABLED, 2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}
 const SCREEN_AA := {"off": Viewport.SCREEN_SPACE_AA_DISABLED, "fxaa": Viewport.SCREEN_SPACE_AA_FXAA,
@@ -142,6 +147,7 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 		RenderingServer.environment_set_volumetric_fog_filter_active(true)
 		env.volumetric_fog_length = VOLUMETRIC[vol]["length_m"]
 		env.volumetric_fog_anisotropy = VOLUMETRIC[vol]["anisotropy"]
+		env.volumetric_fog_ambient_inject = VOLUMETRIC_AMBIENT_INJECT
 
 	env.glow_enabled = bool(img["glow"])
 	env.glow_intensity = GLOW["intensity"]
@@ -149,6 +155,9 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 	env.glow_bloom = GLOW["bloom"]
 	env.glow_hdr_threshold = GLOW["hdr_threshold"]
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	for i in range(7):
+		env.set_glow_level(i, 1.0 if i < int(GLOW["levels"]) else 0.0)
+	RenderingServer.environment_glow_set_use_bicubic_upscale(bool(GLOW["bicubic"]))
 
 	env.tonemap_mode = LOOK["tonemap"] if forward_plus else LOOK["tonemap_compatibility"]
 	env.tonemap_exposure = LOOK["exposure"]
@@ -209,9 +218,9 @@ static func diagnostic_image(img: Dictionary, diag: String = "") -> Dictionary:
 
 
 ## Suite des essais (OPENRIDE_RENDER_DIAG) sur la lumière et l'environnement : `sans_ombres`, `biais_ombres`
-## (biais plus forts, acné d'ombre), `ombres_m=M` (portée des ombres), `brume_ambiante` (lumière ambiante
-## injectée dans la brume volumétrique), `halo_niveaux=N` (N premiers niveaux du halo), `halo_lineaire`
-## (agrandissement du halo linéaire au lieu de bicubique).
+## (biais plus forts, acné d'ombre), `ombres_m=M` (portée des ombres), `brume_ambiante=F` (lumière ambiante
+## injectée dans la brume volumétrique), `halo_niveaux=N` (N premiers niveaux du halo), contraste, ciel
+## (liste complète dans render_diag.gd).
 static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> void:
 	var diag := RenderDiag.text()
 	if diag == "":
@@ -222,8 +231,6 @@ static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> voi
 		light.shadow_bias = 0.3
 		light.shadow_normal_bias = 3.0
 	light.directional_shadow_max_distance = RenderDiag.number("ombres_m", light.directional_shadow_max_distance)
-	if RenderDiag.has("brume_ambiante"):
-		env.volumetric_fog_ambient_inject = 1.0
 	if RenderDiag.value("brume_ambiante") != "":
 		env.volumetric_fog_ambient_inject = clampf(RenderDiag.number("brume_ambiante", 1.0), 0.0, 2.0)
 	env.adjustment_contrast = RenderDiag.number("contraste", env.adjustment_contrast)
@@ -246,8 +253,6 @@ static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> voi
 			env.set_glow_level(i, 1.0 if i < levels else 0.0)
 	if RenderDiag.value("soleil_brume") != "":
 		env.fog_sun_scatter = clampf(RenderDiag.number("soleil_brume", 0.0), 0.0, 1.0)
-	if RenderDiag.has("halo_lineaire"):
-		RenderingServer.environment_glow_set_use_bicubic_upscale(false)
 	print("Diagnostic de rendu : ", diag)
 
 

@@ -95,7 +95,7 @@ Préconisations suivantes (à mesurer) : medium = M1 + atlas des ombres 2048 ; h
 
 ### 6.1 Pistes lancées le 6 novembre (gain de chacune seule, sur le socle proposé)
 
-Accord du propriétaire (0 h 24) : lancer les six pistes et vérifier les gains un par un. `cout_rendu.py --socle propose --repetitions 2` : chaque variante ajoute un seul réglage aux préréglages proposés, deux bancs alternés par variante, médiane gardée.
+Accord du propriétaire (0 h 24) : lancer les six pistes et vérifier les gains un par un. `cout_rendu.py --repetitions 2` (le 6 novembre avec l'option `--socle propose`, retirée depuis que les réglages proposés sont dans les préréglages) : chaque variante ajoute un seul réglage aux préréglages proposés, deux bancs alternés par variante, médiane gardée.
 
 1. Temps GPU de chaque passe (`passes`, option `--gpu-profile` de Godot via `sim_bench.py --gpu-profile`) : `passes.md`.
 2. Occlusion ambiante plus légère : `ssao_low` (medium, high), `ssao_medium` (high).
@@ -106,6 +106,33 @@ Accord du propriétaire (0 h 24) : lancer les six pistes et vérifier les gains 
 
 Image : `reglage_image.py` compare au milieu de chaque biome la brume éclairée à moitié (B), le contraste relevé (C, D), sans halo (E), un étalonnage en S (F, table de couleurs 1D `adjustment_color_correction`, coût nul) et F avec les trois améliorations visuelles (G).
 
-## 7. Suite
+### 6.2 Résultats du 6 novembre
 
-Mesures du vendredi 6 novembre, 7 h (PC) : variantes Godot de `cout_rendu.py` sur le parcours tout en cultures, puis la recette U18 complète avec les combinaisons retenues, planche avant/après en trois qualités pour le propriétaire. Le préréglage ne change dans `quality_presets.gd` et `render_quality.gd` qu'après sa validation des captures.
+Banc tout en cultures (6 km, 60 km/h, médiane de 2 bancs), préréglages proposés : low 5,15 ms (budget 6), medium 9,96 (12), high 10,69 (14). Ce banc est plus léger que le bloc cultures du tour des biomes, qui reste la référence.
+
+| Piste | low | medium | high |
+| --- | --- | --- | --- |
+| Occlusion ambiante « low » | — | −0,34 | bruit |
+| Niveaux de détail des maillages plus tôt | — | −0,32 | bruit |
+| Pierres et fleurs sans ombre | −0,10 | −0,13 | bruit |
+| Brume à la grille du medium | — | — | bruit |
+| Ciel en mode incrémental | −0,13 | −0,48 | −0,18 |
+| Ciel allégé (nuages hors de la carte de rayonnement, demi-résolution, incrémental) | −0,40 | −0,39 | −0,50 |
+
+Temps GPU par passe (`passes.md`) : la passe opaque domine (3,1 / 4,2 / 5,4 ms), puis la prépasse de profondeur (0,2 / 1,25 / 1,8 ms). Le ciel coûtait 0,8 ms à chaque image dans les trois qualités : le `Sky` de `scenes/main.tscn` était en `PROCESS_MODE_REALTIME`, carte de rayonnement recalculée à chaque image, nuages compris.
+
+Tour des six biomes avec les préréglages proposés (GPU médian, avant le 5 novembre → après) :
+
+| Qualité | Avant | Après | Biomes sous le budget |
+| --- | --- | --- | --- |
+| low (6) | 5,8 à 7,8 | 5,8 à 8,0 | 1 sur 7 |
+| medium (12) | 13,3 à 18,2 | 11,0 à 15,7 | 1 sur 7, 2 de plus à moins de 0,6 ms |
+| high (14) | 17,2 à 20,4 | 13,1 à 16,4 | 4 sur 7 |
+
+Couper 30 % de l'herbe et les ombres des arbres en low ne gagne rien : le propriétaire les garde. Les cultures et la forêt restent au-dessus du budget : lots Y22 (herbe au loin, ombres simplifiées du relief) et Y5 (forêt lointaine). Le relief alpin est aussi plus lourd que les cultures (banc de la PR #724).
+
+Revue des autres « loupés » du même genre : le globe du menu « Monde ouvert » (SubViewport de 560 px en `UPDATE_ALWAYS`) était dessiné à chaque image pendant la sortie ; corrigé, il ne l'est plus que menu ouvert.
+
+## 7. Décisions (6 novembre)
+
+Captures validées par le propriétaire : medium et high (MSAA 2×, atlas 2048, high sans SSIL), low inchangé, ciel allégé. Ces réglages sont dans `quality_presets.gd`, `render_quality.gd`, `tree_sway.gdshader`, `sky_clouds.gdshader` et `scenes/main.tscn` ; les essais correspondants ont quitté `render_diag.gd`. Reste à choisir sur captures le contraste et la part de lumière du ciel dans la brume (`RenderQuality.VOLUMETRIC_AMBIENT_INJECT`, à 1 en attendant ; image jugée trop claire), avec `reglage_image.py`.

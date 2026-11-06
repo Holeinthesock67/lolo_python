@@ -108,32 +108,18 @@ func is_tree_sway() -> bool:
 ## Shader des panneaux croisés (copie cull_disabled de tree_sway.gdshader), un seul pour tous les
 ## matériaux : un Shader par matériau ferait compiler autant de fois les mêmes pipelines (lot Y8 étape 2).
 static var _lod1_shader: Shader
-## Variantes des essais de coût (OPENRIDE_RENDER_DIAG, render_diag.gd), une par mode d'éclairage.
-static var _diag_shaders := {}
 
 
 ## Matériau de balancement (Lot P5) ; `lod1` : panneaux croisés vus des deux côtés, amplitude réduite.
-## `far` : arbres lointains (LOD 1 des arbres, pas l'herbe), pour l'essai `arbres_loin_simple`.
+## `far` : arbres lointains (LOD 1 des arbres, pas l'herbe) : sans vent, invisible à cette distance (6 novembre).
 static func sway_material(lod1: bool, far: bool = false) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
-	var simple := RenderDiag.has("feuillage_simple") or (far and RenderDiag.has("arbres_loin_simple"))
-	if simple:
-		var key := "lod1" if lod1 else "lod0"
-		if not _diag_shaders.has(key):
-			var sh := Shader.new()
-			sh.code = TreeSwayShader.code.replace("render_mode cull_back;", "render_mode %s, diffuse_lambert, specular_disabled;"
-				% ("cull_disabled" if lod1 else "cull_back"))
-			_diag_shaders[key] = sh
-		mat.shader = _diag_shaders[key]
-		if lod1:
-			mat.set_shader_parameter("sway_amplitude_m", 0.0 if far and RenderDiag.has("arbres_loin_simple")
-				else 0.45 * LOD1_SWAY_FACTOR)
-	elif lod1:
+	if lod1:
 		if _lod1_shader == null:
 			_lod1_shader = Shader.new()
-			_lod1_shader.code = TreeSwayShader.code.replace("render_mode cull_back;", "render_mode cull_disabled;")
+			_lod1_shader.code = TreeSwayShader.code.replace("render_mode cull_back,", "render_mode cull_disabled,")
 		mat.shader = _lod1_shader
-		mat.set_shader_parameter("sway_amplitude_m", 0.45 * LOD1_SWAY_FACTOR)
+		mat.set_shader_parameter("sway_amplitude_m", 0.0 if far else 0.45 * LOD1_SWAY_FACTOR)
 	else:
 		mat.shader = TreeSwayShader
 	return mat
