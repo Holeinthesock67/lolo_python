@@ -9,7 +9,7 @@ Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026
 
 ## 1. Objectif
 
-Consigner les réponses du propriétaire aux questions du §10 du plan avant tout code.
+Consigner les réponses du propriétaire aux questions du §10 du plan avant tout code. Le 6 novembre, le propriétaire a tranché la taille, les virages et la surface : une piste de 250 m en bois à virages relevés.
 
 ## 2. À lire
 

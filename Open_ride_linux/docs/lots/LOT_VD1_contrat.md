@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série VD : contrat, colonne `bank_deg` et couche `venue` du format `.world`, surfaces `wood` et `concrete`, objet `track` de l'IPC | Contrat | VD0 | Petite | À valider (version 4.0 proposée) |
+| Série VD : contrat, colonne `bank_deg` et couche `venue` du format `.world`, surface `wood`, objet `track` de l'IPC | Contrat | VD0 | Petite | À valider (version 4.0 proposée) |
 
 Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_VD.md`. Rien ne se code avant la validation du plan par le propriétaire (lot VD0).
 
@@ -17,7 +17,7 @@ Ajouter au format `.world` et à l'IPC, par ajouts compatibles, ce que le vélod
 
 ## 3. Travail demandé
 
-- Format `.world`, mineur libre suivant : colonne facultative `bank_deg` de `route.json` (absente = 0), valeurs `wood` et `concrete` de la surface, couche facultative `venue.json` et son schéma ; ligne au journal des changements.
+- Format `.world`, mineur libre suivant : colonne facultative `bank_deg` de `route.json` (absente = 0), valeur `wood` de la surface, couche facultative `venue.json` et son schéma ; ligne au journal des changements.
 - IPC, première révision libre : objet facultatif `track` de `state` (épreuve, tour, tours restants, cloche, points, classement, éliminé) ; options d'épreuve par les commandes génériques de la série GP (les créer ici si GP2 n'est pas encore livré, sous le même nom).
 - Lecture de `bank_deg` dans `route.py` et `route_data.gd` (interpolée comme l'altitude) ; vecteurs de test de la route complétés.
 - Pire trame `track` ajoutée à l'outil X25.

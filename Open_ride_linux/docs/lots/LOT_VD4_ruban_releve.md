@@ -18,7 +18,7 @@ Afficher la piste relevée avec un seul constructeur de ruban, la route classiqu
 ## 3. Travail demandé
 
 - Coupe tournée autour de la ligne de mesure selon `bank_deg` ; côte d'azur non relevée ; zone de sécurité ; balustrade.
-- Texture de piste (bois ou béton) et lignes peintes du §3.1 placées en distance depuis le bord intérieur.
+- Texture de piste en bois et lignes peintes du §3.1 placées en distance depuis le bord intérieur.
 - Position 3D des coureurs d'après `lane_m` remonté sur la pente (§4.2) ; inclinaison de l'avatar et des bots selon le relèvement et la vitesse ; inclinaison de la caméra limitée (réglable).
 - Captures `low`, `medium`, `high` d'une ligne droite et d'un virage, validées par le propriétaire.
 

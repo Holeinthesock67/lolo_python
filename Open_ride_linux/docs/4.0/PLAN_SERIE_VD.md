@@ -9,7 +9,7 @@ Sources lues : `docs/contracts/world_format_v1.md` (§4 couche route, `type = lo
 ## 1. En bref
 
 1. **Un type de parcours, pas un mode à part** : le vélodrome est un `.world` en boucle (`type = loop`) que le core génère lui-même, sans GPX ni compilateur, comme le parcours de démonstration. Il apparaît dans la liste des parcours (filtre « Vélodrome ») et se roule avec tout ce qui existe déjà : séance libre, ERG, plans, bots, fantôme, abri.
-2. **Piste de référence : 250 m couverte en bois**, virages relevés à 42° et lignes droites à 12°, 7 m de large plus la côte d'azur (§3). Variantes proposées : 333 m et 400 m en béton, en plein air (§3.3).
+2. **Une seule piste : 250 m couverte en bois**, virages relevés à 42° et lignes droites à 12°, 7 m de large plus la côte d'azur (§3). Décision du propriétaire du 6 novembre : « On fera une piste de 250 m. En bois avec virages relevés. »
 3. **Le relèvement ne touche pas le trainer** : sur une piste, la pente le long de la trajectoire est nulle. La pente envoyée reste 0 % ; seuls la surface (bois, Crr plus faible), l'air sans vent et l'abri se ressentent. Le relèvement est **visuel** (ruban incliné, caméra et coureurs qui penchent) et **géométrique** (rouler plus haut allonge le tour, §4.2).
 4. **Épreuves de piste** (§5) dans un premier temps : poursuite individuelle, kilomètre et 500 m départ arrêté, scratch, course aux points, élimination (règles de DS reprises), record de l'heure. Keirin (avec le derny, véhicule d'AS6) et omnium ensuite.
 5. **Un bâtiment léger** : salle, tribunes, public, éclairage ; pas de terrain, de végétation, de biome ni de ciel lointain. Le vélodrome couvert doit coûter **nettement moins** que la route (§7) : c'est le parcours le plus léger du jeu.
@@ -21,8 +21,8 @@ Sources lues : `docs/contracts/world_format_v1.md` (§4 couche route, `type = lo
 | --- | --- | --- |
 | Pente envoyée (SIM) | 0 % partout | Une piste est plane le long de la trajectoire ; le relèvement est perpendiculaire au sens de marche |
 | Difficulté (Q1) | Sans effet visible (elle multiplie une pente nulle) | Inchangée, pas d'exception |
-| Surface | `wood` (bois) ou `concrete` (béton), nouveau facteur de Crr (§4.1) | Une piste en bois roule mieux qu'une route |
-| Vent (P) | Coupé sur une piste couverte, normal en plein air | Pas de vent dans une salle |
+| Surface | `wood` (bois), nouveau facteur de Crr (§4.1) | Une piste en bois roule mieux qu'une route |
+| Vent (P) | Coupé | Pas de vent dans une salle |
 | Abri (AS1 à AS5) | Identique, avec les voies de la piste (§4.3) | C'est le cœur des épreuves de piste |
 | ERG, plans, séance .zwo | Identiques | Le vélodrome est un parcours comme un autre |
 | Bonus T6/TT, objets GP | Coupés dans les épreuves, gardés en séance libre | Records honnêtes |
@@ -52,22 +52,15 @@ Les chiffres sont ceux des pistes de 250 m courantes ; le générateur résout l
 - **Vitesse d'équilibre du virage** (aucune force de côté) : v = √(g · R · tan θ) ≈ √(9,81 × 23 × 0,90) ≈ 14,4 m/s, soit **52 km/h**. En dessous, un vrai coureur appuie vers l'intérieur ; au-dessus, vers l'extérieur.
 - **Vitesse minimale dans le virage** avant de glisser (adhérence 0,8) : √(g · R · tan(θ − arctan 0,8)) ≈ **13 km/h**. Sous environ 15 km/h dans un virage, le coureur redescend tout seul vers la côte d'azur (§4.3), comme dans la réalité.
 
-### 3.3 Variantes
+### 3.3 Une seule piste
 
-| Piste | Longueur | Surface | Relèvement virage / droite | Lieu |
-| --- | --- | --- | --- | --- |
-| `velodrome-250` | 250 m | Bois | 42° / 12° | Couvert (référence) |
-| `velodrome-333` | 333,33 m | Béton | 32° / 8° | Plein air |
-| `velodrome-400` | 400 m | Béton | 25° / 6° | Plein air |
-| `velodrome-plat` (facultatif) | 250 m | Béton | 0° / 0° | Plein air, piste d'école |
-
-La forme est un paramètre du générateur : ajouter une piste, c'est ajouter une ligne à une table, pas du code.
+Décision du propriétaire du 6 novembre : une seule piste, `velodrome-250` (250 m, bois, 42° / 12°, couverte). Le générateur garde la forme en paramètres (longueur, rayon, relèvement), sans autre piste listée : une autre longueur (333 m, 400 m) resterait une ligne de table si elle était demandée un jour, pas du code.
 
 ## 4. Physique
 
 ### 4.1 Surface et air (lot VD3)
 
-- Deux surfaces nouvelles dans `surface_physics.py`, au même endroit que `compacted`, `gravel` et `dirt` : `wood` (Crr × 0,6 environ, Crr de l'ordre de 0,0025 avec un boyau de piste) et `concrete` (× 0,9). Le supplément de pente équivalent existant (`grade_offset_pct`) devient **négatif** sur le bois : la résistance baisse un peu, sous la même borne et avec les mêmes rampes que l'abri et le vent.
+- Deux surfaces nouvelles dans `surface_physics.py`, au même endroit que `compacted`, `gravel` et `dirt` : `wood` (Crr × 0,6 environ, Crr de l'ordre de 0,0025 avec un boyau de piste), au même titre que les autres surfaces. Le supplément de pente équivalent existant (`grade_offset_pct`) devient **négatif** sur le bois : la résistance baisse un peu, sous la même borne et avec les mêmes rampes que l'abri et le vent.
 - Air : densité de la salle (`[velodrome] temperature_c`, 24 °C par défaut). Pas de nouveau calcul : `RiderPhysics` reçoit la densité comme aujourd'hui.
 
 ### 4.2 Hauteur sur la piste et distance
@@ -108,14 +101,14 @@ Chaque épreuve est un module pur du paquet `track/` du core (une règle, un fic
 
 ### 7.1 Contrat (lot VD1, décision du propriétaire)
 
-- **Format `.world`, mineur libre suivant** (ajout compatible) : colonne facultative `bank_deg` dans `route.json` (relèvement en degrés, positif quand l'extérieur du virage est plus haut ; absente = 0, toutes les routes actuelles inchangées) ; valeur `wood` et `concrete` pour la surface ; couche facultative `venue.json` (`kind = velodrome`, `indoor`, `track_width_m`, `apron_width_m`, lignes peintes en distance depuis le bord intérieur, tribunes, toit).
+- **Format `.world`, mineur libre suivant** (ajout compatible) : colonne facultative `bank_deg` dans `route.json` (relèvement en degrés, positif quand l'extérieur du virage est plus haut ; absente = 0, toutes les routes actuelles inchangées) ; valeur `wood` pour la surface ; couche facultative `venue.json` (`kind = velodrome`, `indoor`, `track_width_m`, `apron_width_m`, lignes peintes en distance depuis le bord intérieur, tribunes, toit).
 - **IPC, première révision libre à la fusion de VD1** (1.6 est prise par PL1) : objet facultatif `track` dans `state` (épreuve, tour, tours restants, cloche, points, classement, éliminé) et options d'épreuve passées par les commandes génériques `list_mode_options` et `set_mode_option` proposées par la série GP (pas de commandes propres au vélodrome). Pire trame contrôlée par l'outil X25 (budget de 4 096 octets).
 
 ### 7.2 Rendu (lots VD4 et VD5)
 
 - **Ruban relevé** : `road_builder.gd` lit `bank_deg` et fait tourner la coupe autour de la ligne de mesure ; une seule coupe générique, la route classique étant le cas `bank_deg = 0` (pas de second constructeur). Lignes peintes par la texture, une coupe tous les 1 m dans les virages.
 - **Caméra, avatar et bots** penchent avec le relèvement et la vitesse (`camera_follow.gd`, `bots_view.gd`) ; la caméra garde l'horizon de la salle lisible (inclinaison de la vue limitée à la moitié du relèvement, réglable).
-- **Bâtiment** : salle procédurale (murs, toit à arcs, rampes d'éclairage émissives), tribunes en gradins, public par instances (`crowd_renderer.gd`), pelouse centrale avec bancs et home trainers d'échauffement. Plein air : tribunes basses, ciel, sol plat sans terrain généré.
+- **Bâtiment** : salle procédurale (murs, toit à arcs, rampes d'éclairage émissives), tribunes en gradins, public par instances (`crowd_renderer.gd`), pelouse centrale avec bancs et home trainers d'échauffement. Pas de variante en plein air (décision du 6 novembre).
 - **Désactivé sur le vélodrome** : terrain, végétation, biome, bâtiments OSM, eau, circulation, cyclistes du décor, faune.
 
 ### 7.3 Performances (budgets GPU : low 6 ms, medium 12 ms, high 14 ms)
@@ -138,11 +131,11 @@ Chaque épreuve est un module pur du paquet `track/` du core (une règle, un fic
 | Lot | Titre | Dépend de | Taille |
 | --- | --- | --- | --- |
 | [VD0](../lots/LOT_VD0_decisions.md) | Décisions du propriétaire (pistes, épreuves, version) | — | Petite |
-| [VD1](../lots/LOT_VD1_contrat.md) | Contrat : `bank_deg`, surfaces `wood`/`concrete`, couche `venue`, objet `track` de l'IPC | VD0 | Petite |
+| [VD1](../lots/LOT_VD1_contrat.md) | Contrat : `bank_deg`, surface `wood`, couche `venue`, objet `track` de l'IPC | VD0 | Petite |
 | [VD2](../lots/LOT_VD2_generateur_piste.md) | Core : générateur de pistes (droites, clothoïdes, virages, relèvement) | VD1 | Moyenne |
 | [VD3](../lots/LOT_VD3_physique_piste.md) | Core : surface, air, hauteur sur la piste et distance | VD1, AS2 | Moyenne |
 | [VD4](../lots/LOT_VD4_ruban_releve.md) | Engine : ruban relevé, lignes peintes, caméra et coureurs qui penchent | VD2 | Moyenne |
-| [VD5](../lots/LOT_VD5_batiment_tribunes.md) | Engine : salle, tribunes, public, éclairage ; variante plein air | VD2 | Grande |
+| [VD5](../lots/LOT_VD5_batiment_tribunes.md) | Engine : salle, tribunes, public, éclairage | VD2 | Grande |
 | [VD6](../lots/LOT_VD6_epreuves.md) | Core : épreuves de piste (paquet `track/`) | VD3, DS1 | Grande |
 | [VD7](../lots/LOT_VD7_bots_piste.md) | Bots en piste (peloton PL1) | VD3, VD6, PL1 | Moyenne |
 | [VD8](../lots/LOT_VD8_maquettes.md) | Maquettes du HUD de piste, du tableau d'affichage et du bilan | VD6 | Petite |
@@ -157,9 +150,9 @@ Délégables : VD2, VD3, VD6 (modules purs du core, testables sans engine ni mat
 
 ## 10. Questions ouvertes (réponses par défaut appliquées en attendant)
 
-1. **Taille** : 250 m couvert en premier (défaut) ; 333 m et 400 m en plein air ensuite, ou seulement une des deux ?
-2. **Virages** : relevés à 42° (défaut, réaliste) ; la piste plate reste une variante facultative.
-3. **Surface** : bois pour la piste couverte, béton en plein air (défaut).
+1. **Taille** : **tranché le 6 novembre**, une seule piste de 250 m.
+2. **Virages** : **tranché le 6 novembre**, relevés (42° au sommet, 12° dans les droites).
+3. **Surface** : **tranché le 6 novembre**, bois (piste couverte).
 4. **Épreuves de la première livraison** : séance libre, poursuite, kilomètre, scratch, course aux points, élimination, record de l'heure (défaut) ; keirin et omnium ensuite.
 5. **Braquet fixe** : option facultative, coupée par défaut.
 6. **Version** : 4.0 (défaut). VD2 et VD3 peuvent être faits plus tôt sans rien changer au jeu, puisqu'aucune piste n'est listée avant VD10.

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série VD : surface bois et béton, air de la salle, hauteur sur la piste, distance au tour et placement | Python | VD1, AS2 | Moyenne | À valider (version 4.0 proposée) |
+| Série VD : surface bois, air de la salle, hauteur sur la piste, distance au tour et placement | Python | VD1, AS2 | Moyenne | À valider (version 4.0 proposée) |
 
 Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_VD.md`. Rien ne se code avant la validation du plan par le propriétaire (lot VD0).
 
@@ -17,8 +17,8 @@ Faire rouler le cycliste et les bots sur la piste avec la même physique que la 
 
 ## 3. Travail demandé
 
-- Surfaces `wood` et `concrete` dans `surface_physics.py` (facteurs réglables dans la configuration, bornes testées).
-- Section `[velodrome]` de la configuration (`temperature_c`, `braquet_fixe`), vent coupé sur une piste couverte.
+- Surface `wood` dans `surface_physics.py` (facteur réglable dans la configuration, bornes testées).
+- Section `[velodrome]` de la configuration (`temperature_c`, `braquet_fixe`), vent coupé.
 - Distance : avance de `s` de v × R / (R + écart × cos θ) dans les virages, R et θ lus dans la couche `venue` et `bank_deg`.
 - Placement : corde par défaut, montée pour doubler (AS2), descente automatique sous 15 km/h dans un virage.
 

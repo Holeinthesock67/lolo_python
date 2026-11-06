@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série VD : salle, tribunes, public, éclairage et pelouse centrale ; variante plein air | GDScript | VD2 | Grande | À valider (version 4.0 proposée) |
+| Série VD : salle, tribunes, public, éclairage et pelouse centrale | GDScript | VD2 | Grande | À valider (version 4.0 proposée) |
 
 Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_VD.md`. Rien ne se code avant la validation du plan par le propriétaire (lot VD0).
 
@@ -20,12 +20,11 @@ Construire le décor du vélodrome à partir de la couche `venue`, sans terrain,
 - Salle procédurale (murs, toit à arcs, rampes émissives), tribunes en gradins, pelouse centrale (bancs, home trainers d'échauffement), tableau d'affichage.
 - Public par `MultiMesh` (1 000, 3 000, 6 000 selon le préréglage), aucune création pendant l'épreuve.
 - Couches du monde ouvert et de la route coupées quand `venue.kind = velodrome` (terrain, végétation, biome, OSM, eau, circulation, faune).
-- Variante plein air (tribunes basses, ciel, sol plat).
 - Captures `low`, `medium`, `high` validées par le propriétaire.
 
 ## 4. Critères d'acceptation
 
-1. Salle couverte sous 70 % du budget (environ 4,2, 8,4 et 9,8 ms) au banc, plein air sous le budget.
+1. Salle couverte sous 70 % du budget (environ 4,2, 8,4 et 9,8 ms) au banc.
 2. Aucun à-coup au-dessus du garde-fou de `perf_targets.json`.
 3. Routes existantes inchangées.
 
