@@ -38,6 +38,11 @@ const NEAR_HEIGHT_M := 1.8
 const NEAR_AHEAD_M := 10.0
 const FAR_BACK_M := 12.0
 const FAR_HEIGHT_M := 6.0
+## Hauteur de la vue `follow_far` réglable pour les bancs (`--camera-height`, lot Y5 : voir par-dessus les arbres
+## proches) ; FAR_HEIGHT_M dans le jeu.
+const MIN_FAR_HEIGHT_M := 2.0
+const MAX_FAR_HEIGHT_M := 300.0
+var far_height_m := FAR_HEIGHT_M
 const FAR_AHEAD_M := 8.0
 const SIDE_OFFSET_M := 8.0
 const SIDE_HEIGHT_M := 1.6
@@ -159,8 +164,9 @@ func goal(pos: Vector3, heading_rad: float, pitch_deg: float) -> Transform3D:
 	var target: Vector3
 	match view:
 		"follow_far":
-			eye = pos - fwd * FAR_BACK_M + Vector3(0.0, FAR_HEIGHT_M, 0.0)
-			target = target_base + look * FAR_AHEAD_M
+			eye = pos - fwd * FAR_BACK_M + Vector3(0.0, far_height_m, 0.0)
+			# Plus haut que FAR_HEIGHT_M (bancs) : regard plus loin, l'horizon reste dans l'image (environ 14° sous l'horizontale).
+			target = target_base + look * (FAR_AHEAD_M + 4.0 * maxf(0.0, far_height_m - FAR_HEIGHT_M))
 		"side":
 			eye = pos + right * SIDE_OFFSET_M + Vector3(0.0, SIDE_HEIGHT_M, 0.0)
 			target = target_base + look * SIDE_AHEAD_M

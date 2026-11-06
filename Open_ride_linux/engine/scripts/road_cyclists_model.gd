@@ -572,8 +572,8 @@ func riders() -> Array:
 ## Les cyclistes reçus d'un même groupe (`c<case>-<rang>`) forment un groupe `core` de même `id` que celui de
 ## l'engine, extrapolé jusqu'à la liste suivante ; le membre de l'engine de même `id` lui laisse sa place (et sa
 ## tenue, son pédalier). Un cycliste, de l'engine ou du core, absent d'une liste qui n'est pas pleine à moins de
-## NEAR_M − CORE_MARGIN_M n'est plus sur la route ; plus loin, un groupe que le core ne suit plus reste au décor, à
-## sa dernière vitesse, jusqu'à sortir de la fenêtre.
+## NEAR_M − CORE_MARGIN_M n'est plus sur la route ; plus loin, un groupe que le core ne suit plus reste au décor
+## (`_to_decor` : groupe de l'engine, à sa dernière vitesse) jusqu'à sortir de la fenêtre.
 func sync_core(list: Array, seq: int, rider_s: float) -> void:
 	if seq == _core_seq:
 		return
@@ -643,9 +643,29 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 			continue
 		g["members"] = members
 		if is_core:
-			g.erase("core")                 # sorti de la liste : décor lointain
+			_to_decor(g)                    # sorti de la liste : décor lointain, aux règles de l'engine
 		kept.append(g)
 	groups = kept + added
+
+
+## Groupe du core sorti de la liste : il redevient un groupe de l'engine (`ahead` dans le sens du parcours,
+## `oncoming` en face), à sa dernière vitesse tenue à puissance constante, pour qu'il double ou laisse passer
+## les autres groupes au lieu de rouler au travers (banc E1 du 5/11 : contacts « core / ahead » à 2,5 m de l'axe).
+func _to_decor(g: Dictionary) -> void:
+	g.erase("core")
+	var dir := int(g["dir"])
+	var v := float(g["speed_mps"])
+	g["case"] = "oncoming" if dir < 0 else "ahead"
+	g["flat_mps"] = v
+	g["delta_mps"] = 0.0
+	g["power_w"] = power_for(v)
+	g["speed_at"] = -INF
+	g["passed"] = true
+	g["side"] = "left" if dir < 0 else "right"
+	for m in g["members"]:
+		m["col"] = 0
+		m.erase("col0")
+		m.erase("dl0")
 
 
 ## Faux si le core dit que le membre `m` du groupe `g` n'est plus sur la route : liste pas pleine et membre à moins

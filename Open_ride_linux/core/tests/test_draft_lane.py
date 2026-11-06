@@ -220,3 +220,41 @@ def test_rider_passes_two_side_by_side_bots_on_the_left():
     assert alongside, "le dépassement n'a pas eu lieu"
     for r_m, l_m, b_m in alongside:
         assert r_m < min(l_m, b_m) - d.SIDE_CLEAR_M + 1e-6   # à gauche des deux, jamais entre eux
+
+
+# --- Lot PL1 : coureur enfermé dans un peloton ----------------------------------------------------
+
+def test_pl1_blocked_by_a_slower_rider_in_its_line():
+    """Rattrapé dans sa ligne sans s'en écarter : enfermé (écart, vitesse du coureur devant) ; en s'écartant à temps,
+    seulement roues qui se chevauchent ; à côté (0,9 m) ou devant plus vite : libre ; placement coupé : jamais."""
+    me = d.Lane(1.2, 1.2)
+    front = (10.0 + d.BIKE_LENGTH_M + 0.5, 8.0, d.Lane(1.3, 1.3))
+    assert d.blocked_by(10.0, 9.0, me, 1.2, [front]) == pytest.approx((0.5, 8.0))
+    assert d.blocked_by(10.0, 9.0, me, 1.2 - 0.9, [front]) is None                  # il double à gauche
+    overlap = (10.0 + d.BIKE_LENGTH_M - 0.3, 8.0, d.Lane(1.3, 1.3))
+    assert d.blocked_by(10.0, 9.0, me, 1.2 - 0.9, [overlap]) == pytest.approx((-0.3, 8.0))
+    assert d.blocked_by(10.0, 9.0, me, 1.2, [(front[0], 8.0, d.Lane(2.1, 2.1))]) is None   # à côté
+    assert d.blocked_by(10.0, 9.0, me, 1.2, [(front[0], 9.5, d.Lane(1.3, 1.3))]) is None   # il s'éloigne
+    assert d.blocked_by(10.0, 9.0, d.Lane(1.2, 1.2, auto=False), 1.2, [front]) is None
+
+
+def test_pl1_update_lanes_sets_blocked_on_each_lane():
+    a, b = d.Lane(1.2, 1.2), d.Lane(1.2, 1.2)
+    d.update_lanes([(10.0, 8.3, a), (10.0 + d.BIKE_LENGTH_M + 0.4, 8.0, b)], 0.02)   # trop peu plus vite pour doubler
+    assert a.blocked is not None and a.blocked[1] == 8.0 and b.blocked is None
+
+
+def test_side_guard_never_closes_in_on_a_rider_alongside():
+    """Lot PL1 (banc PC de #716 : bots qui se chevauchaient en travers) : à hauteur d'un coureur, la cible garde
+    au moins la largeur d'un coureur plus 10 cm, du côté où l'on est ; plus loin devant ou derrière, rien ne change."""
+    from openride_core.draft import RIDER_WIDTH_M, SIDE_GUARD_M, Lane, side_guard
+    me, other = Lane(m=1.0, home=1.0), Lane(m=1.6, home=1.6)
+    clear = RIDER_WIDTH_M + SIDE_GUARD_M
+    assert side_guard(100.0, me, 1.5, [(100.5, 8.0, other)]) == pytest.approx(1.6 - clear)
+    assert side_guard(100.0, me, 0.5, [(100.5, 8.0, other)]) == 0.5           # s'en éloigner reste libre
+    assert side_guard(100.0, Lane(m=2.0, home=2.0), 1.7, [(99.0, 8.0, other)]) == pytest.approx(1.6 + clear)
+    assert side_guard(100.0, me, 1.5, [(101.75, 8.0, other)]) == 1.5         # dans la roue, sans chevauchement
+    sliding = Lane(m=1.0, home=1.0, rate=0.8)                                 # glisse vers lui : s'arrête plus tôt
+    assert side_guard(100.0, sliding, 1.5, [(100.5, 8.0, other)]) == pytest.approx(1.6 - clear - 0.8 ** 2 / 3.2)
+    manual = Lane(m=1.0, home=1.0, auto=False)
+    assert side_guard(100.0, manual, 1.5, [(100.5, 8.0, other)]) == 1.5

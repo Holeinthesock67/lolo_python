@@ -54,6 +54,14 @@ func _test_engine_args() -> void:
 	var p_bad_cull: Dictionary = EngineArgs.parse(PackedStringArray(["--culling=bof"]))
 	_check(p_bad_cull["culling"] == false and "tri du visible" in EngineArgs.last_error,
 		"engine_args : --culling invalide laisse le tri coupé avec message (%s)" % EngineArgs.last_error)
+	var p_forest_off: Dictionary = EngineArgs.parse(PackedStringArray(["--forest=off"]))
+	_check(p_def["forest"] == true and p_forest_off["forest"] == false and EngineArgs.last_error == "",
+		"engine_args : forêts lointaines actives par défaut, --forest=off les coupe (lot Y5)")
+	for q in ["low", "medium", "high"]:
+		var f := QualityPresets.forest_fraction(q)
+		_check(f > 0.0 and f <= 1.0, "forêts lointaines en %s : part %.1f" % [q, f])
+	_check(QualityPresets.forest_fraction("low") <= QualityPresets.forest_fraction("medium") and QualityPresets.forest_fraction("medium") <= QualityPresets.forest_fraction("high"),
+		"forêts lointaines : part croissante de low à high")
 	# Garde-fou de charge (lot Y6) : actif par défaut, coupé par les outils de test sauf demande explicite.
 	var p_test: Dictionary = EngineArgs.parse(PackedStringArray(["--test-mode"]))
 	var p_test_guard: Dictionary = EngineArgs.parse(PackedStringArray(["--test-mode", "--load-guard=on"]))

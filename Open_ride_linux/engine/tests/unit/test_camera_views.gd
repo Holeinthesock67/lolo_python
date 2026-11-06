@@ -70,6 +70,13 @@ func _test_placement() -> void:
 	v.set_view("follow_far")
 	g = v.goal(pos, heading, 0.0)
 	_check(g.origin.is_equal_approx(pos + Vector3(-12.0, 6.0, 0.0)) and (-g.basis.z).y < 0.0, "suivi éloigné : 12 m derrière, 6 m de haut, regard vers le bas")
+	# Hauteur des bancs (--camera-height, lot Y5) : 80 m de haut, l'horizon reste dans l'image
+	v.far_height_m = 80.0
+	g = v.goal(pos, heading, 0.0)
+	var down := rad_to_deg(asin(-(-g.basis.z).y))
+	_check(g.origin.is_equal_approx(pos + Vector3(-12.0, 80.0, 0.0)) and down > 8.0 and down < 20.0,
+		"suivi éloigné à 80 m (bancs) : regard %.1f° sous l'horizontale" % down)
+	v.far_height_m = CameraViews.FAR_HEIGHT_M
 	v.set_view("side")
 	g = v.goal(pos, heading, 0.0)
 	var right := Vector3(cos(heading), 0.0, sin(heading))
@@ -161,6 +168,11 @@ func _test_args() -> void:
 	_check(cfg["camera"] == "follow_near", "défaut : suivi proche")
 	cfg = EngineArgs.parse(PackedStringArray(["--camera=drone"]))
 	_check(cfg["camera"] == "follow_near" and EngineArgs.last_error != "", "vue inconnue : ignorée avec un message")
+	_check(is_equal_approx(float(EngineArgs.parse(PackedStringArray([]))["camera_height"]), 6.0)
+		and is_equal_approx(float(EngineArgs.parse(PackedStringArray(["--camera-height=80"]))["camera_height"]), 80.0),
+		"--camera-height : 6 m par défaut, 80 m demandé")
+	cfg = EngineArgs.parse(PackedStringArray(["--camera-height=5000"]))
+	_check(is_equal_approx(float(cfg["camera_height"]), 6.0) and EngineArgs.last_error != "", "--camera-height hors bornes : ignoré avec un message")
 
 
 func _init() -> void:

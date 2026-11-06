@@ -24,7 +24,10 @@ extends RefCounted
 ## - `JINGLES` : notes `[début s, fréquence Hz, durée s, niveau 0 à 1, timbre]`, timbre `tone` (note
 ##   douce, deux harmoniques) ou `bell` (cloche, partiels inharmoniques amortis). Palette commune aux
 ##   bruitages du mode Rogue (lot R18) : gamme de do majeur, notes de 523 à 2 093 Hz, au-dessus du vent
-##   et de la roue libre. `jingle_elim` et `jingle_winner` (lot DS5) : rendus par survivor_hud_model.gd à chaque
+##   et de la roue libre. Timbres ajoutés pour les gags du mode WTF (lot WTF7) : `slide` (glissando de la
+##   fréquence de la note jusqu'au 6e champ, en ratio constant : sifflet, « boing », trombone triste) et
+##   `noise` (bruit passé au filtre de la fréquence de la note : craquement, éclaboussure, rafale) ; les
+##   `wtf_*` sont choisis par wtf/wtf_sound_model.gd. `jingle_elim` et `jingle_winner` (lot DS5) : rendus par survivor_hud_model.gd à chaque
 ##   message `elimination` nouveau. Synthèse : sound_player.gd ; remplaçables par ~/OpenRide/Sounds/<nom>.ogg.
 
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
@@ -37,6 +40,9 @@ const C6 := 1046.5
 const E6 := 1318.5
 const G6 := 1568.0
 const C7 := 2093.0
+const D5 := 587.33
+const F5 := 698.46
+const FS5 := 739.99
 
 const JINGLES := {
 	# départ : appel bref et clair, deux notes répétées puis la quinte (plus aigu et plus court que le sprint)
@@ -58,6 +64,37 @@ const JINGLES := {
 	"jingle_elim": [[0.0, G5, 0.14, 0.6, "tone"], [0.16, C5, 0.45, 0.6, "tone"]],
 	"jingle_winner": [[0.0, C6, 0.1, 0.55, "tone"], [0.11, E6, 0.1, 0.55, "tone"], [0.22, G6, 0.1, 0.55, "tone"],
 		[0.33, C7, 1.2, 0.45, "bell"], [0.33, C6, 0.9, 0.4, "tone"]],
+	# Mode WTF (lot WTF7) : un son par début de gag, puis les à-côtés (craquement d'un œuf, éclaboussure du
+	# fromage, cloche du chef, manches des micro-défis), la fin d'un gag (gagné : arpège ; raté : trombone
+	# triste) et les règles permanentes (Katamari « pop » et « boing », klaxon de la mamie, poissons).
+	"wtf_moon": [[0.0, C5, 0.7, 0.55, "slide", C7], [0.6, C7, 0.8, 0.35, "bell"]],
+	"wtf_jupiter": [[0.0, G5, 0.5, 0.6, "slide", C5], [0.48, C5, 0.45, 0.6, "tone"]],
+	"wtf_flip": [[0.0, C6, 0.2, 0.55, "slide", C7], [0.2, C7, 0.25, 0.55, "slide", C6]],
+	"wtf_collapse": [[0.0, C6, 0.8, 0.5, "noise"], [0.0, G5, 0.8, 0.45, "slide", C5]],
+	"wtf_cheese": [[0.0, C5, 0.12, 0.6, "tone"], [0.14, E5, 0.12, 0.6, "tone"], [0.28, C5, 0.12, 0.6, "tone"],
+		[0.42, E5, 0.12, 0.6, "tone"], [0.56, G5, 0.6, 0.4, "bell"]],
+	"wtf_micro": [[0.0, E6, 0.08, 0.5, "tone"], [0.12, E6, 0.08, 0.5, "tone"], [0.24, C7, 0.22, 0.5, "tone"]],
+	"wtf_eggs": [[0.0, E6, 0.3, 0.45, "bell"], [0.1, G6, 0.4, 0.4, "bell"]],
+	"wtf_tiny": [[0.0, C7, 0.5, 0.5, "slide", C6], [0.5, C6, 0.3, 0.35, "bell"]],
+	"wtf_storm": [[0.0, G5, 1.3, 0.55, "noise"], [0.0, C5, 1.3, 0.35, "slide", G5]],
+	"wtf_camera": [[0.0, C7, 0.04, 0.6, "noise"], [0.09, C7, 0.05, 0.6, "noise"], [0.16, G6, 0.2, 0.3, "bell"]],
+	"wtf_chef": [[0.0, C6, 0.1, 0.5, "tone"], [0.1, E6, 0.1, 0.5, "tone"], [0.2, G6, 0.1, 0.5, "tone"],
+		[0.3, E6, 0.1, 0.5, "tone"], [0.4, C6, 0.25, 0.5, "tone"]],
+	"wtf_cloche": [[0.0, G6, 1.0, 0.5, "bell"], [0.12, C7, 1.0, 0.4, "bell"]],
+	"wtf_crack": [[0.0, C7, 0.09, 0.7, "noise"], [0.02, G6, 0.12, 0.3, "slide", C6]],
+	"wtf_splat": [[0.0, C6, 0.3, 0.6, "noise"], [0.0, C6, 0.3, 0.45, "slide", C5]],
+	"wtf_round_ok": [[0.0, G6, 0.1, 0.5, "tone"], [0.11, C7, 0.25, 0.5, "tone"]],
+	"wtf_round_fail": [[0.0, E5, 0.12, 0.55, "tone"], [0.14, C5, 0.3, 0.55, "tone"]],
+	"wtf_win": [[0.0, C6, 0.09, 0.55, "tone"], [0.1, E6, 0.09, 0.55, "tone"], [0.2, G6, 0.09, 0.55, "tone"],
+		[0.3, C7, 0.7, 0.45, "bell"], [0.3, C6, 0.5, 0.35, "tone"]],
+	"wtf_fail": [[0.0, G5, 0.28, 0.55, "slide", FS5], [0.3, FS5, 0.28, 0.55, "slide", F5],
+		[0.6, F5, 0.7, 0.55, "slide", D5]],
+	"wtf_pop": [[0.0, C6, 0.08, 0.5, "slide", C7]],
+	"wtf_boing": [[0.0, C5, 0.12, 0.55, "slide", C6], [0.12, C6, 0.3, 0.55, "slide", C5]],
+	"wtf_horn": [[0.0, E5, 0.14, 0.5, "tone"], [0.0, G5, 0.14, 0.4, "tone"], [0.2, E5, 0.22, 0.5, "tone"],
+		[0.2, G5, 0.22, 0.4, "tone"]],
+	"wtf_fish": [[0.0, C6, 0.06, 0.45, "slide", E6], [0.1, E6, 0.06, 0.45, "slide", G6],
+		[0.2, G6, 0.08, 0.45, "slide", C7]],
 }
 
 var _arches := PackedFloat64Array()

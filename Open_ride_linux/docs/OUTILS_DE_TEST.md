@@ -94,6 +94,7 @@ python3 engine/tests/sim_bench.py --scenario coupures_village --native     # fen
 python3 engine/tests/sim_bench.py --scenario difficulte --difficulty 50 --out ~/OpenRide/sim_bench/d50
 python3 engine/tests/sim_bench.py --native --probe --scenario erg_village --display fullscreen   # mode d'affichage (protocole J10)
 python3 engine/tests/sim_bench.py --native --probe --scenario rendu_invisible --culling on    # essai du tri du visible, coupé par défaut (lot S1, docs/ETUDE_RENDU_INVISIBLE.md)
+python3 engine/tests/sim_bench.py --native --probe --scenario biome_temperate_forest --forest off   # banc avant/après des forêts lointaines en imposteurs (lot Y5, actives par défaut)
 python3 engine/tests/compare_captures.py AVANT_DOSSIER APRES_DOSSIER --out ECARTS   # captures de deux bancs comparées image par image (lot S1)
 python3 engine/tests/sim_bench.py --native --probe --scenario rendu_invisible --world ~/.local/share/openride/routes/essai-69.world --every-m 200   # --world l'emporte sur le monde du scénario ; captures tous les 200 m
 python3 engine/tests/sim_bench.py --scenario erg_village --scenario ceinture --scenario click_sommeil
@@ -137,6 +138,7 @@ Scénarios du banc (`engine/tests/sim_bench_scenarios/`, format de `SIMULATION_B
 | `serie_t` | demo | Recette T11 §1 à §3 sans vélo (lot X33) : 6 min à 600 W, arches tous les 1 000 m (`powerups`), Z au Click simulé toutes les 20 s ; vérifie le bloc du segment, les résultats de la montée et du sprint et leurs records, le bonus en réserve et activé, les jingles (sommet, sprint, record, arches, fin, chacun le bon nombre de fois), `records.json` ; vitesse pendant les bonus en information |
 | `erg_boutons` | demo | Essai J7 sans vélo (lot X33) sur `erg_court` : + et − courts et longs, Z, Y au Click simulé, puis `Égal`, `Moins`, `Page haut`, `Page bas`, + tenu 1,1 s, Z, Y et `Échap` au clavier ; pour chaque appui, biais ERG et cible au journal de séance (rapport attendu à ± 0,5 point, même bloc), bloc suivant, pause et reprise ; aucun bonus ni arche en ERG (T11 §4) |
 | `course_bots` | demo | Recette T11 §8 sans vélo (lot X33) : 4 bots à profil (`bot_profiles`), calibrage au journal du core, encart des bots et écart à l'écran |
+| `peloton` | demo | Peloton du lot PL1 : 11 bots à profil au niveau du cycliste (250 W), départ groupé (pire cas GPU), encart à 5 lignes ; à passer en low, medium et high |
 | `dernier_survivant` | demo | Dernier survivant (série DS) : `bench.mode` = `survivor` (`--mode survivor` du core, aussi `sim_bench.py --mode`), 2 bots, une arche tous les 2 km (`bench.config`) ; départ du mode et première élimination aux journaux ; banc GPU en low, medium et high |
 | `biome_*` (neuf scénarios) | osm | Un biome forcé sur tout le parcours (lot U17, `bench.biome`, ou `--biome` pour un autre scénario) : 3 min à 300 W, difficulté 20 % ; les six du premier jalon (`temperate_grassland`, `temperate_forest`, `farmland`, `alpine`, `mediterranean`, `coast`) et trois lointains plus chargés (`sand_desert`, `savanna`, `jungle`) ; à lancer avec `--probe` en `low` : 55 images/s et p99 sous 25 ms visés sur la GTX 1060 |
 

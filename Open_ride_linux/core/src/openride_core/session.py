@@ -27,6 +27,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Callable
 
+from .bots import FULL_FRAME_BOTS, light_frame
 from .classic import ClassicRace, GainJob
 from .config import BOUNDS as CONFIG_BOUNDS, GPX_DIR, OPENRIDE_HOME, PLANS_DIR, WORKOUTS_DIR, Config
 from .equipment import segment_time_gain
@@ -2257,6 +2258,15 @@ class CoreSession:
             st.bots = [{**b, "out": self.survivor.racers[b["id"]].out_arch}
                        if b["id"] in self._survivor_out else b for b in st.bots]
 
+    def _lighten_bots_frame(self) -> None:
+        """Peloton (lot PL1) : au-delà de 5 bots, les plus loin du cycliste perdent leurs champs facultatifs
+        lourds (`bots.light_frame`) pour que la trame tienne dans 4 096 octets."""
+        st = self.state
+        if st.bots and len(st.bots) > FULL_FRAME_BOTS:
+            route = self.route
+            st.bots = light_frame(st.bots, self.physics.s, route.length_m if route else None,
+                                  bool(route and route.is_loop), self._frame_count)
+
     def _survivor_catch_w(self, rid: str) -> int | None:
         """Puissance moyenne pour être à la hauteur du coureur `rid` à la prochaine arche (essai du 4 novembre) :
         vitesse moyenne qu'il faut pour couvrir la distance à l'arche dans le temps que `rid` met à l'atteindre à
@@ -2876,7 +2886,8 @@ class CoreSession:
         racing = self._racing_bots()   # un bot éliminé (Dernier survivant) n'abrite plus personne
         runners = [(self.physics.s, self.physics.v, self._lane)]
         runners += [(b.s, b.v, b.lane) for b in self.bots   # éliminé : placement coupé, il glisse au bas-côté
-                    if getattr(b, "kind", "constant") == "constant" and getattr(b, "lane", None) is not None]
+                    if getattr(b, "kind", "constant") == "constant" and getattr(b, "lane", None) is not None
+                    and (length is None or is_loop or b.s < length)]   # arrivé : arrêté sur la ligne, hors du jeu (lot PL1)
         runners += [(v.s, v.speed_mps, draft_mod.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width,
                                                        length=v.length)) for v in near if v.dir == 1]
         runners += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders if r.dir == 1]
@@ -3155,6 +3166,7 @@ class CoreSession:
                 self._fill_riders_frame()
                 self._fill_wtf_frame()
                 self._fill_survivor_frame()
+                self._lighten_bots_frame()
                 self.server.send_state(self.state)
             if now >= next_stats:
                 next_stats = now + STATS_PERIOD_S
