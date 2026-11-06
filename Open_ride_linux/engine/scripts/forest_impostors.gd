@@ -13,7 +13,7 @@ extends Node3D
 ## des arbres proches au même endroit : densité du biome (ou du thème 1.x) × moitié du maximum × même bruit
 ## de densité (VegetationPlacer.density_noise). Les forêts lointaines continuent donc les forêts proches.
 ## Espèce tirée comme pour les arbres proches (biome selon les poids du point, puis `weight` des espèces) ;
-## plantes basses (houppier `box` de TreeSpecies.CROWNS) écartées. Exclusions : couloir de la route, pente
+## plantes basses et rangs de vigne (houppiers `box` et `hedge` de TreeSpecies.CROWNS) écartés. Exclusions : couloir de la route, pente
 ## du terrain au-dessus du seuil du thème, altitude au-dessus de la limite des arbres du biome.
 ## Hauteur : terrain lointain réel (avant l'enfoncement sous le proche), au relief affiché (route.display_y),
 ## FAR_DROP_M et SINK_M plus bas que le sol pour ne jamais flotter.
@@ -273,7 +273,7 @@ static func crown_look(kind: String) -> Dictionary:
 		crown = TreeSpecies.CROWNS[kind]
 		height = TreeSpecies.height_m(kind)
 	var shape := str(crown["shape"])
-	if shape == "box" or height < MIN_HEIGHT_M:
+	if shape == "box" or shape == "hedge" or height < MIN_HEIGHT_M:
 		return {}
 	var w := float(crown["w"])
 	var base := float(crown["cy"]) if shape == "cone" else float(crown["cy"]) - float(crown["ry"])
