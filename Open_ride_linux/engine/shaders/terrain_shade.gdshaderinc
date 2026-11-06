@@ -133,6 +133,9 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 	vec2 q = p3.xz;
 	float vis_blade_0 = sd_visible(q, 0.03);
 	float vis_clump_0 = sd_visible(q, 0.3);
+	// Touffes peintes (lot Y22) : gerbes de 0,6 m et plaques de 2 m, visibles bien plus loin que les brins
+	float vis_tuft_0 = sd_visible(q, 0.6);
+	float vis_patch_0 = sd_visible(q, 2.0);
 	float vis_blocks_0 = sd_visible(p3.xz + p3.y, 0.6);
 	float vis_grit_0 = sd_visible(p3.xz + p3.y, 0.08);
 	float vis_strata = sd_visible(vec2(p3.y, p3.x + p3.z), 1.2);
@@ -164,6 +167,12 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 		float clumps = sd_noise(q / 0.3);
 		grass_h = blades * 0.006 * vis_blade + clumps * 0.02 * vis_clump;
 		g *= 1.0 + (blades - 0.5) * 0.35 * vis_blade + (clumps - 0.5) * 0.18 * vis_clump;
+		// Touffes peintes (lot Y22, 6 novembre : « une illusion d'herbe sur l'ensemble du paysage ») : creux sombres
+		// entre des gerbes plus claires et plus jaunes, de 0,6 et 2 m, qui prennent le relais des touffes 3D
+		// (arrêtées à 40 m du bord de la route) jusqu'à ce que leur pas devienne plus fin qu'un pixel.
+		float tufts_p = (sd_noise(q / 0.6 + vec2(2.3, 7.1)) - 0.5) * 0.32 * vis_tuft_0
+			+ (sd_noise(q / 2.0 + vec2(9.4, 3.3)) - 0.5) * 0.26 * vis_patch_0;
+		g *= 1.0 + tufts_p * relief * vec3(1.0, 0.9, 0.6);
 		// Vagues de vent (H3) : bandes claires de 6 m qui défilent dans le sens du vent
 		vec2 wd = length(wind_dir.xz) > 1e-4 ? normalize(wind_dir.xz) : vec2(1.0, 0.0);
 		vec2 wq = vec2(dot(q, wd) - wind_phase * (2.0 + 6.0 * wind_strength), dot(q, vec2(-wd.y, wd.x)) * 0.25);
