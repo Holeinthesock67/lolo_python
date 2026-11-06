@@ -374,6 +374,21 @@ class Session:
         """Attentes allongées sous Vulkan logiciel (rendu_jeu.slowdown)."""
         return rendu_jeu.slowdown(self.core.log.path.read_text(errors="replace"))
 
+    def wait_settled(self, tag: str, tries: int = PENDING_RETRIES) -> None:
+        """Attend que les tuiles et le décor soient posés (`capture_unsettled`), par captures d'essai jetées :
+        avant une scène dont le bandeau ne dure que quelques secondes (erreur du core), la reprise de capture
+        de `capture` le laisserait s'effacer."""
+        png = self.out_dir / f"{self.name}_{tag}_attente.png"
+        for _ in range(tries):
+            mark = self.core.log.mark()
+            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
+                                "path": str(png), "tag": f"{tag}_attente"})
+            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0 * self.slowdown(), mark)
+            if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
+                break
+            time.sleep(1.0)
+        png.unlink(missing_ok=True)
+
     def capture(self, scene: str) -> tuple[Image, dict[str, Any]] | None:
         png = self.out_dir / f"{self.name}_{scene}.png"
         # Scène de référence : capture reprise tant que des tuiles voulues manquent (`streaming_pending`, comme le
@@ -528,9 +543,10 @@ GROUND_SCROLL_LEVEL = 0.2
 
 
 def capture_unsettled(info: dict[str, Any]) -> bool:
-    """Capture d'une scène de référence à reprendre : tuiles du terrain en attente, ou rappel des commandes du
-    départ de séance encore affiché (il s'efface seul au bout de 10 s)."""
-    if int(info.get("streaming_pending", 0)) > 0:
+    """Capture d'une scène de référence à reprendre : tuiles du terrain en attente, décor encore en cours de pose
+    (herbe du bord remplie au plus 120 touffes par image, forêts lointaines : `decor_pending`), ou rappel des
+    commandes du départ de séance encore affiché (il s'efface seul au bout de 10 s)."""
+    if int(info.get("streaming_pending", 0)) > 0 or int(info.get("decor_pending", 0)) > 0:
         return True
     b = info.get("widgets", {}).get("banner", {})
     return bool(b.get("visible")) and str(b.get("text", "")).startswith(CONTROLS_HINT_PREFIX)
@@ -1088,6 +1104,7 @@ def _scenes(s: Session) -> None:
     # READY : en RUNNING, la caméra ne recule jamais et ne reviendrait pas à FIXED_S.
     core.set_scene(speed=0.0, s=FIXED_S, session_state="READY")
     time.sleep(SETTLE_S)
+    s.wait_settled("erreur")   # décor posé avant l'erreur : son bandeau ne dure pas assez pour les reprises
     core.send({"type": "error", "v": CONTRACT_VERSION, "code": "route_invalid", "message": "parcours de test illisible"})
     time.sleep(0.6)
     shot = s.capture("erreur")

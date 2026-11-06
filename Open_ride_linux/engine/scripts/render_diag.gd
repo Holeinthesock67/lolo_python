@@ -15,7 +15,7 @@ extends RefCounted
 ##   arbres lointains sans vent, halo à 3 niveaux en linéaire, brume éclairée, nuages hors de la carte de
 ##   rayonnement et en demi-résolution, ciel en mode incrémental.
 ## Améliorations à faible coût (0 = rendu actuel) : soleil_brume=F (fog_sun_scatter du brouillard),
-##   terrain_macro=F (variation de l'herbe à 600 m, terrain_material), herbe_degrade=F (pied sombre, pointe claire,
+##   terrain_macro=F (prés plus ou moins mûrs, terrain_material ; sans essai : TerrainMaterial.MACRO_VARIATION, lot Y22), herbe_degrade=F (pied sombre, pointe claire,
 ##   grass_tufts et ground_details).
 ## Réglage de l'image (RenderQuality.apply_diagnostic) : brume_ambiante=F (0 à 2, au lieu de RenderQuality.VOLUMETRIC_AMBIENT_INJECT),
 ##   brume_densite=F (facteur sur la densité de la brume volumétrique, RenderQuality.volumetric_density), contraste=F, saturation=F,
