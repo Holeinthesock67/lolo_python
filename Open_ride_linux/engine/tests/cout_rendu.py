@@ -93,7 +93,7 @@ GODOT_FREE = "feuillage_simple,arbres_loin_simple,halo_niveaux=3,halo_lineaire,a
 SOCLES = {
     "aucun": {q: "" for q in QUALITIES},
     "propose": {
-        "low": GODOT_FREE + ",herbe=0.7,sans_ombres_arbres",
+        "low": GODOT_FREE,   # ombres des arbres et herbe gardées (aucun gain, 6 novembre)
         "medium": GODOT_FREE + ",msaa=2,atlas=2048",
         "high": GODOT_FREE + ",msaa=2,sans_ssil,atlas=2048",
     },

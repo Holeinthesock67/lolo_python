@@ -33,7 +33,7 @@ import recette_u18  # noqa: E402
 # Réglages proposés le 6 novembre (étude ETUDE_OPTIMISATION_RENDU_2026-11-05.md §4), sans la brume éclairée
 GODOT = "feuillage_simple,arbres_loin_simple,halo_niveaux=3,halo_lineaire,anisotropy=8"
 PROPOSED = {
-    "low": GODOT + ",herbe=0.7,sans_ombres_arbres",
+    "low": GODOT,   # validé le 6 novembre : ombres des arbres et herbe gardées (aucun gain mesuré)
     "medium": GODOT + ",msaa=2,atlas=2048",
     "high": GODOT + ",msaa=2,sans_ssil,atlas=2048",
 }
