@@ -292,15 +292,16 @@ static func texture_budget_bytes(name: String) -> int:
 ## `cyclists` (P28) : cyclistes du décor sur la route du parcours.
 ## `ground_rocks`, `ground_grass`, `ground_termites` (U8) : rochers épars, herbes hautes et termitières des biomes
 ## (ground_details.gd), seulement quand le parcours a des biomes.
-## `grass_tufts_wide` (Y22) : touffes de la bande large, de 15 à 40 m du bord de la route (grass_tufts.gd).
+## `grass_tufts`, `grass_tufts_wide` (Y22) : touffes de la bande du bord et de la bande large, jusqu'à 40 m du bord
+## de la route, sur 9 tronçons de 40 m (grass_tufts.gd).
 const LIVING := {
 	"low": {
 		"tree_sway": true,
 		"ground_rocks": 240,
 		"ground_grass": 600,
 		"ground_termites": 15,
-		"grass_tufts": 1500,
-		"grass_tufts_wide": 1000,
+		"grass_tufts": 2250,
+		"grass_tufts_wide": 1500,
 		"clouds": "flat",
 		"weather_particles": 600,
 		"birds": 24,
@@ -320,8 +321,8 @@ const LIVING := {
 		"ground_rocks": 600,
 		"ground_grass": 2000,
 		"ground_termites": 30,
-		"grass_tufts": 8000,
-		"grass_tufts_wide": 5000,
+		"grass_tufts": 12000,
+		"grass_tufts_wide": 7500,
 		"clouds": "flat",
 		"weather_particles": 1500,
 		"birds": 48,
@@ -341,8 +342,8 @@ const LIVING := {
 		"ground_rocks": 1200,
 		"ground_grass": 5000,
 		"ground_termites": 50,
-		"grass_tufts": 20000,
-		"grass_tufts_wide": 12000,
+		"grass_tufts": 30000,
+		"grass_tufts_wide": 18000,
 		"clouds": "layered",
 		"weather_particles": 4000,
 		"birds": 80,

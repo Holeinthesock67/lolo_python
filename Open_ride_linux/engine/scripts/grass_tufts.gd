@@ -18,8 +18,8 @@ extends Node3D
 ##   mesuré sur TOUT le parcours (road_clearance.gd) et pas seulement au point qui l'a posée : dans une
 ##   épingle, au creux d'un virage serré ou là où le parcours repasse près de lui-même, l'herbe tombait
 ##   sur l'autre portion de route.
-## - Nombre de touffes jamais au-dessus du budget (`living(preset).grass_tufts` : 1 500 en `low`, 8 000 en
-##   `medium`, 20 000 en `high` ; 0 quand le décor vivant est coupé : nœud vide).
+## - Nombre de touffes jamais au-dessus du budget (`living(preset).grass_tufts` : 2 250 en `low`, 12 000 en
+##   `medium`, 30 000 en `high`, plus `grass_tufts_wide` ; 0 quand le décor vivant est coupé : nœud vide).
 ## - Coût lissé : un tronçon qui entre dans la fenêtre est rempli au plus `MAX_PER_FRAME` places et
 ##   `MAX_FRAME_US` microsecondes par image.
 ## - Niveau de détail selon la distance (lot « herbe au loin », 05/11 : biome cultures au-dessus du budget GPU) :
@@ -39,7 +39,7 @@ const RoadClearance := preload("res://scripts/road_clearance.gd")
 
 const CHUNK_M := 40.0
 const CHUNKS_BEHIND := 1
-const CHUNKS_AHEAD := 4
+const CHUNKS_AHEAD := 7
 const BAND_MIN_M := 2.0
 const BAND_MAX_M := 26.0
 ## Bande large (lot Y22, demande du 6 novembre : « l'herbe ne va pas assez loin ») : places en plus, de
@@ -79,9 +79,12 @@ const DRY_TINTS := [Color(1.55, 0.95, 1.2), Color(1.75, 1.05, 1.15), Color(1.35,
 const DRY_KEEP := 0.45
 ## Fondu avec la distance (mètres) : éclaircissement à partir de THIN_START_M, effacement complet à FADE_END_M,
 ## avant la fin de la fenêtre de tronçons devant la caméra (CHUNKS_AHEAD × CHUNK_M).
-const THIN_START_M := 30.0
-## Remis à 150 m (6 novembre : l'herbe n'allait pas assez loin à 120 m) ; la gerbe simplifiée rend le lointain bon marché.
-const FADE_END_M := 150.0
+## Lot Y22, 6 novembre (« l'herbe ne va pas assez loin devant », « une fondue vers l'avant ») : éclaircissement
+## à partir de 60 m au lieu de 30, effacement fini à 250 m au lieu de 150, fenêtre de 7 tronçons devant (280 m)
+## au lieu de 4 ; budgets des préréglages multipliés par 1,5 (9 tronçons au lieu de 6) pour garder la même densité
+## près de la route. Au-delà de LOD_SWITCH_M, la gerbe simplifiée rend le lointain bon marché.
+const THIN_START_M := 60.0
+const FADE_END_M := 250.0
 ## Passage de la gerbe complète à la gerbe simplifiée (m), fondu en taille sur ± LOD_BLEND_M.
 const LOD_SWITCH_M := 40.0
 const LOD_BLEND_M := 4.0
