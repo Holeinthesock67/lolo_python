@@ -202,6 +202,36 @@ func _test_fill_without_terrain() -> void:
 		g.queue_free()
 
 
+# Banc r721g du 6 novembre (high, bande à 80 m) : sur le PC, le remplissage prenait du retard et l'herbe
+# disparaissait. Hauteur du terrain lente exprès (40 µs par appel, trois appels par touffe) : le tronçon de
+# la caméra et le suivant ont toujours des touffes, parce qu'ils sont remplis avant ceux de plus loin.
+func _test_fill_priority_slow_terrain() -> void:
+	var route = _route()
+	var g = GrassTufts.new()
+	root.add_child(g)
+	var high: Dictionary = QualityPresets.living("high")
+	g.configure(int(high["grass_tufts"]), route, 6.0, 0, int(high["grass_tufts_wide"]))
+	g.height_at = func(_x: float, _z: float) -> float:
+		var t := Time.get_ticks_usec()
+		while Time.get_ticks_usec() - t < 40:
+			pass
+		return 0.0
+	var groups: int = g._slot_chunk.size()
+	var s := 100.0
+	var empty := 0
+	var frames := 60 * 30   # 30 s à 60 km/h : 500 m
+	for i in range(frames):
+		g.update(s)
+		if i > 120:
+			var k := int(floor(s / GrassTufts.CHUNK_M))
+			for kk in [k, k + 1]:
+				if g._group_visible[posmod(kk, groups)] == 0:
+					empty += 1
+		s += (60.0 / 3.6) / 60.0
+	_check(empty == 0, "high, terrain lent : tronçon de la caméra et suivant jamais vides à 60 km/h (%d fois vides)" % empty)
+	g.queue_free()
+
+
 # Critère 3 : tree_sway faux -> StandardMaterial3D d'origine ; vrai -> shader de balancement
 func _test_tree_materials() -> void:
 	var r = TreeRenderer.new()
@@ -430,6 +460,7 @@ func _init() -> void:
 	_test_determinism_and_exclusions()
 	_test_cost()
 	_test_fill_without_terrain()
+	_test_fill_priority_slow_terrain()
 	_test_desert()
 	print("test_grass_tufts : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

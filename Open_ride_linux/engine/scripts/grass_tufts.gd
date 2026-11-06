@@ -20,8 +20,8 @@ extends Node3D
 ##   sur l'autre portion de route.
 ## - Nombre de touffes jamais au-dessus du budget (`living(preset).grass_tufts` : 2 250 en `low`, 12 000 en
 ##   `medium`, 30 000 en `high`, plus `grass_tufts_wide` ; 0 quand le décor vivant est coupé : nœud vide).
-## - Coût lissé : un tronçon qui entre dans la fenêtre est rempli au plus `MAX_PER_FRAME` places et
-##   `MAX_FRAME_US` microsecondes par image.
+## - Coût lissé : la fenêtre est remplie au plus `MAX_PER_FRAME` places (ou un tronçon en `FILL_FRAMES` images)
+##   et `MAX_FRAME_US` microsecondes par image, tronçons les plus proches devant la caméra d'abord.
 ## - Niveau de détail selon la distance (lot « herbe au loin », 05/11 : biome cultures au-dessus du budget GPU) :
 ##   chaque tronçon a deux MultiMesh, la gerbe complète jusqu'à `LOD_SWITCH_M` et une gerbe simplifiée
 ##   (`FAR_BLADES` brins d'un triangle, plus larges) au-delà, qui ne garde que les touffes que le fondu montre
@@ -61,7 +61,12 @@ const MAX_PER_FRAME := 120
 ## Temps de remplissage par image (µs) : vérifié toutes les BATCH places. Sur un parcours sans tuile de
 ## terrain, chaque place coûte bien plus (hauteur lue sur la route) : 120 places faisaient 60 à 80 ms au
 ## début de chaque tronçon de 40 m (saccades du 04/11).
-const MAX_FRAME_US := 1500
+## Lot Y22 (bande à 80 m) : en high un tronçon a ~7 300 places ; à 1,5 ms par image le remplissage prenait
+## du retard à 60 km/h et l'herbe finissait par disparaître (banc r721g du 6 novembre). 2,5 ms par image, places
+## par image selon la taille du tronçon (rempli en FILL_FRAMES images au plus) et tronçons les plus proches
+## devant la caméra remplis d'abord (`_next_job`).
+const MAX_FRAME_US := 2500
+const FILL_FRAMES := 40
 const BATCH := 16
 const STATION_STEP_M := 4.0
 const STATION_COST := 40        # coût d'un échantillonnage de tronçon, compté en places
@@ -280,11 +285,13 @@ func update(cam_s: float) -> void:
 					_queue.remove_at(i)
 			_recycle(g)
 			_queue.append([g, k, 0, PackedVector4Array()])
-	var budget := MAX_PER_FRAME
+	var budget := maxi(MAX_PER_FRAME, ceili(float(_per_chunk) / FILL_FRAMES))
 	var t_start := Time.get_ticks_usec()
 	var far_min_keep := keep_at(LOD_SWITCH_M - LOD_BLEND_M)
+	var cam_k := first + CHUNKS_BEHIND
 	while budget > 0 and not _queue.is_empty() and Time.get_ticks_usec() - t_start < MAX_FRAME_US:
-		var job: Array = _queue[0]
+		var qi := _next_job(cam_k)
+		var job: Array = _queue[qi]
 		var g: int = job[0]
 		var k: int = job[1]
 		var j: int = job[2]
@@ -332,9 +339,23 @@ func update(cam_s: float) -> void:
 		_set_box(g, box)
 		budget -= end - j
 		if end >= _per_chunk:
-			_queue.pop_front()
+			_queue.remove_at(qi)
 		else:
 			job[2] = end
+
+
+## Tâche à faire d'abord : le tronçon de la caméra, puis ceux de devant du plus proche au plus loin, ceux de
+## derrière en dernier.
+func _next_job(cam_k: int) -> int:
+	var best := 0
+	var best_rank := 1 << 30
+	for i in range(_queue.size()):
+		var d: int = int(_queue[i][1]) - cam_k
+		var rank := d if d >= 0 else (1 << 20) - d
+		if rank < best_rank:
+			best_rank = rank
+			best = i
+	return best
 
 
 ## Le groupe `g` reçoit un autre tronçon : ses anciennes touffes ne sont plus dessinées ni comptées.
