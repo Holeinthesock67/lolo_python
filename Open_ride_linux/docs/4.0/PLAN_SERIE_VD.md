@@ -11,7 +11,7 @@ Sources lues : `docs/contracts/world_format_v1.md` (§4 couche route, `type = lo
 1. **Un type de parcours, pas un mode à part** : le vélodrome est un `.world` en boucle (`type = loop`) que le core génère lui-même, sans GPX ni compilateur, comme le parcours de démonstration. Il apparaît dans la liste des parcours (filtre « Vélodrome ») et se roule avec tout ce qui existe déjà : séance libre, ERG, plans, bots, fantôme, abri.
 2. **Une seule piste : 250 m couverte en bois**, virages relevés à 42° et lignes droites à 12°, 7 m de large plus la côte d'azur (§3). Décision du propriétaire du 6 novembre : « On fera une piste de 250 m. En bois avec virages relevés. »
 3. **Le relèvement ne touche pas le trainer** : sur une piste, la pente le long de la trajectoire est nulle. La pente envoyée reste 0 % ; seuls la surface (bois, Crr plus faible), l'air sans vent et l'abri se ressentent. Le relèvement est **visuel** (ruban incliné, caméra et coureurs qui penchent) et **géométrique** (rouler plus haut allonge le tour, §4.2).
-4. **Épreuves de piste** (§5) dans un premier temps : poursuite individuelle, kilomètre et 500 m départ arrêté, scratch, course aux points, élimination (règles de DS reprises), record de l'heure. Keirin (avec le derny, véhicule d'AS6) et omnium ensuite.
+4. **Toutes les épreuves de piste dès la première livraison** (§5, décision du propriétaire du 6 novembre) : poursuite individuelle, kilomètre et 500 m départ arrêté, 200 m lancé, scratch, course aux points, tempo, élimination (règles de DS reprises), keirin (derny, véhicule et abri d'AS6), omnium et record de l'heure.
 5. **Un bâtiment léger** : salle, tribunes, public, éclairage ; pas de terrain, de végétation, de biome ni de ciel lointain. Le vélodrome couvert doit coûter **nettement moins** que la route (§7) : c'est le parcours le plus léger du jeu.
 6. **Version : 4.0**, après le peloton PL1 (bots en piste) et AS2 (voies). Seul le générateur de piste (VD2) et la physique (VD3) sont des modules purs du core, faisables plus tôt si le propriétaire le veut.
 
@@ -86,8 +86,9 @@ Décision du propriétaire du 6 novembre : une seule piste, `velodrome-250` (250
 | Course aux points | Sprint tous les 10 tours (5, 3, 2, 1 points, double au dernier), 20 points par tour pris | 3 à 11 bots | Maillots T14 (barème) |
 | Élimination | Le dernier sort tous les 2 tours | 3 à 11 bots | Règles et code de DS (`survivor.py`) |
 | Record de l'heure | 60 min, distance totale, tableau des tours | 0 | Records |
-| Keirin (après) | Derny jusqu'à 3 tours de l'arrivée, puis sprint | 3 à 6 bots | Véhicule et abri d'AS6 |
-| Omnium (après) | Enchaînement scratch, tempo, élimination, points | 3 à 11 bots | Épreuves ci-dessus |
+| Keirin | Derny jusqu'à 3 tours de l'arrivée, puis sprint | 3 à 6 bots | Véhicule et abri d'AS6 |
+| Tempo | 10 tours au moins ; à partir du 5e tour, 1 point au premier de chaque tour, 20 points par tour pris | 3 à 11 bots | Course aux points |
+| Omnium | Enchaînement scratch, tempo, élimination, course aux points, classement aux points | 3 à 11 bots | Épreuves ci-dessus |
 
 Chaque épreuve est un module pur du paquet `track/` du core (une règle, un fichier), comme `survivor.py` et `wtf/mode.py`. Les épreuves sont en **SIM** ; la séance libre accepte aussi l'ERG. Pause (Y) : tout est figé, épreuve comprise.
 
@@ -136,7 +137,7 @@ Chaque épreuve est un module pur du paquet `track/` du core (une règle, un fic
 | [VD3](../lots/LOT_VD3_physique_piste.md) | Core : surface, air, hauteur sur la piste et distance | VD1, AS2 | Moyenne |
 | [VD4](../lots/LOT_VD4_ruban_releve.md) | Engine : ruban relevé, lignes peintes, caméra et coureurs qui penchent | VD2 | Moyenne |
 | [VD5](../lots/LOT_VD5_batiment_tribunes.md) | Engine : salle, tribunes, public, éclairage | VD2 | Grande |
-| [VD6](../lots/LOT_VD6_epreuves.md) | Core : épreuves de piste (paquet `track/`) | VD3, DS1 | Grande |
+| [VD6](../lots/LOT_VD6_epreuves.md) | Core : toutes les épreuves de piste (paquet `track/`) | VD3, DS1, AS6 | Grande |
 | [VD7](../lots/LOT_VD7_bots_piste.md) | Bots en piste (peloton PL1) | VD3, VD6, PL1 | Moyenne |
 | [VD8](../lots/LOT_VD8_maquettes.md) | Maquettes du HUD de piste, du tableau d'affichage et du bilan | VD6 | Petite |
 | [VD9](../lots/LOT_VD9_hud_sons.md) | Engine : HUD de piste, tableau d'affichage, cloche, pistolet, public | VD6, VD8 | Moyenne |
@@ -144,7 +145,7 @@ Chaque épreuve est un module pur du paquet `track/` du core (une règle, un fic
 | [VD11](../lots/LOT_VD11_bancs.md) | Bancs GPU `low`, `medium`, `high` et captures | VD4, VD5, VD7, VD9 | Petite |
 | [VD12](../lots/LOT_VD12_recette.md) | Recette sur le vélo (étapes de 10 min) | VD10, VD11 | Petite |
 
-Ordre : VD0 ──► VD1 ──► VD2, VD3 ;  VD2 ──► VD4, VD5 ;  VD3, DS1 ──► VD6 ──► VD8, VD10 ;  VD3, VD6, PL1 ──► VD7 ;  VD6, VD8 ──► VD9 ;  VD4, VD5, VD7, VD9 ──► VD11 ;  VD10, VD11 ──► VD12.
+Ordre : VD0 ──► VD1 ──► VD2, VD3 ;  VD2 ──► VD4, VD5 ;  VD3, DS1, AS6 ──► VD6 ──► VD8, VD10 ;  VD3, VD6, PL1 ──► VD7 ;  VD6, VD8 ──► VD9 ;  VD4, VD5, VD7, VD9 ──► VD11 ;  VD10, VD11 ──► VD12.
 
 Délégables : VD2, VD3, VD6 (modules purs du core, testables sans engine ni matériel) ; VD4, VD5, VD9 à rendre au propriétaire avec captures ; VD1 et VD0 décisions ; VD12 recette du propriétaire. Fichiers partagés : `route.py` et `route_data.gd` (VD1 lecture de `bank_deg`, seul) ; `surface_physics.py` (VD3 seul) ; `session.py` et `settings.py` (VD3, puis VD6) ; `bots.py` (VD7, après PL1) ; `road_builder.gd` (VD4 seul) ; `camera_follow.gd` et `bots_view.gd` (VD4) ; `crowd_renderer.gd` et `world_streamer.gd` (VD5) ; `hud_view.gd` et `summary_view.gd` (VD9) ; `menu_flow.gd` et `catalog.py` (VD10).
 
@@ -153,6 +154,6 @@ Délégables : VD2, VD3, VD6 (modules purs du core, testables sans engine ni mat
 1. **Taille** : **tranché le 6 novembre**, une seule piste de 250 m.
 2. **Virages** : **tranché le 6 novembre**, relevés (42° au sommet, 12° dans les droites).
 3. **Surface** : **tranché le 6 novembre**, bois (piste couverte).
-4. **Épreuves de la première livraison** : séance libre, poursuite, kilomètre, scratch, course aux points, élimination, record de l'heure (défaut) ; keirin et omnium ensuite.
+4. **Épreuves de la première livraison** : **tranché le 6 novembre**, toutes les épreuves du §5 (séance libre, poursuite, kilomètre et 500 m, 200 m lancé, scratch, course aux points, tempo, élimination, keirin, omnium, record de l'heure).
 5. **Braquet fixe** : option facultative, coupée par défaut.
 6. **Version** : 4.0 (défaut). VD2 et VD3 peuvent être faits plus tôt sans rien changer au jeu, puisqu'aucune piste n'est listée avant VD10.

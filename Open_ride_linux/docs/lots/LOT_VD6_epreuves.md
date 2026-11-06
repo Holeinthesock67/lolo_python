@@ -3,21 +3,21 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série VD : épreuves de piste en modules purs (poursuite, kilomètre, 200 m, scratch, points, élimination, heure) | Python | VD3, DS1 | Grande | À valider (version 4.0 proposée) |
+| Série VD : épreuves de piste en modules purs (toutes : poursuite, kilomètre, 200 m, scratch, points, tempo, élimination, keirin, omnium, heure) | Python | VD3, DS1, AS6 | Grande | À valider (version 4.0 proposée) |
 
 Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_VD.md`. Rien ne se code avant la validation du plan par le propriétaire (lot VD0).
 
 ## 1. Objectif
 
-Écrire les règles des épreuves du §5 dans un paquet `track/` du core, un fichier par épreuve, et les brancher dans la séance.
+Écrire les règles de toutes les épreuves du §5 (décision du propriétaire du 6 novembre : toutes dès la première livraison) dans un paquet `track/` du core, un fichier par épreuve, et les brancher dans la séance.
 
 ## 2. À lire
 
-§5 du plan ; `core/src/openride_core/survivor.py` (élimination), `wtf/mode.py` (forme d'un mode), `replay.py` (fantôme), `records.py`, `jerseys.py` (barème).
+§5 du plan ; `core/src/openride_core/survivor.py` (élimination), `wtf/mode.py` (forme d'un mode), `replay.py` (fantôme), `records.py`, `jerseys.py` (barème) ; cahier AS6 (véhicule et abri, pour le derny du keirin).
 
 ## 3. Travail demandé
 
-- Paquet `track/` : `pursuit.py`, `time_trial.py` (kilomètre, 500 m, 200 m lancé), `scratch.py`, `points.py`, `elimination.py` (règles de DS, sans copie de code), `hour.py` ; interface commune (`start`, `step`, `frame`, `summary`).
+- Paquet `track/` : `pursuit.py`, `time_trial.py` (kilomètre, 500 m, 200 m lancé), `scratch.py`, `points.py`, `tempo.py`, `elimination.py` (règles de DS, sans copie de code), `keirin.py` (derny d'AS6 qui s'écarte à 3 tours de l'arrivée), `omnium.py` (enchaîne les épreuves et additionne les points), `hour.py` ; interface commune (`start`, `step`, `frame`, `summary`).
 - Départ arrêté et départ lancé ; tours, cloche du dernier tour ; tours pris ; arrivée.
 - Records par piste et par épreuve ; tours dans le journal et dans le FIT (`lap`).
 - Pause et coupure du trainer figent l'épreuve.

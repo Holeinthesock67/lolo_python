@@ -20,6 +20,8 @@ Faire valider le vélodrome par le propriétaire sur le trainer.
 - Étape 1 (10 min) : séance libre sur la piste de 250 m, ressenti du bois, corde et dépassements.
 - Étape 2 (10 min) : kilomètre départ arrêté et 200 m lancé.
 - Étape 3 (10 min) : élimination ou scratch avec le peloton.
+- Étape 4 (10 min) : keirin et course aux points (ou tempo) avec le peloton.
+- Étape 5 (2 séances de 10 min, ou une soirée dédiée) : omnium raccourci, poursuite contre le fantôme.
 - Notes sur 5 et retours consignés.
 
 ## 4. Critères d'acceptation
