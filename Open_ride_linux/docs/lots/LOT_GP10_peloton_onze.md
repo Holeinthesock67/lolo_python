@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : jusqu'à 11 bots avec objets, après le peloton d'environ 12 bots du lot Y18 | Python + GDScript | GP2, GP3, Y18 | Moyenne | Prêt (version 4.0 proposée) |
+| Série GP : jusqu'à 11 bots avec objets, après le peloton d'environ 12 bots (lot PL1) | Python + GDScript | GP2, GP3, Y18, PL1 | Moyenne | Prêt (version 4.0 proposée) |
 
 Série GP (mode « Grand Prix des objets », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`.
 
