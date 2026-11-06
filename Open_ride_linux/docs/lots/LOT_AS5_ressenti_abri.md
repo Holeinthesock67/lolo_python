@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série AS : ressentir l'abri (souffle plus faible, watts économisés au HUD, temps et énergie au bilan) | Python + GDScript | P3, P10, P17 | Moyenne | En PR le 31 octobre (#640, version 2.0) : captures à valider, essai sur le vélo |
+| Série AS : ressentir l'abri (souffle plus faible, watts économisés au HUD, temps et énergie au bilan) | Python + GDScript | P3, P10, P17 | Moyenne | Livré le 3 novembre (version 2.0, #649) ; reste l'essai sur le vélo |
 
 Série AS, version 2.0 (décision du propriétaire du 29 octobre 2026).
 
@@ -46,3 +46,15 @@ Champ facultatif `draft_w` dans `state` ; champs facultatifs `draft_time_s` et `
 ## 8. Hors périmètre
 
 Vibrations, retour haptique.
+
+## 9. Livraison (3 novembre 2026)
+
+Livré avec la série AS réunie dans #649 (PR du lot : #640).
+
+- **Core.** `draft_w` : puissance aérodynamique sans abri moins avec abri, à la vitesse et au vent du moment (`physics.draft_saving_w`, 0 quand l'air pousse), arrondie au watt, dans `state` et au journal à partir de 0,02 d'abri. Bilan : `draft_time_s` et `draft_kj` (somme des `draft_w` du journal à 1 Hz), dans `openride-core summary` et dans `summary` IPC, absents sans bot.
+- **Son.** Le souffle suit `va × (1 − draft)^0,5` (− 3,7 dB à 0,35 d'abri à vitesse égale), variation bornée à 12 dB/s.
+- **HUD.** « −48 W » sous la pastille « Abri 30 % » en medium et high ; pastille seule en low. Échelle de la pastille : 0,55 (lot AS4).
+- **Bilan.** Lignes « Dans la roue : 12 min » et « Énergie économisée : 9 kJ », absentes sans passage dans la roue.
+- **Contrat.** Révision 1.5 : `state.draft_w`, `summary.draft_time_s`, `summary.draft_kj`.
+
+Reste l'essai sur le vélo.

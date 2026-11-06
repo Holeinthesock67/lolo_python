@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série AS : abri dans un groupe (sources devant et sur les côtés), plafond de 55 %, pastille et jauge pleines à 55 % | Python + GDScript | AS2 | Moyenne | En PR (version 2.0) |
+| Série AS : abri dans un groupe (sources devant et sur les côtés), plafond de 55 %, pastille et jauge pleines à 55 % | Python + GDScript | AS2 | Moyenne | Livré le 3 novembre (version 2.0, #649) |
 
 Série AS, version 2.0. Décision du propriétaire du 29 octobre 2026 : **plafond de 55 % au cœur d'un groupe** (45 % aujourd'hui).
 
