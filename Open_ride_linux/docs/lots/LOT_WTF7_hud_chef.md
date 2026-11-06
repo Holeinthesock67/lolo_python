@@ -29,7 +29,7 @@ HUD des micro-défis (défi, cible, barre de progression, résultats), des œufs
   - un son par début de gag (Lune, Jupiter, monde à l'envers, effondrement, fromage, micro-défis, œufs, vélo minuscule, tornade, caméras, chef) ;
   - pendant le gag : cloche du chef, œuf cassé, écrasé par le fromage, manche de micro-défi gagnée ou perdue ;
   - fin du gag : arpège avec des points, trombone triste sans ;
-  - règles permanentes : « pop » du Katamari, « boing » d'un objet trop gros (nouveau champ `kata.bonks`, contrat 1.5), klaxon de la mamie qui attaque, poissons.
+  - règles permanentes : « pop » du Katamari, « boing » d'un objet trop gros (nouveau champ `kata.bonks`, révision 1.6 du contrat), klaxon de la mamie qui attaque, poissons.
 - Les 22 sons `wtf_*` rejoignent la palette commune `event_sounds_model.gd` (`JINGLES`, bus « Events », remplaçables par `~/OpenRide/Sounds/<nom>.ogg`) ; deux timbres ajoutés à la synthèse de `sound_player.gd` : `slide` (glissando) et `noise` (bruit filtré).
 - Tests : `engine/tests/unit/test_wtf_sounds.gd`.
 - Reste : écoute courte sur le PC (fil de fusion), puis validation du propriétaire.
