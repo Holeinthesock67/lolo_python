@@ -1,0 +1,212 @@
+{
+  "low": {
+    "base": {
+      "secondes": 21,
+      "gpu_ms": 5.25,
+      "fps": 54.31,
+      "p99_ms": 16.67,
+      "primitives": 556434.0,
+      "appels": 215.5,
+      "gpu_sature_pct": 1.35,
+      "gpu_ms_reps": [
+        5.37,
+        5.12
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "ciel_rayon_sans_nuages": {
+      "secondes": 32,
+      "gpu_ms": 5.14,
+      "fps": 57.6,
+      "p99_ms": 20.95,
+      "primitives": 543453.0,
+      "appels": 214.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        5.2,
+        5.09
+      ],
+      "enleve": "nuages absents de la lumière ambiante du ciel (fond inchangé)",
+      "diag": "ciel_rayonnement_sans_nuages",
+      "gain_gpu_ms": 0.11,
+      "diag_non_vu": false
+    },
+    "ciel_demi_res": {
+      "secondes": 30,
+      "gpu_ms": 5.18,
+      "fps": 58.32,
+      "p99_ms": 16.67,
+      "primitives": 543798.0,
+      "appels": 213.5,
+      "gpu_sature_pct": 1.65,
+      "gpu_ms_reps": [
+        5.28,
+        5.07
+      ],
+      "enleve": "nuages du fond calculés en demi-résolution",
+      "diag": "ciel_demi_res",
+      "gain_gpu_ms": 0.07,
+      "diag_non_vu": false
+    },
+    "ciel_allege": {
+      "secondes": 35,
+      "gpu_ms": 4.85,
+      "fps": 59.47,
+      "p99_ms": 16.67,
+      "primitives": 551064.0,
+      "appels": 213.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        4.87,
+        4.82
+      ],
+      "enleve": "les trois allègements du ciel ensemble",
+      "diag": "ciel_rayonnement_sans_nuages,ciel_demi_res,ciel=incremental",
+      "gain_gpu_ms": 0.4,
+      "diag_non_vu": false
+    }
+  },
+  "medium": {
+    "base": {
+      "secondes": 34,
+      "gpu_ms": 9.98,
+      "fps": 59.69,
+      "p99_ms": 16.67,
+      "primitives": 1158900.5,
+      "appels": 286.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        10.04,
+        9.92
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "ciel_rayon_sans_nuages": {
+      "secondes": 33,
+      "gpu_ms": 9.71,
+      "fps": 59.74,
+      "p99_ms": 16.67,
+      "primitives": 1155109.0,
+      "appels": 286.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        9.57,
+        9.84
+      ],
+      "enleve": "nuages absents de la lumière ambiante du ciel (fond inchangé)",
+      "diag": "ciel_rayonnement_sans_nuages",
+      "gain_gpu_ms": 0.27,
+      "diag_non_vu": false
+    },
+    "ciel_demi_res": {
+      "secondes": 37,
+      "gpu_ms": 9.84,
+      "fps": 59.92,
+      "p99_ms": 16.67,
+      "primitives": 1152578.0,
+      "appels": 284.5,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        10.01,
+        9.68
+      ],
+      "enleve": "nuages du fond calculés en demi-résolution",
+      "diag": "ciel_demi_res",
+      "gain_gpu_ms": 0.14,
+      "diag_non_vu": false
+    },
+    "ciel_allege": {
+      "secondes": 36,
+      "gpu_ms": 9.59,
+      "fps": 59.76,
+      "p99_ms": 16.67,
+      "primitives": 1143154.0,
+      "appels": 284.75,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        9.4,
+        9.79
+      ],
+      "enleve": "les trois allègements du ciel ensemble",
+      "diag": "ciel_rayonnement_sans_nuages,ciel_demi_res,ciel=incremental",
+      "gain_gpu_ms": 0.39,
+      "diag_non_vu": false
+    }
+  },
+  "high": {
+    "base": {
+      "secondes": 38,
+      "gpu_ms": 10.84,
+      "fps": 59.83,
+      "p99_ms": 16.67,
+      "primitives": 1600580.75,
+      "appels": 295.75,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        10.88,
+        10.8
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "ciel_rayon_sans_nuages": {
+      "secondes": 37,
+      "gpu_ms": 10.74,
+      "fps": 59.73,
+      "p99_ms": 16.67,
+      "primitives": 1601472.5,
+      "appels": 294.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        10.66,
+        10.82
+      ],
+      "enleve": "nuages absents de la lumière ambiante du ciel (fond inchangé)",
+      "diag": "ciel_rayonnement_sans_nuages",
+      "gain_gpu_ms": 0.1,
+      "diag_non_vu": false
+    },
+    "ciel_demi_res": {
+      "secondes": 36,
+      "gpu_ms": 10.87,
+      "fps": 59.75,
+      "p99_ms": 16.67,
+      "primitives": 1600677.75,
+      "appels": 295.25,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        10.82,
+        10.91
+      ],
+      "enleve": "nuages du fond calculés en demi-résolution",
+      "diag": "ciel_demi_res",
+      "gain_gpu_ms": -0.03,
+      "diag_non_vu": false
+    },
+    "ciel_allege": {
+      "secondes": 36,
+      "gpu_ms": 10.34,
+      "fps": 59.43,
+      "p99_ms": 16.67,
+      "primitives": 1622536.5,
+      "appels": 307.25,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        10.48,
+        10.19
+      ],
+      "enleve": "les trois allègements du ciel ensemble",
+      "diag": "ciel_rayonnement_sans_nuages,ciel_demi_res,ciel=incremental",
+      "gain_gpu_ms": 0.5,
+      "diag_non_vu": false
+    }
+  }
+}
