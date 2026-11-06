@@ -166,6 +166,19 @@ const PEOPLE_LOD_M := {
 	"high": 40.0,
 }
 const BOT_LOD_HYSTERESIS_M := 2.0
+## Peloton (lot PL1) : bots au plus aux niveaux 0 et 1 (avec leur ombre), les plus proches de la caméra ; les
+## autres restent au niveau 2. Au moins les 5 bots d'avant le peloton : rien ne change jusqu'à 5 bots. Valeurs
+## à confirmer par les bancs du PC (budgets GPU 6, 12 et 14 ms) ; en repli, les baisser.
+const BOT_DETAIL_MAX := {
+	"low": 5,
+	"medium": 6,
+	"high": 8,
+}
+
+
+## Nombre de bots au plus aux niveaux de détail 0 et 1 pour le préréglage `name` (lot PL1).
+static func bot_detail_max(name: String) -> int:
+	return int(BOT_DETAIL_MAX[applied_name(name)])
 
 
 ## Niveau de détail d'un bot à `dist_m` de la caméra, qui affiche aujourd'hui le niveau `current` (-1 : aucun).

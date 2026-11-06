@@ -95,11 +95,11 @@ func _test_view() -> void:
 	_check(m.count() == 0 and m.view(0.0, 0.0, 0).is_empty(), "trame sans bots : liste vide")
 	m.push([{"id": "", "s": 1.0}, {"id": "x"}, 5], 0)
 	_check(m.count() == 0, "éléments mal formés ignorés")
-	var six: Array = []
-	for i in range(8):
-		six.append({"id": "b%d" % i, "name": "B", "s": float(i), "v": 1.0, "kind": "constant"})
-	m.push(six, 0)
-	_check(m.count() == 5, "au plus cinq bots")
+	var many: Array = []
+	for i in range(14):
+		many.append({"id": "b%d" % i, "name": "B", "s": float(i), "v": 1.0, "kind": "constant"})
+	m.push(many, 0)
+	_check(m.count() == BotsViewModel.MAX_BOTS and BotsViewModel.MAX_BOTS == 12, "au plus 12 bots : 11 et un fantôme (lot PL1)")
 
 
 func _test_hud() -> void:
@@ -153,7 +153,8 @@ func _test_nodes() -> void:
 	bv.update_view(m.view(1000.0, 7.0, 0), route)
 	_check(int(bv.pose_of("bot1")["shown_lod"]) != 0, "niveau 0 construit dans un fil : en attendant, un niveau déjà construit")
 	bv.wait_builds()
-	bv.update_view(m.view(1000.0, 7.0, 0), route)
+	for _i in range(2):   # lot PL1 : un avatar créé par image (BotsView.NEW_AVATARS_PER_FRAME), le fantôme compris
+		bv.update_view(m.view(1000.0, 7.0, 0), route)
 	_check(int(bv.pose_of("bot1")["shown_lod"]) == 0, "niveau 0 montré une fois construit")
 	var lod_high := int(bv.pose_of("bot1")["lod"])
 	bv.set_quality("low")
@@ -296,6 +297,66 @@ func _test_core_lanes() -> void:
 	bv.free()
 
 
+## Lot PL1 : peloton de 11 bots et un fantôme ; champs constants gardés d'une trame allégée à l'autre, bots
+## détaillés plafonnés par préréglage, apparences toutes différentes et stables.
+func _test_peloton() -> void:
+	var m = BotsViewModel.new()
+	var frame: Array = []
+	for i in range(11):
+		frame.append({"id": "bot%d" % (i + 1), "name": "Rouleur %d" % (i + 1), "s": 1000.0 + float(i), "v": 10.0,
+			"kind": "constant", "lane_m": 2.1 if i % 2 == 0 else 0.3, "profile": "rouleur", "cp_w": 250.0 + i, "mass_kg": 70.0})
+	frame.append({"id": "ghost", "name": "Fantôme", "s": 999.0, "v": 10.0, "kind": "ghost"})
+	m.push(frame, 0)
+	_check(m.count() == 12, "peloton : 11 bots et le fantôme gardés")
+	var light: Array = []
+	for b in frame:
+		var c: Dictionary = b.duplicate()
+		if c["id"] == "bot11":
+			c.erase("cp_w")
+			c.erase("mass_kg")
+			c.erase("name")
+			c.erase("profile")
+		light.append(c)
+	m.push(light, US)
+	var b11: Dictionary = m.view(1000.0, 10.0, US).filter(func(b): return b["id"] == "bot11")[0]
+	_check(is_equal_approx(float(b11["cp_w"]), 260.0) and is_equal_approx(float(b11["mass_kg"]), 70.0),
+		"trame allégée : FTP et masse gardées de la trame d'avant (%s)" % str(b11))
+	_check(str(b11["name"]) == "Rouleur 11" and str(b11["profile"]) == "rouleur",
+		"trame allégée : nom et profil gardés de la trame d'avant (%s)" % str(b11))
+	var fresh = BotsViewModel.new()
+	fresh.push([{"id": "bot9", "s": 1000.0, "v": 10.0, "kind": "constant"}], 0)
+	_check(str(fresh.view(1000.0, 10.0, 0)[0]["name"]) == "bot9", "nom encore inconnu : l'id en attendant")
+	var route = ClimbTest.make_route(3000.0, func(_s): return 0.0)
+	var bv = BotsView.new()
+	for q in ["low", "medium", "high"]:
+		bv.set_quality(q)
+		bv.update_view(m.view(1000.0, 10.0, US), route)
+		var detailed := 0
+		for b in frame:
+			var pose: Dictionary = bv.pose_of(str(b["id"]))
+			if not pose.is_empty() and int(pose["lod"]) < 2:
+				detailed += 1
+		_check(detailed == QualityPresets.bot_detail_max(q),
+			"%s : %d bots détaillés au plus (%d)" % [q, QualityPresets.bot_detail_max(q), detailed])
+	_check(bv.get_child_count() == 12, "une silhouette par coureur du peloton (%d)" % bv.get_child_count())
+	var avatars := 0
+	for child in bv.get_children():
+		for sub in child.get_children():
+			if sub is AvatarView:
+				avatars += 1
+	_check(avatars <= 12 + 3 * BotsView.NEW_AVATARS_PER_FRAME,
+		"avatars créés au fil des images, %d par image au plus (%d pour 12 coureurs en 3 images)" % [BotsView.NEW_AVATARS_PER_FRAME, avatars])
+	var looks := {}
+	for i in range(11):
+		var pose: Dictionary = bv.pose_of("bot%d" % (i + 1))
+		looks["%d|%d|%s|%s" % [pose["settings"]["kit_secondary"], pose["settings"]["number"], pose["looks"]["kit"], pose["looks"]["frame"]]] = true
+	_check(looks.size() == 11, "onze bots, onze apparences (dossards différents)")
+	_check(int(bv.pose_of("bot7")["settings"]["number"]) == 7, "dossard = numéro de l'id, stable s'il sort et revient")
+	bv.update_view([], route)
+	bv.wait_builds()
+	bv.free()
+
+
 func _init() -> void:
 	_test_gaps()
 	_test_view()
@@ -304,6 +365,7 @@ func _init() -> void:
 	_test_look()
 	_test_laterals()
 	_test_core_lanes()
+	_test_peloton()
 	_check(BotsViewModel.name_visible(true, 20.0), "nom affiché à 20 m de la caméra")
 	_check(not BotsViewModel.name_visible(true, 2.0), "nom caché tout près de la caméra (lettres géantes)")
 	_check(not BotsViewModel.name_visible(false, 20.0), "nom caché au-delà de NAME_M du cycliste")
