@@ -1,6 +1,6 @@
 # Plan de la série VD : modèle « Vélodrome »
 
-Demande du propriétaire du 5 novembre 2026 : « J'aimerais ajouter un modèle vélodrome au 4.0 ». Lecture retenue : un nouveau type de parcours, une piste ovale fermée à virages relevés, sans route ni terrain, utilisable en séance libre, en ERG et dans des épreuves de piste. Ce document est une étude ; aucun code n'est écrit avant la validation du plan par le propriétaire. Toute maquette est soumise au propriétaire avant le code d'affichage, et tout essai de performance se fait en `low`, `medium` **et** `high`, captures à l'appui.
+Demande du propriétaire du 5 novembre 2026 : « J'aimerais ajouter un modèle vélodrome au 4.0 ». Lecture retenue : un nouveau type de parcours, une piste ovale fermée à virages relevés, sans route ni terrain, utilisable en séance libre, en ERG et dans des épreuves de piste. Plan validé par le propriétaire le 6 novembre 2026 (décisions au §10). Toute maquette est soumise au propriétaire avant le code d'affichage, et tout essai de performance se fait en `low`, `medium` **et** `high`, captures à l'appui.
 
 Sources lues : `docs/contracts/world_format_v1.md` (§4 couche route, `type = loop`), `core/src/openride_core/route.py` (Catmull-Rom, `wrap`), `demo_world.py` (parcours synthétiques écrits par le core), `surface_physics.py` (facteur de Crr par surface), `draft.py` et `lane_m` (AS2), `bots.py`, `engine/scripts/road_builder.gd` (coupe plate de 6 m perpendiculaire au cap), `camera_follow.gd` et `bots_view.gd` (écart à l'axe), `crowd_renderer.gd`, `docs/4.0/PLAN_SERIE_GP.md`, `docs/2.0/PLAN_SERIE_DS.md`, `docs/lots/00_INDEX.md`.
 
@@ -152,11 +152,11 @@ Ordre : VD0 ──► VD1 ──► VD2, VD3 ;  VD2 ──► VD4, VD5 ;  VD3, D
 
 Délégables : VD2, VD3, VD6 (modules purs du core, testables sans engine ni matériel) ; VD4, VD5, VD9 à rendre au propriétaire avec captures ; VD1 et VD0 décisions ; VD12 recette du propriétaire. Fichiers partagés : `route.py` et `route_data.gd` (VD1 lecture de `bank_deg`, seul) ; `surface_physics.py` (VD3 seul) ; `session.py` et `settings.py` (VD3, puis VD6) ; `bots.py` (VD7, après PL1) ; `road_builder.gd` (VD4 seul) ; `camera_follow.gd` et `bots_view.gd` (VD4) ; `crowd_renderer.gd` et `world_streamer.gd` (VD5) ; `hud_view.gd` et `summary_view.gd` (VD9) ; `menu_flow.gd` et `catalog.py` (VD10).
 
-## 10. Questions ouvertes (réponses par défaut appliquées en attendant)
+## 10. Décisions du propriétaire (6 novembre 2026, toutes les questions tranchées)
 
 1. **Taille** : **tranché le 6 novembre**, une seule piste de 250 m.
 2. **Virages** : **tranché le 6 novembre**, relevés (42° au sommet, 12° dans les droites).
 3. **Surface** : **tranché le 6 novembre**, bois (piste couverte).
 4. **Épreuves de la première livraison** : **tranché le 6 novembre**, toutes les épreuves du §5 (séance libre, poursuite, kilomètre et 500 m, 200 m lancé, scratch, course aux points, tempo, élimination, keirin, omnium, record de l'heure) et les trois épreuves par équipes (vitesse par équipes, poursuite par équipes, américaine). **Exclues (décision du 6 novembre)** : toutes les épreuves qui demandent du surplace, dont la vitesse individuelle en duel.
 5. **Braquet fixe** : **tranché le 6 novembre**, option « Braquet fixe » proposée dans les réglages du vélodrome (un seul rapport, sans changement de vitesse), coupée par défaut.
-6. **Version** : 4.0 (défaut). VD2 et VD3 peuvent être faits plus tôt sans rien changer au jeu, puisqu'aucune piste n'est listée avant VD10.
+6. **Version** : **tranché le 6 novembre**, 4.0. VD2 et VD3 peuvent être faits plus tôt sans rien changer au jeu, puisqu'aucune piste n'est listée avant VD10.

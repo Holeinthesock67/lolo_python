@@ -3,9 +3,9 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série VD : recette sur le vélo (étapes de 10 min au plus) | Recette | VD10, VD11 | Petite | À valider (version 4.0 proposée) |
+| Série VD : recette sur le vélo (étapes de 10 min au plus) | Recette | VD10, VD11 | Petite | Prêt (version 4.0) |
 
-Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_VD.md`. Rien ne se code avant la validation du plan par le propriétaire (lot VD0).
+Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_VD.md`. Plan validé par le propriétaire le 6 novembre (lot VD0).
 
 ## 1. Objectif
 
