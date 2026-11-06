@@ -207,7 +207,7 @@ class RideConfig:
 @dataclass
 class SurvivorConfig:
     """Mode « Dernier survivant » (série DS, lot DS2) : plateau et arches, réglés au menu."""
-    opponents: int = 4             # adversaires (2 à 4 ; 11 avec le peloton, lot DS8) : une arche chacun
+    opponents: int = 4             # adversaires (2 à 11 depuis le lot DS8, peloton du lot PL1) : une arche chacun
     spacing_km: int = 2            # écart entre deux arches (1 à 3 km)
     spread: str = "normal"         # écart de niveau des bots : tight (± 3 %), normal (± 8 %), wide (± 15 %)
     after_out: str = "ride"        # cycliste éliminé : ride (continuer à rouler) ou end (bilan tout de suite)
@@ -351,7 +351,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("rogue", "grade_rate_up_pct_per_s"): (0.1, 100),
     ("rogue", "grade_rate_down_pct_per_s"): (0.1, 100),
     ("bots", "level_pct"): (50, 150),
-    ("survivor", "opponents"): (2, 4),          # 4 jusqu'au lot DS8 (11 avec le peloton du lot PL1)
+    ("survivor", "opponents"): (2, 11),         # lot DS8 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
     ("survivor", "spacing_km"): (1, 3),
     ("audio", "master_pct"): (0, 100),
     ("audio", "ride_pct"): (0, 100),

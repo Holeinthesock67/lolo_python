@@ -14,6 +14,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Image moins claire et plus contrastée : brume éclairée à moitié par le ciel et étalonnage en S (ombres plus denses), au même coût.
 - Route qui disparaissait sous l'herbe dans les longues montées (forêt, montagne) : le terrain lointain est de nouveau creusé sous la chaussée avec le relief exagéré.
 
+### Dernier survivant à 11 adversaires (lot DS8)
+- Jusqu'à 11 adversaires (au lieu de 4) grâce au peloton : une arche par adversaire, donc un parcours d'au moins 11 km à 1 km d'écart, ou une boucle, ou le monde ouvert. Sur un parcours trop court, l'écran Prêt propose les réglages qui tiennent.
+- Un bot éliminé laisse passer le coureur à sa hauteur avant de se ranger sur le bas-côté (au lieu de lui couper la route).
+- Liste des coureurs du HUD : nom et écart en secondes de chaque bot, même des plus loin (la trame du peloton ne les envoie pas à chaque fois).
+
 ### Bots et abri (série AS)
 - Cyclistes du décor dessinés comme les bots (même cycliste, mêmes niveaux de détail), avec leurs propres maillots, unis ou de club, de couleurs qu'aucun bot ne porte, sans dossard (lot AS7, retour d'essai du 4 novembre).
 

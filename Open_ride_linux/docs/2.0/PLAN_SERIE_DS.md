@@ -6,6 +6,8 @@ Sources lues : `core/src/openride_core/bots.py` (bots constants, fantôme, bots 
 
 
 **État au 3 novembre 2026 (version 2.0, choix du propriétaire)** : DS1, DS2, DS3, DS5, DS6 et DS7 livrés ensemble dans une seule branche partie de `main` (règles, séance et contrat, tactique des bots, arche d'élimination et bots qui se rangent, HUD, bandeaux et bilan, entrée au menu), avec des courses complètes simulées sans vélo (`core/tests/test_survivor_courses.py`) ; DS4 (maquettes) validé le 31 octobre. Restent les captures `low`, `medium` et `high` à faire valider (scénarios `engine/tests/captures_ds/`), puis DS9 réduit à un bloc de 10 min sur le vélo (le ressenti) ; DS8 attend le peloton.
+
+**État au 6 novembre 2026 (version 3.0)** : DS1 à DS7 et DS9 livrés dans la 2.0.0 (#705). DS8 (jusqu'à 11 adversaires sur le peloton du lot PL1) en PR : réglage 2–11, bot éliminé qui laisse passer avant de se ranger, liste du HUD complète avec la trame allégée ; restent les bancs PC low, medium et high (`--scenario dernier_survivant_onze`) et les captures à valider.
 ---
 
 ## 1. En bref
@@ -76,7 +78,7 @@ Tout se règle dans le menu, sans ligne de commande (lot DS7) :
 
 | Réglage (`survivor.*`, section `[survivor]` de `config.toml`) | Valeurs | Défaut |
 | --- | --- | --- |
-| Adversaires (`opponents`) | 2 à 4, puis 2 à 11 avec DS8 | 4 |
+| Adversaires (`opponents`) | 2 à 11 (lot DS8, 4 jusqu'à la 2.0) | 4 |
 | Écart entre arches (`spacing_km`) | 1, 2, 3 | 2 |
 | Niveau des bots (`bots.level_pct`, réglage existant) | 50 à 150 % de la FTP | inchangé |
 | Écart de niveau (`spread`) | serré, normal, large | normal |

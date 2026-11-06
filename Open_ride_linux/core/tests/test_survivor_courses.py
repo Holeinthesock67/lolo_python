@@ -3,7 +3,7 @@
 
 Faux trainer à puissance fixe (MockDriver), séance complète par les commandes de l'engine (`start` avec `mode`
 = `survivor`, `pause`, `resume`, `end_session`), trame `state` et messages validés par les schémas du contrat.
-Cas : courses à 2 puis à 4 adversaires (une seule élimination par arche, place juste au bilan, aucune erreur au
+Cas : courses à 2, à 4 puis à 11 adversaires (lot DS8, peloton du lot PL1, sur un parcours de 12 km) (une seule élimination par arche, place juste au bilan, aucune erreur au
 journal), cycliste faible éliminé qui continue à rouler puis fin et bilan propres (et réglage « terminer la
 séance »), cycliste fort vainqueur, parcours fini avant la fin de la course, pause pendant le passage d'une arche, perte du trainer en course, braquets
 au Click en course."""
@@ -22,6 +22,7 @@ def _frame(s: CoreSession) -> dict:
     s.state.bots = [b.to_dict() for b in s.bots] or None
     s._fill_race_frame()
     s._fill_survivor_frame()
+    s._lighten_bots_frame()   # peloton (lot PL1) : comme la trame envoyée
     return s.state.to_dict()
 
 
@@ -84,7 +85,11 @@ def course(env, monkeypatch):
     import time as time_mod
     wall = [time_mod.time()]
 
-    def start(port: int, **kw) -> Course:
+    def start(port: int, route_km: float | None = None, **kw) -> Course:
+        if route_km is not None:   # parcours plus long que la démonstration (5 km) : 11 arches à 1 km
+            from openride_core.demo_world import write_world
+            write_world(tmp_path / "routes", f"long-{route_km:g}k", route_km * 1000.0)
+            kw["route_id"] = f"long-{route_km:g}k"
         s, sent, errors = make(port, **kw)
         s._on_command("start", {"mode": "survivor"}, 2)
         assert not errors and s.state.session_state == "RUNNING", errors
@@ -130,6 +135,32 @@ def test_full_race_one_elimination_per_arch(course, caplog, opponents, spacing_k
     assert not c.contacts, c.contacts[:5]   # banc du 3 novembre : éliminé rangé sur l'accotement, évité
     c.s._on_command("end_session", {"save": True}, 9)
     _check_bilan(c, opponents)
+    errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
+    assert not errors, [r.getMessage() for r in errors]
+    assert not c.errors
+
+
+def test_full_race_with_eleven_opponents(course, caplog):
+    """Lot DS8 : 11 adversaires (peloton du lot PL1), une arche par kilomètre sur 12 km. Une seule élimination par
+    arche, bilan juste, aucun contact (règle du banc), trames sous 4 096 octets avec les noms de tous les bots
+    reçus dans les 11 premières trames (champs tournants de `bots.light_frame`)."""
+    caplog.set_level(logging.WARNING, logger="core")
+    c = course(6870, route_km=12, power_w=230.0, opponents=11, spacing_km=1, level_pct=100)
+    assert len(c.s.bots) == 11 and len(c.s.survivor.arches) == 11
+    named: set[str] = set()
+    for _ in range(11):
+        c.s._frame_count += 1   # numéro de trame, avancé par la boucle d'envoi de la séance
+        named |= {b["id"] for b in _frame(c.s)["bots"] if "name" in b}
+    assert named == {b.id for b in c.s.bots}, "chaque bot porte son nom au moins une fois sur 11 trames"
+    c.until(lambda s: s.survivor.winner is not None, 2400)
+    c.step(2.0)
+    assert c.s.survivor.winner is not None
+    assert len(c.frames[0]["alive"]) == 12
+    alive_counts = [len(f["alive"]) for f in c.frames]
+    assert alive_counts == sorted(alive_counts, reverse=True), "le plateau ne fait que diminuer"
+    assert not c.contacts, c.contacts[:5]   # bot éliminé qui se range : il laisse passer le coureur à sa hauteur
+    c.s._on_command("end_session", {"save": True}, 9)
+    _check_bilan(c, 11)
     errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
     assert not errors, [r.getMessage() for r in errors]
     assert not c.errors

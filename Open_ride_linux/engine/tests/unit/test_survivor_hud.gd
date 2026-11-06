@@ -136,6 +136,15 @@ func _run() -> void:
 	_check(v["list"].size() == 12 and v["block"]["rank"] == "1er sur 12 en course" and v["block"]["arch"] == "Arche 1 / 11",
 		"11 adversaires : 12 lignes, rang sur 12")
 	_check(v["block"]["dist"] == "dans 2,00 km", "distance au-delà d'un kilomètre")
+	# Trame allégée du peloton (bots.light_frame) : bot loin sans nom ni gap_s
+	var light: Array = []
+	for bb in bots:
+		light.append({"id": bb["id"], "s": 100.0 + float(str(bb["id"]).substr(3)) * 5.0, "v": 10.0, "kind": "constant"})
+	v = many.view({"session_state": "RUNNING", "s": 100.0, "v": 10.0, "bots": light, "survivor": {"arch": 1, "arches": 11,
+		"d_m": 1900.0, "alive": alive, "last": "bot11", "gap_last_s": 0.5, "out": [], "me_out": null, "winner": null}}, 1.0)
+	var row11: Dictionary = v["list"][11]
+	_check(row11["name"] == "Bot 11", "bot loin sans nom dans la trame : nom gardé (%s)" % row11["name"])
+	_check(row11["detail"] == "+5,5 s", "bot loin sans gap_s : écart estimé distance ÷ vitesse (%s)" % row11["detail"])
 	many.reset()
 	_check(many.names.is_empty() and many.arches_to_draw(_state({"arch": 1, "arches": 11})).is_empty(), "reset : course suivante vierge")
 

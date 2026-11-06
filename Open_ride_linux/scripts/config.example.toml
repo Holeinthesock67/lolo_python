@@ -45,7 +45,7 @@ display = "fullscreen"        # windowed, borderless (plein écran sans bordure)
 level_pct = 100               # niveau des bots à profil, 50 à 150 % de ta FTP (lot T13, réglable dans le menu)
 
 [survivor]                    # mode « Dernier survivant » (lot DS2), réglable dans le menu
-opponents = 4                 # adversaires, 2 à 4 (une arche chacun)
+opponents = 4                 # adversaires, 2 à 11 (une arche chacun ; 11 à 1 km : parcours de 11 km au moins)
 spacing_km = 2                # écart entre deux arches, 1 à 3 km
 spread = "normal"             # écart de niveau des bots : tight, normal, wide
 after_out = "ride"            # éliminé : ride (continuer à rouler) ou end (bilan tout de suite)

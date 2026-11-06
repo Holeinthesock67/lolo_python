@@ -1,0 +1,57 @@
+{
+  "description": "Dernier survivant à 11 adversaires (lot DS8, peloton du lot PL1) sur la démonstration étirée à 12 km (demo_long), à 250 W contre 11 bots à profil (niveau 100 %, écart normal : 108 à 92 % de la FTP), une arche par kilomètre : départ groupé des 12 coureurs (pire cas GPU), trois premières arches, bots éliminés qui laissent passer puis se rangent, liste des 12 coureurs, noms et écarts des bots loin (trame allégée) ; banc GPU en low, medium et high, captures toutes les 15 s à faire valider par le propriétaire.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 250,
+    "cadence_rpm": 90
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [],
+  "bench": {
+    "world": "demo_long",
+    "mode": "survivor",
+    "config": {
+      "survivor": {
+        "opponents": 11,
+        "spacing_km": 1,
+        "spread": "normal"
+      },
+      "bots": {
+        "level_pct": 100
+      }
+    },
+    "duration_s": 360,
+    "every_s": 15,
+    "expect": [
+      {
+        "log": "core",
+        "motif": "Dernier survivant : 11 adversaires",
+        "recette": "DS8",
+        "label": "séance lancée en Dernier survivant à 11 adversaires"
+      },
+      {
+        "log": "engine",
+        "motif": "Élimination : arche 1",
+        "recette": "DS8",
+        "label": "première élimination reçue et affichée par l'engine"
+      },
+      {
+        "log": "engine",
+        "motif": "Élimination : arche 2",
+        "recette": "DS8",
+        "label": "deuxième élimination reçue et affichée par l'engine"
+      }
+    ]
+  }
+}

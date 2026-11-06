@@ -256,5 +256,6 @@ def test_side_guard_never_closes_in_on_a_rider_alongside():
     assert side_guard(100.0, me, 1.5, [(101.75, 8.0, other)]) == 1.5         # dans la roue, sans chevauchement
     sliding = Lane(m=1.0, home=1.0, rate=0.8)                                 # glisse vers lui : s'arrête plus tôt
     assert side_guard(100.0, sliding, 1.5, [(100.5, 8.0, other)]) == pytest.approx(1.6 - clear - 0.8 ** 2 / 3.2)
-    manual = Lane(m=1.0, home=1.0, auto=False)
-    assert side_guard(100.0, manual, 1.5, [(100.5, 8.0, other)]) == 1.5
+    manual = Lane(m=1.0, home=2.9, auto=False)   # lot DS8 : bot éliminé qui se range, il attend d'être dépassé
+    assert side_guard(100.0, manual, 2.9, [(100.5, 8.0, other)]) == pytest.approx(1.6 - clear)
+    assert side_guard(100.0, manual, 2.9, [(102.5, 8.0, other)]) == 2.9   # coureur passé : il se range

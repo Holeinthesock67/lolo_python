@@ -142,6 +142,7 @@ Séance complète sur Bluetooth simulé dans la vraie scène, captures réguliè
 | `course_bots` | Recette T11 §8 sans vélo (X33) : 4 bots à profil calibrés au journal, encart des bots et écarts à l'écran |
 | `peloton` | Peloton du lot PL1 : 11 bots à profil au départ groupé, budgets GPU en low, medium et high, encart à 5 lignes |
 | `dernier_survivant` | Dernier survivant sans vélo (série DS) : départ du mode, portiques, éliminations ; banc GPU en low, medium et high (`--quality`) ; courses complètes du core dans `core/tests/test_survivor_courses.py` |
+| `dernier_survivant_onze` | Dernier survivant à 11 adversaires (lot DS8) sur `demo_long` (12 km) : départ groupé des 12 coureurs, pire cas GPU en low, medium et high ; course complète à 11 du core dans `core/tests/test_survivor_courses.py` |
 
 Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot ni exception du core, journal et FIT écrits, fin de séance, vrai HOME inchangé, qualité appliquée égale à la demande.
 
