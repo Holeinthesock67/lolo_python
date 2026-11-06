@@ -10,7 +10,8 @@ la trace : chaque message que le core envoie à l'engine (`state`, `room`, `loot
 vraie scène Godot (`main.tscn`, `--test-mode`), sous Xvfb (Vulkan logiciel, Forward+) ou, avec `--native`, à l'écran, et la
 rejoue face à un faux core, en temps accéléré `--speed` fois. Aux moments clés (échauffement, chaque salle à
 120 m de son début, pause, couloir avec ses cartes, boss, retour au calme, résultats, bilan), le banc fige la
-trame 1,5 s, demande une capture puis vérifie :
+trame 1,5 s (et, avant la première, jusqu'à ce que la scène du mode soit prête : `scene_ready id=rogue`),
+demande une capture puis vérifie :
 
 - l'image : ni noire ni uniforme, néons dessinés (pixels vifs et saturés) pendant la run ;
 - ce que la scène affiche (`rogue_host.test_info()` de la ligne `screenshot`) : scène du mode active, ruban,
@@ -49,6 +50,12 @@ from visual_check import (GODOT_ISSUE, GODOT_TOLERATED, Capture, Report, free_ud
 import rendu_jeu  # noqa: E402
 
 HOLD_S = 1.5                     # trame figée avant chaque capture : lissage de la position, ennemi, HUD
+# Scène du mode prête (`scene_ready id=rogue`, décor dessiné une fois) avant toute capture : la trace commence
+# en RUNNING sans écran d'attente, la scène entre donc à la première trame et son premier dessin (shaders) bloque
+# l'engine plusieurs secondes sous Vulkan logiciel ; la capture de l'échauffement tombait parfois dans cette image,
+# avant le premier rafraîchissement du HUD (hologramme vide, CI du 6 novembre).
+READY_RE = r"^scene_ready id=rogue$"
+READY_TIMEOUT_S = 60.0
 FRAME_HZ = 25.0                  # trames renvoyées pendant le gel
 ROOM_CAPTURE_M = 120.0           # capture d'une salle à 120 m de son début
 WARMUP_CAPTURE_S = 20.0
@@ -128,6 +135,7 @@ class Bench:
         self.args, self.out, self.report = args, out, report
         self.width, self.height = (int(v) for v in args.size.lower().split("x"))
         self.seq = 0
+        self.ready = False
 
     def check(self, scene: str, name: str, ok: bool, detail: str = "") -> bool:
         return self.report.check(CONFIG, scene, name, ok, detail)
@@ -165,9 +173,12 @@ class Bench:
                 core.send(m)
             if i in at:
                 held = now()
-                while now() - held < HOLD_S:
+                while now() - held < HOLD_S or (not self.ready and now() - held < READY_TIMEOUT_S):
                     time.sleep(1.0 / FRAME_HZ)
                     self.send_state(core, m)
+                    self.ready = self.ready or core.log.wait_for(READY_RE, 0.0) is not None
+                self.check(at[i], "scène du mode prête avant la capture", self.ready,
+                           "" if self.ready else f"pas de « scene_ready id=rogue » en {READY_TIMEOUT_S:.0f} s")
                 shot = self.capture(core, at[i])
                 start += now() - held                  # le temps du gel ne compte pas dans la trace
                 if shot is not None:
