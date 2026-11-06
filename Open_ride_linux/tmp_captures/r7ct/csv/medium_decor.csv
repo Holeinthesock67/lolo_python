@@ -1,0 +1,29 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+33.0;14;0;0;6;0;4;0;
+43.0;19;5;0;7;0;4;0;
+53.0;19;5;0;5;0;4;0;
+63.0;19;5;0;7;0;4;0;
+73.0;19;5;0;6;0;4;0;
+83.0;19;5;0;8;0;4;0;
+93.0;19;5;0;7;0;5;0;airliner_rumble=1
+103.0;19;5;0;8;0;5;0;airliner_rumble=1
+113.0;19;5;0;8;1;5;0;airliner_rumble=1 voice_allez=1
+123.0;19;5;0;8;1;5;0;airliner_rumble=1 voice_allez=1
+133.0;19;5;0;8;1;5;0;airliner_rumble=1 voice_allez=1
+143.0;19;5;0;8;1;6;0;airliner_rumble=2 voice_allez=1
+153.0;19;5;0;10;2;6;0;airliner_rumble=2 voice_allez=1
+163.0;19;5;0;12;1;6;0;airliner_rumble=2 voice_allez=1
+173.0;19;5;0;11;1;6;0;airliner_rumble=2 voice_allez=1
+183.0;19;5;0;12;1;6;0;airliner_rumble=2 voice_allez=1
+193.0;19;5;0;10;3;6;0;airliner_rumble=2 raptor_cry=1 voice_allez=1
+203.0;19;5;0;11;2;6;0;airliner_rumble=2 raptor_cry=1 voice_allez=1
+213.0;19;5;0;12;2;6;0;airliner_rumble=2 raptor_cry=1 voice_allez=1
+223.0;19;5;0;12;2;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=1
+233.0;19;5;0;12;2;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=2
+243.0;19;5;0;11;2;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=2
+253.0;19;5;0;12;0;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=2
+263.0;19;5;0;12;0;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=2
+273.0;19;5;0;12;1;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=2
+283.0;19;5;0;12;1;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=2
+293.0;19;5;0;12;1;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=2
+301.2;19;5;0;12;1;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=2
