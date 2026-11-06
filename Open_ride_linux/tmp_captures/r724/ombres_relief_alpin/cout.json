@@ -1,0 +1,161 @@
+{
+  "low": {
+    "base": {
+      "secondes": 36,
+      "gpu_ms": 6.92,
+      "fps": 59.52,
+      "p99_ms": 16.67,
+      "primitives": 650646.0,
+      "appels": 132.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        6.88,
+        6.95
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "ombres_terrain_proxy": {
+      "secondes": 36,
+      "gpu_ms": 6.89,
+      "fps": 58.89,
+      "p99_ms": 17.02,
+      "primitives": 365188.5,
+      "appels": 124.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        6.93,
+        6.86
+      ],
+      "enleve": "relief simplifié dans les ombres (maille 40 m), tuiles lointaines sans ombre",
+      "diag": "ombres_terrain=proxy",
+      "gain_gpu_ms": 0.03,
+      "diag_non_vu": false
+    },
+    "sans_ombres_terrain": {
+      "secondes": 35,
+      "gpu_ms": 6.87,
+      "fps": 59.76,
+      "p99_ms": 16.7,
+      "primitives": 361602.5,
+      "appels": 118.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        6.88,
+        6.85
+      ],
+      "enleve": "le relief ne porte aucune ombre (borne)",
+      "diag": "ombres_terrain=off",
+      "gain_gpu_ms": 0.05,
+      "diag_non_vu": false
+    }
+  },
+  "medium": {
+    "base": {
+      "secondes": 33,
+      "gpu_ms": 12.54,
+      "fps": 59.67,
+      "p99_ms": 16.67,
+      "primitives": 1573908.0,
+      "appels": 185.5,
+      "gpu_sature_pct": 4.05,
+      "gpu_ms_reps": [
+        12.44,
+        12.65
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "ombres_terrain_proxy": {
+      "secondes": 35,
+      "gpu_ms": 12.6,
+      "fps": 58.58,
+      "p99_ms": 17.37,
+      "primitives": 1011428.0,
+      "appels": 169.0,
+      "gpu_sature_pct": 9.75,
+      "gpu_ms_reps": [
+        12.72,
+        12.48
+      ],
+      "enleve": "relief simplifié dans les ombres (maille 40 m), tuiles lointaines sans ombre",
+      "diag": "ombres_terrain=proxy",
+      "gain_gpu_ms": -0.06,
+      "diag_non_vu": false
+    },
+    "sans_ombres_terrain": {
+      "secondes": 33,
+      "gpu_ms": 12.48,
+      "fps": 59.86,
+      "p99_ms": 16.67,
+      "primitives": 992922.5,
+      "appels": 154.5,
+      "gpu_sature_pct": 9.95,
+      "gpu_ms_reps": [
+        12.48,
+        12.47
+      ],
+      "enleve": "le relief ne porte aucune ombre (borne)",
+      "diag": "ombres_terrain=off",
+      "gain_gpu_ms": 0.06,
+      "diag_non_vu": false
+    }
+  },
+  "high": {
+    "base": {
+      "secondes": 36,
+      "gpu_ms": 13.79,
+      "fps": 58.88,
+      "p99_ms": 16.67,
+      "primitives": 2387655.0,
+      "appels": 196.75,
+      "gpu_sature_pct": 21.9,
+      "gpu_ms_reps": [
+        13.68,
+        13.89
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "ombres_terrain_proxy": {
+      "secondes": 38,
+      "gpu_ms": 13.57,
+      "fps": 58.83,
+      "p99_ms": 16.67,
+      "primitives": 1832756.0,
+      "appels": 182.0,
+      "gpu_sature_pct": 17.35,
+      "gpu_ms_reps": [
+        13.56,
+        13.59
+      ],
+      "enleve": "relief simplifié dans les ombres (maille 40 m), tuiles lointaines sans ombre",
+      "diag": "ombres_terrain=proxy",
+      "gain_gpu_ms": 0.22,
+      "diag_non_vu": false
+    },
+    "sans_ombres_terrain": {
+      "secondes": 36,
+      "gpu_ms": 13.5,
+      "fps": 58.92,
+      "p99_ms": 16.68,
+      "primitives": 1807563.0,
+      "appels": 168.25,
+      "gpu_sature_pct": 28.75,
+      "gpu_ms_reps": [
+        13.43,
+        13.57
+      ],
+      "enleve": "le relief ne porte aucune ombre (borne)",
+      "diag": "ombres_terrain=off",
+      "gain_gpu_ms": 0.29,
+      "diag_non_vu": false
+    }
+  }
+}
