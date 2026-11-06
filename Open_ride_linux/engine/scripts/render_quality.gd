@@ -49,6 +49,9 @@ const LOOK := {
 	"agx_contrast": 1.25,
 	"contrast": 1.08,
 	"saturation": 1.18,
+	# Étalonnage en S (table de couleurs 1D, coût nul), Forward+ seulement comme AgX : ombres plus denses
+	# avec la brume éclairée (variante F du réglage de l'image, 6 novembre).
+	"s_curve": 0.35,
 }
 ## Glow des préréglages qui l'activent : léger, seulement sur ce qui dépasse le blanc (ciel, soleil).
 ## Trois premiers niveaux seulement, agrandis en linéaire (étude du rendu du 6 novembre : −0,45 ms en medium,
@@ -81,8 +84,9 @@ const VOLUMETRIC := {
 	"full": {"grid": 64, "length_m": 1200.0, "density": 0.006, "anisotropy": 0.6},
 }
 ## Part de la lumière du ciel injectée dans la brume volumétrique : sans elle, la brume assombrit tout ce qui est
-## au-delà de sa portée (montagnes noires, 5 novembre) ; à 1, elle voile l'image (trop claire, 6 novembre).
-const VOLUMETRIC_AMBIENT_INJECT := 1.0
+## au-delà de sa portée (montagnes noires, 5 novembre) ; à 1, elle voile l'image (trop claire, 6 novembre) :
+## moitié retenue avec l'étalonnage en S (variante F de `tests/reglage_image.py`).
+const VOLUMETRIC_AMBIENT_INJECT := 0.5
 const VOLUMETRIC_DEPTH := 64
 const MSAA := {0: Viewport.MSAA_DISABLED, 2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}
 const SCREEN_AA := {"off": Viewport.SCREEN_SPACE_AA_DISABLED, "fxaa": Viewport.SCREEN_SPACE_AA_FXAA,
@@ -167,6 +171,7 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 	env.adjustment_enabled = true
 	env.adjustment_contrast = LOOK["contrast"]
 	env.adjustment_saturation = LOOK["saturation"]
+	env.adjustment_color_correction = s_curve(LOOK["s_curve"]) if forward_plus else null
 
 	RenderingServer.directional_shadow_atlas_set_size(int(img["shadow_atlas"]), true)
 	# Le filtre doux de Compatibility tire un bruit différent à chaque image (grain qui scintille) :
@@ -256,9 +261,14 @@ static func apply_diagnostic(light: DirectionalLight3D, env: Environment) -> voi
 	print("Diagnostic de rendu : ", diag)
 
 
+static var _s_curves := {}
+
+
 ## Courbe en S de l'étalonnage (table de couleurs 1D, `adjustment_color_correction`) : ombres plus sombres,
 ## hautes lumières plus claires, milieu de gamme inchangé ; `strength` 0 = droite (aucun effet), 1 = smoothstep.
 static func s_curve(strength: float) -> GradientTexture1D:
+	if _s_curves.has(strength):
+		return _s_curves[strength]
 	var g := Gradient.new()
 	var offsets := PackedFloat32Array()
 	var colors := PackedColorArray()
@@ -272,6 +282,7 @@ static func s_curve(strength: float) -> GradientTexture1D:
 	var tex := GradientTexture1D.new()
 	tex.gradient = g
 	tex.width = 256
+	_s_curves[strength] = tex
 	return tex
 
 

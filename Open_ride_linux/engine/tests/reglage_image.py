@@ -30,16 +30,16 @@ sys.path.insert(0, str(TESTS_DIR))
 import make_biome_world  # noqa: E402
 import recette_u18  # noqa: E402
 
-# Réglages retenus le 6 novembre : ils sont dans les préréglages, rien à ajouter (variante A = préréglage)
+# Réglages retenus le 6 novembre : dans les préréglages (variante F = préréglage), rien à ajouter
 PROPOSED = {"low": "", "medium": "", "high": ""}
 # (nom, réglages ajoutés, description)
 VARIANTS = (
-    ("A", "", "préréglage : brume éclairée pleine (passe du 6 novembre, jugée trop claire)"),
-    ("B", "brume_ambiante=0.5", "brume éclairée à moitié"),
-    ("C", "brume_ambiante=0.5,contraste=1.15,agx_contraste=1.35", "à moitié, contraste relevé"),
-    ("D", "brume_ambiante=0.35,brume_densite=0.7,contraste=1.12", "brume plus légère et moins éclairée"),
-    ("E", "brume_ambiante=0.5,sans_glow", "brume éclairée à moitié, sans halo (−1 ms mesuré)"),
-    ("F", "brume_ambiante=0.5,courbe_s=0.35", "à moitié, étalonnage en S (ombres plus denses)"),
+    ("A", "brume_ambiante=1,courbe_s=0", "ancien réglage : brume éclairée pleine, sans courbe (jugé trop clair)"),
+    ("B", "brume_ambiante=0.5,courbe_s=0", "brume éclairée à moitié"),
+    ("C", "brume_ambiante=0.5,courbe_s=0,contraste=1.15,agx_contraste=1.35", "à moitié, contraste relevé"),
+    ("D", "brume_ambiante=0.35,brume_densite=0.7,courbe_s=0,contraste=1.12", "brume plus légère et moins éclairée"),
+    ("E", "brume_ambiante=0.5,courbe_s=0,sans_glow", "brume éclairée à moitié, sans halo (−1 ms mesuré)"),
+    ("F", "", "préréglage depuis le 6 novembre : brume à moitié, étalonnage en S 0,35"),
     ("G", "brume_ambiante=0.5,courbe_s=0.35,soleil_brume=0.3,terrain_macro=0.35,herbe_degrade=0.35",
      "F avec les trois améliorations visuelles"),
 )

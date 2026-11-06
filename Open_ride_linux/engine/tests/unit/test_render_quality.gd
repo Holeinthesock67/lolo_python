@@ -71,6 +71,8 @@ func _test_presets_application() -> void:
 			and absf(env.tonemap_agx_white - RenderQuality.LOOK["agx_white"]) < 1e-3
 			and env.adjustment_enabled,
 			"%s : glow %s, rendu des tons et étalonnage communs" % [name, str(img["glow"])])
+		_check((env.adjustment_color_correction != null) == fp,
+			"%s : étalonnage en S en Forward+ seulement" % name)
 		_check((light.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS) == (int(img["shadow_splits"]) == 4),
 			"%s : %d cascades d'ombre" % [name, img["shadow_splits"]])
 		var vol := str(img["fog_volumetric"])

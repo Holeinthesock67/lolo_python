@@ -213,8 +213,9 @@ func _run() -> void:
 	var carve_ok := true
 	for s_val in [100.0, 400.0, 700.0]:
 		var p: Vector3 = route.sample_point(s_val)
-		var h := TerrainTiles.mesh_height_at(carved, "far", 0, -1, p.x, p.z)
-		if not (h < p.y):
+		# Hauteur affichée du lointain : relief exagéré (build_arrays) et chute FAR_DROP_M comprise.
+		var h := route.display_y(TerrainTiles.mesh_height_at(carved, "far", 0, -1, p.x, p.z)) - TerrainTiles.FAR_DROP_M
+		if not (h < p.y - TerrainTiles.FAR_CARVE_MARGIN_M):
 			carve_ok = false
 	_check(carve_ok, "k = 2,0 : terrain lointain creusé sous la route affichée")
 
