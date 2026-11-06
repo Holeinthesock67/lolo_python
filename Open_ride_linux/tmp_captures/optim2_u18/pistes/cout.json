@@ -1,0 +1,260 @@
+{
+  "low": {
+    "base": {
+      "secondes": 31,
+      "gpu_ms": 5.15,
+      "fps": 57.05,
+      "p99_ms": 16.67,
+      "primitives": 544715.0,
+      "appels": 208.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        5.17,
+        5.13
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "passes": {
+      "secondes": 35,
+      "gpu_ms": 5.12,
+      "fps": 58.27,
+      "p99_ms": 16.67,
+      "primitives": 544091.0,
+      "appels": 208.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        5.12
+      ],
+      "enleve": "même réglage que base, temps GPU de chaque passe (passes.md)",
+      "diag": "",
+      "gain_gpu_ms": 0.03,
+      "diag_non_vu": false
+    },
+    "sans_ombres_details": {
+      "secondes": 29,
+      "gpu_ms": 5.05,
+      "fps": 58.15,
+      "p99_ms": 16.67,
+      "primitives": 546223.0,
+      "appels": 208.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        5.04,
+        5.06
+      ],
+      "enleve": "pierres et fleurs du sol sans ombre",
+      "diag": "sans_ombres_details",
+      "gain_gpu_ms": 0.1,
+      "diag_non_vu": false
+    }
+  },
+  "medium": {
+    "base": {
+      "secondes": 32,
+      "gpu_ms": 9.96,
+      "fps": 58.36,
+      "p99_ms": 16.67,
+      "primitives": 1195097.0,
+      "appels": 291.5,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        9.88,
+        10.05
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "ssao_low": {
+      "secondes": 33,
+      "gpu_ms": 9.62,
+      "fps": 58.11,
+      "p99_ms": 16.67,
+      "primitives": 1172077.0,
+      "appels": 290.0,
+      "gpu_sature_pct": 1.6,
+      "gpu_ms_reps": [
+        9.57,
+        9.68
+      ],
+      "enleve": "occlusion ambiante basse",
+      "diag": "ssao=low",
+      "gain_gpu_ms": 0.34,
+      "diag_non_vu": false
+    },
+    "passes": {
+      "secondes": 34,
+      "gpu_ms": 9.83,
+      "fps": 58.26,
+      "p99_ms": 16.67,
+      "primitives": 1169693.0,
+      "appels": 281.5,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        9.83
+      ],
+      "enleve": "même réglage que base, temps GPU de chaque passe (passes.md)",
+      "diag": "",
+      "gain_gpu_ms": 0.13,
+      "diag_non_vu": false
+    },
+    "sans_ombres_details": {
+      "secondes": 32,
+      "gpu_ms": 9.83,
+      "fps": 59.3,
+      "p99_ms": 16.67,
+      "primitives": 1184862.5,
+      "appels": 291.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        9.8,
+        9.86
+      ],
+      "enleve": "pierres et fleurs du sol sans ombre",
+      "diag": "sans_ombres_details",
+      "gain_gpu_ms": 0.13,
+      "diag_non_vu": false
+    },
+    "lod_maillage_2": {
+      "secondes": 34,
+      "gpu_ms": 9.64,
+      "fps": 59.06,
+      "p99_ms": 16.67,
+      "primitives": 1201431.0,
+      "appels": 291.25,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        9.5,
+        9.79
+      ],
+      "enleve": "niveaux de détail des maillages comme en low",
+      "diag": "lod_maillage=2.0",
+      "gain_gpu_ms": 0.32,
+      "diag_non_vu": false
+    }
+  },
+  "high": {
+    "base": {
+      "secondes": 33,
+      "gpu_ms": 10.69,
+      "fps": 58.23,
+      "p99_ms": 16.67,
+      "primitives": 1663569.5,
+      "appels": 308.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        10.28,
+        11.1
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "ssao_low": {
+      "secondes": 35,
+      "gpu_ms": 10.76,
+      "fps": 58.92,
+      "p99_ms": 16.67,
+      "primitives": 1624068.0,
+      "appels": 304.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        10.68,
+        10.84
+      ],
+      "enleve": "occlusion ambiante basse",
+      "diag": "ssao=low",
+      "gain_gpu_ms": -0.07,
+      "diag_non_vu": false
+    },
+    "passes": {
+      "secondes": 34,
+      "gpu_ms": 11.05,
+      "fps": 58.7,
+      "p99_ms": 16.67,
+      "primitives": 1666068.0,
+      "appels": 298.0,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        11.05
+      ],
+      "enleve": "même réglage que base, temps GPU de chaque passe (passes.md)",
+      "diag": "",
+      "gain_gpu_ms": -0.36,
+      "diag_non_vu": false
+    },
+    "ssao_medium": {
+      "secondes": 35,
+      "gpu_ms": 10.9,
+      "fps": 58.83,
+      "p99_ms": 16.68,
+      "primitives": 1661851.5,
+      "appels": 297.5,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        10.84,
+        10.96
+      ],
+      "enleve": "occlusion ambiante medium au lieu de high",
+      "diag": "ssao=medium",
+      "gain_gpu_ms": -0.21,
+      "diag_non_vu": false
+    },
+    "brume_light": {
+      "secondes": 28,
+      "gpu_ms": 11.26,
+      "fps": 56.68,
+      "p99_ms": 16.67,
+      "primitives": 1616281.5,
+      "appels": 287.5,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        11.69,
+        10.83
+      ],
+      "enleve": "grille de brume volumétrique du medium",
+      "diag": "brume=light",
+      "gain_gpu_ms": -0.57,
+      "diag_non_vu": false
+    },
+    "sans_ombres_details": {
+      "secondes": 30,
+      "gpu_ms": 11.1,
+      "fps": 57.48,
+      "p99_ms": 16.67,
+      "primitives": 1698783.5,
+      "appels": 299.5,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        11.14,
+        11.05
+      ],
+      "enleve": "pierres et fleurs du sol sans ombre",
+      "diag": "sans_ombres_details",
+      "gain_gpu_ms": -0.41,
+      "diag_non_vu": false
+    },
+    "lod_maillage_1": {
+      "secondes": 32,
+      "gpu_ms": 11.22,
+      "fps": 57.2,
+      "p99_ms": 16.67,
+      "primitives": 1704229.0,
+      "appels": 311.5,
+      "gpu_sature_pct": 0.0,
+      "gpu_ms_reps": [
+        11.23,
+        11.21
+      ],
+      "enleve": "niveaux de détail des maillages comme en medium",
+      "diag": "lod_maillage=1.0",
+      "gain_gpu_ms": -0.53,
+      "diag_non_vu": false
+    }
+  }
+}
