@@ -1,0 +1,7 @@
+$ ~/Games/lolo_python/Open_ride_linux/core/.venv/bin/python /tmp/optim2/Open_ride_linux/engine/tests/sim_bench.py --native --probe --muet --quality low --size 1680x1011 --world ~/OpenRide/mesures/2026-11-06-optim2/image/routes/demo-biomes-tour.world --duration 525 --culling off --out ~/OpenRide/mesures/2026-11-06-optim2/image/low/C --speed-kmh 90 --every-m 1000 --godot ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64
+low C fini (0 min)
+$ ~/Games/lolo_python/Open_ride_linux/core/.venv/bin/python /tmp/optim2/Open_ride_linux/engine/tests/sim_bench.py --native --probe --muet --quality low --size 1680x1011 --world ~/OpenRide/mesures/2026-11-06-optim2/image/routes/demo-biomes-tour.world --duration 525 --culling off --out ~/OpenRide/mesures/2026-11-06-optim2/image/low/F --speed-kmh 90 --every-m 1000 --godot ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64
+low F fini (1 min)
+$ ~/Games/lolo_python/Open_ride_linux/core/.venv/bin/python /tmp/optim2/Open_ride_linux/engine/tests/sim_bench.py --native --probe --muet --quality low --size 1680x1011 --world ~/OpenRide/mesures/2026-11-06-optim2/image/routes/demo-biomes-tour.world --duration 525 --culling off --out ~/OpenRide/mesures/2026-11-06-optim2/image/low/G --speed-kmh 90 --every-m 1000 --godot ~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64
+low G fini (1 min)
+Pillow absent : planche non faite (captures dans les sous-dossiers)

@@ -1,0 +1,172 @@
+{
+  "tour": {
+    "high": {
+      "coast": {
+        "secondes": 117,
+        "fps": 60.0,
+        "p99_ms": 16.67,
+        "gpu_ms": 14.26,
+        "gpu_sature_pct": 21.4,
+        "vram_godot_max_mb": 323.1,
+        "textures_max_mb": 202.1,
+        "vram_nvidia_max_mb": 790.0,
+        "budgets_ok": false
+      },
+      "mediterranean": {
+        "secondes": 96,
+        "fps": 60.0,
+        "p99_ms": 16.67,
+        "gpu_ms": 13.39,
+        "gpu_sature_pct": 3.1,
+        "vram_godot_max_mb": 326.6,
+        "textures_max_mb": 202.1,
+        "vram_nvidia_max_mb": 790.0,
+        "budgets_ok": true
+      },
+      "temperate_grassland": {
+        "secondes": 99,
+        "fps": 60.0,
+        "p99_ms": 16.67,
+        "gpu_ms": 13.44,
+        "gpu_sature_pct": 1.0,
+        "vram_godot_max_mb": 326.8,
+        "textures_max_mb": 202.1,
+        "vram_nvidia_max_mb": 790.0,
+        "budgets_ok": true
+      },
+      "farmland": {
+        "secondes": 100,
+        "fps": 57.59,
+        "p99_ms": 24.85,
+        "gpu_ms": 16.44,
+        "gpu_sature_pct": 69.0,
+        "vram_godot_max_mb": 333.4,
+        "textures_max_mb": 202.1,
+        "vram_nvidia_max_mb": 797.0,
+        "budgets_ok": false
+      },
+      "temperate_forest": {
+        "secondes": 95,
+        "fps": 59.43,
+        "p99_ms": 18.06,
+        "gpu_ms": 15.8,
+        "gpu_sature_pct": 55.8,
+        "vram_godot_max_mb": 330.5,
+        "textures_max_mb": 202.1,
+        "vram_nvidia_max_mb": 797.0,
+        "budgets_ok": false
+      },
+      "alpine": {
+        "secondes": 99,
+        "fps": 60.0,
+        "p99_ms": 16.67,
+        "gpu_ms": 13.06,
+        "gpu_sature_pct": 0.0,
+        "vram_godot_max_mb": 330.0,
+        "textures_max_mb": 203.0,
+        "vram_nvidia_max_mb": 797.0,
+        "budgets_ok": true
+      },
+      "frontières": {
+        "secondes": 66,
+        "fps": 60.0,
+        "p99_ms": 16.67,
+        "gpu_ms": 13.85,
+        "gpu_sature_pct": 18.2,
+        "vram_godot_max_mb": 329.6,
+        "textures_max_mb": 202.1,
+        "vram_nvidia_max_mb": 797.0,
+        "budgets_ok": true
+      }
+    }
+  },
+  "cote": {
+    "high": {
+      "secondes": 57,
+      "fps": 59.98,
+      "p99_ms": 16.67,
+      "gpu_ms": 10.1,
+      "gpu_sature_pct": 1.8,
+      "vram_godot_max_mb": 321.0,
+      "textures_max_mb": 203.0,
+      "vram_nvidia_max_mb": 790.0,
+      "budgets_ok": true
+    }
+  },
+  "perso": {},
+  "textures_sol_mb": {
+    "high": 0.0
+  },
+  "criteres": [
+    {
+      "ok": null,
+      "critere": "U18 §5.1 low coast",
+      "mesure": "pas de mesure"
+    },
+    {
+      "ok": null,
+      "critere": "U18 §5.1 low mediterranean",
+      "mesure": "pas de mesure"
+    },
+    {
+      "ok": null,
+      "critere": "U18 §5.1 low temperate_grassland",
+      "mesure": "pas de mesure"
+    },
+    {
+      "ok": null,
+      "critere": "U18 §5.1 low farmland",
+      "mesure": "pas de mesure"
+    },
+    {
+      "ok": null,
+      "critere": "U18 §5.1 low temperate_forest",
+      "mesure": "pas de mesure"
+    },
+    {
+      "ok": null,
+      "critere": "U18 §5.1 low alpine",
+      "mesure": "pas de mesure"
+    },
+    {
+      "ok": true,
+      "critere": "U18 §5.2 textures du décor en high < 1 Go",
+      "mesure": "203 Mo"
+    },
+    {
+      "ok": false,
+      "critere": "budgets high coast",
+      "mesure": "60.0 i/s, p99 16.67, GPU 14.26 ms"
+    },
+    {
+      "ok": true,
+      "critere": "budgets high mediterranean",
+      "mesure": "60.0 i/s, p99 16.67, GPU 13.39 ms"
+    },
+    {
+      "ok": true,
+      "critere": "budgets high temperate_grassland",
+      "mesure": "60.0 i/s, p99 16.67, GPU 13.44 ms"
+    },
+    {
+      "ok": false,
+      "critere": "budgets high farmland",
+      "mesure": "57.59 i/s, p99 24.85, GPU 16.44 ms"
+    },
+    {
+      "ok": false,
+      "critere": "budgets high temperate_forest",
+      "mesure": "59.43 i/s, p99 18.06, GPU 15.8 ms"
+    },
+    {
+      "ok": true,
+      "critere": "budgets high alpine",
+      "mesure": "60.0 i/s, p99 16.67, GPU 13.06 ms"
+    },
+    {
+      "ok": null,
+      "critere": "U18 §5.3 aucune frontière droite entre biomes",
+      "mesure": "à juger sur planche/ (propriétaire)"
+    }
+  ]
+}
