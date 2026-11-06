@@ -1575,6 +1575,9 @@
             "count": {
               "type": "integer"
             },
+            "bonks": {
+              "type": "integer"
+            },
             "last": {
               "type": [
                 "string",

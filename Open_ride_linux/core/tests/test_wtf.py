@@ -403,8 +403,10 @@ def test_katamari_grows_and_weighs():
     eff = mode.effects()
     assert 0 < eff.mass_add_kg <= KATA_KG_MAX and 0 < eff.feel_offset_pct <= 2.0
     assert mode.physics_params(PARAMS, eff).mass_kg == pytest.approx(80.0 + eff.mass_add_kg)
-    nxt = mode.frame(rider.t, rider.s)["kata"]["next"]
+    kata = mode.frame(rider.t, rider.s)["kata"]
+    nxt = kata["next"]
     assert len(nxt) == 3 and all(d > 0 for d, _ in nxt)
+    assert kata["bonks"] == mode.kata_bonks and kata["bonks"] > 0     # « boing » des sons WTF
 
 
 def test_peloton_skins_whale_draft_and_granny_attack():
