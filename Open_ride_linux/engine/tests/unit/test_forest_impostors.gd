@@ -195,6 +195,22 @@ func _test_display() -> void:
 	_check(forest.get_child_count() == 0 and forest.get_count() == 0, "tuile retirée : plus aucune instance")
 	forest.add_tile({})
 	_check(forest.tile_count() == 0, "tuile vide ignorée")
+	# Préchauffage du pipeline au chargement (banc PC du 6 novembre : à-coup à la première forêt dessinée)
+	var cam := Camera3D.new()
+	root.add_child(cam)
+	_check(not forest.warm_up(null), "préchauffage sans caméra : rien")
+	_check(forest.warm_up(cam) and forest.is_warming() and cam.get_child_count() == 1,
+		"préchauffage : un bouquet collé devant la caméra")
+	var warm := cam.get_child(0) as MultiMeshInstance3D
+	_check(warm.multimesh.use_colors and warm.multimesh.use_custom_data and warm.multimesh.transform_format == MultiMesh.TRANSFORM_3D,
+		"préchauffage : même format de MultiMesh que les forêts")
+	_check((warm.material_override as ShaderMaterial).shader == forest.get_material().shader, "préchauffage : même shader")
+	for i in range(ForestImpostors.WARM_FRAMES):
+		forest._process(0.016)
+	_check(not forest.is_warming(), "préchauffage retiré après %d images" % ForestImpostors.WARM_FRAMES)
+	forest.enabled = false
+	_check(not forest.warm_up(cam), "forêts coupées : pas de préchauffage")
+	cam.free()
 	forest.free()
 
 

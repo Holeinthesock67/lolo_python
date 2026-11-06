@@ -1237,6 +1237,8 @@ func _poll_route_job() -> void:
 	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
 	if living_decor != null:   # cyclistes du décor (lot AS7), spectateurs et passants (lot Y21) préparés au chargement
 		living_decor.warm_up(camera)
+	if streamer.forest_impostors != null:   # forêts lointaines (lot Y5) : pipeline compilé avant la première forêt
+		streamer.forest_impostors.warm_up(camera)
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)

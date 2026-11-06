@@ -49,6 +49,12 @@ const GENERIC_CROWN := {"w": 3.0, "col": Color(0.18, 0.40, 0.18), "shape": "cone
 const GENERIC_HEIGHT_M := 5.4
 ## Flottants par instance dans le tampon du MultiMesh : transformation 3 × 4, couleur, données propres.
 const FLOATS_PER_INSTANCE := 20
+## Préchauffage (banc PC du 6 novembre : 100 à 133 ms à la première forêt dessinée, juste après le départ) :
+## un bouquet minuscule collé devant la caméra pendant WARM_FRAMES images au chargement du parcours, même
+## MultiMesh et même shader, pour que le pipeline soit compilé avant la première vraie forêt.
+const WARM_FRAMES := 5
+const WARM_DIST_M := 2.0
+const WARM_SIZE_M := 0.002
 
 ## Modèle de biome (biome_model.gd) ; null ou inactif : arbre d'avant la série U, densité du thème.
 var biome_model = null
@@ -66,6 +72,8 @@ var _material: ShaderMaterial
 ## { Vector2i(tuile lointaine): [MultiMeshInstance3D, …] }
 var _tiles := {}
 var _count := 0
+var _warm: MultiMeshInstance3D = null
+var _warm_frames := 0
 
 
 func _init() -> void:
@@ -98,6 +106,57 @@ func _apply_to(mmi: MultiMeshInstance3D) -> void:
 	mm.visible_instance_count = visible_count(mm.instance_count, _fraction)
 	mmi.visible = _fraction > 0.0
 	mmi.visibility_range_end = _end_m + CELL_M * 0.75
+
+
+## Préchauffage au chargement du parcours (main.gd, comme segment_markers.warm_up) : un bouquet de
+## WARM_SIZE_M à WARM_DIST_M devant `camera`, dessiné dès 0 m (matériau à part, même shader), retiré après
+## WARM_FRAMES images. Sans caméra ou forêts coupées : rien. Retourne vrai si le bouquet est posé.
+func warm_up(camera: Node3D) -> bool:
+	_drop_warm()
+	if camera == null or not enabled:
+		return false
+	var mat := ShaderMaterial.new()
+	mat.shader = ImpostorShader
+	mat.set_shader_parameter("begin_m", -1.0)
+	mat.set_shader_parameter("fade_m", 0.0)
+	mat.set_shader_parameter("end_m", 1.0e6)
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.use_custom_data = true
+	mm.mesh = _mesh
+	mm.instance_count = 1
+	mm.set_instance_transform(0, Transform3D(Basis().scaled(Vector3.ONE * WARM_SIZE_M), Vector3.ZERO))
+	mm.set_instance_color(0, Color(0.2, 0.4, 0.2))
+	mm.set_instance_custom_data(0, Color(0.5, 0.0, 0.3, 0.2))
+	_warm = MultiMeshInstance3D.new()
+	_warm.name = "ForestImpostorsWarm"
+	_warm.multimesh = mm
+	_warm.material_override = mat
+	_warm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_warm.position = Vector3(0.0, 0.0, -WARM_DIST_M)
+	camera.add_child(_warm)
+	_warm_frames = WARM_FRAMES
+	return true
+
+
+## Bouquet du préchauffage encore en scène (tests).
+func is_warming() -> bool:
+	return _warm != null
+
+
+func _process(_delta: float) -> void:
+	if _warm != null:
+		_warm_frames -= 1
+		if _warm_frames <= 0:
+			_drop_warm()
+
+
+func _drop_warm() -> void:
+	if _warm != null:
+		_warm.queue_free()
+	_warm = null
+	_warm_frames = 0
 
 
 ## Instances affichées pour une part donnée (les premières du tampon, rangées par tirage).
