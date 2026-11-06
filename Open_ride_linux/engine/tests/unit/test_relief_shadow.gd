@@ -73,7 +73,10 @@ func _rough(x: float, z: float) -> float:
 
 
 func _test_counts() -> void:
-	var arrays := TerrainTiles.shadow_proxy_arrays(_tile(_rough))
+	var verts := _tile(_rough)
+	var t0 := Time.get_ticks_usec()
+	var arrays := TerrainTiles.shadow_proxy_arrays(verts)
+	print("faux relief d'une tuile : %.1f ms (tâche de fond, mode proxy seulement)" % ((Time.get_ticks_usec() - t0) / 1000.0))
 	var n := TerrainTiles.CELLS / TerrainTiles.PROXY_STEP
 	var tris := (arrays[Mesh.ARRAY_INDEX] as PackedInt32Array).size() / 3
 	_check(tris == n * n * 2 + 4 * n * 2, "faux relief : %d triangles (grille %d × %d et jupes)" % [tris, n, n])
@@ -134,13 +137,15 @@ func _test_streamer_modes() -> void:
 	var st = WorldStreamer.new()
 	get_root().add_child(st)
 	var tiles := {}
-	for key in ["near:0:0", "far:0:0", "flat:1:0", "road:0"]:
+	for key in ["near:0:0", "near:1:1", "far:0:0", "flat:1:0", "road:0"]:
 		var mi := MeshInstance3D.new()
 		if key == "near:0:0":
 			var proxy := MeshInstance3D.new()
 			proxy.name = WorldStreamer.PROXY_NODE
 			proxy.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
 			mi.add_child(proxy)
+		mi.mesh = BoxMesh.new()
+		st.add_child(mi)
 		st._instances[key] = mi
 		st._apply_relief_shadow(key, mi)
 		tiles[key] = mi
@@ -154,13 +159,15 @@ func _test_streamer_modes() -> void:
 		and proxy_of.call().visible and st.relief_shadow_counts() == {"tiles": 0, "proxies": 1},
 		"proxy : seul le faux relief porte l'ombre (%s)" % [st.relief_shadow_counts()])
 	_check(tiles["road:0"].cast_shadow == ON, "proxy : la route garde son ombre")
+	_check(not st._instances.has("near:1:1") and not is_instance_valid(tiles["near:1:1"]),
+		"proxy : une tuile proche préparée sans faux relief est libérée pour être refaite")
+	tiles.erase("near:1:1")
 	st.relief_shadow = "off"
 	_check(st.relief_shadow_counts() == {"tiles": 0, "proxies": 0}, "off : le relief ne porte aucune ombre")
 	st.relief_shadow = "n'importe quoi"
 	_check(st.relief_shadow == "full" and st.relief_shadow_counts() == {"tiles": 3, "proxies": 0}, "valeur inconnue : full")
 	for key in tiles:
-		st._instances.erase(key)
-		(tiles[key] as Node).free()
+		st._free_instance(key)
 	st.free()
 
 

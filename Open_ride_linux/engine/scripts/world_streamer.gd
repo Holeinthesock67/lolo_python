@@ -108,8 +108,8 @@ var decor_textures := {}
 ## - `proxy` : seules les tuiles proches portent une ombre, par leur faux relief simplifié (TerrainTiles.shadow_proxy_arrays,
 ##   nœud enfant `OmbreRelief` en SHADOW_CASTING_SETTING_SHADOWS_ONLY) ; tuiles dessinées, lointaines et plates sans ombre ;
 ## - `off` : le relief ne porte aucune ombre.
-## Le relief reçoit toujours les ombres (arbres, bâtiments, cyclistes). Le faux relief est préparé pour chaque tuile proche
-## quel que soit le mode : changer de mode en séance ne reconstruit rien.
+## Le relief reçoit toujours les ombres (arbres, bâtiments, cyclistes). Le faux relief n'est calculé qu'en `proxy` (tâche
+## de fond de la tuile) : passer à `proxy` en séance libère les tuiles proches qui n'en ont pas, reconstruites aussitôt.
 const RELIEF_SHADOW_MODES := ["full", "proxy", "off"]
 const PROXY_NODE := "OmbreRelief"
 var relief_shadow := "full":
@@ -118,8 +118,12 @@ var relief_shadow := "full":
 		if v == relief_shadow:
 			return
 		relief_shadow = v
-		for key in _instances:
-			_apply_relief_shadow(key, _instances[key])
+		for key in _instances.keys():
+			var mi: MeshInstance3D = _instances[key]
+			if v == "proxy" and (key as String).begins_with("near:") and mi.get_node_or_null(PROXY_NODE) == null:
+				_free_instance(key)   # reconstruite avec son faux relief au prochain update_window
+			else:
+				_apply_relief_shadow(key, mi)
 		if _ground != null:
 			_apply_relief_shadow("ground", _ground)
 var _shadow_material: StandardMaterial3D = null
@@ -590,7 +594,7 @@ func _start_jobs() -> void:
 		var job := {"key": key, "spec": _wanted[key], "arrays": [], "origin": Vector3.ZERO, "gen": _generation,
 			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m,
 			"gravel": {"mode": gravel_mode, "surfaces": _surfaces},
-			"near_index": _near_index, "far_index": _far_index}
+			"near_index": _near_index, "far_index": _far_index, "relief_shadow": relief_shadow}
 		job["task"] = WorkerThreadPool.add_task(_build_job.bind(job), false, "maillage " + key)
 		_jobs[key] = job
 
@@ -632,7 +636,7 @@ func _build_job(job: Dictionary) -> void:
 			var edges := TerrainTiles.load_neighbour_edges(job["world_dir"], spec["kind"], t.x, t.y)
 			job["arrays"] = TerrainTiles.build_arrays(heights, spec["kind"], edges, v_scale, alt_orig)
 			job["origin"] = TerrainTiles.tile_origin(spec["kind"], t.x, t.y)
-			if spec["kind"] == "near":
+			if spec["kind"] == "near" and job.get("relief_shadow", "full") == "proxy":
 				job["shadow_arrays"] = TerrainTiles.shadow_proxy_arrays(job["arrays"][Mesh.ARRAY_VERTEX])
 			if spec["kind"] == "near" and tree_renderer != null:
 				var t_trees := Time.get_ticks_usec()
@@ -679,7 +683,9 @@ func _poll_jobs(wait: bool) -> void:
 			continue
 		WorkerThreadPool.wait_for_task_completion(job["task"])
 		_jobs.erase(key)
-		if job["gen"] == _generation and _wanted.has(key) and not (job["arrays"] as Array).is_empty():
+		# Tuile proche préparée sans faux relief alors que le mode est passé à `proxy` : refaite (_start_jobs)
+		var stale_shadow: bool = relief_shadow == "proxy" and job["spec"]["kind"] == "near" and not job.has("shadow_arrays")
+		if job["gen"] == _generation and _wanted.has(key) and not (job["arrays"] as Array).is_empty() and not stale_shadow:
 			var ready_item := {"key": key, "arrays": job["arrays"], "origin": job["origin"], "kind": job["spec"]["kind"]}
 			if job.has("trees_data"):
 				ready_item["trees_data"] = job["trees_data"]
