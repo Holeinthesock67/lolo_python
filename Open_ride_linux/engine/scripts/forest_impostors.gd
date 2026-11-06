@@ -18,6 +18,10 @@ extends Node3D
 ## Hauteur : terrain lointain réel (avant l'enfoncement sous le proche), au relief affiché (route.display_y),
 ## FAR_DROP_M et SINK_M plus bas que le sol pour ne jamais flotter.
 ##
+## File (request_tile, appelé par world_streamer.gd à la pose d'une tuile lointaine) : une seule préparation à la fois
+## dans WorkerThreadPool, la plus ancienne demande d'abord, seulement quand le terrain n'a plus de travaux en cours, puis au plus une tuile posée par image (_process). Les
+## forêts lointaines ne comptent pas dans l'attente du décor du départ (pending_count) : elles entrent ensuite, à
+## plus de 1,5 km, sans retarder le départ ni prendre la place des tuiles proches dans les tâches de fond.
 ## Affichage (add_tile) : par case de CELL_M, un MultiMeshInstance3D (tampon rempli d'un bloc, boîte
 ## `custom_aabb` posée, sans ombre) ; instances rangées par tirage, `visible_instance_count` donne la part
 ## affichée du préréglage (QualityPresets.forest_fraction). Distances exactes par instance dans le shader.
@@ -28,6 +32,7 @@ const TreeSpecies := preload("res://scripts/tree_species.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const ImpostorShader := preload("res://shaders/tree_impostor.gdshader")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 ## Début des imposteurs : fin du LOD 1 des arbres proches (tree_renderer.gd LOD1_MAX_DIST_M).
 const BEGIN_M := 1500.0
@@ -74,6 +79,15 @@ var _tiles := {}
 var _count := 0
 var _warm: MultiMeshInstance3D = null
 var _warm_frames := 0
+## File des tuiles à préparer : [{key, tile_x, tile_z, heights, route, theme}], et la tâche en cours.
+var _queue := []
+var _task_id := -1
+var _task_key := Vector2i.ZERO
+var _task_result := {}
+var _task_cancelled := false
+## Vrai tant que le terrain a des travaux en cours (world_streamer.gd) : aucune préparation ne démarre alors, pour
+## laisser les cœurs au terrain et aux arbres proches (départ, tuiles qui entrent). Invalide : jamais occupé.
+var streamer_busy := Callable()
 
 
 func _init() -> void:
@@ -145,11 +159,64 @@ func is_warming() -> bool:
 	return _warm != null
 
 
+## Demande la préparation des forêts de la tuile lointaine (tile_x, tile_z) ; remplace une demande en attente
+## de la même tuile. `heights` : relief réel de la tuile (avant l'enfoncement sous le proche).
+func request_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, theme: Dictionary) -> void:
+	if not enabled:
+		return
+	var key := Vector2i(tile_x, tile_z)
+	_queue = _queue.filter(func(q): return q["key"] != key)
+	if _task_id >= 0 and _task_key == key:
+		_task_cancelled = true
+	_queue.append({"key": key, "tile_x": tile_x, "tile_z": tile_z, "heights": heights, "route": route, "theme": theme})
+	_pump()
+
+
+## Demandes en attente ou en cours (tests, sonde).
+func pending_tiles() -> int:
+	return _queue.size() + (1 if _task_id >= 0 else 0)
+
+
+## Relève la tâche finie (pose sa tuile) et lance la suivante. `wait` : attend la tâche en cours (tests, clear).
+func _pump(wait := false) -> void:
+	if _task_id >= 0:
+		if not wait and not WorkerThreadPool.is_task_completed(_task_id):
+			return
+		WorkerThreadPool.wait_for_task_completion(_task_id)
+		_task_id = -1
+		if not _task_cancelled and not _task_result.is_empty():
+			var t0 := Time.get_ticks_usec()
+			add_tile(_task_result)
+			PerfProbe.mark("foret", "far:%d:%d" % [_task_key.x, _task_key.y], (Time.get_ticks_usec() - t0) / 1000.0)
+		_task_result = {}
+		_task_cancelled = false
+		if not wait:
+			return   # au plus une tuile posée par image ; la suivante part à l'image d'après
+	if _queue.is_empty() or (not wait and streamer_busy.is_valid() and bool(streamer_busy.call())):
+		return
+	var q: Dictionary = _queue.pop_front()
+	_task_key = q["key"]
+	_task_id = WorkerThreadPool.add_task(_prepare_task.bind(q), false, "forêt %d:%d" % [q["tile_x"], q["tile_z"]])
+
+
+func _prepare_task(q: Dictionary) -> void:
+	var t0 := Time.get_ticks_usec()
+	_task_result = prepare_tile(int(q["tile_x"]), int(q["tile_z"]), q["heights"], q["route"], q["theme"])
+	PerfProbe.task("foret", "%d:%d" % [q["tile_x"], q["tile_z"]], (Time.get_ticks_usec() - t0) / 1000.0)
+
+
+## Termine toute la file sur-le-champ (tests en temps simulé).
+func wait_all() -> void:
+	while _task_id >= 0 or not _queue.is_empty():
+		_pump(true)
+
+
 func _process(_delta: float) -> void:
 	if _warm != null:
 		_warm_frames -= 1
 		if _warm_frames <= 0:
 			_drop_warm()
+	_pump()
 
 
 func _drop_warm() -> void:
@@ -422,6 +489,9 @@ func add_tile(data: Dictionary) -> void:
 
 
 func remove_tile(key: Vector2i) -> void:
+	_queue = _queue.filter(func(q): return q["key"] != key)
+	if _task_id >= 0 and _task_key == key:
+		_task_cancelled = true
 	if not _tiles.has(key):
 		return
 	for mmi in _tiles[key]:
@@ -432,6 +502,10 @@ func remove_tile(key: Vector2i) -> void:
 
 
 func clear() -> void:
+	_queue.clear()
+	if _task_id >= 0:
+		_task_cancelled = true
+		_pump(true)
 	for key in _tiles.keys():
 		remove_tile(key)
 	_tiles.clear()
