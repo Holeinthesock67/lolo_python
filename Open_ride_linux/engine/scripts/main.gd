@@ -1039,9 +1039,12 @@ func _process(delta: float) -> void:
 		# Bots placés avant le décor vivant : ses cyclistes, ses véhicules et son compte des contacts lisent les
 		# places des bots de cette image. Après une image bloquée, des places de l'image d'avant, face à la
 		# caméra déjà avancée, comptaient un contact qui n'existait pas (rejeu #707, 490 ms bloquées à t = 132 s).
+		# Bots extrapolés au même instant `now` que le cycliste : lus plus tard dans l'image (après la fenêtre de
+		# tuiles, 3 à 25 ms), ils avançaient de v × ce délai, et un bot à 1,78 m derrière le cycliste dans le core
+		# s'affichait à moins de 1,7 m (contacts du banc course_bots, 6 novembre).
 		if bots_model.count() > 0:
 			t_step = Time.get_ticks_usec()
-			_show_bots(s_route, float(follow.last_frame["v"]))
+			_show_bots(s_route, float(follow.last_frame["v"]), now)
 			_bots_frame = Engine.get_process_frames()
 			PerfProbe.mark_since("bots", "", t_step)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
@@ -1749,13 +1752,15 @@ func _on_state_received(state: Dictionary) -> void:
 	if route_id != _route_id_requested:
 		_request_route(route_id)
 	var running := session_state == "RUNNING"
-	follow.push_frame(Time.get_ticks_usec(), float(state.get("s", 0.0)), float(state.get("v", 0.0)), running)
+	# Une seule heure de réception pour le cycliste et les bots de la trame : le core les donne au même instant.
+	var t_frame_us := Time.get_ticks_usec()
+	follow.push_frame(t_frame_us, float(state.get("s", 0.0)), float(state.get("v", 0.0)), running)
 	ipc.test_log("state seq=%d s=%.3f session=%s" % [int(state.get("seq", 0)), float(state.get("s", 0.0)), session_state])
 
 	if running and route != null:
 		_give_cues(state)
 	var in_session := running or session_state == "PAUSED"
-	bots_model.push(state.get("bots", null) if in_session else null, Time.get_ticks_usec())
+	bots_model.push(state.get("bots", null) if in_session else null, t_frame_us)
 	bots_model.set_race(state if in_session else null)
 	_draft = {"draft": state.get("draft", null) if in_session else null,
 		"draft_bot": state.get("draft_bot", null) if in_session else null}
@@ -1789,7 +1794,7 @@ func _on_state_received(state: Dictionary) -> void:
 	# _process les place avec le s lissé de la caméra. Deux placements par image, l'un avec le s brut, faisaient
 	# avancer les bots par à-coups (rejeu du 2 novembre, lot AS2).
 	if Engine.get_process_frames() - _bots_frame > 1 or bots_model.count() == 0:
-		_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)))
+		_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)), t_frame_us)
 	if living_decor != null:
 		living_decor.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if living_world != null:
@@ -1875,9 +1880,10 @@ func _update_survivor(state: Dictionary, in_session: bool) -> void:
 	segment_markers.set_survivor_arches(survivor_hud.arches_to_draw(state))
 
 
-func _show_bots(rider_s: float, rider_v: float) -> void:
+## Bots vus du cycliste à `now_us`, l'instant où `rider_s` a été calculé (même horloge que les trames).
+func _show_bots(rider_s: float, rider_v: float, now_us: int) -> void:
 	bots_model.vehicles = living_decor.vehicle_places() if living_decor != null else []
-	var view: Array = bots_model.view(rider_s, rider_v, Time.get_ticks_usec())
+	var view: Array = bots_model.view(rider_s, rider_v, now_us)
 	if hud != null and hud.has_method("update_bots"):
 		# Dernier survivant : la liste des coureurs (survivor_view.gd) remplace l'encart des bots
 		hud.update_bots([] if _last_state.has("survivor") else view, bots_model.race())
