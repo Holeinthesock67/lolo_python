@@ -112,6 +112,8 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 			streamer.culling_keep_m = ViewCulling.keep_radius_for(QualityPresets.shadow_distance_m(key))
 		if "quality_preset" in streamer:
 			streamer.quality_preset = key   # biomes par tuile et textures de sol (lot U6)
+		if "forest_impostors" in streamer and streamer.forest_impostors != null:
+			streamer.forest_impostors.set_preset(key)   # forêts lointaines (lot Y5)
 
 
 ## Qualité d'image (lot Y13) : anticrénelage, filtrage, occlusion ambiante, glow, ombres, LOD, et rendu

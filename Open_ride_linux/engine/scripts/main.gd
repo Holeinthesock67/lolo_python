@@ -19,6 +19,7 @@ const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
+const ForestImpostors := preload("res://scripts/forest_impostors.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const RoadSurface := preload("res://scripts/road_surface.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
@@ -240,6 +241,7 @@ func _ready() -> void:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
 	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)), -1.0, "--camera")
+	camera_views.far_height_m = float(cfg.get("camera_height", CameraViews.FAR_HEIGHT_M))
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
 	print("Mode d'affichage : ", _display_name)
@@ -258,6 +260,13 @@ func _ready() -> void:
 		tree_rend.name = "TreeRenderer"
 		streamer.add_child(tree_rend)
 		streamer.tree_renderer = tree_rend
+	if streamer.forest_impostors == null:
+		var forest = ForestImpostors.new()
+		forest.name = "ForestImpostors"
+		forest.enabled = bool(cfg.get("forest", true))
+		streamer.add_child(forest)
+		streamer.forest_impostors = forest
+	print("Forêts lointaines : ", "actives" if streamer.forest_impostors.enabled else "coupées")
 	if streamer.osm_streamer == null:
 		var osm_st = OsmStreamer.new()
 		osm_st.name = "OsmStreamer"
@@ -1234,6 +1243,8 @@ func _poll_route_job() -> void:
 	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
 	if living_decor != null:   # cyclistes du décor (lot AS7), spectateurs et passants (lot Y21) préparés au chargement
 		living_decor.warm_up(camera)
+	if streamer.forest_impostors != null:   # forêts lointaines (lot Y5) : pipeline compilé avant la première forêt
+		streamer.forest_impostors.warm_up(camera)
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)

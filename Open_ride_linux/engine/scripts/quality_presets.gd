@@ -125,6 +125,21 @@ const TREE_BUDGETS := {
 	"high": 100000,
 }
 
+## Forêts lointaines en imposteurs (lot Y5) : part des bouquets d'arbres affichés au-delà des arbres proches
+## (tirage fixe par bouquet, `MultiMesh.visible_instance_count`), de la fin des arbres proches (1 500 m)
+## jusqu'à la fin du brouillard (`fog_end_m`). 0 : aucune forêt lointaine (rendu d'avant Y5).
+const FOREST_FRACTION := {
+	"low": 0.6,
+	"medium": 1.0,
+	"high": 1.0,
+}
+
+
+static func forest_fraction(name: String) -> float:
+	var key := name.strip_edges()
+	return FOREST_FRACTION.get(key, FOREST_FRACTION[DEFAULT_PRESET])
+
+
 ## Distance d'affichage des bâtiments (Lot E4)
 const BUILDING_VISIBILITY_END := {
 	"low": 1500.0,
