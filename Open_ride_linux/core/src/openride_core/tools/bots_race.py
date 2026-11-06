@@ -39,6 +39,8 @@ DT = 0.02
 FRAME_EVERY = 2                # trame `state` toutes les 40 ms (25 Hz, DT_STATE de la séance)
 GAP_LIMIT_PCT = 2.0
 MAX_RIDE_S = 6 * 3600.0
+TACTICS_MODE = "essai"         # lot Y10 : relais, attaques, réponses et fatigue, sans facteur de forme
+SEED = 1                       # graine de la tactique : même course d'un essai à l'autre
 SYNTHETIC = {
     "plat": (20000.0, lambda s: 0.0),
     "col": (10000.0, lambda s: 0.0 if s < 2000.0 else 7.0),
@@ -66,7 +68,7 @@ def prepare_route(route: str, routes_root: Path) -> str:
 
 
 def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0,
-         level_pct: float | None = None, dt: float = DT) -> dict[str, Any]:
+         level_pct: float | None = None, dt: float = DT, seed: int = SEED) -> dict[str, Any]:
     unknown = [p for p in profiles if p not in PROFILES]
     if unknown:
         raise RaceError(f"profil(s) de bot inconnu(s) : {', '.join(unknown)} ({', '.join(PROFILES)})")
@@ -97,6 +99,7 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
         results: list[dict] = []
         s.server.send_raw = lambda m, max_size=None: results.append(m) if m.get("type") == "segment_result" else None
         s.server.send_input_event = lambda ev: None
+        s.bot_tactics_mode, s.bot_tactics_seed = TACTICS_MODE, seed   # lot Y10 : tactique sans forme du jour
         s._on_command("select_route", {"route_id": route_id}, 1)
         if s.route is None:
             raise RaceError(f"parcours {route} refusé par la séance")

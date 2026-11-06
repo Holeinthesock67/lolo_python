@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Comportement des bots dans le core (profils, attaques, abri) | Python | Y9, séries T et R | Moyenne | Oui ; issue #366 |
+| Comportement des bots dans le core (profils, attaques, abri) | Python | Y9, séries T et R | Moyenne | En PR (6 novembre) ; reste la course de 45 min sur le PC ; issue #366 |
 
 ## 1. Objectif
 
@@ -59,3 +59,21 @@ Aucune : les bots gardent les champs de la révision 1.4. Montrer l'action d'un 
 
 - Affichage des actions des bots dans le HUD (révision du contrat, à part) ; lissage et position latérale à l'écran (Y9).
 - Bots du monde ouvert (série W) et ennemis du Cyber-Rogue (série R) ; apprentissage automatique.
+
+## 9. Réalisation (6 novembre 2026)
+
+Module commun `core/src/openride_core/bot_tactics.py`, conçu pour être prolongé par le vélodrome (lot VD7, `docs/4.0/PLAN_SERIE_VD.md` §6.1 : coalitions, marquage, bluff, gestion du classement, fatigue visible, personnalités, réglage « Tactique des bots : aucune, simple, complète ») sans second système de tactique :
+
+- **Table des modes** `MODE_TACTICS` : chaque mode active ses comportements (`Behaviours` : relais, attaques, réponses, fatigue de longue durée, forme du jour). `classic` a tout ; `none` rien (Dernier survivant, WTF, monde ouvert et vélodrome jusqu'à leur propre lot) ; `essai` sans la forme du jour (banc `bots_race`, qui juge chaque bot à ± 2 %) ; `calibration` les attaques et la fatigue (simulation du lot T13). VD7 ajoute ses comportements comme champs de `Behaviours` et ses lignes à la table.
+- **Caractère par profil** (`Character`, champ `character` de la table `PROFILES` du T12) : chance et moment des attaques (grimpeur 90 % entre 10 et 35 % de la montée, rouleur 35 % entre 40 et 85 %, sprinteur et diesel jamais ; attaque au dernier kilomètre d'un sprint : rouleur 40 %, grimpeur 10 %), chance de suivre en montée et sur le plat, relais (pas le sprinteur), fatigue (`durability_pct_per_h` : 3 % par heure, 4,5 % pour le sprinteur, 1,5 % pour le diesel ; plancher de 70 % de la CP).
+- **Pas du bot** (`Tactics.adjust`, appelé par `ProfileBot.step`) : seule la puissance demandée change, et l'envie de quitter la roue suivie (lot AS1) ; la réserve W′bal vide ramène toujours à la CP. **Pas du champ** (`update_field`, appelé par la séance avant le pas des bots, relu deux fois par seconde) : groupes à moins de 2 s, relais, départs.
+- **Graine** : tous les tirages viennent de la graine de la séance (`draw`, CRC32 de la graine et des clés), tirée au départ et écrite au journal du core (« Tactique des bots : classic, graine … ») ; `CoreSession.bot_tactics_seed` la fixe (essais, rejeu).
+
+Écarts assumés avec la lettre du §4, à valider sur le vélo :
+
+- **Abri entre bots** : déjà livré par les lots AS1 à AS4 (`draft.update_bots`, plafond de groupe de 0,55 du lot AS4 au lieu de 0,45) ; Y10 n'y touche pas, le critère 2 est vérifié par un test.
+- **Fin de relais** : le bot qui se relève roule à −15 % au moins 5 s **et jusqu'à être doublé** (15 s au plus) : à −15 % pendant 5 s seulement, les suivants n'ont pas le temps de le doubler et il reprend la tête. Il se décale de 1 m vers l'axe (place de repos du placement AS2) pour que les autres passent sans sortir de leur ligne, puis ne reprend pas la tête avant 20 s.
+- **Départ détecté** : l'écart grandit de plus de 0,5 s **en 3 s**, à chaque relevé (la lettre « 0,5 s par seconde » ne verrait aucune attaque réelle : à 1,25 × CP, l'écart grandit d'environ 0,2 s par seconde). Le bot qui suit roule à 1,25 × CP jusqu'à revenir à 0,3 s (60 s au plus, arrêt sous 20 % de réserve), puis reprend la roue (AS1).
+- **Calibrage** : la simulation du T13 roule seule avec les attaques et la fatigue ; la forme du jour (0,97 à 1,03) s'applique après, sur la CP calibrée, et les relais ne jouent qu'en groupe. Le critère 6 est donc tenu en moyenne (test sur trois graines, forme comprise) et bot par bot au banc `bots_race`, qui tourne en mode `essai`.
+
+Tests : `core/tests/test_bot_tactics.py` (critères 1 à 6 du §7, physique et réserve inchangées par la tactique, mode `none` neutre). Aucun changement d'engine ni de contrat : pas de nouveau coût GPU ; la course de 45 min contre 4 bots (T11) reste à faire sur le PC.

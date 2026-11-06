@@ -17,6 +17,10 @@
 - lot DS3 : tactique de survie du mode « Dernier survivant » (`survival`, posé à chaque pas par la séance
   depuis `survivor.survival_hints`) : sprint avant l'arche quand le bot est menacé, économie dans les
   roues quand il est loin du dernier. Cahier : `docs/lots/LOT_DS3_tactique_bots.md`.
+- lot Y10 : tactique des bots à profil (`tactics`, module `bot_tactics.py`) : relais sur le plat, attaques
+  en montée et au dernier kilomètre d'un sprint, réponses aux départs, fatigue au-delà de 60 min et forme
+  du jour ; caractère tactique de chaque profil dans `PROFILES` (`character`). Cahier :
+  `docs/lots/LOT_Y10_comportement_bots_core.md`.
 """
 
 from __future__ import annotations
@@ -31,6 +35,7 @@ from typing import Any
 
 from dataclasses import dataclass
 
+from .bot_tactics import DURABILITY_START_S, Character, Tactics
 from .config import BOUNDS
 from .draft import BOT_LANE_M, Lane
 from .physics import G, V_FLOOR, V_MAX, PhysicsParams, RiderPhysics, air_density, resistive_force
@@ -269,15 +274,25 @@ class BotProfile:
     peak_s: float = 10.0
     sprint_last_m: float = 200.0
     survival: float = 1.30         # lot DS3 : fraction de CP du sprint de survie avant une arche
+    character: Character = Character()   # lot Y10 : attaques, réponses, relais et fatigue de longue durée
 
 
 PROFILES: dict[str, BotProfile] = {
     "climber": BotProfile("Grimpeur", 60.0, 4.0, 15000.0, flat=0.92, climb=1.00, climb_attack=1.10,
-                          survival=1.25),
-    "rouleur": BotProfile("Rouleur", 72.0, 3.6, 20000.0, flat=1.00, climb=0.95),
+                          survival=1.25,
+                          character=Character(attack_chance=0.9, attack_window=(0.1, 0.35),
+                                              sprint_attack_chance=0.1, follow_climb=0.9, follow_flat=0.3,
+                                              durability_pct_per_h=3.0)),
+    "rouleur": BotProfile("Rouleur", 72.0, 3.6, 20000.0, flat=1.00, climb=0.95,
+                          character=Character(attack_chance=0.35, attack_window=(0.4, 0.85),
+                                              sprint_attack_chance=0.4, follow_climb=0.4, follow_flat=0.85,
+                                              durability_pct_per_h=3.0)),
     "sprinter": BotProfile("Sprinteur", 80.0, 3.3, 25000.0, flat=0.90, climb=0.88, peak_wkg=12.0,
-                           survival=1.50),
-    "diesel": BotProfile("Diesel", 75.0, 3.8, 10000.0, flat=1.00, climb=1.00, survival=1.20),
+                           survival=1.50,
+                           character=Character(follow_climb=0.2, follow_flat=0.7, relays=False,
+                                               durability_pct_per_h=4.5)),
+    "diesel": BotProfile("Diesel", 75.0, 3.8, 10000.0, flat=1.00, climb=1.00, survival=1.20,
+                         character=Character(follow_climb=0.3, follow_flat=0.6, durability_pct_per_h=1.5)),
 }
 
 
@@ -325,6 +340,8 @@ class ProfileBot(ConstantPowerBot):
         self.level_pct = level_pct
         # lot DS3 : (distance à l'arche en m, menacé, à l'abri, distance de début du sprint) ; None hors mode
         self.survival: tuple[float, bool, bool, float] | None = None
+        # lot Y10 : tactique (mode « none » jusqu'au départ de séance, `bot_tactics.start_race`)
+        self.tactics = Tactics(self.id, self.spec.character)
         self.set_scale(scale)
 
     def set_scale(self, scale: float) -> None:
@@ -332,13 +349,20 @@ class ProfileBot(ConstantPowerBot):
         if not math.isfinite(scale) or scale <= 0:
             raise BotError(f"échelle de bot invalide : {scale}")
         self.scale = float(scale)
-        self.cp_w = self.spec.cp_wkg * self.spec.mass_kg * scale
+        self.base_cp_w = self.spec.cp_wkg * self.spec.mass_kg * scale   # CP calibrée, avant forme et fatigue
+        self.cp_w = self.base_cp_w * self.tactics.form
         self.w_prime_j = self.spec.w_prime_j * scale
         self.peak_w = self.spec.peak_wkg * self.spec.mass_kg * scale
         self.power_w = self.cp_w
         self.wbal: WbalState = wbal_initial(self.w_prime_j)
         self._peak_key: tuple | None = None    # sprint (id, tour) dont le pic est entamé
         self._peak_used_s = 0.0
+        self.tactics.reset()
+
+    def apply_form(self) -> None:
+        """CP du jour (lot Y10) : CP calibrée × forme × fatigue de longue durée au temps du bot."""
+        self.cp_w = self.base_cp_w * self.tactics.cp_factor(self.t)
+        self.power_w = self.cp_w
 
     @property
     def wbal_pct(self) -> float:
@@ -425,7 +449,9 @@ class ProfileBot(ConstantPowerBot):
             return
         length = route.length_m if route is not None else 0.0
         loop = route.is_loop if route is not None else False
+        self.cp_w = self.base_cp_w * self.tactics.cp_factor(self.t)   # lot Y10 : forme et fatigue
         power, tactical = self._strategy(self.physics.s, length, loop)
+        power, tactical = self.tactics.adjust(self, power, tactical, self.t, self.physics.s, length, loop)
         if self.wheel is not None and not tactical:
             here = route.sample(self.physics.s) if route is not None else None
             power = self._follow_power(power, here.grade_pct if here else 0.0, here.alt_m if here else 0.0)
@@ -514,12 +540,20 @@ def ride_time(prof: RouteProfile, params: PhysicsParams, power_w: float = 0.0,
     if bot is not None:
         cp, wp, peak = bot.cp_w, bot.w_prime_j, bot.peak_w
         w = wp
+        tac = bot.tactics
+        tired = tac.on.durability
+        spans = tac.attack_spans(bot.segments, bot.spec.sprint_last_m, peak > 0)
     s = v = t = 0.0
     while s < length and t < max_t:
         i = min(int(s / cell), n - 1)
         p = power_w
         if bot is not None:
-            p = bot.target_power(s, length, False, 100.0 * w / wp)
+            if tired and t > DURABILITY_START_S:   # lot Y10 : fatigue de longue durée du mode « calibration »
+                cp = bot.cp_w = bot.base_cp_w * tac.cp_factor(t)
+            reserve = 100.0 * w / wp
+            p, tactical = bot._strategy(s, length, False, reserve)
+            if tac.attack_until > t or any(lo <= s < hi for lo, hi in spans):   # lot Y10 : attaques
+                p, _ = tac.adjust(bot, p, tactical, t, s, length, False, reserve)
             if p > cp and w <= 0.0:
                 p = cp
             if p == peak and peak > 0:
@@ -559,8 +593,9 @@ def calibrate(profile: str, route: Any, level_pct: float, rider: RefRider, segme
     prof = prof or RouteProfile(route)
     still = replace(rider.params, wind_mps=0.0)   # calibrage sans vent, pour le cycliste comme pour le bot
     t_ref = ride_time(prof, still, power_w=rider.ftp_w * level_pct / 100.0)
-    bot = ProfileBot(profile, params=replace(bot_params or rider.params, wind_mps=0.0), segments=segments,
-                     bike_mass_kg=bike_mass_kg)
+    bot = ProfileBot(profile, bot_id="calib", params=replace(bot_params or rider.params, wind_mps=0.0),
+                     segments=segments, bike_mass_kg=bike_mass_kg)
+    bot.tactics.start(0, "calibration")   # lot Y10 : attaques et fatigue, sans groupe ni forme du jour
     lo_x, hi_x = math.log(SCALE_BOUNDS[0]), math.log(SCALE_BOUNDS[1])
 
     def err(x: float) -> float:

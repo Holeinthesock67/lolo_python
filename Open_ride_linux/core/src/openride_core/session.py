@@ -56,6 +56,7 @@ from .rogue import mode as rogue_mode
 ROGUE_SCENE_ID = "rogue"   # `scene_ready.route_id` de la scène du Cyber-Rogue (lot Y20)
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
+from . import bot_tactics
 from . import draft as draft_mod
 from . import road_cyclists as road_cyclists_mod
 from . import traffic as traffic_mod
@@ -273,6 +274,11 @@ class CoreSession:
         self.config_path = config_path   # écrit par pair_devices (lot N13) ; défaut ~/OpenRide/config.toml
         self.bots = list(bots) if bots else []
         self._cli_bots = self.bots   # ceux de la ligne de commande, remis quand `start` n'a pas de `bots`
+        # Lot Y10 : tactique des bots à profil (`bot_tactics.MODE_TACTICS`) ; graine tirée à chaque départ
+        # (fixée par les essais : `bots_race`), groupes et relais relus par `bot_tactics.update_field`
+        self.bot_tactics_mode = "classic"
+        self.bot_tactics_seed: int | None = None
+        self._field = bot_tactics.Field()
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
         if hasattr(self.driver, "event_sink"):   # statuts du trainer et perte de frein au journal
@@ -2321,6 +2327,13 @@ class CoreSession:
         rider = RefRider(self.cfg.rider.ftp_w, self._base_params)
         scales = calibrate_bots(self.bots, route, rider, self.cfg.bots.level_pct, self._segments,
                                 self.cfg.bike.mass_kg, bot_params=plain)
+        # Lot Y10 : tactique après le calibrage (forme du jour sur la CP calibrée), le mode classique seul
+        seed = self.bot_tactics_seed if self.bot_tactics_seed is not None else bot_tactics.seed_from(time.time())
+        mode = self.bot_tactics_mode if classic else "none"
+        bot_tactics.start_race(self.bots, seed, mode)
+        self._field = bot_tactics.Field()
+        if any(getattr(b, "tactics", None) is not None for b in self.bots):
+            log.info("Tactique des bots : %s, graine %d.", mode, seed)
         if scales:
             log.info("Bots calibrés en %.0f ms : %s.", 1000.0 * (time.perf_counter() - t0),
                      ", ".join(f"{p} à {lv:g} % : CP × {k:.2f}" for (p, lv), k in scales.items()))
@@ -2717,6 +2730,10 @@ class CoreSession:
                 self._gravel_stats[0] += ridden
         if self.survivor is not None:
             self._survivor_before_bots()
+        # Lot Y10 : groupes, relais et départs (cycliste déjà avancé, bots au pas précédent)
+        bot_tactics.update_field(self._field, self._racing_bots(), (self.physics.s, self.physics.v), dt,
+                                 (lambda s: route.sample(s).grade_pct) if route else None,
+                                 route.length_m if route else None, bool(route and route.is_loop))
         for bot in self.bots:
             if bot.id in self._survivor_out:
                 self._step_retired_bot(bot, dt)
