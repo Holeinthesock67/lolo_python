@@ -239,6 +239,7 @@ func _ready() -> void:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
 	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)), -1.0, "--camera")
+	camera_views.far_height_m = float(cfg.get("camera_height", CameraViews.FAR_HEIGHT_M))
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
 	print("Mode d'affichage : ", _display_name)

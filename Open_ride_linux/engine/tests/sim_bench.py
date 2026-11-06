@@ -4,7 +4,7 @@
 Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|ouvert|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
-                 [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side]
+                 [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side] [--camera-height M]
                  [--culling on|off] [--forest on|off] [--crowd climbs|all] [--load-guard on|off] [--probe] [--speed-kmh V] [--biome ID] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
@@ -412,6 +412,8 @@ class Bench:
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
                     f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}",
                     f"--forest={a.forest}", f"--load-guard={a.load_guard}", f"--crowd={a.crowd}"]
+            if a.camera_height is not None:   # vue follow_far plus haute (lot Y5 : voir les forêts lointaines)
+                cmd.append(f"--camera-height={a.camera_height:g}")
             if self.biome:
                 cmd.append(f"--biome={self.biome}")
             if self.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
@@ -1071,6 +1073,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="captures tous les N mètres de route au lieu de toutes les N secondes (lot S1)")
     ap.add_argument("--culling", default="off", choices=("on", "off"),
                     help="tri de ce que la caméra ne voit pas (lot S1, défaut off faute de gain mesuré ; on : essai)")
+    ap.add_argument("--camera-height", type=float,
+                    help="hauteur de la vue follow_far en m (défaut du jeu : 6 ; lot Y5 : voir par-dessus les arbres proches)")
     ap.add_argument("--forest", default="on", choices=("on", "off"),
                     help="forêts lointaines en imposteurs au-delà de 1,5 km (lot Y5, défaut on comme le jeu ; off : banc avant)")
     ap.add_argument("--crowd", default="climbs", choices=("climbs", "all"),
