@@ -605,7 +605,7 @@ Le core ne démarre jamais une séance (`RUNNING`) sans avoir reçu un `hello` v
 - `new` : clés des cartes nouvelles pas encore vues.
 
 ```json
-{"type":"collection","v":1,"request_cmd_id":12,"cards_count":42,"first_time":false,"cards":[{"id":"premiere_seance","title":"Premier coup de pédale","text":"Terminer sa première séance sur OpenRide.","family":"distance","rarity":"commune","visual":"pedale_route"}],"earned":[{"id":"premiere_seance","key":"premiere_seance","edition":null,"title":"Premier coup de pédale","text":"Terminer sa première séance sur OpenRide.","family":"distance","rarity":"commune","visual":"pedale_route","journal":"2026-11-07_12-00-00.jsonl","date":"2026-11-07"}],"remaining":[{"id":"km_100","value":42.5,"target":100.0}],"new":["premiere_seance"]}
+{"type":"collection","v":1,"request_cmd_id":12,"cards_count":42,"first_time":false,"cards":[{"id":"premiere_seance","title":"Premier coup de pédale","text":"La première séance est enregistrée.","family":"seance","rarity":"commune","visual":"pedale"}],"earned":[{"id":"premiere_seance","key":"premiere_seance","edition":null,"title":"Premier coup de pédale","text":"La première séance est enregistrée.","family":"seance","rarity":"commune","visual":"pedale","journal":"2026-11-07_12-00-00.jsonl","date":"2026-11-07"}],"remaining":[{"id":"km_100","value":42.5,"target":100.0}],"new":["premiere_seance"]}
 ```
 
 **Séquence nominale**

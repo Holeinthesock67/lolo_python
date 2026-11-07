@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série BC : commandes `list_collection` et `collection_seen`, message `collection`, annonce facultative `summary.collection` (une carte, nombre des autres) | Python | BC1 | Petite | Livré |
+| Série BC : commandes `list_collection` et `collection_seen`, message `collection`, annonce facultative `summary.collection` (une carte, nombre des autres) | Python | BC1 | Petite | En PR (7 novembre, PR #758) |
 
 Série BC (version 5.0, badges et cartes à collectionner, demande du propriétaire du 7 novembre 2026). Plan de la série : `docs/5.0/PLAN_SERIE_BC.md`.
 
