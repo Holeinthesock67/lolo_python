@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Compilateur : classification des biomes (WorldCover en cache, OSM, altitude, latitude), option `--biome` | Python | U1 | Grande | Oui, après U1, **version 3.0** (issue #332) |
+| Compilateur : classification des biomes (WorldCover en cache, OSM, altitude, latitude), option `--biome` | Python | U1 | Grande | En PR le 6 novembre (PR #734), **version 3.0** (issue #332) |
 
 ## 1. Objectif
 
