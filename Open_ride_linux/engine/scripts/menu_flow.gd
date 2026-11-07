@@ -545,7 +545,7 @@ func on_error(code: String, text: String) -> void:
 		contents.on_error(code, text)
 		_refresh_contents()
 		return
-	if (code == "bot_invalid" or (code == "bad_args" and menu.mode == "survivor")) and menu.current_screen() == MenuModel.READY:
+	if (code == "bot_invalid" or (code == "bad_args" and (menu.mode == "survivor" or menu.is_track()))) and menu.current_screen() == MenuModel.READY:
 		ready_message = "Échec : " + text
 		return
 	if _plan_request != "" and code in ["plan_invalid", "busy"]:
@@ -586,13 +586,14 @@ func set_routes(raw: Array) -> void:
 		route_tag = ""
 	var items: Array = catalog.route_items(raw, CatalogModel.ROUTE_SORTS[route_sort][0], route_tag)
 	if items.is_empty() and route_tag != "":
-		items.append({"id": "empty", "label": "Aucun parcours « %s »" % route_tag, "enabled": false})
+		items.append({"id": "empty", "label": "Aucun parcours « %s »" % CatalogModel.tag_label(route_tag), "enabled": false})
 	if not raw.is_empty():
 		items.append({"id": MenuModel.SORT_ROUTES_ID, "label": "Trier par : " + CatalogModel.ROUTE_SORTS[route_sort][1]})
 		if not tags.is_empty():
 			items.append({"id": MenuModel.FILTER_ROUTES_ID,
-				"label": "Étiquette : " + (route_tag if route_tag != "" else "toutes")})
+				"label": "Étiquette : " + (CatalogModel.tag_label(route_tag) if route_tag != "" else "toutes")})
 	menu.set_items(MenuModel.ROUTES, items)
+	menu.set_track_ids(CatalogModel.track_route_ids(raw))   # écran Prêt du vélodrome (lot VD10)
 	for r in raw:
 		if r is Dictionary and str(r.get("id", "")) != "":
 			route_names[str(r["id"])] = str(r.get("name", r["id"]))

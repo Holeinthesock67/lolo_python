@@ -341,7 +341,8 @@ class CoreSession:
                           "theme": cfg.render.theme, "chart": cfg.render.chart,
                           "difficulty_pct": round(self.difficulty_pct), "gravel": cfg.gravel.mode,
                           "biome": cfg.render.biome,
-                          "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances")})
+                          "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances"),
+                          "track": track_mod.menu_options()})
         self._publish_progression()
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",

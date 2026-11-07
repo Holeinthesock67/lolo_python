@@ -440,3 +440,16 @@ def test_journal_lines_and_laps_for_the_fit():
     assert all(ln["kind"] == "track" and ln["track"] == "scratch" for ln in lines)
     laps = [ln for ln in lines if ln["event"] == "lap" and ln["rider"] == ME]
     assert len(laps) == len(ev.my_laps) >= 10 and ev.take_journal() == []
+
+
+def test_json_numbers_become_registry_values():
+    """L'engine envoie 20.0 et 7.0 (nombres JSON de Godot) : le registre rend 20 et 7, et l'épreuve se construit
+    (bug du banc des menus du lot VD10 : 20.0 tours refusés au départ, core arrêté)."""
+    from openride_core import track as track_mod
+
+    s = track_mod.check("points", {"laps": 20.0, "opponents": 7.0, "bot_tactics": "full"})
+    assert s == {"opponents": 7, "laps": 20, "bot_tactics": "full"}
+    assert all(type(v) is int for k, v in s.items() if k != "bot_tactics")
+    assert track_mod.check("team_pursuit", {"relay_laps": 1})["relay_laps"] == 1.0
+    ev = build("points", {"laps": 20.0, "opponents": 7.0})
+    assert ev.laps == 20

@@ -79,6 +79,13 @@ def options(event_id: str) -> list[dict]:
     return out
 
 
+def menu_options() -> dict:
+    """Épreuves et réglages pour l'écran Prêt du vélodrome (lot VD10, `hello_ack.config.track`) :
+    `{events: {épreuve: {réglage: [défaut, [valeurs]]}}}` dans l'ordre du registre et de `options` (forme
+    serrée : 1,4 ko ; la séance libre, seule à accepter l'ERG, est connue de l'engine)."""
+    return {"events": {eid: {o["id"]: [o["default"], o["values"]] for o in options(eid)} for eid in EVENTS}}
+
+
 def has_bots(event_id: str) -> bool:
     """Vrai si l'épreuve peut avoir des bots (adversaires ou coéquipiers)."""
     spec = EVENTS[event_id]
@@ -92,7 +99,7 @@ def check(event_id: str, settings: dict) -> dict:
         v = settings.get(o["id"], o["default"])
         if isinstance(v, bool) or v not in o["values"]:
             raise TrackError(f"{event_id} : {o['id']} = {v!r} refusé ({', '.join(map(str, o['values']))})")
-        out[o["id"]] = v
+        out[o["id"]] = o["values"][o["values"].index(v)]   # 20.0 reçu en JSON : la valeur du registre (20)
     unknown = set(settings) - set(out)
     if unknown:
         raise TrackError(f"{event_id} : réglage inconnu {', '.join(sorted(unknown))}")
@@ -137,5 +144,5 @@ def teams(entrants: list[Entrant], size: int, place: int = 1) -> list[Entrant]:
     return out
 
 
-__all__ = ["EVENTS", "TACTIC_LEVELS", "has_bots", "LAP_M", "ME", "Entrant", "EventSpec", "Option", "TrackError", "TrackEvent",
+__all__ = ["EVENTS", "TACTIC_LEVELS", "has_bots", "menu_options", "LAP_M", "ME", "Entrant", "EventSpec", "Option", "TrackError", "TrackEvent",
            "check", "field_size", "make", "options", "teams"]

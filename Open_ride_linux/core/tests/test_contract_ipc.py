@@ -8,6 +8,7 @@ from pathlib import Path
 import jsonschema
 
 from openride_core import fit_export
+from openride_core import track as track_mod
 from openride_core.config import Config
 from openride_core.input_providers import NullProvider
 from openride_core.ipc_budget import encode
@@ -334,6 +335,11 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
         for ack in acks:
             assert_valid(ack)
             assert ack["rev"] == "1.7" and ack["config"]["modes"] == ["ride", "erg", "open_world", "rogue", "wtf", "survivor", "track"]
+            # écran Prêt du vélodrome (lot VD10) : épreuves et réglages du core, sans passer 4 096 octets
+            assert ack["config"]["track"] == track_mod.menu_options()
+            assert list(ack["config"]["track"]["events"]) == list(track_mod.EVENTS)
+            assert ack["config"]["track"]["events"]["points"]["laps"] == [40, [20, 30, 40, 60]]
+            assert len(json.dumps(ack, separators=(",", ":")).encode()) < 4096 - 1024   # place pour la progression
         assert s.server.engine_rev is None
     asyncio.run(scenario())
     hello = jsonschema.Draft202012Validator(schema("hello"))

@@ -1718,6 +1718,7 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		chart_mode = ch
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
+	menu_flow.menu.set_track_events(ipc.core_config.get("track"))   # écran Prêt du vélodrome (lot VD10)
 	menu_flow.on_hello_interrupted(ipc.core_config.get("interrupted"))   # lot O34
 	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
 	# Derniers choix du profil (lot O32) : bot, fantôme, entraînement, départ du monde ouvert.

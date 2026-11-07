@@ -17,6 +17,7 @@ extends RefCounted
 
 const UiTheme := preload("res://scripts/ui_theme.gd")
 const VelodromeHall := preload("res://scripts/velodrome_hall.gd")
+const TrackNames := preload("res://scripts/track/track_names.gd")
 
 const ME := "me"
 const ME_NAME := "Toi"
@@ -32,11 +33,7 @@ const BLUE_BG := Color(0.08, 0.24, 0.47, 0.93)
 const LAST_RED := Color(1.0, 0.25, 0.25)
 const TEAM_BLUE := Color(0.45, 0.65, 1.0)
 
-const TITLES := {"free": "Séance libre", "pursuit": "Poursuite individuelle", "kilo": "Kilomètre · départ arrêté",
-	"500": "500 m · départ arrêté", "flying_200": "200 m lancé", "hour": "Record de l'heure", "scratch": "Scratch",
-	"points": "Course aux points", "tempo": "Tempo", "elimination": "Élimination", "keirin": "Keirin",
-	"omnium": "Omnium", "team_sprint": "Vitesse par équipes", "team_pursuit": "Poursuite par équipes",
-	"madison": "Américaine"}
+const TITLES := TrackNames.EVENTS
 const SUBS := {"scratch": "Scratch", "tempo": "Tempo", "elimination": "Élimination", "points": "Course aux points"}
 const TEAM_NAMES := {"t2": "Équipe rouge", "t3": "Équipe verte", "t4": "Équipe jaune", "t5": "Équipe blanche",
 	"t6": "Équipe noire"}
