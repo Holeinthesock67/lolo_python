@@ -106,9 +106,18 @@ def _event(ts: float, event_type: EventType) -> EventMessage:
     return m
 
 
+LAP_LINES = {"rogue": ("room_start", None), "track": ("lap", "me")}   # (événement, coureur) de chaque sorte
+
+
 def lap_starts(lines: list[dict]) -> list[float]:
-    """Instants des tours : début de chaque salle et de chaque phase du boss d'une run Cyber-Rogue (lot R8)."""
-    return sorted(ln["ts"] for ln in lines if ln.get("kind") == "rogue" and ln.get("event") == "room_start")
+    """Instants des tours : début de chaque salle et de chaque phase du boss d'une run Cyber-Rogue (lot R8),
+    passage du cycliste sur la ligne d'arrivée d'une piste (épreuves du vélodrome, lot VD6)."""
+    out = []
+    for ln in lines:
+        want = LAP_LINES.get(ln.get("kind"))
+        if want and ln.get("event") == want[0] and ln.get("rider") == want[1]:
+            out.append(ln["ts"])
+    return sorted(out)
 
 
 def write_fit(records: list[dict], events: list[dict], path: Path, laps: list[float] | None = None) -> Summary:
@@ -256,11 +265,11 @@ def default_fit_path(start_ts: float, route_name: str | None) -> Path:
 
 def journal_to_fit(journal_path: Path, out_path: Path | None = None) -> tuple[Path, Summary]:
     """Convertit un journal JSONL en FIT (utilisé en fin de séance et par `recover`)."""
-    records, events, route_id, rogue = [], [], None, []
+    records, events, route_id, laps = [], [], None, []
     for line in read_journal(journal_path):
         kind = line.get("kind")
-        if kind == "rogue":
-            rogue.append(line)
+        if kind in LAP_LINES:
+            laps.append(line)
         if kind == "record":
             records.append(line)
         elif kind == "event":
@@ -270,7 +279,7 @@ def journal_to_fit(journal_path: Path, out_path: Path | None = None) -> tuple[Pa
     if not records:
         raise ValueError(f"journal vide : {journal_path}")
     out_path = out_path or default_fit_path(records[0]["ts"], route_id)
-    return out_path, write_fit(records, events, out_path, lap_starts(rogue))
+    return out_path, write_fit(records, events, out_path, lap_starts(laps))
 
 
 def iter_records(fit_path: Path) -> Iterable:

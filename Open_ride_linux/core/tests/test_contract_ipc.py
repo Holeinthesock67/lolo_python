@@ -307,7 +307,7 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
     révision 1.5 : la même limite pour tout message hors messages en parties."""
     from openride_core import ipc_server
     assert ipc_server.MAX_DATAGRAM_SIZE == MAX_STATE_DATAGRAM
-    assert ipc_server.CONTRACT_REV == "1.6"   # révision 1.6 annoncée depuis le peloton (lot PL1)
+    assert ipc_server.CONTRACT_REV == "1.7"   # révision 1.7 annoncée depuis les épreuves de piste (lot VD6)
 
     class Sock:
         def __init__(self):
@@ -333,7 +333,7 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
         assert len(acks) == 2
         for ack in acks:
             assert_valid(ack)
-            assert ack["rev"] == "1.6" and ack["config"]["modes"] == ["ride", "erg", "open_world", "rogue", "wtf", "survivor"]
+            assert ack["rev"] == "1.7" and ack["config"]["modes"] == ["ride", "erg", "open_world", "rogue", "wtf", "survivor", "track"]
         assert s.server.engine_rev is None
     asyncio.run(scenario())
     hello = jsonschema.Draft202012Validator(schema("hello"))
