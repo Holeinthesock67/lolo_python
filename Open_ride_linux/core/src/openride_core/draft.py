@@ -544,12 +544,19 @@ def side_guard(s: float, lane: Lane, target: float, others: Iterable[tuple[float
                length_m: float | None = None, is_loop: bool = False) -> float:
     """Cible bornée pour ne jamais se rabattre sur un coureur à sa hauteur (lot PL1) : un coureur dont les roues
     chevauchent les siennes garde au moins la largeur d'un coureur plus `SIDE_GUARD_M` d'écart latéral, plus la
-    distance pour arrêter son glissement vers lui (`LANE_ACCEL_MPS2`), du côté où l'on est déjà ; dans sa roue (sans chevauchement), rien ne change. Placement coupé : cible inchangée."""
-    if not lane.auto:
-        return target
+    distance pour arrêter son glissement vers lui (`LANE_ACCEL_MPS2`), du côté où l'on est déjà ; dans sa roue (sans chevauchement), rien ne change.
+    Placement coupé compris (lot DS8) : un bot éliminé du Dernier survivant qui se range au bas-côté (`home`) attend
+    que le coureur à sa hauteur l'ait dépassé au lieu de lui couper la route (à 11 adversaires, banc du 6 novembre)."""
     for o_s, _, o_lane in others:
         d = ahead_distance(s, o_s, length_m, is_loop)
-        if abs(d) >= 0.5 * (lane.length + o_lane.length):
+        reach = 0.5 * (lane.length + o_lane.length)
+        # Lot DS8 : un bot enfermé roue contre roue en diagonale derrière soi (`blocked`, plus d'une demi-largeur
+        # d'écart) compte dès SIDE_GUARD_M avant le chevauchement : on ne glisse plus devant sa roue (contact vu à
+        # 11 adversaires avec la tactique Y10). Prendre la roue de celui de devant, ou un coureur en ligne derrière :
+        # rien ne change.
+        behind_diagonal = (d < 0.0 and o_lane.blocked is not None
+                           and abs(o_lane.m - lane.m) >= 0.5 * RIDER_WIDTH_M)
+        if abs(d) >= reach + (SIDE_GUARD_M if behind_diagonal else 0.0):
             continue
         clear = RIDER_WIDTH_M + SIDE_GUARD_M + _wider(lane) + _wider(o_lane)
         toward = lane.rate if lane.m <= o_lane.m else -lane.rate   # vitesse latérale vers lui

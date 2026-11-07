@@ -140,3 +140,18 @@ def test_revision_1_5_open_world_frame_fits_and_validates():
     assert fit_state(frame, ipc_budget.state_limit("1.5")) == (frame, [])
     out, dropped = fit_state(frame)
     assert size(out) <= MAX_DATAGRAM_SIZE and "open_world" in out and "open_world" not in dropped
+
+
+def test_survivor_with_eleven_opponents_frame_fits_and_validates():
+    """Lot DS8 : la pire trame du Dernier survivant à 11 adversaires (peloton du lot PL1, objet `survivor` au plus
+    lourd) est valide et tient dans 4 096 octets sans rien alléger."""
+    from openride_core.bots import MAX_CONSTANT_BOTS
+
+    path = Path(__file__).resolve().parents[2] / "docs" / "contracts" / "ipc" / "state.schema.json"
+    frame = ipc_budget.worst_survivor_state()
+    validator = jsonschema.Draft202012Validator(json.loads(path.read_text(encoding="utf-8")))
+    assert [e.message for e in validator.iter_errors(frame)] == []
+    assert len(frame["bots"]) == MAX_CONSTANT_BOTS and len(frame["survivor"]["alive"]) == MAX_CONSTANT_BOTS + 1
+    assert size(frame) <= ipc_budget.state_limit("1.6")
+    assert fit_state(frame, ipc_budget.state_limit("1.6")) == (frame, [])
+    assert "1.6 dernier survivant" in ipc_budget.report()

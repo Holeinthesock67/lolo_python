@@ -40,7 +40,8 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     (workouts / "erg.zwo").write_text(ERG_ZWO, encoding="utf-8")
 
     def make(port: int, power_w: float = 220.0, opponents: int = 2, spacing_km: int = 2,
-             after_out: str = "ride", level_pct: int = 100, spread: str = "normal") -> tuple[CoreSession, list, list]:
+             after_out: str = "ride", level_pct: int = 100, spread: str = "normal",
+             route_id: str = "demo") -> tuple[CoreSession, list, list]:
         cfg = Config()
         cfg.ipc.port_state, cfg.ipc.port_commands = port, port + 1
         cfg.survivor.opponents, cfg.survivor.spacing_km, cfg.survivor.after_out = opponents, spacing_km, after_out
@@ -56,7 +57,7 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         s.server.send_raw = lambda m, max_size=None: sent.append(m)
         s.server.send_error = lambda code, msg: errors.append((code, msg))
         s.server.send_input_event = lambda ev: None
-        s._on_command("select_route", {"route_id": "demo"}, 1)
+        s._on_command("select_route", {"route_id": route_id}, 1)
         return s, sent, errors
 
     def run(s: CoreSession, seconds: float, check=None) -> None:
@@ -180,6 +181,6 @@ def test_settings_listed_and_bounds():
         assert k in keys
     cfg = Config()
     items = {it["key"]: it for it in settings.current(cfg)}
-    assert items["survivor.opponents"]["min"] == 2 and items["survivor.opponents"]["max"] == 4
+    assert items["survivor.opponents"]["min"] == 2 and items["survivor.opponents"]["max"] == 11   # lot DS8
     assert items["survivor.spread"]["choices"] == ["tight", "normal", "wide"]
     assert items["survivor.after_out"]["value"] == "ride"
