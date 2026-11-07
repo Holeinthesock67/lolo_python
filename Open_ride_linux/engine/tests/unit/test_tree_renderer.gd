@@ -169,6 +169,41 @@ func _test_budget_enforcement() -> void:
 	renderer.queue_free()
 
 
+## Ombre des arbres limitée (lot « cultures et forêt », essai ombres_arbres_m) : cases lointaines sans ombre, cases
+## proches ou à cheval avec ombre, rien ne change sans limite.
+func _test_shadow_limit() -> void:
+	var c := Vector3(125.0, 0.0, 125.0)   # case [0, 250] × [0, 250]
+	_check(TreeRenderer.casts_shadow(c, Vector3(125.0, 0.0, 125.0), 150.0), "ombre : caméra dans la case")
+	_check(TreeRenderer.casts_shadow(c, Vector3(-100.0, 0.0, 125.0), 150.0), "ombre : case à 100 m (limite 150 m)")
+	_check(not TreeRenderer.casts_shadow(c, Vector3(-200.0, 0.0, 125.0), 150.0), "ombre : case à 200 m, coupée")
+	_check(not TreeRenderer.casts_shadow(c, Vector3(-120.0, 0.0, -120.0), 150.0),
+		"ombre : coin de la case à 170 m en diagonale, coupée")
+
+	var renderer = TreeRenderer.new()
+	root.add_child(renderer)
+	var route = _make_simple_route(3000.0)
+	var theme := {"vegetation": {"max_density_per_ha": 400.0}}
+	renderer.add_tile(renderer.prepare_tile(0, 0, TerrainTiles.flat_heights(1000.0), route, theme, 1.0))
+	var cam := Vector3(125.0, 0.0, 125.0)
+	renderer.update_shadows(cam)
+	var all_on := true
+	for info in renderer._tiles[Vector2i(0, 0)].values():
+		all_on = all_on and (info["parts"][0]["lod0"] as MultiMeshInstance3D).cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	_check(all_on, "ombre : sans limite, toutes les cases projettent")
+	renderer.shadow_end_m = 150.0
+	renderer.update_shadows(cam)
+	var near_ok := true
+	var far_off := 0
+	for info in renderer._tiles[Vector2i(0, 0)].values():
+		var on := (info["parts"][0]["lod0"] as MultiMeshInstance3D).cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		if TreeRenderer.casts_shadow(info["center"], cam, 150.0):
+			near_ok = near_ok and on
+		elif not on:
+			far_off += 1
+	_check(near_ok and far_off > 0, "ombre : limite 150 m, cases proches avec ombre, %d cases lointaines sans" % far_off)
+	renderer.queue_free()
+
+
 ## Empreinte exacte d'une tuile préparée : nombre d'arbres et SHA-256 des octets, case après case.
 func _fingerprint(prep: Dictionary) -> String:
 	var ctx := HashingContext.new()
@@ -230,5 +265,6 @@ func _init() -> void:
 	_test_fingerprints()
 	_test_tree_generation_and_determinism()
 	_test_budget_enforcement()
+	_test_shadow_limit()
 	print("test_tree_renderer : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

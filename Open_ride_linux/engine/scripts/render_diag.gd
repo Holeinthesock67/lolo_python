@@ -23,6 +23,9 @@ extends RefCounted
 ## Pistes du 6 novembre : brume=off|light|full (grille de la brume volumétrique), lod_maillage=F (seuil des niveaux
 ##   de détail des maillages, RenderQuality.diagnostic_image), sans_ombres_details (pierres et fleurs du sol sans
 ##   ombre, ground_details).
+## Cultures et forêt (6 novembre) : vegetation_x=F (facteur sur la densité des arbres du préréglage, 0 : aucun arbre ;
+##   `vegetation=F` remplace la densité, 0,3 en low, 0,8 en medium, 1 en high), ombres_arbres_m=M (ombre portée des
+##   arbres proches limitée à M mètres de la caméra, tree_renderer.update_shadows et tree_sway.gdshader).
 ## Ciel (6 novembre, « Setup Sky » ≈ 0,8 ms par image) : ciel=automatic|quality|incremental|realtime
 ##   (Sky.process_mode, scène : incremental), ciel_radiance=32|64|128|256 (taille de la carte de rayonnement).
 ## Pas de class_name : charger par preload("res://scripts/render_diag.gd").
