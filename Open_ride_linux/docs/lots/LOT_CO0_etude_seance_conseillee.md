@@ -13,11 +13,11 @@ Répondre à la demande du propriétaire du 7 novembre : dire comment identifier
 
 ## 2. Livrables
 
-- `docs/5.0/PLAN_SERIE_CO.md` : besoins et zones (§1), signaux S1 à S7 et cibles (§2), règles R0 à R7 (§3), courses et championnat (§4), questions Q1 à Q7 (§5), écran (§6), lots CO0 à CO7 (§7).
+- `docs/5.0/PLAN_SERIE_CO.md` : besoins et zones (§1), signaux S1 à S7 et cibles (§2), règles R0 à R7 (§3), courses et championnat (§4), suggestion Garmin (§4 bis), séances de jeu calibrées (§4 ter), questions Q1 à Q10 (§5), écran (§6), lots CO0 à CO9 (§7).
 - Maquette de principe dans `/mnt/project-files/menus/co-seance-conseillee/` (hors dépôt).
-- Cahiers CO0 à CO7 dans `docs/lots/`.
+- Cahiers CO0 à CO9 dans `docs/lots/`.
 
 ## 3. Critères d'acceptation
 
 1. `python3 scripts/index_lots.py --verifier` et `pytest -q core/tests/test_docs_coherence.py` passent.
-2. Le propriétaire répond aux questions Q1 à Q7 (ou garde les défauts) et valide la maquette de principe avant CO4 et CO5.
+2. Le propriétaire répond aux questions (Q1 à Q7 : défauts acceptés le 7 novembre ; Q8 à Q10 ouvertes) et valide la maquette de principe avant CO4 et CO5.

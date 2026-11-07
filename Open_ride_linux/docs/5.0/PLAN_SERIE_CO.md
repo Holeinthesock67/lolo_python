@@ -2,7 +2,7 @@
 
 7 novembre 2026. Demande du propriétaire du 7 novembre : « En v5 il faudrait ajouter dans le menu une préconisation de séance par le logiciel en fonction des sessions championnat en cours, du besoin du joueur en entraînement aérobie léger, aérobie intense, anaérobie. Voir comment identifier ces besoins. »
 
-Lecture retenue : le jeu propose chaque jour **une séance** et dit **pourquoi**, à partir de ce qu'il sait déjà du joueur (séances passées, FTP, courses disputées, plan actif, prochaine course annoncée). La série s'appelle CO (« coach ») ; aucune lettre existante n'est reprise. Ce document est l'étude (lot CO0) : comment identifier les besoins, quelles règles, quel écran, quels lots. Rien n'est codé avant la validation des règles (§3) et de la maquette (§6).
+Lecture retenue : le jeu propose chaque jour **une séance** et dit **pourquoi**, à partir de ce qu'il sait déjà du joueur (séances passées, FTP, courses disputées, plan actif, prochaine course annoncée). La série s'appelle CO (« coach ») ; aucune lettre existante n'est reprise. Ce document est l'étude (lot CO0) : comment identifier les besoins, quelles règles, quel écran, quels lots. Les réponses par défaut aux questions Q1 à Q7 ont été acceptées par le propriétaire le 7 novembre ; rien n'est affiché avant la validation de la maquette (§6).
 
 Principes, repris des décisions passées :
 - **Lisible avant d'être savant** (consigne du 7 novembre sur la Course tactique) : chaque conseil affiche sa raison en une phrase et les chiffres qui l'ont décidé ; pas de « boîte noire », pas de score magique.
@@ -29,7 +29,7 @@ Le temps passé par zone se compte **à la seconde de puissance** (comme le bila
 
 ## 2. Comment identifier les besoins
 
-Sept signaux, tous calculables depuis l'historique existant. Chacun donne un chiffre affiché tel quel au joueur.
+Huit signaux : sept calculés depuis l'historique existant, plus la suggestion de la montre Garmin saisie par le joueur. Chacun donne un chiffre affiché tel quel au joueur.
 
 | # | Signal | Calcul | Source | Ce qu'il dit |
 | --- | --- | --- | --- | --- |
@@ -40,10 +40,11 @@ Sept signaux, tous calculables depuis l'historique existant. Chacun donne un chi
 | S5 | **Courses disputées** | où le joueur a perdu : lâché en montée, battu au sprint, craqué en fin de course, éliminé à une arche | lignes `survivor_summary` (DS), segments chronométrés (T4), journal des courses de la Course tactique (CT13), courses avec bots | le besoin qui coûte des places |
 | S6 | **Prochaine course** | date de la prochaine manche annoncée (championnat, coupe, course par étapes) | calendrier du joueur (lot CO6) | affûtage avant, récupération après |
 | S7 | **FTP à jour** | âge du dernier test de FTP accepté, FTP provisoire seulement | lignes `ftp_test` (O10), `ftp-test --history` | proposer un test avant de conseiller sur des zones fausses |
+| S8 | **Suggestion de la montre Garmin** | type, durée et cible saisis au menu pour la journée | profil du joueur (lot CO8) | besoin du jour donné par la montre (règle RG, §4 bis) |
 
 Prudence affichée (même avertissement qu'`estimate_cp`) : le profil de puissance S4 suppose des efforts maximaux ; il ne sert qu'à départager deux besoins proches et n'est lu que si l'historique contient un test ou une course de moins de 90 jours.
 
-Signaux écartés pour la première livraison (question Q4) : la fréquence cardiaque (dérive cardiaque Pa:FC sur l'endurance, possible avec la FC relayée par le trainer mais absente d'une partie des séances) et le ressenti noté après la séance (échelle 1 à 10, nouvel écran à la fin de séance). Les deux peuvent venir plus tard comme signaux supplémentaires, sans changer les règles.
+Signaux écartés pour la première livraison (question Q4) : la fréquence cardiaque (dérive cardiaque Pa:FC sur l'endurance, possible avec la FC relayée par le trainer mais absente d'une partie des séances) et le ressenti noté après la séance (échelle 1 à 10, nouvel écran à la fin de séance). Les deux peuvent venir plus tard comme signaux supplémentaires, sans changer les règles. La suggestion de la montre Garmin, elle, est un signal à part entière (S8, §4 bis).
 
 ### Cibles de répartition
 
@@ -60,7 +61,7 @@ Le **retard** d'un besoin est `cible − part réelle`, en points ; le plus gran
 
 ## 3. Règles proposées
 
-Lues dans l'ordre, la première qui s'applique décide. Chaque règle a son identifiant, affiché dans « Détail du calcul » (pour que le joueur et nous puissions dire « c'est la règle R3 qui a parlé »). Les seuils sont dans une table unique `coach.toml` (dossier `data/` du core, lot CO1), pas dans le code.
+Lues dans l'ordre, la première qui s'applique décide (la règle RG de la suggestion Garmin, §4 bis, passe avant toutes). Chaque règle a son identifiant, affiché dans « Détail du calcul » (pour que le joueur et nous puissions dire « c'est la règle R3 qui a parlé »). Les seuils sont dans une table unique `coach.toml` (dossier `data/` du core, lot CO1), pas dans le code.
 
 | Règle | Condition | Conseil | Raison affichée (exemple) |
 | --- | --- | --- | --- |
@@ -92,6 +93,43 @@ Il n'y a pas encore de championnat dans le jeu : la « coupe de trois manches »
   Le journal des courses CT13 (moments décisifs) en fournira de meilleures quand il existera ; CO6 ne dépend que de ce qui est déjà écrit dans les journaux.
 - **Annoncer une course à venir** (S6) : dans l'écran de conseil, « Ma prochaine course » enregistre une date et un type (course, manche de championnat) dans le profil. Quand un mode championnat existera, il écrira lui-même la date de sa prochaine manche au même endroit.
 
+## 4 bis. Suggestion de la montre Garmin (demande du 7 novembre, 10 h 10)
+
+Demande du propriétaire : « pouvoir rentrer la préconisation de la montre Garmin, et à ce moment-là le jeu propose quelque chose ».
+
+Les montres Garmin donnent chaque jour un entraînement suggéré (type, durée, cible) et rangent la charge en trois familles, **aérobie faible, aérobie élevée, anaérobie** : ce sont exactement les trois besoins du §1. La correspondance est donc directe :
+
+| Suggestion Garmin (type affiché par la montre) | Besoin OpenRide |
+| --- | --- |
+| Repos | aucune séance conseillée (« Garmin conseille le repos ») ; une balade de récupération reste proposée en second |
+| Récupération | récupération |
+| Fond (Base) | aérobie léger |
+| Tempo, Seuil, VO2 max | aérobie intense (avec la sous-famille gardée pour choisir la séance : tempo → `tempo_2x15`, seuil → `seuil_2x20`, VO2 max → `vo2_5x3`) |
+| Anaérobie, Sprint | anaérobie |
+
+**Saisie.** Dans l'écran du conseil, ligne « Suggestion de ma montre » : le joueur choisit le type dans la liste ci-dessus (Click ou clavier), puis la durée (par pas de 5 min) et, s'il veut, la puissance cible en watts. La saisie vaut pour la journée et s'efface le lendemain. Rien n'est lu sur la montre ni sur Garmin Connect : il n'y a pas d'accès public à Garmin Connect pour un particulier, et une connexion avec identifiants est exclue (règle de confidentialité). Une lecture automatique pourra être étudiée plus tard si un export de fichier (entraînement planifié en `.fit`) le permet, sans identifiants (question Q9).
+
+**Règle RG**, lue en premier : si une suggestion Garmin est saisie aujourd'hui, son besoin est le besoin du jour, à la place des règles R3 à R7. Les règles de sécurité R1 et R2 (course hier, course dans 2 jours) ne l'annulent pas mais s'affichent en note quand elles divergent (« Garmin conseille VO2 max ; tu as couru hier »). La raison affichée cite la montre : « Suggestion de ta montre : Seuil, 50 min. » La durée saisie remplace le temps disponible.
+
+## 4 ter. Une séance de jeu à la place d'un entraînement (demande du 7 novembre, 10 h 10)
+
+Demande du propriétaire : « la préconisation pourrait être une course contre bots, Rogue ou autre, avec difficulté et circuit calibrés au besoin ».
+
+Le conseil propose donc, pour chaque besoin, **un entraînement ERG ou une séance de jeu**, au choix du joueur (« Lancer l'entraînement » / « Lancer la course »). La séance de jeu est réglée pour que le temps passé dans les zones du besoin soit proche de celui de l'entraînement équivalent.
+
+| Besoin | Séances de jeu proposées | Réglages calibrés |
+| --- | --- | --- |
+| Récupération | balade seule (parcours plat) ou monde ouvert | pas de bots ; parcours sans montée de plus de 2 % ; durée 30 à 45 min |
+| Aérobie léger | sortie en groupe avec bots (rouler dans les roues), monde ouvert | bots à 60–70 % de la FTP, sans attaque (tactique « groupe » de Y10) ; parcours plat ou vallonné doux, montées de moins de 2 min |
+| Aérobie intense | course contre bots sur un circuit à montées longues ; Cyber-Rogue (salles de montée) ; Course tactique (5.0) | montées de 4 à 10 min à la vitesse estimée du joueur ; bots calés pour tenir 90 à 105 % de la FTP en montée ; nombre de tours selon la durée |
+| Anaérobie | Dernier survivant (arches tous les 1 à 2 km) ; course contre bots avec sprints et bosses courtes ; Grand Prix des objets (4.0) ; épreuves du vélodrome (4.0 : élimination, keirin, scratch) | bosses de 20 s à 1 min 30, sprints intermédiaires ; bots qui attaquent souvent (Y10) ; fin au sprint |
+
+**Calibrage.**
+- **Difficulté** : la force des bots se règle en % de la FTP du joueur, comme aujourd'hui (T12, T13, PL1) ; la difficulté de la pente (Q1, 50 % par défaut) n'est pas touchée par le conseil, elle reste au joueur.
+- **Circuit** : choisi dans le catalogue par les fiches des parcours (O15 : montée principale, dénivelé, durée estimée), ou généré (circuits de CT8) avec la longueur de montée visée ; la durée totale suit le temps disponible ou la durée Garmin.
+- **Vérification avant de proposer** : la séance de jeu est simulée en temps accéléré avec le cycliste virtuel aux valeurs du joueur (`sim_rider.py`, outils `bots_race`, `rogue_sim`, `tactical_sim`) ; le conseil n'est proposé que si le temps prédit dans les zones du besoin atteint au moins 70 % de celui de l'entraînement équivalent. Sinon, le format suivant de la liste est essayé, puis l'entraînement ERG seul.
+- **Bilan** : à la fin de la séance de jeu, le bilan ajoute une ligne « Besoin du jour : aérobie intense · 24 min en Z3–Z5 sur 28 prévues », calculée sur les zones du bilan, sans nouvelle formule.
+
 ## 5. Questions au propriétaire (réponses par défaut appliquées)
 
 | # | Question | Défaut proposé |
@@ -102,17 +140,21 @@ Il n'y a pas encore de championnat dans le jeu : la « coupe de trois manches »
 | Q4 | Fréquence cardiaque et ressenti après séance dès la première livraison ? | non, plus tard en signaux facultatifs |
 | Q5 | Où mettre l'écran ? | ligne « Séance conseillée » en tête de l'accueil, avant le plan (détail : besoin et séance) |
 | Q6 | Nouvelles séances livrées | 3 : `recuperation_40`, `anaerobie_8x30s`, `sprints_10x10s` (contenus de départ O25) |
-| Q7 | « Lancer cette séance » démarre-t-il directement en ERG ? | oui, comme « Entraînement » du menu ; un parcours conseillé démarre en SIM |
+| Q7 | « Lancer cette séance » démarre-t-il directement en ERG ? | oui, comme « Entraînement » du menu ; un parcours conseillé et une séance de jeu démarrent en SIM |
+| Q8 | La suggestion Garmin passe-t-elle avant un plan d'entraînement actif ? | oui : la montre connaît ta récupération, le plan non ; la séance du plan reste en « autre idée » |
+| Q9 | Lecture automatique de la suggestion Garmin ? | non pour la première livraison (saisie au menu) ; étude d'un export `.fit` sans identifiants plus tard |
+| Q10 | Proposer une séance de jeu par défaut, ou l'entraînement ERG ? | les deux côte à côte ; le dernier choix du joueur est retenu (derniers choix, O32) |
 
 ## 6. Écran (maquette à valider avant CO5)
 
-Maquette de principe : `/mnt/project-files/menus/co-seance-conseillee/` (1280 × 720, jetons de `ui_theme.gd`). Deux écrans :
+Maquette de principe : `/mnt/project-files/menus/co-seance-conseillee/` (1280 × 720, jetons de `ui_theme.gd`). Trois écrans :
 
 1. **Séance conseillée** (ligne de l'accueil) :
    - en tête, le besoin du jour en grand, en couleur du besoin (léger `OK`, intense `WARN`, anaérobie `DANGER`, récupération `DIM`) ;
    - la séance (nom, durée, TSS estimé) et la raison en une phrase ;
-   - « Lancer cette séance » (A) ; « Une autre séance de ce besoin » ; « Choisir un autre besoin » (aérobie léger, aérobie intense, anaérobie, récupération, test de FTP) ; « Ma prochaine course » ; « Objectif » (Endurance, Courses et championnat, Grimpeur) ; « Temps disponible » (30 à 120 min) ; « Détail du calcul ».
-2. **Détail du calcul** : barres de répartition sur 4 semaines avec la cible en repère, forme (CTL, ATL, forme), jours depuis la dernière séance dure, profil de puissance 5 s / 1 min / 5 min / 20 min, dernières causes de perte en course, règle qui a décidé.
+   - « Lancer l'entraînement » (A) et « Lancer la course » (séance de jeu calibrée, §4 ter) ; « Suggestion de ma montre » ; « Une autre séance de ce besoin » ; « Choisir un autre besoin » (aérobie léger, aérobie intense, anaérobie, récupération, test de FTP) ; « Ma prochaine course » ; « Objectif » (Endurance, Courses et championnat, Grimpeur) ; « Temps disponible » (30 à 120 min) ; « Détail du calcul ».
+2. **Suggestion de ma montre** : type (liste du §4 bis), durée, puissance cible facultative, « Effacer la suggestion ».
+3. **Détail du calcul** : barres de répartition sur 4 semaines avec la cible en repère, forme (CTL, ATL, forme), jours depuis la dernière séance dure, profil de puissance 5 s / 1 min / 5 min / 20 min, dernières causes de perte en course, règle qui a décidé.
 
 ## 7. Lots
 
@@ -123,13 +165,15 @@ Maquette de principe : `/mnt/project-files/menus/co-seance-conseillee/` (1280 ×
 | CO2 | Classement des entraînements par besoin + 3 séances livrées (Q6) | Python + .zwo | O12, O25 | délégable, CI |
 | CO3 | Contrat : commande `get_coach`, message `coach`, réglages `[coach]` (objectif, temps disponible), prochaine course dans le profil | contrat | CO1 | propriétaire (révision IPC libre à la fusion) |
 | CO4 | Maquettes au rendu du jeu, validées par le propriétaire | GDScript | CO0 | interne |
-| CO5 | Écrans du menu (ligne de l'accueil, conseil, détail, autre besoin, prochaine course) | GDScript | CO3, CO4 | interne, captures low/medium/high |
+| CO5 | Écrans du menu (ligne de l'accueil, conseil, détail, autre besoin, prochaine course, suggestion de la montre, lancement de la course) | GDScript | CO3, CO4, CO8, CO9 | interne, captures low/medium/high |
 | CO6 | Causes de perte des courses (S5) et prochaine course (S6), règles R1, R2, R7 complètes | Python | CO1, DS2, T4 (CT13 quand il existe) | délégable, CI |
-| CO7 | Recette : deux semaines d'usage, le propriétaire juge chaque conseil (suivi / pas suivi / pourquoi) | – | CO5, CO6 | propriétaire, vélo |
+| CO8 | Suggestion Garmin : saisie au menu (type, durée, cible), écrite dans le profil pour la journée, règle RG, correspondance du §4 bis | Python | CO1, CO3 | délégable, CI |
+| CO9 | Séances de jeu calibrées au besoin (§4 ter) : formats par besoin, réglage des bots et choix ou génération du circuit, vérification au simulateur, ligne « Besoin du jour » au bilan | Python | CO1, CO2, T13, O15, CT8 (pour les circuits générés), X27 | délégable, CI |
+| CO7 | Recette : deux semaines d'usage, le propriétaire juge chaque conseil (suivi / pas suivi / pourquoi), avec au moins 3 suggestions Garmin et 3 séances de jeu | – | CO5, CO6, CO8, CO9 | propriétaire, vélo |
 
-Ordre : CO0 ──► CO1, CO2, CO4 ;  CO1 ──► CO3, CO6 ;  CO3, CO4 ──► CO5 ;  CO5, CO6 ──► CO7.
+Ordre : CO0 ──► CO1, CO2, CO4 ;  CO1 ──► CO3, CO6 ;  CO1, CO3 ──► CO8 ;  CO1, CO2 ──► CO9 ;  CO3, CO4, CO8, CO9 ──► CO5 ;  CO5, CO6 ──► CO7.
 
-Fichiers partagés : `session_summary.py` (lecture seule : CO1 réutilise `compute_summary` et `BEST_WINDOWS`) ; `history.py` (CO1 réutilise son cache) ; `plans.py` (CO1 lit le plan actif) ; `contents.py` (CO2) ; `profile.py` (CO3, prochaine course) ; `menu_model.gd`, `menu_flow.gd` (CO5).
+Fichiers partagés : `session_summary.py` (lecture seule : CO1 réutilise `compute_summary` et `BEST_WINDOWS`) ; `history.py` (CO1 réutilise son cache) ; `plans.py` (CO1 lit le plan actif) ; `contents.py` (CO2) ; `profile.py` (CO3 prochaine course, puis CO8 suggestion Garmin) ; `bots.py` et `bot_tactics.py` (lecture seule pour CO9 : réglages passés au lancement) ; `menu_model.gd`, `menu_flow.gd` (CO5).
 
 Coût de calcul : sur 90 jours de séances à 1 Hz, lecture par le cache de `history` (bilans) et `mmp.json` (meilleures puissances) ; seuls S3 et S5 relisent des journaux, ceux de 28 jours au plus. Calcul dans le core à la demande du menu, jamais pendant une séance.
 
@@ -138,3 +182,4 @@ Coût de calcul : sur 90 jours de séances à 1 Hz, lecture par le cache de `his
 | Date | Changement |
 | --- | --- |
 | 2026-11-07 | Création (lot CO0) : besoins, signaux, règles, questions Q1 à Q7, lots CO0 à CO7. |
+| 2026-11-07 | Réponses par défaut Q1 à Q7 acceptées par le propriétaire (« Ok », 10 h 10). Ajouts du propriétaire : suggestion de la montre Garmin (§4 bis, S8, règle RG, lot CO8) et séances de jeu calibrées au besoin (§4 ter, lot CO9) ; questions Q8 à Q10. |
