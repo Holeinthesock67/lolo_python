@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Séance conseillée : saisie de la suggestion de la montre Garmin (type, durée, cible), règle RG | Python | CO1, CO3 | Petite | Prêt (version 5.0) |
+| Séance conseillée : saisie de la suggestion de la montre Garmin (type, durée, cible), règle RG | Python | CO1, CO3 | Petite | En PR (version 5.0), partie menu et contrat avec CO3 et CO5 |
 
 Série CO (version 5.0, séance conseillée par OpenRide). Plan de la série : `docs/5.0/PLAN_SERIE_CO.md`.
 
@@ -25,3 +25,10 @@ Demande du propriétaire du 7 novembre : entrer dans le jeu l'entraînement sugg
 ## 4. Critères d'acceptation
 
 `pytest -q` passe ; `openride-core coach --json` rend `rule = "RG"` le jour de la saisie.
+
+## 5. Réalisation (7 novembre, en PR)
+
+- Suggestion gardée pour la journée dans `conseil.json` du profil en cours (`save_watch`, `saved_watch`, `clear_watch` de `coach.py`, écriture sûre, autres clés gardées pour la prochaine course de CO3) ; une suggestion d'un autre jour ou abîmée est ignorée.
+- Ligne de commande : `openride-core coach --montre seuil:50 --enregistrer`, puis `openride-core coach` la reprend le même jour ; `--effacer-montre`.
+- Sous-famille de la montre : l'entraînement de la zone dominante voulue est choisi d'abord (tempo → Z3, seuil → Z4, VO2 max → Z5).
+- Les commandes IPC `set_watch_advice` et `clear_watch_advice` sont écrites avec le contrat du conseil (CO3, même révision que `get_coach`) pour ne pas ouvrir deux révisions ; l'écran de saisie est dans CO5.

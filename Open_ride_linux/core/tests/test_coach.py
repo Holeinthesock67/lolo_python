@@ -256,3 +256,99 @@ def test_cli_json(tmp_path):
     assert json.loads(watch.stdout)["need"] == "anaerobic"
     bad = subprocess.run(cmd + ["--montre", "marathon"], capture_output=True, text=True, env={**os.environ, **env_home})
     assert bad.returncode == 1 and "type de suggestion inconnu" in bad.stderr
+
+
+# --- lot CO2 : entraînements par besoin ----------------------------------------------------------------
+
+def builtin_library():
+    from openride_core.plans import BUILTIN_WORKOUTS_DIR
+    return coach.classify_library(BUILTIN_WORKOUTS_DIR, FTP, TABLE)
+
+
+def test_builtin_workouts_classified():
+    needs = {w.id: (w.need, w.dominant_zone) for w in builtin_library()}
+    assert needs == {
+        "endurance_60": ("light", None), "recuperation_40": ("recovery", None),
+        "tempo_2x15": ("intense", "Z3"), "sweet_spot_3x10": ("intense", "Z4"),
+        "sweet_spot_3x10_gc": ("intense", "Z4"), "seuil_2x20": ("intense", "Z4"),
+        "vo2_5x3": ("intense", "Z5"), "anaerobie_8x30s": ("anaerobic", "Z7"),
+        "sprints_10x10s": ("anaerobic", "Z7"),
+    }                                                            # le test de rampe n'est pas classé
+
+
+def test_workout_need_rules_on_synthetic_blocks():
+    from openride_core.workout import Block, Workout
+    def w(*blocks):
+        return coach.workout_need(Workout("x", "x", tuple(Block("steady", d, f, f) for d, f in blocks)), FTP, TABLE)
+    assert w((3600, 0.50)).need == "recovery"
+    assert w((3000, 0.50), (600, 0.70)).need == "light"                   # 17 % au-dessus de Z1
+    assert w((3300, 0.65), (290, 0.95)).need == "light"                   # moins de 5 min au-dessus de Z2
+    assert w((3000, 0.65), (600, 0.95)).need == "intense"
+    assert w((3000, 0.65), (600, 0.95), (210, 1.6)).need == "anaerobic"   # 210 × 3 > 600
+    assert w((3000, 0.65), (600, 0.95), (190, 1.6)).need == "intense"
+    assert w((3600, 1.0)).tss == pytest.approx(100.0, abs=0.5)
+
+
+def test_choose_by_watch_zone_then_duration_then_least_done():
+    lib = builtin_library()
+    pick = coach.choose_workouts(lib, "intense", 60, {})
+    assert [x.id for x in pick] == ["sweet_spot_3x10", "sweet_spot_3x10_gc", "seuil_2x20"]
+    pick = coach.choose_workouts(lib, "intense", 60, {"sweet_spot_3x10": 2})
+    assert pick[0].id == "sweet_spot_3x10_gc"
+    assert coach.choose_workouts(lib, "intense", 60, {}, zone="Z5")[0].id == "vo2_5x3"
+    assert coach.choose_workouts(lib, "intense", 60, {}, zone="Z3")[0].id == "tempo_2x15"
+
+
+def test_advice_carries_workout_or_note():
+    r = coach.advise(base_history(), FTP, TODAY, Inputs(), TABLE, builtin_library())
+    assert r["need"] == "intense" and r["workout"]["id"] == "sweet_spot_3x10"
+    assert r["workout"]["tss_estimate"] == 62 and len(r["other_workouts"]) == 2
+    r = coach.advise(base_history(), FTP, TODAY, Inputs(watch=coach.parse_watch("vo2max:45", TABLE)), TABLE,
+                     builtin_library())
+    assert r["workout"]["id"] == "vo2_5x3"
+    r = coach.advise(base_history(), FTP, TODAY, Inputs(raced_yesterday=True), TABLE, builtin_library())
+    assert r["workout"]["id"] == "recuperation_40"
+    r = coach.advise(base_history(), FTP, TODAY, Inputs(), TABLE, [])
+    assert r["workout"] is None and "installe les contenus de départ" in r["notes"][-1]
+    old_ftp = [f for f in base_history() if not f.ftp_test_w]
+    assert coach.advise(old_ftp, FTP, TODAY, Inputs(), TABLE, [])["workout"]["id"] == "ftp_test:ramp"
+
+
+def test_done_workouts_counted_from_journal_header(tmp_path):
+    act = tmp_path / "Activities" / ".journal"
+    p = write_journal(act, "ss", ts(TODAY - timedelta(days=3)), [(600, 150.0)])
+    text = p.read_text(encoding="utf-8").replace('"workout_id": null', '"workout_id": "sweet_spot_3x10"')
+    p.write_text(text, encoding="utf-8")
+    f = coach.collect_facts(tmp_path / "Activities", FTP, TODAY, TABLE, tmp_path / "c.json")[0]
+    assert f.workout == "sweet_spot_3x10"
+
+
+# --- lot CO8 : suggestion de la montre gardée pour la journée -------------------------------------------
+
+def test_watch_saved_for_the_day_only(tmp_path):
+    path = tmp_path / "conseil.json"
+    path.write_text(json.dumps({"autre": 1}), encoding="utf-8")
+    coach.save_watch(coach.parse_watch("seuil:50", TABLE), TODAY, path)
+    assert coach.saved_watch(TODAY, TABLE, path) == {"type": "seuil", "duration_min": 50, "target_w": None}
+    assert coach.saved_watch(TODAY + timedelta(days=1), TABLE, path) is None   # effacée le lendemain
+    assert json.loads(path.read_text(encoding="utf-8"))["autre"] == 1          # autres clés gardées
+    assert coach.clear_watch(path) and not coach.clear_watch(path)
+    assert coach.saved_watch(TODAY, TABLE, path) is None
+    path.write_text("{abîmé", encoding="utf-8")
+    assert coach.saved_watch(TODAY, TABLE, path) is None
+
+
+def test_cli_saves_and_reuses_watch(tmp_path):
+    import os
+    env = {**os.environ, "HOME": str(tmp_path)}
+    env.pop("OPENRIDE_PROFIL", None)
+    act = tmp_path / "Activities"
+    write_journal(act / ".journal", "s", ts(TODAY - timedelta(days=2)), [(1200, 150.0)])
+    base = [sys.executable, "-m", "openride_core", "coach", "--date", TODAY.isoformat(), "--ftp", "250",
+            "--dir", str(act), "--workouts", str(tmp_path / "vide"), "--json"]
+    run = lambda *extra: subprocess.run(base + list(extra), capture_output=True, text=True, env=env, check=True)  # noqa: E731
+    run("--montre", "sprint:30", "--enregistrer")
+    again = json.loads(run().stdout)
+    assert (again["rule"], again["need"], again["duration_min"]) == ("RG", "anaerobic", 30)
+    assert "effacée" in run("--effacer-montre").stdout
+    assert json.loads(run().stdout)["rule"] == "R0"

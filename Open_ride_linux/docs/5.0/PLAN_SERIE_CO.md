@@ -184,3 +184,4 @@ Coût de calcul : sur 90 jours de séances à 1 Hz, lecture par le cache de `his
 | 2026-11-07 | Création (lot CO0) : besoins, signaux, règles, questions Q1 à Q7, lots CO0 à CO7. |
 | 2026-11-07 | Réponses par défaut Q1 à Q7 acceptées par le propriétaire (« Ok », 10 h 10). Ajouts du propriétaire : suggestion de la montre Garmin (§4 bis, S8, règle RG, lot CO8) et séances de jeu calibrées au besoin (§4 ter, lot CO9) ; questions Q8 à Q10. |
 | 2026-11-07 | Q8 à Q10 acceptées par le propriétaire (« Ok », 10 h 27) ; lot CO1 commencé (`coach.py`, `coach.toml`, `openride-core coach`), règle RG comprise (la saisie au menu reste à CO8). |
+| 2026-11-07 | « Lance les lots » (11 h 47) : CO2 (classement des entraînements, 3 séances livrées) et partie core de CO8 (suggestion gardée pour la journée) en PR ; le parcours conseillé sans entraînement du besoin passe à CO9, les commandes IPC de CO8 à CO3. |

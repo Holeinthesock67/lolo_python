@@ -27,8 +27,9 @@ Sous-commandes disponibles à ce stade :
                                       (messages, pauses, trous, FC figée, totaux ; lot X11)
     openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
                                       historique des séances et cumul par semaine ISO
-    openride-core coach [--date J] [--objectif O] [--temps MIN] [--montre TYPE[:MIN[:W]]]
-                        [--prochaine-course J] [--dir DOSSIER] [--ftp W] [--json]
+    openride-core coach [--date J] [--objectif O] [--temps MIN] [--montre TYPE[:MIN[:W]] [--enregistrer]]
+                        [--effacer-montre] [--prochaine-course J] [--dir DOSSIER] [--workouts DOSSIER]
+                        [--ftp W] [--json]
                                       séance conseillée du jour et sa raison (série CO, lot CO1)
     openride-core xp [--dir DOSSIER] [--json] [--config FICHIER] [--save F | --compare F]
                                       progression (niveau, expérience, défis) recalculée depuis

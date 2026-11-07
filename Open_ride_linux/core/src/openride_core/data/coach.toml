@@ -69,3 +69,12 @@ seuil = "intense"
 vo2max = "intense"
 anaerobie = "anaerobic"
 sprint = "anaerobic"
+
+[workouts]
+# Classement des entraînements par besoin (lot CO2), à la seconde sur les cibles des blocs.
+anaerobic_weight = 3     # une seconde en Z6–Z7 compte comme 3 secondes en Z3–Z5
+light_max_above_s = 300  # moins de 5 min (pondérées) au-dessus de Z2 : aérobie léger
+recovery_max_above_z1_pct = 10   # au plus 10 % du temps au-dessus de Z1 : récupération
+ftp_test = "ftp_test:ramp"       # entraînement du conseil « test de FTP » (lot O10)
+# Sous-famille de la suggestion de la montre : zone dominante cherchée d'abord (plan §4 bis).
+watch_zone = { tempo = "Z3", seuil = "Z4", vo2max = "Z5" }
