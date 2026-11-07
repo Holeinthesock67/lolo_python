@@ -229,3 +229,23 @@ Ce que ça dit :
 - Les cultures répondent à l'herbe (`herbe_50`) et aux ombres en général, pas aux arbres : elles demandent un autre levier que la forêt.
 
 Passe suivante : `mesures/2026-11-07-cultures-foret-c/` avec le correctif, plus `ombres_2_cascades` et `ombres_200m` (medium et high).
+
+### 8.6 Bancs c et d (7 novembre) et limite par défaut
+
+`mesures/2026-11-07-cultures-foret-c/` (a2a87ad4) et `-d/` (f0c1fe42, avec #741 : bande large d'herbe moitié moins dense).
+
+| Variante (gain forêt en ms) | low / medium / high |
+| --- | --- |
+| `ombres_arbres_100` (banc c) | +0,16 / +1,05 / +1,89 |
+| `ombres_arbres_150` (banc c) | +0,17 / +0,84 / +1,64 |
+| `sans_ombres_arbres` (borne, banc c) | +0,20 / +1,24 / +2,29 |
+| `ombres_2_cascades` seul (banc c) | — / +0,59 / +1,13 |
+| `ombres_arbres_100` (banc d) | — / +1,11 / +1,72 |
+| `ombres_arbres_100_2c` (banc d) | — / +1,11 / +1,94 |
+| `herbe_150m` (banc d) | ≈ 0 partout |
+
+- Le groupe « ombre seule » rend presque tout le gain de `sans_ombres_arbres`. Ajouter 2 cascades par-dessus ne gagne presque plus rien (+0,02 / +0,13) : pas retenu.
+- L'herbe coûte par sa densité, pas par sa distance (`herbe_150m` ≈ 0) : #741 (bande large moitié moins dense) est le bon levier, déjà sur main.
+- Les cultures ne bougent avec aucune variante d'ombre des arbres.
+- **Défaut retenu (7 novembre)** : ombre des arbres limitée à 100 m (`TreeRenderer.TREE_SHADOW_M`) dans les trois qualités, aspect validé par le propriétaire sur la planche du banc c. L'essai `ombres_arbres_m=0` (variante `ombres_arbres_illimitees`) rend l'ancien comportement.
+- Reste au-dessus du budget : forêt ≈ 12,8 ms en medium (12) et ≈ 15,6 ms en high (14), cultures au-dessus en medium et high.

@@ -132,11 +132,11 @@ func _test_tree_generation_and_determinism() -> void:
 			valid_lods = false
 		if mmi1.visibility_range_begin != 450.0 or mmi1.visibility_range_end != 1500.0:
 			valid_lods = false
-		if mmi0.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_ON:
+		if mmi0.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:   # ombre par le groupe « ombre seule »
 			valid_lods = false
 		if mmi1.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
 			valid_lods = false
-	_check(valid_lods, "chaque case possède ses 2 MultiMeshInstance3D avec LOD0 (0-450m ombre) et LOD1 (450-1500m sans ombre)")
+	_check(valid_lods, "chaque case possède ses 2 MultiMeshInstance3D avec LOD0 (0-450m, ombre par le groupe « ombre seule ») et LOD1 (450-1500m sans ombre)")
 
 	# Libération
 	renderer.remove_tile(Vector2i(0, 0))
@@ -185,6 +185,7 @@ func _test_shadow_limit() -> void:
 	var cam := Vector3(125.0, 0.0, 125.0)
 
 	var plain = TreeRenderer.new()
+	plain.shadow_end_m = 0.0   # essai ombres_arbres_m=0 : ombre de tous les arbres proches
 	root.add_child(plain)
 	plain.add_tile(plain.prepare_tile(0, 0, heights, route, theme, 1.0))
 	plain.update_shadows(cam)

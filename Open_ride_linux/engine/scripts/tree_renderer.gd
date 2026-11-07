@@ -42,6 +42,9 @@ const CELL_RADIUS_M := CELL_SIZE_M * 0.7072 + 10.0
 ## quand la caméra a bougé de SHADOW_UPDATE_STEP_M (tranches du tampon des cases, mises bout à bout), et le shader
 ## replie l'ombre au-delà de M. Le banc du 7 novembre a montré qu'un réglage par case de 250 m laissait presque
 ## tous les sommets dans la passe d'ombre (gain 0,3 ms au lieu de 1,3 à 2,1).
+## Limite par défaut (7 novembre, banc r732c/d : forêt −1,1 ms en medium, −1,7 à −1,9 ms en high, aspect validé
+## par le propriétaire le 7 novembre) ; l'essai `ombres_arbres_m=0` rend l'ombre de tous les arbres proches.
+const TREE_SHADOW_M := 100.0
 const SHADOW_UPDATE_STEP_M := 10.0
 const SHADOW_BUCKET_M := 25.0
 const SHADOW_STRIDE := 16   # flottants par instance du tampon : transformation 3×4 et couleur
@@ -84,7 +87,7 @@ var last_profile := {}
 
 
 func _init() -> void:
-	shadow_end_m = maxf(0.0, RenderDiag.number("ombres_arbres_m", 0.0))   # essai de coût (render_diag.gd)
+	shadow_end_m = maxf(0.0, RenderDiag.number("ombres_arbres_m", TREE_SHADOW_M))   # essai de coût (render_diag.gd)
 	_init_materials()
 	_lod0_mesh = build_lod0_mesh()
 	_lod1_mesh = build_lod1_mesh()
