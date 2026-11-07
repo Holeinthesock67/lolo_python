@@ -163,6 +163,13 @@ class GravelConfig:
 
 
 @dataclass
+class VelodromeConfig:
+    """Vélodrome (série VD, lot VD3, plan §4.1) : bois de la piste et air de la salle couverte."""
+    factor_wood: float = 0.6       # multiplicateur du crr du bitume sur la piste en bois
+    temperature_c: float = 24.0    # température de la salle : densité de l'air
+
+
+@dataclass
 class ProgressionConfig:
     """Progression de la série V (lot V11) ; faux : ni équipement ni `progression`, comme avant la 2.0."""
     enabled: bool = True
@@ -266,6 +273,7 @@ class Config:
     open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
     gravel: GravelConfig = field(default_factory=GravelConfig)
+    velodrome: VelodromeConfig = field(default_factory=VelodromeConfig)
     progression: ProgressionConfig = field(default_factory=ProgressionConfig)
     avatar: AvatarConfig = field(default_factory=AvatarConfig)
     rogue: RogueConfig = field(default_factory=RogueConfig)
@@ -344,6 +352,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("gravel", "factor_compacted"): (1, 3),
     ("gravel", "factor_gravel"): (1, 3),
     ("gravel", "factor_dirt"): (1, 3),
+    ("velodrome", "factor_wood"): (0.3, 1),
+    ("velodrome", "temperature_c"): (5, 40),
     ("avatar", "standing_grade_pct"): (3, 15),
     ("avatar", "standing_power_pct"): (100, 300),
     ("rogue", "w_prime_j"): (5000, 60000),
@@ -473,6 +483,8 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("gravel", "factor_compacted"): "roulement des routes non revêtues",
     ("gravel", "factor_gravel"): "roulement des routes non revêtues",
     ("gravel", "factor_dirt"): "roulement des routes non revêtues",
+    ("velodrome", "factor_wood"): "roulement de la piste en bois du vélodrome",
+    ("velodrome", "temperature_c"): "air de la salle du vélodrome",
     ("avatar", "standing_grade_pct"): "seuil de la danseuse",
     ("avatar", "standing_power_pct"): "seuil de la danseuse",
     ("rogue", "w_prime_j"): "valeur de départ ; le menu du Cyber-Rogue choisit W' de chaque run",

@@ -46,7 +46,7 @@ from .garage import GarageError, ProgressionService, estimate_w_prime, workout_d
 from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
 from .open_world_save import save_ride
 from .physics import PhysicsParams, RiderPhysics, draft_saving_w, resistive_force
-from . import surface_physics
+from . import surface_physics, velodrome
 from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
 from .records import RecordBook, RecordsError
@@ -294,6 +294,7 @@ class CoreSession:
         # Paramètres sans bonus de la série T (lot T7), avec le cadre et les roues choisis (série V)
         self._base_params = self._equipped_params()
         self.physics = RiderPhysics(self._base_params)
+        self._track: velodrome.TrackGeometry | None = None   # piste du parcours choisi (couche venue, lot VD3)
         self._build_wind()
         self._head_mps = 0.0          # vent de face au point s (physique à 50 Hz)
         self._wind_offset = 0.0       # supplément de pente dû au vent (feel = "grade")
@@ -1485,8 +1486,11 @@ class CoreSession:
     def _build_wind(self) -> None:
         """Vent des séances d'après `[wind]` (et le thème en mode `theme`) : au lancement et après un réglage."""
         cfg = self.cfg
+        wind_cfg = cfg.wind
+        if self._track is not None and self._track.spec.indoor:   # salle couverte : pas de vent (lot VD3)
+            wind_cfg = replace(cfg.wind, mode="off")
         self.wind = WindModel.from_config(
-            cfg.wind, theme_wind(cfg.render.theme) if cfg.wind.mode == "theme" else None)
+            wind_cfg, theme_wind(cfg.render.theme) if wind_cfg.mode == "theme" else None)
         self._wind_sample = self.wind.sample(0.0) if self.wind.active else CALM
         if self.wind.active:
             log.info("Vent : mode %s, %.0f km/h venant de %.0f°, rafales %.0f %%, ressenti %s "
@@ -1720,6 +1724,9 @@ class CoreSession:
                 self._set_state(self._ow_previous)
             elif ow.ready and ow.route is not None and ow.route.ready:
                 self.route = ow.route
+                if self._track is not None:   # monde ouvert : plus de piste, vent de la configuration
+                    self._track = None
+                    self._build_wind()
                 self.erg = None
                 self._sync_erg_state()
                 self.state.route_id = f"ow:{ow.id}"
@@ -1773,6 +1780,8 @@ class CoreSession:
             return
         self.route = world.route
         self._world_src = (world.route, world.path, world.manifest)
+        self._track = self._track_of(world)
+        self._build_wind()
         self._segments = world.segments
         self.erg = None
         self._sync_erg_state()
@@ -2644,6 +2653,9 @@ class CoreSession:
         grade = here.grade_pct if here else 0.0
         ahead = route.grade_at(s + self.physics.v * tau) if route else 0.0
         alt = here.alt_m if here else 0.0
+        track = self._track
+        if track is not None:   # vélodrome (lot VD3) : air de la salle, à la densité de sa température
+            alt = velodrome.hall_altitude_m(alt, self.cfg.velodrome.temperature_c)
         wcfg = self.cfg.wind
         race = self.race
         if race:
@@ -2667,7 +2679,8 @@ class CoreSession:
                 if hasattr(bot, "power_factor"):
                     bot.power_factor = wtf.bot_power_factor(bot.id)
         gcfg = self.cfg.gravel
-        if gcfg.mode != "off":
+        surfaced = gcfg.mode != "off" or track is not None   # le bois d'une piste roule même sans gravel (VD3)
+        if surfaced:
             # Gravel (lot U21) : roulement multiplié, lissé sur 20 m ; vitesse virtuelle en SIM comme en ERG.
             params = self.physics.p if (race or wtf is not None) else self._base_params
             self._gravel_factor = self._gravel_factor_at(route, s)
@@ -2704,7 +2717,7 @@ class CoreSession:
                 self._wind_offset = grade_offset_pct(self.physics.v, head, draft, alt,
                                                      self.physics.p, wcfg.max_grade_offset_pct)
                 target += self._wind_offset
-            if gcfg.mode != "off":
+            if surfaced:
                 # Gravel ajouté au vent et à l'abri, le total sous la même borne (lot U21).
                 total = surface_physics.combined_offset_pct(self._wind_offset, self._gravel_offset,
                                                             wcfg.max_grade_offset_pct)
@@ -2730,10 +2743,14 @@ class CoreSession:
         power_used = race.power(m.power_w) if race else m.power_w
         if wtf_eff is not None:
             power_used = wtf.power(power_used, wtf_eff)
+        s_before = self.physics.s
         self.physics.step(power_used, grade, alt, dt, alpha_draft=draft)
+        if track is not None:   # rouler plus haut dans un virage allonge le tour (plan VD §4.2)
+            self.physics.s = s_before + (self.physics.s - s_before) * track.progress_factor(
+                s_before, velodrome.height_on_track(self._lane.m))
         self._draft_w = (round(draft_saving_w(self.physics.v, alt, self.physics.p, draft))
                          if draft >= draft_mod.SAVED_W_MIN_DRAFT else None)
-        if gcfg.mode != "off":
+        if surfaced:
             ridden = self.physics.v * dt
             self._gravel_stats[1] += ridden
             if self._gravel_factor > 1.0:
@@ -2751,7 +2768,11 @@ class CoreSession:
             params = getattr(bot, "params", None)   # bots à puissance constante : même vent (lot P2)
             if self.wind.active and params is not None and route:
                 params.wind_mps = head_component(self._wind_sample, route.sample(bot.s).heading_deg)
+            bot_s = bot.s
             bot.step(dt, route)
+            if track is not None and getattr(bot, "physics", None) is not None:   # même règle de distance (VD3)
+                bot.physics.s = bot_s + (bot.physics.s - bot_s) * track.progress_factor(
+                    bot_s, velodrome.height_on_track(draft_mod.lane_of(bot)))
         if self.survivor is not None:
             self._survivor_after_bots()
 
@@ -2812,13 +2833,29 @@ class CoreSession:
             self._survivor_end_pending = False
             self._finish(True)
 
+    def _track_of(self, world) -> velodrome.TrackGeometry | None:
+        """Piste du parcours (couche `venue` d'un vélodrome, lot VD3) ; None pour une route ou une couche illisible."""
+        venue = getattr(world, "venue", None)
+        if not venue or venue.get("kind") != "velodrome":
+            return None
+        try:
+            track = velodrome.geometry_from_venue(venue)
+        except velodrome.VelodromeError as exc:
+            log.warning("Piste illisible, roulée comme une route : %s", exc)
+            return None
+        log.info("Vélodrome : piste de %.0f m, virages à %.0f°, bois (facteur %.2f), salle à %.0f °C, sans vent.",
+                 track.length_m, track.spec.bank_bend_deg, self.cfg.velodrome.factor_wood,
+                 self.cfg.velodrome.temperature_c)
+        return track
+
     def _gravel_factor_at(self, route: Route | None, s: float) -> float:
         """Facteur de roulement en s (lot U21) : colonne `surface` lissée sur 20 m en `auto`, surface imposée
         sinon ; une route sans colonne (monde ouvert compris) est revêtue en `auto`."""
         gcfg = self.cfg.gravel
         if route is None or not hasattr(route, "surface_at"):
             return surface_physics.crr_factor(surface_physics.effective_surface("paved", gcfg.mode), gcfg)
-        return surface_physics.blended_factor(route, s, gcfg.mode, gcfg)
+        wood = self.cfg.velodrome.factor_wood if self._track is not None else None
+        return surface_physics.blended_factor(route, s, gcfg.mode, gcfg, wood_factor=wood)
 
     def _surface_here(self, route: Route | None, s: float) -> str:
         here = route.surface_at(s) if route is not None and hasattr(route, "surface_at") else "paved"

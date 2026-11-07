@@ -49,6 +49,9 @@ Sous-commandes disponibles à ce stade :
                                       parcours de démonstration des biomes (tour des six biomes,
                                       tour gravel, côte et mer, alpin) dans le dossier des parcours
                                       (lot U19 ; compilateur requis)
+    openride-core velodromes [--out DOSSIER] [--json]
+                                      piste du vélodrome (250 m, bois, virages relevés) écrite par le
+                                      core dans le dossier des parcours (série VD, lot VD2)
     openride-core profil list [--json] | create NOM | rename ID NOM | delete ID
                                       profils de joueurs : liste, création, renommage, corbeille
                                       (série MJ, lot MJ7)
@@ -374,6 +377,32 @@ def cmd_demo_biomes(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_velodromes(args: argparse.Namespace) -> int:
+    from . import config as config_mod
+    from . import velodrome
+
+    out = args.out or config_mod.ROUTES_DIR
+    try:
+        worlds = velodrome.write_all(out)
+    except (OSError, velodrome.VelodromeError) as exc:
+        print(f"openride-core velodromes : {exc}", file=sys.stderr)
+        return 1
+    infos = []
+    for world in worlds:
+        venue = json.loads((world / "venue.json").read_text(encoding="utf-8"))
+        g = venue["geometry"]
+        infos.append({"route": world.stem, "path": str(world), "length_m": g["length_m"],
+                      "bank_bend_deg": g["bank_bend_deg"], "bank_straight_deg": g["bank_straight_deg"]})
+    if args.json:
+        print(json.dumps(infos, indent=2, ensure_ascii=False))
+        return 0
+    for info in infos:
+        print(f"{info['route']} : {info['length_m']:.0f} m, virages à {info['bank_bend_deg']:.0f}°, "
+              f"droites à {info['bank_straight_deg']:.0f}°")
+    print(f"Pistes écrites dans {out}.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Analyseur de la ligne de commande ; aussi lu par `test_docs_coherence.py` (commandes citées)."""
     p = argparse.ArgumentParser(prog="openride-core")
@@ -506,6 +535,10 @@ def build_parser() -> argparse.ArgumentParser:
                                              "(lot U19, compilateur requis)")
     dmb.add_argument("--out", type=Path, help="dossier de sortie (défaut : ~/.local/share/openride/routes)")
     dmb.add_argument("--json", action="store_true", help="sortie JSON (parts des biomes et des surfaces)")
+    vel = sub.add_parser("velodromes", help="piste du vélodrome écrite par le core dans le dossier des parcours "
+                                            "(série VD, lot VD2)")
+    vel.add_argument("--out", type=Path, help="dossier de sortie (défaut : ~/.local/share/openride/routes)")
+    vel.add_argument("--json", action="store_true", help="sortie JSON (pistes écrites)")
     prf = sub.add_parser("profil", help="profils de joueurs : liste, création, renommage, corbeille ; "
                                         "profil d'essai (série MJ)")
     prf.add_argument("action", choices=["essai", "list", "create", "rename", "delete"])
@@ -551,7 +584,8 @@ def main(argv: list[str] | None = None) -> int:
             "fit-check": cmd_fit_check,
             "history": cmd_history, "devices": cmd_devices,
             "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test,
-            "open-world-save": cmd_open_world_save, "demo-biomes": cmd_demo_biomes, "profil": cmd_profil}[args.command](args)
+            "open-world-save": cmd_open_world_save, "demo-biomes": cmd_demo_biomes, "velodromes": cmd_velodromes,
+            "profil": cmd_profil}[args.command](args)
 
 
 if __name__ == "__main__":
