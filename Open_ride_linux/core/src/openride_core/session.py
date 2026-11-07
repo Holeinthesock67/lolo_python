@@ -2859,9 +2859,15 @@ class CoreSession:
         if traffic is None:
             return None
         if self.road_cyclists is None or self.road_cyclists.route is not route:
+            widths = surface_physics.surface_widths(theme_section(self.cfg.render.theme, "surfaces"))
+
+            def half_at(s: float) -> float:
+                # Option gravel : demi-largeur du chemin sous le groupe (mode lu à chaque appel, comme le menu)
+                return surface_physics.rideable_half_m(route, s, self.cfg.gravel.mode, widths, 6.0)
+
             self.road_cyclists = road_cyclists_mod.RoadCyclists(
                 route, road_cyclists_mod.climbs_for(route, self._segments), traffic.villages,
-                seed=road_cyclists_mod.SEED)
+                seed=road_cyclists_mod.SEED, half_width_at=half_at)
         return self.road_cyclists
 
     def _update_draft(self, dt: float, route: Route | None, heading_deg: float,

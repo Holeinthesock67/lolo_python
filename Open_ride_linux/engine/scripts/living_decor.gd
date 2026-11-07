@@ -368,7 +368,11 @@ func _poll_job(wait: bool = false) -> void:
 	passersby = res["passersby"]
 	passersby_view.setup_passersby(passersby, sound_player)
 	traffic.configure(_route, theme, pois, int(living.get("vehicles", 0)))
-	cyclists.configure(_route, climbs, pois, int(living.get("cyclists", 0)), 0, _road_width_m, traffic)
+	# Option gravel : les cyclistes du décor restent sur le chemin (largeur du ruban de world_streamer)
+	var half_at := Callable()
+	if world_streamer != null and world_streamer.has_method("rideable_half"):
+		half_at = func(s: float) -> float: return world_streamer.rideable_half(s, _road_width_m)
+	cyclists.configure(_route, climbs, pois, int(living.get("cyclists", 0)), 0, _road_width_m, traffic, half_at)
 	sky.biome_model = _active_biome_model()
 	sky.configure(_route, theme, climbs, int(living.get("aircraft", 0)))
 	turbines.set_points(pois)
