@@ -119,6 +119,13 @@ def build_segments(route: dict) -> list[dict]:
     return [seg.to_dict() for seg in detect_segments(Profile(s, route["alt_m"], route["grade_pct"]))]
 
 
+# Version du générateur, portée par le manifeste (`compiler.version`). 0.2.0 (7 novembre 2026) : terrain proche
+# dégagé sous la chaussée (`synthetic_terrain.clear_road`) ; une démonstration plus ancienne du dossier des
+# parcours est remplacée par `ensure_demo_world`.
+FAKE_WORLD_NAME = "openride-fake-world"
+FAKE_WORLD_VERSION = "0.2.0"
+
+
 def build_manifest(name: str, route: dict, created: str | None = None,
                    segments: list[dict] | None = None) -> dict:
     segments = build_segments(route) if segments is None else segments
@@ -127,7 +134,7 @@ def build_manifest(name: str, route: dict, created: str | None = None,
         "format_version": "1.3",
         "name": name,
         "created": created or datetime.now().astimezone().isoformat(timespec="seconds"),
-        "compiler": {"name": "openride-fake-world", "version": "0.1.0"},
+        "compiler": {"name": FAKE_WORLD_NAME, "version": FAKE_WORLD_VERSION},
         "source": {"gpx": None, "gpx_sha256": None},
         "origin": {"lat": route["lat"][0], "lon": route["lon"][0], "alt_m": route["alt_m"][0],
                    "utm_zone": "32T"},
@@ -170,16 +177,27 @@ def write_demo_world(out_dir: Path) -> Path:
 
 
 def _demo_needs_rewrite(world: Path) -> bool:
-    """Vrai si `world` manque, ou si c'est une ancienne démonstration écrite ici sans couche terrain."""
+    """Vrai si `world` manque, ou si c'est une démonstration écrite ici sans couche terrain ou par une version
+    plus ancienne du générateur (terrain qui recouvrait la chaussée au km 1,74 avant la 0.2.0)."""
     try:
         manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return True
     if not isinstance(manifest, dict):
         return True
-    ours = (manifest.get("compiler") or {}).get("name") == "openride-fake-world"
+    compiler = manifest.get("compiler") or {}
+    if compiler.get("name") != FAKE_WORLD_NAME:
+        return False
     terrain = (manifest.get("layers") or {}).get("terrain") or {}
-    return ours and not terrain.get("present", False)
+    return not terrain.get("present", False) or _version(compiler.get("version")) < _version(FAKE_WORLD_VERSION)
+
+
+def _version(text) -> tuple[int, ...]:
+    """« 0.2.0 » -> (0, 2, 0) ; (0,) si illisible (plus ancien que toute version)."""
+    try:
+        return tuple(int(p) for p in str(text).split("."))
+    except ValueError:
+        return (0,)
 
 
 def _bundled_demo_world(engine_dir: Path | None = None) -> Path | None:
@@ -195,8 +213,8 @@ def _bundled_demo_world(engine_dir: Path | None = None) -> Path | None:
 
 
 def ensure_demo_world(routes_root: Path, engine_dir: Path | None = None) -> Path:
-    """Crée `<routes_root>/demo.world` s'il manque (ou le réécrit s'il date d'avant sa couche terrain),
-    et renvoie son chemin. Copie la démonstration embarquée par l'engine quand elle est là (quelques
+    """Crée `<routes_root>/demo.world` s'il manque (ou le réécrit s'il date d'avant sa couche terrain ou d'une
+    version plus ancienne du générateur), et renvoie son chemin. Copie la démonstration embarquée par l'engine quand elle est là (quelques
     millisecondes, la séance n'attend pas), sinon l'écrit (environ 2 s pour le terrain). Le manifeste
     est copié en dernier : une copie interrompue est refaite au prochain appel."""
     import shutil

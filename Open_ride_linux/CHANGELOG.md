@@ -13,6 +13,7 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Le globe du menu « Monde ouvert » n'est plus dessiné pendant la sortie.
 - Image moins claire et plus contrastée : brume éclairée à moitié par le ciel et étalonnage en S (ombres plus denses), au même coût.
 - Route qui disparaissait sous l'herbe dans les longues montées (forêt, montagne) : le terrain lointain est de nouveau creusé sous la chaussée avec le relief exagéré.
+- Parcours demo : le sol ne recouvre plus la chaussée au km 1,74, là où la pente passe de 1 % à 3,5 %. Le terrain de démonstration reçoit le même garde-fou que les parcours compilés et la démo du dossier des parcours est remplacée au prochain lancement.
 
 ### Dernier survivant à 11 adversaires (lot DS8)
 - Jusqu'à 11 adversaires (au lieu de 4) grâce au peloton : une arche par adversaire, donc un parcours d'au moins 11 km à 1 km d'écart, ou une boucle, ou le monde ouvert. Sur un parcours trop court, l'écran Prêt propose les réglages qui tiennent.
