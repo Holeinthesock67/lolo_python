@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : catalogue des objets, effets dans la table de TT2, objets sur la route, projectiles, contacts et tirage selon le retard | Python | TT2, AS2, T12, T13 | Grande | Prêt (version 4.0 proposée) |
+| Série GP : catalogue des objets, effets dans la table de TT2, objets sur la route, projectiles, contacts et tirage selon le retard | Python | TT2, AS2, T12, T13 | Grande | En PR (7 novembre, version 4.0 proposée), avant TT2 ; core seul, sans séance ni affichage |
 
 Série GP (mode « Grand Prix des objets », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`.
 
@@ -29,3 +29,20 @@ Série GP (mode « Grand Prix des objets », demande du propriétaire du 31 octo
 2. Tirage : 10 000 tirages par tranche de retard, fréquences à ± 2 points des poids ; aucun objet inutile ni désactivé.
 3. Course simulée de 4 et de 11 bots : trame `gp` sous 500 octets, aucun objet au-delà de 32, même graine, même course.
 4. Aucune fonction du module ne renvoie de pente : test qui le vérifie (la pente envoyée ne dépend pas des objets).
+
+## 5. Livraison (7 novembre)
+
+Modules : `core/src/openride_core/route_objects.py` (générique) et le paquet `core/src/openride_core/grandprix/` (`effects.py`, `items.py`, `boxes.py`, `draw.py`, `mode.py`) ; tests : `core/tests/test_grandprix.py`. Rien n'est branché dans la séance (lot GP2) : le mode n'est ni annoncé ni lançable.
+
+Lectures retenues là où le plan laissait un choix :
+
+- **TT2 n'est pas encore écrit.** Les six effets (`kick`, `slip`, `speed_floor`, `cap`, `immune`, `wind`) et la marque `breakaway` sont des lignes de données (`EffectSpec` : effet, facteur, durée) dans `grandprix/effects.py`, chaque objet étant décrit par une cible (`self`, `ahead`, `leader`, `near`, `behind`) et une forme (`instant`, `duration`, `dropped`, `projectile`) : aucun objet n'a de branche de code à lui. TT2 déplacera ces lignes dans la table unique de `powerups.py` sans les réécrire ; `powerups.py` n'est pas touché ici.
+- **Lignes doubles du tirage** (« Bidon, trois bidons ») : trois quarts pour l'objet simple, un quart pour l'objet triple ; les sommes par ligne sont celles du §4.2.
+- **Chaos** : la force est l'écart à 1 d'un facteur (ou la valeur du vent) multipliée par 0,7, 1 ou 1,3 ; les durées ne changent pas ; la fréquence est l'écart des rangées divisé par le même nombre.
+- **Voies** : trois voies sur la chaussée de droite de l'AS2 (0,3 à 2,6 m), limites à 1,07 et 1,83 m ; le cycliste sans placement (1,2 m) est au centre, un bot seul (2,1 m) à droite. Centres publiés pour le placement forcé de GP2 : 0,68, 1,45 et 2,22 m.
+- **Nuage d'orage** : vole à la vitesse du lanceur plus 30 m/s vers le premier du moment, puis attend 1 s au-dessus de lui (`warn`) avant l'averse ; la sonnette du premier dans cette seconde le chasse.
+- **Musette guidée** : verrouillée sur le premier coureur devant à moins de 200 m, sinon lancée tout droit ; portée 600 m, 40 s.
+- **Furtif** : vol de l'objet et marque `breakaway` de 10 s ; l'abri retiré aux suiveurs et les bots aveugles viennent avec GP4 (après TT4).
+- **Esquivés** (bilan) : coups arrêtés par l'invincibilité, la parade, les 2 s après un coup, la reprise après une pause, ou la sonnette qui chasse un nuage.
+- **Trame `gp`** : `fx` regroupé par objet (`[["star", 5.2]]`, comme l'exemple du §8.1) ; `obj` donne l'objet dessiné (`musette`, jamais `musette_x3`) ; identifiants d'objets repris de 1 à 99 (32 objets au plus) ; rangées au mètre. Pire trame d'une course de 30 km : moins de 500 octets (test).
+- **`loss_s`** de `gp_hit` : perte estimée en secondes, positive, calculée comme les chiffres du §3 (même physique, 60 s après le coup) à la vitesse d'équilibre et la pente du moment.
