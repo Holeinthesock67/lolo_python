@@ -35,7 +35,6 @@ Bibliothèque standard seulement.
 from __future__ import annotations
 
 import argparse
-import bisect
 import csv
 import html
 import json
@@ -533,8 +532,7 @@ def hitch_period(distances: list[float], min_m: float = 10.0, max_m: float = 100
             while j < len(ring) and ring[j][0] <= ring[i][0] + width:
                 count[ring[j][1]] = count.get(ring[j][1], 0) + 1
                 j += 1
-            if (len(count), j - i) > (top_pass, top_img):
-                top_pass, top_img = len(count), j - i
+            top_pass, top_img = max((top_pass, top_img), (len(count), j - i))
             k = ring[i][1]
             count[k] -= 1
             if not count[k]:
