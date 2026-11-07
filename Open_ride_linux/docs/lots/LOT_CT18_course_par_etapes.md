@@ -5,7 +5,7 @@
 | --- | --- | --- | --- | --- |
 | Série CT : course par étapes (trois étapes au temps cumulé) | Python, GDScript | CT0, CT8, CT13 | Moyenne | Prêt (version 5.0, choisi par le propriétaire le 7 novembre) |
 
-Série CT (version 5.0, mode « Course tactique »). Plan de la série : `docs/5.0/PLAN_SERIE_CT.md`. Idée retenue par le propriétaire le 7 novembre parmi les pistes pour renforcer la tactique et la diversité du jeu, avec une consigne : **ne pas nuire à la compréhension ni à la lisibilité du jeu** (la réputation des bots et la lecture imparfaite de leur réserve ont été écartées pour cette raison).
+Série CT (version 5.0, mode « Course tactique »). Plan de la série : `docs/5.0/PLAN_SERIE_CT.md`. Idée retenue par le propriétaire le 7 novembre parmi les pistes pour renforcer la tactique et la diversité du jeu, avec une consigne : **ne pas nuire à la compréhension ni à la lisibilité du jeu**, la lisibilité étant ici la compréhension tactique de la course (la réputation des bots et la lecture imparfaite de leur réserve ont été écartées pour cette raison).
 
 ## 1. Objectif
 
@@ -29,10 +29,15 @@ CT0, CT8, CT13 livrés.
 - **Simulateur d'abord** : la règle est ajoutée à `tactical_sim` et le rapport CT0 régénéré avant tout branchement dans la séance.
 - **Sécurité** : comme toute la série, rien ne passe par la résistance du trainer ; seuils en % de la FTP ; SIM seulement.
 
-## 5. Lisibilité (consigne du 7 novembre)
+## 5. Lisibilité tactique (consigne du 7 novembre)
 
 Écran de l'étape : général en 5 lignes au départ et au bilan ; pendant la course, une seule ligne « Général : 2ᵉ à 12 s ».
-Règles communes : une seule information nouvelle à la fois à l'écran, une explication d'une phrase au premier usage (une fois par profil), et une maquette validée par le propriétaire avant tout code d'affichage, en low, medium et high.
+Ici, lisibilité veut dire **compréhension tactique** (précision du propriétaire du 7 novembre) : le joueur doit comprendre ce qui se passe dans la course, pourquoi un bot agit, et pourquoi il a gagné ou perdu. Règles communes :
+- **Cause visible** : chaque décision d'un bot que la règle provoque est annoncée avec sa raison, en une ligne du bandeau des voisins (par exemple « Grimpeur attaque : réserve 80 %, bosse à 5 % »).
+- **Conséquence prévisible** : avant de s'engager, le joueur sait ce que coûte un choix (réserve dépensée, points ou secondes en jeu), sans calcul de tête.
+- **Bilan qui explique** : le bilan nomme au plus trois moments décisifs de la course (« course perdue au km 6 : 12 s dans la bordure, mal placé à l'entrée ») à partir des événements du core.
+- **Simulateur** : chaque victoire du rapport CT0 est rattachée à un moment décisif (attaque, catapulte, bordure, prime…) ; une victoire sans moment décisif identifiable est un défaut de la règle.
+- Une seule information nouvelle à la fois à l'écran, une phrase d'explication au premier usage (une fois par profil), et une maquette validée par le propriétaire avant tout code d'affichage, en low, medium et high.
 
 ## 6. Modifications de contrat autorisées
 
