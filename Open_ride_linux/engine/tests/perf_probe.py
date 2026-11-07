@@ -508,10 +508,13 @@ def budget_checks(rows: list[dict[str, Any]], targets: dict[str, Any] | None = N
 
 def hitch_period(distances: list[float], min_m: float = 10.0, max_m: float = 1000.0, step_m: float = 0.5,
                  tol_share: float = 0.05, min_hits: int = 4, min_score: float = 0.6) -> dict[str, float] | None:
-    """Période en distance des à-coups, ou None. Pour chaque période P de `min_m` à `max_m`, part des
-    à-coups dont la phase (distance modulo P) tombe à moins de `tol_share`·P de la phase la plus peuplée,
-    multipliée par la couverture (à-coups vus / passages de P sur la route parcourue, au plus 1) : une
-    période divisée par deux (20 m pour 40 m) perd sur la couverture, une période doublée sur la part."""
+    """Période en distance des à-coups, ou None. Pour chaque période P de `min_m` à `max_m`, cherche la fenêtre
+    de phase (distance modulo P, largeur 2·`tol_share`·P) qui revient au plus grand nombre de passages distincts
+    (rang de la distance dans les tours de P). Score = part des à-coups dans cette fenêtre × couverture (passages
+    où elle revient / passages de P sur la route parcourue, au plus 1), avec au moins `min_hits` passages.
+    Compter les passages et non les images (lot X57) : un paquet d'images lentes sur un même passage (chargement
+    de décor, bots) ne fait pas une période, une vraie saccade périodique revient à chaque passage. Une période
+    divisée par deux (20 m pour 40 m) perd sur la couverture, une période doublée sur la part."""
     d = sorted(x for x in distances if isinstance(x, (int, float)))
     if len(d) < min_hits:
         return None
@@ -519,17 +522,29 @@ def hitch_period(distances: list[float], min_m: float = 10.0, max_m: float = 100
     best: dict[str, float] | None = None
     p = min_m
     while p <= min(max_m, span):
-        tol = tol_share * p
-        phases = sorted(x % p for x in d)
-        ring = phases + [q + p for q in phases]   # phases déroulées sur deux tours : fenêtre circulaire
-        top = 0
-        for i, ph in enumerate(phases):   # phase la plus peuplée : fenêtre de 2·tol qui commence à chaque phase
-            top = max(top, bisect.bisect_right(ring, ph + 2.0 * tol, i) - i)
-        share = top / len(d)
-        coverage = min(1.0, top / max(span / p + 1.0, 1.0))
+        width = 2.0 * tol_share * p
+        # (phase, passage), déroulés sur deux tours : la copie du second tour garde le passage du tour d'avant,
+        # pour qu'une fenêtre à cheval sur la fin du tour compte une saccade de part et d'autre comme un passage.
+        base = sorted((x % p, int(x // p)) for x in d)
+        ring = base + [(ph + p, k - 1) for ph, k in base]
+        count: dict[int, int] = {}
+        j = top_pass = top_img = 0
+        for i in range(len(base)):   # fenêtre glissante [phase i, phase i + width] : passages distincts, images
+            while j < len(ring) and ring[j][0] <= ring[i][0] + width:
+                count[ring[j][1]] = count.get(ring[j][1], 0) + 1
+                j += 1
+            if (len(count), j - i) > (top_pass, top_img):
+                top_pass, top_img = len(count), j - i
+            k = ring[i][1]
+            count[k] -= 1
+            if not count[k]:
+                del count[k]
+        share = top_img / len(d)
+        coverage = min(1.0, top_pass / max(span / p + 1.0, 1.0))
         score = share * coverage
-        if top >= min_hits and (best is None or score > best["score"] + 1e-9):
-            best = {"period_m": p, "share": share, "coverage": coverage, "score": score, "hits": float(top)}
+        if top_pass >= min_hits and (best is None or score > best["score"] + 1e-9):
+            best = {"period_m": p, "share": share, "coverage": coverage, "score": score,
+                    "hits": float(top_img), "passes": float(top_pass)}
         p += step_m
     return best if best is not None and best["score"] >= min_score else None
 
@@ -616,7 +631,8 @@ def hitch_checks(rows: list[dict[str, Any]], saccades: list[dict[str, Any]] | No
             causes = sorted({str(r.get("cause") or "inconnue") for r in hits})
             out.append((False if real_window else None, "à-coups : périodicité en distance",
                         f"une image de plus de {hitch_ms:.0f} ms tous les {per['period_m']:.1f} m "
-                        f"({per['hits']:.0f} sur {len(hits)}, causes : {', '.join(causes)}){note}"))
+                        f"({per['hits']:.0f} images sur {len(hits)}, revenue à {per['passes']:.0f} passages, "
+                        f"causes : {', '.join(causes)}){note}"))
     return out
 
 
