@@ -538,8 +538,10 @@ def update_lanes(runners: list[tuple[float, float, Lane]], dt: float, length_m: 
     (`path_bounds`) ; serrés sur un chemin étroit, ils s'enferment et se suivent en file (`blocked_by`)."""
 
     def on_path(s: float, lane: Lane, target: float) -> float:
-        if half_at is None or lane.length != BIKE_LENGTH_M or lane.half_width != RIDER_WIDTH_M / 2.0:
-            return target          # véhicule de la circulation : sa voie est la sienne
+        # Placement automatique seulement : un véhicule de la circulation garde sa voie, un coureur au placement
+        # coupé sa place (bot éliminé du Dernier survivant qui se range sur l'accotement, cycliste à 1,2 m)
+        if half_at is None or not lane.auto or lane.length != BIKE_LENGTH_M or lane.half_width != RIDER_WIDTH_M / 2.0:
+            return target
         lo, hi = path_bounds(half_at(s))
         return min(max(target, lo), hi)
 
