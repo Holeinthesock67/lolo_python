@@ -3,7 +3,7 @@
     python -m openride_core.tools.tactical_sim [--races 200] [--seed 1] [--circuits plat,col,...]
         [--strategies suceur,rouleur,...] [--balance FICHIER.toml] [--report FICHIER.md] [--json] [--jobs N]
 
-Courses de 4 bots à profil (grimpeur, rouleur, sprinteur, diesel, profils du lot T12) et d'un cycliste
+Courses de 5 bots à profil (grimpeur, rouleur, sprinteur, diesel du lot T12, et le baroudeur) et d'un cycliste
 virtuel, en temps accéléré (pas de `dt_s`, 0,5 s), sans trainer ni engine, sur des circuits générés (bouchon
 de CT8 : profils en pente seulement, sans virage). Chaque course tire la forme du jour de chacun (± 3 % de CP),
 les relais et les attaques des bots à partir de la graine : même graine, même rapport à l'octet près, quel
@@ -32,20 +32,28 @@ import random
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
 from typing import Any
 
-from ..bots import FOLLOW_GAIN, FOLLOW_GAP_M, FOLLOW_MIN_CP, FOLLOW_TAU_S, PROFILES
+from ..bot_tactics import Character
+from ..bots import FOLLOW_GAIN, FOLLOW_GAP_M, FOLLOW_MIN_CP, FOLLOW_TAU_S, PROFILES, BotProfile
 from ..draft import ALPHA_GROUP_CAP, BIKE_LENGTH_M, GAP_CUTOFF_M, K_LINE, draft_coefficient
 from ..physics import PhysicsParams, RiderPhysics, draft_saving_w, resistive_force, steady_speed
 from ..rogue.balance import BalanceError
 from ..rogue.wbal import WbalState, wbal_initial, wbal_step
 from ..tactical import bouchons as rules
+from ..tactical import elo
 from ..tactical.balance import DEFAULT_BALANCE, TacticalBalance, balance_hash, load_balance
 
 STRATEGIES = ("suceur", "rouleur", "attaquant", "echappee", "mixte")
-BOT_PROFILES = ("climber", "rouleur", "sprinter", "diesel")
+# Baroudeur (idée du propriétaire du 7 novembre) : profil du simulateur seulement, en attendant le lot CT14
+# qui l'ajoute à `bots.PROFILES` (valeur de contrat, menu, HUD). Rouleur endurant qui part en échappée.
+BAROUDEUR = BotProfile("Baroudeur", 70.0, 3.7, 22000.0, flat=1.00, climb=0.95, survival=1.30,
+                       character=Character(attack_chance=0.3, sprint_attack_chance=0.5, follow_climb=0.4,
+                                           follow_flat=0.6, durability_pct_per_h=2.0))
+SIM_PROFILES: dict[str, BotProfile] = {**PROFILES, "baroudeur": BAROUDEUR}
+BOT_PROFILES = ("climber", "rouleur", "sprinter", "diesel", "baroudeur")
 RIDER_ID = "rider"
 CLIMB_GRADE_PCT = 2.0           # au-dessus : stratégie « montée » des bots (plat en dessous, comme Y10)
 GROUP_LOOK_M = 30.0             # coureurs à moins de 30 m : même groupe (pour l'attaquant)
@@ -134,6 +142,7 @@ class Runner:
     chasing: bool = False
     chase_ok: bool = False
     reckless: bool = False
+    escaping: bool = False             # baroudeur en échappée
     dropped: bool = False
     attack_at_m: float | None = None
     attack_left_s: float = 0.0
@@ -186,7 +195,7 @@ def _solo_time(parts: tuple[tuple[float, float], ...], params: PhysicsParams, po
 
 
 def _bot_time(profile: str, circuit: Circuit, scale: float, bal: TacticalBalance) -> float:
-    spec = PROFILES[profile]
+    spec = SIM_PROFILES[profile]
     params = PhysicsParams(mass_kg=spec.mass_kg + bal.bike_mass_kg)
     cp = spec.cp_wkg * spec.mass_kg * scale
     return _solo_time(circuit.parts, params, lambda g: (spec.climb if g >= CLIMB_GRADE_PCT else spec.flat) * cp)
@@ -222,7 +231,7 @@ def _make_field(strategy: str, scales: dict[str, float], bal: TacticalBalance, r
     out.append(Runner(RIDER_ID, RIDER_ID, strategy, rp, cp, bal.rider_w_prime_j, RiderPhysics(rp, 0.0, START_V_MPS),
                       wbal_initial(bal.rider_w_prime_j)))
     for i, name in enumerate(BOT_PROFILES):
-        spec = PROFILES[name]
+        spec = SIM_PROFILES[name]
         scale = scales[name]
         params = PhysicsParams(mass_kg=spec.mass_kg + bal.bike_mass_kg)
         w = spec.w_prime_j * scale
@@ -337,7 +346,7 @@ def _follow_or_drop(r: Runner, strategy_w: float, grade: float, follow_cap_w: fl
 
 
 def _bot_power(r: Runner, grade: float, to_go: float, dt: float, rng: random.Random, bal: TacticalBalance) -> float:
-    spec = PROFILES[r.profile]
+    spec = SIM_PROFILES[r.profile]
     climbing = grade >= CLIMB_GRADE_PCT
     base = (spec.climb if climbing else spec.flat) * r.cp_w
     tactical = False
@@ -348,6 +357,11 @@ def _bot_power(r: Runner, grade: float, to_go: float, dt: float, rng: random.Ran
         base, tactical = bal.bot_sprint_cp_pct / 100.0 * r.cp_w, True
     elif climbing and spec.climb_attack > 0.0 and r.reserve_pct > bal.bot_climb_attack_reserve_pct:
         base, tactical = bal.bot_climb_attack_cp_pct / 100.0 * r.cp_w, True
+    elif (r.profile == "baroudeur" and r.s < bal.baroudeur_until_pct / 100.0 * (r.s + to_go)
+          and (r.escaping or r.reserve_pct > bal.baroudeur_restart_pct)):
+        r.escaping = r.reserve_pct > bal.baroudeur_stop_pct   # échappée tenue jusqu'à la réserve plancher
+        if r.escaping:
+            base, tactical = bal.baroudeur_cp_pct / 100.0 * r.cp_w, True
     elif r.attack_at_m is not None and to_go <= r.attack_at_m and not r.attacked:
         r.attacked, r.attack_left_s = True, math.inf    # attaque au long cours, jusqu'à vider sa réserve
     if r.attack_left_s > 0.0 and not tactical:
@@ -487,6 +501,7 @@ def race(circuit: Circuit, strategy: str, seed: int, bal: TacticalBalance = DEFA
     me = next(r for r in runners if r.profile == RIDER_ID)
     return {
         "winner": done[0].profile if done else None,
+        "order": [r.profile for r in done],
         "rider_rank": 1 + done.index(me) if me in done else None,
         "rider_gap_s": None if me.finish_s is None else round(me.finish_s - first, 3),
         "gaps_s": {r.profile: (None if r.finish_s is None else round(r.finish_s - first, 3)) for r in runners},
@@ -516,6 +531,7 @@ def _batch(args: tuple[str, str, int, int, TacticalBalance]) -> dict[str, Any]:
 
     gaps = {p: [r["gaps_s"][p] for r in rows if r["gaps_s"][p] is not None] for p in (RIDER_ID, *BOT_PROFILES)}
     return {"circuit": circuit_name, "strategy": strategy, "races": len(rows),
+            "orders": [r["order"] for r in rows],
             "wins": {k: wins.get(k, 0) for k in (RIDER_ID, *BOT_PROFILES)},
             "burnouts": mean("burnouts"), "rider_burnouts": mean("rider_burnouts"), "slings": mean("slings"),
             "abilities": mean("abilities"), "time_s": mean("time_s"),
@@ -559,9 +575,18 @@ def criteria(out: dict[str, Any]) -> list[dict[str, Any]]:
         circuit_winner[c] = max(BOT_PROFILES, key=lambda p: (tot[p], -BOT_PROFILES.index(p)))
     for p in BOT_PROFILES:
         won = sorted(c for c, w in circuit_winner.items() if w == p)
-        checks.append({"ok": bool(won), "text": f"profil {PROFILES[p].name} : premier bot sur "
+        checks.append({"ok": bool(won), "text": f"profil {SIM_PROFILES[p].name} : premier bot sur "
                                                 f"{', '.join(won) if won else 'aucun circuit'}"})
     return checks
+
+
+def elo_ratings(out: dict[str, Any]) -> dict[str, float]:
+    """Elo de chaque bot et de chaque stratégie du cycliste sur toutes les courses, dans l'ordre du rapport."""
+    ratings: dict[str, float] = {}
+    for b in out["batches"]:
+        for order in b.get("orders", []):
+            ratings = elo.update(ratings, [f"{RIDER_ID}:{b['strategy']}" if p == RIDER_ID else p for p in order])
+    return ratings
 
 
 def _pct(x: int, n: int) -> str:
@@ -570,13 +595,13 @@ def _pct(x: int, n: int) -> str:
 
 def report_markdown(out: dict[str, Any], checks: list[dict[str, Any]]) -> str:
     """Rapport du cahier CT0 §4 (sans temps de calcul : même graine, même rapport à l'octet près)."""
-    names = {RIDER_ID: "Cycliste", **{p: PROFILES[p].name for p in BOT_PROFILES}}
+    names = {RIDER_ID: "Cycliste", **{p: SIM_PROFILES[p].name for p in BOT_PROFILES}}
     lines = ["# Rapport d'équilibrage de la Course tactique (lot CT0)", "",
              "Produit par `python -m openride_core.tools.tactical_sim --report docs/5.0/RAPPORT_EQUILIBRAGE_CT0.md` "
              f"(graine {out['seed']}, {out['races']} courses par configuration, table d'équilibrage `{out['balance']}`).",
              "Ne pas modifier à la main : relancer l'outil.", "",
              "Une configuration = un circuit généré × une stratégie du cycliste virtuel. Chaque course : le cycliste "
-             "(FTP 250 W, W′ 20 kJ, 75 kg) et 4 bots à profil (forces relatives du lot T12) mis à une échelle commune : seuls, leur temps moyen sur le circuit est celui du cycliste seul à "
+             "(FTP 250 W, W′ 20 kJ, 75 kg) et 5 bots à profil (forces relatives du lot T12, plus le baroudeur du simulateur) mis à une échelle commune : seuls, leur temps moyen sur le circuit est celui du cycliste seul à "
              f"{out['level_pct']:g} % de la FTP (valeur `bots_level_pct` de la table) ; forme du jour "
              "tirée pour chacun.", "",
              "Règles simulées par des bouchons tant que leurs lots ne sont pas faits (`tactical/bouchons.py`) : "
@@ -584,6 +609,18 @@ def report_markdown(out: dict[str, Any], checks: list[dict[str, Any]]) -> str:
              "Non simulés : virages (CT7, pas de courbure sur les circuits générés), placement latéral (AS2), "
              "parade (CT5), variantes asymétriques (CT8).", "", "## Critères du cahier (§7)", ""]
     lines += [f"- [{'OK' if c['ok'] else 'ÉCHEC'}] {c['text']}" for c in checks]
+    sh = shares(out)
+    lines += ["", "Part des victoires sur tout le calendrier (cible : environ "
+              f"{100 * TARGET_SHARE:.0f} % chacun) : "
+              + ", ".join(f"{names[p]} {100 * sh[p]:.1f} %" for p in (RIDER_ID, *BOT_PROFILES)) + "."]
+    ratings = elo_ratings(out)
+    lines += ["", "## Classement Elo", "",
+              "Toutes les courses du rapport, dans l'ordre (départ à 1 500, K = 24, duels par paires) ; chaque "
+              "stratégie du cycliste a son propre classement. Un profil équilibré reste près de 1 500.", "",
+              "| Coureur | Elo |", "| --- | --- |"]
+    for key, val in sorted(ratings.items(), key=lambda kv: (-kv[1], kv[0])):
+        who = names[key] if key in names else f"Cycliste ({key.split(':', 1)[1]})"
+        lines.append(f"| {who} | {val:.0f} |")
     lines += ["", "## Circuits", "", "| Circuit | Longueur | Description | Échelle commune des bots |",
               "| --- | --- | --- | --- |"]
     seen = set()
@@ -595,7 +632,7 @@ def report_markdown(out: dict[str, Any], checks: list[dict[str, Any]]) -> str:
         sc = f"{b['scales'][BOT_PROFILES[0]]:.3f}"
         lines.append(f"| `{c.name}` | {c.length_m / 1000:.1f} km | {c.title} | {sc} |")
     lines += ["", "## Victoires par stratégie (toutes configurations)", "",
-              "| Stratégie | Cycliste | Grimpeur | Rouleur | Sprinteur | Diesel |", "| --- | --- | --- | --- | --- | --- |"]
+              "| Stratégie | " + " | ".join(names[p] for p in (RIDER_ID, *BOT_PROFILES)) + " |", "| --- |" + " --- |" * (1 + len(BOT_PROFILES))]
     for st in dict.fromkeys(b["strategy"] for b in out["batches"]):
         tot = {p: 0 for p in (RIDER_ID, *BOT_PROFILES)}
         n = 0
@@ -606,7 +643,7 @@ def report_markdown(out: dict[str, Any], checks: list[dict[str, Any]]) -> str:
                     tot[p] += b["wins"][p]
         lines.append(f"| {st} | " + " | ".join(_pct(tot[p], n) for p in (RIDER_ID, *BOT_PROFILES)) + " |")
     lines += ["", "## Victoires par profil et par circuit (toutes stratégies)", "",
-              "| Circuit | Cycliste | Grimpeur | Rouleur | Sprinteur | Diesel |", "| --- | --- | --- | --- | --- | --- |"]
+              "| Circuit | " + " | ".join(names[p] for p in (RIDER_ID, *BOT_PROFILES)) + " |", "| --- |" + " --- |" * (1 + len(BOT_PROFILES))]
     for c in dict.fromkeys(b["circuit"] for b in out["batches"]):
         tot = {p: 0 for p in (RIDER_ID, *BOT_PROFILES)}
         n = 0
@@ -619,7 +656,7 @@ def report_markdown(out: dict[str, Any], checks: list[dict[str, Any]]) -> str:
     lines += ["", "## Détail par configuration", "",
               "Écarts moyens à l'arrivée en secondes derrière le vainqueur ; Burnouts, catapultes : moyennes par "
               "course pour les 5 coureurs ; capacités : achetées par le cycliste.", "",
-              "| Circuit | Stratégie | Vainqueur le plus fréquent | Cycliste gagne | Écart cycliste | Écart G / R / S / D "
+              "| Circuit | Stratégie | Vainqueur le plus fréquent | Cycliste gagne | Écart cycliste | Écart G / R / S / D / B "
               "| Burnouts (dont cycliste) | Catapultes | Capacités |",
               "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for b in out["batches"]:
@@ -636,6 +673,94 @@ def report_markdown(out: dict[str, Any], checks: list[dict[str, Any]]) -> str:
     return "\n".join(lines) + "\n"
 
 
+# --- recherche automatique de l'équilibrage ------------------------------------------------------------------
+# Valeurs que la recherche peut changer : (pas, minimum, maximum). Les décisions du propriétaire du 29 octobre
+# (Burnout à 70 % de la CP pendant 8 s, catapulte pleine en 15 s, relais de 15 s, coûts des capacités) et
+# les profils du lot T12 ne bougent pas.
+TUNABLE: dict[str, tuple[float, float, float]] = {
+    "bot_climb_attack_cp_pct": (5.0, 105.0, 140.0),
+    "bot_climb_attack_reserve_pct": (10.0, 20.0, 70.0),
+    "bot_sprint_cp_pct": (20.0, 140.0, 260.0),
+    "bot_attack_cp_pct": (5.0, 105.0, 140.0),
+    "bot_attack_from_m": (500.0, 1500.0, 5000.0),
+    "bot_chase_cp_pct": (3.0, 95.0, 115.0),
+    "bot_follow_reserve_pct": (10.0, 20.0, 70.0),
+    "bot_error_pct": (5.0, 0.0, 40.0),
+    "sling_gain_pct": (10.0, 10.0, 60.0),
+    "credits_full_kj": (5.0, 10.0, 50.0),
+    "bot_chase_look_m": (200.0, 200.0, 1600.0),
+    "baroudeur_cp_pct": (3.0, 96.0, 115.0),
+    "baroudeur_stop_pct": (10.0, 10.0, 70.0),
+}
+TARGET_SHARE = 1.0 / (1 + len(BOT_PROFILES))   # 6 coureurs : chacun environ 17 % des victoires du calendrier
+CIRCUIT_TOP_MAX = 0.60                          # sur un circuit, aucun coureur au-dessus de 60 %
+
+
+def shares(out: dict[str, Any]) -> dict[str, float]:
+    """Part des victoires de chaque coureur sur tout le calendrier (circuits et stratégies)."""
+    tot = {p: 0 for p in (RIDER_ID, *BOT_PROFILES)}
+    n = 0
+    for b in out["batches"]:
+        n += b["races"]
+        for p in tot:
+            tot[p] += b["wins"][p]
+    return {p: tot[p] / max(n, 1) for p in tot}
+
+
+def score(out: dict[str, Any]) -> float:
+    """Écart à l'équilibre (0 = parfait) : parts loin de 20 %, circuits gagnés à plus de 60 % par le même
+    coureur, et 1 par critère du cahier manqué."""
+    spread = sum(abs(s - TARGET_SHARE) for s in shares(out).values())
+    over = 0.0
+    for c in dict.fromkeys(b["circuit"] for b in out["batches"]):
+        tot = {p: 0 for p in (RIDER_ID, *BOT_PROFILES)}
+        n = 0
+        for b in out["batches"]:
+            if b["circuit"] == c:
+                n += b["races"]
+                for p in tot:
+                    tot[p] += b["wins"][p]
+        over += max(max(tot.values()) / max(n, 1) - CIRCUIT_TOP_MAX, 0.0)
+    fails = sum(1 for c in criteria(out) if not c["ok"])
+    return spread + 0.5 * over + fails
+
+
+def search(bal: TacticalBalance, races: int, seed: int, rounds: int, jobs: int,
+           log=lambda msg: None) -> tuple[TacticalBalance, float]:
+    """Descente coordonnée sur `TUNABLE` : chaque valeur essaie un pas de plus et un pas de moins, et garde
+    le changement qui baisse `score`. Mêmes courses (même graine) à chaque essai : seules les valeurs comptent."""
+    circuits, strategies = list(CIRCUITS), list(STRATEGIES)
+
+    def evaluate(b: TacticalBalance) -> float:
+        return score(simulate(circuits, strategies, races, seed, b, jobs))
+
+    best, best_score = bal, evaluate(bal)
+    log(f"départ : écart {best_score:.3f}")
+    for rnd in range(rounds):
+        improved = False
+        for key, (step, lo, hi) in TUNABLE.items():
+            for sign in (1.0, -1.0):
+                val = getattr(best, key) + sign * step
+                if not lo - 1e-9 <= val <= hi + 1e-9:
+                    continue
+                cand = replace(best, **{key: val})
+                sc = evaluate(cand)
+                if sc < best_score - 1e-9:
+                    best, best_score, improved = cand, sc, True
+                    log(f"tour {rnd + 1} : {key} = {val:g} → écart {sc:.3f}")
+                    break
+        if not improved:
+            break
+    return best, best_score
+
+
+def overrides_toml(base: TacticalBalance, best: TacticalBalance) -> str:
+    """Lignes de `best` qui diffèrent de `base`, au format de `tactical_balance.toml`."""
+    lines = [f"{f.name} = {getattr(best, f.name)!r}" for f in fields(TacticalBalance)
+             if getattr(best, f.name) != getattr(base, f.name)]
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Simulateur d'équilibrage de la Course tactique (lot CT0).")
     ap.add_argument("--races", type=int, default=200, help="courses par configuration (circuit × stratégie)")
@@ -646,6 +771,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--report", type=Path, help="écrit le rapport Markdown dans ce fichier")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--jobs", type=int, default=1)
+    ap.add_argument("--recherche", type=int, metavar="TOURS",
+                    help="cherche les valeurs les plus équilibrées (descente coordonnée, TOURS tours au plus)")
+    ap.add_argument("--table", type=Path, help="avec --recherche : écrit les valeurs trouvées (surcharge TOML)")
     args = ap.parse_args(argv)
     circuits = [c.strip() for c in args.circuits.split(",") if c.strip()]
     strategies = [s.strip() for s in args.strategies.split(",") if s.strip()]
@@ -660,6 +788,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ÉCHEC : {exc}", file=sys.stderr)
         return 2
     t0 = time.perf_counter()
+    if args.recherche:
+        best, sc = search(bal, args.races, args.seed, args.recherche, max(args.jobs, 1),
+                          log=lambda m: print(m, flush=True))
+        text = overrides_toml(bal, best)
+        if args.table:
+            args.table.write_text(text, encoding="utf-8")
+        print(f"Écart final {sc:.3f} ; valeurs changées :\n{text or '(aucune)'}", end="")
+        return 0
     out = simulate(circuits, strategies, args.races, args.seed, bal, max(args.jobs, 1))
     checks = criteria(out)
     text = report_markdown(out, checks)

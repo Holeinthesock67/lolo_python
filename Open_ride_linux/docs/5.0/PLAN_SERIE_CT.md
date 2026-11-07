@@ -178,8 +178,18 @@ La lettre TT est prise par la série des power-ups de la 4.0 : la série de la C
 | CT10 | Effets cartoon dans l'engine, mesurés en `low`, `medium` et `high` | engine | CT9, CT2 à CT8 |
 | CT11 | HUD, menus, pause et bilan | engine | CT9, CT10 |
 | CT12 | Recette sur le vélo, étapes de 10 min | propriétaire | CT2 à CT11 |
+| CT13 | Journal des courses, classement Elo et niveau des bots adaptatif (idées du propriétaire du 7 novembre) | core | CT0, CT3, MJ1 |
+| CT14 | Profil de bot « Baroudeur » dans le jeu (déjà dans le simulateur CT0) | core, engine | CT0, CT1 |
+| CT15 | Primes en course : sprints et sommets à points (choix points ou victoire) | core, engine | CT0, CT1, T2, T14 |
+| CT16 | Plan de course des bots annoncé au départ | core, engine | CT0, CT1, CT3 |
+| CT17 | Équipes : deux coéquipiers bots et deux ordres au Click | core, engine | CT1, CT3, CT16 |
+| CT18 | Course par étapes (trois étapes, temps cumulé, réserve partiellement rechargée) | core, engine | CT0, CT8, CT13 |
+| CT19 | Jeu de capacités choisi avant la course (3 parmi 6) | core, engine | CT6, TT2 à TT5 |
+| CT20 | Terrain qui change : bordures, pluie et pavés | core, engine | CT7, CT8, AS3, U |
 
 Ordre : CT0, CT1, puis CT2, CT7 et CT9, puis CT3, CT4 et CT5, puis CT6 (après la 4.0), puis CT8, puis CT10 et CT11, puis CT12.
+
+Ajouts du 7 novembre (idées du propriétaire, consigne : ne pas nuire à la compréhension ni à la lisibilité) : CT13 (journal et Elo) et CT14 (baroudeur) après CT3 ; puis CT15 et CT16 (peu de code, beaucoup de variété), puis CT19, CT20, CT18 et CT17 (le plus gros). Écartés : réputation des bots et lecture imparfaite de leur réserve.
 
 ## 8. Dépendances avec les autres versions
 

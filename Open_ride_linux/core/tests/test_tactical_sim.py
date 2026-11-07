@@ -181,3 +181,76 @@ def test_cli_writes_the_report(tmp_path):
     assert rc == 2                                                       # surcharge demandée mais absente
     rc = sim.main(["--races", "1", "--circuits", "plat", "--strategies", "suceur", "--report", str(rep)])
     assert rc in (0, 1) and rep.read_text(encoding="utf-8").startswith("# Rapport d'équilibrage")
+
+
+# --- recherche automatique -----------------------------------------------------------------------------------
+
+def _fake_out(wins_by_circuit: dict[str, dict[str, int]]) -> dict:
+    batches = []
+    for c, wins in wins_by_circuit.items():
+        for st in sim.STRATEGIES:
+            batches.append({"circuit": c, "strategy": st, "races": sum(wins.values()), "wins": dict(wins)})
+    return {"batches": batches}
+
+
+def test_score_is_lower_when_wins_are_shared():
+    even = {p: 2 for p in (sim.RIDER_ID, *sim.BOT_PROFILES)}
+    one = {p: (10 if p == "sprinter" else 0) for p in (sim.RIDER_ID, *sim.BOT_PROFILES)}
+    assert sim.shares(_fake_out({"plat": even}))["sprinter"] == pytest.approx(sim.TARGET_SHARE)
+    assert sim.score(_fake_out({"plat": even})) < sim.score(_fake_out({"plat": one}))
+
+
+def test_tunable_values_exist_and_spare_the_owner_decisions():
+    names = {f.name for f in fields(TacticalBalance)}
+    assert set(sim.TUNABLE) <= names
+    for decided in ("burnout_cap_pct", "burnout_s", "sling_full_s", "relay_min_s", "aero_cost_pct"):
+        assert decided not in sim.TUNABLE
+    for key, (step, lo, hi) in sim.TUNABLE.items():
+        assert step > 0 and lo <= getattr(BAL, key) <= hi, key
+
+
+def test_overrides_are_a_valid_override_file(tmp_path):
+    best = replace(BAL, bot_sprint_cp_pct=180.0)
+    text = sim.overrides_toml(BAL, best)
+    assert text == "bot_sprint_cp_pct = 180.0\n"
+    over = tmp_path / "t.toml"
+    over.write_text(text, encoding="utf-8")
+    assert load_balance(over) == best
+    assert sim.overrides_toml(BAL, BAL) == ""
+
+
+def test_search_keeps_the_start_when_nothing_is_better(monkeypatch):
+    monkeypatch.setattr(sim, "simulate", lambda *a, **k: {"batches": []})
+    monkeypatch.setattr(sim, "score", lambda out: 1.0)
+    best, sc = sim.search(BAL, 1, 1, 2, 1)
+    assert best == BAL and sc == 1.0
+
+
+# --- Elo et baroudeur ----------------------------------------------------------------------------------------
+
+def test_elo_winner_gains_what_the_others_lose():
+    from openride_core.tactical import elo
+    r = elo.update({}, ["a", "b", "c"])
+    assert r["a"] > elo.ELO_START > r["c"]
+    assert sum(r.values()) == pytest.approx(3 * elo.ELO_START)
+    assert elo.expected(1600, 1400) == pytest.approx(1 / (1 + 10 ** -0.5))
+    # battre plus fort que soi rapporte plus
+    up_strong = elo.update({"a": 1400, "b": 1600}, ["a", "b"])["a"] - 1400
+    up_weak = elo.update({"a": 1600, "b": 1400}, ["a", "b"])["a"] - 1600
+    assert up_strong > up_weak > 0
+
+
+def test_report_has_an_elo_line_per_bot_and_strategy():
+    out = sim.simulate(["plat"], ["suceur", "mixte"], 2, 1, BAL)
+    ratings = sim.elo_ratings(out)
+    assert set(ratings) == {*sim.BOT_PROFILES, "rider:suceur", "rider:mixte"}
+    assert "## Classement Elo" in sim.report_markdown(out, sim.criteria(out))
+
+
+def test_baroudeur_attacks_early():
+    from openride_core.tools.tactical_sim import _bot_power, _make_field
+    import random
+    field = _make_field("suceur", sim.calibration(sim.CIRCUITS["plat"], BAL), BAL, random.Random(1), 12000.0)
+    bar = next(r for r in field if r.profile == "baroudeur")
+    p = _bot_power(bar, 0.0, 11000.0, BAL.dt_s, random.Random(1), BAL)
+    assert p == pytest.approx(BAL.baroudeur_cp_pct / 100 * bar.cp_w) and bar.escaping
