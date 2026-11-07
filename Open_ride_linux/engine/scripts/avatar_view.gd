@@ -19,8 +19,9 @@ extends Node3D
 ##   `shadow_max_lod` : dernier niveau qui porte une ombre ; `set_wheel_angle(a)` : roues calées sur la
 ##   distance parcourue. Les maillages d'un même niveau, de mêmes mesures et de même équipement sont construits
 ##   une fois et partagés (`_parts_cache`) : un bot qui revient ou change de niveau ne les reconstruit pas.
-##   Construire un niveau prend de 2 à 20 ms : `request_parts` les construit dans un fil de travail
-##   (WorkerThreadPool), `parts_ready` dit s'ils sont prêts ; `configure` les reprend alors sans attendre.
+##   Construire un niveau prend de 2 à 20 ms : `request_parts` en calcule les tableaux de sommets dans un fil
+##   de travail (WorkerThreadPool), `parts_ready` dit s'ils sont prêts ; `configure` en crée alors les maillages
+##   sur le fil principal sans attendre.
 ## - Ombres portées par les seules pièces de SHADOW_PARTS (joueur et bots).
 ## Pas de class_name : charger par preload("res://scripts/avatar_view.gd").
 
@@ -56,16 +57,11 @@ var _nodes := {}           # nom → MeshInstance3D (ou liste pour les pièces d
 var _number: Label3D
 var _mats := {}
 
-static var _parts_cache := {}
+static var _parts_cache := {}      # clé → maillages ; lu et écrit sur le fil principal seulement
+static var _parts_arrays := {}     # clé → tableaux de sommets calculés par un fil de travail, pas encore en maillages
 static var _parts_tasks := {}      # clé → identifiant de tâche du WorkerThreadPool
-static var _parts_mutex := Mutex.new()
+static var _parts_mutex := Mutex.new()   # protège _parts_arrays et _parts_tasks
 const PARTS_CACHE_MAX := 128   # joueur, bots et les 16 apparences du décor à 3 niveaux (lot AS7)
-## Sans écran (--headless, tests), le serveur de rendu factice ne crée pas ses maillages en sécurité depuis
-## plusieurs fils : « Initializing already initialized RID » puis « Parameter "m" is null » quand les bots du
-## peloton (PL1) et les cyclistes du décor (AS7) construisent leurs maillages en même temps (banc du 6 novembre).
-## Les constructions y passent alors une à une ; avec un vrai rendu, elles restent parallèles.
-static var _build_mutex := Mutex.new()
-static var _serial_builds := -1   # -1 : pas encore lu (sur le fil principal), 0 : parallèles, 1 : une à une
 
 
 func _init() -> void:
@@ -240,9 +236,15 @@ static func _key(args: Array) -> String:
 
 
 ## Maillages de AvatarMesh.build, partagés entre les avatars de mêmes paramètres (joueur et bots) ; attend la
-## construction en cours dans un fil de travail s'il y en a une.
+## construction en cours dans un fil de travail s'il y en a une. Fil principal seulement : le fil de travail ne
+## calcule que les tableaux de sommets (AvatarMesh.build_arrays) et les ArrayMesh se créent ici, comme pour les
+## tronçons de world_streamer.gd. Créer des maillages depuis un fil de travail pendant que le fil principal en
+## crée aussi corrompait le serveur de rendu factice de --headless (« Initializing already initialized RID »,
+## « Parameter "mem" is null », « unimplemented base type encountered in renderer scene cull », CI du 7 novembre).
 static func _parts(args: Array) -> Dictionary:
 	var key := _key(args)
+	if _parts_cache.has(key):
+		return _parts_cache[key]
 	_parts_mutex.lock()
 	var task = _parts_tasks.get(key)
 	_parts_mutex.unlock()
@@ -252,58 +254,48 @@ static func _parts(args: Array) -> Dictionary:
 		_parts_tasks.erase(key)
 		_parts_mutex.unlock()
 	_parts_mutex.lock()
-	var ready: bool = _parts_cache.has(key)
+	var arrays = _parts_arrays.get(key)
+	_parts_arrays.erase(key)
 	_parts_mutex.unlock()
-	if not ready:
-		_store(key, _build(args))
-	_parts_mutex.lock()
-	var parts: Dictionary = _parts_cache[key]
-	_parts_mutex.unlock()
+	if arrays == null:
+		arrays = AvatarMesh.build_arrays(args[0], args[1], args[2], args[3])
+	if _parts_cache.size() >= PARTS_CACHE_MAX:
+		_parts_cache.clear()
+	var parts := AvatarMesh.to_meshes(arrays)
+	_parts_cache[key] = parts
 	return parts
 
 
-static func _serial() -> bool:
-	if _serial_builds < 0:
-		_serial_builds = 1 if DisplayServer.get_name() == "headless" else 0
-	return _serial_builds == 1
-
-
-static func _build(args: Array) -> Dictionary:
-	if _serial_builds == 1 or (_serial_builds < 0 and _serial()):
-		_build_mutex.lock()
-		var parts := AvatarMesh.build(args[0], args[1], args[2], args[3])
-		_build_mutex.unlock()
-		return parts
-	return AvatarMesh.build(args[0], args[1], args[2], args[3])
-
-
-static func _store(key: String, parts: Dictionary) -> void:
-	_parts_mutex.lock()
-	if _parts_cache.size() >= PARTS_CACHE_MAX:
-		_parts_cache.clear()
-	_parts_cache[key] = parts
-	_parts_mutex.unlock()
-
-
-## Maillages du niveau `n` pour ces réglages et cet équipement déjà construits (configure ne coûtera que la
-## création des nœuds).
+## Maillages du niveau `n` pour ces réglages et cet équipement déjà construits ou calculés (configure ne coûtera
+## que la création des maillages et des nœuds).
 static func parts_ready(n: int, st: Dictionary, lk: Dictionary) -> bool:
 	var key := _key(_parts_args(n, st, lk))
+	if _parts_cache.has(key):
+		return true
 	_parts_mutex.lock()
-	var ok: bool = _parts_cache.has(key)
+	var ok: bool = _parts_arrays.has(key)
 	_parts_mutex.unlock()
 	return ok
 
 
-## Construit les maillages du niveau `n` dans un fil de travail, sans attendre (rien s'ils sont prêts ou en cours).
+## Calcule les tableaux de sommets du niveau `n` dans un fil de travail, sans attendre (rien s'ils sont prêts ou
+## en cours).
 static func request_parts(n: int, st: Dictionary, lk: Dictionary) -> void:
 	var args := _parts_args(n, st, lk)
 	var key := _key(args)
+	if _parts_cache.has(key):
+		return
 	_parts_mutex.lock()
-	var skip: bool = _parts_cache.has(key) or _parts_tasks.has(key)
-	if not skip:
-		_serial()   # lu ici, sur le fil principal, avant le fil de travail
-		_parts_tasks[key] = WorkerThreadPool.add_task(func() -> void: _store(key, _build(args)))
+	if not _parts_arrays.has(key) and not _parts_tasks.has(key):
+		_parts_tasks[key] = WorkerThreadPool.add_task(func() -> void: _store_arrays(key, args))
+	_parts_mutex.unlock()
+
+
+## Exécuté dans un fil de travail : tableaux seulement, aucune ressource du serveur de rendu.
+static func _store_arrays(key: String, args: Array) -> void:
+	var arrays := AvatarMesh.build_arrays(args[0], args[1], args[2], args[3])
+	_parts_mutex.lock()
+	_parts_arrays[key] = arrays
 	_parts_mutex.unlock()
 
 

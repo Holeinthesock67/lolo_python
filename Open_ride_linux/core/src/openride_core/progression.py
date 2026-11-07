@@ -209,6 +209,10 @@ def load_table(user_path: Path | None = USER_TABLE_PATH,
 
 POWER_STEP_W = 10   # pas de l'histogramme de puissance d'une séance
 RECORD_DURATIONS_S = (5, 60, 300, 1200)   # records de puissance moyenne (primes en pièces, V3b)
+# Lignes de jeu gardées dans `SessionFacts.events` : séries T et R (lot V5), puis test de FTP,
+# modes WTF et Dernier survivant pour la collection de cartes (série BC, lot BC1). Les gains
+# d'expérience et de pièces ignorent les sortes qu'ils ne connaissent pas.
+FACT_EVENT_KINDS = ("segment", "jersey", "rogue_run", "ftp_test", "wtf_summary", "survivor_summary")
 
 
 @dataclass
@@ -298,7 +302,7 @@ def session_facts(path: Path, workout_duration_s: float | None = None,
                 facts.power_s[step] = facts.power_s.get(step, 0.0) + 1.0
             powers.append(float(power) if isinstance(power, (int, float)) and not isinstance(power, bool)
                           and power >= 0 else 0.0)
-        elif kind in ("segment", "jersey", "rogue_run"):   # lignes écrites par les séries T et R (V5)
+        elif kind in FACT_EVENT_KINDS:
             facts.events.append(dict(line))
     if facts.start_ts is None:
         facts.start_ts = first_record_ts
@@ -414,7 +418,7 @@ class Progress:
         return [r for r in self.sessions if r.gains is not None]
 
 
-def _add_stats(stats: dict[str, float], facts: SessionFacts) -> None:
+def add_stats(stats: dict[str, float], facts: SessionFacts) -> None:
     km = facts.distance_m / 1000.0
     stats["total_km"] += km
     stats["total_climb_m"] += facts.climb_m
@@ -468,7 +472,7 @@ class FactsCache:
     fichier absent, abîmé ou d'une autre version est ignoré : tout se relit, rien ne se perd.
     """
 
-    VERSION = 2   # 2 : `profile_id` des faits (série MJ, lot MJ2)
+    VERSION = 3   # 2 : `profile_id` des faits (série MJ, lot MJ2) ; 3 : `FACT_EVENT_KINDS` (lot BC1)
 
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -574,7 +578,7 @@ def recompute(journal_dir: Path, table: Table,
         gains = session_gains(facts, table)
         total += gains.total
         results.append(SessionResult(facts, gains, None))
-        _add_stats(stats, facts)
+        add_stats(stats, facts)
         for ch in table.challenges:
             if ch.id not in done and stats[ch.stat] >= ch.threshold:
                 done[ch.id] = ChallengeDone(ch.id, ch.name, ch.reward, facts.journal, facts.start_ts)

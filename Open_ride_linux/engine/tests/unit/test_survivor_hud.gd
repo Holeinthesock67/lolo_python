@@ -136,6 +136,15 @@ func _run() -> void:
 	_check(v["list"].size() == 12 and v["block"]["rank"] == "1er sur 12 en course" and v["block"]["arch"] == "Arche 1 / 11",
 		"11 adversaires : 12 lignes, rang sur 12")
 	_check(v["block"]["dist"] == "dans 2,00 km", "distance au-delà d'un kilomètre")
+	# Trame allégée du peloton (bots.light_frame) : bot loin sans nom ni gap_s
+	var light: Array = []
+	for bb in bots:
+		light.append({"id": bb["id"], "s": 100.0 + float(str(bb["id"]).substr(3)) * 5.0, "v": 10.0, "kind": "constant"})
+	v = many.view({"session_state": "RUNNING", "s": 100.0, "v": 10.0, "bots": light, "survivor": {"arch": 1, "arches": 11,
+		"d_m": 1900.0, "alive": alive, "last": "bot11", "gap_last_s": 0.5, "out": [], "me_out": null, "winner": null}}, 1.0)
+	var row11: Dictionary = v["list"][11]
+	_check(row11["name"] == "Bot 11", "bot loin sans nom dans la trame : nom gardé (%s)" % row11["name"])
+	_check(row11["detail"] == "+5,5 s", "bot loin sans gap_s : écart estimé distance ÷ vitesse (%s)" % row11["detail"])
 	many.reset()
 	_check(many.names.is_empty() and many.arches_to_draw(_state({"arch": 1, "arches": 11})).is_empty(), "reset : course suivante vierge")
 
@@ -187,6 +196,15 @@ func _run() -> void:
 	var info: Dictionary = view.test_info()
 	_check(info["visible"] and info["block"] == "Arche 2 / 4" and info["danger"] == "DERNIER", "vue : bloc en danger")
 	_check(info["list"].size() == 5 and str(info["list"][3]).contains("Toi"), "vue : liste des coureurs")
+	# Lot DS8 : une image identique ne repose rien (fond, couleur, texte BBCode relancent la mise en page)
+	var me_bg: StyleBoxFlat = view._rows[3][3]
+	_check(me_bg.bg_color == Model.YELLOW, "vue : « Toi » sur fond or")
+	var changes := [0]
+	me_bg.changed.connect(func() -> void: changes[0] += 1)
+	var me_name: RichTextLabel = view._rows[3][1]
+	var bb_before := me_name.text
+	view.update_view(vm.view(_state(sv), 0.0))
+	_check(changes[0] == 0 and me_name.text == bb_before, "vue : image identique, fond et nom non reposés")
 	vm.on_elimination(msg, 0.0)
 	view.update_view(vm.view(_state(sv3), 0.5))
 	_check(view.test_info()["bottom"] == "Éliminé : Sprinteur", "vue : bandeau du bas")

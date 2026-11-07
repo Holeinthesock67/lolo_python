@@ -1,0 +1,420 @@
+# Catalogue de la collection de cartes (série BC, 5.0, lot BC1).
+#
+# Fichier livré avec le core, lu par `collection.py`. Tout se recalcule depuis le journal des
+# séances comptées par la progression (`progression.recompute`) : changer une valeur ici change
+# aussi les cartes des séances passées. Plan de la série : docs/5.0/PLAN_SERIE_BC.md.
+#
+# Une carte : `id` (minuscules, chiffres, `_`), `title` (24 caractères au plus), `text` (ligne
+# d'ambiance, 70 caractères au plus), `family` (voir FAMILIES de collection.py), `rarity`
+# (commune, rare, epique, legendaire), `visual` (nom du visuel, fiche de commande du lot BC4)
+# et `rule`, table dont `kind` est l'une des règles ci-dessous.
+#
+#   cumul        stat de la progression (progression.STATS) atteinte : `stat`, `threshold`
+#   defi         défi de la série V réussi (data/progression.toml) : `challenge`
+#   seance       `count` séances (défaut 1) d'au moins `min_km`, `min_climb_m`, `min_minutes`
+#   heure        `count` séances commencées entre `from_h` et `to_h` (heure locale, `to_h` <
+#                `from_h` passe minuit), d'au moins `min_minutes`
+#   semaines     `count` semaines ISO d'affilée avec au moins `per_week` séances
+#   jours        `count` jours d'affilée avec au moins une séance
+#   mode         `count` lignes de jeu `event` (progression.FACT_EVENT_KINDS) ; `win = true` :
+#                Dernier survivant gagné (place 1)
+#   saison       séance d'au moins `min_minutes` entre `from` et `to` ("MM-JJ", l'intervalle
+#                peut passer le 31 décembre), ou autour de Pâques (`easter_from`, `easter_to`,
+#                jours depuis le dimanche de Pâques) ; une édition par année
+#   anniversaire séance au moins `years` ans après la première séance comptée
+
+# --- distance cumulée ------------------------------------------------------------------------
+
+[[cards]]
+id = "km_100"
+title = "Cent bornes"
+text = "Les cent premiers kilomètres sont au compteur."
+family = "distance"
+rarity = "commune"
+visual = "borne_100"
+rule = { kind = "cumul", stat = "total_km", threshold = 100 }
+
+[[cards]]
+id = "km_500"
+title = "Cinq cents bornes"
+text = "De quoi traverser la France en diagonale."
+family = "distance"
+rarity = "commune"
+visual = "borne_500"
+rule = { kind = "cumul", stat = "total_km", threshold = 500 }
+
+[[cards]]
+id = "km_1000"
+title = "Mille bornes"
+text = "Mille kilomètres : le défi est relevé."
+family = "distance"
+rarity = "rare"
+visual = "borne_1000"
+rule = { kind = "defi", challenge = "km_1000" }
+
+[[cards]]
+id = "km_5000"
+title = "Tour de France"
+text = "Plus de cinq mille kilomètres dans les jambes."
+family = "distance"
+rarity = "epique"
+visual = "hexagone"
+rule = { kind = "cumul", stat = "total_km", threshold = 5000 }
+
+[[cards]]
+id = "km_40000"
+title = "Tour de la Terre"
+text = "Quarante mille kilomètres : l'équateur est bouclé."
+family = "distance"
+rarity = "legendaire"
+visual = "globe"
+rule = { kind = "cumul", stat = "total_km", threshold = 40000 }
+
+# --- séances --------------------------------------------------------------------------------
+
+[[cards]]
+id = "premiere_seance"
+title = "Premier coup de pédale"
+text = "La première séance est enregistrée."
+family = "seance"
+rarity = "commune"
+visual = "pedale"
+rule = { kind = "seance", min_minutes = 5 }
+
+[[cards]]
+id = "seances_50"
+title = "Habitué du home trainer"
+text = "Cinquante séances comptées."
+family = "seance"
+rarity = "rare"
+visual = "trainer_use"
+rule = { kind = "cumul", stat = "sessions", threshold = 50 }
+
+[[cards]]
+id = "seance_50km"
+title = "Demi-centaine"
+text = "Cinquante kilomètres d'une traite."
+family = "seance"
+rarity = "commune"
+visual = "chrono_50"
+rule = { kind = "defi", challenge = "session_50km" }
+
+[[cards]]
+id = "seance_100km"
+title = "Centurion"
+text = "Cent kilomètres en une seule séance."
+family = "seance"
+rarity = "epique"
+visual = "casque_romain"
+rule = { kind = "seance", min_km = 100 }
+
+[[cards]]
+id = "seance_3h"
+title = "Longue sortie"
+text = "Trois heures sans descendre du vélo."
+family = "seance"
+rarity = "rare"
+visual = "sablier"
+rule = { kind = "seance", min_minutes = 180 }
+
+# --- dénivelé -------------------------------------------------------------------------------
+
+[[cards]]
+id = "montee_1000"
+title = "Mille mètres"
+text = "Mille mètres de dénivelé en une séance."
+family = "denivele"
+rarity = "rare"
+visual = "lacets"
+rule = { kind = "seance", min_climb_m = 1000 }
+
+[[cards]]
+id = "everest"
+title = "Toit du monde"
+text = "8 849 m cumulés : l'Everest, depuis le salon."
+family = "denivele"
+rarity = "epique"
+visual = "everest"
+rule = { kind = "cumul", stat = "total_climb_m", threshold = 8849 }
+
+[[cards]]
+id = "climb_10000"
+title = "Dix mille mètres"
+text = "Le défi des dix mille mètres est relevé."
+family = "denivele"
+rarity = "rare"
+visual = "altimetre"
+rule = { kind = "defi", challenge = "climb_10000" }
+
+[[cards]]
+id = "hc_first"
+title = "Hors catégorie"
+text = "Un premier col hors catégorie franchi."
+family = "denivele"
+rarity = "rare"
+visual = "panneau_hc"
+rule = { kind = "defi", challenge = "hc_first" }
+
+# --- régularité -----------------------------------------------------------------------------
+
+[[cards]]
+id = "semaine_3"
+title = "Semaine bien remplie"
+text = "Trois séances dans la même semaine."
+family = "regularite"
+rarity = "commune"
+visual = "calendrier_3"
+rule = { kind = "semaines", count = 1, per_week = 3 }
+
+[[cards]]
+id = "semaines_4"
+title = "Un mois sans lâcher"
+text = "Quatre semaines d'affilée avec au moins une séance."
+family = "regularite"
+rarity = "rare"
+visual = "calendrier_4"
+rule = { kind = "semaines", count = 4, per_week = 1 }
+
+[[cards]]
+id = "semaines_12"
+title = "Une saison entière"
+text = "Douze semaines d'affilée avec au moins deux séances."
+family = "regularite"
+rarity = "legendaire"
+visual = "calendrier_12"
+rule = { kind = "semaines", count = 12, per_week = 2 }
+
+[[cards]]
+id = "jours_7"
+title = "Sept jours sur sept"
+text = "Une séance chaque jour pendant une semaine."
+family = "regularite"
+rarity = "epique"
+visual = "sept_soleils"
+rule = { kind = "jours", count = 7 }
+
+# --- heure de la séance ---------------------------------------------------------------------
+
+[[cards]]
+id = "leve_tot"
+title = "Lève-tôt"
+text = "En selle avant 7 h du matin."
+family = "heure"
+rarity = "commune"
+visual = "coq"
+rule = { kind = "heure", from_h = 4, to_h = 7, min_minutes = 20 }
+
+[[cards]]
+id = "leve_tot_10"
+title = "Chant du coq"
+text = "Dix séances commencées avant 7 h."
+family = "heure"
+rarity = "rare"
+visual = "coq_dore"
+rule = { kind = "heure", from_h = 4, to_h = 7, min_minutes = 20, count = 10 }
+
+[[cards]]
+id = "pause_midi"
+title = "Pause de midi"
+text = "Une séance entre midi et deux."
+family = "heure"
+rarity = "commune"
+visual = "sandwich"
+rule = { kind = "heure", from_h = 12, to_h = 14, min_minutes = 20 }
+
+[[cards]]
+id = "noctambule"
+title = "Noctambule"
+text = "Une séance commencée après 22 h."
+family = "heure"
+rarity = "commune"
+visual = "hibou"
+rule = { kind = "heure", from_h = 22, to_h = 4, min_minutes = 20 }
+
+# --- entraînement ---------------------------------------------------------------------------
+
+[[cards]]
+id = "erg_10"
+title = "Métronome"
+text = "Dix entraînements ERG menés jusqu'au bout."
+family = "entrainement"
+rarity = "rare"
+visual = "metronome"
+rule = { kind = "defi", challenge = "erg_10" }
+
+[[cards]]
+id = "ftp_premier"
+title = "Mesure de référence"
+text = "Un premier test de FTP terminé."
+family = "entrainement"
+rarity = "commune"
+visual = "rampe"
+rule = { kind = "mode", event = "ftp_test" }
+
+[[cards]]
+id = "ftp_4"
+title = "Suivi trimestriel"
+text = "Quatre tests de FTP terminés."
+family = "entrainement"
+rarity = "rare"
+visual = "rampe_quatre"
+rule = { kind = "mode", event = "ftp_test", count = 4 }
+
+# --- modes de jeu ---------------------------------------------------------------------------
+
+[[cards]]
+id = "kom_first"
+title = "Maillot à pois"
+text = "Le premier maillot du meilleur grimpeur."
+family = "modes"
+rarity = "rare"
+visual = "maillot_pois"
+rule = { kind = "defi", challenge = "kom_first" }
+
+[[cards]]
+id = "sprint_first"
+title = "Maillot vert"
+text = "Le premier maillot du meilleur sprinteur."
+family = "modes"
+rarity = "rare"
+visual = "maillot_vert"
+rule = { kind = "cumul", stat = "jerseys_sprint", threshold = 1 }
+
+[[cards]]
+id = "records_10"
+title = "Chasseur de records"
+text = "Dix records personnels sur des segments."
+family = "modes"
+rarity = "rare"
+visual = "chrono_or"
+rule = { kind = "cumul", stat = "segment_prs", threshold = 10 }
+
+[[cards]]
+id = "rogue_premiere"
+title = "Entrée dans la grille"
+text = "Une première run Cyber-Rogue."
+family = "modes"
+rarity = "commune"
+visual = "grille_neon"
+rule = { kind = "mode", event = "rogue_run" }
+
+[[cards]]
+id = "rogue_boss_first"
+title = "Tombeur de boss"
+text = "Un premier boss Cyber-Rogue vaincu."
+family = "modes"
+rarity = "rare"
+visual = "boss_neon"
+rule = { kind = "defi", challenge = "rogue_boss_first" }
+
+[[cards]]
+id = "wtf_premiere"
+title = "Grand n'importe quoi"
+text = "Une première séance en mode WTF."
+family = "modes"
+rarity = "commune"
+visual = "canard"
+rule = { kind = "mode", event = "wtf_summary" }
+
+[[cards]]
+id = "survivant"
+title = "Dernier debout"
+text = "Une course Dernier survivant gagnée."
+family = "modes"
+rarity = "epique"
+visual = "arche_finale"
+rule = { kind = "mode", event = "survivor_summary", win = true }
+
+# --- saisons (une édition par année) ---------------------------------------------------------
+
+[[cards]]
+id = "nouvel_an"
+title = "Bonne résolution"
+text = "Une séance dans la première semaine de l'année."
+family = "saison"
+rarity = "rare"
+visual = "feu_artifice"
+rule = { kind = "saison", from = "01-01", to = "01-07", min_minutes = 20 }
+
+[[cards]]
+id = "saint_valentin"
+title = "Tandem de cœur"
+text = "Une séance le jour de la Saint-Valentin."
+family = "saison"
+rarity = "rare"
+visual = "coeur_tandem"
+rule = { kind = "saison", from = "02-14", to = "02-14", min_minutes = 20 }
+
+[[cards]]
+id = "paques"
+title = "Chasse aux œufs"
+text = "Une séance le week-end de Pâques."
+family = "saison"
+rarity = "rare"
+visual = "oeuf_casque"
+rule = { kind = "saison", easter_from = -1, easter_to = 1, min_minutes = 20 }
+
+[[cards]]
+id = "solstice"
+title = "Jour le plus long"
+text = "Une séance autour du solstice d'été."
+family = "saison"
+rarity = "rare"
+visual = "soleil_haut"
+rule = { kind = "saison", from = "06-20", to = "06-22", min_minutes = 20 }
+
+[[cards]]
+id = "juillet"
+title = "Grande Boucle"
+text = "Dix séances au mois de juillet."
+family = "saison"
+rarity = "epique"
+visual = "boucle_juillet"
+rule = { kind = "saison", from = "07-01", to = "07-31", min_minutes = 20, count = 10 }
+
+[[cards]]
+id = "halloween"
+title = "Pédaleur citrouille"
+text = "Une séance pendant la semaine d'Halloween."
+family = "saison"
+rarity = "rare"
+visual = "citrouille"
+rule = { kind = "saison", from = "10-25", to = "10-31", min_minutes = 20 }
+
+[[cards]]
+id = "noel"
+title = "Tournée du père Noël"
+text = "Une séance entre le 24 et le 26 décembre."
+family = "saison"
+rarity = "rare"
+visual = "traineau"
+rule = { kind = "saison", from = "12-24", to = "12-26", min_minutes = 20 }
+
+[[cards]]
+id = "saint_sylvestre"
+title = "Dernier col de l'année"
+text = "Une séance le 31 décembre."
+family = "saison"
+rarity = "rare"
+visual = "horloge_minuit"
+rule = { kind = "saison", from = "12-31", to = "12-31", min_minutes = 20 }
+
+# --- anniversaires --------------------------------------------------------------------------
+
+[[cards]]
+id = "premiere_annee"
+title = "Première année"
+text = "Un an déjà depuis la première séance."
+family = "anniversaire"
+rarity = "epique"
+visual = "bougie_1"
+rule = { kind = "anniversaire", years = 1 }
+
+[[cards]]
+id = "deux_ans"
+title = "Deux ans de route"
+text = "Deux ans depuis la première séance."
+family = "anniversaire"
+rarity = "legendaire"
+visual = "bougie_2"
+rule = { kind = "anniversaire", years = 2 }
