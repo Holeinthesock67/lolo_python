@@ -7,7 +7,7 @@ Les cahiers des lots sont dans `docs/lots/LOT_BC*.md` ; leur tableau se calcule 
 ## 1. Lecture de la demande
 
 - **« Esprit collectif » est lu comme « esprit de collection »** : un album de cartes à compléter, chaque carte étant un badge illustré. C'est la lecture la plus probable, et c'est celle que la série code.
-- **La dimension sociale reste une question ouverte (BC-Q1, §11).** Cette étude reste locale et sans compte en ligne : rien ne quitte le PC. Si le propriétaire voulait vraiment un esprit d'équipe (comparer ses cartes avec d'autres joueurs, cartes gagnées à plusieurs), la forme la plus simple est locale : les profils de joueurs du même PC (série MJ) affichés côte à côte (lot facultatif BC8).
+- **Pas de dimension sociale (décision du propriétaire du 7 novembre, BC-Q1) :** « c'est juste l'aspect collection qui pourrait stimuler l'utilisation du jeu ». Tout reste local, sans compte en ligne ni comparaison entre joueurs : rien ne quitte le PC.
 - **Badge et carte sont une seule chose** : une carte porte un badge (le visuel), un titre, une ligne d'ambiance et sa rareté. Un seul système, une seule liste, pas de « badges » à part des « cartes » (principe de conception du 27 octobre : pas d'exception).
 
 ## 2. Ce qui existe déjà et que la série reprend
@@ -51,7 +51,7 @@ Familles affichées (ordre de l'écran) : distance, séances, dénivelé, régul
 - une fenêtre de saison peut passer le 31 décembre ; l'édition est l'année du début de la fenêtre ;
 - Pâques est calculé (calendrier grégorien), la fenêtre est donnée en jours autour du dimanche ;
 - l'anniversaire du 29 février tombe le 1er mars ;
-- une carte de saison se gagne **une fois par année** : « Halloween 2026 », « Halloween 2027 »… sont des éditions de la même carte, empilées sur la même case de l'album.
+- une carte de saison est **exclusive à sa période** (jamais rattrapable après la fenêtre, décision du 7 novembre) et se gagne **une fois par année** : « Halloween 2026 », « Halloween 2027 »… sont des éditions de la même carte, empilées sur la même case de l'album.
 
 **Hors du premier catalogue** (à ajouter plus tard, sans code nouveau sauf mention) : séances d'un plan d'entraînement terminé (il faut le champ `plan` dans les faits de séance), parcours du pack « Cols célèbres » (il faut l'identifiant du parcours, déjà dans les faits), vélodrome (série VD), Course tactique (série CT), Grand Prix des objets (série GP) : leurs lignes de jeu s'ajouteront à `FACT_EVENT_KINDS` à leur livraison.
 
@@ -112,14 +112,13 @@ Proposition à dessiner :
 | BC5 | écran « Collection » au menu | GDScript | BC2, BC3 validé, BC4 | captures validées |
 | BC6 | annonce au bilan, badge dans l'historique | Python + GDScript | BC2, BC3 validé | captures validées |
 | BC7 | recette sur le PC (profil d'essai, séances simulées, low, medium, high) | – | BC5, BC6 | propriétaire |
-| BC8 | facultatif, selon BC-Q1 : collections des profils du PC côte à côte | Python + GDScript | BC5 | – |
 
-## 11. Questions ouvertes (réponses par défaut appliquées)
+## 11. Questions ouvertes (réponses par défaut appliquées, BC-Q1 et BC-Q2 tranchées le 7 novembre)
 
 | # | Question | Réponse par défaut |
 | --- | --- | --- |
-| BC-Q1 | « Esprit collectif » : une collection personnelle, ou une vraie dimension sociale (comparer, gagner à plusieurs) ? | collection personnelle ; BC8 local entre profils du PC si oui ; pas de compte en ligne |
-| BC-Q2 | Cartes de saison : une par année (éditions empilées) ou une seule fois pour toujours ? | une par année |
+| BC-Q1 | « Esprit collectif » : une collection personnelle, ou une vraie dimension sociale (comparer, gagner à plusieurs) ? | **tranché le 7 novembre** : collection personnelle seulement, pas de social |
+| BC-Q2 | Cartes de saison : une par année (éditions empilées) ou une seule fois pour toujours ? | **tranché le 7 novembre** : éditions saisonnières exclusives, une par année, à gagner pendant leur période seulement |
 | BC-Q3 | Les séances d'avant la série comptent-elles ? | oui, annonce groupée à la première ouverture |
 | BC-Q4 | Lève-tôt : avant 7 h ? Noctambule : après 22 h ? | 4 h à 7 h et 22 h à 4 h, 20 minutes au moins |
 | BC-Q5 | Les cartes rapportent-elles de l'expérience ou des pièces ? | non : les défis gardent leur pièce offerte, les autres cartes ne donnent rien (pas de double récompense, l'équilibrage de la série V ne bouge pas) |
@@ -128,8 +127,8 @@ Proposition à dessiner :
 
 ## 12. Visuels délégués à Gemini (lot BC4)
 
-- **Une fiche de commande par carte** (document de BC4 dans `docs/5.0/`, tiré du catalogue) : nom du visuel, sujet (« un coq sur un guidon au lever du soleil »), rareté, palette, à éviter (texte, chiffres, logos, marques, personnes réelles).
-- **Format attendu :** PNG 512 × 512, fond transparent, sujet centré dans un cercle de 440 px, aucune lettre ni chiffre dans l'image (le texte est écrit par l'engine), poids sous 200 Ko.
+- **Une fiche de commande par carte** ([VISUELS_BC4.md](VISUELS_BC4.md), écrite le 7 novembre : bloc de style commun, couleur par rareté, une consigne par carte) : nom du visuel, sujet (« un coq sur un guidon au lever du soleil »), rareté, palette, à éviter (texte, chiffres, logos, marques, personnes réelles).
+- **Format attendu :** PNG 512 × 512 (l'IA peut livrer en 1024 × 1024, réduit au contrôle), fond transparent, sujet centré dans un cercle de 440 px, aucune lettre ni chiffre dans l'image (le texte est écrit par l'engine), poids sous 200 Ko.
 - **Contrôle à l'import** (script de BC4, en CI) : un fichier par `visual` du catalogue, taille, transparence, poids ; un visuel manquant s'affiche avec un pictogramme neutre, jamais une erreur.
 - **Planche d'essai d'abord** : 6 cartes (une par rareté, une de saison, une d'heure), validée par le propriétaire avant de commander les 36 autres.
 - Les images sont générées hors du dépôt par le propriétaire (ou une session qui a accès à Gemini) et déposées dans un dossier `collection` des ressources de l'engine (choisi par BC4) ; la licence d'usage des images générées est notée dans la PR.
