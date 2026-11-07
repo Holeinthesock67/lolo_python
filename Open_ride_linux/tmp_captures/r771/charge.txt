@@ -1,0 +1,1342 @@
+23:54:19
+2.20 2.50 2.60 6/823 657749
+%CPU %MEM COMMAND
+ 200  0.2 localsearch-ext
+ 200  0.0 ps
+66.6  0.1 git-remote-http
+17.4  3.0 gnome-shell
+16.6  0.0 git
+11.5  8.1 claude-desktop
+ 6.6  0.7 claude-desktop
+
+23:54:49
+2.02 2.43 2.58 1/822 657890
+%CPU %MEM COMMAND
+ 200  0.0 ps
+17.4  3.0 gnome-shell
+11.6  8.1 claude-desktop
+ 6.7  0.7 claude-desktop
+ 4.9  0.9 localsearch-3
+ 2.6  0.6 Xwayland
+ 1.9  2.8 claude-desktop
+
+23:55:19
+2.32 2.46 2.58 4/826 657934
+%CPU %MEM COMMAND
+ 500  0.0 ps
+ 100  0.1 head
+17.4  3.0 gnome-shell
+11.6  8.3 claude-desktop
+ 6.7  0.7 claude-desktop
+ 4.9  0.9 localsearch-3
+ 2.6  0.6 Xwayland
+
+23:55:49
+2.98 2.59 2.62 8/856 658053
+%CPU %MEM COMMAND
+ 311 11.3 Godot_v4.7.2-st
+17.4  3.0 gnome-shell
+11.7  8.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 4.9  0.9 localsearch-3
+ 2.6  0.6 Xwayland
+ 1.9  2.8 claude-desktop
+
+23:56:19
+3.15 2.68 2.65 3/864 658079
+%CPU %MEM COMMAND
+ 216 10.7 Godot_v4.7.2-st
+ 100  0.0 ps
+17.4  3.0 gnome-shell
+11.6  8.8 claude-desktop
+ 8.1  0.8 Xvfb
+ 6.7  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+
+23:56:50
+2.99 2.68 2.65 2/866 658099
+%CPU %MEM COMMAND
+ 174 11.0 Godot_v4.7.2-st
+17.4  3.0 gnome-shell
+11.6  9.1 claude-desktop
+10.4  0.8 Xvfb
+ 6.7  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 2.6  0.6 Xwayland
+
+23:57:20
+3.05 2.71 2.66 4/868 658122
+%CPU %MEM COMMAND
+ 165 11.4 Godot_v4.7.2-st
+17.4  3.0 gnome-shell
+11.6  9.0 claude-desktop
+11.3  0.8 Xvfb
+ 6.7  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 2.6  0.6 Xwayland
+
+23:57:50
+2.74 2.66 2.64 7/878 658232
+%CPU %MEM COMMAND
+ 304  6.8 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  1.7 python
+17.4  3.0 gnome-shell
+11.6  9.0 claude-desktop
+10.4  0.7 python
+ 6.7  0.7 claude-desktop
+
+23:58:20
+3.87 2.96 2.75 6/875 658330
+%CPU %MEM COMMAND
+ 314 13.0 Godot_v4.7.2-st
+ 200  0.0 ps
+17.4  3.0 gnome-shell
+11.5  9.1 claude-desktop
+ 6.7  0.7 claude-desktop
+ 6.3  0.5 localsearch-ext
+ 6.2  1.7 python
+
+23:58:50
+3.30 2.91 2.74 1/872 658415
+%CPU %MEM COMMAND
+ 235 13.2 Godot_v4.7.2-st
+17.4  3.0 gnome-shell
+11.5  9.1 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.9 localsearch-3
+ 4.6  1.7 python
+ 3.5  0.7 python
+
+23:59:20
+2.30 2.71 2.68 2/874 658504
+%CPU %MEM COMMAND
+ 177 13.2 Godot_v4.7.2-st
+ 100  0.0 ps
+17.4  3.0 gnome-shell
+11.5  9.1 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.9 localsearch-3
+ 4.1  1.7 python
+
+23:59:50
+1.74 2.53 2.62 2/872 658587
+%CPU %MEM COMMAND
+ 146 13.2 Godot_v4.7.2-st
+17.4  3.0 gnome-shell
+11.4  9.1 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.9 localsearch-3
+ 3.7  1.7 python
+ 3.5  0.7 python
+
+00:00:20
+1.62 2.43 2.58 2/876 658768
+%CPU %MEM COMMAND
+ 126 13.2 Godot_v4.7.2-st
+17.4  3.0 gnome-shell
+11.4  8.6 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.9 localsearch-3
+ 3.5  1.7 python
+ 3.5  0.7 python
+
+00:00:50
+1.40 2.30 2.53 2/855 658944
+%CPU %MEM COMMAND
+ 142  1.7 python
+64.7  1.7 python
+17.4  3.0 gnome-shell
+11.4  9.0 claude-desktop
+ 6.7  0.8 claude-desktop
+ 5.1  1.0 localsearch-3
+ 2.6  0.6 Xwayland
+
+00:01:20
+3.25 2.65 2.64 8/868 659063
+%CPU %MEM COMMAND
+ 313 13.4 Godot_v4.7.2-st
+17.4  3.0 gnome-shell
+11.3  8.9 claude-desktop
+ 6.7  0.7 claude-desktop
+ 6.4  1.7 python
+ 5.1  0.4 localsearch-3
+ 3.8  0.6 python
+
+00:01:50
+3.76 2.84 2.70 2/866 659149
+%CPU %MEM COMMAND
+ 260 12.9 Godot_v4.7.2-st
+17.4  3.0 gnome-shell
+11.3  8.9 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.6 localsearch-3
+ 4.5  1.7 python
+ 3.1  0.6 python
+
+00:02:20
+3.02 2.76 2.68 1/868 659246
+%CPU %MEM COMMAND
+ 194 13.1 Godot_v4.7.2-st
+ 100  0.0 ps
+17.4  3.0 gnome-shell
+11.3  9.0 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.6 localsearch-3
+ 3.9  1.7 python
+
+00:02:50
+1.97 2.53 2.60 2/869 659336
+%CPU %MEM COMMAND
+ 158 13.2 Godot_v4.7.2-st
+17.4  3.0 gnome-shell
+11.3  8.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+ 3.6  1.7 python
+ 3.3  0.6 python
+
+00:03:20
+1.73 2.42 2.57 2/868 659422
+%CPU %MEM COMMAND
+ 135 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+11.2  8.8 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+ 3.3  1.7 python
+ 3.3  0.6 python
+
+00:03:50
+2.00 2.43 2.56 1/868 659508
+%CPU %MEM COMMAND
+ 121 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+11.2  8.8 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+ 3.4  0.6 python
+ 3.2  1.7 python
+
+00:04:20
+3.66 2.79 2.68 8/868 659660
+%CPU %MEM COMMAND
+ 305 12.2 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+11.2  9.0 claude-desktop
+ 8.1  1.7 python
+ 6.7  0.8 claude-desktop
+ 5.1  0.7 localsearch-3
+
+00:04:50
+3.10 2.74 2.67 3/873 659756
+%CPU %MEM COMMAND
+ 280 13.0 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+11.2  8.8 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  1.7 python
+ 5.1  0.8 localsearch-3
+
+00:05:20
+2.59 2.67 2.65 4/867 659840
+%CPU %MEM COMMAND
+ 210 13.4 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+11.2  8.5 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+ 4.2  1.7 python
+ 3.1  0.6 python
+
+00:05:50
+1.91 2.49 2.59 1/866 659929
+%CPU %MEM COMMAND
+ 166 13.5 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+11.1  8.5 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+ 3.7  1.7 python
+ 3.0  0.6 python
+
+00:06:20
+1.64 2.38 2.55 4/864 660016
+%CPU %MEM COMMAND
+ 142 13.5 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+11.1  8.5 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+ 3.4  1.7 python
+
+00:06:51
+1.40 2.26 2.50 6/864 660101
+%CPU %MEM COMMAND
+ 125 13.5 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+11.1  8.5 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+ 3.2  1.7 python
+ 3.1  0.6 python
+
+00:07:21
+1.64 2.22 2.48 12/870 660267
+%CPU %MEM COMMAND
+ 297 11.4 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+11.1  8.7 claude-desktop
+ 9.5  1.7 python
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+
+00:07:51
+2.48 2.39 2.53 8/874 660361
+%CPU %MEM COMMAND
+ 291 13.0 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+11.0  8.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.2  1.7 python
+ 5.1  0.7 localsearch-3
+
+00:08:21
+1.88 2.25 2.48 3/866 660444
+%CPU %MEM COMMAND
+ 212 13.0 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+11.0  8.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+ 4.2  1.7 python
+
+00:08:51
+1.35 2.08 2.41 1/867 660533
+%CPU %MEM COMMAND
+ 164 13.1 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+11.0  8.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+ 3.8  1.7 python
+ 3.2  0.6 python
+
+00:09:21
+1.80 2.12 2.42 1/868 660623
+%CPU %MEM COMMAND
+ 139 13.1 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+11.0  8.8 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+ 3.5  1.7 python
+ 3.3  0.6 python
+
+00:09:51
+1.59 2.04 2.38 4/870 660713
+%CPU %MEM COMMAND
+ 122 13.1 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+11.0  8.9 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+ 3.4  0.6 python
+
+00:10:21
+1.80 2.04 2.37 2/870 660859
+%CPU %MEM COMMAND
+ 285  8.9 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+13.5  1.7 python
+11.0  8.9 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.5  0.6 python
+
+00:10:51
+3.18 2.36 2.47 4/876 660958
+%CPU %MEM COMMAND
+ 323 13.4 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+10.9  8.8 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  1.7 python
+ 5.1  0.7 localsearch-3
+
+00:11:21
+2.47 2.27 2.43 5/874 661042
+%CPU %MEM COMMAND
+ 236 13.6 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.9  8.8 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.1  0.7 localsearch-3
+ 4.3  1.7 python
+ 3.0  0.6 python
+
+00:11:51
+1.85 2.14 2.38 4/875 661127
+%CPU %MEM COMMAND
+ 178 13.6 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+10.9  8.9 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 3.7  1.7 python
+
+00:12:21
+1.60 2.04 2.34 2/875 661223
+%CPU %MEM COMMAND
+ 148 13.6 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.9  8.9 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 3.4  1.7 python
+ 3.1  0.6 python
+
+00:12:51
+1.62 2.01 2.32 1/875 661310
+%CPU %MEM COMMAND
+ 128 13.6 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+10.8  8.9 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 3.2  1.7 python
+
+00:13:21
+1.32 1.89 2.27 4/876 661451
+%CPU %MEM COMMAND
+ 231  6.3 Godot_v4.7.2-st
+29.4  1.7 python
+17.5  3.0 gnome-shell
+15.2  0.6 python
+10.8  8.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+
+00:13:51
+2.90 2.24 2.37 6/866 661534
+%CPU %MEM COMMAND
+ 330 13.6 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+10.8  8.8 claude-desktop
+ 6.7  0.7 claude-desktop
+ 6.3  1.7 python
+ 5.0  0.4 localsearch-3
+
+00:14:21
+2.80 2.28 2.38 3/875 661630
+%CPU %MEM COMMAND
+ 261 13.7 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.8  8.8 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.5 localsearch-ext
+ 5.0  0.6 localsearch-3
+ 4.6  1.7 python
+
+00:14:51
+2.20 2.18 2.35 1/874 661719
+%CPU %MEM COMMAND
+ 192 13.7 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.8  8.5 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.6 localsearch-3
+ 4.9  0.5 localsearch-ext
+ 3.9  1.7 python
+
+00:15:21
+1.64 2.05 2.30 2/876 661804
+%CPU %MEM COMMAND
+ 157 13.7 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+10.7  8.5 claude-desktop
+ 6.7  0.5 localsearch-ext
+ 6.7  0.7 claude-desktop
+ 5.0  0.6 localsearch-3
+
+00:15:51
+1.31 1.93 2.25 1/873 661891
+%CPU %MEM COMMAND
+ 136 13.7 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.7  8.5 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.5  0.5 localsearch-ext
+ 5.0  0.6 localsearch-3
+ 3.3  1.7 python
+
+00:16:21
+0.97 1.80 2.19 2/873 661977
+%CPU %MEM COMMAND
+ 122 13.7 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.7  8.5 claude-desktop
+ 6.7  0.7 claude-desktop
+ 6.4  0.5 localsearch-ext
+ 5.0  0.6 localsearch-3
+ 3.2  0.6 python
+
+00:16:51
+2.12 1.99 2.25 5/866 662117
+%CPU %MEM COMMAND
+ 324 12.6 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+10.7  8.4 claude-desktop
+ 7.3  1.7 python
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+
+00:17:21
+2.29 2.06 2.26 6/865 662208
+%CPU %MEM COMMAND
+ 256 12.8 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+10.7  9.1 claude-desktop
+ 6.7  0.8 claude-desktop
+ 5.0  0.7 localsearch-3
+ 4.9  1.7 python
+
+00:17:52
+2.37 2.11 2.27 1/863 662295
+%CPU %MEM COMMAND
+ 182 12.8 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.7  9.1 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 4.1  1.7 python
+ 3.3  0.6 python
+
+00:18:22
+1.85 2.00 2.23 2/863 662381
+%CPU %MEM COMMAND
+ 146 12.9 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.7  9.2 claude-desktop
+ 6.7  0.6 claude-desktop
+ 5.0  0.7 localsearch-3
+ 3.7  1.7 python
+ 3.3  0.6 python
+
+00:18:52
+1.31 1.86 2.17 4/863 662468
+%CPU %MEM COMMAND
+ 124 12.9 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.6  9.2 claude-desktop
+ 6.7  0.6 claude-desktop
+ 5.0  0.7 localsearch-3
+ 3.4  1.7 python
+ 3.3  0.6 python
+
+00:19:22
+0.93 1.71 2.12 3/863 662554
+%CPU %MEM COMMAND
+ 110 12.9 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.6  9.2 claude-desktop
+ 6.7  0.6 claude-desktop
+ 5.0  0.7 localsearch-3
+ 3.3  0.6 python
+ 3.2  1.7 python
+
+00:19:52
+2.37 1.97 2.19 5/863 662700
+%CPU %MEM COMMAND
+ 320 11.8 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+10.6  7.7 claude-desktop
+ 8.5  1.7 python
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+
+00:20:22
+2.72 2.11 2.23 3/870 662799
+%CPU %MEM COMMAND
+ 285 13.4 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+10.5  7.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 5.0  1.7 python
+
+00:20:52
+1.70 1.92 2.16 1/865 662889
+%CPU %MEM COMMAND
+ 198 13.1 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.5  7.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 4.0  1.7 python
+ 3.0  0.6 python
+
+00:21:22
+1.23 1.79 2.11 3/865 662981
+%CPU %MEM COMMAND
+ 155 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.4  7.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 3.5  1.7 python
+ 3.0  0.6 python
+
+00:21:52
+1.21 1.73 2.08 1/865 663075
+%CPU %MEM COMMAND
+ 131 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.4  7.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 3.2  1.7 python
+ 3.1  0.6 python
+
+00:22:22
+1.06 1.64 2.03 1/865 663165
+%CPU %MEM COMMAND
+ 115 13.2 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+10.3  7.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 3.1  0.6 python
+
+00:22:52
+1.77 1.74 2.05 6/871 663317
+%CPU %MEM COMMAND
+ 303 10.5 Godot_v4.7.2-st
+ 300  0.0 ps
+17.5  3.0 gnome-shell
+11.1  1.7 python
+10.3  8.1 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+
+00:23:22
+2.34 1.89 2.09 3/875 663410
+%CPU %MEM COMMAND
+ 307 13.3 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.2  8.0 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.4  1.7 python
+ 5.0  0.7 localsearch-3
+ 3.2  0.6 python
+
+00:23:52
+1.86 1.82 2.06 3/867 663496
+%CPU %MEM COMMAND
+ 214 13.4 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.2  8.0 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 4.2  1.7 python
+ 2.9  0.6 python
+
+00:24:22
+1.45 1.73 2.02 2/869 663589
+%CPU %MEM COMMAND
+ 164 13.4 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+10.1  8.0 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 3.6  1.7 python
+
+00:24:52
+1.13 1.62 1.98 1/868 663682
+%CPU %MEM COMMAND
+ 137 13.4 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.1  8.0 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 3.3  1.7 python
+ 3.1  0.6 python
+
+00:25:22
+1.05 1.55 1.94 2/867 663773
+%CPU %MEM COMMAND
+ 119 13.4 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.0  7.9 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.7 localsearch-3
+ 3.1  1.7 python
+ 3.1  0.6 python
+
+00:25:52
+0.91 1.46 1.90 3/844 663923
+%CPU %MEM COMMAND
+ 156 11.7 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.0  8.1 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 2.6  0.6 Xwayland
+ 2.0  0.7 localsearch-ext
+
+00:26:22
+0.55 1.32 1.84 1/818 663942
+%CPU %MEM COMMAND
+17.5  3.0 gnome-shell
+ 9.9  8.1 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 2.6  0.6 Xwayland
+ 1.9  2.8 claude-desktop
+ 1.1  3.4 claude
+
+00:26:52
+0.33 1.19 1.78 1/818 663971
+%CPU %MEM COMMAND
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+ 9.9  8.1 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 2.6  0.6 Xwayland
+ 1.9  2.9 claude-desktop
+
+00:27:22
+1.63 1.42 1.83 6/863 664107
+%CPU %MEM COMMAND
+ 343 13.4 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.8  8.1 claude-desktop
+ 7.0  1.7 python
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 4.7  0.7 python
+
+00:27:52
+1.79 1.49 1.84 2/864 664195
+%CPU %MEM COMMAND
+ 262 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.8  8.1 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 4.7  1.7 python
+ 3.4  0.7 python
+
+00:28:23
+1.43 1.44 1.82 3/863 664282
+%CPU %MEM COMMAND
+ 185 13.2 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+ 9.7  8.1 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.9  1.7 python
+
+00:28:53
+1.20 1.38 1.78 2/863 664369
+%CPU %MEM COMMAND
+ 148 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.7  8.1 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.5  1.7 python
+ 3.4  0.7 python
+
+00:29:23
+0.99 1.31 1.75 6/865 664454
+%CPU %MEM COMMAND
+ 126 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.6  8.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.3  0.7 python
+ 3.2  1.7 python
+
+00:29:53
+0.94 1.27 1.72 1/863 664539
+%CPU %MEM COMMAND
+ 112 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.6  8.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.4  0.7 python
+ 3.0  1.7 python
+
+00:30:23
+1.85 1.44 1.76 6/866 664690
+%CPU %MEM COMMAND
+ 332 12.3 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+ 9.6  8.2 claude-desktop
+ 8.2  1.7 python
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+
+00:30:53
+2.52 1.65 1.82 7/871 664785
+%CPU %MEM COMMAND
+ 291 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.5  8.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 4.9  1.7 python
+ 3.1  0.6 python
+
+00:31:23
+1.74 1.55 1.78 2/866 664873
+%CPU %MEM COMMAND
+ 208 13.3 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.5  8.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 4.0  1.7 python
+ 2.9  0.6 python
+
+00:31:53
+1.44 1.50 1.76 5/866 664967
+%CPU %MEM COMMAND
+ 162 13.3 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.4  8.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.5  1.7 python
+ 3.0  0.6 python
+
+00:32:23
+1.21 1.43 1.73 1/866 665055
+%CPU %MEM COMMAND
+ 137 13.3 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.4  8.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.2  1.7 python
+ 3.0  0.6 python
+
+00:32:53
+1.03 1.37 1.70 2/867 665150
+%CPU %MEM COMMAND
+ 121 13.3 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.4  8.4 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.1  1.7 python
+ 3.0  0.6 python
+
+00:33:23
+1.78 1.50 1.73 6/874 665300
+%CPU %MEM COMMAND
+ 307 11.0 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+10.2  1.7 python
+ 9.3  8.0 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 4.7  0.6 python
+
+00:33:53
+2.77 1.77 1.81 2/878 665393
+%CPU %MEM COMMAND
+ 312 13.3 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.3  8.0 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.1  1.7 python
+ 5.0  0.8 localsearch-3
+ 3.2  0.6 python
+
+00:34:23
+2.54 1.83 1.83 1/870 665477
+%CPU %MEM COMMAND
+ 224 13.6 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+ 9.3  8.0 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 4.0  1.7 python
+
+00:34:53
+1.83 1.73 1.80 2/869 665571
+%CPU %MEM COMMAND
+ 172 13.6 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.2  8.0 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.5  1.7 python
+ 3.0  0.6 python
+
+00:35:23
+1.65 1.69 1.78 2/869 665663
+%CPU %MEM COMMAND
+ 144 13.6 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.2  7.9 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.2  1.7 python
+ 3.0  0.6 python
+
+00:35:53
+1.70 1.69 1.78 6/867 665757
+%CPU %MEM COMMAND
+ 126 13.6 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+ 9.1  7.9 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.1  0.6 python
+
+00:36:23
+1.76 1.69 1.77 6/877 665908
+%CPU %MEM COMMAND
+ 332  7.2 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+15.6  1.7 python
+ 9.1  8.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 6.4  0.6 python
+
+00:36:53
+2.85 1.96 1.86 4/873 665999
+%CPU %MEM COMMAND
+ 329 13.1 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.1  8.1 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.7  0.5 localsearch-ext
+ 5.5  1.7 python
+ 5.0  0.8 localsearch-3
+
+00:37:23
+2.55 1.98 1.87 1/871 666085
+%CPU %MEM COMMAND
+ 226 12.9 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.0  8.0 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 4.1  1.7 python
+ 3.0  0.6 python
+
+00:37:53
+1.74 1.84 1.83 2/872 666171
+%CPU %MEM COMMAND
+ 168 12.9 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.0  8.1 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.6  1.7 python
+ 3.1  0.6 python
+
+00:38:23
+1.23 1.71 1.78 2/872 666256
+%CPU %MEM COMMAND
+ 138 12.9 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.0  8.1 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.2  1.7 python
+ 3.0  0.6 python
+
+00:38:53
+1.24 1.66 1.76 1/875 666371
+%CPU %MEM COMMAND
+ 120 12.9 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.9  8.1 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.8 localsearch-3
+ 3.1  0.6 python
+ 3.1  1.7 python
+
+00:39:23
+1.07 1.58 1.73 2/848 666479
+%CPU %MEM COMMAND
+ 100  0.3 python
+50.6  1.7 python
+17.5  3.0 gnome-shell
+ 8.9  8.3 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 2.6  0.6 Xwayland
+
+00:39:54
+2.34 1.83 1.81 5/867 666595
+%CPU %MEM COMMAND
+ 348 13.5 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.8  8.3 claude-desktop
+ 6.6  0.7 claude-desktop
+ 6.2  1.7 python
+ 5.0  0.9 localsearch-3
+ 3.7  0.6 python
+
+00:40:24
+2.28 1.87 1.83 1/876 666693
+%CPU %MEM COMMAND
+ 258 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.8  8.3 claude-desktop
+ 6.6  0.7 claude-desktop
+ 6.2  0.5 localsearch-ext
+ 5.0  0.9 localsearch-3
+ 4.4  1.7 python
+
+00:40:54
+2.33 1.92 1.84 2/875 666779
+%CPU %MEM COMMAND
+ 186 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.8  8.3 claude-desktop
+ 6.6  0.7 claude-desktop
+ 6.0  0.5 localsearch-ext
+ 5.0  0.9 localsearch-3
+ 3.7  1.7 python
+
+00:41:24
+1.68 1.80 1.80 1/876 666866
+%CPU %MEM COMMAND
+ 151 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.7  8.3 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.9  0.5 localsearch-ext
+ 5.0  0.9 localsearch-3
+ 3.4  1.7 python
+
+00:41:54
+1.32 1.70 1.77 2/876 666955
+%CPU %MEM COMMAND
+ 130 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.7  8.3 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.7  0.5 localsearch-ext
+ 5.0  0.9 localsearch-3
+ 3.2  1.7 python
+
+00:42:24
+0.99 1.59 1.73 3/876 667039
+%CPU %MEM COMMAND
+ 115 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.7  7.8 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.5  0.5 localsearch-ext
+ 5.0  0.9 localsearch-3
+ 3.2  0.6 python
+
+00:42:54
+2.15 1.79 1.79 7/870 667180
+%CPU %MEM COMMAND
+ 324 12.5 Godot_v4.7.2-st
+ 200  0.0 ps
+17.5  3.0 gnome-shell
+ 8.7  8.1 claude-desktop
+ 7.0  1.7 python
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+
+00:43:24
+2.98 2.05 1.88 6/871 667265
+%CPU %MEM COMMAND
+ 276 13.6 Godot_v4.7.2-st
+ 200  0.0 ps
+17.5  3.0 gnome-shell
+ 8.6  8.1 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 4.7  1.7 python
+
+00:43:54
+2.42 2.01 1.87 8/867 667351
+%CPU %MEM COMMAND
+ 208 13.8 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.6  8.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 4.0  1.7 python
+ 3.1  0.6 python
+
+00:44:24
+1.97 1.93 1.85 2/863 667433
+%CPU %MEM COMMAND
+ 167 13.8 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+ 8.6  8.3 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 3.6  1.7 python
+
+00:44:54
+2.34 2.03 1.89 3/863 667522
+%CPU %MEM COMMAND
+ 143 13.8 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.6  8.5 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 3.4  1.7 python
+ 3.2  0.6 python
+
+00:45:24
+2.24 2.07 1.90 7/863 667607
+%CPU %MEM COMMAND
+ 127 13.8 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.7  8.6 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 3.2  1.7 python
+ 3.2  0.6 python
+
+00:45:54
+3.02 2.26 1.97 6/863 667753
+%CPU %MEM COMMAND
+ 298 12.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 9.1  1.7 python
+ 8.7  9.1 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 4.5  0.6 python
+
+00:46:24
+4.03 2.59 2.10 2/873 667847
+%CPU %MEM COMMAND
+ 278 13.2 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+ 8.7  9.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.2  1.7 python
+ 5.0  0.9 localsearch-3
+
+00:46:54
+3.14 2.52 2.09 1/866 667928
+%CPU %MEM COMMAND
+ 198 13.1 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+ 8.6  9.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 4.2  1.7 python
+
+00:47:24
+2.54 2.42 2.07 1/866 668018
+%CPU %MEM COMMAND
+ 157 13.1 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.7  9.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 3.9  1.7 python
+ 3.3  0.6 python
+
+00:47:54
+3.06 2.55 2.12 2/866 668109
+%CPU %MEM COMMAND
+ 133 13.1 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.7  9.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 3.7  1.7 python
+ 3.5  0.6 python
+
+00:48:24
+2.80 2.53 2.13 8/864 668199
+%CPU %MEM COMMAND
+ 118 13.1 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.6  9.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 3.5  1.7 python
+ 3.5  0.6 python
+
+00:48:54
+3.12 2.63 2.18 6/869 668346
+%CPU %MEM COMMAND
+ 276  9.3 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+12.4  1.7 python
+ 8.7  8.7 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.2  0.6 python
+ 5.0  0.9 localsearch-3
+
+00:49:25
+4.11 2.93 2.29 8/872 668437
+%CPU %MEM COMMAND
+ 309 13.2 Godot_v4.7.2-st
+ 200  0.0 ps
+17.5  3.0 gnome-shell
+ 8.7  8.7 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.6  1.7 python
+ 5.0  0.9 localsearch-3
+
+00:49:55
+3.22 2.84 2.28 1/872 668525
+%CPU %MEM COMMAND
+ 225 13.1 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+ 8.6  8.7 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 4.4  1.7 python
+
+00:50:25
+3.08 2.86 2.31 7/874 668612
+%CPU %MEM COMMAND
+ 200  0.0 ps
+ 173 13.1 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.7  8.5 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 3.9  1.7 python
+
+00:50:55
+2.78 2.80 2.30 1/874 668699
+%CPU %MEM COMMAND
+ 144 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.7  8.5 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 3.7  1.7 python
+ 3.4  0.6 python
+
+00:51:25
+2.34 2.70 2.29 2/874 668784
+%CPU %MEM COMMAND
+ 126 13.2 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.6  8.5 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 3.4  1.7 python
+ 3.4  0.6 python
+
+00:51:55
+2.08 2.59 2.26 9/880 668934
+%CPU %MEM COMMAND
+ 263  6.5 Godot_v4.7.2-st
+ 100  0.0 ps
+23.1  1.7 python
+17.5  3.0 gnome-shell
+10.4  0.6 python
+ 8.7  8.6 claude-desktop
+ 6.6  0.7 claude-desktop
+
+00:52:25
+3.38 2.85 2.36 7/864 669014
+%CPU %MEM COMMAND
+ 320 13.8 Godot_v4.7.2-st
+ 100  0.0 ps
+17.5  3.0 gnome-shell
+ 8.6  8.6 claude-desktop
+ 6.6  0.7 claude-desktop
+ 6.2  1.7 python
+ 5.0  0.9 localsearch-3
+
+00:52:55
+2.90 2.80 2.36 1/874 669110
+%CPU %MEM COMMAND
+ 247 13.3 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.6  8.6 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 4.6  1.7 python
+ 3.0  0.6 python
+
+00:53:25
+2.30 2.67 2.33 3/873 669196
+%CPU %MEM COMMAND
+ 184 13.3 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.6  8.6 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 4.1  0.5 localsearch-ext
+ 4.1  1.7 python
+
+00:53:55
+1.95 2.55 2.30 1/875 669283
+%CPU %MEM COMMAND
+ 152 13.3 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.6  8.6 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 4.1  0.5 localsearch-ext
+ 3.7  1.7 python
+
+00:54:25
+2.17 2.54 2.30 1/873 669370
+%CPU %MEM COMMAND
+ 132 13.3 Godot_v4.7.2-st
+17.5  3.0 gnome-shell
+ 8.6  8.8 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 4.0  0.5 localsearch-ext
+ 3.5  1.7 python
+
+00:54:55
+1.46 2.33 2.24 3/841 669466
+%CPU %MEM COMMAND
+ 103  0.4 python
+17.5  3.0 gnome-shell
+ 8.6  8.9 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.0  0.9 localsearch-3
+ 3.4  1.7 python
+ 2.6  0.6 Xwayland
+

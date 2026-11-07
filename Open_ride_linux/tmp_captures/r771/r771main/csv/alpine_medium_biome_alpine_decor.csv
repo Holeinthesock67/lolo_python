@@ -1,0 +1,8 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+29.1;9;7;0;6;0;6;0;
+59.1;14;27;0;6;0;6;0;
+89.1;14;27;0;7;0;7;0;airliner_rumble=1
+119.1;14;27;0;8;1;7;0;airliner_rumble=1 voice_allez=1
+149.1;14;27;0;12;2;8;0;airliner_rumble=2 voice_allez=1
+179.1;14;27;0;8;1;8;0;airliner_rumble=2 voice_allez=1
+181.1;14;27;0;9;1;8;0;airliner_rumble=2 voice_allez=1

@@ -1,0 +1,23 @@
+00:25:46 empreinte avant c6152d87d6a2fc30a6faa5539f239a55
+00:25:46 tête 4971f059
+00:26:54 biome alpine low_main
+00:30:01 fin biome alpine low rc=0
+00:30:01 biome alpine medium_main
+00:33:08 fin biome alpine medium rc=0
+00:33:08 biome alpine high_main
+00:36:14 fin biome alpine high rc=0
+00:36:14 biome savanna low_main
+00:39:21 fin biome savanna low rc=0
+00:39:21 biome savanna medium_main
+00:42:28 fin biome savanna medium rc=0
+00:42:28 biome savanna high_main
+00:45:34 fin biome savanna high rc=0
+00:45:34 biome sand_desert low_main
+00:48:41 fin biome sand_desert low rc=0
+00:48:41 biome sand_desert medium_main
+00:51:48 fin biome sand_desert medium rc=0
+00:51:48 biome sand_desert high_main
+00:54:56 fin biome sand_desert high rc=0
+00:54:57 empreinte après c6152d87d6a2fc30a6faa5539f239a55
+00:54:57 clone 9c7c9556
+00:54:57 FIN

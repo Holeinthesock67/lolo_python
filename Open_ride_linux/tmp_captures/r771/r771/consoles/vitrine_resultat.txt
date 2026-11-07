@@ -1,0 +1,2 @@
+rc=0 durée=130 s, 99 images ; dernière capture 23:57:38, sortie de Godot 23:57:40, écart 2 s
+aucune erreur de script
