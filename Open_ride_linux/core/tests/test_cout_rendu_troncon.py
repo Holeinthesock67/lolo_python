@@ -54,19 +54,19 @@ def test_variantes_de_densite_relatives_au_preset():
 def test_analyse_par_biome(tmp_path):
     (tmp_path / "troncon.txt").write_text(",".join(TRONCON) + "\n", encoding="utf-8")
     for rep in ("r1", "r2"):
-        _fake_run(tmp_path / "low" / "base" / rep, _gpu(2.0))
+        _fake_run(tmp_path / "low" / "base" / rep, _gpu(4.0))
         _fake_run(tmp_path / "low" / "sans_arbres" / rep, _gpu(0.5))
     assert cr.analyse(tmp_path) == 0
     res = json.loads((tmp_path / "cout.json").read_text(encoding="utf-8"))
     base = res["low"]["base"]["par_biome"]
     assert base["farmland"]["gpu_ms"] == 5.0
-    assert base["temperate_forest"]["gpu_ms"] == 7.0
+    assert base["temperate_forest"]["gpu_ms"] == 9.0
     assert base["farmland"]["secondes"] > 0 and base["frontières"]["secondes"] > 0
     assert res["low"]["sans_arbres"]["par_biome"]["temperate_forest"]["gpu_ms"] == 5.5
     md = (tmp_path / "cout.md").read_text(encoding="utf-8")
     assert "## Par biome du tronçon" in md
-    assert "| sans_arbres | 5.00 (+0.00) | 5.50 (+1.50) |" in md
-    assert "**7.00**" in md   # base au-dessus du budget low (6 ms) en gras
+    assert "| sans_arbres | 5.00 (+0.00) | 5.50 (+3.50) |" in md
+    assert "**9.00**" in md and "**5.00**" not in md   # base au-dessus du budget low (8 ms) en gras
 
 
 def test_nom_du_banc_sans_tiret_bas():

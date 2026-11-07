@@ -206,3 +206,5 @@ Ce que ça dit :
 - `arbres_lod0_300m` gagne en high (+1,25) mais rapproche la bascule vers les panneaux, refusée le 1er novembre : pas retenu.
 
 Remède mesuré à la passe suivante : **ombre portée des arbres limitée près de la caméra** (`ombres_arbres_m=M`, variantes `ombres_arbres_100`, `_150`, `_250`). Les cases de 250 m entièrement plus loin que M ne projettent plus d'ombre (`TreeRenderer.update_shadows`, recalculé tous les 10 m), et dans les cases à cheval le shader replie l'ombre des arbres plus loin que M, seulement dans les passes d'ombre (vue d'une autre caméra que la principale, `tree_sway.gdshader`) : l'image des arbres ne change pas, seules leurs ombres lointaines disparaissent. Vérifié dans le cloud (Vulkan logiciel) : l'ombre d'un objet à 33 m disparaît avec M = 10 et reste avec M = 100, l'objet reste dessiné.
+
+**Décision du propriétaire (7 novembre, 3 h)** : budget GPU du low relevé de 6 à 8 ms (`perf_targets.json`). Le low tient 60 images/s sur la GTX 1060 avec une marge ×2 pour une carte deux fois moins puissante ; les cultures et la forêt en low (7,1 à 7,8 ms) passent sans retirer de détail. Budgets medium (12 ms) et high (14 ms) inchangés.
