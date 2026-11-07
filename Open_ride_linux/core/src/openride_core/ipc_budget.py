@@ -292,7 +292,7 @@ def worst_short_messages() -> dict[str, dict[str, Any]]:
             "gains": [{"source": s, "points": 99_999_999} for s in
                       ("distance", "climb", "erg", "erg_bonus", "segment", "segment_pr", "jersey", "rogue", "rogue_boss")],
             "total": 99_999_999, "level_before": 49, "level_after": 50, "xp_total": 99_999_999,
-            "xp_next_level": None, "coins_gained": 99_999_999, "coins_total": 99_999_999,
+            "xp_level_start": 99_999_999, "xp_next_level": None, "coins_gained": 99_999_999, "coins_total": 99_999_999,
             "unlocked": [_ID] * 8,
             "challenges": [{"id": _ID, "name": text(32), "reward_item": _ID}] * 4,
             "equipment_gain_s": -9_999.99, "more": True},

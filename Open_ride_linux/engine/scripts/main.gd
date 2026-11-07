@@ -1632,7 +1632,7 @@ func _on_progression(msg: Dictionary) -> void:
 	var eq = msg.get("equipped")
 	_equipped_ids = eq if eq is Dictionary else {}
 	var prog := {}
-	for key in ["level", "xp", "xp_next_level", "coins", "equipped", "avatar", "lives"]:
+	for key in ["level", "xp", "xp_level_start", "xp_next_level", "coins", "equipped", "avatar", "lives"]:
 		if msg.has(key):
 			prog[key] = msg[key]
 	ipc.core_config["progression"] = prog
