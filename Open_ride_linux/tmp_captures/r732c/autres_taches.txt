@@ -1,0 +1,8 @@
+Autres tâches pendant r732c (09:41–12:17) : aucune lancée par moi ; voir charge_pc.txt
+10:07:35 3.55 100 nvidia-smi
+10:16:06 1.67 107 python
+10:30:37 2.32 104 python
+10:30:37 2.32 37.5 python
+10:37:38 4.07 21.2 git-remote-http
+10:45:08 1.27 20.5 python
+10:58:39 1.96 25.0 localsearch-ext
