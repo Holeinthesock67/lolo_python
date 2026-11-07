@@ -40,3 +40,9 @@ Porter le plateau du mode de 4 à 11 bots une fois le peloton d'environ 12 bots 
 - Deuxième élimination jamais vue : à 250 W sur les 3-4 % de la démo, 23 km/h, la séance de 360 s s'arrêtait vers 1,9 km. Scénario passé à 280 W et 480 s.
 - Départ : pire image 149-150 ms en medium et high, au premier mètre ; d'après saccades.csv, ce sont les tuiles d'arbres et de route du départ (environ 30 ms d'arbres par tuile), comme le départ de la démo (#710), pas les 12 coureurs.
 - Low : 6,4 secondes lentes par minute (au plus 3), alors que medium en a 1,9 et high 0,4 avec plus de bots détaillés. Low a été passé en premier, cache des shaders froid (cause déjà vue sur le test rogue, #712) : à repasser avec low en dernier avant d'y toucher.
+
+### Bancs PC r735b et témoins r735t (7 novembre, abe9f583 puis b207d0cd)
+
+- r735b (280 W, 480 s) : deux arches passées dans les trois qualités ; images lentes par minute : medium dans la limite, low 5,2 et high 6,9 (limite 3). Dans ces images, toutes les étapes mesurées gonflent ensemble (fenêtre, bots, décor), et l'essentiel du temps reste hors étapes (« inconnue »).
+- Témoins sur la même tête, monde demo_long, 480 s : monde seul low 0,0 et high 1,1 ; peloton de 11 bots sans le mode low 0,6 et high 4,5. En high, le peloton explique l'essentiel ; en low, le surplus vient du mode lui-même.
+- Correctif : la liste des 12 coureurs du HUD ne repose que ce qui a changé (le texte BBCode était relu, la couleur et le fond de chaque ligne reposés à chaque image, ce qui relançait la mise en page de la liste) : 0,28 ms → 0,11 ms par image sur le cloud, hors mise en page. Nouvelle étape « survivant » dans saccades.csv (HUD, liste et portiques du mode) pour que le prochain banc nomme le mode quand il coûte.

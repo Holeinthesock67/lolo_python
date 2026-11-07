@@ -196,6 +196,15 @@ func _run() -> void:
 	var info: Dictionary = view.test_info()
 	_check(info["visible"] and info["block"] == "Arche 2 / 4" and info["danger"] == "DERNIER", "vue : bloc en danger")
 	_check(info["list"].size() == 5 and str(info["list"][3]).contains("Toi"), "vue : liste des coureurs")
+	# Lot DS8 : une image identique ne repose rien (fond, couleur, texte BBCode relancent la mise en page)
+	var me_bg: StyleBoxFlat = view._rows[3][3]
+	_check(me_bg.bg_color == Model.YELLOW, "vue : « Toi » sur fond or")
+	var changes := [0]
+	me_bg.changed.connect(func() -> void: changes[0] += 1)
+	var me_name: RichTextLabel = view._rows[3][1]
+	var bb_before := me_name.text
+	view.update_view(vm.view(_state(sv), 0.0))
+	_check(changes[0] == 0 and me_name.text == bb_before, "vue : image identique, fond et nom non reposés")
 	vm.on_elimination(msg, 0.0)
 	view.update_view(vm.view(_state(sv3), 0.5))
 	_check(view.test_info()["bottom"] == "Éliminé : Sprinteur", "vue : bandeau du bas")
