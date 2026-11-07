@@ -25,7 +25,7 @@ func _init() -> void:
 			continue
 		_check_mesh(kind, built["lod0"], float(built["height"]))
 	_check_mesh("generic", TreeRenderer.build_lod0_mesh(), 5.4)
-	print("%d contrôles, %d échecs" % [_checked, _failures])
+	print("test_tree_faces : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
 
