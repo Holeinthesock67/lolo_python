@@ -12,6 +12,13 @@ Décode le fichier en entier avec le SDK officiel de Garmin (`garmin-fit-sdk`, e
 - **FC figée** : aucune valeur identique plus de 15 s pendant que la puissance varie d'au moins 5 W ;
 - **totaux de `session`** face aux enregistrements : distance, durées écoulée et chronométrée,
   puissance moyenne et maximale, FC moyenne ;
+- **compatibilité Garmin Connect et GoldenCheetah** (lot X56) : en-tête de 12 ou 14 octets signé
+  `.FIT` (seuls acceptés par GoldenCheetah), `file_id` d'activité daté avec fabricant et produit,
+  `session` de vélo datée qui couvre les enregistrements (GoldenCheetah ignore un tour fini avant le
+  premier relevé), autant de tours et de séances que l'annoncent `session` et `activity`, heure
+  locale de `activity` (Garmin Connect s'en sert pour dater la sortie), positions dans le globe ;
+- **totaux affichés** (lot X56, ATTENTION) : calories, travail, D+ et D-, cadence maximale, que les
+  deux logiciels montrent tels quels sans les recalculer (absents des FIT d'avant la 3.0) ;
 - avec `--journal` : **distance et durée chronométrée** face au journal de la séance (± 1 %).
 
 Une ligne OK, ATTENTION ou ÉCHEC par contrôle ; code 0, 1 si un contrôle échoue, 2 si le fichier est
@@ -32,6 +39,7 @@ POWER_VAR_W = 5.0      # « la puissance varie » : au moins 5 W d'écart pendan
 REL_TOL = 0.01         # ± 1 % face au journal et aux enregistrements
 ABS_TOL = {"m": 1.0, "s": 1.0, "W": 1.0, "bpm": 1.0}   # résolution du FIT (secondes entières, entiers)
 REQUIRED = ("file_id", "session", "lap", "activity", "record")
+SEMICIRCLE_DEG = 180.0 / 2**31
 SDK_HINT = "garmin-fit-sdk absent : installer l'extra dev du core (pip install -e 'core[dev]')"
 
 
@@ -57,6 +65,77 @@ def decode(path: Path) -> tuple[dict[str, list[dict[str, Any]]], list[str], bool
     stream.reset()
     messages, errors = decoder.read()
     return ({k.removesuffix("_mesgs"): v for k, v in messages.items()}, [str(e) for e in errors], bool(ok))
+
+
+def read_header(path: Path) -> bytes:
+    """Les 14 premiers octets du fichier (en-tête FIT), pour le contrôle de compatibilité."""
+    with Path(path).open("rb") as fh:
+        return fh.read(14)
+
+
+def _header_issue(header: bytes) -> str | None:
+    if len(header) < 12 or header[0] not in (12, 14):
+        return f"en-tête de {header[0] if header else 0} octets (GoldenCheetah n'accepte que 12 ou 14)"
+    if header[8:12] != b".FIT":
+        return "signature .FIT absente de l'en-tête"
+    return None
+
+
+def compat_issues(messages: dict[str, list[dict[str, Any]]], records: list[dict[str, Any]],
+                  header: bytes | None = None) -> list[str]:
+    """Ce qui ferait refuser le fichier, ou perdre une partie de la séance, par Garmin Connect ou GoldenCheetah."""
+    issues = [i for i in [_header_issue(header) if header is not None else None] if i]
+    fid = (messages.get("file_id") or [{}])[0]
+    if fid.get("type") != "activity":
+        issues.append(f"file_id de type {fid.get('type')} au lieu de activity")
+    missing = [k for k in ("manufacturer", "product", "time_created") if fid.get(k) is None]
+    if missing:
+        issues.append("file_id sans " + ", ".join(missing))
+    sessions, laps = messages.get("session") or [], messages.get("lap") or []
+    first = records[0]["t"] if records else None
+    last = records[-1]["t"] if records else None
+    for kind, items in (("session", sessions), ("tour", laps)):
+        for i, m in enumerate(items):
+            start, end = _ts(m.get("start_time")), _ts(m.get("timestamp"))
+            if start is None or end is None:
+                issues.append(f"{kind} {i} sans début ou sans fin")
+            elif end < start:
+                issues.append(f"{kind} {i} finit avant de commencer")
+            elif first is not None and end < first:
+                issues.append(f"{kind} {i} fini avant le premier enregistrement (ignoré par GoldenCheetah)")
+    for i, m in enumerate(sessions):
+        if m.get("sport") != "cycling":
+            issues.append(f"session {i} de sport {m.get('sport')} au lieu de cycling")
+        if last is not None and _ts(m.get("timestamp")) is not None and _ts(m["timestamp"]) < last - 1:
+            issues.append(f"session {i} finie avant le dernier enregistrement")
+    if sessions and sessions[0].get("num_laps") not in (None, len(laps)):
+        issues.append(f"session annonce {sessions[0].get('num_laps')} tour(s) pour {len(laps)} écrit(s)")
+    starts = [_ts(m.get("start_time")) for m in laps]
+    if any(a is not None and b is not None and b < a for a, b in zip(starts, starts[1:])):
+        issues.append("tours dans le désordre")
+    act = (messages.get("activity") or [{}])[0]
+    if act.get("num_sessions") not in (None, len(sessions)):
+        issues.append(f"activity annonce {act.get('num_sessions')} séance(s) pour {len(sessions)} écrite(s)")
+    if act.get("local_timestamp") is None:
+        issues.append("activity sans heure locale (local_timestamp)")
+    off = [r for r in records if r.get("position_lat") is not None and r.get("position_long") is not None
+           and not (-90 <= r["position_lat"] * SEMICIRCLE_DEG <= 90 and -180 <= r["position_long"] * SEMICIRCLE_DEG <= 180)]
+    if off:
+        issues.append(f"{len(off)} position(s) hors du globe")
+    return issues
+
+
+def displayed_totals(messages: dict[str, list[dict[str, Any]]], records: list[dict[str, Any]]) -> list[str]:
+    """Totaux de `session` que Garmin Connect et GoldenCheetah affichent tels quels, absents du fichier."""
+    s = (messages.get("session") or [{}])[0]
+    want = []
+    if any(r.get("power") is not None for r in records):
+        want += ["total_calories", "total_work"]
+    if any(r.get("cadence") for r in records):
+        want.append("max_cadence")
+    if any(r.get("altitude") is not None or r.get("enhanced_altitude") is not None for r in records):
+        want += ["total_ascent", "total_descent"]
+    return [k for k in want if s.get(k) is None]
 
 
 def pauses(events: list[dict[str, Any]]) -> list[tuple[float, float]]:
@@ -101,7 +180,7 @@ def frozen_hr(recs: list[dict[str, Any]]) -> tuple[float, Any, float]:
 
 
 def check(messages: dict[str, list[dict[str, Any]]], errors: list[str], integrity: bool,
-          journal: list[dict[str, Any]] | None = None) -> list[dict[str, str]]:
+          journal: list[dict[str, Any]] | None = None, header: bytes | None = None) -> list[dict[str, str]]:
     out = [_line("décodage", "OK" if integrity and not errors else "ÉCHEC",
                  "FIT reconnu, CRC valide, aucune erreur du SDK" if integrity and not errors
                  else ("CRC invalide ou fichier non FIT ; " if not integrity else "") + "; ".join(errors[:3]))]
@@ -135,6 +214,12 @@ def check(messages: dict[str, list[dict[str, Any]]], errors: list[str], integrit
                      f"{value} bpm pendant {length:.0f} s à partir de {at - t0:.0f} s (au plus {FROZEN_S:g} s)"
                      if value is not None else "aucune valeur répétée pendant que la puissance varie"))
     out.append(session_totals(messages, records, stops))
+    issues = compat_issues(messages, records, header)
+    out.append(_line("compatibilité Garmin Connect et GoldenCheetah", "ÉCHEC" if issues else "OK",
+                     "; ".join(issues[:4]) if issues else "en-tête, file_id, tours, séance et activity conformes"))
+    absent = displayed_totals(messages, records)
+    out.append(_line("totaux affichés", "ATTENTION" if absent else "OK",
+                     "absents : " + ", ".join(absent) if absent else "calories, travail, cadence et dénivelé présents"))
     if journal is not None:
         out.append(against_journal(messages, journal))
     return out
@@ -189,6 +274,7 @@ def against_journal(messages: dict[str, list[dict[str, Any]]], journal: list[dic
 def run(path: Path, journal_path: Path | None = None, as_json: bool = False) -> int:
     try:
         messages, errors, integrity = decode(Path(path))
+        header = read_header(Path(path))
     except FitCheckError as exc:
         print(f"fit-check : {exc}")
         return 2
@@ -203,7 +289,7 @@ def run(path: Path, journal_path: Path | None = None, as_json: bool = False) -> 
             print(f"fit-check : journal introuvable : {journal_path}")
             return 2
         journal = list(read_journal(Path(journal_path)))
-    lines = check(messages, errors, integrity, journal)
+    lines = check(messages, errors, integrity, journal, header)
     failed = any(ln["niveau"] == "ÉCHEC" for ln in lines)
     if as_json:
         print(json.dumps({"fichier": Path(path).name, "ok": not failed, "controles": lines},

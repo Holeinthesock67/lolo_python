@@ -1,6 +1,6 @@
 # Étude : optimisation du rendu des biomes (5 novembre 2026)
 
-Point de départ : la recette U18 (partie PC, étape 7bt) dépasse les budgets GPU de `perf_targets.json` en medium et en high sur tous les biomes, et en low sur la côte, les cultures, la forêt et l'alpin. Demande du propriétaire (5 novembre) : un vrai travail de recherche d'optimisation, sans trop nuire à la qualité graphique, selon les règles de l'art du métier, et tout documenter. Document de recherche détaillé, avec les sources Web : Claude Doc « Optimisation graphique d'OpenRide : techniques du métier » (hors dépôt). Recherche précédente : `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` (27 octobre, techniques T1 à T14).
+Point de départ : la recette U18 (partie PC, étape 7bt) dépasse les budgets GPU de `perf_targets.json` en medium et en high sur tous les biomes, et en low sur la côte, les cultures, la forêt et l'alpin. Demande du propriétaire (5 novembre) : un vrai travail de recherche d'optimisation, sans trop nuire à la qualité graphique, selon les règles de l'art du métier, et tout documenter. Document de recherche détaillé, avec les sources Web : Claude Doc « Optimisation graphique d'OpenRide : techniques du métier » (hors dépôt). Recherche précédente : `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` (27 octobre, techniques T1 à T14). Historique de tous les essais graphiques et de leur impact : `docs/HISTORIQUE_ESSAIS_GRAPHIQUES.md`.
 
 ## 1. Méthode (règles de l'art)
 

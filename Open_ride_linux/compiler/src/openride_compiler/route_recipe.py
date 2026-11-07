@@ -10,8 +10,12 @@ Une recette (`<id>.toml`) décrit une montée publique et célèbre par quelques
    sont respectés ;
 2. accroche chaque point au nœud routier le plus proche (au plus `SNAP_MAX_M`, sinon refus) et
    relie les points successifs par le plus court chemin (Dijkstra) ;
-3. ré-échantillonne tous les `STEP_M` mètres, prend l'altitude du MNT (Copernicus par défaut) et
-   contrôle longueur et dénivelé positif à ± 5 % de la référence (sinon refus, point à corriger) ;
+3. ré-échantillonne tous les `STEP_M` mètres, prend l'altitude du MNT (Copernicus par défaut), la
+   remplace par une interpolation linéaire entre les deux entrées dans les tunnels et sur les ponts
+   (le MNT y donne la montagne ou le fond de vallée, pas la route) et contrôle longueur et dénivelé
+   positif à ± 5 % de la référence (sinon refus, point à corriger). Le dénivelé contrôlé est mesuré
+   sur le profil moyenné sur `GAIN_SMOOTH_M` : dans des lacets serrés, le MNT à 30 m voit le talus
+   au-dessus puis en dessous de la route à chaque virage et ajouterait 10 à 20 % de montée fictive ;
 4. écrit un GPX par col et sa fiche `.toml` (crédits OpenStreetMap) dans un dossier de pack
    installable par `route-pack-install` (lot O15).
 
@@ -28,6 +32,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import numpy as np
+from scipy.ndimage import uniform_filter1d
 
 from .cache import Log, stderr_log
 from .elevation import ElevationProvider
@@ -42,6 +47,7 @@ BBOX_MARGIN_M = 1500.0
 SNAP_MAX_M = 250.0
 STEP_M = 10.0
 TOLERANCE = 0.05
+GAIN_SMOOTH_M = 200.0   # moyenne glissante du profil avant le calcul du dénivelé contrôlé
 EARTH_R = 6371008.8
 
 # Routes retenues ; `track`, `path` et `cycleway` non revêtus seulement avec `unpaved = true`.
@@ -183,10 +189,17 @@ def _oneway(tags: dict[str, str]) -> int:
     return -1 if ow == "-1" else 0
 
 
+def _off_ground(tags: dict[str, str]) -> bool:
+    """Tunnel, galerie couverte ou pont : la route n'y suit pas le sol du MNT."""
+    return (tags.get("tunnel", "no") != "no" or tags.get("covered", "no") != "no"
+            or tags.get("bridge", "no") != "no")
+
+
 @dataclass
 class RoadGraph:
     coords: dict[int, tuple[float, float]] = field(default_factory=dict)
     adj: dict[int, list[tuple[int, float]]] = field(default_factory=dict)
+    off_ground: set[tuple[int, int]] = field(default_factory=set)   # arêtes en tunnel ou sur un pont
 
     def add_edge(self, a: int, b: int) -> None:
         d = haversine_m(*self.coords[a], *self.coords[b])
@@ -207,7 +220,10 @@ def build_graph(responses: list[dict[str, Any]], unpaved_ok: bool = False) -> Ro
             for nid, pt in zip(nodes, geom):
                 g.coords[int(nid)] = (float(pt["lat"]), float(pt["lon"]))
             direction = _oneway(el.get("tags") or {})
+            off = _off_ground(el.get("tags") or {})
             for a, b in zip(nodes, nodes[1:]):
+                if off:
+                    g.off_ground.update({(int(a), int(b)), (int(b), int(a))})
                 if direction >= 0:
                     g.add_edge(int(a), int(b))
                 if direction <= 0:
@@ -250,19 +266,29 @@ def shortest_path(g: RoadGraph, start: int, goal: int) -> list[int]:
     return path[::-1]
 
 
-def route_through(g: RoadGraph, waypoints: list[tuple[float, float]]) -> list[tuple[float, float]]:
-    """Suite de (lat, lon) passant par les points de passage dans l'ordre."""
+def route_nodes(g: RoadGraph, waypoints: list[tuple[float, float]]) -> list[int]:
+    """Nœuds du graphe passant par les points de passage dans l'ordre."""
     ids = [snap(g, *wp) for wp in waypoints]
     nodes: list[int] = [ids[0]]
     for a, b in zip(ids, ids[1:]):
         nodes.extend(shortest_path(g, a, b)[1:])
-    return [g.coords[n] for n in nodes]
+    return nodes
 
 
-def resample(points: list[tuple[float, float]], step_m: float = STEP_M) -> list[tuple[float, float]]:
-    out = [points[0]]
+def route_through(g: RoadGraph, waypoints: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Suite de (lat, lon) passant par les points de passage dans l'ordre."""
+    return [g.coords[n] for n in route_nodes(g, waypoints)]
+
+
+def resample_flagged(points: list[tuple[float, float]], flags: list[bool],
+                     step_m: float = STEP_M) -> tuple[list[tuple[float, float]], list[bool]]:
+    """Ré-échantillonne ; `flags[i]` marque le segment i → i+1, repris par chaque point créé dessus.
+
+    Un point d'origine retombant juste sur un sommet hérite du segment qui y arrive.
+    """
+    out, out_flags = [points[0]], [False]
     carry = 0.0
-    for (la0, lo0), (la1, lo1) in zip(points, points[1:]):
+    for (la0, lo0), (la1, lo1), flag in zip(points, points[1:], flags):
         seg = haversine_m(la0, lo0, la1, lo1)
         if seg <= 0:
             continue
@@ -270,10 +296,40 @@ def resample(points: list[tuple[float, float]], step_m: float = STEP_M) -> list[
         while pos <= seg:
             t = pos / seg
             out.append((la0 + (la1 - la0) * t, lo0 + (lo1 - lo0) * t))
+            out_flags.append(flag)
             pos += step_m
         carry = seg - (pos - step_m)
     if out[-1] != points[-1]:
         out.append(points[-1])
+        out_flags.append(False)
+    return out, out_flags
+
+
+def resample(points: list[tuple[float, float]], step_m: float = STEP_M) -> list[tuple[float, float]]:
+    return resample_flagged(points, [False] * (len(points) - 1), step_m)[0]
+
+
+def bridge_off_ground(points: list[tuple[float, float]], alt: list[float], flags: list[bool]) -> list[float]:
+    """Altitude interpolée (selon la distance) entre les deux points au sol qui encadrent chaque
+    suite de points en tunnel ou sur un pont ; une suite touchant une extrémité garde le MNT."""
+    out = list(alt)
+    s = [0.0]
+    for a, b in zip(points, points[1:]):
+        s.append(s[-1] + haversine_m(*a, *b))
+    i, n = 0, len(out)
+    while i < n:
+        if not flags[i]:
+            i += 1
+            continue
+        j = i
+        while j < n and flags[j]:
+            j += 1
+        a, b = i - 1, j          # points au sol encadrant la suite [i, j)
+        if a >= 0 and b < n and s[b] > s[a]:
+            for k in range(i, j):
+                t = (s[k] - s[a]) / (s[b] - s[a])
+                out[k] = out[a] + (out[b] - out[a]) * t
+        i = j
     return out
 
 
@@ -301,15 +357,25 @@ def check_reference(recipe: Recipe, length_m: float, gain_m: float, tolerance: f
         raise CompileError(f"{recipe.id} : trace refusée ({' ; '.join(problems)}) : point de passage à corriger")
 
 
+def checked_gain(alt: list[float], step_m: float = STEP_M, smooth_m: float = GAIN_SMOOTH_M) -> float:
+    """Dénivelé positif du profil moyenné sur `smooth_m` (bruit du MNT dans les lacets retiré)."""
+    window = max(1, int(round(smooth_m / step_m)) + 1)
+    profile = uniform_filter1d(np.asarray(alt, dtype=float), window, mode="nearest")
+    return gain_loss([float(a) for a in profile], GAIN_THRESHOLD_M)[0]
+
+
 def build_climb(recipe: Recipe, fetch: Callable[[str], dict[str, Any]], provider: ElevationProvider) -> BuiltClimb:
     response = fetch(roads_query(bbox_around(recipe.waypoints)))
     g = build_graph([response], unpaved_ok=recipe.unpaved)
-    pts = resample(route_through(g, recipe.waypoints))
+    nodes = route_nodes(g, recipe.waypoints)
+    flags = [(a, b) in g.off_ground for a, b in zip(nodes, nodes[1:])]
+    pts, pt_flags = resample_flagged([g.coords[n] for n in nodes], flags)
     alt = [float(a) for a in provider.elevations(np.array([p[0] for p in pts]), np.array([p[1] for p in pts]))]
     if not all(math.isfinite(a) for a in alt):
         raise CompileError(f"{recipe.id} : altitude absente du MNT sur une partie du parcours")
+    alt = bridge_off_ground(pts, alt, pt_flags)
     length = path_length_m(pts)
-    gain = gain_loss(alt, GAIN_THRESHOLD_M)[0]
+    gain = checked_gain(alt)
     check_reference(recipe, length, gain)
     return BuiltClimb(recipe, pts, alt, length, gain)
 
