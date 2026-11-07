@@ -387,7 +387,35 @@ def hall_altitude_m(alt_m: float, temperature_c: float) -> float:
     return alt_m + H_SCALE_M * math.log((273.15 + temperature_c) / STANDARD_AIR_K)
 
 
+# Placement sur la piste (plan §4.3) : le placement d'AS2 (`draft.Lane`, écart à l'axe d'une route où l'on roule à
+# droite et double à gauche) se lit en miroir sur la piste : « à droite » (LANE_MAX_M) est la corde, sur la ligne de
+# mesure, et doubler « à gauche » fait monter. La hauteur publiée dans `lane_m` (IPC) est celle du plan §4.2 :
+# distance sur la pente depuis la ligne de mesure, vers le haut ; l'engine la pose sur la pente relevée.
+SLOW_IN_BEND_MPS = 15.0 / 3.6     # sous 15 km/h dans un virage, le coureur redescend à la corde
+
+
 def height_on_track(lane_m: float | None) -> float:
-    """Hauteur sur la piste (m, mesurée sur la pente depuis la ligne de mesure) d'un coureur à `lane_m` de l'axe :
-    l'axe de la route est la ligne de mesure, la droite est le haut de la piste (virages à gauche)."""
-    return max(0.0, float(lane_m or 0.0))
+    """Hauteur sur la piste (m, sur la pente depuis la ligne de mesure) d'un coureur à `lane_m` (écart d'AS2)."""
+    from .draft import LANE_MAX_M, RIDER_LANE_M
+
+    lane = RIDER_LANE_M if lane_m is None else float(lane_m)
+    return max(0.0, LANE_MAX_M - lane)
+
+
+def lane_for_height(height_m: float) -> float:
+    """Écart d'AS2 qui donne `height_m` sur la piste (réciproque de `height_on_track`)."""
+    from .draft import LANE_MAX_M
+
+    return LANE_MAX_M - max(0.0, height_m)
+
+
+def rider_home_lane(spec: TrackSpec) -> float:
+    """Place du cycliste sans roue à prendre : sur la ligne des sprinteurs."""
+    return lane_for_height(spec.sprinters_line_m - spec.measure_line_m)
+
+
+def home_lane(geo: TrackGeometry, s: float, v: float) -> float:
+    """Place visée sans roue à prendre : ligne des sprinteurs, ou la corde sous 15 km/h dans un virage."""
+    if v < SLOW_IN_BEND_MPS and geo.curvature(s) > 0.0:
+        return lane_for_height(0.0)
+    return rider_home_lane(geo.spec)

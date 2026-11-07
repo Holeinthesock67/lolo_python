@@ -2697,6 +2697,8 @@ class CoreSession:
         self._wind_offset = 0.0
         traffic = self._traffic_for(route)
         self._suction = 0.0
+        if track is not None:   # corde sous 15 km/h dans un virage, ligne des sprinteurs sinon (plan VD §4.3)
+            self._lane.home = velodrome.home_lane(track, s, self.physics.v)
         if self.bots or traffic is not None:
             self._update_draft(dt, route, here.heading_deg if here else 0.0, traffic)
         draft = wtf.draft(self._draft_bot, self._draft) if wtf is not None else self._draft   # baleine volante
@@ -2795,11 +2797,11 @@ class CoreSession:
         st.power, st.power_3s, st.cadence, st.hr = m.power_w, round(p3, 1), m.cadence_rpm, m.hr_bpm
         st.gear = self.gearing.k
         if here:
-            st.lat, st.lon, st.alt = here.lat, here.lon, alt
+            st.lat, st.lon, st.alt = here.lat, here.lon, here.alt_m
         if self.bots or self.traffic is not None:
             st.draft = round(min(self._draft + self._suction, traffic_mod.VEHICLE_ALPHA_CAP), 3)
             st.draft_bot = self._draft_bot if st.draft > 0.0 else None
-            st.lane_m = round(self._lane.m, 2)
+            st.lane_m = round(self._lane_out(self._lane.m), 2)
             st.draft_w = self._draft_w
         else:
             st.draft = st.draft_bot = st.lane_m = st.draft_w = None
@@ -2871,9 +2873,15 @@ class CoreSession:
         self._gravel_stats = [0.0, 0.0, 0.0, 0]
 
     def _rider_lane(self) -> draft_mod.Lane:
-        """Écart à l'axe du cycliste (lot AS2) : 1,2 m, placement automatique selon `ride.auto_draft`."""
-        return draft_mod.Lane(draft_mod.RIDER_LANE_M, draft_mod.RIDER_LANE_M,
-                              auto=self.cfg.ride.auto_draft == "on")
+        """Écart à l'axe du cycliste (lot AS2) : 1,2 m, placement automatique selon `ride.auto_draft` ; sur une piste,
+        ligne des sprinteurs (lot VD4, `velodrome.rider_home_lane`)."""
+        track = getattr(self, "_track", None)
+        home = velodrome.rider_home_lane(track.spec) if track is not None else draft_mod.RIDER_LANE_M
+        return draft_mod.Lane(home, home, auto=self.cfg.ride.auto_draft == "on")
+
+    def _lane_out(self, lane_m: float) -> float:
+        """`lane_m` publié : écart à l'axe sur une route, hauteur sur la piste d'un vélodrome (plan VD §4.2)."""
+        return velodrome.height_on_track(lane_m) if self._track is not None else lane_m
 
     def _traffic_for(self, route: Route | None) -> traffic_mod.Traffic | None:
         """Circulation de la route (lot AS6), créée au premier pas sur une route ; aucune sans décor vivant
@@ -3212,6 +3220,9 @@ class CoreSession:
                     self.state.devices = None
                 if self.bots:
                     self.state.bots = [b.to_dict() for b in self.bots]
+                    if self._track is not None:   # hauteur sur la piste (plan VD §4.2)
+                        self.state.bots = [{**b, "lane_m": round(self._lane_out(b["lane_m"]), 2)}
+                                           if b.get("lane_m") is not None else b for b in self.state.bots]
                 else:
                     self.state.bots = None
                 self._fill_race_frame()

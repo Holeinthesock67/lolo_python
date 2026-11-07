@@ -281,17 +281,31 @@ def test_session_on_track(tmp_path, monkeypatch) -> None:
 def test_session_distance_rule(tmp_path, monkeypatch) -> None:
     """Rouler plus haut : la distance comptée sur la ligne de mesure avance moins vite dans les virages."""
     s, _ = _session(tmp_path, monkeypatch, 7462)
-    s._lane.m = 0.0
     s._lane.auto = False
-    s.physics.s, s.physics.v = 30.0, 12.0
-    s0 = s.physics.s
-    _run(s, 1)
-    low = s.physics.s - s0
-    s.physics.s, s.physics.v = 30.0, 12.0
-    s._lane.m = 2.0
-    _run(s, 1, t0=200.0)
-    high = s.physics.s - 30.0
-    assert high < low
+    def advance(height: float, t0: float) -> float:
+        s._lane.m = s._lane.home = velodrome.lane_for_height(height)
+        s.physics.s, s.physics.v = 30.0, 12.0
+        _run(s, 1, t0=t0)
+        return s.physics.s - 30.0
+    assert advance(3.0, 200.0) < advance(0.0, 100.0)
+
+
+def test_track_placement(tmp_path, monkeypatch) -> None:
+    """Corde par défaut à la ligne des sprinteurs, corde sous 15 km/h dans un virage, hauteur publiée (VD4)."""
+    geo = velodrome.TrackGeometry(SPEC)
+    sprint = velodrome.rider_home_lane(SPEC)
+    assert velodrome.height_on_track(sprint) == pytest.approx(0.65)
+    apex = 0.5 * SPEC.straight_m + SPEC.transition_m + 0.5 * SPEC.arc_m
+    assert velodrome.home_lane(geo, apex, 3.0) == velodrome.lane_for_height(0.0)       # lent dans le virage
+    assert velodrome.home_lane(geo, apex, 10.0) == sprint
+    assert velodrome.home_lane(geo, 0.0, 3.0) == sprint                                # lent dans la droite
+    s, _ = _session(tmp_path, monkeypatch, 7466)
+    from openride_core.bots import ConstantPowerBot
+    s.bots = [ConstantPowerBot(200.0, bot_id="b1", params=PhysicsParams())]
+    assert s._lane.home == pytest.approx(sprint)
+    _run(s, 200)
+    assert 0.0 <= s.state.lane_m <= 7.0
+    assert s.state.lane_m == pytest.approx(velodrome.height_on_track(s._lane.m), abs=0.01)
 
 
 def test_road_unchanged_by_track_code(tmp_path, monkeypatch) -> None:

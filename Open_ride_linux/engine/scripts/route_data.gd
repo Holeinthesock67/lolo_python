@@ -47,6 +47,7 @@ var bank_deg := PackedFloat64Array()  # colonne facultative `bank_deg` (format 1
 const SLOPE_PROBE_M := 1.5          # display_pitch : points de la route à ± cette distance (vélo)
 var relief_k := 1.0                 # exagération visuelle du relief (`--visual-grade`), 1,0 : relief réel
 
+var venue: Dictionary = {}           # couche `venue.json` (format 1.7, vélodrome, lot VD1) ; vide sans couche
 var segments: Array = []            # couche segments (série T) ; vide sans couche
 var segments_present := false       # couche déclarée et valide : seule source des montées du décor
 var segments_error: String = ""
@@ -90,7 +91,37 @@ func load_world_dir(world_dir: String) -> bool:
 	if not load_route_dict(data):
 		return false
 	_load_segments_layer(world_dir, manifest)
+	_load_venue_layer(world_dir, manifest)
 	return true
+
+
+## Couche `venue` (format 1.7, §8 sexies) : piste du vélodrome. Illisible ou d'une autre sorte : ignorée avec un
+## message, le parcours s'affiche alors comme une route (relèvement de `bank_deg` gardé).
+func _load_venue_layer(world_dir: String, manifest: Dictionary) -> void:
+	venue = {}
+	var layers = manifest.get("layers", {})
+	var layer = layers.get("venue", {}) if typeof(layers) == TYPE_DICTIONARY else {}
+	if typeof(layer) != TYPE_DICTIONARY or layer.get("present", false) != true:
+		return
+	var data = _read_json(world_dir.path_join(str(layer.get("file", "venue.json"))))
+	if typeof(data) != TYPE_DICTIONARY or not str(data.get("version", "")).begins_with("1.") \
+			or data.get("kind", "") != "velodrome" or not (data.get("track_width_m") is float or data.get("track_width_m") is int):
+		push_warning("Couche venue ignorée dans " + world_dir)
+		return
+	venue = data
+
+
+## Vrai si le parcours est une piste de vélodrome (couche venue lue).
+func is_track() -> bool:
+	return venue.get("kind", "") == "velodrome"
+
+
+## Ligne peinte `id` de la piste (distance depuis le bord intérieur, sur la pente) ; `fallback` sans elle.
+func track_line_m(id: String, fallback: float) -> float:
+	for line in venue.get("lines", []):
+		if typeof(line) == TYPE_DICTIONARY and str(line.get("id", "")) == id:
+			return float(line.get("offset_m", fallback))
+	return fallback
 
 
 ## Couche `segments` déclarée par le manifeste (`layers.segments.present`) ; un fichier invalide est
@@ -442,6 +473,17 @@ func bank_at(pos: float) -> float:
 	var seg := _segment(wrap_s(pos))
 	var i: int = seg[0]
 	return bank_deg[i] + (bank_deg[i + 1] - bank_deg[i]) * float(seg[1])
+
+
+## Vecteur « droite » de la chaussée en `pos` (cap `heading` en radians) : horizontal sur une route plate, relevé
+## de `bank_at(pos)` sur une piste (positif : la droite monte). Même coupe que road_builder.gd : un coureur à
+## `lateral` mètres de l'axe se pose à `sample_point(pos) + bank_right(pos, heading) * lateral` (lot VD4).
+func bank_right(pos: float, heading: float) -> Vector3:
+	var right := Vector3(cos(heading), 0.0, sin(heading))
+	if bank_deg.is_empty():
+		return right
+	var b := deg_to_rad(bank_at(pos))
+	return right * cos(b) + Vector3.UP * sin(b)
 
 
 func wrap_s(pos: float) -> float:

@@ -894,7 +894,8 @@ func _sync_hud(menu_shown: bool) -> void:
 	if overlay_layer != null:
 		overlay_layer.visible = not menu_shown
 	if segment_markers != null:
-		segment_markers.visible = not menu_shown and not rogue_host.is_active()   # la run les cache aussi
+		segment_markers.visible = not menu_shown and not rogue_host.is_active() \
+			and not (route != null and route.is_track())   # la run les cache aussi ; pas de portique sur une piste (VD4)
 
 
 ## Départ au pédalage (lot O36) : décor du départ prêt, puis `scene_ready` au core (start_wait_model.gd).
@@ -1034,10 +1035,14 @@ func _process(delta: float) -> void:
 		follow.update_lane(float(lane) if (lane is float or lane is int) else RoadBuilder.RIDER_LATERAL_M, -1.0, now)
 		var pos := _rider_point(s_route, heading, follow.lane_m)
 		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
+		_bank_roll = deg_to_rad(route.bank_at(s_route))   # piste relevée (lot VD4) : avatar perpendiculaire à la piste
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
 		camera.global_transform = camera_views.step(delta, camera_views.goal(_rider_point(s_route, heading, follow.camera_lane_m),
-			heading, pitch_deg))
+			heading, pitch_deg, _bank_roll))
 		camera.fov = CameraViews.fov_deg(_base_fov, pitch_deg)   # respire avec la pente (lot Y15)
+		if _bank_roll != 0.0 and camera_views.effective() != "side":   # caméra penchée de la moitié du relèvement au plus (plan VD §7.2) : horizon lisible
+			camera.global_transform.basis = camera.global_transform.basis.rotated(
+				camera.global_transform.basis.z, _bank_roll * CAMERA_BANK_SHARE)
 		# Mode WTF (lots WTF5 et WTF6) : gags posés sur la route, puis roulis et vues imposées de la caméra.
 		wtf_scene.step(WtfSceneModel.view(_last_state.get("wtf", null), now / 1000000.0, _quality_name), route, s_route,
 			bots_view.anchor_of, sun)
@@ -1254,6 +1259,13 @@ func _poll_route_job() -> void:
 	_apply_sky_params(streamer._theme_dict)
 	if living_decor != null:
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
+	# Piste du vélodrome (plan VD §7.2) : ni herbe du bord de route, ni personnages, ni animaux du décor de route ;
+	# la salle et son public viendront du lot VD5.
+	var track: bool = route.is_track()
+	if living_decor != null:
+		living_decor.visible = not track
+	if living_world != null and living_world.grass != null:
+		living_world.grass.visible = not track
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
 	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)
@@ -1564,8 +1576,13 @@ func _configure_avatar() -> void:
 ## Place du cycliste à `s` : dans la voie de droite, à `lateral` de l'axe (RoadBuilder.RIDER_LATERAL_M, lot P32 ;
 ## en séance avec des bots, `lane_m` du core, lot AS2) ; `heading` en radians. La caméra, l'avatar et la vue des
 ## menus en partent.
+## Piste relevée (lot VD4) : roulis de l'avatar (relèvement sous lui, radians) et part de ce roulis prise par la caméra.
+const CAMERA_BANK_SHARE := 0.5
+var _bank_roll := 0.0
+
+
 func _rider_point(s: float, heading: float, lateral: float = RoadBuilder.RIDER_LATERAL_M) -> Vector3:
-	return route.sample_point(s) + Vector3(cos(heading), 0.0, sin(heading)) * lateral
+	return route.sample_point(s) + route.bank_right(s, heading) * lateral   # remonté sur la pente d'une piste (VD4)
 
 
 ## Vue de caméra courante (l'avatar est masqué en subjective) ; une caméra de contrôle de test prend le pas.
@@ -1587,7 +1604,7 @@ func _step_avatar(pos: Vector3, heading: float, now_us: int, pitch_deg: float) -
 	var v = _last_state.get("v", 0.0)
 	avatar_view.set_speed(float(v) * 3.6 if (v is float or v is int) else 0.0, now_us / 1000000.0)
 	avatar_view.position = pos
-	avatar_view.rotation = Vector3(deg_to_rad(pitch_deg), -heading, 0.0)
+	avatar_view.rotation = Vector3(deg_to_rad(pitch_deg), -heading, _bank_roll)
 	if _avatar_cam != "":
 		var fwd := Vector3(sin(heading), 0.0, -cos(heading))
 		var right := Vector3(cos(heading), 0.0, sin(heading))
