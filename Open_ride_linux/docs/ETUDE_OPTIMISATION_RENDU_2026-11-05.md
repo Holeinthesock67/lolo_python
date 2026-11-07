@@ -208,3 +208,24 @@ Ce que ça dit :
 Remède mesuré à la passe suivante : **ombre portée des arbres limitée près de la caméra** (`ombres_arbres_m=M`, variantes `ombres_arbres_100`, `_150`, `_250`). Les cases de 250 m entièrement plus loin que M ne projettent plus d'ombre (`TreeRenderer.update_shadows`, recalculé tous les 10 m), et dans les cases à cheval le shader replie l'ombre des arbres plus loin que M, seulement dans les passes d'ombre (vue d'une autre caméra que la principale, `tree_sway.gdshader`) : l'image des arbres ne change pas, seules leurs ombres lointaines disparaissent. Vérifié dans le cloud (Vulkan logiciel) : l'ombre d'un objet à 33 m disparaît avec M = 10 et reste avec M = 100, l'objet reste dessiné.
 
 **Décision du propriétaire (7 novembre, 3 h)** : budget GPU du low relevé de 6 à 8 ms (`perf_targets.json`). Le low tient 60 images/s sur la GTX 1060 avec une marge ×2 pour une carte deux fois moins puissante ; les cultures et la forêt en low (7,1 à 7,8 ms) passent sans retirer de détail. Budgets medium (12 ms) et high (14 ms) inchangés.
+
+### 8.5 Deuxième banc (7 novembre, avec #721, #736 et #737)
+
+`mesures/2026-11-07-cultures-foret-b/`, tête 0fa13490, 2 répétitions. Référence plus haute qu'au § 8.4 de 0,5 à 1,3 ms (cultures 8,39 / 14,20 / 17,23, forêt 7,54 / 13,63 / 17,11), probablement l'herbe de #721 (primitives +7 à 19 %). Un téléchargement OSM a tourné sur le PC pendant 4 bancs (heures notées dans le dossier) ; leurs deux répétitions restent cohérentes.
+
+| Variante (gain en ms) | cultures low / medium / high | forêt low / medium / high |
+| --- | --- | --- |
+| `sans_ombres` (borne) | +0,68 / +0,82 / +1,15 | +0,87 / **+1,95** / **+3,12** |
+| `sans_ombres_arbres` | +0,19 / −0,05 / +0,02 | +0,20 / +1,31 / **+2,13** |
+| `ombres_arbres_100` | +0,14 / −0,04 / 0,00 | +0,10 / +0,34 / +0,40 |
+| `ombres_arbres_150` | +0,18 / +0,06 / 0,00 | +0,08 / +0,31 / +0,34 |
+| `ombres_arbres_250` | +0,16 / −0,01 / 0,00 | −0,04 / +0,01 / 0,00 |
+| `herbe_50` | +0,35 / +0,69 / **+1,24** | +0,25 / +0,63 / **+1,29** |
+
+Ce que ça dit :
+
+- La première version de `ombres_arbres_m` ne gagne qu'un sixième de `sans_ombres_arbres` : la passe d'ombre est limitée par les sommets, et replier un sommet dans le shader ne lui évite pas d'être traité. Les cases de 250 m à cheval sur la limite gardaient aussi tous leurs arbres dans la passe.
+- **Correctif (a2a87ad4)** : avec `ombres_arbres_m=M`, le modèle proche des arbres ne projette plus d'ombre du tout. Un MultiMesh « ombre seule » par espèce reçoit les arbres des carrés de 25 m à moins de M de la caméra, reconstruit tous les 10 m de déplacement ; le shader fond toujours l'ombre sur les derniers mètres. Vérifié dans le cloud : ombres proches identiques, ombres au-delà de M absentes, pas de décalage.
+- Les cultures répondent à l'herbe (`herbe_50`) et aux ombres en général, pas aux arbres : elles demandent un autre levier que la forêt.
+
+Passe suivante : `mesures/2026-11-07-cultures-foret-c/` avec le correctif, plus `ombres_2_cascades` et `ombres_200m` (medium et high).
