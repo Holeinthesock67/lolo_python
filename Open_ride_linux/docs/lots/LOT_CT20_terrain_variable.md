@@ -25,6 +25,7 @@ CT7, CT8, AS3, U (surfaces) livrés.
 - Vent de travers : le modèle d'abri d'AS3 tel quel (zone abritée décalée, bordure) ; pluie : μ plus bas dans `√(μ g R)` (CT7) ; pavés : Crr de la série U, sous le même plafond de pente envoyée que le vent.
 - Bots (CT3) : se placer avant une section annoncée (ils remontent le groupe 500 m avant), et lever le pied en virage sous la pluie.
 - Simulateur : critère : sur un circuit avec bordure, un coureur mal placé à l'entrée perd en moyenne plus de 10 s.
+- **Terrain du rouleur** (choix recommandé le 7 novembre) : les sections de bordure sont le terrain du rouleur (le faux plat revient au baroudeur) ; ce lot retire le rouleur de `PENDING_TERRAIN` dans `tactical_sim.py`, et le rapport CT0 doit le montrer premier bot d'au moins un circuit à bordure.
 - **Simulateur d'abord** : la règle est ajoutée à `tactical_sim` et le rapport CT0 régénéré avant tout branchement dans la séance.
 - **Sécurité** : comme toute la série, rien ne passe par la résistance du trainer ; seuils en % de la FTP ; SIM seulement.
 

@@ -254,3 +254,13 @@ def test_baroudeur_attacks_early():
     bar = next(r for r in field if r.profile == "baroudeur")
     p = _bot_power(bar, 0.0, 11000.0, BAL.dt_s, random.Random(1), BAL)
     assert p == pytest.approx(BAL.baroudeur_cp_pct / 100 * bar.cp_w) and bar.escaping
+
+
+def test_pending_terrain_is_reported_but_not_failed():
+    wins = {p: 0 for p in (sim.RIDER_ID, *sim.BOT_PROFILES)}
+    wins["sprinter"] = 3
+    checks = sim.criteria(_fake_out({"plat": wins}))
+    rouleur = next(c for c in checks if "Rouleur" in c["text"])
+    assert rouleur["ok"] and rouleur["pending"] and "CT20" in rouleur["text"]
+    diesel = next(c for c in checks if "Diesel" in c["text"])
+    assert not diesel["ok"]

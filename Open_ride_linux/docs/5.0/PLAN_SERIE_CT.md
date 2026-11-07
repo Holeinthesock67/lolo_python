@@ -179,7 +179,7 @@ La lettre TT est prise par la série des power-ups de la 4.0 : la série de la C
 | CT11 | HUD, menus, pause et bilan | engine | CT9, CT10 |
 | CT12 | Recette sur le vélo, étapes de 10 min | propriétaire | CT2 à CT11 |
 | CT13 | Journal des courses, classement Elo et niveau des bots adaptatif (idées du propriétaire du 7 novembre) | core | CT0, CT3, MJ1 |
-| CT14 | Profil de bot « Baroudeur » dans le jeu (déjà dans le simulateur CT0) | core, engine | CT0, CT1 |
+| CT14 | Profils de bot « Baroudeur » et « Puncheur » dans le jeu (déjà dans le simulateur CT0) | core, engine | CT0, CT1 |
 | CT15 | Primes en course : sprints et sommets à points (choix points ou victoire) | core, engine | CT0, CT1, T2, T14 |
 | CT16 | Plan de course des bots annoncé au départ | core, engine | CT0, CT1, CT3 |
 | CT17 | Équipes : deux coéquipiers bots et deux ordres au Click | core, engine | CT1, CT3, CT16 |
@@ -189,7 +189,7 @@ La lettre TT est prise par la série des power-ups de la 4.0 : la série de la C
 
 Ordre : CT0, CT1, puis CT2, CT7 et CT9, puis CT3, CT4 et CT5, puis CT6 (après la 4.0), puis CT8, puis CT10 et CT11, puis CT12.
 
-Ajouts du 7 novembre (idées du propriétaire, consigne : ne pas nuire à la compréhension tactique de la course : cause visible de chaque décision des bots, coût d'un choix connu d'avance, bilan qui nomme les moments décisifs) : CT13 (journal et Elo) et CT14 (baroudeur) après CT3 ; puis CT15 et CT16 (peu de code, beaucoup de variété), puis CT19, CT20, CT18 et CT17 (le plus gros). Écartés : réputation des bots et lecture imparfaite de leur réserve.
+Ajouts du 7 novembre (idées du propriétaire, consigne : ne pas nuire à la compréhension tactique de la course : cause visible de chaque décision des bots, coût d'un choix connu d'avance, bilan qui nomme les moments décisifs) : CT13 (journal et Elo) et CT14 (baroudeur et puncheur) après CT3 ; puis CT15 et CT16 (peu de code, beaucoup de variété), puis CT19, CT20, CT18 et CT17 (le plus gros). Écartés : réputation des bots et lecture imparfaite de leur réserve.
 
 ## 8. Dépendances avec les autres versions
 

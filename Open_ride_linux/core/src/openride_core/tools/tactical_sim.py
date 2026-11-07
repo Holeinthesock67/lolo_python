@@ -3,7 +3,7 @@
     python -m openride_core.tools.tactical_sim [--races 200] [--seed 1] [--circuits plat,col,...]
         [--strategies suceur,rouleur,...] [--balance FICHIER.toml] [--report FICHIER.md] [--json] [--jobs N]
 
-Courses de 5 bots à profil (grimpeur, rouleur, sprinteur, diesel du lot T12, et le baroudeur) et d'un cycliste
+Courses de 6 bots à profil (grimpeur, rouleur, sprinteur, diesel du lot T12, baroudeur et puncheur) et d'un cycliste
 virtuel, en temps accéléré (pas de `dt_s`, 0,5 s), sans trainer ni engine, sur des circuits générés (bouchon
 de CT8 : profils en pente seulement, sans virage). Chaque course tire la forme du jour de chacun (± 3 % de CP),
 les relais et les attaques des bots à partir de la graine : même graine, même rapport à l'octet près, quel
@@ -49,11 +49,16 @@ from ..tactical.balance import DEFAULT_BALANCE, TacticalBalance, balance_hash, l
 STRATEGIES = ("suceur", "rouleur", "attaquant", "echappee", "mixte")
 # Baroudeur (idée du propriétaire du 7 novembre) : profil du simulateur seulement, en attendant le lot CT14
 # qui l'ajoute à `bots.PROFILES` (valeur de contrat, menu, HUD). Rouleur endurant qui part en échappée.
-BAROUDEUR = BotProfile("Baroudeur", 70.0, 3.7, 22000.0, flat=1.00, climb=0.95, survival=1.30,
+BAROUDEUR = BotProfile("Baroudeur", 70.0, 3.75, 18000.0, flat=1.00, climb=0.95, survival=1.30,
                        character=Character(attack_chance=0.3, sprint_attack_chance=0.5, follow_climb=0.4,
                                            follow_flat=0.6, durability_pct_per_h=2.0))
-SIM_PROFILES: dict[str, BotProfile] = {**PROFILES, "baroudeur": BAROUDEUR}
-BOT_PROFILES = ("climber", "rouleur", "sprinter", "diesel", "baroudeur")
+# Puncheur (question du propriétaire du 7 novembre) : profil du simulateur seulement, à garder s'il trouve un
+# terrain à lui (bosses courtes et raides) sans prendre celui du grimpeur ni du sprinteur.
+PUNCHEUR = BotProfile("Puncheur", 68.0, 3.6, 24000.0, flat=0.95, climb=0.98, survival=1.40,
+                      character=Character(attack_chance=0.8, sprint_attack_chance=0.2, follow_climb=0.7,
+                                          follow_flat=0.6, durability_pct_per_h=3.0))
+SIM_PROFILES: dict[str, BotProfile] = {**PROFILES, "baroudeur": BAROUDEUR, "puncheur": PUNCHEUR}
+BOT_PROFILES = ("climber", "rouleur", "sprinter", "diesel", "baroudeur", "puncheur")
 RIDER_ID = "rider"
 CLIMB_GRADE_PCT = 2.0           # au-dessus : stratégie « montée » des bots (plat en dessous, comme Y10)
 GROUP_LOOK_M = 30.0             # coureurs à moins de 30 m : même groupe (pour l'attaquant)
@@ -62,6 +67,9 @@ START_V_MPS = 8.0               # départ lancé, sans la mise en route
 MAX_RACE_S = 4 * 3600.0
 MAX_WIN_PCT = 45.0              # critère 2 du cahier : aucune stratégie au-dessus de 45 %...
 MAX_BREAKAWAY_PCT = 20.0        # ... et l'échappée solitaire sous 20 %
+# Terrain d'un profil qui dépend d'une règle pas encore simulée : critère 3 noté « en attente », sans échec
+# (choix recommandé le 7 novembre : le rouleur aura les bordures du lot CT20, le baroudeur le faux plat).
+PENDING_TERRAIN = {"rouleur": "bordures par vent de travers du lot CT20, pas encore simulées"}
 
 
 @dataclass(frozen=True)
@@ -91,6 +99,10 @@ CIRCUITS: dict[str, Circuit] = {c.name: c for c in (
             ((4000.0, 0.0), (3000.0, 6.0), (6000.0, 0.0))),
     Circuit("bosses_puis_plat", "4 bosses de 600 m à 5 % puis 4 km de plat",
             _repeat(4, (1500.0, 0.0), (600.0, 5.0)) + ((4000.0, 0.0),)),
+    Circuit("mur_final", "10 km de plat vallonné puis un mur de 500 m à 9 %",
+            _repeat(2, (4000.0, 0.0), (500.0, 3.0)) + ((1000.0, 0.0), (500.0, 9.0))),
+    Circuit("longue_distance", "16 km de faux plats : 3 km de plat puis 1 km à 2 %, quatre fois",
+            _repeat(4, (3000.0, 0.0), (1000.0, 2.0))),
     Circuit("faux_plat", "14 km de faux plat à 2,5 %", ((14000.0, 2.5),)),
 )}
 
@@ -107,6 +119,14 @@ class Profile:
             self.grades.append(grade)
             s += length
         self.length_m = s
+
+    def climb(self, s: float) -> tuple[float, float]:
+        """Longueur de la montée en cours et mètres jusqu'à son sommet (0, 0 hors montée)."""
+        i = min(max(bisect.bisect_right(self.starts, max(s, 0.0)) - 1, 0), len(self.grades) - 1)
+        if self.grades[i] < CLIMB_GRADE_PCT:
+            return 0.0, 0.0
+        end = self.starts[i + 1] if i + 1 < len(self.starts) else self.length_m
+        return end - self.starts[i], end - s
 
     def grade(self, s: float) -> float:
         i = bisect.bisect_right(self.starts, max(s, 0.0)) - 1
@@ -249,35 +269,37 @@ def _make_field(strategy: str, scales: dict[str, float], bal: TacticalBalance, r
 
 def _shelter(runners: list[Runner], bal: TacticalBalance) -> None:
     """Abri de chacun (file indienne de `draft.py`), roue devant, coureur en tête et watts donnés aux suiveurs."""
-    ordered = sorted(runners, key=lambda r: (-r.s, r.id))
+    ordered = sorted(runners, key=lambda r: (-r.phys.s, r.id))
+    pos = [r.phys.s for r in ordered]
+    shelters = [not r.has("breakaway") for r in ordered]
     for r in ordered:
         r.saved_for_others_w = 0.0
     for i, r in enumerate(ordered):
-        alphas = []
+        s = pos[i]
         r.wheel = None
-        for o in reversed(ordered[:i]):            # du plus proche au plus loin devant
-            gap = o.s - r.s - BIKE_LENGTH_M
+        r.alpha = 0.0
+        keep = 1.0
+        first = True
+        for j in range(i - 1, -1, -1):             # du plus proche au plus loin devant
+            gap = pos[j] - s - BIKE_LENGTH_M
             if gap > GAP_CUTOFF_M:
                 break
             if r.wheel is None:
-                r.wheel, r.wheel_gap_m = o, gap
-            if not o.has("breakaway"):
-                alphas.append(draft_coefficient(gap))
+                r.wheel, r.wheel_gap_m = ordered[j], gap
+            if shelters[j]:
+                a = draft_coefficient(gap)
+                keep *= 1.0 - (a if first else K_LINE * a)
+                first = False
         r.front = r.wheel is None
         r.chase_gap_m = None
         if r.front and i > 0:
-            gap = ordered[i - 1].s - r.s
+            gap = pos[i - 1] - s
             if gap <= bal.bot_chase_look_m:
                 r.chase_gap_m = gap
-        if alphas:
-            keep = 1.0 - alphas[0]
-            for a in alphas[1:]:
-                keep *= 1.0 - K_LINE * a
+        if not first:
             r.alpha = min(1.0 - keep, ALPHA_GROUP_CAP)
-        else:
-            r.alpha = 0.0
         if r.wheel is not None and r.alpha > 0.0:
-            r.wheel.saved_for_others_w += draft_saving_w(r.v, 0.0, r.params, r.alpha)
+            r.wheel.saved_for_others_w += draft_saving_w(r.phys.v, 0.0, r.params, r.alpha)
     # le premier d'une file reçoit les watts de toute la file qui le suit, qu'il emmène
     for r in ordered:
         if not r.front and r.wheel is not None and r.saved_for_others_w > 0.0:
@@ -345,7 +367,8 @@ def _follow_or_drop(r: Runner, strategy_w: float, grade: float, follow_cap_w: fl
     return min(need, follow_cap_w) if r.chase_ok else strategy_w
 
 
-def _bot_power(r: Runner, grade: float, to_go: float, dt: float, rng: random.Random, bal: TacticalBalance) -> float:
+def _bot_power(r: Runner, grade: float, to_go: float, dt: float, rng: random.Random, bal: TacticalBalance,
+               climb: tuple[float, float] = (0.0, 0.0)) -> float:
     spec = SIM_PROFILES[r.profile]
     climbing = grade >= CLIMB_GRADE_PCT
     base = (spec.climb if climbing else spec.flat) * r.cp_w
@@ -355,6 +378,9 @@ def _bot_power(r: Runner, grade: float, to_go: float, dt: float, rng: random.Ran
         base, tactical = r.peak_w, True
     elif r.peak_w <= 0.0 and to_go <= bal.bot_sprint_m:
         base, tactical = bal.bot_sprint_cp_pct / 100.0 * r.cp_w, True
+    elif (r.profile == "puncheur" and 0.0 < climb[0] <= bal.punch_climb_max_m and climb[1] <= bal.punch_from_m
+          and r.reserve_pct > bal.punch_reserve_pct):
+        base, tactical = bal.punch_cp_pct / 100.0 * r.cp_w, True   # attaque dans le raidard
     elif climbing and spec.climb_attack > 0.0 and r.reserve_pct > bal.bot_climb_attack_reserve_pct:
         base, tactical = bal.bot_climb_attack_cp_pct / 100.0 * r.cp_w, True
     elif (r.profile == "baroudeur" and r.s < bal.baroudeur_until_pct / 100.0 * (r.s + to_go)
@@ -457,18 +483,20 @@ def race(circuit: Circuit, strategy: str, seed: int, bal: TacticalBalance = DEFA
         if not active:
             break
         _shelter(active, bal)
+        grades = {}
         for r in active:
-            grade = prof.grade(r.s)
+            grade = grades[r.id] = prof.grade(r.s)
             to_go = length - r.s
             if r.profile == RIDER_ID:
                 p = _rider_power(r, runners, grade, to_go, dt, rng, bal)
             else:
-                p = _bot_power(r, grade, to_go, dt, rng, bal)
+                climb = prof.climb(r.s) if r.profile == "puncheur" else (0.0, 0.0)
+                p = _bot_power(r, grade, to_go, dt, rng, bal, climb)
             if r.burn.active:
                 p = min(p, rules.burnout_cap_w(r.cp_w, bal))
             r.power_w = p
         for r in active:
-            grade = prof.grade(r.s)
+            grade = grades[r.id]
             applied = r.power_w
             if r.sling_left_s > 0.0:
                 applied = rules.sling_power(applied, r.sling_launch_pct, bal)
@@ -575,8 +603,11 @@ def criteria(out: dict[str, Any]) -> list[dict[str, Any]]:
         circuit_winner[c] = max(BOT_PROFILES, key=lambda p: (tot[p], -BOT_PROFILES.index(p)))
     for p in BOT_PROFILES:
         won = sorted(c for c, w in circuit_winner.items() if w == p)
-        checks.append({"ok": bool(won), "text": f"profil {SIM_PROFILES[p].name} : premier bot sur "
-                                                f"{', '.join(won) if won else 'aucun circuit'}"})
+        text = f"profil {SIM_PROFILES[p].name} : premier bot sur {', '.join(won) if won else 'aucun circuit'}"
+        pending = not won and p in PENDING_TERRAIN
+        if pending:
+            text += f" (en attente : {PENDING_TERRAIN[p]})"
+        checks.append({"ok": bool(won) or pending, "pending": pending, "text": text})
     return checks
 
 
@@ -601,14 +632,14 @@ def report_markdown(out: dict[str, Any], checks: list[dict[str, Any]]) -> str:
              f"(graine {out['seed']}, {out['races']} courses par configuration, table d'équilibrage `{out['balance']}`).",
              "Ne pas modifier à la main : relancer l'outil.", "",
              "Une configuration = un circuit généré × une stratégie du cycliste virtuel. Chaque course : le cycliste "
-             "(FTP 250 W, W′ 20 kJ, 75 kg) et 5 bots à profil (forces relatives du lot T12, plus le baroudeur du simulateur) mis à une échelle commune : seuls, leur temps moyen sur le circuit est celui du cycliste seul à "
+             "(FTP 250 W, W′ 20 kJ, 75 kg) et 6 bots à profil (forces relatives du lot T12, plus le baroudeur et le puncheur du simulateur) mis à une échelle commune : seuls, leur temps moyen sur le circuit est celui du cycliste seul à "
              f"{out['level_pct']:g} % de la FTP (valeur `bots_level_pct` de la table) ; forme du jour "
              "tirée pour chacun.", "",
              "Règles simulées par des bouchons tant que leurs lots ne sont pas faits (`tactical/bouchons.py`) : "
              "Burnout (CT2), catapulte (CT4), crédits et capacités (CT6), suivre ou lâcher (CT3). "
              "Non simulés : virages (CT7, pas de courbure sur les circuits générés), placement latéral (AS2), "
              "parade (CT5), variantes asymétriques (CT8).", "", "## Critères du cahier (§7)", ""]
-    lines += [f"- [{'OK' if c['ok'] else 'ÉCHEC'}] {c['text']}" for c in checks]
+    lines += [f"- [{'EN ATTENTE' if c.get('pending') else 'OK' if c['ok'] else 'ÉCHEC'}] {c['text']}" for c in checks]
     sh = shares(out)
     lines += ["", "Part des victoires sur tout le calendrier (cible : environ "
               f"{100 * TARGET_SHARE:.0f} % chacun) : "
@@ -656,7 +687,7 @@ def report_markdown(out: dict[str, Any], checks: list[dict[str, Any]]) -> str:
     lines += ["", "## Détail par configuration", "",
               "Écarts moyens à l'arrivée en secondes derrière le vainqueur ; Burnouts, catapultes : moyennes par "
               "course pour les 5 coureurs ; capacités : achetées par le cycliste.", "",
-              "| Circuit | Stratégie | Vainqueur le plus fréquent | Cycliste gagne | Écart cycliste | Écart G / R / S / D / B "
+              "| Circuit | Stratégie | Vainqueur le plus fréquent | Cycliste gagne | Écart cycliste | Écart G / R / S / D / B / P "
               "| Burnouts (dont cycliste) | Catapultes | Capacités |",
               "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for b in out["batches"]:
@@ -691,8 +722,10 @@ TUNABLE: dict[str, tuple[float, float, float]] = {
     "bot_chase_look_m": (200.0, 200.0, 1600.0),
     "baroudeur_cp_pct": (3.0, 96.0, 115.0),
     "baroudeur_stop_pct": (10.0, 10.0, 70.0),
+    "punch_cp_pct": (5.0, 120.0, 170.0),
+    "punch_from_m": (100.0, 200.0, 1000.0),
 }
-TARGET_SHARE = 1.0 / (1 + len(BOT_PROFILES))   # 6 coureurs : chacun environ 17 % des victoires du calendrier
+TARGET_SHARE = 1.0 / (1 + len(BOT_PROFILES))   # 7 coureurs : chacun environ 14 % des victoires du calendrier
 CIRCUIT_TOP_MAX = 0.60                          # sur un circuit, aucun coureur au-dessus de 60 %
 
 

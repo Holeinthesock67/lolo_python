@@ -58,4 +58,10 @@ Réglage fin après la recette sur le vélo (CT12) ; IA par apprentissage.
   3. **Bots sans capacités** (décision de la 4.0, « bots sans bonus ») ; ils ont la catapulte et le Burnout, règles symétriques.
   4. **Cerveau des bots simplifié** (bouchon de CT3) : suivre ou lâcher selon la réserve (40 %, lâche sous 20 %, 15 % d'erreurs), relais de 30 à 60 s, poursuite à 1,05 × CP d'un coureur parti à moins de 400 m, attaque du grimpeur en montée à 1,2 × CP (1,1 en séance), attaque au long cours du rouleur dans les 2,5 derniers km, sprint à 2 × CP (pic du profil pour le sprinteur).
 - Non simulés : virages (CT7), placement latéral (AS2), parade (CT5), variantes asymétriques (CT8).
+- Ajouts du 7 novembre (demandes du propriétaire dans le fil) :
+  - **Recherche automatique** `--recherche TOURS [--table FICHIER]` : descente coordonnée sur les valeurs de `TUNABLE` (jamais les décisions du 29 octobre ni les profils T12), pour que chaque coureur gagne sa part du calendrier (1/7) et qu'aucun ne dépasse 60 % sur un circuit ; les valeurs trouvées (16 courses par essai, graine 1) sont reportées dans `balance.toml` et vérifiées par le rapport à 200 courses.
+  - **Classement Elo** (`tactical/elo.py`) de chaque profil et de chaque stratégie dans le rapport : base de l'équilibrage adaptatif de CT13.
+  - **Baroudeur et puncheur** au simulateur seulement, avec le circuit `mur_final` ; leur arrivée dans le jeu est le lot CT14.
+  - Circuits `mur_final` (puncheur) et `longue_distance` (diesel) ajoutés ; baroudeur premier du `faux_plat`. Le rouleur et le baroudeur se disputaient ce terrain : le critère 3 du rouleur est noté « en attente » jusqu'aux bordures de CT20 (`PENDING_TERRAIN`), choix soumis au propriétaire.
+  - Cahiers CT13 à CT20 écrits dans la même PR.
 
