@@ -52,6 +52,15 @@ VILLAGE_NEAR_M = 1000.0
 OVERTAKE_SHARE = 0.4
 SPAWN_AHEAD_M = (600.0, 1200.0)
 SPAWN_BEHIND_M = 250.0
+# Passages forcés pour les bancs (`[ride] traffic_bench_s`, sim_bench scénario circulation_proche) : à
+# tour de rôle, un tracteur un peu plus lent que le cycliste devant lui, puis un camion qui le double, comme les captures
+# abri_tracteur de visual_check, pour mesurer le coût des véhicules proches.
+BENCH_SLOW_AHEAD_M = 30.0
+BENCH_SLOW_SPEED_FRAC = 0.85   # tracteur à 85 % de la vitesse du cycliste : rattrapé en quelques dizaines de
+                               # secondes, une dizaine de secondes dans sa roue avant que le cycliste ne double
+BENCH_PASS_BEHIND_M = 80.0
+TEST_SLOT0 = 1000000       # cases des véhicules posés par place_for_test (ids v1000000 et suivants)
+BENCH_PASS_EXTRA_KMH = 30.0
 REMOVE_BEHIND_M = 300.0
 REMOVE_AHEAD_M = 1300.0
 PASS_SPEED_KMH = 30.0
@@ -251,6 +260,9 @@ class Traffic:
     _next_slot: int = 0
     _last_rider_s: float | None = None
     _others: list[Other] = field(default_factory=list)
+    bench_every_s: float = 0.0     # > 0 : passage forcé toutes les N s (bancs seulement, `[ride] traffic_bench_s`)
+    bench_forced: int = 0
+    _bench_t: float = 0.0
 
     def reset(self) -> None:
         self.vehicles.clear()
@@ -258,6 +270,8 @@ class Traffic:
         self.overtakes_total = 0
         self._next_slot = 0
         self._last_rider_s = None
+        self.bench_forced = 0
+        self._bench_t = 0.0
 
     def slot_event(self, k: int) -> dict | None:
         """Lancer d'une case : None si elle ne porte rien, sinon le véhicule tiré (même tirage que l'engine)."""
@@ -347,6 +361,8 @@ class Traffic:
                     or not self._others_clear_at(s1):
                 continue
             self._spawn(ev, s1, 1)
+        if self.bench_every_s > 0.0:
+            self._bench_pass(rider_s, rider_v, dt_s)
         for v in self.vehicles:
             rel = v.s - rider_s
             if v.dir == -1:
@@ -475,10 +491,33 @@ class Traffic:
         self.vehicles.append(v)
         return v
 
+    def _bench_pass(self, rider_s: float, rider_v: float, dt_s: float) -> None:
+        """Banc : toutes les `bench_every_s`, un tracteur lent à 30 m devant, puis un camion qui double depuis
+        80 m derrière, à tour de rôle ; attend que la place soit libre (autre véhicule, bot), qu'aucun véhicule qui
+        double ne puisse rattraper celui qu'on pose, et pour le camion que le tracteur soit doublé ; budget respecté."""
+        self._bench_t += dt_s
+        if self._bench_t < self.bench_every_s or len(self.vehicles) >= self.budget:
+            return
+        ahead = self.bench_forced % 2 == 0
+        if not ahead:   # le tracteur doublé quitte la route : le camion n'a personne d'autre à doubler
+            self.vehicles = [v for v in self.vehicles if not (v.slow and v.passed and int(v.id[1:]) >= TEST_SLOT0)]
+        s = rider_s + (BENCH_SLOW_AHEAD_M if ahead else -BENCH_PASS_BEHIND_M)
+        if not (0.0 <= s <= self.route.length_m) or not self._segment_ok(s) or not self._free_at(s, 1) \
+                or any(v.dir == 1 and not v.slow and v.s < s + MIN_SPACING_M for v in self.vehicles) \
+                or (not ahead and any(v.slow and not v.passed for v in self.vehicles)) \
+                or any(abs(o.s - s) < MIN_SPACING_M and abs(o.s - rider_s) > 0.5 for o in self._others):
+            return
+        if ahead:
+            self.place_for_test(rider_s, "tractor", 1, BENCH_SLOW_AHEAD_M, rider_v * 3.6 * BENCH_SLOW_SPEED_FRAC)
+        else:
+            self.place_for_test(rider_s, "truck", 1, -BENCH_PASS_BEHIND_M, rider_v * 3.6 + BENCH_PASS_EXTRA_KMH)
+        self.bench_forced += 1
+        self._bench_t = 0.0
+
     def place_for_test(self, rider_s: float, kind: str, d: int, rel_m: float, kmh: float,
                        lateral: float | None = None) -> Vehicle:
         """Véhicule posé par un test ou un banc : `slow` s'il roule devant, dans le même sens."""
-        ev = {"slot": 1000000 + self.spawned_total, "kind": kind, "color": self.spawned_total % COLORS,
+        ev = {"slot": TEST_SLOT0 + self.spawned_total, "kind": kind, "color": self.spawned_total % COLORS,
               "cruise_mps": kmh / 3.6}
         v = self._spawn(ev, rider_s + rel_m, 1 if d >= 0 else -1, slow=d >= 0 and rel_m > 0.0)
         if lateral is not None:
