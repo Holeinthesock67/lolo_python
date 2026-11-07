@@ -228,7 +228,28 @@ Primitives −5 / −13 / −20 % au premier banc. Bilan : l'herbe va plus loin 
 
 En cultures, aucune variante sur les arbres ne bouge (±0,2 ms) : l'hypothèse « c'est la forêt devant qui coûte » est réfutée pour les cultures ; la cause est à chercher dans l'herbe, le sol ou la vigne. La bascule à 300 m n'est pas retenue (450 m choisis le 01/11). Passes en high : passe opaque 8,05 ms (54 %), prépasse de profondeur 3,31 ms (22 %), ombres 0,63 ms.
 
-Remède en essai : `ombres_arbres_m=M`, ombres des arbres coupées au-delà de M mètres (cases de 250 m, plus repli de l'ombre dans le shader). Banc b demandé le 07/11 vers 2 h 30 (base, ombres à 100 / 150 / 250 m, sans ombres d'arbres, moitié de l'herbe, sans ombres) → `mesures/2026-11-07-cultures-foret-b/`. **Résultats non disponibles à la rédaction** ; à ajouter ici dès qu'ils arrivent, avec la planche de captures à valider.
+Remède essayé : `ombres_arbres_m=M`, ombres des arbres coupées au-delà de M mètres (cases de 250 m, plus repli de l'ombre dans le shader).
+
+**Banc b (07/11, 0fa13490, qui contient #721, `mesures/2026-11-07-cultures-foret-b/`, 42 bancs).** Même tronçon cultures → forêt → alpin (alpin toujours non couvert). Référence du tronçon : **8,04 / 13,72 / 17,06 ms** (budgets 8 / 12 / 14 depuis le 7 novembre), high à 56 images/s et p99 19,8 ms. Avec l'herbe de #721, la référence a monté d'environ +0,5 / +0,7 / +1,0 ms par rapport au premier banc. Gain de chaque variante, tronçon entier puis cultures / forêt :
+
+| Variante | low | medium | high | medium cultures / forêt | high cultures / forêt |
+| --- | --- | --- | --- | --- | --- |
+| Aucune ombre (borne) | 0,75 | 1,49 | 2,34 | 0,82 / 1,95 | 1,15 / 3,12 |
+| Arbres sans ombre | 0,12 | 0,74 | 1,39 | −0,05 / 1,31 | 0,02 / 2,13 |
+| Moitié de l'herbe | 0,26 | 0,60 | 1,28 | 0,69 / 0,63 | 1,24 / 1,29 |
+| Ombre des arbres jusqu'à 100 m | 0,13 | 0,23 | 0,29 | −0,04 / 0,34 | 0,00 / 0,40 |
+| Ombre des arbres jusqu'à 150 m | 0,12 | 0,17 | 0,28 | 0,06 / 0,31 | 0,00 / 0,34 |
+| Ombre des arbres jusqu'à 250 m | 0,05 | −0,01 | −0,03 | −0,01 / 0,01 | 0,00 / 0,00 |
+
+Par biome, la référence est cultures 8,39 / 14,20 / 17,23 et forêt 7,54 / 13,63 / 17,11 ms.
+
+Lecture :
+- Raccourcir l'ombre des arbres ne gagne que 0,3 à 0,4 ms en forêt, à 100 comme à 150 m. À 250 m, rien ne change : la coupure se fait par cases de 250 m, et le gros du coût des ombres d'arbres vient des arbres les plus proches.
+- Couper toutes les ombres d'arbres gagne 1,3 ms en medium et 2,1 ms en high en forêt, mais rien en cultures.
+- **En cultures, c'est l'herbe qui coûte** : la moitié des touffes gagne 0,7 ms en medium et 1,2 ms en high, et c'est la seule variante qui bouge dans ce biome. C'est la réponse à la question laissée ouverte par le premier banc.
+- Même sans aucune ombre, aucune variante seule ne ramène medium et high sous leur budget : il faudrait combiner (par exemple ombres d'arbres et herbe), ou toucher à la passe opaque.
+
+Captures : `planche/` du banc, une par variante et par biome, **à valider par le propriétaire**. Verdict : **en cours** (choix à faire dans #732).
 
 ## 3. Récapitulatif par réglage
 
@@ -245,7 +266,7 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 | **Ombres : filtre doux** | Y13 ; 2.0.1 V1 (#717) | filtre un cran plus bas −0,87 / −0,66 (démo) ; filtre low −0,58 / −0,44 | bords des ombres | un cran plus bas adopté | medium low, high medium |
 | **Ombres : cascades / distance** | 4 cascades (Y13), 400 m (Y13 étape 2) ; essais 2 cascades et 200 m (05/11) | 2 cascades −0,41 / −0,30 ; 200 m −0,41 / −0,22 | ombres lointaines | gardées (gain faible) | inchangées |
 | **Ombres du relief** | proxy maille 40 m (06/11, #724) | −0,25 à +0,34 (bruit), primitives −40 % | aucun | rejeté | ombres pleines |
-| **Ombres des arbres** | sans ombre (05/11, 07/11) ; coupure à distance (en cours, #732) | cultures ≈ 0 ; forêt −0,18 / −1,18 / −1,86 | ombres sous les arbres | low : gardées (choix 06/11) ; distance en essai | toutes les ombres jusqu'à 450 m |
+| **Ombres des arbres** | sans ombre (05/11, 07/11) ; coupure à 100 / 150 / 250 m (banc b, 07/11, #732) | cultures ≈ 0 ; forêt sans ombre −0,2 / −1,3 / −2,1 ; coupure à 100–150 m −0,1 / −0,3 / −0,4, à 250 m rien | ombres sous les arbres | low : gardées (choix 06/11) ; coupure à distance peu utile | toutes les ombres jusqu'à 450 m |
 | **Ombres des pierres et fleurs** | 06/11 | −0,10 / −0,13 / bruit | aucun | rejeté (bruit) | inchangées |
 | **Brume volumétrique** | Y13 étape 3 (28/10) ; sans brume, grille medium en high (05–06/11) ; lumière du ciel 1 puis 0,5 (05–06/11) | +0,2 à l'ajout ; sans brume −0,54 / −0,58 ; lumière du ciel ≈ 0 | profondeur de l'air ; montagnes plus noires une fois éclairée | adoptée, éclairée à 0,5 | medium light, high full |
 | **Rendu des tons** | Filmic (28/10) ; AgX (29/10) ; courbe en S 0,35 (06/11) | ≈ 0 | ciel moins délavé ; contraste | AgX + courbe en S | Forward+ |
@@ -255,7 +276,7 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 | **Seuil LOD des maillages** | Y13 (28/10) ; plus tôt (06/11) | low −38 % de primitives, GPU −0,16 ; plus tôt : −0,32 medium, bruit high | aucun | seuil Y13 gardé, « plus tôt » rejeté | inchangé |
 | **LOD des arbres** | 300 → 450 m (01/11, #689) ; 300 m remesuré (05/11, 07/11) | 450 m : ≈ +0,4 medium ; revenir à 300 m : jusqu'à −1,25 en high en forêt | arbres détaillés plus loin | 450 m adopté (choix du propriétaire) | 450 m partout |
 | **Imposteurs de forêt** | Y5 (06/11, #723) | +0,18 / +0,19 | forêts jusqu'à l'horizon | adopté | 1 500 m → brouillard |
-| **Herbe : quantité** | budgets Y11 (27/10) ; moitié (05/11) ; 70 % en low (06/11) | moitié −0,27 / −0,77 / −0,96 ; 70 % en low : aucun gain | herbe pleine | budgets gardés | low herbe pleine |
+| **Herbe : quantité** | budgets Y11 (27/10) ; moitié (05/11, 07/11) ; 70 % en low (06/11) | moitié −0,27 / −0,77 / −0,96 (05/11), puis −0,35 / −0,69 / −1,24 en cultures après #721 (07/11) ; 70 % en low : aucun gain | herbe pleine | budgets gardés ; levier principal en cultures | low herbe pleine |
 | **Herbe : niveau de détail au loin** | Y22 (06/11, #721) | premier banc −0,2 / −0,6 en medium / high ; version finale +0,2 / +0,9 / +1,4 | herbe jusqu'à 80 m sans lisière | adopté | `main` |
 | **Vigne** | haie au-delà de 200 m (Y22) | primitives −25 % caméra haute | aucun saut validé | adopté | 200 m |
 | **Densité de végétation / arbres** | Y13 étape 2 (0,8, 70 000) ; moitié (05/11, 07/11) | +0,2 à l'ajout ; moitié : bruit en cultures, −0,84 / −1,91 en forêt | paysage plus plein | gardée | inchangée |
@@ -270,7 +291,7 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 1. **Le rendu est limité par les pixels, pas par les objets.** MSAA, SSIL et halo pèsent 1 à 3,7 ms chacun ; le tri du visible, la densité des arbres, les cascades et les ombres du relief gagnent quelques dixièmes au plus. Retirer 40 % des primitives (ombres du relief) ne change rien au GPU de la GTX 1060.
 2. **Le MSAA 2× a été le levier principal** des préréglages medium et high (≈ −1,8 ms partout), pour une perte visuelle validée sur captures.
 3. **Sans arbres, la forêt coûte plus cher** (−0,95 ms en low et medium) : les arbres cachent le sol et l'herbe, plus chers par pixel. Supprimer de la végétation n'est donc pas un remède en soi.
-4. **En forêt, les ombres des arbres proches sont le levier principal** (jusqu'à −1,9 ms en high), devant la densité et le niveau de détail ; en cultures, les arbres ne pèsent rien : la cause y est ailleurs (herbe, sol, vigne), à trouver.
+4. **En forêt, les ombres des arbres proches sont le levier principal** (jusqu'à −2,1 ms en high), devant la densité et le niveau de détail. Raccourcir leur portée à 100–150 m ne gagne que 0,3–0,4 ms : ce sont les arbres les plus proches qui coûtent. **En cultures, c'est l'herbe** (moitié des touffes : −0,7 ms en medium, −1,2 ms en high) ; les arbres n'y pèsent rien.
 5. **Les ombres coûtent 0,5 / 1,9 / 2,3 ms au total** et font la moitié des primitives : c'est le coût par pixel (atlas, filtre) qui compte, pas le nombre de triangles.
 6. **Les « loupés » valent plus que les réglages fins** : ciel recalculé à chaque image (0,8 ms), globe du menu dessiné hors menu, shader dupliqué par essence d'arbre (×4 sur le GPU), banc qui mesurait du low.
 7. **Les réglages « presque gratuits » de Godot sont dans le bruit** (±0,6 ms sur le banc tout en cultures) : à garder pour le principe, sans en attendre de gain.
@@ -280,7 +301,7 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 
 ## 5. Encore ouvert
 
-- **Budgets dépassés après #729 et #721** : cultures 14,2 / 16,5 ms et forêt 13,0 / 15,9 ms en medium / high (passe finale du 06/11, avant #721 qui ajoute environ +0,2 / +0,9 / +1,4 ms). En low, cultures 7,8, forêt 7,3 et alpin 6,9 ms dépassaient le budget de 6 ms ; avec le budget de 8 ms décidé le 7 novembre, ils passent tout juste (cultures 7,8 + 0,2 de #721 ≈ 8,0 ms, à confirmer au banc). Suite : #732 (ombres des arbres à distance, banc b), puis recherche de la cause en cultures.
+- **Budgets dépassés après #729 et #721** : cultures 14,2 / 16,5 ms et forêt 13,0 / 15,9 ms en medium / high (passe finale du 06/11, avant #721 qui ajoute environ +0,2 / +0,9 / +1,4 ms). En low, cultures 7,8, forêt 7,3 et alpin 6,9 ms dépassaient le budget de 6 ms ; avec le budget de 8 ms décidé le 7 novembre, ils passent tout juste (cultures 7,8 + 0,2 de #721 ≈ 8,0 ms, à confirmer au banc). Banc b du 7 novembre (avec #721) : tronçon 8,0 / 13,7 / 17,1 ms. Suite dans #732 : aucune variante seule ne suffit ; leviers mesurés : ombres des arbres en forêt, quantité d'herbe en cultures.
 - **Essais jamais mesurés** (cahiers sans résultat retrouvé) : Y3 (HLOD des villages), Y4 (ombres par sorte d'objet), Y7 (moteur Mobile en low), Y12 (lumière et particules), tableau du protocole `ESSAI_RENDU_Y11_Y12.md`, coût de la circulation AS6 avec véhicules à l'écran.
 - **Pistes notées pour plus tard** : même passage propre de l'herbe pour les buissons nains, roseaux et herbes hautes (`ground_details.gd`) ; prépasse de profondeur (22 % du GPU en medium et high) ; S1b (occlusion par le relief) et S1c (décor hors vue) si un cas réellement chargé apparaît.
 
@@ -300,4 +321,4 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 | #724 | `mesures/2026-11-06-ombres-relief/` | — |
 | Y5 | `mesures/2026-11-06-foret/` | `LOT_Y5` |
 | Y22 | `mesures/2026-11-06-herbe-y22*/` | `LOT_Y22` |
-| #732 | `mesures/2026-11-07-cultures-foret/`, `-b/` (à venir) | PR #732 |
+| #732 | `mesures/2026-11-07-cultures-foret/`, `mesures/2026-11-07-cultures-foret-b/` | PR #732 |
