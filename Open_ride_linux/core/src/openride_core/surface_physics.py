@@ -113,7 +113,8 @@ def rideable_half_m(route: SurfaceRoute, s: float, mode: str, widths: dict[str, 
     unpaved = 0
     for j in range(BEVEL_SAMPLES):
         sv = s - BEVEL_M * 0.5 + BEVEL_M * j / (BEVEL_SAMPLES - 1)
-        e = effective_surface(route.surface_at(sv), mode) if mode == "auto" else mode
+        e = effective_surface(route.surface_at(sv) if hasattr(route, "surface_at") else "paved", mode) \
+            if mode == "auto" else mode
         if e in UNPAVED:
             unpaved += 1
             count[e] = count.get(e, 0) + 1

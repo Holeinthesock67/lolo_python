@@ -319,3 +319,34 @@ def test_rider_passes_slow_tractor_on_the_left():
     assert v.s < s and worst < 99.0
     assert worst >= draft.SIDE_CLEAR_M - draft.RIDER_WIDTH_M - 0.05      # longé comme un vélo, sans contact
     assert rider.m >= draft.PASS_LANE_MIN_M
+
+
+# --- option gravel (décision du propriétaire du 7/11) ------------------------------------------------
+
+def test_gravel_path_has_only_tractors_and_motos():
+    """Chemin non revêtu de 8 à 18 km : seuls tracteurs et motos y apparaissent ; ailleurs, toutes les sortes."""
+    kinds_on, kinds_off = set(), set()
+    for seed in range(1, 13):
+        route = straight_route(26000.0)
+        t = tr.Traffic(route=route, seed=seed, unpaved_at=lambda s: 8000.0 <= s <= 18000.0)
+        s = 1000.0
+        while s < 24500.0:
+            t.update(s, 8.3, 0.1)
+            for v in t.vehicles:
+                if abs(v.s - s) < 300.0:
+                    (kinds_on if 8000.0 <= v.s <= 18000.0 and 8000.0 <= s <= 18000.0 else kinds_off).add(v.kind)
+            s += 0.83
+    assert kinds_on and kinds_on <= set(tr.UNPAVED_KINDS), kinds_on
+    assert kinds_off - set(tr.UNPAVED_KINDS), kinds_off
+
+
+def test_session_traffic_sees_the_gravel_option(tmp_path, monkeypatch):
+    from test_draft import FlatRoute, make_session
+
+    s, _ = make_session(tmp_path, monkeypatch, 6214, 200.0, [])
+    s.cfg.gravel.mode = "gravel"
+    t = s._traffic_for(FlatRoute())
+    assert t is not None and t.unpaved_at is not None and t.unpaved_at(100.0)
+    assert not t._kind_ok("car_a", 0.0, 500.0) and t._kind_ok("tractor", 0.0, 500.0)
+    s.cfg.gravel.mode = "off"
+    assert t._kind_ok("bus", 0.0, 500.0)

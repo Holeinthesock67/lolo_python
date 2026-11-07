@@ -368,6 +368,10 @@ func _poll_job(wait: bool = false) -> void:
 	passersby = res["passersby"]
 	passersby_view.setup_passersby(passersby, sound_player)
 	traffic.configure(_route, theme, pois, int(living.get("vehicles", 0)))
+	# Option gravel : seuls tracteurs et motos sur les chemins (surface effective de world_streamer)
+	traffic.unpaved_at = Callable()
+	if world_streamer != null and world_streamer.has_method("surface_at"):
+		traffic.unpaved_at = func(s: float) -> bool: return world_streamer.surface_at(s) != "paved"
 	# Option gravel : les cyclistes du décor restent sur le chemin (largeur du ruban de world_streamer)
 	var half_at := Callable()
 	if world_streamer != null and world_streamer.has_method("rideable_half"):
