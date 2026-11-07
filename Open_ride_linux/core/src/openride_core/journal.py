@@ -42,7 +42,9 @@ Sortes de lignes :
   "echo": bool}` : chaque Fitness Machine Status du trainer (0x02, 0x03, 0x14, 0xFF…) ; `"event":
   "training_status"` (`data`, avec `trace_ftms`) ; `"event": "brake_loss"` (`from_w`, `to_w`,
   `cadence_rpm`, `speed_kmh`), puis `"power_back"` (`after_s`, `power_w`) ou `"power_not_back"`
-  (`after_s`) : le frein lâché du 29 octobre 2026. Lignes facultatives, absentes du FIT ; les lectures
+  (`after_s`) : le frein lâché du 29 octobre 2026 ; `"event": "resistance_weak"` (`retake`, `level`, `force_n`,
+  `target_n`, `speed_kmh`, `k`) puis `"resistance_fallback"` (mêmes champs sans `retake`) : résistance
+  calculée sans effet, contrôle repris puis repli sur le SIM du trainer (essai du 2 novembre). Lignes facultatives, absentes du FIT ; les lectures
   qui ne connaissent pas cette sorte l'ignorent.
 `ts` est l'heure Unix (secondes, UTC).
 """

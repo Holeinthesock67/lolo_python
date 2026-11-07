@@ -90,3 +90,16 @@ Ressenti du propriétaire : « ça ne change pas grand-chose, ça repousse le d�
 - R-I50 : 3,5, « non linéarité de résistance dans phase de sprint (devient plus dur pendant le sprint) puis parfois résistance en retard », décrochage sauf au dernier sprint.
 - Le propriétaire juge les essais manuels trop longs et demande de conclure sur l'ensemble des journaux. Bilan : seul le mode résistance sans inertie supprime le lâcher de façon mesurable (aucun 0 W sur ses sprints, contre 4 sprints sur 5 en SIM), avec des notes de 3 à 4.
 - **Choix du propriétaire : résistance calculée sans inertie par défaut pour la 1.0**, SIM au menu (« Pilotage du trainer »).
+
+## 7. Résistance calculée trop légère à basse vitesse (2 novembre) et correctif (5 novembre)
+
+Essai du 2 novembre vers 19 h (AS #649, résistance calculée, plat, braquet 24/24) : pédalage dans le vide, 21 à 31 W à 70-84 tr/min, quand la route en demandait environ 180 W au volant. Le SIM du trainer est redevenu le défaut (1.0.2).
+
+Ce que dit le journal du core (aucune ligne « FTMS ~ mesures », trace par seconde coupée) : k appris tombé de 0,036 à 0,0147 en 3 min. Le frein donnait donc bien moins de force que la loi de l'étalonnage 7rc1 au niveau envoyé, et la correction ne pouvait pas compenser : elle était coupée sous 30 W, c'est-à-dire justement pendant le défaut.
+
+Correctif (lot RC4) :
+- k se corrige aussi sous 30 W (seuil ramené à 5 W, volant libre écarté) ;
+- frein sans effet (force mesurée sous 35 % de la force visée pendant 8 s, volant ≥ 15 km/h, niveau ≥ 5 %) : contrôle repris et niveau renvoyé, deux fois au plus, puis SIM du trainer jusqu'à la fin de la séance. Journal : lignes `ftms` `resistance_weak` et `resistance_fallback` ;
+- en résistance calculée, la ligne « FTMS ~ mesures » (puissance, cadence, vitesse du volant, niveau, force visée et mesurée, k) est toujours écrite, avec ou sans `trace_ftms`.
+
+Reste à établir sur le vélo : si la reprise du contrôle suffit (trainer resté dans un autre état) ou si le frein répond mal aux petits niveaux (zone morte sous 10 %, hors de l'étalonnage). La recette du soir le tranche en 10 min.
