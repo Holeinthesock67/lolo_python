@@ -66,6 +66,11 @@ static func apply_to_material(mat: ShaderMaterial, theme: Dictionary = {}, theme
 
 ## Paramètres communs aux shaders de terrain (terrain_shade.gdshaderinc) : constantes de la fonction de
 ## référence du lot L3 (le shader n'en recopie aucune) et décor d'E3. Aussi pour terrain_biomes.gdshader (U6).
+## Prés plus ou moins mûrs à grande échelle (lot Y22, variante « terrain_macro » de l'étude du 5 novembre,
+## ≈ 0 ms en medium) : jusqu'à ±18 % sur le rouge, ±12 % sur le vert ; 0 : sol d'avant.
+const MACRO_VARIATION := 0.6
+
+
 static func apply_shared(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("snow_melt_band_m", ThemeRenderParams.SNOW_MELT_BAND_M)
 	mat.set_shader_parameter("steep_snow_start_deg", ThemeRenderParams.STEEP_SNOW_START_DEG)
@@ -74,4 +79,5 @@ static func apply_shared(mat: ShaderMaterial) -> void:
 	mat.set_shader_parameter("max_slope_half_band_deg", ThemeRenderParams.MAX_SLOPE_HALF_BAND_DEG)
 	mat.set_shader_parameter("rock_facet_strength", 0.6)
 	mat.set_shader_parameter("detail_strength", 1.0)
-	mat.set_shader_parameter("macro_variation", clampf(RenderDiag.number("terrain_macro", 0.0), 0.0, 1.0))
+	# Prés plus ou moins mûrs (lot Y22) ; essai de coût OPENRIDE_RENDER_DIAG `terrain_macro=F` (render_diag.gd).
+	mat.set_shader_parameter("macro_variation", clampf(RenderDiag.number("terrain_macro", MACRO_VARIATION), 0.0, 1.0))

@@ -37,6 +37,16 @@ uniform float local_wind_strength = 0.0;
 // instances est repliée (tirage par la position), puis toutes le sont à fade_end_m. 0 : pas de fondu.
 uniform float thin_start_m = 0.0;
 uniform float fade_end_m = 0.0;
+// Tirage du fondu lu dans INSTANCE_CUSTOM.x (touffes d'herbe, lot « herbe au loin ») plutôt que haché depuis la
+// position : le script choisit alors côté CPU les touffes de la gerbe lointaine avec le même tirage.
+uniform bool pick_from_custom = false;
+// Niveau de détail par instance (lot « herbe au loin ») : instance montrée de lod_begin_m à lod_end_m mètres de
+// la caméra principale (0 : sans borne), repliée en taille sur lod_blend_m mètres de part et d'autre, pour que
+// le modèle proche et le modèle lointain se relaient sans saut. Distance à la caméra principale
+// (MAIN_CAM_INV_VIEW_MATRIX) : la passe d'ombre replie les mêmes instances que l'image.
+uniform float lod_begin_m = 0.0;
+uniform float lod_end_m = 0.0;
+uniform float lod_blend_m = 4.0;
 // Faces arrière (copie cull_disabled) : garde la normale du sommet au lieu de la retourner, pour des brins
 // éclairés des deux côtés comme le sol (touffes d'herbe, Lot Y11 H4).
 uniform bool normals_up_both_sides = false;
@@ -63,12 +73,22 @@ void vertex() {
 	float amp = sway_amplitude_m * strength * (1.0 + 0.8 * wind_gust) * h * h * swing;
 	vec3 local_disp = inverse(mat3(MODEL_MATRIX)) * (dir * amp);
 	VERTEX += vec3(local_disp.x, 0.0, local_disp.z);
-	if (fade_end_m > 0.0) {
-		float d = distance(origin, INV_VIEW_MATRIX[3].xyz);
-		float keep = 1.0 - smoothstep(thin_start_m, fade_end_m, d);
-		float pick = fract(offset * 7.31);
-		// Une instance gardée rétrécit doucement quand elle approche de son seuil, au lieu de disparaître d'un coup
-		VERTEX *= clamp((keep - pick) * 8.0, 0.0, 1.0);
+	if (fade_end_m > 0.0 || lod_begin_m > 0.0 || lod_end_m > 0.0) {
+		float d = distance(origin, MAIN_CAM_INV_VIEW_MATRIX[3].xyz);
+		float size = 1.0;
+		if (fade_end_m > 0.0) {
+			float keep = 1.0 - smoothstep(thin_start_m, fade_end_m, d);
+			float pick = pick_from_custom ? INSTANCE_CUSTOM.x : fract(offset * 7.31);
+			// Une instance gardée rétrécit doucement quand elle approche de son seuil, au lieu de disparaître d'un coup
+			size = clamp((keep - pick) * 8.0, 0.0, 1.0);
+		}
+		if (lod_end_m > 0.0) {
+			size *= clamp((lod_end_m + lod_blend_m - d) / lod_blend_m, 0.0, 1.0);
+		}
+		if (lod_begin_m > 0.0) {
+			size *= clamp((d - lod_begin_m + lod_blend_m) / lod_blend_m, 0.0, 1.0);
+		}
+		VERTEX *= size;
 	}
 }
 

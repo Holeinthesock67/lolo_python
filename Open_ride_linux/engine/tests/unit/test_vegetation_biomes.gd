@@ -196,6 +196,51 @@ func _init() -> void:
 	_check(med.get_child_count() == 0, "clear : plus aucun MultiMeshInstance3D")
 	for r in [plain, muted, med, des, pol, sav, alp]:
 		r.free()
+	_test_vine_lod()
 
 	print("test_vegetation_biomes : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## Lot « herbe au loin » : rangs de vigne des cultures simplifiés au-delà de TreeSpecies.lod0_m (200 m), arbre
+## par arbre dans le shader ; modèle lointain en haie d'un rang ; arbres inchangés (passage par case à 450 m).
+func _test_vine_lod() -> void:
+	var vine := TreeSpecies.index_of("vine_row")
+	var oak := TreeSpecies.index_of("oak")
+	var hedge: ArrayMesh = TreeSpecies.build("vine_row")["lod1"]
+	var hb := hedge.get_aabb()
+	_check(TreeSpecies.triangle_count(hedge) == 10 and absf(hb.size.x - 6.0) < 0.01 and hb.size.z < 1.0
+		and hb.position.y > 0.3 and hb.end.y <= TreeSpecies.height_m("vine_row"),
+		"vigne au loin : haie d'un rang (%d triangles, %.1f × %.1f m, de %.2f à %.2f m)" % [
+			TreeSpecies.triangle_count(hedge), hb.size.x, hb.size.z, hb.position.y, hb.end.y])
+	_check(is_equal_approx(TreeSpecies.lod0_m("vine_row"), 200.0) and is_zero_approx(TreeSpecies.lod0_m("oak"))
+		and is_zero_approx(TreeSpecies.lod0_m("generic")), "passage propre : vigne à 200 m, chêne et arbre d'avant sans")
+	var vr := TreeRenderer.lod_ranges(vine, true)
+	_check(TreeRenderer.lod_ranges(oak, true) == Vector2(TreeRenderer.LOD0_MAX_DIST_M, TreeRenderer.LOD0_MAX_DIST_M)
+		and TreeRenderer.lod_ranges(vine, false) == Vector2(TreeRenderer.LOD0_MAX_DIST_M, TreeRenderer.LOD0_MAX_DIST_M)
+		and TreeRenderer.lod_ranges(TreeSpecies.GENERIC, true) == Vector2(TreeRenderer.LOD0_MAX_DIST_M, TreeRenderer.LOD0_MAX_DIST_M),
+		"chêne, arbre d'avant et vigne sans shader : passage par case à %.0f m comme avant" % TreeRenderer.LOD0_MAX_DIST_M)
+	# Un rang au coin de sa case est au plus à CELL_RADIUS_M du centre : jamais coupé par la plage de la case.
+	_check(vr.x >= 200.0 + TreeRenderer.SPECIES_LOD_BLEND_M + CELL_SIZE_HALF_DIAG and vr.x < TreeRenderer.LOD0_MAX_DIST_M
+		and vr.y <= maxf(0.0, 200.0 - TreeRenderer.SPECIES_LOD_BLEND_M - CELL_SIZE_HALF_DIAG),
+		"vigne : modèle proche écarté au-delà de %.0f m du centre de la case (au lieu de %.0f), lointain dès %.0f m" % [
+			vr.x, TreeRenderer.LOD0_MAX_DIST_M, vr.y])
+	var r = TreeRenderer.new()
+	r.set_preset("medium")
+	var look: Dictionary = r._look(vine)
+	var m0: ShaderMaterial = look["m0"]
+	var m1: ShaderMaterial = look["m1"]
+	var oak_m0: ShaderMaterial = r._look(oak)["m0"]
+	_check(is_equal_approx(_param(m0, "lod_end_m"), 200.0) and is_equal_approx(_param(m1, "lod_begin_m"), 200.0)
+		and is_zero_approx(_param(oak_m0, "lod_end_m")) and is_zero_approx(_param(m0, "fade_end_m")),
+		"matériaux de la vigne : modèle proche jusqu'à 200 m, lointain au-delà ; chêne sans borne")
+	r.free()
+
+
+const CELL_SIZE_HALF_DIAG := 250.0 * 0.7071
+
+
+## Paramètre de shader (0 quand il garde sa valeur par défaut, nulle pour les bornes du niveau de détail).
+static func _param(m: ShaderMaterial, name: String) -> float:
+	var v: Variant = m.get_shader_parameter(name)
+	return 0.0 if v == null else float(v)
