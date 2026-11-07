@@ -40,6 +40,17 @@ const VitrineChecks := preload("res://tests/vitrine_checks.gd")
 const DEFAULT_SIZE := Vector2i(1280, 720)
 const ROAD_WIDTH_M := 6.0
 const SETTLE_FRAMES := 30
+## Sortie en ordre (Godot 4.7, Forward+, comme test_rogue_style_sheet_render.gd #712) : libérer la vue ou quitter
+## pendant que Godot compile encore des pipelines bloque la sortie (PC GTX 1060, banc r748 : tuée à 900 s, rc 124).
+## On attend que les compteurs de compilation restent stables PIPELINE_QUIET_S et PIPELINE_QUIET_FRAMES images,
+## au plus PIPELINE_MAX_S secondes, avant et après chaque libération.
+const PIPELINE_QUIET_FRAMES := 10
+const PIPELINE_QUIET_S := 1.0
+const PIPELINE_MAX_S := 30.0
+const PIPELINE_INFOS := [RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_CANVAS,
+	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_MESH, RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SURFACE,
+	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_DRAW,
+	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SPECIALIZATION]
 
 ## Vues : position de la caméra, point visé, champ vertical (degrés).
 const VIEWS := {
@@ -142,6 +153,10 @@ class FixedSky:
 ## Route droite le long de -z (cap 0, comme route_data.gd) : seules les méthodes lues par grass_tufts.gd.
 class StraightRoute:
 	var length_m := 2000.0
+	# Axe en deux points, lu par road_clearance.gd (garde-fou des touffes de grass_tufts.gd)
+	var n := 2
+	var x := PackedFloat64Array([0.0, 0.0])
+	var z := PackedFloat64Array([0.0, -2000.0])
 	func is_loop() -> bool:
 		return false
 	## Route plate : pas de tangage (route_data.gd `display_pitch`).
@@ -238,11 +253,38 @@ func _run() -> void:
 			var objs := RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
 			csv.store_line("%s;%s;%s;%d;%d;%d" % [view, preset, QualityPresets.applied_name(preset), tris, draws, objs])
 			print("[vitrine] %s : %d triangles, %d appels de dessin, %d objets" % [path, tris, draws, objs])
+		await _settle_pipelines()
 		vp.queue_free()
-		await process_frame
+		await _settle_pipelines()
 	csv.close()
 	_checks.compare(_out_dir)
 	quit(_checks.exit_code("vitrine_rendu"))
+
+
+func _pipeline_compilations() -> int:
+	var total := 0
+	for info in PIPELINE_INFOS:
+		total += RenderingServer.get_rendering_info(info)
+	return total
+
+
+## Attend la fin des compilations de pipelines en arrière-plan (voir PIPELINE_QUIET_FRAMES).
+func _settle_pipelines() -> void:
+	var start := Time.get_ticks_msec()
+	var last := _pipeline_compilations()
+	var since := start
+	var frames := 0
+	while Time.get_ticks_msec() - start < PIPELINE_MAX_S * 1000.0:
+		await process_frame
+		var now := _pipeline_compilations()
+		if now != last:
+			last = now
+			since = Time.get_ticks_msec()
+			frames = 0
+		else:
+			frames += 1
+		if frames >= PIPELINE_QUIET_FRAMES and Time.get_ticks_msec() - since >= PIPELINE_QUIET_S * 1000.0:
+			break
 
 
 ## Monde de la vitrine pour un préréglage : ciel, soleil, sol au shader du terrain, route, touffes,
