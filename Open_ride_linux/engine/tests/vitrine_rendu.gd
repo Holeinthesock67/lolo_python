@@ -58,6 +58,10 @@ const VIEWS := {
 	"facades_pres": [Vector3(-3.5, 1.6, -18.0), Vector3(-11.0, 3.0, -26.0), 55.0],
 	"toits": [Vector3(3.0, 22.0, -6.0), Vector3(-2.0, 2.0, -48.0), 60.0],
 	"styles": [Vector3(-104.0, 30.0, -82.0), Vector3(-104.0, 1.0, -134.0), 58.0],
+	"styles_biomes": [Vector3(-101.0, 40.0, -120.0), Vector3(-101.0, 0.0, -166.0), 60.0],
+	"styles_biomes_pres": [Vector3(-152.0, 2.5, -146.0), Vector3(-136.0, 3.0, -161.0), 60.0],
+	"styles_biomes_pres2": [Vector3(-103.0, 2.5, -146.0), Vector3(-86.0, 3.0, -161.0), 60.0],
+	"faune_biomes": [Vector3(-40.0, 2.0, -2.0), Vector3(-40.0, 1.2, 12.0), 55.0],
 	"ciel": [Vector3(0.0, 1.4, 0.0), Vector3(0.0, 70.0, -200.0), 70.0],
 	"ciel_proche": [Vector3(0.0, 1.4, 0.0), Vector3(8.0, 72.0, -270.0), 22.0],
 	"arbres_temperes": [Vector3(147.0, 5.0, -86.0), Vector3(147.0, 8.0, -120.0), 60.0],
@@ -84,6 +88,8 @@ const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "aca
 ## Une maison et une grange par style d'architecture (variantes du contrat U1, building_styles.gd), en rangée
 ## loin de la route : les styles que prendront les biomes et les régions de la série U.
 const STYLE_ROW := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]
+## Lot U23 : styles d'habitat propres aux biomes, en seconde rangée derrière la première (vues `styles_biomes`).
+const STYLE_ROW_BIOMES := ["chalet", "bois_peint", "pise", "case", "paillote", "basalte", "chaumiere"]
 ## Bâtiments de la vitrine (forme de la couche `buildings` du .world) : type OSM, contour [x, z], hauteur des murs (m).
 ## Un échantillon des types courants des villages : maisons, ferme, église, immeuble, atelier, hangar, magasin.
 const BUILDINGS := [
@@ -104,6 +110,12 @@ const ANIMALS := [
 	["sheep", Vector3(-5.2, 0.0, -14.5), -0.4, 0.2, 1.0], ["sheep", Vector3(-6.0, 0.0, -16.0), 0.9, 0.5, 0.0],
 	["sheep", Vector3(-4.4, 0.0, -16.8), 2.2, 0.8, 1.0], ["deer", Vector3(-12.0, 0.0, -11.5), 0.6, 0.3, 1.0],
 	["bird", Vector3(-4.5, 2.4, -8.5), 1.2, 0.0, 0.0], ["bird", Vector3(-6.5, 3.0, -10.0), 0.9, 0.4, 0.0],
+	# Lot U23 (vue `faune_biomes`, derrière les autres vues) : éléphant, antilopes, ours blanc, bœuf musqué, chèvres, singes
+	["elephant", Vector3(-48.0, 0.0, 16.0), 2.2, 0.2, 1.0], ["antelope", Vector3(-42.0, 0.0, 10.0), 1.9, 0.5, 1.0],
+	["antelope", Vector3(-40.5, 0.0, 11.5), 2.6, 0.1, 0.0], ["polar_bear", Vector3(-34.0, 0.0, 12.0), -2.4, 0.3, 1.0],
+	["musk_ox", Vector3(-30.0, 0.0, 16.0), -1.9, 0.6, 1.0], ["goat", Vector3(-36.5, 0.0, 6.5), 2.8, 0.2, 1.0],
+	["goat", Vector3(-35.0, 0.0, 7.5), -2.0, 0.7, 0.0], ["monkey", Vector3(-44.0, 0.0, 5.5), 2.4, 0.4, 1.0],
+	["monkey", Vector3(-43.2, 0.0, 6.4), -2.9, 0.8, 1.0],
 ]
 
 
@@ -430,6 +442,14 @@ func _add_buildings(vp: SubViewport, preset: String) -> void:
 		items.append({"id": "style_grange_%d" % j, "outer": [[x0, -134.0], [x0 + 12.0, -134.0], [x0 + 12.0, -146.0], [x0, -146.0]],
 			"holes": [], "base_y": 0.0, "height_m": 5.0, "roof": "flat", "style": STYLE_ROW[j],
 			"hint": {"building": "barn", "colour": null}})
+	for j in range(STYLE_ROW_BIOMES.size()):
+		var x0 := -150.0 + j * 14.0
+		items.append({"id": "style_biome_maison_%d" % j, "outer": [[x0, -155.0], [x0 + 10.0, -155.0], [x0 + 10.0, -163.0], [x0, -163.0]],
+			"holes": [], "base_y": 0.0, "height_m": 6.0, "roof": "flat", "style": STYLE_ROW_BIOMES[j],
+			"hint": {"building": "house", "colour": null}})
+		items.append({"id": "style_biome_case_%d" % j, "outer": [[x0 + 1.0, -168.0], [x0 + 6.0, -168.0], [x0 + 6.0, -173.0], [x0 + 1.0, -173.0]],
+			"holes": [], "base_y": 0.0, "height_m": 2.8, "roof": "flat", "style": STYLE_ROW_BIOMES[j],
+			"hint": {"building": "hut", "colour": null}})
 	var theme: Dictionary = ThemeLoader.new().load_named("default")["theme"]
 	var m := BuildingMesh.build(items, theme, 3.0)
 	var arr := []

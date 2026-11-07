@@ -1970,7 +1970,7 @@ def _camera_scenes(s: Session) -> None:
 
 XP_RESULT = {"type": "xp_result", "v": CONTRACT_VERSION, "eligible": True, "reason": None,
              "gains": [{"source": "distance", "points": 302}, {"source": "climb", "points": 302}], "total": 604,
-             "xp_total": 100, "xp_next_level": 1600, "level_before": 9, "level_after": 10, "coins_gained": 42,
+             "xp_total": 1300, "xp_level_start": 1200, "xp_next_level": 1600, "level_before": 9, "level_after": 10, "coins_gained": 42,
              "coins_total": 232, "equipment_gain_s": -12.5, "unlocked": ["frame_aero"], "challenges": [], "more": False}
 
 
@@ -1986,7 +1986,7 @@ def _progress_scenes(s: Session) -> None:
         img, info = shot
         s.check_texts("progression", info, {"menu": "Distance 15,2 km : +302 XP"}, contains=True)
         s.check_texts("progression", info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
-        s.check_texts("progression", info, {"menu": "Niveau 10 : ■□□□□□□□□□ 100 / 1600 XP"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Niveau 10 : ■■■□□□□□□□ 100 / 400 XP"}, contains=True)
         s.check_texts("progression", info, {"menu": "Niveau 10 !"}, contains=True)
         s.check_texts("progression", info, {"menu": "Aller au Garage"}, contains=True)
         s.check_layout("progression", info)

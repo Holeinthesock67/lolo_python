@@ -86,7 +86,7 @@ const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 const WtfRulesModel := preload("res://scripts/wtf/wtf_rules_model.gd")
 ## Dernier survivant (lot DS7) : réglages de l'écran Prêt du mode, dans l'ordre du plan (§4).
-const SURVIVOR_OPPONENTS := [2, 4]      # bornes de survivor.opponents et survivor.spacing_km (config.py)
+const SURVIVOR_OPPONENTS := [2, 11]     # bornes de survivor.opponents et survivor.spacing_km (config.py)
 const SURVIVOR_SPACING_KM := [1, 3]
 ## Aide des touches sur une ligne de réglage de l'écran Prêt du mode (essai du 4 novembre).
 const SURVIVOR_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la valeur, A maintenu pour enregistrer, Y pour annuler."

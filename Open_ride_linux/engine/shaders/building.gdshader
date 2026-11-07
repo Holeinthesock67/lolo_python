@@ -2,16 +2,17 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_schlick_ggx;
 
 // Habillage des bâtiments OSM (Lot Y8), sans texture : façades (enduit, brique, moellons, bardage de bois,
-// colombage, tôle, béton), socle, fenêtres, volets, portes et vitrines, toits (tuiles plates, tuiles rondes,
-// ardoise, bac acier, bardeaux, toit plat). Mêmes bruits et même faux relief que la route et le terrain
+// colombage, tôle, béton ; lot U23 : terre crue, chalet à rez-de-chaussée de pierre), socle, fenêtres, volets,
+// portes et vitrines, toits (tuiles plates, tuiles rondes, ardoise, bac acier, bardeaux, toit plat ; lot U23 :
+// chaume). Mêmes bruits et même faux relief que la route et le terrain
 // (surface_detail.gdshaderinc) ; le détail plus fin qu'un pixel est fondu vers sa teinte moyenne.
 //
 // Entrées (building_mesh.gd) :
 // - COLOR.rgb : teinte du mur ou du toit (sRGB) ; COLOR.a : graine du bâtiment ;
 // - UV : mètres (mur : le long du segment et au-dessus de base_y ; toit : le long de l'égout et en remontant
 //   la pente, ou x, z pour un toit plat) ;
-// - UV2 : x = longueur du segment de mur (m), y = code d'habillage : matière du mur + 8 × ouvertures
-//   + 64 × matière du toit + 512 × toit + 1024 × hauteur des murs au quart de mètre.
+// - UV2 : x = longueur du segment de mur (m), y = code d'habillage : matière du mur + 16 × ouvertures
+//   + 128 × matière du toit + 1024 × toit + 2048 × hauteur des murs au quart de mètre.
 
 #include "res://shaders/surface_detail.gdshaderinc"
 #include "res://shaders/couleur_srgb.gdshaderinc"
@@ -29,6 +30,8 @@ const int WALL_WOOD = 3;
 const int WALL_TIMBER = 4;
 const int WALL_METAL = 5;
 const int WALL_CONCRETE = 6;
+const int WALL_ADOBE = 7;
+const int WALL_CHALET = 8;
 
 const int WIN_NONE = 0;
 const int WIN_HOUSE = 1;
@@ -43,6 +46,7 @@ const int ROOF_TILE_ROUND = 2;
 const int ROOF_SLATE = 3;
 const int ROOF_METAL = 4;
 const int ROOF_SHINGLE = 5;
+const int ROOF_THATCH = 6;
 
 varying float v_under;
 
@@ -126,6 +130,38 @@ void concrete(vec2 uv, vec3 tint, inout vec3 col, inout float h) {
 	float stain = sd_noise(uv / vec2(1.2, 3.0));
 	col = tint * (0.88 + 0.12 * stain) * (1.0 - 0.25 * joint * vis);
 	h = smoothstep(0.0, 0.03, min(f.x, 1.0 - f.x) * 3.0) * smoothstep(0.0, 0.03, min(f.y, 1.0 - f.y) * 1.5) * 0.004 * vis;
+}
+
+// Terre crue (lot U23) : enduit de terre lissé à la main, traces de taloche, fissures fines, bas du mur
+// plus sombre (rejaillissement de la pluie) ; plus mat que l'enduit de chaux.
+void adobe(vec2 uv, vec3 tint, inout vec3 col, inout float h) {
+	float swirl = sd_noise(uv / vec2(0.9, 0.5)) * 0.6 + sd_noise(uv / 0.25) * 0.4;
+	float grain = sd_noise(uv / 0.05);
+	float vis = sd_visible(uv, 0.05);
+	float crack_n = sd_noise(uv / vec2(0.6, 1.4));
+	float crack = smoothstep(0.03, 0.0, abs(crack_n - 0.5)) * step(0.6, sd_noise(uv / 3.0)) * sd_visible(uv, 0.1);
+	col = tint * (0.86 + swirl * 0.2 + (grain - 0.5) * 0.1 * vis) * (1.0 - 0.35 * crack);
+	h = (swirl * 0.004 + grain * 0.002 * vis) - crack * 0.004;
+}
+
+// Chalet (lot U23) : rez-de-chaussée de moellons jusqu'au premier plancher, madriers horizontaux au-dessus,
+// séparés par une poutre de rive.
+void chalet(vec2 uv, vec3 tint, inout vec3 col, inout float h) {
+	if (uv.y < FLOOR_H) {
+		stone(uv, vec3(0.7, 0.67, 0.6), col, h);
+		return;
+	}
+	float py = (uv.y - FLOOR_H) / 0.2;
+	float joint = smoothstep(0.08, 0.0, fract(py)) + smoothstep(0.92, 1.0, fract(py));
+	float log_id = sd_hash(vec2(floor(py), 5.3));
+	float grain = sd_noise(vec2(uv.x * 0.9 + log_id * 17.0, py * 6.0));
+	float vis = sd_visible(uv, 0.2);
+	vec3 w = tint * (0.78 + 0.3 * log_id) * (0.85 + 0.25 * grain);
+	col = mix(tint * 0.9, mix(w, tint * 0.4, min(joint, 1.0)), vis);
+	// Poutre de rive au-dessus des pierres
+	float rim = step(uv.y, FLOOR_H + 0.22);
+	col = mix(col, tint * 0.55, rim);
+	h = (1.0 - min(joint, 1.0)) * 0.008 * vis + rim * 0.01;
 }
 
 // ---------- Ouvertures : fenêtre, volets, porte ----------
@@ -478,6 +514,24 @@ void roof_metal(vec2 uv, vec3 tint, inout vec3 col, inout float h, inout float r
 	metal = 0.4;
 }
 
+// Chaume (lot U23) : paille ou roseau en couches épaisses, brins le long de la pente, rangs irréguliers,
+// bas des couches à l'ombre, faîtage plus sombre ; très mat.
+void roof_thatch(vec2 uv, vec3 tint, inout vec3 col, inout float h, inout float rough) {
+	// Couches de 0,35 m au bord inférieur ondulé (les bottes ne sont pas alignées), sans joints verticaux
+	float wave = 0.25 * sd_noise(vec2(uv.x / 0.35, floor(uv.y / 0.35)));
+	float f = fract(uv.y / 0.35 + wave);
+	float straw = sd_noise(vec2(uv.x / 0.01, uv.y / 0.4));
+	float tuft = sd_noise(vec2(uv.x / 0.06, uv.y / 0.12));
+	float vis = sd_visible(uv, 0.03);
+	float vis_row = sd_visible(uv, 0.35);
+	float weather = sd_noise(uv / vec2(3.0, 1.5)) * 0.6 + sd_noise(uv / 0.7) * 0.4;
+	float shadow = smoothstep(0.3, 0.0, f) * vis_row;
+	vec3 t = tint * (0.78 + 0.3 * weather) * (1.0 + (straw - 0.5) * 0.35 * vis + (tuft - 0.5) * 0.15) * (1.0 - 0.35 * shadow);
+	col = t;
+	h = (smoothstep(0.0, 0.35, f) * 0.025 * vis_row + straw * 0.004 * vis);
+	rough = 0.97;
+}
+
 void roof_flat(vec2 uv, vec3 tint, inout vec3 col, inout float h, inout float rough) {
 	float grain = sd_noise(uv / 0.04);
 	float vis = sd_visible(uv, 0.04);
@@ -489,11 +543,11 @@ void roof_flat(vec2 uv, vec3 tint, inout vec3 col, inout float h, inout float ro
 
 void fragment() {
 	int code = int(UV2.y + 0.5);
-	int wall = code % 8;
-	int openings = (code / 8) % 8;
-	int roof = (code / 64) % 8;
-	bool is_roof = ((code / 512) % 2) == 1;
-	float eave = float(code / 1024) * 0.25;
+	int wall = code % 16;
+	int openings = (code / 16) % 8;
+	int roof = (code / 128) % 8;
+	bool is_roof = ((code / 1024) % 2) == 1;
+	float eave = float(code / 2048) * 0.25;
 	// Graine et longueur arrondies : les valeurs interpolées varient d'un pixel à l'autre au dernier chiffre
 	// près, et un hachage en ferait un tirage différent par pixel (points dans les fenêtres)
 	float seed = floor(COLOR.a * 255.0 + 0.5) / 255.0;
@@ -521,6 +575,8 @@ void fragment() {
 		} else if (roof == ROOF_SHINGLE) {
 			roof_slate(uv, tint, 0.14, 0.16, col, h, rough);
 			rough = 0.85;
+		} else if (roof == ROOF_THATCH) {
+			roof_thatch(uv, tint, col, h, rough);
 		} else {
 			roof_flat(uv, tint, col, h, rough);
 		}
@@ -535,6 +591,10 @@ void fragment() {
 			metal_sheet(uv, tint, col, h, rough, metal);
 		} else if (wall == WALL_CONCRETE) {
 			concrete(uv, tint, col, h);
+		} else if (wall == WALL_ADOBE) {
+			adobe(uv, tint, col, h);
+		} else if (wall == WALL_CHALET) {
+			chalet(uv, tint, col, h);
 		} else {
 			plaster(uv, tint, col, h);
 			if (wall == WALL_TIMBER) {

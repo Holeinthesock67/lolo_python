@@ -1681,7 +1681,7 @@ func _on_progression(msg: Dictionary) -> void:
 	var eq = msg.get("equipped")
 	_equipped_ids = eq if eq is Dictionary else {}
 	var prog := {}
-	for key in ["level", "xp", "xp_next_level", "coins", "equipped", "avatar", "lives"]:
+	for key in ["level", "xp", "xp_level_start", "xp_next_level", "coins", "equipped", "avatar", "lives"]:
 		if msg.has(key):
 			prog[key] = msg[key]
 	ipc.core_config["progression"] = prog
@@ -1975,11 +1975,13 @@ func _update_survivor(state: Dictionary, in_session: bool) -> void:
 		if not in_session:
 			survivor_hud.reset()
 		return
+	var t_step := Time.get_ticks_usec()
 	survivor_hud.after_out = str(menu_flow.settings.item("survivor.after_out").get("value", "ride"))
 	survivor_hud.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	survivor_view.right_top = hud.free_right_top()
 	survivor_view.update_view(survivor_hud.view(state, Time.get_ticks_msec() / 1000.0))
 	segment_markers.set_survivor_arches(survivor_hud.arches_to_draw(state))
+	PerfProbe.mark_since("survivant", "", t_step)   # banc (lot DS8) : une image lente nomme le mode
 
 
 ## Épreuves de piste (lot VD9), à chaque trame : bandeau, tours, liste et blocs du HUD, tableau d'affichage de la
