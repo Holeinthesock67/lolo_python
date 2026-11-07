@@ -49,6 +49,18 @@ func _run() -> void:
 	_check(at == [5, 3, 2, 1], "panneaux d'approche à 5, 3, 2 et 1 km du sommet (%s)" % str(at))
 	var three: Dictionary = approach[1]
 	_check(three["lines"] == ["Sommet à 3 km", "Pente moyenne 7 %"], "textes « Sommet à 3 km » et « Pente moyenne 7 %% » (%s)" % str(three["lines"]))
+	_check(three["name"] == "Col de la Croix" and three["km"] == 3 and three["pct"] == 7,
+		"panneau d'approche : nom du sommet, distance et pente pour la mise en page (%s)" % str(three))
+	# Mise en page du panneau d'approche : agrandie, aucun texte sous LETTER_HEIGHT_M, pente en couleur
+	var lay: Dictionary = RoadsideProps.approach_layout(three)
+	var smallest := 1.0
+	for t in lay["texts"]:
+		smallest = minf(smallest, float(t["letter"]))
+	_check(lay["w"] >= RoadsideProps.APPROACH_MIN_W * RoadsideProps.APPROACH_SCALE - 1e-6 and smallest >= RoadsideProps.LETTER_HEIGHT_M - 1e-6
+		and lay["texts"][0]["text"] == "3 km", "panneau d'approche : %.2f × %.2f m, lettres de %.3f m au moins" % [lay["w"], lay["h"], smallest])
+	_check(RoadsideProps.slope_color(2) != RoadsideProps.slope_color(5) and RoadsideProps.slope_color(5) != RoadsideProps.slope_color(8)
+		and RoadsideProps.slope_color(8) != RoadsideProps.slope_color(12) and lay["layers"][2]["color"] == RoadsideProps.slope_color(7),
+		"pente moyenne : vert, bleu, rouge, noir")
 	var summit := items.filter(func(it): return it["kind"] == "summit")
 	_check(summit.size() == 1 and summit[0]["lines"] == ["Col de la Croix", "860 m"],
 		"panneau du sommet : nom du point OSM et altitude arrondie au mètre (%s)" % str(summit[0]["lines"]))

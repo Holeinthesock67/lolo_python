@@ -6,9 +6,12 @@ extends Node3D
 ## `add_chunk(route, k, items)` pose les objets du tronçon k (roadside_model.for_chunk) sur le côté
 ## droit, à 1,5 m du bord de la chaussée, face au cycliste qui arrive ; `remove_chunk(k)` les retire.
 ## Habillage (lot Y8, retouche du 29/10) :
-## - panneaux de col (marron) et d'approche (blancs) : plaque de tôle à coins arrondis, liseré et rebord,
-##   dimensionnée d'après le texte (le texte ne déborde jamais), sur un poteau, ou deux au-delà de
-##   TWO_POSTS_FROM_M de large, avec colliers de fixation ;
+## - panneaux de col (marron) : plaque de tôle à coins arrondis, liseré et rebord, dimensionnée d'après le
+##   texte (le texte ne déborde jamais), sur un poteau, ou deux au-delà de TWO_POSTS_FROM_M de large, avec
+##   colliers de fixation ;
+## - panneaux d'approche (refaits le 07/11, 4.0) : plaque blanche verticale cadrée de noir, à la manière des
+##   panneaux cyclistes des cols (nom, altitude, pictogramme cycliste et distance au sommet en grand, pente
+##   moyenne sur un pavé vert, bleu, rouge ou noir), couches peintes minces (props.gdshader, matière 6) ;
 ## - bornes kilométriques à la française : fût de béton blanc à tête ronde peinte en rouge sur un socle,
 ##   « km » en blanc sur la tête et le numéro en noir sur le fût, un seul maillage.
 ## Texte dimensionné pour être lisible à READABLE_AT_M : lettres de LETTER_HEIGHT_M au moins.
@@ -24,7 +27,6 @@ const KIND_LAYER := 6
 ## Pictogrammes peints sur une couche (props.gdshader, `picto`)
 const PICTO_NONE := 0
 const PICTO_CYCLIST := 1
-const PICTO_SLOPE := 2
 const RELIEF := {"low": 0.0, "medium": 1.0, "high": 1.0}
 
 const READABLE_AT_M := 30.0
@@ -33,11 +35,10 @@ const LETTER_HEIGHT_M := 0.12        # ~ 14 minutes d'arc à 30 m
 const CHAR_WIDTH := 0.6
 const LINE_SPACING := 1.25
 const FONT_SIZE := 48
-## Panneaux : hauteur des lettres (le nom du col se lit à 25 m, 6 pixels sur 720 lignes au moins : visual_check.py),
+## Panneau de col : hauteur des lettres (le nom du col se lit à 25 m, 6 pixels sur 720 lignes au moins : visual_check.py),
 ## bas de la plaque au-dessus du sol, couleurs, marges et largeurs bornées.
 const BOARD := {
 	"summit": {"letter_m": 0.32, "bottom_m": 2.0, "color": Color(0.42, 0.25, 0.12), "ink": Color(1, 1, 1)},
-	"approach": {"letter_m": 0.2, "bottom_m": 1.8, "color": Color(0.95, 0.95, 0.93), "ink": Color(0.1, 0.1, 0.1)},
 }
 const BOARD_MARGIN_M := 0.1          # entre le texte et le liseré
 const BOARD_MIN_W := 0.9
@@ -54,18 +55,21 @@ const KM_BODY_H := 0.52
 const KM_INK := Color(0.08, 0.08, 0.08)
 const KM_HEAD_INK := Color(1, 1, 1)
 
-## Panneaux d'approche (essai du 07/11, une des trois variantes sera gardée) : "cycliste", "routier", "agrandi".
-const APPROACH_STYLES := ["cycliste", "routier", "agrandi"]
+## Panneaux d'approche (refaits le 07/11, 4.0) : plaque de col verticale, voir approach_layout().
+const APPROACH_SCALE := 1.25         # agrandissement voulu (07/11 : « 25 % plus grand »)
+const APPROACH_MARGIN_M := 0.1       # à l'échelle 1, comme les autres longueurs de la mise en page
+const APPROACH_NAME_M := 0.16
+const APPROACH_MIN_W := 1.4
+const APPROACH_MAX_W := 2.2
+const APPROACH_BOTTOM_M := 1.0       # bas de la plaque au-dessus du sol (déjà à l'échelle)
 const INK_DARK := Color(0.08, 0.08, 0.09)
 const SIGN_WHITE := Color(0.95, 0.95, 0.93)
-const SIGN_BLUE := Color(0.06, 0.22, 0.52)
 ## Couleur de la pente moyenne, comme les pistes : vert, bleu, rouge, noir (bornes hautes, %)
 const SLOPE_COLORS := [[3, Color(0.10, 0.55, 0.25)], [6, Color(0.10, 0.36, 0.75)], [9, Color(0.80, 0.12, 0.10)],
 	[1000, Color(0.08, 0.08, 0.09)]]
 const LAYER_DEPTH_M := 0.006
 const BOLD_EMBOLDEN := 0.7
 
-var approach_style := "cycliste"
 var road_width_m := 6.0
 var _chunks: Dictionary = {}        # k -> Array[Node3D]
 var _meshes: Dictionary = {}        # gardés ici : maillages partagés, par clé de dimensions
@@ -79,6 +83,7 @@ func _init() -> void:
 	_mats["km"] = _material(KIND_KM, Color(0.95, 0.95, 0.93))
 	(_mats["km"] as ShaderMaterial).set_shader_parameter("head_from_m", KM_PLINTH_H + KM_BODY_H)
 	_mats["approach_board"] = _material(KIND_BOARD, SIGN_WHITE)
+	(_mats["approach_board"] as ShaderMaterial).set_shader_parameter("border_color", INK_DARK)
 
 
 static func _material(kind: int, color: Color) -> ShaderMaterial:
@@ -100,12 +105,12 @@ var _relief := 1.0
 
 
 ## Matière d'une couche peinte (fond coloré, bandeau, pictogramme), partagée par couleur et pictogramme.
-func _layer_mat(color: Color, picto: int, ink: Color) -> ShaderMaterial:
-	var key := "layer_%s_%d_%s" % [color.to_html(false), picto, ink.to_html(false)]
+func _layer_mat(color: Color, picto: int) -> ShaderMaterial:
+	var key := "layer_%s_%d" % [color.to_html(false), picto]
 	if not _mats.has(key):
 		var m := _material(KIND_LAYER, color)
 		m.set_shader_parameter("picto", picto)
-		m.set_shader_parameter("ink_color", ink)
+		m.set_shader_parameter("ink_color", INK_DARK)
 		m.set_shader_parameter("relief", _relief)
 		_mats[key] = m
 	return _mats[key]
@@ -297,108 +302,54 @@ static func _fit(text: String, letter: float, width: float, bold: bool) -> float
 	return maxf(LETTER_HEIGHT_M, minf(letter, width / maxf(_text_w(text, 1.0, bold), 0.01)))
 
 
-## Mise en page d'un panneau d'approche `{name, km, pct, alt_m}` dans le style `style` (APPROACH_STYLES).
-## Coordonnées de la face en mètres, origine au centre de la plaque, y vers le haut.
-## Rend {w, h, bottom_m, border, layers: [{x, y, w, h, color, picto, ink}], texts: [{text, x, y, letter, ink, bold}]} ;
-## texts[0] est la ligne principale (la distance au sommet), celle que mesurent les contrôles de lisibilité.
-static func approach_layout(item: Dictionary, style: String) -> Dictionary:
+## Mise en page d'un panneau d'approche `{name, km, pct, alt_m}` : plaque de col verticale à la française, avec le
+## nom du sommet, l'altitude du panneau, le pictogramme cycliste et la distance au sommet en grand, puis la pente
+## moyenne en blanc sur un pavé de sa couleur (SLOPE_COLORS). Dessinée en mètres à l'échelle 1, puis agrandie de
+## APPROACH_SCALE (choix du 07/11). Coordonnées de la face, origine au centre de la plaque, y vers le haut.
+## Rend {w, h, bottom_m, layers: [{x, y, w, h, color, picto}], texts: [{text, x, y, letter, ink, bold}]} ;
+## texts[0] est la distance au sommet, la ligne que mesurent les contrôles de lisibilité.
+static func approach_layout(item: Dictionary) -> Dictionary:
 	var name := str(item.get("name", "Sommet"))
-	var km := int(item.get("km", 0))
+	var km_txt := "%d km" % int(item.get("km", 0))
 	var pct := int(item.get("pct", 0))
-	var alt := int(item.get("alt_m", 0))
-	var pct_txt := "%d %%" % pct
-	var layers := []
-	var texts := []
-	var w := 0.0
-	var h := 0.0
-	var bottom := 1.5
-	var border := INK_DARK
-	if style == "cycliste":
-		# Plaque verticale des cols (à la française) : nom, altitude, pictogramme et distance, pente en couleur
-		var m := 0.1
-		w = clampf(_text_w(name, 0.16, true) + 2.0 * m, 1.4, 2.2)
-		var inner := w - 2.0 * m
-		var ln := _fit(name, 0.16, inner, true)
-		var rows: Array[float] = [ln * 1.35, 0.13, 0.03, 0.62, 0.06, 0.6]
-		h = 2.0 * m
-		for r in rows:
-			h += r
-		var y := h * 0.5 - m
-		texts.append({})   # ligne principale, remplie plus bas
-		texts.append({"text": name, "x": 0.0, "y": y - rows[0] * 0.5, "letter": ln, "ink": INK_DARK, "bold": true})
-		y -= rows[0]
-		texts.append({"text": "Altitude %s m" % _fmt_int(alt), "x": 0.0, "y": y - rows[1] * 0.5, "letter": LETTER_HEIGHT_M * 0.85,
-			"ink": INK_DARK, "bold": false})
-		y -= rows[1]
-		layers.append({"x": 0.0, "y": y - rows[2] * 0.5, "w": inner, "h": 0.02, "color": INK_DARK, "picto": PICTO_NONE, "ink": INK_DARK})
-		y -= rows[2]
-		var pic := rows[3] - 0.04
-		layers.append({"x": -inner * 0.5 + pic * 0.5, "y": y - rows[3] * 0.5, "w": pic, "h": pic, "color": SIGN_WHITE,
-			"picto": PICTO_CYCLIST, "ink": INK_DARK})
-		var tx := -inner * 0.5 + pic + (inner - pic) * 0.5
-		texts.append({"text": "SOMMET", "x": tx, "y": y - 0.1, "letter": 0.1, "ink": INK_DARK, "bold": true})
-		texts[0] = {"text": "%d km" % km, "x": tx, "y": y - 0.38, "letter": _fit("%d km" % km, 0.3, inner - pic, true),
-			"ink": INK_DARK, "bold": true}
-		y -= rows[3] + rows[4]
-		var col := slope_color(pct)
-		layers.append({"x": 0.0, "y": y - rows[5] * 0.5, "w": inner, "h": rows[5], "color": col, "picto": PICTO_NONE, "ink": col})
-		texts.append({"text": pct_txt, "x": 0.0, "y": y - 0.25, "letter": 0.32, "ink": SIGN_WHITE, "bold": true})
-		texts.append({"text": "pente moyenne", "x": 0.0, "y": y - 0.5, "letter": 0.09, "ink": SIGN_WHITE, "bold": false})
-		bottom = 1.1
-	elif style == "routier":
-		# Panneau d'information routier : bandeau bleu au nom du sommet, triangle de pente, distance et pente
-		var m := 0.1
-		var head_l := 0.28
-		var l1 := 0.24
-		var l2 := 0.18
-		var t1 := "Sommet à %d km" % km
-		var t2 := "Pente moyenne %s" % pct_txt
-		var pic := 0.85
-		var body_w := pic + 0.12 + maxf(_text_w(t1, l1, true), _text_w(t2, l2, false))
-		w = clampf(maxf(body_w, _text_w(name, head_l, true)) + 2.0 * m, 2.0, 4.0)
-		var inner := w - 2.0 * m
-		head_l = _fit(name, head_l, inner, true)
-		var head_h := head_l * 1.7
-		var body_h := pic + 0.1
-		h = 2.0 * m + head_h + 0.06 + body_h
-		var y := h * 0.5 - m
-		layers.append({"x": 0.0, "y": y - head_h * 0.5, "w": inner, "h": head_h, "color": SIGN_BLUE, "picto": PICTO_NONE, "ink": SIGN_BLUE})
-		texts.append({})
-		texts.append({"text": name, "x": 0.0, "y": y - head_h * 0.5, "letter": head_l, "ink": SIGN_WHITE, "bold": true})
-		y -= head_h + 0.06
-		layers.append({"x": -inner * 0.5 + pic * 0.5, "y": y - body_h * 0.5, "w": pic, "h": pic, "color": SIGN_WHITE,
-			"picto": PICTO_SLOPE, "ink": INK_DARK})
-		var tw := inner - pic - 0.12
-		var tx := -inner * 0.5 + pic + 0.12 + tw * 0.5
-		texts[0] = {"text": t1, "x": tx, "y": y - body_h * 0.32, "letter": _fit(t1, l1, tw, true), "ink": INK_DARK, "bold": true}
-		texts.append({"text": t2, "x": tx, "y": y - body_h * 0.72, "letter": _fit(t2, l2, tw, false), "ink": slope_color(pct).darkened(0.1),
-			"bold": false})
-		border = SIGN_BLUE
-	else:
-		# Panneau actuel agrandi : mêmes lignes en grand, cadre noir, pictogramme cycliste
-		var m := 0.1
-		var l1 := 0.3
-		var l2 := 0.24
-		var t1 := "Sommet à %d km" % km
-		var t2 := "Pente moyenne %s" % pct_txt
-		var pic := 0.8
-		var tw := maxf(_text_w(t1, l1, true), _text_w(t2, l2, false))
-		w = clampf(pic + 0.12 + tw + 2.0 * m, 2.0, 4.0)
-		var inner := w - 2.0 * m
-		tw = inner - pic - 0.12
-		h = 2.0 * m + maxf(pic, (l1 + l2) * 1.3)
-		layers.append({"x": -inner * 0.5 + pic * 0.5, "y": 0.0, "w": pic, "h": pic, "color": SIGN_WHITE,
-			"picto": PICTO_CYCLIST, "ink": INK_DARK})
-		var tx := -inner * 0.5 + pic + 0.12 + tw * 0.5
-		var inner_h := h - 2.0 * m
-		texts.append({"text": t1, "x": tx, "y": inner_h * 0.22, "letter": _fit(t1, l1, tw, true), "ink": INK_DARK, "bold": true})
-		texts.append({"text": t2, "x": tx, "y": -inner_h * 0.24, "letter": _fit(t2, l2, tw, false), "ink": INK_DARK, "bold": false})
-	return {"w": ceilf(w * 20.0) / 20.0, "h": ceilf(h * 20.0) / 20.0, "bottom_m": bottom, "border": border,
+	var m := APPROACH_MARGIN_M
+	var w := clampf(_text_w(name, APPROACH_NAME_M, true) + 2.0 * m, APPROACH_MIN_W, APPROACH_MAX_W)
+	var inner := w - 2.0 * m
+	var name_l := _fit(name, APPROACH_NAME_M, inner, true)
+	# Rangées de haut en bas : nom, altitude, filet, pictogramme et distance, espace, pavé de la pente
+	var rows: Array[float] = [name_l * 1.35, 0.13, 0.03, 0.62, 0.06, 0.6]
+	var h := 2.0 * m
+	for r in rows:
+		h += r
+	var y := h * 0.5 - m
+	var pic := rows[3] - 0.04
+	var tx := -inner * 0.5 + pic + (inner - pic) * 0.5
+	var y_mid := y - rows[0] - rows[1] - rows[2]
+	var y_box := y_mid - rows[3] - rows[4]
+	var color := slope_color(pct)
+	var layers := [
+		{"x": 0.0, "y": y_mid + rows[2] * 0.5, "w": inner, "h": 0.02, "color": INK_DARK, "picto": PICTO_NONE},
+		{"x": -inner * 0.5 + pic * 0.5, "y": y_mid - rows[3] * 0.5, "w": pic, "h": pic, "color": SIGN_WHITE, "picto": PICTO_CYCLIST},
+		{"x": 0.0, "y": y_box - rows[5] * 0.5, "w": inner, "h": rows[5], "color": color, "picto": PICTO_NONE},
+	]
+	var texts := [
+		{"text": km_txt, "x": tx, "y": y_mid - 0.38, "letter": _fit(km_txt, 0.3, inner - pic, true), "ink": INK_DARK, "bold": true},
+		{"text": name, "x": 0.0, "y": y - rows[0] * 0.5, "letter": name_l, "ink": INK_DARK, "bold": true},
+		{"text": "Altitude %s m" % RoadsideModel.format_int(int(item.get("alt_m", 0))), "x": 0.0, "y": y - rows[0] - rows[1] * 0.5,
+			"letter": 0.1, "ink": INK_DARK, "bold": false},
+		{"text": "SOMMET", "x": tx, "y": y_mid - 0.1, "letter": 0.1, "ink": INK_DARK, "bold": true},
+		{"text": "%d %%" % pct, "x": 0.0, "y": y_box - 0.25, "letter": 0.32, "ink": SIGN_WHITE, "bold": true},
+		{"text": "pente moyenne", "x": 0.0, "y": y_box - 0.5, "letter": 0.1, "ink": SIGN_WHITE, "bold": false},
+	]
+	var k := APPROACH_SCALE
+	for ly in layers:
+		for key in ["x", "y", "w", "h"]:
+			ly[key] = float(ly[key]) * k
+	for t in texts:
+		for key in ["x", "y", "letter"]:
+			t[key] = float(t[key]) * k
+	return {"w": ceilf(w * k * 20.0) / 20.0, "h": ceilf(h * k * 20.0) / 20.0, "bottom_m": APPROACH_BOTTOM_M,
 		"layers": layers, "texts": texts}
-
-
-static func _fmt_int(v: int) -> String:
-	return RoadsideModel.format_int(v)
 
 
 ## Plaque peinte mince (couche d'un panneau d'approche) `w` × `h`, face vers +z.
@@ -411,7 +362,7 @@ static func layer_mesh(w: float, h: float) -> ArrayMesh:
 
 ## Panneau d'approche : plaque blanche cadrée, couches peintes et textes de approach_layout().
 func _build_approach(root: Node3D, item: Dictionary) -> Label3D:
-	var lay := approach_layout(item, approach_style)
+	var lay := approach_layout(item)
 	var w: float = lay["w"]
 	var h: float = lay["h"]
 	var bottom: float = lay["bottom_m"]
@@ -420,21 +371,15 @@ func _build_approach(root: Node3D, item: Dictionary) -> Label3D:
 	var post_h := top - 0.04
 	_mesh(root, _shared("posts_%d_%d_%d" % [xs.size(), roundi(w * 100.0), roundi(post_h * 100.0)],
 		posts_mesh.bind(xs, post_h, bottom)), _mats["post"], Vector3(0.0, post_h * 0.5, 0.0))
-	var key := "approach_board_%s" % (lay["border"] as Color).to_html(false)
-	if not _mats.has(key):
-		var bm := _material(KIND_BOARD, SIGN_WHITE)
-		bm.set_shader_parameter("border_color", lay["border"])
-		bm.set_shader_parameter("relief", _relief)
-		_mats[key] = bm
 	var board_y := bottom + h * 0.5
 	_mesh(root, _shared("board_%d_%d" % [roundi(w * 100.0), roundi(h * 100.0)], board_mesh.bind(w, h)),
-		_mats[key], Vector3(0.0, board_y, 0.0))
+		_mats["approach_board"], Vector3(0.0, board_y, 0.0))
 	var zf := BOARD_DEPTH_M * 0.5
 	for ly in lay["layers"]:
 		var lw: float = ly["w"]
 		var lh: float = ly["h"]
 		_mesh(root, _shared("layer_%d_%d" % [roundi(lw * 100.0), roundi(lh * 100.0)], layer_mesh.bind(lw, lh)),
-			_layer_mat(ly["color"], ly["picto"], ly["ink"]), Vector3(ly["x"], board_y + float(ly["y"]), zf + LAYER_DEPTH_M * 0.5))
+			_layer_mat(ly["color"], ly["picto"]), Vector3(ly["x"], board_y + float(ly["y"]), zf + LAYER_DEPTH_M * 0.5))
 	var main: Label3D
 	for t in lay["texts"]:
 		var lb := _label(t["text"], t["ink"], t["letter"], Vector3(t["x"], board_y + float(t["y"]), zf + LAYER_DEPTH_M + 0.004), t["bold"])

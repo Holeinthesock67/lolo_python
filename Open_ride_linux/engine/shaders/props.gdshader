@@ -13,7 +13,7 @@ shader_type spatial;
 //   4 nacelle : capot à panneaux et grilles d'aération ;
 //   5 pale : bord d'attaque usé vers le bout, salissure ;
 //   6 couche peinte d'un panneau d'approche (fond coloré, bandeau, filet) : film plat de `base_color`, avec en option
-//     un pictogramme dessiné à l'encre `ink_color` (`picto` : 1 cycliste, 2 triangle de danger « pente »).
+//     un pictogramme dessiné à l'encre `ink_color` (`picto` : 1 cycliste).
 // Dimensions de la pièce : UV2 (largeur, hauteur) pour les maillages construits par roadside_props.gd, sinon
 // `size_m` ; les pièces sont centrées sur l'origine.
 // La couleur de la pièce est `base_color` ; le texte des panneaux reste un Label3D posé devant la face.
@@ -27,26 +27,15 @@ uniform vec3 size_m = vec3(1.0);          // dimensions du maillage (centré sur
 uniform float relief = 1.0;
 uniform float head_from_m = 0.58;         // borne : hauteur du bas de la tête peinte
 uniform vec3 border_color : source_color = vec3(0.95, 0.95, 0.93);   // panneau : liseré de la face
-uniform int picto = 0;                    // couche peinte : 0 aucun, 1 cycliste, 2 triangle de pente
+uniform int picto = 0;                    // couche peinte : 0 aucun, 1 cycliste
 uniform vec3 ink_color : source_color = vec3(0.08);
 
-// Distance à un segment, à un cercle (anneau) et à un triangle équilatéral pointe en haut (côté `r` * sqrt(3))
+// Distance à un segment
 float sd_seg(vec2 p, vec2 a, vec2 b) {
 	vec2 pa = p - a;
 	vec2 ba = b - a;
 	float t = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
 	return length(pa - ba * t);
-}
-
-float sd_tri(vec2 p, float r) {
-	const float k = sqrt(3.0);
-	p.x = abs(p.x) - r;
-	p.y = p.y + r / k;
-	if (p.x + k * p.y > 0.0) {
-		p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
-	}
-	p.x -= clamp(p.x, -2.0 * r, 0.0);
-	return -length(p) * sign(p.y);
 }
 
 // Encre du pictogramme en (u, v) dans [-0.5, 0.5]² : 1 dans le trait, 0 dehors (bords adoucis de `aa`)
@@ -68,19 +57,6 @@ float picto_cyclist(vec2 q, float aa) {
 	d = min(d, sd_seg(q, vec2(0.1, 0.25), vec2(0.2, 0.12)) - 0.03);
 	d = min(d, length(q - vec2(0.2, 0.34)) - 0.065);
 	return smoothstep(aa, -aa, d);
-}
-
-// Triangle de danger : bord rouge épais, fond blanc, rampe noire « pente » et chiffres laissés au texte
-vec3 picto_slope(vec2 q, vec3 bg, vec3 ink, float aa) {
-	float d = sd_tri(q - vec2(0.0, -0.06), 0.46);
-	vec3 col = bg;
-	col = mix(col, lineaire(vec3(0.80, 0.08, 0.07)), smoothstep(aa, -aa, d));
-	col = mix(col, lineaire(vec3(0.97, 0.97, 0.95)), smoothstep(aa, -aa, d + 0.085));
-	// Rampe : triangle rectangle, montée vers la droite
-	float ramp = max(max(-(q.y + 0.24), q.x - 0.24), (q.y + 0.24) - (q.x + 0.24) * 0.55);
-	ramp = max(ramp, -(q.x + 0.24));
-	col = mix(col, ink, smoothstep(aa, -aa, ramp));
-	return col;
 }
 
 // Position dans la pièce en mètres (échelle du nœud comprise) et dimensions réelles de la pièce
@@ -190,11 +166,7 @@ void fragment() {
 		if (v_obj_normal.z > 0.5 && picto > 0) {
 			vec2 q = p.xy / max(v_extent.xy, vec2(0.01));
 			float aa = 0.012;
-			if (picto == 1) {
-				col = mix(col, ink_color, picto_cyclist(q, aa));
-			} else {
-				col = picto_slope(q, col, ink_color, aa);
-			}
+			col = mix(col, ink_color, picto_cyclist(q, aa));
 		}
 	} else {
 		// Pale : bord d'attaque (côté +x) usé et sali vers le bout

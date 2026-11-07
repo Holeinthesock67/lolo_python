@@ -199,7 +199,6 @@ var _out_dir := "user://vitrine"
 var _presets := ["low", "medium", "high"]
 var _size := DEFAULT_SIZE
 var _views: Array = VIEWS.keys()
-var _approach_style := "cycliste"
 var _checks = VitrineChecks.new()
 
 
@@ -215,8 +214,6 @@ func _init() -> void:
 			_size = Vector2i(int(wh[0]), int(wh[1]))
 		elif args[i] == "--views":
 			_views = Array(args[i + 1].split(","))
-		elif args[i] == "--panneau-style":
-			_approach_style = args[i + 1]
 	_checks.parse_args(args)
 	call_deferred("_run")
 
@@ -425,7 +422,6 @@ func _add_trees(vp: SubViewport, preset: String) -> void:
 ## Panneaux et borne de PROPS avec les matériaux de la scène principale, face à la caméra de la vue `panneaux`.
 func _add_props(vp: SubViewport, preset: String) -> void:
 	var props = RoadsideProps.new()
-	props.approach_style = _approach_style
 	props.set_preset(preset)
 	vp.add_child(props)
 	for it in PROPS:
