@@ -236,6 +236,29 @@ def worst_peloton_devices() -> dict[str, Any]:
     return d
 
 
+def worst_survivor_state() -> dict[str, Any]:
+    """Trame du Dernier survivant à 11 adversaires (lot DS8, révision 1.6) : peloton sans fantôme ni maillots,
+    sans ERG, segment ni bonus (le mode n'en a pas, plan DS §2), monde ouvert gardé, et l'objet `survivor` au
+    plus lourd. Majorant : les 12 coureurs à la fois en course (`alive`) et les 11 bots éliminés (`out`), tous
+    les bots de la trame avec `out`."""
+    from .bots import MAX_CONSTANT_BOTS
+
+    d = worst_state("1.6")
+    for key in ("segment", "powerup", "jerseys"):
+        d.pop(key, None)
+    d.update({"mode": "SIM", "erg": None})
+    d["bots"] = [b for b in d["bots"] if b.get("kind") != "ghost"][:MAX_CONSTANT_BOTS]
+    for b in d["bots"]:
+        b.pop("jersey", None)
+    ids = [b["id"] for b in d["bots"]]
+    d["draft_bot"], d["bot_ahead"], d["bot_behind"] = ids[0], ids[1], ids[2]
+    d["survivor"] = {"arch": MAX_CONSTANT_BOTS, "arches": MAX_CONSTANT_BOTS, "d_m": 2999.9,
+                     "alive": ["me", *ids], "last": ids[-1], "gap_last_s": 3599.9,
+                     "out": [[i, MAX_CONSTANT_BOTS] for i in ids], "me_out": None, "winner": None,
+                     "ahead": {"id": ids[0], "gap_s": 3599.9, "catch_w": 1999}}
+    return d
+
+
 def revisions() -> list[str]:
     return ["1.0", *REVISION_EXTRAS]
 
@@ -322,6 +345,7 @@ def report() -> str:
     lines = [f"{'révision':<22} {'octets':>6}  {'cible 1400':>10}  {'limite':>6}  marge"]
     rows = [(rev, worst_state(rev), state_limit(rev)) for rev in revisions()]
     rows.append(("1.6 peloton + devices", worst_peloton_devices(), state_limit("1.6")))
+    rows.append(("1.6 dernier survivant", worst_survivor_state(), state_limit("1.6")))
     rows.append(("1.4 rogue", worst_rogue_state(), state_limit("1.4")))
     rows += [(f"1.4 {name}", msg, MAX_DATAGRAM_SIZE) for name, msg in worst_short_messages().items()]
     for label, msg, limit in rows:
