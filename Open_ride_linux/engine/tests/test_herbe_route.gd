@@ -15,7 +15,7 @@ extends SceneTree
 ##   du bord ;
 ## - sol affiché sous la chaussée (_ground_fn, même choix que world_streamer.gd : tuile proche, sinon lointaine,
 ##   sinon tuile plate ; sol plat sans couche terrain) : en travers de la chaussée tous les SECTION_STEP_M mètres,
-##   jamais plus de TERRAIN_TOL_M au-dessus de la route (route enfoncée sous l'herbe ou le terrain) ; et la route
+##   au moins TERRAIN_SINK_MIN_M sous la route (route enfoncée sous l'herbe ou le terrain) ; et la route
 ##   ne lévite pas (constat du 4 novembre 2026 sur la démonstration sans terrain) : là où le sol est à plus de
 ##   FLOAT_TOL_M sous la chaussée, les pieds des deux talus (road_builder.gd, SKIRT_DROP_M plus bas, SKIRT_OUT_M
 ##   plus loin que le bas-côté) doivent être enterrés, sinon on voit sous la route. Les remblais plus hauts que
@@ -41,8 +41,10 @@ const ROAD_HALF_M := RoadBuilder.ROAD_WIDTH_M * 0.5
 ## Écart minimal au bord de la chaussée (m) : touffe (rayon et brins penchés), tronc d'arbre.
 const TUFT_CLEAR_M := 0.5
 const TREE_CLEAR_M := 1.0
-## Terrain au plus 2 cm au-dessus de la chaussée (il est posé 5 cm dessous par le compilateur).
-const TERRAIN_TOL_M := 0.02
+## Terrain au moins 2 cm sous la chaussée (il est posé 5 cm dessous par le compilateur et le terrain synthétique).
+## Avant le 7 novembre 2026, la règle admettait 2 cm AU-DESSUS : le terrain de la démonstration, 1 cm au-dessus de
+## la route au changement de pente du km 1,74, passait le contrôle et recouvrait la chaussée à l'écran.
+const TERRAIN_SINK_MIN_M := 0.02
 ## Route au plus 50 cm au-dessus du sol affiché, sur toute sa largeur.
 const FLOAT_TOL_M := 0.5
 const WorldStreamer := preload("res://scripts/world_streamer.gd")
@@ -184,7 +186,7 @@ func _check_terrain(tag: String, route, ground_at: Callable) -> void:
 			n += 1
 			worst_up = maxf(worst_up, d)
 			worst_down = minf(worst_down, d)
-			if d > TERRAIN_TOL_M:
+			if d > -TERRAIN_SINK_MIN_M:
 				above.append([d, "s = %.0f m, x = %.1f, z = %.1f : +%.2f m" % [s, x, z, d]])
 			if d < low:
 				low = d
@@ -200,8 +202,8 @@ func _check_terrain(tag: String, route, ground_at: Callable) -> void:
 			if not buried:
 				floating.append([-low, low_txt])
 		s += SECTION_STEP_M
-	_check(above.is_empty(), "%s : sol jamais au-dessus de la chaussée (%d points, au plus %+.2f m, %d au-dessus)%s" % [
-		tag, n, worst_up, above.size(), "" if above.is_empty() else " — " + _worst(above)])
+	_check(above.is_empty(), "%s : sol au moins %.0f cm sous la chaussée (%d points, au plus %+.2f m, %d trop haut)%s" % [
+		tag, TERRAIN_SINK_MIN_M * 100.0, n, worst_up, above.size(), "" if above.is_empty() else " — " + _worst(above)])
 	_check(floating.is_empty(), "%s : route posée sur le sol ou sur ses talus (sol au plus %.2f m sous la route ; %d coupes sur remblai de plus de %.1f m, %d sans appui)%s" % [
 		tag, -worst_down, banks, FLOAT_TOL_M, floating.size(), "" if floating.is_empty() else " — " + _worst(floating)])
 
