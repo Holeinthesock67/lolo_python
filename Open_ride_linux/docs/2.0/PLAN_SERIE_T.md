@@ -82,7 +82,7 @@ Les bots de N9 roulent à puissance constante. En 2.0, chaque bot a un profil ph
     - **Pourquoi pas distance ÷ vitesse :** l'estimation du lot O7 (1.0) suffit pour un bot à puissance constante, mais elle saute dans les montées et quand la vitesse change vite ; le temps de passage reste stable et c'est ce qu'affichent les retransmissions.
     - **Cas limites :** au départ, avant que le bot devant ait un passage enregistré, l'écart retombe sur l'estimation distance ÷ vitesse ; en boucle, le voisin est cherché sur le tour en cours ; sans bot devant (ou derrière), la ligne disparaît.
     - Le calcul se fait dans le core, une fois par trame, et l'engine affiche la valeur reçue (règle « le core est le maître »).
-- **Aspiration :** les bots abritent le joueur comme dans P3 ; l'aspiration entre bots reste hors périmètre.
+- **Aspiration :** les bots abritent le joueur comme dans P3 ; l'aspiration entre bots reste hors périmètre. Aspiration entre bots livrée ensuite par les lots AS1 à AS4 ; relais, attaques, réponses, fatigue de longue durée et forme du jour par le lot Y10 (`bot_tactics.py`, `docs/lots/LOT_Y10_comportement_bots_core.md` §9).
 - **Bonus :** les bots n'en prennent pas.
 
 ### 3.5 Contrat

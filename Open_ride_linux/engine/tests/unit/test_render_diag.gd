@@ -34,9 +34,10 @@ func _init() -> void:
 	_check(img["shadow_splits"] == 2 and img["ssil"] == "off" and img["fog_volumetric"] == "off" and not img["glow"],
 		"drapeaux appliqués")
 	_check(medium["msaa"] == 2 and medium["ssil"] == "off", "préréglage d'origine non modifié")
-	# Améliorations à faible coût : sans variable, uniformes à 0 (rendu inchangé)
+	# Améliorations à faible coût : sans variable, rendu du jeu (prés mûrs du lot Y22 à MACRO_VARIATION, le reste à 0)
 	var tm := TerrainMaterial.create_material()
-	_check(float(tm.get_shader_parameter("macro_variation")) == 0.0, "terrain : macro-variation à 0 sans essai")
+	_check(is_equal_approx(float(tm.get_shader_parameter("macro_variation")), TerrainMaterial.MACRO_VARIATION),
+		"terrain : prés mûrs à TerrainMaterial.MACRO_VARIATION sans essai")
 	var sway := load("res://shaders/tree_sway.gdshader") as Shader
 	var has_root := false
 	for u in sway.get_shader_uniform_list():
