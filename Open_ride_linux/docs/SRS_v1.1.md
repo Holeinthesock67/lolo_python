@@ -462,6 +462,9 @@ opponents = 4                # adversaires, 2 à 4 : une arche par adversaire
 spacing_km = 2               # écart entre deux arches, 1 à 3 km
 spread = "normal"            # écart de niveau des bots : "tight" (± 3 %), "normal" (± 8 %), "wide" (± 15 %)
 after_out = "ride"           # cycliste éliminé : "ride" (continuer à rouler) ou "end" (bilan tout de suite)
+[coach]                      # séance conseillée (série CO, lot CO3), réglable dans le menu ; suit le profil du joueur
+objectif = "endurance"       # "endurance", "courses" (et championnat) ou "grimpeur" : répartition visée sur 4 semaines
+temps_disponible_min = 60    # durée conseillée quand la règle ne fixe pas la sienne, 30 à 120 min par pas de 15
 [audio]                      # volumes en % (0 : coupé), réglables dans le menu, voir docs/AUDIO.md
 master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre

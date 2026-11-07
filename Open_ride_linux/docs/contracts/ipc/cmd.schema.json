@@ -78,7 +78,12 @@
         "recover_session",
         "scene_ready",
         "list_history",
-        "history_session"
+        "history_session",
+        "get_coach",
+        "set_next_race",
+        "clear_next_race",
+        "set_watch_advice",
+        "clear_watch_advice"
       ]
     },
     "args": {

@@ -97,6 +97,8 @@ DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" /
 
 CONTENT_COMMANDS = ("list_contents", "install_content")   # lot O25
 CONTENT_PROGRESS_PERIOD_S = 1.0   # message `contents` pendant une installation, une fois par seconde au plus
+COACH_COMMANDS = ("get_coach", "set_next_race", "clear_next_race", "set_watch_advice",
+                  "clear_watch_advice")   # séance conseillée (lot CO3), réponse `coach`
 PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile",
                     "clear_trial_profile", "restore_profile")   # lots MJ7 et O33
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
@@ -647,6 +649,8 @@ class CoreSession:
             self._recover_session(args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_history", "history_session"):
             self._spawn(self._send_history(name, args if isinstance(args, dict) else {}, cmd_id))
+        elif name in COACH_COMMANDS:
+            self._spawn(self._send_coach(name, args if isinstance(args, dict) else {}, cmd_id))
         elif name in CONTENT_COMMANDS:
             self._on_content_command(name, args if isinstance(args, dict) else {}, cmd_id)
 
@@ -1277,6 +1281,43 @@ class CoreSession:
             self.server.send_error("bad_args", f"Bilan impossible : {exc}")
             return
         self.server.send_raw(msg)
+
+    async def _send_coach(self, name: str, args: dict, cmd_id: int) -> None:
+        """Séance conseillée (lot CO3) : la saisie éventuelle (prochaine course, suggestion de la montre)
+        est écrite dans `conseil.json` du profil en cours, puis le conseil du jour part en message `coach`,
+        calculé comme `openride-core coach` ; `bad_args` pour une saisie ou un besoin refusé."""
+        from datetime import date
+
+        from . import coach
+        from .ipc_lists import build_coach_message
+
+        today = date.today()
+        chosen = args.get("need") if name == "get_coach" else None
+        try:
+            table = await asyncio.to_thread(coach.load_table)
+            if chosen is not None and chosen not in coach.CHOSEN_NEEDS:
+                raise coach.CoachError(f"besoin inconnu : {chosen!r}")
+            if name == "set_next_race":
+                race = coach.parse_race(args.get("date"), args.get("kind"), today)
+                await asyncio.to_thread(coach.save_next_race, race)
+            elif name == "clear_next_race":
+                await asyncio.to_thread(coach.clear_next_race)
+            elif name == "set_watch_advice":
+                await asyncio.to_thread(coach.save_watch, coach.watch_from_args(args, table), today)
+            elif name == "clear_watch_advice":
+                await asyncio.to_thread(coach.clear_watch)
+        except coach.CoachError as exc:
+            self.server.send_error("bad_args", f"Conseil : {exc}")
+            return
+        c = self.cfg.coach
+        try:
+            advice = await asyncio.to_thread(coach.advice_today, today, float(self.cfg.rider.ftp_w), c.objectif,
+                                             c.temps_disponible_min, self.journal_dir.parent, self.workouts_dir,
+                                             None, None, chosen, table)
+        except Exception:
+            log.exception("Erreur lors du calcul du conseil (cmd_id=%d)", cmd_id)
+            return
+        self.server.send_raw(build_coach_message(cmd_id, advice))
 
     def _setting_file(self, key: str) -> Path:
         """Fichier qui reçoit le réglage `key` : `profil.toml` du profil pour un réglage du joueur (FTP…),

@@ -173,7 +173,7 @@ Maquette de principe : `/mnt/project-files/menus/co-seance-conseillee/` (1280 ×
 
 Ordre : CO0 ──► CO1, CO2, CO4 ;  CO1 ──► CO3, CO6 ;  CO1, CO3 ──► CO8 ;  CO1, CO2 ──► CO9 ;  CO3, CO4, CO8, CO9 ──► CO5 ;  CO5, CO6 ──► CO7.
 
-Fichiers partagés : `session_summary.py` (lecture seule : CO1 réutilise `compute_summary` et `BEST_WINDOWS`) ; `history.py` (CO1 réutilise son cache) ; `plans.py` (CO1 lit le plan actif) ; `contents.py` (CO2) ; `profile.py` (CO3 prochaine course, puis CO8 suggestion Garmin) ; `bots.py` et `bot_tactics.py` (lecture seule pour CO9 : réglages passés au lancement) ; `menu_model.gd`, `menu_flow.gd` (CO5).
+Fichiers partagés : `session_summary.py` (lecture seule : CO1 réutilise `compute_summary` et `BEST_WINDOWS`) ; `history.py` (CO1 réutilise son cache) ; `plans.py` (CO1 lit le plan actif) ; `contents.py` (CO2) ; `conseil.json` du profil, écrit par `coach.py` (CO8 suggestion Garmin, CO3 prochaine course) ; `bots.py` et `bot_tactics.py` (lecture seule pour CO9 : réglages passés au lancement) ; `menu_model.gd`, `menu_flow.gd` (CO5).
 
 Coût de calcul : sur 90 jours de séances à 1 Hz, lecture par le cache de `history` (bilans) et `mmp.json` (meilleures puissances) ; seuls S3 et S5 relisent des journaux, ceux de 28 jours au plus. Calcul dans le core à la demande du menu, jamais pendant une séance.
 
@@ -185,3 +185,4 @@ Coût de calcul : sur 90 jours de séances à 1 Hz, lecture par le cache de `his
 | 2026-11-07 | Réponses par défaut Q1 à Q7 acceptées par le propriétaire (« Ok », 10 h 10). Ajouts du propriétaire : suggestion de la montre Garmin (§4 bis, S8, règle RG, lot CO8) et séances de jeu calibrées au besoin (§4 ter, lot CO9) ; questions Q8 à Q10. |
 | 2026-11-07 | Q8 à Q10 acceptées par le propriétaire (« Ok », 10 h 27) ; lot CO1 commencé (`coach.py`, `coach.toml`, `openride-core coach`), règle RG comprise (la saisie au menu reste à CO8). |
 | 2026-11-07 | « Lance les lots » (11 h 47) : CO2 (classement des entraînements, 3 séances livrées) et partie core de CO8 (suggestion gardée pour la journée) en PR ; le parcours conseillé sans entraînement du besoin passe à CO9, les commandes IPC de CO8 à CO3. |
+| 2026-11-07 | « Ok pour 1 à 3 » (21 h 52) : CO3 en PR (révision 1.6 du contrat : `get_coach`, message `coach`, prochaine course et suggestion de la montre par IPC, règle CH du besoin choisi, réglages `[coach]`) ; suite CO6 puis CO9. |

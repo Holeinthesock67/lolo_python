@@ -102,6 +102,11 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("survivor.spacing_km", "Survivant : écart des arches", "ride", 1, "km"),
     Setting("survivor.spread", "Survivant : écart de niveau", "ride"),
     Setting("survivor.after_out", "Survivant : si éliminé", "ride"),
+    # Séance conseillée (série CO, lot CO3) : aussi réglés depuis l'écran du conseil (lot CO5)
+    Setting("coach.objectif", "Conseil : objectif", "ride",
+            help="Endurance : surtout de l'aérobie léger. Courses : plus d'intensité. Grimpeur : plus "
+                 "d'efforts longs au seuil. Change seulement la répartition visée par la séance conseillée."),
+    Setting("coach.temps_disponible_min", "Conseil : temps disponible", "ride", 15, "min"),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20

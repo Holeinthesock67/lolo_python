@@ -31,4 +31,4 @@ Demande du propriétaire du 7 novembre : entrer dans le jeu l'entraînement sugg
 - Suggestion gardée pour la journée dans `conseil.json` du profil en cours (`save_watch`, `saved_watch`, `clear_watch` de `coach.py`, écriture sûre, autres clés gardées pour la prochaine course de CO3) ; une suggestion d'un autre jour ou abîmée est ignorée.
 - Ligne de commande : `openride-core coach --montre seuil:50 --enregistrer`, puis `openride-core coach` la reprend le même jour ; `--effacer-montre`.
 - Sous-famille de la montre : l'entraînement de la zone dominante voulue est choisi d'abord (tempo → Z3, seuil → Z4, VO2 max → Z5).
-- Les commandes IPC `set_watch_advice` et `clear_watch_advice` sont écrites avec le contrat du conseil (CO3, même révision que `get_coach`) pour ne pas ouvrir deux révisions ; l'écran de saisie est dans CO5.
+- Les commandes IPC `set_watch_advice` et `clear_watch_advice` sont écrites avec le contrat du conseil (CO3, révision 1.6 comme `get_coach`, réponse `coach`) pour ne pas ouvrir deux révisions ; l'écran de saisie est dans CO5.

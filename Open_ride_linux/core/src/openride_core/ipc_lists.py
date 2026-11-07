@@ -5,6 +5,7 @@ Construit les réponses aux commandes `list_routes` et `list_workouts`, avec lim
 ERG limités à 30 triplets. Révision 1.3 (lot O12) : fiche des parcours (`stats`, `library`),
 `unit` des entraînements, message `plans` (réponse à `list_plans`, `start_plan`, `stop_plan`).
 Révision 1.5 (lot O28) : messages `history` et `history_session` (historique du menu).
+Révision 1.6 (lot CO3) : message `coach` (séance conseillée, réponse à `get_coach` et aux saisies du conseil).
 """
 
 from __future__ import annotations
@@ -409,3 +410,26 @@ def build_history_session(request_cmd_id: int, session_id: str, path: Path, ftp_
     }
     return {"type": "history_session", "v": 1, "request_cmd_id": request_cmd_id, "id": session_id,
             "summary": summary}
+
+
+COACH_WORKOUT_KEYS = ("id", "name", "need", "dominant_zone", "tss_estimate")
+
+
+def _coach_workout(w: dict[str, Any] | None) -> dict[str, Any] | None:
+    if w is None:
+        return None
+    return {**{k: w[k] for k in COACH_WORKOUT_KEYS}, "duration_s": int(w["duration_min"]) * 60}
+
+
+def build_coach_message(request_cmd_id: int, advice: dict[str, Any]) -> dict[str, Any]:
+    """Message `coach` (lot CO3) depuis le conseil de `coach.advice_today` : mêmes clés que
+    `openride-core coach --json`, durées en secondes ; `route` (séance de jeu calibrée, lot CO9) vaut
+    null tant que ce lot n'est pas livré."""
+    workout = _coach_workout(advice["workout"])
+    return {"type": "coach", "v": 1, "request_cmd_id": request_cmd_id, "date": advice["date"],
+            "need": advice["need"], "need_label": advice["need_label"], "rule": advice["rule"],
+            "reason": advice["reason"], "duration_s": int(advice["duration_min"]) * 60,
+            "tss_estimate": workout["tss_estimate"] if workout else None,
+            "notes": list(advice["notes"]), "alternatives": list(advice["alternatives"]),
+            "workout": workout, "other_workouts": [_coach_workout(w) for w in advice["other_workouts"]],
+            "route": None, "details": advice["details"]}

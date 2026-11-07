@@ -1,0 +1,388 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideCoachMessage",
+  "description": "Séance conseillée (révision 1.6, lot CO3, série CO de la 5.0) : réponse à get_coach, set_next_race, clear_next_race, set_watch_advice et clear_watch_advice ; même calcul que openride-core coach --json (durées en secondes) ; un seul datagramme de 60 000 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "date",
+    "need",
+    "need_label",
+    "rule",
+    "reason",
+    "duration_s",
+    "tss_estimate",
+    "notes",
+    "alternatives",
+    "workout",
+    "other_workouts",
+    "route",
+    "details"
+  ],
+  "properties": {
+    "type": {
+      "const": "coach"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "need": {
+      "enum": [
+        "light",
+        "intense",
+        "anaerobic",
+        "recovery",
+        "ftp_test",
+        "rest",
+        "plan"
+      ]
+    },
+    "need_label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rule": {
+      "enum": [
+        "RG",
+        "R0",
+        "R1",
+        "R2",
+        "R3",
+        "R4",
+        "R5",
+        "R6",
+        "R7",
+        "CH"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "duration_s": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tss_estimate": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "alternatives": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "light",
+          "intense",
+          "anaerobic",
+          "recovery",
+          "ftp_test"
+        ]
+      }
+    },
+    "workout": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "id",
+        "name",
+        "need",
+        "duration_s",
+        "dominant_zone",
+        "tss_estimate"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "need": {
+          "enum": [
+            "light",
+            "intense",
+            "anaerobic",
+            "recovery",
+            "ftp_test",
+            "rest",
+            "plan"
+          ]
+        },
+        "duration_s": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dominant_zone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tss_estimate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "other_workouts": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "need",
+          "duration_s",
+          "dominant_zone",
+          "tss_estimate"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "need": {
+            "enum": [
+              "light",
+              "intense",
+              "anaerobic",
+              "recovery",
+              "ftp_test",
+              "rest",
+              "plan"
+            ]
+          },
+          "duration_s": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "dominant_zone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tss_estimate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "route": {
+      "type": "null",
+      "description": "Séance de jeu calibrée au besoin (lot CO9) ; null jusqu'à ce lot."
+    },
+    "details": {
+      "type": "object",
+      "required": [
+        "objective",
+        "targets_pct",
+        "shares_pct",
+        "deficits_pts",
+        "sessions_28d",
+        "duration_28d_s",
+        "ctl",
+        "atl",
+        "form",
+        "days_since_hard",
+        "hard_last_7d",
+        "ftp_w",
+        "ftp_test_date",
+        "ftp_age_days",
+        "profile",
+        "profile_weak",
+        "last_by_need",
+        "plan",
+        "next_race",
+        "watch"
+      ],
+      "properties": {
+        "objective": {
+          "enum": [
+            "endurance",
+            "courses",
+            "grimpeur",
+            "reprise"
+          ]
+        },
+        "sessions_28d": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ctl": {
+          "type": "number"
+        },
+        "atl": {
+          "type": "number"
+        },
+        "form": {
+          "type": "number"
+        },
+        "days_since_hard": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "hard_last_7d": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ftp_w": {
+          "type": "number",
+          "minimum": 0
+        },
+        "ftp_test_date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ftp_age_days": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "profile": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "profile_weak": {
+          "enum": [
+            "light",
+            "intense",
+            "anaerobic",
+            null
+          ]
+        },
+        "plan": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "plan",
+            "name",
+            "week",
+            "workout"
+          ]
+        },
+        "next_race": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "date",
+            "kind"
+          ],
+          "properties": {
+            "date": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "kind": {
+              "enum": [
+                "course",
+                "championnat"
+              ]
+            }
+          }
+        },
+        "watch": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "type",
+            "need",
+            "duration_min",
+            "target_w"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "repos",
+                "recuperation",
+                "fond",
+                "tempo",
+                "seuil",
+                "vo2max",
+                "anaerobie",
+                "sprint"
+              ]
+            },
+            "need": {
+              "enum": [
+                "light",
+                "intense",
+                "anaerobic",
+                "recovery",
+                "ftp_test",
+                "rest",
+                "plan"
+              ]
+            },
+            "duration_min": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 5,
+              "maximum": 600
+            },
+            "target_w": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      }
+    }
+  }
+}
