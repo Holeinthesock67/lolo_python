@@ -690,8 +690,12 @@ def _scenes(s: Session) -> None:
         s.check("mouvement_2", "distance affichée qui avance",
                 info_a["widgets"]["distance"]["text"] != info_b["widgets"]["distance"]["text"],
                 f"{info_a['widgets']['distance']['text']} → {info_b['widgets']['distance']['text']}")
+        # Durée entre les deux poses de la caméra (`camera_clock_s`, instant où l'engine l'a placée), comme le
+        # pédalier (`crank_clock_s`) : l'heure des captures (`ticks_ms`, prise après l'écriture du PNG) s'écarte
+        # d'une à deux images de la pose en Vulkan logiciel (1 à 3 images/s). CI de main du 7 novembre : 29,9 m
+        # comptés en 2,85 s, soit 10,5 m/s (seuil 6 à 10 m/s) ; même code vert sur la PR #736 juste avant.
         moved = sum((p - q) ** 2 for p, q in zip(info_a["camera"], info_b["camera"])) ** 0.5
-        dt = (info_b["ticks_ms"] - info_a["ticks_ms"]) / 1000.0
+        dt = info_b["camera_clock_s"] - info_a["camera_clock_s"]
         speed = moved / dt if dt > 0 else 0.0
         s.check("mouvement_2", "caméra à la vitesse du core (8 m/s ± 25 %)", abs(speed - SPEED_MPS) <= 0.25 * SPEED_MPS,
                 f"{moved:.1f} m en {dt:.2f} s, soit {speed:.1f} m/s")
