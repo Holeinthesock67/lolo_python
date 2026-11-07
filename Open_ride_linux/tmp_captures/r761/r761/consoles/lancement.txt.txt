@@ -1,0 +1,13 @@
+18:55:18 empreinte avant c6152d87d6a2fc30a6faa5539f239a55
+18:55:18 tête 4a6ad05d
+18:56:27 demo 1,74 km low_branche
+19:00:35 fin demo low rc=1
+19:00:35 demo 1,74 km medium_branche
+19:04:42 fin demo medium rc=1
+19:04:42 demo 1,74 km high_branche
+19:08:50 fin demo high rc=1
+19:08:50 suite
+19:27:59 fin suite rc=0
+19:28:00 empreinte après c6152d87d6a2fc30a6faa5539f239a55
+19:28:00 clone 9c7c9556
+19:28:00 FIN
