@@ -1,0 +1,6 @@
+low branche GPU 5.34/6.46 >50: 1 >=100: 0 prim 576229 échecs []
+low main GPU 5.37/6.50 >50: 1 >=100: 0 prim 609966 échecs []
+medium branche GPU 9.17/11.08 >50: 3 >=100: 0 prim 1277711 échecs []
+medium main GPU 9.57/11.69 >50: 2 >=100: 0 prim 1449240 échecs []
+high branche GPU 11.08/12.39 >50: 1 >=100: 0 prim 1888080 échecs []
+high main GPU 11.63/12.51 >50: 1 >=100: 0 prim 2159881 échecs []
