@@ -20,7 +20,7 @@ const TRACK := {"events": {
 const ROUTES := [
 	{"id": "demo", "name": "Démo", "status": "ready", "length_m": 4000.0, "library": {"tags": ["demo"]}},
 	{"id": "velodrome-250", "name": "Vélodrome 250 m", "status": "ready", "length_m": 250.0, "route_type": "loop",
-		"library": {"description": "Piste couverte de 250 m en bois, virages relevés à 42° et lignes droites à 12°.",
+		"stats": {"difficulty": 1, "duration_s": 25.0}, "library": {"region": null, "description": "Piste couverte de 250 m en bois, virages relevés à 42° et lignes droites à 12°.",
 			"tags": ["velodrome"]}}]
 
 var _failures := 0
@@ -59,6 +59,8 @@ func _run() -> void:
 	_check(only.size() == 1 and only[0]["id"] == "velodrome-250" and only[0]["detail"] == "Vélodrome", "liste filtrée (%s)" % str(only))
 	var sheet: Dictionary = CatalogModel.route_sheet(ROUTES[1])
 	_check(str(sheet["lines"][-1]).begins_with("Vélodrome — Piste couverte de 250 m en bois"), "fiche de la piste (%s)" % str(sheet["lines"]))
+	_check(not str(sheet["lines"]).contains("<null>") and not str(sheet["lines"]).contains("durée"),
+		"fiche sans région nulle ni durée de moins d'une minute (%s)" % str(sheet["lines"]))
 
 	# Écran Prêt du vélodrome
 	var m = MenuModel.new()

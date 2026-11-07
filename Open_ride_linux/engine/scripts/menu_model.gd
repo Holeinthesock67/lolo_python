@@ -305,7 +305,7 @@ func _track_items() -> Array:
 	var name := TrackNames.event_name(track_event)
 	var erg_note := " en ERG" if mode == "erg" else ""
 	var items := [_item("start", "Lancer : " + name + erg_note),
-		_item(TRACK_EVENT_ID, "Épreuve : " + name, true, "A long : épreuve suivante")]
+		_item(TRACK_EVENT_ID, "Épreuve : " + name)]
 	var opts: Dictionary = track_events.get(track_event, {})
 	for o in opts:
 		items.append(_item(TRACK_OPTION_PREFIX + str(o), "%s : %s" % [TrackNames.option_name(track_event, str(o)),
