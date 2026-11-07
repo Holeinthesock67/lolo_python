@@ -38,7 +38,8 @@ uniform float cloud_shadow_scale_m = 2600.0;
 // (0 : herbe d'avant Y11).
 uniform float grass_relief : hint_range(0.0, 2.0) = 1.0;
 uniform vec3 grass_dry_color : source_color = vec3(0.62, 0.6, 0.32);
-// Variation à grande échelle de l'herbe (bruit de 600 m, plus clair et chaud ou plus sombre et frais) ; 0 = aucune
+// Prés plus ou moins mûrs à grande échelle (plaques de 90 à 250 m, plus claires et jaunes ou plus sombres et vertes),
+// lot Y22 : le sol vu de loin n'est plus d'une seule teinte là où les touffes 3D s'arrêtent ; 0 = aucune.
 uniform float macro_variation : hint_range(0.0, 1.0) = 0.0;
 global uniform vec3 wind_dir;
 global uniform float wind_strength;
@@ -132,6 +133,9 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 	vec2 q = p3.xz;
 	float vis_blade_0 = sd_visible(q, 0.03);
 	float vis_clump_0 = sd_visible(q, 0.3);
+	// Touffes peintes (lot Y22) : gerbes de 0,6 m et plaques de 2 m, visibles bien plus loin que les brins
+	float vis_tuft_0 = sd_visible(q, 0.6);
+	float vis_patch_0 = sd_visible(q, 2.0);
 	float vis_blocks_0 = sd_visible(p3.xz + p3.y, 0.6);
 	float vis_grit_0 = sd_visible(p3.xz + p3.y, 0.08);
 	float vis_strata = sd_visible(vec2(p3.y, p3.x + p3.z), 1.2);
@@ -146,10 +150,15 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 		// Plaques plus sèches ou plus vertes (H2)
 		float dry = smoothstep(0.45, 0.8, sd_noise(q / 120.0 + vec2(3.7, 1.9)) * 0.7 + sd_noise(q / 40.0) * 0.3) * relief;
 		vec3 g = mix(c, c * 0.55 + grass_dry_color * 0.45, dry * 0.6);
-		if (macro_variation > 0.0) {
-			// Prés plus ou moins mûrs sur des centaines de mètres : casse la répétition vue de loin
-			float m = sd_noise(q / 600.0 + vec2(11.3, 4.1)) * 0.7 + sd_noise(q / 230.0 + vec2(5.2, 8.7)) * 0.3 - 0.5;
-			g *= 1.0 + m * macro_variation * vec3(0.55, 0.45, 0.25);
+		if (macro_variation * relief > 0.0) {
+			// Prés plus ou moins mûrs (plaques de 90 à 250 m) : casse la teinte unique des collines vue de loin.
+			// La somme de deux bruits lissés reste près de 0,5 : contraste ×3 pour que les plaques se voient
+			// (premier réglage du 6 novembre, ±4 % seulement, invisible sur les captures).
+			float mn = sd_noise(q / 250.0 + vec2(11.3, 4.1)) * 0.65 + sd_noise(q / 90.0 + vec2(5.2, 8.7)) * 0.35;
+			float m = clamp((mn - 0.5) * 3.0, -0.5, 0.5);
+			// Côté mûr plus jaune et plus clair, côté frais plus sombre et plus vert ; suit le relief de l'herbe
+			// (detail_strength = 0 : couleurs du thème inchangées, comme le reste du décor)
+			g *= 1.0 + m * macro_variation * relief * vec3(0.6, 0.4, 0.1);
 		}
 		// Brins et mottes (H1) : relief et mouchetures, effacés au loin
 		float vis_blade = vis_blade_0 * relief;
@@ -158,6 +167,12 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 		float clumps = sd_noise(q / 0.3);
 		grass_h = blades * 0.006 * vis_blade + clumps * 0.02 * vis_clump;
 		g *= 1.0 + (blades - 0.5) * 0.35 * vis_blade + (clumps - 0.5) * 0.18 * vis_clump;
+		// Touffes peintes (lot Y22, 6 novembre : « une illusion d'herbe sur l'ensemble du paysage ») : creux sombres
+		// entre des gerbes plus claires et plus jaunes, de 0,6 et 2 m, qui prennent le relais des touffes 3D
+		// (arrêtées à 40 m du bord de la route) jusqu'à ce que leur pas devienne plus fin qu'un pixel.
+		float tufts_p = (sd_noise(q / 0.6 + vec2(2.3, 7.1)) - 0.5) * 0.32 * vis_tuft_0
+			+ (sd_noise(q / 2.0 + vec2(9.4, 3.3)) - 0.5) * 0.26 * vis_patch_0;
+		g *= 1.0 + tufts_p * relief * vec3(1.0, 0.9, 0.6);
 		// Vagues de vent (H3) : bandes claires de 6 m qui défilent dans le sens du vent
 		vec2 wd = length(wind_dir.xz) > 1e-4 ? normalize(wind_dir.xz) : vec2(1.0, 0.0);
 		vec2 wq = vec2(dot(q, wd) - wind_phase * (2.0 + 6.0 * wind_strength), dot(q, vec2(-wd.y, wd.x)) * 0.25);

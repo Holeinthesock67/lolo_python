@@ -86,9 +86,11 @@ func configure(preset_name: String, living_enabled: bool, theme: Dictionary, env
 func set_route(route, road_width_m: float = 6.0) -> void:
 	_route = route
 	if grass != null:
-		# Essai de coût (OPENRIDE_RENDER_DIAG `herbe=F`, render_diag.gd) : part des touffes gardée.
-		var tufts := int(float(living.get("grass_tufts", 0)) * RenderDiag.number("herbe", 1.0))
-		grass.configure(tufts if enabled else 0, route, road_width_m)
+		# Essai de coût (OPENRIDE_RENDER_DIAG `herbe=F`, render_diag.gd) : part des touffes gardée, bande large comprise.
+		var share := RenderDiag.number("herbe", 1.0)
+		var tufts := int(float(living.get("grass_tufts", 0)) * share)
+		var wide := int(float(living.get("grass_tufts_wide", 0)) * share)
+		grass.configure(tufts if enabled else 0, route, road_width_m, 0, wide if enabled else 0)
 		grass.exclusions = _exclusions()
 		grass.height_at = _terrain_height(route)
 	# Biomes du parcours : modèle actif passé par world_streamer à osm_streamer (nul : pas de détails)
