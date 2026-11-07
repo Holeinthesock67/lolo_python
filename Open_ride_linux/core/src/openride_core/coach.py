@@ -41,7 +41,8 @@ le même calcul (`advice_today`).
 Clés de la sortie `--json` (stables) : date, need, need_label, rule, reason, duration_min, notes
 (liste de textes), alternatives (besoins proposés en second), workout (null ou {id, name,
 duration_min, need, dominant_zone, tss_estimate} : entraînement conseillé, lot CO2), other_workouts
-(liste de la même forme : autres entraînements du même besoin), details {objective, targets_pct,
+(liste de la même forme : autres entraînements du même besoin), route (null ou séance de jeu
+calibrée au besoin, lot CO9 : `coach_game.choose`), details {objective, targets_pct,
 shares_pct, deficits_pts, sessions_28d, duration_28d_s, ctl, atl, form, days_since_hard,
 hard_last_7d, ftp_w, ftp_test_date, ftp_age_days, profile ({fenêtre: multiple de la FTP} ou null),
 profile_weak (besoin ou null), races (au plus 3 {date, kind, place, cause}), last_by_need ({besoin: date ou null}), plan (null ou {plan, name,
@@ -87,7 +88,7 @@ def load_table(path: Path | None = None) -> dict[str, Any]:
         table = tomllib.loads(p.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
         raise CoachError(f"table du conseil illisible ({p}) : {exc}") from exc
-    for key in ("needs", "window", "hard", "targets", "rules", "profile", "durations", "watch", "workouts", "races"):
+    for key in ("needs", "window", "hard", "targets", "rules", "profile", "durations", "watch", "workouts", "races", "game"):
         if key not in table:
             raise CoachError(f"table du conseil : section [{key}] absente")
     return table
@@ -538,10 +539,15 @@ def profile_weak(signals: dict[str, Any], table: dict[str, Any]) -> str | None:
 
 
 def advise(facts: Iterable[SessionFacts], ftp_w: float, today: date, inputs: Inputs,
-           table: dict[str, Any] | None = None, library: Iterable[WorkoutNeed] | None = None) -> dict[str, Any]:
-    """Conseil complet (sortie `--json`) à partir des faits des séances et de la bibliothèque."""
+           table: dict[str, Any] | None = None, library: Iterable[WorkoutNeed] | None = None,
+           candidates: list[Any] | None = None) -> dict[str, Any]:
+    """Conseil complet (sortie `--json`) à partir des faits des séances, de la bibliothèque et des
+    parcours du catalogue (`coach_game.Candidate`, séance de jeu du lot CO9 ; aucune sans eux)."""
+    from . import coach_game
+
     table = load_table() if table is None else table
     facts = list(facts)
+    library = list(library or [])
     sig = build_signals(facts, ftp_w, today, table)
     yesterday = [r for r in sig["races"] if r["date"] == today - timedelta(days=1)]
     if yesterday and not inputs.raced_yesterday:
@@ -550,13 +556,17 @@ def advise(facts: Iterable[SessionFacts], ftp_w: float, today: date, inputs: Inp
     if inputs.chosen_need and inputs.chosen_need != adv["need"]:
         adv = choose_need(adv, inputs, table)
     need = adv["need"]
-    workout, others = pick_workout(adv, facts, today, inputs, table, list(library or []))
+    workout, others = pick_workout(adv, facts, today, inputs, table, library)
+    route = None
+    if candidates and need in (*NEEDS, "recovery") and ftp_w > 0:
+        ref = next((w.need_s.get(need) for w in library if workout and w.id == workout["id"]), None)
+        route = coach_game.choose(need, adv["duration_min"] * 60.0, ref, candidates, ftp_w, table)
     iso = lambda d: d.isoformat() if d else None  # noqa: E731
     return {
         "date": today.isoformat(), "need": need,
         "need_label": LABELS.get(need, "séance du plan"), "rule": adv["rule"], "reason": adv["reason"],
         "duration_min": adv["duration_min"], "notes": adv["notes"], "alternatives": adv["alternatives"],
-        "workout": workout, "other_workouts": others,
+        "workout": workout, "other_workouts": others, "route": route,
         "details": {
             "objective": adv["used_objective"], "targets_pct": adv["targets"],
             "shares_pct": {n: round(v, 1) for n, v in sig["shares_pct"].items()},
@@ -589,6 +599,7 @@ class WorkoutNeed:
     need: str                    # light, intense, anaerobic ou recovery
     dominant_zone: str | None    # zone la plus longue au-dessus de Z2 (tempo Z3, seuil Z4, VO2 max Z5…)
     tss: float                   # TSS estimé à la FTP donnée
+    need_s: dict[str, float] = field(default_factory=dict)   # secondes dans les zones de chaque besoin (CO9)
 
     def to_dict(self) -> dict[str, Any]:
         return {"id": self.id, "name": self.name, "duration_min": round(self.duration_s / 60.0),
@@ -626,7 +637,9 @@ def workout_need(workout: Any, ftp_w: float, table: dict[str, Any]) -> WorkoutNe
     dominant = max(hot, key=lambda z: hot[z]) if hot else None
     np_w = normalized_power(watts)
     tss = len(watts) / 3600.0 * (np_w / ftp_w) ** 2 * 100.0 if ftp_w > 0 else 0.0
-    return WorkoutNeed(workout.id, workout.name, float(len(watts)), need, dominant, tss)
+    from .coach_game import need_zones
+    per_need = {n: sum(zone_s[z] for z in need_zones(n, table)) for n in (*NEEDS, "recovery")}
+    return WorkoutNeed(workout.id, workout.name, float(len(watts)), need, dominant, tss, per_need)
 
 
 def classify_library(directory: Path, ftp_w: float, table: dict[str, Any]) -> list[WorkoutNeed]:
@@ -851,6 +864,10 @@ def format_text(r: dict[str, Any]) -> str:
         w = r["workout"]
         tss = f" · TSS ≈ {w['tss_estimate']}" if w.get("tss_estimate") is not None else ""
         lines.insert(1, f"Séance : {w['name']} ({w['duration_min']} min{tss})")
+    if r.get("route"):
+        g = r["route"]
+        lines.insert(2, f"Ou en jeu : {g['label']}, {g['route_name']} ({g['laps']} tour{'s' if g['laps'] > 1 else ''}, "
+                        f"{round(g['duration_s'] / 60)} min, {g['ratio_pct']} % du temps de l'entraînement dans le besoin)")
     lines += [f"Note : {n}" for n in r["notes"]]
     if r["alternatives"]:
         lines.append("Autres idées : " + ", ".join(LABELS.get(a, a) for a in r["alternatives"]))
@@ -865,10 +882,11 @@ def format_text(r: dict[str, Any]) -> str:
 def advice_today(today: date, ftp_w: float, objective: str, minutes: int, directory: Path | None = None,
                  workouts_dir: Path | None = None, watch: dict[str, Any] | None = None,
                  next_race: tuple[date, str] | None = None, chosen_need: str | None = None,
-                 table: dict[str, Any] | None = None) -> dict[str, Any]:
+                 table: dict[str, Any] | None = None, routes_root: Path | None = None) -> dict[str, Any]:
     """Conseil du jour du profil en cours, lu sur le disque : même calcul pour `openride-core coach` et
     pour la commande IPC `get_coach` (lot CO3). Sans `watch` ni `next_race`, les saisies du jour de
     `conseil.json` sont reprises."""
+    from . import coach_game
     from . import config as config_mod
 
     table = load_table() if table is None else table
@@ -881,7 +899,11 @@ def advice_today(today: date, ftp_w: float, objective: str, minutes: int, direct
                     plan_today=plan_today(today, ftp_w), chosen_need=chosen_need)
     facts = collect_facts(directory, ftp_w, today, table)
     library = classify_library(workouts_dir or config_mod.WORKOUTS_DIR, ftp_w, table)
-    return advise(facts, ftp_w, today, inputs, table, library)
+    try:
+        candidates = coach_game.load_candidates(routes_root)
+    except Exception:   # catalogue illisible : le conseil reste, sans séance de jeu
+        candidates = []
+    return advise(facts, ftp_w, today, inputs, table, library, candidates)
 
 
 def run(args: argparse.Namespace) -> int:
@@ -916,7 +938,7 @@ def run(args: argparse.Namespace) -> int:
             if race:
                 save_next_race(parsed)
         result = advice_today(today, ftp, objective, minutes, args.directory, args.workouts, watch, race,
-                              args.besoin, table)
+                              args.besoin, table, args.routes)
     except (CoachError, config_mod.ConfigError, ValueError) as exc:
         print(f"openride-core coach : {exc}", file=sys.stderr)
         return 1
@@ -942,6 +964,7 @@ def add_parser(sub: Any) -> None:
     p.add_argument("--effacer-course", action="store_true", help="efface la prochaine course enregistrée")
     p.add_argument("--dir", type=Path, dest="directory", help="dossier des séances (défaut : profil en cours)")
     p.add_argument("--workouts", type=Path, help="dossier des entraînements (défaut : ~/OpenRide/Workouts)")
+    p.add_argument("--routes", type=Path, help="dossier des parcours .world (défaut : celui du jeu)")
     p.add_argument("--ftp", type=float, help="FTP en watts (défaut : config.toml)")
     p.add_argument("--json", action="store_true", help="sortie JSON")
     p.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")

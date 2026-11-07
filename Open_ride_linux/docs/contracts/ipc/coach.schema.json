@@ -203,8 +203,110 @@
       }
     },
     "route": {
-      "type": "null",
-      "description": "Séance de jeu calibrée au besoin (lot CO9) ; null jusqu'à ce lot."
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Séance de jeu calibrée au besoin (lot CO9), à côté de l'entraînement ; null si aucun format ne tient 70 % du temps de l'entraînement équivalent.",
+      "required": [
+        "mode",
+        "label",
+        "route_id",
+        "route_name",
+        "laps",
+        "duration_s",
+        "bots",
+        "survivor",
+        "predicted_need_s",
+        "reference_need_s",
+        "ratio_pct"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "ride",
+            "survivor"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "route_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "route_name": {
+          "type": "string"
+        },
+        "laps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "duration_s": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bots": {
+          "type": "object",
+          "required": [
+            "count",
+            "level_pct",
+            "tactics"
+          ],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 11
+            },
+            "level_pct": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 150
+            },
+            "tactics": {
+              "enum": [
+                "none",
+                "classic",
+                "essai"
+              ]
+            }
+          }
+        },
+        "survivor": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "opponents",
+            "spacing_km"
+          ],
+          "properties": {
+            "opponents": {
+              "type": "integer",
+              "minimum": 2
+            },
+            "spacing_km": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "predicted_need_s": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reference_need_s": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ratio_pct": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     },
     "details": {
       "type": "object",

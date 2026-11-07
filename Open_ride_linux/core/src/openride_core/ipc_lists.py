@@ -423,8 +423,7 @@ def _coach_workout(w: dict[str, Any] | None) -> dict[str, Any] | None:
 
 def build_coach_message(request_cmd_id: int, advice: dict[str, Any]) -> dict[str, Any]:
     """Message `coach` (lot CO3) depuis le conseil de `coach.advice_today` : mêmes clés que
-    `openride-core coach --json`, durées en secondes ; `route` (séance de jeu calibrée, lot CO9) vaut
-    null tant que ce lot n'est pas livré."""
+    `openride-core coach --json`, durées en secondes ; `route` : séance de jeu calibrée (lot CO9) ou null."""
     workout = _coach_workout(advice["workout"])
     return {"type": "coach", "v": 1, "request_cmd_id": request_cmd_id, "date": advice["date"],
             "need": advice["need"], "need_label": advice["need_label"], "rule": advice["rule"],
@@ -432,4 +431,4 @@ def build_coach_message(request_cmd_id: int, advice: dict[str, Any]) -> dict[str
             "tss_estimate": workout["tss_estimate"] if workout else None,
             "notes": list(advice["notes"]), "alternatives": list(advice["alternatives"]),
             "workout": workout, "other_workouts": [_coach_workout(w) for w in advice["other_workouts"]],
-            "route": None, "details": advice["details"]}
+            "route": advice.get("route"), "details": advice["details"]}
