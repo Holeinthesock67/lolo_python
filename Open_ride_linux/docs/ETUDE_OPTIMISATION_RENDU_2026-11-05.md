@@ -185,3 +185,24 @@ Passe finale U18 (`mesures/2026-11-06-final/u18/resume.md`, main 50442813) : cul
 4. Prépasse de profondeur (1,25 à 1,8 ms en medium et high) : Forward+ s'en sert pour l'occlusion ambiante et la lumière indirecte, on ne la coupe pas ; elle baisse avec le nombre de triangles des arbres (pistes 1 et 2).
 
 Chaque remède : banc du tronçon en low, medium et high, captures validées par le propriétaire avant fusion. Les budgets ne bougent pas sans décision du propriétaire.
+
+### 8.4 Résultats du banc du tronçon (nuit du 6 au 7 novembre, main sans #721)
+
+`mesures/2026-11-07-cultures-foret/` (dossier partagé du projet), 2 répétitions, GPU médian par biome. Référence : cultures 7,80 / 13,06 / 15,89 ms, forêt 7,07 / 12,91 / 16,34 ms (low, medium, high). Le bloc alpin n'est pas couvert (banc trop court, à refaire avec environ 400 s).
+
+| Variante (gain en ms) | cultures low / medium / high | forêt low / medium / high |
+| --- | --- | --- |
+| `sans_ombres_arbres` | +0,10 / −0,06 / +0,06 | +0,18 / **+1,18** / **+1,86** |
+| `vegetation_50` | +0,08 / −0,18 / +0,14 | +0,10 / +0,84 / **+1,91** |
+| `arbres_lod0_300m` | +0,02 / 0,00 / +0,14 | +0,04 / +0,51 / +1,25 |
+| `sans_imposteurs` | +0,11 / −0,21 / −0,07 | −0,05 / +0,06 / +0,22 |
+| `sans_arbres` | +0,12 / −0,37 / −0,04 | **−0,95 / −0,97** / −0,28 |
+
+Ce que ça dit :
+
+- **Hypothèse du § 8.1 réfutée pour les cultures** : aucune variante des arbres ni des imposteurs n'y bouge le GPU de plus que le bruit. Le surcoût des cultures vient d'ailleurs (sol, herbe, vignes : la PR #721, absente de ce banc, devait gagner 0,6 ms en high). Le saut vu vers 6,5 km sur le tour reste à expliquer ; prochaine passe avec #721 : `herbe_50`, `sans_ombres`, `sans_ombres_details`.
+- **Forêt : le coût vient des ombres des arbres proches et de leur nombre**, surtout en high (ombres jusqu'à 600 m). La passe « ombres » de `passes.md` ne pèse que 0,3 / 0,6 ms : le reste du gain de `sans_ombres_arbres` est probablement la prépasse de profondeur et la passe opaque, plus légères quand l'atlas d'ombre a moins de détails (à confirmer).
+- **Sans aucun arbre, la forêt coûte plus cher** (−0,95 ms en low et en medium) : les arbres cachent le sol et l'herbe derrière eux, qui coûtent plus par pixel. Réduire la densité des arbres n'est donc pas le bon levier en low.
+- `arbres_lod0_300m` gagne en high (+1,25) mais rapproche la bascule vers les panneaux, refusée le 1er novembre : pas retenu.
+
+Remède mesuré à la passe suivante : **ombre portée des arbres limitée près de la caméra** (`ombres_arbres_m=M`, variantes `ombres_arbres_100`, `_150`, `_250`). Les cases de 250 m entièrement plus loin que M ne projettent plus d'ombre (`TreeRenderer.update_shadows`, recalculé tous les 10 m), et dans les cases à cheval le shader replie l'ombre des arbres plus loin que M, seulement dans les passes d'ombre (vue d'une autre caméra que la principale, `tree_sway.gdshader`) : l'image des arbres ne change pas, seules leurs ombres lointaines disparaissent. Vérifié dans le cloud (Vulkan logiciel) : l'ombre d'un objet à 33 m disparaît avec M = 10 et reste avec M = 100, l'objet reste dessiné.

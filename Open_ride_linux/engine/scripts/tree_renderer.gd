@@ -36,6 +36,11 @@ const LOD1_MAX_DIST_M := 1500.0
 ## d'une case vue de son centre (demi-diagonale et marge), pour les plages de visibilité des deux modèles.
 const SPECIES_LOD_BLEND_M := 6.0
 const CELL_RADIUS_M := CELL_SIZE_M * 0.7072 + 10.0
+## Ombre portée des arbres proches limitée (lot « cultures et forêt », 6 novembre) : au-delà de `shadow_end_m`
+## (essai `ombres_arbres_m=M`, 0 : sans borne), les cases dont aucun point n'est plus près ne projettent plus
+## d'ombre et le shader replie l'ombre des arbres plus loin dans les cases à cheval. Recalcul quand la caméra a
+## bougé de SHADOW_UPDATE_STEP_M.
+const SHADOW_UPDATE_STEP_M := 10.0
 ## Lot S1 : distance ajoutée au rang d'une case hors du champ, pour qu'elle passe avant toute case visible.
 const OUT_OF_VIEW_RANK_M := 1.0e6
 ## Distance minimale entre un tronc et le mur d'un bâtiment OSM (houppier compris).
@@ -64,12 +69,16 @@ var _species := {}
 var _tiles: Dictionary = {}
 var _active_tree_count := 0
 var _budget := 20000
+## Limite de l'ombre portée des arbres proches (m, 0 : sans borne) ; dernière position de la caméra traitée.
+var shadow_end_m := 0.0
+var _shadow_cam := Vector3(INF, INF, INF)
 ## Temps des étapes du dernier `prepare_tile`, en ms (lot O1) : placement (détail de
 ## `placer.last_profile`), semis hors zones OSM, bâtiments, répartition en cases.
 var last_profile := {}
 
 
 func _init() -> void:
+	shadow_end_m = maxf(0.0, RenderDiag.number("ombres_arbres_m", 0.0))   # essai de coût (render_diag.gd)
 	_init_materials()
 	_lod0_mesh = build_lod0_mesh()
 	_lod1_mesh = build_lod1_mesh()
@@ -79,6 +88,7 @@ func _init_materials() -> void:
 	if _tree_sway:
 		_lod0_material = sway_material(false)
 		_lod1_material = sway_material(true, true)
+		(_lod0_material as ShaderMaterial).set_shader_parameter("shadow_end_m", shadow_end_m)
 		return
 	_lod0_material = StandardMaterial3D.new()
 	_lod0_material.vertex_color_use_as_albedo = true
@@ -148,6 +158,7 @@ func _look(index: int) -> Dictionary:
 			for m in [m0, m1]:
 				(m as ShaderMaterial).set_shader_parameter("sway_height_m", float(built["height"]))
 				(m as ShaderMaterial).set_shader_parameter("lod_blend_m", SPECIES_LOD_BLEND_M)
+			(m0 as ShaderMaterial).set_shader_parameter("shadow_end_m", shadow_end_m)
 			var switch_m := TreeSpecies.lod0_m(TreeSpecies.kind_of(index))
 			if switch_m > 0.0:
 				# Passage touffe par touffe (tree_sway.gdshader) : modèle proche jusqu'à switch_m, lointain au-delà.
@@ -412,6 +423,7 @@ func add_tile(data: Dictionary) -> void:
 			"count": tree_list.size(),
 			"center": cell_center,
 		}
+		_shadow_cam = Vector3(INF, INF, INF)   # nouvelle case : ombres à recalculer au prochain update_shadows
 		_active_tree_count += tree_list.size()
 
 	_tiles[tile_key] = tile_cells
@@ -520,6 +532,34 @@ func clear() -> void:
 			_free_cell(tile_cells[cell_idx])
 	_tiles.clear()
 	_active_tree_count = 0
+
+
+## Ombre portée de chaque case selon sa distance à la caméra (`shadow_end_m`) : une case dont le point le plus proche
+## est au-delà de la limite (fondu du shader compris) ne projette plus d'ombre. Sans limite : rien ne change.
+func update_shadows(cam_pos: Vector3) -> void:
+	if shadow_end_m <= 0.0 or RenderDiag.has("sans_ombres_arbres"):
+		return
+	if Vector2(cam_pos.x - _shadow_cam.x, cam_pos.z - _shadow_cam.z).length() < SHADOW_UPDATE_STEP_M:
+		return
+	_shadow_cam = cam_pos
+	for tile_cells in _tiles.values():
+		for cell_info in tile_cells.values():
+			var mode := (GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+				if casts_shadow(cell_info["center"], cam_pos, shadow_end_m)
+				else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+			for part in cell_info["parts"]:
+				var mmi: MultiMeshInstance3D = part["lod0"]
+				if mmi.cast_shadow != mode:
+					mmi.cast_shadow = mode
+
+
+## Vrai si un point de la case de centre `center` (côté CELL_SIZE_M) est à moins de `limit_m` (plus le fondu du
+## shader) de la caméra, en plan.
+static func casts_shadow(center: Vector3, cam_pos: Vector3, limit_m: float) -> bool:
+	var half := CELL_SIZE_M * 0.5
+	var dx := maxf(absf(cam_pos.x - center.x) - half, 0.0)
+	var dz := maxf(absf(cam_pos.z - center.z) - half, 0.0)
+	return Vector2(dx, dz).length() <= limit_m + SPECIES_LOD_BLEND_M
 
 
 ## Vérifie et applique le budget d'instances en retirant les cases les plus lointaines. Lot S1 : avec la
