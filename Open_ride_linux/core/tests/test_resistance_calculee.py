@@ -278,3 +278,68 @@ def test_inertia_config_bounds():
     for bad in (-1.0, 101.0):
         with pytest.raises(config.ConfigError):
             config.from_dict({"trainer": {"resistance_inertia_pct": bad}})
+
+
+def _ride(drv, now, seconds, speed_kmh, cadence, power_of_level, start=100.0):
+    """Trames à 4 Hz ; la puissance suit le niveau envoyé (`power_of_level(niveau)`)."""
+    for i in range(int(seconds * 4)):
+        now[0] = start + i * 0.25
+        level = drv._last_sent[1] if drv._last_sent and drv._last_sent[0] == "resistance" else 0.0
+        drv._on_ibd(None, _ibd(speed_kmh, cadence, round(power_of_level(level))))
+        if drv._last_sent is None:   # contrôle repris : le niveau courant est renvoyé
+            drv._last_sent = ("resistance", level)
+    return now[0]
+
+
+def test_brake_k_learns_at_low_power():
+    """Essai du 2 novembre : 21 à 31 W sur le plat ; sous 30 W la correction de k ne tournait plus."""
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
+    drv._last_sent = ("resistance", 10.0)
+    v = 28 / 3.6
+    _ride(drv, now, 30, 28.0, 80, lambda _lvl: 0.018 * 10.0 * 28.0 * v)   # frein réel deux fois plus faible : ~39 W
+    assert drv.k_road == pytest.approx(0.018, abs=0.001)
+
+
+def test_brake_without_effect_is_retaken_then_falls_back_to_sim():
+    """Frein qui ne répond pas au niveau (25 W quel que soit le niveau, volant à 28 km/h) : deux reprises du
+    contrôle, puis le SIM du trainer pour le reste de la séance ; jamais de pédalage dans le vide."""
+    events = []
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
+    drv.event_sink = events.append
+    drv._last_sent = ("resistance", 25.0)
+    _ride(drv, now, 40, 28.0, 80, lambda _lvl: 25.0)
+    assert drv.road_weak_retakes == 2
+    assert drv.road_fallback
+    assert [e["event"] for e in events] == ["resistance_weak", "resistance_weak", "resistance_fallback"]
+    drv.set_sim_grade(1.0)
+    sent = _flush(drv)
+    assert sent and sent[0][0] == ftms.OP_SET_SIM_PARAMS   # pente 0x11 : le trainer simule la route
+
+
+def test_brake_that_answers_is_not_retaken():
+    events = []
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
+    drv.event_sink = events.append
+    drv._last_sent = ("resistance", 25.0)
+    v = 28 / 3.6
+    _ride(drv, now, 40, 28.0, 80, lambda lvl: 0.036 * lvl * 28.0 * v)
+    assert drv.road_weak_retakes == 0 and not drv.road_fallback and events == []
+
+
+def test_measures_are_traced_in_resistance_control_without_trace_ftms(caplog):
+    """L'essai du 2 novembre n'avait aucune ligne « FTMS ~ mesures » : en résistance calculée elles sont toujours écrites."""
+    drv, now = _driver()
+    assert not drv.cfg.trace_ftms
+    drv._last_sent = ("resistance", 20.0)
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        _ride(drv, now, 3, 28.0, 80, lambda _lvl: 150.0)
+    lines = [r.getMessage() for r in caplog.records if "FTMS ~ mesures" in r.getMessage()]
+    assert lines and "mesurée" in lines[0] and "k = " in lines[0]
+
+
+def test_sim_control_traces_nothing_without_trace_ftms(caplog):
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(control="sim"), BikeConfig(), clock=lambda: now[0])
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        drv._on_ibd(None, _ibd(28.0, 80, 150))
+    assert not [r for r in caplog.records if "FTMS ~ mesures" in r.getMessage()]

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : FIT de séance avec les totaux affichés par Garmin Connect et GoldenCheetah, contrôle de compatibilité dans `fit-check`, import de FIT façon Garmin verrouillé par des tests (3.0, recette 1.0 ligne 21) | Python | H5, X11, M7 | Petite | **En PR** (7 novembre, branche `claude/project-thread-lveqg5`) ; reste l'import réel par le propriétaire (protocole F1) |
+| Série X (outils de test) : FIT de séance avec les totaux affichés par Garmin Connect et GoldenCheetah, contrôle de compatibilité dans `fit-check`, import de FIT façon Garmin verrouillé par des tests (3.0, recette 1.0 ligne 21) | Python | H5, X11, M7 | Petite | **Livré le 7 novembre** (PR #745, branche `claude/project-thread-lveqg5`) ; protocole F1 validé par le propriétaire le 7 novembre |
 
 ## 1. Objectif
 
@@ -29,7 +29,17 @@ Ligne 21 de la recette 1.0, reportée en 3.0 le 1er novembre : un FIT de séance
 2. Aucun fichier d'activité réel dans le dépôt, aucune position proche du domicile (scanner X23).
 3. Recette du propriétaire (protocole F1) : `fit-check` sans ÉCHEC sur le FIT d'une vraie séance enregistrée après la fusion, puis import sans erreur dans Garmin Connect et GoldenCheetah, calories, D+ et puissance normalisée affichés.
 
-## 5. Hors périmètre
+## 5. Livraison
+
+Livré le 7 novembre : PR #745 fusionnée (critères 1 et 2), puis protocole F1 validé par le propriétaire le même jour (critère 3) sur le FIT d'une séance gravel de la démo des biomes enregistrée après la fusion :
+
+- `fit-check` : tous les contrôles OK, y compris « compatibilité Garmin Connect et GoldenCheetah » et « totaux affichés » ;
+- Garmin Connect : import sans erreur ; calories, travail, puissance normalisée (147 W, la même que dans le jeu), D+ et cadence maximale affichés ;
+- GoldenCheetah : import sans erreur ; travail (90 kJ), D+ (42 m) et puissances cohérents.
+
+Le fichier reste sur le PC du propriétaire, hors du dépôt. Ligne 21 de la recette 1.0 faite (cahier O8 §4).
+
+## 6. Hors périmètre
 
 - Training Effect et statut d'entraînement de Garmin Connect : Garmin ne les calcule que pour ses propres appareils ; se faire passer pour l'un d'eux est exclu.
 - Envoi automatique vers Garmin Connect (aucun envoi en ligne, SRS §9).

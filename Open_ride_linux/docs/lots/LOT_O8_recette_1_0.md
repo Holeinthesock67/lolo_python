@@ -92,7 +92,7 @@ Cette section est la **liste unique** de l'état des lignes du §4 ; `docs/SUIVI
 | 17, 19 | Faites. |
 | 18 | **Faite** : `low` le 31 octobre ; `medium` et `high` 1 h le 1er novembre, 60 images/s, aucun plantage, 2,2 saccades/h, mémoire stable. GPU avec le garde-fou actif (réglage du jeu) : medium 8,8 ms / 12, high 10,7 ms / 14. |
 | 20 | **Validée par le propriétaire** (1er novembre) : textes lus sans effort depuis la selle. Contraste du texte des bots sur ciel clair (2,8:1 pour 3:1) corrigé en 1.0.1. |
-| 21 | **Reportée en 3.0** (1er novembre). |
+| 21 | **Faite le 7 novembre** (reportée en 3.0 le 1er novembre, lot X56) : FIT d'une séance réelle, `fit-check` sans ÉCHEC, importé sans erreur dans Garmin Connect (calories, travail, puissance normalisée identique au jeu, D+, cadence maximale) et dans GoldenCheetah (travail, D+, puissances cohérentes). |
 | 24 | **Reportée en 2.0** avec le lot O28, historique au menu (1er novembre). |
 | 25 | **Faite le 1er novembre** : jeu piloté au Click sans terminal (appairage, menus, séance, bilan), « OpenRide – Mettre à jour » puis lancement par l'icône sur la version finale. |
 

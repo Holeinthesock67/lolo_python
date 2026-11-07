@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série BC : étude et plan (catalogue, saisons, format des cartes, stockage, maquettes, anti-triche, vie privée, visuels Gemini, questions BC-Q1 à BC-Q7, BC-Q1 et BC-Q2 tranchées le 7 novembre) | Doc | V2, MJ2, O28 (livrés) | Petite | En PR (7 novembre) |
+| Série BC : étude et plan (catalogue, saisons, format des cartes, stockage, maquettes, anti-triche, vie privée, visuels Gemini, questions BC-Q1 à BC-Q7, BC-Q1 et BC-Q2 tranchées le 7 novembre) | Doc | V2, MJ2, O28 (livrés) | Petite | Livré le 7 novembre (PR #749) |
 
 Série BC (version 5.0, badges et cartes à collectionner, demande du propriétaire du 7 novembre 2026). Plan de la série : `docs/5.0/PLAN_SERIE_BC.md`.
 
@@ -19,3 +19,7 @@ Transformer la demande du 7 novembre (badges ou cartes gagnés par des accomplis
 
 1. Le plan cite les modules existants qu'il reprend, et aucune règle d'éligibilité nouvelle.
 2. Les questions ouvertes ont une réponse par défaut, appliquée par BC1.
+
+## Livraison
+
+PR #749, fusionnée le 7 novembre 2026.

@@ -40,7 +40,8 @@ var _block_last: Label
 var _block_ahead: Label
 var _block_ahead_w: Label
 var _list: PanelContainer
-var _rows: Array = []           # [HBoxContainer, nom (RichTextLabel), détail (Label), fond (StyleBoxFlat)]
+var _rows: Array = []           # [HBoxContainer, nom (RichTextLabel), détail (Label), fond (StyleBoxFlat), {appliqué}]
+var _block_border := -1         # épaisseur du cadre du bloc déjà posée (-1 : aucune)
 var _bottom: PanelContainer
 var _bottom_title: Label
 var _bottom_sub: Label
@@ -121,7 +122,7 @@ func _build() -> void:
 		row.add_child(h)
 		row.visible = false
 		lcol.add_child(row)
-		_rows.append([row, n, d, bg])
+		_rows.append([row, n, d, bg, {}])
 
 	_bottom = _panel(Model.RED)
 	_bottom.anchor_left = 0.5
@@ -178,10 +179,12 @@ func update_view(view: Dictionary) -> void:
 		_block_ahead.visible = _block_ahead.text != ""
 		_block_ahead_w.text = str(b.get("ahead_w", ""))
 		_block_ahead_w.visible = _block_ahead_w.text != ""
-		var st := _block.get_theme_stylebox("panel") as StyleBoxFlat
-		var danger := bool(b.get("danger", false))
-		st.set_border_width_all(2 if danger else 0)
-		st.border_color = Model.LAST_RED
+		var border := 2 if bool(b.get("danger", false)) else 0
+		if border != _block_border:   # un style modifié redessine le panneau : seulement au changement
+			var st := _block.get_theme_stylebox("panel") as StyleBoxFlat
+			st.set_border_width_all(border)
+			st.border_color = Model.LAST_RED
+			_block_border = border
 	var rows: Array = view.get("list", [])
 	_list.visible = not rows.is_empty()
 	for i in range(_rows.size()):
@@ -190,21 +193,7 @@ func update_view(view: Dictionary) -> void:
 		(r[0] as Control).visible = shown
 		if not shown:
 			continue
-		var it: Dictionary = rows[i]
-		var name_text := str(it.get("name", ""))
-		var bb := name_text
-		if bool(it.get("out", false)):
-			bb = "[color=#%s][s]%s[/s][/color]" % [UiTheme.DISABLED.to_html(false), name_text]
-		elif bool(it.get("me", false)):
-			bb = "[color=#111111][b]%s[/b][/color]" % name_text
-		elif bool(it.get("last", false)):
-			bb = "[color=#%s]● %s[/color]" % [Model.LAST_RED.to_html(false), name_text]
-		(r[1] as RichTextLabel).text = bb
-		var d := r[2] as Label
-		d.text = str(it.get("detail", ""))
-		d.add_theme_color_override("font_color", Color(0.07, 0.07, 0.07) if bool(it.get("me", false)) and not bool(it.get("out", false))
-			else (Model.LAST_RED if bool(it.get("last", false)) else UiTheme.DIM))
-		(r[3] as StyleBoxFlat).bg_color = Model.YELLOW if bool(it.get("me", false)) and not bool(it.get("out", false)) else Color(0, 0, 0, 0)
+		_apply_row(r, rows[i])
 	var bo: Dictionary = view.get("bottom", {})
 	_bottom.visible = not bo.is_empty()
 	if _bottom.visible:
@@ -217,6 +206,37 @@ func update_view(view: Dictionary) -> void:
 		_set_fill(_center, ce.get("color", Model.RED))
 		_center_title.text = str(ce.get("title", ""))
 		_center_sub.text = str(ce.get("sub", ""))
+
+
+## Ligne `r` de la liste d'après `it` (survivor_hud_model.gd list_rows) : seul ce qui a changé depuis l'image
+## précédente est reposé (lot DS8 : 12 lignes à chaque image ; un texte BBCode reposé est relu, une couleur ou un
+## fond reposés relancent la mise en page de la liste, même à l'identique).
+func _apply_row(r: Array, it: Dictionary) -> void:
+	var done: Dictionary = r[4]
+	var name_text := str(it.get("name", ""))
+	var me := bool(it.get("me", false)) and not bool(it.get("out", false))
+	var bb := name_text
+	if bool(it.get("out", false)):
+		bb = "[color=#%s][s]%s[/s][/color]" % [UiTheme.DISABLED.to_html(false), name_text]
+	elif bool(it.get("me", false)):
+		bb = "[color=#111111][b]%s[/b][/color]" % name_text
+	elif bool(it.get("last", false)):
+		bb = "[color=#%s]● %s[/color]" % [Model.LAST_RED.to_html(false), name_text]
+	if done.get("bb") != bb:
+		(r[1] as RichTextLabel).text = bb
+		done["bb"] = bb
+	var d := r[2] as Label
+	var detail := str(it.get("detail", ""))
+	if d.text != detail:
+		d.text = detail
+	var color := Color(0.07, 0.07, 0.07) if me else (Model.LAST_RED if bool(it.get("last", false)) else UiTheme.DIM)
+	if done.get("color") != color:
+		d.add_theme_color_override("font_color", color)
+		done["color"] = color
+	var bg := Model.YELLOW if me else Color(0, 0, 0, 0)
+	if done.get("bg") != bg:
+		(r[3] as StyleBoxFlat).bg_color = bg
+		done["bg"] = bg
 
 
 ## Pour les tests graphiques et le banc des menus : textes affichés.
