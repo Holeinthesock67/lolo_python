@@ -94,6 +94,7 @@ const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level
 const SURVIVOR_PREFIX := "Survivant : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
+const CoachViewModel := preload("res://scripts/coach_view_model.gd")
 const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
 
 const SUMMARY := "summary"
@@ -257,6 +258,8 @@ var start_wait: Dictionary = {}
 var profiles = ProfilesViewModel.new()
 ## Historique (lot O28) : séances, cumul par semaine, tests de FTP et bilan d'une séance passée.
 var history = HistoryViewModel.new()
+## Séance conseillée (série CO, lot CO5) : conseil du jour, détail du calcul, autre besoin, saisies.
+var coach = CoachViewModel.new()
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
 var contents = ContentsViewModel.new()
 
@@ -295,6 +298,14 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": HistoryViewModel.SESSION, "title": "Séance", "on_back": HistoryViewModel.SCREEN,
 		"items": HistoryViewModel.session_items()})
+	for screen in [[CoachViewModel.SCREEN, "Séance conseillée", MenuModel.HOME],
+			[CoachViewModel.DETAIL, "Détail du calcul", CoachViewModel.SCREEN],
+			[CoachViewModel.NEED, "Choisir un autre besoin", CoachViewModel.SCREEN],
+			[CoachViewModel.RACE, "Ma prochaine course", CoachViewModel.SCREEN],
+			[CoachViewModel.WATCH, "Suggestion de ma montre", CoachViewModel.SCREEN],
+			[CoachViewModel.OTHER, "Autre séance", CoachViewModel.SCREEN]]:
+		menu.add_screen({"id": screen[0], "title": screen[1], "on_back": screen[2], "items": []})
+	_refresh_coach()
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
 	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
@@ -495,6 +506,7 @@ func on_settings(msg: Dictionary) -> void:
 	settings.on_settings(msg)
 	_refresh_settings()
 	_refresh_survivor()
+	_refresh_coach()   # objectif et temps disponible de l'écran du conseil
 	if _ftp_pending:
 		_ftp_pending = false
 		summary_message = "FTP enregistrée : %s W" % str(settings.item("rider.ftp_w").get("value", ftp_offer.get("ftp_w")))
@@ -540,6 +552,9 @@ func on_error(code: String, text: String) -> void:
 		return
 	if menu.current_screen() in HistoryViewModel.SCREENS and code == "bad_args":
 		history.message = "Échec : " + text
+		return
+	if menu.current_screen() in CoachViewModel.SCREENS and code == "bad_args":
+		coach.message = "Échec : " + text
 		return
 	if code in ["content_invalid", "content_failed"] or (code == "busy" and menu.current_screen() == ContentsViewModel.SCREEN):
 		contents.on_error(code, text)
@@ -696,6 +711,8 @@ func card(st: Dictionary) -> Dictionary:
 		return CatalogModel.pause_sheet(_run_t, _run_s, _power_sum / _power_n if _power_n > 0 else -1.0)
 	if screen in [SUMMARY, HistoryViewModel.SESSION]:
 		return {"title": "Bilan de la séance"}
+	if screen in CoachViewModel.SCREENS:
+		return _coach_card(screen, focused)
 	if screen == RECORDS:
 		return records.sheet_segment(menu.world_id, focused.substr(4)) if focused.begins_with("seg:") else {}
 	if screen == RECORD_TABLE:
@@ -1208,7 +1225,8 @@ func _handle_event(event: String) -> Dictionary:
 	if menu.current_screen() == MenuModel.HOME:
 		interrupted_message = ""   # résultat de recover_session : affiché jusqu'à l'appui suivant
 	if not settings.editing.is_empty():
-		if menu.current_screen() in [SETTING_EDIT, MenuModel.PAUSE, SETTINGS_GROUP, WORKOUT_CREATE, MenuModel.READY]:
+		if menu.current_screen() in [SETTING_EDIT, MenuModel.PAUSE, SETTINGS_GROUP, WORKOUT_CREATE, MenuModel.READY] \
+				or menu.current_screen() in CoachViewModel.SCREENS:
 			return _handle_edit(event)
 		settings.cancel()   # menu quitté pendant un réglage (séance lancée, perte du core…)
 	if menu.current_screen() == ProfilesViewModel.NAME:
@@ -1298,6 +1316,11 @@ func _handle_event(event: String) -> Dictionary:
 			_refresh_history()
 			menu.push_screen(HistoryViewModel.SCREEN)
 			return {"action": "list_history"}
+		if str(act["id"]) == "coach":   # conseil recalculé à chaque ouverture (une séance vient peut-être de finir)
+			var request: Dictionary = coach.request()
+			_refresh_coach()
+			menu.push_screen(CoachViewModel.SCREEN)
+			return request
 		if not plan_day_session().is_empty():
 			return _handle_plan_item(PLANS, "today")
 		plan_message = ""
@@ -1307,6 +1330,8 @@ func _handle_event(event: String) -> Dictionary:
 		return _handle_garage(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in HistoryViewModel.SCREENS:
 		return _handle_history(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") in CoachViewModel.SCREENS:
+		return _handle_coach(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
 		if str(act["id"]) == MenuModel.ADD_ROUTE_ID:
 			return _open_route_import()
@@ -1981,6 +2006,8 @@ func _refresh_edit() -> void:
 				settings.editing.get("value", 0)))
 		MenuModel.READY:
 			_refresh_survivor()
+		CoachViewModel.SCREEN, CoachViewModel.RACE, CoachViewModel.WATCH:
+			_refresh_coach()
 		_:
 			_refresh_settings()
 
@@ -2011,6 +2038,14 @@ func _handle_edit(event: String) -> Dictionary:
 				builder.set_value(str(act["key"]), act["value"])
 				_refresh_builder()
 				return {}
+			if act.get("action", "") == "coach_set":
+				coach.set_field(str(act["key"]), act["value"])
+				_refresh_coach()
+				return {}
+			if act.get("action", "") == "set_setting" and str(act["key"]) in CoachViewModel.SETTING_KEYS:
+				var request: Dictionary = coach.request()   # objectif ou temps changé : conseil recalculé
+				_refresh_coach()
+				return {"action": "sequence", "list": [act, request]}
 			_refresh_edit()
 			return act
 		"Y_SHORT":
@@ -2061,6 +2096,9 @@ func state() -> Dictionary:
 	elif st["screen"] in HistoryViewModel.SCREENS:
 		st["status"] = history.message
 		st["status_error"] = history.message.begins_with("Échec")
+	elif st["screen"] in CoachViewModel.SCREENS:
+		st["status"] = coach.status(str(st["screen"]))
+		st["status_error"] = coach.message.begins_with("Échec")
 	elif st["screen"] == ContentsViewModel.SCREEN:
 		st["status"] = contents.message
 		st["status_error"] = contents.message.begins_with("Échec")
@@ -2078,3 +2116,136 @@ func state() -> Dictionary:
 	st["progress"] = progress_view() if st["screen"] == SUMMARY else {}
 	st["editing"] = not settings.editing.is_empty()
 	return st
+
+
+# --- séance conseillée (série CO, lot CO5) ----------------------------------------------------------
+
+## Message `coach` du core (réponse à get_coach et aux saisies) ; une saisie enregistrée ramène au conseil.
+func on_coach(msg: Dictionary) -> void:
+	var saved: bool = coach.message in ["Enregistrement…", "Effacement…"]
+	coach.on_coach(msg)
+	if saved and menu.current_screen() in [CoachViewModel.RACE, CoachViewModel.WATCH]:
+		menu.handle("Y_SHORT")
+	_refresh_coach()
+
+
+func _refresh_coach() -> void:
+	menu.set_coach_home(coach.home_detail())
+	var rows: Array = []
+	for key in CoachViewModel.SETTING_KEYS:
+		var it: Dictionary = settings.item(key)
+		if not it.is_empty():
+			rows.append(SettingsViewModel.row("set:" + key, it,
+				settings.editing if str(settings.editing.get("key", "")) == key else {}))
+	menu.set_screen_items(CoachViewModel.SCREEN, coach.items(rows), coach.title())
+	menu.set_screen_items(CoachViewModel.DETAIL, coach.detail_items())
+	menu.set_screen_items(CoachViewModel.NEED, coach.need_items())
+	menu.set_screen_items(CoachViewModel.RACE, coach.race_items(settings.editing))
+	menu.set_screen_items(CoachViewModel.WATCH, coach.watch_items(settings.editing))
+	menu.set_screen_items(CoachViewModel.OTHER, coach.other_items())
+
+
+func _coach_card(screen: String, focused: String) -> Dictionary:
+	if focused.begins_with("set:coach."):
+		return settings.sheet(focused.substr(4))
+	match screen:
+		CoachViewModel.SCREEN:
+			return coach.sheet(focused)
+		CoachViewModel.DETAIL:
+			return coach.detail_sheet(focused)
+		CoachViewModel.NEED:
+			return coach.need_sheet(focused)
+		CoachViewModel.RACE:
+			return coach.race_sheet()
+		CoachViewModel.WATCH:
+			return coach.watch_sheet()
+		CoachViewModel.OTHER:
+			return coach.other_sheet(focused)
+	return {}
+
+
+## Choix sur un écran du conseil ; renvoie l'action pour main.gd.
+func _handle_coach(screen: String, item_id: String) -> Dictionary:
+	if item_id.begins_with("set:" + CoachViewModel.KEY_PREFIX):
+		settings.begin_with(coach.field(item_id.substr(4 + CoachViewModel.KEY_PREFIX.length())))
+		_refresh_coach()
+		return {}
+	if item_id.begins_with("set:"):
+		if settings.begin(item_id.substr(4)):
+			_refresh_coach()
+		return {}
+	match item_id:
+		"coach_workout":
+			return _launch_coach_workout()
+		"coach_race":
+			return _launch_coach_race()
+		"coach_other":
+			menu.push_screen(CoachViewModel.OTHER)
+		"coach_need":
+			menu.push_screen(CoachViewModel.NEED)
+			menu.focus_item(CoachViewModel.NEED_PREFIX + (coach.chosen_need if coach.chosen_need != "" else coach.advised_need()))
+		"coach_watch":
+			menu.push_screen(CoachViewModel.WATCH)
+		"coach_race_date":
+			menu.push_screen(CoachViewModel.RACE)
+		"coach_detail":
+			menu.push_screen(CoachViewModel.DETAIL)
+		"race_save":
+			return coach.save_race()
+		"race_clear":
+			return coach.clear("clear_next_race")
+		"watch_save":
+			return coach.save_watch()
+		"watch_clear":
+			return coach.clear("clear_watch_advice")
+		_:
+			if screen == CoachViewModel.NEED:
+				var act: Dictionary = coach.choose_need(item_id)
+				menu.handle("Y_SHORT")
+				_refresh_coach()
+				return act
+			if screen == CoachViewModel.OTHER and item_id.begins_with(CoachViewModel.OTHER_PREFIX):
+				return menu.choose_workout(item_id.substr(CoachViewModel.OTHER_PREFIX.length()))
+	return {}
+
+
+## « Lancer l'entraînement » : l'entraînement conseillé en ERG (écran Prêt, parcours d'abord sans monde choisi),
+## la séance du jour du plan actif, ou l'écran du test de FTP.
+func _launch_coach_workout() -> Dictionary:
+	match coach.need():
+		"plan":
+			if not plan_day_session().is_empty():
+				return _handle_plan_item(PLANS, "today")
+			plan_message = ""
+			menu.push_screen(PLANS)
+			return {"action": "list_plans"}
+		"ftp_test":
+			menu.push_screen(FTP_TEST)
+			return {}
+	var w: Dictionary = coach.workout()
+	return menu.choose_workout(str(w["id"])) if not w.is_empty() else {}
+
+
+## « Lancer la course » : parcours du conseil, puis course contre les bots du format (écran Prêt de la course
+## conseillée) ou Dernier survivant réglé au format (adversaires, écart des arches : réglages du mode, visibles
+## sur son écran Prêt). La difficulté de la pente reste celle du joueur.
+func _launch_coach_race() -> Dictionary:
+	var r: Dictionary = coach.route()
+	if r.is_empty():
+		return {}
+	var rid := str(r.get("route_id", ""))
+	var entry := _route_entry(rid)
+	menu.set_world(rid, str(entry.get("name", r.get("route_name", rid))) if not entry.is_empty() else str(r.get("route_name", rid)))
+	var list: Array = [{"action": "select_route", "route_id": rid}, {"action": "select_workout", "workout_id": null}]
+	if str(r.get("mode", "")) == "survivor" and r.get("survivor") is Dictionary:
+		ready_message = ""
+		for pair in [["survivor.opponents", int(r["survivor"]["opponents"])], ["survivor.spacing_km", int(r["survivor"]["spacing_km"])]]:
+			if not settings.item(pair[0]).is_empty():
+				settings.item(pair[0])["value"] = pair[1]   # affiché tout de suite, le core confirme ensuite
+			list.append({"action": "set_setting", "key": pair[0], "value": pair[1]})
+		menu.prepare_survivor()
+		_refresh_survivor()
+	else:
+		menu.prepare_coach_race("course conseillée", {"bots": coach.race_bots(MenuModel.PELOTON_PROFILES)}
+			if not coach.race_bots(MenuModel.PELOTON_PROFILES).is_empty() else {}, coach.race_ready_text())
+	return {"action": "sequence", "list": list}

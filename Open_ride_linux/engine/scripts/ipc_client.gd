@@ -36,6 +36,9 @@ signal plans_received(msg: Dictionary)
 ## Historique (lot O28, contrat 1.5) : réponse à list_history et bilan d'une séance (history_session).
 signal history_received(msg: Dictionary)
 signal history_session_received(msg: Dictionary)
+## Séance conseillée (série CO, lot CO5, contrat 1.6) : réponse à get_coach, set_next_race, clear_next_race,
+## set_watch_advice et clear_watch_advice.
+signal coach_received(msg: Dictionary)
 
 ## Monde ouvert (lot W10, contrat 1.5) : avancement de la préparation du monde (`world_status`).
 signal world_status_received(msg: Dictionary)
@@ -319,6 +322,8 @@ func _poll_incoming() -> void:
 				history_received.emit(json_obj)
 			"history_session":
 				history_session_received.emit(json_obj)
+			"coach":
+				coach_received.emit(json_obj)
 			"world_status":
 				world_status = json_obj
 				world_status_received.emit(json_obj)

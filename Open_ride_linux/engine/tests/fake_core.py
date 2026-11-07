@@ -31,6 +31,8 @@ from typing import Any, Callable
 
 CONTRACT_VERSION = 1
 STATE_HZ = 30.0
+# Commandes de la séance conseillée (contrat 1.6, lot CO3) : réponse `coach`.
+COACH_COMMANDS = ("get_coach", "set_next_race", "clear_next_race", "set_watch_advice", "clear_watch_advice")
 SPEED_MPS = 8.0
 DEMO_SEGMENTS = Path(__file__).resolve().parents[1] / "demo" / "demo.world" / "segments.json"
 
@@ -110,6 +112,7 @@ class FakeCore:
     chart: str | None = None      # hello_ack.config.chart (lot O14) ; None : champ absent
     progression: dict[str, Any] | None = None   # hello_ack.config.progression (série V, lot V6) ; None : absent
     garage: list[dict[str, Any]] | None = None  # éléments du message `garage` (lot V7) ; None : pas de réponse
+    coach: dict[str, Any] | None = None  # message `coach` (lot CO5) renvoyé aux commandes du conseil ; None : pas de réponse
     session_state: str = "IDLE"
     route_id: str | None = "demo"
     accept_cmd: Callable[[dict[str, Any], int], bool] = lambda msg, count: True
@@ -218,6 +221,8 @@ class FakeCore:
 
             if name in ("list_garage", "equip", "buy", "set_avatar") and self.garage is not None:
                 self._garage_command(name, msg.get("args") or {}, cmd_id)
+            if name in COACH_COMMANDS and self.coach is not None:
+                self._coach_command(name, msg.get("args") or {}, cmd_id)
             if getattr(self, "catalog_data", None):
                 if name == "list_routes":
                     if not getattr(self, "drop_all_catalog", False):
@@ -244,6 +249,26 @@ class FakeCore:
                     pct = args.get("pct")
                     if isinstance(pct, (int, float)):
                         self.difficulty_pct = int(round(max(0, min(100, pct))))
+
+    def _coach_command(self, name: str, args: dict[str, Any], cmd_id: int) -> None:
+        """Séance conseillée simulée (lot CO5) : le message `coach` posé par le test, avec la saisie reçue
+        (prochaine course, montre) ou le besoin choisi (règle CH), comme le vrai core (contrat 1.6)."""
+        out = json.loads(json.dumps(self.coach))
+        details = out.setdefault("details", {})
+        if name == "set_next_race":
+            details["next_race"] = {"date": args.get("date"), "kind": args.get("kind", "course")}
+            self.coach["details"]["next_race"] = details["next_race"]
+        elif name == "clear_next_race":
+            details["next_race"] = self.coach["details"]["next_race"] = None
+        elif name == "set_watch_advice":
+            details["watch"] = {"type": args.get("type"), "need": "intense", "duration_min": args.get("duration_min"),
+                                "target_w": args.get("target_w")}
+            self.coach["details"]["watch"] = details["watch"]
+        elif name == "clear_watch_advice":
+            details["watch"] = self.coach["details"]["watch"] = None
+        elif args.get("need"):
+            out.update({"need": args["need"], "rule": "CH", "alternatives": [self.coach["need"]]})
+        self.send({**out, "type": "coach", "v": CONTRACT_VERSION, "request_cmd_id": cmd_id})
 
     def _garage_command(self, name: str, args: dict[str, Any], cmd_id: int) -> None:
         """Garage simulé (lot V8) : `garage` pour list_garage ; equip, buy et set_avatar modifient le catalogue
