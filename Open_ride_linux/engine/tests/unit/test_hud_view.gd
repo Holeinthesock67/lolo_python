@@ -81,6 +81,17 @@ func _test_labels_and_values() -> void:
 	_check(hud.distance_val.text == "—", "distance vide = —")
 	_check(hud.time_val.text == "—", "temps vide = —")
 
+	# Épreuve de piste (lot VD9) : ni ligne d'état ni profil d'altitude ; la séance libre en ERG garde le bandeau
+	var on_track := state_ref.duplicate()
+	on_track["track"] = {"event": "points"}
+	hud.update_display(on_track, {}, route, 500.0)
+	_check(not hud.panel_center.visible and not hud.profile_panel.visible, "piste : ligne d'état et profil cachés")
+	on_track["erg"] = {"target_w": 200.0}
+	hud.update_display(on_track, {}, route, 500.0)
+	_check(hud.panel_center.visible, "piste en ERG : bandeau ERG gardé")
+	hud.update_display(state_ref, {}, route, 500.0)
+	_check(hud.panel_center.visible and hud.profile_panel.visible, "hors piste : ligne d'état et profil revenus")
+
 	hud.queue_free()
 
 
