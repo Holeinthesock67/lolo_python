@@ -33,3 +33,10 @@ Porter le plateau du mode de 4 à 11 bots une fois le peloton d'environ 12 bots 
 - Tests : course complète simulée à 11 adversaires sur 12 km (`test_survivor_courses.py` : une élimination par arche, bilan, aucun contact, trames sous 4 096 octets, noms reçus en 11 trames) ; `test_ipc_budget.py` ; `test_survivor_hud.gd`, `test_survivor_menu.gd`.
 - Banc PC (pire cas au départ, 12 coureurs) : `sim_bench.py --scenario dernier_survivant_onze --quality low|medium|high` sur `demo_long` (la démonstration étirée à 12 km, même générateur et même terrain), captures toutes les 15 s. Repli si un budget n'est pas tenu : `BOT_DETAIL_MAX`, puis `BOT_LOD_M`.
 - Le défaut reste 4 adversaires. La démonstration (5 km) accepte au plus 5 adversaires à 1 km.
+
+### Banc PC r735 (7 novembre, 069ad816)
+
+- GPU tenu dans les trois qualités (moyenne / p99) : low 4,94 / 5,93 ms, medium 6,60 / 7,93, high 8,27 / 9,13 (budgets 6, 12, 14).
+- Deuxième élimination jamais vue : à 250 W sur les 3-4 % de la démo, 23 km/h, la séance de 360 s s'arrêtait vers 1,9 km. Scénario passé à 280 W et 480 s.
+- Départ : pire image 149-150 ms en medium et high, au premier mètre ; d'après saccades.csv, ce sont les tuiles d'arbres et de route du départ (environ 30 ms d'arbres par tuile), comme le départ de la démo (#710), pas les 12 coureurs.
+- Low : 6,4 secondes lentes par minute (au plus 3), alors que medium en a 1,9 et high 0,4 avec plus de bots détaillés. Low a été passé en premier, cache des shaders froid (cause déjà vue sur le test rogue, #712) : à repasser avec low en dernier avant d'y toucher.

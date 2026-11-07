@@ -1,12 +1,12 @@
 {
-  "description": "Dernier survivant à 11 adversaires (lot DS8, peloton du lot PL1) sur la démonstration étirée à 12 km (demo_long), à 250 W contre 11 bots à profil (niveau 100 %, écart normal : 108 à 92 % de la FTP), une arche par kilomètre : départ groupé des 12 coureurs (pire cas GPU), trois premières arches, bots éliminés qui laissent passer puis se rangent, liste des 12 coureurs, noms et écarts des bots loin (trame allégée) ; banc GPU en low, medium et high, captures toutes les 15 s à faire valider par le propriétaire.",
+  "description": "Dernier survivant à 11 adversaires (lot DS8, peloton du lot PL1) sur la démonstration étirée à 12 km (demo_long), à 280 W contre 11 bots à profil (niveau 100 %, écart normal : 108 à 92 % de la FTP), une arche par kilomètre : départ groupé des 12 coureurs (pire cas GPU), deux premières arches au moins (480 s : la démo monte à 3-4 %, 250 W n'y faisaient que 23 km/h et la séance s'arrêtait avant l'arche 2, banc r735 du 7 novembre), bots éliminés qui laissent passer puis se rangent, liste des 12 coureurs, noms et écarts des bots loin (trame allégée) ; banc GPU en low, medium et high, captures toutes les 15 s à faire valider par le propriétaire.",
   "trainer": {
     "appear_at": 0.3,
     "connect_delay_s": 0.3
   },
   "rider": {
     "strategy": "constante",
-    "watts": 250,
+    "watts": 280,
     "cadence_rpm": 90
   },
   "click": {
@@ -31,7 +31,7 @@
         "level_pct": 100
       }
     },
-    "duration_s": 360,
+    "duration_s": 480,
     "every_s": 15,
     "expect": [
       {
