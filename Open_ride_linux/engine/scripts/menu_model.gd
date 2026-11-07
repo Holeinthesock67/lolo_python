@@ -145,6 +145,8 @@ func set_rogue_ready(text: String) -> void:
 ## Entrée des plans de l'accueil (lot O12) : « Séance du jour » avec un plan actif, sinon « Choisir un plan ».
 var plan_label := "Choisir un plan"
 var plan_detail := ""
+## Détail de la ligne « Collection » de l'accueil (série BC, lot BC5) : « 17 / 42 cartes · 2 nouvelles ».
+var collection_detail := ""
 ## Séance préparée par prepare_start() : nom affiché sur l'écran Prêt et arguments de `start` ({} sinon).
 var start_name := ""
 var start_args: Dictionary = {}
@@ -217,6 +219,7 @@ func _refresh_home() -> void:
 			items.append(_item(m, HOME_MODES[m], true, str(HOME_DETAILS.get(m, ""))))
 	items.append_array([_item("plan", plan_label, true, plan_detail), _item("ftp", "Test de FTP"),
 		_item("history", "Historique", true, "séances, semaines, tests de FTP"),
+		_item("collection", "Collection", true, collection_detail),
 		_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée")])
 	if garage:
 		items.append(_item("garage", "Garage"))
@@ -275,6 +278,12 @@ func set_modes(list) -> void:
 func set_plan_home(label: String, detail := "") -> void:
 	plan_label = label
 	plan_detail = detail
+	_refresh_home()
+
+
+## Détail de la ligne « Collection » de l'accueil (lot BC5).
+func set_collection_home(detail: String) -> void:
+	collection_detail = detail
 	_refresh_home()
 
 
@@ -784,7 +793,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "history", "rogue", "garage", "profile", "wtf", "survivor", "interrupted":
+				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "interrupted":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:

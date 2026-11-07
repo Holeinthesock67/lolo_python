@@ -110,6 +110,9 @@ class FakeCore:
     chart: str | None = None      # hello_ack.config.chart (lot O14) ; None : champ absent
     progression: dict[str, Any] | None = None   # hello_ack.config.progression (série V, lot V6) ; None : absent
     garage: list[dict[str, Any]] | None = None  # éléments du message `garage` (lot V7) ; None : pas de réponse
+    # Message `collection` (série BC, lot BC5) sans request_cmd_id ; None : pas de réponse à list_collection.
+    collection: dict[str, Any] | None = None
+    collection_seen: list[str] = field(default_factory=list)   # clés reçues par `collection_seen`
     session_state: str = "IDLE"
     route_id: str | None = "demo"
     accept_cmd: Callable[[dict[str, Any], int], bool] = lambda msg, count: True
@@ -218,6 +221,8 @@ class FakeCore:
 
             if name in ("list_garage", "equip", "buy", "set_avatar") and self.garage is not None:
                 self._garage_command(name, msg.get("args") or {}, cmd_id)
+            if name in ("list_collection", "collection_seen") and self.collection is not None:
+                self._collection_command(name, msg.get("args") or {}, cmd_id)
             if getattr(self, "catalog_data", None):
                 if name == "list_routes":
                     if not getattr(self, "drop_all_catalog", False):
@@ -244,6 +249,18 @@ class FakeCore:
                     pct = args.get("pct")
                     if isinstance(pct, (int, float)):
                         self.difficulty_pct = int(round(max(0, min(100, pct))))
+
+    def _collection_command(self, name: str, args: dict[str, Any], cmd_id: int) -> None:
+        """Collection simulée (lot BC5) : `collection` pour list_collection ; collection_seen retire les clés des
+        nouvelles et passe la première ouverture, comme le vrai core (collection_vue.json écrit)."""
+        assert self.collection is not None
+        if name == "list_collection":
+            self.send({**self.collection, "type": "collection", "v": CONTRACT_VERSION, "request_cmd_id": cmd_id})
+            return
+        keys = [str(k) for k in args.get("keys", [])]
+        self.collection_seen.extend(keys)
+        self.collection["new"] = [k for k in self.collection.get("new", []) if k not in keys]
+        self.collection["first_time"] = False
 
     def _garage_command(self, name: str, args: dict[str, Any], cmd_id: int) -> None:
         """Garage simulé (lot V8) : `garage` pour list_garage ; equip, buy et set_avatar modifient le catalogue

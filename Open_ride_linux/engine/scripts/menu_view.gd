@@ -18,6 +18,7 @@ const UiIcons := preload("res://scripts/ui_icons.gd")
 const DetailCard := preload("res://scripts/detail_card.gd")
 const GaragePreview := preload("res://scripts/garage_preview.gd")
 const ButtonHelp := preload("res://scripts/button_help.gd")
+const CollectionView := preload("res://scripts/collection_view.gd")
 
 ## Éléments affichés à la fois ; au-delà, la fenêtre suit le focus. Un de moins quand les pastilles des
 ## appareils sont affichées (accueil, Prêt, connexion) : l'accueil tient en entier.
@@ -35,6 +36,8 @@ var status_label: Label
 var card   # detail_card.gd
 var items_box: VBoxContainer
 var more_label: Label
+## Collection de cartes (série BC, lot BC5) : album, carte agrandie, première ouverture, au-dessus de la liste.
+var collection   # collection_view.gd
 ## Grille de lettres (nom d'un profil, lot MJ8) : texte saisi et cases, à la place de la liste.
 var grid_text: Label
 var grid_box: GridContainer
@@ -109,6 +112,9 @@ func _init() -> void:
 	left.add_theme_constant_override("separation", 6)
 	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(left)
+	collection = CollectionView.new()
+	collection.item_clicked.connect(func(id: String) -> void: item_clicked.emit(id))
+	left.add_child(collection)
 	items_box = VBoxContainer.new()
 	items_box.add_theme_constant_override("separation", UiTheme.ROW_GAP)
 	left.add_child(items_box)
@@ -178,7 +184,7 @@ func _show_confirm(on: bool, question := "") -> void:
 	if items_box.get_parent() != target:
 		items_box.reparent(target, false)
 		if not on:
-			_left.move_child(items_box, 0)
+			_left.move_child(items_box, collection.get_index() + 1)
 	_confirm_question.text = question
 
 
@@ -216,6 +222,8 @@ func test_rows() -> Array:
 		if c.visible:
 			out.append({"id": str(c.get_meta("item_id", "")), "text": (c.get_child(0) as Label).text,
 				"focused": bool(c.get_meta("focused", false)), "rect": c.get_global_rect()})
+	if collection.visible:
+		out.append_array(collection.test_rows())   # vignettes de l'album (lot BC5)
 	return out
 
 
@@ -224,7 +232,7 @@ func item_rect(item_id: String) -> Rect2:
 	for p in _item_panels + _grid_cells:
 		if p.visible and str(p.get_meta("item_id", "")) == item_id:
 			return p.get_global_rect()
-	return Rect2()
+	return collection.item_rect(item_id) if collection.visible else Rect2()   # vignette de l'album
 
 
 ## Grille de lettres (`menu.grid` : {columns, text}) ; cachée sans elle. Un clic sur une case passe par
@@ -297,7 +305,11 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	_show_confirm(screen == "confirm", title_label.text)
 	var grid: Dictionary = menu.get("grid", {})
 	_show_grid(grid, menu.get("items", []), int(menu.get("focus", -1)))
-	var items: Array = [] if not grid.is_empty() else menu.get("items", [])
+	var sheet_collection: Dictionary = menu.get("collection", {})
+	collection.update_display(sheet_collection)
+	var album := str(sheet_collection.get("kind", "")) == "album"   # les vignettes sont les éléments
+	items_box.visible = grid.is_empty() and not album
+	var items: Array = [] if not grid.is_empty() or album else menu.get("items", [])
 	var focus := int(menu.get("focus", -1))
 	var max_items := MAX_VISIBLE_WITH_DEVICES if screen in DEVICES_SCREENS else MAX_VISIBLE_ITEMS
 	var first := 0

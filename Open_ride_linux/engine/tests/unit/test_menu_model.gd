@@ -100,7 +100,7 @@ func _test_scenarios() -> void:
 		["PLUS_SHORT", "routes", "alpe", null],
 		["PLUS_SHORT", "routes", "vercors", null],
 	])
-	_scenario("accueil : boucle sur les neuf entrées", _routes(ROUTES_4), [
+	_scenario("accueil : boucle sur les dix entrées", _routes(ROUTES_4), [
 		["MINUS_SHORT", "home", "quit", null],
 		["PLUS_SHORT", "home", "world", null],
 		["PLUS_SHORT", "home", "ride", null],
@@ -111,6 +111,8 @@ func _test_scenarios() -> void:
 		["A_LONG", "home", "ftp", {"action": "item", "screen": "home", "id": "ftp"}],
 		["PLUS_SHORT", "home", "history", null],
 		["A_LONG", "home", "history", {"action": "item", "screen": "home", "id": "history"}],
+		["PLUS_SHORT", "home", "collection", null],
+		["A_LONG", "home", "collection", {"action": "item", "screen": "home", "id": "collection"}],
 		["PLUS_SHORT", "home", "sim", null],
 		["PLUS_SHORT", "home", "settings", null],
 		["Y_SHORT", "home", "settings", null],
@@ -308,11 +310,11 @@ func _test_prepare_start() -> void:
 func _test_modes() -> void:
 	var m = MenuModel.new()
 	var ids: Array = m.state()["items"].map(func(it): return it["id"])
-	_check(ids == ["world", "ride", "erg", "plan", "ftp", "history", "sim", "settings", "quit"],
+	_check(ids == ["world", "ride", "erg", "plan", "ftp", "history", "collection", "sim", "settings", "quit"],
 		"modes par défaut : ride et erg, puis plans et test de FTP (lot O12) (%s)" % str(ids))
 	m.set_modes(["erg", "cyber_rogue"])
 	ids = m.state()["items"].map(func(it): return it["id"])
-	_check(ids == ["world", "erg", "plan", "ftp", "history", "sim", "settings", "quit"], "modes annoncés filtrés, inconnu ignoré (%s)" % str(ids))
+	_check(ids == ["world", "erg", "plan", "ftp", "history", "collection", "sim", "settings", "quit"], "modes annoncés filtrés, inconnu ignoré (%s)" % str(ids))
 	m.set_modes(null)
 	_check(m.state()["items"].size() == 9, "modes absents : retour aux modes par défaut")
 
