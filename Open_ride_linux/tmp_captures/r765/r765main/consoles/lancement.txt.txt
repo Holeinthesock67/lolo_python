@@ -1,0 +1,14 @@
+23:42:10 empreinte avant c6152d87d6a2fc30a6faa5539f239a55
+23:42:10 tête 4971f059
+23:43:23 monde gravel ~/mesures-2026-11-01-auto/r765main/monde/biomes-farmland.world
+23:43:23 gravel low_main
+23:46:28 fin gravel low rc=1
+23:46:28 gravel medium_main
+23:49:32 fin gravel medium rc=0
+23:49:32 gravel high_main
+23:52:37 fin gravel high rc=1
+23:52:37 unit road_cyclists_main
+23:53:41 fin unit rc=0
+23:53:42 empreinte après c6152d87d6a2fc30a6faa5539f239a55
+23:53:42 clone 9c7c9556
+23:53:42 FIN

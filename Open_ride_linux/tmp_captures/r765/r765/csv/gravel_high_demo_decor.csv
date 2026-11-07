@@ -1,0 +1,45 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+29.2;0;0;0;0;0;0;0;
+38.1;27;0;0;0;0;0;0;crow_caw=1
+44.6;28;0;0;0;0;0;0;crow_caw=1
+44.8;28;0;0;0;0;0;0;crow_caw=1
+45.1;28;0;0;0;0;0;0;crow_caw=1
+45.3;28;0;0;0;0;0;0;crow_caw=1
+45.6;28;0;0;0;0;0;0;crow_caw=1
+46.0;28;0;0;0;0;0;0;crow_caw=1
+49.2;28;0;0;0;0;0;0;crow_caw=1
+52.0;28;0;0;0;0;0;0;crow_caw=1
+58.0;28;0;0;0;0;0;0;crow_caw=1
+62.0;28;0;0;0;0;0;0;crow_caw=1
+64.0;28;0;0;0;0;0;0;crow_caw=1
+64.3;28;0;0;0;0;0;0;crow_caw=1
+70.0;28;0;0;0;0;0;0;crow_caw=1
+76.0;28;0;0;0;0;0;0;crow_caw=1
+77.0;28;0;0;0;0;0;0;crow_caw=1
+79.2;28;0;0;0;0;0;0;crow_caw=1
+82.0;28;0;0;0;0;0;0;crow_caw=1
+88.0;28;0;0;0;0;0;0;crow_caw=1
+92.0;28;0;0;0;0;0;0;crow_caw=1
+94.0;28;0;0;0;0;0;0;crow_caw=1
+94.3;28;0;0;0;0;0;0;crow_caw=1
+100.0;28;0;0;0;0;1;0;airliner_rumble=1 crow_caw=1
+106.0;28;0;0;0;0;1;0;airliner_rumble=1 crow_caw=1
+109.2;28;0;0;0;0;1;0;airliner_rumble=1 crow_caw=1
+112.0;28;0;0;0;0;1;0;airliner_rumble=1 crow_caw=1
+118.0;28;0;0;0;0;1;0;airliner_rumble=1 crow_caw=1 voice_allez=1
+124.0;28;0;0;0;0;1;0;airliner_rumble=1 crow_caw=1 voice_allez=1
+124.3;28;0;0;0;0;1;0;airliner_rumble=1 crow_caw=1 voice_allez=1
+130.0;28;0;0;0;0;1;0;airliner_rumble=1 crow_caw=1 voice_allez=1
+136.0;28;0;0;0;0;1;0;airliner_rumble=1 crow_caw=1 voice_allez=1
+139.2;28;0;0;0;1;1;0;airliner_rumble=1 crow_caw=1 voice_allez=1
+142.0;28;0;0;0;1;2;0;airliner_rumble=2 crow_caw=1 voice_allez=1
+148.0;28;0;0;0;1;2;0;airliner_rumble=2 crow_caw=1 voice_allez=1
+152.0;28;0;0;0;1;2;0;airliner_rumble=2 crow_caw=1 voice_allez=1
+154.0;28;0;0;0;1;2;0;airliner_rumble=2 crow_caw=1 voice_allez=1
+154.3;28;0;0;0;1;2;0;airliner_rumble=2 crow_caw=1 voice_allez=1
+160.0;28;0;0;1;1;2;0;airliner_rumble=2 crow_caw=1 voice_allez=1
+166.0;28;0;0;1;1;2;0;airliner_rumble=2 crow_caw=1 voice_allez=1
+169.2;28;0;0;1;1;2;0;airliner_rumble=2 crow_caw=1 voice_allez=1
+172.0;28;0;0;1;1;2;0;airliner_rumble=2 crow_caw=1 voice_allez=1
+178.0;28;0;0;1;1;2;0;airliner_rumble=2 crow_caw=1 voice_allez=1
+181.1;28;0;0;1;1;2;0;airliner_rumble=2 crow_caw=1 voice_allez=1

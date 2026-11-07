@@ -1,0 +1,51 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_road_cyclists_model
+
+30 km : 21 groupes en plaine, 30 en montée, cas { "ahead": 22, "oncoming": 23, "overtake": 6 }, 20 doublés, 6 qui doublent, 2 « Salut ! », 58 km/h au plus
+[OK] 20 km de plaine : de 15 à 30 groupes (21)
+[OK] 10 km de montée : de 20 à 40 groupes (30)
+[OK] aucun cycliste du décor à moins de 0,7 m (épaule à épaule) du cycliste
+[OK] en face à gauche de l'axe, devant à droite du cycliste (0 écarts)
+[OK] aucun cycliste du décor à moins de 1,2 m latéralement d'un bot
+[OK] groupes devant doublés (20), groupes qui doublent (6)
+[OK] jamais plus que le budget de 16 cyclistes (15)
+[OK] jamais plus de 70 km/h (58.2)
+[OK] même graine, même parcours : mêmes groupes
+[OK] autre graine : autres groupes
+[OK] 6 autres graines, budget 8 : mêmes garanties
+[OK] un groupe qui double dit « Salut ! » de temps en temps (17)
+[OK] budget nul : aucun cycliste
+[OK] pas de groupe en face pendant qu'un véhicule est sur la route
+[OK] puissance constante : 25 km/h sur le plat
+[OK] montée à 6 % : 9.0 km/h ; descente à 8 % : 66.4 km/h
+[OK] cadence à 30 km/h en 50 × 17 : 81 tr/min ; roue libre à 60 km/h
+[OK] pause : cyclistes figés
+[OK] affichage : un avatar visible par cycliste du modèle, à sa place (5 au plus)
+[OK] cadence de chaque cycliste affiché d'après sa vitesse
+[OK] apparence de chaque cycliste tirée de son maillot et de sa tenue
+[OK] niveaux de détail des bots selon l'écart ([1113, 2012, 15131] images par niveau)
+[OK] un avatar par cycliste au plus (6 pour 7)
+[OK] avatars cachés repris par les cyclistes suivants de même apparence (0 créés, 3 affichés)
+[PERF] road_cyclists_frame : 0.0323 ms, budget 0.1000 ms
+[OK] 16 cyclistes au plus : modèle en 0.0323 ms par image
+[PERF] road_cyclists_view_frame : 0.2660 ms, budget 0.5000 ms
+[OK] 16 avatars au plus : affichage en 0.2660 ms par image
+[OK] maillots du décor d'autres couleurs que ceux des bots et de l'avatar par défaut
+[OK] sans dossard ni matériel de contre-la-montre
+[OK] 16 apparences différentes
+[OK] chaque maillot et chaque tenue donnent une des 16 apparences
+[OK] low : préchauffage, 16 avatars de réserve minuscules devant la caméra (32 niveaux construits)
+[OK] low : réserve cachée après 3 images
+[OK] low : cyclistes qui arrivent sur les avatars préchauffés (0 créé(s) pour 3 affichés)
+[OK] high : préchauffage, 16 avatars de réserve minuscules devant la caméra (48 niveaux construits)
+[OK] high : réserve cachée après 3 images
+[OK] high : cyclistes qui arrivent sur les avatars préchauffés (0 créé(s) pour 3 affichés)
+[OK] niveaux préchauffés : 1 et 2 en low (32), 0 à 2 en high (48)
+test_road_cyclists_model : 37 vérifications, 0 échecs
+UNIT=test_road_cyclists_model : rendu, ERG et scénarios IPC sautés
+Budgets de temps (OPENRIDE_PERF=report) : 2 mesures, 0 dépassement(s)
+  road_cyclists_frame : 0.0323 ms, budget 0.1000 ms
+  road_cyclists_view_frame : 0.2660 ms, budget 0.5000 ms
+Résumé :
+  OK     unit/test_road_cyclists_model : 37 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent

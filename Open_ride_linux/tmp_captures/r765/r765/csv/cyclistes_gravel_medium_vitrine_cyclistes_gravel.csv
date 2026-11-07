@@ -1,0 +1,12 @@
+scène;qualité;id;rel_m;écart_axe_m;demi_largeur_m;lacet_deg;axe_a_axe_m
+file;medium;c1000000-0;9.00;1.00;1.50;-0.0;nan
+file;medium;c1000000-1;6.90;1.00;1.50;-0.0;2.10
+file;medium;c1000000-2;4.80;1.00;1.50;-0.0;2.10
+en_face;medium;c1000000-0;25.63;-1.00;1.50;0.0;nan
+en_face;medium;c1000000-1;27.73;-1.00;1.50;0.0;2.10
+rabattement_1;medium;c1000000-0;22.67;-0.04;1.50;-3.3;nan
+rabattement_1;medium;c1000000-1;20.57;-0.04;1.50;-3.3;2.10
+rabattement_2;medium;c1000000-0;23.56;0.32;1.50;-8.8;nan
+rabattement_2;medium;c1000000-1;21.46;0.32;1.50;-8.8;2.10
+rabattement_3;medium;c1000000-0;24.44;0.71;1.50;-4.3;nan
+rabattement_3;medium;c1000000-1;22.34;0.71;1.50;-4.3;2.10

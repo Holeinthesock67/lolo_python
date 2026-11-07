@@ -1,0 +1,1 @@
+make_biome_world : ~/mesures-2026-11-01-auto/r765/monde/biomes-farmland.world (farmland 100.0 % ; surfaces {'dirt': 11.2, 'gravel': 22.2, 'paved': 66.6})
