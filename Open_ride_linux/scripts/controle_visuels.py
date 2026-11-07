@@ -216,36 +216,69 @@ def normalize_image(
 ) -> None:
     """Normalise une image brute (p. ex. 1024x1024 livrée par Gemini) :
 
-    - Redimensionne en 512 × 512 avec filtre Lanczos
-    - Applique un masque circulaire si l'image n'est pas transparente
+    - Détecte le cercle du badge pour éliminer tout anneau blanc extérieur
+    - Recadre exactement sur le badge et redimensionne en 512 × 512 (Lanczos)
+    - Applique un masque circulaire transparent
     - Optimise la compression PNG sous max_kb (200 Ko)
     """
+    import math
     from PIL import Image, ImageDraw
 
     src_p = Path(src)
     dst_p = Path(dst)
     dst_p.parent.mkdir(parents=True, exist_ok=True)
 
-    with Image.open(src_p) as im:
-        im = im.convert("RGBA")
-        w, h = im.size
+    with Image.open(src_p) as raw_im:
+        im_rgb = raw_im.convert("RGB")
+        w, h = im_rgb.size
+        cx, cy = w // 2, h // 2
 
-        # Si l'image n'a pas de canal alpha effectif, découpe circulaire automatique
-        alpha_min = im.getchannel("A").getextrema()[0]
-        if alpha_min >= 255:
-            mask = Image.new("L", (w, h), 0)
-            draw = ImageDraw.Draw(mask)
-            # Cercle centré d'environ 85-88% de la taille
-            margin = int(w * 0.06)
-            draw.ellipse((margin, margin, w - margin, h - margin), fill=255)
-            im.putalpha(mask)
+        # Détection du rayon effectif du badge le long de 180 rayons
+        angles = [i * (2 * math.pi / 180) for i in range(180)]
+        radii: list[int] = []
+        for a in angles:
+            cos_a = math.cos(a)
+            sin_a = math.sin(a)
+            for r in range(int(min(w, h) * 0.49), int(min(w, h) * 0.25), -1):
+                px = int(cx + r * cos_a)
+                py = int(cy + r * sin_a)
+                if 0 <= px < w and 0 <= py < h:
+                    r_px, g_px, b_px = im_rgb.getpixel((px, py))
+                    # Fond clair / blanc / damier
+                    is_bg = (
+                        r_px > 215
+                        and g_px > 215
+                        and b_px > 215
+                        and abs(r_px - g_px) < 18
+                        and abs(r_px - b_px) < 18
+                    )
+                    if not is_bg:
+                        radii.append(r)
+                        break
 
-        im_resized = im.resize((target_size, target_size), Image.Resampling.LANCZOS)
+        if len(radii) >= 30:
+            radii.sort()
+            median_r = radii[len(radii) // 2] + 1
+            left = max(0, cx - median_r)
+            top = max(0, cy - median_r)
+            right = min(w, cx + median_r)
+            bottom = min(h, cy + median_r)
+            im_cropped = raw_im.crop((left, top, right, bottom)).convert("RGBA")
+        else:
+            im_cropped = raw_im.convert("RGBA")
 
-        # Sauvegarde optimisée
+        im_resized = im_cropped.resize((target_size, target_size), Image.Resampling.LANCZOS)
+
+        # Masque circulaire net
+        mask = Image.new("L", (target_size, target_size), 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0, target_size, target_size), fill=255)
+        im_resized.putalpha(mask)
+
+        # Sauvegarde
         im_resized.save(dst_p, format="PNG", optimize=True)
 
-        # Si le fichier dépasse max_kb, quantisation 256 couleurs préservant l'alpha
+        # Si le fichier dépasse max_kb, quantisation FASTOCTREE préservant l'alpha
         if dst_p.stat().st_size > max_kb * 1024:
             q = im_resized.quantize(colors=256, method=Image.Quantize.FASTOCTREE)
             q.save(dst_p, format="PNG", optimize=True)
