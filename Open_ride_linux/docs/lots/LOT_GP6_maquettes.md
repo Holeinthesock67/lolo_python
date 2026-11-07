@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : maquettes des treize objets, des boîtes, du HUD, des avertissements et du bilan, charte cartoon CT9, validées par le propriétaire | Docs | GP1 | Petite | Maquettes soumises le 7 novembre 2026, en attente de validation (version 4.0 proposée) |
+| Série GP : maquettes des treize objets, des boîtes, du HUD, des avertissements et du bilan, charte cartoon CT9, validées par le propriétaire | Docs | GP1 | Petite | Maquettes validées par le propriétaire le 7 novembre 2026 (version 4.0 proposée) |
 
 Série GP (mode « Grand Prix des objets », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`.
 
@@ -27,7 +27,7 @@ Montrer au propriétaire, avant tout code d'affichage, le dessin de chaque objet
 
 ## 5. Maquettes soumises (7 novembre 2026)
 
-**Statut : soumises au propriétaire le 7 novembre 2026, en attente de validation.** GP7 et GP8 ne commencent pas avant la date de validation, notée ici.
+**Statut : soumises au propriétaire le 7 novembre 2026 et validées telles quelles le 7 novembre 2026 à 23 h 10 (heure de Paris). GP7 et GP8 peuvent commencer, dans l'ordre de la série.**
 
 Dossier du projet (hors dépôt, comme CT9) : `/mnt/project-files/captures/gp6-maquettes/`. Sept scènes, chacune en 1680×1050 et 1024×600, en `low`, `medium` et `high` (42 images dans `images/`), une planche par scène et une planche du réglage « Effets » de CT9 (forts, normaux, discrets) sur la scène 3. Images fixes dessinées en SVG et rendues par Chromium (`maquettes_gp6.js`, qui reprend les fonctions de `maquettes_ct9.js` dans `ct9_lib.js`) : ce ne sont pas des captures de l'engine, qui n'a encore aucun code du mode.
 
