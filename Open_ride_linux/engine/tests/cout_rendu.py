@@ -59,6 +59,8 @@ VARIANTS: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...], str], ...] = (
     ("ombres_arbres_150", "ombres_arbres_m=150", (), QUALITIES, "ombre des arbres jusqu'à 150 m de la caméra"),
     ("ombres_arbres_250", "ombres_arbres_m=250", (), QUALITIES, "ombre des arbres jusqu'à 250 m de la caméra"),
     ("ombres_2_cascades", "ombres_2_cascades", (), ("medium", "high"), "2 cascades d'ombre au lieu de 4"),
+    ("ombres_arbres_100_2c", "ombres_arbres_m=100,ombres_2_cascades", (), ("medium", "high"),
+     "ombre des arbres jusqu'à 100 m et 2 cascades d'ombre"),
     ("ombres_200m", "ombres_m=200", (), ("medium", "high"), "ombres jusqu'à 200 m au lieu de 400 / 600"),
     ("atlas_4096", "atlas=4096", (), ("medium", "high"), "COÛT : atlas des ombres 4096 au lieu de 2048"),
     ("filtre_low", "filtre=low", (), ("high",), "bord des ombres moins doux"),
@@ -74,6 +76,8 @@ VARIANTS: tuple[tuple[str, str, tuple[str, ...], tuple[str, ...], str], ...] = (
     ("sans_glow", "sans_glow", (), ("medium", "high"), "sans halo"),
     # Décor
     ("herbe_50", "herbe=0.5", (), QUALITIES, "moitié des touffes d'herbe"),
+    ("herbe_75", "herbe=0.75", (), QUALITIES, "trois quarts des touffes d'herbe"),
+    ("herbe_150m", "herbe_fin_m=150", (), QUALITIES, "herbe effacée à 150 m au lieu de 250"),
     ("vegetation_50", "vegetation_x=0.5", (), QUALITIES, "moitié moins d'arbres (densité du préréglage × 0,5)"),
     ("sans_arbres", "vegetation_x=0", (), QUALITIES, "aucun arbre proche (borne du coût des arbres)"),
     ("sans_imposteurs", "", ("--forest", "off"), QUALITIES, "sans les forêts lointaines en imposteurs (lot Y5)"),

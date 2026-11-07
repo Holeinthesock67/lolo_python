@@ -8,7 +8,8 @@ extends RefCounted
 ## Drapeaux et réglages (RenderQuality.apply_diagnostic sauf mention) :
 ##   sans_ombres, sans_ssao, sans_ssil, sans_brume, sans_glow, biais_ombres, ombres_2_cascades,
 ##   msaa=0|2|4, screen_aa=off|fxaa|smaa, ssao=low|medium|high, ssil=low|medium|high, atlas=2048|4096, ombres_m=M, filtre=hard|low|medium,
-##   vegetation=F (densité des arbres, world_streamer), herbe=F (nombre de touffes, living_world),
+##   vegetation=F (densité des arbres, world_streamer), herbe=F (nombre de touffes, living_world), herbe_fin_m=M (fin du fondu des touffes, 250 m sans essai,
+##   grass_tufts),
 ##   sans_ombres_arbres, arbres_lod0_m=M (tree_renderer), anisotropy=2|4|8|16, halo_niveaux=N,
 ##   toute clé de QualityPresets.IMAGE (`shadow_filter=high`, `glow=false`).
 ## Devenus réglages des préréglages le 6 novembre (plus des essais) : feuillage en lambert sans spéculaire,

@@ -202,7 +202,7 @@ func _tuft_material(lod_begin: float, lod_end: float) -> ShaderMaterial:
 	m.set_shader_parameter("sway_amplitude_m", 0.12)
 	m.set_shader_parameter("sway_frequency_hz", 0.9)
 	m.set_shader_parameter("thin_start_m", THIN_START_M)
-	m.set_shader_parameter("fade_end_m", FADE_END_M)
+	m.set_shader_parameter("fade_end_m", fade_end())
 	m.set_shader_parameter("pick_from_custom", true)
 	m.set_shader_parameter("lod_begin_m", lod_begin)
 	m.set_shader_parameter("lod_end_m", lod_end)
@@ -235,7 +235,13 @@ func _make_mmi(mm: MultiMesh, material: ShaderMaterial) -> MultiMeshInstance3D:
 
 ## Part des touffes gardées par le fondu à `d` mètres de la caméra (même courbe que tree_sway.gdshader).
 static func keep_at(d: float) -> float:
-	return 1.0 - smoothstep(THIN_START_M, FADE_END_M, d)
+	return 1.0 - smoothstep(THIN_START_M, fade_end(), d)
+
+
+## Fin du fondu de l'herbe : FADE_END_M, ou l'essai de coût `herbe_fin_m=M` (render_diag.gd), jamais avant la
+## fin de l'éclaircissement.
+static func fade_end() -> float:
+	return maxf(THIN_START_M + 10.0, RenderDiag.number("herbe_fin_m", FADE_END_M))
 
 
 ## Tirage du fondu de la place `slot` du tronçon `k` (0 à 1) : la touffe est montrée tant que keep_at(d) le dépasse.
@@ -414,7 +420,7 @@ func _set_box(g: int, box: AABB) -> void:
 	var radius := grown.size.length() * 0.5
 	_near_mmi[g].visibility_range_end = LOD_SWITCH_M + LOD_BLEND_M + radius
 	_far_mmi[g].visibility_range_begin = maxf(0.0, LOD_SWITCH_M - LOD_BLEND_M - radius)
-	_far_mmi[g].visibility_range_end = FADE_END_M + radius
+	_far_mmi[g].visibility_range_end = fade_end() + radius
 
 
 ## Touffe du désert ? 0 : herbe d'avant ; 1 : herbe sèche ; −1 : place laissée vide (désert clairsemé).
