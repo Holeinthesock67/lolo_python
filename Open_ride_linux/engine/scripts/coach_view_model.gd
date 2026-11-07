@@ -127,6 +127,14 @@ static func need_name(n: String) -> String:
 	return str(NEED_TEXTS.get(n, [n])[0])
 
 
+## Ligne d'état sur deux lignes au plus (« \n » à une espace vers `width` caractères) : la raison tient sans « … ».
+static func two_lines(text: String, width := 100) -> String:
+	if text.length() <= width:
+		return text
+	var cut := text.rfind(" ", width)
+	return text if cut <= 0 else text.substr(0, cut) + "\n" + text.substr(cut + 1)
+
+
 static func first_upper(text: String) -> String:
 	return text.left(1).to_upper() + text.substr(1)
 
@@ -178,7 +186,7 @@ func status(screen: String) -> String:
 		return message if message != "" else LOADING
 	match screen:
 		SCREEN:
-			return "Pourquoi : " + str(msg.get("reason", ""))
+			return two_lines("Pourquoi : " + str(msg.get("reason", "")))
 		DETAIL:
 			return "Répartition du temps sur 4 semaines, en regard de ta cible (objectif %s)." \
 				% str(OBJECTIVE_TEXTS.get(str(details().get("objective", "")), details().get("objective", "")))
@@ -296,8 +304,8 @@ func route_sheet() -> Dictionary:
 		if int(bots.get("count", 0)) > 0:
 			tiles.append({"label": "Niveau", "value": str(int(bots.get("level_pct", 0))), "unit": "%"})
 	tiles.append({"label": "Dans le besoin", "value": str(int(r.get("ratio_pct", 0))), "unit": "%", "gold": true})
-	lines.append("Simulée à tes valeurs : %d min dans les zones du besoin" % minutes(r.get("predicted_need_s")))
-	lines.append("pour %d min avec l'entraînement." % minutes(r.get("reference_need_s")))
+	lines.append("Simulée à tes valeurs : %d min dans le besoin," % minutes(r.get("predicted_need_s")))
+	lines.append("contre %d min avec l'entraînement." % minutes(r.get("reference_need_s")))
 	lines.append("Difficulté de la pente : la tienne.")
 	return {"title": "Course contre des bots" if str(r.get("mode", "")) == "ride" and int(bots.get("count", 0)) > 0
 		else ("Dernier survivant" if str(r.get("mode", "")) == "survivor" else "Séance en jeu"),
@@ -457,7 +465,7 @@ static func format_edit(key: String, value, base_date: String) -> String:
 	match key.trim_prefix(KEY_PREFIX):
 		"race_days":
 			var day := add_days(base_date, int(value))
-			return date_text(day) + (" (aujourd'hui)" if int(value) == 0 else " (dans %d j)" % int(value))
+			return date_text(day)   # « dans n jours » : carte de l'écran
 		"race_kind":
 			return str(RACE_KIND_TEXTS.get(str(value), value))
 		"watch_type":

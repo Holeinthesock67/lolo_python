@@ -229,13 +229,13 @@ func _test_race_and_watch_inputs() -> void:
 	f.menu.focus_item("coach_race_date")
 	f.handle("A_LONG")
 	var st: Dictionary = f.state()
-	_check(st["screen"] == Coach.RACE and _item(st, "set:conseil.race_days")["detail"] == "sam. 14/11 (dans 7 j)"
+	_check(st["screen"] == Coach.RACE and _item(st, "set:conseil.race_days")["detail"] == "sam. 14/11"
 		and not _item(st, "race_clear")["enabled"], "prochaine course : dans 7 jours par défaut (%s)" % str(_item(st, "set:conseil.race_days")))
 	f.menu.focus_item("set:conseil.race_days")
 	f.handle("A_LONG")
 	f.handle("MINUS_SHORT")
 	f.handle("MINUS_SHORT")
-	_check(_item(f.state(), "set:conseil.race_days")["detail"] == "◀ jeu. 12/11 (dans 5 j) ▶", "date modifiée en place")
+	_check(_item(f.state(), "set:conseil.race_days")["detail"] == "◀ jeu. 12/11 ▶", "date modifiée en place")
 	f.handle("A_LONG")
 	f.menu.focus_item("set:conseil.race_kind")
 	f.handle("A_LONG")
