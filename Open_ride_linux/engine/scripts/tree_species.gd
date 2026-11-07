@@ -119,8 +119,10 @@ static func is_deciduous(kind: String) -> bool:
 
 # --- Primitives -------------------------------------------------------------------------------
 
+## Triangle a, b, c dans le sens des aiguilles d'une montre vu de devant (sens de Godot : seul l'avant est dessiné
+## en cull_back) ; normale par défaut : vers l'avant. Contrôle : tests/unit/test_tree_faces.gd.
 static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, col: Color, n: Vector3 = Vector3.ZERO) -> void:
-	var nn := n if n != Vector3.ZERO else (b - a).cross(c - a).normalized()
+	var nn := n if n != Vector3.ZERO else (c - a).cross(b - a).normalized()
 	for p in [a, b, c]:
 		st.set_color(col)
 		st.set_normal(nn)
@@ -138,8 +140,8 @@ static func _limb(st: SurfaceTool, base: Vector3, top: Vector3, r0: float, r1: f
 		var d0 := side * cos(a0) + other * sin(a0)
 		var d1 := side * cos(a1) + other * sin(a1)
 		var n := ((d0 + d1) * 0.5).normalized()
-		_tri(st, base + d0 * r0, base + d1 * r0, top + d0 * r1, col, -n)
-		_tri(st, base + d1 * r0, top + d1 * r1, top + d0 * r1, col, -n)
+		_tri(st, base + d1 * r0, base + d0 * r0, top + d0 * r1, col, n)
+		_tri(st, base + d1 * r0, top + d0 * r1, top + d1 * r1, col, n)
 
 
 ## Cône de feuillage (faces latérales et dessous).
@@ -150,8 +152,8 @@ static func _cone(st: SurfaceTool, y0: float, y1: float, r: float, col: Color, c
 		var a1 := TAU * (i + 1) / SIDES
 		var p0 := center + Vector3(cos(a0) * r, y0, sin(a0) * r)
 		var p1 := center + Vector3(cos(a1) * r, y0, sin(a1) * r)
-		_tri(st, p1, p0, tip, col)
-		_tri(st, center + Vector3(0, y0, 0), p0, p1, shade(col, 0.8), Vector3.DOWN)
+		_tri(st, p0, p1, tip, col)
+		_tri(st, center + Vector3(0, y0, 0), p1, p0, shade(col, 0.8), Vector3.DOWN)
 
 
 ## Houppier en ellipsoïde à facettes (6 méridiens, `rings` parallèles) : 12 × (rings − 1) triangles.
@@ -315,7 +317,7 @@ static func build(kind: String) -> Dictionary:
 			for i in range(8):
 				_frond(st, Vector3(0.9, 11.0, 0), TAU * i / 8.0 + 0.3, 4.2, 0.6, 2.2, 1.5, mat(Color(0.22, 0.42, 0.16), MAT_FRONDS))
 		"acacia":
-			_limb(st, Vector3.ZERO, Vector3(0.3, 4.0, 0), 0.22, 0.16, BARK)
+			_limb(st, Vector3.ZERO, Vector3(0.3, 3.7, 0), 0.22, 0.16, BARK)   # arrêté juste au-dessus de la fourche (3,6 m) : bout ouvert caché par les branches
 			_limb(st, Vector3(0.3, 3.6, 0), Vector3(2.4, 6.0, 0.5), 0.12, 0.08, BARK, 4)
 			_limb(st, Vector3(0.3, 3.6, 0), Vector3(-1.8, 6.1, -0.8), 0.12, 0.08, BARK, 4)
 			_blob(st, Vector3(0.3, 6.8, 0), Vector3(5.0, 1.0, 4.6), mat(Color(0.33, 0.42, 0.18), MAT_LEAVES))
