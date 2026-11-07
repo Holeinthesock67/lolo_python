@@ -9,7 +9,7 @@ const MenuFlow := preload("res://scripts/menu_flow.gd")
 
 const SIM := {"eligible": true, "reason": null,
 	"gains": [{"source": "distance", "points": 302}, {"source": "climb", "points": 302}],
-	"total": 604, "xp_total": 1200, "xp_next_level": 1500, "level_before": 9, "level_after": 9,
+	"total": 604, "xp_total": 1200, "xp_level_start": 500, "xp_next_level": 1500, "level_before": 9, "level_after": 9,
 	"coins_gained": 42, "coins_total": 232, "equipment_gain_s": -12.5, "unlocked": [], "challenges": [], "more": false}
 
 var _failures := 0
@@ -40,8 +40,8 @@ func _test_model() -> void:
 	_check(vals.get("Distance 30,2 km") == "+302 XP" and vals.get("Dénivelé 412 m") == "+302 XP", "SIM : distance et dénivelé : %s" % str(vals))
 	_check(vals.get("Total") == "+604 XP" and vals.get("Pièces") == "+42 (solde 232)", "total et pièces")
 	_check(vals.get("Équipement") == "−12,5 s sur la séance", "temps de l'équipement : gagné")
-	_check(v["bar"]["text"] == "Niveau 9 : ■■■■■■■■□□ 1200 / 1500 XP", "barre : %s" % v["bar"]["text"])
-	_check(is_equal_approx(v["bar"]["before"], 596.0 / 1500.0) and is_equal_approx(v["bar"]["after"], 0.8), "barre : de avant à après")
+	_check(v["bar"]["text"] == "Niveau 9 : ■■■■■■■□□□ 700 / 1000 XP vers le niveau 10", "barre : %s" % v["bar"]["text"])
+	_check(is_equal_approx(v["bar"]["before"], 0.096) and is_equal_approx(v["bar"]["after"], 0.7), "barre : de avant à après dans le niveau")
 	_check(v["level_up"] == "" and not v["garage"], "pas de montée de niveau")
 	var s := SIM.duplicate(true)
 	s["equipment_gain_s"] = null
@@ -61,13 +61,28 @@ func _test_model() -> void:
 	_check(m.view({"eligible": false, "reason": "autre"})["lines"][0]["label"] == "Séance sans expérience", "refusée, motif inconnu")
 	# montée de niveau, déblocages, défis
 	var u := SIM.duplicate(true)
-	u.merge({"level_before": 9, "level_after": 10, "xp_total": 100, "xp_next_level": 1600, "total": 604,
+	u.merge({"level_before": 9, "level_after": 10, "xp_total": 1600, "xp_level_start": 1500, "xp_next_level": 2600, "total": 604,
 		"unlocked": ["f_aero", "inconnu"], "challenges": [{"id": "c1", "name": "Tour du lac", "reward_item": "f_aero"}], "more": true}, true)
 	var names := {"f_aero": {"name": "Profilé", "slot": "frame"}}
 	var uv: Dictionary = m.view(u, {}, names)
 	_check(uv["level_up"] == "Niveau 10 !" and uv["bar"]["before"] == 0.0, "niveau 10 : annonce, barre repart de zéro")
 	_check(uv["unlocked"] == ["Débloqué : cadre Profilé", "Débloqué : inconnu"], "déblocages nommés : %s" % str(uv["unlocked"]))
 	_check(uv["challenges"] == ["Défi réussi : Tour du lac — cadre Profilé"] and uv["more"] != "" and uv["garage"], "défi, suite et accès au Garage")
+	_check(uv["bar"]["text"] == "Niveau 10 : ■□□□□□□□□□ 100 / 1100 XP vers le niveau 11", "niveau 10 : barre depuis le seuil : %s" % uv["bar"]["text"])
+	# Recette vélo du 7 novembre : niveau 7 de 6 650 à 7 910 XP, barre dans le niveau et non sur le total
+	var r7 := SIM.duplicate(true)
+	r7.merge({"level_before": 7, "level_after": 7, "xp_total": 7542, "xp_level_start": 6650, "xp_next_level": 7910, "total": 300}, true)
+	var b7: Dictionary = m.view(r7)["bar"]
+	_check(is_equal_approx(b7["after"], 892.0 / 1260.0) and is_equal_approx(b7["before"], 592.0 / 1260.0)
+		and b7["text"] == "Niveau 7 : ■■■■■■■□□□ 892 / 1260 XP vers le niveau 8", "niveau 7 : 71 %% et non 95 %% : %s" % str(b7))
+	r7.merge({"level_before": 6, "xp_total": 6667, "total": 120}, true)
+	b7 = m.view(r7)["bar"]
+	_check(b7["before"] == 0.0 and is_equal_approx(b7["after"], 17.0 / 1260.0)
+		and b7["text"] == "Niveau 7 : □□□□□□□□□□ 17 / 1260 XP vers le niveau 8", "juste après le passage au niveau 7 : 1 %% et non 84 %% : %s" % str(b7))
+	# sans seuil du niveau (core ancien) : barre depuis zéro comme avant
+	var o := SIM.duplicate(true)
+	o.erase("xp_level_start")
+	_check(is_equal_approx(m.view(o)["bar"]["after"], 0.8), "sans xp_level_start : barre depuis zéro")
 	# niveau maximal
 	var x := SIM.duplicate(true)
 	x["xp_next_level"] = null

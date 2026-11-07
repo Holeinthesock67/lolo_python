@@ -318,10 +318,12 @@ Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = inten
 ### F1. FIT de séance dans Garmin Connect et GoldenCheetah (O8 ligne 21)
 
 - **Étapes :** d'abord `openride-core fit-check ~/OpenRide/Activities/<séance>.fit --journal ~/OpenRide/Activities/.journal/<séance>.jsonl` (contrôle local, X11 : le fichier ne quitte pas le PC) ; puis importer le FIT de D1 ou E1 (`~/OpenRide/Activities/`) dans Garmin Connect, puis dans GoldenCheetah.
-- **Attendu :** `fit-check` sans ÉCHEC (une ATTENTION se note) ; import sans erreur, puissance, cadence et FC présentes.
-- [ ] `fit-check` sans échec
-- [ ] Garmin Connect
-- [ ] GoldenCheetah
+- **Attendu :** `fit-check` sans ÉCHEC (une ATTENTION se note), y compris la ligne « compatibilité Garmin Connect et GoldenCheetah » (lot X56) ; import sans erreur, puissance, cadence et FC présentes ; pour un FIT enregistré après le lot X56, calories, D+ et puissance normalisée affichés (un FIT plus ancien donne l'ATTENTION « totaux affichés » et s'importe quand même).
+- **Où :** Garmin Connect, sur le site, « Importer des données » (icône nuage) puis le fichier `.fit` ; GoldenCheetah, menu « Activité › Importer depuis un fichier ».
+- [x] `fit-check` sans échec
+- [x] Garmin Connect
+- [x] GoldenCheetah
+- **Fait le 7 novembre** (lot X56) : séance gravel de la démo des biomes, `fit-check` entièrement OK, import sans erreur dans les deux logiciels.
 
 ### F2. Traces Garmin déposées dans le dossier (O5)
 

@@ -163,7 +163,7 @@ openride-core run --trainer ftms|mock|sim --input click|keyboard|none|sim [--hr 
 openride-core recover            # transforme le dernier journal en FIT après un plantage
 openride-core release-trainer    # libère le HomeTrainer resté réservé (consigne annulée, contrôle FTMS rendu, déconnexion)
 openride-core summary [CHEMIN] [--ftp W] [--json]   # bilan : NP, IF, TSS, zones, meilleures puissances
-openride-core fit-check FICHIER.fit [--journal JOURNAL.jsonl] [--json]   # contrôle local d'un FIT réel avant import (SDK Garmin, extra dev) : messages, pauses, trous, FC figée, totaux
+openride-core fit-check FICHIER.fit [--journal JOURNAL.jsonl] [--json]   # contrôle local d'un FIT réel avant import (SDK Garmin, extra dev) : messages, pauses, trous, FC figée, totaux, compatibilité Garmin Connect et GoldenCheetah (X56)
 openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]   # historique et cumul par semaine ISO
 openride-core xp [--dir DOSSIER] [--json]   # progression (série V) : niveau, expérience, défis, depuis le journal
 openride-core demo-biomes [--out DOSSIER] [--json]   # quatre parcours fictifs des biomes (tour des six biomes, tour gravel, côte et mer, alpin) dans le dossier des parcours (lot U19, compilateur requis)

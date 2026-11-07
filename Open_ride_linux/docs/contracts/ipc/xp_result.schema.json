@@ -13,6 +13,7 @@
     "level_before",
     "level_after",
     "xp_total",
+    "xp_level_start",
     "xp_next_level",
     "coins_gained",
     "coins_total",
@@ -91,6 +92,11 @@
       "maximum": 50
     },
     "xp_total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "xp_level_start": {
+      "description": "Révision 1.6 (bilan de niveau) : seuil d'expérience du niveau level_after ; la barre du bilan va de ce seuil à xp_next_level.",
       "type": "integer",
       "minimum": 0
     },
