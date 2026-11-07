@@ -1,0 +1,1331 @@
+{
+  "low": {
+    "base": {
+      "secondes": 231,
+      "gpu_ms": 8.04,
+      "fps": 59.73,
+      "p99_ms": 16.67,
+      "primitives": 773401.5,
+      "appels": 257.0,
+      "gpu_sature_pct": 0.0,
+      "par_biome": {
+        "farmland": {
+          "secondes": 235,
+          "gpu_ms": 8.39,
+          "fps": 59.39,
+          "p99_ms": null,
+          "primitives": 714687.0,
+          "gpu_ms_reps": [
+            8.61,
+            8.18
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 179,
+          "gpu_ms": 7.54,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 1171488.5,
+          "gpu_ms_reps": [
+            7.62,
+            7.47
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 37,
+          "gpu_ms": 8.07,
+          "fps": 59.17,
+          "p99_ms": null,
+          "primitives": 1184518.75,
+          "gpu_ms_reps": [
+            8.31,
+            7.84
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        8.2,
+        7.87
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "sans_ombres": {
+      "secondes": 236,
+      "gpu_ms": 7.29,
+      "fps": 59.25,
+      "p99_ms": 16.7,
+      "primitives": 499389.5,
+      "appels": 226.5,
+      "gpu_sature_pct": 0.0,
+      "par_biome": {
+        "farmland": {
+          "secondes": 234,
+          "gpu_ms": 7.71,
+          "fps": 59.3,
+          "p99_ms": null,
+          "primitives": 505515.5,
+          "gpu_ms_reps": [
+            7.74,
+            7.69
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 179,
+          "gpu_ms": 6.67,
+          "fps": 59.25,
+          "p99_ms": null,
+          "primitives": 580470.5,
+          "gpu_ms_reps": [
+            6.67,
+            6.66
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 37,
+          "gpu_ms": 7.29,
+          "fps": 59.54,
+          "p99_ms": null,
+          "primitives": 793134.75,
+          "gpu_ms_reps": [
+            7.24,
+            7.33
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        7.24,
+        7.35
+      ],
+      "enleve": "aucune ombre portée (borne du coût des ombres)",
+      "diag": "sans_ombres",
+      "gain_gpu_ms": 0.75,
+      "diag_non_vu": false
+    },
+    "sans_ombres_arbres": {
+      "secondes": 244,
+      "gpu_ms": 7.92,
+      "fps": 59.56,
+      "p99_ms": 16.67,
+      "primitives": 718663.75,
+      "appels": 239.5,
+      "gpu_sature_pct": 0.2,
+      "par_biome": {
+        "farmland": {
+          "secondes": 229,
+          "gpu_ms": 8.2,
+          "fps": 59.23,
+          "p99_ms": null,
+          "primitives": 717626.0,
+          "gpu_ms_reps": [
+            8.23,
+            8.16
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 187,
+          "gpu_ms": 7.34,
+          "fps": 59.96,
+          "p99_ms": null,
+          "primitives": 754796.75,
+          "gpu_ms_reps": [
+            7.38,
+            7.31
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 43,
+          "gpu_ms": 7.86,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 1001039.25,
+          "gpu_ms_reps": [
+            7.88,
+            7.84
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        7.94,
+        7.89
+      ],
+      "enleve": "arbres sans ombre portée",
+      "diag": "sans_ombres_arbres",
+      "gain_gpu_ms": 0.12,
+      "diag_non_vu": false
+    },
+    "ombres_arbres_100": {
+      "secondes": 244,
+      "gpu_ms": 7.91,
+      "fps": 60.0,
+      "p99_ms": 16.67,
+      "primitives": 757831.75,
+      "appels": 252.0,
+      "gpu_sature_pct": 0.0,
+      "par_biome": {
+        "farmland": {
+          "secondes": 228,
+          "gpu_ms": 8.25,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 718389.0,
+          "gpu_ms_reps": [
+            8.21,
+            8.29
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 189,
+          "gpu_ms": 7.44,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 1059953.5,
+          "gpu_ms_reps": [
+            7.4,
+            7.47
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 43,
+          "gpu_ms": 7.9,
+          "fps": 59.61,
+          "p99_ms": null,
+          "primitives": 1112254.75,
+          "gpu_ms_reps": [
+            7.92,
+            7.88
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        7.92,
+        7.9
+      ],
+      "enleve": "ombre des arbres jusqu'à 100 m de la caméra",
+      "diag": "ombres_arbres_m=100",
+      "gain_gpu_ms": 0.13,
+      "diag_non_vu": false
+    },
+    "ombres_arbres_150": {
+      "secondes": 246,
+      "gpu_ms": 7.92,
+      "fps": 60.0,
+      "p99_ms": 16.67,
+      "primitives": 758361.25,
+      "appels": 250.25,
+      "gpu_sature_pct": 0.0,
+      "par_biome": {
+        "farmland": {
+          "secondes": 229,
+          "gpu_ms": 8.21,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 718277.0,
+          "gpu_ms_reps": [
+            8.24,
+            8.18
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 189,
+          "gpu_ms": 7.46,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 1073480.5,
+          "gpu_ms_reps": [
+            7.49,
+            7.42
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 43,
+          "gpu_ms": 7.98,
+          "fps": 59.17,
+          "p99_ms": null,
+          "primitives": 1130802.25,
+          "gpu_ms_reps": [
+            8.04,
+            7.93
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        7.92,
+        7.91
+      ],
+      "enleve": "ombre des arbres jusqu'à 150 m de la caméra",
+      "diag": "ombres_arbres_m=150",
+      "gain_gpu_ms": 0.12,
+      "diag_non_vu": false
+    },
+    "ombres_arbres_250": {
+      "secondes": 245,
+      "gpu_ms": 7.99,
+      "fps": 59.95,
+      "p99_ms": 16.67,
+      "primitives": 759247.5,
+      "appels": 256.75,
+      "gpu_sature_pct": 0.0,
+      "par_biome": {
+        "farmland": {
+          "secondes": 228,
+          "gpu_ms": 8.23,
+          "fps": 59.89,
+          "p99_ms": null,
+          "primitives": 717025.5,
+          "gpu_ms_reps": [
+            8.26,
+            8.21
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 189,
+          "gpu_ms": 7.58,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 1087819.5,
+          "gpu_ms_reps": [
+            7.55,
+            7.62
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 42,
+          "gpu_ms": 7.94,
+          "fps": 59.5,
+          "p99_ms": null,
+          "primitives": 1141500.5,
+          "gpu_ms_reps": [
+            7.93,
+            7.95
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        7.98,
+        7.99
+      ],
+      "enleve": "ombre des arbres jusqu'à 250 m de la caméra",
+      "diag": "ombres_arbres_m=250",
+      "gain_gpu_ms": 0.05,
+      "diag_non_vu": false
+    },
+    "herbe_50": {
+      "secondes": 245,
+      "gpu_ms": 7.78,
+      "fps": 59.75,
+      "p99_ms": 16.67,
+      "primitives": 704419.0,
+      "appels": 256.0,
+      "gpu_sature_pct": 0.0,
+      "par_biome": {
+        "farmland": {
+          "secondes": 229,
+          "gpu_ms": 8.04,
+          "fps": 59.7,
+          "p99_ms": null,
+          "primitives": 668864.5,
+          "gpu_ms_reps": [
+            8.05,
+            8.02
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 189,
+          "gpu_ms": 7.29,
+          "fps": 59.9,
+          "p99_ms": null,
+          "primitives": 1029246.25,
+          "gpu_ms_reps": [
+            7.37,
+            7.21
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 42,
+          "gpu_ms": 7.88,
+          "fps": 58.34,
+          "p99_ms": null,
+          "primitives": 1079116.5,
+          "gpu_ms_reps": [
+            7.95,
+            7.82
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        7.78,
+        7.78
+      ],
+      "enleve": "moitié des touffes d'herbe",
+      "diag": "herbe=0.5",
+      "gain_gpu_ms": 0.26,
+      "diag_non_vu": false
+    }
+  },
+  "medium": {
+    "base": {
+      "secondes": 242,
+      "gpu_ms": 13.72,
+      "fps": 59.56,
+      "p99_ms": 16.67,
+      "primitives": 2104389.25,
+      "appels": 368.25,
+      "gpu_sature_pct": 5.1,
+      "par_biome": {
+        "farmland": {
+          "secondes": 229,
+          "gpu_ms": 14.2,
+          "fps": 59.5,
+          "p99_ms": null,
+          "primitives": 1743808.5,
+          "gpu_ms_reps": [
+            14.24,
+            14.16
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 188,
+          "gpu_ms": 13.63,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 4603277.5,
+          "gpu_ms_reps": [
+            13.7,
+            13.56
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 34,
+          "gpu_ms": 13.9,
+          "fps": 58.56,
+          "p99_ms": null,
+          "primitives": 3997611.5,
+          "gpu_ms_reps": [
+            13.98,
+            13.82
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        13.79,
+        13.66
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "sans_ombres": {
+      "secondes": 241,
+      "gpu_ms": 12.23,
+      "fps": 59.78,
+      "p99_ms": 16.67,
+      "primitives": 1419995.0,
+      "appels": 281.5,
+      "gpu_sature_pct": 0.8,
+      "par_biome": {
+        "farmland": {
+          "secondes": 233,
+          "gpu_ms": 13.38,
+          "fps": 59.5,
+          "p99_ms": null,
+          "primitives": 1238012.25,
+          "gpu_ms_reps": [
+            13.48,
+            13.29
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 183,
+          "gpu_ms": 11.68,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 1782229.5,
+          "gpu_ms_reps": [
+            11.77,
+            11.59
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 35,
+          "gpu_ms": 12.46,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 2070361.25,
+          "gpu_ms_reps": [
+            12.68,
+            12.24
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        12.31,
+        12.16
+      ],
+      "enleve": "aucune ombre portée (borne du coût des ombres)",
+      "diag": "sans_ombres",
+      "gain_gpu_ms": 1.49,
+      "diag_non_vu": false
+    },
+    "sans_ombres_arbres": {
+      "secondes": 241,
+      "gpu_ms": 12.98,
+      "fps": 59.73,
+      "p99_ms": 16.67,
+      "primitives": 1888009.0,
+      "appels": 319.0,
+      "gpu_sature_pct": 5.75,
+      "par_biome": {
+        "farmland": {
+          "secondes": 233,
+          "gpu_ms": 14.25,
+          "fps": 59.53,
+          "p99_ms": null,
+          "primitives": 1695789.5,
+          "gpu_ms_reps": [
+            14.27,
+            14.23
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 183,
+          "gpu_ms": 12.32,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 2249702.0,
+          "gpu_ms_reps": [
+            12.43,
+            12.21
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 35,
+          "gpu_ms": 13.27,
+          "fps": 58.71,
+          "p99_ms": null,
+          "primitives": 2537110.75,
+          "gpu_ms_reps": [
+            13.43,
+            13.12
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        13.05,
+        12.92
+      ],
+      "enleve": "arbres sans ombre portée",
+      "diag": "sans_ombres_arbres",
+      "gain_gpu_ms": 0.74,
+      "diag_non_vu": false
+    },
+    "ombres_arbres_100": {
+      "secondes": 241,
+      "gpu_ms": 13.49,
+      "fps": 59.87,
+      "p99_ms": 16.67,
+      "primitives": 2030674.5,
+      "appels": 353.0,
+      "gpu_sature_pct": 4.95,
+      "par_biome": {
+        "farmland": {
+          "secondes": 233,
+          "gpu_ms": 14.24,
+          "fps": 59.59,
+          "p99_ms": null,
+          "primitives": 1729313.5,
+          "gpu_ms_reps": [
+            14.25,
+            14.23
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 182,
+          "gpu_ms": 13.29,
+          "fps": 59.97,
+          "p99_ms": null,
+          "primitives": 4066408.0,
+          "gpu_ms_reps": [
+            13.37,
+            13.2
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 33,
+          "gpu_ms": 13.73,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 3527119.5,
+          "gpu_ms_reps": [
+            13.77,
+            13.7
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        13.55,
+        13.43
+      ],
+      "enleve": "ombre des arbres jusqu'à 100 m de la caméra",
+      "diag": "ombres_arbres_m=100",
+      "gain_gpu_ms": 0.23,
+      "diag_non_vu": false
+    },
+    "ombres_arbres_150": {
+      "secondes": 243,
+      "gpu_ms": 13.55,
+      "fps": 60.0,
+      "p99_ms": 16.67,
+      "primitives": 2066408.5,
+      "appels": 354.0,
+      "gpu_sature_pct": 3.85,
+      "par_biome": {
+        "farmland": {
+          "secondes": 228,
+          "gpu_ms": 14.14,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 1725738.5,
+          "gpu_ms_reps": [
+            14.13,
+            14.14
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 189,
+          "gpu_ms": 13.32,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 4119551.75,
+          "gpu_ms_reps": [
+            13.34,
+            13.31
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 37,
+          "gpu_ms": 13.59,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 3465692.75,
+          "gpu_ms_reps": [
+            13.58,
+            13.61
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        13.56,
+        13.54
+      ],
+      "enleve": "ombre des arbres jusqu'à 150 m de la caméra",
+      "diag": "ombres_arbres_m=150",
+      "gain_gpu_ms": 0.17,
+      "diag_non_vu": false
+    },
+    "ombres_arbres_250": {
+      "secondes": 247,
+      "gpu_ms": 13.73,
+      "fps": 60.0,
+      "p99_ms": 16.67,
+      "primitives": 2081882.5,
+      "appels": 365.0,
+      "gpu_sature_pct": 4.9,
+      "par_biome": {
+        "farmland": {
+          "secondes": 228,
+          "gpu_ms": 14.21,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 1732936.5,
+          "gpu_ms_reps": [
+            14.28,
+            14.13
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 190,
+          "gpu_ms": 13.62,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 4534750.5,
+          "gpu_ms_reps": [
+            13.57,
+            13.66
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 39,
+          "gpu_ms": 13.82,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 3695654.5,
+          "gpu_ms_reps": [
+            13.77,
+            13.88
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        13.72,
+        13.75
+      ],
+      "enleve": "ombre des arbres jusqu'à 250 m de la caméra",
+      "diag": "ombres_arbres_m=250",
+      "gain_gpu_ms": -0.01,
+      "diag_non_vu": false
+    },
+    "herbe_50": {
+      "secondes": 247,
+      "gpu_ms": 13.12,
+      "fps": 60.0,
+      "p99_ms": 16.67,
+      "primitives": 1768876.5,
+      "appels": 367.5,
+      "gpu_sature_pct": 1.0,
+      "par_biome": {
+        "farmland": {
+          "secondes": 229,
+          "gpu_ms": 13.51,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 1453139.5,
+          "gpu_ms_reps": [
+            13.5,
+            13.52
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 189,
+          "gpu_ms": 13.0,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 4330317.5,
+          "gpu_ms_reps": [
+            12.98,
+            13.03
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 40,
+          "gpu_ms": 13.08,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 3423939.0,
+          "gpu_ms_reps": [
+            13.25,
+            12.91
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        13.14,
+        13.09
+      ],
+      "enleve": "moitié des touffes d'herbe",
+      "diag": "herbe=0.5",
+      "gain_gpu_ms": 0.6,
+      "diag_non_vu": false
+    }
+  },
+  "high": {
+    "base": {
+      "secondes": 246,
+      "gpu_ms": 17.06,
+      "fps": 56.11,
+      "p99_ms": 19.76,
+      "primitives": 4014481.75,
+      "appels": 420.0,
+      "gpu_sature_pct": 74.6,
+      "par_biome": {
+        "farmland": {
+          "secondes": 228,
+          "gpu_ms": 17.23,
+          "fps": 54.36,
+          "p99_ms": null,
+          "primitives": 2588140.0,
+          "gpu_ms_reps": [
+            17.24,
+            17.23
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 188,
+          "gpu_ms": 17.11,
+          "fps": 56.84,
+          "p99_ms": null,
+          "primitives": 6591764.25,
+          "gpu_ms_reps": [
+            17.16,
+            17.05
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 38,
+          "gpu_ms": 17.19,
+          "fps": 56.16,
+          "p99_ms": null,
+          "primitives": 5460816.0,
+          "gpu_ms_reps": [
+            17.13,
+            17.25
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        17.09,
+        17.04
+      ],
+      "enleve": "préréglage tel quel",
+      "diag": "",
+      "gain_gpu_ms": 0.0,
+      "diag_non_vu": false
+    },
+    "sans_ombres": {
+      "secondes": 246,
+      "gpu_ms": 14.72,
+      "fps": 59.7,
+      "p99_ms": 16.67,
+      "primitives": 2357647.0,
+      "appels": 336.75,
+      "gpu_sature_pct": 26.75,
+      "par_biome": {
+        "farmland": {
+          "secondes": 228,
+          "gpu_ms": 16.08,
+          "fps": 58.12,
+          "p99_ms": null,
+          "primitives": 2054954.5,
+          "gpu_ms_reps": [
+            16.07,
+            16.09
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 188,
+          "gpu_ms": 13.99,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 2734740.0,
+          "gpu_ms_reps": [
+            14.0,
+            13.98
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 41,
+          "gpu_ms": 14.76,
+          "fps": 59.95,
+          "p99_ms": null,
+          "primitives": 3036247.5,
+          "gpu_ms_reps": [
+            14.71,
+            14.8
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        14.75,
+        14.69
+      ],
+      "enleve": "aucune ombre portée (borne du coût des ombres)",
+      "diag": "sans_ombres",
+      "gain_gpu_ms": 2.34,
+      "diag_non_vu": false
+    },
+    "sans_ombres_arbres": {
+      "secondes": 246,
+      "gpu_ms": 15.67,
+      "fps": 59.03,
+      "p99_ms": 17.73,
+      "primitives": 2906768.5,
+      "appels": 370.25,
+      "gpu_sature_pct": 45.45,
+      "par_biome": {
+        "farmland": {
+          "secondes": 228,
+          "gpu_ms": 17.21,
+          "fps": 55.04,
+          "p99_ms": null,
+          "primitives": 2487135.75,
+          "gpu_ms_reps": [
+            17.2,
+            17.23
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 188,
+          "gpu_ms": 14.98,
+          "fps": 60.0,
+          "p99_ms": null,
+          "primitives": 3272247.5,
+          "gpu_ms_reps": [
+            15.04,
+            14.93
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 41,
+          "gpu_ms": 15.71,
+          "fps": 58.58,
+          "p99_ms": null,
+          "primitives": 3507911.5,
+          "gpu_ms_reps": [
+            15.88,
+            15.54
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        15.67,
+        15.67
+      ],
+      "enleve": "arbres sans ombre portée",
+      "diag": "sans_ombres_arbres",
+      "gain_gpu_ms": 1.39,
+      "diag_non_vu": false
+    },
+    "ombres_arbres_100": {
+      "secondes": 246,
+      "gpu_ms": 16.77,
+      "fps": 56.97,
+      "p99_ms": 19.41,
+      "primitives": 3144203.5,
+      "appels": 405.25,
+      "gpu_sature_pct": 71.35,
+      "par_biome": {
+        "farmland": {
+          "secondes": 235,
+          "gpu_ms": 17.23,
+          "fps": 54.97,
+          "p99_ms": null,
+          "primitives": 2553398.25,
+          "gpu_ms_reps": [
+            17.23,
+            17.22
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 179,
+          "gpu_ms": 16.71,
+          "fps": 58.54,
+          "p99_ms": null,
+          "primitives": 5642630.5,
+          "gpu_ms_reps": [
+            16.6,
+            16.82
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 35,
+          "gpu_ms": 16.78,
+          "fps": 57.72,
+          "p99_ms": null,
+          "primitives": 4759626.5,
+          "gpu_ms_reps": [
+            16.69,
+            16.87
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        16.69,
+        16.85
+      ],
+      "enleve": "ombre des arbres jusqu'à 100 m de la caméra",
+      "diag": "ombres_arbres_m=100",
+      "gain_gpu_ms": 0.29,
+      "diag_non_vu": false
+    },
+    "ombres_arbres_150": {
+      "secondes": 246,
+      "gpu_ms": 16.78,
+      "fps": 57.03,
+      "p99_ms": 18.81,
+      "primitives": 3407768.5,
+      "appels": 406.0,
+      "gpu_sature_pct": 70.55,
+      "par_biome": {
+        "farmland": {
+          "secondes": 227,
+          "gpu_ms": 17.23,
+          "fps": 54.67,
+          "p99_ms": null,
+          "primitives": 2560385.5,
+          "gpu_ms_reps": [
+            17.25,
+            17.21
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 188,
+          "gpu_ms": 16.77,
+          "fps": 58.05,
+          "p99_ms": null,
+          "primitives": 5862310.75,
+          "gpu_ms_reps": [
+            16.74,
+            16.79
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 41,
+          "gpu_ms": 16.66,
+          "fps": 56.78,
+          "p99_ms": null,
+          "primitives": 4733495.75,
+          "gpu_ms_reps": [
+            16.65,
+            16.66
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        16.77,
+        16.79
+      ],
+      "enleve": "ombre des arbres jusqu'à 150 m de la caméra",
+      "diag": "ombres_arbres_m=150",
+      "gain_gpu_ms": 0.28,
+      "diag_non_vu": false
+    },
+    "ombres_arbres_250": {
+      "secondes": 246,
+      "gpu_ms": 17.09,
+      "fps": 55.8,
+      "p99_ms": 19.59,
+      "primitives": 3424894.0,
+      "appels": 416.5,
+      "gpu_sature_pct": 75.0,
+      "par_biome": {
+        "farmland": {
+          "secondes": 228,
+          "gpu_ms": 17.23,
+          "fps": 54.57,
+          "p99_ms": null,
+          "primitives": 2571802.0,
+          "gpu_ms_reps": [
+            17.25,
+            17.2
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 188,
+          "gpu_ms": 17.11,
+          "fps": 56.34,
+          "p99_ms": null,
+          "primitives": 6501498.75,
+          "gpu_ms_reps": [
+            17.16,
+            17.06
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 39,
+          "gpu_ms": 17.19,
+          "fps": 56.09,
+          "p99_ms": null,
+          "primitives": 5179946.75,
+          "gpu_ms_reps": [
+            17.2,
+            17.18
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        17.13,
+        17.06
+      ],
+      "enleve": "ombre des arbres jusqu'à 250 m de la caméra",
+      "diag": "ombres_arbres_m=250",
+      "gain_gpu_ms": -0.03,
+      "diag_non_vu": false
+    },
+    "herbe_50": {
+      "secondes": 246,
+      "gpu_ms": 15.78,
+      "fps": 59.2,
+      "p99_ms": 17.24,
+      "primitives": 3423556.75,
+      "appels": 420.75,
+      "gpu_sature_pct": 45.85,
+      "par_biome": {
+        "farmland": {
+          "secondes": 228,
+          "gpu_ms": 15.99,
+          "fps": 58.41,
+          "p99_ms": null,
+          "primitives": 2002980.25,
+          "gpu_ms_reps": [
+            15.95,
+            16.03
+          ]
+        },
+        "temperate_forest": {
+          "secondes": 188,
+          "gpu_ms": 15.82,
+          "fps": 59.7,
+          "p99_ms": null,
+          "primitives": 6042460.0,
+          "gpu_ms_reps": [
+            15.75,
+            15.89
+          ]
+        },
+        "alpine": {
+          "secondes": 0,
+          "gpu_ms": null,
+          "fps": null,
+          "p99_ms": null,
+          "primitives": null,
+          "gpu_ms_reps": [
+            null,
+            null
+          ]
+        },
+        "frontières": {
+          "secondes": 40,
+          "gpu_ms": 15.99,
+          "fps": 59.01,
+          "p99_ms": null,
+          "primitives": 4869163.0,
+          "gpu_ms_reps": [
+            15.94,
+            16.04
+          ]
+        }
+      },
+      "gpu_ms_reps": [
+        15.71,
+        15.85
+      ],
+      "enleve": "moitié des touffes d'herbe",
+      "diag": "herbe=0.5",
+      "gain_gpu_ms": 1.28,
+      "diag_non_vu": false
+    }
+  }
+}

@@ -1,0 +1,1 @@
+farmland,temperate_forest,alpine
