@@ -3,6 +3,10 @@
 Messages : file_id, event (début, pauses, fin), record à 1 Hz, lap, session (cycling /
 virtual_activity) et activity. Aucun envoi en ligne.
 
+Tours et séance portent les totaux que Garmin Connect et GoldenCheetah affichent tels quels
+(lot X56) : calories, travail, D+ et D-, puissance normalisée, cadence et FC moyennes et maximales.
+`device_info` nomme l'appareil créateur « OpenRide » avec la version du jeu.
+
 fit-tool attend des horodatages en millisecondes Unix et des positions en degrés
 (il convertit lui-même en semicercles, degrés × 2³¹ / 180).
 """
@@ -31,6 +35,17 @@ from .journal import read_journal
 
 ACTIVITIES_DIR = OPENRIDE_HOME / "Activities"
 FIT_EPOCH_S = 631065600  # 1989-12-31 00:00:00 UTC
+
+
+def _software_version() -> float:
+    """Version du jeu au format FIT (majeur.mineur, résolution 0,01) : « 2.0.0 » donne 2.0."""
+    from . import __version__
+
+    try:
+        major, minor = (int(x) for x in __version__.split(".")[:2])
+    except ValueError:
+        return 0.0
+    return major + min(minor, 99) / 100.0
 
 
 def _ms(ts: float) -> int:
@@ -97,6 +112,76 @@ def summarize(records: list[dict], events: list[dict]) -> Summary:
     )
 
 
+NP_WINDOW = 30          # puissance normalisée : moyenne glissante sur 30 s (définition usuelle)
+ALT_STEP_M = 1.0        # D+ et D- : hystérésis de 1 m, le bruit d'altitude ne s'additionne pas
+KCAL_PER_KJ = 1.0       # vélo : ~24 % de rendement, 1 kJ mécanique ≈ 1 kcal dépensée (règle usuelle)
+
+
+@dataclass
+class Totals:
+    """Totaux d'une tranche d'enregistrements (un tour ou toute la séance), lot X56."""
+    distance_m: float
+    max_speed: float
+    avg_power: float | None
+    max_power: float | None
+    work_j: float
+    calories: int
+    normalized_power: int | None
+    avg_hr: int | None
+    max_hr: int | None
+    avg_cadence: int | None
+    max_cadence: int | None
+    has_alt: bool
+    ascent_m: int
+    descent_m: int
+
+
+def normalized_power(powers: list[float]) -> int | None:
+    """Puissance normalisée : racine quatrième de la moyenne des puissances⁴ lissées sur 30 s."""
+    if len(powers) < NP_WINDOW:
+        return None
+    acc = sum(powers[:NP_WINDOW])
+    rolled = [acc / NP_WINDOW]
+    for i in range(NP_WINDOW, len(powers)):
+        acc += powers[i] - powers[i - NP_WINDOW]
+        rolled.append(acc / NP_WINDOW)
+    return int(round((sum(p ** 4 for p in rolled) / len(rolled)) ** 0.25))
+
+
+def climb(alts: list[float]) -> tuple[int, int]:
+    """(D+, D-) en mètres entiers, avec une hystérésis de `ALT_STEP_M`."""
+    up = down = 0.0
+    ref = alts[0] if alts else 0.0
+    for a in alts[1:]:
+        if a - ref >= ALT_STEP_M:
+            up += a - ref
+            ref = a
+        elif ref - a >= ALT_STEP_M:
+            down += ref - a
+            ref = a
+    return int(round(up)), int(round(down))
+
+
+def totals(records: list[dict], base_distance: float = 0.0) -> Totals:
+    """Les enregistrements sont à 1 Hz : le travail est la somme des puissances × 1 s."""
+    powers = [float(r["power"]) for r in records if r.get("power") is not None]
+    hrs = [r["hr"] for r in records if r.get("hr")]
+    cads = [r["cadence"] for r in records if r.get("cadence")]
+    alts = [float(r["alt"]) for r in records if r.get("alt") is not None]
+    work = sum(powers)
+    ascent, descent = climb(alts)
+    return Totals(
+        distance_m=max(max((r.get("distance", 0.0) for r in records), default=0.0) - base_distance, 0.0),
+        max_speed=max((r.get("speed", 0.0) for r in records), default=0.0),
+        avg_power=_avg(powers), max_power=max(powers) if powers else None,
+        work_j=work, calories=int(round(work / 1000.0 * KCAL_PER_KJ)),
+        normalized_power=normalized_power(powers),
+        avg_hr=round(_avg(hrs)) if hrs else None, max_hr=max(hrs) if hrs else None,
+        avg_cadence=round(_avg(cads)) if cads else None, max_cadence=int(round(max(cads))) if cads else None,
+        has_alt=bool(alts), ascent_m=ascent, descent_m=descent,
+    )
+
+
 def _event(ts: float, event_type: EventType) -> EventMessage:
     m = EventMessage()
     m.timestamp = _ms(ts)
@@ -133,7 +218,9 @@ def write_fit(records: list[dict], events: list[dict], path: Path, laps: list[fl
     dev.timestamp = _ms(s.start_ts)
     dev.manufacturer = Manufacturer.DEVELOPMENT.value
     dev.product = 1
-    dev.software_version = 0.1
+    dev.device_index = 0          # appareil créateur du fichier
+    dev.product_name = "OpenRide"
+    dev.software_version = _software_version()
     b.add(dev)
 
     timeline: list[tuple[float, int, object]] = []
@@ -167,22 +254,34 @@ def write_fit(records: list[dict], events: list[dict], path: Path, laps: list[fl
     for _, _, msg in sorted(timeline, key=lambda x: (x[0], x[1])):
         b.add(msg)
 
-    def fill_totals(m) -> None:
-        m.timestamp = _ms(s.end_ts)
-        m.start_time = _ms(s.start_ts)
-        m.total_elapsed_time = s.elapsed_s
-        m.total_timer_time = s.timer_s
-        m.total_distance = s.distance_m
-        m.avg_speed = s.avg_speed
-        m.max_speed = s.max_speed
-        if s.avg_power is not None:
-            m.avg_power = int(round(s.avg_power))
-            m.max_power = int(round(s.max_power))
-        if s.avg_hr is not None:
-            m.avg_heart_rate = s.avg_hr
-            m.max_heart_rate = s.max_hr
-        if s.avg_cadence is not None:
-            m.avg_cadence = s.avg_cadence
+    def fill(m, st: Totals, lo: float, hi: float, elapsed: float, timer: float) -> None:
+        """Mêmes totaux pour un tour et pour la séance (lot X56) : ce que Garmin Connect et
+        GoldenCheetah affichent sans recalculer (calories, travail, D+, NP, cadence, FC)."""
+        m.timestamp = _ms(hi)
+        m.start_time = _ms(lo)
+        m.total_elapsed_time = elapsed
+        m.total_timer_time = timer
+        m.total_distance = st.distance_m
+        # Garde-fou : un chrono aberrant (horloge déréglée) ne doit pas produire une vitesse absurde,
+        # que le format FIT refuse (uint16) et qui ferait échouer tout l'export.
+        m.avg_speed = min(st.distance_m / timer, s.max_speed) if timer > 0 else 0.0
+        m.max_speed = st.max_speed
+        if st.avg_power is not None:
+            m.avg_power = int(round(st.avg_power))
+            m.max_power = int(round(st.max_power))
+            m.total_work = int(round(st.work_j))
+            m.total_calories = st.calories
+            if st.normalized_power is not None:
+                m.normalized_power = st.normalized_power
+        if st.avg_hr is not None:
+            m.avg_heart_rate = st.avg_hr
+            m.max_heart_rate = st.max_hr
+        if st.avg_cadence is not None:
+            m.avg_cadence = st.avg_cadence
+            m.max_cadence = st.max_cadence
+        if st.has_alt:
+            m.total_ascent = st.ascent_m
+            m.total_descent = st.descent_m
         m.event = Event.LAP
         m.event_type = EventType.STOP
         m.sport = Sport.CYCLING
@@ -190,36 +289,22 @@ def write_fit(records: list[dict], events: list[dict], path: Path, laps: list[fl
 
     bounds = [s.start_ts] + [t for t in sorted(laps or []) if s.start_ts < t < s.end_ts] + [s.end_ts]
     n_laps = len(bounds) - 1
-    if n_laps == 1:
+    for i in range(n_laps):
+        lo, hi = bounds[i], bounds[i + 1]
+        last = i == n_laps - 1
+        part = [r for r in records if lo <= r["ts"] < hi or (last and r["ts"] == hi)]
         lap = LapMessage()
-        fill_totals(lap)
-        lap.message_index = 0
-        lap.lap_trigger = LapTrigger.SESSION_END
+        if n_laps == 1:
+            fill(lap, totals(records), s.start_ts, s.end_ts, s.elapsed_s, s.timer_s)
+        else:
+            fill(lap, totals(part, base_distance=part[0].get("distance", 0.0) if part else 0.0),
+                 lo, hi, hi - lo, hi - lo)
+        lap.message_index = i
+        lap.lap_trigger = LapTrigger.SESSION_END if last else LapTrigger.MANUAL
         b.add(lap)
-    else:
-        for i in range(n_laps):
-            lo, hi = bounds[i], bounds[i + 1]
-            part = [r for r in records if lo <= r["ts"] < hi or (i == n_laps - 1 and r["ts"] == hi)]
-            lap = LapMessage()
-            lap.timestamp = _ms(hi)
-            lap.start_time = _ms(lo)
-            lap.total_elapsed_time = lap.total_timer_time = hi - lo
-            if part:
-                lap.total_distance = max(part[-1].get("distance", 0.0) - part[0].get("distance", 0.0), 0.0)
-                lap.avg_speed = min(lap.total_distance / (hi - lo), s.max_speed) if hi > lo else 0.0
-                powers = [r["power"] for r in part if r.get("power") is not None]
-                if powers:
-                    lap.avg_power, lap.max_power = int(round(_avg(powers))), int(round(max(powers)))
-            lap.event = Event.LAP
-            lap.event_type = EventType.STOP
-            lap.sport = Sport.CYCLING
-            lap.sub_sport = SubSport.VIRTUAL_ACTIVITY
-            lap.message_index = i
-            lap.lap_trigger = LapTrigger.SESSION_END if i == n_laps - 1 else LapTrigger.MANUAL
-            b.add(lap)
 
     sess = SessionMessage()
-    fill_totals(sess)
+    fill(sess, totals(records), s.start_ts, s.end_ts, s.elapsed_s, s.timer_s)
     sess.event = Event.SESSION
     sess.message_index = 0
     sess.first_lap_index = 0

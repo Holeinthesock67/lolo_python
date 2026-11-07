@@ -99,3 +99,53 @@ def test_cli_terrain_option(tmp_path):
     manifest = json.loads((tmp_path / "cli.world" / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["layers"]["terrain"]["present"] is True
     assert list((tmp_path / "cli.world" / "terrain" / "near").glob("tile_*.f32"))
+
+
+def _mesh_height(tiles, x, z, cell=NEAR[1]):
+    """Hauteur du maillage proche en (x, z), découpage de terrain_tiles.gd `mesh_height_at`."""
+    cells = TILE_SAMPLES - 1
+    gi, gj = math.floor(x / cell), math.floor(z / cell)
+    u, v = x / cell - gi, z / cell - gj
+    ti, tj = gi // cells, gj // cells
+    g = tiles[(ti, tj)]
+    i, j = gi - ti * cells, gj - tj * cells
+    h = lambda a, b: g[b * TILE_SAMPLES + a]
+    if u + v <= 1.0:
+        return h(i, j) + u * (h(i + 1, j) - h(i, j)) + v * (h(i, j + 1) - h(i, j))
+    return h(i + 1, j + 1) + (1.0 - u) * (h(i, j + 1) - h(i + 1, j + 1)) + (1.0 - v) * (h(i + 1, j) - h(i + 1, j + 1))
+
+
+def test_near_mesh_stays_under_road_where_grade_changes():
+    """7 novembre 2026 : au km 1,74 de la démonstration, la pente passe de 1 % à 3,5 % ; les triangles de 10 m,
+    dont les sommets sont 5 cm sous la route, passaient jusqu'à 1 cm au-dessus et le sol recouvrait la chaussée.
+    Après `clear_road`, tout point de la chaussée est au moins à 5 cm au-dessus du maillage proche."""
+    from openride_core.demo_world import DEMO_LENGTH_M
+    from openride_core.synthetic_terrain import build_tiles, road_samples
+
+    route = build_route(DEMO_LENGTH_M)
+    samples = road_samples(route)
+    terrain = SyntheticTerrain(route)
+    raw = {k: terrain.tile_values(NEAR, *k) for k in terrain.tiles_for(NEAR)}
+    kink = [(x, z, a) for x, z, a in samples if 1555.0 < x < 1575.0 and -615.0 < z < -600.0]
+    assert kink and max(_mesh_height(raw, x, z) - a for x, z, a in kink) > 0.0   # défaut d'avant le garde-fou
+    tiles = build_tiles(route, NEAR)
+    worst = max(_mesh_height(tiles, x, z) - a for x, z, a in samples)
+    assert worst <= -TERRAIN_BELOW_ROAD_M + 1e-3
+
+
+def test_clear_road_lowers_only_what_is_needed():
+    """Sur la démonstration, le garde-fou ne touche que les sommets des triangles qui dépassent (environ 650 sur
+    plus de 130 000), de 13 cm au plus."""
+    from openride_core.demo_world import DEMO_LENGTH_M
+    from openride_core.synthetic_terrain import clear_road
+
+    route = build_route(DEMO_LENGTH_M)
+    terrain = SyntheticTerrain(route)
+    n = TILE_SAMPLES * TILE_SAMPLES
+    before = {k: list(struct.unpack(f"<{n}f", struct.pack(f"<{n}f", *terrain.tile_values(NEAR, *k))))
+              for k in terrain.tiles_for(NEAR)}
+    after = {k: list(v) for k, v in before.items()}
+    lowered = clear_road(after, route)
+    assert 0 < lowered < 1000
+    drops = [b - a for k in before for b, a in zip(before[k], after[k])]
+    assert min(drops) >= 0.0 and max(drops) < 0.2

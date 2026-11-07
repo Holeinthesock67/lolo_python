@@ -8,8 +8,11 @@ extends RefCounted
 ##   {eligible, lines: [{label, value}], bar: {before, after, text} ou {}, level_up: texte ou "",
 ##   unlocked: [texte], challenges: [texte], more: texte, garage: vrai si une pièce est devenue achetable}.
 ## - Séance refusée (`eligible` faux) : une seule ligne explicative selon `reason`.
-## - La barre va de 0 au seuil du niveau suivant (`xp_total / xp_next_level`) ; si le niveau a changé, elle
-##   repart de zéro. Niveau maximal (pas de seuil suivant) : pas de barre, la ligne « Niveau maximal ».
+## - La barre montre la progression dans le niveau : du seuil du niveau (`xp_level_start`) au seuil du
+##   suivant (`xp_next_level`), soit (xp_total − xp_level_start) / (xp_next_level − xp_level_start) ; le texte
+##   donne l'expérience gagnée dans le niveau sur l'écart des deux seuils (« 892 / 1260 XP vers le niveau 8 »).
+##   Si le niveau a changé, elle repart de zéro. Niveau maximal (pas de seuil suivant) : pas de barre, la ligne
+##   « Niveau maximal ».
 ## - `names` : {identifiant: {name, slot}} des pièces (message `garage`) pour « Débloqué : cadre Profilé » ;
 ##   identifiant inconnu : l'identifiant lui-même.
 ## Pas de class_name : charger par preload("res://scripts/progress_view_model.gd").
@@ -101,8 +104,10 @@ func _bar(xp: Dictionary, level_before: int, level_after: int) -> Dictionary:
 	var next := float(xp.get("xp_next_level", 0) if xp.get("xp_next_level") != null else 0)
 	if next <= 0.0:
 		return {"max": true, "text": "Niveau maximal", "before": 1.0, "after": 1.0}
-	var total := float(xp.get("xp_total", 0))
-	var after := clampf(total / next, 0.0, 1.0)
-	var before := clampf((total - float(xp.get("total", 0))) / next, 0.0, 1.0) if level_after == level_before else 0.0
+	var start := float(xp.get("xp_level_start", 0) if xp.get("xp_level_start") != null else 0)
+	var span := maxf(next - start, 1.0)
+	var done := clampf(float(xp.get("xp_total", 0)) - start, 0.0, span)
+	var after := done / span
+	var before := clampf((done - float(xp.get("total", 0))) / span, 0.0, 1.0) if level_after == level_before else 0.0
 	return {"max": false, "before": before, "after": after,
-		"text": "Niveau %d : %s %d / %d XP" % [level_after, bar_text(after), int(total), int(next)]}
+		"text": "Niveau %d : %s %d / %d XP vers le niveau %d" % [level_after, bar_text(after), int(done), int(span), level_after + 1]}

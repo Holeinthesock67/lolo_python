@@ -109,6 +109,9 @@ var _route_job: Dictionary = {}
 var _quit_ms := -1   # heure de la demande de fermeture (_quit), pour les étapes de la fermeture dans le journal
 var _quit_code := 0
 var _test_cam_last_us := 0
+## Instant (µs) auquel la caméra de l'image a été placée : heure de la pose capturée (`camera_clock_s` des
+## captures de test). `ticks_ms`, pris après l'écriture du PNG, s'en écarte d'une à deux images en Vulkan logiciel.
+var _camera_clock_us := 0
 var _test_cam_last_s := NAN
 ## Scène figée des tests graphiques (message `_test` « freeze », lot X20) : instant imposé au décor, NAN sinon.
 var _freeze_t := NAN
@@ -1016,6 +1019,7 @@ func _process(delta: float) -> void:
 	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd), figée 1,1 s après la
 	# dernière trame ; journalisée en mode test même core muet (scénario 4 de fake_core.py).
 	var s_disp: float = follow.update(now)
+	_camera_clock_us = now
 	_test_log_camera(now, s_disp)
 	# Core non joignable : la scène se fige entière (caméra et son lissage, avatar, tuiles, décor vivant), comme
 	# l'horloge des personnages et des animaux ci-dessus.
@@ -1423,6 +1427,20 @@ func _test_menu_state(req: String) -> Dictionary:
 		"markers": segment_markers != null and segment_markers.visible, "quality": _quality_name}
 
 
+## Décor posé en plusieurs images après les tuiles : tronçons d'herbe du bord pas encore remplis (lot Y22) et
+## forêts lointaines en attente (lot Y5). Une scène de référence est capturée quand ce compte est à 0.
+## Core non joignable : la scène est figée exprès (_process), le décor n'avancera plus, rien n'est en attente.
+func _decor_pending() -> int:
+	if banner.has_message("core_lost"):
+		return 0
+	var n := 0
+	if living_world != null and living_world.grass != null:
+		n += living_world.grass.pending_count()
+	if streamer.forest_impostors != null:
+		n += streamer.forest_impostors.pending_tiles()
+	return n
+
+
 func _avatar_info() -> Dictionary:
 	if avatar_view == null:
 		return {}
@@ -1493,7 +1511,9 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"triangles": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
 		"streaming_pending": streamer.pending_count(),   # tuiles voulues pas encore affichées (tour visuel, X21)
+		"decor_pending": _decor_pending(),   # herbe du bord et forêts lointaines pas encore posées (lot Y22)
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
+		"camera_clock_s": _camera_clock_us / 1000000.0,
 		"camera_view": camera_views.effective(), "camera_transition": camera_views.in_transition(),
 		"widgets": widgets,
 		"decor": living_decor.test_info(camera) if living_decor != null else {},
@@ -1612,7 +1632,7 @@ func _on_progression(msg: Dictionary) -> void:
 	var eq = msg.get("equipped")
 	_equipped_ids = eq if eq is Dictionary else {}
 	var prog := {}
-	for key in ["level", "xp", "xp_next_level", "coins", "equipped", "avatar", "lives"]:
+	for key in ["level", "xp", "xp_level_start", "xp_next_level", "coins", "equipped", "avatar", "lives"]:
 		if msg.has(key):
 			prog[key] = msg[key]
 	ipc.core_config["progression"] = prog

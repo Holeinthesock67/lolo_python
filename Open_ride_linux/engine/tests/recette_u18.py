@@ -5,6 +5,7 @@ Usage :
     recette_u18.py lancer [--out DOSSIER] [--qualites low,medium,high] [--vitesse 60] [--size 1680x1011]
                           [--trace DOSSIER.world | --sans-trace] [--culling on|off] [--godot CHEMIN]
     recette_u18.py analyser DOSSIER
+    recette_u18.py gravel [JOURNAL.jsonl] [--out DOSSIER]
 
 `lancer` enchaîne, sans rien écrire dans le vrai dossier personnel (sim_bench.py a son HOME temporaire) :
 
@@ -22,6 +23,14 @@ générateur `make_biome_world.Plan`, frontières de 300 m mises à part) et éc
 `resume.md` (tableaux par qualité et par biome, critères du cahier U18 §5 et budgets de
 `perf_targets.json`), `resume.json`, et `planche/` (une capture par biome et par qualité, et les
 frontières, avec `planche/index.html`) pour la validation des captures par le propriétaire.
+
+`gravel` (étape vélo 7bu, cahier U18 §4.4) lit le journal d'une séance roulée avec l'option gravel (défaut :
+le plus récent de `~/OpenRide/Activities/.journal/`), en SIM puis en ERG libre, et juge les critères U18 §5.4 :
+supplément de pente moyen d'au moins 0,3 point en non revêtu et nul sur le bitume, jamais plus de 4 points
+envoyés (vent compris), cible ERG inchangée et vitesse en non revêtu sous 97 % de celle du bitume, rapportée à
+la vitesse d'équilibre du modèle physique du joueur (`config.toml` local, jamais recopié). Les 100 m qui suivent
+un changement de surface ou de mode sont écartés. Il écrit `resume_gravel.md` et `resume_gravel.json`
+(défaut `~/OpenRide/mesures/<date>/u18_7bu/`).
 
 Confidentialité : la trace personnelle n'est jamais nommée dans `resume.md` ni `resume.json`
 (« trace personnelle ») ; seuls des chiffres en sortent, à recopier dans la PR de recette.
@@ -370,6 +379,204 @@ def write_planche(planche: Path, shots: list[dict[str, str]]) -> None:
         + "</table>\n", encoding="utf-8")
 
 
+# --- étape vélo gravel (7bu) ------------------------------------------------------------------------------
+
+GRAVEL_STEADY_M = 100.0       # mètres écartés après chaque changement de surface (fondu de 20 m et élan)
+GRAVEL_SIM_MIN_PCT = 0.3      # U18 §5.4 « nettement plus forte » : au moins 0,3 point en moyenne en non revêtu
+GRAVEL_PAVED_MAX_PCT = 0.05   # sur le bitume, aucun supplément du gravel
+GRAVEL_OFFSET_MAX_PCT = 4.0   # U18 §5.4 : jamais plus de 4 points de supplément, vent compris
+GRAVEL_ERG_DW_MAX = 5.0       # U18 §5.4 : puissance ERG inchangée (écart des moyennes, W)
+GRAVEL_ERG_SLOWER = 0.97      # vitesse en non revêtu au plus 97 % de celle du bitume (même puissance, même pente)
+GRAVEL_MIN_RECORDS = 50       # une partie (SIM ou ERG, revêtu ou non) compte à partir de 50 mesures (≈ 50 s)
+
+
+def read_journal(path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    header: dict[str, Any] = {}
+    records: list[dict[str, Any]] = []
+    with path.open(encoding="utf-8") as fh:
+        for line in fh:
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            if row.get("kind") == "header" and not header:
+                header = row
+            elif row.get("kind") == "record":
+                records.append(row)
+    return header, records
+
+
+def steady_records(records: list[dict[str, Any]], steady_m: float = GRAVEL_STEADY_M) -> list[dict[str, Any]]:
+    """Mesures roulées (au-dessus de 1 m/s) à plus de `steady_m` du dernier changement de surface ou de mode."""
+    out: list[dict[str, Any]] = []
+    key, since = None, 0.0
+    for r in records:
+        if r.get("surface") is None:
+            key = None
+            continue
+        k = (r["surface"] != "paved", r.get("mode", "SIM"))
+        d = float(r.get("distance") or 0.0)
+        if k != key:
+            key, since = k, d
+        if d - since >= steady_m and float(r.get("speed") or 0.0) > 1.0:
+            out.append(r)
+    return out
+
+
+def _f2(v: Any) -> str:
+    return "—" if v is None else (f"{round(v, 2):g}" if isinstance(v, float) else str(v))
+
+
+def _mean(values: list[float]) -> float | None:
+    return statistics.fmean(values) if values else None
+
+
+def gravel_stats(records: list[dict[str, Any]], params: Any = None, steady_speed: Any = None,
+                 max_offset_pct: float = GRAVEL_OFFSET_MAX_PCT) -> dict[str, Any]:
+    """Chiffres de la séance gravel : supplément de pente en SIM, puissance et vitesse en ERG, par surface.
+
+    `params` (PhysicsParams du joueur) et `steady_speed` (physics.steady_speed) : vitesse attendue sur le bitume
+    à la même puissance et sur la même pente ; sans eux, la partie vitesse de l'ERG n'est pas jugée."""
+    rows = steady_records(records)
+    res: dict[str, Any] = {"records": len(records), "steady": len(rows)}
+    total = [float(r.get("wind_grade_pct") or 0.0) + float(r.get("gravel_grade_pct") or 0.0)
+             for r in records if r.get("mode", "SIM") == "SIM" and r.get("surface") is not None]
+    res["offset_raw_max"] = max(total) if total else None
+    res["offset_sent_max"] = max(min(t, max_offset_pct) for t in total) if total else None
+    for mode in ("SIM", "ERG"):
+        for unpaved in (False, True):
+            part = [r for r in rows if r.get("mode", "SIM") == mode and (r["surface"] != "paved") == unpaved]
+            name = f"{mode.lower()}_{'non_revetu' if unpaved else 'bitume'}"
+            dist = [float(r.get("distance") or 0.0) for r in part]
+            stat: dict[str, Any] = {
+                "n": len(part),
+                "m": round(sum(b - a for a, b in zip(dist, dist[1:]) if 0.0 < b - a < 20.0)),
+                "gravel_pct": _mean([float(r.get("gravel_grade_pct") or 0.0) for r in part]),
+                "power_w": _mean([float(r["power"]) for r in part if r.get("power") is not None]),
+                "target_w": _mean([float(r["target_w"]) for r in part if r.get("target_w") is not None]),
+                "speed_kmh": _mean([float(r.get("speed") or 0.0) * 3.6 for r in part]),
+            }
+            if params is not None and steady_speed is not None:
+                ratios = []
+                for r in part:
+                    p = r.get("power")
+                    if p is None or float(p) <= 0.0:
+                        continue
+                    params.wind_mps = float(r.get("head_mps") or 0.0)
+                    v0 = steady_speed(float(p), float(r.get("grade") or 0.0), params, float(r.get("alt") or 0.0))
+                    if v0 > 0.5:
+                        ratios.append(float(r.get("speed") or 0.0) / v0)
+                params.wind_mps = 0.0
+                stat["speed_ratio"] = _mean(ratios)
+            res[name] = stat
+    return res
+
+
+def gravel_checks(res: dict[str, Any]) -> list[dict[str, Any]]:
+    """Critères U18 §5.4 jugés sur les chiffres de `gravel_stats` (None : partie non roulée)."""
+    checks: list[dict[str, Any]] = []
+
+    def add(ok: bool | None, label: str, detail: str) -> None:
+        checks.append({"ok": ok, "critere": label, "detail": detail})
+
+    sp, su = res["sim_bitume"], res["sim_non_revetu"]
+    ep, eu = res["erg_bitume"], res["erg_non_revetu"]
+    sim_ok = sp["n"] >= GRAVEL_MIN_RECORDS and su["n"] >= GRAVEL_MIN_RECORDS
+    erg_ok = ep["n"] >= GRAVEL_MIN_RECORDS and eu["n"] >= GRAVEL_MIN_RECORDS
+    add((su["gravel_pct"] or 0.0) >= GRAVEL_SIM_MIN_PCT and (sp["gravel_pct"] or 0.0) <= GRAVEL_PAVED_MAX_PCT
+        if sim_ok else None,
+        "§5.4 SIM : résistance plus forte en non revêtu",
+        f"supplément moyen {_f2(su['gravel_pct'])} point(s) en non revêtu (≥ {GRAVEL_SIM_MIN_PCT}), "
+        f"{_f2(sp['gravel_pct'])} sur le bitume (≤ {GRAVEL_PAVED_MAX_PCT})")
+    add(res["offset_sent_max"] <= GRAVEL_OFFSET_MAX_PCT + 1e-6 if res["offset_sent_max"] is not None else None,
+        "§5.4 SIM : jamais plus de 4 points en supplément (vent compris)",
+        f"supplément envoyé au plus {_f2(res['offset_sent_max'])} point(s) "
+        f"(avant la borne : {_f2(res['offset_raw_max'])})")
+    if erg_ok and ep["target_w"] is not None and eu["target_w"] is not None:
+        dw = abs(eu["target_w"] - ep["target_w"])
+        add(dw <= GRAVEL_ERG_DW_MAX, "§5.4 ERG : puissance inchangée",
+            f"cible moyenne {_f2(ep['target_w'])} W sur le bitume, {_f2(eu['target_w'])} W en non revêtu "
+            f"(écart ≤ {GRAVEL_ERG_DW_MAX:g} W)")
+    else:
+        add(None, "§5.4 ERG : puissance inchangée", "partie ERG trop courte sur l'une des surfaces")
+    rp, ru = ep.get("speed_ratio"), eu.get("speed_ratio")
+    if erg_ok and rp and ru:
+        add(ru / rp <= GRAVEL_ERG_SLOWER, "§5.4 ERG : vitesse plus faible en non revêtu",
+            f"vitesse / vitesse du bitume attendue : {rp:.3f} sur le bitume, {ru:.3f} en non revêtu "
+            f"(rapport {ru / rp:.3f} ≤ {GRAVEL_ERG_SLOWER})")
+    else:
+        add(None, "§5.4 ERG : vitesse plus faible en non revêtu",
+            "partie ERG trop courte sur l'une des surfaces, ou modèle physique indisponible")
+    return checks
+
+
+def _player_physics() -> tuple[Any, Any, float]:
+    """Modèle physique du joueur (config.toml local, jamais recopié) ; (None, None, 4) sans openride_core."""
+    try:
+        from openride_core import config as core_config
+        from openride_core.physics import PhysicsParams, steady_speed
+    except ImportError:
+        return None, None, GRAVEL_OFFSET_MAX_PCT
+    cfg = core_config.load()
+    return PhysicsParams.from_config(cfg), steady_speed, float(cfg.wind.max_grade_offset_pct)
+
+
+def write_gravel_markdown(path: Path, res: dict[str, Any], checks: list[dict[str, Any]]) -> None:
+    lines = ["# Recette U18, étape vélo gravel (7bu)", "",
+             (f"Parcours : {res.get('route') or 'inconnu'} ; {res['records']} mesures, {res['steady']} "
+              f"retenues (à plus de {GRAVEL_STEADY_M:g} m d'un changement de surface ou de mode)."), "",
+             ("| Partie | Mesures | Mètres | Supplément gravel (pts) | Puissance (W) | Cible ERG (W) | km/h "
+              "| Vitesse / attendue bitume |"),
+             "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+    for name, label in (("sim_bitume", "SIM bitume"), ("sim_non_revetu", "SIM non revêtu"),
+                        ("erg_bitume", "ERG bitume"), ("erg_non_revetu", "ERG non revêtu")):
+        s = res[name]
+        lines.append(f"| {label} | {s['n']} | {s['m']} | {_f2(s['gravel_pct'])} | {_f2(s['power_w'])} | "
+                     f"{_f2(s['target_w'])} | {_f2(s['speed_kmh'])} | {_f2(s.get('speed_ratio'))} |")
+    if res.get("avertissement"):
+        lines += ["", f"**Attention** : {res['avertissement']}."]
+    lines += ["", "| Critère | Résultat | Détail |", "| --- | --- | --- |"]
+    for c in checks:
+        mark = "OK" if c["ok"] else ("NON" if c["ok"] is False else "non jugé")
+        lines.append(f"| {c['critere']} | {mark} | {c['detail']} |")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def cmd_gravel(args: argparse.Namespace) -> int:
+    journal: Path | None = args.journal
+    if journal is None:
+        base = Path.home() / "OpenRide" / "Activities" / ".journal"
+        found = sorted(base.rglob("*.jsonl"), key=lambda p: p.stat().st_mtime) if base.is_dir() else []
+        journal = found[-1] if found else None
+    if journal is None or not journal.is_file():
+        print("journal de séance introuvable (donner son chemin)", file=sys.stderr)
+        return 2
+    header, records = read_journal(journal)
+    if not any(r.get("surface") is not None for r in records):
+        print("gravel coupé dans ce journal (aucune colonne surface)", file=sys.stderr)
+        return 2
+    route = str(header.get("route_id") or "")
+    params, steady, bound = _player_physics()
+    res = gravel_stats(records, params, steady, bound)
+    res["route"] = route if route.startswith("demo") else ("trace personnelle" if route else None)
+    checks = gravel_checks(res)
+    surfaces = {r["surface"] for r in records if r.get("surface") is not None}
+    if surfaces and "paved" not in surfaces:
+        # Gravel imposé (« chemin compact », « gravier » ou « terre ») : toute la route en non revêtu, le journal
+        # n'a aucune mesure sur le bitume à comparer ; la recette se roule en « chemins réels ».
+        res["avertissement"] = (f"aucune mesure sur le bitume (surface {', '.join(sorted(surfaces))} partout) : "
+                                "réglage Gravel imposé à toute la route ; refaire la séance avec « chemins réels »")
+        print("Attention : " + res["avertissement"], file=sys.stderr)
+    out: Path = args.out
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "resume_gravel.json").write_text(json.dumps({**res, "criteres": checks}, indent=1, ensure_ascii=False),
+                                            encoding="utf-8")
+    write_gravel_markdown(out / "resume_gravel.md", res, checks)
+    print((out / "resume_gravel.md").read_text(encoding="utf-8"))
+    judged = [c["ok"] for c in checks if c["ok"] is not None]
+    return 0 if judged and all(judged) and not res.get("avertissement") else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -385,7 +592,12 @@ def main(argv: list[str] | None = None) -> int:
     la.add_argument("--godot", type=Path, default=Path(os.environ["GODOT"]) if os.environ.get("GODOT") else None)
     an = sub.add_parser("analyser", help="refaire résumé et planche d'un dossier déjà mesuré")
     an.add_argument("dossier", type=Path)
+    gr = sub.add_parser("gravel", help="étape vélo gravel (7bu) : critères U18 §5.4 lus au journal de séance")
+    gr.add_argument("journal", type=Path, nargs="?", help="journal .jsonl (défaut : le plus récent)")
+    gr.add_argument("--out", type=Path, default=default_out().with_name("u18_7bu"))
     args = ap.parse_args(argv)
+    if args.cmd == "gravel":
+        return cmd_gravel(args)
     if args.cmd == "analyser":
         return analyse(args.dossier) if args.dossier.is_dir() else 2
     args.qualites = [q for q in args.qualites.split(",") if q]

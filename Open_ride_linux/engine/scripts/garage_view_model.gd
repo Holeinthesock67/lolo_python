@@ -62,6 +62,8 @@ var enabled := false
 var items: Array = []
 var level := 1
 var xp := 0
+## Seuils du niveau actuel et du suivant (0 : niveau maximal) ; la barre va de l'un à l'autre.
+var xp_level_start := 0
 var xp_next_level := 0
 var coins := 0
 var equipped: Dictionary = {}
@@ -94,7 +96,8 @@ func on_progression(msg: Dictionary) -> void:
 func _take(src: Dictionary) -> void:
 	level = int(src.get("level", level))
 	xp = int(src.get("xp", xp))
-	xp_next_level = int(src.get("xp_next_level", xp_next_level))
+	xp_level_start = int(src.get("xp_level_start", xp_level_start)) if src.get("xp_level_start") != null else 0
+	xp_next_level = int(src.get("xp_next_level", xp_next_level)) if src.get("xp_next_level") != null else 0
 	coins = int(src.get("coins", coins))
 	if src.get("equipped") is Dictionary:
 		equipped = src["equipped"].duplicate()
@@ -199,13 +202,15 @@ func state_text(it: Dictionary) -> String:
 func sheet(screen: String, focused_id: String) -> Dictionary:
 	if screen == SCREEN:
 		var lines: Array = []
+		var span := maxi(xp_next_level - xp_level_start, 1)
+		var done := clampi(xp - xp_level_start, 0, span)
 		if xp_next_level > 0:
-			lines.append("Expérience %d / %d vers le niveau %d : %s" % [xp, xp_next_level, level + 1, bar(xp, xp_next_level)])
+			lines.append("Expérience %d / %d vers le niveau %d : %s" % [done, span, level + 1, bar(done, span)])
 		if message != "":
 			lines.append(message)
 		return {"title": "Garage", "name": "Niveau %d" % level,
 			"tiles": [_tile("Niveau", str(level), ""), _tile("Pièces", str(coins), ""),
-				_tile("Expérience", str(xp), "/ %d" % xp_next_level if xp_next_level > 0 else "")],
+				_tile("Expérience", str(done) if xp_next_level > 0 else str(xp), "/ %d" % span if xp_next_level > 0 else "")],
 			"lines": lines}
 	if screen in GROUPS and focused_id.begins_with("item:"):
 		return item_sheet(item(focused_id.substr(5)))

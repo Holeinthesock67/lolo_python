@@ -4,6 +4,8 @@ Date : 27 octobre 2026. Document de recherche, **sans code** : l'amélioration d
 
 **Suite (5 novembre)** : mesures du coût de chaque effet sur la GTX 1060 et pistes retenues dans `docs/ETUDE_OPTIMISATION_RENDU_2026-11-05.md`.
 
+**Historique (7 novembre)** : tous les essais graphiques, leurs mesures en low, medium et high et leur verdict, réglage par réglage, dans `docs/HISTORIQUE_ESSAIS_GRAPHIQUES.md`.
+
 Sources : documentation officielle de Godot (dépôt `godot-docs`, branche principale, lue le 27 octobre 2026), référence des classes (dépôt `godot`, `doc/classes`), pages de version 4.4 à 4.7 (dépôt `godot-website`), plus quelques extensions et articles cités au §9. Chaque affirmation renvoie à sa source ; ce qui n'a pas pu être vérifié est marqué **à vérifier**.
 
 ## 0. Décisions du propriétaire (27 octobre)

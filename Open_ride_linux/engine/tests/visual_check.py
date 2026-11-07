@@ -374,6 +374,21 @@ class Session:
         """Attentes allongées sous Vulkan logiciel (rendu_jeu.slowdown)."""
         return rendu_jeu.slowdown(self.core.log.path.read_text(errors="replace"))
 
+    def wait_settled(self, tag: str, tries: int = PENDING_RETRIES) -> None:
+        """Attend que les tuiles et le décor soient posés (`capture_unsettled`), par captures d'essai jetées :
+        avant une scène dont le bandeau ne dure que quelques secondes (erreur du core), la reprise de capture
+        de `capture` le laisserait s'effacer."""
+        png = self.out_dir / f"{self.name}_{tag}_attente.png"
+        for _ in range(tries):
+            mark = self.core.log.mark()
+            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
+                                "path": str(png), "tag": f"{tag}_attente"})
+            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0 * self.slowdown(), mark)
+            if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
+                break
+            time.sleep(1.0)
+        png.unlink(missing_ok=True)
+
     def capture(self, scene: str) -> tuple[Image, dict[str, Any]] | None:
         png = self.out_dir / f"{self.name}_{scene}.png"
         # Scène de référence : capture reprise tant que des tuiles voulues manquent (`streaming_pending`, comme le
@@ -528,9 +543,10 @@ GROUND_SCROLL_LEVEL = 0.2
 
 
 def capture_unsettled(info: dict[str, Any]) -> bool:
-    """Capture d'une scène de référence à reprendre : tuiles du terrain en attente, ou rappel des commandes du
-    départ de séance encore affiché (il s'efface seul au bout de 10 s)."""
-    if int(info.get("streaming_pending", 0)) > 0:
+    """Capture d'une scène de référence à reprendre : tuiles du terrain en attente, décor encore en cours de pose
+    (herbe du bord remplie au plus 120 touffes par image, forêts lointaines : `decor_pending`), ou rappel des
+    commandes du départ de séance encore affiché (il s'efface seul au bout de 10 s)."""
+    if int(info.get("streaming_pending", 0)) > 0 or int(info.get("decor_pending", 0)) > 0:
         return True
     b = info.get("widgets", {}).get("banner", {})
     return bool(b.get("visible")) and str(b.get("text", "")).startswith(CONTROLS_HINT_PREFIX)
@@ -674,8 +690,12 @@ def _scenes(s: Session) -> None:
         s.check("mouvement_2", "distance affichée qui avance",
                 info_a["widgets"]["distance"]["text"] != info_b["widgets"]["distance"]["text"],
                 f"{info_a['widgets']['distance']['text']} → {info_b['widgets']['distance']['text']}")
+        # Durée entre les deux poses de la caméra (`camera_clock_s`, instant où l'engine l'a placée), comme le
+        # pédalier (`crank_clock_s`) : l'heure des captures (`ticks_ms`, prise après l'écriture du PNG) s'écarte
+        # d'une à deux images de la pose en Vulkan logiciel (1 à 3 images/s). CI de main du 7 novembre : 29,9 m
+        # comptés en 2,85 s, soit 10,5 m/s (seuil 6 à 10 m/s) ; même code vert sur la PR #736 juste avant.
         moved = sum((p - q) ** 2 for p, q in zip(info_a["camera"], info_b["camera"])) ** 0.5
-        dt = (info_b["ticks_ms"] - info_a["ticks_ms"]) / 1000.0
+        dt = info_b["camera_clock_s"] - info_a["camera_clock_s"]
         speed = moved / dt if dt > 0 else 0.0
         s.check("mouvement_2", "caméra à la vitesse du core (8 m/s ± 25 %)", abs(speed - SPEED_MPS) <= 0.25 * SPEED_MPS,
                 f"{moved:.1f} m en {dt:.2f} s, soit {speed:.1f} m/s")
@@ -1088,6 +1108,7 @@ def _scenes(s: Session) -> None:
     # READY : en RUNNING, la caméra ne recule jamais et ne reviendrait pas à FIXED_S.
     core.set_scene(speed=0.0, s=FIXED_S, session_state="READY")
     time.sleep(SETTLE_S)
+    s.wait_settled("erreur")   # décor posé avant l'erreur : son bandeau ne dure pas assez pour les reprises
     core.send({"type": "error", "v": CONTRACT_VERSION, "code": "route_invalid", "message": "parcours de test illisible"})
     time.sleep(0.6)
     shot = s.capture("erreur")
@@ -1949,7 +1970,7 @@ def _camera_scenes(s: Session) -> None:
 
 XP_RESULT = {"type": "xp_result", "v": CONTRACT_VERSION, "eligible": True, "reason": None,
              "gains": [{"source": "distance", "points": 302}, {"source": "climb", "points": 302}], "total": 604,
-             "xp_total": 100, "xp_next_level": 1600, "level_before": 9, "level_after": 10, "coins_gained": 42,
+             "xp_total": 1300, "xp_level_start": 1200, "xp_next_level": 1600, "level_before": 9, "level_after": 10, "coins_gained": 42,
              "coins_total": 232, "equipment_gain_s": -12.5, "unlocked": ["frame_aero"], "challenges": [], "more": False}
 
 
@@ -1965,7 +1986,7 @@ def _progress_scenes(s: Session) -> None:
         img, info = shot
         s.check_texts("progression", info, {"menu": "Distance 15,2 km : +302 XP"}, contains=True)
         s.check_texts("progression", info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
-        s.check_texts("progression", info, {"menu": "Niveau 10 : ■□□□□□□□□□ 100 / 1600 XP"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Niveau 10 : ■■■□□□□□□□ 100 / 400 XP"}, contains=True)
         s.check_texts("progression", info, {"menu": "Niveau 10 !"}, contains=True)
         s.check_texts("progression", info, {"menu": "Aller au Garage"}, contains=True)
         s.check_layout("progression", info)
