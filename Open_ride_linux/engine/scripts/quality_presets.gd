@@ -179,6 +179,19 @@ const BOT_DETAIL_MAX := {
 }
 
 
+## Spectateurs dans les tribunes du vélodrome couvert (série VD, lot VD5, plan §7.2) : instances d'un seul
+## MultiMesh posées au chargement, aucune création pendant l'épreuve.
+const VELODROME_CROWD := {
+	"low": 1000,
+	"medium": 3000,
+	"high": 6000,
+}
+
+
+static func velodrome_crowd(name: String) -> int:
+	return int(VELODROME_CROWD[applied_name(name)])
+
+
 ## Nombre de bots au plus aux niveaux de détail 0 et 1 pour le préréglage `name` (lot PL1).
 static func bot_detail_max(name: String) -> int:
 	return int(BOT_DETAIL_MAX[applied_name(name)])
