@@ -308,7 +308,7 @@ static func build(kind: String) -> Dictionary:
 			_limb(st, Vector3.ZERO, Vector3(0, 1.0, 0), 0.25, 0.22, BARK)
 			_blob(st, Vector3(0, 7.2, 0), Vector3(1.2, 6.8, 1.2), mat(Color(0.12, 0.24, 0.12), MAT_NEEDLES), 6)
 		"stone_pine":
-			_limb(st, Vector3.ZERO, Vector3(0.3, 9.5, 0), 0.32, 0.22, BARK_RED)
+			_limb(st, Vector3.ZERO, Vector3(0.5, 10.6, 0.15), 0.32, 0.22, BARK_RED)   # jusque dans le houppier (dessous à 9,8 m)
 			_limb(st, Vector3(0.3, 8.5, 0), Vector3(2.5, 10.8, 0.6), 0.16, 0.1, BARK_RED, 4)
 			_blob(st, Vector3(0.6, 11.4, 0.2), Vector3(5.2, 1.6, 5.0), mat(Color(0.18, 0.33, 0.15), MAT_NEEDLES))
 		"palm":

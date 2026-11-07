@@ -14,6 +14,12 @@ const BiomeIds := preload("res://scripts/biome_ids.gd")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 
+## Espèces à tronc unique sous le houppier (le premier fût de tree_species.build) : le haut du tronc doit être
+## pris dans le feuillage, sans jour entre les deux (défaut vu le 7 novembre sur le pin parasol : tronc arrêté à
+## 9,5 m sous un houppier qui commence à 9,8 m). Les arbres à fourche (olivier, acacia, baobab) et à palmes
+## (palmier, fougère) ont leurs branches jusqu'au feuillage.
+const SINGLE_TRUNK := ["oak", "beech", "spruce", "pine", "birch", "larch", "holm_oak", "cypress", "stone_pine"]
+
 var _failures := 0
 var _checked := 0
 
@@ -24,6 +30,8 @@ func _init() -> void:
 		if built.is_empty():
 			continue
 		_check_mesh(kind, built["lod0"], float(built["height"]))
+		if kind in SINGLE_TRUNK:
+			_check_trunk_in_crown(kind, built["lod0"])
 	_check_mesh("generic", TreeRenderer.build_lod0_mesh(), 5.4)
 	print("test_tree_faces : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
@@ -92,6 +100,38 @@ func _check_mesh(kind: String, mesh: ArrayMesh, height: float) -> void:
 		if (best_tri[3] as Vector3).dot(-d) <= 0.0:
 			back += 1
 	_check(hits > 0 and back == 0, "%s : première face vue de dehors tournée vers l'œil (%d sur %d à l'envers)" % [kind, back, hits])
+
+
+## Haut du premier fût (ses 12 premiers triangles, sommets de la moitié haute) : un rayon tiré vers le haut depuis
+## son centre doit sortir d'un volume de feuillage de plus qu'il n'en entre : le point est dans le houppier.
+func _check_trunk_in_crown(kind: String, mesh: ArrayMesh) -> void:
+	var verts: PackedVector3Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var colors: PackedColorArray = mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	var n := TreeSpecies.SIDES * 6
+	var lo := INF
+	var hi := -INF
+	for i in range(n):
+		lo = minf(lo, verts[i].y)
+		hi = maxf(hi, verts[i].y)
+	var top := Vector3.ZERO
+	var count := 0
+	for i in range(n):
+		if verts[i].y > (lo + hi) * 0.5:
+			top += verts[i]
+			count += 1
+	top /= float(count)
+	# Sorties moins entrées des volumes de feuillage le long du rayon : au moins 1 si le point est dedans
+	# (houppiers qui se chevauchent : dessous d'un étage supérieur dans le cône inférieur).
+	var depth := 0
+	for t in range(n / 3, verts.size() / 3):
+		var a := verts[3 * t]
+		var b := verts[3 * t + 1]
+		var c := verts[3 * t + 2]
+		if int(round(colors[3 * t].a * 16.0)) < TreeSpecies.MAT_LEAVES or _ray(top, Vector3.UP, a, b, c) <= 0.0:
+			continue
+		depth += 1 if front_normal(a, b, c).y > 0.0 else -1
+	var inside := depth >= 1
+	_check(inside, "%s : haut du tronc (%.1f m) pris dans le feuillage" % [kind, top.y])
 
 
 ## Möller-Trumbore, des deux côtés : distance au point touché, ou -1.
