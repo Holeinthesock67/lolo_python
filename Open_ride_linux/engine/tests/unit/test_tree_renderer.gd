@@ -179,29 +179,53 @@ func _test_shadow_limit() -> void:
 	_check(not TreeRenderer.casts_shadow(c, Vector3(-120.0, 0.0, -120.0), 150.0),
 		"ombre : coin de la case à 170 m en diagonale, coupée")
 
-	var renderer = TreeRenderer.new()
-	root.add_child(renderer)
 	var route = _make_simple_route(3000.0)
 	var theme := {"vegetation": {"max_density_per_ha": 400.0}}
-	renderer.add_tile(renderer.prepare_tile(0, 0, TerrainTiles.flat_heights(1000.0), route, theme, 1.0))
+	var heights := TerrainTiles.flat_heights(1000.0)
 	var cam := Vector3(125.0, 0.0, 125.0)
-	renderer.update_shadows(cam)
+
+	var plain = TreeRenderer.new()
+	root.add_child(plain)
+	plain.add_tile(plain.prepare_tile(0, 0, heights, route, theme, 1.0))
+	plain.update_shadows(cam)
 	var all_on := true
-	for info in renderer._tiles[Vector2i(0, 0)].values():
+	for info in plain._tiles[Vector2i(0, 0)].values():
 		all_on = all_on and (info["parts"][0]["lod0"] as MultiMeshInstance3D).cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	_check(all_on, "ombre : sans limite, toutes les cases projettent")
-	renderer.shadow_end_m = 150.0
-	renderer.update_shadows(cam)
-	var near_ok := true
-	var far_off := 0
-	for info in renderer._tiles[Vector2i(0, 0)].values():
-		var on := (info["parts"][0]["lod0"] as MultiMeshInstance3D).cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		if TreeRenderer.casts_shadow(info["center"], cam, 150.0):
-			near_ok = near_ok and on
-		elif not on:
-			far_off += 1
-	_check(near_ok and far_off > 0, "ombre : limite 150 m, cases proches avec ombre, %d cases lointaines sans" % far_off)
-	renderer.queue_free()
+	_check(all_on and plain.shadow_caster_count() == 0, "ombre : sans limite, modèle proche avec ombre, aucun « ombre seule »")
+	plain.queue_free()
+
+	var limited = TreeRenderer.new()
+	limited.shadow_end_m = 150.0
+	root.add_child(limited)
+	limited.add_tile(limited.prepare_tile(0, 0, heights, route, theme, 1.0))
+	var none_on := true
+	var expected := 0
+	var origin_ok := true
+	var bucketed := 0
+	for info in limited._tiles[Vector2i(0, 0)].values():
+		none_on = none_on and (info["parts"][0]["lod0"] as MultiMeshInstance3D).cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var buckets: Dictionary = info["parts"][0]["buckets"]
+		for key in buckets:
+			var buf: PackedFloat32Array = buckets[key]
+			for k in range(0, buf.size(), TreeRenderer.SHADOW_STRIDE):
+				bucketed += 1
+				origin_ok = origin_ok and floor(buf[k + 3] / TreeRenderer.SHADOW_BUCKET_M) == key.x \
+					and floor(buf[k + 11] / TreeRenderer.SHADOW_BUCKET_M) == key.y
+			var bc := Vector3((key.x + 0.5) * TreeRenderer.SHADOW_BUCKET_M, 0.0, (key.y + 0.5) * TreeRenderer.SHADOW_BUCKET_M)
+			if TreeRenderer.casts_shadow(bc, cam, 150.0, TreeRenderer.SHADOW_BUCKET_M):
+				expected += buf.size() / TreeRenderer.SHADOW_STRIDE
+	origin_ok = origin_ok and bucketed == limited.get_active_tree_count()
+	limited.update_shadows(cam)
+	var n: int = limited.shadow_caster_count()
+	_check(none_on, "ombre : limite 150 m, le modèle proche ne projette plus d'ombre")
+	_check(origin_ok, "ombre : chaque arbre rangé dans le carré de 25 m de sa position (tampon lu au bon endroit)")
+	_check(n == expected and n > 0 and n < limited.get_active_tree_count(),
+		"ombre : %d arbres « ombre seule » sur %d (attendu %d)" % [n, limited.get_active_tree_count(), expected])
+	limited.update_shadows(cam + Vector3(3.0, 0.0, 0.0))
+	_check(limited.shadow_caster_count() == n, "ombre : pas de reconstruction pour 3 m de déplacement")
+	limited.update_shadows(Vector3(5000.0, 0.0, 5000.0))
+	_check(limited.shadow_caster_count() == 0, "ombre : caméra loin, plus aucun arbre « ombre seule »")
+	limited.queue_free()
 
 
 ## Empreinte exacte d'une tuile préparée : nombre d'arbres et SHA-256 des octets, case après case.
