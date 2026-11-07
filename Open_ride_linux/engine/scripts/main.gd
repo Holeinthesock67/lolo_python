@@ -57,6 +57,7 @@ const QualityPresets := preload("res://scripts/quality_presets.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
 const AtmosphereView := preload("res://scripts/atmosphere_view.gd")
+const VelodromeHall := preload("res://scripts/velodrome_hall.gd")
 const SegmentMarkers := preload("res://scripts/segment_markers.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
@@ -220,6 +221,8 @@ var _theme_dict: Dictionary = {}   # thème courant, pour le décor vivant
 var _living_enabled := true
 ## Décor vivant, deuxième vague (lot P17) : météo, animaux, éoliennes, véhicules, bord de route, foule.
 var living_decor = null
+## Salle couverte du vélodrome (lot VD5), posée sur une piste seulement.
+var velodrome_hall = null
 var _cfg_crowd_all_climbs := false   # --crowd=all : spectateurs sur toutes les montées (bancs, lot Y21)
 ## Ciel, brouillard et soleil, atmosphère du biome sous la caméra (atmosphere_view.gd, lots U10 et U17).
 var atmosphere_view = AtmosphereView.new()
@@ -315,6 +318,9 @@ func _ready() -> void:
 	living_decor.configure(_quality_name, _living_enabled, _theme_dict, world_env.environment, sound_player, streamer)
 	atmosphere_view.living_decor = living_decor
 	living_decor.set_fog_base(world_env.environment)
+	velodrome_hall = VelodromeHall.new()
+	velodrome_hall.name = "VelodromeHall"
+	add_child(velodrome_hall)
 	bots_view = BotsView.new()
 	bots_view.set_quality(_quality_name)
 	add_child(bots_view)
@@ -522,6 +528,9 @@ func _on_settings(msg: Dictionary) -> void:
 		load_guard.reset(QualityPresets.image(_quality_name), _forward_plus())
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
+		if velodrome_hall != null:
+			velodrome_hall.set_quality(_quality_name)
+		_apply_indoor()
 		bots_view.set_quality(_quality_name)
 		if living_decor != null and living_decor.cyclists_view != null:
 			living_decor.cyclists_view.set_quality(_quality_name)
@@ -584,6 +593,14 @@ func _apply_theme(name: String) -> void:
 ## sous la caméra, en commençant par celle du départ (atmosphere_view.gd, lots U10 et U17).
 func _apply_sky_params(theme_dict: Dictionary) -> void:
 	atmosphere_view.set_world(theme_dict, streamer.biome_model, route, streamer.has_terrain)
+	_apply_indoor()
+
+
+## Salle couverte (lot VD5) : son ambiance l'emporte sur le ciel, le brouillard et le soleil, reposés par le
+## thème, le préréglage ou l'atmosphère.
+func _apply_indoor() -> void:
+	if velodrome_hall != null and route != null and route.is_track():
+		velodrome_hall.apply_indoor(world_env.environment, sun)
 
 
 ## Latence des appuis (lot X7, core lancé avec --latence) : étage « recu » à la réception de l'événement,
@@ -1079,7 +1096,7 @@ func _process(delta: float) -> void:
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
 ## Core non joignable : pas appelé (_process fige toute la scène), donc ni nuages ni herbe qui bougent.
 func _step_living(delta: float, s_route: float, v: float) -> void:
-	if living_world == null or route == null:
+	if living_world == null or route == null or route.is_track():   # salle couverte : ni météo ni décor vivant
 		return
 	var smp: Dictionary = route.sample(s_route)
 	var now_s := Time.get_ticks_msec() / 1000.0
@@ -1256,16 +1273,23 @@ func _poll_route_job() -> void:
 	if living_world != null:
 		living_world.set_route(route, float(streamer.get("_road_width_m")))
 		living_world.terrain_material = streamer.get("_terrain_material")
+	# Piste du vélodrome (plan VD §7.2, lots VD4 et VD5) : salle couverte à la place du monde ouvert (ni ciel,
+	# météo, herbe, personnages, animaux ni engins du décor de route) ; ambiance de la salle posée par
+	# _apply_sky_params, celle d'avant rendue au parcours suivant.
+	var track: bool = route.is_track()
+	if velodrome_hall != null:
+		if track:
+			velodrome_hall.build(route, _quality_name)
+			print("Salle du vélodrome : %d spectateurs (préréglage %s)" % [velodrome_hall.crowd_count, _quality_name])
+		else:
+			velodrome_hall.clear()
+			velodrome_hall.restore(world_env.environment, sun)
 	_apply_sky_params(streamer._theme_dict)
 	if living_decor != null:
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
-	# Piste du vélodrome (plan VD §7.2) : ni herbe du bord de route, ni personnages, ni animaux du décor de route ;
-	# la salle et son public viendront du lot VD5.
-	var track: bool = route.is_track()
-	if living_decor != null:
 		living_decor.visible = not track
-	if living_world != null and living_world.grass != null:
-		living_world.grass.visible = not track
+	if living_world != null:
+		living_world.visible = not track
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
 	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)

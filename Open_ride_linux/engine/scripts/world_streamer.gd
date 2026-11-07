@@ -18,7 +18,7 @@ extends Node3D
 ## Les tableaux de sommets se calculent dans WorkerThreadPool ; les ArrayMesh et MeshInstance3D se
 ## créent sur le fil principal, au plus MAX_NEW_PER_FRAME par image. Ce qui sort de la fenêtre est
 ## libéré tout de suite (free) ; un changement de parcours vide tout (set_world).
-## Sans couche terrain : sol plat de 2 × far_radius_m de côté, 5 m sous l'altitude minimale de la route,
+## Sans couche terrain (hors piste du vélodrome, lot VD5) : sol plat de 2 × far_radius_m de côté, 5 m sous l'altitude minimale de la route,
 ## qui suit la caméra.
 ## Pas de class_name (charger par preload).
 
@@ -185,7 +185,7 @@ func set_world(new_route, new_world_dir: String) -> void:
 		if _near_index.is_empty() and _far_index.is_empty():
 			push_warning("Couche terrain déclarée mais aucune tuile trouvée : sol plat")
 			has_terrain = false
-	if not has_terrain:
+	if not has_terrain and not RoadBuilder.is_track(route):   # piste (lot VD5) : sol de la salle (velodrome_hall.gd)
 		_make_ground()
 	_set_biome_model()
 	if osm_streamer != null:
