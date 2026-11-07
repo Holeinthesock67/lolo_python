@@ -87,6 +87,21 @@ ROAD_WEAK_S = 8.0
 ROAD_WEAK_MIN_KMH = 15.0
 ROAD_WEAK_MIN_PCT = 5.0
 ROAD_WEAK_RETAKES = 2
+# Recette vélo RC4 du 7 novembre (4/5, journal 2026-11-07_17-29-15) : pompage sous 60 tr/min (66↔262 W puis
+# 30↔305 W, cycles de 3 à 5 s) et k tombé au plancher (0,0072) avec le niveau envoyé déjà au maximum
+# (10 sur 10). Trois corrections (lot RC5) :
+# - k n'est plus corrigé quand le niveau envoyé est en butée haute (ROAD_ADAPT_MAX_PCT) : le niveau ne peut
+#   plus monter, la correction s'emballait jusqu'au plancher (l'effet d'un intégrateur saturé) ;
+# - ni pendant ROAD_ADAPT_SETTLE_S après un changement de niveau : le trainer l'applique 200 à 800 ms plus
+#   tard, la force mesurée entre-temps est celle de l'ancien niveau ;
+# - le niveau est calculé sur la vitesse du volant lissée sur ROAD_LEVEL_SPEED_TAU_S (plus qu'un tour de
+#   pédalier à 40 tr/min) et ne monte pas plus vite que ROAD_LEVEL_RISE_PCT_S % de la plage par seconde.
+#   Suivre la vitesse dans le coup de pédale (niveau en 1/v) annulait l'amortissement naturel du frein
+#   (F ∝ v à niveau fixe) et, avec le délai du trainer, freinait pendant la poussée suivante.
+ROAD_ADAPT_MAX_PCT = 95.0
+ROAD_ADAPT_SETTLE_S = 1.0
+ROAD_LEVEL_SPEED_TAU_S = 1.5
+ROAD_LEVEL_RISE_PCT_S = 20.0
 DEFAULT_ROAD_MASS_KG = 84.0   # masse sans profil (PhysicsParams), remplacée par la session
 # Inertie en accélération (séance de 9 sprints du 1er novembre, choix du propriétaire) : sans inertie,
 # le mode résistance supprime le trou après le sprint (R100 : aucun lâcher, SIM : 4 sprints sur 5) mais
@@ -381,6 +396,9 @@ class FtmsDriver:
         self.road_fallback = False   # frein sans effet en résistance calculée : SIM du trainer jusqu'à la fin de la séance
         self._road_weak_since: float | None = None
         self.road_weak_retakes = 0
+        self._level_speed: tuple[float, float] | None = None   # (instant, vitesse du volant km/h lissée)
+        self._road_level_out: tuple[float, float] | None = None   # (instant, dernier niveau calculé, montée bornée)
+        self._level_changed_at = -math.inf   # dernier changement de niveau envoyé (k gelé ROAD_ADAPT_SETTLE_S)
         self.reconnect_count = 0
         self.att_retries = 0   # renvois après une erreur ATT ponctuelle (lot M1)
         # Control Point occupé (CP_BUSY_CODES) après les renvois : consigne gardée et réessayée.
@@ -482,11 +500,37 @@ class FtmsDriver:
         return (self.road_mass_kg * G * (math.sin(theta) + self._crr * math.cos(theta))
                 + 0.5 * self._cw * va * abs(va))
 
+    def _track_level_speed(self, now: float) -> None:
+        """Vitesse du volant lissée sur ROAD_LEVEL_SPEED_TAU_S, celle du calcul du niveau (lot RC5)."""
+        kmh = self._trainer_speed_kmh
+        if kmh is None:
+            return
+        prev = self._level_speed
+        if prev is None or now <= prev[0]:
+            self._level_speed = (now, kmh if prev is None else prev[1])
+            return
+        alpha = 1.0 - math.exp(-(now - prev[0]) / ROAD_LEVEL_SPEED_TAU_S)
+        self._level_speed = (now, prev[1] + (kmh - prev[1]) * alpha)
+
+    def level_speed_kmh(self) -> float:
+        """Vitesse du volant (km/h) prise pour le niveau : lissée, sans les à-coups du coup de pédale."""
+        if self._level_speed is not None:
+            return self._level_speed[1]
+        return self._trainer_speed_kmh or 0.0
+
     def _road_level(self, grade_pct: float) -> float:
-        """Niveau de résistance FTMS qui donne la force de la route au volant (0 en descente)."""
-        kmh = self._trainer_speed_kmh or 0.0
+        """Niveau de résistance FTMS qui donne la force de la route au volant (0 en descente), calculé sur la
+        vitesse lissée et à montée bornée (ROAD_LEVEL_RISE_PCT_S) ; la baisse n'est pas bornée."""
+        kmh = self.level_speed_kmh()
         force = max(self.road_force_n(grade_pct, kmh / 3.6) + self.inertia_force_n(), 0.0)
-        return resistance_level(force / (max(self.k_road, 1e-6) * max(kmh, ROAD_MIN_KMH)), *self.resistance_range)
+        lo, hi, _ = self.resistance_range
+        level = lo + min(max(force / (max(self.k_road, 1e-6) * max(kmh, ROAD_MIN_KMH)), 0.0), 100.0) / 100.0 * (hi - lo)
+        now = self._clock()
+        prev = self._road_level_out
+        if prev is not None and level > prev[1]:
+            level = min(level, prev[1] + ROAD_LEVEL_RISE_PCT_S / 100.0 * (hi - lo) * max(now - prev[0], 0.0))
+        self._road_level_out = (now, level)
+        return resistance_level(100.0 * (level - lo) / (hi - lo) if hi > lo else 0.0, *self.resistance_range)
 
     def _adapt_road(self, now: float, power_w: float) -> None:
         """Corrige k (force par % et par km/h) sur la force mesurée (puissance / vitesse du volant), volant stable."""
@@ -502,7 +546,11 @@ class FtmsDriver:
         if (dt <= 0 or speed < ROAD_ADAPT_MIN_MPS or power_w < ROAD_ADAPT_MIN_W or pct < 2.0
                 or abs(speed - prev[1]) / dt > ROAD_ADAPT_MAX_ACCEL):
             return
+        if now - self._level_changed_at < ROAD_ADAPT_SETTLE_S:   # niveau pas encore appliqué par le trainer
+            return
         self._check_road_weak(now, power_w / speed, sent[1], pct, speed)
+        if pct >= ROAD_ADAPT_MAX_PCT:   # niveau en butée : k gelé (sinon il s'effondre, recette du 7 novembre)
+            return
         observed = power_w / speed / (pct * speed * 3.6)
         base = self.cfg.resistance_n_per_pct_kmh
         self.k_road += (observed - self.k_road) * (1.0 - math.exp(-dt / ROAD_ADAPT_TAU_S))
@@ -635,6 +683,7 @@ class FtmsDriver:
             self._adapt_road(self._last_data_at, max(float(d.power_w), 0.0))
         if d.speed_kmh is not None:
             self._track_accel(self._last_data_at)
+            self._track_level_speed(self._last_data_at)
         if d.heart_rate_bpm is not None:   # absent d'une trame partielle : on garde la valeur
             self._hr_ibd = d.heart_rate_bpm or None   # 0 = pas de mesure
             self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
@@ -1039,6 +1088,8 @@ class FtmsDriver:
             return
         self._last_sent_at = now
         if self._forgotten == forgotten:   # sinon refus ou contrôle perdu pendant l'écriture
+            if sent[0] == "resistance" and (prev is None or prev[0] != "resistance" or prev[1] != sent[1]):
+                self._level_changed_at = now
             self._last_sent = sent
 
     async def _release(self, cp: ControlPoint) -> None:
