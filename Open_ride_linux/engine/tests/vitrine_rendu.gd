@@ -29,6 +29,7 @@ const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
+const BuildingStyles := preload("res://scripts/building_styles.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const SkyTrafficRenderer := preload("res://scripts/sky_traffic_renderer.gd")
@@ -73,6 +74,9 @@ const VIEWS := {
 	"styles_biomes_pres": [Vector3(-152.0, 2.5, -146.0), Vector3(-136.0, 3.0, -161.0), 60.0],
 	"styles_biomes_pres2": [Vector3(-103.0, 2.5, -146.0), Vector3(-86.0, 3.0, -161.0), 60.0],
 	"faune_biomes": [Vector3(-40.0, 2.0, -2.0), Vector3(-40.0, 1.2, 12.0), 55.0],
+	"habitat_rond": [Vector3(-133.0, 5.0, -179.0), Vector3(-133.0, 1.5, -196.0), 60.0],
+	"habitat_pilotis": [Vector3(-103.0, 2.5, -181.0), Vector3(-103.0, 2.0, -196.0), 60.0],
+	"habitat_yourtes": [Vector3(-76.0, 4.0, -180.0), Vector3(-76.0, 1.5, -196.0), 60.0],
 	"ciel": [Vector3(0.0, 1.4, 0.0), Vector3(0.0, 70.0, -200.0), 70.0],
 	"ciel_proche": [Vector3(0.0, 1.4, 0.0), Vector3(8.0, 72.0, -270.0), 22.0],
 	"arbres_temperes": [Vector3(147.0, 5.0, -86.0), Vector3(147.0, 8.0, -120.0), 60.0],
@@ -101,6 +105,13 @@ const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "aca
 const STYLE_ROW := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]
 ## Lot U23 : styles d'habitat propres aux biomes, en seconde rangée derrière la première (vues `styles_biomes`).
 const STYLE_ROW_BIOMES := ["chalet", "bois_peint", "pise", "case", "paillote", "basalte", "chaumiere"]
+## Lot U23 étape 2 (vues `habitat_rond`, `habitat_pilotis`, `habitat_yourtes`) : [style, famille OSM, largeur, profondeur, rond, pilotis]
+const ROUND_ROW := [
+	["case", "house", 6.0, 6.0, true, false], ["case", "hut", 5.0, 5.0, true, false], ["case", "house", 7.5, 7.0, true, false],
+	["paillote", "house", 8.0, 6.0, false, true], ["paillote", "house", 6.0, 6.0, true, false],
+	["paillote", "house", 6.5, 6.0, true, true],
+	["yourte", "house", 6.5, 6.5, true, false], ["yourte", "hut", 5.0, 5.0, true, false], ["yourte", "house", 7.5, 7.5, true, false],
+]
 ## Bâtiments de la vitrine (forme de la couche `buildings` du .world) : type OSM, contour [x, z], hauteur des murs (m).
 ## Un échantillon des types courants des villages : maisons, ferme, église, immeuble, atelier, hangar, magasin.
 const BUILDINGS := [
@@ -492,6 +503,15 @@ func _add_buildings(vp: SubViewport, preset: String) -> void:
 		items.append({"id": "style_biome_case_%d" % j, "outer": [[x0 + 1.0, -168.0], [x0 + 6.0, -168.0], [x0 + 6.0, -173.0], [x0 + 1.0, -173.0]],
 			"holes": [], "base_y": 0.0, "height_m": 2.8, "roof": "flat", "style": STYLE_ROW_BIOMES[j],
 			"hint": {"building": "hut", "colour": null}})
+	var rx := -148.0
+	for j in range(ROUND_ROW.size()):
+		var r: Array = ROUND_ROW[j]
+		var w: float = r[2]
+		var dz: float = r[3]
+		items.append({"id": _round_row_id(j, r[4], r[5], r[0]), "outer": [[rx, -190.0], [rx + w, -190.0], [rx + w, -190.0 - dz], [rx, -190.0 - dz]],
+			"holes": [], "base_y": 0.0, "height_m": 2.8 if r[1] == "hut" else 3.2, "roof": "flat", "style": r[0],
+			"hint": {"building": r[1], "colour": null}})
+		rx += w + 3.5
 	var theme: Dictionary = ThemeLoader.new().load_named("default")["theme"]
 	var m := BuildingMesh.build(items, theme, 3.0)
 	var arr := []
@@ -510,3 +530,18 @@ func _add_buildings(vp: SubViewport, preset: String) -> void:
 	BuildingMesh.apply_preset(mat, preset)
 	mi.material_override = mat
 	vp.add_child(mi)
+
+
+## Identifiant du bâtiment `j` de ROUND_ROW dont les tirages donnent la case ronde et les pilotis demandés.
+static func _round_row_id(j: int, want_round: bool, want_stilts: bool, style_name: String) -> String:
+	var st := BuildingStyles.style(style_name)
+	var round_share := float(st.get("round", {}).get("share", 0.0))
+	var stilts_share := float(st.get("stilts", {}).get("share", 0.0))
+	for k in range(500):
+		var id := "habitat_rond_%d_%d" % [j, k]
+		var h := BuildingMesh.hash_string(id)
+		var is_round := BuildingMesh._unit(h, BuildingMesh.ROUND_SALT) < round_share
+		var on_stilts := BuildingMesh._unit(h, BuildingMesh.STILTS_SALT) < stilts_share
+		if is_round == want_round and on_stilts == want_stilts:
+			return id
+	return "habitat_rond_%d" % j
