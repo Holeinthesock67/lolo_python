@@ -409,3 +409,124 @@ def build_history_session(request_cmd_id: int, session_id: str, path: Path, ftp_
     }
     return {"type": "history_session", "v": 1, "request_cmd_id": request_cmd_id, "id": session_id,
             "summary": summary}
+
+
+# --- collection de cartes (série BC, lot BC2, contrat IPC révision 1.6) -----------------------
+
+def is_valid_collection_key(key: str, cards_by_id: dict[str, Any]) -> bool:
+    """Vérifie si une clé correspond à une carte du catalogue (ou carte_saison:année)."""
+    if not isinstance(key, str):
+        return False
+    if ":" in key:
+        cid, sep, edition_str = key.partition(":")
+        card = cards_by_id.get(cid)
+        if card is None or card.kind != "saison":
+            return False
+        if not edition_str.isdigit():
+            return False
+        edition = int(edition_str)
+        return 2000 <= edition <= 2100
+    card = cards_by_id.get(key)
+    if card is None:
+        return False
+    if card.kind == "saison":
+        return False
+    return True
+
+
+def build_collection_message(request_cmd_id: int, profile_ctx: Any,
+                             journal_dir: Path | None = None,
+                             table_path: Path | None = None,
+                             now: float | None = None) -> dict[str, Any]:
+    """Réponse à `list_collection` : cartes du catalogue, cartes gagnées, avancement des autres."""
+    from .collection import announcement, card_line, evaluate, load_catalogue, load_seen, new_cards, seen_path
+    from .config import WORKOUTS_DIR
+    from .garage import workout_duration_finder
+    from .garage import CACHE_NAME
+    from .progression import FactsCache, load_table, recompute
+
+    journal_dir = journal_dir or profile_ctx.journal_dir
+    table_path = table_path or getattr(profile_ctx, "table_path", None)
+    table = load_table(table_path)
+    cards = load_catalogue(table=table)
+    cache = FactsCache(journal_dir / CACHE_NAME)
+    progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR), cache=cache,
+                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
+    col = evaluate(progress, cards, table, now=now)
+    seen = load_seen(seen_path(profile_ctx.root))
+
+    return {
+        "type": "collection",
+        "v": 1,
+        "request_cmd_id": request_cmd_id,
+        "cards_count": len(cards),
+        "first_time": seen is None,
+        "cards": [
+            {
+                "id": c.id,
+                "title": c.title,
+                "text": c.text,
+                "family": c.family,
+                "rarity": c.rarity,
+                "visual": c.visual,
+            }
+            for c in cards
+        ],
+        "earned": [card_line(e) for e in col.earned],
+        "remaining": [
+            {"id": cid, "value": v, "target": t}
+            for cid, (v, t) in col.progress.items()
+        ],
+        "new": [e.key for e in new_cards(col, seen)],
+    }
+
+
+def record_collection_seen(profile_ctx: Any, keys: list[str],
+                           catalogue_cards: tuple[Any, ...] | None = None) -> set[str]:
+    """Valide les clés et les ajoute à `collection_vue.json` du profil en cours (lot BC2)."""
+    from .collection import load_catalogue, load_seen, save_seen, seen_path
+
+    if not isinstance(keys, list):
+        raise ValueError("collection_seen attend une liste 'keys'")
+    if catalogue_cards is None:
+        catalogue_cards = load_catalogue()
+    cards_by_id = {c.id: c for c in catalogue_cards}
+    for k in keys:
+        if not is_valid_collection_key(k, cards_by_id):
+            raise ValueError(f"Clé de collection inconnue : {k!r}")
+
+    path = seen_path(profile_ctx.root)
+    existing = load_seen(path)
+    current = set() if existing is None else existing
+    current.update(keys)
+    save_seen(path, current)
+    return current
+
+
+def compute_summary_collection(profile_ctx: Any,
+                               journal_dir: Path | None = None,
+                               table_path: Path | None = None,
+                               now: float | None = None) -> dict[str, Any] | None:
+    """Calcule l'annonce facultative summary.collection ({card, others}) à la fin d'une séance (lot BC2)."""
+    from .collection import announcement, card_line, evaluate, load_catalogue, load_seen, seen_path
+    from .config import WORKOUTS_DIR
+    from .garage import workout_duration_finder
+    from .garage import CACHE_NAME
+    from .progression import FactsCache, load_table, recompute
+
+    journal_dir = journal_dir or profile_ctx.journal_dir
+    table_path = table_path or getattr(profile_ctx, "table_path", None)
+    table = load_table(table_path)
+    cards = load_catalogue(table=table)
+    cache = FactsCache(journal_dir / CACHE_NAME)
+    progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR), cache=cache,
+                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
+    col = evaluate(progress, cards, table, now=now)
+    seen = load_seen(seen_path(profile_ctx.root))
+    ann = announcement(col, seen)
+    if ann.card is None:
+        return None
+    return {
+        "card": card_line(ann.card),
+        "others": ann.others,
+    }
