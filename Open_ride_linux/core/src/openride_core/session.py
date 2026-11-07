@@ -65,6 +65,7 @@ from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
 from . import survivor as survivor_mod
 from .survivor import ME as SURVIVOR_ME, SurvivorError, SurvivorRace
 from . import track as track_mod
+from .track import bot_plan as track_plan_mod
 from .wtf import rules as wtf_rules
 from .wtf.events import WtfInput
 from .wtf.mode import WtfMode
@@ -326,6 +327,8 @@ class CoreSession:
         self._survivor_end_pending = False
         self.track_event: track_mod.TrackEvent | None = None   # épreuve de piste en cours (lot VD6)
         self._track_choice: tuple[str, dict] | None = None     # épreuve et réglages choisis au `start`
+        self._track_plan: Any = None                            # consignes des bots de l'épreuve (lot VD7)
+        self._race_field: bot_tactics.RaceField | None = None   # comportements de course (lot VD7)
         self._records_writable = True
         self.difficulty_pct: float = float(cfg.trainer.difficulty_pct)
         self.state = IpcState(session_state="IDLE", gears_total=self.gearing.n_gears,
@@ -2038,6 +2041,10 @@ class CoreSession:
         track_ev, self.track_event = self.track_event, None
         self.state.track = None
         self._track_choice = None
+        self._track_plan = self._race_field = None
+        for bot in self.bots:   # lot VD7 : plus de consigne d'épreuve
+            if hasattr(bot, "hint"):
+                bot.hint, bot.race_view = None, None
         self._log_gravel()
         if race and self._rec:
             for line in race.take_journal() + race.jersey_lines():
@@ -2347,8 +2354,17 @@ class CoreSession:
         ents = [track_mod.Entrant(track_mod.ME, "Toi")] + [
             track_mod.Entrant(b.id, b.name, level=float(getattr(b, "level_pct", None) or 0.0)) for b in self.bots]
         lap = self._track.length_m if self._track is not None else track_mod.LAP_M
-        self.track_event = track_mod.make(event, ents, settings, lap_m=lap, seed=int(time.time()))
+        seed = self.bot_tactics_seed if self.bot_tactics_seed is not None else bot_tactics.seed_from(time.time())
+        self.track_event = track_mod.make(event, ents, settings, lap_m=lap, seed=seed)
         self.track_event.start(self._t_session, self._track_positions())
+        # Lot VD7 : les bots courent l'épreuve (consignes de `track.bot_plan`, comportements de `bot_tactics`)
+        level = settings.get("bot_tactics", "none")
+        paced = issubclass(track_mod.EVENTS[event].cls, track_mod.Pursuit)
+        bot_tactics.start_race(self.bots, seed, bot_tactics.track_mode(level, paced))
+        self._field = bot_tactics.Field()
+        self._race_field = bot_tactics.RaceField(seed)
+        self._track_plan = track_plan_mod.BotPlan(self.track_event, {b.id: getattr(b, "profile", "rouleur")
+                                                                     for b in self.bots}, seed)
         if self._rec:
             self._rec.game({"kind": "track_start", "ts": round(time.time(), 3), "event": event, **settings})
         log.info("Épreuve de piste : %s, %s.", event, ", ".join(f"{k} = {v}" for k, v in settings.items()) or "réglages par défaut")
@@ -2358,12 +2374,46 @@ class CoreSession:
         pos[track_mod.ME] = (self.physics.s, self.physics.v)
         return pos
 
+    def _track_before_bots(self, dt: float) -> None:
+        """Consignes de l'épreuve et comportements de course des bots, avant leur pas (lot VD7)."""
+        plan, field = self._track_plan, self._race_field
+        if plan is None or field is None or self.track_event is None:
+            return
+        plan.set_reserves({b.id: b.wbal_pct for b in self.bots if hasattr(b, "wbal_pct")})
+        hints, view, survival = plan.update()
+        if view is not None:
+            bot_tactics.race_update(field, self.bots, view, dt)
+        else:
+            field.t += dt
+        for bot in self.bots:
+            if hasattr(bot, "hint"):
+                bot.hint = hints.get(bot.id)
+                bot.race_view = view
+                bot.race_t = field.t
+            if hasattr(bot, "survival"):
+                bot.survival = survival.get(bot.id)
+
+    def _track_relay(self, msg: dict) -> None:
+        """Américaine : le relayeur est lancé à la vitesse du relayé (lancer simulé, plan VD §5), bot ou cycliste."""
+        v = msg.get("v")
+        to = msg.get("to")
+        if not isinstance(v, (int, float)) or to is None:
+            return
+        if to == track_mod.ME:
+            self.physics.v = max(self.physics.v, float(v))
+            return
+        for bot in self.bots:
+            if bot.id == to and getattr(bot, "physics", None) is not None:
+                bot.physics.v = max(bot.physics.v, float(v))
+
     def _track_after_bots(self) -> None:
         """Un pas de l'épreuve : tours, cloche, points, sorties, arrivée ; lignes `track` au journal."""
         ev = self.track_event
         if ev is None:
             return
         for msg in ev.step(self._t_session, self._track_positions()):
+            if msg["event"] == "relay" and "to" in msg:
+                self._track_relay(msg)
             if msg["event"] in ("finish", "out", "arrival", "caught"):
                 log.info("Épreuve de piste %s : %s.", ev.event_id, ", ".join(f"{k} = {v}" for k, v in msg.items()))
         if self._rec:
@@ -2899,6 +2949,8 @@ class CoreSession:
                 self._gravel_stats[0] += ridden
         if self.survivor is not None:
             self._survivor_before_bots()
+        if self.track_event is not None:
+            self._track_before_bots(dt)
         # Lot Y10 : groupes, relais et départs (cycliste déjà avancé, bots au pas précédent)
         bot_tactics.update_field(self._field, self._racing_bots(), (self.physics.s, self.physics.v), dt,
                                  (lambda s: route.sample(s).grade_pct) if route else None,

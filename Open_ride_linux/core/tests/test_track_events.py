@@ -85,8 +85,11 @@ def test_registry_covers_every_event_of_the_plan():
 
 
 def test_options_defaults_and_refusals():
-    assert T.check("scratch", {}) == {"opponents": 7, "laps": 20}
-    assert T.check("pursuit", {"opponents": 0, "distance_m": 3000}) == {"opponents": 0, "distance_m": 3000}
+    assert T.check("scratch", {}) == {"opponents": 7, "laps": 20, "bot_tactics": "full"}
+    assert T.check("pursuit", {"opponents": 0, "distance_m": 3000}) == {"opponents": 0, "distance_m": 3000,
+                                                                       "bot_tactics": "full"}
+    assert T.check("kilo", {}) == {"opponents": 0}   # seul contre le chrono : pas de réglage de tactique (VD7)
+    assert T.check("scratch", {"bot_tactics": "simple"})["bot_tactics"] == "simple"
     assert T.field_size("team_pursuit", {"opponents": 1}) == 7       # 3 coéquipiers + 4 adversaires
     assert T.field_size("madison", {"opponents": 3}) == 7            # 1 coéquipier + 3 équipes de 2
     with pytest.raises(TrackError):
@@ -101,6 +104,10 @@ def test_options_defaults_and_refusals():
         T.check("scratch", {"laps": True})
     with pytest.raises(TrackError):
         T.check("kilo", {"vent": 3})
+    with pytest.raises(TrackError):
+        T.check("scratch", {"bot_tactics": "rusée"})
+    with pytest.raises(TrackError):
+        T.check("kilo", {"bot_tactics": "full"})
     with pytest.raises(TrackError):
         T.make("scratch", entrants(3), {"opponents": 7})
 

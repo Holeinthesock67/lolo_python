@@ -104,7 +104,7 @@ class Omnium(TrackEvent):
                "subs": len(PROGRAM), "neutral": self.sub is None and not self.finished}
         if sub:
             out["eliminated"] = sub["eliminated"]
-            for k in ("to_elim_m", "next_sprint_lap", "laps_up"):
+            for k in ("to_elim_m", "gap_last_s", "last", "alive", "next_sprint_lap", "laps_up"):
                 if k in sub:
                     out[k] = sub[k]
         return out

@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..bot_tactics import LEVELS as TACTIC_LEVELS
 from .base import LAP_M, ME, Entrant, TrackError, TrackEvent
 from .elimination import Elimination
 from .free import Free
@@ -73,7 +74,15 @@ def options(event_id: str) -> list[dict]:
     opp = spec.opponents
     out = [{"id": "opponents", "values": list(opp), "default": opp[len(opp) // 2] if len(opp) > 2 else opp[-1]}]
     out += [{"id": o.id, "values": list(o.values), "default": o.default} for o in spec.options]
+    if has_bots(event_id):   # lot VD7 : « Tactique des bots : aucune, simple, complète », complète par défaut
+        out.append({"id": "bot_tactics", "values": list(TACTIC_LEVELS), "default": "full"})
     return out
+
+
+def has_bots(event_id: str) -> bool:
+    """Vrai si l'épreuve peut avoir des bots (adversaires ou coéquipiers)."""
+    spec = EVENTS[event_id]
+    return max(spec.opponents) > 0 or spec.team_size > 1
 
 
 def check(event_id: str, settings: dict) -> dict:
@@ -106,7 +115,7 @@ def make(event_id: str, entrants: list[Entrant], settings: dict, **kw) -> TrackE
     s = check(event_id, settings)
     if len(entrants) != 1 + field_size(event_id, s):
         raise TrackError(f"{event_id} : {len(entrants)} engagés pour {field_size(event_id, s)} bots attendus")
-    args = {k: v for k, v in s.items() if k not in ("opponents", "place")}
+    args = {k: v for k, v in s.items() if k not in ("opponents", "place", "bot_tactics")}
     if "distance_m" in args:
         args["distance_m"] = float(args["distance_m"])
     if spec.team_size > 1:
@@ -128,5 +137,5 @@ def teams(entrants: list[Entrant], size: int, place: int = 1) -> list[Entrant]:
     return out
 
 
-__all__ = ["EVENTS", "LAP_M", "ME", "Entrant", "EventSpec", "Option", "TrackError", "TrackEvent",
+__all__ = ["EVENTS", "TACTIC_LEVELS", "has_bots", "LAP_M", "ME", "Entrant", "EventSpec", "Option", "TrackError", "TrackEvent",
            "check", "field_size", "make", "options", "teams"]
