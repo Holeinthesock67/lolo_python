@@ -27,6 +27,9 @@ Sous-commandes disponibles à ce stade :
                                       (messages, pauses, trous, FC figée, totaux ; lot X11)
     openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
                                       historique des séances et cumul par semaine ISO
+    openride-core coach [--date J] [--objectif O] [--temps MIN] [--montre TYPE[:MIN[:W]]]
+                        [--prochaine-course J] [--dir DOSSIER] [--ftp W] [--json]
+                                      séance conseillée du jour et sa raison (série CO, lot CO1)
     openride-core xp [--dir DOSSIER] [--json] [--config FICHIER] [--save F | --compare F]
                                       progression (niveau, expérience, défis) recalculée depuis
                                       le journal des séances (série V, lot V2) ; écart avant/après
@@ -230,6 +233,12 @@ def cmd_history(args: argparse.Namespace) -> int:
     from .tools.history import run
 
     return run(args.directory, args.weeks, args.ftp, args.json, args.config)
+
+
+def cmd_coach(args: argparse.Namespace) -> int:
+    from .coach import run
+
+    return run(args)
 
 
 def cmd_xp(args: argparse.Namespace) -> int:
@@ -444,6 +453,8 @@ def build_parser() -> argparse.ArgumentParser:
     fitc.add_argument("file", type=Path, help="fichier .fit")
     fitc.add_argument("--journal", type=Path, help="journal .jsonl de la séance : distance et durée à ± 1 %%")
     fitc.add_argument("--json", action="store_true", help="sortie JSON")
+    from .coach import add_parser as add_coach_parser
+    add_coach_parser(sub)
     hist = sub.add_parser("history", help="historique des séances et cumul par semaine ISO")
     hist.add_argument("--dir", type=Path, dest="directory",
                       help="dossier des séances (défaut : ~/OpenRide/Activities)")
@@ -549,7 +560,7 @@ def main(argv: list[str] | None = None) -> int:
     return {"recover": cmd_recover, "run": cmd_run,
             "release-trainer": cmd_release_trainer, "summary": cmd_summary, "session-report": cmd_session_report, "xp": cmd_xp,
             "fit-check": cmd_fit_check,
-            "history": cmd_history, "devices": cmd_devices,
+            "history": cmd_history, "coach": cmd_coach, "devices": cmd_devices,
             "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test,
             "open-world-save": cmd_open_world_save, "demo-biomes": cmd_demo_biomes, "profil": cmd_profil}[args.command](args)
 

@@ -15,7 +15,7 @@ Demande du propriétaire du 7 novembre : entrer dans le jeu l'entraînement sugg
 
 - Correspondance type Garmin → besoin dans `coach.toml` (Repos, Récupération, Fond, Tempo, Seuil, VO2 max, Anaérobie, Sprint), sous-famille gardée pour le choix de l'entraînement.
 - Commandes `set_watch_advice {type, duration_min, target_w?}` et `clear_watch_advice` (même révision du contrat que CO3) ; suggestion écrite dans le profil du joueur avec sa date, ignorée dès le lendemain.
-- Règle RG dans `coach.py`, avant R0 à R7 : besoin de la montre, durée de la montre à la place du temps disponible, note quand R1 ou R2 divergent ; raison « Suggestion de ta montre : Seuil, 50 min. »
+- Règle RG dans `coach.py` (déjà écrite par CO1, avec `coach --montre`), avant R0 à R7 : besoin de la montre, durée de la montre à la place du temps disponible, note quand R1 ou R2 divergent ; raison « Suggestion de ta montre : Seuil, 50 min. »
 - Aucune connexion à Garmin Connect, aucun identifiant (règle de confidentialité).
 
 ## 3. Tests

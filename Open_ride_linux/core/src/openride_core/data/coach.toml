@@ -1,0 +1,71 @@
+# Table de la séance conseillée (série CO, lot CO1) : docs/5.0/PLAN_SERIE_CO.md.
+#
+# Fichier livré avec le core, seule source des seuils du conseil : aucune valeur n'est écrite dans
+# coach.py. Les zones sont celles du bilan (session_summary.ZONES, % de la FTP).
+
+[needs]
+# Zones de Coggan de chaque besoin (plan §1, réponse Q1 du 7 novembre : la VO2max est « intense »).
+light = ["Z1", "Z2"]
+intense = ["Z3", "Z4", "Z5"]
+anaerobic = ["Z6", "Z7"]
+
+[window]
+share_days = 28          # répartition S1 et nombre de séances de R0
+profile_days = 90        # profil de puissance S4
+history_days = 120       # séances lues (charge chronique CTL sur 42 jours amorcée en amont)
+ctl_days = 42            # constante de la charge chronique
+atl_days = 7             # constante de la charge aiguë
+
+[hard]
+# Séance « dure » (S3) : au moins ce temps en Z4–Z5, ou ce nombre d'efforts au-dessus du seuil.
+threshold_zones = ["Z4", "Z5"]
+threshold_min_s = 600
+effort_pct = 150         # % de la FTP
+effort_min_s = 15        # durée minimale d'un effort
+effort_count = 6
+# Dernière séance d'un besoin, pour départager (R7) : au moins ce temps dans ses zones.
+recent_light_s = 1800
+recent_intense_s = 600
+recent_anaerobic_s = 90
+
+[targets]
+# Parts de temps visées sur 4 semaines, en % (plan §2) ; « reprise » s'applique seule sous ctl_reprise.
+ctl_reprise = 20
+endurance = { light = 80, intense = 16, anaerobic = 4, max_hard_per_week = 2 }
+courses = { light = 72, intense = 20, anaerobic = 8, max_hard_per_week = 3 }
+grimpeur = { light = 75, intense = 22, anaerobic = 3, max_hard_per_week = 2 }
+reprise = { light = 90, intense = 10, anaerobic = 0, max_hard_per_week = 1 }
+
+[rules]
+r0_min_sessions = 3
+r1_form = -30            # forme sous laquelle on récupère
+r2_days_before_race = 2  # activation 1 à 2 jours avant une course annoncée
+r3_form = -20            # forme sous laquelle on roule léger
+r4_ftp_age_days = 42     # test de FTP proposé au-delà
+r4_min_form = -10
+r6_rest_hours = 48       # pas d'intensité moins de 48 h après une séance dure
+r7_tie_points = 3        # deux retards à moins de 3 points : départage
+
+[profile]
+# Profil de puissance (S4) : multiples de la FTP « attendus » ; le plus bas rapport réel / attendu
+# désigne le point faible. Lu seulement avec un test de FTP de moins de profile_days jours.
+reference = { "5s" = 3.0, "1min" = 1.6, "5min" = 1.15, "20min" = 1.0 }
+need = { "5s" = "anaerobic", "1min" = "anaerobic", "5min" = "intense", "20min" = "intense" }
+
+[durations]
+# Durées conseillées en minutes ; null : temps disponible.
+recovery = 40
+r0_light = 45
+activation = 45
+ftp_test = 30
+
+[watch]
+# Suggestion de la montre Garmin (plan §4 bis, règle RG) : type saisi → besoin et sous-famille.
+repos = "rest"
+recuperation = "recovery"
+fond = "light"
+tempo = "intense"
+seuil = "intense"
+vo2max = "intense"
+anaerobie = "anaerobic"
+sprint = "anaerobic"

@@ -141,9 +141,9 @@ Le conseil propose donc, pour chaque besoin, **un entraînement ERG ou une séan
 | Q5 | Où mettre l'écran ? | ligne « Séance conseillée » en tête de l'accueil, avant le plan (détail : besoin et séance) |
 | Q6 | Nouvelles séances livrées | 3 : `recuperation_40`, `anaerobie_8x30s`, `sprints_10x10s` (contenus de départ O25) |
 | Q7 | « Lancer cette séance » démarre-t-il directement en ERG ? | oui, comme « Entraînement » du menu ; un parcours conseillé et une séance de jeu démarrent en SIM |
-| Q8 | La suggestion Garmin passe-t-elle avant un plan d'entraînement actif ? | oui : la montre connaît ta récupération, le plan non ; la séance du plan reste en « autre idée » |
-| Q9 | Lecture automatique de la suggestion Garmin ? | non pour la première livraison (saisie au menu) ; étude d'un export `.fit` sans identifiants plus tard |
-| Q10 | Proposer une séance de jeu par défaut, ou l'entraînement ERG ? | les deux côte à côte ; le dernier choix du joueur est retenu (derniers choix, O32) |
+| Q8 | La suggestion Garmin passe-t-elle avant un plan d'entraînement actif ? | **accepté le 7 novembre** : oui : la montre connaît ta récupération, le plan non ; la séance du plan reste en « autre idée » |
+| Q9 | Lecture automatique de la suggestion Garmin ? | **accepté le 7 novembre** : non pour la première livraison (saisie au menu) ; étude d'un export `.fit` sans identifiants plus tard |
+| Q10 | Proposer une séance de jeu par défaut, ou l'entraînement ERG ? | **accepté le 7 novembre** : les deux côte à côte ; le dernier choix du joueur est retenu (derniers choix, O32) |
 
 ## 6. Écran (maquette à valider avant CO5)
 
@@ -183,3 +183,4 @@ Coût de calcul : sur 90 jours de séances à 1 Hz, lecture par le cache de `his
 | --- | --- |
 | 2026-11-07 | Création (lot CO0) : besoins, signaux, règles, questions Q1 à Q7, lots CO0 à CO7. |
 | 2026-11-07 | Réponses par défaut Q1 à Q7 acceptées par le propriétaire (« Ok », 10 h 10). Ajouts du propriétaire : suggestion de la montre Garmin (§4 bis, S8, règle RG, lot CO8) et séances de jeu calibrées au besoin (§4 ter, lot CO9) ; questions Q8 à Q10. |
+| 2026-11-07 | Q8 à Q10 acceptées par le propriétaire (« Ok », 10 h 27) ; lot CO1 commencé (`coach.py`, `coach.toml`, `openride-core coach`), règle RG comprise (la saisie au menu reste à CO8). |

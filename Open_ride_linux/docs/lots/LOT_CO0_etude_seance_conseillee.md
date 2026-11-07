@@ -20,4 +20,4 @@ Répondre à la demande du propriétaire du 7 novembre : dire comment identifier
 ## 3. Critères d'acceptation
 
 1. `python3 scripts/index_lots.py --verifier` et `pytest -q core/tests/test_docs_coherence.py` passent.
-2. Le propriétaire répond aux questions (Q1 à Q7 : défauts acceptés le 7 novembre ; Q8 à Q10 ouvertes) et valide la maquette de principe avant CO4 et CO5.
+2. Le propriétaire répond aux questions (défauts de Q1 à Q10 acceptés le 7 novembre) et valide la maquette de principe avant CO4 et CO5.
