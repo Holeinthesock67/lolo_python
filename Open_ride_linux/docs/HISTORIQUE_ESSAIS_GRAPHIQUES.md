@@ -8,7 +8,8 @@ Documents liés : [RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md](RECHERCHE_GODOT_PE
 
 - **Matériel** : PC cible, GTX 1060 (Pascal), Linux, Vulkan Forward+. Godot 4.3 jusqu'au 30 octobre, **4.7.2** ensuite (lot Y2).
 - **Résolution** : native, 1680 × 1050 jusqu'au 30 octobre puis 1680 × 1011 (fenêtre du banc). Quelques bancs anciens sont en 1280 × 720 ou 1857 × 1011 : c'est signalé, ils ne se comparent pas aux autres.
-- **Budgets GPU** (médiane du temps GPU de la vue, `perf_targets.json`) : **low 6 ms** (4 ms jusqu'au 31 octobre), **medium 12 ms**, **high 14 ms**. À 60 Hz une image dure 16,7 ms.
+- **Budgets GPU** (médiane du temps GPU de la vue, `perf_targets.json`) : **low 6 ms** (4 ms jusqu'au 31 octobre, **8 ms depuis le 7 novembre**), **medium 12 ms**, **high 14 ms**. À 60 Hz une image dure 16,7 ms. Les verdicts « au-dessus du budget » de ce document en low sont lus contre le budget en vigueur le jour de l'essai (6 ms du 31 octobre au 6 novembre).
+- **Historique du budget low** : 4 ms (Y13, 27 octobre) → 6 ms (31 octobre, le low mesurait 4,7 à 5,7 ms depuis l'herbe Y14, toujours à 60 images/s ; herbe gardée telle quelle) → **8 ms** (7 novembre, décision du propriétaire, appliquée sur la branche de #732) : 6 ms était trop strict, et 8 ms laisse encore de la marge sous les 16,7 ms d'une image pour une carte plus faible que la GTX 1060. medium (12 ms) et high (14 ms) inchangés.
 - **GPU** = temps GPU médian de la vue, en ms. **p99** = 99e centile du **temps d'image** (pas du GPU) ; il vaut 16,7 ms tant que le jeu tient 60 images/s (synchronisation verticale). Le p99 du temps GPU n'a été relevé que sur quelques bancs (Y21, Y6) : ailleurs, « non relevé ».
 - **Gain** = GPU de la référence moins GPU de la variante (positif : la variante coûte moins). Écart de ±0,2 ms en dessous du bruit d'un banc de 2 min ; ±0,6 ms sur le banc tout en cultures (étude du 5 novembre §6).
 - **Verdict** : adopté (dans les préréglages ou le code de `main`), rejeté (PR fermée ou réglage abandonné), livré coupé (code présent, désactivé par défaut), en cours.
@@ -279,7 +280,7 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 
 ## 5. Encore ouvert
 
-- **Budgets dépassés après #729 et #721** : cultures 7,8 / 14,2 / 16,5 ms et forêt 7,3 / 13,0 / 15,9 ms (passe finale du 06/11, avant #721 qui ajoute environ +0,2 / +0,9 / +1,4 ms) ; alpin 6,9 ms en low. Suite : #732 (ombres des arbres à distance, banc b), puis recherche de la cause en cultures.
+- **Budgets dépassés après #729 et #721** : cultures 14,2 / 16,5 ms et forêt 13,0 / 15,9 ms en medium / high (passe finale du 06/11, avant #721 qui ajoute environ +0,2 / +0,9 / +1,4 ms). En low, cultures 7,8, forêt 7,3 et alpin 6,9 ms dépassaient le budget de 6 ms ; avec le budget de 8 ms décidé le 7 novembre, ils passent tout juste (cultures 7,8 + 0,2 de #721 ≈ 8,0 ms, à confirmer au banc). Suite : #732 (ombres des arbres à distance, banc b), puis recherche de la cause en cultures.
 - **Essais jamais mesurés** (cahiers sans résultat retrouvé) : Y3 (HLOD des villages), Y4 (ombres par sorte d'objet), Y7 (moteur Mobile en low), Y12 (lumière et particules), tableau du protocole `ESSAI_RENDU_Y11_Y12.md`, coût de la circulation AS6 avec véhicules à l'écran.
 - **Pistes notées pour plus tard** : même passage propre de l'herbe pour les buissons nains, roseaux et herbes hautes (`ground_details.gd`) ; prépasse de profondeur (22 % du GPU en medium et high) ; S1b (occlusion par le relief) et S1c (décor hors vue) si un cas réellement chargé apparaît.
 
