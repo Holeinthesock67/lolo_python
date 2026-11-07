@@ -78,3 +78,13 @@ recovery_max_above_z1_pct = 10   # au plus 10 % du temps au-dessus de Z1 : récu
 ftp_test = "ftp_test:ramp"       # entraînement du conseil « test de FTP » (lot O10)
 # Sous-famille de la suggestion de la montre : zone dominante cherchée d'abord (plan §4 bis).
 watch_zone = { tempo = "Z3", seuil = "Z4", vo2max = "Z5" }
+
+[races]
+# Courses disputées (S5, lot CO6, plan §4) : cause de perte lue dans le journal, départage de R7.
+climb_window_s = 60      # minute d'avant l'élimination
+climb_grade_pct = 3      # pente moyenne au-dessus : lâché en montée (aérobie intense)
+sprint_gap_s = 2         # éliminé à moins de 2 s : battu au sprint (anaérobie)
+fade_pct = 10            # puissance perdue entre premier et dernier quart : craqué (aérobie léger)
+fade_min_quarter_s = 60  # quarts d'au moins une minute pour lire la baisse
+window_count = 3         # dernières courses lues pour R7
+min_count = 2            # une cause compte si elle revient au moins 2 fois
