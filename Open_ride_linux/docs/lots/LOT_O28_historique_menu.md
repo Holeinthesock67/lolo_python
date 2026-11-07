@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Historique dans le menu : séances (date, parcours, durée, NP, TSS) et leur bilan, cumul par semaine, tests de FTP ; mêmes calculs que `history`, `summary` et `ftp-test --history` | Python + GDScript | O12, L7 (livrés) | Moyenne | Audit des options du 31 octobre accepté par le propriétaire ; version 2.0 (choix du 1er novembre) ; en PR |
+| Historique dans le menu : séances (date, parcours, durée, NP, TSS) et leur bilan, cumul par semaine, tests de FTP ; mêmes calculs que `history`, `summary` et `ftp-test --history` | Python + GDScript | O12, L7 (livrés) | Moyenne | Livré le 2 novembre (PR #666) |
 
 ## 1. Objectif
 
@@ -40,3 +40,7 @@ Révision 1.5, ajouts compatibles : commandes `list_history` et `history_session
 ## 6. Hors périmètre
 
 Les commandes `history`, `summary` et `ftp-test` restent disponibles. Ne sont pas couverts : effacer ou exporter une séance depuis le menu, accepter une FTP d'un ancien test (cela reste au bilan du test), les courbes d'une séance passée.
+
+## Livraison
+
+PR #666, fusionnée le 2 novembre 2026. Statut remis à jour le 7 novembre, d'après les PR fusionnées ; statut précédent : « Audit des options du 31 octobre accepté par le propriétaire ; version 2.0 (choix du 1er novembre) ; en PR ».

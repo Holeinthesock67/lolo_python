@@ -11,6 +11,7 @@ import math
 import re
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from conftest import ORIGIN, plane
@@ -97,6 +98,37 @@ def test_oneway_in_direction_and_cycle_exception() -> None:
     both = rr.route_through(rr.build_graph([two_roads({"oneway": "yes", "oneway:bicycle": "no"})]),
                             [at(2000), at(0)])
     assert rr.path_length_m(both) == pytest.approx(2000.0, abs=20.0)
+
+
+def test_tunnel_altitude_is_interpolated_between_portals(tmp_path: Path) -> None:
+    """Dans un tunnel, le MNT donne la montagne au-dessus : l'altitude est interpolée entre les entrées."""
+    coords = {1: at(0), 2: at(800), 3: at(1200), 9: at(2000)}
+    ways = [way(10, [1, 2], coords), way(11, [2, 3], coords, tunnel="yes"), way(12, [3, 9], coords)]
+    def bump(x, z):                      # montagne de 300 m au-dessus du tunnel (z vers le sud)
+        north = -np.asarray(z, dtype=float)
+        return plane(x, z) + np.where((north > 850.0) & (north < 1150.0), 300.0, 0.0)
+
+    r = rr.load_recipe(recipe(tmp_path))
+    climb = rr.build_climb(r, fetcher({"elements": ways}), SyntheticProvider(*ORIGIN, bump))
+    assert max(climb.alt_m) == pytest.approx(climb.alt_m[-1], abs=1.0)  # pas de bosse de 300 m
+    assert climb.gain_m == pytest.approx(100.0, abs=3.0)                # sans les 300 m de montagne
+
+
+def test_bridge_flag_and_endpoint_run_keep_dem() -> None:
+    pts = [at(i * 10.0) for i in range(6)]
+    alt = [0.0, 10.0, -50.0, -50.0, 40.0, 50.0]
+    assert rr.bridge_off_ground(pts, alt, [False, False, True, True, False, False]) == \
+        pytest.approx([0.0, 10.0, 20.0, 30.0, 40.0, 50.0], abs=0.01)
+    assert rr.bridge_off_ground(pts, alt, [True, True, False, False, False, False]) == alt
+
+
+def test_checked_gain_ignores_hairpin_noise() -> None:
+    """Lacets : ± 6 m d'oscillation tous les 60 m ne comptent pas, la vraie montée reste mesurée."""
+    alt = [i * 0.8 + 6.0 * math.sin(i * 2 * math.pi / 6) for i in range(1000)]   # 800 m sur 10 km
+    assert rr.gain_loss(alt)[0] > 1000.0                                          # mesure brute
+    assert rr.checked_gain(alt) == pytest.approx(800.0, rel=0.02)
+    hill = [min(i, 1000 - i) * 1.0 for i in range(1001)]                          # +500, −500 m
+    assert rr.checked_gain(hill) == pytest.approx(500.0, rel=0.02)
 
 
 def test_waypoint_off_road_is_refused() -> None:
