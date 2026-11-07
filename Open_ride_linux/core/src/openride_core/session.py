@@ -649,6 +649,10 @@ class CoreSession:
             self._spawn(self._send_history(name, args if isinstance(args, dict) else {}, cmd_id))
         elif name in CONTENT_COMMANDS:
             self._on_content_command(name, args if isinstance(args, dict) else {}, cmd_id)
+        elif name == "list_collection":
+            self._spawn(self._send_collection(cmd_id))
+        elif name == "collection_seen":
+            self._handle_collection_seen(args, cmd_id)
 
     # --- contenus installables depuis le menu (lot O25, contrat IPC révision 1.5) ---------------
 
@@ -1277,6 +1281,66 @@ class CoreSession:
             self.server.send_error("bad_args", f"Bilan impossible : {exc}")
             return
         self.server.send_raw(msg)
+
+    async def _send_collection(self, cmd_id: int) -> None:
+        """Réponse à `list_collection` (lot BC2, révision 1.6) : cartes, cartes gagnées, avancement."""
+        from .ipc_lists import build_collection_message
+
+        try:
+            msg = await asyncio.to_thread(
+                build_collection_message,
+                cmd_id,
+                self.profile_ctx,
+                self.journal_dir,
+                self.profile_ctx.table_path,
+            )
+        except Exception:
+            log.exception("Erreur lors de la préparation de la collection (cmd_id=%d)", cmd_id)
+            return
+        self.server.send_raw(msg)
+
+    def _handle_collection_seen(self, args: Any, cmd_id: int) -> None:
+        """Commande `collection_seen` (lot BC2) : valide les clés et met à jour `collection_vue.json`."""
+        from .ipc_lists import record_collection_seen
+
+        if not isinstance(args, dict) or "keys" not in args:
+            self.server.send_error("bad_args", "collection_seen attend un objet avec la clé 'keys'")
+            return
+        try:
+            record_collection_seen(self.profile_ctx, args["keys"])
+        except ValueError as exc:
+            log.warning("collection_seen refusé (%d) : %s", cmd_id, exc)
+            self.server.send_error("bad_args", str(exc))
+            return
+        log.info("collection_seen : %d clé(s) marquée(s) vue(s)", len(args["keys"]))
+
+    def _after_session_collection(self) -> None:
+        """Annonce facultative summary.collection à la fin de la séance (lot BC2)."""
+        from .ipc_lists import compute_summary_collection
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            col_ann = compute_summary_collection(self.profile_ctx, self.journal_dir, self.profile_ctx.table_path)
+            if col_ann is not None and self.state.summary is not None:
+                self.state.summary["collection"] = col_ann
+            return
+        self._spawn(self._attach_summary_collection())
+
+    async def _attach_summary_collection(self) -> None:
+        from .ipc_lists import compute_summary_collection
+
+        try:
+            col_ann = await asyncio.to_thread(
+                compute_summary_collection,
+                self.profile_ctx,
+                self.journal_dir,
+                self.profile_ctx.table_path,
+            )
+            if col_ann is not None and self.state.summary is not None:
+                self.state.summary["collection"] = col_ann
+        except Exception:
+            log.exception("Erreur lors du calcul de summary.collection")
 
     def _setting_file(self, key: str) -> Path:
         """Fichier qui reçoit le réglage `key` : `profil.toml` du profil pour un réglage du joueur (FTP…),
@@ -2086,6 +2150,7 @@ class CoreSession:
         self._set_state(final_state)
         if journal is not None and final_state == "FINISHED":
             self._after_session(journal, records_done)
+            self._after_session_collection()
 
     # --- mode « What the fuck » (série WTF, lot WTF2) -----------------------------------
 
