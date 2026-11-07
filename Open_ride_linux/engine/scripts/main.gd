@@ -109,6 +109,9 @@ var _route_job: Dictionary = {}
 var _quit_ms := -1   # heure de la demande de fermeture (_quit), pour les étapes de la fermeture dans le journal
 var _quit_code := 0
 var _test_cam_last_us := 0
+## Instant (µs) auquel la caméra de l'image a été placée : heure de la pose capturée (`camera_clock_s` des
+## captures de test). `ticks_ms`, pris après l'écriture du PNG, s'en écarte d'une à deux images en Vulkan logiciel.
+var _camera_clock_us := 0
 var _test_cam_last_s := NAN
 ## Scène figée des tests graphiques (message `_test` « freeze », lot X20) : instant imposé au décor, NAN sinon.
 var _freeze_t := NAN
@@ -1016,6 +1019,7 @@ func _process(delta: float) -> void:
 	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd), figée 1,1 s après la
 	# dernière trame ; journalisée en mode test même core muet (scénario 4 de fake_core.py).
 	var s_disp: float = follow.update(now)
+	_camera_clock_us = now
 	_test_log_camera(now, s_disp)
 	# Core non joignable : la scène se fige entière (caméra et son lissage, avatar, tuiles, décor vivant), comme
 	# l'horloge des personnages et des animaux ci-dessus.
@@ -1509,6 +1513,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"streaming_pending": streamer.pending_count(),   # tuiles voulues pas encore affichées (tour visuel, X21)
 		"decor_pending": _decor_pending(),   # herbe du bord et forêts lointaines pas encore posées (lot Y22)
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
+		"camera_clock_s": _camera_clock_us / 1000000.0,
 		"camera_view": camera_views.effective(), "camera_transition": camera_views.in_transition(),
 		"widgets": widgets,
 		"decor": living_decor.test_info(camera) if living_decor != null else {},
