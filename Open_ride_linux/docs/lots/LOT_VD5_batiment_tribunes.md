@@ -41,5 +41,5 @@ Tout lot qui change l'affichage est mesuré en `low`, `medium` et `high` (budget
 - Ambiance : fond uni, lumière ambiante, lumière zénithale, sans brouillard ; état d'avant rendu en revenant sur une route. Salle, public et toit sans ombre portée.
 - `main.gd` : sur une piste, ni décor vivant ni monde vivant (météo, herbe, animaux, engins) ; `world_streamer.gd` : pas de sol plat.
 - Test : `tests/unit/test_velodrome_hall.gd`.
-- Écart au §3 : `crowd_renderer.gd` n'est pas utilisé (personnages détaillés, trop chers pour 6 000 places vues de loin) ; personnes en pavés, vues de près elles restent simples.
+- Écart au §3 : `crowd_renderer.gd` n'est pas utilisé (personnages détaillés, trop chers pour 6 000 places vues de loin). Spectateurs affinés à la demande du propriétaire (7 novembre) : silhouettes arrondies de 152 triangles, cheveux, jean ou pantalon sombre, tailles variées, 8 % debout (la moitié bras levé), assis sur des banquettes bleues.
 - Reste : critères 1 et 2 (banc GPU et à-coups sur PC).

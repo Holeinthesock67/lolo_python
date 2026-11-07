@@ -130,7 +130,14 @@ func _test_crowd(track) -> void:
 	_check(subset, "place prise en low toujours prise en medium (sous-ensemble stable)")
 	var hall := Hall.new()
 	hall.build(track, "medium")
-	_check(hall.built and hall.crowd_count == med.size() and hall.get_node_or_null("Crowd") != null, "salle posée, public de medium")
+	var sit: MultiMeshInstance3D = hall.get_node_or_null("Crowd")
+	var stand: MultiMeshInstance3D = hall.get_node_or_null("CrowdStanding")
+	_check(hall.built and hall.crowd_count == med.size() and sit != null and stand != null
+		and sit.multimesh.instance_count + stand.multimesh.instance_count == med.size(), "salle posée, public de medium (assis et debout)")
+	var share := float(stand.multimesh.instance_count) / med.size() if stand != null else 0.0
+	_check(share > 0.04 and share < 0.12, "%.0f %% du public debout" % (100.0 * share))
+	var tris := (Hall.person_mesh(false).surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() / 3
+	_check(tris <= 200, "spectateur assis : %d triangles (6 000 en high restent légers)" % tris)
 	var shadowless := true
 	for c in hall.get_children():
 		if c is GeometryInstance3D:

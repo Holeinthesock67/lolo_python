@@ -36,10 +36,15 @@ const RAMP_HALF := 0.012
 const RAMP_DROP_M := 0.6
 const SEAT_PITCH_M := 0.55        # écart entre deux places d'un gradin
 const SCOREBOARD_DROP_M := 5.0
+const STANDING_SHARE := 0.08     # spectateurs debout
 
 const FLOOR_COLOR := Color(0.30, 0.52, 0.38)       # pelouse centrale (sol sportif vert)
 const TREAD_COLOR := Color(0.58, 0.58, 0.60)       # béton des gradins
-const RISER_COLOR := Color(0.16, 0.30, 0.62)       # sièges bleus vus de face
+const RISER_COLOR := Color(0.48, 0.48, 0.50)       # contremarche en béton
+const SEAT_COLOR := Color(0.16, 0.30, 0.62)        # banquettes bleues
+const SEAT_H_M := 0.42                             # hauteur de l'assise sur le gradin
+const SEAT_FRONT_M := 0.10                         # assise de 0,1 m devant à 0,3 m derrière la place
+const SEAT_BACK_M := 0.30
 const CONCOURSE_COLOR := Color(0.42, 0.42, 0.45)
 const WALL_COLOR := Color(0.80, 0.81, 0.84)
 const BAND_COLOR := Color(0.10, 0.16, 0.32)
@@ -57,7 +62,8 @@ const TOP_LIGHT_ENERGY := 0.7
 var quality := "low"
 var crowd_count := 0          # personnes posées (tests et journal)
 var built := false
-var _crowd: MultiMeshInstance3D = null
+var _crowd: MultiMeshInstance3D = null            # assis
+var _crowd_standing: MultiMeshInstance3D = null   # debout
 var _seats_cache: Array = []
 var _saved := {}              # ambiance d'avant la salle (restore)
 
@@ -95,6 +101,7 @@ func clear() -> void:
 		remove_child(c)
 		c.queue_free()
 	_crowd = null
+	_crowd_standing = null
 	crowd_count = 0
 	built = false
 	_seats_cache = []
@@ -152,7 +159,7 @@ static func build_arrays(route) -> Dictionary:
 		floor_y = minf(floor_y, float(o["inner_y"]))
 		var pr := stand_profile(o)
 		profiles.append(pr)
-		top = maxf(top, float(pr[pr.size() - 1][1]))
+		top = maxf(top, float(pr[pr.size() - 1][1]) + SEAT_H_M)   # dessus de la dernière banquette
 	center /= float(n)
 	var wall_top := top + WALL_ABOVE_M
 	var wall_bottom := floor_y - FLOOR_BELOW_M
@@ -180,6 +187,19 @@ static func build_arrays(route) -> Dictionary:
 		for k in range(pa.size() - 1):
 			stands.quad(_at(a, pa[k][0], pa[k][1]), _at(b, pb[k][0], pb[k][1]), _at(b, pb[k + 1][0], pb[k + 1][1]),
 				_at(a, pa[k + 1][0], pa[k + 1][1]), pa[k + 1][2], Vector3.UP - (a["out"] as Vector3))
+		# Banquettes : une par gradin, sous les places (seats), dessus et face avant.
+		for row in range(ROWS):
+			var k := 3 + 2 * row
+			var ya_s: float = float(pa[k][1])
+			var yb_s: float = float(pb[k][1])
+			var fa: float = float(pa[k][0]) - 0.5 * TREAD_M - SEAT_FRONT_M
+			var fb: float = float(pb[k][0]) - 0.5 * TREAD_M - SEAT_FRONT_M
+			var w := SEAT_FRONT_M + SEAT_BACK_M
+			var up_in := Vector3.UP - (a["out"] as Vector3)
+			stands.quad(_at(a, fa, ya_s), _at(b, fb, yb_s), _at(b, fb, yb_s + SEAT_H_M), _at(a, fa, ya_s + SEAT_H_M),
+				SEAT_COLOR, -(a["out"] as Vector3))
+			stands.quad(_at(a, fa, ya_s + SEAT_H_M), _at(b, fb, yb_s + SEAT_H_M), _at(b, fb + w, yb_s + SEAT_H_M),
+				_at(a, fa + w, ya_s + SEAT_H_M), SEAT_COLOR, up_in)
 		# Mur : pied sous la piste et bandeau sombre au-dessus du promenoir, panneaux clairs au-dessus.
 		var da: float = pa[pa.size() - 1][0]
 		var db: float = pb[pb.size() - 1][0]
@@ -402,67 +422,125 @@ func _flat_material(color: Color) -> StandardMaterial3D:
 	return m
 
 
-## Public : un sous-ensemble stable des places, couleurs de maillot et de peau tirées de l'indice.
+## Public : un sous-ensemble stable des places ; une personne sur STANDING_SHARE debout (bras levés pour la
+## moitié d'entre elles), les autres assises ; tenue, peau et cheveux tirés de l'indice de la place.
 func _place_crowd() -> void:
-	if _crowd != null:
-		remove_child(_crowd)
-		_crowd.queue_free()
-		_crowd = null
+	for c in [_crowd, _crowd_standing]:
+		if c != null:
+			remove_child(c)
+			c.queue_free()
+	_crowd = null
+	_crowd_standing = null
 	var keep := occupied(_seats_cache.size(), QualityPresets.velodrome_crowd(quality))
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_custom_data = true
-	mm.mesh = person_mesh()
-	mm.instance_count = keep.size()
-	for j in range(keep.size()):
-		var i := keep[j]
-		var t: Transform3D = _seats_cache[i]
-		t.basis = t.basis.rotated(Vector3.UP, (hash01(i + 7) - 0.5) * 0.5)
-		mm.set_instance_transform(j, t)
-		mm.set_instance_custom_data(j, Color.from_hsv(hash01(i + 11), 0.15 + 0.45 * hash01(i + 13),
-			0.25 + 0.6 * hash01(i + 17), hash01(i + 19)))
-	var mat := ShaderMaterial.new()
-	mat.shader = CrowdShader
-	_crowd = MultiMeshInstance3D.new()
-	_crowd.name = "Crowd"
-	_crowd.multimesh = mm
-	_crowd.material_override = mat
-	_crowd.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(_crowd)
+	var seated: Array = []
+	var standing: Array = []
+	for i in keep:
+		(standing if hash01(i + 23) < STANDING_SHARE else seated).append(i)
+	_crowd = _crowd_node("Crowd", person_mesh(false), seated)
+	_crowd_standing = _crowd_node("CrowdStanding", person_mesh(true), standing)
 	crowd_count = keep.size()
 
 
-## Personne assise vue de loin (5 pavés), regard vers −Z : couleur de sommet r = maillot, g = peau, b = pantalon.
-static func person_mesh() -> ArrayMesh:
+func _crowd_node(node_name: String, mesh: Mesh, places: Array) -> MultiMeshInstance3D:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_custom_data = true
+	mm.mesh = mesh
+	mm.instance_count = places.size()
+	for j in range(places.size()):
+		var i: int = places[j]
+		var t: Transform3D = _seats_cache[i]
+		var s := 0.92 + 0.16 * hash01(i + 29)   # tailles variées
+		t.basis = t.basis.rotated(Vector3.UP, (hash01(i + 7) - 0.5) * 0.6).scaled(Vector3(s, s, s))
+		mm.set_instance_transform(j, t)
+		# rgb : maillot (teintes franches ou sombres) ; a : peau et cheveux (shader).
+		var sat := 0.25 + 0.6 * hash01(i + 13)
+		var val := 0.25 + 0.65 * hash01(i + 17)
+		mm.set_instance_custom_data(j, Color.from_hsv(hash01(i + 11), sat, val, hash01(i + 19)))
+	var mat := ShaderMaterial.new()
+	mat.shader = CrowdShader
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = node_name
+	mmi.multimesh = mm
+	mmi.material_override = mat
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mmi)
+	return mmi
+
+
+## Personne vue des tribunes (environ 150 triangles), regard vers −Z, pieds sur le gradin : assise (cuisses
+## en avant, mains sur les genoux) ou debout (`standing`, bras levés). Couleur de sommet : r = maillot,
+## g = peau, b = pantalon, a = cheveux (velodrome_crowd.gdshader).
+static func person_mesh(standing: bool) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_box(st, Vector3(0.0, 0.15, -0.18), Vector3(0.40, 0.16, 0.44), Color(0, 0, 1))   # cuisses
-	_box(st, Vector3(0.0, 0.58, 0.02), Vector3(0.44, 0.58, 0.26), Color(1, 0, 0))    # buste
-	_box(st, Vector3(0.0, 0.98, 0.0), Vector3(0.20, 0.22, 0.22), Color(0, 1, 0))     # tête
-	_box(st, Vector3(-0.26, 0.55, -0.06), Vector3(0.09, 0.46, 0.12), Color(1, 0, 0)) # bras
-	_box(st, Vector3(0.26, 0.55, -0.06), Vector3(0.09, 0.46, 0.12), Color(1, 0, 0))
+	var shirt := Color(1, 0, 0, 0)
+	var skin := Color(0, 1, 0, 0)
+	var trousers := Color(0, 0, 1, 0)
+	var hair := Color(0, 0, 0, 1)
+	var hip := 0.88 if standing else 0.42
+	for side in [-1.0, 1.0]:
+		var x: float = 0.1 * side
+		if standing:
+			_tube(st, Vector3(x, hip, 0.0), Vector3(x, 0.45, -0.02), 0.075, 0.06, 5, trousers)
+			_tube(st, Vector3(x, 0.45, -0.02), Vector3(x, 0.02, 0.0), 0.06, 0.05, 5, trousers)
+		else:
+			_tube(st, Vector3(x, hip, 0.04), Vector3(x * 1.2, 0.46, -0.40), 0.08, 0.065, 5, trousers)   # cuisse
+			_tube(st, Vector3(x * 1.2, 0.46, -0.40), Vector3(x * 1.2, 0.02, -0.44), 0.06, 0.05, 5, trousers)   # jambe
+	var shoulder := hip + 0.52
+	_tube(st, Vector3(0.0, hip - 0.02, 0.02), Vector3(0.0, shoulder, 0.05), 0.15, 0.19, 6, shirt)   # buste
+	_tube(st, Vector3(0.0, shoulder, 0.05), Vector3(0.0, shoulder + 0.07, 0.05), 0.12, 0.05, 6, shirt)   # épaules
+	var head := Vector3(0.0, shoulder + 0.19, 0.04)
+	_ellipsoid(st, head, Vector3(0.095, 0.115, 0.105), 6, 4, skin, -1.0)
+	_ellipsoid(st, head + Vector3(0.0, 0.015, 0.012), Vector3(0.105, 0.12, 0.112), 6, 2, hair, 0.05)   # calotte
+	for side in [-1.0, 1.0]:
+		var sh: Vector3 = Vector3(0.2 * side, shoulder - 0.03, 0.05)
+		if standing and side > 0.0:
+			_tube(st, sh, Vector3(0.26 * side, shoulder + 0.5, 0.0), 0.05, 0.04, 4, shirt)   # bras levé
+		elif standing:
+			_tube(st, sh, Vector3(0.24 * side, hip - 0.05, 0.02), 0.05, 0.04, 4, shirt)
+		else:
+			_tube(st, sh, Vector3(0.17 * side, hip + 0.1, -0.30), 0.05, 0.04, 4, shirt)   # mains sur les genoux
+	st.generate_normals()
 	return st.commit()
 
 
-static func _box(st: SurfaceTool, c: Vector3, size: Vector3, color: Color) -> void:
-	var h := size * 0.5
-	for axis in range(3):
-		for sgn in [-1.0, 1.0]:
-			var nn := Vector3.ZERO
-			nn[axis] = sgn
-			var u := Vector3.ZERO
-			u[(axis + 1) % 3] = 1.0
-			var w := Vector3.ZERO
-			w[(axis + 2) % 3] = 1.0
-			var o := c + nn * h
-			var du := u * h
-			var dw := w * h
-			var q := [o - du - dw, o + du - dw, o + du + dw, o - du + dw]
-			var order := [0, 1, 2, 0, 2, 3] if sgn < 0.0 else [0, 2, 1, 0, 3, 2]
-			for idx in order:
-				st.set_color(color)
-				st.set_normal(nn)
-				st.add_vertex(q[idx])
+## Tube tronconique de `a` (rayon ra) à `b` (rayon rb), `sides` faces, bouts ouverts (cachés dans le corps).
+static func _tube(st: SurfaceTool, a: Vector3, b: Vector3, ra: float, rb: float, sides: int, color: Color) -> void:
+	var axis := (b - a).normalized()
+	var u := axis.cross(Vector3.FORWARD if absf(axis.y) > 0.9 else Vector3.UP).normalized()
+	var w := axis.cross(u).normalized()
+	for k in range(sides):
+		var a0 := TAU * k / sides
+		var a1 := TAU * (k + 1) / sides
+		var d0 := u * cos(a0) + w * sin(a0)
+		var d1 := u * cos(a1) + w * sin(a1)
+		_tri(st, a + d0 * ra, b + d0 * rb, b + d1 * rb, color)
+		_tri(st, a + d0 * ra, b + d1 * rb, a + d1 * ra, color)
+
+
+## Ellipsoïde (ou sa partie au-dessus de y_frac du rayon vertical : calotte des cheveux).
+static func _ellipsoid(st: SurfaceTool, c: Vector3, r: Vector3, seg: int, rings: int, color: Color, y_frac: float) -> void:
+	var lat0 := asin(clampf(y_frac, -1.0, 1.0))
+	for i in range(rings):
+		var t0 := lerpf(lat0, PI * 0.5, float(i) / rings)
+		var t1 := lerpf(lat0, PI * 0.5, float(i + 1) / rings)
+		for k in range(seg):
+			var p0 := TAU * k / seg
+			var p1 := TAU * (k + 1) / seg
+			var q := [_sph(c, r, t0, p0), _sph(c, r, t0, p1), _sph(c, r, t1, p1), _sph(c, r, t1, p0)]
+			_tri(st, q[0], q[2], q[1], color)
+			_tri(st, q[0], q[3], q[2], color)
+
+
+static func _sph(c: Vector3, r: Vector3, lat: float, lon: float) -> Vector3:
+	return c + Vector3(r.x * cos(lat) * cos(lon), r.y * sin(lat), r.z * cos(lat) * sin(lon))
+
+
+static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, color: Color) -> void:
+	for p in [a, b, c]:
+		st.set_color(color)
+		st.add_vertex(p)
 
 
 # --- ambiance ----------------------------------------------------------------------------------------------
