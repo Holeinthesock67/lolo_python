@@ -782,8 +782,9 @@ FULL_FRAME_BOTS = 5   # bots les plus proches du cycliste qui gardent tous leurs
 # n'est montré que dans l'encart du HUD, qui n'affiche que les voisins du cycliste.
 LIGHT_DROPPED = ("cp_w", "mass_kg", "wbal_pct", "gap_s")
 # Champs constants des autres bots envoyés à tour de rôle (un bot par trame) et gardés par l'engine entre deux
-# envois : avec les cyclistes du décor (lot AS7, `riders`), la pire trame 1.6 dépassait 4 096 octets.
-LIGHT_ROTATED = ("name", "profile")
+# envois : avec les cyclistes du décor (lot AS7, `riders`), la pire trame 1.6 dépassait 4 096 octets. Lot GP2 :
+# objet en réserve et effets du Grand Prix (`item`, `fx`) de même, l'engine gardant le dernier reçu.
+LIGHT_ROTATED = ("name", "profile", "item", "fx")
 
 
 def light_frame(bots: list[dict[str, Any]], rider_s: float, length_m: float | None = None,

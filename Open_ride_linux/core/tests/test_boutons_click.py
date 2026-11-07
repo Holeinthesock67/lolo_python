@@ -19,13 +19,13 @@ SPEC = Path(__file__).resolve().parents[2] / "docs" / "SPECIFICATION_GENERALE.md
 
 
 def spec_plan() -> dict[str, list[str]]:
-    """Lignes du tableau des boutons (§7.1) : première colonne → [famille, menus, SIM, ERG, Rogue, monde]."""
+    """Lignes du tableau des boutons (§7.1) : première colonne → [famille, menus, SIM, ERG, Rogue, monde, Grand Prix]."""
     text = SPEC.read_text(encoding="utf-8")
     section = text.split("### 7.1", 1)[1].split("### 7.2", 1)[0]
     rows: dict[str, list[str]] = {}
     for line in section.splitlines():
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if line.startswith("|") and len(cells) == 7 and cells[0] not in ("Bouton", "---"):
+        if line.startswith("|") and len(cells) == 2 + len(bc.MODES) and cells[0] not in ("Bouton", "---"):
             rows[cells[0]] = cells[1:]
     return rows
 

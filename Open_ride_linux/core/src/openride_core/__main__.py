@@ -424,9 +424,9 @@ def build_parser() -> argparse.ArgumentParser:
                      help="avec --autostart : entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)")
     run.add_argument("--ftp-test", choices=["ramp"],
                      help="avec --autostart : séance de test de FTP (rampe par paliers)")
-    run.add_argument("--mode", choices=["ride", "wtf", "survivor"],
+    run.add_argument("--mode", choices=["ride", "wtf", "survivor", "grandprix"],
                      help="avec --autostart : mode de la séance (argument `mode` de start ; bancs du PC, "
-                          "ex. survivor pour le Dernier survivant)")
+                          "ex. survivor pour le Dernier survivant, grandprix pour le Grand Prix des objets)")
     run.add_argument("--depart", choices=["pedalage", "immediat"],
                      help="départ de la séance (lot O36) : pedalage attend le décor, le trainer et le "
                           "pédalage ; immediat part à la commande start (défaut : [depart] mode)")

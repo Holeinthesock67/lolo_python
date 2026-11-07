@@ -124,7 +124,7 @@ Tout se règle dans le menu, sans ligne de commande (lot GP9) :
 | Tours (`laps`) ou distance (`distance_km`) | 1 à 5 ; 5 à 30 km | 3 ; 10 km |
 | Niveau des bots (`bots.level_pct`, réglage existant) | 50 à 150 % de la FTP | inchangé |
 | Chaos (`chaos`) | doux, normal, fou : forces et fréquence des objets × 0,7, × 1, × 1,3 | normal |
-| Écart des boîtes (`box_every_km`) | 1, 1,5, 2, 3 | 1,5 |
+| Écart des boîtes (`box_every_m`, lot GP2 : en mètres, au pas de 500 m comme les autres réglages à pas) | 1 000 à 3 000 m | 1 500 m |
 | Objets (`items.<id>`) | activé, désactivé | tous activés |
 
 ## 5. Recouvrement avec les autres modes
