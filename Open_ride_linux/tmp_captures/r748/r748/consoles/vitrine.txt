@@ -1,0 +1,40 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.312 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce GTX 1060 6GB
+
+SCRIPT ERROR: Invalid access to property or key 'n' on a base object of type 'RefCounted (StraightRoute)'.
+          at: _init (res://scripts/road_clearance.gd:24)
+          GDScript backtrace (most recent call first):
+              [0] _init (res://scripts/road_clearance.gd:24)
+              [1] configure (res://scripts/grass_tufts.gd:174)
+              [2] _build_world (res://tests/vitrine_rendu.gd:290)
+              [3] _run (res://tests/vitrine_rendu.gd:222)
+Qualité appliquée : low (demandée low, source vitrine)
+[vitrine] ~/mesures-2026-11-01-auto/r748/vitrine/styles_biomes_low.png : 9772 triangles, 8 appels de dessin, 8 objets
+[vitrine] ~/mesures-2026-11-01-auto/r748/vitrine/styles_biomes_pres_low.png : 13430 triangles, 26 appels de dessin, 27 objets
+[vitrine] ~/mesures-2026-11-01-auto/r748/vitrine/styles_biomes_pres2_low.png : 13322 triangles, 25 appels de dessin, 25 objets
+[vitrine] ~/mesures-2026-11-01-auto/r748/vitrine/faune_biomes_low.png : 20942 triangles, 9 appels de dessin, 9 objets
+SCRIPT ERROR: Invalid access to property or key 'n' on a base object of type 'RefCounted (StraightRoute)'.
+          at: _init (res://scripts/road_clearance.gd:24)
+          GDScript backtrace (most recent call first):
+              [0] _init (res://scripts/road_clearance.gd:24)
+              [1] configure (res://scripts/grass_tufts.gd:174)
+              [2] _build_world (res://tests/vitrine_rendu.gd:290)
+              [3] _run (res://tests/vitrine_rendu.gd:222)
+Qualité appliquée : medium (demandée medium, source vitrine)
+[vitrine] ~/mesures-2026-11-01-auto/r748/vitrine/styles_biomes_medium.png : 31432 triangles, 8 appels de dessin, 8 objets
+[vitrine] ~/mesures-2026-11-01-auto/r748/vitrine/styles_biomes_pres_medium.png : 40505 triangles, 26 appels de dessin, 27 objets
+[vitrine] ~/mesures-2026-11-01-auto/r748/vitrine/styles_biomes_pres2_medium.png : 40397 triangles, 25 appels de dessin, 25 objets
+[vitrine] ~/mesures-2026-11-01-auto/r748/vitrine/faune_biomes_medium.png : 59930 triangles, 9 appels de dessin, 9 objets
+SCRIPT ERROR: Invalid access to property or key 'n' on a base object of type 'RefCounted (StraightRoute)'.
+          at: _init (res://scripts/road_clearance.gd:24)
+          GDScript backtrace (most recent call first):
+              [0] _init (res://scripts/road_clearance.gd:24)
+              [1] configure (res://scripts/grass_tufts.gd:174)
+              [2] _build_world (res://tests/vitrine_rendu.gd:290)
+              [3] _run (res://tests/vitrine_rendu.gd:222)
+Qualité appliquée : high (demandée high, source vitrine)
+[vitrine] ~/mesures-2026-11-01-auto/r748/vitrine/styles_biomes_high.png : 39907 triangles, 7 appels de dessin, 7 objets
+[vitrine] ~/mesures-2026-11-01-auto/r748/vitrine/styles_biomes_pres_high.png : 58980 triangles, 25 appels de dessin, 26 objets
+[vitrine] ~/mesures-2026-11-01-auto/r748/vitrine/styles_biomes_pres2_high.png : 58872 triangles, 24 appels de dessin, 24 objets
+[vitrine] ~/mesures-2026-11-01-auto/r748/vitrine/faune_biomes_high.png : 131930 triangles, 9 appels de dessin, 9 objets
+[vitrine_rendu] contrôles automatiques : tout passe
