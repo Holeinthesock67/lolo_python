@@ -24,6 +24,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Le FIT de chaque séance donne les calories, le travail, le dénivelé positif et négatif, la puissance normalisée et la cadence maximale, pour la séance et pour chaque tour ; l'appareil s'appelle « OpenRide » avec la version du jeu.
 - `openride-core fit-check` contrôle en plus ce que Garmin Connect et GoldenCheetah exigent à l'import (en-tête, tours et séance datés, heure locale).
 
+### Outils de test
+- Bancs de fluidité : la périodicité des à-coups se compte en passages distincts et non plus en images. Deux paquets d'images lentes éloignés (bots, décor, arrêt à l'arrivée) ne forment plus une fausse période ; la saccade de 40 m du 4 novembre reste détectée (lot X57).
+
 ### Bots et abri (série AS)
 - Cyclistes du décor dessinés comme les bots (même cycliste, mêmes niveaux de détail), avec leurs propres maillots, unis ou de club, de couleurs qu'aucun bot ne porte, sans dossard (lot AS7, retour d'essai du 4 novembre).
 
