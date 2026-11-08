@@ -489,6 +489,9 @@ func _ready() -> void:
 	ipc.history_session_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_history_session(msg)
 		_refresh_menu())
+	ipc.coach_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_coach(msg)
+		_refresh_menu())
 	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_wtf_rules(msg)
 		_refresh_menu())
@@ -709,6 +712,7 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_workouts()
 			ipc.list_settings()
 			ipc.list_plans()
+			ipc.coach_command("get_coach", menu_flow.coach.request_args())   # ligne « Séance conseillée » de l'accueil
 			if act.get("route_id") != null:
 				ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"quit":
@@ -736,6 +740,11 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_plans()
 		"list_history":
 			ipc.list_history()
+		"coach_command":   # séance conseillée (lot CO5) : get_coach et saisies du conseil, réponse `coach`
+			ipc.coach_command(str(act["name"]), act.get("args", {}))
+		"sequence":   # plusieurs actions d'un même choix, dans l'ordre (course conseillée, réglage du conseil)
+			for a in act.get("list", []):
+				_run_menu_action(a)
 		"history_session":
 			ipc.history_session(str(act["id"]))
 		"list_wtf_rules":

@@ -466,6 +466,9 @@ opponents = 4                # adversaires, 2 à 4 : une arche par adversaire
 spacing_km = 2               # écart entre deux arches, 1 à 3 km
 spread = "normal"            # écart de niveau des bots : "tight" (± 3 %), "normal" (± 8 %), "wide" (± 15 %)
 after_out = "ride"           # cycliste éliminé : "ride" (continuer à rouler) ou "end" (bilan tout de suite)
+[coach]                      # séance conseillée (série CO, lot CO3), réglable dans le menu ; suit le profil du joueur
+objectif = "endurance"       # "endurance", "courses" (et championnat) ou "grimpeur" : répartition visée sur 4 semaines
+temps_disponible_min = 60    # durée conseillée quand la règle ne fixe pas la sienne, 30 à 120 min par pas de 15
 [grandprix]                  # mode « Grand Prix des objets » (série GP, lot GP2), réglable dans le menu
 opponents = 4                # adversaires, 2 à 4 (bots à profil)
 laps = 3                     # tours sur un circuit, 1 à 5
