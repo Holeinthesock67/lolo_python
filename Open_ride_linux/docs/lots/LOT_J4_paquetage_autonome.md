@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Paquets installables hors du dépôt (dépendance `jsonschema`, ressources embarquées) | Python | — | Petite | Oui (dépendance `jsonschema` faite ; reste les ressources embarquées) |
+| Paquets installables hors du dépôt (dépendance `jsonschema`, ressources embarquées) | Python | — | Petite | **Livré le 8 novembre** (issue #50 ; dépendance `jsonschema` faite le 23 octobre) |
 
 ## 1. Objectif
 
@@ -60,3 +60,16 @@ Aucune. `theme.schema.json` de `docs/contracts/` reste la référence.
 
 - **Fait directement :** `jsonschema>=4` passe dans les dépendances d'exécution du compilateur (`compiler/pyproject.toml`) ; `openride-compiler` démarre sans l'extra `[dev]`.
 - **Reste à confier :** ressources embarquées (`theme.schema.json`, `.zwo` de référence) avec test d'identité, et essai d'installation par roue (critères 2 et 3).
+
+## 10. Livraison (8 novembre 2026)
+
+- **Copies embarquées :** `compiler/src/openride_compiler/data/theme.schema.json` et `data/default_theme.json` (copie de `engine/themes/default/theme.json`), `core/src/openride_core/data/workouts/` (les 10 entraînements de `core/workouts/`) et `core/src/openride_core/data/plans/` (les 2 plans de `core/plans/`), déclarées en `package-data`. Les dossiers du dépôt restent la référence.
+- **Tests :** `core/tests/test_packaging.py` et `compiler/tests/test_packaging.py` vérifient chaque copie octet pour octet (le message d'échec donne la commande de recopie), que le code lit bien les copies, et l'import de `openride_compiler.cli` avec `pytest`, `hypothesis` et `Pillow` masqués (critère 4). Le test `slow` de chaque paquet (critère 3) passe par `scripts/essai_roue.py` : copie du paquet hors du dépôt, `pip wheel --no-deps --no-build-isolation --no-index`, environnement virtuel neuf sans pip, roue installée par `pip --python … install --no-deps --no-index`, dépendances déclarées prises dans les `site-packages` de l'environnement courant par un `.pth` (les installations éditables du dépôt ne sont donc pas visibles) ; puis, depuis un dossier hors du dépôt, `openride-compiler theme-check` sur une copie du thème par défaut (code 0), `workouts install` (toute la bibliothèque copiée) et `plans.install_builtin` (les 2 plans).
+
+**Écarts assumés :**
+
+- **Thème par défaut embarqué aussi :** `theme-check` lit le `theme.json` par défaut pour signaler les clés inconnues ; sans cette copie, le critère 3 échouait hors du dépôt. `DEFAULT_THEME_DIR` (dossier du thème avec ses textures, utilisé par `theme_packs.py` et `resolve_theme`) reste celui de l'engine.
+- **Plans embarqués aussi :** `plan install` et « Réglages › Contenus » (lot O25) lisent `core/plans/` de la même façon que les entraînements ; même procédé pour rester cohérent. Le cahier comptait 5 `.zwo` : la bibliothèque en compte 10 depuis les lots O9 à O11 (8 `.zwo`, un `.erg`, un `.mrc`), toutes copiées.
+- **Lecture par `Path(__file__).parent / "data"` au lieu d'`importlib.resources` :** c'est déjà la règle de tout le paquet pour ses fichiers embarqués (`progression.toml`, `coach.toml`, `collection.toml`, `places.json`, packs de parcours du compilateur) ; une roue s'installe toujours décompressée, le résultat est le même. Un seul `BUILTIN_WORKOUTS_DIR`, dans `workout.py`, importé par `plans.py` et `tools/workouts.py` (il y en avait deux).
+- **Sans `setuptools` dans l'environnement**, le test `slow` est sauté avec la commande à lancer (`pip install "setuptools>=68"`) : la construction sans réseau ne peut pas aller chercher le moteur de construction. C'est le cas des Python 3.12 et plus de la CI ; l'essai complet se fait sur le PC.
+- Dépendent encore du dépôt (hors périmètre, pour l'installeur final) : le dossier de l'engine (`launcher.DEFAULT_ENGINE_DIR`), `scripts/config.example.toml` et `session.DEFAULT_THEME_JSON`, tous liés à l'engine Godot livré à côté.
