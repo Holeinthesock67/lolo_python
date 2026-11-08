@@ -480,6 +480,12 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 			continue                    # le core dit qu'il n'y est pas
 		else:
 			v.erase("core")             # sorti de la liste : décor lointain
+			# Devant le cycliste dans son sens, il a déjà doublé : il continue à sa vitesse. Sans ce drapeau,
+			# _move_overtaker le croyait en attente derrière et le calait sur la vitesse du cycliste à 150 m
+			# devant, où les suivants venaient s'empiler (contacts « truck / truck » du banc 7ct bis).
+			if int(v["dir"]) == 1 and float(v["s"]) > rider_s:
+				v["committed"] = true
+				v["passed"] = true
 			kept.append(v)
 	vehicles = kept
 

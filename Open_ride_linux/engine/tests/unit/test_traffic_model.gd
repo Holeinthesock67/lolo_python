@@ -387,6 +387,18 @@ func _test_sync_core(route) -> void:
 		if str(v["id"]) == "v40":
 			kept = not v.has("core")
 	_check(kept, "sorti de la liste à plus de 150 m : gardé au décor de l'engine")
+	# Camion qui a doublé, sorti de la liste devant : il garde sa vitesse au lieu de se caler sur le cycliste
+	var truck := {"id": "v41", "kind": "truck", "color": 0, "s": 5150.0, "dir": 1, "v": 17.0, "lane_m": 1.5}
+	tm.sync_core([truck], 13, 5000.0)
+	tm.sync_core([], 14, 5000.0)
+	var t41: Dictionary = {}
+	for v in tm.vehicles:
+		if str(v["id"]) == "v41":
+			t41 = v
+	var s0 := float(t41.get("s", 0.0))
+	tm.update(5000.0, 8.0, 1.0)
+	_check(not t41.is_empty() and float(t41["s"]) - s0 > 16.0,
+		"camion sorti de la liste devant : continue à 17 m/s, pas à la vitesse du cycliste (%.1f m en 1 s)" % (float(t41.get("s", 0.0)) - s0))
 
 
 func _init() -> void:
