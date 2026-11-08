@@ -180,9 +180,10 @@ def _shelters(sources: Iterable[Any]) -> list[tuple[float, Any, float | None, fl
     return [(b.s, b, lane_of(b), size_factor(b)) for b in sources if getattr(b, "kind", "constant") == "constant"]
 
 
-def draft_coefficient(gap_m: float) -> float:
-    """Abri derrière un seul bot à l'écart `gap_m` (m) ; 0 devant le bot et au-delà de 15 m."""
-    if gap_m < 0.0 or gap_m > GAP_CUTOFF_M:
+def draft_coefficient(gap_m: float, cutoff_m: float = GAP_CUTOFF_M) -> float:
+    """Abri derrière un seul bot à l'écart `gap_m` (m) ; 0 devant le bot et au-delà de `cutoff_m` (15 m ;
+    25 m pendant l'Aspiration +, lot TT3)."""
+    if gap_m < 0.0 or gap_m > cutoff_m:
         return 0.0
     return ALPHA_MAX * math.exp(-max(gap_m - GAP_MIN_M, 0.0) / DECAY_M)
 
@@ -230,16 +231,17 @@ def ahead_distance(rider_s: float, bot_s: float, length_m: float | None, is_loop
 _GROUP_REACH_M = GAP_CUTOFF_M + BIKE_LENGTH_M + 1.0   # au-delà, draft_coefficient vaut 0
 
 
-def _source_alpha(d: float, lane_m: float | None, b_lane: float | None, size: float, shift_m: float = 0.0) -> float:
+def _source_alpha(d: float, lane_m: float | None, b_lane: float | None, size: float, shift_m: float = 0.0,
+                  cutoff_m: float = GAP_CUTOFF_M) -> float:
     """Abri `α_i` d'une source à `d` m devant (lot AS4) : courbe de P3 × `lateral_factor` × gabarit ; 0 au-delà
     de `GROUP_SIDE_M` sur le côté. L'écart est pris au centre de la zone abritée, décalé de `shift_m` sous le
     vent de travers (lot AS3). Roues qui se chevauchent (côte à côte) : rien, comme P3 (cahier AS4, § 9)."""
     if lane_m is None or b_lane is None:   # écart inconnu : on est dans la roue de la source (lot AS3)
-        return draft_coefficient(d - BIKE_LENGTH_M) * lateral_factor(shift_m) * size
+        return draft_coefficient(d - BIKE_LENGTH_M, cutoff_m) * lateral_factor(shift_m) * size
     dx = abs(lane_m - b_lane - shift_m)
     if dx > GROUP_SIDE_M:
         return 0.0
-    return draft_coefficient(d - BIKE_LENGTH_M) * lateral_factor(dx) * size
+    return draft_coefficient(d - BIKE_LENGTH_M, cutoff_m) * lateral_factor(dx) * size
 
 
 def _combine(found: list[tuple[float, float, float | None, str]]) -> tuple[float, str | None]:
@@ -264,17 +266,19 @@ def _combine(found: list[tuple[float, float, float | None, str]]) -> tuple[float
 
 def _group_draft(rider_s: float, lane_m: float | None, shelters: list[tuple[float, Any, float | None, float]],
                  length_m: float | None, is_loop: bool, skip: Any = None, rider_v: float = 0.0,
-                 head_mps: float = 0.0, cross_mps: float = 0.0) -> tuple[float, str | None]:
+                 head_mps: float = 0.0, cross_mps: float = 0.0,
+                 cutoff_m: float = GAP_CUTOFF_M) -> tuple[float, str | None]:
     """Abri de groupe (lot AS4) avant la perte résiduelle du vent de travers, et `id` de la source la plus
     forte ; zone abritée de chaque source décalée sous le vent (lot AS3)."""
     found = []
+    reach = _GROUP_REACH_M + max(cutoff_m - GAP_CUTOFF_M, 0.0)
     for s, b, b_lane, size in shelters:
         if b is skip:
             continue
         d = ahead_distance(rider_s, s, length_m, is_loop)
-        if 0.0 < d <= _GROUP_REACH_M:
+        if 0.0 < d <= reach:
             shift = crosswind_shift_m(d - BIKE_LENGTH_M, rider_v, head_mps, cross_mps)
-            alpha = _source_alpha(d, lane_m, b_lane, size, shift)
+            alpha = _source_alpha(d, lane_m, b_lane, size, shift, cutoff_m)
             if alpha > 0.0:
                 found.append((alpha, d, b_lane, b.id))
     return _combine(found)
@@ -282,7 +286,7 @@ def _group_draft(rider_s: float, lane_m: float | None, shelters: list[tuple[floa
 
 def draft_for(rider_s: float, sources: Iterable[Any], length_m: float | None = None, is_loop: bool = False,
               rider_v: float = 0.0, head_mps: float = 0.0, cross_mps: float = 0.0, skip: Any = None,
-              lane_m: float | None = None) -> tuple[float, str | None]:
+              lane_m: float | None = None, boost: Any = None) -> tuple[float, str | None]:
     """Abri d'un coureur à `rider_s` dans le groupe devant lui et `id` de la source la plus forte. Sert au
     cycliste comme aux bots (lot AS1).
 
@@ -291,19 +295,26 @@ def draft_for(rider_s: float, sources: Iterable[Any], length_m: float | None = N
     coureur (lot AS2) ; l'abri de chaque source est multiplié par `lateral_factor` de l'écart latéral au
     centre de sa zone abritée, décalé sous le vent de travers (lot AS3).
     Lot AS4 : abri de toutes les sources devant et sur les côtés, combinées (`_group_draft`).
+    `boost` (`powerups.DraftBoost`, Aspiration + du lot TT3, cycliste seulement) : portée `reach_m`, abri
+    final × `factor` plafonné à `cap`.
     """
+    cutoff = max(GAP_CUTOFF_M, boost.reach_m) if boost is not None else GAP_CUTOFF_M
     alpha, best_id = _group_draft(rider_s, lane_m, _shelters(sources), length_m, is_loop, skip,
-                                  rider_v, head_mps, cross_mps)
+                                  rider_v, head_mps, cross_mps, cutoff)
     if best_id is None:
         return 0.0, None
-    return alpha * crosswind_residual(rider_v, head_mps, cross_mps), best_id
+    alpha *= crosswind_residual(rider_v, head_mps, cross_mps)
+    if boost is not None:
+        alpha = min(alpha * boost.factor, boost.cap)
+    return alpha, best_id
 
 
 def best_draft(rider_s: float, bots: Iterable[Any], length_m: float | None = None, is_loop: bool = False,
-               rider_v: float = 0.0, head_mps: float = 0.0, cross_mps: float = 0.0, lane_m: float | None = None
-               ) -> tuple[float, str | None]:
-    """Abri du cycliste derrière les bots (lot P3) : `draft_for` avec les bots pour sources."""
-    return draft_for(rider_s, bots, length_m, is_loop, rider_v, head_mps, cross_mps, lane_m=lane_m)
+               rider_v: float = 0.0, head_mps: float = 0.0, cross_mps: float = 0.0, lane_m: float | None = None,
+               boost: Any = None) -> tuple[float, str | None]:
+    """Abri du cycliste derrière les bots (lot P3) : `draft_for` avec les bots pour sources ; `boost` :
+    Aspiration + (lot TT3)."""
+    return draft_for(rider_s, bots, length_m, is_loop, rider_v, head_mps, cross_mps, lane_m=lane_m, boost=boost)
 
 
 def wheel_ahead(rider_s: float, sources: Iterable[Any], length_m: float | None = None, is_loop: bool = False,

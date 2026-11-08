@@ -19,9 +19,10 @@ from __future__ import annotations
 
 import math
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Iterable
+from typing import Any
 
 from .gaps import RIDER_ID, GapTracker
 from .jerseys import Finish, Standings
@@ -143,6 +144,10 @@ class ClassicRace:
             return Context(has_bots=self._has_bots)
         return Context(grade_pct=g(s), has_bots=self._has_bots,
                        descent_ahead=lambda: descent_ahead(g, s, None if self.loop else self.length_m))
+
+    def draft_boost(self):
+        """Aspiration + en cours (lot TT3) : `powerups.DraftBoost`, ou None."""
+        return self.powerups.draft_boost() if self.powerups_on else None
 
     def feel_params(self, p: PhysicsParams, base: PhysicsParams) -> PhysicsParams:
         """Paramètres du supplément de pente SIM : masse de base pendant un bonus de masse (TT2)."""

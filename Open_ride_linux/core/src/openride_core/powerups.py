@@ -41,9 +41,9 @@ from __future__ import annotations
 import math
 import random
 import tomllib
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Callable
 
 from .config import OPENRIDE_HOME
 from .physics import PhysicsParams
@@ -73,7 +73,7 @@ class EffectSpec:
         if self.effect not in EFFECTS:
             raise ValueError(f"effet inconnu : {self.effect!r}")
 
-    def scaled(self, chaos: float) -> "EffectSpec":
+    def scaled(self, chaos: float) -> EffectSpec:
         """Force multipliée par le chaos : l'écart à 1 d'un facteur, la valeur du vent ; durée inchangée."""
         if self.effect in MULTIPLIERS:
             return replace(self, factor=1.0 + (self.factor - 1.0) * chaos)
@@ -89,6 +89,8 @@ DESCENT_HOLD_PCT = -0.5         # Enclume : masse en plus suspendue au-dessus, l
 DESCENT_MIN_M = 300.0           # tirage : au moins 300 m d'affilée sous −1,5 %…
 LOOK_AHEAD_M = 5000.0           # … dans les 5 km devant (plan §3)
 LOOK_STEP_M = 25.0
+DRAFT_PLUS_CAP = 0.55          # Aspiration + : plafond du cœur de groupe de la série AS (AS4)
+DRAFT_PLUS_REACH_M = 25.0      # Aspiration + : portée de l'abri (15 m sans bonus)
 REFUSED_SHOW_S = 2.0            # raison du refus affichée 2 s (contrat 1.13, `powerup.refused`)
 
 MODES = ("off", "classiques", "tactiques")      # réglage `powerups.mode` (contrat 1.13)
@@ -144,6 +146,8 @@ class PowerUpSpec:
     draw_if: tuple[str, ...] = ()               # conditions de tirage (noms de `CONDITIONS`)
     refuse_unless: tuple[tuple[str, str], ...] = ()   # (condition, raison du refus)
     hold_above_grade_pct: float | None = None   # effet suspendu au-dessus de cette pente
+    cap: float | None = None                    # effet `draft` : plafond de l'abri (TT3)
+    reach_m: float | None = None                # effet `draft` : portée de l'abri (TT3)
 
     def __post_init__(self) -> None:
         EffectSpec(self.effect, self.factor, self.duration_s)   # effet connu
@@ -177,6 +181,10 @@ DEFAULT_TABLE = PowerUpTable(specs={
     "anvil": PowerUpSpec("anvil", "mass", 1.6, 15.0, "Enclume", sets=("tactiques",), factor_bounds=(1.0, 2.5),
                          draw_if=("descent_ahead",), refuse_unless=(("descending", "no_descent"),),
                          hold_above_grade_pct=DESCENT_HOLD_PCT),
+    # Aspiration + (lot TT3) : abri × 1,5 plafonné au cœur de groupe d'AS4, portée 15 → 25 m.
+    "draft_plus": PowerUpSpec("draft_plus", "draft", 1.5, 40.0, "Aspiration +", sets=("tactiques",),
+                              factor_bounds=(1.0, 2.0), draw_if=("bots",), refuse_unless=(("bots", "no_bots"),),
+                              cap=DRAFT_PLUS_CAP, reach_m=DRAFT_PLUS_REACH_M),
 })
 KINDS = tuple(DEFAULT_TABLE.specs)
 LABELS = {k: s.label for k, s in DEFAULT_TABLE.specs.items()}
@@ -270,6 +278,14 @@ class PowerUpUse:
     def to_dict(self) -> dict:
         return {"kind": self.kind, "t_start": round(self.t_start, 2),
                 "duration_s": round(self.duration_s, 2)}
+
+
+@dataclass(frozen=True)
+class DraftBoost:
+    """Abri du cycliste × `factor`, plafonné à `cap`, sources comptées jusqu'à `reach_m` (lot TT3)."""
+    factor: float
+    cap: float
+    reach_m: float
 
 
 @dataclass(frozen=True)
@@ -382,6 +398,14 @@ class PowerUps:
         if spec.effect == "crr":
             return replace(base, crr=base.crr * spec.factor)
         return base
+
+    def draft_boost(self) -> DraftBoost | None:
+        """Abri renforcé pendant un bonus `draft` (Aspiration +, lot TT3) ; None sinon."""
+        spec = self._effect()
+        if spec is None or spec.effect != "draft":
+            return None
+        return DraftBoost(spec.factor, spec.cap if spec.cap is not None else 1.0,
+                          spec.reach_m if spec.reach_m is not None else 0.0)
 
     def feel_params(self, p: PhysicsParams, base: PhysicsParams) -> PhysicsParams:
         """Paramètres du supplément de pente SIM : masse de base (Plume et Enclume ne se sentent pas au

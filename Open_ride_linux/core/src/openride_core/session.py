@@ -3273,8 +3273,10 @@ class CoreSession:
                               (lambda b: cross_at(route.sample(b.s).heading_deg)) if ws and route else None)
         sources = list(racing) + [road_cyclists_mod.DraftSource(r.s, r.v, road_cyclists_mod.source_id(r.id),
                                                                   r.lane_m) for r in riders if r.dir == 1]
+        boost = self.race.draft_boost() if self.race else None   # Aspiration + (lot TT3)
         target, bot_id = draft_mod.best_draft(self.physics.s, sources, length, is_loop,
-                                              self.physics.v, self._head_mps, cross, lane_m=self._lane.m)
+                                              self.physics.v, self._head_mps, cross, lane_m=self._lane.m,
+                                              boost=boost)
         if near and self.cfg.ride.vehicle_draft == "on":
             v_alpha, v_id = traffic_mod.vehicle_draft(self.physics.s, self._lane.m, near, self.physics.v,
                                                       self._head_mps, cross)
