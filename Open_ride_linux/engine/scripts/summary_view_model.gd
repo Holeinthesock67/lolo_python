@@ -23,7 +23,7 @@ const KEY_BLOCKS := "blocks"
 const KEY_FIT_PATH := "fit_path"
 const KEY_DRAFT_TIME := "draft_time_s"   # lot AS5 : temps dans la roue, énergie économisée à l'abri
 const KEY_DRAFT_KJ := "draft_kj"
-const KEY_POWER_PROFILE := "power_profile"   # lot N20 (révision 1.7) : courbe réduite du graphique du bilan
+const KEY_POWER_PROFILE := "power_profile"   # lot N20 (révision 1.10) : courbe réduite du graphique du bilan
 const KEY_FTP_TEST := "ftp_test"
 
 ## Avertissements du test de FTP (`summary.ftp_test.warnings`), comme `openride-core ftp-test` ; repris par
@@ -250,7 +250,7 @@ func mode_lines(summary: Dictionary) -> Array:
 	return out
 
 
-## Courbe du graphique du bilan (`summary.power_profile`, révision 1.7) : {power_w, target_w, step_s,
+## Courbe du graphique du bilan (`summary.power_profile`, révision 1.10) : {power_w, target_w, step_s,
 ## max_w} (target_w : [] sans cible ; max_w : plus haute valeur, puissance ou cible) ; {} sans courbe
 ## (au moins deux points).
 func power_chart(summary: Dictionary) -> Dictionary:
@@ -272,7 +272,7 @@ func power_chart(summary: Dictionary) -> Dictionary:
 
 
 ## Records battus pendant la séance (`summary.segments.passes`, `pr` vrai), du dernier au premier (la vue
-## en montre MAX_RECORD_LINES) : {name, time, before} ; `before` : ancien record (`pr_time_s`, révision 1.7) ou
+## en montre MAX_RECORD_LINES) : {name, time, before} ; `before` : ancien record (`pr_time_s`, révision 1.10) ou
 ## « premier temps ». names : identifiant du segment → nom (couche `segments` du parcours).
 func records_beaten(summary: Dictionary, names: Dictionary = {}) -> Array:
 	var segs = summary.get("segments", null)

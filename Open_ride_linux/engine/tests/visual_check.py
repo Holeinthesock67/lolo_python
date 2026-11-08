@@ -1459,7 +1459,7 @@ def _menu_scenes(s: Session) -> None:
                 f"{line:.2%} de pixels cyan")
     _records_scene(s)
     _garage_scenes(s)
-    # Bilan en tuiles (lot N20) : tuiles, courbe réduite de la puissance (révision 1.7), record battu en or.
+    # Bilan en tuiles (lot N20) : tuiles, courbe réduite de la puissance (révision 1.10), record battu en or.
     core.set_scene(session_state="FINISHED", summary={
         "duration_s": 1805.0, "distance_m": 15230.0, "avg_power_w": 212.0, "np_w": 221.0, "tss": 41.0,
         "elevation_gain_m": 180.0, "max_power_w": 560.0, "fit_path": "/tmp/openride/seance.fit",

@@ -22,7 +22,7 @@
         "intensity_factor": {"type": ["number", "null"]},
         "tss": {"type": ["number", "null"]},
         "elevation_gain_m": {"type": ["number", "null"]},
-        "power_profile": {"$comment": "Facultatif, révision 1.7 (lot N20) : même forme que state.summary.power_profile.",
+        "power_profile": {"$comment": "Facultatif, révision 1.10 (lot N20) : même forme que state.summary.power_profile.",
                           "type": ["object", "null"], "required": ["step_s", "power_w", "target_w"]}
       }
     }

@@ -199,4 +199,4 @@ def test_finished_frame_with_power_profile_fits_and_validates():
     assert dropped[-1] == "courbe du bilan" and "power_profile" in heavier["summary"]
     labels = [label for label, _ in STATE_DEGRADATION]
     assert labels.index("devices") < labels.index("courbe du bilan") < labels.index("summary")
-    assert "1.7 bilan" in ipc_budget.report()
+    assert "1.10 bilan" in ipc_budget.report()

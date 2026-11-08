@@ -94,7 +94,7 @@ STATE_DEGRADATION: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("noms des bots raccourcis", _short_bot_names),
     ("bots (trame avec devices)", _bots_if_devices),
     ("devices", _drop("devices")),
-    # Lot N20 (révision 1.7) : la courbe du bilan part avant le bilan lui-même ; l'engine garde la dernière reçue.
+    # Lot N20 (révision 1.10) : la courbe du bilan part avant le bilan lui-même ; l'engine garde la dernière reçue.
     ("courbe du bilan", _drop_power_profile),
     ("summary", _drop("summary")),
     ("bots", _drop("bots")),
@@ -300,7 +300,7 @@ def worst_grandprix_state(opponents: int = 4) -> dict[str, Any]:
 
 
 def worst_summary() -> dict[str, Any]:
-    """Bilan `summary` le plus lourd (révision 1.7) : bilan enrichi, 24 blocs ERG, abri, 10 passages sur
+    """Bilan `summary` le plus lourd (révision 1.10) : bilan enrichi, 24 blocs ERG, abri, 10 passages sur
     les segments avec l'ancien record (lot N20), test de FTP et courbe réduite de 50 points avec cible."""
     from .tools.session_summary import PROFILE_POINTS
 
@@ -419,7 +419,7 @@ def report() -> str:
     gp11.pop("devices")
     rows.append(("1.7 grand prix 11 bots", gp11, state_limit("1.7")))
     rows.append(("1.4 rogue", worst_rogue_state(), state_limit("1.4")))
-    rows.append(("1.7 bilan", worst_finished_state(), state_limit("1.7")))
+    rows.append(("1.10 bilan", worst_finished_state(), state_limit("1.10")))
     rows += [(f"1.4 {name}", msg, MAX_DATAGRAM_SIZE) for name, msg in worst_short_messages().items()]
     for label, msg, limit in rows:
         n = size(msg)

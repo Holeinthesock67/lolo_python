@@ -139,7 +139,7 @@ func _init() -> void:
 	set_process(false)
 
 
-## Bandeau du test de FTP : « Résultat du test de FTP », valeur en couleur de sélection, ancienne FTP, écart
+## Bandeau du test de FTP : « Résultat du test de FTP », nouvelle FTP en `GOLD`, ancienne FTP en `DIM`, écart
 ## et fiabilité à droite.
 func _build_ftp_band() -> void:
 	ftp_band = PanelContainer.new()
@@ -158,7 +158,7 @@ func _build_ftp_band() -> void:
 	var value_row := HBoxContainer.new()
 	value_row.add_theme_constant_override("separation", 10)
 	left.add_child(value_row)
-	ftp_value = UiTheme.label(UiTheme.VALUE_SIZE, UiTheme.FOCUS)
+	ftp_value = UiTheme.label(UiTheme.VALUE_SIZE, UiTheme.GOLD)   # nouvelle FTP en or, ancienne en DIM (N19 §4.4)
 	value_row.add_child(ftp_value)
 	ftp_before = UiTheme.label(BLOCK_FONT_SIZE, UiTheme.DIM)
 	ftp_before.size_flags_vertical = Control.SIZE_SHRINK_END

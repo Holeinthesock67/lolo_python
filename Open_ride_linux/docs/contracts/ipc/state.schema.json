@@ -369,7 +369,7 @@
             "object",
             "null"
           ],
-          "description": "Facultatif, révision 1.7 (lot N20) : courbe réduite de la séance pour le graphique du bilan ; chaque point est la moyenne de step_s secondes consécutives (le dernier peut en compter moins), au plus 50 points ; target_w vaut null pour une séance sans cible ERG.",
+          "description": "Facultatif, révision 1.10 (lot N20) : courbe réduite de la séance pour le graphique du bilan ; chaque point est la moyenne de step_s secondes consécutives (le dernier peut en compter moins), au plus 50 points ; target_w vaut null pour une séance sans cible ERG.",
           "required": [
             "step_s",
             "power_w",
@@ -454,7 +454,7 @@
                       "number",
                       "null"
                     ],
-                    "description": "Facultatif, révision 1.7 (lot N20) : record d'avant ce passage (s), null s'il n'y en avait pas."
+                    "description": "Facultatif, révision 1.10 (lot N20) : record d'avant ce passage (s), null s'il n'y en avait pas."
                   },
                   "rank": {
                     "type": "integer",

@@ -25,7 +25,7 @@ CONTRACT_VERSION = 1
 # du 27 octobre ; 127.0.0.1, sans fragmentation). Une trame state plus grande est allégée, les autres jetées.
 MAX_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
-CONTRACT_REV = "1.7"   # Grand Prix des objets (lot GP2, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
+CONTRACT_REV = "1.10"   # bilan en tuiles (lot N20) ; 1.9 : N17/N18 (PR #789) ; 1.8 : collection de cartes (lot BC2, PR #758) ; 1.7 : Grand Prix des objets (lot GP2, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
 # Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
 CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor", "grandprix")   # monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2 ; grandprix : révision 1.7, lot GP2
 MAX_LIST_DATAGRAM_SIZE = 60000

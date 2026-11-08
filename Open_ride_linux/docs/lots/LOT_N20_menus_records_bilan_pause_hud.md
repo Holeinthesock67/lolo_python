@@ -59,7 +59,7 @@ N19 fusionné (mêmes fichiers `menu_view.gd` et `menu_flow.gd`). V9 n'est pas n
 
 ## 6. Modifications de contrat autorisées
 
-Plan des boutons et réglages inchangés. Décision du propriétaire du 8 novembre (bilan en tuiles, étape 4f) : la courbe du graphique et l'ancien temps des records battus viennent du core, pour que le bilan relu dans l'Historique soit le même qu'en fin de séance. Ajouts compatibles de la révision 1.7 du contrat IPC : `summary.power_profile` (au plus 50 points, cible ERG comprise, aussi dans `history_session`) et `pr_time_s` dans `summary.segments.passes` ; la courbe est retirée avant le bilan entier d'une trame trop lourde (`ipc_budget`).
+Plan des boutons et réglages inchangés. Décision du propriétaire du 8 novembre (bilan en tuiles, étape 4f) : la courbe du graphique et l'ancien temps des records battus viennent du core, pour que le bilan relu dans l'Historique soit le même qu'en fin de séance. Ajouts compatibles de la révision 1.10 du contrat IPC (1.8 : BC2, 1.9 : N17/N18) : `summary.power_profile` (au plus 50 points, cible ERG comprise, aussi dans `history_session`) et `pr_time_s` dans `summary.segments.passes` ; la courbe est retirée avant le bilan entier d'une trame trop lourde (`ipc_budget`).
 
 ## 7. Critères d'acceptation
 

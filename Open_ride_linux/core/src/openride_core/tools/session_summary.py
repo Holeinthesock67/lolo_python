@@ -48,7 +48,7 @@ Clés ajoutées par le lot M4, présentes seulement pour un journal qui porte ce
   arrondie à 0,1 s ; une coupure non refermée court jusqu'à la fin de la séance), pour un
   journal qui contient des lignes `device`.
 
-Clé ajoutée par le lot N20 (bilan en tuiles, révision 1.7) : `power_profile` = {step_s, power_w,
+Clé ajoutée par le lot N20 (bilan en tuiles, révision 1.10) : `power_profile` = {step_s, power_w,
 target_w}, courbe réduite de la séance pour le graphique du bilan : au plus `PROFILE_POINTS` points,
 chacun la moyenne de `step_s` échantillons consécutifs (le dernier peut en compter moins), arrondie au
 watt ; `target_w` : cible ERG moyenne des mêmes échantillons (`null` pour un point sans cible), ou `null`

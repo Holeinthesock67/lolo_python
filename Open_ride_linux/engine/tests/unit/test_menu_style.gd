@@ -249,6 +249,13 @@ func _test_cards() -> void:
 	_check(c.chart_kind() == "" and not c.tiles_box.visible and c.text() == "Entraînement | X | fichier illisible",
 		"carte : entraînement illisible, ni tuiles ni graphique")
 	c.free()
+	# Bilan en tuiles (lot N20) : nouvelle FTP du test en GOLD, ancienne en DIM (N19 §4.4, critère 4).
+	var sv = load("res://scripts/summary_view.gd").new()
+	sv.update_display({"duration_s": 1500.0, "ftp_test": {"ftp_w": 262, "previous_ftp_w": 250, "warnings": [], "reliable": true}}, false)
+	_check(sv.ftp_band.visible and sv.ftp_value.text == "262 W"
+		and sv.ftp_value.get_theme_color("font_color") == UiTheme.GOLD and sv.ftp_before.get_theme_color("font_color") == UiTheme.DIM,
+		"bilan : nouvelle FTP en or, ancienne en gris (%s)" % sv.text())
+	sv.free()
 
 
 ## Étape 3 : rangées des réglages (valeur à droite, curseur, modification en place), carte, aide des boutons.
