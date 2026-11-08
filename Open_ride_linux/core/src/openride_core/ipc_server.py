@@ -26,8 +26,13 @@ CONTRACT_VERSION = 1
 MAX_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
 CONTRACT_REV = "1.8"   # collection de cartes (lot BC2, 5.0) ; 1.7 : Grand Prix des objets (lot GP2, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
-# Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
-CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor", "grandprix")   # monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2 ; grandprix : révision 1.7, lot GP2
+# Modes de jeu proposés au joueur (hello_ack.config.modes, révision 1.3) : l'accueil de l'engine n'affiche que
+# ceux-là. Monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2.
+CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor")
+# Modes que le core sait lancer (`start` avec `mode`) mais pas encore annoncés, avec le lot qui les annoncera
+# en même temps que leur entrée à l'accueil (même règle que `config.PENDING_KEYS`) ; ce lot les passe dans
+# CORE_MODES. Grand Prix des objets : révision 1.7, lot GP2, annoncé au lot GP9.
+PENDING_MODES: dict[str, str] = {"grandprix": "GP9"}
 MAX_LIST_DATAGRAM_SIZE = 60000
 # Messages en parties (`part`, `parts`), `plans` et `settings` : 60 000 octets au plus par datagramme (contrat §2,
 # même liste que le contrat ; `garage` et `room` depuis la révision 1.4, le monde ouvert depuis la 1.5,
