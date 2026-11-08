@@ -407,6 +407,8 @@ draft_gauge = "off"  # jauge d'abri au-dessus du bot qui t'abrite : off, on (« 
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 biome = "auto"           # biome du décor (lot U16, « Biome du décor ») : auto (biomes du parcours) ou un des seize biomes, forcé sur tout le parcours
 texture_level = "auto"   # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high (« Textures du décor »)
+day_night = "off"       # jour et nuit (lot P19, « Jour et nuit ») : off (soleil fixe), theme (heure du thème), real (heure du PC) ou accelerated (une journée en une heure)
+seasons = "off"         # saisons (lot P19, « Saisons ») : off (l'été), theme, date (selon la date et l'hémisphère), spring, summer, autumn ou winter
 theme_library_gb = 5 # plafond des packs de thèmes de ~/OpenRide/Themes, de 1 à 50 Go (lot U15) : theme-install retire le moins récemment utilisé ; menu : Avancé, lot O27
 
 [ipc]

@@ -92,6 +92,8 @@ class RenderConfig:
     biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des seize de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
     texture_level: str = "auto"    # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high
+    day_night: str = "off"   # jour et nuit (lot P19) : off (soleil fixe d'aujourd'hui), theme, real (heure du PC) ou accelerated
+    seasons: str = "off"     # saisons (lot P19) : off (l'été d'aujourd'hui), theme, date, spring, summer, autumn ou winter
 
 
 @dataclass
@@ -422,6 +424,8 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "draft_gauge"): ("off", "on"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
+    ("render", "day_night"): ("off", "theme", "real", "accelerated"),
+    ("render", "seasons"): ("off", "theme", "date", "spring", "summer", "autumn", "winter"),
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),
