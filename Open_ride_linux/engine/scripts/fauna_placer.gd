@@ -51,6 +51,9 @@ extends RefCounted
 ##   WATER_NEAR_M d'une eau (dromadaires des oasis, flamants) ; `wade` : bêtes qui peuvent avoir les pattes
 ##   dans l'eau ; `max_slope` : pente tenue (bouquetins).
 ## Tout groupe d'oiseaux porte `species` ("bird" sans biome), qui choisit sa silhouette dans fauna_renderer.gd.
+## Lot U23 : éléphants (à plus de 150 m) et antilopes en savane, antilopes en steppe, bœufs musqués en toundra et
+## au pôle, ours blancs au pôle (à plus de 150 m), chèvres sur les volcans et en Méditerranée, singes en jungle ;
+## le chevreuil P11 devient une antilope en savane, le bétail des volcans des chèvres.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 
@@ -118,29 +121,45 @@ const BIOME_SPECIES := {
 	"tundra": {"cow": "reindeer", "sheep": "reindeer", "horse": "reindeer", "deer": "reindeer"},
 	"polar": {"cow": "", "sheep": "", "horse": "", "deer": "", "hare": "", "birds": "gull", "crows": "gull"},
 	"mediterranean": {"cow": "sheep", "deer": ""},
-	"steppe": {"cow": "horse", "deer": ""},
-	"savanna": {"sheep": "cow", "horse": "cow", "deer": "", "hare": ""},
+	"steppe": {"cow": "horse", "deer": "antelope"},
+	"savanna": {"sheep": "cow", "horse": "cow", "deer": "antelope", "hare": ""},
 	"sand_desert": {"cow": "dromedary", "sheep": "dromedary", "horse": "dromedary", "deer": "", "hare": ""},
 	"rock_desert": {"cow": "dromedary", "sheep": "dromedary", "horse": "dromedary", "deer": "", "hare": ""},
 	"jungle": {"cow": "", "sheep": "", "horse": "", "deer": "", "hare": "", "birds": "parrot", "crows": "", "vee": ""},
 	"wetland": {"crows": ""},
 	"coast": {"birds": "gull", "crows": "gull", "vee": "gull"},
-	"volcanic": {"deer": "", "hare": ""},
+	"volcanic": {"cow": "goat", "sheep": "goat", "horse": "goat", "deer": "", "hare": ""},
 }
 ## Groupes propres à un biome ; `key` : densité du thème qui règle la chance `share` du groupe.
 const BIOME_GROUPS := {
 	"savanna": [
 		{"species": "zebra", "kind": "herd", "n": Vector2i(5, 12), "road_m": Vector2(170.0, 420.0), "min_m": 150.0, "share": 0.9, "key": "deer"},
 		{"species": "giraffe", "kind": "herd", "n": Vector2i(2, 5), "road_m": Vector2(190.0, 480.0), "min_m": 150.0, "share": 0.7, "key": "deer"},
+		{"species": "elephant", "kind": "herd", "n": Vector2i(2, 6), "road_m": Vector2(200.0, 500.0), "min_m": 150.0, "share": 0.6, "key": "deer"},
+		{"species": "antelope", "kind": "herd", "n": Vector2i(6, 16), "road_m": Vector2(70.0, 320.0), "min_m": 50.0, "share": 0.85, "key": "deer"},
 	],
-	"tundra": [{"species": "reindeer", "kind": "herd", "n": Vector2i(6, 15), "road_m": Vector2(60.0, 260.0), "min_m": 30.0, "share": 0.9, "key": "deer"}],
+	"tundra": [
+		{"species": "reindeer", "kind": "herd", "n": Vector2i(6, 15), "road_m": Vector2(60.0, 260.0), "min_m": 30.0, "share": 0.9, "key": "deer"},
+		{"species": "musk_ox", "kind": "herd", "n": Vector2i(5, 12), "road_m": Vector2(80.0, 320.0), "min_m": 40.0, "share": 0.5, "key": "deer"},
+	],
+	"polar": [
+		{"species": "musk_ox", "kind": "herd", "n": Vector2i(4, 10), "road_m": Vector2(80.0, 320.0), "min_m": 40.0, "share": 0.6, "key": "deer"},
+		{"species": "polar_bear", "kind": "herd", "n": Vector2i(1, 2), "road_m": Vector2(160.0, 450.0), "min_m": 150.0, "share": 0.4, "key": "deer"},
+	],
 	"boreal_forest": [{"species": "reindeer", "kind": "herd", "n": Vector2i(3, 8), "road_m": Vector2(50.0, 200.0), "min_m": 25.0, "share": 0.5, "key": "deer"}],
 	"alpine": [
 		{"species": "ibex", "kind": "herd", "n": Vector2i(2, 5), "road_m": Vector2(50.0, 220.0), "min_m": 25.0, "share": 0.8, "key": "deer", "max_slope": 1.2},
 		{"species": "marmot", "kind": "hare", "n": Vector2i(2, 4), "road_m": Vector2(14.0, 45.0), "min_m": 10.0, "share": 0.9, "key": "deer", "max_slope": 0.8},
 	],
-	"steppe": [{"species": "horse", "kind": "herd", "n": Vector2i(4, 10), "road_m": Vector2(60.0, 300.0), "min_m": 30.0, "share": 0.7, "key": "livestock"}],
-	"mediterranean": [{"species": "sheep", "kind": "herd", "n": Vector2i(6, 14), "road_m": Vector2(40.0, 250.0), "min_m": 20.0, "share": 0.6, "key": "livestock", "max_slope": SHEEP_MAX_SLOPE}],
+	"steppe": [
+		{"species": "horse", "kind": "herd", "n": Vector2i(4, 10), "road_m": Vector2(60.0, 300.0), "min_m": 30.0, "share": 0.7, "key": "livestock"},
+		{"species": "antelope", "kind": "herd", "n": Vector2i(6, 18), "road_m": Vector2(90.0, 380.0), "min_m": 60.0, "share": 0.5, "key": "livestock"},
+	],
+	"mediterranean": [
+		{"species": "sheep", "kind": "herd", "n": Vector2i(6, 14), "road_m": Vector2(40.0, 250.0), "min_m": 20.0, "share": 0.6, "key": "livestock", "max_slope": SHEEP_MAX_SLOPE},
+		{"species": "goat", "kind": "herd", "n": Vector2i(4, 10), "road_m": Vector2(40.0, 260.0), "min_m": 20.0, "share": 0.4, "key": "livestock", "max_slope": 0.9},
+	],
+	"volcanic": [{"species": "goat", "kind": "herd", "n": Vector2i(3, 8), "road_m": Vector2(30.0, 220.0), "min_m": 20.0, "share": 0.7, "key": "livestock", "max_slope": 1.0}],
 	"sand_desert": [{"species": "dromedary", "kind": "herd", "n": Vector2i(2, 6), "road_m": Vector2(25.0, 200.0), "min_m": 15.0, "share": 1.0, "key": "livestock", "water": true}],
 	"rock_desert": [{"species": "dromedary", "kind": "herd", "n": Vector2i(2, 5), "road_m": Vector2(25.0, 200.0), "min_m": 15.0, "share": 1.0, "key": "livestock", "water": true}],
 	"wetland": [
@@ -151,7 +170,10 @@ const BIOME_GROUPS := {
 		{"species": "gull", "kind": "crows", "n": Vector2i(4, 9), "road_m": Vector2(18.0, 50.0), "min_m": 10.0, "share": 0.9, "key": "birds"},
 		{"species": "gull", "kind": "birds", "n": Vector2i(5, 12), "road_m": Vector2(30.0, 120.0), "min_m": 0.0, "share": 0.8, "key": "birds"},
 	],
-	"jungle": [{"species": "parrot", "kind": "birds", "n": Vector2i(5, 12), "road_m": Vector2(25.0, 110.0), "min_m": 0.0, "share": 0.9, "key": "birds"}],
+	"jungle": [
+		{"species": "parrot", "kind": "birds", "n": Vector2i(5, 12), "road_m": Vector2(25.0, 110.0), "min_m": 0.0, "share": 0.9, "key": "birds"},
+		{"species": "monkey", "kind": "herd", "n": Vector2i(4, 9), "road_m": Vector2(12.0, 50.0), "min_m": 10.0, "share": 0.8, "key": "deer"},
+	],
 }
 
 const MASK32 := 0xFFFFFFFF

@@ -1,0 +1,33 @@
+{
+  "description": "Circulation proche forcée (lot AS6) : toutes les 40 s, à tour de rôle, un tracteur lent 60 m devant puis un camion qui double, sur le monde de test du village, 6 min en SIM à 250 W, pour mesurer le coût des véhicules proches (liste vehicles du core, abri, aspiration) en low, medium et high.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 250,
+    "cadence_rpm": 90
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [],
+  "bench": {
+    "world": "village",
+    "duration_s": 360,
+    "every_s": 10,
+    "decor_expect": ["vehicles"],
+    "vehicle_draft_expect": true,
+    "config": {
+      "ride": {
+        "traffic_bench_s": 40
+      }
+    }
+  }
+}

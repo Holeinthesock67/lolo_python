@@ -2848,8 +2848,9 @@ class CoreSession:
                 head_mps=round(self._head_mps, 2) if self.wind.active else None,
                 wind_grade_pct=round(self._wind_offset, 2)
                 if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
-                draft=round(self._draft, 3) if self.bots else None,
-                draft_w=self._draft_w if self.bots else None,
+                # abri des bots ; sans bot, seulement quand un véhicule abrite (lot AS6) : aucune clé en solo
+                draft=round(self._draft, 3) if self.bots or self._draft > 0.0 else None,
+                draft_w=self._draft_w if self.bots or self._draft > 0.0 else None,
                 surface=self._surface_here(route, st.s) if gcfg.mode != "off" else None,
                 gravel_grade_pct=round(self._gravel_offset, 2) if gcfg.mode != "off" else None,
                 hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None,
@@ -2900,7 +2901,8 @@ class CoreSession:
             villages = traffic_mod.load_villages(src[1], src[2], route.length_m) if src and src[0] is route else []
             self.traffic = traffic_mod.Traffic(
                 route=route, seed=TRAFFIC_SEED, villages=villages,
-                snow_line_m=traffic_mod.snow_line({"terrain": theme_section(self.cfg.render.theme, "terrain")}))
+                snow_line_m=traffic_mod.snow_line({"terrain": theme_section(self.cfg.render.theme, "terrain")}),
+                bench_every_s=float(self.cfg.ride.traffic_bench_s))
         return self.traffic
 
     def _road_cyclists_for(self, route: Route | None) -> road_cyclists_mod.RoadCyclists | None:
