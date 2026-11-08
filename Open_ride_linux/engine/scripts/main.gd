@@ -8,6 +8,7 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
+const RiderPose := preload("res://scripts/rider_pose.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
 const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const AnimClock := preload("res://scripts/anim_clock.gd")
@@ -1059,7 +1060,9 @@ func _process(delta: float) -> void:
 		# Écart à l'axe (lot AS2) : l'avatar suit `lane_m` du core, la caméra le suit avec 0,5 s de lissage.
 		var lane = _last_state.get("lane_m", null)
 		follow.update_lane(float(lane) if (lane is float or lane is int) else RoadBuilder.RIDER_LATERAL_M, -1.0, now)
-		var pos := _rider_point(s_route, heading, follow.lane_m)
+		# Pose du vélo (lot CY1) : trajectoire lissée dans la voie, cap de cette trajectoire, penché dans les virages.
+		var pose: Dictionary = RiderPose.pose(route, s_route, follow.lane_m, float(follow.last_frame["v"]))
+		var pos: Vector3 = pose["pos"]
 		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
 		_bank_roll = deg_to_rad(route.bank_at(s_route))   # piste relevée (lot VD4) : avatar perpendiculaire à la piste
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
@@ -1077,7 +1080,7 @@ func _process(delta: float) -> void:
 		# Vue imposée par un gag WTF : le cycliste reste visible, même depuis la vue subjective.
 		avatar_view.set_visible_for_view("follow_near" if wtf_scene.forced_camera() else _avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
-		_step_avatar(pos, heading, now, pitch_deg)
+		_step_avatar(pos, float(pose["yaw"]), float(pose["roll"]), now, pitch_deg)
 		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
 		_probe.distance_m = s_route
 		var t_step := Time.get_ticks_usec()
@@ -1624,8 +1627,9 @@ func _avatar_view_name() -> String:
 
 
 ## Une fois par image : pédalier et position du modèle d'après la dernière trame, avatar posé sur la route.
-## `pos` : point de la route sous le cycliste (déjà à l'échelle du relief), `heading` en radians.
-func _step_avatar(pos: Vector3, heading: float, now_us: int, pitch_deg: float) -> void:
+## `pos` : point de la route sous le cycliste (déjà à l'échelle du relief), `heading` (cap) et `roll` (roulis) en
+## radians, de rider_pose.gd (lot CY1).
+func _step_avatar(pos: Vector3, heading: float, roll: float, now_us: int, pitch_deg: float) -> void:
 	if avatar_view == null:
 		return
 	var paused := session_state == "PAUSED"
@@ -1637,7 +1641,7 @@ func _step_avatar(pos: Vector3, heading: float, now_us: int, pitch_deg: float) -
 	var v = _last_state.get("v", 0.0)
 	avatar_view.set_speed(float(v) * 3.6 if (v is float or v is int) else 0.0, now_us / 1000000.0)
 	avatar_view.position = pos
-	avatar_view.rotation = Vector3(deg_to_rad(pitch_deg), -heading, _bank_roll)
+	avatar_view.rotation = Vector3(deg_to_rad(pitch_deg), -heading, roll)
 	if _avatar_cam != "":
 		var fwd := Vector3(sin(heading), 0.0, -cos(heading))
 		var right := Vector3(cos(heading), 0.0, sin(heading))

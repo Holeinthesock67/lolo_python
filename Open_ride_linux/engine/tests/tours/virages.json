@@ -1,0 +1,12 @@
+{
+  "description": "Virages à angle droit (lot CY1) : parcours d'essai engine/tests/make_corner_world.py (3 points par coin, comme « essai-vent-carre »), vélo annoncé à 30 km/h. Le vélo regarde où il va et se penche dans le virage.",
+  "world": "essai-virages",
+  "points": [
+    {"id": "droite_approche", "s": 192, "camera": "follow_near", "v_kmh": 30, "label": "8 m avant un virage à droite, caméra proche : vélo encore droit, dans l'axe de la voie"},
+    {"id": "droite_sommet", "s": 200, "camera": "follow_near", "v_kmh": 30, "label": "Sommet du virage à droite, caméra proche : vélo penché à droite, cap dans le sens de la trajectoire"},
+    {"id": "droite_sortie", "s": 206, "camera": "follow_far", "v_kmh": 30, "label": "Sortie du virage à droite, caméra éloignée : le vélo se redresse"},
+    {"id": "droite_cote", "s": 200, "camera": "side", "v_kmh": 30, "label": "Sommet du virage à droite vu de côté : inclinaison"},
+    {"id": "gauche_sommet", "s": 400, "camera": "follow_near", "v_kmh": 30, "label": "Sommet du virage à gauche, caméra proche : vélo penché à gauche"},
+    {"id": "gauche_arret", "s": 400, "camera": "follow_near", "v_kmh": 0, "label": "Même virage à l'arrêt : vélo droit"}
+  ]
+}
