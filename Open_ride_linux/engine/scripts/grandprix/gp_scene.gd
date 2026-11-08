@@ -279,8 +279,8 @@ func _step_boxes(gp: Dictionary, now_s: float) -> void:
 		var b: Dictionary = list[i]
 		var t := _frame(float(b["s"]), float(b["lateral"]))
 		var bob := 0.08 * sin(now_s * 2.0 + float(i))
-		var basis := Basis(Vector3.UP, now_s * BOX_SPIN + float(i)) * Basis(Vector3.RIGHT, 0.35)
-		mm.set_instance_transform(i, Transform3D(basis, t.origin + Vector3(0.0, BOX_HEIGHT_M + bob, 0.0)))
+		var spin := Basis(Vector3.UP, now_s * BOX_SPIN + float(i)) * Basis(Vector3.RIGHT, 0.35)
+		mm.set_instance_transform(i, Transform3D(spin, t.origin + Vector3(0.0, BOX_HEIGHT_M + bob, 0.0)))
 	mm.visible_instance_count = list.size()
 	_shown["boxes"] = list.size()
 
@@ -474,7 +474,7 @@ static func _crate_image() -> Image:
 			var c := Items.PAPER
 			if x < 5 or y < 5 or x >= n - 5 or y >= n - 5:
 				c = Items.INK
-			elif absi(x - n / 2) < 6 or absi(y - n / 2) < 6:
+			elif absf(x - n * 0.5) < 6.0 or absf(y - n * 0.5) < 6.0:
 				c = Items.WARM
 			img.set_pixel(x, y, c)
 	img.generate_mipmaps()
@@ -527,6 +527,6 @@ static func _rain_image() -> Image:
 		var x0 := 2 + k * 5
 		for y in range(n):
 			if (y + k * 7) % 16 < 9:
-				img.set_pixel(clampi(x0 + y / 8, 0, n - 1), y, Color(0.55, 0.75, 1.0, 0.85))
+				img.set_pixel(clampi(x0 + int(y / 8.0), 0, n - 1), y, Color(0.55, 0.75, 1.0, 0.85))
 	img.generate_mipmaps()
 	return img
