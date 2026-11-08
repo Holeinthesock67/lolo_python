@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Séance conseillée : ligne de l'accueil, écran du conseil, détail du calcul, autre besoin, prochaine course | GDScript | CO3, CO4, CO8, CO9 | Moyenne | En PR, captures à valider (version 5.0) |
+| Séance conseillée : ligne de l'accueil, écran du conseil, détail du calcul, autre besoin, prochaine course | GDScript | CO3, CO4, CO8, CO9 | Moyenne | En PR, captures validées le 08/11 (version 5.0) |
 
 Série CO (version 5.0, séance conseillée par OpenRide). Plan de la série : `docs/5.0/PLAN_SERIE_CO.md`.
 
@@ -46,4 +46,4 @@ Afficher le conseil dans le menu selon les maquettes validées (CO4).
   `menu_scenarios/seance_conseillee.json` (vrai core, à jouer sur le PC).
 - `GUIDE_UTILISATION.md` : paragraphe « Séance conseillée » (§5).
 - Captures du vrai jeu (Forward+ sous Xvfb, faux core, 1280 × 720) en low, medium et high : `/mnt/project-files/menus/co5-captures-conseil/` (fichiers du projet), `planche_low_medium_high.png` ; raison sur deux lignes, date de la course sans « dans n jours » (dans la carte).
-- Reste : captures à valider par le propriétaire avant la fusion ; banc des menus (X55) et suite complète sur le PC.
+- Captures low, medium et high validées par le propriétaire le 08/11. Reste : banc des menus (X55) et suite complète sur le PC (passe r770b : get_coach à froid < 2 s).
