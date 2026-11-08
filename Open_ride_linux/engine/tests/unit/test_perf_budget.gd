@@ -52,10 +52,15 @@ func _init() -> void:
 	OS.set_environment("CI", "true")
 	_check(PerfBudget.budget_ms("passersby_frame_80") == 0.6, "budget de la CI (%.2f ms)" % PerfBudget.budget_ms("passersby_frame_80"))
 	_check(PerfBudget.budget_kb("sound_synthesis_rogue_memory") == 16384.0, "budget mémoire de la CI : 16 Mo")
-	var local := OS.get_cache_dir().path_join("openride_perf_budgets_test.json")
+	# Fichier dans user:// (créé par Godot) : OS.get_cache_dir() peut ne pas exister (cache froid sur le PC, 8/11) ;
+	# FileAccess.open rendait alors null et store_string bloquait le test jusqu'au délai (code 124).
+	var local := ProjectSettings.globalize_path("user://openride_perf_budgets_test.json")
+	DirAccess.make_dir_recursive_absolute(local.get_base_dir())
 	var f := FileAccess.open(local, FileAccess.WRITE)
-	f.store_string(JSON.stringify({"passersby_frame_80": 0.35}))
-	f.close()
+	_check(f != null, "fichier de budgets local écrit (%s, erreur %d)" % [local, FileAccess.get_open_error()])
+	if f != null:
+		f.store_string(JSON.stringify({"passersby_frame_80": 0.35}))
+		f.close()
 	OS.set_environment("OPENRIDE_PERF_BUDGETS", local)
 	_check(PerfBudget.budget_ms("passersby_frame_80") == 0.35, "remplacement par machine (%.2f ms)" % PerfBudget.budget_ms("passersby_frame_80"))
 	DirAccess.remove_absolute(local)

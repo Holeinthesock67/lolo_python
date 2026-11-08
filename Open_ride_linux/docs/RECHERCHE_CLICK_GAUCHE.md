@@ -226,3 +226,29 @@ rien d'indispensable ne doit dépendre du seul boîtier gauche (le droit couvre 
 Un troisième essai (4 min) a reçu les quatre flèches du gauche avant et après chacun des 4 redémarrages
 (46 flèches, reconnexion en 3,8 à 8,1 s ; haut et bas changent bien la vue). Les aides à l'écran montrent
 depuis le 31 octobre « − » et les flèches à côté de B (bandeau des menus : « + A → » suivant, « − B ← » précédent).
+
+## 10. Essai D : garder le gauche déverrouillé (lot K9, 8 novembre 2026)
+
+Code livré, **essai sur le vélo pas encore fait**. Rien ne change par défaut (`click_reset_locked = "reset"`).
+
+- `[drivers] click_reset_locked = "keep"` : à chaque connexion, le core écrit la séquence d'activation complète
+  de zwiftboard (`RideOn 02 03`, `00 08 00`, `00 08 10`, à 100 ms d'intervalle), puis `ff 04 00` sur SYNC_RX
+  à l'écho `RideOn` reçu sur SYNC_TX et à chaque message `0xFF` d'ASYNC autre que le message d'état
+  (classé « défi » dans la trace et le résumé). Si le mode passe quand même à 1, le core écrit `0x18` une fois,
+  comme avec `"reset"` (journal : « maintien échoué après … s (… réponses ff 04 00) »).
+- Journal, avec tous les choix : « Click gauche : fenêtre de boutons de … s, fin par verrou | coupure | arrêt
+  (choix …, … appuis, … réponses ff 04 00) ». La trace brute (`click_trace_raw = true`) montre aussi SYNC_TX.
+- Le boîtier droit reçoit la même activation (zwiftboard n'utilise que lui) ; il n'envoie pas de message d'état,
+  donc jamais de `0x18`.
+
+**Essai à faire sur le PC** (firmware 1.2.0, ne pas mettre à jour ; trois blocs de 10 min, un « − » toutes les
+20 s, appui perdu s'il n'est pas reçu en 8 s) :
+
+    python -m openride_core.tools.click_recette --minutes 10 --rappel 0.33 --attente-rappel 8 --verrou keep -v
+    python -m openride_core.tools.click_recette --minutes 10 --rappel 0.33 --attente-rappel 8 --verrou keep -v
+    python -m openride_core.tools.click_recette --minutes 10 --rappel 0.33 --attente-rappel 8 --verrou reset -v
+
+À relever dans `rapport.txt` : fenêtres du gauche (une seule fenêtre longue, fin par « arrêt », veut dire que le
+maintien tient), verrous, rappels perdus par tranche de 10 min (critère : moins d'un), et coupures du droit
+(critère : aucune). Si le maintien tient, le défaut passe à `"keep"` ; sinon `"reset"` reste et le résultat est
+noté ici. Le troisième bloc sert de témoin (essai C).
