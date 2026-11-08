@@ -1,0 +1,11 @@
+12:27:47 empreinte avant 0a303217ec546e526f2da978a6046f6c
+12:27:47 tête cbfd1524
+12:28:59 visual_check --menus low,medium,high
+12:35:16 fin visual_check rc=1
+12:35:16 menu_bench collection
+12:38:01 fin menu_bench rc=0
+12:38:01 update-golden menu_accueil,erreur (Xvfb, llvmpipe)
+12:41:57 fin update-golden rc=1
+12:41:58 empreinte après 0a303217ec546e526f2da978a6046f6c
+12:41:58 clone 90c08094
+12:41:58 FIN
