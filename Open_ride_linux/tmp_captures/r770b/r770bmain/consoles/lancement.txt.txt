@@ -1,0 +1,7 @@
+06:19:41 empreinte avant 7c0c6e30d7f565baa3167a4b883cbe3e
+06:19:41 tête 1d6c261c
+06:20:50 visual_check 1280x720:low (références non régénérées)
+06:27:44 fin visual_check rc=1
+06:27:46 empreinte après 7c0c6e30d7f565baa3167a4b883cbe3e
+06:27:46 clone 9c7c9556
+06:27:46 FIN

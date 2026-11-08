@@ -1,0 +1,11 @@
+06:05:49 empreinte avant 7c0c6e30d7f565baa3167a4b883cbe3e
+06:05:49 tête 04db87a0
+06:06:50 parcours copiés : 22 .world
+06:06:54 fin coach
+06:06:54 copie du profil prête
+06:07:00 copie du profil effacée
+06:07:00 suite engine sans tests graphiques (scénarios IPC)
+06:19:39 fin suite engine rc=0
+06:19:41 empreinte après 7c0c6e30d7f565baa3167a4b883cbe3e
+06:19:41 clone 9c7c9556
+06:19:41 FIN
