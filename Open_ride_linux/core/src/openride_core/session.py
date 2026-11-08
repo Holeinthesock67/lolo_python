@@ -2367,7 +2367,8 @@ class CoreSession:
         self.grandprix = GrandPrixMode([GP_ME, *(b.id for b in self.bots)], length, lap_m=lap, table=table,
                                        chaos=gc.chaos, box_every_km=gc.box_every_m / 1000.0,
                                        seed=int(time.time()) & 0xFFFFFFFF, params=replace(self._base_params),
-                                       origin_m=self.physics.s)
+                                       origin_m=self.physics.s,
+                                       levels={b.id: float(b.level_pct or self.cfg.bots.level_pct) for b in self.bots})
         self.grandprix.start(self._t_session, self._grandprix_riders(0.0))
         if self._rec:
             self._rec.game({"kind": "gp_start", "ts": round(time.time(), 3), "opponents": gc.opponents,
@@ -2403,19 +2404,25 @@ class CoreSession:
         for b in self.bots:
             if b.id in speeds:
                 b.physics.v = speeds[b.id]
-        self._sync_grandprix_lane()
+        self._sync_grandprix_lanes()
         for msg in gp.due_results(self._t_session):
             self.server.send_raw(msg)
         self._flush_grandprix_journal(gp)
 
-    def _sync_grandprix_lane(self) -> None:
-        """Voie forcée (A court, flèches) : le placement du cycliste vise le centre de la voie ; placement
-        automatique sinon, selon le réglage « Placement dans la roue » (lot AS2)."""
-        lane = self.grandprix.lane_target(GP_ME) if self.grandprix is not None else None
-        if lane is None:
-            self._lane.auto, self._lane.home = self.cfg.ride.auto_draft == "on", draft_mod.RIDER_LANE_M
-        else:
-            self._lane.auto, self._lane.home = False, GP_LANE_CENTRES_M[lane]
+    def _sync_grandprix_lanes(self) -> None:
+        """Voie forcée (cycliste : A court, flèches ; bot : esquive du lot GP3) : le placement vise le centre de
+        la voie ; placement automatique sinon (lot AS2), selon le réglage « Placement dans la roue » pour le
+        cycliste."""
+        gp = self.grandprix
+        lanes = [(GP_ME, self._lane, self.cfg.ride.auto_draft == "on", draft_mod.RIDER_LANE_M)]
+        lanes += [(b.id, b.lane, True, draft_mod.BOT_LANE_M) for b in self.bots
+                  if gp is not None and b.id in gp.racers]
+        for rid, lane, auto, home in lanes:
+            target = gp.lane_target(rid) if gp is not None else None
+            if target is None:
+                lane.auto, lane.home = auto, home
+            else:
+                lane.auto, lane.home = False, GP_LANE_CENTRES_M[target]
 
     def _grandprix_press(self, event: str) -> bool:
         """Boutons du mode (spécification §7.1) : Z court utilise l'objet ; A court change de voie quand le choix
@@ -2441,7 +2448,7 @@ class CoreSession:
         else:
             return False
         done = gp.set_lane(GP_ME, lane)
-        self._sync_grandprix_lane()   # placement suivi dès l'appui, sans attendre le pas suivant
+        self._sync_grandprix_lanes()   # placement suivi dès l'appui, sans attendre le pas suivant
         return done
 
     def _flush_grandprix_journal(self, gp: GrandPrixMode) -> None:

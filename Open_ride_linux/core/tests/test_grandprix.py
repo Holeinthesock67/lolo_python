@@ -197,11 +197,13 @@ def test_route_objects_contact_by_lane_and_sweep():
 # --- mode -----------------------------------------------------------------------------------------
 
 class Sim:
-    """Petite course simulée : physique du core, objets du mode, puissance constante par coureur."""
+    """Petite course simulée : physique du core, objets du mode, puissance constante par coureur ; sans
+    `bots`, aucun coureur mené par le cerveau du lot GP3."""
 
     def __init__(self, powers: dict[str, float], length_m: float = 10_000.0, grade: float = 0.0,
                  seed: int = 1, gap_m: float = 3.0, **kw):
         self.powers, self.grade = powers, grade
+        kw.setdefault("bots", ())   # règles des objets seules : les coureurs n'agissent que sur ordre du test
         self.mode = GrandPrixMode(list(powers), length_m, seed=seed, **kw)
         self.phys = {}
         for i, rid in enumerate(powers):
