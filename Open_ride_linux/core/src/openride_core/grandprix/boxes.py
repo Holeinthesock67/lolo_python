@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 LANES = 3
-BOX_EVERY_KM = (1.0, 1.5, 2.0, 3.0)
+BOX_EVERY_KM = (1.0, 1.5, 2.0, 2.5, 3.0)   # réglage du menu par pas de 500 m (lot GP2)
 FIRST_ROW_M = 500.0
 FINISH_CLEAR_M = 200.0
 REFORM_S = 2.0

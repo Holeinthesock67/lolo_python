@@ -80,7 +80,9 @@
         "list_history",
         "history_session",
         "list_collection",
-        "collection_seen"
+        "collection_seen",
+        "list_mode_options",
+        "set_mode_option"
       ]
     },
     "args": {
