@@ -11,6 +11,7 @@ const SoundPlayer := preload("res://scripts/sound_player.gd")
 const HudView := preload("res://scripts/hud_view.gd")
 const RouteData := preload("res://scripts/route_data.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
+const BiomeModel := preload("res://scripts/biome_model.gd")
 
 var _failures := 0
 var _checked := 0
@@ -58,6 +59,17 @@ class FakeOsm:
 		calls += 1
 		var house := _sq(1500.0, 20.0, 6.0)
 		return {"forests": [_sq(500.0, 0.0, 400.0)], "buildings": [house], "waters": []}
+
+
+## Faux osm_streamer.gd du lot U11 : littoral forcé (`--biome=coast`), mer à 250 m au nord.
+class FakeCoast:
+	var shapes_version := 1
+	var biome_model = null
+
+	func layer_shapes() -> Dictionary:
+		var pts := PackedVector2Array([Vector2(-2000, -2250), Vector2(2000, -2250), Vector2(2000, -250), Vector2(-2000, -250)])
+		return {"forests": [], "buildings": [], "waters": [{"kind": "sea", "area": true, "points": pts,
+			"rect": Rect2(-2000, -2250, 4000, 2000)}]}
 
 
 static func _env() -> Environment:
@@ -118,6 +130,18 @@ func _run() -> void:
 	_check(float(lw.neigh.get("wind_strength", 0.0)) > 0.3 and float(lw.neigh.get("alt_m", 0.0)) == 300.0,
 		"voisinage complété par la force du vent et l'altitude")
 	_check(lw.grass.exclusions.size() == 1, "maison chargée exclue des touffes d'herbe")
+	_check(lw.neigh.get("biomes", null) == {} and lw.neigh.get("season", "") == "summer",
+		"sans couche biome : aucun poids de biome, saison du thème (été par défaut) (lot U11)")
+	var coast := FakeCoast.new()
+	coast.biome_model = BiomeModel.new({}, null)
+	coast.biome_model.set_forced("coast")
+	var lw_coast = LivingWorld.new()
+	root.add_child(lw_coast)
+	lw_coast.configure("low", true, {"season": "autumn"}, null, null, coast)
+	var cn: Dictionary = lw_coast.describe_near(Vector3.ZERO)
+	_check(cn["biomes"] == {"coast": 1.0} and is_equal_approx(float(cn["sea_dist_m"]), 250.0) and lw_coast.season == "autumn",
+		"littoral forcé : poids du biome, mer à %.0f m (au-delà des 100 m des autres eaux), saison du thème" % float(cn["sea_dist_m"]))
+	lw_coast.queue_free()
 	print("Décor vivant : %.3f ms par image (low, voisinage compris)" % per_frame_ms)
 	_check(PerfBudget.check("living_world_frame", per_frame_ms), "coût du branchement en %.3f ms par image" % per_frame_ms)
 	# Demi-tour : vent de dos

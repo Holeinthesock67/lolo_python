@@ -1266,6 +1266,7 @@ def _decor_vivant_scene(s: Session) -> None:
 
 PASS_WINDOW_M = 10.0   # voiture qui double vue à moins de 10 m devant ou derrière le cycliste (lot P32)
 PASS_WAIT_S = 60.0   # la voiture d'en face croisée, puis l'utilitaire qui double (décor ralenti sous Xvfb)
+PELOTON_CAR_KMH = 10.0   # voiture d'en face de la scène peloton_face (voir _peloton_face_scene)
 
 
 def _place(s: Session, **spec: Any) -> None:
@@ -1384,7 +1385,11 @@ def _peloton_face_scene(s: Session) -> None:
                 f"{lats}, {len(near)} à moins de 30 m")
     # Posée assez près pour croiser le peloton même quand le décor avance lentement (Xvfb, --fige) : les bots
     # serrent à droite dès qu'elle est là, elle attend devant eux s'ils ne lui laissent pas encore la place.
-    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 45.0, "kmh": 40.0})
+    # Au pas (PELOTON_CAR_KMH) : en temps réel (--native, 60 images/s), une voiture à 40 km/h croise les bots
+    # 0,4 s après qu'ils ont tous serré à droite, puis ils reprennent leur place ; les captures, espacées de plus
+    # de 0,5 s, manquaient cet instant et la dernière, 60 s plus tard, ne montrait plus la voiture (r773, 8/11).
+    # À 10 km/h, les bots restent à droite environ 11 s avec la voiture à moins de 50 m (simulation des modèles).
+    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 45.0, "kmh": PELOTON_CAR_KMH})
     shot = None
     t0 = now()
     while now() - t0 < PASS_WAIT_S:
