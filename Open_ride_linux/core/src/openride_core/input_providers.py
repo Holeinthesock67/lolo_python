@@ -235,9 +235,20 @@ class ZwiftClickProvider:
                 self._rehandshake_step = 0
 
             self._emit(self._classifier.feed_timed(buttons, now), now)
+            if self.repeat_gap_s > 0:
+                # Fin de rafale à l'heure exacte (relâchement + écart) : le boîtier qui a vu le
+                # relâchement le premier publie le premier, comme sans regroupement.
+                try:
+                    asyncio.get_running_loop().call_later(self.repeat_gap_s + 0.01, self._poll_bursts)
+                except RuntimeError:   # appel hors boucle (tests) : la boucle du fournisseur s'en charge
+                    pass
 
         if self.trace_raw:
             self._trace_raw_notification(now, char_name, msg_type, category, raw, has_button)
+
+    def _poll_bursts(self) -> None:
+        now = self._clock()
+        self._emit(self._classifier.poll_timed(now), now)
 
     def _emit(self, timed: list[tuple[InputEvent, float]], now: float) -> None:
         """Publie les événements du classeur ; la paire compare les heures de relâchement, pas l'heure
