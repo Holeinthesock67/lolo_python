@@ -1,0 +1,7 @@
+13:22:03 empreinte avant dbcae732ed690b86d3cd897f0df788ee
+13:22:03 tête ae7b9c00
+13:23:17 menu_bench, tous les scénarios (pas d'option de qualité)
+14:37:27 fin rc=1
+14:37:28 empreinte après dbcae732ed690b86d3cd897f0df788ee
+14:37:28 clone 90c08094
+14:37:28 FIN
