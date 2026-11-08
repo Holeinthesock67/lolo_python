@@ -20,7 +20,7 @@ Rouler avec le vent du jour au lieu de régler force et direction à la main.
 - Nouveau mode `local` de `[wind] mode` : au lancement, le lanceur (jamais le core) lit vitesse, direction et rafales pour le point de départ du parcours, avec un délai court (5 s) et un cache de 3 h ; le core reçoit des valeurs déjà prêtes.
 - Source : **Open-Meteo** (sans clé ni compte, décision du propriétaire du 8 novembre, 4 h 47) ; aucune coordonnée précise du domicile dans le dépôt ni dans les journaux (position arrondie à environ 10 km, invariant A8).
 - Repli sans vent hors ligne, avec une ligne au journal et un message au menu.
-- Défaut : `local` si le propriétaire confirme la décision P1 n° 1, sinon `off` (question posée avant le code).
+- Défaut : **`off`** (décision du propriétaire du 8 novembre, 8 h 32, qui remplace la décision P1 n° 1) ; la météo du jour s'active au menu.
 - Menu : valeur « Météo du jour » du réglage Vent ; HUD inchangé.
 
 ## 4. Critères d'acceptation
