@@ -1,0 +1,119 @@
+essai-69.world : couche segments ignorée (segments.json absent : ~/.local/share/openride/routes/essai-69.world/segments.json)
+altitude GPX / MNT : médiane 0.03 m, max 3.03 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 1 montée(s) (cat. HC : 1), 0 sprint(s)
+terrain near : 17 tuile(s) de 1000 m, maille 10 m
+terrain near : 2305 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 11 tuile(s) de 5000 m, maille 50 m
+téléchargement de Copernicus_DSM_COG_10_N44_00_E006_00_DEM…
+  Copernicus_DSM_COG_10_N44_00_E006_00_DEM : 42.2 Mo en 12.8 s
+altitude GPX / MNT : médiane 0.03 m, max 2.48 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 1 montée(s) (cat. HC : 1), 0 sprint(s)
+terrain near : 20 tuile(s) de 1000 m, maille 10 m
+terrain near : 2185 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 14 tuile(s) de 5000 m, maille 50 m
+téléchargement de Copernicus_DSM_COG_10_N43_00_W007_00_DEM…
+  Copernicus_DSM_COG_10_N43_00_W007_00_DEM : 25.8 Mo en 8.0 s
+altitude GPX / MNT : médiane 0.03 m, max 0.4 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 1 montée(s) (cat. 2 : 1), 0 sprint(s)
+terrain near : 15 tuile(s) de 1000 m, maille 10 m
+terrain near : 1345 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 13 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.03 m, max 1.48 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 1 montée(s) (cat. HC : 1), 0 sprint(s)
+terrain near : 31 tuile(s) de 1000 m, maille 10 m
+terrain near : 2825 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 18 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.03 m, max 1.92 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 2 montée(s) (cat. HC : 1, cat. 3 : 1), 0 sprint(s)
+terrain near : 31 tuile(s) de 1000 m, maille 10 m
+terrain near : 2772 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 21 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.03 m, max 2.75 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 1 montée(s) (cat. HC : 1), 0 sprint(s)
+terrain near : 34 tuile(s) de 1000 m, maille 10 m
+terrain near : 2725 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 18 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.03 m, max 2.22 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 1 montée(s) (cat. HC : 1), 0 sprint(s)
+terrain near : 38 tuile(s) de 1000 m, maille 10 m
+terrain near : 3722 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 17 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.03 m, max 1.35 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 1 montée(s) (cat. HC : 1), 0 sprint(s)
+terrain near : 21 tuile(s) de 1000 m, maille 10 m
+terrain near : 2398 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 14 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.03 m, max 0.68 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 2 montée(s) (cat. HC : 1, cat. 3 : 1), 0 sprint(s)
+terrain near : 25 tuile(s) de 1000 m, maille 10 m
+terrain near : 2738 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 16 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.05 m, max 104.26 m, 7.9% des points à plus de 50 m
+avertissement : altitude GPX jugée aberrante : 7.9% des points à plus de 50 m du MNT ; altitude prise dans copernicus_glo30
+altitude de la route : copernicus_glo30
+segments : 2 montée(s) (cat. 2 : 1, cat. 4 : 1), 0 sprint(s)
+terrain near : 11 tuile(s) de 1000 m, maille 10 m
+terrain near : 1553 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 12 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.03 m, max 0.68 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 1 montée(s) (cat. HC : 1), 0 sprint(s)
+terrain near : 41 tuile(s) de 1000 m, maille 10 m
+terrain near : 3334 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 22 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.03 m, max 31.19 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 2 montée(s) (cat. HC : 1, cat. 4 : 1), 0 sprint(s)
+terrain near : 16 tuile(s) de 1000 m, maille 10 m
+terrain near : 1619 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 11 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.03 m, max 6.69 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 1 montée(s) (cat. HC : 1), 0 sprint(s)
+terrain near : 24 tuile(s) de 1000 m, maille 10 m
+terrain near : 3436 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 15 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.04 m, max 6.87 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 1 montée(s) (cat. HC : 1), 0 sprint(s)
+terrain near : 35 tuile(s) de 1000 m, maille 10 m
+terrain near : 3299 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 20 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.03 m, max 0.63 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 1 montée(s) (cat. 2 : 1), 0 sprint(s)
+terrain near : 9 tuile(s) de 1000 m, maille 10 m
+terrain near : 795 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 10 tuile(s) de 5000 m, maille 50 m
+altitude GPX / MNT : médiane 0.03 m, max 2.34 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 2 montée(s) (cat. HC : 1, cat. 3 : 1), 1 sprint(s)
+terrain near : 46 tuile(s) de 1000 m, maille 10 m
+terrain near : 4196 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 20 tuile(s) de 5000 m, maille 50 m
+~/.local/share/openride/routes/alpe-d-huez.world : 14.13 km, 1415 points, type open, 60 point(s) limité(s) à ± 25 %, couches route,terrain,segments (14.9 s)
+~/.local/share/openride/routes/alto-de-l-angliru.world : 12.56 km, 1258 points, type open, 18 point(s) limité(s) à ± 25 %, couches route,terrain,segments (9.3 s)
+~/.local/share/openride/routes/ballon-d-alsace.world : 9.24 km, 925 points, type open, 0 point(s) limité(s) à ± 25 %, couches route,terrain,segments (0.9 s)
+~/.local/share/openride/routes/col-de-la-madeleine.world : 18.90 km, 1891 points, type open, 28 point(s) limité(s) à ± 25 %, couches route,terrain,segments (1.5 s)
+~/.local/share/openride/routes/col-du-galibier.world : 17.98 km, 1799 points, type open, 0 point(s) limité(s) à ± 25 %, couches route,terrain,segments (1.9 s)
+~/.local/share/openride/routes/col-du-tourmalet.world : 18.23 km, 1825 points, type open, 5 point(s) limité(s) à ± 25 %, couches route,terrain,segments (1.9 s)
+~/.local/share/openride/routes/fuji-subaru-line.world : 24.10 km, 2412 points, type open, 6 point(s) limité(s) à ± 25 %, couches route,terrain,segments (1.9 s)
+~/.local/share/openride/routes/grand-ballon.world : 15.72 km, 1574 points, type open, 0 point(s) limité(s) à ± 25 %, couches route,terrain,segments (1.2 s)
+~/.local/share/openride/routes/grand-colombier.world : 17.52 km, 1753 points, type open, 26 point(s) limité(s) à ± 25 %, couches route,terrain,segments (1.4 s)
+~/.local/share/openride/routes/irohazaka.world : 9.37 km, 938 points, type open, 86 point(s) limité(s) à ± 25 %, couches route,terrain,segments (0.8 s)
+~/.local/share/openride/routes/mont-ventoux-bedoin.world : 21.80 km, 2182 points, type open, 0 point(s) limité(s) à ± 25 %, couches route,terrain,segments (1.9 s)
+~/.local/share/openride/routes/monte-zoncolan.world : 9.89 km, 990 points, type open, 78 point(s) limité(s) à ± 25 %, couches route,terrain,segments (0.9 s)
+~/.local/share/openride/routes/norikura-echo-line.world : 20.51 km, 2052 points, type open, 4 point(s) limité(s) à ± 25 %, couches route,terrain,segments (1.4 s)
+~/.local/share/openride/routes/passo-dello-stelvio.world : 25.11 km, 2513 points, type open, 41 point(s) limité(s) à ± 25 %, couches route,terrain,segments (1.8 s)
+~/.local/share/openride/routes/planche-des-belles-filles.world : 5.66 km, 568 points, type open, 11 point(s) limité(s) à ± 25 %, couches route,terrain,segments (0.7 s)
+~/.local/share/openride/routes/teide-vilaflor.world : 26.03 km, 2605 points, type open, 22 point(s) limité(s) à ± 25 %, couches route,terrain,segments (2.4 s)
+Résumé : 16 compilé(s), 6 ignoré(s), 0 en erreur

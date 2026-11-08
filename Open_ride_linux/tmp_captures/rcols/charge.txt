@@ -1,0 +1,330 @@
+05:29:55
+1.17 1.65 1.84 9/826 725173
+%CPU %MEM COMMAND
+17.8  2.2 gnome-shell
+ 7.4  8.6 claude-desktop
+ 6.6  0.8 claude-desktop
+ 5.7  0.7 localsearch-3
+ 2.6  0.6 Xwayland
+ 1.9  2.5 claude-desktop
+ 1.4  3.2 claude
+
+05:30:25
+1.36 1.65 1.84 2/826 725240
+%CPU %MEM COMMAND
+17.8  2.2 gnome-shell
+ 7.4  7.0 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.7  0.8 localsearch-3
+ 4.8  1.7 python
+ 2.6  0.6 Xwayland
+ 1.9  2.5 claude-desktop
+
+05:30:55
+1.48 1.65 1.83 2/823 725419
+%CPU %MEM COMMAND
+17.8  2.2 gnome-shell
+ 7.5  7.8 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.7  0.4 localsearch-3
+ 3.5  2.0 python
+ 2.6  0.6 Xwayland
+ 1.9  2.5 claude-desktop
+
+05:31:25
+1.49 1.62 1.82 1/824 725442
+%CPU %MEM COMMAND
+ 600  0.0 ps
+17.8  2.2 gnome-shell
+ 7.5  8.0 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.7  0.4 localsearch-3
+ 3.0  2.9 python
+ 2.6  0.6 Xwayland
+
+05:31:55
+1.43 1.60 1.80 4/824 725464
+%CPU %MEM COMMAND
+ 400  0.0 ps
+17.8  2.2 gnome-shell
+ 7.5  8.0 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.7  0.5 localsearch-3
+ 3.0  3.6 python
+ 2.6  0.6 Xwayland
+
+05:32:25
+1.18 1.52 1.77 1/825 725487
+%CPU %MEM COMMAND
+ 300  0.0 ps
+17.8  2.2 gnome-shell
+ 7.5  8.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.7  0.5 localsearch-3
+ 2.8  3.6 python
+ 2.6  0.6 Xwayland
+
+05:32:55
+1.13 1.47 1.75 4/823 725507
+%CPU %MEM COMMAND
+ 600  0.0 ps
+17.8  2.2 gnome-shell
+ 7.5  8.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.7  4.3 python
+ 2.6  0.6 Xwayland
+
+05:33:26
+1.25 1.46 1.73 3/824 725533
+%CPU %MEM COMMAND
+ 600  0.0 ps
+17.8  2.2 gnome-shell
+ 7.5  8.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.6  0.6 Xwayland
+ 2.4  4.4 python
+
+05:33:56
+1.33 1.46 1.72 3/824 725557
+%CPU %MEM COMMAND
+17.8  2.2 gnome-shell
+ 7.6  8.2 claude-desktop
+ 6.6  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.6  0.6 Xwayland
+ 2.2  4.4 python
+ 1.9  2.5 claude-desktop
+
+05:34:26
+1.20 1.42 1.70 1/822 725579
+%CPU %MEM COMMAND
+17.8  2.2 gnome-shell
+ 7.6  7.6 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.6  0.6 Xwayland
+ 2.1  4.5 python
+ 1.9  2.5 claude-desktop
+
+05:34:56
+1.48 1.46 1.71 1/823 725607
+%CPU %MEM COMMAND
+ 100  0.0 ps
+17.8  2.2 gnome-shell
+ 7.6  7.8 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.7  5.7 python
+ 2.6  0.6 Xwayland
+
+05:35:26
+1.49 1.46 1.70 4/821 725629
+%CPU %MEM COMMAND
+ 400  0.0 ps
+17.8  2.2 gnome-shell
+ 7.6  7.9 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.6  0.6 Xwayland
+ 2.5  5.7 python
+
+05:35:56
+1.17 1.39 1.67 3/822 725655
+%CPU %MEM COMMAND
+ 500  0.0 ps
+ 100  0.1 head
+17.8  2.2 gnome-shell
+ 7.6  7.9 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.6  0.6 Xwayland
+
+05:36:26
+1.11 1.35 1.64 7/820 725677
+%CPU %MEM COMMAND
+ 300  0.0 ps
+17.8  2.2 gnome-shell
+ 7.6  7.4 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.4 localsearch-3
+ 2.6  0.6 Xwayland
+ 2.6  6.4 python
+
+05:36:56
+1.34 1.38 1.64 7/822 725701
+%CPU %MEM COMMAND
+ 500  0.0 ps
+17.8  2.2 gnome-shell
+ 7.7  7.6 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.4 localsearch-3
+ 2.6  0.6 Xwayland
+ 2.5  7.0 python
+
+05:37:26
+1.20 1.34 1.62 1/822 725725
+%CPU %MEM COMMAND
+ 500  0.0 ps
+17.8  2.2 gnome-shell
+ 7.7  7.6 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.4 localsearch-3
+ 2.7  7.7 python
+ 2.6  0.6 Xwayland
+
+05:37:56
+1.25 1.34 1.61 5/822 725749
+%CPU %MEM COMMAND
+ 100  0.0 ps
+17.8  2.2 gnome-shell
+ 7.7  7.5 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.5 localsearch-3
+ 2.8  8.3 python
+ 2.6  0.6 Xwayland
+
+05:38:26
+1.35 1.36 1.61 1/822 725773
+%CPU %MEM COMMAND
+ 500  0.0 ps
+17.8  2.2 gnome-shell
+ 7.7  7.4 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.5 localsearch-3
+ 2.6  8.3 python
+ 2.6  0.6 Xwayland
+
+05:38:56
+1.31 1.35 1.60 3/823 725798
+%CPU %MEM COMMAND
+ 400  0.0 ps
+17.8  2.2 gnome-shell
+ 7.7  7.5 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.7  9.0 python
+ 2.6  0.6 Xwayland
+
+05:39:27
+1.26 1.33 1.59 3/822 725822
+%CPU %MEM COMMAND
+ 400  0.0 ps
+17.8  2.2 gnome-shell
+ 7.7  7.6 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.6  0.6 Xwayland
+ 2.6  9.0 python
+
+05:39:57
+1.50 1.39 1.60 2/823 725846
+%CPU %MEM COMMAND
+17.8  2.2 gnome-shell
+ 7.8  7.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.7  9.7 python
+ 2.6  0.6 Xwayland
+ 1.9  2.5 claude-desktop
+
+05:40:27
+1.57 1.42 1.60 2/820 725872
+%CPU %MEM COMMAND
+ 600  0.0 ps
+ 100  0.1 head
+17.8  2.2 gnome-shell
+ 7.8  7.6 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.8 10.4 python
+
+05:40:57
+1.27 1.36 1.58 4/819 725896
+%CPU %MEM COMMAND
+ 100  0.0 ps
+17.8  2.2 gnome-shell
+ 7.8  7.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.6 10.4 python
+ 2.6  0.6 Xwayland
+
+05:41:27
+1.17 1.33 1.56 3/821 725925
+%CPU %MEM COMMAND
+ 600  0.0 ps
+17.8  2.2 gnome-shell
+ 7.8  7.8 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.7 11.2 python
+ 2.6  0.6 Xwayland
+
+05:41:57
+1.17 1.31 1.55 2/821 725950
+%CPU %MEM COMMAND
+17.8  2.2 gnome-shell
+ 7.8  8.5 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.6  0.6 Xwayland
+ 2.6 11.2 python
+ 1.9  2.5 claude-desktop
+
+05:42:27
+1.27 1.32 1.54 1/820 725974
+%CPU %MEM COMMAND
+17.8  2.2 gnome-shell
+ 7.9  8.5 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.5 localsearch-3
+ 2.6  0.6 Xwayland
+ 2.5 11.2 python
+ 1.9  2.5 claude-desktop
+
+05:42:57
+1.54 1.37 1.55 2/821 725998
+%CPU %MEM COMMAND
+ 300  0.0 ps
+17.8  2.2 gnome-shell
+ 7.9  8.7 claude-desktop
+ 6.7  0.8 claude-desktop
+ 5.7  0.5 localsearch-3
+ 2.6  0.6 Xwayland
+ 2.4 11.2 python
+
+05:43:27
+1.70 1.42 1.56 1/820 726020
+%CPU %MEM COMMAND
+17.8  2.2 gnome-shell
+ 7.9  7.1 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.5 localsearch-3
+ 2.6  0.6 Xwayland
+ 2.3 11.3 python
+ 1.9  2.5 claude-desktop
+
+05:43:57
+1.62 1.42 1.56 2/827 726064
+%CPU %MEM COMMAND
+ 400  0.0 ps
+26.4  3.7 python
+17.8  2.2 gnome-shell
+ 8.0  7.7 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.6  0.6 Xwayland
+
+05:44:27
+1.38 1.38 1.54 2/822 726085
+%CPU %MEM COMMAND
+55.6  3.7 python
+17.9  2.2 gnome-shell
+ 8.0  8.2 claude-desktop
+ 6.7  0.7 claude-desktop
+ 5.7  0.6 localsearch-3
+ 2.6  0.6 Xwayland
+ 1.9  2.5 claude-desktop
+
