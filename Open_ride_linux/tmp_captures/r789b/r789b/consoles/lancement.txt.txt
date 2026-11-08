@@ -1,4 +1,22 @@
-18:45:30 empreinte avant 5dd68002174aac60837bd7c9e4e300a6
-18:45:30 tête a0ef9c97
-18:45:40 Pillow non déclaré dans le pyproject : test_controle_visuels noté non collecté
-18:45:40 pytest core (--continue-on-collection-errors)
+19:04:32 empreinte avant 5dd68002174aac60837bd7c9e4e300a6
+19:04:32 tête a0ef9c97
+19:04:43 Pillow non déclaré dans le pyproject : test_controle_visuels noté non collecté
+19:04:43 pytest core (--continue-on-collection-errors)
+19:39:01 fin pytest rc=1
+warning: le dépôt source est superficiel, option --local ignorée
+warning: --local est ignoré
+remote: warning: lazy fetching disabled; some objects may not be available        
+remote: fatal: could not fetch c078c2809a781df9c497014f30679b76c87edced from promisor remote        
+error: git upload-pack: git-pack-objects died with error.
+fatal: git upload-pack: aborting due to possible repository corruption on the remote side.
+remote: aborting due to possible repository corruption on the remote side.
+fatal: fin de fichier prématurée
+fatal: fetch-pack : sortie d'index de pack invalide
+19:39:01 clone local : fatal: cannot change to '~/mesures-2026-11-01-auto/tmp/clone_r789b': Aucun fichier ou dossier de ce nom
+19:39:01 test_recette_install dans le clone local
+19:39:01 fin recette_install rc=1
+19:40:01 visual_check natif 1680x1011, 3 qualités (scène pause)
+20:02:41 fin rc=1
+20:02:42 empreinte après 5dd68002174aac60837bd7c9e4e300a6
+20:02:42 clone 3a1b36c3
+20:02:42 FIN

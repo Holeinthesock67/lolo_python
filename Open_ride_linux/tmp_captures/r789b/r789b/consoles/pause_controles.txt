@@ -1,0 +1,39 @@
+[OK] 1680x1011_low · pause · capture enregistrée
+[OK] 1680x1011_low · pause · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1680x1011_low · pause · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · pause · texte menu_title : « Pause »
+[OK] 1680x1011_low · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun ||  ||  || Séance en cours | En pause | Durée 4:49 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_low · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun ||  ||  || Séance en cours | En pause | Durée 4:49 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_low · pause · HUD de séance caché derrière le menu
+[OK] 1680x1011_low · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun ||  ||  || Séance en cours | En pause | Durée 4:49 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_low · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun ||  ||  || Séance en cours | En pause | Durée 4:49 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_low · pause · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_low · pause · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · pause · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · pause · panneaux sans chevauchement
+[OK] 1680x1011_medium · pause · capture enregistrée
+[OK] 1680x1011_medium · pause · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1680x1011_medium · pause · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_medium · pause · texte menu_title : « Pause »
+[OK] 1680x1011_medium · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun ||  ||  || Séance en cours | En pause | Durée 4:19 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_medium · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun ||  ||  || Séance en cours | En pause | Durée 4:19 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_medium · pause · HUD de séance caché derrière le menu
+[OK] 1680x1011_medium · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun ||  ||  || Séance en cours | En pause | Durée 4:19 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_medium · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun ||  ||  || Séance en cours | En pause | Durée 4:19 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_medium · pause · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_medium · pause · lignes du HUD sans chevauchement
+[OK] 1680x1011_medium · pause · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_medium · pause · panneaux sans chevauchement
+[OK] 1680x1011_high · pause · capture enregistrée
+[OK] 1680x1011_high · pause · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1680x1011_high · pause · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_high · pause · texte menu_title : « Pause »
+[OK] 1680x1011_high · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun ||  ||  || Séance en cours | En pause | Durée 4:35 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_high · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun ||  ||  || Séance en cours | En pause | Durée 4:35 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_high · pause · HUD de séance caché derrière le menu
+[OK] 1680x1011_high · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun ||  ||  || Séance en cours | En pause | Durée 4:35 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_high · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun ||  ||  || Séance en cours | En pause | Durée 4:35 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_high · pause · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_high · pause · lignes du HUD sans chevauchement
+[OK] 1680x1011_high · pause · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_high · pause · panneaux sans chevauchement

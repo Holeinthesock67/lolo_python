@@ -15,5 +15,188 @@ F...F................................................................... [  2%]
 ........................................................................ [ 35%]
 ........................................................................ [ 38%]
 ........................................................................ [ 40%]
-........F............................................................... [ 43%]
-.....
+........................................................................ [ 43%]
+..........................................................Call stack:
+  File "/usr/lib/python3.14/threading.py", line 1044, in _bootstrap
+    self._bootstrap_inner()
+  File "/usr/lib/python3.14/threading.py", line 1082, in _bootstrap_inner
+    self._context.run(self.run)
+  File "/usr/lib/python3.14/threading.py", line 1024, in run
+    self._target(*self._args, **self._kwargs)
+  File "~/mesures-2026-11-01-auto/tmp/wt_r789b/Open_ride_linux/core/src/openride_core/worldgen_client.py", line 79, in _read_err
+    log.info("générateur : %s", text)
+Message: 'générateur : %s'
+Arguments: ("    with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:",)
+.............. [ 45%]
+........................................................................ [ 47%]
+........................................................................ [ 50%]
+........................................................................ [ 52%]
+........................................................................ [ 55%]
+.....................................F.................................. [ 57%]
+........................................................................ [ 59%]
+........................................................................ [ 62%]
+........................................................................ [ 64%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 76%]
+........................................................................ [ 79%]
+........................................................................ [ 81%]
+........................................................................ [ 83%]
+........................................................................ [ 86%]
+........................................................................ [ 88%]
+........................................................................ [ 91%]
+........................................................................ [ 93%]
+........................................................................ [ 95%]
+........................................................................ [ 98%]
+......................................................                   [100%]
+==================================== ERRORS ====================================
+_______________ ERROR collecting tests/test_controle_visuels.py ________________
+ImportError while importing test module '~/mesures-2026-11-01-auto/tmp/wt_r789b/Open_ride_linux/core/tests/test_controle_visuels.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.14/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_controle_visuels.py:35: in <module>
+    from PIL import Image
+E   ModuleNotFoundError: No module named 'PIL'
+=================================== FAILURES ===================================
+___________________________ test_real_files_are_read ___________________________
+
+    def test_real_files_are_read():
+        pins = ad.read_constraints()
+        assert pins["numpy"] and pins["pip-audit"]
+        used = ad.read_workflows()
+>       assert "actions/checkout" in used and "openride.yml" in used["actions/checkout"]["fichiers"]
+E       AssertionError: assert ('actions/checkout' in {})
+
+tests/test_audit_dependances.py:25: AssertionError
+_______________________ test_clean_run_and_missing_tools _______________________
+
+tmp_path = PosixPath('/tmp/pytest-of-X/pytest-2/test_clean_run_and_missing_too0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a252308c490>
+capsys = <_pytest.capture.CaptureFixture object at 0x7a2522f874d0>
+
+    def test_clean_run_and_missing_tools(tmp_path, monkeypatch, capsys):
+        clean = {"dependencies": [{"name": "numpy", "version": "2.4.6", "vulns": []}]}
+        monkeypatch.setattr(ad, "network_ok", lambda: True)
+        monkeypatch.setattr(ad, "run_pip_audit", lambda c: (0, json.dumps(clean), ""))
+        monkeypatch.setattr(ad, "fetch_latest", lambda name: 99)
+        monkeypatch.setattr(ad, "fetch_published", lambda n, v: datetime.now(timezone.utc))
+        assert ad.main(["--out", str(tmp_path / "a")]) == 0
+        text = (tmp_path / "a" / "resume.txt").read_text(encoding="utf-8")
+>       assert "en retard" in text and "v99 publiée" in text and text.rstrip().endswith("aucune vulnérabilité connue")
+E       AssertionError: assert ('en retard' in 'Audit des dépendances du 08/11/2026 19:04\n\nVulnérabilités connues : 0\nActions GitHub : 0, 0 en retard\nPaquets publiés il y a plus de 365 jours : 0\n\nVerdict : aucune vulnérabilité connue\n' and 'v99 publiée' in 'Audit des dépendances du 08/11/2026 19:04\n\nVulnérabilités connues : 0\nActions GitHub : 0, 0 en retard\nPaquets publiés il y a plus de 365 jours : 0\n\nVerdict : aucune vulnérabilité connue\n')
+
+tests/test_audit_dependances.py:67: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Audit des dépendances du 08/11/2026 19:04
+
+Vulnérabilités connues : 0
+Actions GitHub : 0, 0 en retard
+Paquets publiés il y a plus de 365 jours : 0
+
+Verdict : aucune vulnérabilité connue
+Résumé : /tmp/pytest-of-X/pytest-2/test_clean_run_and_missing_too0/a
+_____________________ test_fresh_install_in_temporary_home _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-X/pytest-2/test_fresh_install_in_temporar0')
+
+    @pytest.mark.slow   # clone, installation sans pip, premier démarrage et mise à jour : une trentaine de secondes
+    @pytest.mark.skipif(shutil.which("git") is None, reason="git requis")
+    def test_fresh_install_in_temporary_home(tmp_path):
+        out = tmp_path / "recette"
+>       rc = ri.main(["--mode", "home", "--sans-pip", "--godot", str(fake_godot(tmp_path)), "--out", str(out)])
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_recette_install.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../scripts/recette_install.py:135: in main
+    origin = make_origin(tmp)
+             ^^^^^^^^^^^^^^^^
+../scripts/recette_install.py:52: in make_origin
+    subprocess.run(["git", "clone", "--quiet", "--bare", str(REPO), str(origin)], check=True)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = False, timeout = None, check = True
+popenargs = (['git', 'clone', '--quiet', '--bare', '~/mesures-2026-11-01-auto/tmp/wt_r789b', '/tmp/openride-recette-install-3mz0n9gy/origin.git'],)
+kwargs = {}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout (seconds) is given and the process takes too long,
+         a TimeoutExpired exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', 'clone', '--quiet', '--bare', '~/mesures-2026-11-01-auto/tmp/wt_r789b', '/tmp/openride-recette-install-3mz0n9gy/origin.git']' returned non-zero exit status 128.
+
+/usr/lib/python3.14/subprocess.py:578: CalledProcessError
+=========================== short test summary info ============================
+FAILED tests/test_audit_dependances.py::test_real_files_are_read - AssertionE...
+FAILED tests/test_audit_dependances.py::test_clean_run_and_missing_tools - As...
+FAILED tests/test_recette_install.py::test_fresh_install_in_temporary_home - ...
+ERROR tests/test_controle_visuels.py
+3 failed, 3002 passed, 2 skipped, 1 error in 2056.48s (0:34:16)
