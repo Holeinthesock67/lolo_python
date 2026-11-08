@@ -407,8 +407,8 @@ func _set_row(p: PanelContainer, it: Dictionary, focused: bool) -> void:
 	d.add_theme_color_override("font_color", UiTheme.FOCUS if it.get("editing", false) else
 		(UiTheme.TEXT if focused else (UiTheme.DIM if enabled else UiTheme.DISABLED)))
 	bar.visible = it.has("bar")
-	# Rangée à curseur : la valeur (« 80 % ») ne prend que sa largeur, le libellé garde le reste (« Volume vent
-	# et roue libre » entier, essai du 8 novembre) ; sans curseur, libellé et détail se partagent la rangée.
+	# Rangée à curseur : la valeur (« 80 % ») ne prend que sa largeur, le libellé garde le reste (« Cyber-Rogue :
+	# bruitages » entier, essai du 8 novembre) ; sans curseur, libellé et détail se partagent la rangée.
 	d.size_flags_horizontal = Control.SIZE_SHRINK_END if bar.visible else Control.SIZE_EXPAND_FILL
 	# Sans coupe ni ellipse, la valeur garde sa largeur minimale (« 80 % ») à côté du curseur.
 	d.clip_text = not bar.visible
