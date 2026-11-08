@@ -63,6 +63,13 @@ Aucune, sauf l'ajout éventuel des réglages d'heure et de saison au contrat du 
 - Message de test `{"type": "_test", "action": "sky_cycle", "day_night", "seasons", "hour", "date"}` : réglages, heure solaire et date imposées pour les captures ; `visual_check.py --jour-nuit` : midi, crépuscule, heure bleue, nuit, automne, hiver, printemps, puis retour aux réglages coupés.
 - Reste : brume du matin (P8) et cloches (P9) pas encore liées à l'heure, floraison des vergers non branchée, altitude des nuages selon la saison non appliquée, l'heure accélérée ne fait pas avancer la date. Recette : `docs/RECETTE_P19.md`.
 
+## 7 ter. Banc du 8 novembre (PC cible, r781, low / medium / high)
+
+- Réglages coupés : GPU égal à `main` (0 à +0,4 ms en low, dans le bruit), 9 passes OK.
+- `day_night = "theme"` + `seasons = "winter"` : sous les budgets partout (alpine 4,84 / 9,93 / 9,27 ms ; savanna 4,73 / 6,75 / 9,03 ; sand_desert 4,80 / 6,05 / 7,95). Seul surcoût net : alpine medium +3,4 ms.
+- À-coups, réglages actifs seulement : alpine low (pire image 104 ms, 7 s d'images lentes, périodicité tous les 174 m) ; savanna medium et high, sand_desert medium (3,2 à 3,7 images lentes par minute). À corriger avant de changer le défaut (pistes : changement de maillage des arbres d'hiver par tuile, texture des étoiles créée à la volée).
+- Captures validées par le propriétaire le 8 novembre (nuit gardée telle quelle).
+
 ## 8. Hors périmètre
 
 - Éclairage public, phare du vélo, fenêtres éclairées (lot ultérieur si souhaité).
