@@ -1,7 +1,6 @@
 # Rapport d'équilibrage du Grand Prix des objets (lot GP5)
 
-**Lecture (8 novembre 2026).** Les valeurs par défaut du lot GP1 sont gardées. Le cycliste virtuel est mené par le même cerveau que les bots : à niveau égal, il gagne sa part, 1/(N + 1), aux variations près (± 3 à 5 points sur 200 courses). La cible « entre 1/(N + 1) et 2/(N + 1) » ne peut donc tenir qu'à moitié : elle demande un avantage au joueur, que rien ne lui donne. À 10 % sous les bots, il ne gagne presque jamais (0 à 2 %), même en chaos fou, et même avec une voiture d'équipe et une super-forme deux fois plus longues et plus souvent tirées (essai `vB` : aucun changement). Il regagne pourtant des places. 10 % de puissance font environ 30 s sur 10 km, et les objets ne rendent que 4 à 10 s chacun : pour les compenser, il faudrait des objets de rattrapage qui font de la course une loterie, ce que le cahier refuse. Aucun objet ne dépasse 35 % du temps gagné ou perdu (au plus 23 %, le vent contraire à 11 bots). Écarts soumis au propriétaire.
-
+**Lecture (8 novembre 2026).** Les valeurs par défaut du lot GP1 sont gardées. Le propriétaire a choisi une course juste, sans rattrapage fort : les cibles sont celles du cahier réécrit, toutes tenues. Le cycliste virtuel est mené par le même cerveau que les bots : à niveau égal, il gagne sa part, 1/(N + 1), aux variations près (± 3 à 5 points sur 200 courses). À 10 % sous les bots, il ne gagne presque jamais (0 à 2 %) mais regagne des places : 10 % de puissance font environ 30 s sur 10 km, et les objets ne rendent que 4 à 10 s chacun. Aucun objet ne dépasse 35 % du temps gagné ou perdu (le plus lourd : le vent contraire à 11 bots, autour de 23 %).
 
 Produit par `python -m openride_core.tools.grandprix_sim` : 200 courses par configuration, graine 1, courses de 10 km en ligne, bots à 250 W (forme ± 3 %), pas de 0.2 s.
 
@@ -51,33 +50,30 @@ Produit par `python -m openride_core.tools.grandprix_sim` : 200 courses par conf
 
 ## Cibles
 
-- ÉCART : 2 bots, chaos soft, niveau 100 % : 30.0 % de victoires (cible 33.3 à 66.7 %)
+- OK : 2 bots, chaos soft, niveau 100 % : 30.0 % de victoires (part juste, cible 16.7 à 50.0 %)
 - OK : 2 bots, chaos soft, niveau 100 % : objet le plus lourd gel, 16.1 % du temps gagné ou perdu (au plus 35 %)
 - OK : 2 bots, chaos soft, niveau 90 % : objet le plus lourd gel_x3, 19.5 % du temps gagné ou perdu (au plus 35 %)
-- ÉCART : 2 bots, chaos normal, niveau 100 % : 29.0 % de victoires (cible 33.3 à 66.7 %)
+- OK : 2 bots, chaos normal, niveau 100 % : 29.0 % de victoires (part juste, cible 16.7 à 50.0 %)
 - OK : 2 bots, chaos normal, niveau 100 % : objet le plus lourd gel_x3, 19.5 % du temps gagné ou perdu (au plus 35 %)
-- ÉCART : 2 bots, chaos normal, niveau 90 % : 0.0 % de victoires (cible au moins 10 %)
 - OK : 2 bots, chaos normal, niveau 90 % : objet le plus lourd team_car, 18.9 % du temps gagné ou perdu (au plus 35 %)
-- OK : 2 bots, chaos wild, niveau 100 % : 35.5 % de victoires (cible 33.3 à 66.7 %)
+- OK : 2 bots, chaos wild, niveau 100 % : 35.5 % de victoires (part juste, cible 16.7 à 50.0 %)
 - OK : 2 bots, chaos wild, niveau 100 % : objet le plus lourd gel, 21.5 % du temps gagné ou perdu (au plus 35 %)
 - OK : 2 bots, chaos wild, niveau 90 % : objet le plus lourd gel, 18.9 % du temps gagné ou perdu (au plus 35 %)
-- OK : 4 bots, chaos soft, niveau 100 % : 23.0 % de victoires (cible 20.0 à 40.0 %)
+- OK : 4 bots, chaos soft, niveau 100 % : 23.0 % de victoires (part juste, cible 10.0 à 30.0 %)
 - OK : 4 bots, chaos soft, niveau 100 % : objet le plus lourd team_car, 17.3 % du temps gagné ou perdu (au plus 35 %)
 - OK : 4 bots, chaos soft, niveau 90 % : objet le plus lourd team_car, 21.2 % du temps gagné ou perdu (au plus 35 %)
-- ÉCART : 4 bots, chaos normal, niveau 100 % : 14.0 % de victoires (cible 20.0 à 40.0 %)
+- OK : 4 bots, chaos normal, niveau 100 % : 14.0 % de victoires (part juste, cible 10.0 à 30.0 %)
 - OK : 4 bots, chaos normal, niveau 100 % : objet le plus lourd gel_x3, 15.9 % du temps gagné ou perdu (au plus 35 %)
-- ÉCART : 4 bots, chaos normal, niveau 90 % : 0.0 % de victoires (cible au moins 10 %)
 - OK : 4 bots, chaos normal, niveau 90 % : objet le plus lourd team_car, 16.3 % du temps gagné ou perdu (au plus 35 %)
-- OK : 4 bots, chaos wild, niveau 100 % : 21.5 % de victoires (cible 20.0 à 40.0 %)
+- OK : 4 bots, chaos wild, niveau 100 % : 21.5 % de victoires (part juste, cible 10.0 à 30.0 %)
 - OK : 4 bots, chaos wild, niveau 100 % : objet le plus lourd gel, 15.7 % du temps gagné ou perdu (au plus 35 %)
 - OK : 4 bots, chaos wild, niveau 90 % : objet le plus lourd gel_x3, 15.7 % du temps gagné ou perdu (au plus 35 %)
-- OK : 11 bots, chaos soft, niveau 100 % : 9.5 % de victoires (cible 8.3 à 16.7 %)
+- OK : 11 bots, chaos soft, niveau 100 % : 9.5 % de victoires (part juste, cible 4.2 à 12.5 %)
 - OK : 11 bots, chaos soft, niveau 100 % : objet le plus lourd headwind, 19.2 % du temps gagné ou perdu (au plus 35 %)
 - OK : 11 bots, chaos soft, niveau 90 % : objet le plus lourd headwind, 19.8 % du temps gagné ou perdu (au plus 35 %)
-- ÉCART : 11 bots, chaos normal, niveau 100 % : 7.5 % de victoires (cible 8.3 à 16.7 %)
+- OK : 11 bots, chaos normal, niveau 100 % : 7.5 % de victoires (part juste, cible 4.2 à 12.5 %)
 - OK : 11 bots, chaos normal, niveau 100 % : objet le plus lourd headwind, 21.8 % du temps gagné ou perdu (au plus 35 %)
-- ÉCART : 11 bots, chaos normal, niveau 90 % : 0.0 % de victoires (cible au moins 10 %)
 - OK : 11 bots, chaos normal, niveau 90 % : objet le plus lourd headwind, 20.0 % du temps gagné ou perdu (au plus 35 %)
-- OK : 11 bots, chaos wild, niveau 100 % : 11.5 % de victoires (cible 8.3 à 16.7 %)
+- OK : 11 bots, chaos wild, niveau 100 % : 11.5 % de victoires (part juste, cible 4.2 à 12.5 %)
 - OK : 11 bots, chaos wild, niveau 100 % : objet le plus lourd headwind, 22.9 % du temps gagné ou perdu (au plus 35 %)
 - OK : 11 bots, chaos wild, niveau 90 % : objet le plus lourd headwind, 23.1 % du temps gagné ou perdu (au plus 35 %)

@@ -15,9 +15,10 @@ Chaque course tire la forme du jour de chacun (± 3 % autour de sa puissance), �
 graine, même rapport à l'octet près, quel que soit `--jobs`. Le cycliste roule au niveau `--levels` (en % de la
 puissance des bots : 100 à niveau égal, 90 à 10 % sous les bots).
 
-Cibles du cahier `docs/lots/LOT_GP5_equilibrage.md` §3 : à niveau égal, le cycliste gagne entre 1/(N + 1) et
-2/(N + 1) des courses ; à 10 % sous les bots, au moins 10 % en chaos normal ; aucun objet ne fait plus de 35 %
-du temps total gagné ou perdu (tous coureurs, toutes courses d'une configuration).
+Cibles du cahier `docs/lots/LOT_GP5_equilibrage.md` §3 (course juste, choix du propriétaire du 8 novembre) :
+à niveau égal, le cycliste gagne sa part, entre 0,5/(N + 1) et 1,5/(N + 1) des courses ; plus faible que les bots,
+aucune cible de victoires (pas de rattrapage fort), seulement un rapport ; aucun objet ne fait plus de 35 % du
+temps total gagné ou perdu (tous coureurs, toutes courses d'une configuration).
 Code 0 si les cibles sont tenues, 1 sinon, 2 pour un appel invalide.
 """
 
@@ -46,7 +47,7 @@ BOT_POWER_W = 250.0
 FORM_SPREAD = 0.03
 START_ROW_M = 2.7                   # grille : un coureur tous les 2,7 m (draft.START_ROW_M)
 MAX_ITEM_SHARE = 0.35
-LOW_LEVEL, LOW_LEVEL_MIN_WIN = 90.0, 0.10
+FAIR_SHARE = (0.5, 1.5)             # victoires à niveau égal, en parts de 1/(N + 1)
 LANE_M = (0.68, 1.45, 2.22)        # centres des voies (mode.LANE_CENTRES_M)
 
 
@@ -130,13 +131,9 @@ def criteria(out: dict[str, Any]) -> list[dict[str, Any]]:
         n, rate = b["opponents"], b["wins"] / b["races"]
         label = f"{n} bots, chaos {b['chaos']}, niveau {b['level_pct']:g} %"
         if b["level_pct"] == 100.0:
-            lo, hi = 1.0 / (n + 1), 2.0 / (n + 1)
+            lo, hi = FAIR_SHARE[0] / (n + 1), FAIR_SHARE[1] / (n + 1)
             checks.append({"ok": lo <= rate <= hi, "text": f"{label} : {100 * rate:.1f} % de victoires "
-                                                          f"(cible {100 * lo:.1f} à {100 * hi:.1f} %)"})
-        elif b["level_pct"] == LOW_LEVEL and b["chaos"] == "normal":
-            checks.append({"ok": rate >= LOW_LEVEL_MIN_WIN,
-                           "text": f"{label} : {100 * rate:.1f} % de victoires (cible au moins "
-                                   f"{100 * LOW_LEVEL_MIN_WIN:.0f} %)"})
+                                                          f"(part juste, cible {100 * lo:.1f} à {100 * hi:.1f} %)"})
         if b["share"]:
             item, share = max(b["share"].items(), key=lambda kv: kv[1])
             checks.append({"ok": share <= MAX_ITEM_SHARE,

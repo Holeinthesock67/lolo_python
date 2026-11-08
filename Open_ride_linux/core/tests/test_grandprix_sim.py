@@ -16,7 +16,7 @@ def test_report_lists_every_configuration_and_target():
     checks = gs.criteria(out)
     text = gs.report_markdown(out, checks)
     assert "| 2 | normal | 100 % |" in text and "| 2 | normal | 90 % |" in text and "## Cibles" in text
-    assert len(checks) == 4   # victoires à niveau égal, à 90 %, et part du plus lourd objet pour chacun
+    assert len(checks) == 3   # victoires à niveau égal (pas de cible à 90 %), part du plus lourd objet pour chacun
 
 
 def test_bad_call_returns_2():
