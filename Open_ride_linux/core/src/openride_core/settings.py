@@ -124,10 +124,10 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.living", "Décor vivant", "graphics", applies="relaunch"),   # lot O26
     Setting("render.visual_grade_scale", "Relief exagéré", "graphics", 25, "%", "relaunch", 100),
     # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
-    Setting("audio.master_pct", "Volume général", "sound", 10, "%", "now"),
-    Setting("audio.ride_pct", "Volume vent et roue libre", "sound", 10, "%", "now"),
-    Setting("audio.ambience_pct", "Volume de l'ambiance", "sound", 10, "%", "now"),
-    Setting("audio.events_pct", "Volume bips et événements", "sound", 10, "%", "now"),
+    Setting("audio.master_pct", "Général", "sound", 10, "%", "now"),
+    Setting("audio.ride_pct", "Vent et roue libre", "sound", 10, "%", "now"),
+    Setting("audio.ambience_pct", "Ambiance", "sound", 10, "%", "now"),
+    Setting("audio.events_pct", "Bips et événements", "sound", 10, "%", "now"),
     Setting("audio.rogue_sfx_pct", "Cyber-Rogue : bruitages", "sound", 10, "%", "now"),   # lot R18
     Setting("audio.rogue_music_pct", "Cyber-Rogue : musique", "sound", 10, "%", "now"),
     # Vent (lot P16, décisions du propriétaire du 25 octobre : coupé par défaut, plafond de 4 points)
