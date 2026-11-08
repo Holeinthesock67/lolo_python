@@ -1,0 +1,20 @@
+== 1280x720_low ==
+[OK] 1280x720_low · menus · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-visual-routes-q12deb2m/demo.world
+[OK] 1280x720_low · reglages · capture enregistrée
+[OK] 1280x720_low · reglages · taille de l'image : 1280x720, attendu 1280x720
+[ÉCHEC] 1280x720_low · reglages · texte menu_title : « OpenRide », attendu « Réglages › Son »
+[ÉCHEC] 1280x720_low · reglages · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer : connecté | Commandes : connecté ||  ||  », attendu « [Général — 80 %] »
+[ÉCHEC] 1280x720_low · reglages · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer : connecté | Commandes : connecté ||  ||  », attendu « Vent et roue libre — 40 % »
+[OK] 1280x720_low · reglages · libellés des curseurs entiers (pas de « … ») : aucun coupé
+[ÉCHEC] 1280x720_low · reglages · valeurs « 80 % » visibles à droite des curseurs : 0.00% de pixels clairs
+[OK] 1280x720_low · reglages · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_low · reglages · lignes du HUD sans chevauchement
+[OK] 1280x720_low · reglages · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · reglages · panneaux sans chevauchement
+[OK] 1280x720_low · reglages · curseurs des volumes remplis en cyan : 0.74% de pixels cyan
+[ÉCHEC] 1280x720_low · reglage_edition · capture enregistrée : aucune ligne « screenshot » dans le journal de l'engine après 3 demandes ; PNG absent
+[ÉCHEC] 1280x720_low · appareils · capture enregistrée : aucune ligne « screenshot » dans le journal de l'engine après 3 demandes ; PNG absent
+[OK] 1280x720_low · reglage_edition · Y annule : aucun set_setting envoyé
+[ÉCHEC] 1280x720_low · menu_accueil · capture enregistrée : aucune ligne « screenshot » dans le journal de l'engine après 3 demandes ; PNG absent
+[ÉCHEC] 1280x720_low · menu_parcours · capture enregistrée : aucune ligne « screenshot » dans le journal de l'engine après 3 demandes ; PNG absent
+[ÉCHEC] 1280x720_low · pret · capture enregistrée : aucune ligne « screenshot » dans le journal de l'engine après 3 demandes ; PNG absent

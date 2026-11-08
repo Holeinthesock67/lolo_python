@@ -1,0 +1,968 @@
+== 1280x720_low ==
+[ÉCHEC] 1280x720_low · menus · parcours demo chargé : aucun route_loaded
+[OK] 1280x720_low · reglages · capture enregistrée
+[OK] 1280x720_low · reglages · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · reglages · texte menu_title : « Réglages › Son »
+[OK] 1280x720_low · reglages · texte menu : «  || [Général — 80 %] | Vent et roue libre — 40 % | Bips et événements — 70 % | Cyber-Rogue : bruitages — 50 % | Ambiance — 60 % ||  ||  ||  || Réglage | Général | Valeur 80 % | Plage 0 à 100 % | Pas 10 % | S'applique tout de suite »
+[OK] 1280x720_low · reglages · texte menu : «  || [Général — 80 %] | Vent et roue libre — 40 % | Bips et événements — 70 % | Cyber-Rogue : bruitages — 50 % | Ambiance — 60 % ||  ||  ||  || Réglage | Général | Valeur 80 % | Plage 0 à 100 % | Pas 10 % | S'applique tout de suite »
+[OK] 1280x720_low · reglages · libellés des curseurs entiers (pas de « … ») : aucun coupé
+[OK] 1280x720_low · reglages · valeurs « 80 % » visibles à droite des curseurs : 2.86% de pixels clairs
+[OK] 1280x720_low · reglages · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · reglages · lignes du HUD sans chevauchement
+[OK] 1280x720_low · reglages · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · reglages · panneaux sans chevauchement
+[OK] 1280x720_low · reglages · curseurs des volumes remplis en cyan : 0.89% de pixels cyan
+[OK] 1280x720_low · reglage_edition · capture enregistrée
+[OK] 1280x720_low · reglage_edition · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · reglage_edition · texte menu_title : « Réglages › Cycliste »
+[OK] 1280x720_low · reglage_edition · texte menu : «  || FTP — 250 W | [Poids — ◀ 76 kg ▶] ||  ||  ||  || Réglage | Poids | Valeur 76 kg | Plage 30 à 200 kg | Pas 1 kg | S'applique à la séance suivante »
+[OK] 1280x720_low · reglage_edition · texte menu : «  || FTP — 250 W | [Poids — ◀ 76 kg ▶] ||  ||  ||  || Réglage | Poids | Valeur 76 kg | Plage 30 à 200 kg | Pas 1 kg | S'applique à la séance suivante »
+[OK] 1280x720_low · reglage_edition · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · reglage_edition · lignes du HUD sans chevauchement
+[OK] 1280x720_low · reglage_edition · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · reglage_edition · panneaux sans chevauchement
+[OK] 1280x720_low · appareils · capture enregistrée
+[OK] 1280x720_low · appareils · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · appareils · texte menu_title : « Appareils »
+[OK] 1280x720_low · appareils · texte menu : « 3 appareil(s) trouvé(s) || Rechercher les appareils | Trainer — HomeTrainer 0001 | [Click : identifier le bouton +] | Oublier le Click | Ceinture — aucune | Enregistrer | Retour ||  ||  ||  || Click | Reconnaître le boîtier + | Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche | Boîtier « − » : Zwift le verrouille environ une minute après la connexion ; OpenRide le redémarre seul (4 s sans flèches, B du boîtier « + » fait « − ») »
+[OK] 1280x720_low · appareils · texte menu : « 3 appareil(s) trouvé(s) || Rechercher les appareils | Trainer — HomeTrainer 0001 | [Click : identifier le bouton +] | Oublier le Click | Ceinture — aucune | Enregistrer | Retour ||  ||  ||  || Click | Reconnaître le boîtier + | Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche | Boîtier « − » : Zwift le verrouille environ une minute après la connexion ; OpenRide le redémarre seul (4 s sans flèches, B du boîtier « + » fait « − ») »
+[OK] 1280x720_low · appareils · texte menu : « 3 appareil(s) trouvé(s) || Rechercher les appareils | Trainer — HomeTrainer 0001 | [Click : identifier le bouton +] | Oublier le Click | Ceinture — aucune | Enregistrer | Retour ||  ||  ||  || Click | Reconnaître le boîtier + | Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche | Boîtier « − » : Zwift le verrouille environ une minute après la connexion ; OpenRide le redémarre seul (4 s sans flèches, B du boîtier « + » fait « − ») »
+[OK] 1280x720_low · appareils · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · appareils · lignes du HUD sans chevauchement
+[OK] 1280x720_low · appareils · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · appareils · panneaux sans chevauchement
+[OK] 1280x720_low · reglage_edition · Y annule : aucun set_setting envoyé : get_coach, scan_devices, get_coach, get_coach
+[OK] 1280x720_low · menu_accueil · capture enregistrée
+[OK] 1280x720_low · menu_accueil · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_low · menu_accueil · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · menu_accueil · texte menu_title : « OpenRide »
+[OK] 1280x720_low · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_low · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_low · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_low · menu_accueil · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_low · menu_accueil · lignes du HUD sans chevauchement
+[OK] 1280x720_low · menu_accueil · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · menu_accueil · panneaux sans chevauchement
+[OK] 1280x720_low · menu_accueil · bandeau caché (hors rappel des commandes)
+[OK] 1280x720_low · menu_accueil · menu en plein écran, HUD de séance caché : rectangle [0.0, 0.0, 1280.0, 720.0]
+[OK] 1280x720_low · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_low · menu_accueil · sélection très visible (cadre cyan) : 0.63% de pixels cyan
+[OK] 1280x720_low · menu_parcours · capture enregistrée
+[OK] 1280x720_low · menu_parcours · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · menu_parcours · texte menu_title : « Parcours »
+[OK] 1280x720_low · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_low · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_low · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_low · menu_parcours · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · menu_parcours · lignes du HUD sans chevauchement
+[OK] 1280x720_low · menu_parcours · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · menu_parcours · panneaux sans chevauchement
+[OK] 1280x720_low · pret · capture enregistrée
+[OK] 1280x720_low · pret · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · pret · texte menu_title : « Prêt : session libre — Démo »
+[OK] 1280x720_low · pret · texte menu : «  || [Démarrer] | Passer en session ERG | Changer de parcours | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun | Records du parcours ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_low · pret · texte menu : «  || [Démarrer] | Passer en session ERG | Changer de parcours | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun | Records du parcours ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_low · pret · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · pret · lignes du HUD sans chevauchement
+[OK] 1280x720_low · pret · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · pret · panneaux sans chevauchement
+[OK] 1280x720_low · pret · profil d'altitude tracé dans la carte (trait cyan) : 0.53% de pixels cyan
+[OK] 1280x720_low · records · capture enregistrée
+[OK] 1280x720_low · records · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · records · texte menu_title : « Records : Démo »
+[OK] 1280x720_low · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_low · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_low · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_low · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_low · records · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · records · lignes du HUD sans chevauchement
+[OK] 1280x720_low · records · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · records · panneaux sans chevauchement
+[OK] 1280x720_low · records · record en or dans la carte : 0.27% de pixels or
+[OK] 1280x720_low · records_table · capture enregistrée
+[OK] 1280x720_low · records_table · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · records_table · texte menu_title : « Montée 1 : sans bonus »
+[OK] 1280x720_low · records_table · texte menu : «  || [A : voir les temps avec bonus] | 1. 4:08,1 · 27/10/2026 18:05 — 251 W, 3,4 W/kg | 2. 4:11,5 · 26/10/2026 18:00 — 240 W, 3,2 W/kg ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_low · records_table · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · records_table · lignes du HUD sans chevauchement
+[OK] 1280x720_low · records_table · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · records_table · panneaux sans chevauchement
+[OK] 1280x720_low · garage · capture enregistrée
+[OK] 1280x720_low · garage · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage · texte menu_title : « Garage : niveau 8, 210 pièces »
+[OK] 1280x720_low · garage · texte menu : «  || [Vélo : cadre et roues — Polyvalent, Standard] | Tenue, casque, chaussettes, lunettes — Unie, Route, Blanches, Claires | Avatar — taille moyenne · silhouette moyenne ||  ||  ||  || Garage | Niveau 8 | Niveau 8 | Pièces 210 | Expérience 510 / 1200 | Expérience 510 / 1200 vers le niveau 9 : ■■■■□□□□□□ »
+[OK] 1280x720_low · garage · texte menu : «  || [Vélo : cadre et roues — Polyvalent, Standard] | Tenue, casque, chaussettes, lunettes — Unie, Route, Blanches, Claires | Avatar — taille moyenne · silhouette moyenne ||  ||  ||  || Garage | Niveau 8 | Niveau 8 | Pièces 210 | Expérience 510 / 1200 | Expérience 510 / 1200 vers le niveau 9 : ■■■■□□□□□□ »
+[OK] 1280x720_low · garage · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_low · garage · lignes du HUD sans chevauchement
+[OK] 1280x720_low · garage · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · garage · panneaux sans chevauchement
+[OK] 1280x720_low · garage · aperçu 3D visible dans la carte : {'angle': 3.857224904615, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'shoulder_y': 1.30694401264191, 'shown': True, 'streaks': False, 'triangles': 5640, 'view': 'preview', 'visible': True}
+[OK] 1280x720_low · garage_2 · capture enregistrée
+[OK] 1280x720_low · garage_2 · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_2 · l'aperçu tourne : écart moyen 4.60 niveaux
+[OK] 1280x720_low · garage_velo · capture enregistrée
+[OK] 1280x720_low · garage_velo · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_velo · texte menu_title : « Garage : vélo »
+[OK] 1280x720_low · garage_velo · texte menu : «  || [Cadre : Polyvalent — choisie] | Cadre : Léger — possédée | Cadre : Profilé — 150 pièces | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Polyvalent | Masse = | CdA = | Niveau 1 | Conseillé : tout terrain | État : choisie »
+[OK] 1280x720_low · garage_velo · texte menu : «  || [Cadre : Polyvalent — choisie] | Cadre : Léger — possédée | Cadre : Profilé — 150 pièces | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Polyvalent | Masse = | CdA = | Niveau 1 | Conseillé : tout terrain | État : choisie »
+[OK] 1280x720_low · garage_velo · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_low · garage_velo · lignes du HUD sans chevauchement
+[OK] 1280x720_low · garage_velo · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · garage_velo · panneaux sans chevauchement
+[OK] 1280x720_low · garage_fiche · capture enregistrée
+[OK] 1280x720_low · garage_fiche · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_fiche · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — 150 pièces] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : 150 pièces »
+[OK] 1280x720_low · garage_fiche · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — 150 pièces] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : 150 pièces »
+[OK] 1280x720_low · garage_fiche · l'aperçu montre le cadre sous le focus avant l'achat : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_low · garage_fiche · l'équipement choisi ne change pas avant l'achat
+[OK] 1280x720_low · garage_confirmation · capture enregistrée
+[OK] 1280x720_low · garage_confirmation · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_confirmation · texte confirm_question : « Acheter Profilé pour 150 pièces ? Solde après : 60 »
+[OK] 1280x720_low · garage_achat · capture enregistrée
+[OK] 1280x720_low · garage_achat · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_achat · pièce achetée : possédée, solde 60 : 60 pièces, owned
+[OK] 1280x720_low · garage_achat · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — possédée] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : possédée »
+[OK] 1280x720_low · garage_choix · capture enregistrée
+[OK] 1280x720_low · garage_choix · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_choix · cadre choisi, états mis à jour : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_low · garage_choix · l'avatar du jeu porte le nouveau cadre : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_low · garage_modif · capture enregistrée
+[OK] 1280x720_low · garage_modif · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_modif · texte menu_title : « Taille »
+[OK] 1280x720_low · garage_modif · texte menu : «  || [moyenne — + / − : changer, A long : enregistrer, Y : annuler] ||  ||  ||  || Avatar | Ton cycliste | Taille moyenne, silhouette moyenne | Rien n'est enregistré avant « Enregistrer ». »
+[OK] 1280x720_low · garage_modif · aperçu visible pendant la modification
+[OK] 1280x720_low · garage_avatar · capture enregistrée
+[OK] 1280x720_low · garage_avatar · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_avatar · brouillon modifié, rien d'enregistré : {'build': 'medium', 'hair': 2, 'hair_color': 1, 'height': 'L', 'kit_primary': 4, 'kit_secondary': 11, 'number': 27, 'skin': 3, 'standing_grade_pct': 8.0, 'standing_power_pct': 150.0}
+[OK] 1280x720_low · garage_enregistre · capture enregistrée
+[OK] 1280x720_low · garage_enregistre · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_enregistre · avatar enregistré par le core : {'build': 'medium', 'hair': 2, 'hair_color': 1, 'height': 'L', 'kit_primary': 4, 'kit_secondary': 11, 'number': 27, 'skin': 3, 'standing_grade_pct': 8.0, 'standing_power_pct': 150.0}
+[OK] 1280x720_low · garage_enregistre · texte menu : « Enregistré || [Taille — grande] | Silhouette — moyenne | Teint — 4 / 8 | Coiffure — coiffure 2 / 5 | Couleur des cheveux — 2 / 8 | Couleur principale de la tenue — 5 / 16 | Couleur secondaire de la tenue — 12 / 16 | Numéro de dossard — n° 27 | Enregistrer | Annuler les changements ||  ||  ||  || Avatar | Ton cycliste | Taille grande, silhouette moyenne | Rien n'est enregistré avant « Enregistrer ». | Enregistré »
+[OK] 1280x720_low · collection_premiere · capture enregistrée
+[OK] 1280x720_low · collection_premiere · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · collection_premiere · texte menu : «  || [Ouvrir la Collection] || 17 cartes déjà gagnées | par vos séances passées. Chaque nouvelle séance peut en débloquer d'autres. ||  ||  ||  »
+[OK] 1280x720_low · collection_premiere · texte menu : «  || [Ouvrir la Collection] || 17 cartes déjà gagnées | par vos séances passées. Chaque nouvelle séance peut en débloquer d'autres. ||  ||  ||  »
+[OK] 1280x720_low · collection_premiere · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_low · collection_premiere · lignes du HUD sans chevauchement
+[OK] 1280x720_low · collection_premiere · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · collection_premiere · panneaux sans chevauchement
+[OK] 1280x720_low · collection_premiere · cartes déjà gagnées notées vues : 17 clés
+[OK] 1280x720_low · collection_album · capture enregistrée
+[OK] 1280x720_low · collection_album · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · collection_album · texte menu_title : « Collection »
+[OK] 1280x720_low · collection_album · texte menu : « 17 / 42 cartes · 2 nouvelles ||  || Régularité | 2 / 4 | c:semaine_3 | c:semaines_4 | c:semaines_12 | c:jours_7 | Heure | 3 / 4 | c:leve_tot | [c:leve_tot_10] | c:pause_midi | c:noctambule | Entraînement | 1 / 3 | c:erg_10 | c:ftp_premier | c:ftp_4 | ▲ 3 familles plus haut · ▼ 3 familles plus bas ||  ||  ||  »
+[OK] 1280x720_low · collection_album · texte menu : « 17 / 42 cartes · 2 nouvelles ||  || Régularité | 2 / 4 | c:semaine_3 | c:semaines_4 | c:semaines_12 | c:jours_7 | Heure | 3 / 4 | c:leve_tot | [c:leve_tot_10] | c:pause_midi | c:noctambule | Entraînement | 1 / 3 | c:erg_10 | c:ftp_premier | c:ftp_4 | ▲ 3 familles plus haut · ▼ 3 familles plus bas ||  ||  ||  »
+[OK] 1280x720_low · collection_album · texte menu : « 17 / 42 cartes · 2 nouvelles ||  || Régularité | 2 / 4 | c:semaine_3 | c:semaines_4 | c:semaines_12 | c:jours_7 | Heure | 3 / 4 | c:leve_tot | [c:leve_tot_10] | c:pause_midi | c:noctambule | Entraînement | 1 / 3 | c:erg_10 | c:ftp_premier | c:ftp_4 | ▲ 3 familles plus haut · ▼ 3 familles plus bas ||  ||  ||  »
+[OK] 1280x720_low · collection_album · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_low · collection_album · lignes du HUD sans chevauchement
+[OK] 1280x720_low · collection_album · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · collection_album · panneaux sans chevauchement
+[OK] 1280x720_low · collection_carte · capture enregistrée
+[OK] 1280x720_low · collection_carte · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · collection_carte · texte menu_title : « Chant du coq »
+[OK] 1280x720_low · collection_carte · texte menu : «  || [Voir la séance] || Chant du coq | Rare | n° 20 / 42 | « Dix séances commencées avant 7 h. » | Gagnée le | 6 novembre 2026 ||  ||  ||  »
+[OK] 1280x720_low · collection_carte · texte menu : «  || [Voir la séance] || Chant du coq | Rare | n° 20 / 42 | « Dix séances commencées avant 7 h. » | Gagnée le | 6 novembre 2026 ||  ||  ||  »
+[OK] 1280x720_low · collection_carte · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_low · collection_carte · lignes du HUD sans chevauchement
+[OK] 1280x720_low · collection_carte · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · collection_carte · panneaux sans chevauchement
+[OK] 1280x720_low · collection_a_gagner · capture enregistrée
+[OK] 1280x720_low · collection_a_gagner · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · collection_a_gagner · texte menu : «  || Pas encore gagnée || Mille bornes | Rare | n° 3 / 42 | « Mille kilomètres : le défi est relevé. » | Avancement | 610 / 1 000 km ||  ||  ||  »
+[OK] 1280x720_low · collection_a_gagner · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_low · collection_a_gagner · lignes du HUD sans chevauchement
+[OK] 1280x720_low · collection_a_gagner · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · collection_a_gagner · panneaux sans chevauchement
+[OK] 1280x720_low · collection_saison · capture enregistrée
+[OK] 1280x720_low · collection_saison · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · collection_saison · texte menu_title : « Pédaleur citrouille 2026 »
+[OK] 1280x720_low · collection_saison · texte menu : «  || [Voir la séance] || Pédaleur citrouille 2026 | Rare | n° 38 / 42 | « Une séance pendant la semaine d'Halloween. » | Gagnée le | 29 octobre 2026 | Éditions | 2026 | Exclusive à sa période : une édition par année, elle ne se rattrape pas après. ||  ||  ||  »
+[OK] 1280x720_low · collection_saison · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_low · collection_saison · lignes du HUD sans chevauchement
+[OK] 1280x720_low · collection_saison · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · collection_saison · panneaux sans chevauchement
+[OK] 1280x720_low · bilan · capture enregistrée
+[OK] 1280x720_low · bilan · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_low · bilan · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · bilan · texte menu_title : « Fin de séance »
+[OK] 1280x720_low · bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m ||  || Bilan de la séance »
+[OK] 1280x720_low · bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m ||  || Bilan de la séance »
+[OK] 1280x720_low · bilan · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · bilan · lignes du HUD sans chevauchement
+[OK] 1280x720_low · bilan · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · bilan · panneaux sans chevauchement
+[OK] 1280x720_low · bilan_carte · capture enregistrée
+[OK] 1280x720_low · bilan_carte · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · bilan_carte · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m ||  || Bilan de la séance »
+[OK] 1280x720_low · bilan_carte · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · bilan_carte · lignes du HUD sans chevauchement
+[OK] 1280x720_low · bilan_carte · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · bilan_carte · panneaux sans chevauchement
+[OK] 1280x720_low · progression · capture enregistrée
+[OK] 1280x720_low · progression · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · progression · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_low · progression · lignes du HUD sans chevauchement
+[OK] 1280x720_low · progression · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · progression · panneaux sans chevauchement
+[OK] 1280x720_low · progression · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · progression · bandeau « Niveau 10 ! » affiché : Niveau 10 !
+[OK] 1280x720_low · bilan_complet · capture enregistrée
+[OK] 1280x720_low · bilan_complet · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · bilan_complet · carte du bilan au-dessus du bandeau des boutons : bas de la carte 633 px, bandeau à 654 px
+[OK] 1280x720_low · bilan_complet · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_low · bilan_complet · lignes du HUD sans chevauchement
+[OK] 1280x720_low · bilan_complet · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · bilan_complet · panneaux sans chevauchement
+[OK] 1280x720_low · bilan_complet · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · bilan_complet_detaille · capture enregistrée
+[OK] 1280x720_low · bilan_complet_detaille · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_low · bilan_complet_detaille · carte du bilan au-dessus du bandeau des boutons : bas de la carte 611 px, bandeau à 654 px
+[OK] 1280x720_low · bilan_complet_detaille · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_low · bilan_complet_detaille · lignes du HUD sans chevauchement
+[OK] 1280x720_low · bilan_complet_detaille · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · bilan_complet_detaille · panneaux sans chevauchement
+[OK] 1280x720_low · bilan_complet_detaille · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · progression_refusee · capture enregistrée
+[OK] 1280x720_low · progression_refusee · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · progression_refusee · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  ||  || Durée : 0:02:00 | Distance : 0,80 km || Séance de moins de 5 minutes : pas d'expérience || Bilan de la séance »
+[OK] 1280x720_low · progression_refusee · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · progression_refusee · lignes du HUD sans chevauchement
+[OK] 1280x720_low · progression_refusee · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · progression_refusee · panneaux sans chevauchement
+[OK] 1280x720_low · depart_decor · capture enregistrée
+[OK] 1280x720_low · depart_decor · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · depart_decor · écran affiché, un feu, pastille Décor en cours : {'animated': False, 'go': False, 'lights': 1, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'current'}, {'label': 'Trainer', 'state': 'todo'}, {'label': 'Pédalage', 'state': 'todo'}], 'text': 'Départ : chargement du décor…  (Y : annuler)', 'visible': True}
+[OK] 1280x720_low · depart_decor · carte du parcours demo : {'animated': False, 'go': False, 'lights': 1, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'current'}, {'label': 'Trainer', 'state': 'todo'}, {'label': 'Pédalage', 'state': 'todo'}], 'text': 'Départ : chargement du décor…  (Y : annuler)', 'visible': True}
+[OK] 1280x720_low · depart_decor · écran figé pendant le chargement : {'animated': False, 'go': False, 'lights': 1, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'current'}, {'label': 'Trainer', 'state': 'todo'}, {'label': 'Pédalage', 'state': 'todo'}], 'text': 'Départ : chargement du décor…  (Y : annuler)', 'visible': True}
+[OK] 1280x720_low · depart_decor · feu rouge allumé à l'image : 1.07% de pixels rouges
+[OK] 1280x720_low · depart_decor · voile opaque à l'image : 93% de pixels sombres
+[OK] 1280x720_low · depart_decor · bandeau caché (hors rappel des commandes)
+[OK] 1280x720_low · depart_pedalage · capture enregistrée
+[OK] 1280x720_low · depart_pedalage · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · depart_pedalage · HUD de séance caché pendant l'attente
+[OK] 1280x720_low · depart_pedalage · quatre feux, pastille Pédalage en cours : {'animated': True, 'go': False, 'lights': 4, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'done'}, {'label': 'Trainer', 'state': 'done'}, {'label': 'Pédalage', 'state': 'current'}], 'text': 'Pédale pour partir : 30 tr/min, 1,6 s sur 3 s  (Y : annuler)', 'visible': True}
+[OK] 1280x720_low · depart_pedalage · feux rouges allumés : 4.26% de pixels rouges
+[OK] 1280x720_low · depart_go · capture enregistrée
+[OK] 1280x720_low · depart_go · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · depart_go · feux verts « GO ! » : {'animated': False, 'go': True, 'lights': 0, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [], 'text': '', 'visible': True}
+[OK] 1280x720_low · depart_go · HUD de séance revenu au départ
+[OK] 1280x720_low · conseil_accueil · capture enregistrée
+[OK] 1280x720_low · conseil_accueil · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · conseil_accueil · texte menu : «  || Séance conseillée — aérobie intense · 60 min | [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_low · conseil_accueil · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_low · conseil_accueil · lignes du HUD sans chevauchement
+[OK] 1280x720_low · conseil_accueil · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · conseil_accueil · panneaux sans chevauchement
+[OK] 1280x720_low · conseil · capture enregistrée
+[OK] 1280x720_low · conseil · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · conseil · texte menu_title : « Séance conseillée : aérobie intense »
+[OK] 1280x720_low · conseil · texte menu : « Pourquoi : 9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce
+type il y a 6 jours, forme +4. || [Lancer l'entraînement — 60 min] | Lancer la course — 60 min | Autre séance — 2 de plus | Autre besoin | Ma montre — aucune | Prochaine course — aucune | Détail du calcul ||  ||  ||  || Entraînement conseillé | Seuil 2 × 20 | Durée 60 min | TSS estimé 72 | Zone Z4 | Zones Z3 à Z5, de 75 à 120 % de la FTP. | Règle R6 · objectif endurance. | À côté : « Lancer la course », course contre des bots sur un parcours à montées longues. »
+[OK] 1280x720_low · conseil · texte menu : « Pourquoi : 9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce
+type il y a 6 jours, forme +4. || [Lancer l'entraînement — 60 min] | Lancer la course — 60 min | Autre séance — 2 de plus | Autre besoin | Ma montre — aucune | Prochaine course — aucune | Détail du calcul ||  ||  ||  || Entraînement conseillé | Seuil 2 × 20 | Durée 60 min | TSS estimé 72 | Zone Z4 | Zones Z3 à Z5, de 75 à 120 % de la FTP. | Règle R6 · objectif endurance. | À côté : « Lancer la course », course contre des bots sur un parcours à montées longues. »
+[OK] 1280x720_low · conseil · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · conseil · lignes du HUD sans chevauchement
+[OK] 1280x720_low · conseil · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · conseil · panneaux sans chevauchement
+[OK] 1280x720_low · conseil_course · capture enregistrée
+[OK] 1280x720_low · conseil_course · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · conseil_course · texte menu_title : « Séance conseillée : aérobie intense »
+[OK] 1280x720_low · conseil_course · texte menu : « Pourquoi : 9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce
+type il y a 6 jours, forme +4. || Lancer l'entraînement — 60 min | [Lancer la course — 60 min] | Autre séance — 2 de plus | Autre besoin | Ma montre — aucune | Prochaine course — aucune | Détail du calcul ||  ||  ||  || Course contre des bots | Démo · 4 tours | Bots 4 | Niveau 95 % | Dans le besoin 79 % | Course contre des bots sur un parcours à montées longues. | Simulée à tes valeurs : 24 min dans le besoin, | contre 30 min avec l'entraînement. | Difficulté de la pente : la tienne. »
+[OK] 1280x720_low · conseil_course · texte menu : « Pourquoi : 9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce
+type il y a 6 jours, forme +4. || Lancer l'entraînement — 60 min | [Lancer la course — 60 min] | Autre séance — 2 de plus | Autre besoin | Ma montre — aucune | Prochaine course — aucune | Détail du calcul ||  ||  ||  || Course contre des bots | Démo · 4 tours | Bots 4 | Niveau 95 % | Dans le besoin 79 % | Course contre des bots sur un parcours à montées longues. | Simulée à tes valeurs : 24 min dans le besoin, | contre 30 min avec l'entraînement. | Difficulté de la pente : la tienne. »
+[OK] 1280x720_low · conseil_course · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · conseil_course · lignes du HUD sans chevauchement
+[OK] 1280x720_low · conseil_course · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · conseil_course · panneaux sans chevauchement
+[OK] 1280x720_low · conseil_detail · capture enregistrée
+[OK] 1280x720_low · conseil_detail · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · conseil_detail · texte menu_title : « Détail du calcul »
+[OK] 1280x720_low · conseil_detail · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · conseil_detail · lignes du HUD sans chevauchement
+[OK] 1280x720_low · conseil_detail · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · conseil_detail · panneaux sans chevauchement
+[OK] 1280x720_low · conseil_besoin · capture enregistrée
+[OK] 1280x720_low · conseil_besoin · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · conseil_besoin · texte menu_title : « Choisir un autre besoin »
+[OK] 1280x720_low · conseil_besoin · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · conseil_besoin · lignes du HUD sans chevauchement
+[OK] 1280x720_low · conseil_besoin · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · conseil_besoin · panneaux sans chevauchement
+[OK] 1280x720_low · conseil_prochaine_course · capture enregistrée
+[OK] 1280x720_low · conseil_prochaine_course · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · conseil_prochaine_course · texte menu_title : « Ma prochaine course »
+[OK] 1280x720_low · conseil_prochaine_course · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · conseil_prochaine_course · lignes du HUD sans chevauchement
+[OK] 1280x720_low · conseil_prochaine_course · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · conseil_prochaine_course · panneaux sans chevauchement
+[OK] 1280x720_low · conseil_montre · capture enregistrée
+[OK] 1280x720_low · conseil_montre · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · conseil_montre · texte menu_title : « Suggestion de ma montre »
+[OK] 1280x720_low · conseil_montre · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_low · conseil_montre · lignes du HUD sans chevauchement
+[OK] 1280x720_low · conseil_montre · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · conseil_montre · panneaux sans chevauchement
+[OK] 1280x720_low · journal · aucune erreur ni avertissement Godot
+[OK] 1280x720_low · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1280x720_low · journal · qualité réellement appliquée : low appliquée (44 capture(s)) ; dernière ligne : low (demandée low, source cli)
+== 1280x720_medium ==
+[OK] 1280x720_medium · menus · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-visual-routes-h9tmxdvm/demo.world
+[OK] 1280x720_medium · reglages · capture enregistrée
+[OK] 1280x720_medium · reglages · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · reglages · texte menu_title : « Réglages › Son »
+[OK] 1280x720_medium · reglages · texte menu : «  || [Général — 80 %] | Vent et roue libre — 40 % | Bips et événements — 70 % | Cyber-Rogue : bruitages — 50 % | Ambiance — 60 % ||  ||  ||  || Réglage | Général | Valeur 80 % | Plage 0 à 100 % | Pas 10 % | S'applique tout de suite »
+[OK] 1280x720_medium · reglages · texte menu : «  || [Général — 80 %] | Vent et roue libre — 40 % | Bips et événements — 70 % | Cyber-Rogue : bruitages — 50 % | Ambiance — 60 % ||  ||  ||  || Réglage | Général | Valeur 80 % | Plage 0 à 100 % | Pas 10 % | S'applique tout de suite »
+[OK] 1280x720_medium · reglages · libellés des curseurs entiers (pas de « … ») : aucun coupé
+[OK] 1280x720_medium · reglages · valeurs « 80 % » visibles à droite des curseurs : 2.86% de pixels clairs
+[OK] 1280x720_medium · reglages · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · reglages · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · reglages · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · reglages · panneaux sans chevauchement
+[OK] 1280x720_medium · reglages · curseurs des volumes remplis en cyan : 0.89% de pixels cyan
+[OK] 1280x720_medium · reglage_edition · capture enregistrée
+[OK] 1280x720_medium · reglage_edition · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · reglage_edition · texte menu_title : « Réglages › Cycliste »
+[OK] 1280x720_medium · reglage_edition · texte menu : «  || FTP — 250 W | [Poids — ◀ 76 kg ▶] ||  ||  ||  || Réglage | Poids | Valeur 76 kg | Plage 30 à 200 kg | Pas 1 kg | S'applique à la séance suivante »
+[OK] 1280x720_medium · reglage_edition · texte menu : «  || FTP — 250 W | [Poids — ◀ 76 kg ▶] ||  ||  ||  || Réglage | Poids | Valeur 76 kg | Plage 30 à 200 kg | Pas 1 kg | S'applique à la séance suivante »
+[OK] 1280x720_medium · reglage_edition · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · reglage_edition · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · reglage_edition · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · reglage_edition · panneaux sans chevauchement
+[OK] 1280x720_medium · appareils · capture enregistrée
+[OK] 1280x720_medium · appareils · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · appareils · texte menu_title : « Appareils »
+[OK] 1280x720_medium · appareils · texte menu : « 3 appareil(s) trouvé(s) || Rechercher les appareils | Trainer — HomeTrainer 0001 | [Click : identifier le bouton +] | Oublier le Click | Ceinture — aucune | Enregistrer | Retour ||  ||  ||  || Click | Reconnaître le boîtier + | Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche | Boîtier « − » : Zwift le verrouille environ une minute après la connexion ; OpenRide le redémarre seul (4 s sans flèches, B du boîtier « + » fait « − ») »
+[OK] 1280x720_medium · appareils · texte menu : « 3 appareil(s) trouvé(s) || Rechercher les appareils | Trainer — HomeTrainer 0001 | [Click : identifier le bouton +] | Oublier le Click | Ceinture — aucune | Enregistrer | Retour ||  ||  ||  || Click | Reconnaître le boîtier + | Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche | Boîtier « − » : Zwift le verrouille environ une minute après la connexion ; OpenRide le redémarre seul (4 s sans flèches, B du boîtier « + » fait « − ») »
+[OK] 1280x720_medium · appareils · texte menu : « 3 appareil(s) trouvé(s) || Rechercher les appareils | Trainer — HomeTrainer 0001 | [Click : identifier le bouton +] | Oublier le Click | Ceinture — aucune | Enregistrer | Retour ||  ||  ||  || Click | Reconnaître le boîtier + | Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche | Boîtier « − » : Zwift le verrouille environ une minute après la connexion ; OpenRide le redémarre seul (4 s sans flèches, B du boîtier « + » fait « − ») »
+[OK] 1280x720_medium · appareils · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · appareils · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · appareils · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · appareils · panneaux sans chevauchement
+[OK] 1280x720_medium · reglage_edition · Y annule : aucun set_setting envoyé : scan_devices
+[OK] 1280x720_medium · menu_accueil · capture enregistrée
+[OK] 1280x720_medium · menu_accueil · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_medium · menu_accueil · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · menu_accueil · texte menu_title : « OpenRide »
+[OK] 1280x720_medium · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_medium · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_medium · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_medium · menu_accueil · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_medium · menu_accueil · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · menu_accueil · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · menu_accueil · panneaux sans chevauchement
+[OK] 1280x720_medium · menu_accueil · bandeau caché (hors rappel des commandes)
+[OK] 1280x720_medium · menu_accueil · menu en plein écran, HUD de séance caché : rectangle [0.0, 0.0, 1280.0, 720.0]
+[OK] 1280x720_medium · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_medium · menu_accueil · sélection très visible (cadre cyan) : 0.63% de pixels cyan
+[OK] 1280x720_medium · menu_parcours · capture enregistrée
+[OK] 1280x720_medium · menu_parcours · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · menu_parcours · texte menu_title : « Parcours »
+[OK] 1280x720_medium · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_medium · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_medium · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_medium · menu_parcours · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · menu_parcours · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · menu_parcours · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · menu_parcours · panneaux sans chevauchement
+[OK] 1280x720_medium · pret · capture enregistrée
+[OK] 1280x720_medium · pret · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · pret · texte menu_title : « Prêt : session libre — Démo »
+[OK] 1280x720_medium · pret · texte menu : «  || [Démarrer] | Passer en session ERG | Changer de parcours | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun | Records du parcours ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_medium · pret · texte menu : «  || [Démarrer] | Passer en session ERG | Changer de parcours | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun | Records du parcours ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_medium · pret · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · pret · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · pret · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · pret · panneaux sans chevauchement
+[OK] 1280x720_medium · pret · profil d'altitude tracé dans la carte (trait cyan) : 0.53% de pixels cyan
+[OK] 1280x720_medium · records · capture enregistrée
+[OK] 1280x720_medium · records · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · records · texte menu_title : « Records : Démo »
+[OK] 1280x720_medium · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_medium · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_medium · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_medium · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_medium · records · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · records · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · records · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · records · panneaux sans chevauchement
+[OK] 1280x720_medium · records · record en or dans la carte : 0.27% de pixels or
+[OK] 1280x720_medium · records_table · capture enregistrée
+[OK] 1280x720_medium · records_table · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · records_table · texte menu_title : « Montée 1 : sans bonus »
+[OK] 1280x720_medium · records_table · texte menu : «  || [A : voir les temps avec bonus] | 1. 4:08,1 · 27/10/2026 18:05 — 251 W, 3,4 W/kg | 2. 4:11,5 · 26/10/2026 18:00 — 240 W, 3,2 W/kg ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_medium · records_table · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · records_table · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · records_table · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · records_table · panneaux sans chevauchement
+[OK] 1280x720_medium · garage · capture enregistrée
+[OK] 1280x720_medium · garage · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · garage · texte menu_title : « Garage : niveau 8, 210 pièces »
+[OK] 1280x720_medium · garage · texte menu : «  || [Vélo : cadre et roues — Polyvalent, Standard] | Tenue, casque, chaussettes, lunettes — Unie, Route, Blanches, Claires | Avatar — taille moyenne · silhouette moyenne ||  ||  ||  || Garage | Niveau 8 | Niveau 8 | Pièces 210 | Expérience 510 / 1200 | Expérience 510 / 1200 vers le niveau 9 : ■■■■□□□□□□ »
+[OK] 1280x720_medium · garage · texte menu : «  || [Vélo : cadre et roues — Polyvalent, Standard] | Tenue, casque, chaussettes, lunettes — Unie, Route, Blanches, Claires | Avatar — taille moyenne · silhouette moyenne ||  ||  ||  || Garage | Niveau 8 | Niveau 8 | Pièces 210 | Expérience 510 / 1200 | Expérience 510 / 1200 vers le niveau 9 : ■■■■□□□□□□ »
+[OK] 1280x720_medium · garage · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_medium · garage · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · garage · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · garage · panneaux sans chevauchement
+[OK] 1280x720_medium · garage · aperçu 3D visible dans la carte : {'angle': 5.22703452683725, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'shoulder_y': 1.30694401264191, 'shown': True, 'streaks': False, 'triangles': 5640, 'view': 'preview', 'visible': True}
+[OK] 1280x720_medium · garage_2 · capture enregistrée
+[OK] 1280x720_medium · garage_2 · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · garage_2 · l'aperçu tourne : écart moyen 5.68 niveaux
+[OK] 1280x720_medium · garage_velo · capture enregistrée
+[OK] 1280x720_medium · garage_velo · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · garage_velo · texte menu_title : « Garage : vélo »
+[OK] 1280x720_medium · garage_velo · texte menu : «  || [Cadre : Polyvalent — choisie] | Cadre : Léger — possédée | Cadre : Profilé — 150 pièces | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Polyvalent | Masse = | CdA = | Niveau 1 | Conseillé : tout terrain | État : choisie »
+[OK] 1280x720_medium · garage_velo · texte menu : «  || [Cadre : Polyvalent — choisie] | Cadre : Léger — possédée | Cadre : Profilé — 150 pièces | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Polyvalent | Masse = | CdA = | Niveau 1 | Conseillé : tout terrain | État : choisie »
+[OK] 1280x720_medium · garage_velo · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_medium · garage_velo · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · garage_velo · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · garage_velo · panneaux sans chevauchement
+[OK] 1280x720_medium · garage_fiche · capture enregistrée
+[OK] 1280x720_medium · garage_fiche · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · garage_fiche · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — 150 pièces] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : 150 pièces »
+[OK] 1280x720_medium · garage_fiche · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — 150 pièces] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : 150 pièces »
+[OK] 1280x720_medium · garage_fiche · l'aperçu montre le cadre sous le focus avant l'achat : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_medium · garage_fiche · l'équipement choisi ne change pas avant l'achat
+[OK] 1280x720_medium · garage_confirmation · capture enregistrée
+[OK] 1280x720_medium · garage_confirmation · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · garage_confirmation · texte confirm_question : « Acheter Profilé pour 150 pièces ? Solde après : 60 »
+[OK] 1280x720_medium · garage_achat · capture enregistrée
+[OK] 1280x720_medium · garage_achat · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · garage_achat · pièce achetée : possédée, solde 60 : 60 pièces, owned
+[OK] 1280x720_medium · garage_achat · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — possédée] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : possédée »
+[OK] 1280x720_medium · garage_choix · capture enregistrée
+[OK] 1280x720_medium · garage_choix · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · garage_choix · cadre choisi, états mis à jour : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_medium · garage_choix · l'avatar du jeu porte le nouveau cadre : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_medium · garage_modif · capture enregistrée
+[OK] 1280x720_medium · garage_modif · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · garage_modif · texte menu_title : « Taille »
+[OK] 1280x720_medium · garage_modif · texte menu : «  || [moyenne — + / − : changer, A long : enregistrer, Y : annuler] ||  ||  ||  || Avatar | Ton cycliste | Taille moyenne, silhouette moyenne | Rien n'est enregistré avant « Enregistrer ». »
+[OK] 1280x720_medium · garage_modif · aperçu visible pendant la modification
+[OK] 1280x720_medium · garage_avatar · capture enregistrée
+[OK] 1280x720_medium · garage_avatar · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · garage_avatar · brouillon modifié, rien d'enregistré : {'build': 'medium', 'hair': 2, 'hair_color': 1, 'height': 'L', 'kit_primary': 4, 'kit_secondary': 11, 'number': 27, 'skin': 3, 'standing_grade_pct': 8.0, 'standing_power_pct': 150.0}
+[OK] 1280x720_medium · garage_enregistre · capture enregistrée
+[OK] 1280x720_medium · garage_enregistre · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · garage_enregistre · avatar enregistré par le core : {'build': 'medium', 'hair': 2, 'hair_color': 1, 'height': 'L', 'kit_primary': 4, 'kit_secondary': 11, 'number': 27, 'skin': 3, 'standing_grade_pct': 8.0, 'standing_power_pct': 150.0}
+[OK] 1280x720_medium · garage_enregistre · texte menu : « Enregistré || [Taille — grande] | Silhouette — moyenne | Teint — 4 / 8 | Coiffure — coiffure 2 / 5 | Couleur des cheveux — 2 / 8 | Couleur principale de la tenue — 5 / 16 | Couleur secondaire de la tenue — 12 / 16 | Numéro de dossard — n° 27 | Enregistrer | Annuler les changements ||  ||  ||  || Avatar | Ton cycliste | Taille grande, silhouette moyenne | Rien n'est enregistré avant « Enregistrer ». | Enregistré »
+[OK] 1280x720_medium · collection_premiere · capture enregistrée
+[OK] 1280x720_medium · collection_premiere · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · collection_premiere · texte menu : «  || [Ouvrir la Collection] || 17 cartes déjà gagnées | par vos séances passées. Chaque nouvelle séance peut en débloquer d'autres. ||  ||  ||  »
+[OK] 1280x720_medium · collection_premiere · texte menu : «  || [Ouvrir la Collection] || 17 cartes déjà gagnées | par vos séances passées. Chaque nouvelle séance peut en débloquer d'autres. ||  ||  ||  »
+[OK] 1280x720_medium · collection_premiere · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_medium · collection_premiere · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · collection_premiere · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · collection_premiere · panneaux sans chevauchement
+[OK] 1280x720_medium · collection_premiere · cartes déjà gagnées notées vues : 17 clés
+[OK] 1280x720_medium · collection_album · capture enregistrée
+[OK] 1280x720_medium · collection_album · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · collection_album · texte menu_title : « Collection »
+[OK] 1280x720_medium · collection_album · texte menu : « 17 / 42 cartes · 2 nouvelles ||  || Régularité | 2 / 4 | c:semaine_3 | c:semaines_4 | c:semaines_12 | c:jours_7 | Heure | 3 / 4 | c:leve_tot | [c:leve_tot_10] | c:pause_midi | c:noctambule | Entraînement | 1 / 3 | c:erg_10 | c:ftp_premier | c:ftp_4 | ▲ 3 familles plus haut · ▼ 3 familles plus bas ||  ||  ||  »
+[OK] 1280x720_medium · collection_album · texte menu : « 17 / 42 cartes · 2 nouvelles ||  || Régularité | 2 / 4 | c:semaine_3 | c:semaines_4 | c:semaines_12 | c:jours_7 | Heure | 3 / 4 | c:leve_tot | [c:leve_tot_10] | c:pause_midi | c:noctambule | Entraînement | 1 / 3 | c:erg_10 | c:ftp_premier | c:ftp_4 | ▲ 3 familles plus haut · ▼ 3 familles plus bas ||  ||  ||  »
+[OK] 1280x720_medium · collection_album · texte menu : « 17 / 42 cartes · 2 nouvelles ||  || Régularité | 2 / 4 | c:semaine_3 | c:semaines_4 | c:semaines_12 | c:jours_7 | Heure | 3 / 4 | c:leve_tot | [c:leve_tot_10] | c:pause_midi | c:noctambule | Entraînement | 1 / 3 | c:erg_10 | c:ftp_premier | c:ftp_4 | ▲ 3 familles plus haut · ▼ 3 familles plus bas ||  ||  ||  »
+[OK] 1280x720_medium · collection_album · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_medium · collection_album · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · collection_album · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · collection_album · panneaux sans chevauchement
+[OK] 1280x720_medium · collection_carte · capture enregistrée
+[OK] 1280x720_medium · collection_carte · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · collection_carte · texte menu_title : « Chant du coq »
+[OK] 1280x720_medium · collection_carte · texte menu : «  || [Voir la séance] || Chant du coq | Rare | n° 20 / 42 | « Dix séances commencées avant 7 h. » | Gagnée le | 6 novembre 2026 ||  ||  ||  »
+[OK] 1280x720_medium · collection_carte · texte menu : «  || [Voir la séance] || Chant du coq | Rare | n° 20 / 42 | « Dix séances commencées avant 7 h. » | Gagnée le | 6 novembre 2026 ||  ||  ||  »
+[OK] 1280x720_medium · collection_carte · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_medium · collection_carte · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · collection_carte · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · collection_carte · panneaux sans chevauchement
+[OK] 1280x720_medium · collection_a_gagner · capture enregistrée
+[OK] 1280x720_medium · collection_a_gagner · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · collection_a_gagner · texte menu : «  || Pas encore gagnée || Mille bornes | Rare | n° 3 / 42 | « Mille kilomètres : le défi est relevé. » | Avancement | 610 / 1 000 km ||  ||  ||  »
+[OK] 1280x720_medium · collection_a_gagner · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_medium · collection_a_gagner · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · collection_a_gagner · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · collection_a_gagner · panneaux sans chevauchement
+[OK] 1280x720_medium · collection_saison · capture enregistrée
+[OK] 1280x720_medium · collection_saison · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · collection_saison · texte menu_title : « Pédaleur citrouille 2026 »
+[OK] 1280x720_medium · collection_saison · texte menu : «  || [Voir la séance] || Pédaleur citrouille 2026 | Rare | n° 38 / 42 | « Une séance pendant la semaine d'Halloween. » | Gagnée le | 29 octobre 2026 | Éditions | 2026 | Exclusive à sa période : une édition par année, elle ne se rattrape pas après. ||  ||  ||  »
+[OK] 1280x720_medium · collection_saison · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_medium · collection_saison · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · collection_saison · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · collection_saison · panneaux sans chevauchement
+[OK] 1280x720_medium · bilan · capture enregistrée
+[OK] 1280x720_medium · bilan · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_medium · bilan · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · bilan · texte menu_title : « Fin de séance »
+[OK] 1280x720_medium · bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m ||  || Bilan de la séance »
+[OK] 1280x720_medium · bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m ||  || Bilan de la séance »
+[OK] 1280x720_medium · bilan · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · bilan · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · bilan · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · bilan · panneaux sans chevauchement
+[OK] 1280x720_medium · bilan_carte · capture enregistrée
+[OK] 1280x720_medium · bilan_carte · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · bilan_carte · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m ||  || Bilan de la séance »
+[OK] 1280x720_medium · bilan_carte · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · bilan_carte · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · bilan_carte · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · bilan_carte · panneaux sans chevauchement
+[OK] 1280x720_medium · progression · capture enregistrée
+[OK] 1280x720_medium · progression · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · progression · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_medium · progression · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · progression · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · progression · panneaux sans chevauchement
+[OK] 1280x720_medium · progression · bandeau sans chevauchement du HUD
+[OK] 1280x720_medium · progression · bandeau « Niveau 10 ! » affiché : Niveau 10 !
+[OK] 1280x720_medium · bilan_complet · capture enregistrée
+[OK] 1280x720_medium · bilan_complet · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · bilan_complet · carte du bilan au-dessus du bandeau des boutons : bas de la carte 633 px, bandeau à 654 px
+[OK] 1280x720_medium · bilan_complet · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_medium · bilan_complet · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · bilan_complet · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · bilan_complet · panneaux sans chevauchement
+[OK] 1280x720_medium · bilan_complet · bandeau sans chevauchement du HUD
+[OK] 1280x720_medium · bilan_complet_detaille · capture enregistrée
+[OK] 1280x720_medium · bilan_complet_detaille · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_medium · bilan_complet_detaille · carte du bilan au-dessus du bandeau des boutons : bas de la carte 611 px, bandeau à 654 px
+[OK] 1280x720_medium · bilan_complet_detaille · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_medium · bilan_complet_detaille · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · bilan_complet_detaille · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · bilan_complet_detaille · panneaux sans chevauchement
+[OK] 1280x720_medium · bilan_complet_detaille · bandeau sans chevauchement du HUD
+[OK] 1280x720_medium · progression_refusee · capture enregistrée
+[OK] 1280x720_medium · progression_refusee · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · progression_refusee · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  ||  || Durée : 0:02:00 | Distance : 0,80 km || Séance de moins de 5 minutes : pas d'expérience || Bilan de la séance »
+[OK] 1280x720_medium · progression_refusee · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · progression_refusee · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · progression_refusee · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · progression_refusee · panneaux sans chevauchement
+[OK] 1280x720_medium · depart_decor · capture enregistrée
+[OK] 1280x720_medium · depart_decor · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · depart_decor · écran affiché, un feu, pastille Décor en cours : {'animated': False, 'go': False, 'lights': 1, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'current'}, {'label': 'Trainer', 'state': 'todo'}, {'label': 'Pédalage', 'state': 'todo'}], 'text': 'Départ : chargement du décor…  (Y : annuler)', 'visible': True}
+[OK] 1280x720_medium · depart_decor · carte du parcours demo : {'animated': False, 'go': False, 'lights': 1, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'current'}, {'label': 'Trainer', 'state': 'todo'}, {'label': 'Pédalage', 'state': 'todo'}], 'text': 'Départ : chargement du décor…  (Y : annuler)', 'visible': True}
+[OK] 1280x720_medium · depart_decor · écran figé pendant le chargement : {'animated': False, 'go': False, 'lights': 1, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'current'}, {'label': 'Trainer', 'state': 'todo'}, {'label': 'Pédalage', 'state': 'todo'}], 'text': 'Départ : chargement du décor…  (Y : annuler)', 'visible': True}
+[OK] 1280x720_medium · depart_decor · feu rouge allumé à l'image : 1.07% de pixels rouges
+[OK] 1280x720_medium · depart_decor · voile opaque à l'image : 93% de pixels sombres
+[OK] 1280x720_medium · depart_decor · bandeau caché (hors rappel des commandes)
+[OK] 1280x720_medium · depart_pedalage · capture enregistrée
+[OK] 1280x720_medium · depart_pedalage · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · depart_pedalage · HUD de séance caché pendant l'attente
+[OK] 1280x720_medium · depart_pedalage · quatre feux, pastille Pédalage en cours : {'animated': True, 'go': False, 'lights': 4, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'done'}, {'label': 'Trainer', 'state': 'done'}, {'label': 'Pédalage', 'state': 'current'}], 'text': 'Pédale pour partir : 30 tr/min, 1,6 s sur 3 s  (Y : annuler)', 'visible': True}
+[OK] 1280x720_medium · depart_pedalage · feux rouges allumés : 4.26% de pixels rouges
+[OK] 1280x720_medium · depart_go · capture enregistrée
+[OK] 1280x720_medium · depart_go · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · depart_go · feux verts « GO ! » : {'animated': False, 'go': True, 'lights': 0, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [], 'text': '', 'visible': True}
+[OK] 1280x720_medium · depart_go · HUD de séance revenu au départ
+[OK] 1280x720_medium · conseil_accueil · capture enregistrée
+[OK] 1280x720_medium · conseil_accueil · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · conseil_accueil · texte menu : «  || Séance conseillée — aérobie intense · 60 min | [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_medium · conseil_accueil · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_medium · conseil_accueil · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · conseil_accueil · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · conseil_accueil · panneaux sans chevauchement
+[OK] 1280x720_medium · conseil · capture enregistrée
+[OK] 1280x720_medium · conseil · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · conseil · texte menu_title : « Séance conseillée : aérobie intense »
+[OK] 1280x720_medium · conseil · texte menu : « Pourquoi : 9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce
+type il y a 6 jours, forme +4. || [Lancer l'entraînement — 60 min] | Lancer la course — 60 min | Autre séance — 2 de plus | Autre besoin | Ma montre — aucune | Prochaine course — aucune | Détail du calcul ||  ||  ||  || Entraînement conseillé | Seuil 2 × 20 | Durée 60 min | TSS estimé 72 | Zone Z4 | Zones Z3 à Z5, de 75 à 120 % de la FTP. | Règle R6 · objectif endurance. | À côté : « Lancer la course », course contre des bots sur un parcours à montées longues. »
+[OK] 1280x720_medium · conseil · texte menu : « Pourquoi : 9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce
+type il y a 6 jours, forme +4. || [Lancer l'entraînement — 60 min] | Lancer la course — 60 min | Autre séance — 2 de plus | Autre besoin | Ma montre — aucune | Prochaine course — aucune | Détail du calcul ||  ||  ||  || Entraînement conseillé | Seuil 2 × 20 | Durée 60 min | TSS estimé 72 | Zone Z4 | Zones Z3 à Z5, de 75 à 120 % de la FTP. | Règle R6 · objectif endurance. | À côté : « Lancer la course », course contre des bots sur un parcours à montées longues. »
+[OK] 1280x720_medium · conseil · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · conseil · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · conseil · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · conseil · panneaux sans chevauchement
+[OK] 1280x720_medium · conseil_course · capture enregistrée
+[OK] 1280x720_medium · conseil_course · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · conseil_course · texte menu_title : « Séance conseillée : aérobie intense »
+[OK] 1280x720_medium · conseil_course · texte menu : « Pourquoi : 9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce
+type il y a 6 jours, forme +4. || Lancer l'entraînement — 60 min | [Lancer la course — 60 min] | Autre séance — 2 de plus | Autre besoin | Ma montre — aucune | Prochaine course — aucune | Détail du calcul ||  ||  ||  || Course contre des bots | Démo · 4 tours | Bots 4 | Niveau 95 % | Dans le besoin 79 % | Course contre des bots sur un parcours à montées longues. | Simulée à tes valeurs : 24 min dans le besoin, | contre 30 min avec l'entraînement. | Difficulté de la pente : la tienne. »
+[OK] 1280x720_medium · conseil_course · texte menu : « Pourquoi : 9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce
+type il y a 6 jours, forme +4. || Lancer l'entraînement — 60 min | [Lancer la course — 60 min] | Autre séance — 2 de plus | Autre besoin | Ma montre — aucune | Prochaine course — aucune | Détail du calcul ||  ||  ||  || Course contre des bots | Démo · 4 tours | Bots 4 | Niveau 95 % | Dans le besoin 79 % | Course contre des bots sur un parcours à montées longues. | Simulée à tes valeurs : 24 min dans le besoin, | contre 30 min avec l'entraînement. | Difficulté de la pente : la tienne. »
+[OK] 1280x720_medium · conseil_course · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · conseil_course · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · conseil_course · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · conseil_course · panneaux sans chevauchement
+[OK] 1280x720_medium · conseil_detail · capture enregistrée
+[OK] 1280x720_medium · conseil_detail · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · conseil_detail · texte menu_title : « Détail du calcul »
+[OK] 1280x720_medium · conseil_detail · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · conseil_detail · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · conseil_detail · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · conseil_detail · panneaux sans chevauchement
+[OK] 1280x720_medium · conseil_besoin · capture enregistrée
+[OK] 1280x720_medium · conseil_besoin · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · conseil_besoin · texte menu_title : « Choisir un autre besoin »
+[OK] 1280x720_medium · conseil_besoin · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · conseil_besoin · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · conseil_besoin · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · conseil_besoin · panneaux sans chevauchement
+[OK] 1280x720_medium · conseil_prochaine_course · capture enregistrée
+[OK] 1280x720_medium · conseil_prochaine_course · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · conseil_prochaine_course · texte menu_title : « Ma prochaine course »
+[OK] 1280x720_medium · conseil_prochaine_course · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · conseil_prochaine_course · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · conseil_prochaine_course · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · conseil_prochaine_course · panneaux sans chevauchement
+[OK] 1280x720_medium · conseil_montre · capture enregistrée
+[OK] 1280x720_medium · conseil_montre · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · conseil_montre · texte menu_title : « Suggestion de ma montre »
+[OK] 1280x720_medium · conseil_montre · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_medium · conseil_montre · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · conseil_montre · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_medium · conseil_montre · panneaux sans chevauchement
+[OK] 1280x720_medium · journal · aucune erreur ni avertissement Godot
+[OK] 1280x720_medium · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1280x720_medium · journal · qualité réellement appliquée : medium appliquée (39 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+== 1280x720_high ==
+[OK] 1280x720_high · menus · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-visual-routes-h9tmxdvm/demo.world
+[OK] 1280x720_high · reglages · capture enregistrée
+[OK] 1280x720_high · reglages · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · reglages · texte menu_title : « Réglages › Son »
+[OK] 1280x720_high · reglages · texte menu : «  || [Général — 80 %] | Vent et roue libre — 40 % | Bips et événements — 70 % | Cyber-Rogue : bruitages — 50 % | Ambiance — 60 % ||  ||  ||  || Réglage | Général | Valeur 80 % | Plage 0 à 100 % | Pas 10 % | S'applique tout de suite »
+[OK] 1280x720_high · reglages · texte menu : «  || [Général — 80 %] | Vent et roue libre — 40 % | Bips et événements — 70 % | Cyber-Rogue : bruitages — 50 % | Ambiance — 60 % ||  ||  ||  || Réglage | Général | Valeur 80 % | Plage 0 à 100 % | Pas 10 % | S'applique tout de suite »
+[OK] 1280x720_high · reglages · libellés des curseurs entiers (pas de « … ») : aucun coupé
+[OK] 1280x720_high · reglages · valeurs « 80 % » visibles à droite des curseurs : 2.86% de pixels clairs
+[OK] 1280x720_high · reglages · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · reglages · lignes du HUD sans chevauchement
+[OK] 1280x720_high · reglages · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · reglages · panneaux sans chevauchement
+[OK] 1280x720_high · reglages · curseurs des volumes remplis en cyan : 0.89% de pixels cyan
+[OK] 1280x720_high · reglage_edition · capture enregistrée
+[OK] 1280x720_high · reglage_edition · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · reglage_edition · texte menu_title : « Réglages › Cycliste »
+[OK] 1280x720_high · reglage_edition · texte menu : «  || FTP — 250 W | [Poids — ◀ 76 kg ▶] ||  ||  ||  || Réglage | Poids | Valeur 76 kg | Plage 30 à 200 kg | Pas 1 kg | S'applique à la séance suivante »
+[OK] 1280x720_high · reglage_edition · texte menu : «  || FTP — 250 W | [Poids — ◀ 76 kg ▶] ||  ||  ||  || Réglage | Poids | Valeur 76 kg | Plage 30 à 200 kg | Pas 1 kg | S'applique à la séance suivante »
+[OK] 1280x720_high · reglage_edition · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · reglage_edition · lignes du HUD sans chevauchement
+[OK] 1280x720_high · reglage_edition · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · reglage_edition · panneaux sans chevauchement
+[OK] 1280x720_high · appareils · capture enregistrée
+[OK] 1280x720_high · appareils · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · appareils · texte menu_title : « Appareils »
+[OK] 1280x720_high · appareils · texte menu : « 3 appareil(s) trouvé(s) || Rechercher les appareils | Trainer — HomeTrainer 0001 | [Click : identifier le bouton +] | Oublier le Click | Ceinture — aucune | Enregistrer | Retour ||  ||  ||  || Click | Reconnaître le boîtier + | Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche | Boîtier « − » : Zwift le verrouille environ une minute après la connexion ; OpenRide le redémarre seul (4 s sans flèches, B du boîtier « + » fait « − ») »
+[OK] 1280x720_high · appareils · texte menu : « 3 appareil(s) trouvé(s) || Rechercher les appareils | Trainer — HomeTrainer 0001 | [Click : identifier le bouton +] | Oublier le Click | Ceinture — aucune | Enregistrer | Retour ||  ||  ||  || Click | Reconnaître le boîtier + | Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche | Boîtier « − » : Zwift le verrouille environ une minute après la connexion ; OpenRide le redémarre seul (4 s sans flèches, B du boîtier « + » fait « − ») »
+[OK] 1280x720_high · appareils · texte menu : « 3 appareil(s) trouvé(s) || Rechercher les appareils | Trainer — HomeTrainer 0001 | [Click : identifier le bouton +] | Oublier le Click | Ceinture — aucune | Enregistrer | Retour ||  ||  ||  || Click | Reconnaître le boîtier + | Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche | Boîtier « − » : Zwift le verrouille environ une minute après la connexion ; OpenRide le redémarre seul (4 s sans flèches, B du boîtier « + » fait « − ») »
+[OK] 1280x720_high · appareils · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · appareils · lignes du HUD sans chevauchement
+[OK] 1280x720_high · appareils · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · appareils · panneaux sans chevauchement
+[OK] 1280x720_high · reglage_edition · Y annule : aucun set_setting envoyé : scan_devices
+[OK] 1280x720_high · menu_accueil · capture enregistrée
+[OK] 1280x720_high · menu_accueil · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_high · menu_accueil · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · menu_accueil · texte menu_title : « OpenRide »
+[OK] 1280x720_high · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_high · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_high · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_high · menu_accueil · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_high · menu_accueil · lignes du HUD sans chevauchement
+[OK] 1280x720_high · menu_accueil · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · menu_accueil · panneaux sans chevauchement
+[OK] 1280x720_high · menu_accueil · bandeau caché (hors rappel des commandes)
+[OK] 1280x720_high · menu_accueil · menu en plein écran, HUD de séance caché : rectangle [0.0, 0.0, 1280.0, 720.0]
+[OK] 1280x720_high · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_high · menu_accueil · sélection très visible (cadre cyan) : 0.63% de pixels cyan
+[OK] 1280x720_high · menu_parcours · capture enregistrée
+[OK] 1280x720_high · menu_parcours · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · menu_parcours · texte menu_title : « Parcours »
+[OK] 1280x720_high · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_high · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_high · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_high · menu_parcours · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · menu_parcours · lignes du HUD sans chevauchement
+[OK] 1280x720_high · menu_parcours · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · menu_parcours · panneaux sans chevauchement
+[OK] 1280x720_high · pret · capture enregistrée
+[OK] 1280x720_high · pret · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · pret · texte menu_title : « Prêt : session libre — Démo »
+[OK] 1280x720_high · pret · texte menu : «  || [Démarrer] | Passer en session ERG | Changer de parcours | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun | Records du parcours ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_high · pret · texte menu : «  || [Démarrer] | Passer en session ERG | Changer de parcours | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun | Records du parcours ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_high · pret · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · pret · lignes du HUD sans chevauchement
+[OK] 1280x720_high · pret · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · pret · panneaux sans chevauchement
+[OK] 1280x720_high · pret · profil d'altitude tracé dans la carte (trait cyan) : 0.53% de pixels cyan
+[OK] 1280x720_high · records · capture enregistrée
+[OK] 1280x720_high · records · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · records · texte menu_title : « Records : Démo »
+[OK] 1280x720_high · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_high · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_high · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_high · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_high · records · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · records · lignes du HUD sans chevauchement
+[OK] 1280x720_high · records · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · records · panneaux sans chevauchement
+[OK] 1280x720_high · records · record en or dans la carte : 0.27% de pixels or
+[OK] 1280x720_high · records_table · capture enregistrée
+[OK] 1280x720_high · records_table · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · records_table · texte menu_title : « Montée 1 : sans bonus »
+[OK] 1280x720_high · records_table · texte menu : «  || [A : voir les temps avec bonus] | 1. 4:08,1 · 27/10/2026 18:05 — 251 W, 3,4 W/kg | 2. 4:11,5 · 26/10/2026 18:00 — 240 W, 3,2 W/kg ||  ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_high · records_table · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · records_table · lignes du HUD sans chevauchement
+[OK] 1280x720_high · records_table · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · records_table · panneaux sans chevauchement
+[OK] 1280x720_high · garage · capture enregistrée
+[OK] 1280x720_high · garage · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · garage · texte menu_title : « Garage : niveau 8, 210 pièces »
+[OK] 1280x720_high · garage · texte menu : «  || [Vélo : cadre et roues — Polyvalent, Standard] | Tenue, casque, chaussettes, lunettes — Unie, Route, Blanches, Claires | Avatar — taille moyenne · silhouette moyenne ||  ||  ||  || Garage | Niveau 8 | Niveau 8 | Pièces 210 | Expérience 510 / 1200 | Expérience 510 / 1200 vers le niveau 9 : ■■■■□□□□□□ »
+[OK] 1280x720_high · garage · texte menu : «  || [Vélo : cadre et roues — Polyvalent, Standard] | Tenue, casque, chaussettes, lunettes — Unie, Route, Blanches, Claires | Avatar — taille moyenne · silhouette moyenne ||  ||  ||  || Garage | Niveau 8 | Niveau 8 | Pièces 210 | Expérience 510 / 1200 | Expérience 510 / 1200 vers le niveau 9 : ■■■■□□□□□□ »
+[OK] 1280x720_high · garage · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_high · garage · lignes du HUD sans chevauchement
+[OK] 1280x720_high · garage · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · garage · panneaux sans chevauchement
+[OK] 1280x720_high · garage · aperçu 3D visible dans la carte : {'angle': 5.89087867128165, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'shoulder_y': 1.30694401264191, 'shown': True, 'streaks': False, 'triangles': 5640, 'view': 'preview', 'visible': True}
+[OK] 1280x720_high · garage_2 · capture enregistrée
+[OK] 1280x720_high · garage_2 · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · garage_2 · l'aperçu tourne : écart moyen 5.56 niveaux
+[OK] 1280x720_high · garage_velo · capture enregistrée
+[OK] 1280x720_high · garage_velo · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · garage_velo · texte menu_title : « Garage : vélo »
+[OK] 1280x720_high · garage_velo · texte menu : «  || [Cadre : Polyvalent — choisie] | Cadre : Léger — possédée | Cadre : Profilé — 150 pièces | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Polyvalent | Masse = | CdA = | Niveau 1 | Conseillé : tout terrain | État : choisie »
+[OK] 1280x720_high · garage_velo · texte menu : «  || [Cadre : Polyvalent — choisie] | Cadre : Léger — possédée | Cadre : Profilé — 150 pièces | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Polyvalent | Masse = | CdA = | Niveau 1 | Conseillé : tout terrain | État : choisie »
+[OK] 1280x720_high · garage_velo · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_high · garage_velo · lignes du HUD sans chevauchement
+[OK] 1280x720_high · garage_velo · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · garage_velo · panneaux sans chevauchement
+[OK] 1280x720_high · garage_fiche · capture enregistrée
+[OK] 1280x720_high · garage_fiche · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · garage_fiche · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — 150 pièces] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : 150 pièces »
+[OK] 1280x720_high · garage_fiche · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — 150 pièces] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : 150 pièces »
+[OK] 1280x720_high · garage_fiche · l'aperçu montre le cadre sous le focus avant l'achat : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_high · garage_fiche · l'équipement choisi ne change pas avant l'achat
+[OK] 1280x720_high · garage_confirmation · capture enregistrée
+[OK] 1280x720_high · garage_confirmation · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · garage_confirmation · texte confirm_question : « Acheter Profilé pour 150 pièces ? Solde après : 60 »
+[OK] 1280x720_high · garage_achat · capture enregistrée
+[OK] 1280x720_high · garage_achat · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · garage_achat · pièce achetée : possédée, solde 60 : 60 pièces, owned
+[OK] 1280x720_high · garage_achat · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — possédée] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : possédée »
+[OK] 1280x720_high · garage_choix · capture enregistrée
+[OK] 1280x720_high · garage_choix · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · garage_choix · cadre choisi, états mis à jour : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_high · garage_choix · l'avatar du jeu porte le nouveau cadre : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_high · garage_modif · capture enregistrée
+[OK] 1280x720_high · garage_modif · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · garage_modif · texte menu_title : « Taille »
+[OK] 1280x720_high · garage_modif · texte menu : «  || [moyenne — + / − : changer, A long : enregistrer, Y : annuler] ||  ||  ||  || Avatar | Ton cycliste | Taille moyenne, silhouette moyenne | Rien n'est enregistré avant « Enregistrer ». »
+[OK] 1280x720_high · garage_modif · aperçu visible pendant la modification
+[OK] 1280x720_high · garage_avatar · capture enregistrée
+[OK] 1280x720_high · garage_avatar · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · garage_avatar · brouillon modifié, rien d'enregistré : {'build': 'medium', 'hair': 2, 'hair_color': 1, 'height': 'L', 'kit_primary': 4, 'kit_secondary': 11, 'number': 27, 'skin': 3, 'standing_grade_pct': 8.0, 'standing_power_pct': 150.0}
+[OK] 1280x720_high · garage_enregistre · capture enregistrée
+[OK] 1280x720_high · garage_enregistre · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · garage_enregistre · avatar enregistré par le core : {'build': 'medium', 'hair': 2, 'hair_color': 1, 'height': 'L', 'kit_primary': 4, 'kit_secondary': 11, 'number': 27, 'skin': 3, 'standing_grade_pct': 8.0, 'standing_power_pct': 150.0}
+[OK] 1280x720_high · garage_enregistre · texte menu : « Enregistré || [Taille — grande] | Silhouette — moyenne | Teint — 4 / 8 | Coiffure — coiffure 2 / 5 | Couleur des cheveux — 2 / 8 | Couleur principale de la tenue — 5 / 16 | Couleur secondaire de la tenue — 12 / 16 | Numéro de dossard — n° 27 | Enregistrer | Annuler les changements ||  ||  ||  || Avatar | Ton cycliste | Taille grande, silhouette moyenne | Rien n'est enregistré avant « Enregistrer ». | Enregistré »
+[OK] 1280x720_high · collection_premiere · capture enregistrée
+[OK] 1280x720_high · collection_premiere · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · collection_premiere · texte menu : «  || [Ouvrir la Collection] || 17 cartes déjà gagnées | par vos séances passées. Chaque nouvelle séance peut en débloquer d'autres. ||  ||  ||  »
+[OK] 1280x720_high · collection_premiere · texte menu : «  || [Ouvrir la Collection] || 17 cartes déjà gagnées | par vos séances passées. Chaque nouvelle séance peut en débloquer d'autres. ||  ||  ||  »
+[OK] 1280x720_high · collection_premiere · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_high · collection_premiere · lignes du HUD sans chevauchement
+[OK] 1280x720_high · collection_premiere · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · collection_premiere · panneaux sans chevauchement
+[OK] 1280x720_high · collection_premiere · cartes déjà gagnées notées vues : 17 clés
+[OK] 1280x720_high · collection_album · capture enregistrée
+[OK] 1280x720_high · collection_album · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · collection_album · texte menu_title : « Collection »
+[OK] 1280x720_high · collection_album · texte menu : « 17 / 42 cartes · 2 nouvelles ||  || Régularité | 2 / 4 | c:semaine_3 | c:semaines_4 | c:semaines_12 | c:jours_7 | Heure | 3 / 4 | c:leve_tot | [c:leve_tot_10] | c:pause_midi | c:noctambule | Entraînement | 1 / 3 | c:erg_10 | c:ftp_premier | c:ftp_4 | ▲ 3 familles plus haut · ▼ 3 familles plus bas ||  ||  ||  »
+[OK] 1280x720_high · collection_album · texte menu : « 17 / 42 cartes · 2 nouvelles ||  || Régularité | 2 / 4 | c:semaine_3 | c:semaines_4 | c:semaines_12 | c:jours_7 | Heure | 3 / 4 | c:leve_tot | [c:leve_tot_10] | c:pause_midi | c:noctambule | Entraînement | 1 / 3 | c:erg_10 | c:ftp_premier | c:ftp_4 | ▲ 3 familles plus haut · ▼ 3 familles plus bas ||  ||  ||  »
+[OK] 1280x720_high · collection_album · texte menu : « 17 / 42 cartes · 2 nouvelles ||  || Régularité | 2 / 4 | c:semaine_3 | c:semaines_4 | c:semaines_12 | c:jours_7 | Heure | 3 / 4 | c:leve_tot | [c:leve_tot_10] | c:pause_midi | c:noctambule | Entraînement | 1 / 3 | c:erg_10 | c:ftp_premier | c:ftp_4 | ▲ 3 familles plus haut · ▼ 3 familles plus bas ||  ||  ||  »
+[OK] 1280x720_high · collection_album · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_high · collection_album · lignes du HUD sans chevauchement
+[OK] 1280x720_high · collection_album · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · collection_album · panneaux sans chevauchement
+[OK] 1280x720_high · collection_carte · capture enregistrée
+[OK] 1280x720_high · collection_carte · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · collection_carte · texte menu_title : « Chant du coq »
+[OK] 1280x720_high · collection_carte · texte menu : «  || [Voir la séance] || Chant du coq | Rare | n° 20 / 42 | « Dix séances commencées avant 7 h. » | Gagnée le | 6 novembre 2026 ||  ||  ||  »
+[OK] 1280x720_high · collection_carte · texte menu : «  || [Voir la séance] || Chant du coq | Rare | n° 20 / 42 | « Dix séances commencées avant 7 h. » | Gagnée le | 6 novembre 2026 ||  ||  ||  »
+[OK] 1280x720_high · collection_carte · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_high · collection_carte · lignes du HUD sans chevauchement
+[OK] 1280x720_high · collection_carte · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · collection_carte · panneaux sans chevauchement
+[OK] 1280x720_high · collection_a_gagner · capture enregistrée
+[OK] 1280x720_high · collection_a_gagner · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · collection_a_gagner · texte menu : «  || Pas encore gagnée || Mille bornes | Rare | n° 3 / 42 | « Mille kilomètres : le défi est relevé. » | Avancement | 610 / 1 000 km ||  ||  ||  »
+[OK] 1280x720_high · collection_a_gagner · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_high · collection_a_gagner · lignes du HUD sans chevauchement
+[OK] 1280x720_high · collection_a_gagner · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · collection_a_gagner · panneaux sans chevauchement
+[OK] 1280x720_high · collection_saison · capture enregistrée
+[OK] 1280x720_high · collection_saison · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · collection_saison · texte menu_title : « Pédaleur citrouille 2026 »
+[OK] 1280x720_high · collection_saison · texte menu : «  || [Voir la séance] || Pédaleur citrouille 2026 | Rare | n° 38 / 42 | « Une séance pendant la semaine d'Halloween. » | Gagnée le | 29 octobre 2026 | Éditions | 2026 | Exclusive à sa période : une édition par année, elle ne se rattrape pas après. ||  ||  ||  »
+[OK] 1280x720_high · collection_saison · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_high · collection_saison · lignes du HUD sans chevauchement
+[OK] 1280x720_high · collection_saison · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · collection_saison · panneaux sans chevauchement
+[OK] 1280x720_high · bilan · capture enregistrée
+[OK] 1280x720_high · bilan · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_high · bilan · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · bilan · texte menu_title : « Fin de séance »
+[OK] 1280x720_high · bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m ||  || Bilan de la séance »
+[OK] 1280x720_high · bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m ||  || Bilan de la séance »
+[OK] 1280x720_high · bilan · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · bilan · lignes du HUD sans chevauchement
+[OK] 1280x720_high · bilan · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · bilan · panneaux sans chevauchement
+[OK] 1280x720_high · bilan_carte · capture enregistrée
+[OK] 1280x720_high · bilan_carte · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · bilan_carte · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m ||  || Bilan de la séance »
+[OK] 1280x720_high · bilan_carte · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · bilan_carte · lignes du HUD sans chevauchement
+[OK] 1280x720_high · bilan_carte · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · bilan_carte · panneaux sans chevauchement
+[OK] 1280x720_high · progression · capture enregistrée
+[OK] 1280x720_high · progression · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter || NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · progression · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_high · progression · lignes du HUD sans chevauchement
+[OK] 1280x720_high · progression · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · progression · panneaux sans chevauchement
+[OK] 1280x720_high · progression · bandeau sans chevauchement du HUD
+[OK] 1280x720_high · progression · bandeau « Niveau 10 ! » affiché : Niveau 10 !
+[OK] 1280x720_high · bilan_complet · capture enregistrée
+[OK] 1280x720_high · bilan_complet · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · bilan_complet · carte du bilan au-dessus du bandeau des boutons : bas de la carte 633 px, bandeau à 654 px
+[OK] 1280x720_high · bilan_complet · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_high · bilan_complet · lignes du HUD sans chevauchement
+[OK] 1280x720_high · bilan_complet · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · bilan_complet · panneaux sans chevauchement
+[OK] 1280x720_high · bilan_complet · bandeau sans chevauchement du HUD
+[OK] 1280x720_high · bilan_complet_detaille · capture enregistrée
+[OK] 1280x720_high · bilan_complet_detaille · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1280x720_high · bilan_complet_detaille · carte du bilan au-dessus du bandeau des boutons : bas de la carte 611 px, bandeau à 654 px
+[OK] 1280x720_high · bilan_complet_detaille · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_high · bilan_complet_detaille · lignes du HUD sans chevauchement
+[OK] 1280x720_high · bilan_complet_detaille · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · bilan_complet_detaille · panneaux sans chevauchement
+[OK] 1280x720_high · bilan_complet_detaille · bandeau sans chevauchement du HUD
+[OK] 1280x720_high · progression_refusee · capture enregistrée
+[OK] 1280x720_high · progression_refusee · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · progression_refusee · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  ||  || Durée : 0:02:00 | Distance : 0,80 km || Séance de moins de 5 minutes : pas d'expérience || Bilan de la séance »
+[OK] 1280x720_high · progression_refusee · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · progression_refusee · lignes du HUD sans chevauchement
+[OK] 1280x720_high · progression_refusee · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · progression_refusee · panneaux sans chevauchement
+[OK] 1280x720_high · depart_decor · capture enregistrée
+[OK] 1280x720_high · depart_decor · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · depart_decor · écran affiché, un feu, pastille Décor en cours : {'animated': False, 'go': False, 'lights': 1, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'current'}, {'label': 'Trainer', 'state': 'todo'}, {'label': 'Pédalage', 'state': 'todo'}], 'text': 'Départ : chargement du décor…  (Y : annuler)', 'visible': True}
+[OK] 1280x720_high · depart_decor · carte du parcours demo : {'animated': False, 'go': False, 'lights': 1, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'current'}, {'label': 'Trainer', 'state': 'todo'}, {'label': 'Pédalage', 'state': 'todo'}], 'text': 'Départ : chargement du décor…  (Y : annuler)', 'visible': True}
+[OK] 1280x720_high · depart_decor · écran figé pendant le chargement : {'animated': False, 'go': False, 'lights': 1, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'current'}, {'label': 'Trainer', 'state': 'todo'}, {'label': 'Pédalage', 'state': 'todo'}], 'text': 'Départ : chargement du décor…  (Y : annuler)', 'visible': True}
+[OK] 1280x720_high · depart_decor · feu rouge allumé à l'image : 1.07% de pixels rouges
+[OK] 1280x720_high · depart_decor · voile opaque à l'image : 93% de pixels sombres
+[OK] 1280x720_high · depart_decor · bandeau caché (hors rappel des commandes)
+[OK] 1280x720_high · depart_pedalage · capture enregistrée
+[OK] 1280x720_high · depart_pedalage · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · depart_pedalage · HUD de séance caché pendant l'attente
+[OK] 1280x720_high · depart_pedalage · quatre feux, pastille Pédalage en cours : {'animated': True, 'go': False, 'lights': 4, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [{'label': 'Décor', 'state': 'done'}, {'label': 'Trainer', 'state': 'done'}, {'label': 'Pédalage', 'state': 'current'}], 'text': 'Pédale pour partir : 30 tr/min, 1,6 s sur 3 s  (Y : annuler)', 'visible': True}
+[OK] 1280x720_high · depart_pedalage · feux rouges allumés : 4.26% de pixels rouges
+[OK] 1280x720_high · depart_go · capture enregistrée
+[OK] 1280x720_high · depart_go · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · depart_go · feux verts « GO ! » : {'animated': False, 'go': True, 'lights': 0, 'route': 'Démo', 'route_line': '4,0 km · 62 m D+', 'steps': [], 'text': '', 'visible': True}
+[OK] 1280x720_high · depart_go · HUD de séance revenu au départ
+[OK] 1280x720_high · conseil_accueil · capture enregistrée
+[OK] 1280x720_high · conseil_accueil · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · conseil_accueil · texte menu : «  || Séance conseillée — aérobie intense · 60 min | [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée ||  || Trainer HomeTrainer 0001 : connecté | Click + : connecté | Click − : verrou Zwift | Cardio : connecté ||  ||  »
+[OK] 1280x720_high · conseil_accueil · éléments dans l'écran : 3 éléments visibles
+[OK] 1280x720_high · conseil_accueil · lignes du HUD sans chevauchement
+[OK] 1280x720_high · conseil_accueil · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · conseil_accueil · panneaux sans chevauchement
+[OK] 1280x720_high · conseil · capture enregistrée
+[OK] 1280x720_high · conseil · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · conseil · texte menu_title : « Séance conseillée : aérobie intense »
+[OK] 1280x720_high · conseil · texte menu : « Pourquoi : 9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce
+type il y a 6 jours, forme +4. || [Lancer l'entraînement — 60 min] | Lancer la course — 60 min | Autre séance — 2 de plus | Autre besoin | Ma montre — aucune | Prochaine course — aucune | Détail du calcul ||  ||  ||  || Entraînement conseillé | Seuil 2 × 20 | Durée 60 min | TSS estimé 72 | Zone Z4 | Zones Z3 à Z5, de 75 à 120 % de la FTP. | Règle R6 · objectif endurance. | À côté : « Lancer la course », course contre des bots sur un parcours à montées longues. »
+[OK] 1280x720_high · conseil · texte menu : « Pourquoi : 9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce
+type il y a 6 jours, forme +4. || [Lancer l'entraînement — 60 min] | Lancer la course — 60 min | Autre séance — 2 de plus | Autre besoin | Ma montre — aucune | Prochaine course — aucune | Détail du calcul ||  ||  ||  || Entraînement conseillé | Seuil 2 × 20 | Durée 60 min | TSS estimé 72 | Zone Z4 | Zones Z3 à Z5, de 75 à 120 % de la FTP. | Règle R6 · objectif endurance. | À côté : « Lancer la course », course contre des bots sur un parcours à montées longues. »
+[OK] 1280x720_high · conseil · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · conseil · lignes du HUD sans chevauchement
+[OK] 1280x720_high · conseil · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · conseil · panneaux sans chevauchement
+[OK] 1280x720_high · conseil_course · capture enregistrée
+[OK] 1280x720_high · conseil_course · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · conseil_course · texte menu_title : « Séance conseillée : aérobie intense »
+[OK] 1280x720_high · conseil_course · texte menu : « Pourquoi : 9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce
+type il y a 6 jours, forme +4. || Lancer l'entraînement — 60 min | [Lancer la course — 60 min] | Autre séance — 2 de plus | Autre besoin | Ma montre — aucune | Prochaine course — aucune | Détail du calcul ||  ||  ||  || Course contre des bots | Démo · 4 tours | Bots 4 | Niveau 95 % | Dans le besoin 79 % | Course contre des bots sur un parcours à montées longues. | Simulée à tes valeurs : 24 min dans le besoin, | contre 30 min avec l'entraînement. | Difficulté de la pente : la tienne. »
+[OK] 1280x720_high · conseil_course · texte menu : « Pourquoi : 9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce
+type il y a 6 jours, forme +4. || Lancer l'entraînement — 60 min | [Lancer la course — 60 min] | Autre séance — 2 de plus | Autre besoin | Ma montre — aucune | Prochaine course — aucune | Détail du calcul ||  ||  ||  || Course contre des bots | Démo · 4 tours | Bots 4 | Niveau 95 % | Dans le besoin 79 % | Course contre des bots sur un parcours à montées longues. | Simulée à tes valeurs : 24 min dans le besoin, | contre 30 min avec l'entraînement. | Difficulté de la pente : la tienne. »
+[OK] 1280x720_high · conseil_course · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · conseil_course · lignes du HUD sans chevauchement
+[OK] 1280x720_high · conseil_course · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · conseil_course · panneaux sans chevauchement
+[OK] 1280x720_high · conseil_detail · capture enregistrée
+[OK] 1280x720_high · conseil_detail · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · conseil_detail · texte menu_title : « Détail du calcul »
+[OK] 1280x720_high · conseil_detail · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · conseil_detail · lignes du HUD sans chevauchement
+[OK] 1280x720_high · conseil_detail · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · conseil_detail · panneaux sans chevauchement
+[OK] 1280x720_high · conseil_besoin · capture enregistrée
+[OK] 1280x720_high · conseil_besoin · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · conseil_besoin · texte menu_title : « Choisir un autre besoin »
+[OK] 1280x720_high · conseil_besoin · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · conseil_besoin · lignes du HUD sans chevauchement
+[OK] 1280x720_high · conseil_besoin · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · conseil_besoin · panneaux sans chevauchement
+[OK] 1280x720_high · conseil_prochaine_course · capture enregistrée
+[OK] 1280x720_high · conseil_prochaine_course · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · conseil_prochaine_course · texte menu_title : « Ma prochaine course »
+[OK] 1280x720_high · conseil_prochaine_course · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · conseil_prochaine_course · lignes du HUD sans chevauchement
+[OK] 1280x720_high · conseil_prochaine_course · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · conseil_prochaine_course · panneaux sans chevauchement
+[OK] 1280x720_high · conseil_montre · capture enregistrée
+[OK] 1280x720_high · conseil_montre · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · conseil_montre · texte menu_title : « Suggestion de ma montre »
+[OK] 1280x720_high · conseil_montre · éléments dans l'écran : 4 éléments visibles
+[OK] 1280x720_high · conseil_montre · lignes du HUD sans chevauchement
+[OK] 1280x720_high · conseil_montre · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_high · conseil_montre · panneaux sans chevauchement
+[OK] 1280x720_high · journal · aucune erreur ni avertissement Godot
+[OK] 1280x720_high · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1280x720_high · journal · qualité réellement appliquée : high appliquée (39 capture(s)) ; dernière ligne : high (demandée high, source cli)
+Tests graphiques : 950/951 vérifications réussies
+Rapport : ~/mesures-2026-11-01-auto/rbc56b/menus/rapport.html

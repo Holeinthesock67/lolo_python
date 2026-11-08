@@ -1,0 +1,11 @@
+14:46:07 empreinte avant dbcae732ed690b86d3cd897f0df788ee
+14:46:07 tête 3a777d80
+14:47:29 visual_check --menus low,medium,high
+14:56:26 fin visual_check rc=1
+14:56:26 menu_bench collection
+14:59:24 fin menu_bench rc=0
+14:59:24 update-golden menu_accueil,erreur (Xvfb, llvmpipe)
+15:29:24 fin update-golden rc=124
+15:29:25 empreinte après dbcae732ed690b86d3cd897f0df788ee
+15:29:25 clone 90c08094
+15:29:25 FIN
