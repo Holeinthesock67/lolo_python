@@ -568,6 +568,7 @@ func update_window(s_pos: float, v: float, cam_pos: Vector3) -> void:
 		_ground.position = Vector3(cam_pos.x, _ground.position.y, cam_pos.z)
 	if tree_renderer != null:
 		tree_renderer.enforce_budget(cam_pos, views[0] if not views.is_empty() else {})
+		tree_renderer.update_shadows(cam_pos)
 	if osm_streamer != null and route != null:
 		osm_streamer.update_window(s_pos - float(chunks_behind) * 1000.0, s_pos + float(chunks_ahead) * 1000.0 + v * LOOKAHEAD_S)
 
