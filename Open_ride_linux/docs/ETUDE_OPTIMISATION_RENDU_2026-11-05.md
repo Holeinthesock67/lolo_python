@@ -248,4 +248,5 @@ Passe suivante : `mesures/2026-11-07-cultures-foret-c/` avec le correctif, plus 
 - L'herbe coûte par sa densité, pas par sa distance (`herbe_150m` ≈ 0) : #741 (bande large moitié moins dense) est le bon levier, déjà sur main.
 - Les cultures ne bougent avec aucune variante d'ombre des arbres.
 - **Défaut retenu (7 novembre)** : ombre des arbres limitée à 100 m (`TreeRenderer.TREE_SHADOW_M`) dans les trois qualités, aspect validé par le propriétaire sur la planche du banc c. L'essai `ombres_arbres_m=0` (variante `ombres_arbres_illimitees`) rend l'ancien comportement.
-- Reste au-dessus du budget : forêt ≈ 12,8 ms en medium (12) et ≈ 15,6 ms en high (14), cultures au-dessus en medium et high.
+- Par biome avec l'ombre à 100 m (banc d) : forêt 7,23 / 12,32 / 15,26 ms, cultures 8,18 / 13,90 / 16,73 ms.
+- **Décision du propriétaire (8 novembre)** : budgets medium 12 → 13 ms et high 14 → 16 ms (`perf_targets.json`). La forêt passe ; **les cultures dépassent encore** de 0,2 / 0,9 / 0,7 ms. Tout nouvel essai de gain de performance est reporté en 5.0 : banc des effets d'écran sur le tronçon (`--variantes base,sans_ssao,ssao_low,sans_brume,brume_light,msaa0_smaa,sans_glow,ciel_128`, low, medium et high), bloc alpin (banc d'environ 400 s), prépasse de profondeur. Récapitulatif de tous les essais : [HISTORIQUE_ESSAIS_GRAPHIQUES.md](HISTORIQUE_ESSAIS_GRAPHIQUES.md).
