@@ -57,6 +57,19 @@ def test_journal_repli_opengl_refuse() -> None:
     assert rendu_jeu.check_log("Godot Engine v4.7.2\n") is not None
 
 
+
+def test_references_xvfb_en_vulkan_logiciel(tmp_path, monkeypatch) -> None:
+    """Références xvfb/ des tests graphiques faites par la CI en llvmpipe (08/11) : sous Xvfb, le PC prenait la NVIDIA."""
+    nvidia = "Vulkan 1.4.312 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce GTX 1060 6GB\n"
+    soft = "Vulkan 1.4.318 - Forward+ - Using Device #0: Mesa - llvmpipe (LLVM 20.1.2, 256 bits)\n"
+    assert rendu_jeu.is_software(soft) and not rendu_jeu.is_software(nvidia)
+    icd = tmp_path / "lvp_icd.x86_64.json"
+    icd.write_text("{}")
+    monkeypatch.setattr(rendu_jeu, "LAVAPIPE_ICD_DIRS", (str(tmp_path / "absent"), str(tmp_path)))
+    assert rendu_jeu.software_vulkan_env() == {"VK_DRIVER_FILES": str(icd), "VK_ICD_FILENAMES": str(icd)}
+    monkeypatch.setattr(rendu_jeu, "LAVAPIPE_ICD_DIRS", (str(tmp_path / "absent"),))
+    assert rendu_jeu.software_vulkan_env() is None
+
 # --- Règle des couleurs (engine/shaders/couleur_srgb.gdshaderinc) ---------------------------------------------
 
 INCLUDE = re.compile(r'#include\s+"res://([^"]+)"')
@@ -112,3 +125,13 @@ def test_standard_material_couleurs_de_sommet_srgb() -> None:
             if f"{m.group(1)}.vertex_color_is_srgb = true" not in text:
                 bad.append(f"{f.relative_to(ENGINE)} ({m.group(1)})")
     assert bad == [], f"couleurs de sommet lues comme linéaires : {bad}"
+
+
+def test_tests_de_rendu_sortie_en_ordre() -> None:
+    """Sortie des tests de rendu (08/11) : chacun attend la fin des compilations de pipelines avant de quitter
+    (``engine/tests/render/render_exit.gd``), sans quoi Godot 4.7 en Forward+ reste bloqué à la sortie sur la GTX 1060
+    (r773 : test_boat_render, test_props_render, test_sky_render ; avant eux test_rogue_style_sheet_render)."""
+    tests = sorted((ENGINE / "tests" / "render").glob("test_*.gd"))
+    assert tests
+    bad = [f.name for f in tests if "await RenderExit.settle(self)" not in f.read_text(encoding="utf-8")]
+    assert bad == [], f"tests de rendu sans sortie en ordre (render_exit.gd) : {bad}"

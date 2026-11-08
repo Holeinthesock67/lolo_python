@@ -22,7 +22,8 @@ const KNOT_EPS_M := 1e-6
 const SEGMENTS_MAJOR := 1
 const MAX_SEGMENTS := 200
 const SEGMENT_TYPES := ["sprint", "climb"]
-const SURFACES := ["paved", "compacted", "gravel", "dirt"]   # colonne facultative `surface` (format 1.6)
+const SURFACES := ["paved", "compacted", "gravel", "dirt", "wood"]   # colonne facultative `surface` (format 1.6 ; wood : 1.7)
+const BANK_MAX_DEG := 50.0   # colonne facultative `bank_deg` (format 1.7, vélodrome, lot VD1)
 
 var version: String = "1.0"
 var ds_m: float = 10.0
@@ -42,9 +43,11 @@ var z: PackedFloat64Array = PackedFloat64Array()
 var grade_pct: PackedFloat64Array = PackedFloat64Array()
 var heading_deg: PackedFloat64Array = PackedFloat64Array()
 var surface := PackedStringArray()  # colonne facultative `surface` (format 1.6, lot U22) ; vide : tout en paved
+var bank_deg := PackedFloat64Array()  # colonne facultative `bank_deg` (format 1.7, lot VD1) ; vide : 0 partout
 const SLOPE_PROBE_M := 1.5          # display_pitch : points de la route à ± cette distance (vélo)
 var relief_k := 1.0                 # exagération visuelle du relief (`--visual-grade`), 1,0 : relief réel
 
+var venue: Dictionary = {}           # couche `venue.json` (format 1.7, vélodrome, lot VD1) ; vide sans couche
 var segments: Array = []            # couche segments (série T) ; vide sans couche
 var segments_present := false       # couche déclarée et valide : seule source des montées du décor
 var segments_error: String = ""
@@ -88,7 +91,37 @@ func load_world_dir(world_dir: String) -> bool:
 	if not load_route_dict(data):
 		return false
 	_load_segments_layer(world_dir, manifest)
+	_load_venue_layer(world_dir, manifest)
 	return true
+
+
+## Couche `venue` (format 1.7, §8 sexies) : piste du vélodrome. Illisible ou d'une autre sorte : ignorée avec un
+## message, le parcours s'affiche alors comme une route (relèvement de `bank_deg` gardé).
+func _load_venue_layer(world_dir: String, manifest: Dictionary) -> void:
+	venue = {}
+	var layers = manifest.get("layers", {})
+	var layer = layers.get("venue", {}) if typeof(layers) == TYPE_DICTIONARY else {}
+	if typeof(layer) != TYPE_DICTIONARY or layer.get("present", false) != true:
+		return
+	var data = _read_json(world_dir.path_join(str(layer.get("file", "venue.json"))))
+	if typeof(data) != TYPE_DICTIONARY or not str(data.get("version", "")).begins_with("1.") \
+			or data.get("kind", "") != "velodrome" or not (data.get("track_width_m") is float or data.get("track_width_m") is int):
+		push_warning("Couche venue ignorée dans " + world_dir)
+		return
+	venue = data
+
+
+## Vrai si le parcours est une piste de vélodrome (couche venue lue).
+func is_track() -> bool:
+	return venue.get("kind", "") == "velodrome"
+
+
+## Ligne peinte `id` de la piste (distance depuis le bord intérieur, sur la pente) ; `fallback` sans elle.
+func track_line_m(id: String, fallback: float) -> float:
+	for line in venue.get("lines", []):
+		if typeof(line) == TYPE_DICTIONARY and str(line.get("id", "")) == id:
+			return float(line.get("offset_m", fallback))
+	return fallback
 
 
 ## Couche `segments` déclarée par le manifeste (`layers.segments.present`) ; un fichier invalide est
@@ -202,6 +235,15 @@ func load_route_dict(data: Dictionary) -> bool:
 			if not (str(v) in SURFACES):
 				return _fail("« surface » inconnue : " + str(v))
 			surface.append(str(v))
+	bank_deg = PackedFloat64Array()
+	var raw_bank = data.get("bank_deg", null)
+	if raw_bank != null:
+		if typeof(raw_bank) != TYPE_ARRAY or (raw_bank as Array).size() != n:
+			return _fail("« bank_deg » doit avoir n valeurs")
+		for v in raw_bank:
+			if not (typeof(v) in [TYPE_FLOAT, TYPE_INT]) or absf(float(v)) > BANK_MAX_DEG:
+				return _fail("« bank_deg » hors de ± 50°")
+			bank_deg.append(float(v))
 	var last_regular := (n - 2) * ds_m
 	if not (last_regular < length_m and length_m <= last_regular + ds_m + 0.01):
 		return _fail("length_m incohérent avec n et ds_m")
@@ -423,6 +465,27 @@ func surface_at(pos: float) -> String:
 
 
 ## Boucle : s modulo la longueur ; sinon s borné à [0, longueur]. (« wrap » est déjà une fonction globale de Godot.)
+## Relèvement en `pos` (degrés, linéaire comme l'altitude, positif quand la droite est plus haute) ; 0 sans
+## colonne `bank_deg` (format 1.7, lot VD1). Même règle que `Route.bank_at` du core (vecteurs partagés).
+func bank_at(pos: float) -> float:
+	if bank_deg.is_empty():
+		return 0.0
+	var seg := _segment(wrap_s(pos))
+	var i: int = seg[0]
+	return bank_deg[i] + (bank_deg[i + 1] - bank_deg[i]) * float(seg[1])
+
+
+## Vecteur « droite » de la chaussée en `pos` (cap `heading` en radians) : horizontal sur une route plate, relevé
+## de `bank_at(pos)` sur une piste (positif : la droite monte). Même coupe que road_builder.gd : un coureur à
+## `lateral` mètres de l'axe se pose à `sample_point(pos) + bank_right(pos, heading) * lateral` (lot VD4).
+func bank_right(pos: float, heading: float) -> Vector3:
+	var right := Vector3(cos(heading), 0.0, sin(heading))
+	if bank_deg.is_empty():
+		return right
+	var b := deg_to_rad(bank_at(pos))
+	return right * cos(b) + Vector3.UP * sin(b)
+
+
 func wrap_s(pos: float) -> float:
 	if is_loop():
 		return fposmod(pos, length_m)
@@ -514,6 +577,56 @@ func sample(pos: float) -> Dictionary:
 		"grade_pct": grade_pct[i] + (grade_pct[i + 1] - grade_pct[i]) * u,
 		"heading_deg": fposmod(h0 + u * _shortest_delta_deg(h0, heading_deg[i + 1]), 360.0),
 	}
+
+
+## Point et cap seuls (x, y affiché, z, cap en radians), sans dictionnaire ni tableau intermédiaire : mêmes calculs
+## que `sample` (Catmull-Rom centripète, cap par l'écart le plus court), environ 5 fois plus rapide. Sert aux
+## poses des cyclistes (rider_pose.gd, lot CY1), qui lisent une vingtaine de points par cycliste et par image.
+func sample_xyzh(pos: float) -> Vector4:
+	var p := wrap_s(pos)
+	var i: int = mini(int(p / ds_m), n - 2)
+	var s0: float = s[i]
+	var s1: float = s[i + 1]
+	var u: float = clampf((p - s0) / (s1 - s0), 0.0, 1.0) if s1 > s0 else 0.0
+	var c := PackedFloat64Array()
+	c.resize(12)
+	for j in 4:
+		var k := i - 1 + j
+		var px: float
+		var py: float
+		var pz: float
+		if is_loop():
+			var m := k % (n - 1)
+			if m < 0:
+				m += n - 1
+			px = x[m]; py = alt_m[m]; pz = z[m]
+		elif k < 0:
+			px = 2.0 * x[0] - x[1]; py = 2.0 * alt_m[0] - alt_m[1]; pz = 2.0 * z[0] - z[1]
+		elif k > n - 1:
+			px = 2.0 * x[n - 1] - x[n - 2]; py = 2.0 * alt_m[n - 1] - alt_m[n - 2]; pz = 2.0 * z[n - 1] - z[n - 2]
+		else:
+			px = x[k]; py = alt_m[k]; pz = z[k]
+		c[j * 3] = px; c[j * 3 + 1] = py; c[j * 3 + 2] = pz
+	# Nœuds centripètes (α = 0,5), comme _knot.
+	var t1 := pow(maxf(sqrt(pow(c[3] - c[0], 2) + pow(c[4] - c[1], 2) + pow(c[5] - c[2], 2)), KNOT_EPS_M), 0.5)
+	var t2 := t1 + pow(maxf(sqrt(pow(c[6] - c[3], 2) + pow(c[7] - c[4], 2) + pow(c[8] - c[5], 2)), KNOT_EPS_M), 0.5)
+	var t3 := t2 + pow(maxf(sqrt(pow(c[9] - c[6], 2) + pow(c[10] - c[7], 2) + pow(c[11] - c[8], 2)), KNOT_EPS_M), 0.5)
+	var t := t1 + u * (t2 - t1)
+	var out := PackedFloat64Array([0.0, 0.0, 0.0])
+	for a in 3:
+		var q0: float = c[a]
+		var q1: float = c[3 + a]
+		var q2: float = c[6 + a]
+		var q3: float = c[9 + a]
+		var a1 := ((t1 - t) * q0 + t * q1) / t1
+		var a2 := ((t2 - t) * q1 + (t - t1) * q2) / (t2 - t1)
+		var a3 := ((t3 - t) * q2 + (t - t2) * q3) / (t3 - t2)
+		var b1 := ((t2 - t) * a1 + t * a2) / t2
+		var b2 := ((t3 - t) * a2 + (t - t1) * a3) / (t3 - t1)
+		out[a] = ((t2 - t) * b1 + (t - t1) * b2) / (t2 - t1)
+	var h0: float = heading_deg[i]
+	var h := deg_to_rad(fposmod(h0 + u * _shortest_delta_deg(h0, heading_deg[i + 1]), 360.0))
+	return Vector4(out[0], display_y(out[1]), out[2], h)
 
 
 func sample_point(pos: float) -> Vector3:

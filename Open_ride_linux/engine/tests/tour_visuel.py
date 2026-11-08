@@ -13,8 +13,9 @@ les tuiles voulues soient toutes affichées (`streaming_pending` de la capture �
 
 Points :
 - `--tour engine/tests/tours/NOM.json` : `{"description", "world", "points": [{"id", "s", "label", "camera",
-  "weather"}]}` ; `camera` : subjective (défaut), follow_near, follow_far ou side ; `weather` : objet du
-  message de test `weather` (ex. `{"kind": "rain", "intensity": 0.8}`), temps clair sinon ;
+  "weather", "v_kmh"}]}` ; `camera` : subjective (défaut), follow_near, follow_far ou side ; `weather` : objet du
+  message de test `weather` (ex. `{"kind": "rain", "intensity": 0.8}`), temps clair sinon ; `v_kmh` : vitesse
+  annoncée dans les trames sans faire avancer le cycliste (vélo penché dans les virages, lot CY1), 0 sinon ;
 - `--auto` : tirés du parcours (`auto_points`) : départ et arrivée, plat et montées à 5 et 10 % (pente lissée
   sur 200 m), village le plus dense (bâtiments à moins de 150 m de la route), forêt et eau les plus proches de la
   route, frontières de biome (couche `biome`). Les deux se cumulent.
@@ -51,7 +52,7 @@ TOURS_DIR = TESTS_DIR / "tours"
 sys.path.insert(0, str(TESTS_DIR))
 
 CAMERAS = ("subjective", "follow_near", "follow_far", "side")
-POINT_KEYS = {"id", "s", "label", "camera", "weather"}
+POINT_KEYS = {"id", "s", "label", "camera", "weather", "v_kmh"}
 GRADE_WINDOW_M = 200.0
 GRADE_TARGETS = ((0.0, "plat", "Plat (pente lissée vers 0 %)"), (5.0, "montee_5", "Montée vers 5 %"),
                  (10.0, "montee_10", "Montée vers 10 %"))
@@ -210,8 +211,11 @@ def validate_tour(doc: Any, where: str = "tour") -> list[dict[str, Any]]:
             raise TourError(f"{w}.camera : {', '.join(CAMERAS)}")
         if "weather" in p and not isinstance(p["weather"], dict):
             raise TourError(f"{w}.weather : objet attendu (message de test `weather`)")
+        if "v_kmh" in p and (not isinstance(p["v_kmh"], (int, float)) or not 0 <= p["v_kmh"] <= 120):
+            raise TourError(f"{w}.v_kmh : vitesse de 0 à 120 km/h attendue")
         out.append({"id": str(p.get("id", f"p{k + 1}")), "s": float(p["s"]), "label": str(p.get("label", "")),
-                    "camera": p.get("camera", "subjective"), **({"weather": p["weather"]} if "weather" in p else {})})
+                    "camera": p.get("camera", "subjective"), **({"weather": p["weather"]} if "weather" in p else {}),
+                    **({"v_kmh": float(p["v_kmh"])} if "v_kmh" in p else {})})
     return out
 
 
@@ -344,6 +348,8 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
             core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "camera_view", "view": p["camera"]})
             core.log.wait_for(r"^camera_view done=", 5.0, mark)
             core.set_scene(speed=0.0, s=p["s"])
+            with core.lock:   # vitesse annoncée, cycliste immobile (lot CY1)
+                core.fields["v"] = float(p.get("v_kmh", 0.0)) / 3.6
             time.sleep(SETTLE_S)
             info: dict[str, Any] | None = None
             png = out / f"{k + 1:02d}_{p['id']}.png"

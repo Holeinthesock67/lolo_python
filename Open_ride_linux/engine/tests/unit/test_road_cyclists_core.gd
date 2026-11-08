@@ -73,6 +73,7 @@ func _run() -> void:
 		ids.append(str(r["id"]))
 	_check(ids == ["c1000000-0", "c1000000-1", "c1000000-2", "c1000001-0"], "identifiants « c<case>-<rang> » comme le core (%s)" % str(ids))
 	var jersey0 := int(_by_id(m)["c1000000-0"]["member"]["jersey"])
+	var lat_before := float(_by_id(m)["c1000000-0"]["lateral"])
 	var list := [
 		{"id": "c1000000-0", "s": s + 21.0, "dir": 1, "v": 6.0, "lane_m": 2.4, "look": 7},
 		{"id": "c1000000-1", "s": s + 19.5, "dir": 1, "v": 6.0, "lane_m": 2.4, "look": 7},
@@ -88,8 +89,11 @@ func _run() -> void:
 	_check(not got.is_empty() and is_same(got["c1000000-0"]["group"], got["c1000000-1"]["group"]),
 		"cyclistes d'un même groupe reçus : un seul groupe (pas de contact compté entre eux)")
 	var r0: Dictionary = got.get("c1000000-0", {})
-	_check(not r0.is_empty() and absf(float(r0["s"]) - (s + 21.0)) < 1e-6 and absf(float(r0["lateral"]) - 2.4) < 1e-6
+	_check(not r0.is_empty() and absf(float(r0["s"]) - (s + 21.0)) < 1e-6 and absf(float(r0["member"]["lane_core"]) - 2.4) < 1e-6
 		and absf(float(got["c1000000-1"]["s"]) - (s + 19.5)) < 1e-6, "places et écarts à l'axe du core repris")
+	# Rabattement sans à-coup (7/11) : l'écart affiché ne saute pas à la reprise, il rejoint celui du core
+	_check(not r0.is_empty() and absf(float(r0["lateral"]) - lat_before) < 1e-6,
+		"écart de l'engine gardé à la reprise (%.2f m), sans saut" % (float(r0["lateral"]) if not r0.is_empty() else NAN))
 	_check(not r0.is_empty() and int(r0["member"]["jersey"]) == jersey0, "maillot du cycliste de l'engine gardé")
 	var r9: Dictionary = got.get("c9-0", {})
 	_check(not r9.is_empty() and int(r9["dir"]) == -1 and int(r9["member"]["jersey"]) == 5 and int(r9["member"]["look"]) == 12,
@@ -98,6 +102,7 @@ func _run() -> void:
 	got = _by_id(m)
 	_check(absf(float(got["c1000000-0"]["s"]) - (s + 24.0)) < 1e-6 and absf(float(got["c9-0"]["s"]) - (s - 34.0)) < 1e-6,
 		"extrapolés entre deux listes, dans leur sens")
+	_check(absf(float(got["c1000000-0"]["lateral"]) - 2.4) < 0.01, "écart du core rejoint en 0,5 s (%.3f m)" % float(got["c1000000-0"]["lateral"]))
 	m.sync_core([], 3, s)
 	_check(_by_id(m).size() == 5, "même trame : liste reprise une seule fois")
 	m.sync_core([list[0]], 6, s)

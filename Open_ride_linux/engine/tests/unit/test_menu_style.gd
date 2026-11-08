@@ -262,14 +262,14 @@ func _test_cards() -> void:
 func _test_settings() -> void:
 	var ftp := {"key": "rider.ftp_w", "label": "FTP", "group": "rider", "type": "int", "value": 250, "min": 50, "max": 600,
 		"step": 5, "unit": "W", "applies": "next_session"}
-	var vol := {"key": "sound.master_pct", "label": "Volume général", "group": "sound", "type": "int", "value": 80, "min": 0,
+	var vol := {"key": "sound.master_pct", "label": "Général", "group": "sound", "type": "int", "value": 80, "min": 0,
 		"max": 100, "step": 10, "unit": "%", "applies": "now"}
 	var quality := {"key": "render.quality", "label": "Qualité", "group": "graphics", "type": "choice", "value": "high",
 		"choices": ["low", "medium", "high"], "applies": "now"}
 	var s = SettingsViewModel.new()
 	s.on_settings({"items": [ftp, vol, quality]})
 	var rows: Array = s.menu_items("sound")
-	_check(rows[0] == {"id": "set:sound.master_pct", "label": "Volume général", "detail": "80 %", "bar": 80},
+	_check(rows[0] == {"id": "set:sound.master_pct", "label": "Général", "detail": "80 %", "bar": 80},
 		"réglage en %% : libellé, valeur à droite, curseur (%s)" % str(rows[0]))
 	_check(s.menu_items("rider")[0] == {"id": "set:rider.ftp_w", "label": "FTP", "detail": "250 W"} and not s.menu_items("rider")[0].has("bar"),
 		"réglage en watts : pas de curseur")
@@ -280,7 +280,7 @@ func _test_settings() -> void:
 	s.cancel()
 	_check(s.menu_items("sound")[0]["detail"] == "80 %", "annulé : valeur d'avant")
 	var sheet: Dictionary = s.sheet("sound.master_pct")
-	_check(sheet["name"] == "Volume général" and sheet["tiles"].map(func(t): return t["label"]) == ["Valeur", "Plage", "Pas"]
+	_check(sheet["name"] == "Général" and sheet["tiles"].map(func(t): return t["label"]) == ["Valeur", "Plage", "Pas"]
 		and sheet["lines"] == ["S'applique tout de suite"], "carte d'un réglage numérique (%s)" % str(sheet["lines"]))
 	_check(s.sheet("render.quality")["lines"][0] == "Choix : low, medium, high" and s.sheet("absent").is_empty(), "carte d'un choix")
 	_check(SettingsViewModel.crumb("sound") == "Réglages › Son", "fil d'Ariane du sous-écran")

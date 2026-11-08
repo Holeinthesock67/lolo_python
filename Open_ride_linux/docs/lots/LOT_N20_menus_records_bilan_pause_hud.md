@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Présentation des menus, étape 4 : records, bilan, pause, confirmation ; couleurs du HUD et du globe ramenées au thème | GDScript | N19 | Moyenne | Non : interne (menus, captures sur le PC) |
+| Présentation des menus, étape 4 : records, bilan, pause, confirmation ; couleurs du HUD et du globe ramenées au thème | GDScript | N19 | Moyenne | En partie : 4a à 4e fusionnées (PR #483, #511, #531, #631, #634) ; reste le bilan en tuiles et le profil du segment (§9) |
 
 ## 1. Objectif
 
@@ -75,3 +75,19 @@ Plan des boutons et réglages inchangés. Décision du propriétaire du 8 novemb
 - Bloc de progression (XP, pièces, niveau) du bilan : V9 ; garage : V8.
 - Nouvelles données dans le bilan (puissance par zone, courbe de puissance maximale) : lot à part si le propriétaire le demande.
 - Disposition du HUD et nouveaux cadrans.
+
+## 9. État (point du 8 novembre)
+
+Fusionné sur `main` (titres « Présentation des menus, étape 4a… 4e », sans « N20 ») :
+
+- 4a, PR #483 (28 octobre) : difficulté de la pause réglée dans sa rangée, groupe Graphisme ;
+- 4b, PR #511 (28 octobre) : table `DATA` de `ui_theme.gd`, plus de couleur en dur dans le HUD, l'ERG, les courbes, le carrefour et le globe (§4.4) ;
+- 4c, PR #531 (29 octobre) : cartes des records (record en `GOLD`, écart au deuxième, date), scènes `records` et `records_table`, double légende Click / clavier ;
+- 4d, PR #631 (31 octobre) : carte de confirmation centrée, « Non » d'office, « Oui » en `DANGER`, scène `confirmation` ;
+- 4e, PR #634 (31 octobre) : carte de la pause (durée, distance, puissance moyenne).
+
+Reste à faire (une PR, engine seul, sans vélo) :
+
+- **bilan en tuiles** (§4.2) : `summary_view.gd` affiche encore les lignes sur deux colonnes ; à faire : six tuiles sans tuile vide, graphique de la puissance (série à accumuler côté engine), records battus en `GOLD` avec l'ancien temps, résultat du test de FTP ; capture de référence `bilan` à refaire et à faire valider ;
+- **profil du segment** et catégorie de la montée dans la carte des records (§4.1) ;
+- `menu_bench.py` avant/après sur le PC (3 qualités) et lecture du bilan à 2 m par le propriétaire.

@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideCollectionMessage",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "cards_count",
+    "first_time",
+    "cards",
+    "earned",
+    "remaining"
+  ],
+  "properties": {
+    "type": {
+      "const": "collection"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cards_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "first_time": {
+      "type": "boolean"
+    },
+    "cards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "text",
+          "family",
+          "rarity",
+          "visual"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 24
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 70
+          },
+          "family": {
+            "type": "string"
+          },
+          "rarity": {
+            "type": "string"
+          },
+          "visual": {
+            "type": "string",
+            "maxLength": 32
+          }
+        }
+      }
+    },
+    "earned": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "key",
+          "edition",
+          "title",
+          "text",
+          "family",
+          "rarity",
+          "visual",
+          "journal",
+          "date"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "edition": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 24
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 70
+          },
+          "family": {
+            "type": "string"
+          },
+          "rarity": {
+            "type": "string"
+          },
+          "visual": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "journal": {
+            "type": "string"
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "remaining": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "value",
+          "target"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "value": {
+            "type": "number"
+          },
+          "target": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "new": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 40
+      }
+    }
+  }
+}

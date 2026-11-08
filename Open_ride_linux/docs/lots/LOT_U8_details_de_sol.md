@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : détails de sol (dunes et rides par normales, rochers épars, herbes hautes) | GDScript + shader | U6 (U7 utile) | Moyenne | Oui, après U6, **version 3.0** (issue #338) |
+| Engine : détails de sol (dunes et rides par normales, rochers épars, herbes hautes) | GDScript + shader | U6 (U7 utile) | Moyenne | Livré le 28 octobre (PR #489, termitières #545), **version 3.0** (issue #338) |
 
 ## 1. Objectif
 
@@ -45,3 +45,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Dunes en relief réel, sable qui vole (particules : extension possible de P8).
+
+## Livraison
+
+PR #489, fusionnée le 28 octobre 2026, puis termitières par #545. Statut remis à jour par le point U3–U14 du 8 novembre, d'après les PR fusionnées.

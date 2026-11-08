@@ -17,6 +17,7 @@ Tout régler depuis le menu, sans ligne de commande.
 
 ## 3. Travail demandé
 
+- Côté core (point A2 des oublis du 8 novembre) : passer `grandprix` de `ipc_server.PENDING_MODES` à `CORE_MODES` (annoncé dans `hello_ack.config.modes`) et remettre les cinq réglages `grandprix.*` de `config.PENDING_KEYS` dans `settings.SETTINGS`, après ceux du Dernier survivant ; tests `test_conformite`, `test_contract_ipc` et `test_grandprix_session` à remettre en conséquence.
 - Entrée visible quand le core annonce le mode ; parcours (circuit et tours, ou distance) ; réglages du §4.4 ; une case par objet ; « Lancer ».
 - Navigation au Click et au clavier selon le plan des boutons (§7.1), sans exception.
 - Scénario `menu_bench` du mode.

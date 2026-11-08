@@ -8,6 +8,7 @@ extends RefCounted
 
 const SurvivorHudModel := preload("res://scripts/survivor/survivor_hud_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
+const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
 
 const KEY_DURATION := "duration_s"
 const KEY_DISTANCE := "distance_m"
@@ -171,6 +172,8 @@ func lines(summary: Dictionary, _mode: String = "", _ftp_w: int = 0) -> Array:
 		out.append_array(wtf_lines(summary["wtf"]))
 	if summary.get("survivor") is Dictionary:   # Dernier survivant (lot DS6) : place, vainqueur, arche par arche
 		out.append_array(SurvivorHudModel.summary_lines(summary["survivor"]))
+	if summary.get("track") is Dictionary:   # Épreuves de piste (lot VD9) : place, temps, tours, record
+		out.append_array(TrackHudModel.summary_lines(summary["track"]))
 
 	return out
 

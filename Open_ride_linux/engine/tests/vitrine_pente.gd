@@ -128,7 +128,8 @@ func _run() -> void:
 
 
 ## Ciel, brume, soleil, terrain (shader du terrain avec relief_k), route, poteaux, arbres et un cycliste schématique.
-func _build_world(route) -> SubViewport:
+## `gravel` : option gravel du ruban (RoadBuilder.build_chunk_arrays, {mode, surfaces}), bitume sans.
+func _build_world(route, gravel: Dictionary = {}) -> SubViewport:
 	var vp := SubViewport.new()
 	vp.size = SIZE
 	vp.own_world_3d = true
@@ -173,7 +174,7 @@ func _build_world(route) -> SubViewport:
 	var road_mat := RoadBuilder.make_markings_material(RoadBuilder.ROAD_COLOR, RoadBuilder.ROAD_WIDTH_M)
 	for k in range(RoadBuilder.chunk_count(route)):
 		var road := MeshInstance3D.new()
-		road.mesh = _mesh(RoadBuilder.build_chunk_arrays(route, k))
+		road.mesh = _mesh(RoadBuilder.build_chunk_arrays(route, k, RoadBuilder.ROAD_WIDTH_M, gravel))
 		road.material_override = road_mat
 		vp.add_child(road)
 
