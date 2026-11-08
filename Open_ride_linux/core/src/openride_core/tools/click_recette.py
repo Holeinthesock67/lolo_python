@@ -4,12 +4,13 @@
     python -m openride_core.tools.click_recette --minutes 10 --rappel 2
     python -m openride_core.tools.click_recette --sim            # sans matériel (Click simulé)
     python -m openride_core.tools.click_recette --materiel       # matériel à préparer
-    python -m openride_core.tools.click_recette --appuis-longs   # appuis longs (R14), environ 3 min
+    python -m openride_core.tools.click_recette --appuis-longs   # appuis longs (R14), environ 1 min 30
 
-`--appuis-longs` (constat R14 : bouton maintenu = rafale de `_SHORT`) : 13 étapes guidées seulement,
-maintenir +, −, A puis Z pendant 1, 2 et 3 s (un seul `_LONG` attendu, un `_SHORT` en trop fait
-échouer l'étape), puis 5 appuis courts rapides sur + (5 `PLUS_SHORT` attendus) ; pas de surveillance,
-trace brute active. `trames.csv` garde chaque trame et chaque événement publié, dans l'ordre, pour
+`--appuis-longs` (constat R14 : bouton maintenu = rafale de `_SHORT`) : 5 étapes sur un écran fixe
+(consigne en haut, état des boîtiers en bas, redessiné sur place). Maintenir +, −, A puis Z du bip
+« appuie » au bip « relâche » (2,5 s, l'outil compte) : un seul `_LONG` attendu, un `_SHORT` en trop
+fait échouer l'étape ; puis 5 appuis courts rapides sur + (5 `PLUS_SHORT` attendus). Aucun autre bip,
+pas de surveillance, trace brute active. `trames.csv` garde chaque trame et chaque événement publié, dans l'ordre, pour
 régler `[drivers] click_repeat_gap_s`.
 
 Avec les vrais fournisseurs du core (deux boîtiers, comme `build_inputs`), l'outil :
@@ -82,12 +83,14 @@ STEPS = (
     GuidedStep("plus_long", "Appui long sur + (une seconde)", InputEvent.PLUS_LONG, "PLUS"),
     GuidedStep("minus_long", "Appui long sur − (une seconde)", InputEvent.MINUS_LONG, "MINUS"),
 )
-# Mode `--appuis-longs` (correctif R14) : un maintien par étape ; une rafale qui rend encore des
-# appuis courts, ou des appuis courts rapides regroupés en appui long, font échouer l'étape.
+# Mode `--appuis-longs` (correctif R14) : l'outil impose la durée du maintien par deux bips (appuie,
+# relâche) ; une rafale qui rend encore des appuis courts, ou des appuis courts rapides regroupés en
+# appui long, font échouer l'étape.
+HOLD_S = 2.5
 LONG_STEPS = tuple(
-    GuidedStep(f"{key}_{hold}s", f"Maintiens {label} pendant {hold} s, puis relâche",
-               InputEvent[f"{key.upper()}_LONG"], key.upper(), strict=True)
-    for key, label in (("plus", "+"), ("minus", "−"), ("a", "A"), ("z", "Z")) for hold in (1, 2, 3)
+    GuidedStep(f"{key}_long", f"Maintiens {label} enfoncé jusqu'au 2e bip", InputEvent[f"{key.upper()}_LONG"],
+               key.upper(), strict=True)
+    for key, label in (("plus", "+"), ("minus", "−"), ("a", "A"), ("z", "Z"))
 ) + (GuidedStep("plus_rapides", "Donne 5 appuis courts rapides sur +", InputEvent.PLUS_SHORT, "PLUS",
                 count=5, strict=True),)
 
@@ -521,9 +524,9 @@ async def sim_user(world: Any, prompts: asyncio.Queue[str]) -> None:
         if "réveiller" in text:
             tap(plus, "+")
             tap(minus, "-")
-        elif text.startswith("Maintiens "):   # mode --appuis-longs : « Maintiens + pendant 2 s… »
-            label, hold = text.split()[1], float(text.split()[3])
-            await world.press({"−": "-"}.get(label, label), hold)
+        elif text.startswith("Maintiens "):   # mode --appuis-longs : maintien jusqu'au 2e bip
+            label = text.split()[1]
+            await world.press({"−": "-"}.get(label, label), HOLD_S)
         elif "appuis courts rapides" in text:
             for _ in range(5):
                 await world.press("+")
@@ -542,12 +545,163 @@ async def sim_user(world: Any, prompts: asyncio.Queue[str]) -> None:
             tap(plus, "Y")
 
 
+def write_frames(rec: Recorder, out: Path) -> None:
+    """Trames et événements dans l'ordre, côté du boîtier seulement (pas d'adresse)."""
+    out.mkdir(parents=True, exist_ok=True)
+    with (out / "trames.csv").open("w", encoding="utf-8") as fh:
+        fh.write("t_s;boitier;trame;evenement\n")
+        for t, side, hexa, ev in rec.frames:
+            fh.write(f"{t:.3f};{side};{hexa};{ev}\n")
+
+
+class LongScreen:
+    """Écran fixe du mode `--appuis-longs` : consigne en haut, état des boîtiers en bas, redessiné
+    sur place (rien ne défile). Hors terminal : une ligne par changement de consigne ou de résultat."""
+
+    def __init__(self, providers: list[TracedClickProvider], bell: bool) -> None:
+        self.providers, self.bell = providers, bell
+        self.tty = sys.stdout.isatty()
+        self.title, self.action, self.info = "", "", ""
+        self.results: list[tuple[str, bool, str]] = []
+        self._last_plain = ""
+
+    def beep(self) -> None:
+        if self.bell:
+            print("\a", end="", flush=True)
+
+    def set(self, title: str | None = None, action: str | None = None, info: str | None = None) -> None:
+        if title is not None:
+            self.title = title
+        if action is not None:
+            self.action = action
+        if info is not None:
+            self.info = info
+        self.draw()
+
+    def draw(self) -> None:
+        if not self.tty:
+            line = f"{self.title} | {self.action}"
+            if line != self._last_plain:
+                print(line, flush=True)
+                self._last_plain = line
+            return
+        units = "   ".join(f"boîtier {p.side if p.side != 'inconnu' else i + 1} : "
+                           f"{'relié' if p.status == 'CONNECTED' else 'en attente'}"
+                           for i, p in enumerate(self.providers))
+        rows = ["\033[H\033[2J", "=" * 64, "  TEST DES APPUIS LONGS DU CLICK  (environ 1 min 30)", "=" * 64, "",
+                f"  {self.title}", "", f"      \033[1m{self.action}\033[0m", "", f"  {self.info}", "", "-" * 64]
+        rows += [f"  {'OK  ' if ok else 'RATÉ'}  {name}" for name, ok, _ in self.results]
+        rows += ["", "-" * 64, f"  {units}"]
+        screen = "\n".join(rows)
+        if screen != self._last_plain:   # redessiné seulement s'il change : pas de scintillement
+            print(screen, flush=True)
+            self._last_plain = screen
+
+
+async def run_appuis_longs(providers: list[TracedClickProvider], rec: Recorder, out: Path,
+                           prompt: Prompter | None = None, connect_timeout: float = 120.0,
+                           bell: bool = True, pause_s: float = 2.0) -> int:
+    """Mode `--appuis-longs` : une consigne à la fois ; pour un maintien, un bip « appuie » puis un bip
+    « relâche » 2,5 s plus tard (rien à compter) ; aucun autre bip, aucune alerte de coupure."""
+    tasks = [asyncio.create_task(p.run()) for p in providers]
+    screen = LongScreen(providers, bell)
+    total = len(LONG_STEPS)
+
+    async def hold_screen(seconds: float) -> None:
+        end = time.monotonic() + seconds
+        while time.monotonic() < end:
+            screen.draw()
+            await asyncio.sleep(0.25)
+
+    try:
+        screen.set("Réveil des boîtiers", "Appuie une fois sur +, puis une fois sur −",
+                   "le test commence quand les deux boîtiers sont reliés")
+        screen.beep()
+        if prompt:
+            prompt("Appuie sur un bouton de chaque boîtier pour les réveiller")
+        end = time.monotonic() + connect_timeout
+        while time.monotonic() < end and not all(p.status == "CONNECTED" for p in providers):
+            screen.set(info=f"attente des boîtiers : encore {end - time.monotonic():.0f} s")
+            await asyncio.sleep(0.25)
+        if not any(p.status == "CONNECTED" for p in providers):
+            screen.set("Aucun boîtier relié", "Ferme le jeu et tout autre outil, puis relance", "")
+            return 1
+        screen.set(info="boîtiers reliés")
+        await hold_screen(pause_s)
+        for k, step in enumerate(LONG_STEPS, 1):
+            title = f"ÉTAPE {k}/{total}"
+            after = rec.t()
+            if step.count == 1:   # maintien : l'outil donne le départ et la fin
+                label = step.prompt.split()[1]
+                screen.set(title, f"Appuie sur {label} et GARDE-LE ENFONCÉ", "relâche au 2e bip")
+                screen.beep()
+                if prompt:
+                    prompt(step.prompt)
+                await hold_screen(HOLD_S)
+                screen.set(action="RELÂCHE", info="")
+                screen.beep()
+                timeout = 4.0
+            else:
+                screen.set(title, step.prompt, "à ton rythme, puis ne touche plus à rien")
+                screen.beep()
+                if prompt:
+                    prompt(step.prompt)
+                timeout = 12.0
+            res = await wait_step(rec, step, timeout + (rec.t() - after), after, screen.draw)
+            name = "5 appuis rapides sur +" if step.count > 1 else f"maintien de {step.prompt.split()[1]}"
+            screen.results.append((f"{name} : {res.detail}", res.ok, res.detail))
+            screen.set(action="OK" if res.ok else "RATÉ", info=res.detail)
+            await hold_screen(pause_s)
+    finally:
+        for p in providers:
+            p.stop()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        rec.close()
+    write_frames(rec, out)
+    ok = sum(r[1] for r in screen.results)
+    lines = ["", "=" * 64, f"  RÉSULTAT : {ok} étape(s) OK sur {total}", "=" * 64]
+    lines += [f"  {'OK  ' if r[1] else 'RATÉ'}  {r[0]}" for r in screen.results]
+    lines += ["", f"  Fichier à renvoyer : {out / 'trames.csv'}"]
+    if screen.tty:
+        print("\033[H\033[2J", end="")
+    print("\n".join(lines), flush=True)
+    (out / "resume.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return 0 if ok == len(screen.results) == total else 1
+
+
+async def main_appuis_longs(args: argparse.Namespace, cfg: Any, out: Path) -> int:
+    rec = Recorder(time.monotonic)
+    prompt: Prompter | None = None
+    extra: list[asyncio.Task[Any]] = []
+    sim = None
+    if args.sim:
+        from .. import sim_scenarios
+        sim = sim_scenarios.build_world({"click": {"appear_at": 0.0}, "trainer": None, "hr": None,
+                                         "events": []}, trainer=False, hr=False)
+        prompts: asyncio.Queue[str] = asyncio.Queue()
+        prompt = prompts.put_nowait
+        extra = [asyncio.create_task(sim.run()), asyncio.create_task(sim_user(sim, prompts))]
+    providers = make_providers(rec, cfg, sim, args.verrou or "", trace_raw=True,
+                               repeat_gap_s=args.regroupement)
+    try:
+        return await run_appuis_longs(providers, rec, out, prompt, connect_timeout=20.0 if args.sim else 120.0,
+                                      bell=not args.muet, pause_s=0.5 if args.sim else 2.0)
+    finally:
+        if sim is not None:
+            sim.stop()
+        for t in extra:
+            t.cancel()
+        await asyncio.gather(*extra, return_exceptions=True)
+
+
 async def main_async(args: argparse.Namespace) -> int:
     from .. import config as config_mod
 
     cfg = config_mod.load(args.config)
     out = args.out or DEFAULT_OUT / datetime.now().strftime("%Y-%m-%d_%H%M%S")
     longs = args.appuis_longs
+    if longs:
+        return await main_appuis_longs(args, cfg, out)
     guide = Guide("Appuis longs du Zwift Click" if longs else "Recette du Zwift Click", out / "guide.jsonl",
                   sound=False if args.muet else None)
     guide.prepare("click_appuis_longs" if longs else "click_recette", wait=not args.sim and not args.sans_attente and sys.stdin.isatty(),
@@ -596,7 +750,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--verrou", choices=zwift_click.LOCK_POLICIES,
                     help="remplace [drivers] click_reset_locked pour l'essai (lot K9 : keep ou reset)")
     ap.add_argument("--appuis-longs", action="store_true",
-                    help="test des appuis longs (R14) : maintiens guidés de +, −, A, Z, sans surveillance, environ 3 min")
+                    help="test des appuis longs (R14) : maintiens guidés de +, −, A, Z, écran fixe, environ 1 min 30")
     ap.add_argument("--trace-brute", action="store_true",
                     help="trace brute de chaque notification au journal (comme [drivers] click_trace_raw)")
     ap.add_argument("--regroupement", type=float, default=None, metavar="S",
@@ -613,7 +767,9 @@ def main(argv: list[str] | None = None) -> int:
         from .guide import materials_text
         print(materials_text(["click_appuis_longs" if args.appuis_longs else "click_recette"]), end="")
         return 0
-    logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING,
+    # --appuis-longs : rien d'autre que les consignes à l'écran (les trames vont dans trames.csv).
+    logging.basicConfig(level=logging.INFO if args.verbose else (logging.CRITICAL if args.appuis_longs
+                                                                 else logging.WARNING),
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     try:
         return asyncio.run(main_async(args))

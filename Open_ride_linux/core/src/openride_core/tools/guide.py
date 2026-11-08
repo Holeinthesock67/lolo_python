@@ -77,12 +77,13 @@ TRIALS: dict[str, Trial] = {
         ("6 appuis guidés, puis 30 min de surveillance avec un appui demandé toutes les 5 min",
          "délais, silences et coupures de chaque boîtier sont mesurés par l'outil")),
     "click_appuis_longs": Trial(
-        "Appuis longs du Zwift Click (correctif R14)", "environ 3 min",
+        "Appuis longs du Zwift Click (correctif R14)", "environ 1 min 30",
         ("python -m openride_core.tools.click_recette --appuis-longs",),
         ("les deux boîtiers Click, piles chargées",
          "le jeu fermé : l'outil tient seul le Click",
          "pas besoin de pédaler"),
-        ("13 étapes guidées : maintenir +, −, A puis Z pendant 1, 2 et 3 s, puis 5 appuis courts rapides sur +",
+        ("5 étapes sur un écran fixe : maintenir +, −, A puis Z du bip « appuie » au bip « relâche », "
+         "puis 5 appuis courts rapides sur +",
          "chaque étape attend un seul appui long ; un appui court en trop fait échouer l'étape",
          "trames.csv (sans adresse) est le fichier à renvoyer")),
     "fc_recette": Trial(

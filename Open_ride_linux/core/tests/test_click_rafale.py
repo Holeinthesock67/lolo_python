@@ -159,12 +159,12 @@ def test_click_recette_long_press_mode_in_simulation(tmp_path):
     """`click_recette --appuis-longs` : seulement les 13 maintiens guidés, sans surveillance, et trames.csv."""
     from openride_core.tools import click_recette
 
-    assert [s.key for s in click_recette.LONG_STEPS][:3] == ["plus_1s", "plus_2s", "plus_3s"]
-    assert len(click_recette.LONG_STEPS) == 13
+    assert [s.key for s in click_recette.LONG_STEPS] == ["plus_long", "minus_long", "a_long", "z_long",
+                                                         "plus_rapides"]
     out = tmp_path / "al"
     assert click_recette.main(["--appuis-longs", "--sim", "--sans-attente", "--muet", "--out", str(out)]) == 0
-    report = (out / "rapport.txt").read_text(encoding="utf-8")
-    assert "13/13" in report and "Appuie brièvement" not in report
+    report = (out / "resume.txt").read_text(encoding="utf-8")
+    assert "5 étape(s) OK sur 5" in report and "Appuie brièvement" not in report
     lines = (out / "trames.csv").read_text(encoding="utf-8").splitlines()
     assert lines[0] == "t_s;boitier;trame;evenement"
-    assert sum(line.endswith(";PLUS_LONG") for line in lines) >= 3
+    assert sum(line.endswith(";PLUS_LONG") for line in lines) >= 1
