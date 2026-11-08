@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Séance conseillée : contrat IPC (`get_coach`, message `coach`), réglages `[coach]`, prochaine course dans le profil | Contrat | CO1 | Petite | En PR (version 5.0, révision 1.6 du contrat) |
+| Séance conseillée : contrat IPC (`get_coach`, message `coach`), réglages `[coach]`, prochaine course dans le profil | Contrat | CO1 | Petite | En PR (version 5.0, révision 1.12 du contrat) |
 
 Série CO (version 5.0, séance conseillée par OpenRide). Plan de la série : `docs/5.0/PLAN_SERIE_CO.md`.
 
@@ -24,7 +24,7 @@ Ajout compatible au contrat IPC (révision libre à la fusion) pour que l'engine
 
 ## 4. Réalisation (7 novembre, en PR)
 
-- Révision 1.6 du contrat (la révision libre, ouverte par le lot PL1 ; `CONTRACT_REV` inchangé) : commandes `get_coach {need?}`, `set_next_race {date, kind?}`, `clear_next_race`, `set_watch_advice {type, duration_min?, target_w?}` et `clear_watch_advice` (celles du lot CO8, dans la même révision), toutes avec la réponse `coach` ; schéma `docs/contracts/ipc/coach.schema.json`, tableau des commandes, paragraphe « Séance conseillée » et ligne au journal de `ipc_v1.md`.
+- Révision 1.12 du contrat (écrite en 1.6 le 7 novembre, renumérotée le 8 novembre avant fusion : la 1.6 est close par PL1, la 1.7 et la 1.8 prises par GP2 et BC2, la 1.9 à la 1.11 réservées ; `CONTRACT_REV` inchangé) : commandes `get_coach {need?}`, `set_next_race {date, kind?}`, `clear_next_race`, `set_watch_advice {type, duration_min?, target_w?}` et `clear_watch_advice` (celles du lot CO8, dans la même révision), toutes avec la réponse `coach` ; schéma `docs/contracts/ipc/coach.schema.json`, tableau des commandes, paragraphe « Séance conseillée » et ligne au journal de `ipc_v1.md`.
 - Un seul calcul : `coach.advice_today` sert `openride-core coach` et `get_coach` ; le message `coach` reprend les clés de `--json`, durées en secondes, `route` à `null` jusqu'au lot CO9.
 - « Choisir un autre besoin » : règle `CH` (`--besoin` en ligne de commande) ; le conseil du jour reste en première autre idée et sa raison en note.
 - Prochaine course : date d'aujourd'hui à un an, type `course` ou `championnat`, gardée dans `conseil.json` du profil en cours jusqu'à son jour (`--prochaine-course AAAA-MM-JJ[:TYPE] --enregistrer`, `--effacer-course`).

@@ -5,7 +5,7 @@ Construit les réponses aux commandes `list_routes` et `list_workouts`, avec lim
 ERG limités à 30 triplets. Révision 1.3 (lot O12) : fiche des parcours (`stats`, `library`),
 `unit` des entraînements, message `plans` (réponse à `list_plans`, `start_plan`, `stop_plan`).
 Révision 1.5 (lot O28) : messages `history` et `history_session` (historique du menu).
-Révision 1.6 (lot CO3) : message `coach` (séance conseillée, réponse à `get_coach` et aux saisies du conseil).
+Révision 1.12 (lot CO3) : message `coach` (séance conseillée, réponse à `get_coach` et aux saisies du conseil).
 """
 
 from __future__ import annotations

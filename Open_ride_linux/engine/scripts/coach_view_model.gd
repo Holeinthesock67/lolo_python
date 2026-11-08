@@ -1,6 +1,6 @@
 extends RefCounted
 
-## Écrans de la séance conseillée (série CO, lot CO5, contrat IPC révision 1.6), sans nœud, selon les
+## Écrans de la séance conseillée (série CO, lot CO5, contrat IPC révision 1.12), sans nœud, selon les
 ## maquettes validées par le propriétaire le 7 novembre (lot CO4, engine/tests/maquette_conseil.gd). Pas de
 ## class_name : charger par preload("res://scripts/coach_view_model.gd").
 ##

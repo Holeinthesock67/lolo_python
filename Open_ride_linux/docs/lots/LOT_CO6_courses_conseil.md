@@ -27,6 +27,6 @@ Faire entrer les courses dans le conseil : récupérer après une course, s'aff�
 - Lignes de jeu gardées par `session_summary.load_session` (champ `games`, `journal.GAME_KINDS`) ; faits mis en cache avec une version (`FACTS_VERSION` 2 : les faits d'avant CO6 sont recalculés).
 - R1 : course lue hier (avec son TSS), ou course annoncée (CO3) dont le jour était hier. R2 : course annoncée dans 1 à 2 jours (CO3).
 - R7 : la cause qui revient au moins 2 fois sur les 3 dernières courses des 4 semaines départage, avant le profil de puissance (« battu au sprint 2 fois sur tes 3 dernières courses »).
-- `details.races` dans `--json` et le message `coach` (journal du contrat, révision 1.6). Le journal CT13 sera lu par `race_of` quand il existera.
+- `details.races` dans `--json` et le message `coach` (journal du contrat, révision 1.12). Le journal CT13 sera lu par `race_of` quand il existera.
 - Tests : `core/tests/test_coach_courses.py` (un cas par cause, journal sans cause lisible, vainqueur, autres journaux, R1, R7, course annoncée hier et dans 2 jours, lecture d'un journal et version du cache).
 

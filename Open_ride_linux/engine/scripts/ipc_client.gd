@@ -36,7 +36,7 @@ signal plans_received(msg: Dictionary)
 ## Historique (lot O28, contrat 1.5) : réponse à list_history et bilan d'une séance (history_session).
 signal history_received(msg: Dictionary)
 signal history_session_received(msg: Dictionary)
-## Séance conseillée (série CO, lot CO5, contrat 1.6) : réponse à get_coach, set_next_race, clear_next_race,
+## Séance conseillée (série CO, lot CO5, contrat 1.12) : réponse à get_coach, set_next_race, clear_next_race,
 ## set_watch_advice et clear_watch_advice.
 signal coach_received(msg: Dictionary)
 
@@ -543,7 +543,7 @@ func list_workouts() -> int:
 	return cmd_id
 
 
-## Séance conseillée (lot CO5, contrat 1.6) : get_coach, set_next_race, clear_next_race, set_watch_advice ou
+## Séance conseillée (lot CO5, contrat 1.12) : get_coach, set_next_race, clear_next_race, set_watch_advice ou
 ## clear_watch_advice. Réponse : signal coach_received (seule la dernière demande compte), relancée sans réponse.
 func coach_command(cmd_name: String, args: Dictionary = {}) -> int:
 	var cmd_id := send_command(cmd_name, args)

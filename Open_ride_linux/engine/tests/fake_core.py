@@ -31,7 +31,7 @@ from typing import Any, Callable
 
 CONTRACT_VERSION = 1
 STATE_HZ = 30.0
-# Commandes de la séance conseillée (contrat 1.6, lot CO3) : réponse `coach`.
+# Commandes de la séance conseillée (contrat 1.12, lot CO3) : réponse `coach`.
 COACH_COMMANDS = ("get_coach", "set_next_race", "clear_next_race", "set_watch_advice", "clear_watch_advice")
 SPEED_MPS = 8.0
 DEMO_SEGMENTS = Path(__file__).resolve().parents[1] / "demo" / "demo.world" / "segments.json"
