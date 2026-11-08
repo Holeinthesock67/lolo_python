@@ -229,7 +229,7 @@ depuis le 31 octobre « − » et les flèches à côté de B (bandeau des menus
 
 ## 10. Essai D : garder le gauche déverrouillé (lot K9, 8 novembre 2026)
 
-Code livré, **essai sur le vélo pas encore fait**. Rien ne change par défaut (`click_reset_locked = "reset"`).
+Code livré par la PR #807. Rien ne change par défaut (`click_reset_locked = "reset"`). **Résultat de l'essai : négatif** (fin de section).
 
 - `[drivers] click_reset_locked = "keep"` : à chaque connexion, le core écrit la séquence d'activation complète
   de zwiftboard (`RideOn 02 03`, `00 08 00`, `00 08 10`, à 100 ms d'intervalle), puis `ff 04 00` sur SYNC_RX
@@ -252,3 +252,19 @@ Code livré, **essai sur le vélo pas encore fait**. Rien ne change par défaut 
 maintien tient), verrous, rappels perdus par tranche de 10 min (critère : moins d'un), et coupures du droit
 (critère : aucune). Si le maintien tient, le défaut passe à `"keep"` ; sinon `"reset"` reste et le résultat est
 noté ici. Le troisième bloc sert de témoin (essai C).
+
+**Résultat de l'essai (vélo, 8 novembre 2026, firmware 1.2.0).** Fait dans trois séances de jeu de 10 min 30 à la
+suite plutôt qu'avec `click_recette`, un « − » au boîtier gauche toutes les 20 s (29 signaux par séance) :
+
+| Séance | Choix | Fenêtres du gauche | Fin par verrou | Durée des fenêtres finies par verrou | `0x18` |
+| --- | --- | --- | --- | --- | --- |
+| A | keep | 11 | 10 | 48,6 à 52,1 s | 10 |
+| B | keep | 11 | 10 | jusqu'à 51,6 s | 10 |
+| C | reset (témoin) | 10 | 10 | 50,4 à 52,1 s | 10 |
+
+Avec `keep`, chaque verrou arrive après environ 51,7 s malgré 4 réponses `ff 04 00` (« maintien échoué »), puis
+`0x18` et reconnexion en environ 4 s, exactement comme le témoin. Le boîtier droit n'est jamais tombé pendant les
+séances (une seule déconnexion par séance, à l'arrêt du jeu). **Conclusion : sous firmware 1.2.0, l'activation
+complète et `ff 04 00` ne retardent pas le verrou ; seul un déverrouillage par l'appli Zwift le ferait (essai B,
+abandonné).** Le défaut reste `"reset"` (environ 4 s sans gauche par minute, B du droit double « − ») ; `"keep"`
+reste disponible, sans gain mesuré, pour refaire l'essai après un changement de firmware.

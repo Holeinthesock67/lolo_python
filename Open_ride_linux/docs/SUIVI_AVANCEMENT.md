@@ -348,7 +348,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Rampe de pente plus rapide, surtout à la descente (lot Q4, `grade_rate_up_pct_per_s` et `grade_rate_down_pct_per_s`, testé par `test_grade_ramp.py`).
 - [x] FC relayée par le trainer figée : écrite comme absente (lot Q5, `hr_relay_freeze_s`, testé par `test_hr_relay_freeze.py`).
 - [x] Boîtier gauche du Click muet après la connexion : trace, détection, reprise (lot Q6).
-- [ ] Boîtier gauche du Click gardé déverrouillé sans redémarrage (lot K9, 4.0) : choix `click_reset_locked = "keep"` livré le 8 novembre, essai D sur le vélo à faire (`docs/RECHERCHE_CLICK_GAUCHE.md` §10).
+- [x] Boîtier gauche du Click gardé déverrouillé sans redémarrage (lot K9, 4.0) : essai D fait le 8 novembre, **négatif** (verrou à 48 à 52 s malgré `ff 04 00`) ; `click_reset_locked = "reset"` reste le défaut (`docs/RECHERCHE_CLICK_GAUCHE.md` §10).
 
 ### Performances du rendu (série S rédigée le 25 octobre)
 - [ ] Ne pas dessiner ce que le cycliste ne voit pas : étude mesurée au banc simulé, puis réductions sans changement visible (lot S1, `docs/ETUDE_RENDU_INVISIBLE.md`). S1a (28 octobre) : tuiles proches hors du champ de la caméra active ni construites ni garnies d'arbres, budget d'arbres dépensé dans le champ, interrupteur `--culling=on|off` et scénario de banc `rendu_invisible`. Mesuré sur la GTX 1060 le 28 octobre (village et essai-69) : aucun gain (moins de 1 % d'images/s), donc tri coupé par défaut ; outils de test gardés. À suivre : S1b (occlusion par le relief et les bâtiments), S1c (décor vivant et bots hors vue en veille).
