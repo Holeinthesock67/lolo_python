@@ -204,8 +204,9 @@ def test_player_is_never_driven_and_ghost_free():
     mode = GrandPrixMode([ME, "b"], 10_000.0)
     assert set(mode.brain.minds) == {"b"}
     assert set(GrandPrixMode([ME, "b"], 10_000.0, bots=()).brain.minds) == set()
+    assert set(GrandPrixMode([ME, "b"], 10_000.0, bots=[ME, "b"]).brain.minds) == {ME, "b"}   # banc GP5
     with pytest.raises(Exception):
-        GrandPrixMode([ME, "b"], 10_000.0, bots=[ME])
+        GrandPrixMode([ME, "b"], 10_000.0, bots=["x"])
 
 
 # --- pas d'élastique ----------------------------------------------------------------------------
