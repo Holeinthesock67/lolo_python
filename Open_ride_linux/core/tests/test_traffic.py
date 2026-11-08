@@ -304,20 +304,27 @@ def test_state_frame_with_four_vehicles_and_five_bots_fits():
     assert ipc_budget.size(with_devices) <= ipc_budget.STATE_LIMIT_1_3
 
 
-def test_rider_passes_slow_tractor_on_the_left():
+@pytest.mark.parametrize("kmh", [20.0, 9.0 * 3.6 * tr.BENCH_SLOW_SPEED_FRAC])   # tracteur du banc : 85 % du cycliste
+def test_rider_passes_slow_tractor_on_the_left(kmh):
     t = tr.Traffic(route=straight_route())
     rider = draft.Lane(draft.RIDER_LANE_M, draft.RIDER_LANE_M)
-    v = t.place_for_test(5000.0, "tractor", 1, 20.0, 20.0)
-    s, worst = 5000.0, 99.0
-    for _ in range(int(30.0 / DT)):
+    v = t.place_for_test(5000.0, "tractor", 1, 20.0, kmh)
+    s, worst, rejoin = 5000.0, 99.0, 99.0
+    for _ in range(int(60.0 / DT)):
         t.update(s, 9.0, DT, others=[tr.Other(s, rider.m)])
         lane = draft.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width, length=v.length)
         draft.update_lanes([(s, 9.0, rider), (v.s, v.speed_mps, lane)], DT)
         s += 9.0 * DT
+        clear = abs(rider.m - v.lateral) - v.half_width - tr.RIDER_HALF_WIDTH_M
         if abs(v.s - s) < v.length / 2 + draft.BIKE_LENGTH_M / 2:
-            worst = min(worst, abs(rider.m - v.lateral) - v.half_width - tr.RIDER_HALF_WIDTH_M)
-    assert v.s < s and worst < 99.0
+            worst = min(worst, clear)
+        elif v.s < s and abs(v.s - s) < v.length / 2 + draft.BIKE_LENGTH_M / 2 + 1.0:
+            rejoin = min(rejoin, clear)
+    assert v.s < s and worst < 99.0 and rejoin < 99.0
     assert worst >= draft.SIDE_CLEAR_M - draft.RIDER_WIDTH_M - 0.05      # longé comme un vélo, sans contact
+    # Banc circulation_proche du 8 novembre : à 1 m devant le tracteur doublé, toujours à l'écart (on ne se rabat
+    # qu'à VEHICLE_REJOIN_M de sa carrosserie)
+    assert rejoin >= draft.SIDE_CLEAR_M - draft.RIDER_WIDTH_M - 0.05
     assert rider.m >= draft.PASS_LANE_MIN_M
 
 

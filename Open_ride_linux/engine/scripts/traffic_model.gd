@@ -63,6 +63,7 @@ const VERGE_M := 0.25
 const HOLD_GAP_M := 5.0
 const SLOPE_PROBE_M := 2.5   # tangage : pente de la route à ± cette distance (environ un demi-empattement)
 const NEAR_M := 150.0                       # lot AS6 : véhicules calculés par le core (liste `vehicles`)
+const CORE_SHIFT_MAX_M := 50.0               # écart cycliste affiché / cycliste du core au-delà duquel (saut, boucle) on ne recale pas
 const CORE_MARGIN_M := 10.0                 # un véhicule qui vient de sortir de la liste n'est pas retiré
 ## Sortes (Lot P25) : demi-largeur et longueur hors tout de vehicle_mesh.gd (rétroviseurs compris), part des
 ## tirages et plage de vitesse.
@@ -249,7 +250,10 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, o
 		var rel := float(v["s"]) - rider_s
 		if v.get("core", false):
 			# Lot AS6 : calculé par le core, extrapolé jusqu'à sa prochaine liste
-			v["s"] = float(v["s"]) + int(v["dir"]) * float(v["speed_mps"]) * dt_s
+			if v.get("fresh", false):
+				v.erase("fresh")
+			else:
+				v["s"] = float(v["s"]) + int(v["dir"]) * float(v["speed_mps"]) * dt_s
 		elif int(v["dir"]) == -1:
 			# Un véhicule en face plus rapide reste derrière le précédent, à MIN_SPACING_M au moins
 			var spd := float(v["cruise_mps"])
@@ -446,10 +450,16 @@ func _spawn(ev: Dictionary, s: float, dir: int) -> void:
 ## Lot AS6 : liste `vehicles` de la trame `state` numéro `seq` (au plus 4 véhicules à moins de NEAR_M, calculés
 ## par le core) ; reprise une seule fois par trame. Les véhicules reçus remplacent ceux de l'engine de même `id`,
 ## ceux de l'engine à moins de NEAR_M absents de la liste partent ; un véhicule qui sort de la liste reste au décor.
-func sync_core(list: Array, seq: int, rider_s: float) -> void:
+func sync_core(list: Array, seq: int, rider_s: float, core_s: float = NAN) -> void:
 	if seq == _core_seq:
 		return
 	_core_seq = seq
+	# Le cycliste affiché (`rider_s`, interpolé par camera_follow.gd) est en retard sur la trame (`core_s`, position du
+	# cycliste dans le core) : chaque véhicule garde l'écart du core au cycliste, pas sa position absolue (sinon, en
+	# retard d'une trame, un tracteur doublé paraissait 1 à 2 m plus en avant : contacts du banc du 8 novembre).
+	var shift := 0.0
+	if not is_nan(core_s) and absf(rider_s - core_s) < CORE_SHIFT_MAX_M:
+		shift = rider_s - core_s
 	var by_id := {}
 	for v in vehicles:
 		by_id[str(v["id"])] = v
@@ -466,7 +476,8 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 		var spd := float(item.get("v", 0.0))
 		v["kind"] = str(item["kind"])
 		v["color"] = int(item.get("color", 0))
-		v["s"] = float(item.get("s", rider_s))
+		v["s"] = float(item.get("s", rider_s)) + shift
+		v["fresh"] = true               # déjà à sa place de cette image : pas extrapolé une fois de plus
 		v["dir"] = 1 if int(item.get("dir", 1)) >= 0 else -1
 		v["speed_mps"] = spd
 		v["cruise_mps"] = spd

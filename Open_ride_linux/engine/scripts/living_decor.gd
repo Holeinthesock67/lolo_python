@@ -496,7 +496,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		others.append({"s": float(b["s"]), "lateral": float(b["lateral"]), "dir": 1})
 	# Lot AS6 : véhicules proches calculés par le core (liste `vehicles`, une trame sur trois)
 	if typeof(state.get("vehicles")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
-		traffic.sync_core(state["vehicles"], int(state["seq"]), cam_s)
+		traffic.sync_core(state["vehicles"], int(state["seq"]), cam_s,
+				float(state["s"]) if typeof(state.get("s")) in [TYPE_INT, TYPE_FLOAT] else NAN)
 	traffic.update(cam_s, rider_v, dt_s, paused, others)
 	if not paused:
 		_count_contacts(others)

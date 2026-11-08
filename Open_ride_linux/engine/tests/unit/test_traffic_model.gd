@@ -375,6 +375,9 @@ func _test_sync_core(route) -> void:
 	for v in tm.vehicles:
 		if str(v["id"]) == "v40":
 			t40 = v
+	_check(not t40.is_empty() and absf(float(t40["s"]) - 5020.0) < 1e-6,
+		"image de la liste : véhicule du core à sa place, pas extrapolé une fois de plus (%s)" % str(t40.get("s")))
+	tm.update(5000.0, 8.0, 0.5)
 	_check(not t40.is_empty() and absf(float(t40["s"]) - 5023.0) < 1e-6 and float(t40["lateral"]) == 1.5,
 		"véhicule du core extrapolé à sa vitesse entre deux listes (%s)" % str(t40.get("s")))
 	tm.sync_core([], 10, 5000.0)
@@ -387,6 +390,16 @@ func _test_sync_core(route) -> void:
 		if str(v["id"]) == "v40":
 			kept = not v.has("core")
 	_check(kept, "sorti de la liste à plus de 150 m : gardé au décor de l'engine")
+	# Cycliste affiché 1,5 m en retard sur le core : le véhicule garde l'écart du core (tracteur doublé, 3 m derrière)
+	var tm2 = TrafficModel.new()
+	tm2.configure(route, {}, [], 1, 7)
+	tm2.update(5000.0, 8.0, 0.1)
+	tm2.sync_core([tractor.merged({"id": "v50", "s": 4997.0}, true)], 1, 4998.5, 5000.0)
+	var gap := NAN
+	for v in tm2.vehicles:
+		if str(v["id"]) == "v50":
+			gap = float(v["s"]) - 4998.5
+	_check(absf(gap + 3.0) < 1e-6, "cycliste affiché en retard sur le core : écart du core gardé (%.2f m)" % gap)
 	# Camion qui a doublé, sorti de la liste devant : il garde sa vitesse au lieu de se caler sur le cycliste
 	var truck := {"id": "v41", "kind": "truck", "color": 0, "s": 5150.0, "dir": 1, "v": 17.0, "lane_m": 1.5}
 	tm.sync_core([truck], 13, 5000.0)
