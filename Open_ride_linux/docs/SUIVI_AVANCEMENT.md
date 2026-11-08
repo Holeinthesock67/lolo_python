@@ -384,7 +384,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Décor complet branché dans la scène : pluie et brume de la météo du thème (chaussée mouillée, brouillard rapproché), animaux chargés avec les tronçons, éoliennes, drapeaux et eau qui scintille, véhicules figés en pause, panneaux, bornes et chiffres peints, spectateurs au sommet des cols et passants, « Abri 30 % » sous l'indicateur du vent (lot P17 ; recette sur le PC : `docs/RECETTE_P17.md`).
 - [x] Jour et nuit, modèle sans affichage : soleil selon la latitude, la date et l'heure (fixe, du PC ou accélérée), aube et coucher orangés, heure bleue, nuit étoilée au clair de lune, lumière minimale pour la route (lot P7, 8 novembre ; rien ne change à l'écran avant P19).
 - [x] Saisons, modèle et shaders : feuillage d'automne varié, feuillus dénudés l'hiver (résineux inchangés), herbe jaunie, neige plus bas l'hiver, forêts lointaines aux couleurs de la saison, feuilles qui tombent près des forêts, insectes l'été et oiseaux plus rares l'hiver ; été identique à aujourd'hui (lot P18, 8 novembre ; rien ne change à l'écran avant P19).
-- [ ] Version 2.0 : intégration P19 avec deux réglages séparés au menu, « Jour et nuit » et « Saisons », coupés par défaut.
+- [ ] Jour, nuit et saisons dans le jeu : deux réglages séparés au menu, « Jour et nuit » (heure du thème, du PC ou journée en une heure) et « Saisons » (du thème, de la date ou imposée), coupés par défaut ; nuit étoilée lisible, arbres d'hiver, feuilles qui tombent (lot P19, 8 novembre ; reste bancs aux trois qualités et captures à valider : `docs/RECETTE_P19.md`).
 
 ### Après la 1.0 : réglages de séance au menu (lots N17 et N18, rédigés le 27 octobre)
 - [ ] Demi-tour sur la route depuis l'écran de pause (lot N17).

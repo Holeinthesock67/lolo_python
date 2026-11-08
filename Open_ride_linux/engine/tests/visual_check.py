@@ -578,6 +578,8 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes_dir}",
             "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}", f"--living={args.decor_vivant}",
             "--camera=subjective"]   # les scènes d'avant le lot V12 supposent la caméra subjective
+    if getattr(args, "biome", None):
+        cmd.append(f"--biome={args.biome}")   # biome forcé sur tout le parcours (lot U5)
     preset_dir = quality + ("" if args.decor_vivant == "on" else "_sans_vivant") + ("" if v_grade == 1.0 else f"_k{v_grade}")
     gold = Path(args.golden) / ("natif" if args.native else "xvfb") / preset_dir if args.golden else None
     update = {v.strip() for v in args.update_golden.split(",") if v.strip()} if args.update_golden else None
@@ -1664,6 +1666,60 @@ def _quality_guard_scenes(s: Session) -> None:
                 f"{shot[1].get('quality')!r}, attendu {wanted!r}")
 
 
+# Jour, nuit et saisons (lot P19) : heure solaire et date imposées par le message de test « sky_cycle »
+SKY_CYCLE_SHOTS = (
+    ("jour_midi", "theme", "off", 12.0, {"year": 2026, "month": 6, "day": 21}),
+    ("jour_crepuscule", "theme", "off", 19.4, {"year": 2026, "month": 6, "day": 21}),
+    ("jour_heure_bleue", "theme", "off", 20.6, {"year": 2026, "month": 6, "day": 21}),
+    ("jour_nuit", "theme", "off", 23.5, {"year": 2026, "month": 6, "day": 29}),
+    ("saison_automne", "off", "autumn", None, None),
+    ("saison_hiver", "off", "winter", None, None),
+    ("saison_printemps", "off", "spring", None, None),
+)
+
+
+def _sky_cycle_scenes(s: Session) -> None:
+    """Lot P19 : captures du jour et de la nuit (midi, crépuscule, heure bleue, nuit) et des saisons (automne,
+    hiver, printemps) sur le parcours demo, réglages remis à « coupé » à la fin. Contrôles : image de plus en plus
+    sombre du midi à la nuit, nuit jamais noire (route lisible), réglages coupés : retour au soleil d'aujourd'hui."""
+    core = s.core
+    t0 = now()
+    while now() - t0 < 20.0 and "IpcClient attaché" not in core.log.path.read_text(errors="replace"):
+        time.sleep(0.1)
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="RUNNING", power=250.0, cadence=90.0, grade=1.0, grade_sent=1.0,
+                   gear=12, gears_total=24, mode="SIM", erg=None, pause_reason=None,
+                   trainer_status="CONNECTED", input_status="CONNECTED")
+    core.auto_hello_ack = True
+    core.catalog_data = MENU_CATALOG
+    core.streaming = True
+    loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
+    s.check("jour_nuit", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    time.sleep(FREEZE_SETTLE_S * max(1.0, s.slowdown() / 2.0))   # terrain et décor chargés : image de référence
+    base = s.capture("jour_coupe")
+    lums = {}
+    for tag, day, season, hour, date in SKY_CYCLE_SHOTS:
+        mark = core.log.mark()
+        core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "sky_cycle", "day_night": day,
+                       "seasons": season, "hour": hour, "date": date})
+        core.log.wait_for(r"^sky_cycle ", 10.0 * s.slowdown(), mark)
+        time.sleep(2.0 * s.slowdown())
+        shot = s.capture(tag)
+        if shot:
+            lums[tag] = stats(shot[0])["lum"]
+    if all(k in lums for k in ("jour_midi", "jour_crepuscule", "jour_nuit")):
+        s.check("jour_nuit", "image de plus en plus sombre du midi à la nuit",
+                lums["jour_midi"] > lums["jour_crepuscule"] > lums["jour_nuit"],
+                f"luminance midi {lums['jour_midi']:.2f}, crépuscule {lums['jour_crepuscule']:.2f}, nuit {lums['jour_nuit']:.2f}")
+        s.check("jour_nuit", "nuit lisible (image jamais noire)", lums["jour_nuit"] > 0.03, f"luminance {lums['jour_nuit']:.3f}")
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "sky_cycle", "day_night": "off", "seasons": "off",
+                   "hour": None, "date": None})
+    time.sleep(2.0 * s.slowdown())
+    back = s.capture("jour_recoupe")
+    if base and back:
+        a, b = stats(base[0])["lum"], stats(back[0])["lum"]
+        s.check("jour_nuit", "réglages recoupés : image d'avant", abs(a - b) < 0.03, f"luminance {a:.3f} puis {b:.3f}")
+
+
 def _draft_gauge_scene(s: Session) -> None:
     """Jauge d'abri (maquette C validée le 29 octobre) : un bot à 3,8 m devant donne 16,5 % d'abri (« Abri 30 % ») ;
     réglage `render.draft_gauge` coupé par défaut, rien au-dessus du bot ; à « on », arc au-dessus du bot, dans le
@@ -2162,9 +2218,16 @@ def main() -> int:
                     help="off : décor vivant coupé, rendu de la 1.0 (références dans <préréglage>_sans_vivant)")
     ap.add_argument("--garde-qualite", action="store_true",
                     help="seulement le garde-fou de la qualité appliquée (démarrage, réglages du core, lot X32)")
+    ap.add_argument("--jour-nuit", action="store_true",
+                    help="seulement les captures du jour, de la nuit et des saisons (lot P19)")
+    ap.add_argument("--biome", default=None, metavar="ID",
+                    help="biome forcé sur tout le parcours (défaut : celui du parcours ; avec --jour-nuit : temperate_forest, "
+                         "feuillus et résineux mêlés pour voir les saisons)")
     ap.add_argument("--lisibilite", action="store_true",
                     help="hauteur des chiffres et contraste des textes du HUD sur chaque capture (lot X22)")
     args = ap.parse_args()
+    if args.jour_nuit and args.biome is None:
+        args.biome = "temperate_forest"
 
     if not (Path(args.godot).is_file() and os.access(args.godot, os.X_OK)):
         print(f"Godot introuvable : {args.godot} (définir GODOT=/chemin/vers/godot)")
@@ -2198,7 +2261,8 @@ def main() -> int:
         shutil.copytree(osm_work / f"{OSM_ROUTE_ID}.world", routes_dir / f"{OSM_ROUTE_ID}.world")
         shutil.rmtree(osm_work, ignore_errors=True)
         for config in [c.strip() for c in args.configs.split(",") if c.strip()]:
-            scenes = _quality_guard_scenes if args.garde_qualite else _menus_only if args.menus else None
+            scenes = (_quality_guard_scenes if args.garde_qualite else _sky_cycle_scenes if args.jour_nuit
+                      else _menus_only if args.menus else None)
             run_config(config, args, routes_dir, out_dir, report, scenes)
     finally:
         shutil.rmtree(routes_dir, ignore_errors=True)

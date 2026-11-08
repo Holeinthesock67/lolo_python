@@ -6,7 +6,8 @@ extends RefCounted
 ##
 ## - `describe(rider_xz, forests, buildings, waters, radius_m)` : voisinage dans un rayon de 150 m à
 ##   partir des couches chargées (polygones de forêt et de bâtiments en x, z ; eaux `{kind, points, area}`) :
-##   `{forest_share, built_share, water_dist_m, water_kind}`.
+##   `{forest_share, built_share, water_dist_m, water_kind, forest_dist_m}` (distance à la forêt la plus proche,
+##   0 dedans, INF sans forêt dans le rayon).
 ## - `evaluate(neigh, now_s)` : volume (dB) de chaque fond de `BEDS`. `neigh` porte aussi `alt_m`,
 ##   `solar_hour` (P7, version 2.0 ; NAN : heure locale du PC), `rain` (P8, 0 à 1), `wind_strength`
 ##   (P4, 0 à 1) et `paused`. Au plus `voices` fonds audibles (`living(preset).ambience_voices`) : les
@@ -279,6 +280,15 @@ static func describe(rider_xz: Vector2, forests: Array, buildings: Array, waters
 				if hit:
 					built_n += 1
 					break
+	# Distance à la forêt la plus proche (feuilles qui tombent, lot P19) : 0 dedans
+	var forest_dist := INF
+	for poly in forests:
+		var pts: PackedVector2Array = poly
+		if pts.size() >= 3 and Geometry2D.is_point_in_polygon(rider_xz, pts):
+			forest_dist = 0.0
+			break
+		for k in range(pts.size()):
+			forest_dist = minf(forest_dist, _point_segment_dist(rider_xz, pts[k], pts[(k + 1) % pts.size()]))
 	var best := INF
 	var kind := ""
 	for w in waters:
@@ -300,5 +310,6 @@ static func describe(rider_xz: Vector2, forests: Array, buildings: Array, waters
 		"forest_share": float(forest_n) / float(maxi(inside, 1)),
 		"built_share": float(built_n) / float(maxi(inside, 1)),
 		"water_dist_m": best,
+		"forest_dist_m": forest_dist,
 		"water_kind": kind,
 	}
