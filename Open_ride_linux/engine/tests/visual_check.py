@@ -1555,6 +1555,7 @@ def _settings_scenes(s: Session) -> None:
         bar = fraction(img, left, lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
         s.check("reglages", "curseurs des volumes remplis en cyan", bar >= 0.003, f"{bar:.2%} de pixels cyan")
     # Retour aux Réglages (focus sur Son), Cycliste, Poids modifié en place : + une fois, 76 kg.
+    t_edit = now()
     press("Y_SHORT", "MINUS_SHORT", "A_LONG", "PLUS_SHORT", "A_LONG", "PLUS_SHORT")
     shot = s.capture("reglage_edition")
     if shot:
@@ -1576,7 +1577,7 @@ def _settings_scenes(s: Session) -> None:
         s.check_texts("appareils", info, {"menu": "[Click : identifier le bouton +]"}, contains=True)
         s.check_texts("appareils", info, {"menu": "Zwift le verrouille environ une minute après la connexion"}, contains=True)
         s.check_layout("appareils", info)
-    sent = [r.msg.get("name") for r in core.messages("cmd")]
+    sent = [r.msg.get("name") for r in core.messages("cmd", since=t_edit)]   # commandes depuis l'édition
     s.check("reglage_edition", "Y annule : aucun set_setting envoyé", "set_setting" not in sent, ", ".join(map(str, sent[-8:])))
     # Retour à l'accueil (focus resté sur Réglages), puis + deux fois (Quitter, Session libre) : les scènes
     # suivantes partent de la première entrée, comme au lancement.
