@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Séance conseillée : contrat IPC (`get_coach`, message `coach`), réglages `[coach]`, prochaine course dans le profil | Contrat | CO1 | Petite | En PR (version 5.0, révision 1.12 du contrat) |
+| Séance conseillée : contrat IPC (`get_coach`, message `coach`), réglages `[coach]`, prochaine course dans le profil | Contrat | CO1 | Petite | Livré le 8 novembre (PR #770, version 5.0, révision 1.12 du contrat) |
 
 Série CO (version 5.0, séance conseillée par OpenRide). Plan de la série : `docs/5.0/PLAN_SERIE_CO.md`.
 
@@ -31,3 +31,6 @@ Ajout compatible au contrat IPC (révision libre à la fusion) pour que l'engine
 - Réglages `[coach] objectif` et `[coach] temps_disponible_min` (30 à 120 min par pas de 15), portée profil, groupe Séance de Réglages (l'écran du conseil du lot CO5 les reprendra) ; défauts de la ligne de commande.
 - Tests : `core/tests/test_coach_contrat.py` (schéma du message pour chaque règle, commandes IPC sur un profil fabriqué, saisies refusées, réglages du profil, ligne de commande).
 
+## Livraison
+
+PR #770 (fusionnée le 8 novembre) : contrat du conseil en révision 1.12 de l'IPC. Statut corrigé par le bilan du 8 novembre au soir.

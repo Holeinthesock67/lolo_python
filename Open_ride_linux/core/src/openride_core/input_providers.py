@@ -51,15 +51,19 @@ class ClickPair:
     """
 
     DEDUP_S = 0.15   # bien moins qu'un appui court réel entre deux relâchements
+    KEEP_S = 5.0     # heures de relâchement gardées par événement
 
     def __init__(self) -> None:
         self.claimed: set[str] = set()
-        self._last: dict[InputEvent, float] = {}
+        self._seen: dict[InputEvent, list[float]] = {}
 
     def first_report(self, ev: InputEvent, t: float) -> bool:
-        last = self._last.get(ev)
-        self._last[ev] = t
-        return last is None or t - last > self.DEDUP_S
+        """`t` : heure du relâchement. Une rafale finie (R14) publie plusieurs tapes à la fois, dans
+        le désordre entre les deux boîtiers : on compare donc à toutes les heures récentes."""
+        seen = [s for s in self._seen.get(ev, []) if abs(t - s) <= self.KEEP_S]
+        relayed = any(abs(t - s) <= self.DEDUP_S for s in seen)
+        self._seen[ev] = seen + [t]
+        return not relayed
 
 
 class ZwiftClickProvider:
@@ -74,6 +78,7 @@ class ZwiftClickProvider:
         short_max_s: float = zwift_click.SHORT_MAX_S,
         long_min_s: float = zwift_click.LONG_MIN_S,
         *,
+        repeat_gap_s: float = 0.0,   # la séance passe `[drivers] click_repeat_gap_s` (0 par défaut)
         device_finder: Callable[[str, str | None, float], Awaitable[Any]] = find_device,
         client_factory: Callable[..., Any] = default_client_factory,
         clock: Callable[[], float] = time.monotonic,
@@ -90,11 +95,11 @@ class ZwiftClickProvider:
         self._pair, self._optional = pair, optional
         self._claimed = pair.claimed if pair is not None else None
         self._mine: str | None = None   # adresse du boîtier tenu, retirée de `claimed` à la coupure
-        self.short_max_s, self.long_min_s = short_max_s, long_min_s
+        self.short_max_s, self.long_min_s, self.repeat_gap_s = short_max_s, long_min_s, repeat_gap_s
         self._find, self._client_factory, self._clock = device_finder, client_factory, clock
         self.events: asyncio.Queue[InputEvent] = asyncio.Queue()
         self.battery_pct: int | None = None
-        self._classifier = PressClassifier(short_max_s, long_min_s)
+        self._classifier = PressClassifier(short_max_s, long_min_s, repeat_gap_s)
         self._link_up = False
         self._ever_connected = False
         self._stop = asyncio.Event()
@@ -229,18 +234,34 @@ class ZwiftClickProvider:
                 self._mute_reported = False
                 self._rehandshake_step = 0
 
-            for ev in self._classifier.feed(buttons, now):
-                if self._pair is not None and not self._pair.first_report(ev, now):
-                    log.debug("Click : %s relayé par l'autre boîtier, ignoré", ev.value)
-                    continue
-                self._last_press_at = now
-                self._window_presses += 1
-                log.info("Click : %s", ev.value)
-                self.events.put_nowait(ev)
-                latency_log.new_press(self)   # lot X7 : sans effet hors `--latence`
+            self._emit(self._classifier.feed_timed(buttons, now), now)
+            if self.repeat_gap_s > 0:
+                # Fin de rafale à l'heure exacte (relâchement + écart) : le boîtier qui a vu le
+                # relâchement le premier publie le premier, comme sans regroupement.
+                try:
+                    asyncio.get_running_loop().call_later(self.repeat_gap_s + 0.01, self._poll_bursts)
+                except RuntimeError:   # appel hors boucle (tests) : la boucle du fournisseur s'en charge
+                    pass
 
         if self.trace_raw:
             self._trace_raw_notification(now, char_name, msg_type, category, raw, has_button)
+
+    def _poll_bursts(self) -> None:
+        now = self._clock()
+        self._emit(self._classifier.poll_timed(now), now)
+
+    def _emit(self, timed: list[tuple[InputEvent, float]], now: float) -> None:
+        """Publie les événements du classeur ; la paire compare les heures de relâchement, pas l'heure
+        de publication (une rafale finit `repeat_gap_s` après, au tour de boucle suivant)."""
+        for ev, released_at in timed:
+            if self._pair is not None and not self._pair.first_report(ev, released_at):
+                log.debug("Click : %s relayé par l'autre boîtier, ignoré", ev.value)
+                continue
+            self._last_press_at = now
+            self._window_presses += 1
+            log.info("Click : %s", ev.value)
+            self.events.put_nowait(ev)
+            latency_log.new_press(self)   # lot X7 : sans effet hors `--latence`
 
     def _on_sync_tx(self, _ch: Any, data: bytearray) -> None:
         """Réponse à l'activation : l'écho `RideOn` dit le boîtier déverrouillé (§3.3 de la recherche)."""
@@ -323,7 +344,7 @@ class ZwiftClickProvider:
         loop = asyncio.get_running_loop()
         dropped = asyncio.Event()
         # Un bouton « appuyé » à la coupure ne doit pas survivre à la reconnexion.
-        self._classifier = PressClassifier(self.short_max_s, self.long_min_s)
+        self._classifier = PressClassifier(self.short_max_s, self.long_min_s, self.repeat_gap_s)
         try:
             await self._connected_session(loop, dropped)
         finally:
@@ -378,6 +399,7 @@ class ZwiftClickProvider:
                     pass
                 self._wake.clear()
                 now = self._clock()
+                self._emit(self._classifier.poll_timed(now), now)   # fin des rafales (R14)
                 # Choix « keep » : `ff 04 00` à l'écho et à chaque défi, pour garder le boîtier déverrouillé.
                 if self._keep_due:
                     self._keep_due = False

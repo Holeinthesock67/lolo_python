@@ -308,7 +308,7 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
     révision 1.5 : la même limite pour tout message hors messages en parties."""
     from openride_core import ipc_server
     assert ipc_server.MAX_DATAGRAM_SIZE == MAX_STATE_DATAGRAM
-    assert ipc_server.CONTRACT_REV == "1.9"   # révision 1.9 annoncée depuis le demi-tour (lot N17) ; 1.8 : lot BC2
+    assert ipc_server.CONTRACT_REV == "1.9"   # révision 1.9 : `set_bots` (lot N18) et demi-tour (lot N17) ; 1.8 : lot BC2
 
     class Sock:
         def __init__(self):

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Séance conseillée : causes de perte des courses disputées (S5) et prochaine course (S6), règles R1, R2 et R7 complètes | Python | CO1, DS2, T4 (livrés sauf CO1) ; CT13 quand il existe | Moyenne | En PR (version 5.0, avec CO3) |
+| Séance conseillée : causes de perte des courses disputées (S5) et prochaine course (S6), règles R1, R2 et R7 complètes | Python | CO1, DS2, T4 (livrés sauf CO1) ; CT13 quand il existe | Moyenne | Livré le 8 novembre (PR #770, version 5.0) |
 
 Série CO (version 5.0, séance conseillée par OpenRide). Plan de la série : `docs/5.0/PLAN_SERIE_CO.md`.
 
@@ -30,3 +30,6 @@ Faire entrer les courses dans le conseil : récupérer après une course, s'aff�
 - `details.races` dans `--json` et le message `coach` (journal du contrat, révision 1.12). Le journal CT13 sera lu par `race_of` quand il existera.
 - Tests : `core/tests/test_coach_courses.py` (un cas par cause, journal sans cause lisible, vainqueur, autres journaux, R1, R7, course annoncée hier et dans 2 jours, lecture d'un journal et version du cache).
 
+## Livraison
+
+PR #770 (fusionnée le 8 novembre) : causes de perte des courses disputées. Statut corrigé par le bilan du 8 novembre au soir.

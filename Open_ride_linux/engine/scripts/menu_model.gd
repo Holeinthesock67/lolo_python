@@ -171,6 +171,8 @@ func set_rogue_ready(text: String) -> void:
 ## Entrée des plans de l'accueil (lot O12) : « Séance du jour » avec un plan actif, sinon « Choisir un plan ».
 var plan_label := "Choisir un plan"
 var plan_detail := ""
+## Détail de la ligne « Collection » de l'accueil (série BC, lot BC5) : « 17 / 42 cartes · 2 nouvelles ».
+var collection_detail := ""
 ## Séance préparée par prepare_start() : nom affiché sur l'écran Prêt et arguments de `start` ({} sinon).
 var start_name := ""
 var start_args: Dictionary = {}
@@ -181,6 +183,10 @@ var ghost := false
 ## Taille du peloton choisie (une valeur de PELOTON_CHOICES, lot PL1) ; celle de la dernière séance.
 var peloton := 0
 var last_peloton := 0
+## Écran de pause (lot N18) : lignes modifiables reçues de menu_flow (set_pause_rows), bots modifiés depuis
+## l'ouverture de la pause (envoyés par `set_bots` avant `resume`).
+var _pause_rows: Array = []
+var pause_bots_changed := false
 ## Derniers choix du profil (lot O32) : bots et fantôme remis par reset(), entraînement mis sous le focus.
 var last_bots: Array[int] = []
 var last_ghost := false
@@ -230,10 +236,10 @@ func _init() -> void:
 			_item("devices", "Appareils : rechercher et appairer")]},
 		CONFIRM: {"id": CONFIRM, "title": "Confirmer", "on_back": "", "items": [
 			_item("no", "Non"), _item("yes", "Oui")]},
-		PAUSE: {"id": PAUSE, "title": "Pause", "on_back": "", "items": [
-			_item("resume", "Reprendre"), _item("end_save", "Terminer et enregistrer"),
-			_item("abandon", "Abandonner"), _item("difficulty", "Difficulté")]},
+		PAUSE: {"id": PAUSE, "title": "Pause", "on_back": "", "items": []},
 	}
+	_pause_rows = [{"id": "difficulty", "label": "Difficulté"}]   # remplacées par menu_flow (set_pause_rows)
+	_refresh_pause()
 	set_items(ROUTES, [])
 	set_items(WORKOUTS, [])
 	_refresh_home()
@@ -255,6 +261,7 @@ func _refresh_home() -> void:
 			items.append(_item(m, HOME_MODES[m], true, str(HOME_DETAILS.get(m, ""))))
 	items.append_array([_item("plan", plan_label, true, plan_detail), _item("ftp", "Test de FTP"),
 		_item("history", "Historique", true, "séances, semaines, tests de FTP"),
+		_item("collection", "Collection", true, collection_detail),
 		_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée")])
 	if garage:
 		items.append(_item("garage", "Garage"))
@@ -401,6 +408,12 @@ func set_plan_home(label: String, detail := "") -> void:
 	_refresh_home()
 
 
+## Détail de la ligne « Collection » de l'accueil (lot BC5).
+func set_collection_home(detail: String) -> void:
+	collection_detail = detail
+	_refresh_home()
+
+
 ## Prépare une séance démarrée avec `args` (`start` : plan_day ou ftp_test, lot O12) et ouvre l'écran
 ## Prêt, ou les parcours d'abord sans monde choisi ; `name` s'affiche dans le titre de l'écran Prêt.
 func prepare_start(name: String, args: Dictionary) -> Dictionary:
@@ -521,6 +534,14 @@ func _start_args() -> Dictionary:
 		return out
 	if mode == "wtf":
 		out["mode"] = "wtf"
+	var bots := _bots_list()
+	if not bots.is_empty():
+		out["bots"] = bots
+	return out
+
+
+## Liste `bots` des lignes « Bot n », du peloton et du fantôme (argument de `start` et de `set_bots`).
+func _bots_list() -> Array:
 	var bots: Array = []
 	for c in bot_choices:
 		bots.append(BOT_CHOICES[c][1].duplicate())
@@ -528,9 +549,7 @@ func _start_args() -> Dictionary:
 		bots.append({"kind": "profile", "profile": PELOTON_PROFILES[i % PELOTON_PROFILES.size()]})
 	if ghost:
 		bots.append({"kind": "ghost"})
-	if not bots.is_empty():
-		out["bots"] = bots
-	return out
+	return bots
 
 
 ## Lignes modifiables de l'écran de pause, après Reprendre, Terminer, Abandonner et, sur un parcours, « Faire
@@ -539,17 +558,34 @@ func _start_args() -> Dictionary:
 ## puissance ou cadence cible (set_ride_mode). `rows` : rangées de SettingsViewModel.row() (valeur,
 ## curseur, mode édition en place) ; leur `id` est renvoyé par une action « item » de l'écran de pause.
 ## Le focus reste sur la même ligne quand la liste change.
+## Lot N18 : puis, en séance libre, ERG ou WTF, les lignes des bots de l'écran Prêt (« Bot 1 » à « Bot n »,
+## fantôme, peloton), modifiées de la même façon (A) et appliquées à la reprise.
 func set_pause_rows(rows: Array) -> void:
+	_pause_rows = rows.duplicate()
+	_refresh_pause()
+
+
+## Bots modifiables sur l'écran de pause (lot N18) : pas en Cyber-Rogue ni en Dernier survivant, où le core
+## compose le plateau.
+func pause_bots_shown() -> bool:
+	return mode in ["free", "erg", "wtf"]
+
+
+func _refresh_pause() -> void:
 	var items: Array = [_item("resume", "Reprendre"), _item("end_save", "Terminer et enregistrer"),
 		_item("abandon", "Abandonner")]
 	if u_turn_shown:
 		items.append(_item("u_turn", "Faire demi-tour"))
-	for row in rows:
+	for row in _pause_rows:
 		var it := _item(str(row["id"]), str(row["label"]), true, str(row.get("detail", "")))
 		if row.has("bar"):
 			it["bar"] = int(row["bar"])
 		it["editing"] = bool(row.get("editing", false))
 		items.append(it)
+	if pause_bots_shown():
+		items.append_array(_bot_items())
+		items.append_array([_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non")),
+			_peloton_item()])
 	var focused_id := ""
 	if _screen == PAUSE and _focus >= 0 and _focus < _screens[PAUSE]["items"].size():
 		focused_id = _screens[PAUSE]["items"][_focus]["id"]
@@ -631,6 +667,18 @@ func _bot_items() -> Array:
 	return out
 
 
+## Reprise depuis la pause (Reprendre ou Y) ; lot N18 : bots changés envoyés par `set_bots` avant `resume`,
+## et gardés comme derniers choix (le core les note aussi).
+func _resume_action() -> Dictionary:
+	if not pause_bots_changed:
+		return {"action": "resume"}
+	pause_bots_changed = false
+	last_bots = bot_choices.duplicate()
+	last_ghost = ghost
+	last_peloton = peloton
+	return {"action": "resume", "bots": _bots_list()}
+
+
 func _cycle_bot(i: int) -> void:
 	var next := (bot_choices[i] if i < bot_choices.size() else 0) + 1
 	next %= BOT_CHOICES.size()
@@ -641,6 +689,7 @@ func _cycle_bot(i: int) -> void:
 	else:
 		bot_choices[i] = next
 	_refresh_home()
+	_refresh_pause()
 
 
 func set_sim_session(on: bool) -> void:
@@ -711,6 +760,8 @@ func open_pause() -> Dictionary:
 	_stack.clear()
 	_focus_stack.clear()
 	_pending = {}
+	pause_bots_changed = false
+	_refresh_pause()
 	_open(PAUSE, false)
 	return state()
 
@@ -720,6 +771,10 @@ func add_screen(screen: Dictionary) -> void:
 	var id := str(screen.get("id", ""))
 	if id != "":
 		_screens[id] = screen.duplicate(true)
+		# Valeurs par défaut des éléments, comme _item() : focus_item() et la validation lisent « enabled »
+		# sans valeur par défaut (première ouverture de la Collection, lot BC5) ; les autres clés restent.
+		for it in _screens[id].get("items", []):
+			it.merge({"label": str(it["id"]), "enabled": true, "detail": ""})
 
 
 ## Ouvre un écran en vidant l'historique (bilan de fin de séance) ; écran inconnu : rien.
@@ -747,19 +802,25 @@ func set_screen_items(screen_id: String, items: Array, title := "") -> void:
 	var focused_id := ""
 	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
 		focused_id = _screens[screen_id]["items"][_focus]["id"]
-	var clean := []
-	for it in items:
-		var e := _item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
-			str(it.get("detail", "")))
-		for k in ["bar", "editing"]:   # affichage seulement : curseur (0 à 100) et valeur en cours de réglage
-			if it.has(k):
-				e[k] = it[k]
-		clean.append(e)
-	_screens[screen_id]["items"] = clean
+	_screens[screen_id]["items"] = _clean_items(items)
 	if title != "":
 		_screens[screen_id]["title"] = title
 	if _screen == screen_id:
 		_focus = _first_enabled_from(_index_of(focused_id), 1)
+
+
+## Éléments d'un écran au format du modèle : id, label, enabled (vrai par défaut), detail, et les clés
+## d'affichage seulement (curseur de 0 à 100, valeur en cours de réglage, pictogramme du badge, lot BC6).
+static func _clean_items(items: Array) -> Array:
+	var clean := []
+	for it in items:
+		var e := _item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
+			str(it.get("detail", "")))
+		for k in ["bar", "editing", "icon"]:
+			if it.has(k):
+				e[k] = it[k]
+		clean.append(e)
+	return clean
 
 
 ## Met le focus sur un élément actif de l'écran courant ; faux s'il n'existe pas ou est désactivé.
@@ -873,7 +934,7 @@ func _back() -> Dictionary:
 			_go_back_to(_confirm_back)
 			return {}
 		PAUSE:
-			return {"action": "resume"}   # retour depuis la pause = Reprendre
+			return _resume_action()   # retour depuis la pause = Reprendre
 		HOME:
 			return {}
 	if not _stack.is_empty():
@@ -958,7 +1019,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "history", "rogue", "garage", "profile", "wtf", "survivor", "interrupted", "coach":
+				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "interrupted", "coach":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
@@ -1025,7 +1086,23 @@ func _validate() -> Dictionary:
 		PAUSE:
 			match id:
 				"resume":
-					return {"action": "resume"}
+					return _resume_action()
+				"bot1", "bot2", "bot3", "bot4":
+					if pause_bots_shown():
+						_cycle_bot(int(id.substr(3)) - 1)
+						pause_bots_changed = true
+				"ghost":
+					if pause_bots_shown():
+						ghost = not ghost
+						pause_bots_changed = true
+						_refresh_home()
+						_refresh_pause()
+				"peloton":
+					if pause_bots_shown():
+						peloton = PELOTON_CHOICES[(PELOTON_CHOICES.find(peloton) + 1) % PELOTON_CHOICES.size()]
+						pause_bots_changed = true
+						_refresh_home()
+						_refresh_pause()
 				"end_save":
 					reset()
 					return {"action": "end_session", "save": true}

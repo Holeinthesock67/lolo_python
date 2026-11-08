@@ -46,6 +46,12 @@ Sortes de lignes :
   `target_n`, `speed_kmh`, `k`) puis `"resistance_fallback"` (mêmes champs sans `retake`) : résistance
   calculée sans effet, contrôle repris puis repli sur le SIM du trainer (essai du 2 novembre). Lignes facultatives, absentes du FIT ; les lectures
   qui ne connaissent pas cette sorte l'ignorent.
+- `{"kind": "bots", "ts": ..., "t": ..., "reason": "start" | "set_bots", "bots": [{"id": ..., "name": ...,
+  "kind": "constant" | "ghost", "power_w": ... | "profile": ..., "level_pct": ...}]}` : bots de la séance
+  au départ (s'il y en a) et à chaque changement fait sur l'écran de pause (commande `set_bots`, lot N18) ;
+  `t` : temps de la séance ; `power_w` pour un bot à puissance constante, `profile` (et `level_pct` s'il
+  a été choisi) pour un bot à profil. Ligne facultative, absente du FIT ; les lectures qui ne
+  connaissent pas cette sorte l'ignorent.
 `ts` est l'heure Unix (secondes, UTC).
 """
 
@@ -185,6 +191,10 @@ class JournalWriter:
     def junction(self, line: dict) -> None:
         """Branche prise à un carrefour du monde ouvert (lot W9)."""
         self._write({**line, "kind": "junction"})
+
+    def bots(self, line: dict) -> None:
+        """Bots de la séance (lot N18) : ligne `bots` déjà formée."""
+        self._write({**line, "kind": "bots"})
 
     def powerup(self, kind: str, t_start: float, duration_s: float, ts: float) -> None:
         """Bonus activé (série T, lot T5) : type, début en temps chronométré, durée."""
