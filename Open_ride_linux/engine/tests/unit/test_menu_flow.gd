@@ -193,6 +193,15 @@ func _test_view() -> void:
 			"bilan : %s" % v.summary.text())
 	_check(v.summary.fit_label.text.contains("seance.fit"), "fichier FIT : %s" % v.summary.fit_label.text)
 	_check(v.summary.blocks_box.get_child_count() == 2, "bilan détaillé : un bloc par ligne")
+	# Paliers de `fit` quand la carte ne tient pas même resserrée : blocs sur deux colonnes, courbe cachée.
+	v.summary.update_display({"duration_s": 1800.0, "distance_m": 15000.0, "blocks": [[1, 200.0, 200.0]],
+			"power_profile": {"step_s": 10, "power_w": [150, 200, 180], "target_w": null}}, true)
+	v.summary.fit(600.0, func() -> bool: return false)
+	_check(v.summary.blocks_box.columns == 2 and not v.summary.chart_box.visible,
+			"bilan trop haut : blocs sur deux colonnes, courbe de puissance cachée")
+	v.summary.fit(600.0, func() -> bool: return true)
+	_check(v.summary.blocks_box.columns == 1 and v.summary.chart_box.visible,
+			"bilan qui tient : un bloc par ligne, courbe affichée")
 	v.free()
 
 

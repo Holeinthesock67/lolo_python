@@ -32,6 +32,8 @@ const COLUMN_GAP := 24
 const TILE_GAP := 8
 ## Plus petite police des lignes du bilan quand `fit` le compacte (celle des autres lignes suit, 2 de moins).
 const MIN_FONT_SIZE := 16
+const COMPACT_LEVELS := 3
+const TILE_MARGIN_COMPACT := 2
 ## Chiffre d'une tuile : 6 points de plus que les lignes (28 à la taille normale, comme la carte de détail).
 const TILE_VALUE_EXTRA := UiTheme.VALUE_SIZE - FONT_SIZE
 ## Écarts entre les lignes ; `fit` passe aux écarts serrés et au graphique bas quand la plus petite police ne
@@ -69,7 +71,7 @@ var records_more: Label
 var more_label: Label
 var lines_grid: GridContainer
 var fit_label: Label
-var blocks_box: VBoxContainer
+var blocks_box: GridContainer
 var progress_box: VBoxContainer
 var progress_grid: GridContainer
 var bar_label: Label
@@ -78,6 +80,8 @@ var extras_label: Label
 ## Animation de la barre d'expérience (coupée par main.gd en qualité basse).
 var animate := true
 var _chart: Dictionary = {}
+var _tile_style: StyleBoxFlat
+var _tile_style_compact: StyleBoxFlat
 var _ftp_w := 0.0
 var _bar_from := 0.0
 var _bar_to := 0.0
@@ -87,6 +91,10 @@ var _bar_key := ""
 
 
 func _init() -> void:
+	_tile_style = UiTheme.tile_style()
+	_tile_style_compact = UiTheme.tile_style()
+	_tile_style_compact.content_margin_top = TILE_MARGIN_COMPACT
+	_tile_style_compact.content_margin_bottom = TILE_MARGIN_COMPACT
 	add_theme_constant_override("separation", BOX_SEP)
 	_build_ftp_band()
 	tiles_grid = GridContainer.new()
@@ -116,7 +124,10 @@ func _init() -> void:
 	fit_label = UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM)
 	fit_label.clip_text = true
 	add_child(fit_label)
-	blocks_box = VBoxContainer.new()
+	blocks_box = GridContainer.new()
+	blocks_box.columns = 1
+	blocks_box.add_theme_constant_override("h_separation", COLUMN_GAP)
+	blocks_box.add_theme_constant_override("v_separation", 0)
 	add_child(blocks_box)
 	progress_box = VBoxContainer.new()
 	progress_box.add_theme_constant_override("separation", PROGRESS_SEP)
@@ -196,7 +207,7 @@ func _build_chart() -> void:
 ## Tuile d'un chiffre (même forme que celles de detail_card.gd) : libellé, chiffre, unité, complément (NP).
 func _tile() -> PanelContainer:
 	var t := PanelContainer.new()
-	t.add_theme_stylebox_override("panel", UiTheme.tile_style())
+	t.add_theme_stylebox_override("panel", _tile_style)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var box := VBoxContainer.new()
@@ -232,18 +243,33 @@ func _record_row() -> HBoxContainer:
 
 ## Réduit les polices de 2 en 2, depuis FONT_SIZE, jusqu'à ce que chaque ligne tienne dans sa colonne
 ## (width : largeur du bilan) et que `fits` (hauteur de la carte) réponde vrai, ou jusqu'à MIN_FONT_SIZE ;
-## à MIN_FONT_SIZE, resserre encore les écarts et baisse le graphique si la carte ne tient toujours pas.
+## à MIN_FONT_SIZE, resserre les écarts et baisse le graphique, puis passe les paliers de `_set_compact`
+## un à un tant que la carte ne tient toujours pas (bilan détaillé avec progression en 1280×720).
 func fit(width: float, fits: Callable) -> void:
 	_set_tight(false)
+	_set_compact(0)
 	var size := FONT_SIZE
 	while true:
 		_set_fonts(size)
 		if _cells_fit(width) and fits.call():
 			return
 		if size <= MIN_FONT_SIZE:
-			_set_tight(true)
-			return
+			break
 		size -= 2
+	_set_tight(true)
+	for level in range(1, COMPACT_LEVELS + 1):
+		if fits.call():
+			return
+		_set_compact(level)
+
+
+## Paliers après les écarts resserrés, dans l'ordre : 1 tuiles basses, 2 blocs ERG sur deux colonnes,
+## 3 graphique de puissance caché (comme l'étape « courbe du bilan » du contrat, la courbe part la première).
+func _set_compact(level: int) -> void:
+	for t in _tiles:
+		t.add_theme_stylebox_override("panel", _tile_style_compact if level >= 1 else _tile_style)
+	blocks_box.columns = 2 if level >= 2 else 1
+	chart_box.visible = not _chart.is_empty() and level < 3
 
 
 func _set_tight(tight: bool) -> void:
