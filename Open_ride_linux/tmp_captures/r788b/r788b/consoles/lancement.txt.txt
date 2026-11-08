@@ -1,0 +1,7 @@
+20:40:34 empreinte avant 5dd68002174aac60837bd7c9e4e300a6
+20:40:34 tête 6bacd012
+20:41:56 menu_bench de la branche (#788), tous les scénarios
+22:00:31 fin rc=0
+22:00:32 empreinte après 5dd68002174aac60837bd7c9e4e300a6
+22:00:32 clone 3a1b36c3
+22:00:32 FIN
