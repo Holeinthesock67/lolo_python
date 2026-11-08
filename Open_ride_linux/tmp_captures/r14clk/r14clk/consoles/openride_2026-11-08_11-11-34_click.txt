@@ -1,0 +1,81 @@
+2026-11-08 11:11:53,374 INFO    input Zwift Click connecté (adresse XX:XX, recherche 17.8 s, 1 tentative(s))
+2026-11-08 11:11:55,450 INFO    input Zwift Click connecté (adresse XX:XX, recherche 19.9 s, 1 tentative(s))
+2026-11-08 11:11:58,181 INFO    input Click gauche : état du boîtier, mode 0 (boutons en clair)
+2026-11-08 11:12:37,931 INFO    input Click : MINUS_SHORT
+2026-11-08 11:12:38,560 INFO    input Click : MINUS_SHORT
+2026-11-08 11:12:39,191 INFO    input Click : MINUS_SHORT
+2026-11-08 11:12:46,212 INFO    input Click gauche : état du boîtier, mode 1 (verrouillé par Zwift)
+2026-11-08 11:12:46,271 WARNING input Click gauche : verrouillé par Zwift, redémarrage du boîtier (0x18)
+2026-11-08 11:12:46,532 WARNING input Zwift Click déconnecté (adresse XX:XX) après 51.1 s de connexion : dernière notification il y a 0.3 s, dernier appui il y a 7.3 s, 39 notification(s), dernière écriture au trainer il y a 1.2 s, raison : lien perdu (rappel bleak) ; appuyez sur un bouton pour le réveiller
+2026-11-08 11:12:53,412 INFO    input Zwift Click connecté (adresse XX:XX, recherche 6.9 s, 1 tentative(s))
+2026-11-08 11:12:53,419 INFO    input Click : 1 notification(s) en 60 s (0.0 par seconde)
+2026-11-08 11:12:53,419 WARNING input Click droit : connecté mais muet depuis 60 s
+2026-11-08 11:12:55,570 INFO    input Click gauche : état du boîtier, mode 0 (boutons en clair)
+2026-11-08 11:12:57,816 INFO    input Click : PLUS_SHORT
+2026-11-08 11:12:58,027 INFO    input Click : PLUS_SHORT
+2026-11-08 11:12:58,656 INFO    input Click : PLUS_SHORT
+2026-11-08 11:12:58,896 INFO    input Click : PLUS_SHORT
+2026-11-08 11:12:59,317 INFO    input Click : PLUS_SHORT
+2026-11-08 11:12:59,617 INFO    input Click : PLUS_SHORT
+2026-11-08 11:12:59,826 INFO    input Click : PLUS_SHORT
+2026-11-08 11:13:00,070 INFO    input Click : PLUS_SHORT
+2026-11-08 11:13:11,050 INFO    input Click : MINUS_SHORT
+2026-11-08 11:13:11,351 INFO    input Click : MINUS_SHORT
+2026-11-08 11:13:11,683 INFO    input Click : MINUS_SHORT
+2026-11-08 11:13:17,562 INFO    input Click : MINUS_SHORT
+2026-11-08 11:13:43,541 INFO    input Click gauche : état du boîtier, mode 1 (verrouillé par Zwift)
+2026-11-08 11:13:43,628 WARNING input Click gauche : verrouillé par Zwift, redémarrage du boîtier (0x18)
+2026-11-08 11:13:43,921 WARNING input Zwift Click déconnecté (adresse XX:XX) après 50.5 s de connexion : dernière notification il y a 0.4 s, dernier appui il y a 26.4 s, 79 notification(s), dernière écriture au trainer il y a 2.0 s, raison : lien perdu (rappel bleak) ; appuyez sur un bouton pour le réveiller
+2026-11-08 11:13:48,040 INFO    input Zwift Click connecté (adresse XX:XX, recherche 4.1 s, 1 tentative(s))
+2026-11-08 11:13:51,762 INFO    input Click gauche : état du boîtier, mode 0 (boutons en clair)
+2026-11-08 11:13:53,501 INFO    input Click : 33 notification(s) en 60 s (0.5 par seconde)
+2026-11-08 11:14:00,135 WARNING input Click droit : connecté mais muet depuis 60 s
+2026-11-08 11:14:05,503 INFO    input Click : MINUS_SHORT
+2026-11-08 11:14:05,951 INFO    input Click : MINUS_SHORT
+2026-11-08 11:14:06,342 INFO    input Click : MINUS_SHORT
+2026-11-08 11:14:06,583 INFO    input Click : MINUS_SHORT
+2026-11-08 11:14:06,971 INFO    input Click : MINUS_SHORT
+2026-11-08 11:14:07,391 INFO    input Click : MINUS_SHORT
+2026-11-08 11:14:39,852 INFO    input Click gauche : état du boîtier, mode 1 (verrouillé par Zwift)
+2026-11-08 11:14:39,871 WARNING input Click gauche : verrouillé par Zwift, redémarrage du boîtier (0x18)
+2026-11-08 11:14:40,111 WARNING input Zwift Click déconnecté (adresse XX:XX) après 52.1 s de connexion : dernière notification il y a 0.3 s, dernier appui il y a 32.7 s, 45 notification(s), dernière écriture au trainer il y a 0.3 s, raison : lien perdu (rappel bleak) ; appuyez sur un bouton pour le réveiller
+2026-11-08 11:14:45,343 WARNING input Click droit : connecté mais muet depuis 60 s
+2026-11-08 11:14:45,399 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:45,583 INFO    input Zwift Click connecté (adresse XX:XX, recherche 5.5 s, 1 tentative(s))
+2026-11-08 11:14:45,606 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:45,847 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:46,058 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:46,267 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:46,479 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:46,777 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:46,987 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:47,197 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:47,528 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:47,598 WARNING input Zwift Click déconnecté (adresse XX:XX) après 2.0 s de connexion : dernière notification il y a 1.5 s, dernier appui il y a jamais, 2 notification(s), dernière écriture au trainer il y a 0.0 s, raison : lien perdu (rappel bleak) ; appuyez sur un bouton pour le réveiller
+2026-11-08 11:14:47,737 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:47,947 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:48,162 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:48,366 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:48,667 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:48,877 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:49,089 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:49,297 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:49,391 INFO    input Zwift Click connecté (adresse XX:XX, recherche 1.8 s, 1 tentative(s))
+2026-11-08 11:14:49,507 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:49,837 INFO    input Click : PLUS_SHORT
+2026-11-08 11:14:53,583 INFO    input Click : 54 notification(s) en 60 s (0.9 par seconde)
+2026-11-08 11:15:15,104 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:15,731 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:16,032 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:16,275 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:17,083 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:17,382 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:17,742 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:18,012 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:18,251 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:18,522 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:18,882 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:19,153 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:19,361 INFO    input Click : MINUS_SHORT
+2026-11-08 11:15:37,599 WARNING input Zwift Click déconnecté (adresse XX:XX) après 224.2 s de connexion : dernière notification il y a 46.8 s, dernier appui il y a 47.8 s, 88 notification(s), dernière écriture au trainer il y a 2.3 s, raison : arrêt du core ; appuyez sur un bouton pour le réveiller
+2026-11-08 11:15:37,640 WARNING input Zwift Click déconnecté (adresse XX:XX) après 48.2 s de connexion : dernière notification il y a 1.5 s, dernier appui il y a 18.3 s, 66 notification(s), dernière écriture au trainer il y a 2.3 s, raison : arrêt du core ; appuyez sur un bouton pour le réveiller
