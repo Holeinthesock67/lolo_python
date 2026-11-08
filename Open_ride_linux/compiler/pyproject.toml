@@ -36,8 +36,8 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 # Recettes des packs de parcours livrés (lot O16), lues par `route-pack-build` ; scénarios de réseau
-# dégradé (lot X28), lus par `openride-worldgen-netcheck`.
-openride_compiler = ["route_packs/*/*.toml", "worldgen/reseau/*.json"]
+# dégradé (lot X28), lus par `openride-worldgen-netcheck` ; table des variantes régionales (lot U4).
+openride_compiler = ["route_packs/*/*.toml", "worldgen/reseau/*.json", "data/*.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

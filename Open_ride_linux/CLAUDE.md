@@ -93,7 +93,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `draft.py` : aspiration derrière les bots (courbe exponentielle, effet de file, vent de travers, poussée du bot suivi), module pur (lot P3).
 - `road_cyclists.py` : cyclistes du décor proches calculés par le core (portage de `road_cyclists_model.gd`, même graine), sources d'abri `rider:<id>` et liste `riders` de `state`, module pur (lot AS7).
 
-**Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `landcover.py` (WorldCover lu par fenêtres, cache par carré de 0,1°, lot U2), `biomes.py` (classification des biomes, numpy sans entrée-sortie, lot U2), `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `segments_layer.py` (couche `segments` et fichier `<trace>.segments.toml`, série T, lot T3), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
+**Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `landcover.py` (WorldCover lu par fenêtres, cache par carré de 0,1°, lot U2), `biomes.py` (classification des biomes, numpy sans entrée-sortie, lot U2), `regional.py` et `data/regional_variants.toml` (variante régionale par tuile, table à grosse maille, lot U4), `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `segments_layer.py` (couche `segments` et fichier `<trace>.segments.toml`, série T, lot T3), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
 
 ## Commandes
 
@@ -135,6 +135,7 @@ python -m openride_core.tools.workouts install | list | check FICHIER.zwo --ftp 
 # Parcours
 openride-compiler build trace.gpx      # route + terrain + biome + segments ; puis : verify / info
 openride-compiler build trace.gpx --biome mediterranean   # impose un biome à tout le parcours (lot U2)
+openride-compiler build trace.gpx --variant basalte,ardoise   # impose la variante régionale de toutes les tuiles (lot U4)
 openride-compiler list                 # liste les parcours (.world et .gpx) et leur statut
 openride-compiler build-all            # compile toutes les traces GPX nouvelles ou modifiées (route,terrain,biome,segments ; --layers pour OSM)
 openride-compiler build trace.gpx --offline --force   # sans réseau, tuiles d'altitude et WorldCover déjà en cache
