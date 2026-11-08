@@ -256,11 +256,13 @@ noté ici. Le troisième bloc sert de témoin (essai C).
 **Résultat de l'essai (vélo, 8 novembre 2026, firmware 1.2.0).** Fait dans trois séances de jeu de 10 min 30 à la
 suite plutôt qu'avec `click_recette`, un « − » au boîtier gauche toutes les 20 s (29 signaux par séance) :
 
-| Séance | Choix | Fenêtres du gauche | Fin par verrou | Durée des fenêtres finies par verrou | `0x18` |
-| --- | --- | --- | --- | --- | --- |
-| A | keep | 11 | 10 | 48,6 à 52,1 s | 10 |
-| B | keep | 11 | 10 | jusqu'à 51,6 s | 10 |
-| C | reset (témoin) | 10 | 10 | 50,4 à 52,1 s | 10 |
+| Séance | Choix | Fenêtres du gauche | Fin par verrou | Durée des fenêtres finies par verrou | `0x18` | « − » perdus |
+| --- | --- | --- | --- | --- | --- | --- |
+| A | keep | 11 | 10 | 48,6 à 52,1 s | 10 | 5 sur 29 (3 près d'un `0x18`) |
+| B | keep | 11 | 10 | jusqu'à 51,6 s | 10 | 3 sur 29 (2 près d'un `0x18`) |
+| C | reset (témoin) | 10 | 10 | 50,4 à 52,1 s | 10 | 3 sur 29 (3 près d'un `0x18`) |
+
+Un « − » est compté perdu quand le journal n'a aucun `MINUS_SHORT` de −1 à +8 s autour du signal. Le critère « moins d'un appui perdu par tranche de 10 min » n'est tenu ni par `keep` ni par `reset`.
 
 Avec `keep`, chaque verrou arrive après environ 51,7 s malgré 4 réponses `ff 04 00` (« maintien échoué »), puis
 `0x18` et reconnexion en environ 4 s, exactement comme le témoin. Le boîtier droit n'est jamais tombé pendant les
