@@ -111,7 +111,7 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 | droit | Y | 6 | pause et reprise (lot N6) |
 | droit | Z | 7 | action du mode (spécification générale §7.1) |
 
-- **Verrou du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche se verrouille environ une minute après la connexion (message d'état `ff 05 00 ea 05`) et n'envoie plus ses boutons ; renvoyer `RideOn` n'y change rien. OpenRide le redémarre alors (octet `0x18`, `[drivers] click_reset_locked`, vrai par défaut) : il se reconnecte en 4 s environ et envoie de nouveau − et les flèches (essais sur le PC du 30 octobre 2026 : 20 « − » sur 21, 46 flèches sur 4 redémarrages). Le boîtier droit n'est pas concerné ; B y double « − » pour les quelques secondes de chaque redémarrage. Même verrou publié par BikeControl, zwiftboard et OpenRadlr (docs/RECHERCHE_CLICK_GAUCHE.md).
+- **Verrou du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche se verrouille environ une minute après la connexion (message d'état `ff 05 00 ea 05`) et n'envoie plus ses boutons ; renvoyer `RideOn` n'y change rien. OpenRide le redémarre alors (octet `0x18`, `[drivers] click_reset_locked = "reset"`, défaut ; le choix `"keep"` du lot K9 essaie d'abord de le garder déverrouillé) : il se reconnecte en 4 s environ et envoie de nouveau − et les flèches (essais sur le PC du 30 octobre 2026 : 20 « − » sur 21, 46 flèches sur 4 redémarrages). Le boîtier droit n'est pas concerné ; B y double « − » pour les quelques secondes de chaque redémarrage. Même verrou publié par BikeControl, zwiftboard et OpenRadlr (docs/RECHERCHE_CLICK_GAUCHE.md).
 - Événements normalisés (contrat IPC révision 1.3) : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`, `A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : sans effet, signalé pour + et − (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`) et expliqué à l'écran. Y et les flèches n'ont qu'un événement, quelle que soit la durée. Rôle de chaque bouton : spécification générale §7.1, seule référence. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
 - Repli : le clavier produit les mêmes événements, touche pour touche et avec les mêmes seuils, selon le tableau du clavier de la spécification générale §7.1 (décision D6, lot O17) : `engine/scripts/key_map.gd` dans la fenêtre de l'engine, `TERMINAL_KEYS` (`input_providers.py`) dans le terminal du core, qui ne mesure pas la durée et prend les synonymes pour les appuis longs.
 
@@ -387,7 +387,7 @@ click_long_min_s = 0.9
 click_trace_raw = false      # trace brute de chaque notification du Click (lot Q6)
 click_mute_after_s = 60.0    # boîtier déclaré muet sans appui depuis ce délai (lot Q6)
 click_rehandshake_s = 0.0    # reprise d'un boîtier muet, en secondes entre deux étapes ; 0 : jamais (lot Q6)
-click_reset_locked = true    # redémarrer le boîtier gauche verrouillé par Zwift (octet 0x18) ; false : le laisser muet
+click_reset_locked = "reset" # boîtier gauche verrouillé par Zwift : "reset" (octet 0x18), "keep" (maintien ff 04 00, lot K9) ou "off" (le laisser muet)
 mock_replay = ""             # chemin facultatif d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
 hr = "none"                  # ceinture cardio : "none", "ble" ou "sim"
 hr_address = ""

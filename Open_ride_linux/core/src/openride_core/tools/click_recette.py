@@ -9,10 +9,16 @@ Avec les vrais fournisseurs du core (deux boîtiers, comme `build_inputs`), l'ou
 1. attend la connexion des boîtiers (un appui réveille chacun) ;
 2. demande chaque bouton tour à tour (« + », « − » du boîtier gauche, B et Y du boîtier droit, appuis
    longs) et coche ce qu'il reçoit : événement décodé, boîtier qui l'a envoyé, délai de réponse ;
-3. surveille ensuite pendant `--minutes` (30 par défaut) en demandant un appui sur chaque boîtier
-   toutes les `--rappel` minutes : silences de chaque boîtier (aucune notification alors que le lien
+3. surveille ensuite pendant `--minutes` (30 par défaut) en demandant un appui sur « − » (boîtier gauche)
+   toutes les `--rappel` minutes, chacun attendu `--attente-rappel` secondes : silences de chaque boîtier (aucune notification alors que le lien
    tient, le défaut du boîtier gauche de l'essai 69), coupures et reprises, notifications sans bouton
-   (types de messages), batterie.
+   (types de messages), batterie, fenêtres de boutons en clair du boîtier gauche entre deux verrous
+   Zwift (lot K9) et rappels perdus.
+
+Essai D du lot K9 (garder le gauche déverrouillé sans redémarrage), par blocs de 10 min :
+
+    python -m openride_core.tools.click_recette --minutes 10 --rappel 0.33 --attente-rappel 8 --verrou keep
+    python -m openride_core.tools.click_recette --minutes 10 --rappel 0.33 --attente-rappel 8 --verrou reset
 
 L'essai est guidé (module `guide`) : rappel du matériel, consigne en grand avec compte à rebours,
 bip à chaque appui demandé, bip d'alerte quand un boîtier se tait ou se coupe, résultat de chaque
@@ -246,7 +252,7 @@ def plain_guide() -> Guide:
 async def run_recette(providers: list[TracedClickProvider], rec: Recorder, minutes: float, reminder_min: float,
                       prompt: Prompter | None = None, step_timeout: float = STEP_TIMEOUT_S,
                       connect_timeout: float = 120.0, tick_s: float = 0.25,
-                      guide: Guide | None = None) -> dict[str, Any]:
+                      guide: Guide | None = None, reminder_timeout: float = STEP_TIMEOUT_S) -> dict[str, Any]:
     g = guide or plain_guide()
     tasks = [asyncio.create_task(p.run()) for p in providers]
     link: dict[int, bool] = {}
@@ -318,9 +324,10 @@ async def run_recette(providers: list[TracedClickProvider], rec: Recorder, minut
         while rec.t() < soak_end:
             if rec.t() >= next_reminder:
                 after = rec.t()
-                ask(REMINDER.prompt, min(step_timeout, soak_end - rec.t() + 1.0))
-                res = await wait_step(rec, REMINDER, min(step_timeout, soak_end - rec.t() + 1.0), after, g.tick)
-                res.key = f"rappel_{int(after // 60)}min"
+                wait_s = min(reminder_timeout, soak_end - rec.t() + 1.0)
+                ask(REMINDER.prompt, wait_s)
+                res = await wait_step(rec, REMINDER, wait_s, after, g.tick)
+                res.key = f"rappel_{int(after)}s"
                 show(res)
                 results.append(res)
                 next_reminder += reminder_min * 60.0
@@ -334,10 +341,12 @@ async def run_recette(providers: list[TracedClickProvider], rec: Recorder, minut
             p.stop()
         await asyncio.gather(*tasks, return_exceptions=True)
         rec.close()
-    return build_report(rec, results, minutes)
+    windows = [w for p in providers for w in p.windows]
+    return build_report(rec, results, minutes, windows, providers[0].reset_locked if providers else "")
 
 
-def build_report(rec: Recorder, results: list[StepResult], minutes: float) -> dict[str, Any]:
+def build_report(rec: Recorder, results: list[StepResult], minutes: float,
+                 windows: list[dict[str, Any]] | None = None, policy: str = "") -> dict[str, Any]:
     units = []
     for u in rec.units.values():
         if u.address == "?":
@@ -355,10 +364,21 @@ def build_report(rec: Recorder, results: list[StepResult], minutes: float) -> di
     sides = {u["address"]: u["side"] for u in units}
     steps = [{**asdict(r), "side": sides.get(r.unit or "", None)} for r in results]
     guided = [r for r in results if not r.key.startswith("rappel")]
+    reminders = [r for r in results if r.key.startswith("rappel")]
     ok = (all(r.ok for r in results) and bool(units)
           and all(not x["silences"] and not x["drops"] for x in units))
+    # Lot K9 : fenêtres de boutons en clair du boîtier gauche (de la connexion au verrou ou à la coupure)
+    # et rappels perdus, rapportés à 10 min de surveillance (critère : moins d'un par tranche de 10 min).
+    windows = list(windows or [])
+    lost = sum(not r.ok for r in reminders)
+    left = {"policy": policy, "windows": windows,
+            "locks": sum(w["cause"] == "verrou" for w in windows),
+            "max_window_s": max((w["duration_s"] for w in windows), default=0.0),
+            "reminders_lost": lost, "reminders_total": len(reminders),
+            "lost_per_10min": round(lost * 10.0 / minutes, 2) if minutes > 0 else 0.0}
     return {"ok": ok, "minutes": minutes, "steps": steps,
-            "guided_ok": sum(r.ok for r in guided), "guided_total": len(guided), "units": units}
+            "guided_ok": sum(r.ok for r in guided), "guided_total": len(guided), "units": units,
+            "left": left}
 
 
 def report_text(report: dict[str, Any]) -> str:
@@ -385,6 +405,15 @@ def report_text(report: dict[str, Any]) -> str:
             lines.append(f"    messages sans bouton : {', '.join(f'{k} ×{v}' for k, v in sorted(u['other_types'].items()))}")
     if not report["units"]:
         lines.append("  aucun boîtier n'a envoyé de notification")
+    left = report.get("left")
+    if left:
+        lines += ["", f"Boîtier gauche (click_reset_locked = \"{left['policy']}\", lot K9) : "
+                  f"{len(left['windows'])} fenêtres de boutons, {left['locks']} verrous Zwift, "
+                  f"plus longue fenêtre {left['max_window_s']:.0f} s"]
+        if left["windows"]:
+            lines.append("    fenêtres : " + ", ".join(f"{w['duration_s']:.0f} s ({w['cause']})" for w in left["windows"]))
+        lines.append(f"    rappels « − » perdus : {left['reminders_lost']} sur {left['reminders_total']} "
+                     f"({left['lost_per_10min']:g} par tranche de 10 min)")
     return "\n".join(lines) + "\n"
 
 
@@ -400,13 +429,14 @@ def write_outputs(rec: Recorder, report: dict[str, Any], out: Path) -> None:
             fh.write(f"{sec};" + ";".join(str(rec.units[a].per_second.get(sec, 0)) for a in addrs) + "\n")
 
 
-def make_providers(rec: Recorder, cfg: Any, sim: Any = None) -> list[TracedClickProvider]:
+def make_providers(rec: Recorder, cfg: Any, sim: Any = None, policy: str = "") -> list[TracedClickProvider]:
     d, pair = cfg.drivers, ClickPair()
     kw: dict[str, Any] = {"device_finder": sim.find_device, "client_factory": sim.client_factory} if sim else {}
     addr_plus = None if sim else (d.click_address or None)
     addr_minus = None if sim else (d.click_minus_address or None)
-    # Comme le core : le boîtier gauche verrouillé par Zwift est redémarré (`click_reset_locked`, vrai par défaut).
-    kw["reset_locked"] = d.click_reset_locked
+    # Comme le core : verrou du boîtier gauche selon `click_reset_locked` (« reset » par défaut), sauf
+    # `--verrou` qui le remplace pour l'essai D du lot K9.
+    kw["reset_locked"] = policy or d.click_reset_locked
     return [TracedClickProvider(rec, addr_plus, d.click_short_max_s, d.click_long_min_s, pair=pair, **kw),
             TracedClickProvider(rec, addr_minus, d.click_short_max_s, d.click_long_min_s, pair=pair,
                                 optional=True, **kw)]
@@ -463,10 +493,11 @@ async def main_async(args: argparse.Namespace) -> int:
 
         prompt = prompts.put_nowait
         extra = [asyncio.create_task(sim.run()), asyncio.create_task(sim_user(sim, prompts))]
-    providers = make_providers(rec, cfg, sim)
+    providers = make_providers(rec, cfg, sim, args.verrou or "")
     try:
         report = await run_recette(providers, rec, args.minutes, args.rappel, prompt,
-                                   connect_timeout=20.0 if args.sim else 120.0, guide=guide)
+                                   connect_timeout=20.0 if args.sim else 120.0, guide=guide,
+                                   reminder_timeout=args.attente_rappel)
     finally:
         if sim is not None:
             sim.stop()
@@ -487,6 +518,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     ap.add_argument("--minutes", type=float, default=30.0, help="durée de la surveillance (défaut 30)")
     ap.add_argument("--rappel", type=float, default=5.0, help="minutes entre deux rappels d'appui (défaut 5)")
+    ap.add_argument("--attente-rappel", type=float, default=STEP_TIMEOUT_S,
+                    help=f"secondes d'attente de chaque rappel avant de le compter perdu (défaut {STEP_TIMEOUT_S:g})")
+    ap.add_argument("--verrou", choices=zwift_click.LOCK_POLICIES,
+                    help="remplace [drivers] click_reset_locked pour l'essai (lot K9 : keep ou reset)")
     ap.add_argument("--sim", action="store_true", help="Click simulé (ble_sim), cycliste simulé")
     ap.add_argument("--scenario", help="avec --sim : scénario (nom ou fichier JSON) pour le Click simulé")
     ap.add_argument("--out", type=Path, help=f"dossier de sortie (défaut : {DEFAULT_OUT}/<date>)")
