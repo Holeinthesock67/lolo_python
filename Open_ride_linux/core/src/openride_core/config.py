@@ -92,6 +92,8 @@ class RenderConfig:
     biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des seize de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
     texture_level: str = "auto"    # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high
+    day_night: str = "off"   # jour et nuit (lot P19) : off (soleil fixe d'aujourd'hui), theme, real (heure du PC) ou accelerated
+    seasons: str = "off"     # saisons (lot P19) : off (l'été d'aujourd'hui), theme, date, spring, summer, autumn ou winter
 
 
 @dataclass
@@ -144,10 +146,10 @@ class OpenWorldConfig:
 @dataclass
 class WindConfig:
     """Vent du core (lot P2, SRS §5 et §11) ; coupé par défaut dans les versions 1.x."""
-    mode: str = "off"              # "off", "fixed", "gusty" ou "theme" (vent du thème 1.2)
+    mode: str = "off"              # "off", "fixed", "gusty", "theme" (vent du thème 1.2) ou "local" (météo du jour, P33)
     speed_kmh: float = 0.0
     from_deg: float = 270.0        # d'où vient le vent, degrés depuis le nord
-    gust_pct: float = 0.0          # amplitude des rafales (modes "gusty" et "theme")
+    gust_pct: float = 0.0          # amplitude des rafales (mode "gusty" ; "theme" et "local" ont les leurs)
     seed: int = 0                  # graine des rafales
     feel: str = "grade"            # "grade" (supplément de pente) ou "ftms" (champ vent de 0x11)
     max_grade_offset_pct: float = 4.0   # borne du supplément de pente, réglable dans le menu
@@ -422,11 +424,13 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "draft_gauge"): ("off", "on"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
+    ("render", "day_night"): ("off", "theme", "real", "accelerated"),
+    ("render", "seasons"): ("off", "theme", "date", "spring", "summer", "autumn", "winter"),
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),
     ("drivers", "click_reset_locked"): ("reset", "keep", "off"),   # zwift_click.LOCK_POLICIES
-    ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
+    ("wind", "mode"): ("off", "fixed", "gusty", "theme", "local"),
     ("wind", "feel"): ("grade", "ftms"),
     ("trainer", "control"): ("sim", "resistance"),
     ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),

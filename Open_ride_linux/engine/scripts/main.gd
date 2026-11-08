@@ -58,6 +58,8 @@ const QualityPresets := preload("res://scripts/quality_presets.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
 const AtmosphereView := preload("res://scripts/atmosphere_view.gd")
+const SkyCycle := preload("res://scripts/sky_cycle.gd")
+const SeasonModel := preload("res://scripts/season_model.gd")
 const VelodromeHall := preload("res://scripts/velodrome_hall.gd")
 const SegmentMarkers := preload("res://scripts/segment_markers.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
@@ -145,6 +147,14 @@ var camera_views = CameraViews.new()
 var _camera_setting := ""
 var _gravel_setting := ""    # dernières valeurs de gravel.mode et render.biome reçues du core (lot U16)
 var _biome_setting := ""
+## Jour et nuit, saisons (lot P19) : réglages `render.day_night` et `render.seasons` reçus du core (coupés par
+## défaut), état recalculé au plus une fois par CYCLE_PERIOD_S.
+const CYCLE_PERIOD_S := 1.0
+var _day_mode := "off"
+var _season_mode := "off"
+var _cycle_at := -INF
+var _season_applied := {}
+var _cycle_test := {}   # message de test « sky_cycle » : heure fixe (`hour`) et date (`date`) imposées
 var _display_setting := ""   # dernière valeur de render.display reçue du core (vide avant la première liste)
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
@@ -572,6 +582,8 @@ func _on_settings(msg: Dictionary) -> void:
 		_camera_setting = cam
 	_apply_gravel(str(menu_flow.settings.item("gravel.mode").get("value", "")))
 	_apply_biome(str(menu_flow.settings.item("render.biome").get("value", "")))
+	_apply_cycle_modes(str(menu_flow.settings.item("render.day_night").get("value", "off")),
+		str(menu_flow.settings.item("render.seasons").get("value", "off")))
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp
@@ -1133,6 +1145,7 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 			living_world.last_wind, _last_state, now_s < _beep_until_s)
 		PerfProbe.mark_since("decor", "", t_step)
 		t_step = Time.get_ticks_usec()
+	_step_cycle(now_s)
 	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
 	PerfProbe.mark_since("atmosphere", "", t_step)
 
@@ -1365,6 +1378,10 @@ func _on_test_message(msg: Dictionary) -> void:
 		"camera_view":   # vue de caméra imposée, sans transition (tour visuel, lot X21)
 			camera_views.set_view(str(msg.get("view", "")), -1.0, "message de test")
 			ipc.test_log("camera_view done=" + camera_views.effective())
+		"sky_cycle":   # heure et date imposées au jour et à la nuit et aux saisons (tests graphiques du lot P19)
+			_cycle_test = {"hour": msg.get("hour", null), "date": msg.get("date", null)}
+			_apply_cycle_modes(str(msg.get("day_night", _day_mode)), str(msg.get("seasons", _season_mode)), true)
+			ipc.test_log("sky_cycle " + JSON.stringify(atmosphere_view.test_info()))
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
 				living_decor.set_weather(msg["weather"])
@@ -1562,6 +1579,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"tag": tag, "path": path, "ok": err == OK, "size": [img.get_width(), img.get_height()],
 		"fps": Engine.get_frames_per_second(), "meshes": meshes, "ticks_ms": Time.get_ticks_msec(),
 		"quality": _quality_name,
+		"menu_clipped": menu_view.clipped_labels() if menu_view.visible else [],
 		"ui_scale": to_pixels.get_scale().x,
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"triangles": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
@@ -1764,6 +1782,54 @@ func _apply_biome(id: String) -> void:
 			_apply_sky_params(_theme_dict)
 			print("Biome : ", id)
 		_biome_setting = id
+
+
+## Jour et nuit, saisons (lot P19) : chaque réglage coupe tout son effet, indépendamment de l'autre.
+func _apply_cycle_modes(day_mode: String, season_mode: String, force: bool = false) -> void:
+	var d := day_mode if day_mode in SkyCycle.DAY_MODES else "off"
+	var s := season_mode if season_mode in SkyCycle.SEASON_MODES else "off"
+	if d == _day_mode and s == _season_mode and not force:
+		return
+	_day_mode = d
+	_season_mode = s
+	print("Jour et nuit : %s ; saisons : %s" % [d, s])
+	_step_cycle(Time.get_ticks_msec() / 1000.0, true)
+
+
+## Lumière de l'heure et paramètres de la saison posés dans la scène ; `force` : tout de suite.
+func _step_cycle(now_s: float, force: bool = false) -> void:
+	if not force and now_s - _cycle_at < CYCLE_PERIOD_S:
+		return
+	_cycle_at = now_s
+	if _day_mode == "off" and _season_mode == "off" and not atmosphere_view.cycle_active() and _season_applied.is_empty():
+		return
+	var lat := NAN
+	var lon := NAN
+	if route != null and route.lat.size() > 0:
+		lat = route.lat[0]
+		lon = route.lon[0]
+	var tz: Dictionary = Time.get_time_zone_from_system()
+	var now: Dictionary = Time.get_datetime_dict_from_system()
+	now["bias"] = int(tz.get("bias", 0))
+	var date: Dictionary = _cycle_test["date"] if typeof(_cycle_test.get("date")) == TYPE_DICTIONARY else Time.get_date_dict_from_system()
+	var hour = _cycle_test.get("hour", null)
+	var out := SkyCycle.evaluate(_day_mode, _season_mode, _theme_dict, lat, lon, date,
+		float(_last_state.get("elapsed_s", 0.0)), now, float(hour) if hour != null else NAN)
+	var light: Dictionary = out["daylight"]
+	if bool(light.get("active", false)) or atmosphere_view.cycle_active():
+		atmosphere_view.set_cycle(light if bool(light.get("active", false)) else {})
+	var season: Dictionary = out["season"]
+	var params: Dictionary = season["params"] if bool(season["active"]) else {}
+	if params != _season_applied:
+		_season_applied = params
+		var p: Dictionary = params if not params.is_empty() else SeasonModel.NEUTRAL
+		SeasonModel.apply_globals(p)
+		if streamer.tree_renderer != null:
+			streamer.tree_renderer.set_winter(float(p.get("bare", 0.0)) > 0.0)
+		if sound_player != null and sound_player.get("ambience") != null:
+			sound_player.ambience.set_season(p)
+		if living_decor != null:
+			living_decor.season_falling_leaves = float(p.get("falling_leaves", 0.0))
 
 
 func _on_core_error(code: String, message: String) -> void:

@@ -11,6 +11,8 @@ const LEVEL_OK := "ok"
 const LEVEL_WARN := "warn"
 const LEVEL_ERROR := "error"
 const LEVEL_OFF := "off"
+## Boîtier gauche du Click muet : raison connue (verrou de Zwift, redémarrage automatique), pas une erreur.
+const CLICK_LEFT_LOCK_TEXT := "verrou Zwift"
 
 
 ## Valeur du contrat qui peut valoir null : dictionnaire vide, liste vide ou texte vide à la place.
@@ -111,6 +113,13 @@ func rows(state: Dictionary) -> Array:
 						else:
 							c_text = "connecté"
 							c_level = LEVEL_OK
+					"LOST" when side == "minus":
+						# Boîtier gauche (« − ») perdu après une connexion : verrou de Zwift environ une minute après
+						# chaque connexion, puis redémarrage par le core (0x18, `click_reset_locked`) et reconnexion en
+						# ~4 s. Raison connue (docs/RECHERCHE_CLICK_GAUCHE.md), affichée au lieu d'une erreur (lot N19).
+						# Jamais vu (SEARCHING) : simple « recherche… » comme les autres appareils.
+						c_text = CLICK_LEFT_LOCK_TEXT
+						c_level = LEVEL_WARN
 					"SEARCHING":
 						c_text = "recherche…"
 						c_level = LEVEL_WARN
