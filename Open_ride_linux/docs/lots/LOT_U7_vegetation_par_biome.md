@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : végétation par biome (dix-huit espèces construites par code, densités, limites) | GDScript | U5, O1 | Grande | Oui, après U5, **version 3.0** (issue #337) |
+| Engine : végétation par biome (dix-huit espèces construites par code, densités, limites) | GDScript | U5, O1 | Grande | Livré le 28 octobre (PR #477, qui reprend #472), **version 3.0** (issue #337) |
 
 ## 1. Objectif
 

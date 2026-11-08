@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : modèle de biome sans affichage (poids, transitions, forçage, thème 2.0) | GDScript | U1, P18 | Moyenne | Oui, après U1, **version 3.0** (issue #335) |
+| Engine : modèle de biome sans affichage (poids, transitions, forçage, thème 2.0) | GDScript | U1, P18 | Moyenne | Livré le 28 octobre (PR #477, qui reprend #467), **version 3.0** (issue #335) ; saisons neutres en attendant P18 et U13 |
 
 ## 1. Objectif
 
