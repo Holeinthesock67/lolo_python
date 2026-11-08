@@ -382,7 +382,8 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Deuxième vague du décor vivant intégrée : un seul ordre de mise à jour par image (météo, oiseaux et animaux, cyclistes, véhicules de la route, véhicules lointains, ciel, bateaux), aucun nœud créé en route, enveloppe de 0,8 ms par image en `medium` tenue, banc simulé `decor_vivant_2` et scène `decor_vivant` des tests graphiques, paragraphe du guide (lot P27 ; recette sur le PC : `docs/RECETTE_P27.md`).
 - [x] Vent branché dans la scène : indicateur du HUD sous la colonne de gauche (flèche, « 18 km/h face », niveau, pastille verte, rouge ou grise), arbres et herbe au vent, nuages qui défilent, fonds sonores selon le décor ; réglages du vent ajoutés à la liste du menu, `[render] living` pour tout couper (lot P16 ; recette sur le PC : `docs/RECETTE_P16.md`).
 - [x] Décor complet branché dans la scène : pluie et brume de la météo du thème (chaussée mouillée, brouillard rapproché), animaux chargés avec les tronçons, éoliennes, drapeaux et eau qui scintille, véhicules figés en pause, panneaux, bornes et chiffres peints, spectateurs au sommet des cols et passants, « Abri 30 % » sous l'indicateur du vent (lot P17 ; recette sur le PC : `docs/RECETTE_P17.md`).
-- [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19).
+- [x] Jour et nuit, modèle sans affichage : soleil selon la latitude, la date et l'heure (fixe, du PC ou accélérée), aube et coucher orangés, heure bleue, nuit étoilée au clair de lune, lumière minimale pour la route (lot P7, 8 novembre ; rien ne change à l'écran avant P19).
+- [ ] Version 2.0 : saisons (lot P18) ; intégration P19 avec deux réglages séparés au menu, « Jour et nuit » et « Saisons », coupés par défaut.
 
 ### Après la 1.0 : réglages de séance au menu (lots N17 et N18, rédigés le 27 octobre)
 - [ ] Demi-tour sur la route depuis l'écran de pause (lot N17).

@@ -27,9 +27,20 @@ P7, P17 et P18 livrés. Version 2.0.
 - `visual_check.py` : scènes `crépuscule`, `nuit`, `automne`, `hiver` ; références mises à jour.
 - Nouveau `docs/RECETTE_P19.md`.
 
+## 4 bis. Deux réglages séparés au menu (décision du propriétaire, 8 novembre)
+
+Demande : « ça doit être désactivable individuellement dans le menu ». Deux réglages de **Réglages › Graphisme**, écrits dans `config.toml` (`[render]`, portée machine), passés à l'engine comme les autres réglages du rendu, sans exception :
+
+| Clé | Libellé | Choix | Défaut |
+| --- | --- | --- | --- |
+| `render.day_night` | Jour et nuit | `off` (soleil fixe d'aujourd'hui), `theme` (heure du thème), `real` (heure du PC), `accelerated` (une journée en une heure) | `off` |
+| `render.seasons` | Saisons | `off` (l'été d'aujourd'hui), `date` (selon la date et l'hémisphère), `spring`, `summer`, `autumn`, `winter` | `off` |
+
+Défauts sûrs : `off` rend exactement l'image d'aujourd'hui, au même coût GPU. Passage du défaut à une autre valeur : seulement après les bancs aux trois qualités (budgets GPU low 8, medium 13, high 16 ms) et la validation des captures par le propriétaire. Chaque réglage coupe tout son effet (lumière, ombres, étoiles, brume du matin et sons pour le jour et la nuit ; teintes, neige, feuilles qui tombent et sons pour les saisons) et l'un ne dépend pas de l'autre. Le réglage `off` l'emporte sur le thème.
+
 ## 5. Fichiers concernés
 
-- **Modifiés :** `engine/scripts/main.gd`, `engine/scripts/render_quality.gd`, `engine/tests/visual_check.py`, `engine/tests/README.md`, `docs/SUIVI_AVANCEMENT.md` ; écran de réglages si l'option du menu est retenue.
+- **Modifiés :** `core/src/openride_core/config.py`, `core/src/openride_core/settings.py`, `core/src/openride_core/launcher.py`, `engine/scripts/engine_args.gd`, `engine/scripts/settings_view_model.gd`, `docs/GUIDE_UTILISATION.md`, `engine/scripts/main.gd`, `engine/scripts/render_quality.gd`, `engine/tests/visual_check.py`, `engine/tests/README.md`, `docs/SUIVI_AVANCEMENT.md` ; écran de réglages si l'option du menu est retenue.
 - **Nouveaux :** `docs/RECETTE_P19.md`.
 
 ## 6. Modifications de contrat autorisées
