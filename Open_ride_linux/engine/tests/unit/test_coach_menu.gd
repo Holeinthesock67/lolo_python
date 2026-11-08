@@ -8,6 +8,7 @@ extends SceneTree
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 const Coach := preload("res://scripts/coach_view_model.gd")
+const IpcClientScript := preload("res://scripts/ipc_client.gd")
 
 const WORKOUT := {"id": "sweet_spot_3x10", "name": "Sweet Spot 3 × 10 min", "need": "intense", "dominant_zone": "Z4",
 	"tss_estimate": 62, "duration_s": 3600}
@@ -86,6 +87,7 @@ func _init() -> void:
 	_test_detail_and_need()
 	_test_race_and_watch_inputs()
 	_test_settings_and_rest()
+	_test_lost_reply()
 	print("test_coach_menu : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -96,6 +98,7 @@ func _test_home_and_screen() -> void:
 	_check(not "coach" in _ids(st), "accueil : pas de ligne avant la réponse du core (%s)" % str(_ids(st)))
 	f.on_coach(MSG)
 	st = f.state()
+	_check(st["items"][st["focus"]]["id"] == "world", "ligne arrivée pendant l'affichage : le focus reste sur Parcours")
 	_check(_ids(st).slice(0, 2) == ["coach", "world"] and _item(st, "coach")["detail"] == "aérobie intense · 60 min",
 		"accueil : « Séance conseillée » en tête, besoin et durée (%s)" % str(_ids(st)))
 	f.menu.set_profile("Profil : Cycliste A", "OpenRide — Cycliste A")
@@ -292,3 +295,41 @@ func _test_settings_and_rest() -> void:
 	_check(_ids(st)[0] == "rest" and not st["items"][0]["enabled"] and not _item(st, "coach_other")["enabled"],
 		"repos : rien à lancer")
 	_check(_item(f.state(), "coach_need")["enabled"], "repos : un autre besoin reste possible")
+
+
+## Message `coach` perdu (grande trame UDP) : commande renvoyée toutes les 3 s, réponse à une demande remplacée
+## ignorée, échec en rouge après 3 relances ; saisie refusée (bad_args) : pas de relance.
+func _test_lost_reply() -> void:
+	var c = IpcClientScript.new()   # sans _ready : aucun port ouvert, envois sans effet
+	var got: Array = []
+	var failed: Array = []
+	c.coach_received.connect(func(m: Dictionary) -> void: got.append(m))
+	c.list_failed.connect(func(n: String, _t: String) -> void: failed.append(n))
+	var first: int = c.coach_command("get_coach", {"need": "anaerobic"})
+	c._tick_coach(2.9)
+	_check(c._pending_coach["cmd_ids"] == [first], "conseil : pas de relance avant 3 s")
+	c._tick_coach(0.2)
+	_check(c._pending_coach["cmd_ids"].size() == 2 and c._pending_coach["args"] == {"need": "anaerobic"},
+		"conseil : même commande renvoyée après 3 s")
+	var late := MSG.duplicate(true)
+	late["request_cmd_id"] = first
+	c._on_coach(late)
+	_check(got.size() == 1 and c._pending_coach.is_empty(), "conseil : réponse à la première demande acceptée")
+	var old: int = c.coach_command("get_coach")
+	c.coach_command("set_next_race", {"date": "2026-11-14", "kind": "course"})
+	var stale := MSG.duplicate(true)
+	stale["request_cmd_id"] = old
+	c._on_coach(stale)
+	_check(got.size() == 1 and not c._pending_coach.is_empty(), "conseil : réponse à une demande remplacée ignorée")
+	for i in 4:
+		c._tick_coach(3.0)
+	_check(failed == ["coach"] and c._pending_coach.is_empty(), "conseil : échec signalé après 3 relances")
+	c.coach_command("set_watch_advice", {"type": "fond"})
+	c._on_error("bad_args", "Conseil : type de séance inconnu")
+	_check(c._pending_coach.is_empty(), "conseil : saisie refusée, pas de relance")
+	var f = _flow()
+	_open(f)
+	f.list_failed("coach")
+	var st: Dictionary = f.state()
+	_check(st["status_error"] and str(st["status"]).contains("sans réponse"), "conseil sans réponse : ligne d'état en rouge")
+	c.free()

@@ -1195,8 +1195,13 @@ func qwk_key(ch: String, enter: bool, backspace: bool) -> Dictionary:
 	return {"used": used, "action": {}}
 
 
-## Liste indisponible (trois demandes sans réponse) : un élément désactivé qui le dit.
+## Liste indisponible (trois demandes sans réponse) : un élément désactivé qui le dit ; pour le conseil,
+## la ligne d'état en rouge.
 func list_failed(list_name: String) -> void:
+	if list_name == "coach":
+		coach.message = "Échec : conseil sans réponse du core"
+		_refresh_coach()
+		return
 	if list_name == "route_imports":
 		menu.set_screen_items(ROUTE_IMPORT, [{"id": "none", "label": "Traces à importer indisponibles",
 			"enabled": false, "detail": "core sans réponse"}])

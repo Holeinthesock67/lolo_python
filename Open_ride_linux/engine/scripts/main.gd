@@ -695,7 +695,7 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_workouts()
 			ipc.list_settings()
 			ipc.list_plans()
-			ipc.send_command("get_coach", menu_flow.coach.request_args())   # ligne « Séance conseillée » de l'accueil
+			ipc.coach_command("get_coach", menu_flow.coach.request_args())   # ligne « Séance conseillée » de l'accueil
 			if act.get("route_id") != null:
 				ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"quit":
@@ -724,7 +724,7 @@ func _run_menu_action(act: Dictionary) -> void:
 		"list_history":
 			ipc.list_history()
 		"coach_command":   # séance conseillée (lot CO5) : get_coach et saisies du conseil, réponse `coach`
-			ipc.send_command(str(act["name"]), act.get("args", {}))
+			ipc.coach_command(str(act["name"]), act.get("args", {}))
 		"sequence":   # plusieurs actions d'un même choix, dans l'ordre (course conseillée, réglage du conseil)
 			for a in act.get("list", []):
 				_run_menu_action(a)

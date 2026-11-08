@@ -238,7 +238,14 @@ func _refresh_home() -> void:
 	if garage:
 		items.append(_item("garage", "Garage"))
 	items.append_array([_item("settings", "Réglages"), _item("quit", "Quitter")])
+	# Ligne ajoutée ou retirée pendant l'affichage (séance conseillée arrivée après l'accueil, lot CO5) : le focus
+	# reste sur le même élément, comme pour une liste qui change (set_screen_items).
+	var focused_id := ""
+	if _screen == HOME and _focus >= 0 and _focus < _screens[HOME]["items"].size():
+		focused_id = _screens[HOME]["items"][_focus]["id"]
 	_screens[HOME]["items"] = items
+	if focused_id != "":
+		_focus = _first_enabled_from(_index_of(focused_id), 1)
 	if mode == "rogue":
 		_screens[READY]["items"] = [_item("start", "Démarrer", true, rogue_ready),
 			_item("rogue_change", "Changer les choix")]
