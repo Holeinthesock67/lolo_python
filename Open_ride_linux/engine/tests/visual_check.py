@@ -658,6 +658,11 @@ def _scenes(s: Session) -> None:
     core.streaming = True
     loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
     s.check("vue_fixe", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    # Décor du départ prêt (`scene_ready`, lot O36) avant la première capture : juste après route_loaded, l'engine
+    # construit la scène sans lire ses datagrammes (20 s en llvmpipe sur le PC, 8 novembre) ; le tampon du socket,
+    # plein des trames state, perdait la demande de capture de vue_fixe (journal r801 : aucune réponse avant 126 s).
+    ready = core.log.wait_for(r"^scene_ready id=demo", ROUTE_TIMEOUT_S * s.slowdown())
+    s.check("vue_fixe", "décor du départ prêt", ready is not None, ready[1].string if ready else "aucun scene_ready")
     time.sleep(SETTLE_S if s.freeze_t is None else FREEZE_SETTLE_S)
     shot = s.capture("vue_fixe")
     if shot:
