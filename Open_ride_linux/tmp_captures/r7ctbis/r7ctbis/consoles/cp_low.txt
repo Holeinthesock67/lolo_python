@@ -1,0 +1,47 @@
+>>> [1/1] Scénario circulation_proche (6:00)
+altitude GPX / MNT : médiane 0.0 m, max 0.0 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+terrain near : 14 tuile(s) de 1000 m, maille 10 m
+terrain near : 875 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 12 tuile(s) de 5000 m, maille 50 m
+requête Overpass (b9c7658a29…)…
+requête Overpass (0fdadd794f…)…
+surface : tout revêtu (colonne omise)
+== circulation_proche : parcours village-simule, 360 s, SIM ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 13.4 s après le démarrage du core
+[OK] parcours chargé par l'engine : village-simule à 25.6 s
+[OK] engine vivant jusqu'à la fin : 360 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] sonde de performance : 323 relevés, rapport sonde/rapport.html
+[OK] budget low : images/s : médiane 60.0 (au moins 55)
+[OK] budget low : temps d'image p99 : 16.7 ms (médiane des p99 de chaque seconde, sous 25 ms)
+[OK] budget low : GPU de la vue : médiane 5.27 ms (au plus 6 ms)
+[OK] budget low : GPU saturé : 0.0 % des secondes au-dessus de 95 % de charge (au plus 5 %)
+[OK] à-coups : départ : pire image 78 ms de 20 à 30 s (au plus 150 ms)
+[OK] à-coups : images lentes : 0 seconde(s) avec une image de plus de 50 ms en 5.3 min, 0.0 par minute (au plus 3)
+[OK] à-coups : pire image : 50 ms (au plus 100 ms)
+[OK] à-coups : périodicité en distance : aucune sur 1 image(s) de plus de 50 ms
+[OK] 34/34 images enregistrées après le chargement, 1 redemandée(s), réponse en 0.30 s (médiane), 6.08 s au pire : captures de l'engine
+   images par seconde de l'engine : min 1, médiane 60, max 61 (33 relevés)
+[OK] qualité réellement appliquée : low appliquée (35 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] qualité notée par la sonde : low sur toute la mesure
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+[OK] circulation : abri derrière un véhicule reçu : 36 s sur 303, 0.26 au plus
+   pente du parcours -0.3 à 7.2 %, pente envoyée -0.2 à 4.2 %
+[OK] décor : véhicules vus : 27 captures sur 34, 4 au plus
+[ÉCHEC] décor : aucun contact sur la route : 5787 (dernier : truck / truck à 151 m (écarts à l'axe 1.5 et 1.5 m))
+[OK] fréquence cardiaque au journal : 303 échantillons, 158 à 174 bpm
+    NON circulation_proche : 1 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r7ctbis/cp_low/index.html
+=== Banc fini : ÉCHEC (1 vérification(s))
+RÉSULTAT : ÉCHEC (1 vérification(s))
