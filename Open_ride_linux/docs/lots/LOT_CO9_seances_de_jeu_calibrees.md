@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Séance conseillée : course contre bots, Cyber-Rogue, Dernier survivant… avec bots et circuit calibrés au besoin, vérifiés au simulateur | Python | CO1, CO2, T13, O15, X27 (CT8 pour les circuits générés) | Moyenne | En PR (version 5.0, avec CO3 et CO6) |
+| Séance conseillée : course contre bots, Cyber-Rogue, Dernier survivant… avec bots et circuit calibrés au besoin, vérifiés au simulateur | Python | CO1, CO2, T13, O15, X27 (CT8 pour les circuits générés) | Moyenne | Livré le 8 novembre (PR #770, version 5.0) |
 
 Série CO (version 5.0, séance conseillée par OpenRide). Plan de la série : `docs/5.0/PLAN_SERIE_CO.md`.
 
@@ -35,3 +35,6 @@ Un cas synthétique par besoin (format retenu, réglages, temps prédit) ; forma
 - Reste à faire avec l'écran (CO5) : lancement par l'engine (`select_route` puis `start` avec les réglages du mode) et ligne « Besoin du jour » du bilan.
 - Tests : `core/tests/test_coach_jeu.py` (format retenu et réglages de chaque besoin, temps prédit par le cycliste virtuel, format écarté sous 70 %, aucun format possible, conseil avec la séance de jeu, parcours du catalogue et budget de 2 s dans le conteneur).
 
+## Livraison
+
+PR #770 (fusionnée le 8 novembre) : séances de jeu calibrées. Statut corrigé par le bilan du 8 novembre au soir.

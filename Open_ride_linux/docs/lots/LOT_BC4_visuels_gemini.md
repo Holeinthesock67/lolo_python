@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série BC : fiche de commande des 42 visuels pour l'IA d'images Gemini, planche d'essai de 6 cartes, contrôle des fichiers à l'import | Doc + Python | BC0 | Moyenne | En PR (7 novembre, PR #757) |
+| Série BC : fiche de commande des 42 visuels pour l'IA d'images Gemini, planche d'essai de 6 cartes, contrôle des fichiers à l'import | Doc + Python | BC0 | Moyenne | Livré le 7 novembre (PR #757) |
 
 Série BC (version 5.0, badges et cartes à collectionner, demande du propriétaire du 7 novembre 2026). Plan de la série : `docs/5.0/PLAN_SERIE_BC.md`.
 
