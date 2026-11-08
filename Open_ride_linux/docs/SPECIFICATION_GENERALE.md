@@ -325,7 +325,7 @@ Détail : [5.0/README.md](5.0/README.md).
 | 5.0-ERG-1 | Séance `.zwo` complète en ERG au Click : cibles, biais ± 2 % et ± 10 %, bip à T − 3 s, Z, Y, courbes lisibles (lignes 5 et 14 de la recette 1.0) | F, O17, O14 | Code livré ; recette à faire en un bloc de 10 min |
 | 5.0-RND-1 | Essais de gain de performance GPU (cultures, forêt, alpin : effets d'écran, prépasse de profondeur) jusqu'à tenir les budgets du §8 | Y, [HISTORIQUE_ESSAIS_GRAPHIQUES.md](HISTORIQUE_ESSAIS_GRAPHIQUES.md) §5 | Planifié (décision du 8 novembre) |
 | 5.0-RND-2 | Graphisme et comportement des bots améliorés en toute fin de projet, sous les budgets GPU (série Y restante : Y3, Y4, Y7, Y9, Y12) | Y | Spécifié |
-| 5.0-DEM-1 | Mondes demo gardés dans le jeu de base, nettoyés des artefacts de test et renommés en parcours explicites (demande du 5 novembre), **avant** l'installeur | O37 | Spécifié (cahier rédigé le 8 novembre) |
+| 5.0-DEM-1 | Mondes demo gardés dans le jeu de base, nettoyés des artefacts de test et renommés en parcours explicites (demande du 5 novembre), **avant** l'installeur | O37 | En PR (8 novembre) |
 | 5.0-INS-1 | Installation simple sur Linux, idéalement un seul fichier exécutable, avec une notice si ce n'est pas un fichier unique ; en tout dernier (demandes du 31 octobre et du 5 novembre) | J4, J9 | Spécifié (J9 rédigé le 8 novembre ; J4 en cours) |
 
 ## 6. Contrats

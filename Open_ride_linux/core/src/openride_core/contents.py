@@ -84,12 +84,12 @@ def _builtin_plans() -> list[Path]:
 
 
 def _demo_names() -> list[str]:
-    """Parcours de démonstration des biomes ; [] si le générateur de l'engine est introuvable."""
+    """Parcours de démonstration des biomes ; [] sans le compilateur (qui porte leur générateur, lot O37)."""
     from .demo_world import biome_demo_names
 
     try:
         return biome_demo_names()
-    except (FileNotFoundError, ImportError):
+    except ImportError:
         return []
 
 
@@ -138,14 +138,15 @@ def install_starter(dirs: ContentDirs, progress: Callable[[int], None] = lambda 
 
 
 def install_biome_demos(routes_dir: Path) -> tuple[list[str], str]:
-    """Écrit les parcours de démonstration des biomes qui manquent (jamais d'écrasement) ;
-    renvoie leurs noms et une remarque ("" si tout va bien)."""
-    from .demo_world import write_biome_demo_worlds
+    """Écrit les parcours de démonstration des biomes qui manquent, et remplace ceux d'avant le lot O37 (nom
+    technique au menu) ; jamais d'autre écrasement. Renvoie leurs noms et une remarque ("" si tout va bien)."""
+    from .demo_world import biome_demo_outdated, write_biome_demo_worlds
 
     names = _demo_names()
-    missing = [n for n in names if not (routes_dir / f"{n}.world" / "manifest.json").is_file()]
+    missing = [n for n in names if not (routes_dir / f"{n}.world" / "manifest.json").is_file()
+               or biome_demo_outdated(routes_dir / f"{n}.world")]
     if not names:
-        return [], "Parcours de démonstration : générateur de l'engine introuvable."
+        return [], "Parcours de démonstration : compilateur absent (scripts/install.sh)."
     if not missing:
         return [], ""
     routes_dir.mkdir(parents=True, exist_ok=True)
@@ -160,7 +161,7 @@ def install_biome_demos(routes_dir: Path) -> tuple[list[str], str]:
             src = Path(tmp) / f"{n}.world"
             dst = routes_dir / f"{n}.world"
             if src.is_dir():
-                if dst.exists():   # dossier incomplet d'un essai précédent : remplacé
+                if dst.exists():   # dossier incomplet d'un essai précédent, ou d'avant le lot O37 : remplacé
                     shutil.rmtree(dst)
                 shutil.move(str(src), dst)
     return missing, ""

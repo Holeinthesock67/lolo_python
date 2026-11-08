@@ -1,8 +1,10 @@
-"""Parcours de démonstration des biomes (lot U19) : `engine/tests/make_biome_world.py` et `openride-core demo-biomes`.
+"""Parcours de démonstration des biomes (lots U19 et O37) : `openride_compiler.demo_biomes`, sa ligne de commande
+des essais de l'engine `engine/tests/make_biome_world.py` et `openride-core demo-biomes`.
 
 Parts des biomes du tour (10 à 25 %), somme des poids 255 en chaque point, un tiers non revêtu avec
 `--gravel`, côte et mer avec `--sea`, validité (`verify` du compilateur et schémas), coordonnées au degré
-entier, deux générations identiques au bit près.
+entier, deux générations identiques au bit près. Lot O37 : noms de parcours et de lieux du jeu de base, variante
+de recette aux noms techniques, démonstrations d'avant le lot O37 remplacées à l'installation.
 """
 
 from __future__ import annotations
@@ -10,6 +12,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import re
+import shutil
 from pathlib import Path
 
 import pytest
@@ -20,10 +23,13 @@ jsonschema = pytest.importorskip("jsonschema")
 from openride_compiler.verify import verify_world  # noqa: E402
 
 from openride_core.__main__ import main  # noqa: E402
-from openride_core.demo_world import write_biome_demo_worlds  # noqa: E402
+from openride_core import contents  # noqa: E402
+from openride_core.demo_world import biome_demo_outdated, write_biome_demo_worlds  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "engine" / "tests" / "make_biome_world.py"
+GENERATOR = REPO / "compiler" / "src" / "openride_compiler" / "demo_biomes.py"
+FAKE_OSM = REPO / "compiler" / "src" / "openride_compiler" / "fake_osm.py"
 SCHEMAS = REPO / "docs" / "contracts" / "world"
 
 
@@ -113,9 +119,63 @@ def test_sea_coast_layer_and_sea_areas(demo_set: Path) -> None:
 
 def test_integer_degree_coordinates_in_repo(mbw) -> None:
     assert all(float(v).is_integer() for v in mbw.ORIGIN)
-    text = SCRIPT.read_text(encoding="utf-8")
-    decimals = re.findall(r"\b\d{1,2}\.\d{3,}\b", text)
-    assert decimals == [], decimals
+    for path in (SCRIPT, GENERATOR, FAKE_OSM):
+        decimals = re.findall(r"\b\d{1,2}\.\d{3,}\b", path.read_text(encoding="utf-8"))
+        assert decimals == [], (path.name, decimals)
+
+
+def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> None:
+    """Lot O37 : nom de parcours au menu, aucun « Fictif » ni nom technique dans les fichiers livrés."""
+    titles = {name: title for name, title, *_ in mbw.DEMO_SET}
+    assert titles == {"demo-biomes-tour": "Tour des six paysages", "demo-biomes-gravel": "Chemins des six paysages",
+                      "demo-biomes-cote": "Route de la côte", "demo-biomes-alpin": "Montée alpine"}
+    for name, title in titles.items():
+        world = demo_set / f"{name}.world"
+        manifest = _json(world / "manifest.json")
+        assert manifest["name"] == title and manifest["compiler"]["name"] == "openride-demo-biomes"
+        for f in world.rglob("*.json"):
+            text = f.read_text(encoding="utf-8")
+            assert "Fictif" not in text and "Fictive" not in text and "make_biome_world" not in text, f
+    assert _json(demo_set / "demo-biomes-alpin.json")["name"] == "Montée alpine"
+
+
+def test_place_names_per_block(mbw) -> None:
+    alpin = mbw.Plan(("alpine",) * 3, False, False)
+    assert [alpin.place("col", i) for i in range(3)] == [
+        "Belvédère des Marmottes", "Belvédère du Glacier", "Col des Edelweiss"]   # le sommet au dernier bloc
+    assert [alpin.place("port", i) for i in range(2)] == ["Port-Lanterne", "Anse aux Mouettes"]
+    tour = mbw.Plan(mbw.TOUR, False, False)
+    assert tour.place("col", len(mbw.TOUR) - 1) == "Col des Edelweiss"
+    assert mbw.Plan(mbw.TOUR, False, False, recette=True).place("col", 5) == "Col Fictif"
+
+
+def test_recette_variant_keeps_technical_names(tmp_path: Path) -> None:
+    infos = write_biome_demo_worlds(tmp_path, recette=True)
+    assert [i["name"] for i in infos] == [i["route"] for i in infos]
+    for info in infos:
+        assert _json(tmp_path / f"{info['route']}.world" / "manifest.json")["name"] == info["route"]
+    texts = "".join(f.read_text(encoding="utf-8") for f in (tmp_path / "demo-biomes-alpin.world" / "poi").glob("*.json"))
+    assert "Col Fictif" in texts
+
+
+def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path) -> None:
+    """Une démonstration écrite avant le lot O37 (`make_biome_world`) est remplacée ; un parcours du joueur
+    au même identifiant, jamais."""
+    routes = tmp_path / "routes"
+    shutil.copytree(demo_set / "demo-biomes-tour.world", routes / "demo-biomes-tour.world")
+    old = routes / "demo-biomes-tour.world" / "manifest.json"
+    manifest = _json(old)
+    manifest.update(name="demo-biomes-tour", compiler={"name": "make_biome_world", "version": "2.0.0"})
+    old.write_text(json.dumps(manifest), encoding="utf-8")
+    mine = routes / "demo-biomes-alpin.world"
+    mine.mkdir(parents=True)
+    (mine / "manifest.json").write_text(json.dumps({"name": "Mon alpin", "compiler": {"name": "openride-compiler"}}),
+                                        encoding="utf-8")
+    assert biome_demo_outdated(routes / "demo-biomes-tour.world") and not biome_demo_outdated(mine)
+    written, note = contents.install_biome_demos(routes)
+    assert note == "" and sorted(written) == ["demo-biomes-cote", "demo-biomes-gravel", "demo-biomes-tour"]
+    assert _json(old)["name"] == "Tour des six paysages"
+    assert _json(mine / "manifest.json")["name"] == "Mon alpin"
 
 
 def test_two_generations_are_identical(tmp_path: Path, mbw) -> None:
@@ -138,5 +198,5 @@ def test_unknown_biome_refused(tmp_path: Path, mbw) -> None:
 def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert main(["demo-biomes", "--out", str(tmp_path)]) == 0
     out = capsys.readouterr().out
-    assert "demo-biomes-tour : " in out and "non revêtu 33 %" in out
+    assert "demo-biomes-tour (Tour des six paysages) : " in out and "non revêtu 33 %" in out
     assert len(list(tmp_path.glob("*.world"))) == 4

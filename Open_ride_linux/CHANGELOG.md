@@ -5,6 +5,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Parcours de démonstration nommés (lot O37)
+- Les cinq parcours livrés portent un vrai nom au menu : « Col du lacet » (ex-`demo`), « Tour des six paysages », « Chemins des six paysages » (le tour en partie non revêtu), « Route de la côte » et « Montée alpine ». Les villages, belvédères et étangs ont des noms de lieux inventés au lieu de « Port Fictif » ou « Col Fictif » (panneau du sommet).
+- Les démonstrations déjà installées sont remplacées au prochain lancement ; un parcours du joueur n'est jamais touché.
+- Le générateur des parcours des biomes est passé des tests de l'engine au compilateur : un jeu installé sans les tests les produit. Les bancs et les recettes gardent les noms techniques avec `--recette`.
+
 ### Rendu plus léger (étude du 5 et 6 novembre)
 - Medium et high : MSAA 2× et ombres du soleil en 2048 ; high sans lumière indirecte d'écran (SSIL) et filtrage anisotrope 8×. Tour des six biomes sur la GTX 1060 : environ −2,4 ms par image en medium et −4 ms en high.
 - Feuillage et herbe éclairés plus simplement (sans reflet spéculaire), arbres lointains sans vent, halo à trois niveaux.
