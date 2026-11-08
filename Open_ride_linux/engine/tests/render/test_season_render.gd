@@ -8,6 +8,7 @@ extends SceneTree
 ## - hiver : feuillage du chêne absent, épicéa inchangé, terrain plus clair (neige plus bas).
 ## Variable SEASON_CAPTURE_DIR : y écrit les images, pour les captures à montrer.
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
 const SeasonModel := preload("res://scripts/season_model.gd")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
@@ -215,5 +216,6 @@ func _run() -> void:
 	SeasonModel.apply_globals(SeasonModel.NEUTRAL)
 	_vp.queue_free()
 	await process_frame
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_season_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
