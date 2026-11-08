@@ -1,0 +1,11 @@
+05:44:56 empreinte avant 7c0c6e30d7f565baa3167a4b883cbe3e
+05:44:56 tête d21f1120
+05:46:08 circulation_proche low
+05:52:16 fin circulation_proche low rc=0
+05:52:16 circulation_proche medium
+05:58:24 fin circulation_proche medium rc=0
+05:58:24 circulation_proche high
+06:04:31 fin circulation_proche high rc=0
+06:04:33 empreinte après 7c0c6e30d7f565baa3167a4b883cbe3e
+06:04:33 clone 9c7c9556
+06:04:33 FIN
