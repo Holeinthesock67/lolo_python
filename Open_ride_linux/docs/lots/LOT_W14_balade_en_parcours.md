@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Enregistrer la balade comme parcours de la bibliothèque (GPX puis `.world`) | Python | W9 | Petite | Oui, après W9 (issue #269) |
+| Enregistrer la balade comme parcours de la bibliothèque (GPX puis `.world`) | Python | W9 | Petite | Livré le 27 octobre (PR #418, issue #269) |
 
 ## 1. Objectif
 
@@ -45,3 +45,7 @@ Aucune.
 ## 8. Hors périmètre
 
 Partage des balades, segments automatiques (série T).
+
+## Livraison
+
+PR #418, fusionnée le 27 octobre 2026. Statut remis à jour le 8 novembre, d'après les PR fusionnées ; statut précédent : « Oui, après W9 (issue #269) ».

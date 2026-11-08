@@ -4,16 +4,9 @@ extends SceneTree
 ## la planche se construit dans les trois préréglages, l'image n'est pas vide et les arêtes lumineuses
 ## apparaissent. L'image du préréglage low est écrite dans user:// pour contrôle visuel.
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const SIZE := Vector2i(640, 360)
-## Fin des compilations de pipelines : compteurs du serveur de rendu inchangés depuis SETTLE_S secondes et
-## SETTLE_FRAMES images, attente bornée à SETTLE_MAX_S secondes.
-const SETTLE_FRAMES := 10
-const SETTLE_S := 1.0
-const SETTLE_MAX_S := 30.0
-const PIPELINE_INFOS := [RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_CANVAS,
-	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_MESH, RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SURFACE,
-	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_DRAW,
-	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SPECIALIZATION]
 
 var _failures := 0
 var _checked := 0
@@ -39,32 +32,6 @@ func _brightest(img: Image) -> float:
 			var c := img.get_pixel(x, y)
 			best = maxf(best, maxf(c.r, maxf(c.g, c.b)))
 	return best
-
-
-func _pipeline_compilations() -> int:
-	var total := 0
-	for info in PIPELINE_INFOS:
-		total += RenderingServer.get_rendering_info(info)
-	return total
-
-
-func _settle_pipelines() -> void:
-	var start := Time.get_ticks_msec()
-	var last := _pipeline_compilations()
-	var since := start
-	var frames := 0
-	while Time.get_ticks_msec() - start < SETTLE_MAX_S * 1000.0:
-		await process_frame
-		var now := _pipeline_compilations()
-		if now != last:
-			last = now
-			since = Time.get_ticks_msec()
-			frames = 0
-		else:
-			frames += 1
-		if frames >= SETTLE_FRAMES and Time.get_ticks_msec() - since >= SETTLE_S * 1000.0:
-			break
-	print("compilations de pipelines : %d, attente %d ms" % [last, Time.get_ticks_msec() - start])
 
 
 func _run() -> void:
@@ -94,8 +61,8 @@ func _run() -> void:
 	# Sortie en ordre (Godot 4.7, Forward+) : quitter pendant que Godot compile encore des pipelines en
 	# arrière-plan bloque la sortie (sur la GTX 1060, au premier lancement, cache des shaders vide). Les
 	# vérifications sont faites : on attend la fin des compilations avant et après la libération de la vue.
-	await _settle_pipelines()
+	await RenderExit.settle(self)
 	vp.queue_free()
-	await _settle_pipelines()
+	await RenderExit.settle(self)
 	print("test_rogue_style_sheet_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

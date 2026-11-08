@@ -8,6 +8,7 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
+const RiderPose := preload("res://scripts/rider_pose.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
 const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const AnimClock := preload("res://scripts/anim_clock.gd")
@@ -32,6 +33,8 @@ const WtfScene := preload("res://scripts/wtf/wtf_scene.gd")
 const WtfSceneModel := preload("res://scripts/wtf/wtf_scene_model.gd")
 const SurvivorHudModel := preload("res://scripts/survivor/survivor_hud_model.gd")
 const SurvivorView := preload("res://scripts/survivor/survivor_view.gd")
+const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
+const TrackView := preload("res://scripts/track/track_view.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -57,6 +60,9 @@ const QualityPresets := preload("res://scripts/quality_presets.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
 const AtmosphereView := preload("res://scripts/atmosphere_view.gd")
+const SkyCycle := preload("res://scripts/sky_cycle.gd")
+const SeasonModel := preload("res://scripts/season_model.gd")
+const VelodromeHall := preload("res://scripts/velodrome_hall.gd")
 const SegmentMarkers := preload("res://scripts/segment_markers.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
@@ -128,6 +134,8 @@ var wtf_scene = null
 ## Dernier survivant (lots DS5 et DS6) : modèle du HUD (bloc, liste, bandeaux, arches à dessiner) et sa vue.
 var survivor_hud = SurvivorHudModel.new()
 var survivor_view = null
+var track_hud = TrackHudModel.new()
+var track_view = null
 ## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
 var load_guard = LoadGuard.new({}, false)
 var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
@@ -143,6 +151,14 @@ var camera_views = CameraViews.new()
 var _camera_setting := ""
 var _gravel_setting := ""    # dernières valeurs de gravel.mode et render.biome reçues du core (lot U16)
 var _biome_setting := ""
+## Jour et nuit, saisons (lot P19) : réglages `render.day_night` et `render.seasons` reçus du core (coupés par
+## défaut), état recalculé au plus une fois par CYCLE_PERIOD_S.
+const CYCLE_PERIOD_S := 1.0
+var _day_mode := "off"
+var _season_mode := "off"
+var _cycle_at := -INF
+var _season_applied := {}
+var _cycle_test := {}   # message de test « sky_cycle » : heure fixe (`hour`) et date (`date`) imposées
 var _display_setting := ""   # dernière valeur de render.display reçue du core (vide avant la première liste)
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
@@ -220,6 +236,8 @@ var _theme_dict: Dictionary = {}   # thème courant, pour le décor vivant
 var _living_enabled := true
 ## Décor vivant, deuxième vague (lot P17) : météo, animaux, éoliennes, véhicules, bord de route, foule.
 var living_decor = null
+## Salle couverte du vélodrome (lot VD5), posée sur une piste seulement.
+var velodrome_hall = null
 var _cfg_crowd_all_climbs := false   # --crowd=all : spectateurs sur toutes les montées (bancs, lot Y21)
 ## Ciel, brouillard et soleil, atmosphère du biome sous la caméra (atmosphere_view.gd, lots U10 et U17).
 var atmosphere_view = AtmosphereView.new()
@@ -315,6 +333,9 @@ func _ready() -> void:
 	living_decor.configure(_quality_name, _living_enabled, _theme_dict, world_env.environment, sound_player, streamer)
 	atmosphere_view.living_decor = living_decor
 	living_decor.set_fog_base(world_env.environment)
+	velodrome_hall = VelodromeHall.new()
+	velodrome_hall.name = "VelodromeHall"
+	add_child(velodrome_hall)
 	bots_view = BotsView.new()
 	bots_view.set_quality(_quality_name)
 	add_child(bots_view)
@@ -413,6 +434,8 @@ func _ready() -> void:
 	hud.add_child(wtf_view)
 	survivor_view = SurvivorView.new()
 	hud.add_child(survivor_view)
+	track_view = TrackView.new()
+	hud.add_child(track_view)
 	wtf_scene = WtfScene.new()
 	add_child(wtf_scene)
 	ipc.world_menu_received.connect(_on_world_menu_received)
@@ -483,6 +506,9 @@ func _ready() -> void:
 	ipc.history_session_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_history_session(msg)
 		_refresh_menu())
+	ipc.coach_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_coach(msg)
+		_refresh_menu())
 	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_wtf_rules(msg)
 		_refresh_menu())
@@ -522,6 +548,9 @@ func _on_settings(msg: Dictionary) -> void:
 		load_guard.reset(QualityPresets.image(_quality_name), _forward_plus())
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
+		if velodrome_hall != null:
+			velodrome_hall.set_quality(_quality_name)
+		_apply_indoor()
 		bots_view.set_quality(_quality_name)
 		if living_decor != null and living_decor.cyclists_view != null:
 			living_decor.cyclists_view.set_quality(_quality_name)
@@ -559,6 +588,8 @@ func _on_settings(msg: Dictionary) -> void:
 		_camera_setting = cam
 	_apply_gravel(str(menu_flow.settings.item("gravel.mode").get("value", "")))
 	_apply_biome(str(menu_flow.settings.item("render.biome").get("value", "")))
+	_apply_cycle_modes(str(menu_flow.settings.item("render.day_night").get("value", "off")),
+		str(menu_flow.settings.item("render.seasons").get("value", "off")))
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp
@@ -584,6 +615,14 @@ func _apply_theme(name: String) -> void:
 ## sous la caméra, en commençant par celle du départ (atmosphere_view.gd, lots U10 et U17).
 func _apply_sky_params(theme_dict: Dictionary) -> void:
 	atmosphere_view.set_world(theme_dict, streamer.biome_model, route, streamer.has_terrain)
+	_apply_indoor()
+
+
+## Salle couverte (lot VD5) : son ambiance l'emporte sur le ciel, le brouillard et le soleil, reposés par le
+## thème, le préréglage ou l'atmosphère.
+func _apply_indoor() -> void:
+	if velodrome_hall != null and route != null and route.is_track():
+		velodrome_hall.apply_indoor(world_env.environment, sun)
 
 
 ## Latence des appuis (lot X7, core lancé avec --latence) : étage « recu » à la réception de l'événement,
@@ -692,6 +731,7 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_workouts()
 			ipc.list_settings()
 			ipc.list_plans()
+			ipc.coach_command("get_coach", menu_flow.coach.request_args())   # ligne « Séance conseillée » de l'accueil
 			if act.get("route_id") != null:
 				ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"quit":
@@ -719,6 +759,11 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_plans()
 		"list_history":
 			ipc.list_history()
+		"coach_command":   # séance conseillée (lot CO5) : get_coach et saisies du conseil, réponse `coach`
+			ipc.coach_command(str(act["name"]), act.get("args", {}))
+		"sequence":   # plusieurs actions d'un même choix, dans l'ordre (course conseillée, réglage du conseil)
+			for a in act.get("list", []):
+				_run_menu_action(a)
 		"history_session":
 			ipc.history_session(str(act["id"]))
 		"list_wtf_rules":
@@ -894,7 +939,8 @@ func _sync_hud(menu_shown: bool) -> void:
 	if overlay_layer != null:
 		overlay_layer.visible = not menu_shown
 	if segment_markers != null:
-		segment_markers.visible = not menu_shown and not rogue_host.is_active()   # la run les cache aussi
+		segment_markers.visible = not menu_shown and not rogue_host.is_active() \
+			and not (route != null and route.is_track())   # la run les cache aussi ; pas de portique sur une piste (VD4)
 
 
 ## Départ au pédalage (lot O36) : décor du départ prêt, puis `scene_ready` au core (start_wait_model.gd).
@@ -1010,6 +1056,7 @@ func _process(delta: float) -> void:
 	if not banner.has_message("core_lost"):
 		AnimClock.advance(delta)
 	if rogue_host.is_active():
+		_step_rogue_avatar(now)
 		return      # la scène du Cyber-Rogue a sa propre caméra et son propre décor
 	if _menu_camera(delta):
 		camera_views.snap()
@@ -1032,21 +1079,34 @@ func _process(delta: float) -> void:
 		# Écart à l'axe (lot AS2) : l'avatar suit `lane_m` du core, la caméra le suit avec 0,5 s de lissage.
 		var lane = _last_state.get("lane_m", null)
 		follow.update_lane(float(lane) if (lane is float or lane is int) else RoadBuilder.RIDER_LATERAL_M, -1.0, now)
-		var pos := _rider_point(s_route, heading, follow.lane_m)
+		# Pose du vélo (lot CY1) : trajectoire lissée dans la voie, cap de cette trajectoire, penché dans les virages.
+		var pose: Dictionary = RiderPose.pose(route, s_route, follow.lane_m, float(follow.last_frame["v"]))
+		var pos: Vector3 = pose["pos"]
 		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
+		_bank_roll = deg_to_rad(route.bank_at(s_route))   # piste relevée (lot VD4) : avatar perpendiculaire à la piste
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
+		# Cap des caméras (lot CY1) : celui du vélo, lissé en CAMERA_YAW_TAU_S ; avec le cap moyenné de la route, la
+		# caméra tournait 20 m avant un virage serré et voyait le vélo de travers.
+		# Saut de position (reprise, choix d'un point, tests graphiques) : cap repris tel quel, sans pivot visible.
+		if absf(s_route - _camera_yaw_s) > CAMERA_YAW_JUMP_M:
+			_camera_yaw = NAN
+		_camera_yaw_s = s_route
+		_camera_yaw = RiderPose.follow_yaw(_camera_yaw, float(pose["yaw"]), delta, CAMERA_YAW_TAU_S)
 		camera.global_transform = camera_views.step(delta, camera_views.goal(_rider_point(s_route, heading, follow.camera_lane_m),
-			heading, pitch_deg))
+			_camera_yaw, pitch_deg, _bank_roll))
 		camera.fov = CameraViews.fov_deg(_base_fov, pitch_deg)   # respire avec la pente (lot Y15)
+		if _bank_roll != 0.0 and camera_views.effective() != "side":   # caméra penchée de la moitié du relèvement au plus (plan VD §7.2) : horizon lisible
+			camera.global_transform.basis = camera.global_transform.basis.rotated(
+				camera.global_transform.basis.z, _bank_roll * CAMERA_BANK_SHARE)
 		# Mode WTF (lots WTF5 et WTF6) : gags posés sur la route, puis roulis et vues imposées de la caméra.
 		wtf_scene.step(WtfSceneModel.view(_last_state.get("wtf", null), now / 1000000.0, _quality_name), route, s_route,
 			bots_view.anchor_of, sun)
-		wtf_scene.apply_camera(camera, pos, heading, delta)
+		wtf_scene.apply_camera(camera, pos, _camera_yaw, delta)
 		pos += Vector3.UP * wtf_scene.hop_m()   # bonds du vélo sur la Lune
 		# Vue imposée par un gag WTF : le cycliste reste visible, même depuis la vue subjective.
 		avatar_view.set_visible_for_view("follow_near" if wtf_scene.forced_camera() else _avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
-		_step_avatar(pos, heading, now, pitch_deg)
+		_step_avatar(pos, float(pose["yaw"]), float(pose["roll"]), now, pitch_deg)
 		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
 		_probe.distance_m = s_route
 		var t_step := Time.get_ticks_usec()
@@ -1074,7 +1134,7 @@ func _process(delta: float) -> void:
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
 ## Core non joignable : pas appelé (_process fige toute la scène), donc ni nuages ni herbe qui bougent.
 func _step_living(delta: float, s_route: float, v: float) -> void:
-	if living_world == null or route == null:
+	if living_world == null or route == null or route.is_track():   # salle couverte : ni météo ni décor vivant
 		return
 	var smp: Dictionary = route.sample(s_route)
 	var now_s := Time.get_ticks_msec() / 1000.0
@@ -1092,6 +1152,7 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 			living_world.last_wind, _last_state, now_s < _beep_until_s)
 		PerfProbe.mark_since("decor", "", t_step)
 		t_step = Time.get_ticks_usec()
+	_step_cycle(now_s)
 	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
 	PerfProbe.mark_since("atmosphere", "", t_step)
 
@@ -1251,9 +1312,23 @@ func _poll_route_job() -> void:
 	if living_world != null:
 		living_world.set_route(route, float(streamer.get("_road_width_m")))
 		living_world.terrain_material = streamer.get("_terrain_material")
+	# Piste du vélodrome (plan VD §7.2, lots VD4 et VD5) : salle couverte à la place du monde ouvert (ni ciel,
+	# météo, herbe, personnages, animaux ni engins du décor de route) ; ambiance de la salle posée par
+	# _apply_sky_params, celle d'avant rendue au parcours suivant.
+	var track: bool = route.is_track()
+	if velodrome_hall != null:
+		if track:
+			velodrome_hall.build(route, _quality_name)
+			print("Salle du vélodrome : %d spectateurs (préréglage %s)" % [velodrome_hall.crowd_count, _quality_name])
+		else:
+			velodrome_hall.clear()
+			velodrome_hall.restore(world_env.environment, sun)
 	_apply_sky_params(streamer._theme_dict)
 	if living_decor != null:
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
+		living_decor.visible = not track
+	if living_world != null:
+		living_world.visible = not track
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
 	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)
@@ -1310,6 +1385,10 @@ func _on_test_message(msg: Dictionary) -> void:
 		"camera_view":   # vue de caméra imposée, sans transition (tour visuel, lot X21)
 			camera_views.set_view(str(msg.get("view", "")), -1.0, "message de test")
 			ipc.test_log("camera_view done=" + camera_views.effective())
+		"sky_cycle":   # heure et date imposées au jour et à la nuit et aux saisons (tests graphiques du lot P19)
+			_cycle_test = {"hour": msg.get("hour", null), "date": msg.get("date", null)}
+			_apply_cycle_modes(str(msg.get("day_night", _day_mode)), str(msg.get("seasons", _season_mode)), true)
+			ipc.test_log("sky_cycle " + JSON.stringify(atmosphere_view.test_info()))
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
 				living_decor.set_weather(msg["weather"])
@@ -1507,6 +1586,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"tag": tag, "path": path, "ok": err == OK, "size": [img.get_width(), img.get_height()],
 		"fps": Engine.get_frames_per_second(), "meshes": meshes, "ticks_ms": Time.get_ticks_msec(),
 		"quality": _quality_name,
+		"menu_clipped": menu_view.clipped_labels() if menu_view.visible else [],
 		"ui_scale": to_pixels.get_scale().x,
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"triangles": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
@@ -1526,6 +1606,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"wtf": wtf_scene.test_info(),
 		"survivor": survivor_view.test_info() if survivor_view != null else {},
 		"survivor_arches": segment_markers.survivor_arches().size() if segment_markers != null else 0,
+		"track": track_view.test_info() if track_view != null else {},
+		"scoreboard": velodrome_hall.scoreboard_text() if velodrome_hall != null else "",
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 
@@ -1564,8 +1646,30 @@ func _configure_avatar() -> void:
 ## Place du cycliste à `s` : dans la voie de droite, à `lateral` de l'axe (RoadBuilder.RIDER_LATERAL_M, lot P32 ;
 ## en séance avec des bots, `lane_m` du core, lot AS2) ; `heading` en radians. La caméra, l'avatar et la vue des
 ## menus en partent.
+## Piste relevée (lot VD4) : roulis de l'avatar (relèvement sous lui, radians) et part de ce roulis prise par la caméra.
+const CAMERA_BANK_SHARE := 0.5
+var _bank_roll := 0.0
+## Cap des caméras de séance (lot CY1) : cap du vélo lissé en CAMERA_YAW_TAU_S secondes ; NAN : à reprendre tel quel.
+const CAMERA_YAW_TAU_S := 0.35
+const CAMERA_YAW_JUMP_M := 5.0   # écart de position d'une image à l'autre au-delà duquel le cap est repris tel quel
+var _camera_yaw := NAN
+var _camera_yaw_s := NAN
+
+
 func _rider_point(s: float, heading: float, lateral: float = RoadBuilder.RIDER_LATERAL_M) -> Vector3:
-	return route.sample_point(s) + Vector3(cos(heading), 0.0, sin(heading)) * lateral
+	return route.sample_point(s) + route.bank_right(s, heading) * lateral   # remonté sur la pente d'une piste (VD4)
+
+
+## Cyber-Rogue : l'avatar du joueur roule et pédale sur le ruban (ou la grille) de la scène du mode, vu de la
+## caméra de suivi de la scène. Avant la recette R14 (8 novembre), il restait figé là où le monde classique
+## l'avait laissé, et l'écran passait pour bloqué.
+func _step_rogue_avatar(now_us: int) -> void:
+	if avatar_view == null or banner.has_message("core_lost"):
+		return
+	_bank_roll = 0.0
+	avatar_view.set_visible_for_view("follow_near" if camera_views.has_avatar else "subjective")   # sans avatar : rien (2.0-CAM-3)
+	avatar_view.scale = Vector3.ONE
+	_step_avatar(rogue_host.scene.rider_point(), 0.0, 0.0, now_us, rogue_host.scene.rider_pitch_deg())
 
 
 ## Vue de caméra courante (l'avatar est masqué en subjective) ; une caméra de contrôle de test prend le pas.
@@ -1574,8 +1678,9 @@ func _avatar_view_name() -> String:
 
 
 ## Une fois par image : pédalier et position du modèle d'après la dernière trame, avatar posé sur la route.
-## `pos` : point de la route sous le cycliste (déjà à l'échelle du relief), `heading` en radians.
-func _step_avatar(pos: Vector3, heading: float, now_us: int, pitch_deg: float) -> void:
+## `pos` : point de la route sous le cycliste (déjà à l'échelle du relief), `heading` (cap) et `roll` (roulis) en
+## radians, de rider_pose.gd (lot CY1).
+func _step_avatar(pos: Vector3, heading: float, roll: float, now_us: int, pitch_deg: float) -> void:
 	if avatar_view == null:
 		return
 	var paused := session_state == "PAUSED"
@@ -1587,7 +1692,7 @@ func _step_avatar(pos: Vector3, heading: float, now_us: int, pitch_deg: float) -
 	var v = _last_state.get("v", 0.0)
 	avatar_view.set_speed(float(v) * 3.6 if (v is float or v is int) else 0.0, now_us / 1000000.0)
 	avatar_view.position = pos
-	avatar_view.rotation = Vector3(deg_to_rad(pitch_deg), -heading, 0.0)
+	avatar_view.rotation = Vector3(deg_to_rad(pitch_deg), -heading, roll)
 	if _avatar_cam != "":
 		var fwd := Vector3(sin(heading), 0.0, -cos(heading))
 		var right := Vector3(cos(heading), 0.0, sin(heading))
@@ -1669,6 +1774,7 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		chart_mode = ch
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
+	menu_flow.menu.set_track_events(ipc.core_config.get("track"))   # écran Prêt du vélodrome (lot VD10)
 	menu_flow.on_hello_interrupted(ipc.core_config.get("interrupted"))   # lot O34
 	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
 	# Derniers choix du profil (lot O32) : bot, fantôme, entraînement, départ du monde ouvert.
@@ -1698,6 +1804,54 @@ func _apply_biome(id: String) -> void:
 			_apply_sky_params(_theme_dict)
 			print("Biome : ", id)
 		_biome_setting = id
+
+
+## Jour et nuit, saisons (lot P19) : chaque réglage coupe tout son effet, indépendamment de l'autre.
+func _apply_cycle_modes(day_mode: String, season_mode: String, force: bool = false) -> void:
+	var d := day_mode if day_mode in SkyCycle.DAY_MODES else "off"
+	var s := season_mode if season_mode in SkyCycle.SEASON_MODES else "off"
+	if d == _day_mode and s == _season_mode and not force:
+		return
+	_day_mode = d
+	_season_mode = s
+	print("Jour et nuit : %s ; saisons : %s" % [d, s])
+	_step_cycle(Time.get_ticks_msec() / 1000.0, true)
+
+
+## Lumière de l'heure et paramètres de la saison posés dans la scène ; `force` : tout de suite.
+func _step_cycle(now_s: float, force: bool = false) -> void:
+	if not force and now_s - _cycle_at < CYCLE_PERIOD_S:
+		return
+	_cycle_at = now_s
+	if _day_mode == "off" and _season_mode == "off" and not atmosphere_view.cycle_active() and _season_applied.is_empty():
+		return
+	var lat := NAN
+	var lon := NAN
+	if route != null and route.lat.size() > 0:
+		lat = route.lat[0]
+		lon = route.lon[0]
+	var tz: Dictionary = Time.get_time_zone_from_system()
+	var now: Dictionary = Time.get_datetime_dict_from_system()
+	now["bias"] = int(tz.get("bias", 0))
+	var date: Dictionary = _cycle_test["date"] if typeof(_cycle_test.get("date")) == TYPE_DICTIONARY else Time.get_date_dict_from_system()
+	var hour = _cycle_test.get("hour", null)
+	var out := SkyCycle.evaluate(_day_mode, _season_mode, _theme_dict, lat, lon, date,
+		float(_last_state.get("elapsed_s", 0.0)), now, float(hour) if hour != null else NAN)
+	var light: Dictionary = out["daylight"]
+	if bool(light.get("active", false)) or atmosphere_view.cycle_active():
+		atmosphere_view.set_cycle(light if bool(light.get("active", false)) else {})
+	var season: Dictionary = out["season"]
+	var params: Dictionary = season["params"] if bool(season["active"]) else {}
+	if params != _season_applied:
+		_season_applied = params
+		var p: Dictionary = params if not params.is_empty() else SeasonModel.NEUTRAL
+		SeasonModel.apply_globals(p)
+		if streamer.tree_renderer != null:
+			streamer.tree_renderer.set_winter(float(p.get("bare", 0.0)) > 0.0)
+		if sound_player != null and sound_player.get("ambience") != null:
+			sound_player.ambience.set_season(p)
+		if living_decor != null:
+			living_decor.season_falling_leaves = float(p.get("falling_leaves", 0.0))
 
 
 func _on_core_error(code: String, message: String) -> void:
@@ -1808,7 +1962,8 @@ func _on_state_received(state: Dictionary) -> void:
 	if running and route != null:
 		_give_cues(state)
 	var in_session := running or session_state == "PAUSED"
-	bots_model.push(state.get("bots", null) if in_session else null, t_frame_us)
+	# Keirin (lot VD9) : le derny roule avec les bots (même extrapolation, même dessin), nommé « Derny ».
+	bots_model.push(TrackHudModel.bots_with_pacer(state) if in_session else null, t_frame_us)
 	bots_model.set_race(state if in_session else null)
 	_draft = {"draft": state.get("draft", null) if in_session else null,
 		"draft_bot": state.get("draft_bot", null) if in_session else null}
@@ -1833,6 +1988,7 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
 		_update_survivor(state, in_session)
+		_update_track(state, in_session)
 		if not state.has("wtf") and wtf_scene.is_active():   # séance WTF finie : rien ne reste derrière le menu
 			wtf_scene.step({}, null, 0.0, Callable(), sun)
 	if junction_view != null:
@@ -1932,13 +2088,34 @@ func _update_survivor(state: Dictionary, in_session: bool) -> void:
 	PerfProbe.mark_since("survivant", "", t_step)   # banc (lot DS8) : une image lente nomme le mode
 
 
+## Épreuves de piste (lot VD9), à chaque trame : bandeau, tours, liste et blocs du HUD, tableau d'affichage de la
+## salle, cloche, pistolet et public. Hors d'une épreuve, tout est retiré et le modèle remis à zéro.
+func _update_track(state: Dictionary, in_session: bool) -> void:
+	var tr = state.get("track", null) if in_session else null
+	if tr == null:
+		if track_view.visible:
+			track_view.update_view({"visible": false})
+			if velodrome_hall != null:
+				velodrome_hall.set_scoreboard(track_hud.board_text({}))
+		if not in_session:
+			track_hud.reset()
+		return
+	track_view.right_top = hud.free_right_top()
+	track_view.banner_top = hud.panel_center.offset_bottom + 6.0 if hud.panel_center.visible else 14.0
+	track_view.update_view(track_hud.view(state))
+	if velodrome_hall != null:
+		velodrome_hall.set_scoreboard(track_hud.board_text(state))
+	for j in track_hud.sounds(state):
+		_play_event(j)
+
+
 ## Bots vus du cycliste à `now_us`, l'instant où `rider_s` a été calculé (même horloge que les trames).
 func _show_bots(rider_s: float, rider_v: float, now_us: int) -> void:
 	bots_model.vehicles = living_decor.vehicle_places() if living_decor != null else []
 	var view: Array = bots_model.view(rider_s, rider_v, now_us)
 	if hud != null and hud.has_method("update_bots"):
 		# Dernier survivant : la liste des coureurs (survivor_view.gd) remplace l'encart des bots
-		hud.update_bots([] if _last_state.has("survivor") else view, bots_model.race())
+		hud.update_bots([] if _last_state.has("survivor") or _last_state.has("track") else view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route)
 	if living_decor != null:

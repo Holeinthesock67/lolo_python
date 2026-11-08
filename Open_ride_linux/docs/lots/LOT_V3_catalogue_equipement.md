@@ -73,7 +73,7 @@ Aucune.
 
 ## 8. Hors périmètre
 
-Achat et solde (V3b), choix enregistré (V4), branchement dans la séance (V11), rendu (V7), sons et traînées d'air (V7), pénalité de la lenticulaire par vent de travers (V-Q13 : la série P ne modélise pas encore le vent de travers).
+Achat et solde (V3b), choix enregistré (V4), branchement dans la séance (V11), rendu (V7), sons et traînées d'air (V7), pénalité de la lenticulaire par vent de travers (V-Q13 : lot P34).
 
 ## 9. Livraison (26 octobre 2026, issue #241)
 

@@ -54,7 +54,7 @@ def test_parse_status():
     assert zwift_click.parse_status(real_locked) == 1
 
 
-def _locked_session(reset_locked: bool, caplog, monkeypatch):
+def _locked_session(reset_locked: str, caplog, monkeypatch):
     """Boîtier gauche simulé : mode 0 puis mode 1 ; renvoie les écritures sur SYNC_RX."""
     monkeypatch.setattr(input_providers, "last_trainer_write_at", lambda: None)
     caplog.set_level(logging.INFO, logger="input")
@@ -89,7 +89,7 @@ def _locked_session(reset_locked: bool, caplog, monkeypatch):
 
 def test_locked_status_resets_pod_once(caplog, monkeypatch):
     """Réglage activé : le mode 1 déclenche un seul redémarrage 0x18, noté au journal."""
-    writes = _locked_session(True, caplog, monkeypatch)
+    writes = _locked_session("reset", caplog, monkeypatch)
     assert writes.count(zwift_click.RESET_POD) == 1
     lines = [r.getMessage() for r in caplog.records]
     assert any("mode 1 (verrouillé par Zwift)" in m for m in lines)
@@ -98,9 +98,119 @@ def test_locked_status_resets_pod_once(caplog, monkeypatch):
 
 def test_locked_status_without_setting_only_logs(caplog, monkeypatch):
     """Réglage désactivé (défaut) : l'état est journalisé, aucun octet 0x18 n'est écrit."""
-    writes = _locked_session(False, caplog, monkeypatch)
+    writes = _locked_session("off", caplog, monkeypatch)
     assert zwift_click.RESET_POD not in writes
     assert any("mode 1 (verrouillé par Zwift)" in r.getMessage() for r in caplog.records)
+
+
+def test_locked_status_logs_window(caplog, monkeypatch):
+    """Lot K9 : la fenêtre de boutons en clair du boîtier gauche est fermée et journalisée au verrou."""
+    _locked_session("reset", caplog, monkeypatch)
+    lines = [r.getMessage() for r in caplog.records]
+    assert any("fenêtre de boutons de" in m and "fin par verrou" in m and "choix reset" in m for m in lines)
+
+
+def _keep_session(caplog, monkeypatch, relock: bool):
+    """Choix « keep » : activation complète, écho RideOn et défi 0xFF, puis verrou si `relock`."""
+    monkeypatch.setattr(input_providers, "last_trainer_write_at", lambda: None)
+    caplog.set_level(logging.INFO, logger="input")
+    writes: list[bytes] = []
+    result: dict = {}
+
+    async def scenario():
+        client = FakeClient([zwift_click.ZWIFT_ASYNC, zwift_click.ZWIFT_SYNC_RX, zwift_click.ZWIFT_SYNC_TX])
+        original = client.write_gatt_char
+
+        async def tracking(char, data, response=True):
+            writes.append(bytes(data))
+            await original(char, data, response)
+
+        client.write_gatt_char = tracking
+        prov = ZwiftClickProvider(device_finder=fake_finder, client_factory=make_factory(client),
+                                  reset_locked="keep", side="gauche")
+        task = asyncio.create_task(prov.run())
+        await wait_for(lambda: len(writes) >= 3)
+        client.cbs[zwift_click.ZWIFT_SYNC_TX](None, bytearray(b"RideOn\x01\x03"))
+        cb = client.cbs[zwift_click.ZWIFT_ASYNC]
+        cb(None, STATUS_UNLOCKED)
+        await wait_for(lambda: writes.count(zwift_click.KEEP_UNLOCKED) >= 1)
+        cb(None, bytes([0xFF, 0x03, 0x00, 0x11, 0x22]))   # défi
+        await wait_for(lambda: writes.count(zwift_click.KEEP_UNLOCKED) >= 2)
+        if relock:
+            cb(None, STATUS_LOCKED)
+            await wait_for(lambda: zwift_click.RESET_POD in writes)
+        else:
+            await asyncio.sleep(0.5)
+        result["counts"] = dict(prov.msg_counts)
+        prov.stop()
+        await asyncio.wait_for(task, 2.0)
+        result["windows"] = prov.windows
+
+    asyncio.run(scenario())
+    return writes, result
+
+
+def test_keep_sends_full_activation_and_keep_replies(caplog, monkeypatch):
+    """Essai D : trois écritures d'activation, `ff 04 00` à l'écho et au défi, aucun redémarrage sans verrou."""
+    writes, result = _keep_session(caplog, monkeypatch, relock=False)
+    assert writes[:3] == list(zwift_click.ACTIVATION)
+    assert writes.count(zwift_click.KEEP_UNLOCKED) == 2
+    assert zwift_click.RESET_POD not in writes
+    assert result["counts"]["defi"] == 1 and result["counts"]["etat"] == 1
+    assert [w["cause"] for w in result["windows"]] == ["arrêt"]
+    assert result["windows"][0]["keep_replies"] == 2 and result["windows"][0]["policy"] == "keep"
+
+
+def test_keep_falls_back_to_reset_when_lock_returns(caplog, monkeypatch):
+    """Choix « keep » : si le verrou revient malgré `ff 04 00`, repli sur un seul redémarrage 0x18."""
+    writes, result = _keep_session(caplog, monkeypatch, relock=True)
+    assert writes.count(zwift_click.RESET_POD) == 1
+    lines = [r.getMessage() for r in caplog.records]
+    assert any("maintien échoué" in m and "2 réponses ff 04 00" in m for m in lines)
+    assert result["windows"][0]["cause"] == "verrou"
+
+
+def test_reset_policy_keeps_plain_handshake(monkeypatch):
+    """Hors « keep », la poignée de main reste `RideOn` seul et aucun `ff 04 00` n'est écrit."""
+    writes = []
+
+    async def scenario():
+        client = FakeClient([zwift_click.ZWIFT_ASYNC, zwift_click.ZWIFT_SYNC_RX, zwift_click.ZWIFT_SYNC_TX])
+        prov = ZwiftClickProvider(device_finder=fake_finder, client_factory=make_factory(client),
+                                  reset_locked="reset", side="gauche")
+        task = asyncio.create_task(prov.run())
+        await wait_for(lambda: prov.status == "CONNECTED" and client.writes)
+        client.cbs[zwift_click.ZWIFT_SYNC_TX](None, bytearray(b"RideOn\x01\x03"))
+        client.cbs[zwift_click.ZWIFT_ASYNC](None, bytes([0xFF, 0x03, 0x00]))
+        await asyncio.sleep(0.4)
+        writes.extend(d for _u, d in client.writes)
+        prov.stop()
+        await asyncio.wait_for(task, 2.0)
+
+    asyncio.run(scenario())
+    assert writes == [zwift_click.RIDE_ON]
+
+
+def test_lock_policy_rejects_unknown_value():
+    with pytest.raises(ValueError):
+        ZwiftClickProvider(reset_locked="maybe")
+
+
+def test_config_reads_old_boolean_and_choices():
+    """`click_reset_locked` : trois choix ; les booléens d'avant le lot K9 restent lus."""
+    from openride_core.config import ConfigError, from_dict
+
+    assert from_dict({}).drivers.click_reset_locked == "reset"
+    assert from_dict({"drivers": {"click_reset_locked": True}}).drivers.click_reset_locked == "reset"
+    assert from_dict({"drivers": {"click_reset_locked": False}}).drivers.click_reset_locked == "off"
+    assert from_dict({"drivers": {"click_reset_locked": "keep"}}).drivers.click_reset_locked == "keep"
+    with pytest.raises(ConfigError):
+        from_dict({"drivers": {"click_reset_locked": "toujours"}})
+
+
+def test_classify_challenge():
+    assert zwift_click.classify_message(bytes([0xFF, 0x03, 0x00])) == "defi"
+    assert zwift_click.classify_message(STATUS_LOCKED) == "etat"
 
 
 def test_trace_raw_disabled_log_identical(caplog, monkeypatch):
@@ -371,11 +481,11 @@ def test_session_passes_q6_settings_and_side(tmp_path):
     from openride_core.session import build_inputs
 
     cfg = from_dict({"drivers": {"input": "click", "click_trace_raw": True, "click_mute_after_s": 45.0,
-                                 "click_rehandshake_s": 30.0, "click_reset_locked": True, "click_address": "AA:BB:CC:00:00:7F",
+                                 "click_rehandshake_s": 30.0, "click_reset_locked": "keep", "click_address": "AA:BB:CC:00:00:7F",
                                  "click_minus_address": "AA:BB:CC:00:00:3C"}})
     plus, minus = [p for p in build_inputs(cfg) if isinstance(p, ZwiftClickProvider)]
     for p in (plus, minus):
-        assert (p.trace_raw, p.mute_after_s, p.rehandshake_s, p.reset_locked) == (True, 45.0, 30.0, True)
+        assert (p.trace_raw, p.mute_after_s, p.rehandshake_s, p.reset_locked) == (True, 45.0, 30.0, "keep")
     assert plus.side == "droit"
     assert minus.side == "gauche"
     # Sans adresse configurée ni connexion, le côté n'est pas deviné
@@ -383,4 +493,4 @@ def test_session_passes_q6_settings_and_side(tmp_path):
             if isinstance(p, ZwiftClickProvider)]
     assert [p.side for p in bare] == ["inconnu", "inconnu"]
     # Par défaut, le boîtier gauche verrouillé par Zwift est redémarré (essai PC du 30/10/2026)
-    assert all(p.trace_raw is False and p.rehandshake_s == 0.0 and p.reset_locked for p in bare)
+    assert all(p.trace_raw is False and p.rehandshake_s == 0.0 and p.reset_locked == "reset" for p in bare)
