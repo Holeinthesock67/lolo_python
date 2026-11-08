@@ -781,7 +781,7 @@ EFFECTS: dict[str, Callable[[CoreSession, Any], tuple[bool, str]]] = {
                                   f"masse de la physique {s.physics.p.mass_kg:.1f} kg"),
     "trainer.difficulty_pct": lambda s, v: (s.state.difficulty_pct == v, f"difficulté de la séance {s.state.difficulty_pct} %"),
     "gearing.start_gear": lambda s, v: (s.state.gear == v, f"braquet au départ {s.state.gear}"),
-    "powerups.mode": lambda s, v: (s.race is None or s.race.powerups_on == (v == "on"),
+    "powerups.mode": lambda s, v: (s.race is None or s.race.powerups_on == (v != "off"),
                                    f"bonus de la course {'actifs' if s.race and s.race.powerups_on else 'coupés'}"),
     **{k: lambda s, v: _wind_effect(s) for k in ("wind.mode", "wind.speed_kmh", "wind.from_deg", "wind.gust_pct")},
 }

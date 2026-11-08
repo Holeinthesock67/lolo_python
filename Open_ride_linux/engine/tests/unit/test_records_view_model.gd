@@ -44,8 +44,9 @@ static func _doc() -> Dictionary:
 func _run() -> void:
 	_model()
 	_flow()
-	var it := {"key": "powerups.mode", "type": "choice", "choices": ["on", "off"]}
-	_check(SettingsViewModel.format_value(it, "on") == "oui" and SettingsViewModel.format_value(it, "off") == "non", "option « Bonus » : oui / non")
+	var it := {"key": "powerups.mode", "type": "choice", "choices": ["off", "classiques", "tactiques"]}
+	_check(SettingsViewModel.format_value(it, "classiques") == "classiques" and SettingsViewModel.format_value(it, "off") == "non"
+		and SettingsViewModel.format_value(it, "tactiques") == "tactiques", "option « Bonus » : non / classiques / tactiques (TT1)")
 	print("test_records_view_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 

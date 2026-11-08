@@ -24,7 +24,11 @@ const RoadsideModel := preload("res://scripts/roadside_model.gd")
 const APPROACH_M := 2000.0
 const RESULT_S := 8.0
 const MINUS := "−"
-const POWERUP_NAMES := {"light": "Légèreté", "aero": "Aéro", "power": "Puissance"}
+# Contrat 1.13 (lot TT1) : bonus tactiques ; `light`, ancien nom de `feather`, gardé une révision.
+# Valeur inconnue (contrat plus récent) : nom neutre « Bonus » (POWERUP_UNKNOWN).
+const POWERUP_NAMES := {"feather": "Plume", "light": "Légèreté", "anvil": "Enclume", "draft_plus": "Aspiration +",
+	"aero": "Aéro", "power": "Puissance", "breakaway": "Échappée", "roller": "Rouleau"}
+const POWERUP_UNKNOWN := "Bonus"
 const KIND_NAMES := {"climb": "Montée", "sprint": "Sprint"}
 
 var names: Dictionary = {}          # id -> {name, type, category}
@@ -139,7 +143,7 @@ func _powerup_view(state: Dictionary) -> Dictionary:
 		return {"visible": false, "held_text": "", "active_text": "", "fraction": 0.0}
 	var held = pu.get("held")
 	var active = pu.get("active")
-	var held_text := "Z : " + str(POWERUP_NAMES.get(str(held), str(held))) if held != null else ""
+	var held_text := "Z : " + str(POWERUP_NAMES.get(str(held), POWERUP_UNKNOWN)) if held != null else ""
 	if active == null:
 		_active_kind = ""
 		return {"visible": held != null, "held_text": held_text, "active_text": "", "fraction": 0.0}
@@ -149,5 +153,5 @@ func _powerup_view(state: Dictionary) -> Dictionary:
 		_active_total_s = maxf(remaining, 0.1)
 	_active_total_s = maxf(_active_total_s, remaining)
 	return {"visible": true, "held_text": held_text,
-		"active_text": "%s · %d s" % [POWERUP_NAMES.get(str(active), str(active)), int(ceil(remaining))],
+		"active_text": "%s · %d s" % [POWERUP_NAMES.get(str(active), POWERUP_UNKNOWN), int(ceil(remaining))],
 		"fraction": clampf(remaining / _active_total_s, 0.0, 1.0)}

@@ -2639,7 +2639,7 @@ class CoreSession:
             self.race = ClassicRace(
                 route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
                 loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
-                powerups_on=self.cfg.powerups.mode == "on",
+                powerups_on=self.cfg.powerups.mode != "off",
                 loadout=header["loadout"] if header else None, gain_mode=gain_mode)
         from .bots import RefRider, attach_segments, calibrate_bots
 
@@ -2842,8 +2842,8 @@ class CoreSession:
             self._mark_dropout()
             return
         if ev == InputEvent.Z_SHORT:
-            # Z court : action du mode (§7.1) ; bloc suivant en ERG ; sinon, en mode
-            # classique et en ERG d'une session libre (sans blocs, lot O18), bonus en réserve (T6, T7).
+            # Z court : action du mode (§7.1) ; bloc suivant en ERG d'un entraînement ; sinon bonus en
+            # réserve (T6, T7), refusé dans tout ERG, ERG d'une session libre compris (lot TT1).
             if self._workout_erg():
                 self._skip_block()
             elif self.race and self.race.activate(self._t_session):

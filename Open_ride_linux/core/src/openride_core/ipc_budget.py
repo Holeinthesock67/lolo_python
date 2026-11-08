@@ -217,6 +217,12 @@ def _extras_1_6(d: dict[str, Any]) -> None:
     d["bot_ahead"], d["bot_behind"] = d["bots"][2]["id"], d["bots"][3]["id"]
 
 
+def _extras_1_13(d: dict[str, Any]) -> None:
+    # Bonus tactiques (lot TT1, 4.0) : noms les plus longs et refus affiché 2 s, sur le peloton de la 1.6.
+    d["powerup"] = {"held": "draft_plus", "active": "breakaway", "remaining_s": 120.0,
+                    "refused": {"kind": "draft_plus", "reason": "near_finish"}}
+
+
 # Une entrée par révision : chaque révision hérite des ajouts des précédentes.
 REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.1": _extras_1_1,
@@ -225,6 +231,7 @@ REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.4": _extras_1_4,
     "1.5": _extras_1_5,
     "1.6": _extras_1_6,
+    "1.13": _extras_1_13,   # 1.7 (Grand Prix) et 1.8 (collection) n'alourdissent pas la trame classique
 }
 
 
