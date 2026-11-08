@@ -22,6 +22,9 @@ extends Node3D
 ##   Construire un niveau prend de 2 à 20 ms : `request_parts` en calcule les tableaux de sommets dans un fil
 ##   de travail (WorkerThreadPool), `parts_ready` dit s'ils sont prêts ; `configure` en crée alors les maillages
 ##   sur le fil principal sans attendre.
+## - Échappée (lot TT6) : `set_breakaway(on)` rend l'avatar du cycliste translucide (BREAKAWAY_ALPHA, sans
+##   ombre, léger reflet cyan) le temps du bonus, puis le rend opaque ; reconstruit une fois à chaque bascule
+##   (maillages repris du cache, matériaux refaits).
 ## - Ombres portées par les seules pièces de SHADOW_PARTS (joueur et bots).
 ## Pas de class_name : charger par preload("res://scripts/avatar_view.gd").
 
@@ -36,10 +39,14 @@ const STREAK_PERIOD_S := 0.5
 ## Pièces qui portent une ombre (lot Y18) : la silhouette ; mains, lunettes, cheveux, chaussettes, manches,
 ## cou, cuissard et pédalier sont dedans ou trop petits pour se voir dans l'ombre et coûteraient un appel de
 ## dessin de plus par cascade d'ombre.
+const BREAKAWAY_ALPHA := 0.35   # maquette validée le 8 novembre : on voit la route à travers
+const BREAKAWAY_TINT := Color(0.094, 0.941, 1.000)   # reflet cyan (UiTheme.FOCUS ; ui_theme.gd non chargé ici, scène 3D)
+const BREAKAWAY_GLOW := 0.35
 const SHADOW_PARTS := ["torso", "thigh", "shin", "upper_arm", "forearm", "head", "helmet", "shoe", "bike", "wheel"]
 
 var lod := 0
 var ghost_alpha := 1.0
+var breakaway := false
 var shadow_max_lod := 0
 var settings: Dictionary = AvatarModel.DEFAULTS.duplicate()
 var looks: Dictionary = EquipmentMeshes.DEFAULT_LOOK.duplicate()
@@ -86,6 +93,15 @@ func set_equipment(new_looks: Dictionary) -> void:
 		_rebuild()
 
 
+func set_breakaway(on: bool) -> void:
+	if on == breakaway:
+		return
+	breakaway = on
+	ghost_alpha = BREAKAWAY_ALPHA if on else 1.0
+	_mats.clear()
+	_rebuild()
+
+
 func set_lod(n: int) -> void:
 	if n != lod:
 		lod = clampi(n, 0, 2)
@@ -128,7 +144,8 @@ func set_wheel_angle(angle: float) -> void:
 func _mat(color: Color, texture: Texture2D = null, emissive := false, metallic := 0.0, roughness := -1.0) -> StandardMaterial3D:
 	if ghost_alpha < 1.0:
 		color.a *= ghost_alpha
-	var key := "%s|%s|%s|%s|%s" % [color.to_html(true), texture.get_rid().get_id() if texture != null else 0, emissive, metallic, roughness]
+	var key := "%s|%s|%s|%s|%s|%s" % [color.to_html(true), texture.get_rid().get_id() if texture != null else 0, emissive,
+		metallic, roughness, breakaway]
 	if not _mats.has(key):
 		var m := StandardMaterial3D.new()
 		m.albedo_color = color
@@ -143,6 +160,10 @@ func _mat(color: Color, texture: Texture2D = null, emissive := false, metallic :
 			m.emission_enabled = true
 			m.emission = color
 			m.emission_energy_multiplier = 0.6
+		elif breakaway:
+			m.emission_enabled = true
+			m.emission = BREAKAWAY_TINT
+			m.emission_energy_multiplier = BREAKAWAY_GLOW
 		if ghost_alpha < 1.0:
 			# Fantôme : une silhouette translucide d'un seul tenant (les pièces cachées ne transparaissent pas).
 			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
@@ -416,7 +437,7 @@ func test_info() -> Dictionary:
 			if m.mesh != null and m.visible:
 				tris += AvatarMesh.triangles_of(m.mesh)
 				count += 1
-	return {"triangles": tris, "nodes": count, "visible": visible, "lod": lod, "view": view, "looks": looks,
+	return {"triangles": tris, "nodes": count, "visible": visible, "lod": lod, "view": view, "breakaway": breakaway, "looks": looks,
 		"streaks": _streaks != null and _streaks.visible,
 		"hip_y": (AvatarMesh.pose(0.0, false, _dims, _frame_spec)["hip"] as Vector3).y,
 		"hand_z": (AvatarMesh.pose(0.0, false, _dims, _frame_spec)["hand_r"] as Vector3).z,

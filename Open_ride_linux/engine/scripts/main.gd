@@ -1830,7 +1830,9 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 		hud.hr_max_bpm = float(ipc.core_config.get("hr_max_bpm", 0.0))
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
-		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
+		var pu_view: Dictionary = segment_hud.view(state, Time.get_ticks_msec() / 1000.0)
+		hud.update_segment(pu_view)
+		_show_power_up_effects(str(pu_view["powerup"].get("active_kind", "")))
 		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
 		_update_survivor(state, in_session)
 		if not state.has("wtf") and wtf_scene.is_active():   # séance WTF finie : rien ne reste derrière le menu
@@ -1943,6 +1945,16 @@ func _show_bots(rider_s: float, rider_v: float, now_us: int) -> void:
 		bots_view.update_view(view, route)
 	if living_decor != null:
 		living_decor.bot_places = bots_model.places()
+
+
+## Effets visibles du bonus actif (lot TT6, maquettes validées le 8 novembre) : Aspiration +, pastille et jauge
+## d'abri en violet ; Échappée, avatar du cycliste translucide. Sans bonus (ERG, option coupée), tout revient.
+func _show_power_up_effects(active_kind: String) -> void:
+	hud.set_draft_boost(active_kind == "draft_plus")
+	if draft_gauge != null:
+		draft_gauge.set_boost(active_kind == "draft_plus")
+	if avatar_view != null:
+		avatar_view.set_breakaway(active_kind == "breakaway")
 
 
 ## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste,
