@@ -4,6 +4,8 @@ extends SceneTree
 ## spectateur apparaît avec la couleur de son haut (couleur d'instance), la peau et le pantalon de sa
 ## tenue (people_mesh.gd, Lot Y14).
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
 
@@ -95,5 +97,6 @@ func _run() -> void:
 	_check(_close(dog, CrowdRenderer.DOG_PALETTE[1]), "passants : chien à la couleur de sa robe (%s)" % str(dog))
 	vp.queue_free()
 	await process_frame
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_crowd_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
