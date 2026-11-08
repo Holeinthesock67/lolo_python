@@ -170,8 +170,8 @@ def test_rg_watch_first_with_notes():
     assert r["details"]["watch"] == {"type": "seuil", "duration_min": 50, "target_w": 240.0, "need": "intense"}
     rest = advise([], watch=coach.parse_watch("repos", TABLE))   # même sans historique
     assert (rest["need"], rest["duration_min"], rest["alternatives"]) == ("rest", 0, ["recovery"])
-    for text, need in (("fond", "light"), ("recuperation", "recovery"), ("VO2max", "intense"),
-                       ("sprint", "anaerobic"), ("anaérobie", "anaerobic")):
+    for text, need in (("fond", "light"), ("recuperation", "recovery"), ("tempo", "intense"), ("seuil", "intense"),
+                       ("VO2max", "intense"), ("sprint", "anaerobic"), ("anaérobie", "anaerobic")):
         assert advise(base_history(), watch=coach.parse_watch(text, TABLE))["need"] == need
     with pytest.raises(coach.CoachError):
         coach.parse_watch("marathon", TABLE)
