@@ -38,7 +38,8 @@ Voies d'entrée (un seul tableau bouton → geste, `GESTES`, d'après la spécif
 En-tête d'un scénario : `description`, `voies` (défaut : les trois), `appareils` (`prets` ou `unilateral`),
 `config` ({clé: valeur} écrite dans config.toml avant le lancement), `entrainement` (vrai : `erg_court.zwo`
 dans ~/OpenRide/Workouts), `telechargements` ({fichier: nom de l'entraînement} dans ~/Téléchargements), `plans`
-(vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `fichiers` ({chemin dans le
+(vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `velodrome` (vrai : piste du
+vélodrome des contenus de départ, lot VD10), `fichiers` ({chemin dans le
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
 (`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
 réseau, en quelques secondes : import de traces du lot O23).
@@ -139,7 +140,7 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "capture", "relancer", "delai", "voies", "note"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
-             "compilateur", "etapes"}
+             "compilateur", "velodrome", "etapes"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -545,6 +546,9 @@ class Run:
             wdir = self.home / "OpenRide" / "Workouts"
             wdir.mkdir(parents=True)
             (wdir / "erg_court.zwo").write_text(ERG_SHORT_ZWO, encoding="utf-8")
+        if doc.get("velodrome"):   # piste du vélodrome des contenus de départ (lot VD10)
+            from openride_core.contents import install_velodromes
+            install_velodromes(self.routes)
         if doc.get("plans"):
             from openride_core.plans import install_builtin
             install_builtin(self.home / "OpenRide" / "Plans", self.home / "OpenRide" / "Workouts")

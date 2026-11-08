@@ -27,6 +27,13 @@ const RISER_M := 0.42             # hauteur d'un gradin
 const CONCOURSE_M := 3.0          # promenoir derrière le dernier gradin
 const FLOOR_BELOW_M := 2.0        # pied du mur sous la piste
 const WALL_ABOVE_M := 5.0         # mur au-dessus du dernier gradin le plus haut
+const SCOREBOARD_IDLE := "VÉLODROME\n250 m"   # texte hors épreuve (track_hud_model.gd board_text)
+const SCOREBOARD_FONT_MAX := 96
+const SCOREBOARD_PIXEL_M := 0.012
+const SCOREBOARD_FACE_W_M := 5.6   # face de 6 m, marge comprise
+const SCOREBOARD_FACE_H_M := 3.0   # face de 3,2 m
+const SCOREBOARD_LINE_FACTOR := 1.2   # hauteur d'une ligne / taille de police
+const SCOREBOARD_CHAR_FACTOR := 0.6   # largeur moyenne d'une capitale / taille de police
 const BAND_H_M := 1.6             # bandeau sombre du bas du mur, au-dessus du promenoir
 const ROOF_RISE_M := 13.0         # flèche de la coupole
 const ROOF_RINGS := 12
@@ -66,6 +73,7 @@ var _crowd: MultiMeshInstance3D = null            # assis
 var _crowd_standing: MultiMeshInstance3D = null   # debout
 var _seats_cache: Array = []
 var _saved := {}              # ambiance d'avant la salle (restore)
+var _scoreboard_text := ""     # dernier texte posé (set_scoreboard)
 
 
 # --- construction -----------------------------------------------------------------------------------------
@@ -97,6 +105,7 @@ func set_quality(preset_name: String) -> void:
 
 
 func clear() -> void:
+	_scoreboard_text = ""
 	for c in get_children():
 		remove_child(c)
 		c.queue_free()
@@ -105,6 +114,35 @@ func clear() -> void:
 	crowd_count = 0
 	built = false
 	_seats_cache = []
+
+
+## Texte du tableau d'affichage (lot VD9, track_hud_model.gd board_text) sur ses quatre faces ; la taille des
+## lettres suit le nombre de lignes et la plus longue, pour tenir sur la face (6 m × 3,2 m).
+func set_scoreboard(text: String) -> void:
+	if text == _scoreboard_text:
+		return
+	_scoreboard_text = text
+	var size := scoreboard_font_size(text)
+	for k in range(4):
+		var lbl := get_node_or_null("ScoreboardText%d" % k) as Label3D
+		if lbl != null:
+			lbl.text = text
+			lbl.font_size = size
+
+
+func scoreboard_text() -> String:
+	var lbl := get_node_or_null("ScoreboardText0") as Label3D
+	return lbl.text if lbl != null else ""
+
+
+static func scoreboard_font_size(text: String) -> int:
+	var lines := text.split("\n")
+	var longest := 1
+	for l in lines:
+		longest = maxi(longest, l.length())
+	var by_h := SCOREBOARD_FACE_H_M / (lines.size() * SCOREBOARD_LINE_FACTOR * SCOREBOARD_PIXEL_M)
+	var by_w := SCOREBOARD_FACE_W_M / (longest * SCOREBOARD_CHAR_FACTOR * SCOREBOARD_PIXEL_M)
+	return clampi(int(minf(by_h, by_w)), 16, SCOREBOARD_FONT_MAX)
 
 
 ## Contour de la salle : un point tous les OUTLINE_STEP_M le long de la piste, avec la direction vers
@@ -405,9 +443,9 @@ func _add_scoreboard(info: Dictionary) -> void:
 	for k in range(4):
 		var lbl := Label3D.new()
 		lbl.name = "ScoreboardText%d" % k
-		lbl.text = "VÉLODROME\n250 m"
-		lbl.font_size = 96
-		lbl.pixel_size = 0.012
+		lbl.text = SCOREBOARD_IDLE
+		lbl.font_size = SCOREBOARD_FONT_MAX
+		lbl.pixel_size = SCOREBOARD_PIXEL_M
 		lbl.modulate = Color(1.0, 0.72, 0.18)
 		lbl.shaded = false
 		var ang := k * PI * 0.5

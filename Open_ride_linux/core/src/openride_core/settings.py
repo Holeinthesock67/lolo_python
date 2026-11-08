@@ -138,7 +138,11 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("audio.rogue_sfx_pct", "Cyber-Rogue : bruitages", "sound", 10, "%", "now"),   # lot R18
     Setting("audio.rogue_music_pct", "Cyber-Rogue : musique", "sound", 10, "%", "now"),
     # Vent (lot P16, décisions du propriétaire du 25 octobre : coupé par défaut, plafond de 4 points)
-    Setting("wind.mode", "Vent", "wind"),
+    # Météo du jour (lot P33, décision du propriétaire du 8 novembre : coupée par défaut, activée ici)
+    Setting("wind.mode", "Vent", "wind",
+            help="Constant ou en rafales : force et direction réglées ci-dessous. Celui du thème : vent du "
+                 "thème. Météo du jour : vent réel au départ du parcours, lu par le lanceur chez Open-Meteo "
+                 "(position arrondie à 10 km) ; sans réseau, séance sans vent."),
     Setting("wind.speed_kmh", "Force du vent", "wind", 5, "km/h"),
     Setting("wind.from_deg", "Direction du vent", "wind", 45, "°"),
     Setting("wind.gust_pct", "Rafales", "wind", 10, "%"),
@@ -219,6 +223,10 @@ def current(cfg: config_mod.Config, themes_dir: Path | None = None) -> list[dict
                                 "applies": s.applies}
         if s.help:
             item["help"] = s.help
+        if s.key == "wind.mode" and cfg.wind.mode == "local":   # état de la dernière lecture (lot P33)
+            from . import local_weather
+
+            item["help"] = f"{s.help} {local_weather.status()}"
         ch = choices(s, themes_dir)
         if ch is not None:
             item.update(type="choice", choices=ch)

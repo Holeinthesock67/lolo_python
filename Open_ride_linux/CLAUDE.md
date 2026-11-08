@@ -95,7 +95,8 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `plans.py` : plans d'entraînement sur plusieurs semaines (`~/OpenRide/Plans/`, plan actif, séance du jour, suivi d'après l'historique, import d'un dossier, plan maison composé dans le menu par `create_from_library` (lot O30) ; `openride-core plan`, format `docs/contracts/plan_format_v1.md`, lot O11).
 - `ftp_test.py` : test de FTP par rampe (entraînement `ftp_test:ramp`, le test de 20 min est retiré au lot O19, fin de la rampe, FTP proposée, ligne `ftp_test` du journal, `openride-core ftp-test`, lot O10).
 - `surface_physics.py` : option « gravel », roulement multiplié des routes non revêtues (`[gravel]`, colonne `surface` du parcours ou surface imposée), supplément de pente en SIM sous la borne du vent, transition de 20 m, module pur (lot U21).
-- `wind.py` : vent réglable (calme, fixe, en rafales ou du thème), composante de face et supplément de pente en SIM, module pur (lot P2).
+- `wind.py` : vent réglable (calme, fixe, en rafales, du thème ou météo du jour), composante de face et supplément de pente en SIM, module pur (lot P2).
+- `local_weather.py` : vent de la météo du jour (lot P33) : le lanceur le lit chez Open-Meteo (délai 5 s, positions arrondies à 0,1°) dans un cache de 3 h que le core lit sans réseau ; repli sans vent.
 - `draft.py` : aspiration derrière les bots (courbe exponentielle, effet de file, vent de travers, poussée du bot suivi), module pur (lot P3).
 - `road_cyclists.py` : cyclistes du décor proches calculés par le core (portage de `road_cyclists_model.gd`, même graine), sources d'abri `rider:<id>` et liste `riders` de `state`, module pur (lot AS7).
 

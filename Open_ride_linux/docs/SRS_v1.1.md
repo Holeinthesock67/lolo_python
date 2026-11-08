@@ -430,10 +430,10 @@ network = true       # false : cache seulement (menu : Avancé, lot O27)
 prefetch_history = true
 prefetch_radius_km = 10.0
 [wind]
-mode = "off"                 # "off" (défaut), "fixed", "gusty" ou "theme" (vent du thème 1.2)
+mode = "off"                 # "off" (défaut), "fixed", "gusty", "theme" (vent du thème 1.2) ou "local" (météo du jour, Open-Meteo, lot P33)
 speed_kmh = 0                # 0 à 60
 from_deg = 270               # d'où vient le vent, degrés depuis le nord (0 à 360) ; réglable dans le menu par pas de 45
-gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme" ; réglable dans le menu
+gust_pct = 0                 # 0 à 100, rafales du mode "gusty" ("theme" et "local" ont les leurs) ; réglable dans le menu
 seed = 0                     # graine des rafales, pour rejouer une séance
 feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11) ; menu : « Ressenti du vent »
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu

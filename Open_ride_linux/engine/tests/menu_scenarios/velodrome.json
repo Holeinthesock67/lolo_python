@@ -1,0 +1,144 @@
+{
+  "description": "Vélodrome (lot VD10) : filtre « Vélodrome » de la liste des parcours, piste choisie, écran Prêt du vélodrome (séance libre par défaut, épreuve et réglages au Click), course aux points en 20 tours lancée, départ de l'épreuve dans le journal du core, fin sans enregistrement et bilan.",
+  "velodrome": true,
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15
+    },
+    {
+      "choisir": "world"
+    },
+    {
+      "ecran": "routes",
+      "elements": [
+        "demo",
+        "velodrome-250",
+        "_filter"
+      ]
+    },
+    {
+      "choisir": "_filter"
+    },
+    {
+      "ecran": "routes",
+      "contient": [
+        "Étiquette : Vélodrome",
+        "Vélodrome 250 m"
+      ]
+    },
+    {
+      "choisir": "velodrome-250"
+    },
+    {
+      "ecran": "home",
+      "contient": [
+        "Parcours : Vélodrome 250 m"
+      ]
+    },
+    {
+      "choisir": "ride"
+    },
+    {
+      "ecran": "ready",
+      "titre": "Prêt : Vélodrome 250 m",
+      "elements": [
+        "start",
+        "track_event",
+        "track:opponents",
+        "track:bot_tactics",
+        "workout",
+        "change_route"
+      ],
+      "contient": [
+        "Lancer : Séance libre",
+        "Épreuve : Séance libre"
+      ],
+      "absent": [
+        "Bot 1",
+        "Fantôme de la dernière séance"
+      ],
+      "delai": 5
+    },
+    {
+      "choisir": "track_event"
+    },
+    {
+      "ecran": "ready",
+      "contient": [
+        "Épreuve : Poursuite individuelle",
+        "Distance : 4 km"
+      ],
+      "absent": [
+        "Passer en session ERG"
+      ]
+    },
+    {
+      "appui": [
+        "A_LONG",
+        "A_LONG",
+        "A_LONG",
+        "A_LONG",
+        "A_LONG",
+        "A_LONG"
+      ]
+    },
+    {
+      "ecran": "ready",
+      "contient": [
+        "Épreuve : Course aux points",
+        "Tours : 40"
+      ]
+    },
+    {
+      "choisir": "track:laps"
+    },
+    {
+      "ecran": "ready",
+      "contient": [
+        "Tours : 60"
+      ]
+    },
+    {
+      "appui": "A_LONG"
+    },
+    {
+      "ecran": "ready",
+      "contient": [
+        "Tours : 20",
+        "Lancer : Course aux points"
+      ]
+    },
+    {
+      "capture": "pret_velodrome"
+    },
+    {
+      "choisir": "start"
+    },
+    {
+      "journal": "core",
+      "motif": "Épreuve de piste : points, opponents = 7, laps = 20",
+      "delai": 20
+    },
+    {
+      "menu_cache": true
+    },
+    {
+      "commande": "end_session",
+      "args": {
+        "save": false
+      }
+    },
+    {
+      "ecran": "summary",
+      "titre": "Fin de séance",
+      "delai": 10
+    },
+    {
+      "choisir": "new_session"
+    },
+    {
+      "ecran": "home"
+    }
+  ]
+}

@@ -23,7 +23,7 @@ import time
 import zlib
 from collections import deque
 from dataclasses import replace
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Callable
 
@@ -36,7 +36,7 @@ from .hr_monitor import HeartRateProvider
 from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
-from . import config_edit, last_choices, latency_log
+from . import config_edit, last_choices, latency_log, local_weather
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import Record
@@ -49,7 +49,7 @@ from .physics import PhysicsParams, RiderPhysics, draft_saving_w, equilibrium_sp
 from . import surface_physics, velodrome
 from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
-from .records import RecordBook, RecordsError
+from .records import DATE_FORMAT as RECORDS_DATE_FORMAT, RecordBook, RecordsError
 from .recorder import SessionRecorder
 from .resume import ResumeError, ResumeState, close_interrupted, interrupted_sessions, load_resume_state
 from .rogue import mode as rogue_mode
@@ -67,6 +67,8 @@ from .survivor import ME as SURVIVOR_ME, SurvivorError, SurvivorRace
 from .grandprix import ME as GP_ME, GpInput, GrandPrixError, GrandPrixMode, RiderIn as GpRider
 from .grandprix import items as gp_items
 from .grandprix.mode import LANE_CENTRES_M as GP_LANE_CENTRES_M
+from . import track as track_mod
+from .track import bot_plan as track_plan_mod
 from .wtf import rules as wtf_rules
 from .wtf.events import WtfInput
 from .wtf.mode import WtfMode
@@ -108,6 +110,7 @@ XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FI
 SURVIVOR_RETIRED_MPS = 15.0 / 3.6   # bot éliminé : il se range à 15 km/h (lot DS2)
 SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
 SURVIVOR_OUT_LANE_M = 2.9         # m : écart à l'axe d'un bot éliminé, au bord de la chaussée (6 m ; `lane_m` borné à 3 m par le contrat)
+TRACK_START_GAP_M = 2.0           # m : coureurs d'une même équipe en file au départ arrêté (lot VD6)
 SURVIVOR_RETIRED_S = 10.0          # s : bot éliminé retiré de la séance
 MODE_OPTIONS = ("wtf", "grandprix")   # modes à options (`list_mode_options`, `set_mode_option`, lot GP2)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
@@ -333,6 +336,10 @@ class CoreSession:
         self._survivor_end_pending = False
         self.grandprix_path: Path = grandprix_path or gp_items.GRANDPRIX_FILE   # objets et valeurs (lot GP2)
         self.grandprix: GrandPrixMode | None = None   # mode « Grand Prix des objets » (lot GP2)
+        self.track_event: track_mod.TrackEvent | None = None   # épreuve de piste en cours (lot VD6)
+        self._track_choice: tuple[str, dict] | None = None     # épreuve et réglages choisis au `start`
+        self._track_plan: Any = None                            # consignes des bots de l'épreuve (lot VD7)
+        self._race_field: bot_tactics.RaceField | None = None   # comportements de course (lot VD7)
         self._records_writable = True
         self.difficulty_pct: float = float(cfg.trainer.difficulty_pct)
         self.state = IpcState(session_state="IDLE", gears_total=self.gearing.n_gears,
@@ -345,7 +352,8 @@ class CoreSession:
                           "theme": cfg.render.theme, "chart": cfg.render.chart,
                           "difficulty_pct": round(self.difficulty_pct), "gravel": cfg.gravel.mode,
                           "biome": cfg.render.biome,
-                          "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances")})
+                          "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances"),
+                          "track": track_mod.menu_options()})
         self._publish_progression()
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
@@ -504,8 +512,8 @@ class CoreSession:
             self._set_mode_option(args if isinstance(args, dict) else {})
         elif name == "start" and st == "READY":
             game_mode = (args if isinstance(args, dict) else {}).get("mode")
-            if game_mode not in (None, "ride", "wtf", "survivor", "grandprix"):
-                self.server.send_error("bad_args", "start : 'mode' vaut ride, wtf, survivor ou grandprix")
+            if game_mode not in (None, "ride", "wtf", "survivor", "grandprix", "track"):
+                self.server.send_error("bad_args", "start : 'mode' vaut ride, wtf, survivor, grandprix ou track")
                 return
             if game_mode == "wtf" and self._workout is not None:
                 # Mode WTF : SIM seulement, comme la Course tactique (plan de la série WTF §1).
@@ -525,13 +533,17 @@ class CoreSession:
                     return
                 self._set_bots(field)
                 draft_mod.start_grid(self.bots, self.physics.s)
+            elif game_mode == "track":
+                # Épreuves de piste (lot VD6) : sur un vélodrome, plateau composé par le core.
+                if not self._track_field(args if isinstance(args, dict) else {}):
+                    return
             elif not self._choose_start_workout(args if isinstance(args, dict) else {}):
                 return
             elif not self._choose_start_bots(args if isinstance(args, dict) else {}):
                 return
             # une run a ses propres ennemis, le Dernier survivant compose son plateau : les bots de la séance
             # libre restent ceux du dernier choix
-            if self.rogue is None and game_mode not in ("survivor", "grandprix"):
+            if self.rogue is None and game_mode not in ("survivor", "grandprix", "track"):
                 self._remember("bots", (args if isinstance(args, dict) else {}).get("bots") or [], cmd_id)
             self._request_start(game_mode)
         elif name == "scene_ready":   # révision 1.5 (lot O36) : décor du départ prêt dans l'engine
@@ -596,6 +608,8 @@ class CoreSession:
 
     def _begin_session(self, game_mode: str | None) -> None:
         """Départ effectif : journal, ERG, mode WTF ou Dernier survivant, segments et bots, puis RUNNING."""
+        if self.cfg.wind.mode == "local":
+            self._build_wind()   # lecture du lanceur arrivée depuis le choix du parcours (lot P33)
         self._open_journal()
         if self._workout:
             self.erg = ErgController(self._workout, self.cfg.rider.ftp_w)
@@ -605,11 +619,13 @@ class CoreSession:
             self._sync_erg_state()
         if game_mode == "wtf":
             self._start_wtf()
-        self._new_race(classic=self.wtf is None and game_mode not in ("survivor", "grandprix"))
+        self._new_race(classic=self.wtf is None and game_mode not in ("survivor", "grandprix", "track"))
         if game_mode == "survivor":
             self._start_survivor()
         if game_mode == "grandprix":
             self._start_grandprix()
+        if game_mode == "track":
+            self._start_track()
         self._lane = self._rider_lane()   # réglage « Placement dans la roue » lu à chaque départ (lot AS2)
         self._set_state("RUNNING")
 
@@ -1638,13 +1654,30 @@ class CoreSession:
         if self._track is not None and self._track.spec.indoor:   # salle couverte : pas de vent (lot VD3)
             wind_cfg = replace(cfg.wind, mode="off")
         self.wind = WindModel.from_config(
-            wind_cfg, theme_wind(cfg.render.theme) if wind_cfg.mode == "theme" else None)
+            wind_cfg, theme_wind(cfg.render.theme) if wind_cfg.mode == "theme" else None,
+            self._local_wind() if wind_cfg.mode == "local" else None)
         self._wind_sample = self.wind.sample(0.0) if self.wind.active else CALM
         if self.wind.active:
             log.info("Vent : mode %s, %.0f km/h venant de %.0f°, rafales %.0f %%, ressenti %s "
                      "(supplément de pente borné à %.1f points)", self.wind.mode, self.wind.base_mps * 3.6,
                      self.wind.from_deg, self.wind.gust_frac * 100, cfg.wind.feel,
                      cfg.wind.max_grade_offset_pct)
+
+    def _local_wind(self):
+        """Vent du jour au départ du parcours choisi (lot P33) : lu dans le cache local écrit par le lanceur,
+        jamais sur le réseau (R-NET-1). None sans parcours, ou sans lecture de moins de 3 h : séance sans vent."""
+        route = getattr(self, "route", None)
+        if route is None or not len(route.lat):
+            return None
+        found = local_weather.lookup(float(route.lat[0]), float(route.lon[0]))
+        if found is None:
+            log.warning("Vent météo du jour indisponible pour ce départ (hors ligne ou lecture de plus de 3 h) : "
+                        "séance sans vent, comme en mode « off ».")
+        else:
+            log.info("Vent météo du jour (Open-Meteo, lu à %s) : %.0f km/h venant de %.0f°, rafales %.0f %%",
+                     time.strftime("%H:%M", time.localtime(found.fetched_at)), found.speed_kmh,
+                     found.from_deg, found.gust_pct)
+        return found
 
     def _set_setting(self, args: dict, cmd_id: int) -> None:
         from . import settings
@@ -1939,6 +1972,8 @@ class CoreSession:
         self._set_session_clock(0.0)
         log.info("Parcours « %s » chargé : %.0f m, type %s", route_id, world.route.length_m,
                  world.route.type)
+        if self.cfg.wind.mode == "local":
+            self._build_wind()   # vent du jour au départ de ce parcours (lot P33)
         self._set_state("READY")
 
     def _select_workout(self, workout_id: Any) -> None:
@@ -2009,6 +2044,9 @@ class CoreSession:
             return
         if self.grandprix is not None and args.get("mode") != "sim":
             self.server.send_error("busy", "Le Grand Prix des objets se joue en SIM seulement.")
+            return
+        if self.track_event is not None and args.get("mode") != "sim" and not self._track_erg():
+            self.server.send_error("busy", "Les épreuves de piste se courent en SIM (la séance libre accepte l'ERG).")
             return
         mode = args.get("mode")
         if mode not in ("sim", "erg", "cadence"):
@@ -2180,6 +2218,13 @@ class CoreSession:
             if self._rec:   # lot GP2 : coups, boîtes et bilan au journal
                 self._flush_grandprix_journal(grandprix)
                 self._rec.game({"kind": "gp_summary", "ts": round(time.time(), 3), **grandprix.summary()})
+        track_ev, self.track_event = self.track_event, None
+        self.state.track = None
+        self._track_choice = None
+        self._track_plan = self._race_field = None
+        for bot in self.bots:   # lot VD7 : plus de consigne d'épreuve
+            if hasattr(bot, "hint"):
+                bot.hint, bot.race_view = None, None
         self._log_gravel()
         if race and self._rec:
             for line in race.take_journal() + race.jersey_lines():
@@ -2196,6 +2241,9 @@ class CoreSession:
             for bot in self.bots:
                 if hasattr(bot, "power_factor"):
                     bot.power_factor = 1.0
+        track_rank = None
+        if track_ev is not None:   # lot VD6 : faits de l'épreuve, bilan et record de la piste
+            track_rank = self._end_track(track_ev, save)
         if self._rec:
             rec, self._rec = self._rec, None
             journal = rec.path.name if rec.path is not None else None
@@ -2228,6 +2276,8 @@ class CoreSession:
                 summary["survivor"] = survivor.summary()
             if grandprix is not None:   # lot GP2 : place, objets lancés, reçus, esquivés, temps par objet
                 summary["gp"] = grandprix.summary()
+            if track_ev is not None:   # lot VD6 : place, temps, tours, record de la piste
+                summary["track"] = {**track_ev.summary(), "record_rank": track_rank}
             segments = race.summary() if race else None
             if segments is not None:   # série T (lot T7, révision 1.4)
                 summary["segments"] = segments
@@ -2432,6 +2482,168 @@ class CoreSession:
         for bot in self.bots:
             if hasattr(bot, "survival"):
                 bot.survival = None
+
+    # --- épreuves de piste (série VD, lot VD6) ----------------------------------------------
+
+    def _track_field(self, args: dict) -> bool:
+        """Épreuve et plateau d'après `start.track` (`event` et réglages, `track.check`) ; faux (rien ne
+        démarre, `bad_args`) hors d'un vélodrome, avec des bots imposés, ou avec l'ERG hors de la séance libre."""
+        from .bots import ProfileBot, profile_bot_names
+
+        choice = args.get("track")
+        if self._track is None:
+            self.server.send_error("bad_args", "Les épreuves de piste se courent sur un vélodrome.")
+            return False
+        if not isinstance(choice, dict) or not isinstance(choice.get("event"), str):
+            self.server.send_error("bad_args", "start : 'track' attend {event, réglages de l'épreuve}")
+            return False
+        if args.get("bots") is not None:
+            self.server.send_error("bad_args", "Les épreuves de piste composent elles-mêmes leur plateau.")
+            return False
+        event = choice["event"]
+        try:
+            settings = track_mod.check(event, {k: v for k, v in choice.items() if k != "event"})
+        except track_mod.TrackError as exc:
+            self.server.send_error("bad_args", f"Épreuve de piste : {exc}")
+            return False
+        if not track_mod.EVENTS[event].erg and (self._workout is not None or args.get("ftp_test") or args.get("plan_day")):
+            self.server.send_error("bad_args", "Les épreuves de piste se courent en SIM (la séance libre accepte l'ERG).")
+            return False
+        if not self._choose_start_workout(args):
+            return False
+        n = track_mod.field_size(event, settings)
+        plan = survivor_mod.plan_field(n, float(self.cfg.bots.level_pct), "normal",
+                                       CONFIG_BOUNDS[("bots", "level_pct")]) if n else []
+        names = profile_bot_names([p for p, _ in plan])
+        params = PhysicsParams.from_config(self.cfg)
+        self._set_bots([ProfileBot(p, bot_id=f"bot{i + 1}", name=nm, params=params,
+                                   bike_mass_kg=self.cfg.bike.mass_kg, s=self.physics.s, level_pct=lv)
+                        for i, ((p, lv), nm) in enumerate(zip(plan, names))])
+        self._track_choice = (event, settings)
+        self._track_places(event)
+        return True
+
+    def _track_places(self, event: str) -> None:
+        """Places au départ : grille derrière le cycliste (courses en peloton), ou équipe adverse un demi-tour
+        plus loin, sur l'autre ligne de poursuite (poursuites, vitesse et poursuite par équipes)."""
+        spec = track_mod.EVENTS[event]
+        if not issubclass(spec.cls, track_mod.Pursuit):
+            draft_mod.start_grid(self.bots, self.physics.s)
+            return
+        mates = spec.team_size - 1
+        half = (self._track.length_m if self._track is not None else track_mod.LAP_M) / 2
+        for i, bot in enumerate(self.bots):   # coéquipiers en file derrière le cycliste, adversaires en face
+            k = i + 1 if i < mates else (i - mates)
+            bot.physics.s = self.physics.s + (0.0 if i < mates else half) - TRACK_START_GAP_M * k
+
+    def _track_erg(self) -> bool:
+        """Vrai si l'épreuve en cours accepte l'ERG (la séance libre seule, plan VD §5)."""
+        ev = self.track_event
+        spec = track_mod.EVENTS.get(ev.event_id) if ev is not None else None
+        return spec is not None and spec.erg
+
+    def _start_track(self) -> None:
+        """Épreuve de la séance qui commence (bots déjà calibrés par `_new_race`)."""
+        assert self._track_choice is not None
+        event, settings = self._track_choice
+        ents = [track_mod.Entrant(track_mod.ME, "Toi")] + [
+            track_mod.Entrant(b.id, b.name, level=float(getattr(b, "level_pct", None) or 0.0)) for b in self.bots]
+        lap = self._track.length_m if self._track is not None else track_mod.LAP_M
+        seed = self.bot_tactics_seed if self.bot_tactics_seed is not None else bot_tactics.seed_from(time.time())
+        self.track_event = track_mod.make(event, ents, settings, lap_m=lap, seed=seed)
+        self.track_event.start(self._t_session, self._track_positions())
+        # Lot VD7 : les bots courent l'épreuve (consignes de `track.bot_plan`, comportements de `bot_tactics`)
+        level = settings.get("bot_tactics", "none")
+        paced = issubclass(track_mod.EVENTS[event].cls, track_mod.Pursuit)
+        bot_tactics.start_race(self.bots, seed, bot_tactics.track_mode(level, paced))
+        self._field = bot_tactics.Field()
+        self._race_field = bot_tactics.RaceField(seed)
+        self._track_plan = track_plan_mod.BotPlan(self.track_event, {b.id: getattr(b, "profile", "rouleur")
+                                                                     for b in self.bots}, seed)
+        if self._rec:
+            self._rec.game({"kind": "track_start", "ts": round(time.time(), 3), "event": event, **settings})
+        log.info("Épreuve de piste : %s, %s.", event, ", ".join(f"{k} = {v}" for k, v in settings.items()) or "réglages par défaut")
+
+    def _track_positions(self) -> dict[str, tuple[float, float]]:
+        pos = {b.id: (b.s, b.v) for b in self.bots}
+        pos[track_mod.ME] = (self.physics.s, self.physics.v)
+        return pos
+
+    def _track_before_bots(self, dt: float) -> None:
+        """Consignes de l'épreuve et comportements de course des bots, avant leur pas (lot VD7)."""
+        plan, field = self._track_plan, self._race_field
+        if plan is None or field is None or self.track_event is None:
+            return
+        plan.set_reserves({b.id: b.wbal_pct for b in self.bots if hasattr(b, "wbal_pct")})
+        hints, view, survival = plan.update()
+        if view is not None:
+            bot_tactics.race_update(field, self.bots, view, dt)
+        else:
+            field.t += dt
+        for bot in self.bots:
+            if hasattr(bot, "hint"):
+                bot.hint = hints.get(bot.id)
+                bot.race_view = view
+                bot.race_t = field.t
+            if hasattr(bot, "survival"):
+                bot.survival = survival.get(bot.id)
+
+    def _track_relay(self, msg: dict) -> None:
+        """Américaine : le relayeur est lancé à la vitesse du relayé (lancer simulé, plan VD §5), bot ou cycliste."""
+        v = msg.get("v")
+        to = msg.get("to")
+        if not isinstance(v, (int, float)) or to is None:
+            return
+        if to == track_mod.ME:
+            self.physics.v = max(self.physics.v, float(v))
+            return
+        for bot in self.bots:
+            if bot.id == to and getattr(bot, "physics", None) is not None:
+                bot.physics.v = max(bot.physics.v, float(v))
+
+    def _track_after_bots(self) -> None:
+        """Un pas de l'épreuve : tours, cloche, points, sorties, arrivée ; lignes `track` au journal."""
+        ev = self.track_event
+        if ev is None:
+            return
+        for msg in ev.step(self._t_session, self._track_positions()):
+            if msg["event"] == "relay" and "to" in msg:
+                self._track_relay(msg)
+            if msg["event"] in ("finish", "out", "arrival", "caught"):
+                log.info("Épreuve de piste %s : %s.", ev.event_id, ", ".join(f"{k} = {v}" for k, v in msg.items()))
+        if self._rec:
+            for line in ev.take_journal():
+                self._rec.game(line)
+
+    def _end_track(self, ev: track_mod.TrackEvent, save: bool) -> int | None:
+        """Fin de séance : dernières lignes et bilan au journal ; record de la piste (une table par épreuve)
+        quand la séance est gardée. Rend la place du résultat dans sa table (1 : record), None sinon."""
+        if self._rec:
+            for line in ev.take_journal():
+                self._rec.game(line)
+            self._rec.game({"kind": "track_summary", "ts": round(time.time(), 3), **ev.summary()})
+        result = ev.record()
+        if not save or result is None or self.state.route_id is None or not self._records_writable:
+            return None
+        try:
+            book = RecordBook.load(self.records_path)
+        except RecordsError as exc:
+            log.warning("Record de piste non noté : %s", exc)
+            return None
+        powers = [r["power"] for r in (self._rec.records if self._rec else []) if r.get("power") is not None]
+        header = self.progress_svc.journal_header()
+        added = book.add_track(str(self.state.route_id), result, datetime.now().strftime(RECORDS_DATE_FORMAT),
+                               sum(powers) / len(powers) if powers else None,
+                               header["loadout"] if header else None)
+        self._save_records(book)
+        return added.rank
+
+    def _fill_track_frame(self) -> None:
+        st = self.state
+        if self.track_event is None or st.session_state not in ("RUNNING", "PAUSED"):
+            st.track = None
+            return
+        st.track = self.track_event.frame()
 
     def _fill_survivor_frame(self) -> None:
         st = self.state
@@ -3155,6 +3367,8 @@ class CoreSession:
                 self._gravel_stats[0] += ridden
         if self.survivor is not None:
             self._survivor_before_bots()
+        if self.track_event is not None:
+            self._track_before_bots(dt)
         # Lot Y10 : groupes, relais et départs (cycliste déjà avancé, bots au pas précédent)
         bot_tactics.update_field(self._field, self._racing_bots(), (self.physics.s, self.physics.v), dt,
                                  (lambda s: route.sample(s).grade_pct) if route else None,
@@ -3180,6 +3394,8 @@ class CoreSession:
             self._survivor_after_bots()
         if self.grandprix is not None:
             self._step_grandprix(dt, power_used)
+        if self.track_event is not None:
+            self._track_after_bots()
 
         if race:
             race.step(self._t_session, dt, self.physics.s, m.power_w, self.bots)
@@ -3296,8 +3512,8 @@ class CoreSession:
         """Circulation de la route (lot AS6), créée au premier pas sur une route ; aucune sans décor vivant
         (`[render] living`, l'engine n'affiche alors aucun véhicule). Villages de la couche `poi` du .world
         choisi, limite de neige du thème, graine de l'engine."""
-        if route is None or not self.cfg.render.living:
-            return None
+        if route is None or not self.cfg.render.living or self._track is not None:
+            return None   # vélodrome : salle couverte, pas de circulation (l'engine n'y pose pas le décor vivant)
         if self.traffic is None or self.traffic.route is not route:
             src = self._world_src
             villages = traffic_mod.load_villages(src[1], src[2], route.length_m) if src and src[0] is route else []
@@ -3660,6 +3876,7 @@ class CoreSession:
                 self._fill_wtf_frame()
                 self._fill_survivor_frame()
                 self._fill_grandprix_frame()
+                self._fill_track_frame()
                 self._lighten_bots_frame()
                 self.server.send_state(self.state)
             if now >= next_stats:
