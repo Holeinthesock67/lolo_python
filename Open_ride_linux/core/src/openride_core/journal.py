@@ -91,6 +91,7 @@ class Record:
     target_w: float | None = None  # cible ERG envoyée au trainer (W), None en SIM / FreeRide / pause
     erg_bias_pct: float | None = None  # biais du Click appliqué à la cible (%, 0 sans appui), None hors ERG actif
     head_mps: float | None = None      # vent de face (m/s, positif de face), None vent coupé (lot P2)
+    cross_mps: float | None = None     # vent de travers (m/s, positif venant de droite), None vent coupé (lot P34)
     wind_grade_pct: float | None = None  # supplément de pente dû au vent et à l'abri (SIM), lots P2 et P3
     draft: float | None = None         # abri derrière un bot (0 à 0,45), None sans bot (lot P3)
     draft_w: int | None = None         # watts économisés à l'abri (W), None sous 0,02 d'abri (lot AS5)
@@ -104,7 +105,7 @@ class Record:
 # Champs facultatifs (séries P et Q, lot O18) absents de la ligne quand ils valent None (vent coupé,
 # pas de bot, pas d'ERG libre, gravel coupé) :
 # une séance sans vent ni bot garde exactement les lignes d'avant, et la mémoire de la séance aussi.
-OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "draft_w", "hr_frozen", "erg_kind", "cadence_target_rpm",
+OPTIONAL_RECORD_KEYS = ("head_mps", "cross_mps", "wind_grade_pct", "draft", "draft_w", "hr_frozen", "erg_kind", "cadence_target_rpm",
                         "surface", "gravel_grade_pct")
 
 
