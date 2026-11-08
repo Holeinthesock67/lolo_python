@@ -36,7 +36,7 @@ Retenu pour les bonus tactiques (essai 1) : **Aspiration + 35 s**, **Échappée 
 
 Rouleau : l'écart vient de la surface. Médianes à 25 s : 1,44 s sur un chemin compact (× 2), 2,28 s sur le gravier (× 2,5) et 3,21 s sur la terre (× 3). La part dans la cible reste donc basse quelle que soit la durée ; la durée est calée sur le gravier, la surface du milieu.
 
-**Casque aéro et Puissance** (jeu `classiques`) : gardés à 15 s, en attente du choix du propriétaire. La règle du plan (§3) veut que `classiques` soit identique à la 2.0 (test du rejeu de TT2). Les allonger (Casque 20 s, Puissance 18 s : médianes 1,67 et 1,61 s) les mettrait dans la cible, mais changerait le jeu `classiques` et ses records.
+**Casque aéro et Puissance** (jeu `classiques`) : gardés à 15 s, **choix du propriétaire du 8 novembre** (« Garder 15 s, comme la 2.0 »). La règle du plan (§3) veut que `classiques` soit identique à la 2.0 (test du rejeu de TT2). Les allonger (Casque 20 s, Puissance 18 s : médianes 1,67 et 1,61 s) les mettrait dans la cible, mais changerait le jeu `classiques` et ses records : écarté.
 
 ## 4. Valeurs retenues
 
