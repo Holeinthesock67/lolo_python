@@ -21,8 +21,7 @@ const SESSION := "history_session"
 const SCREENS := [SCREEN, WEEKS, FTP, SESSION]
 const SESSION_PREFIX := "s:"
 ## Avertissements d'un test de FTP (summary.ftp_test.warnings), comme `openride-core ftp-test`.
-const FTP_WARNINGS := {"too_short": "test trop court", "erratic_cadence": "cadence erratique",
-	"trainer_dropout": "coupure du trainer pendant l'effort", "paused": "pause pendant l'effort"}
+const FTP_WARNINGS := SummaryViewModel.FTP_WARNINGS
 const LOADING := "Chargement…"
 
 var loaded := false

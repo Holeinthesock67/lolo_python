@@ -228,8 +228,8 @@ func _test_cards() -> void:
 	_check(pm.message_error, "erreur de recherche : message d'erreur")
 	f.menu.set_world("col", "Col")
 	_check(on.call(MenuModel.READY, "start").get("id") == "col", "écran Prêt : fiche du parcours choisi, pas du focus")
-	_check(on.call(MenuFlow.SUMMARY, "new_session") == {"title": "Bilan de la séance"} and on.call(MenuModel.HOME, "ride").is_empty(),
-		"bilan : en-tête seul ; accueil : pas de carte")
+	_check(on.call(MenuFlow.SUMMARY, "new_session") == {"title": "Bilan de la séance", "name": "Col"}
+		and on.call(MenuModel.HOME, "ride").is_empty(), "bilan : en-tête et nom du parcours (lot N20) ; accueil : pas de carte")
 	f.builder.set_value("reps", 2)
 	var create: Dictionary = on.call(MenuFlow.WORKOUT_CREATE, "save")
 	_check(create["title"] == "Aperçu" and create["blocks"].size() == 6 and create["blocks"][1] == [240.0, 1.05, 1.05]

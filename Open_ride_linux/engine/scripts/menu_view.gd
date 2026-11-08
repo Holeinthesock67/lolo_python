@@ -319,7 +319,8 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	# Aide toujours visible (sans elle, rien ne dit qu'il faut un appui long pour valider).
 	button_bar.update_display(ButtonHelp.EDIT if menu.get("editing", false) or screen == "setting_edit" else screen)
 	if summary.visible:
-		summary.update_display(summary_data, show_details, str(state.get("mode", "")))
+		summary.update_display(summary_data, show_details, str(state.get("mode", "")), float(menu.get("ftp_w", 0.0)),
+			menu.get("segment_names", {}))
 		summary.update_progress(menu.get("progress", {}))
 		_fit_summary()
 	if devices.visible:

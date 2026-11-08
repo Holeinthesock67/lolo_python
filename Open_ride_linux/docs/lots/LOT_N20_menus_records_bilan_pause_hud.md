@@ -28,11 +28,13 @@ N19 fusionné (mêmes fichiers `menu_view.gd` et `menu_flow.gd`). V9 n'est pas n
 ### 4.1 Records
 
 - Liste des parcours et des segments avec, en carte, le record personnel en grand chiffre `GOLD`, sa date, l'écart du deuxième temps en `DIM`, et le profil du segment ; une montée montre aussi sa catégorie ; un segment sans temps s'écrit « pas encore de temps », sans zéro.
+- Fait (étape 4f) : profil d'altitude du segment dans la carte (calculé par `main.gd` au chargement du parcours), longueur et pente moyenne dans l'en-tête (« Montée · cat. 3 · 3,1 km à 5,8 % »).
 
 ### 4.2 Bilan de fin de séance
 
 - En-tête « Bilan de la séance » et nom du parcours ; six tuiles (distance, durée, dénivelé, puissance moyenne et normalisée, fréquence cardiaque moyenne, cadence moyenne ; une tuile sans donnée est retirée, pas affichée vide) ; graphique de la puissance de la séance (même trait que les courbes d'O14, réduit) ; records battus en lignes `GOLD` avec l'ancien temps ; résultat du test de FTP s'il y en a un (offre de N19).
 - La logique reste dans `summary_view_model.gd` ; `summary_view.gd` ne fait que l'affichage, avec les jetons du thème.
+- Fait (étape 4f, maquette `/mnt/project-files/menus/n20-bilan-tuiles/` du 8 novembre) : tuiles sur trois colonnes (dénivelé nul retiré, NP en complément de la puissance), courbe réduite `power_profile` en trait blanc avec la ligne pointillée de la FTP et, en ERG, le profil cible coloré par zone ; records battus du dernier au premier (trois au plus, « avant 6:58,9 » ou « premier temps ») ; ligne des autres chiffres (IF, TSS, puissance max, abri) ; lignes propres au mode (Cyber-Rogue, WTF, Dernier survivant) dessous ; bandeau du test de FTP (valeur, ancienne FTP, écart, fiabilité ou avertissements) à la place de la ligne d'état.
 
 ### 4.3 Pause et confirmation
 
@@ -57,7 +59,7 @@ N19 fusionné (mêmes fichiers `menu_view.gd` et `menu_flow.gd`). V9 n'est pas n
 
 ## 6. Modifications de contrat autorisées
 
-Aucune : plan des boutons, messages et réglages inchangés.
+Plan des boutons et réglages inchangés. Décision du propriétaire du 8 novembre (bilan en tuiles, étape 4f) : la courbe du graphique et l'ancien temps des records battus viennent du core, pour que le bilan relu dans l'Historique soit le même qu'en fin de séance. Ajouts compatibles de la révision 1.7 du contrat IPC : `summary.power_profile` (au plus 50 points, cible ERG comprise, aussi dans `history_session`) et `pr_time_s` dans `summary.segments.passes` ; la courbe est retirée avant le bilan entier d'une trame trop lourde (`ipc_budget`).
 
 ## 7. Critères d'acceptation
 
