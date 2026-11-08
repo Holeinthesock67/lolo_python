@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Compilateur : variante régionale par tuile (table de géologie et d'architecture à grosse maille) | Python | U1 (U2 utile) | Petite | En PR le 8 novembre (empilée sur U2, PR #734), **version 3.0** (issue #334) |
+| Compilateur : variante régionale par tuile (table de géologie et d'architecture à grosse maille) | Python | U1 (U2 utile) | Petite | En PR le 8 novembre (PR #785, empilée sur U2 #734), **version 3.0** (issue #334) |
 
 ## 1. Objectif
 
