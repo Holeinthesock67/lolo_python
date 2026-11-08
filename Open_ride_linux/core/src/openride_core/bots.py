@@ -511,13 +511,14 @@ class ProfileBot(ConstantPowerBot):
         if self.tactics.on.racing:   # lot VD7 : coalitions, marquage, bluff, classement, fatigue visible
             power, tactical, lane = self.tactics.race_power(self, power, tactical, self.race_t, self.race_view)
         hint = self.hint
-        self._apply_place(lane if lane is not None else (hint.lane_m if hint is not None else None))
-        if hint is not None and hint.wheel is not None:   # roue imposée (derny) : jamais devant elle
-            if self.wheel is None or hint.wheel[0] < self.wheel[0]:
-                self.wheel = hint.wheel
-            tactical = False
-            if hint.wheel[0] <= BRAKE_GAP_M:
-                self.physics.v = min(self.physics.v, hint.wheel[1])   # roue contre roue : pas plus vite
+        if hint is not None or lane is not None or self._lane_home is not None:   # hors piste : rien à faire
+            self._apply_place(lane if lane is not None else (hint.lane_m if hint is not None else None))
+            if hint is not None and hint.wheel is not None:   # roue imposée (derny) : jamais devant elle
+                if self.wheel is None or hint.wheel[0] < self.wheel[0]:
+                    self.wheel = hint.wheel
+                tactical = False
+                if hint.wheel[0] <= BRAKE_GAP_M:
+                    self.physics.v = min(self.physics.v, hint.wheel[1])   # roue contre roue : pas plus vite
         if (self.wheel is not None and not tactical) or self.lane.blocked is not None:
             here = route.sample(self.physics.s) if route is not None else None
             grade, alt = (here.grade_pct, here.alt_m) if here else (0.0, 0.0)
