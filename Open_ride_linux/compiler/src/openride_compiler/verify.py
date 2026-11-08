@@ -5,7 +5,7 @@ cohérence entre `length_m`, `n` et `ds_m`, accord manifeste / route, boucle fer
 plages de valeurs ; terrain : taille des tuiles, présence des tuiles listées, égalité des
 bords partagés, absence de NaN à moins de 25 m de la route ; segments (format 1.3) : bornes
 dans le parcours, identifiants uniques, types et catégories connus ; mer et côte (format 1.6, lot U3) :
-aires `sea` refermées dans leur carré de 1 km, lignes de côte et plages, compteurs du manifeste.
+aires `sea` refermées au niveau 0, lignes de côte et plages, compteurs du manifeste.
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ import numpy as np
 
 from . import constants as C
 from . import segments_layer as SEG
-from .coast import CELL_M, ChunkLocator, cell_of
 from .osm_layers import nearest_chunk_and_y, ring_centroid, signed_area, vegetation_chunk_and_y
 from .terrain import LEVELS, NEAR, TILE_BYTES, RouteAxis, read_tile, tile_coords, tile_filename
 
@@ -260,22 +259,12 @@ def _check_buildings(world: Path, layers: dict, route: dict | None, problems: li
                     problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
 
 
-def _check_sea_area(item: dict, outer: list, holes: list, k: int, locator: ChunkLocator | None,
-                    label: str, problems: list[str]) -> None:
-    """Aire `sea` (lot U3) : refermée dans son carré de 1 km, au niveau 0, dans le tronçon du carré."""
+def _check_sea_area(item: dict, label: str, problems: list[str]) -> None:
+    """Aire `sea` (format 1.6 §8) : anneaux refermés (contrôlés par `_check_ring`) et niveau 0. La mer
+    s'étend jusqu'au bord du terrain : pas de contrôle de distance à la route ni de tronçon, le
+    rangement par tronçon dépend du producteur (compilateur par carrés de 1 km, démo par bandes)."""
     if item.get("level_y") != C.SEA_LEVEL_Y:
         problems.append(f"{label} : level_y de la mer {item.get('level_y')!r} (attendu {C.SEA_LEVEL_Y})")
-    cx, cz = ring_centroid(outer)
-    ix, iz = cell_of(cx, cz)
-    x0, z0, x1, z1 = ix * CELL_M, iz * CELL_M, (ix + 1) * CELL_M, (iz + 1) * CELL_M
-    tol = 0.011
-    for ring in [outer] + [h for h in holes if isinstance(h, list)]:
-        if any(not (x0 - tol <= p[0] <= x1 + tol and z0 - tol <= p[1] <= z1 + tol) for p in ring):
-            problems.append(f"{label} : mer non refermée dans son carré ({ix}, {iz})")
-            return
-    if locator is not None and locator.of_cell(ix, iz) != k:
-        problems.append(f"{label} : tronçon {k} incohérent avec le carré ({ix}, {iz}) "
-                        f"(attendu {locator.of_cell(ix, iz)})")
 
 
 def _check_coast(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
@@ -287,7 +276,6 @@ def _check_coast(world: Path, layers: dict, route: dict | None, problems: list[s
     if not folder.is_dir():
         problems.append("coast : dossier absent")
         return
-    locator = ChunkLocator(route) if route is not None else None
     n_lines = n_beaches = 0
     for chunk_file in sorted(folder.glob("chunk_*.json")):
         m = CHUNK_RE.fullmatch(chunk_file.name)
@@ -317,10 +305,6 @@ def _check_coast(world: Path, layers: dict, route: dict | None, problems: list[s
                     or any(not isinstance(p, list) or len(p) != 2 or not all(_is_number(v) for v in p) for p in pts)):
                 problems.append(f"{label} : points (x, z) invalides")
                 continue
-            mx, mz = (pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2
-            if locator is not None and locator.of_point(mx, mz) != k:
-                problems.append(f"{label} : tronçon {k} incohérent avec la position "
-                                f"(attendu {locator.of_point(mx, mz)})")
         for item in beaches:
             n_beaches += 1
             label = f"{name} ({item.get('id', '?') if isinstance(item, dict) else '?'})"
@@ -330,11 +314,7 @@ def _check_coast(world: Path, layers: dict, route: dict | None, problems: list[s
             if item.get("kind") not in C.COAST_BEACH_KINDS:
                 problems.append(f"{label} : sorte de plage inconnue {item.get('kind')!r}")
             holes = item.get("holes") if isinstance(item.get("holes"), list) else []
-            if _check_ring(item.get("outer"), True, label, problems):
-                cx, cz = ring_centroid(item["outer"])
-                if locator is not None and locator.of_point(cx, cz) != k:
-                    problems.append(f"{label} : tronçon {k} incohérent avec la position "
-                                    f"(attendu {locator.of_point(cx, cz)})")
+            _check_ring(item.get("outer"), True, label, problems)
             for h in holes:
                 _check_ring(h, False, label, problems)
     if c_layer.get("lines_count") != n_lines or c_layer.get("beaches_count") != n_beaches:
@@ -452,7 +432,6 @@ def _check_water(world: Path, layers: dict, route: dict | None, problems: list[s
         problems.append("water : dossier absent")
         return
     axis = RouteAxis(route["x"], route["z"], route["alt_m"]) if route is not None else None
-    locator = ChunkLocator(route) if route is not None else None
     for chunk_file in sorted(folder.glob("chunk_*.json")):
         m = CHUNK_RE.fullmatch(chunk_file.name)
         if not m:
@@ -520,7 +499,7 @@ def _check_water(world: Path, layers: dict, route: dict | None, problems: list[s
             for h in holes:
                 _check_ring(h, False, label, problems)
             if outer_ok and item.get("kind") == "sea":
-                _check_sea_area(item, outer, holes, k, locator, label, problems)
+                _check_sea_area(item, label, problems)
             elif outer_ok and route is not None and axis is not None:
                 cx, cz = ring_centroid(outer)
                 expected_k, _ = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)

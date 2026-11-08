@@ -270,7 +270,7 @@ def test_build_and_verify_coastal_route(coastal_overpass, make_gpx, tmp_path):
     assert after["layers"]["water"]["areas_count"] == seas
 
 
-def test_verify_rejects_a_sea_outside_its_square(coastal_overpass, make_gpx, tmp_path, capsys):
+def test_verify_rejects_a_sea_off_level(coastal_overpass, make_gpx, tmp_path, capsys):
     x, z, alt = straight_north(length=3000.0)
     gpx = make_gpx("littoral.gpx", x, z, alt)
     out = tmp_path / "routes"
@@ -280,12 +280,12 @@ def test_verify_rejects_a_sea_outside_its_square(coastal_overpass, make_gpx, tmp
              if any(a["kind"] == "sea" for a in json.loads(p.read_text(encoding="utf-8"))["areas"]))
     chunk = json.loads(f.read_text(encoding="utf-8"))
     sea = next(a for a in chunk["areas"] if a["kind"] == "sea")
-    sea["outer"] = [[p[0] + 250.0, p[1]] for p in sea["outer"]]       # à cheval sur deux carrés
+    sea["level_y"] = 3.0       # à cheval sur deux carrés
     f.write_text(json.dumps(chunk), encoding="utf-8")
     capsys.readouterr()
     assert run("verify", world) != 0
     captured = capsys.readouterr()
-    assert "mer non refermée dans son carré" in captured.out + captured.err
+    assert "level_y de la mer 3.0" in captured.out + captured.err
 
 
 def test_route_without_coast_keeps_water_unchanged(monkeypatch, make_gpx, tmp_path):
@@ -304,7 +304,7 @@ def test_route_without_coast_keeps_water_unchanged(monkeypatch, make_gpx, tmp_pa
     wa, wb = with_coast / "interieur.world", without / "interieur.world"
     ma = json.loads((wa / "manifest.json").read_text(encoding="utf-8"))
     mb = json.loads((wb / "manifest.json").read_text(encoding="utf-8"))
-    assert ma["layers"]["coast"] == {"present": False} and mb["layers"]["coast"] == {"present": False}
+    assert ma["layers"]["coast"] == {"present": False} and "coast" not in mb["layers"]
     assert not (wa / "coast").exists()
     assert ma["layers"]["water"] == mb["layers"]["water"] and ma["layers"]["water"]["areas_count"] == 1
     for f in sorted((wb / "water").glob("*.json")):
