@@ -1,0 +1,15 @@
+16:57:17 empreinte avant 390d9e633d581dcbfb0ef6c3bd842147
+16:57:17 tête daa90341
+16:58:28 menu_bench derniers_choix souris
+16:59:41 fin derniers_choix rc=1
+16:59:41 menu_bench erg_libre souris
+17:00:54 fin erg_libre rc=1
+17:00:54 menu_bench historique souris
+17:02:06 fin historique rc=1
+17:02:06 menu_bench pause souris
+17:03:19 fin pause rc=1
+17:03:19 menu_bench persistance souris
+17:04:32 fin persistance rc=1
+17:04:33 empreinte après 390d9e633d581dcbfb0ef6c3bd842147
+17:04:33 clone 90c08094
+17:04:33 FIN

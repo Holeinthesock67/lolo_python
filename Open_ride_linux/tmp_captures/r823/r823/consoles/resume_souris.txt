@@ -1,0 +1,5 @@
+derniers_choix           souris   3 ÉCHEC(S)      73 s
+erg_libre                souris   3 ÉCHEC(S)      72 s
+historique               souris   3 ÉCHEC(S)      72 s
+pause                    souris   3 ÉCHEC(S)      73 s
+persistance              souris   3 ÉCHEC(S)      72 s

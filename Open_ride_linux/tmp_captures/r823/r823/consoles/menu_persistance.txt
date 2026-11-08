@@ -1,0 +1,12 @@
+== persistance (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+persistance              souris   3 ÉCHEC(S)      72 s
+Rapport : ~/mesures-2026-11-01-auto/r823/menu_persistance/rapport.html
+1 passage(s) en échec sur 1
