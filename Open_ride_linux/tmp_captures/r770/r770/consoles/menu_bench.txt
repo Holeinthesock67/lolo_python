@@ -1,0 +1,98 @@
+== seance_conseillee (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.8 s
+[OK] écran home (elements=['coach']) : « OpenRide » (engine muet 13.0 s)
+[OK] choisir « coach » : écran « coach », focus « coach_need »
+[OK] écran coach (contient=['Pourquoi : '], elements=['coach_workout', 'coach_need', 'coach_watch', 'coach_race_date', 'coach_detail']) : « Séance conseillée : aérobie léger »
+[OK] choisir « coach_detail » : écran « coach_detail », focus « d_light »
+[OK] écran coach_detail (titre='Détail du calcul', elements=['d_light', 'd_intense', 'd_anaerobic', 'd_rule']) : « Détail du calcul »
+[OK] écran coach (focus='coach_detail') : « Séance conseillée : aérobie léger »
+[OK] choisir « coach_need » : écran « coach_need », focus « need_light »
+[OK] écran coach_need (elements=['need_light', 'need_intense', 'need_anaerobic', 'need_recovery', 'need_ftp_test']) : « Choisir un autre besoin »
+[OK] choisir « need_anaerobic » : écran « coach », focus « coach_need »
+[OK] écran coach (contient=['Besoin choisi : anaérobie.']) : « Séance conseillée : anaérobie »
+[OK] choisir « coach_race_date » : écran « coach_race_date », focus « set:conseil.race_days »
+[OK] écran coach_race_date (elements=['set:conseil.race_days', 'set:conseil.race_kind', 'race_save']) : « Ma prochaine course »
+[OK] choisir « race_save » : écran « coach_race_date », focus « race_save »
+[OK] écran coach (contient=['Prochaine course']) : « Séance conseillée : aérobie léger »
+[OK] choisir « coach_race_date » : écran « coach_race_date », focus « set:conseil.race_days »
+[OK] choisir « race_clear » : écran « coach_race_date », focus « race_clear »
+[OK] écran coach (contient=['Prochaine course — aucune']) : « Séance conseillée : aérobie léger »
+[OK] choisir « coach_watch » : écran « coach_watch », focus « set:conseil.watch_type »
+[OK] écran coach_watch (elements=['set:conseil.watch_type', 'set:conseil.watch_min', 'watch_save']) : « Suggestion de ma montre »
+[OK] choisir « watch_save » : écran « coach_watch », focus « watch_save »
+[OK] écran coach (contient=['Ma montre — fond']) : « Séance conseillée : aérobie léger »
+[OK] écran home (focus='coach') : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== seance_conseillee (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home (elements=['coach']) : « OpenRide » (engine muet 12.5 s)
+[OK] choisir « coach » : écran « coach », focus « coach_need »
+[OK] écran coach (contient=['Pourquoi : '], elements=['coach_workout', 'coach_need', 'coach_watch', 'coach_race_date', 'coach_detail']) : « Séance conseillée : aérobie léger »
+[OK] choisir « coach_detail » : écran « coach_detail », focus « d_light »
+[OK] écran coach_detail (titre='Détail du calcul', elements=['d_light', 'd_intense', 'd_anaerobic', 'd_rule']) : « Détail du calcul »
+[OK] écran coach (focus='coach_detail') : « Séance conseillée : aérobie léger »
+[OK] choisir « coach_need » : écran « coach_need », focus « need_light »
+[OK] écran coach_need (elements=['need_light', 'need_intense', 'need_anaerobic', 'need_recovery', 'need_ftp_test']) : « Choisir un autre besoin »
+[OK] choisir « need_anaerobic » : écran « coach », focus « coach_need »
+[OK] écran coach (contient=['Besoin choisi : anaérobie.']) : « Séance conseillée : anaérobie »
+[OK] choisir « coach_race_date » : écran « coach_race_date », focus « set:conseil.race_days »
+[OK] écran coach_race_date (elements=['set:conseil.race_days', 'set:conseil.race_kind', 'race_save']) : « Ma prochaine course »
+[OK] choisir « race_save » : écran « coach_race_date », focus « race_save »
+[OK] écran coach (contient=['Prochaine course']) : « Séance conseillée : aérobie léger »
+[OK] choisir « coach_race_date » : écran « coach_race_date », focus « set:conseil.race_days »
+[OK] choisir « race_clear » : écran « coach_race_date », focus « race_clear »
+[OK] écran coach (contient=['Prochaine course — aucune']) : « Séance conseillée : aérobie léger »
+[OK] choisir « coach_watch » : écran « coach_watch », focus « set:conseil.watch_type »
+[OK] écran coach_watch (elements=['set:conseil.watch_type', 'set:conseil.watch_min', 'watch_save']) : « Suggestion de ma montre »
+[OK] choisir « watch_save » : écran « coach_watch », focus « watch_save »
+[OK] écran coach (contient=['Ma montre — fond']) : « Séance conseillée : aérobie léger »
+[OK] écran home (focus='coach') : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== seance_conseillee (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.7 s
+[OK] écran home (elements=['coach']) : « OpenRide » (engine muet 13.0 s)
+[OK] choisir « coach » : écran « coach », focus « coach_need »
+[OK] écran coach (contient=['Pourquoi : '], elements=['coach_workout', 'coach_need', 'coach_watch', 'coach_race_date', 'coach_detail']) : « Séance conseillée : aérobie léger »
+[OK] choisir « coach_detail » : écran « coach_detail », focus « d_light »
+[OK] écran coach_detail (titre='Détail du calcul', elements=['d_light', 'd_intense', 'd_anaerobic', 'd_rule']) : « Détail du calcul »
+[OK] écran coach (focus='coach_detail') : « Séance conseillée : aérobie léger »
+[OK] choisir « coach_need » : écran « coach_need », focus « need_light »
+[OK] écran coach_need (elements=['need_light', 'need_intense', 'need_anaerobic', 'need_recovery', 'need_ftp_test']) : « Choisir un autre besoin »
+[OK] choisir « need_anaerobic » : écran « coach », focus « coach_need »
+[OK] écran coach (contient=['Besoin choisi : anaérobie.']) : « Séance conseillée : anaérobie »
+[OK] choisir « coach_race_date » : écran « coach_race_date », focus « set:conseil.race_days »
+[OK] écran coach_race_date (elements=['set:conseil.race_days', 'set:conseil.race_kind', 'race_save']) : « Ma prochaine course »
+[OK] choisir « race_save » : écran « coach_race_date », focus « race_save »
+[OK] écran coach (contient=['Prochaine course']) : « Séance conseillée : aérobie léger »
+[OK] choisir « coach_race_date » : écran « coach_race_date », focus « set:conseil.race_days »
+[OK] choisir « race_clear » : écran « coach_race_date », focus « race_clear »
+[OK] écran coach (contient=['Prochaine course — aucune']) : « Séance conseillée : aérobie léger »
+[OK] choisir « coach_watch » : écran « coach_watch », focus « set:conseil.watch_type »
+[OK] écran coach_watch (elements=['set:conseil.watch_type', 'set:conseil.watch_min', 'watch_save']) : « Suggestion de ma montre »
+[OK] choisir « watch_save » : écran « coach_watch », focus « watch_save »
+[OK] écran coach (contient=['Ma montre — fond']) : « Séance conseillée : aérobie léger »
+[OK] écran home (focus='coach') : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+seance_conseillee        click    OK              60 s
+seance_conseillee        clavier  OK              58 s
+seance_conseillee        souris   OK              47 s
+Rapport : ~/mesures-2026-11-01-auto/r770/vitrine_menus/rapport.html
+OK

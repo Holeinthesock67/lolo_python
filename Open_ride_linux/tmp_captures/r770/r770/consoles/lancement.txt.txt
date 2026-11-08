@@ -1,0 +1,15 @@
+01:42:01 empreinte avant c6152d87d6a2fc30a6faa5539f239a55
+01:42:01 tête d81fb9ae
+01:42:02 pytest core
+02:14:19 fin pytest rc=1
+02:14:20 parcours copiés : 6 .world
+02:14:22 fin coach
+02:14:22 copie du profil prête
+02:15:04 copie du profil effacée
+02:15:04 suite engine
+02:35:27 fin suite engine rc=1
+02:35:27 menu_bench seance_conseillee
+02:38:11 fin menu_bench rc=0
+02:38:13 empreinte après c6152d87d6a2fc30a6faa5539f239a55
+02:38:13 clone 9c7c9556
+02:38:13 FIN

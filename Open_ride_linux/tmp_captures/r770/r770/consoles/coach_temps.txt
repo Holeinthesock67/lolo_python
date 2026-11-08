@@ -1,0 +1,13 @@
+froid 1 rc=0 .418606427 s
+froid 2 rc=0 .398315646 s
+froid 3 rc=0 .348910774 s
+chaud 1 rc=0 .425764777 s
+chaud 2 rc=0 .352464667 s
+chaud 3 rc=0 .333626732 s
+profil froid 1 rc=0 13.880491078 s
+profil froid 2 rc=0 13.313281275 s
+profil froid 3 rc=0 13.375615579 s
+profil chaud 1 rc=0 .634742071 s
+profil chaud 2 rc=0 .351807811 s
+profil chaud 3 rc=0 .358735137 s
+séances du profil lu : 76 fichiers, 58 journaux
