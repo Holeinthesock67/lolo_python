@@ -47,7 +47,7 @@ BBOX_MARGIN_M = 1500.0
 SNAP_MAX_M = 250.0
 STEP_M = 10.0
 TOLERANCE = 0.05
-GAIN_SMOOTH_M = 200.0   # moyenne glissante du profil avant le calcul du dénivelé contrôlé
+GAIN_SMOOTH_M = 300.0   # moyenne glissante du profil avant le calcul du dénivelé contrôlé
 EARTH_R = 6371008.8
 
 # Routes retenues ; `track`, `path` et `cycleway` non revêtus seulement avec `unpaved = true`.
