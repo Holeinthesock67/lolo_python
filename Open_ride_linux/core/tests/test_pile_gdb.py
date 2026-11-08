@@ -106,5 +106,5 @@ def test_banc_des_menus_documente_les_options_et_main_gd_les_modes():
         assert f'"{opt}"' in bench and opt in bench.split('"""', 2)[1], opt
     main = (ROOT / "engine" / "scripts" / "main.gd").read_text(encoding="utf-8")
     modes = re.search(r"const QUIT_MODES := \[(.*)\]", main).group(1)
-    assert [m.strip().strip('"') for m in modes.split(",")] == ["", "differe", "liberer"]
+    assert [m.strip().strip('"') for m in modes.split(",")] == ["", "differe", "liberer", "compilations"]
     assert 'OS.get_environment("OPENRIDE_QUIT_MODE")' in main

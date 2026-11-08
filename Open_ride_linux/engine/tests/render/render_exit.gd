@@ -12,34 +12,15 @@ extends RefCounted
 const SETTLE_FRAMES := 10
 const SETTLE_S := 1.0
 const SETTLE_MAX_S := 30.0
-const PIPELINE_INFOS := [RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_CANVAS,
-	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_MESH, RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SURFACE,
-	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_DRAW,
-	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SPECIALIZATION]
+const PipelineSettle := preload("res://scripts/pipeline_settle.gd")
 
 
 static func pipeline_compilations() -> int:
-	var total := 0
-	for info in PIPELINE_INFOS:
-		total += RenderingServer.get_rendering_info(info)
-	return total
+	return PipelineSettle.pipeline_compilations()
 
 
-## Attend la fin des compilations de pipelines (voir l'en-tête) ; affiche le nombre relevé et l'attente.
+## Attend la fin des compilations de pipelines (voir l'en-tête, engine/scripts/pipeline_settle.gd) ; affiche le
+## nombre relevé et l'attente.
 static func settle(tree: SceneTree) -> void:
-	var start := Time.get_ticks_msec()
-	var last := pipeline_compilations()
-	var since := start
-	var frames := 0
-	while Time.get_ticks_msec() - start < SETTLE_MAX_S * 1000.0:
-		await tree.process_frame
-		var now := pipeline_compilations()
-		if now != last:
-			last = now
-			since = Time.get_ticks_msec()
-			frames = 0
-		else:
-			frames += 1
-		if frames >= SETTLE_FRAMES and Time.get_ticks_msec() - since >= SETTLE_S * 1000.0:
-			break
-	print("compilations de pipelines : %d, attente %d ms" % [last, Time.get_ticks_msec() - start])
+	var got: Array = await PipelineSettle.settle(tree, SETTLE_FRAMES, SETTLE_S, SETTLE_MAX_S)
+	print("compilations de pipelines : %d, attente %d ms" % [got[0], got[1]])

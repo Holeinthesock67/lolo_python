@@ -45,13 +45,16 @@ Connaître la cause, puis fermer proprement sans tuer le processus.
   (arrêt bloqué compté en échec au lieu d'INFO), `--fermeture MODE`, `--engine-arg ARG`, `--qualite low|medium|high`.
 - **Manières de quitter** (`main.gd`, `_quit`, `OPENRIDE_QUIT_MODE`), à comparer sans rien recompiler :
   vide (actuelle), `differe` (deux images plus tard, hors du traitement du clic qui la demande : seule la voie souris
-  bloquait au lot X55), `liberer` (vue 3D coupée, environnement et nœuds 3D libérés, puis deux images). Une seule sera
+  bloquait au lot X55), `liberer` (vue 3D coupée, environnement et nœuds 3D libérés, puis deux images),
+  `compilations` (après la fin des compilations de pipelines en arrière-plan, au plus 2 s : `engine/scripts/pipeline_settle.gd`,
+  même logique que la sortie en ordre des tests de rendu `render_exit.gd`, qui bloquaient de la même façon sur la
+  GTX 1060, #712 et r773 ; piste : le survol des boutons à la souris fait compiler de nouveaux pipelines). Une seule sera
   gardée, la constante `QUIT_MODES` et la variable retirées ensuite.
 - Tests : `core/tests/test_pile_gdb.py` (résumé, repères, vrai gdb sur un programme bloqué : code gardé, pile sur SIGINT).
 
 ### 6.2 Passage sur le PC (via la file du fil de fusion)
 
-Prérequis : `gdb` installé (`sudo apt install gdb`, une fois, par l'utilisateur). Environ 35 min, tout en `--native`.
+Prérequis : `gdb` installé (`sudo apt install gdb`, une fois, par l'utilisateur). Environ 45 min, tout en `--native`.
 
 ```
 cd ~/Games/lolo_python/Open_ride_linux && git fetch origin && git checkout <branche du lot>
@@ -64,6 +67,7 @@ $B --voies souris --gdb --repeter 3 --qualite high --out $O/1_pile_high
 $B --voies clavier,click --repeter 3 --out $O/2_autres_voies                  # témoin : bloquent-elles aussi ?
 $B --voies souris --repeter 10 --fermeture differe --out $O/3_differe_low     # essais de correction
 $B --voies souris --repeter 10 --fermeture liberer --out $O/3_liberer_low
+$B --voies souris --repeter 10 --fermeture compilations --out $O/3_compilations_low
 $B --voies souris --repeter 3 --engine-arg=--rendering-driver --engine-arg=opengl3 --out $O/4_opengl   # diagnostic Vulkan
 ```
 

@@ -13,6 +13,7 @@ const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
+const PipelineSettle := preload("res://scripts/pipeline_settle.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const HudView := preload("res://scripts/hud_view.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
@@ -1983,8 +1984,10 @@ func _give_cues(state: Dictionary) -> void:
 ## Manière de quitter (lot X58, essais sur le PC : arrêt de Godot bloqué sur le pilote NVIDIA après un clic de souris),
 ## lue dans OPENRIDE_QUIT_MODE (banc des menus `--fermeture`) : vide, tout de suite ; `differe` : deux images plus
 ## tard, hors du traitement de l'événement qui l'a demandée ; `liberer` : vue 3D coupée, environnement et nœuds 3D
-## libérés, puis deux images plus tard. Gardée le temps des essais : le lot X58 n'en retient qu'une.
-const QUIT_MODES := ["", "differe", "liberer"]
+## libérés, puis deux images plus tard ; `compilations` : après la fin des compilations de pipelines en arrière-plan
+## (pipeline_settle.gd, au plus 2 s : même blocage à la sortie des tests de rendu, #712, r773). Gardée le temps des
+## essais : le lot X58 n'en retient qu'une.
+const QUIT_MODES := ["", "differe", "liberer", "compilations"]
 
 
 ## Fermeture de l'engine avec le code `code` (0 : quitter, EXIT_RELAUNCH, EXIT_SIM). Le journal date ensuite chaque
@@ -2003,7 +2006,10 @@ func _quit(code: int) -> void:
 			if child is Node3D:
 				child.queue_free()
 		_quit_step("vue 3D coupée, nœuds 3D libérés")
-	if mode != "":
+	if mode == "compilations":
+		var got: Array = await PipelineSettle.settle(get_tree(), 5, 0.3, 2.0)
+		_quit_step("compilations de pipelines finies (%d, attente %d ms)" % [got[0], got[1]])
+	elif mode != "":
 		await get_tree().process_frame
 		await get_tree().process_frame
 		_quit_step("fermeture %s, deux images plus tard" % mode)
