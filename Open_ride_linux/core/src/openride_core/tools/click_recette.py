@@ -4,6 +4,11 @@
     python -m openride_core.tools.click_recette --minutes 10 --rappel 2
     python -m openride_core.tools.click_recette --sim            # sans matériel (Click simulé)
     python -m openride_core.tools.click_recette --materiel       # matériel à préparer
+    python -m openride_core.tools.click_recette --minutes 2 --rappel 5 --trace-brute   # appuis longs (R14)
+
+Trace des appuis longs (constat R14 : bouton maintenu = rafale de `_SHORT`) : après les étapes guidées,
+maintenir 1, 2 puis 3 s chacun de +, −, A et Z, puis quelques appuis courts rapides sur + ; `trames.csv`
+garde chaque trame et chaque événement publié, dans l'ordre, pour régler `[drivers] click_repeat_gap_s`.
 
 Avec les vrais fournisseurs du core (deux boîtiers, comme `build_inputs`), l'outil :
 1. attend la connexion des boîtiers (un appui réveille chacun) ;
@@ -24,7 +29,8 @@ L'essai est guidé (module `guide`) : rappel du matériel, consigne en grand ave
 bip à chaque appui demandé, bip d'alerte quand un boîtier se tait ou se coupe, résultat de chaque
 appui à l'écran et dans `guide.jsonl`.
 
-Écrit `rapport.txt`, `rapport.json` et `notifications.csv` (une ligne par seconde et par boîtier) dans
+Écrit `rapport.txt`, `rapport.json`, `trames.csv` (chaque trame et chaque événement, dans l'ordre)
+et `notifications.csv` (une ligne par seconde et par boîtier) dans
 `~/OpenRide/click_recette/<date>_<heure>/`. L'adresse des boîtiers n'est écrite que dans ce dossier local.
 Code de sortie : 0 si toutes les étapes guidées sont reçues et qu'aucun boîtier ne s'est tu ni coupé,
 1 sinon.
@@ -116,6 +122,8 @@ class Recorder:
         self.units: dict[str, UnitStats] = {}
         self.events: list[tuple[float, str, InputEvent]] = []   # (t, adresse, événement)
         self._silent_since: dict[str, float] = {}
+        # Trace des appuis longs (R14) : (t, côté, trame en hexadécimal, événement publié ou "").
+        self.frames: list[tuple[float, str, str, str]] = []
 
     def t(self) -> float:
         return self.clock() - self.t0
@@ -124,6 +132,9 @@ class Recorder:
         if address not in self.units:
             self.units[address] = UnitStats(address)
         return self.units[address]
+
+    def frame(self, side: str, data: bytes, ev: InputEvent | None = None) -> None:
+        self.frames.append((self.t(), side, data.hex(), ev.value if ev is not None else ""))
 
     def raw(self, address: str, data: bytes) -> None:
         t = self.t()
@@ -197,13 +208,17 @@ class TracedClickProvider(ZwiftClickProvider):
         return str(self._mine or self._conn_address)
 
     def _on_async(self, ch: Any, data: bytearray) -> None:
-        before = self.events.qsize()
         self.recorder.raw(self.unit_address, bytes(data))
+        self.recorder.frame(self.side, bytes(data))
         super()._on_async(ch, data)
-        # Les événements ajoutés à la file viennent de ce boîtier.
-        added = list(self.events._queue)[before:]   # type: ignore[attr-defined]
-        for ev in added:
+
+    def _emit(self, timed: list[tuple[InputEvent, float]], now: float) -> None:
+        # Les événements ajoutés à la file viennent de ce boîtier (à la trame ou à la fin d'une rafale).
+        before = self.events.qsize()
+        super()._emit(timed, now)
+        for ev in list(self.events._queue)[before:]:   # type: ignore[attr-defined]
             self.recorder.event(self.unit_address, ev)
+            self.recorder.frame(self.side, b"", ev)
 
 
 @dataclass
@@ -423,13 +438,19 @@ def write_outputs(rec: Recorder, report: dict[str, Any], out: Path) -> None:
     (out / "rapport.txt").write_text(report_text(report), encoding="utf-8")
     addrs = [u for u in rec.units if u != "?"]
     last = max((max(u.per_second, default=0) for u in rec.units.values()), default=0)
+    # Trames et événements dans l'ordre, côté du boîtier seulement (pas d'adresse) : lecture des rafales.
+    with (out / "trames.csv").open("w", encoding="utf-8") as fh:
+        fh.write("t_s;boitier;trame;evenement\n")
+        for t, side, hexa, ev in rec.frames:
+            fh.write(f"{t:.3f};{side};{hexa};{ev}\n")
     with (out / "notifications.csv").open("w", encoding="utf-8") as fh:
         fh.write("t_s;" + ";".join(f"{rec.units[a].side}_{a}" for a in addrs) + "\n")
         for sec in range(last + 1):
             fh.write(f"{sec};" + ";".join(str(rec.units[a].per_second.get(sec, 0)) for a in addrs) + "\n")
 
 
-def make_providers(rec: Recorder, cfg: Any, sim: Any = None, policy: str = "") -> list[TracedClickProvider]:
+def make_providers(rec: Recorder, cfg: Any, sim: Any = None, policy: str = "", *, trace_raw: bool = False,
+                   repeat_gap_s: float | None = None) -> list[TracedClickProvider]:
     d, pair = cfg.drivers, ClickPair()
     kw: dict[str, Any] = {"device_finder": sim.find_device, "client_factory": sim.client_factory} if sim else {}
     addr_plus = None if sim else (d.click_address or None)
@@ -437,6 +458,10 @@ def make_providers(rec: Recorder, cfg: Any, sim: Any = None, policy: str = "") -
     # Comme le core : verrou du boîtier gauche selon `click_reset_locked` (« reset » par défaut), sauf
     # `--verrou` qui le remplace pour l'essai D du lot K9.
     kw["reset_locked"] = policy or d.click_reset_locked
+    # Comme le core : rafale du bouton maintenu (R14) et trace brute de `[drivers]` ; `--trace-brute`
+    # et `--regroupement` les remplacent pour la trace des appuis longs.
+    kw["repeat_gap_s"] = d.click_repeat_gap_s if repeat_gap_s is None else repeat_gap_s
+    kw["trace_raw"] = d.click_trace_raw or trace_raw
     return [TracedClickProvider(rec, addr_plus, d.click_short_max_s, d.click_long_min_s, pair=pair, **kw),
             TracedClickProvider(rec, addr_minus, d.click_short_max_s, d.click_long_min_s, pair=pair,
                                 optional=True, **kw)]
@@ -493,7 +518,8 @@ async def main_async(args: argparse.Namespace) -> int:
 
         prompt = prompts.put_nowait
         extra = [asyncio.create_task(sim.run()), asyncio.create_task(sim_user(sim, prompts))]
-    providers = make_providers(rec, cfg, sim, args.verrou or "")
+    providers = make_providers(rec, cfg, sim, args.verrou or "", trace_raw=args.trace_brute,
+                               repeat_gap_s=args.regroupement)
     try:
         report = await run_recette(providers, rec, args.minutes, args.rappel, prompt,
                                    connect_timeout=20.0 if args.sim else 120.0, guide=guide,
@@ -522,6 +548,10 @@ def main(argv: list[str] | None = None) -> int:
                     help=f"secondes d'attente de chaque rappel avant de le compter perdu (défaut {STEP_TIMEOUT_S:g})")
     ap.add_argument("--verrou", choices=zwift_click.LOCK_POLICIES,
                     help="remplace [drivers] click_reset_locked pour l'essai (lot K9 : keep ou reset)")
+    ap.add_argument("--trace-brute", action="store_true",
+                    help="trace brute de chaque notification au journal (comme [drivers] click_trace_raw)")
+    ap.add_argument("--regroupement", type=float, default=None, metavar="S",
+                    help="écart de rafale du bouton maintenu (défaut : [drivers] click_repeat_gap_s ; 0 : sans)")
     ap.add_argument("--sim", action="store_true", help="Click simulé (ble_sim), cycliste simulé")
     ap.add_argument("--scenario", help="avec --sim : scénario (nom ou fichier JSON) pour le Click simulé")
     ap.add_argument("--out", type=Path, help=f"dossier de sortie (défaut : {DEFAULT_OUT}/<date>)")

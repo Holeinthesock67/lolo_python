@@ -73,6 +73,7 @@ KEYPAD_BITS = {
 
 SHORT_MAX_S = 0.500
 LONG_MIN_S = 0.900   # abaissé de 1,2 s après essai réel (appuis longs naturels : 0,7 à 1,1 s)
+REPEAT_GAP_S = 0.35  # rafale du bouton maintenu (R14, 8 novembre : un appui toutes les 0,2 à 0,3 s)
 
 
 class InputEvent(str, enum.Enum):
@@ -215,35 +216,94 @@ class PressClassifier:
     L'événement est émis au relâchement : moins de 500 ms -> court, 900 ms ou plus -> long,
     entre les deux -> PLUS_UNCLEAR ou MINUS_UNCLEAR pour + et −, rien pour A et Z (SRS §4.2).
     Y et les flèches n'ont qu'un événement (`_SHORT`), quelle que soit la durée.
+
+    Rafale (constat R14 du 8 novembre) : bouton maintenu, le Click V2 envoie une suite d'appuis
+    et de relâchements toutes les 0,2 à 0,3 s au lieu d'un seul appui. Avec `repeat_gap_s` > 0,
+    un nouvel appui du même bouton moins de `repeat_gap_s` après son relâchement continue l'appui
+    en cours : l'événement attend donc `repeat_gap_s` après le relâchement (`poll`). Une rafale de
+    `LONG_MIN_S` ou plus, du premier appui au dernier relâchement, donne un seul `_LONG` ; plus
+    courte, elle rend un `_SHORT` par appui, pour ne pas perdre de vrais appuis courts répétés.
+    Seuls +, −, A et Z sont concernés (Y et flèches n'ont pas d'appui long). `repeat_gap_s = 0` :
+    comportement d'avant, événement dès le relâchement.
     """
 
-    def __init__(self, short_max_s: float = SHORT_MAX_S, long_min_s: float = LONG_MIN_S) -> None:
+    LONG_BUTTONS = tuple(b for b in BUTTONS if b not in SINGLE_EVENT_BUTTONS)
+
+    def __init__(self, short_max_s: float = SHORT_MAX_S, long_min_s: float = LONG_MIN_S,
+                 repeat_gap_s: float = 0.0) -> None:
         self.short_max_s = short_max_s
         self.long_min_s = long_min_s
+        self.repeat_gap_s = repeat_gap_s
         self._down_since: dict[str, float | None] = {name: None for name in BUTTONS}
+        # Rafale en cours, par bouton : (début du premier appui, heures de chaque relâchement).
+        self._run: dict[str, tuple[float, list[float]] | None] = {name: None for name in BUTTONS}
 
-    def update(self, button: str, pressed: bool, t: float) -> InputEvent | None:
-        since = self._down_since[button]
-        if pressed:
-            if since is None:
-                self._down_since[button] = t
-            return None
-        if since is None:
-            return None
-        self._down_since[button] = None
-        if button in SINGLE_EVENT_BUTTONS:
-            return InputEvent[f"{button}_SHORT"]
-        duration = t - since
+    def _classify(self, button: str, duration: float) -> InputEvent | None:
         if duration < self.short_max_s:
             return InputEvent[f"{button}_SHORT"]
         if duration >= self.long_min_s:
             return InputEvent[f"{button}_LONG"]
         return InputEvent[f"{button}_UNCLEAR"] if button in ("PLUS", "MINUS") else None
 
-    def feed(self, buttons: ClickButtons, t: float) -> list[InputEvent]:
-        events = []
+    def _close_run(self, button: str) -> list[tuple[InputEvent, float]]:
+        run = self._run[button]
+        self._run[button] = None
+        if run is None:
+            return []
+        start, releases = run
+        released = releases[-1]
+        duration = released - start
+        if len(releases) > 1:
+            if duration >= self.long_min_s:
+                return [(InputEvent[f"{button}_LONG"], released)]
+            # Chaque tape garde l'heure de son relâchement : la paire ne les prend pas pour un relais.
+            return [(InputEvent[f"{button}_SHORT"], r) for r in releases]
+        ev = self._classify(button, duration)
+        return [] if ev is None else [(ev, released)]
+
+    def update_timed(self, button: str, pressed: bool, t: float) -> list[tuple[InputEvent, float]]:
+        """Comme `update`, avec l'heure du relâchement qui a fini chaque événement (pour la paire)."""
+        out: list[tuple[InputEvent, float]] = []
+        run = self._run[button]
+        since = self._down_since[button]
+        if run is not None and since is None and t - run[1][-1] > self.repeat_gap_s:
+            out = self._close_run(button)   # relâché depuis plus que l'écart : la rafale est finie
+            run = None
+        if pressed:
+            if since is None:
+                self._down_since[button] = t if run is None else run[0]
+            return out
+        if since is None:
+            return out
+        self._down_since[button] = None
+        if button in SINGLE_EVENT_BUTTONS:
+            return out + [(InputEvent[f"{button}_SHORT"], t)]
+        self._run[button] = (since, [t]) if run is None else (run[0], run[1] + [t])
+        if self.repeat_gap_s <= 0:
+            out += self._close_run(button)
+        return out
+
+    def update(self, button: str, pressed: bool, t: float) -> InputEvent | None:
+        evs = self.update_timed(button, pressed, t)
+        return evs[-1][0] if evs else None
+
+    def poll_timed(self, t: float) -> list[tuple[InputEvent, float]]:
+        """Événements des rafales finies : plus d'appui depuis `repeat_gap_s` après le relâchement."""
+        out: list[tuple[InputEvent, float]] = []
+        for name in self.LONG_BUTTONS:
+            run = self._run[name]
+            if run is not None and self._down_since[name] is None and t - run[1][-1] > self.repeat_gap_s:
+                out += self._close_run(name)
+        return out
+
+    def poll(self, t: float) -> list[InputEvent]:
+        return [ev for ev, _ in self.poll_timed(t)]
+
+    def feed_timed(self, buttons: ClickButtons, t: float) -> list[tuple[InputEvent, float]]:
+        events: list[tuple[InputEvent, float]] = []
         for name in BUTTONS:
-            ev = self.update(name, getattr(buttons, f"{name.lower()}_pressed"), t)
-            if ev is not None:
-                events.append(ev)
+            events += self.update_timed(name, getattr(buttons, f"{name.lower()}_pressed"), t)
         return events
+
+    def feed(self, buttons: ClickButtons, t: float) -> list[InputEvent]:
+        return [ev for ev, _ in self.feed_timed(buttons, t)]
