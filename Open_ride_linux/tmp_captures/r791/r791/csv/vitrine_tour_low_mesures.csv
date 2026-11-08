@@ -1,0 +1,7 @@
+point;s_m;camera;triangles;appels_de_dessin;maillages;images_s;tuiles_en_attente;capture
+retour_300;300;subjective;575848;109;21;56;0;01_retour_300.png
+aller_1200;1200;subjective;634459;190;25;60;0;02_aller_1200.png
+retour_1200;1200;subjective;575863;154;24;60;0;03_retour_1200.png
+aller_2250_suivi;2250;follow_near;604810;162;25;60;0;04_aller_2250_suivi.png
+retour_2250_suivi;2250;follow_near;574502;141;25;60;0;05_retour_2250_suivi.png
+retour_3000;3000;subjective;557690;110;25;60;0;06_retour_3000.png

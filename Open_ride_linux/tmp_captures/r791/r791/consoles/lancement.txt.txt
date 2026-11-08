@@ -1,0 +1,30 @@
+17:49:27 empreinte avant 5dd68002174aac60837bd7c9e4e300a6
+17:49:27 tête 43cfbfb1
+17:50:39 suite engine
+18:16:52 fin suite rc=1
+18:16:52 pytest core
+18:16:59 fin pytest rc=2
+remote: warning: lazy fetching disabled; some objects may not be available        
+remote: fatal: could not fetch c078c2809a781df9c497014f30679b76c87edced from promisor remote        
+error: git upload-pack: git-pack-objects died with error.
+fatal: git upload-pack: aborting due to possible repository corruption on the remote side.
+remote: aborting due to possible repository corruption on the remote side.
+fatal: fin de fichier prématurée
+fatal: fetch-pack : sortie d'index de pack invalide
+18:17:00 test_recette_install dans un clone complet
+18:17:00 fin recette_install rc=1
+18:17:00 tour demi_tour low
+18:17:26 fin tour low rc=0
+18:17:26 tour demi_tour medium
+18:17:54 fin tour medium rc=0
+18:17:54 tour demi_tour high
+18:18:23 fin tour high rc=0
+18:18:23 demo low_branche
+18:22:30 fin demo low rc=0
+18:22:30 demo medium_branche
+18:26:38 fin demo medium rc=0
+18:26:38 demo high_branche
+18:30:45 fin demo high rc=0
+18:30:47 empreinte après 5dd68002174aac60837bd7c9e4e300a6
+18:30:47 clone 3a1b36c3
+18:30:47 FIN

@@ -1,0 +1,9 @@
+== Tour visuel : demo, 6 point(s), préréglage medium ==
+[OK] retour_300 à 300 m (subjective) : 1216013 triangles, 130 appels, 0 tuile(s) en attente
+[OK] aller_1200 à 1200 m (subjective) : 1350879 triangles, 232 appels, 0 tuile(s) en attente
+[OK] retour_1200 à 1200 m (subjective) : 1163093 triangles, 196 appels, 0 tuile(s) en attente
+[OK] aller_2250_suivi à 2250 m (follow_near) : 1382311 triangles, 208 appels, 0 tuile(s) en attente
+[OK] retour_2250_suivi à 2250 m (follow_near) : 1244373 triangles, 190 appels, 0 tuile(s) en attente
+[OK] retour_3000 à 3000 m (subjective) : 1234137 triangles, 160 appels, 0 tuile(s) en attente
+Planche : ~/mesures-2026-11-01-auto/r791/vitrine/tour_medium/planche.html
+RÉSULTAT : tour complet
