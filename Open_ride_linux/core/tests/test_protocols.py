@@ -131,13 +131,16 @@ def test_press_classifier_thresholds():
     assert c.update("PLUS", False, 6.0) is None       # relâché sans appui
 
 
-def test_y_and_arrows_have_one_event_whatever_the_duration():
-    """Spécification générale §7.1 : Y et les flèches n'ont qu'un événement, appui court ou long."""
+def test_y_without_dead_zone_and_arrows_with_one_event():
+    """Spécification générale §7.1 : les flèches n'ont qu'un événement, appui court ou long ; Y est court ou long
+    (Y_LONG, révision 1.11), sans zone floue."""
     c = PressClassifier()
     assert c.feed(ClickButtons(False, False, y_pressed=True), 0.0) == []
     assert c.feed(ClickButtons(False, False), 0.2) == [InputEvent.Y_SHORT]
     c.feed(ClickButtons(False, False, y_pressed=True), 1.0)
-    assert c.feed(ClickButtons(False, False), 2.0) == [InputEvent.Y_SHORT]
+    assert c.feed(ClickButtons(False, False), 2.0) == [InputEvent.Y_LONG]
+    c.feed(ClickButtons(False, False, y_pressed=True), 2.5)
+    assert c.feed(ClickButtons(False, False), 3.2) == [InputEvent.Y_SHORT]   # 0,7 s : court, pas de zone floue
     for name in ("left", "right", "up", "down"):
         c.feed(ClickButtons(False, False, **{f"{name}_pressed": True}), 3.0)
         assert c.feed(ClickButtons(False, False), 3.7) == [InputEvent[f"{name.upper()}_SHORT"]]

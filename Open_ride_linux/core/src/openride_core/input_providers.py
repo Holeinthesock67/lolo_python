@@ -388,12 +388,12 @@ class ZwiftClickProvider:
 
 # Clavier du terminal = Click, touche pour touche (lot O17, tableau du clavier de la spécification générale
 # §7.1). Le terminal ne dit pas quand une touche est relâchée : la durée d'un appui n'est pas mesurable, les
-# appuis longs passent par les synonymes (Page haut et bas, Maj+A, Entrée, Maj+Z) ; Échap vaut Y.
+# appuis longs passent par les synonymes (Page haut et bas, Maj+A, Entrée, Maj+Y, Maj+Z) ; Échap vaut Y court.
 TERMINAL_KEYS: dict[str, InputEvent] = {
     "+": InputEvent.PLUS_SHORT, "=": InputEvent.PLUS_SHORT, "-": InputEvent.MINUS_SHORT,
     "\x1b[5~": InputEvent.PLUS_LONG, "\x1b[6~": InputEvent.MINUS_LONG,
     "a": InputEvent.A_SHORT, "A": InputEvent.A_LONG, "\r": InputEvent.A_LONG, "\n": InputEvent.A_LONG,
-    "y": InputEvent.Y_SHORT, "Y": InputEvent.Y_SHORT, "\x1b": InputEvent.Y_SHORT,
+    "y": InputEvent.Y_SHORT, "Y": InputEvent.Y_LONG, "\x1b": InputEvent.Y_SHORT,
     "z": InputEvent.Z_SHORT, "Z": InputEvent.Z_LONG,
     "\x1b[D": InputEvent.LEFT_SHORT, "\x1b[C": InputEvent.RIGHT_SHORT,
     "\x1b[A": InputEvent.UP_SHORT, "\x1b[B": InputEvent.DOWN_SHORT,

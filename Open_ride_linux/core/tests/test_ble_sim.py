@@ -525,7 +525,7 @@ def test_every_click_v2_button_and_the_control_file(tmp_path):
                 await asyncio.sleep(duration + 0.3)
         await asyncio.sleep(0.3)
         # Boîtier droit (A, B = −, Y, Z, +) puis boîtier gauche (flèches, −), chacun dans l'ordre des appuis.
-        assert rig.events() == [InputEvent.A_LONG, InputEvent.A_SHORT, InputEvent.MINUS_SHORT, InputEvent.Y_SHORT,
+        assert rig.events() == [InputEvent.A_LONG, InputEvent.A_SHORT, InputEvent.MINUS_SHORT, InputEvent.Y_LONG,
                                 InputEvent.Z_LONG, InputEvent.PLUS_SHORT, InputEvent.UP_SHORT, InputEvent.DOWN_SHORT,
                                 InputEvent.RIGHT_SHORT, InputEvent.MINUS_LONG]
         await rig.stop()

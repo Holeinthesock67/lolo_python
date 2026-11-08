@@ -1912,11 +1912,13 @@ class CoreSession:
                  f", cible {self.erg.target_w} W" if self.erg is not None else "")
         self._sync_erg_state()
 
-    def _u_turn_refusal(self) -> str | None:
-        """Raison d'un refus du demi-tour (lot N17), None s'il est possible : séance en pause sur un parcours,
-        hors run, monde ouvert et courses à arches ou à distance fixée."""
-        if self.state.session_state != "PAUSED":
-            return "Demi-tour seulement depuis l'écran de pause."
+    def _u_turn_refusal(self, from_state: str = "PAUSED") -> str | None:
+        """Raison d'un refus du demi-tour (lot N17), None s'il est possible : séance dans l'état `from_state`
+        (PAUSED pour la commande de l'écran de pause, RUNNING pour Y maintenu) sur un parcours, hors run,
+        monde ouvert et courses à arches ou à distance fixée."""
+        if self.state.session_state != from_state or self._start_gate is not None:
+            return ("Demi-tour seulement depuis l'écran de pause." if from_state == "PAUSED"
+                    else "Demi-tour seulement en roulant.")
         if self.rogue is not None or self.route is None:
             return "Pas de demi-tour pendant une run Cyber-Rogue."
         if self.openworld is not None:
@@ -1936,11 +1938,29 @@ class CoreSession:
             self.server.send_error("busy", reason)
             return
         self.physics.u_turn()
-        d = self.physics.direction
-        self.state.dir = -1 if d < 0 else None
         self.state.v = 0.0
         if self.race is not None:
             self.race.pause("user")   # passage en cours annulé, comme une pause voulue
+        self._note_u_turn()
+
+    def _u_turn_riding(self) -> bool:
+        """Y maintenu en roulant (spécification générale §7.1, révision 1.11) : demi-tour sans s'arrêter, même
+        position, sens inversé, vitesse gardée (le trainer ne voit qu'une pente qui change de signe). Renvoie faux
+        quand le demi-tour n'est pas possible ici : Y maintenu vaut alors Y court (pause)."""
+        reason = self._u_turn_refusal("RUNNING")
+        if reason is not None:
+            log.info("Y maintenu sans demi-tour (%s) : pause.", reason)
+            return False
+        self.physics.u_turn(keep_speed=True)
+        if self.race is not None:
+            self.race.pause("user")   # passage de segment ou de sprint en cours annulé, comme à la pause
+        self._note_u_turn()
+        return True
+
+    def _note_u_turn(self) -> None:
+        """Sens du parcours dans `state`, événement `u_turn` au journal (communs à la pause et à Y maintenu)."""
+        d = self.physics.direction
+        self.state.dir = -1 if d < 0 else None
         if self._rec:
             self._rec.u_turn(time.time(), self.physics.s, self.physics.distance, d)
         log.info("Demi-tour à %.0f m (%.0f m parcourus) : %s.", self.physics.s, self.physics.distance,
@@ -2791,7 +2811,11 @@ class CoreSession:
     def _handle_input(self, ev: InputEvent) -> None:
         # Rôle des boutons : spécification générale §7.1. Y en séance : pause, sans relais ; ailleurs
         # (menus, écran de pause), l'engine en fait « écran précédent » ou « reprendre ».
-        if ev == InputEvent.Y_SHORT and (self.state.session_state == "RUNNING" or self._start_gate is not None):
+        if ev in (InputEvent.Y_SHORT, InputEvent.Y_LONG) and \
+                (self.state.session_state == "RUNNING" or self._start_gate is not None):
+            if ev == InputEvent.Y_LONG and self._u_turn_riding():
+                self.server.send_input_event(ev.value)   # bip, bandeau « Demi-tour » de l'engine
+                return
             self._on_command("pause", {}, 0)   # en attente du départ (lot O36) : annule le départ
             return
         # Relayé à l'engine : menus hors séance, retour sonore (bips) et explications pendant la séance.

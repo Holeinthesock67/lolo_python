@@ -408,6 +408,11 @@ func _test_controls_help() -> void:
 		and HudViewModel.dropout_mark_text("Z_LONG", "RUNNING", false, true) == ""
 		and HudViewModel.dropout_mark_text("Z_SHORT", "RUNNING", false, false) == "",
 		"Z long en roulant (hors Cyber-Rogue et menus) : repère « décrochage » confirmé à l'écran (§7.1, X47)")
+	_check(HudViewModel.u_turn_press_text("Y_LONG", "RUNNING", false) == "Demi-tour"
+		and HudViewModel.u_turn_press_text("Y_LONG", "PAUSED", false) == ""
+		and HudViewModel.u_turn_press_text("Y_LONG", "RUNNING", true) == ""
+		and HudViewModel.u_turn_press_text("Y_SHORT", "RUNNING", false) == "",
+		"Y maintenu en roulant : demi-tour confirmé à l'écran (§7.1, révision 1.11)")
 
 
 func _init() -> void:

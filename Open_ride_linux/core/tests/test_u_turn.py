@@ -215,3 +215,47 @@ def test_resume_after_crash_keeps_direction(tmp_path, monkeypatch) -> None:
     again.resume_session(path)
     assert again.physics.direction == -1 and again.state.dir == -1
     assert again.physics.s == pytest.approx(rs.s) and again.physics.distance == pytest.approx(rs.distance)
+
+
+# --- Y maintenu en roulant (révision 1.11, §7.1) ----------------------------------------------------
+
+
+def test_click_y_long_without_dead_zone() -> None:
+    from openride_core.zwift_click import InputEvent, PressClassifier
+    pc = PressClassifier()
+
+    def tap(held: float):
+        pc.update("Y", True, 0.0)
+        return pc.update("Y", False, held)
+    assert tap(0.2) == InputEvent.Y_SHORT
+    assert tap(0.7) == InputEvent.Y_SHORT   # pas de zone floue : la pause ne se perd jamais
+    assert tap(0.9) == InputEvent.Y_LONG and tap(2.0) == InputEvent.Y_LONG
+
+
+def test_y_long_turns_around_without_stopping(tmp_path, monkeypatch) -> None:
+    from openride_core.zwift_click import InputEvent
+    s, _ = make_session(tmp_path, monkeypatch, 7114)
+    relayed: list[str] = []
+    monkeypatch.setattr(s.server, "send_input_event", relayed.append)
+    ride_until(s, lambda: s.physics.s >= 1500.0)
+    v, s_turn = s.physics.v, s.physics.s
+    s._handle_input(InputEvent.Y_LONG)
+    assert s.state.session_state == "RUNNING" and s.physics.direction == -1 and s.state.dir == -1
+    assert s.physics.v == pytest.approx(v) and s.physics.s == s_turn
+    assert relayed == ["Y_LONG"]
+    ride_until(s, lambda: s.physics.s <= 1400.0)
+    s._handle_input(InputEvent.Y_LONG)
+    assert s.physics.direction == 1 and s.state.dir is None and s.state.session_state == "RUNNING"
+    lines = [json.loads(ln) for f in (tmp_path / "journal").glob("*.jsonl") for ln in f.read_text().splitlines()]
+    assert [ln["dir"] for ln in lines if ln.get("event") == "u_turn"] == [-1, 1]
+
+
+def test_y_long_pauses_where_no_u_turn(tmp_path, monkeypatch) -> None:
+    from openride_core.zwift_click import InputEvent
+    s, _ = make_session(tmp_path, monkeypatch, 7116)
+    relayed: list[str] = []
+    monkeypatch.setattr(s.server, "send_input_event", relayed.append)
+    s._handle_input(InputEvent.Y_LONG)   # au départ d'un parcours en ligne : pas de demi-tour, pause
+    assert s.state.session_state == "PAUSED" and s.physics.direction == 1 and relayed == []
+    s._handle_input(InputEvent.Y_LONG)   # sur l'écran de pause : relayé à l'engine (comme Y court)
+    assert relayed == ["Y_LONG"] and s.physics.direction == 1

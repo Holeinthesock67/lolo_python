@@ -125,6 +125,14 @@ static func dropout_mark_text(event_name: String, session_state: String, rogue: 
 	return "Repère « décrochage » noté au journal"
 
 
+## Y maintenu en roulant (spécification générale §7.1, révision 1.11) : le core ne relaie Y_LONG pendant RUNNING
+## qu'après avoir fait demi-tour (sinon il met en pause) ; l'écran le confirme. Texte vide hors de ce cas.
+static func u_turn_press_text(event_name: String, session_state: String, in_menu: bool) -> String:
+	if event_name != "Y_LONG" or session_state != "RUNNING" or in_menu:
+		return ""
+	return "Demi-tour"
+
+
 static func format_hms(seconds: float) -> String:
 	if not is_finite(seconds) or seconds < 0.0 or seconds > MAX_ELAPSED_S:
 		return NO_VALUE

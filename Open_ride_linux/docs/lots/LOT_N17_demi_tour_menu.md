@@ -54,3 +54,13 @@ Demi-tour automatique au bout d'un parcours aller simple, demi-tour en monde ouv
 - **Engine :** entrée « Faire demi-tour » de l'écran de pause après « Abandonner », avec confirmation (focus sur « Non », A long valide, Y revient), montrée sur un parcours seulement ; caméra, avatar, tronçons et tuiles, inclinaison, vent ressenti, profil d'altitude, prochaine montée et repères des bots dans le nouveau sens ; distance du HUD et de la fiche de la pause croissante (`ridden_distance.gd`).
 - **Tests :** `core/tests/test_u_turn.py` (critère 2 : demi-tour à 3 km, fin au km 0, 6 km au FIT ; critère 3 : pente envoyée opposée à 0,1 point près au braquet neutre ; refus, double demi-tour, segments, bots, reprise) ; engine : `test_menu_model.gd` et `test_menu_flow.gd` (critère 4), `test_camera_follow_lag.gd`, `test_hud_view_model.gd`.
 - **Reste :** captures des trois qualités (low, medium, high) à valider par le propriétaire avant la fusion ; mesures sur le PC par le fil de fusion.
+
+## 10. Suite : demi-tour sur Y maintenu (8 novembre 2026, PR séparée)
+
+Demande du propriétaire du 8 novembre : faire demi-tour par un appui long, sans passer par l'écran de pause. Tous les appuis longs étaient pris en roulant (braquet ± 10, vue par défaut, repère « décrochage ») ; Y, de la famille « interrompre et revenir », n'avait qu'un événement.
+
+- **Contrat, révision 1.11** (la 1.10 est prise par #788) : événement `input` `Y_LONG`, Y tenu 0,9 s ou plus, sans zone floue (en dessous, `Y_SHORT` : une pause ne se perd jamais).
+- **Core :** pendant `RUNNING`, `Y_LONG` fait demi-tour sans arrêt aux conditions de la commande `u_turn` (même position, sens inversé, vitesse gardée, passage de segment en cours annulé, événement `u_turn` au journal), puis il est relayé à l'engine ; sinon il vaut `Y_SHORT` (pause).
+- **Engine :** Maj+Y au clavier ; bip et bandeau « Demi-tour » ; en menu, `Y_LONG` vaut `Y_SHORT`.
+- **Plan des boutons :** ligne « Y long » du §7.1 et ligne Y du tableau du clavier ; outils `matrice_boutons` et `boutons_click` à jour.
+- **Tests :** `core/tests/test_u_turn.py` (décodeur sans zone floue, demi-tour sans arrêt et retour, pause là où le demi-tour n'existe pas), `test_protocols.py`, `test_ble_sim.py`, `test_matrice_boutons.py` ; engine : `test_key_map.gd`, `test_hud_view_model.gd`.

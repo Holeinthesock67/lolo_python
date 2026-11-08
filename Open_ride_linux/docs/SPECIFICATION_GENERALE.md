@@ -151,7 +151,7 @@ Détail : paragraphe « Série P » de [lots/00_INDEX.md](lots/00_INDEX.md) et c
 | 1.x-DEC-1 | Arbres et herbe au vent, nuages, météo légère | P5, P6, P8 | Livré (P5, P6, P8) |
 | 1.x-DEC-2 | Sons d'ambiance et du vélo (vent selon la vitesse dans l'air, roue libre, « clac » à la reprise) | P9, P10 | Livré (P9, P10) |
 | 1.x-DEC-3 | Animaux, éoliennes, drapeaux, véhicules, bord de route, spectateurs, passants | P11 à P15, P21 | Livré (P11 à P15, P21) |
-| 1.x-UI-1 | Demi-tour sur la route depuis l'écran de pause (« Faire demi-tour »), sans geste du Click | N17 | En PR (8 novembre : commande `u_turn` et champ `dir`, révision 1.9) |
+| 1.x-UI-1 | Demi-tour sur la route depuis l'écran de pause (« Faire demi-tour »), puis aussi par Y maintenu en roulant (demande du propriétaire du 8 novembre) | N17 | En PR (8 novembre : commande `u_turn` et champ `dir`, révision 1.9 ; Y maintenu, événement `Y_LONG`, révision 1.11) |
 | 1.x-UI-2 | Bots réglés depuis les menus : nombre, puissance de chacun, fantôme, dans les réglages et l'écran de pause | N18 | Spécifié (décision D11 du 27 octobre) |
 | 1.x-DEC-4 | Intégration et recette : au moins 55 images/s en `low` sur la GTX 1060, p99 sous 25 ms, tout se coupe par préréglage | P16, P17 | Livré ; recettes sur la GTX 1060 à faire (`docs/RECETTE_P16.md`, `docs/RECETTE_P17.md`) |
 
@@ -259,6 +259,7 @@ Le champ `v` reste 1 : tous les ajouts sont compatibles. Chaque révision est no
 | 1.5 ; watts économisés à l'abri `draft_w` dans `state`, `summary.draft_time_s` et `summary.draft_kj` (AS5) | Monde ouvert : `start_open_world`, `choose_branch`, champ `open_world`, `world_status` et messages de la carte ; limite unique de 4 096 octets pour tout message hors messages en parties (décision du propriétaire du 27 octobre) ; puis, dans l'ordre des fusions : champ `group` et réglages des volumes et des images/s (24 réglages au plus), bots à profil dans `start.bots` et leur `level_pct` (T12, T13), ERG d'une session libre (`set_ride_mode`, `erg.kind` et champs `cadence_*`, O18) ; profils de joueurs : `list_profiles`, `select_profile`, `create_profile`, `rename_profile`, `delete_profile`, message `profiles`, `hello_ack.config.profile`, `hello_ack` renvoyé après un changement de profil, codes `profile_invalid` et `name_invalid` (MJ6) ; contenus installables : `list_contents`, `install_content`, message `contents`, codes `content_invalid` et `content_failed` (O25) | W1, T12, T13, O18, MJ6, O25, AS5 | 2.0 (O18 sert la 1.0) | Livré : W1 (PR #282), T12 (#487), T13 (#488), O18 (#550), `devices.trainer.busy` (#540), `set_setting` en séance (#552) ; le core et l'engine annoncent `rev` « 1.5 » |
 | 1.6 | Peloton d'environ 12 bots : jusqu'à 12 éléments dans `bots` (`state`, `start`, `last_choices`), liste allégée au-delà de 5 bots | PL1 | 3.0 | En PR (lot PL1, 5 novembre) ; le core et l'engine annoncent `rev` « 1.6 » |
 | 1.9 | Demi-tour depuis la pause : commande `u_turn` (en `PAUSED` seulement, sinon `busy`), champ facultatif `dir` de `state` (`-1` à rebours, absent vaut `1`), `grade` dans le sens roulé | N17 | 1.x | En PR (lot N17, 8 novembre) ; 1.9 et non 1.8, réservée à la collection de cartes (lot BC2, PR #758) ; le core annonce `rev` « 1.9 » |
+| 1.11 | Demi-tour en roulant : événement `input` `Y_LONG` (Y maintenu 0,9 s ou plus, sans zone floue) ; pendant `RUNNING`, demi-tour sans arrêt aux conditions de `u_turn`, sinon pause | N17 (suite) | 1.x | En PR (8 novembre) ; 1.10 prise par #788 |
 | (1.5) | Série U : clés facultatives `biome` et `gravel` de `hello_ack.config`, aucun nouveau message (le menu passe par `set_setting`) | U1, U16 | 3.0 | Livré : prévu pour la 1.6, avancé dans la 1.5 avec le lot U16 (PR #639, journal d'ipc_v1.md du 31 octobre) |
 
 **Ajouts fusionnés le 29 octobre** (notés au journal de [ipc_v1.md](contracts/ipc_v1.md)) : champ facultatif `busy` de `devices.trainer` (PR #540, Control Point occupé par un autre appareil, liaison gardée) ; `set_setting` accepté pendant la séance pour les réglages `applies` = `now` (PR #552, matrice X42) ; réglage `render.draft_gauge` (jauge d'abri). Sans changement IPC : champ facultatif `reason` des lignes `event` du journal de séance (PR #542) et plus aucun bloc `freeride` en ERG (lot O19, consigne jamais sous 50 W). Aucun ajout du contrat n'est en revue au 29 octobre au soir.
@@ -293,6 +294,7 @@ Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches. Les deux boît
 | + / B (ou −), court | Déplacer ou doser, petit pas | Élément suivant, précédent | Braquet ± 1 | Biais ± 2 % | Vitesse du frein ± 1 | Comme le mode roulé (SIM ou ERG) | Braquet ± 1 |
 | + / B (ou −), long | Déplacer ou doser, grand pas | Cinq éléments plus loin, plus haut (bornés à la liste) | Braquet ± 10 | Biais ± 10 % | Vitesse du frein ± 3 | Comme le mode roulé | Braquet ± 10 |
 | Y court | Interrompre et revenir | Écran précédent ; sur l'écran de pause, reprendre | Pause et reprise | Pause et reprise | Pause et reprise | Pause et reprise | Pause et reprise |
+| Y long | Interrompre et revenir : revenir sur ses pas | Comme Y court | Demi-tour sans s'arrêter (sinon pause) | Demi-tour sans s'arrêter (sinon pause) | Pause et reprise, comme Y court | Pause et reprise, comme Y court | Pause et reprise, comme Y court |
 | Z court | Action du mode | Aucune (un menu n'est pas un mode) | Bonus (T) | Bloc suivant | Attaque | Bonus (T) | Utiliser l'objet en réserve |
 | Z long | Action spéciale du mode | Aucune | Repère « décrochage » au journal | Repère « décrochage » au journal | Carte ou relique active (T1) | Repère « décrochage » au journal | Repère « décrochage » au journal |
 | A court | Choisir : option suivante du choix affiché | Élément suivant | Vue de caméra suivante | Vue de caméra suivante | Couloir ou carte suivant | Branche suivante au carrefour, sinon vue suivante | Voie suivante quand le choix de voie est affiché, sinon vue suivante |
@@ -304,6 +306,7 @@ Règles communes, valables partout :
 
 - **A agit sur le choix affiché.** Un menu, un carrefour, une liste de couloirs ou de cartes sont des choix : A court passe à l'option suivante, A long valide. Sans choix affiché (en roulant), le choix est celui de la vue de caméra.
 - **Y revient en arrière** : pause en séance, écran précédent dans un menu, reprise depuis l'écran de pause.
+- **Y maintenu (8 novembre, demande du propriétaire, contrat IPC 1.11)** : en roulant sur un parcours (classique SIM, ERG), demi-tour sans s'arrêter, aux mêmes conditions que la ligne « Faire demi-tour » de l'écran de pause (lot N17) : même position, sens inversé, vitesse gardée, et l'écran affiche « Demi-tour ». Là où le demi-tour n'existe pas (départ d'un parcours en ligne, Cyber-Rogue, monde ouvert, Dernier survivant, Grand Prix), Y maintenu vaut Y court. Y n'a pas de zone floue : un appui de moins de 0,9 s est un Y court, pour qu'une pause ne se perde jamais.
 - **Z n'a que l'action du mode** ; il ne fait rien dans un menu.
 - **Pas de roue libre en ERG** (choix du propriétaire du 29 octobre, lot O19) : la consigne ERG ne descend jamais sous 50 W, biais compris, et un bloc FreeRide d'un `.zwo` devient un palier à 50 W. Les boutons gardent donc la colonne ERG d'un bout à l'autre de l'entraînement. Le test de FTP se fait par la rampe seule.
 - **ERG d'une session libre (lot O18)** : choisi sur l'écran de pause, il garde la colonne ERG, sauf Z, qui reste le bonus de la colonne SIM (pas de blocs) ; en ERG à cadence verrouillée, le biais s'applique à la cadence cible.
@@ -317,7 +320,7 @@ Règles communes, valables partout :
 | + | + (ou =, + du pavé numérique) | Page haut | — |
 | − ou B | − (− du pavé numérique) | Page bas | B n'a pas de touche propre : il double « − » |
 | A | A | Maj+A, Entrée | Entrée vaut donc « valider » partout |
-| Y | Y | — | Échap vaut Y court |
+| Y | Y | Maj+Y | Échap vaut Y court |
 | Z | Z | Maj+Z | — |
 | Flèches du boîtier gauche | Flèches du clavier | — | Haut et bas changent de vue en séance ; ils ne font plus le braquet |
 
@@ -391,3 +394,4 @@ Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS 
 | 27 octobre 2026 | Audit de cohérence (C12) : révisions 1.2 et 1.3 (§6.1), plan de boutons réécrit sans exception (§7.1), exigences 1.0-ERG-5, 1.x-UI-1 et 1.x-UI-2, C10 réglé |
 | 27 octobre 2026 | Statuts remis à l'état de `main` après les fusions du jour (séries O, P, Q, T, V, W0, Y1, contrat 1.4) ; cahiers R, U, V et W sur `main` notés « Spécifié » ; C2 corrigé |
 | 29 octobre 2026 | Révision 1.5 de l'IPC remise à l'état de `main` (W1, T12, T13, O18 livrés), ajouts du 29 octobre notés (#540, #552, `render.draft_gauge`, O19) ; 1.0-ERG-6 (O18) livré ; statuts « en revue » d'O12 et de la série W remplacés par l'état des PR, toutes fusionnées |
+| 8 novembre 2026 | Y maintenu en roulant : demi-tour sans arrêt (§7.1, ligne « Y long », clavier Maj+Y), révision 1.11 de l'IPC (§6.1), exigence 1.x-UI-1 complétée |
