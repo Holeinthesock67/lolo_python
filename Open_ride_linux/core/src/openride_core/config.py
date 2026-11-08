@@ -117,7 +117,7 @@ class DriversConfig:
     click_trace_raw: bool = False
     click_mute_after_s: float = 60.0
     click_rehandshake_s: float = 0.0
-    click_reset_locked: bool = True   # redémarrer le boîtier gauche verrouillé par Zwift (octet 0x18)
+    click_reset_locked: str = "reset"  # verrou du boîtier gauche : "reset" (0x18), "keep" (essai D, lot K9) ou "off"
     mock_replay: str = ""          # chemin d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
     hr: str = "none"               # ceinture cardio : "none", "ble" ou "sim"
     hr_address: str = ""           # adresse MAC de la ceinture (vide : recherche par nom ou service)
@@ -425,6 +425,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),
+    ("drivers", "click_reset_locked"): ("reset", "keep", "off"),   # zwift_click.LOCK_POLICIES
     ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
     ("wind", "feel"): ("grade", "ftms"),
     ("trainer", "control"): ("sim", "resistance"),
@@ -607,6 +608,9 @@ def _merge(dc: Any, data: dict[str, Any], source: str = "config.toml", section: 
         if key not in known:
             name = f"[{section}] {key}" if section else f"[{key}]"
             log.warning("%s : clé inconnue %s ignorée (faute de frappe ?)", source, name)
+    if section == "drivers" and isinstance(data.get("click_reset_locked"), bool):
+        # Booléen d'avant le lot K9 : true = "reset", false = "off" (même effet qu'avant).
+        data = {**data, "click_reset_locked": "reset" if data["click_reset_locked"] else "off"}
     for f in fields(dc):
         if f.name not in data:
             continue
