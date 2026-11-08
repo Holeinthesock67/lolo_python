@@ -83,7 +83,11 @@ SETTINGS: tuple[Setting, ...] = (
             help="Part de la pente envoyée au trainer en SIM : à 50 %, une côte de 6 % se roule à 3 %. "
                  "Sans effet en ERG."),
     Setting("gearing.start_gear", "Braquet de départ", "ride", 1),
-    Setting("powerups.mode", "Bonus", "ride"),
+    # Trois jeux de bonus (série TT, lots TT1 et TT7) ; détail de chaque bonus au guide, section 4
+    Setting("powerups.mode", "Bonus", "ride",
+            help="Coupé : aucun bonus. Classiques : Plume, Casque aéro, Puissance. Tactiques : les sept, "
+                 "avec Enclume, Aspiration +, Échappée et Rouleau, tirés selon le terrain devant. "
+                 "Z lance le bonus en réserve ; refusé en ERG."),
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
     # Option « gravel » (lot U16, partie gravel) : coupée par défaut, roulement du core et rendu de l'engine
     Setting("gravel.mode", "Gravel", "ride",
