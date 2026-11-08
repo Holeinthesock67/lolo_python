@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série BC : fiche de commande des 42 visuels pour l'IA d'images Gemini, planche d'essai de 6 cartes, contrôle des fichiers à l'import | Doc + Python | BC0 | Moyenne | Prêt ; consignes écrites le 7 novembre (`docs/5.0/VISUELS_BC4.md`), images générées hors du dépôt par Gemini |
+| Série BC : fiche de commande des 42 visuels pour l'IA d'images Gemini, planche d'essai de 6 cartes, contrôle des fichiers à l'import | Doc + Python | BC0 | Moyenne | En PR (7 novembre, PR #757) |
 
 Série BC (version 5.0, badges et cartes à collectionner, demande du propriétaire du 7 novembre 2026). Plan de la série : `docs/5.0/PLAN_SERIE_BC.md`.
 
@@ -23,3 +23,9 @@ Demande du propriétaire du 7 novembre : les visuels des cartes et des badges so
 1. Le script refuse une image de mauvaise taille, sans transparence ou trop lourde (tests négatifs).
 2. Planche d'essai, puis planche complète, validées par le propriétaire.
 3. Aucune donnée du cycliste dans les consignes envoyées ; licence d'usage notée dans la PR.
+
+## 4. Livraison (7 novembre 2026)
+
+- scripts/controle_visuels.py : contrôle de conformité des images (dimensions 512x512, canal alpha et transparence effective, poids <= 200 Ko, correspondance catalogue collection.toml, mode strict et sortie JSON) et normalisation automatique sans anneau blanc.
+- core/tests/test_controle_visuels.py : 9 tests unitaires validant l'ensemble des critères d'acceptation et cas d'erreur.
+- engine/assets/collection/ : ensemble complet des 42 visuels livrés et validés (42/42 valides en mode strict).

@@ -411,7 +411,7 @@ def build_history_session(request_cmd_id: int, session_id: str, path: Path, ftp_
             "summary": summary}
 
 
-# --- collection de cartes (série BC, lot BC2, contrat IPC révision 1.6) -----------------------
+# --- collection de cartes (série BC, lot BC2, contrat IPC révision 1.8) -----------------------
 
 def is_valid_collection_key(key: str, cards_by_id: dict[str, Any]) -> bool:
     """Vérifie si une clé correspond à une carte du catalogue (ou carte_saison:année)."""

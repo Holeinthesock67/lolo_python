@@ -568,7 +568,7 @@
       "fauna": {
         "birds": 0.1,
         "livestock": 0.0,
-        "deer": 0.0
+        "deer": 0.3
       },
       "seasons": {
         "calendar": "polar",
@@ -962,7 +962,7 @@
       "fauna": {
         "birds": 1.0,
         "livestock": 0.0,
-        "deer": 0.2
+        "deer": 0.5
       },
       "seasons": {
         "calendar": "wet_dry",
@@ -1157,7 +1157,7 @@
       },
       "fauna": {
         "birds": 0.2,
-        "livestock": 0.0,
+        "livestock": 0.3,
         "deer": 0.0
       },
       "seasons": {

@@ -117,6 +117,7 @@ Toutes les questions sont tranchées par le propriétaire le 25 octobre 2026.
 | U20 | Gravel : surface de la route d'après OSM au compilateur, chemins de terre au monde ouvert (classe `g`) | U1, W4, W6 | Délégable |
 | U21 | Gravel : résistance au roulement dans le core, supplément de pente sous le plafond du vent, ERG en vitesse seulement | U1, P2 | Délégable |
 | U22 | Gravel : ruban de terre et de gravier, poussière et sons | U1, U19, P10 | Délégable |
+| U23 | Constructions et faune propres à chaque biome (chalets, pisé, cases, chaume ; éléphants, ours blancs, chèvres, singes ; ajouté le 7 novembre, version 4.0) | U5, U12, Y8 | Délégable |
 
 Ordre conseillé : U0 et U1 ; puis U19 (données de test) et le premier jalon (U-Q5, littoral compris) : U2, U3, U4, U5, U6, U7, U9, U11, U13, U14 et U15, intégrés par U17 et recettés par U18 ; l'option « gravel » (U20, U21, U22) en parallèle, recettée avec U18 ; ensuite U8, U10 et U12 ; enfin les biomes lointains, qui ne demandent plus que des données (palettes, espèces, sons) dans les packs. Correction du 27 octobre : la côte et la mer (U3, U9) étaient rangées après le premier jalon, alors que U-Q5 y met le littoral (écart C11 de la spécification générale, question U-Q13).
 

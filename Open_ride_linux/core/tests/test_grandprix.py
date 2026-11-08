@@ -197,11 +197,13 @@ def test_route_objects_contact_by_lane_and_sweep():
 # --- mode -----------------------------------------------------------------------------------------
 
 class Sim:
-    """Petite course simulée : physique du core, objets du mode, puissance constante par coureur."""
+    """Petite course simulée : physique du core, objets du mode, puissance constante par coureur ; sans
+    `bots`, aucun coureur mené par le cerveau du lot GP3."""
 
     def __init__(self, powers: dict[str, float], length_m: float = 10_000.0, grade: float = 0.0,
                  seed: int = 1, gap_m: float = 3.0, **kw):
         self.powers, self.grade = powers, grade
+        kw.setdefault("bots", ())   # règles des objets seules : les coureurs n'agissent que sur ordre du test
         self.mode = GrandPrixMode(list(powers), length_m, seed=seed, **kw)
         self.phys = {}
         for i, rid in enumerate(powers):
@@ -487,8 +489,8 @@ def test_circuit_frame_has_laps():
     assert summary["laps"] == 3 and worst < 500
 
 
-def test_worst_frame_under_500_bytes():
-    """Pire trame `gp` d'une course de 30 km (plan §2.1) : 12 objets aux identifiants à 2 chiffres, menace,
+def test_worst_frame_under_520_bytes():
+    """Pire trame `gp` (avec `pick` du lot GP2) d'une course de 30 km (plan §2.1) : 12 objets aux identifiants à 2 chiffres, menace,
     deux objets en effet (le Furtif vole une Voiture d'équipe et l'utilise), deux rangées, tours."""
     m = GrandPrixMode([ME] + [f"bot-{i}" for i in range(11)], 30_000.0, lap_m=6_000.0)
     me = m.racers[ME]
@@ -503,7 +505,8 @@ def test_worst_frame_under_500_bytes():
     frame = m.frame()
     assert len(frame["obj"]) == 12 and frame["warn"] and frame["lap"] == [5, 5]
     assert {o[1] for o in frame["obj"]} == {"musette", "homing"}          # objet dessiné, jamais « _x3 »
-    assert len(json.dumps(frame, separators=(",", ":"))) < 500
+    assert frame["pick"] is True
+    assert len(json.dumps(frame, separators=(",", ":"))) < 520
 
 
 def test_object_ids_cycle_below_100():

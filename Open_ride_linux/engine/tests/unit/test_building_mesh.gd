@@ -3,12 +3,15 @@ extends SceneTree
 ## Tests unitaires sans écran du maillage des bâtiments `building_mesh.gd` (Lots L1 et Y8).
 ## Les critères de L1 (géométrie des murs et du toit plat) utilisent le style à toits plats `toit_plat_blanc` ;
 ## les toits à pans, le débord, les familles et les styles par biome sont vérifiés à part (Y8).
+## Lot U23 : styles d'habitat propres aux biomes (chalet, bois peint, pisé, case, paillote, basalte, chaumière),
+## code d'habillage sur 16 matières de mur, style par biome du modèle de biome.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_building_mesh.gd
 
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const BuildingStyles := preload("res://scripts/building_styles.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
+const BiomeModel := preload("res://scripts/biome_model.gd")
 
 const FLAT := "toit_plat_blanc"
 
@@ -279,8 +282,8 @@ func _test_roof_shapes() -> void:
 # Y8 : style par variante régionale (U1 §4.3), sinon par biome (U0), sinon défaut ; clé `style` du bâtiment
 func _test_styles_by_biome() -> void:
 	_check(BuildingStyles.resolve("ardoise", "mediterranean") == "ardoise", "la variante de la tuile l'emporte sur le biome")
-	_check(BuildingStyles.resolve("", "mediterranean") == "tuile_ronde" and BuildingStyles.resolve("", "boreal_forest") == "bois"
-		and BuildingStyles.resolve("", "sand_desert") == "toit_plat_blanc", "sans variante : style du biome dominant")
+	_check(BuildingStyles.resolve("", "mediterranean") == "tuile_ronde" and BuildingStyles.resolve("", "boreal_forest") == "bois_peint"
+		and BuildingStyles.resolve("", "sand_desert") == "pise", "sans variante : style du biome dominant")
 	_check(BuildingStyles.resolve("", "inconnu") == BuildingStyles.STYLE_DEFAULT, "biome inconnu : style par défaut")
 	var all_known := true
 	for biome in BuildingStyles.BIOME_STYLES:
@@ -291,6 +294,80 @@ func _test_styles_by_biome() -> void:
 	b["style"] = "toit_plat_blanc"
 	var res: Dictionary = BuildingMesh.build([b], _theme)
 	_check(res["pitched"] == 0, "clé `style` du bâtiment : prend le pas sur le style du tronçon")
+
+
+# U23 : habitat par biome
+func _test_biome_habitats() -> void:
+	var expect := {"alpine": "chalet", "tundra": "bois_peint", "polar": "bois_peint", "rock_desert": "pise",
+		"savanna": "case", "jungle": "paillote", "volcanic": "basalte", "wetland": "chaumiere",
+		"temperate_grassland": "tuile_plate", "farmland": "tuile_plate", "coast": "ardoise", "steppe": "pierre_seche"}
+	var ok := true
+	for biome in expect:
+		if BuildingStyles.resolve("", biome) != expect[biome]:
+			ok = false
+			printerr("  %s -> %s" % [biome, BuildingStyles.resolve("", biome)])
+	_check(ok, "U23 : chalets en montagne, bois peint au nord, pisé, cases, paillotes, basalte, chaumières ; tempéré inchangé")
+	var used := {}
+	for biome in BuildingStyles.BIOME_STYLES:
+		used[BuildingStyles.BIOME_STYLES[biome]] = true
+	var all_used := true
+	for st in BuildingStyles.BIOME_ONLY_STYLES:
+		all_used = all_used and used.has(st) and BuildingStyles.STYLES.has(st)
+	_check(all_used, "U23 : chacun des 7 styles d'habitat est pris par au moins un biome")
+
+	var chalet := BuildingStyles.dress("chalet", BuildingStyles.FAMILY_HOUSE, 1.0, 9.0, 6.0, 0.3, 0.5, 0.5)
+	_check(chalet["wall"] == BuildingStyles.WALL_CHALET and chalet["roof"] == BuildingStyles.ROOF_SLATE
+		and chalet["shape"] == BuildingStyles.SHAPE_GABLED and absf(float(chalet["pitch_deg"]) - 24.0) < 1e-4
+		and absf(float(chalet["overhang_m"]) - 1.2) < 1e-4, "chalet : pierre puis bois, lauzes, deux pans à 24°, débord 1,2 m")
+	var b := _building("chalet", [[0.0, 0.0], [10.0, 0.0], [10.0, 8.0], [0.0, 8.0]], 100.0, 6.0)
+	b["style"] = "chalet"
+	b["hint"] = {"building": "house", "colour": null}
+	var res: Dictionary = BuildingMesh.build([b], _theme)
+	var min_x := INF
+	for v in res["vertices"]:
+		min_x = minf(min_x, v.x)
+	_check(res["pitched"] == 1 and absf(min_x + 1.2) < 0.05, "chalet : toit qui déborde de 1,2 m au pignon (x min %.2f)" % min_x)
+
+	var hut := BuildingStyles.dress("case", BuildingStyles.FAMILY_HOUSE, 1.0, 5.0, 3.0, 0.2, 0.3, 0.5)
+	_check(hut["wall"] == BuildingStyles.WALL_ADOBE and hut["roof"] == BuildingStyles.ROOF_THATCH
+		and hut["shape"] == BuildingStyles.SHAPE_HIPPED, "case de savane : terre crue, chaume en pointe (quatre pans)")
+	var adobe := BuildingStyles.dress("pise", BuildingStyles.FAMILY_HOUSE, 1.0, 8.0, 5.0, 0.2, 0.5, 0.5)
+	_check(adobe["wall"] == BuildingStyles.WALL_ADOBE and adobe["shape"] == BuildingStyles.SHAPE_FLAT
+		and BuildingStyles.wall_palette_key(adobe["wall"], "pise") == "adobe"
+		and BuildingStyles.roof_palette_key(adobe["roof"], "pise") == "adobe", "pisé : murs et toit plat couleur de terre")
+	var mosque := BuildingStyles.dress("pise", BuildingStyles.FAMILY_WORSHIP, 1.0, 12.0, 8.0, 0.2, 0.5, 0.5)
+	_check(mosque["wall"] == BuildingStyles.WALL_ADOBE, "lieu de culte en pays de pisé : en terre crue aussi")
+	_check(BuildingStyles.wall_palette_key(BuildingStyles.WALL_WOOD, "bois_peint") == "wood_painted"
+		and BuildingStyles.wall_palette_key(BuildingStyles.WALL_STONE, "basalte") == "stone_dark"
+		and BuildingStyles.wall_palette_key(BuildingStyles.WALL_PLASTER, "chaumiere") == "white"
+		and BuildingStyles.roof_palette_key(BuildingStyles.ROOF_THATCH, "paillote") == "thatch",
+		"palettes propres : bois peint, pierre sombre, chaux blanche, chaume")
+	_check(BuildingStyles.wall_palette_key(BuildingStyles.WALL_PLASTER, "toit_plat_blanc") == "white"
+		and BuildingStyles.roof_palette_key(BuildingStyles.ROOF_FLAT, "toit_plat_blanc") == "white"
+		and BuildingStyles.wall_palette_key(BuildingStyles.WALL_PLASTER, "tuile_plate") == ""
+		and BuildingStyles.roof_palette_key(BuildingStyles.ROOF_TILE_FLAT, "tuile_plate") == ""
+		and BuildingStyles.roof_palette_key(BuildingStyles.ROOF_FLAT, "tuile_plate") == "flat_roof",
+		"palettes d'avant U23 inchangées (blanc du toit plat, enduit et tuiles du thème)")
+	var all_palettes := true
+	for st in BuildingStyles.STYLES:
+		for key in BuildingStyles.STYLES[st].get("palettes", {}).values():
+			all_palettes = all_palettes and (key == "plaster" or BuildingStyles.MATERIAL_COLORS.has(key))
+	_check(all_palettes, "toute palette propre à un style existe dans MATERIAL_COLORS")
+
+	# Code d'habillage : décodage du shader (building.gdshader) pour les plus grandes valeurs
+	var d := {"wall": BuildingStyles.WALL_CHALET, "windows": BuildingStyles.WINDOWS_SHOP, "roof": BuildingStyles.ROOF_THATCH}
+	var code := int(BuildingMesh.dress_code(d, true, 1000.0))
+	_check(code % 16 == BuildingStyles.WALL_CHALET and (code / 16) % 8 == BuildingStyles.WINDOWS_SHOP
+		and (code / 128) % 8 == BuildingStyles.ROOF_THATCH and (code / 1024) % 2 == 1 and code / 2048 == 4000
+		and code < 16777216, "code d'habillage : mur, ouvertures, toit, partie, égout relus comme le shader (%d)" % code)
+
+	# Modèle de biome : forçage et rendu d'avant la série U
+	var model = BiomeModel.new(_theme)
+	_check(model.building_style_at(10.0, 10.0) == "tuile_plate", "sans couche biome : style du biome par défaut (tuile plate)")
+	model.set_forced("alpine")
+	_check(model.building_style_at(10.0, 10.0) == "chalet", "biome forcé alpine : chalets")
+	model.set_forced("savanna")
+	_check(model.building_style_at(-500.0, 2500.0) == "case", "biome forcé savanna : cases")
 
 
 func _init() -> void:
@@ -306,5 +383,6 @@ func _init() -> void:
 	_test_gabled_house()
 	_test_roof_shapes()
 	_test_styles_by_biome()
+	_test_biome_habitats()
 	print("test_building_mesh : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

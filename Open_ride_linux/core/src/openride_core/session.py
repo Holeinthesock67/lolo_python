@@ -36,7 +36,7 @@ from .hr_monitor import HeartRateProvider
 from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
-from . import last_choices, latency_log
+from . import config_edit, last_choices, latency_log
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import Record
@@ -45,7 +45,7 @@ from .mock_driver import MockDriver
 from .garage import GarageError, ProgressionService, estimate_w_prime, workout_duration_finder
 from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
 from .open_world_save import save_ride
-from .physics import PhysicsParams, RiderPhysics, draft_saving_w, resistive_force
+from .physics import PhysicsParams, RiderPhysics, draft_saving_w, equilibrium_speed, resistive_force
 from . import surface_physics
 from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
@@ -64,6 +64,9 @@ from . import traffic as traffic_mod
 from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
 from . import survivor as survivor_mod
 from .survivor import ME as SURVIVOR_ME, SurvivorError, SurvivorRace
+from .grandprix import ME as GP_ME, GpInput, GrandPrixError, GrandPrixMode, RiderIn as GpRider
+from .grandprix import items as gp_items
+from .grandprix.mode import LANE_CENTRES_M as GP_LANE_CENTRES_M
 from .wtf import rules as wtf_rules
 from .wtf.events import WtfInput
 from .wtf.mode import WtfMode
@@ -104,6 +107,7 @@ SURVIVOR_RETIRED_MPS = 15.0 / 3.6   # bot éliminé : il se range à 15 km/h (lo
 SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
 SURVIVOR_OUT_LANE_M = 2.9         # m : écart à l'axe d'un bot éliminé, au bord de la chaussée (6 m ; `lane_m` borné à 3 m par le contrat)
 SURVIVOR_RETIRED_S = 10.0          # s : bot éliminé retiré de la séance
+MODE_OPTIONS = ("wtf", "grandprix")   # modes à options (`list_mode_options`, `set_mode_option`, lot GP2)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
 XP_RESULT_PERIOD_S = 1.0
 
@@ -268,7 +272,7 @@ class CoreSession:
                  workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None,
                  config_path: Path | None = None, records_path: Path | None = None,
                  powerups_path: Path | None = None, profile_path: Path | None = None,
-                 wtf_path: Path | None = None) -> None:
+                 wtf_path: Path | None = None, grandprix_path: Path | None = None) -> None:
         # Fichiers du joueur : ceux du profil en cours (série MJ, lot MJ1), sauf chemins donnés (tests).
         self.profile_ctx = profiles.current()
         self.cfg = cfg
@@ -321,6 +325,8 @@ class CoreSession:
         self.survivor: SurvivorRace | None = None   # mode « Dernier survivant » (lot DS2)
         self._survivor_out: dict[str, float] = {}   # bot éliminé → instant de l'élimination (il se range)
         self._survivor_end_pending = False
+        self.grandprix_path: Path = grandprix_path or gp_items.GRANDPRIX_FILE   # objets et valeurs (lot GP2)
+        self.grandprix: GrandPrixMode | None = None   # mode « Grand Prix des objets » (lot GP2)
         self._records_writable = True
         self.difficulty_pct: float = float(cfg.trainer.difficulty_pct)
         self.state = IpcState(session_state="IDLE", gears_total=self.gearing.n_gears,
@@ -486,10 +492,14 @@ class CoreSession:
             self._send_wtf_rules()
         elif name == "set_wtf_rule":
             self._set_wtf_rule(args if isinstance(args, dict) else {})
+        elif name == "list_mode_options":   # lot GP2 : options d'un mode (règles WTF, objets du Grand Prix)
+            self._send_mode_options(args if isinstance(args, dict) else {})
+        elif name == "set_mode_option":
+            self._set_mode_option(args if isinstance(args, dict) else {})
         elif name == "start" and st == "READY":
             game_mode = (args if isinstance(args, dict) else {}).get("mode")
-            if game_mode not in (None, "ride", "wtf", "survivor"):
-                self.server.send_error("bad_args", "start : 'mode' vaut ride, wtf ou survivor")
+            if game_mode not in (None, "ride", "wtf", "survivor", "grandprix"):
+                self.server.send_error("bad_args", "start : 'mode' vaut ride, wtf, survivor ou grandprix")
                 return
             if game_mode == "wtf" and self._workout is not None:
                 # Mode WTF : SIM seulement, comme la Course tactique (plan de la série WTF §1).
@@ -502,13 +512,20 @@ class CoreSession:
                     return
                 self._set_bots(field)
                 draft_mod.start_grid(self.bots, self.physics.s)   # grille de départ (lot AS2) : pas de bots empilés
+            elif game_mode == "grandprix":
+                # Grand Prix des objets (lot GP2) : SIM seulement, plateau composé par le core comme en DS.
+                field = self._grandprix_field(args if isinstance(args, dict) else {})
+                if field is None:
+                    return
+                self._set_bots(field)
+                draft_mod.start_grid(self.bots, self.physics.s)
             elif not self._choose_start_workout(args if isinstance(args, dict) else {}):
                 return
             elif not self._choose_start_bots(args if isinstance(args, dict) else {}):
                 return
             # une run a ses propres ennemis, le Dernier survivant compose son plateau : les bots de la séance
             # libre restent ceux du dernier choix
-            if self.rogue is None and game_mode != "survivor":
+            if self.rogue is None and game_mode not in ("survivor", "grandprix"):
                 self._remember("bots", (args if isinstance(args, dict) else {}).get("bots") or [], cmd_id)
             self._request_start(game_mode)
         elif name == "scene_ready":   # révision 1.5 (lot O36) : décor du départ prêt dans l'engine
@@ -582,9 +599,11 @@ class CoreSession:
             self._sync_erg_state()
         if game_mode == "wtf":
             self._start_wtf()
-        self._new_race(classic=self.wtf is None and game_mode != "survivor")
+        self._new_race(classic=self.wtf is None and game_mode not in ("survivor", "grandprix"))
         if game_mode == "survivor":
             self._start_survivor()
+        if game_mode == "grandprix":
+            self._start_grandprix()
         self._lane = self._rider_lane()   # réglage « Placement dans la roue » lu à chaque départ (lot AS2)
         self._set_state("RUNNING")
 
@@ -1283,7 +1302,7 @@ class CoreSession:
         self.server.send_raw(msg)
 
     async def _send_collection(self, cmd_id: int) -> None:
-        """Réponse à `list_collection` (lot BC2, révision 1.6) : cartes, cartes gagnées, avancement."""
+        """Réponse à `list_collection` (lot BC2, révision 1.8) : cartes, cartes gagnées, avancement."""
         from .ipc_lists import build_collection_message
 
         try:
@@ -1914,6 +1933,9 @@ class CoreSession:
         if self.survivor is not None and args.get("mode") != "sim":
             self.server.send_error("busy", "Le Dernier survivant se joue en SIM seulement.")
             return
+        if self.grandprix is not None and args.get("mode") != "sim":
+            self.server.send_error("busy", "Le Grand Prix des objets se joue en SIM seulement.")
+            return
         mode = args.get("mode")
         if mode not in ("sim", "erg", "cadence"):
             self.server.send_error("bad_args", "set_ride_mode attend 'mode' : sim, erg ou cadence")
@@ -2077,6 +2099,13 @@ class CoreSession:
         survivor, self.survivor = self.survivor, None
         self.state.survivor = None
         self._end_survivor_bots()
+        grandprix, self.grandprix = self.grandprix, None
+        self.state.gp = None
+        if grandprix is not None:
+            self._lane = self._rider_lane()
+            if self._rec:   # lot GP2 : coups, boîtes et bilan au journal
+                self._flush_grandprix_journal(grandprix)
+                self._rec.game({"kind": "gp_summary", "ts": round(time.time(), 3), **grandprix.summary()})
         self._log_gravel()
         if race and self._rec:
             for line in race.take_journal() + race.jersey_lines():
@@ -2123,6 +2152,8 @@ class CoreSession:
                 summary["wtf"] = wtf.summary()
             if survivor is not None:   # lot DS2 : place, éliminations, vainqueur
                 summary["survivor"] = survivor.summary()
+            if grandprix is not None:   # lot GP2 : place, objets lancés, reçus, esquivés, temps par objet
+                summary["gp"] = grandprix.summary()
             segments = race.summary() if race else None
             if segments is not None:   # série T (lot T7, révision 1.4)
                 summary["segments"] = segments
@@ -2177,24 +2208,29 @@ class CoreSession:
         self.server.send_raw({"type": "wtf_rules", "v": 1, "rules": table.rules_list()})
 
     def _set_wtf_rule(self, args: dict) -> None:
-        """Allume ou coupe une règle (écrit `wtf.toml`) ; prise en compte tout de suite pendant une séance."""
+        """Alias de `set_mode_option` pour le mode WTF (réponse `wtf_rules`, gardé une révision, lot GP2)."""
         rule, on = args.get("id"), args.get("on")
         if not isinstance(rule, str) or not isinstance(on, bool):
             self.server.send_error("bad_args", "set_wtf_rule attend 'id' (texte) et 'on' (vrai ou faux)")
             return
+        if self._apply_wtf_rule(rule, on, "wtf_rule_invalid"):
+            self._send_wtf_rules()
+
+    def _apply_wtf_rule(self, rule: str, on: bool, code: str) -> bool:
+        """Allume ou coupe une règle (écrit `wtf.toml`) ; prise en compte tout de suite pendant une séance."""
         try:
             table = self._wtf_table().with_rule(rule, on)
             wtf_rules.save_table(table, self.wtf_path)
         except wtf_rules.WtfError as exc:
-            self.server.send_error("wtf_rule_invalid", str(exc))
-            return
+            self.server.send_error(code, str(exc))
+            return False
         except OSError as exc:
-            self.server.send_error("wtf_rule_invalid", f"règles non écrites : {exc}")
-            return
+            self.server.send_error(code, f"règles non écrites : {exc}")
+            return False
         if self.wtf is not None:
             self.wtf.table = table
         log.info("Mode WTF : règle %s %s.", rule, "allumée" if on else "coupée")
-        self._send_wtf_rules()
+        return True
 
     def _fill_wtf_frame(self) -> None:
         st = self.state
@@ -2214,7 +2250,7 @@ class CoreSession:
     def _survivor_field(self, args: dict) -> list[Any] | None:
         """Plateau du mode d'après les réglages `[survivor]` ; None (rien ne démarre, `bad_args`) si
         un entraînement ERG est choisi, si `bots` est donné ou si le parcours est trop court."""
-        from .bots import MAX_CONSTANT_BOTS, ProfileBot, profile_bot_names
+        from .bots import MAX_CONSTANT_BOTS
 
         sc = self.cfg.survivor
         if self._workout is not None or args.get("ftp_test") or args.get("plan_day"):
@@ -2231,7 +2267,14 @@ class CoreSession:
         except SurvivorError as exc:
             self.server.send_error("bad_args", f"Dernier survivant : {exc}")
             return None
-        plan = survivor_mod.plan_field(sc.opponents, float(self.cfg.bots.level_pct), sc.spread,
+        return self._profile_field(sc.opponents, sc.spread)
+
+    def _profile_field(self, opponents: int, spread: str) -> list[Any]:
+        """Plateau composé par le core (Dernier survivant, Grand Prix) : profils tournants, niveaux étalés
+        autour du réglage « Niveau des bots » (`survivor.plan_field`)."""
+        from .bots import ProfileBot, profile_bot_names
+
+        plan = survivor_mod.plan_field(opponents, float(self.cfg.bots.level_pct), spread,
                                        CONFIG_BOUNDS[("bots", "level_pct")])
         names = profile_bot_names([p for p, _ in plan])
         params = PhysicsParams.from_config(self.cfg)
@@ -2328,6 +2371,209 @@ class CoreSession:
         if st.bots:
             st.bots = [{**b, "out": self.survivor.racers[b["id"]].out_arch}
                        if b["id"] in self._survivor_out else b for b in st.bots]
+
+    # --- mode « Grand Prix des objets » (série GP, lot GP2) --------------------------------
+
+    def _grandprix_table(self) -> gp_items.ItemTable:
+        """Objets joués et valeurs de `grandprix.toml` ; fichier refusé : table par défaut (signalé au log)."""
+        try:
+            return gp_items.load_table(self.grandprix_path)
+        except GrandPrixError as exc:
+            log.warning("Valeurs du Grand Prix refusées, valeurs par défaut : %s", exc)
+            return gp_items.DEFAULT_TABLE
+
+    def _grandprix_course(self) -> tuple[float, float | None]:
+        """Longueur de la course et d'un tour (circuit) d'après `[grandprix]` ; `GrandPrixError` si le parcours
+        ne s'y prête pas (monde ouvert, sans distance de course ; parcours en ligne plus court que la course)."""
+        gc = self.cfg.grandprix
+        route = self.route
+        if self.openworld is not None or route is None:
+            raise GrandPrixError("le monde ouvert n'a pas de distance de course")
+        if route.is_loop:
+            return gc.laps * route.length_m, route.length_m
+        length = gc.distance_km * 1000.0
+        if self.physics.s + length > route.length_m + 1e-6:
+            raise GrandPrixError(f"parcours trop court pour une course de {gc.distance_km} km "
+                                 f"({route.length_m / 1000.0:.1f} km)")
+        return length, None
+
+    def _grandprix_field(self, args: dict) -> list[Any] | None:
+        """Plateau du mode d'après `[grandprix]` ; None (rien ne démarre, `bad_args`) avec un entraînement ERG,
+        un argument `bots`, un réglage refusé ou un parcours qui ne s'y prête pas."""
+        from .bots import MAX_CONSTANT_BOTS
+        from .grandprix.boxes import BOX_EVERY_KM
+        from .grandprix.effects import CHAOS
+
+        gc = self.cfg.grandprix
+        if self._workout is not None or args.get("ftp_test") or args.get("plan_day"):
+            self.server.send_error("bad_args", "Le Grand Prix des objets se joue sans entraînement ERG.")
+            return None
+        if args.get("bots") is not None:
+            self.server.send_error("bad_args", "Le Grand Prix des objets compose lui-même ses adversaires.")
+            return None
+        try:
+            if not 1 <= gc.opponents <= MAX_CONSTANT_BOTS:
+                raise GrandPrixError(f"adversaires : {gc.opponents} refusé (1 à {MAX_CONSTANT_BOTS})")
+            if gc.box_every_m / 1000.0 not in BOX_EVERY_KM:
+                raise GrandPrixError(f"écart des boîtes : {gc.box_every_m} m refusé (pas de 500 m)")
+            if gc.chaos not in CHAOS:
+                raise GrandPrixError(f"chaos : {gc.chaos!r} refusé ({', '.join(CHAOS)})")
+            self._grandprix_course()
+        except GrandPrixError as exc:
+            self.server.send_error("bad_args", f"Grand Prix des objets : {exc}")
+            return None
+        return self._profile_field(gc.opponents, "normal")
+
+    def _start_grandprix(self) -> None:
+        """Course de la séance qui commence (bots déjà calibrés par `_new_race`)."""
+        gc = self.cfg.grandprix
+        length, lap = self._grandprix_course()
+        table = self._grandprix_table()
+        self.grandprix = GrandPrixMode([GP_ME, *(b.id for b in self.bots)], length, lap_m=lap, table=table,
+                                       chaos=gc.chaos, box_every_km=gc.box_every_m / 1000.0,
+                                       seed=int(time.time()) & 0xFFFFFFFF, params=replace(self._base_params),
+                                       origin_m=self.physics.s,
+                                       levels={b.id: float(b.level_pct or self.cfg.bots.level_pct) for b in self.bots})
+        self.grandprix.start(self._t_session, self._grandprix_riders(0.0))
+        if self._rec:
+            self._rec.game({"kind": "gp_start", "ts": round(time.time(), 3), "opponents": gc.opponents,
+                            "length_m": round(length, 1), "laps": gc.laps if lap else None, "chaos": gc.chaos,
+                            "box_every_m": gc.box_every_m, "items": list(self.grandprix.enabled),
+                            "boxes": [round(x, 1) for x in self.grandprix.boxes.rows]})
+        log.info("Grand Prix des objets : %d adversaires, %.1f km, %d objet(s) joué(s).", gc.opponents,
+                 length / 1000.0, len(self.grandprix.enabled))
+
+    def _grandprix_riders(self, power_w: float) -> dict[str, GpRider]:
+        """Coureurs du pas pour le mode : position, vitesse virtuelle, vitesse d'équilibre, écart à l'axe."""
+        route = self.route
+
+        def grade_at(s: float) -> float:
+            return route.sample(s).grade_pct if route else 0.0
+
+        g = grade_at(self.physics.s)
+        out = {GP_ME: GpRider(self.physics.s, self.physics.v, equilibrium_speed(power_w, g, self.physics.p),
+                              self._lane.m, g)}
+        for b in self.bots:
+            g = grade_at(b.s)
+            out[b.id] = GpRider(b.s, b.v, equilibrium_speed(float(getattr(b, "power_w", 0.0)), g, b.params),
+                                b.lane.m, g)
+        return out
+
+    def _step_grandprix(self, dt: float, power_w: float) -> None:
+        """Objets du pas, après la physique de tous les coureurs : vitesses virtuelles seulement (la pente
+        envoyée ne dépend pas des objets, plan GP §7), voie forcée, messages `gp_hit` et journal."""
+        gp = self.grandprix
+        assert gp is not None
+        speeds = gp.step(GpInput(self._t_session, dt, self._grandprix_riders(power_w)))
+        self.physics.v = speeds[GP_ME]
+        for b in self.bots:
+            if b.id in speeds:
+                b.physics.v = speeds[b.id]
+        self._sync_grandprix_lanes()
+        for msg in gp.due_results(self._t_session):
+            self.server.send_raw(msg)
+        self._flush_grandprix_journal(gp)
+
+    def _sync_grandprix_lanes(self) -> None:
+        """Voie forcée (cycliste : A court, flèches ; bot : esquive du lot GP3) : le placement vise le centre de
+        la voie ; placement automatique sinon (lot AS2), selon le réglage « Placement dans la roue » pour le
+        cycliste."""
+        gp = self.grandprix
+        lanes = [(GP_ME, self._lane, self.cfg.ride.auto_draft == "on", draft_mod.RIDER_LANE_M)]
+        lanes += [(b.id, b.lane, True, draft_mod.BOT_LANE_M) for b in self.bots
+                  if gp is not None and b.id in gp.racers]
+        for rid, lane, auto, home in lanes:
+            target = gp.lane_target(rid) if gp is not None else None
+            if target is None:
+                lane.auto, lane.home = auto, home
+            else:
+                lane.auto, lane.home = False, GP_LANE_CENTRES_M[target]
+
+    def _grandprix_press(self, event: str) -> bool:
+        """Boutons du mode (spécification §7.1) : Z court utilise l'objet ; A court change de voie quand le choix
+        est affiché (`gp.pick`), flèches gauche et droite toujours ; A long revient au placement automatique.
+        Faux : l'événement garde son rôle habituel (vue de caméra dans l'engine)."""
+        gp = self.grandprix
+        assert gp is not None
+        me = gp.racers[GP_ME]
+        target = gp.lane_target(GP_ME)
+        cur = me.lane if target is None else target
+        if event == "Z_SHORT":
+            if gp.use(GP_ME):
+                log.info("Grand Prix : objet utilisé.")
+            self._flush_grandprix_journal(gp)
+            return True
+        if event == "A_SHORT" and gp.lane_choice_shown(GP_ME):
+            lane: int | None = (cur + 1) % len(GP_LANE_CENTRES_M)
+        elif event in ("LEFT_SHORT", "RIGHT_SHORT"):
+            step = -1 if event == "LEFT_SHORT" else 1
+            lane = min(max(cur + step, 0), len(GP_LANE_CENTRES_M) - 1)
+        elif event == "A_LONG" and not me.auto:
+            lane = None
+        else:
+            return False
+        done = gp.set_lane(GP_ME, lane)
+        self._sync_grandprix_lanes()   # placement suivi dès l'appui, sans attendre le pas suivant
+        return done
+
+    def _flush_grandprix_journal(self, gp: GrandPrixMode) -> None:
+        lines = gp.take_journal()
+        if self._rec:
+            for line in lines:
+                self._rec.game({**line, "ts": round(time.time(), 3)})
+
+    def _fill_grandprix_frame(self) -> None:
+        st = self.state
+        gp = self.grandprix
+        if gp is None or st.session_state not in ("RUNNING", "PAUSED"):
+            st.gp = None
+            return
+        st.gp = gp.frame(GP_ME)
+        if st.bots:   # objet en réserve et effets en cours de chaque bot
+            st.bots = [{**b, **gp.bot_frame(b["id"])} if b["id"] in gp.racers else b for b in st.bots]
+
+    # --- options des modes (lot GP2 : commandes génériques, celles du Mode WTF en alias) -------
+
+    def _mode_options(self, mode: str) -> list[dict]:
+        if mode == "wtf":
+            return (self.wtf.table if self.wtf is not None else self._wtf_table()).rules_list()
+        return gp_items.options_list(self._grandprix_table())
+
+    def _send_mode_options(self, args: dict) -> None:
+        mode = args.get("mode")
+        if mode not in MODE_OPTIONS:
+            self.server.send_error("bad_args", f"list_mode_options attend 'mode' : {', '.join(MODE_OPTIONS)}")
+            return
+        self.server.send_raw({"type": "mode_options", "v": 1, "mode": mode, "options": self._mode_options(mode)})
+
+    def _set_mode_option(self, args: dict) -> None:
+        """Allume ou coupe une option d'un mode (règle WTF, objet du Grand Prix) ; réponse `mode_options`."""
+        mode, oid, on = args.get("mode"), args.get("id"), args.get("on")
+        if mode not in MODE_OPTIONS or not isinstance(oid, str) or not isinstance(on, bool):
+            self.server.send_error("bad_args", "set_mode_option attend 'mode' (" + ", ".join(MODE_OPTIONS)
+                                   + "), 'id' (texte) et 'on' (vrai ou faux)")
+            return
+        apply = self._apply_wtf_rule if mode == "wtf" else self._apply_grandprix_item
+        if apply(oid, on, "mode_option_invalid"):
+            self._send_mode_options({"mode": mode})
+
+    def _apply_grandprix_item(self, item: str, on: bool, code: str) -> bool:
+        """Objet joué ou coupé : écrit la section `[items]` de `grandprix.toml` (reste du fichier gardé),
+        pris en compte tout de suite pendant une course."""
+        if item not in gp_items.ITEM_IDS:
+            self.server.send_error(code, f"objet inconnu : {item!r}")
+            return False
+        try:
+            config_edit.update_toml(self.grandprix_path, [("items", item, on)], gp_items.table_from)
+        except (GrandPrixError, config_edit.ConfigEditError, OSError) as exc:
+            self.server.send_error(code, f"objets non écrits : {exc}")
+            return False
+        gp = self.grandprix
+        if gp is not None:
+            table = gp_items.with_item(gp.table, item, on)
+            gp.table, gp.enabled = table, tuple(i for i in gp_items.ITEM_IDS if i in table.enabled)
+        log.info("Grand Prix : objet %s %s.", item, "joué" if on else "coupé")
+        return True
 
     def _lighten_bots_frame(self) -> None:
         """Peloton (lot PL1) : au-delà de 5 bots, les plus loin du cycliste perdent leurs champs facultatifs
@@ -2588,6 +2834,8 @@ class CoreSession:
             return
         if self.wtf is not None and self.wtf.press(ev.value):   # Z court : « Non merci, chef ! »
             return
+        if self.grandprix is not None and self._grandprix_press(ev.value):   # objet, voie (lot GP2)
+            return
         erg = self.erg
         if ev == InputEvent.Z_LONG:
             self._mark_dropout()
@@ -2678,6 +2926,8 @@ class CoreSession:
         if self._start_gate is not None and self.state.session_state == "READY":
             self._step_start_gate(dt, m)
             return
+        if self.grandprix is not None and self.state.session_state == "PAUSED":
+            self.grandprix.step(GpInput(self._t_session, 0.0, {}, paused=True))   # objets figés, 3 s de grâce
         if self.state.session_state != "RUNNING":
             return
         if not m.connected:
@@ -2795,7 +3045,13 @@ class CoreSession:
         power_used = race.power(m.power_w) if race else m.power_w
         if wtf_eff is not None:
             power_used = wtf.power(power_used, wtf_eff)
+        gp_wind = self.grandprix.wind_mps(GP_ME) if self.grandprix is not None else 0.0
+        if gp_wind:   # vent contraire du Grand Prix : physique seulement, sans ressenti (plan GP §7)
+            felt = self.physics.p
+            self.physics.p = replace(felt, wind_mps=felt.wind_mps + gp_wind)
         self.physics.step(power_used, grade, alt, dt, alpha_draft=draft)
+        if gp_wind:
+            self.physics.p = felt
         self._draft_w = (round(draft_saving_w(self.physics.v, alt, self.physics.p, draft))
                          if draft >= draft_mod.SAVED_W_MIN_DRAFT else None)
         if gcfg.mode != "off":
@@ -2816,9 +3072,16 @@ class CoreSession:
             params = getattr(bot, "params", None)   # bots à puissance constante : même vent (lot P2)
             if self.wind.active and params is not None and route:
                 params.wind_mps = head_component(self._wind_sample, route.sample(bot.s).heading_deg)
+            bot_wind = self.grandprix.wind_mps(bot.id) if self.grandprix is not None and params is not None else 0.0
+            if bot_wind:
+                params.wind_mps += bot_wind
             bot.step(dt, route)
+            if bot_wind:
+                params.wind_mps -= bot_wind
         if self.survivor is not None:
             self._survivor_after_bots()
+        if self.grandprix is not None:
+            self._step_grandprix(dt, power_used)
 
         if race:
             race.step(self._t_session, dt, self.physics.s, m.power_w, self.bots)
@@ -2862,8 +3125,9 @@ class CoreSession:
                 head_mps=round(self._head_mps, 2) if self.wind.active else None,
                 wind_grade_pct=round(self._wind_offset, 2)
                 if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
-                draft=round(self._draft, 3) if self.bots else None,
-                draft_w=self._draft_w if self.bots else None,
+                # abri des bots ; sans bot, seulement quand un véhicule abrite (lot AS6) : aucune clé en solo
+                draft=round(self._draft, 3) if self.bots or self._draft > 0.0 else None,
+                draft_w=self._draft_w if self.bots or self._draft > 0.0 else None,
                 surface=self._surface_here(route, st.s) if gcfg.mode != "off" else None,
                 gravel_grade_pct=round(self._gravel_offset, 2) if gcfg.mode != "off" else None,
                 hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None,
@@ -2875,6 +3139,10 @@ class CoreSession:
             self._finish(True)
         elif self._survivor_end_pending:   # éliminé, réglage « terminer la séance » (lot DS2)
             self._survivor_end_pending = False
+            self._finish(True)
+        elif self.grandprix is not None and self.grandprix.racers[GP_ME].finished is not None:
+            log.info("Grand Prix des objets : arrivée, %de sur %d.", self.grandprix.racers[GP_ME].finished,
+                     len(self.grandprix.racers))
             self._finish(True)
 
     def _gravel_factor_at(self, route: Route | None, s: float) -> float:
@@ -2914,7 +3182,8 @@ class CoreSession:
             villages = traffic_mod.load_villages(src[1], src[2], route.length_m) if src and src[0] is route else []
             self.traffic = traffic_mod.Traffic(
                 route=route, seed=TRAFFIC_SEED, villages=villages,
-                snow_line_m=traffic_mod.snow_line({"terrain": theme_section(self.cfg.render.theme, "terrain")}))
+                snow_line_m=traffic_mod.snow_line({"terrain": theme_section(self.cfg.render.theme, "terrain")}),
+                bench_every_s=float(self.cfg.ride.traffic_bench_s))
         return self.traffic
 
     def _road_cyclists_for(self, route: Route | None) -> road_cyclists_mod.RoadCyclists | None:
@@ -3248,6 +3517,7 @@ class CoreSession:
                 self._fill_riders_frame()
                 self._fill_wtf_frame()
                 self._fill_survivor_frame()
+                self._fill_grandprix_frame()
                 self._lighten_bots_frame()
                 self.server.send_state(self.state)
             if now >= next_stats:

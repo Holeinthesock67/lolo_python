@@ -16,6 +16,8 @@ paramètre ; une valeur hors bornes ou une clé inconnue refusent tout le fichie
     splash_m = 10
     [weights.lead]          # poids du tirage en tête (lead, lt5, 5to15, gt15)
     bottle = 30
+    [items]                 # objets joués (true) ou coupés (false), écrit par le menu (lot GP2)
+    storm = false
 """
 
 from __future__ import annotations
@@ -40,6 +42,14 @@ LABELS = {
     "bottle_x3": "Trois bidons", "musette": "Musette lancée", "musette_x3": "Trois musettes",
     "homing": "Musette guidée", "storm": "Nuage d'orage", "star": "Super-forme", "bell": "Sonnette",
     "headwind": "Vent contraire", "team_car": "Voiture d'équipe", "stealth": "Furtif",
+}
+# Familles des maquettes GP6 (validées le 7 novembre 2026) : une couleur et une forme de pastille chacune
+FAMILIES = {
+    "gel": "self", "gel_x3": "self", "star": "self", "team_car": "self", "stealth": "self",
+    "musette": "attack", "musette_x3": "attack", "homing": "attack",
+    "bottle": "trap", "bottle_x3": "trap",
+    "storm": "leader", "headwind": "leader",
+    "bell": "guard",
 }
 SHIELDS = ("bottle", "bottle_x3", "musette", "musette_x3")   # en réserve, parent la musette guidée
 
@@ -145,6 +155,7 @@ class ItemTable:
     items: Mapping[str, ItemSpec] = field(default_factory=lambda: dict(DEFAULT_ITEMS))
     weights: Mapping[str, Mapping[str, float]] = field(default_factory=lambda: {
         b: dict(w) for b, w in DEFAULT_WEIGHTS.items()})
+    enabled: frozenset[str] = frozenset(ITEM_IDS)   # section [items] : objets joués (lot GP2)
 
     def scaled(self, chaos: float) -> "ItemTable":
         return replace(self, items={k: v.scaled(chaos) for k, v in self.items.items()})
@@ -193,8 +204,18 @@ def _item_from(spec: ItemSpec, data: Mapping) -> ItemSpec:
 def table_from(data: Mapping) -> ItemTable:
     items = dict(DEFAULT_ITEMS)
     weights = {b: dict(w) for b, w in DEFAULT_WEIGHTS.items()}
+    enabled = set(ITEM_IDS)
     for key, value in data.items():
-        if key in items:
+        if key == "items":
+            if not isinstance(value, Mapping):
+                raise GrandPrixError("[items] : table attendue")
+            for item, on in value.items():
+                if item not in items:
+                    raise GrandPrixError(f"items.{item} : objet inconnu")
+                if not isinstance(on, bool):
+                    raise GrandPrixError(f"items.{item} : true ou false attendu")
+                (enabled.add if on else enabled.discard)(item)
+        elif key in items:
             items[key] = _item_from(items[key], value)
         elif key == "weights":
             if not isinstance(value, Mapping):
@@ -208,7 +229,7 @@ def table_from(data: Mapping) -> ItemTable:
                     weights[bracket][item] = _num(f"weights.{bracket}.{item}", w, 0.0, WEIGHT_MAX)
         else:
             raise GrandPrixError(f"[{key}] : objet inconnu ({', '.join(ITEM_IDS)})")
-    return ItemTable(items, weights)
+    return ItemTable(items, weights, frozenset(enabled))
 
 
 def load_table(path: Path | None = None) -> ItemTable:
@@ -221,3 +242,17 @@ def load_table(path: Path | None = None) -> ItemTable:
     except (OSError, tomllib.TOMLDecodeError) as exc:
         raise GrandPrixError(f"{path} illisible : {exc}") from exc
     return table_from(data)
+
+
+def options_list(table: ItemTable) -> list[dict]:
+    """Objets pour l'écran « Objets » du menu (message `mode_options`, lot GP2) : un élément par objet."""
+    return [{"id": i, "label": LABELS[i], "family": FAMILIES[i], "on": i in table.enabled} for i in ITEM_IDS]
+
+
+def with_item(table: ItemTable, item: str, on: bool) -> ItemTable:
+    """Table avec un objet joué ou coupé ; un objet inconnu est refusé."""
+    if item not in ITEM_IDS:
+        raise GrandPrixError(f"objet inconnu : {item!r} ({', '.join(ITEM_IDS)})")
+    enabled = set(table.enabled)
+    (enabled.add if on else enabled.discard)(item)
+    return replace(table, enabled=frozenset(enabled))
