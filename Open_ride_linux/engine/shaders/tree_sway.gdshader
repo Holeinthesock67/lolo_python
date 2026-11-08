@@ -66,12 +66,15 @@ uniform float root_darken : hint_range(0.0, 1.0) = 0.0;
 uniform bool deciduous = false;
 uniform bool grass = false;
 uniform bool orchard = false;
+// Panneaux croisés de loin : un feuillu nu garde une couronne de rameaux gris-brun (feuillage non replié).
+uniform bool bare_as_twigs = false;
 const vec3 SEASON_DRY_GRASS = vec3(0.62, 0.6, 0.32);
 
 // Position du sommet dans l'objet (avant le vent : les motifs suivent l'arbre) et décalage propre à l'arbre.
 varying vec3 v_obj;
 varying vec3 v_shift;
 varying float v_pick;   // tirage propre à l'arbre (palette d'automne)
+varying float v_bare;   // 1 : arbre nu cet hiver
 
 void vertex() {
 	vec3 dir = use_local_wind ? local_wind_dir : wind_dir;
@@ -84,9 +87,11 @@ void vertex() {
 	v_shift = vec3(offset * 7.3, offset * 1.7, offset * 5.1);
 	v_pick = fract(offset * 5.37);
 	// Hiver (lot P18) : feuillage d'une part des feuillus replié en un point (aucun pixel, aucune défausse).
-	if (deciduous && season_bare > 0.0) {
+	v_bare = 0.0;
+	if (deciduous && season_bare > 0.0 && fract(offset * 3.71) < season_bare) {
+		v_bare = 1.0;
 		int leaf_code = int(floor(COLOR.a * 16.0 + 0.5));
-		if ((leaf_code == 8 || leaf_code == 9) && fract(offset * 3.71) < season_bare) {
+		if ((leaf_code == 8 || leaf_code == 9) && !bare_as_twigs) {
 			VERTEX = vec3(0.0);
 		}
 	}
@@ -140,6 +145,11 @@ void fragment() {
 		float lum = dot(col, vec3(0.3, 0.59, 0.11));
 		col = mix(col, hue * lum * 2.4, season_autumn * (0.7 + 0.3 * v_pick));
 		col *= season_leaf_tint;
+		if (bare_as_twigs && v_bare > 0.5) {
+			// Rameaux nus vus de loin : gris-brun, plus sombres au cœur
+			col = vec3(0.30, 0.26, 0.23) * (0.8 + 0.5 * v_pick);
+			code = 7;   // motif des tiges, sans reflets de feuilles
+		}
 	}
 	if (grass) {
 		col = mix(col, col * 0.55 + SEASON_DRY_GRASS * 0.45, season_grass_dry) * season_grass_tint;

@@ -25,6 +25,7 @@ var _oak: MeshInstance3D
 var _spruce: MeshInstance3D
 var _slope: MeshInstance3D
 var _cam: Camera3D
+var _oak_bare: Mesh
 
 
 func _init() -> void:
@@ -73,6 +74,7 @@ func _setup() -> void:
 	sun.rotation_degrees = Vector3(-40.0, 30.0, 0.0)
 	_vp.add_child(sun)
 	_oak = _tree("oak", -7.0)
+	_oak_bare = TreeSpecies.build("oak")["lod0_bare"]
 	_spruce = _tree("spruce", 7.0)
 	# Pente douce entre 1 200 et 1 300 m (sous la limite de neige du thème, 2 200 m), loin derrière les arbres
 	_slope = MeshInstance3D.new()
@@ -98,6 +100,28 @@ func _frame() -> Image:
 	for i in 6:
 		await process_frame
 	return _vp.get_texture().get_image()
+
+
+## Pixels du houppier (moitié haute de l'image, au-dessus du fût) qui ne sont pas du ciel : branches nues l'hiver.
+func _crown_pixels(img: Image, left: bool) -> int:
+	var n := 0
+	for y in range(0, int(H * 0.55)):
+		for x in (range(0, W / 2) if left else range(W / 2, W)):
+			var c := img.get_pixel(x, y)
+			if Vector3(c.r - SKY.r, c.g - SKY.g, c.b - SKY.b).length() >= 0.08:
+				n += 1
+	return n
+
+
+## Pixels verts (feuillage d'été) d'une moitié de l'image.
+func _green(img: Image, left: bool) -> int:
+	var n := 0
+	for y in range(0, H):
+		for x in (range(0, W / 2) if left else range(W / 2, W)):
+			var c := img.get_pixel(x, y)
+			if c.g > c.r * 1.05 and c.g > c.b and Vector3(c.r - SKY.r, c.g - SKY.g, c.b - SKY.b).length() >= 0.08:
+				n += 1
+	return n
 
 
 ## Pixels de feuillage d'une moitié de l'image (ni ciel, ni écorce sombre) et leur teinte moyenne.
@@ -152,11 +176,23 @@ func _run() -> void:
 	_check(m.r > m.g * 1.1 and m.g > m.b, "automne : chêne majoritairement orangé (teinte moyenne %.2f %.2f %.2f)" % [m.r, m.g, m.b])
 
 	_season("winter")
+	var trunk_only: Image = await _frame()
+	_oak.mesh = _oak_bare   # tree_renderer.set_winter : charpente de branches l'hiver
 	var winter: Image = await _frame()
 	_save(winter, "saison_hiver.png")
-	var f_winter := _foliage(winter, true)
-	_check(f_winter["count"] < f_summer["count"] * 0.1, "hiver : feuillage du chêne absent (%d pixels contre %d l'été)" % [f_winter["count"], f_summer["count"]])
+	_check(_green(winter, true) < _green(summer, true) * 0.05, "hiver : feuillage du chêne absent (%d pixels verts contre %d l'été)" % [_green(winter, true), _green(summer, true)])
 	_check(_diff(summer, winter, false) < 0.01, "hiver : épicéa inchangé (écart moyen %.4f)" % _diff(summer, winter, false))
+	var bark_trunk := _crown_pixels(trunk_only, true)
+	var bark_bare := _crown_pixels(winter, true)
+	_check(bark_bare > maxi(bark_trunk, 50) * 3, "hiver : chêne avec sa charpente de branches (%d pixels dans le houppier contre %d sans)" % [bark_bare, bark_trunk])
+	_oak.mesh = TreeSpecies.build("oak")["lod0"]
+	_season("summer")
+	var summer_again: Image = await _frame()
+	_oak.mesh = _oak_bare
+	var summer_bare_mesh: Image = await _frame()
+	_check(_diff(summer_again, summer_bare_mesh, true) < 0.02, "été : branches cachées dans le feuillage (écart moyen %.4f)" % _diff(summer_again, summer_bare_mesh, true))
+	_oak.mesh = _oak_bare
+	_season("winter")
 
 	# Terrain à 1 250 m : neige seulement l'hiver
 	_oak.visible = false
