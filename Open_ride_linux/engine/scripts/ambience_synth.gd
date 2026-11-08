@@ -20,7 +20,7 @@ const MIX_RATE := 22050
 ## (vagues, mouettes, sonnailles, glace) : assez longs pour que la répétition ne s'entende pas.
 const LOOP_S := {
 	"forest_birds": 2.0, "field_insects": 2.0, "water_flow": 2.0, "village_murmur": 2.0, "high_wind": 2.0, "rain": 2.0,
-	"cicadas": 3.0, "jungle_chorus": 6.0, "conifer_wind": 4.0, "cowbells": 6.0, "waves": 8.0, "gulls": 7.0,
+	"cicadas": 3.0, "jungle_chorus": 6.0, "conifer_wind": 4.0, "cowbells": 6.0, "waves": 24.0, "gulls": 7.0,
 	"frogs": 5.0, "singing_sand": 4.0, "ice_cracks": 7.0, "fumaroles": 4.0,
 }
 
@@ -210,23 +210,41 @@ static func bed_samples(bed: String) -> PackedFloat32Array:
 							rng.randf_range(0.05, 0.11), [1.0, 2.32, 4.25, 6.63], [1.0, 0.6, 0.35, 0.2], [5.0, 7.0, 10.0, 14.0], 0.9)
 					t0 += rng.randf_range(1.6, 3.2)
 		"waves":
-			# Deux vagues de 3,6 et 4,4 s : houle grave qui monte, déferlement (bruit plus clair) puis ressac qui
-			# siffle en se retirant ; un clapotis grave reste entre deux vagues.
-			var noise := _noise(rng, n)
-			var low := periodic_lowpass(noise, 0.03, 4.0)
-			var mid := periodic_lowpass(noise, 0.15, 2.0)
-			var top := periodic_lowpass(noise, 0.5)
-			var lengths := [3.6, loop_s - 3.6]
+			# Mer (refaite le 8/11 : la houle grave constante et deux vagues régulières sonnaient « machine d'usine ») :
+			# six à huit vagues de 2,6 à 5,5 s et de forces inégales sur une boucle de 24 s ; chacune est un souffle
+			# d'écume (bruit moyen, sans bourdon) qui enfle, déferle puis se retire en sifflant, les vagues se
+			# chevauchent ; entre elles, un ressac très faible. La texture de l'écume varie lentement (deux bruits
+			# mêlés selon une modulation irrégulière) pour qu'aucune vague ne ressemble à la précédente.
+			var na := _noise(rng, n)
+			var nb := _noise(rng, n)
+			var foam_a := periodic_lowpass(na, 0.22, 2.2)
+			var foam_b := periodic_lowpass(nb, 0.09, 3.0)
+			var top_a := periodic_lowpass(na, 0.6)
+			var body := periodic_lowpass(periodic_lowpass(nb, 0.05), 0.05, 6.0)
+			var env := PackedFloat32Array()
+			env.resize(n)
+			var wash := PackedFloat32Array()
+			wash.resize(n)
+			var t0 := 0.0
+			while t0 < loop_s - 1.0:
+				var l := rng.randf_range(2.6, 5.5)
+				var force := rng.randf_range(0.45, 1.0)
+				var rise := rng.randf_range(0.35, 0.6)
+				var at := int(t0 * MIX_RATE)
+				var len := int(l * MIX_RATE)
+				for i in range(len):
+					var u := float(i) / float(len)
+					var e := pow(sin(0.5 * PI * u / rise), 2.0) if u < rise else exp(-(u - rise) / (1.0 - rise) * 3.0) * (1.0 - u * u * u)
+					env[(at + i) % n] += e * force
+					var w := (smoothstep(rise, rise + 0.1, u) * exp(-(u - rise) / (1.0 - rise) * 2.0) * (1.0 - u * u)) if u > rise else 0.0
+					wash[(at + i) % n] += w * force
+				t0 += l * rng.randf_range(0.55, 0.9)
+			var mix_f := _fq(1.0 / 11.0, loop_s)
 			for i in range(n):
 				var t := float(i) / MIX_RATE
-				var start := 0.0 if t < float(lengths[0]) else float(lengths[0])
-				var l: float = lengths[0] if t < float(lengths[0]) else lengths[1]
-				var u := (t - start) / l
-				var swell := smoothstep(0.0, 0.55, u) * (1.0 - smoothstep(0.55, 0.65, u))
-				var tail := 1.0 - smoothstep(0.88, 1.0, u)
-				var crash := exp(-(u - 0.55) * l * 2.2) * tail if u > 0.55 else 0.0
-				var wash := exp(-(u - 0.62) * l * 1.1) * tail if u > 0.62 else 0.0
-				buf[i] = low[i] * (0.25 + 0.55 * swell) + mid[i] * crash * 0.7 + (noise[i] - top[i]) * wash * 0.35
+				var k := 0.5 + 0.35 * sin(TAU * mix_f * t) + 0.15 * sin(TAU * 3.0 * mix_f * t + 1.1)
+				var foam := foam_a[i] * k + foam_b[i] * (1.0 - k)
+				buf[i] = foam * (0.06 + 0.8 * env[i]) + body[i] * 0.12 * env[i] + (na[i] - top_a[i]) * 0.22 * wash[i]
 		"gulls":
 			# Mouettes : séries de 1 à 3 cris « kiou » (montée puis chute de 1,3 à 1,7 puis 1,1 kHz, timbre nasal),
 			# l'une proche, les autres plus loin.
