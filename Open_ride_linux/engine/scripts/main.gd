@@ -32,6 +32,8 @@ const WtfScene := preload("res://scripts/wtf/wtf_scene.gd")
 const WtfSceneModel := preload("res://scripts/wtf/wtf_scene_model.gd")
 const SurvivorHudModel := preload("res://scripts/survivor/survivor_hud_model.gd")
 const SurvivorView := preload("res://scripts/survivor/survivor_view.gd")
+const GpHudModel := preload("res://scripts/grandprix/gp_hud_model.gd")
+const GpView := preload("res://scripts/grandprix/gp_view.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -128,6 +130,9 @@ var wtf_scene = null
 ## Dernier survivant (lots DS5 et DS6) : modèle du HUD (bloc, liste, bandeaux, arches à dessiner) et sa vue.
 var survivor_hud = SurvivorHudModel.new()
 var survivor_view = null
+## Grand Prix des objets (lot GP8) : modèle du HUD (case d'objet, place, bande de course, voies, avertissements) et sa vue.
+var gp_hud = GpHudModel.new()
+var gp_view = null
 ## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
 var load_guard = LoadGuard.new({}, false)
 var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
@@ -413,6 +418,8 @@ func _ready() -> void:
 	hud.add_child(wtf_view)
 	survivor_view = SurvivorView.new()
 	hud.add_child(survivor_view)
+	gp_view = GpView.new()
+	hud.add_child(gp_view)
 	wtf_scene = WtfScene.new()
 	add_child(wtf_scene)
 	ipc.world_menu_received.connect(_on_world_menu_received)
@@ -1525,6 +1532,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"rogue": rogue_host.test_info(),
 		"wtf": wtf_scene.test_info(),
 		"survivor": survivor_view.test_info() if survivor_view != null else {},
+		"grandprix": gp_view.test_info() if gp_view != null else {},
 		"survivor_arches": segment_markers.survivor_arches().size() if segment_markers != null else 0,
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
@@ -1833,6 +1841,7 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
 		_update_survivor(state, in_session)
+		_update_grandprix(state, in_session)
 		if not state.has("wtf") and wtf_scene.is_active():   # séance WTF finie : rien ne reste derrière le menu
 			wtf_scene.step({}, null, 0.0, Callable(), sun)
 	if junction_view != null:
@@ -1932,13 +1941,30 @@ func _update_survivor(state: Dictionary, in_session: bool) -> void:
 	PerfProbe.mark_since("survivant", "", t_step)   # banc (lot DS8) : une image lente nomme le mode
 
 
+## Grand Prix des objets (lot GP8), à chaque trame : case d'objet, place, bande de course, voies et avertissements.
+## Hors du mode, tout est retiré (et le modèle remis à zéro pour la course suivante).
+func _update_grandprix(state: Dictionary, in_session: bool) -> void:
+	var gp = state.get("gp", null) if in_session else null
+	if gp == null:
+		if gp_view.visible:
+			gp_view.update_view({"visible": false})
+		if not in_session:
+			gp_hud.reset()
+		return
+	var t_step := Time.get_ticks_usec()
+	gp_view.right_top = hud.free_right_top()
+	gp_view.update_view(gp_hud.view(state, Time.get_ticks_msec() / 1000.0))
+	PerfProbe.mark_since("grand_prix", "", t_step)   # banc : une image lente nomme le mode
+
+
 ## Bots vus du cycliste à `now_us`, l'instant où `rider_s` a été calculé (même horloge que les trames).
 func _show_bots(rider_s: float, rider_v: float, now_us: int) -> void:
 	bots_model.vehicles = living_decor.vehicle_places() if living_decor != null else []
 	var view: Array = bots_model.view(rider_s, rider_v, now_us)
 	if hud != null and hud.has_method("update_bots"):
-		# Dernier survivant : la liste des coureurs (survivor_view.gd) remplace l'encart des bots
-		hud.update_bots([] if _last_state.has("survivor") else view, bots_model.race())
+		# Dernier survivant et Grand Prix : la liste des coureurs (survivor_view.gd) ou la bande de course
+		# (grandprix/gp_view.gd) remplace l'encart des bots
+		hud.update_bots([] if _last_state.has("survivor") or _last_state.has("gp") else view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route)
 	if living_decor != null:
