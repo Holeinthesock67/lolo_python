@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideGpHitMessage",
+  "description": "Révision 1.7 (lot GP2) : un coureur touché par un objet du Grand Prix ; répété 3 fois à une seconde d'intervalle, l'engine ignore les doublons ; 4 096 octets au plus (contrat §2).",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "item",
+    "by",
+    "target",
+    "loss_s"
+  ],
+  "properties": {
+    "type": {
+      "const": "gp_hit"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "item": {
+      "type": "string",
+      "enum": [
+        "gel",
+        "gel_x3",
+        "bottle",
+        "bottle_x3",
+        "musette",
+        "musette_x3",
+        "homing",
+        "storm",
+        "star",
+        "bell",
+        "headwind",
+        "team_car",
+        "stealth"
+      ]
+    },
+    "by": {
+      "type": "string",
+      "maxLength": 8,
+      "description": "« me » pour le cycliste, sinon l'id du bot ; vide pour un objet sans lanceur."
+    },
+    "target": {
+      "type": "string",
+      "maxLength": 8
+    },
+    "loss_s": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Temps perdu estimé (s)."
+    }
+  },
+  "additionalProperties": false
+}
