@@ -94,6 +94,7 @@ const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level
 const SURVIVOR_PREFIX := "Survivant : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
+const CollectionViewModel := preload("res://scripts/collection_view_model.gd")
 const CoachViewModel := preload("res://scripts/coach_view_model.gd")
 const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
 
@@ -258,6 +259,8 @@ var start_wait: Dictionary = {}
 var profiles = ProfilesViewModel.new()
 ## Historique (lot O28) : séances, cumul par semaine, tests de FTP et bilan d'une séance passée.
 var history = HistoryViewModel.new()
+## Collection de cartes (série BC, lot BC5) : album par familles, carte agrandie, première ouverture.
+var collection = CollectionViewModel.new()
 ## Séance conseillée (série CO, lot CO5) : conseil du jour, détail du calcul, autre besoin, saisies.
 var coach = CoachViewModel.new()
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
@@ -298,6 +301,12 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": HistoryViewModel.SESSION, "title": "Séance", "on_back": HistoryViewModel.SCREEN,
 		"items": HistoryViewModel.session_items()})
+	menu.add_screen({"id": CollectionViewModel.SCREEN, "title": "Collection", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": CollectionViewModel.CARD, "title": "Carte", "on_back": CollectionViewModel.SCREEN,
+		"items": []})
+	menu.add_screen({"id": CollectionViewModel.FIRST, "title": "Collection", "on_back": CollectionViewModel.SCREEN,
+		"items": CollectionViewModel.first_items()})
+	_refresh_collection()
 	for screen in [[CoachViewModel.SCREEN, "Séance conseillée", MenuModel.HOME],
 			[CoachViewModel.DETAIL, "Détail du calcul", CoachViewModel.SCREEN],
 			[CoachViewModel.NEED, "Choisir un autre besoin", CoachViewModel.SCREEN],
@@ -552,6 +561,9 @@ func on_error(code: String, text: String) -> void:
 		return
 	if menu.current_screen() in HistoryViewModel.SCREENS and code == "bad_args":
 		history.message = "Échec : " + text
+		return
+	if menu.current_screen() in CollectionViewModel.SCREENS and code == "bad_args":
+		collection.message = "Échec : " + text
 		return
 	if menu.current_screen() in CoachViewModel.SCREENS and code == "bad_args":
 		coach.message = "Échec : " + text
@@ -1322,6 +1334,11 @@ func _handle_event(event: String) -> Dictionary:
 			_refresh_history()
 			menu.push_screen(HistoryViewModel.SCREEN)
 			return {"action": "list_history"}
+		if str(act["id"]) == "collection":
+			collection.begin()
+			_refresh_collection()
+			menu.push_screen(CollectionViewModel.SCREEN)
+			return {"action": "list_collection"}
 		if str(act["id"]) == "coach":   # conseil recalculé à chaque ouverture (une séance vient peut-être de finir)
 			var request: Dictionary = coach.request()
 			_refresh_coach()
@@ -1336,6 +1353,8 @@ func _handle_event(event: String) -> Dictionary:
 		return _handle_garage(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in HistoryViewModel.SCREENS:
 		return _handle_history(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") in CollectionViewModel.SCREENS:
+		return _handle_collection(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in CoachViewModel.SCREENS:
 		return _handle_coach(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
@@ -1892,8 +1911,10 @@ func on_history(msg: Dictionary) -> void:
 
 ## Bilan d'une séance passée (`history_session`) : ouvert dans le panneau du bilan de fin de séance.
 func on_history_session(msg: Dictionary) -> void:
-	if not history.on_session(msg) or menu.current_screen() != HistoryViewModel.SCREEN:
+	# Séance d'une carte de la collection (« Voir la séance », lot BC5) : même bilan, retour à la carte.
+	if menu.current_screen() not in [HistoryViewModel.SCREEN, CollectionViewModel.CARD] or not history.on_session(msg):
 		return
+	collection.message = ""
 	show_details = false
 	_refresh_history()
 	menu.push_screen(HistoryViewModel.SESSION)
@@ -1921,6 +1942,62 @@ func _handle_history(screen: String, item_id: String) -> Dictionary:
 			show_details = not show_details
 		elif item_id == "back":
 			menu.handle("Y_SHORT")
+	return {}
+
+
+## Collection (lot BC5) : réponse `collection` à `list_collection`. Première ouverture (`first_time`) sur
+## l'album : l'écran « n cartes déjà gagnées » s'ouvre une fois, et les cartes déjà gagnées sont notées vues
+## (action `collection_seen` renvoyée à main.gd) ; sinon, la ligne de l'accueil et l'album sont mis à jour.
+func on_collection(msg: Dictionary) -> Dictionary:
+	collection.on_collection(msg)
+	var act := {}
+	if collection.first_time and menu.current_screen() == CollectionViewModel.SCREEN:
+		act = {"action": "collection_seen", "keys": collection.open_first()}
+		_refresh_collection()
+		menu.push_screen(CollectionViewModel.FIRST)
+	_refresh_collection()
+	return act
+
+
+func _refresh_collection() -> void:
+	menu.set_collection_home(collection.home_detail())
+	menu.set_screen_items(CollectionViewModel.SCREEN, collection.items())
+	menu.set_screen_items(CollectionViewModel.CARD, collection.card_items(), collection.card_title())
+
+
+func _handle_collection(screen: String, item_id: String) -> Dictionary:
+	if screen == CollectionViewModel.SCREEN:
+		if not item_id.begins_with(CollectionViewModel.CARD_PREFIX):
+			return {}
+		var keys: Array = collection.open_card(item_id)
+		collection.message = ""
+		_refresh_collection()
+		menu.push_screen(CollectionViewModel.CARD)
+		return {"action": "collection_seen", "keys": keys} if not keys.is_empty() else {}
+	if screen == CollectionViewModel.FIRST and item_id == "open":
+		menu.handle("Y_SHORT")   # retour à l'album, sous l'écran de la première ouverture
+	elif screen == CollectionViewModel.CARD and item_id == "session":
+		var sid: String = history.request(HistoryViewModel.SESSION_PREFIX + collection.card_journal())
+		history.message = ""
+		if sid != "":
+			collection.message = "Chargement de la séance…"
+			return {"action": "history_session", "id": sid}
+	return {}
+
+
+## Fiche dessinée par collection_view.gd sur les écrans de la collection ({} ailleurs).
+func collection_view(st: Dictionary) -> Dictionary:
+	var screen := str(st["screen"])
+	if screen == CollectionViewModel.SCREEN and collection.loaded and not collection.cards.is_empty():
+		var focus := int(st.get("focus", -1))
+		var focused := str(st["items"][focus]["id"]) if focus >= 0 and focus < st["items"].size() else ""
+		return collection.album(focused)
+	if screen == CollectionViewModel.CARD:
+		return collection.card_view()
+	if screen == CollectionViewModel.FIRST:
+		return collection.first_view()
+	if screen == SUMMARY:   # carte gagnée par la séance qui vient de finir (lot BC6), pas sur un bilan de l'historique
+		return CollectionViewModel.announce_view(summary)
 	return {}
 
 
@@ -2102,6 +2179,10 @@ func state() -> Dictionary:
 	elif st["screen"] in HistoryViewModel.SCREENS:
 		st["status"] = history.message
 		st["status_error"] = history.message.begins_with("Échec")
+	elif st["screen"] in CollectionViewModel.SCREENS:
+		var on_album: bool = st["screen"] == CollectionViewModel.SCREEN   # l'album : total et nouvelles
+		st["status"] = collection.album_status() if on_album else collection.message
+		st["status_error"] = not on_album and collection.message.begins_with("Échec")
 	elif st["screen"] in CoachViewModel.SCREENS:
 		st["status"] = coach.status(str(st["screen"]))
 		st["status_error"] = coach.message.begins_with("Échec")
@@ -2119,6 +2200,7 @@ func state() -> Dictionary:
 			st["status"] = PAUSE_WORKOUT_DONE
 	st["card"] = card(st)
 	st["preview"] = garage_preview(st)
+	st["collection"] = collection_view(st)
 	st["progress"] = progress_view() if st["screen"] == SUMMARY else {}
 	st["editing"] = not settings.editing.is_empty()
 	return st
