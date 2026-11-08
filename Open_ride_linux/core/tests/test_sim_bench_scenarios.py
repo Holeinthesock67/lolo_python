@@ -170,16 +170,24 @@ def test_keys_done_reads_the_engine_log() -> None:
     assert si.keys_done(log) == ["Equal", "PageUp"]
 
 
-def test_survivor_bench_scenario_writes_a_valid_config_and_mode() -> None:
-    """Série DS : le scénario `dernier_survivant` lance le mode (`--mode survivor` du core) avec un plateau
-    qui tient sur le parcours de démonstration (5 km), écrit dans config.toml par `bench.config`."""
+@pytest.mark.parametrize("name,opponents", [("dernier_survivant", 2), ("dernier_survivant_onze", 11)])
+def test_survivor_bench_scenario_writes_a_valid_config_and_mode(name: str, opponents: int) -> None:
+    """Série DS : les scénarios `dernier_survivant` (démonstration de 5 km) et `dernier_survivant_onze` (lot DS8 :
+    11 adversaires sur la démonstration étirée à 12 km, `demo_long`) lancent le mode (`--mode survivor` du core)
+    avec un plateau dans les bornes du réglage et qui tient sur leur parcours, écrit dans config.toml par
+    `bench.config`."""
     from openride_core import survivor
     from openride_core.__main__ import build_parser
+    from openride_core.config import BOUNDS as CONFIG_BOUNDS
+    from openride_core.demo_world import DEMO_LENGTH_M
 
-    _, _, settings, _ = sim_bench.resolve_scenario("dernier_survivant")
+    _, _, settings, _ = sim_bench.resolve_scenario(name)
     assert settings["mode"] == "survivor"
     cfg = tomllib.loads(sim_bench.toml_text(settings["config"]))
     sv = cfg["survivor"]
-    assert survivor.course_length_m(sv["opponents"], sv["spacing_km"]) <= 5000.0
+    lo, hi = CONFIG_BOUNDS[("survivor", "opponents")]
+    assert sv["opponents"] == opponents and lo <= opponents <= hi
+    length = {"demo": DEMO_LENGTH_M, "demo_long": sim_bench.DEMO_LONG_M}[settings.get("world", "demo")]
+    assert survivor.course_length_m(sv["opponents"], sv["spacing_km"]) <= length
     args = build_parser().parse_args(["run", "--autostart", "--mode", "survivor"])
     assert args.mode == "survivor"

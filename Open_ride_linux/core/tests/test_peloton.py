@@ -175,3 +175,38 @@ def test_last_choices_keep_a_peloton():
     items = _peloton_items(11) + [{"kind": "ghost"}]
     assert last_choices.clean("bots", items) == items
     assert last_choices.clean("bots", items + [{"kind": "ghost"}]) is None
+
+
+def test_peloton_stays_on_a_gravel_path(tmp_path: Path):
+    """Option « gravier » (chemin de 3,5 m, correctif du 7/11) : cycliste et 11 bots restent sur le chemin, à
+    LANE_EDGE_M au moins du bord sûr, sans se toucher ; ils se suivent en file."""
+    from test_draft import FlatRoute
+
+    from openride_core import draft, surface_physics
+
+    session = _peloton_session(tmp_path)
+    session.cfg.gravel.mode = "gravel"
+    session.route = FlatRoute()
+    half = surface_physics.rideable_half_m(session.route, 0.0, "gravel", surface_physics.surface_widths(None), 6.0)
+    lo, hi = draft.path_bounds(half)
+    assert hi == pytest.approx(half - draft.LANE_EDGE_M) and lo == -hi
+    start_grid(session.bots, session.physics.s)
+    session.state.session_state = "RUNNING"
+    now = 1.0
+    for i in range(50 * 45):
+        session._step(0.02, now)
+        now += 0.02
+        if i < 50 * 15:              # départ : les bots de la grille (à 2,1 m) rejoignent le chemin
+            continue
+        pos = [(b.s, b.lane.m) for b in session.bots] + [(session.physics.s, session._lane.m)]
+        assert all(lo - 1e-6 <= m <= hi + 1e-6 for _, m in pos), f"hors du chemin à {i * 0.02:.1f} s : {pos}"
+        touching = [(a, c) for a in range(len(pos)) for c in range(a + 1, len(pos))
+                    if abs(pos[a][0] - pos[c][0]) < BIKE_LENGTH_M - 0.1 and abs(pos[a][1] - pos[c][1]) < RIDER_WIDTH_M - 0.05]
+        assert touching == [], f"vélos qui se touchent à {i * 0.02:.1f} s : {touching}"
+
+
+def test_paved_bounds_are_unchanged():
+    """Sans gravel, bornes de la chaussée de 6 m."""
+    from openride_core import draft
+
+    assert draft.path_bounds(3.0) == (draft.PASS_LANE_MIN_M, draft.LANE_MAX_M)

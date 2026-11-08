@@ -36,6 +36,18 @@ const LOD1_MAX_DIST_M := 1500.0
 ## d'une case vue de son centre (demi-diagonale et marge), pour les plages de visibilité des deux modèles.
 const SPECIES_LOD_BLEND_M := 6.0
 const CELL_RADIUS_M := CELL_SIZE_M * 0.7072 + 10.0
+## Ombre portée des arbres proches limitée (lot « cultures et forêt », 6-7 novembre) : avec `shadow_end_m` > 0
+## (essai `ombres_arbres_m=M`), le modèle proche ne projette plus d'ombre ; un MultiMesh « ombre seule » par espèce
+## porte les seuls arbres des carrés de SHADOW_BUCKET_M dont un point est à moins de M de la caméra, reconstruit
+## quand la caméra a bougé de SHADOW_UPDATE_STEP_M (tranches du tampon des cases, mises bout à bout), et le shader
+## replie l'ombre au-delà de M. Le banc du 7 novembre a montré qu'un réglage par case de 250 m laissait presque
+## tous les sommets dans la passe d'ombre (gain 0,3 ms au lieu de 1,3 à 2,1).
+## Limite par défaut (7 novembre, banc r732c/d : forêt −1,1 ms en medium, −1,7 à −1,9 ms en high, aspect validé
+## par le propriétaire le 7 novembre) ; l'essai `ombres_arbres_m=0` rend l'ombre de tous les arbres proches.
+const TREE_SHADOW_M := 100.0
+const SHADOW_UPDATE_STEP_M := 10.0
+const SHADOW_BUCKET_M := 25.0
+const SHADOW_STRIDE := 16   # flottants par instance du tampon : transformation 3×4 et couleur
 ## Lot S1 : distance ajoutée au rang d'une case hors du champ, pour qu'elle passe avant toute case visible.
 const OUT_OF_VIEW_RANK_M := 1.0e6
 ## Distance minimale entre un tronc et le mur d'un bâtiment OSM (houppier compris).
@@ -64,12 +76,18 @@ var _species := {}
 var _tiles: Dictionary = {}
 var _active_tree_count := 0
 var _budget := 20000
+## Limite de l'ombre portée des arbres proches (m, 0 : sans borne) ; dernière position de la caméra traitée.
+var shadow_end_m := 0.0
+var _shadow_cam := Vector3(INF, INF, INF)
+## MultiMeshInstance3D « ombre seule » par espèce (shadow_end_m > 0).
+var _shadow_mmis := {}
 ## Temps des étapes du dernier `prepare_tile`, en ms (lot O1) : placement (détail de
 ## `placer.last_profile`), semis hors zones OSM, bâtiments, répartition en cases.
 var last_profile := {}
 
 
 func _init() -> void:
+	shadow_end_m = maxf(0.0, RenderDiag.number("ombres_arbres_m", TREE_SHADOW_M))   # essai de coût (render_diag.gd)
 	_init_materials()
 	_lod0_mesh = build_lod0_mesh()
 	_lod1_mesh = build_lod1_mesh()
@@ -79,6 +97,7 @@ func _init_materials() -> void:
 	if _tree_sway:
 		_lod0_material = sway_material(false)
 		_lod1_material = sway_material(true, true)
+		(_lod0_material as ShaderMaterial).set_shader_parameter("shadow_end_m", shadow_end_m)
 		return
 	_lod0_material = StandardMaterial3D.new()
 	_lod0_material.vertex_color_use_as_albedo = true
@@ -108,6 +127,8 @@ func set_preset(preset_name: String, living_enabled: bool = true) -> void:
 					(part["lod1"] as MultiMeshInstance3D).material_override = look["m1"]
 					(part["lod0"] as MultiMeshInstance3D).visibility_range_end = ranges.x
 					(part["lod1"] as MultiMeshInstance3D).visibility_range_begin = ranges.y
+		for species in _shadow_mmis:
+			(_shadow_mmis[species] as MultiMeshInstance3D).material_override = _look(int(species))["m0"]
 
 
 func is_tree_sway() -> bool:
@@ -148,6 +169,7 @@ func _look(index: int) -> Dictionary:
 			for m in [m0, m1]:
 				(m as ShaderMaterial).set_shader_parameter("sway_height_m", float(built["height"]))
 				(m as ShaderMaterial).set_shader_parameter("lod_blend_m", SPECIES_LOD_BLEND_M)
+			(m0 as ShaderMaterial).set_shader_parameter("shadow_end_m", shadow_end_m)
 			var switch_m := TreeSpecies.lod0_m(TreeSpecies.kind_of(index))
 			if switch_m > 0.0:
 				# Passage touffe par touffe (tree_sway.gdshader) : modèle proche jusqu'à switch_m, lointain au-delà.
@@ -412,6 +434,7 @@ func add_tile(data: Dictionary) -> void:
 			"count": tree_list.size(),
 			"center": cell_center,
 		}
+		_shadow_cam = Vector3(INF, INF, INF)   # nouvelle case : ombres à recalculer au prochain update_shadows
 		_active_tree_count += tree_list.size()
 
 	_tiles[tile_key] = tile_cells
@@ -432,6 +455,8 @@ func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
 	mm1.mesh = look["lod1"]
 	mm1.instance_count = count
 	var vine := species == TreeSpecies.index_of("vine_row")
+	var with_shadow_buckets := shadow_end_m > 0.0 and not RenderDiag.has("sans_ombres_arbres")
+	var buckets := {}
 
 	for i in range(count):
 		var t := tree_list[i]
@@ -457,13 +482,15 @@ func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
 		mm0.set_instance_color(i, col)
 		mm1.set_instance_transform(i, xform)
 		mm1.set_instance_color(i, col)
+		if with_shadow_buckets:
+			add_to_bucket(buckets, xform, col)
 
 	var mmi0 := MultiMeshInstance3D.new()
 	mmi0.multimesh = mm0
 	mmi0.material_override = look["m0"]
 	# Essais de coût (OPENRIDE_RENDER_DIAG, render_diag.gd) : `sans_ombres_arbres`, `arbres_lod0_m=M`.
-	mmi0.cast_shadow = (GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if RenderDiag.has("sans_ombres_arbres")
-		else GeometryInstance3D.SHADOW_CASTING_SETTING_ON)
+	mmi0.cast_shadow = (GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if RenderDiag.has("sans_ombres_arbres") or shadow_end_m > 0.0 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON)
 	var ranges := lod_ranges(species, look["m0"] is ShaderMaterial)
 	mmi0.visibility_range_begin = 0.0
 	mmi0.visibility_range_end = ranges.x
@@ -476,7 +503,10 @@ func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
 	mmi1.visibility_range_begin = ranges.y
 	mmi1.visibility_range_end = LOD1_MAX_DIST_M
 	add_child(mmi1)
-	return {"lod0": mmi0, "lod1": mmi1, "species": species, "count": count}
+	var part := {"lod0": mmi0, "lod1": mmi1, "species": species, "count": count}
+	if with_shadow_buckets:
+		part["buckets"] = buckets
+	return part
 
 
 ## Plages de visibilité d'une case (distance de la caméra au centre de sa boîte) : (fin du modèle proche, début
@@ -493,6 +523,7 @@ static func lod_ranges(species: int, shader_lod: bool) -> Vector2:
 
 
 func _free_cell(cell_info: Dictionary) -> void:
+	_shadow_cam = Vector3(INF, INF, INF)   # arbres « ombre seule » à reprendre sans cette case
 	for part in cell_info["parts"]:
 		for key in ["lod0", "lod1"]:
 			var mmi: MultiMeshInstance3D = part[key]
@@ -520,6 +551,85 @@ func clear() -> void:
 			_free_cell(tile_cells[cell_idx])
 	_tiles.clear()
 	_active_tree_count = 0
+
+
+## Ajoute un arbre au carré de SHADOW_BUCKET_M qui contient son pied ({Vector2i: PackedFloat32Array}), dans l'ordre
+## du tampon de MultiMesh.buffer : lignes de la transformation 3×4 (base en colonnes, origine en 4e), puis couleur.
+static func add_to_bucket(buckets: Dictionary, xform: Transform3D, col: Color) -> void:
+	var o := xform.origin
+	var key := Vector2i(int(floor(o.x / SHADOW_BUCKET_M)), int(floor(o.z / SHADOW_BUCKET_M)))
+	var b := xform.basis
+	var buf: PackedFloat32Array = buckets.get(key, PackedFloat32Array())   # tableau compact : copie, remise après
+	buf.append_array(PackedFloat32Array([
+		b.x.x, b.y.x, b.z.x, o.x, b.x.y, b.y.y, b.z.y, o.y, b.x.z, b.y.z, b.z.z, o.z, col.r, col.g, col.b, col.a]))
+	buckets[key] = buf
+
+
+## Reconstruit les MultiMesh « ombre seule » autour de la caméra (`shadow_end_m`). Sans limite : rien ne change.
+func update_shadows(cam_pos: Vector3) -> void:
+	if shadow_end_m <= 0.0 or RenderDiag.has("sans_ombres_arbres"):
+		return
+	if Vector2(cam_pos.x - _shadow_cam.x, cam_pos.z - _shadow_cam.z).length() < SHADOW_UPDATE_STEP_M:
+		return
+	_shadow_cam = cam_pos
+	var per_species := {}
+	var half_bucket := Vector3(SHADOW_BUCKET_M * 0.5, 0.0, SHADOW_BUCKET_M * 0.5)
+	for tile_cells in _tiles.values():
+		for cell_info in tile_cells.values():
+			if not casts_shadow(cell_info["center"], cam_pos, shadow_end_m):
+				continue
+			for part in cell_info["parts"]:
+				var buckets: Dictionary = part.get("buckets", {})
+				for key in buckets:
+					var c := Vector3(key.x * SHADOW_BUCKET_M, 0.0, key.y * SHADOW_BUCKET_M) + half_bucket
+					if not casts_shadow(c, cam_pos, shadow_end_m, SHADOW_BUCKET_M):
+						continue
+					var sp := int(part["species"])
+					var acc: PackedFloat32Array = per_species.get(sp, PackedFloat32Array())   # copie, remise après
+					acc.append_array(buckets[key])
+					per_species[sp] = acc
+	for sp in _shadow_mmis.keys():
+		if not per_species.has(sp):
+			per_species[sp] = PackedFloat32Array()
+	for sp in per_species:
+		_set_shadow_casters(int(sp), per_species[sp])
+
+
+## Arbres « ombre seule » d'une espèce (tampon de SHADOW_STRIDE flottants par arbre).
+func _set_shadow_casters(species: int, buf: PackedFloat32Array) -> void:
+	if not _shadow_mmis.has(species):
+		var look := _look(species)
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		mm.mesh = look["lod0"]
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.material_override = look["m0"]
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+		add_child(mmi)
+		_shadow_mmis[species] = mmi
+	var m: MultiMesh = (_shadow_mmis[species] as MultiMeshInstance3D).multimesh
+	m.instance_count = buf.size() / SHADOW_STRIDE
+	if m.instance_count > 0:
+		m.buffer = buf
+
+
+## Nombre d'arbres qui projettent une ombre avec la limite (essais et tests).
+func shadow_caster_count() -> int:
+	var n := 0
+	for sp in _shadow_mmis:
+		n += (_shadow_mmis[sp] as MultiMeshInstance3D).multimesh.instance_count
+	return n
+
+
+## Vrai si un point du carré de centre `center` et de côté `size_m` est à moins de `limit_m` (plus le fondu du
+## shader) de la caméra, en plan.
+static func casts_shadow(center: Vector3, cam_pos: Vector3, limit_m: float, size_m: float = CELL_SIZE_M) -> bool:
+	var half := size_m * 0.5
+	var dx := maxf(absf(cam_pos.x - center.x) - half, 0.0)
+	var dz := maxf(absf(cam_pos.z - center.z) - half, 0.0)
+	return Vector2(dx, dz).length() <= limit_m + SPECIES_LOD_BLEND_M
 
 
 ## Vérifie et applique le budget d'instances en retirant les cases les plus lointaines. Lot S1 : avec la
@@ -612,7 +722,7 @@ static func build_lod0_mesh() -> ArrayMesh:
 			var a1 := TAU * float(i + 1) / sides
 			var p0 := Vector3(cos(a0) * r, y0, sin(a0) * r)
 			var p1 := Vector3(cos(a1) * r, y0, sin(a1) * r)
-			var n := (p0 - tip).cross(p1 - tip).normalized()
+			var n := (tip - p0).cross(p1 - p0).normalized()   # vers l'extérieur, avant de la face (p0, p1, tip)
 
 			st.set_color(foliage_col)
 			st.set_normal(n)

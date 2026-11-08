@@ -7,6 +7,8 @@ extends SceneTree
 ## - deux images à 2 s d'écart avec un vent d'ouest : le motif s'est déplacé vers l'est (corrélation).
 ## Lancé par run_engine_tests.sh sous Xvfb avec le moteur Compatibility, comme test_terrain_render.gd.
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const SkyClouds := preload("res://scripts/sky_clouds.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 
@@ -158,5 +160,6 @@ func _run() -> void:
 	var layered: ShaderMaterial = SkyClouds.build_material(params, "layered")
 	var c := await _shot(layered)
 	_check(_bright_share(c, current, rows) >= _bright_share(a, current, rows) * 0.9, "deux couches : rendu sans erreur, au moins autant de nuages")
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_sky_clouds_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

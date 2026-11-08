@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Pack de départ : cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construits depuis OpenStreetMap, sans trace réelle dans le dépôt | Python | O15 | Moyenne | **Livré le 27 octobre** (issue #158) |
+| Pack de départ : cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construits depuis OpenStreetMap, sans trace réelle dans le dépôt | Python | O15 | Moyenne | **Livré le 27 octobre** (issue #158) ; recettes corrigées le 7 novembre (PR #740) ; reste la recette J4 sur le PC |
 
 ## 1. Objectif
 
@@ -66,3 +66,5 @@ Livré le 27 octobre 2026 (issue #158), thread « Développer les lots O restant
 - Proposition d'installation au premier démarrage ou par le menu : à faire avec l'écran de la bibliothèque (O12), le launcher étant hors de ce lot.
 - **Coordonnées et références saisies sans accès au réseau** : la première construction sur le PC dira, col par col, si un point de passage ou une référence est à corriger (message du contrôle à ± 5 %).
 - **Recettes corrigées le 7 novembre** (première construction réelle : 3 cols sur 16 passaient). Points de passage refaits d'après les routes OSM pour 11 cols (départ, sommet sur la route, points intermédiaires qui gardent l'itinéraire dans la boîte téléchargée ou sur la bonne route : D 974 du Ventoux, D 13B6 et col Amic du Grand Ballon, virage ouest de la Subaru Line, TF-21 du Teide). Longueurs de référence revues pour le Grand Ballon par le col Amic (15,9 km) et le Teide depuis Vilaflor (26 km). Le contrôle garde ± 5 %, mais l'altitude est interpolée entre les deux entrées dans les tunnels et sur les ponts, et le dénivelé contrôlé est mesuré sur le profil moyenné sur 200 m : dans les lacets, le MNT à 30 m voit le talus à chaque virage (Alpe d'Huez : 1 318 m bruts pour 1 103 m d'écart départ-arrivée). Construction des 16 cols validée hors ligne avec les réponses Overpass téléchargées sur le PC.
+
+**Point du 8 novembre.** Fait : 16 recettes, construction, contrôle à ± 5 %, installation par **Réglages › Contenus** (O29, PR #656), recettes corrigées (PR #740) ; les 16 cols passent sur les réponses Overpass récupérées sur le PC (boîte élargie de 5 km, `~/OpenRide/cols-osm/`). Reste, sur le PC et avec le réseau : la première vraie construction (`route-pack-build cols_celebres --install` ou le menu), qui fait les requêtes Overpass exactes et installe le pack (aucun col n'est encore installé dans `~/OpenRide/GPX/` au 8 novembre) ; puis le protocole J4 (`docs/PROTOCOLE_TEST_2026-10-26.md`) : longueur, dénivelé et pente de l'Alpe d'Huez, du Grand Ballon et de la Norikura Echo Line dans la bibliothèque, et un col roulé.

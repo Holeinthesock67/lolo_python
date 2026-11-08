@@ -401,11 +401,12 @@ static func _clip_half(poly: PackedVector2Array, g: Vector3) -> PackedVector2Arr
 	return out
 
 
-## Code d'habillage lu par building.gdshader dans UV2.y : matière du mur, ouvertures, matière du toit,
-## partie (0 mur, 1 toit) et hauteur des murs au quart de mètre (fenêtres sous l'égout seulement).
+## Code d'habillage lu par building.gdshader dans UV2.y : matière du mur (16 codes), ouvertures (8), matière du
+## toit (8), partie (0 mur, 1 toit) et hauteur des murs au quart de mètre (fenêtres sous l'égout seulement).
+## Plus grand code : 4000 × 2048 + 2047, sous 2^24 (entier exact en flottant 32 bits).
 static func dress_code(dress: Dictionary, is_roof: bool, height_m: float) -> float:
 	var eave_q := clampi(roundi(height_m * 4.0), 0, 4000)
-	return float(int(dress["wall"]) + 8 * int(dress["windows"]) + 64 * int(dress["roof"]) + 512 * int(is_roof) + 1024 * eave_q)
+	return float(int(dress["wall"]) + 16 * int(dress["windows"]) + 128 * int(dress["roof"]) + 1024 * int(is_roof) + 2048 * eave_q)
 
 
 ## Murs d'un anneau : un quadrilatère par morceau de segment, de `base_y - skirt` jusqu'au toit (le haut suit
@@ -708,7 +709,7 @@ static func build(buildings: Array, theme: Dictionary, skirt_m: float = 0.0,
 		if planes.size() > 1:
 			pitched += 1
 			# Débord du toit : contour élargi, pans prolongés sous la hauteur des murs
-			var wide := Geometry2D.offset_polygon(outer, BuildingStyles.EAVE_OVERHANG_M, Geometry2D.JOIN_MITER)
+			var wide := Geometry2D.offset_polygon(outer, float(dress.get("overhang_m", BuildingStyles.EAVE_OVERHANG_M)), Geometry2D.JOIN_MITER)
 			if wide.size() == 1 and signed_area(wide[0]) > 0.0:
 				var wide_tris := _triangulate_with_holes(wide[0], holes)
 				if not wide_tris.is_empty():

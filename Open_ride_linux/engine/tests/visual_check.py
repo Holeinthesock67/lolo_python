@@ -1266,6 +1266,7 @@ def _decor_vivant_scene(s: Session) -> None:
 
 PASS_WINDOW_M = 10.0   # voiture qui double vue à moins de 10 m devant ou derrière le cycliste (lot P32)
 PASS_WAIT_S = 60.0   # la voiture d'en face croisée, puis l'utilitaire qui double (décor ralenti sous Xvfb)
+PELOTON_CAR_KMH = 10.0   # voiture d'en face de la scène peloton_face (voir _peloton_face_scene)
 
 
 def _place(s: Session, **spec: Any) -> None:
@@ -1384,7 +1385,11 @@ def _peloton_face_scene(s: Session) -> None:
                 f"{lats}, {len(near)} à moins de 30 m")
     # Posée assez près pour croiser le peloton même quand le décor avance lentement (Xvfb, --fige) : les bots
     # serrent à droite dès qu'elle est là, elle attend devant eux s'ils ne lui laissent pas encore la place.
-    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 45.0, "kmh": 40.0})
+    # Au pas (PELOTON_CAR_KMH) : en temps réel (--native, 60 images/s), une voiture à 40 km/h croise les bots
+    # 0,4 s après qu'ils ont tous serré à droite, puis ils reprennent leur place ; les captures, espacées de plus
+    # de 0,5 s, manquaient cet instant et la dernière, 60 s plus tard, ne montrait plus la voiture (r773, 8/11).
+    # À 10 km/h, les bots restent à droite environ 11 s avec la voiture à moins de 50 m (simulation des modèles).
+    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 45.0, "kmh": PELOTON_CAR_KMH})
     shot = None
     t0 = now()
     while now() - t0 < PASS_WAIT_S:
@@ -1751,7 +1756,7 @@ def _decor_riders_draft_scene(s: Session) -> None:
     s_last = core.current_s() + 1.7 + 12.0
 
     def group(s0: float) -> list[dict[str, Any]]:
-        return [{"id": f"c77-{2 - i}", "s": round(s0 + 1.5 * i, 2), "dir": 1, "v": 0.0, "lane_m": 1.5,
+        return [{"id": f"c77-{2 - i}", "s": round(s0 + 2.1 * i, 2), "dir": 1, "v": 0.0, "lane_m": 1.5,
                  "look": (37 * (i + 1) << 4) | (i + 2)} for i in range(3)]
 
     core.set_scene(speed=0.0, lane_m=1.5, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=0.0,
@@ -1970,7 +1975,7 @@ def _camera_scenes(s: Session) -> None:
 
 XP_RESULT = {"type": "xp_result", "v": CONTRACT_VERSION, "eligible": True, "reason": None,
              "gains": [{"source": "distance", "points": 302}, {"source": "climb", "points": 302}], "total": 604,
-             "xp_total": 100, "xp_next_level": 1600, "level_before": 9, "level_after": 10, "coins_gained": 42,
+             "xp_total": 1300, "xp_level_start": 1200, "xp_next_level": 1600, "level_before": 9, "level_after": 10, "coins_gained": 42,
              "coins_total": 232, "equipment_gain_s": -12.5, "unlocked": ["frame_aero"], "challenges": [], "more": False}
 
 
@@ -1986,7 +1991,7 @@ def _progress_scenes(s: Session) -> None:
         img, info = shot
         s.check_texts("progression", info, {"menu": "Distance 15,2 km : +302 XP"}, contains=True)
         s.check_texts("progression", info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
-        s.check_texts("progression", info, {"menu": "Niveau 10 : ■□□□□□□□□□ 100 / 1600 XP"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Niveau 10 : ■■■□□□□□□□ 100 / 400 XP"}, contains=True)
         s.check_texts("progression", info, {"menu": "Niveau 10 !"}, contains=True)
         s.check_texts("progression", info, {"menu": "Aller au Garage"}, contains=True)
         s.check_layout("progression", info)
