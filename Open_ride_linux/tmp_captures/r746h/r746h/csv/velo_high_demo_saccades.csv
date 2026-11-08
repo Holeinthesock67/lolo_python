@@ -1,0 +1,55 @@
+t_s;unix_s;frame_ms;distance_m;cause;steps
+3.686;1794120178.539;147.9;0.0;inconnue;
+16.692;1794120191.545;133.0;0.0;cyclistes;spectateurs préchauffage 0.1 | passants préchauffage 0.0 | cyclistes préchauffage 1551.9
+23.620;1794120198.473;119.0;0.0;capture;route road:0 2.4 | osm 0 0.1
+24.271;1794120199.124;133.3;0.0;capture;fenetre  0.4 | arches  0.4
+24.526;1794120199.379;133.3;0.0;capture;fenetre  0.5 | arches  0.0
+24.733;1794120199.586;138.3;0.0;capture;fenetre  0.5 | arches  0.0
+24.943;1794120199.796;143.5;0.0;capture;fenetre  0.5 | arches  0.0
+25.117;1794120199.971;124.6;0.0;capture;fenetre  0.3 | arches  0.0
+25.193;1794120200.046;77.0;0.0;capture;fenetre  0.4 | arches  0.0
+25.221;1794120200.075;33.3;0.0;capture;fenetre  0.5 | arches  0.0
+25.264;1794120200.117;36.3;0.0;inconnue;fenetre  0.6 | arches  0.0
+25.684;1794120200.538;33.9;0.0;inconnue;fenetre  0.6 | arches  0.0
+28.581;1794120203.434;60.2;0.0;inconnue;fenetre  0.3 | arches  0.0
+30.479;1794120205.332;129.9;3.5;capture;fenetre  0.9 | arches  0.0
+36.472;1794120211.325;121.8;29.1;capture;fenetre  0.8 | arches  0.0
+36.847;1794120211.700;105.2;31.1;capture;fenetre  0.5 | arches  0.0
+42.512;1794120217.365;138.7;65.2;capture;fenetre  0.5 | arches  0.0
+48.500;1794120223.353;139.0;108.1;capture;fenetre  0.6 | arches  0.0
+51.900;1794120226.753;139.1;134.6;capture;fenetre  2.9 | arches  0.1
+52.474;1794120227.327;105.8;139.7;capture;fenetre  0.4 | arches  0.0
+54.495;1794120229.348;139.2;155.8;capture;fenetre  1.2 | arches  0.0
+60.488;1794120235.340;147.2;205.8;capture;fenetre  0.9 | arches  0.0
+66.480;1794120241.332;105.7;8.4;capture;fenetre  0.7 | arches  0.0
+66.844;1794120241.697;122.4;11.6;capture;fenetre  0.3 | arches  0.0
+67.473;1794120242.326;137.3;17.3;capture;fenetre  0.3 | arches  0.0
+72.508;1794120247.360;133.3;62.0;capture;fenetre  0.6 | arches  0.0
+78.512;1794120253.364;140.3;116.2;capture;fenetre  1.3 | arches  0.1
+81.861;1794120256.713;141.7;147.3;capture;fenetre  0.6 | arches  0.0
+82.498;1794120257.350;141.7;153.1;capture;fenetre  0.5 | arches  0.0
+84.510;1794120259.362;143.9;171.5;capture;fenetre  1.6 | arches  0.1
+90.491;1794120265.343;139.9;228.7;capture;fenetre  0.8 | arches  0.0
+95.864;1794120270.716;33.3;34.1;inconnue;fenetre  1.3 | arches  0.1
+96.511;1794120271.363;138.8;39.0;capture;fenetre  1.3 | arches  0.0
+96.844;1794120271.696;141.8;42.7;capture;fenetre  0.5 | arches  0.0
+102.504;1794120277.356;142.2;99.8;capture;fenetre  0.6 | arches  0.0
+108.545;1794120283.396;142.0;162.5;capture;fenetre  1.1 | arches  0.0
+111.877;1794120286.729;133.9;197.4;capture;fenetre  1.0 | arches  0.1
+114.452;1794120289.304;100.7;224.8;capture;fenetre  0.3 | arches  0.0
+120.486;1794120295.337;134.2;38.5;capture;fenetre  0.8 | arches  0.1
+126.491;1794120301.343;134.4;101.5;capture;fenetre  0.4 | arches  0.0
+126.841;1794120301.693;101.0;105.5;capture;fenetre  0.3 | arches  0.0
+132.498;1794120307.349;117.9;165.7;capture;fenetre  0.7 | arches  0.0
+138.471;1794120313.322;118.1;228.9;capture;fenetre  0.4 | arches  0.0
+141.855;1794120316.706;118.3;15.2;capture;fenetre  0.4 | arches  0.0
+142.498;1794120317.349;118.3;22.0;capture;fenetre  0.3 | arches  0.0
+144.519;1794120319.370;135.0;42.9;capture;fenetre  1.2 | arches  0.1
+150.477;1794120325.328;101.9;103.6;capture;fenetre  0.7 | arches  0.0
+155.701;1794120330.552;34.9;156.1;inconnue;fenetre  0.8 | arches  0.1
+156.504;1794120331.355;137.5;162.6;capture;fenetre  1.8 | arches  0.1
+156.864;1794120331.715;142.9;166.1;capture;fenetre  0.3 | arches  0.0
+162.518;1794120337.369;133.3;218.8;capture;fenetre  0.8 | arches  0.0
+165.707;1794120340.558;33.3;249.8;inconnue;fenetre  2.1 | arches  0.1
+168.495;1794120343.346;133.2;24.7;capture;fenetre  0.9 | arches  0.1
+171.581;1794120346.432;116.6;42.7;capture;fenetre  0.4 | arches  0.0

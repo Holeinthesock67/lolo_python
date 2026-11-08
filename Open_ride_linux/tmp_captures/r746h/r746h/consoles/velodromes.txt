@@ -1,0 +1,2 @@
+velodrome-250 : 250 m, virages à 42°, droites à 12°
+Pistes écrites dans ~/mesures-2026-11-01-auto/r746h/monde.
