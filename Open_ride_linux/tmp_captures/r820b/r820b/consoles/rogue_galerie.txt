@@ -1,0 +1,7 @@
+== low ==
+   low : OK 93/93
+== medium ==
+   medium : OK 93/93
+== high ==
+   high : OK 93/93
+Galerie : ~/mesures-2026-11-01-auto/r820b/vitrine/galerie.html

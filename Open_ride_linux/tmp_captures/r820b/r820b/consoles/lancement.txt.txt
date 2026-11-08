@@ -1,0 +1,7 @@
+14:38:05 empreinte avant dbcae732ed690b86d3cd897f0df788ee
+14:38:05 tête d751ecf7
+14:39:14 rogue_galerie --native --qualites low,medium,high
+14:45:44 fin rc=0
+14:45:45 empreinte après dbcae732ed690b86d3cd897f0df788ee
+14:45:45 clone 90c08094
+14:45:45 FIN
