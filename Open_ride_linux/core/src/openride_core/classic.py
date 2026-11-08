@@ -188,7 +188,8 @@ class ClassicRace:
             base = p.lap * self.length_m
             self.gain_jobs.append(GainJob(pending, p.t_start, p.t_end, base + seg.s_start, base + seg.s_end))
         self.passes.append({"segment_id": p.segment_id, "kind": seg.type, "time_s": round(p.time_s, 2),
-                            "with_powerup": p.with_bonus, "pr": added.is_record, "rank": rank,
+                            "with_powerup": p.with_bonus, "pr": added.is_record,
+                            "pr_time_s": msg["pr_time_s"], "rank": rank,   # ancien record (lot N20)
                             "rank_total": len(rows), "points": points})
         self.journal.append({"kind": "segment", "ts": round(time.time(), 3), "segment_id": p.segment_id,
                              "lap": p.lap, "type": seg.type, "category": seg.category,

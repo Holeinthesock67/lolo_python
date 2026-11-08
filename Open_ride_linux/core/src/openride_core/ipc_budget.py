@@ -76,6 +76,11 @@ def _short_bot_names(d: dict[str, Any]) -> None:
             bot["name"] = bot["name"][:6]
 
 
+def _drop_power_profile(d: dict[str, Any]) -> None:
+    if isinstance(d.get("summary"), dict):
+        d["summary"].pop("power_profile", None)
+
+
 def _bots_if_devices(d: dict[str, Any]) -> None:
     if "devices" in d:
         d.pop("bots", None)
@@ -89,6 +94,8 @@ STATE_DEGRADATION: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("noms des bots raccourcis", _short_bot_names),
     ("bots (trame avec devices)", _bots_if_devices),
     ("devices", _drop("devices")),
+    # Lot N20 (révision 1.7) : la courbe du bilan part avant le bilan lui-même ; l'engine garde la dernière reçue.
+    ("courbe du bilan", _drop_power_profile),
     ("summary", _drop("summary")),
     ("bots", _drop("bots")),
     ("riders", _drop("riders")),          # lot AS7 : extrapolés par l'engine, ils reviennent 100 ms plus tard
@@ -292,6 +299,34 @@ def worst_grandprix_state(opponents: int = 4) -> dict[str, Any]:
     return d
 
 
+def worst_summary() -> dict[str, Any]:
+    """Bilan `summary` le plus lourd (révision 1.7) : bilan enrichi, 24 blocs ERG, abri, 10 passages sur
+    les segments avec l'ancien record (lot N20), test de FTP et courbe réduite de 50 points avec cible."""
+    from .tools.session_summary import PROFILE_POINTS
+
+    return {
+        "duration_s": 86_399.9, "distance_m": 199_999.9, "avg_power_w": 1234.5,
+        "fit_path": "/home/" + _text(16) + "/OpenRide/Profils/" + _text(16) + "/Activities/2026-11-08_07-12-00.fit",
+        "np_w": 1234.5, "intensity_factor": 9.99, "tss": 9999.9, "elevation_gain_m": 9999.9,
+        "avg_cadence_rpm": 123.4, "avg_hr_bpm": 199.9, "max_power_w": 1999.9,
+        "blocks": [[24, 1234.5, 1234.5]] * 24, "blocks_truncated": True,
+        "draft_time_s": 86_399, "draft_kj": 9999.9,
+        "power_profile": {"step_s": 1440, "power_w": [1999] * PROFILE_POINTS, "target_w": [1999] * PROFILE_POINTS},
+        "segments": {"passes": [{"segment_id": _ID, "kind": "climb", "time_s": 99_999.99, "with_powerup": True,
+                                 "pr": True, "pr_time_s": 99_999.99, "rank": 99, "rank_total": 99, "points": 20}] * 10,
+                     "more": True, "jerseys": {"sprint": "bot-1-ab", "kom": "bot-2-ab"}},
+        "ftp_test": {"test": "ramp", "ftp_w": 1234, "previous_ftp_w": 1234,
+                     "warnings": ["too_short", "erratic_cadence", "trainer_dropout", "paused"], "reliable": False},
+    }
+
+
+def worst_finished_state() -> dict[str, Any]:
+    """Trame `state` d'une séance finie (lot N20) : trame 1.0 sans bots ni `devices`, bilan le plus lourd."""
+    d = _worst_1_0()
+    d.update({"session_state": "FINISHED", "pause_reason": None, "summary": worst_summary()})
+    return d
+
+
 def revisions() -> list[str]:
     return ["1.0", *REVISION_EXTRAS]
 
@@ -384,6 +419,7 @@ def report() -> str:
     gp11.pop("devices")
     rows.append(("1.7 grand prix 11 bots", gp11, state_limit("1.7")))
     rows.append(("1.4 rogue", worst_rogue_state(), state_limit("1.4")))
+    rows.append(("1.7 bilan", worst_finished_state(), state_limit("1.7")))
     rows += [(f"1.4 {name}", msg, MAX_DATAGRAM_SIZE) for name, msg in worst_short_messages().items()]
     for label, msg, limit in rows:
         n = size(msg)
