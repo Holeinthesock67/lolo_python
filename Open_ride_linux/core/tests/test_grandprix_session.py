@@ -297,13 +297,16 @@ def test_classic_ride_unchanged_after_grandprix(env):
     assert s._lane.auto and s._lane.home == pytest.approx(1.2)
 
 
-def test_settings_listed_and_bounds():
-    keys = [st.key for st in settings.SETTINGS]
-    for k in ("grandprix.opponents", "grandprix.laps", "grandprix.distance_km", "grandprix.chaos",
-              "grandprix.box_every_m"):
-        assert k in keys
-    items = {it["key"]: it for it in settings.current(Config())}
-    assert (items["grandprix.opponents"]["min"], items["grandprix.opponents"]["max"]) == (2, 4)
-    assert items["grandprix.chaos"]["choices"] == ["soft", "normal", "wild"]
-    assert items["grandprix.box_every_m"]["step"] == 500 and items["grandprix.box_every_m"]["value"] == 1500
-    assert items["grandprix.laps"]["value"] == 3 and items["grandprix.distance_km"]["value"] == 10
+def test_settings_and_mode_pending_until_gp9_bounds_kept():
+    """Avant GP9 (écran du mode) : réglages `grandprix.*` hors du menu et mode non annoncé, rangés avec leur
+    lot ; la séance garde les bornes du fichier, et `start` lance le mode (lots GP7 et GP8)."""
+    from openride_core import config as config_mod
+    from openride_core.ipc_server import CORE_MODES, PENDING_MODES
+    gp_keys = {("grandprix", k) for k in ("opponents", "laps", "distance_km", "chaos", "box_every_m")}
+    assert not any(st.section == "grandprix" for st in settings.SETTINGS)
+    assert all(config_mod.PENDING_KEYS[k] == "GP9" for k in gp_keys)
+    assert PENDING_MODES == {"grandprix": "GP9"} and "grandprix" not in CORE_MODES
+    assert config_mod.BOUNDS[("grandprix", "opponents")] == (2, 4)
+    assert config_mod.CHOICES[("grandprix", "chaos")] == ("soft", "normal", "wild")
+    gc = Config().grandprix
+    assert (gc.box_every_m, gc.laps, gc.distance_km) == (1500, 3, 10)

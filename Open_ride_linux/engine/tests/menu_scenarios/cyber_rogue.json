@@ -21,7 +21,7 @@
     {"note": "avertissement déjà accepté : pas de nouvelle confirmation", "journal": "core", "motif": "start_run.*60", "delai": 10},
     {"ecran": "ready", "titre": "Prêt : Cyber-Rogue", "contient": ["Seuil · 60 min"], "delai": 15},
     {"choisir": "start"},
-    {"journal": "core", "motif": "-> RUNNING", "delai": 15},
+    {"journal": "core", "motif": "-> RUNNING", "delai": 20},
     {"menu_cache": true},
     {"appui": "Y_SHORT"},
     {"ecran": "pause", "focus": "resume"},

@@ -220,7 +220,10 @@
       "ambience": {
         "volume": 0.7,
         "birds": 0.8,
-        "insects": 0.3
+        "insects": 0.3,
+        "layers": {
+          "conifer_wind": 0.25
+        }
       },
       "fauna": {
         "birds": 0.8,
@@ -290,7 +293,10 @@
       "ambience": {
         "volume": 0.6,
         "birds": 0.5,
-        "insects": 0.6
+        "insects": 0.6,
+        "layers": {
+          "cowbells": 0.3
+        }
       },
       "fauna": {
         "birds": 0.4,
@@ -367,7 +373,10 @@
       "ambience": {
         "volume": 0.5,
         "birds": 0.4,
-        "insects": 0.2
+        "insects": 0.2,
+        "layers": {
+          "conifer_wind": 1.0
+        }
       },
       "fauna": {
         "birds": 0.5,
@@ -430,7 +439,11 @@
       "ambience": {
         "volume": 0.5,
         "birds": 0.3,
-        "insects": 0.2
+        "insects": 0.2,
+        "layers": {
+          "cowbells": 1.0,
+          "conifer_wind": 0.4
+        }
       },
       "fauna": {
         "birds": 0.4,
@@ -499,7 +512,10 @@
       "ambience": {
         "volume": 0.5,
         "birds": 0.3,
-        "insects": 0.1
+        "insects": 0.1,
+        "layers": {
+          "ice_cracks": 0.3
+        }
       },
       "fauna": {
         "birds": 0.4,
@@ -563,7 +579,10 @@
       "ambience": {
         "volume": 0.5,
         "birds": 0.0,
-        "insects": 0.0
+        "insects": 0.0,
+        "layers": {
+          "ice_cracks": 1.0
+        }
       },
       "fauna": {
         "birds": 0.1,
@@ -635,7 +654,10 @@
       "ambience": {
         "volume": 0.6,
         "birds": 0.3,
-        "insects": 0.9
+        "insects": 0.9,
+        "layers": {
+          "cicadas": 1.0
+        }
       },
       "fauna": {
         "birds": 0.4,
@@ -767,7 +789,10 @@
       "ambience": {
         "volume": 0.7,
         "birds": 0.5,
-        "insects": 0.8
+        "insects": 0.8,
+        "layers": {
+          "cicadas": 0.4
+        }
       },
       "fauna": {
         "birds": 0.6,
@@ -827,7 +852,10 @@
       "ambience": {
         "volume": 0.5,
         "birds": 0.0,
-        "insects": 0.1
+        "insects": 0.1,
+        "layers": {
+          "singing_sand": 1.0
+        }
       },
       "fauna": {
         "birds": 0.1,
@@ -890,7 +918,10 @@
       "ambience": {
         "volume": 0.5,
         "birds": 0.1,
-        "insects": 0.2
+        "insects": 0.2,
+        "layers": {
+          "singing_sand": 0.3
+        }
       },
       "fauna": {
         "birds": 0.1,
@@ -957,7 +988,11 @@
       "ambience": {
         "volume": 0.9,
         "birds": 0.9,
-        "insects": 1.0
+        "insects": 1.0,
+        "layers": {
+          "jungle_chorus": 1.0,
+          "frogs": 0.3
+        }
       },
       "fauna": {
         "birds": 1.0,
@@ -1021,7 +1056,10 @@
       "ambience": {
         "volume": 0.7,
         "birds": 0.6,
-        "insects": 0.6
+        "insects": 0.6,
+        "layers": {
+          "frogs": 1.0
+        }
       },
       "fauna": {
         "birds": 0.7,
@@ -1091,7 +1129,11 @@
       "ambience": {
         "volume": 0.7,
         "birds": 0.4,
-        "insects": 0.2
+        "insects": 0.2,
+        "layers": {
+          "waves": 1.0,
+          "gulls": 1.0
+        }
       },
       "fauna": {
         "birds": 0.8,
@@ -1153,7 +1195,10 @@
       "ambience": {
         "volume": 0.5,
         "birds": 0.1,
-        "insects": 0.1
+        "insects": 0.1,
+        "layers": {
+          "fumaroles": 1.0
+        }
       },
       "fauna": {
         "birds": 0.2,

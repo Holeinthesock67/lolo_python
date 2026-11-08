@@ -4,8 +4,9 @@ Le joueur n'a besoin d'aucune commande pour remplir sa bibliothèque : chaque co
 message `contents` (`list_contents`), installé par `install_content`, toujours sans rien écraser.
 
 - `starter` (« Contenus de départ ») : les entraînements livrés (`core/workouts/`), les deux plans de
-  départ (`core/plans/`) et les quatre parcours de démonstration des biomes (`openride-core
-  demo-biomes`, lot U19). Installé seul au premier lancement (`run --first-run`), puis proposé dans
+  départ (`core/plans/`), les quatre parcours de démonstration des biomes (`openride-core
+  demo-biomes`, lot U19) et la piste du vélodrome (`openride-core velodromes`, lot VD10, écrite par le
+  core sans compilateur). Installé seul au premier lancement (`run --first-run`), puis proposé dans
   le menu pour une installation existante. Rien n'est téléchargé.
 
 - `routes:cols_celebres` (pack « Cols célèbres », lot O29) : construit depuis OpenStreetMap par le
@@ -102,7 +103,15 @@ def starter_parts(dirs: ContentDirs) -> dict[str, tuple[int, int]]:
         "workouts": (sum((dirs.workouts / p.name).exists() for p in workouts), len(workouts)),
         "plans": (sum((dirs.plans / p.name).exists() for p in plans), len(plans)),
         "routes": (sum((dirs.routes / f"{n}.world" / "manifest.json").is_file() for n in demos), len(demos)),
+        "velodromes": (sum((dirs.routes / f"{n}.world" / "manifest.json").is_file() for n in _velodrome_names()),
+                       len(_velodrome_names())),
     }
+
+
+def _velodrome_names() -> list[str]:
+    from .velodrome import TRACKS
+
+    return list(TRACKS)
 
 
 def _state_of(parts: dict[str, tuple[int, int]]) -> str:
@@ -115,8 +124,10 @@ def _state_of(parts: dict[str, tuple[int, int]]) -> str:
 
 def starter_detail(parts: dict[str, tuple[int, int]]) -> str:
     w, p, r = parts["workouts"][1], parts["plans"][1], parts["routes"][1]
+    v = parts["velodromes"][1]
     text = f"{w} entraînements, {p} plans de départ"
-    return text + (f", {r} parcours de démonstration des biomes" if r else "")
+    text += f", {r} parcours de démonstration des biomes" if r else ""
+    return text + (f", {v} piste de vélodrome" if v == 1 else f", {v} pistes de vélodrome" if v else "")
 
 
 def install_starter(dirs: ContentDirs, progress: Callable[[int], None] = lambda pct: None) -> str:
@@ -131,6 +142,8 @@ def install_starter(dirs: ContentDirs, progress: Callable[[int], None] = lambda 
     copied += [n for n in plans_copied if not n.endswith(".toml")]
     progress(40)
     routes, note = install_biome_demos(dirs.routes)
+    progress(90)
+    routes += install_velodromes(dirs.routes)
     progress(100)
     parts = [f"{len(copied)} entraînement(s)", f"{len(new_plans)} plan(s)", f"{len(routes)} parcours"]
     text = "Ajouté : " + ", ".join(parts) + "."
@@ -164,6 +177,16 @@ def install_biome_demos(routes_dir: Path) -> tuple[list[str], str]:
                     shutil.rmtree(dst)
                 shutil.move(str(src), dst)
     return missing, ""
+
+
+def install_velodromes(routes_dir: Path) -> list[str]:
+    """Écrit les pistes du vélodrome qui manquent (lot VD10, jamais d'écrasement) ; renvoie leurs noms."""
+    from .velodrome import write_velodrome
+
+    missing = [n for n in _velodrome_names() if not (routes_dir / f"{n}.world" / "manifest.json").is_file()]
+    for n in missing:
+        write_velodrome(routes_dir, n)
+    return missing
 
 
 # --- packs, archives et thèmes (lot O29) ---------------------------------------------------------

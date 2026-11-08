@@ -1,6 +1,6 @@
 # Diagnostic – Boîtier gauche du Zwift Click muet après la connexion
 
-**Statut au 31 octobre 2026 : réglé.** Le boîtier gauche est redémarré quand Zwift le verrouille (`[drivers] click_reset_locked`, vrai par défaut, docs/RECHERCHE_CLICK_GAUCHE.md §9) ; − et les quatre flèches sont reçus (essais sur le PC du 30 octobre, firmware 1.2.0). B du boîtier droit n'est plus un contournement : il double « − » pendant les environ 4 s de chaque redémarrage. Ce document garde l'historique du diagnostic.
+**Statut au 31 octobre 2026 : réglé.** Le boîtier gauche est redémarré quand Zwift le verrouille (`[drivers] click_reset_locked = "reset"`, défaut, docs/RECHERCHE_CLICK_GAUCHE.md §9 ; essai D du maintien sans redémarrage : choix `"keep"`, §10) ; − et les quatre flèches sont reçus (essais sur le PC du 30 octobre, firmware 1.2.0). B du boîtier droit n'est plus un contournement : il double « − » pendant les environ 4 s de chaque redémarrage. Ce document garde l'historique du diagnostic.
 
 ## 1. Contexte et constat (essai du 25 octobre 2026)
 

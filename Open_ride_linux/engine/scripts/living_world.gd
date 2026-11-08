@@ -15,6 +15,8 @@ extends Node3D
 ##   terrain en `high`), fonds d'ambiance et cloches ; le voisinage sonore (part de forêt et de bâti, eau
 ##   la plus proche) n'est recalculé qu'au plus toutes les NEIGH_PERIOD_S, à partir des contours des
 ##   tronçons OSM déjà chargés (osm_streamer.gd `layer_shapes`) à moins de AmbienceModel.RADIUS_M.
+## - Lot U11 : le voisinage porte aussi les poids des biomes au cycliste (`biomes`, modèle actif d'osm_streamer),
+##   la mer la plus proche (eaux `sea` jusqu'à AmbienceModel.SEA_REACH_M) et la saison du thème.
 
 const WindModel := preload("res://scripts/wind_model.gd")
 const RenderDiag := preload("res://scripts/render_diag.gd")
@@ -46,6 +48,7 @@ var neigh: Dictionary = {}
 var neigh_updates := 0               # voisinages recalculés (tests)
 var last_wind: Dictionary = {}
 var rain := 0.0                      # pluie de la météo (P8), posée par living_decor.gd (P17)
+var season := "summer"               # saison du thème (`season`) tant que P18 ne la fait pas avancer (U11)
 var _neigh_at := -INF
 var _shapes_version := -1
 var _shapes: Dictionary = {"forests": [], "buildings": [], "waters": []}
@@ -71,6 +74,7 @@ func configure(preset_name: String, living_enabled: bool, theme: Dictionary, env
 		sky_material = mat
 	if sound_player != null:
 		sound_player.ambience.set_theme(theme)
+	season = str(theme.get("season", "summer"))
 	if grass == null:
 		grass = GrassTufts.new()
 		grass.name = "GrassTufts"
@@ -156,6 +160,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		neigh["wind_strength"] = float(last_wind.get("strength", 0.0))
 		neigh["paused"] = paused
 		neigh["rain"] = rain
+		neigh["season"] = season
 		sound_player.update_ambience(neigh, now_s)
 		sound_player.update_bells(NAN, now_s)
 	return last_wind
@@ -178,10 +183,14 @@ func describe_near(p: Vector3) -> Dictionary:
 			buildings.append(b["points"])
 	var waters := []
 	for w in _shapes["waters"]:
-		# Eau : gain jusqu'à 100 m, au-delà la plus proche ne compte plus
-		if (w["rect"] as Rect2).grow(100.0).has_point(q):
+		# Eau : gain jusqu'à 100 m, au-delà la plus proche ne compte plus ; mer : vagues jusqu'à SEA_REACH_M
+		var reach := AmbienceModel.SEA_REACH_M if str(w.get("kind", "")) == "sea" else 100.0
+		if (w["rect"] as Rect2).grow(reach).has_point(q):
 			waters.append(w)
-	return AmbienceModel.describe(q, forests, buildings, waters)
+	var out := AmbienceModel.describe(q, forests, buildings, waters)
+	var model = osm_streamer.biome_model if osm_streamer != null and "biome_model" in osm_streamer else null
+	out["biomes"] = model.weights_at(p.x, p.z) if model != null and model.active() else {}
+	return out
 
 
 func _refresh_shapes() -> void:

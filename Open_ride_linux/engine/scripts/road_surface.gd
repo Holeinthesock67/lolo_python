@@ -98,3 +98,18 @@ static func section(route, s: float, mode: String, surfaces: Dictionary, road_wi
 	var w := lerpf(half, target, weight)
 	return {"weight": weight, "surface": main, "color": surfaces[main]["color"],
 		"left_m": w + EDGE_NOISE_M * weight * edge_noise(s, 0), "right_m": w + EDGE_NOISE_M * weight * edge_noise(s, 1)}
+
+
+## Demi-largeur sûre de la chaussée en `s` (cyclistes du décor sur le gravel, 7/11) : celle du bitume, ou sur une
+## portion non revêtue celle de `section` sans ses bords irréguliers (le plus étroit des deux côtés possibles).
+## Portage : core/src/openride_core/surface_physics.py `rideable_half_m`.
+static func rideable_half(route, s: float, mode: String, surfaces: Dictionary, road_width_m: float) -> float:
+	var half := road_width_m * 0.5
+	if route == null or not active(route, mode):
+		return half
+	var sec := section(route, s, mode, surfaces, road_width_m)
+	var weight := float(sec["weight"])
+	if weight <= 0.0:
+		return half
+	var target := float(surfaces[str(sec["surface"])]["width_m"]) * 0.5
+	return lerpf(half, target, weight) - EDGE_NOISE_M * weight

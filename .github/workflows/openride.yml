@@ -103,7 +103,7 @@ jobs:
       # Rapports JUnit gardés (lot X3) : durée et statut de chaque test, lus par scripts/stabilite_tests.py.
       - name: Rapports JUnit
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: junit-python-${{ matrix.python-version }}
           path: Open_ride_linux/junit/
@@ -131,7 +131,7 @@ jobs:
 
       - name: Cache de Godot 4.7
         id: cache-godot
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/godot-4.7.2
           key: godot-4.7.2-stable-linux-x86_64
@@ -172,7 +172,7 @@ jobs:
 
       - name: Captures des flancs de colline (pièce jointe)
         if: always() && github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: captures_flancs
           path: ${{ runner.temp }}/captures_flancs
@@ -186,7 +186,7 @@ jobs:
 
       - name: Rapport du banc des menus
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: menu_bench
           path: ${{ runner.temp }}/menu_bench
@@ -199,7 +199,7 @@ jobs:
 
       - name: Rapport du banc visuel du Cyber-Rogue
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: rogue_bench
           path: ${{ runner.temp }}/rogue_bench
@@ -207,7 +207,7 @@ jobs:
 
       - name: Rapport JUnit
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: junit-engine
           path: Open_ride_linux/junit/
@@ -236,7 +236,7 @@ jobs:
 
       - name: Résumé de l'audit
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: dependances
           path: ${{ runner.temp }}/deps

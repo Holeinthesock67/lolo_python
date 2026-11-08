@@ -5,6 +5,8 @@ extends SceneTree
 ## l'arbre ne bouge pas (à 2/255 près), la cime bouge.
 ## Lancé par run_engine_tests.sh sous Xvfb avec le moteur Compatibility, comme test_terrain_render.gd.
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 
 const SIZE := 96
@@ -102,5 +104,6 @@ func _run() -> void:
 	_check(top_diff > 0, "vent fort : la cime bouge (%d pixels changés)" % top_diff)
 	var lean := _diff_rows(calm_a, windy_a, top_rows[0], top_rows[1])
 	_check(lean > 0, "vent fort : l'arbre penche par rapport au vent nul (%d pixels)" % lean)
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_tree_sway_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

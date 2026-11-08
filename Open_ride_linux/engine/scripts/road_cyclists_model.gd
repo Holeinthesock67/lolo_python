@@ -29,6 +29,12 @@ extends RefCounted
 ## de parité unit/test_road_cyclists_parity.gd) et en est l'autorité à moins de NEAR_M du cycliste : `sync_core`
 ## reprend sa liste `riders`, ceux qui roulent dans son sens l'abritent (`draft_bot` = `rider:<id>`) ;
 ## l'engine ne garde que le décor lointain, réglé par le préréglage.
+## Correctif du 7 novembre (recette vélo sur le gravel) : bord droit et bord gauche pris sur la demi-largeur roulable
+## `half_width_at(s)` (option gravel : chemin de 3 à 4 m, world_streamer.rideable_half) ; sur un chemin trop étroit
+## pour rouler à MIN_GAP_M du cycliste (`_narrow`), tous les groupes passent en file et restent sur le chemin ;
+## FILE_GAP_M de 2,1 m (vélo de 1,7 m) ; écarts latéraux à accélération bornée (SIDE_ACCEL_MPS2) et vélo tourné
+## dans le sens où il va (`side_yaw`) ; écart des cyclistes du core rejoint en CORE_LANE_TAU_S, extrapolé entre deux
+## listes, sans saut à la reprise.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
@@ -60,7 +66,7 @@ const NEAR_M := 60.0                  # lot AS7 : cyclistes calculés par le cor
 const CORE_MARGIN_M := 5.0            # ... un cycliste absent de la liste à moins de 55 m n'est plus sur la route
 const CORE_LIST_MAX := 6              # ... liste pleine : ceux qu'elle ne donne pas peuvent encore rouler
 const ABREAST_M := 0.6
-const FILE_GAP_M := 1.5
+const FILE_GAP_M := 2.1               # d'axe à axe en file : vélo de 1,7 m et 0,4 m de roue à roue
 const RIDER_HALF_WIDTH_M := 0.3
 const MIN_GAP_M := 0.7                # d'épaule à épaule, comme un cycliste qui en double un autre
 const EDGE_IN_M := 0.5                # roues à 0,5 m du bord de la chaussée
@@ -74,7 +80,13 @@ const LANE_FREE_M := 100.0
 const MIN_CENTRE_M := MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M
 const GROUP_CLEAR_M := 30.0
 const VEHICLE_CLEAR_M := 60.0         # pas d'apparition à moins de 60 m d'un véhicule de traffic_model.gd (lot P32)
-const SIDE_SPEED_MPS := 1.5
+const SIDE_SPEED_MPS := 1.5           # écart latéral : vitesse au plus, ...
+const SIDE_ACCEL_MPS2 := 2.0          # ... accélération au plus (on s'écarte et on se rabat sans à-coup, essai du 7/11)
+const SIDE_TAU_S := 0.5               # ... approche de la place visée,
+const SIDE_ARRIVE_MPS := 0.1          # ... à au moins 0,1 m/s jusqu'à y être
+const DL_SPEED_MPS := 1.0             # passage de deux de front à la file (et retour) : recul ou retour d'un membre
+const CORE_LANE_TAU_S := 0.15         # cyclistes du core : écart affiché qui rejoint celui de la liste, extrapolé
+const CORE_LANE_RATE_MAX := 2.0       # ... à sa vitesse latérale estimée (au plus 2 m/s)
 const SIDE_LOOK_M := 2.5              # lot P32 : longueur d'un vélo et un peu plus, devant et derrière
 const SIDE_CLEAR_M := 0.8             # lot P32 : on ne se décale pas à moins de 0,8 m d'axe à axe d'un autre
 const SPEED_PERIOD_S := 1.0
@@ -89,6 +101,8 @@ var traffic = null                 # traffic_model.gd (pas de groupe en face pen
 var budget: int = 8
 var seed: int = 0
 var road_width_m: float = 6.0
+## Demi-largeur roulable en s (option gravel : world_streamer.rideable_half), sinon celle du bitume.
+var half_width_at: Callable = Callable()
 var groups: Array = []             # {id, case, s, speed_mps, power_w, members: [{dl, lateral, outfit, jersey, phase}], …}
 var spawned_total: int = 0
 var passed_total: int = 0          # groupes `ahead` doublés par le cycliste
@@ -106,11 +120,12 @@ var _core_seq := -1                 # trame de la dernière liste `riders` repri
 
 ## `climbs` : montées de living_decor.gd (`start_s`, `summit_s`) ; `pois` : seuls les `village` comptent.
 func configure(route_data, climbs: Array, pois: Array, cyclist_budget: int, rng_seed: int = 0,
-		p_road_width_m: float = 6.0, traffic_model = null) -> void:
+		p_road_width_m: float = 6.0, traffic_model = null, p_half_width_at: Callable = Callable()) -> void:
 	route = route_data
 	budget = maxi(0, cyclist_budget)
 	seed = rng_seed
 	road_width_m = p_road_width_m
+	half_width_at = p_half_width_at
 	traffic = traffic_model
 	_villages.clear()
 	for p in pois:
@@ -223,10 +238,21 @@ static func speed_on_grade(p: float, grade_pct: float) -> float:
 	return clampf(lo, MIN_KMH / 3.6, MAX_KMH / 3.6)
 
 
-## Écart à l'axe de la place la plus proche de l'axe d'un groupe rangé sur le bord droit, à MIN_GAP_M au
-## moins du cycliste.
-func _edge_lateral() -> float:
-	return maxf(road_width_m * 0.5 - EDGE_IN_M, RIDER_LATERAL_M + MIN_CENTRE_M)
+func _half_at(s: float) -> float:
+	var half := road_width_m * 0.5
+	if half_width_at.is_valid():
+		half = minf(half, float(half_width_at.call(s)))
+	return maxf(half, EDGE_IN_M)
+
+
+## Écart à l'axe de la place la plus proche du bord droit, roues à EDGE_IN_M du bord.
+static func _edge_lateral(half: float) -> float:
+	return half - EDGE_IN_M
+
+
+## Chemin trop étroit pour rouler à MIN_GAP_M du cycliste en restant dessus : on y roule en file.
+static func _narrow(half: float) -> bool:
+	return half - EDGE_IN_M < RIDER_LATERAL_M + MIN_CENTRE_M - 1e-6
 
 
 func _grade_at(s: float, dir: int) -> float:
@@ -323,8 +349,17 @@ func _spawn(ev: Dictionary, rider_s: float, rider_v: float, bots: Array = [], at
 		"behind_t": 0.0, "passed": false, "best_rel": -INF, "side": "left" if dir < 0 else "right",
 	}
 	g["bot_near"] = _bot_near(g, bots)
+	g["half"] = _half_at(s0)
+	if _narrow(float(g["half"])):
+		for i in range(members.size()):
+			var m: Dictionary = members[i]
+			m["col0"] = m["col"]
+			m["dl0"] = m["dl"]
+			m["col"] = 0
+			m["dl"] = float(i) * FILE_GAP_M
 	for m in members:
 		m["lateral"] = _target_lateral(g, m)
+		m["lat_v"] = 0.0
 	groups.append(g)
 	spawned_total += 1
 
@@ -350,25 +385,79 @@ func _bot_near(g: Dictionary, bots: Array) -> bool:
 
 
 ## Écart latéral visé pour un membre `m` du groupe `g` (voir l'en-tête) ; `g.side` : bord où roule le groupe.
+## Sur un chemin étroit, jamais hors de la bande roulable.
 func _target_lateral(g: Dictionary, m: Dictionary) -> float:
+	var own := _base_lateral(g, m)
 	if g.has("pass_lat"):
-		var own := _base_lateral(g, m)
-		return minf(own, float(g["pass_lat"])) if int(g["dir"]) == 1 else maxf(own, float(g["pass_lat"]))
-	return _base_lateral(g, m)
+		own = minf(own, float(g["pass_lat"])) if int(g["dir"]) == 1 else maxf(own, float(g["pass_lat"]))
+	var half := float(g.get("half", road_width_m * 0.5))
+	if _narrow(half):
+		var edge := _edge_lateral(half)
+		own = clampf(own, -edge, edge)
+	return own
 
 
 func _base_lateral(g: Dictionary, m: Dictionary) -> float:
-	var edge := _edge_lateral()
+	var half := float(g.get("half", road_width_m * 0.5))
+	var edge := _edge_lateral(half)
 	var col := float(m["col"]) * ABREAST_M
+	if _narrow(half):
+		# Chemin étroit : le plus à l'extérieur de front sur le bord, les autres à l'intérieur, le temps de reculer
+		# dans la file (dans le même ordre en travers)
+		var max_col := 0
+		for o in g["members"]:
+			max_col = maxi(max_col, int(o.get("col", 0)))
+		col -= float(max_col) * ABREAST_M
 	match str(g["case"]):
 		"oncoming":
-			return -(road_width_m * 0.5 - EDGE_IN_M + col)
+			return -(edge + col)
 		"overtake":
 			if str(g["side"]) == "left":
 				return RIDER_LATERAL_M - MIN_CENTRE_M
-	if bool(g.get("bot_near", false)):
+	if bool(g.get("bot_near", false)) and not _narrow(half):
 		return maxf(edge, BOT_LATERAL_M + MIN_CENTRE_M)
 	return edge + col
+
+
+## De deux de front à la file (`file`) et retour, sans se chevaucher : en file, un membre recule à DL_SPEED_MPS
+## jusqu'à sa place puis se range dans la ligne ; de retour de front, il reprend sa colonne et ne remonte qu'une
+## fois à côté de celui qu'il suit.
+func _formation(g: Dictionary, file: bool, dt_s: float) -> void:
+	var members: Array = g["members"]
+	for i in range(members.size()):
+		var m: Dictionary = members[i]
+		if not m.has("col0"):
+			m["col0"] = m["col"]
+			m["dl0"] = m["dl"]
+		if file:
+			var dl_t := float(i) * FILE_GAP_M
+			m["dl"] = move_toward(float(m["dl"]), dl_t, DL_SPEED_MPS * dt_s)
+			if absf(float(m["dl"]) - dl_t) < 1e-6:
+				m["col"] = 0
+		else:
+			m["col"] = m["col0"]
+			if absf(float(m["lateral"]) - _target_lateral(g, m)) < 0.05:
+				m["dl"] = move_toward(float(m["dl"]), float(m["dl0"]), DL_SPEED_MPS * dt_s)
+
+
+## Écart latéral vers sa place sans à-coup : vitesse au plus SIDE_SPEED_MPS, approche en SIDE_TAU_S, accélération
+## et freinage au plus SIDE_ACCEL_MPS2 (arrêt sur la place, sans la dépasser).
+func _side_step(g: Dictionary, m: Dictionary, dt_s: float, rider_s: float, bots: Array) -> void:
+	var lat0 := float(m["lateral"])
+	var target := _target_lateral(g, m)
+	var d := target - lat0
+	var want := signf(d) * minf(SIDE_SPEED_MPS, minf(sqrt(2.0 * SIDE_ACCEL_MPS2 * absf(d)),
+			maxf(absf(d) / SIDE_TAU_S, SIDE_ARRIVE_MPS)))
+	var v1 := move_toward(float(m.get("lat_v", 0.0)), want, SIDE_ACCEL_MPS2 * dt_s)
+	var lat1 := lat0 + v1 * dt_s
+	if (target - lat1) * d <= 0.0:
+		lat1 = target
+		v1 = 0.0
+	if _side_blocked(g, float(g["s"]) - float(g["dir"]) * float(m["dl"]), lat0, lat1, rider_s, bots):
+		lat1 = lat0
+		v1 = 0.0
+	m["lateral"] = lat1
+	m["lat_v"] = v1
 
 
 func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Array) -> void:
@@ -377,6 +466,13 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 	if str(g["case"]) == "core":
 		# Lot AS7 : calculé par le core, extrapolé jusqu'à sa prochaine liste (puis à sa dernière vitesse)
 		g["s"] = float(g["s"]) + float(dir) * float(g["speed_mps"]) * dt_s
+		var k := 1.0 - exp(-dt_s / CORE_LANE_TAU_S)
+		for m in members:
+			var lat0 := float(m["lateral"])
+			if m.has("lane_core"):
+				m["lane_core"] = float(m["lane_core"]) + float(m.get("lane_rate", 0.0)) * dt_s
+				m["lateral"] = lat0 + (float(m["lane_core"]) - lat0) * k
+			m["lat_v"] = (float(m["lateral"]) - lat0) / dt_s if dt_s > 0.0 else 0.0
 		return
 	if _clock - float(g["speed_at"]) >= SPEED_PERIOD_S:
 		g["speed_at"] = _clock
@@ -387,6 +483,7 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 		g["speed_mps"] = spd
 	var near := _bot_near(g, bots)
 	g["bot_near"] = near
+	g["half"] = _half_at(float(g["s"]))
 	var case_name := str(g["case"])
 	var spd_now := float(g["speed_mps"])
 	var rel_now := float(g["s"]) - rider_s
@@ -412,9 +509,14 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 		if absf(h_lat - own) < MIN_CENTRE_M or absf(h_lat - cur) < MIN_CENTRE_M:
 			near_groups.append(h)
 	if not near_groups.is_empty():
+		# Bots à moins de BOT_LOOK_M : on ne double pas sur leur ligne, ni en la traversant (file longue)
+		var lanes: Array = alongside.duplicate()
+		for b in _bot_groups:
+			if not alongside.has(b) and absf(float(b["s"]) - float(g["s"])) < BOT_LOOK_M + float(members.size()) * FILE_GAP_M:
+				lanes.append(b)
 		var pass_lat := own
 		for _i in range(3):
-			for h in alongside:
+			for h in lanes:
 				var h_lat := _group_lateral(h)
 				if absf(pass_lat - h_lat) < MIN_CENTRE_M:
 					pass_lat = h_lat - signf(h_lat) * MIN_CENTRE_M
@@ -422,12 +524,13 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 		var blocking := false     # encore sur la trajectoire d'un groupe qu'il n'a pas dépassé
 		for h in near_groups:
 			slowest = minf(slowest, float(h["speed_mps"]))
-			if (float(g["s"]) - float(h["s"])) * dir < 0.0 and absf(cur - _group_lateral(h)) < MIN_CENTRE_M - 0.05:
+			# encore derrière lui, un de ses membres sur sa ligne (la queue se décale après la tête)
+			if (float(g["s"]) - float(h["s"])) * dir < 0.0 and _closest_lateral(g, _group_lateral(h)) < MIN_CENTRE_M - 0.05:
 				blocking = true
 		# Pour passer, il faudrait traverser la place d'un autre (un bot entre lui et l'axe) : il ne se décale pas
 		# et, derrière, il attend
 		var crossing := false
-		for h in alongside:
+		for h in lanes:
 			var h_lat := _group_lateral(h)
 			var through := h_lat > minf(cur, pass_lat) and h_lat < maxf(cur, pass_lat)
 			if through or (absf(pass_lat - h_lat) < MIN_CENTRE_M - 0.05 and absf(pass_lat - h_lat) < absf(cur - h_lat)):
@@ -452,21 +555,10 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 	var rel := float(g["s"]) - rider_s
 	var rel0 := float(g.get("last_rel", rel))
 	g["last_rel"] = rel
-	# Près d'un bot, le groupe `ahead` se met en file sur l'accotement
-	if case_name == "ahead":
-		for i in range(members.size()):
-			var m: Dictionary = members[i]
-			if not m.has("col0"):
-				m["col0"] = m["col"]
-				m["dl0"] = m["dl"]
-			m["col"] = 0 if near else m["col0"]
-			m["dl"] = float(i) * FILE_GAP_M if near else m["dl0"]
+	# En file près d'un bot (`ahead`, sur l'accotement) et sur un chemin étroit (tous les cas)
+	_formation(g, _narrow(float(g["half"])) or (case_name == "ahead" and near), dt_s)
 	for m in members:
-		var lat0 := float(m["lateral"])
-		var lat1 := move_toward(lat0, _target_lateral(g, m), SIDE_SPEED_MPS * dt_s)
-		if _side_blocked(g, float(g["s"]) - float(dir) * float(m["dl"]), lat0, lat1, rider_s, bots):
-			lat1 = lat0
-		m["lateral"] = lat1
+		_side_step(g, m, dt_s, rider_s, bots)
 	match case_name:
 		"ahead":
 			var tail := float(members.size()) * FILE_GAP_M
@@ -534,6 +626,14 @@ func _side_blocked(g: Dictionary, s: float, lat0: float, lat1: float, rider_s: f
 	return false
 
 
+## Plus petit écart latéral d'un membre du groupe `g` à `lat`.
+func _closest_lateral(g: Dictionary, lat: float) -> float:
+	var best := INF
+	for m in g["members"]:
+		best = minf(best, absf(float(m["lateral"]) - lat))
+	return best
+
+
 ## Écart à l'axe d'un groupe : celui de son premier membre.
 func _group_lateral(g: Dictionary) -> float:
 	return float((g["members"] as Array)[0]["lateral"])
@@ -564,7 +664,7 @@ func riders() -> Array:
 	for g in groups:
 		for m in g["members"]:
 			out.append({"group": g, "member": m, "id": str(m["id"]), "s": float(g["s"]) - float(g["dir"]) * float(m["dl"]),
-				"lateral": float(m["lateral"]), "dir": int(g["dir"])})
+				"lateral": float(m["lateral"]), "dir": int(g["dir"]), "yaw": side_yaw(g, m)})
 	return out
 
 
@@ -614,12 +714,21 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 			var cm: Dictionary = own.get(id, {})
 			if cm.is_empty():
 				cm = _take_member(id)
+			var lane := float(item.get("lane_m", _edge_lateral(_half_at(float(item.get("s", rider_s))))))
 			if cm.is_empty():
 				var look := int(item.get("look", 0))
-				cm = {"jersey": look % 8, "look": (look >> 4) & 0xFFFF, "phase": _u(VegetationPlacer._mix(look)), "id": id}
+				cm = {"jersey": look % 8, "look": (look >> 4) & 0xFFFF, "phase": _u(VegetationPlacer._mix(look)), "id": id,
+					"lateral": lane, "lat_v": 0.0}
+			# Écart du core repris sans saut : visé, extrapolé à sa vitesse latérale entre deux listes (_move)
+			var rate := 0.0
+			var since := _clock - float(cg.get("sync_at", -INF))
+			if cm.has("lane_seen") and since > 1e-3:
+				rate = clampf((lane - float(cm["lane_seen"])) / since, -CORE_LANE_RATE_MAX, CORE_LANE_RATE_MAX)
+			cm["lane_seen"] = lane
+			cm["lane_core"] = lane
+			cm["lane_rate"] = rate
 			cm["dl"] = head - float(item.get("s", rider_s)) * dir
 			cm["col"] = 0
-			cm["lateral"] = float(item.get("lane_m", _edge_lateral()))
 			members.append(cm)
 		for m in cg["members"]:
 			if not seen.has(str(m["id"])) and _still_on_road(cg, m, rider_s, full):
@@ -629,6 +738,7 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 		cg["s"] = head * dir
 		cg["speed_mps"] = float(items[0].get("v", 0.0))
 		cg["core"] = true
+		cg["sync_at"] = _clock
 	var kept := []
 	for g in groups:
 		var is_core := str(g["case"]) == "core"
@@ -666,6 +776,9 @@ func _to_decor(g: Dictionary) -> void:
 		m["col"] = 0
 		m.erase("col0")
 		m.erase("dl0")
+		m.erase("lane_core")
+		m.erase("lane_seen")
+		m.erase("lane_rate")
 
 
 ## Faux si le core dit que le membre `m` du groupe `g` n'est plus sur la route : liste pas pleine et membre à moins
@@ -689,13 +802,20 @@ func _take_member(id: String) -> Dictionary:
 	return {}
 
 
+## Lacet (rad, vers sa gauche positif) d'un membre qui s'écarte ou se rabat : sa trajectoire, de sa vitesse latérale
+## et de sa vitesse, au plus 0,35 rad (20°).
+static func side_yaw(g: Dictionary, m: Dictionary) -> float:
+	var v := maxf(float(g.get("speed_mps", 0.0)), 1.0)
+	return clampf(-float(m.get("lat_v", 0.0)) * float(g.get("dir", 1)) / v, -0.35, 0.35)
+
+
 ## Position d'un membre dans le monde.
 func world_position(g: Dictionary, m: Dictionary) -> Vector3:
 	return world_transform(float(g["s"]) - float(g["dir"]) * float(m["dl"]), float(m["lateral"]), int(g["dir"])).origin
 
 
 ## Position, cap et tangage (pente de la route affichée) d'un cycliste (face vers +z local, comme people_mesh.gd) à `s`, `lateral`, dans le sens `dir`.
-func world_transform(s: float, lateral: float, dir: int) -> Transform3D:
+func world_transform(s: float, lateral: float, dir: int, yaw: float = 0.0) -> Transform3D:
 	var smp: Dictionary = route.sample(clampf(s, 0.0, route.length_m))
 	var h := deg_to_rad(float(smp["heading_deg"]))
 	var fwd := Vector3(sin(h), 0.0, -cos(h))
@@ -704,7 +824,8 @@ func world_transform(s: float, lateral: float, dir: int) -> Transform3D:
 	var facing := fwd * float(dir)
 	# Tangage selon la pente affichée dans le sens de marche (avant vers +z local : rotation −x = nez levé)
 	var pitch: float = route.display_pitch(s) * float(dir)
-	return Transform3D(Basis(Vector3.UP, atan2(facing.x, facing.z)) * Basis(Vector3.RIGHT, -pitch), pos)
+	# Lacet du rabattement (`yaw`, vers la gauche du sens de marche positif) : cap tourné autour de la verticale
+	return Transform3D(Basis(Vector3.UP, atan2(facing.x, facing.z) + yaw) * Basis(Vector3.RIGHT, -pitch), pos)
 
 
 ## Cadence (tr/min) à `v` (m/s) avec le développement DEVELOPMENT_M ; roue libre au-delà de 55 km/h.
