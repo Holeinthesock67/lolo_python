@@ -360,6 +360,7 @@ func _test_relaunch_setting() -> void:
 	_check(f.state()["items"].size() == 1, "valeur du lancement remise : plus de relance")
 	_check(SettingsViewModel.format_value(feel, "ftms") == "par le trainer (essai)"
 		and SettingsViewModel.format_value({"key": "wind.mode"}, "gusty") == "en rafales"
+		and SettingsViewModel.format_value({"key": "wind.mode"}, "local") == "météo du jour"
 		and SettingsViewModel.format_value({"key": "render.theme"}, "default") == "par défaut",
 		"légendes du vent et du thème en français")
 	var bool_it := {"key": "futur.interrupteur", "type": "choice", "choices": ["on", "off"]}

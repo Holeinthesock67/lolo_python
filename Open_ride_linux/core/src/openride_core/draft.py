@@ -39,6 +39,8 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any, NamedTuple
 
+from .wind import apparent_yaw_deg
+
 ALPHA_MAX = 0.40          # roue dans la roue
 GAP_MIN_M = 0.3
 DECAY_M = 4.0
@@ -73,6 +75,7 @@ BOT_LANE_M = 2.1          # place des bots seuls (RoadBuilder.BOT_LATERAL_M), 0,
 ECHELON_LEAD_SHIFT_M = 0.3   # lot AS3 : meneur côté vent dès que la zone glisse de 0,3 m à 1 m d'écart (~17°)
 LANE_MIN_M = 0.3          # hors dépassement, jamais plus près de l'axe (circulation à droite)
 LANE_MAX_M = 2.6          # bord de la voie de droite (chaussée de 6 m, 0,4 m du bord)
+LANE_EDGE_M = 0.4         # chemin étroit (option gravel, 7/11) : axe du vélo à 0,4 m au moins du bord sûr
 PASS_LANE_MIN_M = -1.5    # dépassement : jamais plus loin dans la voie d'en face
 LANE_RATE_MPS = 0.8       # vitesse latérale maximale
 LANE_ACCEL_MPS2 = 1.6     # accélération latérale maximale : pas d'à-coup
@@ -88,6 +91,8 @@ SIDE_LOOK_S = 1.0         # on se décale dès qu'on toucherait la roue (devant 
 START_ROW_M = BIKE_LENGTH_M + 1.0   # grille de départ : un rang de deux bots tous les 2,7 m derrière le cycliste
 RIDER_WIDTH_M = 0.6       # largeur d'un coureur (2 × RIDER_HALF_WIDTH_M de traffic_model.gd) : contact en dessous
 SIDE_EXTRA_MARGIN = 1.5    # lot AS6 : on commence à doubler un véhicule assez tôt pour avoir fini de se décaler
+VEHICLE_REJOIN_M = 2.0     # lot AS6 : on ne se rabat qu'à 2 m de la carrosserie d'un véhicule doublé (contacts
+                           # « tracteur / cycliste » du banc circulation_proche du 8 novembre, rabattu au ras du pare-chocs)
 # Lot PL1 (peloton) : un coureur plus rapide qu'un autre juste devant dans sa ligne (moins de BLOCK_SIDE_M d'écart
 # latéral, roue dans moins de BLOCK_MIN_GAP_M + écart de vitesse × BLOCK_LOOK_S), ou déjà à sa hauteur à moins de
 # BLOCK_SIDE_M (coincé dans un paquet), est enfermé (`Lane.blocked`, posé par update_lanes) : un bot lève le pied
@@ -202,7 +207,7 @@ def crosswind_residual(rider_v: float, head_mps: float, cross_mps: float) -> flo
     1 − `CROSSWIND_RESIDUAL_LOSS` (0,8) à 45° de lacet et au-delà."""
     if cross_mps == 0.0:
         return 1.0
-    yaw = math.degrees(math.atan2(abs(cross_mps), max(rider_v + head_mps, 1e-6)))
+    yaw = apparent_yaw_deg(rider_v, head_mps, cross_mps)
     return 1.0 - CROSSWIND_RESIDUAL_LOSS * min(yaw / CROSSWIND_FULL_DEG, 1.0)
 
 
@@ -390,6 +395,13 @@ def _wider(lane: Lane) -> float:
     return lane.half_width - RIDER_WIDTH_M / 2.0
 
 
+def _side_reach(lane: Lane, other: Lane) -> float:
+    """Distance centre à centre en dessous de laquelle deux coureurs sont côte à côte (lot AS6) : leurs demi-longueurs,
+    plus `VEHICLE_REJOIN_M` si l'un est un véhicule de la circulation."""
+    extra = VEHICLE_REJOIN_M if _wider(lane) > 0.0 or _wider(other) > 0.0 else 0.0
+    return 0.5 * (lane.length + other.length) + extra
+
+
 def _side_time(lane: Lane, other: Lane) -> float:
     """Temps en plus pour se décaler de la largeur en plus d'un véhicule (lot AS6), marge d'accélération
     comprise ; 0 entre deux vélos."""
@@ -449,8 +461,8 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
                 pass_left = line
     for o_s, o_v, o_lane in others:
         d = ahead_distance(s, o_s, length_m, is_loop)
-        reach = 0.5 * (lane.length + o_lane.length)
-        gap = abs(d) - reach                         # roue à roue, qu'il soit devant ou derrière
+        reach = _side_reach(lane, o_lane)
+        gap = abs(d) - reach                         # roue à roue (2 m de plus le long d'un véhicule), devant ou derrière
         closing = (v - o_v) if d > 0.0 else (o_v - v)   # > 0 : on se rapproche
         look_s = SIDE_LOOK_S + _side_time(lane, o_lane)
         if not (gap < 0.0 or closing > 0.0 and gap < max(PASS_TOUCH_GAP_M, closing * look_s)):
@@ -519,20 +531,40 @@ def step_lane(lane: Lane, target: float, dt: float) -> None:
         lane.m, lane.rate = target, 0.0
 
 
+def path_bounds(half_m: float) -> tuple[float, float]:
+    """Écarts à l'axe permis à un vélo sur une chaussée de demi-largeur sûre `half_m` (correctif du 7/11) :
+    ceux de la chaussée de 6 m (PASS_LANE_MIN_M, LANE_MAX_M), resserrés à LANE_EDGE_M des bords d'un chemin."""
+    edge = max(half_m - LANE_EDGE_M, 0.0)
+    return max(PASS_LANE_MIN_M, -edge), min(LANE_MAX_M, edge)
+
+
 def update_lanes(runners: list[tuple[float, float, Lane]], dt: float, length_m: float | None = None,
-                 is_loop: bool = False, wind_at: Callable[[float], tuple[float, float]] | None = None) -> None:
+                 is_loop: bool = False, wind_at: Callable[[float], tuple[float, float]] | None = None,
+                 half_at: Callable[[float], float] | None = None) -> None:
     """Placement de tous les coureurs (lot AS2) : cibles calculées sur les positions du pas précédent,
     puis chacun avance ; l'ordre de la liste ne compte pas. `runners` : (s, v, Lane) du cycliste et des
     bots `constant` (le fantôme n'en est pas : il passe à travers). `wind_at(s)` : (vent de face, vent de
-    travers) en m/s à la position `s` (lot AS3), sans vent si None."""
+    travers) en m/s à la position `s` (lot AS3), sans vent si None. `half_at(s)` : demi-largeur sûre de la
+    chaussée (option gravel, `surface_physics.rideable_half_m`) : les vélos restent sur le chemin
+    (`path_bounds`) ; serrés sur un chemin étroit, ils s'enferment et se suivent en file (`blocked_by`)."""
+
+    def on_path(s: float, lane: Lane, target: float) -> float:
+        # Placement automatique seulement : un véhicule de la circulation garde sa voie, un coureur au placement
+        # coupé sa place (bot éliminé du Dernier survivant qui se range sur l'accotement, cycliste à 1,2 m)
+        if half_at is None or not lane.auto or lane.length != BIKE_LENGTH_M or lane.half_width != RIDER_WIDTH_M / 2.0:
+            return target
+        lo, hi = path_bounds(half_at(s))
+        return min(max(target, lo), hi)
+
     targets = []
     for i, (s, v, lane) in enumerate(runners):
         others = [r for j, r in enumerate(runners) if j != i]
         head, cross = wind_at(s) if wind_at else (0.0, 0.0)
-        targets.append(lane_target(s, v, lane, others, length_m, is_loop, head, cross))
+        target, passing = lane_target(s, v, lane, others, length_m, is_loop, head, cross)
+        targets.append((on_path(s, lane, target), passing))
     for i, (s, v, lane) in enumerate(runners):
         others = [r for j, r in enumerate(runners) if j != i]
-        target = side_guard(s, lane, targets[i][0], others, length_m, is_loop)
+        target = on_path(s, lane, side_guard(s, lane, targets[i][0], others, length_m, is_loop))
         targets[i] = (target, targets[i][1])
         lane.blocked = blocked_by(s, v, lane, target, others, length_m, is_loop)
     for (_, _, lane), (target, passing) in zip(runners, targets):
@@ -549,7 +581,7 @@ def side_guard(s: float, lane: Lane, target: float, others: Iterable[tuple[float
     que le coureur à sa hauteur l'ait dépassé au lieu de lui couper la route (à 11 adversaires, banc du 6 novembre)."""
     for o_s, _, o_lane in others:
         d = ahead_distance(s, o_s, length_m, is_loop)
-        reach = 0.5 * (lane.length + o_lane.length)
+        reach = _side_reach(lane, o_lane)
         # Lot DS8 : un bot enfermé roue contre roue en diagonale derrière soi (`blocked`, plus d'une demi-largeur
         # d'écart) compte dès SIDE_GUARD_M avant le chevauchement : on ne glisse plus devant sa roue (contact vu à
         # 11 adversaires avec la tactique Y10). Prendre la roue de celui de devant, ou un coureur en ligne derrière :

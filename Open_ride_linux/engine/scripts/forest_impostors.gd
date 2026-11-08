@@ -258,7 +258,8 @@ static func build_quad() -> ArrayMesh:
 	return st.commit()
 
 
-## Réglages d'un houppier vu de loin pour l'imposteur : forme (0 rond, 1 cône), pied de la couronne en part
+## Réglages d'un houppier vu de loin pour l'imposteur : forme (0 rond, 1 cône), espèce caduque ou non (saisons du
+## lot P18 : ajoutée à la forme dans les données d'instance, + 2), pied de la couronne en part
 ## de la hauteur, demi-largeur d'un houppier en part de la largeur du bouquet, couleur sRGB, hauteur, surface
 ## du houppier. Vide pour une plante basse (à ne pas dessiner).
 static func crown_look(kind: String) -> Dictionary:
@@ -280,6 +281,7 @@ static func crown_look(kind: String) -> Dictionary:
 	var col: Color = crown["col"]
 	return {
 		"shape": 1.0 if shape == "cone" else 0.0,
+		"deciduous": kind != "" and TreeSpecies.is_deciduous(kind),
 		"base": clampf(base / height, 0.0, 0.9),
 		"half": clampf(w * 0.5 / CLUMP_WIDTH_M * 1.15, 0.08, 0.4),
 		"col": Color(col.r, col.g, col.b, 1.0),
@@ -420,7 +422,7 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 				0.0, float(look_c["height"]) * scale_f, 0.0, y_draw,
 				0.0, 0.0, 1.0, pz,
 				col.r * (1.0 + tint), col.g * (1.0 + tint), col.b * (1.0 + tint), 1.0,
-				VegetationPlacer._unit(VegetationPlacer._mix(h + 9)), float(look_c["shape"]), float(look_c["base"]), float(look_c["half"]),
+				VegetationPlacer._unit(VegetationPlacer._mix(h + 9)), float(look_c["shape"]) + (2.0 if look_c["deciduous"] else 0.0), float(look_c["base"]), float(look_c["half"]),
 			])
 			var cx := clampi(int((px - x0) / CELL_M), 0, cells_per_side - 1)
 			var cz := clampi(int((pz - z0) / CELL_M), 0, cells_per_side - 1)

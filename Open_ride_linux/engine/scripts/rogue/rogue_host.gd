@@ -77,7 +77,7 @@ func update(state: Dictionary, parent: Node, classic: Array, world_env: WorldEnv
 	if scene == null or not in_rogue:
 		return false
 	scene.resync_requested = false
-	scene.on_state(rogue, now_s)
+	scene.on_state(rogue, now_s, float(state.get("s", 0.0)))
 	scene.on_hud(state, now_s)
 	if scene.resync_requested:
 		resync_requests += 1

@@ -307,7 +307,7 @@ async def run_steps(providers: list[TracedClickProvider], rec: Recorder, guide: 
                 watch_links()
                 if step.left and watch_muted() and not rec.events[seen:]:
                     res = StepResult(step.key, step.prompt, step.event.value, False, None, received, "gauche",
-                                     "boîtier gauche muet, étape sautée (click_reset_locked coupé ?)")
+                                     "boîtier gauche muet, étape sautée (click_reset_locked = « off » ?)")
                     g.sound.play("echec")
                     break
                 g.tick()
@@ -361,7 +361,7 @@ def report_text(report: dict[str, Any]) -> str:
         lines.append(f"  {'OK ' if s['ok'] else 'NON'} {s['prompt']} : {s['detail']}{side}{delay}")
     if report["missed_left"]:
         lines += ["", "Boîtier gauche : appuis manqués. Un appui fait pendant un redémarrage (environ 4 s par minute)",
-                  "est perdu ; s'il reste muet, vérifier [drivers] click_reset_locked = true (docs/DIAG_CLICK_GAUCHE.md)."]
+                  "est perdu ; s'il reste muet, vérifier [drivers] click_reset_locked = « reset » ou « keep » (docs/DIAG_CLICK_GAUCHE.md)."]
     return "\n".join(lines) + "\n"
 
 

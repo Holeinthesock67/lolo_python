@@ -157,12 +157,12 @@ class GrandPrixMode:
         self.racers: dict[str, Racer] = {rid: Racer(rid) for rid in riders}
         if ME not in self.racers:
             raise GrandPrixError("le cycliste (« me ») doit être en course")
-        # Bots menés par le core (lot GP3 ; tous les coureurs sauf le cycliste par défaut) : niveau en % de la
-        # FTP (esquive ± 10 points), 100 sans niveau connu
+        # Coureurs menés par le core (lot GP3 ; tous sauf le cycliste par défaut, le cycliste virtuel du banc
+        # GP5 compris) : niveau en % de la FTP (esquive ± 10 points), 100 sans niveau connu
         levels = levels or {}
         driven = [rid for rid in self.racers if rid != ME] if bots is None else list(bots)
-        if ME in driven or not set(driven) <= set(self.racers):
-            raise GrandPrixError("bots : coureurs inconnus, ou le cycliste")
+        if not set(driven) <= set(self.racers):
+            raise GrandPrixError("bots : coureurs inconnus")
         self.brain = BotBrain({rid: float(levels.get(rid, 100.0)) for rid in driven}, chaos, seed)
         self.clock = 0.0
         self.t = 0.0
@@ -336,7 +336,7 @@ class GrandPrixMode:
     def _fire(self, r: Racer, spec: ItemSpec, now: float) -> bool:
         if spec.target == "self":
             self._give(r, spec.self_fx, spec.id, r.id, now)
-            if any(e.effect in IMPULSES for e in spec.self_fx):
+            if spec.self_fx:   # impulsion comme plancher de vitesse (super-forme, voiture d'équipe, lot GP5)
                 self._credit(r, spec.id, spec.self_fx)
             return True
         if spec.form == "dropped":

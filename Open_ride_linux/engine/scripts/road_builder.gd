@@ -12,6 +12,11 @@ extends RefCounted
 ##   elle comble l'écart là où les triangles de 10 m du terrain passent sous la route (flancs raides) : la
 ##   route repose sur un remblai au lieu de léviter.
 ## - UV : u en travers de 0 (bord gauche du bas-côté) à 1 (bord droit), v = s / 6 m (lot E2).
+## - Relèvement (format 1.7, lot VD4) : la coupe tourne autour de l'axe de `bank_deg` (route_data.bank_right) ; une
+##   route sans relèvement est le cas bank = 0, aux mêmes sommets qu'avant. Piste du vélodrome (couche venue) : même
+##   coupe à six sommets, profil de piste (track_profile) : zone de sécurité et côte d'azur à plat à l'intérieur,
+##   piste relevée de son bord intérieur à son bord extérieur, balustrade verticale ; une coupe tous les 1 m,
+##   UV.x en mètres depuis le bord intérieur de la piste (lignes peintes du matériau make_track_material).
 ## - Sommets en coordonnées du monde (pas de décalage par tronçon : jointures exactes).
 ## Les tableaux se calculent dans une tâche de fond ; seule la création du maillage reste sur le
 ## fil principal. Pas de class_name (charger par preload).
@@ -24,6 +29,9 @@ const SHOULDER_DROP_M := 0.05
 const V_REPEAT_M := 6.0
 const SKIRT_DROP_M := 2.5
 const SKIRT_OUT_M := 1.5
+const TRACK_SECTION_STEP_M := 1.0  # piste du vélodrome : virages de 23 m de rayon (plan VD §7.2)
+const TRACK_BARRIER_H := 1.0       # balustrade du bord extérieur de la piste
+const TRACK_SHADER := "res://shaders/track_wood.gdshader"
 const VERTS_PER_SECTION := 6       # bas-côté gauche (2), chaussée (2), bas-côté droit (2)
 ## Places en travers de la chaussée (lot P32, demande du 29 octobre : « on roule à droite, pas au milieu ») :
 ## écart à l'axe, positif à droite du sens du parcours. Le cycliste (caméra, avatar) roule dans la voie de
@@ -145,15 +153,36 @@ static func lead_heights(route, s_values: PackedFloat64Array, outer: float, heig
 	return out
 
 
-## Positions s des coupes du tronçon k : tous les 2 m, plus la fin exacte du tronçon.
+## Piste de vélodrome (couche venue lue par route_data.gd, lot VD4) ?
+static func is_track(route) -> bool:
+	return route != null and route.has_method("is_track") and route.is_track()
+
+
+## Relèvement en s (degrés) ; 0 pour une route sans colonne `bank_deg` ou un objet de test sans `bank_at`.
+static func bank_deg_at(route, s_pos: float) -> float:
+	return route.bank_at(s_pos) if route.has_method("bank_at") else 0.0
+
+
+## Profil en travers de la piste (m), d'après la couche venue : `inner` (ligne de mesure → bord intérieur, sur la
+## pente), `outer` (ligne de mesure → bord extérieur), `flat` (côte d'azur et zone de sécurité, à plat).
+static func track_profile(route) -> Dictionary:
+	var v: Dictionary = route.venue
+	var measure: float = route.track_line_m("measure", 0.2)
+	return {"inner": measure, "outer": float(v.get("track_width_m", 7.0)) - measure,
+		"flat": float(v.get("apron_width_m", 1.0)) + float(v.get("safety_width_m", 4.0)),
+		"width": float(v.get("track_width_m", 7.0))}
+
+
+## Positions s des coupes du tronçon k : tous les 2 m (1 m sur une piste), plus la fin exacte du tronçon.
 static func section_s(route, k: int) -> PackedFloat64Array:
 	var rng := chunk_range(route, k)
 	var s0 := rng.x
 	var s1 := rng.y
+	var step := TRACK_SECTION_STEP_M if is_track(route) else SECTION_STEP_M
 	var out := PackedFloat64Array()
-	var count := ceili((s1 - s0) / SECTION_STEP_M - 1e-9)
+	var count := ceili((s1 - s0) / step - 1e-9)
 	for j in range(count):
-		out.append(s0 + j * SECTION_STEP_M)
+		out.append(s0 + j * step)
 	out.append(s1)
 	return out
 
@@ -190,6 +219,8 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 	var relief_k: float = route.relief_k
 	var is_lead := k < 0 or k >= chunk_count(route)
 	var lead_y := lead_heights(route, s_values, outer, height_at) if is_lead else PackedFloat64Array()
+	var track := is_track(route) and not is_lead
+	var prof := track_profile(route) if track else {}
 	for i_cut in range(s_values.size()):
 		var s_cut: float = s_values[i_cut]
 		if unpaved_on:
@@ -207,6 +238,8 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 		var h := deg_to_rad(float(smp["heading_deg"]))
 		# Cap horaire depuis le nord (−z) : avant = (sin h, 0, −cos h), droite = (cos h, 0, sin h).
 		var right := Vector3(cos(h), 0.0, sin(h))
+		var bank := 0.0 if is_lead else deg_to_rad(bank_deg_at(route, s_cut))
+		var right_b := right * cos(bank) + Vector3.UP * sin(bank)   # coupe relevée (bank = 0 : right)
 		var grade := (float(smp["grade_pct"]) / 100.0) * relief_k
 		if is_lead:
 			center.y = lead_y[i_cut]
@@ -214,12 +247,29 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 			var i_b := mini(i_cut + 1, s_values.size() - 1)
 			grade = (lead_y[i_b] - lead_y[i_a]) / maxf(s_values[i_b] - s_values[i_a], 1e-6)
 		var forward := Vector3(sin(h), grade, -cos(h))
-		var up_road := right.cross(forward).normalized()
-		var left_shoulder := (right * SHOULDER_WIDTH_M + Vector3.UP * SHOULDER_DROP_M).cross(forward).normalized()
-		var right_shoulder := (right * SHOULDER_WIDTH_M - Vector3.UP * SHOULDER_DROP_M).cross(forward).normalized()
+		var up_road := right_b.cross(forward).normalized()
+		if track:
+			# Piste (lot VD4) : à plat de la zone de sécurité au bord intérieur, relevée jusqu'au bord extérieur, puis
+			# balustrade ; UV.x en mètres depuis le bord intérieur de la piste, le long de la surface.
+			var p_in := center - right_b * float(prof["inner"])
+			var p_out := center + right_b * float(prof["outer"])
+			var flat: float = prof["flat"]
+			var width: float = prof["width"]
+			var flat_up := right.cross(forward).normalized()
+			var face_in := -right
+			var pts := [p_in - right * flat, p_in, p_in, p_out, p_out, p_out + Vector3.UP * TRACK_BARRIER_H]
+			var nrm := [flat_up, flat_up, up_road, up_road, face_in, face_in]
+			var u := [-flat, 0.0, 0.0, width, width, width + TRACK_BARRIER_H]
+			for c in range(VERTS_PER_SECTION):
+				vertices.append(pts[c])
+				normals.append(nrm[c])
+				uvs.append(Vector2(u[c], s_cut / V_REPEAT_M))
+			continue
+		var left_shoulder := (right_b * SHOULDER_WIDTH_M + Vector3.UP * SHOULDER_DROP_M).cross(forward).normalized()
+		var right_shoulder := (right_b * SHOULDER_WIDTH_M - Vector3.UP * SHOULDER_DROP_M).cross(forward).normalized()
 		var section_normals := [left_shoulder, left_shoulder, up_road, up_road, right_shoulder, right_shoulder]
 		for c in range(VERTS_PER_SECTION):
-			vertices.append(center + right * float(offsets[c]) - Vector3.UP * float(drops[c]))
+			vertices.append(center + right_b * float(offsets[c]) - Vector3.UP * float(drops[c]))
 			normals.append(section_normals[c])
 			uvs.append(Vector2((float(offsets[c]) + outer) / total_width, s_cut / V_REPEAT_M))
 	var indices := PackedInt32Array()
@@ -343,6 +393,32 @@ static func make_preview_material(road_color: Color = ROAD_COLOR) -> StandardMat
 	mat.vertex_color_is_srgb = true   # couleurs de sommet sRGB (couleur_srgb.gdshaderinc)
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.roughness = 0.9
+	return mat
+
+
+## Matériau de la piste du vélodrome (lot VD4, shaders/track_wood.gdshader) : lattes de bois le long de la piste,
+## lignes peintes de la couche venue (mesure noire, sprinteurs rouge, stayers bleue, en m depuis le bord intérieur),
+## côte d'azur bleue et zone de sécurité à l'intérieur, balustrade ; ligne d'arrivée et lignes de poursuite et des
+## 200 m d'après `marks`. Même matériau dans les trois préréglages (les reflets viennent de SSR et SSIL du préréglage).
+static func make_track_material(route) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = load(TRACK_SHADER)
+	var prof := track_profile(route)
+	mat.set_shader_parameter("track_width_m", float(prof["width"]))
+	mat.set_shader_parameter("apron_width_m", float(route.venue.get("apron_width_m", 1.0)))
+	mat.set_shader_parameter("measure_m", route.track_line_m("measure", 0.2))
+	mat.set_shader_parameter("sprinters_m", route.track_line_m("sprinters", 0.85))
+	mat.set_shader_parameter("stayers_m", route.track_line_m("stayers", 2.45))
+	mat.set_shader_parameter("v_repeat_m", V_REPEAT_M)
+	mat.set_shader_parameter("lap_m", float(route.length_m))
+	var marks := {"finish": 0.0, "pursuit_a": 0.0, "pursuit_b": 0.5 * route.length_m, "line_200m": route.length_m - 200.0}
+	for m in route.venue.get("marks", []):
+		if typeof(m) == TYPE_DICTIONARY and marks.has(str(m.get("id", ""))):
+			marks[str(m["id"])] = float(m.get("s", 0.0))
+	mat.set_shader_parameter("finish_s", marks["finish"])
+	mat.set_shader_parameter("pursuit_a_s", marks["pursuit_a"])
+	mat.set_shader_parameter("pursuit_b_s", marks["pursuit_b"])
+	mat.set_shader_parameter("line_200_s", marks["line_200m"])
 	return mat
 
 

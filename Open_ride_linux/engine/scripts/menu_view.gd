@@ -407,6 +407,12 @@ func _set_row(p: PanelContainer, it: Dictionary, focused: bool) -> void:
 	d.add_theme_color_override("font_color", UiTheme.FOCUS if it.get("editing", false) else
 		(UiTheme.TEXT if focused else (UiTheme.DIM if enabled else UiTheme.DISABLED)))
 	bar.visible = it.has("bar")
+	# Rangée à curseur : la valeur (« 80 % ») ne prend que sa largeur, le libellé garde le reste (« Cyber-Rogue :
+	# bruitages » entier, essai du 8 novembre) ; sans curseur, libellé et détail se partagent la rangée.
+	d.size_flags_horizontal = Control.SIZE_SHRINK_END if bar.visible else Control.SIZE_EXPAND_FILL
+	# Sans coupe ni ellipse, la valeur garde sa largeur minimale (« 80 % ») à côté du curseur.
+	d.clip_text = not bar.visible
+	d.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING if bar.visible else TextServer.OVERRUN_TRIM_ELLIPSIS
 	bar.set_meta("pct", int(it.get("bar", 0)))
 	bar.set_meta("focused", focused)
 	bar.queue_redraw()
@@ -414,6 +420,20 @@ func _set_row(p: PanelContainer, it: Dictionary, focused: bool) -> void:
 	icon.set_meta("color", color)
 	icon.queue_redraw()
 	p.queue_redraw()
+
+
+## Libellés des rangées affichées coupés par manque de place (tests graphiques ; liste vide : tout se lit).
+func clipped_labels() -> Array[String]:
+	var out: Array[String] = []
+	for p in _item_panels:
+		if not p.visible:
+			continue
+		var l: Label = p.get_child(0).get_child(1)
+		var w := l.get_theme_font("font").get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			l.get_theme_font_size("font_size")).x
+		if w > l.size.x + 0.5:
+			out.append(l.text)
+	return out
 
 
 ## Libellé et détail d'une entrée, comme avant le lot : « libellé — détail ».

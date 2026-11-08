@@ -25,6 +25,7 @@ import json
 from typing import Any, Callable
 
 MAX_DATAGRAM_SIZE = 1400          # cible de toutes les révisions, et limite jusqu'à la 1.2
+TRACK_FRAME_MAX = 800             # objet `track` de `state` (révision 1.7, lot VD6) : majorant de `worst_track`
 STATE_LIMIT_1_3 = 4096            # limite de `state` depuis la révision 1.3 (ipc_server.MAX_DATAGRAM_SIZE, tout message depuis la 1.5)
 
 # Longueurs maximales attendues des textes libres (caractères). Au-delà, `fit_state` raccourcit.
@@ -94,6 +95,7 @@ STATE_DEGRADATION: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("riders", _drop("riders")),          # lot AS7 : extrapolés par l'engine, ils reviennent 100 ms plus tard
     ("vehicles", _drop("vehicles")),      # lot AS6 : extrapolés par l'engine, ils reviennent 100 ms plus tard
     ("open_world", _drop("open_world")),
+    ("track", _drop("track")),            # lot VD6 : sous une limite basse seulement (la 1.7 tient en 4 096 octets)
     ("erg", _drop("erg")),
 ]
 
@@ -217,6 +219,35 @@ def _extras_1_6(d: dict[str, Any]) -> None:
     d["bot_ahead"], d["bot_behind"] = d["bots"][2]["id"], d["bots"][3]["id"]
 
 
+def worst_track() -> dict[str, Any]:
+    """Objet `track` le plus lourd (révision 1.7, lot VD6) : une course en peloton à 12 coureurs (identifiants
+    au plus long, 11 sortis), avec les champs propres de toutes les courses en peloton réunis (points, keirin,
+    américaine, élimination, omnium). Les épreuves contre la montre et les poursuites, à 2 coureurs ou
+    2 équipes au plus, sont plus légères (`tests/test_track_events.py` le vérifie épreuve par épreuve)."""
+    ids = [f"bot{i}-xyz"[:MAX_TEXT["bot_id"]] for i in range(12)]
+    return {
+        "event": "elimination", "t_s": 86_399.99, "lap": 60, "laps": 60, "laps_to_go": 60, "bell": True,
+        "ranking": ids, "points": [-999] * 12, "eliminated": ids[:11], "finished": False,
+        "laps_up": -9, "my_lap": 60, "next_sprint_lap": 60,
+        "pacer": {"s": 123_456.79, "v": 13.89, "on": True},
+        "racers": {f"t{i}": ids[i] for i in range(6)},
+        "to_elim_m": 999.9, "gap_last_s": 99.9, "last": ids[11], "alive": 12,
+        "sub": "elimination", "sub_index": 4, "subs": 4, "neutral": False,
+    }
+
+
+def _extras_1_7(d: dict[str, Any]) -> None:
+    # Épreuves de piste (lot VD6, 4.0) : sur un vélodrome, ni monde ouvert, ni circulation, ni cyclistes du
+    # décor (salle couverte), ni segment, bonus ou maillot (mode à part, comme le Dernier survivant) ; la
+    # trame qui porte `devices` est donc possible et reste la pire (12 bots, ERG de la séance libre).
+    for key in ("open_world", "vehicles", "riders", "segment", "powerup", "jerseys"):
+        d.pop(key, None)
+    if "devices" not in d:
+        _extras_1_1(scratch := {})
+        d["devices"] = scratch["devices"]
+    d["track"] = worst_track()
+
+
 def _extras_1_9(d: dict[str, Any]) -> None:
     # Demi-tour depuis la pause (lot N17) : `dir` = -1 à rebours ; `segment`, `bot_ahead` et `bot_behind`
     # n'y sont plus remplis, majorant gardé avec eux. Les révisions 1.7 (Grand Prix) et 1.8 (collection, sans
@@ -232,6 +263,7 @@ REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.4": _extras_1_4,
     "1.5": _extras_1_5,
     "1.6": _extras_1_6,
+    "1.7": _extras_1_7,
     "1.9": _extras_1_9,
 }
 
