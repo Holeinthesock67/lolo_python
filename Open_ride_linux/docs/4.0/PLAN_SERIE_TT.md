@@ -17,11 +17,11 @@ Gains calculés avec `core/src/openride_core/physics.py` (cycliste et vélo de 8
 | --- | --- | --- | --- | --- | --- | --- |
 | Plume | `feather` | masse × 0,90 | **20 s** | — | ≈ 2 s à 8 % | Aucun (T-Q3) |
 | Enclume | `anvil` | masse × **1,6** (relative, ≈ +50 kg pour 84 kg) | 15 s | Activation refusée si la pente dépasse −1,5 % ; masse en plus suspendue au-dessus de −0,5 % (le temps continue) | 1,5 s à −3 %, 2,3 s à −6 % | Aucun ; supplément de pente calculé avec la masse de base |
-| Aspiration + (ex-Camion) | `draft_plus` | abri × 1,5, plafonné à **0,55** (plafond du cœur de groupe de la série AS), portée de l'abri 15 → 25 m | 40 s | Tiré seulement avec des bots | 2,0 s roue dans la roue | Oui : −1,0 → −1,4 point sur le plat |
+| Aspiration + (ex-Camion) | `draft_plus` | abri × 1,5, plafonné à **0,55** (plafond du cœur de groupe de la série AS), portée de l'abri 15 → 25 m | 35 s (40 s avant le banc TT8) | Tiré seulement avec des bots | 2,0 s roue dans la roue | Oui : −1,0 → −1,4 point sur le plat |
 | Casque aéro | `aero` | CdA × 0,75 | 15 s | — | 1,3 s sur le plat ; +8,8 m en 15 s au sprint à 600 W | Oui quand il y a vent ou abri |
 | Puissance (T6) | `power` | puissance prise en compte × 1,10 | 15 s | — | 1,4 s à 8 % | Aucun |
-| Échappée (Burrito + Fantôme fusionnés) | `breakaway` | les bots derrière toi ne reçoivent plus ton abri **et** ne répondent pas à ton attaque ; avatar semi-transparent | 20 s | Tiré seulement avec des bots ; refusé à moins de 400 m de l'arrivée ou de la fin d'un sprint | Un suiveur collé perd ≈ 14 m (1,4 s) | Aucun |
-| Rouleau compresseur | `roller` | Crr du bitume sur une surface non revêtue, transitions de 20 m | 30 s | Tiré seulement avec le gravel actif et au moins 1 km non revêtu dans les 5 km devant | ≈ 2,5 s | Oui : le supplément du gravel disparaît (−0,6 point) |
+| Échappée (Burrito + Fantôme fusionnés) | `breakaway` | les bots derrière toi ne reçoivent plus ton abri **et** ne répondent pas à ton attaque ; avatar semi-transparent | 30 s (20 s avant le banc TT8) | Tiré seulement avec des bots ; refusé à moins de 400 m de l'arrivée ou de la fin d'un sprint | Un suiveur collé perd ≈ 14 m (1,4 s) | Aucun |
+| Rouleau compresseur | `roller` | Crr du bitume sur une surface non revêtue, transitions de 20 m | 25 s (30 s avant le banc TT8) | Tiré seulement avec le gravel actif et au moins 1 km non revêtu dans les 5 km devant | ≈ 2,5 s | Oui : le supplément du gravel disparaît (−0,6 point) |
 
 Noms : « Camion » se confondait avec l'abri derrière un vrai véhicule lent (série AS) ; « Fantôme » est déjà le bot de rejeu (`kind = "ghost"`).
 
