@@ -8,8 +8,8 @@ Documents liés : [RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md](RECHERCHE_GODOT_PE
 
 - **Matériel** : PC cible, GTX 1060 (Pascal), Linux, Vulkan Forward+. Godot 4.3 jusqu'au 30 octobre, **4.7.2** ensuite (lot Y2).
 - **Résolution** : native, 1680 × 1050 jusqu'au 30 octobre puis 1680 × 1011 (fenêtre du banc). Quelques bancs anciens sont en 1280 × 720 ou 1857 × 1011 : c'est signalé, ils ne se comparent pas aux autres.
-- **Budgets GPU** (médiane du temps GPU de la vue, `perf_targets.json`) : **low 6 ms** (4 ms jusqu'au 31 octobre, **8 ms depuis le 7 novembre**), **medium 12 ms**, **high 14 ms**. À 60 Hz une image dure 16,7 ms. Les verdicts « au-dessus du budget » de ce document en low sont lus contre le budget en vigueur le jour de l'essai (6 ms du 31 octobre au 6 novembre).
-- **Historique du budget low** : 4 ms (Y13, 27 octobre) → 6 ms (31 octobre, le low mesurait 4,7 à 5,7 ms depuis l'herbe Y14, toujours à 60 images/s ; herbe gardée telle quelle) → **8 ms** (7 novembre, décision du propriétaire, appliquée sur la branche de #732) : 6 ms était trop strict, et 8 ms laisse encore de la marge sous les 16,7 ms d'une image pour une carte plus faible que la GTX 1060. medium (12 ms) et high (14 ms) inchangés.
+- **Budgets GPU** (médiane du temps GPU de la vue, `perf_targets.json`) : **low 6 ms** (4 ms jusqu'au 31 octobre, **8 ms depuis le 7 novembre**), **medium 12 ms** (**13 ms depuis le 8 novembre**), **high 14 ms** (**16 ms depuis le 8 novembre**). À 60 Hz une image dure 16,7 ms. Les verdicts « au-dessus du budget » de ce document en low sont lus contre le budget en vigueur le jour de l'essai (6 ms du 31 octobre au 6 novembre).
+- **Historique du budget low** : 4 ms (Y13, 27 octobre) → 6 ms (31 octobre, le low mesurait 4,7 à 5,7 ms depuis l'herbe Y14, toujours à 60 images/s ; herbe gardée telle quelle) → **8 ms** (7 novembre, décision du propriétaire, appliquée sur la branche de #732) : 6 ms était trop strict, et 8 ms laisse encore de la marge sous les 16,7 ms d'une image pour une carte plus faible que la GTX 1060. **Medium 12 → 13 ms et high 14 → 16 ms le 8 novembre** (décision du propriétaire, #732) : avec la limite d'ombre des arbres à 100 m, la forêt restait à 12,3 ms en medium et 15,3 ms en high, les cultures à 13,9 et 16,7 ms, et les leviers des arbres et de l'herbe étaient épuisés ; les essais suivants (effets d'écran) sont reportés en 5.0 (§ 5).
 - **GPU** = temps GPU médian de la vue, en ms. **p99** = 99e centile du **temps d'image** (pas du GPU) ; il vaut 16,7 ms tant que le jeu tient 60 images/s (synchronisation verticale). Le p99 du temps GPU n'a été relevé que sur quelques bancs (Y21, Y6) : ailleurs, « non relevé ».
 - **Gain** = GPU de la référence moins GPU de la variante (positif : la variante coûte moins). Écart de ±0,2 ms en dessous du bruit d'un banc de 2 min ; ±0,6 ms sur le banc tout en cultures (étude du 5 novembre §6).
 - **Verdict** : adopté (dans les préréglages ou le code de `main`), rejeté (PR fermée ou réglage abandonné), livré coupé (code présent, désactivé par défaut), en cours.
@@ -251,28 +251,27 @@ Lecture :
 
 Captures : `planche/` du banc, une par variante et par biome. Suite au §2.6.
 
-### 2.6 Derniers essais (7 et 8 novembre)
+**Correctif de la coupure (07/11, a2a87ad4).** La première coupure gagnait peu parce que la passe d'ombre est limitée par les sommets : replier un sommet dans le shader ne lui évite pas d'être traité, et une case de 250 m à cheval sur la limite gardait tous ses arbres. Nouvelle version : le modèle proche des arbres ne projette plus d'ombre ; un MultiMesh « ombre seule » par essence reçoit les arbres des carrés de 25 m à moins de M mètres de la caméra, reconstruit tous les 10 m de déplacement, et le shader fond l'ombre sur les derniers mètres. Vérifié dans le cloud (Vulkan logiciel) : ombres proches au même endroit, ombres au-delà de M absentes.
 
-**#732 – Ombre des arbres limitée, version corrigée (bancs c et d, 07/11, `mesures/2026-11-07-cultures-foret-c/` et `-d/`).** Correctif a2a87ad4 : avec `ombres_arbres_m=M`, le modèle proche des arbres ne projette plus d'ombre du tout, et un MultiMesh « ombre seule » par espèce reçoit les arbres des carrés de 25 m à moins de M de la caméra (reconstruit tous les 10 m). Banc c sur a2a87ad4, banc d sur f0c1fe42 (avec #741). Référence par biome, banc c : cultures 8,34 / 14,20 / 17,33, forêt 7,54 / 13,71 / 17,46 ms ; banc d : cultures 8,18 / 13,89 / 16,77, forêt 7,36 / 13,43 / 16,98 ms. Gain en forêt :
+**Banc c (07/11, a2a87ad4, `mesures/2026-11-07-cultures-foret-c/`, 32 bancs).** Gain en forêt, low / medium / high :
 
 | Variante (forêt) | low | medium | high |
 | --- | --- | --- | --- |
-| Arbres sans ombre (borne, banc c) | +0,20 | +1,24 | +2,29 |
-| Ombre des arbres jusqu'à 100 m (banc c) | +0,16 | +1,05 | +1,89 |
-| Ombre des arbres jusqu'à 150 m (banc c) | +0,17 | +0,84 | +1,64 |
-| 2 cascades d'ombre seules (banc c) | — | +0,59 | +1,13 |
-| Ombres jusqu'à 200 m (banc c) | — | +0,09 | +0,65 |
-| Ombre des arbres jusqu'à 100 m (banc d) | +0,13 | +1,11 | +1,72 |
-| 100 m + 2 cascades (banc d) | — | +1,11 | +1,94 |
-| Herbe effacée à 150 m au lieu de 250 (banc d) | −0,04 | −0,11 | +0,07 |
+| Ombre des arbres jusqu'à 100 m | +0,16 | +1,05 | +1,89 |
+| Ombre des arbres jusqu'à 150 m | +0,17 | +0,84 | +1,64 |
+| Arbres sans ombre (borne) | +0,20 | +1,24 | +2,29 |
+| 2 cascades d'ombre au lieu de 4 | — | +0,59 | +1,13 |
+| Ombres jusqu'à 200 m | — | +0,09 | +0,65 |
 
-- Le groupe « ombre seule » rend presque tout le gain de « arbres sans ombre ». Ajouter 2 cascades par-dessus ne gagne presque plus rien (+0,02 en medium, +0,13 à +0,22 en high) : pas retenu.
-- En cultures, aucune variante d'ombre des arbres ne bouge (±0,13 ms).
-- L'herbe coûte par sa densité, pas par sa distance : l'effacer à 150 m ne gagne rien (≈ 0 dans les trois préréglages). La variante « 75 % de l'herbe » était demandée pour le banc d : résultat non retrouvé dans le dossier.
-- Aspect validé par le propriétaire sur la planche forêt du banc c (07/11, 12 h 41, `planche_foret_ombres.jpg`).
-- **Défaut retenu sur la branche de #732** (188e44cb, 07/11 22 h 32) : ombre des arbres limitée à 100 m (`TreeRenderer.TREE_SHADOW_M`) dans les trois préréglages ; `ombres_arbres_m=0` rend l'ancien comportement. #732 n'est pas encore fusionnée (brouillon au 8 novembre).
-- Reste au-dessus du budget avec ce défaut : forêt ≈ 12,3 ms en medium et ≈ 15,3 ms en high (banc d), cultures 13,9 / 16,8 ms. Banc e (effets d'écran en medium et high) demandé le 07/11 au soir : résultats non retrouvés au 8 novembre 4 h.
-- Verdict : **en cours** (adopté sur la branche, à fusionner).
+La coupure corrigée rend presque tout le gain d'« arbres sans ombre ». Cultures : aucune variante ne bouge (14,2 / 17,3 ms). Planche forêt low / medium / high (`planche_foret_ombres.jpg`) : **aspect validé par le propriétaire le 7 novembre à 12 h 41**.
+
+**Banc d (07/11, f0c1fe42, avec #741 « bande large d'herbe moitié moins dense », `mesures/2026-11-07-cultures-foret-d/`, 22 bancs).** Ombre des arbres à 100 m : forêt +1,11 / +1,72 (medium / high). Avec 2 cascades en plus : +1,11 / +1,94, soit presque rien de plus : **non retenu**. Herbe effacée à 150 m au lieu de 250 (`herbe_fin_m=150`) : ≈ 0 partout, l'herbe coûte par sa densité et pas par sa distance : **rejeté**. Avec l'ombre à 100 m, par biome : forêt 7,23 / 12,32 / 15,26 ms, cultures 8,18 / 13,90 / 16,73 ms (low / medium / high).
+
+Verdict : **ombre des arbres limitée à 100 m adoptée** dans les trois préréglages (`TreeRenderer.TREE_SHADOW_M`, 188e44cb ; essai `ombres_arbres_m=0` pour l'ancien comportement). **Budgets medium 13 ms et high 16 ms** (choix du propriétaire, 8 novembre). Avec ces budgets, la forêt passe (12,3 / 13 et 15,3 / 16) ; **les cultures dépassent encore** de 0,2 / 0,9 / 0,7 ms (8,18 / 8, 13,90 / 13, 16,73 / 16). Banc des effets d'écran (r732e) annulé et reporté en 5.0.
+
+### 2.6 Derniers essais (7 et 8 novembre)
+
+**#732 – Ombre des arbres limitée à 100 m (bancs c et d).** Détail à la fin du §2.5 (correctif, bancs c et d, verdict). **Adopté** (fusionnée le 8 novembre, main d1e53985).
 
 **Y22-15 – Bande large d'herbe moitié moins dense (07/11, PR #741, `mesures/2026-11-07-herbe-y22-15/`).** Demande du propriétaire après le banc b (l'herbe de #721 avait coûté +0,6 / +1,1 / +1,3 ms en cultures). Budgets de la bande large 1 500 / 7 500 / 12 000 au lieu de 3 000 / 15 000 / 24 000. Cultures, main → branche, GPU médian (seconde valeur du relevé entre parenthèses, probablement le p99 GPU) : low 5,37 (6,50) → 5,34 (6,46), medium 9,57 (11,69) → 9,17 (11,08), high 11,63 (12,51) → 11,08 (12,39) ; primitives −6 / −12 / −13 %, aucune image ≥ 100 ms. Captures validées (« Ok », 07/11 16 h 18). **Adopté** (fusionnée le 07/11).
 
@@ -284,7 +283,7 @@ Captures : `planche/` du banc, une par variante et par biome. Suite au §2.6.
 
 **U23 étape 2 – Cases rondes, yourtes, pilotis (08/11, PR #771, `mesures/2026-11-08-u23-r771/`).** Mêmes scènes, main → branche : low 4,88–5,46 → 4,93–5,31, medium 6,05–6,49 → 5,89–6,50, high 7,76–8,64 → 7,64–8,53 ms : neutre ; murs à 11 % de sommets en moins. Vitrine à froid : quitte normalement (2 s après la dernière capture, contrôles automatiques tout bons). Réserve : l'indexeur de fichiers tournait pendant le banc (`charge.txt`). Captures cloud validées (07/11 23 h 09). Verdict : **en cours** (PR ouverte).
 
-**Gravel – Cyclistes du décor sur le chemin (07/11, PR #765, `mesures/2026-11-07-gravel-cyclistes-r765/`).** Cyclistes, bots et cycliste bornés à la largeur roulable du chemin, files sans roues superposées, rabattement lissé. Parcours gravel : 5,04 / 6,64 / 8,62 ms, soit +0,06 / +0,36 / +0,55 par rapport à main ; mise à jour des cyclistes 0,047 ms par image. Captures PC validées (08/11, 3 h 01). Verdict : **en cours** (prête, à fusionner).
+**Gravel – Cyclistes du décor sur le chemin (07/11, PR #765, `mesures/2026-11-07-gravel-cyclistes-r765/`).** Cyclistes, bots et cycliste bornés à la largeur roulable du chemin, files sans roues superposées, rabattement lissé. Parcours gravel : 5,04 / 6,64 / 8,62 ms, soit +0,06 / +0,36 / +0,55 par rapport à main ; mise à jour des cyclistes 0,047 ms par image. Captures PC validées (08/11, 3 h 01). **Adopté** (fusionnée le 8 novembre, main a5e42e6e).
 
 **AS6 – Circulation proche avec véhicules à l'écran (8/11, banc 7ct bis sur main 46a29e1b, `mesures/2026-11-08-circulation-7ctbis/`).** Première mesure du coût de la circulation avec un tracteur devant et un camion qui double : 5,27 / 7,50 / 9,34 ms, dans les budgets. Le banc a révélé des véhicules superposés (contacts camion/camion à 150 m), corrigés par la PR #775. Banc 7ct ter et captures : à venir. Verdict : coût **acceptable**, correctif **en cours**.
 
@@ -305,9 +304,9 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 | **Halo (glow)** | Y13 (28/10) ; 3 niveaux (06/11) | sans halo −1,24 / −0,98 ; 3 niveaux +0,45 medium, bruit high | soleil et zones claires | gardé, 3 niveaux | medium et high |
 | **Ombres : atlas** | 4096 (Y13) → 2048 (#729) | −0,96 / −0,81 | ombres un peu moins fines, validé | 2048 adopté | medium et high 2048 |
 | **Ombres : filtre doux** | Y13 ; 2.0.1 V1 (#717) | filtre un cran plus bas −0,87 / −0,66 (démo) ; filtre low −0,58 / −0,44 | bords des ombres | un cran plus bas adopté | medium low, high medium |
-| **Ombres : cascades / distance** | 4 cascades (Y13), 400 m (Y13 étape 2) ; essais 2 cascades et 200 m (05/11, 07/11) | 2 cascades −0,41 / −0,30 (cultures, 05/11), −0,59 / −1,13 (forêt, 07/11), presque rien une fois l'ombre des arbres limitée à 100 m ; 200 m −0,41 / −0,22, puis −0,09 / −0,65 en forêt | ombres lointaines | gardées | inchangées |
+| **Ombres : cascades / distance** | 4 cascades (Y13), 400 m (Y13 étape 2) ; essais 2 cascades et 200 m (05/11, puis forêt 07/11) | 2 cascades −0,41 / −0,30 ; 200 m −0,41 / −0,22 ; en forêt (07/11) 2 cascades −0,59 / −1,13, 200 m −0,09 / −0,65, 2 cascades en plus de l'ombre des arbres à 100 m ≈ 0 / −0,2 | ombres lointaines | gardées (gain faible) | inchangées |
 | **Ombres du relief** | proxy maille 40 m (06/11, #724) | −0,25 à +0,34 (bruit), primitives −40 % | aucun | rejeté | ombres pleines |
-| **Ombres des arbres** | sans ombre (05/11, 07/11) ; coupure à 100 / 150 / 250 m (bancs b, c, d, 07/11, #732) | cultures ≈ 0 ; forêt sans ombre −0,2 / −1,2 / −2,3 ; coupure à 100 m, 1re version −0,1 / −0,3 / −0,4, version « ombre seule » −0,16 / −1,05 / −1,89 | ombres proches identiques, lointaines absentes ; aspect validé | 100 m retenu | limite à 100 m sur la branche de #732, pas encore sur main |
+| **Ombres des arbres** | sans ombre (05/11, 07/11) ; coupure par cases à 100 / 150 / 250 m (banc b) ; groupe « ombre seule » par carrés de 25 m (bancs c et d, 07/11, #732) | cultures ≈ 0 ; forêt sans ombre −0,2 / −1,3 / −2,3 ; coupure par cases −0,1 / −0,3 / −0,4 ; « ombre seule » à 100 m −0,16 / −1,1 / −1,7 à −1,9 | ombres des arbres lointains (au-delà de 100 m) | « ombre seule » à 100 m adoptée (aspect validé 07/11) | ombre des arbres jusqu'à 100 m, les trois préréglages |
 | **Ombres des pierres et fleurs** | 06/11 | −0,10 / −0,13 / bruit | aucun | rejeté (bruit) | inchangées |
 | **Brume volumétrique** | Y13 étape 3 (28/10) ; sans brume, grille medium en high (05–06/11) ; lumière du ciel 1 puis 0,5 (05–06/11) | +0,2 à l'ajout ; sans brume −0,54 / −0,58 ; lumière du ciel ≈ 0 | profondeur de l'air ; montagnes plus noires une fois éclairée | adoptée, éclairée à 0,5 | medium light, high full |
 | **Rendu des tons** | Filmic (28/10) ; AgX (29/10) ; courbe en S 0,35 (06/11) | ≈ 0 | ciel moins délavé ; contraste | AgX + courbe en S | Forward+ |
@@ -335,7 +334,7 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 1. **Le rendu est limité par les pixels, pas par les objets.** MSAA, SSIL et halo pèsent 1 à 3,7 ms chacun ; le tri du visible, la densité des arbres, les cascades et les ombres du relief gagnent quelques dixièmes au plus. Retirer 40 % des primitives (ombres du relief) ne change rien au GPU de la GTX 1060.
 2. **Le MSAA 2× a été le levier principal** des préréglages medium et high (≈ −1,8 ms partout), pour une perte visuelle validée sur captures.
 3. **Sans arbres, la forêt coûte plus cher** (−0,95 ms en low et medium) : les arbres cachent le sol et l'herbe, plus chers par pixel. Supprimer de la végétation n'est donc pas un remède en soi.
-4. **En forêt, les ombres des arbres sont le levier principal** (jusqu'à −2,3 ms en high), devant la densité et le niveau de détail. Les limiter à 100 m n'a marché qu'une fois les arbres lointains vraiment retirés de la passe d'ombre (groupe « ombre seule ») : la passe d'ombre est limitée par les sommets, replier un sommet dans le shader ne lui évite pas d'être traité. **En cultures, c'est l'herbe**, par sa densité et non par sa distance (moitié des touffes : −0,7 ms en medium, −1,2 ms en high ; effacer l'herbe à 150 m : rien) ; les arbres n'y pèsent rien.
+4. **En forêt, les ombres des arbres proches sont le levier principal** (jusqu'à −2,1 ms en high), devant la densité et le niveau de détail. Une coupure par cases de 250 m ne gagnait que 0,3–0,4 ms (la passe d'ombre traite encore les sommets repliés) ; un groupe « ombre seule » limité aux arbres à moins de 100 m rend presque tout le gain (−1,1 / −1,9 ms). **En cultures, c'est l'herbe** (moitié des touffes : −0,7 ms en medium, −1,2 ms en high) ; les arbres n'y pèsent rien.
 5. **Les ombres coûtent 0,5 / 1,9 / 2,3 ms au total** et font la moitié des primitives : c'est le coût par pixel (atlas, filtre) qui compte, pas le nombre de triangles.
 6. **Les « loupés » valent plus que les réglages fins** : ciel recalculé à chaque image (0,8 ms), globe du menu dessiné hors menu, shader dupliqué par essence d'arbre (×4 sur le GPU), banc qui mesurait du low.
 7. **Les réglages « presque gratuits » de Godot sont dans le bruit** (±0,6 ms sur le banc tout en cultures) : à garder pour le principe, sans en attendre de gain.
@@ -345,7 +344,9 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 
 ## 5. Encore ouvert
 
-- **Budgets dépassés après #729 et #721** : cultures 14,2 / 16,5 ms et forêt 13,0 / 15,9 ms en medium / high (passe finale du 06/11, avant #721 qui ajoute environ +0,2 / +0,9 / +1,4 ms). En low, cultures 7,8, forêt 7,3 et alpin 6,9 ms dépassaient le budget de 6 ms ; avec le budget de 8 ms décidé le 7 novembre, ils passent tout juste (cultures 7,8 + 0,2 de #721 ≈ 8,0 ms, à confirmer au banc). Banc b du 7 novembre (avec #721) : tronçon 8,0 / 13,7 / 17,1 ms. Après les bancs c et d (ombre des arbres à 100 m et #741) : forêt ≈ 12,3 / 15,3 ms et cultures 13,9 / 16,8 ms en medium / high, toujours au-dessus. Banc e (effets d'écran) attendu dans #732.
+- **Cultures encore au-dessus des budgets du 8 novembre** (banc d, avec #741 et l'ombre des arbres à 100 m) : 8,18 / 13,90 / 16,73 ms pour 8 / 13 / 16. Reporté en 5.0 avec les autres essais de gain.
+- **Historique, budgets dépassés après #729 et #721** : cultures 14,2 / 16,5 ms et forêt 13,0 / 15,9 ms en medium / high (passe finale du 06/11, avant #721 qui ajoute environ +0,2 / +0,9 / +1,4 ms). En low, cultures 7,8, forêt 7,3 et alpin 6,9 ms dépassaient le budget de 6 ms ; avec le budget de 8 ms décidé le 7 novembre, ils passent tout juste (cultures 7,8 + 0,2 de #721 ≈ 8,0 ms, à confirmer au banc). Banc b du 7 novembre (avec #721) : tronçon 8,0 / 13,7 / 17,1 ms. Suite dans #732 : aucune variante seule ne suffit ; leviers mesurés : ombres des arbres en forêt, quantité d'herbe en cultures.
+- **Reporté en 5.0 (choix du propriétaire, 8 novembre)** : tout nouvel essai de gain de performance. Prévu et non lancé : banc des effets d'écran sur le tronçon cultures → forêt → alpin, en low, medium et high (`cout_rendu.py --troncon farmland,temperate_forest,alpine --variantes base,sans_ssao,ssao_low,sans_brume,brume_light,msaa0_smaa,sans_glow,ciel_128 --repetitions 2`), bloc alpin du tronçon (banc d'environ 400 s), prépasse de profondeur.
 - **Essais jamais mesurés** (cahiers sans résultat retrouvé) : Y3 (HLOD des villages), Y4 (ombres par sorte d'objet), Y7 (moteur Mobile en low), Y12 (lumière et particules), tableau du protocole `ESSAI_RENDU_Y11_Y12.md`, banc GPU des panneaux d'approche #773. La circulation AS6 avec véhicules à l'écran a été mesurée le 8 novembre (§2.6).
 - **Pistes notées pour plus tard** : même passage propre de l'herbe pour les buissons nains, roseaux et herbes hautes (`ground_details.gd`) ; prépasse de profondeur (22 % du GPU en medium et high) ; S1b (occlusion par le relief) et S1c (décor hors vue) si un cas réellement chargé apparaît.
 
@@ -365,7 +366,7 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 | #724 | `mesures/2026-11-06-ombres-relief/` | — |
 | Y5 | `mesures/2026-11-06-foret/` | `LOT_Y5` |
 | Y22 | `mesures/2026-11-06-herbe-y22*/` | `LOT_Y22` |
-| #732 | `mesures/2026-11-07-cultures-foret/`, `-b/`, `-c/`, `-d/` | PR #732, étude du 5 novembre §8 |
+| #732 | `mesures/2026-11-07-cultures-foret/`, `-b/`, `-c/` (planche forêt validée), `-d/` | PR #732, étude § 8 |
 | #741 | `mesures/2026-11-07-herbe-y22-15/` | `LOT_Y22` (règle Y22-15) |
 | #762, #761 | `mesures/2026-11-07-coniferes-r762/`, `captures/troncs-arbres/`, `captures/herbe-route-km173/` | — |
 | U23 (#748, #771) | `mesures/2026-11-07-u23-r748/`, `mesures/2026-11-08-u23-r771/`, `captures/u23/`, `captures/u23-etape2/` | `LOT_U23` |

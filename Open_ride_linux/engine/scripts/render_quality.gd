@@ -114,7 +114,9 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 		if "chunks_behind" in streamer:
 			streamer.chunks_behind = int(p["chunks_behind"])
 		if "vegetation_density_factor" in streamer:
-			streamer.vegetation_density_factor = RenderDiag.number("vegetation", float(p["vegetation_density_factor"]))
+			# Essais : `vegetation=F` remplace la densité du préréglage, `vegetation_x=F` la multiplie (0 : aucun arbre).
+			streamer.vegetation_density_factor = RenderDiag.number("vegetation", float(p["vegetation_density_factor"])) \
+				* maxf(0.0, RenderDiag.number("vegetation_x", 1.0))
 		if "far_radius_m" in streamer:
 			streamer.far_radius_m = WorldStreamer.far_radius_for(QualityPresets.fog_end_m(key))
 		if "culling_keep_m" in streamer:

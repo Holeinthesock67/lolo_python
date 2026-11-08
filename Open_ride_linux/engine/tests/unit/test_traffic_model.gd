@@ -497,6 +497,31 @@ func _run() -> void:
 	_test_core_vectors()
 	_test_sync_core(route)
 	await _test_renderer(route)
+	# Option gravel (décision du 7/11) : chemin non revêtu de 8 à 18 km, seuls tracteurs et motos y apparaissent
+	var on_path := {}
+	var off_path := {}
+	for sd in range(1, 9):
+		var tg = TrafficModel.new()
+		tg.configure(route, {"terrain": {"snow_line_m": 2200.0}}, [], 5, sd)
+		tg.unpaved_at = func(s: float) -> bool: return s >= 8000.0 and s <= 18000.0
+		var sg := 1000.0
+		while sg < 24500.0:
+			tg.update(sg, 8.3, 0.1)
+			for v in tg.vehicles:
+				if absf(float(v["s"]) - sg) < 300.0:
+					if float(v["s"]) >= 8000.0 and float(v["s"]) <= 18000.0 and sg >= 8000.0 and sg <= 18000.0:
+						on_path[v["kind"]] = true
+					else:
+						off_path[v["kind"]] = true
+			sg += 0.83
+	var only_ok := not on_path.is_empty()
+	for k in on_path:
+		only_ok = only_ok and k in TrafficModel.UNPAVED_KINDS
+	_check(only_ok, "gravier : seuls tracteurs et motos sur le chemin (%s)" % str(on_path.keys()))
+	var others_off := false
+	for k in off_path:
+		others_off = others_off or not (k in TrafficModel.UNPAVED_KINDS)
+	_check(others_off, "bitume : toutes les sortes de véhicules (%s)" % str(off_path.keys()))
 	print("test_traffic_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
 

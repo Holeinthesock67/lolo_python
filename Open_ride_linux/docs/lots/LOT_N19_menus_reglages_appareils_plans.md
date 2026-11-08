@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Présentation des menus, étape 3 : Réglages (valeur alignée, édition en place, curseurs), Appareils et connexion, plans et test de FTP | GDScript | étapes 1 et 2, PR #452 | Moyenne | Non : interne (menus, captures sur le PC) |
+| Présentation des menus, étape 3 : Réglages (valeur alignée, édition en place, curseurs), Appareils et connexion, plans et test de FTP | GDScript | étapes 1 et 2, PR #452 | Moyenne | **Livré le 28 octobre** (PR #464 étape 3a, PR #479 étape 3b) ; restes en §9 |
 
 ## 1. Objectif
 
@@ -74,3 +74,15 @@ Aucune : messages `settings`, `set_setting`, `devices`, plans et test de FTP inc
 
 - Records, bilan, pause, confirmation et couleurs du HUD et du globe : N20 (étape 4).
 - Nouveaux réglages, garage et avatar (V8), choix du biome (U16).
+
+## 9. Livraison (point du 8 novembre)
+
+Livré sur `main` : étape 3a (PR #464, 28 octobre : Réglages valeur à droite, curseurs, édition en place, carte du réglage, fil d'Ariane, « Créer un entraînement » en place, tests `test_menu_flow.gd`) et étape 3b (PR #479, 28 octobre : cartes de l'appairage avec barres de signal, des plans, de la séance du jour et du test de FTP). Les commits de `main` ne citent pas « N19 » (titres « Présentation des menus, étape 3a / 3b »).
+
+Restes, petits et sans blocage de code :
+
+- scènes `visual_check.py` `reglages`, `reglage_edition` et `appareils` non ajoutées ;
+- raison du silence du Click gauche (verrou Zwift) absente de la carte de l'appareil ;
+- offre de la nouvelle FTP pas encore en grand chiffre `GOLD` ;
+- une couleur dérivée `Color(UiTheme.OK, 0.5)` dans `devices_view.gd` (transparence d'un jeton, tolérée) ;
+- `menu_bench.py` avant/après et parcours au Click à 2 m sur le PC (recette du propriétaire, sans vélo).
