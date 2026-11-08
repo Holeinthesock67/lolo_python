@@ -2,7 +2,7 @@
 """Banc d'essai simulé : vrai core sur Bluetooth simulé, vrai engine, captures et rapport.
 
 Usage :
-    sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|ouvert|DOSSIER.world]
+    sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|demo_long|village|osm|ouvert|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
                  [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side] [--camera-height M]
                  [--culling on|off] [--forest on|off] [--crowd climbs|all] [--load-guard on|off] [--probe] [--speed-kmh V] [--biome ID] [--out DOSSIER] [--list]
@@ -45,7 +45,9 @@ journal de séance, motifs des journaux du core et de l'engine, éléments du HU
 attente avec son renvoi à l'étape de la recette ; `bench.powerups` (contenu de `~/OpenRide/powerups.toml`,
 ex. arches rapprochées) et `bench.bot_profiles` (`--bot-profile` du core). Série DS : `bench.mode` (ou `--mode`) donne
 le mode de la séance (`start.mode`, ex. `survivor`, scénario `dernier_survivant`) et `bench.config` des sections
-ajoutées à config.toml (ex. `{"survivor": {"opponents": 2}}`).
+ajoutées à config.toml (ex. `{"survivor": {"opponents": 2}}`). Lot AS6 : scénario `circulation_proche`
+(`[ride] traffic_bench_s`, passages forcés d'un tracteur lent puis d'un camion qui double) et `bench.vehicle_draft_expect`
+(abri derrière un véhicule reçu au journal de séance), pour mesurer le coût des véhicules proches.
 
 Fiabilité (lot X35) : les captures périodiques commencent après le chargement du parcours (`route_loaded`
 puis SETTLE_S) et une capture sans réponse est redemandée une fois ; seules les captures demandées après le
@@ -208,6 +210,10 @@ def toml_text(table: dict[str, Any]) -> str:
 
 # --- parcours ----------------------------------------------------------------------------------
 
+DEMO_LONG_NAME = "demo-long"
+DEMO_LONG_M = 12_000.0
+
+
 def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
     """Écrit le parcours dans le dossier des parcours du core et renvoie son identifiant."""
     routes.mkdir(parents=True, exist_ok=True)
@@ -216,6 +222,12 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--demo", "--terrain",
                         "--out", str(routes)], check=True, env=env, stdout=subprocess.DEVNULL)
         return "demo"
+    if kind == "demo_long":
+        # Même générateur et même terrain que la démonstration, étiré à 12 km (lot DS8 : 11 arches à 1 km).
+        subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--name", DEMO_LONG_NAME,
+                        "--length", str(DEMO_LONG_M), "--terrain", "--out", str(routes)],
+                       check=True, env=env, stdout=subprocess.DEVNULL)
+        return DEMO_LONG_NAME
     if kind == "ouvert":
         # Monde vivant synthétique de 20 km (W15) : même rendu que le monde ouvert, sans générateur ni réseau.
         problem = compiler_problem(())
@@ -242,7 +254,7 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         return world.stem
     src = Path(kind).expanduser()
     if not (src / "manifest.json").is_file():
-        raise SystemExit(f"parcours introuvable : {kind} (demo, village, osm, ouvert ou dossier .world)")
+        raise SystemExit(f"parcours introuvable : {kind} (demo, demo_long, village, osm, ouvert ou dossier .world)")
     shutil.copytree(src, routes / src.name, dirs_exist_ok=True)
     return src.stem
 
@@ -301,6 +313,7 @@ class Bench:
                               min(max(scenario_duration(spec) + 15.0, 45.0), 600.0))
         self.every = float(args.every or settings.get("every_s") or 15.0)
         self.decor_expect = [str(k) for k in settings.get("decor_expect", [])]
+        self.vehicle_draft_expect = bool(settings.get("vehicle_draft_expect"))   # lot AS6 : abri d'un véhicule reçu
         self.sounds_expect = [[str(k) for k in group] for group in settings.get("sounds_expect", [])]
         # Lot X33 : appuis joués (clavier ; ceux du Click sont déjà des événements du scénario), attentes,
         # valeurs des bonus et bots à profil.
@@ -732,6 +745,11 @@ class Bench:
         r = self.report
         recs = [x for x in self.records if x.get("kind") == "record"]
         t0 = self.t0_wall
+        if self.vehicle_draft_expect:   # lot AS6 (circulation_proche) : passages forcés, sans bot
+            sheltered = [x for x in recs if float(x.get("draft") or 0.0) >= 0.05]
+            r.check(bool(sheltered), "circulation : abri derrière un véhicule reçu",
+                    f"{len(sheltered)} s sur {len(recs)}, {max(float(x['draft']) for x in sheltered):.2f} au plus"
+                    if sheltered else f"aucun abri sur {len(recs)} s")
         devs = [x for x in self.records if x.get("kind") == "device"]
         for ev in self.spec.get("events", []):
             t = float(ev.get("t", 0))
@@ -1053,7 +1071,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
         "GODOT", Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     ap.add_argument("--scenario", action="append", help="scénario (répétable ; défaut : demo)")
-    ap.add_argument("--world", help="demo (défaut), village (bâtiments, montée et descente), osm, ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
+    ap.add_argument("--world", help="demo (défaut), demo_long (la démonstration étirée à 12 km, lot DS8), village (bâtiments, montée et descente), osm, ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
                     "l'emporte sur le monde du scénario")
     ap.add_argument("--biome", help="biome forcé sur tout le parcours (lot U17, ex. sand_desert) ; "
                     "l'emporte sur le biome du scénario (scénarios biome_*)")

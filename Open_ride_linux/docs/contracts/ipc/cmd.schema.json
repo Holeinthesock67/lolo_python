@@ -78,7 +78,9 @@
         "recover_session",
         "scene_ready",
         "list_history",
-        "history_session"
+        "history_session",
+        "list_mode_options",
+        "set_mode_option"
       ]
     },
     "args": {

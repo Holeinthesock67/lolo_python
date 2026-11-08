@@ -10,13 +10,16 @@ extends RefCounted
 ## - `params(biome, season, progress, variant)` : paramètres du thème 2.0, repli sur les clés 1.x ;
 ##   un thème 1.x donne donc à tous les biomes les paramètres d'aujourd'hui. Saisons : valeurs neutres
 ##   tant que P18 et le lot U13 ne sont pas là ;
-## - `blend(weights, params_by_biome)` : mélange numérique des couleurs et des densités en un point.
+## - `blend(weights, params_by_biome)` : mélange numérique des couleurs et des densités en un point ;
+## - `building_style_at(x, z)` (lot U23) : style d'architecture d'un bâtiment (building_styles.gd) : variante
+##   `roofs` de la tuile si elle en a une, sinon style du biome dominant au point.
 ## Pas de class_name : charger par preload("res://scripts/biome_model.gd").
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const BiomeLayer := preload("res://scripts/biome_layer.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const BuildingStyles := preload("res://scripts/building_styles.gd")
 
 const NEAR_M := 1000.0
 const FAR_M := 5000.0
@@ -134,6 +137,34 @@ func top_biomes(ix: int, iz: int, max_n: int) -> Dictionary:
 	for e in shares:
 		out[e[1]] = e[0] / total
 	return out
+
+
+## Biome de plus grand poids en (x, z) ; à poids égaux, le premier dans l'ordre alphabétique.
+func dominant_at(x: float, z: float) -> String:
+	var w := weights_at(x, z)
+	var best := ""
+	var best_w := -1.0
+	var keys := w.keys()
+	keys.sort()
+	for b in keys:
+		if float(w[b]) > best_w:
+			best = b
+			best_w = float(w[b])
+	return best
+
+
+## Style d'architecture d'un bâtiment centré en (x, z) (lot U23, building_styles.gd `resolve`) : la variante
+## `roofs` de la tuile (U4) l'emporte, puis le biome dominant ; un forçage `--biome=` ignore les variantes.
+func building_style_at(x: float, z: float) -> String:
+	var roofs := ""
+	if forced == "" and layer.present:
+		var t: Dictionary = layer.tile("near", floori(x / NEAR_M), floori(z / NEAR_M))
+		if t.is_empty():
+			t = layer.tile("far", floori(x / FAR_M), floori(z / FAR_M))
+		var v = t.get("variant", null)
+		if typeof(v) == TYPE_DICTIONARY and typeof(v.get("roofs", null)) == TYPE_STRING:
+			roofs = v["roofs"]
+	return BuildingStyles.resolve(roofs, dominant_at(x, z))
 
 
 func max_biomes(quality: String) -> int:

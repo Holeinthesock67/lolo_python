@@ -36,6 +36,7 @@ var after_out := "ride"         # réglage survivor.after_out : texte du bandeau
 var ftp_w := 0.0
 const REACH_FTP := 1.5
 const REACH_MAX_W := 600.0
+const GAP_MIN_SPEED_MPS := 1.0   # vitesse plancher de l'écart estimé d'un bot loin (gaps.py MIN_SPEED_MPS)
 var _seen := {}                 # "arche:coureur" des éliminations déjà affichées
 var _bottom := {}               # bandeau du bas en cours : {title, sub, color, until}
 var _center := {}               # bandeau du milieu en cours
@@ -54,13 +55,14 @@ func reset() -> void:
 	_total = 0
 
 
-## Noms des bots de la trame (`bots` de `state`).
+## Noms des bots de la trame (`bots` de `state`). Peloton (lot PL1) : un bot loin n'a son nom qu'une trame sur
+## N (`bots.light_frame`) ; sans nom, le nom déjà connu reste (lot DS8).
 func remember_names(bots) -> void:
 	if not bots is Array:
 		return
 	for b in bots:
-		if b is Dictionary and str(b.get("id", "")) != "":
-			names[str(b["id"])] = str(b.get("name", b["id"]))
+		if b is Dictionary and str(b.get("id", "")) != "" and b.has("name"):
+			names[str(b["id"])] = str(b["name"])
 
 
 func name_of(id: String) -> String:
@@ -119,7 +121,7 @@ func view(state, now_s: float) -> Dictionary:
 	var winner = sv.get("winner", null)
 	var last := str(sv.get("last", "")) if sv.get("last", null) != null else ""
 	_total = alive.size() + (sv["out"].size() if sv.get("out") is Array else 0) + (1 if me_out != null else 0)
-	var out := {"visible": true, "block": {}, "list": list_rows(sv, state.get("bots", null)), "bottom": {}, "center": {}}
+	var out := {"visible": true, "block": {}, "list": list_rows(sv, state.get("bots", null), _num(state.get("s", null), NAN), _num(state.get("v", null), 0.0)), "bottom": {}, "center": {}}
 	if d != null and me_out == null and winner == null:
 		var dm := float(d)
 		if not _arch_start_d.has(arch) or dm > float(_arch_start_d[arch]):
@@ -166,12 +168,18 @@ func ahead_lines(ahead, power_w: float) -> Array:
 
 
 ## Lignes de la liste des coureurs : [{name, detail, me, last, out}].
-func list_rows(sv: Dictionary, bots) -> Array:
+func list_rows(sv: Dictionary, bots, rider_s := NAN, rider_v := 0.0) -> Array:
 	var gaps := {}
 	if bots is Array:
 		for b in bots:
-			if b is Dictionary and (b.get("gap_s") is float or b.get("gap_s") is int):
+			if not b is Dictionary:
+				continue
+			if b.get("gap_s") is float or b.get("gap_s") is int:
 				gaps[str(b.get("id", ""))] = float(b["gap_s"])
+			elif not is_nan(rider_s) and (b.get("s") is float or b.get("s") is int):
+				# Peloton (lot PL1) : les bots loin n'ont plus `gap_s` ; écart estimé comme le repli du core
+				# (gaps.py : distance ÷ vitesse, vitesse plancher 1 m/s), lot DS8.
+				gaps[str(b.get("id", ""))] = (float(b["s"]) - rider_s) / maxf(rider_v, GAP_MIN_SPEED_MPS)
 	var rows: Array = []
 	var alive: Array = sv.get("alive", []) if sv.get("alive") is Array else []
 	var last := str(sv.get("last", "")) if sv.get("last", null) != null else ""
@@ -198,6 +206,10 @@ func list_rows(sv: Dictionary, bots) -> Array:
 	for g in gone:
 		rows.append({"name": name_of(g[1]), "detail": "arche %d" % g[0], "me": g[1] == ME, "last": false, "out": true})
 	return rows.slice(0, MAX_LINES)
+
+
+static func _num(x, fallback: float) -> float:
+	return float(x) if (x is float or x is int) else fallback
 
 
 ## Position de l'arche `arch` sur la route (s cumulé), connue dès qu'elle est devenue la prochaine ; NAN sinon.

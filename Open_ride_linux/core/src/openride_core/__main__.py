@@ -27,10 +27,17 @@ Sous-commandes disponibles à ce stade :
                                       (messages, pauses, trous, FC figée, totaux ; lot X11)
     openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
                                       historique des séances et cumul par semaine ISO
+    openride-core coach [--date J] [--objectif O] [--temps MIN] [--montre TYPE[:MIN[:W]] [--enregistrer]]
+                        [--effacer-montre] [--prochaine-course J] [--dir DOSSIER] [--workouts DOSSIER]
+                        [--ftp W] [--json]
+                                      séance conseillée du jour et sa raison (série CO, lot CO1)
     openride-core xp [--dir DOSSIER] [--json] [--config FICHIER] [--save F | --compare F]
                                       progression (niveau, expérience, défis) recalculée depuis
                                       le journal des séances (série V, lot V2) ; écart avant/après
                                       une PR face à un instantané (lot X39)
+    openride-core collection [--dir DOSSIER] [--json]
+                                      cartes à collectionner gagnées et à gagner, recalculées
+                                      depuis le journal (série BC, lot BC1)
     openride-core devices [--timeout S] [--json] [--all] [--config FICHIER]
                           [--sim-scenario NOM|FICHIER] [--save [--yes]]
                                       inventaire des appareils Bluetooth (trainer, Click,
@@ -232,10 +239,22 @@ def cmd_history(args: argparse.Namespace) -> int:
     return run(args.directory, args.weeks, args.ftp, args.json, args.config)
 
 
+def cmd_coach(args: argparse.Namespace) -> int:
+    from .coach import run
+
+    return run(args)
+
+
 def cmd_xp(args: argparse.Namespace) -> int:
     from .tools.xp import run
 
     return run(args.directory, args.json, args.config, save=args.save, compare=args.compare)
+
+
+def cmd_collection(args: argparse.Namespace) -> int:
+    from .tools.collection import run
+
+    return run(args.directory, args.json)
 
 
 def cmd_devices(args: argparse.Namespace) -> int:
@@ -415,9 +434,9 @@ def build_parser() -> argparse.ArgumentParser:
                      help="avec --autostart : entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)")
     run.add_argument("--ftp-test", choices=["ramp"],
                      help="avec --autostart : séance de test de FTP (rampe par paliers)")
-    run.add_argument("--mode", choices=["ride", "wtf", "survivor"],
+    run.add_argument("--mode", choices=["ride", "wtf", "survivor", "grandprix"],
                      help="avec --autostart : mode de la séance (argument `mode` de start ; bancs du PC, "
-                          "ex. survivor pour le Dernier survivant)")
+                          "ex. survivor pour le Dernier survivant, grandprix pour le Grand Prix des objets)")
     run.add_argument("--depart", choices=["pedalage", "immediat"],
                      help="départ de la séance (lot O36) : pedalage attend le décor, le trainer et le "
                           "pédalage ; immediat part à la commande start (défaut : [depart] mode)")
@@ -444,6 +463,8 @@ def build_parser() -> argparse.ArgumentParser:
     fitc.add_argument("file", type=Path, help="fichier .fit")
     fitc.add_argument("--journal", type=Path, help="journal .jsonl de la séance : distance et durée à ± 1 %%")
     fitc.add_argument("--json", action="store_true", help="sortie JSON")
+    from .coach import add_parser as add_coach_parser
+    add_coach_parser(sub)
     hist = sub.add_parser("history", help="historique des séances et cumul par semaine ISO")
     hist.add_argument("--dir", type=Path, dest="directory",
                       help="dossier des séances (défaut : ~/OpenRide/Activities)")
@@ -460,6 +481,10 @@ def build_parser() -> argparse.ArgumentParser:
     snap.add_argument("--save", type=Path, metavar="FICHIER", help="écrit l'instantané (sortie --json) avant une PR")
     snap.add_argument("--compare", type=Path, metavar="FICHIER",
                       help="écart d'expérience, de pièces et de défis face à un instantané (code 1 si écart)")
+    col = sub.add_parser("collection", help="cartes à collectionner recalculées depuis le journal (série BC)")
+    col.add_argument("--dir", type=Path, dest="directory",
+                     help="dossier des journaux (défaut : celui du profil en cours)")
+    col.add_argument("--json", action="store_true", help="sortie JSON")
     dev = sub.add_parser("devices", help="inventaire des appareils Bluetooth et bloc [drivers] proposé")
     dev.add_argument("--timeout", type=float, default=8.0, help="durée de la recherche en s (défaut : 8)")
     dev.add_argument("--json", action="store_true", help="sortie JSON")
@@ -547,9 +572,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"openride-core {args.command} : erreur : {exc}", file=sys.stderr)
         raise SystemExit(2) from None
     return {"recover": cmd_recover, "run": cmd_run,
-            "release-trainer": cmd_release_trainer, "summary": cmd_summary, "session-report": cmd_session_report, "xp": cmd_xp,
+            "release-trainer": cmd_release_trainer, "summary": cmd_summary, "session-report": cmd_session_report, "xp": cmd_xp, "collection": cmd_collection,
             "fit-check": cmd_fit_check,
-            "history": cmd_history, "devices": cmd_devices,
+            "history": cmd_history, "coach": cmd_coach, "devices": cmd_devices,
             "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test,
             "open-world-save": cmd_open_world_save, "demo-biomes": cmd_demo_biomes, "profil": cmd_profil}[args.command](args)
 

@@ -287,17 +287,17 @@ Demande du propriétaire du 26 octobre (point C7) : chaque bouton garde le même
 
 Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches. Les deux boîtiers répondent ; Zwift verrouille le gauche environ une minute après la connexion et OpenRide le redémarre alors tout seul, d'où environ 4 s sans boutons à gauche chaque minute (SRS §4.2). B double donc toujours « − », et rien d'indispensable n'est mis sur le seul boîtier gauche : les flèches sont des raccourcis. Appui court : moins de 0,5 s ; appui long : 0,9 s ou plus ; entre les deux, rien ne se passe et l'écran le dit (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`).
 
-| Bouton | Famille | Menus | Classique SIM | ERG | Cyber-Rogue | Monde ouvert |
-| --- | --- | --- | --- | --- | --- | --- |
-| + / B (ou −), court | Déplacer ou doser, petit pas | Élément suivant, précédent | Braquet ± 1 | Biais ± 2 % | Vitesse du frein ± 1 | Comme le mode roulé (SIM ou ERG) |
-| + / B (ou −), long | Déplacer ou doser, grand pas | Cinq éléments plus loin, plus haut (bornés à la liste) | Braquet ± 10 | Biais ± 10 % | Vitesse du frein ± 3 | Comme le mode roulé |
-| Y court | Interrompre et revenir | Écran précédent ; sur l'écran de pause, reprendre | Pause et reprise | Pause et reprise | Pause et reprise | Pause et reprise |
-| Z court | Action du mode | Aucune (un menu n'est pas un mode) | Bonus (T) | Bloc suivant | Attaque | Bonus (T) |
-| Z long | Action spéciale du mode | Aucune | Repère « décrochage » au journal | Repère « décrochage » au journal | Carte ou relique active (T1) | Repère « décrochage » au journal |
-| A court | Choisir : option suivante du choix affiché | Élément suivant | Vue de caméra suivante | Vue de caméra suivante | Couloir ou carte suivant | Branche suivante au carrefour, sinon vue suivante |
-| A long | Valider le choix affiché | Valider l'élément | Revenir à la vue par défaut | Revenir à la vue par défaut | Valider le couloir ou la carte | Valider la branche, sinon revenir à la vue par défaut |
-| Flèches gauche, droite (boîtier gauche) | Choisir, raccourci | Élément précédent, suivant | Aucune | Aucune | Couloir ou carte précédent, suivant | Branche à gauche, à droite |
-| Flèches haut, bas (boîtier gauche) | Vue, raccourci | Aucune (pas de vue dans un menu) | Vue suivante, précédente | idem | idem | idem |
+| Bouton | Famille | Menus | Classique SIM | ERG | Cyber-Rogue | Monde ouvert | Grand Prix des objets |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| + / B (ou −), court | Déplacer ou doser, petit pas | Élément suivant, précédent | Braquet ± 1 | Biais ± 2 % | Vitesse du frein ± 1 | Comme le mode roulé (SIM ou ERG) | Braquet ± 1 |
+| + / B (ou −), long | Déplacer ou doser, grand pas | Cinq éléments plus loin, plus haut (bornés à la liste) | Braquet ± 10 | Biais ± 10 % | Vitesse du frein ± 3 | Comme le mode roulé | Braquet ± 10 |
+| Y court | Interrompre et revenir | Écran précédent ; sur l'écran de pause, reprendre | Pause et reprise | Pause et reprise | Pause et reprise | Pause et reprise | Pause et reprise |
+| Z court | Action du mode | Aucune (un menu n'est pas un mode) | Bonus (T) | Bloc suivant | Attaque | Bonus (T) | Utiliser l'objet en réserve |
+| Z long | Action spéciale du mode | Aucune | Repère « décrochage » au journal | Repère « décrochage » au journal | Carte ou relique active (T1) | Repère « décrochage » au journal | Repère « décrochage » au journal |
+| A court | Choisir : option suivante du choix affiché | Élément suivant | Vue de caméra suivante | Vue de caméra suivante | Couloir ou carte suivant | Branche suivante au carrefour, sinon vue suivante | Voie suivante quand le choix de voie est affiché, sinon vue suivante |
+| A long | Valider le choix affiché | Valider l'élément | Revenir à la vue par défaut | Revenir à la vue par défaut | Valider le couloir ou la carte | Valider la branche, sinon revenir à la vue par défaut | Revenir au placement automatique, sinon à la vue par défaut |
+| Flèches gauche, droite (boîtier gauche) | Choisir, raccourci | Élément précédent, suivant | Aucune | Aucune | Couloir ou carte précédent, suivant | Branche à gauche, à droite | Voie à gauche, à droite |
+| Flèches haut, bas (boîtier gauche) | Vue, raccourci | Aucune (pas de vue dans un menu) | Vue suivante, précédente | idem | idem | idem | idem |
 
 Règles communes, valables partout :
 

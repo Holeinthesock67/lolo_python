@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série AS : circulation calculée par le core, abri derrière un véhicule lent (activé par défaut, réglable), aspiration au dépassement | Python + GDScript | AS2 | Grande | Livré le 3 novembre (version 2.0, #649) ; reste l'essai sur le vélo |
+| Série AS : circulation calculée par le core, abri derrière un véhicule lent (activé par défaut, réglable), aspiration au dépassement | Python + GDScript | AS2 | Grande | Livré le 3 novembre (version 2.0, #649) ; restent le coût GPU de la circulation (véhicules à l'écran) et l'essai sur le vélo |
 
 Série AS, version 2.0. Demande du propriétaire du 29 octobre 2026 (« abri derrière véhicules ou groupes à intégrer ») ; décision du même jour : **abri derrière un véhicule lent activé par défaut, désactivable dans le menu**.
 
@@ -59,7 +59,7 @@ Liste facultative `vehicles` dans `state` ; `draft_bot` peut valoir `veh:<id>` ;
 
 Véhicules qui réagissent au cycliste (klaxon, freinage), règles de sécurité routière.
 
-## 9. Livraison (31 octobre 2026, PR empilée sur AS2)
+## 9. Livraison (PR #663 du 31 octobre 2026, dans main le 3 novembre avec la série AS #649)
 
 - **Core.** `traffic.py` : portage de `traffic_model.gd` (cases de 250 m, mêmes sortes et parts, même tirage `hash3`, graine 0 comme l'engine, villages de la couche `poi` par tronçons de 1 km, limite de neige du thème), budget fixe de 8 véhicules (celui du préréglage high) quel que soit le préréglage. Liste `vehicles` : les 4 plus proches à moins de 150 m, une trame sur trois. Pas de circulation sans décor vivant (`[render] living`), puisque l'engine n'en affiche pas.
 - **Véhicule lent devant.** Tracteur, ou utilitaire dans une montée de plus de 6 % (18 à 26 km/h), tiré dans le même sens et plus lent que le cycliste : posé 150 à 300 m devant, voie de droite. Il garde sa ligne face aux coureurs qui le doublent (ce sont eux qui s'écartent) et ne double jamais un coureur. Une fois doublé, il suit les règles des autres véhicules, sans jamais s'engager à doubler plus vite qu'il ne roule.
@@ -80,3 +80,4 @@ Véhicules qui réagissent au cycliste (klaxon, freinage), règles de sécurité
 | 6 : coût du core, 4 véhicules et 5 bots | 0,011 ms par pas (borne 0,2 ms) |
 
 Restent sur le PC (fil de fusion) : `visual_check.py` et banc sim en low, medium et high (scènes `abri_tracteur` et `abri_tracteur_parti`), captures à montrer au propriétaire avant la fusion ; sur le vélo : suivre un tracteur en montée, le doubler, se faire doubler par un camion.
+- **Banc de la circulation proche (6 novembre).** La mesure 7ct n'a vu passer aucun véhicule proche. Le scénario `circulation_proche` de `sim_bench` force donc les passages : `[ride] traffic_bench_s` (bancs seulement, 0 par défaut) pose toutes les N s, à tour de rôle, un tracteur à 85 % de la vitesse du cycliste 30 m devant lui, puis un camion qui double depuis 80 m derrière (le tracteur doublé quitte alors la route). Le banc vérifie l'abri reçu derrière un véhicule (`vehicle_draft_expect`). Sans bot, le journal de séance note désormais `draft` et `draft_w` quand un véhicule abrite. Au cloud, en low et sur 200 s, le cycliste est à l'abri pendant 20 s (0,26 au plus), sans aucun contact sur la route.

@@ -236,6 +236,62 @@ def worst_peloton_devices() -> dict[str, Any]:
     return d
 
 
+def worst_survivor_state() -> dict[str, Any]:
+    """Trame du Dernier survivant à 11 adversaires (lot DS8, révision 1.6) : peloton sans fantôme ni maillots,
+    sans ERG, segment ni bonus (le mode n'en a pas, plan DS §2), monde ouvert gardé, et l'objet `survivor` au
+    plus lourd. Majorant : les 12 coureurs à la fois en course (`alive`) et les 11 bots éliminés (`out`), tous
+    les bots de la trame avec `out`."""
+    from .bots import MAX_CONSTANT_BOTS
+
+    d = worst_state("1.6")
+    for key in ("segment", "powerup", "jerseys"):
+        d.pop(key, None)
+    d.update({"mode": "SIM", "erg": None})
+    d["bots"] = [b for b in d["bots"] if b.get("kind") != "ghost"][:MAX_CONSTANT_BOTS]
+    for b in d["bots"]:
+        b.pop("jersey", None)
+    ids = [b["id"] for b in d["bots"]]
+    d["draft_bot"], d["bot_ahead"], d["bot_behind"] = ids[0], ids[1], ids[2]
+    d["survivor"] = {"arch": MAX_CONSTANT_BOTS, "arches": MAX_CONSTANT_BOTS, "d_m": 2999.9,
+                     "alive": ["me", *ids], "last": ids[-1], "gap_last_s": 3599.9,
+                     "out": [[i, MAX_CONSTANT_BOTS] for i in ids], "me_out": None, "winner": None,
+                     "ahead": {"id": ids[0], "gap_s": 3599.9, "catch_w": 1999}}
+    return d
+
+
+GP_LONGEST_ITEM, GP_FX = "musette_x3", 4   # majorant : 4 effets à la fois (le sien, un coup, une éclaboussure, une glissade)
+GP_LONGEST_SHOT = "musette"                 # objet posé ou lancé le plus long tel que l'engine le dessine
+
+
+def worst_grandprix_state(opponents: int = 4) -> dict[str, Any]:
+    """Trame du Grand Prix des objets (lot GP2, révision 1.7) : `opponents` bots à profil sans fantôme, maillots,
+    ERG, segment, bonus ni monde ouvert (le mode les refuse, plan GP §2), donc avec `devices`, chaque bot avec
+    son objet et `GP_FX` effets (au-delà de 5, comme `bots.light_frame`), et `gp` au plus lourd (12 objets en vue,
+    identifiants de 1 à `route_objects.ID_MAX`, menace, 2 rangées de boîtes, tours)."""
+    from .bots import light_frame
+    from .grandprix import ITEM_IDS
+    from .route_objects import ID_MAX
+
+    d = worst_state("1.6")
+    for key in ("segment", "powerup", "jerseys", "open_world"):
+        d.pop(key, None)
+    d.update({"mode": "SIM", "erg": None, "devices": worst_state("1.4")["devices"]})
+    full = worst_state("1.4")["bots"][0]
+    longest = sorted(ITEM_IDS, key=len, reverse=True)[:GP_FX]
+    bots = [{**full, "id": f"bot-{i}-ab"[:MAX_TEXT["bot_id"]], "kind": "constant", "s": 123_456.79 + i,
+             "lane_m": -2.33, "gap_s": -3599.9, "jersey": None, "item": GP_LONGEST_ITEM, "fx": longest}
+            for i in range(opponents)]
+    d["bots"] = bots = light_frame(bots, 123_456.79)
+    ids = [b["id"] for b in bots]
+    d["draft_bot"], d["bot_ahead"], d["bot_behind"] = ids[0], ids[1], ids[-1]
+    d["gp"] = {"place": 12, "of": 12, "gap_s": -3599.9, "held": GP_LONGEST_ITEM, "n": 3, "roll_s": 1.5,
+               "lane": 2, "auto": False, "fx": [[k, 99.9] for k in longest],
+               "warn": [GP_LONGEST_SHOT, 399.9],
+               "obj": [[ID_MAX, GP_LONGEST_SHOT, 123_456.7, -1] for _ in range(12)],
+               "boxes": [199_999, 199_999], "pick": True, "lap": [5, 5]}
+    return d
+
+
 def revisions() -> list[str]:
     return ["1.0", *REVISION_EXTRAS]
 
@@ -292,7 +348,7 @@ def worst_short_messages() -> dict[str, dict[str, Any]]:
             "gains": [{"source": s, "points": 99_999_999} for s in
                       ("distance", "climb", "erg", "erg_bonus", "segment", "segment_pr", "jersey", "rogue", "rogue_boss")],
             "total": 99_999_999, "level_before": 49, "level_after": 50, "xp_total": 99_999_999,
-            "xp_next_level": None, "coins_gained": 99_999_999, "coins_total": 99_999_999,
+            "xp_level_start": 99_999_999, "xp_next_level": None, "coins_gained": 99_999_999, "coins_total": 99_999_999,
             "unlocked": [_ID] * 8,
             "challenges": [{"id": _ID, "name": text(32), "reward_item": _ID}] * 4,
             "equipment_gain_s": -9_999.99, "more": True},
@@ -322,6 +378,11 @@ def report() -> str:
     lines = [f"{'révision':<22} {'octets':>6}  {'cible 1400':>10}  {'limite':>6}  marge"]
     rows = [(rev, worst_state(rev), state_limit(rev)) for rev in revisions()]
     rows.append(("1.6 peloton + devices", worst_peloton_devices(), state_limit("1.6")))
+    rows.append(("1.6 dernier survivant", worst_survivor_state(), state_limit("1.6")))
+    rows.append(("1.7 grand prix", worst_grandprix_state(), state_limit("1.7")))
+    gp11 = worst_grandprix_state(11)
+    gp11.pop("devices")
+    rows.append(("1.7 grand prix 11 bots", gp11, state_limit("1.7")))
     rows.append(("1.4 rogue", worst_rogue_state(), state_limit("1.4")))
     rows += [(f"1.4 {name}", msg, MAX_DATAGRAM_SIZE) for name, msg in worst_short_messages().items()]
     for label, msg, limit in rows:
