@@ -1,0 +1,40 @@
+>>> [1/1] Scénario dernier_survivant_onze (8:00)
+== dernier_survivant_onze : parcours demo-long, 480 s, SIM ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 12.0 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-long à 22.8 s
+[OK] engine vivant jusqu'à la fin : 480 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] sonde de performance : 450 relevés, rapport sonde/rapport.html
+[OK] budget low : images/s : médiane 60.0 (au moins 55)
+[OK] budget low : temps d'image p99 : 16.7 ms (médiane des p99 de chaque seconde, sous 25 ms)
+[OK] budget low : GPU de la vue : médiane 5.27 ms (au plus 6 ms)
+[OK] budget low : GPU saturé : 0.0 % des secondes au-dessus de 95 % de charge (au plus 5 %)
+[OK] à-coups : départ : pire image 142 ms de 20 à 30 s et avant le premier mètre (au plus 150 ms)
+[OK] à-coups : images lentes : 2 seconde(s) avec une image de plus de 50 ms en 7.3 min, 0.3 par minute (au plus 3)
+[OK] à-coups : pire image : 74 ms (au plus 100 ms)
+[OK] à-coups : périodicité en distance : aucune sur 4 image(s) de plus de 50 ms
+[OK] 32/32 images enregistrées après le chargement, réponse en 0.28 s (médiane), 4.74 s au pire : captures de l'engine
+   images par seconde de l'engine : min 1, médiane 60, max 60 (31 relevés)
+[OK] qualité réellement appliquée : low appliquée (32 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] qualité notée par la sonde : low sur toute la mesure
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 1.7 à 4.5 %, pente envoyée 0.4 à 2.6 %
+[OK] décor : aucun contact sur la route : 0 sur 32 captures
+[OK] [DS8] séance lancée en Dernier survivant à 11 adversaires : 1 (au moins 1 attendu)
+[OK] [DS8] première élimination reçue et affichée par l'engine : 1 (au moins 1 attendu)
+[OK] [DS8] deuxième élimination reçue et affichée par l'engine : 1 (au moins 1 attendu)
+[OK] fréquence cardiaque au journal : 431 échantillons, 163 à 180 bpm
+    OK  dernier_survivant_onze : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r735d/ds11_low/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
