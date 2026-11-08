@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+    <author>OpenRide</author>
+    <name>Récupération 40 min</name>
+    <description>Récupération active (série CO) : 5 min de mise en route, 30 min à 50 % FTP, 5 min de retour au calme ; tout sous 55 % FTP, à faire le lendemain d'une course ou d'un bloc dur.</description>
+    <sportType>bike</sportType>
+    <workout>
+        <Warmup Duration="300" PowerLow="0.40" PowerHigh="0.50"/>
+        <SteadyState Duration="1800" Power="0.50"/>
+        <Cooldown Duration="300" PowerLow="0.50" PowerHigh="0.40"/>
+    </workout>
+</workout_file>

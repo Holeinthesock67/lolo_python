@@ -174,6 +174,7 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
 
 - **Langue :** commentaires, docstrings, messages de journal et documentation en français ; identifiants en anglais.
 - **Python :** 3.11 minimum, et le code doit tourner en 3.14. Aucune entrée-sortie bloquante dans la boucle du core. Le matériel s'isole derrière des interfaces (`MockDriver` et `FtmsDriver` s'échangent).
+- **Fichiers embarqués des paquets (lot J4) :** les paquets lisent leurs données dans leur dossier `data/` (`Path(__file__).parent / "data"`), pour marcher installés hors du dépôt ; `theme.schema.json`, le `theme.json` par défaut, `core/workouts/` et `core/plans/` y sont **copiés** (les originaux restent la référence) : après un changement d'un original, recopier (la commande est dans le message de `test_packaging.py`, qui compare octet pour octet).
 - **GDScript :** jamais de `class_name` dans les scripts chargés par la scène principale. L'engine est lancé sans passer par l'éditeur, et Godot ne connaît alors pas les `class_name` : utiliser `preload`.
   - Les fonctions globales de Godot masquent les méthodes de même nom : `route_data.gd` utilise `wrap_s`, et non `wrap`.
 - **Tests :**
