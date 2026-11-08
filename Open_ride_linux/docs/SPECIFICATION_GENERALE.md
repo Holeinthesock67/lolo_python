@@ -190,7 +190,7 @@ Détail : paragraphe « Série P » de [lots/00_INDEX.md](lots/00_INDEX.md) et c
 | 1.x-DEC-2 | Sons d'ambiance et du vélo (vent selon la vitesse dans l'air, roue libre, « clac » à la reprise) | P9, P10 | Livré (P9, P10) |
 | 1.x-DEC-3 | Animaux, éoliennes, drapeaux, véhicules, bord de route, spectateurs, passants | P11 à P15, P21 | Livré (P11 à P15, P21) |
 | 1.x-UI-1 | Demi-tour sur la route depuis l'écran de pause (« Faire demi-tour »), sans geste du Click | N17 | En revue (PR #791 ; suite en brouillon, PR #792 : demi-tour sur Y maintenu en roulant) |
-| 1.x-UI-2 | Bots réglés depuis les menus : nombre, puissance de chacun, fantôme, dans les réglages et l'écran de pause | N18 | En revue (PR #789) ; écran Prêt déjà livré par O35 et PL1 |
+| 1.x-UI-2 | Bots réglés depuis les menus : nombre, puissance de chacun, fantôme, sur l'écran Prêt (gardés d'une séance à l'autre par profil) et sur l'écran de pause (commande `set_bots`, révision 1.9) | N18 (avec O7, O32, O35, PL1) | En revue (PR #789, 8 novembre ; écran Prêt livré par O7, O35 et PL1) |
 | 1.x-DEC-4 | Intégration et recette : au moins 55 images/s en `low` sur la GTX 1060, p99 sous 25 ms, tout se coupe par préréglage | P16, P17 | Livré ; RECETTE_P16 validée le 27 octobre sauf vent de travers, vent de dos et décor vivant coupé ; RECETTE_P17 jamais passée |
 
 ### 5.2 Version 2.0
@@ -345,6 +345,7 @@ Le champ `v` reste 1 : tous les ajouts sont compatibles. Chaque révision est no
 | 1.6 | Peloton d'environ 12 bots : jusqu'à 12 éléments dans `bots` (`state`, `start`, `last_choices`), liste allégée au-delà de 5 bots | PL1 | 3.0 | Livré (PR #716, 6 novembre) |
 | 1.7 | Mode `grandprix` (argument `mode` de `start`, `hello_ack.config.modes`), objet `gp` de `state`, champs `item` et `fx` des bots, `summary.gp`, message `gp_hit` ; commandes génériques `list_mode_options` et `set_mode_option`, message `mode_options`. Fermée | GP2 | 4.0 | Livré (7 novembre) |
 | 1.8 | Collection de cartes : commandes `list_collection` et `collection_seen`, message `collection`, objet facultatif `summary.collection` | BC2 | 5.0 | Livré (PR #758, 8 novembre) ; le core annonce `rev` « 1.8 » |
+| 1.9 | Réglages de séance au menu de la série N, partagée par N17 et N18 lancés ensemble (1.7 : Grand Prix et vélodrome ; 1.8 : collection de cartes, BC2) : commande `set_bots` pendant la pause, `last_choices.bots` repris du dernier `set_bots` (N18) | N18 (N17 complète la ligne) | 1.x | En PR (N18, 8 novembre) ; le core annonce `rev` « 1.9 » |
 | (1.5) | Série U : clés facultatives `biome` et `gravel` de `hello_ack.config`, aucun nouveau message (le menu passe par `set_setting`) | U1, U16 | 3.0 | Livré : prévu pour la 1.6, avancé dans la 1.5 avec le lot U16 (PR #639, journal d'ipc_v1.md du 31 octobre) |
 
 **Ajouts fusionnés le 29 octobre** (notés au journal de [ipc_v1.md](contracts/ipc_v1.md)) : champ facultatif `busy` de `devices.trainer` (PR #540, Control Point occupé par un autre appareil, liaison gardée) ; `set_setting` accepté pendant la séance pour les réglages `applies` = `now` (PR #552, matrice X42) ; réglage `render.draft_gauge` (jauge d'abri). Sans changement IPC : champ facultatif `reason` des lignes `event` du journal de séance (PR #542) et plus aucun bloc `freeride` en ERG (lot O19, consigne jamais sous 50 W). Aucun ajout du contrat n'est en revue au 29 octobre au soir.

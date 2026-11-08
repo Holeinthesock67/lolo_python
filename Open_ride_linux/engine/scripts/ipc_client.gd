@@ -592,6 +592,11 @@ func send_set_difficulty(pct: int) -> int:
 	return send_command("set_difficulty", {"pct": pct})
 
 
+## Bots de la séance changés sur l'écran de pause (lot N18, contrat 1.9) : même liste que `bots` de `start`.
+func send_set_bots(bots: Array) -> int:
+	return send_command("set_bots", {"bots": bots})
+
+
 ## Compose une run du Cyber-Rogue (lot R13, contrat 1.4) : objective, duration_min, seed, w_prime_j, chassis.
 func start_run(args: Dictionary) -> int:
 	return send_command("start_run", args)

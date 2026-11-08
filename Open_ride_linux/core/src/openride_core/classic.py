@@ -111,6 +111,12 @@ class ClassicRace:
                 self._bot_timer(bot.id).step(t, bot.s)
         self._prev_s = s
 
+    def add_bots(self, t: float, bots: Iterable[Any]) -> None:
+        """Bots ajoutés pendant la pause (lot N18) : chronométrés depuis leur place, comme au départ."""
+        for bot in bots:
+            if getattr(bot, "kind", "") != "ghost":
+                self._bot_timer(bot.id).step(t, bot.s)
+
     def _bot_timer(self, bot_id: str) -> SegmentTimer:
         timer = self._bot_timers.get(bot_id)
         if timer is None:
