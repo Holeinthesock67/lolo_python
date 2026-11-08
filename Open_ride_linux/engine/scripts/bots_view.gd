@@ -4,7 +4,8 @@ extends Node3D
 ## (avatar_view.gd : corps effilé, maillot à motif, casque à aérations, vélo de route, roues et pédalier qui
 ## tournent), habillé d'après le bot (bot_look.gd : maillot à la couleur du bot, maillot vert ou à pois de la
 ## séance, corps et équipement variés) ; le fantôme est le même cycliste translucide, sans ombre. Posé à `s`
-## avec le cap et la pente de route_data.gd (relief exagéré comme la caméra), décalé de sa place en travers
+## avec la pose du joueur (rider_pose.gd, lot CY1 : trajectoire lissée, cap de cette trajectoire, penché en
+## virage) et la pente de route_data.gd (relief exagéré comme la caméra), décalé de sa place en travers
 ## `lateral` (bots_view_model.gd : `lane_m` du core, lot AS2, sinon à droite du cycliste vers le bord, côte à côte
 ## en peloton ; lots P32 et Z2) ; un bot de la grille de départ (s < 0) est posé derrière le départ ; nom
 ## au-dessus à moins de NAME_M.
@@ -31,6 +32,7 @@ const AvatarMesh := preload("res://scripts/avatar_mesh.gd")
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const RoadCyclistsModel := preload("res://scripts/road_cyclists_model.gd")
+const RiderPose := preload("res://scripts/rider_pose.gd")
 
 const NAME_HEIGHT_M := 2.1
 ## Indice d'apparence des bots dont l'id ne finit pas par un numéro (fantôme), loin de ceux du peloton.
@@ -180,20 +182,14 @@ func update_view(view: Array, route) -> void:
 		_refresh_jersey(node, b, int(node.get_meta("index")))
 		var s := float(b["s"])
 		var smp: Dictionary = route.sample(route.wrap_s(s))
-		var pos := Vector3(smp["x"], smp["y"], smp["z"])
-		var h := deg_to_rad(float(smp["heading_deg"]))
-		var right := Vector3(cos(h), 0.0, sin(h))
 		var pitch: float = route.display_pitch(s)
-		var before: float = route.wrap_s(s) - s   # grille de départ derrière le départ (lot AS2)
-		if before > 0.0:
-			pos -= Vector3(sin(h), 0.0, -cos(h)) * before
-		var roll := 0.0
-		if route.has_method("bank_right"):   # piste relevée (lot VD4) : bot remonté sur la pente, perpendiculaire à elle
-			right = route.bank_right(route.wrap_s(s), h)
-			roll = deg_to_rad(route.bank_at(route.wrap_s(s)))
-		node.position = pos + right * float(b["lateral"])
+		# Même pose que le joueur (lot CY1, rider_pose.gd) : trajectoire lissée dans sa voie, cap de cette
+		# trajectoire, penché dans les virages, perpendiculaire à une piste relevée (lot VD4) ; grille de départ
+		# tout droit derrière le départ (lot AS2).
+		var pose: Dictionary = RiderPose.pose(route, s, float(b["lateral"]), float(b.get("v", 0.0)))
+		node.position = pose["pos"]
 		node.set_meta("lateral", float(b["lateral"]))
-		node.rotation = Vector3(pitch, -h, roll)
+		node.rotation = Vector3(pitch, -float(pose["yaw"]), float(pose["roll"]))
 		placed.append([_distance(b, node.position), b, key, smp])
 	# Peloton (lot PL1) : niveaux détaillés pour les plus proches de la caméra seulement.
 	placed.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) < float(y[0]))

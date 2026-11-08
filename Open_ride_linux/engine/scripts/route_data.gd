@@ -579,6 +579,56 @@ func sample(pos: float) -> Dictionary:
 	}
 
 
+## Point et cap seuls (x, y affiché, z, cap en radians), sans dictionnaire ni tableau intermédiaire : mêmes calculs
+## que `sample` (Catmull-Rom centripète, cap par l'écart le plus court), environ 5 fois plus rapide. Sert aux
+## poses des cyclistes (rider_pose.gd, lot CY1), qui lisent une vingtaine de points par cycliste et par image.
+func sample_xyzh(pos: float) -> Vector4:
+	var p := wrap_s(pos)
+	var i: int = mini(int(p / ds_m), n - 2)
+	var s0: float = s[i]
+	var s1: float = s[i + 1]
+	var u: float = clampf((p - s0) / (s1 - s0), 0.0, 1.0) if s1 > s0 else 0.0
+	var c := PackedFloat64Array()
+	c.resize(12)
+	for j in 4:
+		var k := i - 1 + j
+		var px: float
+		var py: float
+		var pz: float
+		if is_loop():
+			var m := k % (n - 1)
+			if m < 0:
+				m += n - 1
+			px = x[m]; py = alt_m[m]; pz = z[m]
+		elif k < 0:
+			px = 2.0 * x[0] - x[1]; py = 2.0 * alt_m[0] - alt_m[1]; pz = 2.0 * z[0] - z[1]
+		elif k > n - 1:
+			px = 2.0 * x[n - 1] - x[n - 2]; py = 2.0 * alt_m[n - 1] - alt_m[n - 2]; pz = 2.0 * z[n - 1] - z[n - 2]
+		else:
+			px = x[k]; py = alt_m[k]; pz = z[k]
+		c[j * 3] = px; c[j * 3 + 1] = py; c[j * 3 + 2] = pz
+	# Nœuds centripètes (α = 0,5), comme _knot.
+	var t1 := pow(maxf(sqrt(pow(c[3] - c[0], 2) + pow(c[4] - c[1], 2) + pow(c[5] - c[2], 2)), KNOT_EPS_M), 0.5)
+	var t2 := t1 + pow(maxf(sqrt(pow(c[6] - c[3], 2) + pow(c[7] - c[4], 2) + pow(c[8] - c[5], 2)), KNOT_EPS_M), 0.5)
+	var t3 := t2 + pow(maxf(sqrt(pow(c[9] - c[6], 2) + pow(c[10] - c[7], 2) + pow(c[11] - c[8], 2)), KNOT_EPS_M), 0.5)
+	var t := t1 + u * (t2 - t1)
+	var out := PackedFloat64Array([0.0, 0.0, 0.0])
+	for a in 3:
+		var q0: float = c[a]
+		var q1: float = c[3 + a]
+		var q2: float = c[6 + a]
+		var q3: float = c[9 + a]
+		var a1 := ((t1 - t) * q0 + t * q1) / t1
+		var a2 := ((t2 - t) * q1 + (t - t1) * q2) / (t2 - t1)
+		var a3 := ((t3 - t) * q2 + (t - t2) * q3) / (t3 - t2)
+		var b1 := ((t2 - t) * a1 + t * a2) / t2
+		var b2 := ((t3 - t) * a2 + (t - t1) * a3) / (t3 - t1)
+		out[a] = ((t2 - t) * b1 + (t - t1) * b2) / (t2 - t1)
+	var h0: float = heading_deg[i]
+	var h := deg_to_rad(fposmod(h0 + u * _shortest_delta_deg(h0, heading_deg[i + 1]), 360.0))
+	return Vector4(out[0], display_y(out[1]), out[2], h)
+
+
 func sample_point(pos: float) -> Vector3:
 	var smp := sample(pos)
 	return Vector3(smp["x"], smp["y"], smp["z"])
