@@ -1,0 +1,407 @@
+18:45:29
+1.12 1.77 2.10 3/813 90839
+%CPU %MEM COMMAND
+ 200  0.2 localsearch-ext
+14.4  2.8 gnome-shell
+12.2  0.8 claude-desktop
+11.5 10.4 claude-desktop
+ 4.8  0.4 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.5 claude
+
+18:46:00
+1.85 1.89 2.13 4/819 91047
+%CPU %MEM COMMAND
+ 101  3.0 python
+14.4  2.8 gnome-shell
+12.2  0.9 claude-desktop
+11.5 10.5 claude-desktop
+ 4.8  0.7 localsearch-3
+ 2.6  2.9 claude-desktop
+ 1.0  3.9 claude
+
+18:46:30
+2.20 1.98 2.15 9/819 91099
+%CPU %MEM COMMAND
+44.0  2.8 python
+14.4  2.8 gnome-shell
+12.2  0.9 claude-desktop
+11.5 10.6 claude-desktop
+ 4.8  0.4 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.8 claude
+
+18:47:00
+1.76 1.90 2.12 1/828 91181
+%CPU %MEM COMMAND
+28.4  2.8 python
+14.4  2.8 gnome-shell
+12.3  0.9 claude-desktop
+11.5 10.7 claude-desktop
+ 4.7  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  4.2 claude
+
+18:47:30
+1.68 1.86 2.10 1/821 91234
+%CPU %MEM COMMAND
+ 400  0.0 ps
+22.7  2.8 python
+14.5  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.5 10.7 claude-desktop
+ 4.7  0.4 localsearch-3
+ 2.6  2.9 claude-desktop
+
+18:48:00
+2.11 1.94 2.11 10/821 91291
+%CPU %MEM COMMAND
+27.4  3.6 python
+14.5  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.5  9.3 claude-desktop
+ 4.7  0.5 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.9 claude
+
+18:48:30
+1.94 1.91 2.10 2/820 91344
+%CPU %MEM COMMAND
+40.2  3.6 python
+14.5  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.5  9.3 claude-desktop
+ 4.7  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.8 claude
+
+18:49:00
+1.90 1.91 2.09 2/820 91396
+%CPU %MEM COMMAND
+49.2  3.6 python
+14.5  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.5  9.4 claude-desktop
+ 4.7  0.6 localsearch-3
+ 2.6  2.9 claude-desktop
+ 1.0  3.8 claude
+
+18:49:30
+1.67 1.85 2.06 3/820 91455
+%CPU %MEM COMMAND
+55.8  3.9 python
+14.5  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.5  9.5 claude-desktop
+ 4.7  0.6 localsearch-3
+ 2.6  2.9 claude-desktop
+ 1.0  3.8 claude
+
+18:50:00
+1.52 1.80 2.04 1/820 91507
+%CPU %MEM COMMAND
+ 400  0.0 ps
+57.4  3.9 python
+14.5  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.5  9.5 claude-desktop
+ 4.7  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+
+18:50:30
+2.22 1.93 2.07 5/831 91578
+%CPU %MEM COMMAND
+88.8  1.5 claude
+52.3  3.9 python
+14.5  2.8 gnome-shell
+12.3  1.1 claude-desktop
+11.5 10.3 claude-desktop
+ 9.6  0.9 claude-desktop
+ 4.7  0.6 localsearch-3
+
+18:51:00
+2.74 2.08 2.12 2/821 91642
+%CPU %MEM COMMAND
+ 100  0.0 ps
+50.9  3.9 python
+14.5  2.8 gnome-shell
+12.3  1.2 claude-desktop
+11.6 11.8 claude-desktop
+ 4.7  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+
+18:51:30
+2.23 2.03 2.10 1/819 91696
+%CPU %MEM COMMAND
+ 700  0.0 ps
+46.6  3.9 python
+14.5  2.8 gnome-shell
+12.3  1.0 claude-desktop
+11.6 10.1 claude-desktop
+ 4.7  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+
+18:52:00
+1.66 1.91 2.06 2/822 91825
+%CPU %MEM COMMAND
+ 400  0.0 ps
+46.2  3.9 python
+14.6  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.6  9.9 claude-desktop
+11.3  0.6 python
+ 4.7  0.6 localsearch-3
+
+18:52:30
+1.40 1.82 2.02 2/822 91879
+%CPU %MEM COMMAND
+ 500  0.0 ps
+42.9  3.9 python
+14.6  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.6  9.9 claude-desktop
+ 9.1  0.6 python
+ 4.6  0.6 localsearch-3
+
+18:53:00
+1.29 1.76 1.99 2/820 91991
+%CPU %MEM COMMAND
+ 100  0.0 ps
+43.7  4.1 python
+14.6  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.6  9.9 claude-desktop
+ 4.6  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+
+18:53:30
+1.17 1.68 1.96 2/820 92047
+%CPU %MEM COMMAND
+ 100  0.0 ps
+47.3  4.1 python
+14.6  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.6  9.7 claude-desktop
+ 4.6  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+
+18:54:00
+1.29 1.67 1.94 2/821 92103
+%CPU %MEM COMMAND
+50.0  4.3 python
+14.6  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.6  9.7 claude-desktop
+ 4.6  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.8 claude
+
+18:54:31
+1.29 1.63 1.92 2/821 92159
+%CPU %MEM COMMAND
+52.8  4.3 python
+14.6  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.6  9.8 claude-desktop
+ 4.6  0.4 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.8 claude
+
+18:55:01
+1.23 1.59 1.90 2/820 92210
+%CPU %MEM COMMAND
+55.3  4.3 python
+14.6  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.6  9.8 claude-desktop
+ 4.6  0.4 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.8 claude
+
+18:55:31
+1.20 1.55 1.88 2/818 92264
+%CPU %MEM COMMAND
+57.6  4.3 python
+14.6  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.6  9.8 claude-desktop
+ 4.6  0.4 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.8 claude
+
+18:56:01
+1.12 1.49 1.85 2/817 92317
+%CPU %MEM COMMAND
+59.6  4.3 python
+14.6  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.6  9.9 claude-desktop
+ 4.6  0.4 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.8 claude
+
+18:56:31
+1.07 1.44 1.82 2/818 92373
+%CPU %MEM COMMAND
+61.5  4.3 python
+14.6  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.6  9.9 claude-desktop
+ 4.6  0.4 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.6 claude
+
+18:57:01
+1.11 1.42 1.80 2/816 92424
+%CPU %MEM COMMAND
+63.2  4.3 python
+14.6  2.8 gnome-shell
+12.3  0.8 claude-desktop
+11.6  9.6 claude-desktop
+ 4.6  0.4 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.6 claude
+
+18:57:31
+1.17 1.41 1.78 2/821 92484
+%CPU %MEM COMMAND
+64.7  8.8 python
+14.6  2.8 gnome-shell
+12.2  0.8 claude-desktop
+11.6  9.6 claude-desktop
+ 4.6  0.4 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.6 claude
+
+18:58:01
+1.43 1.46 1.79 2/816 92536
+%CPU %MEM COMMAND
+ 100  0.0 ps
+66.2  9.2 python
+14.6  2.8 gnome-shell
+12.2  0.8 claude-desktop
+11.6  9.8 claude-desktop
+ 4.6  0.4 localsearch-3
+ 2.6  3.0 claude-desktop
+
+18:58:31
+1.34 1.43 1.77 2/818 92592
+%CPU %MEM COMMAND
+ 100  0.0 ps
+67.5  8.9 python
+14.6  2.8 gnome-shell
+12.2  0.8 claude-desktop
+11.5  9.8 claude-desktop
+ 4.5  0.5 localsearch-3
+ 2.6  3.0 claude-desktop
+
+18:59:01
+1.21 1.39 1.74 2/817 92644
+%CPU %MEM COMMAND
+68.7  9.0 python
+14.5  2.8 gnome-shell
+12.2  0.8 claude-desktop
+11.5 10.0 claude-desktop
+ 4.5  0.5 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.6 claude
+
+18:59:31
+1.12 1.35 1.72 1/818 92700
+%CPU %MEM COMMAND
+69.7  9.0 python
+14.5  2.8 gnome-shell
+12.2  0.8 claude-desktop
+11.5  9.7 claude-desktop
+ 4.5  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.6 claude
+
+19:00:01
+1.46 1.40 1.72 1/823 92768
+%CPU %MEM COMMAND
+67.4  9.0 python
+14.5  2.8 gnome-shell
+12.2  1.1 claude-desktop
+11.5 10.6 claude-desktop
+ 4.5  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  4.1 claude
+
+19:00:31
+3.11 1.81 1.85 3/851 93516
+%CPU %MEM COMMAND
+ 100  0.0 ps
+66.4  5.6 python
+14.5  2.8 gnome-shell
+12.2  0.9 claude-desktop
+11.6 11.5 claude-desktop
+ 4.5  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+
+19:01:01
+2.38 1.75 1.82 2/834 93568
+%CPU %MEM COMMAND
+ 100  0.0 ps
+67.0  5.6 python
+14.5  2.8 gnome-shell
+12.2  0.9 claude-desktop
+11.6 10.1 claude-desktop
+ 4.5  0.6 localsearch-3
+ 2.6  3.1 claude-desktop
+
+19:01:31
+2.23 1.77 1.83 3/836 93639
+%CPU %MEM COMMAND
+ 100  0.0 ps
+67.7  5.6 python
+14.5  2.8 gnome-shell
+12.2  0.8 claude-desktop
+11.6  9.4 claude-desktop
+ 4.5  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+
+19:02:01
+1.47 1.63 1.78 1/839 93709
+%CPU %MEM COMMAND
+ 200  0.0 ps
+66.0  5.6 python
+14.5  2.8 gnome-shell
+12.2  0.8 claude-desktop
+11.6 10.1 claude-desktop
+ 4.5  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+
+19:02:31
+0.94 1.49 1.73 1/835 93761
+%CPU %MEM COMMAND
+64.2  5.6 python
+14.5  2.8 gnome-shell
+12.2  0.8 claude-desktop
+11.6  9.7 claude-desktop
+ 4.5  0.6 localsearch-3
+ 2.6  3.0 claude-desktop
+ 1.0  3.8 claude
+
+19:03:01
+0.88 1.43 1.70 4/839 93828
+%CPU %MEM COMMAND
+ 300  0.0 ps
+62.6  5.6 python
+14.5  2.8 gnome-shell
+12.2  0.8 claude-desktop
+11.6 10.3 claude-desktop
+ 9.0  0.1 python
+ 4.5  0.6 localsearch-3
+
+19:03:31
+1.71 1.55 1.73 6/819 94630
+%CPU %MEM COMMAND
+ 600  0.0 ps
+60.9  5.6 python
+22.2  0.1 python
+14.5  2.8 gnome-shell
+12.2  0.9 claude-desktop
+11.6 10.7 claude-desktop
+ 4.5  0.6 localsearch-3
+

@@ -1,0 +1,4 @@
+18:45:30 empreinte avant 5dd68002174aac60837bd7c9e4e300a6
+18:45:30 tête a0ef9c97
+18:45:40 Pillow non déclaré dans le pyproject : test_controle_visuels noté non collecté
+18:45:40 pytest core (--continue-on-collection-errors)
