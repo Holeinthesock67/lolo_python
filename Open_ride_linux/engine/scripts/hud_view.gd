@@ -795,7 +795,7 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 		profile_panel.visible = not _erg_active
 	var now_s := Time.get_ticks_usec() / 1e6
 	vm.on_state(state, now_s)
-	var lines := HudViewModel.session_lines(state, erg_eval, ftp_w, hr_max_bpm, vm.ridden_m())
+	var lines := HudViewModel.session_lines(state, erg_eval, ftp_w, hr_max_bpm, vm.ridden_m() if state.has("s") else NAN)
 
 	if power_val != null:
 		_set_metric(power_val, lines["power_val"])
