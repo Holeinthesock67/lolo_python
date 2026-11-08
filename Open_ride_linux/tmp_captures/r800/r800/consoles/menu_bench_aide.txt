@@ -1,0 +1,21 @@
+usage: menu_bench.py [-h] [--godot GODOT] [--scenario SCENARIO]
+                     [--voies VOIES] [--rotation] [--native] [--out OUT]
+                     [--captures {echecs,ecrans}] [--keep] [--list]
+
+Banc des menus : scénarios déclaratifs joués au Click simulé, au clavier et à
+la souris, de bout en bout.
+
+options:
+  -h, --help            show this help message and exit
+  --godot GODOT
+  --scenario SCENARIO   nom (menu_scenarios/) ou fichier JSON ; défaut : tous
+  --voies VOIES         voies d'entrée, séparées par des virgules
+  --rotation            une seule voie par scénario, à tour de rôle
+                        (intégration continue : trois fois plus court)
+  --native              fenêtre sur l'écran réel au lieu de Xvfb
+  --out OUT
+  --captures {echecs,ecrans}
+                        captures aux échecs seulement (défaut) ou aussi à
+                        chaque écran vérifié
+  --keep                garde le HOME temporaire
+  --list

@@ -1,0 +1,149 @@
+== appareils (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran connect (titre='Connexion des appareils', focus='continue', contient=['Click − : recherche']) : « Connexion des appareils »
+[OK] choisir « continue » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] choisir « devices » : écran « pairing », focus « back »
+[OK] écran pairing (titre='Appareils') : « Appareils »
+[OK] journal du engine : « scan_results done=true items=([3-9]) » : scan_results done=true items=3
+[OK] écran pairing (contient=['Trainer — HomeTrainer', 'Ceinture —', 'appareil(s) trouvé(s)'], elements=['scan', 'trainer', 'identify', 'forget_click', 'hr', 'save', 'back']) : « Appareils »
+[OK] choisir « save » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no', elements=['no', 'yes']) : « Enregistrer trainer HomeTrainer 0000 (sim), ceinture HRM (sim) ? »
+[OK] choisir « no » : écran « pairing », focus « save »
+[OK] écran pairing : « Appareils »
+[OK] config.toml : drivers.trainer_address = None : OK
+[OK] choisir « save » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no') : « Enregistrer trainer HomeTrainer 0000 (sim), ceinture HRM (sim) ? »
+[OK] choisir « yes » : écran « pairing », focus « save »
+[OK] config.toml : drivers.trainer_address = '*', drivers.hr_address = '*', drivers.hr = 'ble' : OK
+[OK] écran pairing (contient=['Relancer OpenRide maintenant', 'Enregistré']) : « Appareils »
+[OK] choisir « relaunch » : écran « pairing », focus « relaunch »
+[OK] l'engine sort avec le code 64 : code 64 en 0.6 s
+[OK] arrêt du core : code de sortie 0
+== appareils (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran connect (titre='Connexion des appareils', focus='continue', contient=['Click − : recherche']) : « Connexion des appareils »
+[OK] choisir « continue » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] choisir « devices » : écran « pairing », focus « back »
+[OK] écran pairing (titre='Appareils') : « Appareils »
+[OK] journal du engine : « scan_results done=true items=([3-9]) » : scan_results done=true items=3
+[OK] écran pairing (contient=['Trainer — HomeTrainer', 'Ceinture —', 'appareil(s) trouvé(s)'], elements=['scan', 'trainer', 'identify', 'forget_click', 'hr', 'save', 'back']) : « Appareils »
+[OK] choisir « save » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no', elements=['no', 'yes']) : « Enregistrer trainer HomeTrainer 0000 (sim), ceinture HRM (sim) ? »
+[OK] choisir « no » : écran « pairing », focus « save »
+[OK] écran pairing : « Appareils »
+[OK] config.toml : drivers.trainer_address = None : OK
+[OK] choisir « save » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no') : « Enregistrer trainer HomeTrainer 0000 (sim), ceinture HRM (sim) ? »
+[OK] choisir « yes » : écran « pairing », focus « save »
+[OK] config.toml : drivers.trainer_address = '*', drivers.hr_address = '*', drivers.hr = 'ble' : OK
+[OK] écran pairing (contient=['Relancer OpenRide maintenant', 'Enregistré']) : « Appareils »
+[OK] choisir « relaunch » : écran « pairing », focus « relaunch »
+[OK] l'engine sort avec le code 64 : code 64 en 0.6 s
+[OK] arrêt du core : code de sortie 0
+== appareils (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran connect (titre='Connexion des appareils', focus='continue', contient=['Click − : recherche']) : « Connexion des appareils »
+[OK] choisir « continue » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] choisir « devices » : écran « pairing », focus « back »
+[OK] écran pairing (titre='Appareils') : « Appareils »
+[OK] journal du engine : « scan_results done=true items=([3-9]) » : scan_results done=true items=3
+[OK] écran pairing (contient=['Trainer — HomeTrainer', 'Ceinture —', 'appareil(s) trouvé(s)'], elements=['scan', 'trainer', 'identify', 'forget_click', 'hr', 'save', 'back']) : « Appareils »
+[OK] choisir « save » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no', elements=['no', 'yes']) : « Enregistrer trainer HomeTrainer 0000 (sim), ceinture HRM (sim) ? »
+[OK] choisir « no » : écran « pairing », focus « save »
+[OK] écran pairing : « Appareils »
+[OK] config.toml : drivers.trainer_address = None : OK
+[OK] choisir « save » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no') : « Enregistrer trainer HomeTrainer 0000 (sim), ceinture HRM (sim) ? »
+[OK] choisir « yes » : écran « pairing », focus « save »
+[OK] config.toml : drivers.trainer_address = '*', drivers.hr_address = '*', drivers.hr = 'ble' : OK
+[OK] écran pairing (contient=['Relancer OpenRide maintenant', 'Enregistré']) : « Appareils »
+[OK] choisir « relaunch » : écran « pairing », focus « relaunch »
+[OK] l'engine sort avec le code 64 : code 64 en 0.8 s
+[OK] arrêt du core : code de sortie 0
+== clavier_synonymes (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran home (elements=['coach']) : « OpenRide » (engine muet 10.0 s)
+[OK] focus sur « world » : écran « home », focus « world »
+[OK] écran home (focus='world') : « OpenRide »
+[OK] écran home (focus='ride') : « OpenRide »
+[OK] écran home (focus='erg') : « OpenRide »
+[OK] écran home (focus='ride') : « OpenRide »
+[OK] écran home (focus='erg') : « OpenRide »
+[OK] écran home (focus='erg') : « OpenRide »
+[OK] journal du engine : « Appui ambigu : PLUS_UNCLEAR » : Appui ambigu : PLUS_UNCLEAR
+[OK] écran home (focus='erg') : « OpenRide »
+[OK] écran home (focus='plan') : « OpenRide »
+[OK] écran home (focus='erg') : « OpenRide »
+[OK] focus sur « settings » : écran « home », focus « settings »
+[OK] écran settings : « Réglages »
+[OK] écran home (focus='settings') : « OpenRide »
+[OK] écran settings : « Réglages »
+[OK] écran home : « OpenRide »
+[OK] écran home (focus='settings') : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== connexion_auto (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran connect (titre='Connexion des appareils') : « Connexion des appareils »
+[OK] écran home (titre='OpenRide', elements=['world', 'ride', 'erg', 'plan', 'ftp', 'history', 'sim', 'settings', 'quit']) : « OpenRide »
+[OK] écran home (contient=['Parcours : à choisir']) : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 14.0 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus', contient=['Contenus de départ — en partie installé']) : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé', 'Ajouté : 9 entraînement(s), 2 plan(s), 4 parcours.']) : « Contenus »
+[OK] fichier ~/OpenRide/Plans/reprise_4_semaines.toml présent : OpenRide/Plans/reprise_4_semaines.toml
+[OK] fichier ~/OpenRide/Workouts/vo2_5x3.zwo présent : OpenRide/Workouts/vo2_5x3.zwo
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-alpin.world/manifest.json présent : .local/share/openride/routes/demo-biomes-alpin.world/manifest.json
+[OK] journal du core : « Contenu « starter » : Ajouté » : Contenu « starter » : Ajouté
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (contient=['demo-biomes-alpin']) : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
