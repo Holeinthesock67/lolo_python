@@ -1,0 +1,34 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_free_erg_menu
+
+[OK] SIM sans objet erg : session libre
+[OK] kind free : ERG
+[OK] kind cadence : ERG cadence
+[OK] entraînement (kind absent) : pas de bascule
+[OK] run Cyber-Rogue : pas de bascule
+[OK] pause d'une session libre : ligne du mode (["resume", "end_save", "abandon", "difficulty", "ride_mode", "bot1", "ghost", "peloton"])
+[OK] mode affiché : SIM
+[OK] A long : modification en place
+[OK] choix suivant : ERG
+[OK] A long : set_ride_mode erg ({ "action": "set_ride_mode", "args": { "mode": "erg" } })
+[OK] ERG : ligne de la puissance cible (["resume", "end_save", "abandon", "difficulty", "ride_mode", "target_w", "bot1", "ghost", "peloton"])
+[OK] puissance cible affichée (204 W)
+[OK] puissance cible + 25 W ({ "action": "set_ride_mode", "args": { "mode": "erg", "target_w": 229 } })
+[OK] choix ERG cadence ({ "action": "set_ride_mode", "args": { "mode": "cadence" } })
+[OK] ERG cadence : cadence cible (["resume", "end_save", "abandon", "difficulty", "ride_mode", "cadence_rpm", "bot1", "ghost", "peloton"])
+[OK] cadence cible − 1 ({ "action": "set_ride_mode", "args": { "mode": "cadence", "cadence_rpm": 89 } })
+[OK] Y annule le changement de mode
+[OK] entraînement : pas de bascule (["resume", "end_save", "abandon", "difficulty", "bot1", "ghost", "peloton"])
+[OK] clé de pause inconnue : rien
+[OK] bandeau ERG libre ({ "visible": true, "kind": "free", "title": "ERG libre", "target_text": "204 W (102 %)", "next_text": "", "remaining_text": "", "remaining_s": 0.0, "progress": 0.0, "beep": false, "paused_text": "ERG en pause" })
+[OK] lignes du bandeau ERG libre, sans type de bloc ({ "title": "ERG libre", "target": "204 W (102 %)", "remaining": "", "next": "En pause" })
+[OK] bandeau ERG cadence ({ "visible": true, "kind": "cadence", "title": "ERG cadence 90 tr/min (81–99)", "target_text": "215 W", "next_text": "Trop vite : la puissance monte", "remaining_text": "", "remaining_s": 0.0, "progress": 0.0, "beep": false, "paused_text": "" })
+[OK] zone mise à jour d'une trame à l'autre
+[OK] pas de blocs en session libre
+[OK] ligne ERG du HUD sans temps restant (ERG: ERG cadence 90 tr/min (81–99)  |  Trop lent : la puissance baisse)
+[OK] rappel des commandes selon le mode
+test_free_erg_menu : 26 vérifications, 0 échecs
+UNIT=test_free_erg_menu : rendu, ERG et scénarios IPC sautés
+Résumé :
+  OK     unit/test_free_erg_menu : 26 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent

@@ -1,0 +1,68 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_menu_model
+
+[OK] A long valide (accueil → Parcours)
+[OK] + long : cinq éléments actifs plus loin (r3 désactivé sauté)
+[OK] + long : borné au dernier élément, sans boucler
+[OK] − long : cinq éléments plus haut
+[OK] − long : borné au premier élément
+[OK] A court et flèche droite : élément suivant
+[OK] flèche gauche : élément précédent
+[OK] Z, flèches haut et bas, appui ambigu : rien dans un menu
+[OK] Y : écran précédent
+[OK] Y sur l'écran de pause : reprendre
+[OK] modes par défaut : ride et erg, puis plans et test de FTP (lot O12) (["world", "ride", "erg", "plan", "ftp", "history", "sim", "settings", "quit"])
+[OK] modes annoncés filtrés, inconnu ignoré (["world", "erg", "plan", "ftp", "history", "sim", "settings", "quit"])
+[OK] modes absents : retour aux modes par défaut
+[OK] accueil : séance du jour avec durée et TSS
+[OK] sans monde choisi : parcours d'abord
+[OK] puis écran Prêt (Prêt : test de FTP (rampe) — Col du Galibier)
+[OK] start avec ftp_test ({ "action": "start", "args": { "ftp_test": "ramp" } })
+[OK] entraînement choisi : séance préparée annulée (Prêt : session ERG — Col du Galibier)
+[OK] start sans arguments
+[OK] remise à zéro (nouvelle séance) : annulée aussi
+[OK] tri des parcours : action pour menu_flow, pas de parcours choisi
+[OK] scénario « session libre sans monde : parcours puis Prêt, démarrer » (7 événements)
+[OK] scénario « passer un parcours désactivé (à compiler) » (3 événements)
+[OK] scénario « boucler en fin et en début de liste » (9 événements)
+[OK] scénario « accueil : boucle sur les neuf entrées » (13 événements)
+[OK] scénario « choisir le monde depuis l'accueil : retour à l'accueil » (11 événements)
+[OK] scénario « retour depuis les parcours et les réglages » (7 événements)
+[OK] scénario « session ERG sans monde : entraînement (invalide sauté), parcours, Prêt » (15 événements)
+[OK] scénario « session simulée : confirmation puis relance » (6 événements)
+[OK] scénario « en session simulée : revenir au matériel réel » (6 événements)
+[OK] scénario « quitter : annulé puis confirmé » (8 événements)
+[OK] scénario « pause : abandon annulé puis confirmé » (9 événements)
+[OK] scénario « pause : reprendre, retour et terminer en enregistrant » (4 événements)
+[OK] scénario « liste de parcours vide : seules les lignes d'aide (lot O22) » (5 événements)
+[OK] scénario « tous les parcours désactivés » (3 événements)
+[OK] liste vide : « Aucun parcours » désactivé, renvoie à l'import, puis les lignes d'aide
+[OK] liste injectée pendant l'affichage : focus sur le premier actif, détail gardé
+[OK] liste remplacée : le focus reste sur le même parcours
+[OK] parcours affiché à l'accueil
+[OK] nom du monde sans la longueur
+[OK] événements inconnus : ignorés, état inchangé
+[OK] aucun entraînement : « Sans entraînement (SIM) » reste choisissable
+[OK] sous-menu ERG (N16) : Créer et Importer en fin de liste
+[OK] Créer : action item laissée à menu_flow.gd
+[OK] aucun nœud créé (0 avant, 0 après)
+[OK] derniers choix : bot à profil (nombre du JSON en flottant) et fantôme repris
+[OK] Session ERG : la liste s'ouvre sur le dernier entraînement
+[OK] Parcours : la liste s'ouvre sur le parcours en cours
+[OK] nouvel accueil : le bot et le fantôme de la séance lancée restent choisis
+[OK] bot inconnu et choix absents : valeurs par défaut
+[OK] aucun choix gardé (core sans last_choices)
+[OK] quatre bots repris au plus, bot inconnu sauté ([1, 3, 1, 1])
+[OK] pause : bots de la séance, ligne vide, fantôme et peloton (["resume", "end_save", "abandon", "difficulty", "bot1", "bot2", "ghost", "peloton"])
+[OK] rien changé : resume sans bots
+[OK] lignes modifiées en place (["Reprendre", "Terminer et enregistrer", "Abandonner", "Difficulté", "Bot 1 : 250 W", "Bot 2 : 200 W", "Bot 3 : aucun", "Fantôme de la dernière séance : oui", "Peloton : aucun"])
+[OK] reprise : liste des bots pour set_bots ({ "action": "resume", "bots": [{ "kind": "constant", "power_w": 250 }, { "kind": "constant", "power_w": 200 }, { "kind": "ghost" }] })
+[OK] derniers choix mis à jour (repris au prochain accueil)
+[OK] pause suivante : plus rien à envoyer
+[OK] Dernier survivant : plateau du core, pas de lignes de bots
+[OK] Dernier survivant : resume seul
+test_menu_model : 60 vérifications, 0 échecs
+UNIT=test_menu_model : rendu, ERG et scénarios IPC sautés
+Résumé :
+  OK     unit/test_menu_model : 60 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent
