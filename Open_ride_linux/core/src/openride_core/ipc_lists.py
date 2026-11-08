@@ -5,6 +5,7 @@ Construit les réponses aux commandes `list_routes` et `list_workouts`, avec lim
 ERG limités à 30 triplets. Révision 1.3 (lot O12) : fiche des parcours (`stats`, `library`),
 `unit` des entraînements, message `plans` (réponse à `list_plans`, `start_plan`, `stop_plan`).
 Révision 1.5 (lot O28) : messages `history` et `history_session` (historique du menu).
+Révision 1.12 (lot CO3) : message `coach` (séance conseillée, réponse à `get_coach` et aux saisies du conseil).
 """
 
 from __future__ import annotations
@@ -409,3 +410,146 @@ def build_history_session(request_cmd_id: int, session_id: str, path: Path, ftp_
     }
     return {"type": "history_session", "v": 1, "request_cmd_id": request_cmd_id, "id": session_id,
             "summary": summary}
+
+
+COACH_WORKOUT_KEYS = ("id", "name", "need", "dominant_zone", "tss_estimate")
+
+
+def _coach_workout(w: dict[str, Any] | None) -> dict[str, Any] | None:
+    if w is None:
+        return None
+    return {**{k: w[k] for k in COACH_WORKOUT_KEYS}, "duration_s": int(w["duration_min"]) * 60}
+
+
+def build_coach_message(request_cmd_id: int, advice: dict[str, Any]) -> dict[str, Any]:
+    """Message `coach` (lot CO3) depuis le conseil de `coach.advice_today` : mêmes clés que
+    `openride-core coach --json`, durées en secondes ; `route` : séance de jeu calibrée (lot CO9) ou null."""
+    workout = _coach_workout(advice["workout"])
+    return {"type": "coach", "v": 1, "request_cmd_id": request_cmd_id, "date": advice["date"],
+            "need": advice["need"], "need_label": advice["need_label"], "rule": advice["rule"],
+            "reason": advice["reason"], "duration_s": int(advice["duration_min"]) * 60,
+            "tss_estimate": workout["tss_estimate"] if workout else None,
+            "notes": list(advice["notes"]), "alternatives": list(advice["alternatives"]),
+            "workout": workout, "other_workouts": [_coach_workout(w) for w in advice["other_workouts"]],
+            "route": advice.get("route"), "details": advice["details"]}
+
+
+# --- collection de cartes (série BC, lot BC2, contrat IPC révision 1.8) -----------------------
+
+def is_valid_collection_key(key: str, cards_by_id: dict[str, Any]) -> bool:
+    """Vérifie si une clé correspond à une carte du catalogue (ou carte_saison:année)."""
+    if not isinstance(key, str):
+        return False
+    if ":" in key:
+        cid, sep, edition_str = key.partition(":")
+        card = cards_by_id.get(cid)
+        if card is None or card.kind != "saison":
+            return False
+        if not edition_str.isdigit():
+            return False
+        edition = int(edition_str)
+        return 2000 <= edition <= 2100
+    card = cards_by_id.get(key)
+    if card is None:
+        return False
+    if card.kind == "saison":
+        return False
+    return True
+
+
+def build_collection_message(request_cmd_id: int, profile_ctx: Any,
+                             journal_dir: Path | None = None,
+                             table_path: Path | None = None,
+                             now: float | None = None) -> dict[str, Any]:
+    """Réponse à `list_collection` : cartes du catalogue, cartes gagnées, avancement des autres."""
+    from .collection import announcement, card_line, evaluate, load_catalogue, load_seen, new_cards, seen_path
+    from .config import WORKOUTS_DIR
+    from .garage import workout_duration_finder
+    from .garage import CACHE_NAME
+    from .progression import FactsCache, load_table, recompute
+
+    journal_dir = journal_dir or profile_ctx.journal_dir
+    table_path = table_path or getattr(profile_ctx, "table_path", None)
+    table = load_table(table_path)
+    cards = load_catalogue(table=table)
+    cache = FactsCache(journal_dir / CACHE_NAME)
+    progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR), cache=cache,
+                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
+    col = evaluate(progress, cards, table, now=now)
+    seen = load_seen(seen_path(profile_ctx.root))
+
+    return {
+        "type": "collection",
+        "v": 1,
+        "request_cmd_id": request_cmd_id,
+        "cards_count": len(cards),
+        "first_time": seen is None,
+        "cards": [
+            {
+                "id": c.id,
+                "title": c.title,
+                "text": c.text,
+                "family": c.family,
+                "rarity": c.rarity,
+                "visual": c.visual,
+            }
+            for c in cards
+        ],
+        "earned": [card_line(e) for e in col.earned],
+        "remaining": [
+            {"id": cid, "value": v, "target": t}
+            for cid, (v, t) in col.progress.items()
+        ],
+        "new": [e.key for e in new_cards(col, seen)],
+    }
+
+
+def record_collection_seen(profile_ctx: Any, keys: list[str],
+                           catalogue_cards: tuple[Any, ...] | None = None) -> set[str]:
+    """Valide les clés et les ajoute à `collection_vue.json` du profil en cours (lot BC2)."""
+    from .collection import load_catalogue, load_seen, save_seen, seen_path
+
+    if not isinstance(keys, list):
+        raise ValueError("collection_seen attend une liste 'keys'")
+    if catalogue_cards is None:
+        catalogue_cards = load_catalogue()
+    cards_by_id = {c.id: c for c in catalogue_cards}
+    for k in keys:
+        if not is_valid_collection_key(k, cards_by_id):
+            raise ValueError(f"Clé de collection inconnue : {k!r}")
+
+    path = seen_path(profile_ctx.root)
+    existing = load_seen(path)
+    current = set() if existing is None else existing
+    current.update(keys)
+    save_seen(path, current)
+    return current
+
+
+def compute_summary_collection(profile_ctx: Any,
+                               journal_dir: Path | None = None,
+                               table_path: Path | None = None,
+                               now: float | None = None) -> dict[str, Any] | None:
+    """Calcule l'annonce facultative summary.collection ({card, others}) à la fin d'une séance (lot BC2)."""
+    from .collection import announcement, card_line, evaluate, load_catalogue, load_seen, seen_path
+    from .config import WORKOUTS_DIR
+    from .garage import workout_duration_finder
+    from .garage import CACHE_NAME
+    from .progression import FactsCache, load_table, recompute
+
+    journal_dir = journal_dir or profile_ctx.journal_dir
+    table_path = table_path or getattr(profile_ctx, "table_path", None)
+    table = load_table(table_path)
+    cards = load_catalogue(table=table)
+    cache = FactsCache(journal_dir / CACHE_NAME)
+    progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR), cache=cache,
+                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
+    col = evaluate(progress, cards, table, now=now)
+    seen = load_seen(seen_path(profile_ctx.root))
+    ann = announcement(col, seen)
+    if ann.card is None:
+        return None
+    return {
+        "card": card_line(ann.card),
+        "others": ann.others,
+    }

@@ -791,8 +791,13 @@ func _zone_color(zone: int) -> Color:
 func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = null, s: float = 0.0, dir := 1) -> void:
 	_route = route
 	_erg_active = state.get("erg") != null
+	# Épreuve de piste (lot VD9, maquettes VD8) : bandeau de l'épreuve à la place de la ligne d'état, bloc des
+	# tours à la place du profil d'altitude (piste plate) ; la séance libre en ERG garde le bandeau ERG.
+	var on_track: bool = state.get("track") != null
 	if profile_panel != null:
-		profile_panel.visible = not _erg_active
+		profile_panel.visible = not _erg_active and not on_track
+	if panel_center != null:
+		panel_center.visible = _erg_active or not on_track
 	var now_s := Time.get_ticks_usec() / 1e6
 	vm.on_state(state, now_s)
 	var lines := HudViewModel.session_lines(state, erg_eval, ftp_w, hr_max_bpm, vm.ridden_m() if state.has("s") else NAN)

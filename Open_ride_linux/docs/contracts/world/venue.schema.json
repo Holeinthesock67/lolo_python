@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldVenue",
+  "description": "Couche facultative venue.json d'un .world (Format .world v1, §8 sexies, depuis 1.7, lot VD1) : lieu fermé, aujourd'hui la piste couverte d'un vélodrome. La route du .world est la ligne de mesure de la piste.",
+  "type": "object",
+  "required": [
+    "version",
+    "kind",
+    "track_width_m",
+    "apron_width_m",
+    "lines",
+    "marks",
+    "geometry"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\."
+    },
+    "kind": {
+      "enum": [
+        "velodrome"
+      ]
+    },
+    "track_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+    },
+    "indoor": {
+      "type": "boolean",
+      "description": "Vrai : salle couverte, sans vent ni ciel."
+    },
+    "track_width_m": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Largeur de la piste relevée, depuis son bord intérieur."
+    },
+    "apron_width_m": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Côte d'azur : bande bleue non relevée, à l'intérieur de la piste."
+    },
+    "safety_width_m": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Zone de sécurité, à l'intérieur de la côte d'azur."
+    },
+    "route_line": {
+      "enum": [
+        "measure"
+      ],
+      "description": "Ligne suivie par la route du .world."
+    },
+    "lines": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "offset_m"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "measure",
+              "sprinters",
+              "stayers"
+            ]
+          },
+          "color": {
+            "type": "string"
+          },
+          "offset_m": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Distance depuis le bord intérieur de la piste, mesurée sur la pente."
+          }
+        }
+      }
+    },
+    "marks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "s"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "finish",
+              "pursuit_a",
+              "pursuit_b",
+              "line_200m"
+            ]
+          },
+          "s": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "geometry": {
+      "type": "object",
+      "required": [
+        "length_m",
+        "radius_m",
+        "transition_m",
+        "bank_straight_deg",
+        "bank_bend_deg"
+      ],
+      "properties": {
+        "length_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "radius_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "transition_m": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Longueur de chaque clothoïde (courbure linéaire de 0 à 1/R)."
+        },
+        "straight_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "arc_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "bank_straight_deg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 50
+        },
+        "bank_bend_deg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 50
+        },
+        "turn": {
+          "enum": [
+            "left"
+          ]
+        },
+        "bends": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "s_start",
+              "s_end"
+            ],
+            "properties": {
+              "s_start": {
+                "type": "number",
+                "minimum": 0
+              },
+              "s_arc_start": {
+                "type": "number",
+                "minimum": 0
+              },
+              "s_arc_end": {
+                "type": "number",
+                "minimum": 0
+              },
+              "s_end": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "equilibrium_speed_kmh": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Vitesse sans force de côté au sommet du virage, √(g R tan θ)."
+    }
+  }
+}

@@ -37,6 +37,19 @@ RESET_POD = b"\x18"
 STATUS_HEADER = bytes([0xFF, 0x05, 0x00, 0xEA, 0x05])
 STATUS_MODE_FIELD = 2
 STATUS_MODE_LOCKED = 1
+# Lot K9, essai D (zwiftboard, « verified on Click V2 hardware », docs/RECHERCHE_CLICK_GAUCHE.md §3.3) :
+# activation complète en trois écritures sur SYNC_RX à 100 ms d'intervalle, puis `ff 04 00` en réponse à
+# l'écho `RideOn` (SYNC_TX) et à chaque défi `0xFF` (ASYNC) pour garder un boîtier déjà déverrouillé.
+ACTIVATION = (RIDE_ON + bytes([0x02, 0x03]), bytes([0x00, 0x08, 0x00]), bytes([0x00, 0x08, 0x10]))
+ACTIVATION_GAP_S = 0.1
+KEEP_UNLOCKED = bytes([0xFF, 0x04, 0x00])
+CHALLENGE_BYTE = 0xFF
+# `[drivers] click_reset_locked` : que faire du verrou du boîtier gauche (SRS §4.2).
+#   reset : redémarrage `0x18` dès le verrou (défaut depuis le 30 octobre, essai C) ;
+#   keep  : activation complète et `ff 04 00` pour garder le déverrouillage, `0x18` seulement si le
+#           verrou revient quand même (essai D, lot K9) ;
+#   off   : rien, le boîtier gauche reste muet (B du droit fait « − »).
+LOCK_POLICIES = ("reset", "keep", "off")
 
 MSG_CONTROLLER_NOTIFICATION = 0x07  # Zwift Play
 MSG_EMPTY = 0x15
@@ -143,17 +156,20 @@ class ClickButtons:
     down_pressed: bool = False
 
 
-MESSAGE_TYPES = ("boutons", "batterie", "maintien", "etat", "inconnu")
+MESSAGE_TYPES = ("boutons", "batterie", "maintien", "etat", "defi", "inconnu")
 
 
 def classify_message(data: bytes) -> str:
     """Classe un message de notification du Click : 'boutons', 'batterie', 'maintien', 'etat' (état du
-    boîtier gauche, voir `parse_status`) ou 'inconnu'."""
+    boîtier gauche, voir `parse_status`), 'defi' (autre message commençant par `0xFF`, auquel le choix
+    `keep` répond `ff 04 00`) ou 'inconnu'."""
     if not data:
         return "inconnu"
     if data.startswith(STATUS_HEADER):
         return "etat"
     msg_type = data[0]
+    if msg_type == CHALLENGE_BYTE:
+        return "defi"
     if msg_type in (MSG_KEYPAD_STATUS, MSG_CLICK_NOTIFICATION, MSG_CONTROLLER_NOTIFICATION):
         return "boutons"
     if msg_type == MSG_BATTERY_LEVEL:

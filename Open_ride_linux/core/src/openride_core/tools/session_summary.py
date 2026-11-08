@@ -64,7 +64,7 @@ from pathlib import Path
 from typing import Any
 
 from ..fit_export import summarize
-from ..journal import TIMER_EVENTS, read_journal
+from ..journal import GAME_KINDS, TIMER_EVENTS, read_journal
 
 ZONES: tuple[tuple[str, float, float | None], ...] = (
     ("Z1", 0.0, 55.0), ("Z2", 55.0, 75.0), ("Z3", 75.0, 90.0), ("Z4", 90.0, 105.0),
@@ -87,6 +87,7 @@ class Session:
     fmt: str
     devices: list[dict] = field(default_factory=list)   # lignes `device` (lot M4)
     ftp_tests: list[dict] = field(default_factory=list)   # lignes `ftp_test` (lot O10)
+    games: list[dict] = field(default_factory=list)       # lignes de jeu (`journal.GAME_KINDS`), lues par CO6
 
 
 # --- lecture ----------------------------------------------------------------------------
@@ -110,7 +111,7 @@ def load_session(path: Path) -> Session:
 
 
 def _load_jsonl(path: Path) -> Session:
-    records, events, devices, ftp_tests = [], [], [], []
+    records, events, devices, ftp_tests, games = [], [], [], [], []
     for line in read_journal(path):
         if not isinstance(line, dict):
             continue
@@ -122,7 +123,9 @@ def _load_jsonl(path: Path) -> Session:
             devices.append(line)
         elif line.get("kind") == "ftp_test":
             ftp_tests.append(line)
-    return Session(records, events, "jsonl", devices, ftp_tests)
+        elif line.get("kind") in GAME_KINDS:
+            games.append(line)
+    return Session(records, events, "jsonl", devices, ftp_tests, games)
 
 
 def _load_fit(path: Path) -> Session:

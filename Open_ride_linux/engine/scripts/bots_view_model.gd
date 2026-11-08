@@ -202,7 +202,7 @@ static func color_of(kind: String, profile = null) -> Color:
 	return COLORS.get(kind, OTHER_COLOR)
 
 
-## Bots à l'instant now_us vus du cycliste (s et v affichés) : [{id, name, kind, s, lateral, gap_m, gap_s,
+## Bots à l'instant now_us vus du cycliste (s et v affichés) : [{id, name, kind, s, v, lateral, gap_m, gap_s,
 ## visible, show_name, color, profile, cp_w, mass_kg, wbal_pct, jersey}], du plus loin devant au plus
 ## loin derrière.
 func view(rider_s: float, rider_v: float, now_us: int) -> Array:
@@ -211,7 +211,7 @@ func view(rider_s: float, rider_v: float, now_us: int) -> Array:
 		var s := _shown_s(b, now_us)
 		var gm := gap_m(rider_s, s, loop_length_m)
 		var gs: float = b["gap_s"] if b["gap_s"] != null else gap_seconds(gm, rider_v, b["v"])
-		var item := {"id": b["id"], "name": b["name"], "kind": b["kind"], "s": s, "lane_m": b["lane_m"], "out": b["out"], "gap_m": gm, "gap_s": gs,
+		var item := {"id": b["id"], "name": b["name"], "kind": b["kind"], "s": s, "v": b["v"], "lane_m": b["lane_m"], "out": b["out"], "gap_m": gm, "gap_s": gs,
 			"visible": absf(gm) < VISIBLE_M, "show_name": absf(gm) < NAME_M, "color": color_of(b["kind"], b["profile"])}
 		for key in PROFILE_FIELDS:
 			item[key] = b[key]

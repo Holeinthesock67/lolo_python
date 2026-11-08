@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : faune par biome (extension de P11) | GDScript | U5, P11 | Moyenne | Oui, après U5, **version 3.0** (issue #342) |
+| Engine : faune par biome (extension de P11) | GDScript | U5, P11 | Moyenne | Livré le 28 octobre (PR #477, qui reprend #476 ; faune de plus en U23 #748), **version 3.0** (issue #342) |
 
 ## 1. Objectif
 
@@ -43,3 +43,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Animaux qui traversent devant le cycliste, interactions.
+
+## Livraison
+
+PR #477 (qui reprend #476), fusionnée le 28 octobre 2026 ; faune complétée par U23 (#748). Statut remis à jour par le point U3–U14 du 8 novembre, d'après les PR fusionnées.

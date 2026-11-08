@@ -16,6 +16,9 @@ extends Node3D
 ##   dernier `update`), au-dessus de `DUST_MIN_MPS`. `dust_amount(budget)` grains (budget / `DUST_SHARE`, au
 ##   moins `DUST_MIN_AMOUNT`), pris sur le budget de la météo (`living(preset).weather_particles`) : pluie,
 ##   neige et poussière restent sous ce budget.
+## - Feuilles qui tombent (lot P18, automne) : `update_leaves(intensity, wind_eval)` ; intensité donnée par
+##   `leaves_intensity(falling, forest_dist_m)` (densité de la saison, seulement à moins de LEAVES_FOREST_M d'une
+##   forêt). `leaves_amount(budget)` feuilles (budget / LEAVES_SHARE), prises elles aussi sur le même budget.
 
 const BOX_M := 40.0
 const RAIN_FALL_MPS := 7.0
@@ -28,11 +31,18 @@ const DUST_SHARE := 25
 const DUST_MIN_AMOUNT := 8
 const DUST_MIN_MPS := 2.0
 const DUST_LIFETIME_S := 1.6
+const LEAVES_SHARE := 10
+const LEAVES_MIN_AMOUNT := 8
+const LEAVES_FALL_MPS := 0.9
+const LEAVES_WIND_SHARE := 1.0    # feuilles légères : poussées par tout le vent
+const LEAVES_FOREST_M := 30.0     # au-delà, aucune feuille
+const LEAVES_FADE_M := 10.0
 
 var _budget := 0
 var _rain: GPUParticles3D = null
 var _snow: GPUParticles3D = null
 var _dust: GPUParticles3D = null
+var _leaves: GPUParticles3D = null
 var _dry := true
 
 
@@ -44,6 +54,7 @@ func configure(budget: int) -> void:
 	_rain = null
 	_snow = null
 	_dust = null
+	_leaves = null
 	if _budget == 0:
 		set_process(false)
 		visible = false
@@ -51,6 +62,12 @@ func configure(budget: int) -> void:
 	_rain = _make_emitter("Pluie", _rain_mesh(), RAIN_FALL_MPS)
 	_snow = _make_emitter("Neige", _snow_mesh(), SNOW_FALL_MPS)
 	_dust = _make_dust()
+	_leaves = _make_emitter("Feuilles", _leaf_mesh(), LEAVES_FALL_MPS)
+	_leaves.amount = leaves_amount(_budget)
+	var lm := _leaves.process_material as ParticleProcessMaterial
+	lm.angular_velocity_min = -180.0   # tourbillonnent en tombant
+	lm.angular_velocity_max = 180.0
+	lm.color_initial_ramp = _leaf_colors()
 	visible = true
 
 
@@ -60,13 +77,13 @@ func get_budget() -> int:
 
 func is_active() -> bool:
 	return _budget > 0 and ((_rain != null and _rain.emitting) or (_snow != null and _snow.emitting)
-			or (_dust != null and _dust.emitting))
+			or (_dust != null and _dust.emitting) or (_leaves != null and _leaves.emitting))
 
 
 ## Particules visibles au plus (amount × amount_ratio des effets qui émettent).
 func get_active_count() -> int:
 	var n := 0
-	for p in [_rain, _snow, _dust]:
+	for p in [_rain, _snow, _dust, _leaves]:
 		if p != null and p.emitting:
 			n += int(round(p.amount * p.amount_ratio))
 	return n
@@ -75,6 +92,8 @@ func get_active_count() -> int:
 func get_emitter(kind: String) -> GPUParticles3D:
 	if kind == "dust":
 		return _dust
+	if kind == "leaves":
+		return _leaves
 	return _rain if kind == "rain" else _snow
 
 
@@ -87,6 +106,27 @@ func update(camera_position: Vector3, weather_eval: Dictionary) -> void:
 	var wind := {"dir": weather_eval.get("wind_dir", Vector3.ZERO), "strength": weather_eval.get("wind_strength", 0.0)}
 	_apply(_rain, float(weather_eval.get("rain", 0.0)), particle_velocity("rain", wind))
 	_apply(_snow, float(weather_eval.get("snow", 0.0)), particle_velocity("snow", wind))
+
+
+## Une fois par image, après `update` (automne, lot P18) : feuilles qui tombent près des forêts, au vent.
+func update_leaves(intensity: float, wind_eval: Dictionary) -> void:
+	if _leaves == null:
+		return
+	_apply(_leaves, intensity, particle_velocity("leaves", wind_eval))
+
+
+## Densité des feuilles qui tombent : celle de la saison (`season_model.params` `falling_leaves`), pleine
+## jusqu'à LEAVES_FOREST_M − LEAVES_FADE_M d'une forêt, nulle au-delà de LEAVES_FOREST_M.
+static func leaves_intensity(falling: float, forest_dist_m: float) -> float:
+	var near := 1.0 - smoothstep(LEAVES_FOREST_M - LEAVES_FADE_M, LEAVES_FOREST_M, forest_dist_m)
+	return clampf(falling, 0.0, 1.0) * near
+
+
+static func leaves_amount(budget: int) -> int:
+	if budget <= 0:
+		return 0
+	# Jamais plus que ce que laisse la poussière, une particule gardée pour la pluie ou la neige
+	return clampi(maxi(budget / LEAVES_SHARE, LEAVES_MIN_AMOUNT), 0, maxi(budget - dust_amount(budget) - 1, 0))
 
 
 ## Une fois par image, après `update` : poussière derrière la roue arrière (`rider_pos` au sol, `back` vers
@@ -124,6 +164,8 @@ static func particle_velocity(kind: String, wind_eval: Dictionary) -> Vector3:
 	var speed := clampf(float(wind_eval.get("strength", 0.0)), 0.0, 1.0) * WIND_MAX_MPS
 	if kind == "rain":
 		return horiz * speed * RAIN_WIND_SHARE + Vector3(0.0, -RAIN_FALL_MPS, 0.0)
+	if kind == "leaves":
+		return horiz * speed * LEAVES_WIND_SHARE + Vector3(0.0, -LEAVES_FALL_MPS, 0.0)
 	return horiz * speed * SNOW_WIND_SHARE + Vector3(0.0, -SNOW_FALL_MPS, 0.0)
 
 
@@ -148,7 +190,7 @@ func _apply(p: GPUParticles3D, intensity: float, velocity: Vector3) -> void:
 func _make_emitter(node_name: String, mesh: Mesh, fall_mps: float) -> GPUParticles3D:
 	var p := GPUParticles3D.new()
 	p.name = node_name
-	p.amount = _budget - dust_amount(_budget)   # la poussière prend sa part du même budget
+	p.amount = maxi(_budget - dust_amount(_budget) - leaves_amount(_budget), 1)   # poussière et feuilles prennent leur part du même budget
 	p.amount_ratio = 0.0
 	p.local_coords = false
 	p.emitting = false
@@ -231,3 +273,25 @@ static func _snow_mesh() -> QuadMesh:
 	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 	q.material = m
 	return q
+
+
+## Feuille : petit carré tourné vers la caméra, teinte de la rampe d'automne (_leaf_colors).
+static func _leaf_mesh() -> QuadMesh:
+	var q := QuadMesh.new()
+	q.size = Vector2(0.07, 0.05)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	q.material = m
+	return q
+
+
+static func _leaf_colors() -> GradientTexture1D:
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	g.colors = PackedColorArray([Color(0.85, 0.62, 0.16), Color(0.80, 0.36, 0.10), Color(0.50, 0.20, 0.08)])
+	var t := GradientTexture1D.new()
+	t.gradient = g
+	return t

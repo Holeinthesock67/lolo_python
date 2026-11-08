@@ -78,3 +78,64 @@ recovery_max_above_z1_pct = 10   # au plus 10 % du temps au-dessus de Z1 : récu
 ftp_test = "ftp_test:ramp"       # entraînement du conseil « test de FTP » (lot O10)
 # Sous-famille de la suggestion de la montre : zone dominante cherchée d'abord (plan §4 bis).
 watch_zone = { tempo = "Z3", seuil = "Z4", vo2max = "Z5" }
+
+[races]
+# Courses disputées (S5, lot CO6, plan §4) : cause de perte lue dans le journal, départage de R7.
+climb_window_s = 60      # minute d'avant l'élimination
+climb_grade_pct = 3      # pente moyenne au-dessus : lâché en montée (aérobie intense)
+sprint_gap_s = 2         # éliminé à moins de 2 s : battu au sprint (anaérobie)
+fade_pct = 10            # puissance perdue entre premier et dernier quart : craqué (aérobie léger)
+fade_min_quarter_s = 60  # quarts d'au moins une minute pour lire la baisse
+window_count = 3         # dernières courses lues pour R7
+min_count = 2            # une cause compte si elle revient au moins 2 fois
+
+[game]
+# Séance de jeu calibrée au besoin (lot CO9, plan §4 ter) : formats essayés dans l'ordre, simulés avec le
+# cycliste virtuel (coach_game.py) ; proposé si le temps prédit dans les zones du besoin atteint
+# min_ratio_pct % de celui de l'entraînement équivalent (sinon reference_pct % de la durée).
+min_ratio_pct = 70
+min_duration_pct = 60    # un parcours aller trop court pour la durée est écarté
+recovery_zones = ["Z1"]
+reference_pct = { recovery = 90, light = 85, intense = 30, anaerobic = 5 }
+
+[[game.formats]]
+need = "recovery"
+label = "Balade seule sur un parcours plat"
+mode = "ride"
+bots = 0
+rider_pct = 50
+max_grade_pct = 2
+
+[[game.formats]]
+need = "light"
+label = "Sortie en groupe avec des bots"
+mode = "ride"
+bots = 4
+level_pct = 65           # bots à 60–70 % de la FTP
+tactics = "none"         # sans attaque ni relais : rouler dans les roues
+rider_pct = 65
+max_climb_s = 120        # montées de moins de 2 min
+
+[[game.formats]]
+need = "intense"
+label = "Course contre des bots sur un parcours à montées longues"
+mode = "ride"
+bots = 4
+level_pct = 95           # tenus de 90 à 105 % de la FTP en montée
+tactics = "classic"
+rider_pct = 70
+climb_pct = 98
+min_climb_s = 240        # montée principale de 4 à 10 min
+max_climb_s = 600
+
+[[game.formats]]
+need = "anaerobic"
+label = "Dernier survivant, une arche par kilomètre"
+mode = "survivor"
+opponents = 4
+spacing_km = 1
+level_pct = 100
+tactics = "classic"
+rider_pct = 70
+sprint_pct = 160         # sprint de l'arche
+sprint_s = 20

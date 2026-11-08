@@ -3,17 +3,21 @@ extends SceneTree
 ## Rendu hors écran de l'habillage des objets du bord de route (Lot Y8 étape 3, shaders/props.gdshader) :
 ## panneau de col, panneau d'approche et borne de roadside_props.gd, matériaux de la scène principale.
 ## - Aucun point parasite sur les objets éclairés, relief en marche (détecteur speckle.gd) ;
-## - liseré blanc autour de la face marron du panneau de col ;
+## - liseré blanc autour de la face marron du panneau de col ; pavé rouge de la pente (7 %) du panneau d'approche ;
 ## - poteau en acier galvanisé, pas d'un gris uni ; pied de la borne sali ;
 ## - mât d'éolienne : pied en dégradé vert, haut blanc.
 ##   xvfb-run -a godot --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/render/test_props_render.gd
+
+const RenderExit := preload("res://tests/render/render_exit.gd")
 
 const RoadsideProps := preload("res://scripts/roadside_props.gd")
 const WindTurbines := preload("res://scripts/wind_turbines.gd")
 const Speckle := preload("res://tests/render/speckle.gd")
 
 const SIZE := 384
+const APPROACH := {"kind": "approach", "s": 0.0, "lines": ["Sommet à 2 km", "Pente moyenne 7 %"], "name": "Col", "km": 2,
+	"pct": 7, "alt_m": 900}
 ## Même seuil que les bâtiments et les arbres
 const MAX_ISOLATED := 0.001
 
@@ -56,7 +60,7 @@ func _viewport(unshaded: bool) -> SubViewport:
 	var props = RoadsideProps.new()
 	props.set_preset("medium")
 	vp.add_child(props)
-	var items := [{"kind": "summit", "s": 0.0, "lines": ["COL"]}, {"kind": "approach", "s": 0.0, "lines": ["2 km"]},
+	var items := [{"kind": "summit", "s": 0.0, "lines": ["COL"]}, APPROACH,
 		{"kind": "km", "s": 0.0, "lines": ["3"]}]
 	for i in range(items.size()):
 		var node: Node3D = props.build_prop(items[i])
@@ -103,8 +107,15 @@ func _run() -> void:
 	var inner := board.get_pixel(SIZE / 2, y0 + 30)
 	_check(edge.r > 0.8 and edge.g > 0.8 and inner.r > inner.g + 0.1 and inner.g > inner.b,
 		"panneau de col : liseré clair (%s) autour du fond marron (%s)" % [edge.to_html(false), inner.to_html(false)])
+	# Panneau d'approche sans éclairage : pavé de la pente (7 %) en rouge, à droite du chiffre
+	var lay: Dictionary = RoadsideProps.approach_layout(APPROACH)
+	var box: Dictionary = lay["layers"][2]
+	var at := Vector3(5.0 + float(box["x"]) + float(box["w"]) * 0.4, float(lay["bottom_m"]) + float(lay["h"]) * 0.5 + float(box["y"]), 0.0)
+	var face: Image = await _shot(flat, at + Vector3(0.0, 0.0, 1.0), at, 10.0)
+	var red := face.get_pixel(SIZE / 2, SIZE / 2)
+	_check(red.r > red.g + 0.3 and red.r > red.b + 0.3, "panneau d'approche : pente de 7 %% sur un pavé rouge (%s)" % red.to_html(false))
 	# Poteau sans éclairage : écart type de la luminance sur une bande verticale
-	var post: Image = await _shot(flat, Vector3(5.0, 1.0, 0.5), Vector3(5.0, 1.0, 0.0), 20.0)
+	var post: Image = await _shot(flat, Vector3(0.0, 1.0, 0.5), Vector3(0.0, 1.0, 0.0), 20.0)
 	var n := 0
 	var s1 := 0.0
 	var s2 := 0.0
@@ -137,5 +148,6 @@ func _run() -> void:
 	lit.queue_free()
 	flat.queue_free()
 	await process_frame
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_props_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

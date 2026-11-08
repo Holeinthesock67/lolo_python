@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideWorldRoute",
-  "description": "Couche route d'un .world (Format .world v1, §4 ; colonne surface depuis 1.6, lot U1).",
+  "description": "Couche route d'un .world (Format .world v1, §4 ; colonne surface depuis 1.6, lot U1 ; colonne bank_deg et surface wood depuis 1.7, lot VD1).",
   "type": "object",
   "required": [
     "version",
@@ -114,10 +114,21 @@
           "paved",
           "compacted",
           "gravel",
-          "dirt"
+          "dirt",
+          "wood"
         ]
       },
-      "description": "Facultative, depuis 1.6 : surface de chaque point ; absente = tout en paved."
+      "description": "Facultative, depuis 1.6 : surface de chaque point ; absente = tout en paved. wood (piste du vélodrome) depuis 1.7."
+    },
+    "bank_deg": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "number",
+        "minimum": -50,
+        "maximum": 50
+      },
+      "description": "Facultative, depuis 1.7 (lot VD1) : relèvement de la chaussée en degrés, positif quand le côté droit (extérieur d'un virage à gauche) est plus haut ; absente = 0 partout. Interpolée linéairement comme l'altitude."
     }
   }
 }

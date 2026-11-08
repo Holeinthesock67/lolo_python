@@ -34,7 +34,7 @@
     "ambience": {
       "type": "object",
       "additionalProperties": true,
-      "description": "Thème 1.2 (lot P1, utilisé par P9).",
+      "description": "Thème 1.2 (lot P1, utilisé par P9) ; `layers` depuis le lot U11.",
       "properties": {
         "volume": {
           "type": "number",
@@ -50,6 +50,63 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1
+        },
+        "layers": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Lot U11 : gain (0 à 1) de chaque fond d'ambiance propre au biome ; un fond absent est muet.",
+          "properties": {
+            "cicadas": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "jungle_chorus": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "conifer_wind": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "cowbells": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "waves": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "gulls": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "frogs": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "singing_sand": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "ice_cracks": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "fumaroles": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
         }
       }
     },

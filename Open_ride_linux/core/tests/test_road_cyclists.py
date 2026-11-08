@@ -332,3 +332,108 @@ def test_cost_per_step_with_sixteen_riders(route: Route) -> None:
     ms = (time.perf_counter() - t0) * 1000.0 / n
     assert m.rider_count() == 16
     assert ms < 0.5, f"{ms:.3f} ms par pas"
+
+
+# --- Cyclistes du décor sur le gravel, en file et au rabattement (recette vélo du 7 novembre) ----------------
+
+def _gravel_ride(route: Route, mode: str, seconds: float = 900.0) -> dict:
+    """Séance de plaine à 30 km/h avec l'option gravel `mode` (largeurs du thème par défaut) : demi-largeur
+    roulable la plus faible vue, écart latéral le plus loin de l'axe, plus petit écart en file, plus grande
+    accélération latérale."""
+    from openride_core import surface_physics as sp
+
+    widths = sp.surface_widths(None)
+    m = rc.RoadCyclists(route, (), (), 16, 7,
+                        half_width_at=lambda s: sp.rideable_half_m(route, s, mode, widths, 6.0))
+    dt = 1.0 / 15.0
+    s, t = 300.0, 0.0
+    out = {"outside": 0, "min_file_gap": math.inf, "max_acc": 0.0, "max_speed": 0.0, "groups": 0}
+    last_v: dict[str, float] = {}
+    seen = set()
+    while t < seconds:
+        v = 30.0 / 3.6
+        m.update(s, v, dt)
+        for g in m.groups:
+            seen.add(g.id)
+            half = sp.rideable_half_m(route, g.s, mode, widths, 6.0)
+            for mem in g.members:
+                if abs(mem.lateral) + rc.RIDER_HALF_WIDTH_M > half + 1e-6:
+                    out["outside"] += 1
+                key = f"{g.id}-{mem.index}"
+                if key in last_v:
+                    out["max_acc"] = max(out["max_acc"], abs(mem.lat_v - last_v[key]) / dt)
+                last_v[key] = mem.lat_v
+                out["max_speed"] = max(out["max_speed"], abs(mem.lat_v))
+            for a in g.members:
+                for b in g.members:
+                    if a is not b and abs(a.lateral - b.lateral) < 2.0 * rc.RIDER_HALF_WIDTH_M:
+                        out["min_file_gap"] = min(out["min_file_gap"], abs(a.dl - b.dl))
+        s += v * dt
+        t += dt
+    out["groups"] = len(seen)
+    return out
+
+
+def test_gravel_riders_stay_on_the_track(route: Route) -> None:
+    """Option « gravier » (3,5 m) : tous les cyclistes du décor roulent sur le chemin, en file, roues séparées."""
+    r = _gravel_ride(route, "gravel")
+    assert r["groups"] >= 5
+    assert r["outside"] == 0
+    assert r["min_file_gap"] >= draft.BIKE_LENGTH_M
+
+
+def test_paved_riders_keep_their_lanes(route: Route) -> None:
+    """Sans gravel, mêmes places qu'avant : bord droit à 2,5 m de l'axe, en face à −2,5 m."""
+    m = rc.RoadCyclists(route, (), (), 16, 7)
+    g = m.place_for_test(1000.0, 8.0, "ahead", 100.0, 1)
+    o = m.place_for_test(1000.0, 8.0, "oncoming", 200.0, 1)
+    assert g is not None and o is not None
+    assert g.members[0].lateral == pytest.approx(rc.RIDER_LATERAL_M + MIN_CENTRE_M)
+    assert o.members[0].lateral == pytest.approx(-2.5)
+
+
+def test_file_gap_leaves_room_between_wheels() -> None:
+    """En file, d'axe à axe : la longueur d'un vélo et au moins 0,3 m de roue à roue."""
+    assert rc.FILE_GAP_M >= draft.BIKE_LENGTH_M + 0.3
+
+
+def test_side_moves_are_smooth(route: Route) -> None:
+    """Écarts et rabattements sans à-coup : accélération latérale bornée, vitesse latérale bornée."""
+    r = _gravel_ride(route, "off", 1200.0)
+    assert r["max_speed"] <= rc.SIDE_SPEED_MPS + 1e-9
+    # Une image d'arrêt sur la place (au plus SIDE_ARRIVE_MPS) ou un arrêt de sécurité (`_side_blocked`) mis à part
+    assert r["max_acc"] <= rc.SIDE_ACCEL_MPS2 + 1e-6 or r["max_acc"] * (1.0 / 15.0) <= rc.SIDE_SPEED_MPS + 1e-6
+
+
+def test_abreast_pair_files_up_on_narrow_track_without_overlap() -> None:
+    """Deux de front qui arrivent sur un chemin étroit : le second recule avant de se ranger dans la ligne."""
+    narrow = {"on": False}
+    r = Route(PARITY.route_dict())
+    m = rc.RoadCyclists(r, (), (), 16, 7, half_width_at=lambda s: 1.5 if narrow["on"] else 3.0)
+    g = m.place_for_test(1000.0, 8.0, "ahead", 200.0, 2, abreast=True)
+    assert g is not None and g.members[1].col == 1 and g.members[1].dl == 0.0
+    narrow["on"] = True
+    for _ in range(15 * 6):
+        m.update(1000.0, 8.0, 1.0 / 15.0)
+        a, b = g.members
+        assert abs(a.dl - b.dl) >= draft.BIKE_LENGTH_M or abs(a.lateral - b.lateral) >= 2.0 * rc.RIDER_HALF_WIDTH_M - 0.05
+    assert g.members[1].dl == pytest.approx(rc.FILE_GAP_M)
+    assert abs(g.members[1].lateral) + rc.RIDER_HALF_WIDTH_M <= 1.5 + 1e-6
+
+
+def test_rideable_half_matches_engine_rules() -> None:
+    """Demi-largeur roulable : bitume 3 m ; gravier 1,75 − 0,25 m ; biseau de 5 m entre les deux."""
+    from openride_core import surface_physics as sp
+
+    class R:
+        surface = None
+
+        def surface_at(self, s: float) -> str:
+            return "gravel" if s >= 100.0 else "paved"
+
+    widths = sp.surface_widths({"gravel": {"width_m": 3.5}})
+    assert sp.rideable_half_m(R(), 50.0, "auto", widths, 6.0) == 3.0
+    assert sp.rideable_half_m(R(), 200.0, "auto", widths, 6.0) == pytest.approx(1.5)
+    assert 1.5 < sp.rideable_half_m(R(), 100.0, "auto", widths, 6.0) < 3.0
+    assert sp.rideable_half_m(R(), 50.0, "dirt", widths, 6.0) == pytest.approx(1.25)
+    assert sp.rideable_half_m(R(), 200.0, "off", widths, 6.0) == 3.0
