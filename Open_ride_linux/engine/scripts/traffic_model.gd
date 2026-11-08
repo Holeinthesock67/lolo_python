@@ -41,6 +41,12 @@ const VILLAGE_NEAR_M := 1000.0
 const OVERTAKE_SHARE := 0.4
 const SPAWN_AHEAD_M := Vector2(600.0, 1200.0)
 const SPAWN_BEHIND_M := 250.0
+## Option gravel (décision du propriétaire du 7/11) : sur un chemin non revêtu, seuls ces véhicules apparaissent
+## (même règle que core traffic.py : surface contrôlée tous les UNPAVED_STEP_M de l'apparition au cycliste, et
+## jusqu'à UNPAVED_AHEAD_M devant lui pour un véhicule qui le double).
+const UNPAVED_KINDS := ["tractor", "moto"]
+const UNPAVED_STEP_M := 25.0
+const UNPAVED_AHEAD_M := 300.0
 const REMOVE_BEHIND_M := 300.0
 const REMOVE_AHEAD_M := 1300.0
 const PASS_SPEED_KMH := 30.0
@@ -82,6 +88,8 @@ const HEADLIGHT_SUN_DEG := 8.0
 
 var route = null
 var budget: int = 3
+## Option gravel : vrai si la chaussée est non revêtue en s (living_decor : world_streamer.surface_at).
+var unpaved_at: Callable = Callable()
 var seed: int = 0
 var vehicles: Array = []           # {id, kind, color, s, dir, speed_mps, cruise_mps, lateral, wheel}
 var spawned_total: int = 0
@@ -197,6 +205,19 @@ static func oncoming_lateral(kind: String) -> float:
 	return minf(-RIGHT_LANE_M, lane_lateral(kind))
 
 
+## Option gravel : faux pour un véhicule hors de UNPAVED_KINDS si un point non revêtu sépare `s_a` de `s_b`.
+func _kind_ok(kind: String, s_a: float, s_b: float) -> bool:
+	if not unpaved_at.is_valid() or kind in UNPAVED_KINDS:
+		return true
+	var lo := minf(s_a, s_b)
+	var hi := maxf(s_a, s_b)
+	var n := int((hi - lo) / UNPAVED_STEP_M) + 1
+	for i in range(n + 1):
+		if bool(unpaved_at.call(lo + (hi - lo) * float(i) / float(n))):
+			return false
+	return true
+
+
 func _segment_ok(s: float) -> bool:
 	if route == null or s < 0.0 or s > route.length_m:
 		return false
@@ -236,12 +257,14 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, o
 			continue
 		if int(ev["dir"]) == -1:
 			var s0 := rider_s + float(ev["ahead_m"])
-			if _overtaking() or not _segment_ok(s0) or not _free_at(s0, -1) or not _others_clear_at(s0):
+			if _overtaking() or not _segment_ok(s0) or not _free_at(s0, -1) or not _others_clear_at(s0) \
+					or not _kind_ok(str(ev["kind"]), s0, rider_s):
 				continue
 			_spawn(ev, s0, -1)
 		else:
 			var s1 := rider_s - SPAWN_BEHIND_M
-			if _overtaking() or not _segment_ok(maxf(s1, 0.0)) or float(ev["cruise_mps"]) <= rider_v or not _others_clear_at(s1):
+			if _overtaking() or not _segment_ok(maxf(s1, 0.0)) or float(ev["cruise_mps"]) <= rider_v or not _others_clear_at(s1) \
+					or not _kind_ok(str(ev["kind"]), s1, rider_s + UNPAVED_AHEAD_M):
 				continue
 			_spawn(ev, s1, 1)
 	# Déplacement

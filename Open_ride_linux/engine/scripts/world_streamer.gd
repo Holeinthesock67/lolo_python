@@ -314,6 +314,12 @@ func surface_at(s: float) -> String:
 	return RoadSurface.effective(route.surface_at(s), gravel_mode)
 
 
+## Demi-largeur roulable du ruban en s (cyclistes du décor sur le gravel) : RoadSurface.rideable_half, option et
+## largeurs du thème actuelles.
+func rideable_half(s: float, road_width_m: float = RoadBuilder.ROAD_WIDTH_M) -> float:
+	return RoadSurface.rideable_half(route, s, gravel_mode, _surfaces, road_width_m)
+
+
 ## Monde vivant (lot W10) : nouvelle route (prolongée ou réécrite depuis la partie `from_part`) et tuiles
 ## de terrain nouvellement écrites. Les tronçons de ruban touchés sont reconstruits, les autres gardés ;
 ## les travaux en cours gardent l'ancienne route, qui n'est plus modifiée.
@@ -562,6 +568,7 @@ func update_window(s_pos: float, v: float, cam_pos: Vector3) -> void:
 		_ground.position = Vector3(cam_pos.x, _ground.position.y, cam_pos.z)
 	if tree_renderer != null:
 		tree_renderer.enforce_budget(cam_pos, views[0] if not views.is_empty() else {})
+		tree_renderer.update_shadows(cam_pos)
 	if osm_streamer != null and route != null:
 		osm_streamer.update_window(s_pos - float(chunks_behind) * 1000.0, s_pos + float(chunks_ahead) * 1000.0 + v * LOOKAHEAD_S)
 

@@ -585,9 +585,12 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     print(f"== {name} ==", flush=True)
     records_file = out_dir / f"{name}_records.json"   # records de démonstration, pas ceux du propriétaire
     records_file.write_text(json.dumps(DEMO_RECORDS), encoding="utf-8")
+    # Références xvfb/ faites par la CI en Vulkan logiciel (llvmpipe) : la comparaison impose le même pilote, même
+    # sur un PC où Xvfb prendrait la carte graphique (SSIM 0,959 à 0,966 sur la NVIDIA, 8 novembre).
+    soft_env = rendu_jeu.software_vulkan_env() if gold is not None and not args.native else None
     with engine_log.open("w") as log_fh:
         proc = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT, start_new_session=True,
-                                env={**os.environ, "OPENRIDE_RECORDS_FILE": str(records_file)})
+                                env={**os.environ, **(soft_env or {}), "OPENRIDE_RECORDS_FILE": str(records_file)})
     try:
         (scenes or _scenes)(s)
     finally:
@@ -605,6 +608,11 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     s.check("journal", "aucune erreur ni avertissement Godot", not issues, " | ".join(issues[:5]))
     r_err = rendu_jeu.check_log(engine_log.read_text(errors="replace"))
     s.check("journal", "rendu du jeu (Forward+)", r_err is None, r_err or "Vulkan, Forward+")
+    if gold is not None and not args.native:
+        soft = rendu_jeu.is_software(engine_log.read_text(errors="replace"))
+        s.check("journal", "références xvfb comparées en Vulkan logiciel (llvmpipe, comme la CI)", soft,
+                "llvmpipe" if soft else "rendu sur la carte graphique : installer mesa-vulkan-drivers (lavapipe)"
+                if soft_env is None else "rendu sur la carte graphique malgré VK_DRIVER_FILES=" + soft_env["VK_DRIVER_FILES"])
     # Qualité réellement appliquée (lot X32) : le faux core ne doit pas la ramener à une autre valeur.
     q_ok, q_msg = quality_guard.check(engine_log.read_text(errors="replace"), quality)
     s.check("journal", "qualité réellement appliquée", bool(q_ok), q_msg)
@@ -1266,6 +1274,7 @@ def _decor_vivant_scene(s: Session) -> None:
 
 PASS_WINDOW_M = 10.0   # voiture qui double vue à moins de 10 m devant ou derrière le cycliste (lot P32)
 PASS_WAIT_S = 60.0   # la voiture d'en face croisée, puis l'utilitaire qui double (décor ralenti sous Xvfb)
+PELOTON_CAR_KMH = 10.0   # voiture d'en face de la scène peloton_face (voir _peloton_face_scene)
 
 
 def _place(s: Session, **spec: Any) -> None:
@@ -1384,7 +1393,11 @@ def _peloton_face_scene(s: Session) -> None:
                 f"{lats}, {len(near)} à moins de 30 m")
     # Posée assez près pour croiser le peloton même quand le décor avance lentement (Xvfb, --fige) : les bots
     # serrent à droite dès qu'elle est là, elle attend devant eux s'ils ne lui laissent pas encore la place.
-    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 45.0, "kmh": 40.0})
+    # Au pas (PELOTON_CAR_KMH) : en temps réel (--native, 60 images/s), une voiture à 40 km/h croise les bots
+    # 0,4 s après qu'ils ont tous serré à droite, puis ils reprennent leur place ; les captures, espacées de plus
+    # de 0,5 s, manquaient cet instant et la dernière, 60 s plus tard, ne montrait plus la voiture (r773, 8/11).
+    # À 10 km/h, les bots restent à droite environ 11 s avec la voiture à moins de 50 m (simulation des modèles).
+    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 45.0, "kmh": PELOTON_CAR_KMH})
     shot = None
     t0 = now()
     while now() - t0 < PASS_WAIT_S:
@@ -1751,7 +1764,7 @@ def _decor_riders_draft_scene(s: Session) -> None:
     s_last = core.current_s() + 1.7 + 12.0
 
     def group(s0: float) -> list[dict[str, Any]]:
-        return [{"id": f"c77-{2 - i}", "s": round(s0 + 1.5 * i, 2), "dir": 1, "v": 0.0, "lane_m": 1.5,
+        return [{"id": f"c77-{2 - i}", "s": round(s0 + 2.1 * i, 2), "dir": 1, "v": 0.0, "lane_m": 1.5,
                  "look": (37 * (i + 1) << 4) | (i + 2)} for i in range(3)]
 
     core.set_scene(speed=0.0, lane_m=1.5, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=0.0,

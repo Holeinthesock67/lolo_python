@@ -202,6 +202,7 @@ class RideConfig:
     """Séance : placement avec les bots (série AS, lot AS2), abri derrière les véhicules (lot AS6)."""
     auto_draft: str = "on"         # placement dans la roue : on (rangé derrière le coureur devant, sorti pour doubler) ou off (1,2 m de l'axe)
     vehicle_draft: str = "on"      # abri derrière un véhicule lent (lot AS6) : on ou off ; l'aspiration d'un véhicule qui double reste
+    traffic_bench_s: int = 0       # bancs seulement : passage forcé d'un véhicule proche toutes les N s (0 : jamais)
 
 
 @dataclass
@@ -211,6 +212,17 @@ class SurvivorConfig:
     spacing_km: int = 2            # écart entre deux arches (1 à 3 km)
     spread: str = "normal"         # écart de niveau des bots : tight (± 3 %), normal (± 8 %), wide (± 15 %)
     after_out: str = "ride"        # cycliste éliminé : ride (continuer à rouler) ou end (bilan tout de suite)
+
+
+@dataclass
+class GrandPrixConfig:
+    """Mode « Grand Prix des objets » (série GP, lot GP2) : plateau, format de la course et objets.
+    Les objets joués et leurs valeurs sont dans `~/OpenRide/grandprix.toml` (`grandprix.items`)."""
+    opponents: int = 4             # adversaires (2 à 4 ; 11 avec le lot GP10)
+    laps: int = 3                  # circuit : nombre de tours (1 à 5)
+    distance_km: int = 10          # parcours en ligne : distance de la course (5 à 30 km)
+    chaos: str = "normal"          # force et fréquence des objets : soft (× 0,7), normal, wild (× 1,3)
+    box_every_m: int = 1500        # écart des rangées de boîtes (1000 à 3000 m, pas de 500 m)
 
 
 @dataclass
@@ -273,6 +285,7 @@ class Config:
     bots: BotsConfig = field(default_factory=BotsConfig)
     ride: RideConfig = field(default_factory=RideConfig)
     survivor: SurvivorConfig = field(default_factory=SurvivorConfig)
+    grandprix: GrandPrixConfig = field(default_factory=GrandPrixConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     depart: DepartConfig = field(default_factory=DepartConfig)
     log: LogConfig = field(default_factory=LogConfig)
@@ -351,8 +364,13 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("rogue", "grade_rate_up_pct_per_s"): (0.1, 100),
     ("rogue", "grade_rate_down_pct_per_s"): (0.1, 100),
     ("bots", "level_pct"): (50, 150),
+    ("ride", "traffic_bench_s"): (0, 600),
     ("survivor", "opponents"): (2, 11),         # lot DS8 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
     ("survivor", "spacing_km"): (1, 3),
+    ("grandprix", "opponents"): (2, 4),         # lot GP2 ; 2 à 11 avec le lot GP10
+    ("grandprix", "laps"): (1, 5),
+    ("grandprix", "distance_km"): (5, 30),
+    ("grandprix", "box_every_m"): (1000, 3000),
     ("audio", "master_pct"): (0, 100),
     ("audio", "ride_pct"): (0, 100),
     ("audio", "ambience_pct"): (0, 100),
@@ -398,6 +416,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("ride", "vehicle_draft"): ("on", "off"),
     ("survivor", "spread"): ("tight", "normal", "wide"),
     ("survivor", "after_out"): ("ride", "end"),
+    ("grandprix", "chaos"): ("soft", "normal", "wild"),
 }
 
 
@@ -414,6 +433,8 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),
     ("survivor", "opponents"), ("survivor", "spacing_km"), ("survivor", "spread"), ("survivor", "after_out"),
+    ("grandprix", "opponents"), ("grandprix", "laps"), ("grandprix", "distance_km"), ("grandprix", "chaos"),
+    ("grandprix", "box_every_m"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
     ("wind", "max_grade_offset_pct"),
     ("render", "camera"), ("render", "chart"),
@@ -448,9 +469,9 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("trainer", "grade_rate_up_pct_per_s"): "rampe de pente du trainer",
     ("trainer", "grade_rate_down_pct_per_s"): "rampe de pente du trainer",
     ("trainer", "hr_relay_freeze_s"): "détection de la FC relayée figée",
-    ("trainer", "resend_s"): "renvoi de la consigne, essais contre le pompage (lot O27 : ira dans Avancé si l'essai la garde réglable)",
-    ("trainer", "resistance_n_per_pct_kmh"): "pilotage SIM ou résistance calculée (en essai, lots RC1-RC3)",
-    ("trainer", "resistance_inertia_pct"): "pilotage SIM ou résistance calculée (en essai, lots RC1-RC3)",
+    ("trainer", "resend_s"): "renvoi de la consigne SIM et ERG, réglage fin contre le pompage (essai du 30 octobre, défaut 2 s gardé)",
+    ("trainer", "resistance_n_per_pct_kmh"): "étalonnage de la résistance calculée (lots RC1 à RC4), corrigé en roulant",
+    ("trainer", "resistance_inertia_pct"): "inertie de la résistance calculée, abandonnée le 1er novembre (coupée par défaut)",
     ("gearing", "n_gears"): "boîte de vitesses virtuelle",
     ("gearing", "ratio_min"): "boîte de vitesses virtuelle",
     ("gearing", "ratio_max"): "boîte de vitesses virtuelle",
@@ -495,9 +516,17 @@ DEV_KEYS: dict[tuple[str, str], str] = {
     ("engine", "godot"): "écrit par scripts/install.sh",
     ("wind", "seed"): "graine des rafales",
     ("log", "latence"): "journal de latence du Click",
+    ("ride", "traffic_bench_s"): "passages forcés de véhicules proches pour sim_bench (lot AS6)",
 }
 # Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
 PENDING_KEYS: dict[tuple[str, str], str] = {
+    # Grand Prix des objets (série GP, 4.0) : pas d'entrée à l'accueil avant GP9, donc pas de réglage au menu
+    # (point A2 des oublis du 8 novembre) ; la séance les lit déjà (`start` avec `mode` « grandprix »).
+    ("grandprix", "opponents"): "GP9",
+    ("grandprix", "laps"): "GP9",
+    ("grandprix", "distance_km"): "GP9",
+    ("grandprix", "chaos"): "GP9",
+    ("grandprix", "box_every_m"): "GP9",
 }
 
 

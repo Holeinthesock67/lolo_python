@@ -115,7 +115,7 @@ Le choix de voie est affiché (trois petits traits en bas du HUD) dès qu'il a u
 
 Tout se règle dans le menu, sans ligne de commande (lot GP9) :
 
-- Accueil : entrée « Grand Prix des objets », visible quand le core annonce le mode.
+- Accueil : entrée « Grand Prix des objets », visible quand le core annonce le mode. Le core n'annonce le mode et ne liste ses réglages au menu qu'à partir du lot GP9 (`ipc_server.PENDING_MODES`, `config.PENDING_KEYS`) : avant, rien du Grand Prix n'apparaît dans les menus.
 - Écran du mode : parcours (circuit et nombre de tours, ou distance), puis les réglages, puis « Objets » (une case par objet, comme l'écran des règles du Mode WTF), puis « Lancer ».
 
 | Réglage (section `[grandprix]` de `config.toml`) | Valeurs | Défaut |
@@ -124,7 +124,7 @@ Tout se règle dans le menu, sans ligne de commande (lot GP9) :
 | Tours (`laps`) ou distance (`distance_km`) | 1 à 5 ; 5 à 30 km | 3 ; 10 km |
 | Niveau des bots (`bots.level_pct`, réglage existant) | 50 à 150 % de la FTP | inchangé |
 | Chaos (`chaos`) | doux, normal, fou : forces et fréquence des objets × 0,7, × 1, × 1,3 | normal |
-| Écart des boîtes (`box_every_km`) | 1, 1,5, 2, 3 | 1,5 |
+| Écart des boîtes (`box_every_m`, lot GP2 : en mètres, au pas de 500 m comme les autres réglages à pas) | 1 000 à 3 000 m | 1 500 m |
 | Objets (`items.<id>`) | activé, désactivé | tous activés |
 
 ## 5. Recouvrement avec les autres modes

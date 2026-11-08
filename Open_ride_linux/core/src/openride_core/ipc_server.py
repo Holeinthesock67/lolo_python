@@ -25,16 +25,21 @@ CONTRACT_VERSION = 1
 # du 27 octobre ; 127.0.0.1, sans fragmentation). Une trame state plus grande est allégée, les autres jetées.
 MAX_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
-CONTRACT_REV = "1.6"   # peloton de 11 bots et un fantôme (lot PL1, 3.0)
-# Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
-CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor")   # monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2
+CONTRACT_REV = "1.8"   # collection de cartes (lot BC2, 5.0) ; 1.7 : Grand Prix des objets (lot GP2, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
+# Modes de jeu proposés au joueur (hello_ack.config.modes, révision 1.3) : l'accueil de l'engine n'affiche que
+# ceux-là. Monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2.
+CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor")
+# Modes que le core sait lancer (`start` avec `mode`) mais pas encore annoncés, avec le lot qui les annoncera
+# en même temps que leur entrée à l'accueil (même règle que `config.PENDING_KEYS`) ; ce lot les passe dans
+# CORE_MODES. Grand Prix des objets : révision 1.7, lot GP2, annoncé au lot GP9.
+PENDING_MODES: dict[str, str] = {"grandprix": "GP9"}
 MAX_LIST_DATAGRAM_SIZE = 60000
 # Messages en parties (`part`, `parts`), `plans` et `settings` : 60 000 octets au plus par datagramme (contrat §2,
 # même liste que le contrat ; `garage` et `room` depuis la révision 1.4, le monde ouvert depuis la 1.5,
 # `settings` depuis le 30 octobre : 26 réglages et les thèmes installés passaient 4 096 octets ; l'historique,
 # lot O28).
 LIST_MESSAGE_TYPES = ("routes", "workouts", "imports", "route_imports", "plans", "settings", "garage", "room", "contents",
-                      "places", "world_map", "world_regions", "history", "history_session")
+                      "places", "world_map", "world_regions", "history", "history_session", "collection")
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
 
 
@@ -94,6 +99,7 @@ class IpcState:
     workout_done: dict[str, Any] | None = None
     start_wait: dict[str, Any] | None = None   # révision 1.5 (lot O36) : départ au pédalage en attente (READY)
     survivor: dict[str, Any] | None = None  # révision 1.5 (lot DS2) : présent seulement en Dernier survivant
+    gp: dict[str, Any] | None = None        # révision 1.7 (lot GP2) : présent seulement en Grand Prix des objets
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -127,7 +133,7 @@ class IpcState:
             d.pop("draft_w", None)
         if self.open_world is None or self.devices is not None:
             d.pop("open_world", None)
-        for key in ("segment", "powerup", "jerseys", "rogue", "wtf", "workout_done", "start_wait", "survivor"):
+        for key in ("segment", "powerup", "jerseys", "rogue", "wtf", "workout_done", "start_wait", "survivor", "gp"):
             if d[key] is None:
                 d.pop(key)
         if self.bots is None:
@@ -363,7 +369,7 @@ class IpcServer:
             is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "create_workout_qwk",
                                 "import_workout", "list_route_imports", "import_route",
                                 "world_search", "world_map", "world_regions", "list_contents",
-                                "list_history", "history_session")
+                                "list_history", "history_session", "list_collection")
             if cmd_id > self.last_cmd_id or is_query:
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)

@@ -7,6 +7,8 @@ extends SceneTree
 ## 1. Prairie tempérée : image identique avec et sans le relief du sable (critère 3 : pas de rides hors du sable).
 ## 2. Désert de sable : le relief change l'image (rides et dunes visibles sous un soleil rasant).
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const BiomeTextures := preload("res://scripts/biome_textures.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
 const BiomeLayer := preload("res://scripts/biome_layer.gd")
@@ -90,5 +92,6 @@ func _run() -> void:
 	var s_off := await _shot(theme, "sand_desert", false)
 	var d := _diff(s_on, s_off)
 	_check(d > 0.02, "désert de sable : le relief change l'image (écart au pire %.1f %%)" % (100.0 * d))
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_ground_details_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

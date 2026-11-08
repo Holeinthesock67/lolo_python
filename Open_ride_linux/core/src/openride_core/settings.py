@@ -102,6 +102,8 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("survivor.spacing_km", "Survivant : écart des arches", "ride", 1, "km"),
     Setting("survivor.spread", "Survivant : écart de niveau", "ride"),
     Setting("survivor.after_out", "Survivant : si éliminé", "ride"),
+    # Grand Prix des objets (série GP, 4.0) : réglages `grandprix.*` hors du menu jusqu'à l'écran du mode
+    # (lot GP9), rangés dans `config.PENDING_KEYS` ; GP9 les remet ici, après les réglages du Dernier survivant
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20

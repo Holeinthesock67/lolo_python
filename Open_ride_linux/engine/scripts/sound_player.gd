@@ -6,9 +6,10 @@ extends Node
 ## Génère des sons procéduraux au démarrage sans aucun fichier audio externe requis.
 ## Permet le remplacement optionnel par des fichiers ~/OpenRide/Sounds/<kind>.ogg.
 ##
-## Lot P9 : six fonds d'ambiance non spatialisés (`AmbienceModel.BEDS` : oiseaux, insectes, eau, village,
-## vent d'altitude, pluie), synthétisés au lancement ou lus dans ~/OpenRide/Sounds/<fond>.ogg, réglés par
-## `update_ambience(neigh, now_s)` ; les cloches des points `church_bell` sonnent l'heure pleine
+## Lot P9 : six fonds d'ambiance non spatialisés (oiseaux, insectes, eau, village, vent d'altitude, pluie),
+## lot U11 : dix de plus propres aux biomes (`AmbienceModel.BIOME_BEDS`) ; les seize (`AmbienceModel.BEDS`)
+## sont synthétisés par ambience_synth.gd ou lus dans ~/OpenRide/Sounds/<fond>.ogg, chacun à sa première
+## demande et dans un fil de travail, et réglés par `update_ambience(neigh, now_s)` ; les cloches des points `church_bell` sonnent l'heure pleine
 ## (`update_bells(hour, now_s)`, heure du PC par défaut).
 ##
 ## Lot P10 : le vent est un bruit filtré (boucle raccordée en fondu enchaîné), dont la hauteur suit la
@@ -46,11 +47,11 @@ extends Node
 
 const SoundModel := preload("res://scripts/sound_model.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
+const AmbienceSynth := preload("res://scripts/ambience_synth.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
 const EVENT_DB := -6.0
 const EVENT_POLYPHONY := 3
-const BED_SAMPLES := 44100    # fonds d'ambiance : boucles de 2 secondes
 const BELL_INTERVAL_S := 2.2
 
 const MIX_RATE := 22050
@@ -111,6 +112,9 @@ var _bell_queue := 0                    # coups de cloche restant à sonner
 var _bell_next_s := 0.0
 var _bell_hour := NAN
 var bell_strikes_rung := 0              # coups effectivement sonnés (tests)
+var _bed_tasks := {}                    # fond -> tâche de WorkerThreadPool qui le fabrique (lot U11)
+var _bed_done := {}                     # fond -> échantillons ou .ogg fabriqués, pas encore posés (sous _bed_mutex)
+var _bed_mutex := Mutex.new()
 var _event_player: AudioStreamPlayer
 var events_played := []                # jingles demandés (tests)
 
@@ -175,7 +179,7 @@ func _init_players() -> void:
 	for bed in AmbienceModel.BEDS:
 		var bp := AudioStreamPlayer.new()
 		bp.name = "Ambience_%s" % bed
-		bp.stream = _streams.get(bed, null)
+		bp.stream = null   # fait à la première demande (`update_ambience`, `stream`)
 		bp.volume_db = SoundModel.SILENCE_DB
 		bp.bus = AudioMix.bus(AudioMix.AMBIENCE)
 		add_child(bp)
@@ -186,6 +190,8 @@ func _init_players() -> void:
 func stream(kind: String) -> Resource:
 	if not _streams.has(kind) and EventSoundsModel.JINGLES.has(kind):
 		_make_jingle(kind)
+	if not _streams.has(kind) and AmbienceModel.BEDS.has(kind):
+		make_beds_now([kind])
 	return _streams.get(kind, null)
 
 
@@ -310,9 +316,12 @@ func update_audio(state: Dictionary, now_s: float, rider_pos: Vector3) -> Dictio
 ## Fonds d'ambiance (Lot P9) : une fois par image, avec le voisinage décrit par AmbienceModel.describe.
 func update_ambience(neigh: Dictionary, now_s: float) -> Dictionary:
 	var vols: Dictionary = ambience.evaluate(neigh, now_s)
+	_collect_beds()
 	for bed in AmbienceModel.BEDS:
 		var bp: AudioStreamPlayer = _bed_players[bed]
 		var db := float(vols[bed])
+		if db > SoundModel.SILENCE_DB and not _streams.has(bed):
+			_request_bed(bed)
 		# oiseaux par phrases (essai vélo du 2 novembre) ; le lecteur tourne entre deux phrases, 40 dB plus bas
 		bp.volume_db = db + AmbienceModel.birds_phrase_db(now_s) if bed == "forest_birds" and db > SoundModel.SILENCE_DB else db
 		if is_inside_tree():
@@ -364,9 +373,77 @@ func _generate_all_streams() -> void:
 	_streams["gravel"] = custom_gravel if custom_gravel != null else _synthesize_gravel()
 	var custom_clac = _try_load_custom("clac")
 	_streams["clac"] = custom_clac if custom_clac != null else _synthesize_clac()
-	for bed in AmbienceModel.BEDS:
-		var custom_bed = _try_load_custom(bed)
-		_streams[bed] = custom_bed if custom_bed != null else _synthesize_bed(bed)
+	# Fonds d'ambiance : pas ici, chacun à sa première demande (lot U11).
+
+
+# --- Fonds d'ambiance faits à la demande (lot U11) ---
+# Seize fonds, dont la plupart ne servent pas sur un parcours donné : chacun est fabriqué la première fois que
+# le modèle le veut audible, dans un fil de WorkerThreadPool (aucun à-coup d'image), puis posé sur son lecteur
+# à l'image suivante. Le fond monte depuis FADE_FLOOR_DB : l'attente ne s'entend pas.
+
+## Fabrication d'un fond (fil de travail ou appel direct) : ~/OpenRide/Sounds/<fond>.ogg, sinon AmbienceSynth.
+func _bed_source(bed: String) -> Variant:
+	var custom = _try_load_custom(bed)
+	return custom if custom != null else AmbienceSynth.pcm16(AmbienceSynth.bed_samples(bed))
+
+
+func _bed_task(bed: String) -> void:
+	var src = _bed_source(bed)
+	_bed_mutex.lock()
+	_bed_done[bed] = src
+	_bed_mutex.unlock()
+
+
+func _request_bed(bed: String) -> void:
+	if _streams.has(bed) or _bed_tasks.has(bed):
+		return
+	_bed_tasks[bed] = WorkerThreadPool.add_task(_bed_task.bind(bed), false, "fond %s" % bed)
+
+
+func _set_bed(bed: String, src: Variant) -> void:
+	_streams[bed] = src if src is Resource else AmbienceSynth.to_wav(src)
+	_bed_players[bed].stream = _streams[bed]
+
+
+## Pose sur leurs lecteurs les fonds que les fils de travail ont finis.
+func _collect_beds() -> void:
+	for bed in _bed_tasks.keys():
+		if not WorkerThreadPool.is_task_completed(_bed_tasks[bed]):
+			continue
+		WorkerThreadPool.wait_for_task_completion(_bed_tasks[bed])
+		_bed_tasks.erase(bed)
+		_bed_mutex.lock()
+		var src = _bed_done.get(bed, null)
+		_bed_done.erase(bed)
+		_bed_mutex.unlock()
+		_set_bed(bed, src)
+
+
+## Fabrique tout de suite les fonds `beds` qui ne le sont pas encore (tests, export des échantillons, `stream`).
+func make_beds_now(beds: Array) -> void:
+	for bed in beds:
+		if _streams.has(bed) or not AmbienceModel.BEDS.has(bed):
+			continue
+		if _bed_tasks.has(bed):
+			WorkerThreadPool.wait_for_task_completion(_bed_tasks[bed])
+			_bed_tasks.erase(bed)
+			_bed_mutex.lock()
+			_bed_done.erase(bed)
+			_bed_mutex.unlock()
+		_set_bed(bed, _bed_source(bed))
+
+
+## Fonds en cours de fabrication (tests).
+func beds_pending() -> int:
+	return _bed_tasks.size()
+
+
+func _notification(what: int) -> void:
+	# Une tâche en cours tient une référence à ce nœud : l'attendre avant qu'il disparaisse
+	if what == NOTIFICATION_PREDELETE:
+		for bed in _bed_tasks:
+			WorkerThreadPool.wait_for_task_completion(_bed_tasks[bed])
+		_bed_tasks.clear()
 
 
 func _try_load_custom(kind: String) -> Resource:
@@ -383,7 +460,7 @@ func _try_load_custom(kind: String) -> Resource:
 ## Sons en boucle d'une seconde, ou de NOISE_LOOP_S pour ceux qui contiennent du bruit (et sons joués une fois,
 ## ONE_SHOT_KINDS). Raccord sans clic : les
 ## fréquences et modulations font un nombre entier de cycles par boucle et les bruits filtrés sont
-## périodiques (`_periodic_lowpass`), donc la fin de la boucle enchaîne exactement sur son début.
+## périodiques (`AmbienceSynth.periodic_lowpass`), donc la fin de la boucle enchaîne exactement sur son début.
 func _synthesize_stream(kind: String) -> AudioStreamWAV:
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
@@ -421,7 +498,7 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 		var alpha := 1.0 - pow(1.0 - float(NOISE_LOWPASS[kind]), float(MIX_RATE) / float(rate))
 		# Même niveau qu'à MIX_RATE : la variance d'un passe-bas à un pôle vaut alpha / (2 − alpha), ici doublée
 		var a0 := float(NOISE_LOWPASS[kind])
-		lp = _periodic_lowpass(noise, alpha, sqrt(a0 * (2.0 - alpha) / (alpha * (2.0 - a0))))
+		lp = AmbienceSynth.periodic_lowpass(noise, alpha, sqrt(a0 * (2.0 - alpha) / (alpha * (2.0 - a0))))
 	var buf := PackedFloat32Array()
 	buf.resize(n)
 	for i in range(n):
@@ -504,24 +581,6 @@ static func _lcg_noise(n: int, seed_val: int) -> PackedFloat32Array:
 	for i in range(n):
 		seed_val = (seed_val * 1103515245 + 12345) & 0x7FFFFFFF
 		out[i] = float(seed_val & 0xFFFF) / 32768.0 - 1.0
-	return out
-
-
-## Passe-bas à un pôle (coefficient `alpha`) d'un bruit bouclé, en régime établi : le filtre fait d'abord un
-## tour de boucle à vide (ses 12/alpha derniers échantillons suffisent), si bien que la sortie est elle-même
-## périodique (fin raccordée au début, sans clic).
-static func _periodic_lowpass(noise: PackedFloat32Array, alpha: float, gain: float = 1.0) -> PackedFloat32Array:
-	var n := noise.size()
-	var out := PackedFloat32Array()
-	out.resize(n)
-	var lp := 0.0
-	# Mise en régime sur la fin de la boucle seulement : l'écart restant vaut (1 − alpha)^warm ≈ e^−12
-	var warm := mini(n, int(ceil(12.0 / maxf(alpha, 1e-3))))
-	for i in range(n - warm, n):
-		lp += alpha * (noise[i] - lp)
-	for i in range(n):
-		lp += alpha * (noise[i] - lp)
-		out[i] = lp * gain
 	return out
 
 
@@ -822,85 +881,5 @@ static func _synthesize_clac() -> AudioStreamWAV:
 	wav.mix_rate = MIX_RATE
 	wav.stereo = false
 	wav.loop_mode = AudioStreamWAV.LOOP_DISABLED
-	wav.data = bytes
-	return wav
-
-
-## Fonds d'ambiance procéduraux (Lot P9), boucles de 2 s sans raccord audible : modulations à un nombre
-## entier de cycles par boucle, bruits filtrés périodiques (`_periodic_lowpass`), chants et
-## gouttes qui débordent de la fin reprennent au début ; motifs tirés d'un générateur déterministe (même son
-## à chaque lancement). Aucun fondu au silence aux bords : il s'entendait comme un « tac » toutes les 2 s.
-## Niveaux constants (29/10) : les ondulations de 0,5 à 1,5 Hz (vent d'altitude, eau, rumeur) s'entendaient comme
-## une vague, même à l'arrêt ; le niveau ne varie que par AmbienceModel (altitude, vent, voisinage).
-static func _synthesize_bed(bed: String) -> AudioStreamWAV:
-	var n := BED_SAMPLES
-	var buf := PackedFloat32Array()
-	buf.resize(n)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(bed)
-	var loop_s := float(n) / float(MIX_RATE)
-	match bed:
-		"forest_birds":
-			# Chants : courtes glissades de 2,5 à 5 kHz, par motifs de 2 à 4 notes
-			var t0 := 0.05
-			while t0 < loop_s - 0.4:
-				var notes := rng.randi_range(2, 4)
-				var f0 := rng.randf_range(2500.0, 4200.0)
-				for k in range(notes):
-					var dur := rng.randf_range(0.05, 0.12)
-					var f1 := f0 + rng.randf_range(-600.0, 900.0)
-					var amp := rng.randf_range(0.18, 0.35)
-					var start := int((t0 + k * (dur + 0.03)) * MIX_RATE)
-					var len := int(dur * MIX_RATE)
-					var ph := 0.0
-					for i in range(len):
-						var u := float(i) / float(len)
-						ph += TAU * lerpf(f0, f1, u) / MIX_RATE
-						buf[(start + i) % n] += sin(ph) * sin(PI * u) * amp
-				t0 += rng.randf_range(0.25, 0.6)
-		"field_insects":
-			# Stridulation : porteuse de 4,6 kHz hachée à 30 Hz, par salves de 0,4 s (bords sur des zéros)
-			for i in range(n):
-				var t := float(i) / MIX_RATE
-				var burst := 1.0 if fmod(t, 0.5) < 0.4 else 0.0
-				var chop := maxf(sin(TAU * 30.0 * t), 0.0)
-				buf[i] = sin(TAU * 4600.0 * t) * chop * burst * 0.25
-		"water_flow", "village_murmur", "high_wind", "rain":
-			# Bruits filtrés passe-bas (un pôle), plus ou moins sourds
-			var alpha: float = {"water_flow": 0.18, "village_murmur": 0.04, "high_wind": 0.02, "rain": 0.6}[bed]
-			var noise := PackedFloat32Array()
-			noise.resize(n)
-			for i in range(n):
-				noise[i] = rng.randf() * 2.0 - 1.0
-			var lp := _periodic_lowpass(noise, alpha)
-			for i in range(n):
-				var t := float(i) / MIX_RATE
-				var v := lp[i]
-				match bed:
-					"water_flow":
-						v = lp[i] * 1.3
-					"village_murmur":
-						v = lp[i] * 2.5 + sin(TAU * 110.0 * t) * 0.025
-					"high_wind":
-						v = lp[i] * 2.6
-					"rain":
-						v = (noise[i] - lp[i]) * 0.35
-				buf[i] = v
-			if bed == "rain":
-				for d in range(40):   # gouttes
-					var at := rng.randi_range(0, n - 1)
-					for i in range(300):
-						buf[(at + i) % n] += sin(TAU * 1800.0 * i / MIX_RATE) * exp(-float(i) / 40.0) * 0.3
-	var bytes := PackedByteArray()
-	bytes.resize(n * 2)
-	for i in range(n):
-		bytes.encode_s16(i * 2, clampi(int(buf[i] * 32767.0), -32768, 32767))
-	var wav := AudioStreamWAV.new()
-	wav.format = AudioStreamWAV.FORMAT_16_BITS
-	wav.mix_rate = MIX_RATE
-	wav.stereo = false
-	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	wav.loop_begin = 0
-	wav.loop_end = n
 	wav.data = bytes
 	return wav

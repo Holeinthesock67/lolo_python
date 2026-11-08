@@ -46,7 +46,7 @@ SIM_THINK_S = 3.0        # --sim : le cycliste simulé lit la consigne avant d'a
 
 # --- plan des boutons (spécification générale §7.1, seule référence) -------------------------
 
-MODES = ("Menus", "Classique SIM", "ERG", "Cyber-Rogue", "Monde ouvert")
+MODES = ("Menus", "Classique SIM", "ERG", "Cyber-Rogue", "Monde ouvert", "Grand Prix des objets")
 
 
 @dataclass(frozen=True)
@@ -64,38 +64,44 @@ _UNCLEAR = Action("", "Appui ni court ni long (0,5 à 0,9 s)",
 # ici pour un seul sens ; `test_boutons_click` compare le reste du tableau mot pour mot.
 PLAN: dict[InputEvent, Action] = {
     InputEvent.PLUS_SHORT: Action("+ / B (ou −), court", "Déplacer ou doser, petit pas", (
-        "Élément suivant", "Braquet + 1", "Biais + 2 %", "Vitesse du frein + 1", _SAME)),
+        "Élément suivant", "Braquet + 1", "Biais + 2 %", "Vitesse du frein + 1", _SAME, "Braquet + 1")),
     InputEvent.MINUS_SHORT: Action("+ / B (ou −), court", "Déplacer ou doser, petit pas", (
-        "Élément précédent", "Braquet − 1", "Biais − 2 %", "Vitesse du frein − 1", _SAME)),
+        "Élément précédent", "Braquet − 1", "Biais − 2 %", "Vitesse du frein − 1", _SAME, "Braquet − 1")),
     InputEvent.PLUS_LONG: Action("+ / B (ou −), long", "Déplacer ou doser, grand pas", (
-        "Cinq éléments plus loin", "Braquet + 10", "Biais + 10 %", "Vitesse du frein + 3", "Comme le mode roulé")),
+        "Cinq éléments plus loin", "Braquet + 10", "Biais + 10 %", "Vitesse du frein + 3", "Comme le mode roulé",
+        "Braquet + 10")),
     InputEvent.MINUS_LONG: Action("+ / B (ou −), long", "Déplacer ou doser, grand pas", (
-        "Cinq éléments plus haut", "Braquet − 10", "Biais − 10 %", "Vitesse du frein − 3", "Comme le mode roulé")),
+        "Cinq éléments plus haut", "Braquet − 10", "Biais − 10 %", "Vitesse du frein − 3", "Comme le mode roulé",
+        "Braquet − 10")),
     InputEvent.PLUS_UNCLEAR: _UNCLEAR,
     InputEvent.MINUS_UNCLEAR: _UNCLEAR,
     InputEvent.Y_SHORT: Action("Y court", "Interrompre et revenir", (
         "Écran précédent ; sur l'écran de pause, reprendre", "Pause et reprise", "Pause et reprise",
-        "Pause et reprise", "Pause et reprise")),
+        "Pause et reprise", "Pause et reprise", "Pause et reprise")),
     InputEvent.Z_SHORT: Action("Z court", "Action du mode", (
-        "Aucune (un menu n'est pas un mode)", "Bonus (T)", "Bloc suivant", "Attaque", "Bonus (T)")),
+        "Aucune (un menu n'est pas un mode)", "Bonus (T)", "Bloc suivant", "Attaque", "Bonus (T)",
+        "Utiliser l'objet en réserve")),
     InputEvent.Z_LONG: Action("Z long", "Action spéciale du mode", (
         "Aucune", "Repère « décrochage » au journal", "Repère « décrochage » au journal",
-        "Carte ou relique active (T1)", "Repère « décrochage » au journal")),
+        "Carte ou relique active (T1)", "Repère « décrochage » au journal", "Repère « décrochage » au journal")),
     InputEvent.A_SHORT: Action("A court", "Choisir : option suivante du choix affiché", (
         "Élément suivant", "Vue de caméra suivante", "Vue de caméra suivante", "Couloir ou carte suivant",
-        "Branche suivante au carrefour, sinon vue suivante")),
+        "Branche suivante au carrefour, sinon vue suivante",
+        "Voie suivante quand le choix de voie est affiché, sinon vue suivante")),
     InputEvent.A_LONG: Action("A long", "Valider le choix affiché", (
         "Valider l'élément", "Revenir à la vue par défaut", "Revenir à la vue par défaut",
-        "Valider le couloir ou la carte", "Valider la branche, sinon revenir à la vue par défaut")),
+        "Valider le couloir ou la carte", "Valider la branche, sinon revenir à la vue par défaut",
+        "Revenir au placement automatique, sinon à la vue par défaut")),
     InputEvent.LEFT_SHORT: Action("Flèches gauche, droite (boîtier gauche)", "Choisir, raccourci", (
-        "Élément précédent", "Aucune", "Aucune", "Couloir ou carte précédent", "Branche à gauche")),
+        "Élément précédent", "Aucune", "Aucune", "Couloir ou carte précédent", "Branche à gauche", "Voie à gauche")),
     InputEvent.RIGHT_SHORT: Action("Flèches gauche, droite (boîtier gauche)", "Choisir, raccourci", (
-        "Élément suivant", "Aucune", "Aucune", "Couloir ou carte suivant", "Branche à droite")),
+        "Élément suivant", "Aucune", "Aucune", "Couloir ou carte suivant", "Branche à droite", "Voie à droite")),
     InputEvent.UP_SHORT: Action("Flèches haut, bas (boîtier gauche)", "Vue, raccourci", (
-        "Aucune (pas de vue dans un menu)", "Vue suivante", "Vue suivante", "Vue suivante", "Vue suivante")),
+        "Aucune (pas de vue dans un menu)", "Vue suivante", "Vue suivante", "Vue suivante", "Vue suivante",
+        "Vue suivante")),
     InputEvent.DOWN_SHORT: Action("Flèches haut, bas (boîtier gauche)", "Vue, raccourci", (
         "Aucune (pas de vue dans un menu)", "Vue précédente", "Vue précédente", "Vue précédente",
-        "Vue précédente")),
+        "Vue précédente", "Vue précédente")),
 }
 
 EVENT_LABELS = {
