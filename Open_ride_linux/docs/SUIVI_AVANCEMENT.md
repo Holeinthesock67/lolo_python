@@ -388,6 +388,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 ### Après la 1.0 : réglages de séance au menu (lots N17 et N18, rédigés le 27 octobre)
 - [ ] Demi-tour sur la route depuis l'écran de pause (lot N17).
 - [ ] Bots réglés depuis les menus : réglages et écran de pause (lot N18).
+- [ ] Décor lisible après un demi-tour : bornes et panneau de col des deux côtés, bandeaux de portique à deux faces (lot N21, en PR le 8 novembre).
 
 ### Version 2.0 : segments, bonus et maillots (série T)
 - [x] Contrat (T1), détection (T2), couche du compilateur (T3) et modules purs (T4, T5, T6, T14, T16), 27 octobre.

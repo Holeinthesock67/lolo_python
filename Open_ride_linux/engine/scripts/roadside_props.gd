@@ -3,14 +3,17 @@ extends Node3D
 ## Panneaux et bornes du bord de route (Lot P14), construits par code, texte en Label3D (police par
 ## défaut de Godot). Pas de class_name : charger par preload("res://scripts/roadside_props.gd").
 ##
-## `add_chunk(route, k, items)` pose les objets du tronçon k (roadside_model.for_chunk) sur le côté
-## droit, à 1,5 m du bord de la chaussée, face au cycliste qui arrive ; `remove_chunk(k)` les retire.
+## `add_chunk(route, k, items)` pose les objets du tronçon k (roadside_model.for_chunk) du côté `side` de
+## l'objet, à 1,5 m du bord de la chaussée : à droite (`side` 1) face au cycliste qui arrive dans le sens du
+## parcours, à gauche (`side` -1) face à celui qui roule à rebours (demi-tour, lot N17) ; `remove_chunk(k)`
+## les retire.
 ## Habillage (lot Y8, retouche du 29/10) :
 ## - panneaux de col (marron) et d'approche (blancs) : plaque de tôle à coins arrondis, liseré et rebord,
 ##   dimensionnée d'après le texte (le texte ne déborde jamais), sur un poteau, ou deux au-delà de
 ##   TWO_POSTS_FROM_M de large, avec colliers de fixation ;
 ## - bornes kilométriques à la française : fût de béton blanc à tête ronde peinte en rouge sur un socle,
-##   « km » en blanc sur la tête et le numéro en noir sur le fût, un seul maillage.
+##   « km » en blanc sur la tête et le numéro en noir sur le fût, sur les deux faces (lisible dans les deux
+##   sens de marche), un seul maillage.
 ## Texte dimensionné pour être lisible à READABLE_AT_M : lettres de LETTER_HEIGHT_M au moins.
 ## Maillages partagés, gardés par dimensions (peu de tailles différentes sur un parcours).
 
@@ -237,7 +240,7 @@ func build_prop(item: Dictionary) -> Node3D:
 	var kind: String = item["kind"]
 	var lines: Array = item["lines"]
 	var root := Node3D.new()
-	root.name = "%s_%d" % [kind, int(item["s"])]
+	root.name = "%s_%d%s" % [kind, int(item["s"]), "_rebours" if int(item.get("side", 1)) < 0 else ""]
 	var label: Label3D
 	if kind == "km":
 		var total := KM_PLINTH_H + KM_BODY_H + KM_W * 0.5
@@ -248,11 +251,19 @@ func build_prop(item: Dictionary) -> Node3D:
 		var zf := KM_DEPTH * 0.5 + 0.004
 		var digits := maxi(1, number.length())
 		var letter := minf(0.2, (KM_W - 0.08) / (digits * CHAR_WIDTH))
-		label = _label(number, KM_INK, letter, Vector3(0.0, KM_PLINTH_H + KM_BODY_H * 0.55, zf))
-		root.add_child(label)
-		if parts.size() > 1:
-			root.add_child(_label(" ".join(parts.slice(0, parts.size() - 1)), KM_HEAD_INK, 0.075,
-				Vector3(0.0, KM_PLINTH_H + KM_BODY_H + KM_W * 0.2, zf)))
+		# Les deux faces (demi-tour, lot N17) : la face arrière est la face avant tournée d'un demi-tour
+		for back in [false, true]:
+			var turn := Basis(Vector3.UP, PI) if back else Basis()
+			var num := _label(number, KM_INK, letter, turn * Vector3(0.0, KM_PLINTH_H + KM_BODY_H * 0.55, zf))
+			num.basis = turn
+			root.add_child(num)
+			if not back:
+				label = num
+			if parts.size() > 1:
+				var head := _label(" ".join(parts.slice(0, parts.size() - 1)), KM_HEAD_INK, 0.075,
+					turn * Vector3(0.0, KM_PLINTH_H + KM_BODY_H + KM_W * 0.2, zf))
+				head.basis = turn
+				root.add_child(head)
 	else:
 		var spec: Dictionary = BOARD[kind]
 		var lay := board_layout(kind, lines)
@@ -285,11 +296,13 @@ func add_chunk(route, k: int, chunk_items: Array) -> void:
 	for it in chunk_items:
 		var prop := build_prop(it)
 		var s := float(it["s"])
-		var pos := RoadsideModel.prop_position(route, s, road_width_m)
+		var side := -1 if int(it.get("side", 1)) < 0 else 1
+		var pos := RoadsideModel.prop_position(route, s, road_width_m, side)
 		var h := deg_to_rad(route.sample_heading_deg(s))
 		var fwd := Vector3(sin(h), 0.0, -cos(h))
-		# +z local (face du panneau) vers le cycliste qui arrive, donc vers -fwd
-		prop.transform = Transform3D(Basis(Vector3.UP, atan2(-fwd.x, -fwd.z)), pos)
+		# +z local (face du panneau) vers le cycliste qui arrive : vers -fwd à droite, vers +fwd à gauche (rebours)
+		var face := -fwd * float(side)
+		prop.transform = Transform3D(Basis(Vector3.UP, atan2(face.x, face.z)), pos)
 		add_child(prop)
 		nodes.append(prop)
 	_chunks[k] = nodes
