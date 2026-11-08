@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série VD : épreuves de piste en modules purs (toutes : poursuite, kilomètre, 200 m, scratch, points, tempo, élimination, keirin, omnium, heure) | Python | VD3, DS1, AS6 | Grande | En PR (version 4.0) |
+| Série VD : épreuves de piste en modules purs (toutes : poursuite, kilomètre, 200 m, scratch, points, tempo, élimination, keirin, omnium, heure) | Python | VD3, DS1, AS6 | Grande | Livré le 8 novembre (PR #769, version 4.0) |
 
 Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_VD.md`. Plan validé par le propriétaire le 6 novembre (lot VD0).
 

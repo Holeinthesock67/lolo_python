@@ -33,11 +33,12 @@
 from __future__ import annotations
 
 import bisect
-from dataclasses import replace
+from dataclasses import astuple, replace
 from datetime import datetime
 import math
 import zlib
 from pathlib import Path
+from collections.abc import Iterable
 from typing import Any, NamedTuple
 
 from dataclasses import dataclass
@@ -414,15 +415,6 @@ class ProfileBot(ConstantPowerBot):
     def wbal_pct(self) -> float:
         return 100.0 * self.wbal.w_bal_j / self.w_prime_j
 
-    def _segment_here(self, s: float, length_m: float, is_loop: bool) -> tuple[Any, int] | None:
-        pos, lap = s, 0
-        if is_loop and length_m > 0:
-            lap, pos = int(s // length_m), s % length_m
-        for seg in self.segments:
-            if seg.s_start <= pos < seg.s_end:
-                return seg, lap
-        return None
-
     def target_power(self, s: float, length_m: float = 0.0, is_loop: bool = False,
                      wbal_pct: float | None = None) -> float:
         """Puissance demandée par la stratégie à la position s, avant la limite de la réserve
@@ -456,17 +448,21 @@ class ProfileBot(ConstantPowerBot):
 
     def _course_strategy(self, s: float, length_m: float, is_loop: bool,
                          wbal_pct: float | None = None) -> tuple[float, bool]:
-        """Stratégie par segment du lot T12 (montée, attaque, sprint ; plat ailleurs)."""
+        """Stratégie par segment du lot T12 (montée, attaque, sprint ; plat ailleurs). Appelée à chaque
+        pas du calibrage (`ride_time`) : segment cherché en ligne, sans appel de plus."""
         spec = self.spec
-        here = self._segment_here(s, length_m, is_loop)
-        if here is None:
+        pos, lap = s, 0
+        if is_loop and length_m > 0:
+            lap, pos = int(s // length_m), s % length_m
+        for seg in self.segments:
+            if seg.s_start <= pos < seg.s_end:
+                break
+        else:
             return spec.flat * self.cp_w, False
-        seg, lap = here
         if seg.type == "climb":
             reserve = self.wbal_pct if wbal_pct is None else wbal_pct
             attack = spec.climb_attack > 0 and reserve > 100.0 * spec.climb_reserve
             return (spec.climb_attack if attack else spec.climb) * self.cp_w, attack
-        pos = s % length_m if is_loop and length_m > 0 else s
         if self.peak_w > 0 and seg.s_end - pos <= spec.sprint_last_m:
             key = (seg.id, lap)
             if key != self._peak_key:
@@ -597,12 +593,22 @@ class RouteProfile:
         self.sin: list[float] = []
         self.cos: list[float] = []
         self.rho: list[float] = []
+        self._ref_times: dict[tuple, float] = {}
         for i in range(n):
             here = route.sample(min((i + 0.5) * cell_m, self.length_m))
             theta = math.atan(here.grade_pct / 100.0)
             self.sin.append(math.sin(theta))
             self.cos.append(math.cos(theta))
             self.rho.append(air_density(here.alt_m))
+
+
+    def ref_time(self, params: PhysicsParams, power_w: float) -> float:
+        """Temps du cycliste de référence à puissance constante, calculé une fois par physique et
+        puissance : les bots d'un même niveau le partagent (`calibrate_bots`)."""
+        key = (astuple(params), power_w)
+        if key not in self._ref_times:
+            self._ref_times[key] = ride_time(self, params, power_w=power_w)
+        return self._ref_times[key]
 
 
 def ride_time(prof: RouteProfile, params: PhysicsParams, power_w: float = 0.0,
@@ -627,35 +633,52 @@ def ride_time(prof: RouteProfile, params: PhysicsParams, power_w: float = 0.0,
         triggers = tac.attack_triggers(bot.segments, bot.spec.sprint_last_m, peak > 0)
         next_trigger = triggers[0] if triggers else math.inf   # point d'attaque suivant, jugé une fois
         k, attack_until = 0, -1.0
+    # Boucle chaude (des centaines de milliers de pas par calibrage) : noms locaux et tests en ligne
+    # plutôt que min/max/abs, mêmes opérations et même ordre que `RiderPhysics.step` (résultat identique
+    # au bit près, vérifié par `test_bots_calibration.py`).
+    exp, sqrt = math.exp, math.sqrt
+    strategy = bot._strategy if bot is not None else None
+    last = n - 1
     s = v = t = 0.0
     while s < length and t < max_t:
-        i = min(int(s / cell), n - 1)
+        i = int(s / cell)
+        if i > last:
+            i = last
         p = power_w
-        if bot is not None:
+        if strategy is not None:
             if t > tired_from:   # lot Y10 : fatigue de longue durée, relevée toutes les 10 s (0,01 % de CP)
                 cp = bot.cp_w = cp_day * max(1.0 - tired_rate * (t - DURABILITY_START_S), DURABILITY_FLOOR)
                 tired_from = t + 10.0
             reserve = 100.0 * w / wp
-            p, tactical = bot._strategy(s, length, False, reserve)
+            p, tactical = strategy(s, length, False, reserve)
             if s >= next_trigger or attack_until > t:   # lot Y10 : attaque qui part ou en cours
                 if s >= next_trigger:
                     k += 1
                     next_trigger = triggers[k] if k < len(triggers) else math.inf
                 p, _ = tac.adjust(bot, p, tactical, t, s, length, False, reserve)
                 attack_until = tac.attack_until
-            if p > cp and w <= 0.0:
-                p = cp
+            if p > cp:
+                if w <= 0.0:
+                    p = cp
             if p == peak and peak > 0:
                 bot._peak_used_s += dt
             if p > cp:
-                w = max(w - (p - cp) * dt, 0.0)
+                w -= (p - cp) * dt
+                if w < 0.0:
+                    w = 0.0
             else:
-                w = wp - (wp - w) * math.exp(-(cp - p) / wp * dt)
-        if v < V_FLOOR and (p > 0.0 or gravity[i] < 0.0):
+                w = wp - (wp - w) * exp(-(cp - p) / wp * dt)
+        g = gravity[i]
+        if v < V_FLOOR and (p > 0.0 or g < 0.0):
             v = V_FLOOR
         va = v + wind
-        energy = 0.5 * m * v * v + (eff * p - (aero[i] * va * abs(va) + gravity[i]) * v) * dt
-        v_new = min(math.sqrt(max(energy, 0.0) * 2.0 / m), V_MAX)
+        drag = aero[i] * va * va
+        if va < 0.0:
+            drag = -drag
+        energy = 0.5 * m * v * v + (eff * p - (drag + g) * v) * dt
+        v_new = sqrt(energy * 2.0 / m) if energy > 0.0 else 0.0
+        if v_new > V_MAX:
+            v_new = V_MAX
         if s + v_new * dt >= length and v_new > 0:
             return t + (length - s) / v_new   # fraction du dernier pas
         s += v_new * dt
@@ -681,7 +704,7 @@ def calibrate(profile: str, route: Any, level_pct: float, rider: RefRider, segme
         raise BotError(f"profil de bot inconnu : {profile!r} ({', '.join(PROFILES)})")
     prof = prof or RouteProfile(route)
     still = replace(rider.params, wind_mps=0.0)   # calibrage sans vent, pour le cycliste comme pour le bot
-    t_ref = ride_time(prof, still, power_w=rider.ftp_w * level_pct / 100.0)
+    t_ref = prof.ref_time(still, rider.ftp_w * level_pct / 100.0)
     bot = ProfileBot(profile, bot_id="calib", params=replace(bot_params or rider.params, wind_mps=0.0),
                      segments=segments, bike_mass_kg=bike_mass_kg)
     bot.tactics.start(0, "calibration")   # lot Y10 : attaques et fatigue, sans groupe ni forme du jour
@@ -766,14 +789,27 @@ def last_ride(route_id: str | None, directory: Path) -> Path | None:
 
 
 def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: str | None,
-                   journal_dir: Path, s: float = 0.0, bike_mass_kg: float = DEFAULT_BIKE_MASS_KG) -> list[Any]:
+                   journal_dir: Path, s: float = 0.0, bike_mass_kg: float = DEFAULT_BIKE_MASS_KG,
+                   taken_ids: Iterable[str] = ()) -> list[Any]:
     """Bots de l'argument `bots` de `start` : `{kind: "constant", power_w}` ou `{kind: "constant",
     ftp_pct}`, `{kind: "profile", profile, level_pct?}` (lots T12 et T13 ; au plus `MAX_CONSTANT_BOTS` bots
     de ces deux genres en tout, 11 depuis le lot PL1 ; `level_pct` dans les bornes du réglage `bots.level_pct`, celui-ci sans lui) et
     `{kind: "ghost"}` (dernière séance sur ce parcours, un seul).
 
+    `taken_ids` (lot N18, `set_bots`) : ids déjà pris dans la séance, sautés (`bot1`, `bot2`… sinon).
+
     Lève BotError (rien ne démarre) si la liste est mal écrite ou si le fantôme n'a pas de séance.
     """
+    taken = set(taken_ids)
+    serial = 0
+
+    def next_id() -> str:
+        nonlocal serial
+        serial += 1
+        while f"bot{serial}" in taken:
+            serial += 1
+        return f"bot{serial}"
+
     if not isinstance(items, list) or len(items) > MAX_BOTS:
         raise BotError(f"liste de {MAX_BOTS} bots au plus attendue")
     out: list[Any] = []
@@ -793,7 +829,7 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
                 raise BotError(f"au plus {MAX_CONSTANT_BOTS} bots à puissance constante ou à profil")
             power = float(w) if w is not None else ftp_w * float(pct) / 100.0
             name = f"Bot {pct:g} % FTP" if pct is not None else None
-            out.append(ConstantPowerBot(power, bot_id=f"bot{constant}", name=name, params=params, s=s))
+            out.append(ConstantPowerBot(power, bot_id=next_id(), name=name, params=params, s=s))
         elif kind == "profile":
             profile = it.get("profile")
             if not isinstance(profile, str) or profile not in PROFILES:
@@ -806,7 +842,7 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
             constant += 1
             if constant > MAX_CONSTANT_BOTS:
                 raise BotError(f"au plus {MAX_CONSTANT_BOTS} bots à puissance constante ou à profil")
-            out.append(ProfileBot(profile, bot_id=f"bot{constant}", name=next(names), params=params,
+            out.append(ProfileBot(profile, bot_id=next_id(), name=next(names), params=params,
                                   bike_mass_kg=bike_mass_kg, s=s,
                                   level_pct=float(level) if level is not None else None))
         elif kind == "ghost":
@@ -819,15 +855,81 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
             out.append(GhostBot(path))
         else:
             raise BotError(f"genre de bot inconnu : {kind!r} (constant, profile ou ghost)")
-    # Lot O35 : deux bots constants de même puissance (« Bot 200 W ») deviennent « Bot 200 W » et
-    # « Bot 200 W 2 », comme les profils (profile_bot_names), pour rester distincts au HUD.
-    seen: dict[str, int] = {}
-    for b in out:
-        if isinstance(b, ConstantPowerBot):
-            seen[b.name] = seen.get(b.name, 0) + 1
-            if seen[b.name] > 1:
-                b.name = f"{b.name} {seen[b.name]}"[:16]
+    for b, it in zip(out, items):
+        b.menu_spec = dict(it)   # élément de la liste du menu, relu par `merge_menu_bots` (lot N18)
+    dedupe_constant_names(out)
     return out
+
+
+def dedupe_constant_names(bots: list[Any]) -> None:
+    """Lot O35 : deux bots constants de même puissance (« Bot 200 W ») deviennent « Bot 200 W » et
+    « Bot 200 W 2 », comme les profils (profile_bot_names), pour rester distincts au HUD."""
+    seen: dict[str, int] = {}
+    for b in bots:
+        if isinstance(b, ConstantPowerBot):
+            base = b.name
+            seen[base] = seen.get(base, 0) + 1
+            if seen[base] > 1:
+                b.name = f"{base} {seen[base]}"[:16]
+
+
+def bot_line(bot: Any) -> dict[str, Any]:
+    """Description d'un bot pour la ligne `bots` du journal (lot N18) : id, nom, genre, puissance ou profil."""
+    line: dict[str, Any] = {"id": bot.id, "name": bot.name, "kind": getattr(bot, "kind", "constant")}
+    if isinstance(bot, ProfileBot):
+        line["profile"] = bot.profile
+        if bot.level_pct is not None:
+            line["level_pct"] = bot.level_pct
+    elif isinstance(bot, ConstantPowerBot):
+        line["power_w"] = round(bot.power_w, 1)
+    return line
+
+
+def merge_menu_bots(current: list[Any], wanted: list[Any]) -> tuple[list[Any], list[Any]]:
+    """Bots de la séance après `set_bots` (lot N18, pendant la pause) ; `wanted` vient de `bots_from_menu`
+    (ids jamais pris dans la séance, `taken_ids`).
+
+    Un bot demandé à l'identique (même élément du menu) garde le bot en cours, sa place et son id ; un bot
+    constant dont seule la puissance change (même rang de la liste, bot constant en cours non repris)
+    garde le coureur de ce rang (puissance appliquée tout de suite, place gardée) ; le fantôme demandé garde le fantôme en cours. Les autres sont nouveaux, posés là
+    où `bots_from_menu` les a mis. Les bots en cours non repris sont retirés. Renvoie (liste de la séance,
+    bots nouveaux), dans l'ordre de `wanted`."""
+    left = list(current)
+
+    def take(pred: Any) -> Any:
+        for b in left:
+            if pred(b):
+                left.remove(b)
+                return b
+        return None
+
+    out: list[Any] = []
+    for w in wanted:
+        if isinstance(w, GhostBot):
+            out.append(take(lambda b: isinstance(b, GhostBot)))
+        else:
+            out.append(take(lambda b: type(b) is type(w) and getattr(b, "menu_spec", None) == w.menu_spec))
+    fresh: list[Any] = []
+    for i, w in enumerate(wanted):
+        if out[i] is not None:
+            continue
+        same_row = current[i] if i < len(current) else None
+        kept = None
+        if type(w) is ConstantPowerBot and type(same_row) is ConstantPowerBot and same_row in left:
+            left.remove(same_row)
+            kept = same_row
+        if kept is not None:   # puissance changée : même coureur, à sa place
+            kept.power_w, kept.menu_spec = w.power_w, w.menu_spec
+            out[i] = kept
+        else:
+            out[i] = w
+            fresh.append(w)
+    for b in out:   # noms recalculés d'après la puissance (« Bot 250 W »), puis départagés
+        if type(b) is ConstantPowerBot and isinstance(getattr(b, "menu_spec", None), dict):
+            pct = b.menu_spec.get("ftp_pct")
+            b.name = (f"Bot {pct:g} % FTP" if pct is not None else f"Bot {int(round(b.power_w))} W")[:16]
+    dedupe_constant_names(out)
+    return out, fresh
 
 
 # --- trame d'un peloton (lot PL1, contrat IPC révision 1.6) -----------------------------------------

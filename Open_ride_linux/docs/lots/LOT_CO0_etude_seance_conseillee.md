@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série CO : étude de la séance conseillée (besoins aérobie léger, aérobie intense, anaérobie ; signaux, règles, écran) | Markdown | – | Petite | En PR (version 5.0) |
+| Série CO : étude de la séance conseillée (besoins aérobie léger, aérobie intense, anaérobie ; signaux, règles, écran) | Markdown | – | Petite | Livré le 8 novembre (PR #747, version 5.0) |
 
 Série CO (version 5.0, séance conseillée par OpenRide). Plan de la série : `docs/5.0/PLAN_SERIE_CO.md`.
 
@@ -21,3 +21,7 @@ Répondre à la demande du propriétaire du 7 novembre : dire comment identifier
 
 1. `python3 scripts/index_lots.py --verifier` et `pytest -q core/tests/test_docs_coherence.py` passent.
 2. Le propriétaire répond aux questions (défauts de Q1 à Q10 acceptés le 7 novembre) et valide la maquette de principe avant CO4 et CO5.
+
+## Livraison
+
+PR #747 (fusionnée en squash le 8 novembre, commit 46a29e1b) : étude de la séance conseillée, avec CO1. Statut corrigé par le bilan du 8 novembre au soir.

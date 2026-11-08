@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série P : pénalité de la roue lenticulaire par vent de travers (question V-Q13), à partir du vent de travers déjà calculé pour l'abri | Python | P2, AS3, V3 | Petite | En PR (8 novembre, version 3.0) |
+| Série P : pénalité de la roue lenticulaire par vent de travers (question V-Q13), à partir du vent de travers déjà calculé pour l'abri | Python | P2, AS3, V3 | Petite | Livré le 8 novembre (PR #808, version 3.0) |
 
 Question V-Q13 (plan V, validée le 27 octobre) : la lenticulaire est pénalisée par sa masse en montée seulement, et la pénalité au vent de travers « attend un lot de la série P ». Ce lot n'existait pas ; relevé le 8 novembre. Le vent de travers est déjà calculé pour la bordure (AS3, `draft.py`).
 
@@ -40,3 +40,7 @@ Donner à la roue lenticulaire un vrai compromis : rapide par vent calme, moins 
 - **Temps gagné** (bilan `xp_result` et passages de segment, V5) : les deux simulations rejouent le vent de face relevé, et l'équipement le CdA au lacet relevé. Sans vent relevé, calcul d'avant. Journaux d'avant le lot (sans `cross_mps`) : vent de face seul.
 - **Tests** : `core/tests/test_equipment_crosswind.py` (critères 1 et 2, borne, masse, catalogue invalide, temps gagné sur séance et segment, journal).
 - **Mesures** : calcul Python seulement, rien côté rendu (pas de capture) ; coût à 50 Hz : un `atan2` et deux sommes de pièces quand le vent est actif.
+
+## Livraison
+
+PR #808 (fusionnée le 8 novembre, main 7dc6fa82) : pénalité de la roue lenticulaire par vent de travers. Statut corrigé par le bilan du 8 novembre au soir.

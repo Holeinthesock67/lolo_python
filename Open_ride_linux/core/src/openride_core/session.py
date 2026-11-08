@@ -212,7 +212,7 @@ def build_inputs(cfg: Config, sim: Any = None) -> list[Any]:
     d = cfg.drivers
     # Réglages du lot Q6 (trace brute, boîtier muet, reprise), communs aux deux boîtiers.
     q6 = {"trace_raw": d.click_trace_raw, "mute_after_s": d.click_mute_after_s,
-          "rehandshake_s": d.click_rehandshake_s, "reset_locked": d.click_reset_locked, "side_of": click_side_of(d)}
+          "rehandshake_s": d.click_rehandshake_s, "repeat_gap_s": d.click_repeat_gap_s, "reset_locked": d.click_reset_locked, "side_of": click_side_of(d)}
     if kind == "sim":
         # Vrais fournisseurs du Click contre la paire simulée ; le clavier appuie sur le Click simulé.
         pair = ClickPair()
@@ -284,6 +284,7 @@ class CoreSession:
         self.config_path = config_path   # écrit par pair_devices (lot N13) ; défaut ~/OpenRide/config.toml
         self.bots = list(bots) if bots else []
         self._cli_bots = self.bots   # ceux de la ligne de commande, remis quand `start` n'a pas de `bots`
+        self._bot_ids_seen: set[str] = {b.id for b in self.bots}   # ids déjà pris (lot N18, `set_bots`)
         # Lot Y10 : tactique des bots à profil (`bot_tactics.MODE_TACTICS`) ; graine tirée à chaque départ
         # (fixée par les essais : `bots_race`), groupes et relais relus par `bot_tactics.update_field`
         self.bot_tactics_mode = "classic"
@@ -626,6 +627,7 @@ class CoreSession:
             self._start_survivor()
         if game_mode == "grandprix":
             self._start_grandprix()
+        self._journal_bots("start")   # lot N18 : bots du départ, puis chaque changement de la pause
         if game_mode == "track":
             self._start_track()
         self._lane = self._rider_lane()   # réglage « Placement dans la roue » lu à chaque départ (lot AS2)
@@ -647,6 +649,8 @@ class CoreSession:
                 log.warning("input_event inconnu : %s", args.get("event"))
         elif name == "end_session" and st in ("RUNNING", "PAUSED"):
             self._finish(bool(args.get("save", True)))
+        elif name == "set_bots":   # lot N18 : bots changés sur l'écran de pause
+            self._set_bots_paused(args if isinstance(args, dict) else {}, cmd_id)
         elif name == "set_difficulty":
             raw_pct = args.get("pct") if isinstance(args, dict) else None
             if raw_pct is None or isinstance(raw_pct, bool) or not isinstance(raw_pct, (int, float)) \
@@ -1247,10 +1251,75 @@ class CoreSession:
         draft_mod.start_grid(self.bots, self.physics.s)   # grille de départ (lot AS2) : pas de bots empilés
         return True
 
+    def _set_bots_paused(self, args: dict, cmd_id: int) -> None:
+        """`set_bots` (lot N18, révision 1.9) : bots changés sur l'écran de pause, même liste que `bots` de
+        `start`. Un bot gardé garde sa place, un bot ajouté part à la hauteur du cycliste, un bot retiré
+        disparaît, une puissance changée s'applique tout de suite ; ligne `bots` au journal. Hors `PAUSED`, en
+        Cyber-Rogue, en Dernier survivant et au Grand Prix (plateaux composés par le core) : `busy`."""
+        from .bots import BotError, bots_from_menu, merge_menu_bots
+
+        st = self.state.session_state
+        if st != "PAUSED" or self.rogue is not None or self.survivor is not None or self.grandprix is not None:
+            self.server.send_error("busy", "Bots modifiables seulement sur l'écran de pause d'une séance libre, "
+                                           "ERG ou WTF.")
+            return
+        items = args.get("bots")
+        try:
+            wanted = bots_from_menu(items, PhysicsParams.from_config(self.cfg), self.cfg.rider.ftp_w,
+                                    self.state.route_id, self.journal_dir, s=self.physics.s,
+                                    bike_mass_kg=self.cfg.bike.mass_kg, taken_ids=self._bot_ids_seen)
+        except BotError as exc:
+            self.server.send_error("bot_invalid", f"Bots refusés : {exc}")
+            return
+        bots, fresh = merge_menu_bots(self.bots, wanted)
+        self._place_new_bots(fresh)
+        self._set_bots(bots)
+        self._journal_bots("set_bots")
+        self._remember("bots", items, cmd_id)
+
+    def _place_new_bots(self, fresh: list[Any]) -> None:
+        """Bots ajoutés pendant la pause (lot N18) : à la hauteur et à la vitesse du cycliste, rangés par deux
+        comme au départ ; fantôme au temps de la séance ; bots à profil calibrés comme au départ."""
+        if not fresh:
+            return
+        from .bots import GhostBot, ProfileBot, RefRider, attach_segments, calibrate_bots
+
+        for b in fresh:
+            if isinstance(b, GhostBot):
+                b.step(self._t_session)
+            else:
+                b.physics.v = self.physics.v
+        draft_mod.start_grid(fresh, self.physics.s)
+        profiled = [b for b in fresh if isinstance(b, ProfileBot)]
+        if profiled and self.route is not None:
+            attach_segments(profiled, self._segments)
+            calibrate_bots(profiled, self.route, RefRider(self.cfg.rider.ftp_w, self._base_params),
+                           self.cfg.bots.level_pct, self._segments, self.cfg.bike.mass_kg,
+                           bot_params=PhysicsParams.from_config(self.cfg))
+            mode = self.bot_tactics_mode if self.race is not None else "none"
+            seed = self.bot_tactics_seed if self.bot_tactics_seed is not None else bot_tactics.seed_from(time.time())
+            bot_tactics.start_race(profiled, seed, mode)
+        if self.race is not None:
+            self.race.add_bots(self._t_session, fresh)
+        if self.wtf is not None:
+            for b in fresh:
+                self.wtf.bot_skin(b.id)
+
+    def _journal_bots(self, reason: str) -> None:
+        """Ligne `bots` du journal (lot N18) : bots de la séance au départ (s'il y en a) et à chaque `set_bots`."""
+        if self._rec is None or (reason == "start" and not self.bots):
+            return
+        from .bots import bot_line
+
+        self._rec.bots({"ts": round(time.time(), 3), "t": round(self._t_session, 2), "reason": reason,
+                        "bots": [bot_line(b) for b in self.bots]})
+        log.info("Bots (%s) : %s.", reason, ", ".join(b.name for b in self.bots) or "aucun")
+
     def _set_bots(self, bots: list[Any]) -> None:
         if bots is self.bots:
             return
         self.bots = bots
+        self._bot_ids_seen.update(b.id for b in bots)
         self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
         self._draft = 0.0
         self._draft_w = None
@@ -1301,15 +1370,27 @@ class CoreSession:
         self._plan_day = msg["active"]["plan_day"] if msg["active"] else None
         self.server.send_raw(msg)
 
+    def _history_with_cards(self, cmd_id: int, ftp_w: float, activities: Path) -> dict:
+        """`history` avec les cartes de la collection posées sur leur séance (lot BC6) ; une collection
+        illisible ne prive pas de l'historique."""
+        from .ipc_lists import build_history_message, collection_earned
+
+        try:
+            earned = collection_earned(self.profile_ctx, self.journal_dir, self.profile_ctx.table_path)
+        except Exception:
+            log.exception("Cartes de la collection non calculées pour l'historique")
+            earned = None
+        return build_history_message(cmd_id, ftp_w, activities, earned)
+
     async def _send_history(self, name: str, args: dict, cmd_id: int) -> None:
         """Historique du menu (lot O28) : `list_history` -> `history`, `history_session` -> bilan d'une séance."""
-        from .ipc_lists import HistoryError, build_history_message, build_history_session, history_file
+        from .ipc_lists import HistoryError, build_history_session, history_file
 
         activities = self.journal_dir.parent   # `Activities/` du profil en cours (journaux dans `.journal/`)
         ftp_w = self.cfg.rider.ftp_w
         if name == "list_history":
             try:
-                msg = await asyncio.to_thread(build_history_message, cmd_id, ftp_w, activities)
+                msg = await asyncio.to_thread(self._history_with_cards, cmd_id, ftp_w, activities)
             except Exception:
                 log.exception("Erreur lors de la préparation de l'historique (cmd_id=%d)", cmd_id)
                 return

@@ -507,6 +507,9 @@ func _ready() -> void:
 	ipc.history_session_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_history_session(msg)
 		_refresh_menu())
+	ipc.collection_received.connect(func(msg: Dictionary) -> void:
+		_run_menu_action(menu_flow.on_collection(msg))
+		_refresh_menu())
 	ipc.coach_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_coach(msg)
 		_refresh_menu())
@@ -736,6 +739,7 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_workouts()
 			ipc.list_settings()
 			ipc.list_plans()
+			ipc.list_collection()   # ligne « Collection » de l'accueil (lot BC5)
 			ipc.coach_command("get_coach", menu_flow.coach.request_args())   # ligne « Séance conseillée » de l'accueil
 			if act.get("route_id") != null:
 				ipc.send_command("select_route", {"route_id": act["route_id"]})
@@ -771,6 +775,10 @@ func _run_menu_action(act: Dictionary) -> void:
 				_run_menu_action(a)
 		"history_session":
 			ipc.history_session(str(act["id"]))
+		"list_collection":
+			ipc.list_collection()
+		"collection_seen":
+			ipc.collection_seen(act.get("keys", []))
 		"list_wtf_rules":
 			ipc.send_command("list_wtf_rules", {})
 		"set_wtf_rules":   # une commande set_wtf_rule par règle basculée (lot WTF3)
@@ -801,6 +809,8 @@ func _run_menu_action(act: Dictionary) -> void:
 		"end_session":
 			ipc.send_command("end_session", {"save": bool(act.get("save", true))})
 		"start", "resume":
+			if name == "resume" and act.has("bots"):   # bots changés sur l'écran de pause (lot N18, révision 1.9)
+				ipc.send_set_bots(act["bots"])
 			ipc.send_command(name, act.get("args", {}))
 		"u_turn":   # demi-tour depuis la pause (lot N17, révision 1.9)
 			ipc.send_command("u_turn", {})
@@ -1645,7 +1655,9 @@ func _garage_info() -> Dictionary:
 ## Texte des zones composées du menu (éléments, appareils, bilan), pour les tests graphiques.
 func _widget_text(key: String) -> String:
 	if key == "menu":
-		return "%s || %s || %s || %s || %s" % [menu_view.status_label.text, menu_view.items_text(), menu_view.devices.text() if menu_view.devices.visible else "",
+		return "%s || %s || %s || %s || %s || %s" % [menu_view.status_label.text, menu_view.items_text(),
+				menu_view.collection.view_text() if menu_view.collection.visible else "",
+				menu_view.devices.text() if menu_view.devices.visible else "",
 				(menu_view.summary.text() + " || " + menu_view.summary.progress_text()) if menu_view.summary.visible else "", menu_view.card.text() if menu_view.card.visible else ""]
 	return ""
 

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série VD : ruban de piste relevé, lignes peintes, caméra, avatar et bots qui penchent | GDScript | VD2 | Moyenne | En PR (7 novembre) : ruban générique, profil de piste, shader bois, coureurs et caméra sur la pente ; captures low/medium/high à valider, banc GPU sur PC à demander au fil de fusion |
+| Série VD : ruban de piste relevé, lignes peintes, caméra, avatar et bots qui penchent | GDScript | VD2 | Moyenne | Livré le 8 novembre (PR #746) ; banc GPU sur PC avec VD11 |
 
 Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_VD.md`. Plan validé par le propriétaire le 6 novembre (lot VD0).
 

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série P : vent d'après la météo locale lue au lancement par un processus annexe, repli sans vent hors ligne | Python | P1, P2 | Moyenne | En revue (version 3.0, reprise de l'exigence 2.0-VNT-1) |
+| Série P : vent d'après la météo locale lue au lancement par un processus annexe, repli sans vent hors ligne | Python | P1, P2 | Moyenne | Livré le 8 novembre (PR #809, version 3.0), coupé par défaut |
 
 Décision n° 1 du lot P1 (propriétaire, 25 octobre) : en 2.0, vent activé par défaut d'après la météo locale. Jamais fait : relevé le 8 novembre (fil « Expliquer quand le vent est actif »), reporté en 3.0 par la feuille de route. Règles R-NET-1 à R-NET-3 de la spécification générale (§3).
 
@@ -32,3 +32,7 @@ Rouler avec le vent du jour au lieu de régler force et direction à la main.
 ## 5. Fichiers touchés
 
 `core/src/openride_core/launcher.py`, `core/src/openride_core/config.py`, `core/src/openride_core/settings.py`, `core/src/openride_core/wind.py`, tests, `docs/GUIDE_UTILISATION.md`.
+
+## Livraison
+
+PR #804 (cahier, défaut « coupé ») et PR #809 (fusionnée le 8 novembre, main ae7b9c00) : vent d'après la météo du jour (Open-Meteo), coupé par défaut. Statut corrigé par le bilan du 8 novembre au soir.

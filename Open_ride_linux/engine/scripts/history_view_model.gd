@@ -113,6 +113,9 @@ func session_detail(s: Dictionary) -> String:
 		"NP %d W" % int(round(_num(s.get("np_w")))), "TSS %d" % int(round(_num(s.get("tss"))))]
 	if str(s.get("status", "")) == "recover":
 		parts.append("sans fichier FIT")
+	var n: int = s.get("cards", []).size() if s.get("cards") is Array else 0
+	if n > 0:   # cartes de la collection gagnées par la séance (lot BC6)
+		parts.append("%d carte%s" % [n, "s" if n > 1 else ""])
 	return " · ".join(parts)
 
 
@@ -130,8 +133,11 @@ func items(names: Dictionary) -> Array:
 	if sessions.is_empty():
 		out.append({"id": "none", "label": "Aucune séance enregistrée", "enabled": false})
 	for s in sessions:
-		out.append({"id": SESSION_PREFIX + str(s.get("id", "")), "label": session_label(s, names),
-			"detail": session_detail(s)})
+		var row := {"id": SESSION_PREFIX + str(s.get("id", "")), "label": session_label(s, names),
+			"detail": session_detail(s)}
+		if s.get("cards") is Array and not s["cards"].is_empty():
+			row["icon"] = "trophy"   # badge de la collection (lot BC6)
+		out.append(row)
 	if truncated:
 		out.append({"id": "more", "label": "Seules les %d séances les plus récentes sont listées" % sessions.size(),
 			"enabled": false})
