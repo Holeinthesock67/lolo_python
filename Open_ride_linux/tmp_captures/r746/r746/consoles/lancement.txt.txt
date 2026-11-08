@@ -1,0 +1,14 @@
+06:28:29 empreinte avant 7c0c6e30d7f565baa3167a4b883cbe3e
+06:28:29 tête feaac5ff
+06:29:38 velodromes
+06:29:38 fin velodromes rc=0
+06:29:38 monde ~/mesures-2026-11-01-auto/r746/monde/velodrome-250.world
+06:29:38 velodrome medium
+06:32:43 fin velodrome medium rc=0
+06:32:43 velodrome high
+06:35:48 fin velodrome high rc=1
+06:35:48 velodrome low
+06:38:53 fin velodrome low rc=0
+06:38:54 empreinte après 7c0c6e30d7f565baa3167a4b883cbe3e
+06:38:54 clone 9c7c9556
+06:38:54 FIN

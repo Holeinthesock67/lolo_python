@@ -1,0 +1,37 @@
+>>> [1/1] Scénario demo (3:00)
+== demo : parcours velodrome-250, 180 s, SIM ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 13.4 s après le démarrage du core
+[OK] parcours chargé par l'engine : velodrome-250 à 26.7 s
+[OK] engine vivant jusqu'à la fin : 180 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] sonde de performance : 150 relevés, rapport sonde/rapport.html
+[OK] budget medium : images/s : médiane 60.0 (au moins 58)
+[OK] budget medium : temps d'image p99 : 16.7 ms (médiane des p99 de chaque seconde, sous 25 ms)
+[OK] budget medium : GPU de la vue : médiane 4.94 ms (au plus 12 ms)
+[OK] budget medium : GPU saturé : 0.0 % des secondes au-dessus de 95 % de charge (au plus 5 %)
+[OK] à-coups : départ : pire image 60 ms de 20 à 30 s (au plus 150 ms)
+[OK] à-coups : images lentes : 0 seconde(s) avec une image de plus de 50 ms en 2.3 min, 0.0 par minute (au plus 3)
+[OK] à-coups : pire image : 38 ms (au plus 100 ms)
+[OK] à-coups : périodicité en distance : aucune sur 0 image(s) de plus de 50 ms
+[OK] 43/43 images enregistrées après le chargement (+1 avant, hors compte : 1 enregistrée(s)), 2 redemandée(s), réponse en 0.17 s (médiane), 6.75 s au pire : captures de l'engine
+   images par seconde de l'engine : min 57, médiane 60, max 60 (10 relevés)
+[OK] qualité réellement appliquée : medium appliquée (45 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] qualité notée par la sonde : medium sur toute la mesure
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 0.0 à 0.0 %, pente envoyée -0.1 à 0.8 %
+[OK] décor : aucun contact sur la route : 0 sur 44 captures
+[OK] fréquence cardiaque au journal : 143 échantillons, 132 à 165 bpm
+    OK  demo : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r746/velo_medium/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
