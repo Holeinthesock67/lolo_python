@@ -153,3 +153,18 @@ def test_config_key_and_session_pass_the_gap():
     provs = [p for p in build_inputs(cfg) if isinstance(p, ZwiftClickProvider)]
     assert provs and all(p._classifier.repeat_gap_s == 0.2 for p in provs)
     assert from_dict({}).drivers.click_repeat_gap_s == GAP
+
+
+def test_click_recette_long_press_mode_in_simulation(tmp_path):
+    """`click_recette --appuis-longs` : seulement les 13 maintiens guidés, sans surveillance, et trames.csv."""
+    from openride_core.tools import click_recette
+
+    assert [s.key for s in click_recette.LONG_STEPS][:3] == ["plus_1s", "plus_2s", "plus_3s"]
+    assert len(click_recette.LONG_STEPS) == 13
+    out = tmp_path / "al"
+    assert click_recette.main(["--appuis-longs", "--sim", "--sans-attente", "--muet", "--out", str(out)]) == 0
+    report = (out / "rapport.txt").read_text(encoding="utf-8")
+    assert "13/13" in report and "Appuie brièvement" not in report
+    lines = (out / "trames.csv").read_text(encoding="utf-8").splitlines()
+    assert lines[0] == "t_s;boitier;trame;evenement"
+    assert sum(line.endswith(";PLUS_LONG") for line in lines) >= 3

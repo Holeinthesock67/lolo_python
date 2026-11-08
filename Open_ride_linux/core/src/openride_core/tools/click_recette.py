@@ -4,11 +4,13 @@
     python -m openride_core.tools.click_recette --minutes 10 --rappel 2
     python -m openride_core.tools.click_recette --sim            # sans matériel (Click simulé)
     python -m openride_core.tools.click_recette --materiel       # matériel à préparer
-    python -m openride_core.tools.click_recette --minutes 2 --rappel 5 --trace-brute   # appuis longs (R14)
+    python -m openride_core.tools.click_recette --appuis-longs   # appuis longs (R14), environ 3 min
 
-Trace des appuis longs (constat R14 : bouton maintenu = rafale de `_SHORT`) : après les étapes guidées,
-maintenir 1, 2 puis 3 s chacun de +, −, A et Z, puis quelques appuis courts rapides sur + ; `trames.csv`
-garde chaque trame et chaque événement publié, dans l'ordre, pour régler `[drivers] click_repeat_gap_s`.
+`--appuis-longs` (constat R14 : bouton maintenu = rafale de `_SHORT`) : 13 étapes guidées seulement,
+maintenir +, −, A puis Z pendant 1, 2 et 3 s (un seul `_LONG` attendu, un `_SHORT` en trop fait
+échouer l'étape), puis 5 appuis courts rapides sur + (5 `PLUS_SHORT` attendus) ; pas de surveillance,
+trace brute active. `trames.csv` garde chaque trame et chaque événement publié, dans l'ordre, pour
+régler `[drivers] click_repeat_gap_s`.
 
 Avec les vrais fournisseurs du core (deux boîtiers, comme `build_inputs`), l'outil :
 1. attend la connexion des boîtiers (un appui réveille chacun) ;
@@ -68,6 +70,8 @@ class GuidedStep:
     prompt: str
     event: InputEvent
     button: str           # nom du bouton dans KEYPAD_BITS (touche attendue dans la trame)
+    count: int = 1        # nombre d'événements attendus (appuis courts rapides du mode `--appuis-longs`)
+    strict: bool = False  # aucun autre événement du même bouton pendant l'étape (rafale R14)
 
 
 STEPS = (
@@ -78,6 +82,15 @@ STEPS = (
     GuidedStep("plus_long", "Appui long sur + (une seconde)", InputEvent.PLUS_LONG, "PLUS"),
     GuidedStep("minus_long", "Appui long sur − (une seconde)", InputEvent.MINUS_LONG, "MINUS"),
 )
+# Mode `--appuis-longs` (correctif R14) : un maintien par étape ; une rafale qui rend encore des
+# appuis courts, ou des appuis courts rapides regroupés en appui long, font échouer l'étape.
+LONG_STEPS = tuple(
+    GuidedStep(f"{key}_{hold}s", f"Maintiens {label} pendant {hold} s, puis relâche",
+               InputEvent[f"{key.upper()}_LONG"], key.upper(), strict=True)
+    for key, label in (("plus", "+"), ("minus", "−"), ("a", "A"), ("z", "Z")) for hold in (1, 2, 3)
+) + (GuidedStep("plus_rapides", "Donne 5 appuis courts rapides sur +", InputEvent.PLUS_SHORT, "PLUS",
+                count=5, strict=True),)
+
 REMINDER = GuidedStep("rappel", "Rappel : appuie brièvement sur − (boîtier gauche)",
                       InputEvent.MINUS_SHORT, "MINUS")
 
@@ -236,20 +249,40 @@ async def wait_step(rec: Recorder, step: GuidedStep, timeout: float, after: floa
     """Attend l'événement de l'étape après `after` ; la touche attendue doit figurer dans la trame."""
     end = rec.t() + timeout
     seen_idx = 0
+    got = 0
     while rec.t() < end:
         if tick:
             tick()
         for t, address, ev in rec.events[seen_idx:]:
             if t >= after and ev == step.event:
+                got += 1
+                if got < step.count:
+                    continue
                 u = rec.unit(address)
                 key_ok = u.buttons.get(step.button, 0) > 0
-                detail = f"{ev.value} reçu"
+                detail = f"{ev.value} reçu" if step.count == 1 else f"{got} {ev.value} reçus"
                 if not key_ok:
                     detail += f", touche {step.button} jamais vue dans les trames"
+                if step.strict:
+                    # Laisse finir une éventuelle rafale, puis compte les autres événements du bouton.
+                    settle = rec.t() + 1.0
+                    while rec.t() < settle:
+                        if tick:
+                            tick()
+                        await asyncio.sleep(0.05)
+                    prefix = f"{step.button}_"
+                    extra = [e.value for t2, _, e in rec.events if t2 >= after and e.value.startswith(prefix)]
+                    for _ in range(step.count):
+                        extra.remove(ev.value)
+                    if extra:
+                        key_ok = False
+                        detail += f", en trop : {', '.join(extra)}"
                 return StepResult(step.key, step.prompt, key_ok, t - after, address, detail)
         seen_idx = len(rec.events)
         await asyncio.sleep(0.05)
-    return StepResult(step.key, step.prompt, False, None, None, f"{step.event.value} non reçu en {timeout:.0f} s")
+    return StepResult(step.key, step.prompt, False, None, None,
+                      f"{step.event.value} non reçu en {timeout:.0f} s" if got == 0
+                      else f"{got} {step.event.value} sur {step.count} en {timeout:.0f} s")
 
 
 Prompter = Callable[[str], None]
@@ -267,12 +300,13 @@ def plain_guide() -> Guide:
 async def run_recette(providers: list[TracedClickProvider], rec: Recorder, minutes: float, reminder_min: float,
                       prompt: Prompter | None = None, step_timeout: float = STEP_TIMEOUT_S,
                       connect_timeout: float = 120.0, tick_s: float = 0.25,
-                      guide: Guide | None = None, reminder_timeout: float = STEP_TIMEOUT_S) -> dict[str, Any]:
+                      guide: Guide | None = None, reminder_timeout: float = STEP_TIMEOUT_S,
+                      steps: tuple[GuidedStep, ...] = STEPS) -> dict[str, Any]:
     g = guide or plain_guide()
     tasks = [asyncio.create_task(p.run()) for p in providers]
     link: dict[int, bool] = {}
     stop = asyncio.Event()
-    n_steps = len(STEPS)
+    n_steps = len(steps)
 
     def ask(text: str, seconds: float, index: int | None = None, total: int | None = None,
             detail: str = "") -> None:
@@ -323,7 +357,7 @@ async def run_recette(providers: list[TracedClickProvider], rec: Recorder, minut
         connected = sum(link.values())
         g.measure("boîtiers connectés", f"{connected} sur {len(providers)}", ok=connected == len(providers))
         await asyncio.sleep(1.0)
-        for k, step in enumerate(STEPS):
+        for k, step in enumerate(steps):
             after = rec.t()
             ask(step.prompt, step_timeout, k + 1, n_steps)
             res = await wait_step(rec, step, step_timeout, after, g.tick)
@@ -335,7 +369,8 @@ async def run_recette(providers: list[TracedClickProvider], rec: Recorder, minut
         next_reminder = rec.t() + reminder_min * 60.0
         surveil = ("Surveillance : roule normalement, ne touche pas au Click",
                    f"un appui sera demandé toutes les {reminder_min:g} min (bip)")
-        g.step(surveil[0], soak_end - rec.t(), surveil[1])
+        if minutes > 0:
+            g.step(surveil[0], soak_end - rec.t(), surveil[1])
         while rec.t() < soak_end:
             if rec.t() >= next_reminder:
                 after = rec.t()
@@ -462,6 +497,9 @@ def make_providers(rec: Recorder, cfg: Any, sim: Any = None, policy: str = "", *
     # et `--regroupement` les remplacent pour la trace des appuis longs.
     kw["repeat_gap_s"] = d.click_repeat_gap_s if repeat_gap_s is None else repeat_gap_s
     kw["trace_raw"] = d.click_trace_raw or trace_raw
+    if not sim:   # côté du boîtier (droit / gauche) dans le journal et trames.csv, comme la séance
+        from ..session import click_side_of
+        kw["side_of"] = click_side_of(d)
     return [TracedClickProvider(rec, addr_plus, d.click_short_max_s, d.click_long_min_s, pair=pair, **kw),
             TracedClickProvider(rec, addr_minus, d.click_short_max_s, d.click_long_min_s, pair=pair,
                                 optional=True, **kw)]
@@ -483,6 +521,13 @@ async def sim_user(world: Any, prompts: asyncio.Queue[str]) -> None:
         if "réveiller" in text:
             tap(plus, "+")
             tap(minus, "-")
+        elif text.startswith("Maintiens "):   # mode --appuis-longs : « Maintiens + pendant 2 s… »
+            label, hold = text.split()[1], float(text.split()[3])
+            await world.press({"−": "-"}.get(label, label), hold)
+        elif "appuis courts rapides" in text:
+            for _ in range(5):
+                await world.press("+")
+                await asyncio.sleep(0.45)
         elif "long sur +" in text:
             await world.press("+", 1.0)
         elif "long sur −" in text:
@@ -502,8 +547,10 @@ async def main_async(args: argparse.Namespace) -> int:
 
     cfg = config_mod.load(args.config)
     out = args.out or DEFAULT_OUT / datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    guide = Guide("Recette du Zwift Click", out / "guide.jsonl", sound=False if args.muet else None)
-    guide.prepare("click_recette", wait=not args.sim and not args.sans_attente and sys.stdin.isatty(),
+    longs = args.appuis_longs
+    guide = Guide("Appuis longs du Zwift Click" if longs else "Recette du Zwift Click", out / "guide.jsonl",
+                  sound=False if args.muet else None)
+    guide.prepare("click_appuis_longs" if longs else "click_recette", wait=not args.sim and not args.sans_attente and sys.stdin.isatty(),
                   auto_s=0 if args.sim else 10.0)
     rec = Recorder(time.monotonic)
     prompt: Prompter | None = None
@@ -518,12 +565,12 @@ async def main_async(args: argparse.Namespace) -> int:
 
         prompt = prompts.put_nowait
         extra = [asyncio.create_task(sim.run()), asyncio.create_task(sim_user(sim, prompts))]
-    providers = make_providers(rec, cfg, sim, args.verrou or "", trace_raw=args.trace_brute,
+    providers = make_providers(rec, cfg, sim, args.verrou or "", trace_raw=args.trace_brute or longs,
                                repeat_gap_s=args.regroupement)
     try:
-        report = await run_recette(providers, rec, args.minutes, args.rappel, prompt,
+        report = await run_recette(providers, rec, 0.0 if longs else args.minutes, args.rappel, prompt,
                                    connect_timeout=20.0 if args.sim else 120.0, guide=guide,
-                                   reminder_timeout=args.attente_rappel)
+                                   reminder_timeout=args.attente_rappel, steps=LONG_STEPS if longs else STEPS)
     finally:
         if sim is not None:
             sim.stop()
@@ -548,6 +595,8 @@ def main(argv: list[str] | None = None) -> int:
                     help=f"secondes d'attente de chaque rappel avant de le compter perdu (défaut {STEP_TIMEOUT_S:g})")
     ap.add_argument("--verrou", choices=zwift_click.LOCK_POLICIES,
                     help="remplace [drivers] click_reset_locked pour l'essai (lot K9 : keep ou reset)")
+    ap.add_argument("--appuis-longs", action="store_true",
+                    help="test des appuis longs (R14) : maintiens guidés de +, −, A, Z, sans surveillance, environ 3 min")
     ap.add_argument("--trace-brute", action="store_true",
                     help="trace brute de chaque notification au journal (comme [drivers] click_trace_raw)")
     ap.add_argument("--regroupement", type=float, default=None, metavar="S",
@@ -562,7 +611,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     if args.materiel:
         from .guide import materials_text
-        print(materials_text(["click_recette"]), end="")
+        print(materials_text(["click_appuis_longs" if args.appuis_longs else "click_recette"]), end="")
         return 0
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
