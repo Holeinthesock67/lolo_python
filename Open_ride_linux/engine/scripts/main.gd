@@ -1037,6 +1037,7 @@ func _process(delta: float) -> void:
 	if not banner.has_message("core_lost"):
 		AnimClock.advance(delta)
 	if rogue_host.is_active():
+		_step_rogue_avatar(now)
 		return      # la scène du Cyber-Rogue a sa propre caméra et son propre décor
 	if _menu_camera(delta):
 		camera_views.snap()
@@ -1616,6 +1617,18 @@ var _bank_roll := 0.0
 
 func _rider_point(s: float, heading: float, lateral: float = RoadBuilder.RIDER_LATERAL_M) -> Vector3:
 	return route.sample_point(s) + route.bank_right(s, heading) * lateral   # remonté sur la pente d'une piste (VD4)
+
+
+## Cyber-Rogue : l'avatar du joueur roule et pédale sur le ruban (ou la grille) de la scène du mode, vu de la
+## caméra de suivi de la scène. Avant la recette R14 (8 novembre), il restait figé là où le monde classique
+## l'avait laissé, et l'écran passait pour bloqué.
+func _step_rogue_avatar(now_us: int) -> void:
+	if avatar_view == null or banner.has_message("core_lost"):
+		return
+	_bank_roll = 0.0
+	avatar_view.set_visible_for_view("follow_near" if camera_views.has_avatar else "subjective")   # sans avatar : rien (2.0-CAM-3)
+	avatar_view.scale = Vector3.ONE
+	_step_avatar(rogue_host.scene.rider_point(), 0.0, now_us, rogue_host.scene.rider_pitch_deg())
 
 
 ## Vue de caméra courante (l'avatar est masqué en subjective) ; une caméra de contrôle de test prend le pas.

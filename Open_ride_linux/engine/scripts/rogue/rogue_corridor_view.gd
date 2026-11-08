@@ -23,6 +23,8 @@ const ARCHETYPE_HINTS := {"diesel": "Rampe longue et régulière", "puncheur": "
 const ARCHETYPE_OBJECTS := {"diesel": "enemy_diesel", "puncheur": "enemy_puncher", "grimpeur": "enemy_climber",
 	"sprinteur": "enemy_sprinter", "saboteur": "enemy_saboteur", "boss": "boss_chimera"}
 const CARD_COUNT := 3
+## Relique de départ, offerte pendant l'échauffement (`corridor.relic`) : ni porte ni relance.
+const RELIC_TEXT := "Relique de départ : A court ou flèches pour choisir, A long pour la prendre"
 const DOOR_SIZE := Vector2(320.0, 150.0)
 
 var root: VBoxContainer
@@ -150,7 +152,7 @@ static func door_text(door: Dictionary) -> String:
 	return "%s : %s" % [side_text(door), archetype_name(str(door.get("archetype", "")))]
 
 
-## `corridor` : {cards, doors, focus, reroll_cost, can_reroll} ou {} hors couloir.
+## `corridor` : {cards, doors, focus, reroll_cost, can_reroll, relic (facultatif)} ou {} hors couloir.
 func apply(corridor: Dictionary) -> void:
 	if root == null:
 		return
@@ -167,10 +169,14 @@ func apply(corridor: Dictionary) -> void:
 	for i in CARD_COUNT:
 		_fill_card(cards[i], card_list[i] if i < card_list.size() else {}, i == focus)
 	var door_list: Array = corridor.get("doors", [])
+	(doors[0] as Control).get_parent().visible = not door_list.is_empty()
 	for i in 2:
 		_fill_door(doors[i], door_list[i] if i < door_list.size() else {}, 3 + i == focus)
 	var cost := int(corridor.get("reroll_cost", 0))
-	reroll.text = "Relancer les cartes : %d or%s" % [cost, "" if bool(corridor.get("can_reroll", true)) else " (or insuffisant)"]
+	if bool(corridor.get("relic", false)):
+		reroll.text = RELIC_TEXT
+	else:
+		reroll.text = "Relancer les cartes : %d or%s" % [cost, "" if bool(corridor.get("can_reroll", true)) else " (or insuffisant)"]
 
 
 static func _clear(panel: Control) -> void:
