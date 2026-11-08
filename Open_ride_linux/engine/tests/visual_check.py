@@ -1806,7 +1806,7 @@ def _decor_riders_draft_scene(s: Session) -> None:
     s_last = core.current_s() + 1.7 + 12.0
 
     def group(s0: float) -> list[dict[str, Any]]:
-        return [{"id": f"c77-{2 - i}", "s": round(s0 + 1.5 * i, 2), "dir": 1, "v": 0.0, "lane_m": 1.5,
+        return [{"id": f"c77-{2 - i}", "s": round(s0 + 2.1 * i, 2), "dir": 1, "v": 0.0, "lane_m": 1.5,
                  "look": (37 * (i + 1) << 4) | (i + 2)} for i in range(3)]
 
     core.set_scene(speed=0.0, lane_m=1.5, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=0.0,

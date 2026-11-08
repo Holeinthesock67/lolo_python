@@ -304,7 +304,7 @@ func update(dt_s: float, paused: bool = false, cam_s: float = NAN) -> void:
 				m["crank"] = fposmod(float(m.get("crank", float(m["phase"]) * TAU)) + rpm / 60.0 * TAU * dt_s, TAU)
 			var angle := float(m.get("crank", float(m["phase"]) * TAU))
 			var s := float(r["s"])
-			var xf: Transform3D = model.world_transform(s, float(r["lateral"]), int(r["dir"]))
+			var xf: Transform3D = model.world_transform(s, float(r["lateral"]), int(r["dir"]), float(r.get("yaw", 0.0)))
 			var variant := RoadCyclistLook.variant_of(int(m["jersey"]), int(m["look"]))
 			var root: Node3D = _by_id.get(id)
 			if root != null and int(root.get_meta("variant")) != variant:
