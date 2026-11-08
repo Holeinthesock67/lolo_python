@@ -134,6 +134,12 @@ class ProgressionService:
             return base
         return equipment_mod.apply_equipment(base, self.profile.equipped, self.catalogue)
 
+    def crosswind_cda_ratio(self, yaw_deg: float) -> float:
+        """Facteur du CdA équipé au lacet du vent apparent (lot P34) ; 1 si la progression est coupée."""
+        if not self.enabled:
+            return 1.0
+        return equipment_mod.crosswind_cda_ratio(self.profile.equipped, self.catalogue, yaw_deg)
+
     def journal_header(self, equipped: bool = True) -> dict[str, Any] | None:
         """`loadout` et `ftp_w` pour l'en-tête du journal ; `None` si la progression est coupée.
 
@@ -290,7 +296,8 @@ class ProgressionService:
                       for c in new.challenges if c.id not in done_before] if eligible else []
         gain_s = None
         if records is not None and base is not None:
-            gain_s = equipment_mod.equipment_time_gain(records, self.physics_params(base), base)
+            gain_s = equipment_mod.equipment_time_gain(records, self.physics_params(base), base,
+                                                       cda_ratio=self.crosswind_cda_ratio)
         by_session = coins_mod.coins_by_session(new, self.ct)
         return {
             "type": "xp_result", "v": 1, "eligible": eligible,

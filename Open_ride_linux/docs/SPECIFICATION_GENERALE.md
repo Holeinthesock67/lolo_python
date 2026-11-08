@@ -296,7 +296,7 @@ Détail : [PLAN_SERIE_U.md](3.0/PLAN_SERIE_U.md). Toutes les questions U-Q1 à U
 | 3.0-DS-1 | Dernier survivant jusqu'à 11 adversaires | DS8 | Livré (PR #735) |
 | 3.0-FIT-1 | FIT importé sans erreur dans Garmin Connect et GoldenCheetah (ligne 21 de la recette 1.0) | X56 | Livré, validé le 7 novembre |
 | 3.0-VNT-1 | Vent d'après la météo locale au lancement, lu par un processus annexe, repli sans vent hors ligne, le core n'attend jamais le réseau (reprend 2.0-VNT-1, règle R-NET-3) | P33 | Spécifié (cahier rédigé le 8 novembre) |
-| 3.0-VNT-2 | Lenticulaire et vent de travers : pénalité de la roue lenticulaire par vent de travers (question V-Q13), vent de travers déjà calculé pour l'abri (AS3) | P34 | Spécifié (cahier rédigé le 8 novembre) |
+| 3.0-VNT-2 | Lenticulaire et vent de travers : pénalité de la roue lenticulaire par vent de travers (question V-Q13), vent de travers déjà calculé pour l'abri (AS3) | P34 | En revue |
 
 ### 5.4 Version 4.0
 

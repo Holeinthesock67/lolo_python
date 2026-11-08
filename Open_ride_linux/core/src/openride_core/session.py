@@ -61,7 +61,7 @@ from . import bot_tactics
 from . import draft as draft_mod
 from . import road_cyclists as road_cyclists_mod
 from . import traffic as traffic_mod
-from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
+from .wind import CALM, WindModel, apparent_yaw_deg, cross_component, grade_offset_pct, head_component, wind_frame
 from . import survivor as survivor_mod
 from .survivor import ME as SURVIVOR_ME, SurvivorError, SurvivorRace
 from .grandprix import ME as GP_ME, GpInput, GrandPrixError, GrandPrixMode, RiderIn as GpRider
@@ -300,6 +300,7 @@ class CoreSession:
         self.physics = RiderPhysics(self._base_params)
         self._build_wind()
         self._head_mps = 0.0          # vent de face au point s (physique à 50 Hz)
+        self._cross_mps = 0.0         # vent de travers au point s, positif venant de droite (lot P34)
         self._wind_offset = 0.0       # supplément de pente dû au vent (feel = "grade")
         self._gravel_factor = 1.0     # roulement multiplié des routes non revêtues (lot U21)
         self._gravel_offset = 0.0     # supplément de pente du gravel avant la borne commune
@@ -2683,7 +2684,8 @@ class CoreSession:
         equipped, plain = self._base_params, PhysicsParams.from_config(self.cfg)
 
         def compute() -> float | None:
-            return segment_time_gain(records, equipped, plain, job.t_start, job.t_end, job.s_start, job.s_end)
+            return segment_time_gain(records, equipped, plain, job.t_start, job.t_end, job.s_start, job.s_end,
+                                     cda_ratio=self.progress_svc.crosswind_cda_ratio)
 
         try:
             asyncio.get_running_loop()
@@ -2962,6 +2964,8 @@ class CoreSession:
         alt = here.alt_m if here else 0.0
         wcfg = self.cfg.wind
         race = self.race
+        # Paramètres du pas : équipement de la séance, puis bonus, mode WTF, gravel et vent de travers.
+        self.physics.p = self._base_params
         if race:
             race.set_erg(self.state.mode == "ERG")
             # Bonus de masse ou de CdA : paramètres du pas, utilisés aussi par le supplément de vent et
@@ -2993,6 +2997,13 @@ class CoreSession:
             self._wind_sample = self.wind.sample(self._t_session)
             self._head_mps = head_component(self._wind_sample, here.heading_deg if here else 0.0)
             self.physics.p.wind_mps = self._head_mps + (wtf_eff.wind_add_mps if wtf_eff else 0.0)
+            self._cross_mps = cross_component(self._wind_sample, here.heading_deg if here else 0.0)
+            # Roue lenticulaire (lot P34) : gain de CdA réduit puis annulé par fort lacet du vent apparent ;
+            # CdA du pas seulement (vitesse virtuelle et ressenti), jamais la puissance mesurée (A7).
+            ratio = self.progress_svc.crosswind_cda_ratio(
+                apparent_yaw_deg(self.physics.v, self.physics.p.wind_mps, self._cross_mps))
+            if ratio != 1.0:
+                self.physics.p = replace(self.physics.p, cda_m2=self.physics.p.cda_m2 * ratio)
             if wcfg.feel == "ftms":
                 setter = getattr(self.driver, "set_wind", None)
                 if setter:
@@ -3124,6 +3135,7 @@ class CoreSession:
                 target_w=erg.target_w if erg and erg.target_active else None,
                 erg_bias_pct=erg.bias_pct - BIAS_DEFAULT_PCT if erg and erg.target_active else None,
                 head_mps=round(self._head_mps, 2) if self.wind.active else None,
+                cross_mps=round(self._cross_mps, 2) if self.wind.active else None,
                 wind_grade_pct=round(self._wind_offset, 2)
                 if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
                 # abri des bots ; sans bot, seulement quand un véhicule abrite (lot AS6) : aucune clé en solo
@@ -3246,7 +3258,7 @@ class CoreSession:
         ws = self._wind_sample if self.wind.active else None
 
         def cross_at(heading: float) -> float:
-            return ws.speed_mps * math.sin(math.radians(ws.from_deg - heading)) if ws else 0.0
+            return cross_component(ws, heading) if ws else 0.0
 
         def wind_at(s: float) -> tuple[float, float]:
             heading = route.sample(s).heading_deg
