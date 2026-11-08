@@ -36,6 +36,8 @@ signal plans_received(msg: Dictionary)
 ## Historique (lot O28, contrat 1.5) : réponse à list_history et bilan d'une séance (history_session).
 signal history_received(msg: Dictionary)
 signal history_session_received(msg: Dictionary)
+## Collection de cartes (série BC, lot BC5, contrat 1.6) : réponse à list_collection.
+signal collection_received(msg: Dictionary)
 ## Séance conseillée (série CO, lot CO5, contrat 1.12) : réponse à get_coach, set_next_race, clear_next_race,
 ## set_watch_advice et clear_watch_advice.
 signal coach_received(msg: Dictionary)
@@ -325,6 +327,8 @@ func _poll_incoming() -> void:
 				history_received.emit(json_obj)
 			"history_session":
 				history_session_received.emit(json_obj)
+			"collection":
+				collection_received.emit(json_obj)
 			"coach":
 				_on_coach(json_obj)
 			"world_status":
@@ -666,6 +670,17 @@ func list_plans() -> int:
 ## Historique du profil en cours (lot O28, contrat 1.5). Réponse : signal history_received.
 func list_history() -> int:
 	return send_command("list_history", {})
+
+
+## Collection de cartes du profil en cours (lot BC5). Réponse : collection_received.
+func list_collection() -> int:
+	return send_command("list_collection", {})
+
+
+## Cartes montrées au joueur (clés « id » ou « id:année »), notées dans collection_vue.json du profil ;
+## pas de réponse (clé inconnue : error bad_args).
+func collection_seen(keys: Array) -> int:
+	return send_command("collection_seen", {"keys": keys})
 
 
 ## Bilan d'une séance de l'historique (`id` du message `history`). Réponse : history_session_received, ou error bad_args.

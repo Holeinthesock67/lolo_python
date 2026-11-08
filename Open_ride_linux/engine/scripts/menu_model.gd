@@ -167,6 +167,8 @@ func set_rogue_ready(text: String) -> void:
 ## Entrée des plans de l'accueil (lot O12) : « Séance du jour » avec un plan actif, sinon « Choisir un plan ».
 var plan_label := "Choisir un plan"
 var plan_detail := ""
+## Détail de la ligne « Collection » de l'accueil (série BC, lot BC5) : « 17 / 42 cartes · 2 nouvelles ».
+var collection_detail := ""
 ## Séance préparée par prepare_start() : nom affiché sur l'écran Prêt et arguments de `start` ({} sinon).
 var start_name := ""
 var start_args: Dictionary = {}
@@ -255,6 +257,7 @@ func _refresh_home() -> void:
 			items.append(_item(m, HOME_MODES[m], true, str(HOME_DETAILS.get(m, ""))))
 	items.append_array([_item("plan", plan_label, true, plan_detail), _item("ftp", "Test de FTP"),
 		_item("history", "Historique", true, "séances, semaines, tests de FTP"),
+		_item("collection", "Collection", true, collection_detail),
 		_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée")])
 	if garage:
 		items.append(_item("garage", "Garage"))
@@ -398,6 +401,12 @@ func set_modes(list) -> void:
 func set_plan_home(label: String, detail := "") -> void:
 	plan_label = label
 	plan_detail = detail
+	_refresh_home()
+
+
+## Détail de la ligne « Collection » de l'accueil (lot BC5).
+func set_collection_home(detail: String) -> void:
+	collection_detail = detail
 	_refresh_home()
 
 
@@ -755,6 +764,10 @@ func add_screen(screen: Dictionary) -> void:
 	var id := str(screen.get("id", ""))
 	if id != "":
 		_screens[id] = screen.duplicate(true)
+		# Valeurs par défaut des éléments, comme _item() : focus_item() et la validation lisent « enabled »
+		# sans valeur par défaut (première ouverture de la Collection, lot BC5) ; les autres clés restent.
+		for it in _screens[id].get("items", []):
+			it.merge({"label": str(it["id"]), "enabled": true, "detail": ""})
 
 
 ## Ouvre un écran en vidant l'historique (bilan de fin de séance) ; écran inconnu : rien.
@@ -782,19 +795,25 @@ func set_screen_items(screen_id: String, items: Array, title := "") -> void:
 	var focused_id := ""
 	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
 		focused_id = _screens[screen_id]["items"][_focus]["id"]
-	var clean := []
-	for it in items:
-		var e := _item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
-			str(it.get("detail", "")))
-		for k in ["bar", "editing"]:   # affichage seulement : curseur (0 à 100) et valeur en cours de réglage
-			if it.has(k):
-				e[k] = it[k]
-		clean.append(e)
-	_screens[screen_id]["items"] = clean
+	_screens[screen_id]["items"] = _clean_items(items)
 	if title != "":
 		_screens[screen_id]["title"] = title
 	if _screen == screen_id:
 		_focus = _first_enabled_from(_index_of(focused_id), 1)
+
+
+## Éléments d'un écran au format du modèle : id, label, enabled (vrai par défaut), detail, et les clés
+## d'affichage seulement (curseur de 0 à 100, valeur en cours de réglage, pictogramme du badge, lot BC6).
+static func _clean_items(items: Array) -> Array:
+	var clean := []
+	for it in items:
+		var e := _item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
+			str(it.get("detail", "")))
+		for k in ["bar", "editing", "icon"]:
+			if it.has(k):
+				e[k] = it[k]
+		clean.append(e)
+	return clean
 
 
 ## Met le focus sur un élément actif de l'écran courant ; faux s'il n'existe pas ou est désactivé.
@@ -993,7 +1012,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "history", "rogue", "garage", "profile", "wtf", "survivor", "interrupted", "coach":
+				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "interrupted", "coach":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
