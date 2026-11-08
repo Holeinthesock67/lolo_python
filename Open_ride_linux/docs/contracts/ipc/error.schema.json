@@ -46,7 +46,8 @@
         "profile_invalid",
         "name_invalid",
         "content_invalid",
-        "content_failed"
+        "content_failed",
+        "mode_option_invalid"
       ]
     },
     "message": {
