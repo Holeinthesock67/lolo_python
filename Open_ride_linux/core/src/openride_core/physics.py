@@ -110,6 +110,25 @@ class RiderPhysics:
         return self.v
 
 
+EQUILIBRIUM_STEPS = 24   # dichotomie courte : 80 m/s / 2^24, bien sous le mm/s
+
+
+def equilibrium_speed(power_w: float, grade_pct: float, params: PhysicsParams, alt_m: float = 0.0) -> float:
+    """Vitesse d'équilibre à `power_w`, en 24 pas (appelée à chaque pas pour chaque coureur du Grand Prix,
+    lot GP2) ; 0 sans puissance sur le plat ou en montée."""
+    if power_w <= 0.0 and grade_pct >= 0.0:
+        return 0.0
+    lo, hi = 0.0, V_MAX
+    target = params.efficiency * max(power_w, 0.0)
+    for _ in range(EQUILIBRIUM_STEPS):
+        mid = 0.5 * (lo + hi)
+        if resistive_force(mid, grade_pct, alt_m, params) * mid < target:
+            lo = mid
+        else:
+            hi = mid
+    return 0.5 * (lo + hi)
+
+
 def steady_speed(power_w: float, grade_pct: float, params: PhysicsParams,
                  alt_m: float = 0.0) -> float:
     """Vitesse d'équilibre η P = F_res(v) v, par dichotomie (outil de test et de calibrage)."""

@@ -53,7 +53,8 @@ def test_four_fabricated_files(tmp_path, name, kw, failed):
     path, _, _ = write(tmp_path, name, **kw)
     got = levels(path)
     assert {k for k, v in got.items() if v == "ÉCHEC"} == failed, got
-    assert len(got) == 7 and got["décodage"] == "OK" and got["totaux de la séance"] == "OK"
+    assert len(got) == 9 and got["décodage"] == "OK" and got["totaux de la séance"] == "OK"
+    assert got["compatibilité Garmin Connect et GoldenCheetah"] == "OK" and got["totaux affichés"] == "OK"
 
 
 def journal_lines(records, events, scale=1.0):

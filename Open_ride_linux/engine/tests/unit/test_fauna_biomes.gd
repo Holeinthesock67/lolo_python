@@ -3,6 +3,7 @@ extends SceneTree
 ## Tests sans écran de la faune par biome (lot U12, série U) : espèces de chaque biome (fauna_placer.gd
 ## BIOME_SPECIES et BIOME_GROUPS), distances à la route, eau des oasis, densités mélangées, budgets d'affichage ;
 ## branchement du modèle de biome dans world_streamer.gd (lot U17, première partie : `--biome=`).
+## Lot U23 : éléphants, antilopes, bœufs musqués, ours blancs, chèvres et singes (section 10).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_fauna_biomes.gd
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
@@ -240,6 +241,35 @@ func _init() -> void:
 			kinds += 1
 	_check(kinds >= 4, "low : %d espèces à l'écran" % kinds)
 	r.free()
+
+	# 10. Lot U23 : éléphants et antilopes en savane, bœufs musqués et ours blancs au pôle, chèvres sur les volcans,
+	#     singes en jungle, bœufs musqués en toundra ; grands animaux (éléphant, ours) à plus de 150 m de la route
+	var sav23 := _species(sav)
+	_check(sav23.has("elephant") and sav23.has("antelope"), "U23 savane : éléphants et antilopes %s" % str(sav23))
+	var big_far := true
+	var polar_groups := _place(route, _model("polar"))
+	for g in sav + polar_groups:
+		if str(g.get("species", "")) in ["elephant", "polar_bear"]:
+			for p in _ground_points(g):
+				if absf((p as Vector3).z) < 150.0:
+					big_far = false
+	_check(big_far, "U23 : éléphants et ours blancs à plus de 150 m de la route")
+	var pol := _species(polar_groups)
+	_check(pol.has("musk_ox") and pol.has("polar_bear") and not pol.has("deer") and not pol.has("cow"),
+		"U23 pôle : bœufs musqués et ours blancs, ni chevreuil ni bétail %s" % str(pol))
+	_check(tun.has("musk_ox"), "U23 toundra : bœufs musqués avec les rennes %s" % str(tun))
+	var vol := _species(_place(route, _model("volcanic")))
+	_check(vol.has("goat") and not vol.has("cow") and not vol.has("sheep"), "U23 volcans : chèvres, pas de vaches ni de moutons %s" % str(vol))
+	var jun23 := _species(jun_groups)
+	_check(jun23.has("monkey"), "U23 jungle : singes %s" % str(jun23))
+	var all_rendered := true
+	for biome in BiomeIds.BIOMES:
+		for g in _place(route, _model(biome), oases):
+			var sp := str(g.get("species", ""))
+			if not FaunaRenderer.SPECIES.has(sp):
+				all_rendered = false
+				printerr("  espèce sans maillage : %s (%s)" % [sp, biome])
+	_check(all_rendered, "U23 : toute espèce placée dans les 16 biomes a son maillage (fauna_renderer.gd SPECIES)")
 
 	# 9. world_streamer.gd : biome forcé transmis aux arbres et aux animaux, sol aux couleurs du biome ; « auto »
 	#    sans couche biome : rendu d'avant la série U

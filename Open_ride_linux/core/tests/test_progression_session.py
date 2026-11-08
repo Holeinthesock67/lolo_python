@@ -277,6 +277,9 @@ def test_xp_result_after_eligible_session(tmp_path, monkeypatch):
         assert r["level_before"] == level0 and r["level_after"] >= level0
         assert r["coins_gained"] > 0 and r["coins_total"] == coins0 + r["coins_gained"]
         assert r["xp_total"] == s.progress_svc.progress.total_xp
+        lv = s.progress_svc.progress.level                # barre du bilan : seuils du niveau atteint
+        assert (r["xp_level_start"], r["xp_next_level"]) == (lv.xp_level_start, lv.xp_next_level)
+        assert r["xp_level_start"] <= r["xp_total"] < r["xp_next_level"]
         assert [g["source"] for g in r["gains"]][:1] == ["distance"] or r["gains"]
         assert r["equipment_gain_s"] == 0.0               # équipement de départ : rien de gagné
         assert len(json.dumps(r)) <= 1400 and r["more"] is False

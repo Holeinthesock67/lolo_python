@@ -350,3 +350,31 @@ def test_session_traffic_sees_the_gravel_option(tmp_path, monkeypatch):
     assert not t._kind_ok("car_a", 0.0, 500.0) and t._kind_ok("tractor", 0.0, 500.0)
     s.cfg.gravel.mode = "off"
     assert t._kind_ok("bus", 0.0, 500.0)
+
+
+def test_bench_forced_passes_alternate_tractor_then_overtaking_truck():
+    """Banc `circulation_proche` (`[ride] traffic_bench_s`) : un tracteur un peu plus lent devant, puis un camion
+    qui double (le tracteur doublé quitte la route), toutes les N s ; rien sans le réglage (0, défaut)."""
+    from openride_core.config import Config
+
+    assert Config().ride.traffic_bench_s == 0
+    route = straight_route()
+    t = tr.Traffic(route=route, seed=0, bench_every_s=20.0)
+    off = tr.Traffic(route=route, seed=0)
+    s, v = 1000.0, 9.0
+    new: list[tr.Vehicle] = []
+    for _ in range(int(160.0 / DT)):
+        before = {x.id for x in t.vehicles}
+        t.update(s, v, DT)
+        off.update(s, v, DT)
+        new += [x for x in t.vehicles if x.id not in before and int(x.id[1:]) >= tr.TEST_SLOT0]
+        s += v * DT
+        trucks = [x.s for x in t.vehicles if x.kind == "truck"]
+        tractors = [x.s for x in t.vehicles if x.kind == "tractor"]
+        assert not any(a < b for a in trucks for b in tractors)   # jamais un camion derrière un tracteur
+    assert [x.kind for x in new][:3] == ["tractor", "truck", "tractor"] and t.bench_forced == len(new)
+    tractor, truck = new[0], new[1]
+    assert tractor.slow and tractor.dir == 1
+    assert tractor.cruise_mps == pytest.approx(v * tr.BENCH_SLOW_SPEED_FRAC)   # rattrapé, jamais semé
+    assert truck.dir == 1 and truck.cruise_mps > v and not truck.slow
+    assert off.bench_forced == 0 and all(int(x.id[1:]) < tr.TEST_SLOT0 for x in off.vehicles)

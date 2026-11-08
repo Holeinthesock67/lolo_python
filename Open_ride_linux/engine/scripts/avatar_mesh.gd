@@ -288,8 +288,9 @@ class Geo:
 			for k in [0, 1, 2, 0, 2, 3]:
 				vert(p[k], n)
 
-	func commit() -> ArrayMesh:
-		return st.commit()
+	## Tableaux de la surface (aucune ressource du serveur de rendu : sans risque dans un fil de travail).
+	func commit() -> Array:
+		return st.commit_to_arrays()
 
 
 ## Anneaux d'un segment de longueur `length` le long de Y local (−length/2 au début, +length/2 à la fin) :
@@ -303,7 +304,7 @@ static func _segment_rings(length: float, radius: float, profile: Array, default
 	return out
 
 
-static func _limb(length: float, radius: float, profile: Array, sides: int, color: Color, caps := true) -> ArrayMesh:
+static func _limb(length: float, radius: float, profile: Array, sides: int, color: Color, caps := true) -> Array:
 	var g := Geo.new()
 	g.color = color
 	g.loft(_segment_rings(length, radius, profile, color), sides, Vector3.RIGHT, Vector3.BACK, caps)
@@ -324,7 +325,7 @@ static func _shin_radius(t: float) -> float:
 
 
 ## Tronc (maillot) dans le repère du segment hanche → épaule : +Z local = le dos, X = la droite.
-static func _torso(d: Dictionary, sides: int, coarse: bool) -> ArrayMesh:
+static func _torso(d: Dictionary, sides: int, coarse: bool) -> Array:
 	var bs := float(d["bs"])
 	var L := float(d["torso"])
 	var prof := [[1.12, 0.085, 0.065, 0.0], [1.07, 0.16, 0.085, 0.01], [1.0, 0.205, 0.105, 0.005],
@@ -341,7 +342,7 @@ static func _torso(d: Dictionary, sides: int, coarse: bool) -> ArrayMesh:
 
 
 ## Cuissard (bas du tronc, sous le maillot) dans le même repère que le tronc.
-static func _shorts(d: Dictionary, sides: int) -> ArrayMesh:
+static func _shorts(d: Dictionary, sides: int) -> Array:
 	var bs := float(d["bs"])
 	var L := float(d["torso"])
 	var g := Geo.new()
@@ -354,7 +355,7 @@ static func _shorts(d: Dictionary, sides: int) -> ArrayMesh:
 
 
 ## Tête (peau) centrée sur `head` : crâne, mâchoire, nez, oreilles ; face vers −Z.
-static func _head(d: Dictionary, sides: int, rings: int, skin: Color, fine: bool) -> ArrayMesh:
+static func _head(d: Dictionary, sides: int, rings: int, skin: Color, fine: bool) -> Array:
 	var hs := float(d["hs"])
 	var g := Geo.new()
 	g.color = skin
@@ -369,7 +370,7 @@ static func _head(d: Dictionary, sides: int, rings: int, skin: Color, fine: bool
 
 ## Casque de route centré sur la tête : coque allongée vers l'arrière, aérations sombres d'avant en arrière,
 ## bord sombre, sangles sous le menton ; visière (casque « summit »). Couleur de la coque : `shell`.
-static func _helmet(d: Dictionary, sides: int, rings: int, shell: Color, visor: bool, fine: bool) -> ArrayMesh:
+static func _helmet(d: Dictionary, sides: int, rings: int, shell: Color, visor: bool, fine: bool) -> Array:
 	var hs := float(d["hs"])
 	var c := Vector3(0.0, 0.032, 0.012) * hs
 	var r := Vector3(0.098, 0.093, 0.124) * hs
@@ -405,7 +406,7 @@ static func _helmet(d: Dictionary, sides: int, rings: int, shell: Color, visor: 
 
 
 ## Lunettes enveloppantes centrées sur la tête : bandeau courbe devant les yeux.
-static func _glasses(d: Dictionary, segs: int) -> ArrayMesh:
+static func _glasses(d: Dictionary, segs: int) -> Array:
 	var hs := float(d["hs"])
 	var g := Geo.new()
 	for i in range(segs):
@@ -423,7 +424,7 @@ static func _glasses(d: Dictionary, segs: int) -> ArrayMesh:
 
 
 ## Chaussure de vélo et pédale, origine sur la cale, pointe vers −Z : semelle sombre, dessus clair, molette.
-static func _shoe(sides: int, lod: int) -> ArrayMesh:
+static func _shoe(sides: int, lod: int) -> Array:
 	var g := Geo.new()
 	if lod == 2:
 		g.color = SOLE_COLOR
@@ -446,7 +447,7 @@ static func _shoe(sides: int, lod: int) -> ArrayMesh:
 
 
 ## Main gantée sur la cocotte, centrée sur la main (doigts autour de la cocotte, pouce dessus).
-static func _hand(sides: int, fine: bool) -> ArrayMesh:
+static func _hand(sides: int, fine: bool) -> Array:
 	var g := Geo.new()
 	g.color = GLOVE_COLOR
 	g.ellipsoid(Vector3(0.0, 0.0, 0.0), Vector3(0.04, 0.042, 0.055), sides, maxi(sides / 2, 2))
@@ -458,7 +459,7 @@ static func _hand(sides: int, fine: bool) -> ArrayMesh:
 ## Vélo fixe (sans roues ni pédalier) dans le repère de l'avatar : cadre à la couleur `frame` (sections de
 ## `fs.tube`), fourche, potence, cintre de route et cocottes, tige et selle à la hauteur de la hanche assise,
 ## prolongateurs du contre-la-montre, bidon, transmission (chaîne, cassette, dérailleur).
-static func _bike(lod: int, d: Dictionary, fs: Dictionary, accent: Color) -> ArrayMesh:
+static func _bike(lod: int, d: Dictionary, fs: Dictionary, accent: Color) -> Array:
 	var g := Geo.new()
 	var sides: int = [8, 4, 3][lod]
 	var tube: Vector2 = fs["tube"]
@@ -529,7 +530,7 @@ static func _bike(lod: int, d: Dictionary, fs: Dictionary, accent: Color) -> Arr
 
 
 ## Roue d'axe X centrée sur son moyeu : pneu, jante (forme selon `ws.kind`), rayons croisés, moyeu.
-static func wheel_mesh(lod: int, ws: Dictionary) -> ArrayMesh:
+static func wheel_arrays(lod: int, ws: Dictionary) -> Array:
 	var g := Geo.new()
 	var segs: int = [28, 10, 6][lod]
 	g.color = TYRE_COLOR
@@ -561,7 +562,7 @@ static func wheel_mesh(lod: int, ws: Dictionary) -> ArrayMesh:
 
 
 ## Pédalier centré sur le boîtier, manivelle droite vers le bas (angle 0) : plateaux à droite, manivelles, axe.
-static func crank_mesh(lod: int) -> ArrayMesh:
+static func crank_arrays(lod: int) -> Array:
 	var g := Geo.new()
 	var sides: int = [8, 5, 3][lod]
 	g.color = METAL_COLOR
@@ -584,6 +585,16 @@ static func crank_mesh(lod: int) -> ArrayMesh:
 ## (DEFAULT_COLORS par défaut), cuites dans les couleurs de sommet. Le tronc et les manches restent blancs :
 ## leur matériau porte le motif de la tenue.
 static func build(lod: int, d: Dictionary, looks := {}, colors := {}) -> Dictionary:
+	return to_meshes(build_arrays(lod, d, looks, colors))
+
+
+## Comme `build`, mais `"mesh"` porte les tableaux de la surface (Mesh.ARRAY_*) au lieu d'un ArrayMesh : ne crée
+## aucune ressource du serveur de rendu, donc se calcule dans un fil de travail (avatar_view.gd request_parts).
+## Créer les maillages hors du fil principal pendant que celui-ci en crée aussi corrompt le serveur de rendu
+## factice de --headless (« Initializing already initialized RID », « Parameter "mem" is null », « unimplemented
+## base type encountered in renderer scene cull », CI du 7 novembre) : comme world_streamer.gd, les tableaux
+## se calculent dans le fil de travail et les ArrayMesh se créent sur le fil principal (`to_meshes`).
+static func build_arrays(lod: int, d: Dictionary, looks := {}, colors := {}) -> Dictionary:
 	lod = clampi(lod, 0, 2)
 	var col := DEFAULT_COLORS.duplicate()
 	col.merge(colors, true)
@@ -617,7 +628,7 @@ static func build(lod: int, d: Dictionary, looks := {}, colors := {}) -> Diction
 	parts["head"] = {"mesh": _head(d, [12, 7, 4][lod], [7, 4, 2][lod], skin, fine), "count": 1}
 	parts["shoe"] = {"mesh": _shoe([8, 4, 3][lod], lod), "count": 2}
 	parts["bike"] = {"mesh": _bike(lod, d, fs, col["primary"]), "count": 1}
-	parts["wheel"] = {"mesh": wheel_mesh(lod, ws), "count": 2}
+	parts["wheel"] = {"mesh": wheel_arrays(lod, ws), "count": 2}
 	if lod == 0:
 		var g := Geo.new()
 		g.loft(_segment_rings(float(d["upper_arm"]), float(d["r_arm"]), sleeve_prof, Color.WHITE), maxi(radial - 2, 4))
@@ -626,7 +637,7 @@ static func build(lod: int, d: Dictionary, looks := {}, colors := {}) -> Diction
 		parts["pelvis"] = {"mesh": _shorts(d, [14, 8][lod]), "count": 1}
 		parts["neck"] = {"mesh": _limb(float(d["neck"]), 0.05 * float(d["bs"]), [[0.0, 1.0, 0.0], [1.0, 0.9, 0.0]], radial, skin), "count": 1}
 		parts["hand"] = {"mesh": _hand([8, 4][lod], fine), "count": 2}
-		parts["crank"] = {"mesh": crank_mesh(lod), "count": 1}
+		parts["crank"] = {"mesh": crank_arrays(lod), "count": 1}
 		var hs := EquipmentMeshes.helmet_spec(str(looks.get("helmet", "")))
 		parts["helmet"] = {"mesh": _helmet(d, [18, 8][lod], [7, 3][lod], col["helmet"], bool(hs["visor"]), fine), "count": 1}
 		var hair := Geo.new()
@@ -641,7 +652,7 @@ static func build(lod: int, d: Dictionary, looks := {}, colors := {}) -> Diction
 
 ## Chaussette : du pied vers le genou sur `length` de la jambe, au profil du mollet un peu élargi ; repère du
 ## segment cheville → haut de la chaussette (Y local), comme la vue la place. Rayée : deux bandes `accent` en haut.
-static func _sock(d: Dictionary, length: float, sides: int, ss: Dictionary, accent: Color) -> ArrayMesh:
+static func _sock(d: Dictionary, length: float, sides: int, ss: Dictionary, accent: Color) -> Array:
 	var L := float(d["shin"]) * length
 	var base: Color = ss["color"]
 	var stops := [[0.0, base], [0.25, base], [0.5, base], [0.75, base], [1.0, base]]
@@ -656,6 +667,28 @@ static func _sock(d: Dictionary, length: float, sides: int, ss: Dictionary, acce
 	var g := Geo.new()
 	g.loft(rings, sides, Vector3.RIGHT, Vector3.BACK, false)
 	return g.commit()
+
+
+## Tableaux de build_arrays → maillages de build (fil principal).
+static func to_meshes(parts: Dictionary) -> Dictionary:
+	var out := {}
+	for name in parts:
+		out[name] = {"mesh": arrays_to_mesh(parts[name]["mesh"]), "count": parts[name]["count"]}
+	return out
+
+
+static func arrays_to_mesh(arrays: Array) -> ArrayMesh:
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
+
+static func wheel_mesh(lod: int, ws: Dictionary) -> ArrayMesh:
+	return arrays_to_mesh(wheel_arrays(lod, ws))
+
+
+static func crank_mesh(lod: int) -> ArrayMesh:
+	return arrays_to_mesh(crank_arrays(lod))
 
 
 static func triangles_of(mesh: Mesh) -> int:
