@@ -1,0 +1,26 @@
+09:21:10 empreinte avant 7c0c6e30d7f565baa3167a4b883cbe3e
+09:21:10 tête 72eb8bd0
+patch r781 appliqué
+09:22:21 biome alpine low_main coupé
+09:25:29 fin rc=1
+09:25:29 biome alpine medium_main coupé
+09:28:37 fin rc=1
+09:28:37 biome alpine high_main coupé
+09:31:44 fin rc=1
+09:31:44 biome savanna low_main coupé
+09:34:52 fin rc=0
+09:34:52 biome savanna medium_main coupé
+09:38:00 fin rc=0
+09:38:00 biome savanna high_main coupé
+09:41:07 fin rc=0
+09:41:07 biome sand_desert low_main coupé
+09:44:14 fin rc=0
+09:44:14 biome sand_desert medium_main coupé
+09:47:21 fin rc=0
+09:47:21 biome sand_desert high_main coupé
+09:50:29 fin rc=1
+09:50:29 visual natif low (comparaison avec main)
+09:59:14 fin visual rc=1
+09:59:15 empreinte après e3a2b7fbd0e338c0411b8b5268eadafa
+09:59:15 clone 9c7c9556
+09:59:15 FIN

@@ -1,0 +1,45 @@
+>>> [1/1] Scénario biome_alpine (3:00)
+altitude GPX / MNT : médiane 0.0 m, max 0.0 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+terrain near : 10 tuile(s) de 1000 m, maille 10 m
+terrain near : 714 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 10 tuile(s) de 5000 m, maille 50 m
+requête Overpass (38f10b399c…)…
+requête Overpass (0d2a05c044…)…
+surface : tout revêtu (colonne omise)
+== biome_alpine : parcours osm-test, 180 s, SIM, difficulté 20 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.4 s après le démarrage du core
+[OK] parcours chargé par l'engine : osm-test à 25.8 s
+[OK] engine vivant jusqu'à la fin : 180 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] sonde de performance : 147 relevés, rapport sonde/rapport.html
+[OK] budget low : images/s : médiane 60.0 (au moins 55)
+[OK] budget low : temps d'image p99 : 16.7 ms (médiane des p99 de chaque seconde, sous 25 ms)
+[OK] budget low : GPU de la vue : médiane 5.08 ms (au plus 6 ms)
+[OK] budget low : GPU saturé : 0.0 % des secondes au-dessus de 95 % de charge (au plus 5 %)
+[OK] à-coups : départ : pire image 67 ms de 20 à 30 s (au plus 150 ms)
+[OK] à-coups : images lentes : 2 seconde(s) avec une image de plus de 50 ms en 2.3 min, 0.9 par minute (au plus 3)
+[OK] à-coups : pire image : 67 ms (au plus 100 ms)
+[OK] à-coups : périodicité en distance : aucune sur 2 image(s) de plus de 50 ms
+[OK] 6/6 images enregistrées après le chargement, réponse en 0.28 s (médiane), 3.59 s au pire : captures de l'engine
+   images par seconde de l'engine : min 1, médiane 59, max 60 (5 relevés)
+[OK] qualité réellement appliquée : low appliquée (6 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] qualité notée par la sonde : low sur toute la mesure
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 5.0 à 5.0 %, pente envoyée 0.1 à 1.2 %
+[OK] décor : aucun contact sur la route : 0 sur 6 captures
+[OK] fréquence cardiaque au journal : 121 échantillons, 172 à 182 bpm
+    OK  biome_alpine : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r781/alpine_low/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK

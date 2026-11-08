@@ -1,0 +1,28 @@
+== 1920x1080_high ==
+[OK] 1920x1080_high · jour_nuit · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-visual-routes-p0h_93uk/demo.world
+[OK] 1920x1080_high · jour_coupe · capture enregistrée
+[ÉCHEC] 1920x1080_high · jour_coupe · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_high · jour_midi · capture enregistrée
+[ÉCHEC] 1920x1080_high · jour_midi · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_high · jour_crepuscule · capture enregistrée
+[ÉCHEC] 1920x1080_high · jour_crepuscule · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_high · jour_heure_bleue · capture enregistrée
+[ÉCHEC] 1920x1080_high · jour_heure_bleue · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_high · jour_nuit · capture enregistrée
+[ÉCHEC] 1920x1080_high · jour_nuit · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_high · saison_automne · capture enregistrée
+[ÉCHEC] 1920x1080_high · saison_automne · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_high · saison_hiver · capture enregistrée
+[ÉCHEC] 1920x1080_high · saison_hiver · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_high · saison_printemps · capture enregistrée
+[ÉCHEC] 1920x1080_high · saison_printemps · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_high · jour_nuit · image de plus en plus sombre du midi à la nuit : luminance midi 0.36, crépuscule 0.20, nuit 0.03
+[OK] 1920x1080_high · jour_nuit · nuit lisible (image jamais noire) : luminance 0.034
+[OK] 1920x1080_high · jour_recoupe · capture enregistrée
+[ÉCHEC] 1920x1080_high · jour_recoupe · taille de l'image : 1857x1011, attendu 1920x1080
+[ÉCHEC] 1920x1080_high · jour_nuit · réglages recoupés : image d'avant : luminance 0.476 puis 0.286
+[OK] 1920x1080_high · journal · aucune erreur ni avertissement Godot
+[OK] 1920x1080_high · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1920x1080_high · journal · qualité réellement appliquée : high appliquée (9 capture(s)) ; dernière ligne : high (demandée high, source cli)
+Tests graphiques : 15/25 vérifications réussies
+Rapport : ~/mesures-2026-11-01-auto/r781/jour_nuit/high/rapport.html

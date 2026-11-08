@@ -1,0 +1,28 @@
+== 1920x1080_low ==
+[OK] 1920x1080_low · jour_nuit · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-visual-routes-05bofu73/demo.world
+[OK] 1920x1080_low · jour_coupe · capture enregistrée
+[ÉCHEC] 1920x1080_low · jour_coupe · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · jour_midi · capture enregistrée
+[ÉCHEC] 1920x1080_low · jour_midi · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · jour_crepuscule · capture enregistrée
+[ÉCHEC] 1920x1080_low · jour_crepuscule · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · jour_heure_bleue · capture enregistrée
+[ÉCHEC] 1920x1080_low · jour_heure_bleue · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · jour_nuit · capture enregistrée
+[ÉCHEC] 1920x1080_low · jour_nuit · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · saison_automne · capture enregistrée
+[ÉCHEC] 1920x1080_low · saison_automne · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · saison_hiver · capture enregistrée
+[ÉCHEC] 1920x1080_low · saison_hiver · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · saison_printemps · capture enregistrée
+[ÉCHEC] 1920x1080_low · saison_printemps · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · jour_nuit · image de plus en plus sombre du midi à la nuit : luminance midi 0.41, crépuscule 0.22, nuit 0.04
+[OK] 1920x1080_low · jour_nuit · nuit lisible (image jamais noire) : luminance 0.043
+[OK] 1920x1080_low · jour_recoupe · capture enregistrée
+[ÉCHEC] 1920x1080_low · jour_recoupe · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · jour_nuit · réglages recoupés : image d'avant : luminance 0.354 puis 0.365
+[OK] 1920x1080_low · journal · aucune erreur ni avertissement Godot
+[OK] 1920x1080_low · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1920x1080_low · journal · qualité réellement appliquée : low appliquée (9 capture(s)) ; dernière ligne : low (demandée low, source cli)
+Tests graphiques : 16/25 vérifications réussies
+Rapport : ~/mesures-2026-11-01-auto/r781/jour_nuit/low/rapport.html

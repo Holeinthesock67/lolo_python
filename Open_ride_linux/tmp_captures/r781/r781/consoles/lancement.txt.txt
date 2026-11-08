@@ -1,0 +1,50 @@
+08:11:33 empreinte avant 7c0c6e30d7f565baa3167a4b883cbe3e
+08:11:33 tête f6c87a11
+patch r781 appliqué
+08:12:42 biome alpine low_branche coupé
+08:15:49 fin rc=0
+08:15:49 biome alpine medium_branche coupé
+08:18:57 fin rc=0
+08:18:57 biome alpine high_branche coupé
+08:22:03 fin rc=0
+08:22:03 biome savanna low_branche coupé
+08:25:10 fin rc=0
+08:25:10 biome savanna medium_branche coupé
+08:28:17 fin rc=0
+08:28:17 biome savanna high_branche coupé
+08:31:24 fin rc=0
+08:31:24 biome sand_desert low_branche coupé
+08:34:31 fin rc=0
+08:34:31 biome sand_desert medium_branche coupé
+08:37:39 fin rc=0
+08:37:39 biome sand_desert high_branche coupé
+08:40:46 fin rc=0
+08:40:46 visual natif low (comparaison avec main)
+08:49:54 fin visual rc=1
+08:49:54 biome alpine low hiver+theme
+08:53:03 fin rc=1
+08:53:03 biome alpine medium hiver+theme
+08:56:11 fin rc=1
+08:56:11 biome alpine high hiver+theme
+08:59:19 fin rc=0
+08:59:19 biome savanna low hiver+theme
+09:02:27 fin rc=0
+09:02:27 biome savanna medium hiver+theme
+09:05:35 fin rc=1
+09:05:35 biome savanna high hiver+theme
+09:08:43 fin rc=1
+09:08:43 biome sand_desert low hiver+theme
+09:11:51 fin rc=0
+09:11:51 biome sand_desert medium hiver+theme
+09:14:58 fin rc=1
+09:14:58 biome sand_desert high hiver+theme
+09:18:06 fin rc=0
+09:18:07 visual --jour-nuit low
+09:19:06 fin rc=1
+09:19:06 visual --jour-nuit medium
+09:20:06 fin rc=1
+09:20:06 visual --jour-nuit high
+09:21:09 fin rc=1
+09:21:10 empreinte après 7c0c6e30d7f565baa3167a4b883cbe3e
+09:21:10 clone 9c7c9556
+09:21:10 FIN

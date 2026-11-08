@@ -1,0 +1,733 @@
+== 1680x1011_low ==
+[ÉCHEC] 1680x1011_low · attente · capture enregistrée : aucune ligne « screenshot » dans le journal de l'engine
+[OK] 1680x1011_low · vue_fixe · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-visual-routes-mu7ko2rg/demo.world
+[OK] 1680x1011_low · vue_fixe · capture enregistrée
+[OK] 1680x1011_low · vue_fixe · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1680x1011_low · vue_fixe · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · vue_fixe · texte power : « 248 »
+[OK] 1680x1011_low · vue_fixe · texte speed : « 0.0 »
+[OK] 1680x1011_low · vue_fixe · texte cadence : « 90 »
+[OK] 1680x1011_low · vue_fixe · texte hr : « 142 »
+[OK] 1680x1011_low · vue_fixe · texte grade : « +4.5 % »
+[OK] 1680x1011_low · vue_fixe · texte distance : « 1.50 km »
+[OK] 1680x1011_low · vue_fixe · texte status : « ÉTAT: RUNNING | TRAINER: CONNECTED | ENTRÉE: CONNECTED »
+[OK] 1680x1011_low · vue_fixe · ligne ERG cachée en SIM
+[OK] 1680x1011_low · vue_fixe · cible ERG cachée en SIM
+[OK] 1680x1011_low · vue_fixe · bandeau ERG caché en SIM
+[OK] 1680x1011_low · vue_fixe · menu caché pendant la séance
+[OK] 1680x1011_low · vue_fixe · bandeau caché (hors rappel des commandes)
+[OK] 1680x1011_low · vue_fixe · éléments dans l'écran : 18 éléments visibles
+[OK] 1680x1011_low · vue_fixe · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · vue_fixe · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1011_low · vue_fixe · panneaux sans chevauchement
+[OK] 1680x1011_low · vue_fixe · textes dans panel_left
+[OK] 1680x1011_low · vue_fixe · textes dans panel_right
+[OK] 1680x1011_low · vue_fixe · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1011_low · vue_fixe · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1011_low · vue_fixe · image ni noire ni uniforme : luminance 0.53, écart type 0.202
+[OK] 1680x1011_low · vue_fixe · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1680x1011_low · vue_fixe · sol en bas de l'image : 97% de pixels hors ciel
+[OK] 1680x1011_low · vue_fixe · maillages affichés : 25 maillages visibles
+[OK] 1680x1011_low · nuages · capture enregistrée
+[OK] 1680x1011_low · nuages · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · nuages · nuages dessinés au-dessus de l'horizon : 14.7% de pixels de nuage
+[OK] 1680x1011_low · mouvement_1 · capture enregistrée
+[OK] 1680x1011_low · mouvement_1 · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · mouvement_2 · capture enregistrée
+[OK] 1680x1011_low · mouvement_2 · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · mouvement_2 · texte speed : « 28.8 »
+[OK] 1680x1011_low · mouvement_2 · distance affichée qui avance : 1.51 km → 1.53 km
+[OK] 1680x1011_low · mouvement_2 · caméra à la vitesse du core (8 m/s ± 25 %) : 26.6 m en 3.32 s, soit 8.0 m/s
+[OK] 1680x1011_low · mouvement_2 · le sol défile à l'image : écart moyen 8.19 niveaux
+[OK] 1680x1011_low · mouvement_2 · image ni noire ni uniforme : luminance 0.54, écart type 0.193
+[OK] 1680x1011_low · mouvement_2 · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1680x1011_low · mouvement_2 · sol en bas de l'image : 97% de pixels hors ciel
+[OK] 1680x1011_low · mouvement_2 · maillages affichés : 24 maillages visibles
+[OK] 1680x1011_low · vent · capture enregistrée
+[OK] 1680x1011_low · vent · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · vent · indicateur du vent affiché
+[OK] 1680x1011_low · vent · texte wind_verdict : « Vent défavorable »
+[OK] 1680x1011_low · vent · texte wind_level : « fort »
+[OK] 1680x1011_low · vent · texte wind_speed : « 26 km/h face »
+[OK] 1680x1011_low · vent · éléments dans l'écran : 22 éléments visibles
+[OK] 1680x1011_low · vent · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · vent · panneaux dans l'écran : 5 panneaux
+[OK] 1680x1011_low · vent · panneaux sans chevauchement
+[OK] 1680x1011_low · vent · textes dans panel_left
+[OK] 1680x1011_low · vent · textes dans panel_right
+[OK] 1680x1011_low · vent · pastille « Vent défavorable » en rouge : 82% de pixels rouges
+[OK] 1680x1011_low · vent · indicateur sous la colonne de gauche : rectangle [26.25, 283.605194091797, 318.9375, 140.384552001953]
+[OK] 1680x1011_low · abri · capture enregistrée
+[OK] 1680x1011_low · abri · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · abri · pastille de l'abri affichée
+[OK] 1680x1011_low · abri · texte draft : « Abri 30 % »
+[OK] 1680x1011_low · abri · éléments dans l'écran : 23 éléments visibles
+[OK] 1680x1011_low · abri · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · abri · panneaux dans l'écran : 6 panneaux
+[OK] 1680x1011_low · abri · panneaux sans chevauchement
+[OK] 1680x1011_low · abri · textes dans panel_left
+[OK] 1680x1011_low · abri · textes dans panel_right
+[OK] 1680x1011_low · abri · abri sous l'indicateur du vent : rectangle [26.25, 437.11962890625, 318.9375, 46.7948608398438]
+[OK] 1680x1011_low · abri · watts économisés montrés en medium et high, cachés en low : qualité low, visible False
+[OK] 1680x1011_low · bots · capture enregistrée
+[OK] 1680x1011_low · bots · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · bots · encart des bots affiché
+[OK] 1680x1011_low · bots · texte bots_line1 : « Bot 250 W »
+[OK] 1680x1011_low · bots · texte bots_line2 : « Fantôme du 26/10 »
+[OK] 1680x1011_low · bots · texte bots_ahead : « Bot 250 W »
+[OK] 1680x1011_low · bots · texte bots_behind : « Fantôme du 26/10 »
+[OK] 1680x1011_low · bots · texte bots_jerseys : « Vert : toi · Pois : Bot 250 W »
+[OK] 1680x1011_low · bots · encart sous le panneau de droite : rectangle [1334.8125, 447.728546142578, 318.9375, 97.8437805175781]
+[OK] 1680x1011_low · bots · bot devant visible dans le champ de la caméra : {'in_view': 1, 'lanes': {'bot1': 2.1, 'ghost': 2.1}, 'lods': [0, 0, 2], 'shown': 2}
+[OK] 1680x1011_low · bots · éléments dans l'écran : 25 éléments visibles
+[OK] 1680x1011_low · bots · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · bots · panneaux dans l'écran : 5 panneaux
+[OK] 1680x1011_low · bots · panneaux sans chevauchement
+[OK] 1680x1011_low · bots · textes dans panel_left
+[OK] 1680x1011_low · bots · textes dans panel_right
+[OK] 1680x1011_low · jauge_abri_coupee · capture enregistrée
+[OK] 1680x1011_low · jauge_abri_coupee · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · jauge_abri_coupee · réglage coupé par défaut : pas de jauge : {'bot': '', 'fill': 0.0, 'glow': False, 'on_screen': False, 'point': [], 'text': '', 'visible': False}
+[OK] 1680x1011_low · jauge_abri · capture enregistrée
+[OK] 1680x1011_low · jauge_abri · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · jauge_abri · jauge au-dessus du bot qui abrite, dans l'image : {'bot': 'bot1', 'fill': 0.3, 'glow': False, 'on_screen': True, 'point': [736.500732421875, 264.320861816406], 'text': '', 'visible': True}
+[OK] 1680x1011_low · jauge_abri · texte sous l'arc : «  » : ''
+[OK] 1680x1011_low · jauge_abri · pastille du HUD au même pourcentage : 'Abri 30 %'
+[OK] 1680x1011_low · jauge_abri · éléments dans l'écran : 23 éléments visibles
+[OK] 1680x1011_low · jauge_abri · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · jauge_abri · panneaux dans l'écran : 6 panneaux
+[OK] 1680x1011_low · jauge_abri · panneaux sans chevauchement
+[OK] 1680x1011_low · jauge_abri · textes dans panel_left
+[OK] 1680x1011_low · jauge_abri · textes dans panel_right
+[OK] 1680x1011_low · jauge_abri_retiree · capture enregistrée
+[OK] 1680x1011_low · jauge_abri_retiree · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · jauge_abri_retiree · réglage recoupé : jauge cachée : {'bot': '', 'fill': 0.0, 'glow': False, 'on_screen': False, 'point': [], 'text': '', 'visible': False}
+[OK] 1680x1011_low · abri_dans_la_roue · capture enregistrée
+[OK] 1680x1011_low · abri_dans_la_roue · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · abri_dans_la_roue · avatar à 2.1 m de l'axe : 2.1
+[OK] 1680x1011_low · abri_dans_la_roue · caméra sur la ligne de l'avatar : 2.09910749242205
+[OK] 1680x1011_low · abri_dans_la_roue · bot à 2,1 m de l'axe et dans l'image : {'in_view': 1, 'lanes': {'bot1': 2.1}, 'lods': [0, 1, 0], 'shown': 1}
+[OK] 1680x1011_low · abri_dans_la_roue · avatar dans l'image : {'camera_lane_m': 2.09910749242205, 'crank': 4.13419770204725, 'crank_clock_s': 101.525697, 'crank_turned': 550.771319426671, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 2.1, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1680x1011_low · abri_depassement · capture enregistrée
+[OK] 1680x1011_low · abri_depassement · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · abri_depassement · avatar à 1.1 m de l'axe : 1.1
+[OK] 1680x1011_low · abri_depassement · caméra sur la ligne de l'avatar : 1.10000035965864
+[OK] 1680x1011_low · abri_depassement · bot à 2,1 m de l'axe et dans l'image : {'in_view': 1, 'lanes': {'bot1': 2.1}, 'lods': [0, 1, 0], 'shown': 1}
+[OK] 1680x1011_low · abri_depassement · avatar dans l'image : {'camera_lane_m': 1.10000035965864, 'crank': 4.81156591886572, 'crank_clock_s': 111.952347, 'crank_turned': 645.696467251183, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.1, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1680x1011_low · abri_tracteur_approche · capture enregistrée
+[OK] 1680x1011_low · abri_tracteur_approche · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · abri_tracteur · capture enregistrée
+[OK] 1680x1011_low · abri_tracteur · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · abri_tracteur · jauge sur l'arrière du tracteur, dans l'image, sous le bandeau du haut : {'bot': 'veh:v77', 'fill': 0.763636363636364, 'glow': False, 'on_screen': True, 'point': [643.233154296875, 220.344604492188], 'text': '', 'visible': True}
+[OK] 1680x1011_low · abri_tracteur · tracteur du core sur la route, 4 à 9 m devant, à 1,5 m de l'axe : [{'dir': 1, 'half_width': 1.07, 'kind': 'tractor', 'lateral': 1.5, 'rel_m': 6.49841119411144, 'what': 'vehicle'}]
+[OK] 1680x1011_low · abri_tracteur · éléments dans l'écran : 20 éléments visibles
+[OK] 1680x1011_low · abri_tracteur · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · abri_tracteur · panneaux dans l'écran : 5 panneaux
+[OK] 1680x1011_low · abri_tracteur · panneaux sans chevauchement
+[OK] 1680x1011_low · abri_tracteur · textes dans panel_left
+[OK] 1680x1011_low · abri_tracteur · textes dans panel_right
+[OK] 1680x1011_low · abri_tracteur_parti · capture enregistrée
+[OK] 1680x1011_low · abri_tracteur_parti · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · abri_tracteur_parti · liste vide : plus de tracteur près du cycliste : []
+[OK] 1680x1011_low · abri_cyclistes_decor_approche · capture enregistrée
+[OK] 1680x1011_low · abri_cyclistes_decor_approche · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · abri_cyclistes_decor · capture enregistrée
+[OK] 1680x1011_low · abri_cyclistes_decor · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · abri_cyclistes_decor · jauge au-dessus du dernier cycliste du groupe, dans l'image : {'bot': 'rider:c77-2', 'fill': 0.690909090909091, 'glow': False, 'on_screen': True, 'point': [641.647033691406, 126.012313842773], 'text': '', 'visible': True}
+[OK] 1680x1011_low · abri_cyclistes_decor · trois cyclistes du core en file à 1,5 m de l'axe, le dernier 1 à 4 m devant : [{'dir': 1, 'half_width': 0.3, 'id': 'c77-2', 'kind': 'core', 'lateral': 1.5, 'rel_m': 2.49841119411144, 'what': 'cyclist'}, {'dir': 1, 'half_width': 0.3, 'id': 'c77-1', 'kind': 'core', 'lateral': 1.5, 'rel_m': 3.99841119411144, 'what': 'cyclist'}, {'dir': 1, 'half_width': 0.3, 'id': 'c77-0', 'kind': 'core', 'lateral': 1.5, 'rel_m': 5.49841119411144, 'what': 'cyclist'}]
+[OK] 1680x1011_low · abri_cyclistes_decor · éléments dans l'écran : 20 éléments visibles
+[OK] 1680x1011_low · abri_cyclistes_decor · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · abri_cyclistes_decor · panneaux dans l'écran : 5 panneaux
+[OK] 1680x1011_low · abri_cyclistes_decor · panneaux sans chevauchement
+[OK] 1680x1011_low · abri_cyclistes_decor · textes dans panel_left
+[OK] 1680x1011_low · abri_cyclistes_decor · textes dans panel_right
+[OK] 1680x1011_low · abri_cyclistes_decor_parti · capture enregistrée
+[OK] 1680x1011_low · abri_cyclistes_decor_parti · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · abri_cyclistes_decor_parti · liste vide : plus de groupe près du cycliste : []
+[OK] 1680x1011_low · cyclistes_decor_tenues_approche · capture enregistrée
+[OK] 1680x1011_low · cyclistes_decor_tenues_approche · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · cyclistes_decor_tenues · capture enregistrée
+[OK] 1680x1011_low · cyclistes_decor_tenues · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · cyclistes_decor_tenues · trois cyclistes du décor à côté de l'avatar, 2,7 m de l'axe : [{'dir': 1, 'half_width': 0.3, 'id': 'c88-0', 'kind': 'core', 'lateral': 2.7, 'rel_m': -1.60158880588847, 'what': 'cyclist'}, {'dir': 1, 'half_width': 0.3, 'id': 'c88-1', 'kind': 'core', 'lateral': 2.7, 'rel_m': -0.00158880588855936, 'what': 'cyclist'}, {'dir': 1, 'half_width': 0.3, 'id': 'c88-2', 'kind': 'core', 'lateral': 2.7, 'rel_m': 1.59841119411158, 'what': 'cyclist'}]
+[OK] 1680x1011_low · cyclistes_decor_tenues · dessinés comme les bots, au niveau de détail de près : niveaux [0, 3, 0]
+[OK] 1680x1011_low · cyclistes_decor_tenues · image ni noire ni uniforme : luminance 0.47, écart type 0.239
+[OK] 1680x1011_low · cyclistes_decor_tenues · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1680x1011_low · cyclistes_decor_tenues · sol en bas de l'image : 86% de pixels hors ciel
+[OK] 1680x1011_low · cyclistes_decor_tenues · maillages affichés : 24 maillages visibles
+[OK] 1680x1011_low · cyclistes_decor_double_approche · capture enregistrée
+[OK] 1680x1011_low · cyclistes_decor_double_approche · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · cyclistes_decor_double · capture enregistrée
+[OK] 1680x1011_low · cyclistes_decor_double · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · cyclistes_decor_double · groupe de trois qui double à gauche, de 1 à 6 m devant : [{'dir': 1, 'half_width': 0.3, 'id': 'c89-0', 'kind': 'core', 'lateral': 0.2, 'rel_m': 1.49841119411144, 'what': 'cyclist'}, {'dir': 1, 'half_width': 0.3, 'id': 'c89-1', 'kind': 'core', 'lateral': -0.6, 'rel_m': 2.69841119411149, 'what': 'cyclist'}, {'dir': 1, 'half_width': 0.3, 'id': 'c89-2', 'kind': 'core', 'lateral': 0.2, 'rel_m': 3.89841119411153, 'what': 'cyclist'}]
+[OK] 1680x1011_low · cyclistes_decor_double · éléments dans l'écran : 19 éléments visibles
+[OK] 1680x1011_low · cyclistes_decor_double · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · cyclistes_decor_double · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1011_low · cyclistes_decor_double · panneaux sans chevauchement
+[OK] 1680x1011_low · cyclistes_decor_double · textes dans panel_left
+[OK] 1680x1011_low · cyclistes_decor_double · textes dans panel_right
+[OK] 1680x1011_low · sans_bot · capture enregistrée
+[OK] 1680x1011_low · sans_bot · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · sans_bot · sans bot : encart caché, aucune silhouette : {'in_view': 0, 'lanes': {}, 'lods': [0, 0, 0], 'shown': 0}
+[OK] 1680x1011_low · bots_segment_bonus · capture enregistrée
+[OK] 1680x1011_low · bots_segment_bonus · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · bots_segment_bonus · blocs segment et bonus, voisins avec leur ligne complète et maillots affichés
+[OK] 1680x1011_low · bots_segment_bonus · texte bots_ahead : « Rouleur  281 W · 3,7 W/kg »
+[OK] 1680x1011_low · bots_segment_bonus · texte bots_behind : « Sprinteur  255 W · 3,5 W/kg »
+[OK] 1680x1011_low · bots_segment_bonus · texte bots_jerseys : « Vert : Sprinteur · Pois : Grimpeur »
+[OK] 1680x1011_low · bots_segment_bonus · segment, bonus puis bots empilés : hauts 448, 556, 609 px
+[OK] 1680x1011_low · bots_segment_bonus · profil d'altitude sous le panneau de droite, au-dessus du segment : profil 362–437 px, panneau jusqu'à 352 px, segment à 448 px
+[OK] 1680x1011_low · bots_segment_bonus · éléments dans l'écran : 30 éléments visibles
+[OK] 1680x1011_low · bots_segment_bonus · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · bots_segment_bonus · panneaux dans l'écran : 7 panneaux
+[OK] 1680x1011_low · bots_segment_bonus · panneaux sans chevauchement
+[OK] 1680x1011_low · bots_segment_bonus · textes dans panel_left
+[OK] 1680x1011_low · bots_segment_bonus · textes dans panel_right
+[OK] 1680x1011_low · avatar_subjectif · capture enregistrée
+[OK] 1680x1011_low · avatar_subjectif · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_subjectif · avatar caché en vue subjective : {'camera_lane_m': 1.20000000000072, 'crank': 6.06618607781788, 'crank_clock_s': 184.885318, 'crank_turned': 1294.11917404964, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': False, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'subjective', 'visible': False}
+[OK] 1680x1011_low · avatar_assis · capture enregistrée
+[OK] 1680x1011_low · avatar_assis · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_assis_2 · capture enregistrée
+[OK] 1680x1011_low · avatar_assis_2 · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_assis · avatar visible dans le champ de la caméra de contrôle : {'camera_lane_m': 1.2, 'crank': 4.57449945227007, 'crank_clock_s': 188.264124, 'crank_turned': 1317.76022865281, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1680x1011_low · avatar_assis · avatar assis à plat
+[OK] 1680x1011_low · avatar_assis · avatar entier (niveau de détail 0) : 5640 triangles
+[OK] 1680x1011_low · avatar_assis_2 · pédalier qui tourne d'une capture à l'autre, au plus à la cadence : 9.53 rad parcourus (3.04 rad à l'image) en 2.80 s, au plus 10.85 rad à 37 tr/min
+[OK] 1680x1011_low · avatar_assis_2 · les jambes changent l'image : écart moyen 2.26 niveaux
+[OK] 1680x1011_low · avatar_assis · image ni noire ni uniforme : luminance 0.45, écart type 0.190
+[OK] 1680x1011_low · avatar_assis · ciel en haut de l'image : 99% de pixels de ciel
+[OK] 1680x1011_low · avatar_assis · sol en bas de l'image : 97% de pixels hors ciel
+[OK] 1680x1011_low · avatar_assis · maillages affichés : 25 maillages visibles
+[OK] 1680x1011_low · avatar_danseuse · capture enregistrée
+[OK] 1680x1011_low · avatar_danseuse · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_danseuse · en danseuse sur 10 % de pente : {'camera_lane_m': 1.2, 'crank': 3.65981344144385, 'crank_clock_s': 195.143555, 'crank_turned': 1341.9782838707, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': True, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1680x1011_low · avatar_frame_round · capture enregistrée
+[OK] 1680x1011_low · avatar_frame_round · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_frame_round · frame_round : équipement appliqué : {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1680x1011_low · avatar_frame_light · capture enregistrée
+[OK] 1680x1011_low · avatar_frame_light · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_frame_light · frame_light : équipement appliqué : {'frame': 'frame_light', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1680x1011_low · avatar_frame_aero · capture enregistrée
+[OK] 1680x1011_low · avatar_frame_aero · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_frame_aero · frame_aero : équipement appliqué : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1680x1011_low · avatar_frame_tt · capture enregistrée
+[OK] 1680x1011_low · avatar_frame_tt · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_frame_tt · frame_tt : équipement appliqué : {'frame': 'frame_tt', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1680x1011_low · avatar_frame_light · cadre : frame_round et frame_light se distinguent : écart moyen 2.45 niveaux
+[OK] 1680x1011_low · avatar_frame_aero · cadre : frame_round et frame_aero se distinguent : écart moyen 3.18 niveaux
+[OK] 1680x1011_low · avatar_frame_tt · cadre : frame_round et frame_tt se distinguent : écart moyen 3.81 niveaux
+[OK] 1680x1011_low · avatar_frame_aero · cadre : frame_light et frame_aero se distinguent : écart moyen 3.94 niveaux
+[OK] 1680x1011_low · avatar_frame_tt · cadre : frame_light et frame_tt se distinguent : écart moyen 3.83 niveaux
+[OK] 1680x1011_low · avatar_frame_tt · cadre : frame_aero et frame_tt se distinguent : écart moyen 3.49 niveaux
+[OK] 1680x1011_low · avatar_wheels_spoked · capture enregistrée
+[OK] 1680x1011_low · avatar_wheels_spoked · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_wheels_spoked · wheels_spoked : équipement appliqué : {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1680x1011_low · avatar_wheels_spoked_light · capture enregistrée
+[OK] 1680x1011_low · avatar_wheels_spoked_light · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_wheels_spoked_light · wheels_spoked_light : équipement appliqué : {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked_light'}
+[OK] 1680x1011_low · avatar_wheels_deep · capture enregistrée
+[OK] 1680x1011_low · avatar_wheels_deep · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_wheels_deep · wheels_deep : équipement appliqué : {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_deep'}
+[OK] 1680x1011_low · avatar_wheels_disc · capture enregistrée
+[OK] 1680x1011_low · avatar_wheels_disc · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_wheels_disc · wheels_disc : équipement appliqué : {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_disc'}
+[OK] 1680x1011_low · avatar_wheels_spoked_light · roues : wheels_spoked et wheels_spoked_light se distinguent : écart moyen 2.35 niveaux
+[OK] 1680x1011_low · avatar_wheels_deep · roues : wheels_spoked et wheels_deep se distinguent : écart moyen 2.85 niveaux
+[OK] 1680x1011_low · avatar_wheels_disc · roues : wheels_spoked et wheels_disc se distinguent : écart moyen 5.89 niveaux
+[OK] 1680x1011_low · avatar_wheels_deep · roues : wheels_spoked_light et wheels_deep se distinguent : écart moyen 3.30 niveaux
+[OK] 1680x1011_low · avatar_wheels_disc · roues : wheels_spoked_light et wheels_disc se distinguent : écart moyen 5.79 niveaux
+[OK] 1680x1011_low · avatar_wheels_disc · roues : wheels_deep et wheels_disc se distinguent : écart moyen 5.06 niveaux
+[OK] 1680x1011_low · avatar_40kmh · capture enregistrée
+[OK] 1680x1011_low · avatar_40kmh · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_40kmh · pas de traînées d'air à 40 km/h : {'camera_lane_m': 1.2, 'crank': 5.09185158975598, 'crank_clock_s': 225.802049, 'crank_turned': 1450.22447224107, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_stripes', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'side', 'visible': True}
+[OK] 1680x1011_low · avatar_50kmh · capture enregistrée
+[OK] 1680x1011_low · avatar_50kmh · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · avatar_50kmh · traînées d'air visibles à 50 km/h : {'camera_lane_m': 1.2, 'crank': 3.73147159907617, 'crank_clock_s': 228.982901, 'crank_turned': 1461.43046286475, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_stripes', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': True, 'triangles': 5640, 'view': 'side', 'visible': True}
+[OK] 1680x1011_low · camera_subjective · capture enregistrée
+[OK] 1680x1011_low · camera_subjective · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · camera_subjective · vue subjective affichée : subjective
+[OK] 1680x1011_low · camera_subjective · avatar masqué en vue subjective : {'camera_lane_m': 1.2, 'crank': 2.72353400767276, 'crank_clock_s': 234.035573, 'crank_turned': 1485.55526650207, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': False, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': True, 'triangles': 5640, 'view': 'subjective', 'visible': False}
+[OK] 1680x1011_low · camera_follow_near · capture enregistrée
+[OK] 1680x1011_low · camera_follow_near · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · camera_follow_near · vue follow_near affichée : follow_near
+[OK] 1680x1011_low · camera_follow_near · avatar visible dans le champ de la caméra : {'camera_lane_m': 1.2, 'crank': 2.3886680862549, 'crank_clock_s': 237.512366, 'crank_turned': 1497.78677119501, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow_near', 'visible': True}
+[OK] 1680x1011_low · camera_follow_far · capture enregistrée
+[OK] 1680x1011_low · camera_follow_far · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · camera_follow_far · vue follow_far affichée : follow_far
+[OK] 1680x1011_low · camera_follow_far · avatar visible dans le champ de la caméra : {'camera_lane_m': 1.2, 'crank': 2.22199989391767, 'crank_clock_s': 240.997069, 'crank_turned': 1510.18647361703, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow_far', 'visible': True}
+[OK] 1680x1011_low · camera_side · capture enregistrée
+[OK] 1680x1011_low · camera_side · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · camera_side · vue side affichée : side
+[OK] 1680x1011_low · camera_side · avatar visible dans le champ de la caméra : {'camera_lane_m': 1.2, 'crank': 2.91451173924366, 'crank_clock_s': 244.756129, 'crank_turned': 1523.44535607671, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'side', 'visible': True}
+[OK] 1680x1011_low · camera_subjective_2 · capture enregistrée
+[OK] 1680x1011_low · camera_subjective_2 · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · camera_subjective_2 · vue subjective affichée : subjective
+[OK] 1680x1011_low · camera_subjective_2 · avatar masqué en vue subjective : {'camera_lane_m': 1.2, 'crank': 3.3028108109915, 'crank_clock_s': 248.387278, 'crank_turned': 1536.40002576282, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': False, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'subjective', 'visible': False}
+[OK] 1680x1011_low · camera_follow_near · subjective et follow_near se distinguent : écart moyen 18.57 niveaux
+[OK] 1680x1011_low · camera_follow_far · subjective et follow_far se distinguent : écart moyen 30.00 niveaux
+[OK] 1680x1011_low · camera_side · subjective et side se distinguent : écart moyen 31.62 niveaux
+[OK] 1680x1011_low · camera_follow_far · follow_near et follow_far se distinguent : écart moyen 27.58 niveaux
+[OK] 1680x1011_low · camera_side · follow_near et side se distinguent : écart moyen 31.41 niveaux
+[OK] 1680x1011_low · camera_side · follow_far et side se distinguent : écart moyen 28.62 niveaux
+[OK] 1680x1011_low · camera_follow_far · suivi éloigné plus haut que le suivi proche : 1184.6 m contre 1180.7 m
+[OK] 1680x1011_low · camera_transition · capture enregistrée
+[OK] 1680x1011_low · camera_transition · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · camera_transition · pose intermédiaire pendant la transition : True
+[OK] 1680x1011_low · camera_transition · pas de ciel sous l'horizon pendant la bascule : 0.0% de pixels de ciel dans le tiers bas
+[OK] 1680x1011_low · camera_defaut · capture enregistrée
+[OK] 1680x1011_low · camera_defaut · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · camera_defaut · A long : retour au suivi proche : follow_near
+[OK] 1680x1011_low · camera_precedente · capture enregistrée
+[OK] 1680x1011_low · camera_precedente · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · camera_precedente · flèche bas : vue précédente (subjective) : subjective
+[OK] 1680x1011_low · camera_memoire · dernière vue écrite dans render.camera : [{'key': 'render.camera', 'value': 'follow_near'}, {'key': 'render.camera', 'value': 'follow_far'}, {'key': 'render.camera', 'value': 'side'}, {'key': 'render.camera', 'value': 'subjective'}, {'key': 'render.camera', 'value': 'follow_near'}, {'key': 'render.camera', 'value': 'follow_near'}, {'key': 'render.camera', 'value': 'subjective'}]
+[OK] 1680x1011_low · pluie · capture enregistrée
+[OK] 1680x1011_low · pluie · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · pluie · particules de pluie actives : 413 particules
+[OK] 1680x1011_low · pluie · chaussée mouillée : wetness 1.00
+[OK] 1680x1011_low · pluie · éléments dans l'écran : 20 éléments visibles
+[OK] 1680x1011_low · pluie · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · pluie · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1011_low · pluie · panneaux sans chevauchement
+[OK] 1680x1011_low · pluie · textes dans panel_left
+[OK] 1680x1011_low · pluie · textes dans panel_right
+[OK] 1680x1011_low · pluie · image ni noire ni uniforme : luminance 0.53, écart type 0.200
+[OK] 1680x1011_low · pluie · ciel en haut de l'image : 99% de pixels de ciel
+[OK] 1680x1011_low · pluie · sol en bas de l'image : 96% de pixels hors ciel
+[OK] 1680x1011_low · pluie · maillages affichés : 25 maillages visibles
+[OK] 1680x1011_low · col · capture enregistrée
+[OK] 1680x1011_low · col · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · col · panneau du sommet devant la caméra : « Sommet / 1 174 m » à 25 m
+[OK] 1680x1011_low · col · lettres du panneau lisibles : 7.4 px pour 720 lignes
+[OK] 1680x1011_low · col · aucun spectateur sur une montée de moins de 3 km : 0 spectateurs
+[OK] 1680x1011_low · col · éléments dans l'écran : 21 éléments visibles
+[OK] 1680x1011_low · col · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · col · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1011_low · col · panneaux sans chevauchement
+[OK] 1680x1011_low · col · textes dans panel_left
+[OK] 1680x1011_low · col · textes dans panel_right
+[OK] 1680x1011_low · col · bandeau sans chevauchement du HUD
+[OK] 1680x1011_low · col · image ni noire ni uniforme : luminance 0.52, écart type 0.200
+[OK] 1680x1011_low · col · ciel en haut de l'image : 97% de pixels de ciel
+[OK] 1680x1011_low · col · sol en bas de l'image : 97% de pixels hors ciel
+[OK] 1680x1011_low · col · maillages affichés : 25 maillages visibles
+[OK] 1680x1011_low · erg · capture enregistrée
+[OK] 1680x1011_low · erg · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · erg · texte target : « 230 W »
+[OK] 1680x1011_low · erg · texte erg_title : « Sweet spot 3x10 — Bloc 2 / 7 · Effort »
+[OK] 1680x1011_low · erg · texte erg_target : « 230 W »
+[OK] 1680x1011_low · erg · texte erg_next : « Ensuite : 150 W »
+[OK] 1680x1011_low · erg · textes du bandeau ERG de largeur lisible : trop étroits : 
+[OK] 1680x1011_low · erg · ligne ERG du panneau central laissée au bandeau
+[OK] 1680x1011_low · erg · profil d'altitude caché en ERG
+[OK] 1680x1011_low · erg · éléments dans l'écran : 26 éléments visibles
+[OK] 1680x1011_low · erg · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · erg · panneaux dans l'écran : 3 panneaux
+[OK] 1680x1011_low · erg · panneaux sans chevauchement
+[OK] 1680x1011_low · erg · textes dans panel_left
+[OK] 1680x1011_low · erg · textes dans panel_right
+[OK] 1680x1011_low · erg · bandeau sans chevauchement du HUD
+[OK] 1680x1011_low · erg · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1011_low · erg · texte status dessiné (pixels clairs) : 9.4% de pixels clairs
+[OK] 1680x1011_low · erg · histogramme des blocs affiché : rectangle [52.5, 911.212951660156, 1575.0, 80.0922241210938]
+[OK] 1680x1011_low · erg · bloc en cours dessiné en couleur de zone : 44.4% de pixels jaunes
+[OK] 1680x1011_low · erg · blocs à venir visibles en couleur de zone : 39.8% de pixels jaunes
+[OK] 1680x1011_low · erg_cible_longue · capture enregistrée
+[OK] 1680x1011_low · erg_cible_longue · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · erg_cible_longue · texte target : « 152 W (98 %) »
+[OK] 1680x1011_low · erg_cible_longue · braquet caché en ERG
+[OK] 1680x1011_low · erg_cible_longue · éléments dans l'écran : 26 éléments visibles
+[OK] 1680x1011_low · erg_cible_longue · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · erg_cible_longue · panneaux dans l'écran : 3 panneaux
+[OK] 1680x1011_low · erg_cible_longue · panneaux sans chevauchement
+[OK] 1680x1011_low · erg_cible_longue · textes dans panel_left
+[OK] 1680x1011_low · erg_cible_longue · textes dans panel_right
+[OK] 1680x1011_low · erg_cible_longue · bandeau sans chevauchement du HUD
+[OK] 1680x1011_low · erg_palier_50w · capture enregistrée
+[OK] 1680x1011_low · erg_palier_50w · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · erg_palier_50w · texte target : « 50 W (98 %) »
+[OK] 1680x1011_low · erg_palier_50w · braquet caché au palier de 50 W
+[OK] 1680x1011_low · erg_palier_50w · éléments dans l'écran : 25 éléments visibles
+[OK] 1680x1011_low · erg_palier_50w · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · erg_palier_50w · panneaux dans l'écran : 3 panneaux
+[OK] 1680x1011_low · erg_palier_50w · panneaux sans chevauchement
+[OK] 1680x1011_low · erg_palier_50w · textes dans panel_left
+[OK] 1680x1011_low · erg_palier_50w · textes dans panel_right
+[OK] 1680x1011_low · erg_courbes · capture enregistrée
+[OK] 1680x1011_low · erg_courbes · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · erg_courbes · courbes affichées à la place de l'histogramme : rectangle [52.5, 911.212951660156, 1575.0, 80.0922241210938]
+[OK] 1680x1011_low · erg_courbes · éléments dans l'écran : 25 éléments visibles
+[OK] 1680x1011_low · erg_courbes · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · erg_courbes · panneaux dans l'écran : 3 panneaux
+[OK] 1680x1011_low · erg_courbes · panneaux sans chevauchement
+[OK] 1680x1011_low · erg_courbes · textes dans panel_left
+[OK] 1680x1011_low · erg_courbes · textes dans panel_right
+[OK] 1680x1011_low · erg_courbes · courbe de puissance blanche tracée
+[OK] 1680x1011_low · erg_courbes · courbe de fréquence cardiaque rouge tracée
+[OK] 1680x1011_low · erg_courbes · profil cible coloré en zone
+[OK] 1680x1011_low · sim_courbes · capture enregistrée
+[OK] 1680x1011_low · sim_courbes · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · sim_courbes · panneau des courbes affiché dans l'écran : rectangle [371.4375, 833.746704101562, 937.125, 157.558471679688]
+[OK] 1680x1011_low · sim_courbes · pas de chevauchement avec les panneaux du HUD
+[OK] 1680x1011_low · sim_courbes · courbe de puissance blanche tracée
+[OK] 1680x1011_low · fin_entrainement · capture enregistrée
+[OK] 1680x1011_low · fin_entrainement · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · fin_entrainement · invite de fin d'entraînement au bandeau : « Entraînement « Sweet spot » terminé : Y puis A maintenu pour terminer et enregistrer · sinon, la balade continue   (clavier : Échap puis Entrée) »
+[OK] 1680x1011_low · fin_entrainement · éléments dans l'écran : 21 éléments visibles
+[OK] 1680x1011_low · fin_entrainement · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · fin_entrainement · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1011_low · fin_entrainement · panneaux sans chevauchement
+[OK] 1680x1011_low · fin_entrainement · textes dans panel_left
+[OK] 1680x1011_low · fin_entrainement · textes dans panel_right
+[OK] 1680x1011_low · fin_entrainement · bandeau sans chevauchement du HUD
+[OK] 1680x1011_low · fin_entrainement_pause · capture enregistrée
+[OK] 1680x1011_low · fin_entrainement_pause · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · fin_entrainement_pause · texte menu : « Entraînement terminé : A maintenu pour terminer et enregistrer || Reprendre | [Terminer et enregistrer] | Abandonner | Difficulté — 50 % | Mode — SIM ||  ||  || Séance en cours | En pause | Durée 5:15 | Distance 2,1 km | Puissance moy. 250 W »
+[OK] 1680x1011_low · fin_entrainement_pause · texte menu : « Entraînement terminé : A maintenu pour terminer et enregistrer || Reprendre | [Terminer et enregistrer] | Abandonner | Difficulté — 50 % | Mode — SIM ||  ||  || Séance en cours | En pause | Durée 5:15 | Distance 2,1 km | Puissance moy. 250 W »
+[OK] 1680x1011_low · fin_entrainement_pause · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_low · fin_entrainement_pause · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · fin_entrainement_pause · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · fin_entrainement_pause · panneaux sans chevauchement
+[OK] 1680x1011_low · pause · capture enregistrée
+[OK] 1680x1011_low · pause · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1680x1011_low · pause · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · pause · texte menu_title : « Pause »
+[OK] 1680x1011_low · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM ||  ||  || Séance en cours | En pause | Durée 5:21 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_low · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM ||  ||  || Séance en cours | En pause | Durée 5:21 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_low · pause · HUD de séance caché derrière le menu
+[OK] 1680x1011_low · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM ||  ||  || Séance en cours | En pause | Durée 5:21 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_low · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM ||  ||  || Séance en cours | En pause | Durée 5:21 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1680x1011_low · pause · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_low · pause · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · pause · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · pause · panneaux sans chevauchement
+[OK] 1680x1011_low · confirmation · capture enregistrée
+[OK] 1680x1011_low · confirmation · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · confirmation · texte confirm_question : « Abandonner la séance ? »
+[OK] 1680x1011_low · confirmation · texte menu : «  || [Non] | Oui ||  ||  ||  »
+[OK] 1680x1011_low · confirmation · carte visible, étroite et centrée : rectangle [420.0, 380.109741210938, 840.0, 250.780517578125]
+[OK] 1680x1011_low · confirmation · détail de la liste caché
+[OK] 1680x1011_low · confirmation · « Oui » en rouge (danger) : 0.24% de pixels rouges
+[OK] 1680x1011_low · confirmation · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_low · confirmation · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · confirmation · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · confirmation · panneaux sans chevauchement
+[OK] 1680x1011_low · core_muet · core_lost signalé
+[OK] 1680x1011_low · core_muet_1 · capture enregistrée
+[OK] 1680x1011_low · core_muet_1 · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · core_muet_2 · capture enregistrée
+[OK] 1680x1011_low · core_muet_2 · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · core_muet_2 · bandeau affiché : « Click : Y = pause · + / − = braquet · appui long = 10 braquets · ↑ / ↓ = vue   (clavier : mêmes touches)
+Core non joignable (nouvel essai chaque seconde) »
+[OK] 1680x1011_low · core_muet_2 · bandeau rouge dessiné : 87% de pixels rouges
+[OK] 1680x1011_low · core_muet_2 · éléments dans l'écran : 21 éléments visibles
+[OK] 1680x1011_low · core_muet_2 · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · core_muet_2 · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1011_low · core_muet_2 · panneaux sans chevauchement
+[OK] 1680x1011_low · core_muet_2 · textes dans panel_left
+[OK] 1680x1011_low · core_muet_2 · textes dans panel_right
+[OK] 1680x1011_low · core_muet_2 · bandeau sans chevauchement du HUD
+[OK] 1680x1011_low · core_muet_2 · caméra figée : 0.000 m en 2.72 s
+[OK] 1680x1011_low · core_muet_2 · image figée : écart moyen 0.00 niveaux
+[OK] 1680x1011_low · reprise · capture enregistrée
+[OK] 1680x1011_low · reprise · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · reprise · bandeau caché (hors rappel des commandes) : « Click : Y = pause · + / − = braquet · appui long = 10 braquets · ↑ / ↓ = vue   (clavier : mêmes touches) »
+[OK] 1680x1011_low · reprise · image ni noire ni uniforme : luminance 0.52, écart type 0.198
+[OK] 1680x1011_low · reprise · ciel en haut de l'image : 98% de pixels de ciel
+[OK] 1680x1011_low · reprise · sol en bas de l'image : 96% de pixels hors ciel
+[OK] 1680x1011_low · reprise · maillages affichés : 24 maillages visibles
+[OK] 1680x1011_low · erreur · capture enregistrée
+[OK] 1680x1011_low · erreur · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1680x1011_low · erreur · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · erreur · bandeau affiché : « Erreur du core [route_invalid] : parcours de test illisible »
+[OK] 1680x1011_low · erreur · bandeau rouge dessiné : 90% de pixels rouges
+[OK] 1680x1011_low · erreur · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_low · erreur · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · erreur · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · erreur · panneaux sans chevauchement
+[OK] 1680x1011_low · erreur · bandeau sans chevauchement du HUD
+[OK] 1680x1011_low · menu_accueil · capture enregistrée
+[OK] 1680x1011_low · menu_accueil · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1680x1011_low · menu_accueil · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · menu_accueil · texte menu_title : « OpenRide »
+[OK] 1680x1011_low · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Session simulée | Garage | Réglages || Trainer HomeTrainer 0001 : connecté | Click : connecté | Click : perdu | Cardio : connecté ||  ||  »
+[OK] 1680x1011_low · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Session simulée | Garage | Réglages || Trainer HomeTrainer 0001 : connecté | Click : connecté | Click : perdu | Cardio : connecté ||  ||  »
+[OK] 1680x1011_low · menu_accueil · éléments dans l'écran : 5 éléments visibles
+[OK] 1680x1011_low · menu_accueil · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · menu_accueil · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · menu_accueil · panneaux sans chevauchement
+[OK] 1680x1011_low · menu_accueil · bandeau caché (hors rappel des commandes)
+[OK] 1680x1011_low · menu_accueil · menu en plein écran, HUD de séance caché : rectangle [0.0, 0.0, 1680.0, 1010.99993896484]
+[OK] 1680x1011_low · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Session simulée | Garage | Réglages || Trainer HomeTrainer 0001 : connecté | Click : connecté | Click : perdu | Cardio : connecté ||  ||  »
+[OK] 1680x1011_low · menu_accueil · sélection très visible (cadre cyan) : 0.48% de pixels cyan
+[OK] 1680x1011_low · menu_parcours · capture enregistrée
+[OK] 1680x1011_low · menu_parcours · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · menu_parcours · texte menu_title : « Parcours »
+[OK] 1680x1011_low · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1680x1011_low · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1680x1011_low · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1680x1011_low · menu_parcours · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_low · menu_parcours · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · menu_parcours · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · menu_parcours · panneaux sans chevauchement
+[OK] 1680x1011_low · pret · capture enregistrée
+[OK] 1680x1011_low · pret · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · pret · texte menu_title : « Prêt : session libre — Démo »
+[OK] 1680x1011_low · pret · texte menu : «  || [Démarrer] | Passer en session ERG | Changer de parcours | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun | Records du parcours || Trainer HomeTrainer 0001 : connecté | Click : connecté | Click : perdu | Cardio : connecté ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1680x1011_low · pret · texte menu : «  || [Démarrer] | Passer en session ERG | Changer de parcours | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun | Records du parcours || Trainer HomeTrainer 0001 : connecté | Click : connecté | Click : perdu | Cardio : connecté ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1680x1011_low · pret · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_low · pret · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · pret · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · pret · panneaux sans chevauchement
+[OK] 1680x1011_low · pret · profil d'altitude tracé dans la carte (trait cyan) : 0.53% de pixels cyan
+[OK] 1680x1011_low · records · capture enregistrée
+[OK] 1680x1011_low · records · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · records · texte menu_title : « Records : Démo »
+[OK] 1680x1011_low · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1680x1011_low · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1680x1011_low · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1680x1011_low · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1680x1011_low · records · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_low · records · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · records · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · records · panneaux sans chevauchement
+[OK] 1680x1011_low · records · record en or dans la carte : 0.25% de pixels or
+[OK] 1680x1011_low · records_table · capture enregistrée
+[OK] 1680x1011_low · records_table · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · records_table · texte menu_title : « Montée 1 : sans bonus »
+[OK] 1680x1011_low · records_table · texte menu : «  || [A : voir les temps avec bonus] | 1. 4:08,1 · 27/10/2026 18:05 — 251 W, 3,4 W/kg | 2. 4:11,5 · 26/10/2026 18:00 — 240 W, 3,2 W/kg ||  ||  || Montée · cat. 4 | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1680x1011_low · records_table · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_low · records_table · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · records_table · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · records_table · panneaux sans chevauchement
+[OK] 1680x1011_low · garage · capture enregistrée
+[OK] 1680x1011_low · garage · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · garage · texte menu_title : « Garage : niveau 8, 210 pièces »
+[OK] 1680x1011_low · garage · texte menu : «  || [Vélo : cadre et roues — Polyvalent, Standard] | Tenue, casque, chaussettes, lunettes — Unie, Route, Blanches, Claires | Avatar — taille moyenne · silhouette moyenne ||  ||  || Garage | Niveau 8 | Niveau 8 | Pièces 210 | Expérience 510 / 1200 | Expérience 510 / 1200 vers le niveau 9 : ■■■■□□□□□□ »
+[OK] 1680x1011_low · garage · texte menu : «  || [Vélo : cadre et roues — Polyvalent, Standard] | Tenue, casque, chaussettes, lunettes — Unie, Route, Blanches, Claires | Avatar — taille moyenne · silhouette moyenne ||  ||  || Garage | Niveau 8 | Niveau 8 | Pièces 210 | Expérience 510 / 1200 | Expérience 510 / 1200 vers le niveau 9 : ■■■■□□□□□□ »
+[OK] 1680x1011_low · garage · éléments dans l'écran : 7 éléments visibles
+[OK] 1680x1011_low · garage · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · garage · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · garage · panneaux sans chevauchement
+[OK] 1680x1011_low · garage · aperçu 3D visible dans la carte : {'angle': 5.11056582974072, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'shoulder_y': 1.30694401264191, 'shown': True, 'streaks': False, 'triangles': 5640, 'view': 'preview', 'visible': True}
+[OK] 1680x1011_low · garage_2 · capture enregistrée
+[OK] 1680x1011_low · garage_2 · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · garage_2 · l'aperçu tourne : écart moyen 6.19 niveaux
+[OK] 1680x1011_low · garage_velo · capture enregistrée
+[OK] 1680x1011_low · garage_velo · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · garage_velo · texte menu_title : « Garage : vélo »
+[OK] 1680x1011_low · garage_velo · texte menu : «  || [Cadre : Polyvalent — choisie] | Cadre : Léger — possédée | Cadre : Profilé — 150 pièces | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  || Cadre | Polyvalent | Masse = | CdA = | Niveau 1 | Conseillé : tout terrain | État : choisie »
+[OK] 1680x1011_low · garage_velo · texte menu : «  || [Cadre : Polyvalent — choisie] | Cadre : Léger — possédée | Cadre : Profilé — 150 pièces | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  || Cadre | Polyvalent | Masse = | CdA = | Niveau 1 | Conseillé : tout terrain | État : choisie »
+[OK] 1680x1011_low · garage_velo · éléments dans l'écran : 7 éléments visibles
+[OK] 1680x1011_low · garage_velo · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · garage_velo · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · garage_velo · panneaux sans chevauchement
+[OK] 1680x1011_low · garage_fiche · capture enregistrée
+[OK] 1680x1011_low · garage_fiche · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · garage_fiche · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — 150 pièces] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : 150 pièces »
+[OK] 1680x1011_low · garage_fiche · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — 150 pièces] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : 150 pièces »
+[OK] 1680x1011_low · garage_fiche · l'aperçu montre le cadre sous le focus avant l'achat : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1680x1011_low · garage_fiche · l'équipement choisi ne change pas avant l'achat
+[OK] 1680x1011_low · garage_confirmation · capture enregistrée
+[OK] 1680x1011_low · garage_confirmation · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · garage_confirmation · texte confirm_question : « Acheter Profilé pour 150 pièces ? Solde après : 60 »
+[OK] 1680x1011_low · garage_achat · capture enregistrée
+[OK] 1680x1011_low · garage_achat · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · garage_achat · pièce achetée : possédée, solde 60 : 60 pièces, owned
+[OK] 1680x1011_low · garage_achat · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — possédée] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : possédée »
+[OK] 1680x1011_low · garage_choix · capture enregistrée
+[OK] 1680x1011_low · garage_choix · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · garage_choix · cadre choisi, états mis à jour : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1680x1011_low · garage_choix · l'avatar du jeu porte le nouveau cadre : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1680x1011_low · garage_modif · capture enregistrée
+[OK] 1680x1011_low · garage_modif · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · garage_modif · texte menu_title : « Taille »
+[OK] 1680x1011_low · garage_modif · texte menu : «  || [moyenne — + / − : changer, A long : enregistrer, Y : annuler] ||  ||  || Avatar | Ton cycliste | Taille moyenne, silhouette moyenne | Rien n'est enregistré avant « Enregistrer ». »
+[OK] 1680x1011_low · garage_modif · aperçu visible pendant la modification
+[OK] 1680x1011_low · garage_avatar · capture enregistrée
+[OK] 1680x1011_low · garage_avatar · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · garage_avatar · brouillon modifié, rien d'enregistré : {'build': 'medium', 'hair': 2, 'hair_color': 1, 'height': 'L', 'kit_primary': 4, 'kit_secondary': 11, 'number': 27, 'skin': 3, 'standing_grade_pct': 8.0, 'standing_power_pct': 150.0}
+[OK] 1680x1011_low · garage_enregistre · capture enregistrée
+[OK] 1680x1011_low · garage_enregistre · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · garage_enregistre · avatar enregistré par le core : {'build': 'medium', 'hair': 2, 'hair_color': 1, 'height': 'L', 'kit_primary': 4, 'kit_secondary': 11, 'number': 27, 'skin': 3, 'standing_grade_pct': 8.0, 'standing_power_pct': 150.0}
+[OK] 1680x1011_low · garage_enregistre · texte menu : « Enregistré || [Taille — grande] | Silhouette — moyenne | Teint — 4 / 8 | Coiffure — coiffure 2 / 5 | Couleur des cheveux — 2 / 8 | Couleur principale de la tenue — 5 / 16 | Couleur secondaire de la tenue — 12 / 16 | Numéro de dossard — n° 27 | Enregistrer | Annuler les changements ||  ||  || Avatar | Ton cycliste | Taille grande, silhouette moyenne | Rien n'est enregistré avant « Enregistrer ». | Enregistré »
+[OK] 1680x1011_low · bilan · capture enregistrée
+[OK] 1680x1011_low · bilan · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1680x1011_low · bilan · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · bilan · texte menu_title : « Fin de séance »
+[OK] 1680x1011_low · bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m ||  || Bilan de la séance »
+[OK] 1680x1011_low · bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m ||  || Bilan de la séance »
+[OK] 1680x1011_low · bilan · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_low · bilan · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · bilan · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · bilan · panneaux sans chevauchement
+[OK] 1680x1011_low · progression · capture enregistrée
+[OK] 1680x1011_low · progression · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:30:05 | Distance : 15,23 km | Puissance moyenne : 212 W | Puissance normalisée : 221 W | TSS : 41 | Dénivelé : 180 m || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · progression · éléments dans l'écran : 7 éléments visibles
+[OK] 1680x1011_low · progression · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · progression · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · progression · panneaux sans chevauchement
+[OK] 1680x1011_low · progression · bandeau sans chevauchement du HUD
+[OK] 1680x1011_low · progression · bandeau « Niveau 10 ! » affiché : Niveau 10 !
+[OK] 1680x1011_low · bilan_complet · capture enregistrée
+[OK] 1680x1011_low · bilan_complet · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · bilan_complet · carte du bilan au-dessus du bandeau des boutons : bas de la carte 831 px, bandeau à 924 px
+[OK] 1680x1011_low · bilan_complet · éléments dans l'écran : 7 éléments visibles
+[OK] 1680x1011_low · bilan_complet · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · bilan_complet · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · bilan_complet · panneaux sans chevauchement
+[OK] 1680x1011_low · bilan_complet · bandeau sans chevauchement du HUD
+[OK] 1680x1011_low · bilan_complet_detaille · capture enregistrée
+[OK] 1680x1011_low · bilan_complet_detaille · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Durée : 0:08:36 | Distance : 3,21 km | Puissance moyenne : 139 W | Puissance normalisée : 155 W | IF : 0,62 | TSS : 6 | Dénivelé : 33 m | Cadence : 49 rpm | FC moyenne : 119 bpm | Puissance max : 400 W | Dans la roue : 12 min | Énergie économisée : 9 kJ | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance »
+[OK] 1680x1011_low · bilan_complet_detaille · carte du bilan au-dessus du bandeau des boutons : bas de la carte 863 px, bandeau à 924 px
+[OK] 1680x1011_low · bilan_complet_detaille · éléments dans l'écran : 7 éléments visibles
+[OK] 1680x1011_low · bilan_complet_detaille · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · bilan_complet_detaille · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · bilan_complet_detaille · panneaux sans chevauchement
+[OK] 1680x1011_low · bilan_complet_detaille · bandeau sans chevauchement du HUD
+[OK] 1680x1011_low · progression_refusee · capture enregistrée
+[OK] 1680x1011_low · progression_refusee · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · progression_refusee · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Durée : 0:02:00 | Distance : 0,80 km || Séance de moins de 5 minutes : pas d'expérience || Bilan de la séance »
+[OK] 1680x1011_low · progression_refusee · éléments dans l'écran : 6 éléments visibles
+[OK] 1680x1011_low · progression_refusee · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · progression_refusee · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1011_low · progression_refusee · panneaux sans chevauchement
+[OK] 1680x1011_low · pente_0pct · capture enregistrée
+[OK] 1680x1011_low · pente_0pct · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1680x1011_low · pente_0pct · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · pente_0pct · texte grade : « 0.0 % »
+[OK] 1680x1011_low · pente_0pct · éléments dans l'écran : 20 éléments visibles
+[OK] 1680x1011_low · pente_0pct · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · pente_0pct · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1011_low · pente_0pct · panneaux sans chevauchement
+[OK] 1680x1011_low · pente_0pct · textes dans panel_left
+[OK] 1680x1011_low · pente_0pct · textes dans panel_right
+[OK] 1680x1011_low · pente_0pct · image ni noire ni uniforme : luminance 0.55, écart type 0.196
+[OK] 1680x1011_low · pente_0pct · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1680x1011_low · pente_0pct · sol en bas de l'image : 98% de pixels hors ciel
+[OK] 1680x1011_low · pente_0pct · maillages affichés : 23 maillages visibles
+[OK] 1680x1011_low · pente_4pct · capture enregistrée
+[OK] 1680x1011_low · pente_4pct · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1680x1011_low · pente_4pct · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · pente_4pct · texte grade : « +4.5 % »
+[OK] 1680x1011_low · pente_4pct · éléments dans l'écran : 20 éléments visibles
+[OK] 1680x1011_low · pente_4pct · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · pente_4pct · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1011_low · pente_4pct · panneaux sans chevauchement
+[OK] 1680x1011_low · pente_4pct · textes dans panel_left
+[OK] 1680x1011_low · pente_4pct · textes dans panel_right
+[OK] 1680x1011_low · pente_4pct · image ni noire ni uniforme : luminance 0.54, écart type 0.198
+[OK] 1680x1011_low · pente_4pct · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1680x1011_low · pente_4pct · sol en bas de l'image : 98% de pixels hors ciel
+[OK] 1680x1011_low · pente_4pct · maillages affichés : 23 maillages visibles
+[OK] 1680x1011_low · decor_vivant · monde de test OSM chargé : route_loaded id=osm-test length_m=3000.0 path=/tmp/openride-visual-routes-mu7ko2rg/osm-test.world
+[OK] 1680x1011_low · decor_vivant · capture enregistrée
+[OK] 1680x1011_low · decor_vivant · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · decor_vivant · capture enregistrée
+[OK] 1680x1011_low · decor_vivant · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · decor_vivant · décor vivant préparé
+[OK] 1680x1011_low · decor_vivant · troupeau en vue : 5 au plus
+[OK] 1680x1011_low · decor_vivant · oiseaux en vue : 19 au plus
+[OK] 1680x1011_low · decor_vivant · véhicule croisé en vue : 1 au plus
+[OK] 1680x1011_low · decor_vivant · véhicule lointain en vue : 6 au plus
+[OK] 1680x1011_low · decor_vivant · objet du ciel en vue : 4 au plus
+[OK] 1680x1011_low · decor_vivant · éléments dans l'écran : 20 éléments visibles
+[OK] 1680x1011_low · decor_vivant · lignes du HUD sans chevauchement
+[OK] 1680x1011_low · decor_vivant · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1011_low · decor_vivant · panneaux sans chevauchement
+[OK] 1680x1011_low · decor_vivant · textes dans panel_left
+[OK] 1680x1011_low · decor_vivant · textes dans panel_right
+[OK] 1680x1011_low · decor_vivant · image ni noire ni uniforme : luminance 0.54, écart type 0.202
+[OK] 1680x1011_low · decor_vivant · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1680x1011_low · decor_vivant · sol en bas de l'image : 98% de pixels hors ciel
+[OK] 1680x1011_low · decor_vivant · maillages affichés : 30 maillages visibles
+[OK] 1680x1011_low · decor_vivant · aucun contact sur la route : 0
+[OK] 1680x1011_low · decor_pause_1 · capture enregistrée
+[OK] 1680x1011_low · decor_pause_1 · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · decor_pause_2 · capture enregistrée
+[OK] 1680x1011_low · decor_pause_2 · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · decor_pause · décor figé en pause (véhicules, cyclistes, ciel, bateaux) : signature -5104.45 puis -5104.45
+[OK] 1680x1011_low · voies_face · capture enregistrée
+[OK] 1680x1011_low · voies_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · voies_face · cycliste dans la voie de droite : +1.20 m de l'axe
+[OK] 1680x1011_low · voies_face · usagers en face sur leur droite (à gauche de l'axe) : vehicle -1.63 m, cyclist -2.50 m
+[OK] 1680x1011_low · voies_face · cyclistes devant, même sens, à droite du cycliste : +2.50 m, +2.50 m
+[OK] 1680x1011_low · voies_face · image ni noire ni uniforme : luminance 0.52, écart type 0.213
+[OK] 1680x1011_low · voies_face · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1680x1011_low · voies_face · sol en bas de l'image : 97% de pixels hors ciel
+[OK] 1680x1011_low · voies_face · maillages affichés : 30 maillages visibles
+[OK] 1680x1011_low · voies_attente · capture enregistrée
+[OK] 1680x1011_low · voies_attente · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · voies_attente · voiture en face : l'utilitaire attend derrière au lieu de doubler : van à -29 m, car_b à +55 m
+[OK] 1680x1011_low · voies_depassement · capture enregistrée
+[OK] 1680x1011_low · voies_depassement · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · voies_depassement · capture enregistrée
+[OK] 1680x1011_low · voies_depassement · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · voies_depassement · voiture qui double à 1,5 m au moins, sur la gauche : -1.72 m, écart 1.50 m
+[OK] 1680x1011_low · voies_depassement · aucun contact sur la route : 0
+[OK] 1680x1011_low · peloton_large · capture enregistrée
+[OK] 1680x1011_low · peloton_large · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_large · peloton au départ : cinq bots de front, devant le cycliste : [-2.4, -1.5, -0.6, 0.3, 2.1], 5 à moins de 30 m
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[OK] 1680x1011_low · peloton_face · capture enregistrée
+[OK] 1680x1011_low · peloton_face · taille de l'image : 1680x1011, attendu 1680x1011
+[ÉCHEC] 1680x1011_low · peloton_face · voiture d'en face sur la chaussée : aucune près des bots
+[ÉCHEC] 1680x1011_low · peloton_face · bots serrés à droite, deux de front au plus : +2.10 m à +13.2 m, +0.30 m à +12.9 m, -0.60 m à +12.6 m, -1.50 m à +12.3 m, -2.40 m à +12.0 m
+[OK] 1680x1011_low · peloton_face · aucun contact sur la route : 0
+[OK] 1680x1011_low · journal · rendu actif (images par seconde) : fps relevés : [29.0, 60.0, 60.0, 60.0, 61.0, 59.0, 60.0, 59.0, 60.0, 60.0, 59.0, 59.0, 60.0, 60.0, 59.0, 57.0, 60.0, 60.0, 60.0, 59.0, 56.0, 60.0, 59.0, 59.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 59.0, 60.0, 59.0, 60.0, 60.0, 60.0, 59.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 59.0, 59.0, 59.0, 60.0, 60.0, 58.0, 60.0, 60.0, 60.0, 58.0, 60.0, 57.0, 58.0, 58.0, 58.0, 53.0, 59.0, 60.0, 60.0, 60.0, 53.0, 58.0, 59.0, 59.0, 58.0, 58.0, 60.0, 60.0, 55.0, 60.0, 33.0, 59.0, 60.0, 60.0, 58.0, 60.0, 60.0, 58.0, 59.0, 60.0]
+[OK] 1680x1011_low · journal · aucune erreur ni avertissement Godot
+[OK] 1680x1011_low · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1680x1011_low · journal · qualité réellement appliquée : low appliquée (134 capture(s)) ; dernière ligne : low (demandée low, source cli)
+Tests graphiques : 726/729 vérifications réussies
+Rapport : ~/mesures-2026-11-01-auto/r781/visual_low/rapport.html
