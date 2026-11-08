@@ -8,7 +8,7 @@ const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const GaragePreview := preload("res://scripts/garage_preview.gd")
 
-const PROGRESSION := {"level": 9, "xp": 1200, "xp_next_level": 1500, "coins": 190,
+const PROGRESSION := {"level": 9, "xp": 1200, "xp_level_start": 1000, "xp_next_level": 1500, "coins": 190,
 	"equipped": {"frame": "f_all", "wheels": "w_std", "helmet": "h_road", "kit": "k_plain", "socks": "s_white", "glasses": "g_clear"},
 	"avatar": {"height": "M", "build": "medium", "skin": 3, "hair": 2, "hair_color": 1, "kit_primary": 4,
 		"kit_secondary": 11, "number": 27, "standing_grade_pct": 8.0, "standing_power_pct": 150.0}}
@@ -75,7 +75,8 @@ func _test_model() -> void:
 	_check("Conseillé : col" in sheet["lines"], "fiche : terrain conseillé")
 	_check(vm.sheet(GarageViewModel.OUTFIT, "item:k_polka")["lines"][0] == "Apparence seulement", "fiche d'une tenue : apparence seulement")
 	var head: Dictionary = vm.sheet(GarageViewModel.SCREEN, "bike")
-	_check(head["name"] == "Niveau 9" and "1200 / 1500" in head["lines"][0] and "■■■■■■■■□□" in head["lines"][0], "barre d'expérience vers le niveau suivant")
+	_check(head["name"] == "Niveau 9" and "200 / 500" in head["lines"][0] and "■■■■□□□□□□" in head["lines"][0]
+		and head["tiles"][2]["value"] == "200", "barre d'expérience dans le niveau, vers le niveau suivant : %s" % str(head))
 	# Achat avec confirmation
 	var buy: Dictionary = vm.activate("item:f_climb")
 	_check(buy["action"] == "confirm_buy" and buy["title"] == "Acheter Grimpeur pour 150 pièces ? Solde après : 40", "achat : « %s »" % buy.get("title", ""))

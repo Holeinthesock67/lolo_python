@@ -722,7 +722,7 @@ static func build_lod0_mesh() -> ArrayMesh:
 			var a1 := TAU * float(i + 1) / sides
 			var p0 := Vector3(cos(a0) * r, y0, sin(a0) * r)
 			var p1 := Vector3(cos(a1) * r, y0, sin(a1) * r)
-			var n := (p0 - tip).cross(p1 - tip).normalized()
+			var n := (tip - p0).cross(p1 - p0).normalized()   # vers l'extérieur, avant de la face (p0, p1, tip)
 
 			st.set_color(foliage_col)
 			st.set_normal(n)

@@ -17,7 +17,8 @@ extends Node3D
 ## de road_traffic_model.gd des routes voisines et des tracteurs des champs ; lot P29, quand `boats_enabled` :
 ## `extras.boats`, chemins des bateaux de boat_model.gd), le tronçon retiré `chunk_freed(k)`. Eau qui scintille
 ## (water_mesh.gd, P12) avec `set_water_shimmer(true)`, avant le chargement des tronçons.
-## `biome_model` (biome_model.gd, série U, lot U17) : transmis au placement des animaux (faune par biome, U12).
+## `biome_model` (biome_model.gd, série U, lot U17) : transmis au placement des animaux (faune par biome, U12)
+## et, actif, donne à chaque bâtiment le style d'architecture de son biome ou de sa variante (lot U23).
 ## Pas de class_name (charger par preload).
 
 const OsmLayers := preload("res://scripts/osm_layers.gd")
@@ -239,14 +240,20 @@ func _build_chunk_job(job: Dictionary) -> void:
 			for b in items:
 				shapes["buildings"].append(_shape(b.get("outer", [])))
 			if not items.is_empty():
-				if v_scale != 1.0:
-					var scaled_items: Array = []
+				# Lot U23 : style d'architecture du biome (ou de la variante) au centre de chaque bâtiment
+				var b_model = job.get("biome_model", null)
+				var styled: bool = b_model != null and b_model.active()
+				if v_scale != 1.0 or styled:
+					var dressed_items: Array = []
 					for b in items:
 						var bc: Dictionary = b.duplicate()
-						if bc.has("base_y"):
+						if v_scale != 1.0 and bc.has("base_y"):
 							bc["base_y"] = r_disp.display_y(float(bc["base_y"]))
-						scaled_items.append(bc)
-					items = scaled_items
+						if styled and not bc.has("style"):
+							var c: Vector2 = (_shape(bc.get("outer", []))["rect"] as Rect2).get_center()
+							bc["style"] = b_model.building_style_at(c.x, c.y)
+						dressed_items.append(bc)
+					items = dressed_items
 				var m := BuildingMesh.build(items, th, SKIRT_M)
 				if int(m.get("built", 0)) > 0:
 					var arr := _arrays_from_mesh_dict(m)

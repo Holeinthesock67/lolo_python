@@ -536,6 +536,8 @@ def write_gravel_markdown(path: Path, res: dict[str, Any], checks: list[dict[str
         s = res[name]
         lines.append(f"| {label} | {s['n']} | {s['m']} | {_f2(s['gravel_pct'])} | {_f2(s['power_w'])} | "
                      f"{_f2(s['target_w'])} | {_f2(s['speed_kmh'])} | {_f2(s.get('speed_ratio'))} |")
+    if res.get("avertissement"):
+        lines += ["", f"**Attention** : {res['avertissement']}."]
     lines += ["", "| Critère | Résultat | Détail |", "| --- | --- | --- |"]
     for c in checks:
         mark = "OK" if c["ok"] else ("NON" if c["ok"] is False else "non jugé")
@@ -561,6 +563,13 @@ def cmd_gravel(args: argparse.Namespace) -> int:
     res = gravel_stats(records, params, steady, bound)
     res["route"] = route if route.startswith("demo") else ("trace personnelle" if route else None)
     checks = gravel_checks(res)
+    surfaces = {r["surface"] for r in records if r.get("surface") is not None}
+    if surfaces and "paved" not in surfaces:
+        # Gravel imposé (« chemin compact », « gravier » ou « terre ») : toute la route en non revêtu, le journal
+        # n'a aucune mesure sur le bitume à comparer ; la recette se roule en « chemins réels ».
+        res["avertissement"] = (f"aucune mesure sur le bitume (surface {', '.join(sorted(surfaces))} partout) : "
+                                "réglage Gravel imposé à toute la route ; refaire la séance avec « chemins réels »")
+        print("Attention : " + res["avertissement"], file=sys.stderr)
     out: Path = args.out
     out.mkdir(parents=True, exist_ok=True)
     (out / "resume_gravel.json").write_text(json.dumps({**res, "criteres": checks}, indent=1, ensure_ascii=False),
@@ -568,7 +577,7 @@ def cmd_gravel(args: argparse.Namespace) -> int:
     write_gravel_markdown(out / "resume_gravel.md", res, checks)
     print((out / "resume_gravel.md").read_text(encoding="utf-8"))
     judged = [c["ok"] for c in checks if c["ok"] is not None]
-    return 0 if judged and all(judged) else 1
+    return 0 if judged and all(judged) and not res.get("avertissement") else 1
 
 
 def main(argv: list[str] | None = None) -> int:

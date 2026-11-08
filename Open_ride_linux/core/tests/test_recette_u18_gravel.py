@@ -33,7 +33,7 @@ def _surface(s: float) -> str:
     return "paved"
 
 
-def _session(tmp_path, monkeypatch, port: int, mode: str = "auto") -> CoreSession:
+def _session(tmp_path, monkeypatch, port: int = 6980, mode: str = "auto") -> CoreSession:
     monkeypatch.setattr(fit_export, "ACTIVITIES_DIR", tmp_path / "act")
     cfg = Config()
     cfg.ipc.port_state, cfg.ipc.port_commands = port, port + 1
@@ -104,3 +104,15 @@ def test_commande_ecrit_le_resume_sans_trace_nommee(tmp_path, monkeypatch):
     text = (tmp_path / "out" / "resume_gravel.md").read_text(encoding="utf-8")
     assert code in (0, 1)
     assert "trace personnelle" in text and "dimanche" not in text
+
+
+def test_gravel_impose_partout_est_signale(tmp_path, monkeypatch):
+    """Réglage « gravier » au lieu de « chemins réels » : rien sur le bitume, l'outil dit pourquoi."""
+    s = _session(tmp_path, monkeypatch, mode="gravel")
+    _ride(s, 120.0, 100.0)
+    journal = tmp_path / "j.jsonl"
+    journal.write_text("\n".join(json.dumps(r) for r in _records(s)) + "\n", encoding="utf-8")
+    code = ru.main(["gravel", str(journal), "--out", str(tmp_path / "out")])
+    text = (tmp_path / "out" / "resume_gravel.md").read_text(encoding="utf-8")
+    assert code == 1
+    assert "chemins réels" in text and "gravel partout" in text
