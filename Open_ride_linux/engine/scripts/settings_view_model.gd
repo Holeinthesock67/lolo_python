@@ -17,6 +17,7 @@ extends RefCounted
 
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
+const CoachViewModel := preload("res://scripts/coach_view_model.gd")
 
 ## Écran de modification des champs de l'avatar du Garage (V8) : seul réglage qui garde son écran
 ## (aperçu 3D à côté), les autres se modifient en place dans leur liste.
@@ -46,6 +47,7 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
 ## Départ de la séance (lot O36) : `depart.mode` prend `pedalage` / `immediat`.
 ## Dernier survivant (lot DS2) : écart de niveau des bots et suite donnée à l'élimination du cycliste.
+## Séance conseillée (lot CO5) : `coach.objectif` ; champs des saisies du conseil (CoachViewModel.KEY_PREFIX).
 const CHOICE_TEXTS := {
 	"depart.mode": {"pedalage": "au pédalage", "immediat": "immédiat"},
 	"powerups.mode": {"on": "oui", "off": "non"},
@@ -73,6 +75,7 @@ const CHOICE_TEXTS := {
 	"trainer.control": {"resistance": "résistance calculée", "sim": "SIM du trainer"},
 	"survivor.spread": {"tight": "serré (± 3 %)", "normal": "normal (± 8 %)", "wide": "large (± 15 %)"},
 	"survivor.after_out": {"ride": "continuer à rouler", "end": "terminer la séance"},
+	"coach.objectif": {"endurance": "endurance", "courses": "courses", "grimpeur": "grimpeur"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
 
@@ -139,6 +142,8 @@ static func format_value(it: Dictionary, value) -> String:
 		return slider(int(value))
 	if str(it.get("key", "")).begins_with(GarageViewModel.KEY_PREFIX):
 		return GarageViewModel.format_edit(str(it["key"]), int(value))
+	if str(it.get("key", "")).begins_with(CoachViewModel.KEY_PREFIX):
+		return CoachViewModel.format_edit(str(it["key"]), value, str(it.get("base_date", "")))
 	if it.has("format"):
 		return WorkoutBuilder.format_param(it, value)
 	var texts: Dictionary = CHOICE_TEXTS.get(str(it.get("key", "")), BOOL_TEXTS if it.get("choices", []) == BOOL_CHOICES else {})
@@ -336,6 +341,8 @@ func commit() -> Dictionary:
 	if str(e["key"]).begins_with(GarageViewModel.KEY_PREFIX):
 		return {"action": "garage_set", "key": str(e["key"]).substr(GarageViewModel.KEY_PREFIX.length()),
 			"value": int(e["value"])}
+	if str(e["key"]).begins_with(CoachViewModel.KEY_PREFIX):
+		return {"action": "coach_set", "key": str(e["key"]).substr(CoachViewModel.KEY_PREFIX.length()), "value": e["value"]}
 	if str(e["key"]).begins_with(WorkoutBuilder.KEY_PREFIX):
 		return {"action": "builder_set", "key": str(e["key"]).substr(WorkoutBuilder.KEY_PREFIX.length()),
 			"value": int(e["value"])}

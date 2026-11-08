@@ -148,7 +148,9 @@ func snap() -> void:
 
 ## Pose visée de la vue affichée. `pos` : point de la route sous le cycliste, `heading_rad` : cap horaire,
 ## `pitch_deg` : inclinaison de la route (positive en montée).
-func goal(pos: Vector3, heading_rad: float, pitch_deg: float) -> Transform3D:
+## `bank_rad` : relèvement de la piste sous le cycliste (lot VD4) ; la vue de côté se place sur la pente, au-dessus
+## de la piste, au lieu de s'enfoncer dans un virage relevé. 0 sur une route : mêmes poses qu'avant.
+func goal(pos: Vector3, heading_rad: float, pitch_deg: float, bank_rad: float = 0.0) -> Transform3D:
 	var view := effective()
 	var p_cam := deg_to_rad(camera_pitch_deg(pitch_deg))
 	if view == "subjective":
@@ -168,7 +170,8 @@ func goal(pos: Vector3, heading_rad: float, pitch_deg: float) -> Transform3D:
 			# Plus haut que FAR_HEIGHT_M (bancs) : regard plus loin, l'horizon reste dans l'image (environ 14° sous l'horizontale).
 			target = target_base + look * (FAR_AHEAD_M + 4.0 * maxf(0.0, far_height_m - FAR_HEIGHT_M))
 		"side":
-			eye = pos + right * SIDE_OFFSET_M + Vector3(0.0, SIDE_HEIGHT_M, 0.0)
+			var side := right if bank_rad == 0.0 else right * cos(bank_rad) + Vector3.UP * sin(bank_rad)
+			eye = pos + side * SIDE_OFFSET_M + Vector3(0.0, SIDE_HEIGHT_M, 0.0)
 			target = target_base + look * SIDE_AHEAD_M
 		_:
 			eye = pos - fwd * NEAR_BACK_M + Vector3(0.0, NEAR_HEIGHT_M, 0.0)

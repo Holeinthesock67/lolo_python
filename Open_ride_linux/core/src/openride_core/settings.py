@@ -102,6 +102,11 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("survivor.spacing_km", "Survivant : écart des arches", "ride", 1, "km"),
     Setting("survivor.spread", "Survivant : écart de niveau", "ride"),
     Setting("survivor.after_out", "Survivant : si éliminé", "ride"),
+    # Séance conseillée (série CO, lot CO3) : aussi réglés depuis l'écran du conseil (lot CO5)
+    Setting("coach.objectif", "Conseil : objectif", "ride",
+            help="Endurance : surtout de l'aérobie léger. Courses : plus d'intensité. Grimpeur : plus "
+                 "d'efforts longs au seuil. Change seulement la répartition visée par la séance conseillée."),
+    Setting("coach.temps_disponible_min", "Conseil : temps disponible", "ride", 15, "min"),
     # Grand Prix des objets (série GP, 4.0) : réglages `grandprix.*` hors du menu jusqu'à l'écran du mode
     # (lot GP9), rangés dans `config.PENDING_KEYS` ; GP9 les remet ici, après les réglages du Dernier survivant
     # Graphisme

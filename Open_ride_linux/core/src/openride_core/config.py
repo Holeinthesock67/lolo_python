@@ -163,6 +163,13 @@ class GravelConfig:
 
 
 @dataclass
+class VelodromeConfig:
+    """Vélodrome (série VD, lot VD3, plan §4.1) : bois de la piste et air de la salle couverte."""
+    factor_wood: float = 0.6       # multiplicateur du crr du bitume sur la piste en bois
+    temperature_c: float = 24.0    # température de la salle : densité de l'air
+
+
+@dataclass
 class ProgressionConfig:
     """Progression de la série V (lot V11) ; faux : ni équipement ni `progression`, comme avant la 2.0."""
     enabled: bool = True
@@ -256,6 +263,14 @@ class DepartConfig:
 
 
 @dataclass
+class CoachConfig:
+    """Séance conseillée (série CO, lot CO3) : objectif du joueur (cibles de répartition, plan §2) et
+    temps disponible par séance, réglés au menu ; seuils des règles dans `data/coach.toml`."""
+    objectif: str = "endurance"    # endurance, courses (et championnat) ou grimpeur
+    temps_disponible_min: int = 60  # durée conseillée quand la règle ne fixe pas la sienne (30 à 120 min)
+
+
+@dataclass
 class LogConfig:
     latence: bool = False   # journal de latence des appuis du Click, `[latence]` (lot X7, docs/OUTILS_DE_TEST.md)
 
@@ -278,6 +293,7 @@ class Config:
     open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
     gravel: GravelConfig = field(default_factory=GravelConfig)
+    velodrome: VelodromeConfig = field(default_factory=VelodromeConfig)
     progression: ProgressionConfig = field(default_factory=ProgressionConfig)
     avatar: AvatarConfig = field(default_factory=AvatarConfig)
     rogue: RogueConfig = field(default_factory=RogueConfig)
@@ -288,6 +304,7 @@ class Config:
     grandprix: GrandPrixConfig = field(default_factory=GrandPrixConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     depart: DepartConfig = field(default_factory=DepartConfig)
+    coach: CoachConfig = field(default_factory=CoachConfig)
     log: LogConfig = field(default_factory=LogConfig)
     profils: ProfilsConfig = field(default_factory=ProfilsConfig)
 
@@ -357,6 +374,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("gravel", "factor_compacted"): (1, 3),
     ("gravel", "factor_gravel"): (1, 3),
     ("gravel", "factor_dirt"): (1, 3),
+    ("velodrome", "factor_wood"): (0.3, 1),
+    ("velodrome", "temperature_c"): (5, 40),
     ("avatar", "standing_grade_pct"): (3, 15),
     ("avatar", "standing_power_pct"): (100, 300),
     ("rogue", "w_prime_j"): (5000, 60000),
@@ -380,6 +399,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("depart", "cadence_rpm"): (10, 90),
     ("depart", "duree_s"): (0, 10),
     ("depart", "attente_decor_s"): (0, 600),
+    ("coach", "temps_disponible_min"): (30, 120),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
@@ -416,6 +436,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("ride", "vehicle_draft"): ("on", "off"),
     ("survivor", "spread"): ("tight", "normal", "wide"),
     ("survivor", "after_out"): ("ride", "end"),
+    ("coach", "objectif"): ("endurance", "courses", "grimpeur"),
     ("grandprix", "chaos"): ("soft", "normal", "wild"),
 }
 
@@ -433,6 +454,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),
     ("survivor", "opponents"), ("survivor", "spacing_km"), ("survivor", "spread"), ("survivor", "after_out"),
+    ("coach", "objectif"), ("coach", "temps_disponible_min"),
     ("grandprix", "opponents"), ("grandprix", "laps"), ("grandprix", "distance_km"), ("grandprix", "chaos"),
     ("grandprix", "box_every_m"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
@@ -494,6 +516,8 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("gravel", "factor_compacted"): "roulement des routes non revêtues",
     ("gravel", "factor_gravel"): "roulement des routes non revêtues",
     ("gravel", "factor_dirt"): "roulement des routes non revêtues",
+    ("velodrome", "factor_wood"): "roulement de la piste en bois du vélodrome",
+    ("velodrome", "temperature_c"): "air de la salle du vélodrome",
     ("avatar", "standing_grade_pct"): "seuil de la danseuse",
     ("avatar", "standing_power_pct"): "seuil de la danseuse",
     ("rogue", "w_prime_j"): "valeur de départ ; le menu du Cyber-Rogue choisit W' de chaque run",
