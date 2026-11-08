@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Séance conseillée : saisie de la suggestion de la montre Garmin (type, durée, cible), règle RG | Python | CO1, CO3 | Petite | En PR (version 5.0), partie menu et contrat avec CO3 et CO5 |
+| Séance conseillée : saisie de la suggestion de la montre Garmin (type, durée, cible), règle RG | Python | CO1, CO3 | Petite | En PR #770 avec CO3 et CO5, complet (version 5.0) |
 
 Série CO (version 5.0, séance conseillée par OpenRide). Plan de la série : `docs/5.0/PLAN_SERIE_CO.md`.
 
@@ -31,4 +31,5 @@ Demande du propriétaire du 7 novembre : entrer dans le jeu l'entraînement sugg
 - Suggestion gardée pour la journée dans `conseil.json` du profil en cours (`save_watch`, `saved_watch`, `clear_watch` de `coach.py`, écriture sûre, autres clés gardées pour la prochaine course de CO3) ; une suggestion d'un autre jour ou abîmée est ignorée.
 - Ligne de commande : `openride-core coach --montre seuil:50 --enregistrer`, puis `openride-core coach` la reprend le même jour ; `--effacer-montre`.
 - Sous-famille de la montre : l'entraînement de la zone dominante voulue est choisi d'abord (tempo → Z3, seuil → Z4, VO2 max → Z5).
-- Les commandes IPC `set_watch_advice` et `clear_watch_advice` sont écrites avec le contrat du conseil (CO3, même révision que `get_coach`) pour ne pas ouvrir deux révisions ; l'écran de saisie est dans CO5.
+- Les commandes IPC `set_watch_advice` et `clear_watch_advice` sont écrites avec le contrat du conseil (CO3, révision 1.12 comme `get_coach`, réponse `coach`) pour ne pas ouvrir deux révisions ; l'écran de saisie est dans CO5.
+- Écran « Ma montre » du conseil livré avec CO5 (même PR #770) : les huit types de la montre, durée, cible en watts facultative, Enregistrer et Effacer ; captures validées par le propriétaire le 8 novembre. Les huit types sont vérifiés par `test_rg_watch_first_with_notes`. Rien d'autre à faire pour CO8 ; l'usage réel est jugé par la recette CO7 (au moins 3 suggestions de la montre).

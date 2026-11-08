@@ -187,9 +187,13 @@ func update_view(view: Array, route) -> void:
 		var before: float = route.wrap_s(s) - s   # grille de départ derrière le départ (lot AS2)
 		if before > 0.0:
 			pos -= Vector3(sin(h), 0.0, -cos(h)) * before
+		var roll := 0.0
+		if route.has_method("bank_right"):   # piste relevée (lot VD4) : bot remonté sur la pente, perpendiculaire à elle
+			right = route.bank_right(route.wrap_s(s), h)
+			roll = deg_to_rad(route.bank_at(route.wrap_s(s)))
 		node.position = pos + right * float(b["lateral"])
 		node.set_meta("lateral", float(b["lateral"]))
-		node.rotation = Vector3(pitch, -h, 0.0)
+		node.rotation = Vector3(pitch, -h, roll)
 		placed.append([_distance(b, node.position), b, key, smp])
 	# Peloton (lot PL1) : niveaux détaillés pour les plus proches de la caméra seulement.
 	placed.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) < float(y[0]))
