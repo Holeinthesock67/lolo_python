@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Tests unitaires sans écran des fonds d'ambiance `ambience_model.gd` (Lot P9).
+## Tests unitaires sans écran des fonds d'ambiance `ambience_model.gd` (Lot P9, fonds des biomes : lot U11).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_ambience_model.gd
 
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
@@ -190,7 +190,167 @@ func _test_describe_and_cost() -> void:
 	_check(PerfBudget.check("ambience_evaluate", ms), "evaluate : %.4f ms" % ms)
 
 
+# --- Lot U11 : fonds propres aux biomes ---
+
+func _default_theme() -> Dictionary:
+	return JSON.parse_string(FileAccess.get_file_as_string("res://themes/default/theme.json"))
+
+
+func _biome_model() -> Object:
+	var m = AmbienceModel.new()
+	m.set_theme(_default_theme())
+	return m
+
+
+# Critère 2 : tuile 100 % méditerranéenne, cigales en été à midi, muettes l'hiver
+func _test_biome_seasons() -> void:
+	var m = _biome_model()
+	var summer := _neigh(0.0, 0.0, 12.0, {"biomes": {"mediterranean": 1.0}, "season": "summer"})
+	var winter := _neigh(0.0, 0.0, 12.0, {"biomes": {"mediterranean": 1.0}, "season": "winter"})
+	var gs := float(m.biome_gains(summer)["cicadas"])
+	var gw := float(m.biome_gains(winter)["cicadas"])
+	_check(gs > 0.5, "méditerranéen, été, midi : cigales %.2f (> 0,5)" % gs)
+	_check(gw == 0.0 and m.targets(winter)["cicadas"] == AmbienceModel.SILENCE_DB, "méditerranéen, hiver : cigales muettes")
+	var settled := _settle(m, summer)
+	_check(float(settled["cicadas"]) > AmbienceModel.SILENCE_DB, "méditerranéen, été : cigales audibles (%.1f dB)" % settled["cicadas"])
+	var night := float(m.biome_gains(_neigh(0.0, 0.0, 1.0, {"biomes": {"mediterranean": 1.0}, "season": "summer"}))["cicadas"])
+	_check(night == 0.0, "méditerranéen, nuit : cigales muettes")
+	var frogs_night := float(m.biome_gains(_neigh(0.0, 0.0, 23.0, {"biomes": {"wetland": 1.0}, "season": "spring"}))["frogs"])
+	var frogs_noon := float(m.biome_gains(_neigh(0.0, 0.0, 12.0, {"biomes": {"wetland": 1.0}, "season": "spring"}))["frogs"])
+	_check(frogs_night > frogs_noon and frogs_noon > 0.0, "zone humide : grenouilles plus fortes la nuit (%.2f contre %.2f)" % [frogs_night, frogs_noon])
+	# Un fond par biome au moins : chaque fond de BIOME_BEDS est déclaré par un biome du thème par défaut
+	var declared := {}
+	for id in _default_theme()["biomes"]:
+		var g: Dictionary = m.biome_gains(_neigh(0.0, 0.0, 12.0, {"biomes": {id: 1.0}, "season": "summer",
+			"sea_dist_m": 10.0, "wind_strength": 1.0}))
+		for bed in g:
+			if float(g[bed]) > 0.0:
+				declared[bed] = true
+	_check(declared.size() == AmbienceModel.BIOME_BEDS.size(), "les %d fonds de biome sont déclarés par le thème (%d)" % [
+		AmbienceModel.BIOME_BEDS.size(), declared.size()])
+
+
+# Critère 3 : prairie tempérée, volumes identiques à P9
+func _test_grassland_like_p9() -> void:
+	var with_biome = _biome_model()
+	var p9 = AmbienceModel.new()
+	p9.set_theme({"ambience": _default_theme()["ambience"]})
+	var same := true
+	var t := 0.0
+	for k in range(4):
+		var base := _neigh(0.2 * k, 0.1 * k, 8.0 + 3.0 * k, {"water_dist_m": 30.0 + 20.0 * k, "water_kind": "river",
+			"alt_m": 600.0 * k, "rain": 0.2 * k, "season": "summer"})
+		var biome := base.duplicate()
+		biome["biomes"] = {"temperate_grassland": 1.0}
+		for i in range(300):
+			var a: Dictionary = p9.evaluate(base, t)
+			var b: Dictionary = with_biome.evaluate(biome, t)
+			for bed in AmbienceModel.BEDS:
+				same = same and is_equal_approx(float(a[bed]), float(b[bed]))
+			t += 1.0 / 60.0
+	_check(same, "prairie tempérée : volumes identiques à ceux de P9, sans fond de biome")
+
+
+# Critère 4 : d'un biome à l'autre, aucun fond ne change de plus d'1/3 de son niveau plein par seconde
+func _test_biome_crossfade() -> void:
+	var m = _biome_model()
+	m.voices = 8
+	var tour := [{"boreal_forest": 1.0}, {"coast": 1.0}, {"mediterranean": 1.0}, {"jungle": 0.5, "wetland": 0.5},
+		{"sand_desert": 1.0}, {"alpine": 1.0}, {"polar": 1.0}, {"volcanic": 1.0}, {"temperate_grassland": 1.0}]
+	var hist: Array = []
+	var t := 0.0
+	for b in tour:
+		var n := _neigh(0.3, 0.0, 12.0, {"biomes": b, "season": "summer", "sea_dist_m": 20.0, "wind_strength": 0.6})
+		for i in range(600):
+			hist.append(m.evaluate(n, t))
+			t += 1.0 / 60.0
+	var worst := 0.0
+	var worst_bed := ""
+	for i in range(hist.size() - 60):
+		for bed in AmbienceModel.BEDS:
+			var a := _lin(bed, float(hist[i][bed]))
+			var c := _lin(bed, float(hist[i + 60][bed]))
+			if absf(c - a) > worst:
+				worst = absf(c - a)
+				worst_bed = bed
+	_check(worst <= 1.0 / 3.0 + 1e-3, "tour des biomes : variation max %.3f du niveau plein en 1 s (%s, ≤ 1/3)" % [worst, worst_bed])
+	# Du plein au silence : 3 s au moins
+	var f = _biome_model()
+	var full := _neigh(0.0, 0.0, 12.0, {"biomes": {"coast": 1.0}, "season": "summer", "sea_dist_m": 0.0, "wind_strength": 1.0})
+	var v := _settle(f, full)
+	var t1 := 30.0
+	var steps := 0
+	while float(v["waves"]) > AmbienceModel.SILENCE_DB and steps < 3600:
+		v = f.evaluate(_neigh(0.0, 0.0, 12.0, {"biomes": {"temperate_grassland": 1.0}}), t1)
+		t1 += 1.0 / 60.0
+		steps += 1
+	_check(steps / 60.0 >= 3.0, "vagues : fondu de %.1f s du plein au silence (≥ 3 s)" % (steps / 60.0))
+
+
+func _lin(bed: String, db: float) -> float:
+	return 0.0 if db <= AmbienceModel.SILENCE_DB else pow(10.0, (db - float(AmbienceModel.BED_MAX_DB[bed])) / 20.0)
+
+
+# Critère 5 : plafond de voix, fonds de biome compris
+func _test_biome_voices() -> void:
+	for preset in ["low", "medium", "high"]:
+		var m = _biome_model()
+		m.voices = QualityPresets.living(preset)["ambience_voices"]
+		var worst := 0
+		var t := 0.0
+		var rich := _neigh(0.5, 0.3, 12.0, {"water_dist_m": 10.0, "water_kind": "river", "alt_m": 2400.0, "rain": 0.3,
+			"wind_strength": 0.9, "sea_dist_m": 10.0, "season": "summer",
+			"biomes": {"coast": 0.3, "mediterranean": 0.3, "alpine": 0.2, "wetland": 0.2}})
+		for k in range(6):
+			var n := rich if k % 2 == 0 else _neigh(0.0, 0.0, 12.0, {"biomes": {"jungle": 1.0}})
+			for i in range(600):
+				m.evaluate(n, t)
+				t += 1.0 / 60.0
+				worst = maxi(worst, m.audible_count())
+		_check(worst <= m.voices, "%s, biomes mêlés : au plus %d fonds audibles (relevé %d)" % [preset, m.voices, worst])
+
+
+# Mélange des biomes, rivage, repli sur le thème 1.x
+func _test_biome_mix() -> void:
+	var m = _biome_model()
+	var g: Dictionary = m.biome_gains(_neigh(0.0, 0.0, 12.0, {"biomes": {"mediterranean": 0.5, "coast": 0.5},
+		"season": "summer", "sea_dist_m": 0.0, "wind_strength": 1.0}))
+	_check(is_equal_approx(float(g["cicadas"]), 0.5) and is_equal_approx(float(g["waves"]), 0.5),
+		"moitié méditerranée, moitié littoral : cigales %.2f, vagues %.2f (0,5)" % [g["cicadas"], g["waves"]])
+	var mixed: Dictionary = m.mix({"jungle": 0.5, "polar": 0.5})
+	_check(is_equal_approx(float(mixed["volume"]), 0.7) and is_equal_approx(float(mixed["birds"]), 0.45),
+		"volume et oiseaux pondérés par les biomes (%.2f, %.2f)" % [mixed["volume"], mixed["birds"]])
+	var shore := []
+	for d in [10.0, 200.0, 400.0, INF]:
+		shore.append(float(m.biome_gains(_neigh(0.0, 0.0, 12.0, {"biomes": {"coast": 1.0}, "sea_dist_m": d,
+			"wind_strength": 1.0}))["waves"]))
+	_check(shore[0] == 1.0 and shore[1] > 0.0 and shore[1] < 1.0 and shore[2] == 0.0 and shore[3] == 0.0,
+		"vagues selon la distance à la mer : %s" % str(shore))
+	var t1 = AmbienceModel.new()
+	t1.set_theme({"ambience": {"volume": 0.5, "layers": {"cicadas": 0.8, "inconnu": 1.0}}})
+	_check(t1.mix({})["layers"] == {"cicadas": 0.8} and t1.mix({"mediterranean": 1.0})["layers"] == {"cicadas": 0.8},
+		"thème 1.x : `ambience.layers` lu, fonds inconnus ignorés, repli des biomes sans entrée")
+	var sea := {"kind": "sea", "area": true, "points": PackedVector2Array([Vector2(-500, 100), Vector2(500, 100),
+		Vector2(500, 600), Vector2(-500, 600)])}
+	var river := {"kind": "river", "points": PackedVector2Array([Vector2(-300, 40), Vector2(300, 40)])}
+	var d := AmbienceModel.describe(Vector2.ZERO, [], [], [river, sea])
+	_check(is_equal_approx(float(d["sea_dist_m"]), 100.0) and d["water_kind"] == "river",
+		"mer à 100 m derrière une rivière à 40 m : sea_dist_m %.0f" % d["sea_dist_m"])
+	var n := _neigh(0.5, 0.2, 12.0, {"water_dist_m": 30.0, "water_kind": "stream", "sea_dist_m": 50.0, "season": "summer",
+		"biomes": {"coast": 0.4, "mediterranean": 0.3, "wetland": 0.2, "alpine": 0.1}})
+	var t0 := Time.get_ticks_usec()
+	for i in range(5000):
+		m.evaluate(n, i / 60.0)
+	var ms := (Time.get_ticks_usec() - t0) / 1000.0 / 5000.0
+	_check(PerfBudget.check("ambience_evaluate", ms), "evaluate avec quatre biomes : %.4f ms" % ms)
+
+
 func _init() -> void:
+	_test_biome_seasons()
+	_test_grassland_like_p9()
+	_test_biome_crossfade()
+	_test_biome_voices()
+	_test_biome_mix()
 	_test_bird_phrases()
 	_test_landscapes()
 	_test_voices()
