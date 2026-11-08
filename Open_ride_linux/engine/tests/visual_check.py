@@ -80,6 +80,8 @@ GOLDEN_MASKS = ("status", "distance", "time", "erg_remaining", "chart_sim", "cha
 FREEZE_SETTLE_S = 8.0             # --fige : attente du chargement complet des tuiles et du décor avant la vue fixe
 ROUTE_TIMEOUT_S = 20.0
 SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
+SHOT_WAIT_S = 10.0                # réponse à une demande de capture (× rendu_jeu.slowdown en Vulkan logiciel)
+SHOT_SENDS = 3                    # demandes de capture envoyées au plus avant de conclure à une capture manquée
 PENDING_RETRIES = 15              # scènes de référence : captures reprises (1 s d'écart) tant que des tuiles manquent
 SPEED_MPS = 8.0
 # Scènes reproductibles (s fixé, rien ne bouge) : les seules comparées aux images de référence.
@@ -380,14 +382,27 @@ class Session:
         de `capture` le laisserait s'effacer."""
         png = self.out_dir / f"{self.name}_{tag}_attente.png"
         for _ in range(tries):
-            mark = self.core.log.mark()
-            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
-                                "path": str(png), "tag": f"{tag}_attente"})
-            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0 * self.slowdown(), mark)
+            hit = self._shot(png, f"{tag}_attente")
             if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
                 break
             time.sleep(1.0)
         png.unlink(missing_ok=True)
+
+    def _shot(self, png: Path, tag: str):
+        """Demande de capture (`_test` « screenshot ») et ligne « screenshot » de l'engine, None sans réponse. Le
+        datagramme peut se perdre (tampon du socket plein pendant un long chargement, Vulkan logiciel ; démarrage) :
+        sans réponse, la demande est renvoyée, SHOT_SENDS fois en tout. Une capture manquée l'était sans reprise
+        (vue_fixe en lavapipe et attente en natif sur le PC, 8 novembre)."""
+        hit = None
+        for _ in range(SHOT_SENDS):
+            png.unlink(missing_ok=True)
+            mark = self.core.log.mark()
+            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
+                                "path": str(png), "tag": tag})
+            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", SHOT_WAIT_S * self.slowdown(), mark)
+            if hit is not None:
+                break
+        return hit
 
     def capture(self, scene: str) -> tuple[Image, dict[str, Any]] | None:
         png = self.out_dir / f"{self.name}_{scene}.png"
@@ -398,16 +413,14 @@ class Session:
         # sur l'autre, il faisait tomber `vue_fixe` à SSIM 0,96 face à sa référence (PC, 1er novembre).
         tries = PENDING_RETRIES if scene in GOLDEN_SCENES else 1
         for attempt in range(tries):
-            mark = self.core.log.mark()
-            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
-                                "path": str(png), "tag": scene})
-            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0 * self.slowdown(), mark)
+            hit = self._shot(png, scene)
             if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
                 break
             if attempt < tries - 1:
                 time.sleep(1.0)
         if not self.check(scene, "capture enregistrée", hit is not None and png.exists(),
-                          "" if hit else "aucune ligne « screenshot » dans le journal de l'engine"):
+                          "" if hit else f"aucune ligne « screenshot » dans le journal de l'engine après {SHOT_SENDS} "
+                          f"demandes ; PNG {'écrit' if png.exists() else 'absent'}"):
             return None
         info = json.loads(hit[1].group(1))
         if scene in GOLDEN_SCENES:
