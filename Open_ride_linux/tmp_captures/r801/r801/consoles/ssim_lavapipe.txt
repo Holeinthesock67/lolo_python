@@ -1,0 +1,15 @@
+ attente fps 1.0 · 0 maillages · 22.0 appels de dessin · SSIM 0.9853, écart moyen 5.95 à la référence 
+ pause fps 2.0 · 25 maillages · 233.0 appels de dessin · SSIM 0.9776, écart moyen 1.35 à la référence 
+ erreur fps 2.0 · 25 maillages · 309.0 appels de dessin · SSIM 0.9898, écart moyen 0.44 à la référence 
+ menu_accueil fps 2.0 · 25 maillages · 313.0 appels de dessin · SSIM 0.9847, écart moyen 1.15 à la référence 
+ bilan fps 2.0 · 25 maillages · 199.0 appels de dessin · SSIM 0.9804, écart moyen 1.19 à la référence 
+ pente_0pct fps 2.0 · 23 maillages · 173.0 appels de dessin · SSIM 0.9805, écart moyen 0.83 à la référence 
+ pente_4pct fps 2.0 · 23 maillages · 174.0 appels de dessin · SSIM 0.9805, écart moyen 0.81 à la référence 
+ attente écart à l&#x27;image de référence OK SSIM 0.9853 (seuil 0.97), pire bloc 0.97, écart moyen 5.95 niveaux, 106 blocs masqués 
+ pause écart à l&#x27;image de référence OK SSIM 0.9776 (seuil 0.97), pire bloc 0.03, écart moyen 1.35 niveaux, 0 blocs masqués 
+ erreur écart à l&#x27;image de référence OK SSIM 0.9898 (seuil 0.97), pire bloc 0.27, écart moyen 0.44 niveaux, 0 blocs masqués 
+ menu_accueil écart à l&#x27;image de référence OK SSIM 0.9847 (seuil 0.97), pire bloc 0.26, écart moyen 1.15 niveaux, 0 blocs masqués 
+ bilan écart à l&#x27;image de référence OK SSIM 0.9804 (seuil 0.97), pire bloc 0.12, écart moyen 1.19 niveaux, 0 blocs masqués 
+ pente_0pct écart à l&#x27;image de référence OK SSIM 0.9805 (seuil 0.97), pire bloc -0.21, écart moyen 0.83 niveaux, 130 blocs masqués 
+ pente_4pct écart à l&#x27;image de référence OK SSIM 0.9805 (seuil 0.97), pire bloc -0.21, écart moyen 0.81 niveaux, 130 blocs masqués 
+ journal références xvfb comparées en Vulkan logiciel (llvmpipe, comme la CI) OK llvmpipe 
