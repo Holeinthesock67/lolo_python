@@ -406,7 +406,10 @@ def scenario_retry(core: FakeCore) -> str:
 
 def scenario_timeout(core: FakeCore) -> str:
     """3. Commande jamais acquittée : abandon au bout de 3 s ± 0,3 s, signal émis."""
-    core.accept_cmd = lambda msg, count: msg.get("name") != "resume"
+    # Comme au scénario 2, toute commande est refusée le temps de l'essai : une commande envoyée après
+    # « resume » et acceptée l'acquitterait par cumul (contrat §4). Ce faux core ne répond pas au conseil
+    # (`coach` à None) : l'engine relance alors get_coach toutes les 3 s (lot CO5), parfois pendant l'essai.
+    core.accept_cmd = lambda msg, count: False
     mark = core.log.mark()
     t0 = now()
     core.test_command("resume")

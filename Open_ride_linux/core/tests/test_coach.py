@@ -99,6 +99,30 @@ def test_replay_excluded_simulated_only_when_counted_and_cache(tmp_path):
         [f for f in both if f.source == "live"]
 
 
+def test_fit_written_from_a_journal_is_not_decoded(tmp_path, monkeypatch):
+    """Passe PC r770 : 13 s à froid avec un vrai profil, chaque FIT d'OpenRide était décodé (1,5 s par
+    heure) puis écarté comme doublon de son journal. Reconnu à son nom, il n'est plus lu ; un FIT importé
+    (autre nom, ou sans journal à sa minute) l'est toujours."""
+    from openride_core import fit_export
+    from openride_core.tools import session_summary
+
+    act = tmp_path / "Activities"
+    start = ts(TODAY - timedelta(days=1))
+    journal = write_journal(act / ".journal", "j", start, [(600, 150.0)])
+    s = session_summary.load_session(journal)
+    stamp = datetime.fromtimestamp(start).strftime("%Y-%m-%d_%H-%M")
+    fit_export.write_fit(s.records, s.events, act / f"{stamp}_demo.fit")
+    other = write_journal(tmp_path / "x", "garmin", ts(TODAY - timedelta(days=2)), [(600, 150.0)])
+    o = session_summary.load_session(other)
+    fit_export.write_fit(o.records, o.events, act / "Morning_Ride.fit")
+    read = []
+    real = session_summary.load_session
+    monkeypatch.setattr(session_summary, "load_session", lambda p: read.append(Path(p).name) or real(p))
+    facts = coach.collect_facts(act, FTP, TODAY, TABLE, tmp_path / "c.json", counted_sources=("live",))
+    assert sorted(read) == ["Morning_Ride.fit", "j.jsonl"]
+    assert len(facts) == 2
+
+
 def test_ftp_test_line_is_read(tmp_path):
     act = tmp_path / "Activities" / ".journal"
     p = write_journal(act, "rampe", ts(TODAY - timedelta(days=5)), [(900, 200.0)])

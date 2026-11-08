@@ -673,6 +673,17 @@ def _cache_path() -> Path:
     return profiles.current().history_cache.with_name("coach.json")
 
 
+def _twin_of_journal(fit: Path, journals: list[SessionFacts]) -> bool:
+    """Vrai si le FIT est celui qu'OpenRide a écrit pour un de ces journaux, d'après son nom
+    (`AAAA-MM-JJ_HH-MM_…`, minute du premier point, `fit_export.default_fit_path`), sans le décoder ;
+    même tolérance que le dédoublonnage par début de séance (`MATCH_TOLERANCE_S`). Autre nom : faux."""
+    try:
+        minute = datetime.strptime(fit.name[:16], "%Y-%m-%d_%H-%M").timestamp()
+    except ValueError:
+        return False
+    return any(abs(j.start_ts - (minute + 30.0)) <= 30.0 + MATCH_TOLERANCE_S for j in journals)
+
+
 def collect_facts(directory: Path | None, ftp_w: float, today: date, table: dict[str, Any],
                   cache_path: Path | None = None, counted_sources: tuple[str, ...] | None = None
                   ) -> list[SessionFacts]:
@@ -725,6 +736,8 @@ def collect_facts(directory: Path | None, ftp_w: float, today: date, table: dict
     from_jsonl = [f for f in (facts_of(p) for p in jsonls) if f is not None]
     out = list(from_jsonl)
     for p in fits:
+        if _twin_of_journal(p, from_jsonl):
+            continue   # FIT écrit depuis un journal déjà lu : décodé pour rien (1,5 s par heure de séance)
         f = facts_of(p)
         if f is not None and not any(abs(f.start_ts - j.start_ts) <= MATCH_TOLERANCE_S for j in from_jsonl):
             out.append(f)

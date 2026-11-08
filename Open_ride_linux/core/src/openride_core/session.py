@@ -289,6 +289,7 @@ class CoreSession:
         self.inputs = inputs if inputs is not None else build_inputs(cfg, self.sim)
         self.hr = build_hr(cfg, self.sim)
         self.journal_dir = journal_dir if journal_dir is not None else self.profile_ctx.journal_dir
+        self._coach_lock: asyncio.Lock | None = None   # séance conseillée : un calcul à la fois (lot CO5)
         self.routes_root = routes_root or routes_dir()
         self.workouts_dir = workouts_dir
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
@@ -1285,7 +1286,16 @@ class CoreSession:
     async def _send_coach(self, name: str, args: dict, cmd_id: int) -> None:
         """Séance conseillée (lot CO3) : la saisie éventuelle (prochaine course, suggestion de la montre)
         est écrite dans `conseil.json` du profil en cours, puis le conseil du jour part en message `coach`,
-        calculé comme `openride-core coach` ; `bad_args` pour une saisie ou un besoin refusé."""
+        calculé comme `openride-core coach` ; `bad_args` pour une saisie ou un besoin refusé.
+
+        Une commande à la fois : une relance de l'engine (message `coach` perdu) attend la fin du calcul en
+        cours et repart du cache des séances qu'il vient d'écrire, au lieu de relire les journaux en parallèle."""
+        if self._coach_lock is None:
+            self._coach_lock = asyncio.Lock()
+        async with self._coach_lock:
+            await self._send_coach_now(name, args, cmd_id)
+
+    async def _send_coach_now(self, name: str, args: dict, cmd_id: int) -> None:
         from datetime import date
 
         from . import coach
