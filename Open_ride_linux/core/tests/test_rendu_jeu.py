@@ -57,6 +57,19 @@ def test_journal_repli_opengl_refuse() -> None:
     assert rendu_jeu.check_log("Godot Engine v4.7.2\n") is not None
 
 
+
+def test_references_xvfb_en_vulkan_logiciel(tmp_path, monkeypatch) -> None:
+    """Références xvfb/ des tests graphiques faites par la CI en llvmpipe (08/11) : sous Xvfb, le PC prenait la NVIDIA."""
+    nvidia = "Vulkan 1.4.312 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce GTX 1060 6GB\n"
+    soft = "Vulkan 1.4.318 - Forward+ - Using Device #0: Mesa - llvmpipe (LLVM 20.1.2, 256 bits)\n"
+    assert rendu_jeu.is_software(soft) and not rendu_jeu.is_software(nvidia)
+    icd = tmp_path / "lvp_icd.x86_64.json"
+    icd.write_text("{}")
+    monkeypatch.setattr(rendu_jeu, "LAVAPIPE_ICD_DIRS", (str(tmp_path / "absent"), str(tmp_path)))
+    assert rendu_jeu.software_vulkan_env() == {"VK_DRIVER_FILES": str(icd), "VK_ICD_FILENAMES": str(icd)}
+    monkeypatch.setattr(rendu_jeu, "LAVAPIPE_ICD_DIRS", (str(tmp_path / "absent"),))
+    assert rendu_jeu.software_vulkan_env() is None
+
 # --- Règle des couleurs (engine/shaders/couleur_srgb.gdshaderinc) ---------------------------------------------
 
 INCLUDE = re.compile(r'#include\s+"res://([^"]+)"')

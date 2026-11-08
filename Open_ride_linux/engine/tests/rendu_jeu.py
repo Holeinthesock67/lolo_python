@@ -12,6 +12,7 @@ laisser passer des captures qui ne ressemblent pas au jeu.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 RENDERING_DRIVER = "vulkan"
 RENDERING_METHOD = "forward_plus"
@@ -23,6 +24,9 @@ _FALLBACK = re.compile(r"- Compatibility - |switching to OpenGL", re.M)
 # Vulkan logiciel de Mesa (cloud, CI) : la scène complète tourne à 1 à 3 images/s, contre 60 sur le PC.
 _SOFTWARE = re.compile(r"^Vulkan [0-9.]+ - Forward\+ - .*llvmpipe", re.M)
 SOFTWARE_SLOWDOWN = 10.0
+# Pilote Vulkan logiciel de Mesa (lavapipe, rendu llvmpipe) : celui de la CI, qui a fait les références xvfb/ des
+# tests graphiques. Sous Xvfb, le PC prendrait sinon la carte NVIDIA (SSIM 0,959 à 0,966 sur main, 8/11).
+LAVAPIPE_ICD_DIRS = ("/usr/share/vulkan/icd.d", "/usr/local/share/vulkan/icd.d", "/etc/vulkan/icd.d")
 
 
 def xvfb_cmd(cmd: list[str], width: int, height: int) -> list[str]:
@@ -44,6 +48,20 @@ def check_log(text: str) -> str | None:
     return None
 
 
+def software_vulkan_env() -> dict[str, str] | None:
+    """Variables d'environnement qui imposent lavapipe à Vulkan (Godot ne voit alors que llvmpipe) ; None si le
+    pilote manque (paquet mesa-vulkan-drivers)."""
+    for d in LAVAPIPE_ICD_DIRS:
+        for icd in sorted(Path(d).glob("lvp_icd*.json")):
+            return {"VK_DRIVER_FILES": str(icd), "VK_ICD_FILENAMES": str(icd)}
+    return None
+
+
+def is_software(text: str) -> bool:
+    """Vrai si le journal de Godot montre un rendu Forward+ sur Vulkan logiciel (llvmpipe)."""
+    return bool(_SOFTWARE.search(text))
+
+
 def slowdown(text: str) -> float:
     """Facteur des attentes d'un essai : SOFTWARE_SLOWDOWN sous Vulkan logiciel (llvmpipe), 1 sur un vrai GPU."""
-    return SOFTWARE_SLOWDOWN if _SOFTWARE.search(text) else 1.0
+    return SOFTWARE_SLOWDOWN if is_software(text) else 1.0
