@@ -2,7 +2,8 @@ extends SceneTree
 
 ## Collection de cartes au menu (série BC, lot BC5, maquettes BC3) : ligne « Collection » de l'accueil,
 ## première ouverture, album par familles, carte agrandie (gagnée, à gagner, de saison), `collection_seen`,
-## « Voir la séance » vers le bilan de l'historique. Données synthétiques (dates fictives).
+## « Voir la séance » vers le bilan de l'historique ; annonce d'une carte au bilan et badge de l'historique
+## (lot BC6). Données synthétiques (dates fictives).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_collection_menu.gd
 
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -73,6 +74,8 @@ func _init() -> void:
 	_test_model()
 	_test_flow()
 	_test_view()
+	_test_announce()
+	_test_history_badge()
 	print("test_collection_menu : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -191,3 +194,55 @@ func _test_view() -> void:
 	v.update_display({})
 	_check(not v.visible, "cachée hors de la collection")
 	v.free()
+
+
+## Lot BC6 : une seule carte annoncée au bilan (la plus rare, choisie par le core) et « + N autres » ; bilan
+## sans carte nouvelle inchangé ; rien sur le bilan d'une séance de l'historique.
+func _test_announce() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE"})
+	f.on_state({"session_state": "RUNNING"})
+	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 1800.0, "distance_m": 15000.0}})
+	var st: Dictionary = f.state()
+	_check(st["screen"] == "summary" and st["collection"].is_empty(), "bilan sans carte nouvelle : rien de plus")
+	var card := _earned("halloween", "2026-10-29", 2026)
+	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 1800.0, "distance_m": 15000.0,
+		"collection": {"card": card, "others": 2}}})
+	st = f.state()
+	var v: Dictionary = st["collection"]
+	_check(v.get("kind") == "announce" and v["title"] == "Pédaleur citrouille 2026" and v["rarity_name"] == "Rare · saison"
+		and v["others"] == "+ 2 autres dans la Collection", "une carte annoncée et « + 2 autres » (%s)" % str(v))
+	card = _earned("km_100", "2026-09-20")
+	_check(Collection.announce_view({"collection": {"card": card, "others": 0}})["others"] == ""
+		and Collection.announce_view({"collection": {"card": card, "others": 1}})["others"] == "+ 1 autre dans la Collection",
+		"seule : pas de « + N autres » ; une autre au singulier")
+	var view = CollectionView.new()
+	view.update_display(v)
+	_check(view.view_text() == "NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection",
+		"encart de l'annonce (%s)" % view.view_text())
+	view.free()
+
+
+## Lot BC6 : séance de l'historique qui a fait gagner des cartes : badge (trophée) et « · n cartes ».
+func _test_history_badge() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE"})
+	var base := {"date": "2026-10-29 07:00", "route": "demo", "duration_s": 1800.0, "distance_m": 15000.0,
+		"elevation_gain_m": 20.0, "avg_power_w": 150.0, "np_w": 160.0, "if": 0.7, "tss": 25.0, "status": "ok", "workout": null}
+	var a := base.duplicate()
+	a["id"] = "a.fit"
+	a["cards"] = ["halloween:2026", "leve_tot"]
+	var b := base.duplicate()
+	b["id"] = "b.fit"
+	f.on_history({"type": "history", "sessions": [a, b], "weeks": [], "ftp_tests": [], "unreadable": 0, "truncated": false})
+	f.menu.focus_item("history")
+	f.handle("A_LONG")
+	f.on_history({"type": "history", "sessions": [a, b], "weeks": [], "ftp_tests": [], "unreadable": 0, "truncated": false})
+	var st: Dictionary = f.state()
+	var ra := _item(st, "s:a.fit")
+	var rb := _item(st, "s:b.fit")
+	_check(ra.get("icon", "") == "trophy" and ra["detail"].ends_with(" · 2 cartes") and not rb.has("icon")
+		and not rb["detail"].contains("carte"), "badge et nombre de cartes sur la seule séance qui en a gagné (%s)" % str(ra))
+

@@ -184,7 +184,7 @@ func _show_confirm(on: bool, question := "") -> void:
 	if items_box.get_parent() != target:
 		items_box.reparent(target, false)
 		if not on:
-			_left.move_child(items_box, collection.get_index() + 1)
+			_left.move_child(items_box, 0)
 	_confirm_question.text = question
 
 
@@ -308,6 +308,11 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	var sheet_collection: Dictionary = menu.get("collection", {})
 	collection.update_display(sheet_collection)
 	var album := str(sheet_collection.get("kind", "")) == "album"   # les vignettes sont les éléments
+	# Annonce d'une carte au bilan (lot BC6) sous les éléments ; album, carte et première ouverture au-dessus.
+	var below := str(sheet_collection.get("kind", "")) == "announce"
+	if collection.get_parent() == _left and (collection.get_index() > items_box.get_index()) != below \
+			and items_box.get_parent() == _left:
+		_left.move_child(collection, items_box.get_index())   # passe juste de l'autre côté de la liste
 	items_box.visible = grid.is_empty() and not album
 	var items: Array = [] if not grid.is_empty() or album else menu.get("items", [])
 	var focus := int(menu.get("focus", -1))
@@ -422,8 +427,8 @@ func _set_row(p: PanelContainer, it: Dictionary, focused: bool) -> void:
 	bar.set_meta("pct", int(it.get("bar", 0)))
 	bar.set_meta("focused", focused)
 	bar.queue_redraw()
-	icon.set_meta("shape", UiIcons.for_item(id))
-	icon.set_meta("color", color)
+	icon.set_meta("shape", str(it.get("icon", UiIcons.for_item(id))))
+	icon.set_meta("color", UiTheme.GOLD if it.has("icon") and not focused else color)   # badge en or
 	icon.queue_redraw()
 	p.queue_redraw()
 

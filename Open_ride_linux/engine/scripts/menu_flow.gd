@@ -1965,6 +1965,8 @@ func collection_view(st: Dictionary) -> Dictionary:
 		return collection.card_view()
 	if screen == CollectionViewModel.FIRST:
 		return collection.first_view()
+	if screen == SUMMARY:   # carte gagnée par la séance qui vient de finir (lot BC6), pas sur un bilan de l'historique
+		return CollectionViewModel.announce_view(summary)
 	return {}
 
 

@@ -20,6 +20,8 @@ const CARD_H := 380
 const FIRST_VISUAL := 120     # visuels de la première ouverture
 const FIRST_OVERLAP := -15    # ils se chevauchent un peu
 const RING_W := 4.0
+const ANNOUNCE_VISUAL := 96   # visuel de l'annonce au bilan (lot BC6), à gauche du bilan
+const ANNOUNCE_TEXT_W := 260
 const RARITY_COLORS := {"commune": UiTheme.RARITY_COMMUNE, "rare": UiTheme.RARITY_RARE,
 	"epique": UiTheme.RARITY_EPIQUE, "legendaire": UiTheme.RARITY_LEGENDAIRE}
 
@@ -70,6 +72,8 @@ func update_display(view: Dictionary) -> void:
 			_build_card(view)
 		"first":
 			_build_first(view)
+		"announce":
+			_build_announce(view)
 
 
 ## Textes affichés, séparés par « | », vignette choisie entre crochets (tests).
@@ -261,6 +265,43 @@ func _build_card(view: Dictionary) -> void:
 		var note := UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM, str(view["note"]))
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		info.add_child(note)
+
+
+# --- Annonce au bilan (lot BC6) ------------------------------------------------------------------
+
+func _build_announce(view: Dictionary) -> void:
+	var rarity := str(view.get("rarity", ""))
+	var frame := PanelContainer.new()
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style: StyleBoxFlat = UiTheme.card_style()
+	style.border_color = rarity_color(rarity)
+	style.set_border_width_all(3)
+	frame.add_theme_stylebox_override("panel", style)
+	add_child(frame)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UiTheme.GAP)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(row)
+	var visual := str(view.get("visual", ""))
+	var art := Control.new()
+	art.custom_minimum_size = Vector2(ANNOUNCE_VISUAL, ANNOUNCE_VISUAL)
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.draw.connect(func() -> void: _draw_badge(art, Rect2(Vector2.ZERO, art.size), visual, rarity, true))
+	row.add_child(art)
+	var texts := VBoxContainer.new()
+	texts.alignment = BoxContainer.ALIGNMENT_CENTER
+	texts.add_theme_constant_override("separation", 4)
+	texts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	texts.custom_minimum_size.x = ANNOUNCE_TEXT_W
+	row.add_child(texts)
+	texts.add_child(UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.CARD_NEW, "NOUVELLE CARTE"))
+	var t := UiTheme.label(UiTheme.DETAIL_SIZE, UiTheme.TEXT, str(view.get("title", "")))
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	texts.add_child(t)
+	texts.add_child(UiTheme.label(UiTheme.DETAIL_SIZE, rarity_color(rarity), str(view.get("rarity_name", ""))))
+	if str(view.get("others", "")) != "":
+		texts.add_child(UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM, str(view["others"])))
 
 
 # --- Première ouverture ----------------------------------------------------------------------------

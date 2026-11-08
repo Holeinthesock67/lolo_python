@@ -301,6 +301,25 @@ func card_items() -> Array:
 		"enabled": false}]
 
 
+## Annonce au bilan de fin de séance (lot BC6) : la carte la plus rare des nouvelles (`summary.collection`,
+## calculée par le core) et le nombre des autres ; {} sans carte nouvelle (bilan inchangé).
+static func announce_view(summary: Dictionary) -> Dictionary:
+	var col = summary.get("collection")
+	if not (col is Dictionary) or not (col.get("card") is Dictionary):
+		return {}
+	var c: Dictionary = col["card"]
+	var title := str(c.get("title", ""))
+	if c.get("edition") != null:
+		title += " %d" % int(c["edition"])
+	var others := int(col.get("others", 0))
+	var rarity := str(c.get("rarity", ""))
+	var kind_text := str(RARITY_NAMES.get(rarity, ""))
+	if str(c.get("family", "")) == "saison":
+		kind_text += " · saison"
+	return {"kind": "announce", "visual": str(c.get("visual", "")), "rarity": rarity, "rarity_name": kind_text,
+		"title": title, "others": "" if others <= 0 else "+ %d autre%s dans la Collection" % [others, "s" if others > 1 else ""]}
+
+
 ## Première ouverture, dessinée par collection_view.gd : nombre de cartes déjà gagnées et jusqu'à cinq
 ## visuels (les plus rares d'abord).
 func first_view() -> Dictionary:

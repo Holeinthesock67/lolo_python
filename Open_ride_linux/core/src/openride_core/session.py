@@ -1275,15 +1275,27 @@ class CoreSession:
         self._plan_day = msg["active"]["plan_day"] if msg["active"] else None
         self.server.send_raw(msg)
 
+    def _history_with_cards(self, cmd_id: int, ftp_w: float, activities: Path) -> dict:
+        """`history` avec les cartes de la collection posées sur leur séance (lot BC6) ; une collection
+        illisible ne prive pas de l'historique."""
+        from .ipc_lists import build_history_message, collection_earned
+
+        try:
+            earned = collection_earned(self.profile_ctx, self.journal_dir, self.profile_ctx.table_path)
+        except Exception:
+            log.exception("Cartes de la collection non calculées pour l'historique")
+            earned = None
+        return build_history_message(cmd_id, ftp_w, activities, earned)
+
     async def _send_history(self, name: str, args: dict, cmd_id: int) -> None:
         """Historique du menu (lot O28) : `list_history` -> `history`, `history_session` -> bilan d'une séance."""
-        from .ipc_lists import HistoryError, build_history_message, build_history_session, history_file
+        from .ipc_lists import HistoryError, build_history_session, history_file
 
         activities = self.journal_dir.parent   # `Activities/` du profil en cours (journaux dans `.journal/`)
         ftp_w = self.cfg.rider.ftp_w
         if name == "list_history":
             try:
-                msg = await asyncio.to_thread(build_history_message, cmd_id, ftp_w, activities)
+                msg = await asyncio.to_thread(self._history_with_cards, cmd_id, ftp_w, activities)
             except Exception:
                 log.exception("Erreur lors de la préparation de l'historique (cmd_id=%d)", cmd_id)
                 return

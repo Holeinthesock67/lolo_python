@@ -586,7 +586,7 @@ func set_screen_items(screen_id: String, items: Array, title := "") -> void:
 	for it in items:
 		var e := _item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
 			str(it.get("detail", "")))
-		for k in ["bar", "editing"]:   # affichage seulement : curseur (0 à 100) et valeur en cours de réglage
+		for k in ["bar", "editing", "icon"]:   # affichage seulement : curseur (0 à 100), valeur en cours de réglage, pictogramme (badge, lot BC6)
 			if it.has(k):
 				e[k] = it[k]
 		clean.append(e)

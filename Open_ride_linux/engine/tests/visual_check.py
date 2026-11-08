@@ -1513,6 +1513,17 @@ def _menu_scenes(s: Session) -> None:
         s.check_texts("bilan", info, {"menu_title": "Fin de séance", "menu": "Distance : 15,23 km"}, contains=True)
         s.check_texts("bilan", info, {"menu": "[Nouvelle séance]"}, contains=True)
         s.check_layout("bilan", info)
+    # Lot BC6 : carte gagnée par la séance, annoncée seule au bilan avec « + 2 autres ».
+    halloween = next(e for e in core.collection["earned"] if e["id"] == "halloween")
+    core.set_scene(session_state="FINISHED", summary={
+        "duration_s": 1805.0, "distance_m": 15230.0, "avg_power_w": 212.0, "np_w": 221.0, "tss": 41.0,
+        "elevation_gain_m": 180.0, "fit_path": "/tmp/openride/seance.fit", "collection": {"card": halloween, "others": 2}})
+    time.sleep(1.0)
+    shot = s.capture("bilan_carte")
+    if shot:
+        img, info = shot
+        s.check_texts("bilan_carte", info, {"menu": "NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection"}, contains=True)
+        s.check_layout("bilan_carte", info)
     _progress_scenes(s)
 
 
