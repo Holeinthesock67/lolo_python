@@ -146,10 +146,10 @@ class OpenWorldConfig:
 @dataclass
 class WindConfig:
     """Vent du core (lot P2, SRS §5 et §11) ; coupé par défaut dans les versions 1.x."""
-    mode: str = "off"              # "off", "fixed", "gusty" ou "theme" (vent du thème 1.2)
+    mode: str = "off"              # "off", "fixed", "gusty", "theme" (vent du thème 1.2) ou "local" (météo du jour, P33)
     speed_kmh: float = 0.0
     from_deg: float = 270.0        # d'où vient le vent, degrés depuis le nord
-    gust_pct: float = 0.0          # amplitude des rafales (modes "gusty" et "theme")
+    gust_pct: float = 0.0          # amplitude des rafales (mode "gusty" ; "theme" et "local" ont les leurs)
     seed: int = 0                  # graine des rafales
     feel: str = "grade"            # "grade" (supplément de pente) ou "ftms" (champ vent de 0x11)
     max_grade_offset_pct: float = 4.0   # borne du supplément de pente, réglable dans le menu
@@ -430,7 +430,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),
     ("drivers", "click_reset_locked"): ("reset", "keep", "off"),   # zwift_click.LOCK_POLICIES
-    ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
+    ("wind", "mode"): ("off", "fixed", "gusty", "theme", "local"),
     ("wind", "feel"): ("grade", "ftms"),
     ("trainer", "control"): ("sim", "resistance"),
     ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),

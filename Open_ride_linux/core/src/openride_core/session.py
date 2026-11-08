@@ -36,7 +36,7 @@ from .hr_monitor import HeartRateProvider
 from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
-from . import config_edit, last_choices, latency_log
+from . import config_edit, last_choices, latency_log, local_weather
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import Record
@@ -596,6 +596,8 @@ class CoreSession:
 
     def _begin_session(self, game_mode: str | None) -> None:
         """Départ effectif : journal, ERG, mode WTF ou Dernier survivant, segments et bots, puis RUNNING."""
+        if self.cfg.wind.mode == "local":
+            self._build_wind()   # lecture du lanceur arrivée depuis le choix du parcours (lot P33)
         self._open_journal()
         if self._workout:
             self.erg = ErgController(self._workout, self.cfg.rider.ftp_w)
@@ -1626,13 +1628,30 @@ class CoreSession:
         if self._track is not None and self._track.spec.indoor:   # salle couverte : pas de vent (lot VD3)
             wind_cfg = replace(cfg.wind, mode="off")
         self.wind = WindModel.from_config(
-            wind_cfg, theme_wind(cfg.render.theme) if wind_cfg.mode == "theme" else None)
+            wind_cfg, theme_wind(cfg.render.theme) if wind_cfg.mode == "theme" else None,
+            self._local_wind() if wind_cfg.mode == "local" else None)
         self._wind_sample = self.wind.sample(0.0) if self.wind.active else CALM
         if self.wind.active:
             log.info("Vent : mode %s, %.0f km/h venant de %.0f°, rafales %.0f %%, ressenti %s "
                      "(supplément de pente borné à %.1f points)", self.wind.mode, self.wind.base_mps * 3.6,
                      self.wind.from_deg, self.wind.gust_frac * 100, cfg.wind.feel,
                      cfg.wind.max_grade_offset_pct)
+
+    def _local_wind(self):
+        """Vent du jour au départ du parcours choisi (lot P33) : lu dans le cache local écrit par le lanceur,
+        jamais sur le réseau (R-NET-1). None sans parcours, ou sans lecture de moins de 3 h : séance sans vent."""
+        route = getattr(self, "route", None)
+        if route is None or not len(route.lat):
+            return None
+        found = local_weather.lookup(float(route.lat[0]), float(route.lon[0]))
+        if found is None:
+            log.warning("Vent météo du jour indisponible pour ce départ (hors ligne ou lecture de plus de 3 h) : "
+                        "séance sans vent, comme en mode « off ».")
+        else:
+            log.info("Vent météo du jour (Open-Meteo, lu à %s) : %.0f km/h venant de %.0f°, rafales %.0f %%",
+                     time.strftime("%H:%M", time.localtime(found.fetched_at)), found.speed_kmh,
+                     found.from_deg, found.gust_pct)
+        return found
 
     def _set_setting(self, args: dict, cmd_id: int) -> None:
         from . import settings
@@ -1927,6 +1946,8 @@ class CoreSession:
         self._set_session_clock(0.0)
         log.info("Parcours « %s » chargé : %.0f m, type %s", route_id, world.route.length_m,
                  world.route.type)
+        if self.cfg.wind.mode == "local":
+            self._build_wind()   # vent du jour au départ de ce parcours (lot P33)
         self._set_state("READY")
 
     def _select_workout(self, workout_id: Any) -> None:
