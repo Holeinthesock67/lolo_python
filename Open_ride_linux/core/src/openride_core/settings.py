@@ -121,17 +121,28 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.biome", "Biome du décor", "graphics", applies="now",   # lot U16
             help="Automatique : les biomes du parcours (prairie tempérée sans données). Un autre choix met "
                  "ce biome sur tout le parcours : sol, végétation, faune et ciel."),
+    # Jour et nuit, saisons (lot P19, décision du propriétaire du 8 novembre : coupables séparément, coupés par défaut)
+    Setting("render.day_night", "Jour et nuit", "graphics", applies="now",
+            help="Coupé : soleil fixe, comme avant. Heure du thème, heure du PC, ou une journée en une heure : "
+                 "aube, coucher orangé et nuit étoilée, route toujours lisible."),
+    Setting("render.seasons", "Saisons", "graphics", applies="now",
+            help="Coupées : l'été, comme avant. Selon le thème, selon la date (hémisphère du parcours) ou une "
+                 "saison au choix : feuillages d'automne, arbres nus et neige plus bas l'hiver."),
     Setting("render.living", "Décor vivant", "graphics", applies="relaunch"),   # lot O26
     Setting("render.visual_grade_scale", "Relief exagéré", "graphics", 25, "%", "relaunch", 100),
     # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
-    Setting("audio.master_pct", "Volume général", "sound", 10, "%", "now"),
-    Setting("audio.ride_pct", "Volume vent et roue libre", "sound", 10, "%", "now"),
-    Setting("audio.ambience_pct", "Volume de l'ambiance", "sound", 10, "%", "now"),
-    Setting("audio.events_pct", "Volume bips et événements", "sound", 10, "%", "now"),
+    Setting("audio.master_pct", "Général", "sound", 10, "%", "now"),
+    Setting("audio.ride_pct", "Vent et roue libre", "sound", 10, "%", "now"),
+    Setting("audio.ambience_pct", "Ambiance", "sound", 10, "%", "now"),
+    Setting("audio.events_pct", "Bips et événements", "sound", 10, "%", "now"),
     Setting("audio.rogue_sfx_pct", "Cyber-Rogue : bruitages", "sound", 10, "%", "now"),   # lot R18
     Setting("audio.rogue_music_pct", "Cyber-Rogue : musique", "sound", 10, "%", "now"),
     # Vent (lot P16, décisions du propriétaire du 25 octobre : coupé par défaut, plafond de 4 points)
-    Setting("wind.mode", "Vent", "wind"),
+    # Météo du jour (lot P33, décision du propriétaire du 8 novembre : coupée par défaut, activée ici)
+    Setting("wind.mode", "Vent", "wind",
+            help="Constant ou en rafales : force et direction réglées ci-dessous. Celui du thème : vent du "
+                 "thème. Météo du jour : vent réel au départ du parcours, lu par le lanceur chez Open-Meteo "
+                 "(position arrondie à 10 km) ; sans réseau, séance sans vent."),
     Setting("wind.speed_kmh", "Force du vent", "wind", 5, "km/h"),
     Setting("wind.from_deg", "Direction du vent", "wind", 45, "°"),
     Setting("wind.gust_pct", "Rafales", "wind", 10, "%"),
@@ -212,6 +223,10 @@ def current(cfg: config_mod.Config, themes_dir: Path | None = None) -> list[dict
                                 "applies": s.applies}
         if s.help:
             item["help"] = s.help
+        if s.key == "wind.mode" and cfg.wind.mode == "local":   # état de la dernière lecture (lot P33)
+            from . import local_weather
+
+            item["help"] = f"{s.help} {local_weather.status()}"
         ch = choices(s, themes_dir)
         if ch is not None:
             item.update(type="choice", choices=ch)

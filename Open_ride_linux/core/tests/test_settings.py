@@ -175,11 +175,12 @@ def test_wind_settings_lot_p16():
     cfg = Config()
     items = {i["key"]: i for i in settings.current(cfg)}
     assert items["wind.mode"]["value"] == "off"
-    assert items["wind.mode"]["choices"] == ["off", "fixed", "gusty", "theme"]
+    assert items["wind.mode"]["choices"] == ["off", "fixed", "gusty", "theme", "local"]
     cap = items["wind.max_grade_offset_pct"]
     assert (cap["value"], cap["min"], cap["max"], cap["step"]) == (4, 0, 8, 1)
     assert items["wind.speed_kmh"]["max"] == 60
-    assert settings.step(cfg, "wind.mode", "theme", +1) == "off"
+    assert settings.step(cfg, "wind.mode", "theme", +1) == "local"
+    assert settings.step(cfg, "wind.mode", "local", +1) == "off"
     assert settings.step(cfg, "wind.max_grade_offset_pct", 8, +1) == 8
     assert settings.step(cfg, "wind.speed_kmh", 20, +1) == 25
 
@@ -192,7 +193,7 @@ def test_gravel_setting_lot_u16(tmp_path: Path):
     assert (g["group"], g["value"], g["applies"]) == ("ride", "off", "next_session")
     assert g["choices"] == ["off", "auto", "compacted", "gravel", "dirt"]
     assert "Chemins réels" in g["help"] and "plafond du vent" in g["help"]
-    assert "help" not in items["wind.mode"]
+    assert "help" not in items["wind.speed_kmh"]
     path = tmp_path / "config.toml"
     path.write_text(START, encoding="utf-8")
     s, _, errors = _session(tmp_path, path)

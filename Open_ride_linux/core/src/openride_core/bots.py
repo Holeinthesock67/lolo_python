@@ -21,6 +21,10 @@
   en montée et au dernier kilomètre d'un sprint, réponses aux départs, fatigue au-delà de 60 min et forme
   du jour ; caractère tactique de chaque profil dans `PROFILES` (`character`). Cahier :
   `docs/lots/LOT_Y10_comportement_bots_core.md`.
+- lot VD7 (vélodrome, 4.0) : consigne d'épreuve de piste (`hint`, `RaceHint`, posée à chaque pas par la séance
+  depuis `track.bot_plan`) : sprint vers une ligne, allure de poursuite, derny du keirin à ne pas dépasser,
+  repos de l'américaine, hauteur voulue sur la piste ; puis comportements de course de `bot_tactics`
+  (`Tactics.race_power`). Aucune règle physique propre aux bots. Cahier : `docs/lots/LOT_VD7_bots_piste.md`.
 - lot PL1 (peloton, 3.0) : jusqu'à 11 bots à puissance constante ou à profil (`MAX_CONSTANT_BOTS`) et un
   fantôme. Au-delà de `FULL_FRAME_BOTS` bots, la trame `state` allège les plus loin du cycliste
   (`light_frame`) pour que la pire trame tienne dans 4 096 octets. Cahier : `docs/lots/LOT_PL1_peloton.md`.
@@ -29,12 +33,12 @@
 from __future__ import annotations
 
 import bisect
-from dataclasses import replace
+from dataclasses import astuple, replace
 from datetime import datetime
 import math
 import zlib
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from dataclasses import dataclass
 
@@ -45,6 +49,22 @@ from .physics import G, V_FLOOR, V_MAX, PhysicsParams, RiderPhysics, air_density
 from .rogue.wbal import WbalState, wbal_initial, wbal_step
 from .route import Route
 from .tools.session_summary import Session, load_session, running_records
+
+
+class RaceHint(NamedTuple):
+    """Consigne d'une épreuve à un bot à profil (lot VD7) : écrite par le mode, lue par `ProfileBot`.
+
+    `power_cp` : puissance demandée en part de la CP (None : la stratégie du bot) ; `peak` : son pic de sprint
+    s'il en a un ; `tactical` : il quitte la roue suivie (sprint, relais en tête, allure) ; `wheel` : roue
+    imposée (écart en m, vitesse en m/s : le derny du keirin), qu'il ne double pas ; `lane_m` : place voulue
+    (`lane.home`, écart d'AS2 ; None : la sienne) ; `key` : occasion du pic (un pic par ligne)."""
+
+    power_cp: float | None = None
+    peak: bool = False
+    tactical: bool = False
+    wheel: tuple[float, float] | None = None
+    lane_m: float | None = None
+    key: Any = None
 
 
 class BotError(Exception):
@@ -362,7 +382,12 @@ class ProfileBot(ConstantPowerBot):
         # lot DS3 : (distance à l'arche en m, menacé, à l'abri, distance de début du sprint) ; None hors mode
         self.survival: tuple[float, bool, bool, float] | None = None
         # lot Y10 : tactique (mode « none » jusqu'au départ de séance, `bot_tactics.start_race`)
-        self.tactics = Tactics(self.id, self.spec.character)
+        self.tactics = Tactics(self.id, self.spec.character, name=self.name)
+        # lot VD7 : consigne de l'épreuve de piste (None hors épreuve), course vue par les bots, temps du champ
+        self.hint: RaceHint | None = None
+        self.race_view: Any = None
+        self.race_t = 0.0
+        self._lane_home: float | None = None    # place d'avant la consigne (rendue sans consigne)
         self.set_scale(scale)
 
     def set_scale(self, scale: float) -> None:
@@ -389,15 +414,6 @@ class ProfileBot(ConstantPowerBot):
     def wbal_pct(self) -> float:
         return 100.0 * self.wbal.w_bal_j / self.w_prime_j
 
-    def _segment_here(self, s: float, length_m: float, is_loop: bool) -> tuple[Any, int] | None:
-        pos, lap = s, 0
-        if is_loop and length_m > 0:
-            lap, pos = int(s // length_m), s % length_m
-        for seg in self.segments:
-            if seg.s_start <= pos < seg.s_end:
-                return seg, lap
-        return None
-
     def target_power(self, s: float, length_m: float = 0.0, is_loop: bool = False,
                      wbal_pct: float | None = None) -> float:
         """Puissance demandée par la stratégie à la position s, avant la limite de la réserve
@@ -409,6 +425,15 @@ class ProfileBot(ConstantPowerBot):
         """Puissance de la stratégie et vrai pour une attaque en montée ou un sprint (lot AS1 : le bot
         quitte alors la roue qu'il suivait)."""
         spec = self.spec
+        hint = self.hint
+        if hint is not None and (hint.peak or hint.power_cp is not None):   # lot VD7 : consigne de l'épreuve
+            if hint.peak and self.peak_w > 0:
+                if hint.key != self._peak_key:
+                    self._peak_key, self._peak_used_s = hint.key, 0.0
+                if self._peak_used_s < spec.peak_s - 1e-9:
+                    return self.peak_w, True
+            frac = hint.power_cp if hint.power_cp is not None else 1.30   # sans pic : sprint à 1,3 × CP
+            return frac * self.cp_w, hint.tactical or hint.peak
         if self.survival is not None:
             d_m, danger, safe, sprint_from_m = self.survival
             reserve = self.wbal_pct if wbal_pct is None else wbal_pct
@@ -422,17 +447,21 @@ class ProfileBot(ConstantPowerBot):
 
     def _course_strategy(self, s: float, length_m: float, is_loop: bool,
                          wbal_pct: float | None = None) -> tuple[float, bool]:
-        """Stratégie par segment du lot T12 (montée, attaque, sprint ; plat ailleurs)."""
+        """Stratégie par segment du lot T12 (montée, attaque, sprint ; plat ailleurs). Appelée à chaque
+        pas du calibrage (`ride_time`) : segment cherché en ligne, sans appel de plus."""
         spec = self.spec
-        here = self._segment_here(s, length_m, is_loop)
-        if here is None:
+        pos, lap = s, 0
+        if is_loop and length_m > 0:
+            lap, pos = int(s // length_m), s % length_m
+        for seg in self.segments:
+            if seg.s_start <= pos < seg.s_end:
+                break
+        else:
             return spec.flat * self.cp_w, False
-        seg, lap = here
         if seg.type == "climb":
             reserve = self.wbal_pct if wbal_pct is None else wbal_pct
             attack = spec.climb_attack > 0 and reserve > 100.0 * spec.climb_reserve
             return (spec.climb_attack if attack else spec.climb) * self.cp_w, attack
-        pos = s % length_m if is_loop and length_m > 0 else s
         if self.peak_w > 0 and seg.s_end - pos <= spec.sprint_last_m:
             key = (seg.id, lap)
             if key != self._peak_key:
@@ -473,6 +502,18 @@ class ProfileBot(ConstantPowerBot):
         self.cp_w = self.base_cp_w * self.tactics.cp_factor(self.t)   # lot Y10 : forme et fatigue
         power, tactical = self._strategy(self.physics.s, length, loop)
         power, tactical = self.tactics.adjust(self, power, tactical, self.t, self.physics.s, length, loop)
+        lane = None
+        if self.tactics.on.racing:   # lot VD7 : coalitions, marquage, bluff, classement, fatigue visible
+            power, tactical, lane = self.tactics.race_power(self, power, tactical, self.race_t, self.race_view)
+        hint = self.hint
+        if hint is not None or lane is not None or self._lane_home is not None:   # hors piste : rien à faire
+            self._apply_place(lane if lane is not None else (hint.lane_m if hint is not None else None))
+            if hint is not None and hint.wheel is not None:   # roue imposée (derny) : jamais devant elle
+                if self.wheel is None or hint.wheel[0] < self.wheel[0]:
+                    self.wheel = hint.wheel
+                tactical = False
+                if hint.wheel[0] <= BRAKE_GAP_M:
+                    self.physics.v = min(self.physics.v, hint.wheel[1])   # roue contre roue : pas plus vite
         if (self.wheel is not None and not tactical) or self.lane.blocked is not None:
             here = route.sample(self.physics.s) if route is not None else None
             grade, alt = (here.grade_pct, here.alt_m) if here else (0.0, 0.0)
@@ -486,6 +527,16 @@ class ProfileBot(ConstantPowerBot):
         self.power_w = power
         super().step(dt, route)
         self.wbal = wbal_step(self.wbal, power, 0.0, dt, cp_w=self.cp_w, w_prime_j=self.w_prime_j)
+
+    def _apply_place(self, want: float | None) -> None:
+        """Place voulue (`lane.home`) par la fatigue visible ou la consigne de l'épreuve ; celle d'avant rendue
+        sans consigne."""
+        if want is not None:
+            if self._lane_home is None:
+                self._lane_home = self.lane.home
+            self.lane.home = want
+        elif self._lane_home is not None:
+            self.lane.home, self._lane_home = self._lane_home, None
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
@@ -541,12 +592,22 @@ class RouteProfile:
         self.sin: list[float] = []
         self.cos: list[float] = []
         self.rho: list[float] = []
+        self._ref_times: dict[tuple, float] = {}
         for i in range(n):
             here = route.sample(min((i + 0.5) * cell_m, self.length_m))
             theta = math.atan(here.grade_pct / 100.0)
             self.sin.append(math.sin(theta))
             self.cos.append(math.cos(theta))
             self.rho.append(air_density(here.alt_m))
+
+
+    def ref_time(self, params: PhysicsParams, power_w: float) -> float:
+        """Temps du cycliste de référence à puissance constante, calculé une fois par physique et
+        puissance : les bots d'un même niveau le partagent (`calibrate_bots`)."""
+        key = (astuple(params), power_w)
+        if key not in self._ref_times:
+            self._ref_times[key] = ride_time(self, params, power_w=power_w)
+        return self._ref_times[key]
 
 
 def ride_time(prof: RouteProfile, params: PhysicsParams, power_w: float = 0.0,
@@ -571,35 +632,52 @@ def ride_time(prof: RouteProfile, params: PhysicsParams, power_w: float = 0.0,
         triggers = tac.attack_triggers(bot.segments, bot.spec.sprint_last_m, peak > 0)
         next_trigger = triggers[0] if triggers else math.inf   # point d'attaque suivant, jugé une fois
         k, attack_until = 0, -1.0
+    # Boucle chaude (des centaines de milliers de pas par calibrage) : noms locaux et tests en ligne
+    # plutôt que min/max/abs, mêmes opérations et même ordre que `RiderPhysics.step` (résultat identique
+    # au bit près, vérifié par `test_bots_calibration.py`).
+    exp, sqrt = math.exp, math.sqrt
+    strategy = bot._strategy if bot is not None else None
+    last = n - 1
     s = v = t = 0.0
     while s < length and t < max_t:
-        i = min(int(s / cell), n - 1)
+        i = int(s / cell)
+        if i > last:
+            i = last
         p = power_w
-        if bot is not None:
+        if strategy is not None:
             if t > tired_from:   # lot Y10 : fatigue de longue durée, relevée toutes les 10 s (0,01 % de CP)
                 cp = bot.cp_w = cp_day * max(1.0 - tired_rate * (t - DURABILITY_START_S), DURABILITY_FLOOR)
                 tired_from = t + 10.0
             reserve = 100.0 * w / wp
-            p, tactical = bot._strategy(s, length, False, reserve)
+            p, tactical = strategy(s, length, False, reserve)
             if s >= next_trigger or attack_until > t:   # lot Y10 : attaque qui part ou en cours
                 if s >= next_trigger:
                     k += 1
                     next_trigger = triggers[k] if k < len(triggers) else math.inf
                 p, _ = tac.adjust(bot, p, tactical, t, s, length, False, reserve)
                 attack_until = tac.attack_until
-            if p > cp and w <= 0.0:
-                p = cp
+            if p > cp:
+                if w <= 0.0:
+                    p = cp
             if p == peak and peak > 0:
                 bot._peak_used_s += dt
             if p > cp:
-                w = max(w - (p - cp) * dt, 0.0)
+                w -= (p - cp) * dt
+                if w < 0.0:
+                    w = 0.0
             else:
-                w = wp - (wp - w) * math.exp(-(cp - p) / wp * dt)
-        if v < V_FLOOR and (p > 0.0 or gravity[i] < 0.0):
+                w = wp - (wp - w) * exp(-(cp - p) / wp * dt)
+        g = gravity[i]
+        if v < V_FLOOR and (p > 0.0 or g < 0.0):
             v = V_FLOOR
         va = v + wind
-        energy = 0.5 * m * v * v + (eff * p - (aero[i] * va * abs(va) + gravity[i]) * v) * dt
-        v_new = min(math.sqrt(max(energy, 0.0) * 2.0 / m), V_MAX)
+        drag = aero[i] * va * va
+        if va < 0.0:
+            drag = -drag
+        energy = 0.5 * m * v * v + (eff * p - (drag + g) * v) * dt
+        v_new = sqrt(energy * 2.0 / m) if energy > 0.0 else 0.0
+        if v_new > V_MAX:
+            v_new = V_MAX
         if s + v_new * dt >= length and v_new > 0:
             return t + (length - s) / v_new   # fraction du dernier pas
         s += v_new * dt
@@ -625,7 +703,7 @@ def calibrate(profile: str, route: Any, level_pct: float, rider: RefRider, segme
         raise BotError(f"profil de bot inconnu : {profile!r} ({', '.join(PROFILES)})")
     prof = prof or RouteProfile(route)
     still = replace(rider.params, wind_mps=0.0)   # calibrage sans vent, pour le cycliste comme pour le bot
-    t_ref = ride_time(prof, still, power_w=rider.ftp_w * level_pct / 100.0)
+    t_ref = prof.ref_time(still, rider.ftp_w * level_pct / 100.0)
     bot = ProfileBot(profile, bot_id="calib", params=replace(bot_params or rider.params, wind_mps=0.0),
                      segments=segments, bike_mass_kg=bike_mass_kg)
     bot.tactics.start(0, "calibration")   # lot Y10 : attaques et fatigue, sans groupe ni forme du jour

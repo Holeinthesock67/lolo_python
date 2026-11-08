@@ -8,7 +8,8 @@ extends RefCounted
 ## - `summit` au sommet de chaque montée (climb_detector.gd) : nom du point d'intérêt nommé le plus
 ##   proche à moins de SUMMIT_NAME_M, sinon « Sommet », et l'altitude arrondie au mètre (« 1 234 m ») ;
 ## - `approach` à APPROACH_KM du sommet (si la montée est assez longue) : « Sommet à 3 km » et
-##   « Pente moyenne 7 % » (pente moyenne du reste de la montée, arrondie à l'unité) ;
+##   « Pente moyenne 7 % » (pente moyenne du reste de la montée, arrondie à l'unité), avec aussi le nom du
+##   sommet (`name`), la distance (`km`), la pente (`pct`) et l'altitude du panneau (`alt_m`) pour sa mise en page ;
 ## - `km` tous les kilomètres de parcours (« km 12 »), sans doublon au point de départ d'une boucle.
 ## `side` vaut 1 (à droite, face au cycliste qui suit le parcours) ou -1 (à gauche, face au cycliste qui roule
 ## à rebours après un demi-tour, lot N17) : le panneau du sommet est posé des deux côtés, comme sur une vraie
@@ -138,7 +139,9 @@ static func items(route, climbs: Array, pois: Array = [], water: Dictionary = {}
 			var lines := approach_texts(km, avg)
 			var sa := _dry_s(route, s, water, road_width_m)
 			if not is_nan(sa):
-				out.append({"kind": "approach", "s": sa, "side": 1, "text": "\n".join(lines), "lines": lines})
+				out.append({"kind": "approach", "s": sa, "side": 1, "text": "\n".join(lines), "lines": lines,
+					"name": name, "km": km, "pct": int(round(avg)),
+					"alt_m": int(round(float(route.sample(sa)["alt_m"])))})
 	var n_km := int(floor(route.length_m / 1000.0 + 1e-6))
 	for k in range(1, n_km + 1):
 		var s := k * 1000.0

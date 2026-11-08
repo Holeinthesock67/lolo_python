@@ -13,7 +13,7 @@ import struct
 
 import pytest
 
-from openride_core import ble_sim, ble_util, fit_export, ftms, hr_monitor
+from openride_core import ble_sim, ble_util, fit_export, ftms, hr_monitor, zwift_click
 from openride_core.__main__ import build_parser, main
 from openride_core.config import Config, ConfigError, from_dict
 from openride_core.ftms_driver import FtmsDriver
@@ -33,6 +33,9 @@ def sim_config(scenario: str = "nominal") -> Config:
     cfg.drivers.trainer = cfg.drivers.input = cfg.drivers.hr = "sim"
     cfg.drivers.sim_scenario = scenario
     cfg.trainer.control = "sim"   # ces tests suivent le protocole SIM (0x11) ; résistance calculée : test_resistance_calculee.py
+    # Le Click simulé envoie un seul appui par bouton maintenu : événements dès le relâchement. La
+    # rafale du vrai Click V2 (R14) : test_click_rafale.py et `test_click_burst_gap_in_the_real_loop`.
+    cfg.drivers.click_repeat_gap_s = 0.0
     return cfg
 
 
@@ -453,6 +456,27 @@ def test_click_pair_relay_short_and_long_presses():
         await asyncio.sleep(0.2)
         assert rig.events() == [InputEvent.PLUS_SHORT, InputEvent.PLUS_UNCLEAR, InputEvent.MINUS_LONG]   # boîtier « + » puis « − »
         assert {p.battery_pct for p in clicks} == {80}
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_click_burst_gap_in_the_real_loop():
+    """Écart de rafale du défaut (R14) : la boucle du fournisseur publie l'appui après l'écart, une
+    seule fois malgré le relais du « + » par le boîtier « − »."""
+    async def scenario():
+        cfg = sim_config()
+        cfg.drivers.click_repeat_gap_s = zwift_click.REPEAT_GAP_S
+        rig = Rig(READY, cfg).start()
+        clicks = [p for p in rig.inputs if isinstance(p, ZwiftClickProvider)]
+        await wait_for(lambda: all(p.status == "CONNECTED" for p in clicks))
+        await rig.world.press("+")
+        await rig.world.press("+")             # second appui à moins de l'écart : même appui
+        assert rig.events() == []
+        await asyncio.sleep(zwift_click.REPEAT_GAP_S + 0.5)
+        assert rig.events() == [InputEvent.PLUS_SHORT, InputEvent.PLUS_SHORT]   # vrais appuis courts gardés
+        await rig.world.press("-", 1.0)
+        await asyncio.sleep(zwift_click.REPEAT_GAP_S + 0.5)
+        assert rig.events() == [InputEvent.MINUS_LONG]
         await rig.stop()
     asyncio.run(scenario())
 

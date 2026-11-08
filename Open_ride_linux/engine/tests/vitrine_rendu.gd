@@ -69,6 +69,9 @@ const VIEWS := {
 	"ecorces": [Vector3(129.0, 1.8, -112.0), Vector3(129.0, 2.4, -120.0), 55.0],
 	"panneaux": [Vector3(58.5, 1.5, -15.5), Vector3(61.5, 1.3, -22.0), 50.0],
 	"panneau_col": [Vector3(58.6, 2.3, -18.6), Vector3(60.0, 2.3, -22.0), 40.0],
+	"panneau_approche": [Vector3(65.6, 2.3, -18.2), Vector3(63.0, 2.2, -24.0), 40.0],
+	"panneau_approche_15m": [Vector3(61.0, 1.6, -9.8), Vector3(63.0, 2.0, -24.0), 55.0],
+	"panneau_approche_30m": [Vector3(55.0, 1.5, 4.0), Vector3(63.0, 2.0, -24.0), 55.0],
 	"borne": [Vector3(61.0, 0.9, -17.4), Vector3(61.8, 0.45, -19.5), 40.0],
 	"borne_dos": [Vector3(62.6, 0.9, -21.6), Vector3(61.8, 0.45, -19.5), 40.0],   # face arrière (demi-tour, N17)
 	"portes": [Vector3(-4.0, 1.6, -24.0), Vector3(-9.0, 1.2, -25.0), 60.0],
@@ -79,7 +82,8 @@ const VIEWS := {
 ## textes que leur donne roadside_model.gd.
 const PROPS := [
 	[{"kind": "summit", "s": 0.0, "lines": ["Col de la Croix", "1 234 m"]}, Vector3(60.0, 0.0, -22.0)],
-	[{"kind": "approach", "s": 0.0, "lines": ["Sommet à 2 km", "Pente moyenne 7 %"]}, Vector3(63.0, 0.0, -24.0)],
+	[{"kind": "approach", "s": 0.0, "lines": ["Sommet à 2 km", "Pente moyenne 7 %"], "name": "Col de la Croix", "km": 2,
+		"pct": 7, "alt_m": 1094}, Vector3(63.0, 0.0, -24.0)],
 	[{"kind": "km", "s": 0.0, "lines": ["km 3"]}, Vector3(61.8, 0.0, -19.5)],
 ]
 ## Arbres de tree_species.gd (lot U7) et arbre d'avant la série U, en deux rangées loin de la route.

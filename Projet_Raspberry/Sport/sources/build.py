@@ -31,7 +31,7 @@ B = lambda t: S.append(Paragraph(t, bul, bulletText="●"))
 BB = lambda t: S.append(Paragraph(t, sub, bulletText="○"))
 
 P("Synthèse Intégrale v2.3 : Performance, Entraînement, Home Gym, Nutrition et Santé (Homme, 45 ans)", h1)
-P("Version 2.3 – 20 octobre 2026 (mise à jour du 22/10 : tension, 2 mesures par séance) – révisée selon l'état actuel de la littérature scientifique ; pilotage de l'intensité par la charge Garmin sur 4 semaines.", meta)
+P("Version 2.3 – 20 octobre 2026 (mises à jour du 22/10 : tension, 2 mesures par séance ; du 08/11 : sortie du dimanche au meilleur créneau météo) – révisée selon l'état actuel de la littérature scientifique ; pilotage de l'intensité par la charge Garmin sur 4 semaines.", meta)
 P("Ce document rassemble les métriques et principes essentiels pour piloter la performance, la charge "
   "d'entraînement, le home gym, la nutrition empirique et la santé cardiométabolique à 45 ans, en s'appuyant "
   "sur la montre Garmin 265, les pédales de puissance Favero Assioma, une balance, un mètre ruban, un "
@@ -65,7 +65,10 @@ B("<b>Vendredi soir – Home Gym (Séance B) :</b> épaules (V-taper), dos, pect
 B("<b>Samedi – Repos / Mobilité.</b>")
 B("<b>Dimanche matin – Vélo route (2h00), 100 % Zone 2 :</b> IF ≈ 0,60–0,65. Sortie identique chaque semaine, "
   "donc Efficiency Factor et découplage comparables d'un dimanche à l'autre.")
-BB("<b>Dimanche dégradé :</b> pluie mais envie d'aérobie → 40–45 min de home trainer en Zone 2 (55–62 % du FTP, soit ≈ 140–160 W) ; "
+BB("<b>Dehors ou home trainer :</b> départ au meilleur créneau météo de 2 h entre 9 h et 14 h (calculé par le Raspberry Pi). "
+   "Home trainer si brouillard, bruine, pluie de plus de 1 mm ou moins de 9 °C sur le créneau ; entre 9 et 13 °C, dehors seulement "
+   "par grand soleil ; à 13 °C et plus, dehors.")
+BB("<b>Dimanche dégradé :</b> météo défavorable mais envie d'aérobie → 60–75 min de home trainer en Zone 2 (55–62 % du FTP, soit ≈ 132–149 W avec le FTP testé de 240 W) ; "
    "envie de plein air mais pas de route → VTT ou footing souple de 35 min en Zone 2 ; fatigue ou démotivation → repos, sans culpabilité "
    "(et pas de recharge glucidique).")
 B("<b>Quotidien :</b> objectif de 7 000–8 000 pas. Repère OMS 2020 : 150–300 min d'activité modérée ou 75–150 min d'activité intense par semaine, "
