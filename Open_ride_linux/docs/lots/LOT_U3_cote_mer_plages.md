@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Compilateur : côte, mer et plages | Python | U1 | Moyenne | Oui, après U1, **version 3.0** (issue #333) |
+| Compilateur : côte, mer et plages | Python | U1 | Moyenne | En PR, **version 3.0** (issue #333, lancé le 8 novembre) |
 
 ## 1. Objectif
 

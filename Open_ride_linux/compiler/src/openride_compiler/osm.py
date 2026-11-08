@@ -110,6 +110,20 @@ def build_overpass_query(bboxes: list[tuple[float, float, float, float]]) -> str
     return f"[out:json][timeout:60];\n(\n{union_body}\n);\nout body geom;\n"
 
 
+def build_coast_query(bbox: tuple[float, float, float, float]) -> str:
+    """Requête Overpass de la côte (lot U3) sur l'étendue du terrain : lignes de côte, plages, sable
+    et falaises. Les chemins reviennent entiers (`out body geom`), au-delà de la boîte comprise."""
+    south, west, north, east = bbox
+    b = f"({south:.5f},{west:.5f},{north:.5f},{east:.5f})"
+    parts = [
+        f'  way["natural"="coastline"]{b};',
+        f'  way["natural"~"^(beach|sand)$"]{b};',
+        f'  relation["natural"~"^(beach|sand)$"]{b};',
+        f'  way["natural"="cliff"]{b};',
+    ]
+    return "[out:json][timeout:90];\n(\n" + "\n".join(parts) + "\n);\nout body geom;\n"
+
+
 def query_hash(query: str) -> str:
     return hashlib.sha256(query.encode("utf-8")).hexdigest()
 
@@ -202,6 +216,11 @@ class OverpassClient:
         raise CompileError(
             f"échec de la requête Overpass après {RETRIES} reprises : {last_error}"
         )
+
+    def fetch_coast(self, route: dict[str, Any], frame: LocalFrame) -> list[dict[str, Any]]:
+        """Réponse Overpass de la côte sur l'étendue des tuiles lointaines du terrain (lot U3)."""
+        from .coast import coast_bbox
+        return [self.fetch_query(build_coast_query(coast_bbox(route, frame)))]
 
     def fetch_for_route(
         self,

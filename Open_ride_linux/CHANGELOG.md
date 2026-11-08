@@ -5,6 +5,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Mer, côte et plages dans les parcours compilés (lot U3)
+- Un parcours compilé avec la couche eau reçoit la mer, tirée des lignes de côte d'OpenStreetMap et refermée sur le bord du terrain, îles comprises.
+- Nouvelle couche `coast` (`--layers …,coast` ou `add-layer coast`) : le rivage (falaise, sable, galets ou roche) et les plages qui touchent la côte, pour la mer animée de la 3.0 (U9).
+- Un parcours loin de la mer ne change pas.
+
 ### Rendu plus léger (étude du 5 et 6 novembre)
 - Medium et high : MSAA 2× et ombres du soleil en 2048 ; high sans lumière indirecte d'écran (SSIL) et filtrage anisotrope 8×. Tour des six biomes sur la GTX 1060 : environ −2,4 ms par image en medium et −4 ms en high.
 - Feuillage et herbe éclairés plus simplement (sans reflet spéculaire), arbres lointains sans vent, halo à trois niveaux.
