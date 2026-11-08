@@ -2642,6 +2642,7 @@ class CoreSession:
                 powerups_on=self.cfg.powerups.mode != "off",
                 powerup_set=self.cfg.powerups.mode if self.cfg.powerups.mode != "off" else "classiques",
                 grade_at=route.grade_at,
+                surface_at=(lambda x: self._surface_here(route, x)) if self.cfg.gravel.mode != "off" else None,
                 loadout=header["loadout"] if header else None, gain_mode=gain_mode)
         from .bots import RefRider, attach_segments, calibrate_bots
 
@@ -2989,6 +2990,8 @@ class CoreSession:
             # Gravel (lot U21) : roulement multiplié, lissé sur 20 m ; vitesse virtuelle en SIM comme en ERG.
             params = self.physics.p if (race or wtf is not None) else self._base_params
             self._gravel_factor = self._gravel_factor_at(route, s)
+            if race:   # Rouleau compresseur (lot TT5) : roulement du bitume, fondu sur 20 m
+                self._gravel_factor = race.surface_factor(self._gravel_factor)
             self.physics.p = replace(params, crr=params.crr * self._gravel_factor)
             self._gravel_offset = surface_physics.grade_offset_pct(params.crr, self._gravel_factor, grade)
         if self.wind.active:   # vent figé en pause : son temps est celui de la séance

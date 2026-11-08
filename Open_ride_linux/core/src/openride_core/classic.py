@@ -27,7 +27,15 @@ from typing import Any
 from .gaps import RIDER_ID, GapTracker
 from .jerseys import Finish, Standings
 from .physics import PhysicsParams
-from .powerups import NEAR_FINISH_M, ArchSchedule, Context, PowerUps, PowerUpTable, descent_ahead
+from .powerups import (
+    NEAR_FINISH_M,
+    ArchSchedule,
+    Context,
+    PowerUps,
+    PowerUpTable,
+    descent_ahead,
+    unpaved_ahead,
+)
 from .records import DATE_FORMAT, RecordBook
 from .segment_timing import SegmentPass, SegmentTimer
 
@@ -79,6 +87,7 @@ class ClassicRace:
     powerups_on: bool = True
     powerup_set: str = "classiques"                         # jeu tiré : `classiques` ou `tactiques` (TT2)
     grade_at: Callable[[float], float] | None = None        # pente du parcours (tirage et refus de TT2)
+    surface_at: Callable[[float], str] | None = None        # surface effective, None sans gravel (TT5)
     seed: int | None = None
     loadout: dict | None = None                             # cadre et roues de la séance (lot V5)
     gain_mode: str = "off"                                  # voir GAIN_MODES
@@ -136,14 +145,20 @@ class ClassicRace:
         self.erg = bool(on)
         self.powerups.set_erg(self.erg)
 
-    def context(self, s: float | None = None) -> Context:
+    def context(self, s: float | None = None, ds_m: float = 0.0) -> Context:
         """Terrain et séance pour le tirage, l'appui et le pas (conditions de la table, lot TT2)."""
         s = self._s if s is None else s
-        g = self.grade_at
+        g, surf = self.grade_at, self.surface_at
+        end = None if self.loop else self.length_m
+        gravel = (lambda: unpaved_ahead(surf, s, end)) if surf is not None else (lambda: False)
         if g is None:
-            return Context(has_bots=self._has_bots)
-        return Context(grade_pct=g(s), has_bots=self._has_bots, near_finish=self._near_finish(s),
-                       descent_ahead=lambda: descent_ahead(g, s, None if self.loop else self.length_m))
+            return Context(has_bots=self._has_bots, ds_m=ds_m, gravel_ahead=gravel)
+        return Context(grade_pct=g(s), has_bots=self._has_bots, near_finish=self._near_finish(s), ds_m=ds_m,
+                       descent_ahead=lambda: descent_ahead(g, s, end), gravel_ahead=gravel)
+
+    def surface_factor(self, gravel_factor: float) -> float:
+        """Facteur de roulement du gravel pendant le Rouleau compresseur (lot TT5)."""
+        return self.powerups.surface_factor(gravel_factor) if self.powerups_on else gravel_factor
 
     def _near_finish(self, s: float) -> bool:
         """À moins de `NEAR_FINISH_M` de l'arrivée (parcours ouvert) ou de la fin d'un sprint (lot TT4)."""
@@ -187,7 +202,9 @@ class ClassicRace:
         self._s = s
         self._has_bots = any(getattr(b, "kind", "") != "ghost" for b in bots)
         if self.powerups_on:
-            self.powerups.step(dt, self.context(s) if self.powerups.active is not None else None)
+            ds = max(s - self._prev_s, 0.0) if self._prev_s is not None else 0.0
+            busy = self.powerups.active is not None or self.powerups.roll_w > 0.0
+            self.powerups.step(dt, self.context(s, ds) if busy else None)
             if self._prev_s is not None and not self.erg:
                 for _ in range(self.arches.crossed(self._prev_s, s)):
                     self.powerups.award("arch", self.context(s))
