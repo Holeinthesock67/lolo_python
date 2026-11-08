@@ -136,6 +136,7 @@ class Source(NamedTuple):
     kind: str = "constant"
     lane_m: float | None = None
     cda_m2: float | None = None
+    shelters: bool = True        # faux pendant l'Échappée (lot TT4) : les suiveurs ne reçoivent plus son abri
 
 
 def lane_of(runner: Any) -> float | None:
@@ -381,7 +382,7 @@ def update_bots(bots: list[Any], rider: Source | None, dt: float, length_m: floa
                 if d > length_m / 2.0:
                     d -= length_m
             if d > 0.0:
-                if d <= _GROUP_REACH_M:
+                if d <= _GROUP_REACH_M and getattr(f, "shelters", True):   # Échappée (TT4) : abri annulé
                     shift = crosswind_shift_m(d - BIKE_LENGTH_M, b.v, head, cross)   # lot AS3
                     alpha = _source_alpha(d, me, f_lane, size, shift)
                     if alpha > 0.0:

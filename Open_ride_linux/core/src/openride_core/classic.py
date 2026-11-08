@@ -27,7 +27,7 @@ from typing import Any
 from .gaps import RIDER_ID, GapTracker
 from .jerseys import Finish, Standings
 from .physics import PhysicsParams
-from .powerups import ArchSchedule, Context, PowerUps, PowerUpTable, descent_ahead
+from .powerups import NEAR_FINISH_M, ArchSchedule, Context, PowerUps, PowerUpTable, descent_ahead
 from .records import DATE_FORMAT, RecordBook
 from .segment_timing import SegmentPass, SegmentTimer
 
@@ -142,8 +142,19 @@ class ClassicRace:
         g = self.grade_at
         if g is None:
             return Context(has_bots=self._has_bots)
-        return Context(grade_pct=g(s), has_bots=self._has_bots,
+        return Context(grade_pct=g(s), has_bots=self._has_bots, near_finish=self._near_finish(s),
                        descent_ahead=lambda: descent_ahead(g, s, None if self.loop else self.length_m))
+
+    def _near_finish(self, s: float) -> bool:
+        """À moins de `NEAR_FINISH_M` de l'arrivée (parcours ouvert) ou de la fin d'un sprint (lot TT4)."""
+        pos = s % self.length_m if self.loop and self.length_m > 0 else s
+        if not self.loop and self.length_m - pos <= NEAR_FINISH_M:
+            return True
+        return any(seg.type == "sprint" and 0.0 <= seg.s_end - pos <= NEAR_FINISH_M for seg in self.segments)
+
+    def unseen(self) -> bool:
+        """Échappée en cours (lot TT4) : les bots ne reçoivent plus l'abri du cycliste ni ne voient son attaque."""
+        return self.powerups.unseen() if self.powerups_on else False
 
     def draft_boost(self):
         """Aspiration + en cours (lot TT3) : `powerups.DraftBoost`, ou None."""
