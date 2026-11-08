@@ -1,0 +1,221 @@
+== appareils (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== appareils (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== appareils (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== clavier_synonymes (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== connexion_auto (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== cyber_rogue (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== cyber_rogue (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== cyber_rogue (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== dernier_survivant (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== dernier_survivant (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== dernier_survivant (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== derniers_choix (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== derniers_choix (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== derniers_choix (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== erg (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== erg (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== erg (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== erg_libre (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== erg_libre (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== erg_libre (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== erg_qwkcode (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[ÉCHEC] engine prêt (première réponse à menu_state) : sans réponse en 60 s
+[ÉCHEC] qualité réellement appliquée à l'arrêt : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== garage (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[ÉCHEC] qualité réellement appliquée au départ : aucune ligne « Qualité appliquée » au journal de l'engine
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+

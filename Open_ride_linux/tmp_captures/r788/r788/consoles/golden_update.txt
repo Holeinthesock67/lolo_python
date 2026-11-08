@@ -1,0 +1,1776 @@
+== 1280x720_low ==
+[OK] 1280x720_low · attente · capture enregistrée
+[OK] 1280x720_low · attente · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_low · attente · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · attente · écart à l'image de référence : SSIM 0.9853 (seuil 0.97), pire bloc 0.97, écart moyen 5.95 niveaux, 106 blocs masqués
+[OK] 1280x720_low · attente · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · attente · contraste speed_caption : 3.7:1 (au moins 3:1)
+[OK] 1280x720_low · attente · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · attente · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · attente · contraste grade_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · attente · texte status : « ÉTAT: en attente du core… »
+[OK] 1280x720_low · attente · texte power : « — »
+[OK] 1280x720_low · attente · éléments dans l'écran : 20 éléments visibles
+[OK] 1280x720_low · attente · lignes du HUD sans chevauchement
+[OK] 1280x720_low · attente · panneaux dans l'écran : 4 panneaux
+[OK] 1280x720_low · attente · panneaux sans chevauchement
+[OK] 1280x720_low · attente · textes dans panel_left
+[OK] 1280x720_low · attente · textes dans panel_right
+[OK] 1280x720_low · attente · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · attente · image affichée (ni noire ni uniforme) : luminance 0.36
+[OK] 1280x720_low · vue_fixe · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-visual-routes-2trtyxiz/demo.world
+[ÉCHEC] 1280x720_low · vue_fixe · capture enregistrée : aucune ligne « screenshot » dans le journal de l'engine
+[OK] 1280x720_low · nuages · capture enregistrée
+[OK] 1280x720_low · nuages · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · nuages · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · nuages · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · nuages · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · nuages · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · nuages · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · nuages · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · nuages · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · nuages · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · nuages · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · nuages · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · nuages · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · nuages · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · nuages · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · nuages · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · nuages · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · nuages · nuages dessinés au-dessus de l'horizon : 12.4% de pixels de nuage
+[OK] 1280x720_low · mouvement_1 · capture enregistrée
+[OK] 1280x720_low · mouvement_1 · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · mouvement_1 · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · mouvement_1 · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · mouvement_1 · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · mouvement_1 · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · mouvement_1 · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · mouvement_1 · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · mouvement_1 · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · mouvement_1 · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · mouvement_1 · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · mouvement_1 · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · mouvement_1 · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · mouvement_1 · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · mouvement_1 · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · mouvement_1 · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · mouvement_1 · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · mouvement_2 · capture enregistrée
+[OK] 1280x720_low · mouvement_2 · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · mouvement_2 · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · mouvement_2 · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · mouvement_2 · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · mouvement_2 · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · mouvement_2 · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · mouvement_2 · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · mouvement_2 · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · mouvement_2 · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · mouvement_2 · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · mouvement_2 · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · mouvement_2 · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · mouvement_2 · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · mouvement_2 · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · mouvement_2 · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · mouvement_2 · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · mouvement_2 · texte speed : « 28.8 »
+[OK] 1280x720_low · mouvement_2 · distance affichée qui avance : 1.51 km → 1.54 km
+[OK] 1280x720_low · mouvement_2 · caméra à la vitesse du core (8 m/s ± 25 %) : 26.8 m en 3.35 s, soit 8.0 m/s
+[OK] 1280x720_low · mouvement_2 · le sol défile à l'image : écart moyen 7.22 niveaux
+[OK] 1280x720_low · mouvement_2 · image ni noire ni uniforme : luminance 0.53, écart type 0.192
+[OK] 1280x720_low · mouvement_2 · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1280x720_low · mouvement_2 · sol en bas de l'image : 98% de pixels hors ciel
+[OK] 1280x720_low · mouvement_2 · maillages affichés : 24 maillages visibles
+[OK] 1280x720_low · vent · capture enregistrée
+[OK] 1280x720_low · vent · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · vent · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · vent · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · vent · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · vent · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · vent · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · vent · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · vent · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · vent · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · vent · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · vent · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · vent · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · vent · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · vent · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · vent · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · vent · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · vent · contraste wind_speed : 7.1:1 (au moins 3:1)
+[OK] 1280x720_low · vent · contraste wind_level : 4.0:1 (au moins 3:1)
+[OK] 1280x720_low · vent · indicateur du vent affiché
+[OK] 1280x720_low · vent · texte wind_verdict : « Vent défavorable »
+[OK] 1280x720_low · vent · texte wind_level : « fort »
+[OK] 1280x720_low · vent · texte wind_speed : « 26 km/h face »
+[OK] 1280x720_low · vent · éléments dans l'écran : 22 éléments visibles
+[OK] 1280x720_low · vent · lignes du HUD sans chevauchement
+[OK] 1280x720_low · vent · panneaux dans l'écran : 5 panneaux
+[OK] 1280x720_low · vent · panneaux sans chevauchement
+[OK] 1280x720_low · vent · textes dans panel_left
+[OK] 1280x720_low · vent · textes dans panel_right
+[OK] 1280x720_low · vent · pastille « Vent défavorable » en rouge : 81% de pixels rouges
+[OK] 1280x720_low · vent · indicateur sous la colonne de gauche : rectangle [20.0, 216.0, 243.0, 106.919982910156]
+[OK] 1280x720_low · abri · capture enregistrée
+[OK] 1280x720_low · abri · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · abri · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · abri · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · abri · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · abri · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · abri · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · abri · contraste wind_speed : 7.1:1 (au moins 3:1)
+[OK] 1280x720_low · abri · contraste wind_level : 4.0:1 (au moins 3:1)
+[OK] 1280x720_low · abri · pastille de l'abri affichée
+[OK] 1280x720_low · abri · texte draft : « Abri 30 % »
+[OK] 1280x720_low · abri · éléments dans l'écran : 23 éléments visibles
+[OK] 1280x720_low · abri · lignes du HUD sans chevauchement
+[OK] 1280x720_low · abri · panneaux dans l'écran : 6 panneaux
+[OK] 1280x720_low · abri · panneaux sans chevauchement
+[OK] 1280x720_low · abri · textes dans panel_left
+[OK] 1280x720_low · abri · textes dans panel_right
+[OK] 1280x720_low · abri · abri sous l'indicateur du vent : rectangle [20.0, 332.920013427734, 243.0, 35.6399841308594]
+[OK] 1280x720_low · abri · watts économisés montrés en medium et high, cachés en low : qualité low, visible False
+[OK] 1280x720_low · bots · capture enregistrée
+[OK] 1280x720_low · bots · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · bots · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · bots · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · bots · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · bots · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · bots · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · bots · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · bots · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · bots · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · bots · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · bots · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · bots · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · bots · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · bots · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · bots · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · bots · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · bots · contraste bots_line1 : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · bots · contraste bots_line2 : 5.8:1 (au moins 3:1)
+[OK] 1280x720_low · bots · contraste bots_jerseys : 7.4:1 (au moins 3:1)
+[OK] 1280x720_low · bots · encart des bots affiché
+[OK] 1280x720_low · bots · texte bots_line1 : « Bot 250 W »
+[OK] 1280x720_low · bots · texte bots_line2 : « Fantôme du 26/10 »
+[OK] 1280x720_low · bots · texte bots_ahead : « Bot 250 W »
+[OK] 1280x720_low · bots · texte bots_behind : « Fantôme du 26/10 »
+[OK] 1280x720_low · bots · texte bots_jerseys : « Vert : toi · Pois : Bot 250 W »
+[OK] 1280x720_low · bots · encart sous le panneau de droite : rectangle [1017.0, 341.0, 243.0, 74.5199890136719]
+[OK] 1280x720_low · bots · bot devant visible dans le champ de la caméra : {'in_view': 1, 'lanes': {'bot1': 2.1, 'ghost': 2.1}, 'lods': [0, 0, 2], 'shown': 2}
+[OK] 1280x720_low · bots · éléments dans l'écran : 25 éléments visibles
+[OK] 1280x720_low · bots · lignes du HUD sans chevauchement
+[OK] 1280x720_low · bots · panneaux dans l'écran : 5 panneaux
+[OK] 1280x720_low · bots · panneaux sans chevauchement
+[OK] 1280x720_low · bots · textes dans panel_left
+[OK] 1280x720_low · bots · textes dans panel_right
+[OK] 1280x720_low · jauge_abri_coupee · capture enregistrée
+[OK] 1280x720_low · jauge_abri_coupee · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · jauge_abri_coupee · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri_coupee · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri_coupee · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri_coupee · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri_coupee · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri_coupee · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri_coupee · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri_coupee · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri_coupee · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri_coupee · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri_coupee · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri_coupee · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri_coupee · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri_coupee · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri_coupee · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri_coupee · contraste bots_line1 : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri_coupee · réglage coupé par défaut : pas de jauge : {'bot': '', 'fill': 0.0, 'glow': False, 'on_screen': False, 'point': [], 'text': '', 'visible': False}
+[OK] 1280x720_low · jauge_abri · capture enregistrée
+[OK] 1280x720_low · jauge_abri · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · jauge_abri · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri · contraste bots_line1 : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri · jauge au-dessus du bot qui abrite, dans l'image : {'bot': 'bot1', 'fill': 0.3, 'glow': False, 'on_screen': True, 'point': [819.013427734375, 133.043167114258], 'text': '', 'visible': True}
+[OK] 1280x720_low · jauge_abri · texte sous l'arc : «  » : ''
+[OK] 1280x720_low · jauge_abri · pastille du HUD au même pourcentage : 'Abri 30 %'
+[OK] 1280x720_low · jauge_abri · éléments dans l'écran : 23 éléments visibles
+[OK] 1280x720_low · jauge_abri · lignes du HUD sans chevauchement
+[OK] 1280x720_low · jauge_abri · panneaux dans l'écran : 6 panneaux
+[OK] 1280x720_low · jauge_abri · panneaux sans chevauchement
+[OK] 1280x720_low · jauge_abri · textes dans panel_left
+[OK] 1280x720_low · jauge_abri · textes dans panel_right
+[OK] 1280x720_low · jauge_abri_retiree · capture enregistrée
+[OK] 1280x720_low · jauge_abri_retiree · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · jauge_abri_retiree · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri_retiree · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri_retiree · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri_retiree · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri_retiree · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri_retiree · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri_retiree · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri_retiree · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri_retiree · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · jauge_abri_retiree · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · jauge_abri_retiree · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri_retiree · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri_retiree · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri_retiree · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri_retiree · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri_retiree · contraste bots_line1 : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · jauge_abri_retiree · réglage recoupé : jauge cachée : {'bot': '', 'fill': 0.0, 'glow': False, 'on_screen': False, 'point': [], 'text': '', 'visible': False}
+[OK] 1280x720_low · abri_dans_la_roue · capture enregistrée
+[OK] 1280x720_low · abri_dans_la_roue · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · abri_dans_la_roue · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_dans_la_roue · contraste power : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_dans_la_roue · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_dans_la_roue · contraste speed : 12.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_dans_la_roue · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_dans_la_roue · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_dans_la_roue · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_dans_la_roue · contraste hr : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_dans_la_roue · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_dans_la_roue · contraste grade : 7.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_dans_la_roue · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · abri_dans_la_roue · contraste speed_caption : 5.9:1 (au moins 3:1)
+[OK] 1280x720_low · abri_dans_la_roue · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · abri_dans_la_roue · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_dans_la_roue · contraste grade_caption : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · abri_dans_la_roue · contraste bots_line1 : 5.0:1 (au moins 3:1)
+[OK] 1280x720_low · abri_dans_la_roue · avatar à 2.1 m de l'axe : 2.1
+[OK] 1280x720_low · abri_dans_la_roue · caméra sur la ligne de l'avatar : 2.09917388664926
+[OK] 1280x720_low · abri_dans_la_roue · bot à 2,1 m de l'axe et dans l'image : {'in_view': 1, 'lanes': {'bot1': 2.1}, 'lods': [0, 1, 0], 'shown': 1}
+[OK] 1280x720_low · abri_dans_la_roue · avatar dans l'image : {'camera_lane_m': 2.09917388664926, 'crank': 3.92699081698724, 'crank_clock_s': 171.135941, 'crank_turned': 412.334035783661, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 2.1, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1280x720_low · abri_depassement · capture enregistrée
+[OK] 1280x720_low · abri_depassement · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · abri_depassement · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_depassement · contraste power : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_depassement · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_depassement · contraste speed : 12.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_depassement · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_depassement · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_depassement · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_depassement · contraste hr : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_depassement · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_depassement · contraste grade : 7.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_depassement · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · abri_depassement · contraste speed_caption : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · abri_depassement · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · abri_depassement · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_depassement · contraste grade_caption : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · abri_depassement · contraste bots_line1 : 5.1:1 (au moins 3:1)
+[OK] 1280x720_low · abri_depassement · avatar à 1.1 m de l'axe : 1.1
+[OK] 1280x720_low · abri_depassement · caméra sur la ligne de l'avatar : 1.10000025309848
+[OK] 1280x720_low · abri_depassement · bot à 2,1 m de l'axe et dans l'image : {'in_view': 1, 'lanes': {'bot1': 2.1}, 'lods': [0, 1, 0], 'shown': 1}
+[OK] 1280x720_low · abri_depassement · avatar dans l'image : {'camera_lane_m': 1.10000025309848, 'crank': 5.49778714378214, 'crank_clock_s': 181.454625, 'crank_turned': 464.170314567893, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.1, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1280x720_low · abri_tracteur_approche · capture enregistrée
+[OK] 1280x720_low · abri_tracteur_approche · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · abri_tracteur_approche · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur_approche · contraste power : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur_approche · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur_approche · contraste speed : 12.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur_approche · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur_approche · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur_approche · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur_approche · contraste hr : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur_approche · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur_approche · contraste grade : 7.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur_approche · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur_approche · contraste speed_caption : 5.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur_approche · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur_approche · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur_approche · contraste grade_caption : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur · capture enregistrée
+[OK] 1280x720_low · abri_tracteur · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · abri_tracteur · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur · contraste power : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur · contraste speed : 12.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur · contraste hr : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur · contraste grade : 7.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur · contraste speed_caption : 5.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur · contraste grade_caption : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur · jauge sur l'arrière du tracteur, dans l'image, sous le bandeau du haut : {'bot': 'veh:v77', 'fill': 0.763636363636364, 'glow': False, 'on_screen': True, 'point': [642.974365234375, 206.032302856445], 'text': '', 'visible': True}
+[OK] 1280x720_low · abri_tracteur · tracteur du core sur la route, 4 à 9 m devant, à 1,5 m de l'axe : [{'dir': 1, 'half_width': 1.07, 'kind': 'tractor', 'lateral': 1.5, 'rel_m': 6.50200381603145, 'what': 'vehicle'}]
+[OK] 1280x720_low · abri_tracteur · éléments dans l'écran : 20 éléments visibles
+[OK] 1280x720_low · abri_tracteur · lignes du HUD sans chevauchement
+[OK] 1280x720_low · abri_tracteur · panneaux dans l'écran : 5 panneaux
+[OK] 1280x720_low · abri_tracteur · panneaux sans chevauchement
+[OK] 1280x720_low · abri_tracteur · textes dans panel_left
+[OK] 1280x720_low · abri_tracteur · textes dans panel_right
+[OK] 1280x720_low · abri_tracteur_parti · capture enregistrée
+[OK] 1280x720_low · abri_tracteur_parti · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · abri_tracteur_parti · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur_parti · contraste power : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur_parti · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur_parti · contraste speed : 12.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur_parti · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur_parti · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur_parti · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur_parti · contraste hr : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur_parti · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_tracteur_parti · contraste grade : 7.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_tracteur_parti · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur_parti · contraste speed_caption : 5.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur_parti · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur_parti · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur_parti · contraste grade_caption : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · abri_tracteur_parti · liste vide : plus de tracteur près du cycliste : []
+[OK] 1280x720_low · abri_cyclistes_decor_approche · capture enregistrée
+[OK] 1280x720_low · abri_cyclistes_decor_approche · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · abri_cyclistes_decor_approche · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · contraste power : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · contraste speed : 12.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · contraste hr : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · contraste grade : 7.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · contraste speed_caption : 5.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor_approche · contraste grade_caption : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor · capture enregistrée
+[OK] 1280x720_low · abri_cyclistes_decor · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · abri_cyclistes_decor · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor · contraste power : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor · contraste speed : 12.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor · contraste hr : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor · contraste grade : 7.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor · contraste speed_caption : 5.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor · contraste grade_caption : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor · jauge au-dessus du dernier cycliste du groupe, dans l'image : {'bot': 'rider:c77-2', 'fill': 0.690909090909091, 'glow': False, 'on_screen': True, 'point': [641.730224609375, 117.675849914551], 'text': '', 'visible': True}
+[OK] 1280x720_low · abri_cyclistes_decor · trois cyclistes du core en file à 1,5 m de l'axe, le dernier 1 à 4 m devant : [{'dir': 1, 'half_width': 0.3, 'id': 'c77-2', 'kind': 'core', 'lateral': 1.5, 'rel_m': 2.49200381603146, 'what': 'cyclist'}, {'dir': 1, 'half_width': 0.3, 'id': 'c77-1', 'kind': 'core', 'lateral': 1.5, 'rel_m': 3.99200381603146, 'what': 'cyclist'}, {'dir': 1, 'half_width': 0.3, 'id': 'c77-0', 'kind': 'core', 'lateral': 1.5, 'rel_m': 5.49200381603146, 'what': 'cyclist'}]
+[OK] 1280x720_low · abri_cyclistes_decor · éléments dans l'écran : 20 éléments visibles
+[OK] 1280x720_low · abri_cyclistes_decor · lignes du HUD sans chevauchement
+[OK] 1280x720_low · abri_cyclistes_decor · panneaux dans l'écran : 5 panneaux
+[OK] 1280x720_low · abri_cyclistes_decor · panneaux sans chevauchement
+[OK] 1280x720_low · abri_cyclistes_decor · textes dans panel_left
+[OK] 1280x720_low · abri_cyclistes_decor · textes dans panel_right
+[OK] 1280x720_low · abri_cyclistes_decor_parti · capture enregistrée
+[OK] 1280x720_low · abri_cyclistes_decor_parti · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · abri_cyclistes_decor_parti · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · contraste power : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · contraste speed : 12.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · contraste hr : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · contraste grade : 7.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · contraste speed_caption : 5.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · contraste grade_caption : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · abri_cyclistes_decor_parti · liste vide : plus de groupe près du cycliste : []
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · capture enregistrée
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · contraste power : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · contraste hr_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_tenues_approche · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_tenues · capture enregistrée
+[OK] 1280x720_low · cyclistes_decor_tenues · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · cyclistes_decor_tenues · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_tenues · contraste power : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_tenues · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_tenues · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_tenues · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_tenues · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_tenues · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_tenues · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_tenues · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_tenues · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_tenues · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_tenues · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_tenues · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_tenues · contraste hr_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_tenues · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_tenues · trois cyclistes du décor à côté de l'avatar, 2,7 m de l'axe : [{'dir': 1, 'half_width': 0.3, 'id': 'c88-0', 'kind': 'core', 'lateral': 2.7, 'rel_m': -1.60799618396845, 'what': 'cyclist'}, {'dir': 1, 'half_width': 0.3, 'id': 'c88-1', 'kind': 'core', 'lateral': 2.7, 'rel_m': -0.00799618396854385, 'what': 'cyclist'}, {'dir': 1, 'half_width': 0.3, 'id': 'c88-2', 'kind': 'core', 'lateral': 2.7, 'rel_m': 1.59200381603159, 'what': 'cyclist'}]
+[OK] 1280x720_low · cyclistes_decor_tenues · dessinés comme les bots, au niveau de détail de près : niveaux [0, 3, 0]
+[OK] 1280x720_low · cyclistes_decor_tenues · image ni noire ni uniforme : luminance 0.47, écart type 0.237
+[OK] 1280x720_low · cyclistes_decor_tenues · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1280x720_low · cyclistes_decor_tenues · sol en bas de l'image : 87% de pixels hors ciel
+[OK] 1280x720_low · cyclistes_decor_tenues · maillages affichés : 24 maillages visibles
+[OK] 1280x720_low · cyclistes_decor_double_approche · capture enregistrée
+[OK] 1280x720_low · cyclistes_decor_double_approche · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · cyclistes_decor_double_approche · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_double_approche · contraste power : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_double_approche · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_double_approche · contraste speed : 12.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_double_approche · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_double_approche · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_double_approche · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_double_approche · contraste hr : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_double_approche · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_double_approche · contraste grade : 7.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_double_approche · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_double_approche · contraste speed_caption : 5.7:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_double_approche · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_double_approche · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_double_approche · contraste grade_caption : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_double · capture enregistrée
+[OK] 1280x720_low · cyclistes_decor_double · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · cyclistes_decor_double · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_double · contraste power : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_double · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_double · contraste speed : 12.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_double · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_double · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_double · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_double · contraste hr : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_double · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · cyclistes_decor_double · contraste grade : 7.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · cyclistes_decor_double · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_double · contraste speed_caption : 5.7:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_double · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_double · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_double · contraste grade_caption : 5.6:1 (au moins 3:1)
+[OK] 1280x720_low · cyclistes_decor_double · groupe de trois qui double à gauche, de 1 à 6 m devant : [{'dir': 1, 'half_width': 0.3, 'id': 'c89-0', 'kind': 'core', 'lateral': 0.2, 'rel_m': 1.49200381603146, 'what': 'cyclist'}, {'dir': 1, 'half_width': 0.3, 'id': 'c89-1', 'kind': 'core', 'lateral': -0.6, 'rel_m': 2.6920038160315, 'what': 'cyclist'}, {'dir': 1, 'half_width': 0.3, 'id': 'c89-2', 'kind': 'core', 'lateral': 0.2, 'rel_m': 3.89200381603155, 'what': 'cyclist'}]
+[OK] 1280x720_low · cyclistes_decor_double · éléments dans l'écran : 19 éléments visibles
+[OK] 1280x720_low · cyclistes_decor_double · lignes du HUD sans chevauchement
+[OK] 1280x720_low · cyclistes_decor_double · panneaux dans l'écran : 4 panneaux
+[OK] 1280x720_low · cyclistes_decor_double · panneaux sans chevauchement
+[OK] 1280x720_low · cyclistes_decor_double · textes dans panel_left
+[OK] 1280x720_low · cyclistes_decor_double · textes dans panel_right
+[OK] 1280x720_low · sans_bot · capture enregistrée
+[OK] 1280x720_low · sans_bot · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · sans_bot · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · sans_bot · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · sans_bot · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · sans_bot · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · sans_bot · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · sans_bot · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · sans_bot · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · sans_bot · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · sans_bot · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · sans_bot · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · sans_bot · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · sans_bot · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · sans_bot · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · sans_bot · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · sans_bot · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · sans_bot · sans bot : encart caché, aucune silhouette : {'in_view': 0, 'lanes': {}, 'lods': [0, 0, 0], 'shown': 0}
+[OK] 1280x720_low · bots_segment_bonus · capture enregistrée
+[OK] 1280x720_low · bots_segment_bonus · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · bots_segment_bonus · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · bots_segment_bonus · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · bots_segment_bonus · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · bots_segment_bonus · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · bots_segment_bonus · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · bots_segment_bonus · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · bots_segment_bonus · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · bots_segment_bonus · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · bots_segment_bonus · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · bots_segment_bonus · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · bots_segment_bonus · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · bots_segment_bonus · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · bots_segment_bonus · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · bots_segment_bonus · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · bots_segment_bonus · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · bots_segment_bonus · contraste bots_line1 : 5.8:1 (au moins 3:1)
+[OK] 1280x720_low · bots_segment_bonus · contraste bots_line2 : 6.1:1 (au moins 3:1)
+[OK] 1280x720_low · bots_segment_bonus · contraste bots_jerseys : 7.9:1 (au moins 3:1)
+[OK] 1280x720_low · bots_segment_bonus · contraste segment_title : 9.5:1 (au moins 3:1)
+[OK] 1280x720_low · bots_segment_bonus · contraste segment_main : 7.7:1 (au moins 3:1)
+[OK] 1280x720_low · bots_segment_bonus · contraste bonus_held : 8.0:1 (au moins 3:1)
+[OK] 1280x720_low · bots_segment_bonus · blocs segment et bonus, voisins avec leur ligne complète et maillots affichés
+[OK] 1280x720_low · bots_segment_bonus · texte bots_ahead : « Rouleur  281 W · 3,7 W/kg »
+[OK] 1280x720_low · bots_segment_bonus · texte bots_behind : « Sprinteur  255 W · 3,5 W/kg »
+[OK] 1280x720_low · bots_segment_bonus · texte bots_jerseys : « Vert : Sprinteur · Pois : Grimpeur »
+[OK] 1280x720_low · bots_segment_bonus · segment, bonus puis bots empilés : hauts 341, 424, 464 px
+[OK] 1280x720_low · bots_segment_bonus · profil d'altitude sous le panneau de droite, au-dessus du segment : profil 276–333 px, panneau jusqu'à 268 px, segment à 341 px
+[OK] 1280x720_low · bots_segment_bonus · éléments dans l'écran : 30 éléments visibles
+[OK] 1280x720_low · bots_segment_bonus · lignes du HUD sans chevauchement
+[OK] 1280x720_low · bots_segment_bonus · panneaux dans l'écran : 7 panneaux
+[OK] 1280x720_low · bots_segment_bonus · panneaux sans chevauchement
+[OK] 1280x720_low · bots_segment_bonus · textes dans panel_left
+[OK] 1280x720_low · bots_segment_bonus · textes dans panel_right
+[OK] 1280x720_low · avatar_subjectif · capture enregistrée
+[OK] 1280x720_low · avatar_subjectif · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_subjectif · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_subjectif · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_subjectif · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_subjectif · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_subjectif · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_subjectif · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_subjectif · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_subjectif · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_subjectif · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_subjectif · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_subjectif · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_subjectif · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_subjectif · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_subjectif · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_subjectif · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_subjectif · avatar caché en vue subjective : {'camera_lane_m': 1.20000000000618, 'crank': 5.49778714378214, 'crank_clock_s': 252.207995, 'crank_turned': 784.612765234055, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': False, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'subjective', 'visible': False}
+[OK] 1280x720_low · avatar_assis · capture enregistrée
+[OK] 1280x720_low · avatar_assis · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_assis · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_assis · contraste power : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_assis · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_assis · contraste speed : 8.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_assis · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_assis · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_assis · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_assis · contraste hr : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_assis · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_assis · contraste grade : 8.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_assis · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_assis · contraste speed_caption : 6.0:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_assis · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_assis · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_assis · contraste grade_caption : 9.6:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_assis_2 · capture enregistrée
+[OK] 1280x720_low · avatar_assis_2 · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_assis_2 · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_assis_2 · contraste power : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_assis_2 · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_assis_2 · contraste speed : 8.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_assis_2 · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_assis_2 · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_assis_2 · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_assis_2 · contraste hr : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_assis_2 · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_assis_2 · contraste grade : 8.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_assis_2 · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_assis_2 · contraste speed_caption : 6.0:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_assis_2 · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_assis_2 · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_assis_2 · contraste grade_caption : 9.6:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_assis · avatar visible dans le champ de la caméra de contrôle : {'camera_lane_m': 1.20000000000001, 'crank': 4.29350995990605, 'crank_clock_s': 255.258287, 'crank_turned': 795.974858664538, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1280x720_low · avatar_assis · avatar assis à plat
+[OK] 1280x720_low · avatar_assis · avatar entier (niveau de détail 0) : 5640 triangles
+[OK] 1280x720_low · avatar_assis_2 · pédalier qui tourne d'une capture à l'autre, au plus à la cadence : 4.84 rad parcourus (1.44 rad à l'image) en 2.92 s, au plus 11.32 rad à 37 tr/min
+[OK] 1280x720_low · avatar_assis_2 · les jambes changent l'image : écart moyen 1.08 niveaux
+[OK] 1280x720_low · avatar_assis · image ni noire ni uniforme : luminance 0.46, écart type 0.188
+[OK] 1280x720_low · avatar_assis · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1280x720_low · avatar_assis · sol en bas de l'image : 98% de pixels hors ciel
+[OK] 1280x720_low · avatar_assis · maillages affichés : 24 maillages visibles
+[OK] 1280x720_low · avatar_danseuse · capture enregistrée
+[OK] 1280x720_low · avatar_danseuse · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_danseuse · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_danseuse · contraste power : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_danseuse · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_danseuse · contraste speed : 8.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_danseuse · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_danseuse · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_danseuse · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_danseuse · contraste hr : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_danseuse · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_danseuse · contraste grade : 7.0:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_danseuse · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_danseuse · contraste speed_caption : 6.0:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_danseuse · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_danseuse · contraste hr_caption : 4.7:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_danseuse · contraste grade_caption : 9.6:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_danseuse · en danseuse sur 10 % de pente : {'camera_lane_m': 1.2, 'crank': 3.35103216382911, 'crank_clock_s': 262.112782, 'crank_turned': 807.59875148282, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': True, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1280x720_low · avatar_frame_round · capture enregistrée
+[OK] 1280x720_low · avatar_frame_round · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_frame_round · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_round · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_round · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_round · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_round · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_round · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_round · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_round · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_round · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_round · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_round · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_round · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_round · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_round · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_round · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_round · frame_round : équipement appliqué : {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_low · avatar_frame_light · capture enregistrée
+[OK] 1280x720_low · avatar_frame_light · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_frame_light · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_light · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_light · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_light · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_light · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_light · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_light · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_light · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_light · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_light · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_light · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_light · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_light · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_light · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_light · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_light · frame_light : équipement appliqué : {'frame': 'frame_light', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_low · avatar_frame_aero · capture enregistrée
+[OK] 1280x720_low · avatar_frame_aero · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_frame_aero · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_aero · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_aero · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_aero · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_aero · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_aero · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_aero · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_aero · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_aero · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_aero · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_aero · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_aero · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_aero · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_aero · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_aero · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_aero · frame_aero : équipement appliqué : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_low · avatar_frame_tt · capture enregistrée
+[OK] 1280x720_low · avatar_frame_tt · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_frame_tt · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_tt · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_tt · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_tt · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_tt · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_tt · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_tt · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_tt · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_tt · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_frame_tt · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_frame_tt · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_tt · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_tt · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_tt · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_tt · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_frame_tt · frame_tt : équipement appliqué : {'frame': 'frame_tt', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_low · avatar_frame_light · cadre : frame_round et frame_light se distinguent : écart moyen 1.72 niveaux
+[OK] 1280x720_low · avatar_frame_aero · cadre : frame_round et frame_aero se distinguent : écart moyen 2.76 niveaux
+[OK] 1280x720_low · avatar_frame_tt · cadre : frame_round et frame_tt se distinguent : écart moyen 3.29 niveaux
+[OK] 1280x720_low · avatar_frame_aero · cadre : frame_light et frame_aero se distinguent : écart moyen 3.32 niveaux
+[OK] 1280x720_low · avatar_frame_tt · cadre : frame_light et frame_tt se distinguent : écart moyen 3.57 niveaux
+[OK] 1280x720_low · avatar_frame_tt · cadre : frame_aero et frame_tt se distinguent : écart moyen 2.74 niveaux
+[OK] 1280x720_low · avatar_wheels_spoked · capture enregistrée
+[OK] 1280x720_low · avatar_wheels_spoked · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_wheels_spoked · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_spoked · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_spoked · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_spoked · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_spoked · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_spoked · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_spoked · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_spoked · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_spoked · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_spoked · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_spoked · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_spoked · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_spoked · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_spoked · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_spoked · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_spoked · wheels_spoked : équipement appliqué : {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_low · avatar_wheels_spoked_light · capture enregistrée
+[OK] 1280x720_low · avatar_wheels_spoked_light · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_wheels_spoked_light · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_spoked_light · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_spoked_light · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_spoked_light · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_spoked_light · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_spoked_light · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_spoked_light · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_spoked_light · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_spoked_light · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_spoked_light · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_spoked_light · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_spoked_light · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_spoked_light · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_spoked_light · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_spoked_light · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_spoked_light · wheels_spoked_light : équipement appliqué : {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked_light'}
+[OK] 1280x720_low · avatar_wheels_deep · capture enregistrée
+[OK] 1280x720_low · avatar_wheels_deep · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_wheels_deep · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_deep · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_deep · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_deep · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_deep · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_deep · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_deep · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_deep · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_deep · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_deep · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_deep · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_deep · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_deep · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_deep · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_deep · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_deep · wheels_deep : équipement appliqué : {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_deep'}
+[OK] 1280x720_low · avatar_wheels_disc · capture enregistrée
+[OK] 1280x720_low · avatar_wheels_disc · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_wheels_disc · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_disc · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_disc · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_disc · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_disc · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_disc · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_disc · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_disc · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_disc · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_wheels_disc · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_wheels_disc · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_disc · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_disc · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_disc · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_disc · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_wheels_disc · wheels_disc : équipement appliqué : {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_disc'}
+[OK] 1280x720_low · avatar_wheels_spoked_light · roues : wheels_spoked et wheels_spoked_light se distinguent : écart moyen 2.32 niveaux
+[OK] 1280x720_low · avatar_wheels_deep · roues : wheels_spoked et wheels_deep se distinguent : écart moyen 2.92 niveaux
+[OK] 1280x720_low · avatar_wheels_disc · roues : wheels_spoked et wheels_disc se distinguent : écart moyen 5.34 niveaux
+[OK] 1280x720_low · avatar_wheels_deep · roues : wheels_spoked_light et wheels_deep se distinguent : écart moyen 2.30 niveaux
+[OK] 1280x720_low · avatar_wheels_disc · roues : wheels_spoked_light et wheels_disc se distinguent : écart moyen 5.44 niveaux
+[OK] 1280x720_low · avatar_wheels_disc · roues : wheels_deep et wheels_disc se distinguent : écart moyen 3.98 niveaux
+[OK] 1280x720_low · avatar_40kmh · capture enregistrée
+[OK] 1280x720_low · avatar_40kmh · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_40kmh · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_40kmh · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_40kmh · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_40kmh · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_40kmh · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_40kmh · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_40kmh · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_40kmh · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_40kmh · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_40kmh · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_40kmh · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_40kmh · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_40kmh · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_40kmh · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_40kmh · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_40kmh · pas de traînées d'air à 40 km/h : {'camera_lane_m': 1.2, 'crank': 1.95897570386245, 'crank_clock_s': 290.69763, 'crank_turned': 862.755362787469, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_stripes', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'side', 'visible': True}
+[OK] 1280x720_low · avatar_50kmh · capture enregistrée
+[OK] 1280x720_low · avatar_50kmh · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · avatar_50kmh · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_50kmh · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_50kmh · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_50kmh · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_50kmh · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_50kmh · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_50kmh · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_50kmh · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_50kmh · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · avatar_50kmh · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · avatar_50kmh · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_50kmh · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_50kmh · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_50kmh · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_50kmh · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · avatar_50kmh · traînées d'air visibles à 50 km/h : {'camera_lane_m': 1.2, 'crank': 0.519079070967129, 'crank_clock_s': 295.880428, 'crank_turned': 867.598651461753, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_stripes', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': True, 'triangles': 5640, 'view': 'side', 'visible': True}
+[OK] 1280x720_low · camera_subjective · capture enregistrée
+[OK] 1280x720_low · camera_subjective · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · camera_subjective · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_subjective · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_subjective · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_subjective · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_subjective · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_subjective · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_subjective · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_subjective · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_subjective · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_subjective · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_subjective · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_subjective · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · camera_subjective · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_subjective · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · camera_subjective · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_subjective · vue subjective affichée : subjective
+[OK] 1280x720_low · camera_subjective · avatar masqué en vue subjective : {'camera_lane_m': 1.2, 'crank': 0.41435931584747, 'crank_clock_s': 301.356498, 'crank_turned': 880.060302320992, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': False, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': True, 'triangles': 5640, 'view': 'subjective', 'visible': False}
+[OK] 1280x720_low · camera_follow_near · capture enregistrée
+[OK] 1280x720_low · camera_follow_near · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · camera_follow_near · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_follow_near · contraste power : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_follow_near · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_follow_near · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_follow_near · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_follow_near · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_follow_near · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_follow_near · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_follow_near · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_follow_near · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_follow_near · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_follow_near · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_follow_near · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_follow_near · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · camera_follow_near · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_follow_near · vue follow_near affichée : follow_near
+[OK] 1280x720_low · camera_follow_near · avatar visible dans le champ de la caméra : {'camera_lane_m': 1.2, 'crank': 2.84909362237956, 'crank_clock_s': 305.670287, 'crank_turned': 888.778221934704, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow_near', 'visible': True}
+[OK] 1280x720_low · camera_follow_far · capture enregistrée
+[OK] 1280x720_low · camera_follow_far · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · camera_follow_far · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_follow_far · contraste power : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_follow_far · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_follow_far · contraste speed : 7.2:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_follow_far · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_follow_far · contraste cadence : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_follow_far · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_follow_far · contraste hr : 5.2:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_follow_far · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_follow_far · contraste grade : 6.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_follow_far · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · camera_follow_far · contraste speed_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · camera_follow_far · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · camera_follow_far · contraste hr_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · camera_follow_far · contraste grade_caption : 5.1:1 (au moins 3:1)
+[OK] 1280x720_low · camera_follow_far · vue follow_far affichée : follow_far
+[OK] 1280x720_low · camera_follow_far · avatar visible dans le champ de la caméra : {'camera_lane_m': 1.2, 'crank': 5.28382792891165, 'crank_clock_s': 310.031261, 'crank_turned': 897.496141548415, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow_far', 'visible': True}
+[OK] 1280x720_low · camera_side · capture enregistrée
+[OK] 1280x720_low · camera_side · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · camera_side · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_side · contraste power : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_side · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_side · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_side · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_side · contraste cadence : 7.3:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_side · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_side · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_side · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_side · contraste grade : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_side · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_side · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_side · contraste cadence_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · camera_side · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · camera_side · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_side · vue side affichée : side
+[OK] 1280x720_low · camera_side · avatar visible dans le champ de la caméra : {'camera_lane_m': 1.2, 'crank': 2.38550617796876, 'crank_clock_s': 314.759927, 'crank_turned': 907.164190411831, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'side', 'visible': True}
+[OK] 1280x720_low · camera_subjective_2 · capture enregistrée
+[OK] 1280x720_low · camera_subjective_2 · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · camera_subjective_2 · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_subjective_2 · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_subjective_2 · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_subjective_2 · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_subjective_2 · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_subjective_2 · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_subjective_2 · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_subjective_2 · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_subjective_2 · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_subjective_2 · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_subjective_2 · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_subjective_2 · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · camera_subjective_2 · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_subjective_2 · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · camera_subjective_2 · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_subjective_2 · vue subjective affichée : subjective
+[OK] 1280x720_low · camera_subjective_2 · avatar masqué en vue subjective : {'camera_lane_m': 1.2, 'crank': 5.75850173963799, 'crank_clock_s': 319.448331, 'crank_turned': 916.82037128068, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': False, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'subjective', 'visible': False}
+[OK] 1280x720_low · camera_follow_near · subjective et follow_near se distinguent : écart moyen 16.71 niveaux
+[OK] 1280x720_low · camera_follow_far · subjective et follow_far se distinguent : écart moyen 30.22 niveaux
+[OK] 1280x720_low · camera_side · subjective et side se distinguent : écart moyen 30.25 niveaux
+[OK] 1280x720_low · camera_follow_far · follow_near et follow_far se distinguent : écart moyen 27.98 niveaux
+[OK] 1280x720_low · camera_side · follow_near et side se distinguent : écart moyen 30.20 niveaux
+[OK] 1280x720_low · camera_side · follow_far et side se distinguent : écart moyen 28.83 niveaux
+[OK] 1280x720_low · camera_follow_far · suivi éloigné plus haut que le suivi proche : 1185.7 m contre 1181.8 m
+[OK] 1280x720_low · camera_transition · capture enregistrée
+[OK] 1280x720_low · camera_transition · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · camera_transition · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_transition · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_transition · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_transition · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_transition · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_transition · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_transition · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_transition · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_transition · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_transition · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_transition · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_transition · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · camera_transition · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_transition · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · camera_transition · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_transition · pose intermédiaire pendant la transition : True
+[OK] 1280x720_low · camera_transition · pas de ciel sous l'horizon pendant la bascule : 0.0% de pixels de ciel dans le tiers bas
+[OK] 1280x720_low · camera_defaut · capture enregistrée
+[OK] 1280x720_low · camera_defaut · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · camera_defaut · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_defaut · contraste power : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_defaut · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_defaut · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_defaut · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_defaut · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_defaut · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_defaut · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_defaut · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_defaut · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_defaut · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_defaut · contraste speed_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_defaut · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_defaut · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · camera_defaut · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_defaut · A long : retour au suivi proche : follow_near
+[OK] 1280x720_low · camera_precedente · capture enregistrée
+[OK] 1280x720_low · camera_precedente · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · camera_precedente · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_precedente · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_precedente · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_precedente · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_precedente · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_precedente · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_precedente · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_precedente · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_precedente · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · camera_precedente · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · camera_precedente · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_precedente · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · camera_precedente · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_precedente · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · camera_precedente · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · camera_precedente · flèche bas : vue précédente (subjective) : subjective
+[OK] 1280x720_low · camera_memoire · dernière vue écrite dans render.camera : [{'key': 'render.camera', 'value': 'follow_near'}, {'key': 'render.camera', 'value': 'follow_far'}, {'key': 'render.camera', 'value': 'side'}, {'key': 'render.camera', 'value': 'subjective'}, {'key': 'render.camera', 'value': 'follow_near'}, {'key': 'render.camera', 'value': 'follow_far'}, {'key': 'render.camera', 'value': 'follow_near'}, {'key': 'render.camera', 'value': 'subjective'}]
+[OK] 1280x720_low · pluie · capture enregistrée
+[OK] 1280x720_low · pluie · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · pluie · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pluie · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · pluie · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pluie · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · pluie · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pluie · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · pluie · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pluie · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · pluie · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pluie · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · pluie · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · pluie · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · pluie · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · pluie · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · pluie · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · pluie · particules de pluie actives : 461 particules
+[OK] 1280x720_low · pluie · chaussée mouillée : wetness 1.00
+[OK] 1280x720_low · pluie · éléments dans l'écran : 20 éléments visibles
+[OK] 1280x720_low · pluie · lignes du HUD sans chevauchement
+[OK] 1280x720_low · pluie · panneaux dans l'écran : 4 panneaux
+[OK] 1280x720_low · pluie · panneaux sans chevauchement
+[OK] 1280x720_low · pluie · textes dans panel_left
+[OK] 1280x720_low · pluie · textes dans panel_right
+[OK] 1280x720_low · pluie · image ni noire ni uniforme : luminance 0.53, écart type 0.197
+[OK] 1280x720_low · pluie · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1280x720_low · pluie · sol en bas de l'image : 97% de pixels hors ciel
+[OK] 1280x720_low · pluie · maillages affichés : 25 maillages visibles
+[OK] 1280x720_low · col · capture enregistrée
+[OK] 1280x720_low · col · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · col · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · col · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · col · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · col · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · col · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · col · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · col · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · col · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · col · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · col · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · col · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · col · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · col · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · col · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · col · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · col · panneau du sommet devant la caméra : « Sommet / 1 174 m » à 25 m
+[OK] 1280x720_low · col · lettres du panneau lisibles : 7.4 px pour 720 lignes
+[OK] 1280x720_low · col · aucun spectateur sur une montée de moins de 3 km : 0 spectateurs
+[OK] 1280x720_low · col · éléments dans l'écran : 21 éléments visibles
+[OK] 1280x720_low · col · lignes du HUD sans chevauchement
+[OK] 1280x720_low · col · panneaux dans l'écran : 4 panneaux
+[OK] 1280x720_low · col · panneaux sans chevauchement
+[OK] 1280x720_low · col · textes dans panel_left
+[OK] 1280x720_low · col · textes dans panel_right
+[OK] 1280x720_low · col · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · col · image ni noire ni uniforme : luminance 0.51, écart type 0.200
+[OK] 1280x720_low · col · ciel en haut de l'image : 98% de pixels de ciel
+[OK] 1280x720_low · col · sol en bas de l'image : 97% de pixels hors ciel
+[OK] 1280x720_low · col · maillages affichés : 25 maillages visibles
+[OK] 1280x720_low · erg · capture enregistrée
+[OK] 1280x720_low · erg · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · erg · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · erg · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · erg · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · erg · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · erg · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · erg · texte target : « 230 W »
+[OK] 1280x720_low · erg · texte erg_title : « Sweet spot 3x10 — Bloc 2 / 7 · Effort »
+[OK] 1280x720_low · erg · texte erg_target : « 230 W »
+[OK] 1280x720_low · erg · texte erg_next : « Ensuite : 150 W »
+[OK] 1280x720_low · erg · textes du bandeau ERG de largeur lisible : trop étroits : 
+[OK] 1280x720_low · erg · ligne ERG du panneau central laissée au bandeau
+[OK] 1280x720_low · erg · profil d'altitude caché en ERG
+[OK] 1280x720_low · erg · éléments dans l'écran : 26 éléments visibles
+[OK] 1280x720_low · erg · lignes du HUD sans chevauchement
+[OK] 1280x720_low · erg · panneaux dans l'écran : 3 panneaux
+[OK] 1280x720_low · erg · panneaux sans chevauchement
+[OK] 1280x720_low · erg · textes dans panel_left
+[OK] 1280x720_low · erg · textes dans panel_right
+[OK] 1280x720_low · erg · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · erg · texte power dessiné (pixels clairs) : 19.7% de pixels clairs
+[OK] 1280x720_low · erg · texte status dessiné (pixels clairs) : 9.2% de pixels clairs
+[OK] 1280x720_low · erg · histogramme des blocs affiché : rectangle [40.0, 644.0, 1200.0, 61.0]
+[OK] 1280x720_low · erg · bloc en cours dessiné en couleur de zone : 44.3% de pixels jaunes
+[OK] 1280x720_low · erg · blocs à venir visibles en couleur de zone : 40.1% de pixels jaunes
+[OK] 1280x720_low · erg_cible_longue · capture enregistrée
+[OK] 1280x720_low · erg_cible_longue · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · erg_cible_longue · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_cible_longue · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_cible_longue · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_cible_longue · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_cible_longue · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_cible_longue · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_cible_longue · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_cible_longue · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_cible_longue · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_cible_longue · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_cible_longue · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · erg_cible_longue · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · erg_cible_longue · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · erg_cible_longue · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · erg_cible_longue · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · erg_cible_longue · texte target : « 152 W (98 %) »
+[OK] 1280x720_low · erg_cible_longue · braquet caché en ERG
+[OK] 1280x720_low · erg_cible_longue · éléments dans l'écran : 26 éléments visibles
+[OK] 1280x720_low · erg_cible_longue · lignes du HUD sans chevauchement
+[OK] 1280x720_low · erg_cible_longue · panneaux dans l'écran : 3 panneaux
+[OK] 1280x720_low · erg_cible_longue · panneaux sans chevauchement
+[OK] 1280x720_low · erg_cible_longue · textes dans panel_left
+[OK] 1280x720_low · erg_cible_longue · textes dans panel_right
+[OK] 1280x720_low · erg_cible_longue · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · erg_palier_50w · capture enregistrée
+[OK] 1280x720_low · erg_palier_50w · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · erg_palier_50w · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_palier_50w · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_palier_50w · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_palier_50w · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_palier_50w · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_palier_50w · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_palier_50w · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_palier_50w · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_palier_50w · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_palier_50w · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_palier_50w · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · erg_palier_50w · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · erg_palier_50w · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · erg_palier_50w · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · erg_palier_50w · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · erg_palier_50w · texte target : « 50 W (98 %) »
+[OK] 1280x720_low · erg_palier_50w · braquet caché au palier de 50 W
+[OK] 1280x720_low · erg_palier_50w · éléments dans l'écran : 25 éléments visibles
+[OK] 1280x720_low · erg_palier_50w · lignes du HUD sans chevauchement
+[OK] 1280x720_low · erg_palier_50w · panneaux dans l'écran : 3 panneaux
+[OK] 1280x720_low · erg_palier_50w · panneaux sans chevauchement
+[OK] 1280x720_low · erg_palier_50w · textes dans panel_left
+[OK] 1280x720_low · erg_palier_50w · textes dans panel_right
+[OK] 1280x720_low · erg_courbes · capture enregistrée
+[OK] 1280x720_low · erg_courbes · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · erg_courbes · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_courbes · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_courbes · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_courbes · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_courbes · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_courbes · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_courbes · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_courbes · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_courbes · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · erg_courbes · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · erg_courbes · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · erg_courbes · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · erg_courbes · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · erg_courbes · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · erg_courbes · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · erg_courbes · courbes affichées à la place de l'histogramme : rectangle [40.0, 644.0, 1200.0, 61.0]
+[OK] 1280x720_low · erg_courbes · éléments dans l'écran : 25 éléments visibles
+[OK] 1280x720_low · erg_courbes · lignes du HUD sans chevauchement
+[OK] 1280x720_low · erg_courbes · panneaux dans l'écran : 3 panneaux
+[OK] 1280x720_low · erg_courbes · panneaux sans chevauchement
+[OK] 1280x720_low · erg_courbes · textes dans panel_left
+[OK] 1280x720_low · erg_courbes · textes dans panel_right
+[OK] 1280x720_low · erg_courbes · courbe de puissance blanche tracée
+[OK] 1280x720_low · erg_courbes · courbe de fréquence cardiaque rouge tracée
+[OK] 1280x720_low · erg_courbes · profil cible coloré en zone
+[OK] 1280x720_low · sim_courbes · capture enregistrée
+[OK] 1280x720_low · sim_courbes · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · sim_courbes · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · sim_courbes · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · sim_courbes · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · sim_courbes · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · sim_courbes · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · sim_courbes · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · sim_courbes · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · sim_courbes · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · sim_courbes · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · sim_courbes · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · sim_courbes · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · sim_courbes · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · sim_courbes · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · sim_courbes · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · sim_courbes · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · sim_courbes · panneau des courbes affiché dans l'écran : rectangle [283.0, 585.0, 714.0, 120.0]
+[OK] 1280x720_low · sim_courbes · pas de chevauchement avec les panneaux du HUD
+[OK] 1280x720_low · sim_courbes · courbe de puissance blanche tracée
+[OK] 1280x720_low · fin_entrainement · capture enregistrée
+[OK] 1280x720_low · fin_entrainement · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · fin_entrainement · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · fin_entrainement · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · fin_entrainement · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · fin_entrainement · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · fin_entrainement · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · fin_entrainement · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · fin_entrainement · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · fin_entrainement · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · fin_entrainement · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · fin_entrainement · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · fin_entrainement · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · fin_entrainement · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · fin_entrainement · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · fin_entrainement · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · fin_entrainement · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · fin_entrainement · invite de fin d'entraînement au bandeau : « Entraînement « Sweet spot » terminé : Y puis A maintenu pour terminer et enregistrer · sinon, la balade continue   (clavier : Échap puis Entrée) »
+[OK] 1280x720_low · fin_entrainement · éléments dans l'écran : 21 éléments visibles
+[OK] 1280x720_low · fin_entrainement · lignes du HUD sans chevauchement
+[OK] 1280x720_low · fin_entrainement · panneaux dans l'écran : 4 panneaux
+[OK] 1280x720_low · fin_entrainement · panneaux sans chevauchement
+[OK] 1280x720_low · fin_entrainement · textes dans panel_left
+[OK] 1280x720_low · fin_entrainement · textes dans panel_right
+[OK] 1280x720_low · fin_entrainement · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · fin_entrainement_pause · capture enregistrée
+[OK] 1280x720_low · fin_entrainement_pause · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · fin_entrainement_pause · texte menu : « Entraînement terminé : A maintenu pour terminer et enregistrer || Reprendre | [Terminer et enregistrer] | Abandonner | Difficulté — 50 % | Mode — SIM ||  ||  || Séance en cours | En pause | Durée 6:28 | Distance 2,1 km | Puissance moy. 250 W »
+[OK] 1280x720_low · fin_entrainement_pause · texte menu : « Entraînement terminé : A maintenu pour terminer et enregistrer || Reprendre | [Terminer et enregistrer] | Abandonner | Difficulté — 50 % | Mode — SIM ||  ||  || Séance en cours | En pause | Durée 6:28 | Distance 2,1 km | Puissance moy. 250 W »
+[OK] 1280x720_low · fin_entrainement_pause · éléments dans l'écran : 6 éléments visibles
+[OK] 1280x720_low · fin_entrainement_pause · lignes du HUD sans chevauchement
+[OK] 1280x720_low · fin_entrainement_pause · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · fin_entrainement_pause · panneaux sans chevauchement
+[OK] 1280x720_low · pause · capture enregistrée
+[OK] 1280x720_low · pause · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_low · pause · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · pause · écart à l'image de référence : SSIM 0.9779 (seuil 0.97), pire bloc 0.05, écart moyen 1.33 niveaux, 0 blocs masqués
+[OK] 1280x720_low · pause · texte menu_title : « Pause »
+[OK] 1280x720_low · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM ||  ||  || Séance en cours | En pause | Durée 6:52 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1280x720_low · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM ||  ||  || Séance en cours | En pause | Durée 6:52 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1280x720_low · pause · HUD de séance caché derrière le menu
+[OK] 1280x720_low · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM ||  ||  || Séance en cours | En pause | Durée 6:52 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1280x720_low · pause · texte menu : « Trainer perdu : reconnexion en cours… || [Reprendre] | Terminer et enregistrer | Abandonner | Difficulté — 50 % | Mode — SIM ||  ||  || Séance en cours | En pause | Durée 6:52 | Distance 1,5 km | Puissance moy. 250 W »
+[OK] 1280x720_low · pause · éléments dans l'écran : 6 éléments visibles
+[OK] 1280x720_low · pause · lignes du HUD sans chevauchement
+[OK] 1280x720_low · pause · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · pause · panneaux sans chevauchement
+[OK] 1280x720_low · confirmation · capture enregistrée
+[OK] 1280x720_low · confirmation · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · confirmation · texte confirm_question : « Abandonner la séance ? »
+[OK] 1280x720_low · confirmation · texte menu : «  || [Non] | Oui ||  ||  ||  »
+[OK] 1280x720_low · confirmation · carte visible, étroite et centrée : rectangle [320.0, 264.5, 640.0, 191.0]
+[OK] 1280x720_low · confirmation · détail de la liste caché
+[OK] 1280x720_low · confirmation · « Oui » en rouge (danger) : 0.23% de pixels rouges
+[OK] 1280x720_low · confirmation · éléments dans l'écran : 6 éléments visibles
+[OK] 1280x720_low · confirmation · lignes du HUD sans chevauchement
+[OK] 1280x720_low · confirmation · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · confirmation · panneaux sans chevauchement
+[OK] 1280x720_low · core_muet · core_lost signalé
+[OK] 1280x720_low · core_muet_1 · capture enregistrée
+[OK] 1280x720_low · core_muet_1 · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · core_muet_1 · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · core_muet_1 · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · core_muet_1 · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · core_muet_1 · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · core_muet_1 · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · core_muet_1 · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · core_muet_1 · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · core_muet_1 · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · core_muet_1 · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · core_muet_1 · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · core_muet_1 · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · core_muet_1 · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · core_muet_1 · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · core_muet_1 · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · core_muet_1 · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · core_muet_2 · capture enregistrée
+[OK] 1280x720_low · core_muet_2 · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · core_muet_2 · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · core_muet_2 · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · core_muet_2 · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · core_muet_2 · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · core_muet_2 · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · core_muet_2 · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · core_muet_2 · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · core_muet_2 · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · core_muet_2 · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · core_muet_2 · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · core_muet_2 · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · core_muet_2 · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · core_muet_2 · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · core_muet_2 · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · core_muet_2 · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · core_muet_2 · bandeau affiché : « Click : Y = pause · + / − = braquet · appui long = 10 braquets · ↑ / ↓ = vue   (clavier : mêmes touches)
+Core non joignable (nouvel essai chaque seconde) »
+[OK] 1280x720_low · core_muet_2 · bandeau rouge dessiné : 88% de pixels rouges
+[OK] 1280x720_low · core_muet_2 · éléments dans l'écran : 21 éléments visibles
+[OK] 1280x720_low · core_muet_2 · lignes du HUD sans chevauchement
+[OK] 1280x720_low · core_muet_2 · panneaux dans l'écran : 4 panneaux
+[OK] 1280x720_low · core_muet_2 · panneaux sans chevauchement
+[OK] 1280x720_low · core_muet_2 · textes dans panel_left
+[OK] 1280x720_low · core_muet_2 · textes dans panel_right
+[OK] 1280x720_low · core_muet_2 · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · core_muet_2 · caméra figée : 0.000 m en 2.62 s
+[OK] 1280x720_low · core_muet_2 · image figée : écart moyen 0.00 niveaux
+[OK] 1280x720_low · reprise · capture enregistrée
+[OK] 1280x720_low · reprise · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · reprise · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · reprise · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · reprise · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · reprise · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · reprise · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · reprise · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · reprise · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · reprise · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · reprise · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · reprise · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · reprise · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · reprise · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · reprise · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · reprise · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · reprise · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · reprise · bandeau caché (hors rappel des commandes) : « Click : Y = pause · + / − = braquet · appui long = 10 braquets · ↑ / ↓ = vue   (clavier : mêmes touches) »
+[OK] 1280x720_low · reprise · image ni noire ni uniforme : luminance 0.52, écart type 0.198
+[OK] 1280x720_low · reprise · ciel en haut de l'image : 98% de pixels de ciel
+[OK] 1280x720_low · reprise · sol en bas de l'image : 96% de pixels hors ciel
+[OK] 1280x720_low · reprise · maillages affichés : 24 maillages visibles
+[OK] 1280x720_low · erreur · capture enregistrée
+[OK] 1280x720_low · erreur · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_low · erreur · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · erreur · écart à l'image de référence : SSIM 0.9898 (seuil 0.97), pire bloc 0.27, écart moyen 0.44 niveaux, 0 blocs masqués
+[OK] 1280x720_low · erreur · bandeau affiché : « Erreur du core [route_invalid] : parcours de test illisible »
+[OK] 1280x720_low · erreur · bandeau rouge dessiné : 91% de pixels rouges
+[OK] 1280x720_low · erreur · éléments dans l'écran : 6 éléments visibles
+[OK] 1280x720_low · erreur · lignes du HUD sans chevauchement
+[OK] 1280x720_low · erreur · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · erreur · panneaux sans chevauchement
+[OK] 1280x720_low · erreur · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · menu_accueil · capture enregistrée
+[OK] 1280x720_low · menu_accueil · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_low · menu_accueil · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · menu_accueil · écart à l'image de référence : SSIM 0.9848 (seuil 0.97), pire bloc 0.26, écart moyen 1.15 niveaux, 0 blocs masqués
+[OK] 1280x720_low · menu_accueil · texte menu_title : « OpenRide »
+[OK] 1280x720_low · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Session simulée | Garage | Réglages || Trainer HomeTrainer 0001 : connecté | Click : connecté | Click : perdu | Cardio : connecté ||  ||  »
+[OK] 1280x720_low · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Session simulée | Garage | Réglages || Trainer HomeTrainer 0001 : connecté | Click : connecté | Click : perdu | Cardio : connecté ||  ||  »
+[OK] 1280x720_low · menu_accueil · éléments dans l'écran : 5 éléments visibles
+[OK] 1280x720_low · menu_accueil · lignes du HUD sans chevauchement
+[OK] 1280x720_low · menu_accueil · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · menu_accueil · panneaux sans chevauchement
+[OK] 1280x720_low · menu_accueil · bandeau caché (hors rappel des commandes)
+[OK] 1280x720_low · menu_accueil · menu en plein écran, HUD de séance caché : rectangle [0.0, 0.0, 1280.0, 720.0]
+[OK] 1280x720_low · menu_accueil · texte menu : «  || [Parcours : Démo] | Session libre | Session ERG | Choisir un plan | Test de FTP | Historique — séances, semaines, tests de FTP | Session simulée | Garage | Réglages || Trainer HomeTrainer 0001 : connecté | Click : connecté | Click : perdu | Cardio : connecté ||  ||  »
+[OK] 1280x720_low · menu_accueil · sélection très visible (cadre cyan) : 0.63% de pixels cyan
+[OK] 1280x720_low · menu_parcours · capture enregistrée
+[OK] 1280x720_low · menu_parcours · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · menu_parcours · texte menu_title : « Parcours »
+[OK] 1280x720_low · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_low · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_low · menu_parcours · texte menu : «  || [Démo (4,0 km, ↑ 62 m) — boucle] | Vallée de test (32,5 km) | Nouveau GPX (12,0 km) — à compiler | Trier par : nom | Étiquette : toutes | Ajouter un parcours | Comment ça marche ? ||  ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_low · menu_parcours · éléments dans l'écran : 6 éléments visibles
+[OK] 1280x720_low · menu_parcours · lignes du HUD sans chevauchement
+[OK] 1280x720_low · menu_parcours · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · menu_parcours · panneaux sans chevauchement
+[OK] 1280x720_low · pret · capture enregistrée
+[OK] 1280x720_low · pret · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · pret · texte menu_title : « Prêt : session libre — Démo »
+[OK] 1280x720_low · pret · texte menu : «  || [Démarrer] | Passer en session ERG | Changer de parcours | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun | Records du parcours || Trainer HomeTrainer 0001 : connecté | Click : connecté | Click : perdu | Cardio : connecté ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_low · pret · texte menu : «  || [Démarrer] | Passer en session ERG | Changer de parcours | Bot 1 : aucun | Fantôme de la dernière séance : non | Peloton : aucun | Records du parcours || Trainer HomeTrainer 0001 : connecté | Click : connecté | Click : perdu | Cardio : connecté ||  || Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m | Pente max 4,5 % | Montée principale : 1,5 km à 3,7 %, ↑ 55 m | Difficulté 1 / 5 · durée ≈ 9 min | boucle — Boucle de démonstration. »
+[OK] 1280x720_low · pret · éléments dans l'écran : 6 éléments visibles
+[OK] 1280x720_low · pret · lignes du HUD sans chevauchement
+[OK] 1280x720_low · pret · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · pret · panneaux sans chevauchement
+[OK] 1280x720_low · pret · profil d'altitude tracé dans la carte (trait cyan) : 0.53% de pixels cyan
+[OK] 1280x720_low · records · capture enregistrée
+[OK] 1280x720_low · records · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · records · texte menu_title : « Records : Démo »
+[OK] 1280x720_low · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  || Montée · cat. 4 · 1,5 km à 3,6 % | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_low · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  || Montée · cat. 4 · 1,5 km à 3,6 % | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_low · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  || Montée · cat. 4 · 1,5 km à 3,6 % | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_low · records · texte menu : «  || [Montée 1 · 4:08,1 — 2 temps sans bonus, avec bonus 3:59,9] | Sprint 1 — aucun temps ||  ||  || Montée · cat. 4 · 1,5 km à 3,6 % | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_low · records · éléments dans l'écran : 6 éléments visibles
+[OK] 1280x720_low · records · lignes du HUD sans chevauchement
+[OK] 1280x720_low · records · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · records · panneaux sans chevauchement
+[OK] 1280x720_low · records · record en or dans la carte : 0.21% de pixels or
+[OK] 1280x720_low · records · profil du segment tracé dans la carte (trait cyan, lot N20) : 0.53% de pixels cyan
+[OK] 1280x720_low · records_table · capture enregistrée
+[OK] 1280x720_low · records_table · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · records_table · texte menu_title : « Montée 1 : sans bonus »
+[OK] 1280x720_low · records_table · texte menu : «  || [A : voir les temps avec bonus] | 1. 4:08,1 · 27/10/2026 18:05 — 251 W, 3,4 W/kg | 2. 4:11,5 · 26/10/2026 18:00 — 240 W, 3,2 W/kg ||  ||  || Montée · cat. 4 · 1,5 km à 3,6 % | Montée 1 | Record 4:08,1 | Écart au 2e +3,4 s | Temps 2 | 27/10/2026 18:05 | 251 W, 3,4 W/kg | avec bonus : 3:59,9 »
+[OK] 1280x720_low · records_table · éléments dans l'écran : 6 éléments visibles
+[OK] 1280x720_low · records_table · lignes du HUD sans chevauchement
+[OK] 1280x720_low · records_table · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · records_table · panneaux sans chevauchement
+[OK] 1280x720_low · garage · capture enregistrée
+[OK] 1280x720_low · garage · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage · texte menu_title : « Garage : niveau 8, 210 pièces »
+[OK] 1280x720_low · garage · texte menu : «  || [Vélo : cadre et roues — Polyvalent, Standard] | Tenue, casque, chaussettes, lunettes — Unie, Route, Blanches, Claires | Avatar — taille moyenne · silhouette moyenne ||  ||  || Garage | Niveau 8 | Niveau 8 | Pièces 210 | Expérience 510 / 1200 | Expérience 510 / 1200 vers le niveau 9 : ■■■■□□□□□□ »
+[OK] 1280x720_low · garage · texte menu : «  || [Vélo : cadre et roues — Polyvalent, Standard] | Tenue, casque, chaussettes, lunettes — Unie, Route, Blanches, Claires | Avatar — taille moyenne · silhouette moyenne ||  ||  || Garage | Niveau 8 | Niveau 8 | Pièces 210 | Expérience 510 / 1200 | Expérience 510 / 1200 vers le niveau 9 : ■■■■□□□□□□ »
+[OK] 1280x720_low · garage · éléments dans l'écran : 7 éléments visibles
+[OK] 1280x720_low · garage · lignes du HUD sans chevauchement
+[OK] 1280x720_low · garage · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · garage · panneaux sans chevauchement
+[OK] 1280x720_low · garage · aperçu 3D visible dans la carte : {'angle': 3.04059318769124, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'shoulder_y': 1.30694401264191, 'shown': True, 'streaks': False, 'triangles': 5640, 'view': 'preview', 'visible': True}
+[OK] 1280x720_low · garage_2 · capture enregistrée
+[OK] 1280x720_low · garage_2 · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_2 · l'aperçu tourne : écart moyen 3.16 niveaux
+[OK] 1280x720_low · garage_velo · capture enregistrée
+[OK] 1280x720_low · garage_velo · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_velo · texte menu_title : « Garage : vélo »
+[OK] 1280x720_low · garage_velo · texte menu : «  || [Cadre : Polyvalent — choisie] | Cadre : Léger — possédée | Cadre : Profilé — 150 pièces | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  || Cadre | Polyvalent | Masse = | CdA = | Niveau 1 | Conseillé : tout terrain | État : choisie »
+[OK] 1280x720_low · garage_velo · texte menu : «  || [Cadre : Polyvalent — choisie] | Cadre : Léger — possédée | Cadre : Profilé — 150 pièces | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  || Cadre | Polyvalent | Masse = | CdA = | Niveau 1 | Conseillé : tout terrain | État : choisie »
+[OK] 1280x720_low · garage_velo · éléments dans l'écran : 7 éléments visibles
+[OK] 1280x720_low · garage_velo · lignes du HUD sans chevauchement
+[OK] 1280x720_low · garage_velo · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · garage_velo · panneaux sans chevauchement
+[OK] 1280x720_low · garage_fiche · capture enregistrée
+[OK] 1280x720_low · garage_fiche · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_fiche · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — 150 pièces] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : 150 pièces »
+[OK] 1280x720_low · garage_fiche · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — 150 pièces] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : 150 pièces »
+[OK] 1280x720_low · garage_fiche · l'aperçu montre le cadre sous le focus avant l'achat : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_low · garage_fiche · l'équipement choisi ne change pas avant l'achat
+[OK] 1280x720_low · garage_confirmation · capture enregistrée
+[OK] 1280x720_low · garage_confirmation · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_confirmation · texte confirm_question : « Acheter Profilé pour 150 pièces ? Solde après : 60 »
+[OK] 1280x720_low · garage_achat · capture enregistrée
+[OK] 1280x720_low · garage_achat · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_achat · pièce achetée : possédée, solde 60 : 60 pièces, owned
+[OK] 1280x720_low · garage_achat · texte menu : «  || Cadre : Polyvalent — choisie | Cadre : Léger — possédée | [Cadre : Profilé — possédée] | Cadre : Contre-la-montre — niveau 20 | Roues : Standard — choisie | Roues : Légères — possédée | Roues : Profilées — 90 pièces | Roues : Lenticulaire — niveau 15 ||  ||  || Cadre | Profilé | Masse = | CdA −4,0 % | Niveau 5 | Conseillé : plat | État : possédée »
+[OK] 1280x720_low · garage_choix · capture enregistrée
+[OK] 1280x720_low · garage_choix · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_choix · cadre choisi, états mis à jour : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_low · garage_choix · l'avatar du jeu porte le nouveau cadre : {'frame': 'frame_aero', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}
+[OK] 1280x720_low · garage_modif · capture enregistrée
+[OK] 1280x720_low · garage_modif · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_modif · texte menu_title : « Taille »
+[OK] 1280x720_low · garage_modif · texte menu : «  || [moyenne — + / − : changer, A long : enregistrer, Y : annuler] ||  ||  || Avatar | Ton cycliste | Taille moyenne, silhouette moyenne | Rien n'est enregistré avant « Enregistrer ». »
+[OK] 1280x720_low · garage_modif · aperçu visible pendant la modification
+[OK] 1280x720_low · garage_avatar · capture enregistrée
+[OK] 1280x720_low · garage_avatar · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_avatar · brouillon modifié, rien d'enregistré : {'build': 'medium', 'hair': 2, 'hair_color': 1, 'height': 'L', 'kit_primary': 4, 'kit_secondary': 11, 'number': 27, 'skin': 3, 'standing_grade_pct': 8.0, 'standing_power_pct': 150.0}
+[OK] 1280x720_low · garage_enregistre · capture enregistrée
+[OK] 1280x720_low · garage_enregistre · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · garage_enregistre · avatar enregistré par le core : {'build': 'medium', 'hair': 2, 'hair_color': 1, 'height': 'L', 'kit_primary': 4, 'kit_secondary': 11, 'number': 27, 'skin': 3, 'standing_grade_pct': 8.0, 'standing_power_pct': 150.0}
+[OK] 1280x720_low · garage_enregistre · texte menu : « Enregistré || [Taille — grande] | Silhouette — moyenne | Teint — 4 / 8 | Coiffure — coiffure 2 / 5 | Couleur des cheveux — 2 / 8 | Couleur principale de la tenue — 5 / 16 | Couleur secondaire de la tenue — 12 / 16 | Numéro de dossard — n° 27 | Enregistrer | Annuler les changements ||  ||  || Avatar | Ton cycliste | Taille grande, silhouette moyenne | Rien n'est enregistré avant « Enregistrer ». | Enregistré »
+[OK] 1280x720_low · bilan · capture enregistrée
+[OK] 1280x720_low · bilan · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_low · bilan · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · bilan · texte menu_title : « Fin de séance »
+[OK] 1280x720_low · bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Distance 15,23 km | Durée 0:30:05 | Dénivelé 180 m | Puissance 212 W NP 221 | Puissance max 560 W | ★ montee 6:42,3 avant 6:58,9 | TSS 41 · Puissance max 560 W ||  || Bilan de la séance | Démo »
+[OK] 1280x720_low · bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Distance 15,23 km | Durée 0:30:05 | Dénivelé 180 m | Puissance 212 W NP 221 | Puissance max 560 W | ★ montee 6:42,3 avant 6:58,9 | TSS 41 · Puissance max 560 W ||  || Bilan de la séance | Démo »
+[OK] 1280x720_low · bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Distance 15,23 km | Durée 0:30:05 | Dénivelé 180 m | Puissance 212 W NP 221 | Puissance max 560 W | ★ montee 6:42,3 avant 6:58,9 | TSS 41 · Puissance max 560 W ||  || Bilan de la séance | Démo »
+[OK] 1280x720_low · bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Distance 15,23 km | Durée 0:30:05 | Dénivelé 180 m | Puissance 212 W NP 221 | Puissance max 560 W | ★ montee 6:42,3 avant 6:58,9 | TSS 41 · Puissance max 560 W ||  || Bilan de la séance | Démo »
+[OK] 1280x720_low · bilan · éléments dans l'écran : 6 éléments visibles
+[OK] 1280x720_low · bilan · lignes du HUD sans chevauchement
+[OK] 1280x720_low · bilan · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · bilan · panneaux sans chevauchement
+[OK] 1280x720_low · bilan · courbe de la puissance tracée (trait blanc) et record en or : 0.31% de pixels blancs, 0.18% de pixels or
+[OK] 1280x720_low · progression · capture enregistrée
+[OK] 1280x720_low · progression · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Distance 15,23 km | Durée 0:30:05 | Dénivelé 180 m | Puissance 212 W NP 221 | ★ montee 6:42,3 avant 6:58,9 | TSS 41 · Puissance max 560 W || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance | Démo »
+[OK] 1280x720_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Distance 15,23 km | Durée 0:30:05 | Dénivelé 180 m | Puissance 212 W NP 221 | ★ montee 6:42,3 avant 6:58,9 | TSS 41 · Puissance max 560 W || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance | Démo »
+[OK] 1280x720_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Distance 15,23 km | Durée 0:30:05 | Dénivelé 180 m | Puissance 212 W NP 221 | ★ montee 6:42,3 avant 6:58,9 | TSS 41 · Puissance max 560 W || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance | Démo »
+[OK] 1280x720_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Distance 15,23 km | Durée 0:30:05 | Dénivelé 180 m | Puissance 212 W NP 221 | ★ montee 6:42,3 avant 6:58,9 | TSS 41 · Puissance max 560 W || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance | Démo »
+[OK] 1280x720_low · progression · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Distance 15,23 km | Durée 0:30:05 | Dénivelé 180 m | Puissance 212 W NP 221 | ★ montee 6:42,3 avant 6:58,9 | TSS 41 · Puissance max 560 W || Distance 15,2 km : +302 XP | Dénivelé 180 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance | Démo »
+[OK] 1280x720_low · progression · éléments dans l'écran : 7 éléments visibles
+[OK] 1280x720_low · progression · lignes du HUD sans chevauchement
+[OK] 1280x720_low · progression · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · progression · panneaux sans chevauchement
+[OK] 1280x720_low · progression · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · progression · bandeau « Niveau 10 ! » affiché : Niveau 10 !
+[OK] 1280x720_low · bilan_complet · capture enregistrée
+[OK] 1280x720_low · bilan_complet · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Distance 3,21 km | Durée 0:08:36 | Dénivelé 33 m | Puissance 139 W NP 155 | FC moyenne 119 bpm | Cadence 49 rpm | IF 0,62 · TSS 6 · Puissance max 400 W · Dans la roue 12 min · 9 kJ économisés || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance | Démo »
+[OK] 1280x720_low · bilan_complet · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Distance 3,21 km | Durée 0:08:36 | Dénivelé 33 m | Puissance 139 W NP 155 | FC moyenne 119 bpm | Cadence 49 rpm | IF 0,62 · TSS 6 · Puissance max 400 W · Dans la roue 12 min · 9 kJ économisés || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance | Démo »
+[OK] 1280x720_low · bilan_complet · carte du bilan au-dessus du bandeau des boutons : bas de la carte 627 px, bandeau à 654 px
+[OK] 1280x720_low · bilan_complet · éléments dans l'écran : 7 éléments visibles
+[OK] 1280x720_low · bilan_complet · lignes du HUD sans chevauchement
+[OK] 1280x720_low · bilan_complet · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · bilan_complet · panneaux sans chevauchement
+[OK] 1280x720_low · bilan_complet · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · bilan_complet_detaille · capture enregistrée
+[OK] 1280x720_low · bilan_complet_detaille · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Distance 3,21 km | Durée 0:08:36 | Dénivelé 33 m | Puissance 139 W NP 155 | FC moyenne 119 bpm | Cadence 49 rpm | IF 0,62 · TSS 6 · Puissance max 400 W · Dans la roue 12 min · 9 kJ économisés | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance | Démo »
+[OK] 1280x720_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Distance 3,21 km | Durée 0:08:36 | Dénivelé 33 m | Puissance 139 W NP 155 | FC moyenne 119 bpm | Cadence 49 rpm | IF 0,62 · TSS 6 · Puissance max 400 W · Dans la roue 12 min · 9 kJ économisés | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance | Démo »
+[OK] 1280x720_low · bilan_complet_detaille · texte menu : «  || Nouvelle séance | [Voir le bilan détaillé] | Aller au Garage — une pièce est devenue achetable | Quitter ||  || Distance 3,21 km | Durée 0:08:36 | Dénivelé 33 m | Puissance 139 W NP 155 | FC moyenne 119 bpm | Cadence 49 rpm | IF 0,62 · TSS 6 · Puissance max 400 W · Dans la roue 12 min · 9 kJ économisés | Bloc 1 : 91 W pour 141 W (-50 W, -35,5 %) | Bloc 2 : 149 W pour 170 W (-21 W, -12,4 %) | Bloc 3 : 127 W pour 126 W (+1 W, +0,8 %) | Bloc 4 : 182 W pour 183 W (-1 W, -0,5 %) || Distance 3,2 km : +302 XP | Dénivelé 33 m : +302 XP | Total : +604 XP | Pièces : +42 (solde 232) | Équipement : −12,5 s sur la séance | Niveau 10 : ■■■□□□□□□□ 100 / 400 XP vers le niveau 11 | Niveau 10 ! | Débloqué : cadre Profilé || Bilan de la séance | Démo »
+[OK] 1280x720_low · bilan_complet_detaille · carte du bilan au-dessus du bandeau des boutons : bas de la carte 608 px, bandeau à 654 px
+[OK] 1280x720_low · bilan_complet_detaille · éléments dans l'écran : 7 éléments visibles
+[OK] 1280x720_low · bilan_complet_detaille · lignes du HUD sans chevauchement
+[OK] 1280x720_low · bilan_complet_detaille · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · bilan_complet_detaille · panneaux sans chevauchement
+[OK] 1280x720_low · bilan_complet_detaille · bandeau sans chevauchement du HUD
+[OK] 1280x720_low · progression_refusee · capture enregistrée
+[OK] 1280x720_low · progression_refusee · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · progression_refusee · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Distance 0,80 km | Durée 0:02:00 || Séance de moins de 5 minutes : pas d'expérience || Bilan de la séance | Démo »
+[OK] 1280x720_low · progression_refusee · éléments dans l'écran : 6 éléments visibles
+[OK] 1280x720_low · progression_refusee · lignes du HUD sans chevauchement
+[OK] 1280x720_low · progression_refusee · panneaux dans l'écran : 0 panneaux
+[OK] 1280x720_low · progression_refusee · panneaux sans chevauchement
+[OK] 1280x720_low · pente_0pct · capture enregistrée
+[OK] 1280x720_low · pente_0pct · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_low · pente_0pct · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · pente_0pct · écart à l'image de référence : SSIM 0.9805 (seuil 0.97), pire bloc -0.21, écart moyen 0.85 niveaux, 130 blocs masqués
+[OK] 1280x720_low · pente_0pct · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pente_0pct · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · pente_0pct · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pente_0pct · contraste speed : 6.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · pente_0pct · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pente_0pct · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · pente_0pct · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pente_0pct · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · pente_0pct · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pente_0pct · contraste grade : 4.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · pente_0pct · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · pente_0pct · contraste speed_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · pente_0pct · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · pente_0pct · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · pente_0pct · contraste grade_caption : 3.7:1 (au moins 3:1)
+[OK] 1280x720_low · pente_0pct · texte grade : « 0.0 % »
+[OK] 1280x720_low · pente_0pct · éléments dans l'écran : 20 éléments visibles
+[OK] 1280x720_low · pente_0pct · lignes du HUD sans chevauchement
+[OK] 1280x720_low · pente_0pct · panneaux dans l'écran : 4 panneaux
+[OK] 1280x720_low · pente_0pct · panneaux sans chevauchement
+[OK] 1280x720_low · pente_0pct · textes dans panel_left
+[OK] 1280x720_low · pente_0pct · textes dans panel_right
+[OK] 1280x720_low · pente_0pct · image ni noire ni uniforme : luminance 0.56, écart type 0.198
+[OK] 1280x720_low · pente_0pct · ciel en haut de l'image : 99% de pixels de ciel
+[OK] 1280x720_low · pente_0pct · sol en bas de l'image : 98% de pixels hors ciel
+[OK] 1280x720_low · pente_0pct · maillages affichés : 23 maillages visibles
+[OK] 1280x720_low · pente_4pct · capture enregistrée
+[OK] 1280x720_low · pente_4pct · tuiles du terrain toutes affichées : 0 tuile(s) encore en attente après 15 capture(s)
+[OK] 1280x720_low · pente_4pct · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · pente_4pct · écart à l'image de référence : SSIM 0.9805 (seuil 0.97), pire bloc -0.21, écart moyen 0.82 niveaux, 130 blocs masqués
+[OK] 1280x720_low · pente_4pct · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pente_4pct · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · pente_4pct · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pente_4pct · contraste speed : 6.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · pente_4pct · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pente_4pct · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · pente_4pct · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pente_4pct · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · pente_4pct · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · pente_4pct · contraste grade : 4.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · pente_4pct · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · pente_4pct · contraste speed_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · pente_4pct · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · pente_4pct · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · pente_4pct · contraste grade_caption : 3.7:1 (au moins 3:1)
+[OK] 1280x720_low · pente_4pct · texte grade : « +4.5 % »
+[OK] 1280x720_low · pente_4pct · éléments dans l'écran : 20 éléments visibles
+[OK] 1280x720_low · pente_4pct · lignes du HUD sans chevauchement
+[OK] 1280x720_low · pente_4pct · panneaux dans l'écran : 4 panneaux
+[OK] 1280x720_low · pente_4pct · panneaux sans chevauchement
+[OK] 1280x720_low · pente_4pct · textes dans panel_left
+[OK] 1280x720_low · pente_4pct · textes dans panel_right
+[OK] 1280x720_low · pente_4pct · image ni noire ni uniforme : luminance 0.55, écart type 0.199
+[OK] 1280x720_low · pente_4pct · ciel en haut de l'image : 99% de pixels de ciel
+[OK] 1280x720_low · pente_4pct · sol en bas de l'image : 98% de pixels hors ciel
+[OK] 1280x720_low · pente_4pct · maillages affichés : 23 maillages visibles
+[OK] 1280x720_low · decor_vivant · monde de test OSM chargé : route_loaded id=osm-test length_m=3000.0 path=/tmp/openride-visual-routes-2trtyxiz/osm-test.world
+[OK] 1280x720_low · decor_vivant · capture enregistrée
+[OK] 1280x720_low · decor_vivant · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · decor_vivant · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · decor_vivant · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · decor_vivant · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · decor_vivant · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · decor_vivant · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · decor_vivant · contraste cadence : 6.3:1 (au moins 4.5:1)
+[OK] 1280x720_low · decor_vivant · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · decor_vivant · contraste hr : 4.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · decor_vivant · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · decor_vivant · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · decor_vivant · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · decor_vivant · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · decor_vivant · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · decor_vivant · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · decor_vivant · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · decor_vivant · capture enregistrée
+[OK] 1280x720_low · decor_vivant · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · decor_vivant · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · decor_vivant · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · decor_vivant · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · decor_vivant · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · decor_vivant · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · decor_vivant · contraste cadence : 6.3:1 (au moins 4.5:1)
+[OK] 1280x720_low · decor_vivant · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · decor_vivant · contraste hr : 4.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · decor_vivant · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · decor_vivant · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1280x720_low · decor_vivant · contraste power_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · decor_vivant · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · decor_vivant · contraste cadence_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · decor_vivant · contraste hr_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · decor_vivant · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · decor_vivant · décor vivant préparé
+[OK] 1280x720_low · decor_vivant · troupeau en vue : 5 au plus
+[OK] 1280x720_low · decor_vivant · oiseaux en vue : 19 au plus
+[OK] 1280x720_low · decor_vivant · véhicule croisé en vue : 1 au plus
+[OK] 1280x720_low · decor_vivant · véhicule lointain en vue : 6 au plus
+[OK] 1280x720_low · decor_vivant · objet du ciel en vue : 4 au plus
+[OK] 1280x720_low · decor_vivant · éléments dans l'écran : 20 éléments visibles
+[OK] 1280x720_low · decor_vivant · lignes du HUD sans chevauchement
+[OK] 1280x720_low · decor_vivant · panneaux dans l'écran : 4 panneaux
+[OK] 1280x720_low · decor_vivant · panneaux sans chevauchement
+[OK] 1280x720_low · decor_vivant · textes dans panel_left
+[OK] 1280x720_low · decor_vivant · textes dans panel_right
+[OK] 1280x720_low · decor_vivant · image ni noire ni uniforme : luminance 0.55, écart type 0.203
+[OK] 1280x720_low · decor_vivant · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1280x720_low · decor_vivant · sol en bas de l'image : 98% de pixels hors ciel
+[OK] 1280x720_low · decor_vivant · maillages affichés : 22 maillages visibles
+[OK] 1280x720_low · decor_vivant · aucun contact sur la route : 0
+[OK] 1280x720_low · decor_pause_1 · capture enregistrée
+[OK] 1280x720_low · decor_pause_1 · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · decor_pause_2 · capture enregistrée
+[OK] 1280x720_low · decor_pause_2 · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · decor_pause · décor figé en pause (véhicules, cyclistes, ciel, bateaux) : signature -7096.78 puis -7096.78
+[OK] 1280x720_low · voies_face · capture enregistrée
+[OK] 1280x720_low · voies_face · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · voies_face · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_face · contraste power : 5.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_face · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_face · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_face · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_face · contraste cadence : 6.2:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_face · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_face · contraste hr : 4.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_face · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_face · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_face · contraste power_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · voies_face · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · voies_face · contraste cadence_caption : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · voies_face · contraste hr_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · voies_face · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · voies_face · cycliste dans la voie de droite : +1.20 m de l'axe
+[OK] 1280x720_low · voies_face · usagers en face sur leur droite (à gauche de l'axe) : vehicle -1.63 m, cyclist -2.50 m
+[OK] 1280x720_low · voies_face · cyclistes devant, même sens, à droite du cycliste : +2.50 m, +2.50 m
+[OK] 1280x720_low · voies_face · image ni noire ni uniforme : luminance 0.50, écart type 0.221
+[OK] 1280x720_low · voies_face · ciel en haut de l'image : 100% de pixels de ciel
+[OK] 1280x720_low · voies_face · sol en bas de l'image : 96% de pixels hors ciel
+[OK] 1280x720_low · voies_face · maillages affichés : 30 maillages visibles
+[OK] 1280x720_low · voies_attente · capture enregistrée
+[OK] 1280x720_low · voies_attente · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · voies_attente · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_attente · contraste power : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_attente · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_attente · contraste speed : 7.2:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_attente · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_attente · contraste cadence : 7.0:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_attente · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_attente · contraste hr : 7.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_attente · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_attente · contraste grade : 5.2:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_attente · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · voies_attente · contraste speed_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · voies_attente · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · voies_attente · contraste hr_caption : 6.1:1 (au moins 3:1)
+[OK] 1280x720_low · voies_attente · contraste grade_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · voies_attente · voiture en face : l'utilitaire attend derrière au lieu de doubler : van à -42 m, car_a à +24 m, car_b à +65 m
+[OK] 1280x720_low · voies_depassement · capture enregistrée
+[OK] 1280x720_low · voies_depassement · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste power : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste speed : 7.2:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste cadence : 6.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste grade : 5.2:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste speed_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste hr_caption : 4.2:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste grade_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · capture enregistrée
+[OK] 1280x720_low · voies_depassement · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste power : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste speed : 7.2:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste cadence : 7.0:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste grade : 5.2:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste speed_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste hr_caption : 4.2:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste grade_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · capture enregistrée
+[OK] 1280x720_low · voies_depassement · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste speed : 7.2:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste cadence : 6.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste hr : 5.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste grade : 5.2:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste speed_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste cadence_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste hr_caption : 6.6:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste grade_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · capture enregistrée
+[OK] 1280x720_low · voies_depassement · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste speed : 7.1:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste cadence : 6.7:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · voies_depassement · contraste grade : 5.2:1 (au moins 4.5:1)
+[OK] 1280x720_low · voies_depassement · contraste power_caption : 4.4:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste speed_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste hr_caption : 4.2:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · contraste grade_caption : 4.3:1 (au moins 3:1)
+[OK] 1280x720_low · voies_depassement · voiture qui double à 1,5 m au moins, sur la gauche : -1.72 m, écart 1.50 m
+[OK] 1280x720_low · voies_depassement · aucun contact sur la route : 0
+[OK] 1280x720_low · peloton_large · capture enregistrée
+[OK] 1280x720_low · peloton_large · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · peloton_large · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_large · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_large · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_large · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_large · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_large · contraste cadence : 6.3:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_large · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_large · contraste hr : 4.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_large · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_large · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_large · contraste power_caption : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_large · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_large · contraste cadence_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_large · contraste hr_caption : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_large · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_large · contraste bots_line1 : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_large · contraste bots_line2 : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_large · peloton au départ : cinq bots de front, devant le cycliste : [-2.4, -1.5, -0.6, 0.3, 2.1], 5 à moins de 30 m
+[OK] 1280x720_low · peloton_face · capture enregistrée
+[OK] 1280x720_low · peloton_face · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · peloton_face · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste cadence : 6.3:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste hr : 4.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · contraste power_caption : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste cadence_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste hr_caption : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste bots_line1 : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste bots_line2 : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · capture enregistrée
+[OK] 1280x720_low · peloton_face · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · peloton_face · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste cadence : 6.3:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste hr : 4.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · contraste power_caption : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste cadence_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste hr_caption : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste bots_line1 : 4.0:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste bots_line2 : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · capture enregistrée
+[OK] 1280x720_low · peloton_face · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · peloton_face · hauteur des chiffres power : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste power : 5.6:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · hauteur des chiffres speed : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · hauteur des chiffres cadence : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste cadence : 6.3:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · hauteur des chiffres hr : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste hr : 4.9:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · hauteur des chiffres grade : 44 px pour 1080 lignes (au moins 28)
+[OK] 1280x720_low · peloton_face · contraste grade : 5.5:1 (au moins 4.5:1)
+[OK] 1280x720_low · peloton_face · contraste power_caption : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste cadence_caption : 3.8:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste hr_caption : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste bots_line1 : 4.1:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · contraste bots_line2 : 3.9:1 (au moins 3:1)
+[OK] 1280x720_low · peloton_face · voiture d'en face sur la chaussée : -1.63 m
+[OK] 1280x720_low · peloton_face · bots serrés à droite, deux de front au plus : +2.10 m à +13.2 m, +0.30 m à +12.9 m, +2.10 m à +10.6 m, +0.30 m à +10.3 m, +0.30 m à +8.0 m
+[OK] 1280x720_low · peloton_face · aucun contact sur la route : 0
+[OK] 1280x720_low · journal · rendu actif (images par seconde) : fps relevés : [1.0, 2.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 2.0, 2.0, 2.0, 2.0, 3.0, 2.0, 2.0, 3.0, 2.0, 2.0, 2.0, 2.0, 3.0, 1.0, 2.0, 1.0, 2.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 2.0, 3.0, 2.0, 2.0, 3.0, 3.0, 2.0, 2.0, 3.0, 2.0, 2.0, 2.0, 1.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 1.0, 2.0, 3.0, 2.0, 2.0, 1.0, 1.0, 1.0, 2.0, 2.0, 1.0, 2.0, 2.0, 2.0, 2.0, 1.0, 1.0, 1.0, 2.0, 1.0, 3.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 3.0, 1.0]
+[OK] 1280x720_low · journal · aucune erreur ni avertissement Godot
+[OK] 1280x720_low · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1280x720_low · journal · qualité réellement appliquée : low appliquée (120 capture(s)) ; dernière ligne : low (demandée low, source cli)
+Tests graphiques : 1771/1772 vérifications réussies
+Rapport : ~/mesures-2026-11-01-auto/r788/golden_run/rapport.html

@@ -1,0 +1,9 @@
+16:01:20 empreinte avant dbcae732ed690b86d3cd897f0df788ee
+16:01:20 tête 6cccacee
+16:02:29 suite engine
+16:21:44 fin suite rc=1
+16:21:44 run_visual_tests --native --menus 3 qualités, --update-golden=bilan (références du worktree seulement)
+16:25:29 fin rc=1
+16:25:29 run_visual_tests --update-golden=bilan 1280x720:low sous Xvfb, lavapipe forcé
+16:35:43 fin rc=1
+16:35:43 menu_bench_branche

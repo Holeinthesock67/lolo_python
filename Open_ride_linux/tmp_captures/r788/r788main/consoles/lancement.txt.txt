@@ -1,0 +1,7 @@
+15:30:08 empreinte avant dbcae732ed690b86d3cd897f0df788ee
+15:30:08 tête f190a798
+15:31:19 menu_bench_main
+16:01:19 fin menu_bench rc=124
+16:01:20 empreinte après dbcae732ed690b86d3cd897f0df788ee
+16:01:20 clone 90c08094
+16:01:20 FIN

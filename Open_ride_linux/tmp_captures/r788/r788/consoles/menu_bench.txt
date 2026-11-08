@@ -1,0 +1,503 @@
+== appareils (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran connect (titre='Connexion des appareils', focus='continue', contient=['Click − : recherche']) : « Connexion des appareils »
+[OK] choisir « continue » : écran « home », focus « world »
+[OK] écran home : « OpenRide »
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] choisir « devices » : écran « pairing », focus « back »
+[OK] écran pairing (titre='Appareils') : « Appareils »
+[OK] journal du engine : « scan_results done=true items=([3-9]) » : scan_results done=true items=3
+[OK] écran pairing (contient=['Trainer — HomeTrainer', 'Ceinture —', 'appareil(s) trouvé(s)'], elements=['scan', 'trainer', 'identify', 'forget_click', 'hr', 'save', 'back']) : « Appareils »
+[OK] choisir « save » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no', elements=['no', 'yes']) : « Enregistrer trainer HomeTrainer 0000 (sim), ceinture HRM (sim) ? »
+[OK] choisir « no » : écran « pairing », focus « save »
+[OK] écran pairing : « Appareils »
+[OK] config.toml : drivers.trainer_address = None : OK
+[OK] choisir « save » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no') : « Enregistrer trainer HomeTrainer 0000 (sim), ceinture HRM (sim) ? »
+[OK] choisir « yes » : écran « pairing », focus « save »
+[OK] config.toml : drivers.trainer_address = '*', drivers.hr_address = '*', drivers.hr = 'ble' : OK
+[OK] écran pairing (contient=['Relancer OpenRide maintenant', 'Enregistré']) : « Appareils »
+[OK] choisir « relaunch » : écran « pairing », focus « relaunch »
+[OK] l'engine sort avec le code 64 : code 64 en 0.8 s
+[OK] arrêt du core : code de sortie 0
+== appareils (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran connect (titre='Connexion des appareils', focus='continue', contient=['Click − : recherche']) : « Connexion des appareils »
+[OK] choisir « continue » : écran « home », focus « world »
+[OK] écran home : « OpenRide »
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] choisir « devices » : écran « pairing », focus « back »
+[OK] écran pairing (titre='Appareils') : « Appareils »
+[OK] journal du engine : « scan_results done=true items=([3-9]) » : scan_results done=true items=3
+[OK] écran pairing (contient=['Trainer — HomeTrainer', 'Ceinture —', 'appareil(s) trouvé(s)'], elements=['scan', 'trainer', 'identify', 'forget_click', 'hr', 'save', 'back']) : « Appareils »
+[OK] choisir « save » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no', elements=['no', 'yes']) : « Enregistrer trainer HomeTrainer 0000 (sim), ceinture HRM (sim) ? »
+[OK] choisir « no » : écran « pairing », focus « save »
+[OK] écran pairing : « Appareils »
+[OK] config.toml : drivers.trainer_address = None : OK
+[OK] choisir « save » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no') : « Enregistrer trainer HomeTrainer 0000 (sim), ceinture HRM (sim) ? »
+[OK] choisir « yes » : écran « pairing », focus « save »
+[OK] config.toml : drivers.trainer_address = '*', drivers.hr_address = '*', drivers.hr = 'ble' : OK
+[OK] écran pairing (contient=['Relancer OpenRide maintenant', 'Enregistré']) : « Appareils »
+[OK] choisir « relaunch » : écran « pairing », focus « relaunch »
+[OK] l'engine sort avec le code 64 : code 64 en 0.8 s
+[OK] arrêt du core : code de sortie 0
+== appareils (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran connect (titre='Connexion des appareils', focus='continue', contient=['Click − : recherche']) : « Connexion des appareils »
+[OK] choisir « continue » : écran « home », focus « world »
+[OK] écran home : « OpenRide »
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] choisir « devices » : écran « pairing », focus « back »
+[OK] écran pairing (titre='Appareils') : « Appareils »
+[OK] journal du engine : « scan_results done=true items=([3-9]) » : scan_results done=true items=3
+[OK] écran pairing (contient=['Trainer — HomeTrainer', 'Ceinture —', 'appareil(s) trouvé(s)'], elements=['scan', 'trainer', 'identify', 'forget_click', 'hr', 'save', 'back']) : « Appareils »
+[OK] choisir « save » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no', elements=['no', 'yes']) : « Enregistrer trainer HomeTrainer 0000 (sim), ceinture HRM (sim) ? »
+[OK] choisir « no » : écran « pairing », focus « save »
+[OK] écran pairing : « Appareils »
+[OK] config.toml : drivers.trainer_address = None : OK
+[OK] choisir « save » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no') : « Enregistrer trainer HomeTrainer 0000 (sim), ceinture HRM (sim) ? »
+[OK] choisir « yes » : écran « pairing », focus « save »
+[OK] config.toml : drivers.trainer_address = '*', drivers.hr_address = '*', drivers.hr = 'ble' : OK
+[OK] écran pairing (contient=['Relancer OpenRide maintenant', 'Enregistré']) : « Appareils »
+[OK] choisir « relaunch » : écran « pairing », focus « relaunch »
+[OK] l'engine sort avec le code 64 : code 64 en 0.8 s
+[OK] arrêt du core : code de sortie 0
+== clavier_synonymes (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home (focus='world') : « OpenRide » (engine muet 11.0 s)
+[OK] écran home (focus='ride') : « OpenRide » (engine muet 2.5 s)
+[OK] écran home (focus='erg') : « OpenRide »
+[OK] écran home (focus='ride') : « OpenRide » (engine muet 2.0 s)
+[OK] écran home (focus='erg') : « OpenRide »
+[OK] écran home (focus='erg') : « OpenRide »
+[OK] journal du engine : « Appui ambigu : PLUS_UNCLEAR » : Appui ambigu : PLUS_UNCLEAR
+[OK] écran home (focus='erg') : « OpenRide »
+[OK] écran home (focus='plan') : « OpenRide »
+[OK] écran home (focus='erg') : « OpenRide »
+[OK] focus sur « settings » : écran « home », focus « settings »
+[OK] écran settings : « Réglages »
+[OK] écran home (focus='settings') : « OpenRide »
+[OK] écran settings : « Réglages »
+[OK] écran home : « OpenRide »
+[OK] écran home (focus='settings') : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== connexion_auto (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.8 s
+[OK] écran connect (titre='Connexion des appareils') : « Connexion des appareils »
+[OK] écran home (titre='OpenRide', elements=['world', 'ride', 'erg', 'plan', 'ftp', 'history', 'sim', 'settings', 'quit']) : « OpenRide » (engine muet 11.0 s)
+[OK] écran home (contient=['Parcours : à choisir']) : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus', contient=['Contenus de départ — en partie installé']) : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé', 'Ajouté : 9 entraînement(s), 2 plan(s), 4 parcours.']) : « Contenus »
+[OK] fichier ~/OpenRide/Plans/reprise_4_semaines.toml présent : OpenRide/Plans/reprise_4_semaines.toml
+[OK] fichier ~/OpenRide/Workouts/vo2_5x3.zwo présent : OpenRide/Workouts/vo2_5x3.zwo
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-alpin.world/manifest.json présent : .local/share/openride/routes/demo-biomes-alpin.world/manifest.json
+[OK] journal du core : « Contenu « starter » : Ajouté » : Contenu « starter » : Ajouté
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (contient=['demo-biomes-alpin']) : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus', contient=['Contenus de départ — en partie installé']) : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé', 'Ajouté : 9 entraînement(s), 2 plan(s), 4 parcours.']) : « Contenus »
+[OK] fichier ~/OpenRide/Plans/reprise_4_semaines.toml présent : OpenRide/Plans/reprise_4_semaines.toml
+[OK] fichier ~/OpenRide/Workouts/vo2_5x3.zwo présent : OpenRide/Workouts/vo2_5x3.zwo
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-alpin.world/manifest.json présent : .local/share/openride/routes/demo-biomes-alpin.world/manifest.json
+[OK] journal du core : « Contenu « starter » : Ajouté » : Contenu « starter » : Ajouté
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (contient=['demo-biomes-alpin']) : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus', contient=['Contenus de départ — en partie installé']) : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé', 'Ajouté : 9 entraînement(s), 2 plan(s), 4 parcours.']) : « Contenus »
+[OK] fichier ~/OpenRide/Plans/reprise_4_semaines.toml présent : OpenRide/Plans/reprise_4_semaines.toml
+[OK] fichier ~/OpenRide/Workouts/vo2_5x3.zwo présent : OpenRide/Workouts/vo2_5x3.zwo
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-alpin.world/manifest.json présent : .local/share/openride/routes/demo-biomes-alpin.world/manifest.json
+[OK] journal du core : « Contenu « starter » : Ajouté » : Contenu « starter » : Ajouté
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (contient=['demo-biomes-alpin']) : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== cyber_rogue (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home (elements=['rogue']) : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « rogue » : écran « rogue_start », focus « objective »
+[OK] écran rogue_start (titre='Départ Cyber-Rogue', contient=['Objectif : Endurance', 'Durée : 30 min'], elements=['objective', 'duration', 'wprime', 'launch']) : « Départ Cyber-Rogue »
+[OK] choisir « objective » : écran « rogue_start », focus « objective »
+[OK] écran rogue_start (contient=['Objectif : Seuil']) : « Départ Cyber-Rogue »
+[OK] choisir « duration » : écran « rogue_start », focus « duration »
+[OK] écran rogue_start (contient=['Durée : 45 min']) : « Départ Cyber-Rogue »
+[OK] choisir « launch » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Cyber-Rogue : en VO2max, des efforts au-delà de 140 % de la FTP sont possibles. Sortie sans pénalité à tout moment. Lancer ?', focus='no') : « Cyber-Rogue : en VO2max, des efforts au-delà de 140 % de la FTP sont possibles. Sortie sans pénalité à tout moment. Lancer ? »
+[OK] choisir « yes » : écran « rogue_loading », focus «  »
+[OK] journal du core : « start_run » : start_run
+[OK] écran ready (titre='Prêt : Cyber-Rogue', contient=['Seuil · 45 min'], elements=['start', 'rogue_change']) : « Prêt : Cyber-Rogue »
+[OK] choisir « rogue_change » : écran « rogue_start », focus « objective »
+[OK] écran rogue_start (contient=['Objectif : Seuil', 'Durée : 45 min']) : « Départ Cyber-Rogue »
+[OK] choisir « duration » : écran « rogue_start », focus « duration »
+[OK] choisir « launch » : écran « rogue_loading », focus «  »
+[OK] journal du core : « start_run.*60 » : start_run {'chassis': 'standard', 'duration_min': 60
+[OK] écran ready (titre='Prêt : Cyber-Rogue', contient=['Seuil · 60 min']) : « Prêt : Cyber-Rogue »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] écran menu caché : « Prêt : Cyber-Rogue »
+[OK] écran pause (focus='resume') : « Pause »
+[OK] choisir « abandon » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no') : « Abandonner la séance ? »
+[OK] choisir « yes » : écran « home », focus « world »
+[OK] journal du core : « -> FINISHED » : -> FINISHED
+[OK] fichier ~/OpenRide/Activities/*.fit absent : absent
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== cyber_rogue (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home (elements=['rogue']) : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « rogue » : écran « rogue_start », focus « objective »
+[OK] écran rogue_start (titre='Départ Cyber-Rogue', contient=['Objectif : Endurance', 'Durée : 30 min'], elements=['objective', 'duration', 'wprime', 'launch']) : « Départ Cyber-Rogue »
+[OK] choisir « objective » : écran « rogue_start », focus « objective »
+[OK] écran rogue_start (contient=['Objectif : Seuil']) : « Départ Cyber-Rogue »
+[OK] choisir « duration » : écran « rogue_start », focus « duration »
+[OK] écran rogue_start (contient=['Durée : 45 min']) : « Départ Cyber-Rogue »
+[OK] choisir « launch » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Cyber-Rogue : en VO2max, des efforts au-delà de 140 % de la FTP sont possibles. Sortie sans pénalité à tout moment. Lancer ?', focus='no') : « Cyber-Rogue : en VO2max, des efforts au-delà de 140 % de la FTP sont possibles. Sortie sans pénalité à tout moment. Lancer ? »
+[OK] choisir « yes » : écran « rogue_loading », focus «  »
+[OK] journal du core : « start_run » : start_run
+[OK] écran ready (titre='Prêt : Cyber-Rogue', contient=['Seuil · 45 min'], elements=['start', 'rogue_change']) : « Prêt : Cyber-Rogue »
+[OK] choisir « rogue_change » : écran « rogue_start », focus « objective »
+[OK] écran rogue_start (contient=['Objectif : Seuil', 'Durée : 45 min']) : « Départ Cyber-Rogue »
+[OK] choisir « duration » : écran « rogue_start », focus « duration »
+[OK] choisir « launch » : écran « rogue_loading », focus «  »
+[OK] journal du core : « start_run.*60 » : start_run {'chassis': 'standard', 'duration_min': 60
+[OK] écran ready (titre='Prêt : Cyber-Rogue', contient=['Seuil · 60 min']) : « Prêt : Cyber-Rogue »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] écran menu caché : « Prêt : Cyber-Rogue »
+[OK] écran pause (focus='resume') : « Pause »
+[OK] choisir « abandon » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no') : « Abandonner la séance ? »
+[OK] choisir « yes » : écran « home », focus « world »
+[OK] journal du core : « -> FINISHED » : -> FINISHED
+[OK] fichier ~/OpenRide/Activities/*.fit absent : absent
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== cyber_rogue (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home (elements=['rogue']) : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « rogue » : écran « rogue_start », focus « objective »
+[OK] écran rogue_start (titre='Départ Cyber-Rogue', contient=['Objectif : Endurance', 'Durée : 30 min'], elements=['objective', 'duration', 'wprime', 'launch']) : « Départ Cyber-Rogue »
+[OK] choisir « objective » : écran « rogue_start », focus « objective »
+[OK] écran rogue_start (contient=['Objectif : Seuil']) : « Départ Cyber-Rogue »
+[OK] choisir « duration » : écran « rogue_start », focus « duration »
+[OK] écran rogue_start (contient=['Durée : 45 min']) : « Départ Cyber-Rogue »
+[OK] choisir « launch » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Cyber-Rogue : en VO2max, des efforts au-delà de 140 % de la FTP sont possibles. Sortie sans pénalité à tout moment. Lancer ?', focus='no') : « Cyber-Rogue : en VO2max, des efforts au-delà de 140 % de la FTP sont possibles. Sortie sans pénalité à tout moment. Lancer ? »
+[OK] choisir « yes » : écran « rogue_loading », focus «  »
+[OK] journal du core : « start_run » : start_run
+[OK] écran ready (titre='Prêt : Cyber-Rogue', contient=['Seuil · 45 min'], elements=['start', 'rogue_change']) : « Prêt : Cyber-Rogue »
+[OK] choisir « rogue_change » : écran « rogue_start », focus « objective »
+[OK] écran rogue_start (contient=['Objectif : Seuil', 'Durée : 45 min']) : « Départ Cyber-Rogue »
+[OK] choisir « duration » : écran « rogue_start », focus « duration »
+[OK] choisir « launch » : écran « rogue_loading », focus «  »
+[OK] journal du core : « start_run.*60 » : start_run {'chassis': 'standard', 'duration_min': 60
+[OK] écran ready (titre='Prêt : Cyber-Rogue', contient=['Seuil · 60 min']) : « Prêt : Cyber-Rogue »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] écran menu caché : « Prêt : Cyber-Rogue »
+[OK] écran pause (focus='resume') : « Pause »
+[OK] choisir « abandon » : écran « confirm », focus « no »
+[OK] écran confirm (focus='no') : « Abandonner la séance ? »
+[OK] choisir « yes » : écran « home », focus « world »
+[OK] journal du core : « -> FINISHED » : -> FINISHED
+[OK] fichier ~/OpenRide/Activities/*.fit absent : absent
+[INFO] souris : gestes joués au clavier (pas de geste de souris) : 1
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== dernier_survivant (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home (elements=['survivor']) : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (elements=['demo']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : demo']) : « OpenRide »
+[OK] choisir « survivor » : écran « ready », focus « change_route »
+[OK] écran ready (titre='Prêt : Dernier survivant — demo', contient=['trop court ('], elements=['start', 'change_route', 'set:survivor.opponents', 'set:survivor.spacing_km', 'set:bots.level_pct', 'set:survivor.spread', 'set:survivor.after_out']) : « Prêt : Dernier survivant — demo »
+[OK] choisir « set:survivor.opponents » : écran « ready », focus « set:survivor.opponents »
+[OK] écran ready : « Prêt : Dernier survivant — demo »
+[OK] écran ready (contient=['Adversaires — ◀ 2 ▶']) : « Prêt : Dernier survivant — demo »
+[OK] écran ready (contient=['2 arches sur 4 km']) : « Prêt : Dernier survivant — demo »
+[OK] config.toml : survivor.opponents = 2 : OK
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Dernier survivant : 2 adversaires » : Dernier survivant : 2 adversaires
+[OK] écran menu caché : « Prêt : Dernier survivant — demo »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « world »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== dernier_survivant (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home (elements=['survivor']) : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (elements=['demo']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : demo']) : « OpenRide »
+[OK] choisir « survivor » : écran « ready », focus « change_route »
+[OK] écran ready (titre='Prêt : Dernier survivant — demo', contient=['trop court ('], elements=['start', 'change_route', 'set:survivor.opponents', 'set:survivor.spacing_km', 'set:bots.level_pct', 'set:survivor.spread', 'set:survivor.after_out']) : « Prêt : Dernier survivant — demo »
+[OK] choisir « set:survivor.opponents » : écran « ready », focus « set:survivor.opponents »
+[OK] écran ready : « Prêt : Dernier survivant — demo »
+[OK] écran ready (contient=['Adversaires — ◀ 2 ▶']) : « Prêt : Dernier survivant — demo »
+[OK] écran ready (contient=['2 arches sur 4 km']) : « Prêt : Dernier survivant — demo »
+[OK] config.toml : survivor.opponents = 2 : OK
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Dernier survivant : 2 adversaires » : Dernier survivant : 2 adversaires
+[OK] écran menu caché : « Prêt : Dernier survivant — demo »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « world »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== dernier_survivant (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.7 s
+[OK] écran home (elements=['survivor']) : « OpenRide » (engine muet 15.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (elements=['demo']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : demo']) : « OpenRide »
+[OK] choisir « survivor » : écran « ready », focus « change_route »
+[OK] écran ready (titre='Prêt : Dernier survivant — demo', contient=['trop court ('], elements=['start', 'change_route', 'set:survivor.opponents', 'set:survivor.spacing_km', 'set:bots.level_pct', 'set:survivor.spread', 'set:survivor.after_out']) : « Prêt : Dernier survivant — demo »
+[OK] choisir « set:survivor.opponents » : écran « ready », focus « set:survivor.opponents »
+[OK] écran ready : « Prêt : Dernier survivant — demo »
+[OK] écran ready (contient=['Adversaires — ◀ 2 ▶']) : « Prêt : Dernier survivant — demo »
+[OK] écran ready (contient=['2 arches sur 4 km']) : « Prêt : Dernier survivant — demo »
+[OK] config.toml : survivor.opponents = 2 : OK
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Dernier survivant : 2 adversaires » : Dernier survivant : 2 adversaires
+[OK] écran menu caché : « Prêt : Dernier survivant — demo »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « world »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== derniers_choix (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home (contient=['Parcours : à choisir']) : « OpenRide — Cycliste A » (engine muet 11.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (contient=['Bot 1 : aucun']) : « Prêt : session libre — demo »
+[OK] choisir « bot1 » : écran « ready », focus « bot1 »
+[OK] choisir « bot1 » : écran « ready », focus « bot1 »
+[OK] écran ready (contient=['Bot 1 : 250 W']) : « Prêt : session libre — demo »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] écran summary : « Fin de séance »
+[OK] fichier ~/OpenRide/Profils/cycliste-a/derniers_choix.json présent : OpenRide/Profils/cycliste-a/derniers_choix.json
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.2 s
+[OK] écran home (contient=['Parcours : demo']) : « OpenRide — Cycliste A » (engine muet 9.5 s)
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — demo', contient=['Bot 1 : 250 W']) : « Prêt : session libre — demo »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== derniers_choix (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home (contient=['Parcours : à choisir']) : « OpenRide — Cycliste A » (engine muet 11.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (contient=['Bot 1 : aucun']) : « Prêt : session libre — demo »
+[OK] choisir « bot1 » : écran « ready », focus « bot1 »
+[OK] choisir « bot1 » : écran « ready », focus « bot1 »
+[OK] écran ready (contient=['Bot 1 : 250 W']) : « Prêt : session libre — demo »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] écran summary : « Fin de séance »
+[OK] fichier ~/OpenRide/Profils/cycliste-a/derniers_choix.json présent : OpenRide/Profils/cycliste-a/derniers_choix.json
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.2 s
+[OK] écran home (contient=['Parcours : demo']) : « OpenRide — Cycliste A » (engine muet 9.5 s)
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — demo', contient=['Bot 1 : 250 W']) : « Prêt : session libre — demo »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== derniers_choix (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home (contient=['Parcours : à choisir']) : « OpenRide — Cycliste A » (engine muet 10.5 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (contient=['Bot 1 : aucun']) : « Prêt : session libre — demo »
+[OK] choisir « bot1 » : écran « ready », focus « bot1 »
+[OK] choisir « bot1 » : écran « ready », focus « bot1 »
+[OK] écran ready (contient=['Bot 1 : 250 W']) : « Prêt : session libre — demo »
+[OK] choisir « start » : écran « ready », focus « start »
+[ÉCHEC] journal du core : « -> RUNNING » : absent après 10 s
+[ÉCHEC] écran summary : écran « ready »
+[OK] fichier ~/OpenRide/Profils/cycliste-a/derniers_choix.json présent : OpenRide/Profils/cycliste-a/derniers_choix.json
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.2 s
+[OK] écran home (contient=['Parcours : demo']) : « OpenRide — Cycliste A » (engine muet 9.5 s)
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — demo', contient=['Bot 1 : 250 W']) : « Prêt : session libre — demo »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== erg (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « erg » : écran « workouts », focus « _sim »
+[OK] écran workouts (elements=['erg_court', '_create', '_import', '_help']) : « Session ERG : entraînement »
+[OK] choisir « _help » : écran « workout_help », focus « help:choose »
+[OK] écran workout_help (titre='Aide ERG', contient=['Créer des intervalles', 'Saisie QWKcode (GoldenCheetah)', 'Écrire un fichier à la main']) : « Aide ERG »
+[OK] écran workouts : « Session ERG : entraînement »
+[OK] choisir « _create » : écran « workout_create », focus « param:warmup_min »
+[OK] écran workout_create (titre='Créer un entraînement', contient=['Répétitions — 5', "Puissance de l'effort — 105 % de la FTP"]) : « Créer un entraînement »
+[OK] choisir « param:reps » : écran « workout_create », focus « param:reps »
+[OK] écran workout_create (contient=['Répétitions — 6']) : « Créer un entraînement »
+[OK] choisir « save » : écran « workout_create », focus « save »
+[OK] fichier ~/OpenRide/Workouts/intervalles_6x240s_105.zwo présent : OpenRide/Workouts/intervalles_6x240s_105.zwo
+[OK] écran workouts : « Session ERG : entraînement »
+[OK] choisir « _import » : écran « workout_import », focus «  »
+[OK] écran workout_import (titre='Importer un entraînement', contient=['seuil_import.zwo']) : « Importer un entraînement »
+[OK] choisir « file:0 » : écran « workout_import », focus « file:0 »
+[OK] fichier ~/OpenRide/Workouts/seuil_import.zwo présent : OpenRide/Workouts/seuil_import.zwo
+[OK] écran workouts : « Session ERG : entraînement »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== erg (clavier) ==
+[OK] démarrage du core : « Core démarré »
