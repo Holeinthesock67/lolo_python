@@ -9,6 +9,8 @@ extends SceneTree
 ##   xvfb-run -a godot --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/render/test_props_render.gd
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const RoadsideProps := preload("res://scripts/roadside_props.gd")
 const WindTurbines := preload("res://scripts/wind_turbines.gd")
 const Speckle := preload("res://tests/render/speckle.gd")
@@ -137,5 +139,6 @@ func _run() -> void:
 	lit.queue_free()
 	flat.queue_free()
 	await process_frame
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_props_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

@@ -6,6 +6,8 @@ extends SceneTree
 ## Critère 4 du cahier : teinte moyenne de la portion `dirt` à moins de 10 % de `surfaces.dirt` ; plus : aucune
 ## peinture sur la terre, bas-côté au-delà des 3 m de chaussée, bitume et ligne médiane inchangés avant 60 m.
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const RoadSurface := preload("res://scripts/road_surface.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
@@ -124,5 +126,6 @@ func _run() -> void:
 		"bitume avant 60 m : chaussée, ligne médiane et bande de rive inchangées")
 	vp.queue_free()
 	await process_frame
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_gravel_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
