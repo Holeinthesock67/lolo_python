@@ -255,7 +255,7 @@ const CONFIRM_W := 640        # carte de confirmation, centrée
 const SUMMARY_CARD_W := 700   # carte du bilan de fin de séance (chiffres sur deux colonnes)
 const ICON := 28              # pictogramme d'une entrée
 const LINE_W := 2.2           # trait des pictogrammes
-const BAR_W := 180            # curseur d'un réglage en % dans une rangée
+const BAR_W := 100            # curseur d'un réglage en % dans une rangée (180 coupait les libellés des curseurs, 8 nov. ; libellés du Son raccourcis)
 const BAR_H := 10
 const CHART_H := 72           # profil d'altitude ou blocs d'entraînement dans la carte
 

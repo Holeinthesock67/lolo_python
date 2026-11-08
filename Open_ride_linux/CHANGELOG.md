@@ -5,6 +5,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Boîtier gauche du Click sans redémarrage, à l'essai (lot K9)
+- `[drivers] click_reset_locked` devient un choix : `"reset"` (défaut, comme avant), `"keep"` ou `"off"` ; les anciens `true` et `false` sont toujours lus.
+- `"keep"` essaie de garder le boîtier gauche déverrouillé (activation complète et réponse `ff 04 00`) et ne le redémarre que si Zwift le verrouille quand même. Essai sur le vélo du 8 novembre : sans effet sous le firmware 1.2.0 (verrou toujours vers 50 s), `"reset"` reste donc le défaut.
+- Journal : durée de chaque fenêtre de boutons du boîtier gauche ; `click_recette --verrou keep --attente-rappel 8` compte les appuis perdus par tranche de 10 min.
+
 ### Rendu plus léger (étude du 5 et 6 novembre)
 - Medium et high : MSAA 2× et ombres du soleil en 2048 ; high sans lumière indirecte d'écran (SSIL) et filtrage anisotrope 8×. Tour des six biomes sur la GTX 1060 : environ −2,4 ms par image en medium et −4 ms en high.
 - Feuillage et herbe éclairés plus simplement (sans reflet spéculaire), arbres lointains sans vent, halo à trois niveaux.

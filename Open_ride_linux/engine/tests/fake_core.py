@@ -31,6 +31,8 @@ from typing import Any, Callable
 
 CONTRACT_VERSION = 1
 STATE_HZ = 30.0
+# Commandes de la séance conseillée (contrat 1.12, lot CO3) : réponse `coach`.
+COACH_COMMANDS = ("get_coach", "set_next_race", "clear_next_race", "set_watch_advice", "clear_watch_advice")
 SPEED_MPS = 8.0
 DEMO_SEGMENTS = Path(__file__).resolve().parents[1] / "demo" / "demo.world" / "segments.json"
 
@@ -113,6 +115,7 @@ class FakeCore:
     # Message `collection` (série BC, lot BC5) sans request_cmd_id ; None : pas de réponse à list_collection.
     collection: dict[str, Any] | None = None
     collection_seen: list[str] = field(default_factory=list)   # clés reçues par `collection_seen`
+    coach: dict[str, Any] | None = None  # message `coach` (lot CO5) renvoyé aux commandes du conseil ; None : pas de réponse
     session_state: str = "IDLE"
     route_id: str | None = "demo"
     accept_cmd: Callable[[dict[str, Any], int], bool] = lambda msg, count: True
@@ -223,6 +226,8 @@ class FakeCore:
                 self._garage_command(name, msg.get("args") or {}, cmd_id)
             if name in ("list_collection", "collection_seen") and self.collection is not None:
                 self._collection_command(name, msg.get("args") or {}, cmd_id)
+            if name in COACH_COMMANDS and self.coach is not None:
+                self._coach_command(name, msg.get("args") or {}, cmd_id)
             if getattr(self, "catalog_data", None):
                 if name == "list_routes":
                     if not getattr(self, "drop_all_catalog", False):
@@ -261,6 +266,26 @@ class FakeCore:
         self.collection_seen.extend(keys)
         self.collection["new"] = [k for k in self.collection.get("new", []) if k not in keys]
         self.collection["first_time"] = False
+
+    def _coach_command(self, name: str, args: dict[str, Any], cmd_id: int) -> None:
+        """Séance conseillée simulée (lot CO5) : le message `coach` posé par le test, avec la saisie reçue
+        (prochaine course, montre) ou le besoin choisi (règle CH), comme le vrai core (contrat 1.6)."""
+        out = json.loads(json.dumps(self.coach))
+        details = out.setdefault("details", {})
+        if name == "set_next_race":
+            details["next_race"] = {"date": args.get("date"), "kind": args.get("kind", "course")}
+            self.coach["details"]["next_race"] = details["next_race"]
+        elif name == "clear_next_race":
+            details["next_race"] = self.coach["details"]["next_race"] = None
+        elif name == "set_watch_advice":
+            details["watch"] = {"type": args.get("type"), "need": "intense", "duration_min": args.get("duration_min"),
+                                "target_w": args.get("target_w")}
+            self.coach["details"]["watch"] = details["watch"]
+        elif name == "clear_watch_advice":
+            details["watch"] = self.coach["details"]["watch"] = None
+        elif args.get("need"):
+            out.update({"need": args["need"], "rule": "CH", "alternatives": [self.coach["need"]]})
+        self.send({**out, "type": "coach", "v": CONTRACT_VERSION, "request_cmd_id": cmd_id})
 
     def _garage_command(self, name: str, args: dict[str, Any], cmd_id: int) -> None:
         """Garage simulé (lot V8) : `garage` pour list_garage ; equip, buy et set_avatar modifient le catalogue
@@ -398,7 +423,10 @@ def scenario_retry(core: FakeCore) -> str:
 
 def scenario_timeout(core: FakeCore) -> str:
     """3. Commande jamais acquittée : abandon au bout de 3 s ± 0,3 s, signal émis."""
-    core.accept_cmd = lambda msg, count: msg.get("name") != "resume"
+    # Comme au scénario 2, toute commande est refusée le temps de l'essai : une commande envoyée après
+    # « resume » et acceptée l'acquitterait par cumul (contrat §4). Ce faux core ne répond pas au conseil
+    # (`coach` à None) : l'engine relance alors get_coach toutes les 3 s (lot CO5), parfois pendant l'essai.
+    core.accept_cmd = lambda msg, count: False
     mark = core.log.mark()
     t0 = now()
     core.test_command("resume")

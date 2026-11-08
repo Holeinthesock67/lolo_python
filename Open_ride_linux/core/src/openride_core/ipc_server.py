@@ -26,15 +26,20 @@ CONTRACT_VERSION = 1
 MAX_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
 CONTRACT_REV = "1.8"   # collection de cartes (lot BC2, 5.0) ; 1.7 : Grand Prix des objets (lot GP2, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
-# Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
-CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor", "grandprix")   # monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2 ; grandprix : révision 1.7, lot GP2
+# Modes de jeu proposés au joueur (hello_ack.config.modes, révision 1.3) : l'accueil de l'engine n'affiche que
+# ceux-là. Monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2.
+CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor")
+# Modes que le core sait lancer (`start` avec `mode`) mais pas encore annoncés, avec le lot qui les annoncera
+# en même temps que leur entrée à l'accueil (même règle que `config.PENDING_KEYS`) ; ce lot les passe dans
+# CORE_MODES. Grand Prix des objets : révision 1.7, lot GP2, annoncé au lot GP9.
+PENDING_MODES: dict[str, str] = {"grandprix": "GP9"}
 MAX_LIST_DATAGRAM_SIZE = 60000
 # Messages en parties (`part`, `parts`), `plans` et `settings` : 60 000 octets au plus par datagramme (contrat §2,
 # même liste que le contrat ; `garage` et `room` depuis la révision 1.4, le monde ouvert depuis la 1.5,
 # `settings` depuis le 30 octobre : 26 réglages et les thèmes installés passaient 4 096 octets ; l'historique,
-# lot O28).
+# lot O28 ; le conseil `coach`, lot CO3).
 LIST_MESSAGE_TYPES = ("routes", "workouts", "imports", "route_imports", "plans", "settings", "garage", "room", "contents",
-                      "places", "world_map", "world_regions", "history", "history_session", "collection")
+                      "places", "world_map", "world_regions", "history", "history_session", "coach", "collection")
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
 
 
@@ -364,7 +369,9 @@ class IpcServer:
             is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "create_workout_qwk",
                                 "import_workout", "list_route_imports", "import_route",
                                 "world_search", "world_map", "world_regions", "list_contents",
-                                "list_history", "history_session", "list_collection")
+                                "list_history", "history_session", "get_coach", "set_next_race",
+                                "clear_next_race", "set_watch_advice", "clear_watch_advice",
+                                "list_collection")
             if cmd_id > self.last_cmd_id or is_query:
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)

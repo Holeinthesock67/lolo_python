@@ -10,10 +10,10 @@ temps.
 
 | Catégorie | Réglage (`config.toml`, menu) | Bus de l'engine | Sons |
 | --- | --- | --- | --- |
-| Général | `[audio] master_pct`, « Volume général » | `Master` | tous les sons |
-| Vent et roue libre | `[audio] ride_pct`, « Volume vent et roue libre » | `Ride` | vent dans les oreilles, roue libre, « clac » de reprise (`sound_player.gd`) |
-| Ambiance | `[audio] ambience_pct`, « Volume de l'ambiance » | `Ambience` | fonds d'ambiance, cloches, points sonores (`sound_player.gd`), véhicules (`traffic_renderer.gd`), foule et passants (`crowd_renderer.gd`) |
-| Bips et événements | `[audio] events_pct`, « Volume bips et événements » | `Events` | bips d'appui du Click, bip de changement de bloc ERG, consignes d'essai (`main.gd`) ; jingles d'événements (sommet de col, arche, fin de sprint, fin de séance) |
+| Général | `[audio] master_pct`, « Général » | `Master` | tous les sons |
+| Vent et roue libre | `[audio] ride_pct`, « Vent et roue libre » | `Ride` | vent dans les oreilles, roue libre, « clac » de reprise (`sound_player.gd`) |
+| Ambiance | `[audio] ambience_pct`, « Ambiance » | `Ambience` | fonds d'ambiance, cloches, points sonores (`sound_player.gd`), véhicules (`traffic_renderer.gd`), foule et passants (`crowd_renderer.gd`) |
+| Bips et événements | `[audio] events_pct`, « Bips et événements » | `Events` | bips d'appui du Click, bip de changement de bloc ERG, consignes d'essai (`main.gd`) ; jingles d'événements (sommet de col, arche, fin de sprint, fin de séance) |
 | Rogue, bruitages | `[audio] rogue_sfx_pct`, « Cyber-Rogue : bruitages » (défaut 70) | `RogueSfx` | bruitages du mode Cyber-Rogue (`rogue_audio.gd`) |
 | Rogue, musique | `[audio] rogue_music_pct`, « Cyber-Rogue : musique » (défaut 40) | `RogueMusic` | musique du mode Cyber-Rogue (`rogue_audio.gd`) |
 
@@ -31,7 +31,7 @@ Les deux dernières catégories sont plus basses par défaut (confort, lot R18) 
   est créé ; aucun lecteur ne reste sur `Master` sauf s'il n'appartient à aucune catégorie.
 - `[render] living = false` coupe toujours le décor vivant et ses sons, quels que soient les volumes.
 - Sons synthétisés en boucle (`sound_player.gd`) : raccord sans saut ni fondu au silence. Fréquences et
-  modulations à un nombre entier de cycles par boucle, bruits filtrés périodiques (`_periodic_lowpass`),
+  modulations à un nombre entier de cycles par boucle, bruits filtrés périodiques (`AmbienceSynth.periodic_lowpass`),
   événements (chants, gouttes, cliquets) qui débordent de la fin repris au début. Le « tac-tac » régulier
   entendu le 28/10 venait du fondu au silence de 10 ms aux bords de chaque fond (un creux toutes les 2 s) ;
   les insectes gardent leurs salves à 2 Hz, préférées à l'écoute. Le vent n'a plus de fondu enchaîné ni de
@@ -43,6 +43,17 @@ Les deux dernières catégories sont plus basses par défaut (confort, lot R18) 
   sur 3 s à 11 025 Hz, chacun décalé dans un bruit commun : un bruit figé d'une seconde se répétait et faisait une
   pulsation régulière d'une seconde (mesure du 30/10, autocorrélation 0,98 à 1 s). Un son joué une fois (`ONE_SHOT_KINDS` : corne, cloche) n'est
   jamais relancé par les points sonores : la cloche ne sonne qu'aux coups de l'heure pleine.
+- Fonds d'ambiance par biome (lot U11, version 3.0) : seize fonds (`AmbienceModel.BEDS`), les six de P9
+  (oiseaux, insectes, eau, village, vent d'altitude, pluie) et dix propres aux biomes (cigales, chorus de la
+  jungle, vent dans les résineux, sonnailles, vagues, mouettes, grenouilles, sable qui chante, craquements de la
+  banquise, fumerolles), synthétisés par `engine/scripts/ambience_synth.gd`. Chaque biome du thème déclare les
+  siens dans `biomes.<id>.ambience.layers` ; leur volume suit les poids des biomes au cycliste, la saison, l'heure,
+  la pluie, le vent et, pour les vagues, la distance à la mer (pleines à 30 m, muettes à 400 m). Aucun fond n'est
+  fabriqué au démarrage : chacun l'est à sa première demande, dans un fil de travail (aucun à-coup d'image), et seuls
+  ceux des biomes traversés existent. Même fondu pour tous : au plus 5,5 dB et au plus un tiers du niveau plein par
+  seconde, donc au moins 3 s du plein au silence d'un biome à l'autre ; plafond de voix inchangé (`ambience_voices`).
+  Remplaçables par `~/OpenRide/Sounds/<fond>.ogg` comme les autres. Écoute : `engine/tests/ambience_export.gd`
+  (une scène de 20 s par biome et chaque fond seul).
 - Abri (lot AS5) : dans la roue d'un bot, le vent (`sound_model.gd`) suit la vitesse de l'air ressentie,
   `va × (1 − draft)^0,5`, avec `draft` déjà lissé à 1 s par le core : − 3,7 dB à 0,35 d'abri, à vitesse égale.
   La variation reste bornée à 12 dB/s comme tout volume : pas de saut, donc pas de « tac-tac ».

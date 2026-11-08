@@ -10,6 +10,8 @@ extends SceneTree
 ##    couleur témoin change (3 biomes échantillonnés), elle change en medium.
 ## 3. Couche texturée : la couleur rendue est celle de la texture du tableau ground_a.
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const BiomeTextures := preload("res://scripts/biome_textures.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
 const BiomeLayer := preload("res://scripts/biome_layer.gd")
@@ -185,5 +187,6 @@ func _run() -> void:
 	var got := _mean(await _shot(bt3, [Vector2i(0, 0)], 0.0, 1000.0), 0, SIZE)
 	_check(_rel(got, tex_color) < 0.03, "couleur de la texture du tableau (#%s pour #%s)" % [got.to_html(false), tex_color.to_html(false)])
 
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_terrain_biomes_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
