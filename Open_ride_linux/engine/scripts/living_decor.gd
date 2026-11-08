@@ -369,7 +369,15 @@ func _poll_job(wait: bool = false) -> void:
 	passersby = res["passersby"]
 	passersby_view.setup_passersby(passersby, sound_player)
 	traffic.configure(_route, theme, pois, int(living.get("vehicles", 0)))
-	cyclists.configure(_route, climbs, pois, int(living.get("cyclists", 0)), 0, _road_width_m, traffic)
+	# Option gravel : seuls tracteurs et motos sur les chemins (surface effective de world_streamer)
+	traffic.unpaved_at = Callable()
+	if world_streamer != null and world_streamer.has_method("surface_at"):
+		traffic.unpaved_at = func(s: float) -> bool: return world_streamer.surface_at(s) != "paved"
+	# Option gravel : les cyclistes du décor restent sur le chemin (largeur du ruban de world_streamer)
+	var half_at := Callable()
+	if world_streamer != null and world_streamer.has_method("rideable_half"):
+		half_at = func(s: float) -> float: return world_streamer.rideable_half(s, _road_width_m)
+	cyclists.configure(_route, climbs, pois, int(living.get("cyclists", 0)), 0, _road_width_m, traffic, half_at)
 	sky.biome_model = _active_biome_model()
 	sky.configure(_route, theme, climbs, int(living.get("aircraft", 0)))
 	turbines.set_points(pois)
@@ -501,7 +509,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		others.append({"s": float(b["s"]), "lateral": float(b["lateral"]), "dir": 1})
 	# Lot AS6 : véhicules proches calculés par le core (liste `vehicles`, une trame sur trois)
 	if typeof(state.get("vehicles")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
-		traffic.sync_core(state["vehicles"], int(state["seq"]), cam_s)
+		traffic.sync_core(state["vehicles"], int(state["seq"]), cam_s,
+				float(state["s"]) if typeof(state.get("s")) in [TYPE_INT, TYPE_FLOAT] else NAN)
 	traffic.update(cam_s, rider_v, dt_s, paused, others)
 	if not paused:
 		_count_contacts(others)

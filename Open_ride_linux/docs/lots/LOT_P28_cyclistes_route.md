@@ -22,7 +22,7 @@ P13, P17, P21, Y14 et P25 (#466) livrés : P28 est empilé sur #466, qui touche 
 
 ## 4. Travail demandé
 
-- **Modèle sans nœud** (nouveau `road_cyclists_model.gd`), sur le principe de `traffic_model.gd` : le parcours est découpé en cases de 250 m. Chaque case tire un groupe, d'après la graine et son indice, avec une probabilité qui dépend de l'endroit : plaine, montée de `climbs`, ou moins de 1 km d'un village. Il faut de 15 à 30 groupes sur 20 km de plaine et de 20 à 40 sur 10 km de montée. Un groupe compte 1 cycliste (55 %), 2 (25 %) ou 3 à 6 (20 %). Il roule en file ou à deux de front, à 0,6 m d'écart latéral et 1,5 m l'un derrière l'autre.
+- **Modèle sans nœud** (nouveau `road_cyclists_model.gd`), sur le principe de `traffic_model.gd` : le parcours est découpé en cases de 250 m. Chaque case tire un groupe, d'après la graine et son indice, avec une probabilité qui dépend de l'endroit : plaine, montée de `climbs`, ou moins de 1 km d'un village. Il faut de 15 à 30 groupes sur 20 km de plaine et de 20 à 40 sur 10 km de montée. Un groupe compte 1 cycliste (55 %), 2 (25 %) ou 3 à 6 (20 %). Il roule en file ou à deux de front, à 0,6 m d'écart latéral et 2,1 m l'un derrière l'autre d'axe à axe (1,5 m avant le 7 novembre 2026 : la roue avant touchait la roue arrière du vélo de 1,7 m devant).
 - **Trois cas**, tirés par groupe :
   - **en face** (40 %) : sur le bord gauche, de 22 à 35 km/h sur le plat, de 35 à 55 km/h en descente ;
   - **devant, plus lent** (35 %) : sur le bord droit, de 18 à 28 km/h (de 9 à 16 km/h en montée). Le cycliste les rattrape et les double, à au moins 1,2 m sur sa droite ;

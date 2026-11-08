@@ -80,6 +80,8 @@ GOLDEN_MASKS = ("status", "distance", "time", "erg_remaining", "chart_sim", "cha
 FREEZE_SETTLE_S = 8.0             # --fige : attente du chargement complet des tuiles et du décor avant la vue fixe
 ROUTE_TIMEOUT_S = 20.0
 SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
+SHOT_WAIT_S = 10.0                # réponse à une demande de capture (× rendu_jeu.slowdown en Vulkan logiciel)
+SHOT_SENDS = 3                    # demandes de capture envoyées au plus avant de conclure à une capture manquée
 PENDING_RETRIES = 15              # scènes de référence : captures reprises (1 s d'écart) tant que des tuiles manquent
 SPEED_MPS = 8.0
 # Scènes reproductibles (s fixé, rien ne bouge) : les seules comparées aux images de référence.
@@ -380,14 +382,27 @@ class Session:
         de `capture` le laisserait s'effacer."""
         png = self.out_dir / f"{self.name}_{tag}_attente.png"
         for _ in range(tries):
-            mark = self.core.log.mark()
-            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
-                                "path": str(png), "tag": f"{tag}_attente"})
-            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0 * self.slowdown(), mark)
+            hit = self._shot(png, f"{tag}_attente")
             if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
                 break
             time.sleep(1.0)
         png.unlink(missing_ok=True)
+
+    def _shot(self, png: Path, tag: str):
+        """Demande de capture (`_test` « screenshot ») et ligne « screenshot » de l'engine, None sans réponse. Le
+        datagramme peut se perdre (tampon du socket plein pendant un long chargement, Vulkan logiciel ; démarrage) :
+        sans réponse, la demande est renvoyée, SHOT_SENDS fois en tout. Une capture manquée l'était sans reprise
+        (vue_fixe en lavapipe et attente en natif sur le PC, 8 novembre)."""
+        hit = None
+        for _ in range(SHOT_SENDS):
+            png.unlink(missing_ok=True)
+            mark = self.core.log.mark()
+            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
+                                "path": str(png), "tag": tag})
+            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", SHOT_WAIT_S * self.slowdown(), mark)
+            if hit is not None:
+                break
+        return hit
 
     def capture(self, scene: str) -> tuple[Image, dict[str, Any]] | None:
         png = self.out_dir / f"{self.name}_{scene}.png"
@@ -398,16 +413,14 @@ class Session:
         # sur l'autre, il faisait tomber `vue_fixe` à SSIM 0,96 face à sa référence (PC, 1er novembre).
         tries = PENDING_RETRIES if scene in GOLDEN_SCENES else 1
         for attempt in range(tries):
-            mark = self.core.log.mark()
-            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
-                                "path": str(png), "tag": scene})
-            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0 * self.slowdown(), mark)
+            hit = self._shot(png, scene)
             if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
                 break
             if attempt < tries - 1:
                 time.sleep(1.0)
         if not self.check(scene, "capture enregistrée", hit is not None and png.exists(),
-                          "" if hit else "aucune ligne « screenshot » dans le journal de l'engine"):
+                          "" if hit else f"aucune ligne « screenshot » dans le journal de l'engine après {SHOT_SENDS} "
+                          f"demandes ; PNG {'écrit' if png.exists() else 'absent'}"):
             return None
         info = json.loads(hit[1].group(1))
         if scene in GOLDEN_SCENES:
@@ -587,9 +600,12 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     print(f"== {name} ==", flush=True)
     records_file = out_dir / f"{name}_records.json"   # records de démonstration, pas ceux du propriétaire
     records_file.write_text(json.dumps(DEMO_RECORDS), encoding="utf-8")
+    # Références xvfb/ faites par la CI en Vulkan logiciel (llvmpipe) : la comparaison impose le même pilote, même
+    # sur un PC où Xvfb prendrait la carte graphique (SSIM 0,959 à 0,966 sur la NVIDIA, 8 novembre).
+    soft_env = rendu_jeu.software_vulkan_env() if gold is not None and not args.native else None
     with engine_log.open("w") as log_fh:
         proc = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT, start_new_session=True,
-                                env={**os.environ, "OPENRIDE_RECORDS_FILE": str(records_file)})
+                                env={**os.environ, **(soft_env or {}), "OPENRIDE_RECORDS_FILE": str(records_file)})
     try:
         (scenes or _scenes)(s)
     finally:
@@ -607,6 +623,11 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     s.check("journal", "aucune erreur ni avertissement Godot", not issues, " | ".join(issues[:5]))
     r_err = rendu_jeu.check_log(engine_log.read_text(errors="replace"))
     s.check("journal", "rendu du jeu (Forward+)", r_err is None, r_err or "Vulkan, Forward+")
+    if gold is not None and not args.native:
+        soft = rendu_jeu.is_software(engine_log.read_text(errors="replace"))
+        s.check("journal", "références xvfb comparées en Vulkan logiciel (llvmpipe, comme la CI)", soft,
+                "llvmpipe" if soft else "rendu sur la carte graphique : installer mesa-vulkan-drivers (lavapipe)"
+                if soft_env is None else "rendu sur la carte graphique malgré VK_DRIVER_FILES=" + soft_env["VK_DRIVER_FILES"])
     # Qualité réellement appliquée (lot X32) : le faux core ne doit pas la ramener à une autre valeur.
     q_ok, q_msg = quality_guard.check(engine_log.read_text(errors="replace"), quality)
     s.check("journal", "qualité réellement appliquée", bool(q_ok), q_msg)
@@ -1268,6 +1289,7 @@ def _decor_vivant_scene(s: Session) -> None:
 
 PASS_WINDOW_M = 10.0   # voiture qui double vue à moins de 10 m devant ou derrière le cycliste (lot P32)
 PASS_WAIT_S = 60.0   # la voiture d'en face croisée, puis l'utilitaire qui double (décor ralenti sous Xvfb)
+PELOTON_CAR_KMH = 10.0   # voiture d'en face de la scène peloton_face (voir _peloton_face_scene)
 
 
 def _place(s: Session, **spec: Any) -> None:
@@ -1386,7 +1408,11 @@ def _peloton_face_scene(s: Session) -> None:
                 f"{lats}, {len(near)} à moins de 30 m")
     # Posée assez près pour croiser le peloton même quand le décor avance lentement (Xvfb, --fige) : les bots
     # serrent à droite dès qu'elle est là, elle attend devant eux s'ils ne lui laissent pas encore la place.
-    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 45.0, "kmh": 40.0})
+    # Au pas (PELOTON_CAR_KMH) : en temps réel (--native, 60 images/s), une voiture à 40 km/h croise les bots
+    # 0,4 s après qu'ils ont tous serré à droite, puis ils reprennent leur place ; les captures, espacées de plus
+    # de 0,5 s, manquaient cet instant et la dernière, 60 s plus tard, ne montrait plus la voiture (r773, 8/11).
+    # À 10 km/h, les bots restent à droite environ 11 s avec la voiture à moins de 50 m (simulation des modèles).
+    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 45.0, "kmh": PELOTON_CAR_KMH})
     shot = None
     t0 = now()
     while now() - t0 < PASS_WAIT_S:
@@ -1581,6 +1607,78 @@ def _start_screen_scenes(s: Session) -> None:
         s.check("depart_go", "HUD de séance revenu au départ", info["widgets"]["power"]["visible"])
 
 
+# Séance conseillée fabriquée (lot CO5), valeurs des maquettes validées le 7 novembre (lot CO4).
+COACH_MSG = {
+    "type": "coach", "v": CONTRACT_VERSION, "request_cmd_id": 0, "date": "2026-11-07", "need": "intense",
+    "need_label": "aérobie intense", "rule": "R6",
+    "reason": "9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce type il y a 6 jours, forme +4.",
+    "duration_s": 3600, "tss_estimate": 72, "notes": [], "alternatives": ["anaerobic"],
+    "workout": {"id": "seuil_2x20", "name": "Seuil 2 × 20", "need": "intense", "duration_s": 3600, "dominant_zone": "Z4",
+                "tss_estimate": 72},
+    "other_workouts": [{"id": "sweet_spot_3x10", "name": "Sweet Spot 3 × 10", "need": "intense", "duration_s": 3600,
+                        "dominant_zone": "Z4", "tss_estimate": 62},
+                       {"id": "vo2_5x4", "name": "VO2 max 5 × 4", "need": "intense", "duration_s": 3300,
+                        "dominant_zone": "Z5", "tss_estimate": 70}],
+    "route": {"mode": "ride", "label": "Course contre des bots sur un parcours à montées longues", "route_id": "demo",
+              "route_name": "Démo", "laps": 4, "duration_s": 3600, "bots": {"count": 4, "level_pct": 95, "tactics": "classic"},
+              "survivor": None, "predicted_need_s": 1420, "reference_need_s": 1800, "ratio_pct": 79},
+    "details": {"objective": "endurance", "targets_pct": {"light": 80.0, "intense": 16.0, "anaerobic": 4.0},
+                "shares_pct": {"light": 85.0, "intense": 9.0, "anaerobic": 6.0},
+                "deficits_pts": {"light": -5.0, "intense": 7.0, "anaerobic": -2.0}, "sessions_28d": 14,
+                "duration_28d_s": 41100.0, "ctl": 33.9, "atl": 29.5, "form": 4.4, "days_since_hard": 6, "hard_last_7d": 1,
+                "ftp_w": 250.0, "ftp_test_date": "2026-10-28", "ftp_age_days": 10, "profile": None, "profile_weak": "intense",
+                "races": [{"date": "2026-11-05", "kind": "survivor", "place": 3, "cause": "intense"}],
+                "last_by_need": {"light": "2026-11-04", "intense": "2026-11-01", "anaerobic": None}, "plan": None,
+                "next_race": None, "watch": None},
+}
+
+
+def _coach_scenes(s: Session) -> None:
+    """Lot CO5 : séance conseillée au menu, rendu réel de la scène derrière le voile : ligne de l'accueil, conseil
+    (entraînement puis course sous le focus), détail du calcul, autre besoin, prochaine course, montre."""
+    core = s.core
+
+    def press(*events: str, wait: float = 0.5) -> None:
+        for event in events:
+            core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+            time.sleep(wait)
+
+    def focus(item_id: str) -> None:
+        core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "menu_focus", "id": item_id})
+        time.sleep(0.4)
+
+    core.coach = json.loads(json.dumps(COACH_MSG))
+    core.set_scene(speed=0.0, session_state="IDLE", summary=None, start_wait=None, cadence=0.0)
+    time.sleep(1.0)
+    core.send(dict(COACH_MSG))   # réponse au get_coach de l'accueil
+    time.sleep(0.8)
+    shot = s.capture("conseil_accueil")
+    if shot:
+        s.check_texts("conseil_accueil", shot[1], {"menu": "Séance conseillée — aérobie intense · 60 min"}, contains=True)
+        s.check_layout("conseil_accueil", shot[1])
+    focus("coach")
+    press("A_LONG", wait=1.0)
+    for item, scene, text in (("coach_workout", "conseil", "Seuil 2 × 20"), ("coach_race", "conseil_course", "Démo · 4 tours")):
+        focus(item)
+        shot = s.capture(scene)
+        if shot:
+            s.check_texts(scene, shot[1], {"menu_title": "Séance conseillée : aérobie intense", "menu": "Pourquoi : 9 %"}, contains=True)
+            s.check_texts(scene, shot[1], {"menu": text}, contains=True)
+            s.check_layout(scene, shot[1])
+    for item, scene, title in (("coach_detail", "conseil_detail", "Détail du calcul"),
+                               ("coach_need", "conseil_besoin", "Choisir un autre besoin"),
+                               ("coach_race_date", "conseil_prochaine_course", "Ma prochaine course"),
+                               ("coach_watch", "conseil_montre", "Suggestion de ma montre")):
+        focus(item)
+        press("A_LONG", wait=0.8)
+        shot = s.capture(scene)
+        if shot:
+            s.check_texts(scene, shot[1], {"menu_title": title}, contains=True)
+            s.check_layout(scene, shot[1])
+        press("Y_SHORT", wait=0.5)
+    press("Y_SHORT", wait=0.5)
+
+
 def _menus_only(s: Session) -> None:
     """`--menus` : seulement les scènes des menus (accueil, parcours, Prêt, records, garage, bilan,
     progression), pour des captures de menus à chaque qualité en quelques minutes."""
@@ -1599,6 +1697,7 @@ def _menus_only(s: Session) -> None:
     time.sleep(SETTLE_S)
     _menu_scenes(s)
     _start_screen_scenes(s)
+    _coach_scenes(s)
 
 
 def _quality_guard_scenes(s: Session) -> None:
@@ -1807,7 +1906,7 @@ def _decor_riders_draft_scene(s: Session) -> None:
     s_last = core.current_s() + 1.7 + 12.0
 
     def group(s0: float) -> list[dict[str, Any]]:
-        return [{"id": f"c77-{2 - i}", "s": round(s0 + 1.5 * i, 2), "dir": 1, "v": 0.0, "lane_m": 1.5,
+        return [{"id": f"c77-{2 - i}", "s": round(s0 + 2.1 * i, 2), "dir": 1, "v": 0.0, "lane_m": 1.5,
                  "look": (37 * (i + 1) << 4) | (i + 2)} for i in range(3)]
 
     core.set_scene(speed=0.0, lane_m=1.5, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=0.0,

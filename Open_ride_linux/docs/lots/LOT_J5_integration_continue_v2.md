@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Intégration continue : chaque état de `main` testé, exécution hebdomadaire, actions à jour | YAML | — | Petite | Oui (concurrence, hebdomadaire, `pip check` et actions faits ; reste JUnit) |
+| Intégration continue : chaque état de `main` testé, exécution hebdomadaire, actions à jour | YAML | — | Petite | **Livré le 8 novembre** (concurrence, hebdomadaire, `pip check` le 23 octobre ; JUnit par X3 le 28 octobre ; actions sur Node.js 24 le 8 novembre) ; issue #51 |
 
 ## 1. Objectif
 
@@ -53,3 +53,9 @@ Aucune.
 - **Fait directement :** concurrence (annulation seulement sur les demandes de fusion, chaque envoi sur `main` testé jusqu'au bout), exécution hebdomadaire (lundi 5 h UTC), étape `pip check`, `actions/checkout@v5` et `actions/setup-python@v6`.
 - **Reste à confier :** rapports JUnit publiés en artefact (critère 4), et vérification qu'aucun avertissement Node.js 20 ne subsiste (critère 5, `actions/cache` compris).
 - **Rapports JUnit (28 octobre, lot X3)** : les deux suites Python (`--junitxml`, artefacts `junit-python-3.11` et `junit-python-3.14`) et les tests de l'engine (`ENGINE_JUNIT`, artefact `junit-engine`) sont gardés en artefact avec `actions/upload-artifact@v5`, même après un échec. Le critère 5 (aucun avertissement Node.js 20) reste à vérifier sur une exécution, `actions/cache@v4` compris.
+
+## 10. Fin du lot (8 novembre 2026)
+
+- Critère 5 (avertissement Node.js 20) : les deux actions qui tournaient encore sous Node.js 20 sont passées à une version majeure sous Node.js 24, vérifié dans le `action.yml` de chaque étiquette : `actions/upload-artifact@v4` et `@v5` (Node.js 20) → `@v6` (Node.js 24), `actions/cache@v4` (Node.js 20) → `@v5` (Node.js 24). `actions/checkout@v5` et `actions/setup-python@v6` tournaient déjà sous Node.js 24.
+- Versions choisies : la plus petite version majeure sous Node.js 24, pour ne pas changer le comportement des étapes. Le rattrapage vers les toutes dernières versions majeures relève de l'audit des dépendances (lot X24).
+- Critère 4 (JUnit) : fait par le lot X3 (section 9). Le lot est terminé, l'issue #51 est fermée par la PR.

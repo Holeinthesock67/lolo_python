@@ -41,6 +41,12 @@ const VILLAGE_NEAR_M := 1000.0
 const OVERTAKE_SHARE := 0.4
 const SPAWN_AHEAD_M := Vector2(600.0, 1200.0)
 const SPAWN_BEHIND_M := 250.0
+## Option gravel (décision du propriétaire du 7/11) : sur un chemin non revêtu, seuls ces véhicules apparaissent
+## (même règle que core traffic.py : surface contrôlée tous les UNPAVED_STEP_M de l'apparition au cycliste, et
+## jusqu'à UNPAVED_AHEAD_M devant lui pour un véhicule qui le double).
+const UNPAVED_KINDS := ["tractor", "moto"]
+const UNPAVED_STEP_M := 25.0
+const UNPAVED_AHEAD_M := 300.0
 const REMOVE_BEHIND_M := 300.0
 const REMOVE_AHEAD_M := 1300.0
 const PASS_SPEED_KMH := 30.0
@@ -63,6 +69,7 @@ const VERGE_M := 0.25
 const HOLD_GAP_M := 5.0
 const SLOPE_PROBE_M := 2.5   # tangage : pente de la route à ± cette distance (environ un demi-empattement)
 const NEAR_M := 150.0                       # lot AS6 : véhicules calculés par le core (liste `vehicles`)
+const CORE_SHIFT_MAX_M := 50.0               # écart cycliste affiché / cycliste du core au-delà duquel (saut, boucle) on ne recale pas
 const CORE_MARGIN_M := 10.0                 # un véhicule qui vient de sortir de la liste n'est pas retiré
 ## Sortes (Lot P25) : demi-largeur et longueur hors tout de vehicle_mesh.gd (rétroviseurs compris), part des
 ## tirages et plage de vitesse.
@@ -82,6 +89,8 @@ const HEADLIGHT_SUN_DEG := 8.0
 
 var route = null
 var budget: int = 3
+## Option gravel : vrai si la chaussée est non revêtue en s (living_decor : world_streamer.surface_at).
+var unpaved_at: Callable = Callable()
 var seed: int = 0
 var vehicles: Array = []           # {id, kind, color, s, dir, speed_mps, cruise_mps, lateral, wheel}
 var spawned_total: int = 0
@@ -197,6 +206,19 @@ static func oncoming_lateral(kind: String) -> float:
 	return minf(-RIGHT_LANE_M, lane_lateral(kind))
 
 
+## Option gravel : faux pour un véhicule hors de UNPAVED_KINDS si un point non revêtu sépare `s_a` de `s_b`.
+func _kind_ok(kind: String, s_a: float, s_b: float) -> bool:
+	if not unpaved_at.is_valid() or kind in UNPAVED_KINDS:
+		return true
+	var lo := minf(s_a, s_b)
+	var hi := maxf(s_a, s_b)
+	var n := int((hi - lo) / UNPAVED_STEP_M) + 1
+	for i in range(n + 1):
+		if bool(unpaved_at.call(lo + (hi - lo) * float(i) / float(n))):
+			return false
+	return true
+
+
 func _segment_ok(s: float) -> bool:
 	if route == null or s < 0.0 or s > route.length_m:
 		return false
@@ -236,12 +258,14 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, o
 			continue
 		if int(ev["dir"]) == -1:
 			var s0 := rider_s + float(ev["ahead_m"])
-			if _overtaking() or not _segment_ok(s0) or not _free_at(s0, -1) or not _others_clear_at(s0):
+			if _overtaking() or not _segment_ok(s0) or not _free_at(s0, -1) or not _others_clear_at(s0) \
+					or not _kind_ok(str(ev["kind"]), s0, rider_s):
 				continue
 			_spawn(ev, s0, -1)
 		else:
 			var s1 := rider_s - SPAWN_BEHIND_M
-			if _overtaking() or not _segment_ok(maxf(s1, 0.0)) or float(ev["cruise_mps"]) <= rider_v or not _others_clear_at(s1):
+			if _overtaking() or not _segment_ok(maxf(s1, 0.0)) or float(ev["cruise_mps"]) <= rider_v or not _others_clear_at(s1) \
+					or not _kind_ok(str(ev["kind"]), s1, rider_s + UNPAVED_AHEAD_M):
 				continue
 			_spawn(ev, s1, 1)
 	# Déplacement
@@ -249,7 +273,10 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, o
 		var rel := float(v["s"]) - rider_s
 		if v.get("core", false):
 			# Lot AS6 : calculé par le core, extrapolé jusqu'à sa prochaine liste
-			v["s"] = float(v["s"]) + int(v["dir"]) * float(v["speed_mps"]) * dt_s
+			if v.get("fresh", false):
+				v.erase("fresh")
+			else:
+				v["s"] = float(v["s"]) + int(v["dir"]) * float(v["speed_mps"]) * dt_s
 		elif int(v["dir"]) == -1:
 			# Un véhicule en face plus rapide reste derrière le précédent, à MIN_SPACING_M au moins
 			var spd := float(v["cruise_mps"])
@@ -446,10 +473,16 @@ func _spawn(ev: Dictionary, s: float, dir: int) -> void:
 ## Lot AS6 : liste `vehicles` de la trame `state` numéro `seq` (au plus 4 véhicules à moins de NEAR_M, calculés
 ## par le core) ; reprise une seule fois par trame. Les véhicules reçus remplacent ceux de l'engine de même `id`,
 ## ceux de l'engine à moins de NEAR_M absents de la liste partent ; un véhicule qui sort de la liste reste au décor.
-func sync_core(list: Array, seq: int, rider_s: float) -> void:
+func sync_core(list: Array, seq: int, rider_s: float, core_s: float = NAN) -> void:
 	if seq == _core_seq:
 		return
 	_core_seq = seq
+	# Le cycliste affiché (`rider_s`, interpolé par camera_follow.gd) est en retard sur la trame (`core_s`, position du
+	# cycliste dans le core) : chaque véhicule garde l'écart du core au cycliste, pas sa position absolue (sinon, en
+	# retard d'une trame, un tracteur doublé paraissait 1 à 2 m plus en avant : contacts du banc du 8 novembre).
+	var shift := 0.0
+	if not is_nan(core_s) and absf(rider_s - core_s) < CORE_SHIFT_MAX_M:
+		shift = rider_s - core_s
 	var by_id := {}
 	for v in vehicles:
 		by_id[str(v["id"])] = v
@@ -466,7 +499,8 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 		var spd := float(item.get("v", 0.0))
 		v["kind"] = str(item["kind"])
 		v["color"] = int(item.get("color", 0))
-		v["s"] = float(item.get("s", rider_s))
+		v["s"] = float(item.get("s", rider_s)) + shift
+		v["fresh"] = true               # déjà à sa place de cette image : pas extrapolé une fois de plus
 		v["dir"] = 1 if int(item.get("dir", 1)) >= 0 else -1
 		v["speed_mps"] = spd
 		v["cruise_mps"] = spd
@@ -480,6 +514,12 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 			continue                    # le core dit qu'il n'y est pas
 		else:
 			v.erase("core")             # sorti de la liste : décor lointain
+			# Devant le cycliste dans son sens, il a déjà doublé : il continue à sa vitesse. Sans ce drapeau,
+			# _move_overtaker le croyait en attente derrière et le calait sur la vitesse du cycliste à 150 m
+			# devant, où les suivants venaient s'empiler (contacts « truck / truck » du banc 7ct bis).
+			if int(v["dir"]) == 1 and float(v["s"]) > rider_s:
+				v["committed"] = true
+				v["passed"] = true
 			kept.append(v)
 	vehicles = kept
 

@@ -375,6 +375,9 @@ func _test_sync_core(route) -> void:
 	for v in tm.vehicles:
 		if str(v["id"]) == "v40":
 			t40 = v
+	_check(not t40.is_empty() and absf(float(t40["s"]) - 5020.0) < 1e-6,
+		"image de la liste : véhicule du core à sa place, pas extrapolé une fois de plus (%s)" % str(t40.get("s")))
+	tm.update(5000.0, 8.0, 0.5)
 	_check(not t40.is_empty() and absf(float(t40["s"]) - 5023.0) < 1e-6 and float(t40["lateral"]) == 1.5,
 		"véhicule du core extrapolé à sa vitesse entre deux listes (%s)" % str(t40.get("s")))
 	tm.sync_core([], 10, 5000.0)
@@ -387,6 +390,28 @@ func _test_sync_core(route) -> void:
 		if str(v["id"]) == "v40":
 			kept = not v.has("core")
 	_check(kept, "sorti de la liste à plus de 150 m : gardé au décor de l'engine")
+	# Cycliste affiché 1,5 m en retard sur le core : le véhicule garde l'écart du core (tracteur doublé, 3 m derrière)
+	var tm2 = TrafficModel.new()
+	tm2.configure(route, {}, [], 1, 7)
+	tm2.update(5000.0, 8.0, 0.1)
+	tm2.sync_core([tractor.merged({"id": "v50", "s": 4997.0}, true)], 1, 4998.5, 5000.0)
+	var gap := NAN
+	for v in tm2.vehicles:
+		if str(v["id"]) == "v50":
+			gap = float(v["s"]) - 4998.5
+	_check(absf(gap + 3.0) < 1e-6, "cycliste affiché en retard sur le core : écart du core gardé (%.2f m)" % gap)
+	# Camion qui a doublé, sorti de la liste devant : il garde sa vitesse au lieu de se caler sur le cycliste
+	var truck := {"id": "v41", "kind": "truck", "color": 0, "s": 5150.0, "dir": 1, "v": 17.0, "lane_m": 1.5}
+	tm.sync_core([truck], 13, 5000.0)
+	tm.sync_core([], 14, 5000.0)
+	var t41: Dictionary = {}
+	for v in tm.vehicles:
+		if str(v["id"]) == "v41":
+			t41 = v
+	var s0 := float(t41.get("s", 0.0))
+	tm.update(5000.0, 8.0, 1.0)
+	_check(not t41.is_empty() and float(t41["s"]) - s0 > 16.0,
+		"camion sorti de la liste devant : continue à 17 m/s, pas à la vitesse du cycliste (%.1f m en 1 s)" % (float(t41.get("s", 0.0)) - s0))
 
 
 func _init() -> void:
@@ -497,6 +522,31 @@ func _run() -> void:
 	_test_core_vectors()
 	_test_sync_core(route)
 	await _test_renderer(route)
+	# Option gravel (décision du 7/11) : chemin non revêtu de 8 à 18 km, seuls tracteurs et motos y apparaissent
+	var on_path := {}
+	var off_path := {}
+	for sd in range(1, 9):
+		var tg = TrafficModel.new()
+		tg.configure(route, {"terrain": {"snow_line_m": 2200.0}}, [], 5, sd)
+		tg.unpaved_at = func(s: float) -> bool: return s >= 8000.0 and s <= 18000.0
+		var sg := 1000.0
+		while sg < 24500.0:
+			tg.update(sg, 8.3, 0.1)
+			for v in tg.vehicles:
+				if absf(float(v["s"]) - sg) < 300.0:
+					if float(v["s"]) >= 8000.0 and float(v["s"]) <= 18000.0 and sg >= 8000.0 and sg <= 18000.0:
+						on_path[v["kind"]] = true
+					else:
+						off_path[v["kind"]] = true
+			sg += 0.83
+	var only_ok := not on_path.is_empty()
+	for k in on_path:
+		only_ok = only_ok and k in TrafficModel.UNPAVED_KINDS
+	_check(only_ok, "gravier : seuls tracteurs et motos sur le chemin (%s)" % str(on_path.keys()))
+	var others_off := false
+	for k in off_path:
+		others_off = others_off or not (k in TrafficModel.UNPAVED_KINDS)
+	_check(others_off, "bitume : toutes les sortes de véhicules (%s)" % str(off_path.keys()))
 	print("test_traffic_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
 
