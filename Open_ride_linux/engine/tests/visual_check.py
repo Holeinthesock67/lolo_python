@@ -1426,7 +1426,7 @@ def _menu_scenes(s: Session) -> None:
         s.check_texts("menu_accueil", info, {"menu_title": "OpenRide", "menu": "Session libre | Session ERG | Choisir un plan"}, contains=True)
         s.check_texts("menu_accueil", info, {"menu": "Trainer HomeTrainer 0001 : connecté"}, contains=True)
         # Boîtier gauche muet (lot N19) : raison connue, verrou de Zwift, au lieu d'une erreur.
-        s.check_texts("menu_accueil", info, {"menu": "Click − : verrou Zwift, redémarrage…"}, contains=True)
+        s.check_texts("menu_accueil", info, {"menu": "Click − : verrou Zwift"}, contains=True)
         s.check_layout("menu_accueil", info)
         s.check_banner("menu_accueil", img, info, None)
         m = info["widgets"]["menu"]
@@ -1528,11 +1528,10 @@ def _settings_scenes(s: Session) -> None:
     modifié en place dans sa rangée) et `appareils` (écran Appareils après une recherche, carte du Click avec la
     raison connue du silence du boîtier gauche). Part de l'accueil et y revient."""
     core = s.core
-    # Sans `devices` d'abord : tout est relié (repli v1), l'écran de connexion passe seul à l'accueil ; la
-    # liste des appareils (boîtier gauche muet) vient ensuite.
+    # Sans `devices` : tout est relié (repli v1), l'écran de connexion passe seul à l'accueil (la pastille du
+    # boîtier gauche muet est vérifiée par `menu_accueil`).
     core.set_scene(speed=0.0, s=FIXED_S, session_state="IDLE", devices=None, summary=None)
     time.sleep(SETTLE_S + 3.0)
-    core.set_scene(devices=MENU_DEVICES)
     core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": SETTINGS_ITEMS})
     time.sleep(0.5)
 

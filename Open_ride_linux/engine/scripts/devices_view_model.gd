@@ -12,7 +12,7 @@ const LEVEL_WARN := "warn"
 const LEVEL_ERROR := "error"
 const LEVEL_OFF := "off"
 ## Boîtier gauche du Click muet : raison connue (verrou de Zwift, redémarrage automatique), pas une erreur.
-const CLICK_LEFT_LOCK_TEXT := "verrou Zwift, redémarrage…"
+const CLICK_LEFT_LOCK_TEXT := "verrou Zwift"
 
 
 ## Valeur du contrat qui peut valoir null : dictionnaire vide, liste vide ou texte vide à la place.
