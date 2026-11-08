@@ -1,0 +1,5 @@
+derniers_choix           souris   OK              79 s
+erg_libre                souris   OK              50 s
+historique               souris   OK              82 s
+pause                    souris   OK              51 s
+persistance              souris   OK              82 s

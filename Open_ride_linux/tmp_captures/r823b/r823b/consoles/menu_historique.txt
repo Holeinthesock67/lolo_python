@@ -1,0 +1,31 @@
+== historique (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran home : « OpenRide » (engine muet 10.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] écran summary : « Fin de séance »
+[OK] fichier ~/OpenRide/Activities/*.fit présent : OpenRide/Activities/2026-11-08_22-05_demo.fit
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] choisir « history » : écran « history », focus «  »
+[OK] écran history (titre='Historique', contient=['Cumul par semaine — 1 semaine', 'Tests de FTP — aucun test', 'demo']) : « Historique »
+[OK] choisir « weeks » : écran « history_weeks », focus « week:2026-W45 »
+[OK] écran history_weeks (titre='Cumul par semaine', contient=['1 séance']) : « Cumul par semaine »
+[OK] écran history (focus='weeks') : « Historique »
+[OK] écran history_session (contient=['Bilan de la séance']) : « Séance du 08/11/2026 22:05 · demo »
+[OK] choisir « back » : écran « history », focus « s:2026-11-08_22-05_demo.fit »
+[OK] écran history : « Historique »
+[OK] écran home (focus='history') : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+historique               souris   OK              82 s
+Rapport : ~/mesures-2026-11-01-auto/r823b/menu_historique/rapport.html
+OK

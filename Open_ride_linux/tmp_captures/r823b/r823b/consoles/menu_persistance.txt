@@ -1,0 +1,62 @@
+== persistance (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran home : « OpenRide » (engine muet 10.0 s)
+[OK] choisir « ride » : écran « routes », focus « demo »
+[OK] choisir « demo » : écran « ready », focus « start »
+[OK] écran ready : « Prêt : session libre — demo »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] écran menu caché : « Prêt : session libre — demo »
+[OK] écran pause : « Pause »
+[OK] choisir « difficulty » : écran « pause », focus « difficulty »
+[OK] journal du core : « Difficulté : 50 % -> 40 % » : Difficulté : 50 % -> 40 %
+[OK] config.toml : trainer.difficulty_pct = 40 : OK
+[OK] choisir « abandon » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « coach »
+[OK] écran summary : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] choisir « group:rider » : écran « settings_group », focus « set:rider.ftp_w »
+[OK] choisir « set:rider.ftp_w » : écran « settings_group », focus « set:rider.ftp_w »
+[OK] config.toml : rider.ftp_w = 255 : OK
+[OK] choisir « group:ride » : écran « settings_group », focus « set:trainer.difficulty_pct »
+[OK] choisir « set:bots.level_pct » : écran « settings_group », focus « set:bots.level_pct »
+[OK] config.toml : bots.level_pct = 95 : OK
+[OK] choisir « group:sound » : écran « settings_group », focus « set:audio.master_pct »
+[OK] choisir « set:audio.master_pct » : écran « settings_group », focus « set:audio.master_pct »
+[OK] config.toml : audio.master_pct = 90 : OK
+[OK] choisir « group:wind » : écran « settings_group », focus « set:wind.mode »
+[OK] choisir « set:wind.speed_kmh » : écran « settings_group », focus « set:wind.speed_kmh »
+[OK] config.toml : wind.speed_kmh = 5 : OK
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.2 s
+[OK] écran home : « OpenRide » (engine muet 10.0 s)
+[OK] config.toml : trainer.difficulty_pct = 40, rider.ftp_w = 255, bots.level_pct = 95, audio.master_pct = 90, wind.speed_kmh = 5 : OK
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] choisir « group:rider » : écran « settings_group », focus « set:rider.ftp_w »
+[OK] écran settings_group (groupe='rider', contient=['FTP — 255 W']) : « Réglages › Cycliste »
+[OK] choisir « group:ride » : écran « settings_group », focus « set:trainer.difficulty_pct »
+[OK] écran settings_group (groupe='ride', contient=['Difficulté — 40 %', 'Niveau des bots — 95 %']) : « Réglages › Séance »
+[OK] choisir « group:sound » : écran « settings_group », focus « set:audio.master_pct »
+[OK] écran settings_group (groupe='sound', contient=['Général — 90 %']) : « Réglages › Son »
+[OK] choisir « group:wind » : écran « settings_group », focus « set:wind.mode »
+[OK] écran settings_group (groupe='wind', contient=['Force du vent — 5 km/h']) : « Réglages › Vent »
+[OK] écran home : « OpenRide »
+[INFO] souris : gestes joués au clavier (pas de geste de souris) : 1
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+persistance              souris   OK              82 s
+Rapport : ~/mesures-2026-11-01-auto/r823b/menu_persistance/rapport.html
+OK

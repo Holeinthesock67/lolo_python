@@ -1,0 +1,35 @@
+== derniers_choix (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home (contient=['Parcours : à choisir']) : « OpenRide — Cycliste A » (engine muet 10.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (contient=['Bot 1 : aucun']) : « Prêt : session libre — demo »
+[OK] choisir « bot1 » : écran « ready », focus « bot1 »
+[OK] choisir « bot1 » : écran « ready », focus « bot1 »
+[OK] écran ready (contient=['Bot 1 : 250 W']) : « Prêt : session libre — demo »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] écran summary : « Fin de séance »
+[OK] fichier ~/OpenRide/Profils/cycliste-a/derniers_choix.json présent : OpenRide/Profils/cycliste-a/derniers_choix.json
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.2 s
+[OK] écran home (contient=['Parcours : demo']) : « OpenRide — Cycliste A » (engine muet 10.0 s)
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — demo', contient=['Bot 1 : 250 W']) : « Prêt : session libre — demo »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+derniers_choix           souris   OK              79 s
+Rapport : ~/mesures-2026-11-01-auto/r823b/menu_derniers_choix/rapport.html
+OK

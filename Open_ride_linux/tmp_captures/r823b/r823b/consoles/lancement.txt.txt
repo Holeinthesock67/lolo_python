@@ -1,0 +1,15 @@
+22:01:35 empreinte avant 5dd68002174aac60837bd7c9e4e300a6
+22:01:35 tête c9de79de
+22:02:46 menu_bench derniers_choix souris
+22:04:05 fin derniers_choix rc=0
+22:04:05 menu_bench erg_libre souris
+22:04:55 fin erg_libre rc=0
+22:04:55 menu_bench historique souris
+22:06:17 fin historique rc=0
+22:06:17 menu_bench pause souris
+22:07:08 fin pause rc=0
+22:07:08 menu_bench persistance souris
+22:08:31 fin persistance rc=0
+22:08:32 empreinte après 5dd68002174aac60837bd7c9e4e300a6
+22:08:32 clone 3a1b36c3
+22:08:32 FIN

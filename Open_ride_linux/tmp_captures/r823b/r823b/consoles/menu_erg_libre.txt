@@ -1,0 +1,41 @@
+== erg_libre (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 10.0 s)
+[OK] choisir « ride » : écran « routes », focus « demo »
+[OK] choisir « demo » : écran « ready », focus « start »
+[OK] écran ready : « Prêt : session libre — demo »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] écran menu caché : « Prêt : session libre — demo »
+[OK] écran pause (contient=['SIM'], elements=['resume', 'end_save', 'abandon', 'difficulty', 'ride_mode']) : « Pause »
+[OK] choisir « ride_mode » : écran « pause », focus « ride_mode »
+[OK] écran pause : « Pause »
+[OK] journal du core : « Mode de la séance : ERG, cible » : Mode de la séance : ERG, cible
+[OK] écran pause (elements=['resume', 'end_save', 'abandon', 'difficulty', 'ride_mode', 'target_w']) : « Pause »
+[OK] choisir « target_w » : écran « pause », focus « target_w »
+[OK] écran pause : « Pause »
+[OK] écran pause (contient=['Puissance cible']) : « Pause »
+[OK] choisir « ride_mode » : écran « pause », focus « ride_mode »
+[OK] journal du core : « Mode de la séance : CADENCE » : Mode de la séance : CADENCE
+[OK] écran pause (contient=['tr/min'], elements=['resume', 'end_save', 'abandon', 'difficulty', 'ride_mode', 'cadence_rpm']) : « Pause »
+[OK] choisir « resume » : écran « pause », focus « resume »
+[OK] journal du core : « PAUSED -> RUNNING » : PAUSED -> RUNNING
+[OK] écran menu caché : « Pause »
+[OK] écran pause : « Pause »
+[OK] choisir « ride_mode » : écran « pause », focus « ride_mode »
+[OK] journal du core : « Mode de la séance : SIM » : Mode de la séance : SIM
+[OK] écran pause (elements=['resume', 'end_save', 'abandon', 'difficulty', 'ride_mode']) : « Pause »
+[OK] choisir « end_save » : écran « home », focus « coach »
+[OK] journal du core : « -> FINISHED » : -> FINISHED
+[OK] écran summary : « Fin de séance »
+[INFO] souris : gestes joués au clavier (pas de geste de souris) : 3
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+erg_libre                souris   OK              50 s
+Rapport : ~/mesures-2026-11-01-auto/r823b/menu_erg_libre/rapport.html
+OK
