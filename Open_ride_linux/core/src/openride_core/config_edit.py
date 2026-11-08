@@ -21,6 +21,7 @@ import shutil
 import sys
 import tomllib
 from pathlib import Path
+from typing import Callable
 
 from . import config as config_mod
 
@@ -117,13 +118,23 @@ def update_config(path: Path, values: list[tuple[str, str, object]]) -> list[str
 
     Lève `ConfigEditError` si le fichier final ne passe pas `config.validate` : rien n'est écrit.
     """
+    def check(data: dict) -> None:
+        try:
+            config_mod.from_dict(data, str(path))
+        except config_mod.ConfigError as exc:
+            raise ConfigEditError(f"écriture refusée : {exc}") from None
+
+    return update_toml(path, values, check)
+
+
+def update_toml(path: Path, values: list[tuple[str, str, object]], check: Callable[[dict], None]) -> list[str]:
+    """Écrit les valeurs dans le fichier TOML `path` en gardant le reste (commentaires compris) ; `check`
+    contrôle le contenu final et lève une exception pour refuser l'écriture (rien n'est écrit). Sert à
+    `config.toml` et aux fichiers de valeurs des modes (`grandprix.toml`, lot GP2)."""
     new, changed = plan_text(_read_text(path), values)
     if not changed:
         return []
-    try:
-        config_mod.from_dict(_parse(path, new), str(path))
-    except config_mod.ConfigError as exc:
-        raise ConfigEditError(f"écriture refusée : {exc}") from None
+    check(_parse(path, new))
     _write(path, new)
     return changed
 

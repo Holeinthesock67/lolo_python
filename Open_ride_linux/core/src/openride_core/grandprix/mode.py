@@ -131,12 +131,12 @@ class GrandPrixMode:
     def __init__(self, riders: Iterable[str], length_m: float, *, lap_m: float | None = None,
                  table: ItemTable = DEFAULT_TABLE, chaos: str = "normal", box_every_km: float = 1.5,
                  enabled: Iterable[str] | None = None, seed: int | None = None,
-                 params: PhysicsParams | None = None) -> None:
+                 params: PhysicsParams | None = None, origin_m: float = 0.0) -> None:
         if chaos not in CHAOS:
             raise GrandPrixError(f"chaos : {chaos!r} refusé ({', '.join(CHAOS)})")
         if box_every_km not in BOX_EVERY_KM:
             raise GrandPrixError(f"écart des boîtes : {box_every_km!r} refusé")
-        chosen = set(ITEM_IDS if enabled is None else enabled)
+        chosen = set(table.enabled if enabled is None else enabled)
         self.enabled = tuple(i for i in ITEM_IDS if i in chosen)
         unknown = chosen - set(ITEM_IDS)
         if unknown:
@@ -146,8 +146,9 @@ class GrandPrixMode:
         self.table = table.scaled(k)
         self.length_m = float(length_m)
         self.lap_m = lap_m
+        self.origin_m = float(origin_m)   # abscisse du départ : la course va de origin_m à origin_m + length_m
         # fréquence des objets × chaos : rangées plus serrées en « fou », plus espacées en « doux »
-        self.boxes = BoxRows(row_positions(self.length_m, box_every_km * 1000.0 / k, lap_m))
+        self.boxes = BoxRows([self.origin_m + x for x in row_positions(self.length_m, box_every_km * 1000.0 / k, lap_m)])
         self.objects = RouteObjects()
         self.params = params or PhysicsParams()
         self.rng = random.Random(seed)
@@ -223,7 +224,7 @@ class GrandPrixMode:
             if r.roll is not None and now >= r.roll_until:
                 spec = self.table.items[r.roll]
                 r.held, r.charges, r.roll = r.roll, spec.charges, None
-            if r.finished is None and r.s >= self.length_m:
+            if r.finished is None and r.s >= self.origin_m + self.length_m:
                 self.arrivals += 1
                 r.finished = self.arrivals
                 self._log("finish", r.id, place=r.finished)
@@ -247,6 +248,13 @@ class GrandPrixMode:
         return wind_of(self.racers[rid].fx)
 
     # --- voies ----------------------------------------------------------------------------------
+
+    def lane_target(self, rid: str) -> int | None:
+        """Voie forcée vers laquelle va le coureur (None : placement automatique), pour l'écart à l'axe."""
+        r = self.racers[rid]
+        if r.auto:
+            return None
+        return r.lane if r.lane_to is None else r.lane_to
 
     def set_lane(self, rid: str, lane: int | None) -> bool:
         """Voie forcée (0, 1, 2) en 0,6 s ; None : retour au placement automatique."""
@@ -464,9 +472,10 @@ class GrandPrixMode:
             "obj": [[o.id, self.table.items[o.kind].shot_kind, round(o.s, 1), o.lane if o.lane is not None else -1]
                     for o in objs],
             "boxes": [round(x) for x in self.boxes.ahead(r.s, FRAME_AHEAD_M)][:2],   # rangées fixes : au mètre
+            "pick": self.lane_choice_shown(rid),   # lot GP2 : A court change de voie (sinon vue suivante)
         }
         if self.lap_m:
-            lap = min(int(r.s // self.lap_m) + 1, max(int(round(self.length_m / self.lap_m)), 1))
+            lap = min(int(max(r.s - self.origin_m, 0.0) // self.lap_m) + 1, max(int(round(self.length_m / self.lap_m)), 1))
             out["lap"] = [lap, max(int(round(self.length_m / self.lap_m)), 1)]
         return out
 
