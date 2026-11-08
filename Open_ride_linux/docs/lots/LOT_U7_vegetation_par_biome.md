@@ -27,7 +27,7 @@ U5 livré ; O1 livré (préparation des arbres sous 150 ms).
 
 ## 5. Fichiers concernés
 
-- **Nouveaux :** `engine/scripts/tree_species.gd`, `engine/tests/unit/test_tree_species.gd`, `engine/tests/unit/test_vegetation_biomes.gd`, `engine/tests/render/test_species_render.gd`.
+- **Nouveaux :** `engine/scripts/tree_species.gd`, `engine/tests/unit/test_vegetation_biomes.gd` (à la livraison, les espèces sont testées dans `engine/tests/unit/test_vegetation_biomes.gd` et le rendu par `engine/tests/render/test_tree_render.gd` ; pas de test_tree_species.gd ni de test_species_render.gd séparés).
 - **Modifiés :** `engine/scripts/vegetation_placer.gd`, `engine/scripts/tree_renderer.gd`, `engine/shaders/tree_sway.gdshader` (masque des espèces sans feuillage saisonnier), tests existants de ces scripts, `engine/tests/README.md`, `docs/SUIVI_AVANCEMENT.md` (une ligne).
 - **Interdits :** `main.gd` (U17), core, compilateur, contrats.
 
@@ -46,3 +46,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Herbes hautes et détails de sol (U8), faune (U12).
+
+## Livraison
+
+PR #477 (qui reprend #472), fusionnée le 28 octobre 2026. Statut remis à jour par le point U3–U14 du 8 novembre, d'après les PR fusionnées ; statut précédent : « Oui, après U5, **version 3.0** (issue #337) ».

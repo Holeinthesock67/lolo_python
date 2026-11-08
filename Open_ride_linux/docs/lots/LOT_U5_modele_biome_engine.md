@@ -12,7 +12,7 @@
 ## 2. À lire
 
 1. `docs/3.0/PLAN_SERIE_U.md` §4 et §6, `docs/lots/LOT_U1_contrat_biomes.md` §4.1, §4.3, §4.5 et §4.6.
-2. Code : `engine/scripts/theme_loader.gd`, `engine/scripts/theme_render_params.gd`, `engine/scripts/terrain_tiles.gd`, `engine/scripts/season_model.gd` (P18), `engine/scripts/quality_presets.gd`.
+2. Code : `engine/scripts/theme_loader.gd`, `engine/scripts/theme_render_params.gd`, `engine/scripts/terrain_tiles.gd`, season_model.gd (P18, pas encore livré), `engine/scripts/quality_presets.gd`.
 
 ## 3. Prérequis
 
@@ -31,7 +31,7 @@ U1 et P18 livrés ; U19 utile pour les données de test.
 
 ## 5. Fichiers concernés
 
-- **Nouveaux :** `engine/scripts/biome_layer.gd`, `engine/scripts/biome_model.gd`, `engine/tests/unit/test_biome_layer.gd`, `engine/tests/unit/test_biome_model.gd`.
+- **Nouveaux :** `engine/scripts/biome_layer.gd`, `engine/scripts/biome_model.gd`, `engine/tests/unit/test_biome_model.gd` (à la livraison, la couche est testée par `engine/tests/unit/test_biome_model.gd` et `engine/tests/test_biome_seams.gd` ; pas de test_biome_layer.gd séparé).
 - **Modifiés :** `engine/scripts/theme_loader.gd`, `engine/scripts/quality_presets.gd` (clé `max_biomes`), `engine/tests/unit/test_theme_loader.gd`, `engine/tests/README.md`, `docs/SUIVI_AVANCEMENT.md` (une ligne).
 - **Interdits :** `main.gd` (U17), shaders, core, compilateur, contrats.
 
@@ -52,3 +52,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Shader (U6), espèces (U7), calendriers propres aux biomes (U13).
+
+## Livraison
+
+PR #477 (qui reprend #467), fusionnée le 28 octobre 2026. Saisons neutres en attendant P18 et U13. Statut remis à jour par le point U3–U14 du 8 novembre, d'après les PR fusionnées ; statut précédent : « Oui, après U1, **version 3.0** (issue #335) ».

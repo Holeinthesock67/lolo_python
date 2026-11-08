@@ -43,3 +43,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Animaux qui traversent devant le cycliste, interactions.
+
+## Livraison
+
+PR #477 (qui reprend #476), fusionnée le 28 octobre 2026 ; faune complétée par U23 (#748). Statut remis à jour par le point U3–U14 du 8 novembre, d'après les PR fusionnées.

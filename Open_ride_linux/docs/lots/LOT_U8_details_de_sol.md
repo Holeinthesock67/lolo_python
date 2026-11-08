@@ -45,3 +45,7 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Dunes en relief réel, sable qui vole (particules : extension possible de P8).
+
+## Livraison
+
+PR #489, fusionnée le 28 octobre 2026, puis termitières par #545. Statut remis à jour par le point U3–U14 du 8 novembre, d'après les PR fusionnées.
