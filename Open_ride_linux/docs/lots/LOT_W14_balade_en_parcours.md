@@ -45,3 +45,7 @@ Aucune.
 ## 8. Hors périmètre
 
 Partage des balades, segments automatiques (série T).
+
+## Livraison
+
+PR #418, fusionnée le 27 octobre 2026. Statut remis à jour le 8 novembre, d'après les PR fusionnées ; statut précédent : « Oui, après W9 (issue #269) ».
