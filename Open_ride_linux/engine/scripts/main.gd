@@ -1980,11 +1980,33 @@ func _give_cues(state: Dictionary) -> void:
 		ipc.test_log("cue index=%d warn=%s s=%.1f" % [c["index"], str(c["warn"]), s])
 
 
+## Manière de quitter (lot X58, essais sur le PC : arrêt de Godot bloqué sur le pilote NVIDIA après un clic de souris),
+## lue dans OPENRIDE_QUIT_MODE (banc des menus `--fermeture`) : vide, tout de suite ; `differe` : deux images plus
+## tard, hors du traitement de l'événement qui l'a demandée ; `liberer` : vue 3D coupée, environnement et nœuds 3D
+## libérés, puis deux images plus tard. Gardée le temps des essais : le lot X58 n'en retient qu'une.
+const QUIT_MODES := ["", "differe", "liberer"]
+
+
 ## Fermeture de l'engine avec le code `code` (0 : quitter, EXIT_RELAUNCH, EXIT_SIM). Le journal date ensuite chaque
 ## étape depuis la demande (« Fermeture : … ») : une fermeture lente dit où elle attend (banc des menus, lot X55).
 func _quit(code: int) -> void:
 	_quit_ms = Time.get_ticks_msec()
 	_quit_code = code
+	var mode := OS.get_environment("OPENRIDE_QUIT_MODE")
+	if mode not in QUIT_MODES:
+		push_warning("OPENRIDE_QUIT_MODE inconnu : %s (permis : %s) ; fermeture immédiate." % [mode, ", ".join(QUIT_MODES)])
+		mode = ""
+	if mode == "liberer":
+		get_viewport().disable_3d = true
+		world_env.environment = null
+		for child in get_children():
+			if child is Node3D:
+				child.queue_free()
+		_quit_step("vue 3D coupée, nœuds 3D libérés")
+	if mode != "":
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_quit_step("fermeture %s, deux images plus tard" % mode)
 	get_tree().quit(code)
 
 
