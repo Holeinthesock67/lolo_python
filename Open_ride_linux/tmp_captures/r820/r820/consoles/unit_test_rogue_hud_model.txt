@@ -1,0 +1,39 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_rogue_hud_model
+
+[OK] trame sans rogue : modèle vide
+[OK] vitesse engagée « 05 »
+[OK] watts en % de FTP
+[OK] cadence et posture
+[OK] arcs bouclier et adrénaline
+[OK] seuil de l'attaque Z
+[OK] W'bal 75 %
+[OK] PV de l'ennemi 64 %
+[OK] Firewall loin, salle et or
+[OK] hors couloir et sans piratage
+[OK] vitesse immédiate « 12 »
+[OK] dt = 0 : valeurs lissées inchangées
+[OK] lissage à mi-chemin après 0,15 s
+[OK] W'bal 20 % atteint en 0,3 s, rouge
+[OK] Firewall à 12 m rouge, adrénaline sous Z
+[OK] événements rendus une fois pour trois trames identiques
+[OK] file vidée après lecture
+[OK] nouvelle trame, nouvel événement
+[OK] couloir : 3 cartes, 2 portes, sélection
+[OK] relance trop chère pour 85 d'or
+[OK] piratage : pignon imposé et durée
+[OK] échauffement : ligne de phase, pas d'offre
+[OK] échauffement : pas de Firewall, pas d'alerte rouge
+[OK] échauffement : relique de départ, 3 cartes, ni porte ni relance
+[OK] relique prise : offre cachée
+[OK] en salle : ni ligne de phase ni offre
+[OK] retour au calme : ligne de phase
+[OK] FTP inconnue, divisions par zéro évitées
+[OK] arc vide à 0 %
+[OK] arc gauche à gauche, arc droit à droite
+[OK] rayon de l'arc : 1,5 m
+test_rogue_hud_model : 31 vérifications, 0 échecs
+UNIT=test_rogue_hud_model : rendu, ERG et scénarios IPC sautés
+Résumé :
+  OK     unit/test_rogue_hud_model : 31 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent

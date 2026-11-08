@@ -1,0 +1,15 @@
+usage: rogue_galerie.py [-h] --godot GODOT [--objective OBJECTIVE]
+                        [--seed SEED] [--size SIZE] [--qualites QUALITES]
+                        [--native] [--out OUT]
+
+Galerie du Cyber-Rogue en low, medium et high (lot X51).
+
+options:
+  -h, --help            show this help message and exit
+  --godot GODOT
+  --objective OBJECTIVE
+  --seed SEED
+  --size SIZE
+  --qualites QUALITES
+  --native              écran réel (GTX 1060), sans Xvfb
+  --out OUT

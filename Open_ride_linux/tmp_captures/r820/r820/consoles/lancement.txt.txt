@@ -1,0 +1,15 @@
+12:42:55 empreinte avant 0a303217ec546e526f2da978a6046f6c
+12:42:55 tête d751ecf7
+12:44:04 UNIT=test_rogue_host
+12:44:06 fin test_rogue_host rc=0
+12:44:06 UNIT=test_rogue_hud_model
+12:44:07 fin test_rogue_hud_model rc=0
+12:44:07 rogue_galerie --native low
+12:44:08 fin low rc=2
+12:44:08 rogue_galerie --native medium
+12:44:08 fin medium rc=2
+12:44:08 rogue_galerie --native high
+12:44:08 fin high rc=2
+12:44:09 empreinte après dbcae732ed690b86d3cd897f0df788ee
+12:44:09 clone 90c08094
+12:44:09 FIN

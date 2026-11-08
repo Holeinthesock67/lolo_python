@@ -1,0 +1,58 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_rogue_host
+
+[OK] mode SIM : pas de scène du Cyber-Rogue
+[OK] monde classique visible
+[OK] attente du départ : scène créée
+[OK] attente du départ : un repère de chaque sorte, un ennemi par archétype et un bout de ruban (préchauffage)
+[OK] attente du départ : hologramme, jauges et bandeau du HUD préchauffés
+[OK] attente du départ : monde classique déjà masqué
+[OK] fin de l'attente sans état de run : scène préchauffée gardée
+[OK] départ annulé : scène retirée après 1.0 s, monde classique rendu
+[OK] trame sans attente ni run juste avant le départ : même scène
+[OK] mode ROGUE : scène créée et salle inconnue demandée
+[OK] RUNNING : même scène, préchauffage retiré
+[OK] RUNNING : bandeau du préchauffage caché
+[OK] monde classique masqué
+[OK] environnement néon en place
+[OK] la caméra de la scène est la caméra courante
+[OK] pas de ruban tant que la salle est inconnue
+[OK] 0,4 s plus tard : pas de seconde demande
+[OK] 1,2 s plus tard : nouvelle demande
+[OK] deux demandes comptées
+[OK] ruban construit depuis la salle
+[OK] deux repères posés
+[OK] seule l'arche a sa fenêtre active
+[OK] arche à 105 m (z = −105)
+[OK] Firewall à 80 m derrière le joueur
+[OK] le ruban monte
+[OK] modèle du HUD alimenté par la trame
+[OK] HUD dans la scène
+[OK] cartes du couloir relayées au modèle
+[OK] ennemi : train du Diesel affiché
+[OK] ennemi : volume construit
+[OK] ennemi puncheur : volume construit
+[OK] ennemi grimpeur : volume construit
+[OK] ennemi sprinteur : volume construit
+[OK] ennemi saboteur : volume construit
+[OK] ennemi boss : volume construit
+[OK] échauffement : ni ruban ni Firewall
+[OK] échauffement : le vélo avance (z -400.0 puis -409.3)
+[OK] échauffement : grille sous le vélo, à plat
+[OK] échauffement : la ligne « Échauffement » est affichée
+[OK] le noeud sonore du mode est dans la scène
+[OK] sons : synthèse en tâche de fond, pas sur l'image du départ
+[OK] sons : 25 flux installés à la fin de la synthèse
+[OK] musique : les couches ont leur flux à la fin de la synthèse
+[OK] retour au mode SIM : scène libérée
+[OK] monde classique de nouveau visible
+[OK] environnement classique rendu
+[OK] caméra classique de nouveau courante
+[OK] salles oubliées à la sortie
+test_rogue_host : 48 vérifications, 0 échecs
+WARNING: 8 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
+UNIT=test_rogue_host : rendu, ERG et scénarios IPC sautés
+Résumé :
+  OK     unit/test_rogue_host : 48 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent

@@ -1,0 +1,4 @@
+usage: rogue_galerie.py [-h] --godot GODOT [--objective OBJECTIVE]
+                        [--seed SEED] [--size SIZE] [--qualites QUALITES]
+                        [--native] [--out OUT]
+rogue_galerie.py: error: unrecognized arguments: --quality low

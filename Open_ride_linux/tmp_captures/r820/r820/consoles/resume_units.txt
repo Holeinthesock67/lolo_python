@@ -1,0 +1,4 @@
+  OK     unit/test_rogue_host : 48 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent
+  OK     unit/test_rogue_hud_model : 31 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent

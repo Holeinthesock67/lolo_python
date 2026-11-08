@@ -1,0 +1,33 @@
+12:42:55
+2.09 3.43 3.01 4/835 11602
+%CPU %MEM COMMAND
+ 100  0.0 ps
+30.7  5.3 gnome-shell
+25.8  2.1 claude-desktop
+20.6 10.0 claude-desktop
+ 5.5  4.2 claude-desktop
+ 4.6  0.6 localsearch-3
+ 1.7  3.7 claude
+
+12:43:25
+1.55 3.18 2.94 1/822 11722
+%CPU %MEM COMMAND
+30.5  5.3 gnome-shell
+25.8  2.1 claude-desktop
+20.6  9.9 claude-desktop
+ 5.4  4.2 claude-desktop
+ 4.6  0.6 localsearch-3
+ 1.8  4.0 claude
+ 1.1  3.4 claude
+
+12:43:55
+1.97 3.13 2.93 1/823 11803
+%CPU %MEM COMMAND
+30.6  5.3 gnome-shell
+25.9  2.3 claude-desktop
+20.6 10.8 claude-desktop
+ 5.4  4.2 claude-desktop
+ 4.5  0.6 localsearch-3
+ 1.9  4.2 claude
+ 1.1  3.4 claude
+
