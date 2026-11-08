@@ -1068,6 +1068,10 @@ func _process(delta: float) -> void:
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
 		# Cap des caméras (lot CY1) : celui du vélo, lissé en CAMERA_YAW_TAU_S ; avec le cap moyenné de la route, la
 		# caméra tournait 20 m avant un virage serré et voyait le vélo de travers.
+		# Saut de position (reprise, choix d'un point, tests graphiques) : cap repris tel quel, sans pivot visible.
+		if absf(s_route - _camera_yaw_s) > CAMERA_YAW_JUMP_M:
+			_camera_yaw = NAN
+		_camera_yaw_s = s_route
 		_camera_yaw = RiderPose.follow_yaw(_camera_yaw, float(pose["yaw"]), delta, CAMERA_YAW_TAU_S)
 		camera.global_transform = camera_views.step(delta, camera_views.goal(_rider_point(s_route, heading, follow.camera_lane_m),
 			_camera_yaw, pitch_deg, _bank_roll))
@@ -1620,7 +1624,9 @@ const CAMERA_BANK_SHARE := 0.5
 var _bank_roll := 0.0
 ## Cap des caméras de séance (lot CY1) : cap du vélo lissé en CAMERA_YAW_TAU_S secondes ; NAN : à reprendre tel quel.
 const CAMERA_YAW_TAU_S := 0.35
+const CAMERA_YAW_JUMP_M := 5.0   # écart de position d'une image à l'autre au-delà duquel le cap est repris tel quel
 var _camera_yaw := NAN
+var _camera_yaw_s := NAN
 
 
 func _rider_point(s: float, heading: float, lateral: float = RoadBuilder.RIDER_LATERAL_M) -> Vector3:

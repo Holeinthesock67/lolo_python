@@ -45,7 +45,7 @@ Une seule pose pour tout cycliste posé sur la route, le joueur comme les bots :
 
 ## 4. Vérification
 
-- `engine/tests/unit/test_rider_pose.gd` et la suite de l'engine (`run_engine_tests.sh`).
+- `engine/tests/unit/test_rider_pose.gd` et la suite de l'engine (`run_engine_tests.sh`). Images de référence `tests/golden/xvfb/low/{vue_fixe,pente_0pct,pente_4pct}.png` refaites (`visual_check.py --update-golden`) : en vue subjective sur la démo, la caméra suit maintenant la tangente de la trajectoire au lieu du cap de la colonne (en retard d'un demi-pas dans les courbes), d'où quelques degrés de lacet.
 - Captures avant et après, low, medium et high (planches dans les fichiers du projet, `captures/cy1-cinematique/`) : `python3 engine/tests/make_corner_world.py --out DOSSIER` puis `engine/tests/tour_visuel.py --world DOSSIER/essai-virages.world --tour engine/tests/tours/virages.json --quality Q`. À valider par le propriétaire avant fusion.
 - Sur le vélo (10 min au plus) : `essai-vent-carre` et la démonstration (épingles), vue proche et éloignée, avec des bots.
 
