@@ -110,7 +110,7 @@ MENU_CATALOG = {
 }
 MENU_DEVICES = {
     "trainer": {"status": "CONNECTED", "name": "HomeTrainer 0001"},
-    "click": [{"status": "CONNECTED", "role": "plus"}, {"status": "LOST", "role": "minus"}],
+    "click": [{"status": "CONNECTED", "side": "plus"}, {"status": "LOST", "side": "minus"}],
     "hr": {"status": "CONNECTED", "name": "Ceinture"},
 }
 
@@ -1116,6 +1116,7 @@ def _scenes(s: Session) -> None:
         img, info = shot
         s.check_banner("erreur", img, info, "route_invalid")
         s.check_layout("erreur", info)
+    _settings_scenes(s)
     _menu_scenes(s)
     _pentes_scenes(s)
     _decor_vivant_scene(s)
@@ -1424,6 +1425,8 @@ def _menu_scenes(s: Session) -> None:
         img, info = shot
         s.check_texts("menu_accueil", info, {"menu_title": "OpenRide", "menu": "Session libre | Session ERG | Choisir un plan"}, contains=True)
         s.check_texts("menu_accueil", info, {"menu": "Trainer HomeTrainer 0001 : connecté"}, contains=True)
+        # Boîtier gauche muet (lot N19) : raison connue, verrou de Zwift, au lieu d'une erreur.
+        s.check_texts("menu_accueil", info, {"menu": "Click − : verrou Zwift, redémarrage…"}, contains=True)
         s.check_layout("menu_accueil", info)
         s.check_banner("menu_accueil", img, info, None)
         m = info["widgets"]["menu"]
@@ -1496,6 +1499,91 @@ def _confirmation_scene(s: Session) -> None:
         s.check_layout("confirmation", info)
     core.send({"type": "input", "v": CONTRACT_VERSION, "event": "Y_SHORT"})
     time.sleep(0.6)
+
+
+# Réglages de la scène `reglages` (lot N19) : un sous-écran Son avec des volumes en % (curseurs) et le
+# sous-écran Cycliste (FTP, poids), sans valeur réelle du propriétaire.
+SETTINGS_ITEMS = [
+    {"key": "rider.ftp_w", "label": "FTP", "group": "rider", "type": "int", "value": 250, "min": 50, "max": 600,
+     "step": 5, "unit": "W", "applies": "next_session"},
+    {"key": "rider.weight_kg", "label": "Poids", "group": "rider", "type": "int", "value": 75, "min": 30, "max": 200,
+     "step": 1, "unit": "kg", "applies": "next_session"},
+    {"key": "audio.master_pct", "label": "Volume général", "group": "sound", "type": "int", "value": 80, "min": 0,
+     "max": 100, "step": 10, "unit": "%", "applies": "now"},
+    {"key": "audio.ride_pct", "label": "Volume vent et roue libre", "group": "sound", "type": "int", "value": 40,
+     "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
+    {"key": "audio.ambience_pct", "label": "Volume de l'ambiance", "group": "sound", "type": "int", "value": 60,
+     "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
+]
+# Appareils trouvés par la recherche de la scène `appareils` (adresses factices).
+SCAN_ITEMS = [
+    {"role": "trainer", "name": "HomeTrainer 0001", "address": "C1:1C:00:00:00:01", "rssi": -58, "configured": True},
+    {"role": "click", "name": "Zwift Click", "address": "C1:1C:00:00:00:02", "rssi": -62, "configured": True},
+    {"role": "click", "name": "Zwift Click", "address": "C1:1C:00:00:00:03", "rssi": -70, "configured": True},
+]
+
+
+def _settings_scenes(s: Session) -> None:
+    """Lot N19 (étape 3 des menus) : `reglages` (sous-écran Son, volumes en curseur), `reglage_edition` (poids
+    modifié en place dans sa rangée) et `appareils` (écran Appareils après une recherche, carte du Click avec la
+    raison connue du silence du boîtier gauche). Part de l'accueil et y revient."""
+    core = s.core
+    # Sans `devices` d'abord : tout est relié (repli v1), l'écran de connexion passe seul à l'accueil ; la
+    # liste des appareils (boîtier gauche muet) vient ensuite.
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="IDLE", devices=None, summary=None)
+    time.sleep(SETTLE_S + 3.0)
+    core.set_scene(devices=MENU_DEVICES)
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": SETTINGS_ITEMS})
+    time.sleep(0.5)
+
+    def press(*events: str, pause: float = 0.25) -> None:
+        for event in events:
+            core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+            time.sleep(pause)
+        time.sleep(0.5)
+
+    # Accueil : − deux fois (Quitter, puis Réglages), A maintenu ; Réglages : Appareils, Contenus, Cycliste, Son.
+    press("MINUS_SHORT", "MINUS_SHORT", "A_LONG")
+    press("PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT", "A_LONG")
+    shot = s.capture("reglages")
+    if shot:
+        img, info = shot
+        s.check_texts("reglages", info, {"menu_title": "Réglages › Son", "menu": "[Volume général — 80 %]"}, contains=True)
+        s.check_texts("reglages", info, {"menu": "Volume vent et roue libre — 40 %"}, contains=True)
+        s.check_layout("reglages", info)
+        m = info["widgets"]["menu"]
+        left = (int(m["rect"][0]), int(m["rect"][1]), int(m["rect"][0] + m["rect"][2] / 2), int(m["rect"][1] + m["rect"][3]))
+        bar = fraction(img, left, lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
+        s.check("reglages", "curseurs des volumes remplis en cyan", bar >= 0.003, f"{bar:.2%} de pixels cyan")
+    # Retour aux Réglages (focus sur Son), Cycliste, Poids modifié en place : + une fois, 76 kg.
+    press("Y_SHORT", "MINUS_SHORT", "A_LONG", "PLUS_SHORT", "A_LONG", "PLUS_SHORT")
+    shot = s.capture("reglage_edition")
+    if shot:
+        img, info = shot
+        s.check_texts("reglage_edition", info, {"menu_title": "Réglages › Cycliste", "menu": "[Poids — ◀ 76 kg ▶]"}, contains=True)
+        s.check_texts("reglage_edition", info, {"menu": "FTP — 250 W"}, contains=True)
+        s.check_layout("reglage_edition", info)
+    # Y annule (rien n'est écrit), retour aux Réglages ; Appareils en tête ; recherche faite par le core.
+    press("Y_SHORT", "Y_SHORT", "MINUS_SHORT", "MINUS_SHORT", "A_LONG")
+    core.send({"type": "scan_results", "v": CONTRACT_VERSION, "request_cmd_id": 0, "done": True, "items": SCAN_ITEMS,
+               "plus_address": None})
+    time.sleep(0.5)
+    # Pendant la recherche, seul « Retour » est actif et garde le focus : + trois fois, Rechercher, Trainer, Click.
+    press("PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT")
+    shot = s.capture("appareils")
+    if shot:
+        img, info = shot
+        s.check_texts("appareils", info, {"menu_title": "Appareils", "menu": "Trainer — HomeTrainer 0001"}, contains=True)
+        s.check_texts("appareils", info, {"menu": "[Click : identifier le bouton +]"}, contains=True)
+        s.check_texts("appareils", info, {"menu": "Zwift le verrouille environ une minute après la connexion"}, contains=True)
+        s.check_layout("appareils", info)
+    sent = [r.msg.get("name") for r in core.messages("cmd")]
+    s.check("reglage_edition", "Y annule : aucun set_setting envoyé", "set_setting" not in sent, ", ".join(map(str, sent[-8:])))
+    # Retour à l'accueil (focus resté sur Réglages), puis + deux fois (Quitter, Session libre) : les scènes
+    # suivantes partent de la première entrée, comme au lancement.
+    press("Y_SHORT", "Y_SHORT", "PLUS_SHORT", "PLUS_SHORT", pause=0.4)
+    time.sleep(0.6)
+
 
 
 def _records_scene(s: Session) -> None:
@@ -1595,6 +1683,7 @@ def _menus_only(s: Session) -> None:
     loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
     s.check("menus", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
     time.sleep(SETTLE_S)
+    _settings_scenes(s)
     _menu_scenes(s)
     _start_screen_scenes(s)
 
