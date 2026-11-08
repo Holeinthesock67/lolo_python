@@ -21,7 +21,8 @@ const ButtonHelp := preload("res://scripts/button_help.gd")
 const CollectionView := preload("res://scripts/collection_view.gd")
 
 ## Éléments affichés à la fois ; au-delà, la fenêtre suit le focus. Un de moins quand les pastilles des
-## appareils sont affichées (accueil, Prêt, connexion) : l'accueil tient en entier.
+## appareils sont affichées (accueil, Prêt, connexion). L'accueil (dix entrées depuis « Collection », lot BC5)
+## défile donc d'une entrée : une dixième rangée déborderait de 4 pixels sur le bandeau des boutons en 1280 × 720.
 const MAX_VISIBLE_ITEMS := 10
 const MAX_VISIBLE_WITH_DEVICES := 9
 const DEVICES_SCREENS := ["home", "ready", "connect"]

@@ -555,6 +555,10 @@ func add_screen(screen: Dictionary) -> void:
 	var id := str(screen.get("id", ""))
 	if id != "":
 		_screens[id] = screen.duplicate(true)
+		# Valeurs par défaut des éléments, comme _item() : focus_item() et la validation lisent « enabled »
+		# sans valeur par défaut (première ouverture de la Collection, lot BC5) ; les autres clés restent.
+		for it in _screens[id].get("items", []):
+			it.merge({"label": str(it["id"]), "enabled": true, "detail": ""})
 
 
 ## Ouvre un écran en vidant l'historique (bilan de fin de séance) ; écran inconnu : rien.
@@ -582,19 +586,25 @@ func set_screen_items(screen_id: String, items: Array, title := "") -> void:
 	var focused_id := ""
 	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
 		focused_id = _screens[screen_id]["items"][_focus]["id"]
-	var clean := []
-	for it in items:
-		var e := _item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
-			str(it.get("detail", "")))
-		for k in ["bar", "editing", "icon"]:   # affichage seulement : curseur (0 à 100), valeur en cours de réglage, pictogramme (badge, lot BC6)
-			if it.has(k):
-				e[k] = it[k]
-		clean.append(e)
-	_screens[screen_id]["items"] = clean
+	_screens[screen_id]["items"] = _clean_items(items)
 	if title != "":
 		_screens[screen_id]["title"] = title
 	if _screen == screen_id:
 		_focus = _first_enabled_from(_index_of(focused_id), 1)
+
+
+## Éléments d'un écran au format du modèle : id, label, enabled (vrai par défaut), detail, et les clés
+## d'affichage seulement (curseur de 0 à 100, valeur en cours de réglage, pictogramme du badge, lot BC6).
+static func _clean_items(items: Array) -> Array:
+	var clean := []
+	for it in items:
+		var e := _item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
+			str(it.get("detail", "")))
+		for k in ["bar", "editing", "icon"]:
+			if it.has(k):
+				e[k] = it[k]
+		clean.append(e)
+	return clean
 
 
 ## Met le focus sur un élément actif de l'écran courant ; faux s'il n'existe pas ou est désactivé.

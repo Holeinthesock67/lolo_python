@@ -1457,7 +1457,7 @@ def _peloton_face_scene(s: Session) -> None:
 
 def _menu_scenes(s: Session) -> None:
     """Lot N6 : accueil avec l'état des appareils, liste des parcours au Click, bilan de fin ; menus en plein
-    écran du lot « présentation des menus » : accueil entier, sélection en cyan, HUD caché ; étape 2 : carte
+    écran du lot « présentation des menus » : accueil, sélection en cyan, HUD caché ; étape 2 : carte
     de détail (fiche du parcours sous le focus, écran Prêt avec le profil d'altitude du parcours chargé)."""
     core = s.core
     core.set_scene(speed=0.0, s=FIXED_S, session_state="IDLE", devices=MENU_DEVICES, summary=None)

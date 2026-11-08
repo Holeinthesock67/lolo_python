@@ -316,7 +316,7 @@ func _test_modes() -> void:
 	ids = m.state()["items"].map(func(it): return it["id"])
 	_check(ids == ["world", "erg", "plan", "ftp", "history", "collection", "sim", "settings", "quit"], "modes annoncés filtrés, inconnu ignoré (%s)" % str(ids))
 	m.set_modes(null)
-	_check(m.state()["items"].size() == 9, "modes absents : retour aux modes par défaut")
+	_check(m.state()["items"].size() == 10, "modes absents : retour aux modes par défaut")
 
 
 ## Plan des boutons sans exception (spécification générale §7.1, 27 octobre).
