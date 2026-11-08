@@ -693,8 +693,14 @@ class Run:
         elif "journal" in step:
             got = (self.core.wait_for(step["motif"], delay) if step["journal"] == "core"
                    else self.wait_engine(step["motif"], delay, 0.0))
-            self.check(got is not None, f"journal du {step['journal']} : « {step['motif']} »",
-                       got[1].group(0) if got else f"absent après {delay:.0f} s")
+            detail = got[1].group(0) if got else f"absent après {delay:.0f} s"
+            if got is None and step["journal"] == "core":
+                # Départ au pédalage (lot O36) : la dernière étape du départ dit où l'attente s'est arrêtée (décor
+                # de l'engine encore en préparation, trainer, pédalage).
+                depart = [line for _, line in list(self.core.lines) if "Départ" in line]
+                if depart:
+                    detail += " ; " + depart[-1].split(" core ", 1)[-1]
+            self.check(got is not None, f"journal du {step['journal']} : « {step['motif']} »", detail)
         elif "fichier" in step:
             want = bool(step.get("existe", True))
             found = lambda: sorted(str(p.relative_to(self.home)) for p in self.home.glob(step["fichier"]))
