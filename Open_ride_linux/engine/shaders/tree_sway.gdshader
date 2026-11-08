@@ -47,6 +47,11 @@ uniform bool pick_from_custom = false;
 uniform float lod_begin_m = 0.0;
 uniform float lod_end_m = 0.0;
 uniform float lod_blend_m = 4.0;
+// Ombre portée des arbres limitée à shadow_end_m mètres de la caméra principale (lot « cultures et forêt », 0 : sans
+// borne) : dans une passe d'ombre (vue d'une autre caméra que la principale), l'instance plus loin est repliée sur
+// lod_blend_m mètres ; l'image, elle, ne change pas. Les cases tout entières plus loin ne projettent plus d'ombre du
+// tout (tree_renderer.gd, update_shadows), ce repli ne sert qu'aux cases à cheval sur la limite.
+uniform float shadow_end_m = 0.0;
 // Faces arrière (copie cull_disabled) : garde la normale du sommet au lieu de la retourner, pour des brins
 // éclairés des deux côtés comme le sol (touffes d'herbe, Lot Y11 H4).
 uniform bool normals_up_both_sides = false;
@@ -89,6 +94,10 @@ void vertex() {
 			size *= clamp((d - lod_begin_m + lod_blend_m) / lod_blend_m, 0.0, 1.0);
 		}
 		VERTEX *= size;
+	}
+	if (shadow_end_m > 0.0 && distance(INV_VIEW_MATRIX[3].xyz, MAIN_CAM_INV_VIEW_MATRIX[3].xyz) > 0.5) {
+		float d = distance(origin, MAIN_CAM_INV_VIEW_MATRIX[3].xyz);
+		VERTEX *= clamp((shadow_end_m + lod_blend_m - d) / lod_blend_m, 0.0, 1.0);
 	}
 }
 

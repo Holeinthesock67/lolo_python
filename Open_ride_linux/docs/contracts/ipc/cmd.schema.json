@@ -83,7 +83,11 @@
         "set_next_race",
         "clear_next_race",
         "set_watch_advice",
-        "clear_watch_advice"
+        "clear_watch_advice",
+        "list_collection",
+        "collection_seen",
+        "list_mode_options",
+        "set_mode_option"
       ]
     },
     "args": {

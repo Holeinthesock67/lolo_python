@@ -107,6 +107,12 @@ SETTINGS: tuple[Setting, ...] = (
             help="Endurance : surtout de l'aérobie léger. Courses : plus d'intensité. Grimpeur : plus "
                  "d'efforts longs au seuil. Change seulement la répartition visée par la séance conseillée."),
     Setting("coach.temps_disponible_min", "Conseil : temps disponible", "ride", 15, "min"),
+    # Grand Prix des objets (série GP, lot GP2) ; écran du mode au lot GP9
+    Setting("grandprix.opponents", "Grand Prix : adversaires", "ride"),
+    Setting("grandprix.laps", "Grand Prix : tours du circuit", "ride"),
+    Setting("grandprix.distance_km", "Grand Prix : distance en ligne", "ride", 1, "km"),
+    Setting("grandprix.chaos", "Grand Prix : chaos", "ride"),
+    Setting("grandprix.box_every_m", "Grand Prix : écart des boîtes", "ride", 500, "m"),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20

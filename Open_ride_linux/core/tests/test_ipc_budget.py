@@ -155,3 +155,26 @@ def test_survivor_with_eleven_opponents_frame_fits_and_validates():
     assert size(frame) <= ipc_budget.state_limit("1.6")
     assert fit_state(frame, ipc_budget.state_limit("1.6")) == (frame, [])
     assert "1.6 dernier survivant" in ipc_budget.report()
+
+
+def test_grandprix_frame_fits_and_validates():
+    """Lot GP2 : la pire trame du Grand Prix des objets (objet et effets de chaque bot, objet `gp` au plus lourd)
+    est valide et tient dans 4 096 octets sans rien alléger avec 4 adversaires, `devices` compris ; avec 11
+    (lot GP10, pas encore permis, liste allégée du lot PL1), sans rien alléger hors de la trame qui porte
+    `devices`, où seuls les bots manquent (à régler au lot GP10)."""
+    path = Path(__file__).resolve().parents[2] / "docs" / "contracts" / "ipc" / "state.schema.json"
+    validator = jsonschema.Draft202012Validator(json.loads(path.read_text(encoding="utf-8")))
+    limit = ipc_budget.state_limit("1.7")
+    frame = ipc_budget.worst_grandprix_state(4)
+    assert [e.message for e in validator.iter_errors(frame)] == []
+    assert len(frame["bots"]) == 4 and "devices" in frame and "open_world" not in frame
+    assert size(frame) <= limit - 256   # marge gardée pour les bots du lot GP3
+    assert fit_state(frame, limit) == (frame, [])
+    eleven = ipc_budget.worst_grandprix_state(11)
+    assert [e.message for e in validator.iter_errors(eleven)] == []
+    assert sum("fx" in b for b in eleven["bots"]) == 6   # 5 bots proches et un loin à tour de rôle
+    out, dropped = fit_state(eleven, limit)
+    assert size(out) <= limit and "bots (trame avec devices)" in dropped and "gp" in out
+    eleven.pop("devices")
+    assert fit_state(eleven, limit) == (eleven, [])
+    assert "1.7 grand prix" in ipc_budget.report() and "1.7 grand prix 11 bots" in ipc_budget.report()

@@ -693,6 +693,142 @@
               "description": "Facultatif : nom du vainqueur (« Toi » côté engine quand winner vaut me)."
             }
           }
+        },
+        "gp": {
+          "type": "object",
+          "description": "Révision 1.7 (lot GP2) : bilan du Grand Prix des objets.",
+          "required": [
+            "place",
+            "of",
+            "launched",
+            "received",
+            "dodged",
+            "gained_s",
+            "lost_s"
+          ],
+          "properties": {
+            "place": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "of": {
+              "type": "integer",
+              "minimum": 2,
+              "maximum": 12
+            },
+            "launched": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "received": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "dodged": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "gained_s": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "number"
+              },
+              "description": "Temps gagné estimé par objet utilisé (s)."
+            },
+            "lost_s": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "number"
+              },
+              "description": "Temps perdu estimé par objet reçu (s)."
+            },
+            "laps": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            },
+            "distance_km": {
+              "type": "number"
+            }
+          }
+        },
+        "collection": {
+          "type": "object",
+          "description": "Facultatif, révision 1.8 (série BC, lot BC2) : annonce d'une carte gagnée à la fin de la séance ; absent si aucune carte nouvelle.",
+          "required": [
+            "card",
+            "others"
+          ],
+          "properties": {
+            "card": {
+              "type": "object",
+              "required": [
+                "id",
+                "key",
+                "edition",
+                "title",
+                "text",
+                "family",
+                "rarity",
+                "visual",
+                "journal",
+                "date"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                "key": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "edition": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 24
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 70
+                },
+                "family": {
+                  "type": "string"
+                },
+                "rarity": {
+                  "type": "string"
+                },
+                "visual": {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                "journal": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "others": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         }
       },
       "required": [
@@ -917,6 +1053,52 @@
             "type": "integer",
             "minimum": 1,
             "description": "Révision 1.5 (lot DS2) : Dernier survivant, arche de l'élimination du bot ; présent pendant les 10 s où il se range."
+          },
+          "item": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "gel",
+              "gel_x3",
+              "bottle",
+              "bottle_x3",
+              "musette",
+              "musette_x3",
+              "homing",
+              "storm",
+              "star",
+              "bell",
+              "headwind",
+              "team_car",
+              "stealth",
+              null
+            ],
+            "description": "Facultatif, révision 1.7 (lot GP2) : Grand Prix des objets, objet en réserve du bot."
+          },
+          "fx": {
+            "type": "array",
+            "maxItems": 13,
+            "items": {
+              "type": "string",
+              "enum": [
+                "gel",
+                "gel_x3",
+                "bottle",
+                "bottle_x3",
+                "musette",
+                "musette_x3",
+                "homing",
+                "storm",
+                "star",
+                "bell",
+                "headwind",
+                "team_car",
+                "stealth"
+              ]
+            },
+            "description": "Facultatif, révision 1.7 (lot GP2) : objets dont un effet est en cours sur le bot."
           }
         }
       }
@@ -1793,6 +1975,195 @@
           "additionalProperties": false
         }
       }
+    },
+    "gp": {
+      "type": "object",
+      "description": "Facultatif, révision 1.7 (lot GP2) : présent seulement en Grand Prix des objets (`start` avec `mode: grandprix`). Les effets changent la vitesse virtuelle seulement ; la pente envoyée au trainer n'en dépend jamais.",
+      "required": [
+        "place",
+        "of",
+        "gap_s",
+        "held",
+        "n",
+        "roll_s",
+        "lane",
+        "auto",
+        "fx",
+        "warn",
+        "obj",
+        "boxes",
+        "pick"
+      ],
+      "properties": {
+        "place": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "of": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 12
+        },
+        "gap_s": {
+          "type": "number",
+          "description": "Écart en secondes avec le coureur de devant (le second si le cycliste mène)."
+        },
+        "held": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "gel",
+            "gel_x3",
+            "bottle",
+            "bottle_x3",
+            "musette",
+            "musette_x3",
+            "homing",
+            "storm",
+            "star",
+            "bell",
+            "headwind",
+            "team_car",
+            "stealth",
+            null
+          ]
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3,
+          "description": "Charges restantes de l'objet en réserve."
+        },
+        "roll_s": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Tirage en cours après une boîte : reste en s (0 sinon)."
+        },
+        "lane": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Voie (0 gauche, 1 centre, 2 droite) ou voie visée pendant un changement."
+        },
+        "auto": {
+          "type": "boolean",
+          "description": "Placement automatique (A long y revient)."
+        },
+        "fx": {
+          "type": "array",
+          "maxItems": 13,
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "string",
+                "enum": [
+                  "gel",
+                  "gel_x3",
+                  "bottle",
+                  "bottle_x3",
+                  "musette",
+                  "musette_x3",
+                  "homing",
+                  "storm",
+                  "star",
+                  "bell",
+                  "headwind",
+                  "team_car",
+                  "stealth"
+                ]
+              },
+              {
+                "type": "number",
+                "minimum": 0
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Effets en cours regroupés par objet : [objet, reste en s] (l'icône est celle de l'objet)."
+        },
+        "warn": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "prefixItems": [
+            {
+              "type": "string",
+              "maxLength": 12
+            },
+            {
+              "type": "number",
+              "minimum": 0
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Menace la plus proche visant le cycliste : [objet dessiné, distance en m] ; null sinon."
+        },
+        "obj": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 99
+              },
+              {
+                "type": "string",
+                "maxLength": 12
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer",
+                "minimum": -1,
+                "maximum": 2
+              }
+            ],
+            "minItems": 4,
+            "maxItems": 4
+          },
+          "description": "Objets posés ou lancés de 100 m derrière à 400 m devant : [id, objet dessiné, s, voie (-1 : toute la route)]."
+        },
+        "boxes": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "type": "integer"
+          },
+          "description": "Rangées de boîtes à venir (s au mètre)."
+        },
+        "pick": {
+          "type": "boolean",
+          "description": "Choix de voie affiché : A court change de voie (sinon vue suivante)."
+        },
+        "lap": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            }
+          ],
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Sur un circuit seulement : [tour en cours, tours]."
+        }
+      },
+      "additionalProperties": false
     }
   },
   "$defs": {
