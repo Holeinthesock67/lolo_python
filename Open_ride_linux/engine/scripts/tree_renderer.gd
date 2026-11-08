@@ -148,6 +148,8 @@ func _look(index: int) -> Dictionary:
 			for m in [m0, m1]:
 				(m as ShaderMaterial).set_shader_parameter("sway_height_m", float(built["height"]))
 				(m as ShaderMaterial).set_shader_parameter("lod_blend_m", SPECIES_LOD_BLEND_M)
+				# Saisons (lot P18) : feuillage d'automne et arbres dénudés l'hiver pour les espèces caduques
+				(m as ShaderMaterial).set_shader_parameter("deciduous", TreeSpecies.is_deciduous(TreeSpecies.kind_of(index)))
 			var switch_m := TreeSpecies.lod0_m(TreeSpecies.kind_of(index))
 			if switch_m > 0.0:
 				# Passage touffe par touffe (tree_sway.gdshader) : modèle proche jusqu'à switch_m, lointain au-delà.

@@ -17,6 +17,8 @@ extends RefCounted
 ## - Oiseaux par phrases (essai vélo du 2 novembre : « le bruit des oiseaux en continu est pénible ») : une
 ##   phrase de BIRD_PHRASE_MIN_S à BIRD_PHRASE_MAX_S par tranche de BIRD_SLOT_S, puis silence (BIRD_REST_DB),
 ##   fondus de BIRD_EDGE_S ; `birds_gate(t)` est déterministe (même tirage d'une partie à l'autre).
+## - Saisons (lot P18) : `set_season(p)` (`season_model.params`) multiplie oiseaux et insectes par `birds` et
+##   `insects` de la saison (insectes l'été seulement, oiseaux plus rares l'hiver) ; été ou sans appel : 1.
 ## - `bell_strikes(prev_hour, hour)` : coups de cloche quand l'heure pleine est franchie.
 
 const SILENCE_DB := -80.0
@@ -51,6 +53,8 @@ var volume := 0.6
 var birds := 0.6
 var insects := 0.4
 var voices := DEFAULT_VOICES
+var season_birds := 1.0
+var season_insects := 1.0
 
 var _db := {}
 var _last_s := NAN
@@ -84,6 +88,12 @@ func set_theme(theme: Dictionary) -> void:
 		birds = clampf(float(a["birds"]), 0.0, 1.0)
 	if _is_number(a.get("insects", null)):
 		insects = clampf(float(a["insects"]), 0.0, 1.0)
+
+
+## Facteurs de saison des oiseaux et des insectes (season_model.params) ; {} : été (aucun effet).
+func set_season(p: Dictionary) -> void:
+	season_birds = clampf(float(p.get("birds", 1.0)), 0.0, 1.0)
+	season_insects = clampf(float(p.get("insects", 1.0)), 0.0, 1.0)
 
 
 ## Heure locale du PC (heures décimales), quand l'heure solaire n'est pas simulée.
@@ -139,8 +149,8 @@ func targets(neigh: Dictionary) -> Dictionary:
 	var water_dist := float(neigh.get("water_dist_m", INF))
 	var water_kind := str(neigh.get("water_kind", "river"))
 	var gains := {
-		"forest_birds": pow(forest, 0.7) * birds / 0.6 * birds_day_factor(hour) * (1.0 - 0.8 * rain),
-		"field_insects": (1.0 - forest) * (1.0 - built) * insects / 0.4 * insects_day_factor(hour)
+		"forest_birds": pow(forest, 0.7) * birds / 0.6 * season_birds * birds_day_factor(hour) * (1.0 - 0.8 * rain),
+		"field_insects": (1.0 - forest) * (1.0 - built) * insects / 0.4 * season_insects * insects_day_factor(hour)
 			* (1.0 - rain) * (1.0 - 0.5 * wind) * (1.0 - clampf((alt - 1800.0) / 600.0, 0.0, 1.0)),
 		"water_flow": clampf(1.0 - (water_dist - 15.0) / 85.0, 0.0, 1.0) * float(WATER_KIND_GAIN.get(water_kind, 0.5)),
 		"village_murmur": pow(built, 0.6) * (1.0 if birds_day_factor(hour) > 0.5 else 0.3),

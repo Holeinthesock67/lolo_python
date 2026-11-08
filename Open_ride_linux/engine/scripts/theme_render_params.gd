@@ -155,6 +155,9 @@ static func blend_weights(normal: Vector3, altitude_m: float, params: Dictionary
 	var snow_line := DEFAULT_SNOW_LINE_M
 	if _is_number(params.get("snow_line_m", null)):
 		snow_line = float(params["snow_line_m"])
+	# Saisons (lot P18) : limite abaissée l'hiver, comme `season_snow_drop_m` dans terrain_shade.gdshaderinc
+	if _is_number(params.get("season_snow_drop_m", null)):
+		snow_line -= maxf(float(params["season_snow_drop_m"]), 0.0)
 
 	# Demi-largeur de transition bornée à ± 3° autour du seuil, plus étroite quand blend_sharpness augmente
 	var half_band := clampf(12.0 / maxf(sharpness, 1.0), MIN_SLOPE_HALF_BAND_DEG, MAX_SLOPE_HALF_BAND_DEG)

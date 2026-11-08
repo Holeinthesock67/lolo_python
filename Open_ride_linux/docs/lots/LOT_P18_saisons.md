@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Saisons : feuillages, arbres dénudés, neige, vergers en fleurs, feuilles qui tombent | GDScript + shader | P5, P8, P9, P17 ; P7 | Moyenne | Oui, **version 2.0** (issue #142) |
+| Saisons : feuillages, arbres dénudés, neige, vergers en fleurs, feuilles qui tombent | GDScript + shader | P5, P8, P9, P17 ; P7 | Moyenne | **En PR** (lancé le 8 novembre, après P7) ; rien ne change à l'écran avant P19 (paramètres globaux à l'été par défaut) ; issue #142 |
 
 ## 1. Objectif
 
@@ -53,6 +53,17 @@ Aucune (P1).
 6. Feuilles qui tombent : seulement en automne, seulement à moins de 30 m d'une forêt, jamais au-dessus du budget.
 
 **Sur le PC cible (le propriétaire) :** une séance par saison en `low` : paysage cohérent, perte de moins de 1 image/s par rapport à l'été.
+
+## 7 bis. Livraison (8 novembre)
+
+- `engine/scripts/season_model.gd` : `season_for` (thème, sinon date et hémisphère, saisons météorologiques), `params` (paliers sur l'année, continus, été neutre), `globals` et `apply_globals` (paramètres globaux `season_*` des shaders, déclarés dans `project.godot` avec les valeurs de l'été).
+- Arbres (`tree_sway.gdshader`) : `deciduous` posé par espèce (`TreeSpecies.is_deciduous`) dans `tree_renderer.gd` ; palette d'automne par arbre (jaune, orange, roux) ; l'hiver, feuillage des caducs replié en un point dans `vertex()` (aucun pixel, sans `discard`) ; résineux et feuillus persistants inchangés ; herbe (`grass`, touffes de P5 et herbes hautes du bord) jaunie.
+- Forêts lointaines (`tree_impostor.gdshader`) : espèce caduque ajoutée à la forme (+ 2) par `forest_impostors.gd` ; mêmes teintes d'automne, branches nues l'hiver.
+- Sol (`terrain_shade.gdshaderinc`, donc `terrain.gdshader` et `terrain_biomes.gdshader`) : herbe jaunie, limite de neige abaissée de 1 200 m l'hiver (partout si la météo du thème est `snow`) ; même abaissement dans la fonction de référence `ThemeRenderParams.blend_weights` (`season_snow_drop_m`).
+- Feuilles qui tombent : effet de plus dans `weather_particles.gd` (`update_leaves`, `leaves_intensity`, pris sur le même budget que la pluie, la neige et la poussière), seulement à moins de 30 m d'une forêt.
+- Sons : `ambience_model.set_season` (insectes l'été seulement, oiseaux plus rares l'hiver).
+- Tests : `test_season_model.gd` (critères 2, 3 et 5, branchements), `tests/render/test_season_render.gd` (critère 4 ; `SEASON_CAPTURE_DIR` pour les images).
+- **Reste à brancher :** floraison des vergers (uniform `orchard` prêt dans `tree_sway.gdshader`) : les arbres placés dans les zones `orchard` n'y sont pas encore distingués des autres ; lot à part si le propriétaire le souhaite. Ciel plus bas (`cloud_altitude`) et feuilles qui tombent appliqués par P19. Arbre d'avant la série U (`GENERIC`, couleur unie) : inchangé.
 
 ## 8. Hors périmètre
 
