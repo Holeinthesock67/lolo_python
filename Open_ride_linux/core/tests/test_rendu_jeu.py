@@ -112,3 +112,13 @@ def test_standard_material_couleurs_de_sommet_srgb() -> None:
             if f"{m.group(1)}.vertex_color_is_srgb = true" not in text:
                 bad.append(f"{f.relative_to(ENGINE)} ({m.group(1)})")
     assert bad == [], f"couleurs de sommet lues comme linéaires : {bad}"
+
+
+def test_tests_de_rendu_sortie_en_ordre() -> None:
+    """Sortie des tests de rendu (08/11) : chacun attend la fin des compilations de pipelines avant de quitter
+    (``engine/tests/render/render_exit.gd``), sans quoi Godot 4.7 en Forward+ reste bloqué à la sortie sur la GTX 1060
+    (r773 : test_boat_render, test_props_render, test_sky_render ; avant eux test_rogue_style_sheet_render)."""
+    tests = sorted((ENGINE / "tests" / "render").glob("test_*.gd"))
+    assert tests
+    bad = [f.name for f in tests if "await RenderExit.settle(self)" not in f.read_text(encoding="utf-8")]
+    assert bad == [], f"tests de rendu sans sortie en ordre (render_exit.gd) : {bad}"
