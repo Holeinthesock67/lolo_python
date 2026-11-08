@@ -226,7 +226,7 @@ func _test_biome_beds_on_demand() -> void:
 	_check(sp._bed_players["waves"].stream is AudioStreamWAV and sp._bed_players["gulls"].stream is AudioStreamWAV,
 		"littoral : vagues et mouettes fabriquées puis posées sur leur lecteur (%d images)" % frames)
 	_check(not sp._streams.has("cicadas") and not sp._streams.has("frogs"), "fonds d'autres biomes : jamais fabriqués")
-	_check(frame_ms < 8.0, "fabrication hors du fil principal : update_ambience au plus %.2f ms par image" % frame_ms)
+	_check(PerfBudget.check("ambience_layer_frame", frame_ms), "fabrication hors du fil principal : update_ambience au plus %.2f ms par image" % frame_ms)
 	sp.update_ambience(neigh, t)
 	_check(sp._bed_players["waves"].playing and sp.get_child_count() == n0 and sp.beds_pending() == 0,
 		"vagues jouées, aucun nœud créé, aucune fabrication en attente")
