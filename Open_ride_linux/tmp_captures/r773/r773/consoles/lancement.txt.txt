@@ -1,0 +1,15 @@
+04:07:44 empreinte avant c6152d87d6a2fc30a6faa5539f239a55
+04:07:44 tête 2b7fba6d
+04:08:54 demo low_branche
+04:13:02 fin demo low rc=0
+04:13:02 demo medium_branche
+04:17:10 fin demo medium rc=0
+04:17:10 demo high_branche
+04:21:17 fin demo high rc=0
+04:21:17 visual natif
+04:48:31 fin visual rc=1
+04:48:31 suite
+05:13:55 fin suite rc=1
+05:13:56 empreinte après c6152d87d6a2fc30a6faa5539f239a55
+05:13:56 clone 9c7c9556
+05:13:56 FIN
