@@ -191,3 +191,21 @@ def test_survivor_bench_scenario_writes_a_valid_config_and_mode(name: str, oppon
     assert survivor.course_length_m(sv["opponents"], sv["spacing_km"]) <= length
     args = build_parser().parse_args(["run", "--autostart", "--mode", "survivor"])
     assert args.mode == "survivor"
+
+
+def test_grandprix_bench_scenario_writes_a_valid_config_and_mode() -> None:
+    """Série GP (lots GP7 et GP8) : le scénario `grand_prix` lance le mode (`--mode grandprix` du core et du banc)
+    avec un plateau et un format de course dans les bornes du réglage, et une course qui tient sur la démonstration."""
+    from openride_core.__main__ import build_parser
+    from openride_core.config import BOUNDS as CONFIG_BOUNDS, CHOICES as CONFIG_CHOICES
+    from openride_core.demo_world import DEMO_LENGTH_M
+
+    _, _, settings, _ = sim_bench.resolve_scenario("grand_prix")
+    assert settings["mode"] == "grandprix"
+    gp = tomllib.loads(sim_bench.toml_text(settings["config"]))["grandprix"]
+    for key in ("opponents", "distance_km", "box_every_m"):
+        lo, hi = CONFIG_BOUNDS[("grandprix", key)]
+        assert lo <= gp[key] <= hi, key
+    assert gp["chaos"] in CONFIG_CHOICES[("grandprix", "chaos")]
+    assert gp["distance_km"] * 1000 <= DEMO_LENGTH_M
+    assert build_parser().parse_args(["run", "--autostart", "--mode", "grandprix"]).mode == "grandprix"

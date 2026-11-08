@@ -1,0 +1,53 @@
+{
+  "description": "Grand Prix des objets (lots GP7 et GP8, plan docs/4.0/PLAN_SERIE_GP.md §8.3) sur la démonstration de 5 km : départ groupé du cycliste et de 4 bots (pire cas GPU du mode : tous les bots, deux rangées de boîtes en vue), chaos fou (objets les plus fréquents, jusqu'à douze objets en vue), boîtes tous les 1 000 m ; à 280 W contre des bots au niveau 100 %. Banc GPU en low, medium et high (budgets 8, 13 et 16 ms), captures toutes les 15 s à faire valider par le propriétaire (case d'objet, bande de course, boîtes, objets, effets).",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 280,
+    "cadence_rpm": 90
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [],
+  "bench": {
+    "world": "demo",
+    "mode": "grandprix",
+    "config": {
+      "grandprix": {
+        "opponents": 4,
+        "distance_km": 5,
+        "chaos": "wild",
+        "box_every_m": 1000
+      },
+      "bots": {
+        "level_pct": 100
+      }
+    },
+    "duration_s": 480,
+    "every_s": 15,
+    "expect": [
+      {
+        "log": "core",
+        "motif": "Grand Prix des objets : 4 adversaires",
+        "recette": "GP7",
+        "label": "séance lancée en Grand Prix des objets à 4 adversaires"
+      },
+      {
+        "log": "engine",
+        "motif": "\\[test\\] event_sound kind=gp_roulette",
+        "min": 1,
+        "recette": "GP7",
+        "label": "boîte prise : roulette jouée par l'engine"
+      }
+    ]
+  }
+}

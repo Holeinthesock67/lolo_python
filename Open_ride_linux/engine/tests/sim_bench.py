@@ -1076,7 +1076,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--biome", help="biome forcé sur tout le parcours (lot U17, ex. sand_desert) ; "
                     "l'emporte sur le biome du scénario (scénarios biome_*)")
     ap.add_argument("--workout", help="ERG : erg_court (5 min 30 intégré) ou fichier .zwo")
-    ap.add_argument("--mode", choices=("ride", "wtf", "survivor"),
+    ap.add_argument("--mode", choices=("ride", "wtf", "survivor", "grandprix"),
                     help="mode de la séance (start.mode), ex. survivor ; défaut : bench.mode du scénario, sinon ride")
     ap.add_argument("--duration", type=float, help="durée de chaque séance en s (défaut : fin du scénario + 15 s)")
     ap.add_argument("--every", type=float, help="intervalle des captures en s (défaut : celui du scénario, sinon 15)")

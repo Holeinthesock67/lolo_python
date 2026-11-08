@@ -37,6 +37,8 @@ const GpHudModel := preload("res://scripts/grandprix/gp_hud_model.gd")
 const GpView := preload("res://scripts/grandprix/gp_view.gd")
 const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
 const TrackView := preload("res://scripts/track/track_view.gd")
+const GpScene := preload("res://scripts/grandprix/gp_scene.gd")
+const GpSoundModel := preload("res://scripts/grandprix/gp_sound_model.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -143,6 +145,9 @@ var gp_hud = GpHudModel.new()
 var gp_view = null
 var track_hud = TrackHudModel.new()
 var track_view = null
+## Grand Prix des objets en 3D (lot GP7) : boîtes, objets, effets sur les coureurs, onomatopées ; et ses sons.
+var gp_scene = null
+var gp_sounds = GpSoundModel.new()
 ## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
 var load_guard = LoadGuard.new({}, false)
 var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
@@ -355,6 +360,9 @@ func _ready() -> void:
 	segment_markers = SegmentMarkers.new()
 	segment_markers.name = "SegmentMarkers"
 	add_child(segment_markers)
+	gp_scene = GpScene.new()
+	gp_scene.set_quality(_quality_name)
+	add_child(gp_scene)
 	print("Décor vivant : %s (préréglage %s)" % ["actif" if _living_enabled else "coupé (rendu 1.0)", _quality_name])
 	ipc.state_received.connect(_on_state_received)
 	ipc.room_received.connect(rogue_host.on_room)
@@ -385,6 +393,10 @@ func _ready() -> void:
 			print("Segment terminé : %s en %s s" % [msg.get("segment_id", "?"), msg.get("time_s", "?")])
 			ipc.test_log("segment_result id=%s" % msg.get("segment_id", "?"))
 			_play_event(event_sounds.on_segment_result(msg)))
+	ipc.gp_hit_received.connect(func(msg: Dictionary) -> void:
+		if gp_scene != null and gp_scene.on_hit(msg, Time.get_ticks_msec() / 1000.0):
+			ipc.test_log("gp_hit item=%s target=%s" % [msg.get("item", "?"), msg.get("target", "?")])
+			_play_event(GpSoundModel.on_hit(msg)))
 	ipc.elimination_received.connect(func(msg: Dictionary) -> void:
 		var jingles: Array = survivor_hud.on_elimination(msg, Time.get_ticks_msec() / 1000.0)
 		if not jingles.is_empty():
@@ -565,6 +577,8 @@ func _on_settings(msg: Dictionary) -> void:
 			velodrome_hall.set_quality(_quality_name)
 		_apply_indoor()
 		bots_view.set_quality(_quality_name)
+		if gp_scene != null:
+			gp_scene.set_quality(_quality_name)
 		if living_decor != null and living_decor.cyclists_view != null:
 			living_decor.cyclists_view.set_quality(_quality_name)
 		if streamer.tree_renderer != null:
@@ -1135,6 +1149,8 @@ func _process(delta: float) -> void:
 		wtf_scene.step(WtfSceneModel.view(_last_state.get("wtf", null), now / 1000000.0, _quality_name), route, s_route,
 			bots_view.anchor_of, sun)
 		wtf_scene.apply_camera(camera, pos, _camera_yaw, delta)
+		# Grand Prix des objets (lot GP7) : boîtes, objets et effets sur les coureurs, à la place affichée.
+		gp_scene.step(_last_state.get("gp", null), _gp_riders(pos, heading), now / 1000000.0, camera)
 		pos += Vector3.UP * wtf_scene.hop_m()   # bonds du vélo sur la Lune
 		# Vue imposée par un gag WTF : le cycliste reste visible, même depuis la vue subjective.
 		avatar_view.set_visible_for_view("follow_near" if wtf_scene.forced_camera() else _avatar_view_name())
@@ -1367,6 +1383,7 @@ func _poll_route_job() -> void:
 		living_world.visible = not track
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
+	gp_scene.set_route(route)
 	# premier dessin des portiques au chargement, pas à 400 m d'eux (et celui d'élimination si le mode est préparé)
 	segment_markers.warm_up(camera, menu_flow.menu.mode == "survivor")
 	if living_decor != null:   # cyclistes du décor (lot AS7), spectateurs et passants (lot Y21) préparés au chargement
@@ -1646,6 +1663,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"wtf": wtf_scene.test_info(),
 		"survivor": survivor_view.test_info() if survivor_view != null else {},
 		"grandprix": gp_view.test_info() if gp_view != null else {},
+		"grandprix_scene": gp_scene.test_info() if gp_scene != null else {},
 		"survivor_arches": segment_markers.survivor_arches().size() if segment_markers != null else 0,
 		"track": track_view.test_info() if track_view != null else {},
 		"scoreboard": velodrome_hall.scoreboard_text() if velodrome_hall != null else "",
@@ -2144,8 +2162,12 @@ func _update_grandprix(state: Dictionary, in_session: bool) -> void:
 			gp_view.update_view({"visible": false})
 		if not in_session:
 			gp_hud.reset()
+			gp_sounds.reset()
+			gp_scene.reset()
 		return
 	var t_step := Time.get_ticks_usec()
+	for snd in gp_sounds.on_state(gp):   # roulette, lancer, sonnette, klaxon (lot GP7)
+		_play_event(snd)
 	gp_view.right_top = hud.free_right_top()
 	gp_view.update_view(gp_hud.view(state, Time.get_ticks_msec() / 1000.0))
 	PerfProbe.mark_since("grand_prix", "", t_step)   # banc : une image lente nomme le mode
@@ -2170,6 +2192,22 @@ func _update_track(state: Dictionary, in_session: bool) -> void:
 		velodrome_hall.set_scoreboard(track_hud.board_text(state))
 	for j in track_hud.sounds(state):
 		_play_event(j)
+
+
+## Coureurs du Grand Prix pour gp_scene.gd (lot GP7) : le cycliste à sa place affichée `pos`, puis les bots à
+## la place de leur silhouette (bots_view.anchor_of, null hors de vue), avec leurs objets en cours.
+func _gp_riders(pos: Vector3, heading: float) -> Array:
+	var gp = _last_state.get("gp", null)
+	if not gp is Dictionary:
+		return []
+	var out: Array = [{"id": "me", "pos": pos, "heading": heading, "fx": gp.get("fx", [])}]
+	var bots = _last_state.get("bots", null)
+	if bots is Array:
+		for b in bots:
+			if b is Dictionary and str(b.get("id", "")) != "":
+				var id := str(b["id"])
+				out.append({"id": id, "pos": bots_view.anchor_of(id), "heading": heading, "fx": gp_hud.fxs.get(id, [])})
+	return out
 
 
 ## Bots vus du cycliste à `now_us`, l'instant où `rider_s` a été calculé (même horloge que les trames).
