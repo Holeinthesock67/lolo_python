@@ -78,7 +78,7 @@ class ZwiftClickProvider:
         short_max_s: float = zwift_click.SHORT_MAX_S,
         long_min_s: float = zwift_click.LONG_MIN_S,
         *,
-        repeat_gap_s: float = 0.0,   # la séance passe `[drivers] click_repeat_gap_s` (0,35 s, R14)
+        repeat_gap_s: float = 0.0,   # la séance passe `[drivers] click_repeat_gap_s` (0 par défaut)
         device_finder: Callable[[str, str | None, float], Awaitable[Any]] = find_device,
         client_factory: Callable[..., Any] = default_client_factory,
         clock: Callable[[], float] = time.monotonic,

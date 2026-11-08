@@ -116,7 +116,7 @@ class DriversConfig:
     click_minus_address: str = ""  # boîtier « − » du Click (vide : l'autre boîtier trouvé)
     click_short_max_s: float = 0.5
     click_long_min_s: float = 0.9
-    click_repeat_gap_s: float = 0.35  # rafale du bouton maintenu = un seul appui (0 : sans regroupement)
+    click_repeat_gap_s: float = 0.0  # > 0 : rafale du bouton maintenu = un seul appui (essai 08/11 : 0,35 fond les appuis rapides)
     click_trace_raw: bool = False
     click_mute_after_s: float = 60.0
     click_rehandshake_s: float = 0.0

@@ -152,7 +152,7 @@ def test_config_key_and_session_pass_the_gap():
     cfg = from_dict({"drivers": {"input": "click", "click_repeat_gap_s": 0.2}})
     provs = [p for p in build_inputs(cfg) if isinstance(p, ZwiftClickProvider)]
     assert provs and all(p._classifier.repeat_gap_s == 0.2 for p in provs)
-    assert from_dict({}).drivers.click_repeat_gap_s == GAP
+    assert from_dict({}).drivers.click_repeat_gap_s == 0.0   # essai du 8 novembre : pas de regroupement par défaut
 
 
 def test_click_recette_long_press_mode_in_simulation(tmp_path):

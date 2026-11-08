@@ -73,7 +73,7 @@ KEYPAD_BITS = {
 
 SHORT_MAX_S = 0.500
 LONG_MIN_S = 0.900   # abaissé de 1,2 s après essai réel (appuis longs naturels : 0,7 à 1,1 s)
-REPEAT_GAP_S = 0.35  # rafale du bouton maintenu (R14, 8 novembre : un appui toutes les 0,2 à 0,3 s)
+REPEAT_GAP_S = 0.35  # écart de regroupement de référence (R14) ; défaut de la séance : 0, voir SRS §4.2
 
 
 class InputEvent(str, enum.Enum):
