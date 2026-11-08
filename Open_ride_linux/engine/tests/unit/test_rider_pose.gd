@@ -181,6 +181,16 @@ func _run() -> void:
 			worst = maxf(worst, Vector3(fast.x, fast.y, fast.z).distance_to(Vector3(full["x"], full["y"], full["z"])))
 			worst = maxf(worst, absf(_wrap(fast.w - deg_to_rad(float(full["heading_deg"])))))
 	_check(worst < 1e-3, "sample_xyzh = sample (écart au plus %.6f)" % worst)
+	# 6 bis. Cap des caméras : lissé, par l'écart le plus court, repris tel quel après un saut.
+	var cy := RiderPose.follow_yaw(NAN, 1.0, 1.0 / 60.0, 0.35)
+	_check(is_equal_approx(cy, 1.0), "cap de caméra : repris tel quel au premier appel")
+	var y := deg_to_rad(350.0) - TAU
+	for i in 60:
+		y = RiderPose.follow_yaw(y, deg_to_rad(20.0), 1.0 / 60.0, 0.35)
+	_check(absf(rad_to_deg(_wrap(y - deg_to_rad(20.0)))) < 2.0 and absf(rad_to_deg(_wrap(y - deg_to_rad(350.0)))) > 25.0,
+		"cap de caméra : de 350° vers 20° par le nord en 1 s (%.1f°)" % fposmod(rad_to_deg(y), 360.0))
+	_check(is_equal_approx(RiderPose.follow_yaw(0.0, 2.5, 1.0 / 60.0, 0.35), 2.5), "cap de caméra : saut de plus de 90° repris tel quel")
+	_check(RiderPose.follow_yaw(0.3, 0.5, 0.0, 0.35) == 0.3, "cap de caméra : pas nul, cap inchangé")
 	# 7. Coût : une pose par image pour le joueur et jusqu'à 12 bots (peloton PL1).
 	var t0 := Time.get_ticks_usec()
 	for i in 1300:

@@ -17,6 +17,8 @@ extends RefCounted
 ##   piste ; arrêté ou en ligne droite, il est droit.
 ## - Sans état : la pose ne dépend que de la route, de `s`, de l'écart à l'axe et de la vitesse. Continue quand `s`
 ##   avance (fenêtre glissante), donc sans saut d'une image à l'autre, et la même pour le joueur et les bots.
+## - Caméras : `follow_yaw` lisse le cap du vélo pour les vues de séance (main.gd) ; elles ne prennent plus le cap
+##   moyenné de la route, qui tournait 20 m avant un virage serré.
 ## Convention de roulis : celle de `rotation.z` de l'avatar (positif : la droite monte, penché à gauche).
 ## `route` : route_data.gd (`sample_xyzh` sinon `sample`, `wrap_s`, `is_loop`, et `bank_at` / `bank_right` s'ils existent).
 ## Pas de class_name : charger par preload("res://scripts/rider_pose.gd").
@@ -69,6 +71,20 @@ static func lean_roll(v: float, kappa: float, bank_rad: float = 0.0) -> float:
 	var phys := -atan(v * v * kappa / GRAVITY)
 	var lim := deg_to_rad(LEAN_MAX_DEG)
 	return bank_rad + clampf(phys - bank_rad, -lim, lim)
+
+
+## Un pas de lissage d'un cap (radians) vers `target`, premier ordre de constante `tau_s`, par l'écart le plus court.
+## `current` NAN, pas trop long (reprise, plus de 0,5 s) ou écart de plus de 90° (saut de position) : `target` tel
+## quel ; pas nul : `current`. Sert au cap des caméras (main.gd).
+static func follow_yaw(current: float, target: float, dt_s: float, tau_s: float) -> float:
+	if is_nan(current) or dt_s > 0.5:
+		return target
+	if dt_s <= 0.0:
+		return current
+	var d := _wrap_angle(target - current)
+	if absf(d) > PI / 2.0:
+		return target
+	return _wrap_angle(current + d * (1.0 - exp(-dt_s / tau_s)))
 
 
 static func _wrap_angle(a: float) -> float:

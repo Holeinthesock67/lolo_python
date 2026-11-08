@@ -1066,8 +1066,11 @@ func _process(delta: float) -> void:
 		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
 		_bank_roll = deg_to_rad(route.bank_at(s_route))   # piste relevée (lot VD4) : avatar perpendiculaire à la piste
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
+		# Cap des caméras (lot CY1) : celui du vélo, lissé en CAMERA_YAW_TAU_S ; avec le cap moyenné de la route, la
+		# caméra tournait 20 m avant un virage serré et voyait le vélo de travers.
+		_camera_yaw = RiderPose.follow_yaw(_camera_yaw, float(pose["yaw"]), delta, CAMERA_YAW_TAU_S)
 		camera.global_transform = camera_views.step(delta, camera_views.goal(_rider_point(s_route, heading, follow.camera_lane_m),
-			heading, pitch_deg, _bank_roll))
+			_camera_yaw, pitch_deg, _bank_roll))
 		camera.fov = CameraViews.fov_deg(_base_fov, pitch_deg)   # respire avec la pente (lot Y15)
 		if _bank_roll != 0.0 and camera_views.effective() != "side":   # caméra penchée de la moitié du relèvement au plus (plan VD §7.2) : horizon lisible
 			camera.global_transform.basis = camera.global_transform.basis.rotated(
@@ -1075,7 +1078,7 @@ func _process(delta: float) -> void:
 		# Mode WTF (lots WTF5 et WTF6) : gags posés sur la route, puis roulis et vues imposées de la caméra.
 		wtf_scene.step(WtfSceneModel.view(_last_state.get("wtf", null), now / 1000000.0, _quality_name), route, s_route,
 			bots_view.anchor_of, sun)
-		wtf_scene.apply_camera(camera, pos, heading, delta)
+		wtf_scene.apply_camera(camera, pos, _camera_yaw, delta)
 		pos += Vector3.UP * wtf_scene.hop_m()   # bonds du vélo sur la Lune
 		# Vue imposée par un gag WTF : le cycliste reste visible, même depuis la vue subjective.
 		avatar_view.set_visible_for_view("follow_near" if wtf_scene.forced_camera() else _avatar_view_name())
@@ -1615,6 +1618,9 @@ func _configure_avatar() -> void:
 ## Piste relevée (lot VD4) : roulis de l'avatar (relèvement sous lui, radians) et part de ce roulis prise par la caméra.
 const CAMERA_BANK_SHARE := 0.5
 var _bank_roll := 0.0
+## Cap des caméras de séance (lot CY1) : cap du vélo lissé en CAMERA_YAW_TAU_S secondes ; NAN : à reprendre tel quel.
+const CAMERA_YAW_TAU_S := 0.35
+var _camera_yaw := NAN
 
 
 func _rider_point(s: float, heading: float, lateral: float = RoadBuilder.RIDER_LATERAL_M) -> Vector3:

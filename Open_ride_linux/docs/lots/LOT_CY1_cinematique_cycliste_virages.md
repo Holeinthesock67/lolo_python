@@ -28,7 +28,7 @@ Une seule pose pour tout cycliste posé sur la route, le joueur comme les bots :
 - **Roulis** : inclinaison d'équilibre `atan(v² κ / g)` vers l'intérieur du virage, κ courbure de la trajectoire lissée (écart de cap sur ± 2 m). Bornée à ± 30° du relèvement de la piste : sur une route plate, au plus 30° ; dans un virage relevé de vélodrome à la vitesse de course, le vélo reste à peu près perpendiculaire à la piste comme au lot VD4 ; arrêté ou en ligne droite, il est droit (à l'arrêt sur 42° de relèvement : 12°, relèvement − 30°).
 - **Parcours ouvert** : avant le départ et après l'arrivée, la voie est prolongée tout droit dans l'axe du bout ; la grille de départ des bots (lot AS2) n'a plus de cas à part et la moyenne ne se tasse pas aux extrémités.
 - **Bots** : même pose, avec leur vitesse (`v`, ajoutée aux sorties de `bots_view_model.view()`) et leur écart à l'axe.
-- **Caméra inchangée** : elle garde le cap moyenné de la route (elle « anticipe » le virage comme une moto de suivi) et sa part du relèvement des pistes (VD4).
+- **Caméras de séance alignées sur le vélo** : elles prennent le cap du vélo, lissé en 0,35 s (`RiderPose.follow_yaw`, par l'écart le plus court, repris tel quel après un saut de plus de 90° ou une reprise). Avec le cap moyenné de la route, la caméra tournait 20 m avant le virage et voyait le vélo de travers (premières captures). Leur position, leur part du relèvement des pistes (VD4) et la caméra des menus ne changent pas.
 - **Coût** : une vingtaine de lectures de la route par cycliste et par image. `route_data.sample_xyzh` (point et cap seuls, mêmes calculs que `sample`, sans dictionnaire) : environ 46 µs par pose dans le nuage, 0,6 ms pour le joueur et 12 bots.
 
 ## 3. Fichiers
@@ -37,16 +37,16 @@ Une seule pose pour tout cycliste posé sur la route, le joueur comme les bots :
 | --- | --- |
 | `engine/scripts/rider_pose.gd` | Nouveau : `pose(route, s, écart, v)` → `{pos, yaw, roll, kappa}`, `lane_point`, `lean_roll` |
 | `engine/scripts/route_data.gd` | `sample_xyzh(pos)` : point et cap seuls, sans allocation de dictionnaire |
-| `engine/scripts/main.gd` | Avatar du joueur posé par `RiderPose.pose` (position, cap, roulis) |
+| `engine/scripts/main.gd` | Avatar du joueur posé par `RiderPose.pose` (position, cap, roulis) ; cap des caméras de séance = cap du vélo lissé (`CAMERA_YAW_TAU_S` 0,35 s) |
 | `engine/scripts/bots_view.gd`, `bots_view_model.gd` | Bots posés par `RiderPose.pose` ; `v` dans la vue des bots ; cas à part de la grille de départ retiré |
-| `engine/tests/unit/test_rider_pose.gd` | Carré à angles droits : crabe d'avant (> 20°) et d'après (< 3°), écart à la voie, continuité tous les 10 cm, signe et borne du roulis, piste relevée, grille de départ, `sample_xyzh` = `sample`, coût |
+| `engine/tests/unit/test_rider_pose.gd` | Carré à angles droits : crabe d'avant (> 20°) et d'après (< 3°), écart à la voie, continuité tous les 10 cm, signe et borne du roulis, piste relevée, grille de départ, lissage du cap des caméras, `sample_xyzh` = `sample`, coût |
 | `engine/tests/make_corner_world.py`, `engine/tests/tours/virages.json` | Parcours d'essai `essai-virages` (escalier de 5 côtés de 200 m, 3 points par coin) et tour visuel de ses virages à 30 km/h |
 | `engine/tests/tour_visuel.py` | Clé `v_kmh` d'un point : vitesse annoncée sans faire avancer le cycliste |
 
 ## 4. Vérification
 
 - `engine/tests/unit/test_rider_pose.gd` et la suite de l'engine (`run_engine_tests.sh`).
-- Captures avant et après, low, medium et high : `python3 engine/tests/make_corner_world.py --out DOSSIER` puis `engine/tests/tour_visuel.py --world DOSSIER/essai-virages.world --tour engine/tests/tours/virages.json --quality Q`. À valider par le propriétaire avant fusion.
+- Captures avant et après, low, medium et high (planches dans les fichiers du projet, `captures/cy1-cinematique/`) : `python3 engine/tests/make_corner_world.py --out DOSSIER` puis `engine/tests/tour_visuel.py --world DOSSIER/essai-virages.world --tour engine/tests/tours/virages.json --quality Q`. À valider par le propriétaire avant fusion.
 - Sur le vélo (10 min au plus) : `essai-vent-carre` et la démonstration (épingles), vue proche et éloignée, avec des bots.
 
 ## 5. Suites possibles (hors de ce lot)
