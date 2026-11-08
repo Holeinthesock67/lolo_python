@@ -829,6 +829,119 @@
               "minimum": 0
             }
           }
+        },
+        "track": {
+          "type": "object",
+          "description": "Révision 1.7 (lot VD6) : bilan de l'épreuve de piste.",
+          "required": [
+            "event",
+            "place",
+            "of",
+            "ranking",
+            "elapsed_s",
+            "laps",
+            "best_lap_s",
+            "finished",
+            "record",
+            "record_rank"
+          ],
+          "properties": {
+            "event": {
+              "type": "string",
+              "enum": [
+                "free",
+                "pursuit",
+                "kilo",
+                "500",
+                "flying_200",
+                "hour",
+                "scratch",
+                "points",
+                "tempo",
+                "elimination",
+                "keirin",
+                "omnium",
+                "team_sprint",
+                "team_pursuit",
+                "madison"
+              ]
+            },
+            "place": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "of": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "ranking": {
+              "type": "array",
+              "maxItems": 12,
+              "items": {
+                "type": "string",
+                "maxLength": 8
+              }
+            },
+            "elapsed_s": {
+              "type": "number",
+              "minimum": 0
+            },
+            "laps": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0
+              },
+              "description": "Temps de chaque tour du cycliste."
+            },
+            "best_lap_s": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "finished": {
+              "type": "boolean"
+            },
+            "record": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "required": [
+                "id",
+                "time_s",
+                "distance_m"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 24
+                },
+                "time_s": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "distance_m": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "description": "Résultat chronométré noté dans les records de la piste (table `id`) ; null sans chrono."
+            },
+            "record_rank": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "description": "Place du résultat dans sa table (1 : record), null hors des 10 meilleurs ou sans chrono."
+            }
+          }
         }
       },
       "required": [
@@ -2164,6 +2277,129 @@
         }
       },
       "additionalProperties": false
+    },
+    "track": {
+      "type": "object",
+      "description": "Facultatif, révision 1.7 (lot VD6) : présent seulement pendant une épreuve de piste (séance lancée par `start` avec `mode` = `track`). Les champs propres à une épreuve s'ajoutent aux champs communs (contrat §3, « Objet `track` »).",
+      "required": [
+        "event",
+        "t_s",
+        "lap",
+        "laps",
+        "laps_to_go",
+        "bell",
+        "ranking",
+        "points",
+        "eliminated",
+        "finished"
+      ],
+      "properties": {
+        "event": {
+          "type": "string",
+          "enum": [
+            "free",
+            "pursuit",
+            "kilo",
+            "500",
+            "flying_200",
+            "hour",
+            "scratch",
+            "points",
+            "tempo",
+            "elimination",
+            "keirin",
+            "omnium",
+            "team_sprint",
+            "team_pursuit",
+            "madison"
+          ]
+        },
+        "t_s": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Temps de l'épreuve (figé en pause)."
+        },
+        "lap": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Tour en cours (de la tête de course en peloton, du cycliste seul ou de son équipe sinon)."
+        },
+        "laps": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Tours de l'épreuve ; null sans nombre de tours (séance libre, heure)."
+        },
+        "laps_to_go": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "bell": {
+          "type": "boolean",
+          "description": "Cloche : dernier tour (et tour d'élimination à l'élimination)."
+        },
+        "ranking": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "maxLength": 8
+          },
+          "description": "Coureurs (« me » pour le cycliste) ou équipes (« home » pour la sienne), du premier au dernier."
+        },
+        "points": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "maxItems": 12,
+          "items": {
+            "type": "integer"
+          },
+          "description": "Points de chaque coureur ou équipe, dans l'ordre de `ranking` ; null pour une épreuve sans points."
+        },
+        "eliminated": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "maxLength": 8
+          },
+          "description": "Coureurs sortis (éliminés, déclassés, lâchés, écartés), dans l'ordre de sortie."
+        },
+        "finished": {
+          "type": "boolean"
+        },
+        "pacer": {
+          "type": "object",
+          "required": [
+            "s",
+            "v",
+            "on"
+          ],
+          "properties": {
+            "s": {
+              "type": "number"
+            },
+            "v": {
+              "type": "number",
+              "minimum": 0
+            },
+            "on": {
+              "type": "boolean"
+            }
+          },
+          "description": "Keirin : derny (distance sur la piste, vitesse, encore en piste)."
+        }
+      }
     }
   },
   "$defs": {

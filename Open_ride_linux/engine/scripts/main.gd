@@ -32,6 +32,8 @@ const WtfScene := preload("res://scripts/wtf/wtf_scene.gd")
 const WtfSceneModel := preload("res://scripts/wtf/wtf_scene_model.gd")
 const SurvivorHudModel := preload("res://scripts/survivor/survivor_hud_model.gd")
 const SurvivorView := preload("res://scripts/survivor/survivor_view.gd")
+const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
+const TrackView := preload("res://scripts/track/track_view.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -131,6 +133,8 @@ var wtf_scene = null
 ## Dernier survivant (lots DS5 et DS6) : modèle du HUD (bloc, liste, bandeaux, arches à dessiner) et sa vue.
 var survivor_hud = SurvivorHudModel.new()
 var survivor_view = null
+var track_hud = TrackHudModel.new()
+var track_view = null
 ## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
 var load_guard = LoadGuard.new({}, false)
 var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
@@ -429,6 +433,8 @@ func _ready() -> void:
 	hud.add_child(wtf_view)
 	survivor_view = SurvivorView.new()
 	hud.add_child(survivor_view)
+	track_view = TrackView.new()
+	hud.add_child(track_view)
 	wtf_scene = WtfScene.new()
 	add_child(wtf_scene)
 	ipc.world_menu_received.connect(_on_world_menu_received)
@@ -1589,6 +1595,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"wtf": wtf_scene.test_info(),
 		"survivor": survivor_view.test_info() if survivor_view != null else {},
 		"survivor_arches": segment_markers.survivor_arches().size() if segment_markers != null else 0,
+		"track": track_view.test_info() if track_view != null else {},
+		"scoreboard": velodrome_hall.scoreboard_text() if velodrome_hall != null else "",
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 
@@ -1737,6 +1745,7 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		chart_mode = ch
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
+	menu_flow.menu.set_track_events(ipc.core_config.get("track"))   # écran Prêt du vélodrome (lot VD10)
 	menu_flow.on_hello_interrupted(ipc.core_config.get("interrupted"))   # lot O34
 	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
 	# Derniers choix du profil (lot O32) : bot, fantôme, entraînement, départ du monde ouvert.
@@ -1924,7 +1933,8 @@ func _on_state_received(state: Dictionary) -> void:
 	if running and route != null:
 		_give_cues(state)
 	var in_session := running or session_state == "PAUSED"
-	bots_model.push(state.get("bots", null) if in_session else null, t_frame_us)
+	# Keirin (lot VD9) : le derny roule avec les bots (même extrapolation, même dessin), nommé « Derny ».
+	bots_model.push(TrackHudModel.bots_with_pacer(state) if in_session else null, t_frame_us)
 	bots_model.set_race(state if in_session else null)
 	_draft = {"draft": state.get("draft", null) if in_session else null,
 		"draft_bot": state.get("draft_bot", null) if in_session else null}
@@ -1949,6 +1959,7 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
 		_update_survivor(state, in_session)
+		_update_track(state, in_session)
 		if not state.has("wtf") and wtf_scene.is_active():   # séance WTF finie : rien ne reste derrière le menu
 			wtf_scene.step({}, null, 0.0, Callable(), sun)
 	if junction_view != null:
@@ -2048,13 +2059,34 @@ func _update_survivor(state: Dictionary, in_session: bool) -> void:
 	PerfProbe.mark_since("survivant", "", t_step)   # banc (lot DS8) : une image lente nomme le mode
 
 
+## Épreuves de piste (lot VD9), à chaque trame : bandeau, tours, liste et blocs du HUD, tableau d'affichage de la
+## salle, cloche, pistolet et public. Hors d'une épreuve, tout est retiré et le modèle remis à zéro.
+func _update_track(state: Dictionary, in_session: bool) -> void:
+	var tr = state.get("track", null) if in_session else null
+	if tr == null:
+		if track_view.visible:
+			track_view.update_view({"visible": false})
+			if velodrome_hall != null:
+				velodrome_hall.set_scoreboard(track_hud.board_text({}))
+		if not in_session:
+			track_hud.reset()
+		return
+	track_view.right_top = hud.free_right_top()
+	track_view.banner_top = hud.panel_center.offset_bottom + 6.0 if hud.panel_center.visible else 14.0
+	track_view.update_view(track_hud.view(state))
+	if velodrome_hall != null:
+		velodrome_hall.set_scoreboard(track_hud.board_text(state))
+	for j in track_hud.sounds(state):
+		_play_event(j)
+
+
 ## Bots vus du cycliste à `now_us`, l'instant où `rider_s` a été calculé (même horloge que les trames).
 func _show_bots(rider_s: float, rider_v: float, now_us: int) -> void:
 	bots_model.vehicles = living_decor.vehicle_places() if living_decor != null else []
 	var view: Array = bots_model.view(rider_s, rider_v, now_us)
 	if hud != null and hud.has_method("update_bots"):
 		# Dernier survivant : la liste des coureurs (survivor_view.gd) remplace l'encart des bots
-		hud.update_bots([] if _last_state.has("survivor") else view, bots_model.race())
+		hud.update_bots([] if _last_state.has("survivor") or _last_state.has("track") else view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route)
 	if living_decor != null:
