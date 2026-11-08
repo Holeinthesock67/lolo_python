@@ -520,6 +520,13 @@ DEV_KEYS: dict[tuple[str, str], str] = {
 }
 # Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
 PENDING_KEYS: dict[tuple[str, str], str] = {
+    # Grand Prix des objets (série GP, 4.0) : pas d'entrée à l'accueil avant GP9, donc pas de réglage au menu
+    # (point A2 des oublis du 8 novembre) ; la séance les lit déjà (`start` avec `mode` « grandprix »).
+    ("grandprix", "opponents"): "GP9",
+    ("grandprix", "laps"): "GP9",
+    ("grandprix", "distance_km"): "GP9",
+    ("grandprix", "chaos"): "GP9",
+    ("grandprix", "box_every_m"): "GP9",
 }
 
 
