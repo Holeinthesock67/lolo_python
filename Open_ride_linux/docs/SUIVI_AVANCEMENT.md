@@ -385,7 +385,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19).
 
 ### Après la 1.0 : réglages de séance au menu (lots N17 et N18, rédigés le 27 octobre)
-- [ ] Demi-tour sur la route depuis l'écran de pause (lot N17).
+- [ ] Demi-tour sur la route depuis l'écran de pause (lot N17) : en PR le 8 novembre (contrat IPC 1.9, core, écran de pause, caméra et HUD dans le nouveau sens ; critères 2 et 3 vérifiés en simulé par `core/tests/test_u_turn.py`, critère 4 par `test_menu_model.gd` et `test_menu_flow.gd` ; captures des 3 qualités à valider).
 - [ ] Bots réglés depuis les menus : réglages et écran de pause (lot N18).
 
 ### Version 2.0 : segments, bonus et maillots (série T)

@@ -2092,6 +2092,14 @@
         }
       },
       "additionalProperties": false
+    },
+    "dir": {
+      "type": "integer",
+      "enum": [
+        -1,
+        1
+      ],
+      "description": "Facultatif, révision 1.9 (lot N17) : sens du cycliste sur le parcours, 1 dans le sens du parcours, -1 à rebours après un demi-tour (commande `u_turn` depuis la pause) ; absent vaut 1 (le core ne l'écrit qu'à rebours). À rebours, `s` décroît, `grade` est la pente dans le sens roulé et `lane_m` reste dans le repère de la route (négatif : à droite du cycliste)."
     }
   },
   "$defs": {

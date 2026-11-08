@@ -752,6 +752,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("end_session", {"save": bool(act.get("save", true))})
 		"start", "resume":
 			ipc.send_command(name, act.get("args", {}))
+		"u_turn":   # demi-tour depuis la pause (lot N17, révision 1.9)
+			ipc.send_command("u_turn", {})
 		"start_run":
 			ipc.start_run(act.get("args", {}))
 		"open_world_menu":
@@ -1028,10 +1030,13 @@ func _process(delta: float) -> void:
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
-		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
+		# À rebours (lot N17), cap retourné : la caméra et l'avatar regardent vers le départ du parcours.
+		var dir: int = follow.direction
+		var heading: float = deg_to_rad(route.sample_heading_deg(s_route)) + (PI if dir < 0 else 0.0)
 		# Écart à l'axe (lot AS2) : l'avatar suit `lane_m` du core, la caméra le suit avec 0,5 s de lissage.
+		# `lane_m` est dans le repère de la route ; avec le cap retourné, l'écart se compte à droite du cycliste.
 		var lane = _last_state.get("lane_m", null)
-		follow.update_lane(float(lane) if (lane is float or lane is int) else RoadBuilder.RIDER_LATERAL_M, -1.0, now)
+		follow.update_lane(dir * float(lane) if (lane is float or lane is int) else RoadBuilder.RIDER_LATERAL_M, -1.0, now)
 		var pos := _rider_point(s_route, heading, follow.lane_m)
 		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
@@ -1050,6 +1055,7 @@ func _process(delta: float) -> void:
 		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
 		_probe.distance_m = s_route
 		var t_step := Time.get_ticks_usec()
+		streamer.direction = dir   # tronçons et tuiles chargés devant, dans le sens de la marche (lot N17)
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		PerfProbe.mark_since("fenetre", "", t_step)
 		# Bots placés avant le décor vivant : ses cyclistes, ses véhicules et son compte des contacts lisent les
@@ -1084,7 +1090,8 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 		if living_world.frozen_at != _freeze_t:
 			living_world.freeze(_freeze_t)
 	var paused := session_state == "PAUSED"
-	living_world.step(now_s, delta, camera.global_position, s_route, v, float(smp["heading_deg"]),
+	var rider_heading_deg: float = float(smp["heading_deg"]) + (180.0 if follow.direction < 0 else 0.0)   # lot N17
+	living_world.step(now_s, delta, camera.global_position, s_route, v, rider_heading_deg,
 		float(smp["alt_m"]), paused)   # marque elle-même « herbe » et « sol »
 	var t_step := Time.get_ticks_usec()
 	if living_decor != null:
@@ -1108,6 +1115,7 @@ func _menu_camera(delta: float) -> bool:
 	camera.fov = _base_fov
 	camera.rotation.y = -heading
 	camera.rotation.x = deg_to_rad(CameraViews.camera_pitch_deg(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS)))
+	streamer.direction = 1   # le décor des menus avance dans le sens du parcours (lot N17)
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
 	_step_living(delta, _menu_s, MENU_CAMERA_MPS)
 	return true
@@ -1802,7 +1810,8 @@ func _on_state_received(state: Dictionary) -> void:
 	var running := session_state == "RUNNING"
 	# Une seule heure de réception pour le cycliste et les bots de la trame : le core les donne au même instant.
 	var t_frame_us := Time.get_ticks_usec()
-	follow.push_frame(t_frame_us, float(state.get("s", 0.0)), float(state.get("v", 0.0)), running)
+	follow.push_frame(t_frame_us, float(state.get("s", 0.0)), float(state.get("v", 0.0)), running,
+		HudViewModel.direction_of(state))   # sens de la marche après un demi-tour (lot N17)
 	ipc.test_log("state seq=%d s=%.3f session=%s" % [int(state.get("seq", 0)), float(state.get("s", 0.0)), session_state])
 
 	if running and route != null:
@@ -1829,7 +1838,7 @@ func _on_state_received(state: Dictionary) -> void:
 	if hud != null and hud.has_method("update_display"):
 		hud.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 		hud.hr_max_bpm = float(ipc.core_config.get("hr_max_bpm", 0.0))
-		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
+		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)), HudViewModel.direction_of(state))
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
 		_update_survivor(state, in_session)
@@ -1850,6 +1859,8 @@ func _on_state_received(state: Dictionary) -> void:
 		var wind_now_s := Time.get_ticks_msec() / 1000.0
 		living_world.on_state(state, wind_now_s)
 		var heading_deg: float = route.sample_heading_deg(route.wrap_s(float(state.get("s", 0.0)))) if route != null else 0.0
+		if HudViewModel.direction_of(state) < 0:
+			heading_deg += 180.0   # vent ressenti dans le sens de la marche (lot N17)
 		if hud != null and hud.has_method("update_wind"):
 			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s), _quality_name != "low")
 

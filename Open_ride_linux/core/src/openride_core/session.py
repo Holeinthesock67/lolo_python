@@ -537,6 +537,8 @@ class CoreSession:
             self._set_ride_mode(args if isinstance(args, dict) else {}, st)
         elif name == "pause" and st == "RUNNING":
             self._set_state("PAUSED", "user")
+        elif name == "u_turn":   # révision 1.9 (lot N17) : demi-tour depuis l'écran de pause
+            self._u_turn(st)
         else:
             self._on_command_more(name, args, cmd_id, st)
 
@@ -1743,7 +1745,8 @@ class CoreSession:
                 self._sync_erg_state()
                 self.state.route_id = f"ow:{ow.id}"
                 self.state.route_length_m = ow.route.length_m
-                self.physics.s = self.physics.v = 0.0
+                self.physics.place(0.0)
+                self.state.dir = None
                 self._set_session_clock(0.0)
                 log.info("Monde ouvert prêt : %.0f m de route engagée.", ow.route.length_m)
                 self._set_state("READY")
@@ -1797,7 +1800,8 @@ class CoreSession:
         self._sync_erg_state()
         self.state.route_id = route_id
         self.state.route_length_m = world.route.length_m
-        self.physics.s = self.physics.v = 0.0
+        self.physics.place(0.0)
+        self.state.dir = None
         self._set_session_clock(0.0)
         log.info("Parcours « %s » chargé : %.0f m, type %s", route_id, world.route.length_m,
                  world.route.type)
@@ -1907,6 +1911,40 @@ class CoreSession:
         log.info("Mode de la séance : %s%s.", mode.upper(),
                  f", cible {self.erg.target_w} W" if self.erg is not None else "")
         self._sync_erg_state()
+
+    def _u_turn_refusal(self) -> str | None:
+        """Raison d'un refus du demi-tour (lot N17), None s'il est possible : séance en pause sur un parcours,
+        hors run, monde ouvert et courses à arches ou à distance fixée."""
+        if self.state.session_state != "PAUSED":
+            return "Demi-tour seulement depuis l'écran de pause."
+        if self.rogue is not None or self.route is None:
+            return "Pas de demi-tour pendant une run Cyber-Rogue."
+        if self.openworld is not None:
+            return "Pas de demi-tour en monde ouvert : la route se choisit aux carrefours."
+        if self.survivor is not None or self.grandprix is not None:
+            return "Pas de demi-tour pendant une course à élimination ou un Grand Prix."
+        if not self.route.is_loop and self.physics.direction > 0 and self.physics.s <= 0.0:
+            return "Déjà au départ du parcours."
+        return None
+
+    def _u_turn(self, st: str) -> None:
+        """Commande `u_turn` (révision 1.9, lot N17) : même position, sens inversé, vitesse remise à 0 ; la
+        séance reste en pause. Refus : `error` `busy`."""
+        reason = self._u_turn_refusal()
+        if reason is not None:
+            log.warning("Demi-tour refusé (%s) : %s", st, reason)
+            self.server.send_error("busy", reason)
+            return
+        self.physics.u_turn()
+        d = self.physics.direction
+        self.state.dir = -1 if d < 0 else None
+        self.state.v = 0.0
+        if self.race is not None:
+            self.race.pause("user")   # passage en cours annulé, comme une pause voulue
+        if self._rec:
+            self._rec.u_turn(time.time(), self.physics.s, self.physics.distance, d)
+        log.info("Demi-tour à %.0f m (%.0f m parcourus) : %s.", self.physics.s, self.physics.distance,
+                 "à rebours" if d < 0 else "dans le sens du parcours")
 
     def _skip_block(self) -> None:
         assert isinstance(self.erg, ErgController)
@@ -2037,6 +2075,7 @@ class CoreSession:
         self._end_survivor_bots()
         grandprix, self.grandprix = self.grandprix, None
         self.state.gp = None
+        self.state.dir = None   # séance finie : le bilan et les menus repartent dans le sens du parcours (lot N17)
         if grandprix is not None:
             self._lane = self._rider_lane()
             if self._rec:   # lot GP2 : coups, boîtes et bilan au journal
@@ -2663,6 +2702,9 @@ class CoreSession:
         f = race.frame(self._t_session, self.physics.s, self.physics.v, self.bots)
         st.segment, st.powerup, st.jerseys = f.get("segment"), f.get("powerup"), f.get("jerseys")
         st.bot_ahead, st.bot_behind = f.get("bot_ahead"), f.get("bot_behind")
+        if self.physics.direction < 0:   # à rebours (lot N17) : ni segment à venir ni voisin dans la course
+            st.segment = None
+            st.bot_ahead = st.bot_behind = None
         extra = f.get("bots_extra") or {}
         if st.bots:
             st.bots = [{**b, **extra.get(b["id"], {})} for b in st.bots]
@@ -2890,9 +2932,11 @@ class CoreSession:
         s = self.physics.s
         tau = self.cfg.trainer.latency_tau_s
         route = self.route
+        d = self.physics.direction   # -1 à rebours après un demi-tour (lot N17) : pente et cap retournés
         here = route.sample(s) if route else None           # sample ramène s sur le parcours (boucle)
-        grade = here.grade_pct if here else 0.0
-        ahead = route.grade_at(s + self.physics.v * tau) if route else 0.0
+        grade = d * here.grade_pct if here else 0.0
+        ahead = d * route.grade_at(s + d * self.physics.v * tau) if route else 0.0
+        heading = ((here.heading_deg + (180.0 if d < 0 else 0.0)) % 360.0) if here else 0.0
         alt = here.alt_m if here else 0.0
         wcfg = self.cfg.wind
         race = self.race
@@ -2925,7 +2969,7 @@ class CoreSession:
             self._gravel_offset = surface_physics.grade_offset_pct(params.crr, self._gravel_factor, grade)
         if self.wind.active:   # vent figé en pause : son temps est celui de la séance
             self._wind_sample = self.wind.sample(self._t_session)
-            self._head_mps = head_component(self._wind_sample, here.heading_deg if here else 0.0)
+            self._head_mps = head_component(self._wind_sample, heading)
             self.physics.p.wind_mps = self._head_mps + (wtf_eff.wind_add_mps if wtf_eff else 0.0)
             if wcfg.feel == "ftms":
                 setter = getattr(self.driver, "set_wind", None)
@@ -2935,7 +2979,7 @@ class CoreSession:
         traffic = self._traffic_for(route)
         self._suction = 0.0
         if self.bots or traffic is not None:
-            self._update_draft(dt, route, here.heading_deg if here else 0.0, traffic)
+            self._update_draft(dt, route, heading, traffic)
         draft = wtf.draft(self._draft_bot, self._draft) if wtf is not None else self._draft   # baleine volante
         if self._suction > 0.0:      # aspiration au dépassement (lot AS6), sans lissage : 1 à 2 s
             draft = min(draft + self._suction, traffic_mod.VEHICLE_ALPHA_CAP)
@@ -2997,7 +3041,8 @@ class CoreSession:
         if self.survivor is not None:
             self._survivor_before_bots()
         # Lot Y10 : groupes, relais et départs (cycliste déjà avancé, bots au pas précédent)
-        bot_tactics.update_field(self._field, self._racing_bots(), (self.physics.s, self.physics.v), dt,
+        # à rebours (lot N17), le cycliste n'est dans aucun groupe : les bots courent entre eux
+        bot_tactics.update_field(self._field, self._racing_bots(), (self.physics.s, self.physics.v) if d > 0 else None, dt,
                                  (lambda s: route.sample(s).grade_pct) if route else None,
                                  route.length_m if route else None, bool(route and route.is_loop))
         for bot in self.bots:
@@ -3041,7 +3086,7 @@ class CoreSession:
         if self.bots or self.traffic is not None:
             st.draft = round(min(self._draft + self._suction, traffic_mod.VEHICLE_ALPHA_CAP), 3)
             st.draft_bot = self._draft_bot if st.draft > 0.0 else None
-            st.lane_m = round(self._lane.m, 2)
+            st.lane_m = round(d * self._lane.m, 2)   # repère de la route : à rebours, à gauche de son axe
             st.draft_w = self._draft_w
         else:
             st.draft = st.draft_bot = st.lane_m = st.draft_w = None
@@ -3050,7 +3095,7 @@ class CoreSession:
             self._next_record += 1.0
             self._rec.record(Record(
                 ts=round(time.time(), 3), t=round(self._t_session, 2), lat=st.lat, lon=st.lon,
-                alt=round(alt, 2), distance=round(st.s, 2), speed=round(st.v, 3),
+                alt=round(alt, 2), distance=round(self.physics.distance, 2), speed=round(st.v, 3),
                 power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
                 grade=round(route_grade, 2), mode=st.mode, gear=self.gearing.k, grade_sent=st.grade_sent,
                 difficulty_pct=round(self.difficulty_pct),
@@ -3067,10 +3112,13 @@ class CoreSession:
                 gravel_grade_pct=round(self._gravel_offset, 2) if gcfg.mode != "off" else None,
                 hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None,
                 erg_kind=free_erg.kind if free_erg else None,
-                cadence_target_rpm=free_erg.cadence_target if isinstance(free_erg, CadenceLock) else None))
+                cadence_target_rpm=free_erg.cadence_target if isinstance(free_erg, CadenceLock) else None,
+                pos=round(st.s, 2) if self.physics.distance != self.physics.s else None))
 
-        if route and not route.is_loop and self.openworld is None and st.s >= route.length_m:   # ni une boucle, ni le monde ouvert
-            log.info("Arrivée atteinte.")
+        if route and not route.is_loop and self.openworld is None and \
+                (st.s >= route.length_m if d > 0 else st.s <= 0.0):   # ni une boucle, ni le monde ouvert
+            # à rebours (lot N17), le départ du parcours est l'arrivée
+            log.info("Arrivée atteinte%s.", "" if d > 0 else " (retour au départ après un demi-tour)")
             self._finish(True)
         elif self._survivor_end_pending:   # éliminé, réglage « terminer la séance » (lot DS2)
             self._survivor_end_pending = False
@@ -3157,7 +3205,8 @@ class CoreSession:
                 riders = cyclists.near(self.physics.s)
             others = [traffic_mod.Other(s, lat) for s, lat in bot_places]
             others += [traffic_mod.Other(r.s, r.lane_m, r.dir) for r in (cyclists.riders() if cyclists else [])]
-            others.append(traffic_mod.Other(self.physics.s, self._lane.m))
+            d = self.physics.direction   # à rebours (lot N17) : le cycliste roule sur l'autre moitié de la route
+            others.append(traffic_mod.Other(self.physics.s, d * self._lane.m, d))
             traffic.update(self.physics.s, self.physics.v, dt, others=others)
             near = traffic.near(self.physics.s)
         ws = self._wind_sample if self.wind.active else None
@@ -3170,7 +3219,8 @@ class CoreSession:
             return head_component(ws, heading), cross_at(heading)
 
         racing = self._racing_bots()   # un bot éliminé (Dernier survivant) n'abrite plus personne
-        runners = [(self.physics.s, self.physics.v, self._lane)]
+        reverse = self.physics.direction < 0   # à rebours (lot N17) : personne dans le même sens, ni abri ni placement
+        runners = [] if reverse else [(self.physics.s, self.physics.v, self._lane)]
         runners += [(b.s, b.v, b.lane) for b in self.bots   # éliminé : placement coupé, il glisse au bas-côté
                     if getattr(b, "kind", "constant") == "constant" and getattr(b, "lane", None) is not None
                     and (length is None or is_loop or b.s < length)]   # arrivé : arrêté sur la ligne, hors du jeu (lot PL1)
@@ -3180,19 +3230,21 @@ class CoreSession:
         draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None)
 
         cross = cross_at(heading_deg)
-        rider = draft_mod.Source(self.physics.s, self.physics.v, lane_m=self._lane.m, cda_m2=self.physics.p.cda_m2)
+        rider = None if reverse else \
+            draft_mod.Source(self.physics.s, self.physics.v, lane_m=self._lane.m, cda_m2=self.physics.p.cda_m2)
         draft_mod.update_bots(racing, rider, dt, length, is_loop,
                               (lambda b: cross_at(route.sample(b.s).heading_deg)) if ws and route else None)
         sources = list(racing) + [road_cyclists_mod.DraftSource(r.s, r.v, road_cyclists_mod.source_id(r.id),
                                                                   r.lane_m) for r in riders if r.dir == 1]
-        target, bot_id = draft_mod.best_draft(self.physics.s, sources, length, is_loop,
-                                              self.physics.v, self._head_mps, cross, lane_m=self._lane.m)
-        if near and self.cfg.ride.vehicle_draft == "on":
+        target, bot_id = (0.0, None) if reverse else \
+            draft_mod.best_draft(self.physics.s, sources, length, is_loop,
+                                 self.physics.v, self._head_mps, cross, lane_m=self._lane.m)
+        if near and self.cfg.ride.vehicle_draft == "on" and not reverse:
             v_alpha, v_id = traffic_mod.vehicle_draft(self.physics.s, self._lane.m, near, self.physics.v,
                                                       self._head_mps, cross)
             if v_alpha > target:
                 target, bot_id = v_alpha, v_id
-        self._suction = traffic_mod.pass_suction(self.physics.s, self.physics.v, self._lane.m, near)
+        self._suction = 0.0 if reverse else traffic_mod.pass_suction(self.physics.s, self.physics.v, self._lane.m, near)
         self._draft = draft_mod.smooth(self._draft, target, dt)
         if bot_id is not None:
             self._draft_bot = bot_id
@@ -3252,7 +3304,8 @@ class CoreSession:
                 raise ResumeError(f"entraînement « {rs.workout_id} » du journal introuvable")
 
         self._set_session_clock(rs.t)
-        self.physics.s, self.physics.v = rs.s, 0.0
+        self.physics.place(rs.s, rs.distance, rs.direction)   # sens et distance repris du journal (lot N17)
+        self.state.dir = -1 if rs.direction < 0 else None
         if rs.gear is not None and 1 <= int(rs.gear) <= self.gearing.n_gears:
             self.gearing.k = int(rs.gear)
         self.state.gear = self.gearing.k

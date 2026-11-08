@@ -193,6 +193,25 @@ func _test_scenarios() -> void:
 		["MINUS_SHORT", "confirm", "yes", null],
 		["A_LONG", "home", "world", {"action": "end_session", "save": false}],
 	])
+	# Lot N17 : « Faire demi-tour » après Abandonner, avec confirmation (A long valide, Y revient, §7.1).
+	var paused_u_turn := func(m): _routes(ROUTES_4).call(m); m.u_turn_shown = true; m.set_pause_rows([]); m.open_pause()
+	_scenario("pause : faire demi-tour annulé puis confirmé (lot N17)", paused_u_turn, [
+		["PLUS_SHORT", "pause", "end_save", null],
+		["PLUS_SHORT", "pause", "abandon", null],
+		["PLUS_SHORT", "pause", "u_turn", null],
+		["A_LONG", "confirm", "no", null],
+		["Y_SHORT", "pause", "u_turn", null],
+		["A_LONG", "confirm", "no", null],
+		["PLUS_SHORT", "confirm", "yes", null],
+		["A_LONG", "pause", "u_turn", {"action": "u_turn"}],
+		["MINUS_SHORT", "pause", "abandon", null],
+	])
+	var paused_no_u_turn := func(m): _routes(ROUTES_4).call(m); m.set_pause_rows([]); m.open_pause()
+	_scenario("pause sans demi-tour (monde ouvert, run, course) : pas d'entrée (lot N17)", paused_no_u_turn, [
+		["PLUS_SHORT", "pause", "end_save", null],
+		["PLUS_SHORT", "pause", "abandon", null],
+		["PLUS_SHORT", "pause", "resume", null],
+	])
 	_scenario("pause : reprendre, retour et terminer en enregistrant", paused, [
 		["A_LONG", "pause", "resume", {"action": "resume"}],
 		["Y_SHORT", "pause", "resume", {"action": "resume"}],
