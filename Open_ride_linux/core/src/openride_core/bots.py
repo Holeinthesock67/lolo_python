@@ -34,6 +34,7 @@ from datetime import datetime
 import math
 import zlib
 from pathlib import Path
+from collections.abc import Iterable
 from typing import Any
 
 from dataclasses import dataclass
@@ -710,14 +711,27 @@ def last_ride(route_id: str | None, directory: Path) -> Path | None:
 
 
 def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: str | None,
-                   journal_dir: Path, s: float = 0.0, bike_mass_kg: float = DEFAULT_BIKE_MASS_KG) -> list[Any]:
+                   journal_dir: Path, s: float = 0.0, bike_mass_kg: float = DEFAULT_BIKE_MASS_KG,
+                   taken_ids: Iterable[str] = ()) -> list[Any]:
     """Bots de l'argument `bots` de `start` : `{kind: "constant", power_w}` ou `{kind: "constant",
     ftp_pct}`, `{kind: "profile", profile, level_pct?}` (lots T12 et T13 ; au plus `MAX_CONSTANT_BOTS` bots
     de ces deux genres en tout, 11 depuis le lot PL1 ; `level_pct` dans les bornes du réglage `bots.level_pct`, celui-ci sans lui) et
     `{kind: "ghost"}` (dernière séance sur ce parcours, un seul).
 
+    `taken_ids` (lot N18, `set_bots`) : ids déjà pris dans la séance, sautés (`bot1`, `bot2`… sinon).
+
     Lève BotError (rien ne démarre) si la liste est mal écrite ou si le fantôme n'a pas de séance.
     """
+    taken = set(taken_ids)
+    serial = 0
+
+    def next_id() -> str:
+        nonlocal serial
+        serial += 1
+        while f"bot{serial}" in taken:
+            serial += 1
+        return f"bot{serial}"
+
     if not isinstance(items, list) or len(items) > MAX_BOTS:
         raise BotError(f"liste de {MAX_BOTS} bots au plus attendue")
     out: list[Any] = []
@@ -737,7 +751,7 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
                 raise BotError(f"au plus {MAX_CONSTANT_BOTS} bots à puissance constante ou à profil")
             power = float(w) if w is not None else ftp_w * float(pct) / 100.0
             name = f"Bot {pct:g} % FTP" if pct is not None else None
-            out.append(ConstantPowerBot(power, bot_id=f"bot{constant}", name=name, params=params, s=s))
+            out.append(ConstantPowerBot(power, bot_id=next_id(), name=name, params=params, s=s))
         elif kind == "profile":
             profile = it.get("profile")
             if not isinstance(profile, str) or profile not in PROFILES:
@@ -750,7 +764,7 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
             constant += 1
             if constant > MAX_CONSTANT_BOTS:
                 raise BotError(f"au plus {MAX_CONSTANT_BOTS} bots à puissance constante ou à profil")
-            out.append(ProfileBot(profile, bot_id=f"bot{constant}", name=next(names), params=params,
+            out.append(ProfileBot(profile, bot_id=next_id(), name=next(names), params=params,
                                   bike_mass_kg=bike_mass_kg, s=s,
                                   level_pct=float(level) if level is not None else None))
         elif kind == "ghost":
@@ -763,15 +777,81 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
             out.append(GhostBot(path))
         else:
             raise BotError(f"genre de bot inconnu : {kind!r} (constant, profile ou ghost)")
-    # Lot O35 : deux bots constants de même puissance (« Bot 200 W ») deviennent « Bot 200 W » et
-    # « Bot 200 W 2 », comme les profils (profile_bot_names), pour rester distincts au HUD.
-    seen: dict[str, int] = {}
-    for b in out:
-        if isinstance(b, ConstantPowerBot):
-            seen[b.name] = seen.get(b.name, 0) + 1
-            if seen[b.name] > 1:
-                b.name = f"{b.name} {seen[b.name]}"[:16]
+    for b, it in zip(out, items):
+        b.menu_spec = dict(it)   # élément de la liste du menu, relu par `merge_menu_bots` (lot N18)
+    dedupe_constant_names(out)
     return out
+
+
+def dedupe_constant_names(bots: list[Any]) -> None:
+    """Lot O35 : deux bots constants de même puissance (« Bot 200 W ») deviennent « Bot 200 W » et
+    « Bot 200 W 2 », comme les profils (profile_bot_names), pour rester distincts au HUD."""
+    seen: dict[str, int] = {}
+    for b in bots:
+        if isinstance(b, ConstantPowerBot):
+            base = b.name
+            seen[base] = seen.get(base, 0) + 1
+            if seen[base] > 1:
+                b.name = f"{base} {seen[base]}"[:16]
+
+
+def bot_line(bot: Any) -> dict[str, Any]:
+    """Description d'un bot pour la ligne `bots` du journal (lot N18) : id, nom, genre, puissance ou profil."""
+    line: dict[str, Any] = {"id": bot.id, "name": bot.name, "kind": getattr(bot, "kind", "constant")}
+    if isinstance(bot, ProfileBot):
+        line["profile"] = bot.profile
+        if bot.level_pct is not None:
+            line["level_pct"] = bot.level_pct
+    elif isinstance(bot, ConstantPowerBot):
+        line["power_w"] = round(bot.power_w, 1)
+    return line
+
+
+def merge_menu_bots(current: list[Any], wanted: list[Any]) -> tuple[list[Any], list[Any]]:
+    """Bots de la séance après `set_bots` (lot N18, pendant la pause) ; `wanted` vient de `bots_from_menu`
+    (ids jamais pris dans la séance, `taken_ids`).
+
+    Un bot demandé à l'identique (même élément du menu) garde le bot en cours, sa place et son id ; un bot
+    constant dont seule la puissance change (même rang de la liste, bot constant en cours non repris)
+    garde le coureur de ce rang (puissance appliquée tout de suite, place gardée) ; le fantôme demandé garde le fantôme en cours. Les autres sont nouveaux, posés là
+    où `bots_from_menu` les a mis. Les bots en cours non repris sont retirés. Renvoie (liste de la séance,
+    bots nouveaux), dans l'ordre de `wanted`."""
+    left = list(current)
+
+    def take(pred: Any) -> Any:
+        for b in left:
+            if pred(b):
+                left.remove(b)
+                return b
+        return None
+
+    out: list[Any] = []
+    for w in wanted:
+        if isinstance(w, GhostBot):
+            out.append(take(lambda b: isinstance(b, GhostBot)))
+        else:
+            out.append(take(lambda b: type(b) is type(w) and getattr(b, "menu_spec", None) == w.menu_spec))
+    fresh: list[Any] = []
+    for i, w in enumerate(wanted):
+        if out[i] is not None:
+            continue
+        same_row = current[i] if i < len(current) else None
+        kept = None
+        if type(w) is ConstantPowerBot and type(same_row) is ConstantPowerBot and same_row in left:
+            left.remove(same_row)
+            kept = same_row
+        if kept is not None:   # puissance changée : même coureur, à sa place
+            kept.power_w, kept.menu_spec = w.power_w, w.menu_spec
+            out[i] = kept
+        else:
+            out[i] = w
+            fresh.append(w)
+    for b in out:   # noms recalculés d'après la puissance (« Bot 250 W »), puis départagés
+        if type(b) is ConstantPowerBot and isinstance(getattr(b, "menu_spec", None), dict):
+            pct = b.menu_spec.get("ftp_pct")
+            b.name = (f"Bot {pct:g} % FTP" if pct is not None else f"Bot {int(round(b.power_w))} W")[:16]
+    dedupe_constant_names(out)
+    return out, fresh
 
 
 # --- trame d'un peloton (lot PL1, contrat IPC révision 1.6) -----------------------------------------

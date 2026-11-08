@@ -80,7 +80,8 @@
         "list_history",
         "history_session",
         "list_mode_options",
-        "set_mode_option"
+        "set_mode_option",
+        "set_bots"
       ]
     },
     "args": {

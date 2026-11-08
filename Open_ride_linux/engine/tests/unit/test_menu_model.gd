@@ -382,6 +382,41 @@ func _test_last_choices() -> void:
 	_check(m.bot_choices == [1, 3, 1, 1], "quatre bots repris au plus, bot inconnu sauté (%s)" % str(m.bot_choices))
 
 
+## Lot N18 : lignes des bots de l'écran Prêt reprises sur l'écran de pause, `set_bots` envoyé à la reprise.
+func _test_pause_bots() -> void:
+	var m = MenuModel.new()
+	m.set_items("routes", ROUTES_4)
+	m.set_last_choices({"bots": [{"kind": "constant", "power_w": 200}]})
+	m.open_pause()
+	var ids: Array = m.state()["items"].map(func(it): return it["id"])
+	_check(ids == ["resume", "end_save", "abandon", "difficulty", "bot1", "bot2", "ghost", "peloton"],
+		"pause : bots de la séance, ligne vide, fantôme et peloton (%s)" % str(ids))
+	_check(m.handle("A_LONG")["action"] == {"action": "resume"}, "rien changé : resume sans bots")
+	m.open_pause()
+	m.focus_item("bot1")
+	m.handle("A_LONG")   # 200 W → 250 W
+	m.focus_item("bot2")
+	m.handle("A_LONG")   # ligne vide → 200 W
+	m.focus_item("ghost")
+	m.handle("A_LONG")   # fantôme : oui
+	var labels: Array = m.state()["items"].map(func(it): return it["label"])
+	_check(labels.has("Bot 1 : 250 W") and labels.has("Bot 2 : 200 W") and labels.has("Bot 3 : aucun")
+		and labels.has("Fantôme de la dernière séance : oui"), "lignes modifiées en place (%s)" % str(labels))
+	m.focus_item("resume")
+	var act: Dictionary = m.handle("A_LONG")["action"]
+	_check(act == {"action": "resume", "bots": [{"kind": "constant", "power_w": 250}, {"kind": "constant", "power_w": 200},
+		{"kind": "ghost"}]}, "reprise : liste des bots pour set_bots (%s)" % str(act))
+	_check(m.last_bots == m.bot_choices and m.last_ghost, "derniers choix mis à jour (repris au prochain accueil)")
+	m.open_pause()
+	_check(m.handle("A_LONG")["action"] == {"action": "resume"}, "pause suivante : plus rien à envoyer")
+	m.mode = "survivor"
+	m.open_pause()
+	ids = m.state()["items"].map(func(it): return it["id"])
+	_check(not ids.has("bot1") and not ids.has("ghost"), "Dernier survivant : plateau du core, pas de lignes de bots")
+	m.focus_item("resume")
+	_check(m.handle("A_LONG")["action"] == {"action": "resume"}, "Dernier survivant : resume seul")
+
+
 func _init() -> void:
 	_test_button_plan()
 	_test_modes()
@@ -390,5 +425,6 @@ func _init() -> void:
 	_test_lists_and_events()
 	_test_no_nodes()
 	_test_last_choices()
+	_test_pause_bots()
 	print("test_menu_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

@@ -751,6 +751,8 @@ func _run_menu_action(act: Dictionary) -> void:
 		"end_session":
 			ipc.send_command("end_session", {"save": bool(act.get("save", true))})
 		"start", "resume":
+			if name == "resume" and act.has("bots"):   # bots changés sur l'écran de pause (lot N18, révision 1.9)
+				ipc.send_set_bots(act["bots"])
 			ipc.send_command(name, act.get("args", {}))
 		"start_run":
 			ipc.start_run(act.get("args", {}))

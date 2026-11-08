@@ -121,6 +121,8 @@ class SessionRecorder:
                 self._writer.junction(line)
             elif line["kind"] == "ftms":
                 self._writer.ftms(line)
+            elif line["kind"] == "bots":
+                self._writer.bots(line)
             elif line["kind"] in GAME_KINDS:
                 self._writer.game(line)
             else:
@@ -158,6 +160,12 @@ class SessionRecorder:
     def junction(self, line: dict) -> None:
         """Branche prise à un carrefour du monde ouvert (lot W9) ; absente du FIT."""
         line = {**line, "kind": "junction"}
+        self.lines.append(line)
+        self._write(line)
+
+    def bots(self, line: dict) -> None:
+        """Bots de la séance au départ et à chaque changement de la pause (lot N18) ; absente du FIT."""
+        line = {**line, "kind": "bots"}
         self.lines.append(line)
         self._write(line)
 
