@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série TT : core, modèle unique de bonus décrit par des données dans `powerups.py` (effets du Grand Prix compris), tirage selon le contexte, refus motivé ; Plume, Casque, Puissance, Enclume | Python | TT1, T6, T7, GP1 | Moyenne | Prêt (version 4.0) |
+| Série TT : core, modèle unique de bonus décrit par des données dans `powerups.py` (effets du Grand Prix compris), tirage selon le contexte, refus motivé ; Plume, Casque, Puissance, Enclume | Python | TT1, T6, T7, GP1 | Moyenne | En revue (version 4.0) |
 
 Série TT (bonus tactiques, version 4.0). Plan de la série : `docs/4.0/PLAN_SERIE_TT.md`, recommandations retenues par le propriétaire le 29 octobre (« ok pour tout », §6 du plan). Cahier rédigé le 8 novembre 2026 (le plan les annonçait, aucun n'existait).
 

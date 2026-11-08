@@ -11,8 +11,8 @@ du contrat IPC qui les concernent :
   l'équipement (`equipment_gain_s`) calculé hors de la boucle à 50 Hz par la séance.
 
 Le fantôme (bot `ghost`) n'est ni chronométré ni classé : ton meilleur temps le représente (T5).
-Noms du contrat (révision 1.4) : le bonus `lightweight` du module s'appelle `light`, la réserve
-`held`, et le cycliste `"me"` dans `jerseys`.
+Noms du contrat : les bonus portent leur identifiant du contrat (révision 1.13, lot TT2 ; `light`
+de la 1.4 est devenu `feather`), la réserve s'appelle `held`, et le cycliste `"me"` dans `jerseys`.
 """
 
 from __future__ import annotations
@@ -21,16 +21,15 @@ import math
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from .gaps import RIDER_ID, GapTracker
 from .jerseys import Finish, Standings
 from .physics import PhysicsParams
-from .powerups import ArchSchedule, PowerUps, PowerUpTable
+from .powerups import ArchSchedule, Context, PowerUps, PowerUpTable, descent_ahead
 from .records import DATE_FORMAT, RecordBook
 from .segment_timing import SegmentPass, SegmentTimer
 
-CONTRACT_POWERUP = {"lightweight": "light", "aero": "aero", "power": "power"}
 SEGMENT_RESULT_REPEAT = 3        # message `segment_result` répété 3 fois, à une seconde d'intervalle
 SUMMARY_PASSES = 10              # passages gardés dans `summary.segments`
 ME = "me"                        # le cycliste dans `jerseys` (contrat 1.4)
@@ -77,6 +76,8 @@ class ClassicRace:
     book: RecordBook = field(default_factory=RecordBook)
     table: PowerUpTable | None = None
     powerups_on: bool = True
+    powerup_set: str = "classiques"                         # jeu tiré : `classiques` ou `tactiques` (TT2)
+    grade_at: Callable[[float], float] | None = None        # pente du parcours (tirage et refus de TT2)
     seed: int | None = None
     loadout: dict | None = None                             # cadre et roues de la séance (lot V5)
     gain_mode: str = "off"                                  # voir GAIN_MODES
@@ -92,10 +93,13 @@ class ClassicRace:
         self._bot_times: dict[tuple[str, int], dict[str, float]] = {}   # (segment, tour) → {bot: temps}
         self.standings = Standings(segs)
         self.gaps = GapTracker(self.length_m, self.loop)
-        self.powerups = PowerUps(self.table, seed=self.seed) if self.table else PowerUps(seed=self.seed)
+        self.powerups = (PowerUps(self.table, seed=self.seed, set_name=self.powerup_set) if self.table
+                         else PowerUps(seed=self.seed, set_name=self.powerup_set))
         every = self.powerups.table.arch_every_m if self.powerups_on else 0.0
         self.arches = ArchSchedule(every, self.length_m, self.loop)
         self._prev_s: float | None = None
+        self._s = 0.0
+        self._has_bots = False
         self._pending: list[_Pending] = []
         self._gaps_report = None
         self.erg = False
@@ -131,22 +135,46 @@ class ClassicRace:
         self.erg = bool(on)
         self.powerups.set_erg(self.erg)
 
+    def context(self, s: float | None = None) -> Context:
+        """Terrain et séance pour le tirage, l'appui et le pas (conditions de la table, lot TT2)."""
+        s = self._s if s is None else s
+        g = self.grade_at
+        if g is None:
+            return Context(has_bots=self._has_bots)
+        return Context(grade_pct=g(s), has_bots=self._has_bots,
+                       descent_ahead=lambda: descent_ahead(g, s, None if self.loop else self.length_m))
+
+    def feel_params(self, p: PhysicsParams, base: PhysicsParams) -> PhysicsParams:
+        """Paramètres du supplément de pente SIM : masse de base pendant un bonus de masse (TT2)."""
+        return self.powerups.feel_params(p, base) if self.powerups_on else p
+
     def activate(self, t: float) -> bool:
-        """Appui court sur Z : active le bonus en réserve."""
-        if not self.powerups_on or not self.powerups.activate(t):
+        """Appui court sur Z : active le bonus en réserve, ou le refuse avec sa raison (journal)."""
+        if not self.powerups_on:
             return False
-        use = self.powerups.uses[-1]
+        pu = self.powerups
+        before = len(pu.refusals)
+        if not pu.activate(t, self.context()):
+            if len(pu.refusals) > before:
+                r = pu.refusals[-1]
+                self.journal.append({"kind": "powerup", "ts": round(time.time(), 3), "powerup": r.kind,
+                                     "t": round(r.t, 2), "refused": r.reason})
+            return False
+        use = pu.uses[-1]
         self.journal.append({"kind": "powerup", "ts": round(time.time(), 3), "powerup": use.kind,
                              "t": round(use.t_start, 2), "duration_s": round(use.duration_s, 2)})
         return True
 
     def step(self, t: float, dt: float, s: float, power_w: float, bots: Iterable[Any]) -> None:
         """Un pas de `RUNNING` : `t` temps chronométré, `s` distance cumulée, `power_w` mesurée."""
+        bots = list(bots)
+        self._s = s
+        self._has_bots = any(getattr(b, "kind", "") != "ghost" for b in bots)
         if self.powerups_on:
-            self.powerups.step(dt)
+            self.powerups.step(dt, self.context(s) if self.powerups.active is not None else None)
             if self._prev_s is not None and not self.erg:
                 for _ in range(self.arches.crossed(self._prev_s, s)):
-                    self.powerups.award("arch")
+                    self.powerups.award("arch", self.context(s))
         self._prev_s = s
         active = self.powerups.active if self.powerups_on else None
         finishes: list[Finish] = []
@@ -168,7 +196,7 @@ class ClassicRace:
     def _passed(self, t: float, p: SegmentPass, points: int) -> None:
         seg = self._by_id[p.segment_id]
         if self.powerups_on and not self.erg:
-            self.powerups.award("segment")
+            self.powerups.award("segment", self.context())
         rows = self.book.ranking(self.route_id, p.segment_id, p,
                                  self._bot_times.get((p.segment_id, p.lap), {}))
         rank = next(i for i, r in enumerate(rows, 1) if r.kind == "you")
@@ -230,11 +258,9 @@ class ClassicRace:
                 "d_to_start_m": 0.0 if active else round(live.distance_m, 1),
                 "elapsed_s": round(live.elapsed_s, 1) if active and live.elapsed_s is not None else None,
                 "gap_to_pr_s": None if gap is None else round(gap, 1)}
-        if self.powerups_on and not self.erg:
-            pu = self.powerups
-            out["powerup"] = {"held": CONTRACT_POWERUP.get(pu.reserve) if pu.reserve else None,
-                              "active": CONTRACT_POWERUP.get(pu.active) if pu.active else None,
-                              "remaining_s": round(pu.remaining_s, 1) if pu.active else 0.0}
+        # Absent en ERG (T-Q2), sauf pendant les 2 s d'un appui refusé en ERG libre (contrat 1.13).
+        if self.powerups_on and (not self.erg or self.powerups.refused is not None):
+            out["powerup"] = self.powerups.contract()
         if self.segments:
             out["jerseys"] = {"sprint": _contract_rider(self.standings.leader("sprint")),
                               "kom": _contract_rider(self.standings.leader("kom"))}
