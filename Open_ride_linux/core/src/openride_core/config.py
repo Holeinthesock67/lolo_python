@@ -116,6 +116,7 @@ class DriversConfig:
     click_minus_address: str = ""  # boîtier « − » du Click (vide : l'autre boîtier trouvé)
     click_short_max_s: float = 0.5
     click_long_min_s: float = 0.9
+    click_repeat_gap_s: float = 0.0  # > 0 : rafale du bouton maintenu = un seul appui (essai 08/11 : 0,35 fond les appuis rapides)
     click_trace_raw: bool = False
     click_mute_after_s: float = 60.0
     click_rehandshake_s: float = 0.0
@@ -360,6 +361,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("render", "theme_library_gb"): (1, 50),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
+    ("drivers", "click_repeat_gap_s"): (0, 1),
     ("open_world", "cache_max_gb"): (0.5, 500),
     ("open_world", "horizon_m"): (1000, 10000),
     ("open_world", "offer_m"): (50, 2000),
@@ -507,6 +509,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
     ("drivers", "click_long_min_s"): "seuils d'appui du Click",
+    ("drivers", "click_repeat_gap_s"): "seuils d'appui du Click",
     ("drivers", "click_mute_after_s"): "alerte de boîtier muet",
     ("drivers", "click_rehandshake_s"): "reprise d'un boîtier muet",
     ("drivers", "click_reset_locked"): "boîtier gauche verrouillé par Zwift",
