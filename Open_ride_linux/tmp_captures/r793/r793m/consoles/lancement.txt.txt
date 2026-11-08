@@ -1,0 +1,7 @@
+07:27:52 empreinte avant 7c0c6e30d7f565baa3167a4b883cbe3e
+07:27:52 tête 445863fe
+07:29:01 visual_check 1280x720:low main, Xvfb + lavapipe forcé
+07:39:11 fin visual rc=1
+07:39:12 empreinte après 7c0c6e30d7f565baa3167a4b883cbe3e
+07:39:12 clone 9c7c9556
+07:39:12 FIN

@@ -1,0 +1,9 @@
+06:39:59 empreinte avant 7c0c6e30d7f565baa3167a4b883cbe3e
+06:39:59 tête a72f1791
+06:41:10 caches de shaders mis de côté (froid)
+06:41:10 suite engine à froid
+07:04:19 fin suite rc=1
+07:04:19 caches remis en place
+07:04:20 empreinte après 7c0c6e30d7f565baa3167a4b883cbe3e
+07:04:20 clone 9c7c9556
+07:04:20 FIN

@@ -1,0 +1,7 @@
+07:04:20 empreinte avant 7c0c6e30d7f565baa3167a4b883cbe3e
+07:04:20 tête 910b3e27
+07:05:29 visual natif
+07:27:49 fin visual rc=1
+07:27:51 empreinte après 7c0c6e30d7f565baa3167a4b883cbe3e
+07:27:51 clone 9c7c9556
+07:27:51 FIN
