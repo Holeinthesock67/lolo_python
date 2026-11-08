@@ -364,7 +364,7 @@ grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
 trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce nombre de secondes (lot Q5)
 resend_s = 2.0               # la consigne est renvoyée au moins toutes les resend_s secondes ; une valeur plus grande (10 à 15) limite les écritures SIM_PARAMS quand la pente dérive peu
-control = "sim"              # menu « Pilotage du trainer » : "sim" (défaut, revenu en 1.0.2 le 2 novembre : pente 0x11, le trainer simule l'élan et le rend après un sprint) ou "resistance" (le core calcule la force de la route au volant et envoie un niveau 0x04, lots RC1-RC3 ; tournait dans le vide à basse vitesse sur le plat, essai du 2 novembre : k se corrige aussi sous 30 W, frein sans effet 8 s = contrôle repris, deux fois au plus, puis SIM du trainer jusqu'à la fin de la séance ; ligne « FTMS ~ mesures » toujours écrite dans ce mode) ; le mode « power » des essais 7rc2 est retiré
+control = "sim"              # menu « Pilotage du trainer » : "sim" (défaut, revenu en 1.0.2 le 2 novembre : pente 0x11, le trainer simule l'élan et le rend après un sprint) ou "resistance" (le core calcule la force de la route au volant et envoie un niveau 0x04, lots RC1-RC3 ; tournait dans le vide à basse vitesse sur le plat, essai du 2 novembre : k se corrige aussi sous 30 W, frein sans effet 8 s = contrôle repris, deux fois au plus, puis SIM du trainer jusqu'à la fin de la séance ; ligne « FTMS ~ mesures » toujours écrite dans ce mode ; lot RC5, recette du 7 novembre : k gelé niveau en butée et 1 s après un changement de niveau, niveau calculé sur la vitesse du volant lissée 1,5 s, montée bornée à 20 % de la plage par seconde) ; le mode « power » des essais 7rc2 est retiré
 resistance_n_per_pct_kmh = 0.036  # frein du trainer en mode résistance : force par % et par km/h du volant (N), étalonnage 7rc1 (F = k × niveau × v), corrigée en roulant
 resistance_inertia_pct = 0.0  # mode résistance : part de l'inertie m × a (masse du profil) ajoutée quand le volant accélère, 0 à 100 %, jamais rendue ; coupée par défaut (essai 7rc3 à 50 % : 3,5, durcit et retarde)
 
@@ -407,6 +407,8 @@ draft_gauge = "off"  # jauge d'abri au-dessus du bot qui t'abrite : off, on (« 
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 biome = "auto"           # biome du décor (lot U16, « Biome du décor ») : auto (biomes du parcours) ou un des seize biomes, forcé sur tout le parcours
 texture_level = "auto"   # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high (« Textures du décor »)
+day_night = "off"       # jour et nuit (lot P19, « Jour et nuit ») : off (soleil fixe), theme (heure du thème), real (heure du PC) ou accelerated (une journée en une heure)
+seasons = "off"         # saisons (lot P19, « Saisons ») : off (l'été), theme, date (selon la date et l'hémisphère), spring, summer, autumn ou winter
 theme_library_gb = 5 # plafond des packs de thèmes de ~/OpenRide/Themes, de 1 à 50 Go (lot U15) : theme-install retire le moins récemment utilisé ; menu : Avancé, lot O27
 
 [ipc]

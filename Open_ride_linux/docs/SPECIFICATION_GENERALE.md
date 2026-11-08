@@ -296,7 +296,7 @@ Détail : [PLAN_SERIE_U.md](3.0/PLAN_SERIE_U.md). Toutes les questions U-Q1 à U
 | 3.0-DS-1 | Dernier survivant jusqu'à 11 adversaires | DS8 | Livré (PR #735) |
 | 3.0-FIT-1 | FIT importé sans erreur dans Garmin Connect et GoldenCheetah (ligne 21 de la recette 1.0) | X56 | Livré, validé le 7 novembre |
 | 3.0-VNT-1 | Vent d'après la météo locale (Open-Meteo) au lancement, coupé par défaut et activé au menu (décisions du 8 novembre), lu par un processus annexe, repli sans vent hors ligne, le core n'attend jamais le réseau (reprend 2.0-VNT-1, règle R-NET-3) | P33 | Spécifié (cahier rédigé le 8 novembre) |
-| 3.0-VNT-2 | Lenticulaire et vent de travers : pénalité de la roue lenticulaire par vent de travers (question V-Q13), vent de travers déjà calculé pour l'abri (AS3) | P34 | Spécifié (cahier rédigé le 8 novembre) |
+| 3.0-VNT-2 | Lenticulaire et vent de travers : pénalité de la roue lenticulaire par vent de travers (question V-Q13), vent de travers déjà calculé pour l'abri (AS3) | P34 | En revue |
 
 ### 5.4 Version 4.0
 
@@ -307,7 +307,7 @@ Détail : [4.0/README.md](4.0/README.md). Code de la 4.0 déjà fusionné sur `m
 | 4.0-BON-1 | Bonus tactiques : un seul modèle de bonus dans `powerups.py`, tirage selon le contexte et refus motivé ; Plume, Casque, Puissance, Enclume, Aspiration +, Échappée, Rouleau compresseur ; réglage `powerups.mode` à trois choix ; tous coupés en ERG, ERG de session libre compris | TT1 à TT8 | Spécifié (cahiers rédigés le 8 novembre) |
 | 4.0-GP-1 | Grand Prix des objets : treize objets propres à OpenRide, chacun désactivable, boîtes de ravitaillement, tirage selon le retard, effets sur la vitesse virtuelle seulement, bots qui prennent et lancent les objets, jusqu'à 11 bots | GP1 à GP11 | GP1, GP2, GP3 et GP6 livrés ; GP5 en revue (PR #779) ; reste GP4, GP7 à GP11 |
 | 4.0-VD-1 | Vélodrome couvert : piste de 250 m en bois à virages relevés, salle et tribunes, épreuves de piste (poursuite, kilomètre, scratch, points, élimination, keirin, omnium, heure…), bots du peloton sur la piste | VD0 à VD12 | VD0 livré (PR #725) ; VD1 à VD5 en revue (PR #746) ; VD6, VD7, VD9 et VD10 en revue (PR #769) |
-| 4.0-CLK-1 | Boîtier gauche du Click fiable quand Zwift tourne sur un autre appareil, essai sur le vélo (décision du 28 octobre) | K9 | Code en PR le 8 novembre (choix `keep`), essai sur le vélo à faire |
+| 4.0-CLK-1 | Boîtier gauche du Click fiable quand Zwift tourne sur un autre appareil, essai sur le vélo (décision du 28 octobre) | K9 | Essayé le 8 novembre : le maintien sans redémarrage ne tient pas sous firmware 1.2.0, le redémarrage `0x18` reste (environ 4 s par minute) |
 | 4.0-BIO-1 | Constructions et faune propres à chaque biome (demande du 6 novembre) | U23 | Étape 1 livrée (PR #748) ; étape 2 en revue (PR #771) |
 | 4.0-DEC-1 | Panneaux d'approche plus grands (+25 %) et plus travaillés (demande du 6 novembre) | panneaux, PR #773 | En revue : captures validées le 8 novembre, banc GPU à faire |
 | 4.0-RES-1 | Résistance calculée sans trou à basse vitesse, sans pompage à basse cadence | RC4, RC5 | RC4 livré (PR #718, recette 4/5 le 7 novembre) ; RC5 en revue (PR #766) |

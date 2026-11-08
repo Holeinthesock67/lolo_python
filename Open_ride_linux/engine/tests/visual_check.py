@@ -112,7 +112,7 @@ MENU_CATALOG = {
 }
 MENU_DEVICES = {
     "trainer": {"status": "CONNECTED", "name": "HomeTrainer 0001"},
-    "click": [{"status": "CONNECTED", "role": "plus"}, {"status": "LOST", "role": "minus"}],
+    "click": [{"status": "CONNECTED", "side": "plus"}, {"status": "LOST", "side": "minus"}],
     "hr": {"status": "CONNECTED", "name": "Ceinture"},
 }
 
@@ -591,6 +591,8 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes_dir}",
             "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}", f"--living={args.decor_vivant}",
             "--camera=subjective"]   # les scènes d'avant le lot V12 supposent la caméra subjective
+    if getattr(args, "biome", None):
+        cmd.append(f"--biome={args.biome}")   # biome forcé sur tout le parcours (lot U5)
     preset_dir = quality + ("" if args.decor_vivant == "on" else "_sans_vivant") + ("" if v_grade == 1.0 else f"_k{v_grade}")
     gold = Path(args.golden) / ("natif" if args.native else "xvfb") / preset_dir if args.golden else None
     update = {v.strip() for v in args.update_golden.split(",") if v.strip()} if args.update_golden else None
@@ -658,6 +660,11 @@ def _scenes(s: Session) -> None:
     core.streaming = True
     loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
     s.check("vue_fixe", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    # Décor du départ prêt (`scene_ready`, lot O36) avant la première capture : juste après route_loaded, l'engine
+    # construit la scène sans lire ses datagrammes (20 s en llvmpipe sur le PC, 8 novembre) ; le tampon du socket,
+    # plein des trames state, perdait la demande de capture de vue_fixe (journal r801 : aucune réponse avant 126 s).
+    ready = core.log.wait_for(r"^scene_ready id=demo", ROUTE_TIMEOUT_S * s.slowdown())
+    s.check("vue_fixe", "décor du départ prêt", ready is not None, ready[1].string if ready else "aucun scene_ready")
     time.sleep(SETTLE_S if s.freeze_t is None else FREEZE_SETTLE_S)
     shot = s.capture("vue_fixe")
     if shot:
@@ -1137,6 +1144,7 @@ def _scenes(s: Session) -> None:
         img, info = shot
         s.check_banner("erreur", img, info, "route_invalid")
         s.check_layout("erreur", info)
+    _settings_scenes(s)
     _menu_scenes(s)
     _pentes_scenes(s)
     _decor_vivant_scene(s)
@@ -1450,6 +1458,8 @@ def _menu_scenes(s: Session) -> None:
         img, info = shot
         s.check_texts("menu_accueil", info, {"menu_title": "OpenRide", "menu": "Session libre | Session ERG | Choisir un plan"}, contains=True)
         s.check_texts("menu_accueil", info, {"menu": "Trainer HomeTrainer 0001 : connecté"}, contains=True)
+        # Boîtier gauche muet (lot N19) : raison connue, verrou de Zwift, au lieu d'une erreur.
+        s.check_texts("menu_accueil", info, {"menu": "Click − : verrou Zwift"}, contains=True)
         s.check_layout("menu_accueil", info)
         s.check_banner("menu_accueil", img, info, None)
         m = info["widgets"]["menu"]
@@ -1522,6 +1532,102 @@ def _confirmation_scene(s: Session) -> None:
         s.check_layout("confirmation", info)
     core.send({"type": "input", "v": CONTRACT_VERSION, "event": "Y_SHORT"})
     time.sleep(0.6)
+
+
+# Réglages de la scène `reglages` (lot N19) : un sous-écran Son avec des volumes en % (curseurs, libellés
+# longs du core compris : aucun ne doit être coupé) et le
+# sous-écran Cycliste (FTP, poids), sans valeur réelle du propriétaire.
+SETTINGS_ITEMS = [
+    {"key": "rider.ftp_w", "label": "FTP", "group": "rider", "type": "int", "value": 250, "min": 50, "max": 600,
+     "step": 5, "unit": "W", "applies": "next_session"},
+    {"key": "rider.weight_kg", "label": "Poids", "group": "rider", "type": "int", "value": 75, "min": 30, "max": 200,
+     "step": 1, "unit": "kg", "applies": "next_session"},
+    {"key": "audio.master_pct", "label": "Général", "group": "sound", "type": "int", "value": 80, "min": 0,
+     "max": 100, "step": 10, "unit": "%", "applies": "now"},
+    {"key": "audio.ride_pct", "label": "Vent et roue libre", "group": "sound", "type": "int", "value": 40,
+     "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
+    {"key": "audio.events_pct", "label": "Bips et événements", "group": "sound", "type": "int", "value": 70,
+     "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
+    {"key": "audio.rogue_sfx_pct", "label": "Cyber-Rogue : bruitages", "group": "sound", "type": "int", "value": 50,
+     "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
+    {"key": "audio.ambience_pct", "label": "Ambiance", "group": "sound", "type": "int", "value": 60,
+     "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
+]
+# Appareils trouvés par la recherche de la scène `appareils` (adresses factices).
+SCAN_ITEMS = [
+    {"role": "trainer", "name": "HomeTrainer 0001", "address": "C1:1C:00:00:00:01", "rssi": -58, "configured": True},
+    {"role": "click", "name": "Zwift Click", "address": "C1:1C:00:00:00:02", "rssi": -62, "configured": True},
+    {"role": "click", "name": "Zwift Click", "address": "C1:1C:00:00:00:03", "rssi": -70, "configured": True},
+]
+
+
+def _settings_scenes(s: Session) -> None:
+    """Lot N19 (étape 3 des menus) : `reglages` (sous-écran Son, volumes en curseur), `reglage_edition` (poids
+    modifié en place dans sa rangée) et `appareils` (écran Appareils après une recherche, carte du Click avec la
+    raison connue du silence du boîtier gauche). Part de l'accueil et y revient."""
+    core = s.core
+    # Sans `devices` : tout est relié (repli v1), l'écran de connexion passe seul à l'accueil (la pastille du
+    # boîtier gauche muet est vérifiée par `menu_accueil`).
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="IDLE", devices=None, summary=None)
+    time.sleep(SETTLE_S + 3.0)
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": SETTINGS_ITEMS})
+    time.sleep(0.5)
+
+    def press(*events: str, pause: float = 0.25) -> None:
+        for event in events:
+            core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+            time.sleep(pause)
+        time.sleep(0.5)
+
+    # Accueil : − deux fois (Quitter, puis Réglages), A maintenu ; Réglages : Appareils, Contenus, Cycliste, Son.
+    press("MINUS_SHORT", "MINUS_SHORT", "A_LONG")
+    press("PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT", "A_LONG")
+    shot = s.capture("reglages")
+    if shot:
+        img, info = shot
+        s.check_texts("reglages", info, {"menu_title": "Réglages › Son", "menu": "[Général — 80 %]"}, contains=True)
+        s.check_texts("reglages", info, {"menu": "Vent et roue libre — 40 %"}, contains=True)
+        clipped = info.get("menu_clipped", [])
+        s.check("reglages", "libellés des curseurs entiers (pas de « … »)", not clipped, ", ".join(clipped) or "aucun coupé")
+        # Valeurs (« 80 % ») entre le curseur et le bord droit de la liste (x ≈ 595–650 sur 1280, trois rangées).
+        right = (int(s.width * 0.46), int(s.height * 0.16), int(s.width * 0.515), int(s.height * 0.35))
+        value = fraction(img, right, lambda p: min(p) > 150, step=1)
+        s.check("reglages", "valeurs « 80 % » visibles à droite des curseurs", value >= 0.01, f"{value:.2%} de pixels clairs")
+        s.check_layout("reglages", info)
+        m = info["widgets"]["menu"]
+        left = (int(m["rect"][0]), int(m["rect"][1]), int(m["rect"][0] + m["rect"][2] / 2), int(m["rect"][1] + m["rect"][3]))
+        bar = fraction(img, left, lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
+        s.check("reglages", "curseurs des volumes remplis en cyan", bar >= 0.003, f"{bar:.2%} de pixels cyan")
+    # Retour aux Réglages (focus sur Son), Cycliste, Poids modifié en place : + une fois, 76 kg.
+    t_edit = now()
+    press("Y_SHORT", "MINUS_SHORT", "A_LONG", "PLUS_SHORT", "A_LONG", "PLUS_SHORT")
+    shot = s.capture("reglage_edition")
+    if shot:
+        img, info = shot
+        s.check_texts("reglage_edition", info, {"menu_title": "Réglages › Cycliste", "menu": "[Poids — ◀ 76 kg ▶]"}, contains=True)
+        s.check_texts("reglage_edition", info, {"menu": "FTP — 250 W"}, contains=True)
+        s.check_layout("reglage_edition", info)
+    # Y annule (rien n'est écrit), retour aux Réglages ; Appareils en tête ; recherche faite par le core.
+    press("Y_SHORT", "Y_SHORT", "MINUS_SHORT", "MINUS_SHORT", "A_LONG")
+    core.send({"type": "scan_results", "v": CONTRACT_VERSION, "request_cmd_id": 0, "done": True, "items": SCAN_ITEMS,
+               "plus_address": None})
+    time.sleep(0.5)
+    # Pendant la recherche, seul « Retour » est actif et garde le focus : + trois fois, Rechercher, Trainer, Click.
+    press("PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT")
+    shot = s.capture("appareils")
+    if shot:
+        img, info = shot
+        s.check_texts("appareils", info, {"menu_title": "Appareils", "menu": "Trainer — HomeTrainer 0001"}, contains=True)
+        s.check_texts("appareils", info, {"menu": "[Click : identifier le bouton +]"}, contains=True)
+        s.check_texts("appareils", info, {"menu": "Zwift le verrouille environ une minute après la connexion"}, contains=True)
+        s.check_layout("appareils", info)
+    sent = [r.msg.get("name") for r in core.messages("cmd", since=t_edit)]   # commandes depuis l'édition
+    s.check("reglage_edition", "Y annule : aucun set_setting envoyé", "set_setting" not in sent, ", ".join(map(str, sent[-8:])))
+    # Retour à l'accueil (focus resté sur Réglages), puis + deux fois (Quitter, Session libre) : les scènes
+    # suivantes partent de la première entrée, comme au lancement.
+    press("Y_SHORT", "Y_SHORT", "PLUS_SHORT", "PLUS_SHORT", pause=0.4)
+    time.sleep(0.6)
+
 
 
 def _records_scene(s: Session) -> None:
@@ -1693,6 +1799,7 @@ def _menus_only(s: Session) -> None:
     loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
     s.check("menus", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
     time.sleep(SETTLE_S)
+    _settings_scenes(s)
     _menu_scenes(s)
     _start_screen_scenes(s)
     _coach_scenes(s)
@@ -1761,6 +1868,60 @@ def _quality_guard_scenes(s: Session) -> None:
     if shot:
         s.check("garde_qualite_fin", "qualité portée par la capture", shot[1].get("quality") == wanted,
                 f"{shot[1].get('quality')!r}, attendu {wanted!r}")
+
+
+# Jour, nuit et saisons (lot P19) : heure solaire et date imposées par le message de test « sky_cycle »
+SKY_CYCLE_SHOTS = (
+    ("jour_midi", "theme", "off", 12.0, {"year": 2026, "month": 6, "day": 21}),
+    ("jour_crepuscule", "theme", "off", 19.4, {"year": 2026, "month": 6, "day": 21}),
+    ("jour_heure_bleue", "theme", "off", 20.6, {"year": 2026, "month": 6, "day": 21}),
+    ("jour_nuit", "theme", "off", 23.5, {"year": 2026, "month": 6, "day": 29}),
+    ("saison_automne", "off", "autumn", None, None),
+    ("saison_hiver", "off", "winter", None, None),
+    ("saison_printemps", "off", "spring", None, None),
+)
+
+
+def _sky_cycle_scenes(s: Session) -> None:
+    """Lot P19 : captures du jour et de la nuit (midi, crépuscule, heure bleue, nuit) et des saisons (automne,
+    hiver, printemps) sur le parcours demo, réglages remis à « coupé » à la fin. Contrôles : image de plus en plus
+    sombre du midi à la nuit, nuit jamais noire (route lisible), réglages coupés : retour au soleil d'aujourd'hui."""
+    core = s.core
+    t0 = now()
+    while now() - t0 < 20.0 and "IpcClient attaché" not in core.log.path.read_text(errors="replace"):
+        time.sleep(0.1)
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="RUNNING", power=250.0, cadence=90.0, grade=1.0, grade_sent=1.0,
+                   gear=12, gears_total=24, mode="SIM", erg=None, pause_reason=None,
+                   trainer_status="CONNECTED", input_status="CONNECTED")
+    core.auto_hello_ack = True
+    core.catalog_data = MENU_CATALOG
+    core.streaming = True
+    loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
+    s.check("jour_nuit", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    time.sleep(FREEZE_SETTLE_S * max(1.0, s.slowdown() / 2.0))   # terrain et décor chargés : image de référence
+    base = s.capture("jour_coupe")
+    lums = {}
+    for tag, day, season, hour, date in SKY_CYCLE_SHOTS:
+        mark = core.log.mark()
+        core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "sky_cycle", "day_night": day,
+                       "seasons": season, "hour": hour, "date": date})
+        core.log.wait_for(r"^sky_cycle ", 10.0 * s.slowdown(), mark)
+        time.sleep(2.0 * s.slowdown())
+        shot = s.capture(tag)
+        if shot:
+            lums[tag] = stats(shot[0])["lum"]
+    if all(k in lums for k in ("jour_midi", "jour_crepuscule", "jour_nuit")):
+        s.check("jour_nuit", "image de plus en plus sombre du midi à la nuit",
+                lums["jour_midi"] > lums["jour_crepuscule"] > lums["jour_nuit"],
+                f"luminance midi {lums['jour_midi']:.2f}, crépuscule {lums['jour_crepuscule']:.2f}, nuit {lums['jour_nuit']:.2f}")
+        s.check("jour_nuit", "nuit lisible (image jamais noire)", lums["jour_nuit"] > 0.03, f"luminance {lums['jour_nuit']:.3f}")
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "sky_cycle", "day_night": "off", "seasons": "off",
+                   "hour": None, "date": None})
+    time.sleep(2.0 * s.slowdown())
+    back = s.capture("jour_recoupe")
+    if base and back:
+        a, b = stats(base[0])["lum"], stats(back[0])["lum"]
+        s.check("jour_nuit", "réglages recoupés : image d'avant", abs(a - b) < 0.03, f"luminance {a:.3f} puis {b:.3f}")
 
 
 def _draft_gauge_scene(s: Session) -> None:
@@ -2261,9 +2422,16 @@ def main() -> int:
                     help="off : décor vivant coupé, rendu de la 1.0 (références dans <préréglage>_sans_vivant)")
     ap.add_argument("--garde-qualite", action="store_true",
                     help="seulement le garde-fou de la qualité appliquée (démarrage, réglages du core, lot X32)")
+    ap.add_argument("--jour-nuit", action="store_true",
+                    help="seulement les captures du jour, de la nuit et des saisons (lot P19)")
+    ap.add_argument("--biome", default=None, metavar="ID",
+                    help="biome forcé sur tout le parcours (défaut : celui du parcours ; avec --jour-nuit : temperate_forest, "
+                         "feuillus et résineux mêlés pour voir les saisons)")
     ap.add_argument("--lisibilite", action="store_true",
                     help="hauteur des chiffres et contraste des textes du HUD sur chaque capture (lot X22)")
     args = ap.parse_args()
+    if args.jour_nuit and args.biome is None:
+        args.biome = "temperate_forest"
 
     if not (Path(args.godot).is_file() and os.access(args.godot, os.X_OK)):
         print(f"Godot introuvable : {args.godot} (définir GODOT=/chemin/vers/godot)")
@@ -2297,7 +2465,8 @@ def main() -> int:
         shutil.copytree(osm_work / f"{OSM_ROUTE_ID}.world", routes_dir / f"{OSM_ROUTE_ID}.world")
         shutil.rmtree(osm_work, ignore_errors=True)
         for config in [c.strip() for c in args.configs.split(",") if c.strip()]:
-            scenes = _quality_guard_scenes if args.garde_qualite else _menus_only if args.menus else None
+            scenes = (_quality_guard_scenes if args.garde_qualite else _sky_cycle_scenes if args.jour_nuit
+                      else _menus_only if args.menus else None)
             run_config(config, args, routes_dir, out_dir, report, scenes)
     finally:
         shutil.rmtree(routes_dir, ignore_errors=True)

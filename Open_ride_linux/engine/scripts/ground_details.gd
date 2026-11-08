@@ -332,6 +332,7 @@ func _material_for(kind: String) -> Material:
 			_grass_material.set_shader_parameter("fade_end_m", GRASS_FADE_END_M)
 			_grass_material.set_shader_parameter("normals_up_both_sides", true)
 			_grass_material.set_shader_parameter("root_darken", clampf(RenderDiag.number("herbe_degrade", 0.0), 0.0, 1.0))
+			_grass_material.set_shader_parameter("grass", true)   # herbe jaunie selon la saison (lot P18)
 		return _grass_material
 	var m := StandardMaterial3D.new()
 	m.vertex_color_use_as_albedo = true

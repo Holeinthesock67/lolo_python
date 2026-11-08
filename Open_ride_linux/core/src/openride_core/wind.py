@@ -88,6 +88,22 @@ def head_component(sample: WindSample, heading_deg: float) -> float:
     return sample.speed_mps * math.cos(math.radians(sample.from_deg - heading_deg))
 
 
+def cross_component(sample: WindSample, heading_deg: float) -> float:
+    """Composante de travers : positive pour un vent venant de droite (lot AS3)."""
+    return sample.speed_mps * math.sin(math.radians(sample.from_deg - heading_deg))
+
+
+def apparent_yaw_deg(v: float, head_mps: float, cross_mps: float) -> float:
+    """Lacet du vent apparent (degrés, 0 à 90) : angle entre l'air vu par le cycliste et son axe.
+
+    Partagé par l'abri en bordure (lot AS3) et la roue lenticulaire (lot P34) ; 0 sans vent de travers,
+    90 quand le vent de dos va plus vite que le vélo.
+    """
+    if cross_mps == 0.0:
+        return 0.0
+    return math.degrees(math.atan2(abs(cross_mps), max(v + head_mps, 1e-6)))
+
+
 def aero_force_delta(v: float, head_mps: float, alpha_draft: float, alt_m: float,
                      p: PhysicsParams) -> float:
     """Écart de force aérodynamique (N) dû au vent et à l'aspiration, à vitesse `v` donnée.

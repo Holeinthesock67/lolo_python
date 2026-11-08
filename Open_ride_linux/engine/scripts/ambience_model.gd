@@ -6,7 +6,8 @@ extends RefCounted
 ##
 ## - `describe(rider_xz, forests, buildings, waters, radius_m)` : voisinage dans un rayon de 150 m à
 ##   partir des couches chargées (polygones de forêt et de bâtiments en x, z ; eaux `{kind, points, area}`) :
-##   `{forest_share, built_share, water_dist_m, water_kind, sea_dist_m}` (mer la plus proche : lot U11).
+##   `{forest_share, built_share, water_dist_m, water_kind, sea_dist_m, forest_dist_m}` (mer la plus proche :
+##   lot U11 ; distance à la forêt la plus proche, 0 dedans, INF sans forêt dans le rayon : lot P19).
 ## - `evaluate(neigh, now_s)` : volume (dB) de chaque fond de `BEDS`. `neigh` porte aussi `alt_m`,
 ##   `solar_hour` (P7, version 2.0 ; NAN : heure locale du PC), `rain` (P8, 0 à 1), `wind_strength`
 ##   (P4, 0 à 1) et `paused`. Au plus `voices` fonds audibles (`living(preset).ambience_voices`) : les
@@ -17,6 +18,8 @@ extends RefCounted
 ## - Oiseaux par phrases (essai vélo du 2 novembre : « le bruit des oiseaux en continu est pénible ») : une
 ##   phrase de BIRD_PHRASE_MIN_S à BIRD_PHRASE_MAX_S par tranche de BIRD_SLOT_S, puis silence (BIRD_REST_DB),
 ##   fondus de BIRD_EDGE_S ; `birds_gate(t)` est déterministe (même tirage d'une partie à l'autre).
+## - Saisons (lot P18) : `set_season(p)` (`season_model.params`) multiplie oiseaux et insectes par `birds` et
+##   `insects` de la saison (insectes l'été seulement, oiseaux plus rares l'hiver) ; été ou sans appel : 1.
 ## - `bell_strikes(prev_hour, hour)` : coups de cloche quand l'heure pleine est franchie.
 ##
 ## Lot U11 (version 3.0) : dix fonds propres aux biomes (`BIOME_BEDS`), joués comme ceux de P9. `neigh` porte
@@ -101,6 +104,8 @@ var volume := 0.6
 var birds := 0.6
 var insects := 0.4
 var voices := DEFAULT_VOICES
+var season_birds := 1.0
+var season_insects := 1.0
 var _biome_ambience := {}   # biome -> {volume, birds, insects, layers} (thème 2.0, lot U11)
 var _mix_key: Variant = null   # poids du dernier `mix` (cache de `targets`)
 var _mix_val := {}
@@ -242,6 +247,12 @@ func biome_gains(neigh: Dictionary, settings: Dictionary = {}) -> Dictionary:
 	return out
 
 
+## Facteurs de saison des oiseaux et des insectes (season_model.params) ; {} : été (aucun effet).
+func set_season(p: Dictionary) -> void:
+	season_birds = clampf(float(p.get("birds", 1.0)), 0.0, 1.0)
+	season_insects = clampf(float(p.get("insects", 1.0)), 0.0, 1.0)
+
+
 ## Heure locale du PC (heures décimales), quand l'heure solaire n'est pas simulée.
 static func local_hour() -> float:
 	var t := Time.get_datetime_dict_from_system()
@@ -298,8 +309,8 @@ func targets(neigh: Dictionary) -> Dictionary:
 	var birds_k: float = m["birds"]
 	var insects_k: float = m["insects"]
 	var gains := {
-		"forest_birds": pow(forest, 0.7) * birds_k / 0.6 * birds_day_factor(hour) * (1.0 - 0.8 * rain),
-		"field_insects": (1.0 - forest) * (1.0 - built) * insects_k / 0.4 * insects_day_factor(hour)
+		"forest_birds": pow(forest, 0.7) * birds_k / 0.6 * season_birds * birds_day_factor(hour) * (1.0 - 0.8 * rain),
+		"field_insects": (1.0 - forest) * (1.0 - built) * insects_k / 0.4 * season_insects * insects_day_factor(hour)
 			* (1.0 - rain) * (1.0 - 0.5 * wind) * (1.0 - clampf((alt - 1800.0) / 600.0, 0.0, 1.0)),
 		"water_flow": clampf(1.0 - (water_dist - 15.0) / 85.0, 0.0, 1.0) * float(WATER_KIND_GAIN.get(water_kind, 0.5)),
 		"village_murmur": pow(built, 0.6) * (1.0 if birds_day_factor(hour) > 0.5 else 0.3),
@@ -434,6 +445,15 @@ static func describe(rider_xz: Vector2, forests: Array, buildings: Array, waters
 				if hit:
 					built_n += 1
 					break
+	# Distance à la forêt la plus proche (feuilles qui tombent, lot P19) : 0 dedans
+	var forest_dist := INF
+	for poly in forests:
+		var pts: PackedVector2Array = poly
+		if pts.size() >= 3 and Geometry2D.is_point_in_polygon(rider_xz, pts):
+			forest_dist = 0.0
+			break
+		for k in range(pts.size()):
+			forest_dist = minf(forest_dist, _point_segment_dist(rider_xz, pts[k], pts[(k + 1) % pts.size()]))
 	var best := INF
 	var kind := ""
 	var sea := INF
@@ -461,6 +481,7 @@ static func describe(rider_xz: Vector2, forests: Array, buildings: Array, waters
 		"forest_share": float(forest_n) / float(maxi(inside, 1)),
 		"built_share": float(built_n) / float(maxi(inside, 1)),
 		"water_dist_m": best,
+		"forest_dist_m": forest_dist,
 		"water_kind": kind,
 		"sea_dist_m": sea,
 	}
