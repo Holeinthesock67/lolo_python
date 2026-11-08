@@ -58,6 +58,11 @@ extends RefCounted
 ## parcours ». `start` part avec `mode` « track » et `track` = {event, réglages}. Passer à une autre épreuve en
 ## ERG revient en SIM (sans entraînement). Les choix restent jusqu'à la fermeture de l'engine.
 ##
+## Séance conseillée (série CO, lot CO5) : « Séance conseillée » en tête de l'accueil, sous le profil, quand le core a
+## répondu à get_coach (set_coach_home()) ; elle renvoie une action « item » de l'accueil (écrans de menu_flow.gd).
+## choose_workout() prépare un entraînement (liste des entraînements, entraînement conseillé) ; prepare_coach_race()
+## prépare la course conseillée (`mode` « coach » : écran Prêt avec « Démarrer » et le fantôme, bots du format).
+##
 ## Derniers choix du profil (lot O32, hello_ack.config.last_choices, set_last_choices()) : un nouvel accueil
 ## remet le bot et le fantôme de la dernière séance au lieu de « aucun » ; la liste des entraînements s'ouvre
 ## sur le dernier entraînement choisi, celle des parcours sur le parcours en cours (rechargé par le core).
@@ -187,6 +192,16 @@ var home_title := "OpenRide"
 ## Séance interrompue d'un lancement précédent (lot O34) : ligne en tête de l'accueil ("" : aucune).
 var interrupted_label := ""
 var interrupted_detail := ""
+## Séance conseillée (série CO, lot CO5) : détail de la ligne « Séance conseillée » de l'accueil (besoin et durée) ;
+## "" tant que le core n'a pas répondu à get_coach : pas de ligne (comme la séance interrompue).
+var coach_detail := ""
+## Course conseillée (lot CO5) : `mode` « coach », rappel du format affiché sur l'écran Prêt.
+var coach_ready := ""
+
+
+func set_coach_home(detail: String) -> void:
+	coach_detail = detail
+	_refresh_home()
 
 
 func set_interrupted(label: String, detail: String) -> void:
@@ -224,6 +239,8 @@ func _init() -> void:
 func _refresh_home() -> void:
 	var world := world_name if world_name != "" else "à choisir"
 	var items := [_item("world", "Parcours : " + world)]
+	if coach_detail != "":
+		items.push_front(_item("coach", "Séance conseillée", true, coach_detail))
 	if profile_label != "":
 		items.push_front(_item("profile", profile_label))
 	if interrupted_label != "":
@@ -238,11 +255,23 @@ func _refresh_home() -> void:
 	if garage:
 		items.append(_item("garage", "Garage"))
 	items.append_array([_item("settings", "Réglages"), _item("quit", "Quitter")])
+	# Ligne ajoutée ou retirée pendant l'affichage (séance conseillée arrivée après l'accueil, lot CO5) : le focus
+	# reste sur le même élément, comme pour une liste qui change (set_screen_items).
+	var focused_id := ""
+	if _screen == HOME and _focus >= 0 and _focus < _screens[HOME]["items"].size():
+		focused_id = _screens[HOME]["items"][_focus]["id"]
 	_screens[HOME]["items"] = items
+	if focused_id != "":
+		_focus = _first_enabled_from(_index_of(focused_id), 1)
 	if mode == "rogue":
 		_screens[READY]["items"] = [_item("start", "Démarrer", true, rogue_ready),
 			_item("rogue_change", "Changer les choix")]
 		_screens[READY]["title"] = "Prêt : Cyber-Rogue"
+		return
+	if mode == "coach":
+		_screens[READY]["items"] = [_item("start", "Démarrer", true, coach_ready), _item("ghost",
+			"Fantôme de la dernière séance : " + ("oui" if ghost else "non"))]
+		_screens[READY]["title"] = "Prêt : " + start_name + ("" if world_name == "" else " — " + world_name)
 		return
 	if mode == "survivor":
 		_screens[READY]["items"] = [_item("start", "Lancer", bool(survivor_launch.get("enabled", true)),
@@ -383,6 +412,44 @@ func prepare_start(name: String, args: Dictionary) -> Dictionary:
 	return state()
 
 
+## Course conseillée (série CO, lot CO5) : session libre en SIM sur le parcours du conseil, déjà choisi, avec
+## les bots du format (`args` de `start`) ; l'écran Prêt ne garde que « Démarrer » et le fantôme.
+func prepare_coach_race(name: String, args: Dictionary, ready_text: String) -> Dictionary:
+	start_name = name
+	start_args = args.duplicate(true)
+	coach_ready = ready_text
+	mode = "coach"
+	bot_choices = []
+	peloton = 0
+	ghost = false
+	_refresh_home()
+	_open(READY)
+	return state()
+
+
+## Entraînement choisi (liste des entraînements, ou séance conseillée, lot CO5) : séance ERG, écran Prêt, ou les
+## parcours d'abord sans monde choisi ; `workout` null : session libre. Renvoie l'action `select_workout`.
+func choose_workout(workout) -> Dictionary:
+	mode = "free" if workout == null else "erg"
+	if workout != null:
+		last_workout = str(workout)   # noté aussi par le core (lot O32)
+	_clear_start()
+	_refresh_home()
+	if _screen == WORKOUTS and _workouts_return == READY:
+		_back()
+	elif world_id == "":
+		_routes_return = READY
+		if _screen == WORKOUTS:
+			_replace_top(ROUTES)
+		else:
+			_open(ROUTES)
+	elif _screen == WORKOUTS:
+		_go(READY)
+	else:
+		_open(READY)
+	return {"action": "select_workout", "workout_id": workout}
+
+
 ## Séance du mode WTF (lot WTF3) : session libre en SIM avec `mode` « wtf » au `start` ; ouvre l'écran
 ## Prêt, ou les parcours d'abord sans monde choisi.
 func prepare_wtf() -> Dictionary:
@@ -444,6 +511,10 @@ func _start_args() -> Dictionary:
 			var v = track_value(str(o))
 			choice[str(o)] = int(v) if v is float and is_equal_approx(v, round(v)) else v   # 20 et non 20.0
 		return {"mode": "track", "track": choice}
+	if mode == "coach" and ghost:   # bots du format de la course conseillée, fantôme en plus (lot CO5)
+		out["bots"] = (out.get("bots", []) as Array) + [{"kind": "ghost"}]
+	if mode == "coach":
+		return out
 	if mode == "wtf":
 		out["mode"] = "wtf"
 	var bots: Array = []
@@ -583,7 +654,7 @@ func reset() -> void:
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	peloton = last_peloton
-	if mode in ["rogue", "wtf", "survivor"]:
+	if mode in ["rogue", "wtf", "survivor", "coach"]:
 		mode = "free"
 	_refresh_home()
 	_open(HOME, false)
@@ -880,7 +951,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "history", "rogue", "garage", "profile", "wtf", "survivor", "interrupted":
+				"plan", "ftp", "history", "rogue", "garage", "profile", "wtf", "survivor", "interrupted", "coach":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
@@ -898,24 +969,11 @@ func _validate() -> Dictionary:
 		WORKOUTS:
 			if id in [CREATE_WORKOUT_ID, IMPORT_WORKOUT_ID, QWK_WORKOUT_ID, HELP_WORKOUT_ID]:
 				return {"action": "item", "screen": WORKOUTS, "id": id}
-			var workout = null if id == NO_WORKOUT_ID else id
-			mode = "free" if workout == null else "erg"
-			if workout != null:
-				last_workout = id   # noté aussi par le core (lot O32)
-			_clear_start()
-			_refresh_home()
-			if _workouts_return == READY:
-				_back()
-			elif world_id == "":
-				_routes_return = READY
-				_replace_top(ROUTES)
-			else:
-				_go(READY)
-			return {"action": "select_workout", "workout_id": workout}
+			return choose_workout(null if id == NO_WORKOUT_ID else id)
 		READY:
 			match id:
 				"start":
-					if not mode in ["rogue", "survivor"]:   # bots de la séance notés aussi par le core (lot O32)
+					if not mode in ["rogue", "survivor", "coach"]:   # bots de la séance notés aussi par le core (lot O32)
 						last_bots = bot_choices.duplicate()
 						last_ghost = ghost
 						last_peloton = peloton

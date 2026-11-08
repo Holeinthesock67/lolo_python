@@ -36,6 +36,9 @@ signal plans_received(msg: Dictionary)
 ## Historique (lot O28, contrat 1.5) : réponse à list_history et bilan d'une séance (history_session).
 signal history_received(msg: Dictionary)
 signal history_session_received(msg: Dictionary)
+## Séance conseillée (série CO, lot CO5, contrat 1.12) : réponse à get_coach, set_next_race, clear_next_race,
+## set_watch_advice et clear_watch_advice.
+signal coach_received(msg: Dictionary)
 
 ## Monde ouvert (lot W10, contrat 1.5) : avancement de la préparation du monde (`world_status`).
 signal world_status_received(msg: Dictionary)
@@ -121,6 +124,11 @@ var _pending_list_routes: Dictionary = {}
 var _pending_list_workouts: Dictionary = {}
 var _pending_list_imports: Dictionary = {}
 var _pending_list_route_imports: Dictionary = {}
+## Commande du conseil en attente de son message `coach` (lot CO5) : {name, args, cmd_ids, retries, timer}.
+## Le message `coach` est une grande trame UDP qui peut se perdre : même commande renvoyée (elles sont
+## toutes idempotentes) toutes les 3 s, 3 fois au plus ; le calcul du conseil prend jusqu'à 2 s.
+const COACH_RETRY_S := 3.0
+var _pending_coach: Dictionary = {}
 var _hello_acked := false
 ## Hello demandés au fil d'horloge (contrat §5) ; _hello_now : envoyer dès son prochain tour.
 var _hello_lock := Mutex.new()
@@ -254,6 +262,7 @@ func _process(delta: float) -> void:
 		"Aucune réponse pour les fichiers à importer après 3 tentatives", delta)
 	_tick_list(_pending_list_route_imports, "list_route_imports", "route_imports",
 		"Aucune réponse pour les traces à importer après 3 tentatives", delta)
+	_tick_coach(delta)
 
 	_resend_pending(now)
 
@@ -290,10 +299,7 @@ func _poll_incoming() -> void:
 				test_log("hello_ack config=%s" % JSON.stringify(core_config))
 				hello_ack_received.emit(json_obj)
 			"error":
-				var code := str(json_obj.get("code", ""))
-				var message := str(json_obj.get("message", ""))
-				print("Erreur du core : ", code, " : ", message)
-				error_received.emit(code, message)
+				_on_error(str(json_obj.get("code", "")), str(json_obj.get("message", "")))
 			"shutdown":
 				print("Le core s'est arrêté ; retour à l'attente.")
 				test_log("shutdown")
@@ -319,6 +325,8 @@ func _poll_incoming() -> void:
 				history_received.emit(json_obj)
 			"history_session":
 				history_session_received.emit(json_obj)
+			"coach":
+				_on_coach(json_obj)
 			"world_status":
 				world_status = json_obj
 				world_status_received.emit(json_obj)
@@ -533,6 +541,46 @@ func list_workouts() -> int:
 	var cmd_id := send_command("list_workouts", {})
 	_reset_list_request(_pending_list_workouts, cmd_id)
 	return cmd_id
+
+
+## Séance conseillée (lot CO5, contrat 1.12) : get_coach, set_next_race, clear_next_race, set_watch_advice ou
+## clear_watch_advice. Réponse : signal coach_received (seule la dernière demande compte), relancée sans réponse.
+func coach_command(cmd_name: String, args: Dictionary = {}) -> int:
+	var cmd_id := send_command(cmd_name, args)
+	_pending_coach.clear()
+	_pending_coach.merge({"name": cmd_name, "args": args, "cmd_ids": [cmd_id], "retries": 0, "timer": 0.0})
+	return cmd_id
+
+
+func _on_error(code: String, message: String) -> void:
+	if code == "bad_args":
+		_pending_coach.clear()   # saisie du conseil refusée : la renvoyer ne changerait rien
+	print("Erreur du core : ", code, " : ", message)
+	error_received.emit(code, message)
+
+
+## Message `coach` : émis s'il répond à la demande en cours (ou sans demande en cours), ignoré s'il répond
+## à une demande remplacée depuis.
+func _on_coach(msg: Dictionary) -> void:
+	if _pending_coach.is_empty() or int(msg.get("request_cmd_id", -1)) in _pending_coach["cmd_ids"]:
+		_pending_coach.clear()
+		coach_received.emit(msg)
+
+
+func _tick_coach(delta: float) -> void:
+	if _pending_coach.is_empty():
+		return
+	_pending_coach["timer"] = float(_pending_coach["timer"]) + delta
+	if _pending_coach["timer"] < COACH_RETRY_S:
+		return
+	_pending_coach["timer"] = 0.0
+	_pending_coach["retries"] = int(_pending_coach["retries"]) + 1
+	if _pending_coach["retries"] > LIST_MAX_RETRIES:
+		_pending_coach.clear()
+		list_failed.emit("coach", "Aucune réponse pour la séance conseillée après 3 tentatives")
+		return
+	test_log("coach_retry name=%s retries=%d" % [_pending_coach["name"], _pending_coach["retries"]])
+	_pending_coach["cmd_ids"].append(send_command(str(_pending_coach["name"]), _pending_coach["args"]))
 
 
 ## Modifie la difficulté du trainer pendant la séance (lot Q1, contrat v1.2).
