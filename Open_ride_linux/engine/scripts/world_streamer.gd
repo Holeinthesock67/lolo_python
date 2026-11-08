@@ -314,6 +314,12 @@ func surface_at(s: float) -> String:
 	return RoadSurface.effective(route.surface_at(s), gravel_mode)
 
 
+## Demi-largeur roulable du ruban en s (cyclistes du décor sur le gravel) : RoadSurface.rideable_half, option et
+## largeurs du thème actuelles.
+func rideable_half(s: float, road_width_m: float = RoadBuilder.ROAD_WIDTH_M) -> float:
+	return RoadSurface.rideable_half(route, s, gravel_mode, _surfaces, road_width_m)
+
+
 ## Monde vivant (lot W10) : nouvelle route (prolongée ou réécrite depuis la partie `from_part`) et tuiles
 ## de terrain nouvellement écrites. Les tronçons de ruban touchés sont reconstruits, les autres gardés ;
 ## les travaux en cours gardent l'ancienne route, qui n'est plus modifiée.

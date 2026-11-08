@@ -311,6 +311,7 @@ class CoreSession:
         self._lane = self._rider_lane()   # écart à l'axe du cycliste (lot AS2)
         self.traffic: traffic_mod.Traffic | None = None   # circulation de la route (lot AS6)
         self.road_cyclists: road_cyclists_mod.RoadCyclists | None = None   # cyclistes du décor (lot AS7)
+        self._surface_widths: dict[str, float] | None = None   # largeurs des chemins du thème (option gravel)
         self._world_src: tuple[Route, Path, dict] | None = None   # route, dossier et manifeste du .world choisi
         self._suction = 0.0           # aspiration d'un véhicule qui double (lot AS6)
         self._draft_w: int | None = None   # watts économisés à l'abri, à partir de 0,02 d'abri (lot AS5)
@@ -3118,6 +3119,9 @@ class CoreSession:
             self.traffic = traffic_mod.Traffic(
                 route=route, seed=TRAFFIC_SEED, villages=villages,
                 snow_line_m=traffic_mod.snow_line({"terrain": theme_section(self.cfg.render.theme, "terrain")}),
+                unpaved_at=lambda s: surface_physics.effective_surface(
+                    route.surface_at(s) if hasattr(route, "surface_at") else "paved", self.cfg.gravel.mode)
+                in surface_physics.UNPAVED,
                 bench_every_s=float(self.cfg.ride.traffic_bench_s))
         return self.traffic
 
@@ -3130,8 +3134,22 @@ class CoreSession:
         if self.road_cyclists is None or self.road_cyclists.route is not route:
             self.road_cyclists = road_cyclists_mod.RoadCyclists(
                 route, road_cyclists_mod.climbs_for(route, self._segments), traffic.villages,
-                seed=road_cyclists_mod.SEED)
+                seed=road_cyclists_mod.SEED, half_width_at=self._half_at(route))
         return self.road_cyclists
+
+    def _half_at(self, route: Route | None) -> Callable[[float], float] | None:
+        """Option gravel (correctif du 7/11) : demi-largeur sûre de la chaussée en s, pour les vélos (cycliste, bots,
+        cyclistes du décor) ; mode lu à chaque appel (menu), largeurs du thème ; None sans parcours."""
+        if route is None:
+            return None
+        if self._surface_widths is None:
+            self._surface_widths = surface_physics.surface_widths(theme_section(self.cfg.render.theme, "surfaces"))
+        widths = self._surface_widths
+
+        def half_at(s: float) -> float:
+            return surface_physics.rideable_half_m(route, s, self.cfg.gravel.mode, widths, 6.0)
+
+        return half_at
 
     def _update_draft(self, dt: float, route: Route | None, heading_deg: float,
                       traffic: traffic_mod.Traffic | None = None) -> None:
@@ -3177,7 +3195,8 @@ class CoreSession:
         runners += [(v.s, v.speed_mps, draft_mod.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width,
                                                        length=v.length)) for v in near if v.dir == 1]
         runners += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders if r.dir == 1]
-        draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None)
+        draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None,
+                               self._half_at(route))
 
         cross = cross_at(heading_deg)
         rider = draft_mod.Source(self.physics.s, self.physics.v, lane_m=self._lane.m, cda_m2=self.physics.p.cda_m2)
