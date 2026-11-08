@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série P : vent d'après la météo locale lue au lancement par un processus annexe, repli sans vent hors ligne | Python | P1, P2 | Moyenne | Prêt (version 3.0, reprise de l'exigence 2.0-VNT-1) |
+| Série P : vent d'après la météo locale lue au lancement par un processus annexe, repli sans vent hors ligne | Python | P1, P2 | Moyenne | En revue (version 3.0, reprise de l'exigence 2.0-VNT-1) |
 
 Décision n° 1 du lot P1 (propriétaire, 25 octobre) : en 2.0, vent activé par défaut d'après la météo locale. Jamais fait : relevé le 8 novembre (fil « Expliquer quand le vent est actif »), reporté en 3.0 par la feuille de route. Règles R-NET-1 à R-NET-3 de la spécification générale (§3).
 

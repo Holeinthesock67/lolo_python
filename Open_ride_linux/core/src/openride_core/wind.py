@@ -9,7 +9,9 @@ Modes (`[wind] mode`) :
 - `fixed` : vent constant `speed_kmh` venant de `from_deg` ;
 - `gusty` : même vent de base, avec des rafales d'amplitude `gust_pct` et une direction qui
   oscille de ± 15° au plus ;
-- `theme` : vent `wind` du thème (`speed_kmh`, `from_deg`, `gust_pct`), en rafales.
+- `theme` : vent `wind` du thème (`speed_kmh`, `from_deg`, `gust_pct`), en rafales ;
+- `local` : vent du jour au départ du parcours (lot P33), lu par le lanceur chez Open-Meteo et
+  passé par le cache de `local_weather` ; en rafales. Sans lecture de moins de 3 h : comme `off`.
 
 Les rafales sont une somme de trois sinusoïdes de périodes 20 à 90 s, dont les phases viennent
 de `seed` : même graine, même suite de vents (rejeu d'une séance).
@@ -48,15 +50,20 @@ class WindModel:
         self.mode = mode
         self.base_mps = max(speed_kmh, 0.0) * KMH
         self.from_deg = from_deg % 360.0
-        self.gusty = mode in ("gusty", "theme")
+        self.gusty = mode in ("gusty", "theme", "local")
         self.gust_frac = max(min(gust_pct, 100.0), 0.0) / 100.0 if self.gusty else 0.0
         rng = random.Random(seed)
         self._phases = [rng.uniform(0.0, 2.0 * math.pi) for _ in GUST_PERIODS_S]
         self._dir_phases = [rng.uniform(0.0, 2.0 * math.pi) for _ in DIR_PERIODS_S]
 
     @classmethod
-    def from_config(cls, wind_cfg, theme_wind: dict | None = None) -> WindModel:
-        """`theme_wind` : objet `wind` du thème 1.2, lu seulement en mode `theme`."""
+    def from_config(cls, wind_cfg, theme_wind: dict | None = None, local_wind=None) -> WindModel:
+        """`theme_wind` : objet `wind` du thème 1.2, lu seulement en mode `theme` ; `local_wind` :
+        `local_weather.LocalWind` du départ, lu seulement en mode `local` (None : aucun vent, comme `off`)."""
+        if wind_cfg.mode == "local":
+            if local_wind is None:
+                return cls("off")
+            return cls("local", local_wind.speed_kmh, local_wind.from_deg, local_wind.gust_pct, wind_cfg.seed)
         if wind_cfg.mode == "theme":
             tw = theme_wind or {}
             return cls("theme", float(tw.get("speed_kmh", 0.0)), float(tw.get("from_deg", 0.0)),

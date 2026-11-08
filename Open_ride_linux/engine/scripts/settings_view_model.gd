@@ -65,7 +65,7 @@ const CHOICE_TEXTS := {
 		"wetland": "zones humides", "coast": "littoral", "volcanic": "volcanique"},
 	"render.living": {"on": "oui", "off": "non (rendu de la 1.0)"},
 	"render.theme": {"default": "par défaut"},
-	"wind.mode": {"off": "coupé", "fixed": "constant", "gusty": "en rafales", "theme": "celui du thème"},
+	"wind.mode": {"off": "coupé", "fixed": "constant", "gusty": "en rafales", "theme": "celui du thème", "local": "météo du jour"},
 	"wind.feel": {"grade": "par la pente", "ftms": "par le trainer (essai)"},
 	"open_world.network": {"on": "oui", "off": "non (hors ligne)"},
 	"progression.enabled": {"on": "oui", "off": "non (sans Garage)"},
