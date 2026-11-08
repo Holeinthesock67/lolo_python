@@ -1501,18 +1501,23 @@ def _confirmation_scene(s: Session) -> None:
     time.sleep(0.6)
 
 
-# Réglages de la scène `reglages` (lot N19) : un sous-écran Son avec des volumes en % (curseurs) et le
+# Réglages de la scène `reglages` (lot N19) : un sous-écran Son avec des volumes en % (curseurs, libellés
+# longs du core compris : aucun ne doit être coupé) et le
 # sous-écran Cycliste (FTP, poids), sans valeur réelle du propriétaire.
 SETTINGS_ITEMS = [
     {"key": "rider.ftp_w", "label": "FTP", "group": "rider", "type": "int", "value": 250, "min": 50, "max": 600,
      "step": 5, "unit": "W", "applies": "next_session"},
     {"key": "rider.weight_kg", "label": "Poids", "group": "rider", "type": "int", "value": 75, "min": 30, "max": 200,
      "step": 1, "unit": "kg", "applies": "next_session"},
-    {"key": "audio.master_pct", "label": "Volume général", "group": "sound", "type": "int", "value": 80, "min": 0,
+    {"key": "audio.master_pct", "label": "Général", "group": "sound", "type": "int", "value": 80, "min": 0,
      "max": 100, "step": 10, "unit": "%", "applies": "now"},
-    {"key": "audio.ride_pct", "label": "Volume vent et roue libre", "group": "sound", "type": "int", "value": 40,
+    {"key": "audio.ride_pct", "label": "Vent et roue libre", "group": "sound", "type": "int", "value": 40,
      "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
-    {"key": "audio.ambience_pct", "label": "Volume de l'ambiance", "group": "sound", "type": "int", "value": 60,
+    {"key": "audio.events_pct", "label": "Bips et événements", "group": "sound", "type": "int", "value": 70,
+     "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
+    {"key": "audio.rogue_sfx_pct", "label": "Cyber-Rogue : bruitages", "group": "sound", "type": "int", "value": 50,
+     "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
+    {"key": "audio.ambience_pct", "label": "Ambiance", "group": "sound", "type": "int", "value": 60,
      "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
 ]
 # Appareils trouvés par la recherche de la scène `appareils` (adresses factices).
@@ -1547,8 +1552,14 @@ def _settings_scenes(s: Session) -> None:
     shot = s.capture("reglages")
     if shot:
         img, info = shot
-        s.check_texts("reglages", info, {"menu_title": "Réglages › Son", "menu": "[Volume général — 80 %]"}, contains=True)
-        s.check_texts("reglages", info, {"menu": "Volume vent et roue libre — 40 %"}, contains=True)
+        s.check_texts("reglages", info, {"menu_title": "Réglages › Son", "menu": "[Général — 80 %]"}, contains=True)
+        s.check_texts("reglages", info, {"menu": "Vent et roue libre — 40 %"}, contains=True)
+        clipped = info.get("menu_clipped", [])
+        s.check("reglages", "libellés des curseurs entiers (pas de « … »)", not clipped, ", ".join(clipped) or "aucun coupé")
+        # Valeurs (« 80 % ») entre le curseur et le bord droit de la liste (x ≈ 595–650 sur 1280, trois rangées).
+        right = (int(s.width * 0.46), int(s.height * 0.16), int(s.width * 0.515), int(s.height * 0.35))
+        value = fraction(img, right, lambda p: min(p) > 150, step=1)
+        s.check("reglages", "valeurs « 80 % » visibles à droite des curseurs", value >= 0.01, f"{value:.2%} de pixels clairs")
         s.check_layout("reglages", info)
         m = info["widgets"]["menu"]
         left = (int(m["rect"][0]), int(m["rect"][1]), int(m["rect"][0] + m["rect"][2] / 2), int(m["rect"][1] + m["rect"][3]))

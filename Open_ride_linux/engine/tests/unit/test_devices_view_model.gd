@@ -177,10 +177,11 @@ func func_test_lost_reconnected_alerts(vm: RefCounted) -> void:
 	_check(al_reconn.size() == 1 and "reconnecté" in al_reconn[0]["text"], "boîtier − CONNECTED : 1 alerte de retour")
 	# Raison connue du silence du boîtier gauche (lot N19) : verrou de Zwift, pas une erreur ; le « + » perdu
 	# reste une erreur.
-	for st in ["LOST", "SEARCHING"]:
-		var row: Dictionary = vm.rows(make_click_minus.call(st))[1]
-		_check(row["id"] == "click_minus" and row["status_text"] == vm.CLICK_LEFT_LOCK_TEXT and row["level"] == "warn",
-			"boîtier − %s : verrou Zwift en attention, pas en erreur (%s)" % [st, str(row)])
+	var row: Dictionary = vm.rows(make_click_minus.call("LOST"))[1]
+	_check(row["id"] == "click_minus" and row["status_text"] == vm.CLICK_LEFT_LOCK_TEXT and row["level"] == "warn",
+		"boîtier − LOST : verrou Zwift en attention, pas en erreur (%s)" % str(row))
+	var never: Dictionary = vm.rows(make_click_minus.call("SEARCHING"))[1]
+	_check(never["status_text"] == "recherche…", "boîtier − jamais connecté : « recherche… », pas de verrou (%s)" % str(never))
 	var plus_lost: Array = vm.rows({"devices": {"trainer": {"status": "CONNECTED"}, "click": [{"side": "plus", "status": "LOST"}],
 		"hr": {"status": "NONE"}}})
 	_check(plus_lost[1]["status_text"] == "perdu" and plus_lost[1]["level"] == "error", "boîtier + perdu : toujours une erreur")

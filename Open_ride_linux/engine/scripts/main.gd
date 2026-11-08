@@ -1507,6 +1507,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"tag": tag, "path": path, "ok": err == OK, "size": [img.get_width(), img.get_height()],
 		"fps": Engine.get_frames_per_second(), "meshes": meshes, "ticks_ms": Time.get_ticks_msec(),
 		"quality": _quality_name,
+		"menu_clipped": menu_view.clipped_labels() if menu_view.visible else [],
 		"ui_scale": to_pixels.get_scale().x,
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"triangles": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
