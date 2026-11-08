@@ -72,7 +72,7 @@ def test_all_message_schemas_exist():
                  "routes", "workouts", "scan_results", "settings", "imports", "workout_saved",
                  "route_imports", "route_import_status",
                  "segment_result", "room", "loot", "garage", "progression", "xp_result", "plans", "profiles",
-                 "contents", "interrupted", "history", "history_session"):
+                 "contents", "interrupted", "history", "history_session", "collection"):
         jsonschema.Draft202012Validator.check_schema(schema(name))
 
 
@@ -308,7 +308,7 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
     révision 1.5 : la même limite pour tout message hors messages en parties."""
     from openride_core import ipc_server
     assert ipc_server.MAX_DATAGRAM_SIZE == MAX_STATE_DATAGRAM
-    assert ipc_server.CONTRACT_REV == "1.7"   # révision 1.7 : Grand Prix des objets (lot GP2) et épreuves de piste (lot VD6)
+    assert ipc_server.CONTRACT_REV == "1.8"   # révision 1.8 annoncée depuis la collection de cartes (lot BC2)
 
     class Sock:
         def __init__(self):
@@ -334,8 +334,8 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
         assert len(acks) == 2
         for ack in acks:
             assert_valid(ack)
-            assert ack["rev"] == "1.7" and ack["config"]["modes"] == ["ride", "erg", "open_world", "rogue", "wtf", "survivor",
-                                                         "grandprix", "track"]
+            assert ack["rev"] == "1.8" and ack["config"]["modes"] == ["ride", "erg", "open_world", "rogue", "wtf", "survivor",
+                                                         "track"]
             # écran Prêt du vélodrome (lot VD10) : épreuves et réglages du core, sans passer 4 096 octets
             assert ack["config"]["track"] == track_mod.menu_options()
             assert list(ack["config"]["track"]["events"]) == list(track_mod.EVENTS)

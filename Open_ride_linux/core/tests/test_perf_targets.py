@@ -27,9 +27,9 @@ def by_label(checks):
 def test_targets_follow_the_y13_budgets():
     t = pp.load_targets()
     assert t["warmup_s"] == 20
-    assert t["presets"]["low"]["gpu_ms_median_max"] == 6 and t["presets"]["low"]["fps_median_min"] == 55
-    assert t["presets"]["medium"]["fps_median_min"] == 58 and t["presets"]["medium"]["gpu_ms_median_max"] == 12
-    assert t["presets"]["high"]["gpu_ms_median_max"] == 14
+    assert t["presets"]["low"]["gpu_ms_median_max"] == 8 and t["presets"]["low"]["fps_median_min"] == 55
+    assert t["presets"]["medium"]["fps_median_min"] == 58 and t["presets"]["medium"]["gpu_ms_median_max"] == 13
+    assert t["presets"]["high"]["gpu_ms_median_max"] == 16
     assert all(p["p99_ms_max"] == 25 for p in t["presets"].values())
 
 
@@ -41,13 +41,13 @@ def test_within_budget_and_warmup_ignored():
 
 
 def test_over_budget_fails_each_measure():
-    checks = by_label(pp.budget_checks(rows(fps=50.0, p99=30.0, gpu=13.0, util=97.0)))
+    checks = by_label(pp.budget_checks(rows(fps=50.0, p99=30.0, gpu=17.0, util=97.0)))
     assert [checks[k][0] for k in ("images/s", "temps d'image p99", "GPU de la vue", "GPU saturé")] == [False] * 4
 
 
 def test_preset_read_from_probe_not_from_command_line():
     checks = pp.budget_checks(rows(preset="low", gpu=9.0))
-    assert checks[2] == (False, "budget low : GPU de la vue", "médiane 9.00 ms (au plus 6 ms)")
+    assert checks[2] == (False, "budget low : GPU de la vue", "médiane 9.00 ms (au plus 8 ms)")
     mixed = rows(preset="medium")[:40] + rows(preset="low")[40:]
     assert pp.budget_checks(mixed)[0][0] is False and "plusieurs préréglages" in pp.budget_checks(mixed)[0][2]
 

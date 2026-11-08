@@ -315,6 +315,7 @@ class CoreSession:
         self._lane = self._rider_lane()   # écart à l'axe du cycliste (lot AS2)
         self.traffic: traffic_mod.Traffic | None = None   # circulation de la route (lot AS6)
         self.road_cyclists: road_cyclists_mod.RoadCyclists | None = None   # cyclistes du décor (lot AS7)
+        self._surface_widths: dict[str, float] | None = None   # largeurs des chemins du thème (option gravel)
         self._world_src: tuple[Route, Path, dict] | None = None   # route, dossier et manifeste du .world choisi
         self._suction = 0.0           # aspiration d'un véhicule qui double (lot AS6)
         self._draft_w: int | None = None   # watts économisés à l'abri, à partir de 0,02 d'abri (lot AS5)
@@ -683,6 +684,10 @@ class CoreSession:
             self._spawn(self._send_history(name, args if isinstance(args, dict) else {}, cmd_id))
         elif name in CONTENT_COMMANDS:
             self._on_content_command(name, args if isinstance(args, dict) else {}, cmd_id)
+        elif name == "list_collection":
+            self._spawn(self._send_collection(cmd_id))
+        elif name == "collection_seen":
+            self._handle_collection_seen(args, cmd_id)
 
     # --- contenus installables depuis le menu (lot O25, contrat IPC révision 1.5) ---------------
 
@@ -1311,6 +1316,66 @@ class CoreSession:
             self.server.send_error("bad_args", f"Bilan impossible : {exc}")
             return
         self.server.send_raw(msg)
+
+    async def _send_collection(self, cmd_id: int) -> None:
+        """Réponse à `list_collection` (lot BC2, révision 1.8) : cartes, cartes gagnées, avancement."""
+        from .ipc_lists import build_collection_message
+
+        try:
+            msg = await asyncio.to_thread(
+                build_collection_message,
+                cmd_id,
+                self.profile_ctx,
+                self.journal_dir,
+                self.profile_ctx.table_path,
+            )
+        except Exception:
+            log.exception("Erreur lors de la préparation de la collection (cmd_id=%d)", cmd_id)
+            return
+        self.server.send_raw(msg)
+
+    def _handle_collection_seen(self, args: Any, cmd_id: int) -> None:
+        """Commande `collection_seen` (lot BC2) : valide les clés et met à jour `collection_vue.json`."""
+        from .ipc_lists import record_collection_seen
+
+        if not isinstance(args, dict) or "keys" not in args:
+            self.server.send_error("bad_args", "collection_seen attend un objet avec la clé 'keys'")
+            return
+        try:
+            record_collection_seen(self.profile_ctx, args["keys"])
+        except ValueError as exc:
+            log.warning("collection_seen refusé (%d) : %s", cmd_id, exc)
+            self.server.send_error("bad_args", str(exc))
+            return
+        log.info("collection_seen : %d clé(s) marquée(s) vue(s)", len(args["keys"]))
+
+    def _after_session_collection(self) -> None:
+        """Annonce facultative summary.collection à la fin de la séance (lot BC2)."""
+        from .ipc_lists import compute_summary_collection
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            col_ann = compute_summary_collection(self.profile_ctx, self.journal_dir, self.profile_ctx.table_path)
+            if col_ann is not None and self.state.summary is not None:
+                self.state.summary["collection"] = col_ann
+            return
+        self._spawn(self._attach_summary_collection())
+
+    async def _attach_summary_collection(self) -> None:
+        from .ipc_lists import compute_summary_collection
+
+        try:
+            col_ann = await asyncio.to_thread(
+                compute_summary_collection,
+                self.profile_ctx,
+                self.journal_dir,
+                self.profile_ctx.table_path,
+            )
+            if col_ann is not None and self.state.summary is not None:
+                self.state.summary["collection"] = col_ann
+        except Exception:
+            log.exception("Erreur lors du calcul de summary.collection")
 
     def _setting_file(self, key: str) -> Path:
         """Fichier qui reçoit le réglage `key` : `profil.toml` du profil pour un réglage du joueur (FTP…),
@@ -2155,6 +2220,7 @@ class CoreSession:
         self._set_state(final_state)
         if journal is not None and final_state == "FINISHED":
             self._after_session(journal, records_done)
+            self._after_session_collection()
 
     # --- mode « What the fuck » (série WTF, lot WTF2) -----------------------------------
 
@@ -2567,7 +2633,8 @@ class CoreSession:
         self.grandprix = GrandPrixMode([GP_ME, *(b.id for b in self.bots)], length, lap_m=lap, table=table,
                                        chaos=gc.chaos, box_every_km=gc.box_every_m / 1000.0,
                                        seed=int(time.time()) & 0xFFFFFFFF, params=replace(self._base_params),
-                                       origin_m=self.physics.s)
+                                       origin_m=self.physics.s,
+                                       levels={b.id: float(b.level_pct or self.cfg.bots.level_pct) for b in self.bots})
         self.grandprix.start(self._t_session, self._grandprix_riders(0.0))
         if self._rec:
             self._rec.game({"kind": "gp_start", "ts": round(time.time(), 3), "opponents": gc.opponents,
@@ -2603,19 +2670,25 @@ class CoreSession:
         for b in self.bots:
             if b.id in speeds:
                 b.physics.v = speeds[b.id]
-        self._sync_grandprix_lane()
+        self._sync_grandprix_lanes()
         for msg in gp.due_results(self._t_session):
             self.server.send_raw(msg)
         self._flush_grandprix_journal(gp)
 
-    def _sync_grandprix_lane(self) -> None:
-        """Voie forcée (A court, flèches) : le placement du cycliste vise le centre de la voie ; placement
-        automatique sinon, selon le réglage « Placement dans la roue » (lot AS2)."""
-        lane = self.grandprix.lane_target(GP_ME) if self.grandprix is not None else None
-        if lane is None:
-            self._lane.auto, self._lane.home = self.cfg.ride.auto_draft == "on", draft_mod.RIDER_LANE_M
-        else:
-            self._lane.auto, self._lane.home = False, GP_LANE_CENTRES_M[lane]
+    def _sync_grandprix_lanes(self) -> None:
+        """Voie forcée (cycliste : A court, flèches ; bot : esquive du lot GP3) : le placement vise le centre de
+        la voie ; placement automatique sinon (lot AS2), selon le réglage « Placement dans la roue » pour le
+        cycliste."""
+        gp = self.grandprix
+        lanes = [(GP_ME, self._lane, self.cfg.ride.auto_draft == "on", draft_mod.RIDER_LANE_M)]
+        lanes += [(b.id, b.lane, True, draft_mod.BOT_LANE_M) for b in self.bots
+                  if gp is not None and b.id in gp.racers]
+        for rid, lane, auto, home in lanes:
+            target = gp.lane_target(rid) if gp is not None else None
+            if target is None:
+                lane.auto, lane.home = auto, home
+            else:
+                lane.auto, lane.home = False, GP_LANE_CENTRES_M[target]
 
     def _grandprix_press(self, event: str) -> bool:
         """Boutons du mode (spécification §7.1) : Z court utilise l'objet ; A court change de voie quand le choix
@@ -2641,7 +2714,7 @@ class CoreSession:
         else:
             return False
         done = gp.set_lane(GP_ME, lane)
-        self._sync_grandprix_lane()   # placement suivi dès l'appui, sans attendre le pas suivant
+        self._sync_grandprix_lanes()   # placement suivi dès l'appui, sans attendre le pas suivant
         return done
 
     def _flush_grandprix_journal(self, gp: GrandPrixMode) -> None:
@@ -3351,6 +3424,9 @@ class CoreSession:
             self.traffic = traffic_mod.Traffic(
                 route=route, seed=TRAFFIC_SEED, villages=villages,
                 snow_line_m=traffic_mod.snow_line({"terrain": theme_section(self.cfg.render.theme, "terrain")}),
+                unpaved_at=lambda s: surface_physics.effective_surface(
+                    route.surface_at(s) if hasattr(route, "surface_at") else "paved", self.cfg.gravel.mode)
+                in surface_physics.UNPAVED,
                 bench_every_s=float(self.cfg.ride.traffic_bench_s))
         return self.traffic
 
@@ -3363,8 +3439,22 @@ class CoreSession:
         if self.road_cyclists is None or self.road_cyclists.route is not route:
             self.road_cyclists = road_cyclists_mod.RoadCyclists(
                 route, road_cyclists_mod.climbs_for(route, self._segments), traffic.villages,
-                seed=road_cyclists_mod.SEED)
+                seed=road_cyclists_mod.SEED, half_width_at=self._half_at(route))
         return self.road_cyclists
+
+    def _half_at(self, route: Route | None) -> Callable[[float], float] | None:
+        """Option gravel (correctif du 7/11) : demi-largeur sûre de la chaussée en s, pour les vélos (cycliste, bots,
+        cyclistes du décor) ; mode lu à chaque appel (menu), largeurs du thème ; None sans parcours."""
+        if route is None:
+            return None
+        if self._surface_widths is None:
+            self._surface_widths = surface_physics.surface_widths(theme_section(self.cfg.render.theme, "surfaces"))
+        widths = self._surface_widths
+
+        def half_at(s: float) -> float:
+            return surface_physics.rideable_half_m(route, s, self.cfg.gravel.mode, widths, 6.0)
+
+        return half_at
 
     def _update_draft(self, dt: float, route: Route | None, heading_deg: float,
                       traffic: traffic_mod.Traffic | None = None) -> None:
@@ -3410,7 +3500,8 @@ class CoreSession:
         runners += [(v.s, v.speed_mps, draft_mod.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width,
                                                        length=v.length)) for v in near if v.dir == 1]
         runners += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders if r.dir == 1]
-        draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None)
+        draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None,
+                               self._half_at(route))
 
         cross = cross_at(heading_deg)
         rider = draft_mod.Source(self.physics.s, self.physics.v, lane_m=self._lane.m, cda_m2=self.physics.p.cda_m2)

@@ -9,6 +9,8 @@ extends SceneTree
 ## Le moteur Compatibility travaille en espace sRGB : les couleurs du thème y sont mélangées telles quelles.
 ## (Avec Forward+, sur le PC cible, le même mélange se fait en espace linéaire ; les poids sont identiques.)
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const TerrainMaterial := preload("res://scripts/terrain_material.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 
@@ -158,5 +160,6 @@ func _run() -> void:
 	_check(hi - lo > 0.02, "relief de l'herbe : mottes visibles (vert de %.3f à %.3f)" % [lo, hi])
 	_check(absf(mean.y / want_flat.g - 1.0) <= 0.2, "relief de l'herbe : vert moyen à ± 20 %% du thème (ratio %.3f)" % (mean.y / want_flat.g))
 
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_terrain_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

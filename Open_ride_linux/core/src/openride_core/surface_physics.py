@@ -87,3 +87,54 @@ def blended_factor(route: SurfaceRoute, s: float, mode: str, cfg: GravelSettings
     for a, b in zip(cuts, cuts[1:]):
         total += (b - a) * crr_factor(effective_surface(route.surface_at(0.5 * (a + b)), mode), cfg, wood)
     return total / blend_m
+
+
+# --- Largeur roulable (cyclistes du décor sur le gravel, correctif du 7 novembre) ----------------------------
+# Mêmes règles que le ruban de l'engine (`engine/scripts/road_surface.gd`, lot U22) : largeur de la surface non
+# revêtue du thème (`surfaces.<id>.width_m`, défauts ci-dessous), raccord en biseau de BEVEL_M avec le bitume
+# (part non revêtue sur BEVEL_SAMPLES points centrés), bords irréguliers de ± EDGE_NOISE_M retirés.
+UNPAVED = ("compacted", "gravel", "dirt")
+DEFAULT_WIDTH_M = {"compacted": 4.0, "gravel": 3.5, "dirt": 3.0}
+BEVEL_M = 5.0
+BEVEL_SAMPLES = 11
+EDGE_NOISE_M = 0.25
+
+
+def surface_widths(theme_surfaces: dict | None) -> dict[str, float]:
+    """Largeur (m) de chaque surface non revêtue : `surfaces` du thème, sinon les défauts (bornée à 1–8 m)."""
+    out = {}
+    raw = theme_surfaces if isinstance(theme_surfaces, dict) else {}
+    for sid in UNPAVED:
+        entry = raw.get(sid)
+        w = entry.get("width_m") if isinstance(entry, dict) else None
+        if isinstance(w, bool) or not isinstance(w, (int, float)):
+            w = DEFAULT_WIDTH_M[sid]
+        out[sid] = min(max(float(w), 1.0), 8.0)
+    return out
+
+
+def rideable_half_m(route: SurfaceRoute, s: float, mode: str, widths: dict[str, float],
+                    road_width_m: float) -> float:
+    """Demi-largeur sûre de la chaussée en `s` (m) : celle du bitume, ou sur une portion non revêtue la
+    demi-largeur du ruban de l'engine sans ses bords irréguliers (le plus étroit des deux côtés possibles)."""
+    half = road_width_m * 0.5
+    if mode == "off" or mode not in MODES:
+        return half
+    count: dict[str, int] = {}
+    unpaved = 0
+    for j in range(BEVEL_SAMPLES):
+        sv = s - BEVEL_M * 0.5 + BEVEL_M * j / (BEVEL_SAMPLES - 1)
+        e = effective_surface(route.surface_at(sv) if hasattr(route, "surface_at") else "paved", mode) \
+            if mode == "auto" else mode
+        if e in UNPAVED:
+            unpaved += 1
+            count[e] = count.get(e, 0) + 1
+    if unpaved == 0:
+        return half
+    main = ""
+    for sid in UNPAVED:   # surface la plus présente dans le biseau, ordre fixe en cas d'égalité
+        if count.get(sid, 0) > count.get(main, 0):
+            main = sid
+    weight = unpaved / BEVEL_SAMPLES
+    target = widths.get(main, DEFAULT_WIDTH_M[main]) * 0.5
+    return half + (target - half) * weight - EDGE_NOISE_M * weight

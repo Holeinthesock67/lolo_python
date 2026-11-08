@@ -758,6 +758,78 @@
             }
           }
         },
+        "collection": {
+          "type": "object",
+          "description": "Facultatif, révision 1.8 (série BC, lot BC2) : annonce d'une carte gagnée à la fin de la séance ; absent si aucune carte nouvelle.",
+          "required": [
+            "card",
+            "others"
+          ],
+          "properties": {
+            "card": {
+              "type": "object",
+              "required": [
+                "id",
+                "key",
+                "edition",
+                "title",
+                "text",
+                "family",
+                "rarity",
+                "visual",
+                "journal",
+                "date"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                "key": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "edition": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 24
+                },
+                "text": {
+                  "type": "string",
+                  "maxLength": 70
+                },
+                "family": {
+                  "type": "string"
+                },
+                "rarity": {
+                  "type": "string"
+                },
+                "visual": {
+                  "type": "string",
+                  "maxLength": 32
+                },
+                "journal": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "others": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
         "track": {
           "type": "object",
           "description": "Révision 1.7 (lot VD6) : bilan de l'épreuve de piste.",

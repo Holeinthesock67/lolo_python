@@ -6,6 +6,8 @@ extends SceneTree
 ## que le début des imposteurs ni au-delà de leur fin (distances coupées dans le shader, par instance).
 ## Variable FOREST_CAPTURE_DIR : y écrit les images (téléobjectif et champ du jeu), pour les captures à montrer.
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const ForestImpostors := preload("res://scripts/forest_impostors.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
@@ -139,5 +141,6 @@ func _run() -> void:
 	_check(beyond < W / 8, "au-delà de la fin des imposteurs : aucun bouquet (%d pixels)" % beyond)
 	vp.queue_free()
 	await process_frame
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_forest_impostor_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

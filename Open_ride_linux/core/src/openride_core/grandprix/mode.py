@@ -25,6 +25,7 @@ from typing import Iterable, Mapping, NamedTuple
 
 from ..physics import PhysicsParams, resistive_force
 from ..route_objects import RouteObjects, Runner
+from .brain import BotBrain
 from .boxes import BOX_EVERY_KM, LANES, ROULETTE_S, BoxRows, row_positions
 from .draw import DrawContext, draw
 from .effects import CHAOS, DURATIONS, IMPULSES, Active, EffectSpec, apply_speed, gain_s, is_immune, wind_of
@@ -131,7 +132,8 @@ class GrandPrixMode:
     def __init__(self, riders: Iterable[str], length_m: float, *, lap_m: float | None = None,
                  table: ItemTable = DEFAULT_TABLE, chaos: str = "normal", box_every_km: float = 1.5,
                  enabled: Iterable[str] | None = None, seed: int | None = None,
-                 params: PhysicsParams | None = None, origin_m: float = 0.0) -> None:
+                 params: PhysicsParams | None = None, origin_m: float = 0.0,
+                 bots: Iterable[str] | None = None, levels: Mapping[str, float] | None = None) -> None:
         if chaos not in CHAOS:
             raise GrandPrixError(f"chaos : {chaos!r} refusé ({', '.join(CHAOS)})")
         if box_every_km not in BOX_EVERY_KM:
@@ -155,6 +157,13 @@ class GrandPrixMode:
         self.racers: dict[str, Racer] = {rid: Racer(rid) for rid in riders}
         if ME not in self.racers:
             raise GrandPrixError("le cycliste (« me ») doit être en course")
+        # Coureurs menés par le core (lot GP3 ; tous sauf le cycliste par défaut, le cycliste virtuel du banc
+        # GP5 compris) : niveau en % de la FTP (esquive ± 10 points), 100 sans niveau connu
+        levels = levels or {}
+        driven = [rid for rid in self.racers if rid != ME] if bots is None else list(bots)
+        if not set(driven) <= set(self.racers):
+            raise GrandPrixError("bots : coureurs inconnus")
+        self.brain = BotBrain({rid: float(levels.get(rid, 100.0)) for rid in driven}, chaos, seed)
         self.clock = 0.0
         self.t = 0.0
         self.grace_until = 0.0
@@ -232,6 +241,7 @@ class GrandPrixMode:
             for row in self.boxes.crossed(r.s0, r.s):
                 if self.boxes.take(row, r.lane, now) and r.held is None and r.roll is None:
                     self._roll(r, now)
+        self.brain.step(self, now)
         self._step_objects(inp.dt)
         self._step_bursts(now)
         self._step_touch(now)
@@ -326,7 +336,7 @@ class GrandPrixMode:
     def _fire(self, r: Racer, spec: ItemSpec, now: float) -> bool:
         if spec.target == "self":
             self._give(r, spec.self_fx, spec.id, r.id, now)
-            if any(e.effect in IMPULSES for e in spec.self_fx):
+            if spec.self_fx:   # impulsion comme plancher de vitesse (super-forme, voiture d'équipe, lot GP5)
                 self._credit(r, spec.id, spec.self_fx)
             return True
         if spec.form == "dropped":

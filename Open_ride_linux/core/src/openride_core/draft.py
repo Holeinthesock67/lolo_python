@@ -73,6 +73,7 @@ BOT_LANE_M = 2.1          # place des bots seuls (RoadBuilder.BOT_LATERAL_M), 0,
 ECHELON_LEAD_SHIFT_M = 0.3   # lot AS3 : meneur côté vent dès que la zone glisse de 0,3 m à 1 m d'écart (~17°)
 LANE_MIN_M = 0.3          # hors dépassement, jamais plus près de l'axe (circulation à droite)
 LANE_MAX_M = 2.6          # bord de la voie de droite (chaussée de 6 m, 0,4 m du bord)
+LANE_EDGE_M = 0.4         # chemin étroit (option gravel, 7/11) : axe du vélo à 0,4 m au moins du bord sûr
 PASS_LANE_MIN_M = -1.5    # dépassement : jamais plus loin dans la voie d'en face
 LANE_RATE_MPS = 0.8       # vitesse latérale maximale
 LANE_ACCEL_MPS2 = 1.6     # accélération latérale maximale : pas d'à-coup
@@ -519,20 +520,40 @@ def step_lane(lane: Lane, target: float, dt: float) -> None:
         lane.m, lane.rate = target, 0.0
 
 
+def path_bounds(half_m: float) -> tuple[float, float]:
+    """Écarts à l'axe permis à un vélo sur une chaussée de demi-largeur sûre `half_m` (correctif du 7/11) :
+    ceux de la chaussée de 6 m (PASS_LANE_MIN_M, LANE_MAX_M), resserrés à LANE_EDGE_M des bords d'un chemin."""
+    edge = max(half_m - LANE_EDGE_M, 0.0)
+    return max(PASS_LANE_MIN_M, -edge), min(LANE_MAX_M, edge)
+
+
 def update_lanes(runners: list[tuple[float, float, Lane]], dt: float, length_m: float | None = None,
-                 is_loop: bool = False, wind_at: Callable[[float], tuple[float, float]] | None = None) -> None:
+                 is_loop: bool = False, wind_at: Callable[[float], tuple[float, float]] | None = None,
+                 half_at: Callable[[float], float] | None = None) -> None:
     """Placement de tous les coureurs (lot AS2) : cibles calculées sur les positions du pas précédent,
     puis chacun avance ; l'ordre de la liste ne compte pas. `runners` : (s, v, Lane) du cycliste et des
     bots `constant` (le fantôme n'en est pas : il passe à travers). `wind_at(s)` : (vent de face, vent de
-    travers) en m/s à la position `s` (lot AS3), sans vent si None."""
+    travers) en m/s à la position `s` (lot AS3), sans vent si None. `half_at(s)` : demi-largeur sûre de la
+    chaussée (option gravel, `surface_physics.rideable_half_m`) : les vélos restent sur le chemin
+    (`path_bounds`) ; serrés sur un chemin étroit, ils s'enferment et se suivent en file (`blocked_by`)."""
+
+    def on_path(s: float, lane: Lane, target: float) -> float:
+        # Placement automatique seulement : un véhicule de la circulation garde sa voie, un coureur au placement
+        # coupé sa place (bot éliminé du Dernier survivant qui se range sur l'accotement, cycliste à 1,2 m)
+        if half_at is None or not lane.auto or lane.length != BIKE_LENGTH_M or lane.half_width != RIDER_WIDTH_M / 2.0:
+            return target
+        lo, hi = path_bounds(half_at(s))
+        return min(max(target, lo), hi)
+
     targets = []
     for i, (s, v, lane) in enumerate(runners):
         others = [r for j, r in enumerate(runners) if j != i]
         head, cross = wind_at(s) if wind_at else (0.0, 0.0)
-        targets.append(lane_target(s, v, lane, others, length_m, is_loop, head, cross))
+        target, passing = lane_target(s, v, lane, others, length_m, is_loop, head, cross)
+        targets.append((on_path(s, lane, target), passing))
     for i, (s, v, lane) in enumerate(runners):
         others = [r for j, r in enumerate(runners) if j != i]
-        target = side_guard(s, lane, targets[i][0], others, length_m, is_loop)
+        target = on_path(s, lane, side_guard(s, lane, targets[i][0], others, length_m, is_loop))
         targets[i] = (target, targets[i][1])
         lane.blocked = blocked_by(s, v, lane, target, others, length_m, is_loop)
     for (_, _, lane), (target, passing) in zip(runners, targets):

@@ -479,9 +479,9 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("trainer", "grade_rate_up_pct_per_s"): "rampe de pente du trainer",
     ("trainer", "grade_rate_down_pct_per_s"): "rampe de pente du trainer",
     ("trainer", "hr_relay_freeze_s"): "détection de la FC relayée figée",
-    ("trainer", "resend_s"): "renvoi de la consigne, essais contre le pompage (lot O27 : ira dans Avancé si l'essai la garde réglable)",
-    ("trainer", "resistance_n_per_pct_kmh"): "pilotage SIM ou résistance calculée (en essai, lots RC1-RC3)",
-    ("trainer", "resistance_inertia_pct"): "pilotage SIM ou résistance calculée (en essai, lots RC1-RC3)",
+    ("trainer", "resend_s"): "renvoi de la consigne SIM et ERG, réglage fin contre le pompage (essai du 30 octobre, défaut 2 s gardé)",
+    ("trainer", "resistance_n_per_pct_kmh"): "étalonnage de la résistance calculée (lots RC1 à RC4), corrigé en roulant",
+    ("trainer", "resistance_inertia_pct"): "inertie de la résistance calculée, abandonnée le 1er novembre (coupée par défaut)",
     ("gearing", "n_gears"): "boîte de vitesses virtuelle",
     ("gearing", "ratio_min"): "boîte de vitesses virtuelle",
     ("gearing", "ratio_max"): "boîte de vitesses virtuelle",
@@ -532,6 +532,13 @@ DEV_KEYS: dict[tuple[str, str], str] = {
 }
 # Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
 PENDING_KEYS: dict[tuple[str, str], str] = {
+    # Grand Prix des objets (série GP, 4.0) : pas d'entrée à l'accueil avant GP9, donc pas de réglage au menu
+    # (point A2 des oublis du 8 novembre) ; la séance les lit déjà (`start` avec `mode` « grandprix »).
+    ("grandprix", "opponents"): "GP9",
+    ("grandprix", "laps"): "GP9",
+    ("grandprix", "distance_km"): "GP9",
+    ("grandprix", "chaos"): "GP9",
+    ("grandprix", "box_every_m"): "GP9",
 }
 
 

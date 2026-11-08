@@ -389,7 +389,7 @@ Themes/alpes-ete/
 | `weather` | `{kind, intensity, morning_mist}` : `kind` vaut `clear`, `mist`, `rain` ou `snow` ; intensité de 0 à 1 ; brume de vallée le matin | P8 |
 | `season` | `spring`, `summer`, `autumn` ou `winter` | P18 (version 2.0) |
 | `wind` | `{speed_kmh, from_deg, gust_pct}` : vent lu quand `[wind] mode = "theme"` (SRS §11), et vent décoratif de l'engine quand `state` ne porte pas de `wind` | P2, P4 |
-| `ambience` | `{volume, birds, insects}`, de 0 à 1 | P9 |
+| `ambience` | `{volume, birds, insects}`, de 0 à 1 ; `layers` facultatif (lot U11) : gain de 0 à 1 de chaque fond propre au paysage, parmi `cicadas`, `jungle_chorus`, `conifer_wind`, `cowbells`, `waves`, `gulls`, `frogs`, `singing_sand`, `ice_cracks`, `fumaroles` (fond absent : muet) | P9, U11 |
 | `fauna` | `{birds, livestock, deer}` : densités de 0 à 1 | P11 |
 
 **Thème 2.0 : pack de biomes (lot U1, version 3.0).** Un thème 2.0 (`"version": "2.0"`) décrit plusieurs biomes au lieu d'un seul paysage ; l'engine les mélange selon la couche `biome` du parcours (§8 quater). Les clés 1.x (`terrain`, `road`, `buildings`, `vegetation`, `sky`, `weather`, `season`, `wind`, `ambience`, `fauna`) restent valables et gardent leur sens. Exemple complet : `docs/contracts/world/examples/theme_2_0_two_biomes.json`.
@@ -402,7 +402,7 @@ Themes/alpes-ete/
 | `biomes.<id>.vegetation` | `species` : liste `{kind, weight}`, `kind` parmi `oak`, `beech`, `spruce`, `pine`, `birch`, `larch`, `olive`, `holm_oak`, `cypress`, `stone_pine`, `palm`, `acacia`, `baobab`, `cactus`, `tree_fern`, `reed`, `dwarf_shrub`, `vine_row` (lot U7) ; `max_density_per_ha` ; `treeline_m` (nombre ou `null`) |
 | `biomes.<id>.water` | `color`, `turbidity` (0 à 1) : teinte des lacs, rivières et de la mer dans ce biome |
 | `biomes.<id>.sky` | `fog_density`, `haze` (0 à 1, brume de chaleur ou d'humidité), `light_tint` (teinte de la lumière du soleil) |
-| `biomes.<id>.ambience`, `.fauna` | Mêmes clés que le thème 1.2 |
+| `biomes.<id>.ambience`, `.fauna` | Mêmes clés que le thème 1.2 (`ambience.layers` compris) ; l'engine pondère chaque clé par le poids du biome au cycliste |
 | `biomes.<id>.seasons` | `calendar` parmi `four` (quatre saisons de P18), `wet_dry` (saison sèche, saison des pluies), `polar` (jour et nuit polaires), `none` ; `offset_months` (−6 à 6, décalage par rapport au calendrier de l'hémisphère) ; `durations_months` : durée de chaque saison dans l'ordre du calendrier, somme 12 |
 | `variants` | Un objet par variante régionale (§8 quater) : `rock_color` et `soil_color` pour les roches et terres, `walls` et `roofs` (listes de couleurs, même forme que `buildings` en 1.x) pour l'architecture, `textures` facultatives ; l'identifiant d'architecture choisit aussi le style des bâtiments de l'engine (matière et pente des toits, murs) |
 | `surfaces` | `compacted`, `gravel`, `dirt` : `{color, texture, width_m}`, ruban des routes non revêtues (lot U22) |
@@ -496,6 +496,7 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.5 | 27 octobre 2026 | Ajout compatible (lot P22) : terrains ouverts `meadow`, `farmland` et `grassland` de la couche végétation, de densité 0 (§7) ; couche facultative `roads/` des routes voisines (§8 ter), entrée `layers.roads` du manifeste (`present`, `version`, `count`, `osm_date`) et schéma `docs/contracts/world/roads.schema.json` ; `verify` les contrôle ; un `.world` 1.3 reste valide |
 | 1.6 | 28 octobre 2026 | Ajout compatible (lot U1, partie format, série U avancée avant la 3.0 sur décision du propriétaire) : couche facultative `biome/near` et `biome/far` (§8 quater) et entrée `layers.biome` ; couche facultative `coast/` (§8 quinquies) et entrée `layers.coast` ; aire d'eau `sea` (§8) ; colonne facultative `surface` de la route, `route.surface_source` et `stats.surface_pct` (§4) ; thème 2.0 en pack de biomes (§9). Schémas `biome.schema.json` et `coast.schema.json`, exemples dans `docs/contracts/world/examples/`. La partie IPC et configuration du lot U1 (`hello_ack.config.biome` et `.gravel`, `[render] biome`, `[gravel]`) attend le lot U16. Un `.world` 1.5 reste valide |
 | 1.6 | 30 octobre 2026 | Ajout compatible au thème (lot P20, sans changement du format `.world`) : clé `texture_levels` et fichier `provenance.toml` des packs (§9) ; sous-commande `theme-pack` |
+| 1.6 | 8 novembre 2026 | Ajout compatible au thème (lot U11, sans changement du format `.world`) : clé facultative `ambience.layers`, à la racine et dans `biomes.<id>.ambience` (§9) |
 | 1.7 | 7 novembre 2026 | Ajout compatible (lot VD1, série VD de la 4.0, partie format) : colonne facultative `bank_deg` de la route et surface `wood` (§4) ; couche facultative `venue.json` (§8 sexies), entrée `layers.venue` du manifeste et schéma `venue.schema.json` ; `route.surface_source` peut valoir `venue` et `stats.surface_pct` compter `wood`. Vecteurs de test de la route complétés (relèvement de la boucle). Un `.world` 1.6 reste valide. La partie IPC du lot VD1 (objet `track` de `state`) attend les épreuves (lot VD6) |
 
 ## 13. Monde vivant (monde ouvert, série W)
