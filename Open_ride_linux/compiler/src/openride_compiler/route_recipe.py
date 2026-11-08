@@ -15,7 +15,8 @@ Une recette (`<id>.toml`) décrit une montée publique et célèbre par quelques
    (le MNT y donne la montagne ou le fond de vallée, pas la route) et contrôle longueur et dénivelé
    positif à ± 5 % de la référence (sinon refus, point à corriger). Le dénivelé contrôlé est mesuré
    sur le profil moyenné sur `GAIN_SMOOTH_M` : dans des lacets serrés, le MNT à 30 m voit le talus
-   au-dessus puis en dessous de la route à chaque virage et ajouterait 10 à 20 % de montée fictive ;
+   au-dessus puis en dessous de la route à chaque virage et ajouterait 10 à 20 % de montée fictive.
+   Le GPX écrit reçoit ce même profil moyenné, que le jeu roule ;
 4. écrit un GPX par col et sa fiche `.toml` (crédits OpenStreetMap) dans un dossier de pack
    installable par `route-pack-install` (lot O15).
 
@@ -32,7 +33,6 @@ from pathlib import Path
 from typing import Any, Callable
 
 import numpy as np
-from scipy.ndimage import uniform_filter1d
 
 from .cache import Log, stderr_log
 from .elevation import ElevationProvider
@@ -357,11 +357,25 @@ def check_reference(recipe: Recipe, length_m: float, gain_m: float, tolerance: f
         raise CompileError(f"{recipe.id} : trace refusée ({' ; '.join(problems)}) : point de passage à corriger")
 
 
+def smooth_profile(alt: list[float], step_m: float = STEP_M, smooth_m: float = GAIN_SMOOTH_M) -> list[float]:
+    """Profil moyenné sur `smooth_m` : retire le bruit du MNT dans les lacets (talus vu à chaque virage).
+
+    Moyenne centrée dont la fenêtre se resserre aux extrémités : départ et arrivée gardent leur
+    altitude et une pente régulière y reste exacte (une fenêtre tronquée l'aplatirait).
+    """
+    a = np.asarray(alt, dtype=float)
+    n, half = len(a), int(round(smooth_m / step_m / 2))
+    if n == 0 or half < 1:
+        return [float(v) for v in a]
+    i = np.arange(n)
+    h = np.minimum(half, np.minimum(i, n - 1 - i))
+    csum = np.concatenate(([0.0], np.cumsum(a)))
+    return [float(v) for v in (csum[i + h + 1] - csum[i - h]) / (2 * h + 1)]
+
+
 def checked_gain(alt: list[float], step_m: float = STEP_M, smooth_m: float = GAIN_SMOOTH_M) -> float:
-    """Dénivelé positif du profil moyenné sur `smooth_m` (bruit du MNT dans les lacets retiré)."""
-    window = max(1, int(round(smooth_m / step_m)) + 1)
-    profile = uniform_filter1d(np.asarray(alt, dtype=float), window, mode="nearest")
-    return gain_loss([float(a) for a in profile], GAIN_THRESHOLD_M)[0]
+    """Dénivelé positif du profil moyenné sur `smooth_m`."""
+    return gain_loss(smooth_profile(alt, step_m, smooth_m), GAIN_THRESHOLD_M)[0]
 
 
 def build_climb(recipe: Recipe, fetch: Callable[[str], dict[str, Any]], provider: ElevationProvider) -> BuiltClimb:
@@ -373,9 +387,10 @@ def build_climb(recipe: Recipe, fetch: Callable[[str], dict[str, Any]], provider
     alt = [float(a) for a in provider.elevations(np.array([p[0] for p in pts]), np.array([p[1] for p in pts]))]
     if not all(math.isfinite(a) for a in alt):
         raise CompileError(f"{recipe.id} : altitude absente du MNT sur une partie du parcours")
-    alt = bridge_off_ground(pts, alt, pt_flags)
+    # Le GPX reçoit le profil contrôlé : sans lui, le bruit des lacets donnait au jeu des pentes à ± 25 %.
+    alt = smooth_profile(bridge_off_ground(pts, alt, pt_flags))
     length = path_length_m(pts)
-    gain = checked_gain(alt)
+    gain = gain_loss(alt, GAIN_THRESHOLD_M)[0]
     check_reference(recipe, length, gain)
     return BuiltClimb(recipe, pts, alt, length, gain)
 

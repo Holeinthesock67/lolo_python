@@ -131,6 +131,20 @@ def test_checked_gain_ignores_hairpin_noise() -> None:
     assert rr.checked_gain(hill) == pytest.approx(500.0, rel=0.02)
 
 
+def test_gpx_altitude_is_the_checked_profile(tmp_path: Path) -> None:
+    """Le GPX reçoit le profil moyenné du contrôle : pas de pente fictive due au bruit des lacets."""
+    def noisy(x, z):                     # ± 6 m tous les 70 m sur le plan à 5 %
+        north = -np.asarray(z, dtype=float)
+        return plane(x, z) + 6.0 * np.sin(north * 2 * math.pi / 70.0)
+
+    r = rr.load_recipe(recipe(tmp_path))
+    climb = rr.build_climb(r, fetcher(two_roads()), SyntheticProvider(*ORIGIN, noisy))
+    grades = np.diff(climb.alt_m) / rr.STEP_M * 100.0
+    assert np.abs(grades[15:-15] - 5.0).max() < 1.0          # brut : ± 50 % d'un point à l'autre
+    assert climb.gain_m == pytest.approx(rr.gain_loss(climb.alt_m)[0])
+    assert "<ele>" in rr.gpx_text(climb)
+
+
 def test_waypoint_off_road_is_refused() -> None:
     graph = rr.build_graph([two_roads()])
     with pytest.raises(CompileError, match="hors de toute route permise"):
