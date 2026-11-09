@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : catalogue des objets, effets dans la table de TT2, objets sur la route, projectiles, contacts et tirage selon le retard | Python | TT2, AS2, T12, T13 | Grande | En PR (7 novembre, version 4.0 proposée), avant TT2 ; core seul, sans séance ni affichage |
+| Série GP : catalogue des objets, effets dans la table de TT2, objets sur la route, projectiles, contacts et tirage selon le retard | Python | TT2, AS2, T12, T13 | Grande | Livré le 7 novembre (PR #744, version 4.0) ; core seul, sans séance ni affichage |
 
 Série GP (mode « Grand Prix des objets », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`.
 

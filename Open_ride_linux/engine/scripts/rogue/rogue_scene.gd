@@ -202,8 +202,10 @@ func warm_count() -> int:
 
 
 ## Trame `state.rogue` : salle à afficher, position, fenêtres actives et Firewall. `now_s` : horloge de
-## l'appelant (pour limiter les demandes de resynchronisation).
-func on_state(rogue: Dictionary, now_s: float) -> void:
+## l'appelant (pour limiter les demandes de resynchronisation). `run_s` : distance depuis le début de la run
+## (`state.s`) ; hors salle (échauffement, retour au calme), le vélo avance sur la grille de cette distance
+## (recette R14 du 8 novembre : sans elle, l'échauffement de 6 min restait figé et passait pour un blocage).
+func on_state(rogue: Dictionary, now_s: float, run_s: float = 0.0) -> void:
 	if not _warm_markers.is_empty():
 		hud_view.banner.visible = false
 	for n in _warm_markers:
@@ -222,7 +224,7 @@ func on_state(rogue: Dictionary, now_s: float) -> void:
 	ribbon.visible = ribbon_visible and shown_room_id == rid and store != null and store.has_room(rid)
 	markers_root.visible = ribbon.visible
 	firewall.visible = ribbon.visible
-	_s_target = float(rogue.get("s_room", 0.0)) if ribbon.visible else 0.0
+	_s_target = float(rogue.get("s_room", 0.0)) if ribbon.visible else maxf(run_s, 0.0)
 	_gap_m = float(rogue.get("firewall_gap_m", 150.0))
 	if ribbon.visible:
 		var windows: Array = rogue.get("windows", [])
@@ -233,8 +235,6 @@ func on_state(rogue: Dictionary, now_s: float) -> void:
 						and float(w.get("s_end", 0.0)) > m["s"]:
 					active = true
 			MarkerViews.set_active(m["node"], active)
-	else:
-		_s_disp = 0.0
 	_update_pose()
 
 
@@ -271,6 +271,18 @@ func _update_pose() -> void:
 		firewall.place(_s_disp - _gap_m, ribbon_y(_s_disp - _gap_m), _gap_m)
 	_ribbon_mat.set_shader_parameter("player_s", _s_disp)
 	_place_camera()
+
+
+## Point du ruban (ou de la grille) sous le joueur, où l'engine pose l'avatar du cycliste.
+func rider_point() -> Vector3:
+	return Vector3(0.0, ribbon_y(_s_disp), -_s_disp)
+
+
+## Pente du ruban sous le joueur, en degrés (positive en montée), pour incliner l'avatar.
+func rider_pitch_deg() -> float:
+	if not ribbon_visible:
+		return 0.0
+	return rad_to_deg(atan((ribbon_y(_s_disp + 1.0) - ribbon_y(_s_disp - 1.0)) * 0.5))
 
 
 func _tick_enemy(delta: float) -> void:

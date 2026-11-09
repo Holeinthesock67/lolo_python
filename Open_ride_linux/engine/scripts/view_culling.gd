@@ -75,7 +75,7 @@ static func route_dir(route, s_pos: float) -> Vector2:
 
 ## Vue active `view` en s, plus les vues futures le long de la route (même écart entre le regard et la
 ## route, même décalage de la caméra par rapport au point de route).
-static func route_views(view: Dictionary, route, s_pos: float, v: float) -> Array:
+static func route_views(view: Dictionary, route, s_pos: float, v: float, direction := 1) -> Array:
 	var out := [view]
 	if route == null:
 		return out
@@ -88,8 +88,8 @@ static func route_views(view: Dictionary, route, s_pos: float, v: float) -> Arra
 	var dist := maxf(maxf(v, 0.0) * LOOKAHEAD_S, LOOKAHEAD_MIN_M)
 	var n := mini(LOOKAHEAD_MAX_VIEWS, ceili(dist / LOOKAHEAD_STEP_M))
 	for i in range(1, n + 1):
-		var s := s_pos + dist * float(i) / float(n)
-		if not route.is_loop() and s > route.length_m:
+		var s := s_pos + direction * dist * float(i) / float(n)   # devant, dans le sens de la marche (lot N17)
+		if not route.is_loop() and (s > route.length_m or s < 0.0):
 			break
 		var d := route_dir(route, s)
 		if d == Vector2.ZERO:

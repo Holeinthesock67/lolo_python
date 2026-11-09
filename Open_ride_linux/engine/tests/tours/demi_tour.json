@@ -1,0 +1,12 @@
+{
+  "description": "Demi-tour depuis la pause (lot N17) : mêmes endroits de la démo dans le sens du parcours puis à rebours (champ dir = -1) ; caméra, avatar à droite de la route dans son sens, décor chargé devant, profil et prochaine montée vers le départ. À lancer en low, medium et high.",
+  "world": "demo",
+  "points": [
+    {"id": "aller_1200", "s": 1200, "label": "Montée, dans le sens du parcours"},
+    {"id": "retour_1200", "s": 1200, "dir": -1, "label": "Même endroit à rebours : descente vers le départ"},
+    {"id": "aller_2250_suivi", "s": 2250, "camera": "follow_near", "label": "Virage, suivi proche, sens du parcours"},
+    {"id": "retour_2250_suivi", "s": 2250, "camera": "follow_near", "dir": -1, "label": "Même virage à rebours, suivi proche : cycliste à droite dans son sens"},
+    {"id": "retour_3000", "s": 3000, "dir": -1, "label": "Demi-tour à 3 km : route chargée devant, vers le départ"},
+    {"id": "retour_300", "s": 300, "dir": -1, "label": "Approche du départ, devenu l'arrivée"}
+  ]
+}

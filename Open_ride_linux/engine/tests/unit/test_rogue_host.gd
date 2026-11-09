@@ -116,9 +116,20 @@ func _run() -> void:
 		sc.enemy_view.set_archetype(arch)
 		_check(sc.enemy_view.body.get_child_count() >= 1, "ennemi %s : volume construit" % arch)
 	sc.enemy_view.set_archetype("diesel")
-	# échauffement : pas de ruban
-	host.update({"mode": "ROGUE", "rogue": _rogue("WARMUP", 0, 0.0)}, main, classic, we, cam, "low", 103.0)
+	# échauffement : pas de ruban, mais le vélo avance sur la grille de la distance de la run (recette R14 du
+	# 8 novembre : l'échauffement figé passait pour un blocage)
+	host.update({"mode": "ROGUE", "s": 400.0, "rogue": _rogue("WARMUP", 0, 0.0)}, main, classic, we, cam, "low", 103.0)
 	_check(not sc.ribbon.visible and not sc.firewall.visible, "échauffement : ni ruban ni Firewall")
+	await process_frame
+	host.update({"mode": "ROGUE", "s": 410.0, "rogue": _rogue("WARMUP", 0, 0.0)}, main, classic, we, cam, "low", 103.1)
+	var z0: float = sc.bike.position.z
+	for _i in 30:
+		await process_frame
+	_check(sc.bike.position.z < z0 - 0.5 and is_equal_approx(sc.rider_point().z, sc.bike.position.z),
+		"échauffement : le vélo avance (z %.1f puis %.1f)" % [z0, sc.bike.position.z])
+	_check(is_equal_approx(sc.grid.position.z, sc.bike.position.z) and sc.rider_pitch_deg() == 0.0, "échauffement : grille sous le vélo, à plat")
+	_check(sc.hud_view.phase_label.visible and sc.hud_view.phase_label.text.begins_with("Échauffement"),
+		"échauffement : la ligne « Échauffement » est affichée")
 	_check(sc.audio != null and sc.audio.get_parent() == sc, "le noeud sonore du mode est dans la scène")
 	# préchauffage (2 novembre) : la synthèse ne bloque pas l'image du départ, les flux arrivent ensuite
 	_check(sc.audio.threaded and not sc.audio.streams_ready(), "sons : synthèse en tâche de fond, pas sur l'image du départ")

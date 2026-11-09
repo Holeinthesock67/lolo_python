@@ -35,6 +35,8 @@ const FOUND := [
 
 func _init() -> void:
 	var m = PairingViewModel.new()
+	_check(m.sheet("identify")["lines"].has(PairingViewModel.CLICK_LEFT_LOCK_LINE)
+		and PairingViewModel.CLICK_LEFT_LOCK_LINE.contains("Zwift"), "carte du Click : raison du silence du boîtier « − » (lot N19)")
 	_check(_item(m, "save")["enabled"] == false and _item(m, "identify")["enabled"] == false,
 			"rien trouvé : Enregistrer et Identifier inactifs")
 	_check(m.handle("scan") == {"action": "scan_devices"} and m.scanning, "Rechercher : scan_devices")

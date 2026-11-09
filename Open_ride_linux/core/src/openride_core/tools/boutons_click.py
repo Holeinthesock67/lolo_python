@@ -4,7 +4,7 @@
     python -m openride_core.tools.boutons_click --sim        # sans matériel (Click simulé)
     python -m openride_core.tools.boutons_click --materiel   # matériel à préparer
 
-L'outil demande les 17 appuis du plan des boutons (spécification générale §7.1) un par un : bip de
+L'outil demande les 18 appuis du plan des boutons (spécification générale §7.1) un par un : bip de
 départ à chaque étape, consigne en grand avec compte à rebours, puis étape suivante dès que l'appui
 demandé est reçu et lu (`--lecture`, 4 s), ou au bout de `--delai` secondes (30). Chaque appui reçu, demandé ou non, s'affiche dans
 un encadré : événement décodé par le core, bouton et boîtier, et l'action qu'il commande dans chaque
@@ -15,7 +15,7 @@ appui ni court ni long). Le boîtier gauche (−, flèches) passe d'abord, avant
 
 Mêmes fournisseurs que le core (deux boîtiers, comme la recette X8 `click_recette`). Écrit
 `rapport.txt`, `rapport.json` et `guide.jsonl` dans `~/OpenRide/boutons_click/<date>_<heure>/` ;
-l'adresse des boîtiers n'est écrite que dans ce dossier local. Code de sortie : 0 si les 17 appuis
+l'adresse des boîtiers n'est écrite que dans ce dossier local. Code de sortie : 0 si les 18 appuis
 sont reconnus, 1 sinon.
 """
 
@@ -78,6 +78,9 @@ PLAN: dict[InputEvent, Action] = {
     InputEvent.Y_SHORT: Action("Y court", "Interrompre et revenir", (
         "Écran précédent ; sur l'écran de pause, reprendre", "Pause et reprise", "Pause et reprise",
         "Pause et reprise", "Pause et reprise", "Pause et reprise")),
+    InputEvent.Y_LONG: Action("Y long", "Interrompre et revenir : revenir sur ses pas", (
+        "Comme Y court", "Demi-tour sans s'arrêter (sinon pause)", "Demi-tour sans s'arrêter (sinon pause)",
+        "Pause et reprise, comme Y court", "Pause et reprise, comme Y court", "Pause et reprise, comme Y court")),
     InputEvent.Z_SHORT: Action("Z court", "Action du mode", (
         "Aucune (un menu n'est pas un mode)", "Bonus (T)", "Bloc suivant", "Attaque", "Bonus (T)",
         "Utiliser l'objet en réserve")),
@@ -113,7 +116,7 @@ KIND_LABELS = {"SHORT": "court", "LONG": "long", "UNCLEAR": "ni court ni long"}
 
 def event_label(ev: InputEvent) -> str:
     button, kind = ev.value.rsplit("_", 1)
-    if button in ("Y", "LEFT", "RIGHT", "UP", "DOWN"):
+    if button in ("LEFT", "RIGHT", "UP", "DOWN") or ev == InputEvent.Y_SHORT:
         return EVENT_LABELS[button]
     return f"{EVENT_LABELS[button]} {KIND_LABELS[kind]}"
 
@@ -161,7 +164,8 @@ STEPS = (
     ButtonStep("b_long", "Appui long sur B (une seconde)", InputEvent.MINUS_LONG, "B", LONG),
     ButtonStep("a", "Appuie brièvement sur A (boîtier droit)", InputEvent.A_SHORT, "A", SHORT),
     ButtonStep("a_long", "Appui long sur A (une seconde)", InputEvent.A_LONG, "A", LONG),
-    ButtonStep("y", "Appuie sur Y (boîtier droit)", InputEvent.Y_SHORT, "Y", SHORT),
+    ButtonStep("y", "Appuie brièvement sur Y (boîtier droit)", InputEvent.Y_SHORT, "Y", SHORT),
+    ButtonStep("y_long", "Appui long sur Y (une seconde)", InputEvent.Y_LONG, "Y", LONG),
     ButtonStep("z", "Appuie brièvement sur Z (boîtier droit)", InputEvent.Z_SHORT, "Z", SHORT),
     ButtonStep("z_long", "Appui long sur Z (une seconde)", InputEvent.Z_LONG, "Z", LONG),
 )
@@ -303,7 +307,7 @@ async def run_steps(providers: list[TracedClickProvider], rec: Recorder, guide: 
                 watch_links()
                 if step.left and watch_muted() and not rec.events[seen:]:
                     res = StepResult(step.key, step.prompt, step.event.value, False, None, received, "gauche",
-                                     "boîtier gauche muet, étape sautée (click_reset_locked coupé ?)")
+                                     "boîtier gauche muet, étape sautée (click_reset_locked = « off » ?)")
                     g.sound.play("echec")
                     break
                 g.tick()
@@ -357,7 +361,7 @@ def report_text(report: dict[str, Any]) -> str:
         lines.append(f"  {'OK ' if s['ok'] else 'NON'} {s['prompt']} : {s['detail']}{side}{delay}")
     if report["missed_left"]:
         lines += ["", "Boîtier gauche : appuis manqués. Un appui fait pendant un redémarrage (environ 4 s par minute)",
-                  "est perdu ; s'il reste muet, vérifier [drivers] click_reset_locked = true (docs/DIAG_CLICK_GAUCHE.md)."]
+                  "est perdu ; s'il reste muet, vérifier [drivers] click_reset_locked = « reset » ou « keep » (docs/DIAG_CLICK_GAUCHE.md)."]
     return "\n".join(lines) + "\n"
 
 

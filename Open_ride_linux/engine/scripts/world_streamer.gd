@@ -18,7 +18,7 @@ extends Node3D
 ## Les tableaux de sommets se calculent dans WorkerThreadPool ; les ArrayMesh et MeshInstance3D se
 ## créent sur le fil principal, au plus MAX_NEW_PER_FRAME par image. Ce qui sort de la fenêtre est
 ## libéré tout de suite (free) ; un changement de parcours vide tout (set_world).
-## Sans couche terrain : sol plat de 2 × far_radius_m de côté, 5 m sous l'altitude minimale de la route,
+## Sans couche terrain (hors piste du vélodrome, lot VD5) : sol plat de 2 × far_radius_m de côté, 5 m sous l'altitude minimale de la route,
 ## qui suit la caméra.
 ## Pas de class_name (charger par preload).
 
@@ -51,6 +51,8 @@ var world_dir := ""
 var has_terrain := false
 var chunks_ahead: int = 3
 var chunks_behind: int = 1
+## Sens de la marche (lot N17) : 1 dans le sens du parcours, -1 à rebours ; « devant » et « derrière » le suivent.
+var direction := 1
 var vegetation_density_factor: float = 0.3
 ## Rayon des tuiles lointaines et demi-côté du sol plat, réglé par render_quality.gd (far_radius_for).
 var far_radius_m: float = FAR_RADIUS_M:
@@ -126,6 +128,7 @@ var _road_color: Color = RoadBuilder.ROAD_COLOR
 var _road_texture: Texture2D = null
 var _marks_by_chunk: Dictionary = {}    # k -> [{s, digit}]
 var _chunk_road_materials: Dictionary = {}   # k -> ShaderMaterial (tronçons à chiffres)
+var _track_material: ShaderMaterial = null   # piste du vélodrome (lot VD4), refait quand la route change
 var _road_wetness := 0.0
 var _terrain_material: Material
 var _road_width_m: float = RoadBuilder.ROAD_WIDTH_M
@@ -184,7 +187,7 @@ func set_world(new_route, new_world_dir: String) -> void:
 		if _near_index.is_empty() and _far_index.is_empty():
 			push_warning("Couche terrain déclarée mais aucune tuile trouvée : sol plat")
 			has_terrain = false
-	if not has_terrain:
+	if not has_terrain and not RoadBuilder.is_track(route):   # piste (lot VD5) : sol de la salle (velodrome_hall.gd)
 		_make_ground()
 	_set_biome_model()
 	if osm_streamer != null:
@@ -445,8 +448,10 @@ func road_window(s_pos: float, v: float) -> Array:
 	var count := RoadBuilder.chunk_count(route)
 	if count == 0:
 		return out
-	var lo := s_pos - float(chunks_behind) * RoadBuilder.CHUNK_LENGTH_M
-	var hi := s_pos + float(chunks_ahead) * RoadBuilder.CHUNK_LENGTH_M + maxf(v, 0.0) * LOOKAHEAD_S
+	var behind := float(chunks_behind) * RoadBuilder.CHUNK_LENGTH_M
+	var ahead := float(chunks_ahead) * RoadBuilder.CHUNK_LENGTH_M + maxf(v, 0.0) * LOOKAHEAD_S
+	var lo := s_pos - (behind if direction > 0 else ahead)
+	var hi := s_pos + (ahead if direction > 0 else behind)
 	var k_lo := floori(lo / RoadBuilder.CHUNK_LENGTH_M)
 	var k_hi := ceili(hi / RoadBuilder.CHUNK_LENGTH_M) - 1
 	for k in range(k_lo, k_hi + 1):
@@ -500,7 +505,7 @@ func _views(s_pos: float, v: float, cam_pos: Vector3) -> Array:
 	var cam := get_viewport().get_camera_3d()
 	if cam == null or cam.global_position.distance_to(cam_pos) > ViewCulling.CAMERA_MATCH_M:
 		return []
-	return ViewCulling.route_views(ViewCulling.view_of(cam), route, s_pos, v)
+	return ViewCulling.route_views(ViewCulling.view_of(cam), route, s_pos, v, direction)
 
 
 ## Tuile proche voulue pour ces vues (lot S1) ; `loaded` : déjà chargée ou en construction, gardée avec
@@ -546,7 +551,7 @@ func update_window(s_pos: float, v: float, cam_pos: Vector3) -> void:
 	for k in road_window(s_pos, v):
 		wanted["road:%d" % k] = {"kind": "road", "k": k, "dist": 0.0}
 	if has_terrain:
-		var ahead: Vector3 = route.sample_point(route.wrap_s(s_pos + maxf(v, 0.0) * LOOKAHEAD_S))
+		var ahead: Vector3 = route.sample_point(route.wrap_s(s_pos + direction * maxf(v, 0.0) * LOOKAHEAD_S))
 		var near := near_window([Vector2(cam_pos.x, cam_pos.z), Vector2(ahead.x, ahead.z)])
 		culled_near = 0
 		for t in near:
@@ -570,7 +575,12 @@ func update_window(s_pos: float, v: float, cam_pos: Vector3) -> void:
 		tree_renderer.enforce_budget(cam_pos, views[0] if not views.is_empty() else {})
 		tree_renderer.update_shadows(cam_pos)
 	if osm_streamer != null and route != null:
-		osm_streamer.update_window(s_pos - float(chunks_behind) * 1000.0, s_pos + float(chunks_ahead) * 1000.0 + v * LOOKAHEAD_S)
+		var osm_behind := float(chunks_behind) * 1000.0
+		var osm_ahead := float(chunks_ahead) * 1000.0 + v * LOOKAHEAD_S
+		if direction > 0:
+			osm_streamer.update_window(s_pos - osm_behind, s_pos + osm_ahead)
+		else:
+			osm_streamer.update_window(s_pos - osm_ahead, s_pos + osm_behind)
 
 
 func _start_jobs() -> void:
@@ -609,7 +619,7 @@ func _build_job(job: Dictionary) -> void:
 				height_at = _display_height_fn(job["world_dir"], r)
 			job["arrays"] = RoadBuilder.build_chunk_arrays(r, k_road, float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)),
 				job.get("gravel", {}), height_at)
-			job["skirt_arrays"] = RoadBuilder.build_skirt_arrays(job["arrays"])
+			job["skirt_arrays"] = [] if RoadBuilder.is_track(r) else RoadBuilder.build_skirt_arrays(job["arrays"])
 		"near", "far":
 			var t: Vector2i = spec["tile"]
 			var heights := TerrainTiles.load_filled(job["world_dir"], spec["kind"], t.x, t.y, r)
@@ -898,6 +908,11 @@ func set_road_marks(marks_by_chunk: Dictionary) -> void:
 
 
 func road_material_for(k: int) -> Material:
+	if RoadBuilder.is_track(route):   # piste du vélodrome (lot VD4) : bois et lignes peintes, sans marquages de route
+		if _track_material == null or _track_material.get_meta("route_id", -1) != route.get_instance_id():
+			_track_material = RoadBuilder.make_track_material(route)
+			_track_material.set_meta("route_id", route.get_instance_id())
+		return _track_material
 	if not road_markings or not _marks_by_chunk.has(k):
 		return _road_material
 	if not _chunk_road_materials.has(k):

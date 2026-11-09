@@ -94,6 +94,16 @@ func _model() -> void:
 	_check(rows.size() == 2 and rows[1]["label"] == "Aucun temps avec bonus" and not rows[1]["enabled"],
 		"segment sans record : table vide")
 	_check(m.table_title("climb1", true) == "Montée 1 : avec bonus", "titre de la table")
+	# Lot N20 : longueur et pente moyenne dans le titre, profil du segment dans la carte (même sans temps).
+	var prof := {"points": PackedVector2Array([Vector2(0, 100), Vector2(3100, 280)]), "alt_min": 100.0, "alt_max": 280.0}
+	m.set_segments([SEGMENTS[0].merged({"length_m": 3100.0, "avg_grade_pct": 5.8}), SEGMENTS[1].merged({"length_m": 400.0})],
+		{"climb1": prof, "sprint1": prof})
+	sh = m.sheet_segment("demo", "climb1")
+	_check(sh["title"] == "Montée · cat. 4 · 3,1 km à 5,8 %" and sh["profile"] == prof, "fiche : longueur, pente et profil (%s)" % sh["title"])
+	sh = m.sheet_segment("demo", "sprint1")
+	_check(sh["title"] == "Sprint · 400 m" and sh.has("profile") and sh["lines"] == ["pas encore de temps"],
+		"fiche d'un sprint sans temps : longueur et profil (%s)" % sh["title"])
+	_check(m.segment_names() == {"climb1": "Montée 1", "sprint1": "Sprint 1"}, "noms des segments pour le bilan")
 	var none = Model.new()
 	_check(none.segment_items("demo")[0]["label"] == "Ce parcours n'a ni sprint ni montée", "parcours sans segment")
 

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Click gauche (4.0) : garder le boîtier gauche déverrouillé sans le redémarrer chaque minute, essai sur le vélo | Python | K8, Q6 | Petite | Prêt (version 4.0) |
+| Click gauche (4.0) : garder le boîtier gauche déverrouillé sans le redémarrer chaque minute, essai sur le vélo | Python | K8, Q6 | Petite | **Livré le 8 novembre** (version 4.0) : essai D négatif, `reset` reste le défaut |
 
 Décision du propriétaire du 28 octobre : l'essai du boîtier gauche face à Zwift est reporté en 4.0. Depuis le 30 octobre, le gauche est redémarré par `0x18` quand Zwift le verrouille (essai C, `docs/RECHERCHE_CLICK_GAUCHE.md` §9) : environ 4 s sans boutons à gauche chaque minute. L'essai B (appli Zwift) est abandonné, faute d'abonnement. Cahier rédigé le 8 novembre (aucun lot ne portait la 4.0).
 
@@ -29,3 +29,14 @@ Supprimer le trou d'environ 4 s par minute, en gardant le redémarrage `0x18` co
 ## 5. Fichiers touchés
 
 `core/src/openride_core/zwift_click.py`, `core/src/openride_core/config.py`, `docs/RECHERCHE_CLICK_GAUCHE.md`.
+
+## 6. Livraison (8 novembre 2026)
+
+Code livré, essai sur le vélo à faire (`docs/RECHERCHE_CLICK_GAUCHE.md` §10) :
+
+- `[drivers] click_reset_locked` devient un choix : `"reset"` (défaut, inchangé), `"keep"` (essai D) ou `"off"` ; les anciens `true` et `false` sont lus comme `"reset"` et `"off"`.
+- `"keep"` : activation complète (`zwift_click.ACTIVATION`), `ff 04 00` à l'écho `RideOn` et à chaque défi `0xFF` (nouvelle catégorie « défi » du journal), redémarrage `0x18` seulement si le verrou revient quand même.
+- Journal : une ligne par fenêtre de boutons en clair du boîtier gauche (durée, fin par verrou, coupure ou arrêt, appuis, réponses `ff 04 00`) ; `click_recette` la reprend dans son rapport avec les rappels perdus par tranche de 10 min, `--verrou keep|reset` pour comparer sans toucher au fichier, `--attente-rappel` pour compter un appui perdu.
+- Le défaut ne passe à `"keep"` qu'après un essai qui tient (critères du §4).
+
+**Résultat de l'essai D (8 novembre, sur le vélo, firmware 1.2.0) : le maintien ne tient pas.** Détail : `docs/RECHERCHE_CLICK_GAUCHE.md` §10. Le défaut reste `"reset"` ; le choix `"keep"` est gardé, sans gain mesuré, pour refaire l'essai après un changement de firmware.
