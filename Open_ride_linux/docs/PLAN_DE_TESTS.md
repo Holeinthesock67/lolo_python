@@ -171,7 +171,7 @@ Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot
 | `python -m openride_core.tools.trainer_steps --mode sim\|erg` | Latence du trainer par paliers (X5) | Délai d'accusé, t63, t90 et stabilisation dans `rapport.html` |
 | `python -m openride_core.tools.click_recette --minutes 30` | Click sur 30 min (X8) | Aucun silence non signalé |
 | `python -m openride_core.tools.fc_recette` | Fréquence cardiaque (X9) | Retrait, absence, valeur figée et retour détectés |
-| `python -m openride_core.tools.boutons_click` | 17 appuis du plan des boutons | Chaque appui reconnu avec son action et un bip |
+| `python -m openride_core.tools.boutons_click` | 18 appuis du plan des boutons | Chaque appui reconnu avec son action et un bip |
 | `python -m openride_core.tools.seance_guidee` | Séances guidées sur le trainer | Consignes suivies, journal complet |
 | `openride-core session-report` | Analyse d'une séance réelle (X12) | Rapport par section, en local |
 
@@ -191,6 +191,7 @@ Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot
 | Matrice des boutons et des réglages (X42, PR #552) | `python -m openride_core.tools.matrice_boutons --partie tout` ; `core/tests/test_matrice_boutons.py` | idem | — |
 | Cyber-Rogue de bout en bout (X40, #546) et banc visuel (X41, #548) | `python -m openride_core.tools.rogue_bout_en_bout --objective tous` ; `python3 engine/tests/rogue_bench.py --godot GODOT` | idem | Planche `rapport.html` montrée au propriétaire |
 | Lisibilité du HUD (X22), persistance des réglages (X37), couleurs du thème (X38), qualité appliquée (X32), hygiène des suites (X34) | §3.7, §3.8, `core/tests/test_settings_persistance.py`, `scripts/recompte_tests.py` | voir les sections citées | Remesures medium et high par la file du PC |
+| Demi-tour depuis la pause (N17, contrat 1.9, 8 novembre) | `core/tests/test_u_turn.py` (critères 2 et 3 du cahier en simulé) ; `test_menu_model.gd`, `test_menu_flow.gd` (critère 4, Click et clavier), `test_camera_follow_lag.gd`, `test_hud_view_model.gd` | `(cd core && pytest -q tests/test_u_turn.py)` ; captures : `python3 engine/tests/tour_visuel.py --tour engine/tests/tours/demi_tour.json --quality low` (puis medium, high) | Captures des trois qualités validées par le propriétaire ; aucune recette sur le vélo |
 | Autres outils X fusionnés le 29 octobre (X3, X10, X11, X14, X15, X17, X19, X20, X21, X24, X26, X27, X28, X30, X31, X35) | Chacun décrit dans [OUTILS_DE_TEST.md](OUTILS_DE_TEST.md) avec sa commande | voir le catalogue | Premier passage sur le PC pour ceux qui mesurent le matériel |
 
 ## 6. En revue : PR ouvertes au 29 octobre 2026 au soir

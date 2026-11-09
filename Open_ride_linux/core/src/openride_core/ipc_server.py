@@ -25,7 +25,7 @@ CONTRACT_VERSION = 1
 # du 27 octobre ; 127.0.0.1, sans fragmentation). Une trame state plus grande est allégée, les autres jetées.
 MAX_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
-CONTRACT_REV = "1.8"   # collection de cartes (lot BC2, 5.0) ; 1.7 : Grand Prix des objets (lot GP2, 4.0) et épreuves de piste (lot VD6, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
+CONTRACT_REV = "1.11"   # Y maintenu : demi-tour en roulant ; 1.10 : bilan en tuiles (lot N20, #788) ; 1.9 : demi-tour depuis la pause (lot N17) et bots changés en pause, `set_bots` (lot N18) ; 1.8 : collection de cartes (lot BC2, 5.0) ; 1.7 : Grand Prix des objets (lot GP2, 4.0) et épreuves de piste (lot VD6, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
 # Modes de jeu proposés au joueur (hello_ack.config.modes, révision 1.3) : l'accueil de l'engine n'affiche que
 # ceux-là. Monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2 ; track : révision 1.7,
 # lot VD6, proposé par l'écran Prêt du vélodrome (lot VD10, pas d'entrée à l'accueil).
@@ -101,6 +101,7 @@ class IpcState:
     start_wait: dict[str, Any] | None = None   # révision 1.5 (lot O36) : départ au pédalage en attente (READY)
     survivor: dict[str, Any] | None = None  # révision 1.5 (lot DS2) : présent seulement en Dernier survivant
     gp: dict[str, Any] | None = None        # révision 1.7 (lot GP2) : présent seulement en Grand Prix des objets
+    dir: int | None = None                  # révision 1.9 (lot N17) : -1 à rebours après un demi-tour, absent dans le sens du parcours
     track: dict[str, Any] | None = None     # révision 1.7 (lot VD6) : présent seulement pendant une épreuve de piste
     last_cmd_id: int = 0
 
@@ -135,7 +136,7 @@ class IpcState:
             d.pop("draft_w", None)
         if self.open_world is None or self.devices is not None:
             d.pop("open_world", None)
-        for key in ("segment", "powerup", "jerseys", "rogue", "wtf", "workout_done", "start_wait", "survivor", "gp", "track"):
+        for key in ("segment", "powerup", "jerseys", "rogue", "wtf", "workout_done", "start_wait", "survivor", "gp", "track", "dir"):
             if d[key] is None:
                 d.pop(key)
         if self.bots is None:

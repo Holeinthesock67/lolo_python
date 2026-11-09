@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série VD : générateur de pistes dans le core (droites, clothoïdes, virages relevés), sans GPX ni compilateur | Python | VD1 | Moyenne | En PR (7 novembre) : `velodrome.py`, `openride-core velodromes` ; écriture au premier lancement avec le menu (VD10) |
+| Série VD : générateur de pistes dans le core (droites, clothoïdes, virages relevés), sans GPX ni compilateur | Python | VD1 | Moyenne | Livré le 8 novembre (PR #746) : `velodrome.py`, `openride-core velodromes` |
 
 Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_VD.md`. Plan validé par le propriétaire le 6 novembre (lot VD0).
 
@@ -33,3 +33,7 @@ Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026
 - `core/src/openride_core/velodrome.py` (nouveau), son test, `__main__.py` (sous-commande).
 
 Tout lot qui change l'affichage est mesuré en `low`, `medium` et `high` (budgets GPU : 6, 12 et 14 ms) et ses captures sont validées par le propriétaire avant la fusion.
+
+## Livraison
+
+PR #746 (fusionnée le 8 novembre, main bd7b29d5) : générateur de pistes dans le core. Statut corrigé par le bilan du 8 novembre au soir.

@@ -637,7 +637,7 @@ def test_no_hard_coded_test_counts_and_negative() -> None:
 
 def test_cited_paths_exist_and_negative() -> None:
     skipped = undelivered_lot_files()
-    assert "LOT_J4_paquetage_autonome.md" in skipped
+    assert "LOT_N17_demi_tour_menu.md" in skipped
     errors: list[str] = []
     for f in project_files(".md"):
         if f.parent == LOTS_DIR and f.name in skipped:

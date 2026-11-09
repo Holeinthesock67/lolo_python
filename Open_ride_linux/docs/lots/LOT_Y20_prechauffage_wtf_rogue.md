@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série Y (rendu) : objets WTF et scène du Cyber-Rogue dessinés pendant l'écran d'attente du départ ; synthèse des sons et de la musique du Cyber-Rogue sur un fil de travail | GDScript | Y19, WTF5, WTF6, R18 | Petite | **En PR** (2.0) ; banc PC à refaire en low, medium et high |
+| Série Y (rendu) : objets WTF et scène du Cyber-Rogue dessinés pendant l'écran d'attente du départ ; synthèse des sons et de la musique du Cyber-Rogue sur un fil de travail | GDScript | Y19, WTF5, WTF6, R18 | Petite | Livré le 2 novembre (PR #700, 2.0) ; banc PC à refaire en low, medium et high |
 
 ## 1. Objectif
 
@@ -50,3 +50,7 @@ Défauts restants, à traiter ensemble (basse priorité, après la 1.0) :
 - Séance sur route, high, demo compilée : une à deux images de 117 à 147 ms vers 23 à 24 s, cycliste encore à 0 m. Cause notée par la sonde : arbres des premières tuiles posés sur le fil principal (`arbres near:-1:0 33 ms`, `arbres near:0:0 32 ms`). Relevé du banc de #710 dans `/mnt/project-files/mesures/2026-11-04-saccades-40m/r710-fix/compilee_high_saccades.csv`.
 
 Garde-fou : la ligne « à-coups : départ » de `perf_probe.py` (#710, bloc `hitches` de `perf_targets.json`) refuse toute image de plus de 150 ms entre la fin du chargement et 30 s, en low, medium et high. Le seuil se resserrera quand ces à-coups seront corrigés.
+
+## Livraison
+
+PR #700 (fusionnée le 2 novembre) : préchauffage du mode WTF, sons du Cyber-Rogue hors du fil principal. Reste le banc PC en low, medium et high. Statut corrigé par le bilan du 8 novembre au soir.

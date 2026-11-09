@@ -127,6 +127,40 @@ func _test_pause_after_workout_done() -> void:
 	_check(h.state()["status"] == MenuFlow.PAUSE_REASONS["trainer_lost"], "pause subie : la raison passe avant l'invite")
 
 
+## Lot N17 : « Faire demi-tour » proposé sur un parcours seulement (mêmes refus que le core), commande u_turn
+## après confirmation, retour à la pause ; distance de la fiche de la pause croissante à rebours.
+func _test_u_turn_entry() -> void:
+	_check(MenuFlow.u_turn_allowed_of({"route_id": "vosges", "mode": "SIM"}), "demi-tour : parcours en SIM")
+	_check(MenuFlow.u_turn_allowed_of({"route_id": "vosges", "mode": "ERG"}), "demi-tour : parcours en ERG")
+	_check(not MenuFlow.u_turn_allowed_of({"route_id": "ow:abc", "mode": "SIM"}), "pas de demi-tour en monde ouvert")
+	_check(not MenuFlow.u_turn_allowed_of({"route_id": null, "mode": "ROGUE"}), "pas de demi-tour en run Cyber-Rogue")
+	_check(not MenuFlow.u_turn_allowed_of({"route_id": "vosges", "survivor": {}}), "pas de demi-tour en Dernier survivant")
+	_check(not MenuFlow.u_turn_allowed_of({"route_id": "vosges", "gp": {}}), "pas de demi-tour en Grand Prix")
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "RUNNING", "route_id": "vosges", "mode": "SIM", "t": 600.0, "s": 3000.0})
+	f.on_state({"session_state": "PAUSED", "pause_reason": "user", "route_id": "vosges", "mode": "SIM",
+		"t": 600.0, "s": 3000.0})
+	var ids: Array = []
+	for it in f.state()["items"]:
+		ids.append(str(it["id"]))
+	_check(ids.slice(0, 4) == ["resume", "end_save", "abandon", "u_turn"], "pause : Faire demi-tour après Abandonner (%s)" % str(ids))
+	for i in range(3):
+		f.handle("PLUS_SHORT")
+	_check(_focus_id(f) == "u_turn", "focus sur Faire demi-tour")
+	f.handle("A_LONG")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "u_turn"}, "Oui : commande u_turn")
+	_check(f.state()["screen"] == "pause", "retour à la pause après le demi-tour")
+	f.on_state({"session_state": "PAUSED", "pause_reason": "user", "route_id": "vosges", "mode": "SIM", "dir": -1,
+		"t": 600.0, "s": 3000.0})
+	f.on_state({"session_state": "RUNNING", "route_id": "vosges", "mode": "SIM", "dir": -1, "t": 700.0, "s": 2600.0})
+	f.on_state({"session_state": "PAUSED", "pause_reason": "user", "route_id": "vosges", "mode": "SIM", "dir": -1,
+		"t": 700.0, "s": 2600.0})
+	var tiles: Array = f.card(f.state()).get("tiles", [])
+	_check(not tiles.is_empty() and str(tiles[1]["value"]) == "3,4", "fiche de la pause : 3,4 km parcourus à rebours (%s)" % str(tiles))
+
+
 func _test_abandon_and_summary_quit() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true   # écran de connexion : _test_connect_screen
@@ -189,10 +223,19 @@ func _test_view() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # détails
 	v.update_display(f.state(), state, f.summary, f.show_details)
-	_check(v.summary.visible and not v.devices.visible and v.summary.text().contains("Distance : 15,00 km"),
+	_check(v.summary.visible and not v.devices.visible and v.summary.text().contains("Distance 15,00 km"),
 			"bilan : %s" % v.summary.text())
 	_check(v.summary.fit_label.text.contains("seance.fit"), "fichier FIT : %s" % v.summary.fit_label.text)
 	_check(v.summary.blocks_box.get_child_count() == 2, "bilan détaillé : un bloc par ligne")
+	# Paliers de `fit` quand la carte ne tient pas même resserrée : blocs sur deux colonnes, courbe cachée.
+	v.summary.update_display({"duration_s": 1800.0, "distance_m": 15000.0, "blocks": [[1, 200.0, 200.0]],
+			"power_profile": {"step_s": 10, "power_w": [150, 200, 180], "target_w": null}}, true)
+	v.summary.fit(600.0, func() -> bool: return false)
+	_check(v.summary.blocks_box.columns == 2 and not v.summary.chart_box.visible,
+			"bilan trop haut : blocs sur deux colonnes, courbe de puissance cachée")
+	v.summary.fit(600.0, func() -> bool: return true)
+	_check(v.summary.blocks_box.columns == 1 and v.summary.chart_box.visible,
+			"bilan qui tient : un bloc par ligne, courbe affichée")
 	v.free()
 
 
@@ -408,8 +451,7 @@ func _test_settings_screen() -> void:
 	# Curseur de difficulté sur l'écran de pause : set_difficulty, sans config.toml.
 	f.on_state({"session_state": "RUNNING", "difficulty_pct": 50})
 	f.on_state({"session_state": "PAUSED", "difficulty_pct": 50})
-	f.handle("MINUS_SHORT")   # dernière ligne : mode de la session libre (lot O18)
-	f.handle("MINUS_SHORT")
+	f.menu.focus_item("difficulty")   # sous Abandonner ; puis mode (lot O18) et bots (lot N18)
 	_check(_focus_id(f) == "difficulty" and f.state()["items"][3]["detail"] == "50 %" and f.state()["items"][3]["bar"] == 50,
 			"pause : curseur de difficulté")
 	f.handle("A_LONG")
@@ -614,8 +656,9 @@ func _test_ftp_flow() -> void:
 	f.on_state({"session_state": "RUNNING"})
 	var ftp := {"test": "ramp", "ftp_w": 262, "previous_ftp_w": 250, "warnings": ["trainer_dropout"], "reliable": false}
 	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 1500.0, "ftp_test": ftp}})
-	_check(f.state()["status"] == "Nouvelle FTP : 262 W (avant 250 W) ; coupure du trainer pendant l'effort",
-		"bilan : nouvelle FTP et avertissement (%s)" % f.state()["status"])
+	_check(f.state()["status"] == "" and f.summary_model.ftp_result(f.summary) == {"value": "262 W", "before": "avant 250 W",
+		"delta": "+12 W", "ok": false, "note": "coupure du trainer pendant l'effort"},
+		"bilan : nouvelle FTP et avertissement au bandeau du bilan, rien sous le titre (lot N20)")
 	_check(_ids(f) == ["accept_ftp", "keep_ftp", "new_session", "details", "quit"] and _focus_id(f) == "accept_ftp",
 		"Accepter / Garder en tête du bilan")
 	_check(f.handle("A_LONG") == {"action": "accept_ftp", "force": false}, "accept_ftp")
@@ -638,8 +681,8 @@ func _test_ftp_flow() -> void:
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {"ftp_test": {"test": "ramp", "ftp_w": null,
 		"previous_ftp_w": 250, "warnings": ["too_short"], "reliable": false}}})
-	_check(f.state()["status"] == "Test de FTP : aucune FTP calculable ; test trop court" and _ids(f)[0] == "new_session",
-		"sans FTP calculable : rien à accepter")
+	_check(f.state()["status"] == "" and f.summary_model.ftp_result(f.summary)["note"] == "aucune FTP calculable ; test trop court"
+		and _ids(f)[0] == "new_session", "sans FTP calculable : rien à accepter, raison au bandeau du bilan")
 
 
 ## Bibliothèque de parcours (lot O12, critère 3) : filtrer « col », trier par dénivelé, lancer le premier.
@@ -970,6 +1013,7 @@ func _init() -> void:
 	_test_full_session()
 	_test_abandon_and_summary_quit()
 	_test_pause_after_workout_done()
+	_test_u_turn_entry()
 	_test_view()
 	print("test_menu_flow : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

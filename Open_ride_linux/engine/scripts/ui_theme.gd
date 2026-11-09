@@ -135,6 +135,14 @@ const BOT_CONSTANT := Color(1.00, 0.78, 0.40)
 const BOT_GHOST := Color(0.72, 0.84, 1.00)
 const BOT_PROFILE := Color(0.95, 0.85, 0.30)
 const BOT_OTHER := Color(0.85, 0.85, 0.85)
+# Collection de cartes (série BC, lot BC5) : cadre selon la rareté, point d'une carte pas encore vue,
+# silhouette d'une carte à gagner (visuel assombri en gris).
+const RARITY_COMMUNE := Color(0.690, 0.439, 0.251)
+const RARITY_RARE := Color(0.667, 0.722, 0.784)
+const RARITY_EPIQUE := Color(0.871, 0.698, 0.235)
+const RARITY_LEGENDAIRE := Color(0.745, 0.471, 0.902)
+const CARD_NEW := Color(1.000, 0.690, 0.180)
+const CARD_LOCKED := Color(0.18, 0.20, 0.27)
 const DATA := {
 	"grade_descent": GRADE_DESCENT,
 	"grade_flat": GRADE_FLAT,
@@ -214,6 +222,12 @@ const DATA := {
 	"bot_ghost": BOT_GHOST,
 	"bot_profile": BOT_PROFILE,
 	"bot_other": BOT_OTHER,
+	"rarity_commune": RARITY_COMMUNE,
+	"rarity_rare": RARITY_RARE,
+	"rarity_epique": RARITY_EPIQUE,
+	"rarity_legendaire": RARITY_LEGENDAIRE,
+	"card_new": CARD_NEW,
+	"card_locked": CARD_LOCKED,
 }
 
 # --- Tailles de police --------------------------------------------------------------------------
@@ -286,6 +300,14 @@ static func tile_style() -> StyleBoxFlat:
 	s.content_margin_right = 14
 	s.content_margin_top = 8
 	s.content_margin_bottom = 8
+	return s
+
+
+## Bandeau d'un résultat à décider (test de FTP du bilan, lot N20) : tuile au bord de la sélection.
+static func band_style() -> StyleBoxFlat:
+	var s := tile_style()
+	s.border_color = FOCUS
+	s.set_border_width_all(2)
 	return s
 
 

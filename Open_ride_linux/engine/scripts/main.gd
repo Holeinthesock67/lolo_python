@@ -77,6 +77,8 @@ const DEMO_ROUTE_ID := "demo"
 const OW_PREFIX := "ow:"
 ## Colonnes du profil d'altitude de la carte de détail des menus (parcours entier).
 const ROUTE_PROFILE_COLUMNS := 120
+## Points du profil d'un segment dans la carte des records (lot N20).
+const SEGMENT_PROFILE_COLUMNS := 60
 const DEMO_WORLD := "res://demo/demo.world"
 const ERROR_MIN_S := 5.0
 const TEST_CAM_PERIOD_US := 50_000   # journal de la caméra à 20 Hz en mode test
@@ -180,6 +182,7 @@ const BEEPS := {
 	"A_SHORT": [[880.0, 0.08]],
 	"A_LONG": [[660.0, 0.10], [990.0, 0.14]],
 	"Y_SHORT": [[550.0, 0.10], [330.0, 0.14]],
+	"Y_LONG": [[660.0, 0.10], [440.0, 0.10], [660.0, 0.14]],
 	"LEFT_SHORT": [[440.0, 0.08]],
 	"RIGHT_SHORT": [[880.0, 0.08]],
 	"UP_SHORT": [[880.0, 0.08]],
@@ -506,6 +509,9 @@ func _ready() -> void:
 	ipc.history_session_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_history_session(msg)
 		_refresh_menu())
+	ipc.collection_received.connect(func(msg: Dictionary) -> void:
+		_run_menu_action(menu_flow.on_collection(msg))
+		_refresh_menu())
 	ipc.coach_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_coach(msg)
 		_refresh_menu())
@@ -671,6 +677,8 @@ func _on_input_event(event_name: String) -> void:
 	print("Bip : ", event_name)
 	_play_tones(BEEPS[event_name], BEEP_LEVEL)
 	var mark := HudViewModel.dropout_mark_text(event_name, session_state, rogue_host.is_active(), menu_flow.is_visible())
+	if mark == "":
+		mark = HudViewModel.u_turn_press_text(event_name, session_state, menu_flow.is_visible())
 	if mark != "":
 		banner.show_message("press", mark, PRESS_HINT_S)
 		return
@@ -711,6 +719,8 @@ func _remember_camera_view(now_s: float) -> void:
 
 ## Événement du Click (relayé par le core) ou du clavier, menu affiché : navigation et action.
 func _menu_event(event_name: String) -> void:
+	if event_name == "Y_LONG":
+		event_name = "Y_SHORT"   # Y maintenu (révision 1.11) : demi-tour en roulant seulement ; en menu, comme Y court
 	if world_menu_view != null and world_menu_view.visible:
 		_world_menu_event(event_name)
 		return
@@ -731,6 +741,7 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_workouts()
 			ipc.list_settings()
 			ipc.list_plans()
+			ipc.list_collection()   # ligne « Collection » de l'accueil (lot BC5)
 			ipc.coach_command("get_coach", menu_flow.coach.request_args())   # ligne « Séance conseillée » de l'accueil
 			if act.get("route_id") != null:
 				ipc.send_command("select_route", {"route_id": act["route_id"]})
@@ -766,6 +777,10 @@ func _run_menu_action(act: Dictionary) -> void:
 				_run_menu_action(a)
 		"history_session":
 			ipc.history_session(str(act["id"]))
+		"list_collection":
+			ipc.list_collection()
+		"collection_seen":
+			ipc.collection_seen(act.get("keys", []))
 		"list_wtf_rules":
 			ipc.send_command("list_wtf_rules", {})
 		"set_wtf_rules":   # une commande set_wtf_rule par règle basculée (lot WTF3)
@@ -796,7 +811,11 @@ func _run_menu_action(act: Dictionary) -> void:
 		"end_session":
 			ipc.send_command("end_session", {"save": bool(act.get("save", true))})
 		"start", "resume":
+			if name == "resume" and act.has("bots"):   # bots changés sur l'écran de pause (lot N18, révision 1.9)
+				ipc.send_set_bots(act["bots"])
 			ipc.send_command(name, act.get("args", {}))
+		"u_turn":   # demi-tour depuis la pause (lot N17, révision 1.9)
+			ipc.send_command("u_turn", {})
 		"start_run":
 			ipc.start_run(act.get("args", {}))
 		"open_world_menu":
@@ -1075,12 +1094,19 @@ func _process(delta: float) -> void:
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
-		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
+		# À rebours (lot N17), cap retourné : la caméra et l'avatar regardent vers le départ du parcours.
+		var dir: int = follow.direction
+		var heading: float = deg_to_rad(route.sample_heading_deg(s_route)) + (PI if dir < 0 else 0.0)
 		# Écart à l'axe (lot AS2) : l'avatar suit `lane_m` du core, la caméra le suit avec 0,5 s de lissage.
+		# `lane_m` est dans le repère de la route ; avec le cap retourné, l'écart se compte à droite du cycliste.
 		var lane = _last_state.get("lane_m", null)
-		follow.update_lane(float(lane) if (lane is float or lane is int) else RoadBuilder.RIDER_LATERAL_M, -1.0, now)
+		follow.update_lane(dir * float(lane) if (lane is float or lane is int) else RoadBuilder.RIDER_LATERAL_M, -1.0, now)
 		# Pose du vélo (lot CY1) : trajectoire lissée dans la voie, cap de cette trajectoire, penché dans les virages.
-		var pose: Dictionary = RiderPose.pose(route, s_route, follow.lane_m, float(follow.last_frame["v"]))
+		# À rebours (lot N17) : écart repassé dans le repère de la route, cap retourné, virages pris dans l'autre sens.
+		var pose: Dictionary = RiderPose.pose(route, s_route, dir * follow.lane_m, float(follow.last_frame["v"]))
+		if dir < 0:
+			pose["yaw"] = float(pose["yaw"]) + PI
+			pose["roll"] = -float(pose["roll"])
 		var pos: Vector3 = pose["pos"]
 		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
 		_bank_roll = deg_to_rad(route.bank_at(s_route))   # piste relevée (lot VD4) : avatar perpendiculaire à la piste
@@ -1110,6 +1136,7 @@ func _process(delta: float) -> void:
 		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
 		_probe.distance_m = s_route
 		var t_step := Time.get_ticks_usec()
+		streamer.direction = dir   # tronçons et tuiles chargés devant, dans le sens de la marche (lot N17)
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		PerfProbe.mark_since("fenetre", "", t_step)
 		# Bots placés avant le décor vivant : ses cyclistes, ses véhicules et son compte des contacts lisent les
@@ -1144,7 +1171,8 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 		if living_world.frozen_at != _freeze_t:
 			living_world.freeze(_freeze_t)
 	var paused := session_state == "PAUSED"
-	living_world.step(now_s, delta, camera.global_position, s_route, v, float(smp["heading_deg"]),
+	var rider_heading_deg: float = float(smp["heading_deg"]) + (180.0 if follow.direction < 0 else 0.0)   # lot N17
+	living_world.step(now_s, delta, camera.global_position, s_route, v, rider_heading_deg,
 		float(smp["alt_m"]), paused)   # marque elle-même « herbe » et « sol »
 	var t_step := Time.get_ticks_usec()
 	if living_decor != null:
@@ -1169,6 +1197,7 @@ func _menu_camera(delta: float) -> bool:
 	camera.fov = _base_fov
 	camera.rotation.y = -heading
 	camera.rotation.x = deg_to_rad(CameraViews.camera_pitch_deg(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS)))
+	streamer.direction = 1   # le décor des menus avance dans le sens du parcours (lot N17)
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
 	_step_living(delta, _menu_s, MENU_CAMERA_MPS)
 	return true
@@ -1340,7 +1369,11 @@ func _poll_route_job() -> void:
 	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
 		not route.live)
 	segment_hud.set_segments(route.segments)
-	menu_flow.records.set_segments(route.segments)
+	var seg_profiles := {}   # profil de chaque segment pour la carte des records (lot N20)
+	for seg in route.segments:
+		seg_profiles[str(seg["id"])] = hud.vm.profile(route, float(seg["s_start"]), 0.0,
+			float(seg["s_end"]) - float(seg["s_start"]), SEGMENT_PROFILE_COLUMNS)
+	menu_flow.records.set_segments(route.segments, seg_profiles)
 	# Fichier des records de remplacement (tests visuels) ; vide : ~/OpenRide/records.json.
 	menu_flow.records_path = OS.get_environment("OPENRIDE_RECORDS_FILE")
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
@@ -1628,7 +1661,9 @@ func _garage_info() -> Dictionary:
 ## Texte des zones composées du menu (éléments, appareils, bilan), pour les tests graphiques.
 func _widget_text(key: String) -> String:
 	if key == "menu":
-		return "%s || %s || %s || %s || %s" % [menu_view.status_label.text, menu_view.items_text(), menu_view.devices.text() if menu_view.devices.visible else "",
+		return "%s || %s || %s || %s || %s || %s" % [menu_view.status_label.text, menu_view.items_text(),
+				menu_view.collection.view_text() if menu_view.collection.visible else "",
+				menu_view.devices.text() if menu_view.devices.visible else "",
 				(menu_view.summary.text() + " || " + menu_view.summary.progress_text()) if menu_view.summary.visible else "", menu_view.card.text() if menu_view.card.visible else ""]
 	return ""
 
@@ -1956,7 +1991,8 @@ func _on_state_received(state: Dictionary) -> void:
 	var running := session_state == "RUNNING"
 	# Une seule heure de réception pour le cycliste et les bots de la trame : le core les donne au même instant.
 	var t_frame_us := Time.get_ticks_usec()
-	follow.push_frame(t_frame_us, float(state.get("s", 0.0)), float(state.get("v", 0.0)), running)
+	follow.push_frame(t_frame_us, float(state.get("s", 0.0)), float(state.get("v", 0.0)), running,
+		HudViewModel.direction_of(state))   # sens de la marche après un demi-tour (lot N17)
 	ipc.test_log("state seq=%d s=%.3f session=%s" % [int(state.get("seq", 0)), float(state.get("s", 0.0)), session_state])
 
 	if running and route != null:
@@ -1984,7 +2020,7 @@ func _on_state_received(state: Dictionary) -> void:
 	if hud != null and hud.has_method("update_display"):
 		hud.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 		hud.hr_max_bpm = float(ipc.core_config.get("hr_max_bpm", 0.0))
-		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
+		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)), HudViewModel.direction_of(state))
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
 		_update_survivor(state, in_session)
@@ -2006,6 +2042,8 @@ func _on_state_received(state: Dictionary) -> void:
 		var wind_now_s := Time.get_ticks_msec() / 1000.0
 		living_world.on_state(state, wind_now_s)
 		var heading_deg: float = route.sample_heading_deg(route.wrap_s(float(state.get("s", 0.0)))) if route != null else 0.0
+		if HudViewModel.direction_of(state) < 0:
+			heading_deg += 180.0   # vent ressenti dans le sens de la marche (lot N17)
 		if hud != null and hud.has_method("update_wind"):
 			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s), _quality_name != "low")
 

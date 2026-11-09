@@ -341,6 +341,8 @@ def summary_extras(records: list[dict[str, Any]], events: list[dict[str, Any]],
         "max_power_w": round(max(powers), 1) if powers else None,
         "blocks": blocks,
         "blocks_truncated": blocks_truncated,
+        # Lot N20 (révision 1.10) : courbe réduite de la puissance pour le graphique du bilan.
+        "power_profile": res.get("power_profile") if res else None,
         # Lot AS5 (révision 1.5) : temps dans la roue et énergie économisée, seulement avec des bots.
         **({k: res[k] for k in ("draft_time_s", "draft_kj")} if res and "draft_time_s" in res else {}),
     }
@@ -349,21 +351,32 @@ def summary_extras(records: list[dict[str, Any]], events: list[dict[str, Any]],
 # --- historique (lot O28, révision 1.5) ------------------------------------------------------
 
 MAX_HISTORY_SESSIONS = 60
+MAX_HISTORY_CARDS = 8   # cartes posées sur une séance de l'historique (lot BC6)
 MAX_HISTORY_WEEKS = 8
 MAX_HISTORY_FTP_TESTS = 20
 HISTORY_SESSION_KEYS = ("date", "route", "duration_s", "distance_m", "elevation_gain_m", "avg_power_w",
                         "np_w", "if", "tss", "status", "workout")
 
 
-def build_history_message(request_cmd_id: int, ftp_w: float, activities_dir: Path) -> dict[str, Any]:
+def build_history_message(request_cmd_id: int, ftp_w: float, activities_dir: Path,
+                          earned: list[tuple[float, str]] | None = None) -> dict[str, Any]:
     """Réponse à `list_history` : séances, cumul par semaine et tests de FTP, calculés comme
-    `openride-core history` et `ftp-test --history` (mêmes arrondis, même cache)."""
+    `openride-core history` et `ftp-test --history` (mêmes arrondis, même cache). `earned` : cartes de la
+    collection gagnées (début de la séance, clé), posées sur leur séance (`cards`, révision 1.8, lot BC6)."""
     from . import ftp_test
-    from .tools.history import compute_history
+    from .tools.history import MATCH_TOLERANCE_S, compute_history
 
     hist = compute_history(activities_dir, ftp=ftp_w, weeks=MAX_HISTORY_WEEKS)
-    sessions = [{"id": s["filename"], **{k: s[k] for k in HISTORY_SESSION_KEYS}}
-                for s in hist["sessions"] if s["status"] != "error"]
+    sessions = []
+    for s in hist["sessions"]:
+        if s["status"] == "error":
+            continue
+        entry = {"id": s["filename"], **{k: s[k] for k in HISTORY_SESSION_KEYS}}
+        start = s.get("start_ts")
+        keys = [k for ts, k in earned or [] if start is not None and abs(ts - start) <= MATCH_TOLERANCE_S]
+        if keys:
+            entry["cards"] = keys[:MAX_HISTORY_CARDS]
+        sessions.append(entry)
     unreadable = sum(1 for s in hist["sessions"] if s["status"] == "error")
     tests = []
     for _path, r in reversed(ftp_test.find_results(activities_dir / ".journal")):
@@ -502,6 +515,24 @@ def build_collection_message(request_cmd_id: int, profile_ctx: Any,
         ],
         "new": [e.key for e in new_cards(col, seen)],
     }
+
+
+def collection_earned(profile_ctx: Any, journal_dir: Path | None = None,
+                      table_path: Path | None = None, now: float | None = None) -> list[tuple[float, str]]:
+    """Cartes gagnées du profil en cours, (début de la séance, clé), pour l'historique (lot BC6)."""
+    from .collection import evaluate, load_catalogue
+    from .config import WORKOUTS_DIR
+    from .garage import CACHE_NAME, workout_duration_finder
+    from .progression import FactsCache, load_table, recompute
+
+    journal_dir = journal_dir or profile_ctx.journal_dir
+    table_path = table_path or getattr(profile_ctx, "table_path", None)
+    table = load_table(table_path)
+    progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR),
+                         cache=FactsCache(journal_dir / CACHE_NAME),
+                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
+    col = evaluate(progress, load_catalogue(table=table), table, now=now)
+    return [(e.start_ts, e.key) for e in col.earned if e.start_ts is not None]
 
 
 def record_collection_seen(profile_ctx: Any, keys: list[str],

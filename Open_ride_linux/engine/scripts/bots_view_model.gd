@@ -354,11 +354,12 @@ static func _slot_free(taken: Array, gap: float, lateral: float, from: float, sh
 
 
 ## Repères du profil d'altitude : [{rel_m, color}] des bots entre from_m et to_m (écarts au cycliste,
-## fenêtre de hud_view_model.profile()).
-static func profile_marks(bots_view: Array, from_m: float, to_m: float) -> Array:
+## fenêtre de hud_view_model.profile()). `dir` = -1 à rebours (lot N17) : le profil regarde vers le départ, l'écart
+## (mesuré dans le sens du parcours) change de signe.
+static func profile_marks(bots_view: Array, from_m: float, to_m: float, dir := 1) -> Array:
 	var out: Array = []
 	for b in bots_view:
-		var rel: float = b["gap_m"]
+		var rel: float = dir * float(b["gap_m"])
 		if rel >= from_m and rel <= to_m:
 			out.append({"rel_m": rel, "color": b["color"]})
 	return out

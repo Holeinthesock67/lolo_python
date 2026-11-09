@@ -134,7 +134,42 @@ func _init() -> void:
 	var confirmed_act := menu.handle("A_LONG") # valider 'Oui'
 	_check(confirmed_act.get("action") == {"action": "quit"}, "acceptation confirmation : action 'quit' émise")
 
-	# 6. Performance : aucun nœud créé
+	# 6. Bilan en tuiles (lot N20) : six tuiles au plus, sans tuile vide ; courbe, records battus, FTP
+	var tile_texts := func(sm: Dictionary) -> Array:
+		return vm.tiles(sm).map(func(t): return ("%s %s %s %s" % [t["label"], t["value"], t["unit"], t["sub"]]).strip_edges())
+	_check(tile_texts.call(full_summary) == ["Distance 12,35 km", "Durée 1:02:03", "Dénivelé 350 m", "Puissance 220 W NP 235",
+		"FC moyenne 142 bpm", "Cadence 88 rpm"], "tuiles : six, dans l'ordre (%s)" % str(tile_texts.call(full_summary)))
+	_check(tile_texts.call(v1_summary) == ["Distance 15,00 km", "Durée 0:30:00", "Puissance 200 W"],
+		"tuiles : sans donnée, la tuile est retirée (%s)" % str(tile_texts.call(v1_summary)))
+	_check(tile_texts.call(full_summary.merged({"elevation_gain_m": 0.0}, true)).size() == 5, "tuiles : dénivelé nul (ERG) retiré")
+	_check(vm.more_line(full_summary.merged({"draft_time_s": 724, "draft_kj": 9.4}))
+		== "IF 0,85 · TSS 75 · Puissance max 520 W · Dans la roue 12 min · 9 kJ économisés",
+		"ligne des autres chiffres (%s)" % vm.more_line(full_summary.merged({"draft_time_s": 724, "draft_kj": 9.4})))
+	_check(vm.more_line(v1_summary) == "", "ligne des autres chiffres : vide sans donnée")
+	_check(vm.power_chart(v1_summary).is_empty() and vm.power_chart({"power_profile": null}).is_empty()
+		and vm.power_chart({"power_profile": {"step_s": 1, "power_w": [200], "target_w": null}}).is_empty(),
+		"courbe : absente, nulle ou d'un seul point, pas de graphique")
+	var chart: Dictionary = vm.power_chart({"power_profile": {"step_s": 30, "power_w": [150, 320, 210], "target_w": [200, null, 250]}})
+	_check(chart["power_w"] == [150.0, 320.0, 210.0] and chart["target_w"] == [200.0, null, 250.0] and chart["max_w"] == 320.0
+		and chart["step_s"] == 30, "courbe avec cible : valeurs et plus haute valeur (%s)" % str(chart))
+	_check(vm.power_chart({"power_profile": {"step_s": 30, "power_w": [150, 320], "target_w": null}})["target_w"].is_empty(),
+		"courbe sans cible : pas de profil cible")
+	var segs := {"segments": {"more": false, "jerseys": {}, "passes": [
+		{"segment_id": "col", "kind": "climb", "time_s": 402.3, "with_powerup": false, "pr": true, "pr_time_s": 418.9},
+		{"segment_id": "spr", "kind": "sprint", "time_s": 24.8, "with_powerup": false, "pr": false, "pr_time_s": 23.1},
+		{"segment_id": "spr", "kind": "sprint", "time_s": 22.4, "with_powerup": true, "pr": true, "pr_time_s": null}]}}
+	var recs: Array = vm.records_beaten(segs, {"col": "Montée du col", "spr": "Sprint"})
+	_check(recs == [{"name": "Sprint (bonus)", "time": "0:22,4", "before": "premier temps"},
+		{"name": "Montée du col", "time": "6:42,3", "before": "avant 6:58,9"}],
+		"records battus : du dernier au premier, ancien temps ou premier temps (%s)" % str(recs))
+	_check(vm.records_beaten(full_summary).is_empty(), "records battus : aucun sans segments")
+	_check(vm.ftp_result(full_summary).is_empty(), "FTP : pas de bandeau sans test")
+	_check(vm.ftp_result({"ftp_test": {"ftp_w": 251, "previous_ftp_w": 243, "warnings": [], "reliable": true}})
+		== {"value": "251 W", "before": "avant 243 W", "delta": "+8 W", "ok": true, "note": "effort fiable"}, "FTP : résultat fiable")
+	_check(vm.ftp_result({"ftp_test": {"ftp_w": 240, "previous_ftp_w": 243, "warnings": ["paused"], "reliable": false}})["delta"]
+		== "−3 W", "FTP : baisse écrite avec le signe moins")
+
+	# 7. Performance : aucun nœud créé
 	var nodes_after := Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 	_check(nodes_after == nodes_before, "aucun nœud créé (Performance.OBJECT_NODE_COUNT constant)")
 

@@ -364,6 +364,46 @@
         "blocks_truncated": {
           "type": "boolean"
         },
+        "power_profile": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Facultatif, révision 1.10 (lot N20) : courbe réduite de la séance pour le graphique du bilan ; chaque point est la moyenne de step_s secondes consécutives (le dernier peut en compter moins), au plus 50 points ; target_w vaut null pour une séance sans cible ERG.",
+          "required": [
+            "step_s",
+            "power_w",
+            "target_w"
+          ],
+          "properties": {
+            "step_s": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "power_w": {
+              "type": "array",
+              "maxItems": 50,
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "target_w": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "maxItems": 50,
+              "items": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              }
+            }
+          }
+        },
         "segments": {
           "type": "object",
           "description": "Facultatif, révision 1.4 (série T) : passages de la séance et maillots finaux.",
@@ -408,6 +448,13 @@
                   },
                   "pr": {
                     "type": "boolean"
+                  },
+                  "pr_time_s": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "Facultatif, révision 1.10 (lot N20) : record d'avant ce passage (s), null s'il n'y en avait pas."
                   },
                   "rank": {
                     "type": "integer",
@@ -2277,6 +2324,14 @@
         }
       },
       "additionalProperties": false
+    },
+    "dir": {
+      "type": "integer",
+      "enum": [
+        -1,
+        1
+      ],
+      "description": "Facultatif, révision 1.9 (lot N17) : sens du cycliste sur le parcours, 1 dans le sens du parcours, -1 à rebours après un demi-tour (commande `u_turn` depuis la pause) ; absent vaut 1 (le core ne l'écrit qu'à rebours). À rebours, `s` décroît, `grade` est la pente dans le sens roulé et `lane_m` reste dans le repère de la route (négatif : à droite du cycliste)."
     },
     "track": {
       "type": "object",

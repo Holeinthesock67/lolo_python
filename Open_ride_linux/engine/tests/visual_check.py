@@ -181,6 +181,48 @@ def overlap(a: list[float], b: list[float]) -> float:
 
 
 # Profil de démonstration du hello_ack (lot V6) : avatar réglé, seuils de danseuse par défaut.
+# Collection de démonstration du message `collection` (série BC, lot BC5) : le vrai catalogue, 17 cartes gagnées à
+# des dates fictives (aucune séance réelle), deux nouvelles ; avancement fictif des autres (61 % de la cible).
+COLLECTION_EARNED = {"premiere_seance": "2026-09-02", "km_100": "2026-09-20", "km_500": "2026-10-21",
+                     "seance_50km": "2026-10-04", "seance_3h": "2026-10-18", "montee_1000": "2026-10-11",
+                     "semaine_3": "2026-09-14", "semaines_4": "2026-10-05", "leve_tot": "2026-09-09",
+                     "leve_tot_10": "2026-11-06", "pause_midi": "2026-09-23", "ftp_premier": "2026-09-30",
+                     "kom_first": "2026-10-02", "rogue_premiere": "2026-10-15", "wtf_premiere": "2026-10-26",
+                     "halloween": "2026-10-29", "solstice": "2026-06-21"}
+COLLECTION_NEW = ["leve_tot_10", "halloween:2026"]
+
+
+def collection_message() -> dict[str, Any]:
+    import tomllib
+    data = tomllib.loads((ENGINE_DIR.parent / "core" / "src" / "openride_core" / "data" / "collection.toml").read_text())
+    cards = [{k: c[k] for k in ("id", "title", "text", "family", "rarity", "visual")} for c in data["cards"]]
+    rules = {c["id"]: c.get("rule", {}) for c in data["cards"]}
+    table = tomllib.loads((ENGINE_DIR.parent / "core" / "src" / "openride_core" / "data" / "progression.toml").read_text())
+    challenges = {ch["id"]: ch["threshold"] for ch in table.get("challenges", [])}
+    earned, remaining = [], []
+    for c in cards:
+        day = COLLECTION_EARNED.get(c["id"])
+        seasonal = c["family"] == "saison"
+        if day is not None:
+            edition = int(day[:4]) if seasonal else None
+            earned.append({**c, "key": f"{c['id']}:{edition}" if seasonal else c["id"], "edition": edition,
+                           "journal": f"{day}_07-00-00.jsonl", "date": day})
+        elif not seasonal:
+            rule = rules[c["id"]]
+            if rule.get("kind") == "defi":
+                target = float(challenges[rule["challenge"]])
+            elif rule.get("kind") == "anniversaire":
+                target = 365.0 * rule.get("years", 1)
+            else:
+                target = float(rule.get("threshold", rule.get("count", 10)))
+            remaining.append({"id": c["id"], "value": round(target * 0.61, 1), "target": target})
+    earned.sort(key=lambda e: e["date"])
+    missing = set(COLLECTION_EARNED) - {e["id"] for e in earned}
+    assert not missing, f"cartes absentes du catalogue : {missing}"
+    return {"cards_count": len(cards), "first_time": True, "cards": cards, "earned": earned, "remaining": remaining,
+            "new": list(COLLECTION_NEW)}
+
+
 # Catalogue de démonstration du message `garage` (lot V7) : un identifiant par `look`, un par emplacement.
 # Lot V8 : états, niveaux, prix et noms pour le Garage ; frame_round, wheels_spoked et kit_plain sont choisis.
 GARAGE_NAMES = {"frame_round": "Polyvalent", "frame_light": "Léger", "frame_aero": "Profilé", "frame_tt": "Contre-la-montre",
@@ -584,6 +626,7 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     core = VisualCore(state_port, cmd_port, EngineLog(engine_log))
     core.progression = copy.deepcopy(AVATAR_PROGRESSION)   # le faux core les modifie (achats, choix)
     core.garage = copy.deepcopy(AVATAR_GARAGE)
+    core.collection = collection_message()
     core.start()
     cmd = rendu_jeu.godot_cmd([args.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}",
                                "--audio-driver", "Dummy"], args.native, width, height)
@@ -1448,7 +1491,7 @@ def _peloton_face_scene(s: Session) -> None:
 
 def _menu_scenes(s: Session) -> None:
     """Lot N6 : accueil avec l'état des appareils, liste des parcours au Click, bilan de fin ; menus en plein
-    écran du lot « présentation des menus » : accueil entier, sélection en cyan, HUD caché ; étape 2 : carte
+    écran du lot « présentation des menus » : accueil, sélection en cyan, HUD caché ; étape 2 : carte
     de détail (fiche du parcours sous le focus, écran Prêt avec le profil d'altitude du parcours chargé)."""
     core = s.core
     core.set_scene(speed=0.0, s=FIXED_S, session_state="IDLE", devices=MENU_DEVICES, summary=None)
@@ -1465,7 +1508,7 @@ def _menu_scenes(s: Session) -> None:
         m = info["widgets"]["menu"]
         s.check("menu_accueil", "menu en plein écran, HUD de séance caché", m["rect"][2] >= 0.99 * s.width
                 and m["rect"][3] >= 0.99 * s.height and not info["widgets"]["power"]["visible"], f"rectangle {m['rect']}")
-        s.check_texts("menu_accueil", info, {"menu": "Test de FTP | Historique — séances, semaines, tests de FTP | Session simulée | Garage | Réglages"}, contains=True)
+        s.check_texts("menu_accueil", info, {"menu": "Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage"}, contains=True)
         focus = fraction(img, rect_box(m["rect"]), lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
         s.check("menu_accueil", "sélection très visible (cadre cyan)", focus >= 0.003, f"{focus:.2%} de pixels cyan")
     # Appui long sur A du Click relayé par le core : liste des parcours.
@@ -1495,16 +1538,41 @@ def _menu_scenes(s: Session) -> None:
                 f"{line:.2%} de pixels cyan")
     _records_scene(s)
     _garage_scenes(s)
+    _collection_scenes(s)
+    # Bilan en tuiles (lot N20) : tuiles, courbe réduite de la puissance (révision 1.10), record battu en or.
     core.set_scene(session_state="FINISHED", summary={
         "duration_s": 1805.0, "distance_m": 15230.0, "avg_power_w": 212.0, "np_w": 221.0, "tss": 41.0,
-        "elevation_gain_m": 180.0, "fit_path": "/tmp/openride/seance.fit"})
+        "elevation_gain_m": 180.0, "max_power_w": 560.0, "fit_path": "/tmp/openride/seance.fit",
+        "power_profile": {"step_s": 37, "target_w": None,
+                          "power_w": [190 + (i * 37) % 60 + (330 if i in (17, 38) else 0) for i in range(49)]},
+        "segments": {"more": False, "jerseys": {"sprint": None, "kom": None}, "passes": [
+            {"segment_id": "montee", "kind": "climb", "time_s": 402.3, "with_powerup": False, "pr": True,
+             "pr_time_s": 418.9, "rank": 1, "rank_total": 3, "points": 10}]}})
     time.sleep(1.0)
     shot = s.capture("bilan")
     if shot:
         img, info = shot
-        s.check_texts("bilan", info, {"menu_title": "Fin de séance", "menu": "Distance : 15,23 km"}, contains=True)
+        s.check_texts("bilan", info, {"menu_title": "Fin de séance", "menu": "Distance 15,23 km"}, contains=True)
+        s.check_texts("bilan", info, {"menu": "Puissance 212 W NP 221"}, contains=True)
+        s.check_texts("bilan", info, {"menu": "6:42,3 avant 6:58,9"}, contains=True)
         s.check_texts("bilan", info, {"menu": "[Nouvelle séance]"}, contains=True)
         s.check_layout("bilan", info)
+        card = info["widgets"]["menu_card"]
+        white = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 235 and p[1] > 235 and p[2] > 235, step=1)
+        gold = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 220 and 170 < p[1] < 230 and p[2] < 110, step=1)
+        s.check("bilan", "courbe de la puissance tracée (trait blanc) et record en or", card["visible"]
+                and white >= 0.002 and gold >= 0.0005, f"{white:.2%} de pixels blancs, {gold:.2%} de pixels or")
+    # Lot BC6 : carte gagnée par la séance, annoncée seule au bilan avec « + 2 autres ».
+    halloween = next(e for e in core.collection["earned"] if e["id"] == "halloween")
+    core.set_scene(session_state="FINISHED", summary={
+        "duration_s": 1805.0, "distance_m": 15230.0, "avg_power_w": 212.0, "np_w": 221.0, "tss": 41.0,
+        "elevation_gain_m": 180.0, "fit_path": "/tmp/openride/seance.fit", "collection": {"card": halloween, "others": 2}})
+    time.sleep(1.0)
+    shot = s.capture("bilan_carte")
+    if shot:
+        img, info = shot
+        s.check_texts("bilan_carte", info, {"menu": "NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection"}, contains=True)
+        s.check_layout("bilan_carte", info)
     _progress_scenes(s)
 
 
@@ -1650,6 +1718,9 @@ def _records_scene(s: Session) -> None:
         card = info["widgets"]["menu_card"]
         gold = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 220 and 180 < p[1] < 240 and p[2] < 100, step=1)
         s.check("records", "record en or dans la carte", card["visible"] and gold >= 0.0005, f"{gold:.2%} de pixels or")
+        line = fraction(img, rect_box(card["rect"]), lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
+        s.check("records", "profil du segment tracé dans la carte (trait cyan, lot N20)", line >= 0.002,
+                f"{line:.2%} de pixels cyan")
     core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
     time.sleep(0.6)
     shot = s.capture("records_table")
@@ -2253,7 +2324,8 @@ def _progress_scenes(s: Session) -> None:
         banner = info["widgets"]["banner"]
         s.check("progression", "bandeau « Niveau 10 ! » affiché", banner["visible"] and "Niveau 10 !" in banner.get("text", ""),
                 f"{banner.get('text')}")
-    # Bilan complet (dix chiffres, abri du lot AS5, fichier FIT, quatre blocs ERG du bilan détaillé) et
+    # Bilan complet (six tuiles et la ligne des autres chiffres, abri du lot AS5, fichier FIT, quatre blocs ERG du
+    # bilan détaillé) et
     # progression : la carte tient au-dessus du bandeau des boutons (suite X22, recette ERG du 28/10).
     core.set_scene(session_state="IDLE", summary=None)
     time.sleep(0.5)
@@ -2277,9 +2349,8 @@ def _progress_scenes(s: Session) -> None:
         if shot:
             img, info = shot
             w = info["widgets"]
-            s.check_texts(scene, info, {"menu": "Puissance max : 400 W"}, contains=True)
-            s.check_texts(scene, info, {"menu": "Dans la roue : 12 min"}, contains=True)
-            s.check_texts(scene, info, {"menu": "Énergie économisée : 9 kJ"}, contains=True)
+            s.check_texts(scene, info, {"menu": "Puissance max 400 W · Dans la roue 12 min · 9 kJ économisés"},
+                          contains=True)
             s.check_texts(scene, info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
             if detailed:
                 s.check_texts(scene, info, {"menu": "Bloc 4 : 182 W pour 183 W"}, contains=True)
@@ -2301,6 +2372,72 @@ def _progress_scenes(s: Session) -> None:
         img, info = shot
         s.check_texts("progression_refusee", info, {"menu": "Séance de moins de 5 minutes : pas d'expérience"}, contains=True)
         s.check_layout("progression_refusee", info)
+
+
+def _collection_scenes(s: Session) -> None:
+    """Lot BC5 : Collection au menu avec le faux core (maquettes BC3) : première ouverture, album par familles,
+    carte gagnée (nouvelle : `collection_seen`, point retiré), carte à gagner avec son avancement, carte de
+    saison ; retour à l'accueil."""
+    core = s.core
+
+    def press(*events: str, wait: float = 0.5) -> None:
+        for event in events:
+            core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+            time.sleep(wait)
+
+    def focus(item_id: str) -> None:
+        core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "menu_focus", "id": item_id})
+        time.sleep(0.4)
+
+    press("Y_SHORT", "Y_SHORT", wait=0.4)   # accueil
+    focus("collection")
+    press("A_LONG", wait=0.4)
+    time.sleep(1.0)
+    shot = s.capture("collection_premiere")
+    if shot:
+        img, info = shot
+        s.check_texts("collection_premiere", info, {"menu": "17 cartes déjà gagnées"}, contains=True)
+        s.check_texts("collection_premiere", info, {"menu": "[Ouvrir la Collection]"}, contains=True)
+        s.check_layout("collection_premiere", info)
+        s.check("collection_premiere", "cartes déjà gagnées notées vues", len(core.collection_seen) == 17,
+                f"{len(core.collection_seen)} clés")
+    press("A_LONG", "Y_SHORT", wait=0.6)   # album, puis accueil
+    core.collection["new"] = list(COLLECTION_NEW)   # deux cartes gagnées depuis (séance d'hier, Halloween)
+    focus("collection")
+    press("A_LONG", wait=1.0)
+    focus("c:leve_tot_10")
+    time.sleep(0.6)
+    shot = s.capture("collection_album")
+    if shot:
+        img, info = shot
+        s.check_texts("collection_album", info, {"menu_title": "Collection", "menu": "Heure | 3 / 4"}, contains=True)
+        s.check_texts("collection_album", info, {"menu": "[c:leve_tot_10]"}, contains=True)
+        s.check_texts("collection_album", info, {"menu": "17 / 42 cartes · 2 nouvelles"}, contains=True)
+        s.check_layout("collection_album", info)
+    press("A_LONG", wait=0.6)
+    shot = s.capture("collection_carte")
+    if shot:
+        img, info = shot
+        s.check_texts("collection_carte", info, {"menu_title": "Chant du coq", "menu": "Gagnée le | 6 novembre 2026"}, contains=True)
+        s.check_texts("collection_carte", info, {"menu": "[Voir la séance]"}, contains=True)
+        s.check_layout("collection_carte", info)
+    press("Y_SHORT", wait=0.4)
+    focus("c:km_1000")
+    press("A_LONG", wait=0.6)
+    shot = s.capture("collection_a_gagner")
+    if shot:
+        img, info = shot
+        s.check_texts("collection_a_gagner", info, {"menu": "Avancement | 610 / 1 000 km"}, contains=True)
+        s.check_layout("collection_a_gagner", info)
+    press("Y_SHORT", wait=0.4)
+    focus("c:halloween")
+    press("A_LONG", wait=0.6)
+    shot = s.capture("collection_saison")
+    if shot:
+        img, info = shot
+        s.check_texts("collection_saison", info, {"menu_title": "Pédaleur citrouille 2026", "menu": "Éditions | 2026"}, contains=True)
+        s.check_layout("collection_saison", info)
+    press("Y_SHORT", "Y_SHORT", wait=0.4)
 
 
 def _garage_scenes(s: Session) -> None:
