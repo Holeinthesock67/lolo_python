@@ -179,6 +179,19 @@ const BOT_DETAIL_MAX := {
 }
 
 
+## Spectateurs dans les tribunes du vélodrome couvert (série VD, lot VD5, plan §7.2) : instances d'un seul
+## MultiMesh posées au chargement, aucune création pendant l'épreuve.
+const VELODROME_CROWD := {
+	"low": 1000,
+	"medium": 3000,
+	"high": 6000,
+}
+
+
+static func velodrome_crowd(name: String) -> int:
+	return int(VELODROME_CROWD[applied_name(name)])
+
+
 ## Nombre de bots au plus aux niveaux de détail 0 et 1 pour le préréglage `name` (lot PL1).
 static func bot_detail_max(name: String) -> int:
 	return int(BOT_DETAIL_MAX[applied_name(name)])
@@ -301,7 +314,7 @@ const LIVING := {
 		"ground_grass": 600,
 		"ground_termites": 15,
 		"grass_tufts": 2250,
-		"grass_tufts_wide": 3000,
+		"grass_tufts_wide": 1500,
 		"clouds": "flat",
 		"weather_particles": 600,
 		"birds": 24,
@@ -322,7 +335,7 @@ const LIVING := {
 		"ground_grass": 2000,
 		"ground_termites": 30,
 		"grass_tufts": 12000,
-		"grass_tufts_wide": 15000,
+		"grass_tufts_wide": 7500,
 		"clouds": "flat",
 		"weather_particles": 1500,
 		"birds": 48,
@@ -343,7 +356,7 @@ const LIVING := {
 		"ground_grass": 5000,
 		"ground_termites": 50,
 		"grass_tufts": 30000,
-		"grass_tufts_wide": 24000,
+		"grass_tufts_wide": 12000,
 		"clouds": "layered",
 		"weather_particles": 4000,
 		"birds": 80,

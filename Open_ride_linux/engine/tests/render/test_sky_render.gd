@@ -5,6 +5,8 @@ extends SceneTree
 ## alors que le même avion avec vehicle.gdshader disparaît dans le brouillard ; une traînée est opaque au
 ## réacteur, s'efface vers son bout et sur ses bords.
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const SkyMesh := preload("res://scripts/sky_mesh.gd")
 const VehicleShader := preload("res://shaders/vehicle.gdshader")
 const VehicleFarShader := preload("res://shaders/vehicle_far.gdshader")
@@ -134,5 +136,6 @@ func _run() -> void:
 	_check(side < _pixel(vp2, cam2, Vector3(SkyMesh.ENGINE_X, y, 100.0)).get_luminance() * 0.5, "traînée effacée sur ses bords : %.2f contre %.2f au milieu" % [side, mid])
 	vp2.queue_free()
 	await process_frame
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_sky_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

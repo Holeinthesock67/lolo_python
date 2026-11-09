@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série CT : simulateur d'équilibrage de la Course tactique | Python | Y10, T13 | Moyenne | Prêt (version 5.0) |
+| Série CT : simulateur d'équilibrage de la Course tactique | Python | Y10, T13 | Moyenne | Livré le 7 novembre (PR #743) ; rapport `docs/5.0/RAPPORT_EQUILIBRAGE_CT0.md` |
 
 Série CT (version 5.0, mode « Course tactique »). Plan de la série : `docs/5.0/PLAN_SERIE_CT.md`.
 
@@ -47,3 +47,15 @@ Aucune.
 ## 8. Hors périmètre
 
 Réglage fin après la recette sur le vélo (CT12) ; IA par apprentissage.
+
+## 9. Livraison (7 novembre)
+
+- `core/src/openride_core/tactical/` : `balance.py` et `balance.toml` (table d'équilibrage, surcharge `~/OpenRide/tactical_balance.toml`), `bouchons.py` (règles pures de CT2, CT4 et CT6 en attendant leurs lots : Burnout, catapulte, crédits et capacités).
+- `python -m openride_core.tools.tactical_sim` : 7 circuits générés (bouchon de CT8, pentes seulement), 5 stratégies du cycliste virtuel, 4 bots à profil ; rapport `docs/5.0/RAPPORT_EQUILIBRAGE_CT0.md` (200 courses par configuration, graine 1).
+- Lectures retenues, à confirmer par le propriétaire :
+  1. **Configuration** = un circuit × une stratégie du cycliste ; le critère 2 se lit sur les victoires du cycliste, stratégie par stratégie, toutes configurations confondues ; le critère 3 sur le bot le plus souvent premier de chaque circuit.
+  2. **Calibrage** : une échelle commune à tous les bots (temps moyen seul = cycliste seul à 95 % de sa FTP), et non une échelle par profil comme T13 en séance : avec une échelle par profil, tous les bots arrivent ensemble et le sprinteur gagne partout. L'échelle commune garde les forces relatives du lot T12 (validées le 27 octobre), chaque profil garde son terrain.
+  3. **Bots sans capacités** (décision de la 4.0, « bots sans bonus ») ; ils ont la catapulte et le Burnout, règles symétriques.
+  4. **Cerveau des bots simplifié** (bouchon de CT3) : suivre ou lâcher selon la réserve (40 %, lâche sous 20 %, 15 % d'erreurs), relais de 30 à 60 s, poursuite à 1,05 × CP d'un coureur parti à moins de 400 m, attaque du grimpeur en montée à 1,2 × CP (1,1 en séance), attaque au long cours du rouleur dans les 2,5 derniers km, sprint à 2 × CP (pic du profil pour le sprinteur).
+- Non simulés : virages (CT7), placement latéral (AS2), parade (CT5), variantes asymétriques (CT8).
+

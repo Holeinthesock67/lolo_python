@@ -9,6 +9,8 @@ extends SceneTree
 ##   xvfb-run -a godot --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/render/test_tree_render.gd
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
 const Speckle := preload("res://tests/render/speckle.gd")
@@ -17,8 +19,13 @@ const SIZE := 384
 const KINDS := ["oak", "birch", "spruce", "palm"]
 const SPACING_M := 25.0
 ## Même seuil que les bâtiments (test_building_render.gd). Feuillage sans habillage : écart type de 0,014 à 0,024 ;
-## avec : 0,031 à 0,049 (seuil 0,028). Chêne à contre-jour sans habillage : 81 % de feuillage noir.
+## avec : 0,031 à 0,049 (seuil 0,028, épicéa à part : MIN_LEAF_SD). Chêne à contre-jour sans habillage : 81 % de feuillage noir.
 const MAX_ISOLATED := 0.001
+## Seuil de l'écart type du feuillage, 0,028 par défaut. Épicéa vu de dehors (faces des cônes remises à
+## l'endroit le 7 novembre ; avant, on voyait l'intérieur du fond des cônes et leurs dessous plus sombres) :
+## 0,002 sans habillage, 0,023 avec.
+const MIN_LEAF_SD := {"spruce": 0.015}
+const DEFAULT_LEAF_SD := 0.028
 
 var _failures := 0
 var _checked := 0
@@ -116,7 +123,8 @@ func _run() -> void:
 					s2 += l * l
 		var mean := s1 / maxf(n, 1.0)
 		var sd := sqrt(maxf(s2 / maxf(n, 1.0) - mean * mean, 0.0))
-		_check(n > SIZE * SIZE / 20 and sd > 0.028, "%s : feuillage varié (%d pixels, écart type %.3f)" % [kind, n, sd])
+		var min_sd := float(MIN_LEAF_SD.get(kind, DEFAULT_LEAF_SD))
+		_check(n > SIZE * SIZE / 20 and sd > min_sd, "%s : feuillage varié (%d pixels, écart type %.3f, seuil %.3f)" % [kind, n, sd, min_sd])
 	# Chêne à contre-jour (le soleil derrière le houppier) : feuillage vert, pas noir
 	var back: Image = await _shot(lit, Vector3(-3.0, 2.0, -12.0), Vector3(0.0, 8.0, 0.0), 60.0)
 	var leaves := 0
@@ -145,5 +153,6 @@ func _run() -> void:
 	lit.queue_free()
 	flat.queue_free()
 	await process_frame
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_tree_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

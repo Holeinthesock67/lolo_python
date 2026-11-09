@@ -119,8 +119,10 @@ static func is_deciduous(kind: String) -> bool:
 
 # --- Primitives -------------------------------------------------------------------------------
 
+## Triangle a, b, c dans le sens des aiguilles d'une montre vu de devant (sens de Godot : seul l'avant est dessiné
+## en cull_back) ; normale par défaut : vers l'avant. Contrôle : tests/unit/test_tree_faces.gd.
 static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, col: Color, n: Vector3 = Vector3.ZERO) -> void:
-	var nn := n if n != Vector3.ZERO else (b - a).cross(c - a).normalized()
+	var nn := n if n != Vector3.ZERO else (c - a).cross(b - a).normalized()
 	for p in [a, b, c]:
 		st.set_color(col)
 		st.set_normal(nn)
@@ -138,8 +140,8 @@ static func _limb(st: SurfaceTool, base: Vector3, top: Vector3, r0: float, r1: f
 		var d0 := side * cos(a0) + other * sin(a0)
 		var d1 := side * cos(a1) + other * sin(a1)
 		var n := ((d0 + d1) * 0.5).normalized()
-		_tri(st, base + d0 * r0, base + d1 * r0, top + d0 * r1, col, -n)
-		_tri(st, base + d1 * r0, top + d1 * r1, top + d0 * r1, col, -n)
+		_tri(st, base + d1 * r0, base + d0 * r0, top + d0 * r1, col, n)
+		_tri(st, base + d1 * r0, top + d0 * r1, top + d1 * r1, col, n)
 
 
 ## Cône de feuillage (faces latérales et dessous).
@@ -150,8 +152,8 @@ static func _cone(st: SurfaceTool, y0: float, y1: float, r: float, col: Color, c
 		var a1 := TAU * (i + 1) / SIDES
 		var p0 := center + Vector3(cos(a0) * r, y0, sin(a0) * r)
 		var p1 := center + Vector3(cos(a1) * r, y0, sin(a1) * r)
-		_tri(st, p1, p0, tip, col)
-		_tri(st, center + Vector3(0, y0, 0), p0, p1, shade(col, 0.8), Vector3.DOWN)
+		_tri(st, p0, p1, tip, col)
+		_tri(st, center + Vector3(0, y0, 0), p1, p0, shade(col, 0.8), Vector3.DOWN)
 
 
 ## Houppier en ellipsoïde à facettes (6 méridiens, `rings` parallèles) : 12 × (rings − 1) triangles.
@@ -266,10 +268,78 @@ static func _cross(width: float, height: float, col: Color) -> ArrayMesh:
 
 # --- Espèces ----------------------------------------------------------------------------------
 
-## Renvoie {"lod0": ArrayMesh, "lod1": ArrayMesh, "height": float, "deciduous": bool}.
+## Renvoie {"lod0": ArrayMesh, "lod1": ArrayMesh, "height": float, "deciduous": bool} ; feuillus de
+## WINTER_BRANCHES : aussi "lod0_bare", le même arbre avec sa charpente de branches pour l'hiver (lot P18).
 static func build(kind: String) -> Dictionary:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	if not _draw(st, kind):
+		return {}
+	var mesh := st.commit()
+	var h := height_m(kind)
+	var out := {"lod0": mesh, "lod1": _profile(CROWNS[kind], h), "height": h, "deciduous": is_deciduous(kind)}
+	# Saisons (lot P18) : même arbre avec sa charpente de branches, pris l'hiver par tree_renderer.gd (le feuillage
+	# y est replié par tree_sway.gdshader) ; l'été garde le maillage sans branches, au même coût qu'avant.
+	if WINTER_BRANCHES.has(kind):
+		var bare := SurfaceTool.new()
+		bare.begin(Mesh.PRIMITIVE_TRIANGLES)
+		_draw(bare, kind)
+		_winter_branches(bare, kind)
+		out["lod0_bare"] = bare.commit()
+	return out
+
+
+## Charpente des feuillus pour l'hiver : point de départ (haut du fût), centre et rayons du houppier, nombre de
+## branches maîtresses, écorce, flèche (prolongement du fût jusqu'au sommet).
+const WINTER_BRANCHES := {
+	"oak": {"base": Vector3(0, 4.8, 0), "c": Vector3(0.6, 8.8, 0.3), "r": Vector3(4.6, 4.0, 4.4), "n": 7, "bark": BARK, "r0": 0.2},
+	"beech": {"base": Vector3(0, 7.0, 0), "c": Vector3(0, 11.5, 0), "r": Vector3(3.6, 5.2, 3.6), "n": 5, "bark": BARK_SMOOTH, "r0": 0.16},
+	"birch": {"base": Vector3(0.2, 5.5, 0), "c": Vector3(0.2, 8.8, 0), "r": Vector3(2.0, 3.6, 2.0), "n": 5, "bark": BARK_WHITE, "r0": 0.08},
+	"larch": {"base": Vector3(0, 3.6, 0), "c": Vector3(0, 10.0, 0), "r": Vector3(3.2, 7.0, 3.2), "n": 8, "bark": BARK_RED, "r0": 0.1, "whorls": true},
+	"vine_row": {"cordon": true},
+}
+
+
+static func _winter_branches(st: SurfaceTool, kind: String) -> void:
+	var w: Dictionary = WINTER_BRANCHES[kind]
+	if w.get("cordon", false):
+		# Vigne taillée : fil de palissage et sarments nus le long du rang
+		var cane := mat(Color(0.36, 0.27, 0.18), MAT_STEM)
+		_limb(st, Vector3(-3.0, 1.0, 0), Vector3(3.0, 1.0, 0), 0.03, 0.03, cane, 3)
+		for i in range(4):
+			var x := -3.0 + 2.0 * i
+			_limb(st, Vector3(x, 1.0, 0), Vector3(x + 0.5, 1.45, 0.15), 0.025, 0.012, cane, 3)
+			_limb(st, Vector3(x, 1.0, 0), Vector3(x - 0.45, 1.4, -0.15), 0.025, 0.012, cane, 3)
+		return
+	var base: Vector3 = w["base"]
+	var c: Vector3 = w["c"]
+	var r: Vector3 = w["r"]
+	var bark: Color = w["bark"]
+	var r0 := float(w["r0"])
+	var n := int(w["n"])
+	# Flèche : le fût prolongé jusqu'au sommet du houppier
+	var top := c + Vector3(0, r.y * 0.85, 0)
+	_limb(st, base - Vector3(0, 0.3, 0), top, r0 * 1.2, 0.03, bark, 4)
+	for i in range(n):
+		var a := TAU * (i + 0.37 * (i % 2)) / n
+		var whorls: bool = w.get("whorls", false)
+		var start := base.lerp(top, (0.15 + 0.7 * i / float(n)) if whorls else 0.1 * (i % 3))
+		var lift := 0.15 if whorls else 0.25 + 0.45 * float((i * 7) % 5) / 4.0
+		var reach := (1.0 - 0.6 * i / float(n)) if whorls else 0.92
+		var tip := Vector3(c.x + cos(a) * r.x * reach, (start.y + 0.6) if whorls else c.y + (lift - 0.2) * r.y, c.z + sin(a) * r.z * reach)
+		if whorls:
+			tip.y = start.y - 0.3   # branches du mélèze un peu tombantes
+		_limb(st, start, tip, r0, 0.025, bark, 4)
+		# Deux rameaux par branche, partis aux deux tiers, vers le haut et de côté
+		var mid := start.lerp(tip, 0.6)
+		var side := Vector3(-sin(a), 0, cos(a))
+		for k: float in [-1.0, 1.0]:
+			var twig: Vector3 = tip.lerp(mid, 0.3) + side * k * r.x * 0.3 + Vector3(0, r.y * (0.12 if whorls else 0.3), 0)
+			_limb(st, mid, twig, r0 * 0.4, 0.012, bark, 3)
+
+
+## Géométrie de l'espèce ; faux pour une espèce inconnue.
+static func _draw(st: SurfaceTool, kind: String) -> bool:
 	match kind:
 		"oak":
 			_limb(st, Vector3.ZERO, Vector3(0, 5.5, 0), 0.45, 0.32, BARK)
@@ -306,7 +376,7 @@ static func build(kind: String) -> Dictionary:
 			_limb(st, Vector3.ZERO, Vector3(0, 1.0, 0), 0.25, 0.22, BARK)
 			_blob(st, Vector3(0, 7.2, 0), Vector3(1.2, 6.8, 1.2), mat(Color(0.12, 0.24, 0.12), MAT_NEEDLES), 6)
 		"stone_pine":
-			_limb(st, Vector3.ZERO, Vector3(0.3, 9.5, 0), 0.32, 0.22, BARK_RED)
+			_limb(st, Vector3.ZERO, Vector3(0.5, 10.6, 0.15), 0.32, 0.22, BARK_RED)   # jusque dans le houppier (dessous à 9,8 m)
 			_limb(st, Vector3(0.3, 8.5, 0), Vector3(2.5, 10.8, 0.6), 0.16, 0.1, BARK_RED, 4)
 			_blob(st, Vector3(0.6, 11.4, 0.2), Vector3(5.2, 1.6, 5.0), mat(Color(0.18, 0.33, 0.15), MAT_NEEDLES))
 		"palm":
@@ -315,7 +385,7 @@ static func build(kind: String) -> Dictionary:
 			for i in range(8):
 				_frond(st, Vector3(0.9, 11.0, 0), TAU * i / 8.0 + 0.3, 4.2, 0.6, 2.2, 1.5, mat(Color(0.22, 0.42, 0.16), MAT_FRONDS))
 		"acacia":
-			_limb(st, Vector3.ZERO, Vector3(0.3, 4.0, 0), 0.22, 0.16, BARK)
+			_limb(st, Vector3.ZERO, Vector3(0.3, 3.7, 0), 0.22, 0.16, BARK)   # arrêté juste au-dessus de la fourche (3,6 m) : bout ouvert caché par les branches
 			_limb(st, Vector3(0.3, 3.6, 0), Vector3(2.4, 6.0, 0.5), 0.12, 0.08, BARK, 4)
 			_limb(st, Vector3(0.3, 3.6, 0), Vector3(-1.8, 6.1, -0.8), 0.12, 0.08, BARK, 4)
 			_blob(st, Vector3(0.3, 6.8, 0), Vector3(5.0, 1.0, 4.6), mat(Color(0.33, 0.42, 0.18), MAT_LEAVES))
@@ -355,11 +425,8 @@ static func build(kind: String) -> Dictionary:
 			for i in range(3):
 				_blob(st, Vector3(-2.0 + 2.0 * i, 1.05, 0), Vector3(1.15, 0.45, 0.4), mat(Color(0.28, 0.44, 0.16), MAT_LEAVES), 3)
 		_:
-			return {}
-	var mesh := st.commit()
-	var h := height_m(kind)
-	return {"lod0": mesh, "lod1": _profile(CROWNS[kind], h), "height": h,
-		"deciduous": is_deciduous(kind)}
+			return false
+	return true
 
 
 ## Triangles d'un maillage (contrôle du budget de 300 triangles en LOD 0).

@@ -92,6 +92,8 @@ class RenderConfig:
     biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des seize de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
     texture_level: str = "auto"    # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high
+    day_night: str = "off"   # jour et nuit (lot P19) : off (soleil fixe d'aujourd'hui), theme, real (heure du PC) ou accelerated
+    seasons: str = "off"     # saisons (lot P19) : off (l'été d'aujourd'hui), theme, date, spring, summer, autumn ou winter
 
 
 @dataclass
@@ -114,10 +116,11 @@ class DriversConfig:
     click_minus_address: str = ""  # boîtier « − » du Click (vide : l'autre boîtier trouvé)
     click_short_max_s: float = 0.5
     click_long_min_s: float = 0.9
+    click_repeat_gap_s: float = 0.0  # > 0 : rafale du bouton maintenu = un seul appui (essai 08/11 : 0,35 fond les appuis rapides)
     click_trace_raw: bool = False
     click_mute_after_s: float = 60.0
     click_rehandshake_s: float = 0.0
-    click_reset_locked: bool = True   # redémarrer le boîtier gauche verrouillé par Zwift (octet 0x18)
+    click_reset_locked: str = "reset"  # verrou du boîtier gauche : "reset" (0x18), "keep" (essai D, lot K9) ou "off"
     mock_replay: str = ""          # chemin d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
     hr: str = "none"               # ceinture cardio : "none", "ble" ou "sim"
     hr_address: str = ""           # adresse MAC de la ceinture (vide : recherche par nom ou service)
@@ -144,10 +147,10 @@ class OpenWorldConfig:
 @dataclass
 class WindConfig:
     """Vent du core (lot P2, SRS §5 et §11) ; coupé par défaut dans les versions 1.x."""
-    mode: str = "off"              # "off", "fixed", "gusty" ou "theme" (vent du thème 1.2)
+    mode: str = "off"              # "off", "fixed", "gusty", "theme" (vent du thème 1.2) ou "local" (météo du jour, P33)
     speed_kmh: float = 0.0
     from_deg: float = 270.0        # d'où vient le vent, degrés depuis le nord
-    gust_pct: float = 0.0          # amplitude des rafales (modes "gusty" et "theme")
+    gust_pct: float = 0.0          # amplitude des rafales (mode "gusty" ; "theme" et "local" ont les leurs)
     seed: int = 0                  # graine des rafales
     feel: str = "grade"            # "grade" (supplément de pente) ou "ftms" (champ vent de 0x11)
     max_grade_offset_pct: float = 4.0   # borne du supplément de pente, réglable dans le menu
@@ -160,6 +163,13 @@ class GravelConfig:
     factor_compacted: float = 2.0  # multiplicateur du crr du bitume
     factor_gravel: float = 2.5
     factor_dirt: float = 3.0
+
+
+@dataclass
+class VelodromeConfig:
+    """Vélodrome (série VD, lot VD3, plan §4.1) : bois de la piste et air de la salle couverte."""
+    factor_wood: float = 0.6       # multiplicateur du crr du bitume sur la piste en bois
+    temperature_c: float = 24.0    # température de la salle : densité de l'air
 
 
 @dataclass
@@ -202,15 +212,27 @@ class RideConfig:
     """Séance : placement avec les bots (série AS, lot AS2), abri derrière les véhicules (lot AS6)."""
     auto_draft: str = "on"         # placement dans la roue : on (rangé derrière le coureur devant, sorti pour doubler) ou off (1,2 m de l'axe)
     vehicle_draft: str = "on"      # abri derrière un véhicule lent (lot AS6) : on ou off ; l'aspiration d'un véhicule qui double reste
+    traffic_bench_s: int = 0       # bancs seulement : passage forcé d'un véhicule proche toutes les N s (0 : jamais)
 
 
 @dataclass
 class SurvivorConfig:
     """Mode « Dernier survivant » (série DS, lot DS2) : plateau et arches, réglés au menu."""
-    opponents: int = 4             # adversaires (2 à 4 ; 11 avec le peloton, lot DS8) : une arche chacun
+    opponents: int = 4             # adversaires (2 à 11 depuis le lot DS8, peloton du lot PL1) : une arche chacun
     spacing_km: int = 2            # écart entre deux arches (1 à 3 km)
     spread: str = "normal"         # écart de niveau des bots : tight (± 3 %), normal (± 8 %), wide (± 15 %)
     after_out: str = "ride"        # cycliste éliminé : ride (continuer à rouler) ou end (bilan tout de suite)
+
+
+@dataclass
+class GrandPrixConfig:
+    """Mode « Grand Prix des objets » (série GP, lot GP2) : plateau, format de la course et objets.
+    Les objets joués et leurs valeurs sont dans `~/OpenRide/grandprix.toml` (`grandprix.items`)."""
+    opponents: int = 4             # adversaires (2 à 4 ; 11 avec le lot GP10)
+    laps: int = 3                  # circuit : nombre de tours (1 à 5)
+    distance_km: int = 10          # parcours en ligne : distance de la course (5 à 30 km)
+    chaos: str = "normal"          # force et fréquence des objets : soft (× 0,7), normal, wild (× 1,3)
+    box_every_m: int = 1500        # écart des rangées de boîtes (1000 à 3000 m, pas de 500 m)
 
 
 @dataclass
@@ -244,6 +266,14 @@ class DepartConfig:
 
 
 @dataclass
+class CoachConfig:
+    """Séance conseillée (série CO, lot CO3) : objectif du joueur (cibles de répartition, plan §2) et
+    temps disponible par séance, réglés au menu ; seuils des règles dans `data/coach.toml`."""
+    objectif: str = "endurance"    # endurance, courses (et championnat) ou grimpeur
+    temps_disponible_min: int = 60  # durée conseillée quand la règle ne fixe pas la sienne (30 à 120 min)
+
+
+@dataclass
 class LogConfig:
     latence: bool = False   # journal de latence des appuis du Click, `[latence]` (lot X7, docs/OUTILS_DE_TEST.md)
 
@@ -266,6 +296,7 @@ class Config:
     open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
     gravel: GravelConfig = field(default_factory=GravelConfig)
+    velodrome: VelodromeConfig = field(default_factory=VelodromeConfig)
     progression: ProgressionConfig = field(default_factory=ProgressionConfig)
     avatar: AvatarConfig = field(default_factory=AvatarConfig)
     rogue: RogueConfig = field(default_factory=RogueConfig)
@@ -273,8 +304,10 @@ class Config:
     bots: BotsConfig = field(default_factory=BotsConfig)
     ride: RideConfig = field(default_factory=RideConfig)
     survivor: SurvivorConfig = field(default_factory=SurvivorConfig)
+    grandprix: GrandPrixConfig = field(default_factory=GrandPrixConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     depart: DepartConfig = field(default_factory=DepartConfig)
+    coach: CoachConfig = field(default_factory=CoachConfig)
     log: LogConfig = field(default_factory=LogConfig)
     profils: ProfilsConfig = field(default_factory=ProfilsConfig)
 
@@ -328,6 +361,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("render", "theme_library_gb"): (1, 50),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
+    ("drivers", "click_repeat_gap_s"): (0, 1),
     ("open_world", "cache_max_gb"): (0.5, 500),
     ("open_world", "horizon_m"): (1000, 10000),
     ("open_world", "offer_m"): (50, 2000),
@@ -344,6 +378,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("gravel", "factor_compacted"): (1, 3),
     ("gravel", "factor_gravel"): (1, 3),
     ("gravel", "factor_dirt"): (1, 3),
+    ("velodrome", "factor_wood"): (0.3, 1),
+    ("velodrome", "temperature_c"): (5, 40),
     ("avatar", "standing_grade_pct"): (3, 15),
     ("avatar", "standing_power_pct"): (100, 300),
     ("rogue", "w_prime_j"): (5000, 60000),
@@ -351,8 +387,13 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("rogue", "grade_rate_up_pct_per_s"): (0.1, 100),
     ("rogue", "grade_rate_down_pct_per_s"): (0.1, 100),
     ("bots", "level_pct"): (50, 150),
-    ("survivor", "opponents"): (2, 4),          # 4 jusqu'au lot DS8 (11 avec le peloton du lot PL1)
+    ("ride", "traffic_bench_s"): (0, 600),
+    ("survivor", "opponents"): (2, 11),         # lot DS8 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
     ("survivor", "spacing_km"): (1, 3),
+    ("grandprix", "opponents"): (2, 4),         # lot GP2 ; 2 à 11 avec le lot GP10
+    ("grandprix", "laps"): (1, 5),
+    ("grandprix", "distance_km"): (5, 30),
+    ("grandprix", "box_every_m"): (1000, 3000),
     ("audio", "master_pct"): (0, 100),
     ("audio", "ride_pct"): (0, 100),
     ("audio", "ambience_pct"): (0, 100),
@@ -362,6 +403,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("depart", "cadence_rpm"): (10, 90),
     ("depart", "duree_s"): (0, 10),
     ("depart", "attente_decor_s"): (0, 600),
+    ("coach", "temps_disponible_min"): (30, 120),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
@@ -384,10 +426,13 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "draft_gauge"): ("off", "on"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
+    ("render", "day_night"): ("off", "theme", "real", "accelerated"),
+    ("render", "seasons"): ("off", "theme", "date", "spring", "summer", "autumn", "winter"),
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),
-    ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
+    ("drivers", "click_reset_locked"): ("reset", "keep", "off"),   # zwift_click.LOCK_POLICIES
+    ("wind", "mode"): ("off", "fixed", "gusty", "theme", "local"),
     ("wind", "feel"): ("grade", "ftms"),
     ("trainer", "control"): ("sim", "resistance"),
     ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),
@@ -398,6 +443,8 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("ride", "vehicle_draft"): ("on", "off"),
     ("survivor", "spread"): ("tight", "normal", "wide"),
     ("survivor", "after_out"): ("ride", "end"),
+    ("coach", "objectif"): ("endurance", "courses", "grimpeur"),
+    ("grandprix", "chaos"): ("soft", "normal", "wild"),
 }
 
 
@@ -414,6 +461,9 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),
     ("survivor", "opponents"), ("survivor", "spacing_km"), ("survivor", "spread"), ("survivor", "after_out"),
+    ("coach", "objectif"), ("coach", "temps_disponible_min"),
+    ("grandprix", "opponents"), ("grandprix", "laps"), ("grandprix", "distance_km"), ("grandprix", "chaos"),
+    ("grandprix", "box_every_m"),
     ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
     ("wind", "max_grade_offset_pct"),
     ("render", "camera"), ("render", "chart"),
@@ -448,9 +498,9 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("trainer", "grade_rate_up_pct_per_s"): "rampe de pente du trainer",
     ("trainer", "grade_rate_down_pct_per_s"): "rampe de pente du trainer",
     ("trainer", "hr_relay_freeze_s"): "détection de la FC relayée figée",
-    ("trainer", "resend_s"): "renvoi de la consigne, essais contre le pompage (lot O27 : ira dans Avancé si l'essai la garde réglable)",
-    ("trainer", "resistance_n_per_pct_kmh"): "pilotage SIM ou résistance calculée (en essai, lots RC1-RC3)",
-    ("trainer", "resistance_inertia_pct"): "pilotage SIM ou résistance calculée (en essai, lots RC1-RC3)",
+    ("trainer", "resend_s"): "renvoi de la consigne SIM et ERG, réglage fin contre le pompage (essai du 30 octobre, défaut 2 s gardé)",
+    ("trainer", "resistance_n_per_pct_kmh"): "étalonnage de la résistance calculée (lots RC1 à RC4), corrigé en roulant",
+    ("trainer", "resistance_inertia_pct"): "inertie de la résistance calculée, abandonnée le 1er novembre (coupée par défaut)",
     ("gearing", "n_gears"): "boîte de vitesses virtuelle",
     ("gearing", "ratio_min"): "boîte de vitesses virtuelle",
     ("gearing", "ratio_max"): "boîte de vitesses virtuelle",
@@ -459,6 +509,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
     ("drivers", "click_long_min_s"): "seuils d'appui du Click",
+    ("drivers", "click_repeat_gap_s"): "seuils d'appui du Click",
     ("drivers", "click_mute_after_s"): "alerte de boîtier muet",
     ("drivers", "click_rehandshake_s"): "reprise d'un boîtier muet",
     ("drivers", "click_reset_locked"): "boîtier gauche verrouillé par Zwift",
@@ -473,6 +524,8 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("gravel", "factor_compacted"): "roulement des routes non revêtues",
     ("gravel", "factor_gravel"): "roulement des routes non revêtues",
     ("gravel", "factor_dirt"): "roulement des routes non revêtues",
+    ("velodrome", "factor_wood"): "roulement de la piste en bois du vélodrome",
+    ("velodrome", "temperature_c"): "air de la salle du vélodrome",
     ("avatar", "standing_grade_pct"): "seuil de la danseuse",
     ("avatar", "standing_power_pct"): "seuil de la danseuse",
     ("rogue", "w_prime_j"): "valeur de départ ; le menu du Cyber-Rogue choisit W' de chaque run",
@@ -495,9 +548,17 @@ DEV_KEYS: dict[tuple[str, str], str] = {
     ("engine", "godot"): "écrit par scripts/install.sh",
     ("wind", "seed"): "graine des rafales",
     ("log", "latence"): "journal de latence du Click",
+    ("ride", "traffic_bench_s"): "passages forcés de véhicules proches pour sim_bench (lot AS6)",
 }
 # Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
 PENDING_KEYS: dict[tuple[str, str], str] = {
+    # Grand Prix des objets (série GP, 4.0) : pas d'entrée à l'accueil avant GP9, donc pas de réglage au menu
+    # (point A2 des oublis du 8 novembre) ; la séance les lit déjà (`start` avec `mode` « grandprix »).
+    ("grandprix", "opponents"): "GP9",
+    ("grandprix", "laps"): "GP9",
+    ("grandprix", "distance_km"): "GP9",
+    ("grandprix", "chaos"): "GP9",
+    ("grandprix", "box_every_m"): "GP9",
 }
 
 
@@ -554,6 +615,9 @@ def _merge(dc: Any, data: dict[str, Any], source: str = "config.toml", section: 
         if key not in known:
             name = f"[{section}] {key}" if section else f"[{key}]"
             log.warning("%s : clé inconnue %s ignorée (faute de frappe ?)", source, name)
+    if section == "drivers" and isinstance(data.get("click_reset_locked"), bool):
+        # Booléen d'avant le lot K9 : true = "reset", false = "off" (même effet qu'avant).
+        data = {**data, "click_reset_locked": "reset" if data["click_reset_locked"] else "off"}
     for f in fields(dc):
         if f.name not in data:
             continue

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : mode `grandprix` dans la séance, réglages `[grandprix]`, champ `state.gp`, message `gp_hit`, `summary.gp`, colonne du mode au plan des boutons | Python | GP1 | Moyenne | Prêt (version 4.0 proposée) |
+| Série GP : mode `grandprix` dans la séance, réglages `[grandprix]`, champ `state.gp`, message `gp_hit`, `summary.gp`, colonne du mode au plan des boutons | Python | GP1 | Moyenne | Livré le 8 novembre (PR #774, version 4.0) |
 
 Série GP (mode « Grand Prix des objets », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`.
 
@@ -29,3 +29,14 @@ Brancher `GrandPrixMode` dans la séance, enregistrer les réglages et publier l
 2. Test : la pente envoyée d'une séance avec objets est identique, au pas près, à celle d'une séance sans objets sur la même route et à la même vitesse virtuelle d'abri.
 3. `python -m openride_core.ipc_budget` : pire trame sous 4 096 octets avec 4 puis 11 bots.
 4. Les séances classique, WTF et Cyber-Rogue restent identiques au bit près (tests existants verts).
+
+## 5. Livraison (7 novembre 2026)
+
+- Séance : `start` avec `mode: "grandprix"` (bots à profil d'après `grandprix.opponents` et `bots.level_pct`, sur une boucle `grandprix.laps` tours, sinon `grandprix.distance_km`) ; refus `bad_args` en ERG, avec `ftp_test`, `plan_day`, un argument `bots`, en monde ouvert, sur un parcours en ligne trop court ou avec des réglages hors bornes ; `set_ride_mode` vers l'ERG : `busy`.
+- Boutons : Z court utilise l'objet ; A court change de voie seulement quand `gp.pick` est vrai (sinon vue) ; flèches gauche et droite changent toujours de voie ; A long revient au placement automatique (sinon vue par défaut). Voie forcée : placement de l'abri (lot AS2) au centre de la voie.
+- Vitesse virtuelle du cycliste et des bots fixée par `GrandPrixMode.step` ; pente envoyée calculée avant, sans les objets ; vent contraire appliqué à la physique seulement, autour du pas.
+- Réglages `grandprix.opponents` (2 à 4), `grandprix.laps` (1 à 5), `grandprix.distance_km` (5 à 30), `grandprix.chaos` (`soft`, `normal`, `wild`), `grandprix.box_every_m` (1 000 à 3 000 m par 500 m ; le plan disait `box_every_km`, réécrit en mètres au pas des autres réglages, 2,5 km ajouté).
+- Objets : commandes génériques `list_mode_options` et `set_mode_option` (message `mode_options`, code `mode_option_invalid`), section `[items]` de `~/OpenRide/grandprix.toml` (commentaires gardés, `config_edit.update_toml`) ; commandes du Mode WTF gardées en alias une révision.
+- Contrat : révision 1.7 (`state.gp`, `bots[].item` et `bots[].fx`, `summary.gp`, `gp_hit`, `mode_options`), schémas, colonne du mode au §7.1 de la spécification ; journal `gp_start`, `gp`, `gp_summary`.
+- Budget : pire trame 3 558 octets avec 4 adversaires et `devices` ; avec 11 (lot GP10), 4 032 octets sans `devices`, mais la trame qui porte `devices` perd ses bots : à régler au lot GP10.
+- Tests : `core/tests/test_grandprix_session.py` (critères 1, 2 et refus), `test_ipc_budget.py` (critère 3), suite complète du core (critère 4). L'engine reste en 1.6 jusqu'aux lots GP7 et GP8.

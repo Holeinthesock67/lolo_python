@@ -19,13 +19,13 @@ SPEC = Path(__file__).resolve().parents[2] / "docs" / "SPECIFICATION_GENERALE.md
 
 
 def spec_plan() -> dict[str, list[str]]:
-    """Lignes du tableau des boutons (§7.1) : première colonne → [famille, menus, SIM, ERG, Rogue, monde]."""
+    """Lignes du tableau des boutons (§7.1) : première colonne → [famille, menus, SIM, ERG, Rogue, monde, Grand Prix]."""
     text = SPEC.read_text(encoding="utf-8")
     section = text.split("### 7.1", 1)[1].split("### 7.2", 1)[0]
     rows: dict[str, list[str]] = {}
     for line in section.splitlines():
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if line.startswith("|") and len(cells) == 7 and cells[0] not in ("Bouton", "---"):
+        if line.startswith("|") and len(cells) == 2 + len(bc.MODES) and cells[0] not in ("Bouton", "---"):
             rows[cells[0]] = cells[1:]
     return rows
 
@@ -55,11 +55,11 @@ def test_plan_matches_specification_table():
 
 def test_steps_cover_every_event_left_unit_first():
     assert {s.event for s in bc.STEPS} == set(InputEvent)
-    assert len({s.key for s in bc.STEPS}) == len(bc.STEPS) == 17
+    assert len({s.key for s in bc.STEPS}) == len(bc.STEPS) == 18
     lefts = [s.left for s in bc.STEPS]
     assert lefts == sorted(lefts, reverse=True), "boîtier gauche d'abord (il se tait après une minute)"
     assert {s.button for s in bc.STEPS if s.event == InputEvent.MINUS_SHORT} == {"MINUS", "B"}
-    assert "17 appuis" in " ".join(gd.TRIALS["boutons_click"].notes)
+    assert "18 appuis" in " ".join(gd.TRIALS["boutons_click"].notes)
 
 
 def test_beep_kinds_exist_and_match_the_game():
@@ -137,14 +137,14 @@ def run_sim(spec: dict, timeout: float = 5.0) -> tuple[dict, gd.Guide]:
 @pytest.mark.slow   # une trentaine de secondes
 def test_all_buttons_on_simulated_click(tmp_path):
     report, guide = run_sim({"click": {"appear_at": 0.0}, "events": []})
-    assert report["ok"] and report["steps_ok"] == report["steps_total"] == 17, report["steps"]
+    assert report["ok"] and report["steps_ok"] == report["steps_total"] == 18, report["steps"]
     sides = {s["key"]: s["side"] for s in report["steps"]}
     assert sides["moins"] == sides["haut"] == "gauche" and sides["b"] == sides["z_long"] == "droit"
     played = guide.sound.played
-    assert played.count("debut") == 18 and played.count("appui_flou") == 2 and "alerte" not in played
+    assert played.count("debut") == 19 and played.count("appui_flou") == 2 and "alerte" not in played
     bc.write_outputs(report, tmp_path)
     assert "tout passe" in (tmp_path / "rapport.txt").read_text(encoding="utf-8")
-    assert json.loads((tmp_path / "rapport.json").read_text(encoding="utf-8"))["steps_ok"] == 17
+    assert json.loads((tmp_path / "rapport.json").read_text(encoding="utf-8"))["steps_ok"] == 18
 
 
 @pytest.mark.slow

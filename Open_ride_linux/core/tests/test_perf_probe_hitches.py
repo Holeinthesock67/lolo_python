@@ -50,6 +50,37 @@ def test_no_period_for_scattered_hitches():
     assert pp.hitch_period([100.0, 140.0, 180.0]) is None   # moins de 4 à-coups : rien à conclure
 
 
+def test_period_counts_passes_not_frames():
+    """Lot X57 : chaque passage de 40 m compte une fois, même s'il donne plusieurs images lentes."""
+    d = [40.0 * k + 0.1 * j for k in range(5, 29) for j in range(3)]   # 3 images lentes par tronçon
+    per = pp.hitch_period(d)
+    assert per is not None and abs(per["period_m"] - 40.0) <= 1.0, per
+    assert (per["hits"], per["passes"]) == (72.0, 24.0)
+
+
+def test_two_far_apart_bursts_are_not_a_period():
+    """r735c low (07/11) : deux paquets de 6 et 7 images à ~780 m l'un de l'autre, plus deux isolées, sur
+    2,5 km. L'ancien contrôle, qui comptait les images, y voyait une image lente tous les 778 m."""
+    d = ([1614.0 + 25.0 * i for i in range(6)] + [2402.0 + 7.0 * i for i in range(7)]
+         + [2263.0, 2270.0] + [320.0, 905.0, 1180.0])
+    assert pp.hitch_period(d) is None
+
+
+def test_a_burst_at_the_finish_is_not_a_period():
+    """Séance FTP du 04/11 : 17 images lentes à 5 000 m (cycliste arrêté à l'arrivée), soit un seul passage,
+    plus quelques-unes éparses : l'ancien contrôle y voyait une période de 293 m."""
+    d = [130.2, 188.5, 289.4, 884.0, 1263.9, 1336.1, 1373.3, 1473.8, 2220.9, 2320.7, 2408.4, 2527.2,
+         2565.4, 2627.5, 2637.0, 3526.9, 4001.5, 4345.4] + [5000.0] * 17
+    assert pp.hitch_period(d) is None
+
+
+def test_window_across_the_end_of_the_turn_counts_one_pass():
+    """Phase à cheval sur la fin du tour (39,9 puis 40,1 m pour P = 40) : les deux comptent comme un passage."""
+    d = [40.0 * k + (-0.1 if k % 2 else 0.1) for k in range(1, 20)]
+    per = pp.hitch_period(d)
+    assert per is not None and abs(per["period_m"] - 40.0) <= 1.0 and per["passes"] >= 18, per
+
+
 def test_bench_of_main_fails_on_the_40_m_hitches():
     sac = saccades(range(200, 1121, 40))
     checks = by_label(pp.hitch_checks(rows(hitch_every_s=5), sac))
@@ -57,6 +88,7 @@ def test_bench_of_main_fails_on_the_40_m_hitches():
     assert checks["pire image"] == (False, "120 ms (au plus 100 ms)")
     ok, msg = checks["périodicité en distance"]
     assert ok is False and "tous les 40." in msg and "causes : inconnue" in msg
+    assert "(17 images sur 17, revenue à 17 passages" in msg
 
 
 def test_smooth_run_passes_and_captures_are_left_out():

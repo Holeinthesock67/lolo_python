@@ -93,7 +93,7 @@ Vrai core sur trainer `mock` et vrai engine, HOME temporaire. Attendu : `hello_a
 ### 3.7 Tests graphiques
 
 - **Scène principale** : `engine/tests/run_visual_tests.sh [--native]` lance `visual_check.py` face au faux core : captures du HUD, bandeau, menus, bilans (`bilan_complet`, `bilan_complet_detaille`), ERG (cible longue, palier de 50 W), contrôles de lisibilité (chiffres d'au moins 28 px ramenés à 1080 lignes, contraste 4,5:1 pour les valeurs et 3:1 pour les libellés) et de débordement (panneaux dans l'écran, sans chevauchement, textes dans leur colonne). Rapport dans `~/OpenRide/visual_tests/`.
-- **Galerie des cas du HUD** : `python3 engine/tests/hud_galerie.py [--configs 1024x600:medium,1920x1080:high] [--native]` capture chaque cas (SIM, zones de puissance, vent et abri, bots avec segment et bonus, ERG avec cible courte, cible longue et palier de 50 W, courbes réduites et complètes, courbes en SIM, valeurs extrêmes) ; attendu : braquet et profil cachés en ERG, rien ne déborde, `planche_<config>.png` et `rapport.html` à montrer au propriétaire.
+- **Galerie des cas du HUD** : `python3 engine/tests/hud_galerie.py [--configs 1024x600:medium,1920x1080:high] [--native]` capture chaque cas (SIM, zones de puissance, vent et abri, bots avec segment et bonus, ERG avec cible courte, cible longue et palier de 50 W, courbes réduites et complètes, courbes en SIM, épreuves de piste : points, élimination et poursuite, lot VD9, valeurs extrêmes) ; attendu : braquet et profil cachés en ERG, profil et ligne d'état cachés sur la piste, rien ne déborde, `planche_<config>.png` et `rapport.html` à montrer au propriétaire.
 - **Qualité appliquée (X32)** : chaque banc vérifie dans le journal de l'engine que la capture a été rendue dans la qualité demandée (`engine/tests/quality_guard.py`) ; sinon ÉCHEC « qualité demandée medium, appliquée low ».
 - **Couleurs du thème (X38)** : `test_theme_colors.gd` refuse toute couleur écrite en dur dans les scripts d'interface.
 
@@ -142,6 +142,7 @@ Séance complète sur Bluetooth simulé dans la vraie scène, captures réguliè
 | `course_bots` | Recette T11 §8 sans vélo (X33) : 4 bots à profil calibrés au journal, encart des bots et écarts à l'écran |
 | `peloton` | Peloton du lot PL1 : 11 bots à profil au départ groupé, budgets GPU en low, medium et high, encart à 5 lignes |
 | `dernier_survivant` | Dernier survivant sans vélo (série DS) : départ du mode, portiques, éliminations ; banc GPU en low, medium et high (`--quality`) ; courses complètes du core dans `core/tests/test_survivor_courses.py` |
+| `dernier_survivant_onze` | Dernier survivant à 11 adversaires (lot DS8) sur `demo_long` (12 km) : départ groupé des 12 coureurs, pire cas GPU en low, medium et high ; course complète à 11 du core dans `core/tests/test_survivor_courses.py` |
 
 Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot ni exception du core, journal et FIT écrits, fin de séance, vrai HOME inchangé, qualité appliquée égale à la demande.
 
@@ -170,7 +171,7 @@ Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot
 | `python -m openride_core.tools.trainer_steps --mode sim\|erg` | Latence du trainer par paliers (X5) | Délai d'accusé, t63, t90 et stabilisation dans `rapport.html` |
 | `python -m openride_core.tools.click_recette --minutes 30` | Click sur 30 min (X8) | Aucun silence non signalé |
 | `python -m openride_core.tools.fc_recette` | Fréquence cardiaque (X9) | Retrait, absence, valeur figée et retour détectés |
-| `python -m openride_core.tools.boutons_click` | 17 appuis du plan des boutons | Chaque appui reconnu avec son action et un bip |
+| `python -m openride_core.tools.boutons_click` | 18 appuis du plan des boutons | Chaque appui reconnu avec son action et un bip |
 | `python -m openride_core.tools.seance_guidee` | Séances guidées sur le trainer | Consignes suivies, journal complet |
 | `openride-core session-report` | Analyse d'une séance réelle (X12) | Rapport par section, en local |
 
@@ -190,6 +191,7 @@ Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot
 | Matrice des boutons et des réglages (X42, PR #552) | `python -m openride_core.tools.matrice_boutons --partie tout` ; `core/tests/test_matrice_boutons.py` | idem | — |
 | Cyber-Rogue de bout en bout (X40, #546) et banc visuel (X41, #548) | `python -m openride_core.tools.rogue_bout_en_bout --objective tous` ; `python3 engine/tests/rogue_bench.py --godot GODOT` | idem | Planche `rapport.html` montrée au propriétaire |
 | Lisibilité du HUD (X22), persistance des réglages (X37), couleurs du thème (X38), qualité appliquée (X32), hygiène des suites (X34) | §3.7, §3.8, `core/tests/test_settings_persistance.py`, `scripts/recompte_tests.py` | voir les sections citées | Remesures medium et high par la file du PC |
+| Demi-tour depuis la pause (N17, contrat 1.9, 8 novembre) | `core/tests/test_u_turn.py` (critères 2 et 3 du cahier en simulé) ; `test_menu_model.gd`, `test_menu_flow.gd` (critère 4, Click et clavier), `test_camera_follow_lag.gd`, `test_hud_view_model.gd` | `(cd core && pytest -q tests/test_u_turn.py)` ; captures : `python3 engine/tests/tour_visuel.py --tour engine/tests/tours/demi_tour.json --quality low` (puis medium, high) | Captures des trois qualités validées par le propriétaire ; aucune recette sur le vélo |
 | Autres outils X fusionnés le 29 octobre (X3, X10, X11, X14, X15, X17, X19, X20, X21, X24, X26, X27, X28, X30, X31, X35) | Chacun décrit dans [OUTILS_DE_TEST.md](OUTILS_DE_TEST.md) avec sa commande | voir le catalogue | Premier passage sur le PC pour ceux qui mesurent le matériel |
 
 ## 6. En revue : PR ouvertes au 29 octobre 2026 au soir

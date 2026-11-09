@@ -5,6 +5,17 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Le cycliste prend mieux les virages (lot CY1)
+- Le vélo du joueur et des bots regarde où il va : il ne tourne plus 20 m avant un virage serré et ne roule plus en crabe (jusqu'à 29° dans un angle droit dessiné avec peu de points).
+- Il se penche dans les virages selon sa vitesse (au plus 30°), et se redresse en ligne droite ou à l'arrêt. Sur la piste du vélodrome, il reste perpendiculaire à la piste dans les virages relevés.
+- Sa trajectoire est lissée : il coupe légèrement les angles droits au lieu de faire un écart.
+- La caméra suit le cap du vélo (lissé) au lieu de tourner 20 m avant le virage.
+
+### Boîtier gauche du Click sans redémarrage, à l'essai (lot K9)
+- `[drivers] click_reset_locked` devient un choix : `"reset"` (défaut, comme avant), `"keep"` ou `"off"` ; les anciens `true` et `false` sont toujours lus.
+- `"keep"` essaie de garder le boîtier gauche déverrouillé (activation complète et réponse `ff 04 00`) et ne le redémarre que si Zwift le verrouille quand même. Essai sur le vélo du 8 novembre : sans effet sous le firmware 1.2.0 (verrou toujours vers 50 s), `"reset"` reste donc le défaut.
+- Journal : durée de chaque fenêtre de boutons du boîtier gauche ; `click_recette --verrou keep --attente-rappel 8` compte les appuis perdus par tranche de 10 min.
+
 ### Rendu plus léger (étude du 5 et 6 novembre)
 - Medium et high : MSAA 2× et ombres du soleil en 2048 ; high sans lumière indirecte d'écran (SSIL) et filtrage anisotrope 8×. Tour des six biomes sur la GTX 1060 : environ −2,4 ms par image en medium et −4 ms en high.
 - Feuillage et herbe éclairés plus simplement (sans reflet spéculaire), arbres lointains sans vent, halo à trois niveaux.
@@ -13,6 +24,19 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Le globe du menu « Monde ouvert » n'est plus dessiné pendant la sortie.
 - Image moins claire et plus contrastée : brume éclairée à moitié par le ciel et étalonnage en S (ombres plus denses), au même coût.
 - Route qui disparaissait sous l'herbe dans les longues montées (forêt, montagne) : le terrain lointain est de nouveau creusé sous la chaussée avec le relief exagéré.
+- Parcours demo : le sol ne recouvre plus la chaussée au km 1,74, là où la pente passe de 1 % à 3,5 %. Le terrain de démonstration reçoit le même garde-fou que les parcours compilés et la démo du dossier des parcours est remplacée au prochain lancement.
+
+### Dernier survivant à 11 adversaires (lot DS8)
+- Jusqu'à 11 adversaires (au lieu de 4) grâce au peloton : une arche par adversaire, donc un parcours d'au moins 11 km à 1 km d'écart, ou une boucle, ou le monde ouvert. Sur un parcours trop court, l'écran Prêt propose les réglages qui tiennent.
+- Un bot éliminé laisse passer le coureur à sa hauteur avant de se ranger sur le bas-côté (au lieu de lui couper la route).
+- Liste des coureurs du HUD : nom et écart en secondes de chaque bot, même des plus loin (la trame du peloton ne les envoie pas à chaque fois).
+
+### Séances dans Garmin Connect et GoldenCheetah (lot X56)
+- Le FIT de chaque séance donne les calories, le travail, le dénivelé positif et négatif, la puissance normalisée et la cadence maximale, pour la séance et pour chaque tour ; l'appareil s'appelle « OpenRide » avec la version du jeu.
+- `openride-core fit-check` contrôle en plus ce que Garmin Connect et GoldenCheetah exigent à l'import (en-tête, tours et séance datés, heure locale).
+
+### Outils de test
+- Bancs de fluidité : la périodicité des à-coups se compte en passages distincts et non plus en images. Deux paquets d'images lentes éloignés (bots, décor, arrêt à l'arrivée) ne forment plus une fausse période ; la saccade de 40 m du 4 novembre reste détectée (lot X57).
 
 ### Bots et abri (série AS)
 - Cyclistes du décor dessinés comme les bots (même cycliste, mêmes niveaux de détail), avec leurs propres maillots, unis ou de club, de couleurs qu'aucun bot ne porte, sans dossard (lot AS7, retour d'essai du 4 novembre).

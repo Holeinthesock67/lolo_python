@@ -4,6 +4,8 @@ extends SceneTree
 ## proche (peinture du matériau) et la même en MultiMesh (couleur d'instance) ont la même peinture et des
 ## vitres sombres ; phares éteints puis allumés (INSTANCE_CUSTOM.x et `lights`).
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 const VehicleShader := preload("res://shaders/vehicle.gdshader")
 
@@ -131,5 +133,6 @@ func _run() -> void:
 			vp.queue_free()
 			await process_frame
 		_check(lum[0] < 0.1 and lum[1] > 0.8, "%s : phares éteints %.2f, allumés %.2f" % ["MultiMesh" if instanced else "proche", lum[0], lum[1]])
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_vehicle_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
