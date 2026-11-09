@@ -1,0 +1,17 @@
+03:22:15 empreinte avant 5dd68002174aac60837bd7c9e4e300a6
+03:22:15 tête b7064d53
+03:22:16 trace D940 depuis OSM
+03:22:41 trace : trace : 11.27 km, 1130 points, altitude 3 à 117 m
+03:22:41 build côte
+03:25:44 fin build rc=0 durée 183.354518453 s
+03:25:47 verify rc=0
+03:25:47 plan rc=1
+03:26:55 banc côte low
+03:30:35 fin rc=0
+03:30:35 banc côte medium
+03:34:15 fin rc=1
+03:34:15 banc côte high
+03:37:54 fin rc=1
+03:37:56 empreinte après 5dd68002174aac60837bd7c9e4e300a6
+03:37:56 clone 90c08094
+03:37:56 FIN

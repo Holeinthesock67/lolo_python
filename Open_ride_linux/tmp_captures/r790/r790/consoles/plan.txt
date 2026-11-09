@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "~/mesures-2026-11-01-auto/r790_plan_world.py", line 11, in <module>
+    from PIL import Image, ImageDraw
+ModuleNotFoundError: No module named 'PIL'
