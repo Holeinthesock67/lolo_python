@@ -1,0 +1,52 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+23.2;0;0;0;0;0;0;0;
+27.4;14;0;0;0;0;0;0;
+28.8;14;0;0;0;0;0;0;
+29.1;14;0;0;0;0;0;0;
+32.4;14;0;0;0;0;0;0;
+34.0;14;0;0;0;0;0;0;
+40.0;14;0;0;0;0;0;0;
+43.2;14;0;0;0;0;0;0;
+46.0;14;0;0;0;0;0;0;
+52.0;14;0;0;0;0;0;0;
+58.0;14;0;0;0;0;0;0;
+58.3;14;0;0;0;0;0;0;
+62.0;14;0;0;0;0;0;0;
+64.0;14;0;0;0;0;0;0;
+70.0;14;0;0;0;0;0;0;
+73.2;14;0;0;0;0;0;0;
+76.0;14;0;0;0;0;0;0;
+77.0;14;0;0;0;0;0;0;
+82.0;14;0;0;0;0;0;0;
+88.0;14;0;0;0;0;1;0;airliner_rumble=1
+88.3;14;0;0;0;0;1;0;airliner_rumble=1
+92.0;14;0;0;0;0;1;0;airliner_rumble=1
+94.0;14;0;0;0;0;1;0;airliner_rumble=1
+100.0;14;0;0;0;1;1;0;airliner_rumble=1
+103.2;14;0;0;0;1;1;0;airliner_rumble=1
+106.0;14;0;0;0;1;1;0;airliner_rumble=1
+112.0;14;0;0;0;1;1;0;airliner_rumble=1
+118.0;14;0;0;0;1;1;0;airliner_rumble=1 raptor_cry=1
+118.3;14;0;0;0;1;1;0;airliner_rumble=1 raptor_cry=1
+124.0;14;0;0;0;1;1;0;airliner_rumble=1 raptor_cry=1
+130.0;14;0;0;0;1;2;0;airliner_rumble=2 raptor_cry=1
+133.2;14;0;0;0;1;2;0;airliner_rumble=2 raptor_cry=1
+136.0;14;0;0;0;2;2;0;airliner_rumble=2 raptor_cry=1
+142.0;14;0;0;0;2;2;0;airliner_rumble=2 raptor_cry=1
+148.0;14;0;0;0;2;2;0;airliner_rumble=2 raptor_cry=2
+148.3;14;0;0;0;2;2;0;airliner_rumble=2 raptor_cry=2
+152.0;14;0;0;0;2;2;0;airliner_rumble=2 raptor_cry=2
+154.0;14;0;0;0;2;2;0;airliner_rumble=2 raptor_cry=2
+160.0;14;0;0;0;1;2;0;airliner_rumble=2 raptor_cry=2
+163.2;14;0;0;0;1;2;0;airliner_rumble=2 raptor_cry=2
+166.0;14;0;0;0;1;2;0;airliner_rumble=2 raptor_cry=2
+172.0;14;0;0;0;1;2;0;airliner_rumble=2 raptor_cry=2
+178.0;14;0;0;0;3;2;0;airliner_rumble=2 raptor_cry=2
+178.3;14;0;0;0;3;2;0;airliner_rumble=2 raptor_cry=2
+184.0;14;0;0;0;3;2;0;airliner_rumble=2 raptor_cry=2
+193.2;14;0;0;0;2;2;0;airliner_rumble=2 raptor_cry=2
+202.0;14;0;0;0;2;2;0;airliner_rumble=2 raptor_cry=2
+208.2;14;0;0;0;2;2;0;airliner_rumble=2 raptor_cry=2
+223.2;14;0;0;0;2;2;0;airliner_rumble=2 raptor_cry=2
+238.2;14;0;0;0;2;2;0;airliner_rumble=2 raptor_cry=2 voice_allez=1
+241.1;14;0;0;0;2;2;0;airliner_rumble=2 raptor_cry=2 voice_allez=1
