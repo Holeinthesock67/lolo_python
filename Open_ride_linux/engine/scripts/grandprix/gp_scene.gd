@@ -89,7 +89,10 @@ func step(gp, riders: Array, now_s: float, camera: Camera3D) -> void:
 
 ## Pour les tests graphiques et le banc : ce qui est montré.
 func test_info() -> Dictionary:
-	return {"active": _active, "quality": quality} | _shown
+	var info := _shown.duplicate()
+	info["active"] = _active
+	info["quality"] = quality
+	return info
 
 
 # --- construction ------------------------------------------------------------------------------------
