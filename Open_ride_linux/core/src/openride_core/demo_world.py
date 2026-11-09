@@ -14,7 +14,7 @@ sous le nom `DEMO_TITLE`, lot O37) est écrit par `write_demo_world` avec une da
 couche terrain synthétique, pour être identique octet pour octet :
     python -m openride_core.tools.fake_world --demo --out ../engine/demo
 
-Les quatre parcours de démonstration des biomes (lot U19) sont écrits par `write_biome_demo_worlds`, qui
+Les parcours de démonstration des biomes (lot U19 ; trois dans le jeu de base, le tour gravel en plus pour les recettes, lot O37) sont écrits par `write_biome_demo_worlds`, qui
 appelle le générateur du compilateur `openride_compiler.demo_biomes` (lot O37 ; compilateur requis) :
     openride-core demo-biomes [--out DOSSIER] [--recette]
 
@@ -246,7 +246,12 @@ def _biome_demo_module():
 
 def biome_demo_names() -> list[str]:
     """Identifiants des parcours écrits par `write_biome_demo_worlds` (contenus de départ, lot O25)."""
-    return [name for name, *_ in _biome_demo_module().DEMO_SET]
+    return list(_biome_demo_module().GAME_DEMOS)
+
+
+def retired_biome_demo_names() -> list[str]:
+    """Démonstrations retirées du jeu de base (lot O37 : le tour gravel), gardées pour les recettes."""
+    return list(_biome_demo_module().RETIRED_DEMOS)
 
 
 def biome_demo_outdated(world: Path) -> bool:
@@ -261,8 +266,8 @@ def biome_demo_outdated(world: Path) -> bool:
 
 
 def write_biome_demo_worlds(out_dir: Path, recette: bool = False) -> list[dict]:
-    """Écrit les quatre parcours de démonstration des biomes (lot U19) dans `out_dir` : tour des six biomes,
-    même tour avec un tiers de gravel, côte avec la mer, alpin. Renvoie le résumé de chacun. `recette` :
-    variante des bancs et des recettes (noms techniques, lot O37), jamais dans le jeu de base.
+    """Écrit les parcours de démonstration des biomes (lot U19) dans `out_dir` : tour des six biomes, côte avec
+    la mer, alpin. Renvoie le résumé de chacun. `recette` : variante des bancs et des recettes (noms
+    techniques, lot O37), avec en plus le tour avec un tiers de gravel ; jamais dans le jeu de base.
     Lève ImportError sans le compilateur."""
     return _biome_demo_module().write_demo_set(Path(out_dir), recette=recette)

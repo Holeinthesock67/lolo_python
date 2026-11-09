@@ -4,7 +4,7 @@ Le joueur n'a besoin d'aucune commande pour remplir sa bibliothèque : chaque co
 message `contents` (`list_contents`), installé par `install_content`, toujours sans rien écraser.
 
 - `starter` (« Contenus de départ ») : les entraînements livrés (`core/workouts/`), les deux plans de
-  départ (`core/plans/`) et les quatre parcours de démonstration des biomes (`openride-core
+  départ (`core/plans/`) et les trois parcours de démonstration des biomes (`openride-core
   demo-biomes`, lot U19). Installé seul au premier lancement (`run --first-run`), puis proposé dans
   le menu pour une installation existante. Rien n'est téléchargé.
 
@@ -140,9 +140,16 @@ def install_starter(dirs: ContentDirs, progress: Callable[[int], None] = lambda 
 def install_biome_demos(routes_dir: Path) -> tuple[list[str], str]:
     """Écrit les parcours de démonstration des biomes qui manquent, et remplace ceux d'avant le lot O37 (nom
     technique au menu) ; jamais d'autre écrasement. Renvoie leurs noms et une remarque ("" si tout va bien)."""
-    from .demo_world import biome_demo_outdated, write_biome_demo_worlds
+    from .demo_world import biome_demo_outdated, retired_biome_demo_names, write_biome_demo_worlds
 
     names = _demo_names()
+    try:   # démonstration retirée du jeu de base (lot O37), écrite avant lui : enlevée, jamais un parcours du joueur
+        retired = retired_biome_demo_names()
+    except ImportError:
+        retired = []
+    for n in retired:
+        if biome_demo_outdated(routes_dir / f"{n}.world"):
+            shutil.rmtree(routes_dir / f"{n}.world", ignore_errors=True)
     missing = [n for n in names if not (routes_dir / f"{n}.world" / "manifest.json").is_file()
                or biome_demo_outdated(routes_dir / f"{n}.world")]
     if not names:

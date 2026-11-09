@@ -8,7 +8,7 @@ pour les bancs, les recettes et `run_engine_tests.sh`. Les bancs et les fiches d
 
     python3 engine/tests/make_biome_world.py --out DOSSIER --tour [--gravel] [--sea] [--recette]
     python3 engine/tests/make_biome_world.py --out DOSSIER --biome alpine
-    python3 engine/tests/make_biome_world.py --out DOSSIER --demo-set [--recette]   # les quatre parcours
+    python3 engine/tests/make_biome_world.py --out DOSSIER --demo-set [--recette]   # parcours du jeu de base (+ tour gravel avec --recette)
 
 Prérequis : compilateur installé (`pip install -e compiler`), sinon pris dans `compiler/src` du dépôt.
 Code de sortie : 0 si tout est écrit, 2 sans le compilateur.

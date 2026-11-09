@@ -6,8 +6,8 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 ## Non publié
 
 ### Parcours de démonstration nommés (lot O37)
-- Les cinq parcours livrés portent un vrai nom au menu : « Col du lacet » (ex-`demo`), « Tour des six paysages », « Chemins des six paysages » (le tour en partie non revêtu), « Route de la côte » et « Montée alpine ». Les villages, belvédères et étangs ont des noms de lieux inventés au lieu de « Port Fictif » ou « Col Fictif » (panneau du sommet).
-- Les démonstrations déjà installées sont remplacées au prochain lancement ; un parcours du joueur n'est jamais touché.
+- Les quatre parcours livrés portent un vrai nom au menu : « Col du lacet » (ex-`demo`), « Tour des six paysages », « Route de la côte » et « Montée alpine ». Le tour en partie non revêtu (`demo-biomes-gravel`) quitte le jeu de base : le gravel étant coupé par défaut, il ressemblait au tour asphalté ; il reste pour les recettes. Les villages, belvédères et étangs ont des noms de lieux inventés au lieu de « Port Fictif » ou « Col Fictif » (panneau du sommet).
+- Les démonstrations déjà installées sont remplacées au prochain lancement (l'ancien tour gravel est enlevé) ; un parcours du joueur n'est jamais touché.
 - Le générateur des parcours des biomes est passé des tests de l'engine au compilateur : un jeu installé sans les tests les produit. Les bancs et les recettes gardent les noms techniques avec `--recette`.
 
 ### Rendu plus léger (étude du 5 et 6 novembre)

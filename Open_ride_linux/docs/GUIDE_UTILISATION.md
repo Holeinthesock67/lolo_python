@@ -35,7 +35,7 @@ Pour mettre à jour, cliquez sur l'icône **OpenRide – Mettre à jour**. La mi
 
 ## 3. Premier démarrage et appairage
 
-Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/OpenRide/` (parcours, entraînements, séances, réglages), installe les contenus de départ (les entraînements livrés, deux plans et quatre parcours de démonstration des biomes, sans rien télécharger : « Tour des six paysages », « Chemins des six paysages » en partie non revêtus, « Route de la côte » et « Montée alpine » ; avec eux, le « Col du lacet », toujours là) et ouvre l'écran **Connexion des appareils**.
+Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/OpenRide/` (parcours, entraînements, séances, réglages), installe les contenus de départ (les entraînements livrés, deux plans et trois parcours de démonstration des biomes, sans rien télécharger : « Tour des six paysages », « Route de la côte » et « Montée alpine » ; avec eux, le « Col du lacet », toujours là) et ouvre l'écran **Connexion des appareils**.
 
 1. Allumez le trainer (pédalez un peu pour le réveiller) et les boîtiers du Click.
 2. L'écran cherche les appareils. Quand tout est relié, il passe seul au menu. Avec un seul boîtier du Click, ou sans Click, choisissez **Passer**.

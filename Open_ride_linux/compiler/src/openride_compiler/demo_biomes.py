@@ -16,10 +16,11 @@ U20) : la couche `biome` (§8 quater), la colonne `surface` de la route et, avec
 - `sea` : côte inventée à gauche de la route le long du biome `coast` : terrain sous le niveau 0, ligne
   de côte, plage de sable puis côte rocheuse, aires `sea` (`level_y` = 0) de 300 m de large.
 
-Jeu de base (lot O37) : les quatre parcours de `DEMO_SET` portent au menu un nom de parcours (`name` du
-manifeste) et leurs lieux des noms inventés (`PLACE_NAMES`) ; l'identifiant de fichier (`demo-biomes-tour`…)
-ne change pas. Variante de recette (`recette=True`, `--recette`) pour les bancs et les fiches de recette : nom
-de parcours égal à l'identifiant et lieux « Fictif », comme avant le lot O37 ; jamais dans le jeu de base.
+Jeu de base (lot O37) : les trois parcours de `DEMO_SET` marqués pour le jeu de base portent au menu un nom
+de parcours (`name` du manifeste) et leurs lieux des noms inventés (`PLACE_NAMES`) ; l'identifiant de fichier
+(`demo-biomes-tour`…) ne change pas. Variante de recette (`recette=True`, `--recette`) pour les bancs et les
+fiches de recette : les quatre parcours, dont le tour gravel, nom de parcours égal à l'identifiant et lieux
+« Fictif », comme avant le lot O37 ; jamais dans le jeu de base.
 Vit dans le compilateur (et non plus dans `engine/tests/`) pour qu'un jeu installé sans les tests produise
 ses parcours de démonstration.
 
@@ -30,7 +31,7 @@ ses parcours de démonstration.
 
 Origine inventée au degré entier (45° N, 2° E : latitude tempérée de l'hémisphère nord, aucune ville au
 point), date de création fixe : deux générations donnent des fichiers identiques au bit près.
-`openride-core demo-biomes` range les quatre parcours dans le dossier des parcours ; `engine/tests/make_biome_world.py`
+`openride-core demo-biomes` range les parcours du jeu de base dans le dossier des parcours ; `engine/tests/make_biome_world.py`
 reste la ligne de commande des essais de l'engine. Code de sortie : 0 si tout est écrit.
 """
 
@@ -69,11 +70,15 @@ SEA_BAND_M = (70.0, 370.0)              # aires `sea` : de 70 à 370 m de l'axe
 BEACH_M = (36.0, 70.0)
 NEAR_T, FAR_T, GRID = 1000.0, 5000.0, 17
 GENERATOR = "openride-demo-biomes"    # `compiler.name` du manifeste (« make_biome_world » avant le lot O37)
-# Parcours du jeu de base : (identifiant de fichier, nom affiché au menu, biomes, gravel, mer).
-DEMO_SET = (("demo-biomes-tour", "Tour des six paysages", "tour", False, False),
-            ("demo-biomes-gravel", "Chemins des six paysages", "tour", True, False),
-            ("demo-biomes-cote", "Route de la côte", "coast", False, True),
-            ("demo-biomes-alpin", "Montée alpine", "alpine", False, False))
+# Parcours de démonstration : (identifiant de fichier, nom affiché au menu, biomes, gravel, mer, jeu de base).
+# Le tour gravel n'est que de recette (décision du propriétaire du 9 novembre) : le gravel étant coupé par
+# défaut, il s'affichait et se roulait comme le tour asphalté.
+DEMO_SET = (("demo-biomes-tour", "Tour des six paysages", "tour", False, False, True),
+            ("demo-biomes-gravel", "demo-biomes-gravel", "tour", True, False, False),
+            ("demo-biomes-cote", "Route de la côte", "coast", False, True, True),
+            ("demo-biomes-alpin", "Montée alpine", "alpine", False, False, True))
+GAME_DEMOS = tuple(name for name, *_, base in DEMO_SET if base)     # écrits par les contenus de départ
+RETIRED_DEMOS = tuple(name for name, *_, base in DEMO_SET if not base)
 # Lieux du jeu de base : un nom par bloc du même biome (trois blocs au plus), dans l'ordre de la route ; le col
 # est compté depuis la fin (le dernier bloc alpin porte le sommet, nommé sur son panneau). Variante de recette :
 # les noms « Fictif » d'avant le lot O37.
@@ -542,10 +547,12 @@ def generate(out: Path, name: str, biomes: tuple[str, ...], gravel: bool = False
 
 
 def write_demo_set(out: Path, seed: int = 0, recette: bool = False) -> list[dict]:
-    """Les quatre parcours de `openride-core demo-biomes` : tour, tour gravel, côte avec mer, alpin ;
-    `recette` : variante des bancs et des recettes (noms techniques)."""
+    """Parcours de `openride-core demo-biomes` : tour, côte avec mer, alpin ; `recette` : variante des bancs et
+    des recettes (noms techniques), avec en plus le tour gravel."""
     infos = []
-    for name, title, which, gravel, sea in DEMO_SET:
+    for name, title, which, gravel, sea, base in DEMO_SET:
+        if not (base or recette):
+            continue
         biomes = TOUR if which == "tour" else (which,) * 3
         infos.append(generate(out, name, biomes, gravel=gravel, sea=sea, seed=seed, title=title, recette=recette))
     return infos
@@ -557,7 +564,7 @@ def main(argv: list[str] | None = None) -> int:
     what = parser.add_mutually_exclusive_group(required=True)
     what.add_argument("--biome", choices=TOUR, help="un seul biome sur 6 km")
     what.add_argument("--tour", action="store_true", help="les six biomes du premier jalon, 2 km chacun")
-    what.add_argument("--demo-set", action="store_true", help="les quatre parcours de demo-biomes")
+    what.add_argument("--demo-set", action="store_true", help="les parcours de demo-biomes (le tour gravel en plus avec --recette)")
     parser.add_argument("--gravel", action="store_true", help="un tiers de la route en gravel ou dirt")
     parser.add_argument("--sea", action="store_true", help="côte inventée et mer le long du biome coast")
     parser.add_argument("--name", help="identifiant du parcours (défaut : biomes-tour ou biomes-<ID>)")

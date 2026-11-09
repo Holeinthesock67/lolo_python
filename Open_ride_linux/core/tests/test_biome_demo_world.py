@@ -52,6 +52,13 @@ def demo_set(tmp_path_factory) -> Path:
     return out
 
 
+@pytest.fixture(scope="module")
+def recette_set(tmp_path_factory) -> Path:
+    out = tmp_path_factory.mktemp("demo-biomes-recette")
+    write_biome_demo_worlds(out, recette=True)
+    return out
+
+
 def _schema(name: str) -> dict:
     return json.loads((SCHEMAS / f"{name}.schema.json").read_text(encoding="utf-8"))
 
@@ -60,11 +67,12 @@ def _json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def test_demo_set_four_valid_worlds(demo_set: Path) -> None:
+def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
+    """Jeu de base : trois parcours (le tour gravel retiré le 9 novembre) ; recette : les quatre."""
     names = sorted(p.name for p in demo_set.glob("*.world"))
-    assert names == ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-gravel.world",
-                     "demo-biomes-tour.world"]
-    for world in demo_set.glob("*.world"):
+    assert names == ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-tour.world"]
+    assert sorted(p.name for p in recette_set.glob("*.world")) == sorted(names + ["demo-biomes-gravel.world"])
+    for world in [*demo_set.glob("*.world"), recette_set / "demo-biomes-gravel.world"]:
         assert verify_world(world) == [], world.name
         manifest = _json(world / "manifest.json")
         jsonschema.validate(manifest, _schema("manifest"))
@@ -92,8 +100,8 @@ def test_tour_shares_between_10_and_25(demo_set: Path, mbw) -> None:
     assert single["shares"] == {"alpine": 100.0} and single["default_biome"] == "alpine"
 
 
-def test_gravel_one_third_unpaved(demo_set: Path) -> None:
-    world = demo_set / "demo-biomes-gravel.world"
+def test_gravel_one_third_unpaved(demo_set: Path, recette_set: Path) -> None:
+    world = recette_set / "demo-biomes-gravel.world"
     route = _json(world / "route.json")
     unpaved = sum(1 for v in route["surface"] if v in ("gravel", "dirt")) / route["n"]
     assert abs(unpaved - 1.0 / 3.0) <= 0.05, unpaved
@@ -126,9 +134,10 @@ def test_integer_degree_coordinates_in_repo(mbw) -> None:
 
 def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> None:
     """Lot O37 : nom de parcours au menu, aucun « Fictif » ni nom technique dans les fichiers livrés."""
-    titles = {name: title for name, title, *_ in mbw.DEMO_SET}
-    assert titles == {"demo-biomes-tour": "Tour des six paysages", "demo-biomes-gravel": "Chemins des six paysages",
-                      "demo-biomes-cote": "Route de la côte", "demo-biomes-alpin": "Montée alpine"}
+    titles = {name: title for name, title, *_, base in mbw.DEMO_SET if base}
+    assert titles == {"demo-biomes-tour": "Tour des six paysages", "demo-biomes-cote": "Route de la côte",
+                      "demo-biomes-alpin": "Montée alpine"}
+    assert mbw.RETIRED_DEMOS == ("demo-biomes-gravel",) and not (demo_set / "demo-biomes-gravel.world").exists()
     for name, title in titles.items():
         world = demo_set / f"{name}.world"
         manifest = _json(world / "manifest.json")
@@ -158,9 +167,9 @@ def test_recette_variant_keeps_technical_names(tmp_path: Path) -> None:
     assert "Col Fictif" in texts
 
 
-def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path) -> None:
-    """Une démonstration écrite avant le lot O37 (`make_biome_world`) est remplacée ; un parcours du joueur
-    au même identifiant, jamais."""
+def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path, recette_set: Path) -> None:
+    """Une démonstration écrite avant le lot O37 (`make_biome_world`) est remplacée, le tour gravel d'avant lui
+    enlevé ; un parcours du joueur au même identifiant, jamais."""
     routes = tmp_path / "routes"
     shutil.copytree(demo_set / "demo-biomes-tour.world", routes / "demo-biomes-tour.world")
     old = routes / "demo-biomes-tour.world" / "manifest.json"
@@ -171,9 +180,14 @@ def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path) -> N
     mine.mkdir(parents=True)
     (mine / "manifest.json").write_text(json.dumps({"name": "Mon alpin", "compiler": {"name": "openride-compiler"}}),
                                         encoding="utf-8")
+    gravel = routes / "demo-biomes-gravel.world"
+    shutil.copytree(recette_set / "demo-biomes-gravel.world", gravel)
+    (gravel / "manifest.json").write_text(json.dumps({**_json(gravel / "manifest.json"),
+                                                      "compiler": {"name": "make_biome_world"}}), encoding="utf-8")
     assert biome_demo_outdated(routes / "demo-biomes-tour.world") and not biome_demo_outdated(mine)
     written, note = contents.install_biome_demos(routes)
-    assert note == "" and sorted(written) == ["demo-biomes-cote", "demo-biomes-gravel", "demo-biomes-tour"]
+    assert note == "" and sorted(written) == ["demo-biomes-cote", "demo-biomes-tour"]
+    assert not gravel.exists()
     assert _json(old)["name"] == "Tour des six paysages"
     assert _json(mine / "manifest.json")["name"] == "Mon alpin"
 
@@ -198,5 +212,5 @@ def test_unknown_biome_refused(tmp_path: Path, mbw) -> None:
 def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert main(["demo-biomes", "--out", str(tmp_path)]) == 0
     out = capsys.readouterr().out
-    assert "demo-biomes-tour (Tour des six paysages) : " in out and "non revêtu 33 %" in out
-    assert len(list(tmp_path.glob("*.world"))) == 4
+    assert "demo-biomes-tour (Tour des six paysages) : " in out and "demo-biomes-gravel" not in out
+    assert len(list(tmp_path.glob("*.world"))) == 3
