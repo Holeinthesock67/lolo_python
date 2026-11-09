@@ -1,0 +1,51 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+25.2;0;0;0;0;0;0;0;
+28.8;0;0;0;0;0;0;0;
+32.4;0;0;0;0;0;0;0;
+36.3;10;0;0;0;0;0;0;
+36.9;19;0;0;0;0;0;0;
+37.1;27;0;0;0;0;0;0;
+40.0;36;0;0;0;0;0;0;
+45.2;36;0;0;0;0;0;0;
+46.0;36;0;0;0;0;0;0;
+52.0;36;0;0;0;0;0;0;
+58.0;36;0;0;0;0;0;0;
+60.2;36;0;0;0;0;0;0;
+62.0;36;0;0;0;0;0;0;
+64.0;36;0;0;0;0;0;0;
+70.0;36;0;0;0;0;4;0;
+75.2;36;0;0;0;0;4;0;
+76.0;36;0;0;0;0;4;0;
+77.0;36;0;0;0;0;4;0;
+82.0;36;0;0;0;0;4;0;
+88.0;36;0;0;0;0;4;0;kid_laugh=1
+90.2;36;0;0;0;0;4;0;kid_laugh=1
+92.0;36;0;0;0;0;5;0;airliner_rumble=1 kid_laugh=1
+94.0;36;0;0;0;0;5;0;airliner_rumble=1 kid_laugh=1
+100.0;36;0;0;0;0;5;0;airliner_rumble=1 kid_laugh=1
+105.2;36;0;0;0;0;5;0;airliner_rumble=1 kid_laugh=1
+106.0;36;0;0;0;0;5;0;airliner_rumble=1 kid_laugh=1
+112.0;36;0;0;0;0;5;0;airliner_rumble=1 kid_laugh=1 voice_bonjour=1
+118.0;36;0;0;0;0;5;0;airliner_rumble=1 kid_laugh=1 voice_bonjour=1
+120.2;36;0;0;0;0;5;0;airliner_rumble=1 kid_laugh=1 voice_bonjour=1
+124.0;36;0;0;0;1;5;0;airliner_rumble=1 kid_laugh=1 voice_bonjour=1
+130.0;36;0;0;0;1;5;0;airliner_rumble=1 kid_laugh=1 voice_bonjour=1
+135.2;36;0;0;0;1;6;0;airliner_rumble=1 kid_laugh=1 voice_bonjour=1
+136.0;36;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_bonjour=1
+142.0;36;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_bonjour=1
+148.0;36;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_bonjour=1
+150.2;36;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_bonjour=1
+152.0;36;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_bonjour=1
+154.0;36;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_bonjour=1
+160.0;42;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_allez=1 voice_bonjour=1
+165.2;42;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_allez=1 voice_bonjour=1
+166.0;42;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_allez=1 voice_bonjour=1
+172.0;42;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_allez=1 voice_bonjour=1
+178.0;42;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_allez=1 voice_bonjour=1
+180.2;42;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_allez=1 voice_bonjour=1
+184.0;42;0;0;0;0;6;0;airliner_rumble=2 kid_laugh=1 voice_allez=2 voice_bonjour=1
+195.2;42;0;0;0;0;6;0;airliner_rumble=2 kid_laugh=1 voice_allez=2 voice_bonjour=1
+202.0;42;0;0;0;1;6;0;airliner_rumble=2 kid_laugh=1 voice_allez=2 voice_bonjour=1
+210.2;42;0;0;0;1;6;0;airliner_rumble=2 dog_bark=1 kid_laugh=1 voice_allez=2 voice_bonjour=1
+225.2;42;0;0;0;1;6;0;airliner_rumble=2 dog_bark=1 kid_laugh=1 voice_allez=2 voice_bonjour=1
+241.1;42;0;0;0;2;6;0;airliner_rumble=2 dog_bark=1 kid_laugh=1 voice_allez=2 voice_bonjour=1
