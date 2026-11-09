@@ -1,0 +1,11 @@
+03:07:16 empreinte avant 5dd68002174aac60837bd7c9e4e300a6
+03:07:16 tête 9c9dc755
+03:08:26 demo low_main
+03:12:33 fin demo low rc=0
+03:12:33 demo medium_main
+03:16:40 fin demo medium rc=0
+03:16:40 demo high_main
+03:20:47 fin demo high rc=0
+03:20:49 empreinte après 5dd68002174aac60837bd7c9e4e300a6
+03:20:49 clone 90c08094
+03:20:49 FIN
