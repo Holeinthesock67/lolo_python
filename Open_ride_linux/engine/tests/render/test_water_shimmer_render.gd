@@ -4,6 +4,8 @@ extends SceneTree
 ## la couleur de base est celle de l'eau d'E4, et la même image deux fois de suite (aucun clignotement
 ## sans défilement). Le matériau sans reflets reste le StandardMaterial3D d'E4 (test_water_mesh.gd).
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const WaterMesh := preload("res://scripts/water_mesh.gd")
 
 const SIZE := 32
@@ -63,5 +65,6 @@ func _run() -> void:
 		"shader compilé : couleur de base de l'eau d'E4 (%s)" % str(c))
 	var b: Image = await _shot(sh)
 	_check(a.get_data() == b.get_data(), "même matériau, même image : aucun clignotement")
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_water_shimmer_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

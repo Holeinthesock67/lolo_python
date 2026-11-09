@@ -9,6 +9,8 @@ extends SceneTree
 ## - Temps CPU de génération des sons au démarrage < 1 200 ms (budget `sound_generation`).
 ## - Lot P9 : fonds d'ambiance générés (ou .ogg de remplacement), lecteurs réglés par le modèle,
 ##   cloches de l'heure pleine sur les points church_bell.
+## - Lot U11 : seize fonds (P9 et biomes) fabriqués à la première demande dans un fil de travail, jamais au
+##   démarrage ; les fonds d'autres biomes ne sont jamais fabriqués.
 ## - Lot P10 : vent en bruit passe-bande bouclé sans clic, cliquetis calé sur le modèle, un « clac » par
 ##   reprise du pédalage.
 ## - « Tac-tac » régulier (28/10) : toutes les boucles raccordées sans saut, bruit filtré périodique, cloche
@@ -20,9 +22,10 @@ const SoundPlayer := preload("res://scripts/sound_player.gd")
 const SoundModel := preload("res://scripts/sound_model.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
+const AmbienceSynth := preload("res://scripts/ambience_synth.gd")
 ## Sons continus : ni coups, ni chants, ni battement voulu ; leur niveau doit rester stable d'un tour de boucle à l'autre.
 const STEADY_KINDS := ["wind", "river", "village", "vehicle_pass", "airliner_rumble", "water_flow", "village_murmur",
-	"high_wind", "rain", "wheel_hum"]
+	"high_wind", "rain", "wheel_hum", "conifer_wind", "singing_sand", "fumaroles"]
 const STEADY_MAX_DB := 3.0
 
 var _failures := 0
@@ -71,13 +74,21 @@ func _test_sound_synthesis_perf() -> void:
 		if not (v is AudioStreamWAV) or v.loop_mode != AudioStreamWAV.LOOP_DISABLED or v.get_length() < 0.3 or v.get_length() > 1.0:
 			voices_ok = false
 	_check(voices_ok, "lots P21, P23 et P24 : voix, aboiement, rire, cris d'oiseaux et de troupeaux brefs (0,3 à 1 s) et non bouclés")
+	var lazy := true
+	for bed in AmbienceModel.BEDS:
+		lazy = lazy and not sp._streams.has(bed)
+	_check(lazy, "fonds d'ambiance : aucun fabriqué au démarrage (lot U11, chacun à sa première demande)")
+	var t_beds := Time.get_ticks_usec()
+	sp.make_beds_now(AmbienceModel.BEDS)
+	print("Fabrication des %d fonds d'ambiance : %.0f ms" % [AmbienceModel.BEDS.size(), (Time.get_ticks_usec() - t_beds) / 1000.0])
 	var beds_ok := true
 	for bed in AmbienceModel.BEDS:
 		var b: Resource = sp._streams.get(bed, null)
 		beds_ok = beds_ok and b is AudioStreamWAV and (b as AudioStreamWAV).loop_mode == AudioStreamWAV.LOOP_FORWARD \
-			and (b as AudioStreamWAV).data.size() == SoundPlayer.BED_SAMPLES * 2
-		beds_ok = beds_ok and sp._bed_players.has(bed) and not (sp._bed_players[bed] is AudioStreamPlayer3D)
-	_check(beds_ok, "fonds d'ambiance : 6 boucles générées, lecteurs non spatialisés")
+			and (b as AudioStreamWAV).data.size() == AmbienceSynth.loop_samples(bed) * 2
+		beds_ok = beds_ok and sp._bed_players.has(bed) and not (sp._bed_players[bed] is AudioStreamPlayer3D) \
+			and sp._bed_players[bed].stream == b
+	_check(beds_ok, "fonds d'ambiance : %d boucles générées, lecteurs non spatialisés" % AmbienceModel.BEDS.size())
 
 	sp.queue_free()
 
@@ -152,6 +163,7 @@ func _test_ogg_override() -> void:
 		tmp.path_join("OpenRide/Sounds/rain.ogg"))
 	OS.set_environment("HOME", tmp)
 	var sp = SoundPlayer.new()
+	sp.make_beds_now(["rain", "forest_birds"])   # fonds faits à la demande (lot U11) : ici, avec le HOME d'essai
 	OS.set_environment("HOME", home)
 	_check(sp._streams["rain"] is AudioStreamOggVorbis and sp._streams["forest_birds"] is AudioStreamWAV,
 		"rain.ogg de remplacement utilisé, les autres fonds restent synthétisés")
@@ -189,6 +201,35 @@ func _test_ambience_and_bells() -> void:
 	for i in range(600):
 		sp.update_bells(15.3 + i * 0.0005, t + i / 60.0)
 	_check(sp.bell_strikes_rung == before, "aucun coup hors de l'heure pleine")
+	sp.queue_free()
+
+
+# Lot U11 : fonds des biomes faits à la demande, dans un fil de travail, puis posés sur leur lecteur
+func _test_biome_beds_on_demand() -> void:
+	var sp = SoundPlayer.new()
+	root.add_child(sp)
+	await process_frame
+	sp.ambience.set_theme(JSON.parse_string(FileAccess.get_file_as_string("res://themes/default/theme.json")))
+	var n0: int = sp.get_child_count()
+	var neigh := {"forest_share": 0.0, "built_share": 0.0, "solar_hour": 12.0, "alt_m": 10.0, "season": "summer",
+		"biomes": {"coast": 1.0}, "sea_dist_m": 10.0, "wind_strength": 0.5}
+	var frame_ms := 0.0
+	var t := 0.0
+	var frames := 0
+	while frames < 600 and not (sp._bed_players["waves"].stream != null and sp._bed_players["gulls"].stream != null):
+		var t0 := Time.get_ticks_usec()
+		sp.update_ambience(neigh, t)
+		frame_ms = maxf(frame_ms, (Time.get_ticks_usec() - t0) / 1000.0)
+		t += 1.0 / 60.0
+		frames += 1
+		await process_frame
+	_check(sp._bed_players["waves"].stream is AudioStreamWAV and sp._bed_players["gulls"].stream is AudioStreamWAV,
+		"littoral : vagues et mouettes fabriquées puis posées sur leur lecteur (%d images)" % frames)
+	_check(not sp._streams.has("cicadas") and not sp._streams.has("frogs"), "fonds d'autres biomes : jamais fabriqués")
+	_check(PerfBudget.check("ambience_layer_frame", frame_ms), "fabrication hors du fil principal : update_ambience au plus %.2f ms par image" % frame_ms)
+	sp.update_ambience(neigh, t)
+	_check(sp._bed_players["waves"].playing and sp.get_child_count() == n0 and sp.beds_pending() == 0,
+		"vagues jouées, aucun nœud créé, aucune fabrication en attente")
 	sp.queue_free()
 
 
@@ -234,6 +275,7 @@ func _test_seamless_loops() -> void:
 	var sp = SoundPlayer.new()
 	root.add_child(sp)
 	await process_frame
+	sp.make_beds_now(AmbienceModel.BEDS)
 	var bad := []
 	for k in sp._streams:
 		var w = sp._streams[k]
@@ -248,7 +290,7 @@ func _test_seamless_loops() -> void:
 			bad.append(k)
 	_check(bad.is_empty(), "boucles : raccord pas plus brusque que le son lui-même (en défaut : %s)" % str(bad))
 	var noise := SoundPlayer._lcg_noise(4000, 7)
-	var lp := SoundPlayer._periodic_lowpass(noise, 0.02)
+	var lp := AmbienceSynth.periodic_lowpass(noise, 0.02)
 	var next := lp[3999] + 0.02 * (noise[0] - lp[3999])
 	_check(absf(next - lp[0]) < 1e-4, "bruit filtré périodique : le pas qui suit la fin redonne le début (%.6f)" % absf(next - lp[0]))
 	_check(sp.stream("church_bell").loop_mode == AudioStreamWAV.LOOP_DISABLED, "cloche : un coup, sans boucle")
@@ -305,6 +347,7 @@ func _run() -> void:
 	await _test_scenarios_and_limits()
 	_test_ogg_override()
 	await _test_ambience_and_bells()
+	await _test_biome_beds_on_demand()
 	await _test_p10_wind_and_freewheel()
 	await _test_seamless_loops()
 	_test_steady_levels()

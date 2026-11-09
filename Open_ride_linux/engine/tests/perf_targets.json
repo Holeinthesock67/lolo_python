@@ -1,12 +1,12 @@
 {
-  "_doc": "Budgets de performance par préréglage (lot X14), tirés du cahier Y13 §3 (GPU du low relevé de 4 à 6 ms le 31/10 par le propriétaire : 4 ms n'est plus tenu depuis l'herbe Y14, gardée telle quelle) : images/s médianes au moins fps_median_min, p99 du temps d'image (médiane des p99 de chaque seconde) sous p99_ms_max, temps GPU médian de la vue sous gpu_ms_median_max, part des secondes où nvidia-smi voit le GPU chargé à plus de 95 % sous gpu_busy95_pct_max. Les warmup_s premières secondes (chargement, premières tuiles) sont ignorées. Lus par perf_probe.py (rapport de la sonde) et sim_bench.py --probe ; sous Xvfb, en INFO seulement.",
+  "_doc": "Budgets de performance par préréglage (lot X14), tirés du cahier Y13 §3 (GPU du low relevé de 4 à 6 ms le 31/10 par le propriétaire : 4 ms n'est plus tenu depuis l'herbe Y14, gardée telle quelle ; puis à 8 ms le 7/11 par le propriétaire, lot cultures et forêt : 60 images/s tenues sur la GTX 1060 avec une marge ×2 pour une carte deux fois moins puissante ; medium 12 → 13 ms et high 14 → 16 ms le 8/11 par le propriétaire, même lot, après la limite d'ombre des arbres à 100 m : forêt et cultures restaient vers 12,8 et 15,6 ms) : images/s médianes au moins fps_median_min, p99 du temps d'image (médiane des p99 de chaque seconde) sous p99_ms_max, temps GPU médian de la vue sous gpu_ms_median_max, part des secondes où nvidia-smi voit le GPU chargé à plus de 95 % sous gpu_busy95_pct_max. Les warmup_s premières secondes (chargement, premières tuiles) sont ignorées. Lus par perf_probe.py (rapport de la sonde) et sim_bench.py --probe ; sous Xvfb, en INFO seulement.",
   "warmup_s": 20,
   "busy_pct": 95,
   "hitches": {"_doc": "À-coups en régime établi, tous préréglages (saccades du 04/11 : une image de 82 à 147 ms tous les 40 m, invisible au p99) : au plus max_per_min secondes par minute dont la pire image dépasse hitch_ms, aucune image au-delà de freeze_ms, et pas d'images de plus de hitch_ms qui reviennent à distance régulière (perf_probe.hitch_checks). Les warmup_s premières secondes sont ignorées : arbres des premières tuiles posés pendant le départ, avant que le cycliste roule (banc #710 du 04/11 : 117 à 147 ms vers 23 s, à 0 m). Le départ reste jugé à part : de la fin du chargement (warmup_s général) à warmup_s du bloc, aucune image au-delà de start_freeze_ms (147 ms mesurés en high sur la demo compilée, à-coup du départ connu). Tolérance de max_per_min : un à-coup isolé de 50 à 75 ms par minute ou deux ne compte pas (bancs de 2 min de #710 après correction : 0 à 2) ; l'herbe de 40 m en faisait 8 à 23 par minute.",
               "warmup_s": 30, "hitch_ms": 50, "max_per_min": 3, "freeze_ms": 100, "start_freeze_ms": 150},
   "presets": {
-    "low":    {"fps_median_min": 55, "p99_ms_max": 25, "gpu_ms_median_max": 6,  "gpu_busy95_pct_max": 5},
-    "medium": {"fps_median_min": 58, "p99_ms_max": 25, "gpu_ms_median_max": 12, "gpu_busy95_pct_max": 5},
-    "high":   {"fps_median_min": 55, "p99_ms_max": 25, "gpu_ms_median_max": 14, "gpu_busy95_pct_max": 5}
+    "low":    {"fps_median_min": 55, "p99_ms_max": 25, "gpu_ms_median_max": 8,  "gpu_busy95_pct_max": 5},
+    "medium": {"fps_median_min": 58, "p99_ms_max": 25, "gpu_ms_median_max": 13, "gpu_busy95_pct_max": 5},
+    "high":   {"fps_median_min": 55, "p99_ms_max": 25, "gpu_ms_median_max": 16, "gpu_busy95_pct_max": 5}
   }
 }

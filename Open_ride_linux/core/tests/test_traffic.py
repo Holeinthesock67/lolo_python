@@ -304,21 +304,59 @@ def test_state_frame_with_four_vehicles_and_five_bots_fits():
     assert ipc_budget.size(with_devices) <= ipc_budget.STATE_LIMIT_1_3
 
 
-def test_rider_passes_slow_tractor_on_the_left():
+@pytest.mark.parametrize("kmh", [20.0, 9.0 * 3.6 * tr.BENCH_SLOW_SPEED_FRAC])   # tracteur du banc : 85 % du cycliste
+def test_rider_passes_slow_tractor_on_the_left(kmh):
     t = tr.Traffic(route=straight_route())
     rider = draft.Lane(draft.RIDER_LANE_M, draft.RIDER_LANE_M)
-    v = t.place_for_test(5000.0, "tractor", 1, 20.0, 20.0)
-    s, worst = 5000.0, 99.0
-    for _ in range(int(30.0 / DT)):
+    v = t.place_for_test(5000.0, "tractor", 1, 20.0, kmh)
+    s, worst, rejoin = 5000.0, 99.0, 99.0
+    for _ in range(int(60.0 / DT)):
         t.update(s, 9.0, DT, others=[tr.Other(s, rider.m)])
         lane = draft.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width, length=v.length)
         draft.update_lanes([(s, 9.0, rider), (v.s, v.speed_mps, lane)], DT)
         s += 9.0 * DT
+        clear = abs(rider.m - v.lateral) - v.half_width - tr.RIDER_HALF_WIDTH_M
         if abs(v.s - s) < v.length / 2 + draft.BIKE_LENGTH_M / 2:
-            worst = min(worst, abs(rider.m - v.lateral) - v.half_width - tr.RIDER_HALF_WIDTH_M)
-    assert v.s < s and worst < 99.0
+            worst = min(worst, clear)
+        elif v.s < s and abs(v.s - s) < v.length / 2 + draft.BIKE_LENGTH_M / 2 + 1.0:
+            rejoin = min(rejoin, clear)
+    assert v.s < s and worst < 99.0 and rejoin < 99.0
     assert worst >= draft.SIDE_CLEAR_M - draft.RIDER_WIDTH_M - 0.05      # longé comme un vélo, sans contact
+    # Banc circulation_proche du 8 novembre : à 1 m devant le tracteur doublé, toujours à l'écart (on ne se rabat
+    # qu'à VEHICLE_REJOIN_M de sa carrosserie)
+    assert rejoin >= draft.SIDE_CLEAR_M - draft.RIDER_WIDTH_M - 0.05
     assert rider.m >= draft.PASS_LANE_MIN_M
+
+
+# --- option gravel (décision du propriétaire du 7/11) ------------------------------------------------
+
+def test_gravel_path_has_only_tractors_and_motos():
+    """Chemin non revêtu de 8 à 18 km : seuls tracteurs et motos y apparaissent ; ailleurs, toutes les sortes."""
+    kinds_on, kinds_off = set(), set()
+    for seed in range(1, 13):
+        route = straight_route(26000.0)
+        t = tr.Traffic(route=route, seed=seed, unpaved_at=lambda s: 8000.0 <= s <= 18000.0)
+        s = 1000.0
+        while s < 24500.0:
+            t.update(s, 8.3, 0.1)
+            for v in t.vehicles:
+                if abs(v.s - s) < 300.0:
+                    (kinds_on if 8000.0 <= v.s <= 18000.0 and 8000.0 <= s <= 18000.0 else kinds_off).add(v.kind)
+            s += 0.83
+    assert kinds_on and kinds_on <= set(tr.UNPAVED_KINDS), kinds_on
+    assert kinds_off - set(tr.UNPAVED_KINDS), kinds_off
+
+
+def test_session_traffic_sees_the_gravel_option(tmp_path, monkeypatch):
+    from test_draft import FlatRoute, make_session
+
+    s, _ = make_session(tmp_path, monkeypatch, 6214, 200.0, [])
+    s.cfg.gravel.mode = "gravel"
+    t = s._traffic_for(FlatRoute())
+    assert t is not None and t.unpaved_at is not None and t.unpaved_at(100.0)
+    assert not t._kind_ok("car_a", 0.0, 500.0) and t._kind_ok("tractor", 0.0, 500.0)
+    s.cfg.gravel.mode = "off"
+    assert t._kind_ok("bus", 0.0, 500.0)
 
 
 def test_bench_forced_passes_alternate_tractor_then_overtaking_truck():

@@ -4,6 +4,8 @@ extends SceneTree
 ## (shaders/vehicle.gdshader), plancher d'une barque en zone bois ; sillage (shaders/wake.gdshader) opaque à
 ## la poupe, effacé vers son bout.
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const BoatMesh := preload("res://scripts/boat_mesh.gd")
 const VehicleShader := preload("res://shaders/vehicle.gdshader")
 const WakeShader := preload("res://shaders/wake.gdshader")
@@ -126,5 +128,6 @@ func _run() -> void:
 	_check(near > 0.25 and far < near * 0.2, "sillage marqué à la poupe (%.2f), effacé vers son bout (%.2f)" % [near, far])
 	vp3.queue_free()
 	await process_frame
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_boat_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

@@ -129,6 +129,45 @@ func _test_distance_on_loop() -> void:
 	_check(vm2.evaluate(0.0)["distance_text"] == "4.10 km", "boucle : s cumulé par le core (2 tours) → 4,10 km")
 
 
+## Lot N17 : à rebours (champ `dir` de la révision 1.9), le profil et la prochaine montée regardent vers le départ,
+## comme sur le parcours retourné, et la distance parcourue continue de croître.
+func _test_reverse_direction() -> void:
+	_check(HudViewModel.direction_of({"dir": -1}) == -1 and HudViewModel.direction_of({}) == 1,
+		"sens : -1 à rebours, 1 sans champ dir")
+	var alts := _climb_alts(1000.0, 800.0, 7.0, 1200.0)
+	var route = _make_route(alts, 10.0)
+	var rev_alts := alts.duplicate()
+	rev_alts.reverse()
+	var rev = _make_route(rev_alts, 10.0)
+	var vm = HudViewModel.new()
+	var a: Dictionary = vm.profile(route, 2400.0, 500.0, 2000.0, 101, -1)
+	var b: Dictionary = vm.profile(rev, 600.0, 500.0, 2000.0, 101)
+	var err := 0.0
+	for c in range(101):
+		err = maxf(err, absf(a["alts"][c] - b["alts"][c]))
+	_check(err < 0.01 and absf(a["to_m"] - 2000.0) < 1e-6, "à rebours : profil = celui du parcours retourné (%.4f m)" % err)
+	var at_climb: Dictionary = vm.profile(route, 1400.0, 0.0, 100.0, 11, -1)
+	_check(absf(at_climb["grades"][5] + 7.0) < 0.01, "à rebours : la montée devient une descente (%.2f %%)" % at_climb["grades"][5])
+	var tail: Dictionary = vm.profile(route, 300.0, 500.0, 4500.0, 61, -1)
+	_check(absf(tail["to_m"] - 300.0) < 1e-6 and absf(tail["from_m"] + 500.0) < 1e-6,
+		"à rebours : fenêtre tronquée au départ du parcours (%.0f ; %.0f)" % [tail["from_m"], tail["to_m"]])
+	var climb: Dictionary = vm.next_climb(rev, 600.0, 300.0, 3.0)
+	var climb_rev: Dictionary = vm.next_climb(route, 2400.0, 300.0, 3.0, -1)
+	_check(climb.is_empty() and climb_rev.is_empty(), "à rebours depuis 2 400 m : la montée est une descente, aucune montée")
+	var up: Dictionary = vm.next_climb(rev, 2400.0, 300.0, 3.0, -1)
+	_check(not up.is_empty() and absf(up["start_m"] - 400.0) <= 20.0 and absf(up["length_m"] - 800.0) <= 20.0 and absf(up["avg_grade_pct"] - 7.0) <= 0.3,
+		"parcours retourné, à rebours depuis 2 400 m : montée à %.0f m (400 attendus)" % up.get("start_m", -1.0))
+	var d = HudViewModel.new()
+	d.on_state({"s": 3000.0, "t": 600.0, "route_length_m": 6000.0}, 0.0)
+	d.on_state({"s": 2600.0, "t": 700.0, "route_length_m": 6000.0, "dir": -1}, 1.0)
+	_check(d.evaluate(1.0)["distance_text"] == "3.40 km" and is_equal_approx(d.ridden_m(), 3400.0),
+		"à rebours : 3 km puis 400 m vers le départ → 3,40 km parcourus")
+	_check(HudViewModel.session_lines({"s": 2600.0}, {"visible": false}, 0.0, 0.0, d.ridden_m())["distance_val"] == "3.40 km",
+		"HUD : distance parcourue, pas la position")
+	d.on_state({"s": 0.0, "t": 0.0, "route_length_m": 6000.0}, 2.0)
+	_check(d.evaluate(2.0)["distance_text"] == "0.00 km", "nouvelle séance : distance remise à la position")
+
+
 func _test_grade_classes() -> void:
 	var expect := {-5.0: "descent", -2.0: "flat", 0.0: "flat", 1.99: "flat", 2.0: "climb", 5.9: "climb",
 		6.0: "steep", 10.0: "steep", 10.1: "wall"}
@@ -369,6 +408,11 @@ func _test_controls_help() -> void:
 		and HudViewModel.dropout_mark_text("Z_LONG", "RUNNING", false, true) == ""
 		and HudViewModel.dropout_mark_text("Z_SHORT", "RUNNING", false, false) == "",
 		"Z long en roulant (hors Cyber-Rogue et menus) : repère « décrochage » confirmé à l'écran (§7.1, X47)")
+	_check(HudViewModel.u_turn_press_text("Y_LONG", "RUNNING", false) == "Demi-tour"
+		and HudViewModel.u_turn_press_text("Y_LONG", "PAUSED", false) == ""
+		and HudViewModel.u_turn_press_text("Y_LONG", "RUNNING", true) == ""
+		and HudViewModel.u_turn_press_text("Y_SHORT", "RUNNING", false) == "",
+		"Y maintenu en roulant : demi-tour confirmé à l'écran (§7.1, révision 1.11)")
 
 
 func _init() -> void:
@@ -377,6 +421,7 @@ func _init() -> void:
 	_test_texts()
 	_test_session_lines()
 	_test_distance_on_loop()
+	_test_reverse_direction()
 	_test_grade_classes()
 	_test_profile_open()
 	_test_profile_loop()

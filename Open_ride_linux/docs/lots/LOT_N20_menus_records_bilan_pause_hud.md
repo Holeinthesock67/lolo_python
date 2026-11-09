@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Présentation des menus, étape 4 : records, bilan, pause, confirmation ; couleurs du HUD et du globe ramenées au thème | GDScript | N19 | Moyenne | Non : interne (menus, captures sur le PC) |
+| Présentation des menus, étape 4 : records, bilan, pause, confirmation ; couleurs du HUD et du globe ramenées au thème | GDScript | N19 | Moyenne | En partie : 4a à 4e fusionnées (PR #483, #511, #531, #631, #634) ; reste le bilan en tuiles et le profil du segment (§9) |
 
 ## 1. Objectif
 
@@ -28,11 +28,13 @@ N19 fusionné (mêmes fichiers `menu_view.gd` et `menu_flow.gd`). V9 n'est pas n
 ### 4.1 Records
 
 - Liste des parcours et des segments avec, en carte, le record personnel en grand chiffre `GOLD`, sa date, l'écart du deuxième temps en `DIM`, et le profil du segment ; une montée montre aussi sa catégorie ; un segment sans temps s'écrit « pas encore de temps », sans zéro.
+- Fait (étape 4f) : profil d'altitude du segment dans la carte (calculé par `main.gd` au chargement du parcours), longueur et pente moyenne dans l'en-tête (« Montée · cat. 3 · 3,1 km à 5,8 % »).
 
 ### 4.2 Bilan de fin de séance
 
 - En-tête « Bilan de la séance » et nom du parcours ; six tuiles (distance, durée, dénivelé, puissance moyenne et normalisée, fréquence cardiaque moyenne, cadence moyenne ; une tuile sans donnée est retirée, pas affichée vide) ; graphique de la puissance de la séance (même trait que les courbes d'O14, réduit) ; records battus en lignes `GOLD` avec l'ancien temps ; résultat du test de FTP s'il y en a un (offre de N19).
 - La logique reste dans `summary_view_model.gd` ; `summary_view.gd` ne fait que l'affichage, avec les jetons du thème.
+- Fait (étape 4f, maquette `/mnt/project-files/menus/n20-bilan-tuiles/` du 8 novembre) : tuiles sur trois colonnes (dénivelé nul retiré, NP en complément de la puissance), courbe réduite `power_profile` en trait blanc avec la ligne pointillée de la FTP et, en ERG, le profil cible coloré par zone ; records battus du dernier au premier (trois au plus, « avant 6:58,9 » ou « premier temps ») ; ligne des autres chiffres (IF, TSS, puissance max, abri) ; lignes propres au mode (Cyber-Rogue, WTF, Dernier survivant) dessous ; bandeau du test de FTP (valeur, ancienne FTP, écart, fiabilité ou avertissements) à la place de la ligne d'état. Si la carte ne tient pas au-dessus du bandeau des boutons (bilan détaillé avec progression en 1280×720), polices puis écarts réduits, puis tuiles basses, blocs ERG sur deux colonnes et enfin courbe cachée.
 
 ### 4.3 Pause et confirmation
 
@@ -57,7 +59,7 @@ N19 fusionné (mêmes fichiers `menu_view.gd` et `menu_flow.gd`). V9 n'est pas n
 
 ## 6. Modifications de contrat autorisées
 
-Aucune : plan des boutons, messages et réglages inchangés.
+Plan des boutons et réglages inchangés. Décision du propriétaire du 8 novembre (bilan en tuiles, étape 4f) : la courbe du graphique et l'ancien temps des records battus viennent du core, pour que le bilan relu dans l'Historique soit le même qu'en fin de séance. Ajouts compatibles de la révision 1.10 du contrat IPC (1.8 : BC2, 1.9 : N17/N18) : `summary.power_profile` (au plus 50 points, cible ERG comprise, aussi dans `history_session`) et `pr_time_s` dans `summary.segments.passes` ; la courbe est retirée avant le bilan entier d'une trame trop lourde (`ipc_budget`).
 
 ## 7. Critères d'acceptation
 
@@ -73,3 +75,19 @@ Aucune : plan des boutons, messages et réglages inchangés.
 - Bloc de progression (XP, pièces, niveau) du bilan : V9 ; garage : V8.
 - Nouvelles données dans le bilan (puissance par zone, courbe de puissance maximale) : lot à part si le propriétaire le demande.
 - Disposition du HUD et nouveaux cadrans.
+
+## 9. État (point du 8 novembre)
+
+Fusionné sur `main` (titres « Présentation des menus, étape 4a… 4e », sans « N20 ») :
+
+- 4a, PR #483 (28 octobre) : difficulté de la pause réglée dans sa rangée, groupe Graphisme ;
+- 4b, PR #511 (28 octobre) : table `DATA` de `ui_theme.gd`, plus de couleur en dur dans le HUD, l'ERG, les courbes, le carrefour et le globe (§4.4) ;
+- 4c, PR #531 (29 octobre) : cartes des records (record en `GOLD`, écart au deuxième, date), scènes `records` et `records_table`, double légende Click / clavier ;
+- 4d, PR #631 (31 octobre) : carte de confirmation centrée, « Non » d'office, « Oui » en `DANGER`, scène `confirmation` ;
+- 4e, PR #634 (31 octobre) : carte de la pause (durée, distance, puissance moyenne).
+
+Reste à faire (une PR, engine seul, sans vélo) :
+
+- **bilan en tuiles** (§4.2) : `summary_view.gd` affiche encore les lignes sur deux colonnes ; à faire : six tuiles sans tuile vide, graphique de la puissance (série à accumuler côté engine), records battus en `GOLD` avec l'ancien temps, résultat du test de FTP ; capture de référence `bilan` à refaire et à faire valider ;
+- **profil du segment** et catégorie de la montée dans la carte des records (§4.1) ;
+- `menu_bench.py` avant/après sur le PC (3 qualités) et lecture du bilan à 2 m par le propriétaire.

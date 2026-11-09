@@ -44,6 +44,9 @@ WORKOUT_ID_RE = re.compile(r"^[^/\\.][^/\\]*$")   # un nom de fichier simple, sa
 # Extensions lues, par priorité : en cas de conflit de nom (`x.zwo` et `x.erg`), la première gagne.
 # `.qwk` : QWKcode de GoldenCheetah (lot O20, `workout_formats.parse_qwk`).
 WORKOUT_SUFFIXES = (".zwo", ".erg", ".mrc", ".qwk")
+# Entraînements de référence livrés : copie embarquée de `core/workouts/` (lot J4), identique octet
+# pour octet (`tests/test_packaging.py`), pour que `workouts install` marche installé hors du dépôt.
+BUILTIN_WORKOUTS_DIR = Path(__file__).resolve().parent / "data" / "workouts"
 
 # Attributs lus pour chaque balise de bloc (noms en minuscules).
 _BLOCK_ATTRS: dict[str, set[str]] = {

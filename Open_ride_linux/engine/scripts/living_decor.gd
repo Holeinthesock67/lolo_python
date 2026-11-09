@@ -76,6 +76,7 @@ var living: Dictionary = {}
 var theme: Dictionary = {}
 var weather: Dictionary = {}
 var weather_eval: Dictionary = {}
+var season_falling_leaves := 0.0   # densité des feuilles qui tombent de la saison (lot P19, season_model.gd)
 var sound_player = null
 var world_streamer = null
 var osm_streamer = null
@@ -368,7 +369,15 @@ func _poll_job(wait: bool = false) -> void:
 	passersby = res["passersby"]
 	passersby_view.setup_passersby(passersby, sound_player)
 	traffic.configure(_route, theme, pois, int(living.get("vehicles", 0)))
-	cyclists.configure(_route, climbs, pois, int(living.get("cyclists", 0)), 0, _road_width_m, traffic)
+	# Option gravel : seuls tracteurs et motos sur les chemins (surface effective de world_streamer)
+	traffic.unpaved_at = Callable()
+	if world_streamer != null and world_streamer.has_method("surface_at"):
+		traffic.unpaved_at = func(s: float) -> bool: return world_streamer.surface_at(s) != "paved"
+	# Option gravel : les cyclistes du décor restent sur le chemin (largeur du ruban de world_streamer)
+	var half_at := Callable()
+	if world_streamer != null and world_streamer.has_method("rideable_half"):
+		half_at = func(s: float) -> float: return world_streamer.rideable_half(s, _road_width_m)
+	cyclists.configure(_route, climbs, pois, int(living.get("cyclists", 0)), 0, _road_width_m, traffic, half_at)
 	sky.biome_model = _active_biome_model()
 	sky.configure(_route, theme, climbs, int(living.get("aircraft", 0)))
 	turbines.set_points(pois)
@@ -452,6 +461,10 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	_rider_lane_m = _lane_of(state, RoadBuilder.RIDER_LATERAL_M)   # placement dans la roue (lot AS2)
 	var wheel: Vector3 = _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * _rider_lane_m
 	particles.update_dust(wheel, back, 0.0 if paused else rider_v, surface_here)
+	# Feuilles qui tombent (saisons, lots P18 et P19) : près des forêts seulement, au vent
+	if season_falling_leaves > 0.0 or particles.get_emitter("leaves") != null and particles.get_emitter("leaves").emitting:
+		var forest_dist := float(living_world.neigh.get("forest_dist_m", INF)) if living_world != null else INF
+		particles.update_leaves(WeatherParticles.leaves_intensity(season_falling_leaves, forest_dist), wind_eval)
 	if sound_player != null and sound_player.get("model") != null:
 		sound_player.model.set_surface(surface_here)
 	if world_streamer != null and world_streamer.has_method("set_road_wetness"):
@@ -496,7 +509,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		others.append({"s": float(b["s"]), "lateral": float(b["lateral"]), "dir": 1})
 	# Lot AS6 : véhicules proches calculés par le core (liste `vehicles`, une trame sur trois)
 	if typeof(state.get("vehicles")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
-		traffic.sync_core(state["vehicles"], int(state["seq"]), cam_s)
+		traffic.sync_core(state["vehicles"], int(state["seq"]), cam_s,
+				float(state["s"]) if typeof(state.get("s")) in [TYPE_INT, TYPE_FLOAT] else NAN)
 	traffic.update(cam_s, rider_v, dt_s, paused, others)
 	if not paused:
 		_count_contacts(others)

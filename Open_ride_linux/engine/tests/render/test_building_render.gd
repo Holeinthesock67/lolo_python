@@ -8,6 +8,8 @@ extends SceneTree
 ##   xvfb-run -a godot --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/render/test_building_render.gd
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const BuildingStyles := preload("res://scripts/building_styles.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
@@ -154,5 +156,6 @@ func _run() -> void:
 	lit.queue_free()
 	flat.queue_free()
 	await process_frame
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_building_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

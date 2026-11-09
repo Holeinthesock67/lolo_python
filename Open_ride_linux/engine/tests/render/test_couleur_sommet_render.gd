@@ -11,6 +11,8 @@ extends SceneTree
 ## pâle). Le test tourne dans le moteur du jeu (engine/tests/rendu_jeu.py) : s'il passait en Compatibility, le
 ## témoin ne serait plus plus clair et le test échouerait.
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const SIZE := 64
 const TOL := 3.0 / 255.0
 const GREY := Color(0.5, 0.5, 0.5)
@@ -134,5 +136,6 @@ func _run() -> void:
 	var smat: Color = await _shot(_mesh(std))
 	_check(_near(smat, GREY), "StandardMaterial3D, vertex_color_is_srgb : affichée telle qu'écrite (%s)" % smat.to_html(false))
 
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_couleur_sommet_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

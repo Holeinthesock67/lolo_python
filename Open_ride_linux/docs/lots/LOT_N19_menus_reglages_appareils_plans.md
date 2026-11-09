@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Présentation des menus, étape 3 : Réglages (valeur alignée, édition en place, curseurs), Appareils et connexion, plans et test de FTP | GDScript | étapes 1 et 2, PR #452 | Moyenne | Non : interne (menus, captures sur le PC) |
+| Présentation des menus, étape 3 : Réglages (valeur alignée, édition en place, curseurs), Appareils et connexion, plans et test de FTP | GDScript | étapes 1 et 2, PR #452 | Moyenne | **Livré le 28 octobre** (PR #464 étape 3a, PR #479 étape 3b) ; restes livrés le 8 novembre (PR #800), sauf FTP en `GOLD` (PR #788) et banc PC, voir §9 |
 
 ## 1. Objectif
 
@@ -28,7 +28,7 @@ Maquette validée le 27 octobre (écran « Réglages », édition en place du po
 
 ### 4.1 Réglages
 
-- **Liste** : une rangée par réglage (`ROW_H`), pictogramme, libellé à gauche, valeur à droite en `DIM` (en `TEXT` sur la rangée sélectionnée), unité en plus petit ; un réglage en % de 0 à 100 (difficulté, volumes) montre son curseur (barre de 180 de large, remplie en `FOCUS`) à gauche de la valeur. L'entrée « Appareils » reste en tête, séparée des sous-écrans par un filet. Le fil d'Ariane du titre dit « Accueil › Réglages › Son ».
+- **Liste** : une rangée par réglage (`ROW_H`), pictogramme, libellé à gauche, valeur à droite en `DIM` (en `TEXT` sur la rangée sélectionnée), unité en plus petit ; un réglage en % de 0 à 100 (difficulté, volumes) montre son curseur (barre de 100 de large depuis le 8 novembre, 180 coupait les libellés longs ; remplie en `FOCUS`) à gauche de la valeur. L'entrée « Appareils » reste en tête, séparée des sous-écrans par un filet. Le fil d'Ariane du titre dit « Accueil › Réglages › Son ».
 - **Édition en place** : valider un réglage n'ouvre plus l'écran séparé `setting_edit` ; la rangée passe en mode édition (`◀ 75 kg ▶`, flèches en `FOCUS`), + et B règlent la valeur (appui long : pas × 5, comme aujourd'hui), A maintenu enregistre, Y annule et rend la valeur d'avant. Un choix (thème, qualité, mode d'affichage) défile dans la même rangée. Le bandeau des boutons suit (`button_help.gd` : « maintenir : Enregistrer », « Régler », « Annuler »). La difficulté de l'écran de pause (`PAUSE_DIFFICULTY`) garde son propre écran (étape 4).
 - **Carte de détail** à droite, pour le réglage sous le focus : ce qu'il change, sa plage, sa valeur par défaut, et s'il s'applique tout de suite ou à la prochaine séance (champ `applies` du message `settings`). Pas de carte sur l'entrée « Appareils ».
 - **Version** du jeu et du core en bas à droite, en `DISABLED`, 16 px.
@@ -74,3 +74,19 @@ Aucune : messages `settings`, `set_setting`, `devices`, plans et test de FTP inc
 
 - Records, bilan, pause, confirmation et couleurs du HUD et du globe : N20 (étape 4).
 - Nouveaux réglages, garage et avatar (V8), choix du biome (U16).
+
+## 9. Livraison (point du 8 novembre)
+
+Livré sur `main` : étape 3a (PR #464, 28 octobre : Réglages valeur à droite, curseurs, édition en place, carte du réglage, fil d'Ariane, « Créer un entraînement » en place, tests `test_menu_flow.gd`) et étape 3b (PR #479, 28 octobre : cartes de l'appairage avec barres de signal, des plans, de la séance du jour et du test de FTP). Les commits de `main` ne citent pas « N19 » (titres « Présentation des menus, étape 3a / 3b »).
+
+Restes livrés le 8 novembre (PR #800) :
+
+- scènes `visual_check.py` `reglages` (Réglages › Son, curseurs, aucun libellé coupé), `reglage_edition` (édition en place, Y annule sans `set_setting`) et `appareils` (carte du Click après une recherche) ;
+- raison du silence du Click gauche : pastille « Click − : verrou Zwift » en `WARN` quand le boîtier « − » est perdu après une connexion (plus en erreur ; jamais connecté : « recherche… ») et ligne d'explication dans la carte du Click ;
+- libellés des volumes du sous-écran Son raccourcis (« Général », « Vent et roue libre », « Ambiance », « Bips et événements ») et curseur de 100 de large : plus aucun libellé coupé.
+
+Restent :
+
+- offre de la nouvelle FTP en grand chiffre `GOLD` : faite avec le bilan en tuiles de N20 (PR #788, pas encore fusionnée) ;
+- une couleur dérivée `Color(UiTheme.OK, 0.5)` dans `devices_view.gd` (transparence d'un jeton, tolérée) ;
+- `menu_bench.py` avant/après et parcours au Click à 2 m sur le PC (recette du propriétaire, sans vélo).
