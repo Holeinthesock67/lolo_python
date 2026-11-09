@@ -1,0 +1,200 @@
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-1, maillage near:1:-2, maillage far:-1:0, maillage far:0:0, 5013 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9728 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9728 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9729 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-1, maillage near:1:-2, maillage far:-1:0, maillage far:0:0, 5003 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9337 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9338 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9339 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-1, maillage near:1:-2, maillage far:-1:0, maillage far:0:0, 5009 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9110 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9110 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9111 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-1, maillage near:1:-2, maillage far:-1:0, maillage far:0:0, 5007 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 8875 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 8875 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 8875 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-1, maillage near:1:-2, maillage far:-1:0, maillage far:0:0, 5006 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 8877 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 8877 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 8878 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-1, maillage near:1:-2, maillage far:-1:0, maillage far:0:0, 5002 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9476 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9476 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9477 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-1, maillage near:1:-2, maillage far:-1:0, maillage far:0:0, 5002 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9553 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9553 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9554 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-1, maillage near:1:-2, maillage far:-1:0, maillage far:0:0, 5006 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9250 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9250 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9251 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-1, maillage near:1:-2, maillage far:-1:0, maillage far:0:0, 5000 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9342 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9342 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9343 ms après la demande.
+Fermeture : tâches de fond attendues (2), encore en cours au bout de 5 s : maillage near:1:-1, maillage near:1:-2, maillage far:-1:0, maillage far:0:0, 5011 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9958 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9958 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9959 ms après la demande.
+Fermeture : tâches de fond attendues (6), 3361 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3387 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3387 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3388 ms après la demande.
+Fermeture : tâches de fond attendues (9), 2536 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 2560 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 2560 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 2561 ms après la demande.
+Fermeture : tâches de fond attendues (8), 3494 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3520 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3520 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3520 ms après la demande.
+Fermeture : tâches de fond attendues (8), 3210 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3244 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3244 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3245 ms après la demande.
+Fermeture : tâches de fond attendues (8), 3323 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3351 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3351 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3352 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage far:0:0, maillage far:-1:-1, maillage far:0:-1, maillage far:-1:1, 5001 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 5275 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 5275 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 5276 ms après la demande.
+Fermeture : tâches de fond attendues (8), 3513 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3535 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3535 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3536 ms après la demande.
+Fermeture : tâches de fond attendues (7), 2776 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 2799 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 2799 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 2800 ms après la demande.
+Fermeture : tâches de fond attendues (7), 2454 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 2477 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 2477 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 2478 ms après la demande.
+Fermeture : tâches de fond attendues (7), 3688 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3710 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3710 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3711 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage far:0:0, maillage far:-1:-1, maillage far:0:-1, maillage far:-1:1, 5000 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 8422 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 8423 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 8424 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage far:0:0, maillage far:-1:-1, maillage far:0:-1, maillage far:-1:1, 5004 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9924 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9924 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9926 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage far:0:0, maillage far:-1:-1, maillage far:0:-1, maillage far:-1:1, 5008 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 7817 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 7817 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 7818 ms après la demande.
+Fermeture : tâches de fond attendues (10), 3052 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3074 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3074 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3075 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage far:0:0, maillage far:-1:-1, maillage far:0:-1, maillage far:-1:1, 5009 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 8799 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 8799 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 8799 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage far:0:0, maillage far:-1:-1, maillage far:0:-1, maillage far:-1:1, 5009 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 8596 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 8596 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 8597 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage far:0:0, maillage far:-1:-1, maillage far:0:-1, maillage far:-1:1, 5008 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9272 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9272 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9272 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage far:0:0, maillage far:-1:-1, maillage far:0:-1, maillage far:-1:1, 5007 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 8872 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 8872 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 8873 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage far:0:0, maillage far:-1:-1, maillage far:0:-1, maillage far:-1:1, 5011 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 8483 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 8483 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 8484 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage far:0:0, maillage far:-1:-1, maillage far:0:-1, maillage far:-1:1, 5005 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 8696 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 8696 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 8697 ms après la demande.
+Fermeture : tâches de fond attendues (9), 3653 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3676 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3676 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3677 ms après la demande.
+Fermeture : tâches de fond attendues (8), 3809 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3830 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3830 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3831 ms après la demande.
+Fermeture : tâches de fond attendues (7), 4407 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 4434 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 4434 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 4435 ms après la demande.
+Fermeture : tâches de fond attendues (8), 4563 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 4593 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 4593 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 4594 ms après la demande.
+Fermeture : tâches de fond attendues (8), 3814 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3844 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3844 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3845 ms après la demande.
+Fermeture : tâches de fond attendues (9), 4034 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 4056 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 4056 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 4056 ms après la demande.
+Fermeture : tâches de fond attendues (7), 3682 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3708 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3708 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3708 ms après la demande.
+Fermeture : tâches de fond attendues (7), 3948 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3970 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3970 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3971 ms après la demande.
+Fermeture : tâches de fond attendues (8), 3811 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3837 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3837 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3837 ms après la demande.
+Fermeture : tâches de fond attendues (7), 3912 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 3942 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 3942 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 3943 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-2, maillage far:-1:0, maillage far:0:0, maillage far:-1:-1, 5002 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9690 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9690 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9691 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-2, maillage far:-1:0, maillage far:0:0, maillage far:-1:-1, 5011 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9669 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9669 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9670 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-2, maillage far:-1:0, maillage far:0:0, maillage far:-1:-1, 5002 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9153 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9153 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9154 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-2, maillage far:-1:0, maillage far:0:0, maillage far:-1:-1, 5005 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 8495 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 8495 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 8496 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-2, maillage far:-1:0, maillage far:0:0, maillage far:-1:-1, 5002 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 8705 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 8705 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 8706 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-2, maillage far:-1:0, maillage far:0:0, maillage far:-1:-1, 5010 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9093 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9093 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9094 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-2, maillage far:-1:0, maillage far:0:0, maillage far:-1:-1, 5019 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9137 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9137 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9138 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-2, maillage far:-1:0, maillage far:0:0, maillage far:-1:-1, 5003 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 8492 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 8492 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 8493 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-2, maillage far:-1:0, maillage far:0:0, maillage far:-1:-1, 5012 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 8866 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 8866 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 8867 ms après la demande.
+Fermeture : tâches de fond attendues (0), encore en cours au bout de 5 s : maillage near:1:-2, maillage far:-1:0, maillage far:0:0, maillage far:-1:-1, 5009 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 9002 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 9002 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 9003 ms après la demande.

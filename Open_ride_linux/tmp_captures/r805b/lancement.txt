@@ -1,0 +1,16 @@
+07:34:08 empreinte avant 5110c06b4c9d6954972ebf363612e48f
+07:34:08 tête 323f8ac0
+07:35:19 x58 souris_low
+07:45:01 fin souris_low rc=1
+07:45:01 x58 clavier_low
+07:53:24 fin clavier_low rc=1
+07:53:24 x58 click_low
+08:01:47 fin click_low rc=1
+08:01:47 x58 souris_medium
+08:10:34 fin souris_medium rc=1
+08:10:34 x58 souris_high
+08:19:06 fin souris_high rc=1
+08:19:06 durée totale 2627 s
+08:19:07 empreinte après 5110c06b4c9d6954972ebf363612e48f
+08:19:07 clone 90c08094
+08:19:07 FIN

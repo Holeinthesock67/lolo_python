@@ -1,0 +1,1062 @@
+[
+ {
+  "scenario": "quitter_1",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 60.9,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 14.5 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "toujours en marche après 10 s ; dernière étape : scène libérée, arrêt des serveurs de Godot (code 0), 8597 ms après la demande. ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×5; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée à l'arrêt",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) à l'arrêt",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_2",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 58.2,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 14.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "toujours en marche après 10 s ; dernière étape : scène libérée, arrêt des serveurs de Godot (code 0), 8424 ms après la demande. ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×5; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée à l'arrêt",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) à l'arrêt",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_3",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 59.3,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.4 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 13.5 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "toujours en marche après 10 s ; dernière étape : scène libérée, arrêt des serveurs de Godot (code 0), 9926 ms après la demande. ; fils de Godot : Godot_v4.7.2-st (R, -); Godot_v4.7.2-st (S, futex_do_wait) ×2; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0); Godot_v4.7.2-st (S, hrtimer_nanosleep) ×3; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, -)"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée à l'arrêt",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) à l'arrêt",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_4",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 56.8,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 14.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "toujours en marche après 10 s ; dernière étape : scène libérée, arrêt des serveurs de Godot (code 0), 7818 ms après la demande. ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×5; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée à l'arrêt",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) à l'arrêt",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_5",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 59.2,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 14.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "toujours en marche après 10 s ; dernière étape : scène libérée, arrêt des serveurs de Godot (code 0), 8873 ms après la demande. ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×5; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée à l'arrêt",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) à l'arrêt",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_6",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 59.3,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 14.5 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "toujours en marche après 10 s ; dernière étape : scène libérée, arrêt des serveurs de Godot (code 0), 8697 ms après la demande. ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×5; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée à l'arrêt",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) à l'arrêt",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_7",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 58.2,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 14.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "toujours en marche après 10 s ; dernière étape : scène libérée, arrêt des serveurs de Godot (code 0), 9272 ms après la demande. ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×5; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée à l'arrêt",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) à l'arrêt",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_8",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 58.4,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 14.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "toujours en marche après 10 s ; dernière étape : scène libérée, arrêt des serveurs de Godot (code 0), 8799 ms après la demande. ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×5; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée à l'arrêt",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) à l'arrêt",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_9",
+  "voie": "souris",
+  "echecs": 0,
+  "duree_s": 62.4,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.8 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 15.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": true,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code 0 en 3.8 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_10",
+  "voie": "souris",
+  "echecs": 0,
+  "duree_s": 48.7,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.4 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 11.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": true,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code 0 en 9.2 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ }
+]
