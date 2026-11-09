@@ -10,7 +10,8 @@ extends SceneTree
 ## - Lot P9 : fonds d'ambiance générés (ou .ogg de remplacement), lecteurs réglés par le modèle,
 ##   cloches de l'heure pleine sur les points church_bell.
 ## - Lot U11 : seize fonds (P9 et biomes) fabriqués à la première demande dans un fil de travail, jamais au
-##   démarrage ; les fonds d'autres biomes ne sont jamais fabriqués.
+##   démarrage ; les fonds d'autres biomes ne sont jamais fabriqués ; coût par image de update_ambience pendant
+##   la fabrication en low, medium et high (4, 6, 8 voix), un fond posé par image au plus (suite du banc r787).
 ## - Lot P10 : vent en bruit passe-bande bouclé sans clic, cliquetis calé sur le modèle, un « clac » par
 ##   reprise du pédalage.
 ## - « Tac-tac » régulier (28/10) : toutes les boucles raccordées sans saut, bruit filtré périodique, cloche
@@ -23,6 +24,7 @@ const SoundModel := preload("res://scripts/sound_model.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
 const AmbienceSynth := preload("res://scripts/ambience_synth.gd")
+const QualityPresets := preload("res://scripts/quality_presets.gd")
 ## Sons continus : ni coups, ni chants, ni battement voulu ; leur niveau doit rester stable d'un tour de boucle à l'autre.
 const STEADY_KINDS := ["wind", "river", "village", "vehicle_pass", "airliner_rumble", "water_flow", "village_murmur",
 	"high_wind", "rain", "wheel_hum", "conifer_wind", "singing_sand", "fumaroles"]
@@ -213,24 +215,93 @@ func _test_biome_beds_on_demand() -> void:
 	var n0: int = sp.get_child_count()
 	var neigh := {"forest_share": 0.0, "built_share": 0.0, "solar_hour": 12.0, "alt_m": 10.0, "season": "summer",
 		"biomes": {"coast": 1.0}, "sea_dist_m": 10.0, "wind_strength": 0.5}
-	var frame_ms := 0.0
 	var t := 0.0
 	var frames := 0
 	while frames < 600 and not (sp._bed_players["waves"].stream != null and sp._bed_players["gulls"].stream != null):
-		var t0 := Time.get_ticks_usec()
 		sp.update_ambience(neigh, t)
-		frame_ms = maxf(frame_ms, (Time.get_ticks_usec() - t0) / 1000.0)
 		t += 1.0 / 60.0
 		frames += 1
 		await process_frame
 	_check(sp._bed_players["waves"].stream is AudioStreamWAV and sp._bed_players["gulls"].stream is AudioStreamWAV,
 		"littoral : vagues et mouettes fabriquées puis posées sur leur lecteur (%d images)" % frames)
 	_check(not sp._streams.has("cicadas") and not sp._streams.has("frogs"), "fonds d'autres biomes : jamais fabriqués")
-	_check(PerfBudget.check("ambience_layer_frame", frame_ms), "fabrication hors du fil principal : update_ambience au plus %.2f ms par image" % frame_ms)
 	sp.update_ambience(neigh, t)
 	_check(sp._bed_players["waves"].playing and sp.get_child_count() == n0 and sp.beds_pending() == 0,
 		"vagues jouées, aucun nœud créé, aucune fabrication en attente")
 	sp.queue_free()
+
+
+## Coût par image de update_ambience pendant la fabrication des fonds (suite du banc r787, 09/11) : un
+## voisinage mêlé (littoral, méditerranée, alpage, forêt, rivière) qui demande jusqu'à 8 fonds, pour les trois
+## préréglages (4, 6 et 8 voix). Trois séries d'images : pendant la fabrication (fils de travail actifs), images
+## où un fond est posé, puis 120 images une fois tout posé (témoin : bruit de la machine seule). Médiane, p95 et
+## pire image, et le détail de la pire (modèle, pose, lecteurs) ; le budget porte sur la pire image.
+func _test_ambience_frame_cost() -> void:
+	print("Processeur : %s, %d fils" % [OS.get_processor_name(), OS.get_processor_count()])
+	var theme = JSON.parse_string(FileAccess.get_file_as_string("res://themes/default/theme.json"))
+	var neigh := {"forest_share": 0.5, "built_share": 0.0, "solar_hour": 12.0, "alt_m": 10.0, "season": "summer",
+		"biomes": {"coast": 0.4, "mediterranean": 0.3, "alpine": 0.3}, "sea_dist_m": 10.0, "wind_strength": 0.5,
+		"water_dist_m": 20.0, "water_kind": "river"}
+	for preset in ["low", "medium", "high"]:
+		var sp = SoundPlayer.new()
+		root.add_child(sp)
+		await process_frame
+		sp.ambience.set_theme(theme)
+		sp.ambience.voices = QualityPresets.living(preset)["ambience_voices"]
+		var making: Array[float] = []
+		var posing: Array[float] = []
+		var steady: Array[float] = []
+		var worst := {"ms": 0.0}
+		var t := 0.0
+		var after := 0
+		var max_posed := 0
+		var frames := 0
+		while frames < 900 and after < 120:
+			var posed_before: int = sp.beds_posed
+			var pending_before: int = sp.beds_pending()
+			var t0 := Time.get_ticks_usec()
+			sp.update_ambience(neigh, t)
+			var ms := (Time.get_ticks_usec() - t0) / 1000.0
+			var posed: int = sp.beds_posed - posed_before
+			max_posed = maxi(max_posed, posed)
+			if posed > 0:
+				posing.append(ms)
+			elif pending_before > 0 or sp.beds_pending() > 0:
+				making.append(ms)
+			else:
+				steady.append(ms)
+				after += 1
+			if posed > 0 or pending_before > 0 or sp.beds_pending() > 0:
+				if ms > worst["ms"]:
+					worst = {"ms": ms, "us": sp.ambience_us.duplicate(), "posed": posed}
+			t += 1.0 / 60.0
+			frames += 1
+			await process_frame
+		var beds: int = sp.beds_posed
+		print("%s (%d voix) : %d fonds posés en %d images" % [preset, sp.ambience.voices, beds, frames])
+		print("  fabrication : %s" % _stats_text(making))
+		print("  pose d'un fond : %s" % _stats_text(posing))
+		print("  tout posé (témoin) : %s" % _stats_text(steady))
+		print("  pire image : %.3f ms (modèle %d µs, pose %d µs, lecteurs %d µs, %d fond posé)" % [worst["ms"],
+			worst.get("us", {}).get("evaluate", 0), worst.get("us", {}).get("collect", 0), worst.get("us", {}).get("players", 0),
+			worst.get("posed", 0)])
+		_check(beds >= 2 and beds <= sp.ambience.voices and max_posed <= SoundPlayer.BEDS_POSED_PER_FRAME
+			and not sp._streams.has("frogs") and not sp._streams.has("fumaroles"),
+			"%s : %d fonds posés, un seul par image, aucun fond d'un autre biome" % [preset, beds])
+		_check(PerfBudget.check("ambience_layer_frame", worst["ms"]),
+			"%s : fabrication hors du fil principal, update_ambience au plus %.2f ms par image" % [preset, worst["ms"]])
+		sp.queue_free()
+		await process_frame
+
+
+## « médiane m ms, p95 p ms, pire x ms (n images) » d'une série de temps.
+func _stats_text(samples: Array[float]) -> String:
+	if samples.is_empty():
+		return "aucune image"
+	var s := samples.duplicate()
+	s.sort()
+	var n := s.size()
+	return "médiane %.3f ms, p95 %.3f ms, pire %.3f ms (%d images)" % [s[n / 2], s[mini(int(0.95 * n), n - 1)], s[n - 1], n]
 
 
 # Lot P10 : boucle du vent sans clic, pitch du cliquetis égal au rythme du modèle, un « clac » par reprise
@@ -348,6 +419,7 @@ func _run() -> void:
 	_test_ogg_override()
 	await _test_ambience_and_bells()
 	await _test_biome_beds_on_demand()
+	await _test_ambience_frame_cost()
 	await _test_p10_wind_and_freewheel()
 	await _test_seamless_loops()
 	_test_steady_levels()

@@ -54,3 +54,21 @@ Sons enregistrés, sons du vélo sur le gravier (U22).
 - Thème par défaut : `layers` de quatorze biomes (la prairie, la steppe n'en ont pas) ; contrat (écart au §6, ajout compatible sans changement de version) : clé facultative `ambience.layers` dans `world_format_v1.md` §9 et `theme.schema.json`.
 - Vagues : U9 n'étant pas là, la distance au rivage vient des eaux `sea` déjà chargées (parcours de démonstration U19 `--sea`).
 - Écoute : `engine/tests/ambience_export.gd` (scène de 20 s par biome, chaque fond seul).
+
+## 10. Suite du banc r787 (9 novembre 2026)
+
+**Mesure.** Banc PC r787 (nuit du 8 au 9 novembre, captures `a01eed21`) : `ambience_layer_frame` = 1,87 ms pour un budget de 2 ms, alors que la PR annonçait 0,44 ms. Sur la même passe, `ambience_evaluate` (le modèle seul) vaut 0,06 ms sur le PC.
+
+**Pourquoi l'écart.**
+- La mesure est la **pire image** d'une seule série d'environ 87 images, pas une médiane : un seul échantillon décide. Les 0,44 ms venaient d'une machine cloud au repos ; le PC avait en même temps le bureau, l'indexeur de fichiers (`localsearch`, 13 % d'un cœur) et deux fils de travail qui synthétisaient les fonds. Une préemption du fil principal pendant la mesure suffit à faire 1 ms de plus.
+- Le modèle (0,06 ms) et l'ajout des tâches ne pèsent pas. Ce que l'image faisait de plus, c'était la **pose** : création de l'`AudioStreamWAV` et copie des échantillons (environ 500 Ko par fond, `to_wav`), affectation au lecteur et `play()`, et pour **deux fonds dans la même image** (vagues et mouettes finissent ensemble).
+- Faute de détail par étape dans la mesure de la PR, la part de chaque cause n'est pas connue : la nouvelle mesure ci-dessous la donne.
+
+**Changements.**
+- Le fil de travail rend le flux complet (`_bed_source` : `to_wav(pcm16(bed_samples(…)))`, copie comprise) ; le fil principal ne fait plus que l'affecter au lecteur.
+- Au plus un fond posé par image (`BEDS_POSED_PER_FRAME = 1`) ; les suivants le sont aux images d'après, ce qui ne s'entend pas (montée depuis `FADE_FLOOR_DB`).
+- `update_ambience` garde le temps de ses trois étapes dans `ambience_us` (modèle, pose, lecteurs).
+- `test_sound_player` mesure en low, medium et high (4, 6 et 8 voix, voisinage mêlé littoral, méditerranée, alpage, forêt et rivière, jusqu'à 8 fonds) : médiane, p95 et pire image pendant la fabrication, aux images de pose, puis sur 120 images tout posé (témoin : bruit de la machine seule), et le détail par étape de la pire image. Le budget `ambience_layer_frame` (2 ms) reste sur la pire image, pour rester comparable au banc r787.
+
+**À mesurer sur le PC** (via le fil de fusion) : `UNIT=test_sound_player`, trois préréglages en une passe ; en cas de pire image au-dessus du témoin, le détail par étape dit si c'est la pose ou la machine.
+
