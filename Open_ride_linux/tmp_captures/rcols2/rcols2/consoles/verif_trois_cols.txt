@@ -1,0 +1,6 @@
+Alpe d'Huez : longueur 14.11 km (réf. 13.80, écart +2.3 %) ; dénivelé + 1113 m (réf. 1071, écart +3.9 %), net +1103 m ; pente moyenne 7.8 % (réf. 7.8 %) ; pente max 12.2 % sur 1 km, 18.0 % sur 200 m ; 1423 points
+Grand Ballon : longueur 15.71 km (réf. 15.90, écart -1.2 %) ; dénivelé + 976 m (réf. 940, écart +3.9 %), net +970 m ; pente moyenne 6.2 % (réf. 5.9 %) ; pente max 9.3 % sur 1 km, 11.7 % sur 200 m ; 1575 points
+Norikura Echo Line : longueur 20.50 km (réf. 20.50, écart +0.0 %) ; dénivelé + 1268 m (réf. 1260, écart +0.6 %), net +1257 m ; pente moyenne 6.1 % (réf. 6.1 %) ; pente max 9.2 % sur 1 km, 11.3 % sur 200 m ; 2061 points
+  alpe-d-huez : 14.1 km, 1109 m de dénivelé positif
+  grand-ballon : 15.7 km, 975 m de dénivelé positif
+  norikura-echo-line : 20.5 km, 1267 m de dénivelé positif
