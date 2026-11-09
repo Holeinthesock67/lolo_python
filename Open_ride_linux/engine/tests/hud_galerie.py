@@ -134,6 +134,22 @@ CAS: list[dict[str, Any]] = [
     {"name": "erg_courbes_completes", "state": {"mode": "ERG", "erg": _erg(230.0, 100)}, "chart": "full", "wait": 7.0,
      "shown": ["chart_erg"], "hidden": ["profile"]},
     {"name": "sim_courbes", "state": {}, "chart": "full", "wait": 7.0, "shown": ["chart_sim", "profile"]},
+    # Épreuves de piste (lot VD9) : bandeau, tours et liste à la place de la ligne d'état et du profil
+    {"name": "piste_points", "state": {"track": {
+        "event": "points", "t_s": 412.0, "lap": 23, "laps": 40, "laps_to_go": 17, "bell": False,
+        "ranking": ["b1", "me", "b2", "b3"], "points": [14, 11, 8, 5], "eliminated": [], "finished": False,
+        "laps_up": 0, "my_lap": 23, "next_sprint_lap": 25}},
+     "hidden": ["profile", "status"]},
+    {"name": "piste_elimination_dernier", "state": {"track": {
+        "event": "elimination", "t_s": 200.0, "lap": 6, "laps": 24, "laps_to_go": 18, "bell": True,
+        "ranking": ["b1", "b2", "me", "b3"], "points": None, "eliminated": ["b3"], "finished": False,
+        "to_elim_m": 180.0, "gap_last_s": 0.4, "last": "me", "alive": 3}},
+     "hidden": ["profile", "status"]},
+    {"name": "piste_poursuite", "state": {"track": {
+        "event": "pursuit", "t_s": 150.0, "lap": 9, "laps": 16, "laps_to_go": 8, "bell": False, "ranking": ["me", "b1"],
+        "points": None, "eliminated": [], "finished": False, "d_m": 2125.0, "to_go_m": 1875.0, "gap_m": 12.0,
+        "gap_s": 0.84, "lead": None}},
+     "hidden": ["profile", "status"]},
     {"name": "valeurs_extremes", "state": {"power": 1999.0, "power_3s": 1999.0, "cadence": 199.0, "hr": 199,
                                            "grade": -19.9, "grade_sent": -19.9, "mode": "ERG",
                                            "erg": _erg(1999.0, 150)},

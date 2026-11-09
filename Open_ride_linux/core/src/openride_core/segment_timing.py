@@ -13,7 +13,8 @@ Règles (plan de la série T §3.2) :
   chronométré s'arrête avec la séance et le passage reprend à la reprise (décision du 28 octobre 2026,
   séance A : la montée 1 annulée par deux coupures du trainer). Raison inconnue : annulation ;
 - boucle : chaque tour donne un passage ; aller-retour : `s` ne fait que croître, le segment
-  ne se chronomètre donc que dans le sens où il a été défini ;
+  ne se chronomètre donc que dans le sens où il a été défini ; après un demi-tour depuis la pause (lot N17),
+  `s` décroît et un passage à rebours ne compte pas ;
 - chaque passage garde temps, puissance moyenne (mesurée), W/kg, vitesse moyenne et bonus
   utilisés ; il se relit depuis le journal des séances (`passes_from_journal`).
 
@@ -251,7 +252,8 @@ def passes_from_journal(path: Path, segments: Iterable[SegmentLike], length_m: f
                 continue
         elif kind == "record":
             try:
-                t, s = float(line["t"]), float(line["distance"])
+                # position `pos` après un demi-tour (lot N17) : à rebours, `s` décroît et rien ne compte
+                t, s = float(line["t"]), float(line["pos"] if line.get("pos") is not None else line["distance"])
             except (KeyError, TypeError, ValueError):
                 continue
             bonus = next((k for a, b, k in reversed(uses) if a <= t <= b), None)

@@ -4,6 +4,8 @@ extends SceneTree
 ## de road_builder.gd : ligne médiane claire au centre, motif de 13 m (3 m peints), bandes de rive aux
 ## deux bords, chiffre peint sur la voie de droite. Rendu sans éclairage : la couleur lue est l'albédo.
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const ClimbTest := preload("res://tests/unit/test_climb_detector.gd")
 const MarkingsShader := preload("res://shaders/road_markings.gdshader")
@@ -97,5 +99,6 @@ func _run() -> void:
 		"chiffre « 1 » peint sur la voie de droite à 40 m")
 	vp.queue_free()
 	await process_frame
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_road_markings_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série Y (rendu) : un exemplaire de chaque portique et panneau du parcours dessiné au chargement, hors de vue ; saccades d'un essai de moins d'une heure comptées sur une heure | GDScript, Python | T8, X16 | Petite | **En PR** (2.0) ; banc PC à refaire en low, medium et high |
+| Série Y (rendu) : un exemplaire de chaque portique et panneau du parcours dessiné au chargement, hors de vue ; saccades d'un essai de moins d'une heure comptées sur une heure | GDScript, Python | T8, X16 | Petite | Livré le 2 novembre (PR #698, 2.0) ; banc PC à refaire en low, medium et high |
 
 ## 1. Objectif
 
@@ -32,3 +32,7 @@ Le banc échouait aussi sur une extrapolation : 2 à-coups en 15 min comptés co
 
 1. Cloud : `test_segment_markers_model` et `test_perf_probe.py` passent.
 2. PC : banc 7bx (village simulé, 15 min) en low, medium et high, main contre branche : plus d'à-coup au premier passage vers 4 600 m, temps de chargement au départ pas plus long de 0,5 s. Si l'à-coup reste, la trace des nœuds dit quel autre objet apparaît à cet instant.
+
+## Livraison
+
+PR #698 (fusionnée le 2 novembre, commit 5c6b03c7) : préchauffage des portiques au chargement. Reste le banc PC en low, medium et high. Statut corrigé par le bilan du 8 novembre au soir.

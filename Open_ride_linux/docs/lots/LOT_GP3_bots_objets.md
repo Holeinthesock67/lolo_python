@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : bots qui prennent, gardent et lancent les objets, esquive selon le niveau et le chaos, sans élastique physique | Python | GP1 | Moyenne | En PR (version 4.0 proposée) |
+| Série GP : bots qui prennent, gardent et lancent les objets, esquive selon le niveau et le chaos, sans élastique physique | Python | GP1 | Moyenne | Livré le 8 novembre (PR #776, version 4.0) |
 
 Série GP (mode « Grand Prix des objets », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`.
 

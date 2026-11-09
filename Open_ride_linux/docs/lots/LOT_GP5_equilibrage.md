@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série GP : simulateur de courses (cycliste virtuel X27 et bots), rapport et valeurs de `grandprix.toml` | Python | GP1, GP3 | Moyenne | En PR, cibles tenues (version 4.0 proposée) |
+| Série GP : simulateur de courses (cycliste virtuel X27 et bots), rapport et valeurs de `grandprix.toml` | Python | GP1, GP3 | Moyenne | Livré le 8 novembre (PR #779, version 4.0), cibles tenues |
 
 Série GP (mode « Grand Prix des objets », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_GP.md`.
 

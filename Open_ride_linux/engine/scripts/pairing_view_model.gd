@@ -17,6 +17,9 @@ const SCREEN := "pairing"
 const ROLES := ["trainer", "click_plus", "click_minus", "hr"]
 ## Choix « aucun » d'un rôle : l'appareil enregistré est oublié (lot O24).
 const FORGET := ""
+## Raison connue du silence du boîtier gauche (« − »), dans la carte du Click (lot N19,
+## docs/RECHERCHE_CLICK_GAUCHE.md) : verrou de Zwift, redémarrage automatique par le core.
+const CLICK_LEFT_LOCK_LINE := "Boîtier « − » : Zwift le verrouille environ une minute après la connexion ; OpenRide le redémarre seul (4 s sans flèches, B du boîtier « + » fait « − »)"
 
 ## Derniers appareils trouvés : [{role, name, address, rssi, configured}].
 var items: Array = []
@@ -201,7 +204,7 @@ func sheet(item_id: String) -> Dictionary:
 			"name": _name_of(address) if address != null else "", "tiles": tiles, "lines": lines}
 	if item_id == "identify":
 		return {"title": "Click", "name": "Reconnaître le boîtier +",
-			"lines": ["Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche"]}
+			"lines": ["Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche", CLICK_LEFT_LOCK_LINE]}
 	if item_id == "forget_click":
 		return {"title": "Click", "name": "Oublier les deux boîtiers",
 			"lines": ["Enregistrer retire les boîtiers « + » et « − » ; le clavier reste utilisable"]}

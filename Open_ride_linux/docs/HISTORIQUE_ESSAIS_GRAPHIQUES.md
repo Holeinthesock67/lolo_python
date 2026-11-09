@@ -1,4 +1,4 @@
-# Historique des essais graphiques et de leur impact (27 octobre → 7 novembre 2026)
+# Historique des essais graphiques et de leur impact (27 octobre → 8 novembre 2026)
 
 Demande du propriétaire (7 novembre) : documenter tous les essais graphiques réalisés et l'impact des réglages essayés. Ce document rassemble, sans rien remesurer, ce que disent les cahiers des lots, les études, les résultats des bancs déposés dans le dossier partagé du projet (`mesures/`, `plans/FILE_MESURES_PC.md`) et les PR fusionnées ou fermées. Quand une valeur n'a pas été retrouvée dans ces sources, c'est écrit « non retrouvé » : rien n'est extrapolé.
 
@@ -244,12 +244,12 @@ Remède essayé : `ombres_arbres_m=M`, ombres des arbres coupées au-delà de M 
 Par biome, la référence est cultures 8,39 / 14,20 / 17,23 et forêt 7,54 / 13,63 / 17,11 ms.
 
 Lecture :
-- Raccourcir l'ombre des arbres ne gagne que 0,3 à 0,4 ms en forêt, à 100 comme à 150 m. À 250 m, rien ne change : la coupure se fait par cases de 250 m, et le gros du coût des ombres d'arbres vient des arbres les plus proches.
+- Raccourcir l'ombre des arbres ne gagne que 0,3 à 0,4 ms en forêt, à 100 comme à 150 m, et rien à 250 m. Cause trouvée ensuite (étude du 5 novembre §8.5) : la passe d'ombre est limitée par les sommets, replier un sommet dans le shader ne lui évite pas d'être traité, et les cases de 250 m à cheval sur la limite gardaient tous leurs arbres dans la passe. Voir le correctif et les bancs c et d au §2.6.
 - Couper toutes les ombres d'arbres gagne 1,3 ms en medium et 2,1 ms en high en forêt, mais rien en cultures.
 - **En cultures, c'est l'herbe qui coûte** : la moitié des touffes gagne 0,7 ms en medium et 1,2 ms en high, et c'est la seule variante qui bouge dans ce biome. C'est la réponse à la question laissée ouverte par le premier banc.
 - Même sans aucune ombre, aucune variante seule ne ramène medium et high sous leur budget : il faudrait combiner (par exemple ombres d'arbres et herbe), ou toucher à la passe opaque.
 
-Captures : `planche/` du banc, une par variante et par biome.
+Captures : `planche/` du banc, une par variante et par biome. Suite au §2.6.
 
 **Correctif de la coupure (07/11, a2a87ad4).** La première coupure gagnait peu parce que la passe d'ombre est limitée par les sommets : replier un sommet dans le shader ne lui évite pas d'être traité, et une case de 250 m à cheval sur la limite gardait tous ses arbres. Nouvelle version : le modèle proche des arbres ne projette plus d'ombre ; un MultiMesh « ombre seule » par essence reçoit les arbres des carrés de 25 m à moins de M mètres de la caméra, reconstruit tous les 10 m de déplacement, et le shader fond l'ombre sur les derniers mètres. Vérifié dans le cloud (Vulkan logiciel) : ombres proches au même endroit, ombres au-delà de M absentes.
 
@@ -268,6 +268,28 @@ La coupure corrigée rend presque tout le gain d'« arbres sans ombre ». Cultur
 **Banc d (07/11, f0c1fe42, avec #741 « bande large d'herbe moitié moins dense », `mesures/2026-11-07-cultures-foret-d/`, 22 bancs).** Ombre des arbres à 100 m : forêt +1,11 / +1,72 (medium / high). Avec 2 cascades en plus : +1,11 / +1,94, soit presque rien de plus : **non retenu**. Herbe effacée à 150 m au lieu de 250 (`herbe_fin_m=150`) : ≈ 0 partout, l'herbe coûte par sa densité et pas par sa distance : **rejeté**. Avec l'ombre à 100 m, par biome : forêt 7,23 / 12,32 / 15,26 ms, cultures 8,18 / 13,90 / 16,73 ms (low / medium / high).
 
 Verdict : **ombre des arbres limitée à 100 m adoptée** dans les trois préréglages (`TreeRenderer.TREE_SHADOW_M`, 188e44cb ; essai `ombres_arbres_m=0` pour l'ancien comportement). **Budgets medium 13 ms et high 16 ms** (choix du propriétaire, 8 novembre). Avec ces budgets, la forêt passe (12,3 / 13 et 15,3 / 16) ; **les cultures dépassent encore** de 0,2 / 0,9 / 0,7 ms (8,18 / 8, 13,90 / 13, 16,73 / 16). Banc des effets d'écran (r732e) annulé et reporté en 5.0.
+
+### 2.6 Derniers essais (7 et 8 novembre)
+
+**#732 – Ombre des arbres limitée à 100 m (bancs c et d).** Détail à la fin du §2.5 (correctif, bancs c et d, verdict). **Adopté** (fusionnée le 8 novembre, main d1e53985).
+
+**Y22-15 – Bande large d'herbe moitié moins dense (07/11, PR #741, `mesures/2026-11-07-herbe-y22-15/`).** Demande du propriétaire après le banc b (l'herbe de #721 avait coûté +0,6 / +1,1 / +1,3 ms en cultures). Budgets de la bande large 1 500 / 7 500 / 12 000 au lieu de 3 000 / 15 000 / 24 000. Cultures, main → branche, GPU médian (seconde valeur du relevé entre parenthèses, probablement le p99 GPU) : low 5,37 (6,50) → 5,34 (6,46), medium 9,57 (11,69) → 9,17 (11,08), high 11,63 (12,51) → 11,08 (12,39) ; primitives −6 / −12 / −13 %, aucune image ≥ 100 ms. Captures validées (« Ok », 07/11 16 h 18). **Adopté** (fusionnée le 07/11).
+
+**Troncs des conifères à l'endroit (07/11, PR #762, `mesures/2026-11-07-coniferes-r762/`).** Défaut vu en recette vélo : tronc dessiné devant le houppier (faces des cônes et des branches dans le mauvais sens, donc retirées par le moteur). Correction de géométrie, pin parasol au tronc rallongé. Banc alpin et forêt, main → branche : low 5,08–5,30 → 5,04–5,31, medium 6,50–7,95 → 6,38–8,07, high 8,43–10,09 → 8,44–10,17 ms : neutre (±0,13). Captures validées. **Adopté** (fusionnée le 07/11).
+
+**Sol sur la chaussée au km 1,74 de la démo (07/11, PR #761).** Terrain synthétique sans garde-fou : triangles de 10 m posés 1 cm au-dessus de la route. Correction de géométrie (même `clear_road` que le compilateur), contrôle `test_herbe_route` plus strict (sol au moins 2 cm sous la chaussée). Captures cloud validées ; coût GPU : non mesuré (attendu nul). **Adopté.**
+
+**U23 – Constructions et faune propres à chaque biome (07/11, PR #748, `mesures/2026-11-07-u23-r748/`).** Sept styles de bâtiments (chalet, bois peint, pisé, case, paillote, basalte, chaumière) et six animaux. Banc alpin, désert de sable et savane, main → branche : low 5,25–5,31 → 5,18–5,21, medium 6,20–6,73 → 6,17–6,88, high 8,07–8,92 → 7,99–8,98 ms : neutre (−0,12 à +0,14). Le monde OSM du banc a peu de bâtiments : peu représentatif. Captures validées. **Adopté** (fusionnée le 07/11).
+
+**U23 étape 2 – Cases rondes, yourtes, pilotis (08/11, PR #771, `mesures/2026-11-08-u23-r771/`).** Mêmes scènes, main → branche : low 4,88–5,46 → 4,93–5,31, medium 6,05–6,49 → 5,89–6,50, high 7,76–8,64 → 7,64–8,53 ms : neutre ; murs à 11 % de sommets en moins. Vitrine à froid : quitte normalement (2 s après la dernière capture, contrôles automatiques tout bons). Réserve : l'indexeur de fichiers tournait pendant le banc (`charge.txt`). Captures cloud validées (07/11 23 h 09). Verdict : **en cours** (PR ouverte).
+
+**Gravel – Cyclistes du décor sur le chemin (07/11, PR #765, `mesures/2026-11-07-gravel-cyclistes-r765/`).** Cyclistes, bots et cycliste bornés à la largeur roulable du chemin, files sans roues superposées, rabattement lissé. Parcours gravel : 5,04 / 6,64 / 8,62 ms, soit +0,06 / +0,36 / +0,55 par rapport à main ; mise à jour des cyclistes 0,047 ms par image. Captures PC validées (08/11, 3 h 01). **Adopté** (fusionnée le 8 novembre, main a5e42e6e).
+
+**AS6 – Circulation proche avec véhicules à l'écran (8/11, banc 7ct bis sur main 46a29e1b, `mesures/2026-11-08-circulation-7ctbis/`).** Première mesure du coût de la circulation avec un tracteur devant et un camion qui double : 5,27 / 7,50 / 9,34 ms, dans les budgets. Le banc a révélé des véhicules superposés (contacts camion/camion à 150 m), corrigés par la PR #775. Banc 7ct ter et captures : à venir. Verdict : coût **acceptable**, correctif **en cours**.
+
+**Panneaux d'approche 25 % plus grands (4.0, PR #773).** Plaque de col verticale de 2,2 × 2,35 m, variante A choisie par le propriétaire (07/11, 22 h 15), captures validées (08/11, 3 h 01). Banc GPU en low, medium et high : demandé, résultat non retrouvé. Verdict : **en cours**.
+
+**DS8 – Dernier survivant jusqu'à 11 adversaires (07/11, PR #735, `mesures/ds8*/`).** Banc r735 : GPU médian (p99 GPU) low 4,94 (5,93), medium 6,60 (7,93), high 8,27 (9,13) ms. Les images lentes de low et high au banc b venaient du peloton PL1 déjà sur main, pas de DS8 ; corrigées pour le HUD (r735c : budgets et images lentes tenus dans les trois préréglages). Planche validée. **Adopté** (fusionnée le 07/11).
 
 ## 3. Récapitulatif par réglage
 
@@ -295,13 +317,16 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 | **LOD des arbres** | 300 → 450 m (01/11, #689) ; 300 m remesuré (05/11, 07/11) | 450 m : ≈ +0,4 medium ; revenir à 300 m : jusqu'à −1,25 en high en forêt | arbres détaillés plus loin | 450 m adopté (choix du propriétaire) | 450 m partout |
 | **Imposteurs de forêt** | Y5 (06/11, #723) | +0,18 / +0,19 | forêts jusqu'à l'horizon | adopté | 1 500 m → brouillard |
 | **Herbe : quantité** | budgets Y11 (27/10) ; moitié (05/11, 07/11) ; 70 % en low (06/11) | moitié −0,27 / −0,77 / −0,96 (05/11), puis −0,35 / −0,69 / −1,24 en cultures après #721 (07/11) ; 70 % en low : aucun gain | herbe pleine | budgets gardés ; levier principal en cultures | low herbe pleine |
-| **Herbe : niveau de détail au loin** | Y22 (06/11, #721) ; bande large moitié moins dense (07/11, #741) ; effacée à 150 m au lieu de 250 (07/11, #732) | premier banc −0,2 / −0,6 en medium / high ; version finale +0,2 / +0,9 / +1,4 ; #741 −0,4 / −0,55 (medium / high) ; 150 m ≈ 0 | herbe jusqu'à 80 m sans lisière | adopté | `main` |
+| **Herbe : niveau de détail au loin** | Y22 (06/11, #721) ; herbe effacée à 150 m (07/11) | premier banc −0,2 / −0,6 en medium / high ; version finale +0,2 / +0,9 / +1,4 ; effacer à 150 m : ≈ 0 | herbe jusqu'à 80 m sans lisière | adopté ; distance plus courte rejetée | `main` |
+| **Herbe : bande large moitié moins dense** | Y22-15 (07/11, #741) | −0,03 / −0,40 / −0,55 | validé sur captures | adopté | `main` |
 | **Vigne** | haie au-delà de 200 m (Y22) | primitives −25 % caméra haute | aucun saut validé | adopté | 200 m |
 | **Densité de végétation / arbres** | Y13 étape 2 (0,8, 70 000) ; moitié (05/11, 07/11) | +0,2 à l'ajout ; moitié : bruit en cultures, −0,84 / −1,91 en forêt | paysage plus plein | gardée | inchangée |
 | **Tri du visible (S1)** | 28/10, 05/11 | −0,17 / −0,37 / −0,14 | aucun | livré coupé | `--culling=on` pour essayer |
 | **Parallaxe de la route** | Y17 (30/10, #603) | high +3,8 à +5,2 | visible à 2–3 m | rejeté | non |
 | **Feuillage simplifié (Lambert, sans reflets)** | G1, G3 (06/11) | bruit | aucun | adopté (principe) | `tree_sway.gdshader` |
 | **Embellissements** (halo du soleil dans la brume, prés mûrs, dégradé des touffes) | 06/11 | bruit | léger | prés mûrs repris par Y22 ; le reste non retrouvé dans les préréglages | — |
+| **Géométrie des arbres et du sol** (troncs à l'endroit #762, sol sous la chaussée #761) | 07/11 | ±0,13 (troncs) ; non mesuré (sol) | défauts visibles corrigés | adopté | `main` |
+| **Styles de bâtiments et faune par biome** (U23, #748, #771) | 07–08/11 | ±0,15 | constructions et animaux propres à chaque biome | adopté (#748) ; étape 2 en cours | `main` + #771 |
 | **Garde-fou de charge** | Y6 (30/10, #612) | medium 13,69 → 11,85 au pic | coupe SSIL / SSAO temporairement | adopté | `[render] load_guard` |
 
 ## 4. Enseignements
@@ -322,7 +347,7 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 - **Cultures encore au-dessus des budgets du 8 novembre** (banc d, avec #741 et l'ombre des arbres à 100 m) : 8,18 / 13,90 / 16,73 ms pour 8 / 13 / 16. Reporté en 5.0 avec les autres essais de gain.
 - **Historique, budgets dépassés après #729 et #721** : cultures 14,2 / 16,5 ms et forêt 13,0 / 15,9 ms en medium / high (passe finale du 06/11, avant #721 qui ajoute environ +0,2 / +0,9 / +1,4 ms). En low, cultures 7,8, forêt 7,3 et alpin 6,9 ms dépassaient le budget de 6 ms ; avec le budget de 8 ms décidé le 7 novembre, ils passent tout juste (cultures 7,8 + 0,2 de #721 ≈ 8,0 ms, à confirmer au banc). Banc b du 7 novembre (avec #721) : tronçon 8,0 / 13,7 / 17,1 ms. Suite dans #732 : aucune variante seule ne suffit ; leviers mesurés : ombres des arbres en forêt, quantité d'herbe en cultures.
 - **Reporté en 5.0 (choix du propriétaire, 8 novembre)** : tout nouvel essai de gain de performance. Prévu et non lancé : banc des effets d'écran sur le tronçon cultures → forêt → alpin, en low, medium et high (`cout_rendu.py --troncon farmland,temperate_forest,alpine --variantes base,sans_ssao,ssao_low,sans_brume,brume_light,msaa0_smaa,sans_glow,ciel_128 --repetitions 2`), bloc alpin du tronçon (banc d'environ 400 s), prépasse de profondeur.
-- **Essais jamais mesurés** (cahiers sans résultat retrouvé) : Y3 (HLOD des villages), Y4 (ombres par sorte d'objet), Y7 (moteur Mobile en low), Y12 (lumière et particules), tableau du protocole `ESSAI_RENDU_Y11_Y12.md`, coût de la circulation AS6 avec véhicules à l'écran.
+- **Essais jamais mesurés** (cahiers sans résultat retrouvé) : Y3 (HLOD des villages), Y4 (ombres par sorte d'objet), Y7 (moteur Mobile en low), Y12 (lumière et particules), tableau du protocole `ESSAI_RENDU_Y11_Y12.md`, banc GPU des panneaux d'approche #773. La circulation AS6 avec véhicules à l'écran a été mesurée le 8 novembre (§2.6).
 - **Pistes notées pour plus tard** : même passage propre de l'herbe pour les buissons nains, roseaux et herbes hautes (`ground_details.gd`) ; prépasse de profondeur (22 % du GPU en medium et high) ; S1b (occlusion par le relief) et S1c (décor hors vue) si un cas réellement chargé apparaît.
 
 ## 6. Où trouver les données
@@ -342,3 +367,10 @@ Valeurs de gain en ms (low / medium / high) ; « — » = sans objet dans ce pr�
 | Y5 | `mesures/2026-11-06-foret/` | `LOT_Y5` |
 | Y22 | `mesures/2026-11-06-herbe-y22*/` | `LOT_Y22` |
 | #732 | `mesures/2026-11-07-cultures-foret/`, `-b/`, `-c/` (planche forêt validée), `-d/` | PR #732, étude § 8 |
+| #741 | `mesures/2026-11-07-herbe-y22-15/` | `LOT_Y22` (règle Y22-15) |
+| #762, #761 | `mesures/2026-11-07-coniferes-r762/`, `captures/troncs-arbres/`, `captures/herbe-route-km173/` | — |
+| U23 (#748, #771) | `mesures/2026-11-07-u23-r748/`, `mesures/2026-11-08-u23-r771/`, `captures/u23/`, `captures/u23-etape2/` | `LOT_U23` |
+| #765 | `mesures/2026-11-07-gravel-cyclistes-r765/`, `captures/cyclistes-gravel/` | — |
+| AS6 (#775) | `mesures/2026-11-08-circulation-7ctbis/` | `LOT_AS6` |
+| #773 | `panneaux-approche/` | — |
+| DS8 (#735) | `mesures/ds8/`, `ds8-b/`, `ds8-c/` | — |

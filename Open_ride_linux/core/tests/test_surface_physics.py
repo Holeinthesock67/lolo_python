@@ -33,7 +33,8 @@ def test_offset_on_flat_crr_0004_factor_25() -> None:
 def test_factors_and_effective_surface() -> None:
     g = _cfg().gravel
     assert (g.mode, g.factor_compacted, g.factor_gravel, g.factor_dirt) == ("off", 2.0, 2.5, 3.0)
-    assert [SP.crr_factor(s, g) for s in SP.SURFACES] == [1.0, 2.0, 2.5, 3.0]
+    assert [SP.crr_factor(s, g) for s in SP.SURFACES] == [1.0, 2.0, 2.5, 3.0, 1.0]   # wood : facteur de la piste (VD3)
+    assert SP.crr_factor("wood", g, 0.6) == 0.6
     assert SP.effective_surface("dirt", "off") == "paved"
     assert SP.effective_surface("dirt", "auto") == "dirt"
     assert SP.effective_surface("paved", "gravel") == "gravel"     # surface imposée (U-Q8)

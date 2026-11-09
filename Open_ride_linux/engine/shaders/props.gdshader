@@ -11,7 +11,9 @@ shader_type spatial;
 //     de `head_from_m` en peinture rouge un peu écaillée, filet noir à la jonction ;
 //   3 mât d'éolienne : tronçons boulonnés, porte au pied, bas du mât en dégradé vert, coulures ;
 //   4 nacelle : capot à panneaux et grilles d'aération ;
-//   5 pale : bord d'attaque usé vers le bout, salissure.
+//   5 pale : bord d'attaque usé vers le bout, salissure ;
+//   6 couche peinte d'un panneau d'approche (fond coloré, bandeau, filet) : film plat de `base_color`, avec en option
+//     un pictogramme dessiné à l'encre `ink_color` (`picto` : 1 cycliste).
 // Dimensions de la pièce : UV2 (largeur, hauteur) pour les maillages construits par roadside_props.gd, sinon
 // `size_m` ; les pièces sont centrées sur l'origine.
 // La couleur de la pièce est `base_color` ; le texte des panneaux reste un Label3D posé devant la face.
@@ -24,6 +26,38 @@ uniform vec3 base_color : source_color = vec3(0.9);
 uniform vec3 size_m = vec3(1.0);          // dimensions du maillage (centré sur l'origine), avant l'échelle du nœud
 uniform float relief = 1.0;
 uniform float head_from_m = 0.58;         // borne : hauteur du bas de la tête peinte
+uniform vec3 border_color : source_color = vec3(0.95, 0.95, 0.93);   // panneau : liseré de la face
+uniform int picto = 0;                    // couche peinte : 0 aucun, 1 cycliste
+uniform vec3 ink_color : source_color = vec3(0.08);
+
+// Distance à un segment
+float sd_seg(vec2 p, vec2 a, vec2 b) {
+	vec2 pa = p - a;
+	vec2 ba = b - a;
+	float t = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+	return length(pa - ba * t);
+}
+
+// Encre du pictogramme en (u, v) dans [-0.5, 0.5]² : 1 dans le trait, 0 dehors (bords adoucis de `aa`)
+float picto_cyclist(vec2 q, float aa) {
+	float t = 0.028;
+	float d = abs(length(q - vec2(-0.25, -0.2)) - 0.16) - t;
+	d = min(d, abs(length(q - vec2(0.25, -0.2)) - 0.16) - t);
+	d = min(d, sd_seg(q, vec2(-0.25, -0.2), vec2(-0.02, -0.2)) - t);
+	d = min(d, sd_seg(q, vec2(-0.02, -0.2), vec2(-0.08, 0.05)) - t);
+	d = min(d, sd_seg(q, vec2(-0.25, -0.2), vec2(-0.08, 0.05)) - t);
+	d = min(d, sd_seg(q, vec2(-0.08, 0.05), vec2(0.18, 0.05)) - t);
+	d = min(d, sd_seg(q, vec2(-0.02, -0.2), vec2(0.18, 0.05)) - t);
+	d = min(d, sd_seg(q, vec2(0.18, 0.05), vec2(0.25, -0.2)) - t);
+	d = min(d, sd_seg(q, vec2(0.18, 0.05), vec2(0.2, 0.12)) - t);
+	// Cycliste : jambe, buste penché, bras, tête
+	d = min(d, sd_seg(q, vec2(-0.1, 0.1), vec2(0.02, -0.06)) - 0.045);
+	d = min(d, sd_seg(q, vec2(0.02, -0.06), vec2(-0.02, -0.2)) - 0.035);
+	d = min(d, sd_seg(q, vec2(-0.1, 0.1), vec2(0.1, 0.25)) - 0.055);
+	d = min(d, sd_seg(q, vec2(0.1, 0.25), vec2(0.2, 0.12)) - 0.03);
+	d = min(d, length(q - vec2(0.2, 0.34)) - 0.065);
+	return smoothstep(aa, -aa, d);
+}
 
 // Position dans la pièce en mètres (échelle du nœud comprise) et dimensions réelles de la pièce
 varying vec3 v_obj;
@@ -55,7 +89,7 @@ void fragment() {
 		float border = step(-0.045, d);
 		float rim = smoothstep(0.012, 0.0, abs(d + 0.012));
 		if (face) {
-			col = mix(col, lineaire(vec3(0.95, 0.95, 0.93)), border);
+			col = mix(col, border_color, border);
 			h = rim * 0.003;
 			rough = 0.35;   // film rétroréfléchissant
 		} else {
@@ -125,6 +159,15 @@ void fragment() {
 		float grille = step(0.5, fract(p.y * 8.0)) * step(0.35 * v_extent.z, p.z) * step(abs(p.x), 0.3 * v_extent.x);
 		col *= 1.0 - 0.3 * grille;
 		rough = 0.45;
+	} else if (kind == 6) {
+		// Couche peinte : film plat, pictogramme éventuel sur la face
+		col = base_color;
+		rough = 0.35;
+		if (v_obj_normal.z > 0.5 && picto > 0) {
+			vec2 q = p.xy / max(v_extent.xy, vec2(0.01));
+			float aa = 0.012;
+			col = mix(col, ink_color, picto_cyclist(q, aa));
+		}
 	} else {
 		// Pale : bord d'attaque (côté +x) usé et sali vers le bout
 		float wear = smoothstep(0.25 * v_extent.x, 0.5 * v_extent.x, p.x) * smoothstep(-0.1, 0.5, p.y / v_extent.y);
