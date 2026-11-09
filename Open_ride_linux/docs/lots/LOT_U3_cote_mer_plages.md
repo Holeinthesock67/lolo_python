@@ -58,6 +58,12 @@ Aucune (U1).
   `boat_model.gd` ne parcourt plus la route quand sa boîte englobante est plus loin que le bord déjà trouvé
   (même résultat). Sur une côte synthétique de 11 km : 205 aires deviennent 122, et le travail des bateaux
   est divisé par 17.
+- r790b (9 novembre) : 56 aires de mer, mais tâches `osm` 1 et 4 toujours à 20 s et pire image 124 / 149 ms :
+  la mer n'était pas la cause. r790c, avec le détail de la tâche (`osm_eau`, `osm_bateaux`, `osm_veg_poi`,
+  `osm_faune`, `osm_circulation` dans `taches.csv`) : plus de 99 % dans `osm_circulation`, les tracteurs des
+  champs (lot P25). `field_rows` coupait chaque rang de 9 m avec tous les côtés du champ ; les champs OSM du
+  Pas-de-Calais font plusieurs km et des milliers de points. Chaque rang ne regarde plus que les côtés qu'il
+  peut couper (même résultat, test sur un champ de 4 000 points). Défaut antérieur à U3, révélé par ce parcours.
 - Tracé : la route D940 tirée d'OSM fait 11,3 km entre Wissant et Sangatte ; l'essai la coupe à 8 km depuis
   Wissant (`couper_gpx.py` de la fiche d'essai).
 

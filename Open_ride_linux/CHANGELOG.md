@@ -20,6 +20,7 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Un parcours compilé avec la couche eau reçoit la mer, tirée des lignes de côte d'OpenStreetMap et refermée sur le bord du terrain, îles comprises.
 - Nouvelle couche `coast` (`--layers …,coast` ou `add-layer coast`) : le rivage (falaise, sable, galets ou roche) et les plages qui touchent la côte, pour la mer animée de la 3.0 (U9).
 - Un parcours loin de la mer ne change pas.
+- Grands champs (plusieurs km, milliers de points) : les rangs des tracteurs se calculent en quelques millisecondes au lieu de 20 s, ce qui retardait l'arrivée du terrain proche et des arbres (à-coups au premier essai de la Côte d'Opale).
 - La pleine mer est écrite en grands rectangles et non plus carré de 1 km par carré : les tronçons au bord de la mer se chargent en moins d'une seconde au lieu de 20 (pire image de 142 ms au premier essai).
 
 ### Rendu plus léger (étude du 5 et 6 novembre)

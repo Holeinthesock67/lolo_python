@@ -10,6 +10,7 @@ const RoadTraffic := preload("res://scripts/road_traffic_model.gd")
 const RoadTrafficRenderer := preload("res://scripts/road_traffic_renderer.gd")
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
+const FaunaPlacerRef := preload("res://scripts/fauna_placer.gd")
 
 const SLOPE := 0.04        # pente de la route secondaire
 const SECONDARY_Z := 100.0
@@ -137,6 +138,7 @@ func _run() -> void:
 	_check(rows.size() == 2 * 14 and absf(rows[1].x - rows[0].x - (300.0 - 2.0 * RoadTraffic.FIELD_MARGIN_M)) < 0.01
 		and absf(rows[2].y - rows[1].y - RoadTraffic.FIELD_ROW_M) < 0.01 and rows[2].x == rows[1].x,
 		"rangs : 14 au plus, tous les %.0f m, en zigzag (%d points)" % [RoadTraffic.FIELD_ROW_M, rows.size()])
+	_test_big_field_rows()
 	var fp: Dictionary = fields[0]
 	var p0: Dictionary = RoadTraffic.place(fp, 0, 0.0)
 	var p1: Dictionary = RoadTraffic.place(fp, 0, 10.0)
@@ -262,3 +264,33 @@ func _run() -> void:
 	await process_frame
 	print("test_road_traffic_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
+
+
+## Lot U3 (r790c) : grand champ OSM (6 km, 4 000 points) : rangs identiques à ceux du calcul sur tout
+## l'anneau, en peu de temps (tâches `osm` de 20 s sur la Côte d'Opale).
+func _test_big_field_rows() -> void:
+	var ring := PackedVector2Array()
+	for i in range(4000):
+		var a := TAU * i / 4000.0
+		var r := 3000.0 + 400.0 * sin(5.0 * a) + 60.0 * sin(37.0 * a)
+		ring.append(Vector2(r * cos(a), 0.6 * r * sin(a)))
+	var angle := 0.7
+	var t0 := Time.get_ticks_usec()
+	var rows := RoadTraffic.field_rows(ring, angle)
+	var ms := (Time.get_ticks_usec() - t0) / 1000.0
+	# Référence : rangs du milieu recalculés sur tout l'anneau (sans la liste des côtés)
+	var d := Vector2(cos(angle), sin(angle))
+	var nrm := Vector2(-d.y, d.x)
+	var worst := 0.0
+	for k in range(0, rows.size(), 2):
+		var mid := (rows[k] + rows[k + 1]) * 0.5
+		var c := FaunaPlacerRef._ring_centroid(ring)
+		var base := c + nrm * (mid - c).dot(nrm)
+		var span := RoadTraffic._row_span(ring, base, d)
+		var a2 := base + d * (span.x + RoadTraffic.FIELD_MARGIN_M)
+		var b2 := base + d * (span.y - RoadTraffic.FIELD_MARGIN_M)
+		worst = maxf(worst, minf(a2.distance_to(rows[k]) + b2.distance_to(rows[k + 1]),
+			a2.distance_to(rows[k + 1]) + b2.distance_to(rows[k])))
+	_check(rows.size() == 2 * RoadTraffic.FIELD_MAX_ROWS and worst < 0.01,
+		"grand champ : %d rangs, écart %.4f m au calcul sur tout l'anneau" % [rows.size() / 2, worst])
+	_check(ms < 300.0, "grand champ de 4 000 points : rangs en %.1f ms" % ms)
