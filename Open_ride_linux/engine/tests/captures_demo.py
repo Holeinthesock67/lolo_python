@@ -8,7 +8,8 @@
    démonstration `demo` avec son terrain) dans `DOSSIER/routes`.
 2. Pour chaque parcours et chaque qualité, une séance `sim_bench.py --world` tenue à `--vitesse` km/h
    (cycliste virtuel), assez longue pour aller jusqu'au sommet, avec des captures prises à des distances
-   choisies (`--at-m`) : début de parcours (150 et 400 m, après le compte à rebours) et approche du panneau
+   choisies (`--at-m`), scénario `nominal` : début de parcours (150 et 400 m, après le compte à rebours ; 1 000 m,
+   non revêtu, sur « Chemins des six paysages ») et approche du panneau
    du sommet (80, 50 et 30 m avant, en 1920×1080 pour que son nom se lise). Le sommet est le point le plus
    haut de la route ; un parcours sans montée n'a que les captures du début.
 3. `menu_bench.py --scenario parcours_demo --captures ecrans` : liste des parcours avec leurs cinq noms et
@@ -16,7 +17,7 @@
 4. `DOSSIER/planche.html` : toutes les captures, rangées par parcours et par qualité.
 
 Prérequis : Godot (`--godot` ou `OPENRIDE_GODOT`, comme les bancs), compilateur installé, xvfb-run sans
-`--native`. Durée : environ 45 min par qualité à 50 km/h (tour de 12 km), plus 2 min de menus.
+`--native`. Durée : environ 1 h par qualité à 50 km/h (tour de 12 km), plus 2 min de menus.
 Code de sortie : 0 si tous les bancs passent, 1 sinon.
 """
 
@@ -38,7 +39,9 @@ ROUTES = ("demo", "demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", 
 START_MARKS_M = (150.0, 400.0)
 SUMMIT_BEFORE_M = (80.0, 50.0, 30.0)
 MIN_CLIMB_M = 30.0                 # dénivelé sous lequel le parcours n'a pas de sommet à montrer
-LOAD_S = 60.0                      # chargement, compte à rebours et départ au pédalage
+LOAD_S = 90.0                      # chargement, compte à rebours et départ au pédalage
+RIDE_MARGIN = 1.3                  # vitesse moyenne sous la vitesse tenue (départ, pentes) : r811b roulait 48 km/h
+EXTRA_MARKS_M = {"demo-biomes-gravel": (1000.0,)}   # milieu de la portion non revêtue du premier bloc
 
 
 def _env() -> dict[str, str]:
@@ -61,7 +64,7 @@ def marks_for(world: Path) -> tuple[list[float], float]:
     alt = route["alt_m"]
     top = max(range(len(alt)), key=lambda i: alt[i])
     summit = min(top * float(route["ds_m"]), float(route["length_m"]))
-    marks = [m for m in START_MARKS_M if m < route["length_m"]]
+    marks = [m for m in START_MARKS_M + EXTRA_MARKS_M.get(world.name[:-len(".world")], ()) if m < route["length_m"]]
     if alt[top] - min(alt) >= MIN_CLIMB_M and summit > max(START_MARKS_M) + max(SUMMIT_BEFORE_M):
         marks += [summit - d for d in SUMMIT_BEFORE_M]
     return sorted(marks), max(marks) + 20.0
@@ -70,8 +73,10 @@ def marks_for(world: Path) -> tuple[list[float], float]:
 def run_bench(args, routes: Path, route_id: str, quality: str, out: Path) -> int:
     world = routes / f"{route_id}.world"
     marks, ride_m = marks_for(world)
-    duration = LOAD_S + ride_m / (args.vitesse / 3.6)
-    cmd = [sys.executable, str(TESTS_DIR / "sim_bench.py"), "--world", str(world), "--quality", quality,
+    duration = LOAD_S + RIDE_MARGIN * ride_m / (args.vitesse / 3.6)
+    # Scénario « nominal » : aucun appui du Click ni changement d'effort (le scénario « demo » par défaut en a).
+    cmd = [sys.executable, str(TESTS_DIR / "sim_bench.py"), "--scenario", "nominal", "--world", str(world),
+           "--quality", quality,
            "--speed-kmh", str(args.vitesse), "--duration", f"{duration:.0f}", "--size", "1920x1080",
            "--at-m", ",".join(f"{m:.0f}" for m in marks), "--out", str(out), "--muet"]
     if args.godot:
