@@ -127,6 +127,40 @@ func _test_pause_after_workout_done() -> void:
 	_check(h.state()["status"] == MenuFlow.PAUSE_REASONS["trainer_lost"], "pause subie : la raison passe avant l'invite")
 
 
+## Lot N17 : « Faire demi-tour » proposé sur un parcours seulement (mêmes refus que le core), commande u_turn
+## après confirmation, retour à la pause ; distance de la fiche de la pause croissante à rebours.
+func _test_u_turn_entry() -> void:
+	_check(MenuFlow.u_turn_allowed_of({"route_id": "vosges", "mode": "SIM"}), "demi-tour : parcours en SIM")
+	_check(MenuFlow.u_turn_allowed_of({"route_id": "vosges", "mode": "ERG"}), "demi-tour : parcours en ERG")
+	_check(not MenuFlow.u_turn_allowed_of({"route_id": "ow:abc", "mode": "SIM"}), "pas de demi-tour en monde ouvert")
+	_check(not MenuFlow.u_turn_allowed_of({"route_id": null, "mode": "ROGUE"}), "pas de demi-tour en run Cyber-Rogue")
+	_check(not MenuFlow.u_turn_allowed_of({"route_id": "vosges", "survivor": {}}), "pas de demi-tour en Dernier survivant")
+	_check(not MenuFlow.u_turn_allowed_of({"route_id": "vosges", "gp": {}}), "pas de demi-tour en Grand Prix")
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "RUNNING", "route_id": "vosges", "mode": "SIM", "t": 600.0, "s": 3000.0})
+	f.on_state({"session_state": "PAUSED", "pause_reason": "user", "route_id": "vosges", "mode": "SIM",
+		"t": 600.0, "s": 3000.0})
+	var ids: Array = []
+	for it in f.state()["items"]:
+		ids.append(str(it["id"]))
+	_check(ids.slice(0, 4) == ["resume", "end_save", "abandon", "u_turn"], "pause : Faire demi-tour après Abandonner (%s)" % str(ids))
+	for i in range(3):
+		f.handle("PLUS_SHORT")
+	_check(_focus_id(f) == "u_turn", "focus sur Faire demi-tour")
+	f.handle("A_LONG")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "u_turn"}, "Oui : commande u_turn")
+	_check(f.state()["screen"] == "pause", "retour à la pause après le demi-tour")
+	f.on_state({"session_state": "PAUSED", "pause_reason": "user", "route_id": "vosges", "mode": "SIM", "dir": -1,
+		"t": 600.0, "s": 3000.0})
+	f.on_state({"session_state": "RUNNING", "route_id": "vosges", "mode": "SIM", "dir": -1, "t": 700.0, "s": 2600.0})
+	f.on_state({"session_state": "PAUSED", "pause_reason": "user", "route_id": "vosges", "mode": "SIM", "dir": -1,
+		"t": 700.0, "s": 2600.0})
+	var tiles: Array = f.card(f.state()).get("tiles", [])
+	_check(not tiles.is_empty() and str(tiles[1]["value"]) == "3,4", "fiche de la pause : 3,4 km parcourus à rebours (%s)" % str(tiles))
+
+
 func _test_abandon_and_summary_quit() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true   # écran de connexion : _test_connect_screen
@@ -417,8 +451,7 @@ func _test_settings_screen() -> void:
 	# Curseur de difficulté sur l'écran de pause : set_difficulty, sans config.toml.
 	f.on_state({"session_state": "RUNNING", "difficulty_pct": 50})
 	f.on_state({"session_state": "PAUSED", "difficulty_pct": 50})
-	f.handle("MINUS_SHORT")   # dernière ligne : mode de la session libre (lot O18)
-	f.handle("MINUS_SHORT")
+	f.menu.focus_item("difficulty")   # sous Abandonner ; puis mode (lot O18) et bots (lot N18)
 	_check(_focus_id(f) == "difficulty" and f.state()["items"][3]["detail"] == "50 %" and f.state()["items"][3]["bar"] == 50,
 			"pause : curseur de difficulté")
 	f.handle("A_LONG")
@@ -980,6 +1013,7 @@ func _init() -> void:
 	_test_full_session()
 	_test_abandon_and_summary_quit()
 	_test_pause_after_workout_done()
+	_test_u_turn_entry()
 	_test_view()
 	print("test_menu_flow : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

@@ -3,9 +3,9 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Vélo du joueur et des bots qui regarde où il va et se penche dans les virages : trajectoire lissée dans la voie, cap de cette trajectoire, roulis d'équilibre | GDScript | Q2, AS2, VD4, Y18 | Petite | En PR (8 novembre) |
+| Vélo du joueur et des bots qui regarde où il va et se penche dans les virages : trajectoire lissée dans la voie, cap de cette trajectoire, roulis d'équilibre | GDScript | Q2, AS2, VD4, Y18 | Petite | Livré le 8 novembre (PR #821, correctif #826) |
 
-**Statut : en PR (8 novembre)**, captures low, medium et high à valider par le propriétaire avant fusion.
+**Statut : livré le 8 novembre (PR #821)**, captures low, medium et high validées avant fusion.
 
 ## 1. Constat
 
@@ -53,3 +53,7 @@ Une seule pose pour tout cycliste posé sur la route, le joueur comme les bots :
 
 - **Coins du parcours arrondis au compilateur** : la chaussée elle-même se tord aux angles droits de 3 points (coupe posée sur le cap moyenné, bords en zigzag visibles sur les captures). Arrondir les coins plus serrés qu'un rayon minimal (par exemple 8 m) avant le ré-échantillonnage réglerait la route, le décor et la trajectoire d'un coup ; touche la sortie du compilateur, donc à faire dans un lot à part.
 - Coureurs du décor (P28, `road_cyclists_model.gd`) : toujours posés avec le cap de la route, sans roulis.
+
+## Livraison
+
+PR #821 (fusionnée le 8 novembre, main ff1af07b) : le cycliste et les bots regardent où ils vont et se penchent dans les virages. Correctif de l'appel en Cyber-Rogue : PR #826. Statut corrigé par le bilan du 8 novembre au soir.

@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Tests sans écran du thème commun des menus (lot « présentation des menus », étape 1) : jetons et
 ## contrastes de `ui_theme.gd`, aide des boutons (`button_help.gd`) fidèle au plan des boutons §7.1,
-## pictogrammes (`ui_icons.gd`), menu plein écran (`menu_view.gd`) avec l'accueil entier, la sélection,
+## pictogrammes (`ui_icons.gd`), menu plein écran (`menu_view.gd`) avec l'accueil (neuf entrées à la fois), la sélection,
 ## les éléments désactivés et la carte de détail, table des couleurs de données (couleurs en dur :
 ## test_theme_colors.gd) ;
 ## étape 2 : fiches de la carte (catalog_model.route_sheet, workout_sheet), carte selon l'écran
@@ -139,8 +139,11 @@ func _test_view() -> void:
 	var home: Array = f.state()["items"]
 	_check(v.anchor_right == 1.0 and v.anchor_bottom == 1.0 and v.offset_left == 0.0 and v.offset_top == 0.0,
 		"menu en plein écran")
-	_check(v.items_text().split(" | ").size() == home.size() and v.more_label.text == "",
-		"accueil entier avec les appareils : %d entrées sur %d" % [v.items_text().split(" | ").size(), home.size()])
+	# Dix entrées depuis la ligne « Collection » (lot BC5) : neuf à la fois avec les pastilles des appareils
+	# (la dixième déborderait sur le bandeau des boutons en 1280 × 720), la fenêtre suit le focus.
+	var shown := v.items_text().split(" | ").size()
+	_check(home.size() == 10 and shown == MenuView.MAX_VISIBLE_WITH_DEVICES and v.more_label.text == "1 / 10",
+		"accueil avec les appareils : %d entrées sur %d, « %s »" % [shown, home.size(), v.more_label.text])
 	_check(v.devices.visible and v.button_bar.visible and not v.card.visible, "accueil : pastilles et bandeau, sans carte")
 	var first: PanelContainer = v._item_panels[0]
 	_check(first.get_meta("focused") and first.get_theme_stylebox("panel").border_color == UiTheme.FOCUS,

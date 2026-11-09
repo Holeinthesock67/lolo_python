@@ -36,6 +36,8 @@ signal plans_received(msg: Dictionary)
 ## Historique (lot O28, contrat 1.5) : réponse à list_history et bilan d'une séance (history_session).
 signal history_received(msg: Dictionary)
 signal history_session_received(msg: Dictionary)
+## Collection de cartes (série BC, lot BC5, contrat 1.6) : réponse à list_collection.
+signal collection_received(msg: Dictionary)
 ## Séance conseillée (série CO, lot CO5, contrat 1.12) : réponse à get_coach, set_next_race, clear_next_race,
 ## set_watch_advice et clear_watch_advice.
 signal coach_received(msg: Dictionary)
@@ -75,7 +77,7 @@ const EngineArgs := preload("res://scripts/engine_args.gd")
 
 const CONTRACT_VERSION := 1
 ## Révision du contrat annoncée dans hello (champ facultatif rev, révision 1.3).
-const CONTRACT_REV := "1.7"   # série T (T8, T9), monde ouvert (W10 à W12), peloton (PL1) lus ; objet `track` (VD6) annoncé, affiché au lot VD9
+const CONTRACT_REV := "1.7"   # série T (T8, T9), monde ouvert (W10 à W12), peloton (PL1) lus ; objet `track` (VD6) annoncé, affiché au lot VD9 ; de la 1.9, `dir` et `u_turn` (lot N17) déjà lus
 ## Version de l'engine, lue dans project.godot (source unique : fichier VERSION, lot O2).
 var engine_version: String = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 const SERVER_HOST := "127.0.0.1"
@@ -325,6 +327,8 @@ func _poll_incoming() -> void:
 				history_received.emit(json_obj)
 			"history_session":
 				history_session_received.emit(json_obj)
+			"collection":
+				collection_received.emit(json_obj)
 			"coach":
 				_on_coach(json_obj)
 			"world_status":
@@ -588,6 +592,11 @@ func send_set_difficulty(pct: int) -> int:
 	return send_command("set_difficulty", {"pct": pct})
 
 
+## Bots de la séance changés sur l'écran de pause (lot N18, contrat 1.9) : même liste que `bots` de `start`.
+func send_set_bots(bots: Array) -> int:
+	return send_command("set_bots", {"bots": bots})
+
+
 ## Compose une run du Cyber-Rogue (lot R13, contrat 1.4) : objective, duration_min, seed, w_prime_j, chassis.
 func start_run(args: Dictionary) -> int:
 	return send_command("start_run", args)
@@ -661,6 +670,17 @@ func list_plans() -> int:
 ## Historique du profil en cours (lot O28, contrat 1.5). Réponse : signal history_received.
 func list_history() -> int:
 	return send_command("list_history", {})
+
+
+## Collection de cartes du profil en cours (lot BC5). Réponse : collection_received.
+func list_collection() -> int:
+	return send_command("list_collection", {})
+
+
+## Cartes montrées au joueur (clés « id » ou « id:année »), notées dans collection_vue.json du profil ;
+## pas de réponse (clé inconnue : error bad_args).
+func collection_seen(keys: Array) -> int:
+	return send_command("collection_seen", {"keys": keys})
 
 
 ## Bilan d'une séance de l'historique (`id` du message `history`). Réponse : history_session_received, ou error bad_args.

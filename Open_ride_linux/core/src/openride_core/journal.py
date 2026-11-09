@@ -46,6 +46,12 @@ Sortes de lignes :
   `target_n`, `speed_kmh`, `k`) puis `"resistance_fallback"` (mêmes champs sans `retake`) : résistance
   calculée sans effet, contrôle repris puis repli sur le SIM du trainer (essai du 2 novembre). Lignes facultatives, absentes du FIT ; les lectures
   qui ne connaissent pas cette sorte l'ignorent.
+- `{"kind": "bots", "ts": ..., "t": ..., "reason": "start" | "set_bots", "bots": [{"id": ..., "name": ...,
+  "kind": "constant" | "ghost", "power_w": ... | "profile": ..., "level_pct": ...}]}` : bots de la séance
+  au départ (s'il y en a) et à chaque changement fait sur l'écran de pause (commande `set_bots`, lot N18) ;
+  `t` : temps de la séance ; `power_w` pour un bot à puissance constante, `profile` (et `level_pct` s'il
+  a été choisi) pour un bot à profil. Ligne facultative, absente du FIT ; les lectures qui ne
+  connaissent pas cette sorte l'ignorent.
 `ts` est l'heure Unix (secondes, UTC).
 """
 
@@ -65,7 +71,7 @@ JOURNAL_DIR = OPENRIDE_HOME / "Activities" / ".journal"
 FSYNC_EVERY_S = 5.0   # fsync bloque la boucle ~7 ms ; flush à chaque ligne protège déjà d'un plantage du programme
 
 TIMER_EVENTS = ("start", "pause", "resume", "stop")
-EVENTS = (*TIMER_EVENTS, "resume_after_crash", "decrochage")
+EVENTS = (*TIMER_EVENTS, "resume_after_crash", "decrochage", "u_turn")   # u_turn : demi-tour (lot N17)
 DEVICES = ("trainer", "click_plus", "click_minus", "hr")
 DEVICE_STATES = ("up", "down")
 
@@ -100,13 +106,14 @@ class Record:
     cadence_target_rpm: int | None = None  # cadence cible de l'ERG cadence (tr/min), None sinon (lot O18)
     surface: str | None = None         # surface roulée (paved, compacted, gravel, dirt), None gravel coupé (lot U21)
     gravel_grade_pct: float | None = None  # supplément de pente du gravel avant la borne commune, None gravel coupé
+    pos: float | None = None           # position sur le parcours (m) quand elle diffère de `distance`, après un demi-tour (lot N17)
 
 
 # Champs facultatifs (séries P et Q, lot O18) absents de la ligne quand ils valent None (vent coupé,
 # pas de bot, pas d'ERG libre, gravel coupé) :
 # une séance sans vent ni bot garde exactement les lignes d'avant, et la mémoire de la séance aussi.
 OPTIONAL_RECORD_KEYS = ("head_mps", "cross_mps", "wind_grade_pct", "draft", "draft_w", "hr_frozen", "erg_kind", "cadence_target_rpm",
-                        "surface", "gravel_grade_pct")
+                        "surface", "gravel_grade_pct", "pos")
 
 
 # Lignes de jeu de la série T (lot T7), lues par les records (T5) et la progression (V5).
@@ -154,12 +161,15 @@ class JournalWriter:
     def record(self, rec: Record) -> None:
         self._write(record_line(rec))
 
-    def event(self, name: str, ts: float, reason: str | None = None) -> None:
+    def event(self, name: str, ts: float, reason: str | None = None, extra: dict | None = None) -> None:
+        """Événement ; `extra` : champs propres à l'événement (`s`, `distance` et `dir` du demi-tour, lot N17)."""
         if name not in EVENTS:
             raise ValueError(f"événement inconnu : {name}")
         line = {"kind": "event", "event": name, "ts": ts}
         if reason:
             line["reason"] = reason
+        if extra:
+            line.update(extra)
         self._write(line)
 
     def device(self, device: str, state: str, ts: float) -> None:
@@ -181,6 +191,10 @@ class JournalWriter:
     def junction(self, line: dict) -> None:
         """Branche prise à un carrefour du monde ouvert (lot W9)."""
         self._write({**line, "kind": "junction"})
+
+    def bots(self, line: dict) -> None:
+        """Bots de la séance (lot N18) : ligne `bots` déjà formée."""
+        self._write({**line, "kind": "bots"})
 
     def powerup(self, kind: str, t_start: float, duration_s: float, ts: float) -> None:
         """Bonus activé (série T, lot T5) : type, début en temps chronométré, durée."""

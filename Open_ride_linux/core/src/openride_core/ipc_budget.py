@@ -255,6 +255,13 @@ def _extras_1_7(d: dict[str, Any]) -> None:
     d["track"] = worst_track()
 
 
+def _extras_1_9(d: dict[str, Any]) -> None:
+    # Demi-tour depuis la pause (lot N17) : `dir` = -1 à rebours ; `segment`, `bot_ahead` et `bot_behind`
+    # n'y sont plus remplis, majorant gardé avec eux. Les révisions 1.7 (Grand Prix) et 1.8 (collection, sans
+    # champ de `state`) ont leurs trames à part (`worst_grandprix_state`).
+    d["dir"] = -1
+
+
 # Une entrée par révision : chaque révision hérite des ajouts des précédentes.
 REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.1": _extras_1_1,
@@ -264,6 +271,7 @@ REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.5": _extras_1_5,
     "1.6": _extras_1_6,
     "1.7": _extras_1_7,
+    "1.9": _extras_1_9,
 }
 
 
