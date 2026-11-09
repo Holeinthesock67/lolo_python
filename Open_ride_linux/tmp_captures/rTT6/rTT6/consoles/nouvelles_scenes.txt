@@ -1,0 +1,114 @@
+[OK] 1280x720_low · aspiration_plus · capture enregistrée
+[OK] 1280x720_low · aspiration_plus · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · aspiration_plus · Aspiration + : arc violet au-dessus du bot : {'boost': True, 'bot': 'bot1', 'fill': 0.3, 'glow': False, 'on_screen': True, 'point': [730.519348144531, 246.625106811523], 'text': '', 'visible': True}
+[OK] 1280x720_low · echappee_avatar · capture enregistrée
+[OK] 1280x720_low · echappee_avatar · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · echappee_avatar · Échappée : avatar translucide dans l'image : {'breakaway': True, 'camera_lane_m': 1.2, 'crank': 5.71628805443187, 'crank_clock_s': 47.283738, 'crank_turned': 363.857850563668, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1280x720_low · echappee_finie · capture enregistrée
+[OK] 1280x720_low · echappee_finie · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · echappee_finie · sans bonus : avatar opaque, arc bleu : False, False
+[OK] 1280x720_low · bonus_refus_actif · capture enregistrée
+[OK] 1280x720_low · bonus_refus_actif · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_low · bonus_refus_actif · texte bonus_held : « Enclume refusée »
+[OK] 1280x720_low · bonus_refus_actif · bloc bonus à trois lignes au-dessus de l'encart des bots : bonus [1017.0, 423.519989013672, 243.0, 81.0000305175781], bots [1017.0, 512.52001953125, 243.0, 123.119995117188]
+[OK] 1280x720_low · bonus_refus_actif · éléments dans l'écran : 30 éléments visibles
+[OK] 1280x720_low · bonus_refus_actif · lignes du HUD sans chevauchement
+[OK] 1280x720_low · bonus_refus_actif · panneaux dans l'écran : 7 panneaux
+[OK] 1280x720_low · bonus_refus_actif · panneaux sans chevauchement
+[OK] 1280x720_low · bonus_refus_actif · textes dans panel_left
+[OK] 1280x720_low · bonus_refus_actif · textes dans panel_right
+[OK] 1280x720_medium · aspiration_plus · capture enregistrée
+[OK] 1280x720_medium · aspiration_plus · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · aspiration_plus · Aspiration + : arc violet au-dessus du bot : {'boost': True, 'bot': 'bot1', 'fill': 0.3, 'glow': False, 'on_screen': True, 'point': [730.872436523438, 246.170639038086], 'text': '30 %', 'visible': True}
+[OK] 1280x720_medium · echappee_avatar · capture enregistrée
+[OK] 1280x720_medium · echappee_avatar · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · echappee_avatar · Échappée : avatar translucide dans l'image : {'breakaway': True, 'camera_lane_m': 1.2, 'crank': 3.11058513409887, 'crank_clock_s': 48.084333, 'crank_turned': 386.384888872053, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1280x720_medium · echappee_finie · capture enregistrée
+[OK] 1280x720_medium · echappee_finie · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · echappee_finie · sans bonus : avatar opaque, arc bleu : False, False
+[OK] 1280x720_medium · bonus_refus_actif · capture enregistrée
+[OK] 1280x720_medium · bonus_refus_actif · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_medium · bonus_refus_actif · texte bonus_held : « Enclume refusée »
+[OK] 1280x720_medium · bonus_refus_actif · bloc bonus à trois lignes au-dessus de l'encart des bots : bonus [1017.0, 423.519989013672, 243.0, 81.0000305175781], bots [1017.0, 512.52001953125, 243.0, 123.119995117188]
+[OK] 1280x720_medium · bonus_refus_actif · éléments dans l'écran : 30 éléments visibles
+[OK] 1280x720_medium · bonus_refus_actif · lignes du HUD sans chevauchement
+[OK] 1280x720_medium · bonus_refus_actif · panneaux dans l'écran : 7 panneaux
+[OK] 1280x720_medium · bonus_refus_actif · panneaux sans chevauchement
+[OK] 1280x720_medium · bonus_refus_actif · textes dans panel_left
+[OK] 1280x720_medium · bonus_refus_actif · textes dans panel_right
+[OK] 1280x720_high · aspiration_plus · capture enregistrée
+[OK] 1280x720_high · aspiration_plus · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · aspiration_plus · Aspiration + : arc violet au-dessus du bot : {'boost': True, 'bot': 'bot1', 'fill': 0.3, 'glow': True, 'on_screen': True, 'point': [729.852172851562, 247.488571166992], 'text': '30 %', 'visible': True}
+[OK] 1280x720_high · echappee_avatar · capture enregistrée
+[OK] 1280x720_high · echappee_avatar · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · echappee_avatar · Échappée : avatar translucide dans l'image : {'breakaway': True, 'camera_lane_m': 1.2, 'crank': 3.57474602388883, 'crank_clock_s': 48.373486, 'crank_turned': 386.849049761843, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1280x720_high · echappee_finie · capture enregistrée
+[OK] 1280x720_high · echappee_finie · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · echappee_finie · sans bonus : avatar opaque, arc bleu : False, False
+[OK] 1280x720_high · bonus_refus_actif · capture enregistrée
+[OK] 1280x720_high · bonus_refus_actif · taille de l'image : 1280x720, attendu 1280x720
+[OK] 1280x720_high · bonus_refus_actif · texte bonus_held : « Enclume refusée »
+[OK] 1280x720_high · bonus_refus_actif · bloc bonus à trois lignes au-dessus de l'encart des bots : bonus [1017.0, 423.519989013672, 243.0, 81.0000305175781], bots [1017.0, 512.52001953125, 243.0, 123.119995117188]
+[OK] 1280x720_high · bonus_refus_actif · éléments dans l'écran : 30 éléments visibles
+[OK] 1280x720_high · bonus_refus_actif · lignes du HUD sans chevauchement
+[OK] 1280x720_high · bonus_refus_actif · panneaux dans l'écran : 7 panneaux
+[OK] 1280x720_high · bonus_refus_actif · panneaux sans chevauchement
+[OK] 1280x720_high · bonus_refus_actif · textes dans panel_left
+[OK] 1280x720_high · bonus_refus_actif · textes dans panel_right
+[OK] 1920x1080_low · aspiration_plus · capture enregistrée
+[ÉCHEC] 1920x1080_low · aspiration_plus · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · aspiration_plus · Aspiration + : arc violet au-dessus du bot : {'boost': True, 'bot': 'bot1', 'fill': 0.3, 'glow': False, 'on_screen': True, 'point': [751.502807617188, 246.472946166992], 'text': '', 'visible': True}
+[OK] 1920x1080_low · echappee_avatar · capture enregistrée
+[ÉCHEC] 1920x1080_low · echappee_avatar · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · echappee_avatar · Échappée : avatar translucide dans l'image : {'breakaway': True, 'camera_lane_m': 1.2, 'crank': 1.77021834525957, 'crank_clock_s': 60.118692, 'crank_turned': 454.159560462189, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1920x1080_low · echappee_finie · capture enregistrée
+[ÉCHEC] 1920x1080_low · echappee_finie · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · echappee_finie · sans bonus : avatar opaque, arc bleu : False, False
+[OK] 1920x1080_low · bonus_refus_actif · capture enregistrée
+[ÉCHEC] 1920x1080_low · bonus_refus_actif · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_low · bonus_refus_actif · texte bonus_held : « Enclume refusée »
+[OK] 1920x1080_low · bonus_refus_actif · bloc bonus à trois lignes au-dessus de l'encart des bots : bonus [1487.56665039062, 594.692687988281, 341.339599609375, 113.737548828125], bots [1487.56665039062, 719.66357421875, 341.339599609375, 172.880981445312]
+[OK] 1920x1080_low · bonus_refus_actif · éléments dans l'écran : 30 éléments visibles
+[OK] 1920x1080_low · bonus_refus_actif · lignes du HUD sans chevauchement
+[OK] 1920x1080_low · bonus_refus_actif · panneaux dans l'écran : 7 panneaux
+[OK] 1920x1080_low · bonus_refus_actif · panneaux sans chevauchement
+[OK] 1920x1080_low · bonus_refus_actif · textes dans panel_left
+[OK] 1920x1080_low · bonus_refus_actif · textes dans panel_right
+[OK] 1920x1080_medium · aspiration_plus · capture enregistrée
+[ÉCHEC] 1920x1080_medium · aspiration_plus · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_medium · aspiration_plus · Aspiration + : arc violet au-dessus du bot : {'boost': True, 'bot': 'bot1', 'fill': 0.3, 'glow': False, 'on_screen': True, 'point': [752.075866699219, 245.67985534668], 'text': '30 %', 'visible': True}
+[OK] 1920x1080_medium · echappee_avatar · capture enregistrée
+[ÉCHEC] 1920x1080_medium · echappee_avatar · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_medium · echappee_avatar · Échappée : avatar translucide dans l'image : {'breakaway': True, 'camera_lane_m': 1.2, 'crank': 6.01115794089792, 'crank_clock_s': 60.792444, 'crank_turned': 452.117314750647, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1920x1080_medium · echappee_finie · capture enregistrée
+[ÉCHEC] 1920x1080_medium · echappee_finie · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_medium · echappee_finie · sans bonus : avatar opaque, arc bleu : False, False
+[OK] 1920x1080_medium · bonus_refus_actif · capture enregistrée
+[ÉCHEC] 1920x1080_medium · bonus_refus_actif · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_medium · bonus_refus_actif · texte bonus_held : « Enclume refusée »
+[OK] 1920x1080_medium · bonus_refus_actif · bloc bonus à trois lignes au-dessus de l'encart des bots : bonus [1487.56665039062, 594.692687988281, 341.339599609375, 113.737548828125], bots [1487.56665039062, 719.66357421875, 341.339599609375, 172.880981445312]
+[OK] 1920x1080_medium · bonus_refus_actif · éléments dans l'écran : 30 éléments visibles
+[OK] 1920x1080_medium · bonus_refus_actif · lignes du HUD sans chevauchement
+[OK] 1920x1080_medium · bonus_refus_actif · panneaux dans l'écran : 7 panneaux
+[OK] 1920x1080_medium · bonus_refus_actif · panneaux sans chevauchement
+[OK] 1920x1080_medium · bonus_refus_actif · textes dans panel_left
+[OK] 1920x1080_medium · bonus_refus_actif · textes dans panel_right
+[OK] 1920x1080_high · aspiration_plus · capture enregistrée
+[ÉCHEC] 1920x1080_high · aspiration_plus · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_high · aspiration_plus · Aspiration + : arc violet au-dessus du bot : {'boost': True, 'bot': 'bot1', 'fill': 0.3, 'glow': True, 'on_screen': True, 'point': [753.062133789062, 245.057739257812], 'text': '30 %', 'visible': True}
+[OK] 1920x1080_high · echappee_avatar · capture enregistrée
+[ÉCHEC] 1920x1080_high · echappee_avatar · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_high · echappee_avatar · Échappée : avatar translucide dans l'image : {'breakaway': True, 'camera_lane_m': 1.2, 'crank': 5.27384813624897, 'crank_clock_s': 69.206939, 'crank_turned': 507.928672710615, 'hand_z': -0.579999983310699, 'hip_y': 0.975625455379486, 'lane_m': 1.2, 'lod': 0, 'looks': {'frame': 'frame_round', 'glasses': 'glasses_clear', 'helmet': 'helmet_road', 'kit': 'kit_plain', 'socks': 'socks_white', 'wheels': 'wheels_spoked'}, 'nodes': 27, 'on_screen': True, 'shoulder_y': 1.30694401264191, 'standing': False, 'streaks': False, 'triangles': 5640, 'view': 'follow', 'visible': True}
+[OK] 1920x1080_high · echappee_finie · capture enregistrée
+[ÉCHEC] 1920x1080_high · echappee_finie · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_high · echappee_finie · sans bonus : avatar opaque, arc bleu : False, False
+[OK] 1920x1080_high · bonus_refus_actif · capture enregistrée
+[ÉCHEC] 1920x1080_high · bonus_refus_actif · taille de l'image : 1857x1011, attendu 1920x1080
+[OK] 1920x1080_high · bonus_refus_actif · texte bonus_held : « Enclume refusée »
+[OK] 1920x1080_high · bonus_refus_actif · bloc bonus à trois lignes au-dessus de l'encart des bots : bonus [1487.56665039062, 594.692687988281, 341.339599609375, 113.737548828125], bots [1487.56665039062, 719.66357421875, 341.339599609375, 172.880981445312]
+[OK] 1920x1080_high · bonus_refus_actif · éléments dans l'écran : 30 éléments visibles
+[OK] 1920x1080_high · bonus_refus_actif · lignes du HUD sans chevauchement
+[OK] 1920x1080_high · bonus_refus_actif · panneaux dans l'écran : 7 panneaux
+[OK] 1920x1080_high · bonus_refus_actif · panneaux sans chevauchement
+[OK] 1920x1080_high · bonus_refus_actif · textes dans panel_left
+[OK] 1920x1080_high · bonus_refus_actif · textes dans panel_right

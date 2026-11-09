@@ -1,0 +1,6 @@
+[ÉCHEC] 1920x1080_low · camera_follow_near · taille de l'image : 1857x1011, attendu 1920x1080
+[ÉCHEC] 1920x1080_low · erreur · taille de l'image : 1857x1011, attendu 1920x1080
+[ÉCHEC] 1920x1080_medium · camera_follow_near · taille de l'image : 1857x1011, attendu 1920x1080
+[ÉCHEC] 1920x1080_medium · erreur · taille de l'image : 1857x1011, attendu 1920x1080
+[ÉCHEC] 1920x1080_high · camera_follow_near · taille de l'image : 1857x1011, attendu 1920x1080
+[ÉCHEC] 1920x1080_high · erreur · taille de l'image : 1857x1011, attendu 1920x1080
