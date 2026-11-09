@@ -33,6 +33,8 @@ const WtfScene := preload("res://scripts/wtf/wtf_scene.gd")
 const WtfSceneModel := preload("res://scripts/wtf/wtf_scene_model.gd")
 const SurvivorHudModel := preload("res://scripts/survivor/survivor_hud_model.gd")
 const SurvivorView := preload("res://scripts/survivor/survivor_view.gd")
+const GpHudModel := preload("res://scripts/grandprix/gp_hud_model.gd")
+const GpView := preload("res://scripts/grandprix/gp_view.gd")
 const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
 const TrackView := preload("res://scripts/track/track_view.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
@@ -138,6 +140,9 @@ var wtf_scene = null
 ## Dernier survivant (lots DS5 et DS6) : modèle du HUD (bloc, liste, bandeaux, arches à dessiner) et sa vue.
 var survivor_hud = SurvivorHudModel.new()
 var survivor_view = null
+## Grand Prix des objets (lot GP8) : modèle du HUD (case d'objet, place, bande de course, voies, avertissements) et sa vue.
+var gp_hud = GpHudModel.new()
+var gp_view = null
 var track_hud = TrackHudModel.new()
 var track_view = null
 ## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
@@ -439,6 +444,8 @@ func _ready() -> void:
 	hud.add_child(wtf_view)
 	survivor_view = SurvivorView.new()
 	hud.add_child(survivor_view)
+	gp_view = GpView.new()
+	hud.add_child(gp_view)
 	track_view = TrackView.new()
 	hud.add_child(track_view)
 	wtf_scene = WtfScene.new()
@@ -1640,6 +1647,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"rogue": rogue_host.test_info(),
 		"wtf": wtf_scene.test_info(),
 		"survivor": survivor_view.test_info() if survivor_view != null else {},
+		"grandprix": gp_view.test_info() if gp_view != null else {},
 		"survivor_arches": segment_markers.survivor_arches().size() if segment_markers != null else 0,
 		"track": track_view.test_info() if track_view != null else {},
 		"scoreboard": velodrome_hall.scoreboard_text() if velodrome_hall != null else "",
@@ -2026,6 +2034,7 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
 		_update_survivor(state, in_session)
+		_update_grandprix(state, in_session)
 		_update_track(state, in_session)
 		if not state.has("wtf") and wtf_scene.is_active():   # séance WTF finie : rien ne reste derrière le menu
 			wtf_scene.step({}, null, 0.0, Callable(), sun)
@@ -2128,6 +2137,22 @@ func _update_survivor(state: Dictionary, in_session: bool) -> void:
 	PerfProbe.mark_since("survivant", "", t_step)   # banc (lot DS8) : une image lente nomme le mode
 
 
+## Grand Prix des objets (lot GP8), à chaque trame : case d'objet, place, bande de course, voies et avertissements.
+## Hors du mode, tout est retiré (et le modèle remis à zéro pour la course suivante).
+func _update_grandprix(state: Dictionary, in_session: bool) -> void:
+	var gp = state.get("gp", null) if in_session else null
+	if gp == null:
+		if gp_view.visible:
+			gp_view.update_view({"visible": false})
+		if not in_session:
+			gp_hud.reset()
+		return
+	var t_step := Time.get_ticks_usec()
+	gp_view.right_top = hud.free_right_top()
+	gp_view.update_view(gp_hud.view(state, Time.get_ticks_msec() / 1000.0))
+	PerfProbe.mark_since("grand_prix", "", t_step)   # banc : une image lente nomme le mode
+
+
 ## Épreuves de piste (lot VD9), à chaque trame : bandeau, tours, liste et blocs du HUD, tableau d'affichage de la
 ## salle, cloche, pistolet et public. Hors d'une épreuve, tout est retiré et le modèle remis à zéro.
 func _update_track(state: Dictionary, in_session: bool) -> void:
@@ -2154,8 +2179,9 @@ func _show_bots(rider_s: float, rider_v: float, now_us: int) -> void:
 	bots_model.vehicles = living_decor.vehicle_places() if living_decor != null else []
 	var view: Array = bots_model.view(rider_s, rider_v, now_us)
 	if hud != null and hud.has_method("update_bots"):
-		# Dernier survivant : la liste des coureurs (survivor_view.gd) remplace l'encart des bots
-		hud.update_bots([] if _last_state.has("survivor") or _last_state.has("track") else view, bots_model.race())
+		# Dernier survivant, Grand Prix et épreuves de piste : la liste des coureurs (survivor_view.gd), la bande
+		# de course (grandprix/gp_view.gd) ou le HUD de piste (track/track_view.gd) remplace l'encart des bots
+		hud.update_bots([] if _last_state.has("survivor") or _last_state.has("gp") or _last_state.has("track") else view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route)
 	if living_decor != null:

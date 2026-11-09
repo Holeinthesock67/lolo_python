@@ -2,10 +2,10 @@
 
     openride-compiler build <trace .gpx|.fit|.tcx|.fit.gz|.tcx.gz|.zip> [--name NOM] [--out DOSSIER] [--out-and-back] [--force]
                             [--layers route,terrain,biome,buildings,vegetation,poi,water,roads,segments] [--offline]
-                            [--biome ID]
+                            [--biome ID] [--variant GROUND,ROOFS]
     openride-compiler add-layer <dossier.world> terrain|biome|buildings|vegetation|poi|water|roads|segments [--offline]
-                                [--manual FICHIER.segments.toml] [--biome ID]
-    openride-compiler list | build-all [--layers ...] [--biome ID] [--dry-run] [--offline]
+                                [--manual FICHIER.segments.toml] [--biome ID] [--variant GROUND,ROOFS]
+    openride-compiler list | build-all [--layers ...] [--biome ID] [--variant GROUND,ROOFS] [--dry-run] [--offline]
     openride-compiler theme-check <dossier du thème>
     openride-compiler theme-pack <dossier du thème> [--levels 512,1024,2048] [--fix-seams]   (lot P20, Pillow)
     openride-compiler theme-list [--themes-dir D] [--json]
@@ -36,6 +36,7 @@ from .elevation import CopernicusGlo30Provider, ElevationProvider
 from .errors import EXIT_INPUT, EXIT_INTERNAL, EXIT_OK, CompileError
 from .frame import LocalFrame
 from . import biomes as BIO
+from . import regional as REG
 from .landcover import LandcoverSource, WorldCoverSource
 from .track_formats import read_track, scan_tracks, track_stem
 from .osm import OverpassClient
@@ -101,6 +102,17 @@ def parse_biome(text: str) -> str:
     return text
 
 
+VARIANT_HELP = ("variante régionale (lot U4) imposée à toutes les tuiles de la couche biome, ex. basalte,ardoise "
+                "(un membre vide reste null)")
+
+
+def parse_variant(text: str) -> dict:
+    try:
+        return REG.parse_forced(text)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
 def parse_layers(text: str) -> tuple[str, ...]:
     layers = tuple(dict.fromkeys(s.strip() for s in text.split(",") if s.strip()))
     unknown = [la for la in layers if la not in LAYERS]
@@ -135,6 +147,8 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--biome", type=parse_biome, default=None, metavar="ID",
                    help="impose ce biome à tout le parcours (255 partout, sans WorldCover ni OSM) ; "
                         "identifiants du Format .world §8 quater")
+    b.add_argument("--variant", type=parse_variant, default=None, metavar="GROUND,ROOFS",
+                   help=VARIANT_HELP)
     b.add_argument("--no-surface", action="store_true",
                    help="ne cherche pas la surface de la route dans OSM (pas de colonne surface, avant U20)")
     b.add_argument("--offline", action="store_true",
@@ -146,6 +160,8 @@ def build_parser() -> argparse.ArgumentParser:
                                      "segments"])
     a.add_argument("--biome", type=parse_biome, default=None, metavar="ID",
                    help="couche biome : impose ce biome à tout le parcours (255 partout)")
+    a.add_argument("--variant", type=parse_variant, default=None, metavar="GROUND,ROOFS",
+                   help=VARIANT_HELP)
     a.add_argument("--manual", type=Path, default=None,
                    help="segments : fichier <parcours>.segments.toml (défaut : celui de la trace source, "
                         "cherché à côté du .world puis dans ~/OpenRide/GPX)")
@@ -230,6 +246,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="couches à produire pour chaque trace (défaut : route,terrain,biome,segments)")
     ba.add_argument("--biome", type=parse_biome, default=None, metavar="ID",
                     help="impose ce biome à tous les parcours compilés (255 partout)")
+    ba.add_argument("--variant", type=parse_variant, default=None, metavar="GROUND,ROOFS",
+                    help=VARIANT_HELP)
     ba.add_argument("--offline", action="store_true",
                     help="interdit le réseau : les tuiles d'altitude et OSM doivent être en cache")
     ba.add_argument("--dry-run", action="store_true",
@@ -309,10 +327,11 @@ def cmd_build(args: argparse.Namespace) -> int:
         manifest["layers"]["terrain"] = terrain_manifest(tiles, provider)
 
     forced = getattr(args, "biome", None)
+    forced_variant = getattr(args, "variant", None)
     biome_layer = None
-    if "biome" in args.layers or forced is not None:
+    if "biome" in args.layers or forced is not None or forced_variant is not None:
         keys = biome_tile_keys(compiled.route, tiles)
-        biome_layer = _make_biome(compiled.route, frame, keys, forced, provider, args.offline)
+        biome_layer = _make_biome(compiled.route, frame, keys, forced, provider, args.offline, forced_variant)
         manifest["layers"]["biome"] = biome_manifest(biome_layer)
 
     osm_res = None
@@ -372,16 +391,20 @@ def _layers_written(layers: tuple[str, ...], biome_layer) -> list[str]:
 
 
 def _make_biome(route: dict, frame: LocalFrame, keys: dict, forced: str | None,
-                provider: ElevationProvider | None, offline: bool):
-    """Couche biome d'un parcours et son rapport (parts des biomes sur stderr)."""
+                provider: ElevationProvider | None, offline: bool, forced_variant: dict | None = None):
+    """Couche biome d'un parcours et son rapport (parts des biomes et variantes régionales sur stderr)."""
     if forced is not None:
-        layer = build_biome(route, frame, keys, forced=forced)
+        layer = build_biome(route, frame, keys, forced=forced, forced_variant=forced_variant)
     else:
         layer = build_biome(route, frame, keys, provider=provider, landcover=make_landcover(offline),
-                            osm_client=make_biome_osm_client(offline), offline=offline, log=stderr_log)
+                            osm_client=make_biome_osm_client(offline), offline=offline, log=stderr_log,
+                            forced_variant=forced_variant)
     count = sum(len(t) for t in layer.tiles.values())
     origin = f"imposé : {forced}" if forced else f"sources : {', '.join(layer.sources)}"
     print(f"biomes ({origin}, {count} tuile(s)) : {shares_text(layer.shares)}", file=sys.stderr)
+    v_origin = "imposées" if forced_variant is not None else "table régionale"
+    print(f"variantes ({v_origin}, tuiles proches) : {REG.summary(layer.tiles.get(BIO.NEAR.name, {}))}",
+          file=sys.stderr)
     return layer
 
 
@@ -454,7 +477,7 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
         terrain = (manifest.get("layers") or {}).get("terrain") or {}
         keys = biome_tile_keys(route, terrain.get("tiles") if terrain.get("present") else None)
         provider = None if forced else make_provider(args.offline)
-        layer = _make_biome(route, frame, keys, forced, provider, args.offline)
+        layer = _make_biome(route, frame, keys, forced, provider, args.offline, getattr(args, "variant", None))
         replace_biome_dir(world, layer)
         manifest.setdefault("layers", {})["biome"] = biome_manifest(layer)
         manifest["format_version"] = C.FORMAT_VERSION
@@ -897,6 +920,7 @@ def cmd_build_all(args: argparse.Namespace) -> int:
                 offline=args.offline,
                 no_surface=False,
                 biome=getattr(args, "biome", None),
+                variant=getattr(args, "variant", None),
             )
             cmd_build(sub_args)
             compiled_count += 1
