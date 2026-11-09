@@ -45,6 +45,8 @@ Que les parcours livrés avec le jeu ressemblent à des parcours, pas à des ban
 
 **Installations existantes.** `FAKE_WORLD_VERSION` 0.3.0 : la démo du dossier des parcours est réécrite par `ensure_demo_world`. Une démonstration des biomes dont le manifeste vient de `make_biome_world` est remplacée par les contenus de départ (`demo_world.biome_demo_outdated`) ; un parcours du joueur au même identifiant n'est jamais touché.
 
+**Captures (9 novembre).** Le banc de 60 s du 8 novembre coupait les séances avant le départ (compte à rebours seul) et le panneau du sommet était trop loin pour se lire : `engine/tests/captures_demo.py` roule chaque parcours jusqu'au sommet et capture le début et l'approche du panneau en 1920×1080 (`sim_bench.py --at-m`), avec le scénario de menus `parcours_demo`.
+
 **Affichage.** Seuls des textes changent (nom au menu et sur la carte du départ, nom du sommet) : aucun coût GPU à mesurer en `low`, `medium` et `high`, mais les captures de chaque parcours sont à valider par le propriétaire avant la fusion (critère 3).
 
 Tout lot qui change l'affichage est mesuré en `low`, `medium` et `high` (budgets GPU : 8, 13 et 16 ms depuis le 8 novembre) et ses captures sont validées par le propriétaire avant la fusion.
