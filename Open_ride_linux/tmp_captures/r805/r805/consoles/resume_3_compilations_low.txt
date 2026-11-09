@@ -1,0 +1,10 @@
+quitter_1                souris   OK              42 s
+quitter_2                souris   1 ÉCHEC(S)      45 s
+quitter_3                souris   OK              42 s
+quitter_4                souris   1 ÉCHEC(S)      45 s
+quitter_5                souris   1 ÉCHEC(S)      45 s
+quitter_6                souris   OK              42 s
+quitter_7                souris   OK              42 s
+quitter_8                souris   1 ÉCHEC(S)      44 s
+quitter_9                souris   1 ÉCHEC(S)      45 s
+quitter_10               souris   OK              42 s

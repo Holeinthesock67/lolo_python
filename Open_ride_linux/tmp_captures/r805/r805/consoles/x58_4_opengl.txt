@@ -1,0 +1,64 @@
+== quitter_1 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[ÉCHEC] arrêt de Godot bloqué après la libération de la scène : processus arrêté après 3 s, comme par le lanceur ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×6; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0); Godot_v4.7.2-st (S, hrtimer_nanosleep) ×3
+[OK] l'engine sort avec le code 0 : code 0 annoncé
+[OK] arrêt du core : code de sortie 0
+== quitter_2 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[ÉCHEC] arrêt de Godot bloqué après la libération de la scène : processus arrêté après 3 s, comme par le lanceur ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×6; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0); Godot_v4.7.2-st (S, hrtimer_nanosleep) ×3
+[OK] l'engine sort avec le code 0 : code 0 annoncé
+[OK] arrêt du core : code de sortie 0
+== quitter_3 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[OK] l'engine sort avec le code 0 : code 0 en 7.8 s
+[OK] arrêt du core : code de sortie 0
+quitter_1                souris   1 ÉCHEC(S)      45 s
+quitter_2                souris   1 ÉCHEC(S)      45 s
+quitter_3                souris   OK              43 s
+Rapport : ~/mesures-2026-11-01-auto/r805/x58/4_opengl/rapport.html
+2 passage(s) en échec sur 3

@@ -1,0 +1,202 @@
+== quitter_1 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[ÉCHEC] l'engine sort avec le code 0 : code -6 en 7.2 s
+[OK] arrêt du core : code de sortie 0
+== quitter_2 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[ÉCHEC] l'engine sort avec le code 0 : code -6 en 7.4 s
+[OK] arrêt du core : code de sortie 0
+== quitter_3 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[ÉCHEC] l'engine sort avec le code 0 : code -6 en 6.8 s
+[OK] arrêt du core : code de sortie 0
+== quitter_4 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[ÉCHEC] l'engine sort avec le code 0 : code -6 en 8.2 s
+[OK] arrêt du core : code de sortie 0
+== quitter_5 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[ÉCHEC] l'engine sort avec le code 0 : code -6 en 7.4 s
+[OK] arrêt du core : code de sortie 0
+== quitter_6 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[ÉCHEC] l'engine sort avec le code 0 : code -6 en 7.8 s
+[OK] arrêt du core : code de sortie 0
+== quitter_7 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[ÉCHEC] l'engine sort avec le code 0 : code -6 en 7.6 s
+[OK] arrêt du core : code de sortie 0
+== quitter_8 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[ÉCHEC] l'engine sort avec le code 0 : code -6 en 7.8 s
+[OK] arrêt du core : code de sortie 0
+== quitter_9 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[ÉCHEC] l'engine sort avec le code 0 : code -6 en 7.8 s
+[OK] arrêt du core : code de sortie 0
+== quitter_10 (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.6 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes']) : « Quitter OpenRide ? »
+[OK] choisir « no » : écran « home », focus « quit »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] écran confirm : « Quitter OpenRide ? »
+[OK] écran home : « OpenRide »
+[OK] choisir « quit » : écran « confirm », focus « no »
+[OK] choisir « yes » : écran « home », focus « quit »
+[OK] journal du engine : « Quitter demandé depuis le menu » : Quitter demandé depuis le menu
+[ÉCHEC] l'engine sort avec le code 0 : code -6 en 7.0 s
+[OK] arrêt du core : code de sortie 0
+quitter_1                souris   1 ÉCHEC(S)      42 s
+quitter_2                souris   1 ÉCHEC(S)      43 s
+quitter_3                souris   1 ÉCHEC(S)      42 s
+quitter_4                souris   1 ÉCHEC(S)      43 s
+quitter_5                souris   1 ÉCHEC(S)      43 s
+quitter_6                souris   1 ÉCHEC(S)      42 s
+quitter_7                souris   1 ÉCHEC(S)      42 s
+quitter_8                souris   1 ÉCHEC(S)      43 s
+quitter_9                souris   1 ÉCHEC(S)      42 s
+quitter_10               souris   1 ÉCHEC(S)      42 s
+Rapport : ~/mesures-2026-11-01-auto/r805/x58/3_liberer_low/rapport.html
+10 passage(s) en échec sur 10

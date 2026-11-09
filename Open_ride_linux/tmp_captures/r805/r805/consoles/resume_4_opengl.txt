@@ -1,0 +1,3 @@
+quitter_1                souris   1 ÉCHEC(S)      45 s
+quitter_2                souris   1 ÉCHEC(S)      45 s
+quitter_3                souris   OK              43 s
