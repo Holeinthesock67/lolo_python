@@ -1,0 +1,11 @@
+04:15:35 empreinte avant 5dd68002174aac60837bd7c9e4e300a6
+04:15:35 tête 61064edd
+04:16:45 UNIT=test_sound_player_branche
+04:16:55 fin test_sound_player rc=0
+04:16:55 UNIT=test_ambience_model_branche
+04:16:59 fin test_ambience_model rc=0
+04:16:59 UNIT=test_living_world_branche
+04:17:02 fin test_living_world rc=0
+04:17:04 empreinte après 5dd68002174aac60837bd7c9e4e300a6
+04:17:04 clone 90c08094
+04:17:04 FIN

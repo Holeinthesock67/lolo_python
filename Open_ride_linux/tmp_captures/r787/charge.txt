@@ -1,0 +1,66 @@
+04:14:15
+1.37 1.79 1.73 3/807 168684
+%CPU %MEM COMMAND
+12.8  0.7 localsearch-3
+10.9  2.1 gnome-shell
+ 7.6 11.2 claude-desktop
+ 7.5  0.6 claude-desktop
+ 1.9  2.3 claude-desktop
+ 0.9  0.6 Xwayland
+ 0.7  0.6 localsearch-ext
+
+04:14:45
+1.05 1.68 1.70 1/798 168754
+%CPU %MEM COMMAND
+12.9  0.8 localsearch-3
+10.9  2.1 gnome-shell
+ 7.6 11.2 claude-desktop
+ 7.5  0.6 claude-desktop
+ 1.9  2.3 claude-desktop
+ 0.9  0.6 Xwayland
+ 0.6  0.0 nv_queue
+
+04:15:15
+0.74 1.55 1.65 1/797 168788
+%CPU %MEM COMMAND
+12.5  0.8 localsearch-3
+10.9  2.1 gnome-shell
+ 7.6 10.7 claude-desktop
+ 7.5  0.6 claude-desktop
+ 1.9  2.3 claude-desktop
+ 0.9  0.6 Xwayland
+ 0.6  0.0 nv_queue
+
+04:15:45
+1.39 1.61 1.67 1/813 169462
+%CPU %MEM COMMAND
+13.2  0.9 localsearch-3
+10.9  2.1 gnome-shell
+ 7.6 10.8 claude-desktop
+ 7.5  0.6 claude-desktop
+ 1.9  2.3 claude-desktop
+ 1.7  0.7 localsearch-ext
+ 0.9  0.6 Xwayland
+
+04:16:15
+0.84 1.45 1.62 1/796 169487
+%CPU %MEM COMMAND
+12.9  0.9 localsearch-3
+10.9  2.1 gnome-shell
+ 7.6 10.8 claude-desktop
+ 7.5  0.6 claude-desktop
+ 1.9  2.3 claude-desktop
+ 0.9  0.6 Xwayland
+ 0.6  0.0 nv_queue
+
+04:16:45
+0.51 1.31 1.56 2/807 169649
+%CPU %MEM COMMAND
+ 100  0.0 ps
+12.5  1.0 localsearch-3
+12.1  0.0 bash
+10.9  2.1 gnome-shell
+10.2  0.5 localsearch-ext
+ 7.6 10.6 claude-desktop
+ 7.5  0.6 claude-desktop
+

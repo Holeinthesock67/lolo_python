@@ -1,0 +1,39 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_ambience_model
+
+[OK] oiseaux : chants 28 % du temps (15 à 45 %)
+[OK] oiseaux : phrases pleines et silences d'au moins 4 s (11.9 s)
+[OK] oiseaux : tirage déterministe
+[OK] entre deux phrases : au plus 40 dB plus bas
+[OK] forêt à 80 %, jour : les oiseaux dominent (forest_birds)
+[OK] champ à midi : les insectes dominent (field_insects)
+[OK] rivière à 20 m : eau audible (-20.0 dB)
+[OK] nuit : oiseaux 24.0 dB plus bas qu'à midi (≥ 20 dB)
+[OK] insectes muets la nuit
+[OK] pluie : oiseaux plus bas, pluie audible
+[OK] altitude : vent marqué (-21.5 dB)
+[OK] en pause : tout au silence en 2 s
+[OK] ambience.volume = 0 : tout muet
+[OK] low : au plus 4 fonds audibles (relevé 4)
+[OK] medium : au plus 6 fonds audibles (relevé 6)
+[OK] high : au plus 8 fonds audibles (relevé 6)
+[OK] 2 voix pour 5 fonds possibles : 2 audibles (relevé 2)
+[OK] forêt puis champ : variation max 2.75 dB en 0,5 s (≤ 3 dB)
+[OK] au champ, les insectes l'emportent ensuite
+[OK] 3 coups à 15 h
+[OK] 12 coups à midi et à minuit
+[OK] aucun coup hors de l'heure pleine
+[OK] horloge qui recule ou première lecture : rien
+[OK] moitié en forêt : part 0.59
+[OK] une maison : part bâtie 0.02
+[OK] rivière à 40 m
+[OK] rien autour : aucune forêt, pas d'eau
+[PERF] ambience_evaluate : 0.0165 ms, budget 0.1000 ms
+[OK] evaluate : 0.0165 ms
+test_ambience_model : 28 vérifications, 0 échecs
+UNIT=test_ambience_model : rendu, ERG et scénarios IPC sautés
+Budgets de temps (OPENRIDE_PERF=report) : 1 mesures, 0 dépassement(s)
+  ambience_evaluate : 0.0165 ms, budget 0.1000 ms
+Résumé :
+  OK     unit/test_ambience_model : 28 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent
