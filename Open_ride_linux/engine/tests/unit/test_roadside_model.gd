@@ -62,8 +62,12 @@ func _run() -> void:
 		and RoadsideProps.slope_color(8) != RoadsideProps.slope_color(12) and lay["layers"][2]["color"] == RoadsideProps.slope_color(7),
 		"pente moyenne : vert, bleu, rouge, noir")
 	var summit := items.filter(func(it): return it["kind"] == "summit")
-	_check(summit.size() == 1 and summit[0]["lines"] == ["Col de la Croix", "860 m"],
+	_check(summit.size() == 2 and summit[0]["lines"] == ["Col de la Croix", "860 m"] and summit[1]["lines"] == summit[0]["lines"],
 		"panneau du sommet : nom du point OSM et altitude arrondie au mètre (%s)" % str(summit[0]["lines"]))
+	_check(int(summit[0]["side"]) == 1 and int(summit[1]["side"]) == -1,
+		"panneau du sommet des deux côtés, un par sens de marche (demi-tour N17)")
+	_check(items.filter(func(it): return it["kind"] != "summit" and int(it["side"]) != 1).is_empty(),
+		"approche et bornes : à droite seulement")
 	var unnamed: Array = RoadsideModel.items(route, climbs, [])
 	_check(unnamed.filter(func(it): return it["kind"] == "summit")[0]["lines"][0] == "Sommet", "sans point nommé : « Sommet »")
 	var kms := items.filter(func(it): return it["kind"] == "km")
@@ -93,10 +97,11 @@ func _run() -> void:
 	_check(dry and shifted == [3010.0, 4040.0], "aucun objet dans l'eau ni sur le pont : bornes avancées (%s)" % str(shifted))
 	var off_road := true
 	for it in items:
-		var p: Vector3 = RoadsideModel.prop_position(route, float(it["s"]))
+		var p: Vector3 = RoadsideModel.prop_position(route, float(it["s"]), 6.0, int(it["side"]))
 		var c: Vector3 = route.sample_point(float(it["s"]))
-		off_road = off_road and is_equal_approx(p.distance_to(c), 3.0 + 1.5) and p.z > c.z   # route vers l'est : droite = +z
-	_check(off_road, "tous les objets sur le côté droit, à 1,5 m du bord de la chaussée")
+		# route vers l'est : droite = +z
+		off_road = off_road and is_equal_approx(p.distance_to(c), 3.0 + 1.5) and (p.z > c.z) == (int(it["side"]) == 1)
+	_check(off_road, "objets du côté de leur `side`, à 1,5 m du bord de la chaussée")
 	_check(RoadsideModel.paint_marks(climbs).size() == 5, "chiffres peints de 5 à 1 km du sommet")
 
 	# Affichage
@@ -110,6 +115,25 @@ func _run() -> void:
 	var face := sign.global_transform.basis.z
 	_check(lh >= RoadsideProps.LETTER_HEIGHT_M - 1e-6 and face.dot(Vector3(-1, 0, 0)) > 0.99,
 		"panneau lisible à 30 m (lettres de %.2f m), face au cycliste qui arrive" % lh)
+	var tops: Array = []
+	for k in range(16):
+		for n in props._chunks.get(k, []):
+			if str((n as Node3D).name).begins_with("summit"):
+				tops.append(n)
+	var to_west: bool = tops.size() == 2 and (tops[0] as Node3D).global_transform.basis.z.dot(Vector3(-1, 0, 0)) > 0.99
+	var to_east: bool = tops.size() == 2 and (tops[1] as Node3D).global_transform.basis.z.dot(Vector3(1, 0, 0)) > 0.99 \
+		and (tops[1] as Node3D).global_position.z < route.sample_point(float(summit[1]["s"])).z
+	_check(to_west and to_east, "panneau du sommet à gauche face au cycliste qui roule à rebours (%d panneaux)" % tops.size())
+	var borne: Node3D = null
+	for n in props._chunks.get(1, []):
+		if str((n as Node3D).name).begins_with("km"):
+			borne = n
+	var faces := {}
+	for c in borne.get_children():
+		if c is Label3D:
+			faces[signf((c as Label3D).global_transform.basis.z.dot(borne.global_transform.basis.z))] = true
+	_check(borne != null and faces.has(1.0) and faces.has(-1.0),
+		"borne kilométrique numérotée sur ses deux faces (%s)" % str(faces.keys()))
 	for k in range(16):
 		props.remove_chunk(k)
 	await process_frame

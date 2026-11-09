@@ -116,3 +116,66 @@ def write_world(out_dir: Path, name: str, manifest: dict, route: dict, force: bo
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return final
+
+
+# --- couche biome (lot U2) ------------------------------------------------------------------
+
+def biome_manifest(layer) -> dict:
+    """Bloc `layers.biome` du manifeste (Format .world v1 §8 quater)."""
+    from .biomes import BIOME_VERSION, DEFAULT_BIOME
+    from .landcover import WORLDCOVER_ATTRIBUTION, WORLDCOVER_NAME
+
+    block = {
+        "present": True,
+        "version": BIOME_VERSION,
+        "default_biome": layer.forced or DEFAULT_BIOME,
+        "forced": layer.forced,
+        "sources": list(layer.sources),
+        "shares": dict(layer.shares),
+        "tiles": {level: [[ix, iz] for ix, iz in sorted(tiles)] for level, tiles in layer.tiles.items()},
+    }
+    if WORLDCOVER_NAME in layer.sources:   # licence CC BY 4.0 : attribution obligatoire
+        block["attribution"] = WORLDCOVER_ATTRIBUTION
+    return block
+
+
+def biome_tile_filename(ix: int, iz: int) -> str:
+    return f"tile_{ix}_{iz}.json"
+
+
+def write_biome(folder: Path, layer) -> None:
+    """Écrit `folder/near/…` et `folder/far/…` (folder est le dossier `biome` ou son temporaire)."""
+    for level, tiles in layer.tiles.items():
+        d = Path(folder) / level
+        d.mkdir(parents=True, exist_ok=True)
+        for (ix, iz), tile in sorted(tiles.items()):
+            (d / biome_tile_filename(ix, iz)).write_text(json.dumps(tile, separators=(",", ":")), encoding="utf-8")
+
+
+def replace_biome_dir(world: Path, layer) -> None:
+    """Remplace `world/biome` de façon atomique : dossier temporaire voisin, puis renommage."""
+    world = Path(world)
+    final = world / "biome"
+    tmp = world / f".biome.tmp-{os.getpid()}"
+    old = world / f".biome.old-{os.getpid()}"
+    shutil.rmtree(tmp, ignore_errors=True)
+    try:
+        write_biome(tmp, layer)
+        if final.exists():
+            final.rename(old)
+            try:
+                tmp.rename(final)
+            except BaseException:
+                old.rename(final)
+                raise
+            shutil.rmtree(old, ignore_errors=True)
+        else:
+            tmp.rename(final)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def shares_text(shares: dict[str, float]) -> str:
+    """« farmland 62,4 %, temperate_forest 30,1 %, … » (rapport de compilation)."""
+    items = sorted(shares.items(), key=lambda kv: (-kv[1], kv[0]))
+    return ", ".join(f"{b} {v:.1f} %".replace(".", ",") for b, v in items) or "aucune"

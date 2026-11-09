@@ -297,10 +297,94 @@ func _test_styles_by_biome() -> void:
 
 
 # U23 : habitat par biome
+## Premier identifiant `prefix_k` dont les tirages de case ronde (u4) et de pilotis (u5) vérifient `want`.
+func _id_with(prefix: String, want: Callable) -> String:
+	for k in range(200):
+		var id := "%s_%d" % [prefix, k]
+		var h := BuildingMesh.hash_string(id)
+		if want.call(BuildingMesh._unit(h, BuildingMesh.ROUND_SALT), BuildingMesh._unit(h, BuildingMesh.STILTS_SALT)):
+			return id
+	return prefix
+
+
+# Lot U23 étape 2 : cases rondes à toit conique et maisons sur pilotis
+func _test_round_and_stilts() -> void:
+	var F := BuildingStyles.FAMILY_HOUSE
+	var hut := BuildingStyles.dress("case", F, 1.0, 6.0, 3.0, 0.2, 0.3, 0.5, 7.0, 0.1, 1.0)
+	_check(hut["shape"] == BuildingStyles.SHAPE_CONE and hut["roof"] == BuildingStyles.ROOF_THATCH
+		and hut["windows"] == BuildingStyles.WINDOWS_NONE and absf(float(hut["pitch_deg"]) - 40.0) < 1e-4
+		and float(hut["stilts_m"]) == 0.0, "case de savane 6×7 m : ronde, chaume conique à 40°, sans fenêtres ni pilotis")
+	var not_round := [
+		BuildingStyles.dress("case", F, 1.0, 6.0, 3.0, 0.2, 0.3, 0.5, 12.0, 0.1, 1.0),
+		BuildingStyles.dress("case", F, 1.0, 6.0, 3.0, 0.2, 0.3, 0.5, 7.0, 0.95, 1.0),
+		BuildingStyles.dress("case", F, 1.0, 4.0, 3.0, 0.2, 0.3, 0.5, 8.0, 0.1, 1.0),
+		BuildingStyles.dress("case", F, 1.0, 6.0, 3.0, 0.2, 0.3, 0.5, 0.0, 0.1, 1.0),
+		BuildingStyles.dress("case", BuildingStyles.FAMILY_WORSHIP, 1.0, 6.0, 3.0, 0.2, 0.3, 0.5, 7.0, 0.1, 1.0),
+		BuildingStyles.dress("tuile_plate", F, 1.0, 6.0, 3.0, 0.2, 0.3, 0.5, 7.0, 0.0, 0.0),
+	]
+	var none_round := true
+	for dd in not_round:
+		none_round = none_round and dd["shape"] != BuildingStyles.SHAPE_CONE and float(dd["stilts_m"]) == 0.0
+	_check(none_round, "pas de case ronde au-delà de 10 m, hors tirage, trop allongée, à cour intérieure, église, ni hors des styles ronds")
+	var yurt := BuildingStyles.dress("yourte", BuildingStyles.FAMILY_FARM, 1.0, 6.0, 3.0, 0.2, 0.3, 0.5, 6.0, 0.1, 1.0)
+	_check(yurt["shape"] == BuildingStyles.SHAPE_CONE and yurt["wall"] == BuildingStyles.WALL_PLASTER
+		and yurt["roof"] == BuildingStyles.ROOF_FLAT and BuildingStyles.wall_palette_key(yurt["wall"], "yourte") == "felt"
+		and BuildingStyles.roof_palette_key(yurt["roof"], "yourte") == "felt_roof",
+		"yourte de la steppe : ronde, murs et cône de feutre clair")
+	var stilt := BuildingStyles.dress("paillote", F, 1.0, 6.0, 3.0, 0.2, 0.3, 0.5, 8.0, 0.9, 0.1)
+	var shed := BuildingStyles.dress("paillote", BuildingStyles.FAMILY_FARM, 1.0, 6.0, 3.0, 0.2, 0.3, 0.5, 8.0, 0.9, 0.1)
+	_check(absf(float(stilt["stilts_m"]) - 1.5) < 1e-4 and float(shed["stilts_m"]) == 0.0,
+		"paillote de jungle : maison sur pilotis de 1,5 m, dépendances au sol")
+
+	# Maillage d'une case ronde 6 × 6 m : 12 murs sur un cercle de 3 m, sommet du cône à tan 40° × apothème
+	var b := _building(_id_with("case", func(u4: float, _u5: float) -> bool: return u4 < 0.85),
+		[[0.0, 0.0], [6.0, 0.0], [6.0, 6.0], [0.0, 6.0]], 100.0, 3.0)
+	b["style"] = "case"
+	var res: Dictionary = BuildingMesh.build([b], _theme)
+	var verts: PackedVector3Array = res["vertices"]
+	var norms: PackedVector3Array = res["normals"]
+	var on_circle := true
+	var wall_verts := 0
+	var max_y := -INF
+	for i in range(verts.size()):
+		max_y = maxf(max_y, verts[i].y)
+		if absf(norms[i].y) < 1e-4:
+			wall_verts += 1
+			on_circle = on_circle and absf(Vector2(verts[i].x - 3.0, verts[i].z - 3.0).length() - 3.0) < 1e-3
+	var apex := 103.0 + tan(deg_to_rad(40.0)) * 3.0 * cos(PI / BuildingStyles.ROUND_SIDES)
+	_check(res["built"] == 1 and res["pitched"] == 1 and on_circle and wall_verts == 4 * BuildingStyles.ROUND_SIDES,
+		"case ronde : %d murs sur le cercle de 3 m (%d sommets de murs)" % [BuildingStyles.ROUND_SIDES, wall_verts])
+	_check(absf(max_y - apex) < 1e-3, "case ronde : sommet du cône à %.2f m (%.2f)" % [apex, max_y])
+	var tris := (res["indices"] as PackedInt32Array).size() / 3
+	_check(tris <= 400, "case ronde : maillage léger (%d triangles)" % tris)
+
+	# Maison sur pilotis 8 × 6 m, sans jupe : poteaux depuis le sol, plancher à 1,5 m vu d'en dessous, murs au-dessus
+	var p := _building(_id_with("paillote", func(u4: float, u5: float) -> bool: return u4 >= 0.35 and u5 < 0.7),
+		[[0.0, 0.0], [8.0, 0.0], [8.0, 6.0], [0.0, 6.0]], 100.0, 3.0)
+	p["style"] = "paillote"
+	p["hint"] = {"building": "house", "colour": null}
+	var rp: Dictionary = BuildingMesh.build([p], _theme)
+	var pv: PackedVector3Array = rp["vertices"]
+	var pn: PackedVector3Array = rp["normals"]
+	var min_y := INF
+	var floor_under := false
+	var wall_low := INF       # bas des murs : sommets à l'aplomb exact du contour (les poteaux sont rentrés)
+	for i in range(pv.size()):
+		min_y = minf(min_y, pv[i].y)
+		if pn[i].y < -0.99 and absf(pv[i].y - 101.5) < 1e-4:
+			floor_under = true
+		var on_ring := minf(minf(absf(pv[i].x), absf(pv[i].x - 8.0)), minf(absf(pv[i].z), absf(pv[i].z - 6.0))) < 1e-4
+		if absf(pn[i].y) < 1e-4 and on_ring:
+			wall_low = minf(wall_low, pv[i].y)
+	_check(rp["built"] == 1 and absf(min_y - 100.0) < 1e-4 and floor_under,
+		"pilotis : poteaux depuis le sol (y min %.2f), dessous du plancher à 101,5 m" % min_y)
+	_check(absf(wall_low - 101.5) < 1e-4, "pilotis : les murs partent du plancher (%.2f)" % wall_low)
+
+
 func _test_biome_habitats() -> void:
 	var expect := {"alpine": "chalet", "tundra": "bois_peint", "polar": "bois_peint", "rock_desert": "pise",
 		"savanna": "case", "jungle": "paillote", "volcanic": "basalte", "wetland": "chaumiere",
-		"temperate_grassland": "tuile_plate", "farmland": "tuile_plate", "coast": "ardoise", "steppe": "pierre_seche"}
+		"temperate_grassland": "tuile_plate", "farmland": "tuile_plate", "coast": "ardoise", "steppe": "yourte"}
 	var ok := true
 	for biome in expect:
 		if BuildingStyles.resolve("", biome) != expect[biome]:
@@ -313,7 +397,7 @@ func _test_biome_habitats() -> void:
 	var all_used := true
 	for st in BuildingStyles.BIOME_ONLY_STYLES:
 		all_used = all_used and used.has(st) and BuildingStyles.STYLES.has(st)
-	_check(all_used, "U23 : chacun des 7 styles d'habitat est pris par au moins un biome")
+	_check(all_used, "U23 : chacun des %d styles d'habitat est pris par au moins un biome" % BuildingStyles.BIOME_ONLY_STYLES.size())
 
 	var chalet := BuildingStyles.dress("chalet", BuildingStyles.FAMILY_HOUSE, 1.0, 9.0, 6.0, 0.3, 0.5, 0.5)
 	_check(chalet["wall"] == BuildingStyles.WALL_CHALET and chalet["roof"] == BuildingStyles.ROOF_SLATE
@@ -384,5 +468,6 @@ func _init() -> void:
 	_test_roof_shapes()
 	_test_styles_by_biome()
 	_test_biome_habitats()
+	_test_round_and_stilts()
 	print("test_building_mesh : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

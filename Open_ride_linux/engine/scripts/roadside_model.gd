@@ -11,7 +11,11 @@ extends RefCounted
 ##   « Pente moyenne 7 % » (pente moyenne du reste de la montée, arrondie à l'unité), avec aussi le nom du
 ##   sommet (`name`), la distance (`km`), la pente (`pct`) et l'altitude du panneau (`alt_m`) pour sa mise en page ;
 ## - `km` tous les kilomètres de parcours (« km 12 »), sans doublon au point de départ d'une boucle.
-## `side` vaut 1 (à droite). Un objet qui tomberait dans l'eau (surface d'eau ou cours d'eau, donc
+## `side` vaut 1 (à droite, face au cycliste qui suit le parcours) ou -1 (à gauche, face au cycliste qui roule
+## à rebours après un demi-tour, lot N17) : le panneau du sommet est posé des deux côtés, comme sur une vraie
+## route (son nom et son altitude valent dans les deux sens) ; les panneaux d'approche, propres à la montée de
+## l'aller, et les bornes (numérotées sur leurs deux faces par roadside_props.gd) restent à droite.
+## Un objet qui tomberait dans l'eau (surface d'eau ou cours d'eau, donc
 ## aussi sur un pont) est avancé par pas de NUDGE_M, au plus MAX_NUDGE_M, sinon abandonné.
 ## `paint_marks(climbs)` : chiffres des kilomètres restants peints sur la chaussée, de 5 à 1 km du
 ## sommet, `[{s, digit}]`, pour road_markings.gdshader.
@@ -55,12 +59,13 @@ static func approach_texts(km: int, avg_pct: float) -> Array:
 	return ["Sommet à %d km" % km, "Pente moyenne %d %%" % int(round(avg_pct))]
 
 
-## Position d'un objet du bord de route (côté droit, à SIDE_OFFSET_M du bord de la chaussée).
-static func prop_position(route, s: float, road_width_m: float = RoadBuilder.ROAD_WIDTH_M) -> Vector3:
+## Position d'un objet du bord de route, à SIDE_OFFSET_M du bord de la chaussée, côté `side` (1 : droite du
+## parcours, -1 : gauche).
+static func prop_position(route, s: float, road_width_m: float = RoadBuilder.ROAD_WIDTH_M, side: int = 1) -> Vector3:
 	var smp: Dictionary = route.sample(s)
 	var h := deg_to_rad(float(smp["heading_deg"]))
 	var right := Vector3(cos(h), 0.0, sin(h))
-	return Vector3(smp["x"], smp["y"], smp["z"]) + right * (road_width_m * 0.5 + SIDE_OFFSET_M)
+	return Vector3(smp["x"], smp["y"], smp["z"]) + right * (-1.0 if side < 0 else 1.0) * (road_width_m * 0.5 + SIDE_OFFSET_M)
 
 
 static func _in_water(p: Vector3, water: Dictionary) -> bool:
@@ -85,14 +90,14 @@ static func _in_water(p: Vector3, water: Dictionary) -> bool:
 	return false
 
 
-## `s` hors de l'eau le plus proche en avançant (NAN si aucun à moins de MAX_NUDGE_M).
-static func _dry_s(route, s: float, water: Dictionary, road_width_m: float) -> float:
+## `s` hors de l'eau le plus proche en avançant (NAN si aucun à moins de MAX_NUDGE_M), côté `side`.
+static func _dry_s(route, s: float, water: Dictionary, road_width_m: float, side: int = 1) -> float:
 	var t := 0.0
 	while t <= MAX_NUDGE_M:
 		var cand := s + t
 		if cand > route.length_m:
 			return NAN
-		if not _in_water(prop_position(route, cand, road_width_m), water):
+		if not _in_water(prop_position(route, cand, road_width_m, side), water):
 			return cand
 		t += NUDGE_M
 	return NAN
@@ -121,9 +126,10 @@ static func items(route, climbs: Array, pois: Array = [], water: Dictionary = {}
 		var summit_s := float(c["summit_s"])
 		var name := _summit_name(route, summit_s, pois)
 		var alt_txt := "%s m" % format_int(int(round(float(c["summit_alt_m"]))))
-		var ss := _dry_s(route, summit_s, water, road_width_m)
-		if not is_nan(ss):
-			out.append({"kind": "summit", "s": ss, "side": 1, "text": "%s\n%s" % [name, alt_txt], "lines": [name, alt_txt]})
+		for side in [1, -1]:   # un panneau pour chaque sens de marche (demi-tour, lot N17)
+			var ss := _dry_s(route, summit_s, water, road_width_m, side)
+			if not is_nan(ss):
+				out.append({"kind": "summit", "s": ss, "side": side, "text": "%s\n%s" % [name, alt_txt], "lines": [name, alt_txt]})
 		for km in APPROACH_KM:
 			var s: float = summit_s - km * 1000.0
 			if s < float(c["start_s"]) - 1.0:
@@ -144,7 +150,8 @@ static func items(route, climbs: Array, pois: Array = [], water: Dictionary = {}
 		var sk := _dry_s(route, minf(s, route.length_m - 1.0), water, road_width_m)   # borne finale : dans le dernier tronçon
 		if not is_nan(sk):
 			out.append({"kind": "km", "s": sk, "side": 1, "text": "km %d" % k, "lines": ["km %d" % k]})
-	out.sort_custom(func(a, b): return a["s"] < b["s"] or (a["s"] == b["s"] and a["kind"] < b["kind"]))
+	out.sort_custom(func(a, b): return a["s"] < b["s"] or (a["s"] == b["s"] and (a["kind"] < b["kind"]
+		or (a["kind"] == b["kind"] and int(a["side"]) > int(b["side"])))))
 	return out
 
 

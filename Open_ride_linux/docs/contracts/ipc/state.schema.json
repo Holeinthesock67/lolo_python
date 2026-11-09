@@ -1493,7 +1493,7 @@
     },
     "powerup": {
       "type": "object",
-      "description": "Facultatif, révision 1.4 (T6) : absent en ERG (T-Q2).",
+      "description": "Facultatif, révision 1.4 (T6) : absent en ERG (T-Q2). Révision 1.13 (TT1) : valeurs des bonus tactiques, `light` gardé comme ancien nom de `feather` pendant une révision, champ facultatif `refused`.",
       "required": [
         "held",
         "active",
@@ -1506,9 +1506,14 @@
             "null"
           ],
           "enum": [
-            "light",
+            "feather",
+            "anvil",
+            "draft_plus",
             "aero",
             "power",
+            "breakaway",
+            "roller",
+            "light",
             null
           ]
         },
@@ -1518,15 +1523,45 @@
             "null"
           ],
           "enum": [
-            "light",
+            "feather",
+            "anvil",
+            "draft_plus",
             "aero",
             "power",
+            "breakaway",
+            "roller",
+            "light",
             null
           ]
         },
         "remaining_s": {
           "type": "number",
           "minimum": 0
+        },
+        "refused": {
+          "type": "object",
+          "description": "Facultatif, révision 1.13 (TT1) : dernier appui sur Z refusé, présent 2 s ; la réserve est gardée.",
+          "required": [
+            "kind",
+            "reason"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "maxLength": 16,
+              "description": "Bonus refusé (une valeur de `held` ; l'engine affiche une icône neutre pour une valeur inconnue)."
+            },
+            "reason": {
+              "type": "string",
+              "enum": [
+                "no_bots",
+                "no_descent",
+                "near_finish",
+                "no_gravel",
+                "erg"
+              ]
+            }
+          }
         }
       }
     },

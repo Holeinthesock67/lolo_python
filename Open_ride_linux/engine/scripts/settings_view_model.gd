@@ -51,7 +51,7 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## Séance conseillée (lot CO5) : `coach.objectif` ; champs des saisies du conseil (CoachViewModel.KEY_PREFIX).
 const CHOICE_TEXTS := {
 	"depart.mode": {"pedalage": "au pédalage", "immediat": "immédiat"},
-	"powerups.mode": {"on": "oui", "off": "non"},
+	"powerups.mode": {"off": "non", "classiques": "classiques", "tactiques": "tactiques"},   # contrat 1.13 (TT1)
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
 	"render.camera": {"subjective": "subjective", "follow_near": "suivi proche", "follow_far": "suivi éloigné", "side": "latérale"},
 	"render.fps": {"off": "non", "on": "oui", "detail": "détaillé"},
