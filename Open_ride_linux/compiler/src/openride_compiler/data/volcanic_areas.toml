@@ -1,0 +1,252 @@
+# Paysages volcaniques (lot U24) : dans un de ces disques, le sol nu de WorldCover (classe 60 : laves,
+# scories, cendres) donne le biome `volcanic` au lieu du désert de sable ou de roche. Rien d'autre ne change :
+# forêts, prairies et cultures d'un volcan gardent leur biome.
+#
+# Table établie à la main pour ce lot : centre approximatif (degrés décimaux, au centième) et rayon (km)
+# des volcans et champs de lave connus, sans données importées. Ajouter une ligne suffit pour un nouveau lieu.
+
+[[area]]
+name = "Teide et Las Cañadas (Tenerife)"
+lat = 28.26
+lon = -16.62
+radius_km = 14.0
+
+[[area]]
+name = "Cumbre Vieja et Taburiente (La Palma)"
+lat = 28.62
+lon = -17.86
+radius_km = 16.0
+
+[[area]]
+name = "Timanfaya (Lanzarote)"
+lat = 29.02
+lon = -13.75
+radius_km = 12.0
+
+[[area]]
+name = "Pico do Fogo (Cap-Vert)"
+lat = 14.95
+lon = -24.35
+radius_km = 10.0
+
+[[area]]
+name = "Pico (Açores)"
+lat = 38.47
+lon = -28.40
+radius_km = 8.0
+
+[[area]]
+name = "Islande"
+lat = 64.90
+lon = -18.60
+radius_km = 260.0
+
+[[area]]
+name = "Etna"
+lat = 37.75
+lon = 15.00
+radius_km = 20.0
+
+[[area]]
+name = "Vésuve"
+lat = 40.82
+lon = 14.43
+radius_km = 6.0
+
+[[area]]
+name = "Stromboli"
+lat = 38.79
+lon = 15.21
+radius_km = 3.0
+
+[[area]]
+name = "Vulcano"
+lat = 38.40
+lon = 14.96
+radius_km = 3.0
+
+[[area]]
+name = "Santorin"
+lat = 36.40
+lon = 25.40
+radius_km = 9.0
+
+[[area]]
+name = "Chaîne des Puys"
+lat = 45.78
+lon = 2.96
+radius_km = 16.0
+
+[[area]]
+name = "Elbrouz"
+lat = 43.35
+lon = 42.44
+radius_km = 12.0
+
+[[area]]
+name = "Ararat"
+lat = 39.70
+lon = 44.30
+radius_km = 15.0
+
+[[area]]
+name = "Erciyes"
+lat = 38.53
+lon = 35.45
+radius_km = 8.0
+
+[[area]]
+name = "Damavand"
+lat = 35.95
+lon = 52.11
+radius_km = 10.0
+
+[[area]]
+name = "Kilimandjaro"
+lat = -3.07
+lon = 37.35
+radius_km = 16.0
+
+[[area]]
+name = "Piton de la Fournaise (La Réunion)"
+lat = -21.24
+lon = 55.71
+radius_km = 10.0
+
+[[area]]
+name = "Fuji"
+lat = 35.36
+lon = 138.73
+radius_km = 12.0
+
+[[area]]
+name = "Asama"
+lat = 36.40
+lon = 138.52
+radius_km = 8.0
+
+[[area]]
+name = "Aso"
+lat = 32.88
+lon = 131.10
+radius_km = 12.0
+
+[[area]]
+name = "Sakurajima"
+lat = 31.58
+lon = 130.66
+radius_km = 6.0
+
+[[area]]
+name = "Klioutchevskoï (Kamtchatka)"
+lat = 56.06
+lon = 160.64
+radius_km = 30.0
+
+[[area]]
+name = "Bromo et Tengger"
+lat = -7.94
+lon = 112.95
+radius_km = 10.0
+
+[[area]]
+name = "Rinjani"
+lat = -8.41
+lon = 116.46
+radius_km = 10.0
+
+[[area]]
+name = "Mayon"
+lat = 13.26
+lon = 123.69
+radius_km = 8.0
+
+[[area]]
+name = "Tongariro et Ruapehu"
+lat = -39.20
+lon = 175.60
+radius_km = 20.0
+
+[[area]]
+name = "Taranaki"
+lat = -39.30
+lon = 174.06
+radius_km = 8.0
+
+[[area]]
+name = "Hawaï (Grande Île)"
+lat = 19.60
+lon = -155.50
+radius_km = 80.0
+
+[[area]]
+name = "Haleakalā (Maui)"
+lat = 20.71
+lon = -156.25
+radius_km = 10.0
+
+[[area]]
+name = "Mont Saint Helens"
+lat = 46.20
+lon = -122.18
+radius_km = 10.0
+
+[[area]]
+name = "Lassen"
+lat = 40.49
+lon = -121.50
+radius_km = 8.0
+
+[[area]]
+name = "Craters of the Moon"
+lat = 43.42
+lon = -113.52
+radius_km = 25.0
+
+[[area]]
+name = "Popocatépetl et Iztaccíhuatl"
+lat = 19.10
+lon = -98.64
+radius_km = 15.0
+
+[[area]]
+name = "Pico de Orizaba"
+lat = 19.03
+lon = -97.27
+radius_km = 10.0
+
+[[area]]
+name = "Arenal"
+lat = 10.46
+lon = -84.70
+radius_km = 5.0
+
+[[area]]
+name = "Irazú"
+lat = 9.98
+lon = -83.85
+radius_km = 6.0
+
+[[area]]
+name = "Cotopaxi"
+lat = -0.68
+lon = -78.44
+radius_km = 12.0
+
+[[area]]
+name = "Chimborazo"
+lat = -1.47
+lon = -78.82
+radius_km = 12.0
+
+[[area]]
+name = "Villarrica"
+lat = -39.42
+lon = -71.93
+radius_km = 8.0
+
+[[area]]
+name = "Osorno"
+lat = -41.10
+lon = -72.49
+radius_km = 8.0

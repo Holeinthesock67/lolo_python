@@ -10,10 +10,13 @@ Méthode, point par point de la grille 17 × 17 de chaque tuile (cases de 62,5 m
    classe ESA WorldCover (pixel de 10 m), corrigée par les polygones OSM qui le contiennent
    (`landuse=vineyard|farmland|orchard` → cultures, `natural=sand|wetland|glacier|scrub|heath`).
    Sans WorldCover (repli), ou sur un pixel sans donnée, la classe « prairie » est prise.
-2. **Zone climatique d'après la latitude seule**, en bandes (tropicale, aride, tempérée chaude, tempérée,
-   boréale, polaire) fondues sur 2° autour de chaque limite. Chaque classe donne un biome par zone
-   (`CLASS_BIOME`) : arbres → forêt tempérée ou boréale, cultures → `farmland`, prairie → prairie ou steppe,
-   sol nu → désert de sable ou de roche, neige → `polar` ou `alpine`, etc. ; eau et bâti ne votent pas.
+2. **Zone climatique d'après la carte de Köppen-Geiger embarquée** (module `koppen`, pixels de 3 km, lot
+   U24) : tropicale, aride, tempérée chaude (été chaud et sec, Csa), tempérée, boréale, polaire, en parts
+   fondues sur un voisinage de 5 × 5 pixels ; en pleine mer, bandes de latitude fondues sur 2°. Chaque
+   classe donne un biome par zone (`CLASS_BIOME`) : arbres → forêt tempérée ou boréale, cultures → `farmland`,
+   prairie → prairie ou steppe, sol nu → désert de sable ou de roche, neige → `polar` ou `alpine`, etc. ; eau
+   et bâti ne votent pas. Dans un paysage volcanique connu (`data/volcanic_areas.toml`), le sol nu donne
+   `volcanic`.
 3. **Bruit de bord déterministe** (hachage des indices globaux du point, donc de `ix`, `iz`) puis **flou de
    2 cases** (noyau binomial 5 × 5) : pas de frontière droite. Un point sans vote reçoit le biome de prairie
    de sa zone.
@@ -28,10 +31,16 @@ tuiles voisines sont identiques par construction, et deux compilations donnent l
 
 from __future__ import annotations
 
+import math
+import tomllib
 from dataclasses import dataclass, field
+from functools import lru_cache
+from importlib import resources
 from typing import Callable, Sequence
 
 import numpy as np
+
+from . import koppen
 
 BIOME_VERSION = "1.0"
 # Identifiants du lot U0, dans l'ordre de la liste définitive (Format .world v1 §8 quater).
@@ -53,13 +62,14 @@ KERNEL = np.array([1.0, 4.0, 6.0, 4.0, 1.0]) / 16.0
 NOISE_AMPLITUDE = 0.6   # poids bruts multipliés par 1 ± 0,3
 
 # --- zones climatiques ---------------------------------------------------------------------------------
-ZONES = ("tropical", "arid", "warm", "temperate", "boreal", "polar")
-ZONE_LIMITS_DEG = (15.0, 30.0, 44.0, 55.0, 66.5)   # |latitude| entre deux zones
+ZONES = koppen.ZONES   # ("tropical", "arid", "warm", "temperate", "boreal", "polar")
+ZONE_LIMITS_DEG = (15.0, 30.0, 44.0, 55.0, 66.5)   # |latitude| entre deux zones, en pleine mer seulement
 ZONE_RAMP_DEG = 2.0
 
 # --- classes ESA WorldCover 2021 (et classes OSM) → biome par zone --------------------------------------
 TREES, SHRUB, GRASS, CROP, BUILT, BARE, SNOW, WATER, WETLAND, MANGROVE, MOSS = 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100
 OSM_SAND = 200          # classe propre au compilateur : `natural=sand`
+VOLCANIC_BARE = 201     # classe propre au compilateur : sol nu dans un paysage volcanique
 CLASS_BIOME: dict[int, tuple[str | None, ...]] = {
     TREES: ("jungle", "savanna", "mediterranean", "temperate_forest", "boreal_forest", "tundra"),
     SHRUB: ("savanna", "steppe", "mediterranean", "temperate_grassland", "tundra", "tundra"),
@@ -73,6 +83,7 @@ CLASS_BIOME: dict[int, tuple[str | None, ...]] = {
     MANGROVE: ("wetland",) * 6,
     MOSS: ("tundra",) * 6,
     OSM_SAND: ("sand_desert",) * 6,
+    VOLCANIC_BARE: ("volcanic",) * 6,
 }
 NODATA_CLASS = GRASS    # pixel sans donnée, ou pas de WorldCover (repli OSM et altitude)
 
@@ -121,11 +132,15 @@ class OsmArea:
 
 @dataclass
 class Inputs:
-    """Sources de la classification. `landcover(lats, lons)` → classes uint8 ; `elevation` → altitudes (m)."""
+    """Sources de la classification. `landcover(lats, lons)` → classes uint8 ; `elevation` → altitudes (m) ;
+    `zones(lats, lons)` → parts (n, 6) des zones climatiques (carte de Köppen par défaut) ; `volcanic(lats,
+    lons)` → booléens « paysage volcanique » (table embarquée par défaut)."""
     to_latlon: Callable[[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]
     landcover: Callable[[np.ndarray, np.ndarray], np.ndarray] | None = None
     elevation: Callable[[np.ndarray, np.ndarray], np.ndarray] | None = None
     osm: Sequence[OsmArea] = ()
+    zones: Callable[[np.ndarray, np.ndarray], np.ndarray] = field(default=lambda lat, lon: zone_weights(lat, lon))
+    volcanic: Callable[[np.ndarray, np.ndarray], np.ndarray] = field(default=lambda lat, lon: in_volcanic_area(lat, lon))
 
 
 @dataclass
@@ -148,8 +163,9 @@ def osm_class(tags: dict) -> int | None:
 
 # --- fonctions ponctuelles -----------------------------------------------------------------------------
 
-def zone_weights(lat: np.ndarray) -> np.ndarray:
-    """Part (n, 6) de chaque zone climatique d'après |latitude|, fondue sur ZONE_RAMP_DEG à chaque limite."""
+def latitude_zone_weights(lat: np.ndarray) -> np.ndarray:
+    """Part (n, 6) de chaque zone climatique d'après |latitude|, fondue sur ZONE_RAMP_DEG à chaque limite
+    (repli en pleine mer, où la carte de Köppen n'a pas de climat)."""
     a = np.abs(np.asarray(lat, dtype=float)).ravel()
     s = [np.clip((a - b) / ZONE_RAMP_DEG + 0.5, 0.0, 1.0) for b in ZONE_LIMITS_DEG]
     w = np.empty((len(a), len(ZONES)))
@@ -158,6 +174,45 @@ def zone_weights(lat: np.ndarray) -> np.ndarray:
         w[:, k] = s[k - 1] - s[k]
     w[:, -1] = s[-1]
     return w
+
+
+def zone_weights(lat: np.ndarray, lon: np.ndarray) -> np.ndarray:
+    """Part (n, 6) de chaque zone climatique : carte de Köppen, bandes de latitude en pleine mer."""
+    w, sea = koppen.zone_weights(lat, lon)
+    if sea.any():
+        w[sea] = latitude_zone_weights(np.asarray(lat, dtype=float).ravel()[sea])
+    return w
+
+
+@dataclass(frozen=True)
+class VolcanicArea:
+    name: str
+    lat: float
+    lon: float
+    radius_km: float
+
+
+@lru_cache(maxsize=1)
+def volcanic_areas() -> tuple[VolcanicArea, ...]:
+    """Paysages volcaniques de la table embarquée `data/volcanic_areas.toml`."""
+    text = resources.files("openride_compiler").joinpath("data", "volcanic_areas.toml").read_text(encoding="utf-8")
+    return tuple(VolcanicArea(str(a["name"]), float(a["lat"]), float(a["lon"]), float(a["radius_km"]))
+                 for a in tomllib.loads(text)["area"])
+
+
+EARTH_RADIUS_KM = 6371.0
+
+
+def in_volcanic_area(lat: np.ndarray, lon: np.ndarray) -> np.ndarray:
+    """Booléens (n,) : point à l'intérieur d'un paysage volcanique de la table (distance du grand cercle)."""
+    la = np.radians(np.asarray(lat, dtype=float).ravel())
+    lo = np.radians(np.asarray(lon, dtype=float).ravel())
+    out = np.zeros(len(la), dtype=bool)
+    for a in volcanic_areas():
+        la0, lo0 = math.radians(a.lat), math.radians(a.lon)
+        h = np.sin((la - la0) / 2) ** 2 + np.cos(la) * math.cos(la0) * np.sin((lo - lo0) / 2) ** 2
+        out |= 2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(h, 0.0, 1.0))) <= a.radius_km
+    return out
 
 
 def alpine_line_m(lat: np.ndarray) -> np.ndarray:
@@ -303,9 +358,15 @@ def _raw_weights(pts: _Points, level: BiomeLevel, inputs: Inputs) -> tuple[np.nd
         flat = classes.ravel().copy()
         flat[order] = sorted_classes
         classes = flat.reshape(sx.shape)
+    lat_p, lon_p = inputs.to_latlon((pts.gx * level.cell_m).astype(float), (pts.gz * level.cell_m).astype(float))
+    lat_p, lon_p = np.asarray(lat_p, dtype=float), np.asarray(lon_p, dtype=float)
+    volcanic = np.asarray(inputs.volcanic(lat_p, lon_p), dtype=bool).ravel()
+    if volcanic.any():   # sol nu d'un paysage volcanique : laves et scories
+        sub = classes[volcanic]
+        sub[sub == BARE] = VOLCANIC_BARE
+        classes[volcanic] = sub
     classes = np.clip(classes, 0, 255)
-    lat_p, _ = inputs.to_latlon((pts.gx * level.cell_m).astype(float), (pts.gz * level.cell_m).astype(float))
-    zw = zone_weights(np.asarray(lat_p))
+    zw = np.asarray(inputs.zones(lat_p, lon_p), dtype=float).reshape(n, len(ZONES))
     raw = np.zeros(n * NB)
     rows = np.repeat(np.arange(n, dtype=np.int64), SUB * SUB)
     for z in range(len(ZONES)):
@@ -313,7 +374,7 @@ def _raw_weights(pts: _Points, level: BiomeLevel, inputs: Inputs) -> tuple[np.nd
         ok = b >= 0
         w = np.repeat(zw[:, z], SUB * SUB)[ok] / (SUB * SUB)
         raw += np.bincount(rows[ok] * NB + b[ok], weights=w, minlength=n * NB)
-    return raw.reshape(n, NB), zw, np.asarray(lat_p)
+    return raw.reshape(n, NB), zw, lat_p
 
 
 def _blur(raw: np.ndarray, ext: _Points, core: _Points) -> np.ndarray:
@@ -375,7 +436,7 @@ def classify_level(keys: Sequence[tuple[int, int]], level: BiomeLevel, inputs: I
     total = w.sum(axis=1)
     empty = total <= 1e-9
     if empty.any():   # aucun vote dans le rayon du flou (eau, bâti) : prairie de la zone
-        zw = zone_weights(lat_c[empty])
+        zw = np.asarray(inputs.zones(lat_c[empty], lon_c[empty]), dtype=float).reshape(-1, len(ZONES))
         fill = np.zeros((int(empty.sum()), NB))
         for z in range(len(ZONES)):
             fill[np.arange(len(fill)), CLASS_TABLE[NODATA_CLASS, z]] += zw[:, z]
