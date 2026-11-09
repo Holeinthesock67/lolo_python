@@ -223,10 +223,19 @@ func _test_view() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # détails
 	v.update_display(f.state(), state, f.summary, f.show_details)
-	_check(v.summary.visible and not v.devices.visible and v.summary.text().contains("Distance : 15,00 km"),
+	_check(v.summary.visible and not v.devices.visible and v.summary.text().contains("Distance 15,00 km"),
 			"bilan : %s" % v.summary.text())
 	_check(v.summary.fit_label.text.contains("seance.fit"), "fichier FIT : %s" % v.summary.fit_label.text)
 	_check(v.summary.blocks_box.get_child_count() == 2, "bilan détaillé : un bloc par ligne")
+	# Paliers de `fit` quand la carte ne tient pas même resserrée : blocs sur deux colonnes, courbe cachée.
+	v.summary.update_display({"duration_s": 1800.0, "distance_m": 15000.0, "blocks": [[1, 200.0, 200.0]],
+			"power_profile": {"step_s": 10, "power_w": [150, 200, 180], "target_w": null}}, true)
+	v.summary.fit(600.0, func() -> bool: return false)
+	_check(v.summary.blocks_box.columns == 2 and not v.summary.chart_box.visible,
+			"bilan trop haut : blocs sur deux colonnes, courbe de puissance cachée")
+	v.summary.fit(600.0, func() -> bool: return true)
+	_check(v.summary.blocks_box.columns == 1 and v.summary.chart_box.visible,
+			"bilan qui tient : un bloc par ligne, courbe affichée")
 	v.free()
 
 
@@ -647,8 +656,9 @@ func _test_ftp_flow() -> void:
 	f.on_state({"session_state": "RUNNING"})
 	var ftp := {"test": "ramp", "ftp_w": 262, "previous_ftp_w": 250, "warnings": ["trainer_dropout"], "reliable": false}
 	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 1500.0, "ftp_test": ftp}})
-	_check(f.state()["status"] == "Nouvelle FTP : 262 W (avant 250 W) ; coupure du trainer pendant l'effort",
-		"bilan : nouvelle FTP et avertissement (%s)" % f.state()["status"])
+	_check(f.state()["status"] == "" and f.summary_model.ftp_result(f.summary) == {"value": "262 W", "before": "avant 250 W",
+		"delta": "+12 W", "ok": false, "note": "coupure du trainer pendant l'effort"},
+		"bilan : nouvelle FTP et avertissement au bandeau du bilan, rien sous le titre (lot N20)")
 	_check(_ids(f) == ["accept_ftp", "keep_ftp", "new_session", "details", "quit"] and _focus_id(f) == "accept_ftp",
 		"Accepter / Garder en tête du bilan")
 	_check(f.handle("A_LONG") == {"action": "accept_ftp", "force": false}, "accept_ftp")
@@ -671,8 +681,8 @@ func _test_ftp_flow() -> void:
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {"ftp_test": {"test": "ramp", "ftp_w": null,
 		"previous_ftp_w": 250, "warnings": ["too_short"], "reliable": false}}})
-	_check(f.state()["status"] == "Test de FTP : aucune FTP calculable ; test trop court" and _ids(f)[0] == "new_session",
-		"sans FTP calculable : rien à accepter")
+	_check(f.state()["status"] == "" and f.summary_model.ftp_result(f.summary)["note"] == "aucune FTP calculable ; test trop court"
+		and _ids(f)[0] == "new_session", "sans FTP calculable : rien à accepter, raison au bandeau du bilan")
 
 
 ## Bibliothèque de parcours (lot O12, critère 3) : filtrer « col », trier par dénivelé, lancer le premier.
