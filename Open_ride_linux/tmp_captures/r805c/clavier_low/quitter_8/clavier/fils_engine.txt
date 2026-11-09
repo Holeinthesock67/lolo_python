@@ -1,0 +1,12 @@
+Godot_v4.7.2-st (S, futex_do_wait) ×5
+WorkerThread 0 (S, futex_do_wait)
+WorkerThread 1 (S, futex_do_wait)
+WorkerThread 2 (S, futex_do_wait)
+WorkerThread 3 (S, futex_do_wait)
+async-io (S, ep_poll)
+Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2
+Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4
+[vkcf] Analysis (S, futex_do_wait)
+[vkrt] Analysis (S, futex_do_wait)
+[vkps] Update (S, futex_do_wait)
+cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)

@@ -1,0 +1,1032 @@
+[
+ {
+  "scenario": "quitter_1",
+  "voie": "click",
+  "echecs": 0,
+  "duree_s": 56.4,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 13.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": true,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code 0 en 5.6 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_2",
+  "voie": "click",
+  "echecs": 1,
+  "duree_s": 58.5,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.4 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 13.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "arrêt de Godot bloqué après la libération de la scène",
+    "mesure": "processus arrêté après 3 s, comme par le lanceur ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×5; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)"
+   },
+   {
+    "ok": null,
+    "quoi": "pile gdb de Godot bloqué (pile_gdb.txt)",
+    "mesure": "principal Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) ← ___pthread_cond_wait (pthread_cond_wait.c) ← ?? ← __libc_start_call_main (libc_start_call_main.h) ← __libc_start_main_impl (libc-start.c) ← ?? | Godot_v4.7.2-st ×3 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | Godot_v4.7.2-st ×2 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← ?? ← ?? | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← usleep (usleep.c) ← ?? | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___select (select.c) ← ?? ← ?? | cuda-EvtHandlr : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___poll (poll.c) ← ??@libcuda.so.1 ← ??@libcuda.so.1 | [vkps] Update : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | [vkrt] Analysis : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | [vkcf] Analysis : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← ??@libnvidia-glcore.so.580.178.04 ← ??@libnvidia-glcore.so.580.178.04 | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___poll (poll.c) ← ??@libcuda.so.1 ← ??@libcuda.so.1 | async-io : ?? ← ?? ← ?? ← ?? ← start_thread (pthread_create.c) ← __GI___clone3 (clone3.S) | Godot_v4.7.2-st : syscall (syscall.S) ← ?? ← ?? ← ?? ← ?? ← start_thread (pthread_create.c) | WorkerThread 3 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 2 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 1 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 0 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c)"
+   },
+   {
+    "ok": true,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code 0 annoncé"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_3",
+  "voie": "click",
+  "echecs": 1,
+  "duree_s": 59.7,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.4 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 13.5 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "arrêt de Godot bloqué après la libération de la scène",
+    "mesure": "processus arrêté après 3 s, comme par le lanceur ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×5; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)"
+   },
+   {
+    "ok": null,
+    "quoi": "pile gdb de Godot bloqué (pile_gdb.txt)",
+    "mesure": "principal Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) ← ___pthread_cond_wait (pthread_cond_wait.c) ← ?? ← __libc_start_call_main (libc_start_call_main.h) ← __libc_start_main_impl (libc-start.c) ← ?? | Godot_v4.7.2-st ×3 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | Godot_v4.7.2-st ×2 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← ?? ← ?? | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← usleep (usleep.c) ← ?? | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___select (select.c) ← ?? ← ?? | cuda-EvtHandlr : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___poll (poll.c) ← ??@libcuda.so.1 ← ??@libcuda.so.1 | [vkps] Update : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | [vkrt] Analysis : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | [vkcf] Analysis : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← ??@libnvidia-glcore.so.580.178.04 ← ??@libnvidia-glcore.so.580.178.04 | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___poll (poll.c) ← ??@libcuda.so.1 ← ??@libcuda.so.1 | async-io : ?? ← ?? ← ?? ← ?? ← start_thread (pthread_create.c) ← __GI___clone3 (clone3.S) | Godot_v4.7.2-st : syscall (syscall.S) ← ?? ← ?? ← ?? ← ?? ← start_thread (pthread_create.c) | WorkerThread 3 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 2 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 1 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 0 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c)"
+   },
+   {
+    "ok": true,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code 0 annoncé"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_4",
+  "voie": "click",
+  "echecs": 1,
+  "duree_s": 58.4,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.4 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 13.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "arrêt de Godot bloqué après la libération de la scène",
+    "mesure": "processus arrêté après 3 s, comme par le lanceur ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×5; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)"
+   },
+   {
+    "ok": null,
+    "quoi": "pile gdb de Godot bloqué (pile_gdb.txt)",
+    "mesure": "principal Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) ← ___pthread_cond_wait (pthread_cond_wait.c) ← ?? ← __libc_start_call_main (libc_start_call_main.h) ← __libc_start_main_impl (libc-start.c) ← ?? | Godot_v4.7.2-st ×3 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | Godot_v4.7.2-st ×2 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← ?? ← ?? | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← usleep (usleep.c) ← ?? | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___select (select.c) ← ?? ← ?? | cuda-EvtHandlr : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___poll (poll.c) ← ??@libcuda.so.1 ← ??@libcuda.so.1 | [vkps] Update : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | [vkrt] Analysis : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | [vkcf] Analysis : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← ??@libnvidia-glcore.so.580.178.04 ← ??@libnvidia-glcore.so.580.178.04 | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___poll (poll.c) ← ??@libcuda.so.1 ← ??@libcuda.so.1 | async-io : ?? ← ?? ← ?? ← ?? ← start_thread (pthread_create.c) ← __GI___clone3 (clone3.S) | Godot_v4.7.2-st : syscall (syscall.S) ← ?? ← ?? ← ?? ← ?? ← start_thread (pthread_create.c) | WorkerThread 3 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 2 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 1 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 0 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c)"
+   },
+   {
+    "ok": true,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code 0 annoncé"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_5",
+  "voie": "click",
+  "echecs": 0,
+  "duree_s": 56.3,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 13.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": true,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code 0 en 5.2 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_6",
+  "voie": "click",
+  "echecs": 1,
+  "duree_s": 58.7,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 13.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "arrêt de Godot bloqué après la libération de la scène",
+    "mesure": "processus arrêté après 3 s, comme par le lanceur ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×5; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)"
+   },
+   {
+    "ok": null,
+    "quoi": "pile gdb de Godot bloqué (pile_gdb.txt)",
+    "mesure": "principal Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) ← ___pthread_cond_wait (pthread_cond_wait.c) ← ?? ← __libc_start_call_main (libc_start_call_main.h) ← __libc_start_main_impl (libc-start.c) ← ?? | Godot_v4.7.2-st ×3 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | Godot_v4.7.2-st ×2 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← ?? ← ?? | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← usleep (usleep.c) ← ?? | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___select (select.c) ← ?? ← ?? | cuda-EvtHandlr : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___poll (poll.c) ← ??@libcuda.so.1 ← ??@libcuda.so.1 | [vkps] Update : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | [vkrt] Analysis : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | [vkcf] Analysis : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← ??@libnvidia-glcore.so.580.178.04 ← ??@libnvidia-glcore.so.580.178.04 | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___poll (poll.c) ← ??@libcuda.so.1 ← ??@libcuda.so.1 | async-io : ?? ← ?? ← ?? ← ?? ← start_thread (pthread_create.c) ← __GI___clone3 (clone3.S) | Godot_v4.7.2-st : syscall (syscall.S) ← ?? ← ?? ← ?? ← ?? ← start_thread (pthread_create.c) | WorkerThread 3 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 2 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 1 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 0 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c)"
+   },
+   {
+    "ok": true,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code 0 annoncé"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_7",
+  "voie": "click",
+  "echecs": 0,
+  "duree_s": 58.6,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 14.5 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": true,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code 0 en 5.6 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_8",
+  "voie": "click",
+  "echecs": 0,
+  "duree_s": 56.9,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 13.5 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": true,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code 0 en 4.8 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_9",
+  "voie": "click",
+  "echecs": 1,
+  "duree_s": 54.5,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.4 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 12.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "arrêt de Godot bloqué après la libération de la scène",
+    "mesure": "processus arrêté après 3 s, comme par le lanceur ; fils de Godot : Godot_v4.7.2-st (S, futex_do_wait) ×5; WorkerThread 0 (S, futex_do_wait); WorkerThread 1 (S, futex_do_wait); WorkerThread 2 (S, futex_do_wait); WorkerThread 3 (S, futex_do_wait); async-io (S, ep_poll); Godot_v4.7.2-st (S, poll_schedule_timeout.constprop.0) ×2; Godot_v4.7.2-st (S, hrtimer_nanosleep) ×4; [vkcf] Analysis (S, futex_do_wait); [vkrt] Analysis (S, futex_do_wait); [vkps] Update (S, futex_do_wait); cuda-EvtHandlr (S, poll_schedule_timeout.constprop.0)"
+   },
+   {
+    "ok": null,
+    "quoi": "pile gdb de Godot bloqué (pile_gdb.txt)",
+    "mesure": "principal Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) ← ___pthread_cond_wait (pthread_cond_wait.c) ← ?? ← __libc_start_call_main (libc_start_call_main.h) ← __libc_start_main_impl (libc-start.c) ← ?? | Godot_v4.7.2-st ×3 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | Godot_v4.7.2-st ×2 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← ?? ← ?? | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← usleep (usleep.c) ← ?? | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___select (select.c) ← ?? ← ?? | cuda-EvtHandlr : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___poll (poll.c) ← ??@libcuda.so.1 ← ??@libcuda.so.1 | [vkps] Update : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | [vkrt] Analysis : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | [vkcf] Analysis : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __GI___clock_nanosleep (clock_nanosleep.c) ← __GI___nanosleep (nanosleep.c) ← ??@libnvidia-glcore.so.580.178.04 ← ??@libnvidia-glcore.so.580.178.04 | Godot_v4.7.2-st : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __syscall_cancel (cancellation.c) ← __GI___poll (poll.c) ← ??@libcuda.so.1 ← ??@libcuda.so.1 | async-io : ?? ← ?? ← ?? ← ?? ← start_thread (pthread_create.c) ← __GI___clone3 (clone3.S) | Godot_v4.7.2-st : syscall (syscall.S) ← ?? ← ?? ← ?? ← ?? ← start_thread (pthread_create.c) | WorkerThread 3 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 2 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 1 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c) | WorkerThread 0 : __syscall_cancel_arch (syscall_cancel.S) ← __internal_syscall_cancel (cancellation.c) ← __futex_abstimed_wait_common64 (futex-internal.c) ← __futex_abstimed_wait_common (futex-internal.c) ← __GI___futex_abstimed_wait_cancelable64 (futex-internal.c) ← __pthread_cond_wait_common (pthread_cond_wait.c)"
+   },
+   {
+    "ok": true,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code 0 annoncé"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_10",
+  "voie": "click",
+  "echecs": 0,
+  "duree_s": 51.5,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.4 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 11.5 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": true,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code 0 en 5.0 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ }
+]

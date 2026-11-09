@@ -1,0 +1,10 @@
+quitter_1                souris   OK              56 s
+quitter_2                souris   OK              52 s
+quitter_3                souris   OK              59 s
+quitter_4                souris   OK              50 s
+quitter_5                souris   OK              50 s
+quitter_6                souris   OK              50 s
+quitter_7                souris   OK              50 s
+quitter_8                souris   OK              50 s
+quitter_9                souris   OK              50 s
+quitter_10               souris   OK              50 s

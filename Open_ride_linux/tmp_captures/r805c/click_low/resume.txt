@@ -1,0 +1,10 @@
+quitter_1                click    OK              56 s
+quitter_2                click    1 ÉCHEC(S)      58 s
+quitter_3                click    1 ÉCHEC(S)      60 s
+quitter_4                click    1 ÉCHEC(S)      58 s
+quitter_5                click    OK              56 s
+quitter_6                click    1 ÉCHEC(S)      59 s
+quitter_7                click    OK              59 s
+quitter_8                click    OK              57 s
+quitter_9                click    1 ÉCHEC(S)      55 s
+quitter_10               click    OK              51 s

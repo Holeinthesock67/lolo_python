@@ -1,0 +1,10 @@
+quitter_1                clavier  1 ÉCHEC(S)      51 s
+quitter_2                clavier  1 ÉCHEC(S)      57 s
+quitter_3                clavier  1 ÉCHEC(S)      52 s
+quitter_4                clavier  1 ÉCHEC(S)      52 s
+quitter_5                clavier  1 ÉCHEC(S)      58 s
+quitter_6                clavier  1 ÉCHEC(S)      58 s
+quitter_7                clavier  1 ÉCHEC(S)      58 s
+quitter_8                clavier  1 ÉCHEC(S)      59 s
+quitter_9                clavier  1 ÉCHEC(S)      58 s
+quitter_10               clavier  1 ÉCHEC(S)      59 s
