@@ -3052,7 +3052,9 @@ class CoreSession:
             self.race = ClassicRace(
                 route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
                 loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
-                powerups_on=self.cfg.powerups.mode == "on",
+                powerups_on=self.cfg.powerups.mode != "off",
+                powerup_set=self.cfg.powerups.mode if self.cfg.powerups.mode != "off" else "classiques",
+                grade_at=route.grade_at,
                 loadout=header["loadout"] if header else None, gain_mode=gain_mode)
         from .bots import RefRider, attach_segments, calibrate_bots
 
@@ -3263,8 +3265,8 @@ class CoreSession:
             self._mark_dropout()
             return
         if ev == InputEvent.Z_SHORT:
-            # Z court : action du mode (§7.1) ; bloc suivant en ERG ; sinon, en mode
-            # classique et en ERG d'une session libre (sans blocs, lot O18), bonus en réserve (T6, T7).
+            # Z court : action du mode (§7.1) ; bloc suivant en ERG d'un entraînement ; sinon bonus en
+            # réserve (T6, T7), refusé dans tout ERG, ERG d'une session libre compris (lot TT1).
             if self._workout_erg():
                 self._skip_block()
             elif self.race and self.race.activate(self._t_session):
@@ -3455,8 +3457,10 @@ class CoreSession:
                 # Vent et abri ressentis : supplément de pente avant la limitation de variation et les
                 # bornes. Avec feel = "ftms", le vent part dans la commande 0x11 et seul l'abri passe ici.
                 head = self._head_mps if wcfg.feel == "grade" else 0.0
+                # Bonus de masse (Plume, Enclume) : supplément calculé à la masse de base (lot TT2, T-Q3).
+                feel_p = race.feel_params(self.physics.p, self._base_params) if race else self.physics.p
                 self._wind_offset = grade_offset_pct(self.physics.v, head, draft, alt,
-                                                     self.physics.p, wcfg.max_grade_offset_pct)
+                                                     feel_p, wcfg.max_grade_offset_pct)
                 target += self._wind_offset
             if surfaced:
                 # Gravel ajouté au vent et à l'abri, le total sous la même borne (lot U21).

@@ -7,6 +7,7 @@ extends RefCounted
 ## Pas de class_name : charger par preload("res://scripts/summary_view_model.gd").
 
 const SurvivorHudModel := preload("res://scripts/survivor/survivor_hud_model.gd")
+const GpHudModel := preload("res://scripts/grandprix/gp_hud_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
 
@@ -172,6 +173,8 @@ func lines(summary: Dictionary, _mode: String = "", _ftp_w: int = 0) -> Array:
 		out.append_array(wtf_lines(summary["wtf"]))
 	if summary.get("survivor") is Dictionary:   # Dernier survivant (lot DS6) : place, vainqueur, arche par arche
 		out.append_array(SurvivorHudModel.summary_lines(summary["survivor"]))
+	if summary.get("gp") is Dictionary:   # Grand Prix des objets (lot GP8) : place, objets, temps par objet
+		out.append_array(GpHudModel.summary_lines(summary["gp"]))
 	if summary.get("track") is Dictionary:   # Épreuves de piste (lot VD9) : place, temps, tours, record
 		out.append_array(TrackHudModel.summary_lines(summary["track"]))
 
@@ -241,7 +244,7 @@ func more_line(summary: Dictionary) -> String:
 	return " · ".join(parts)
 
 
-## Lignes propres à un mode (Cyber-Rogue, WTF, Dernier survivant), au format de lines() ; [] sinon.
+## Lignes propres à un mode (Cyber-Rogue, WTF, Dernier survivant, Grand Prix), au format de lines() ; [] sinon.
 func mode_lines(summary: Dictionary) -> Array:
 	var out: Array = []
 	if summary.get("rogue") is Dictionary:
@@ -250,6 +253,8 @@ func mode_lines(summary: Dictionary) -> Array:
 		out.append_array(wtf_lines(summary["wtf"]))
 	if summary.get("survivor") is Dictionary:
 		out.append_array(SurvivorHudModel.summary_lines(summary["survivor"]))
+	if summary.get("gp") is Dictionary:
+		out.append_array(GpHudModel.summary_lines(summary["gp"]))
 	return out
 
 

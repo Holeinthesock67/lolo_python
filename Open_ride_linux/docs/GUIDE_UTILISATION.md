@@ -178,7 +178,7 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 
 **Z long** (ou `Maj+Z` au clavier) note un repère « décrochage » au journal quand vous sentez la résistance du trainer lâcher (sauf en Cyber-Rogue, où Z long joue la carte active). L'écran le confirme ; rien d'autre ne change. L'outil `decrochages` relit ces repères en face des chutes de puissance mesurées.
 
-Un entraînement ERG n'a jamais de roue libre : la consigne ne descend pas sous 50 W, et un bloc « FreeRide » d'un fichier `.zwo` devient un palier à 50 W. En ERG d'une session libre (section 5), Z garde son rôle de la Session libre (bonus) ; en ERG cadence, « + » et « − » changent la cadence cible de ± 2 % (appui long ± 10 %).
+Un entraînement ERG n'a jamais de roue libre : la consigne ne descend pas sous 50 W, et un bloc « FreeRide » d'un fichier `.zwo` devient un palier à 50 W. En ERG d'une session libre (section 5), Z garde son rôle de la Session libre, mais les bonus sont coupés dans tout ERG : l'appui est refusé, le bonus reste en réserve pour le retour en SIM ; en ERG cadence, « + » et « − » changent la cadence cible de ± 2 % (appui long ± 10 %).
 
 **Au clavier**
 

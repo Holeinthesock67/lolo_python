@@ -198,7 +198,10 @@ class RogueConfig:
 @dataclass
 class PowerupsConfig:
     """Bonus du mode classique (série T, lots T6 et T7) ; valeurs dans `~/OpenRide/powerups.toml`."""
-    mode: str = "on"               # "on" ou "off" (ni arche ni réserve ; segments toujours chronométrés)
+    # "off" (ni arche ni réserve ; segments toujours chronométrés), "classiques" (Plume, Casque, Puissance,
+    # comportement de la 2.0) ou "tactiques" (les sept bonus de la série TT) ; contrat IPC 1.13 (lot TT1).
+    # L'ancien "on" est lu comme "classiques" (`_merge`).
+    mode: str = "classiques"
 
 
 @dataclass
@@ -437,7 +440,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("trainer", "control"): ("sim", "resistance"),
     ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),
     ("render", "biome"): ("auto", *BIOMES),
-    ("powerups", "mode"): ("on", "off"),
+    ("powerups", "mode"): ("off", "classiques", "tactiques"),
     ("ride", "auto_draft"): ("on", "off"),
     ("depart", "mode"): ("pedalage", "immediat"),
     ("ride", "vehicle_draft"): ("on", "off"),
@@ -632,6 +635,8 @@ def _merge(dc: Any, data: dict[str, Any], source: str = "config.toml", section: 
                 setattr(dc, f.name, _convert(current, value, f"{source}, [{section}] {f.name}"))
             except ConfigError as exc:
                 raise ConfigError(str(exc), section=section, key=f.name) from None
+    if section == "powerups" and getattr(dc, "mode", None) == "on":
+        dc.mode = "classiques"   # valeur de la 2.0 (`on` / `off`), lue comme le jeu `classiques` (lot TT1)
     if section == "trainer" and "grade_rate_pct_per_s" in data:
         if "grade_rate_up_pct_per_s" not in data and "grade_rate_down_pct_per_s" not in data:
             log.warning(
