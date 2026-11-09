@@ -217,7 +217,9 @@ func _test_biome_beds_on_demand() -> void:
 		"biomes": {"coast": 1.0}, "sea_dist_m": 10.0, "wind_strength": 0.5}
 	var t := 0.0
 	var frames := 0
-	while frames < 600 and not (sp._bed_players["waves"].stream != null and sp._bed_players["gulls"].stream != null):
+	var t_end := Time.get_ticks_msec() + 30000
+	while Time.get_ticks_msec() < t_end and not (sp._bed_players["waves"].stream != null and sp._bed_players["gulls"].stream != null
+			and sp.beds_pending() == 0):
 		sp.update_ambience(neigh, t)
 		t += 1.0 / 60.0
 		frames += 1
@@ -255,8 +257,10 @@ func _test_ambience_frame_cost() -> void:
 		var t := 0.0
 		var after := 0
 		var max_posed := 0
+		var max_running := 0
 		var frames := 0
-		while frames < 900 and after < 120:
+		var t_end := Time.get_ticks_msec() + 60000
+		while Time.get_ticks_msec() < t_end and after < 120:
 			var posed_before: int = sp.beds_posed
 			var pending_before: int = sp.beds_pending()
 			var t0 := Time.get_ticks_usec()
@@ -264,6 +268,7 @@ func _test_ambience_frame_cost() -> void:
 			var ms := (Time.get_ticks_usec() - t0) / 1000.0
 			var posed: int = sp.beds_posed - posed_before
 			max_posed = maxi(max_posed, posed)
+			max_running = maxi(max_running, sp.beds_running())
 			if posed > 0:
 				posing.append(ms)
 			elif pending_before > 0 or sp.beds_pending() > 0:
@@ -286,8 +291,9 @@ func _test_ambience_frame_cost() -> void:
 			worst.get("us", {}).get("evaluate", 0), worst.get("us", {}).get("collect", 0), worst.get("us", {}).get("players", 0),
 			worst.get("posed", 0)])
 		_check(beds >= 2 and beds <= sp.ambience.voices and max_posed <= SoundPlayer.BEDS_POSED_PER_FRAME
+			and max_running <= 1 and sp.beds_pending() == 0
 			and not sp._streams.has("frogs") and not sp._streams.has("fumaroles"),
-			"%s : %d fonds posés, un seul par image, aucun fond d'un autre biome" % [preset, beds])
+			"%s : %d fonds posés, un seul par image, un seul en fabrication à la fois, aucun fond d'un autre biome" % [preset, beds])
 		_check(PerfBudget.check("ambience_layer_frame", worst["ms"]),
 			"%s : fabrication hors du fil principal, update_ambience au plus %.2f ms par image" % [preset, worst["ms"]])
 		sp.queue_free()

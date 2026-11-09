@@ -112,7 +112,8 @@ var _bell_queue := 0                    # coups de cloche restant à sonner
 var _bell_next_s := 0.0
 var _bell_hour := NAN
 var bell_strikes_rung := 0              # coups effectivement sonnés (tests)
-var _bed_tasks := {}                    # fond -> tâche de WorkerThreadPool qui le fabrique (lot U11)
+var _bed_tasks := {}                    # fond -> tâche de WorkerThreadPool qui le fabrique (lot U11), une au plus
+var _bed_queue: Array[String] = []      # fonds demandés, en attente de leur tour de fabrication
 var _bed_done := {}                     # fond -> flux fabriqué (synthèse ou .ogg), pas encore posé (sous _bed_mutex)
 var _bed_mutex := Mutex.new()
 var beds_posed := 0                     # fonds posés sur leur lecteur depuis le démarrage (tests)
@@ -390,6 +391,9 @@ func _generate_all_streams() -> void:
 # Suite du banc r787 (09/11, 1,87 ms la pire image sur le PC) : le fil de travail rend le flux complet
 # (AudioStreamWAV, copie des échantillons comprise), et l'image n'en pose qu'un (BEDS_POSED_PER_FRAME) :
 # il ne reste au fil principal que l'affectation du flux au lecteur.
+# Un seul fond en fabrication à la fois (file `_bed_queue`) : les tâches de basse priorité du pool sont servies
+# dans l'ordre, et huit synthèses demandées d'un coup au démarrage passaient avant le chargement du parcours
+# et du monde vivant, que le fil principal attend (banc des menus de la CI de #829, « engine muet 28,5 s »).
 
 const BEDS_POSED_PER_FRAME := 1
 
@@ -408,8 +412,17 @@ func _bed_task(bed: String) -> void:
 
 
 func _request_bed(bed: String) -> void:
-	if _streams.has(bed) or _bed_tasks.has(bed):
+	if _streams.has(bed) or _bed_tasks.has(bed) or _bed_queue.has(bed):
 		return
+	_bed_queue.append(bed)
+	_start_next_bed()
+
+
+## Lance la fabrication du premier fond de la file si aucune n'est en cours.
+func _start_next_bed() -> void:
+	if not _bed_tasks.is_empty() or _bed_queue.is_empty():
+		return
+	var bed: String = _bed_queue.pop_front()
 	_bed_tasks[bed] = WorkerThreadPool.add_task(_bed_task.bind(bed), false, "fond %s" % bed)
 
 
@@ -435,6 +448,7 @@ func _collect_beds() -> void:
 		_bed_done.erase(bed)
 		_bed_mutex.unlock()
 		_set_bed(bed, src)
+	_start_next_bed()
 
 
 ## Fabrique tout de suite les fonds `beds` qui ne le sont pas encore (tests, export des échantillons, `stream`).
@@ -442,6 +456,7 @@ func make_beds_now(beds: Array) -> void:
 	for bed in beds:
 		if _streams.has(bed) or not AmbienceModel.BEDS.has(bed):
 			continue
+		_bed_queue.erase(bed)
 		if _bed_tasks.has(bed):
 			WorkerThreadPool.wait_for_task_completion(_bed_tasks[bed])
 			_bed_tasks.erase(bed)
@@ -449,10 +464,16 @@ func make_beds_now(beds: Array) -> void:
 			_bed_done.erase(bed)
 			_bed_mutex.unlock()
 		_set_bed(bed, _bed_source(bed))
+	_start_next_bed()
 
 
-## Fonds en cours de fabrication (tests).
+## Fonds en cours de fabrication ou en file (tests).
 func beds_pending() -> int:
+	return _bed_tasks.size() + _bed_queue.size()
+
+
+## Fonds en cours de fabrication dans le pool (tests : jamais plus d'un).
+func beds_running() -> int:
 	return _bed_tasks.size()
 
 
@@ -462,6 +483,7 @@ func _notification(what: int) -> void:
 		for bed in _bed_tasks:
 			WorkerThreadPool.wait_for_task_completion(_bed_tasks[bed])
 		_bed_tasks.clear()
+		_bed_queue.clear()
 
 
 func _try_load_custom(kind: String) -> Resource:
