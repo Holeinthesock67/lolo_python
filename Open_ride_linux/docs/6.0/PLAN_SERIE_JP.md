@@ -1,6 +1,6 @@
 # Série JP – Biome « Japon » : Hakone et le mont Fuji (version 6.0)
 
-<!-- Plan de série ; les cahiers des lots JP1 à JP7 seront rédigés après validation de ce plan. -->
+<!-- Plan de série validé par le propriétaire le 9 novembre (« ok ») ; un cahier par lot dans docs/lots/LOT_JP*.md. -->
 
 Demande du propriétaire du 9 novembre 2026 : « Pour v6 j'aimerais bien un biome Japon avec Hakone et Fuji ».
 
@@ -14,7 +14,7 @@ Trois manques rendent cela impossible aujourd'hui :
 2. **Le Fuji ne se voit pas depuis Hakone.** Le terrain s'arrête à ± 5 km de la route (niveau lointain, `FAR_BAND_M`, cases de 50 m) ; le sommet est à 25–30 km du lac Ashi.
 3. **Aucun parcours à Hakone** dans le pack « Cols célèbres ».
 
-## 2. Choix retenus (à valider par le propriétaire)
+## 2. Choix retenus (validés par le propriétaire le 9 novembre)
 
 | # | Sujet | Choix proposé | Pourquoi |
 | --- | --- | --- | --- |
@@ -65,7 +65,7 @@ Budgets du projet : **low 8 ms, medium 13 ms, high 16 ms**. Toute mesure couvre 
 | Lot | Contenu | Dépend de | Taille |
 | --- | --- | --- | --- |
 | JP0 | Ce plan et les décisions JP-Q1 à JP-Q5 | — | Petite |
-| JP1 | Contrat : 17e biome `japan`, espèces `sugi`, `hinoki`, `momiji`, `bamboo`, toit `kawara`, niveau de terrain `horizon` (Format .world v1, schémas, `biome_ids.gd`, `config.py`) ; révision IPC si `hello_ack.config.biome` énumère les biomes | JP0 | Petite |
+| JP1 | Contrat : 17e biome `japan` et toit `kawara` dans toutes les énumérations fermées, avec un rendu de base (thème, style de bâtiment, nom au menu) ; les espèces `sugi`, `hinoki`, `momiji`, `bamboo` entrent au contrat avec leurs maillages (JP5) et le niveau `horizon` avec JP4 (cahier `docs/lots/LOT_JP1_contrat_biome_japon.md`) | JP0 | Petite |
 | JP2 | Compilateur : pose de `japan` (zone Japon × Köppen × WorldCover), toit `kawara` dans `regional_variants.toml` | JP1, lot Köppen fusionné | Moyenne |
 | JP3 | Engine : thème `japan`, sol, ciel, faune, sons, style `minka`, nom au menu « Biome du décor » | JP1 | Moyenne |
 | JP4 | Niveau de terrain « horizon » : compilateur (tuiles 500 m, 40 km) et engine (maillage, brouillard) | JP1 | Moyenne |

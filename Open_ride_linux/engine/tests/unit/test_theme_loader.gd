@@ -81,7 +81,7 @@ func _init() -> void:
 	var default_1x := ThemeLoader.without_biomes(default_theme)
 	default_1x["version"] = "1.2"
 	_check(_dicts_equal(min_res["theme"], default_1x), "minimal: égal clé par clé à default, sans le pack de biomes (U15)")
-	_check(default_theme["version"] == "2.0" and default_theme["biomes"].size() == 16, "default : thème 2.0 à 16 biomes (U15)")
+	_check(default_theme["version"] == "2.0" and default_theme["biomes"].size() == 17, "default : thème 2.0 à 17 biomes (U15, JP1)")
 	# Un thème 1.0 reste lu sans erreur ni avertissement : les clés 1.2 viennent du défaut
 	var old_dir := base_tmp.path_join("ancien")
 	_write_theme(old_dir, '{"version": "1.0"}\n')
