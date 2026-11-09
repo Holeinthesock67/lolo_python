@@ -70,5 +70,5 @@ Sons enregistrés, sons du vélo sur le gravier (U22).
 - `update_ambience` garde le temps de ses trois étapes dans `ambience_us` (modèle, pose, lecteurs).
 - `test_sound_player` mesure en low, medium et high (4, 6 et 8 voix, voisinage mêlé littoral, méditerranée, alpage, forêt et rivière, jusqu'à 8 fonds) : médiane, p95 et pire image pendant la fabrication, aux images de pose, puis sur 120 images tout posé (témoin : bruit de la machine seule), et le détail par étape de la pire image. Le budget `ambience_layer_frame` (2 ms) reste sur la pire image, pour rester comparable au banc r787.
 
-**À mesurer sur le PC** (via le fil de fusion) : `UNIT=test_sound_player`, trois préréglages en une passe ; en cas de pire image au-dessus du témoin, le détail par étape dit si c'est la pose ou la machine.
+**Mesure PC r829 (9 novembre, c07181ab, i3-6100, 4 fils).** Pire image `ambience_layer_frame` : low 0,382 ms, medium 0,508 ms, high 0,513 ms (1,87 ms avant, budget 2 ms) ; pire image de pose 0,34 / 0,32 / 0,33 ms ; témoin tout posé 0,97 / 1,35 / 0,87 ms, au-dessus des images de fabrication : les pointes restantes viennent de la machine.
 
