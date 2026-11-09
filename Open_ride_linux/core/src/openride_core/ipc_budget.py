@@ -262,6 +262,14 @@ def _extras_1_9(d: dict[str, Any]) -> None:
     d["dir"] = -1
 
 
+def _extras_1_13(d: dict[str, Any]) -> None:
+    # Bonus tactiques (lot TT1, 4.0) : noms les plus longs et refus affiché 2 s, là où il y a des bonus (la
+    # trame de piste de la 1.7, plus lourde, n'en a pas).
+    if "powerup" in d:
+        d["powerup"] = {"held": "draft_plus", "active": "breakaway", "remaining_s": 120.0,
+                        "refused": {"kind": "draft_plus", "reason": "near_finish"}}
+
+
 # Une entrée par révision : chaque révision hérite des ajouts des précédentes.
 REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.1": _extras_1_1,
@@ -272,6 +280,7 @@ REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.6": _extras_1_6,
     "1.7": _extras_1_7,
     "1.9": _extras_1_9,
+    "1.13": _extras_1_13,
 }
 
 
