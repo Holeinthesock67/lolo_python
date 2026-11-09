@@ -1,0 +1,19 @@
+mont-ventoux-bedoin : ERREUR :   Overpass : nouvelle tentative dans 2 s (1/3) : HTTP Error 502: Bad Gateway
+mont-ventoux-bedoin : ERREUR :   Overpass : nouvelle tentative dans 4 s (2/3) : HTTP Error 502: Bad Gateway
+mont-ventoux-bedoin : biomes (sources : esa_worldcover_2021, osm, dem, latitude, 63 tuile(s)) : mediterranean 31,2 %, temperate_forest 31,1 %, rock_desert 13,0 %, farmland 12,7 %, temperate_grassland 9,1 %, alpine 2,7 %
+teide-vilaflor : ERREUR :   Overpass : nouvelle tentative dans 2 s (1/3) : HTTP Error 502: Bad Gateway
+teide-vilaflor : ERREUR :   Overpass : nouvelle tentative dans 4 s (2/3) : HTTP Error 502: Bad Gateway
+teide-vilaflor : ERREUR :   Overpass : nouvelle tentative dans 2 s (1/3) : HTTP Error 502: Bad Gateway
+teide-vilaflor : biomes (sources : esa_worldcover_2021, osm, dem, latitude, 66 tuile(s)) : steppe 65,6 %, sand_desert 19,7 %, savanna 12,7 %, farmland 2,0 %
+col-du-galibier : biomes (sources : esa_worldcover_2021, osm, dem, latitude, 52 tuile(s)) : alpine 50,1 %, temperate_grassland 26,8 %, temperate_forest 15,2 %, rock_desert 7,1 %, tundra 0,9 %
+ballon-d-alsace : ERREUR :   Overpass : nouvelle tentative dans 2 s (1/3) : HTTP Error 502: Bad Gateway
+ballon-d-alsace : ERREUR :   Overpass : nouvelle tentative dans 4 s (2/3) : HTTP Error 502: Bad Gateway
+ballon-d-alsace : biomes (sources : esa_worldcover_2021, osm, dem, latitude, 28 tuile(s)) : temperate_forest 77,1 %, temperate_grassland 22,9 %
+fuji-subaru-line : ERREUR :   Overpass : nouvelle tentative dans 2 s (1/3) : HTTP Error 502: Bad Gateway
+fuji-subaru-line : ERREUR :   Overpass : nouvelle tentative dans 4 s (2/3) : HTTP Error 502: Bad Gateway
+fuji-subaru-line : ERREUR :   Overpass : nouvelle tentative dans 2 s (1/3) : HTTP Error 502: Bad Gateway
+fuji-subaru-line : biomes (sources : esa_worldcover_2021, osm, dem, latitude, 55 tuile(s)) : mediterranean 99,1 %, alpine 0,5 %, rock_desert 0,4 %
+alto-de-l-angliru : ERREUR :   Overpass : nouvelle tentative dans 2 s (1/3) : HTTP Error 502: Bad Gateway
+alto-de-l-angliru : ERREUR :   Overpass : nouvelle tentative dans 4 s (2/3) : HTTP Error 502: Bad Gateway
+alto-de-l-angliru : ERREUR :   Overpass : nouvelle tentative dans 8 s (3/3) : HTTP Error 502: Bad Gateway
+alto-de-l-angliru : biomes (sources : esa_worldcover_2021, osm, dem, latitude, 34 tuile(s)) : mediterranean 88,0 %, temperate_forest 6,7 %, temperate_grassland 5,3 %
