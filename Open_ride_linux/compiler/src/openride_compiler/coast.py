@@ -383,6 +383,36 @@ class SeaTester:
         return crossings % 2 == 1
 
 
+def merge_cells(cells: list[tuple[int, int]]) -> list[tuple[int, int, int, int]]:
+    """Regroupe des carrés (ix, iz) en blocs rectangulaires (ix0, iz0, largeur, hauteur) qui ne se
+    recouvrent pas : suites de carrés voisins par rangée, puis rangées identiques empilées."""
+    rows: dict[int, list[int]] = {}
+    for ix, iz in set(cells):
+        rows.setdefault(iz, []).append(ix)
+    runs: list[tuple[int, int, int]] = []          # (iz, ix0, largeur)
+    for iz in sorted(rows):
+        xs = sorted(rows[iz])
+        start = prev = xs[0]
+        for ix in xs[1:] + [None]:
+            if ix is not None and ix == prev + 1:
+                prev = ix
+                continue
+            runs.append((iz, start, prev - start + 1))
+            if ix is not None:
+                start = prev = ix
+    blocks: list[list[int]] = []                    # [ix0, iz0, largeur, hauteur]
+    open_by_span: dict[tuple[int, int], list[int]] = {}
+    for iz, ix0, w in runs:
+        b = open_by_span.get((ix0, w))
+        if b is not None and b[1] + b[3] == iz:
+            b[3] += 1
+        else:
+            b = [ix0, iz, w, 1]
+            blocks.append(b)
+            open_by_span[(ix0, w)] = b
+    return [tuple(b) for b in blocks]
+
+
 # --- rivage -----------------------------------------------------------------------------------
 
 def _densify(pts: list[Point], step: float) -> list[Point]:
@@ -601,6 +631,7 @@ def build_coast(
     sea_chunks: dict[int, list[dict[str, Any]]] = {}
     coast_chunks: dict[int, dict[str, list[dict[str, Any]]]] = {}
     pending_lines: list[tuple[int, str, list[Point]]] = []
+    open_cells: dict[int, list[tuple[int, int]]] = {}    # carrés tout en mer, par tronçon
     sea_count = 0
     ignored = whole.dangling
     for ix, iz in cells:
@@ -610,7 +641,9 @@ def build_coast(
             if be1 < rect[0] or be0 > rect[2] or bn1 < rect[1] or bn0 > rect[3]:
                 continue
             pieces.extend(clip_line(ln, rect, _bbox_overlap_mask(arr, rect)))
-        if not pieces and not tester((rect[0] + 0.01, rect[3] - 0.01)):
+        if not pieces:
+            if tester((rect[0] + 0.01, rect[3] - 0.01)):
+                open_cells.setdefault(locator.of_cell(ix, iz), []).append((ix, iz))
             continue
         k = locator.of_cell(ix, iz)
         sea = close_sea(pieces, rect, lambda r=rect: tester((r[0] + 0.01, r[3] - 0.01)))
@@ -626,6 +659,19 @@ def build_coast(
             sea_count += 1
         for n_pc, pc in enumerate(pieces):
             pending_lines.append((k, f"c{ix}_{iz}_{n_pc}", _densify(pc, C.COAST_LINE_STEP_M)))
+
+    # Carrés tout en mer d'un même tronçon regroupés en blocs rectangulaires : une aire par bloc et
+    # non par carré (r790 : 214 aires, dont une centaine pour un seul tronçon, préparées en 20 s par
+    # l'engine, bateaux, faune et maillage de l'eau compris).
+    for k, blocks in ((k, merge_cells(c)) for k, c in sorted(open_cells.items())):
+        for ix0, iz0, w, h in blocks:
+            x0b, z0b = ix0 * CELL_M, iz0 * CELL_M
+            x1b, z1b = (ix0 + w) * CELL_M, (iz0 + h) * CELL_M
+            sea_chunks.setdefault(k, []).append({
+                "id": f"sea_{ix0}_{iz0}_b{w}x{h}", "kind": "sea", "level_y": C.SEA_LEVEL_Y,
+                "outer": clean_and_orient_ring([[x0b, z1b], [x1b, z1b], [x1b, z0b], [x0b, z0b]], outer=True),
+                "holes": []})
+            sea_count += 1
 
     # Rivage : un seul appel au MNT pour tous les points des lignes.
     lines_count = 0

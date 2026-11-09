@@ -185,7 +185,7 @@ static func area_paths(a: Dictionary, road: PackedVector2Array = PackedVector2Ar
 	var level := float(a.get("level_y", 0.0))
 	var sea := kind == "sea"
 	var shape := {"outer": outer, "holes": holes, "road": road, "margin": SEA_MARGIN_M if sea else LOOP_MARGIN_M,
-		"rect": _rect(outer)}
+		"rect": _rect(outer), "road_rect": _rect(road) if road.size() >= 2 else Rect2()}
 	var out := []
 	var loops := []   # [centre, rayon le plus grand] déjà placés
 	var want := []    # [sorte, rayons, distance au bord la plus grande]
@@ -245,8 +245,18 @@ static func _shore_dist(shape: Dictionary, p: Vector2) -> float:
 			return -1.0
 		d = minf(d, _ring_dist(h, p))
 	var road: PackedVector2Array = shape["road"]
+	if road.size() < 2:
+		return d
+	# Route vue de loin : aucun de ses segments n'est plus près que sa boîte englobante, on la saute
+	# (même résultat ; la mer du lot U3 couvre des km² loin de la route).
+	var rr: Rect2 = shape["road_rect"] if shape.has("road_rect") else _rect(road)
+	var bx := maxf(maxf(rr.position.x - p.x, 0.0), p.x - rr.end.x)
+	var bz := maxf(maxf(rr.position.y - p.y, 0.0), p.y - rr.end.y)
+	var off := float(shape["margin"]) - ROAD_CLEAR_M
+	if sqrt(bx * bx + bz * bz) + off >= d:
+		return d
 	for i in range(road.size() - 1):
-		d = minf(d, FaunaPlacer._seg_dist(p, road[i], road[i + 1]) - ROAD_CLEAR_M + float(shape["margin"]))
+		d = minf(d, FaunaPlacer._seg_dist(p, road[i], road[i + 1]) + off)
 	return d
 
 

@@ -46,6 +46,21 @@ Aucune (U1).
 5. Falaise de test (pente de 60°) : rivage `cliff` ; plage `natural=beach` : rivage `sand`.
 6. Parcours sans côte : couche `coast` absente (`present: false`), couche eau inchangée.
 
+## 7 bis. Premier essai sur le PC (r790, 9 novembre)
+
+- GPU sous les budgets : 5,39 / 8,86 / 10,52 ms en low, medium et high.
+- Pire image de 142 ms en medium et high (limite 100 ms). Cause : la mer était écrite carré de 1 km par carré
+  (214 aires) ; les tronçons 1 et 4 en portaient une centaine chacun, et l'engine les préparait en 20 à 23 s
+  (bateaux du lot P29 cherchés dans chaque aire, faune, maillage de l'eau). Les tuiles proches et leurs arbres
+  arrivaient alors pendant la sortie au lieu du chargement.
+- Correction : les carrés tout en mer d'un même tronçon sont regroupés en blocs rectangulaires (`merge_cells`,
+  aires `sea_<ix>_<iz>_b<l>x<h>`) ; seuls les carrés traversés par la côte restent un par un. Côté engine,
+  `boat_model.gd` ne parcourt plus la route quand sa boîte englobante est plus loin que le bord déjà trouvé
+  (même résultat). Sur une côte synthétique de 11 km : 205 aires deviennent 122, et le travail des bateaux
+  est divisé par 17.
+- Tracé : la route D940 tirée d'OSM fait 11,3 km entre Wissant et Sangatte ; l'essai la coupe à 8 km depuis
+  Wissant (`couper_gpx.py` de la fiche d'essai).
+
 ## 8. Hors périmètre
 
 Marées, vagues et rendu (U9), courbes bathymétriques.

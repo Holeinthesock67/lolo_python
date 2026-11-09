@@ -14,7 +14,7 @@ import pytest
 from conftest import ORIGIN, WORLD_CONTRACTS, straight_north, to_latlon
 from openride_compiler import cache, cli
 from openride_compiler import constants as C
-from openride_compiler.coast import (CELL_M, assemble_coastlines, build_coast, close_sea, extent_cells,
+from openride_compiler.coast import (CELL_M, assemble_coastlines, build_coast, close_sea, extent_cells, merge_cells,
                                      _ring_area_en)
 from openride_compiler.frame import LocalFrame
 from openride_compiler.osm_layers import signed_area
@@ -110,15 +110,29 @@ def test_sea_pieces_never_overlap_and_stay_in_their_square():
     route = route_dict()
     res = build_coast(route, FRAME, [response(straight_coast())])
     seen = set()
+    blocks = 0
     for a in sea_areas(res):
-        _, ix, iz, _ = a["id"].split("_")
-        cell = (int(ix), int(iz))
+        _, ix, iz, tag = a["id"].split("_")
+        w, h = (int(v) for v in tag[1:].split("x")) if tag.startswith("b") else (1, 1)
+        blocks += tag.startswith("b")
+        ix, iz = int(ix), int(iz)
         xs = [p[0] for p in a["outer"]]
         zs = [p[1] for p in a["outer"]]
-        assert cell[0] * CELL_M - 0.01 <= min(xs) and max(xs) <= (cell[0] + 1) * CELL_M + 0.01
-        assert cell[1] * CELL_M - 0.01 <= min(zs) and max(zs) <= (cell[1] + 1) * CELL_M + 0.01
-        assert cell not in seen
-        seen.add(cell)
+        assert ix * CELL_M - 0.01 <= min(xs) and max(xs) <= (ix + w) * CELL_M + 0.01
+        assert iz * CELL_M - 0.01 <= min(zs) and max(zs) <= (iz + h) * CELL_M + 0.01
+        cells = {(ix + i, iz + j) for i in range(w) for j in range(h)}
+        assert not cells & seen
+        seen |= cells
+    # Carrés tout en mer regroupés : bien moins d'aires que de carrés en mer.
+    assert blocks >= 1 and len(sea_areas(res)) < len(seen) / 4
+
+
+def test_merge_cells_covers_each_cell_once_with_few_blocks():
+    cells = [(ix, iz) for ix in range(3, 9) for iz in range(-4, 2)] + [(10, 0), (11, 0), (0, 5)]
+    blocks = merge_cells(cells)
+    covered = [(x0 + i, z0 + j) for x0, z0, w, h in blocks for i in range(w) for j in range(h)]
+    assert sorted(covered) == sorted(cells)
+    assert len(blocks) == 3
 
 
 # Critère 3 : île au large -------------------------------------------------------------------------
