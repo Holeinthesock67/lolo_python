@@ -15,8 +15,8 @@ Méthode, point par point de la grille 17 × 17 de chaque tuile (cases de 62,5 m
    fondues sur un voisinage de 5 × 5 pixels ; en pleine mer, bandes de latitude fondues sur 2°. Chaque
    classe donne un biome par zone (`CLASS_BIOME`) : arbres → forêt tempérée ou boréale, cultures → `farmland`,
    prairie → prairie ou steppe, sol nu → désert de sable ou de roche, neige → `polar` ou `alpine`, etc. ; eau
-   et bâti ne votent pas. Dans un paysage volcanique connu (`data/volcanic_areas.toml`), le sol nu donne
-   `volcanic`.
+   et bâti ne votent pas. Dans un paysage volcanique connu (`data/volcanic_areas.toml`), le sol nu et le
+   sable OSM (`natural=sand` : cendres, lapilli) donnent `volcanic`.
 3. **Bruit de bord déterministe** (hachage des indices globaux du point, donc de `ix`, `iz`) puis **flou de
    2 cases** (noyau binomial 5 × 5) : pas de frontière droite. Un point sans vote reçoit le biome de prairie
    de sa zone.
@@ -361,9 +361,9 @@ def _raw_weights(pts: _Points, level: BiomeLevel, inputs: Inputs) -> tuple[np.nd
     lat_p, lon_p = inputs.to_latlon((pts.gx * level.cell_m).astype(float), (pts.gz * level.cell_m).astype(float))
     lat_p, lon_p = np.asarray(lat_p, dtype=float), np.asarray(lon_p, dtype=float)
     volcanic = np.asarray(inputs.volcanic(lat_p, lon_p), dtype=bool).ravel()
-    if volcanic.any():   # sol nu d'un paysage volcanique : laves et scories
+    if volcanic.any():   # sol nu ou sable OSM d'un paysage volcanique : laves, scories, cendres
         sub = classes[volcanic]
-        sub[sub == BARE] = VOLCANIC_BARE
+        sub[(sub == BARE) | (sub == OSM_SAND)] = VOLCANIC_BARE
         classes[volcanic] = sub
     classes = np.clip(classes, 0, 255)
     zw = np.asarray(inputs.zones(lat_p, lon_p), dtype=float).reshape(n, len(ZONES))

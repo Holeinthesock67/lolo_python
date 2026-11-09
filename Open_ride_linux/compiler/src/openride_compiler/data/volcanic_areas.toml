@@ -1,5 +1,5 @@
 # Paysages volcaniques (lot U24) : dans un de ces disques, le sol nu de WorldCover (classe 60 : laves,
-# scories, cendres) donne le biome `volcanic` au lieu du désert de sable ou de roche. Rien d'autre ne change :
+# scories, cendres) et le sable des polygones OSM (`natural=sand`) donnent le biome `volcanic` au lieu du désert de sable ou de roche. Rien d'autre ne change :
 # forêts, prairies et cultures d'un volcan gardent leur biome.
 #
 # Table établie à la main pour ce lot : centre approximatif (degrés décimaux, au centième) et rayon (km)

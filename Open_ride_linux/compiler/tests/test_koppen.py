@@ -86,3 +86,15 @@ def test_volcano_keeps_its_forests():
 def test_galicia_trees_are_not_mediterranean():
     assert layer_at(42.9, -8.5, TREES).shares == {"temperate_forest": 100.0}   # Saint-Jacques-de-Compostelle
     assert layer_at(37.4, -6.0, TREES).shares == {"mediterranean": 100.0}      # Séville
+
+
+def test_osm_sand_of_a_volcano_is_volcanic():
+    s = np.arange(0.0, 3000.0 + 1e-9, 10.0)
+    route = {"x": np.zeros_like(s).tolist(), "z": (-s).tolist(), "alt_m": [500.0] * len(s)}
+    frame = LocalFrame.at(28.22, -16.66)                                   # Las Cañadas
+    sand = B.OsmArea(B.osm_class({"natural": "sand"}),
+                     [[-5000.0, -8000.0], [5000.0, -8000.0], [5000.0, 5000.0], [-5000.0, 5000.0]])
+    inputs = B.Inputs(to_latlon=frame.to_latlon, osm=[sand],
+                      landcover=lambda la, lo: np.full(np.shape(la), BARE, dtype=np.uint8))
+    layer = B.build_biome_layer(biome_tile_keys(route), route["x"], route["z"], inputs=inputs)
+    assert layer.shares == {"volcanic": 100.0}

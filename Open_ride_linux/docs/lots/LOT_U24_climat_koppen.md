@@ -27,7 +27,9 @@ lire une vraie carte des climats, embarquée, sans appel réseau à l'exécution
   jusqu'à 62°) compte comme boréale : l'étage alpin vient déjà de l'altitude. En pleine mer, les bandes de
   latitude du lot U2 restent le repli (`biomes.latitude_zone_weights`).
 - **Paysages volcaniques** `data/volcanic_areas.toml` : une quarantaine de disques (centre au centième,
-  rayon en km) établis à la main pour ce lot ; le sol nu de WorldCover qui y tombe donne `volcanic`. Forêts,
+  rayon en km) établis à la main pour ce lot ; le sol nu de WorldCover et le sable OSM (`natural=sand`,
+  cendres et lapilli) qui y tombent donnent `volcanic` ; le disque du Teide couvre toute la montée depuis
+  Vilaflor. Forêts,
   prairies et cultures gardent leur biome.
 - `layers.biome.sources` nomme `koppen_1986_2010` au lieu de `latitude` (texte libre, journal du format
   `.world` complété, sans changement de format ni de version de la couche).
