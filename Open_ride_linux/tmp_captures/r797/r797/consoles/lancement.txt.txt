@@ -1,0 +1,7 @@
+04:17:15 empreinte avant 5dd68002174aac60837bd7c9e4e300a6
+04:17:15 tête 5815b6c9
+04:18:24 hud_galerie
+04:22:04 fin hud_galerie rc=1
+04:22:05 empreinte après 5dd68002174aac60837bd7c9e4e300a6
+04:22:05 clone 90c08094
+04:22:05 FIN

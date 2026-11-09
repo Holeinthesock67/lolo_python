@@ -1,0 +1,761 @@
+== 1680x1050_low ==
+[OK] 1680x1050_low · galerie · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-hud-galerie-routes-h0a0fx9u/demo.world
+[OK] 1680x1050_low · gp_hud · capture enregistrée
+[ÉCHEC] 1680x1050_low · gp_hud · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_low · gp_hud · hauteur des chiffres power : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_hud · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_hud · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_hud · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_hud · hauteur des chiffres cadence : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_hud · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_hud · hauteur des chiffres hr : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_hud · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_hud · hauteur des chiffres grade : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_hud · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_hud · contraste power_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_hud · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_hud · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_hud · contraste hr_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_hud · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_hud · Grand Prix : item = 'musette_x3' : affiché 'musette_x3'
+[OK] 1680x1050_low · gp_hud · Grand Prix : key = 'Z : Trois musettes' : affiché 'Z : Trois musettes'
+[OK] 1680x1050_low · gp_hud · Grand Prix : place = '3e / 5' : affiché '3e / 5'
+[OK] 1680x1050_low · gp_hud · Grand Prix : warn = '' : affiché ''
+[OK] 1680x1050_low · gp_hud · Grand Prix : hint = 'Bidon glissant en vue : A ou ← →' : affiché 'Bidon glissant en vue : A ou ← →'
+[OK] 1680x1050_low · gp_hud · bots_panel caché
+[OK] 1680x1050_low · gp_hud · éléments dans l'écran : 18 éléments visibles
+[OK] 1680x1050_low · gp_hud · lignes du HUD sans chevauchement
+[OK] 1680x1050_low · gp_hud · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1050_low · gp_hud · panneaux sans chevauchement
+[OK] 1680x1050_low · gp_hud · textes dans panel_left
+[OK] 1680x1050_low · gp_hud · textes dans panel_right
+[OK] 1680x1050_low · gp_hud · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1050_low · gp_hud · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1050_low · gp_attaque · capture enregistrée
+[ÉCHEC] 1680x1050_low · gp_attaque · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_low · gp_attaque · hauteur des chiffres power : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_attaque · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_attaque · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_attaque · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_attaque · hauteur des chiffres cadence : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_attaque · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_attaque · hauteur des chiffres hr : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_attaque · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_attaque · hauteur des chiffres grade : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_attaque · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_attaque · contraste power_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_attaque · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_attaque · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_attaque · contraste hr_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_attaque · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_attaque · Grand Prix : warn = 'Musette guidée derrière !' : affiché 'Musette guidée derrière !'
+[OK] 1680x1050_low · gp_attaque · Grand Prix : outline = True : affiché True
+[OK] 1680x1050_low · gp_attaque · éléments dans l'écran : 18 éléments visibles
+[OK] 1680x1050_low · gp_attaque · lignes du HUD sans chevauchement
+[OK] 1680x1050_low · gp_attaque · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1050_low · gp_attaque · panneaux sans chevauchement
+[OK] 1680x1050_low · gp_attaque · textes dans panel_left
+[OK] 1680x1050_low · gp_attaque · textes dans panel_right
+[OK] 1680x1050_low · gp_attaque · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1050_low · gp_attaque · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1050_low · gp_orage_roulette · capture enregistrée
+[ÉCHEC] 1680x1050_low · gp_orage_roulette · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_low · gp_orage_roulette · hauteur des chiffres power : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_orage_roulette · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_orage_roulette · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_orage_roulette · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_orage_roulette · hauteur des chiffres cadence : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_orage_roulette · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_orage_roulette · hauteur des chiffres hr : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_orage_roulette · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_orage_roulette · hauteur des chiffres grade : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_orage_roulette · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_orage_roulette · contraste power_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_orage_roulette · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_orage_roulette · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_orage_roulette · contraste hr_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_orage_roulette · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_orage_roulette · Grand Prix : warn = 'Orage vers le premier' : affiché 'Orage vers le premier'
+[OK] 1680x1050_low · gp_orage_roulette · Grand Prix : outline = False : affiché False
+[OK] 1680x1050_low · gp_orage_roulette · Grand Prix : hint = '← → : voie' : affiché '← → : voie'
+[OK] 1680x1050_low · gp_orage_roulette · éléments dans l'écran : 18 éléments visibles
+[OK] 1680x1050_low · gp_orage_roulette · lignes du HUD sans chevauchement
+[OK] 1680x1050_low · gp_orage_roulette · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1050_low · gp_orage_roulette · panneaux sans chevauchement
+[OK] 1680x1050_low · gp_orage_roulette · textes dans panel_left
+[OK] 1680x1050_low · gp_orage_roulette · textes dans panel_right
+[OK] 1680x1050_low · gp_orage_roulette · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1050_low · gp_orage_roulette · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1050_low · gp_12_coureurs · capture enregistrée
+[ÉCHEC] 1680x1050_low · gp_12_coureurs · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_low · gp_12_coureurs · hauteur des chiffres power : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_12_coureurs · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_12_coureurs · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_12_coureurs · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_12_coureurs · hauteur des chiffres cadence : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_12_coureurs · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_12_coureurs · hauteur des chiffres hr : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_12_coureurs · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_12_coureurs · hauteur des chiffres grade : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_low · gp_12_coureurs · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1680x1050_low · gp_12_coureurs · contraste power_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_12_coureurs · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_12_coureurs · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_12_coureurs · contraste hr_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_12_coureurs · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_low · gp_12_coureurs · Grand Prix : place = '9e / 12' : affiché '9e / 12'
+[OK] 1680x1050_low · gp_12_coureurs · Grand Prix : key = 'Z : Musette guidée' : affiché 'Z : Musette guidée'
+[OK] 1680x1050_low · gp_12_coureurs · éléments dans l'écran : 18 éléments visibles
+[OK] 1680x1050_low · gp_12_coureurs · lignes du HUD sans chevauchement
+[OK] 1680x1050_low · gp_12_coureurs · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1050_low · gp_12_coureurs · panneaux sans chevauchement
+[OK] 1680x1050_low · gp_12_coureurs · textes dans panel_left
+[OK] 1680x1050_low · gp_12_coureurs · textes dans panel_right
+[OK] 1680x1050_low · gp_12_coureurs · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1050_low · gp_12_coureurs · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1050_low · gp_bilan · capture enregistrée
+[ÉCHEC] 1680x1050_low · gp_bilan · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_low · gp_bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Durée : 0:24:15 | Distance : 15,20 km | Puissance moyenne : 246 W | Grand Prix des objets : 2e sur 5 | Objets : 4 lancés · 2 reçus · 4 esquivés | Coup de fouet : +7,6 s · lancé ×2 | Trois musettes : +5,2 s · lancé ×1 | Musette guidée : −3,9 s · reçu ×1 | Bidon glissant : −3,7 s · reçu ×1 | Bidon glissant : +2,1 s · lancé ×1 | Bilan des objets : +7,3 s | Journal et FIT : puissance et vitesse réelles | Records : aucun dans ce mode ||  || Bilan de la séance »
+[OK] 1680x1050_low · gp_bilan · éléments dans l'écran : 4 éléments visibles
+[OK] 1680x1050_low · gp_bilan · lignes du HUD sans chevauchement
+[OK] 1680x1050_low · gp_bilan · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1050_low · gp_bilan · panneaux sans chevauchement
+[OK] 1680x1050_low · journal · aucune erreur ni avertissement Godot
+[OK] 1680x1050_low · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1680x1050_low · journal · qualité réellement appliquée : low appliquée (5 capture(s)) ; dernière ligne : low (demandée low, source cli)
+== 1680x1050_medium ==
+[OK] 1680x1050_medium · galerie · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-hud-galerie-routes-h0a0fx9u/demo.world
+[OK] 1680x1050_medium · gp_hud · capture enregistrée
+[ÉCHEC] 1680x1050_medium · gp_hud · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_medium · gp_hud · hauteur des chiffres power : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_hud · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_hud · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_hud · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_hud · hauteur des chiffres cadence : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_hud · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_hud · hauteur des chiffres hr : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_hud · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_hud · hauteur des chiffres grade : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_hud · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_hud · contraste power_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_hud · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_hud · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_hud · contraste hr_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_hud · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_hud · Grand Prix : item = 'musette_x3' : affiché 'musette_x3'
+[OK] 1680x1050_medium · gp_hud · Grand Prix : key = 'Z : Trois musettes' : affiché 'Z : Trois musettes'
+[OK] 1680x1050_medium · gp_hud · Grand Prix : place = '3e / 5' : affiché '3e / 5'
+[OK] 1680x1050_medium · gp_hud · Grand Prix : warn = '' : affiché ''
+[OK] 1680x1050_medium · gp_hud · Grand Prix : hint = 'Bidon glissant en vue : A ou ← →' : affiché 'Bidon glissant en vue : A ou ← →'
+[OK] 1680x1050_medium · gp_hud · bots_panel caché
+[OK] 1680x1050_medium · gp_hud · éléments dans l'écran : 19 éléments visibles
+[OK] 1680x1050_medium · gp_hud · lignes du HUD sans chevauchement
+[OK] 1680x1050_medium · gp_hud · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1050_medium · gp_hud · panneaux sans chevauchement
+[OK] 1680x1050_medium · gp_hud · textes dans panel_left
+[OK] 1680x1050_medium · gp_hud · textes dans panel_right
+[OK] 1680x1050_medium · gp_hud · bandeau sans chevauchement du HUD
+[OK] 1680x1050_medium · gp_hud · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1050_medium · gp_hud · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1050_medium · gp_attaque · capture enregistrée
+[ÉCHEC] 1680x1050_medium · gp_attaque · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_medium · gp_attaque · hauteur des chiffres power : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_attaque · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_attaque · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_attaque · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_attaque · hauteur des chiffres cadence : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_attaque · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_attaque · hauteur des chiffres hr : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_attaque · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_attaque · hauteur des chiffres grade : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_attaque · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_attaque · contraste power_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_attaque · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_attaque · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_attaque · contraste hr_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_attaque · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_attaque · Grand Prix : warn = 'Musette guidée derrière !' : affiché 'Musette guidée derrière !'
+[OK] 1680x1050_medium · gp_attaque · Grand Prix : outline = True : affiché True
+[OK] 1680x1050_medium · gp_attaque · éléments dans l'écran : 18 éléments visibles
+[OK] 1680x1050_medium · gp_attaque · lignes du HUD sans chevauchement
+[OK] 1680x1050_medium · gp_attaque · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1050_medium · gp_attaque · panneaux sans chevauchement
+[OK] 1680x1050_medium · gp_attaque · textes dans panel_left
+[OK] 1680x1050_medium · gp_attaque · textes dans panel_right
+[OK] 1680x1050_medium · gp_attaque · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1050_medium · gp_attaque · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1050_medium · gp_orage_roulette · capture enregistrée
+[ÉCHEC] 1680x1050_medium · gp_orage_roulette · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_medium · gp_orage_roulette · hauteur des chiffres power : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_orage_roulette · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_orage_roulette · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_orage_roulette · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_orage_roulette · hauteur des chiffres cadence : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_orage_roulette · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_orage_roulette · hauteur des chiffres hr : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_orage_roulette · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_orage_roulette · hauteur des chiffres grade : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_orage_roulette · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_orage_roulette · contraste power_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_orage_roulette · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_orage_roulette · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_orage_roulette · contraste hr_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_orage_roulette · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_orage_roulette · Grand Prix : warn = 'Orage vers le premier' : affiché 'Orage vers le premier'
+[OK] 1680x1050_medium · gp_orage_roulette · Grand Prix : outline = False : affiché False
+[OK] 1680x1050_medium · gp_orage_roulette · Grand Prix : hint = '← → : voie' : affiché '← → : voie'
+[OK] 1680x1050_medium · gp_orage_roulette · éléments dans l'écran : 18 éléments visibles
+[OK] 1680x1050_medium · gp_orage_roulette · lignes du HUD sans chevauchement
+[OK] 1680x1050_medium · gp_orage_roulette · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1050_medium · gp_orage_roulette · panneaux sans chevauchement
+[OK] 1680x1050_medium · gp_orage_roulette · textes dans panel_left
+[OK] 1680x1050_medium · gp_orage_roulette · textes dans panel_right
+[OK] 1680x1050_medium · gp_orage_roulette · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1050_medium · gp_orage_roulette · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1050_medium · gp_12_coureurs · capture enregistrée
+[ÉCHEC] 1680x1050_medium · gp_12_coureurs · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_medium · gp_12_coureurs · hauteur des chiffres power : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_12_coureurs · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_12_coureurs · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_12_coureurs · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_12_coureurs · hauteur des chiffres cadence : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_12_coureurs · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_12_coureurs · hauteur des chiffres hr : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_12_coureurs · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_12_coureurs · hauteur des chiffres grade : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_medium · gp_12_coureurs · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1680x1050_medium · gp_12_coureurs · contraste power_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_12_coureurs · contraste speed_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_12_coureurs · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_12_coureurs · contraste hr_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_12_coureurs · contraste grade_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_medium · gp_12_coureurs · Grand Prix : place = '9e / 12' : affiché '9e / 12'
+[OK] 1680x1050_medium · gp_12_coureurs · Grand Prix : key = 'Z : Musette guidée' : affiché 'Z : Musette guidée'
+[OK] 1680x1050_medium · gp_12_coureurs · éléments dans l'écran : 18 éléments visibles
+[OK] 1680x1050_medium · gp_12_coureurs · lignes du HUD sans chevauchement
+[OK] 1680x1050_medium · gp_12_coureurs · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1050_medium · gp_12_coureurs · panneaux sans chevauchement
+[OK] 1680x1050_medium · gp_12_coureurs · textes dans panel_left
+[OK] 1680x1050_medium · gp_12_coureurs · textes dans panel_right
+[OK] 1680x1050_medium · gp_12_coureurs · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1050_medium · gp_12_coureurs · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1050_medium · gp_bilan · capture enregistrée
+[ÉCHEC] 1680x1050_medium · gp_bilan · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_medium · gp_bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Durée : 0:24:15 | Distance : 15,20 km | Puissance moyenne : 246 W | Grand Prix des objets : 2e sur 5 | Objets : 4 lancés · 2 reçus · 4 esquivés | Coup de fouet : +7,6 s · lancé ×2 | Trois musettes : +5,2 s · lancé ×1 | Musette guidée : −3,9 s · reçu ×1 | Bidon glissant : −3,7 s · reçu ×1 | Bidon glissant : +2,1 s · lancé ×1 | Bilan des objets : +7,3 s | Journal et FIT : puissance et vitesse réelles | Records : aucun dans ce mode ||  || Bilan de la séance »
+[OK] 1680x1050_medium · gp_bilan · éléments dans l'écran : 4 éléments visibles
+[OK] 1680x1050_medium · gp_bilan · lignes du HUD sans chevauchement
+[OK] 1680x1050_medium · gp_bilan · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1050_medium · gp_bilan · panneaux sans chevauchement
+[OK] 1680x1050_medium · journal · aucune erreur ni avertissement Godot
+[OK] 1680x1050_medium · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1680x1050_medium · journal · qualité réellement appliquée : medium appliquée (5 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+== 1680x1050_high ==
+[OK] 1680x1050_high · galerie · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-hud-galerie-routes-h0a0fx9u/demo.world
+[OK] 1680x1050_high · gp_hud · capture enregistrée
+[ÉCHEC] 1680x1050_high · gp_hud · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_high · gp_hud · hauteur des chiffres power : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_hud · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_hud · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_hud · contraste speed : 6.1:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_hud · hauteur des chiffres cadence : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_hud · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_hud · hauteur des chiffres hr : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_hud · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_hud · hauteur des chiffres grade : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_hud · contraste grade : 5.7:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_hud · contraste power_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_hud · contraste speed_caption : 3.8:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_hud · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_hud · contraste hr_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_hud · contraste grade_caption : 3.8:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_hud · Grand Prix : item = 'musette_x3' : affiché 'musette_x3'
+[OK] 1680x1050_high · gp_hud · Grand Prix : key = 'Z : Trois musettes' : affiché 'Z : Trois musettes'
+[OK] 1680x1050_high · gp_hud · Grand Prix : place = '3e / 5' : affiché '3e / 5'
+[OK] 1680x1050_high · gp_hud · Grand Prix : warn = '' : affiché ''
+[OK] 1680x1050_high · gp_hud · Grand Prix : hint = 'Bidon glissant en vue : A ou ← →' : affiché 'Bidon glissant en vue : A ou ← →'
+[OK] 1680x1050_high · gp_hud · bots_panel caché
+[OK] 1680x1050_high · gp_hud · éléments dans l'écran : 19 éléments visibles
+[OK] 1680x1050_high · gp_hud · lignes du HUD sans chevauchement
+[OK] 1680x1050_high · gp_hud · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1050_high · gp_hud · panneaux sans chevauchement
+[OK] 1680x1050_high · gp_hud · textes dans panel_left
+[OK] 1680x1050_high · gp_hud · textes dans panel_right
+[OK] 1680x1050_high · gp_hud · bandeau sans chevauchement du HUD
+[OK] 1680x1050_high · gp_hud · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1050_high · gp_hud · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1050_high · gp_attaque · capture enregistrée
+[ÉCHEC] 1680x1050_high · gp_attaque · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_high · gp_attaque · hauteur des chiffres power : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_attaque · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_attaque · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_attaque · contraste speed : 6.1:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_attaque · hauteur des chiffres cadence : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_attaque · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_attaque · hauteur des chiffres hr : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_attaque · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_attaque · hauteur des chiffres grade : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_attaque · contraste grade : 5.7:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_attaque · contraste power_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_attaque · contraste speed_caption : 3.8:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_attaque · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_attaque · contraste hr_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_attaque · contraste grade_caption : 3.8:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_attaque · Grand Prix : warn = 'Musette guidée derrière !' : affiché 'Musette guidée derrière !'
+[OK] 1680x1050_high · gp_attaque · Grand Prix : outline = True : affiché True
+[OK] 1680x1050_high · gp_attaque · éléments dans l'écran : 18 éléments visibles
+[OK] 1680x1050_high · gp_attaque · lignes du HUD sans chevauchement
+[OK] 1680x1050_high · gp_attaque · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1050_high · gp_attaque · panneaux sans chevauchement
+[OK] 1680x1050_high · gp_attaque · textes dans panel_left
+[OK] 1680x1050_high · gp_attaque · textes dans panel_right
+[OK] 1680x1050_high · gp_attaque · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1050_high · gp_attaque · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1050_high · gp_orage_roulette · capture enregistrée
+[ÉCHEC] 1680x1050_high · gp_orage_roulette · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_high · gp_orage_roulette · hauteur des chiffres power : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_orage_roulette · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_orage_roulette · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_orage_roulette · contraste speed : 6.1:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_orage_roulette · hauteur des chiffres cadence : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_orage_roulette · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_orage_roulette · hauteur des chiffres hr : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_orage_roulette · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_orage_roulette · hauteur des chiffres grade : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_orage_roulette · contraste grade : 5.7:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_orage_roulette · contraste power_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_orage_roulette · contraste speed_caption : 3.8:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_orage_roulette · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_orage_roulette · contraste hr_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_orage_roulette · contraste grade_caption : 3.8:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_orage_roulette · Grand Prix : warn = 'Orage vers le premier' : affiché 'Orage vers le premier'
+[OK] 1680x1050_high · gp_orage_roulette · Grand Prix : outline = False : affiché False
+[OK] 1680x1050_high · gp_orage_roulette · Grand Prix : hint = '← → : voie' : affiché '← → : voie'
+[OK] 1680x1050_high · gp_orage_roulette · éléments dans l'écran : 18 éléments visibles
+[OK] 1680x1050_high · gp_orage_roulette · lignes du HUD sans chevauchement
+[OK] 1680x1050_high · gp_orage_roulette · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1050_high · gp_orage_roulette · panneaux sans chevauchement
+[OK] 1680x1050_high · gp_orage_roulette · textes dans panel_left
+[OK] 1680x1050_high · gp_orage_roulette · textes dans panel_right
+[OK] 1680x1050_high · gp_orage_roulette · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1050_high · gp_orage_roulette · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1050_high · gp_12_coureurs · capture enregistrée
+[ÉCHEC] 1680x1050_high · gp_12_coureurs · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_high · gp_12_coureurs · hauteur des chiffres power : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_12_coureurs · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_12_coureurs · hauteur des chiffres speed : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_12_coureurs · contraste speed : 6.1:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_12_coureurs · hauteur des chiffres cadence : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_12_coureurs · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_12_coureurs · hauteur des chiffres hr : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_12_coureurs · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_12_coureurs · hauteur des chiffres grade : 38 px pour 1080 lignes (au moins 28)
+[OK] 1680x1050_high · gp_12_coureurs · contraste grade : 5.7:1 (au moins 4.5:1)
+[OK] 1680x1050_high · gp_12_coureurs · contraste power_caption : 4.6:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_12_coureurs · contraste speed_caption : 3.8:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_12_coureurs · contraste cadence_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_12_coureurs · contraste hr_caption : 4.5:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_12_coureurs · contraste grade_caption : 3.8:1 (au moins 3:1)
+[OK] 1680x1050_high · gp_12_coureurs · Grand Prix : place = '9e / 12' : affiché '9e / 12'
+[OK] 1680x1050_high · gp_12_coureurs · Grand Prix : key = 'Z : Musette guidée' : affiché 'Z : Musette guidée'
+[OK] 1680x1050_high · gp_12_coureurs · éléments dans l'écran : 18 éléments visibles
+[OK] 1680x1050_high · gp_12_coureurs · lignes du HUD sans chevauchement
+[OK] 1680x1050_high · gp_12_coureurs · panneaux dans l'écran : 4 panneaux
+[OK] 1680x1050_high · gp_12_coureurs · panneaux sans chevauchement
+[OK] 1680x1050_high · gp_12_coureurs · textes dans panel_left
+[OK] 1680x1050_high · gp_12_coureurs · textes dans panel_right
+[OK] 1680x1050_high · gp_12_coureurs · texte power dessiné (pixels clairs) : 18.7% de pixels clairs
+[OK] 1680x1050_high · gp_12_coureurs · texte status dessiné (pixels clairs) : 9.3% de pixels clairs
+[OK] 1680x1050_high · gp_bilan · capture enregistrée
+[ÉCHEC] 1680x1050_high · gp_bilan · taille de l'image : 1680x1011, attendu 1680x1050
+[OK] 1680x1050_high · gp_bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Durée : 0:24:15 | Distance : 15,20 km | Puissance moyenne : 246 W | Grand Prix des objets : 2e sur 5 | Objets : 4 lancés · 2 reçus · 4 esquivés | Coup de fouet : +7,6 s · lancé ×2 | Trois musettes : +5,2 s · lancé ×1 | Musette guidée : −3,9 s · reçu ×1 | Bidon glissant : −3,7 s · reçu ×1 | Bidon glissant : +2,1 s · lancé ×1 | Bilan des objets : +7,3 s | Journal et FIT : puissance et vitesse réelles | Records : aucun dans ce mode ||  || Bilan de la séance »
+[OK] 1680x1050_high · gp_bilan · éléments dans l'écran : 4 éléments visibles
+[OK] 1680x1050_high · gp_bilan · lignes du HUD sans chevauchement
+[OK] 1680x1050_high · gp_bilan · panneaux dans l'écran : 0 panneaux
+[OK] 1680x1050_high · gp_bilan · panneaux sans chevauchement
+[OK] 1680x1050_high · journal · aucune erreur ni avertissement Godot
+[OK] 1680x1050_high · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1680x1050_high · journal · qualité réellement appliquée : high appliquée (5 capture(s)) ; dernière ligne : high (demandée high, source cli)
+== 1024x600_low ==
+[OK] 1024x600_low · galerie · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-hud-galerie-routes-h0a0fx9u/demo.world
+[OK] 1024x600_low · gp_hud · capture enregistrée
+[OK] 1024x600_low · gp_hud · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_low · gp_hud · hauteur des chiffres power : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_hud · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_hud · hauteur des chiffres speed : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_hud · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_hud · hauteur des chiffres cadence : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_hud · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_hud · hauteur des chiffres hr : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_hud · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_hud · hauteur des chiffres grade : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_hud · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_hud · contraste power_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_low · gp_hud · contraste speed_caption : 4.3:1 (au moins 3:1)
+[OK] 1024x600_low · gp_hud · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1024x600_low · gp_hud · contraste hr_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_low · gp_hud · contraste grade_caption : 4.4:1 (au moins 3:1)
+[OK] 1024x600_low · gp_hud · Grand Prix : item = 'musette_x3' : affiché 'musette_x3'
+[OK] 1024x600_low · gp_hud · Grand Prix : key = 'Z : Trois musettes' : affiché 'Z : Trois musettes'
+[OK] 1024x600_low · gp_hud · Grand Prix : place = '3e / 5' : affiché '3e / 5'
+[OK] 1024x600_low · gp_hud · Grand Prix : warn = '' : affiché ''
+[OK] 1024x600_low · gp_hud · Grand Prix : hint = 'Bidon glissant en vue : A ou ← →' : affiché 'Bidon glissant en vue : A ou ← →'
+[OK] 1024x600_low · gp_hud · bots_panel caché
+[OK] 1024x600_low · gp_hud · éléments dans l'écran : 19 éléments visibles
+[OK] 1024x600_low · gp_hud · lignes du HUD sans chevauchement
+[OK] 1024x600_low · gp_hud · panneaux dans l'écran : 4 panneaux
+[OK] 1024x600_low · gp_hud · panneaux sans chevauchement
+[OK] 1024x600_low · gp_hud · textes dans panel_left
+[OK] 1024x600_low · gp_hud · textes dans panel_right
+[OK] 1024x600_low · gp_hud · bandeau sans chevauchement du HUD
+[OK] 1024x600_low · gp_hud · texte power dessiné (pixels clairs) : 17.1% de pixels clairs
+[OK] 1024x600_low · gp_hud · texte status dessiné (pixels clairs) : 7.8% de pixels clairs
+[OK] 1024x600_low · gp_attaque · capture enregistrée
+[OK] 1024x600_low · gp_attaque · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_low · gp_attaque · hauteur des chiffres power : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_attaque · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_attaque · hauteur des chiffres speed : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_attaque · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_attaque · hauteur des chiffres cadence : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_attaque · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_attaque · hauteur des chiffres hr : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_attaque · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_attaque · hauteur des chiffres grade : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_attaque · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_attaque · contraste power_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_low · gp_attaque · contraste speed_caption : 4.3:1 (au moins 3:1)
+[OK] 1024x600_low · gp_attaque · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1024x600_low · gp_attaque · contraste hr_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_low · gp_attaque · contraste grade_caption : 4.4:1 (au moins 3:1)
+[OK] 1024x600_low · gp_attaque · Grand Prix : warn = 'Musette guidée derrière !' : affiché 'Musette guidée derrière !'
+[OK] 1024x600_low · gp_attaque · Grand Prix : outline = True : affiché True
+[OK] 1024x600_low · gp_attaque · éléments dans l'écran : 19 éléments visibles
+[OK] 1024x600_low · gp_attaque · lignes du HUD sans chevauchement
+[OK] 1024x600_low · gp_attaque · panneaux dans l'écran : 4 panneaux
+[OK] 1024x600_low · gp_attaque · panneaux sans chevauchement
+[OK] 1024x600_low · gp_attaque · textes dans panel_left
+[OK] 1024x600_low · gp_attaque · textes dans panel_right
+[OK] 1024x600_low · gp_attaque · bandeau sans chevauchement du HUD
+[OK] 1024x600_low · gp_attaque · texte power dessiné (pixels clairs) : 17.1% de pixels clairs
+[OK] 1024x600_low · gp_attaque · texte status dessiné (pixels clairs) : 7.8% de pixels clairs
+[OK] 1024x600_low · gp_orage_roulette · capture enregistrée
+[OK] 1024x600_low · gp_orage_roulette · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_low · gp_orage_roulette · hauteur des chiffres power : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_orage_roulette · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_orage_roulette · hauteur des chiffres speed : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_orage_roulette · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_orage_roulette · hauteur des chiffres cadence : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_orage_roulette · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_orage_roulette · hauteur des chiffres hr : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_orage_roulette · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_orage_roulette · hauteur des chiffres grade : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_orage_roulette · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_orage_roulette · contraste power_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_low · gp_orage_roulette · contraste speed_caption : 4.3:1 (au moins 3:1)
+[OK] 1024x600_low · gp_orage_roulette · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1024x600_low · gp_orage_roulette · contraste hr_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_low · gp_orage_roulette · contraste grade_caption : 4.4:1 (au moins 3:1)
+[OK] 1024x600_low · gp_orage_roulette · Grand Prix : warn = 'Orage vers le premier' : affiché 'Orage vers le premier'
+[OK] 1024x600_low · gp_orage_roulette · Grand Prix : outline = False : affiché False
+[OK] 1024x600_low · gp_orage_roulette · Grand Prix : hint = '← → : voie' : affiché '← → : voie'
+[OK] 1024x600_low · gp_orage_roulette · éléments dans l'écran : 18 éléments visibles
+[OK] 1024x600_low · gp_orage_roulette · lignes du HUD sans chevauchement
+[OK] 1024x600_low · gp_orage_roulette · panneaux dans l'écran : 4 panneaux
+[OK] 1024x600_low · gp_orage_roulette · panneaux sans chevauchement
+[OK] 1024x600_low · gp_orage_roulette · textes dans panel_left
+[OK] 1024x600_low · gp_orage_roulette · textes dans panel_right
+[OK] 1024x600_low · gp_orage_roulette · texte power dessiné (pixels clairs) : 17.1% de pixels clairs
+[OK] 1024x600_low · gp_orage_roulette · texte status dessiné (pixels clairs) : 7.8% de pixels clairs
+[OK] 1024x600_low · gp_12_coureurs · capture enregistrée
+[OK] 1024x600_low · gp_12_coureurs · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_low · gp_12_coureurs · hauteur des chiffres power : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_12_coureurs · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_12_coureurs · hauteur des chiffres speed : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_12_coureurs · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_12_coureurs · hauteur des chiffres cadence : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_12_coureurs · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_12_coureurs · hauteur des chiffres hr : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_12_coureurs · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_12_coureurs · hauteur des chiffres grade : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_low · gp_12_coureurs · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1024x600_low · gp_12_coureurs · contraste power_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_low · gp_12_coureurs · contraste speed_caption : 4.3:1 (au moins 3:1)
+[OK] 1024x600_low · gp_12_coureurs · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1024x600_low · gp_12_coureurs · contraste hr_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_low · gp_12_coureurs · contraste grade_caption : 4.4:1 (au moins 3:1)
+[OK] 1024x600_low · gp_12_coureurs · Grand Prix : place = '9e / 12' : affiché '9e / 12'
+[OK] 1024x600_low · gp_12_coureurs · Grand Prix : key = 'Z : Musette guidée' : affiché 'Z : Musette guidée'
+[OK] 1024x600_low · gp_12_coureurs · éléments dans l'écran : 18 éléments visibles
+[OK] 1024x600_low · gp_12_coureurs · lignes du HUD sans chevauchement
+[OK] 1024x600_low · gp_12_coureurs · panneaux dans l'écran : 4 panneaux
+[OK] 1024x600_low · gp_12_coureurs · panneaux sans chevauchement
+[OK] 1024x600_low · gp_12_coureurs · textes dans panel_left
+[OK] 1024x600_low · gp_12_coureurs · textes dans panel_right
+[OK] 1024x600_low · gp_12_coureurs · texte power dessiné (pixels clairs) : 17.1% de pixels clairs
+[OK] 1024x600_low · gp_12_coureurs · texte status dessiné (pixels clairs) : 7.8% de pixels clairs
+[OK] 1024x600_low · gp_bilan · capture enregistrée
+[OK] 1024x600_low · gp_bilan · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_low · gp_bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Durée : 0:24:15 | Distance : 15,20 km | Puissance moyenne : 246 W | Grand Prix des objets : 2e sur 5 | Objets : 4 lancés · 2 reçus · 4 esquivés | Coup de fouet : +7,6 s · lancé ×2 | Trois musettes : +5,2 s · lancé ×1 | Musette guidée : −3,9 s · reçu ×1 | Bidon glissant : −3,7 s · reçu ×1 | Bidon glissant : +2,1 s · lancé ×1 | Bilan des objets : +7,3 s | Journal et FIT : puissance et vitesse réelles | Records : aucun dans ce mode ||  || Bilan de la séance »
+[OK] 1024x600_low · gp_bilan · éléments dans l'écran : 4 éléments visibles
+[OK] 1024x600_low · gp_bilan · lignes du HUD sans chevauchement
+[OK] 1024x600_low · gp_bilan · panneaux dans l'écran : 0 panneaux
+[OK] 1024x600_low · gp_bilan · panneaux sans chevauchement
+[OK] 1024x600_low · journal · aucune erreur ni avertissement Godot
+[OK] 1024x600_low · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1024x600_low · journal · qualité réellement appliquée : low appliquée (5 capture(s)) ; dernière ligne : low (demandée low, source cli)
+== 1024x600_medium ==
+[OK] 1024x600_medium · galerie · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-hud-galerie-routes-h0a0fx9u/demo.world
+[OK] 1024x600_medium · gp_hud · capture enregistrée
+[OK] 1024x600_medium · gp_hud · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_medium · gp_hud · hauteur des chiffres power : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_hud · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_hud · hauteur des chiffres speed : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_hud · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_hud · hauteur des chiffres cadence : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_hud · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_hud · hauteur des chiffres hr : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_hud · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_hud · hauteur des chiffres grade : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_hud · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_hud · contraste power_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_hud · contraste speed_caption : 4.3:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_hud · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_hud · contraste hr_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_hud · contraste grade_caption : 4.4:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_hud · Grand Prix : item = 'musette_x3' : affiché 'musette_x3'
+[OK] 1024x600_medium · gp_hud · Grand Prix : key = 'Z : Trois musettes' : affiché 'Z : Trois musettes'
+[OK] 1024x600_medium · gp_hud · Grand Prix : place = '3e / 5' : affiché '3e / 5'
+[OK] 1024x600_medium · gp_hud · Grand Prix : warn = '' : affiché ''
+[OK] 1024x600_medium · gp_hud · Grand Prix : hint = 'Bidon glissant en vue : A ou ← →' : affiché 'Bidon glissant en vue : A ou ← →'
+[OK] 1024x600_medium · gp_hud · bots_panel caché
+[OK] 1024x600_medium · gp_hud · éléments dans l'écran : 19 éléments visibles
+[OK] 1024x600_medium · gp_hud · lignes du HUD sans chevauchement
+[OK] 1024x600_medium · gp_hud · panneaux dans l'écran : 4 panneaux
+[OK] 1024x600_medium · gp_hud · panneaux sans chevauchement
+[OK] 1024x600_medium · gp_hud · textes dans panel_left
+[OK] 1024x600_medium · gp_hud · textes dans panel_right
+[OK] 1024x600_medium · gp_hud · bandeau sans chevauchement du HUD
+[OK] 1024x600_medium · gp_hud · texte power dessiné (pixels clairs) : 17.1% de pixels clairs
+[OK] 1024x600_medium · gp_hud · texte status dessiné (pixels clairs) : 7.8% de pixels clairs
+[OK] 1024x600_medium · gp_attaque · capture enregistrée
+[OK] 1024x600_medium · gp_attaque · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_medium · gp_attaque · hauteur des chiffres power : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_attaque · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_attaque · hauteur des chiffres speed : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_attaque · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_attaque · hauteur des chiffres cadence : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_attaque · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_attaque · hauteur des chiffres hr : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_attaque · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_attaque · hauteur des chiffres grade : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_attaque · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_attaque · contraste power_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_attaque · contraste speed_caption : 4.3:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_attaque · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_attaque · contraste hr_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_attaque · contraste grade_caption : 4.4:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_attaque · Grand Prix : warn = 'Musette guidée derrière !' : affiché 'Musette guidée derrière !'
+[OK] 1024x600_medium · gp_attaque · Grand Prix : outline = True : affiché True
+[OK] 1024x600_medium · gp_attaque · éléments dans l'écran : 19 éléments visibles
+[OK] 1024x600_medium · gp_attaque · lignes du HUD sans chevauchement
+[OK] 1024x600_medium · gp_attaque · panneaux dans l'écran : 4 panneaux
+[OK] 1024x600_medium · gp_attaque · panneaux sans chevauchement
+[OK] 1024x600_medium · gp_attaque · textes dans panel_left
+[OK] 1024x600_medium · gp_attaque · textes dans panel_right
+[OK] 1024x600_medium · gp_attaque · bandeau sans chevauchement du HUD
+[OK] 1024x600_medium · gp_attaque · texte power dessiné (pixels clairs) : 17.1% de pixels clairs
+[OK] 1024x600_medium · gp_attaque · texte status dessiné (pixels clairs) : 7.8% de pixels clairs
+[OK] 1024x600_medium · gp_orage_roulette · capture enregistrée
+[OK] 1024x600_medium · gp_orage_roulette · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_medium · gp_orage_roulette · hauteur des chiffres power : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_orage_roulette · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_orage_roulette · hauteur des chiffres speed : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_orage_roulette · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_orage_roulette · hauteur des chiffres cadence : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_orage_roulette · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_orage_roulette · hauteur des chiffres hr : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_orage_roulette · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_orage_roulette · hauteur des chiffres grade : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_orage_roulette · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_orage_roulette · contraste power_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_orage_roulette · contraste speed_caption : 4.3:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_orage_roulette · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_orage_roulette · contraste hr_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_orage_roulette · contraste grade_caption : 4.4:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_orage_roulette · Grand Prix : warn = 'Orage vers le premier' : affiché 'Orage vers le premier'
+[OK] 1024x600_medium · gp_orage_roulette · Grand Prix : outline = False : affiché False
+[OK] 1024x600_medium · gp_orage_roulette · Grand Prix : hint = '← → : voie' : affiché '← → : voie'
+[OK] 1024x600_medium · gp_orage_roulette · éléments dans l'écran : 18 éléments visibles
+[OK] 1024x600_medium · gp_orage_roulette · lignes du HUD sans chevauchement
+[OK] 1024x600_medium · gp_orage_roulette · panneaux dans l'écran : 4 panneaux
+[OK] 1024x600_medium · gp_orage_roulette · panneaux sans chevauchement
+[OK] 1024x600_medium · gp_orage_roulette · textes dans panel_left
+[OK] 1024x600_medium · gp_orage_roulette · textes dans panel_right
+[OK] 1024x600_medium · gp_orage_roulette · texte power dessiné (pixels clairs) : 17.1% de pixels clairs
+[OK] 1024x600_medium · gp_orage_roulette · texte status dessiné (pixels clairs) : 7.8% de pixels clairs
+[OK] 1024x600_medium · gp_12_coureurs · capture enregistrée
+[OK] 1024x600_medium · gp_12_coureurs · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_medium · gp_12_coureurs · hauteur des chiffres power : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_12_coureurs · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_12_coureurs · hauteur des chiffres speed : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_12_coureurs · contraste speed : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_12_coureurs · hauteur des chiffres cadence : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_12_coureurs · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_12_coureurs · hauteur des chiffres hr : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_12_coureurs · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_12_coureurs · hauteur des chiffres grade : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_medium · gp_12_coureurs · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1024x600_medium · gp_12_coureurs · contraste power_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_12_coureurs · contraste speed_caption : 4.3:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_12_coureurs · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_12_coureurs · contraste hr_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_12_coureurs · contraste grade_caption : 4.4:1 (au moins 3:1)
+[OK] 1024x600_medium · gp_12_coureurs · Grand Prix : place = '9e / 12' : affiché '9e / 12'
+[OK] 1024x600_medium · gp_12_coureurs · Grand Prix : key = 'Z : Musette guidée' : affiché 'Z : Musette guidée'
+[OK] 1024x600_medium · gp_12_coureurs · éléments dans l'écran : 18 éléments visibles
+[OK] 1024x600_medium · gp_12_coureurs · lignes du HUD sans chevauchement
+[OK] 1024x600_medium · gp_12_coureurs · panneaux dans l'écran : 4 panneaux
+[OK] 1024x600_medium · gp_12_coureurs · panneaux sans chevauchement
+[OK] 1024x600_medium · gp_12_coureurs · textes dans panel_left
+[OK] 1024x600_medium · gp_12_coureurs · textes dans panel_right
+[OK] 1024x600_medium · gp_12_coureurs · texte power dessiné (pixels clairs) : 17.1% de pixels clairs
+[OK] 1024x600_medium · gp_12_coureurs · texte status dessiné (pixels clairs) : 7.8% de pixels clairs
+[OK] 1024x600_medium · gp_bilan · capture enregistrée
+[OK] 1024x600_medium · gp_bilan · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_medium · gp_bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Durée : 0:24:15 | Distance : 15,20 km | Puissance moyenne : 246 W | Grand Prix des objets : 2e sur 5 | Objets : 4 lancés · 2 reçus · 4 esquivés | Coup de fouet : +7,6 s · lancé ×2 | Trois musettes : +5,2 s · lancé ×1 | Musette guidée : −3,9 s · reçu ×1 | Bidon glissant : −3,7 s · reçu ×1 | Bidon glissant : +2,1 s · lancé ×1 | Bilan des objets : +7,3 s | Journal et FIT : puissance et vitesse réelles | Records : aucun dans ce mode ||  || Bilan de la séance »
+[OK] 1024x600_medium · gp_bilan · éléments dans l'écran : 4 éléments visibles
+[OK] 1024x600_medium · gp_bilan · lignes du HUD sans chevauchement
+[OK] 1024x600_medium · gp_bilan · panneaux dans l'écran : 0 panneaux
+[OK] 1024x600_medium · gp_bilan · panneaux sans chevauchement
+[OK] 1024x600_medium · journal · aucune erreur ni avertissement Godot
+[OK] 1024x600_medium · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1024x600_medium · journal · qualité réellement appliquée : medium appliquée (5 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+== 1024x600_high ==
+[OK] 1024x600_high · galerie · parcours demo chargé : route_loaded id=demo length_m=5000.0 path=/tmp/openride-hud-galerie-routes-h0a0fx9u/demo.world
+[OK] 1024x600_high · gp_hud · capture enregistrée
+[OK] 1024x600_high · gp_hud · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_high · gp_hud · hauteur des chiffres power : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_hud · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_hud · hauteur des chiffres speed : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_hud · contraste speed : 6.1:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_hud · hauteur des chiffres cadence : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_hud · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_hud · hauteur des chiffres hr : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_hud · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_hud · hauteur des chiffres grade : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_hud · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_hud · contraste power_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_high · gp_hud · contraste speed_caption : 3.5:1 (au moins 3:1)
+[OK] 1024x600_high · gp_hud · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1024x600_high · gp_hud · contraste hr_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_high · gp_hud · contraste grade_caption : 3.6:1 (au moins 3:1)
+[OK] 1024x600_high · gp_hud · Grand Prix : item = 'musette_x3' : affiché 'musette_x3'
+[OK] 1024x600_high · gp_hud · Grand Prix : key = 'Z : Trois musettes' : affiché 'Z : Trois musettes'
+[OK] 1024x600_high · gp_hud · Grand Prix : place = '3e / 5' : affiché '3e / 5'
+[OK] 1024x600_high · gp_hud · Grand Prix : warn = '' : affiché ''
+[OK] 1024x600_high · gp_hud · Grand Prix : hint = 'Bidon glissant en vue : A ou ← →' : affiché 'Bidon glissant en vue : A ou ← →'
+[OK] 1024x600_high · gp_hud · bots_panel caché
+[OK] 1024x600_high · gp_hud · éléments dans l'écran : 19 éléments visibles
+[OK] 1024x600_high · gp_hud · lignes du HUD sans chevauchement
+[OK] 1024x600_high · gp_hud · panneaux dans l'écran : 4 panneaux
+[OK] 1024x600_high · gp_hud · panneaux sans chevauchement
+[OK] 1024x600_high · gp_hud · textes dans panel_left
+[OK] 1024x600_high · gp_hud · textes dans panel_right
+[OK] 1024x600_high · gp_hud · bandeau sans chevauchement du HUD
+[OK] 1024x600_high · gp_hud · texte power dessiné (pixels clairs) : 17.1% de pixels clairs
+[OK] 1024x600_high · gp_hud · texte status dessiné (pixels clairs) : 7.8% de pixels clairs
+[OK] 1024x600_high · gp_attaque · capture enregistrée
+[OK] 1024x600_high · gp_attaque · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_high · gp_attaque · hauteur des chiffres power : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_attaque · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_attaque · hauteur des chiffres speed : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_attaque · contraste speed : 6.1:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_attaque · hauteur des chiffres cadence : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_attaque · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_attaque · hauteur des chiffres hr : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_attaque · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_attaque · hauteur des chiffres grade : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_attaque · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_attaque · contraste power_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_high · gp_attaque · contraste speed_caption : 3.5:1 (au moins 3:1)
+[OK] 1024x600_high · gp_attaque · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1024x600_high · gp_attaque · contraste hr_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_high · gp_attaque · contraste grade_caption : 3.6:1 (au moins 3:1)
+[OK] 1024x600_high · gp_attaque · Grand Prix : warn = 'Musette guidée derrière !' : affiché 'Musette guidée derrière !'
+[OK] 1024x600_high · gp_attaque · Grand Prix : outline = True : affiché True
+[OK] 1024x600_high · gp_attaque · éléments dans l'écran : 19 éléments visibles
+[OK] 1024x600_high · gp_attaque · lignes du HUD sans chevauchement
+[OK] 1024x600_high · gp_attaque · panneaux dans l'écran : 4 panneaux
+[OK] 1024x600_high · gp_attaque · panneaux sans chevauchement
+[OK] 1024x600_high · gp_attaque · textes dans panel_left
+[OK] 1024x600_high · gp_attaque · textes dans panel_right
+[OK] 1024x600_high · gp_attaque · bandeau sans chevauchement du HUD
+[OK] 1024x600_high · gp_attaque · texte power dessiné (pixels clairs) : 17.1% de pixels clairs
+[OK] 1024x600_high · gp_attaque · texte status dessiné (pixels clairs) : 7.8% de pixels clairs
+[OK] 1024x600_high · gp_orage_roulette · capture enregistrée
+[OK] 1024x600_high · gp_orage_roulette · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_high · gp_orage_roulette · hauteur des chiffres power : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_orage_roulette · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_orage_roulette · hauteur des chiffres speed : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_orage_roulette · contraste speed : 6.1:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_orage_roulette · hauteur des chiffres cadence : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_orage_roulette · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_orage_roulette · hauteur des chiffres hr : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_orage_roulette · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_orage_roulette · hauteur des chiffres grade : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_orage_roulette · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_orage_roulette · contraste power_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_high · gp_orage_roulette · contraste speed_caption : 3.5:1 (au moins 3:1)
+[OK] 1024x600_high · gp_orage_roulette · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1024x600_high · gp_orage_roulette · contraste hr_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_high · gp_orage_roulette · contraste grade_caption : 3.6:1 (au moins 3:1)
+[OK] 1024x600_high · gp_orage_roulette · Grand Prix : warn = 'Orage vers le premier' : affiché 'Orage vers le premier'
+[OK] 1024x600_high · gp_orage_roulette · Grand Prix : outline = False : affiché False
+[OK] 1024x600_high · gp_orage_roulette · Grand Prix : hint = '← → : voie' : affiché '← → : voie'
+[OK] 1024x600_high · gp_orage_roulette · éléments dans l'écran : 18 éléments visibles
+[OK] 1024x600_high · gp_orage_roulette · lignes du HUD sans chevauchement
+[OK] 1024x600_high · gp_orage_roulette · panneaux dans l'écran : 4 panneaux
+[OK] 1024x600_high · gp_orage_roulette · panneaux sans chevauchement
+[OK] 1024x600_high · gp_orage_roulette · textes dans panel_left
+[OK] 1024x600_high · gp_orage_roulette · textes dans panel_right
+[OK] 1024x600_high · gp_orage_roulette · texte power dessiné (pixels clairs) : 17.1% de pixels clairs
+[OK] 1024x600_high · gp_orage_roulette · texte status dessiné (pixels clairs) : 7.8% de pixels clairs
+[OK] 1024x600_high · gp_12_coureurs · capture enregistrée
+[OK] 1024x600_high · gp_12_coureurs · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_high · gp_12_coureurs · hauteur des chiffres power : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_12_coureurs · contraste power : 5.9:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_12_coureurs · hauteur des chiffres speed : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_12_coureurs · contraste speed : 6.1:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_12_coureurs · hauteur des chiffres cadence : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_12_coureurs · contraste cadence : 7.4:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_12_coureurs · hauteur des chiffres hr : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_12_coureurs · contraste hr : 5.5:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_12_coureurs · hauteur des chiffres grade : 40 px pour 1080 lignes (au moins 28)
+[OK] 1024x600_high · gp_12_coureurs · contraste grade : 5.8:1 (au moins 4.5:1)
+[OK] 1024x600_high · gp_12_coureurs · contraste power_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_high · gp_12_coureurs · contraste speed_caption : 3.5:1 (au moins 3:1)
+[OK] 1024x600_high · gp_12_coureurs · contraste cadence_caption : 4.2:1 (au moins 3:1)
+[OK] 1024x600_high · gp_12_coureurs · contraste hr_caption : 4.1:1 (au moins 3:1)
+[OK] 1024x600_high · gp_12_coureurs · contraste grade_caption : 3.6:1 (au moins 3:1)
+[OK] 1024x600_high · gp_12_coureurs · Grand Prix : place = '9e / 12' : affiché '9e / 12'
+[OK] 1024x600_high · gp_12_coureurs · Grand Prix : key = 'Z : Musette guidée' : affiché 'Z : Musette guidée'
+[OK] 1024x600_high · gp_12_coureurs · éléments dans l'écran : 18 éléments visibles
+[OK] 1024x600_high · gp_12_coureurs · lignes du HUD sans chevauchement
+[OK] 1024x600_high · gp_12_coureurs · panneaux dans l'écran : 4 panneaux
+[OK] 1024x600_high · gp_12_coureurs · panneaux sans chevauchement
+[OK] 1024x600_high · gp_12_coureurs · textes dans panel_left
+[OK] 1024x600_high · gp_12_coureurs · textes dans panel_right
+[OK] 1024x600_high · gp_12_coureurs · texte power dessiné (pixels clairs) : 17.1% de pixels clairs
+[OK] 1024x600_high · gp_12_coureurs · texte status dessiné (pixels clairs) : 7.8% de pixels clairs
+[OK] 1024x600_high · gp_bilan · capture enregistrée
+[OK] 1024x600_high · gp_bilan · taille de l'image : 1024x600, attendu 1024x600
+[OK] 1024x600_high · gp_bilan · texte menu : «  || [Nouvelle séance] | Voir le bilan détaillé | Quitter ||  || Durée : 0:24:15 | Distance : 15,20 km | Puissance moyenne : 246 W | Grand Prix des objets : 2e sur 5 | Objets : 4 lancés · 2 reçus · 4 esquivés | Coup de fouet : +7,6 s · lancé ×2 | Trois musettes : +5,2 s · lancé ×1 | Musette guidée : −3,9 s · reçu ×1 | Bidon glissant : −3,7 s · reçu ×1 | Bidon glissant : +2,1 s · lancé ×1 | Bilan des objets : +7,3 s | Journal et FIT : puissance et vitesse réelles | Records : aucun dans ce mode ||  || Bilan de la séance »
+[OK] 1024x600_high · gp_bilan · éléments dans l'écran : 4 éléments visibles
+[OK] 1024x600_high · gp_bilan · lignes du HUD sans chevauchement
+[OK] 1024x600_high · gp_bilan · panneaux dans l'écran : 0 panneaux
+[OK] 1024x600_high · gp_bilan · panneaux sans chevauchement
+[OK] 1024x600_high · journal · aucune erreur ni avertissement Godot
+[OK] 1024x600_high · journal · rendu du jeu (Forward+) : Vulkan, Forward+
+[OK] 1024x600_high · journal · qualité réellement appliquée : high appliquée (5 capture(s)) ; dernière ligne : high (demandée high, source cli)
+Galerie du HUD : 737/752 vérifications réussies
+Rapport : ~/mesures-2026-11-01-auto/r797/vitrine/rapport.html
+Planches : ~/mesures-2026-11-01-auto/r797/vitrine/planche_1024x600_high.png, ~/mesures-2026-11-01-auto/r797/vitrine/planche_1024x600_low.png, ~/mesures-2026-11-01-auto/r797/vitrine/planche_1024x600_medium.png, ~/mesures-2026-11-01-auto/r797/vitrine/planche_1680x1050_high.png, ~/mesures-2026-11-01-auto/r797/vitrine/planche_1680x1050_low.png, ~/mesures-2026-11-01-auto/r797/vitrine/planche_1680x1050_medium.png
