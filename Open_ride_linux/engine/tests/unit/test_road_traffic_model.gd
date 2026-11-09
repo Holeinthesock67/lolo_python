@@ -293,4 +293,4 @@ func _test_big_field_rows() -> void:
 			a2.distance_to(rows[k + 1]) + b2.distance_to(rows[k])))
 	_check(rows.size() == 2 * RoadTraffic.FIELD_MAX_ROWS and worst < 0.01,
 		"grand champ : %d rangs, écart %.4f m au calcul sur tout l'anneau" % [rows.size() / 2, worst])
-	_check(ms < 300.0, "grand champ de 4 000 points : rangs en %.1f ms" % ms)
+	_check(PerfBudget.check("field_rows_4000", ms), "grand champ de 4 000 points : rangs en %.1f ms" % ms)

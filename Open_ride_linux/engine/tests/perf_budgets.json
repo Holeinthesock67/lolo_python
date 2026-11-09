@@ -16,6 +16,7 @@
   "traffic_view_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P13"},
   "road_traffic_frame": {"budget_ms": 0.15, "ci_ms": 0.45, "lot": "P25"},
   "road_traffic_view_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P25"},
+  "field_rows_4000": {"budget_ms": 100, "ci_ms": 300, "lot": "P25 / U3 (rangs du tracteur d'un champ OSM de 4 000 points ; avant le correctif r790c : plusieurs secondes)"},
   "road_cyclists_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P28"},
   "road_cyclists_view_frame": {"budget_ms": 0.5, "ci_ms": 1.5, "lot": "AS7 (16 avatars des bots, à mesurer sur le PC cible)"},
   "sky_traffic_frame": {"budget_ms": 0.3, "ci_ms": 0.9, "lot": "P26"},
