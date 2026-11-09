@@ -452,7 +452,7 @@ enabled = true               # niveau, pièces, équipement et Garage (série V)
 standing_grade_pct = 8.0     # l'avatar se met en danseuse au-dessus de cette pente (3 à 15 %, lot V6)
 standing_power_pct = 150.0   # ou de cette puissance, en % de la FTP (100 à 300)
 [powerups]
-mode = "on"                  # "on" (défaut) ou "off" : bonus et arches du mode classique (série T)
+mode = "classiques"          # "off", "classiques" (défaut) ou "tactiques" (série TT, 4.0) ; l'ancien "on" vaut "classiques"
 [bots]
 level_pct = 100              # niveau des bots à profil, 50 à 150 % de la FTP par pas de 5 ; réglable dans le menu (lot T13)
 [ride]
@@ -500,7 +500,7 @@ Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
 
 La section `[progression]` (lot V11) coupe, avec `enabled = false`, l'équipement, le message `progression` et le bilan `xp_result`. La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
 
-La section `[powerups]` (lot T7) coupe les bonus du mode classique (`mode = "off"` : ni arche, ni réserve, ni champ `powerup` dans la trame) ; les segments, records et maillots restent. Option « Bonus » du menu (clé `powerups.mode` de `set_setting`). Les valeurs des bonus sont dans `~/OpenRide/powerups.toml` (lot T6).
+La section `[powerups]` (lot T7, trois choix depuis le lot TT1) coupe les bonus du mode classique (`mode = "off"` : ni arche, ni réserve, ni champ `powerup` dans la trame), garde ceux de la 2.0 (`classiques`, défaut) ou ajoute les bonus tactiques (`tactiques`, lot TT2 ; d'ici là, comme `classiques`) ; les segments, records et maillots restent. Option « Bonus » du menu (clé `powerups.mode` de `set_setting`). Les valeurs des bonus sont dans `~/OpenRide/powerups.toml` (lot T6).
 
 La section `[bots]` (lot T13) donne le niveau des bots à profil : `level_pct` (50 à 150, défaut 100) est le pourcentage de ta FTP visé par le calibrage. Au départ de la séance, le core simule le parcours au pas de 0,5 s et ajuste la CP de chaque bot à profil pour qu'il finisse dans le temps d'un cycliste de ta masse roulant à ce niveau. Réglage « Niveau des bots » du menu (clé `bots.level_pct`, pas de 5) ; un bot choisi au menu à 90, 100 ou 110 % garde son propre niveau.
 
