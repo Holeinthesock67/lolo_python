@@ -73,6 +73,7 @@ const VIEWS := {
 	"panneau_approche_15m": [Vector3(61.0, 1.6, -9.8), Vector3(63.0, 2.0, -24.0), 55.0],
 	"panneau_approche_30m": [Vector3(55.0, 1.5, 4.0), Vector3(63.0, 2.0, -24.0), 55.0],
 	"borne": [Vector3(61.0, 0.9, -17.4), Vector3(61.8, 0.45, -19.5), 40.0],
+	"borne_dos": [Vector3(62.6, 0.9, -21.6), Vector3(61.8, 0.45, -19.5), 40.0],   # face arrière (demi-tour, N17)
 	"portes": [Vector3(-4.0, 1.6, -24.0), Vector3(-9.0, 1.2, -25.0), 60.0],
 	"eolienne": [Vector3(-75.0, 2.0, -150.0), Vector3(-120.0, 55.0, -300.0), 60.0],
 	"eolienne_pied": [Vector3(-113.0, 1.7, -287.0), Vector3(-120.0, 8.0, -300.0), 60.0],
