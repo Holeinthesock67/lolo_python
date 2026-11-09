@@ -1,0 +1,7 @@
+06:38:24 empreinte avant 5110c06b4c9d6954972ebf363612e48f
+06:38:24 tête d85f5f1ac
+06:39:50 captures_demo lancer --qualites medium
+07:32:29 fin rc=1 durée 3159 s
+07:32:31 empreinte après 5110c06b4c9d6954972ebf363612e48f
+07:32:31 clone 90c08094
+07:32:31 FIN
