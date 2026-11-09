@@ -1,0 +1,7 @@
+08:37:40 empreinte avant 5110c06b4c9d6954972ebf363612e48f
+08:37:40 tête 01586dd4
+08:38:51 sim_bench nominal demo 50 km/h 560 s medium
+08:48:29 fin rc=1
+08:48:30 empreinte après 5110c06b4c9d6954972ebf363612e48f
+08:48:30 clone 90c08094
+08:48:30 FIN
