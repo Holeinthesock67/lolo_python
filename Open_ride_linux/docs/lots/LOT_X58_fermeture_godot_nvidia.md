@@ -78,12 +78,25 @@ maillages, avatars), dont certaines ne sont jamais attendues.
 - Test `engine/tests/unit/test_bg_tasks.gd` (12 tâches de basse priorité en file, drain, délai dépassé nommé).
 - Contournement de 3 s du lanceur gardé tant que le PC n'a pas confirmé 10 sur 10.
 
-### 6.5 Deuxième passage sur le PC (via la file du fil de fusion)
+### 6.5 Deuxième passage sur le PC (r805b, 9 novembre, tête 323f8ac0)
+
+12 fermetures propres sur 50 (souris low 2/10, clavier 0/10, Click 0/10, souris medium 7/10, high 3/10). Dans 30
+fermetures, « tâches de fond attendues (0), encore en cours au bout de 5 s : maillage far:0:0, maillage near:1:-1… »
+(quatre maillages du terrain encore en file ; `world_streamer._exit_tree` les attend ensuite, la scène n'est libérée
+que vers 9 s) ; les fermetures propres sont celles où tout avait été attendu (6 à 10 tâches). La cause est donc
+confirmée : tâche de basse priorité pas finie au moment de quitter = arrêt de Godot bloqué. Fichiers :
+`/mnt/project-files/mesures/2026-11-09-x58-r805b/`.
+
+Correction complétée : à la fermeture, `main.gd` cesse de traiter ses nœuds (`PROCESS_MODE_DISABLED` : plus de
+nouvelle tâche du streaming), `BgTasks.drain` passe en fermeture (une tâche pas encore démarrée rend la main sans
+rien faire ; le journal dit combien), attend celles qui tournent, au plus 8 s.
+
+### 6.6 Troisième passage sur le PC (via la file du fil de fusion)
 
 ```
 cd <worktree de la branche du lot>
 B="python3 engine/tests/menu_bench.py --scenario quitter --native --fermeture-stricte --gdb"
-O=~/OpenRide/mesures/x58b
+O=~/OpenRide/mesures/x58c
 $B --voies souris,clavier,click --repeter 10 --out $O/low
 $B --voies souris --repeter 10 --qualite medium --out $O/medium
 $B --voies souris --repeter 10 --qualite high --out $O/high

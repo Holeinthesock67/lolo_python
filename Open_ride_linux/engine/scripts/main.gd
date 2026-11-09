@@ -90,7 +90,7 @@ const MENU_CAMERA_MPS := 4.0
 const EXIT_RELAUNCH := 64
 ## Code de sortie « relancer en session simulée » (menu « Session simulée »).
 const EXIT_SIM := 65
-const QUIT_TASKS_MAX_S := 5.0   # attente des tâches de fond à la fermeture (bg_tasks.gd, lot X58)
+const QUIT_TASKS_MAX_S := 8.0   # attente des tâches de fond à la fermeture (bg_tasks.gd, lot X58)
 
 @onready var ipc: Node = $IpcClient
 @onready var camera: Camera3D = $Camera3D
@@ -2199,15 +2199,17 @@ func _give_cues(state: Dictionary) -> void:
 
 ## Fermeture de l'engine avec le code `code` (0 : quitter, EXIT_RELAUNCH, EXIT_SIM). Le journal date ensuite chaque
 ## étape depuis la demande (« Fermeture : … ») : une fermeture lente dit où elle attend (banc des menus, lot X55).
-## Les tâches de fond encore en cours ou en file sont d'abord attendues (bg_tasks.gd, au plus QUIT_TASKS_MAX_S) :
-## sinon l'arrêt de Godot peut attendre sans fin son pool de fils (lot X58).
+## Les nœuds cessent d'être traités, les tâches de fond pas encore démarrées sont sautées et celles qui tournent sont
+## attendues (bg_tasks.gd, au plus QUIT_TASKS_MAX_S) : sinon l'arrêt de Godot peut attendre sans fin son pool de
+## fils (lot X58).
 func _quit(code: int) -> void:
 	if _quit_ms >= 0:
 		return   # fermeture déjà demandée (ses tâches de fond sont en cours d'attente)
 	_quit_ms = Time.get_ticks_msec()
 	_quit_code = code
+	process_mode = Node.PROCESS_MODE_DISABLED   # plus d'image traitée : ni chargement ni tâche de fond nouvelle
 	var got: Array = await BgTasks.drain(get_tree(), QUIT_TASKS_MAX_S)
-	_quit_step("tâches de fond attendues (%d)%s" % [got[0],
+	_quit_step("tâches de fond attendues (%d, dont %d sautées)%s" % [got[0], got[2],
 		"" if got[1].is_empty() else ", encore en cours au bout de %.0f s : %s" % [QUIT_TASKS_MAX_S, ", ".join(got[1])]])
 	get_tree().quit(code)
 

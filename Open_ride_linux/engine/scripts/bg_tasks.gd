@@ -11,23 +11,38 @@ extends RefCounted
 ## leur attente de tâche, même verrou).
 ##
 ## Ce registre garde chaque tâche lancée et pas encore attendue ; à la fermeture, `drain` les attend toutes (au plus
-## quelques secondes), si bien que les deux files sont vides quand Godot arrête son pool. Pas de class_name : charger
-## par preload("res://scripts/bg_tasks.gd").
+## quelques secondes), si bien que les deux files sont vides quand Godot arrête son pool. Deuxième passage (r805b) :
+## quatre maillages du terrain encore en file au bout de 5 s dans 30 fermetures sur 50 (une seule tâche de basse
+## priorité tourne à la fois), et 12 fermetures propres seulement, celles où tout avait été attendu. Depuis, `drain`
+## passe d'abord en fermeture : une tâche encore en file ne fait plus son travail (elle rend la main tout de suite),
+## seules celles qui tournent déjà finissent. Pas de class_name : charger par preload("res://scripts/bg_tasks.gd").
 
 static var _mutex := Mutex.new()
 static var _pending := {}   # identifiant de tâche → description, tâches lancées et pas encore attendues
+static var _closing := false   # fermeture demandée : les tâches qui n'ont pas encore démarré ne font rien
+static var _skipped := 0       # tâches sautées depuis la fermeture
 
 
 ## Comme WorkerThreadPool.add_task (basse priorité par défaut, comme lui), tâche gardée jusqu'à son attente.
 static func add(action: Callable, high_priority := false, description := "") -> int:
 	_mutex.lock()
-	var id := WorkerThreadPool.add_task(action, high_priority, description)
+	var id := WorkerThreadPool.add_task(_run.bind(action), high_priority, description)
 	_pending[id] = description
 	_mutex.unlock()
 	return id
 
 
 ## Tâche finie ; vrai aussi pour une tâche déjà attendue (par `drain` à la fermeture, par exemple).
+## Exécutée dans le fil de travail : le travail demandé, sauf si la fermeture a commencé avant son départ.
+static func _run(action: Callable) -> void:
+	if _closing:
+		_mutex.lock()
+		_skipped += 1
+		_mutex.unlock()
+		return
+	action.call()
+
+
 static func done(id: int) -> bool:
 	if not _has(id):
 		return true
@@ -54,6 +69,12 @@ static func _has(id: int) -> bool:
 	return ok
 
 
+## Remet le registre hors fermeture (tests seulement).
+static func reopen_for_tests() -> void:
+	_closing = false
+	_skipped = 0
+
+
 static func pending_count() -> int:
 	_mutex.lock()
 	var n := _pending.size()
@@ -61,10 +82,11 @@ static func pending_count() -> int:
 	return n
 
 
-## Fermeture : attend les tâches lancées et pas encore attendues, sans bloquer les images (une tâche en file ne
-## démarre qu'après d'autres), au plus `max_s` secondes. Renvoie [tâches attendues, descriptions de celles qui
-## tournent encore au bout du délai].
+## Fermeture : les tâches pas encore démarrées sont sautées, puis toutes celles lancées et pas encore attendues sont
+## attendues, sans bloquer les images, au plus `max_s` secondes. Renvoie [tâches attendues, descriptions de celles
+## qui tournent encore au bout du délai, tâches sautées]. Les tâches lancées ensuite sont sautées aussi.
 static func drain(tree: SceneTree, max_s: float) -> Array:
+	_closing = true
 	var start := Time.get_ticks_msec()
 	var waited := 0
 	while true:
@@ -84,6 +106,9 @@ static func drain(tree: SceneTree, max_s: float) -> Array:
 			for id in left:
 				names.append(str(_pending.get(id, "?")))
 			_mutex.unlock()
-			return [waited, names]
+			_mutex.lock()
+			var skipped := _skipped
+			_mutex.unlock()
+			return [waited, names, skipped]
 		await tree.process_frame
-	return [waited, PackedStringArray()]
+	return [waited, PackedStringArray(), 0]

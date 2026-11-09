@@ -121,5 +121,5 @@ def test_taches_de_fond_toutes_par_bg_tasks_et_attendues_a_la_fermeture():
     assert direct == [], f"tâches lancées ou attendues sans bg_tasks.gd : {direct}"
     main = (scripts / "main.gd").read_text(encoding="utf-8")
     quit_body = main.split("func _quit(code: int) -> void:", 1)[1].split("\nfunc ", 1)[0]
-    assert quit_body.index("BgTasks.drain(") < quit_body.index("get_tree().quit(code)")
+    assert quit_body.index("PROCESS_MODE_DISABLED") < quit_body.index("BgTasks.drain(") < quit_body.index("get_tree().quit(code)")
     assert "OPENRIDE_QUIT_MODE" not in main
