@@ -1,0 +1,12 @@
+11:23:04 empreinte avant 5110c06b4c9d6954972ebf363612e48f
+11:23:04 tête 3eb20ee5
+11:24:16 --at-m absent de sim_bench sur main : option retirée
+11:24:16 (a) demo
+11:33:53 fin (a) rc=1
+11:33:53 (b) make_biome_world --demo-set
+11:33:58 fin rc=0
+11:33:58 (b) demo-biomes-tour
+11:54:53 fin (b) rc=1
+11:54:55 empreinte après 5110c06b4c9d6954972ebf363612e48f
+11:54:55 clone 90c08094
+11:54:55 FIN

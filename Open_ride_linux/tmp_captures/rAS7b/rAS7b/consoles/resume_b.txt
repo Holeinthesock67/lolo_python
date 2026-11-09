@@ -1,0 +1,3 @@
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[ÉCHEC] décor : aucun contact sur la route : 72 (dernier : core / cycliste à -1 m (écarts à l'axe -1.1 et -0.7 m))
+RÉSULTAT : ÉCHEC (2 vérification(s))

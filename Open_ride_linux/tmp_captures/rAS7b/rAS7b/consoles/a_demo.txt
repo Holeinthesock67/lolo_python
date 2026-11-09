@@ -1,0 +1,28 @@
+>>> [1/1] Scénario nominal (9:20)
+== nominal : parcours demo, 560 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 14.5 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo à 24.9 s
+[OK] engine vivant jusqu'à la fin : 560 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 37/37 images enregistrées après le chargement, réponse en 0.51 s (médiane), 0.65 s au pire : captures de l'engine
+   images par seconde de l'engine : min 1, médiane 59, max 60 (36 relevés)
+[OK] qualité réellement appliquée : medium appliquée (37 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 0.6 à 4.5 %, pente envoyée 0.1 à 5.2 %
+[OK] médiane 53.5 km/h sur 322 s (attendu 50.0 ± 5.0), de 49.7 à 54.9 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 37 captures
+[OK] fréquence cardiaque au journal : 343 échantillons, 177 à 185 bpm
+    NON nominal : 1 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rAS7b/a_demo/index.html
+=== Banc fini : ÉCHEC (1 vérification(s))
+RÉSULTAT : ÉCHEC (1 vérification(s))

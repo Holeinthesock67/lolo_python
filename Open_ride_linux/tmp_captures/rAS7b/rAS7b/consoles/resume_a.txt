@@ -1,0 +1,3 @@
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] décor : aucun contact sur la route : 0 sur 37 captures
+RÉSULTAT : ÉCHEC (1 vérification(s))

@@ -1,0 +1,4 @@
+make_biome_world : ~/mesures-2026-11-01-auto/rAS7b/t811/demo-biomes-tour.world (coast 16.7 %, mediterranean 16.6 %, temperate_grassland 16.6 %, farmland 16.6 %, temperate_forest 16.7 %, alpine 16.8 %)
+make_biome_world : ~/mesures-2026-11-01-auto/rAS7b/t811/demo-biomes-gravel.world (coast 16.7 %, mediterranean 16.6 %, temperate_grassland 16.6 %, farmland 16.6 %, temperate_forest 16.7 %, alpine 16.8 % ; surfaces {'dirt': 16.6, 'gravel': 16.6, 'paved': 66.7})
+make_biome_world : ~/mesures-2026-11-01-auto/rAS7b/t811/demo-biomes-cote.world (coast 100.0 %)
+make_biome_world : ~/mesures-2026-11-01-auto/rAS7b/t811/demo-biomes-alpin.world (alpine 100.0 %)
