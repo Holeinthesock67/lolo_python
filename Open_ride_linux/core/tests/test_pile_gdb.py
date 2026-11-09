@@ -100,11 +100,26 @@ def test_sous_gdb_code_garde_et_pile_sur_sigint(tmp_path):
     assert any(re.search(r"futex|sem_wait|pthread_cond", line) for line in summary[1:])
 
 
-def test_banc_des_menus_documente_les_options_et_main_gd_les_modes():
+def test_banc_des_menus_documente_ses_options():
     bench = (TESTS / "menu_bench.py").read_text(encoding="utf-8")
-    for opt in ("--repeter", "--fermeture-stricte", "--gdb", "--fermeture", "--engine-arg", "--qualite"):
+    for opt in ("--repeter", "--fermeture-stricte", "--gdb", "--engine-arg", "--qualite"):
         assert f'"{opt}"' in bench and opt in bench.split('"""', 2)[1], opt
-    main = (ROOT / "engine" / "scripts" / "main.gd").read_text(encoding="utf-8")
-    modes = re.search(r"const QUIT_MODES := \[(.*)\]", main).group(1)
-    assert [m.strip().strip('"') for m in modes.split(",")] == ["", "differe", "liberer", "compilations"]
-    assert 'OS.get_environment("OPENRIDE_QUIT_MODE")' in main
+
+
+def test_taches_de_fond_toutes_par_bg_tasks_et_attendues_a_la_fermeture():
+    """Lot X58 : une tâche de basse priorité restée en file à la fermeture bloque l'arrêt du pool de Godot 4.7.
+    Le jeu ne lance donc ses tâches que par bg_tasks.gd, que main.gd vide avant de quitter."""
+    scripts = ROOT / "engine" / "scripts"
+    direct = []
+    for path in sorted(scripts.rglob("*.gd")):
+        if path.name == "bg_tasks.gd":
+            continue
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            code = line.split("#", 1)[0]
+            if "WorkerThreadPool." in code:
+                direct.append(f"{path.relative_to(scripts)}:{n}")
+    assert direct == [], f"tâches lancées ou attendues sans bg_tasks.gd : {direct}"
+    main = (scripts / "main.gd").read_text(encoding="utf-8")
+    quit_body = main.split("func _quit(code: int) -> void:", 1)[1].split("\nfunc ", 1)[0]
+    assert quit_body.index("BgTasks.drain(") < quit_body.index("get_tree().quit(code)")
+    assert "OPENRIDE_QUIT_MODE" not in main

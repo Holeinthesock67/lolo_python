@@ -43,37 +43,51 @@ Connaître la cause, puis fermer proprement sans tuer le processus.
   `??@Godot…`, celles du pilote et de la libc suffisent à dire qui attend qui.
 - **Banc des menus** (`menu_bench.py`) : `--repeter N` (10 fermetures de suite, critère 2), `--fermeture-stricte`
   (arrêt bloqué compté en échec au lieu d'INFO), `--fermeture MODE`, `--engine-arg ARG`, `--qualite low|medium|high`.
-- **Manières de quitter** (`main.gd`, `_quit`, `OPENRIDE_QUIT_MODE`), à comparer sans rien recompiler :
-  vide (actuelle), `differe` (deux images plus tard, hors du traitement du clic qui la demande : seule la voie souris
-  bloquait au lot X55), `liberer` (vue 3D coupée, environnement et nœuds 3D libérés, puis deux images),
-  `compilations` (après la fin des compilations de pipelines en arrière-plan, au plus 2 s : `engine/scripts/pipeline_settle.gd`,
-  même logique que la sortie en ordre des tests de rendu `render_exit.gd`, qui bloquaient de la même façon sur la
-  GTX 1060, #712 et r773 ; piste : le survol des boutons à la souris fait compiler de nouveaux pipelines). Une seule sera
-  gardée, la constante `QUIT_MODES` et la variable retirées ensuite.
+- **Manières de quitter essayées** au premier passage (variable `OPENRIDE_QUIT_MODE`, retirée depuis) : `differe`
+  (deux images plus tard), `liberer` (nœuds 3D libérés : plantage, code -6), `compilations` (fin des compilations
+  de pipelines). Aucune ne corrigeait : voir §6.3.
 - Tests : `core/tests/test_pile_gdb.py` (résumé, repères, vrai gdb sur un programme bloqué : code gardé, pile sur SIGINT).
 
-### 6.2 Passage sur le PC (via la file du fil de fusion)
+### 6.2 Premier passage sur le PC (r805, 9 novembre, pilote NVIDIA 580.178.04)
 
-Prérequis : `gdb` installé (`sudo apt install gdb`, une fois, par l'utilisateur). Environ 45 min, tout en `--native`.
+Branche 278924b2, scénario `quitter` en `--native`, `--fermeture-stricte`. Blocages : souris 4 sur 9 (low, medium,
+high), clavier 2 sur 3, Click 2 sur 3, `differe` 8 sur 10, `compilations` 5 sur 10, `liberer` 10 sur 10 en plantage
+(code -6), OpenGL (`--rendering-driver opengl3`) 2 sur 3. Le blocage ne tient donc ni à la souris ni à Vulkan.
+Fichiers : `/mnt/project-files/mesures/2026-11-09-x58-r805/` (`brut/`, quatre `pile_gdb.txt`).
+
+### 6.3 Cause
+
+Les quatre piles sont identiques. Le fil principal attend dans `pthread_cond_wait`, appelé de `main` (0x42d0fe dans
+le Godot 4.7.2 officiel) ; le désassemblage de cet endroit est la boucle de `WorkerThreadPool::exit_languages_threads`
+(appelée par `Main::cleanup`) : `_switch_runlevel(RUNLEVEL_PRE_EXIT_LANGUAGES)` puis attente que
+`num_idle_threads` vaille le nombre de fils. Les quatre `WorkerThread` dorment dans leur attente de tâche (même
+verrou `task_mutex`). Dans `core/object/worker_thread_pool.cpp` (4.7.2), un fil ne se compte inactif que si
+`task_queue` ET `low_priority_task_queue` sont vides : une tâche de basse priorité restée dans sa file au moment de
+quitter (avec 4 fils, une seule tâche de basse priorité tourne à la fois) bloque donc le décompte sans fin, alors
+que les fils n'ont rien à faire. Le jeu lance toutes ses tâches en basse priorité (fonds sonores, décor, forêt,
+maillages, avatars), dont certaines ne sont jamais attendues.
+
+### 6.4 Correction
+
+- `engine/scripts/bg_tasks.gd` : registre de toutes les tâches de fond du jeu (`add`, `wait`, `done`), qui garde les
+  tâches lancées et pas encore attendues ; plus aucun appel direct à `WorkerThreadPool` dans `engine/scripts/`
+  (vérifié par `core/tests/test_pile_gdb.py`).
+- `main.gd` `_quit` : `BgTasks.drain` attend ces tâches (sans bloquer les images, au plus `QUIT_TASKS_MAX_S` = 5 s)
+  avant `get_tree().quit` ; le journal dit combien et nomme celles qui tourneraient encore
+  (« Fermeture : tâches de fond attendues (N) … »). Les attentes des nœuds libérés ensuite rendent OK sans erreur.
+- Test `engine/tests/unit/test_bg_tasks.gd` (12 tâches de basse priorité en file, drain, délai dépassé nommé).
+- Contournement de 3 s du lanceur gardé tant que le PC n'a pas confirmé 10 sur 10.
+
+### 6.5 Deuxième passage sur le PC (via la file du fil de fusion)
 
 ```
-cd ~/Games/lolo_python/Open_ride_linux && git fetch origin && git checkout <branche du lot>
-nvidia-smi --query-gpu=driver_version --format=csv,noheader > /tmp/x58_pilote.txt
-B="python3 engine/tests/menu_bench.py --scenario quitter --native --fermeture-stricte"
-O=~/OpenRide/mesures/x58
-$B --voies souris --gdb --repeter 3 --out $O/1_pile_low                       # cause : pile des fils bloqués
-$B --voies souris --gdb --repeter 3 --qualite medium --out $O/1_pile_medium
-$B --voies souris --gdb --repeter 3 --qualite high --out $O/1_pile_high
-$B --voies clavier,click --repeter 3 --out $O/2_autres_voies                  # témoin : bloquent-elles aussi ?
-$B --voies souris --repeter 10 --fermeture differe --out $O/3_differe_low     # essais de correction
-$B --voies souris --repeter 10 --fermeture liberer --out $O/3_liberer_low
-$B --voies souris --repeter 10 --fermeture compilations --out $O/3_compilations_low
-$B --voies souris --repeter 3 --engine-arg=--rendering-driver --engine-arg=opengl3 --out $O/4_opengl   # diagnostic Vulkan
+cd <worktree de la branche du lot>
+B="python3 engine/tests/menu_bench.py --scenario quitter --native --fermeture-stricte --gdb"
+O=~/OpenRide/mesures/x58b
+$B --voies souris,clavier,click --repeter 10 --out $O/low
+$B --voies souris --repeter 10 --qualite medium --out $O/medium
+$B --voies souris --repeter 10 --qualite high --out $O/high
 ```
 
-Une variante qui tient 10/10 en low est rejouée 10 fois en medium et en high (`--qualite`), puis sur les trois voies.
-À rapporter : `resume.txt` de chaque dossier, `pile_gdb.txt` du premier passage bloqué, version du pilote.
-
-### 6.3 Cause et décision
-
-À écrire après le passage sur le PC.
+Attendu : 50 sur 50 sans « arrêt de Godot bloqué » ; sinon `pile_gdb.txt` et la ligne « Fermeture : tâches de
+fond attendues » du journal de l'engine. Si 50 sur 50 : retrait du contournement de 3 s dans cette même PR, puis un dernier passage (critère 2).

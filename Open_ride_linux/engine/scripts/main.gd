@@ -13,7 +13,6 @@ const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
-const PipelineSettle := preload("res://scripts/pipeline_settle.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const HudView := preload("res://scripts/hud_view.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
@@ -67,6 +66,7 @@ const WtfSoundModel := preload("res://scripts/wtf/wtf_sound_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
 const WorldMenuView := preload("res://scripts/world_menu_view.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const OW_PREFIX := "ow:"
@@ -82,6 +82,7 @@ const MENU_CAMERA_MPS := 4.0
 const EXIT_RELAUNCH := 64
 ## Code de sortie « relancer en session simulée » (menu « Session simulée »).
 const EXIT_SIM := 65
+const QUIT_TASKS_MAX_S := 5.0   # attente des tâches de fond à la fermeture (bg_tasks.gd, lot X58)
 
 @onready var ipc: Node = $IpcClient
 @onready var camera: Camera3D = $Camera3D
@@ -1213,10 +1214,10 @@ func _request_route(route_id) -> void:
 		return
 	if not _route_job.is_empty():
 		# Un chargement est déjà en cours : son résultat sera ignoré (_poll_route_job).
-		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
+		BgTasks.wait(_route_job["task"])
 	var job := {"id": str(route_id), "route": RouteDataScript.new(), "path": path, "ok": false}
 	job["route"].relief_k = _visual_grade_scale   # relief affiché (lot Q2) : toute la scène suit la route
-	job["task"] = WorkerThreadPool.add_task(_load_route_job.bind(job), false, "chargement du parcours")
+	job["task"] = BgTasks.add(_load_route_job.bind(job), false, "chargement du parcours")
 	_route_job = job
 
 
@@ -1226,11 +1227,11 @@ func _load_route_job(job: Dictionary) -> void:
 
 
 func _poll_route_job() -> void:
-	if _route_job.is_empty() or not WorkerThreadPool.is_task_completed(_route_job["task"]):
+	if _route_job.is_empty() or not BgTasks.done(_route_job["task"]):
 		return
 	var job := _route_job
 	_route_job = {}
-	WorkerThreadPool.wait_for_task_completion(job["task"])
+	BgTasks.wait(job["task"])
 	if job["id"] != str(_route_id_requested):
 		return
 	if not job["ok"]:
@@ -1981,38 +1982,18 @@ func _give_cues(state: Dictionary) -> void:
 		ipc.test_log("cue index=%d warn=%s s=%.1f" % [c["index"], str(c["warn"]), s])
 
 
-## Manière de quitter (lot X58, essais sur le PC : arrêt de Godot bloqué sur le pilote NVIDIA après un clic de souris),
-## lue dans OPENRIDE_QUIT_MODE (banc des menus `--fermeture`) : vide, tout de suite ; `differe` : deux images plus
-## tard, hors du traitement de l'événement qui l'a demandée ; `liberer` : vue 3D coupée, environnement et nœuds 3D
-## libérés, puis deux images plus tard ; `compilations` : après la fin des compilations de pipelines en arrière-plan
-## (pipeline_settle.gd, au plus 2 s : même blocage à la sortie des tests de rendu, #712, r773). Gardée le temps des
-## essais : le lot X58 n'en retient qu'une.
-const QUIT_MODES := ["", "differe", "liberer", "compilations"]
-
-
 ## Fermeture de l'engine avec le code `code` (0 : quitter, EXIT_RELAUNCH, EXIT_SIM). Le journal date ensuite chaque
 ## étape depuis la demande (« Fermeture : … ») : une fermeture lente dit où elle attend (banc des menus, lot X55).
+## Les tâches de fond encore en cours ou en file sont d'abord attendues (bg_tasks.gd, au plus QUIT_TASKS_MAX_S) :
+## sinon l'arrêt de Godot peut attendre sans fin son pool de fils (lot X58).
 func _quit(code: int) -> void:
+	if _quit_ms >= 0:
+		return   # fermeture déjà demandée (ses tâches de fond sont en cours d'attente)
 	_quit_ms = Time.get_ticks_msec()
 	_quit_code = code
-	var mode := OS.get_environment("OPENRIDE_QUIT_MODE")
-	if mode not in QUIT_MODES:
-		push_warning("OPENRIDE_QUIT_MODE inconnu : %s (permis : %s) ; fermeture immédiate." % [mode, ", ".join(QUIT_MODES)])
-		mode = ""
-	if mode == "liberer":
-		get_viewport().disable_3d = true
-		world_env.environment = null
-		for child in get_children():
-			if child is Node3D:
-				child.queue_free()
-		_quit_step("vue 3D coupée, nœuds 3D libérés")
-	if mode == "compilations":
-		var got: Array = await PipelineSettle.settle(get_tree(), 5, 0.3, 2.0)
-		_quit_step("compilations de pipelines finies (%d, attente %d ms)" % [got[0], got[1]])
-	elif mode != "":
-		await get_tree().process_frame
-		await get_tree().process_frame
-		_quit_step("fermeture %s, deux images plus tard" % mode)
+	var got: Array = await BgTasks.drain(get_tree(), QUIT_TASKS_MAX_S)
+	_quit_step("tâches de fond attendues (%d)%s" % [got[0],
+		"" if got[1].is_empty() else ", encore en cours au bout de %.0f s : %s" % [QUIT_TASKS_MAX_S, ", ".join(got[1])]])
 	get_tree().quit(code)
 
 
@@ -2024,7 +2005,7 @@ func _quit_step(what: String) -> void:
 func _exit_tree() -> void:
 	_quit_step("nœuds de la scène sortis (décor, monde et IPC compris)")
 	if not _route_job.is_empty():
-		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
+		BgTasks.wait(_route_job["task"])
 	_probe.close()
 	_quit_step("chargement du parcours et sonde fermés")
 

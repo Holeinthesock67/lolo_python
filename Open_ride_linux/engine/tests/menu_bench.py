@@ -4,7 +4,7 @@
 Usage :
     menu_bench.py [--godot CHEMIN] [--scenario NOM|FICHIER.json]... [--voies click,clavier,souris] [--rotation]
                   [--native] [--out DOSSIER] [--captures echecs|ecrans] [--keep] [--list]
-                  [--repeter N] [--fermeture-stricte] [--gdb] [--fermeture MODE] [--engine-arg ARG]... [--qualite Q]
+                  [--repeter N] [--fermeture-stricte] [--gdb] [--engine-arg ARG]... [--qualite Q]
 
 Chaque scénario (`engine/tests/menu_scenarios/*.json`) est joué une fois par voie d'entrée, avec un vrai core
 sur Bluetooth simulé (`--trainer sim --input sim --hr sim`, sans `--autostart` : le core démarre en IDLE,
@@ -51,8 +51,7 @@ vérifications passent, 1 sinon, 2 si Godot ou xvfb-run manque.
 Fermeture de Godot (lots X55, X58) : `--repeter N` joue chaque passage N fois (critère « 10 fermetures de suite ») ;
 `--fermeture-stricte` compte en échec un arrêt de Godot bloqué après sa ligne de fin (INFO sinon, comme le lanceur
 qui l'arrête après ENGINE_SHUTDOWN_S) ; `--gdb` lance Godot sous gdb (`pile_gdb.py`, sans sudo) et, s'il bloque,
-écrit la pile de ses fils dans `pile_gdb.txt` et son résumé au rapport ; `--fermeture MODE` choisit la manière de
-quitter de l'engine (OPENRIDE_QUIT_MODE, `main.gd` `_quit`, essais du lot X58) ; `--engine-arg` ajoute un argument
+écrit la pile de ses fils dans `pile_gdb.txt` et son résumé au rapport ; `--engine-arg` ajoute un argument
 à la commande de Godot (ex. `--engine-arg=--rendering-driver --engine-arg=opengl3`) ; `--qualite low|medium|high`
 impose le préréglage graphique à tous les scénarios.
 """
@@ -626,8 +625,6 @@ class Run:
             assert prefix is not None, "gdb vérifié au lancement du banc"
             at = cmd.index(str(a.godot))
             cmd = [*cmd[:at], *prefix, *cmd[at:]]
-        if a.fermeture:
-            env["OPENRIDE_QUIT_MODE"] = a.fermeture
         # Arguments de l'engine tirés de config.toml par le vrai lanceur (qualité, caméra, mode d'affichage…).
         sup = build_supervisor(["--config", str(self.config)], env={"GODOT": str(a.godot),
                                                                      "OPENRIDE_ENGINE": str(ENGINE_DIR)})
@@ -851,7 +848,6 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--fermeture-stricte", action="store_true",
                     help="arrêt de Godot bloqué après sa ligne de fin compté en échec (INFO sinon)")
     ap.add_argument("--gdb", action="store_true", help="Godot lancé sous gdb : pile de ses fils s'il ne se ferme pas")
-    ap.add_argument("--fermeture", default="", help="manière de quitter de l'engine (OPENRIDE_QUIT_MODE, lot X58)")
     ap.add_argument("--engine-arg", action="append", default=[], help="argument ajouté à la commande de Godot")
     ap.add_argument("--qualite", choices=["low", "medium", "high"],
                     help="préréglage graphique imposé à tous les scénarios (render.quality, défaut : low ou celui du scénario)")
