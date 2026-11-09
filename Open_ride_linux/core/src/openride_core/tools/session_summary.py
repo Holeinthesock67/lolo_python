@@ -48,6 +48,12 @@ Clés ajoutées par le lot M4, présentes seulement pour un journal qui porte ce
   arrondie à 0,1 s ; une coupure non refermée court jusqu'à la fin de la séance), pour un
   journal qui contient des lignes `device`.
 
+Clé ajoutée par le lot N20 (bilan en tuiles, révision 1.10) : `power_profile` = {step_s, power_w,
+target_w}, courbe réduite de la séance pour le graphique du bilan : au plus `PROFILE_POINTS` points,
+chacun la moyenne de `step_s` échantillons consécutifs (le dernier peut en compter moins), arrondie au
+watt ; `target_w` : cible ERG moyenne des mêmes échantillons (`null` pour un point sans cible), ou `null`
+pour une séance sans cible ; `power_profile` vaut `null` sans échantillon.
+
 Clé ajoutée par le lot O10, présente seulement pour une séance de test de FTP (ligne `ftp_test`
 du journal) : `ftp_test` = {test, ftp_w, method, ref_power_w, held_s, step_w, warnings,
 previous_ftp_w} (voir `ftp_test.py`).
@@ -64,7 +70,7 @@ from pathlib import Path
 from typing import Any
 
 from ..fit_export import summarize
-from ..journal import TIMER_EVENTS, read_journal
+from ..journal import GAME_KINDS, TIMER_EVENTS, read_journal
 
 ZONES: tuple[tuple[str, float, float | None], ...] = (
     ("Z1", 0.0, 55.0), ("Z2", 55.0, 75.0), ("Z3", 75.0, 90.0), ("Z4", 90.0, 105.0),
@@ -87,6 +93,7 @@ class Session:
     fmt: str
     devices: list[dict] = field(default_factory=list)   # lignes `device` (lot M4)
     ftp_tests: list[dict] = field(default_factory=list)   # lignes `ftp_test` (lot O10)
+    games: list[dict] = field(default_factory=list)       # lignes de jeu (`journal.GAME_KINDS`), lues par CO6
 
 
 # --- lecture ----------------------------------------------------------------------------
@@ -110,7 +117,7 @@ def load_session(path: Path) -> Session:
 
 
 def _load_jsonl(path: Path) -> Session:
-    records, events, devices, ftp_tests = [], [], [], []
+    records, events, devices, ftp_tests, games = [], [], [], [], []
     for line in read_journal(path):
         if not isinstance(line, dict):
             continue
@@ -122,7 +129,9 @@ def _load_jsonl(path: Path) -> Session:
             devices.append(line)
         elif line.get("kind") == "ftp_test":
             ftp_tests.append(line)
-    return Session(records, events, "jsonl", devices, ftp_tests)
+        elif line.get("kind") in GAME_KINDS:
+            games.append(line)
+    return Session(records, events, "jsonl", devices, ftp_tests, games)
 
 
 def _load_fit(path: Path) -> Session:
@@ -225,6 +234,7 @@ def _avg_max(values: list[float]) -> dict[str, float] | None:
     return {"avg": round(sum(values) / len(values), 1), "max": round(max(values), 1)}
 
 
+PROFILE_POINTS = 50   # lot N20 : points de la courbe réduite du bilan (`power_profile`)
 DRAFT_MIN = 0.0225   # 5 % de l'abri maximal (0,45) : seuil de l'indicateur « Abri » du HUD
 
 
@@ -282,6 +292,7 @@ def compute_summary(session: Session, ftp_w: float, source: str = "") -> dict[st
         "cadence": _avg_max(cads),
         "hr": hr_dict,
         "erg": _erg_blocks(recs, powers),
+        "power_profile": power_profile(recs, powers),
     }
     if hr_ignored_s > 0:
         out["hr_ignored_s"] = hr_ignored_s
@@ -294,6 +305,26 @@ def compute_summary(session: Session, ftp_w: float, source: str = "") -> dict[st
     if session.ftp_tests:   # lot O10 : dernier résultat écrit
         out["ftp_test"] = {k: v for k, v in session.ftp_tests[-1].items() if k not in ("kind", "ts")}
     return out
+
+
+def power_profile(recs: list[dict], powers: list[float],
+                  points: int = PROFILE_POINTS) -> dict[str, Any] | None:
+    """Courbe réduite de la séance (lot N20) : moyennes de `step_s` échantillons consécutifs, au plus
+    `points` points ; cible ERG moyenne des échantillons qui en ont une, `null` sans cible."""
+    n = len(powers)
+    if n == 0:
+        return None
+    step = math.ceil(n / points)
+    power_w: list[int] = []
+    target_w: list[int | None] = []
+    for i in range(0, n, step):
+        chunk = powers[i:i + step]
+        power_w.append(int(round(sum(chunk) / len(chunk))))
+        tgts = [float(r["target_w"]) for r in recs[i:i + step]
+                if r.get("target_w") is not None and r.get("mode", "ERG") == "ERG"]
+        target_w.append(int(round(sum(tgts) / len(tgts))) if tgts else None)
+    has_target = any(t is not None for t in target_w)
+    return {"step_s": step, "power_w": power_w, "target_w": target_w if has_target else None}
 
 
 def _device_drops(session: Session) -> dict[str, dict[str, float]]:

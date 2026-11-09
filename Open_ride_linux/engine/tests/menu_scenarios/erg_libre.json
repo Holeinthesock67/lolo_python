@@ -6,7 +6,7 @@
     {"choisir": "demo"},
     {"ecran": "ready"},
     {"choisir": "start"},
-    {"journal": "core", "motif": "-> RUNNING", "delai": 10},
+    {"journal": "core", "motif": "-> RUNNING", "delai": 20},
     {"menu_cache": true},
     {"appui": "Y_SHORT"},
     {"ecran": "pause", "elements": ["resume", "end_save", "abandon", "difficulty", "ride_mode"], "contient": ["SIM"]},

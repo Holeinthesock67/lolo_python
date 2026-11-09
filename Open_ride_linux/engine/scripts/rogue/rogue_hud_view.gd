@@ -27,6 +27,7 @@ var gauges: Label3D
 var shield_arc: MeshInstance3D
 var adrenaline_arc: MeshInstance3D
 var banner: Label
+var phase_label: Label              # échauffement et retour au calme : ce qui se passe (recette R14)
 var glitch_rect: ColorRect
 var banner_left_s := 0.0
 var glitch_left_s := 0.0
@@ -70,6 +71,20 @@ func _ready() -> void:
 	banner.position = Vector2(0.0, 80.0)
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_layer.add_child(banner)
+	phase_label = Label.new()
+	phase_label.name = "PhaseLabel"
+	phase_label.visible = false
+	phase_label.add_theme_font_size_override("font_size", 28)
+	phase_label.add_theme_color_override("font_color", Palette.color("neutral", adapted))
+	phase_label.add_theme_constant_override("outline_size", 8)
+	phase_label.add_theme_color_override("font_outline_color", Palette.color("void", false))
+	phase_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# En bas de l'écran : le haut est pris par le bandeau de l'engine (rappel des commandes du mode).
+	phase_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	phase_label.offset_top = -150.0
+	phase_label.offset_bottom = -110.0
+	phase_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_layer.add_child(phase_label)
 	set_style(preset, adapted)
 
 
@@ -125,8 +140,10 @@ func apply(values: Dictionary, bike_pos: Vector3, delta: float) -> void:
 	if holo == null:
 		return
 	visible = bool(values.get("active", false))
+	phase_label.visible = visible and String(values.get("phase_text", "")) != ""
 	if not visible:
 		return
+	phase_label.text = String(values.get("phase_text", ""))
 	position = bike_pos
 	# Couloir : l'écran des cartes et des portes occupe le centre, l'hologramme et les jauges se retirent
 	# (ils transparaissaient sous les cartes) ; les arcs au sol restent.
@@ -138,9 +155,9 @@ func apply(values: Dictionary, bike_pos: Vector3, delta: float) -> void:
 	holo.text = "%s\n%s · %s rpm" % [values["gear_text"], values["power_pct_text"], values["cadence_text"]]
 	holo.modulate = Palette.color(String(values["posture_token"]), adapted)
 	var wbal := "W' %d %%" % int(roundf(values["wbal_pct"]))
-	var fw := "FW %d m" % int(roundf(values["firewall_gap_m"]))
+	var fw := "  ·  FW %d m" % int(roundf(values["firewall_gap_m"])) if values.get("has_firewall", true) else ""
 	var enemy := "  ·  Ennemi %d %%" % int(roundf(values["enemy_pct"])) if values["has_enemy"] else ""
-	gauges.text = "%s  ·  %s%s" % [wbal, fw, enemy]
+	gauges.text = "%s%s%s" % [wbal, fw, enemy]
 	var warn: bool = values["wbal_low"] or values["firewall_danger"]
 	gauges.modulate = Palette.color("danger" if warn else "neutral", adapted)
 	_set_arc(shield_arc, float(values["shield_frac"]), -1, true)

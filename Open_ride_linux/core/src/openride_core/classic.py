@@ -115,6 +115,12 @@ class ClassicRace:
                 self._bot_timer(bot.id).step(t, bot.s)
         self._prev_s = s
 
+    def add_bots(self, t: float, bots: Iterable[Any]) -> None:
+        """Bots ajoutés pendant la pause (lot N18) : chronométrés depuis leur place, comme au départ."""
+        for bot in bots:
+            if getattr(bot, "kind", "") != "ghost":
+                self._bot_timer(bot.id).step(t, bot.s)
+
     def _bot_timer(self, bot_id: str) -> SegmentTimer:
         timer = self._bot_timers.get(bot_id)
         if timer is None:
@@ -216,7 +222,8 @@ class ClassicRace:
             base = p.lap * self.length_m
             self.gain_jobs.append(GainJob(pending, p.t_start, p.t_end, base + seg.s_start, base + seg.s_end))
         self.passes.append({"segment_id": p.segment_id, "kind": seg.type, "time_s": round(p.time_s, 2),
-                            "with_powerup": p.with_bonus, "pr": added.is_record, "rank": rank,
+                            "with_powerup": p.with_bonus, "pr": added.is_record,
+                            "pr_time_s": msg["pr_time_s"], "rank": rank,   # ancien record (lot N20)
                             "rank_total": len(rows), "points": points})
         self.journal.append({"kind": "segment", "ts": round(time.time(), 3), "segment_id": p.segment_id,
                              "lap": p.lap, "type": seg.type, "category": seg.category,

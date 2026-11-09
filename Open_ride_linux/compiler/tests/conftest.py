@@ -118,6 +118,26 @@ def offline_and_synthetic(request, monkeypatch, tmp_path):
     monkeypatch.setattr(socket.socket, "connect", no_network_connect)
     monkeypatch.setattr(socket, "create_connection", no_network_create)
     monkeypatch.setattr(cli, "make_provider", lambda offline, log=None: SyntheticProvider(*ORIGIN, plane))
+    # Couche biome (lot U2) : occupation du sol « prairie » partout et pas de polygones OSM, sans réseau ;
+    # les tests de la couche remplacent ces deux sources (tests/test_biomes.py, tests/test_landcover.py).
+    monkeypatch.setattr(cli, "make_landcover", lambda offline, log=None: FakeLandcover())
+    monkeypatch.setattr(cli, "make_biome_osm_client", lambda offline, log=None: None)
+
+
+class FakeLandcover:
+    """Petite grille WorldCover synthétique : `func(lat, lon)` → classe (prairie, 30, par défaut)."""
+
+    name = "esa_worldcover_2021"
+
+    def __init__(self, func=None) -> None:
+        self.func = func or (lambda lat, lon: np.full(np.shape(lat), 30, dtype=np.uint8))
+        self.prepared = 0
+
+    def prepare(self, lats, lons) -> None:
+        self.prepared += 1
+
+    def classes(self, lats, lons):
+        return np.asarray(self.func(np.asarray(lats), np.asarray(lons)), dtype=np.uint8)
 
 # Profils du fuzz des fichiers (lot X26) : 200 exemples par lecteur, `--hypothesis-profile=long` (5 000)
 # sur le PC ; pas de délai par exemple (la limite de 2 s est vérifiée dans les tests).

@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Tests sans écran du thème commun des menus (lot « présentation des menus », étape 1) : jetons et
 ## contrastes de `ui_theme.gd`, aide des boutons (`button_help.gd`) fidèle au plan des boutons §7.1,
-## pictogrammes (`ui_icons.gd`), menu plein écran (`menu_view.gd`) avec l'accueil entier, la sélection,
+## pictogrammes (`ui_icons.gd`), menu plein écran (`menu_view.gd`) avec l'accueil (neuf entrées à la fois), la sélection,
 ## les éléments désactivés et la carte de détail, table des couleurs de données (couleurs en dur :
 ## test_theme_colors.gd) ;
 ## étape 2 : fiches de la carte (catalog_model.route_sheet, workout_sheet), carte selon l'écran
@@ -139,8 +139,11 @@ func _test_view() -> void:
 	var home: Array = f.state()["items"]
 	_check(v.anchor_right == 1.0 and v.anchor_bottom == 1.0 and v.offset_left == 0.0 and v.offset_top == 0.0,
 		"menu en plein écran")
-	_check(v.items_text().split(" | ").size() == home.size() and v.more_label.text == "",
-		"accueil entier avec les appareils : %d entrées sur %d" % [v.items_text().split(" | ").size(), home.size()])
+	# Dix entrées depuis la ligne « Collection » (lot BC5) : neuf à la fois avec les pastilles des appareils
+	# (la dixième déborderait sur le bandeau des boutons en 1280 × 720), la fenêtre suit le focus.
+	var shown := v.items_text().split(" | ").size()
+	_check(home.size() == 10 and shown == MenuView.MAX_VISIBLE_WITH_DEVICES and v.more_label.text == "1 / 10",
+		"accueil avec les appareils : %d entrées sur %d, « %s »" % [shown, home.size(), v.more_label.text])
 	_check(v.devices.visible and v.button_bar.visible and not v.card.visible, "accueil : pastilles et bandeau, sans carte")
 	var first: PanelContainer = v._item_panels[0]
 	_check(first.get_meta("focused") and first.get_theme_stylebox("panel").border_color == UiTheme.FOCUS,
@@ -228,8 +231,8 @@ func _test_cards() -> void:
 	_check(pm.message_error, "erreur de recherche : message d'erreur")
 	f.menu.set_world("col", "Col")
 	_check(on.call(MenuModel.READY, "start").get("id") == "col", "écran Prêt : fiche du parcours choisi, pas du focus")
-	_check(on.call(MenuFlow.SUMMARY, "new_session") == {"title": "Bilan de la séance"} and on.call(MenuModel.HOME, "ride").is_empty(),
-		"bilan : en-tête seul ; accueil : pas de carte")
+	_check(on.call(MenuFlow.SUMMARY, "new_session") == {"title": "Bilan de la séance", "name": "Col"}
+		and on.call(MenuModel.HOME, "ride").is_empty(), "bilan : en-tête et nom du parcours (lot N20) ; accueil : pas de carte")
 	f.builder.set_value("reps", 2)
 	var create: Dictionary = on.call(MenuFlow.WORKOUT_CREATE, "save")
 	_check(create["title"] == "Aperçu" and create["blocks"].size() == 6 and create["blocks"][1] == [240.0, 1.05, 1.05]
@@ -249,20 +252,27 @@ func _test_cards() -> void:
 	_check(c.chart_kind() == "" and not c.tiles_box.visible and c.text() == "Entraînement | X | fichier illisible",
 		"carte : entraînement illisible, ni tuiles ni graphique")
 	c.free()
+	# Bilan en tuiles (lot N20) : nouvelle FTP du test en GOLD, ancienne en DIM (N19 §4.4, critère 4).
+	var sv = load("res://scripts/summary_view.gd").new()
+	sv.update_display({"duration_s": 1500.0, "ftp_test": {"ftp_w": 262, "previous_ftp_w": 250, "warnings": [], "reliable": true}}, false)
+	_check(sv.ftp_band.visible and sv.ftp_value.text == "262 W"
+		and sv.ftp_value.get_theme_color("font_color") == UiTheme.GOLD and sv.ftp_before.get_theme_color("font_color") == UiTheme.DIM,
+		"bilan : nouvelle FTP en or, ancienne en gris (%s)" % sv.text())
+	sv.free()
 
 
 ## Étape 3 : rangées des réglages (valeur à droite, curseur, modification en place), carte, aide des boutons.
 func _test_settings() -> void:
 	var ftp := {"key": "rider.ftp_w", "label": "FTP", "group": "rider", "type": "int", "value": 250, "min": 50, "max": 600,
 		"step": 5, "unit": "W", "applies": "next_session"}
-	var vol := {"key": "sound.master_pct", "label": "Volume général", "group": "sound", "type": "int", "value": 80, "min": 0,
+	var vol := {"key": "sound.master_pct", "label": "Général", "group": "sound", "type": "int", "value": 80, "min": 0,
 		"max": 100, "step": 10, "unit": "%", "applies": "now"}
 	var quality := {"key": "render.quality", "label": "Qualité", "group": "graphics", "type": "choice", "value": "high",
 		"choices": ["low", "medium", "high"], "applies": "now"}
 	var s = SettingsViewModel.new()
 	s.on_settings({"items": [ftp, vol, quality]})
 	var rows: Array = s.menu_items("sound")
-	_check(rows[0] == {"id": "set:sound.master_pct", "label": "Volume général", "detail": "80 %", "bar": 80},
+	_check(rows[0] == {"id": "set:sound.master_pct", "label": "Général", "detail": "80 %", "bar": 80},
 		"réglage en %% : libellé, valeur à droite, curseur (%s)" % str(rows[0]))
 	_check(s.menu_items("rider")[0] == {"id": "set:rider.ftp_w", "label": "FTP", "detail": "250 W"} and not s.menu_items("rider")[0].has("bar"),
 		"réglage en watts : pas de curseur")
@@ -273,7 +283,7 @@ func _test_settings() -> void:
 	s.cancel()
 	_check(s.menu_items("sound")[0]["detail"] == "80 %", "annulé : valeur d'avant")
 	var sheet: Dictionary = s.sheet("sound.master_pct")
-	_check(sheet["name"] == "Volume général" and sheet["tiles"].map(func(t): return t["label"]) == ["Valeur", "Plage", "Pas"]
+	_check(sheet["name"] == "Général" and sheet["tiles"].map(func(t): return t["label"]) == ["Valeur", "Plage", "Pas"]
 		and sheet["lines"] == ["S'applique tout de suite"], "carte d'un réglage numérique (%s)" % str(sheet["lines"]))
 	_check(s.sheet("render.quality")["lines"][0] == "Choix : low, medium, high" and s.sheet("absent").is_empty(), "carte d'un choix")
 	_check(SettingsViewModel.crumb("sound") == "Réglages › Son", "fil d'Ariane du sous-écran")
