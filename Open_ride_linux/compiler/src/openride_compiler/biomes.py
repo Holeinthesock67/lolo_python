@@ -134,6 +134,7 @@ class BiomeLayer:
     shares: dict[str, float]
     forced: str | None = None
     sources: list[str] = field(default_factory=list)
+    forced_variant: dict | None = None     # option --variant (lot U4)
 
 
 def osm_class(tags: dict) -> int | None:
@@ -477,8 +478,16 @@ def route_shares(tiles: dict[tuple[int, int], dict], x: Sequence[float], z: Sequ
 
 def build_biome_layer(keys: dict[str, Sequence[tuple[int, int]]], route_x: Sequence[float],
                       route_z: Sequence[float], inputs: Inputs | None = None,
-                      forced: str | None = None, sources: Sequence[str] = ()) -> BiomeLayer:
-    """Couche biome complète (niveaux proche et lointain) et parts le long de la route."""
+                      forced: str | None = None, sources: Sequence[str] = (),
+                      to_latlon: Callable[[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]] | None = None,
+                      forced_variant: dict | None = None) -> BiomeLayer:
+    """Couche biome complète (niveaux proche et lointain), variante régionale de chaque tuile (lot U4) et
+    parts le long de la route.
+
+    La variante vient de `forced_variant` (option `--variant`), sinon de la table régionale au centre de chaque
+    tuile (`to_latlon`, ou celui de `inputs`) ; sans projection ni variante imposée, elle reste `null`.
+    """
+    from . import regional
     tiles: dict[str, dict[tuple[int, int], dict]] = {}
     for k, level in enumerate(LEVELS):
         level_keys = keys.get(level.name, [])
@@ -487,6 +496,11 @@ def build_biome_layer(keys: dict[str, Sequence[tuple[int, int]]], route_x: Seque
         else:
             assert inputs is not None
             tiles[level.name] = classify_level(level_keys, level, inputs, salt=k)
+    project = to_latlon or (inputs.to_latlon if inputs is not None else None)
+    if forced_variant is not None or project is not None:
+        regional.assign_variants(tiles, {level.name: level.tile_m for level in LEVELS}, project,
+                                 forced=forced_variant, near=NEAR.name, far=FAR.name)
     shares = route_shares(tiles.get(NEAR.name, {}), route_x, route_z)
     return BiomeLayer(tiles=tiles, shares=shares, forced=forced,
-                      sources=["forced"] if forced is not None else list(sources))
+                      sources=["forced"] if forced is not None else list(sources),
+                      forced_variant=forced_variant)

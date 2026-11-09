@@ -6,7 +6,7 @@ plages de valeurs ; terrain : taille des tuiles, présence des tuiles listées, 
 bords partagés, absence de NaN à moins de 25 m de la route ; segments (format 1.3) : bornes
 dans le parcours, identifiants uniques, types et catégories connus ; biome (format 1.6, lot U2) :
 présence des tuiles listées, contenu (identifiants, une grille de 289 poids par biome, somme 255 en chaque
-point, 4 biomes au plus) et égalité des bords partagés.
+point, 4 biomes au plus, variante régionale du lot U4) et égalité des bords partagés.
 """
 
 from __future__ import annotations
@@ -222,7 +222,21 @@ def biome_tile_problems(tile: object) -> list[str]:
         out.append(f"{bad} point(s) dont la somme des poids diffère de {TOTAL}")
     if "variant" not in tile:
         out.append("variant absent")
+    else:
+        out += _variant_problems(tile["variant"])
     return out
+
+
+def _variant_problems(variant: object) -> list[str]:
+    """Variante régionale (lot U4) : null, ou {"ground", "roofs"} pris dans l'énumération du contrat."""
+    from .regional import MEMBERS
+
+    if variant is None:
+        return []
+    if not isinstance(variant, dict) or set(variant) != set(MEMBERS):
+        return [f"variant : null ou objet {{ground, roofs}} attendu, reçu {variant!r}"]
+    return [f"variant : {member} {variant[member]!r} inconnu" for member, ids in MEMBERS.items()
+            if variant[member] is not None and variant[member] not in ids]
 
 
 def _biome_grids(tile: dict) -> dict[str, np.ndarray]:

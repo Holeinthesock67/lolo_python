@@ -288,7 +288,8 @@ def _coverage_points(keys: dict[str, list[tuple[int, int]]]) -> tuple[np.ndarray
 
 def build_biome(route: dict, frame: LocalFrame, keys: dict[str, list[tuple[int, int]]],
                 forced: str | None = None, provider: ElevationProvider | None = None,
-                landcover=None, osm_client=None, offline: bool = False, log=None):
+                landcover=None, osm_client=None, offline: bool = False, log=None,
+                forced_variant: dict | None = None):
     """Couche biome (lot U2) : biome imposé, ou classification WorldCover + OSM + altitude + latitude.
 
     Sans `--offline`, une source injoignable est remplacée par un repli (OSM et altitude seules, ou
@@ -299,7 +300,8 @@ def build_biome(route: dict, frame: LocalFrame, keys: dict[str, list[tuple[int, 
 
     log = log or (lambda message: None)
     if forced is not None:
-        return B.build_biome_layer(keys, route["x"], route["z"], forced=forced)
+        return B.build_biome_layer(keys, route["x"], route["z"], forced=forced, to_latlon=frame.to_latlon,
+                                   forced_variant=forced_variant)
     sources: list[str] = []
     lc_fn = None
     if landcover is not None:
@@ -328,4 +330,5 @@ def build_biome(route: dict, frame: LocalFrame, keys: dict[str, list[tuple[int, 
     sources.append("latitude")
     inputs = B.Inputs(to_latlon=frame.to_latlon, landcover=lc_fn,
                       elevation=provider.elevations if provider is not None else None, osm=areas)
-    return B.build_biome_layer(keys, route["x"], route["z"], inputs=inputs, sources=sources)
+    return B.build_biome_layer(keys, route["x"], route["z"], inputs=inputs, sources=sources,
+                               forced_variant=forced_variant)
