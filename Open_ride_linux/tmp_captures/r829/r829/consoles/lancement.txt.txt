@@ -1,0 +1,11 @@
+08:19:30 empreinte avant 5110c06b4c9d6954972ebf363612e48f
+08:19:30 tête c07181ab
+08:19:40 UNIT=test_sound_player
+08:20:01 fin test_sound_player rc=0
+08:20:01 UNIT=test_ambience_model
+08:20:06 fin test_ambience_model rc=0
+08:20:06 UNIT=test_living_world
+08:20:10 fin test_living_world rc=0
+08:20:11 empreinte après 5110c06b4c9d6954972ebf363612e48f
+08:20:11 clone 90c08094
+08:20:11 FIN

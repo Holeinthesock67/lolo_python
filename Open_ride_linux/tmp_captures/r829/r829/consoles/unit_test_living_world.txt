@@ -1,0 +1,34 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_living_world
+
+[OK] ciel de P6 à la place du ciel actuel (nuages « flat » en low)
+[OK] low : touffes d'herbe dans le budget du bord (2 250) et de la bande large (3 000), lot Y22
+[OK] vent du core vers le décor : souffle vers l'ouest, force 0.43
+[OK] nuages qui défilent dans le sens du vent (décalage du motif 10.8 m)
+[OK] indicateur : « 26 km/h face », Vent défavorable, fort
+[OK] voisinage sonore recalculé 4 fois en 2 s (au plus 2 fois par seconde)
+[OK] en forêt : part de forêt 1.00, contours lus une seule fois
+[OK] voisinage complété par la force du vent et l'altitude
+[OK] maison chargée exclue des touffes d'herbe
+[OK] sans couche biome : aucun poids de biome, saison du thème (été par défaut) (lot U11)
+[OK] littoral forcé : poids du biome, mer à 250 m (au-delà des 100 m des autres eaux), saison du thème
+Décor vivant : 0.873 ms par image (low, voisinage compris)
+[PERF] living_world_frame : 0.8735 ms, budget 1.0000 ms
+[OK] coût du branchement en 0.873 ms par image
+[OK] demi-tour : « dos », Vent favorable
+[OK] route en travers du vent : Vent neutre
+[OK] HUD : « 26 km/h face », « Vent défavorable »
+[OK] HUD : indicateur sous le panneau de gauche, coin supérieur droit laissé libre
+[OK] HUD : indicateur caché sans vent
+[OK] living = false : ciel, herbe et ambiance de la 1.0
+[OK] living = false : le vent du core reste affiché
+[OK] high : 3560 touffes d'herbe placées
+test_living_world : 20 vérifications, 0 échecs
+WARNING: 2 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
+UNIT=test_living_world : rendu, ERG et scénarios IPC sautés
+Budgets de temps (OPENRIDE_PERF=report) : 1 mesures, 0 dépassement(s)
+  living_world_frame : 0.8735 ms, budget 1.0000 ms
+Résumé :
+  OK     unit/test_living_world : 20 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent

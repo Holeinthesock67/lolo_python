@@ -1,0 +1,59 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_ambience_model
+
+[OK] méditerranéen, été, midi : cigales 1.00 (> 0,5)
+[OK] méditerranéen, hiver : cigales muettes
+[OK] méditerranéen, été : cigales audibles (-21.4 dB)
+[OK] méditerranéen, nuit : cigales muettes
+[OK] zone humide : grenouilles plus fortes la nuit (1.00 contre 0.35)
+[OK] les 10 fonds de biome sont déclarés par le thème (10)
+[OK] prairie tempérée : volumes identiques à ceux de P9, sans fond de biome
+[OK] tour des biomes : variation max 0.328 du niveau plein en 1 s (field_insects, ≤ 1/3)
+[OK] vagues : fondu de 3.7 s du plein au silence (≥ 3 s)
+[OK] low, biomes mêlés : au plus 4 fonds audibles (relevé 4)
+[OK] medium, biomes mêlés : au plus 6 fonds audibles (relevé 6)
+[OK] high, biomes mêlés : au plus 8 fonds audibles (relevé 8)
+[OK] moitié méditerranée, moitié littoral : cigales 0.50, vagues 0.50 (0,5)
+[OK] volume et oiseaux pondérés par les biomes (0.70, 0.45)
+[OK] vagues selon la distance à la mer : [1.0, 0.54054054054054, 0.0, 0.0]
+[OK] thème 1.x : `ambience.layers` lu, fonds inconnus ignorés, repli des biomes sans entrée
+[OK] mer à 100 m derrière une rivière à 40 m : sea_dist_m 100
+[PERF] ambience_evaluate : 0.0728 ms, budget 0.1000 ms
+[OK] evaluate avec quatre biomes : 0.0728 ms
+[OK] oiseaux : chants 28 % du temps (15 à 45 %)
+[OK] oiseaux : phrases pleines et silences d'au moins 4 s (11.9 s)
+[OK] oiseaux : tirage déterministe
+[OK] entre deux phrases : au plus 40 dB plus bas
+[OK] forêt à 80 %, jour : les oiseaux dominent (forest_birds)
+[OK] champ à midi : les insectes dominent (field_insects)
+[OK] rivière à 20 m : eau audible (-20.0 dB)
+[OK] nuit : oiseaux 24.0 dB plus bas qu'à midi (≥ 20 dB)
+[OK] insectes muets la nuit
+[OK] pluie : oiseaux plus bas, pluie audible
+[OK] altitude : vent marqué (-21.5 dB)
+[OK] en pause : tout au silence en 2 s
+[OK] ambience.volume = 0 : tout muet
+[OK] low : au plus 4 fonds audibles (relevé 4)
+[OK] medium : au plus 6 fonds audibles (relevé 6)
+[OK] high : au plus 8 fonds audibles (relevé 6)
+[OK] 2 voix pour 5 fonds possibles : 2 audibles (relevé 2)
+[OK] forêt puis champ : variation max 2.75 dB en 0,5 s (≤ 3 dB)
+[OK] au champ, les insectes l'emportent ensuite
+[OK] 3 coups à 15 h
+[OK] 12 coups à midi et à minuit
+[OK] aucun coup hors de l'heure pleine
+[OK] horloge qui recule ou première lecture : rien
+[OK] moitié en forêt : part 0.59
+[OK] une maison : part bâtie 0.02
+[OK] rivière à 40 m
+[OK] rien autour : aucune forêt, pas d'eau
+[PERF] ambience_evaluate : 0.0656 ms, budget 0.1000 ms
+[OK] evaluate : 0.0656 ms
+test_ambience_model : 46 vérifications, 0 échecs
+UNIT=test_ambience_model : rendu, ERG et scénarios IPC sautés
+Budgets de temps (OPENRIDE_PERF=report) : 2 mesures, 0 dépassement(s)
+  ambience_evaluate : 0.0728 ms, budget 0.1000 ms
+  ambience_evaluate : 0.0656 ms, budget 0.1000 ms
+Résumé :
+  OK     unit/test_ambience_model : 46 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent

@@ -1,0 +1,72 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_sound_player
+
+[PERF] sound_generation_memory : 1551.2617 Ko, budget 4096.0000 Ko
+[OK] mémoire des sons synthétisés : 1551 Ko
+Génération de tous les sons : 596.17 ms
+[PERF] sound_generation : 596.1710 ms, budget 1200.0000 ms
+[OK] génération des sons au démarrage dans le budget (596.17 ms)
+[OK] tous les flux procéduraux générés et valides (dont vehicle_pass et tractor_engine, lot P13, crowd_cheer, lot P15, helicopter_rotor et airliner_rumble, lot P26, barge_engine et ship_horn, lot P29, paramotor_buzz, lot P31)
+[OK] corne de brume jouée une fois, diesel de la péniche en boucle (lot P29)
+[OK] sons des véhicules accessibles par stream(kind), en boucle
+[OK] kind_of : nom du son d'un flux, vide pour un flux étranger (lot P30)
+[OK] lots P21, P23 et P24 : voix, aboiement, rire, cris d'oiseaux et de troupeaux brefs (0,3 à 1 s) et non bouclés
+[OK] fonds d'ambiance : aucun fabriqué au démarrage (lot U11, chacun à sa première demande)
+Fabrication des 16 fonds d'ambiance : 2354 ms
+[OK] fonds d'ambiance : 16 boucles générées, lecteurs non spatialisés
+[OK] jamais plus de 4 lecteurs 3D actifs (max relevé: 4)
+[OK] aucun nœud créé après le démarrage (26 enfants permanents)
+[OK] volumes des lecteurs à moins de 0.5 dB de sound_model.gd
+[OK] rain.ogg de remplacement utilisé, les autres fonds restent synthétisés
+[OK] fonds : volumes des lecteurs égaux à ceux du modèle (phrases d'oiseaux comprises), aucun nœud créé
+[OK] 15 h : 3 coups de cloche (3)
+[OK] aucun coup hors de l'heure pleine
+[OK] littoral : vagues et mouettes fabriquées puis posées sur leur lecteur (91 images)
+[OK] fonds d'autres biomes : jamais fabriqués
+[OK] vagues jouées, aucun nœud créé, aucune fabrication en attente
+Processeur : Intel(R) Core(TM) i3-6100 CPU @ 3.70GHz, 4 fils
+low (4 voix) : 4 fonds posés en 213 images
+  fabrication : médiane 0.178 ms, p95 0.328 ms, pire 0.382 ms (89 images)
+  pose d'un fond : médiane 0.292 ms, p95 0.340 ms, pire 0.340 ms (4 images)
+  tout posé (témoin) : médiane 0.303 ms, p95 0.671 ms, pire 0.974 ms (120 images)
+  pire image : 0.382 ms (modèle 194 µs, pose 10 µs, lecteurs 167 µs, 0 fond posé)
+[OK] low : 4 fonds posés, un seul par image, aucun fond d'un autre biome
+[PERF] ambience_layer_frame : 0.3820 ms, budget 2.0000 ms
+[OK] low : fabrication hors du fil principal, update_ambience au plus 0.38 ms par image
+medium (6 voix) : 6 fonds posés en 223 images
+  fabrication : médiane 0.223 ms, p95 0.337 ms, pire 0.508 ms (97 images)
+  pose d'un fond : médiane 0.191 ms, p95 0.316 ms, pire 0.316 ms (6 images)
+  tout posé (témoin) : médiane 0.401 ms, p95 0.761 ms, pire 1.351 ms (120 images)
+  pire image : 0.508 ms (modèle 417 µs, pose 8 µs, lecteurs 75 µs, 0 fond posé)
+[OK] medium : 6 fonds posés, un seul par image, aucun fond d'un autre biome
+[PERF] ambience_layer_frame : 0.5080 ms, budget 2.0000 ms
+[OK] medium : fabrication hors du fil principal, update_ambience au plus 0.51 ms par image
+high (8 voix) : 8 fonds posés en 329 images
+  fabrication : médiane 0.216 ms, p95 0.361 ms, pire 0.513 ms (201 images)
+  pose d'un fond : médiane 0.200 ms, p95 0.331 ms, pire 0.331 ms (8 images)
+  tout posé (témoin) : médiane 0.299 ms, p95 0.549 ms, pire 0.869 ms (120 images)
+  pire image : 0.513 ms (modèle 413 µs, pose 7 µs, lecteurs 86 µs, 0 fond posé)
+[OK] high : 8 fonds posés, un seul par image, aucun fond d'un autre biome
+[PERF] ambience_layer_frame : 0.5130 ms, budget 2.0000 ms
+[OK] high : fabrication hors du fil principal, update_ambience au plus 0.51 ms par image
+[OK] boucle du vent : raccord (609) pas plus brusque que le bruit lui-même (5957)
+[OK] « clac » : son court sans boucle (60 ms)
+[OK] cliquetis : pitch_scale = coups/s du modèle / 140 (0.612 à 18 km/h)
+[OK] deux reprises du pédalage : 2 « clac », aucun nœud créé
+[OK] boucles : raccord pas plus brusque que le son lui-même (en défaut : [])
+[OK] bruit filtré périodique : le pas qui suit la fin redonne le début (0.000000)
+[OK] cloche : un coup, sans boucle
+[OK] cloche à portée hors de l'heure pleine : muette
+[OK] sons continus : niveau stable à 3 dB près sur 3 tours de boucle (en défaut : [])
+[OK] sons à bruit : boucle d'au moins 3 s, pas de bruit figé qui pulse chaque seconde (en défaut : [])
+test_sound_player : 35 vérifications, 0 échecs
+UNIT=test_sound_player : rendu, ERG et scénarios IPC sautés
+Budgets de temps (OPENRIDE_PERF=report) : 5 mesures, 0 dépassement(s)
+  sound_generation_memory : 1551.2617 Ko, budget 4096.0000 Ko
+  sound_generation : 596.1710 ms, budget 1200.0000 ms
+  ambience_layer_frame : 0.3820 ms, budget 2.0000 ms
+  ambience_layer_frame : 0.5080 ms, budget 2.0000 ms
+  ambience_layer_frame : 0.5130 ms, budget 2.0000 ms
+Résumé :
+  OK     unit/test_sound_player : 35 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent

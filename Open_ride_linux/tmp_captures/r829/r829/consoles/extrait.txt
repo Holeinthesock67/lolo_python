@@ -1,0 +1,23 @@
+  OK     unit/test_ambience_model : 46 vérifications, 0 échecs
+  OK     unit/test_living_world : 20 vérifications, 0 échecs
+[OK] vagues jouées, aucun nœud créé, aucune fabrication en attente
+Processeur : Intel(R) Core(TM) i3-6100 CPU @ 3.70GHz, 4 fils
+  fabrication : médiane 0.178 ms, p95 0.328 ms, pire 0.382 ms (89 images)
+  pose d'un fond : médiane 0.292 ms, p95 0.340 ms, pire 0.340 ms (4 images)
+  tout posé (témoin) : médiane 0.303 ms, p95 0.671 ms, pire 0.974 ms (120 images)
+  pire image : 0.382 ms (modèle 194 µs, pose 10 µs, lecteurs 167 µs, 0 fond posé)
+[PERF] ambience_layer_frame : 0.3820 ms, budget 2.0000 ms
+[OK] low : fabrication hors du fil principal, update_ambience au plus 0.38 ms par image
+  fabrication : médiane 0.223 ms, p95 0.337 ms, pire 0.508 ms (97 images)
+  pose d'un fond : médiane 0.191 ms, p95 0.316 ms, pire 0.316 ms (6 images)
+  tout posé (témoin) : médiane 0.401 ms, p95 0.761 ms, pire 1.351 ms (120 images)
+  pire image : 0.508 ms (modèle 417 µs, pose 8 µs, lecteurs 75 µs, 0 fond posé)
+[PERF] ambience_layer_frame : 0.5080 ms, budget 2.0000 ms
+[OK] medium : fabrication hors du fil principal, update_ambience au plus 0.51 ms par image
+  fabrication : médiane 0.216 ms, p95 0.361 ms, pire 0.513 ms (201 images)
+  pose d'un fond : médiane 0.200 ms, p95 0.331 ms, pire 0.331 ms (8 images)
+  tout posé (témoin) : médiane 0.299 ms, p95 0.549 ms, pire 0.869 ms (120 images)
+  pire image : 0.513 ms (modèle 413 µs, pose 7 µs, lecteurs 86 µs, 0 fond posé)
+[PERF] ambience_layer_frame : 0.5130 ms, budget 2.0000 ms
+[OK] high : fabrication hors du fil principal, update_ambience au plus 0.51 ms par image
+  OK     unit/test_sound_player : 35 vérifications, 0 échecs
