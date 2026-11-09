@@ -29,6 +29,7 @@ const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
+const BuildingStyles := preload("res://scripts/building_styles.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const SkyTrafficRenderer := preload("res://scripts/sky_traffic_renderer.gd")
@@ -40,6 +41,17 @@ const VitrineChecks := preload("res://tests/vitrine_checks.gd")
 const DEFAULT_SIZE := Vector2i(1280, 720)
 const ROAD_WIDTH_M := 6.0
 const SETTLE_FRAMES := 30
+## Sortie en ordre (Godot 4.7, Forward+, comme test_rogue_style_sheet_render.gd #712) : libérer la vue ou quitter
+## pendant que Godot compile encore des pipelines bloque la sortie (PC GTX 1060, banc r748 : tuée à 900 s, rc 124).
+## On attend que les compteurs de compilation restent stables PIPELINE_QUIET_S et PIPELINE_QUIET_FRAMES images,
+## au plus PIPELINE_MAX_S secondes, avant et après chaque libération.
+const PIPELINE_QUIET_FRAMES := 10
+const PIPELINE_QUIET_S := 1.0
+const PIPELINE_MAX_S := 30.0
+const PIPELINE_INFOS := [RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_CANVAS,
+	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_MESH, RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SURFACE,
+	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_DRAW,
+	RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SPECIALIZATION]
 
 ## Vues : position de la caméra, point visé, champ vertical (degrés).
 const VIEWS := {
@@ -62,6 +74,9 @@ const VIEWS := {
 	"styles_biomes_pres": [Vector3(-152.0, 2.5, -146.0), Vector3(-136.0, 3.0, -161.0), 60.0],
 	"styles_biomes_pres2": [Vector3(-103.0, 2.5, -146.0), Vector3(-86.0, 3.0, -161.0), 60.0],
 	"faune_biomes": [Vector3(-40.0, 2.0, -2.0), Vector3(-40.0, 1.2, 12.0), 55.0],
+	"habitat_rond": [Vector3(-133.0, 5.0, -179.0), Vector3(-133.0, 1.5, -196.0), 60.0],
+	"habitat_pilotis": [Vector3(-103.0, 2.5, -181.0), Vector3(-103.0, 2.0, -196.0), 60.0],
+	"habitat_yourtes": [Vector3(-76.0, 4.0, -180.0), Vector3(-76.0, 1.5, -196.0), 60.0],
 	"ciel": [Vector3(0.0, 1.4, 0.0), Vector3(0.0, 70.0, -200.0), 70.0],
 	"ciel_proche": [Vector3(0.0, 1.4, 0.0), Vector3(8.0, 72.0, -270.0), 22.0],
 	"arbres_temperes": [Vector3(147.0, 5.0, -86.0), Vector3(147.0, 8.0, -120.0), 60.0],
@@ -95,6 +110,13 @@ const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "aca
 const STYLE_ROW := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]
 ## Lot U23 : styles d'habitat propres aux biomes, en seconde rangée derrière la première (vues `styles_biomes`).
 const STYLE_ROW_BIOMES := ["chalet", "bois_peint", "pise", "case", "paillote", "basalte", "chaumiere"]
+## Lot U23 étape 2 (vues `habitat_rond`, `habitat_pilotis`, `habitat_yourtes`) : [style, famille OSM, largeur, profondeur, rond, pilotis]
+const ROUND_ROW := [
+	["case", "house", 6.0, 6.0, true, false], ["case", "hut", 5.0, 5.0, true, false], ["case", "house", 7.5, 7.0, true, false],
+	["paillote", "house", 8.0, 6.0, false, true], ["paillote", "house", 6.0, 6.0, true, false],
+	["paillote", "house", 6.5, 6.0, true, true],
+	["yourte", "house", 6.5, 6.5, true, false], ["yourte", "hut", 5.0, 5.0, true, false], ["yourte", "house", 7.5, 7.5, true, false],
+]
 ## Bâtiments de la vitrine (forme de la couche `buildings` du .world) : type OSM, contour [x, z], hauteur des murs (m).
 ## Un échantillon des types courants des villages : maisons, ferme, église, immeuble, atelier, hangar, magasin.
 const BUILDINGS := [
@@ -147,6 +169,10 @@ class FixedSky:
 ## Route droite le long de -z (cap 0, comme route_data.gd) : seules les méthodes lues par grass_tufts.gd.
 class StraightRoute:
 	var length_m := 2000.0
+	# Axe en deux points, lu par road_clearance.gd (garde-fou des touffes de grass_tufts.gd)
+	var n := 2
+	var x := PackedFloat64Array([0.0, 0.0])
+	var z := PackedFloat64Array([0.0, -2000.0])
 	func is_loop() -> bool:
 		return false
 	## Route plate : pas de tangage (route_data.gd `display_pitch`).
@@ -243,11 +269,38 @@ func _run() -> void:
 			var objs := RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
 			csv.store_line("%s;%s;%s;%d;%d;%d" % [view, preset, QualityPresets.applied_name(preset), tris, draws, objs])
 			print("[vitrine] %s : %d triangles, %d appels de dessin, %d objets" % [path, tris, draws, objs])
+		await _settle_pipelines()
 		vp.queue_free()
-		await process_frame
+		await _settle_pipelines()
 	csv.close()
 	_checks.compare(_out_dir)
 	quit(_checks.exit_code("vitrine_rendu"))
+
+
+func _pipeline_compilations() -> int:
+	var total := 0
+	for info in PIPELINE_INFOS:
+		total += RenderingServer.get_rendering_info(info)
+	return total
+
+
+## Attend la fin des compilations de pipelines en arrière-plan (voir PIPELINE_QUIET_FRAMES).
+func _settle_pipelines() -> void:
+	var start := Time.get_ticks_msec()
+	var last := _pipeline_compilations()
+	var since := start
+	var frames := 0
+	while Time.get_ticks_msec() - start < PIPELINE_MAX_S * 1000.0:
+		await process_frame
+		var now := _pipeline_compilations()
+		if now != last:
+			last = now
+			since = Time.get_ticks_msec()
+			frames = 0
+		else:
+			frames += 1
+		if frames >= PIPELINE_QUIET_FRAMES and Time.get_ticks_msec() - since >= PIPELINE_QUIET_S * 1000.0:
+			break
 
 
 ## Monde de la vitrine pour un préréglage : ciel, soleil, sol au shader du terrain, route, touffes,
@@ -455,6 +508,15 @@ func _add_buildings(vp: SubViewport, preset: String) -> void:
 		items.append({"id": "style_biome_case_%d" % j, "outer": [[x0 + 1.0, -168.0], [x0 + 6.0, -168.0], [x0 + 6.0, -173.0], [x0 + 1.0, -173.0]],
 			"holes": [], "base_y": 0.0, "height_m": 2.8, "roof": "flat", "style": STYLE_ROW_BIOMES[j],
 			"hint": {"building": "hut", "colour": null}})
+	var rx := -148.0
+	for j in range(ROUND_ROW.size()):
+		var r: Array = ROUND_ROW[j]
+		var w: float = r[2]
+		var dz: float = r[3]
+		items.append({"id": _round_row_id(j, r[4], r[5], r[0]), "outer": [[rx, -190.0], [rx + w, -190.0], [rx + w, -190.0 - dz], [rx, -190.0 - dz]],
+			"holes": [], "base_y": 0.0, "height_m": 2.8 if r[1] == "hut" else 3.2, "roof": "flat", "style": r[0],
+			"hint": {"building": r[1], "colour": null}})
+		rx += w + 3.5
 	var theme: Dictionary = ThemeLoader.new().load_named("default")["theme"]
 	var m := BuildingMesh.build(items, theme, 3.0)
 	var arr := []
@@ -473,3 +535,18 @@ func _add_buildings(vp: SubViewport, preset: String) -> void:
 	BuildingMesh.apply_preset(mat, preset)
 	mi.material_override = mat
 	vp.add_child(mi)
+
+
+## Identifiant du bâtiment `j` de ROUND_ROW dont les tirages donnent la case ronde et les pilotis demandés.
+static func _round_row_id(j: int, want_round: bool, want_stilts: bool, style_name: String) -> String:
+	var st := BuildingStyles.style(style_name)
+	var round_share := float(st.get("round", {}).get("share", 0.0))
+	var stilts_share := float(st.get("stilts", {}).get("share", 0.0))
+	for k in range(500):
+		var id := "habitat_rond_%d_%d" % [j, k]
+		var h := BuildingMesh.hash_string(id)
+		var is_round := BuildingMesh._unit(h, BuildingMesh.ROUND_SALT) < round_share
+		var on_stilts := BuildingMesh._unit(h, BuildingMesh.STILTS_SALT) < stilts_share
+		if is_round == want_round and on_stilts == want_stilts:
+			return id
+	return "habitat_rond_%d" % j
