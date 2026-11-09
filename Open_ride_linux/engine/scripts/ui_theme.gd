@@ -303,6 +303,14 @@ static func tile_style() -> StyleBoxFlat:
 	return s
 
 
+## Bandeau d'un résultat à décider (test de FTP du bilan, lot N20) : tuile au bord de la sélection.
+static func band_style() -> StyleBoxFlat:
+	var s := tile_style()
+	s.border_color = FOCUS
+	s.set_border_width_all(2)
+	return s
+
+
 ## Pastille d'appareil (bord de la couleur du niveau quand `edge` n'est pas transparent).
 static func chip_style(edge := Color(0, 0, 0, 0)) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()

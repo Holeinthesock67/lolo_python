@@ -134,8 +134,6 @@ const FTP_TESTS := [
 	["ramp", "Rampe", "≈ 25 min : +20 W par minute jusqu'à ne plus tenir ; FTP = 75 % de la meilleure minute",
 		"test de FTP (rampe)"]]
 const FTP_HINT := "Sur une boucle : l'arrivée d'un parcours arrête le test"
-## Avertissements du test de FTP (summary.ftp_test.warnings), comme `openride-core ftp-test`.
-const FTP_WARNINGS := HistoryViewModel.FTP_WARNINGS
 const SUMMARY_BASE_IDS := ["new_session", "details", "quit"]
 ## Ligne d'état de l'écran de pause selon `state.pause_reason` (contrat IPC) : le HUD est caché pendant
 ## un menu, la raison de la pause s'affiche donc sous le titre. Pause demandée (`user`) : rien.
@@ -415,7 +413,11 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	if rid != null and str(rid) != "" and str(rid) != menu.world_id:
 		menu.set_world(str(rid), str(route_names.get(str(rid), rid)))
 	if st == "FINISHED" and state.get("summary") is Dictionary:
+		# Courbe du bilan (lot N20) retirée d'une trame trop lourde par le core (allègement) : la dernière reçue reste.
+		var kept = summary.get("power_profile", null) if session_state == "FINISHED" else null
 		summary = state["summary"]
+		if kept != null and not summary.has("power_profile"):
+			summary = summary.merged({"power_profile": kept})
 	if st != session_state:
 		var prev := session_state
 		session_state = st
@@ -427,7 +429,7 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 			"FINISHED":
 				show_details = false
 				ftp_offer = summary["ftp_test"] if summary.get("ftp_test") is Dictionary else {}
-				summary_message = _ftp_text(ftp_offer)
+				summary_message = ""   # résultat du test au bandeau du bilan (summary_view.gd, lot N20)
 				_refresh_summary()
 				menu.open_screen(SUMMARY)
 			"IDLE", "READY":
@@ -732,7 +734,9 @@ func card(st: Dictionary) -> Dictionary:
 			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
 	if screen == MenuModel.PAUSE:
 		return CatalogModel.pause_sheet(_run_t, _run_s, _power_sum / _power_n if _power_n > 0 else -1.0)
-	if screen in [SUMMARY, HistoryViewModel.SESSION]:
+	if screen == SUMMARY:   # nom du parcours sous l'en-tête (lot N20) ; une run du Cyber-Rogue n'a pas de parcours
+		return {"title": "Bilan de la séance", "name": "" if summary.get("rogue") is Dictionary else menu.world_name}
+	if screen == HistoryViewModel.SESSION:   # parcours et date dans le titre de l'écran
 		return {"title": "Bilan de la séance"}
 	if screen in CoachViewModel.SCREENS:
 		return _coach_card(screen, focused)
@@ -910,22 +914,6 @@ func _refresh_plan_screen() -> void:
 
 
 ## Texte du bilan d'un test de FTP : nouvelle FTP, ancienne, avertissements ; "" sans test.
-static func _ftp_text(ftp: Dictionary) -> String:
-	if ftp.is_empty():
-		return ""
-	var text := "Test de FTP : aucune FTP calculable"
-	if ftp.get("ftp_w", null) != null:
-		text = "Nouvelle FTP : %d W" % int(ftp["ftp_w"])
-		if ftp.get("previous_ftp_w", null) != null:
-			text += " (avant %d W)" % int(ftp["previous_ftp_w"])
-	var warnings: Array[String] = []
-	for w in ftp.get("warnings", []):
-		warnings.append(str(FTP_WARNINGS.get(str(w), w)))
-	if not warnings.is_empty():
-		text += " ; " + ", ".join(warnings)
-	return text
-
-
 ## Message `xp_result` (répété par le core) : gardé pour le bloc « Progression » ; renvoie le texte du bandeau
 ## « Niveau N ! » la première fois qu'un passage de niveau est annoncé, sinon "".
 func on_xp_result(msg: Dictionary) -> String:
@@ -2213,6 +2201,9 @@ func state() -> Dictionary:
 	elif st["screen"] in ProfilesViewModel.SCREENS:
 		st["status"] = profiles.message
 		st["status_error"] = profiles.message.begins_with("Nom refusé") or profiles.message.begins_with("Nom vide")
+	if st["screen"] in [SUMMARY, HistoryViewModel.SESSION]:   # bilan en tuiles (lot N20) : noms des records, FTP
+		st["segment_names"] = records.segment_names()
+		st["ftp_w"] = _ftp_w()
 	if st["screen"] == ProfilesViewModel.NAME:
 		st["grid"] = {"columns": ProfilesViewModel.GRID_COLUMNS, "text": profiles.name_text}
 	elif st["screen"] == MenuModel.PAUSE:

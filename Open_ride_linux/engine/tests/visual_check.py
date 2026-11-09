@@ -1539,16 +1539,29 @@ def _menu_scenes(s: Session) -> None:
     _records_scene(s)
     _garage_scenes(s)
     _collection_scenes(s)
+    # Bilan en tuiles (lot N20) : tuiles, courbe réduite de la puissance (révision 1.10), record battu en or.
     core.set_scene(session_state="FINISHED", summary={
         "duration_s": 1805.0, "distance_m": 15230.0, "avg_power_w": 212.0, "np_w": 221.0, "tss": 41.0,
-        "elevation_gain_m": 180.0, "fit_path": "/tmp/openride/seance.fit"})
+        "elevation_gain_m": 180.0, "max_power_w": 560.0, "fit_path": "/tmp/openride/seance.fit",
+        "power_profile": {"step_s": 37, "target_w": None,
+                          "power_w": [190 + (i * 37) % 60 + (330 if i in (17, 38) else 0) for i in range(49)]},
+        "segments": {"more": False, "jerseys": {"sprint": None, "kom": None}, "passes": [
+            {"segment_id": "montee", "kind": "climb", "time_s": 402.3, "with_powerup": False, "pr": True,
+             "pr_time_s": 418.9, "rank": 1, "rank_total": 3, "points": 10}]}})
     time.sleep(1.0)
     shot = s.capture("bilan")
     if shot:
         img, info = shot
-        s.check_texts("bilan", info, {"menu_title": "Fin de séance", "menu": "Distance : 15,23 km"}, contains=True)
+        s.check_texts("bilan", info, {"menu_title": "Fin de séance", "menu": "Distance 15,23 km"}, contains=True)
+        s.check_texts("bilan", info, {"menu": "Puissance 212 W NP 221"}, contains=True)
+        s.check_texts("bilan", info, {"menu": "6:42,3 avant 6:58,9"}, contains=True)
         s.check_texts("bilan", info, {"menu": "[Nouvelle séance]"}, contains=True)
         s.check_layout("bilan", info)
+        card = info["widgets"]["menu_card"]
+        white = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 235 and p[1] > 235 and p[2] > 235, step=1)
+        gold = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 220 and 170 < p[1] < 230 and p[2] < 110, step=1)
+        s.check("bilan", "courbe de la puissance tracée (trait blanc) et record en or", card["visible"]
+                and white >= 0.002 and gold >= 0.0005, f"{white:.2%} de pixels blancs, {gold:.2%} de pixels or")
     # Lot BC6 : carte gagnée par la séance, annoncée seule au bilan avec « + 2 autres ».
     halloween = next(e for e in core.collection["earned"] if e["id"] == "halloween")
     core.set_scene(session_state="FINISHED", summary={
@@ -1705,6 +1718,9 @@ def _records_scene(s: Session) -> None:
         card = info["widgets"]["menu_card"]
         gold = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 220 and 180 < p[1] < 240 and p[2] < 100, step=1)
         s.check("records", "record en or dans la carte", card["visible"] and gold >= 0.0005, f"{gold:.2%} de pixels or")
+        line = fraction(img, rect_box(card["rect"]), lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
+        s.check("records", "profil du segment tracé dans la carte (trait cyan, lot N20)", line >= 0.002,
+                f"{line:.2%} de pixels cyan")
     core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
     time.sleep(0.6)
     shot = s.capture("records_table")
@@ -2308,7 +2324,8 @@ def _progress_scenes(s: Session) -> None:
         banner = info["widgets"]["banner"]
         s.check("progression", "bandeau « Niveau 10 ! » affiché", banner["visible"] and "Niveau 10 !" in banner.get("text", ""),
                 f"{banner.get('text')}")
-    # Bilan complet (dix chiffres, abri du lot AS5, fichier FIT, quatre blocs ERG du bilan détaillé) et
+    # Bilan complet (six tuiles et la ligne des autres chiffres, abri du lot AS5, fichier FIT, quatre blocs ERG du
+    # bilan détaillé) et
     # progression : la carte tient au-dessus du bandeau des boutons (suite X22, recette ERG du 28/10).
     core.set_scene(session_state="IDLE", summary=None)
     time.sleep(0.5)
@@ -2332,9 +2349,8 @@ def _progress_scenes(s: Session) -> None:
         if shot:
             img, info = shot
             w = info["widgets"]
-            s.check_texts(scene, info, {"menu": "Puissance max : 400 W"}, contains=True)
-            s.check_texts(scene, info, {"menu": "Dans la roue : 12 min"}, contains=True)
-            s.check_texts(scene, info, {"menu": "Énergie économisée : 9 kJ"}, contains=True)
+            s.check_texts(scene, info, {"menu": "Puissance max 400 W · Dans la roue 12 min · 9 kJ économisés"},
+                          contains=True)
             s.check_texts(scene, info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
             if detailed:
                 s.check_texts(scene, info, {"menu": "Bloc 4 : 182 W pour 183 W"}, contains=True)
