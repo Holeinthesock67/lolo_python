@@ -1,0 +1,11 @@
+{
+  "description": "Piste du vélodrome (série VD, lot VD4) : ligne droite et virage relevé, vues subjective, proche, éloignée et de côté. Monde : openride-core velodromes.",
+  "world": "velodrome-250",
+  "points": [
+    {"id": "droite_arrivee", "s": 240, "label": "Ligne droite d'arrivée, vue subjective : lattes, lignes peintes, ligne d'arrivée devant"},
+    {"id": "entree_virage", "s": 22, "camera": "follow_near", "label": "Entrée du virage, caméra proche : relèvement qui monte de 12° à 42°"},
+    {"id": "sommet_virage", "s": 62, "camera": "follow_far", "label": "Sommet du virage (42°), caméra éloignée : cycliste penché avec la piste"},
+    {"id": "virage_cote", "s": 70, "camera": "side", "label": "Virage vu de côté : pente de la piste, côte d'azur, balustrade"},
+    {"id": "droite_opposee", "s": 125, "camera": "follow_far", "label": "Ligne droite opposée, ligne de poursuite B"}
+  ]
+}

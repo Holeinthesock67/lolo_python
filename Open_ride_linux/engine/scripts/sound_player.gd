@@ -40,7 +40,7 @@ extends Node
 ##
 ## Lot T17 : jingles des événements du parcours (`EventSoundsModel.JINGLES` : sommet, sprint, arche, fin
 ## de séance), synthétisés note par note ou lus dans ~/OpenRide/Sounds/<nom>.ogg ; `play_event(nom)`
-## les joue sur un lecteur non spatialisé du bus `Events` (« Volume bips et événements » des Réglages,
+## les joue sur un lecteur non spatialisé du bus `Events` (« Son › Bips et événements » des Réglages,
 ## audio_mix.gd), trois à la fois au plus. Depuis le 29/10 (jingles de départ et de ligne d'une boucle), les
 ## jingles ne sont plus faits au démarrage mais un par image ensuite (`_process`, 8 à 60 ms chacun), ou tout
 ## de suite s'il en faut un avant : le budget `sound_generation` du démarrage y gagne ~0,2 s.

@@ -32,6 +32,13 @@ const DEFAULT_SUN_ELEVATION_DEG := 40.0
 const DEFAULT_FOG_DENSITY := 0.0008
 const SUN_AZIMUTH_DEG := 150.0
 
+# Heure du jour (Lot P7, thème 1.2 `sky.time_of_day`)
+const TIME_OF_DAY_MODES := ["fixed", "real", "accelerated"]
+const DEFAULT_TIME_OF_DAY_HOUR := 14.0
+const DEFAULT_TIME_OF_DAY_FACTOR := 1.0
+const MAX_TIME_OF_DAY_FACTOR := 1440.0
+const DEFAULT_MIN_AMBIENT := 0.12   # lumière ambiante minimale la nuit : route toujours lisible
+
 # Nuages (Lot P6, thème 1.2 `sky.clouds`)
 const DEFAULT_CLOUD_COVERAGE := 0.3
 const DEFAULT_CLOUD_SPEED_FACTOR := 1.0
@@ -148,6 +155,9 @@ static func blend_weights(normal: Vector3, altitude_m: float, params: Dictionary
 	var snow_line := DEFAULT_SNOW_LINE_M
 	if _is_number(params.get("snow_line_m", null)):
 		snow_line = float(params["snow_line_m"])
+	# Saisons (lot P18) : limite abaissée l'hiver, comme `season_snow_drop_m` dans terrain_shade.gdshaderinc
+	if _is_number(params.get("season_snow_drop_m", null)):
+		snow_line -= maxf(float(params["season_snow_drop_m"]), 0.0)
 
 	# Demi-largeur de transition bornée à ± 3° autour du seuil, plus étroite quand blend_sharpness augmente
 	var half_band := clampf(12.0 / maxf(sharpness, 1.0), MIN_SLOPE_HALF_BAND_DEG, MAX_SLOPE_HALF_BAND_DEG)
@@ -244,3 +254,33 @@ static func cloud_params(theme: Dictionary) -> Dictionary:
 		"color": _color_or_default(c_dict.get("color", null), DEFAULT_CLOUD_HEX),
 		"altitude_m": altitude,
 	}
+
+
+## Heure du jour du thème 1.2 (`sky.time_of_day`, Lot P7) pour `daylight_model.gd evaluate` :
+## `{present, mode, hour, factor, min_ambient, sky}`. Clé absente : `present` faux, et `sky` (`sky_params`)
+## donne le soleil d'aujourd'hui ; mode inconnu : `fixed` ; heure ramenée dans [0, 24[, facteur dans
+## ]0, MAX_TIME_OF_DAY_FACTOR] ; `min_ambient` (facultatif) entre 0 et 1.
+static func time_of_day_params(theme: Dictionary) -> Dictionary:
+	var out := {
+		"present": false,
+		"mode": "fixed",
+		"hour": DEFAULT_TIME_OF_DAY_HOUR,
+		"factor": DEFAULT_TIME_OF_DAY_FACTOR,
+		"min_ambient": DEFAULT_MIN_AMBIENT,
+		"sky": sky_params(theme),
+	}
+	if typeof(theme) != TYPE_DICTIONARY or typeof(theme.get("sky", null)) != TYPE_DICTIONARY:
+		return out
+	var tod: Variant = theme["sky"].get("time_of_day", null)
+	if typeof(tod) != TYPE_DICTIONARY:
+		return out
+	out["present"] = true
+	if str(tod.get("mode", "")) in TIME_OF_DAY_MODES:
+		out["mode"] = str(tod["mode"])
+	if _is_number(tod.get("hour", null)):
+		out["hour"] = fposmod(float(tod["hour"]), 24.0)
+	if _is_number(tod.get("factor", null)) and float(tod["factor"]) > 0.0:
+		out["factor"] = minf(float(tod["factor"]), MAX_TIME_OF_DAY_FACTOR)
+	if _is_number(tod.get("min_ambient", null)):
+		out["min_ambient"] = clampf(float(tod["min_ambient"]), 0.0, 1.0)
+	return out

@@ -268,10 +268,78 @@ static func _cross(width: float, height: float, col: Color) -> ArrayMesh:
 
 # --- Espèces ----------------------------------------------------------------------------------
 
-## Renvoie {"lod0": ArrayMesh, "lod1": ArrayMesh, "height": float, "deciduous": bool}.
+## Renvoie {"lod0": ArrayMesh, "lod1": ArrayMesh, "height": float, "deciduous": bool} ; feuillus de
+## WINTER_BRANCHES : aussi "lod0_bare", le même arbre avec sa charpente de branches pour l'hiver (lot P18).
 static func build(kind: String) -> Dictionary:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	if not _draw(st, kind):
+		return {}
+	var mesh := st.commit()
+	var h := height_m(kind)
+	var out := {"lod0": mesh, "lod1": _profile(CROWNS[kind], h), "height": h, "deciduous": is_deciduous(kind)}
+	# Saisons (lot P18) : même arbre avec sa charpente de branches, pris l'hiver par tree_renderer.gd (le feuillage
+	# y est replié par tree_sway.gdshader) ; l'été garde le maillage sans branches, au même coût qu'avant.
+	if WINTER_BRANCHES.has(kind):
+		var bare := SurfaceTool.new()
+		bare.begin(Mesh.PRIMITIVE_TRIANGLES)
+		_draw(bare, kind)
+		_winter_branches(bare, kind)
+		out["lod0_bare"] = bare.commit()
+	return out
+
+
+## Charpente des feuillus pour l'hiver : point de départ (haut du fût), centre et rayons du houppier, nombre de
+## branches maîtresses, écorce, flèche (prolongement du fût jusqu'au sommet).
+const WINTER_BRANCHES := {
+	"oak": {"base": Vector3(0, 4.8, 0), "c": Vector3(0.6, 8.8, 0.3), "r": Vector3(4.6, 4.0, 4.4), "n": 7, "bark": BARK, "r0": 0.2},
+	"beech": {"base": Vector3(0, 7.0, 0), "c": Vector3(0, 11.5, 0), "r": Vector3(3.6, 5.2, 3.6), "n": 5, "bark": BARK_SMOOTH, "r0": 0.16},
+	"birch": {"base": Vector3(0.2, 5.5, 0), "c": Vector3(0.2, 8.8, 0), "r": Vector3(2.0, 3.6, 2.0), "n": 5, "bark": BARK_WHITE, "r0": 0.08},
+	"larch": {"base": Vector3(0, 3.6, 0), "c": Vector3(0, 10.0, 0), "r": Vector3(3.2, 7.0, 3.2), "n": 8, "bark": BARK_RED, "r0": 0.1, "whorls": true},
+	"vine_row": {"cordon": true},
+}
+
+
+static func _winter_branches(st: SurfaceTool, kind: String) -> void:
+	var w: Dictionary = WINTER_BRANCHES[kind]
+	if w.get("cordon", false):
+		# Vigne taillée : fil de palissage et sarments nus le long du rang
+		var cane := mat(Color(0.36, 0.27, 0.18), MAT_STEM)
+		_limb(st, Vector3(-3.0, 1.0, 0), Vector3(3.0, 1.0, 0), 0.03, 0.03, cane, 3)
+		for i in range(4):
+			var x := -3.0 + 2.0 * i
+			_limb(st, Vector3(x, 1.0, 0), Vector3(x + 0.5, 1.45, 0.15), 0.025, 0.012, cane, 3)
+			_limb(st, Vector3(x, 1.0, 0), Vector3(x - 0.45, 1.4, -0.15), 0.025, 0.012, cane, 3)
+		return
+	var base: Vector3 = w["base"]
+	var c: Vector3 = w["c"]
+	var r: Vector3 = w["r"]
+	var bark: Color = w["bark"]
+	var r0 := float(w["r0"])
+	var n := int(w["n"])
+	# Flèche : le fût prolongé jusqu'au sommet du houppier
+	var top := c + Vector3(0, r.y * 0.85, 0)
+	_limb(st, base - Vector3(0, 0.3, 0), top, r0 * 1.2, 0.03, bark, 4)
+	for i in range(n):
+		var a := TAU * (i + 0.37 * (i % 2)) / n
+		var whorls: bool = w.get("whorls", false)
+		var start := base.lerp(top, (0.15 + 0.7 * i / float(n)) if whorls else 0.1 * (i % 3))
+		var lift := 0.15 if whorls else 0.25 + 0.45 * float((i * 7) % 5) / 4.0
+		var reach := (1.0 - 0.6 * i / float(n)) if whorls else 0.92
+		var tip := Vector3(c.x + cos(a) * r.x * reach, (start.y + 0.6) if whorls else c.y + (lift - 0.2) * r.y, c.z + sin(a) * r.z * reach)
+		if whorls:
+			tip.y = start.y - 0.3   # branches du mélèze un peu tombantes
+		_limb(st, start, tip, r0, 0.025, bark, 4)
+		# Deux rameaux par branche, partis aux deux tiers, vers le haut et de côté
+		var mid := start.lerp(tip, 0.6)
+		var side := Vector3(-sin(a), 0, cos(a))
+		for k: float in [-1.0, 1.0]:
+			var twig: Vector3 = tip.lerp(mid, 0.3) + side * k * r.x * 0.3 + Vector3(0, r.y * (0.12 if whorls else 0.3), 0)
+			_limb(st, mid, twig, r0 * 0.4, 0.012, bark, 3)
+
+
+## Géométrie de l'espèce ; faux pour une espèce inconnue.
+static func _draw(st: SurfaceTool, kind: String) -> bool:
 	match kind:
 		"oak":
 			_limb(st, Vector3.ZERO, Vector3(0, 5.5, 0), 0.45, 0.32, BARK)
@@ -357,11 +425,8 @@ static func build(kind: String) -> Dictionary:
 			for i in range(3):
 				_blob(st, Vector3(-2.0 + 2.0 * i, 1.05, 0), Vector3(1.15, 0.45, 0.4), mat(Color(0.28, 0.44, 0.16), MAT_LEAVES), 3)
 		_:
-			return {}
-	var mesh := st.commit()
-	var h := height_m(kind)
-	return {"lod0": mesh, "lod1": _profile(CROWNS[kind], h), "height": h,
-		"deciduous": is_deciduous(kind)}
+			return false
+	return true
 
 
 ## Triangles d'un maillage (contrôle du budget de 300 triangles en LOD 0).

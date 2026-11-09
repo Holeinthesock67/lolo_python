@@ -202,7 +202,7 @@ static func color_of(kind: String, profile = null) -> Color:
 	return COLORS.get(kind, OTHER_COLOR)
 
 
-## Bots à l'instant now_us vus du cycliste (s et v affichés) : [{id, name, kind, s, lateral, gap_m, gap_s,
+## Bots à l'instant now_us vus du cycliste (s et v affichés) : [{id, name, kind, s, v, lateral, gap_m, gap_s,
 ## visible, show_name, color, profile, cp_w, mass_kg, wbal_pct, jersey}], du plus loin devant au plus
 ## loin derrière.
 func view(rider_s: float, rider_v: float, now_us: int) -> Array:
@@ -211,7 +211,7 @@ func view(rider_s: float, rider_v: float, now_us: int) -> Array:
 		var s := _shown_s(b, now_us)
 		var gm := gap_m(rider_s, s, loop_length_m)
 		var gs: float = b["gap_s"] if b["gap_s"] != null else gap_seconds(gm, rider_v, b["v"])
-		var item := {"id": b["id"], "name": b["name"], "kind": b["kind"], "s": s, "lane_m": b["lane_m"], "out": b["out"], "gap_m": gm, "gap_s": gs,
+		var item := {"id": b["id"], "name": b["name"], "kind": b["kind"], "s": s, "v": b["v"], "lane_m": b["lane_m"], "out": b["out"], "gap_m": gm, "gap_s": gs,
 			"visible": absf(gm) < VISIBLE_M, "show_name": absf(gm) < NAME_M, "color": color_of(b["kind"], b["profile"])}
 		for key in PROFILE_FIELDS:
 			item[key] = b[key]
@@ -354,11 +354,12 @@ static func _slot_free(taken: Array, gap: float, lateral: float, from: float, sh
 
 
 ## Repères du profil d'altitude : [{rel_m, color}] des bots entre from_m et to_m (écarts au cycliste,
-## fenêtre de hud_view_model.profile()).
-static func profile_marks(bots_view: Array, from_m: float, to_m: float) -> Array:
+## fenêtre de hud_view_model.profile()). `dir` = -1 à rebours (lot N17) : le profil regarde vers le départ, l'écart
+## (mesuré dans le sens du parcours) change de signe.
+static func profile_marks(bots_view: Array, from_m: float, to_m: float, dir := 1) -> Array:
 	var out: Array = []
 	for b in bots_view:
-		var rel: float = b["gap_m"]
+		var rel: float = dir * float(b["gap_m"])
 		if rel >= from_m and rel <= to_m:
 			out.append({"rel_m": rel, "color": b["color"]})
 	return out
