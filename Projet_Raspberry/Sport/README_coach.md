@@ -1,6 +1,6 @@
 # Coach sportif hybride – mémo du système
 
-Mis à jour le 24/10/2026 (lieu de la météo lu dans l'onglet Réglages). Ce document est la référence pour reprendre le système dans une nouvelle conversation : le donner à Claude, ou lui dire de lire `claude/README_coach.md` dans le projet « Coach Sportif ».
+Mis à jour le 08/11/2026 (sortie du dimanche : meilleur créneau météo et règle brouillard / bruine / température). Ce document est la référence pour reprendre le système dans une nouvelle conversation : le donner à Claude, ou lui dire de lire `claude/README_coach.md` dans le projet « Coach Sportif ».
 
 ## Vue d'ensemble
 
@@ -95,6 +95,8 @@ Mis à jour le 24/10/2026 (lieu de la météo lu dans l'onglet Réglages). Ce do
 Le Pi remplit le dossier Drive **« Coach - Garmin export »** avec `coach_snapshot.md`, `coach_metrics.json`, `integrite.html`, `daily.csv`, `activities.csv` et `weather_daily.csv`.
 
 Lieu de la météo : lu chaque matin par le Pi dans l'onglet Réglages (« Lieu météo ») via `settings_source.py` : la feuille est téléchargée en .xlsx par le remote rclone `coachro:` (lecture seule, limité au dossier « Coach - Garmin export »), le nom est converti en coordonnées par le géocodage d'Open-Meteo, et le dernier lieu connu est gardé dans `data/location.json`. Si la feuille ou le géocodage échouent, le dernier lieu connu sert ; l'instantané affiche le lieu dans « Météo à venir (lieu) ». Aucun lieu n'est écrit dans le code ni dans GitHub.
+
+Sortie longue du dimanche (`report.py`, section « Sortie longue du dimanche » de l'instantané, le samedi et le dimanche) : le Pi relève aussi, heure par heure, le code de temps (brouillard, bruine…) et la couverture nuageuse. Il teste chaque créneau de 2 h qui part entre 9 h et 14 h et retient le meilleur. Règle de Laurent (08/11/2026) : home trainer si brouillard, bruine, pluie > 1 mm, neige/orage ou moins de 9 °C sur le créneau ; entre 9 et 13 °C, dehors seulement par grand soleil (nuages ≤ 25 % en moyenne) ; à 13 °C et plus, dehors. Repli : home trainer 60–75 min en Zone 2. Les seuils sont en tête de `report.py`.
 
 Données Garmin importées : FC repos, VFC, sommeil, Body Battery, stress, pas, Training Readiness, VO2max, poids, minutes d'intensité OMS, statut d'entraînement (charge aiguë/chronique, rapport, répartition sur 4 semaines et cibles), FTP estimé, activités (durée, FC, puissance, charge, effet d'entraînement aérobie/anaérobie et étiquette, temps en zones cardiaques) et séries de musculation. Calculs dans `training.py` : minutes OMS, FTP en W/kg. L'intensité se pilote uniquement par la répartition Garmin sur 4 semaines (aérobie intense et anaérobie) : ni détection des 4×4, ni décompte des séances intenses. Le coach lit ce dossier, ton carnet (feuille « Coach – Carnet ») et la Synthèse Intégrale.
 

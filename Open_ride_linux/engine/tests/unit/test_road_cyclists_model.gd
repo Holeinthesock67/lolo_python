@@ -276,6 +276,37 @@ func _test_decor_look() -> void:
 		"chaque maillot et chaque tenue donnent une des %d apparences" % Look.VARIANTS)
 
 
+## Recette vélo du 7/11 : sur le gravier (chemin de 3,5 m, 1,5 m de demi-largeur sûre), les cyclistes du décor restent
+## sur le chemin, en file, roues séparées ; le vélo qui s'écarte est tourné dans le sens où il va.
+func _test_gravel(route) -> void:
+	var m = Model.new()
+	m.configure(route, CLIMBS, [], 16, 7, 6.0, null, func(_s: float) -> float: return 1.5)
+	var s := 300.0
+	var outside := 0
+	var touching := 0
+	var groups := {}
+	var yawed := false
+	for i in range(15 * 600):
+		m.update(s, 30.0 / 3.6, 1.0 / 15.0)
+		for g in m.groups:
+			groups[str(g["id"])] = true
+			var members: Array = g["members"]
+			for a in members:
+				if absf(float(a["lateral"])) + Model.RIDER_HALF_WIDTH_M > 1.5 + 1e-6:
+					outside += 1
+				for b in members:
+					if not is_same(a, b) and absf(float(a["dl"]) - float(b["dl"])) < 1.7 \
+							and absf(float(a["lateral"]) - float(b["lateral"])) < 2.0 * Model.RIDER_HALF_WIDTH_M - 0.05:
+						touching += 1
+		for r in m.riders():
+			yawed = yawed or absf(float(r["yaw"])) > 0.02
+		s += 30.0 / 3.6 / 15.0
+	_check(groups.size() >= 5 and outside == 0, "gravier : %d groupes, tous sur le chemin (%d hors)" % [groups.size(), outside])
+	_check(touching == 0, "gravier : en file, roues séparées (%d contacts)" % touching)
+	_check(yawed, "un cycliste qui s'écarte ou se rabat est tourné dans le sens où il va")
+	_check(Model.FILE_GAP_M >= 1.7 + 0.3, "en file : vélo de 1,7 m et au moins 0,3 m de roue à roue (%.1f m d'axe à axe)" % Model.FILE_GAP_M)
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -335,6 +366,7 @@ func _run() -> void:
 	for i in range(50):
 		m.update(s, 0.0, 0.1, true)
 	_check(not m.groups.is_empty() and str(m.groups) == before, "pause : cyclistes figés")
+	_test_gravel(route)
 	await _test_renderer(route)
 	_test_decor_look()
 	await _test_warm_up(route)

@@ -28,14 +28,18 @@ const UNREADABLE := "Aucun record lisible"
 var routes: Dictionary = {}
 var load_error := ""
 var segments: Array = []
+## Profil d'altitude de chaque segment du parcours chargé (identifiant → HudViewModel.profile), donné par
+## main.gd au chargement du parcours (lot N20) : graphique de la carte d'un segment.
+var profiles: Dictionary = {}
 
 
 static func default_path() -> String:
 	return OS.get_environment("HOME").path_join("OpenRide/records.json")
 
 
-func set_segments(p_segments: Array) -> void:
+func set_segments(p_segments: Array, p_profiles: Dictionary = {}) -> void:
 	segments = p_segments.duplicate()
+	profiles = p_profiles.duplicate()
 
 
 ## Relit le fichier (à chaque ouverture de l'écran : les records d'une séance qui vient de finir y sont).
@@ -78,6 +82,14 @@ func entries(route_id: String, segment_id: String, with_bonus: bool) -> Array:
 		if typeof(e) == TYPE_DICTIONARY and typeof(e.get("time_s")) in [TYPE_INT, TYPE_FLOAT]:
 			out.append(e)
 	out.sort_custom(func(a, b): return float(a["time_s"]) < float(b["time_s"]))
+	return out
+
+
+## Identifiant → nom des segments du parcours chargé (records battus du bilan, lot N20).
+func segment_names() -> Dictionary:
+	var out := {}
+	for s in segments:
+		out[str(s.get("id", ""))] = str(s.get("name", s.get("id", "")))
 	return out
 
 
@@ -155,12 +167,24 @@ func _info(segment_id: String) -> Dictionary:
 	return {}
 
 
-## « Montée · cat. 4 », « Sprint ».
+## « Montée · cat. 4 · 3,1 km à 5,8 % », « Sprint · 400 m » (longueur et pente moyenne quand la couche
+## `segments` les donne, lot N20).
 func _kind_title(segment_id: String) -> String:
 	var info := _info(segment_id)
 	var kind := "Montée" if str(info.get("type", "")) == "climb" else "Sprint"
 	var cat := SegmentHudModel.category_short(info.get("category"))
-	return kind + (" · " + cat if cat != "" else "")
+	var parts: Array[String] = [kind]
+	if cat != "":
+		parts.append(cat)
+	var length = info.get("length_m", null)
+	if (length is int or length is float) and float(length) > 0.0:
+		var size := ("%d m" % int(round(float(length)))) if float(length) < 1000.0 \
+			else (RoadsideModel.format_dec(float(length) / 1000.0, 1) + " km")
+		var grade = info.get("avg_grade_pct", null)
+		if kind == "Montée" and (grade is int or grade is float):
+			size += " à " + RoadsideModel.format_dec(float(grade), 1) + " %"
+		parts.append(size)
+	return " · ".join(parts)
 
 
 static func _gap_tile(gap_s: float) -> Dictionary:
@@ -181,6 +205,8 @@ static func power_text(e: Dictionary) -> String:
 ## le nombre de temps ; un segment sans temps dit « pas encore de temps », sans zéro.
 func sheet_segment(route_id: String, segment_id: String) -> Dictionary:
 	var sheet := {"title": _kind_title(segment_id), "name": _name(segment_id)}
+	if profiles.get(segment_id) is Dictionary:   # profil du segment (lot N20), même tracé que celui d'un parcours
+		sheet["profile"] = profiles[segment_id]
 	var plain := entries(route_id, segment_id, false)
 	var bonus := entries(route_id, segment_id, true)
 	if plain.is_empty() and bonus.is_empty():

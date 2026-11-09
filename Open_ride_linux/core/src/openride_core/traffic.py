@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -52,6 +52,10 @@ VILLAGE_NEAR_M = 1000.0
 OVERTAKE_SHARE = 0.4
 SPAWN_AHEAD_M = (600.0, 1200.0)
 SPAWN_BEHIND_M = 250.0
+# Option gravel (décision du propriétaire du 7/11) : sur un chemin non revêtu, seuls ces véhicules apparaissent
+UNPAVED_KINDS = ("tractor", "moto")
+UNPAVED_STEP_M = 25.0     # pas du contrôle de la surface entre l'apparition et le cycliste
+UNPAVED_AHEAD_M = 300.0   # ... et, pour un véhicule qui le double, jusqu'à 300 m devant lui
 # Passages forcés pour les bancs (`[ride] traffic_bench_s`, sim_bench scénario circulation_proche) : à
 # tour de rôle, un tracteur un peu plus lent que le cycliste devant lui, puis un camion qui le double, comme les captures
 # abri_tracteur de visual_check, pour mesurer le coût des véhicules proches.
@@ -254,6 +258,8 @@ class Traffic:
     budget: int = BUDGET
     villages: list[tuple[float, float]] = field(default_factory=list)
     snow_line_m: float = DEFAULT_SNOW_LINE_M
+    # Option gravel : vrai si la chaussée est non revêtue en s (session : surface effective du parcours)
+    unpaved_at: Callable[[float], bool] | None = None
     vehicles: list[Vehicle] = field(default_factory=list)
     spawned_total: int = 0
     overtakes_total: int = 0
@@ -303,6 +309,15 @@ class Traffic:
             "u_speed": _u(_mix(h + 3)),
         }
 
+    def _kind_ok(self, kind: str, s_a: float, s_b: float) -> bool:
+        """Option gravel : faux pour un véhicule hors de UNPAVED_KINDS si un point non revêtu sépare son
+        apparition `s_a` du cycliste `s_b` (contrôlé tous les UNPAVED_STEP_M)."""
+        if self.unpaved_at is None or kind in UNPAVED_KINDS:
+            return True
+        lo, hi = min(s_a, s_b), max(s_a, s_b)
+        n = int((hi - lo) / UNPAVED_STEP_M) + 1
+        return not any(self.unpaved_at(lo + (hi - lo) * i / n) for i in range(n + 1))
+
     def _segment_ok(self, s: float) -> bool:
         if self.route is None or s < 0.0 or s > self.route.length_m:
             return False
@@ -346,19 +361,19 @@ class Traffic:
             if ev["dir"] == -1:
                 s0 = rider_s + ev["ahead_m"]
                 if self._overtaking() or not self._segment_ok(s0) or not self._free_at(s0, -1) \
-                        or not self._others_clear_at(s0):
+                        or not self._others_clear_at(s0) or not self._kind_ok(ev["kind"], s0, rider_s):
                     continue
                 self._spawn(ev, s0, -1)
                 continue
             s2 = rider_s + ev["ahead_m"] * SLOW_AHEAD_SCALE
-            slow = self.slow_cruise(ev, s2) if self._segment_ok(s2) else None
+            slow = self.slow_cruise(ev, s2) if self._segment_ok(s2) and self._kind_ok(ev["kind"], s2, rider_s) else None
             if slow is not None and slow < rider_v:
                 if self._free_at(s2, 1) and self._others_clear_at(s2):
                     self._spawn(dict(ev, cruise_mps=slow), s2, 1, slow=True)
                 continue
             s1 = rider_s - SPAWN_BEHIND_M
             if self._overtaking() or not self._segment_ok(max(s1, 0.0)) or ev["cruise_mps"] <= rider_v \
-                    or not self._others_clear_at(s1):
+                    or not self._others_clear_at(s1) or not self._kind_ok(ev["kind"], s1, rider_s + UNPAVED_AHEAD_M):
                 continue
             self._spawn(ev, s1, 1)
         if self.bench_every_s > 0.0:

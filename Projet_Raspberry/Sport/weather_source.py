@@ -15,7 +15,8 @@ import db
 log = logging.getLogger("weather")
 ARCHIVE = "https://archive-api.open-meteo.com/v1/archive"
 FORECAST = "https://api.open-meteo.com/v1/forecast"
-HOURLY = "temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,wind_speed_10m"
+HOURLY = ("temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,wind_speed_10m,"
+          "weather_code,cloud_cover")   # code de temps OMM (brouillard, bruine…) et couverture nuageuse %
 
 
 def _get(url, params, tries=3):
@@ -30,6 +31,11 @@ def _get(url, params, tries=3):
     raise RuntimeError("Open-Meteo injoignable")
 
 
+def _at(h, key, i):
+    v = h.get(key)
+    return v[i] if v and i < len(v) else None
+
+
 def _store(con, js, source):
     h = js["hourly"]
     for i, ts in enumerate(h["time"]):
@@ -38,7 +44,8 @@ def _store(con, js, source):
         db.upsert(con, "weather_hourly", dict(
             ts=ts, temp_c=h["temperature_2m"][i], feels_c=h["apparent_temperature"][i],
             humidity=h["relative_humidity_2m"][i], precip_mm=h["precipitation"][i],
-            wind_kmh=h["wind_speed_10m"][i], source=source), "ts")
+            wind_kmh=h["wind_speed_10m"][i], weather_code=_at(h, "weather_code", i),
+            cloud_pct=_at(h, "cloud_cover", i), source=source), "ts")
     con.commit()
     return len(h["time"])
 

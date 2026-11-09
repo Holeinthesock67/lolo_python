@@ -4,6 +4,8 @@ extends SceneTree
 ## vache et un oiseau apparaissent à l'image avec la couleur de leur espèce, et rien n'est dessiné sans animal.
 ## Demande Xvfb et le pilote OpenGL (lancé par run_engine_tests.sh, comme test_terrain_render.gd).
 
+const RenderExit := preload("res://tests/render/render_exit.gd")
+
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 
 const SIZE := 48
@@ -76,5 +78,6 @@ func _run() -> void:
 
 	var img_e: Image = await _shot([], Vector3(0.0, 1.1, 10.0), Vector3(0.0, 1.1, 0.0), 3.0)
 	_check(img_e.get_pixel(SIZE / 2, SIZE / 2).a < 0.1, "sans animal : rien n'est dessiné")
+	await RenderExit.settle(self)   # sortie en ordre (render_exit.gd)
 	print("test_fauna_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

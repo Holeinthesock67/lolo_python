@@ -226,3 +226,47 @@ rien d'indispensable ne doit dépendre du seul boîtier gauche (le droit couvre 
 Un troisième essai (4 min) a reçu les quatre flèches du gauche avant et après chacun des 4 redémarrages
 (46 flèches, reconnexion en 3,8 à 8,1 s ; haut et bas changent bien la vue). Les aides à l'écran montrent
 depuis le 31 octobre « − » et les flèches à côté de B (bandeau des menus : « + A → » suivant, « − B ← » précédent).
+
+## 10. Essai D : garder le gauche déverrouillé (lot K9, 8 novembre 2026)
+
+Code livré par la PR #807. Rien ne change par défaut (`click_reset_locked = "reset"`). **Résultat de l'essai : négatif** (fin de section).
+
+- `[drivers] click_reset_locked = "keep"` : à chaque connexion, le core écrit la séquence d'activation complète
+  de zwiftboard (`RideOn 02 03`, `00 08 00`, `00 08 10`, à 100 ms d'intervalle), puis `ff 04 00` sur SYNC_RX
+  à l'écho `RideOn` reçu sur SYNC_TX et à chaque message `0xFF` d'ASYNC autre que le message d'état
+  (classé « défi » dans la trace et le résumé). Si le mode passe quand même à 1, le core écrit `0x18` une fois,
+  comme avec `"reset"` (journal : « maintien échoué après … s (… réponses ff 04 00) »).
+- Journal, avec tous les choix : « Click gauche : fenêtre de boutons de … s, fin par verrou | coupure | arrêt
+  (choix …, … appuis, … réponses ff 04 00) ». La trace brute (`click_trace_raw = true`) montre aussi SYNC_TX.
+- Le boîtier droit reçoit la même activation (zwiftboard n'utilise que lui) ; il n'envoie pas de message d'état,
+  donc jamais de `0x18`.
+
+**Essai à faire sur le PC** (firmware 1.2.0, ne pas mettre à jour ; trois blocs de 10 min, un « − » toutes les
+20 s, appui perdu s'il n'est pas reçu en 8 s) :
+
+    python -m openride_core.tools.click_recette --minutes 10 --rappel 0.33 --attente-rappel 8 --verrou keep -v
+    python -m openride_core.tools.click_recette --minutes 10 --rappel 0.33 --attente-rappel 8 --verrou keep -v
+    python -m openride_core.tools.click_recette --minutes 10 --rappel 0.33 --attente-rappel 8 --verrou reset -v
+
+À relever dans `rapport.txt` : fenêtres du gauche (une seule fenêtre longue, fin par « arrêt », veut dire que le
+maintien tient), verrous, rappels perdus par tranche de 10 min (critère : moins d'un), et coupures du droit
+(critère : aucune). Si le maintien tient, le défaut passe à `"keep"` ; sinon `"reset"` reste et le résultat est
+noté ici. Le troisième bloc sert de témoin (essai C).
+
+**Résultat de l'essai (vélo, 8 novembre 2026, firmware 1.2.0).** Fait dans trois séances de jeu de 10 min 30 à la
+suite plutôt qu'avec `click_recette`, un « − » au boîtier gauche toutes les 20 s (29 signaux par séance) :
+
+| Séance | Choix | Fenêtres du gauche | Fin par verrou | Durée des fenêtres finies par verrou | `0x18` | « − » perdus |
+| --- | --- | --- | --- | --- | --- | --- |
+| A | keep | 11 | 10 | 48,6 à 52,1 s | 10 | 5 sur 29 (3 près d'un `0x18`) |
+| B | keep | 11 | 10 | jusqu'à 51,6 s | 10 | 3 sur 29 (2 près d'un `0x18`) |
+| C | reset (témoin) | 10 | 10 | 50,4 à 52,1 s | 10 | 3 sur 29 (3 près d'un `0x18`) |
+
+Un « − » est compté perdu quand le journal n'a aucun `MINUS_SHORT` de −1 à +8 s autour du signal. Le critère « moins d'un appui perdu par tranche de 10 min » n'est tenu ni par `keep` ni par `reset`.
+
+Avec `keep`, chaque verrou arrive après environ 51,7 s malgré 4 réponses `ff 04 00` (« maintien échoué »), puis
+`0x18` et reconnexion en environ 4 s, exactement comme le témoin. Le boîtier droit n'est jamais tombé pendant les
+séances (une seule déconnexion par séance, à l'arrêt du jeu). **Conclusion : sous firmware 1.2.0, l'activation
+complète et `ff 04 00` ne retardent pas le verrou ; seul un déverrouillage par l'appli Zwift le ferait (essai B,
+abandonné).** Le défaut reste `"reset"` (environ 4 s sans gauche par minute, B du droit double « − ») ; `"keep"`
+reste disponible, sans gain mesuré, pour refaire l'essai après un changement de firmware.

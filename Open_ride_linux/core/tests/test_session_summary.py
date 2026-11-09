@@ -150,7 +150,7 @@ def test_json_output_keys_are_stable(tmp_path: Path, capsys):
     out = json.loads(capsys.readouterr().out)
     assert set(out) == {"source", "format", "ftp_w", "start_ts", "duration_s", "elapsed_s", "distance_m",
                         "elevation_gain_m", "avg_power_w", "np_w", "if", "tss", "zones", "best_power_w",
-                        "cadence", "hr", "erg"}
+                        "cadence", "hr", "erg", "power_profile"}
     assert set(out["zones"][0]) == {"zone", "low_pct", "high_pct", "seconds", "pct"}
     assert set(out["best_power_w"]) == {"5s", "1min", "5min", "20min"}
 
@@ -188,6 +188,9 @@ def test_text_output_and_errors(tmp_path: Path, capsys):
     assert res_l6["erg"]["blocks"][1] == {
         "block": 2, "seconds": 60, "avg_power_w": 308.0, "target_w": 300.0, "delta_w": 8.0,
     }
+    prof_l6 = res_l6["power_profile"]   # lot N20 : courbe réduite avec la cible ERG
+    assert prof_l6["step_s"] == 3 and prof_l6["power_w"][0] == 195 and prof_l6["power_w"][-1] == 308
+    assert prof_l6["target_w"][0] == 200 and prof_l6["target_w"][-1] == 300
     txt_l6 = format_text(res_l6)
     assert "bloc  1 : 0:01:00, 195 W / cible 200 W, écart -5 W" in txt_l6
     assert "bloc  2 : 0:01:00, 308 W / cible 300 W, écart +8 W" in txt_l6
@@ -237,3 +240,30 @@ def test_mock_driver_ten_minutes_under_one_second(tmp_path: Path):
 def test_normalized_power_short_series():
     assert normalized_power([]) == 0.0
     assert normalized_power([100.0, 300.0]) == pytest.approx(200.0)
+
+
+# --- lot N20 : courbe réduite du bilan (`power_profile`) ------------------------------------
+
+def test_power_profile_has_at_most_50_points_averaged(tmp_path: Path):
+    from openride_core.tools.session_summary import PROFILE_POINTS
+
+    powers = [100.0] * 1800 + [300.0] * 1800   # une heure
+    prof = summary_of(write_session(tmp_path / "s.jsonl", powers))["power_profile"]
+    assert PROFILE_POINTS == 50 and prof["step_s"] == 72 and len(prof["power_w"]) == 50
+    assert prof["power_w"][0] == 100 and prof["power_w"][-1] == 300 and prof["target_w"] is None
+    assert all(isinstance(w, int) for w in prof["power_w"])
+
+
+def test_power_profile_short_session_keeps_each_second(tmp_path: Path):
+    prof = summary_of(write_session(tmp_path / "s.jsonl", [150.0, 250.0, 350.0]))["power_profile"]
+    assert prof == {"step_s": 1, "power_w": [150, 250, 350], "target_w": None}
+
+
+def test_power_profile_last_point_may_count_fewer_seconds(tmp_path: Path):
+    prof = summary_of(write_session(tmp_path / "s.jsonl", [200.0] * 100 + [400.0]))["power_profile"]
+    assert prof["step_s"] == 3 and len(prof["power_w"]) == 34 and prof["power_w"][-1] == 300   # 200 et 400 W
+
+
+def test_power_profile_skips_pauses(tmp_path: Path):
+    prof = summary_of(write_session(tmp_path / "s.jsonl", [200.0] * 10, pauses={5: 600.0}))["power_profile"]
+    assert prof["power_w"] == [200] * 10   # la pause n'ajoute aucun point

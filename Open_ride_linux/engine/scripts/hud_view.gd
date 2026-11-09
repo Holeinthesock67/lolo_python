@@ -175,6 +175,7 @@ var _bonus_fraction := 0.0
 
 # Données du profil d'altitude en cache
 var _last_profile_s := -99999.0
+var _last_profile_dir := 1
 var _last_profile_time_s := 0.0
 var _profile_data: Dictionary = {}
 var _route = null
@@ -786,14 +787,20 @@ func _zone_color(zone: int) -> Color:
 
 
 ## Met à jour les valeurs et le profil d'altitude.
-func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = null, s: float = 0.0) -> void:
+## `dir` : sens de la marche (lot N17) ; à rebours, le profil et la prochaine montée regardent vers le départ.
+func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = null, s: float = 0.0, dir := 1) -> void:
 	_route = route
 	_erg_active = state.get("erg") != null
+	# Épreuve de piste (lot VD9, maquettes VD8) : bandeau de l'épreuve à la place de la ligne d'état, bloc des
+	# tours à la place du profil d'altitude (piste plate) ; la séance libre en ERG garde le bandeau ERG.
+	var on_track: bool = state.get("track") != null
 	if profile_panel != null:
-		profile_panel.visible = not _erg_active
+		profile_panel.visible = not _erg_active and not on_track
+	if panel_center != null:
+		panel_center.visible = _erg_active or not on_track
 	var now_s := Time.get_ticks_usec() / 1e6
 	vm.on_state(state, now_s)
-	var lines := HudViewModel.session_lines(state, erg_eval, ftp_w, hr_max_bpm)
+	var lines := HudViewModel.session_lines(state, erg_eval, ftp_w, hr_max_bpm, vm.ridden_m() if state.has("s") else NAN)
 
 	if power_val != null:
 		_set_metric(power_val, lines["power_val"])
@@ -839,7 +846,7 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 
 	# Prochaine montée (rafraîchie avec le profil)
 	if route != null and climb_label != null:
-		var climb: Dictionary = vm.next_climb(route, s)
+		var climb: Dictionary = vm.next_climb(route, s, 300.0, 3.0, dir)
 		if climb.is_empty():
 			climb_label.text = ""
 		elif climb.get("in_progress", false):
@@ -854,10 +861,12 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 
 	# Profil d'altitude (au plus 5 fois par seconde ou si s a avancé d'une colonne ~41 m)
 	var col_step := 5000.0 / 120.0
-	if route != null and (absf(s - _last_profile_s) >= col_step or now_s - _last_profile_time_s >= 0.20):
+	if route != null and (absf(s - _last_profile_s) >= col_step or now_s - _last_profile_time_s >= 0.20 \
+			or dir != _last_profile_dir):
 		_last_profile_s = s
+		_last_profile_dir = dir
 		_last_profile_time_s = now_s
-		_profile_data = vm.profile(route, s)
+		_profile_data = vm.profile(route, s, 500.0, 4500.0, 120, dir)
 		if alt_min_label != null and alt_max_label != null:
 			alt_min_label.text = "%.0f m" % float(_profile_data.get("alt_min", 0.0))
 			alt_max_label.text = "%.0f m" % float(_profile_data.get("alt_max", 0.0))
@@ -898,7 +907,7 @@ func _on_profile_draw() -> void:
 	var from_m: float = float(_profile_data.get("from_m", 0.0))
 	var to_m: float = float(_profile_data.get("to_m", 0.0))
 	if to_m > from_m:
-		for mark in BotsViewModel.profile_marks(_bots_view, from_m, to_m):
+		for mark in BotsViewModel.profile_marks(_bots_view, from_m, to_m, _last_profile_dir):
 			var idx := clampi(int(round((float(mark["rel_m"]) - from_m) / (to_m - from_m) * float(cols - 1))), 0, cols - 1)
 			var bx := x0 + (idx + 0.5) * col_w
 			var by := h - clampf((float(alts[idx]) - alt_min) / alt_range, 0.05, 0.95) * h

@@ -204,9 +204,18 @@ if command -v xvfb-run >/dev/null 2>&1; then
     render_issues="$(echo "$RENDER_OUT" | grep -v -E "V-Sync|set_use_vsync" | godot_issues)"
     render_count="$(echo "$RENDER_OUT" | grep -E "^$render_name : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
     render_issues="$render_issues$(echo "$RENDER_OUT" | renderer_issue)"
-    if [ -n "$render_issues" ]; then echo "$render_issues"; render_rc=1; fi
-    if [ -z "$render_count" ]; then render_rc=1; fi
-    record "render/$render_name" "$render_rc" "${render_count#*: }"
+    # Cause de l'échec dans le résumé, comme les tests unitaires : code de Godot (124 ou 137 : arrêté au bout de
+    # UNIT_TIMEOUT s, il ne quittait pas), erreurs Godot, ligne finale absente.
+    reason=""
+    if [ "$render_rc" -ne 0 ]; then
+      reason="code $render_rc"
+      if [ "$render_rc" -eq 124 ] || [ "$render_rc" -eq 137 ]; then
+        reason="$reason, arrêté au bout de $UNIT_TIMEOUT s"; echo "Test arrêté au bout de $UNIT_TIMEOUT s"
+      fi
+    fi
+    if [ -n "$render_issues" ]; then echo "$render_issues"; render_rc=1; reason="${reason:+$reason, }erreurs ou avertissements Godot"; fi
+    if [ -z "$render_count" ]; then render_rc=1; reason="${reason:+$reason, }ligne finale absente"; fi
+    record "render/$render_name" "$render_rc" "${reason:+$reason, }${render_count#*: }"
   done < <(find "$ENGINE_DIR/tests/render" -maxdepth 1 -name 'test_*.gd' | LC_ALL=C sort)
 elif [ "${REQUIRE_RENDER:-0}" = "1" ]; then
   record "render (tests/render/)" 1 "xvfb-run introuvable alors que REQUIRE_RENDER=1"

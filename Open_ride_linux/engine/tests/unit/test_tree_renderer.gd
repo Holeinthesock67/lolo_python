@@ -132,11 +132,11 @@ func _test_tree_generation_and_determinism() -> void:
 			valid_lods = false
 		if mmi1.visibility_range_begin != 450.0 or mmi1.visibility_range_end != 1500.0:
 			valid_lods = false
-		if mmi0.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_ON:
+		if mmi0.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:   # ombre par le groupe « ombre seule »
 			valid_lods = false
 		if mmi1.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
 			valid_lods = false
-	_check(valid_lods, "chaque case possède ses 2 MultiMeshInstance3D avec LOD0 (0-450m ombre) et LOD1 (450-1500m sans ombre)")
+	_check(valid_lods, "chaque case possède ses 2 MultiMeshInstance3D avec LOD0 (0-450m, ombre par le groupe « ombre seule ») et LOD1 (450-1500m sans ombre)")
 
 	# Libération
 	renderer.remove_tile(Vector2i(0, 0))
@@ -167,6 +167,66 @@ func _test_budget_enforcement() -> void:
 		"budget respecté après enforce_budget (%d -> %d <= 500)" % [count_before, count_after])
 
 	renderer.queue_free()
+
+
+## Ombre des arbres limitée (lot « cultures et forêt », essai ombres_arbres_m) : cases lointaines sans ombre, cases
+## proches ou à cheval avec ombre, rien ne change sans limite.
+func _test_shadow_limit() -> void:
+	var c := Vector3(125.0, 0.0, 125.0)   # case [0, 250] × [0, 250]
+	_check(TreeRenderer.casts_shadow(c, Vector3(125.0, 0.0, 125.0), 150.0), "ombre : caméra dans la case")
+	_check(TreeRenderer.casts_shadow(c, Vector3(-100.0, 0.0, 125.0), 150.0), "ombre : case à 100 m (limite 150 m)")
+	_check(not TreeRenderer.casts_shadow(c, Vector3(-200.0, 0.0, 125.0), 150.0), "ombre : case à 200 m, coupée")
+	_check(not TreeRenderer.casts_shadow(c, Vector3(-120.0, 0.0, -120.0), 150.0),
+		"ombre : coin de la case à 170 m en diagonale, coupée")
+
+	var route = _make_simple_route(3000.0)
+	var theme := {"vegetation": {"max_density_per_ha": 400.0}}
+	var heights := TerrainTiles.flat_heights(1000.0)
+	var cam := Vector3(125.0, 0.0, 125.0)
+
+	var plain = TreeRenderer.new()
+	plain.shadow_end_m = 0.0   # essai ombres_arbres_m=0 : ombre de tous les arbres proches
+	root.add_child(plain)
+	plain.add_tile(plain.prepare_tile(0, 0, heights, route, theme, 1.0))
+	plain.update_shadows(cam)
+	var all_on := true
+	for info in plain._tiles[Vector2i(0, 0)].values():
+		all_on = all_on and (info["parts"][0]["lod0"] as MultiMeshInstance3D).cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	_check(all_on and plain.shadow_caster_count() == 0, "ombre : sans limite, modèle proche avec ombre, aucun « ombre seule »")
+	plain.queue_free()
+
+	var limited = TreeRenderer.new()
+	limited.shadow_end_m = 150.0
+	root.add_child(limited)
+	limited.add_tile(limited.prepare_tile(0, 0, heights, route, theme, 1.0))
+	var none_on := true
+	var expected := 0
+	var origin_ok := true
+	var bucketed := 0
+	for info in limited._tiles[Vector2i(0, 0)].values():
+		none_on = none_on and (info["parts"][0]["lod0"] as MultiMeshInstance3D).cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var buckets: Dictionary = info["parts"][0]["buckets"]
+		for key in buckets:
+			var buf: PackedFloat32Array = buckets[key]
+			for k in range(0, buf.size(), TreeRenderer.SHADOW_STRIDE):
+				bucketed += 1
+				origin_ok = origin_ok and floor(buf[k + 3] / TreeRenderer.SHADOW_BUCKET_M) == key.x \
+					and floor(buf[k + 11] / TreeRenderer.SHADOW_BUCKET_M) == key.y
+			var bc := Vector3((key.x + 0.5) * TreeRenderer.SHADOW_BUCKET_M, 0.0, (key.y + 0.5) * TreeRenderer.SHADOW_BUCKET_M)
+			if TreeRenderer.casts_shadow(bc, cam, 150.0, TreeRenderer.SHADOW_BUCKET_M):
+				expected += buf.size() / TreeRenderer.SHADOW_STRIDE
+	origin_ok = origin_ok and bucketed == limited.get_active_tree_count()
+	limited.update_shadows(cam)
+	var n: int = limited.shadow_caster_count()
+	_check(none_on, "ombre : limite 150 m, le modèle proche ne projette plus d'ombre")
+	_check(origin_ok, "ombre : chaque arbre rangé dans le carré de 25 m de sa position (tampon lu au bon endroit)")
+	_check(n == expected and n > 0 and n < limited.get_active_tree_count(),
+		"ombre : %d arbres « ombre seule » sur %d (attendu %d)" % [n, limited.get_active_tree_count(), expected])
+	limited.update_shadows(cam + Vector3(3.0, 0.0, 0.0))
+	_check(limited.shadow_caster_count() == n, "ombre : pas de reconstruction pour 3 m de déplacement")
+	limited.update_shadows(Vector3(5000.0, 0.0, 5000.0))
+	_check(limited.shadow_caster_count() == 0, "ombre : caméra loin, plus aucun arbre « ombre seule »")
+	limited.queue_free()
 
 
 ## Empreinte exacte d'une tuile préparée : nombre d'arbres et SHA-256 des octets, case après case.
@@ -230,5 +290,6 @@ func _init() -> void:
 	_test_fingerprints()
 	_test_tree_generation_and_determinism()
 	_test_budget_enforcement()
+	_test_shadow_limit()
 	print("test_tree_renderer : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

@@ -115,7 +115,7 @@ Le choix de voie est affiché (trois petits traits en bas du HUD) dès qu'il a u
 
 Tout se règle dans le menu, sans ligne de commande (lot GP9) :
 
-- Accueil : entrée « Grand Prix des objets », visible quand le core annonce le mode.
+- Accueil : entrée « Grand Prix des objets », visible quand le core annonce le mode. Le core n'annonce le mode et ne liste ses réglages au menu qu'à partir du lot GP9 (`ipc_server.PENDING_MODES`, `config.PENDING_KEYS`) : avant, rien du Grand Prix n'apparaît dans les menus.
 - Écran du mode : parcours (circuit et nombre de tours, ou distance), puis les réglages, puis « Objets » (une case par objet, comme l'écran des règles du Mode WTF), puis « Lancer ».
 
 | Réglage (section `[grandprix]` de `config.toml`) | Valeurs | Défaut |
