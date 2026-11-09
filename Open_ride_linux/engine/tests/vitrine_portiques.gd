@@ -30,7 +30,9 @@ const SEGMENTS := [
 ]
 ## Vue : position de la marque visée (m) ; caméra 16 m avant, à 1,4 m, sur la voie de droite.
 const VIEWS := {"depart": 0.0, "sprint_depart": 100.0, "sprint_arrivee": 250.0, "montee": 350.0, "sommet": 500.0,
-	"bonus": 550.0, "arrivee": 600.0}
+	"bonus": 550.0, "arrivee": 600.0,
+	# À rebours (demi-tour, lot N17) : caméra 16 m après la marque, sur la voie de gauche, tournée vers le départ
+	"rebours_depart": -0.0, "rebours_sprint": -250.0, "rebours_sommet": -500.0}
 
 
 ## Route droite le long de -z (cap 0, comme route_data.gd) : seules les méthodes lues par segment_markers.gd.
@@ -79,9 +81,10 @@ func _run() -> void:
 			var markers = vp.get_node("Markers")
 			var cam: Camera3D = vp.get_node("Camera")
 			for view in _views:
-				var s: float = VIEWS[view]
-				markers.update(s - 16.0, true)
-				cam.look_at_from_position(Vector3(1.0, 1.4, -(s - 16.0)), Vector3(0.0, 2.6, -s))
+				var s: float = absf(VIEWS[view])
+				var dir := -1.0 if str(view).begins_with("rebours") else 1.0
+				markers.update(s - dir * 16.0, true)
+				cam.look_at_from_position(Vector3(dir * 1.0, 1.4, -(s - dir * 16.0)), Vector3(0.0, 2.6, -s))
 				for f in range(SETTLE_FRAMES):
 					await process_frame
 				var path := _out_dir.path_join("%s_%s_%dx%d.png" % [view, preset, size.x, size.y])

@@ -25,6 +25,7 @@ import json
 from typing import Any, Callable
 
 MAX_DATAGRAM_SIZE = 1400          # cible de toutes les révisions, et limite jusqu'à la 1.2
+TRACK_FRAME_MAX = 800             # objet `track` de `state` (révision 1.7, lot VD6) : majorant de `worst_track`
 STATE_LIMIT_1_3 = 4096            # limite de `state` depuis la révision 1.3 (ipc_server.MAX_DATAGRAM_SIZE, tout message depuis la 1.5)
 
 # Longueurs maximales attendues des textes libres (caractères). Au-delà, `fit_state` raccourcit.
@@ -76,6 +77,11 @@ def _short_bot_names(d: dict[str, Any]) -> None:
             bot["name"] = bot["name"][:6]
 
 
+def _drop_power_profile(d: dict[str, Any]) -> None:
+    if isinstance(d.get("summary"), dict):
+        d["summary"].pop("power_profile", None)
+
+
 def _bots_if_devices(d: dict[str, Any]) -> None:
     if "devices" in d:
         d.pop("bots", None)
@@ -89,11 +95,14 @@ STATE_DEGRADATION: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("noms des bots raccourcis", _short_bot_names),
     ("bots (trame avec devices)", _bots_if_devices),
     ("devices", _drop("devices")),
+    # Lot N20 (révision 1.10) : la courbe du bilan part avant le bilan lui-même ; l'engine garde la dernière reçue.
+    ("courbe du bilan", _drop_power_profile),
     ("summary", _drop("summary")),
     ("bots", _drop("bots")),
     ("riders", _drop("riders")),          # lot AS7 : extrapolés par l'engine, ils reviennent 100 ms plus tard
     ("vehicles", _drop("vehicles")),      # lot AS6 : extrapolés par l'engine, ils reviennent 100 ms plus tard
     ("open_world", _drop("open_world")),
+    ("track", _drop("track")),            # lot VD6 : sous une limite basse seulement (la 1.7 tient en 4 096 octets)
     ("erg", _drop("erg")),
 ]
 
@@ -217,10 +226,48 @@ def _extras_1_6(d: dict[str, Any]) -> None:
     d["bot_ahead"], d["bot_behind"] = d["bots"][2]["id"], d["bots"][3]["id"]
 
 
+def worst_track() -> dict[str, Any]:
+    """Objet `track` le plus lourd (révision 1.7, lot VD6) : une course en peloton à 12 coureurs (identifiants
+    au plus long, 11 sortis), avec les champs propres de toutes les courses en peloton réunis (points, keirin,
+    américaine, élimination, omnium). Les épreuves contre la montre et les poursuites, à 2 coureurs ou
+    2 équipes au plus, sont plus légères (`tests/test_track_events.py` le vérifie épreuve par épreuve)."""
+    ids = [f"bot{i}-xyz"[:MAX_TEXT["bot_id"]] for i in range(12)]
+    return {
+        "event": "elimination", "t_s": 86_399.99, "lap": 60, "laps": 60, "laps_to_go": 60, "bell": True,
+        "ranking": ids, "points": [-999] * 12, "eliminated": ids[:11], "finished": False,
+        "laps_up": -9, "my_lap": 60, "next_sprint_lap": 60,
+        "pacer": {"s": 123_456.79, "v": 13.89, "on": True},
+        "racers": {f"t{i}": ids[i] for i in range(6)},
+        "to_elim_m": 999.9, "gap_last_s": 99.9, "last": ids[11], "alive": 12,
+        "sub": "elimination", "sub_index": 4, "subs": 4, "neutral": False,
+    }
+
+
+def _extras_1_7(d: dict[str, Any]) -> None:
+    # Épreuves de piste (lot VD6, 4.0) : sur un vélodrome, ni monde ouvert, ni circulation, ni cyclistes du
+    # décor (salle couverte), ni segment, bonus ou maillot (mode à part, comme le Dernier survivant) ; la
+    # trame qui porte `devices` est donc possible et reste la pire (12 bots, ERG de la séance libre).
+    for key in ("open_world", "vehicles", "riders", "segment", "powerup", "jerseys"):
+        d.pop(key, None)
+    if "devices" not in d:
+        _extras_1_1(scratch := {})
+        d["devices"] = scratch["devices"]
+    d["track"] = worst_track()
+
+
+def _extras_1_9(d: dict[str, Any]) -> None:
+    # Demi-tour depuis la pause (lot N17) : `dir` = -1 à rebours ; `segment`, `bot_ahead` et `bot_behind`
+    # n'y sont plus remplis, majorant gardé avec eux. Les révisions 1.7 (Grand Prix) et 1.8 (collection, sans
+    # champ de `state`) ont leurs trames à part (`worst_grandprix_state`).
+    d["dir"] = -1
+
+
 def _extras_1_13(d: dict[str, Any]) -> None:
-    # Bonus tactiques (lot TT1, 4.0) : noms les plus longs et refus affiché 2 s, sur le peloton de la 1.6.
-    d["powerup"] = {"held": "draft_plus", "active": "breakaway", "remaining_s": 120.0,
-                    "refused": {"kind": "draft_plus", "reason": "near_finish"}}
+    # Bonus tactiques (lot TT1, 4.0) : noms les plus longs et refus affiché 2 s, là où il y a des bonus (la
+    # trame de piste de la 1.7, plus lourde, n'en a pas).
+    if "powerup" in d:
+        d["powerup"] = {"held": "draft_plus", "active": "breakaway", "remaining_s": 120.0,
+                        "refused": {"kind": "draft_plus", "reason": "near_finish"}}
 
 
 # Une entrée par révision : chaque révision hérite des ajouts des précédentes.
@@ -231,7 +278,9 @@ REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.4": _extras_1_4,
     "1.5": _extras_1_5,
     "1.6": _extras_1_6,
-    "1.13": _extras_1_13,   # 1.7 (Grand Prix) et 1.8 (collection) n'alourdissent pas la trame classique
+    "1.7": _extras_1_7,
+    "1.9": _extras_1_9,
+    "1.13": _extras_1_13,
 }
 
 
@@ -296,6 +345,34 @@ def worst_grandprix_state(opponents: int = 4) -> dict[str, Any]:
                "warn": [GP_LONGEST_SHOT, 399.9],
                "obj": [[ID_MAX, GP_LONGEST_SHOT, 123_456.7, -1] for _ in range(12)],
                "boxes": [199_999, 199_999], "pick": True, "lap": [5, 5]}
+    return d
+
+
+def worst_summary() -> dict[str, Any]:
+    """Bilan `summary` le plus lourd (révision 1.10) : bilan enrichi, 24 blocs ERG, abri, 10 passages sur
+    les segments avec l'ancien record (lot N20), test de FTP et courbe réduite de 50 points avec cible."""
+    from .tools.session_summary import PROFILE_POINTS
+
+    return {
+        "duration_s": 86_399.9, "distance_m": 199_999.9, "avg_power_w": 1234.5,
+        "fit_path": "/home/" + _text(16) + "/OpenRide/Profils/" + _text(16) + "/Activities/2026-11-08_07-12-00.fit",
+        "np_w": 1234.5, "intensity_factor": 9.99, "tss": 9999.9, "elevation_gain_m": 9999.9,
+        "avg_cadence_rpm": 123.4, "avg_hr_bpm": 199.9, "max_power_w": 1999.9,
+        "blocks": [[24, 1234.5, 1234.5]] * 24, "blocks_truncated": True,
+        "draft_time_s": 86_399, "draft_kj": 9999.9,
+        "power_profile": {"step_s": 1440, "power_w": [1999] * PROFILE_POINTS, "target_w": [1999] * PROFILE_POINTS},
+        "segments": {"passes": [{"segment_id": _ID, "kind": "climb", "time_s": 99_999.99, "with_powerup": True,
+                                 "pr": True, "pr_time_s": 99_999.99, "rank": 99, "rank_total": 99, "points": 20}] * 10,
+                     "more": True, "jerseys": {"sprint": "bot-1-ab", "kom": "bot-2-ab"}},
+        "ftp_test": {"test": "ramp", "ftp_w": 1234, "previous_ftp_w": 1234,
+                     "warnings": ["too_short", "erratic_cadence", "trainer_dropout", "paused"], "reliable": False},
+    }
+
+
+def worst_finished_state() -> dict[str, Any]:
+    """Trame `state` d'une séance finie (lot N20) : trame 1.0 sans bots ni `devices`, bilan le plus lourd."""
+    d = _worst_1_0()
+    d.update({"session_state": "FINISHED", "pause_reason": None, "summary": worst_summary()})
     return d
 
 
@@ -391,6 +468,7 @@ def report() -> str:
     gp11.pop("devices")
     rows.append(("1.7 grand prix 11 bots", gp11, state_limit("1.7")))
     rows.append(("1.4 rogue", worst_rogue_state(), state_limit("1.4")))
+    rows.append(("1.10 bilan", worst_finished_state(), state_limit("1.10")))
     rows += [(f"1.4 {name}", msg, MAX_DATAGRAM_SIZE) for name, msg in worst_short_messages().items()]
     for label, msg, limit in rows:
         n = size(msg)

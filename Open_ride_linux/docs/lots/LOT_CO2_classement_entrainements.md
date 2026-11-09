@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Séance conseillée : entraînements classés par besoin + 3 séances livrées (récupération, anaérobie, sprints) | Python + .zwo | CO0, O12, O25 (livrés sauf CO0) | Petite | En PR (version 5.0) |
+| Séance conseillée : entraînements classés par besoin + 3 séances livrées (récupération, anaérobie, sprints) | Python + .zwo | CO0, O12, O25 (livrés sauf CO0) | Petite | Livré le 8 novembre (PR #770, version 5.0) |
 
 Série CO (version 5.0, séance conseillée par OpenRide). Plan de la série : `docs/5.0/PLAN_SERIE_CO.md`.
 
@@ -29,3 +29,7 @@ Savoir, pour chaque entraînement de la bibliothèque (livré, importé, créé 
 - Séances livrées : `recuperation_40.zwo`, `anaerobie_8x30s.zwo`, `sprints_10x10s.zwo` (installées par les contenus de départ et `workouts install` avec les autres).
 - Reporté à CO9 : le parcours conseillé quand la bibliothèque n'a aucun entraînement du besoin (même choix de circuit que les séances de jeu).
 - Tests : `core/tests/test_coach.py` (classement des séances livrées et de blocs fabriqués, choix, conseil), `test_workout_tools.py` (10 fichiers livrés).
+
+## Livraison
+
+PR #770 (fusionnée le 8 novembre) : entraînements classés par besoin et 3 séances livrées (commit b1269873). Statut corrigé par le bilan du 8 novembre au soir.

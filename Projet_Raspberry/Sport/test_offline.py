@@ -89,7 +89,8 @@ def fake_weather(url, params):
     n = len(times)
     temp = 11.0 if "start_date" in params else 12.0   # observé (archive) ≠ modèle (forecast)
     return {"hourly": {"time": times, "temperature_2m": [temp] * n, "apparent_temperature": [10.0] * n,
-                       "relative_humidity_2m": [70] * n, "precipitation": [0.1] * n, "wind_speed_10m": [15] * n}}
+                       "relative_humidity_2m": [70] * n, "precipitation": [0.1] * n, "wind_speed_10m": [15] * n,
+                       "weather_code": [1] * n, "cloud_cover": [20] * n}}
 
 
 def main():
@@ -140,6 +141,7 @@ def main():
         test_login(Path(t))
         test_settings(Path(t))
         test_weather_archive_refresh(con)
+        test_sunday_ride(con)
         test_deleted_activities(con)
         print(f"Météo : {n} heures ; fichiers : {sorted(p.name for p in out.iterdir())}\n")
         print((out / "coach_snapshot.md").read_text(encoding="utf-8"))
@@ -311,6 +313,32 @@ def test_weather_archive_refresh(con):
     ws._store(con, {"hourly": {"time": [ts], "temperature_2m": [None], "apparent_temperature": [None],
                                "relative_humidity_2m": [None], "precipitation": [None], "wind_speed_10m": [None]}}, "archive")
     assert con.execute("SELECT source FROM weather_hourly WHERE ts=?", (ts,)).fetchone()[0] == "recent"
+
+
+def test_sunday_ride(con):
+    """Sortie du dimanche : meilleur créneau de 2 h et règle brouillard / bruine / < 9 °C / grand soleil."""
+    h = lambda t=10, p=0.0, c=1, n=10: dict(temp_c=t, precip_mm=p, weather_code=c, cloud_pct=n)
+    rw = report.ride_window
+    assert rw([h(14, n=90), h(15, n=90)])["outside"]                       # ≥ 13 °C : dehors même couvert
+    assert rw([h(10, n=20), h(11, n=20)])["outside"]                       # 9–13 °C par grand soleil
+    assert not rw([h(10, n=60), h(11, n=60)])["outside"]                   # 9–13 °C couvert : home trainer
+    assert not rw([h(8, n=0), h(12, n=0)])["outside"]                      # < 9 °C
+    assert not rw([h(15, c=45), h(15)])["outside"]                         # brouillard
+    assert not rw([h(15, c=53), h(15)])["outside"]                         # bruine
+    assert not rw([h(15, p=0.8), h(15, p=0.8)])["outside"]                 # pluie > 1 mm
+    sat = TODAY + timedelta(days=(5 - TODAY.weekday()) % 7)
+    sun = sat + timedelta(days=1)
+    for hr in range(24):   # brouillard et 7 °C le matin, soleil et 11 °C à partir de 12 h
+        warm = 12 <= hr < 16
+        db.upsert(con, "weather_hourly", dict(ts=f"{sun}T{hr:02d}:00", temp_c=11 if warm else 7, precip_mm=0,
+                                              weather_code=0 if warm else 45, cloud_pct=10 if warm else 100,
+                                              source="recent"), "ts")
+    txt = "\n".join(report.sunday_section(con, sat))
+    assert "12 h–14 h" in txt and "dehors possible" in txt, txt
+    assert report.sunday_section(con, sat - timedelta(days=3)) == []        # en semaine : rien
+    for hr in range(12, 16):
+        db.upsert(con, "weather_hourly", dict(ts=f"{sun}T{hr:02d}:00", cloud_pct=80), "ts")
+    assert "home trainer" in "\n".join(report.sunday_section(con, sun))
 
 
 class FakeGarminDown(FakeGarmin):

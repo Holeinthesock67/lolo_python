@@ -103,3 +103,18 @@ Correctif (lot RC4) :
 - en résistance calculée, la ligne « FTMS ~ mesures » (puissance, cadence, vitesse du volant, niveau, force visée et mesurée, k) est toujours écrite, avec ou sans `trace_ftms`.
 
 Reste à établir sur le vélo : si la reprise du contrôle suffit (trainer resté dans un autre état) ou si le frein répond mal aux petits niveaux (zone morte sous 10 %, hors de l'étalonnage). La recette du soir le tranche en 10 min.
+
+## 8. Recette RC4 (7 novembre) et correctif du pompage à basse cadence (lot RC5)
+
+Recette vélo de 10 min sur #718 : 4/5 (« pas de trou, sprints beaucoup mieux, on monte moins haut en puissance mais beaucoup plus réaliste »), mais quelques pompages à faible cadence. Journal : k entre 0,034 et 0,048 la plupart du temps, puis tombé au plancher (0,0072) entre 520 et 557 s avec deux `resistance_weak` au niveau 10 (le maximum de la plage 0 à 10, donc 100 %). Pompage sous 60 tr/min : 66↔262 W à 61–76 s et 30↔305 W à 513–577 s, en cycles de 3 à 5 s.
+
+Causes trouvées dans le code :
+- k était corrigé même quand le niveau envoyé était déjà au maximum. Le niveau ne pouvait plus monter, et k baissait à chaque mesure jusqu'au plancher (un intégrateur saturé). Le frein restait ensuite au maximum trop longtemps, d'où les pics à 305 W ;
+- le niveau suivait la vitesse instantanée du volant (F / (k × v)). Au point mort du pédalage, le volant ralentit et le niveau montait. Le trainer l'appliquait 200 à 800 ms plus tard, donc pendant la poussée suivante. À niveau fixe, le frein donne F ∝ v, ce qui stabilise le volant : la compensation en 1/v annulait cet amortissement, et le défaut grossit quand la cadence baisse.
+
+Correctif (lot RC5) :
+- k est gelé quand le niveau envoyé est à 95 % ou plus, et pendant 1 s après chaque changement de niveau (le temps que le trainer l'applique) ;
+- le niveau est calculé sur la vitesse du volant lissée sur 1,5 s, soit plus qu'un tour de pédalier à 40 tr/min ;
+- le niveau ne monte pas plus vite que 20 % de la plage par seconde. La baisse reste immédiate.
+
+Recette vélo : 10 min, dont 3 min à 40–50 tr/min sur le plat et 2 min en montée à basse cadence.

@@ -17,7 +17,9 @@ extends Node3D
 ## pois rouges (bandeau blanc au départ, rouge au sommet), départ du parcours bleu, arrivée du parcours en
 ## damier, arche de bonus violette et lumineuse. Toute arrivée (fin de sprint, sommet, arrivée, ligne
 ## d'une boucle) a une frise en damier sous le bandeau et une ligne en damier au sol ; tout départ, une
-## ligne blanche. Panneaux à gauche de la route, face au cycliste qui arrive. Aucune ombre portée.
+## ligne blanche. Bandeau imprimé des deux côtés (demi-tour, lot N17 : `back_lines`, le dos du départ d'un
+## parcours en ligne annonce l'arrivée). Panneaux à gauche de la route, face au cycliste qui arrive (une seule
+## face : rien ne se chronomètre à rebours). Aucune ombre portée.
 ## - Lot DS5 : `set_survivor_arches(arches)` pose les portiques d'élimination du Dernier survivant (style `elim` :
 ##   tube à bandes rouges et noires, bandeau rouge foncé « ÉLIMINATION », frise et ligne en damier), mis à jour
 ##   par `update` comme les autres marques ; un portique de segment confondu (moins de MERGE_M) n'est pas doublé.
@@ -454,14 +456,20 @@ func build_mark(mark: Dictionary) -> Node3D:
 	var face := BANNER_DEPTH_M * 0.5 + 0.01
 	_mesh(root, style["banner"], Vector3(0.0, banner_y, 0.0), Vector3(2.0 * inner, BANNER_HEIGHT_M, BANNER_DEPTH_M))
 	var ink: Color = COLORS[style["ink"]]
-	var lines: Array = mark["lines"]
-	var title_h := BANNER_HEIGHT_M * (0.6 if lines.size() > 1 else 0.9)
-	var title_y := banner_y + (BANNER_HEIGHT_M - title_h) * 0.5 - 0.04
-	_label(root, [str(lines[0]).to_upper()], Vector3(0.0, title_y, face), 2.0 * inner * 0.9, title_h, ink)
-	if lines.size() > 1:
-		var sub_h := BANNER_HEIGHT_M - title_h
-		_label(root, [" · ".join(lines.slice(1))], Vector3(0.0, banner_y - BANNER_HEIGHT_M * 0.5 + sub_h * 0.5 + 0.02, face),
-			2.0 * inner * 0.85, sub_h, ink, 0.08)
+	# Bandeau imprimé des deux côtés (demi-tour, lot N17) : le dos porte le texte de back_lines(), tourné d'un
+	# demi-tour pour se lire à l'endroit depuis l'autre sens de marche
+	for back in [false, true]:
+		var lines: Array = back_lines(mark) if back else mark["lines"]
+		var turn := Basis(Vector3.UP, PI) if back else Basis()
+		var title_h := BANNER_HEIGHT_M * (0.6 if lines.size() > 1 else 0.9)
+		var title_y := banner_y + (BANNER_HEIGHT_M - title_h) * 0.5 - 0.04
+		var title := _label(root, [str(lines[0]).to_upper()], turn * Vector3(0.0, title_y, face), 2.0 * inner * 0.9, title_h, ink)
+		title.basis = turn
+		if lines.size() > 1:
+			var sub_h := BANNER_HEIGHT_M - title_h
+			var sub := _label(root, [" · ".join(lines.slice(1))],
+				turn * Vector3(0.0, banner_y - BANNER_HEIGHT_M * 0.5 + sub_h * 0.5 + 0.02, face), 2.0 * inner * 0.85, sub_h, ink, 0.08)
+			sub.basis = turn
 	if style["finish"]:
 		_mesh(root, "strip", Vector3(0.0, banner_y - (BANNER_HEIGHT_M + STRIP_HEIGHT_M) * 0.5, 0.0),
 			Vector3(2.0 * inner, STRIP_HEIGHT_M, BANNER_DEPTH_M))
@@ -475,6 +483,15 @@ func build_mark(mark: Dictionary) -> Node3D:
 		_mesh(root, "finish_line" if style["finish"] else "line", Vector3(0.0, LINE_LIFT_M, 0.0),
 			Vector3(road_width_m, 0.02, FINISH_LINE_DEPTH_M if style["finish"] else LINE_DEPTH_M))
 	return root
+
+
+## Texte du dos d'un bandeau, lu par le cycliste qui roule à rebours (lot N17) : le même que la face, sauf le
+## portique de départ d'un parcours en ligne, dont le dos annonce l'arrivée (à rebours, la séance finit au
+## départ du parcours, session.py). Une boucle a un seul portique « Départ · Arrivée », juste des deux côtés.
+static func back_lines(mark: Dictionary) -> Array:
+	if str(mark.get("style", "")) == "route_start":
+		return ["Arrivée"]
+	return mark["lines"]
 
 
 func _place(node: Node3D, mark: Dictionary) -> void:

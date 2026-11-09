@@ -24,7 +24,10 @@ openride-ble-diag = "openride_core.tools.ble_diag:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-openride_core = ["data/*.toml", "data/*.json", "rogue/*.toml", "tactical/*.toml"]
+# Copies embarquées des entraînements et plans de référence (lot J4) : `data/workouts/`, `data/plans/`.
+openride_core = [
+    "data/*.toml", "data/*.json", "data/workouts/*", "data/plans/*.toml", "rogue/*.toml", "tactical/*.toml",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

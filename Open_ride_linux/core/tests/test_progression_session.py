@@ -71,7 +71,11 @@ def test_hello_ack_carries_progression(tmp_path, monkeypatch):
     assert prog["avatar"]["standing_grade_pct"] == 8 and prog["avatar"]["standing_power_pct"] == 150
     assert prog["xp_next_level"] > prog["xp"] and prog["lives"] == 0
     s.server._handle_message({"type": "hello", "v": 1, "engine_version": "t"})
-    assert len(json.dumps(of(frames, "hello_ack")[0])) < 1400
+    ack = of(frames, "hello_ack")[0]
+    # Cible de 1 400 octets (contrat §2) hors épreuves de piste : `config.track` (révision 1.7, lot VD10) porte le
+    # message vers 2,7 Ko, sous la limite de 4 096 octets (taille vérifiée dans test_contract_ipc.py).
+    ack["config"].pop("track")
+    assert len(json.dumps(ack)) < 1400
 
 
 def test_standing_thresholds_come_from_avatar_section(tmp_path, monkeypatch):

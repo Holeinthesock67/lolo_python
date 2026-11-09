@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+    <author>OpenRide</author>
+    <name>Anaérobie 8 × 30 s</name>
+    <description>Capacité anaérobie (série CO) : échauffement 10 min, 8 × 30 s à 150 % FTP avec 3 min à 50 %, retour au calme 5 min.</description>
+    <sportType>bike</sportType>
+    <workout>
+        <Warmup Duration="600" PowerLow="0.50" PowerHigh="0.75"/>
+        <IntervalsT Repeat="8" OnDuration="30" OffDuration="180" OnPower="1.50" OffPower="0.50"/>
+        <Cooldown Duration="300" PowerLow="0.60" PowerHigh="0.45"/>
+    </workout>
+</workout_file>

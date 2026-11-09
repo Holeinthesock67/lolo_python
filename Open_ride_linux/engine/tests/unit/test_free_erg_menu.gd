@@ -71,7 +71,7 @@ func _test_ride_mode_of() -> void:
 
 func _test_pause_rows_and_commands() -> void:
 	var f = _paused(null)
-	_check(_ids(f) == ["resume", "end_save", "abandon", "difficulty", "ride_mode"],
+	_check(_ids(f) == ["resume", "end_save", "abandon", "difficulty", "ride_mode", "bot1", "ghost", "peloton"],
 		"pause d'une session libre : ligne du mode (%s)" % str(_ids(f)))
 	_check(_row(f, "ride_mode")["label"] == "Mode" and _row(f, "ride_mode")["detail"] == "SIM", "mode affiché : SIM")
 	_focus(f, "ride_mode")
@@ -81,7 +81,7 @@ func _test_pause_rows_and_commands() -> void:
 	var act: Dictionary = f.handle("A_LONG")
 	_check(act == {"action": "set_ride_mode", "args": {"mode": "erg"}}, "A long : set_ride_mode erg (%s)" % str(act))
 	f.on_state({"session_state": "PAUSED", "mode": "ERG", "erg": FREE, "difficulty_pct": 50})
-	_check(_ids(f) == ["resume", "end_save", "abandon", "difficulty", "ride_mode", "target_w"],
+	_check(_ids(f) == ["resume", "end_save", "abandon", "difficulty", "ride_mode", "target_w", "bot1", "ghost", "peloton"],
 		"ERG : ligne de la puissance cible (%s)" % str(_ids(f)))
 	_check(_row(f, "target_w")["detail"] == "204 W" and _row(f, "ride_mode")["detail"] == "ERG",
 		"puissance cible affichée (%s)" % _row(f, "target_w")["detail"])
@@ -97,7 +97,7 @@ func _test_pause_rows_and_commands() -> void:
 	act = f.handle("A_LONG")
 	_check(act == {"action": "set_ride_mode", "args": {"mode": "cadence"}}, "choix ERG cadence (%s)" % str(act))
 	f.on_state({"session_state": "PAUSED", "mode": "ERG", "erg": CADENCE, "difficulty_pct": 50})
-	_check(_ids(f).back() == "cadence_rpm" and _row(f, "cadence_rpm")["detail"] == "90 tr/min",
+	_check(_ids(f).has("cadence_rpm") and _row(f, "cadence_rpm")["detail"] == "90 tr/min",
 		"ERG cadence : cadence cible (%s)" % str(_ids(f)))
 	_focus(f, "cadence_rpm")
 	f.handle("A_LONG")
@@ -112,7 +112,7 @@ func _test_pause_rows_and_commands() -> void:
 		and not _row(f, "ride_mode")["editing"], "Y annule le changement de mode")
 	# Entraînement : pas de ligne de mode.
 	var g = _paused(WORKOUT, "ERG")
-	_check(_ids(g) == ["resume", "end_save", "abandon", "difficulty"], "entraînement : pas de bascule (%s)" % str(_ids(g)))
+	_check(_ids(g) == ["resume", "end_save", "abandon", "difficulty", "bot1", "ghost", "peloton"], "entraînement : pas de bascule (%s)" % str(_ids(g)))
 	_check(SettingsViewModel.pause_item("pause.inconnu", 1).is_empty(), "clé de pause inconnue : rien")
 
 
