@@ -1,0 +1,10 @@
+Nom               : cote-opale-essai
+Longueur          : 8.012 km
+Type              : open
+Pente maximale    : 18.6 %
+Pente minimale    : -9.3 %
+Dénivelé positif  : 195 m
+Points limités    : 0
+Altitude          : gpx
+Terrain           : 18 tuile(s) proche(s), 11 lointaine(s) (copernicus_glo30)
+Segments          : 2 montée(s) (cat. 4 : 2), 0 sprint(s)

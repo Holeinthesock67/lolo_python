@@ -1,0 +1,17 @@
+10:38:35 empreinte avant 5110c06b4c9d6954972ebf363612e48f
+10:38:35 tête 0b3fb67e
+10:38:36 coupe officielle (couper_gpx.py --km 8)
+10:38:36 coupe : trace source : 11.27 km, 1130 points ; coupée : 8.00 km, 803 points
+10:38:36 build côte
+10:41:53 fin build rc=0 durée 196.336596421 s
+10:41:55 verify rc=0
+10:41:58 plan rc=0
+10:43:08 banc côte low
+10:46:48 fin rc=0
+10:46:48 banc côte medium
+10:50:28 fin rc=1
+10:50:28 banc côte high
+10:54:08 fin rc=1
+10:54:09 empreinte après 5110c06b4c9d6954972ebf363612e48f
+10:54:09 clone 90c08094
+10:54:09 FIN
