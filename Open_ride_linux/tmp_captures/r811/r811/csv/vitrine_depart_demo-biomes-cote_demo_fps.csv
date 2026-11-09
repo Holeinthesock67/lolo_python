@@ -1,0 +1,14 @@
+t_s,fps,maillages,appels_de_dessin,qualite,capture
+24.4,1.0,4,563.0,low,000_ev0_click_press.png
+32.5,1.0,14,211.0,low,001_ev1_click_press.png
+39.0,1.0,14,210.0,low,002_ev2_click_press.png
+39.4,1.0,14,210.0,low,003_ev3_click_press.png
+39.9,1.0,14,210.0,low,004_t029.png
+40.2,1.0,14,210.0,low,005_ev4_click_press.png
+40.5,2.0,14,212.0,low,006_ev5_click_press.png
+44.4,60.0,14,221.0,low,007_t044.png
+46.0,54.0,14,221.0,low,008_ev6_click_press.png
+52.0,60.0,18,264.0,low,009_ev7_click_press.png
+58.0,59.0,29,312.0,low,010_ev8_click_press.png
+59.4,47.0,29,332.0,low,011_t059.png
+61.0,54.0,30,396.0,low,012_fin.png

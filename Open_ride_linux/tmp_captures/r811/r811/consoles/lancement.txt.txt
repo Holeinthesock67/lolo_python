@@ -1,0 +1,25 @@
+05:39:46 empreinte avant 5110c06b4c9d6954972ebf363612e48f
+05:39:46 tête e4a81360
+05:39:55 pytest compiler
+05:44:26 fin pytest compiler rc=0
+05:45:26 suite engine
+06:09:38 fin suite rc=0
+06:09:38 mondes de démonstration
+06:09:42 fin demo-biomes rc=0
+06:09:42 menu des parcours (visual_check --menus, low)
+06:11:40 fin rc=1
+06:11:40 départ demo-biomes-alpin (low)
+06:12:45 fin demo-biomes-alpin rc=0
+06:12:45 départ demo-biomes-cote (low)
+06:13:49 fin demo-biomes-cote rc=0
+06:13:49 départ demo-biomes-gravel (low)
+06:15:03 fin demo-biomes-gravel rc=1
+06:15:03 départ demo-biomes-tour (low)
+06:16:18 fin demo-biomes-tour rc=1
+06:16:18 départ demo (low)
+06:17:32 fin demo rc=1
+06:17:32 tour du parcours alpin (sommet)
+06:17:59 fin tour rc=0
+06:18:00 empreinte après 5110c06b4c9d6954972ebf363612e48f
+06:18:00 clone 90c08094
+06:18:00 FIN

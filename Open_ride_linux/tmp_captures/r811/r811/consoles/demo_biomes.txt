@@ -1,0 +1,147 @@
+[
+  {
+    "route": "demo-biomes-tour",
+    "name": "Tour des six paysages",
+    "length_m": 12131.876,
+    "biomes": [
+      "coast",
+      "mediterranean",
+      "temperate_grassland",
+      "farmland",
+      "temperate_forest",
+      "alpine"
+    ],
+    "shares": {
+      "coast": 16.7,
+      "mediterranean": 16.6,
+      "temperate_grassland": 16.6,
+      "farmland": 16.6,
+      "temperate_forest": 16.7,
+      "alpine": 16.8
+    },
+    "surface_pct": null,
+    "coast": null,
+    "generated": {
+      "buildings": 77,
+      "vegetation": 20,
+      "water_lines": 1,
+      "water_areas": 1,
+      "poi": 8
+    },
+    "layers": [
+      "biome",
+      "buildings",
+      "poi",
+      "terrain",
+      "vegetation",
+      "water"
+    ]
+  },
+  {
+    "route": "demo-biomes-gravel",
+    "name": "Chemins des six paysages",
+    "length_m": 12131.876,
+    "biomes": [
+      "coast",
+      "mediterranean",
+      "temperate_grassland",
+      "farmland",
+      "temperate_forest",
+      "alpine"
+    ],
+    "shares": {
+      "coast": 16.7,
+      "mediterranean": 16.6,
+      "temperate_grassland": 16.6,
+      "farmland": 16.6,
+      "temperate_forest": 16.7,
+      "alpine": 16.8
+    },
+    "surface_pct": {
+      "dirt": 16.6,
+      "gravel": 16.6,
+      "paved": 66.7
+    },
+    "coast": null,
+    "generated": {
+      "buildings": 77,
+      "vegetation": 20,
+      "water_lines": 1,
+      "water_areas": 1,
+      "poi": 8
+    },
+    "layers": [
+      "biome",
+      "buildings",
+      "poi",
+      "terrain",
+      "vegetation",
+      "water"
+    ]
+  },
+  {
+    "route": "demo-biomes-cote",
+    "name": "Route de la côte",
+    "length_m": 6063.917,
+    "biomes": [
+      "coast",
+      "coast",
+      "coast"
+    ],
+    "shares": {
+      "coast": 100.0
+    },
+    "surface_pct": null,
+    "coast": {
+      "lines": 6,
+      "beaches": 3,
+      "sea_areas": 24
+    },
+    "generated": {
+      "buildings": 44,
+      "vegetation": 3,
+      "water_lines": 0,
+      "water_areas": 0,
+      "poi": 6
+    },
+    "layers": [
+      "biome",
+      "buildings",
+      "coast",
+      "poi",
+      "terrain",
+      "vegetation",
+      "water"
+    ]
+  },
+  {
+    "route": "demo-biomes-alpin",
+    "name": "Montée alpine",
+    "length_m": 6063.917,
+    "biomes": [
+      "alpine",
+      "alpine",
+      "alpine"
+    ],
+    "shares": {
+      "alpine": 100.0
+    },
+    "surface_pct": null,
+    "coast": null,
+    "generated": {
+      "buildings": 18,
+      "vegetation": 12,
+      "water_lines": 0,
+      "water_areas": 0,
+      "poi": 3
+    },
+    "layers": [
+      "biome",
+      "buildings",
+      "poi",
+      "terrain",
+      "vegetation",
+      "water"
+    ]
+  }
+]

@@ -1,0 +1,20 @@
+........................................................................ [ 14%]
+........................................................................ [ 28%]
+........................................................................ [ 43%]
+.................................................ssss................... [ 57%]
+........................................................................ [ 72%]
+........................................................................ [ 86%]
+..................................................................       [100%]
+=============================== warnings summary ===============================
+tests/test_netcheck.py::test_fake_server_serves_tilejson_tiles_and_relief
+tests/test_netcheck.py::test_scenario_passes_on_the_real_generator[lent]
+tests/test_netcheck.py::test_scenario_passes_on_the_real_generator[lent]
+tests/test_netcheck.py::test_scenario_passes_on_the_real_generator[coupure]
+tests/test_netcheck.py::test_scenario_passes_on_the_real_generator[coupure]
+tests/test_netcheck.py::test_scenario_passes_on_the_real_generator[erreurs]
+tests/test_netcheck.py::test_scenario_passes_on_the_real_generator[erreurs]
+  ~/Games/lolo_python/Open_ride_linux/core/.venv/lib/python3.14/site-packages/rasterio/transform.py:178: PendingDeprecationWarning: Use `@` matmul instead of `*` mul operator for matrix multiplication
+    return Affine.translation(west, north) * Affine.scale(xsize, -ysize)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+494 passed, 6 skipped, 2 deselected, 7 warnings in 269.87s (0:04:29)

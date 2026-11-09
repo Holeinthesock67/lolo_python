@@ -1,0 +1,7 @@
+== Tour visuel : demo-biomes-alpin, 4 point(s), préréglage low ==
+[OK] depart à 30 m (subjective) : 671871 triangles, 134 appels, 0 tuile(s) en attente
+[OK] foret à 380 m (subjective) : 646032 triangles, 136 appels, 0 tuile(s) en attente
+[OK] montee_5 à 3670 m (subjective) : 746917 triangles, 163 appels, 0 tuile(s) en attente
+[OK] arrivee à 6004 m (subjective) : 723702 triangles, 134 appels, 0 tuile(s) en attente
+Planche : ~/mesures-2026-11-01-auto/r811/vitrine/tour_alpin/planche.html
+RÉSULTAT : tour complet
