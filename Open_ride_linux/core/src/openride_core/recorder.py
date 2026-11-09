@@ -112,7 +112,8 @@ class SessionRecorder:
             return
         try:
             if line["kind"] == "event":
-                self._writer.event(line["event"], line["ts"], line.get("reason"))
+                self._writer.event(line["event"], line["ts"], line.get("reason"),
+                                   {k: v for k, v in line.items() if k not in ("kind", "event", "ts", "reason")})
             elif line["kind"] == "device":
                 self._writer.device(line["device"], line["state"], line["ts"])
             elif line["kind"] == "ftp_test":
@@ -137,6 +138,14 @@ class SessionRecorder:
         line = {"kind": "event", "event": name, "ts": ts}
         if reason:
             line["reason"] = reason   # raison de la pause, lue par le chronométrage des segments
+        self.lines.append(line)
+        self._write(line)
+
+    def u_turn(self, ts: float, s: float, distance: float, direction: int) -> None:
+        """Demi-tour depuis la pause (lot N17) : position `s` sur le parcours, distance parcourue et nouveau sens ;
+        hors du chronomètre (`events`), donc absent du FIT, qui garde une distance croissante."""
+        line = {"kind": "event", "event": "u_turn", "ts": ts, "s": round(s, 2), "distance": round(distance, 2),
+                "dir": direction}
         self.lines.append(line)
         self._write(line)
 

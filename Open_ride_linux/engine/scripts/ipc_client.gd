@@ -77,7 +77,7 @@ const EngineArgs := preload("res://scripts/engine_args.gd")
 
 const CONTRACT_VERSION := 1
 ## Révision du contrat annoncée dans hello (champ facultatif rev, révision 1.3).
-const CONTRACT_REV := "1.7"   # série T (T8, T9), monde ouvert (W10 à W12), peloton (PL1) lus ; objet `track` (VD6) annoncé, affiché au lot VD9
+const CONTRACT_REV := "1.7"   # série T (T8, T9), monde ouvert (W10 à W12), peloton (PL1) lus ; objet `track` (VD6) annoncé, affiché au lot VD9 ; de la 1.9, `dir` et `u_turn` (lot N17) déjà lus
 ## Version de l'engine, lue dans project.godot (source unique : fichier VERSION, lot O2).
 var engine_version: String = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 const SERVER_HOST := "127.0.0.1"

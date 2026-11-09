@@ -78,12 +78,30 @@ def draft_saving_w(v: float, alt_m: float, p: PhysicsParams, alpha_draft: float)
 
 
 class RiderPhysics:
-    """État du coureur sur la route : position `s` (m) et vitesse `v` (m/s)."""
+    """État du coureur sur la route : position `s` (m), vitesse `v` (m/s), sens `direction` et distance
+    parcourue `distance` (m).
+
+    `direction` vaut 1 dans le sens du parcours, -1 à rebours après un demi-tour (lot N17) : `s` décroît
+    alors, et `distance` croît toujours (distance du journal et du FIT). Sans demi-tour, `distance` = `s`."""
 
     def __init__(self, params: PhysicsParams, s: float = 0.0, v: float = 0.0) -> None:
         self.p = params
         self.s = s
         self.v = v
+        self.direction = 1
+        self.distance = s
+
+    def place(self, s: float, distance: float | None = None, direction: int = 1) -> None:
+        """Pose le coureur à l'arrêt en `s` (parcours chargé, reprise d'une séance) ; `distance` vaut `s` par
+        défaut."""
+        self.s, self.v = s, 0.0
+        self.distance = s if distance is None else distance
+        self.direction = -1 if direction < 0 else 1
+
+    def u_turn(self) -> None:
+        """Demi-tour sur place (lot N17) : même position, même distance, sens inversé, vitesse remise à 0."""
+        self.direction = -self.direction
+        self.v = 0.0
 
     @property
     def kinetic_energy(self) -> float:
@@ -106,7 +124,8 @@ class RiderPhysics:
         energy += (self.p.efficiency * power_w - f_res * self.v) * dt
         # Jamais de recul : énergie bornée à 0 (montée à 0 W -> arrêt).
         self.v = min(math.sqrt(max(energy, 0.0) * 2.0 / m), V_MAX)
-        self.s += self.v * dt
+        self.s += self.direction * self.v * dt
+        self.distance += self.v * dt
         return self.v
 
 

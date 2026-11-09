@@ -14,11 +14,12 @@ extends RefCounted
 ## mêmes événements, touche pour touche (key_map.gd, lot O17). Tout autre événement est ignoré.
 ##
 ## Règles : le focus saute les éléments désactivés et boucle en fin de liste ; valider un élément
-## désactivé ne fait rien ; une action destructrice (Abandonner, Quitter) passe par l'écran de
+## désactivé ne fait rien ; une action destructrice (Abandonner, Quitter) ou qui change la séance (Faire
+## demi-tour, lot N17) passe par l'écran de
 ## confirmation, focus sur « Non » ; une liste vide affiche un élément désactivé et le retour reste possible.
 ##
 ## Actions renvoyées ({"action": nom, …}) : noms des commandes du contrat v1 quand elles existent
-## (select_route + route_id, select_workout + workout_id, start, resume, end_session + save), sinon
+## (select_route + route_id, select_workout + workout_id, start, resume, end_session + save, u_turn), sinon
 ## internes à l'engine (quit ; relaunch_sim et relaunch : relancer OpenRide en session simulée ou sur le
 ## vrai matériel). Une action ouvre au besoin l'écran suivant dans le même appel.
 ##
@@ -131,6 +132,9 @@ var _focus_stack: Array[int] = []   # focus de chacun, rendu au retour
 var _screen: String = HOME
 var _focus: int = 0
 var _pending: Dictionary = {}       # action destructrice en attente de confirmation
+## Entrée « Faire demi-tour » de l'écran de pause (lot N17) : séance sur un parcours, hors run, monde ouvert,
+## Dernier survivant et Grand Prix (menu_flow.gd, u_turn_allowed_of) ; prise en compte par set_pause_rows().
+var u_turn_shown := false
 var _confirm_back: String = ""      # écran où revenir après « Non »
 var _confirm_focus: int = 0
 var _workouts_return: String = ROUTES
@@ -548,7 +552,8 @@ func _bots_list() -> Array:
 	return bots
 
 
-## Lignes modifiables de l'écran de pause, après Reprendre, Terminer et Abandonner : difficulté (curseur
+## Lignes modifiables de l'écran de pause, après Reprendre, Terminer, Abandonner et, sur un parcours, « Faire
+## demi-tour » (lot N17, `u_turn_shown`, avec confirmation comme Abandonner) : difficulté (curseur
 ## du lot O4, commande set_difficulty) et, en session libre (lot O18), mode SIM / ERG / ERG cadence,
 ## puissance ou cadence cible (set_ride_mode). `rows` : rangées de SettingsViewModel.row() (valeur,
 ## curseur, mode édition en place) ; leur `id` est renvoyé par une action « item » de l'écran de pause.
@@ -569,6 +574,8 @@ func pause_bots_shown() -> bool:
 func _refresh_pause() -> void:
 	var items: Array = [_item("resume", "Reprendre"), _item("end_save", "Terminer et enregistrer"),
 		_item("abandon", "Abandonner")]
+	if u_turn_shown:
+		items.append(_item("u_turn", "Faire demi-tour"))
 	for row in _pause_rows:
 		var it := _item(str(row["id"]), str(row["label"]), true, str(row.get("detail", "")))
 		if row.has("bar"):
@@ -1101,6 +1108,8 @@ func _validate() -> Dictionary:
 					return {"action": "end_session", "save": true}
 				"abandon":
 					_confirm("Abandonner la séance ?", {"action": "end_session", "save": false})
+				"u_turn":   # lot N17 : « Oui » renvoie la commande u_turn et revient à la pause
+					_confirm("Faire demi-tour ?", {"action": "u_turn"})
 				_:   # lignes modifiables (set_pause_rows) : modifiées en place par menu_flow.gd
 					return {"action": "item", "screen": PAUSE, "id": id}
 		_:

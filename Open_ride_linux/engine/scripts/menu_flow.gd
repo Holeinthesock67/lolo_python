@@ -71,6 +71,7 @@ extends RefCounted
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
+const RiddenDistance := preload("res://scripts/ridden_distance.gd")
 const SummaryViewModel := preload("res://scripts/summary_view_model.gd")
 const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
@@ -155,10 +156,12 @@ var menu = MenuModel.new()
 var catalog = CatalogModel.new()
 var summary_model = SummaryViewModel.new()
 var session_state: String = ""
-## Chiffres de la séance en cours pour la carte de la pause : durée (t), distance (s) de la dernière trame et
-## moyenne de la puissance mesurée en roulant (le core n'envoie pas de moyenne dans la trame d'état).
+## Chiffres de la séance en cours pour la carte de la pause : durée (t), distance parcourue (ridden_distance.gd,
+## croissante après un demi-tour, lot N17) et moyenne de la puissance mesurée en roulant (le core n'envoie pas de
+## moyenne dans la trame d'état).
 var _run_t := NAN
 var _run_s := NAN
+var _ridden = RiddenDistance.new()
 var _power_sum := 0.0
 var _power_n := 0
 ## Dernier bilan reçu (objet `summary` de la trame en FINISHED).
@@ -351,6 +354,7 @@ func _track_run(st: String, state: Dictionary) -> void:
 	if st in ["IDLE", "READY"]:
 		_run_t = NAN
 		_run_s = NAN
+		_ridden.reset()
 		_power_sum = 0.0
 		_power_n = 0
 		return
@@ -362,7 +366,9 @@ func _track_run(st: String, state: Dictionary) -> void:
 	if t is int or t is float:
 		_run_t = float(t)
 	if s is int or s is float:
-		_run_s = float(s)
+		var length = state.get("route_length_m", null)
+		_run_s = _ridden.push(float(s), float(t) if (t is int or t is float) else NAN,
+			float(length) if (length is int or length is float) else 0.0)
 	var p = state.get("power", null)
 	if st == "RUNNING" and (p is int or p is float) and float(p) >= 0.0 and float(p) < 3000.0:
 		_power_sum += float(p)
@@ -387,6 +393,10 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var rm: String = ride_mode_of(state)
 	var tw: int = int(round(float(erg.get("target_w", 0)))) if erg is Dictionary else 0
 	var cad: int = int(erg.get("cadence_target_rpm", 0)) if erg is Dictionary else 0
+	var u_turn_ok := u_turn_allowed_of(state)
+	if u_turn_ok != menu.u_turn_shown:   # entrée « Faire demi-tour » de la pause (lot N17)
+		menu.u_turn_shown = u_turn_ok
+		pause_changed = true
 	if rm != ride_mode or tw != erg_target_w or cad != cadence_target_rpm:
 		ride_mode = rm
 		erg_target_w = tw
@@ -2047,6 +2057,17 @@ static func ride_mode_of(state: Dictionary) -> String:
 		"cadence":
 			return "cadence"
 	return ""
+
+
+## Demi-tour possible depuis la pause (lot N17, commande u_turn de la révision 1.9) : séance sur un parcours, hors
+## run Cyber-Rogue, monde ouvert (`ow:…`), Dernier survivant et Grand Prix des objets, mêmes refus que le core.
+static func u_turn_allowed_of(state: Dictionary) -> bool:
+	var rid = state.get("route_id", null)
+	if rid == null or str(rid) == "" or str(rid).begins_with("ow:"):
+		return false
+	if str(state.get("mode", "")) == "ROGUE" or state.get("open_world") is Dictionary:
+		return false
+	return not (state.get("survivor") is Dictionary or state.get("gp") is Dictionary)
 
 
 ## Valeur en cours d'une ligne de la pause (clé « pause.… »).
