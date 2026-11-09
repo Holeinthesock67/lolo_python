@@ -6,7 +6,7 @@ Les deux implémentations sont tenues identiques par des vecteurs de test partag
 
 Règle d'interpolation (format §4.5) :
 - abscisses : s_i = i·ds_m pour i < n−1, et s_{n−1} = length_m ;
-- grandeurs scalaires (pente, lat, lon, altitude) : linéaire ;
+- grandeurs scalaires (pente, lat, lon, altitude, relèvement `bank_deg` depuis 1.7) : linéaire ;
 - cap : par l'écart angulaire le plus court, résultat dans [0, 360) ;
 - position (x, alt_m, z) : Catmull-Rom centripète (Barry-Goldman, α = 0,5), points fantômes
   aux extrémités d'un parcours ouvert, indices circulaires pour une boucle.
@@ -28,7 +28,8 @@ FORMAT_NAME = "openride-world"
 SUPPORTED_MAJOR = 1
 KNOT_EPS_M = 1e-6
 ROUTE_FIELDS = ("lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg")
-SURFACES = ("paved", "compacted", "gravel", "dirt")   # colonne facultative `surface` (format 1.6)
+SURFACES = ("paved", "compacted", "gravel", "dirt", "wood")   # colonne facultative `surface` (format 1.6 ; wood : 1.7)
+BANK_MAX_DEG = 50.0      # colonne facultative `bank_deg` (format 1.7, vélodrome, lot VD1)
 
 
 class WorldError(Exception):
@@ -49,6 +50,7 @@ class RouteSample:
     alt_m: float
     grade_pct: float
     heading_deg: float
+    bank_deg: float = 0.0       # relèvement (format 1.7, lot VD1), 0 sans colonne `bank_deg`
 
 
 def _shortest_delta_deg(a: float, b: float) -> float:
@@ -117,6 +119,17 @@ class Route:
             if any(v not in SURFACES for v in surface):
                 raise WorldError("route_invalid", f"« surface » hors de {', '.join(SURFACES)}")
         self.surface: list[str] | None = [str(v) for v in surface] if surface is not None else None
+        bank = data.get("bank_deg")   # facultative, depuis 1.7 (lot VD1) : absente = 0 partout
+        if bank is not None:
+            try:
+                bank = [float(v) for v in bank]
+            except (TypeError, ValueError) as exc:
+                raise WorldError("route_invalid", f"« bank_deg » mal typé : {exc}") from exc
+            if len(bank) != self.n:
+                raise WorldError("route_invalid", f"« bank_deg » doit avoir {self.n} valeurs")
+            if any(not -BANK_MAX_DEG <= v <= BANK_MAX_DEG for v in bank):
+                raise WorldError("route_invalid", f"« bank_deg » hors de ± {BANK_MAX_DEG:.0f}°")
+        self.bank_deg: list[float] | None = bank
         self.points = list(zip(self.x, self.alt_m, self.z))
         if self.type == "loop":
             gap = math.dist((self.x[0], self.z[0]), (self.x[-1], self.z[-1]))
@@ -170,6 +183,14 @@ class Route:
         p = self.wrap(s)
         return self.surface[self.n - 1 if p >= self.length_m else min(int(p / self.ds_m), self.n - 2)]
 
+    def bank_at(self, s: float) -> float:
+        """Relèvement en s (degrés, linéaire comme l'altitude) ; 0 sans colonne `bank_deg` (lot VD1)."""
+        if self.bank_deg is None:
+            return 0.0
+        i, u = self._segment(self.wrap(s))
+        b = self.bank_deg
+        return b[i] + (b[i + 1] - b[i]) * u
+
     def sample(self, s: float) -> RouteSample:
         i, u = self._segment(self.wrap(s))
 
@@ -182,7 +203,7 @@ class Route:
         heading = (h0 + u * _shortest_delta_deg(h0, self.heading_deg[i + 1])) % 360.0
         return RouteSample(x=x, y=y, z=z, lat=lin(self.lat), lon=lin(self.lon),
                            alt_m=lin(self.alt_m), grade_pct=lin(self.grade_pct),
-                           heading_deg=heading)
+                           heading_deg=heading, bank_deg=lin(self.bank_deg) if self.bank_deg is not None else 0.0)
 
 
 @dataclass
@@ -191,6 +212,7 @@ class World:
     manifest: dict
     route: Route
     segments: tuple = ()        # couche `segments.json` (format 1.3, série T), vide si absente
+    venue: dict | None = None   # couche `venue.json` (format 1.7, vélodrome, lot VD1), None si absente
 
     @property
     def name(self) -> str:
@@ -238,7 +260,33 @@ def load_world(path: Path) -> World:
     else:
         route_file = (manifest.get("route") or {}).get("file", "route.json")
         route = Route(_read_json(path / route_file, route_file))
-    return World(path=path, manifest=manifest, route=route, segments=load_segments(path, manifest, route))
+    return World(path=path, manifest=manifest, route=route, segments=load_segments(path, manifest, route),
+                 venue=load_venue(path, manifest))
+
+
+VENUE_KINDS = ("velodrome",)
+
+
+def load_venue(path: Path, manifest: dict) -> dict | None:
+    """Couche facultative `venue.json` (format §8 sexies, lot VD1) ; invalide : ignorée avec un avertissement,
+    le parcours se roule alors comme une route (relèvement de `bank_deg` gardé)."""
+    layer = (manifest.get("layers") or {}).get("venue")
+    if not isinstance(layer, dict) or not layer.get("present"):
+        return None
+    name = str(layer.get("file") or "venue.json")
+    try:
+        data = _read_json(path / name, name)
+        if not str(data.get("version", "")).startswith("1."):
+            raise ValueError(f"version {data.get('version')!r} inconnue")
+        if data.get("kind") not in VENUE_KINDS:
+            raise ValueError(f"sorte de lieu inconnue : {data.get('kind')!r}")
+        for key in ("track_width_m", "apron_width_m"):
+            if not isinstance(data.get(key), (int, float)) or data[key] < 0:
+                raise ValueError(f"« {key} » invalide")
+    except (WorldError, ValueError) as exc:
+        log.warning("%s : couche venue ignorée (%s)", path.name, exc)
+        return None
+    return data
 
 
 def load_segments(path: Path, manifest: dict, route: Route) -> tuple:

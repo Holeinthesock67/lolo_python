@@ -52,6 +52,8 @@ func _init() -> void:
 					errs.append(key + " écart")
 			if absf(got["alt_m"] - expected["alt_m"]) > float(tol["alt_m"]):
 				errs.append("altitude écart")
+			if absf(route.bank_at(float(expected["s"])) - float(expected.get("bank_deg", 0.0))) > float(tol.get("bank_deg", 1e-6)):
+				errs.append("relèvement %.6f au lieu de %.6f" % [route.bank_at(float(expected["s"])), float(expected.get("bank_deg", 0.0))])
 			if absf(route.wrap_s(float(expected["s"])) - float(expected["wrapped_s"])) > 1e-9:
 				errs.append("wrap différent")
 			checked += 1

@@ -248,3 +248,87 @@ def compile_route(points: list[GpxPoint], out_and_back: bool = False,
     }
     return CompiledRoute(route=route, utm_zone=frame.zone, grade_clamped_points=clamped,
                          alt_source=alt_source, alt_check=alt_check)
+
+
+# --- couche biome (lot U2) ------------------------------------------------------------------
+
+def biome_tile_keys(route: dict, terrain_tiles: dict | None = None) -> dict[str, list[tuple[int, int]]]:
+    """Tuiles de la couche biome : celles du terrain (liste du manifeste ou grilles calculées), sinon la
+    même sélection que le terrain (bande autour de la route)."""
+    from .terrain import LEVELS, select_tiles
+
+    keys: dict[str, list[tuple[int, int]]] = {}
+    for level in LEVELS:
+        listed = (terrain_tiles or {}).get(level.name)
+        if listed:
+            keys[level.name] = sorted((int(k[0]), int(k[1])) for k in listed)
+        else:
+            keys[level.name] = select_tiles(route["x"], route["z"], level)
+    return keys
+
+
+def _coverage_points(keys: dict[str, list[tuple[int, int]]]) -> tuple[np.ndarray, np.ndarray]:
+    """Points (x, z) espacés de 500 m au plus sur l'emprise des tuiles (marge du flou comprise) : de quoi
+    connaître tous les carrés de 0,1° de WorldCover à lire."""
+    from . import biomes as B
+
+    xs, zs = [], []
+    for level in B.LEVELS:
+        margin = B.MARGIN * level.cell_m
+        n = int(np.ceil((level.tile_m + 2 * margin) / 500.0)) + 1
+        t = np.linspace(-margin, level.tile_m + margin, n)
+        gx, gz = np.meshgrid(t, t)
+        for ix, iz in keys.get(level.name, []):
+            xs.append(ix * level.tile_m + gx.ravel())
+            zs.append(iz * level.tile_m + gz.ravel())
+    if not xs:
+        return np.empty(0), np.empty(0)
+    return np.concatenate(xs), np.concatenate(zs)
+
+
+def build_biome(route: dict, frame: LocalFrame, keys: dict[str, list[tuple[int, int]]],
+                forced: str | None = None, provider: ElevationProvider | None = None,
+                landcover=None, osm_client=None, offline: bool = False, log=None,
+                forced_variant: dict | None = None):
+    """Couche biome (lot U2) : biome imposé, ou classification WorldCover + OSM + altitude + latitude.
+
+    Sans `--offline`, une source injoignable est remplacée par un repli (OSM et altitude seules, ou
+    altitude seule) avec un avertissement ; avec `--offline`, une donnée absente du cache est une erreur.
+    """
+    from . import biomes as B
+    from .osm_layers import biome_areas
+
+    log = log or (lambda message: None)
+    if forced is not None:
+        return B.build_biome_layer(keys, route["x"], route["z"], forced=forced, to_latlon=frame.to_latlon,
+                                   forced_variant=forced_variant)
+    sources: list[str] = []
+    lc_fn = None
+    if landcover is not None:
+        cx, cz = _coverage_points(keys)
+        lat, lon = frame.to_latlon(cx, cz)
+        try:
+            landcover.prepare(lat, lon)
+            lc_fn = landcover.classes
+            sources.append(landcover.name)
+        except CompileError as exc:
+            if offline:
+                raise
+            log(f"avertissement : occupation du sol indisponible ({exc}) ; biomes tirés d'OSM, de l'altitude "
+                "et de la latitude seulement")
+    areas = []
+    if osm_client is not None:
+        try:
+            areas = biome_areas(osm_client.fetch_biome_for_route(route, frame), frame)
+            sources.append("osm")
+        except CompileError as exc:
+            if offline:
+                raise
+            log(f"avertissement : polygones OSM des biomes indisponibles ({exc}) ; classification sans OSM")
+    if provider is not None:
+        sources.append("dem")
+    sources.append("latitude")
+    inputs = B.Inputs(to_latlon=frame.to_latlon, landcover=lc_fn,
+                      elevation=provider.elevations if provider is not None else None, osm=areas)
+    return B.build_biome_layer(keys, route["x"], route["z"], inputs=inputs, sources=sources,
+                               forced_variant=forced_variant)

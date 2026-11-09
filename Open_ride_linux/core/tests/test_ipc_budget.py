@@ -178,3 +178,25 @@ def test_grandprix_frame_fits_and_validates():
     eleven.pop("devices")
     assert fit_state(eleven, limit) == (eleven, [])
     assert "1.7 grand prix" in ipc_budget.report() and "1.7 grand prix 11 bots" in ipc_budget.report()
+
+
+def test_finished_frame_with_power_profile_fits_and_validates():
+    """Lot N20 : la trame d'une séance finie au bilan le plus lourd (courbe réduite de 50 points avec cible,
+    10 passages avec l'ancien record, 24 blocs, test de FTP) est valide et tient sans rien alléger ; avec
+    `devices` en plus, `devices` part seul ; une trame encore plus lourde perd la courbe avant le bilan entier."""
+    path = Path(__file__).resolve().parents[2] / "docs" / "contracts" / "ipc" / "state.schema.json"
+    validator = jsonschema.Draft202012Validator(json.loads(path.read_text(encoding="utf-8")))
+    limit = ipc_budget.state_limit("1.7")
+    frame = ipc_budget.worst_finished_state()
+    assert [e.message for e in validator.iter_errors(frame)] == []
+    assert fit_state(frame, limit) == (frame, [])
+    devices = worst_state("1.1")["devices"]
+    out, dropped = fit_state({**frame, "devices": devices}, limit)   # une trame sur 30 : `devices` part seul
+    assert dropped[-1] == "devices" and "power_profile" in out["summary"]
+    heavier = {**frame, "devices": devices, "route_id": "x" * 400}   # trame hors budget : courbe avant le bilan
+    out, dropped = fit_state(heavier, limit)
+    assert size(out) <= limit and "summary" in out and "power_profile" not in out["summary"]
+    assert dropped[-1] == "courbe du bilan" and "power_profile" in heavier["summary"]
+    labels = [label for label, _ in STATE_DEGRADATION]
+    assert labels.index("devices") < labels.index("courbe du bilan") < labels.index("summary")
+    assert "1.10 bilan" in ipc_budget.report()

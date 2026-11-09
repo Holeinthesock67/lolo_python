@@ -30,6 +30,34 @@ textures/vram_compression/import_etc2_astc=true
 
 [shader_globals]
 
+season_leaf_tint={
+"type": "vec3",
+"value": Vector3(1, 1, 1)
+}
+season_autumn={
+"type": "float",
+"value": 0.0
+}
+season_bare={
+"type": "float",
+"value": 0.0
+}
+season_blossom={
+"type": "float",
+"value": 0.0
+}
+season_grass_tint={
+"type": "vec3",
+"value": Vector3(1, 1, 1)
+}
+season_grass_dry={
+"type": "float",
+"value": 0.0
+}
+season_snow_drop_m={
+"type": "float",
+"value": 0.0
+}
 wind_dir={
 "type": "vec3",
 "value": Vector3(0, 0, 0)

@@ -20,7 +20,7 @@ from ..route import Route
 
 DEFAULT_OUT = Path(__file__).resolve().parents[4] / "docs" / "contracts" / "world" / "route_test_vectors.json"
 TOLERANCES = {"position_m": 0.01, "grade_pct": 1e-4, "heading_deg": 1e-3, "latlon_deg": 1e-9,
-              "alt_m": 1e-6}
+              "alt_m": 1e-6, "bank_deg": 1e-6}
 
 
 def _grades(alt: list[float], s: list[float]) -> list[float]:
@@ -64,6 +64,8 @@ def build_cases() -> list[dict]:
     loop_route = _route(headings=loop_headings,
                         alts=[500.0 + 2.0 * math.sin(i * math.pi / 6) for i in range(13)],
                         ds=10.0, last=10.0, kind="loop")
+    # Relèvement (format 1.7, lot VD1) : colonne facultative de la boucle, interpolée comme l'altitude.
+    loop_route["bank_deg"] = [12.0, 20.0, 35.0, 42.0, 42.0, 30.0, 12.0, 12.0, 25.0, 42.0, 40.0, 20.0, 12.0]
     cases = []
     for name, data, extra_s in (
         ("open", open_route, [0.0, 3.7, 12.5, 29.99, 33.3, 50.0, 71.25, 99.0, 103.0, 106.0, -5.0, 200.0]),

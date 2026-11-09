@@ -43,9 +43,11 @@ func _test_table() -> void:
 	_check(_tap(km, KEY_A, SHORT) == "A_SHORT" and _tap(km, KEY_A, LONG) == "A_LONG", "A court et long")
 	_check(_tap(km, KEY_A, SHORT, true) == "A_LONG", "Maj+A : A long")
 	_check(_tap(km, KEY_ENTER, SHORT) == "A_LONG" and _tap(km, KEY_KP_ENTER, SHORT) == "A_LONG", "Entrée : A long (valider)")
-	# Ligne Y : Y ; Échap vaut Y court ; pas d'appui long.
-	_check(_tap(km, KEY_Y, SHORT) == "Y_SHORT" and _tap(km, KEY_Y, LONG) == "Y_SHORT", "Y : un seul événement")
-	_check(_tap(km, KEY_ESCAPE, SHORT) == "Y_SHORT", "Échap : Y court")
+	# Ligne Y : Y ; appui long aussi par Maj+Y (demi-tour en roulant) ; Échap vaut Y court ; pas de zone floue.
+	_check(_tap(km, KEY_Y, SHORT) == "Y_SHORT" and _tap(km, KEY_Y, LONG) == "Y_LONG", "Y court et long")
+	_check(_tap(km, KEY_Y, UNCLEAR) == "Y_SHORT" and _tap(km, KEY_Y, 0.9) == "Y_LONG", "Y sans zone floue : 0,7 s court, 0,9 s long")
+	_check(_tap(km, KEY_Y, SHORT, true) == "Y_LONG", "Maj+Y : Y long")
+	_check(_tap(km, KEY_ESCAPE, SHORT) == "Y_SHORT" and _tap(km, KEY_ESCAPE, LONG) == "Y_SHORT", "Échap : Y court, même tenu")
 	# Ligne Z : Z ; appui long aussi par Maj+Z.
 	_check(_tap(km, KEY_Z, SHORT) == "Z_SHORT" and _tap(km, KEY_Z, LONG) == "Z_LONG", "Z court et long")
 	_check(_tap(km, KEY_Z, SHORT, true) == "Z_LONG", "Maj+Z : Z long")

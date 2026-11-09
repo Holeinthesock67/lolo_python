@@ -26,6 +26,25 @@ static func _format_fr_duration(seconds: float) -> String:
 
 
 ## Étiquettes de la bibliothèque (`library.tags`, lot O15), sans doublon, triées.
+## Étiquettes affichées autrement que leur identifiant (minuscules sans accent du manifeste) : filtre
+## « Vélodrome » de la liste des parcours (lot VD10).
+const TAG_LABELS := {"velodrome": "Vélodrome"}
+
+
+static func tag_label(tag: String) -> String:
+	return str(TAG_LABELS.get(tag, tag))
+
+
+## Parcours qui sont des pistes de vélodrome (étiquette « velodrome » de la fiche, lot VD10).
+static func track_route_ids(raw_routes: Array) -> Array:
+	var out: Array = []
+	for item in raw_routes:
+		if item is Dictionary and item.get("library") is Dictionary and item["library"].get("tags") is Array \
+				and "velodrome" in item["library"]["tags"].map(func(t): return str(t)):
+			out.append(str(item.get("id", "")))
+	return out
+
+
 static func route_tags(raw_routes: Array) -> Array:
 	var tags: Array = []
 	for item in raw_routes:
@@ -75,18 +94,19 @@ static func route_sheet(item: Dictionary) -> Dictionary:
 		var parts: Array[String] = []
 		if st.get("difficulty", null) != null:
 			parts.append("Difficulté %d / 5" % int(st["difficulty"]))
-		if st.get("duration_s", null) != null:
+		if st.get("duration_s", null) != null and float(st["duration_s"]) >= 60.0:
 			parts.append("durée ≈ " + _format_fr_duration(float(st["duration_s"])))
 		if not parts.is_empty():
 			lines.append(" · ".join(parts))
 	var lib = item.get("library", null)
 	if lib is Dictionary:
 		var words: Array[String] = []
-		if str(lib.get("region", "")) != "":
-			words.append(str(lib["region"]))
+		var region = lib.get("region", null)
+		if region != null and str(region) != "":
+			words.append(str(region))
 		if lib.get("tags") is Array:
 			for t in lib["tags"]:
-				words.append(str(t))
+				words.append(tag_label(str(t)))
 		var head := ", ".join(words)
 		var desc := str(lib.get("description", ""))
 		var line := head + (" — " if head != "" and desc != "" else "") + desc
@@ -282,7 +302,7 @@ func route_items(raw_routes: Array, sort_key := "nom", tag := "") -> Array:
 			"invalid":
 				detail = str(err) if (err != null and str(err) != "") else "invalide"
 			_:
-				detail = ", ".join(PackedStringArray(tags.map(func(t): return str(t))))
+				detail = ", ".join(PackedStringArray(tags.map(func(t): return tag_label(str(t)))))
 
 		var entry := {
 			"id": r_id,
