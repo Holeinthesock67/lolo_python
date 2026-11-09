@@ -86,6 +86,12 @@ func _run() -> void:
 	on = m.view({"powerup": {"held": "power", "active": "light", "remaining_s": 7.5}}, 48.0)["powerup"]
 	_check(is_equal_approx(on["fraction"], 0.5) and on["held_text"] == "Z : Puissance" and on["active_text"] == "Légèreté · 8 s",
 		"barre de temps à moitié, nouvelle réserve affichée (%s)" % str(on))
+	# Contrat 1.13 (TT1) : bonus tactiques nommés, valeur inconnue sous un nom neutre, `refused` toléré
+	on = m.view({"powerup": {"held": "draft_plus", "active": "breakaway", "remaining_s": 20.0,
+		"refused": {"kind": "anvil", "reason": "no_descent"}}}, 60.0)["powerup"]
+	_check(on["held_text"] == "Z : Aspiration +" and on["active_text"] == "Échappée · 20 s", "bonus tactiques (%s)" % str(on))
+	on = m.view({"powerup": {"held": "bonus_de_demain", "active": null, "remaining_s": 0.0}}, 61.0)["powerup"]
+	_check(on["visible"] and on["held_text"] == "Z : Bonus", "valeur inconnue : nom neutre (%s)" % str(on))
 	_check(Model.time_text(3725.0) == "62:05" and Model.time_text(59.96, true) == "1:00,0", "format des temps")
 	_hud_blocks(m)
 	print("test_segment_hud_model : %d vérifications, %d échecs" % [_checked, _failures])

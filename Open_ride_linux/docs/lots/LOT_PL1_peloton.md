@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Peloton : 11 bots et un fantôme (12 coureurs avec le cycliste), trame IPC allégée sous 4 096 octets, bots enfermés qui lèvent le pied, bots détaillés plafonnés par qualité, ligne « Peloton » au menu | Python + GDScript | Y18, AS2, AS4, O35 | Moyenne | En PR (5 novembre) ; bancs PC low/medium/high et captures à valider |
+| Peloton : 11 bots et un fantôme (12 coureurs avec le cycliste), trame IPC allégée sous 4 096 octets, bots enfermés qui lèvent le pied, bots détaillés plafonnés par qualité, ligne « Peloton » au menu | Python + GDScript | Y18, AS2, AS4, O35 | Moyenne | Livré le 6 novembre (PR #716, contrat IPC 1.6) ; bancs PC low/medium/high et captures à valider |
 
 Version 3.0. Plan validé par le propriétaire le 5 novembre (`PLAN_APRES_2_0.md` : « Peloton d'environ 12 bots
 (core + engine, trame IPC ≤ 4 096 o), tests verts » puis bancs du PC en trois qualités). Préalables tenus : Y18
@@ -89,3 +89,7 @@ aligné ; les six bancs rejoués passent).
    low|medium|high` et `course_bots` (non-régression à 4 bots) ; budgets GPU tenus au départ (peloton groupé, pire
    cas) ; repli : baisser `BOT_DETAIL_MAX`, puis `BOT_LOD_M`.
 5. Captures du peloton en trois qualités validées par le propriétaire avant fusion.
+
+## Livraison
+
+PR #716 (fusionnée le 6 novembre, main 30db1501) : peloton de 11 bots et un fantôme, contrat IPC 1.6. Restent les bancs PC low/medium/high et les captures à valider. Statut corrigé par le bilan du 8 novembre au soir.

@@ -14,7 +14,7 @@
     {"choisir": "bot1"},
     {"ecran": "ready", "contient": ["Bot 1 : 250 W"]},
     {"choisir": "start"},
-    {"journal": "core", "motif": "-> RUNNING", "delai": 10},
+    {"journal": "core", "motif": "-> RUNNING", "delai": 20},
     {"commande": "end_session", "args": {"save": false}},
     {"ecran": "summary", "delai": 15},
     {"fichier": "OpenRide/Profils/cycliste-a/derniers_choix.json"},

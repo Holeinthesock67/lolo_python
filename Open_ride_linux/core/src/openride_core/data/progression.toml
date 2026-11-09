@@ -256,6 +256,10 @@ mass_delta_kg = 0.5
 cda_delta_pct = -3.0
 terrain = "flat"
 look = "wheels_disc"
+# Vent de travers (lot P34, V-Q13) : gain de CdA complet jusqu'à 10° de lacet du vent apparent, nul
+# au-delà de 20° (vent de 15 km/h de côté à 35 km/h) ; moins bonne que les Profilées dès 13,3°.
+crosswind_fade_deg = 10.0
+crosswind_zero_deg = 20.0
 
 # Apparence seulement (aucun effet).
 [[items]]

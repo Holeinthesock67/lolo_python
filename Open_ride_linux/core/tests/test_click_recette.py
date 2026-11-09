@@ -101,3 +101,24 @@ def test_silent_left_unit_and_missing_step_are_reported():
     assert report["ok"] is False
     assert "SILENCES" in cr.report_text(report)
     assert InputEvent.MINUS_SHORT.value not in left["events"]
+
+
+def test_report_left_windows_and_lost_reminders():
+    """Lot K9 : fenêtres du boîtier gauche et rappels perdus, rapportés à 10 min."""
+    rec = cr.Recorder(Clock())
+    results = [cr.StepResult("rappel_20s", "r", True, 0.5, None, ""),
+               cr.StepResult("rappel_40s", "r", False, None, None, "non reçu")]
+    windows = [{"duration_s": 50.1, "cause": "verrou", "policy": "keep", "presses": 2, "keep_replies": 3},
+               {"duration_s": 300.0, "cause": "arrêt", "policy": "keep", "presses": 9, "keep_replies": 20}]
+    report = cr.build_report(rec, results, 20.0, windows, "keep")
+    left = report["left"]
+    assert (left["locks"], left["max_window_s"], left["reminders_lost"], left["lost_per_10min"]) == (1, 300.0, 1, 0.5)
+    text = cr.report_text(report)
+    assert 'click_reset_locked = "keep"' in text and "50 s (verrou)" in text and "1 sur 2" in text
+
+
+def test_verrou_option_overrides_config():
+    cfg = Config()
+    providers = cr.make_providers(cr.Recorder(Clock()), cfg, policy="keep")
+    assert [p.reset_locked for p in providers] == ["keep", "keep"]
+    assert [p.reset_locked for p in cr.make_providers(cr.Recorder(Clock()), cfg)] == ["reset", "reset"]

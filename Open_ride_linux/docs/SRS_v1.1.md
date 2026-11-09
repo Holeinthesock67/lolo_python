@@ -111,8 +111,8 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 | droit | Y | 6 | pause et reprise (lot N6) |
 | droit | Z | 7 | action du mode (spécification générale §7.1) |
 
-- **Verrou du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche se verrouille environ une minute après la connexion (message d'état `ff 05 00 ea 05`) et n'envoie plus ses boutons ; renvoyer `RideOn` n'y change rien. OpenRide le redémarre alors (octet `0x18`, `[drivers] click_reset_locked`, vrai par défaut) : il se reconnecte en 4 s environ et envoie de nouveau − et les flèches (essais sur le PC du 30 octobre 2026 : 20 « − » sur 21, 46 flèches sur 4 redémarrages). Le boîtier droit n'est pas concerné ; B y double « − » pour les quelques secondes de chaque redémarrage. Même verrou publié par BikeControl, zwiftboard et OpenRadlr (docs/RECHERCHE_CLICK_GAUCHE.md).
-- Événements normalisés (contrat IPC révision 1.3) : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`, `A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : sans effet, signalé pour + et − (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`) et expliqué à l'écran. Y et les flèches n'ont qu'un événement, quelle que soit la durée. Rôle de chaque bouton : spécification générale §7.1, seule référence. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
+- **Verrou du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche se verrouille environ une minute après la connexion (message d'état `ff 05 00 ea 05`) et n'envoie plus ses boutons ; renvoyer `RideOn` n'y change rien. OpenRide le redémarre alors (octet `0x18`, `[drivers] click_reset_locked = "reset"`, défaut ; le choix `"keep"` du lot K9 essaie d'abord de le garder déverrouillé) : il se reconnecte en 4 s environ et envoie de nouveau − et les flèches (essais sur le PC du 30 octobre 2026 : 20 « − » sur 21, 46 flèches sur 4 redémarrages). Le boîtier droit n'est pas concerné ; B y double « − » pour les quelques secondes de chaque redémarrage. Même verrou publié par BikeControl, zwiftboard et OpenRadlr (docs/RECHERCHE_CLICK_GAUCHE.md).
+- Événements normalisés (contrat IPC révision 1.3) : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`, `A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT` ; `Y_LONG` depuis la révision 1.11 (8 novembre, demi-tour en roulant). Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : sans effet, signalé pour + et − (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`) et expliqué à l'écran. Les flèches n'ont qu'un événement, quelle que soit la durée ; Y n'a pas de zone floue (moins de 0,9 s : `Y_SHORT`, sinon `Y_LONG`). Rôle de chaque bouton : spécification générale §7.1, seule référence. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s). Bouton maintenu, le Click V2 envoie une rafale d'appuis et de relâchements toutes les 0,2 à 0,3 s (constat R14 du 8 novembre 2026) : avec `click_repeat_gap_s` > 0, un nouvel appui du même bouton (+, −, A, Z ou Y) moins de `click_repeat_gap_s` après son relâchement continue l'appui en cours. Par défaut 0 (sans regroupement) : à l'essai du 8 novembre (`click_recette --appuis-longs`), les maintiens arrivent en trames « appuyé » continues, sans rafale, et 0,35 s fondait 5 appuis rapides (relâchements de 90 à 130 ms) en un appui long. La rafale compte pour un seul appui, long si elle dure 900 ms ou plus du premier appui au dernier relâchement ; plus courte, elle rend un appui court par tape. L'événement est donc publié `click_repeat_gap_s` après le relâchement.
 - Repli : le clavier produit les mêmes événements, touche pour touche et avec les mêmes seuils, selon le tableau du clavier de la spécification générale §7.1 (décision D6, lot O17) : `engine/scripts/key_map.gd` dans la fenêtre de l'engine, `TERMINAL_KEYS` (`input_providers.py`) dans le terminal du core, qui ne mesure pas la durée et prend les synonymes pour les appuis longs.
 
 ### 4.3 Braquets virtuels
@@ -364,7 +364,7 @@ grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
 trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce nombre de secondes (lot Q5)
 resend_s = 2.0               # la consigne est renvoyée au moins toutes les resend_s secondes ; une valeur plus grande (10 à 15) limite les écritures SIM_PARAMS quand la pente dérive peu
-control = "sim"              # menu « Pilotage du trainer » : "sim" (défaut, revenu en 1.0.2 le 2 novembre : pente 0x11, le trainer simule l'élan et le rend après un sprint) ou "resistance" (le core calcule la force de la route au volant et envoie un niveau 0x04, lots RC1-RC3 ; tournait dans le vide à basse vitesse sur le plat, essai du 2 novembre : k se corrige aussi sous 30 W, frein sans effet 8 s = contrôle repris, deux fois au plus, puis SIM du trainer jusqu'à la fin de la séance ; ligne « FTMS ~ mesures » toujours écrite dans ce mode) ; le mode « power » des essais 7rc2 est retiré
+control = "sim"              # menu « Pilotage du trainer » : "sim" (défaut, revenu en 1.0.2 le 2 novembre : pente 0x11, le trainer simule l'élan et le rend après un sprint) ou "resistance" (le core calcule la force de la route au volant et envoie un niveau 0x04, lots RC1-RC3 ; tournait dans le vide à basse vitesse sur le plat, essai du 2 novembre : k se corrige aussi sous 30 W, frein sans effet 8 s = contrôle repris, deux fois au plus, puis SIM du trainer jusqu'à la fin de la séance ; ligne « FTMS ~ mesures » toujours écrite dans ce mode ; lot RC5, recette du 7 novembre : k gelé niveau en butée et 1 s après un changement de niveau, niveau calculé sur la vitesse du volant lissée 1,5 s, montée bornée à 20 % de la plage par seconde) ; le mode « power » des essais 7rc2 est retiré
 resistance_n_per_pct_kmh = 0.036  # frein du trainer en mode résistance : force par % et par km/h du volant (N), étalonnage 7rc1 (F = k × niveau × v), corrigée en roulant
 resistance_inertia_pct = 0.0  # mode résistance : part de l'inertie m × a (masse du profil) ajoutée quand le volant accélère, 0 à 100 %, jamais rendue ; coupée par défaut (essai 7rc3 à 50 % : 3,5, durcit et retarde)
 
@@ -384,10 +384,11 @@ click_address = ""          # boîtier « + » du Click (openride-core devices -
 click_minus_address = ""    # boîtier « − » du Click
 click_short_max_s = 0.5
 click_long_min_s = 0.9
+click_repeat_gap_s = 0.0    # > 0 : un réappui du même bouton plus tôt que ce délai continue l'appui en cours (R14) ; 0 : sans regroupement
 click_trace_raw = false      # trace brute de chaque notification du Click (lot Q6)
 click_mute_after_s = 60.0    # boîtier déclaré muet sans appui depuis ce délai (lot Q6)
 click_rehandshake_s = 0.0    # reprise d'un boîtier muet, en secondes entre deux étapes ; 0 : jamais (lot Q6)
-click_reset_locked = true    # redémarrer le boîtier gauche verrouillé par Zwift (octet 0x18) ; false : le laisser muet
+click_reset_locked = "reset" # boîtier gauche verrouillé par Zwift : "reset" (octet 0x18), "keep" (maintien ff 04 00, lot K9) ou "off" (le laisser muet)
 mock_replay = ""             # chemin facultatif d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
 hr = "none"                  # ceinture cardio : "none", "ble" ou "sim"
 hr_address = ""
@@ -407,6 +408,8 @@ draft_gauge = "off"  # jauge d'abri au-dessus du bot qui t'abrite : off, on (« 
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 biome = "auto"           # biome du décor (lot U16, « Biome du décor ») : auto (biomes du parcours) ou un des seize biomes, forcé sur tout le parcours
 texture_level = "auto"   # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high (« Textures du décor »)
+day_night = "off"       # jour et nuit (lot P19, « Jour et nuit ») : off (soleil fixe), theme (heure du thème), real (heure du PC) ou accelerated (une journée en une heure)
+seasons = "off"         # saisons (lot P19, « Saisons ») : off (l'été), theme, date (selon la date et l'hémisphère), spring, summer, autumn ou winter
 theme_library_gb = 5 # plafond des packs de thèmes de ~/OpenRide/Themes, de 1 à 50 Go (lot U15) : theme-install retire le moins récemment utilisé ; menu : Avancé, lot O27
 
 [ipc]
@@ -428,10 +431,10 @@ network = true       # false : cache seulement (menu : Avancé, lot O27)
 prefetch_history = true
 prefetch_radius_km = 10.0
 [wind]
-mode = "off"                 # "off" (défaut), "fixed", "gusty" ou "theme" (vent du thème 1.2)
+mode = "off"                 # "off" (défaut), "fixed", "gusty", "theme" (vent du thème 1.2) ou "local" (météo du jour, Open-Meteo, lot P33)
 speed_kmh = 0                # 0 à 60
 from_deg = 270               # d'où vient le vent, degrés depuis le nord (0 à 360) ; réglable dans le menu par pas de 45
-gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme" ; réglable dans le menu
+gust_pct = 0                 # 0 à 100, rafales du mode "gusty" ("theme" et "local" ont les leurs) ; réglable dans le menu
 seed = 0                     # graine des rafales, pour rejouer une séance
 feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11) ; menu : « Ressenti du vent »
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
@@ -449,7 +452,7 @@ enabled = true               # niveau, pièces, équipement et Garage (série V)
 standing_grade_pct = 8.0     # l'avatar se met en danseuse au-dessus de cette pente (3 à 15 %, lot V6)
 standing_power_pct = 150.0   # ou de cette puissance, en % de la FTP (100 à 300)
 [powerups]
-mode = "on"                  # "on" (défaut) ou "off" : bonus et arches du mode classique (série T)
+mode = "classiques"          # "off", "classiques" (défaut) ou "tactiques" (série TT, 4.0) ; l'ancien "on" vaut "classiques"
 [bots]
 level_pct = 100              # niveau des bots à profil, 50 à 150 % de la FTP par pas de 5 ; réglable dans le menu (lot T13)
 [ride]
@@ -497,7 +500,7 @@ Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
 
 La section `[progression]` (lot V11) coupe, avec `enabled = false`, l'équipement, le message `progression` et le bilan `xp_result`. La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
 
-La section `[powerups]` (lot T7) coupe les bonus du mode classique (`mode = "off"` : ni arche, ni réserve, ni champ `powerup` dans la trame) ; les segments, records et maillots restent. Option « Bonus » du menu (clé `powerups.mode` de `set_setting`). Les valeurs des bonus sont dans `~/OpenRide/powerups.toml` (lot T6).
+La section `[powerups]` (lot T7, trois choix depuis le lot TT1) coupe les bonus du mode classique (`mode = "off"` : ni arche, ni réserve, ni champ `powerup` dans la trame), garde ceux de la 2.0 (`classiques`, défaut) ou ajoute les bonus tactiques (`tactiques`, lot TT2 ; d'ici là, comme `classiques`) ; les segments, records et maillots restent. Option « Bonus » du menu (clé `powerups.mode` de `set_setting`). Les valeurs des bonus sont dans `~/OpenRide/powerups.toml` (lot T6).
 
 La section `[bots]` (lot T13) donne le niveau des bots à profil : `level_pct` (50 à 150, défaut 100) est le pourcentage de ta FTP visé par le calibrage. Au départ de la séance, le core simule le parcours au pas de 0,5 s et ajuste la CP de chaque bot à profil pour qu'il finisse dans le temps d'un cycliste de ta masse roulant à ce niveau. Réglage « Niveau des bots » du menu (clé `bots.level_pct`, pas de 5) ; un bot choisi au menu à 90, 100 ou 110 % garde son propre niveau.
 

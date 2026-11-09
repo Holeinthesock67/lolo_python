@@ -28,7 +28,7 @@ extends RefCounted
 ##   fréquence de la note jusqu'au 6e champ, en ratio constant : sifflet, « boing », trombone triste) et
 ##   `noise` (bruit passé au filtre de la fréquence de la note : craquement, éclaboussure, rafale) ; les
 ##   `wtf_*` sont choisis par wtf/wtf_sound_model.gd. `jingle_elim` et `jingle_winner` (lot DS5) : rendus par survivor_hud_model.gd à chaque
-##   message `elimination` nouveau. Synthèse : sound_player.gd ; remplaçables par ~/OpenRide/Sounds/<nom>.ogg.
+##   message `elimination` nouveau. `track_bell`, `track_gun` et `track_crowd` (lot VD9) : vélodrome. Synthèse : sound_player.gd ; remplaçables par ~/OpenRide/Sounds/<nom>.ogg.
 
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 
@@ -64,6 +64,14 @@ const JINGLES := {
 	"jingle_elim": [[0.0, G5, 0.14, 0.6, "tone"], [0.16, C5, 0.45, 0.6, "tone"]],
 	"jingle_winner": [[0.0, C6, 0.1, 0.55, "tone"], [0.11, E6, 0.1, 0.55, "tone"], [0.22, G6, 0.1, 0.55, "tone"],
 		[0.33, C7, 1.2, 0.45, "bell"], [0.33, C6, 0.9, 0.4, "tone"]],
+	# Vélodrome (lot VD9) : cloche du dernier tour (coups rapides répétés), pistolet du départ (claquement de
+	# bruit), public qui monte au sprint (rumeur de bruit en vagues qui se chevauchent) ; rendus par
+	# track/track_hud_model.gd sounds().
+	"track_bell": [[0.0, E6, 0.35, 0.55, "bell"], [0.18, E6, 0.35, 0.55, "bell"], [0.36, E6, 0.35, 0.55, "bell"],
+		[0.54, E6, 0.35, 0.55, "bell"], [0.72, E6, 0.7, 0.55, "bell"]],
+	"track_gun": [[0.0, C7, 0.05, 0.8, "noise"], [0.0, C6, 0.35, 0.6, "noise"], [0.03, C5, 0.6, 0.35, "noise"]],
+	"track_crowd": [[0.0, G5, 0.9, 0.35, "noise"], [0.25, C6, 1.0, 0.45, "noise"], [0.55, E6, 1.1, 0.5, "noise"],
+		[0.9, C6, 1.2, 0.5, "noise"]],
 	# Mode WTF (lot WTF7) : un son par début de gag, puis les à-côtés (craquement d'un œuf, éclaboussure du
 	# fromage, cloche du chef, manches des micro-défis), la fin d'un gag (gagné : arpège ; raté : trombone
 	# triste) et les règles permanentes (Katamari « pop » et « boing », klaxon de la mamie, poissons).

@@ -92,6 +92,8 @@ class RenderConfig:
     biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des seize de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
     texture_level: str = "auto"    # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high
+    day_night: str = "off"   # jour et nuit (lot P19) : off (soleil fixe d'aujourd'hui), theme, real (heure du PC) ou accelerated
+    seasons: str = "off"     # saisons (lot P19) : off (l'été d'aujourd'hui), theme, date, spring, summer, autumn ou winter
 
 
 @dataclass
@@ -114,10 +116,11 @@ class DriversConfig:
     click_minus_address: str = ""  # boîtier « − » du Click (vide : l'autre boîtier trouvé)
     click_short_max_s: float = 0.5
     click_long_min_s: float = 0.9
+    click_repeat_gap_s: float = 0.0  # > 0 : rafale du bouton maintenu = un seul appui (essai 08/11 : 0,35 fond les appuis rapides)
     click_trace_raw: bool = False
     click_mute_after_s: float = 60.0
     click_rehandshake_s: float = 0.0
-    click_reset_locked: bool = True   # redémarrer le boîtier gauche verrouillé par Zwift (octet 0x18)
+    click_reset_locked: str = "reset"  # verrou du boîtier gauche : "reset" (0x18), "keep" (essai D, lot K9) ou "off"
     mock_replay: str = ""          # chemin d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
     hr: str = "none"               # ceinture cardio : "none", "ble" ou "sim"
     hr_address: str = ""           # adresse MAC de la ceinture (vide : recherche par nom ou service)
@@ -144,10 +147,10 @@ class OpenWorldConfig:
 @dataclass
 class WindConfig:
     """Vent du core (lot P2, SRS §5 et §11) ; coupé par défaut dans les versions 1.x."""
-    mode: str = "off"              # "off", "fixed", "gusty" ou "theme" (vent du thème 1.2)
+    mode: str = "off"              # "off", "fixed", "gusty", "theme" (vent du thème 1.2) ou "local" (météo du jour, P33)
     speed_kmh: float = 0.0
     from_deg: float = 270.0        # d'où vient le vent, degrés depuis le nord
-    gust_pct: float = 0.0          # amplitude des rafales (modes "gusty" et "theme")
+    gust_pct: float = 0.0          # amplitude des rafales (mode "gusty" ; "theme" et "local" ont les leurs)
     seed: int = 0                  # graine des rafales
     feel: str = "grade"            # "grade" (supplément de pente) ou "ftms" (champ vent de 0x11)
     max_grade_offset_pct: float = 4.0   # borne du supplément de pente, réglable dans le menu
@@ -195,7 +198,10 @@ class RogueConfig:
 @dataclass
 class PowerupsConfig:
     """Bonus du mode classique (série T, lots T6 et T7) ; valeurs dans `~/OpenRide/powerups.toml`."""
-    mode: str = "on"               # "on" ou "off" (ni arche ni réserve ; segments toujours chronométrés)
+    # "off" (ni arche ni réserve ; segments toujours chronométrés), "classiques" (Plume, Casque, Puissance,
+    # comportement de la 2.0) ou "tactiques" (les sept bonus de la série TT) ; contrat IPC 1.13 (lot TT1).
+    # L'ancien "on" est lu comme "classiques" (`_merge`).
+    mode: str = "classiques"
 
 
 @dataclass
@@ -358,6 +364,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("render", "theme_library_gb"): (1, 50),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
+    ("drivers", "click_repeat_gap_s"): (0, 1),
     ("open_world", "cache_max_gb"): (0.5, 500),
     ("open_world", "horizon_m"): (1000, 10000),
     ("open_world", "offer_m"): (50, 2000),
@@ -422,15 +429,18 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "draft_gauge"): ("off", "on"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
+    ("render", "day_night"): ("off", "theme", "real", "accelerated"),
+    ("render", "seasons"): ("off", "theme", "date", "spring", "summer", "autumn", "winter"),
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),
-    ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
+    ("drivers", "click_reset_locked"): ("reset", "keep", "off"),   # zwift_click.LOCK_POLICIES
+    ("wind", "mode"): ("off", "fixed", "gusty", "theme", "local"),
     ("wind", "feel"): ("grade", "ftms"),
     ("trainer", "control"): ("sim", "resistance"),
     ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),
     ("render", "biome"): ("auto", *BIOMES),
-    ("powerups", "mode"): ("on", "off"),
+    ("powerups", "mode"): ("off", "classiques", "tactiques"),
     ("ride", "auto_draft"): ("on", "off"),
     ("depart", "mode"): ("pedalage", "immediat"),
     ("ride", "vehicle_draft"): ("on", "off"),
@@ -502,6 +512,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
     ("drivers", "click_long_min_s"): "seuils d'appui du Click",
+    ("drivers", "click_repeat_gap_s"): "seuils d'appui du Click",
     ("drivers", "click_mute_after_s"): "alerte de boîtier muet",
     ("drivers", "click_rehandshake_s"): "reprise d'un boîtier muet",
     ("drivers", "click_reset_locked"): "boîtier gauche verrouillé par Zwift",
@@ -607,6 +618,9 @@ def _merge(dc: Any, data: dict[str, Any], source: str = "config.toml", section: 
         if key not in known:
             name = f"[{section}] {key}" if section else f"[{key}]"
             log.warning("%s : clé inconnue %s ignorée (faute de frappe ?)", source, name)
+    if section == "drivers" and isinstance(data.get("click_reset_locked"), bool):
+        # Booléen d'avant le lot K9 : true = "reset", false = "off" (même effet qu'avant).
+        data = {**data, "click_reset_locked": "reset" if data["click_reset_locked"] else "off"}
     for f in fields(dc):
         if f.name not in data:
             continue
@@ -621,6 +635,8 @@ def _merge(dc: Any, data: dict[str, Any], source: str = "config.toml", section: 
                 setattr(dc, f.name, _convert(current, value, f"{source}, [{section}] {f.name}"))
             except ConfigError as exc:
                 raise ConfigError(str(exc), section=section, key=f.name) from None
+    if section == "powerups" and getattr(dc, "mode", None) == "on":
+        dc.mode = "classiques"   # valeur de la 2.0 (`on` / `off`), lue comme le jeu `classiques` (lot TT1)
     if section == "trainer" and "grade_rate_pct_per_s" in data:
         if "grade_rate_up_pct_per_s" not in data and "grade_rate_down_pct_per_s" not in data:
             log.warning(

@@ -10,7 +10,7 @@
    (cycliste virtuel), assez longue pour aller jusqu'au sommet, avec des captures prises à des distances
    choisies (`--at-m`), scénario `nominal` : début de parcours (150 et 400 m, après le compte à rebours) et
    approche du panneau
-   du sommet (80, 50 et 30 m avant, en 1920×1080 pour que son nom se lise). Le sommet est le point le plus
+   du sommet (100, 70, 50, 40 et 30 m avant, en 1920×1080 pour que son nom se lise). Le sommet est le point le plus
    haut de la route ; un parcours sans montée n'a que les captures du début.
 3. `menu_bench.py --scenario parcours_demo --captures ecrans` : liste des parcours avec leurs quatre noms et
    écran « Prêt » de chacun.
@@ -37,7 +37,7 @@ ENGINE_DIR = TESTS_DIR.parent
 REPO = ENGINE_DIR.parent
 ROUTES = ("demo", "demo-biomes-tour", "demo-biomes-cote", "demo-biomes-alpin")   # tour gravel : recette seule (9 novembre)
 START_MARKS_M = (150.0, 400.0)
-SUMMIT_BEFORE_M = (80.0, 50.0, 30.0)
+SUMMIT_BEFORE_M = (100.0, 70.0, 50.0, 40.0, 30.0)   # plusieurs : un spectateur peut cacher le panneau (r811c)
 MIN_CLIMB_M = 30.0                 # dénivelé sous lequel le parcours n'a pas de sommet à montrer
 LOAD_S = 90.0                      # chargement, compte à rebours et départ au pédalage
 RIDE_MARGIN = 1.3                  # vitesse moyenne sous la vitesse tenue (départ, pentes) : r811b roulait 48 km/h

@@ -7,7 +7,8 @@
 L'engine réel tourne avec le faux core de visual_check.py (Xvfb, ou l'écran avec --native) sur le parcours
 de démonstration et passe par les cas de CAS : SIM simple, vent et abri, bots avec segment et bonus, ERG
 avec une cible courte ou longue, palier de 50 W (FreeRide, lot O19), palier d'un test de FTP avec la FTP provisoire, courbes réduites et complètes, teintes des
-zones de puissance et de FC, valeurs extrêmes. Sur chaque
+zones de puissance et de FC, valeurs extrêmes, Grand Prix des objets (lot GP8 : HUD complet, attaque,
+orage et roulette, 12 coureurs, bilan). Sur chaque
 capture : panneaux dans l'écran et sans chevauchement, textes dans leur colonne, hauteur et contraste des
 chiffres (hud_lisibilite.py), texte attendu des valeurs. Sortie : une capture par cas et par
 configuration, une planche par configuration (`planche_<config>.png`, cas dans l'ordre de CAS, trois par
@@ -63,6 +64,38 @@ def _bots(s_now: float) -> list[dict[str, Any]]:
             for b in vc.PROFILE_BOTS]
 
 
+# Grand Prix des objets (lot GP8, maquettes GP6 scènes 3, 4, 6 et 7) : bots de la scène 6 (écart au cycliste en s,
+# objet tenu, effets en cours) placés à `ds` mètres du cycliste ; objets de `gp.obj` donnés en mètres devant lui.
+GP_BOTS = [("Grimpeur", 60.0, 6.4, "bell", []), ("Rouleur", 40.0, 4.3, None, []), ("Sprinteur", -6.0, -0.6, "bottle", []),
+           ("Diesel", -60.0, -6.4, None, ["musette"])]
+GP_BASE = {"place": 3, "of": 5, "gap_s": 2.1, "held": "musette_x3", "n": 3, "roll_s": 0.0, "lane": 1, "auto": False,
+           "fx": [], "warn": None, "obj": [], "boxes": [], "pick": True, "lap": [2, 3]}
+
+
+def _gp_bots(s_now: float, count: int = 0) -> list[dict[str, Any]]:
+    """Bots du Grand Prix : ceux de la scène 6, ou `count` bots en file (cas des 12 coureurs)."""
+    if count:
+        items = ["gel", "bottle", None, "musette", "bell", None, "homing", "star", None, "storm", "team_car"]
+        return [{"id": f"g{i}", "name": f"Coureur {i + 1}", "s": s_now + 120.0 - 30.0 * i, "v": 0.0, "kind": "constant",
+                 "gap_s": (120.0 - 30.0 * i) / 10.0, "item": items[i % len(items)], "fx": ["bottle"] if i == 9 else []}
+                for i in range(count)]
+    return [{"id": f"g{i}", "name": n, "s": s_now + ds, "v": 0.0, "kind": "constant", "gap_s": gap, "item": item, "fx": fx}
+            for i, (n, ds, gap, item, fx) in enumerate(GP_BOTS)]
+
+
+def _gp(s_now: float, spec: dict[str, Any]) -> dict[str, Any]:
+    gp = GP_BASE | {k: v for k, v in spec.items() if k != "obj_ahead"}
+    gp["obj"] = [[i + 1, kind, round(s_now + ds, 1), lane] for i, (kind, ds, lane) in enumerate(spec.get("obj_ahead", []))]
+    return gp
+
+
+GP_SUMMARY = {"duration_s": 1455.0, "distance_m": 15200.0, "avg_power_w": 246.0, "fit_path": "/tmp/openride/seance.fit",
+              "gp": {"place": 2, "of": 5, "launched": {"gel": 2, "musette_x3": 1, "bottle": 1},
+                     "received": {"homing": 1, "bottle": 1}, "dodged": 4,
+                     "gained_s": {"gel": 7.6, "musette_x3": 5.2, "bottle": 2.1}, "lost_s": {"homing": 3.9, "bottle": 3.7},
+                     "distance_km": 15.2}}
+
+
 # Cas : nom, valeurs de la trame `state` (par-dessus SIM), textes attendus des widgets, zones attendues des
 # teintes (zones, de 1 à 7), widgets visibles ou cachés, taille des courbes (chart, None : courbes cachées)
 # et attente avant la capture.
@@ -101,10 +134,40 @@ CAS: list[dict[str, Any]] = [
     {"name": "erg_courbes_completes", "state": {"mode": "ERG", "erg": _erg(230.0, 100)}, "chart": "full", "wait": 7.0,
      "shown": ["chart_erg"], "hidden": ["profile"]},
     {"name": "sim_courbes", "state": {}, "chart": "full", "wait": 7.0, "shown": ["chart_sim", "profile"]},
+    # Épreuves de piste (lot VD9) : bandeau, tours et liste à la place de la ligne d'état et du profil
+    {"name": "piste_points", "state": {"track": {
+        "event": "points", "t_s": 412.0, "lap": 23, "laps": 40, "laps_to_go": 17, "bell": False,
+        "ranking": ["b1", "me", "b2", "b3"], "points": [14, 11, 8, 5], "eliminated": [], "finished": False,
+        "laps_up": 0, "my_lap": 23, "next_sprint_lap": 25}},
+     "hidden": ["profile", "status"]},
+    {"name": "piste_elimination_dernier", "state": {"track": {
+        "event": "elimination", "t_s": 200.0, "lap": 6, "laps": 24, "laps_to_go": 18, "bell": True,
+        "ranking": ["b1", "b2", "me", "b3"], "points": None, "eliminated": ["b3"], "finished": False,
+        "to_elim_m": 180.0, "gap_last_s": 0.4, "last": "me", "alive": 3}},
+     "hidden": ["profile", "status"]},
+    {"name": "piste_poursuite", "state": {"track": {
+        "event": "pursuit", "t_s": 150.0, "lap": 9, "laps": 16, "laps_to_go": 8, "bell": False, "ranking": ["me", "b1"],
+        "points": None, "eliminated": [], "finished": False, "d_m": 2125.0, "to_go_m": 1875.0, "gap_m": 12.0,
+        "gap_s": 0.84, "lead": None}},
+     "hidden": ["profile", "status"]},
     {"name": "valeurs_extremes", "state": {"power": 1999.0, "power_3s": 1999.0, "cadence": 199.0, "hr": 199,
                                            "grade": -19.9, "grade_sent": -19.9, "mode": "ERG",
                                            "erg": _erg(1999.0, 150)},
      "texts": {"power": "1999"}},
+    # Grand Prix des objets (lot GP8) : HUD complet (maquette 6), attaque (maquette 3), orage, roulette et
+    # super-forme (maquette 4), 12 coureurs (lot GP10), bilan (maquette 7, en dernier : écran de fin de séance)
+    {"name": "gp_hud", "gp": {"obj_ahead": [("bottle", 60.0, 1)]},
+     "expect": {"item": "musette_x3", "key": "Z : Trois musettes", "place": "3e / 5", "warn": "",
+                "hint": "Bidon glissant en vue : A ou ← →"}, "hidden": ["bots_panel"]},
+    {"name": "gp_attaque", "gp": {"n": 2, "warn": ["homing", 42.0], "obj_ahead": [("homing", -42.0, 1), ("bottle", 25.0, 0)]},
+     "expect": {"warn": "Musette guidée derrière !", "outline": True}},
+    {"name": "gp_orage_roulette", "gp": {"roll_s": 1.2, "held": None, "n": 0, "fx": [["star", 5.2]], "auto": True,
+                                         "lane": 2, "pick": False, "obj_ahead": [("storm", 140.0, -1)]},
+     "expect": {"warn": "Orage vers le premier", "outline": False, "hint": "← → : voie"}},
+    {"name": "gp_12_coureurs", "gp": {"place": 9, "of": 12, "gap_s": 3.0, "held": "homing", "n": 1, "lap": None},
+     "gp_count": 11, "expect": {"place": "9e / 12", "key": "Z : Musette guidée"}},
+    {"name": "gp_bilan", "state": {"session_state": "FINISHED", "summary": GP_SUMMARY},
+     "texts_contains": {"menu": "Grand Prix des objets : 2e sur 5"}},
 ]
 
 
@@ -128,9 +191,16 @@ def _cases(s: vc.Session, names: list[str] | None) -> None:
         if chart != core.chart:
             core.chart = chart
             core.send_hello_ack()
-        state = dict(SIM) | cas["state"]
+        state = dict(SIM) | cas.get("state", {})
         if cas.get("bots"):
             state["bots"] = _bots(core.current_s())
+        if "gp" in cas:
+            gp = _gp(core.current_s(), cas["gp"])
+            if gp.get("lap") is None:
+                gp.pop("lap")
+            state |= {"gp": gp, "bots": _gp_bots(core.current_s(), cas.get("gp_count", 0)), "summary": None}
+        else:
+            state["gp"] = None
         core.set_scene(speed=7.0 if chart else 0.0, **state)
         time.sleep(cas.get("wait", vc.SETTLE_S))
         shot = s.capture(cas["name"])
@@ -140,6 +210,11 @@ def _cases(s: vc.Session, names: list[str] | None) -> None:
         w = info["widgets"]
         if cas.get("texts"):
             s.check_texts(cas["name"], info, cas["texts"])
+        if cas.get("texts_contains"):
+            s.check_texts(cas["name"], info, cas["texts_contains"], contains=True)
+        gp_info = info.get("grandprix", {})
+        for key, want in cas.get("expect", {}).items():
+            s.check(cas["name"], f"Grand Prix : {key} = {want!r}", gp_info.get(key) == want, f"affiché {gp_info.get(key)!r}")
         for key, zone in cas.get("zones", {}).items():
             s.check(cas["name"], f"{key} teinté en zone {zone}", zone_color_ok(w[key]["color"], zone),
                     f"teinte #{w[key]['color']}")

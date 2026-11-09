@@ -6,7 +6,7 @@
     {"choisir": "demo"},
     {"choisir": "ride"},
     {"choisir": "start"},
-    {"journal": "core", "motif": "-> RUNNING", "delai": 10},
+    {"journal": "core", "motif": "-> RUNNING", "delai": 20},
     {"attendre": 30},
     {"commande": "end_session", "args": {"save": true}},
     {"ecran": "summary", "delai": 15},

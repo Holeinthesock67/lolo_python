@@ -31,6 +31,8 @@ uniform float sun_curve : hint_range(0, 1) = 0.15;
 uniform float exposure : hint_range(0, 128) = 1.0;
 
 // Nuages
+// Nuit (lot P19) : étoiles de 0 (jour, rien de plus à calculer) à 1 (nuit noire), cachées par les nuages
+uniform float stars : hint_range(0, 1) = 0.0;
 uniform float coverage : hint_range(0, 1) = 0.0;
 uniform vec4 cloud_color : source_color = vec4(0.957, 0.969, 0.984, 1.0);
 uniform float altitude_m = 2000.0;
@@ -110,6 +112,13 @@ void sky() {
 	float v_angle = clamp(EYEDIR.y, -1.0, 1.0);
 	vec3 sky = mix(sky_top_color.rgb, sky_horizon_color.rgb, clamp(pow(1.0 - v_angle, 0.6 / sky_curve), 0.0, 1.0));
 	sky *= sky_energy;
+	if (stars > 0.0 && EYEDIR.y > 0.0) {
+		// Une étoile au plus par case d'environ 0,3° ; éclat tiré de la case, plus faible près de l'horizon
+		vec3 cell = floor(EYEDIR * 380.0);
+		float h = _hash21(cell.xy + cell.z * 17.31);
+		float star = smoothstep(0.9965, 1.0, h) * smoothstep(0.0, 0.25, EYEDIR.y);
+		sky += vec3(0.9, 0.92, 1.0) * star * stars * 1.4;
+	}
 
 	// Nuages, avant le soleil : le disque solaire reste visible à travers une couche fine seulement
 	float alpha = 0.0;

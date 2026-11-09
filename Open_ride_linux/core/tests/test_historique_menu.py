@@ -62,3 +62,27 @@ def test_empty_history(home, monkeypatch):
     asyncio.run(s._send_history("list_history", {}, 6))
     (msg,) = of(frames, "history")
     assert msg["sessions"] == [] and msg["weeks"] == [] and msg["ftp_tests"] == []
+
+
+def test_history_sessions_carry_their_cards(home, monkeypatch):
+    """Lot BC6 (révision 1.8) : une séance qui a fait gagner des cartes de la collection porte leurs clés."""
+    rides(home)
+    s, frames = make(home, monkeypatch)
+    asyncio.run(s._send_history("list_history", {}, 3))
+    (msg,) = of(frames, "history")
+    cards = {x["id"]: x.get("cards") for x in msg["sessions"]}
+    assert cards == {"2025-10-12_10-00_demo.jsonl": ["ftp_premier"], "2025-10-09_10-00_demo.jsonl": ["premiere_seance"]}
+
+
+def test_history_without_collection_still_answers(home, monkeypatch):
+    """Une collection qui ne se calcule pas ne prive pas de l'historique (séances sans `cards`)."""
+    rides(home)
+    s, frames = make(home, monkeypatch)
+    import openride_core.ipc_lists as ipc_lists
+
+    def broken(*_a, **_k):
+        raise RuntimeError("catalogue illisible")
+    monkeypatch.setattr(ipc_lists, "collection_earned", broken)
+    asyncio.run(s._send_history("list_history", {}, 3))
+    (msg,) = of(frames, "history")
+    assert len(msg["sessions"]) == 2 and all("cards" not in x for x in msg["sessions"])

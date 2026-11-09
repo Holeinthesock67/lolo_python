@@ -71,6 +71,7 @@ extends RefCounted
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
+const RiddenDistance := preload("res://scripts/ridden_distance.gd")
 const SummaryViewModel := preload("res://scripts/summary_view_model.gd")
 const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
@@ -94,6 +95,7 @@ const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level
 const SURVIVOR_PREFIX := "Survivant : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
+const CollectionViewModel := preload("res://scripts/collection_view_model.gd")
 const CoachViewModel := preload("res://scripts/coach_view_model.gd")
 const ContentsViewModel := preload("res://scripts/contents_view_model.gd")
 
@@ -132,8 +134,6 @@ const FTP_TESTS := [
 	["ramp", "Rampe", "≈ 25 min : +20 W par minute jusqu'à ne plus tenir ; FTP = 75 % de la meilleure minute",
 		"test de FTP (rampe)"]]
 const FTP_HINT := "Sur une boucle : l'arrivée d'un parcours arrête le test"
-## Avertissements du test de FTP (summary.ftp_test.warnings), comme `openride-core ftp-test`.
-const FTP_WARNINGS := HistoryViewModel.FTP_WARNINGS
 const SUMMARY_BASE_IDS := ["new_session", "details", "quit"]
 ## Ligne d'état de l'écran de pause selon `state.pause_reason` (contrat IPC) : le HUD est caché pendant
 ## un menu, la raison de la pause s'affiche donc sous le titre. Pause demandée (`user`) : rien.
@@ -154,10 +154,12 @@ var menu = MenuModel.new()
 var catalog = CatalogModel.new()
 var summary_model = SummaryViewModel.new()
 var session_state: String = ""
-## Chiffres de la séance en cours pour la carte de la pause : durée (t), distance (s) de la dernière trame et
-## moyenne de la puissance mesurée en roulant (le core n'envoie pas de moyenne dans la trame d'état).
+## Chiffres de la séance en cours pour la carte de la pause : durée (t), distance parcourue (ridden_distance.gd,
+## croissante après un demi-tour, lot N17) et moyenne de la puissance mesurée en roulant (le core n'envoie pas de
+## moyenne dans la trame d'état).
 var _run_t := NAN
 var _run_s := NAN
+var _ridden = RiddenDistance.new()
 var _power_sum := 0.0
 var _power_n := 0
 ## Dernier bilan reçu (objet `summary` de la trame en FINISHED).
@@ -258,6 +260,8 @@ var start_wait: Dictionary = {}
 var profiles = ProfilesViewModel.new()
 ## Historique (lot O28) : séances, cumul par semaine, tests de FTP et bilan d'une séance passée.
 var history = HistoryViewModel.new()
+## Collection de cartes (série BC, lot BC5) : album par familles, carte agrandie, première ouverture.
+var collection = CollectionViewModel.new()
 ## Séance conseillée (série CO, lot CO5) : conseil du jour, détail du calcul, autre besoin, saisies.
 var coach = CoachViewModel.new()
 ## Contenus installables (lot O25) : écran « Réglages › Contenus ».
@@ -298,6 +302,12 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": HistoryViewModel.SESSION, "title": "Séance", "on_back": HistoryViewModel.SCREEN,
 		"items": HistoryViewModel.session_items()})
+	menu.add_screen({"id": CollectionViewModel.SCREEN, "title": "Collection", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": CollectionViewModel.CARD, "title": "Carte", "on_back": CollectionViewModel.SCREEN,
+		"items": []})
+	menu.add_screen({"id": CollectionViewModel.FIRST, "title": "Collection", "on_back": CollectionViewModel.SCREEN,
+		"items": CollectionViewModel.first_items()})
+	_refresh_collection()
 	for screen in [[CoachViewModel.SCREEN, "Séance conseillée", MenuModel.HOME],
 			[CoachViewModel.DETAIL, "Détail du calcul", CoachViewModel.SCREEN],
 			[CoachViewModel.NEED, "Choisir un autre besoin", CoachViewModel.SCREEN],
@@ -342,6 +352,7 @@ func _track_run(st: String, state: Dictionary) -> void:
 	if st in ["IDLE", "READY"]:
 		_run_t = NAN
 		_run_s = NAN
+		_ridden.reset()
 		_power_sum = 0.0
 		_power_n = 0
 		return
@@ -353,7 +364,9 @@ func _track_run(st: String, state: Dictionary) -> void:
 	if t is int or t is float:
 		_run_t = float(t)
 	if s is int or s is float:
-		_run_s = float(s)
+		var length = state.get("route_length_m", null)
+		_run_s = _ridden.push(float(s), float(t) if (t is int or t is float) else NAN,
+			float(length) if (length is int or length is float) else 0.0)
 	var p = state.get("power", null)
 	if st == "RUNNING" and (p is int or p is float) and float(p) >= 0.0 and float(p) < 3000.0:
 		_power_sum += float(p)
@@ -378,6 +391,10 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var rm: String = ride_mode_of(state)
 	var tw: int = int(round(float(erg.get("target_w", 0)))) if erg is Dictionary else 0
 	var cad: int = int(erg.get("cadence_target_rpm", 0)) if erg is Dictionary else 0
+	var u_turn_ok := u_turn_allowed_of(state)
+	if u_turn_ok != menu.u_turn_shown:   # entrée « Faire demi-tour » de la pause (lot N17)
+		menu.u_turn_shown = u_turn_ok
+		pause_changed = true
 	if rm != ride_mode or tw != erg_target_w or cad != cadence_target_rpm:
 		ride_mode = rm
 		erg_target_w = tw
@@ -396,7 +413,11 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	if rid != null and str(rid) != "" and str(rid) != menu.world_id:
 		menu.set_world(str(rid), str(route_names.get(str(rid), rid)))
 	if st == "FINISHED" and state.get("summary") is Dictionary:
+		# Courbe du bilan (lot N20) retirée d'une trame trop lourde par le core (allègement) : la dernière reçue reste.
+		var kept = summary.get("power_profile", null) if session_state == "FINISHED" else null
 		summary = state["summary"]
+		if kept != null and not summary.has("power_profile"):
+			summary = summary.merged({"power_profile": kept})
 	if st != session_state:
 		var prev := session_state
 		session_state = st
@@ -408,7 +429,7 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 			"FINISHED":
 				show_details = false
 				ftp_offer = summary["ftp_test"] if summary.get("ftp_test") is Dictionary else {}
-				summary_message = _ftp_text(ftp_offer)
+				summary_message = ""   # résultat du test au bandeau du bilan (summary_view.gd, lot N20)
 				_refresh_summary()
 				menu.open_screen(SUMMARY)
 			"IDLE", "READY":
@@ -553,6 +574,9 @@ func on_error(code: String, text: String) -> void:
 	if menu.current_screen() in HistoryViewModel.SCREENS and code == "bad_args":
 		history.message = "Échec : " + text
 		return
+	if menu.current_screen() in CollectionViewModel.SCREENS and code == "bad_args":
+		collection.message = "Échec : " + text
+		return
 	if menu.current_screen() in CoachViewModel.SCREENS and code == "bad_args":
 		coach.message = "Échec : " + text
 		return
@@ -560,7 +584,7 @@ func on_error(code: String, text: String) -> void:
 		contents.on_error(code, text)
 		_refresh_contents()
 		return
-	if (code == "bot_invalid" or (code == "bad_args" and menu.mode == "survivor")) and menu.current_screen() == MenuModel.READY:
+	if (code == "bot_invalid" or (code == "bad_args" and (menu.mode == "survivor" or menu.is_track()))) and menu.current_screen() == MenuModel.READY:
 		ready_message = "Échec : " + text
 		return
 	if _plan_request != "" and code in ["plan_invalid", "busy"]:
@@ -601,13 +625,14 @@ func set_routes(raw: Array) -> void:
 		route_tag = ""
 	var items: Array = catalog.route_items(raw, CatalogModel.ROUTE_SORTS[route_sort][0], route_tag)
 	if items.is_empty() and route_tag != "":
-		items.append({"id": "empty", "label": "Aucun parcours « %s »" % route_tag, "enabled": false})
+		items.append({"id": "empty", "label": "Aucun parcours « %s »" % CatalogModel.tag_label(route_tag), "enabled": false})
 	if not raw.is_empty():
 		items.append({"id": MenuModel.SORT_ROUTES_ID, "label": "Trier par : " + CatalogModel.ROUTE_SORTS[route_sort][1]})
 		if not tags.is_empty():
 			items.append({"id": MenuModel.FILTER_ROUTES_ID,
-				"label": "Étiquette : " + (route_tag if route_tag != "" else "toutes")})
+				"label": "Étiquette : " + (CatalogModel.tag_label(route_tag) if route_tag != "" else "toutes")})
 	menu.set_items(MenuModel.ROUTES, items)
+	menu.set_track_ids(CatalogModel.track_route_ids(raw))   # écran Prêt du vélodrome (lot VD10)
 	for r in raw:
 		if r is Dictionary and str(r.get("id", "")) != "":
 			route_names[str(r["id"])] = str(r.get("name", r["id"]))
@@ -709,7 +734,9 @@ func card(st: Dictionary) -> Dictionary:
 			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
 	if screen == MenuModel.PAUSE:
 		return CatalogModel.pause_sheet(_run_t, _run_s, _power_sum / _power_n if _power_n > 0 else -1.0)
-	if screen in [SUMMARY, HistoryViewModel.SESSION]:
+	if screen == SUMMARY:   # nom du parcours sous l'en-tête (lot N20) ; une run du Cyber-Rogue n'a pas de parcours
+		return {"title": "Bilan de la séance", "name": "" if summary.get("rogue") is Dictionary else menu.world_name}
+	if screen == HistoryViewModel.SESSION:   # parcours et date dans le titre de l'écran
 		return {"title": "Bilan de la séance"}
 	if screen in CoachViewModel.SCREENS:
 		return _coach_card(screen, focused)
@@ -887,22 +914,6 @@ func _refresh_plan_screen() -> void:
 
 
 ## Texte du bilan d'un test de FTP : nouvelle FTP, ancienne, avertissements ; "" sans test.
-static func _ftp_text(ftp: Dictionary) -> String:
-	if ftp.is_empty():
-		return ""
-	var text := "Test de FTP : aucune FTP calculable"
-	if ftp.get("ftp_w", null) != null:
-		text = "Nouvelle FTP : %d W" % int(ftp["ftp_w"])
-		if ftp.get("previous_ftp_w", null) != null:
-			text += " (avant %d W)" % int(ftp["previous_ftp_w"])
-	var warnings: Array[String] = []
-	for w in ftp.get("warnings", []):
-		warnings.append(str(FTP_WARNINGS.get(str(w), w)))
-	if not warnings.is_empty():
-		text += " ; " + ", ".join(warnings)
-	return text
-
-
 ## Message `xp_result` (répété par le core) : gardé pour le bloc « Progression » ; renvoie le texte du bandeau
 ## « Niveau N ! » la première fois qu'un passage de niveau est annoncé, sinon "".
 func on_xp_result(msg: Dictionary) -> String:
@@ -1321,6 +1332,11 @@ func _handle_event(event: String) -> Dictionary:
 			_refresh_history()
 			menu.push_screen(HistoryViewModel.SCREEN)
 			return {"action": "list_history"}
+		if str(act["id"]) == "collection":
+			collection.begin()
+			_refresh_collection()
+			menu.push_screen(CollectionViewModel.SCREEN)
+			return {"action": "list_collection"}
 		if str(act["id"]) == "coach":   # conseil recalculé à chaque ouverture (une séance vient peut-être de finir)
 			var request: Dictionary = coach.request()
 			_refresh_coach()
@@ -1335,6 +1351,8 @@ func _handle_event(event: String) -> Dictionary:
 		return _handle_garage(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in HistoryViewModel.SCREENS:
 		return _handle_history(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") in CollectionViewModel.SCREENS:
+		return _handle_collection(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") in CoachViewModel.SCREENS:
 		return _handle_coach(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
@@ -1891,8 +1909,10 @@ func on_history(msg: Dictionary) -> void:
 
 ## Bilan d'une séance passée (`history_session`) : ouvert dans le panneau du bilan de fin de séance.
 func on_history_session(msg: Dictionary) -> void:
-	if not history.on_session(msg) or menu.current_screen() != HistoryViewModel.SCREEN:
+	# Séance d'une carte de la collection (« Voir la séance », lot BC5) : même bilan, retour à la carte.
+	if menu.current_screen() not in [HistoryViewModel.SCREEN, CollectionViewModel.CARD] or not history.on_session(msg):
 		return
+	collection.message = ""
 	show_details = false
 	_refresh_history()
 	menu.push_screen(HistoryViewModel.SESSION)
@@ -1920,6 +1940,62 @@ func _handle_history(screen: String, item_id: String) -> Dictionary:
 			show_details = not show_details
 		elif item_id == "back":
 			menu.handle("Y_SHORT")
+	return {}
+
+
+## Collection (lot BC5) : réponse `collection` à `list_collection`. Première ouverture (`first_time`) sur
+## l'album : l'écran « n cartes déjà gagnées » s'ouvre une fois, et les cartes déjà gagnées sont notées vues
+## (action `collection_seen` renvoyée à main.gd) ; sinon, la ligne de l'accueil et l'album sont mis à jour.
+func on_collection(msg: Dictionary) -> Dictionary:
+	collection.on_collection(msg)
+	var act := {}
+	if collection.first_time and menu.current_screen() == CollectionViewModel.SCREEN:
+		act = {"action": "collection_seen", "keys": collection.open_first()}
+		_refresh_collection()
+		menu.push_screen(CollectionViewModel.FIRST)
+	_refresh_collection()
+	return act
+
+
+func _refresh_collection() -> void:
+	menu.set_collection_home(collection.home_detail())
+	menu.set_screen_items(CollectionViewModel.SCREEN, collection.items())
+	menu.set_screen_items(CollectionViewModel.CARD, collection.card_items(), collection.card_title())
+
+
+func _handle_collection(screen: String, item_id: String) -> Dictionary:
+	if screen == CollectionViewModel.SCREEN:
+		if not item_id.begins_with(CollectionViewModel.CARD_PREFIX):
+			return {}
+		var keys: Array = collection.open_card(item_id)
+		collection.message = ""
+		_refresh_collection()
+		menu.push_screen(CollectionViewModel.CARD)
+		return {"action": "collection_seen", "keys": keys} if not keys.is_empty() else {}
+	if screen == CollectionViewModel.FIRST and item_id == "open":
+		menu.handle("Y_SHORT")   # retour à l'album, sous l'écran de la première ouverture
+	elif screen == CollectionViewModel.CARD and item_id == "session":
+		var sid: String = history.request(HistoryViewModel.SESSION_PREFIX + collection.card_journal())
+		history.message = ""
+		if sid != "":
+			collection.message = "Chargement de la séance…"
+			return {"action": "history_session", "id": sid}
+	return {}
+
+
+## Fiche dessinée par collection_view.gd sur les écrans de la collection ({} ailleurs).
+func collection_view(st: Dictionary) -> Dictionary:
+	var screen := str(st["screen"])
+	if screen == CollectionViewModel.SCREEN and collection.loaded and not collection.cards.is_empty():
+		var focus := int(st.get("focus", -1))
+		var focused := str(st["items"][focus]["id"]) if focus >= 0 and focus < st["items"].size() else ""
+		return collection.album(focused)
+	if screen == CollectionViewModel.CARD:
+		return collection.card_view()
+	if screen == CollectionViewModel.FIRST:
+		return collection.first_view()
+	if screen == SUMMARY:   # carte gagnée par la séance qui vient de finir (lot BC6), pas sur un bilan de l'historique
+		return CollectionViewModel.announce_view(summary)
 	return {}
 
 
@@ -1969,6 +2045,17 @@ static func ride_mode_of(state: Dictionary) -> String:
 		"cadence":
 			return "cadence"
 	return ""
+
+
+## Demi-tour possible depuis la pause (lot N17, commande u_turn de la révision 1.9) : séance sur un parcours, hors
+## run Cyber-Rogue, monde ouvert (`ow:…`), Dernier survivant et Grand Prix des objets, mêmes refus que le core.
+static func u_turn_allowed_of(state: Dictionary) -> bool:
+	var rid = state.get("route_id", null)
+	if rid == null or str(rid) == "" or str(rid).begins_with("ow:"):
+		return false
+	if str(state.get("mode", "")) == "ROGUE" or state.get("open_world") is Dictionary:
+		return false
+	return not (state.get("survivor") is Dictionary or state.get("gp") is Dictionary)
 
 
 ## Valeur en cours d'une ligne de la pause (clé « pause.… »).
@@ -2101,6 +2188,10 @@ func state() -> Dictionary:
 	elif st["screen"] in HistoryViewModel.SCREENS:
 		st["status"] = history.message
 		st["status_error"] = history.message.begins_with("Échec")
+	elif st["screen"] in CollectionViewModel.SCREENS:
+		var on_album: bool = st["screen"] == CollectionViewModel.SCREEN   # l'album : total et nouvelles
+		st["status"] = collection.album_status() if on_album else collection.message
+		st["status_error"] = not on_album and collection.message.begins_with("Échec")
 	elif st["screen"] in CoachViewModel.SCREENS:
 		st["status"] = coach.status(str(st["screen"]))
 		st["status_error"] = coach.message.begins_with("Échec")
@@ -2110,6 +2201,9 @@ func state() -> Dictionary:
 	elif st["screen"] in ProfilesViewModel.SCREENS:
 		st["status"] = profiles.message
 		st["status_error"] = profiles.message.begins_with("Nom refusé") or profiles.message.begins_with("Nom vide")
+	if st["screen"] in [SUMMARY, HistoryViewModel.SESSION]:   # bilan en tuiles (lot N20) : noms des records, FTP
+		st["segment_names"] = records.segment_names()
+		st["ftp_w"] = _ftp_w()
 	if st["screen"] == ProfilesViewModel.NAME:
 		st["grid"] = {"columns": ProfilesViewModel.GRID_COLUMNS, "text": profiles.name_text}
 	elif st["screen"] == MenuModel.PAUSE:
@@ -2118,6 +2212,7 @@ func state() -> Dictionary:
 			st["status"] = PAUSE_WORKOUT_DONE
 	st["card"] = card(st)
 	st["preview"] = garage_preview(st)
+	st["collection"] = collection_view(st)
 	st["progress"] = progress_view() if st["screen"] == SUMMARY else {}
 	st["editing"] = not settings.editing.is_empty()
 	return st
