@@ -1,0 +1,982 @@
+[
+ {
+  "scenario": "quitter_1",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 42.5,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.6 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 11.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code -6 en 7.2 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_2",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 42.7,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 11.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code -6 en 7.4 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_3",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 41.8,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 11.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code -6 en 6.8 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_4",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 43.1,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.6 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 11.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code -6 en 8.2 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_5",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 42.7,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.6 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 11.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code -6 en 7.4 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_6",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 42.2,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.6 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 11.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code -6 en 7.8 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_7",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 42.5,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.5 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 11.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code -6 en 7.6 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_8",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 42.8,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.6 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 11.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code -6 en 7.8 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_9",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 42.3,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.4 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 11.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code -6 en 7.8 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ },
+ {
+  "scenario": "quitter_10",
+  "voie": "souris",
+  "echecs": 1,
+  "duree_s": 42.3,
+  "verifications": [
+   {
+    "ok": true,
+    "quoi": "démarrage du core",
+    "mesure": "« Core démarré »"
+   },
+   {
+    "ok": true,
+    "quoi": "engine relié au core",
+    "mesure": "hello_ack"
+   },
+   {
+    "ok": true,
+    "quoi": "qualité réellement appliquée au départ",
+    "mesure": "low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)"
+   },
+   {
+    "ok": true,
+    "quoi": "rendu du jeu (Forward+) au départ",
+    "mesure": "Vulkan, Forward+"
+   },
+   {
+    "ok": true,
+    "quoi": "engine prêt (première réponse à menu_state)",
+    "mesure": "0.6 s"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide » (engine muet 11.0 s)"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm (titre='Quitter OpenRide ?', focus='no', elements=['no', 'yes'])",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « no »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran confirm",
+    "mesure": "« Quitter OpenRide ? »"
+   },
+   {
+    "ok": true,
+    "quoi": "écran home",
+    "mesure": "« OpenRide »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « quit »",
+    "mesure": "écran « confirm », focus « no »"
+   },
+   {
+    "ok": true,
+    "quoi": "choisir « yes »",
+    "mesure": "écran « home », focus « quit »"
+   },
+   {
+    "ok": true,
+    "quoi": "journal du engine : « Quitter demandé depuis le menu »",
+    "mesure": "Quitter demandé depuis le menu"
+   },
+   {
+    "ok": false,
+    "quoi": "l'engine sort avec le code 0",
+    "mesure": "code -6 en 7.0 s"
+   },
+   {
+    "ok": true,
+    "quoi": "arrêt du core",
+    "mesure": "code de sortie 0"
+   }
+  ]
+ }
+]

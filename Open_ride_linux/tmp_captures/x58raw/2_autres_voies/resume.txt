@@ -1,0 +1,6 @@
+quitter_1                clavier  1 ÉCHEC(S)      46 s
+quitter_2                clavier  OK              43 s
+quitter_3                clavier  1 ÉCHEC(S)      45 s
+quitter_1                click    1 ÉCHEC(S)      45 s
+quitter_2                click    OK              44 s
+quitter_3                click    1 ÉCHEC(S)      45 s
