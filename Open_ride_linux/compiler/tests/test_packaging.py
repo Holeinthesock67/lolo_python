@@ -28,6 +28,10 @@ COPIES = {
     DATA_DIR / "theme.schema.json": ROOT / "docs" / "contracts" / "world" / "theme.schema.json",
     DATA_DIR / "default_theme.json": ROOT / "engine" / "themes" / "default" / "theme.json",
 }
+# fichiers propres au paquet, sans référence ailleurs dans le dépôt
+ORIGINAUX = {
+    DATA_DIR / "regional_variants.toml",   # table des variantes régionales (lot U4)
+}
 
 
 @pytest.mark.parametrize("copie", sorted(COPIES), ids=lambda p: p.name)
@@ -40,7 +44,7 @@ def test_copie_embarquee_identique_a_sa_reference(copie: Path) -> None:
 
 
 def test_aucune_copie_orpheline() -> None:
-    assert set(DATA_DIR.iterdir()) == set(COPIES)
+    assert set(DATA_DIR.iterdir()) == set(COPIES) | ORIGINAUX
 
 
 def test_theme_lit_les_copies_embarquees() -> None:
