@@ -1,4 +1,4 @@
-"""Lot T6 : bonus légèreté, aérodynamique et puissance (module pur `powerups`)."""
+"""Lot T6 : bonus Plume (ex-légèreté), aérodynamique et puissance (module pur `powerups`, table de TT2)."""
 
 from __future__ import annotations
 
@@ -17,15 +17,15 @@ BASE = PhysicsParams(mass_kg=80.0, cda_m2=0.32)
 
 def test_default_values_match_plan():
     s = DEFAULT_TABLE.specs
-    assert (s["lightweight"].factor, s["aero"].factor, s["power"].factor) == (0.90, 0.75, 1.10)
-    assert all(spec.duration_s == 15.0 for spec in s.values())
+    assert (s["feather"].factor, s["aero"].factor, s["power"].factor) == (0.90, 0.75, 1.10)
+    assert (s["feather"].duration_s, s["aero"].duration_s, s["power"].duration_s) == (20.0, 15.0, 15.0)   # Plume 20 s (TT)
     assert DEFAULT_TABLE.arch_every_m == 5000.0 and DEFAULT_TABLE.per_segment
 
 
 def test_award_random_single_reserve_replaced():
     pu = PowerUps(seed=4)
     kinds = Counter(pu.award("segment") for _ in range(3000))
-    assert set(kinds) == set(KINDS)
+    assert set(kinds) == {"feather", "aero", "power"}        # jeu `classiques` (TT2)
     assert all(800 < n < 1200 for n in kinds.values())     # tirage uniforme
     first = pu.reserve
     pu.award("arch")
@@ -39,7 +39,7 @@ def test_activate_duration_and_expiry():
     pu = PowerUps(seed=1)
     assert not pu.activate(0.0)                 # rien en réserve
     pu.award("segment")
-    kind = pu.reserve
+    pu.reserve = kind = "aero"                  # 15 s (la Plume dure 20 s)
     assert pu.activate(10.0)
     assert pu.active == kind and pu.reserve is None and pu.remaining_s == 15.0
     pu.award("arch")
@@ -62,7 +62,7 @@ def force(pu: PowerUps, kind: str) -> None:
 def test_effects_on_params_and_power():
     pu = PowerUps()
     assert pu.params(BASE) is BASE and pu.power(250.0) == 250.0
-    force(pu, "lightweight")
+    force(pu, "feather")
     assert pu.params(BASE).mass_kg == pytest.approx(72.0)
     assert pu.params(BASE).cda_m2 == BASE.cda_m2
     pu = PowerUps()
@@ -82,7 +82,7 @@ def test_each_bonus_speeds_up_where_expected():
     assert steady_speed(250.0, 0.0, pu.params(BASE)) > flat_base * 1.08
     assert steady_speed(250.0, 8.0, pu.params(BASE)) < climb_base * 1.03   # peu d'effet en montée
     pu = PowerUps()
-    force(pu, "lightweight")
+    force(pu, "feather")
     assert steady_speed(250.0, 8.0, pu.params(BASE)) > climb_base * 1.08
     pu = PowerUps()
     force(pu, "power")
