@@ -1,0 +1,17 @@
+08:22:03 empreinte avant 5110c06b4c9d6954972ebf363612e48f
+08:22:04 tête 85cfd895
+08:22:04 trace coupée à 8 km depuis Wissant
+08:22:04 trace : coupée à 8.00 km : 802 points sur 1130
+08:22:04 build côte
+08:24:25 fin build rc=0 durée 140.558992896 s
+08:24:27 verify rc=0
+08:24:27 plan rc=0
+08:25:36 banc côte low
+08:29:17 fin rc=0
+08:29:17 banc côte medium
+08:32:57 fin rc=1
+08:32:57 banc côte high
+08:36:36 fin rc=1
+08:36:38 empreinte après 5110c06b4c9d6954972ebf363612e48f
+08:36:38 clone 90c08094
+08:36:38 FIN
