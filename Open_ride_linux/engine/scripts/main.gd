@@ -182,6 +182,7 @@ const BEEPS := {
 	"A_SHORT": [[880.0, 0.08]],
 	"A_LONG": [[660.0, 0.10], [990.0, 0.14]],
 	"Y_SHORT": [[550.0, 0.10], [330.0, 0.14]],
+	"Y_LONG": [[660.0, 0.10], [440.0, 0.10], [660.0, 0.14]],
 	"LEFT_SHORT": [[440.0, 0.08]],
 	"RIGHT_SHORT": [[880.0, 0.08]],
 	"UP_SHORT": [[880.0, 0.08]],
@@ -676,6 +677,8 @@ func _on_input_event(event_name: String) -> void:
 	print("Bip : ", event_name)
 	_play_tones(BEEPS[event_name], BEEP_LEVEL)
 	var mark := HudViewModel.dropout_mark_text(event_name, session_state, rogue_host.is_active(), menu_flow.is_visible())
+	if mark == "":
+		mark = HudViewModel.u_turn_press_text(event_name, session_state, menu_flow.is_visible())
 	if mark != "":
 		banner.show_message("press", mark, PRESS_HINT_S)
 		return
@@ -716,6 +719,8 @@ func _remember_camera_view(now_s: float) -> void:
 
 ## Événement du Click (relayé par le core) ou du clavier, menu affiché : navigation et action.
 func _menu_event(event_name: String) -> void:
+	if event_name == "Y_LONG":
+		event_name = "Y_SHORT"   # Y maintenu (révision 1.11) : demi-tour en roulant seulement ; en menu, comme Y court
 	if world_menu_view != null and world_menu_view.visible:
 		_world_menu_event(event_name)
 		return

@@ -171,7 +171,7 @@ Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot
 | `python -m openride_core.tools.trainer_steps --mode sim\|erg` | Latence du trainer par paliers (X5) | Délai d'accusé, t63, t90 et stabilisation dans `rapport.html` |
 | `python -m openride_core.tools.click_recette --minutes 30` | Click sur 30 min (X8) | Aucun silence non signalé |
 | `python -m openride_core.tools.fc_recette` | Fréquence cardiaque (X9) | Retrait, absence, valeur figée et retour détectés |
-| `python -m openride_core.tools.boutons_click` | 17 appuis du plan des boutons | Chaque appui reconnu avec son action et un bip |
+| `python -m openride_core.tools.boutons_click` | 18 appuis du plan des boutons | Chaque appui reconnu avec son action et un bip |
 | `python -m openride_core.tools.seance_guidee` | Séances guidées sur le trainer | Consignes suivies, journal complet |
 | `openride-core session-report` | Analyse d'une séance réelle (X12) | Rapport par section, en local |
 

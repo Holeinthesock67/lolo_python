@@ -101,12 +101,21 @@ def test_next_notification_after_the_gap_also_ends_the_burst():
     assert c.feed(ClickButtons(True, False), 3.0) == [InputEvent.PLUS_SHORT]
 
 
-def test_y_and_arrows_are_not_delayed():
+def test_arrows_are_not_delayed_y_is_grouped_like_long_buttons():
+    """Les flèches n'ont pas d'appui long : pas de délai. Y en a un depuis la révision 1.11 (demi-tour) : sa
+    rafale est regroupée comme celles de +, −, A et Z, et une rafale de 0,9 s ou plus donne Y_LONG."""
     c = PressClassifier(repeat_gap_s=GAP)
-    c.feed(ClickButtons(False, False, y_pressed=True), 0.0)
-    assert c.feed(ClickButtons(False, False), 0.1) == [InputEvent.Y_SHORT]
     c.feed(ClickButtons(False, False, up_pressed=True), 0.2)
     assert c.feed(ClickButtons(False, False), 0.25) == [InputEvent.UP_SHORT]
+    c.feed(ClickButtons(False, False, y_pressed=True), 1.0)
+    assert c.feed(ClickButtons(False, False), 1.1) == []
+    assert c.poll(1.1 + GAP + 0.05) == [InputEvent.Y_SHORT]
+    t = 3.0
+    for _ in range(5):   # Y maintenu en rafale : appuis et relâchements toutes les 0,25 s
+        c.feed(ClickButtons(False, False, y_pressed=True), t)
+        c.feed(ClickButtons(False, False), t + 0.2)
+        t += 0.25
+    assert c.poll(t + GAP) == [InputEvent.Y_LONG]
 
 
 def test_gap_zero_is_the_previous_behaviour():

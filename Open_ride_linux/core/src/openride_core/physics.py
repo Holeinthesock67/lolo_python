@@ -98,10 +98,12 @@ class RiderPhysics:
         self.distance = s if distance is None else distance
         self.direction = -1 if direction < 0 else 1
 
-    def u_turn(self) -> None:
-        """Demi-tour sur place (lot N17) : même position, même distance, sens inversé, vitesse remise à 0."""
+    def u_turn(self, keep_speed: bool = False) -> None:
+        """Demi-tour sur place (lot N17) : même position, même distance, sens inversé ; vitesse remise à 0
+        depuis l'écran de pause, gardée en roulant (Y maintenu, `keep_speed`)."""
         self.direction = -self.direction
-        self.v = 0.0
+        if not keep_speed:
+            self.v = 0.0
 
     @property
     def kinetic_energy(self) -> float:

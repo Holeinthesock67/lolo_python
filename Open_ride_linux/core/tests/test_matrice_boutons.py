@@ -104,13 +104,15 @@ def test_keyboard_plan_is_read_and_matches_key_map(tmp_path):
     keys = tool.read_keys()
     assert keys["Page haut"]["court"] == "PLUS_LONG" and keys["Échap"]["long"] == "Y_SHORT"
     assert keys["Z"] == {"court": "Z_SHORT", "entre les deux": "", "long": "Z_LONG"}
+    assert keys["Y"] == {"court": "Y_SHORT", "entre les deux": "Y_SHORT", "long": "Y_LONG"}   # pas de zone floue
+    assert keys["Maj+Y"]["court"] == "Y_LONG"
     assert keys["+ du pavé numérique"]["entre les deux"] == "PLUS_UNCLEAR" and keys["Flèche haut"]["long"] == "UP_SHORT"
     cells = tool.check_keys()
     assert cells and all(c.ok for c in cells), [c for c in cells if not c.ok]
     # Écart de key_map.gd : synonyme faux, touche hors plan, seuil différent.
     km = tmp_path / "key_map.gd"
     km.write_text(tool.KEY_MAP.read_text("utf-8").replace('KEY_PAGEUP: "PLUS_LONG"', 'KEY_PAGEUP: "PLUS_SHORT"')
-                  .replace('KEY_Y: "Y_SHORT",', 'KEY_Y: "Y_SHORT", KEY_TAB: "A_SHORT",')
+                  .replace('KEY_ESCAPE: "Y_SHORT",', 'KEY_ESCAPE: "Y_SHORT", KEY_TAB: "A_SHORT",')
                   .replace("LONG_MIN_S := 0.9", "LONG_MIN_S := 1.5"), "utf-8")
     bad = {(c.key, c.hold) for c in tool.check_keys(key_map=km) if not c.ok}
     assert {("Page haut", "court"), ("KEY_TAB", "court"), ("seuils", "court / long"), ("A", "long")} <= bad

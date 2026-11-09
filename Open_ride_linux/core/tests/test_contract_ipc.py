@@ -308,7 +308,7 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
     révision 1.5 : la même limite pour tout message hors messages en parties."""
     from openride_core import ipc_server
     assert ipc_server.MAX_DATAGRAM_SIZE == MAX_STATE_DATAGRAM
-    assert ipc_server.CONTRACT_REV == "1.10"   # révision 1.10 annoncée depuis le bilan en tuiles (lot N20)
+    assert ipc_server.CONTRACT_REV == "1.11"   # révision 1.11 : Y maintenu (demi-tour en roulant) ; 1.10 : N20 ; 1.9 : `set_bots` (N18) et demi-tour (N17)
 
     class Sock:
         def __init__(self):
@@ -334,7 +334,7 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
         assert len(acks) == 2
         for ack in acks:
             assert_valid(ack)
-            assert ack["rev"] == "1.10" and ack["config"]["modes"] == ["ride", "erg", "open_world", "rogue", "wtf", "survivor",
+            assert ack["rev"] == "1.11" and ack["config"]["modes"] == ["ride", "erg", "open_world", "rogue", "wtf", "survivor",
                                                          "track"]
             # écran Prêt du vélodrome (lot VD10) : épreuves et réglages du core, sans passer 4 096 octets
             assert ack["config"]["track"] == track_mod.menu_options()

@@ -156,6 +156,7 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Braquet plus un, moins un | « + » court, « − » court |
 | Braquet plus dix, moins dix (de 1 à 24) | « + » long, « − » long |
 | Pause et reprise | Y |
+| Faire demi-tour sans s'arrêter | Y maintenu (une seconde) |
 | Vue de caméra suivante, précédente | flèche haut (ou A court), flèche bas |
 | Activer le bonus en réserve (mode classique) | Z |
 | Noter un décrochage du trainer au journal | Z long |
@@ -169,8 +170,11 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Bloc suivant | Z |
 | Noter un décrochage du trainer au journal | Z long |
 | Pause et reprise | Y |
+| Faire demi-tour sans s'arrêter | Y maintenu (une seconde) |
 | Entraînement fini : terminer et enregistrer | Y, puis A long |
 | Vue de caméra suivante, précédente | flèche haut (ou A court), flèche bas |
+
+**Y maintenu** (une seconde ou plus, ou `Maj+Y` au clavier) fait demi-tour sans s'arrêter, comme la ligne « Faire demi-tour » de l'écran de pause : vous repartez vers le départ du parcours, à la même vitesse, et l'écran affiche « Demi-tour ». Un second Y maintenu vous remet dans le sens du parcours. Là où le demi-tour n'existe pas (au départ d'un parcours en ligne, en Cyber-Rogue, en monde ouvert, en Dernier survivant et en Grand Prix), Y maintenu met en pause comme un Y bref. Un Y de moins de 0,9 s est toujours une pause.
 
 **Z long** (ou `Maj+Z` au clavier) note un repère « décrochage » au journal quand vous sentez la résistance du trainer lâcher (sauf en Cyber-Rogue, où Z long joue la carte active). L'écran le confirme ; rien d'autre ne change. L'outil `decrochages` relit ces repères en face des chutes de puissance mesurées.
 
@@ -185,7 +189,7 @@ Le clavier double le Click touche pour touche, en menu comme en séance, avec le
 | « + » | `+` (ou `=`, `+` du pavé numérique) | `Page haut` |
 | « − » ou B | `-` (ou `-` du pavé numérique) | `Page bas` |
 | A | `A` | `Maj+A`, `Entrée` |
-| Y | `Y` ou `Échap` | — |
+| Y | `Y` ou `Échap` | `Maj+Y` |
 | Z | `Z` | `Maj+Z` |
 | Flèches | `Gauche`, `Droite`, `Haut`, `Bas` | — |
 

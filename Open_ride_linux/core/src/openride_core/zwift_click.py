@@ -81,13 +81,15 @@ class InputEvent(str, enum.Enum):
     MINUS_SHORT = "MINUS_SHORT"
     PLUS_LONG = "PLUS_LONG"
     MINUS_LONG = "MINUS_LONG"
-    # Autres boutons du Click V2 (contrat IPC révision 1.3) : A et Z, court et long ; Y, flèches :
-    # un seul événement, quelle que soit la durée de l'appui.
+    # Autres boutons du Click V2 (contrat IPC révision 1.3) : A et Z, court et long ; flèches : un seul
+    # événement, quelle que soit la durée de l'appui. Y : court ou long (Y_LONG, révision 1.11), sans zone
+    # floue : tout appui de moins de 0,9 s reste Y_SHORT, pour qu'une pause ne se perde jamais.
     A_SHORT = "A_SHORT"
     A_LONG = "A_LONG"
     Z_SHORT = "Z_SHORT"
     Z_LONG = "Z_LONG"
     Y_SHORT = "Y_SHORT"
+    Y_LONG = "Y_LONG"   # demi-tour en roulant (spécification générale §7.1, révision 1.11)
     LEFT_SHORT = "LEFT_SHORT"
     RIGHT_SHORT = "RIGHT_SHORT"
     UP_SHORT = "UP_SHORT"
@@ -139,9 +141,11 @@ def decode_protobuf_varints(payload: bytes) -> dict[int, int]:
     return out
 
 
-# Boutons suivis par PressClassifier ; B est lu comme « − ». Y et flèches : un seul événement.
+# Boutons suivis par PressClassifier ; B est lu comme « − ». Flèches : un seul événement. Y : court ou long,
+# sans zone floue (moins de 0,9 s : court).
 BUTTONS = ("PLUS", "MINUS", "A", "Z", "Y", "LEFT", "RIGHT", "UP", "DOWN")
-SINGLE_EVENT_BUTTONS = ("Y", "LEFT", "RIGHT", "UP", "DOWN")
+SINGLE_EVENT_BUTTONS = ("LEFT", "RIGHT", "UP", "DOWN")
+NO_DEAD_ZONE_BUTTONS = ("Y",)
 
 
 @dataclass
@@ -215,7 +219,8 @@ class PressClassifier:
 
     L'événement est émis au relâchement : moins de 500 ms -> court, 900 ms ou plus -> long,
     entre les deux -> PLUS_UNCLEAR ou MINUS_UNCLEAR pour + et −, rien pour A et Z (SRS §4.2).
-    Y et les flèches n'ont qu'un événement (`_SHORT`), quelle que soit la durée.
+    Les flèches n'ont qu'un événement (`_SHORT`), quelle que soit la durée. Y n'a pas de zone floue : long à
+    0,9 s ou plus (Y_LONG), court en dessous, pour que la pause ne se perde jamais.
 
     Rafale (constat R14 du 8 novembre) : bouton maintenu, le Click V2 envoie une suite d'appuis
     et de relâchements toutes les 0,2 à 0,3 s au lieu d'un seul appui. Avec `repeat_gap_s` > 0,
@@ -223,7 +228,7 @@ class PressClassifier:
     en cours : l'événement attend donc `repeat_gap_s` après le relâchement (`poll`). Une rafale de
     `LONG_MIN_S` ou plus, du premier appui au dernier relâchement, donne un seul `_LONG` ; plus
     courte, elle rend un `_SHORT` par appui, pour ne pas perdre de vrais appuis courts répétés.
-    Seuls +, −, A et Z sont concernés (Y et flèches n'ont pas d'appui long). `repeat_gap_s = 0` :
+    Seuls +, −, A, Z et Y sont concernés (les flèches n'ont pas d'appui long). `repeat_gap_s = 0` :
     comportement d'avant, événement dès le relâchement.
     """
 
@@ -239,6 +244,8 @@ class PressClassifier:
         self._run: dict[str, tuple[float, list[float]] | None] = {name: None for name in BUTTONS}
 
     def _classify(self, button: str, duration: float) -> InputEvent | None:
+        if button in NO_DEAD_ZONE_BUTTONS:
+            return InputEvent[f"{button}_LONG" if duration >= self.long_min_s else f"{button}_SHORT"]
         if duration < self.short_max_s:
             return InputEvent[f"{button}_SHORT"]
         if duration >= self.long_min_s:
