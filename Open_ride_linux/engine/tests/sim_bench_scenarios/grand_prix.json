@@ -1,5 +1,5 @@
 {
-  "description": "Grand Prix des objets (lots GP7 et GP8, plan docs/4.0/PLAN_SERIE_GP.md §8.3) sur la démonstration de 5 km : départ groupé du cycliste et de 4 bots (pire cas GPU du mode : tous les bots, deux rangées de boîtes en vue), chaos fou (objets les plus fréquents, jusqu'à douze objets en vue), boîtes tous les 1 000 m ; à 280 W contre des bots au niveau 100 %. Banc GPU en low, medium et high (budgets 8, 13 et 16 ms), captures toutes les 15 s à faire valider par le propriétaire (case d'objet, bande de course, boîtes, objets, effets).",
+  "description": "Grand Prix des objets (lots GP7 et GP8, plan docs/4.0/PLAN_SERIE_GP.md §8.3) sur la démonstration de 5 km : départ groupé du cycliste et de 4 bots (pire cas GPU du mode : tous les bots, deux rangées de boîtes en vue), chaos fou (objets les plus fréquents, jusqu'à douze objets en vue), boîtes tous les 1 000 m (rangées à 500, 1 500, 2 500 m…) ; à 280 W contre des bots au niveau 100 %. Banc GPU en low, medium et high (budgets 8, 13 et 16 ms). Captures à faire valider par le propriétaire : 35 m avant chaque rangée de boîtes (`first_m`, `every_m`) et 1,5 s après chaque appui sur Z (objet lancé, effet sur le cycliste), toutes les 20 s.",
   "trainer": {
     "appear_at": 0.3,
     "connect_delay_s": 0.3
@@ -18,6 +18,103 @@
     "connect_delay_s": 0.2
   },
   "events": [],
+  "inputs": [
+    {
+      "t": 100,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 120,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 140,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 160,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 180,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 200,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 220,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 240,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 260,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 280,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 300,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 320,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 340,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 360,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 380,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 400,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 420,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 440,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    },
+    {
+      "t": 460,
+      "key": "Z",
+      "recette": "GP7 : objet lancé"
+    }
+  ],
   "bench": {
     "world": "demo",
     "mode": "grandprix",
@@ -33,7 +130,6 @@
       }
     },
     "duration_s": 480,
-    "every_s": 15,
     "expect": [
       {
         "log": "core",
@@ -47,7 +143,16 @@
         "min": 1,
         "recette": "GP7",
         "label": "boîte prise : roulette jouée par l'engine"
+      },
+      {
+        "log": "engine",
+        "motif": "\\[test\\] event_sound kind=gp_(lancer|sonnette|klaxon)",
+        "min": 1,
+        "recette": "GP7",
+        "label": "objet utilisé au Z : lancer, sonnette ou klaxon joué par l'engine"
       }
-    ]
+    ],
+    "first_m": 465,
+    "every_m": 1000
   }
 }

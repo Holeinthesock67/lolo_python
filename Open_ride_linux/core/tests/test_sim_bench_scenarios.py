@@ -209,3 +209,17 @@ def test_grandprix_bench_scenario_writes_a_valid_config_and_mode() -> None:
     assert gp["chaos"] in CONFIG_CHOICES[("grandprix", "chaos")]
     assert gp["distance_km"] * 1000 <= DEMO_LENGTH_M
     assert build_parser().parse_args(["run", "--autostart", "--mode", "grandprix"]).mode == "grandprix"
+
+
+def test_grandprix_bench_captures_fall_just_before_each_box_row_and_after_each_z() -> None:
+    """Lot GP7 : les captures en distance tombent juste avant chaque rangée de boîtes (dans la fenêtre envoyée par
+    le core), et des appuis sur Z lancent les objets pendant la course."""
+    from openride_core.grandprix.boxes import FIRST_ROW_M
+    from openride_core.grandprix.mode import FRAME_AHEAD_M
+
+    _, _, settings, _ = sim_bench.resolve_scenario("grand_prix")
+    every = settings["config"]["grandprix"]["box_every_m"]
+    assert settings["every_m"] == every
+    assert 0 < FIRST_ROW_M - settings["first_m"] <= min(60.0, FRAME_AHEAD_M)
+    z = [x for x in settings["inputs"] if x.get("key") == "Z"]
+    assert len(z) >= 10 and all(float(x["t"]) < settings["duration_s"] for x in z)
