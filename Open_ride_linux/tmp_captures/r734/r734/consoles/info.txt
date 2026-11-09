@@ -1,0 +1,11 @@
+Nom               : alpe-d-huez
+Longueur          : 14.131 km
+Type              : open
+Pente maximale    : 25.0 %
+Pente minimale    : -25.0 %
+Dénivelé positif  : 1265 m
+Points limités    : 60
+Altitude          : gpx
+Terrain           : 17 tuile(s) proche(s), 11 lointaine(s) (copernicus_glo30)
+Biomes            : temperate_forest 58,3 %, temperate_grassland 34,4 %, alpine 6,4 %, rock_desert 0,6 %, farmland 0,3 %
+Segments          : 1 montée(s) (cat. HC : 1), 0 sprint(s)

@@ -1,0 +1,9 @@
+03:38:44 empreinte avant 5dd68002174aac60837bd7c9e4e300a6
+03:38:44 tête fe1b0bab
+03:38:45 build alpe-d-huez, couches par défaut
+03:41:25 fin build rc=0 durée 159.630108271 s
+03:41:26 verify rc=0
+03:41:27 info rc=0
+03:41:28 empreinte après 5dd68002174aac60837bd7c9e4e300a6
+03:41:28 clone 90c08094
+03:41:28 FIN
