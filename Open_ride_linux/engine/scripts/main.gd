@@ -2209,7 +2209,7 @@ func _quit(code: int) -> void:
 	_quit_code = code
 	process_mode = Node.PROCESS_MODE_DISABLED   # plus d'image traitée : ni chargement ni tâche de fond nouvelle
 	var got: Array = await BgTasks.drain(get_tree(), QUIT_TASKS_MAX_S)
-	_quit_step("tâches de fond attendues (%d, dont %d sautées)%s" % [got[0], got[2],
+	_quit_step("tâches de fond : %d attendues, %d abandonnées sans travail%s" % [got[0], got[2],
 		"" if got[1].is_empty() else ", encore en cours au bout de %.0f s : %s" % [QUIT_TASKS_MAX_S, ", ".join(got[1])]])
 	get_tree().quit(code)
 

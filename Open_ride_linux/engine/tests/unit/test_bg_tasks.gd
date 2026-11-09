@@ -41,20 +41,24 @@ func _slow_job() -> void:
 
 
 func _run() -> void:
-	# 1. Sans fermeture : `drain` attend tout, sans bloquer les images.
+	# 1. Sans fermeture : au plus low_max() tâches de basse priorité confiées à Godot, les autres dans la file du
+	# registre ; la fin de chacune lance la suivante ; wait d'une tâche encore en file la lance tout de suite.
+	BgTasks.reopen_for_tests()
 	var ids: Array = []
 	for i in range(12):
 		ids.append(BgTasks.add(_job, false, "essai %d" % i))
 	_check(BgTasks.pending_count() == 12, "12 tâches gardées par le registre")
-	var frames := [0]
-	var count_frames := func() -> void: frames[0] += 1
-	process_frame.connect(count_frames)
-	BgTasks.reopen_for_tests()
-	var got: Array = await _drain_open(10.0)
-	process_frame.disconnect(count_frames)
-	_check(got[0] == 12 and got[1].is_empty(), "drain : 12 tâches attendues, aucune encore en cours (%s)" % str(got))
-	_check(BgTasks.pending_count() == 0, "registre vide après drain")
-	_check(frames[0] > 0, "drain laisse passer les images (%d images)" % frames[0])
+	_check(BgTasks.queued_count() == 12 - mini(12, BgTasks.low_max()),
+		"%d dans la file du registre (low_max %d)" % [BgTasks.queued_count(), BgTasks.low_max()])
+	_check(BgTasks.wait(ids[11]) == OK, "attente de la dernière, encore en file : lancée tout de suite")
+	var frames := 0
+	while BgTasks.queued_count() > 0 and frames < 600:
+		await process_frame
+		frames += 1
+	_check(BgTasks.queued_count() == 0, "la file du registre se vide seule (%d images)" % frames)
+	for id in ids:
+		BgTasks.wait(id)
+	_check(_ran == 12 and BgTasks.pending_count() == 0, "les 12 tâches ont tourné, registre vide (%d)" % _ran)
 	_check(BgTasks.wait(ids[0]) == OK and BgTasks.done(ids[0]), "tâche déjà attendue : wait rend OK, done vrai")
 	# 2. Fermeture : une tâche lente qui tourne déjà est nommée au bout du délai ; celles en file sont sautées.
 	BgTasks.reopen_for_tests()

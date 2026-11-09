@@ -91,12 +91,28 @@ Correction complétée : à la fermeture, `main.gd` cesse de traiter ses nœuds 
 nouvelle tâche du streaming), `BgTasks.drain` passe en fermeture (une tâche pas encore démarrée rend la main sans
 rien faire ; le journal dit combien), attend celles qui tournent, au plus 8 s.
 
-### 6.6 Troisième passage sur le PC (via la file du fil de fusion)
+### 6.6 Troisième passage sur le PC (r805c, 9 novembre, tête 81df972a)
+
+32 fermetures propres sur 50 (souris low 7/10, clavier 0/10, Click 5/10, souris medium 10/10, high 10/10). Les 24
+fermetures où « 4 attendues, dont 4 sautées » sont propres ; dans les 26 autres, « 0 attendues, dont 0 sautées,
+encore en cours au bout de 8 s » : les quatre maillages du terrain n'ont jamais démarré, alors que les 18 piles gdb
+montrent les quatre fils endormis sans tâche. Ils étaient donc dans la file de basse priorité de Godot, derrière une
+place de basse priorité (une seule avec quatre fils) prise sans tâche visible du jeu. Attendre plus ne sert à rien.
+Fichiers : `/mnt/project-files/mesures/2026-11-09-x58-r805c/`.
+
+Correction (registre `bg_tasks.gd` réécrit) : plus rien du jeu dans la file de basse priorité de Godot. Le registre
+tient sa propre file ; une tâche de basse priorité est confiée à Godot en haute priorité, seulement quand moins de
+`low_max()` des siennes tournent (même nombre que Godot : `threading/worker_pool/low_priority_thread_ratio` des fils,
+au moins 1, donc le même partage des fils en jeu) ; la fin de chacune lance la suivante ; `wait` d'une tâche encore
+en file la lance tout de suite. À la fermeture, la file du registre est abandonnée sans rien lancer. Effet attendu
+aussi en jeu : ces maillages ne restent plus bloqués derrière la place de basse priorité de Godot.
+
+### 6.7 Quatrième passage sur le PC (via la file du fil de fusion)
 
 ```
 cd <worktree de la branche du lot>
 B="python3 engine/tests/menu_bench.py --scenario quitter --native --fermeture-stricte --gdb"
-O=~/OpenRide/mesures/x58c
+O=~/OpenRide/mesures/x58d
 $B --voies souris,clavier,click --repeter 10 --out $O/low
 $B --voies souris --repeter 10 --qualite medium --out $O/medium
 $B --voies souris --repeter 10 --qualite high --out $O/high
