@@ -10,10 +10,10 @@ temps.
 
 | Catégorie | Réglage (`config.toml`, menu) | Bus de l'engine | Sons |
 | --- | --- | --- | --- |
-| Général | `[audio] master_pct`, « Volume général » | `Master` | tous les sons |
-| Vent et roue libre | `[audio] ride_pct`, « Volume vent et roue libre » | `Ride` | vent dans les oreilles, roue libre, « clac » de reprise (`sound_player.gd`) |
-| Ambiance | `[audio] ambience_pct`, « Volume de l'ambiance » | `Ambience` | fonds d'ambiance, cloches, points sonores (`sound_player.gd`), véhicules (`traffic_renderer.gd`), foule et passants (`crowd_renderer.gd`) |
-| Bips et événements | `[audio] events_pct`, « Volume bips et événements » | `Events` | bips d'appui du Click, bip de changement de bloc ERG, consignes d'essai (`main.gd`) ; jingles d'événements (sommet de col, arche, fin de sprint, fin de séance) |
+| Général | `[audio] master_pct`, « Général » | `Master` | tous les sons |
+| Vent et roue libre | `[audio] ride_pct`, « Vent et roue libre » | `Ride` | vent dans les oreilles, roue libre, « clac » de reprise (`sound_player.gd`) |
+| Ambiance | `[audio] ambience_pct`, « Ambiance » | `Ambience` | fonds d'ambiance, cloches, points sonores (`sound_player.gd`), véhicules (`traffic_renderer.gd`), foule et passants (`crowd_renderer.gd`) |
+| Bips et événements | `[audio] events_pct`, « Bips et événements » | `Events` | bips d'appui du Click, bip de changement de bloc ERG, consignes d'essai (`main.gd`) ; jingles d'événements (sommet de col, arche, fin de sprint, fin de séance) |
 | Rogue, bruitages | `[audio] rogue_sfx_pct`, « Cyber-Rogue : bruitages » (défaut 70) | `RogueSfx` | bruitages du mode Cyber-Rogue (`rogue_audio.gd`) |
 | Rogue, musique | `[audio] rogue_music_pct`, « Cyber-Rogue : musique » (défaut 40) | `RogueMusic` | musique du mode Cyber-Rogue (`rogue_audio.gd`) |
 

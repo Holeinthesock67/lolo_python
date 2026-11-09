@@ -72,6 +72,7 @@ ROWS = {
     "+ / B (ou −), court": ((InputEvent.PLUS_SHORT, 1), (InputEvent.MINUS_SHORT, -1)),
     "+ / B (ou −), long": ((InputEvent.PLUS_LONG, 1), (InputEvent.MINUS_LONG, -1)),
     "Y court": ((InputEvent.Y_SHORT, 0),),
+    "Y long": ((InputEvent.Y_LONG, 0),),
     "Z court": ((InputEvent.Z_SHORT, 0),),
     "Z long": ((InputEvent.Z_LONG, 0),),
     "A court": ((InputEvent.A_SHORT, 1),),
@@ -196,10 +197,13 @@ def read_key_map(path: Path = KEY_MAP) -> tuple[dict[str, dict[str, str]], tuple
             raise MatrixError(f"seuil {name} introuvable dans {path}")
         return float(cm.group(1))
     short_max, long_min = const("SHORT_MAX_S"), const("LONG_MIN_S")
+    nm = re.search(r"^const NO_DEAD_ZONE := \[(.*?)\]", text, re.M)
+    no_dead_zone = set(re.findall(r'"(\w+)"', nm.group(1))) if nm else set()
     keys: dict[str, dict[str, str]] = {}
     for k, button in table("MEASURED"):
         keys[GODOT_KEYS.get(k, k)] = {
-            d: f"{button}_SHORT" if t < short_max else f"{button}_LONG" if t >= long_min else
+            d: (f"{button}_LONG" if t >= long_min else f"{button}_SHORT") if button in no_dead_zone else
+            f"{button}_SHORT" if t < short_max else f"{button}_LONG" if t >= long_min else
             (f"{button}_UNCLEAR" if button in ("PLUS", "MINUS") else "") for d, t in HOLDS.items()}
     for k, ev in table("FIXED"):
         keys[GODOT_KEYS.get(k, k)] = {d: ev for d in HOLDS}
@@ -254,6 +258,8 @@ def expect_of(cell: str, sign: int, column: str) -> Expect | None:
         return Expect("brake", sign * int(num.group(1)))
     if c.startswith("pause et reprise"):
         return Expect("pause")
+    if c.startswith("demi-tour"):
+        return Expect("u_turn")
     if c.startswith("bonus"):
         return Expect("bonus")
     if c.startswith("bloc suivant"):
@@ -516,6 +522,7 @@ def observe(s: CoreSession) -> dict[str, Any]:
         "bonus actif": race.powerups.active if race else None,
         "bonus en réserve": race.powerups.reserve if race else None,
         "repères décrochage": s.dropout_marks,
+        "sens": s.physics.direction,
     }
     if rg is not None:
         e = rg.engine
@@ -646,6 +653,14 @@ def _verify(exp: Expect, ev: InputEvent, ph: Phase, before: dict, now: dict, lat
         ok = now["repères décrochage"] == before["repères décrochage"] + 1 and not extra and relayed
         return ok, (f"repère « décrochage » au journal : {before['repères décrochage']} → "
                     f"{now['repères décrochage']}" + _x(extra) + _r(relayed))
+    if exp.kind == "u_turn":
+        reason = s._u_turn_refusal("RUNNING")
+        if reason is not None:   # « sinon pause » : demi-tour impossible ici (départ d'un parcours en ligne…)
+            extra = _changed(before, now, {"séance"})
+            return now["séance"] == "PAUSED" and not extra, f"demi-tour impossible ({reason}) : séance {before['séance']} → {now['séance']}" + _x(extra)
+        extra = _changed(before, now, {"sens"})
+        ok = now["sens"] == -before["sens"] and now["séance"] == "RUNNING" and not extra and relayed
+        return ok, f"sens {before['sens']} → {now['sens']}, séance {now['séance']}" + _x(extra) + _r(relayed)
     if exp.kind == "block":
         if before["bloc"] is None:
             return False, "pas d'entraînement ERG en cours"

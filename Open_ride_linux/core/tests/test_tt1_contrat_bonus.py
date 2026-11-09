@@ -56,8 +56,12 @@ def test_old_on_value_reads_as_classiques():
 
 
 def test_worst_frame_1_13_fits_and_validates():
-    frame = ipc_budget.worst_state("1.13")
+    """La pire trame 1.13 (piste de la 1.7, sans bonus) et la pire trame avec bonus (peloton de la 1.6, qui porte
+    `devices`) avec la réserve, le bonus actif et le refus les plus longs : valides et sous la limite."""
     validator = jsonschema.Draft202012Validator(json.loads(STATE.read_text(encoding="utf-8")))
-    assert [e.message for e in validator.iter_errors(frame)] == []
-    assert "refused" in frame["powerup"]
-    assert ipc_budget.size(frame) <= ipc_budget.state_limit("1.13")
+    with_bonus = ipc_budget.worst_peloton_devices()
+    ipc_budget._extras_1_13(with_bonus)
+    assert "refused" in with_bonus["powerup"]
+    for frame in (ipc_budget.worst_state("1.13"), with_bonus):
+        assert [e.message for e in validator.iter_errors(frame)] == []
+        assert ipc_budget.size(frame) <= ipc_budget.state_limit("1.13")

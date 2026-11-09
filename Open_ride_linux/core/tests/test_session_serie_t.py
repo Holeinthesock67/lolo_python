@@ -146,6 +146,7 @@ def test_demo_route_frames_results_records_and_journal(env):
                                                                           ("sprint1", 0, "sprint")]
     summary = s.state.summary["segments"]
     assert [p["segment_id"] for p in summary["passes"]] == ["climb1", "sprint1"]
+    assert [p["pr_time_s"] for p in summary["passes"]] == [None, None]   # premier passage : pas d'ancien record (N20)
     assert summary["more"] is False and set(summary["jerseys"]) == {"sprint", "kom"}
     assert summary["jerseys"]["kom"] == "me"   # seul en course : maillot à pois
     assert any(ln.get("kind") == "jersey" and ln["jersey"] == "kom" for ln in lines)
@@ -156,6 +157,7 @@ def test_demo_route_frames_results_records_and_journal(env):
     ride_to_end(s2, run)
     m2 = results(sent2)[0]
     assert not m2["pr"] and m2["pr_time_s"] == msgs[0]["time_s"] and (m2["rank"], m2["rank_total"]) == (2, 2)
+    assert s2.state.summary["segments"]["passes"][0]["pr_time_s"] == msgs[0]["time_s"]   # ancien record au bilan (N20)
     book = json.loads((tmp / "records.json").read_text(encoding="utf-8"))["routes"]["demo"]
     assert len(book["climb1"]["no_bonus"]) == 2
 

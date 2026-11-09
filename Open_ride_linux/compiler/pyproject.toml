@@ -36,8 +36,9 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 # Recettes des packs de parcours livrés (lot O16), lues par `route-pack-build` ; scénarios de réseau
-# dégradé (lot X28), lus par `openride-worldgen-netcheck`.
-openride_compiler = ["route_packs/*/*.toml", "worldgen/reseau/*.json"]
+# dégradé (lot X28), lus par `openride-worldgen-netcheck` ; copies embarquées du schéma des thèmes et
+# du thème par défaut (lot J4), lues par `theme-check` hors du dépôt.
+openride_compiler = ["route_packs/*/*.toml", "worldgen/reseau/*.json", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -45,6 +46,7 @@ pythonpath = ["src"]
 # Le test d'intégration réseau (Copernicus réel) est sauté par défaut : `pytest -m network`.
 addopts = "-m 'not network'"
 markers = [
+    "slow: essai long (roue installée hors du dépôt, lot J4) ; `pytest -m \"not slow\"` pour le sauter",
     "network: télécharge des tuiles Copernicus réelles (sauté par défaut)",
     "fuzz: fuzz des lecteurs de traces (lot X26) ; `pytest -m fuzz --hypothesis-profile=long` sur le PC",
 ]

@@ -8,6 +8,11 @@ la séance : lot V11). Les autres emplacements sont de l'apparence.
 Bornes du plan V §2.2, cadre et roues ensemble : la masse ne baisse jamais de plus de 3 % de la
 masse totale de départ, le CdA de plus de 6 %. Les hausses ne sont pas bornées. Les bonus de la
 série T se composent ensuite par multiplication (lot T6).
+
+Vent de travers (lot P34, question V-Q13) : une pièce qui déclare `crosswind_fade_deg` et
+`crosswind_zero_deg` (la roue lenticulaire) garde tout son gain de CdA jusqu'au premier lacet du
+vent apparent, le perd ensuite en ligne droite et n'en a plus au-delà du second ; sa masse ne change
+pas. Sans vent, rien ne change ; la puissance mesurée et enregistrée non plus (invariant A7).
 """
 
 from __future__ import annotations
@@ -15,10 +20,11 @@ from __future__ import annotations
 import bisect
 import math
 from dataclasses import dataclass, replace
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from .physics import DT_DEFAULT, PhysicsParams, RiderPhysics
 from .progression import Table
+from .wind import apparent_yaw_deg
 
 SLOTS = ("frame", "wheels", "helmet", "kit", "socks", "glasses")
 PHYSICAL_SLOTS = ("frame", "wheels")
@@ -31,12 +37,14 @@ MAX_MASS_DROP = 0.03      # fraction de la masse totale
 MAX_CDA_DROP = 0.06       # fraction du CdA
 ITEM_MASS_RANGE = (-2.0, 1.0)     # kg, par pièce
 ITEM_CDA_RANGE = (-5.0, 0.0)      # %, par pièce
+CROSSWIND_MAX_DEG = 90.0          # lacet du vent apparent : 0 à 90°
 FLAT_MAX_M_PER_KM = 5.0
 CLIMB_MIN_M_PER_KM = 15.0
 
 _ITEM_KEYS = {"id": str, "slot": str, "name": str, "level": int, "price": int,
               "mass_delta_kg": float, "cda_delta_pct": float, "terrain": str, "look": str,
-              "default": bool, "buyable": bool}
+              "default": bool, "buyable": bool,
+              "crosswind_fade_deg": float, "crosswind_zero_deg": float}
 
 
 class CatalogueError(Exception):
@@ -56,10 +64,25 @@ class Item:
     look: str = ""
     default: bool = False
     buyable: bool = True     # faux : offerte par un défi seulement
+    crosswind_fade_deg: float = 0.0   # lot P34 : lacet où le gain de CdA commence à baisser (0 : insensible)
+    crosswind_zero_deg: float = 0.0   # lot P34 : lacet au-delà duquel il n'y a plus de gain
 
     @property
     def physical(self) -> bool:
         return self.slot in PHYSICAL_SLOTS
+
+    @property
+    def crosswind_sensitive(self) -> bool:
+        return self.crosswind_zero_deg > 0.0
+
+    def cda_keep(self, yaw_deg: float) -> float:
+        """Part du gain de CdA gardée au lacet `yaw_deg` : 1 jusqu'à `crosswind_fade_deg`, 0 au-delà
+        de `crosswind_zero_deg`, en ligne droite entre les deux ; toujours 1 pour une pièce insensible."""
+        if not self.crosswind_sensitive or yaw_deg <= self.crosswind_fade_deg:
+            return 1.0
+        if yaw_deg >= self.crosswind_zero_deg:
+            return 0.0
+        return (self.crosswind_zero_deg - yaw_deg) / (self.crosswind_zero_deg - self.crosswind_fade_deg)
 
 
 @dataclass
@@ -130,6 +153,12 @@ def load_catalogue(table: Table) -> Catalogue:
         lo, hi = ITEM_CDA_RANGE
         if not lo <= item.cda_delta_pct <= hi:
             raise CatalogueError(f"{where}, cda_delta_pct : hors de {lo:g} à {hi:g} %")
+        if item.crosswind_fade_deg or item.crosswind_zero_deg:
+            if not item.physical or item.cda_delta_pct >= 0.0:
+                raise CatalogueError(f"{where} : vent de travers seulement pour une pièce qui baisse le CdA")
+            if not 0.0 <= item.crosswind_fade_deg < item.crosswind_zero_deg <= CROSSWIND_MAX_DEG:
+                raise CatalogueError(f"{where}, crosswind_fade_deg et crosswind_zero_deg : 0 ≤ début < fin ≤ "
+                                     f"{CROSSWIND_MAX_DEG:g}° attendus")
         items[item.id] = item
     cat = Catalogue(items)
     for slot in SLOTS:
@@ -146,23 +175,44 @@ def load_catalogue(table: Table) -> Catalogue:
 
 # --- effets ---------------------------------------------------------------------------------
 
-def physical_deltas(loadout: dict[str, str], catalogue: Catalogue) -> tuple[float, float]:
-    """Somme brute (non bornée) des deltas de masse (kg) et de CdA (%) du cadre et des roues."""
+def physical_deltas(loadout: dict[str, str], catalogue: Catalogue, yaw_deg: float = 0.0) -> tuple[float, float]:
+    """Somme brute (non bornée) des deltas de masse (kg) et de CdA (%) du cadre et des roues, au lacet
+    du vent apparent `yaw_deg` (lot P34 : 0 par vent calme ou de face, gain complet)."""
     mass = cda = 0.0
     for slot in PHYSICAL_SLOTS:
         item = catalogue.items.get(loadout.get(slot, ""))
         if item is not None:
             mass += item.mass_delta_kg
-            cda += item.cda_delta_pct
+            cda += item.cda_delta_pct * item.cda_keep(yaw_deg)
     return mass, cda
 
 
-def apply_equipment(base: PhysicsParams, loadout: dict[str, str], catalogue: Catalogue) -> PhysicsParams:
+def _cda_factor(cda_pct: float) -> float:
+    return max(1.0 + cda_pct / 100.0, 1.0 - MAX_CDA_DROP)
+
+
+def apply_equipment(base: PhysicsParams, loadout: dict[str, str], catalogue: Catalogue,
+                    yaw_deg: float = 0.0) -> PhysicsParams:
     """`PhysicsParams` avec l'équipement, dans les bornes du plan ; `crr` et rendement inchangés."""
-    mass_delta, cda_pct = physical_deltas(loadout, catalogue)
+    mass_delta, cda_pct = physical_deltas(loadout, catalogue, yaw_deg)
     mass_delta = max(mass_delta, -MAX_MASS_DROP * base.mass_kg)
-    cda_factor = max(1.0 + cda_pct / 100.0, 1.0 - MAX_CDA_DROP)
-    return replace(base, mass_kg=base.mass_kg + mass_delta, cda_m2=base.cda_m2 * cda_factor)
+    return replace(base, mass_kg=base.mass_kg + mass_delta, cda_m2=base.cda_m2 * _cda_factor(cda_pct))
+
+
+CdaRatio = Callable[[float], float]   # lacet du vent apparent (°) → facteur du CdA équipé
+
+
+def crosswind_cda_ratio(loadout: dict[str, str], catalogue: Catalogue, yaw_deg: float) -> float:
+    """Facteur du CdA équipé par vent calme qui donne le CdA au lacet `yaw_deg` (lot P34).
+
+    1 sans pièce sensible au vent de travers ou sous son premier seuil ; s'applique par multiplication
+    sur les paramètres du pas, comme les bonus de la série T (même borne de −6 % au total).
+    """
+    if not any(i is not None and i.crosswind_sensitive
+               for i in (catalogue.items.get(loadout.get(slot, "")) for slot in PHYSICAL_SLOTS)):
+        return 1.0
+    calm = _cda_factor(physical_deltas(loadout, catalogue)[1])
+    return _cda_factor(physical_deltas(loadout, catalogue, yaw_deg)[1]) / calm
 
 
 # --- conseil par terrain -----------------------------------------------------------------
@@ -208,28 +258,43 @@ class _Profile:
     """Pente et altitude du journal en fonction de la distance (paliers entre deux relevés)."""
 
     def __init__(self, records: list[dict]) -> None:
-        pts = sorted((float(r["distance"]), float(r.get("grade") or 0.0), float(r.get("alt") or 0.0))
+        pts = sorted((float(r["distance"]), float(r.get("grade") or 0.0), float(r.get("alt") or 0.0),
+                      float(r.get("head_mps") or 0.0), float(r.get("cross_mps") or 0.0))
                      for r in records if r.get("distance") is not None)
         self.s = [p[0] for p in pts]
         self.grade = [p[1] for p in pts]
         self.alt = [p[2] for p in pts]
+        # vent du parcours relevé (lot P34) : `head_mps` (P2) et `cross_mps`, 0 vent coupé
+        self.head = [p[3] for p in pts]
+        self.cross = [p[4] for p in pts]
+        self.windy = any(self.head) or any(self.cross)
+
+    def index(self, s: float) -> int:
+        return max(bisect.bisect_right(self.s, s) - 1, 0)
 
     def at(self, s: float) -> tuple[float, float]:
-        i = max(bisect.bisect_right(self.s, s) - 1, 0)
+        i = self.index(s)
         return self.grade[i], self.alt[i]
 
 
 def _simulate(params: PhysicsParams, powers: list[float], profile: _Profile, v0: float,
-              dt: float) -> list[tuple[float, float]]:
-    """Trajectoire (temps, distance) en rejouant la puissance seconde par seconde."""
-    rider = RiderPhysics(params, s=profile.s[0], v=v0)
+              dt: float, cda_ratio: CdaRatio | None = None) -> list[tuple[float, float]]:
+    """Trajectoire (temps, distance) en rejouant la puissance seconde par seconde, dans le vent relevé
+    (lot P34) : vent de face dans la physique, CdA corrigé par `cda_ratio` selon le lacet."""
+    # copie propre à la simulation quand le vent change ses paramètres d'un pas à l'autre
+    rider = RiderPhysics(replace(params) if profile.windy else params, s=profile.s[0], v=v0)
     steps = max(int(round(1.0 / dt)), 1)
     out = [(0.0, rider.s)]
     t = 0.0
     for p in powers:
         for _ in range(steps):
-            grade, alt = profile.at(rider.s)
-            rider.step(p, grade, alt, dt=1.0 / steps)
+            i = profile.index(rider.s)
+            if profile.windy:
+                head = profile.head[i]
+                ratio = cda_ratio(apparent_yaw_deg(rider.v, head, profile.cross[i])) if cda_ratio else 1.0
+                rider.p.wind_mps = head
+                rider.p.cda_m2 = params.cda_m2 * ratio
+            rider.step(p, profile.grade[i], profile.alt[i], dt=1.0 / steps)
         t += 1.0
         out.append((t, rider.s))
     return out
@@ -247,8 +312,11 @@ def _time_at(traj: list[tuple[float, float]], s: float) -> float | None:
 
 def equipment_time_gain(records: Iterable[dict], equipped: PhysicsParams, base: PhysicsParams,
                         s_start: float | None = None, s_end: float | None = None,
-                        dt: float = DT_DEFAULT) -> float | None:
-    """Temps gagné (négatif) ou perdu par l'équipement : même puissance mesurée, même profil.
+                        dt: float = DT_DEFAULT, cda_ratio: CdaRatio | None = None) -> float | None:
+    """Temps gagné (négatif) ou perdu par l'équipement : même puissance mesurée, même profil, même vent.
+
+    Vent relevé dans le journal (lot P34) : `head_mps` pour les deux simulations, `cross_mps` pour le
+    CdA de l'équipement (`cda_ratio`, voir `crosswind_cda_ratio`) ; sans vent, calcul d'avant.
 
     Sur toute la séance, la distance comparée est la plus courte des deux simulations ; sur un
     segment `[s_start, s_end]`, le temps entre les deux bornes. None sans puissance ni distance,
@@ -264,7 +332,7 @@ def equipment_time_gain(records: Iterable[dict], equipped: PhysicsParams, base: 
         return 0.0
     powers = [float(r.get("power") or 0.0) for r in sorted(recs, key=lambda r: float(r.get("t") or 0.0))]
     v0 = float(recs[0].get("speed") or 0.0)
-    a = _simulate(equipped, powers, profile, v0, dt)
+    a = _simulate(equipped, powers, profile, v0, dt, cda_ratio)
     b = _simulate(base, powers, profile, v0, dt)
     start = profile.s[0] if s_start is None else s_start
     end = min(a[-1][1], b[-1][1]) if s_end is None else s_end
@@ -283,7 +351,7 @@ SEGMENT_PAD = 0.3               # durée ajoutée après la sortie, en fraction 
 
 def segment_time_gain(records: Iterable[dict], equipped: PhysicsParams, base: PhysicsParams,
                       t_start: float, t_end: float, s_start: float, s_end: float,
-                      dt: float = SEGMENT_GAIN_DT_S) -> float | None:
+                      dt: float = SEGMENT_GAIN_DT_S, cda_ratio: CdaRatio | None = None) -> float | None:
     """Temps gagné par l'équipement sur un passage de segment (lot V5, `segment_result`).
 
     `records` : relevés à 1 Hz de la séance (temps `t` chronométré, distance cumulée). Seuls ceux
@@ -299,7 +367,7 @@ def segment_time_gain(records: Iterable[dict], equipped: PhysicsParams, base: Ph
     last = window[-1]
     pad = int(math.ceil((t_end - t_start) * SEGMENT_PAD)) + 5
     window += [{**last, "t": float(last["t"]) + k} for k in range(1, pad + 1)]
-    return equipment_time_gain(window, equipped, base, s_start, s_end, dt)
+    return equipment_time_gain(window, equipped, base, s_start, s_end, dt, cda_ratio)
 
 
 def gain_text(item_name: str, slot: str, seconds: float, where: str = "sur la séance") -> str:

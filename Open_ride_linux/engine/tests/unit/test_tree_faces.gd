@@ -30,6 +30,9 @@ func _init() -> void:
 		if built.is_empty():
 			continue
 		_check_mesh(kind, built["lod0"], float(built["height"]))
+		if built.has("lod0_bare"):
+			_check_mesh(kind + " (hiver, charpente du lot P18)", built["lod0_bare"], float(built["height"]))
+			_check(TreeSpecies.triangle_count(built["lod0_bare"]) < 300, "%s l'hiver : moins de 300 triangles (%d)" % [kind, TreeSpecies.triangle_count(built["lod0_bare"])])
 		if kind in SINGLE_TRUNK:
 			_check_trunk_in_crown(kind, built["lod0"])
 	_check_mesh("generic", TreeRenderer.build_lod0_mesh(), 5.4)

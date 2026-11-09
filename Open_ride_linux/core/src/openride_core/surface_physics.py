@@ -17,7 +17,7 @@ from __future__ import annotations
 import math
 from typing import Protocol
 
-SURFACES = ("paved", "compacted", "gravel", "dirt")
+SURFACES = ("paved", "compacted", "gravel", "dirt", "wood")
 MODES = ("off", "auto", "compacted", "gravel", "dirt")
 BLEND_M = 20.0
 
@@ -37,6 +37,8 @@ class SurfaceRoute(Protocol):
 
 
 def effective_surface(route_surface: str, mode: str) -> str:
+    if route_surface == "wood":   # piste du vélodrome : hors de l'option gravel
+        return "wood"
     if mode == "off":
         return "paved"
     if mode == "auto":
@@ -44,7 +46,9 @@ def effective_surface(route_surface: str, mode: str) -> str:
     return mode
 
 
-def crr_factor(surface: str, cfg: GravelSettings) -> float:
+def crr_factor(surface: str, cfg: GravelSettings, wood_factor: float = 1.0) -> float:
+    if surface == "wood":
+        return float(wood_factor)
     if surface == "compacted":
         return float(cfg.factor_compacted)
     if surface == "gravel":
@@ -64,17 +68,24 @@ def combined_offset_pct(wind_pct: float, gravel_pct: float, max_offset_pct: floa
     return max(-max_offset_pct, min(max_offset_pct, wind_pct + gravel_pct))
 
 
-def blended_factor(route: SurfaceRoute, s: float, mode: str, cfg: GravelSettings, blend_m: float = BLEND_M) -> float:
-    """Facteur moyen sur [s − 20 m, s] : la surface d'un point vaut jusqu'au point suivant (`Route.surface_at`)."""
-    if mode == "off":
-        return 1.0
-    if mode != "auto" or route.surface is None:
+def blended_factor(route: SurfaceRoute, s: float, mode: str, cfg: GravelSettings, blend_m: float = BLEND_M,
+                   wood_factor: float | None = None) -> float:
+    """Facteur moyen sur [s − 20 m, s] : la surface d'un point vaut jusqu'au point suivant (`Route.surface_at`).
+
+    `wood_factor` : facteur du bois sur une piste de vélodrome (lot VD3) ; None hors piste."""
+    if wood_factor is None:
+        if mode == "off":
+            return 1.0
+        if mode != "auto" or route.surface is None:
+            return crr_factor(effective_surface("paved", mode), cfg)
+    elif route.surface is None:
         return crr_factor(effective_surface("paved", mode), cfg)
+    wood = 1.0 if wood_factor is None else wood_factor
     start, ds = s - blend_m, route.ds_m
     cuts = [start] + [k * ds for k in range(math.floor(start / ds) + 1, math.ceil(s / ds))] + [s]
     total = 0.0
     for a, b in zip(cuts, cuts[1:]):
-        total += (b - a) * crr_factor(effective_surface(route.surface_at(0.5 * (a + b)), mode), cfg)
+        total += (b - a) * crr_factor(effective_surface(route.surface_at(0.5 * (a + b)), mode), cfg, wood)
     return total / blend_m
 
 

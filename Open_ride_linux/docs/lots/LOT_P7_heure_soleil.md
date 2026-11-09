@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Jour et nuit : heure, coucher de soleil, nuit étoilée (sans affichage) | GDScript | P1, P17 | Petite | Oui, **version 2.0** (issue #131) |
+| Jour et nuit : heure, coucher de soleil, nuit étoilée (sans affichage) | GDScript | P1, P17 | Petite | **En PR** (lancé le 8 novembre, demande du propriétaire « Lance jour/nuit et saison du 2.0 ») ; modèle pur, sans effet à l'écran avant P19 ; issue #131 |
 
 ## 1. Objectif
 
@@ -48,6 +48,13 @@ Aucune.
 5. Thème par défaut sans `time_of_day` : élévation et direction identiques à `sky_params` actuel.
 6. `evaluate` (position et lumière) sous 0,05 ms.
 7. `stars` : 0 au-dessus de 0° d'élévation, 1 sous −18°, croissante entre les deux ; nuit de pleine lune plus claire qu'une nuit de nouvelle lune, route toujours au-dessus de la lumière ambiante minimale.
+
+## 7 bis. Livraison (8 novembre)
+
+- `engine/scripts/daylight_model.gd` : `sun_position`, `light` (multiplicateurs des valeurs de jour du thème, neutres dès 30° d'élévation : la scène de jour ne change pas), `stars`, `clock`, `days_elapsed`, `moon_illumination`, `evaluate`.
+- `theme_render_params.gd` : `time_of_day_params(theme)` (`present` faux sans `sky.time_of_day` : soleil d'aujourd'hui).
+- `engine/tests/unit/test_daylight_model.gd` (critères 2 à 7) ; budget `daylight_evaluate` (0,05 ms) dans `perf_budgets.json`.
+- Interrupteur du menu (décision du propriétaire du 8 novembre : jour/nuit et saisons coupables séparément) : branché par P19, voir son cahier §4 bis.
 
 ## 8. Hors périmètre
 
