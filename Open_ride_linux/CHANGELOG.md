@@ -20,8 +20,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Un parcours compilé avec la couche eau reçoit la mer, tirée des lignes de côte d'OpenStreetMap et refermée sur le bord du terrain, îles comprises.
 - Nouvelle couche `coast` (`--layers …,coast` ou `add-layer coast`) : le rivage (falaise, sable, galets ou roche) et les plages qui touchent la côte, pour la mer animée de la 3.0 (U9).
 - Un parcours loin de la mer ne change pas.
-- Grands champs (plusieurs km, milliers de points) : les rangs des tracteurs se calculent en quelques millisecondes au lieu de 20 s, ce qui retardait l'arrivée du terrain proche et des arbres (à-coups au premier essai de la Côte d'Opale).
-- La pleine mer est écrite en grands rectangles et non plus carré de 1 km par carré : les tronçons au bord de la mer se chargent en moins d'une seconde au lieu de 20 (pire image de 142 ms au premier essai).
+- Tracteurs des champs loin de la route : leur sol est lu sur le terrain lointain, et la recherche de la route la plus proche ne parcourt plus des milliers de cases vides. Les tronçons de la Côte d'Opale bordés de grands champs se préparaient en 20 s, ce qui retardait le terrain proche et les arbres (à-coups au premier essai).
+- Rangs des tracteurs dans les grands champs (plusieurs km, milliers de points) calculés sans relire tous les côtés du champ.
+- La pleine mer est écrite en grands rectangles et non plus carré de 1 km par carré (214 aires deviennent une cinquantaine).
 
 ### Rendu plus léger (étude du 5 et 6 novembre)
 - Medium et high : MSAA 2× et ombres du soleil en 2048 ; high sans lumière indirecte d'écran (SSIL) et filtrage anisotrope 8×. Tour des six biomes sur la GTX 1060 : environ −2,4 ms par image en medium et −4 ms en high.

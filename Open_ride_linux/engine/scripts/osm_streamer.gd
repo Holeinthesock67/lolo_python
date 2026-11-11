@@ -386,7 +386,9 @@ func _build_chunk_job(job: Dictionary) -> void:
 						scaled.append(lc)
 					lines = scaled
 				traffic.append_array(RoadTrafficModel.road_paths(lines))
+		var t_fields := Time.get_ticks_usec()
 		traffic.append_array(RoadTrafficModel.field_paths(veg_items, height_at))
+		PerfProbe.task("osm_champs", str(k), (Time.get_ticks_usec() - t_fields) / 1000.0)
 
 	PerfProbe.task("osm_circulation", str(k), (Time.get_ticks_usec() - t_traffic) / 1000.0)
 	PerfProbe.task("osm", str(k), (Time.get_ticks_usec() - t0) / 1000.0)
@@ -401,18 +403,31 @@ func _build_chunk_job(job: Dictionary) -> void:
 	}
 
 
-## Hauteur du terrain proche en (x, z), lue dans les tuiles `near` du parcours (cache par tuile) ; repli
-## sur l'altitude de la route la plus proche sans tuile. Sans nœud : utilisable dans une tâche de fond.
+## Hauteur du terrain proche en (x, z), lue dans les tuiles `near` du parcours (cache par tuile) ; hors des
+## tuiles proches, tuile lointaine (`far`, abaissée comme à l'affichage), puis altitude de la route la plus
+## proche. Les champs loin de la route (tracteurs, lot P25) sont posés sur le lointain : avant, chaque point
+## de rang cherchait la route la plus proche (20 s par tronçon côtier, essai r790d). Sans nœud : utilisable
+## dans une tâche de fond.
 static func terrain_height_fn(w_dir: String, r) -> Callable:
 	var cache := {}
+	var far_cache := {}
+	var far_dy: float = TerrainTiles.LEVELS["far"]["y_offset"]
 	return func(x: float, z: float) -> float:
 		var t := TerrainTiles.tile_of("near", x, z)
 		if not cache.has(t):
 			cache[t] = TerrainTiles.load_filled(w_dir, "near", t.x, t.y, r)
 		var h: PackedFloat32Array = cache[t]
-		if h.is_empty():
-			return TerrainTiles.nearest_route_alt(r, x, z)
-		return TerrainTiles.mesh_height_at(h, "near", t.x, t.y, x, z)
+		if not h.is_empty():
+			return TerrainTiles.mesh_height_at(h, "near", t.x, t.y, x, z)
+		var ft := TerrainTiles.tile_of("far", x, z)
+		if not far_cache.has(ft):
+			far_cache[ft] = TerrainTiles.load_tile(w_dir, "far", ft.x, ft.y)
+		var fh: PackedFloat32Array = far_cache[ft]
+		if not fh.is_empty():
+			var y := TerrainTiles.mesh_height_at(fh, "far", ft.x, ft.y, x, z)
+			if not is_nan(y):
+				return y + far_dy
+		return TerrainTiles.nearest_route_alt(r, x, z)
 
 
 ## Axe de la route (x, z) sur le tronçon k, élargi de 200 m de part et d'autre.

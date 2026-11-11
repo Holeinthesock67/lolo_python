@@ -64,6 +64,14 @@ Aucune (U1).
   champs (lot P25). `field_rows` coupait chaque rang de 9 m avec tous les côtés du champ ; les champs OSM du
   Pas-de-Calais font plusieurs km et des milliers de points. Chaque rang ne regarde plus que les côtés qu'il
   peut couper (même résultat, test sur un champ de 4 000 points). Défaut antérieur à U3, révélé par ce parcours.
+- r790d (11 novembre) : `osm_circulation` toujours à 19,5-23 s : `field_rows` n'était pas la cause. Vraie
+  cause : la hauteur du sol de chaque point de rang (tous les 10 m). Hors des tuiles proches (bande de 400 m),
+  `terrain_height_fn` cherchait la route la plus proche (`route_data.gd` `nearest_index`), qui lisait les cases
+  vides de la grille anneau par anneau : un point à 2 km lisait environ 6 400 cases, plusieurs ms par point.
+  Corrections : hors des tuiles proches, le sol vient de la tuile lointaine (abaissée comme à l'affichage),
+  puis seulement de la route ; et `nearest_index` ne lit plus que les cases occupées au-delà de quelques
+  anneaux (même résultat que le parcours de tous les points, environ 400 cases au lieu de milliers sur une
+  route de 8 km). Sous-tâche `osm_champs` ajoutée à la sonde pour le vérifier au passage r790e.
 - Tracé : la route D940 tirée d'OSM fait 11,3 km entre Wissant et Sangatte ; l'essai la coupe à 8 km depuis
   Wissant (`couper_gpx.py` de la fiche d'essai).
 
