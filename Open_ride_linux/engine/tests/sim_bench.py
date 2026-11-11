@@ -330,6 +330,9 @@ class Bench:
         # Lot S1 : captures tous les N mètres de route (même endroit d'un essai à l'autre) au lieu de toutes
         # les N secondes ; contrôles des tuiles (apparitions, jointures, trous) stricts si le scénario le demande.
         self.every_m = float(getattr(args, "every_m", None) or settings.get("every_m") or 0.0)
+        # Première capture en distance (défaut : `every_m`) : décale la série, p. ex. juste avant chaque rangée de
+        # boîtes du Grand Prix (lot GP7).
+        self.first_m = float(settings.get("first_m") or self.every_m)
         self.strict_tiles = bool(settings.get("strict_tiles"))
         # Essai d'endurance (lot X16) : sonde de performance et vérifications de durée.
         self.endurance = bool(settings.get("endurance"))
@@ -543,7 +546,7 @@ class Bench:
             if "key" in x and float(x["t"]) < self.duration:
                 plan.append((float(x["t"]) + inputs_mod.held_s(x) + 1.5, f"in{k}_{re.sub(r'[^A-Za-z0-9]', '', x['key'])}"))
         plan.sort()
-        next_m = self.every_m
+        next_m = self.first_m
         cam_after = 0.0
         while True:
             t_rel = now() - self.t_core
@@ -1076,7 +1079,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--biome", help="biome forcé sur tout le parcours (lot U17, ex. sand_desert) ; "
                     "l'emporte sur le biome du scénario (scénarios biome_*)")
     ap.add_argument("--workout", help="ERG : erg_court (5 min 30 intégré) ou fichier .zwo")
-    ap.add_argument("--mode", choices=("ride", "wtf", "survivor"),
+    ap.add_argument("--mode", choices=("ride", "wtf", "survivor", "grandprix"),
                     help="mode de la séance (start.mode), ex. survivor ; défaut : bench.mode du scénario, sinon ride")
     ap.add_argument("--duration", type=float, help="durée de chaque séance en s (défaut : fin du scénario + 15 s)")
     ap.add_argument("--every", type=float, help="intervalle des captures en s (défaut : celui du scénario, sinon 15)")
