@@ -87,6 +87,11 @@ const STYLES := {
 	"bois": {"roof": ROOF_SHINGLE, "pitch_deg": 35.0, "hip_share": 0.1,
 		"walls": {WALL_WOOD: 0.85, WALL_PLASTER: 0.15},
 		"farm_wall": WALL_WOOD, "worship_roof": ROOF_SHINGLE},
+	# Lot JP1 : tuiles kawara grises du Japon, toits à croupe (irimoya) à large débord, enduit clair et bois sombre
+	"kawara": {"roof": ROOF_TILE_ROUND, "pitch_deg": 28.0, "hip_share": 0.6, "overhang_m": 0.9,
+		"walls": {WALL_PLASTER: 0.5, WALL_WOOD: 0.5},
+		"farm_wall": WALL_WOOD, "worship_roof": ROOF_TILE_ROUND,
+		"palettes": {"tile_round": "kawara", "wood": "wood_dark"}},
 	# Lot U23 : habitat propre au biome (pas de variante régionale U1 équivalente)
 	"chalet": {"roof": ROOF_SLATE, "pitch_deg": 24.0, "hip_share": 0.05, "overhang_m": 1.2,
 		"walls": {WALL_CHALET: 0.7, WALL_STONE: 0.2, WALL_WOOD: 0.1},
@@ -120,7 +125,7 @@ const STYLES := {
 		"walls": {WALL_PLASTER: 0.7, WALL_STONE: 0.2, WALL_TIMBER: 0.1},
 		"farm_wall": WALL_WOOD, "worship_roof": ROOF_SLATE, "palettes": {"plaster": "white"}},
 }
-## Styles du lot U23 (vitrine, tests) ; STYLES garde d'abord les six variantes du contrat U1.
+## Styles du lot U23 (vitrine, tests) ; STYLES garde d'abord les sept variantes du contrat (U1, `kawara` du lot JP1).
 const BIOME_ONLY_STYLES := ["chalet", "bois_peint", "pise", "case", "paillote", "basalte", "chaumiere", "yourte"]
 
 ## Style par défaut de chaque biome du lot U0, quand la tuile n'a pas de variante régionale (U1 `variant` null) :
@@ -132,7 +137,7 @@ const BIOME_STYLES := {
 	"boreal_forest": "bois_peint", "alpine": "chalet", "tundra": "bois_peint", "polar": "bois_peint",
 	"mediterranean": "tuile_ronde", "steppe": "yourte", "savanna": "case",
 	"sand_desert": "pise", "rock_desert": "pise", "jungle": "paillote", "wetland": "chaumiere",
-	"coast": "ardoise", "volcanic": "basalte",
+	"coast": "ardoise", "volcanic": "basalte", "japan": "kawara",
 }
 
 ## Teintes propres aux matières (l'enduit et les tuiles prennent celles du thème)
@@ -157,6 +162,9 @@ const MATERIAL_COLORS := {
 	"thatch": ["#a38a5a", "#8f7a50", "#b39a66", "#7d6c48"],
 	"felt": ["#e8e0cc", "#ddd3bb", "#efe9da"],
 	"felt_roof": ["#d9cfb6", "#cfc3a6", "#e2dac6"],
+	# Lot JP1
+	"kawara": ["#4a4f57", "#555a62", "#3f444b", "#5c6168"],
+	"wood_dark": ["#4a3628", "#3e2e22", "#56402e"],
 }
 
 ## Familles par valeur OSM de `building=*` ; toute autre valeur (dont `yes`) est une maison.

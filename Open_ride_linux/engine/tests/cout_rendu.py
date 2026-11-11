@@ -130,7 +130,7 @@ def cmd_lancer(args: argparse.Namespace) -> int:
     if not world.is_dir():
         import make_biome_world
         try:
-            make_biome_world.generate(routes, name, biomes)
+            make_biome_world.generate(routes, name, biomes, recette=True)
         except (ImportError, RuntimeError, ValueError) as exc:
             print(f"parcours du banc impossible : {exc}", file=sys.stderr)
             return 2
