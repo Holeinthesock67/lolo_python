@@ -19,10 +19,10 @@
     {"ecran": "summary", "delai": 15},
     {"fichier": "OpenRide/Profils/cycliste-a/derniers_choix.json"},
     {"note": "lancement suivant : tout doit être relu", "relancer": true},
-    {"ecran": "home", "contient": ["Parcours : demo"], "delai": 20},
+    {"ecran": "home", "contient": ["Parcours : Col du lacet"], "delai": 20},
     {"capture": "accueil_dernier_parcours"},
     {"choisir": "ride"},
-    {"ecran": "ready", "titre": "Prêt : session libre — demo", "contient": ["Bot 1 : 250 W"]},
+    {"ecran": "ready", "titre": "Prêt : session libre — Col du lacet", "contient": ["Bot 1 : 250 W"]},
     {"capture": "pret_dernier_bot"}
   ]
 }

@@ -305,7 +305,8 @@
                 "jungle",
                 "wetland",
                 "coast",
-                "volcanic"
+                "volcanic",
+                "japan"
               ]
             },
             "forced": {
@@ -330,7 +331,8 @@
                     "jungle",
                     "wetland",
                     "coast",
-                    "volcanic"
+                    "volcanic",
+                    "japan"
                   ]
                 }
               ]
@@ -360,7 +362,8 @@
                   "jungle",
                   "wetland",
                   "coast",
-                  "volcanic"
+                  "volcanic",
+                  "japan"
                 ]
               },
               "additionalProperties": {

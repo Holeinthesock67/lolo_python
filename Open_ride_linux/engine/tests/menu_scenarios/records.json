@@ -12,7 +12,7 @@
     {"choisir": "demo"},
     {"ecran": "ready"},
     {"choisir": "records"},
-    {"ecran": "records", "titre": "Records : demo", "elements": ["seg:climb1", "seg:sprint1"],
+    {"ecran": "records", "titre": "Records : Col du lacet", "elements": ["seg:climb1", "seg:sprint1"],
      "contient": ["2 temps sans bonus", "Sprint 1 — aucun temps"]},
     {"choisir": "seg:climb1"},
     {"ecran": "record_table", "elements": ["toggle", "row:0", "row:1"], "contient": ["27/10/2026 18:05"]},

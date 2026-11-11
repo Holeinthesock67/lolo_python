@@ -149,7 +149,8 @@
         "jungle",
         "wetland",
         "coast",
-        "volcanic"
+        "volcanic",
+        "japan"
       ]
     },
     "groundLayer": {
@@ -680,7 +681,8 @@
           "tuile_plate",
           "pierre_seche",
           "toit_plat_blanc",
-          "bois"
+          "bois",
+          "kawara"
         ]
       },
       "additionalProperties": {
