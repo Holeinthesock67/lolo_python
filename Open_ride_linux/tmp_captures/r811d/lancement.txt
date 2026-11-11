@@ -1,0 +1,7 @@
+11:33:55 empreinte avant cd3850c51f3f01752752e767563f7ccd
+11:33:55 tête ad70e262
+11:35:06 captures_demo lancer --qualites medium
+12:20:18 fin rc=1 durée 2711 s
+12:20:19 empreinte après cd3850c51f3f01752752e767563f7ccd
+12:20:19 clone 8fc4a132
+12:20:19 FIN

@@ -1,0 +1,164 @@
+menus : liste des parcours et écran Prêt de chacun
+== parcours_demo (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 10.0 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus') : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé']) : « Contenus »
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (titre='Parcours', contient=['Col du lacet', 'Tour des six paysages', 'Route de la côte', 'Montée alpine'], elements=['demo', 'demo-biomes-tour', 'demo-biomes-cote', 'demo-biomes-alpin']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Col du lacet') : « Prêt : session libre — Col du lacet »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo-biomes-tour » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Tour des six paysages']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Tour des six paysages') : « Prêt : session libre — Tour des six paysages »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo-biomes-tour »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo-biomes-cote » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Route de la côte']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Route de la côte') : « Prêt : session libre — Route de la côte »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo-biomes-cote »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo-biomes-alpin » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Montée alpine']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Montée alpine') : « Prêt : session libre — Montée alpine »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo-biomes-alpin »
+[OK] écran routes : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+parcours_demo            clavier  OK              89 s
+Rapport : ~/mesures-2026-11-01-auto/r811d/captures/menus/rapport.html
+OK
+demo (medium) : 9 min, captures à 150, 400, 4900, 4930, 4950, 4960, 4970 m
+>>> [1/1] Scénario nominal (9:17)
+== nominal : parcours demo, 557 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 14.0 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo à 24.0 s
+[OK] engine vivant jusqu'à la fin : 557 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.61 s (médiane), 0.65 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (8 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 0.6 à 4.5 %, pente envoyée 0.1 à 5.2 %
+[OK] médiane 53.5 km/h sur 322 s (attendu 50.0 ± 5.0), de 49.7 à 54.9 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 2 (dernier : oncoming / core à 57 m (écarts à l'axe -2.5 et -2.5 m))
+[OK] fréquence cardiaque au journal : 343 échantillons, 176 à 185 bpm
+    NON nominal : 2 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r811d/captures/demo_medium/index.html
+=== Banc fini : ÉCHEC (2 vérification(s))
+RÉSULTAT : ÉCHEC (2 vérification(s))
+demo-biomes-tour (medium) : 20 min, captures à 150, 400, 12032, 12062, 12082, 12092, 12102 m
+>>> [1/1] Scénario nominal (20:25)
+== nominal : parcours demo-biomes-tour, 1225 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 14.0 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-tour à 25.3 s
+[OK] engine vivant jusqu'à la fin : 1225 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.79 s (médiane), 0.91 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (8 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -2.5 à 8.9 %, pente envoyée -2.5 à 10.2 %
+[OK] médiane 51.6 km/h sur 834 s (attendu 50.0 ± 5.0), de 46.7 à 53.2 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 89 (dernier : core / core à -51 m (écarts à l'axe -0.1 et -0.1 m))
+[OK] fréquence cardiaque au journal : 855 échantillons, 179 à 185 bpm
+    NON nominal : 2 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r811d/captures/demo-biomes-tour_medium/index.html
+=== Banc fini : ÉCHEC (2 vérification(s))
+RÉSULTAT : ÉCHEC (2 vérification(s))
+demo-biomes-cote (medium) : 2 min, captures à 150, 400 m
+>>> [1/1] Scénario nominal (2:09)
+== nominal : parcours demo-biomes-cote, 129 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 14.1 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-cote à 24.6 s
+[OK] engine vivant jusqu'à la fin : 129 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 3/3 images enregistrées après le chargement, réponse en 0.66 s (médiane), 0.68 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (3 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -0.1 à 0.3 %, pente envoyée 0.0 à 0.6 %
+[OK] médiane 50.5 km/h sur 49 s (attendu 50.0 ± 5.0), de 46.6 à 50.9 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 3 captures
+[OK] fréquence cardiaque au journal : 70 échantillons, 179 à 185 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r811d/captures/demo-biomes-cote_medium/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-biomes-alpin (medium) : 11 min, captures à 150, 400, 5964, 5994, 6014, 6024, 6034 m
+>>> [1/1] Scénario nominal (10:57)
+== nominal : parcours demo-biomes-alpin, 657 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 13.9 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-alpin à 24.4 s
+[OK] engine vivant jusqu'à la fin : 657 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.76 s (médiane), 0.80 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (8 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 5.9 à 9.0 %, pente envoyée 0.1 à 10.2 %
+[OK] médiane 52.8 km/h sur 400 s (attendu 50.0 ± 5.0), de 50.6 à 53.3 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 44 (dernier : oncoming / core à 52 m (écarts à l'axe -2.5 et -2.5 m))
+[OK] fréquence cardiaque au journal : 421 échantillons, 178 à 185 bpm
+    NON nominal : 2 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r811d/captures/demo-biomes-alpin_medium/index.html
+=== Banc fini : ÉCHEC (2 vérification(s))
+RÉSULTAT : ÉCHEC (2 vérification(s))
+Planche : ~/mesures-2026-11-01-auto/r811d/captures/planche.html
