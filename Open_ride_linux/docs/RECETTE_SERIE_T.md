@@ -7,7 +7,7 @@ Cahier : [LOT_T11_recette.md](lots/LOT_T11_recette.md)
 
 **Règle de la recette : aucune étape ne dépasse 10 minutes sur le vélo.** Chaque étape dit quand s'arrêter. Entre deux étapes, pause libre : on peut en faire une seule par jour. À cocher par le propriétaire : « fait », ou « à corriger » avec une remarque. Les valeurs réelles (FTP, poids, appareils) restent dans `~/OpenRide/config.toml`, jamais dans le dépôt ; tes traces GPS restent sur ton PC.
 
-Parcours de démonstration (`demo`, 5 km, ouvert) : montée « Montée 1 » de 0 à 1 500 m (4e catégorie, 3,6 %), puis sprint « Sprint 1 » de 2 860 à 3 290 m. Vers 25 km/h, le sprint est atteint en 7 minutes environ.
+Parcours de démonstration (`demo`, affiché « Col du lacet » au menu depuis le lot O37, 5 km, ouvert) : montée « Montée 1 » de 0 à 1 500 m (4e catégorie, 3,6 %), puis sprint « Sprint 1 » de 2 860 à 3 290 m. Vers 25 km/h, le sprint est atteint en 7 minutes environ.
 
 ---
 
