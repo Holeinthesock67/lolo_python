@@ -89,6 +89,7 @@ DESCENT_HOLD_PCT = -0.5         # Enclume : masse en plus suspendue au-dessus, l
 DESCENT_MIN_M = 300.0           # tirage : au moins 300 m d'affilée sous −1,5 %…
 LOOK_AHEAD_M = 5000.0           # … dans les 5 km devant (plan §3)
 LOOK_STEP_M = 25.0
+NEAR_FINISH_M = 400.0          # Échappée : refusée à moins de 400 m de l'arrivée ou de la fin d'un sprint
 DRAFT_PLUS_CAP = 0.55          # Aspiration + : plafond du cœur de groupe de la série AS (AS4)
 DRAFT_PLUS_REACH_M = 25.0      # Aspiration + : portée de l'abri (15 m sans bonus)
 REFUSED_SHOW_S = 2.0            # raison du refus affichée 2 s (contrat 1.13, `powerup.refused`)
@@ -104,6 +105,7 @@ class Context:
 
     grade_pct: float = 0.0
     has_bots: bool = False
+    near_finish: bool = False                         # à moins de 400 m de l'arrivée ou de la fin d'un sprint
     descent_ahead: Callable[[], bool] = lambda: False   # calcul paresseux : seulement au tirage
 
 
@@ -111,6 +113,7 @@ CONDITIONS: dict[str, Callable[[Context], bool]] = {
     "descending": lambda c: c.grade_pct <= DESCENT_GRADE_PCT,
     "descent_ahead": lambda c: c.descent_ahead(),
     "bots": lambda c: c.has_bots,
+    "far_from_finish": lambda c: not c.near_finish,
 }
 
 
@@ -185,6 +188,11 @@ DEFAULT_TABLE = PowerUpTable(specs={
     "draft_plus": PowerUpSpec("draft_plus", "draft", 1.5, 40.0, "Aspiration +", sets=("tactiques",),
                               factor_bounds=(1.0, 2.0), draw_if=("bots",), refuse_unless=(("bots", "no_bots"),),
                               cap=DRAFT_PLUS_CAP, reach_m=DRAFT_PLUS_REACH_M),
+    # Échappée (lot TT4, Burrito et Fantôme fusionnés) : les bots derrière ne reçoivent plus ton abri et
+    # ne répondent pas à ton attaque. Même ligne d'effet que le Furtif du Grand Prix (GP4).
+    "breakaway": PowerUpSpec("breakaway", "breakaway", 1.0, 20.0, "Échappée", sets=("tactiques",),
+                             factor_bounds=(1.0, 1.0), draw_if=("bots",),
+                             refuse_unless=(("bots", "no_bots"), ("far_from_finish", "near_finish"))),
 })
 KINDS = tuple(DEFAULT_TABLE.specs)
 LABELS = {k: s.label for k, s in DEFAULT_TABLE.specs.items()}
@@ -406,6 +414,11 @@ class PowerUps:
             return None
         return DraftBoost(spec.factor, spec.cap if spec.cap is not None else 1.0,
                           spec.reach_m if spec.reach_m is not None else 0.0)
+
+    def unseen(self) -> bool:
+        """Vrai pendant un effet `breakaway` (Échappée, lot TT4) : ni abri donné, ni attaque vue."""
+        spec = self._effect()
+        return spec is not None and spec.effect == "breakaway"
 
     def feel_params(self, p: PhysicsParams, base: PhysicsParams) -> PhysicsParams:
         """Paramètres du supplément de pente SIM : masse de base (Plume et Enclume ne se sentent pas au
