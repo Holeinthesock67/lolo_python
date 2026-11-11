@@ -1,0 +1,2 @@
+trace source : 11.27 km, 1130 points ; coupée : 8.00 km, 803 points
+points : coupe officielle 803, coupe locale de r790b 802

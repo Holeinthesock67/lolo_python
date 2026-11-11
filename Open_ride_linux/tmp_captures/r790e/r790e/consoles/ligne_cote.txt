@@ -1,0 +1,2 @@
+côte : 118 ligne(s), 8 plage(s), 56 aire(s) de mer
+durée totale : 141.356285842 s (rc=0)
