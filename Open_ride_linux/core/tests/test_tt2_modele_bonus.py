@@ -7,7 +7,6 @@ import json
 import random
 import time
 from collections import Counter
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -18,8 +17,15 @@ from openride_core.grandprix import effects as gp_effects
 from openride_core.input_providers import NullProvider
 from openride_core.mock_driver import MockDriver
 from openride_core.physics import PhysicsParams, RiderPhysics, steady_speed
-from openride_core.powerups import (DEFAULT_TABLE, Context, EffectSpec, PowerUpError, PowerUps, descent_ahead,
-                                    load_table)
+from openride_core.powerups import (
+    DEFAULT_TABLE,
+    Context,
+    EffectSpec,
+    PowerUpError,
+    PowerUps,
+    descent_ahead,
+    load_table,
+)
 from openride_core.session import CoreSession
 from openride_core.wind import grade_offset_pct
 from openride_core.zwift_click import InputEvent
@@ -33,12 +39,12 @@ FLAT = Context(grade_pct=0.0)
 
 def test_one_table_no_branch_per_bonus():
     s = DEFAULT_TABLE.specs
-    assert list(s) == ["feather", "aero", "power", "anvil"]
-    assert [(k, v.effect, v.factor, v.duration_s) for k, v in s.items()] == [
+    assert list(s)[:4] == ["feather", "aero", "power", "anvil"]   # puis les lots TT3 à TT5
+    assert [(k, v.effect, v.factor, v.duration_s) for k, v in s.items()][:4] == [
         ("feather", "mass", 0.90, 20.0), ("aero", "cda", 0.75, 15.0), ("power", "power", 1.10, 15.0),
         ("anvil", "mass", 1.6, 15.0)]
     assert DEFAULT_TABLE.kinds("classiques") == ("feather", "aero", "power")
-    assert DEFAULT_TABLE.kinds("tactiques") == ("feather", "aero", "power", "anvil")
+    assert DEFAULT_TABLE.kinds("tactiques")[:4] == ("feather", "aero", "power", "anvil")
     # Les objets du Grand Prix sont des lignes du même modèle (plan GP §5).
     assert gp_effects.EffectSpec is EffectSpec and gp_effects.EFFECTS is powerups.EFFECTS
     assert {"kick", "slip", "speed_floor", "cap", "immune", "wind", "mass", "cda", "breakaway"} <= set(powerups.EFFECTS)
