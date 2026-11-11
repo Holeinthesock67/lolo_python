@@ -143,7 +143,7 @@ func _init() -> void:
 			same = false
 		if p["vegetation"]["max_density_per_ha"] != float(theme["vegetation"]["max_density_per_ha"]):
 			same = false
-	_check(same, "thème 1.x : les 16 biomes ont les paramètres de theme_render_params.gd")
+	_check(same, "thème 1.x : les 17 biomes ont les paramètres de theme_render_params.gd")
 
 	# Thème 2.0 de l'exemple du contrat : clés du biome, repli 1.x pour le reste
 	var v2_dir := "user://theme_v2_test"
@@ -166,7 +166,7 @@ func _init() -> void:
 	_check(jungle["terrain"]["grass_color"] == ref["grass_color"] and jungle["vegetation"]["species"].is_empty(), "biome absent du thème 2.0 : valeurs 1.x")
 	_check(m2.default_biome() == "temperate_grassland" and not m2.active(), "sans couche ni forçage : modèle muet")
 
-	# Thème par défaut 2.0 (U15) : prairie = valeurs 1.x exactes, 16 biomes distincts
+	# Thème par défaut 2.0 (U15) : prairie = valeurs 1.x exactes, 17 biomes distincts
 	var md = BiomeModel.new(default_theme, null)
 	var gp: Dictionary = md.params("temperate_grassland")
 	var same_grass := true
@@ -187,7 +187,7 @@ func _init() -> void:
 	for id in BiomeIds.BIOMES:
 		if id != "alpine":
 			flats[md.params(id)["terrain"]["grass_color"].to_html()] = true
-	_check(flats.size() == 15, "défaut 2.0 : 15 couleurs de sol différentes hors alpine (%d)" % flats.size())
+	_check(flats.size() == BiomeIds.BIOMES.size() - 1, "défaut 2.0 : %d couleurs de sol différentes hors alpine (%d)" % [BiomeIds.BIOMES.size() - 1, flats.size()])
 	_check(md.params("sand_desert")["vegetation"]["species"][0]["kind"] == "palm" and md.params("polar")["vegetation"]["species"].is_empty(), "défaut 2.0 : espèces par biome")
 
 	# blend : 50/50
@@ -211,7 +211,8 @@ func _init() -> void:
 	var names := {}
 	for id in ["auto"] + BiomeIds.BIOMES:
 		names[str(texts.get(id, ""))] = true
-	_check(texts.size() == 17 and names.size() == 17 and not names.has(""), "render.biome : 17 noms français distincts")
+	var n_choices := BiomeIds.BIOMES.size() + 1
+	_check(texts.size() == n_choices and names.size() == n_choices and not names.has(""), "render.biome : %d noms français distincts" % n_choices)
 	_check(SettingsViewModel.format_value({"key": "render.biome"}, "savanna") == "savane", "render.biome : savanna = savane")
 
 	print("test_biome_model : %d vérifications, %d échecs" % [_checked, _failures])
