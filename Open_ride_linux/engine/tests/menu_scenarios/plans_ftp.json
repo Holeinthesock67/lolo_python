@@ -20,7 +20,7 @@
     {"choisir": "ramp"},
     {"ecran": "routes"},
     {"choisir": "demo"},
-    {"ecran": "ready", "titre": "Prêt : test de FTP (rampe) — demo"},
+    {"ecran": "ready", "titre": "Prêt : test de FTP (rampe) — Col du lacet"},
     {"appui": "Y_SHORT"},
     {"ecran": "ftp_test", "focus": "ramp"},
     {"appui": "Y_SHORT"},

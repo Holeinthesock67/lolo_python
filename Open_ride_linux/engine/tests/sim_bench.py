@@ -5,7 +5,7 @@ Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|demo_long|village|osm|ouvert|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
                  [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side] [--camera-height M]
-                 [--culling on|off] [--forest on|off] [--crowd climbs|all] [--load-guard on|off] [--probe] [--speed-kmh V] [--biome ID] [--out DOSSIER] [--list]
+                 [--culling on|off] [--forest on|off] [--crowd climbs|all] [--load-guard on|off] [--probe] [--speed-kmh V] [--biome ID] [--at-m M1,M2…] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
@@ -66,6 +66,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import math
 import os
 import re
 import shutil
@@ -330,6 +331,8 @@ class Bench:
         # Lot S1 : captures tous les N mètres de route (même endroit d'un essai à l'autre) au lieu de toutes
         # les N secondes ; contrôles des tuiles (apparitions, jointures, trous) stricts si le scénario le demande.
         self.every_m = float(getattr(args, "every_m", None) or settings.get("every_m") or 0.0)
+        # Lot O37 : captures à des distances choisies (`--at-m 200,5800`, ex. le panneau d'un sommet).
+        self.at_m = sorted(float(v) for v in (getattr(args, "at_m", None) or settings.get("at_m") or []))
         # Première capture en distance (défaut : `every_m`) : décale la série, p. ex. juste avant chaque rangée de
         # boîtes du Grand Prix (lot GP7).
         self.first_m = float(settings.get("first_m") or self.every_m)
@@ -531,7 +534,8 @@ class Bench:
         scénario, jusqu'à la durée voulue."""
         plan: list[tuple[float, str]] = []
         t = max(3.0, self.ready_at)
-        while t < self.duration and self.every_m <= 0.0:
+        by_distance = self.every_m > 0.0 or bool(self.at_m)
+        while t < self.duration and not by_distance:
             plan.append((t, f"t{int(t):03d}"))
             t += self.every
         for k, ev in enumerate(self.spec.get("events", [])):
@@ -546,7 +550,8 @@ class Bench:
             if "key" in x and float(x["t"]) < self.duration:
                 plan.append((float(x["t"]) + inputs_mod.held_s(x) + 1.5, f"in{k}_{re.sub(r'[^A-Za-z0-9]', '', x['key'])}"))
         plan.sort()
-        next_m = self.first_m
+        next_m = self.first_m if self.every_m > 0.0 else math.inf
+        marks = list(self.at_m)
         cam_after = 0.0
         while True:
             t_rel = now() - self.t_core
@@ -559,7 +564,7 @@ class Bench:
                 self._shot(engine, port, plan.pop(0)[1])
                 continue
             until = min(plan[0][0] if plan else self.duration, self.duration) - t_rel
-            if self.every_m <= 0.0:
+            if not by_distance:
                 time.sleep(max(0.0, until))
                 continue
             # Position de la caméra lue au journal du mode test (« [test] cam s=… », 20 fois par seconde).
@@ -572,6 +577,10 @@ class Bench:
                 self._shot(engine, port, f"d{int(next_m):05d}")
                 while next_m <= s_m:
                     next_m += self.every_m
+            elif marks and s_m >= marks[0] and t_rel >= self.ready_at:
+                self._shot(engine, port, f"m{int(marks[0]):05d}")
+                while marks and marks[0] <= s_m:
+                    marks.pop(0)
 
     def _key_loop(self, engine: Proc, port: int) -> None:
         """Lot X33 : touches de `inputs` envoyées à l'engine au temps voulu (message de test `key`)."""
@@ -1092,6 +1101,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="vue de caméra mesurée (lot V12, exigence 2.0-CAM-5 : au moins 55 images/s en low pour chacune)")
     ap.add_argument("--display", default="windowed", choices=("windowed", "borderless", "fullscreen"),
                     help="mode d'affichage de l'engine (défaut windowed ; les pleins écrans demandent --native)")
+    ap.add_argument("--at-m", type=lambda v: [float(x) for x in v.split(",") if x.strip()],
+                    help="captures aux distances données en mètres, séparées par des virgules (lot O37, "
+                         "ex. 200,5790 : départ et panneau d'un sommet)")
     ap.add_argument("--every-m", type=float,
                     help="captures tous les N mètres de route au lieu de toutes les N secondes (lot S1)")
     ap.add_argument("--culling", default="off", choices=("on", "off"),

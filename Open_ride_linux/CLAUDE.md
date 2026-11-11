@@ -49,7 +49,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `recorder.py` : journal, mémoire, FIT ;
 - `route.py`, `catalog.py` : lecture des `.world`, interpolation et catalogue des parcours (`.world` et `.gpx`) ;
 - `route_stats.py` : fiches des parcours (dénivelé, montée principale, durée, difficulté, fiche `.toml`), tri et filtres du catalogue (lot O15) ; copie exacte dans le compilateur ;
-- `demo_world.py` : parcours de démonstration ;
+- `demo_world.py` : parcours de démonstration (`demo`, « Col du lacet » au menu) ; ceux des biomes viennent du compilateur (`openride_compiler.demo_biomes`, lot O37 : noms de parcours du jeu de base, variante `--recette` aux noms techniques pour les bancs) ;
 - `synthetic_terrain.py` : couche terrain synthétique (démonstration et parcours d'essai) ;
 - `workout.py`, `workout_formats.py` : lecture des `.zwo`, des `.erg` et `.mrc` de GoldenCheetah (lot O9) et contrôleur ERG ; `workout_menu.py` : entraînements créés ou importés depuis le menu ERG, écrits par le core seul (sous-menu ERG, décision D4 de l'audit IPC) ;
 - `start_gate.py` : départ au pédalage (lot O36), module pur : après `start`, la séance attend en `READY` le décor du départ (commande `scene_ready` de l'engine, au plus `[depart] attente_decor_s`), le trainer, puis `[depart] duree_s` secondes à `[depart] cadence_rpm` tr/min ; objet `start_wait` de `state` ; `[depart] mode = "immediat"` ou `run --depart immediat` part tout de suite ;

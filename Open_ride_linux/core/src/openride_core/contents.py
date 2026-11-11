@@ -4,7 +4,7 @@ Le joueur n'a besoin d'aucune commande pour remplir sa bibliothèque : chaque co
 message `contents` (`list_contents`), installé par `install_content`, toujours sans rien écraser.
 
 - `starter` (« Contenus de départ ») : les entraînements livrés (`core/workouts/`), les deux plans de
-  départ (`core/plans/`), les quatre parcours de démonstration des biomes (`openride-core
+  départ (`core/plans/`), les trois parcours de démonstration des biomes (`openride-core
   demo-biomes`, lot U19) et la piste du vélodrome (`openride-core velodromes`, lot VD10, écrite par le
   core sans compilateur). Installé seul au premier lancement (`run --first-run`), puis proposé dans
   le menu pour une installation existante. Rien n'est téléchargé.
@@ -85,12 +85,12 @@ def _builtin_plans() -> list[Path]:
 
 
 def _demo_names() -> list[str]:
-    """Parcours de démonstration des biomes ; [] si le générateur de l'engine est introuvable."""
+    """Parcours de démonstration des biomes ; [] sans le compilateur (qui porte leur générateur, lot O37)."""
     from .demo_world import biome_demo_names
 
     try:
         return biome_demo_names()
-    except (FileNotFoundError, ImportError):
+    except ImportError:
         return []
 
 
@@ -151,14 +151,22 @@ def install_starter(dirs: ContentDirs, progress: Callable[[int], None] = lambda 
 
 
 def install_biome_demos(routes_dir: Path) -> tuple[list[str], str]:
-    """Écrit les parcours de démonstration des biomes qui manquent (jamais d'écrasement) ;
-    renvoie leurs noms et une remarque ("" si tout va bien)."""
-    from .demo_world import write_biome_demo_worlds
+    """Écrit les parcours de démonstration des biomes qui manquent, et remplace ceux d'avant le lot O37 (nom
+    technique au menu) ; jamais d'autre écrasement. Renvoie leurs noms et une remarque ("" si tout va bien)."""
+    from .demo_world import biome_demo_outdated, retired_biome_demo_names, write_biome_demo_worlds
 
     names = _demo_names()
-    missing = [n for n in names if not (routes_dir / f"{n}.world" / "manifest.json").is_file()]
+    try:   # démonstration retirée du jeu de base (lot O37), écrite avant lui : enlevée, jamais un parcours du joueur
+        retired = retired_biome_demo_names()
+    except ImportError:
+        retired = []
+    for n in retired:
+        if biome_demo_outdated(routes_dir / f"{n}.world"):
+            shutil.rmtree(routes_dir / f"{n}.world", ignore_errors=True)
+    missing = [n for n in names if not (routes_dir / f"{n}.world" / "manifest.json").is_file()
+               or biome_demo_outdated(routes_dir / f"{n}.world")]
     if not names:
-        return [], "Parcours de démonstration : générateur de l'engine introuvable."
+        return [], "Parcours de démonstration : compilateur absent (scripts/install.sh)."
     if not missing:
         return [], ""
     routes_dir.mkdir(parents=True, exist_ok=True)
@@ -173,7 +181,7 @@ def install_biome_demos(routes_dir: Path) -> tuple[list[str], str]:
             src = Path(tmp) / f"{n}.world"
             dst = routes_dir / f"{n}.world"
             if src.is_dir():
-                if dst.exists():   # dossier incomplet d'un essai précédent : remplacé
+                if dst.exists():   # dossier incomplet d'un essai précédent, ou d'avant le lot O37 : remplacé
                     shutil.rmtree(dst)
                 shutil.move(str(src), dst)
     return missing, ""
