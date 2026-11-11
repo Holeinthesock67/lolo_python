@@ -11,6 +11,11 @@ Utilisé par `core/tests/test_packaging.py` et `compiler/tests/test_packaging.py
    ne liste que ses dossiers `site-packages` : les `.pth` qu'ils contiennent (installations
    éditables du dépôt) ne sont pas lus, donc seul le paquet de la roue est importable.
 
+Les sous-processus ont `RUSTUP_HOME` et `CARGO_HOME` dans le dossier de travail : pip lance
+`rustc --version` pour son en-tête User-Agent (même avec `--no-index`), et le relais `rustc` de
+rustup, sans `RUSTUP_HOME` (machines GitHub, PC sans variable), crée `~/.rustup/settings.toml`
+dans le HOME temporaire de la suite.
+
 `construire_et_installer` renvoie le dossier `bin/` de l'environnement (python et commandes).
 """
 
@@ -26,15 +31,17 @@ from pathlib import Path
 IGNORES = shutil.ignore_patterns("__pycache__", "*.egg-info", "build", "*.pyc")
 
 
-def env_sans_reseau() -> dict[str, str]:
+def env_sans_reseau(travail: Path) -> dict[str, str]:
+    """Environnement des sous-processus : pas de réseau, et rien d'écrit hors de `travail`."""
     env = dict(os.environ)
-    env.update(PIP_NO_INDEX="1", PIP_DISABLE_PIP_VERSION_CHECK="1", PYTHONNOUSERSITE="1")
+    env.update(PIP_NO_INDEX="1", PIP_DISABLE_PIP_VERSION_CHECK="1", PYTHONNOUSERSITE="1",
+               RUSTUP_HOME=str(travail / "rustup"), CARGO_HOME=str(travail / "cargo"))
     env.pop("PYTHONPATH", None)
     return env
 
 
 def _run(cmd: list[str], cwd: Path) -> None:
-    res = subprocess.run(cmd, cwd=cwd, env=env_sans_reseau(), capture_output=True, text=True, timeout=600)
+    res = subprocess.run(cmd, cwd=cwd, env=env_sans_reseau(cwd), capture_output=True, text=True, timeout=600)
     if res.returncode != 0:
         raise RuntimeError(f"échec de {' '.join(cmd)} :\n{res.stdout}\n{res.stderr}")
 
@@ -70,5 +77,5 @@ def lancer(bin_dir: Path, args: list[str], cwd: Path) -> subprocess.CompletedPro
     exe = bin_dir / args[0]
     if os.name == "nt" and not exe.exists():
         exe = exe.with_suffix(".exe")
-    return subprocess.run([str(exe), *args[1:]], cwd=cwd, env=env_sans_reseau(),
+    return subprocess.run([str(exe), *args[1:]], cwd=cwd, env=env_sans_reseau(bin_dir.parent.parent),
                           capture_output=True, text=True, timeout=300)

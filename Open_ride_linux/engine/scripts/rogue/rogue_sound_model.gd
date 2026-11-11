@@ -8,8 +8,8 @@ extends RefCounted
 ##
 ## Sons dérivés d'un changement d'état (le core n'envoie pas d'événement dédié) : changement de vitesse,
 ## bouclier touché (le bouclier baisse), début de piratage, changement de phase du boss, or gagné, porte
-## choisie (le couloir se referme), fin de la récupération, bilan. La balise de purge réussie et le coffre
-## de fin n'ont pas de signal : leurs sons existent (rogue_sound_synth.gd) mais ne sont pas déclenchés.
+## choisie (le couloir se referme), fin de la récupération, coffre de fin (entrée dans le retour au calme,
+## lot R21), bilan. La balise de purge réussie a son événement `purge` (révision 1.14, lot R21).
 
 const Synth := preload("res://scripts/rogue/rogue_sound_synth.gd")
 
@@ -32,6 +32,7 @@ const EVENT_SOUNDS := {
 	"perfect_shift": "rogue_perfect_shift", "hit": "rogue_hit", "crit": "rogue_crit", "parry": "rogue_parry",
 	"parry_miss": "rogue_parry_miss", "room_won": "rogue_room_won", "room_fled": "rogue_room_fled",
 	"room_skipped": "rogue_room_skipped", "defeat": "rogue_defeat", "card_taken": "rogue_card_pick",
+	"purge": "rogue_purge",
 }
 ## Priorité des sons (le plus haut garde sa voix à saturation) : défaite > boss > salle > Perfect Shift > parade
 ## > impact > le reste.
@@ -155,6 +156,8 @@ func update(rogue: Variant, gear: int, seq: int, now_s: float, result: String = 
 				_request("rogue_door", now_s)
 			elif before == "RECOVERY" and phase != "RECOVERY":
 				_request("rogue_recovery_end", now_s)
+			if phase == "COOLDOWN" and before != "COOLDOWN":
+				_request("rogue_chest", now_s)
 			elif phase == "RESULTS" and before != "RESULTS":
 				_request("rogue_result" if result == "victory" else "rogue_result_lost", now_s)
 		_prev = {"gear": gear, "shield": float(rogue.get("shield", 0.0)), "hack": typeof(rogue.get("hack", null)) == TYPE_DICTIONARY,

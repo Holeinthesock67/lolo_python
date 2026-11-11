@@ -212,6 +212,17 @@
               "minimum": 0,
               "maximum": 3,
               "description": "Facultatif (lot R9) : vies en réserve."
+            },
+            "life_price": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Facultatif, révision 1.14 (lot R21) : prix d'une vie en pièces (commande buy_life)."
+            },
+            "max_lives": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3,
+              "description": "Facultatif, révision 1.14 (lot R21) : vies en réserve au plus."
             }
           }
         },

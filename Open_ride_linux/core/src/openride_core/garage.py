@@ -271,6 +271,17 @@ class ProgressionService:
             code = "item_locked" if exc.code in ("item_unknown", "already_owned", "item_locked") else exc.code
             raise GarageError(code, str(exc)) from exc
 
+    def buy_life(self) -> None:
+        """Achète une vie du Cyber-Rogue avec les pièces (lot R21) : `item_locked` au maximum, `not_enough_coins`."""
+        try:
+            self._mutate(lambda p: coins_mod.buy_life(self.progress, p, self.ct))
+        except coins_mod.CoinsError as exc:
+            raise GarageError(exc.code, str(exc)) from exc
+
+    def life_offer(self) -> dict[str, int]:
+        """Prix d'une vie et réserve maximale (`hello_ack.config.rogue`, lot R21)."""
+        return {"life_price": self.ct.life_price, "max_lives": self.ct.max_lives}
+
     def set_avatar(self, avatar: Any) -> None:
         try:
             checked = check_avatar({k: v for k, v in avatar.items()

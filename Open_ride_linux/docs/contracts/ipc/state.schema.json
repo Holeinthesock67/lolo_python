@@ -1792,7 +1792,8 @@
               "room_fled",
               "room_skipped",
               "defeat",
-              "card_taken"
+              "card_taken",
+              "purge"
             ]
           }
         }
