@@ -1,0 +1,13 @@
+16:22:52 empreinte avant cd3850c51f3f01752752e767563f7ccd
+16:22:52 tête f547b66b
+16:24:00 build teide-vilaflor
+16:30:41 fin build teide-vilaflor rc=0
+16:30:41 banc teide-vilaflor
+16:34:21 fin banc teide-vilaflor rc=0
+16:34:21 build col-du-galibier
+16:41:33 fin build col-du-galibier rc=0
+16:41:33 banc col-du-galibier
+16:45:12 fin banc col-du-galibier rc=0
+16:45:13 empreinte après cd3850c51f3f01752752e767563f7ccd
+16:45:13 clone 8fc4a132
+16:45:13 FIN

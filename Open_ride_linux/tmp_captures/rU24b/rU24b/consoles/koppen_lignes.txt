@@ -1,0 +1,2 @@
+teide-vilaflor : biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 66 tuile(s)) : temperate_grassland 62,2 %, volcanic 19,6 %, temperate_forest 12,0 %, steppe 3,6 %, farmland 2,0 %, savanna 0,5 %
+col-du-galibier : biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 52 tuile(s)) : alpine 50,2 %, temperate_grassland 27,4 %, boreal_forest 13,5 %, tundra 6,3 %, temperate_forest 2,7 %
