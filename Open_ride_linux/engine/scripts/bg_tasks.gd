@@ -18,6 +18,14 @@ extends RefCounted
 ## tout de suite. À la fermeture, `drain` vide `_fifo` sans rien lancer, une tâche confiée qui n'a pas encore démarré
 ## rend la main sans travailler, et `drain` attend celles qui tournent : les deux files de Godot sont vides quand il
 ## arrête son pool. Les identifiants sont ceux du registre, pas ceux de Godot.
+##
+## Quatrième passage (r805d, 0 fermeture propre sur 50, même pile) : le mécanisme exact est l'anomalie de Godot
+## godotengine/godot#125097 (correctif proposé #125099) : au passage en RUNLEVEL_PRE_EXIT_LANGUAGES, un fil qui voit
+## une file non vide ne se compte pas et se rendort ; quand la file se vide, personne ne le réveille. Toute tâche
+## confiée à Godot et pas encore démarrée à cet instant (haute priorité comprise) suffit donc. Les nœuds libérés après
+## `drain` (attentes et demandes de leurs `_exit_tree` et NOTIFICATION_PREDELETE) en confiaient encore : depuis,
+## après `drain`, `add` ne confie plus rien (la tâche est comptée « abandonnée ») et `wait` d'une tâche encore dans la
+## file du registre l'abandonne au lieu de la lancer.
 ## Pas de class_name : charger par preload("res://scripts/bg_tasks.gd").
 
 static var _mutex := Mutex.new()
@@ -36,6 +44,10 @@ static func add(action: Callable, high_priority := false, description := "") -> 
 	_mutex.lock()
 	var id := _next_id
 	_next_id += 1
+	if _closing:   # après `drain` : rien ne doit plus entrer dans les files de Godot (voir l'en-tête)
+		_skipped += 1
+		_mutex.unlock()
+		return id   # absent du registre : done() vrai, wait() OK
 	_tasks[id] = {"desc": description, "action": action, "low": not high_priority, "gid": -1}
 	if high_priority or _low_running < low_max():
 		_dispatch(id)
@@ -103,6 +115,10 @@ static func wait(id: int) -> Error:
 		return OK
 	if _tasks[id]["gid"] == -1:
 		_fifo.erase(id)
+		if _closing:   # abandonnée à la fermeture, jamais confiée à Godot
+			_tasks.erase(id)
+			_mutex.unlock()
+			return OK
 		_dispatch(id)
 	var gid: int = _tasks[id]["gid"]
 	_mutex.unlock()

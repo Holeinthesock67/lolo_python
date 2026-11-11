@@ -3,7 +3,8 @@
 Sous Ubuntu, `ptrace` n'est permis qu'aux ancêtres du processus (`kernel.yama.ptrace_scope = 1`) : `gdb -p` sur
 le Godot du banc est refusé sans `sudo`. Le banc des menus (`menu_bench.py --gdb`) lance donc Godot SOUS gdb dès le
 départ : gdb en est le parent. Godot tourne normalement ; s'il sort seul, gdb sort avec son code (le banc lit le
-même code de sortie). S'il reste bloqué après sa ligne de fin, le banc lui envoie SIGINT : gdb l'arrête, écrit la
+même code de sortie ; tué par un signal, comme l'engine qui s'arrête lui-même par SIGKILL au lot X58, 128 + le
+signal, comme un shell). S'il reste bloqué après sa ligne de fin, le banc lui envoie SIGINT : gdb l'arrête, écrit la
 pile de tous ses fils entre deux repères, le tue et sort avec le code `CODE_PILE`.
 
 `resume_pile` réduit cette sortie à une ligne par fil (nom, puis fonctions du haut de la pile avec leur bibliothèque),
@@ -29,6 +30,9 @@ set print inferior-events off
 handle SIGPIPE SIGUSR1 SIGUSR2 SIGALRM SIGCHLD nostop noprint pass
 handle SIGINT stop print nopass
 run
+if !$_isvoid($_exitsignal)
+  quit 128 + $_exitsignal
+end
 if $_isvoid($_exitcode)
   echo {DEBUT}\\n
   info threads

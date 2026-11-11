@@ -1074,9 +1074,14 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		key_map.reset()   # le relâchement des touches enfoncées ne viendra pas
 	elif what == NOTIFICATION_PREDELETE:
-		# Ligne lue par le lanceur et le banc (ENGINE_DONE de launcher.py) : au-delà, l'arrêt de Godot peut bloquer
-		# (pilote NVIDIA, lot X55) ; ils arrêtent alors le processus et retiennent ce code.
+		# Ligne lue par le lanceur et le banc (ENGINE_DONE de launcher.py) : elle donne le code de sortie.
 		_quit_step("scène libérée, arrêt des serveurs de Godot (code %d)" % _quit_code)
+		if _quit_ms >= 0:
+			# Lot X58 : l'arrêt de Godot 4.7 qui suit peut attendre à jamais ses fils de travail (godotengine/godot
+			# #125097, Main::cleanup → WorkerThreadPool::exit_languages_threads ; r805d : 50 fois sur 50 sur le PC).
+			# Tout le travail du jeu est fait (séance, `bye`, fichiers fermés, tâches de fond attendues) : le processus
+			# s'arrête donc ici. Le lanceur et le banc lisent le code dans la ligne ci-dessus (sortie par SIGKILL).
+			OS.kill(OS.get_process_id())
 
 
 func _process(delta: float) -> void:

@@ -86,7 +86,7 @@ sys.path.insert(0, str(TESTS_DIR))
 sys.path.insert(0, str(REPO / "core" / "src"))
 
 from openride_core.input_providers import ClickPair  # noqa: E402
-from openride_core.launcher import ENGINE_DONE, ENGINE_SHUTDOWN_S, build_supervisor  # noqa: E402
+from openride_core.launcher import ENGINE_DONE, ENGINE_SELF_KILLED, ENGINE_SHUTDOWN_S, build_supervisor  # noqa: E402
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
 import pile_gdb  # noqa: E402
@@ -516,6 +516,14 @@ class Run:
                 break
             time.sleep(0.2)
         if rc is not None:
+            if rc in ENGINE_SELF_KILLED:   # lot X58 : sortie immédiate après la ligne de fin, code de la ligne
+                time.sleep(0.5)            # la ligne peut être encore dans le tuyau
+                got = self.engine.matching(ENGINE_DONE.pattern)
+                if got:
+                    announced = int(got[-1][1].group(1))
+                    self.report.check(announced == code, f"l'engine sort avec le code {code}",
+                                      f"code {announced} annoncé, sortie immédiate en {now() - t0:.1f} s")
+                    return
             self.report.check(rc == code, f"l'engine sort avec le code {code}", f"code {rc} en {now() - t0:.1f} s")
             return
         threads = self.godot_threads()

@@ -81,6 +81,9 @@ def test_sous_gdb_code_garde_et_pile_sur_sigint(tmp_path):
     if "ptrace" in done.stdout + done.stderr and done.returncode != 7:
         pytest.skip("ptrace refusé dans ce conteneur")
     assert done.returncode == 7
+    killed = subprocess.run([*prefix, sys.executable, "-c", "import os, signal; os.kill(os.getpid(), signal.SIGKILL)"],
+                            capture_output=True, text=True, timeout=60, check=False)
+    assert killed.returncode == 128 + signal.SIGKILL   # engine qui s'arrête lui-même (lot X58)
     p = subprocess.Popen([*prefix, sys.executable, str(prog), "bloque"], stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT, text=True)
     deadline = time.monotonic() + 30
@@ -123,3 +126,8 @@ def test_taches_de_fond_toutes_par_bg_tasks_et_attendues_a_la_fermeture():
     quit_body = main.split("func _quit(code: int) -> void:", 1)[1].split("\nfunc ", 1)[0]
     assert quit_body.index("PROCESS_MODE_DISABLED") < quit_body.index("BgTasks.drain(") < quit_body.index("get_tree().quit(code)")
     assert "OPENRIDE_QUIT_MODE" not in main
+    # Sortie immédiate après la ligne de fin (godotengine/godot#125097), seulement à la fermeture demandée par _quit.
+    predelete = main.split("elif what == NOTIFICATION_PREDELETE:", 1)[1].split("\nfunc ", 1)[0]
+    assert predelete.index("scène libérée") < predelete.index("if _quit_ms >= 0:") < predelete.index(
+        "OS.kill(OS.get_process_id())")
+    assert "run/flush_stdout_on_print=true" in (ROOT / "engine" / "project.godot").read_text(encoding="utf-8")

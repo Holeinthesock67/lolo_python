@@ -74,6 +74,9 @@ func _run() -> void:
 	_check(rest[1].is_empty() and BgTasks.pending_count() == 0, "tout attendu ensuite (%s)" % str(rest))
 	_check(rest[2] + _ran == 6 and rest[2] > 0, "tâches en file sautées après la fermeture (%d sautées, %d faites)" % [rest[2], _ran])
 	_check(BgTasks.done(slow), "tâche lente finie")
+	var after: int = BgTasks.add(_job, true, "après la fermeture")
+	_check(BgTasks.pending_count() == 0 and BgTasks.done(after) and BgTasks.wait(after) == OK,
+		"après drain : add ne confie rien à Godot (done vrai, wait OK, registre vide)")
 	print("test_bg_tasks : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 

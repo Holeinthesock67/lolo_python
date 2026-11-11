@@ -107,16 +107,44 @@ au moins 1, donc le même partage des fils en jeu) ; la fin de chacune lance la 
 en file la lance tout de suite. À la fermeture, la file du registre est abandonnée sans rien lancer. Effet attendu
 aussi en jeu : ces maillages ne restent plus bloqués derrière la place de basse priorité de Godot.
 
-### 6.7 Quatrième passage sur le PC (via la file du fil de fusion)
+### 6.7 Quatrième passage sur le PC (r805d, 11 novembre, tête 52c9ba6f)
+
+0 fermeture propre sur 50, sur toutes les voies et les trois qualités. La vidange des tâches du jeu dure environ
+130 ms (0 ou 1 tâche attendue) ; les 50 piles gdb sont identiques : fil principal dans
+`WorkerThreadPool::exit_languages_threads` (0x42d0fe), les quatre fils de travail endormis. Aucun fil n'est donc
+« non rejoint » : c'est le pool de Godot qui attend que ses fils se déclarent inactifs, et ils ne le font jamais.
+Fichiers : `/mnt/project-files/mesures/2026-11-11-x58-r805d/`.
+
+Mécanisme exact : anomalie de Godot 4.7 godotengine/godot#125097 (correctif proposé #125099, pas fusionné). Au
+passage en `RUNLEVEL_PRE_EXIT_LANGUAGES`, chaque fil est réveillé une fois ; s'il voit une des deux files non vide, il
+ne se compte pas inactif et se rendort, et personne ne le réveille quand la file se vide. Une seule tâche confiée à
+Godot et pas encore démarrée à cet instant suffit, y compris les tâches de Godot lui-même (cache des pipelines,
+chargements en fil) : le jeu ne peut pas l'empêcher depuis GDScript. Le registre `bg_tasks.gd` garde ses règles et
+ne confie plus rien à Godot après `drain` (les `_exit_tree` qui attendent ou lancent encore une tâche).
+
+### 6.8 Correction : sortie immédiate après la ligne de fin
+
+Tout le travail du jeu est fait quand main.gd écrit « Fermeture : scène libérée, arrêt des serveurs de Godot
+(code N) » (séance, `bye` au core, fichiers fermés, tâches de fond attendues) ; ce qui suit est l'arrêt de Godot,
+seul à bloquer. main.gd s'arrête donc lui-même juste après cette ligne (`OS.kill(OS.get_process_id())`, SIGKILL),
+seulement pour une fermeture demandée par `_quit`. `run/flush_stdout_on_print=true` (project.godot) garantit que la
+ligne est écrite avant. Le lanceur (`ENGINE_SELF_KILLED` : -9, ou 137 à travers un shell ou gdb) lit le reste du
+tuyau puis retient le code annoncé, sans attente ; le banc des menus fait de même (« sortie immédiate ») et le script
+gdb sort avec 128 + le signal. `ENGINE_SHUTDOWN_S` (3 s) reste le filet si le processus ne sort toujours pas ; il ne
+sert plus dans une fermeture normale. Ce qui est perdu : la dernière écriture du cache des pipelines par Godot à
+l'arrêt (il l'écrit aussi en jeu) et la fin du journal interne de Godot.
+
+### 6.9 Cinquième passage sur le PC (r805e, via la file du fil de fusion)
 
 ```
 cd <worktree de la branche du lot>
 B="python3 engine/tests/menu_bench.py --scenario quitter --native --fermeture-stricte --gdb"
-O=~/OpenRide/mesures/x58d
+O=~/OpenRide/mesures/x58e
 $B --voies souris,clavier,click --repeter 10 --out $O/low
 $B --voies souris --repeter 10 --qualite medium --out $O/medium
 $B --voies souris --repeter 10 --qualite high --out $O/high
 ```
 
-Attendu : 50 sur 50 sans « arrêt de Godot bloqué » ; sinon `pile_gdb.txt` et la ligne « Fermeture : tâches de
-fond attendues » du journal de l'engine. Si 50 sur 50 : retrait du contournement de 3 s dans cette même PR, puis un dernier passage (critère 2).
+Attendu : 50 sur 50 « sortie immédiate » avec le bon code, aucune pile gdb ; puis un lancement par le lanceur
+(Quitter, puis « Relancer » : code 64) pour vérifier qu'aucun plantage n'est compté et que le démarrage suivant ne
+recompile pas tous les shaders.
