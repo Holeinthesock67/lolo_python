@@ -848,6 +848,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("equip", {"slot": str(act["slot"]), "item_id": str(act["item_id"])})
 		"buy":
 			ipc.send_command("buy", {"item_id": str(act["item_id"])})
+		"buy_life":   # vie du Cyber-Rogue (lot R21, révision 1.14)
+			ipc.send_command("buy_life", {})
 		"set_avatar":
 			ipc.send_command("set_avatar", {"avatar": act["avatar"]})
 		"list_contents":   # contenus installables (lot O25, contrat 1.5)
