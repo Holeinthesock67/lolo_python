@@ -557,6 +557,10 @@ func on_error(code: String, text: String) -> void:
 		else:
 			summary_message = "Échec : " + text
 		return
+	if code in ["not_enough_coins", "item_locked", "busy"] and menu.current_screen() == RogueMenuModel.SCREEN:
+		rogue.message = "Échec : " + text   # achat d'une vie refusé (lot R21)
+		_refresh_rogue()
+		return
 	if code in ["run_invalid", "item_locked", "busy"] and menu.current_screen() == RogueMenuModel.LOADING:
 		rogue.message = "Échec : " + text
 		_refresh_rogue()
@@ -1269,6 +1273,10 @@ func _handle_event(event: String) -> Dictionary:
 		"start_run":   # confirmation du premier lancement acceptée (lot R13) : l'avertissement n'est plus redemandé
 			rogue.mark_warned()
 			return _launch_rogue(act)
+		"buy_life":   # achat d'une vie confirmé (lot R21) : réponse `progression`
+			rogue.message = "Achat d'une vie…"
+			_refresh_rogue()
+			return act
 		"start_plan", "stop_plan":
 			return _send_plan_request(act)
 		"accept_ftp":
@@ -1644,6 +1652,10 @@ func _refresh_rogue() -> void:
 
 
 func _handle_rogue(item_id: String) -> Dictionary:
+	if item_id == "life":
+		if rogue.can_buy_life():
+			menu.confirm(rogue.lives_detail(), {"action": "buy_life"})
+		return {}
 	if item_id != "launch":
 		rogue.cycle(item_id)
 		_refresh_rogue()
@@ -1881,10 +1893,15 @@ func on_progression(msg: Dictionary) -> void:
 	if garage.message == "Enregistrement…":
 		garage.message = "Enregistré"
 	_refresh_garage()
+	rogue.on_progression(msg)   # vies et pièces du départ du Cyber-Rogue (lot R21)
+	if rogue.message == "Achat d'une vie…":
+		rogue.message = "Vie achetée"
+	_refresh_rogue()
 
 
 func on_hello_progression(progression) -> void:
 	garage.on_hello(progression)
+	rogue.on_progression(progression)
 	menu.set_garage(garage.enabled)
 	_refresh_garage()
 

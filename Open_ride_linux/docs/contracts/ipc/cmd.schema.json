@@ -51,6 +51,7 @@
         "list_garage",
         "equip",
         "buy",
+        "buy_life",
         "set_avatar",
         "list_plans",
         "start_plan",

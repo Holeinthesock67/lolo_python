@@ -686,7 +686,7 @@ class CoreSession:
             self._on_workout_menu_command(name, args, cmd_id)
         elif name in ("list_route_imports", "import_route"):
             self._on_route_import_command(name, args if isinstance(args, dict) else {}, cmd_id)
-        elif name in ("list_garage", "equip", "buy", "set_avatar"):
+        elif name in ("list_garage", "equip", "buy", "buy_life", "set_avatar"):
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in PROFILE_COMMANDS:
             self._on_profile_command(name, args if isinstance(args, dict) else {}, cmd_id)
@@ -1065,6 +1065,8 @@ class CoreSession:
                 svc.equip(args.get("slot"), args.get("item_id"))
             elif name == "buy":
                 svc.buy(args.get("item_id"))
+            elif name == "buy_life":
+                svc.buy_life()
             else:
                 svc.set_avatar(args.get("avatar"))
         except GarageError as exc:
@@ -1075,6 +1077,8 @@ class CoreSession:
         self._base_params = self._equipped_params()   # le cadre et les roues valent pour la séance suivante
         self.physics.p = self._base_params
         self._publish_progression()
+        if name == "buy_life":
+            self._publish_rogue()   # vies en réserve du menu de départ à la prochaine connexion de l'engine
         self.server.send_raw(svc.progression_message(cmd_id))
 
     def _after_session(self, journal: str, records: list[dict] | None) -> None:
@@ -1150,8 +1154,9 @@ class CoreSession:
     def _publish_rogue(self) -> None:
         """`hello_ack.config.rogue` d'après la progression : châssis, vies, dernière run (lots R9, R13), W' estimé (R16)."""
         chassis, stats, lives = self.rogue_provider() if self.rogue_provider else (None, None, 0)
+        offer = self.progress_svc.life_offer() if chassis is not None and self.progress_svc.enabled else None
         self.server.hello_config["rogue"] = rogue_mode.hello_block(self.cfg, self.w_prime_estimate_j, chassis,
-                                                                   stats, lives)
+                                                                   stats, lives, offer)
 
     def _estimate_w_prime(self) -> float | None:
         """W' estimé depuis les séances passées (FIT et journaux), `None` si l'historique ne suffit pas (lot R16)."""
@@ -3053,6 +3058,8 @@ class CoreSession:
                 route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
                 loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
                 powerups_on=self.cfg.powerups.mode != "off",
+                powerup_set=self.cfg.powerups.mode if self.cfg.powerups.mode != "off" else "classiques",
+                grade_at=route.grade_at,
                 loadout=header["loadout"] if header else None, gain_mode=gain_mode)
         from .bots import RefRider, attach_segments, calibrate_bots
 
@@ -3455,8 +3462,10 @@ class CoreSession:
                 # Vent et abri ressentis : supplément de pente avant la limitation de variation et les
                 # bornes. Avec feel = "ftms", le vent part dans la commande 0x11 et seul l'abri passe ici.
                 head = self._head_mps if wcfg.feel == "grade" else 0.0
+                # Bonus de masse (Plume, Enclume) : supplément calculé à la masse de base (lot TT2, T-Q3).
+                feel_p = race.feel_params(self.physics.p, self._base_params) if race else self.physics.p
                 self._wind_offset = grade_offset_pct(self.physics.v, head, draft, alt,
-                                                     self.physics.p, wcfg.max_grade_offset_pct)
+                                                     feel_p, wcfg.max_grade_offset_pct)
                 target += self._wind_offset
             if surfaced:
                 # Gravel ajouté au vent et à l'abri, le total sous la même borne (lot U21).
@@ -3749,9 +3758,11 @@ class CoreSession:
                               (lambda b: cross_at(route.sample(b.s).heading_deg)) if ws and route else None)
         sources = list(racing) + [road_cyclists_mod.DraftSource(r.s, r.v, road_cyclists_mod.source_id(r.id),
                                                                   r.lane_m) for r in riders if r.dir == 1]
+        boost = self.race.draft_boost() if self.race else None   # Aspiration + (lot TT3)
         target, bot_id = (0.0, None) if reverse else \
             draft_mod.best_draft(self.physics.s, sources, length, is_loop,
-                                 self.physics.v, self._head_mps, cross, lane_m=self._lane.m)
+                                 self.physics.v, self._head_mps, cross, lane_m=self._lane.m,
+                                 boost=boost)
         if near and self.cfg.ride.vehicle_draft == "on" and not reverse:
             v_alpha, v_id = traffic_mod.vehicle_draft(self.physics.s, self._lane.m, near, self.physics.v,
                                                       self._head_mps, cross)

@@ -281,6 +281,7 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
                 if lo <= s <= hi:
                     if hacked:
                         hack_kind, forced, hacked = None, None, False
+                        events.append("purge")
                     used = True
             elif m.kind == "strike_target" and ("strike", i) not in done:
                 lo, hi = _window(m, v, b.strike_window_s)

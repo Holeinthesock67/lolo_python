@@ -11,8 +11,9 @@ coureur, jamais la pente envoyée au trainer ni la puissance mesurée :
 - `wind` : vent de face virtuel de `facteur` m/s pendant la durée, sans ressenti (vent contraire) ;
 - `breakaway` : marque de l'Échappée de la série TT (lot TT4) ; son effet sur l'abri vient avec GP4.
 
-Ces lignes sont écrites comme des données pour rejoindre telles quelles la table unique des bonus
-de la 4.0 quand le lot TT2 la créera dans `powerups.py` (plan GP §5) : aucun objet n'a de code à lui.
+Depuis le lot TT2, ces lignes sont celles de la table unique des bonus de la 4.0 : `EffectSpec` et les
+listes d'effets sont dans `powerups.py` (un seul système, plan GP §5), ce module n'en garde que
+l'application à la vitesse du Grand Prix. Aucun objet n'a de code à lui.
 """
 
 from __future__ import annotations
@@ -20,34 +21,13 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from ..physics import PhysicsParams, RiderPhysics, steady_speed
+from ..powerups import DURATIONS, EFFECTS, HITS, IMPULSES, MULTIPLIERS, EffectSpec
 
-IMPULSES = ("kick", "slip")
-DURATIONS = ("speed_floor", "cap", "immune", "wind", "breakaway")
-EFFECTS = IMPULSES + DURATIONS
-MULTIPLIERS = ("kick", "slip", "speed_floor", "cap")   # facteurs sans unité, comparés à 1
-HITS = ("slip", "cap", "wind")                         # effets subis : arrêtés par `immune`
+__all__ = ["CHAOS", "DURATIONS", "EFFECTS", "GAIN_HORIZON_S", "HITS", "IMPULSES", "MULTIPLIERS", "Active",
+           "EffectSpec", "apply_speed", "gain_s", "is_immune", "wind_of"]
 
 CHAOS = {"soft": 0.7, "normal": 1.0, "wild": 1.3}      # doux, normal, fou (plan §4.4)
 GAIN_HORIZON_S = 60.0                                  # écart mesuré 60 s après l'effet (plan §3)
-
-
-@dataclass(frozen=True)
-class EffectSpec:
-    effect: str
-    factor: float
-    duration_s: float = 0.0
-
-    def __post_init__(self) -> None:
-        if self.effect not in EFFECTS:
-            raise ValueError(f"effet inconnu : {self.effect!r}")
-
-    def scaled(self, chaos: float) -> "EffectSpec":
-        """Force multipliée par le chaos : l'écart à 1 d'un facteur, la valeur du vent ; durée inchangée."""
-        if self.effect in MULTIPLIERS:
-            return replace(self, factor=1.0 + (self.factor - 1.0) * chaos)
-        if self.effect == "wind":
-            return replace(self, factor=self.factor * chaos)
-        return self
 
 
 @dataclass
