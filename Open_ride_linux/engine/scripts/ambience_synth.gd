@@ -327,8 +327,8 @@ static func pcm16(buf: PackedFloat32Array) -> PackedByteArray:
 	return bytes
 
 
-## Flux bouclé (mono, 16 bits, MIX_RATE) d'une boucle déjà convertie par `pcm16(bed_samples(…))` : la
-## conversion, la plus longue, se fait dans le fil de travail ; ici, rien qu'une copie.
+## Flux bouclé (mono, 16 bits, MIX_RATE) d'une boucle déjà convertie par `pcm16(bed_samples(…))`. Appelé dans
+## le fil de travail avec la conversion (copie des échantillons comprise) : le fil principal ne fait que poser le flux.
 static func to_wav(pcm: PackedByteArray) -> AudioStreamWAV:
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS

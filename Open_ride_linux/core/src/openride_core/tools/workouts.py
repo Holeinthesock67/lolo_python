@@ -29,6 +29,7 @@ from pathlib import Path
 from .. import config as config_mod
 from ..config import WORKOUTS_DIR
 from ..workout import (
+    BUILTIN_WORKOUTS_DIR,
     ERG_MIN_W,
     WORKOUT_SUFFIXES,
     Workout,
@@ -37,9 +38,6 @@ from ..workout import (
     load_workout,
 )
 from ..workout_formats import to_mrc
-
-BUILTIN_WORKOUTS_DIR = Path(__file__).resolve().parents[3] / "workouts"
-
 
 def format_hms(seconds: float) -> str:
     total = int(round(max(seconds, 0.0)))

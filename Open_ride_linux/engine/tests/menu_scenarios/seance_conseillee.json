@@ -1,0 +1,33 @@
+{
+  "description": "Séance conseillée (série CO, lot CO5) : ligne de l'accueil, écran du conseil et sa raison, détail du calcul, autre besoin (règle CH), prochaine course enregistrée puis effacée, suggestion de la montre (règle RG) ; profil neuf, sans historique.",
+  "etapes": [
+    {"ecran": "home", "elements": ["coach"], "delai": 20},
+    {"choisir": "coach"},
+    {"ecran": "coach", "elements": ["coach_workout", "coach_need", "coach_watch", "coach_race_date", "coach_detail"], "contient": ["Pourquoi : "], "delai": 10},
+    {"capture": "conseil"},
+    {"choisir": "coach_detail"},
+    {"ecran": "coach_detail", "titre": "Détail du calcul", "elements": ["d_light", "d_intense", "d_anaerobic", "d_rule"]},
+    {"capture": "conseil_detail"},
+    {"appui": "Y_SHORT"},
+    {"ecran": "coach", "focus": "coach_detail"},
+    {"choisir": "coach_need"},
+    {"ecran": "coach_need", "elements": ["need_light", "need_intense", "need_anaerobic", "need_recovery", "need_ftp_test"]},
+    {"choisir": "need_anaerobic"},
+    {"ecran": "coach", "contient": ["Besoin choisi : anaérobie."], "delai": 10},
+    {"choisir": "coach_race_date"},
+    {"ecran": "coach_race_date", "elements": ["set:conseil.race_days", "set:conseil.race_kind", "race_save"]},
+    {"capture": "conseil_course"},
+    {"choisir": "race_save"},
+    {"ecran": "coach", "contient": ["Prochaine course"], "absent": ["Prochaine course — aucune"], "delai": 10},
+    {"choisir": "coach_race_date"},
+    {"choisir": "race_clear"},
+    {"ecran": "coach", "contient": ["Prochaine course — aucune"], "delai": 10},
+    {"choisir": "coach_watch"},
+    {"ecran": "coach_watch", "elements": ["set:conseil.watch_type", "set:conseil.watch_min", "watch_save"]},
+    {"capture": "conseil_montre"},
+    {"choisir": "watch_save"},
+    {"ecran": "coach", "contient": ["Ma montre — fond"], "delai": 10},
+    {"appui": "Y_SHORT"},
+    {"ecran": "home", "focus": "coach"}
+  ]
+}

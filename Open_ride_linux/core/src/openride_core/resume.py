@@ -2,8 +2,8 @@
 
 Le lanceur relance `openride-core run --resume JOURNAL` quand le core meurt pendant une séance.
 Ce module relit le journal JSONL (dernière ligne tronquée tolérée, comme `recover`) et en tire
-l'état à restaurer : temps chronométré, distance, braquet, mode, bloc ERG et temps écoulé dans
-le bloc, biais du Click. La vitesse repart de zéro : le cycliste a dû s'arrêter de pédaler.
+l'état à restaurer : temps chronométré, position et distance, sens après un demi-tour (lot N17), braquet,
+mode, bloc ERG et temps écoulé dans le bloc, biais du Click. La vitesse repart de zéro : le cycliste a dû s'arrêter de pédaler.
 
 Un journal est « non terminé » quand son dernier événement du chronomètre n'est pas `stop`.
 """
@@ -26,7 +26,7 @@ class ResumeState:
     route_id: str | None
     workout_id: str | None
     t: float                          # temps chronométré (s) de la dernière ligne complète
-    s: float                          # distance (m)
+    s: float                          # position sur le parcours (m) : la distance tant qu'il n'y a pas eu de demi-tour
     gear: int | None
     mode: str                         # SIM ou ERG
     block: int | None                 # bloc ERG en cours (à partir de 1), None hors ERG
@@ -39,6 +39,8 @@ class ResumeState:
     erg_kind: str | None = None       # ERG d'une session libre (`free`, `cadence`, lot O18), None sinon
     target_w: float | None = None     # dernière cible ERG écrite (W), pour l'ERG d'une session libre
     cadence_target_rpm: int | None = None  # cadence cible de l'ERG cadence (lot O18)
+    distance: float | None = None     # distance parcourue (m), None : la position `s` (aucun demi-tour)
+    direction: int = 1                # sens du dernier événement `u_turn` (lot N17), 1 sans demi-tour
 
 
 def _timer_events(lines: list[dict]) -> list[dict]:
@@ -91,6 +93,11 @@ def load_resume_state(path: Path) -> ResumeState:
     last = records[-1]
     state.t = float(last.get("t") or 0.0)
     state.s = float(last.get("distance") or 0.0)
+    if last.get("pos") is not None:   # après un demi-tour (lot N17) : position et distance distinctes
+        state.distance, state.s = state.s, float(last["pos"])
+    turn = next((ln for ln in reversed(lines) if ln.get("kind") == "event" and ln.get("event") == "u_turn"), None)
+    if turn is not None:
+        state.direction = -1 if int(turn.get("dir") or 1) < 0 else 1
     state.gear = last.get("gear")
     state.mode = str(last.get("mode") or "SIM")
     state.last_ts = max(state.last_ts, float(last["ts"]))

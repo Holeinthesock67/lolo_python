@@ -76,6 +76,7 @@ var living: Dictionary = {}
 var theme: Dictionary = {}
 var weather: Dictionary = {}
 var weather_eval: Dictionary = {}
+var season_falling_leaves := 0.0   # densité des feuilles qui tombent de la saison (lot P19, season_model.gd)
 var sound_player = null
 var world_streamer = null
 var osm_streamer = null
@@ -460,6 +461,10 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	_rider_lane_m = _lane_of(state, RoadBuilder.RIDER_LATERAL_M)   # placement dans la roue (lot AS2)
 	var wheel: Vector3 = _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * _rider_lane_m
 	particles.update_dust(wheel, back, 0.0 if paused else rider_v, surface_here)
+	# Feuilles qui tombent (saisons, lots P18 et P19) : près des forêts seulement, au vent
+	if season_falling_leaves > 0.0 or particles.get_emitter("leaves") != null and particles.get_emitter("leaves").emitting:
+		var forest_dist := float(living_world.neigh.get("forest_dist_m", INF)) if living_world != null else INF
+		particles.update_leaves(WeatherParticles.leaves_intensity(season_falling_leaves, forest_dist), wind_eval)
 	if sound_player != null and sound_player.get("model") != null:
 		sound_player.model.set_surface(surface_here)
 	if world_streamer != null and world_streamer.has_method("set_road_wetness"):

@@ -50,15 +50,32 @@ Avant ce lot, la table `BIOME_STYLES` de `building_styles.gd` (Y8) existait mais
 
 Thème par défaut : densités `fauna` relevées là où elles valaient 0 et empêchaient ces groupes (`polar.deer` 0,3, `volcanic.livestock` 0,3, `jungle.deer` 0,5 ; les rôles P11 correspondants restent retirés par `BIOME_SPECIES`).
 
+### Étape 2 : cases rondes, yourtes, pilotis
+
+Demandée par le propriétaire le 07/11 (« Lance tout ») : les formes propres laissées hors périmètre de l'étape 1, sans coût GPU mesurable.
+
+- `building_styles.gd` : forme `SHAPE_CONE` et deux clés de style. `round` (part, longueur au plus `max_m`, pente du cône, matières propres) : petites maisons et dépendances dont le rectangle orienté fait au plus 1,6 fois sa largeur. `stilts` (part, hauteur du plancher) : maisons seulement.
+
+| Style | Rondes | Pilotis |
+| --- | --- | --- |
+| `case` (savane) | 85 % des maisons et huttes jusqu'à 10 m, chaume conique à 40° | non |
+| `paillote` (jungle) | 35 % jusqu'à 9 m, chaume à 42° | 70 % des maisons, plancher à 1,5 m |
+| `yourte` (steppe, nouveau) | 55 % jusqu'à 9 m : feutre clair (murs et cône à 24°, matière lisse des toits plats) | non |
+
+  La steppe passe de `pierre_seche` à `yourte` : ses maisons plus grandes restent en pierre (85 %) ou en bois sous ardoise. `pierre_seche` reste la variante régionale U1.
+- `building_mesh.gd` : le contour d'une case ronde devient un polygone régulier de 12 côtés, de même aire, centré sur le rectangle orienté (rayon borné par ses demi-côtés). Le toit est le minimum de 12 plans (`cone_planes`), avec le même débord et le même découpage que les toits à pans. Jamais de case ronde pour un contour à cour intérieure. Une maison sur pilotis a son plancher relevé, ses murs partent du plancher (sans socle), son dessous est en voliges (dessin des dessous de débord) et un poteau de bois carré de 0,22 m est posé sous chaque angle (12 au plus). Les tirages viennent du hachage de l'identifiant (`ROUND_SALT`, `STILTS_SALT`).
+- Murs : un segment n'est plus coupé qu'aux points où le plan le plus bas change vraiment. Les coupures entre deux plans qui ne sont pas le toit à cet endroit ne changeaient pas la forme et doublaient des murs. Le test de 500 maisons passe ainsi de 30 208 à 26 880 sommets, pour une forme identique.
+- Une case ronde fait au plus 400 triangles (test). Les côtés de 1,5 m environ ne portent pas de fenêtres ni de porte.
+
 ## 4. Critères d'acceptation
 
 1. `engine/tests/run_engine_tests.sh` passe (`test_building_mesh.gd`, `test_fauna_mesh.gd`, `test_fauna_biomes.gd` étendus).
 2. Sans couche biome ni forçage : bâtiments et faune identiques à avant (tests de L1, Y8, P11, U12 inchangés).
-3. Vitrine (`tests/vitrine_rendu.gd`, vues `styles_biomes`, `styles_biomes_pres`, `styles_biomes_pres2`, `faune_biomes`) : captures low, medium et high validées par le propriétaire avant fusion.
+3. Vitrine (`tests/vitrine_rendu.gd`, vues `styles_biomes`, `styles_biomes_pres`, `styles_biomes_pres2`, `faune_biomes` ; étape 2 : `habitat_rond`, `habitat_pilotis`, `habitat_yourtes`) : captures low, medium et high validées par le propriétaire avant fusion.
 4. Budgets GPU 8 / 12 / 14 ms (low / medium / high) tenus sur le PC (GTX 1060) : banc demandé au fil « Fusionner les PR et séquencer les mesures », par exemple `vitrine_biomes` ou un parcours `--biome=` de U19 (alpine, savanna, sand_desert) contre main. Le nombre de triangles des bâtiments ne change pas ; le shader des bâtiments gagne trois branches ; chaque nouvelle espèce ajoute un MultiMesh vide tant qu'elle n'est pas dans le biome.
 
 ## 5. Hors périmètre (suite possible)
 
-- Formes propres : maisons rondes (cases, yourtes), pilotis des paillotes, toits de tourbe, minarets ; le contour OSM est gardé.
+- Formes propres encore absentes : toits de tourbe, minarets, échelle ou escalier des pilotis, porte des cases rondes.
 - Variantes régionales de couleur des murs et des toits (`variants.*.walls/roofs` du thème) : lot U14.
 - Sons des nouvelles espèces (barrissement, grognement), animaux qui traversent.

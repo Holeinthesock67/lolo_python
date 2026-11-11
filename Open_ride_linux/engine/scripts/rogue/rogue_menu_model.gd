@@ -9,6 +9,10 @@ extends RefCounted
 ## Les choix faits restent pour la durée du programme ; d'une fois sur l'autre, le core donne ceux de la
 ## dernière run (`last` : objectif et durée, `chassis.selected` : châssis), relus dans son journal. `last`
 ## non nul dit aussi que l'avertissement du premier lancement a déjà été accepté.
+##
+## Vies (lot R21) : `lives`, `life_price` et `max_lives` de `hello_ack.config.rogue`, pièces de la progression ;
+## l'élément « Vies » achète une vie (commande `buy_life`, après confirmation) tant que la réserve n'est pas
+## pleine et que les pièces suffisent. Le message `progression` qui répond met vies et pièces à jour.
 
 const SCREEN := "rogue_start"
 const LOADING := "rogue_loading"
@@ -27,6 +31,10 @@ var objective_idx := 0
 var duration_idx := 0
 var chassis_idx := 0
 var use_estimate := false
+var lives := 0
+var life_price := 0                     # 0 : achat non proposé (core sans le champ, avant la révision 1.14)
+var max_lives := 0
+var coins := 0
 var warned := false
 var message := ""
 var _configured := false
@@ -63,6 +71,34 @@ func configure(cfg: Variant) -> void:
 	chassis_idx = chassis.find(selected) if chassis.find(selected) >= 0 else clampi(chassis_idx, 0, maxi(chassis.size() - 1, 0))
 	if w_estimate_j <= 0.0:
 		use_estimate = false
+	lives = int(cfg.get("lives", 0))
+	life_price = int(cfg.get("life_price", 0))
+	max_lives = int(cfg.get("max_lives", 0))
+
+
+## Pièces et vies de `hello_ack.config.progression` ou d'un message `progression` (null : rien ne change).
+func on_progression(progression: Variant) -> void:
+	if typeof(progression) != TYPE_DICTIONARY:
+		return
+	coins = int(progression.get("coins", coins))
+	lives = int(progression.get("lives", lives))
+
+
+func can_buy_life() -> bool:
+	return life_price > 0 and lives < max_lives and coins >= life_price
+
+
+## Texte de l'élément « Vies » et de sa confirmation.
+func lives_label() -> String:
+	return "Vies : %d / %d" % [lives, max_lives]
+
+
+func lives_detail() -> String:
+	if lives >= max_lives:
+		return "Réserve pleine"
+	if coins < life_price:
+		return "Une vie coûte %d pièces, solde %d" % [life_price, coins]
+	return "Acheter une vie pour %d pièces ? Solde après : %d" % [life_price, coins - life_price]
 
 
 func objective() -> String:
@@ -96,11 +132,14 @@ func items() -> Array:
 			"detail": "Utiliser l'estimation de W' ?" if w_estimate_j > 0.0 else ""}]
 	if not chassis.is_empty():
 		out.append({"id": "chassis", "label": "Châssis : " + chassis_name(), "enabled": chassis.size() > 1, "detail": ""})
+	if life_price > 0:
+		out.append({"id": "life", "label": lives_label(), "enabled": can_buy_life(), "detail": lives_detail()})
 	out.append({"id": "launch", "label": "Lancer", "enabled": true, "detail": message})
 	return out
 
 
-## Valider un élément : les trois premiers font défiler leur valeur ; `launch` est traité par l'appelant.
+## Valider un élément : les trois premiers font défiler leur valeur ; `launch` et `life` sont traités par
+## l'appelant.
 func cycle(item_id: String) -> void:
 	match item_id:
 		"objective":

@@ -40,7 +40,7 @@ extends Node
 ##
 ## Lot T17 : jingles des événements du parcours (`EventSoundsModel.JINGLES` : sommet, sprint, arche, fin
 ## de séance), synthétisés note par note ou lus dans ~/OpenRide/Sounds/<nom>.ogg ; `play_event(nom)`
-## les joue sur un lecteur non spatialisé du bus `Events` (« Volume bips et événements » des Réglages,
+## les joue sur un lecteur non spatialisé du bus `Events` (« Son › Bips et événements » des Réglages,
 ## audio_mix.gd), trois à la fois au plus. Depuis le 29/10 (jingles de départ et de ligne d'une boucle), les
 ## jingles ne sont plus faits au démarrage mais un par image ensuite (`_process`, 8 à 60 ms chacun), ou tout
 ## de suite s'il en faut un avant : le budget `sound_generation` du démarrage y gagne ~0,2 s.
@@ -112,9 +112,12 @@ var _bell_queue := 0                    # coups de cloche restant à sonner
 var _bell_next_s := 0.0
 var _bell_hour := NAN
 var bell_strikes_rung := 0              # coups effectivement sonnés (tests)
-var _bed_tasks := {}                    # fond -> tâche de WorkerThreadPool qui le fabrique (lot U11)
-var _bed_done := {}                     # fond -> échantillons ou .ogg fabriqués, pas encore posés (sous _bed_mutex)
+var _bed_tasks := {}                    # fond -> tâche de WorkerThreadPool qui le fabrique (lot U11), une au plus
+var _bed_queue: Array[String] = []      # fonds demandés, en attente de leur tour de fabrication
+var _bed_done := {}                     # fond -> flux fabriqué (synthèse ou .ogg), pas encore posé (sous _bed_mutex)
 var _bed_mutex := Mutex.new()
+var beds_posed := 0                     # fonds posés sur leur lecteur depuis le démarrage (tests)
+var ambience_us := {"evaluate": 0, "collect": 0, "players": 0}   # dernier update_ambience, en µs (mesures)
 var _event_player: AudioStreamPlayer
 var events_played := []                # jingles demandés (tests)
 
@@ -314,9 +317,13 @@ func update_audio(state: Dictionary, now_s: float, rider_pos: Vector3) -> Dictio
 
 
 ## Fonds d'ambiance (Lot P9) : une fois par image, avec le voisinage décrit par AmbienceModel.describe.
+## `ambience_us` garde le temps de ses trois étapes (modèle, pose d'un fond fini, lecteurs) pour les mesures.
 func update_ambience(neigh: Dictionary, now_s: float) -> Dictionary:
+	var t0 := Time.get_ticks_usec()
 	var vols: Dictionary = ambience.evaluate(neigh, now_s)
+	var t1 := Time.get_ticks_usec()
 	_collect_beds()
+	var t2 := Time.get_ticks_usec()
 	for bed in AmbienceModel.BEDS:
 		var bp: AudioStreamPlayer = _bed_players[bed]
 		var db := float(vols[bed])
@@ -329,6 +336,7 @@ func update_ambience(neigh: Dictionary, now_s: float) -> Dictionary:
 				bp.play()
 			elif db <= SoundModel.SILENCE_DB and bp.playing:
 				bp.stop()
+	ambience_us = {"evaluate": t1 - t0, "collect": t2 - t1, "players": Time.get_ticks_usec() - t2}
 	return vols
 
 
@@ -379,12 +387,21 @@ func _generate_all_streams() -> void:
 # --- Fonds d'ambiance faits à la demande (lot U11) ---
 # Seize fonds, dont la plupart ne servent pas sur un parcours donné : chacun est fabriqué la première fois que
 # le modèle le veut audible, dans un fil de WorkerThreadPool (aucun à-coup d'image), puis posé sur son lecteur
-# à l'image suivante. Le fond monte depuis FADE_FLOOR_DB : l'attente ne s'entend pas.
+# à une image suivante. Le fond monte depuis FADE_FLOOR_DB : l'attente ne s'entend pas.
+# Suite du banc r787 (09/11, 1,87 ms la pire image sur le PC) : le fil de travail rend le flux complet
+# (AudioStreamWAV, copie des échantillons comprise), et l'image n'en pose qu'un (BEDS_POSED_PER_FRAME) :
+# il ne reste au fil principal que l'affectation du flux au lecteur.
+# Un seul fond en fabrication à la fois (file `_bed_queue`) : les tâches de basse priorité du pool sont servies
+# dans l'ordre, et huit synthèses demandées d'un coup au démarrage passaient avant le chargement du parcours
+# et du monde vivant, que le fil principal attend (banc des menus de la CI de #829, « engine muet 28,5 s »).
 
-## Fabrication d'un fond (fil de travail ou appel direct) : ~/OpenRide/Sounds/<fond>.ogg, sinon AmbienceSynth.
-func _bed_source(bed: String) -> Variant:
+const BEDS_POSED_PER_FRAME := 1
+
+## Fabrication d'un fond, flux prêt à poser (fil de travail ou appel direct) : ~/OpenRide/Sounds/<fond>.ogg,
+## sinon AmbienceSynth.
+func _bed_source(bed: String) -> Resource:
 	var custom = _try_load_custom(bed)
-	return custom if custom != null else AmbienceSynth.pcm16(AmbienceSynth.bed_samples(bed))
+	return custom if custom != null else AmbienceSynth.to_wav(AmbienceSynth.pcm16(AmbienceSynth.bed_samples(bed)))
 
 
 func _bed_task(bed: String) -> void:
@@ -395,21 +412,35 @@ func _bed_task(bed: String) -> void:
 
 
 func _request_bed(bed: String) -> void:
-	if _streams.has(bed) or _bed_tasks.has(bed):
+	if _streams.has(bed) or _bed_tasks.has(bed) or _bed_queue.has(bed):
 		return
+	_bed_queue.append(bed)
+	_start_next_bed()
+
+
+## Lance la fabrication du premier fond de la file si aucune n'est en cours.
+func _start_next_bed() -> void:
+	if not _bed_tasks.is_empty() or _bed_queue.is_empty():
+		return
+	var bed: String = _bed_queue.pop_front()
 	_bed_tasks[bed] = WorkerThreadPool.add_task(_bed_task.bind(bed), false, "fond %s" % bed)
 
 
-func _set_bed(bed: String, src: Variant) -> void:
-	_streams[bed] = src if src is Resource else AmbienceSynth.to_wav(src)
-	_bed_players[bed].stream = _streams[bed]
+func _set_bed(bed: String, src: Resource) -> void:
+	_streams[bed] = src
+	_bed_players[bed].stream = src
+	beds_posed += 1
 
 
-## Pose sur leurs lecteurs les fonds que les fils de travail ont finis.
+## Pose sur son lecteur un fond (au plus BEDS_POSED_PER_FRAME) que les fils de travail ont fini.
 func _collect_beds() -> void:
+	var posed := 0
 	for bed in _bed_tasks.keys():
+		if posed >= BEDS_POSED_PER_FRAME:
+			return
 		if not WorkerThreadPool.is_task_completed(_bed_tasks[bed]):
 			continue
+		posed += 1
 		WorkerThreadPool.wait_for_task_completion(_bed_tasks[bed])
 		_bed_tasks.erase(bed)
 		_bed_mutex.lock()
@@ -417,6 +448,7 @@ func _collect_beds() -> void:
 		_bed_done.erase(bed)
 		_bed_mutex.unlock()
 		_set_bed(bed, src)
+	_start_next_bed()
 
 
 ## Fabrique tout de suite les fonds `beds` qui ne le sont pas encore (tests, export des échantillons, `stream`).
@@ -424,6 +456,7 @@ func make_beds_now(beds: Array) -> void:
 	for bed in beds:
 		if _streams.has(bed) or not AmbienceModel.BEDS.has(bed):
 			continue
+		_bed_queue.erase(bed)
 		if _bed_tasks.has(bed):
 			WorkerThreadPool.wait_for_task_completion(_bed_tasks[bed])
 			_bed_tasks.erase(bed)
@@ -431,10 +464,16 @@ func make_beds_now(beds: Array) -> void:
 			_bed_done.erase(bed)
 			_bed_mutex.unlock()
 		_set_bed(bed, _bed_source(bed))
+	_start_next_bed()
 
 
-## Fonds en cours de fabrication (tests).
+## Fonds en cours de fabrication ou en file (tests).
 func beds_pending() -> int:
+	return _bed_tasks.size() + _bed_queue.size()
+
+
+## Fonds en cours de fabrication dans le pool (tests : jamais plus d'un).
+func beds_running() -> int:
 	return _bed_tasks.size()
 
 
@@ -444,6 +483,7 @@ func _notification(what: int) -> void:
 		for bed in _bed_tasks:
 			WorkerThreadPool.wait_for_task_completion(_bed_tasks[bed])
 		_bed_tasks.clear()
+		_bed_queue.clear()
 
 
 func _try_load_custom(kind: String) -> Resource:
