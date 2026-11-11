@@ -1,0 +1,290 @@
+  Id   Target Id                                           Frame 
+* 1    Thread 0x7ffff7e62b40 (LWP 28752) "Godot_v4.7.2-st" __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  2    Thread 0x7ffff71ff6c0 (LWP 28759) "Godot_v4.7.2-st" __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  3    Thread 0x7ffff69fe6c0 (LWP 28760) "WorkerThread 0"  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  4    Thread 0x7ffff61fd6c0 (LWP 28761) "WorkerThread 1"  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  5    Thread 0x7ffff59fc6c0 (LWP 28762) "WorkerThread 2"  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  6    Thread 0x7ffff51fb6c0 (LWP 28763) "WorkerThread 3"  0x00007fffdcc52140 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+  7    Thread 0x7fffe5a9c6c0 (LWP 28764) "Godot_v4.7.2-st" syscall () at ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+  9    Thread 0x7fffe43fe6c0 (LWP 28766) "async-io"        0x00000000051ad8c2 in ?? ()
+  10   Thread 0x7fffd1bff6c0 (LWP 28769) "Godot_v4.7.2-st" __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  11   Thread 0x7fffd13fe6c0 (LWP 28771) "Godot_v4.7.2-st" __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  12   Thread 0x7fffd0bfd6c0 (LWP 28772) "[vkcf] Analysis" __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  13   Thread 0x7fffd03fc6c0 (LWP 28774) "[vkrt] Analysis" __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  14   Thread 0x7fffcfbfb6c0 (LWP 28775) "[vkps] Update"   __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  15   Thread 0x7fffcf23a6c0 (LWP 28784) "cuda-EvtHandlr"  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  16   Thread 0x7fffadbff6c0 (LWP 28785) "Godot_v4.7.2-st" __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  17   Thread 0x7fffad3fe6c0 (LWP 28786) "Godot_v4.7.2-st" __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  18   Thread 0x7fffacbfd6c0 (LWP 28788) "Godot_v4.7.2-st" __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  19   Thread 0x7fff8bfff6c0 (LWP 28789) "Godot_v4.7.2-st" __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  20   Thread 0x7fff8a5f36c0 (LWP 28799) "Godot_v4.7.2-st" __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+  21   Thread 0x7fff89bf26c0 (LWP 28803) "Godot_v4.7.2-st" __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+
+Thread 21 (Thread 0x7fff89bf26c0 (LWP 28803) "Godot_v4.7.2-st"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=246069416, a2=<optimized out>, a3=a3@entry=0, a4=a4@entry=0, a5=a5@entry=0, a6=a6@entry=4294967295, nr=202) at ./nptl/cancellation.c:49
+#2  0x00007ffff7ca06e7 in __futex_abstimed_wait_common64 (private=0, futex_word=0xeaab8a8, expected=0, op=393, abstime=0x0, cancel=true) at ./nptl/futex-internal.c:57
+#3  __futex_abstimed_wait_common (futex_word=0xeaab8a8, expected=0, clockid=0, abstime=0x0, private=0, cancel=true) at ./nptl/futex-internal.c:87
+#4  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0xeaab8a8, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#5  0x00007ffff7ca30c7 in __pthread_cond_wait_common (cond=<optimized out>, mutex=0xeaab860, clockid=0, abstime=0x0) at ./nptl/pthread_cond_wait.c:421
+#6  ___pthread_cond_wait (cond=<optimized out>, mutex=0xeaab860) at ./nptl/pthread_cond_wait.c:453
+#7  0x00000000006e23d6 in ?? ()
+#8  0x00000000052e6c23 in ?? ()
+#9  0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#10 0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 20 (Thread 0x7fff8a5f36c0 (LWP 28799) "Godot_v4.7.2-st"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=0, a2=a2@entry=0, a3=<optimized out>, a4=<optimized out>, a5=a5@entry=0, a6=a6@entry=0, nr=230) at ./nptl/cancellation.c:49
+#2  0x00007ffff7cf5af2 in __GI___clock_nanosleep (clock_id=<optimized out>, clock_id@entry=0, flags=flags@entry=0, req=<optimized out>, rem=<optimized out>) at ../sysdeps/unix/sysv/linux/clock_nanosleep.c:48
+#3  0x00007ffff7d03707 in __GI___nanosleep (req=<optimized out>, rem=<optimized out>) at ../sysdeps/unix/sysv/linux/nanosleep.c:25
+#4  0x0000000004d9a34a in ?? ()
+#5  0x0000000003b051a3 in ?? ()
+#6  0x0000000004406195 in ?? ()
+#7  0x00000000052e6c23 in ?? ()
+#8  0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#9  0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 19 (Thread 0x7fff8bfff6c0 (LWP 28789) "Godot_v4.7.2-st"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=0, a2=a2@entry=0, a3=a3@entry=140735542188256, a4=a4@entry=0, a5=a5@entry=0, a6=a6@entry=0, nr=230) at ./nptl/cancellation.c:49
+#2  0x00007ffff7cf5af2 in __GI___clock_nanosleep (clock_id=<optimized out>, clock_id@entry=0, flags=flags@entry=0, req=req@entry=0x7fff8bffd8e0, rem=rem@entry=0x0) at ../sysdeps/unix/sysv/linux/clock_nanosleep.c:48
+#3  0x00007ffff7d03707 in __GI___nanosleep (req=req@entry=0x7fff8bffd8e0, rem=rem@entry=0x0) at ../sysdeps/unix/sysv/linux/nanosleep.c:25
+#4  0x00007ffff7d3713a in usleep (useconds=<optimized out>) at ../sysdeps/posix/usleep.c:31
+#5  0x00000000004a7de5 in ?? ()
+#6  0x0000000004406195 in ?? ()
+#7  0x00000000052e6c23 in ?? ()
+#8  0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#9  0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 18 (Thread 0x7fffacbfd6c0 (LWP 28788) "Godot_v4.7.2-st"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=0, a2=a2@entry=0, a3=<optimized out>, a4=<optimized out>, a5=a5@entry=0, a6=a6@entry=0, nr=230) at ./nptl/cancellation.c:49
+#2  0x00007ffff7cf5af2 in __GI___clock_nanosleep (clock_id=<optimized out>, clock_id@entry=0, flags=flags@entry=0, req=<optimized out>, rem=<optimized out>) at ../sysdeps/unix/sysv/linux/clock_nanosleep.c:48
+#3  0x00007ffff7d03707 in __GI___nanosleep (req=<optimized out>, rem=<optimized out>) at ../sysdeps/unix/sysv/linux/nanosleep.c:25
+#4  0x0000000004d9a34a in ?? ()
+#5  0x00000000005252aa in ?? ()
+#6  0x0000000004406195 in ?? ()
+#7  0x00000000052e6c23 in ?? ()
+#8  0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#9  0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 17 (Thread 0x7fffad3fe6c0 (LWP 28786) "Godot_v4.7.2-st"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca039c in __internal_syscall_cancel (a1=<optimized out>, a2=<optimized out>, a3=<optimized out>, a4=<optimized out>, a5=140736100026576, a6=0, nr=270) at ./nptl/cancellation.c:49
+#2  __syscall_cancel (a1=<optimized out>, a2=<optimized out>, a3=<optimized out>, a4=<optimized out>, a5=a5@entry=140736100026672, a6=a6@entry=0, nr=270) at ./nptl/cancellation.c:75
+#3  0x00007ffff7d34541 in __GI___select (nfds=<optimized out>, readfds=<optimized out>, writefds=<optimized out>, exceptfds=<optimized out>, timeout=0x7fffad3fc990) at ../sysdeps/unix/sysv/linux/select.c:69
+#4  0x00000000004bc1fb in ?? ()
+#5  0x00000000004de9fd in ?? ()
+#6  0x0000000004406195 in ?? ()
+#7  0x00000000052e6c23 in ?? ()
+#8  0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#9  0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 16 (Thread 0x7fffadbff6c0 (LWP 28785) "Godot_v4.7.2-st"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=140736414616912, a2=<optimized out>, a3=a3@entry=0, a4=a4@entry=0, a5=a5@entry=0, a6=a6@entry=4294967295, nr=202) at ./nptl/cancellation.c:49
+#2  0x00007ffff7ca06e7 in __futex_abstimed_wait_common64 (private=0, futex_word=0x7fffc0000d50, expected=0, op=393, abstime=0x0, cancel=true) at ./nptl/futex-internal.c:57
+#3  __futex_abstimed_wait_common (futex_word=0x7fffc0000d50, expected=0, clockid=0, abstime=0x0, private=0, cancel=true) at ./nptl/futex-internal.c:87
+#4  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffc0000d50, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x7fffadbfd8f0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#5  0x00007ffff7ca3382 in __pthread_cond_wait_common (cond=0x7fffc0000d30, mutex=0xa168f30, clockid=<optimized out>, abstime=0x7fffadbfd8f0) at ./nptl/pthread_cond_wait.c:421
+#6  ___pthread_cond_timedwait64 (cond=0x7fffc0000d30, mutex=0xa168f30, abstime=0x7fffadbfd8f0) at ./nptl/pthread_cond_wait.c:478
+#7  0x00007fffe66104ac in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#8  0x00007fffe6b8dc79 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#9  0x00007fffe6b77b66 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#10 0x00007fffe6610664 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#11 0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#12 0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 15 (Thread 0x7fffcf23a6c0 (LWP 28784) "cuda-EvtHandlr"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca039c in __internal_syscall_cancel (a1=<optimized out>, a2=<optimized out>, a3=<optimized out>, a4=0, a5=0, a6=0, nr=7) at ./nptl/cancellation.c:49
+#2  __syscall_cancel (a1=<optimized out>, a2=<optimized out>, a3=<optimized out>, a4=a4@entry=0, a5=a5@entry=0, a6=a6@entry=0, nr=7) at ./nptl/cancellation.c:75
+#3  0x00007ffff7d27c0e in __GI___poll (fds=<optimized out>, nfds=<optimized out>, timeout=<optimized out>) at ../sysdeps/unix/sysv/linux/poll.c:29
+#4  0x00007fffb3f19fa7 in ?? () from /usr/lib/x86_64-linux-gnu/libcuda.so.1
+#5  0x00007fffb40069e7 in ?? () from /usr/lib/x86_64-linux-gnu/libcuda.so.1
+#6  0x00007fffb3f06de3 in ?? () from /usr/lib/x86_64-linux-gnu/libcuda.so.1
+#7  0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#8  0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 14 (Thread 0x7fffcfbfb6c0 (LWP 28775) "[vkps] Update"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=140735810637220, a2=<optimized out>, a3=a3@entry=4007841792, a4=a4@entry=3834594322225823744, a5=a5@entry=0, a6=a6@entry=4294967295, nr=202) at ./nptl/cancellation.c:49
+#2  0x00007ffff7ca06e7 in __futex_abstimed_wait_common64 (private=0, futex_word=0x7fff9c000da4, expected=4007841792, op=393, abstime=0x3537373832000000, cancel=true) at ./nptl/futex-internal.c:57
+#3  __futex_abstimed_wait_common (futex_word=0x7fff9c000da4, expected=4007841792, clockid=0, abstime=0x3537373832000000, private=0, cancel=true) at ./nptl/futex-internal.c:87
+#4  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fff9c000da4, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x7fffcfbf99d0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#5  0x00007ffff7ca3382 in __pthread_cond_wait_common (cond=0x7fff9c000d80, mutex=0xa167cb0, clockid=<optimized out>, abstime=0x7fffcfbf99d0) at ./nptl/pthread_cond_wait.c:421
+#6  ___pthread_cond_timedwait64 (cond=0x7fff9c000d80, mutex=0xa167cb0, abstime=0x7fffcfbf99d0) at ./nptl/pthread_cond_wait.c:478
+#7  0x00007fffe66104ac in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#8  0x00007fffe6a4d50d in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#9  0x00007fffe6610664 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#10 0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#11 0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 13 (Thread 0x7fffd03fc6c0 (LWP 28774) "[vkrt] Analysis"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=140735743527504, a2=<optimized out>, a3=a3@entry=3485450240, a4=a4@entry=0, a5=a5@entry=0, a6=a6@entry=4294967295, nr=202) at ./nptl/cancellation.c:49
+#2  0x00007ffff7ca06e7 in __futex_abstimed_wait_common64 (private=0, futex_word=0x7fff98000a50, expected=3485450240, op=-1382597239, abstime=0x0, cancel=true) at ./nptl/futex-internal.c:57
+#3  __futex_abstimed_wait_common (futex_word=0x7fff98000a50, expected=3485450240, clockid=-827484356, abstime=0x0, private=0, cancel=true) at ./nptl/futex-internal.c:87
+#4  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fff98000a50, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x7fffd03fa9e0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#5  0x00007ffff7ca3382 in __pthread_cond_wait_common (cond=0x7fff98000a30, mutex=0xa169230, clockid=<optimized out>, abstime=0x7fffd03fa9e0) at ./nptl/pthread_cond_wait.c:421
+#6  ___pthread_cond_timedwait64 (cond=0x7fff98000a30, mutex=0xa169230, abstime=0x7fffd03fa9e0) at ./nptl/pthread_cond_wait.c:478
+#7  0x00007fffe66104ac in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#8  0x00007fffe6a7e0c2 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#9  0x00007fffe6610664 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#10 0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#11 0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 12 (Thread 0x7fffd0bfd6c0 (LWP 28772) "[vkcf] Analysis"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=140735944854100, a2=<optimized out>, a3=a3@entry=2, a4=a4@entry=0, a5=a5@entry=0, a6=a6@entry=4294967295, nr=202) at ./nptl/cancellation.c:49
+#2  0x00007ffff7ca06e7 in __futex_abstimed_wait_common64 (private=0, futex_word=0x7fffa4000a54, expected=2, op=393, abstime=0x0, cancel=true) at ./nptl/futex-internal.c:57
+#3  __futex_abstimed_wait_common (futex_word=0x7fffa4000a54, expected=2, clockid=0, abstime=0x0, private=0, cancel=true) at ./nptl/futex-internal.c:87
+#4  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x7fffa4000a54, expected=expected@entry=157, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#5  0x00007ffff7ca30c7 in __pthread_cond_wait_common (cond=<optimized out>, mutex=0xa16b160, clockid=0, abstime=0x0) at ./nptl/pthread_cond_wait.c:421
+#6  ___pthread_cond_wait (cond=<optimized out>, mutex=0xa16b160) at ./nptl/pthread_cond_wait.c:453
+#7  0x00007fffe661044c in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#8  0x00007fffe6a6664e in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#9  0x00007fffe6610664 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#10 0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#11 0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 11 (Thread 0x7fffd13fe6c0 (LWP 28771) "Godot_v4.7.2-st"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=0, a2=a2@entry=0, a3=<optimized out>, a4=<optimized out>, a5=a5@entry=0, a6=a6@entry=0, nr=230) at ./nptl/cancellation.c:49
+#2  0x00007ffff7cf5af2 in __GI___clock_nanosleep (clock_id=<optimized out>, clock_id@entry=0, flags=flags@entry=0, req=<optimized out>, rem=<optimized out>) at ../sysdeps/unix/sysv/linux/clock_nanosleep.c:48
+#3  0x00007ffff7d03707 in __GI___nanosleep (req=<optimized out>, rem=<optimized out>) at ../sysdeps/unix/sysv/linux/nanosleep.c:25
+#4  0x00007fffe6610927 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#5  0x00007fffe6a5efc4 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#6  0x00007fffe6610664 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#7  0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#8  0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 10 (Thread 0x7fffd1bff6c0 (LWP 28769) "Godot_v4.7.2-st"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca039c in __internal_syscall_cancel (a1=<optimized out>, a2=<optimized out>, a3=<optimized out>, a4=0, a5=0, a6=0, nr=7) at ./nptl/cancellation.c:49
+#2  __syscall_cancel (a1=<optimized out>, a2=<optimized out>, a3=<optimized out>, a4=a4@entry=0, a5=a5@entry=0, a6=a6@entry=0, nr=7) at ./nptl/cancellation.c:75
+#3  0x00007ffff7d27c0e in __GI___poll (fds=<optimized out>, nfds=<optimized out>, timeout=<optimized out>) at ../sysdeps/unix/sysv/linux/poll.c:29
+#4  0x00007fffb3f19fa7 in ?? () from /usr/lib/x86_64-linux-gnu/libcuda.so.1
+#5  0x00007fffb40069e7 in ?? () from /usr/lib/x86_64-linux-gnu/libcuda.so.1
+#6  0x00007fffb3f06de3 in ?? () from /usr/lib/x86_64-linux-gnu/libcuda.so.1
+#7  0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#8  0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 9 (Thread 0x7fffe43fe6c0 (LWP 28766) "async-io"):
+#0  0x00000000051ad8c2 in ?? ()
+#1  0x00000000051acd3c in ?? ()
+#2  0x00000000051acc84 in ?? ()
+#3  0x00000000051f93a0 in ?? ()
+#4  0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#5  0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 7 (Thread 0x7fffe5a9c6c0 (LWP 28764) "Godot_v4.7.2-st"):
+#0  syscall () at ../sysdeps/unix/sysv/linux/x86_64/syscall.S:38
+#1  0x00000000051cdd51 in ?? ()
+#2  0x000000000517cf02 in ?? ()
+#3  0x000000000517b4fa in ?? ()
+#4  0x00000000051f93a0 in ?? ()
+#5  0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#6  0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 6 (Thread 0x7ffff51fb6c0 (LWP 28763) "WorkerThread 3"):
+#0  0x00007fffdcc52140 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#1  0x00007fffdcc52232 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#2  0x00007fffdcdc0fff in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#3  0x00007fffdcdc6c76 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#4  0x00007fffdcdc6e38 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#5  0x00007fffdcdca2b5 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#6  0x00007fffdcdca7ae in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#7  0x00007fffdcdca966 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#8  0x00007fffdccae9e9 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#9  0x00007fffdccaeaba in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#10 0x00007fffdcc9f528 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#11 0x00007fffdcca0548 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#12 0x00007fffde601b14 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#13 0x00007fffde603c3c in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#14 0x00007fffde6041eb in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#15 0x00007fffdc8672b8 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#16 0x00007fffdc86121c in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#17 0x00007fffdc8612dc in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#18 0x00007fffdc87a747 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#19 0x00007fffdc861854 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-gpucomp.so.580.178.04
+#20 0x00007fffccca49ab in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glvkspirv.so.580.178.04
+#21 0x00007fffccca5136 in _nv002nvvm () from /usr/lib/x86_64-linux-gnu/libnvidia-glvkspirv.so.580.178.04
+#22 0x00007fffe6a982aa in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#23 0x00007fffe6b9ebb7 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#24 0x00007fffe6a9dfc1 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#25 0x00007fffe6bd05ae in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#26 0x00007fffe6a9ab66 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#27 0x00007fffe6aa1345 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#28 0x00007fffe6bb65e6 in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+#29 0x00007fffe695405e in ?? () from /usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.580.178.04
+
+Thread 5 (Thread 0x7ffff59fc6c0 (LWP 28762) "WorkerThread 2"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=157960848, a2=<optimized out>, a3=a3@entry=4120881568, a4=a4@entry=0, a5=a5@entry=0, a6=a6@entry=4294967295, nr=202) at ./nptl/cancellation.c:49
+#2  0x00007ffff7ca06e7 in __futex_abstimed_wait_common64 (private=0, futex_word=0x96a4a90, expected=4120881568, op=393, abstime=0x0, cancel=true) at ./nptl/futex-internal.c:57
+#3  __futex_abstimed_wait_common (futex_word=0x96a4a90, expected=4120881568, clockid=0, abstime=0x0, private=0, cancel=true) at ./nptl/futex-internal.c:87
+#4  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x96a4a90, expected=expected@entry=56, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#5  0x00007ffff7ca30c7 in __pthread_cond_wait_common (cond=<optimized out>, mutex=0x954f1e8, clockid=0, abstime=0x0) at ./nptl/pthread_cond_wait.c:421
+#6  ___pthread_cond_wait (cond=<optimized out>, mutex=0x954f1e8) at ./nptl/pthread_cond_wait.c:453
+#7  0x000000000490545d in ?? ()
+#8  0x0000000004406195 in ?? ()
+#9  0x00000000052e6c23 in ?? ()
+#10 0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#11 0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 4 (Thread 0x7ffff61fd6c0 (LWP 28761) "WorkerThread 1"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=157960748, a2=<optimized out>, a3=a3@entry=4129274272, a4=a4@entry=0, a5=a5@entry=0, a6=a6@entry=4294967295, nr=202) at ./nptl/cancellation.c:49
+#2  0x00007ffff7ca06e7 in __futex_abstimed_wait_common64 (private=0, futex_word=0x96a4a2c, expected=4129274272, op=393, abstime=0x0, cancel=true) at ./nptl/futex-internal.c:57
+#3  __futex_abstimed_wait_common (futex_word=0x96a4a2c, expected=4129274272, clockid=0, abstime=0x0, private=0, cancel=true) at ./nptl/futex-internal.c:87
+#4  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x96a4a2c, expected=expected@entry=59, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#5  0x00007ffff7ca30c7 in __pthread_cond_wait_common (cond=<optimized out>, mutex=0x954f1e8, clockid=0, abstime=0x0) at ./nptl/pthread_cond_wait.c:421
+#6  ___pthread_cond_wait (cond=<optimized out>, mutex=0x954f1e8) at ./nptl/pthread_cond_wait.c:453
+#7  0x000000000490545d in ?? ()
+#8  0x0000000004406195 in ?? ()
+#9  0x00000000052e6c23 in ?? ()
+#10 0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#11 0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 3 (Thread 0x7ffff69fe6c0 (LWP 28760) "WorkerThread 0"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=157960640, a2=<optimized out>, a3=a3@entry=4137666976, a4=a4@entry=0, a5=a5@entry=0, a6=a6@entry=4294967295, nr=202) at ./nptl/cancellation.c:49
+#2  0x00007ffff7ca06e7 in __futex_abstimed_wait_common64 (private=0, futex_word=0x96a49c0, expected=4137666976, op=393, abstime=0x0, cancel=true) at ./nptl/futex-internal.c:57
+#3  __futex_abstimed_wait_common (futex_word=0x96a49c0, expected=4137666976, clockid=0, abstime=0x0, private=0, cancel=true) at ./nptl/futex-internal.c:87
+#4  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x96a49c0, expected=expected@entry=44, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#5  0x00007ffff7ca30c7 in __pthread_cond_wait_common (cond=<optimized out>, mutex=0x954f1e8, clockid=0, abstime=0x0) at ./nptl/pthread_cond_wait.c:421
+#6  ___pthread_cond_wait (cond=<optimized out>, mutex=0x954f1e8) at ./nptl/pthread_cond_wait.c:453
+#7  0x000000000490545d in ?? ()
+#8  0x0000000004406195 in ?? ()
+#9  0x00000000052e6c23 in ?? ()
+#10 0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#11 0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 2 (Thread 0x7ffff71ff6c0 (LWP 28759) "Godot_v4.7.2-st"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=156554864, a2=<optimized out>, a3=a3@entry=0, a4=a4@entry=0, a5=a5@entry=0, a6=a6@entry=4294967295, nr=202) at ./nptl/cancellation.c:49
+#2  0x00007ffff7ca06e7 in __futex_abstimed_wait_common64 (private=0, futex_word=0x954d670, expected=0, op=393, abstime=0x0, cancel=true) at ./nptl/futex-internal.c:57
+#3  __futex_abstimed_wait_common (futex_word=0x954d670, expected=0, clockid=0, abstime=0x0, private=0, cancel=true) at ./nptl/futex-internal.c:87
+#4  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x954d670, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#5  0x00007ffff7ca30c7 in __pthread_cond_wait_common (cond=<optimized out>, mutex=0x954d628, clockid=0, abstime=0x0) at ./nptl/pthread_cond_wait.c:421
+#6  ___pthread_cond_wait (cond=<optimized out>, mutex=0x954d628) at ./nptl/pthread_cond_wait.c:453
+#7  0x00000000044f3da3 in ?? ()
+#8  0x0000000004406195 in ?? ()
+#9  0x00000000052e6c23 in ?? ()
+#10 0x00007ffff7ca3dfa in start_thread (arg=<optimized out>) at ./nptl/pthread_create.c:454
+#11 0x00007ffff7d375cc in __GI___clone3 () at ../sysdeps/unix/sysv/linux/x86_64/clone3.S:78
+
+Thread 1 (Thread 0x7ffff7e62b40 (LWP 28752) "Godot_v4.7.2-st"):
+#0  __syscall_cancel_arch () at ../sysdeps/unix/sysv/linux/x86_64/syscall_cancel.S:56
+#1  0x00007ffff7ca030c in __internal_syscall_cancel (a1=a1@entry=156561992, a2=<optimized out>, a3=a3@entry=4007841792, a4=a4@entry=0, a5=a5@entry=0, a6=a6@entry=4294967295, nr=202) at ./nptl/cancellation.c:49
+#2  0x00007ffff7ca06e7 in __futex_abstimed_wait_common64 (private=0, futex_word=0x954f248, expected=4007841792, op=393, abstime=0x0, cancel=true) at ./nptl/futex-internal.c:57
+#3  __futex_abstimed_wait_common (futex_word=0x954f248, expected=4007841792, clockid=0, abstime=0x0, private=0, cancel=true) at ./nptl/futex-internal.c:87
+#4  __GI___futex_abstimed_wait_cancelable64 (futex_word=futex_word@entry=0x954f248, expected=expected@entry=0, clockid=clockid@entry=0, abstime=abstime@entry=0x0, private=private@entry=0) at ./nptl/futex-internal.c:139
+#5  0x00007ffff7ca30c7 in __pthread_cond_wait_common (cond=<optimized out>, mutex=0x954f1e8, clockid=0, abstime=0x0) at ./nptl/pthread_cond_wait.c:421
+#6  ___pthread_cond_wait (cond=<optimized out>, mutex=0x954f1e8) at ./nptl/pthread_cond_wait.c:453
+#7  0x000000000042d0fe in ?? ()
+#8  0x00007ffff7c2a601 in __libc_start_call_main (main=main@entry=0x42be50, argc=argc@entry=26, argv=argv@entry=0x7fffffffe1c8) at ../sysdeps/nptl/libc_start_call_main.h:59
+#9  0x00007ffff7c2a718 in __libc_start_main_impl (main=0x42be50, argc=26, argv=0x7fffffffe1c8, init=<optimized out>, fini=<optimized out>, rtld_fini=<optimized out>, stack_end=0x7fffffffe1b8) at ../csu/libc-start.c:360
+#10 0x000000000048a6da in ?? ()

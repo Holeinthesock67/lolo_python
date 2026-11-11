@@ -1,0 +1,16 @@
+13:03:26 empreinte avant cd3850c51f3f01752752e767563f7ccd
+13:03:26 tête 52c9ba6f
+13:04:37 x58 souris_low
+13:22:19 fin souris_low rc=1
+13:22:19 x58 clavier_low
+13:29:46 fin clavier_low rc=1
+13:29:46 x58 click_low
+13:40:27 fin click_low rc=1
+13:40:27 x58 souris_medium
+13:58:19 fin souris_medium rc=1
+13:58:19 x58 souris_high
+14:16:11 fin souris_high rc=1
+14:16:11 durée totale 4294 s
+14:16:12 empreinte après cd3850c51f3f01752752e767563f7ccd
+14:16:12 clone 8fc4a132
+14:16:12 FIN
