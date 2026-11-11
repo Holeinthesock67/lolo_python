@@ -54,6 +54,9 @@ signal segment_result_received(msg: Dictionary)
 ## Dernier survivant (révision 1.5, lot DS2) : une élimination, répétée 3 fois par le core (doublons écartés par
 ## survivor_hud_model.gd).
 signal elimination_received(msg: Dictionary)
+## Grand Prix des objets (révision 1.7, lot GP2) : un coureur touché par un objet, répété 3 fois par le core
+## (doublons écartés par grandprix/gp_scene_model.gd).
+signal gp_hit_received(msg: Dictionary)
 ## Garage (lots V3/V7, contrat 1.4) : `garage_received` une fois toutes les parties arrivées (éléments
 ## réunis) ; `progression_received` après chaque succès du Garage.
 signal garage_received(items: Array)
@@ -344,6 +347,8 @@ func _poll_incoming() -> void:
 				segment_result_received.emit(json_obj)
 			"elimination":
 				elimination_received.emit(json_obj)
+			"gp_hit":
+				gp_hit_received.emit(json_obj)
 			"garage":
 				_on_garage_part(json_obj)
 			"progression":

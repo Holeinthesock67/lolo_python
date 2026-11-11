@@ -603,10 +603,11 @@ def groups(runners: list[tuple[float, float, str, Any]]) -> list[list[tuple[floa
 
 def update_field(field: Field, bots: list[Any], rider: tuple[float, float] | None, dt: float,
                  grade_at: Callable[[float], float] | None = None, length_m: float | None = None,
-                 is_loop: bool = False) -> None:
+                 is_loop: bool = False, unseen: frozenset[str] = frozenset()) -> None:
     """Groupes, relais et réponses aux départs (§4), relus toutes les `TICK_S` secondes sur les positions
     du pas précédent ; appelé par la séance avant le pas des bots. `rider` : (s, v) du cycliste, None sans
-    lui ; `grade_at(s)` : pente (%) à la position s."""
+    lui ; `grade_at(s)` : pente (%) à la position s. `unseen` : coureurs dont personne ne suit le départ
+    (le cycliste pendant l'Échappée, lot TT4) : leur écart n'est pas relevé."""
     field.t += dt
     field._acc += dt
     if field._acc + 1e-9 < TICK_S:
@@ -629,7 +630,7 @@ def update_field(field: Field, bots: list[Any], rider: tuple[float, float] | Non
             seen = set()
             for o_s, _, o_id, _ in runners:
                 gap = (o_s - pos[id(b)]) / max(v, 1.0)
-                if gap <= 0.0 or gap > GROUP_GAP_S + 2 * RESPONSE_WINDOW_S:
+                if gap <= 0.0 or gap > GROUP_GAP_S + 2 * RESPONSE_WINDOW_S or o_id in unseen:
                     continue
                 seen.add(o_id)
                 tac._watch(o_id, gap, t, b.wbal_pct, climbing)
