@@ -1,0 +1,10 @@
+quitter_1                clavier  OK              42 s
+quitter_2                clavier  OK              42 s
+quitter_3                clavier  OK              42 s
+quitter_4                clavier  OK              42 s
+quitter_5                clavier  OK              42 s
+quitter_6                clavier  OK              42 s
+quitter_7                clavier  OK              42 s
+quitter_8                clavier  OK              42 s
+quitter_9                clavier  OK              42 s
+quitter_10               clavier  OK              42 s

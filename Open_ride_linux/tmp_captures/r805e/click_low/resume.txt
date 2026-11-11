@@ -1,0 +1,10 @@
+quitter_1                click    OK              42 s
+quitter_2                click    OK              42 s
+quitter_3                click    OK              42 s
+quitter_4                click    OK              42 s
+quitter_5                click    OK              41 s
+quitter_6                click    OK              42 s
+quitter_7                click    OK              42 s
+quitter_8                click    OK              42 s
+quitter_9                click    OK              42 s
+quitter_10               click    OK              42 s

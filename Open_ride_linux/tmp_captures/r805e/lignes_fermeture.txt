@@ -1,0 +1,200 @@
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 54 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 54 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 55 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 64 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 65 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 66 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 59 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 60 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 61 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 58 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 58 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 59 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 66 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 66 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 68 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 2 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 68 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 68 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 69 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 66 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 66 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 67 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 59 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 59 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 60 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 62 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 62 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 63 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 2 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 63 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 63 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 65 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 159 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 159 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 160 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 146 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 146 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 147 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 173 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 173 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 174 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 155 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 155 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 156 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 146 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 146 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 147 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 158 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 158 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 159 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 146 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 147 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 147 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 151 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 151 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 152 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 148 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 148 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 149 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 2 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 157 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 157 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 158 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 135 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 164 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 164 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 165 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 114 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 148 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 148 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 149 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 101 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 128 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 128 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 129 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 145 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 166 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 167 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 167 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 70 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 104 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 104 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 105 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 107 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 141 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 141 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 142 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 149 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 173 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 173 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 174 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 130 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 158 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 158 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 159 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 109 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 133 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 133 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 134 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 2 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 73 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 73 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 74 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 68 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 68 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 69 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 2 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 70 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 70 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 71 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 2 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 66 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 66 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 67 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 65 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 65 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 66 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 2 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 70 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 70 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 71 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 67 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 67 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 68 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 73 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 73 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 74 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 62 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 62 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 63 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 1 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 64 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 64 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 65 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 2 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 63 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 63 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 64 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 166 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 192 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 192 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 193 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 146 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 186 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 186 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 187 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 167 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 193 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 193 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 194 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 151 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 176 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 176 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 177 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 155 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 187 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 187 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 189 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 158 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 180 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 181 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 182 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 126 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 165 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 165 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 167 ms après la demande.
+Fermeture : tâches de fond : 0 attendues, 0 abandonnées sans travail, 2 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 66 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 66 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 67 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 156 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 185 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 185 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 186 ms après la demande.
+Fermeture : tâches de fond : 1 attendues, 0 abandonnées sans travail, 150 ms après la demande.
+Fermeture : nœuds de la scène sortis (décor, monde et IPC compris), 176 ms après la demande.
+Fermeture : chargement du parcours et sonde fermés, 176 ms après la demande.
+Fermeture : scène libérée, arrêt des serveurs de Godot (code 0), 177 ms après la demande.
