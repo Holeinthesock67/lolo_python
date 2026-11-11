@@ -49,8 +49,8 @@ Les deux dernières catégories sont plus basses par défaut (confort, lot R18) 
   banquise, fumerolles), synthétisés par `engine/scripts/ambience_synth.gd`. Chaque biome du thème déclare les
   siens dans `biomes.<id>.ambience.layers` ; leur volume suit les poids des biomes au cycliste, la saison, l'heure,
   la pluie, le vent et, pour les vagues, la distance à la mer (pleines à 30 m, muettes à 400 m). Aucun fond n'est
-  fabriqué au démarrage : chacun l'est à sa première demande, dans un fil de travail (aucun à-coup d'image), et seuls
-  ceux des biomes traversés existent. Même fondu pour tous : au plus 5,5 dB et au plus un tiers du niveau plein par
+  fabriqué au démarrage : chacun l'est à sa première demande, dans un fil de travail qui rend le flux complet (aucun à-coup
+  d'image ; l'image n'en pose qu'un sur son lecteur), et seuls ceux des biomes traversés existent. Même fondu pour tous : au plus 5,5 dB et au plus un tiers du niveau plein par
   seconde, donc au moins 3 s du plein au silence d'un biome à l'autre ; plafond de voix inchangé (`ambience_voices`).
   Remplaçables par `~/OpenRide/Sounds/<fond>.ogg` comme les autres. Écoute : `engine/tests/ambience_export.gd`
   (une scène de 20 s par biome et chaque fond seul).
