@@ -686,7 +686,7 @@ class CoreSession:
             self._on_workout_menu_command(name, args, cmd_id)
         elif name in ("list_route_imports", "import_route"):
             self._on_route_import_command(name, args if isinstance(args, dict) else {}, cmd_id)
-        elif name in ("list_garage", "equip", "buy", "set_avatar"):
+        elif name in ("list_garage", "equip", "buy", "buy_life", "set_avatar"):
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in PROFILE_COMMANDS:
             self._on_profile_command(name, args if isinstance(args, dict) else {}, cmd_id)
@@ -1065,6 +1065,8 @@ class CoreSession:
                 svc.equip(args.get("slot"), args.get("item_id"))
             elif name == "buy":
                 svc.buy(args.get("item_id"))
+            elif name == "buy_life":
+                svc.buy_life()
             else:
                 svc.set_avatar(args.get("avatar"))
         except GarageError as exc:
@@ -1075,6 +1077,8 @@ class CoreSession:
         self._base_params = self._equipped_params()   # le cadre et les roues valent pour la séance suivante
         self.physics.p = self._base_params
         self._publish_progression()
+        if name == "buy_life":
+            self._publish_rogue()   # vies en réserve du menu de départ à la prochaine connexion de l'engine
         self.server.send_raw(svc.progression_message(cmd_id))
 
     def _after_session(self, journal: str, records: list[dict] | None) -> None:
@@ -1150,8 +1154,9 @@ class CoreSession:
     def _publish_rogue(self) -> None:
         """`hello_ack.config.rogue` d'après la progression : châssis, vies, dernière run (lots R9, R13), W' estimé (R16)."""
         chassis, stats, lives = self.rogue_provider() if self.rogue_provider else (None, None, 0)
+        offer = self.progress_svc.life_offer() if chassis is not None and self.progress_svc.enabled else None
         self.server.hello_config["rogue"] = rogue_mode.hello_block(self.cfg, self.w_prime_estimate_j, chassis,
-                                                                   stats, lives)
+                                                                   stats, lives, offer)
 
     def _estimate_w_prime(self) -> float | None:
         """W' estimé depuis les séances passées (FIT et journaux), `None` si l'historique ne suffit pas (lot R16)."""

@@ -87,8 +87,10 @@ def parse_start_run(args: Any, cfg: Config, rng: random.Random | None = None) ->
 
 
 def hello_block(cfg: Config, w_prime_estimate_j: float | None, chassis: tuple[Chassis, ...] | None = None,
-                stats: RogueStats | None = None, lives: int | None = None) -> dict:
-    """Objet `hello_ack.config.rogue` (contrat 1.4, lot R9 ; `last` : révision 1.5)."""
+                stats: RogueStats | None = None, lives: int | None = None,
+                life_offer: dict | None = None) -> dict:
+    """Objet `hello_ack.config.rogue` (contrat 1.4, lot R9 ; `last` : révision 1.5 ; `life_price` et `max_lives`,
+    prix d'une vie et réserve maximale : révision 1.14, lot R21)."""
     from .progress import config_block
 
     block: dict[str, Any] = {
@@ -96,6 +98,8 @@ def hello_block(cfg: Config, w_prime_estimate_j: float | None, chassis: tuple[Ch
         "cp_w": cfg.rogue.cp_w or cfg.rider.ftp_w, "objectives": list(OBJECTIVES), "durations_min": list(DURATIONS)}
     if chassis is not None and stats is not None:
         block.update(config_block(chassis, stats, lives or 0))
+        if life_offer:
+            block.update(life_offer)
     return block
 
 
