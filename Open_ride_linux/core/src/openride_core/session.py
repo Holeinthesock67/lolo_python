@@ -3516,10 +3516,11 @@ class CoreSession:
         if self.track_event is not None:
             self._track_before_bots(dt)
         # Lot Y10 : groupes, relais et départs (cycliste déjà avancé, bots au pas précédent)
+        unseen = frozenset((bot_tactics.RIDER_ID,)) if self.race and self.race.unseen() else frozenset()   # TT4
         # à rebours (lot N17), le cycliste n'est dans aucun groupe : les bots courent entre eux
         bot_tactics.update_field(self._field, self._racing_bots(), (self.physics.s, self.physics.v) if d > 0 else None, dt,
                                  (lambda s: route.sample(s).grade_pct) if route else None,
-                                 route.length_m if route else None, bool(route and route.is_loop))
+                                 route.length_m if route else None, bool(route and route.is_loop), unseen)
         for bot in self.bots:
             if bot.id in self._survivor_out:
                 self._step_retired_bot(bot, dt)
@@ -3753,7 +3754,8 @@ class CoreSession:
 
         cross = cross_at(heading_deg)
         rider = None if reverse else \
-            draft_mod.Source(self.physics.s, self.physics.v, lane_m=self._lane.m, cda_m2=self.physics.p.cda_m2)
+            draft_mod.Source(self.physics.s, self.physics.v, lane_m=self._lane.m, cda_m2=self.physics.p.cda_m2,
+                             shelters=not (self.race and self.race.unseen()))   # Échappée (lot TT4)
         draft_mod.update_bots(racing, rider, dt, length, is_loop,
                               (lambda b: cross_at(route.sample(b.s).heading_deg)) if ws and route else None)
         sources = list(racing) + [road_cyclists_mod.DraftSource(r.s, r.v, road_cyclists_mod.source_id(r.id),
