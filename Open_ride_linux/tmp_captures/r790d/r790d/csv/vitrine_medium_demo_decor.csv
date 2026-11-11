@@ -1,0 +1,44 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+26.1;0;0;0;0;0;0;0;
+32.8;7;0;0;12;0;0;6;
+38.1;7;0;0;12;0;0;6;
+38.5;7;0;0;12;0;0;6;
+38.9;7;0;0;12;0;0;6;
+39.3;7;0;0;12;0;0;6;
+40.0;7;0;0;12;0;0;6;
+46.0;7;0;0;9;0;0;6;
+52.0;48;12;0;3;0;0;6;
+58.0;48;12;0;2;0;0;6;
+61.1;48;12;0;5;0;0;6;
+62.0;48;12;0;5;0;0;6;
+64.0;48;12;0;4;0;0;6;
+70.0;48;12;0;4;0;0;6;
+76.0;48;22;0;6;0;0;6;
+77.0;48;22;0;6;0;0;6;
+82.0;48;22;0;5;0;0;6;
+88.0;48;22;0;3;0;0;6;
+91.1;48;22;0;5;0;0;6;
+92.0;48;22;0;5;0;0;6;voice_bonjour=1
+94.0;48;22;0;5;0;0;6;voice_bonjour=1
+100.0;48;22;0;10;0;1;6;airliner_rumble=1 voice_bonjour=1
+106.0;48;22;0;11;0;1;6;airliner_rumble=1 voice_bonjour=1
+112.0;48;22;0;12;0;1;6;airliner_rumble=1 voice_bonjour=1
+118.0;48;22;0;11;0;1;6;airliner_rumble=1 voice_bonjour=1
+121.1;48;22;0;12;0;1;6;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+124.0;48;22;0;12;0;1;6;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+130.0;48;22;0;12;0;1;6;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+136.0;48;22;0;12;0;1;6;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+142.0;48;22;0;12;1;2;6;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+148.0;48;22;0;11;1;2;6;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+151.1;48;22;0;12;1;2;6;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+152.0;48;22;0;10;1;2;6;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+154.0;48;22;0;12;1;2;6;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+160.0;48;22;0;11;1;2;6;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+166.0;48;22;0;12;1;2;6;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+172.0;48;22;0;12;1;2;6;airliner_rumble=2 voice_allez=1 voice_bonjour=2
+178.0;48;22;0;12;1;2;6;airliner_rumble=2 voice_allez=1 voice_bonjour=2
+181.1;48;22;0;11;1;2;6;airliner_rumble=2 voice_allez=1 voice_bonjour=2
+184.0;48;22;0;12;1;2;6;airliner_rumble=2 voice_allez=1 voice_bonjour=2
+202.0;48;30;0;6;0;2;6;airliner_rumble=2 raptor_cry=1 voice_allez=2 voice_bonjour=2
+211.1;48;30;0;4;0;2;6;airliner_rumble=2 raptor_cry=1 voice_allez=2 voice_bonjour=2
+216.1;48;30;0;8;0;2;6;airliner_rumble=2 raptor_cry=2 voice_allez=2 voice_bonjour=2
