@@ -1,0 +1,28 @@
+>>> [1/1] Scénario demo (3:35)
+== demo : parcours mont-ventoux-bedoin, 215 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 14.4 s après le démarrage du core
+[OK] parcours chargé par l'engine : mont-ventoux-bedoin à 25.3 s
+[OK] engine vivant jusqu'à la fin : 215 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 35/35 images enregistrées après le chargement (+2 avant, hors compte : 2 enregistrée(s)), réponse en 0.51 s (médiane), 4.89 s au pire : captures de l'engine
+   images par seconde de l'engine : min 57, médiane 57, max 57 (1 relevés)
+[OK] qualité réellement appliquée : medium appliquée (37 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -10.2 à 11.1 %, pente envoyée -10.0 à 8.0 %
+[OK] médiane 79.3 km/h sur 131 s (attendu 80.0 ± 8.0), de 77.5 à 80.7 km/h : vitesse imposée 80 km/h
+[OK] décor : aucun contact sur la route : 0 sur 37 captures
+[OK] fréquence cardiaque au journal : 152 échantillons, 180 à 185 bpm
+    OK  demo : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/OpenRide/mesures/2026-11-09/u18_koppen/mont-ventoux-bedoin/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK

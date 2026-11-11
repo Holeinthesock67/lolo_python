@@ -1,0 +1,6 @@
+mont-ventoux-bedoin : biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 63 tuile(s)) : temperate_forest 52,8 %, temperate_grassland 15,1 %, farmland 12,7 %, rock_desert 12,5 %, alpine 3,5 %, mediterranean 3,4 %
+teide-vilaflor : biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 66 tuile(s)) : temperate_grassland 62,2 %, volcanic 19,6 %, temperate_forest 12,0 %, steppe 3,6 %, farmland 2,0 %, savanna 0,5 %
+col-du-galibier : biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 52 tuile(s)) : alpine 50,2 %, temperate_grassland 27,4 %, boreal_forest 13,5 %, tundra 6,3 %, temperate_forest 2,7 %
+ballon-d-alsace : biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 28 tuile(s)) : temperate_forest 77,1 %, temperate_grassland 22,9 %
+fuji-subaru-line : biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 55 tuile(s)) : temperate_forest 49,5 %, boreal_forest 48,1 %, temperate_grassland 1,8 %, alpine 0,3 %, volcanic 0,2 %
+alto-de-l-angliru : biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 34 tuile(s)) : temperate_forest 56,3 %, temperate_grassland 43,7 %

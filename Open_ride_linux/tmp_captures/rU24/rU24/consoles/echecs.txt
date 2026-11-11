@@ -1,0 +1,6 @@
+[ÉCHEC] médiane 88.5 km/h sur 137 s (attendu 80.0 ± 8.0), de 82.3 à 91.8 km/h : vitesse imposée 80 km/h
+RÉSULTAT : ÉCHEC (1 vérification(s))
+RÉSULTAT : banc simulé OK
+[ÉCHEC] médiane 90.4 km/h sur 135 s (attendu 80.0 ± 8.0), de 87.0 à 93.1 km/h : vitesse imposée 80 km/h
+RÉSULTAT : ÉCHEC (1 vérification(s))
+RÉSULTAT : banc simulé OK

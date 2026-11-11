@@ -1,0 +1,28 @@
+>>> [1/1] Scénario demo (3:35)
+== demo : parcours ballon-d-alsace, 215 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 13.8 s après le démarrage du core
+[OK] parcours chargé par l'engine : ballon-d-alsace à 24.6 s
+[OK] engine vivant jusqu'à la fin : 215 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 36/36 images enregistrées après le chargement (+1 avant, hors compte : 1 enregistrée(s)), 2 redemandée(s), réponse en 0.50 s (médiane), 7.83 s au pire : captures de l'engine
+   images par seconde de l'engine : min 60, médiane 60, max 60 (1 relevés)
+[OK] qualité réellement appliquée : medium appliquée (38 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -2.2 à 12.3 %, pente envoyée -1.8 à 11.1 %
+[OK] médiane 79.0 km/h sur 132 s (attendu 80.0 ± 8.0), de 76.5 à 81.9 km/h : vitesse imposée 80 km/h
+[OK] décor : aucun contact sur la route : 0 sur 37 captures
+[OK] fréquence cardiaque au journal : 153 échantillons, 180 à 185 bpm
+    OK  demo : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/OpenRide/mesures/2026-11-09/u18_koppen/ballon-d-alsace/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK

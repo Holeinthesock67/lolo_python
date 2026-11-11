@@ -1,0 +1,2 @@
+>>> [1/1] Scénario demo (3:35)
+parcours introuvable : ~/OpenRide/mesures/2026-11-09/u18_koppen/routes/col-du-galibier.world (demo, demo_long, village, osm, ouvert ou dossier .world)

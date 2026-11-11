@@ -1,0 +1,29 @@
+14:44:28 empreinte avant cd3850c51f3f01752752e767563f7ccd
+14:44:28 tête f547b66b
+14:45:40 build mont-ventoux-bedoin
+14:53:45 fin build mont-ventoux-bedoin rc=0
+14:53:45 banc mont-ventoux-bedoin
+14:57:25 fin banc mont-ventoux-bedoin rc=0
+14:57:25 build teide-vilaflor
+15:01:24 fin build teide-vilaflor rc=1
+15:01:24 banc teide-vilaflor
+15:01:24 fin banc teide-vilaflor rc=1
+15:01:24 build col-du-galibier
+15:05:28 fin build col-du-galibier rc=1
+15:05:28 banc col-du-galibier
+15:05:28 fin banc col-du-galibier rc=1
+15:05:28 build ballon-d-alsace
+15:08:41 fin build ballon-d-alsace rc=0
+15:08:41 banc ballon-d-alsace
+15:12:21 fin banc ballon-d-alsace rc=0
+15:12:21 build fuji-subaru-line
+15:19:45 fin build fuji-subaru-line rc=0
+15:19:45 banc fuji-subaru-line
+15:23:25 fin banc fuji-subaru-line rc=1
+15:23:25 build alto-de-l-angliru
+15:27:21 fin build alto-de-l-angliru rc=0
+15:27:21 banc alto-de-l-angliru
+15:31:01 fin banc alto-de-l-angliru rc=1
+15:31:02 empreinte après cd3850c51f3f01752752e767563f7ccd
+15:31:02 clone 8fc4a132
+15:31:02 FIN
