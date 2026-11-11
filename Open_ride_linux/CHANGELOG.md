@@ -5,6 +5,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Parcours de démonstration nommés (lot O37)
+- Les quatre parcours de démonstration livrés portent un vrai nom au menu : « Col du lacet » (ex-`demo`), « Tour des six paysages », « Route de la côte » et « Montée alpine ». Le tour en partie non revêtu (`demo-biomes-gravel`) quitte le jeu de base : le gravel étant coupé par défaut, il ressemblait au tour asphalté ; il reste pour les recettes. Les villages, belvédères et étangs ont des noms de lieux inventés au lieu de « Port Fictif » ou « Col Fictif » (panneau du sommet).
+- Les démonstrations déjà installées sont remplacées au prochain lancement (l'ancien tour gravel est enlevé) ; un parcours du joueur n'est jamais touché.
+- Le générateur des parcours des biomes est passé des tests de l'engine au compilateur : un jeu installé sans les tests les produit. Les bancs et les recettes gardent les noms techniques avec `--recette`.
+
 ### Le cycliste prend mieux les virages (lot CY1)
 - Le vélo du joueur et des bots regarde où il va : il ne tourne plus 20 m avant un virage serré et ne roule plus en crabe (jusqu'à 29° dans un angle droit dessiné avec peu de points).
 - Il se penche dans les virages selon sa vitesse (au plus 30°), et se redresse en ligne droite ou à l'arrêt. Sur la piste du vélodrome, il reste perpendiculaire à la piste dans les virages relevés.

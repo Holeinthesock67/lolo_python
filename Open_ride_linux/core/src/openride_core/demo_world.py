@@ -9,14 +9,14 @@ des données factices, le compilateur utilisera UTM via pyproj).
 
     python -m openride_core.tools.fake_world --out ../engine/demo --length 8000
 
-Le parcours de démonstration commun au core et à l'engine (`demo`, 5 000 m) est écrit par
-`write_demo_world` avec une date de création fixe et sa couche terrain synthétique, pour être
-identique octet pour octet :
+Le parcours de démonstration commun au core et à l'engine (identifiant `demo`, 5 000 m, affiché au menu
+sous le nom `DEMO_TITLE`, lot O37) est écrit par `write_demo_world` avec une date de création fixe et sa
+couche terrain synthétique, pour être identique octet pour octet :
     python -m openride_core.tools.fake_world --demo --out ../engine/demo
 
-Les quatre parcours de démonstration des biomes (lot U19) sont écrits par `write_biome_demo_worlds`, qui
-appelle le générateur `engine/tests/make_biome_world.py` (compilateur requis) :
-    openride-core demo-biomes [--out DOSSIER]
+Les parcours de démonstration des biomes (lot U19 ; trois dans le jeu de base, le tour gravel en plus pour les recettes, lot O37) sont écrits par `write_biome_demo_worlds`, qui
+appelle le générateur du compilateur `openride_compiler.demo_biomes` (lot O37 ; compilateur requis) :
+    openride-core demo-biomes [--out DOSSIER] [--recette]
 
 La couche `segments.json` (format 1.3, lot T3) porte les montées et sprints détectés
 automatiquement par `segments.py`, sans segment manuel (décision du 27 octobre).
@@ -36,7 +36,8 @@ from .synthetic_terrain import add_terrain_layer
 EARTH_R = 6_371_000.0
 DS_M = 10.0
 
-DEMO_NAME = "demo"
+DEMO_NAME = "demo"                 # identifiant de fichier (`demo.world`), inchangé
+DEMO_TITLE = "Col du lacet"        # nom affiché au menu (lot O37)
 DEMO_LENGTH_M = 5000.0
 DEMO_CREATED = "2026-10-23T00:00:00+02:00"   # fixe : le fichier de démo est reproductible
 HAIRPIN_GAP_M = 500.0       # distance entre les deux épingles du lacet (au plus 0,15 × longueur)
@@ -120,10 +121,11 @@ def build_segments(route: dict) -> list[dict]:
 
 
 # Version du générateur, portée par le manifeste (`compiler.version`). 0.2.0 (7 novembre 2026) : terrain proche
-# dégagé sous la chaussée (`synthetic_terrain.clear_road`) ; une démonstration plus ancienne du dossier des
+# dégagé sous la chaussée (`synthetic_terrain.clear_road`) ; 0.3.0 (8 novembre 2026, lot O37) : la
+# démonstration porte son nom de parcours `DEMO_TITLE`. Une démonstration plus ancienne du dossier des
 # parcours est remplacée par `ensure_demo_world`.
 FAKE_WORLD_NAME = "openride-fake-world"
-FAKE_WORLD_VERSION = "0.2.0"
+FAKE_WORLD_VERSION = "0.3.0"
 
 
 def build_manifest(name: str, route: dict, created: str | None = None,
@@ -155,7 +157,8 @@ def build_manifest(name: str, route: dict, created: str | None = None,
 
 
 def write_world(out_dir: Path, name: str, length_m: float, created: str | None = None,
-                grade: Callable[[float], float] | None = None) -> Path:
+                grade: Callable[[float], float] | None = None, title: str | None = None) -> Path:
+    """Écrit `out_dir/<name>.world` ; `title` : nom affiché au menu (défaut : l'identifiant `name`)."""
     route = build_route(length_m, grade=grade)
     world = out_dir / f"{name}.world"
     world.mkdir(parents=True, exist_ok=True)
@@ -165,7 +168,7 @@ def write_world(out_dir: Path, name: str, length_m: float, created: str | None =
         json.dumps({"version": "1.0", "segments": segments}, indent=1, ensure_ascii=False) + "\n",
         encoding="utf-8")
     (world / "manifest.json").write_text(
-        json.dumps(build_manifest(name, route, created, segments), indent=2), encoding="utf-8")
+        json.dumps(build_manifest(title or name, route, created, segments), indent=2), encoding="utf-8")
     return world
 
 
@@ -173,7 +176,7 @@ def write_demo_world(out_dir: Path) -> Path:
     """Écrit le parcours de démonstration commun au core et à l'engine, avec sa couche terrain
     synthétique (`synthetic_terrain.py`) : sans elle, l'engine pose un sol plat sous l'altitude la plus
     basse et la route, qui monte de 120 m, semble léviter (constat du 4 novembre 2026)."""
-    return add_terrain_layer(write_world(out_dir, DEMO_NAME, DEMO_LENGTH_M, created=DEMO_CREATED))
+    return add_terrain_layer(write_world(out_dir, DEMO_NAME, DEMO_LENGTH_M, created=DEMO_CREATED, title=DEMO_TITLE))
 
 
 def _demo_needs_rewrite(world: Path) -> bool:
@@ -233,33 +236,38 @@ def ensure_demo_world(routes_root: Path, engine_dir: Path | None = None) -> Path
     return world
 
 
-def _biome_demo_module(engine_dir: Path | None = None):
-    """Générateur `engine/tests/make_biome_world.py` (lot U19) ; FileNotFoundError s'il manque."""
-    import importlib.util
-    import os
+def _biome_demo_module():
+    """Générateur du compilateur `openride_compiler.demo_biomes` (lots U19 et O37) ; ImportError sans le
+    compilateur."""
+    from openride_compiler import demo_biomes
 
-    from .launcher import DEFAULT_ENGINE_DIR
-
-    engine = Path(engine_dir or os.environ.get("OPENRIDE_ENGINE") or DEFAULT_ENGINE_DIR).expanduser()
-    script = engine / "tests" / "make_biome_world.py"
-    if not script.is_file():
-        raise FileNotFoundError(f"générateur introuvable : {script} (définir OPENRIDE_ENGINE)")
-    spec = importlib.util.spec_from_file_location("make_biome_world", script)
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+    return demo_biomes
 
 
-def biome_demo_names(engine_dir: Path | None = None) -> list[str]:
-    """Noms des parcours écrits par `write_biome_demo_worlds` (contenus de départ, lot O25)."""
-    return [name for name, *_ in _biome_demo_module(engine_dir).DEMO_SET]
+def biome_demo_names() -> list[str]:
+    """Identifiants des parcours écrits par `write_biome_demo_worlds` (contenus de départ, lot O25)."""
+    return list(_biome_demo_module().GAME_DEMOS)
 
 
-def write_biome_demo_worlds(out_dir: Path, engine_dir: Path | None = None) -> list[dict]:
-    """Écrit les quatre parcours de démonstration des biomes (lot U19) dans `out_dir` : tour des six biomes,
-    même tour avec un tiers de gravel, côte avec la mer, alpin. Renvoie le résumé de chacun.
-    Lève ImportError sans le compilateur, FileNotFoundError sans le générateur de l'engine."""
-    module = _biome_demo_module(engine_dir)
-    import openride_compiler  # noqa: F401  (ImportError explicite si le compilateur manque)
-    return module.write_demo_set(Path(out_dir))
+def retired_biome_demo_names() -> list[str]:
+    """Démonstrations retirées du jeu de base (lot O37 : le tour gravel), gardées pour les recettes."""
+    return list(_biome_demo_module().RETIRED_DEMOS)
+
+
+def biome_demo_outdated(world: Path) -> bool:
+    """Vrai si `world` est une démonstration des biomes écrite avant le lot O37 (générateur
+    `make_biome_world` des tests de l'engine : nom technique au menu, lieux « Fictif »)."""
+    try:
+        manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    compiler = manifest.get("compiler") if isinstance(manifest, dict) else None
+    return isinstance(compiler, dict) and compiler.get("name") == "make_biome_world"
+
+
+def write_biome_demo_worlds(out_dir: Path, recette: bool = False) -> list[dict]:
+    """Écrit les parcours de démonstration des biomes (lot U19) dans `out_dir` : tour des six biomes, côte avec
+    la mer, alpin. Renvoie le résumé de chacun. `recette` : variante des bancs et des recettes (noms
+    techniques, lot O37), avec en plus le tour avec un tiers de gravel ; jamais dans le jeu de base.
+    Lève ImportError sans le compilateur."""
+    return _biome_demo_module().write_demo_set(Path(out_dir), recette=recette)
