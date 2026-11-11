@@ -1,0 +1,11 @@
+14:16:24 empreinte avant cd3850c51f3f01752752e767563f7ccd
+14:16:24 tête 52c9ba6f
+14:17:33 demo low_branche
+14:21:40 fin demo low rc=0
+14:21:40 demo medium_branche
+14:25:48 fin demo medium rc=0
+14:25:48 demo high_branche
+14:29:55 fin demo high rc=0
+14:29:57 empreinte après cd3850c51f3f01752752e767563f7ccd
+14:29:57 clone 8fc4a132
+14:29:57 FIN
