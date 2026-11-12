@@ -4,7 +4,8 @@ Contrôles : structure et manifeste, nombre de valeurs de chaque tableau de la r
 cohérence entre `length_m`, `n` et `ds_m`, accord manifeste / route, boucle fermée,
 plages de valeurs ; terrain : taille des tuiles, présence des tuiles listées, égalité des
 bords partagés, absence de NaN à moins de 25 m de la route ; segments (format 1.3) : bornes
-dans le parcours, identifiants uniques, types et catégories connus ; biome (format 1.6, lot U2) :
+dans le parcours, identifiants uniques, types et catégories connus ; mer et côte (format 1.6, lot U3) :
+aires `sea` refermées au niveau 0, lignes de côte et plages, compteurs du manifeste ; biome (format 1.6, lot U2) :
 présence des tuiles listées, contenu (identifiants, une grille de 289 poids par biome, somme 255 en chaque
 point, 4 biomes au plus, variante régionale du lot U4) et égalité des bords partagés.
 """
@@ -370,6 +371,70 @@ def _check_buildings(world: Path, layers: dict, route: dict | None, problems: li
                     problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
 
 
+def _check_sea_area(item: dict, label: str, problems: list[str]) -> None:
+    """Aire `sea` (format 1.6 §8) : anneaux refermés (contrôlés par `_check_ring`) et niveau 0. La mer
+    s'étend jusqu'au bord du terrain : pas de contrôle de distance à la route ni de tronçon, le
+    rangement par tronçon dépend du producteur (compilateur par carrés de 1 km, démo par bandes)."""
+    if item.get("level_y") != C.SEA_LEVEL_Y:
+        problems.append(f"{label} : level_y de la mer {item.get('level_y')!r} (attendu {C.SEA_LEVEL_Y})")
+
+
+def _check_coast(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
+    """Couche côte (format 1.6 §8 quinquies, lot U3) : lignes, plages, tronçons et compteurs."""
+    c_layer = layers.get("coast") if isinstance(layers, dict) else None
+    if not isinstance(c_layer, dict) or not c_layer.get("present"):
+        return
+    folder = world / "coast"
+    if not folder.is_dir():
+        problems.append("coast : dossier absent")
+        return
+    n_lines = n_beaches = 0
+    for chunk_file in sorted(folder.glob("chunk_*.json")):
+        m = CHUNK_RE.fullmatch(chunk_file.name)
+        if not m:
+            continue
+        k = int(m.group(1))
+        data = _load(chunk_file, problems)
+        if data is None:
+            continue
+        name = f"coast/{chunk_file.name}"
+        if not str(data.get("version", "")).startswith("1."):
+            problems.append(f"{name} : version inattendue {data.get('version')!r}")
+        lines = data.get("lines") if isinstance(data.get("lines"), list) else []
+        beaches = data.get("beaches") if isinstance(data.get("beaches"), list) else []
+        if not isinstance(data.get("lines"), list) or not isinstance(data.get("beaches"), list):
+            problems.append(f"{name} : « lines » ou « beaches » n'est pas une liste")
+        for item in lines:
+            n_lines += 1
+            label = f"{name} ({item.get('id', '?') if isinstance(item, dict) else '?'})"
+            if not isinstance(item, dict) or not isinstance(item.get("id"), str) or not item["id"]:
+                problems.append(f"{label} : ligne sans id")
+                continue
+            if item.get("shore") not in C.COAST_SHORES:
+                problems.append(f"{label} : rivage inconnu {item.get('shore')!r}")
+            pts = item.get("points")
+            if (not isinstance(pts, list) or len(pts) < 2
+                    or any(not isinstance(p, list) or len(p) != 2 or not all(_is_number(v) for v in p) for p in pts)):
+                problems.append(f"{label} : points (x, z) invalides")
+                continue
+        for item in beaches:
+            n_beaches += 1
+            label = f"{name} ({item.get('id', '?') if isinstance(item, dict) else '?'})"
+            if not isinstance(item, dict) or not isinstance(item.get("id"), str) or not item["id"]:
+                problems.append(f"{label} : plage sans id")
+                continue
+            if item.get("kind") not in C.COAST_BEACH_KINDS:
+                problems.append(f"{label} : sorte de plage inconnue {item.get('kind')!r}")
+            holes = item.get("holes") if isinstance(item.get("holes"), list) else []
+            _check_ring(item.get("outer"), True, label, problems)
+            for h in holes:
+                _check_ring(h, False, label, problems)
+    if c_layer.get("lines_count") != n_lines or c_layer.get("beaches_count") != n_beaches:
+        problems.append(f"coast : compteurs du manifeste ({c_layer.get('lines_count')} ligne(s), "
+                        f"{c_layer.get('beaches_count')} plage(s)) différents des fichiers "
+                        f"({n_lines}, {n_beaches})")
+
+
 def _check_vegetation(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
     v_layer = layers.get("vegetation") if isinstance(layers, dict) else None
     if not isinstance(v_layer, dict) or not v_layer.get("present"):
@@ -545,7 +610,9 @@ def _check_water(world: Path, layers: dict, route: dict | None, problems: list[s
             outer_ok = _check_ring(outer, True, label, problems)
             for h in holes:
                 _check_ring(h, False, label, problems)
-            if outer_ok and route is not None and axis is not None:
+            if outer_ok and item.get("kind") == "sea":
+                _check_sea_area(item, label, problems)
+            elif outer_ok and route is not None and axis is not None:
                 cx, cz = ring_centroid(outer)
                 expected_k, _ = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)
                 if expected_k != k:
@@ -690,6 +757,7 @@ def verify_world(world: Path) -> list[str]:
     _check_vegetation(world, layers, route, problems)
     _check_poi(world, layers, route, problems)
     _check_water(world, layers, route, problems)
+    _check_coast(world, layers, route, problems)
     _check_roads(world, layers, route, problems)
     _check_segments(world, layers, route, problems)
     return problems

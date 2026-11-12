@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Compilateur : côte, mer et plages | Python | U1 | Moyenne | Oui, après U1, **version 3.0** (issue #333) |
+| Compilateur : côte, mer et plages | Python | U1 | Moyenne | En PR, **version 3.0** (issue #333, lancé le 8 novembre) |
 
 ## 1. Objectif
 
@@ -45,6 +45,35 @@ Aucune (U1).
 4. Baie fermée par deux segments mal ordonnés : lignes recollées, un seul polygone.
 5. Falaise de test (pente de 60°) : rivage `cliff` ; plage `natural=beach` : rivage `sand`.
 6. Parcours sans côte : couche `coast` absente (`present: false`), couche eau inchangée.
+
+## 7 bis. Premier essai sur le PC (r790, 9 novembre)
+
+- GPU sous les budgets : 5,39 / 8,86 / 10,52 ms en low, medium et high.
+- Pire image de 142 ms en medium et high (limite 100 ms). Cause : la mer était écrite carré de 1 km par carré
+  (214 aires) ; les tronçons 1 et 4 en portaient une centaine chacun, et l'engine les préparait en 20 à 23 s
+  (bateaux du lot P29 cherchés dans chaque aire, faune, maillage de l'eau). Les tuiles proches et leurs arbres
+  arrivaient alors pendant la sortie au lieu du chargement.
+- Correction : les carrés tout en mer d'un même tronçon sont regroupés en blocs rectangulaires (`merge_cells`,
+  aires `sea_<ix>_<iz>_b<l>x<h>`) ; seuls les carrés traversés par la côte restent un par un. Côté engine,
+  `boat_model.gd` ne parcourt plus la route quand sa boîte englobante est plus loin que le bord déjà trouvé
+  (même résultat). Sur une côte synthétique de 11 km : 205 aires deviennent 122, et le travail des bateaux
+  est divisé par 17.
+- r790b (9 novembre) : 56 aires de mer, mais tâches `osm` 1 et 4 toujours à 20 s et pire image 124 / 149 ms :
+  la mer n'était pas la cause. r790c, avec le détail de la tâche (`osm_eau`, `osm_bateaux`, `osm_veg_poi`,
+  `osm_faune`, `osm_circulation` dans `taches.csv`) : plus de 99 % dans `osm_circulation`, les tracteurs des
+  champs (lot P25). `field_rows` coupait chaque rang de 9 m avec tous les côtés du champ ; les champs OSM du
+  Pas-de-Calais font plusieurs km et des milliers de points. Chaque rang ne regarde plus que les côtés qu'il
+  peut couper (même résultat, test sur un champ de 4 000 points). Défaut antérieur à U3, révélé par ce parcours.
+- r790d (11 novembre) : `osm_circulation` toujours à 19,5-23 s : `field_rows` n'était pas la cause. Vraie
+  cause : la hauteur du sol de chaque point de rang (tous les 10 m). Hors des tuiles proches (bande de 400 m),
+  `terrain_height_fn` cherchait la route la plus proche (`route_data.gd` `nearest_index`), qui lisait les cases
+  vides de la grille anneau par anneau : un point à 2 km lisait environ 6 400 cases, plusieurs ms par point.
+  Corrections : hors des tuiles proches, le sol vient de la tuile lointaine (abaissée comme à l'affichage),
+  puis seulement de la route ; et `nearest_index` ne lit plus que les cases occupées au-delà de quelques
+  anneaux (même résultat que le parcours de tous les points, environ 400 cases au lieu de milliers sur une
+  route de 8 km). Sous-tâche `osm_champs` ajoutée à la sonde pour le vérifier au passage r790e.
+- Tracé : la route D940 tirée d'OSM fait 11,3 km entre Wissant et Sangatte ; l'essai la coupe à 8 km depuis
+  Wissant (`couper_gpx.py` de la fiche d'essai).
 
 ## 8. Hors périmètre
 

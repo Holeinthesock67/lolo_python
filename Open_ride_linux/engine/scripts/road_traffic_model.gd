@@ -158,14 +158,30 @@ static func field_rows(ring: PackedVector2Array, angle: float) -> PackedVector2A
 		var o := (p - c).dot(nrm)
 		omin = minf(omin, o)
 		omax = maxf(omax, o)
+	# Côtés rangés par rang : un rang ne regarde que les côtés qu'il peut couper (même résultat que tout
+	# l'anneau, r790c : grands champs OSM de plusieurs km et milliers de points, tâches `osm` de 20 s).
+	var o0 := omin + FIELD_MARGIN_M
+	var n_rows := 0
+	while o0 + n_rows * FIELD_ROW_M <= omax - FIELD_MARGIN_M:
+		n_rows += 1
+	var buckets := []
+	buckets.resize(n_rows)
+	for r in range(n_rows):
+		buckets[r] = []   # Array (référence) : un tableau compact serait copié par buckets[r]
+	var n := ring.size()
+	for i in range(n):
+		var oa := (ring[i] - c).dot(nrm)
+		var ob := (ring[(i + 1) % n] - c).dot(nrm)
+		var r0 := maxi(0, int(ceil((minf(oa, ob) - o0) / FIELD_ROW_M)) - 1)
+		var r1 := mini(n_rows - 1, int(floor((maxf(oa, ob) - o0) / FIELD_ROW_M)) + 1)
+		for r in range(r0, r1 + 1):
+			(buckets[r] as Array).append(i)
 	var rows := []
-	var o := omin + FIELD_MARGIN_M
-	while o <= omax - FIELD_MARGIN_M:
-		var base := c + nrm * o
-		var span := _row_span(ring, base, d)
+	for r in range(n_rows):
+		var base := c + nrm * (o0 + r * FIELD_ROW_M)
+		var span := _row_span(ring, base, d, buckets[r])
 		if span.y - span.x - 2.0 * FIELD_MARGIN_M >= FIELD_MIN_ROW_M:
 			rows.append([base + d * (span.x + FIELD_MARGIN_M), base + d * (span.y - FIELD_MARGIN_M)])
-		o += FIELD_ROW_M
 	if rows.size() > FIELD_MAX_ROWS:
 		var from := (rows.size() - FIELD_MAX_ROWS) / 2
 		rows = rows.slice(from, from + FIELD_MAX_ROWS)
@@ -182,10 +198,13 @@ static func field_rows(ring: PackedVector2Array, angle: float) -> PackedVector2A
 
 
 ## Plus long morceau de la droite `o + d·t` dans l'anneau : Vector2(t0, t1), ou (0, 0) si elle ne le coupe pas.
-static func _row_span(ring: PackedVector2Array, o: Vector2, d: Vector2) -> Vector2:
+## `edges` : indices des côtés à regarder (tous si vide) ; les autres ne doivent pas pouvoir couper la droite.
+static func _row_span(ring: PackedVector2Array, o: Vector2, d: Vector2, edges: Array = []) -> Vector2:
 	var ts: Array[float] = []
 	var n := ring.size()
-	for i in range(n):
+	var all := edges.is_empty()
+	for k in range(n if all else edges.size()):
+		var i: int = k if all else int(edges[k])
 		var a := ring[i]
 		var e := ring[(i + 1) % n] - a
 		var den := d.cross(e)

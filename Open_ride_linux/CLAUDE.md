@@ -146,8 +146,8 @@ openride-compiler build trace.gpx --variant basalte,ardoise   # impose la varian
 openride-compiler list                 # liste les parcours (.world et .gpx) et leur statut
 openride-compiler build-all            # compile toutes les traces GPX nouvelles ou modifiées (route,terrain,biome,segments ; --layers pour OSM)
 openride-compiler build trace.gpx --offline --force   # sans réseau, tuiles d'altitude et WorldCover déjà en cache
-openride-compiler build trace.gpx --layers route,terrain,buildings,vegetation,poi,water,roads
-openride-compiler add-layer <nom>.world terrain|biome|buildings|vegetation|poi|water|roads|segments  # régénère une couche seule
+openride-compiler build trace.gpx --layers route,terrain,buildings,vegetation,poi,water,coast,roads
+openride-compiler add-layer <nom>.world terrain|biome|buildings|vegetation|poi|water|coast|roads|segments  # régénère une couche seule
 openride-compiler theme-check ~/OpenRide/Themes/<nom>  # contrôle un thème (défaut : engine/themes/default/)
 openride-compiler theme-list          # liste les thèmes installés et intégrés ; --json
 openride-compiler theme-install SOURCE # installe un thème depuis un dossier ou .zip ; --force
