@@ -35,6 +35,14 @@ const MIN_RING_AREA := 1e-3
 const DUP_EPS := 1e-4
 const BRIDGE_EPS := 1e-5
 const MASK32 := 0xFFFFFFFF
+## Pilotis (U23 étape 2) : côté des poteaux, nombre de poteaux au plus, relevé de v des murs (au-dessus du socle
+## que building.gdshader dessine sous PLINTH_H = 0,55 m)
+const STILT_POST_M := 0.22
+## Graines des tirages de la case ronde et des pilotis (hachage de l'identifiant)
+const ROUND_SALT := 0x3C6EF372
+const STILTS_SALT := 0x7F4A7C15
+const STILT_MAX_POSTS := 12
+const STILT_UV_LIFT_M := 0.6
 
 
 ## FNV-1a 32 bits sur les octets UTF-8 : hachage déterministe indépendant de la plateforme.
@@ -374,6 +382,38 @@ static func roof_planes(shape: String, pitch_deg: float, box: Dictionary) -> Arr
 	return planes
 
 
+## Case ronde (U23 étape 2) : contour régulier de ROUND_SIDES côtés centré sur le rectangle orienté, de même aire
+## que le contour (rayon borné par les demi-côtés du rectangle), premier sommet sur l'axe du rectangle.
+static func round_ring(box: Dictionary, area: float) -> PackedVector2Array:
+	var c: Vector2 = box["center"]
+	var d: Vector2 = box["axis"]
+	var r := clampf(sqrt(absf(area) / PI), float(box["half_width"]), float(box["half_len"]))
+	var a0 := d.angle()
+	var ring := PackedVector2Array()
+	for k in range(BuildingStyles.ROUND_SIDES):
+		var a := a0 + TAU * float(k) / float(BuildingStyles.ROUND_SIDES)
+		ring.append(c + Vector2(cos(a), sin(a)) * r)
+	return ring
+
+
+## Toit conique d'un contour convexe d'aire > 0 : un plan par côté, nul sur le côté et qui monte vers le centre
+## `c` avec la pente `pitch_deg` ; le minimum des plans est une pyramide à ROUND_SIDES pans (un cône à facettes).
+static func cone_planes(ring: PackedVector2Array, c: Vector2, pitch_deg: float) -> Array[Vector3]:
+	var planes: Array[Vector3] = []
+	var s := tan(deg_to_rad(pitch_deg))
+	var n := ring.size()
+	for i in range(n):
+		var e := ring[(i + 1) % n] - ring[i]
+		if e.length_squared() <= DUP_EPS * DUP_EPS:
+			continue
+		# Normale extérieure d'un anneau d'aire > 0, comme celle des murs
+		var nrm := Vector2(e.y, -e.x).normalized()
+		var apothem := nrm.dot(ring[i] - c)
+		# s × (apothème − n·(q − c))
+		planes.append(Vector3(-s * nrm.x, -s * nrm.y, s * (apothem + nrm.dot(c))))
+	return planes
+
+
 static func _plane_at(pl: Vector3, q: Vector2) -> float:
 	return pl.x * q.x + pl.y * q.y + pl.z
 
@@ -439,7 +479,14 @@ static func _append_wall_ring(ring: PackedVector2Array, base_y: float, wall_base
 				var g0 := _plane_at(planes[a], p0) - _plane_at(planes[b], p0)
 				var g1 := _plane_at(planes[a], p1) - _plane_at(planes[b], p1)
 				if (g0 < 0.0 and g1 > 0.0) or (g0 > 0.0 and g1 < 0.0):
-					cuts.append(g0 / (g0 - g1))
+					# Seulement si ces deux plans y sont les plus bas (sinon le haut du mur reste droit)
+					var t := g0 / (g0 - g1)
+					var q := p0.lerp(p1, t)
+					var lowest := INF
+					for pl in planes:
+						lowest = minf(lowest, _plane_at(pl, q))
+					if _plane_at(planes[a], q) <= lowest + 1e-6:
+						cuts.append(t)
 		if cuts.size() > 2:
 			cuts.sort()
 		for c in range(cuts.size() - 1):
@@ -547,6 +594,28 @@ static func _emit_roof_poly(poly: PackedVector2Array, pl: Vector3, underside: bo
 			indices.append(base)
 			indices.append(base + (k if up_facing else k + 1))
 			indices.append(base + (k + 1 if up_facing else k))
+
+
+## Poteaux des pilotis : un poteau carré de STILT_POST_M de côté sous chaque sommet du contour (au plus
+## STILT_MAX_POSTS, répartis), rentré de sa demi-largeur vers `center`, du pied `y0` au plancher `y1`.
+static func _append_stilts(ring: PackedVector2Array, center: Vector2, y0: float, y1: float, base_y: float,
+		dress: Dictionary, color: Color, out: Dictionary) -> void:
+	var post := dress.duplicate()
+	post["wall"] = BuildingStyles.WALL_WOOD
+	post["windows"] = BuildingStyles.WINDOWS_NONE
+	var code := dress_code(post, false, y1 - base_y)
+	var flat: Array[Vector3] = [Vector3.ZERO]
+	var n := ring.size()
+	var step := maxi(1, ceili(float(n) / float(STILT_MAX_POSTS)))
+	var half := STILT_POST_M * 0.5
+	for i in range(0, n, step):
+		var p := ring[i]
+		var to_c := center - p
+		if to_c.length() > half * 2.0:
+			p += to_c.normalized() * half * 1.5
+		var sq := PackedVector2Array([p + Vector2(-half, -half), p + Vector2(half, -half), p + Vector2(half, half),
+			p + Vector2(-half, half)])
+		_append_wall_ring(sq, base_y, y0, y1, flat, color, code, out)
 
 
 static func _unit(h: int, salt: int) -> float:
@@ -701,11 +770,19 @@ static func build(buildings: Array, theme: Dictionary, skirt_m: float = 0.0,
 		# BuildingStyles.resolve), sinon celui du tronçon
 		var b_style := str(b.get("style", style_name))
 		var dress := BuildingStyles.dress(b_style, BuildingStyles.classify(osm_type), fill,
-			2.0 * float(box.get("half_width", 0.0)), height_m, _unit(h, 0x5BD1E995), _unit(h, 0x1B873593), _unit(h, 0x68E31DA4))
+			2.0 * float(box.get("half_width", 0.0)), height_m, _unit(h, 0x5BD1E995), _unit(h, 0x1B873593), _unit(h, 0x68E31DA4),
+			2.0 * float(box.get("half_len", 0.0)) if holes.is_empty() else 0.0, _unit(h, ROUND_SALT), _unit(h, STILTS_SALT))
 		# `roof: gabled` donné par la couche : deux pans quelle que soit la forme du contour
 		if roof_kind == "gabled" and not box.is_empty():
 			dress = BuildingStyles.force_gabled(dress, b_style)
-		var planes := roof_planes(dress["shape"], float(dress["pitch_deg"]), box)
+		var planes: Array[Vector3] = []
+		if dress["shape"] == BuildingStyles.SHAPE_CONE:
+			# Case ronde : le contour devient un polygone régulier (BuildingStyles.dress l'exclut s'il y a des trous)
+			outer = round_ring(box, area_outer)
+			roof_tris = _triangulate_with_holes(outer, holes)
+			planes = cone_planes(outer, box["center"], float(dress["pitch_deg"]))
+		else:
+			planes = roof_planes(dress["shape"], float(dress["pitch_deg"]), box)
 		if planes.size() > 1:
 			pitched += 1
 			# Débord du toit : contour élargi, pans prolongés sous la hauteur des murs
@@ -732,11 +809,27 @@ static func build(buildings: Array, theme: Dictionary, skirt_m: float = 0.0,
 		roof_color.a = wall_color.a
 
 		var wall_code := dress_code(dress, false, height_m)
+		var roof_code := dress_code(dress, true, height_m)
 		var wall_base_y := base_y - skirt_m
-		_append_wall_ring(outer, base_y, wall_base_y, top_y, planes, wall_color, wall_code, out)
+		var uv_base_y := base_y
+		var stilts_m := float(dress.get("stilts_m", 0.0))
+		if stilts_m > 0.0:
+			# Pilotis (U23 étape 2) : plancher relevé de `stilts_m`, poteaux de bois aux angles, dessous en voliges.
+			# Les murs partent du plancher, sans socle (v commence au-dessus du socle dessiné par le shader).
+			var floor_y := base_y + stilts_m
+			top_y = floor_y + height_m
+			wall_base_y = floor_y
+			uv_base_y = floor_y - STILT_UV_LIFT_M
+			_append_stilts(outer, box["center"], base_y - skirt_m, floor_y, base_y, dress,
+				_pick(material_palettes["wood"], _unit(h, 0x0B4611A3)), out)
+			var floor_tris := _triangulate_with_holes(outer, holes)
+			for tri in floor_tris:
+				_emit_roof_poly(PackedVector2Array([tri[0], tri[1], tri[2]]), Vector3.ZERO, true, floor_y, roof_color,
+					roof_code, out)
+		_append_wall_ring(outer, uv_base_y, wall_base_y, top_y, planes, wall_color, wall_code, out)
 		for h_ring in holes:
-			_append_wall_ring(h_ring, base_y, wall_base_y, top_y, planes, wall_color, wall_code, out)
-		_append_roof(roof_tris, top_y, planes, roof_color, dress_code(dress, true, height_m), out)
+			_append_wall_ring(h_ring, uv_base_y, wall_base_y, top_y, planes, wall_color, wall_code, out)
+		_append_roof(roof_tris, top_y, planes, roof_color, roof_code, out)
 
 		built += 1
 

@@ -18,9 +18,11 @@ const UiIcons := preload("res://scripts/ui_icons.gd")
 const DetailCard := preload("res://scripts/detail_card.gd")
 const GaragePreview := preload("res://scripts/garage_preview.gd")
 const ButtonHelp := preload("res://scripts/button_help.gd")
+const CollectionView := preload("res://scripts/collection_view.gd")
 
 ## Éléments affichés à la fois ; au-delà, la fenêtre suit le focus. Un de moins quand les pastilles des
-## appareils sont affichées (accueil, Prêt, connexion) : l'accueil tient en entier.
+## appareils sont affichées (accueil, Prêt, connexion). L'accueil (dix entrées depuis « Collection », lot BC5)
+## défile donc d'une entrée : une dixième rangée déborderait de 4 pixels sur le bandeau des boutons en 1280 × 720.
 const MAX_VISIBLE_ITEMS := 10
 const MAX_VISIBLE_WITH_DEVICES := 9
 const DEVICES_SCREENS := ["home", "ready", "connect"]
@@ -35,6 +37,8 @@ var status_label: Label
 var card   # detail_card.gd
 var items_box: VBoxContainer
 var more_label: Label
+## Collection de cartes (série BC, lot BC5) : album, carte agrandie, première ouverture, au-dessus de la liste.
+var collection   # collection_view.gd
 ## Grille de lettres (nom d'un profil, lot MJ8) : texte saisi et cases, à la place de la liste.
 var grid_text: Label
 var grid_box: GridContainer
@@ -109,6 +113,9 @@ func _init() -> void:
 	left.add_theme_constant_override("separation", 6)
 	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(left)
+	collection = CollectionView.new()
+	collection.item_clicked.connect(func(id: String) -> void: item_clicked.emit(id))
+	left.add_child(collection)
 	items_box = VBoxContainer.new()
 	items_box.add_theme_constant_override("separation", UiTheme.ROW_GAP)
 	left.add_child(items_box)
@@ -216,6 +223,8 @@ func test_rows() -> Array:
 		if c.visible:
 			out.append({"id": str(c.get_meta("item_id", "")), "text": (c.get_child(0) as Label).text,
 				"focused": bool(c.get_meta("focused", false)), "rect": c.get_global_rect()})
+	if collection.visible:
+		out.append_array(collection.test_rows())   # vignettes de l'album (lot BC5)
 	return out
 
 
@@ -224,7 +233,7 @@ func item_rect(item_id: String) -> Rect2:
 	for p in _item_panels + _grid_cells:
 		if p.visible and str(p.get_meta("item_id", "")) == item_id:
 			return p.get_global_rect()
-	return Rect2()
+	return collection.item_rect(item_id) if collection.visible else Rect2()   # vignette de l'album
 
 
 ## Grille de lettres (`menu.grid` : {columns, text}) ; cachée sans elle. Un clic sur une case passe par
@@ -297,7 +306,16 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	_show_confirm(screen == "confirm", title_label.text)
 	var grid: Dictionary = menu.get("grid", {})
 	_show_grid(grid, menu.get("items", []), int(menu.get("focus", -1)))
-	var items: Array = [] if not grid.is_empty() else menu.get("items", [])
+	var sheet_collection: Dictionary = menu.get("collection", {})
+	collection.update_display(sheet_collection)
+	var album := str(sheet_collection.get("kind", "")) == "album"   # les vignettes sont les éléments
+	# Annonce d'une carte au bilan (lot BC6) sous les éléments ; album, carte et première ouverture au-dessus.
+	var below := str(sheet_collection.get("kind", "")) == "announce"
+	if collection.get_parent() == _left and (collection.get_index() > items_box.get_index()) != below \
+			and items_box.get_parent() == _left:
+		_left.move_child(collection, items_box.get_index())   # passe juste de l'autre côté de la liste
+	items_box.visible = grid.is_empty() and not album
+	var items: Array = [] if not grid.is_empty() or album else menu.get("items", [])
 	var focus := int(menu.get("focus", -1))
 	var max_items := MAX_VISIBLE_WITH_DEVICES if screen in DEVICES_SCREENS else MAX_VISIBLE_ITEMS
 	var first := 0
@@ -319,7 +337,8 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	# Aide toujours visible (sans elle, rien ne dit qu'il faut un appui long pour valider).
 	button_bar.update_display(ButtonHelp.EDIT if menu.get("editing", false) or screen == "setting_edit" else screen)
 	if summary.visible:
-		summary.update_display(summary_data, show_details, str(state.get("mode", "")))
+		summary.update_display(summary_data, show_details, str(state.get("mode", "")), float(menu.get("ftp_w", 0.0)),
+			menu.get("segment_names", {}))
 		summary.update_progress(menu.get("progress", {}))
 		_fit_summary()
 	if devices.visible:
@@ -407,13 +426,33 @@ func _set_row(p: PanelContainer, it: Dictionary, focused: bool) -> void:
 	d.add_theme_color_override("font_color", UiTheme.FOCUS if it.get("editing", false) else
 		(UiTheme.TEXT if focused else (UiTheme.DIM if enabled else UiTheme.DISABLED)))
 	bar.visible = it.has("bar")
+	# Rangée à curseur : la valeur (« 80 % ») ne prend que sa largeur, le libellé garde le reste (« Cyber-Rogue :
+	# bruitages » entier, essai du 8 novembre) ; sans curseur, libellé et détail se partagent la rangée.
+	d.size_flags_horizontal = Control.SIZE_SHRINK_END if bar.visible else Control.SIZE_EXPAND_FILL
+	# Sans coupe ni ellipse, la valeur garde sa largeur minimale (« 80 % ») à côté du curseur.
+	d.clip_text = not bar.visible
+	d.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING if bar.visible else TextServer.OVERRUN_TRIM_ELLIPSIS
 	bar.set_meta("pct", int(it.get("bar", 0)))
 	bar.set_meta("focused", focused)
 	bar.queue_redraw()
-	icon.set_meta("shape", UiIcons.for_item(id))
-	icon.set_meta("color", color)
+	icon.set_meta("shape", str(it.get("icon", UiIcons.for_item(id))))
+	icon.set_meta("color", UiTheme.GOLD if it.has("icon") and not focused else color)   # badge en or
 	icon.queue_redraw()
 	p.queue_redraw()
+
+
+## Libellés des rangées affichées coupés par manque de place (tests graphiques ; liste vide : tout se lit).
+func clipped_labels() -> Array[String]:
+	var out: Array[String] = []
+	for p in _item_panels:
+		if not p.visible:
+			continue
+		var l: Label = p.get_child(0).get_child(1)
+		var w := l.get_theme_font("font").get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			l.get_theme_font_size("font_size")).x
+		if w > l.size.x + 0.5:
+			out.append(l.text)
+	return out
 
 
 ## Libellé et détail d'une entrée, comme avant le lot : « libellé — détail ».

@@ -8,8 +8,8 @@ render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_sc
 // Textures : deux Texture2DArray pour tout le parcours (biome_textures.gd) ; carte A = couleur et
 // rugosité (alpha), carte B = normale XY et occlusion (bleu). Une couche sans texture garde sa couleur unie.
 
-const int MAX_BIOMES = 16;     // BiomeIds.BIOMES
-const int MAX_LAYERS = 48;     // biome_textures.gd MAX_LAYERS
+const int MAX_BIOMES = 17;     // BiomeIds.BIOMES
+const int MAX_LAYERS = 51;     // biome_textures.gd MAX_LAYERS
 
 // Par tuile : poids des 4 biomes (RGBA, grille 17 × 17 du format, filtrage linéaire), indice de chaque
 // biome dans les tableaux (-1 : canal vide), rectangle de la tuile dans le monde (x, z, côté, côté)

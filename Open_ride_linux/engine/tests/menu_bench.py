@@ -4,6 +4,7 @@
 Usage :
     menu_bench.py [--godot CHEMIN] [--scenario NOM|FICHIER.json]... [--voies click,clavier,souris] [--rotation]
                   [--native] [--out DOSSIER] [--captures echecs|ecrans] [--keep] [--list]
+                  [--repeter N] [--fermeture-stricte] [--gdb] [--engine-arg ARG]... [--qualite Q]
 
 Chaque scénario (`engine/tests/menu_scenarios/*.json`) est joué une fois par voie d'entrée, avec un vrai core
 sur Bluetooth simulé (`--trainer sim --input sim --hr sim`, sans `--autostart` : le core démarre en IDLE,
@@ -38,7 +39,8 @@ Voies d'entrée (un seul tableau bouton → geste, `GESTES`, d'après la spécif
 En-tête d'un scénario : `description`, `voies` (défaut : les trois), `appareils` (`prets` ou `unilateral`),
 `config` ({clé: valeur} écrite dans config.toml avant le lancement), `entrainement` (vrai : `erg_court.zwo`
 dans ~/OpenRide/Workouts), `telechargements` ({fichier: nom de l'entraînement} dans ~/Téléchargements), `plans`
-(vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `fichiers` ({chemin dans le
+(vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `velodrome` (vrai : piste du
+vélodrome des contenus de départ, lot VD10), `fichiers` ({chemin dans le
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
 (`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
 réseau, en quelques secondes : import de traces du lot O23).
@@ -46,6 +48,13 @@ réseau, en quelques secondes : import de traces du lot O23).
 Rapport dans `--out` : `rapport.html` (tableau scénario × voie, vérifications, captures), `resultats.json`
 et `resume.txt`. Une capture est prise à chaque échec, avec l'état du menu. Code de sortie : 0 si toutes les
 vérifications passent, 1 sinon, 2 si Godot ou xvfb-run manque.
+
+Fermeture de Godot (lots X55, X58) : `--repeter N` joue chaque passage N fois (critère « 10 fermetures de suite ») ;
+`--fermeture-stricte` compte en échec un arrêt de Godot bloqué après sa ligne de fin (INFO sinon, comme le lanceur
+qui l'arrête après ENGINE_SHUTDOWN_S) ; `--gdb` lance Godot sous gdb (`pile_gdb.py`, sans sudo) et, s'il bloque,
+écrit la pile de ses fils dans `pile_gdb.txt` et son résumé au rapport ; `--engine-arg` ajoute un argument
+à la commande de Godot (ex. `--engine-arg=--rendering-driver --engine-arg=opengl3`) ; `--qualite low|medium|high`
+impose le préréglage graphique à tous les scénarios.
 """
 
 from __future__ import annotations
@@ -60,6 +69,7 @@ import shlex
 import shutil
 import signal
 import socket
+import subprocess
 import sys
 import tempfile
 import time
@@ -76,9 +86,10 @@ sys.path.insert(0, str(TESTS_DIR))
 sys.path.insert(0, str(REPO / "core" / "src"))
 
 from openride_core.input_providers import ClickPair  # noqa: E402
-from openride_core.launcher import ENGINE_DONE, ENGINE_SHUTDOWN_S, build_supervisor  # noqa: E402
+from openride_core.launcher import ENGINE_DONE, ENGINE_SELF_KILLED, ENGINE_SHUTDOWN_S, build_supervisor  # noqa: E402
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
+import pile_gdb  # noqa: E402
 import quality_guard  # noqa: E402
 import rendu_jeu  # noqa: E402
 
@@ -139,7 +150,7 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "capture", "relancer", "delai", "voies", "note"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
-             "compilateur", "etapes"}
+             "compilateur", "velodrome", "etapes"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -505,14 +516,24 @@ class Run:
                 break
             time.sleep(0.2)
         if rc is not None:
+            if rc in ENGINE_SELF_KILLED:   # lot X58 : sortie immédiate après la ligne de fin, code de la ligne
+                time.sleep(0.5)            # la ligne peut être encore dans le tuyau
+                got = self.engine.matching(ENGINE_DONE.pattern)
+                if got:
+                    announced = int(got[-1][1].group(1))
+                    self.report.check(announced == code, f"l'engine sort avec le code {code}",
+                                      f"code {announced} annoncé, sortie immédiate en {now() - t0:.1f} s")
+                    return
             self.report.check(rc == code, f"l'engine sort avec le code {code}", f"code {rc} en {now() - t0:.1f} s")
             return
         threads = self.godot_threads()
         if done is not None and now() - done[0] >= ENGINE_SHUTDOWN_S:
             announced = int(done[1].group(1))
-            self.report.check(None, "arrêt de Godot bloqué après la libération de la scène",
+            self.report.check(False if self.args.fermeture_stricte else None,
+                              "arrêt de Godot bloqué après la libération de la scène",
                               f"processus arrêté après {ENGINE_SHUTDOWN_S:.0f} s, comme par le lanceur ; fils de Godot : "
                               + ("; ".join(threads) or "introuvables"))
+            self.gdb_stacks()
             self.report.check(announced == code, f"l'engine sort avec le code {code}", f"code {announced} annoncé")
             self.stop_engine()
             return
@@ -521,6 +542,27 @@ class Run:
                           f"toujours en marche après {delay:.0f} s ; dernière étape : "
                           + (steps[-1][1].group(1) if steps else "aucune ligne « Fermeture : »")
                           + " ; fils de Godot : " + ("; ".join(threads) or "introuvables"))
+
+    def gdb_stacks(self) -> None:
+        """Avec --gdb : SIGINT au Godot bloqué, gdb écrit la pile de ses fils puis le tue (pile_gdb.py) ; texte dans
+        pile_gdb.txt, résumé (une ligne par fil) au rapport."""
+        assert self.engine is not None
+        if not self.args.gdb:
+            return
+        godot = [pid for pid in descendants(self.engine.p.pid)
+                 if Path(f"/proc/{pid}/comm").is_file() and Path(f"/proc/{pid}/comm").read_text().startswith("Godot")]
+        if godot:
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(godot[0], signal.SIGINT)
+        got = self.engine.wait_for(re.escape(pile_gdb.FIN), 60.0)
+        with contextlib.suppress(subprocess.TimeoutExpired):
+            self.engine.p.wait(10.0)
+        with self.engine._cond:
+            text = pile_gdb.extraire([line for _, line in self.engine.lines])
+        (self.out / "pile_gdb.txt").write_text(text, encoding="utf-8")
+        summary = pile_gdb.resume_pile(text)
+        self.report.check(None, "pile gdb de Godot bloqué (pile_gdb.txt)",
+                          " | ".join(summary) if got and summary else "pile non écrite par gdb")
 
     def godot_threads(self) -> list[str]:
         """Fils du processus Godot (sous xvfb-run ou non), aussi écrits dans fils_engine.txt."""
@@ -545,6 +587,9 @@ class Run:
             wdir = self.home / "OpenRide" / "Workouts"
             wdir.mkdir(parents=True)
             (wdir / "erg_court.zwo").write_text(ERG_SHORT_ZWO, encoding="utf-8")
+        if doc.get("velodrome"):   # piste du vélodrome des contenus de départ (lot VD10)
+            from openride_core.contents import install_velodromes
+            install_velodromes(self.routes)
         if doc.get("plans"):
             from openride_core.plans import install_builtin
             install_builtin(self.home / "OpenRide" / "Plans", self.home / "OpenRide" / "Workouts")
@@ -563,7 +608,9 @@ class Run:
         self.state_port, self.cmd_port = free_udp_ports(2)
         self.config = self.tmp / "config.toml"
         self.config.write_text(f"[ipc]\nport_state = {self.state_port}\nport_commands = {self.cmd_port}\n"
-                               + config_text({**BASE_CONFIG, **doc.get("config", {})}), encoding="utf-8")
+                               + config_text({**BASE_CONFIG, **doc.get("config", {}),
+                                             **({"render.quality": self.args.qualite} if self.args.qualite else {})}),
+                               encoding="utf-8")
         self.control = self.tmp / "click.jsonl"
         scen = {**APPAREILS[doc.get("appareils", "prets")], "control_file": str(self.control)}
         (self.tmp / "scenario.json").write_text(json.dumps(scen), encoding="utf-8")
@@ -584,7 +631,12 @@ class Run:
                                  "« Core démarré »"):
             return False
         cmd = rendu_jeu.godot_cmd([str(a.godot), "--path", str(ENGINE_DIR), "--resolution", "1280x720",
-                                   "--audio-driver", "Dummy"], a.native, 1280, 720)
+                                   "--audio-driver", "Dummy", *a.engine_arg], a.native, 1280, 720)
+        if a.gdb:   # Godot lancé sous gdb, son parent : pile de ses fils sans sudo (pile_gdb.py, lot X58)
+            prefix = pile_gdb.gdb_prefix(self.tmp / "pile.gdb")
+            assert prefix is not None, "gdb vérifié au lancement du banc"
+            at = cmd.index(str(a.godot))
+            cmd = [*cmd[:at], *prefix, *cmd[at:]]
         # Arguments de l'engine tirés de config.toml par le vrai lanceur (qualité, caméra, mode d'affichage…).
         sup = build_supervisor(["--config", str(self.config)], env={"GODOT": str(a.godot),
                                                                      "OPENRIDE_ENGINE": str(ENGINE_DIR)})
@@ -689,8 +741,14 @@ class Run:
         elif "journal" in step:
             got = (self.core.wait_for(step["motif"], delay) if step["journal"] == "core"
                    else self.wait_engine(step["motif"], delay, 0.0))
-            self.check(got is not None, f"journal du {step['journal']} : « {step['motif']} »",
-                       got[1].group(0) if got else f"absent après {delay:.0f} s")
+            detail = got[1].group(0) if got else f"absent après {delay:.0f} s"
+            if got is None and step["journal"] == "core":
+                # Départ au pédalage (lot O36) : la dernière étape du départ dit où l'attente s'est arrêtée (décor
+                # de l'engine encore en préparation, trainer, pédalage).
+                depart = [line for _, line in list(self.core.lines) if "Départ" in line]
+                if depart:
+                    detail += " ; " + depart[-1].split(" core ", 1)[-1]
+            self.check(got is not None, f"journal du {step['journal']} : « {step['motif']} »", detail)
         elif "fichier" in step:
             want = bool(step.get("existe", True))
             found = lambda: sorted(str(p.relative_to(self.home)) for p in self.home.glob(step["fichier"]))
@@ -804,6 +862,13 @@ def main(argv: list[str] | None = None) -> int:
                     help="captures aux échecs seulement (défaut) ou aussi à chaque écran vérifié")
     ap.add_argument("--keep", action="store_true", help="garde le HOME temporaire")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--repeter", type=int, default=1, metavar="N", help="chaque passage joué N fois (fermetures de suite)")
+    ap.add_argument("--fermeture-stricte", action="store_true",
+                    help="arrêt de Godot bloqué après sa ligne de fin compté en échec (INFO sinon)")
+    ap.add_argument("--gdb", action="store_true", help="Godot lancé sous gdb : pile de ses fils s'il ne se ferme pas")
+    ap.add_argument("--engine-arg", action="append", default=[], help="argument ajouté à la commande de Godot")
+    ap.add_argument("--qualite", choices=["low", "medium", "high"],
+                    help="préréglage graphique imposé à tous les scénarios (render.quality, défaut : low ou celui du scénario)")
     args = ap.parse_args(argv)
     known = scenarios()
     if args.list:
@@ -817,6 +882,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if not os.access(args.godot, os.X_OK):
         print(f"Godot introuvable : {args.godot}")
+        return 2
+    if args.gdb and shutil.which("gdb") is None:
+        print("gdb introuvable : sudo apt install gdb")
         return 2
     if not args.native and shutil.which("xvfb-run") is None:
         print("xvfb-run introuvable : sudo apt install xvfb xauth, ou --native (fenêtre sur l'écran)")
@@ -836,9 +904,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.rotation and mine:
             mine = [mine[i % len(mine)]]
         for voie in mine:
-            run = Run(args, name, doc, voie, out / name / voie)
-            run.play()
-            runs.append(run)
+            for k in range(1, args.repeter + 1):
+                label = f"{name}_{k}" if args.repeter > 1 else name
+                run = Run(args, label, doc, voie, out / label / voie)
+                run.play()
+                runs.append(run)
     report = write_reports(out, runs)
     failed = [r for r in runs if r.report.failed]
     print((out / "resume.txt").read_text(encoding="utf-8"), end="")

@@ -35,6 +35,7 @@ col-du-galibier.world/
     near/tile_<ix>_<iz>.json   facultative, depuis 1.6 : poids de biome des tuiles proches (§8 quater)
     far/tile_<ix>_<iz>.json    facultative, depuis 1.6 : poids de biome des tuiles lointaines
   coast/chunk_<k>.json         facultative, depuis 1.6 : lignes de côte et plages (§8 quinquies)
+  venue.json                   facultative, depuis 1.7 : lieu fermé, piste du vélodrome (§8 sexies)
 ```
 
 Les couches vivent par morceaux : `<k>` est l'indice du tronçon de route de 1 km (`k` = partie entière de `s` / 1000, `s` étant la position du point de route le plus proche de l'objet). Le terrain, lui, est découpé en tuiles fixes dans le repère du monde (§5).
@@ -103,7 +104,8 @@ Chaque tableau compte exactement `n` valeurs.
 | `grade_pct` | Pente calculée sur `alt_m` par différences centrées sur 20 m, limitée à ± 25 % |
 | `heading_deg` | Cap lissé sur environ 30 m |
 | `x`, `z` | Position dans le repère du monde (§3) |
-| `surface` | Facultative, depuis 1.6 (lot U1) : surface de chaque point, parmi `paved`, `compacted`, `gravel` et `dirt` (portions non revêtues réelles, d'après OSM) ; une route sans cette colonne est entièrement `paved` |
+| `surface` | Facultative, depuis 1.6 (lot U1) : surface de chaque point, parmi `paved`, `compacted`, `gravel` et `dirt` (portions non revêtues réelles, d'après OSM) ; une route sans cette colonne est entièrement `paved`. Depuis 1.7 (lot VD1) : `wood`, bois d'une piste de vélodrome, hors de l'option « gravel » |
+| `bank_deg` | Facultative, depuis 1.7 (lot VD1) : relèvement de la chaussée en degrés, de − 50 à 50, positif quand le côté droit est plus haut (extérieur d'un virage à gauche) ; interpolé linéairement comme l'altitude ; une route sans cette colonne est plate en travers (0 partout). La pente `grade_pct` reste celle du sens de marche : le relèvement ne la change pas |
 
 **Surface de la route (depuis 1.6).** La colonne `surface` ne sert qu'à l'option « gravel » (série U, lots U20 à U22). Le réglage `[gravel] mode` de la configuration (SRS §11, ajouté avec l'IPC du lot U16) décide de ce qu'on en fait : `off` roule et affiche tout en bitume, `auto` suit la colonne, `compacted`, `gravel` ou `dirt` imposent cette surface à tout le parcours, colonne ignorée, trace revêtue comprise (décision U-Q8 du 27 octobre 2026). Le manifeste donne `route.surface_source` (`osm` ou `none`, absent = `none`) et, quand la fiche `stats` existe, `stats.surface_pct`, la part de chaque surface en %.
 
@@ -111,7 +113,7 @@ Chaque tableau compte exactement `n` valeurs.
 
 - Abscisses des points : `s_i = i × ds_m` pour `i < n − 1`, et `s_{n−1} = length_m`.
 - Pour une position `s` : un parcours `loop` la ramène modulo `length_m`, les autres la bornent à `[0, length_m]`. Le segment `[i, i+1]` qui contient `s` donne `u = (s − s_i) / (s_{i+1} − s_i)` ; au point final, `i = n − 2`.
-- `grade_pct`, `lat`, `lon`, `alt_m` : interpolation linéaire en `u`.
+- `grade_pct`, `lat`, `lon`, `alt_m` et, depuis 1.7, `bank_deg` : interpolation linéaire en `u`.
 - Cap : `h_i + u × d`, où `d` est l'écart le plus court de `h_i` vers `h_{i+1}` (dans ]−180, 180]), ramené dans [0, 360).
 - Position `(x, alt_m, z)` : Catmull-Rom centripète (Barry-Goldman, α = 0,5) sur `P_{i−1}, P_i, P_{i+1}, P_{i+2}`, distances mesurées en 3D. Nœuds `t0 = 0`, `t1 = t0 + |P_i − P_{i−1}|^0,5`, `t2 = t1 + |P_{i+1} − P_i|^0,5`, `t3 = t2 + |P_{i+2} − P_{i+1}|^0,5` (toute distance inférieure à 1e-6 m vaut 1e-6 m), paramètre `t = t1 + u × (t2 − t1)`, puis :
   `A1 = (t1−t)/(t1−t0)·P_{i−1} + (t−t0)/(t1−t0)·P_i`, `A2 = (t2−t)/(t2−t1)·P_i + (t−t1)/(t2−t1)·P_{i+1}`, `A3 = (t3−t)/(t3−t2)·P_{i+1} + (t−t2)/(t3−t2)·P_{i+2}`, `B1 = (t2−t)/(t2−t0)·A1 + (t−t0)/(t2−t0)·A2`, `B2 = (t3−t)/(t3−t1)·A2 + (t−t1)/(t3−t1)·A3`, `C = (t2−t)/(t2−t1)·B1 + (t−t1)/(t2−t1)·B2`.
@@ -290,13 +292,13 @@ Couche facultative (lot U1, série U, version 3.0) : la part de chaque biome en 
 }
 ```
 
-- `biomes` : de 1 à 4 identifiants distincts, parmi les seize du lot U0 : `temperate_grassland` (prairie et bocage tempérés, biome par défaut), `temperate_forest`, `farmland` (vignobles et grandes cultures), `boreal_forest`, `alpine`, `tundra`, `polar`, `mediterranean`, `steppe`, `savanna`, `sand_desert`, `rock_desert`, `jungle`, `wetland`, `coast` (littoral), `volcanic`.
+- `biomes` : de 1 à 4 identifiants distincts, parmi les dix-sept (seize du lot U0, puis `japan` du lot JP1, version 6.0) : `temperate_grassland` (prairie et bocage tempérés, biome par défaut), `temperate_forest`, `farmland` (vignobles et grandes cultures), `boreal_forest`, `alpine`, `tundra`, `polar`, `mediterranean`, `steppe`, `savanna`, `sand_desert`, `rock_desert`, `jungle`, `wetland`, `coast` (littoral), `volcanic`, `japan` (Japon : montagnes humides, lot JP1).
 - `grid` : 17. La tuile est une grille de 17 × 17 points (16 × 16 cases : 62,5 m en proche, 312,5 m en lointain) ; le point `(i, j)` est à `x` = `ix` × T + `i` × T / 16 et `z` = `iz` × T + `j` × T / 16, et les bords sont partagés avec les tuiles voisines, comme le terrain.
 - `weights` : une grille par biome, dans l'ordre de `biomes`, de 289 entiers de 0 à 255 rangés par ligne (le point `(i, j)` à l'indice `j` × 17 + `i`). **En chaque point, la somme des poids vaut 255.** Entre les points, l'engine interpole linéairement.
-- `variant` : variante régionale de la tuile (§9, `variants`), `null` ou un couple `{"ground": …, "roofs": …}` dont chaque membre peut être `null`. Énumération fermée, étendue seulement par ajout : roches et terres `gres_rose`, `calcaire_blanc`, `granite_gris`, `schiste_sombre`, `basalte`, `laterite_rouge`, `craie` ; architecture `tuile_ronde`, `ardoise`, `tuile_plate`, `pierre_seche`, `toit_plat_blanc`, `bois`. La table qui la choisit (lot U4) travaille à grosse maille, 1° au plus fin : aucune coordonnée précise n'est écrite dans le dépôt.
+- `variant` : variante régionale de la tuile (§9, `variants`), `null` ou un couple `{"ground": …, "roofs": …}` dont chaque membre peut être `null`. Énumération fermée, étendue seulement par ajout : roches et terres `gres_rose`, `calcaire_blanc`, `granite_gris`, `schiste_sombre`, `basalte`, `laterite_rouge`, `craie` ; architecture `tuile_ronde`, `ardoise`, `tuile_plate`, `pierre_seche`, `toit_plat_blanc`, `bois`, `kawara` (tuiles grises du Japon, lot JP1). La table qui la choisit (lot U4) travaille à grosse maille, 1° au plus fin : aucune coordonnée précise n'est écrite dans le dépôt.
 - Taille : moins de 8 Ko par tuile proche (exemple à 3 biomes : 2,8 Ko).
 
-**Manifeste, `layers.biome` :** `present`, `version`, `default_biome` (`temperate_grassland` si rien n'est forcé), `forced` (identifiant imposé par l'option `--biome` du compilateur, ou `null`), `sources` (par exemple `["esa_worldcover_2021", "osm", "dem", "latitude"]`), `shares` (part de chaque biome sur le parcours, en %), `tiles` (`{"near": [[ix, iz], …], "far": […]}`, comme le terrain).
+**Manifeste, `layers.biome` :** `present`, `version`, `default_biome` (`temperate_grassland` si rien n'est forcé), `forced` (identifiant imposé par l'option `--biome` du compilateur, ou `null`), `sources` (par exemple `["esa_worldcover_2021", "osm", "dem", "koppen_1986_2010"]` ; `latitude` dans les `.world` compilés avant le lot U24), `shares` (part de chaque biome sur le parcours, en %), `tiles` (`{"near": [[ix, iz], …], "far": […]}`, comme le terrain).
 
 **Validation.** Schéma `docs/contracts/world/biome.schema.json` ; la somme de 255 en chaque point et le nombre de grilles égal au nombre de biomes, que le schéma ne peut pas exprimer, sont contrôlés par `verify` (contrôle ajouté par le lot U2, qui écrit la couche ; `compiler/tests/test_contract_biome.py` le fait déjà sur l'exemple). Exemple : `docs/contracts/world/examples/biome_tile_near_3_biomes.json`.
 
@@ -315,6 +317,19 @@ Couche facultative en fichiers `coast/chunk_<k>.json` (lot U1) : le rivage de la
 - `lines` : lignes de côte, points (x, z) ; la mer est à droite dans le sens des points, comme pour `natural=coastline`. `shore` : `sand`, `shingle` (galets), `rock` ou `cliff` (falaise).
 - `beaches` : polygones de plage, `kind` `sand` ou `shingle`, avec trous.
 - Manifeste, `layers.coast` : `present`, `version`, `lines_count`, `beaches_count`, `osm_date`. Schéma : `docs/contracts/world/coast.schema.json`.
+
+## 8 sexies. Couche lieu : piste du vélodrome (depuis 1.7)
+
+Couche facultative en un seul fichier, `venue.json`, entrée `layers.venue` du manifeste (`present`, `version`, `file`, `kind`), schéma `docs/contracts/world/venue.schema.json` (série VD, lot VD1, plan `docs/4.0/PLAN_SERIE_VD.md`). Elle décrit un lieu fermé dont la route est une boucle ; seule sorte aujourd'hui : `kind = velodrome`. Le parcours est écrit par le core (`openride-core velodromes`, `velodrome.py`), sans GPX ni compilateur, ni terrain ni végétation.
+
+- **La route est la ligne de mesure** (`route_line = measure`), noire, à `lines[measure].offset_m` (0,20 m) du bord intérieur de la piste ; `length_m` est la longueur d'un tour à cette ligne (250,00 m). Les virages se prennent à gauche (`geometry.turn = left`) : la droite de la route est le haut de la piste.
+- **Largeurs** : `track_width_m` (piste relevée, depuis son bord intérieur), `apron_width_m` (côte d'azur, non relevée, à l'intérieur), `safety_width_m` (zone de sécurité, plus à l'intérieur). `indoor` vrai : salle couverte, sans vent ni ciel.
+- **Lignes peintes** `lines` : `measure` (noire), `sprinters` (rouge, 0,85 m) et `stayers` (bleue, 2,45 m), distances mesurées sur la pente depuis le bord intérieur.
+- **Repères** `marks` (position `s` sur la ligne de mesure) : `finish` et `pursuit_a` (s = 0, milieu de la droite d'arrivée), `pursuit_b` (milieu de la droite opposée), `line_200m` (200 m avant l'arrivée).
+- **Géométrie** `geometry` : `length_m`, `radius_m` (arc), `transition_m` (clothoïde : courbure linéaire de 0 à 1/R), `straight_m`, `arc_m`, `bank_straight_deg`, `bank_bend_deg`, `bends` (début, début et fin de l'arc, fin de chaque virage, en `s`). Relèvement proportionnel à la courbure, donc continu ; la colonne `bank_deg` de la route en porte la valeur point par point. Un lecteur recalcule la courbure en tout `s` depuis ces champs (distance au tour selon la hauteur sur la piste, lot VD3).
+- `equilibrium_speed_kmh` : vitesse sans force de côté au sommet du virage, √(g R tan θ) (information).
+
+Une couche `venue` absente ou illisible est ignorée (le parcours se roule comme une route, relèvement compris). La salle, les tribunes et le toit (lot VD5) s'ajouteront à cette couche par ajout compatible.
 
 ## 9. Thèmes : palettes, textures, shader triplanaire
 
@@ -406,7 +421,7 @@ Themes/alpes-ete/
 | --- | --- |
 | `route.json` absent ou invalide | Erreur `route_invalid` ; le parcours n'est pas proposé |
 | Couche terrain absente | L'engine dessine le ruban de route sur un sol plat bas, dans le brouillard |
-| Couche bâtiments, végétation, poi, eau, routes voisines, segments, biome ou côte absente | Ignorée sans message ; sans couche biome, tout le parcours prend le biome par défaut du thème |
+| Couche bâtiments, végétation, poi, eau, routes voisines, segments, biome, côte ou lieu absente | Ignorée sans message ; sans couche biome, tout le parcours prend le biome par défaut du thème |
 | Couche inconnue dans le manifeste | Ignorée |
 | Tuile de terrain manquante | Remplacée par le niveau lointain ou, à défaut, par un sol plat à l'altitude de la route |
 | Champ inconnu dans un fichier | Ignoré |
@@ -482,6 +497,9 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.6 | 28 octobre 2026 | Ajout compatible (lot U1, partie format, série U avancée avant la 3.0 sur décision du propriétaire) : couche facultative `biome/near` et `biome/far` (§8 quater) et entrée `layers.biome` ; couche facultative `coast/` (§8 quinquies) et entrée `layers.coast` ; aire d'eau `sea` (§8) ; colonne facultative `surface` de la route, `route.surface_source` et `stats.surface_pct` (§4) ; thème 2.0 en pack de biomes (§9). Schémas `biome.schema.json` et `coast.schema.json`, exemples dans `docs/contracts/world/examples/`. La partie IPC et configuration du lot U1 (`hello_ack.config.biome` et `.gravel`, `[render] biome`, `[gravel]`) attend le lot U16. Un `.world` 1.5 reste valide |
 | 1.6 | 30 octobre 2026 | Ajout compatible au thème (lot P20, sans changement du format `.world`) : clé `texture_levels` et fichier `provenance.toml` des packs (§9) ; sous-commande `theme-pack` |
 | 1.6 | 8 novembre 2026 | Ajout compatible au thème (lot U11, sans changement du format `.world`) : clé facultative `ambience.layers`, à la racine et dans `biomes.<id>.ambience` (§9) |
+| 1.7 | 7 novembre 2026 | Ajout compatible (lot VD1, série VD de la 4.0, partie format) : colonne facultative `bank_deg` de la route et surface `wood` (§4) ; couche facultative `venue.json` (§8 sexies), entrée `layers.venue` du manifeste et schéma `venue.schema.json` ; `route.surface_source` peut valoir `venue` et `stats.surface_pct` compter `wood`. Vecteurs de test de la route complétés (relèvement de la boucle). Un `.world` 1.6 reste valide. La partie IPC du lot VD1 (objet `track` de `state`) attend les épreuves (lot VD6) |
+| 1.7 | 9 novembre 2026 | Sans changement du format (lot U24) : la zone climatique des biomes vient de la carte de Köppen-Geiger embarquée dans le compilateur ; `layers.biome.sources` nomme `koppen_1986_2010` au lieu de `latitude` (texte libre, rien à changer côté lecture) |
+| 1.7 | 9 novembre 2026 | Ajout compatible (lot JP1, série JP de la 6.0) : 17e biome `japan` (Japon : montagnes humides) dans l'énumération des biomes (§8 quater, `biome`, `manifest` et `theme`), toit `kawara` dans celle des variantes régionales (§8 quater et §9) ; entrée `biomes.japan` et variante `kawara` du thème par défaut. Énumérations étendues seulement par ajout ; aucun monde n'écrit encore `japan` avant le lot JP2 |
 
 ## 13. Monde vivant (monde ouvert, série W)
 

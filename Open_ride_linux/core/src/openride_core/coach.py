@@ -1,8 +1,8 @@
 """Séance conseillée (série CO, lot CO1) : besoin du jour et sa raison, calculés depuis l'historique.
 
     openride-core coach [--date AAAA-MM-JJ] [--objectif endurance|courses|grimpeur] [--temps MIN]
-                        [--montre TYPE[:MIN[:W]] [--enregistrer]] [--effacer-montre]
-                        [--prochaine-course AAAA-MM-JJ] [--dir DOSSIER]
+                        [--besoin BESOIN] [--montre TYPE[:MIN[:W]]] [--prochaine-course AAAA-MM-JJ[:TYPE]]
+                        [--enregistrer] [--effacer-montre] [--effacer-course] [--dir DOSSIER]
                         [--workouts DOSSIER] [--ftp W] [--json] [--config FICHIER]
 
 Plan et règles : `docs/5.0/PLAN_SERIE_CO.md`. Toutes les valeurs (zones de chaque besoin, cibles par
@@ -12,7 +12,7 @@ puissances viennent de `tools/session_summary.py` (aucune seconde formule).
 Trois besoins : `light` (aérobie léger, Z1–Z2), `intense` (aérobie intense, Z3–Z5), `anaerobic`
 (anaérobie, Z6–Z7) ; et trois conseils à part : `recovery` (récupération), `ftp_test` (test de FTP),
 `rest` (repos, seulement sur suggestion de la montre). Règles lues dans l'ordre, la première qui
-s'applique décide : RG (suggestion de la montre Garmin saisie aujourd'hui), R0 (pas assez de séances),
+s'applique décide (CH, besoin choisi par le joueur, passe après elles) : RG (suggestion de la montre Garmin saisie aujourd'hui), R0 (pas assez de séances),
 R1 (course hier ou forme très basse), R2 (course dans 1 à 2 jours), R3 (fatigue), R4 (FTP ancienne),
 R5 (séance du plan actif), R6 (plus grand retard sur la cible, avec garde-fous), R7 (départage de R6).
 
@@ -25,17 +25,29 @@ Faits de chaque séance mis en cache dans `.cache/coach.json` du profil (clé : 
 
 La suggestion de la montre Garmin (lot CO8) se donne avec `--montre` ; avec `--enregistrer`, elle est
 gardée pour la journée dans `conseil.json` du profil et reprise par les appels suivants du même jour
-(`--effacer-montre` l'efface). La course d'hier et la prochaine course (lots CO3, CO6) sont des
-paramètres de `recommend` ; `--prochaine-course` permet d'essayer la règle R2.
+(`--effacer-montre` l'efface). La prochaine course (lot CO3, « Ma prochaine course » : date et type
+`course` ou `championnat`) se garde de même dans `conseil.json` (`--prochaine-course … --enregistrer`,
+`--effacer-course`) jusqu'à son jour ; le lendemain, elle donne la règle R1.
+
+Courses disputées (lot CO6, plan §4) : `race_of` lit dans chaque journal une course (Dernier survivant,
+run Cyber-Rogue, course contre les bots hors ERG) et sa cause de perte (montée, sprint, fin de course ou
+aucune, seuils de `[races]`) ; une course d'hier donne R1 avec son TSS, et la cause qui revient sur les
+dernières courses départage R7 avant le profil de puissance. Objectif et temps disponible
+par défaut : réglages `[coach] objectif` et `[coach] temps_disponible_min` du profil (lot CO3).
+`--besoin` remplace le conseil par un besoin choisi (« Choisir un autre besoin », règle CH : le conseil
+du jour reste en note et en première autre idée). La commande IPC `get_coach` (message `coach`) fait
+le même calcul (`advice_today`).
 
 Clés de la sortie `--json` (stables) : date, need, need_label, rule, reason, duration_min, notes
 (liste de textes), alternatives (besoins proposés en second), workout (null ou {id, name,
 duration_min, need, dominant_zone, tss_estimate} : entraînement conseillé, lot CO2), other_workouts
-(liste de la même forme : autres entraînements du même besoin), details {objective, targets_pct,
+(liste de la même forme : autres entraînements du même besoin), route (null ou séance de jeu
+calibrée au besoin, lot CO9 : `coach_game.choose`), details {objective, targets_pct,
 shares_pct, deficits_pts, sessions_28d, duration_28d_s, ctl, atl, form, days_since_hard,
 hard_last_7d, ftp_w, ftp_test_date, ftp_age_days, profile ({fenêtre: multiple de la FTP} ou null),
-profile_weak (besoin ou null), last_by_need ({besoin: date ou null}), plan (null ou {plan, name,
-week, workout}), watch (null ou {type, need, duration_min, target_w}), next_race (null ou date)}.
+profile_weak (besoin ou null), races (au plus 3 {date, kind, place, cause}), last_by_need ({besoin: date ou null}), plan (null ou {plan, name,
+week, workout}), watch (null ou {type, need, duration_min, target_w}), next_race (null ou {date,
+kind})}.
 """
 
 from __future__ import annotations
@@ -44,10 +56,12 @@ import argparse
 import json
 import sys
 import tomllib
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable
+
+from .config import CHOICES
 
 TABLE_PATH = Path(__file__).resolve().parent / "data" / "coach.toml"
 NEEDS = ("light", "intense", "anaerobic")
@@ -55,8 +69,11 @@ LABELS = {
     "light": "aérobie léger", "intense": "aérobie intense", "anaerobic": "anaérobie",
     "recovery": "récupération", "ftp_test": "test de FTP", "rest": "repos",
 }
-OBJECTIVES = ("endurance", "courses", "grimpeur")
+OBJECTIVES = CHOICES[("coach", "objectif")]      # réglage `[coach] objectif` (lot CO3)
+CHOSEN_NEEDS = (*NEEDS, "recovery", "ftp_test")   # « Choisir un autre besoin » (get_coach {need})
+RACE_KINDS = ("course", "championnat")           # « Ma prochaine course » (plan §3, S6)
 MATCH_TOLERANCE_S = 60.0
+FACTS_VERSION = 2   # version des faits du cache `coach.json` (2 : course disputée, lot CO6)
 
 
 class CoachError(ValueError):
@@ -71,7 +88,7 @@ def load_table(path: Path | None = None) -> dict[str, Any]:
         table = tomllib.loads(p.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
         raise CoachError(f"table du conseil illisible ({p}) : {exc}") from exc
-    for key in ("needs", "window", "hard", "targets", "rules", "profile", "durations", "watch", "workouts"):
+    for key in ("needs", "window", "hard", "targets", "rules", "profile", "durations", "watch", "workouts", "races", "game"):
         if key not in table:
             raise CoachError(f"table du conseil : section [{key}] absente")
     return table
@@ -91,6 +108,7 @@ class SessionFacts:
     ftp_test_w: float | None = None          # FTP calculée par un test de FTP de la séance
     source: str = ""                         # live, simulated, replay ou "" (FIT sans journal)
     workout: str | None = None               # entraînement ERG de la séance (en-tête du journal)
+    race: dict[str, Any] | None = None       # course disputée (lot CO6) : {kind, place, cause}
 
     @property
     def day(self) -> date:
@@ -103,7 +121,8 @@ class SessionFacts:
     def from_dict(cls, d: dict[str, Any]) -> "SessionFacts":
         return cls(float(d["start_ts"]), float(d["duration_s"]), float(d["tss"]),
                    {k: float(v) for k, v in d["need_s"].items()}, bool(d["hard"]),
-                   dict(d["best_w"]), d.get("ftp_test_w"), str(d.get("source") or ""), d.get("workout"))
+                   dict(d["best_w"]), d.get("ftp_test_w"), str(d.get("source") or ""), d.get("workout"),
+                   d.get("race") if isinstance(d.get("race"), dict) else None)
 
 
 def _efforts(powers: list[float], floor_w: float, min_s: int) -> int:
@@ -137,8 +156,71 @@ def session_facts(session: Any, ftp_w: float, table: dict[str, Any], source: str
     for t in getattr(session, "ftp_tests", []) or []:
         if isinstance(t.get("ftp_w"), (int, float)) and t["ftp_w"] > 0:
             test_w = float(t["ftp_w"])
+    race = race_of(recs, getattr(session, "games", []) or [], table)
     return SessionFacts(float(s["start_ts"]), float(s["duration_s"]), float(s["tss"]), need_s, hard,
-                        dict(s["best_power_w"]), test_w, source, workout)
+                        dict(s["best_power_w"]), test_w, source, workout, race)
+
+
+# --- courses disputées (lot CO6, pur) ----------------------------------------------------------------
+
+CAUSE_TEXT = {"intense": "lâché en montée", "anaerobic": "battu au sprint", "light": "craqué en fin de course"}
+
+
+def _mean(values: list[float]) -> float | None:
+    return sum(values) / len(values) if values else None
+
+
+def _faded(records: list[dict], table: dict[str, Any]) -> bool:
+    """Plus de `fade_pct` % de puissance perdue entre le premier et le dernier quart de la course."""
+    powers = [max(0.0, float(r["power"])) for r in records if r.get("power") is not None]
+    if len(powers) < 4 * int(table["races"]["fade_min_quarter_s"]):
+        return False
+    q = len(powers) // 4
+    first, last = _mean(powers[:q]), _mean(powers[-q:])
+    return bool(first) and 100.0 * (first - last) / first > float(table["races"]["fade_pct"])
+
+
+def race_of(records: list[dict], games: list[dict], table: dict[str, Any]) -> dict[str, Any] | None:
+    """Course disputée dans la séance et sa cause de perte (plan §4), ou None si ce n'est pas une course.
+
+    Dernier survivant (lignes `survivor_*`) : éliminé dans une montée (pente moyenne au-dessus de
+    `climb_grade_pct` sur les `climb_window_s` secondes d'avant) → aérobie intense ; éliminé à moins de
+    `sprint_gap_s` secondes → anaérobie ; sinon puissance en baisse → aérobie léger ; vainqueur : aucune
+    cause. Run Cyber-Rogue (`rogue_run`) et course contre les bots hors ERG (relevés avec `draft`) : le
+    journal ne dit pas où le cycliste a perdu, seule la baisse de puissance est lue. Sinon : None
+    (rien n'est inventé ; les sprints chronométrés T4 ne gardent pas l'écart au journal)."""
+    rc = table["races"]
+    kinds = {g.get("kind") for g in games}
+    if kinds & {"survivor_start", "survivor_summary"}:
+        start = next((float(g["ts"]) for g in games if g.get("kind") == "survivor_start" and g.get("ts")), None)
+        summary = next((g for g in reversed(games) if g.get("kind") == "survivor_summary"), None)
+        mine = next((g for g in games if g.get("kind") == "survivor" and g.get("rider") == "me"), None)
+        place = summary.get("place") if summary else (mine.get("place") if mine else None)
+        if place == 1:
+            return {"kind": "survivor", "place": 1, "cause": None}
+        end = float(mine["ts"]) if mine and mine.get("ts") else (float(records[-1]["ts"]) if records else 0.0)
+        race_recs = [r for r in records if (start is None or r["ts"] >= start) and r["ts"] <= end]
+        cause = None
+        if mine is not None:
+            before = [float(r["grade"]) for r in race_recs
+                      if r.get("grade") is not None and r["ts"] >= end - float(rc["climb_window_s"])]
+            grade = _mean(before)
+            gap = mine.get("gap_s")
+            if grade is not None and grade > float(rc["climb_grade_pct"]):
+                cause = "intense"
+            elif isinstance(gap, (int, float)) and gap < float(rc["sprint_gap_s"]):
+                cause = "anaerobic"
+        if cause is None and _faded(race_recs, table):
+            cause = "light"
+        return {"kind": "survivor", "place": place if isinstance(place, int) else None, "cause": cause}
+    if "rogue_run" in kinds:
+        kind = "rogue"
+    elif records and any("draft" in r for r in records) \
+            and sum(1 for r in records if r.get("mode") == "ERG") * 2 < len(records):
+        kind = "bots"
+    else:
+        return None
+    return {"kind": kind, "place": None, "cause": "light" if _faded(records, table) else None}
 
 
 # --- signaux (pur) --------------------------------------------------------------------------------
@@ -201,6 +283,7 @@ def build_signals(facts: Iterable[SessionFacts], ftp_w: float, today: date, tabl
         "days_since_hard": days_since_hard, "hard_last_7d": hard_last_7, "hard_days": hard_days,
         "last_by_need": last_by_need, "ftp_w": ftp_w, "ftp_test_date": ftp_test_date,
         "ftp_age_days": ftp_age, "profile": profile,
+        "races": [{"date": f.day, "tss": f.tss, **f.race} for f in reversed(recent) if f.race],
     }
 
 
@@ -216,6 +299,8 @@ class Inputs:
     yesterday_tss: float | None = None
     next_race: date | None = None                # prochaine course annoncée (CO3, CO6)
     plan_today: dict[str, Any] | None = None     # {plan, name, week, workout} : séance du plan non faite
+    race_kind: str | None = None                 # type de la prochaine course (RACE_KINDS)
+    chosen_need: str | None = None               # besoin choisi par le joueur (CHOSEN_NEEDS), lot CO3
     notes: list[str] = field(default_factory=list)
 
 
@@ -233,6 +318,17 @@ def parse_watch(text: str, table: dict[str, Any]) -> dict[str, Any]:
     if minutes is not None and not 5 <= minutes <= 600:
         raise CoachError("durée de la suggestion de la montre : 5 à 600 min")
     return {"type": kind, "duration_min": minutes, "target_w": target}
+
+
+def watch_from_args(args: dict[str, Any], table: dict[str, Any]) -> dict[str, Any]:
+    """Suggestion de la montre de la commande IPC `set_watch_advice {type, duration_min?, target_w?}` :
+    mêmes règles que `--montre` (`parse_watch`)."""
+    kind, minutes, target = args.get("type"), args.get("duration_min"), args.get("target_w")
+    if not isinstance(kind, str) or (minutes is not None and (not isinstance(minutes, int) or isinstance(minutes, bool))) \
+            or (target is not None and (not isinstance(target, (int, float)) or isinstance(target, bool) or target <= 0)):
+        raise CoachError("set_watch_advice : {type, duration_min?, target_w?} attendu")
+    text = f"{kind}:{'' if minutes is None else minutes}:{'' if target is None else target}"
+    return parse_watch(text, table)
 
 
 def _pct(x: float) -> str:
@@ -341,10 +437,15 @@ def recommend(signals: dict[str, Any], inputs: Inputs, today: date, table: dict[
         return advice("light", "R6", reason)
     need = candidates[0]
     rule = "R6"
+    race_note: str | None = None
     if len(candidates) > 1 and deficits[candidates[0]] - deficits[candidates[1]] < rules["r7_tie_points"]:
         pair = candidates[:2]
         weak = profile_weak(signals, table)
-        if weak in pair:
+        lost = race_weak(signals, table)
+        if lost and lost[0] in pair:
+            need, rule = lost[0], "R7"
+            race_note = lost[1]
+        elif weak in pair:
             need, rule = weak, "R7"
         else:
             last = signals["last_by_need"]
@@ -355,7 +456,9 @@ def recommend(signals: dict[str, Any], inputs: Inputs, today: date, table: dict[
     last = signals["last_by_need"][need]
     if need != "light" and last is not None:
         parts.append(f"dernière séance de ce type {_days((today - last).days)}")
-    if rule == "R7" and profile_weak(signals, table) == need:
+    if race_note:
+        parts.append(race_note)
+    elif rule == "R7" and profile_weak(signals, table) == need:
         parts.append("ton profil de puissance est plus faible de ce côté")
     if blocked:
         parts.append(blocked)
@@ -393,6 +496,38 @@ def pick_workout(adv: dict[str, Any], facts: list[SessionFacts], today: date, in
     return chosen[0].to_dict(), [w.to_dict() for w in chosen[1:]]
 
 
+def choose_need(adv: dict[str, Any], inputs: Inputs, table: dict[str, Any]) -> dict[str, Any]:
+    """Besoin choisi par le joueur à la place du conseil (« Choisir un autre besoin », lot CO3) : règle
+    `CH` ; le conseil du jour reste en première autre idée, sa raison en note."""
+    need = inputs.chosen_need
+    if need not in CHOSEN_NEEDS:
+        raise CoachError(f"besoin inconnu : {need} (attendu : {', '.join(CHOSEN_NEEDS)})")
+    minutes = table["durations"].get(need) or inputs.available_min
+    computed = adv["need"]
+    label = LABELS.get(computed, "séance du plan")
+    notes = [*adv["notes"], f"Conseil du jour : {label}. {adv['reason']}"]
+    alternatives = [a for a in (computed, *adv["alternatives"]) if a not in (need, "rest", "plan")]
+    return {**adv, "need": need, "rule": "CH", "reason": f"Besoin choisi : {LABELS[need]}.",
+            "duration_min": int(minutes), "alternatives": alternatives, "notes": notes}
+
+
+def race_weak(signals: dict[str, Any], table: dict[str, Any]) -> tuple[str, str] | None:
+    """Besoin qui coûte des places (S5) : la cause la plus fréquente des `window_count` dernières courses
+    des 4 semaines, si elle revient au moins `min_count` fois ; avec le texte de la raison."""
+    rc = table["races"]
+    races = signals.get("races", [])[:int(rc["window_count"])]
+    counts: dict[str, int] = {}
+    for r in races:
+        if r.get("cause"):
+            counts[r["cause"]] = counts.get(r["cause"], 0) + 1
+    if not counts:
+        return None
+    cause = max(counts, key=lambda c: (counts[c], -NEEDS.index(c)))
+    if counts[cause] < int(rc["min_count"]):
+        return None
+    return cause, f"{CAUSE_TEXT[cause]} {counts[cause]} fois sur tes {len(races)} dernières courses"
+
+
 def profile_weak(signals: dict[str, Any], table: dict[str, Any]) -> str | None:
     """Besoin du point faible du profil de puissance (plus bas rapport réel / attendu)."""
     profile = signals.get("profile")
@@ -404,20 +539,34 @@ def profile_weak(signals: dict[str, Any], table: dict[str, Any]) -> str | None:
 
 
 def advise(facts: Iterable[SessionFacts], ftp_w: float, today: date, inputs: Inputs,
-           table: dict[str, Any] | None = None, library: Iterable[WorkoutNeed] | None = None) -> dict[str, Any]:
-    """Conseil complet (sortie `--json`) à partir des faits des séances et de la bibliothèque."""
+           table: dict[str, Any] | None = None, library: Iterable[WorkoutNeed] | None = None,
+           candidates: list[Any] | None = None) -> dict[str, Any]:
+    """Conseil complet (sortie `--json`) à partir des faits des séances, de la bibliothèque et des
+    parcours du catalogue (`coach_game.Candidate`, séance de jeu du lot CO9 ; aucune sans eux)."""
+    from . import coach_game
+
     table = load_table() if table is None else table
     facts = list(facts)
+    library = list(library or [])
     sig = build_signals(facts, ftp_w, today, table)
+    yesterday = [r for r in sig["races"] if r["date"] == today - timedelta(days=1)]
+    if yesterday and not inputs.raced_yesterday:
+        inputs = replace(inputs, raced_yesterday=True, yesterday_tss=sum(r["tss"] for r in yesterday))
     adv = recommend(sig, inputs, today, table)
+    if inputs.chosen_need and inputs.chosen_need != adv["need"]:
+        adv = choose_need(adv, inputs, table)
     need = adv["need"]
-    workout, others = pick_workout(adv, facts, today, inputs, table, list(library or []))
+    workout, others = pick_workout(adv, facts, today, inputs, table, library)
+    route = None
+    if candidates and need in (*NEEDS, "recovery") and ftp_w > 0:
+        ref = next((w.need_s.get(need) for w in library if workout and w.id == workout["id"]), None)
+        route = coach_game.choose(need, adv["duration_min"] * 60.0, ref, candidates, ftp_w, table)
     iso = lambda d: d.isoformat() if d else None  # noqa: E731
     return {
         "date": today.isoformat(), "need": need,
         "need_label": LABELS.get(need, "séance du plan"), "rule": adv["rule"], "reason": adv["reason"],
         "duration_min": adv["duration_min"], "notes": adv["notes"], "alternatives": adv["alternatives"],
-        "workout": workout, "other_workouts": others,
+        "workout": workout, "other_workouts": others, "route": route,
         "details": {
             "objective": adv["used_objective"], "targets_pct": adv["targets"],
             "shares_pct": {n: round(v, 1) for n, v in sig["shares_pct"].items()},
@@ -428,8 +577,12 @@ def advise(facts: Iterable[SessionFacts], ftp_w: float, today: date, inputs: Inp
             "ftp_w": round(ftp_w, 1), "ftp_test_date": iso(sig["ftp_test_date"]),
             "ftp_age_days": sig["ftp_age_days"], "profile": sig["profile"],
             "profile_weak": profile_weak(sig, table),
+            "races": [{"date": r["date"].isoformat(), "kind": r["kind"], "place": r["place"], "cause": r["cause"]}
+                      for r in sig["races"][:int(table["races"]["window_count"])]],
             "last_by_need": {n: iso(d) for n, d in sig["last_by_need"].items()},
-            "plan": inputs.plan_today, "next_race": iso(inputs.next_race),
+            "plan": inputs.plan_today,
+            "next_race": ({"date": iso(inputs.next_race), "kind": inputs.race_kind or RACE_KINDS[0]}
+                          if inputs.next_race else None),
             "watch": ({**inputs.watch, "need": table["watch"][inputs.watch["type"]]} if inputs.watch else None),
         },
     }
@@ -446,6 +599,7 @@ class WorkoutNeed:
     need: str                    # light, intense, anaerobic ou recovery
     dominant_zone: str | None    # zone la plus longue au-dessus de Z2 (tempo Z3, seuil Z4, VO2 max Z5…)
     tss: float                   # TSS estimé à la FTP donnée
+    need_s: dict[str, float] = field(default_factory=dict)   # secondes dans les zones de chaque besoin (CO9)
 
     def to_dict(self) -> dict[str, Any]:
         return {"id": self.id, "name": self.name, "duration_min": round(self.duration_s / 60.0),
@@ -483,7 +637,9 @@ def workout_need(workout: Any, ftp_w: float, table: dict[str, Any]) -> WorkoutNe
     dominant = max(hot, key=lambda z: hot[z]) if hot else None
     np_w = normalized_power(watts)
     tss = len(watts) / 3600.0 * (np_w / ftp_w) ** 2 * 100.0 if ftp_w > 0 else 0.0
-    return WorkoutNeed(workout.id, workout.name, float(len(watts)), need, dominant, tss)
+    from .coach_game import need_zones
+    per_need = {n: sum(zone_s[z] for z in need_zones(n, table)) for n in (*NEEDS, "recovery")}
+    return WorkoutNeed(workout.id, workout.name, float(len(watts)), need, dominant, tss, per_need)
 
 
 def classify_library(directory: Path, ftp_w: float, table: dict[str, Any]) -> list[WorkoutNeed]:
@@ -515,6 +671,17 @@ def choose_workouts(library: Iterable[WorkoutNeed], need: str, minutes: int, don
 def _cache_path() -> Path:
     from . import profiles
     return profiles.current().history_cache.with_name("coach.json")
+
+
+def _twin_of_journal(fit: Path, journals: list[SessionFacts]) -> bool:
+    """Vrai si le FIT est celui qu'OpenRide a écrit pour un de ces journaux, d'après son nom
+    (`AAAA-MM-JJ_HH-MM_…`, minute du premier point, `fit_export.default_fit_path`), sans le décoder ;
+    même tolérance que le dédoublonnage par début de séance (`MATCH_TOLERANCE_S`). Autre nom : faux."""
+    try:
+        minute = datetime.strptime(fit.name[:16], "%Y-%m-%d_%H-%M").timestamp()
+    except ValueError:
+        return False
+    return any(abs(j.start_ts - (minute + 30.0)) <= 30.0 + MATCH_TOLERANCE_S for j in journals)
 
 
 def collect_facts(directory: Path | None, ftp_w: float, today: date, table: dict[str, Any],
@@ -550,7 +717,7 @@ def collect_facts(directory: Path | None, ftp_w: float, today: date, table: dict
         key = str(path.resolve())
         c = cache.get(key)
         if (isinstance(c, dict) and c.get("size") == st.st_size and c.get("mtime_ns") == st.st_mtime_ns
-                and c.get("ftp_w") == round(ftp_w, 2)):
+                and c.get("ftp_w") == round(ftp_w, 2) and c.get("v") == FACTS_VERSION):
             return SessionFacts.from_dict(c["facts"]) if c.get("facts") else None
         source, workout = "", None
         if path.suffix.lower() == ".jsonl":
@@ -561,7 +728,7 @@ def collect_facts(directory: Path | None, ftp_w: float, today: date, table: dict
             f = session_facts(load_session(path), ftp_w, table, source, workout)
         except Exception:
             f = None
-        cache[key] = {"size": st.st_size, "mtime_ns": st.st_mtime_ns, "ftp_w": round(ftp_w, 2),
+        cache[key] = {"v": FACTS_VERSION, "size": st.st_size, "mtime_ns": st.st_mtime_ns, "ftp_w": round(ftp_w, 2),
                       "facts": f.to_dict() if f else None}
         dirty = True
         return f
@@ -569,6 +736,8 @@ def collect_facts(directory: Path | None, ftp_w: float, today: date, table: dict
     from_jsonl = [f for f in (facts_of(p) for p in jsonls) if f is not None]
     out = list(from_jsonl)
     for p in fits:
+        if _twin_of_journal(p, from_jsonl):
+            continue   # FIT écrit depuis un journal déjà lu : décodé pour rien (1,5 s par heure de séance)
         f = facts_of(p)
         if f is not None and not any(abs(f.start_ts - j.start_ts) <= MATCH_TOLERANCE_S for j in from_jsonl):
             out.append(f)
@@ -598,28 +767,36 @@ def _read_advice_file(path: Path) -> dict[str, Any]:
         return {}
 
 
-def save_watch(watch: dict[str, Any], today: date, path: Path | None = None) -> None:
-    """Enregistre la suggestion de la montre pour la journée `today` (écriture sûre, autres clés gardées)."""
+def _write_advice_file(path: Path, data: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(path)
+
+
+def _set_advice(key: str, value: dict[str, Any] | None, path: Path | None) -> bool:
+    """Écrit (ou efface, `value` None) la clé `key` de `conseil.json` ; les autres clés sont gardées.
+    Rend False pour un effacement d'une clé absente."""
     p = advice_path() if path is None else Path(path)
     data = _read_advice_file(p)
-    data["watch"] = {**watch, "date": today.isoformat()}
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    tmp.replace(p)
+    if value is None:
+        if key not in data:
+            return False
+        del data[key]
+    else:
+        data[key] = value
+    _write_advice_file(p, data)
+    return True
+
+
+def save_watch(watch: dict[str, Any], today: date, path: Path | None = None) -> None:
+    """Enregistre la suggestion de la montre pour la journée `today` (écriture sûre, autres clés gardées)."""
+    _set_advice("watch", {**watch, "date": today.isoformat()}, path)
 
 
 def clear_watch(path: Path | None = None) -> bool:
     """Efface la suggestion enregistrée ; False s'il n'y en avait pas."""
-    p = advice_path() if path is None else Path(path)
-    data = _read_advice_file(p)
-    if "watch" not in data:
-        return False
-    del data["watch"]
-    tmp = p.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    tmp.replace(p)
-    return True
+    return _set_advice("watch", None, path)
 
 
 def saved_watch(today: date, table: dict[str, Any], path: Path | None = None) -> dict[str, Any] | None:
@@ -630,6 +807,47 @@ def saved_watch(today: date, table: dict[str, Any], path: Path | None = None) ->
     minutes, target = w.get("duration_min"), w.get("target_w")
     return {"type": w["type"], "duration_min": minutes if isinstance(minutes, int) else None,
             "target_w": float(target) if isinstance(target, (int, float)) else None}
+
+
+def parse_race(day: str, kind: str | None, today: date) -> dict[str, Any]:
+    """Prochaine course saisie : date AAAA-MM-JJ d'aujourd'hui à un an, type parmi RACE_KINDS."""
+    try:
+        when = date.fromisoformat(day)
+    except (TypeError, ValueError) as exc:
+        raise CoachError(f"date de course invalide : {day!r} (attendu AAAA-MM-JJ)") from exc
+    if not today <= when <= today + timedelta(days=366):
+        raise CoachError("date de course : d'aujourd'hui à un an")
+    kind = kind or RACE_KINDS[0]
+    if kind not in RACE_KINDS:
+        raise CoachError(f"type de course inconnu : {kind} (attendu : {', '.join(RACE_KINDS)})")
+    return {"date": when.isoformat(), "kind": kind}
+
+
+def save_next_race(race: dict[str, Any], path: Path | None = None) -> None:
+    """Enregistre la prochaine course (`parse_race`) dans `conseil.json` du profil en cours."""
+    _set_advice("next_race", race, path)
+
+
+def clear_next_race(path: Path | None = None) -> bool:
+    """Efface la prochaine course ; False s'il n'y en avait pas."""
+    return _set_advice("next_race", None, path)
+
+
+def saved_race(path: Path | None = None) -> tuple[date, str] | None:
+    """Course enregistrée, passée ou non (None si absente ou abîmée) : la veille, elle donne R1 (CO6)."""
+    r = _read_advice_file(advice_path() if path is None else Path(path)).get("next_race")
+    if not isinstance(r, dict) or r.get("kind") not in RACE_KINDS:
+        return None
+    try:
+        return date.fromisoformat(r.get("date")), r["kind"]
+    except (TypeError, ValueError):
+        return None
+
+
+def saved_next_race(today: date, path: Path | None = None) -> tuple[date, str] | None:
+    """Prochaine course enregistrée, aujourd'hui ou plus tard (None si absente, passée ou abîmée)."""
+    r = saved_race(path)
+    return r if r and r[0] >= today else None
 
 
 def plan_today(today: date, ftp_w: float) -> dict[str, Any] | None:
@@ -659,6 +877,10 @@ def format_text(r: dict[str, Any]) -> str:
         w = r["workout"]
         tss = f" · TSS ≈ {w['tss_estimate']}" if w.get("tss_estimate") is not None else ""
         lines.insert(1, f"Séance : {w['name']} ({w['duration_min']} min{tss})")
+    if r.get("route"):
+        g = r["route"]
+        lines.insert(2, f"Ou en jeu : {g['label']}, {g['route_name']} ({g['laps']} tour{'s' if g['laps'] > 1 else ''}, "
+                        f"{round(g['duration_s'] / 60)} min, {g['ratio_pct']} % du temps de l'entraînement dans le besoin)")
     lines += [f"Note : {n}" for n in r["notes"]]
     if r["alternatives"]:
         lines.append("Autres idées : " + ", ".join(LABELS.get(a, a) for a in r["alternatives"]))
@@ -670,31 +892,66 @@ def format_text(r: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def advice_today(today: date, ftp_w: float, objective: str, minutes: int, directory: Path | None = None,
+                 workouts_dir: Path | None = None, watch: dict[str, Any] | None = None,
+                 next_race: tuple[date, str] | None = None, chosen_need: str | None = None,
+                 table: dict[str, Any] | None = None, routes_root: Path | None = None) -> dict[str, Any]:
+    """Conseil du jour du profil en cours, lu sur le disque : même calcul pour `openride-core coach` et
+    pour la commande IPC `get_coach` (lot CO3). Sans `watch` ni `next_race`, les saisies du jour de
+    `conseil.json` sont reprises."""
+    from . import coach_game
+    from . import config as config_mod
+
+    table = load_table() if table is None else table
+    watch = watch if watch is not None else saved_watch(today, table)
+    race = next_race if next_race is not None else saved_next_race(today)
+    announced = saved_race(None)
+    inputs = Inputs(objective=objective, available_min=minutes, watch=watch,
+                    raced_yesterday=bool(announced and announced[0] == today - timedelta(days=1)),
+                    next_race=race[0] if race else None, race_kind=race[1] if race else None,
+                    plan_today=plan_today(today, ftp_w), chosen_need=chosen_need)
+    facts = collect_facts(directory, ftp_w, today, table)
+    library = classify_library(workouts_dir or config_mod.WORKOUTS_DIR, ftp_w, table)
+    try:
+        candidates = coach_game.load_candidates(routes_root)
+    except Exception:   # catalogue illisible : le conseil reste, sans séance de jeu
+        candidates = []
+    return advise(facts, ftp_w, today, inputs, table, library, candidates)
+
+
 def run(args: argparse.Namespace) -> int:
     from . import config as config_mod
 
     try:
         table = load_table()
         today = date.fromisoformat(args.date) if args.date else date.today()
-        ftp = float(config_mod.load(args.config).rider.ftp_w) if args.ftp is None else args.ftp
-        objective = args.objectif or "endurance"
-        minutes = args.temps or 60
+        cfg = config_mod.load(args.config)
+        ftp = float(cfg.rider.ftp_w) if args.ftp is None else args.ftp
+        objective = args.objectif or cfg.coach.objectif
+        minutes = args.temps or cfg.coach.temps_disponible_min
         if not 10 <= minutes <= 300:
             raise CoachError("--temps : 10 à 300 min")
-        if args.effacer_montre:
-            print("Suggestion de la montre effacée." if clear_watch() else "Aucune suggestion de la montre enregistrée.")
+        if args.effacer_montre or args.effacer_course:
+            if args.effacer_montre:
+                print("Suggestion de la montre effacée." if clear_watch() else "Aucune suggestion de la montre enregistrée.")
+            if args.effacer_course:
+                print("Prochaine course effacée." if clear_next_race() else "Aucune prochaine course enregistrée.")
             return 0
         watch = parse_watch(args.montre, table) if args.montre else None
-        if watch and args.enregistrer:
-            save_watch(watch, today)
-        if watch is None:
-            watch = saved_watch(today, table)
-        inputs = Inputs(objective=objective, available_min=minutes, watch=watch,
-                        next_race=date.fromisoformat(args.prochaine_course) if args.prochaine_course else None,
-                        plan_today=plan_today(today, ftp))
-        facts = collect_facts(args.directory, ftp, today, table)
-        library = classify_library(args.workouts or config_mod.WORKOUTS_DIR, ftp, table)
-        result = advise(facts, ftp, today, inputs, table, library)
+        race = None
+        if args.prochaine_course:
+            day, _, kind = args.prochaine_course.partition(":")
+            parsed = parse_race(day, kind or None, today)
+            race = (date.fromisoformat(parsed["date"]), parsed["kind"])
+        if args.enregistrer:
+            if watch is None and race is None:
+                raise CoachError("--enregistrer : avec --montre ou --prochaine-course")
+            if watch:
+                save_watch(watch, today)
+            if race:
+                save_next_race(parsed)
+        result = advice_today(today, ftp, objective, minutes, args.directory, args.workouts, watch, race,
+                              args.besoin, table, args.routes)
     except (CoachError, config_mod.ConfigError, ValueError) as exc:
         print(f"openride-core coach : {exc}", file=sys.stderr)
         return 1
@@ -705,17 +962,22 @@ def run(args: argparse.Namespace) -> int:
 def add_parser(sub: Any) -> None:
     p = sub.add_parser("coach", help="séance conseillée du jour et sa raison (série CO, lot CO1)")
     p.add_argument("--date", help="jour du conseil AAAA-MM-JJ (défaut : aujourd'hui)")
-    p.add_argument("--objectif", choices=OBJECTIVES, help="objectif (défaut : endurance)")
-    p.add_argument("--temps", type=int, help="temps disponible en minutes (défaut : 60)")
+    p.add_argument("--objectif", choices=OBJECTIVES, help="objectif (défaut : [coach] objectif)")
+    p.add_argument("--temps", type=int, help="temps disponible en minutes (défaut : [coach] temps_disponible_min)")
+    p.add_argument("--besoin", choices=CHOSEN_NEEDS, help="besoin choisi à la place du conseil (règle CH)")
     p.add_argument("--montre", metavar="TYPE[:MIN[:W]]",
                    help="suggestion de la montre Garmin : repos, recuperation, fond, tempo, seuil, vo2max, "
                         "anaerobie, sprint")
     p.add_argument("--enregistrer", action="store_true",
-                   help="avec --montre : garde la suggestion pour la journée (profil en cours)")
+                   help="avec --montre : garde la suggestion pour la journée ; avec --prochaine-course : "
+                        "garde la course (profil en cours)")
     p.add_argument("--effacer-montre", action="store_true", help="efface la suggestion de la montre enregistrée")
-    p.add_argument("--prochaine-course", metavar="AAAA-MM-JJ", help="date de la prochaine course annoncée")
+    p.add_argument("--prochaine-course", metavar="AAAA-MM-JJ[:TYPE]",
+                   help="prochaine course annoncée (type : course ou championnat)")
+    p.add_argument("--effacer-course", action="store_true", help="efface la prochaine course enregistrée")
     p.add_argument("--dir", type=Path, dest="directory", help="dossier des séances (défaut : profil en cours)")
     p.add_argument("--workouts", type=Path, help="dossier des entraînements (défaut : ~/OpenRide/Workouts)")
+    p.add_argument("--routes", type=Path, help="dossier des parcours .world (défaut : celui du jeu)")
     p.add_argument("--ftp", type=float, help="FTP en watts (défaut : config.toml)")
     p.add_argument("--json", action="store_true", help="sortie JSON")
     p.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")

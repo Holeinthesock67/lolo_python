@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série VD : surface bois, air de la salle, hauteur sur la piste, distance au tour et placement | Python | VD1, AS2 | Moyenne | Prêt (version 4.0) |
+| Série VD : surface bois, air de la salle, hauteur sur la piste, distance au tour et placement | Python | VD1, AS2 | Moyenne | Livré le 8 novembre (PR #746) : bois, air de la salle, vent coupé, placement sur la piste |
 
 Série VD (modèle « Vélodrome », demande du propriétaire du 5 novembre 2026). Plan de la série : `docs/4.0/PLAN_SERIE_VD.md`. Plan validé par le propriétaire le 6 novembre (lot VD0).
 
@@ -34,3 +34,7 @@ Faire rouler le cycliste et les bots sur la piste avec la même physique que la 
 - `surface_physics.py`, `session.py`, `settings.py`, `config.py` (section `[velodrome]`), leurs tests.
 
 Tout lot qui change l'affichage est mesuré en `low`, `medium` et `high` (budgets GPU : 6, 12 et 14 ms) et ses captures sont validées par le propriétaire avant la fusion.
+
+## Livraison
+
+PR #746 (fusionnée le 8 novembre, main bd7b29d5) : physique de la piste. Statut corrigé par le bilan du 8 novembre au soir.

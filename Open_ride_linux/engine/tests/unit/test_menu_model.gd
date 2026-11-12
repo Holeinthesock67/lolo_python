@@ -100,7 +100,7 @@ func _test_scenarios() -> void:
 		["PLUS_SHORT", "routes", "alpe", null],
 		["PLUS_SHORT", "routes", "vercors", null],
 	])
-	_scenario("accueil : boucle sur les neuf entrées", _routes(ROUTES_4), [
+	_scenario("accueil : boucle sur les dix entrées", _routes(ROUTES_4), [
 		["MINUS_SHORT", "home", "quit", null],
 		["PLUS_SHORT", "home", "world", null],
 		["PLUS_SHORT", "home", "ride", null],
@@ -111,6 +111,8 @@ func _test_scenarios() -> void:
 		["A_LONG", "home", "ftp", {"action": "item", "screen": "home", "id": "ftp"}],
 		["PLUS_SHORT", "home", "history", null],
 		["A_LONG", "home", "history", {"action": "item", "screen": "home", "id": "history"}],
+		["PLUS_SHORT", "home", "collection", null],
+		["A_LONG", "home", "collection", {"action": "item", "screen": "home", "id": "collection"}],
 		["PLUS_SHORT", "home", "sim", null],
 		["PLUS_SHORT", "home", "settings", null],
 		["Y_SHORT", "home", "settings", null],
@@ -193,6 +195,25 @@ func _test_scenarios() -> void:
 		["MINUS_SHORT", "confirm", "yes", null],
 		["A_LONG", "home", "world", {"action": "end_session", "save": false}],
 	])
+	# Lot N17 : « Faire demi-tour » après Abandonner, avec confirmation (A long valide, Y revient, §7.1).
+	var paused_u_turn := func(m): _routes(ROUTES_4).call(m); m.u_turn_shown = true; m.set_pause_rows([]); m.open_pause()
+	_scenario("pause : faire demi-tour annulé puis confirmé (lot N17)", paused_u_turn, [
+		["PLUS_SHORT", "pause", "end_save", null],
+		["PLUS_SHORT", "pause", "abandon", null],
+		["PLUS_SHORT", "pause", "u_turn", null],
+		["A_LONG", "confirm", "no", null],
+		["Y_SHORT", "pause", "u_turn", null],
+		["A_LONG", "confirm", "no", null],
+		["PLUS_SHORT", "confirm", "yes", null],
+		["A_LONG", "pause", "u_turn", {"action": "u_turn"}],
+		["MINUS_SHORT", "pause", "abandon", null],
+	])
+	var paused_no_u_turn := func(m): _routes(ROUTES_4).call(m); m.set_pause_rows([]); m.open_pause()
+	_scenario("pause sans demi-tour (monde ouvert, run, course) : pas d'entrée (lot N17)", paused_no_u_turn, [
+		["PLUS_SHORT", "pause", "end_save", null],
+		["PLUS_SHORT", "pause", "abandon", null],
+		["PLUS_SHORT", "pause", "bot1", null],   # après « Abandonner », les bots (lot N18), pas de demi-tour
+	])
 	_scenario("pause : reprendre, retour et terminer en enregistrant", paused, [
 		["A_LONG", "pause", "resume", {"action": "resume"}],
 		["Y_SHORT", "pause", "resume", {"action": "resume"}],
@@ -247,10 +268,10 @@ func _test_lists_and_events() -> void:
 	w.handle("PLUS_SHORT")
 	w.handle("PLUS_SHORT")
 	var ws: Dictionary = w.handle("A_LONG")
-	_check(ws["items"].size() == 6 and ws["items"][1]["label"] == "Aucun entraînement" and _focus_id(ws) == "_sim",
+	_check(ws["items"].size() == 5 and ws["items"][1]["label"] == "Aucun entraînement" and _focus_id(ws) == "_sim",
 		"aucun entraînement : « Sans entraînement (SIM) » reste choisissable")
-	_check(ws["items"][2]["id"] == "_create" and ws["items"][3]["id"] == "_qwk" and ws["items"][4]["id"] == "_import",
-		"sous-menu ERG (N16) : Créer et Importer en fin de liste")
+	_check(ws["items"][2]["id"] == "_create" and ws["items"][3]["id"] == "_qwk" and ws["items"][4]["id"] == "_help",
+		"sous-menu ERG (N16) : Créer, QWKcode et Aide en fin de liste, sans import (révision 1.15)")
 	w.handle("PLUS_SHORT")
 	var wc: Dictionary = w.handle("A_LONG")
 	_check(wc["action"] == {"action": "item", "screen": "workouts", "id": "_create"} and wc["screen"] == "workouts",
@@ -308,13 +329,13 @@ func _test_prepare_start() -> void:
 func _test_modes() -> void:
 	var m = MenuModel.new()
 	var ids: Array = m.state()["items"].map(func(it): return it["id"])
-	_check(ids == ["world", "ride", "erg", "plan", "ftp", "history", "sim", "settings", "quit"],
+	_check(ids == ["world", "ride", "erg", "plan", "ftp", "history", "collection", "sim", "settings", "quit"],
 		"modes par défaut : ride et erg, puis plans et test de FTP (lot O12) (%s)" % str(ids))
 	m.set_modes(["erg", "cyber_rogue"])
 	ids = m.state()["items"].map(func(it): return it["id"])
-	_check(ids == ["world", "erg", "plan", "ftp", "history", "sim", "settings", "quit"], "modes annoncés filtrés, inconnu ignoré (%s)" % str(ids))
+	_check(ids == ["world", "erg", "plan", "ftp", "history", "collection", "sim", "settings", "quit"], "modes annoncés filtrés, inconnu ignoré (%s)" % str(ids))
 	m.set_modes(null)
-	_check(m.state()["items"].size() == 9, "modes absents : retour aux modes par défaut")
+	_check(m.state()["items"].size() == 10, "modes absents : retour aux modes par défaut")
 
 
 ## Plan des boutons sans exception (spécification générale §7.1, 27 octobre).
@@ -382,6 +403,41 @@ func _test_last_choices() -> void:
 	_check(m.bot_choices == [1, 3, 1, 1], "quatre bots repris au plus, bot inconnu sauté (%s)" % str(m.bot_choices))
 
 
+## Lot N18 : lignes des bots de l'écran Prêt reprises sur l'écran de pause, `set_bots` envoyé à la reprise.
+func _test_pause_bots() -> void:
+	var m = MenuModel.new()
+	m.set_items("routes", ROUTES_4)
+	m.set_last_choices({"bots": [{"kind": "constant", "power_w": 200}]})
+	m.open_pause()
+	var ids: Array = m.state()["items"].map(func(it): return it["id"])
+	_check(ids == ["resume", "end_save", "abandon", "difficulty", "bot1", "bot2", "ghost", "peloton"],
+		"pause : bots de la séance, ligne vide, fantôme et peloton (%s)" % str(ids))
+	_check(m.handle("A_LONG")["action"] == {"action": "resume"}, "rien changé : resume sans bots")
+	m.open_pause()
+	m.focus_item("bot1")
+	m.handle("A_LONG")   # 200 W → 250 W
+	m.focus_item("bot2")
+	m.handle("A_LONG")   # ligne vide → 200 W
+	m.focus_item("ghost")
+	m.handle("A_LONG")   # fantôme : oui
+	var labels: Array = m.state()["items"].map(func(it): return it["label"])
+	_check(labels.has("Bot 1 : 250 W") and labels.has("Bot 2 : 200 W") and labels.has("Bot 3 : aucun")
+		and labels.has("Fantôme de la dernière séance : oui"), "lignes modifiées en place (%s)" % str(labels))
+	m.focus_item("resume")
+	var act: Dictionary = m.handle("A_LONG")["action"]
+	_check(act == {"action": "resume", "bots": [{"kind": "constant", "power_w": 250}, {"kind": "constant", "power_w": 200},
+		{"kind": "ghost"}]}, "reprise : liste des bots pour set_bots (%s)" % str(act))
+	_check(m.last_bots == m.bot_choices and m.last_ghost, "derniers choix mis à jour (repris au prochain accueil)")
+	m.open_pause()
+	_check(m.handle("A_LONG")["action"] == {"action": "resume"}, "pause suivante : plus rien à envoyer")
+	m.mode = "survivor"
+	m.open_pause()
+	ids = m.state()["items"].map(func(it): return it["id"])
+	_check(not ids.has("bot1") and not ids.has("ghost"), "Dernier survivant : plateau du core, pas de lignes de bots")
+	m.focus_item("resume")
+	_check(m.handle("A_LONG")["action"] == {"action": "resume"}, "Dernier survivant : resume seul")
+
+
 func _init() -> void:
 	_test_button_plan()
 	_test_modes()
@@ -390,5 +446,6 @@ func _init() -> void:
 	_test_lists_and_events()
 	_test_no_nodes()
 	_test_last_choices()
+	_test_pause_bots()
 	print("test_menu_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

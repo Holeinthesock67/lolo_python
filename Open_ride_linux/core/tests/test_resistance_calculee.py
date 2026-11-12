@@ -65,11 +65,13 @@ def test_sim_grade_is_sent_as_a_resistance_level():
 
 def test_level_falls_as_the_flywheel_speeds_up_on_the_same_slope():
     """Le frein monte avec la vitesse du volant : à force égale, 40 km/h demande moins de niveau que 25 km/h."""
-    drv, _ = _driver(resistance_n_per_pct_kmh=0.036)
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
     drv._wind_mps, drv._cw = 0.0, 0.0   # force de pente seule, la même aux deux vitesses
     drv._on_ibd(None, _ibd(25.0, 85, 200))
     slow = drv._road_level(4.0)
-    drv._on_ibd(None, _ibd(40.0, 110, 400))
+    for i in range(1, 41):   # 10 s à 40 km/h : la vitesse lissée du niveau (lot RC5) a rejoint le volant
+        now[0] = 100.0 + i * 0.25
+        drv._on_ibd(None, _ibd(40.0, 110, 400))
     fast = drv._road_level(4.0)
     assert fast == pytest.approx(slow * 25.0 / 40.0, abs=1.0)
 
@@ -343,3 +345,64 @@ def test_sim_control_traces_nothing_without_trace_ftms(caplog):
     with caplog.at_level(logging.INFO, logger="ftms_driver"):
         drv._on_ibd(None, _ibd(28.0, 80, 150))
     assert not [r for r in caplog.records if "FTMS ~ mesures" in r.getMessage()]
+
+
+# --- Lot RC5 : recette vélo du 7 novembre (pompage sous 60 tr/min, k au plancher avec le niveau en butée) ---
+
+def test_brake_k_frozen_while_the_level_is_at_its_maximum():
+    """Recette du 7 novembre : niveau 10 sur 10 et 5,6 N mesurés ; k tombait au plancher (0,0072)."""
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
+    drv._last_sent = ("resistance", 100.0)
+    _ride(drv, now, 7, 19.0, 40, lambda _lvl: 5.6 * 19 / 3.6)   # avant la première reprise du contrôle (8 s)
+    assert drv.k_road == 0.036
+
+
+def test_brake_k_frozen_until_the_new_level_is_applied():
+    """Le trainer applique un niveau 200 à 800 ms après l'envoi : la force mesurée juste après est l'ancienne."""
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
+    drv._last_sent = ("resistance", 40.0)
+    drv._level_changed_at = 100.0
+    v = 30 / 3.6
+    _ride(drv, now, 0.75, 30.0, 85, lambda _lvl: 0.036 * 20.0 * 30.0 * v)   # encore la force du niveau 20
+    assert drv.k_road == 0.036
+
+
+def test_level_change_is_recorded_when_sent():
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
+    drv._on_ibd(None, _ibd(30.0, 85, 200))
+    drv.set_sim_grade(3.0)
+    _flush(drv)
+    assert drv._level_changed_at == now[0]
+
+
+def test_level_rise_is_bounded():
+    """Montée du niveau bornée à ROAD_LEVEL_RISE_PCT_S % par seconde ; la baisse est immédiate."""
+    from openride_core.ftms_driver import ROAD_LEVEL_RISE_PCT_S
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
+    drv._on_ibd(None, _ibd(20.0, 60, 150))
+    flat = drv._road_level(0.0)
+    now[0] += 0.5
+    climb = drv._road_level(10.0)
+    assert climb == pytest.approx(flat + ROAD_LEVEL_RISE_PCT_S * 0.5, abs=1.0)
+    now[0] += 10.0
+    assert drv._road_level(10.0) > climb + 10
+    now[0] += 0.25
+    assert drv._road_level(0.0) == pytest.approx(flat, abs=1.0)
+
+
+def test_low_cadence_level_does_not_follow_the_pedal_stroke():
+    """40 tr/min, volant 19 ± 3 km/h en dents de scie : un niveau en 1/v instantané variait de ±16 % à chaque
+    coup de pédale et, appliqué 0,2 à 0,8 s plus tard, freinait pendant la poussée suivante (pompage du
+    7 novembre). Sur la vitesse lissée, le niveau reste quasi fixe et le frein garde F ∝ v."""
+    drv, now = _driver(resistance_n_per_pct_kmh=0.036)
+    drv.road_mass_kg = 80.0
+    levels = []
+    for i in range(240):   # 60 s à 4 trames par seconde
+        t = 100.0 + i * 0.25
+        now[0] = t
+        phase = (t * 40 / 60.0) % 1.0
+        kmh = 19.0 + 3.0 * (abs(2.0 * phase - 1.0) * 2.0 - 1.0)
+        drv._on_ibd(None, _ibd(kmh, 40, 100))
+        levels.append(drv._road_level(2.0))
+    tail = levels[80:]
+    assert (max(tail) - min(tail)) / (sum(tail) / len(tail)) < 0.12

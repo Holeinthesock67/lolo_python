@@ -14,9 +14,12 @@ extends RefCounted
 ##   - `result` pendant RESULT_S après un `segment_result` (répété 3 fois par le core : doublons ignorés
 ##     par segment et temps) : temps, « Record ! » et ancien record, place, points ;
 ##   - `""` (bloc caché) sinon ;
-## - powerup : bloc caché sans champ `powerup` (ERG, option « Bonus » coupée) ; « Z : Aéro » pour le
+## - powerup : bloc caché sans champ `powerup` (ERG, option « Bonus » coupée) ; « Z : Casque aéro » pour le
 ##   bonus en réserve ; bonus actif, secondes restantes et `fraction` de la barre de temps (durée prise
-##   au premier `remaining_s` vu pour ce bonus).
+##   au premier `remaining_s` vu pour ce bonus). Lot TT6 (maquettes validées le 8 novembre) : `held_kind`,
+##   `active_kind` et `refused_kind` nomment l'icône (ui_icons.gd `powerup_shape`) ; pendant les 2 s d'un
+##   refus (`refused` du contrat 1.13), `refused_text` (« Enclume refusée ») et `refused_detail` (la raison,
+##   « pas de descente ») remplacent la ligne de la réserve, qui revient ensuite.
 ## Textes en français, nombres au format français.
 
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
@@ -27,8 +30,14 @@ const MINUS := "−"
 # Contrat 1.13 (lot TT1) : bonus tactiques ; `light`, ancien nom de `feather`, gardé une révision.
 # Valeur inconnue (contrat plus récent) : nom neutre « Bonus » (POWERUP_UNKNOWN).
 const POWERUP_NAMES := {"feather": "Plume", "light": "Légèreté", "anvil": "Enclume", "draft_plus": "Aspiration +",
-	"aero": "Aéro", "power": "Puissance", "breakaway": "Échappée", "roller": "Rouleau"}
+	"aero": "Casque aéro", "power": "Puissance", "breakaway": "Échappée", "roller": "Rouleau"}
 const POWERUP_UNKNOWN := "Bonus"
+# Noms féminins (« refusée ») ; les autres, et le nom neutre, au masculin.
+const POWERUP_FEMININE := ["feather", "light", "anvil", "draft_plus", "power", "breakaway"]
+# Raisons d'un refus (contrat 1.13) ; une raison inconnue n'affiche que « gardé en réserve ».
+const REFUSAL_REASONS := {"no_bots": "il faut des bots", "no_descent": "pas de descente",
+	"near_finish": "trop près de l'arrivée", "no_gravel": "pas de chemin devant", "erg": "coupé en ERG"}
+const KEPT := "gardé en réserve"
 const KIND_NAMES := {"climb": "Montée", "sprint": "Sprint"}
 
 var names: Dictionary = {}          # id -> {name, type, category}
@@ -137,21 +146,40 @@ func _segment_view(state: Dictionary, now_s: float) -> Dictionary:
 
 
 func _powerup_view(state: Dictionary) -> Dictionary:
+	var out := {"visible": false, "held_text": "", "active_text": "", "fraction": 0.0, "held_kind": "",
+		"active_kind": "", "refused_kind": "", "refused_text": "", "refused_detail": ""}
 	var pu = state.get("powerup")
 	if typeof(pu) != TYPE_DICTIONARY:
 		_active_kind = ""
-		return {"visible": false, "held_text": "", "active_text": "", "fraction": 0.0}
+		return out
 	var held = pu.get("held")
 	var active = pu.get("active")
-	var held_text := "Z : " + str(POWERUP_NAMES.get(str(held), POWERUP_UNKNOWN)) if held != null else ""
+	if held != null:
+		out["held_kind"] = str(held)
+		out["held_text"] = "Z : " + power_up_name(str(held))
+	var refused = pu.get("refused")
+	if typeof(refused) == TYPE_DICTIONARY:
+		var kind := str(refused.get("kind", ""))
+		out["refused_kind"] = kind
+		out["refused_text"] = power_up_name(kind) + (" refusée" if kind in POWERUP_FEMININE else " refusé")
+		var reason := str(REFUSAL_REASONS.get(str(refused.get("reason", "")), ""))
+		# Raison seule (la ligne de 300 unités ne tient pas « … · gardé en réserve » pour « trop près de
+		# l'arrivée ») : la réserve revient sur la même ligne au bout des 2 s ; sans raison connue, « gardé en réserve ».
+		out["refused_detail"] = reason if reason != "" else KEPT
+	out["visible"] = held != null or active != null or out["refused_kind"] != ""
 	if active == null:
 		_active_kind = ""
-		return {"visible": held != null, "held_text": held_text, "active_text": "", "fraction": 0.0}
+		return out
 	var remaining := maxf(float(pu.get("remaining_s", 0.0)), 0.0)
 	if str(active) != _active_kind:
 		_active_kind = str(active)
 		_active_total_s = maxf(remaining, 0.1)
 	_active_total_s = maxf(_active_total_s, remaining)
-	return {"visible": true, "held_text": held_text,
-		"active_text": "%s · %d s" % [POWERUP_NAMES.get(str(active), POWERUP_UNKNOWN), int(ceil(remaining))],
-		"fraction": clampf(remaining / _active_total_s, 0.0, 1.0)}
+	out["active_kind"] = str(active)
+	out["active_text"] = "%s · %d s" % [power_up_name(str(active)), int(ceil(remaining))]
+	out["fraction"] = clampf(remaining / _active_total_s, 0.0, 1.0)
+	return out
+
+
+static func power_up_name(kind: String) -> String:
+	return str(POWERUP_NAMES.get(kind, POWERUP_UNKNOWN))

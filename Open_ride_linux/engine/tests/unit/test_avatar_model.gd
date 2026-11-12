@@ -190,6 +190,17 @@ func _test_view() -> void:
 	_check(turned > 0.0, "les roues tournent avec la vitesse, le bas vers l'arrière")
 	var number: Label3D = v._number
 	_check(number != null and number.visible and number.text == "27", "numéro 27 sur le dos")
+	# Échappée (lot TT6) : translucide sans ombre, puis opaque de nouveau
+	v.set_breakaway(true)
+	var mesh: MeshInstance3D = v._list("torso")[0]
+	var mat: StandardMaterial3D = mesh.material_override
+	_check(v.test_info()["breakaway"] and mat.albedo_color.a < 0.5 and mat.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED
+		and mesh.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "Échappée : avatar translucide, sans ombre")
+	v.set_breakaway(false)
+	mesh = v._list("torso")[0]
+	mat = mesh.material_override
+	_check(not v.test_info()["breakaway"] and is_equal_approx(mat.albedo_color.a, 1.0)
+		and mesh.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON, "fin de l'Échappée : avatar opaque, ombre rendue")
 	v.set_lod(2)
 	var low: Dictionary = v.test_info()
 	_check(low["lod"] == 2 and low["triangles"] <= 300, "niveau 2 : %d triangles" % low["triangles"])

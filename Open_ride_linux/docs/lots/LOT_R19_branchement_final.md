@@ -67,10 +67,10 @@ Série R (version 2.0). Demande du propriétaire du 30 octobre : « terminer le 
 
 - Essais du propriétaire : R0 et R14 sur le vélo, contrôle visuel R10–R13, accord sur la charte R17,
   mesures sur la GTX 1060, écoute des sons R18.
-- Purge et coffre sans déclencheur de son.
+- Purge et coffre sans déclencheur de son : fait par le lot R21 (10 novembre).
 - Banc visuel dans le cloud en `high` : les deux premières captures sortent sombres (OpenGL logiciel), comme
   sur `main` ; à confirmer sur la GTX 1060.
-- Achat d'une vie depuis le Garage : `coins.buy_life` existe, aucune commande ne l'appelle.
+- Achat d'une vie : fait par le lot R21 (commande `buy_life`, depuis l'écran de départ du mode).
 
 ## Livraison
 

@@ -8,7 +8,8 @@ render_mode cull_disabled, diffuse_lambert, specular_disabled, shadows_disabled;
 // dessin tiré de la graine de l'instance. Au-delà de 1,5 km un arbre fait quelques pixels : un atlas d'images
 // capturées sous plusieurs angles n'apporterait rien de visible, et une silhouette calculée ne « tourne » pas.
 // Données d'instance (forest_impostors.gd) : transformation = position du pied, largeur (x) et hauteur (y) du
-// bouquet en mètres ; COLOR.rgb = couleur sRGB du houppier ; INSTANCE_CUSTOM = (graine, forme 0 rond / 1 cône,
+// bouquet en mètres ; COLOR.rgb = couleur sRGB du houppier ; INSTANCE_CUSTOM = (graine, forme 0 rond / 1 cône
+// (+ 2 : espèce caduque, saisons du lot P18),
 // pied de la couronne en part de la hauteur, demi-largeur d'un houppier en part de la largeur).
 // Affiché de begin_m à end_m de la caméra (distance horizontale du pied) : en deçà, les arbres proches de
 // tree_renderer.gd ; l'entrée se fait sur fade_m, chaque bouquet à sa distance (tirage par la graine), en
@@ -17,12 +18,18 @@ render_mode cull_disabled, diffuse_lambert, specular_disabled, shadows_disabled;
 
 #include "res://shaders/couleur_srgb.gdshaderinc"
 
+// Saisons (lot P18, season_model.gd) : valeurs par défaut de project.godot = été, rendu inchangé.
+global uniform vec3 season_leaf_tint;
+global uniform float season_autumn;
+global uniform float season_bare;
+
 uniform float begin_m = 1500.0;
 uniform float fade_m = 250.0;
 uniform float end_m = 6000.0;
 
 varying float v_seed;
 varying float v_shape;
+varying float v_deciduous;
 varying float v_crown_base;
 varying float v_crown_half;
 varying float v_aspect;   // largeur / hauteur du bouquet
@@ -31,7 +38,8 @@ void vertex() {
 	vec3 origin = MODEL_MATRIX[3].xyz;
 	float d = distance(origin.xz, INV_VIEW_MATRIX[3].xz);
 	v_seed = INSTANCE_CUSTOM.x;
-	v_shape = INSTANCE_CUSTOM.y;
+	v_shape = mod(INSTANCE_CUSTOM.y, 2.0);
+	v_deciduous = step(1.5, INSTANCE_CUSTOM.y);
 	v_crown_base = INSTANCE_CUSTOM.z;
 	v_crown_half = INSTANCE_CUSTOM.w;
 	float sx = length(MODEL_MATRIX[0].xyz);
@@ -117,6 +125,14 @@ void fragment() {
 		NORMAL = normalize(mix(n, up_view, 0.35));
 		// Dessous et intérieur plus sombres, comme le feuillage de tree_sway.gdshader (moyenne proche de 0,92)
 		col = COLOR.rgb * tone * mix(0.6, 1.05, smoothstep(0.0, 1.0, p.y));
+		if (v_deciduous > 0.5) {
+			// Automne : palette du bouquet (même trois teintes que tree_sway.gdshader) ; hiver : branches nues
+			float pick = fract(v_seed * 5.37);
+			vec3 hue = pick < 0.4 ? vec3(0.95, 0.74, 0.18) : (pick < 0.75 ? vec3(0.92, 0.45, 0.12) : vec3(0.62, 0.24, 0.10));
+			float lum = dot(col, vec3(0.3, 0.59, 0.11));
+			col = mix(col, hue * lum * 2.4, season_autumn * (0.7 + 0.3 * pick)) * season_leaf_tint;
+			col = mix(col, vec3(0.34, 0.30, 0.27) * tone, season_bare);
+		}
 		through = v_shape > 0.5 ? 0.25 : 0.5;
 	} else if (trunk) {
 		col = vec3(0.30, 0.22, 0.15);

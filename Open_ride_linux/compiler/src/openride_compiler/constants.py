@@ -12,7 +12,7 @@ from pathlib import Path
 FORMAT_NAME = "openride-world"
 DS_M = 10.0
 ROUTE_FIELDS = ("lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg")
-SURFACES = ("paved", "compacted", "gravel", "dirt")   # colonne facultative surface (1.6, lot U20)
+SURFACES = ("paved", "compacted", "gravel", "dirt", "wood")   # colonne facultative surface (1.6, lot U20 ; wood : 1.7, lot VD1)
 ROUTES_DIR = Path.home() / ".local" / "share" / "openride" / "routes"
 
 FORMAT_VERSION = "1.6"   # 1.6 : colonne surface de la route (lot U20) ; 1.5 : prés, champs et routes voisines (lot P22) ; 1.4 : monde vivant (W1)
@@ -90,3 +90,16 @@ WATER_WIDTH_DEFAULT_M = 2.0
 WATER_WIDTH_RIVER_M = 6.0
 WATER_WIDTH_STREAM_M = 2.0
 WATER_WIDTH_CANAL_M = 8.0
+
+# Côte, mer et plages (format §8 et §8 quinquies, lot U3).
+COAST_VERSION = "1.0"
+COAST_SHORES = ("sand", "shingle", "rock", "cliff")
+COAST_BEACH_KINDS = ("sand", "shingle")
+SEA_LEVEL_Y = 0.0                         # niveau de la mer (contrat §8 : `level_y` = 0)
+COAST_CLIFF_DIST_M = 30.0                 # `natural=cliff` à moins de 30 m : rivage `cliff`
+COAST_CLIFF_SLOPE_DEG = 45.0              # ou pente du MNT au-dessus de 45° côté terre
+COAST_SLOPE_OFFSETS_M = (0.0, 10.0, 20.0, 30.0)   # points du MNT pris vers la terre pour la pente
+COAST_BEACH_DIST_M = 30.0                 # plage à moins de 30 m : rivage `sand` ou `shingle`, plage qui touche la côte
+COAST_SHINGLE_SURFACES = ("pebblestone", "shingle", "gravel")
+COAST_SAMPLE_STEP_M = 5.0                 # pas des points de comparaison (plages, falaises)
+COAST_LINE_STEP_M = 25.0                  # pas des points des lignes de côte écrites

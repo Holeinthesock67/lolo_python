@@ -14,7 +14,9 @@ extends CanvasLayer
 ##   Le coin supérieur droit sous le panneau de droite reste libre (blocs segment et bonus, série T).
 ## - Lot T9 : blocs « segment » (approche, chrono et écart au record, résultat) et « bonus » (réserve,
 ##   bonus actif et barre de temps) empilés sous le panneau de droite (`update_segment`, sortie de
-##   segment_hud_model.gd) ; cachés sans champ `segment` ni `powerup`. Le bloc segment s'arrête au-dessus
+##   segment_hud_model.gd) ; cachés sans champ `segment` ni `powerup`. Lot TT6 : icône de chaque bonus
+##   (ui_icons.gd), refus de 2 s en orange barré avec sa raison, pastille d'abri violette pendant l'Aspiration +
+##   (`set_draft_boost`). Le bloc segment s'arrête au-dessus
 ##   du bandeau ERG en 720p ; le bloc bonus n'existe pas en ERG.
 ## - Lot P17 : « Abri 30 % » derrière un bot (`draft_text` de la même sortie), pastille bleue sous
 ##   l'indicateur du vent (à sa place quand il n'y a pas de vent) ; cachée sans abri.
@@ -33,6 +35,7 @@ extends CanvasLayer
 ##   survivant (survivor/survivor_view.gd).
 
 const UiTheme := preload("res://scripts/ui_theme.gd")
+const UiIcons := preload("res://scripts/ui_icons.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotHudModel := preload("res://scripts/bot_hud_model.gd")
@@ -56,6 +59,11 @@ const DRAFT_W_GAP := 4.0
 const WIND_BAR_OFF := UiTheme.WIND_BAR_OFF
 const SEGMENT_TONES := {"good": UiTheme.SEGMENT_GOOD, "bad": UiTheme.SEGMENT_BAD, "": UiTheme.SEGMENT_NEUTRAL}
 const BONUS_COLOR := UiTheme.BONUS   # violet des arches de bonus (lot T8)
+## Bloc bonus (lot TT6, maquettes validées le 8 novembre) : icône blanche de la réserve, violette du bonus
+## actif, orange barrée d'un refus ; côtés des icônes et retrait des textes qui les suivent.
+const BONUS_HELD_ICON := 30.0
+const BONUS_ACTIVE_ICON := 24.0
+const BONUS_ICON_GAP := 8.0
 const BLOCK_GAP := 8.0
 const BLOCK_PAD := 4.0
 ## Profil d'altitude (SIM seulement : caché en ERG, où la pente n'agit pas sur le trainer) : depuis le
@@ -171,10 +179,18 @@ var panel_bonus: Panel
 var bonus_held: Label
 var bonus_active: Label
 var bonus_bar: Control
+var bonus_detail: Label          # raison d'un refus (lot TT6)
+var bonus_held_icon: Control
+var bonus_active_icon: Control
 var _bonus_fraction := 0.0
+var _bonus_icons := {"held": ["", UiTheme.TEXT, false], "active": ["", BONUS_COLOR, false]}   # forme, couleur, barrée
+## Pastille et jauge d'abri en violet pendant l'Aspiration + (lot TT6).
+var _draft_boost := false
+var _bonus_tint: Color           # teinte d'origine de la ligne du haut, rendue après un refus
 
 # Données du profil d'altitude en cache
 var _last_profile_s := -99999.0
+var _last_profile_dir := 1
 var _last_profile_time_s := 0.0
 var _profile_data: Dictionary = {}
 var _route = null
@@ -274,6 +290,11 @@ func _build_ui() -> void:
 	alt_max_label.add_theme_constant_override("outline_size", 6)
 	alt_max_label.position = Vector2(5.0, 1.0)
 	profile_panel.add_child(alt_max_label)
+
+
+## Aspiration + active (lot TT6) : la pastille d'abri passe au violet des bonus le temps du bonus.
+func set_draft_boost(on: bool) -> void:
+	_draft_boost = on
 
 
 ## Indicateur du vent (Lot P16), sous le panneau de gauche (même largeur), caché tant qu'il n'y a
@@ -568,14 +589,47 @@ func _build_segment_blocks() -> void:
 	_shrink_block(panel_bonus, true)
 	panel_bonus.name = "BonusPanel"
 	panel_bonus.visible = false
-	bonus_held = _block_label(panel_bonus, "BonusHeld", Vector2(10.0, 4.0), 26)
-	bonus_active = _block_label(panel_bonus, "BonusActive", Vector2(10.0, 36.0), 20)
+	bonus_held = _block_label(panel_bonus, "BonusHeld", Vector2(10.0 + BONUS_HELD_ICON + BONUS_ICON_GAP, 4.0), 26)
+	bonus_held.size.x = 280.0 - BONUS_HELD_ICON - BONUS_ICON_GAP
+	_bonus_tint = bonus_held.modulate
+	bonus_detail = _block_label(panel_bonus, "BonusDetail", Vector2(10.0, 36.0), 18)
+	bonus_detail.modulate = UiTheme.WARN
+	bonus_active = _block_label(panel_bonus, "BonusActive", Vector2(10.0 + BONUS_ACTIVE_ICON + BONUS_ICON_GAP, 36.0), 22)
+	bonus_active.size.x = 280.0 - BONUS_ACTIVE_ICON - BONUS_ICON_GAP
+	bonus_held_icon = _bonus_icon("BonusHeldIcon", BONUS_HELD_ICON, "held")
+	bonus_active_icon = _bonus_icon("BonusActiveIcon", BONUS_ACTIVE_ICON, "active")
 	bonus_bar = Control.new()
 	bonus_bar.name = "BonusBar"
 	bonus_bar.position = Vector2(10.0, 62.0)
 	bonus_bar.size = Vector2(280.0, 6.0)
 	bonus_bar.draw.connect(_on_bonus_bar_draw)
 	panel_bonus.add_child(bonus_bar)
+
+
+func _bonus_icon(node_name: String, side: float, slot: String) -> Control:
+	var c := Control.new()
+	c.name = node_name
+	c.size = Vector2(side, side)
+	c.position = Vector2(10.0, 0.0)
+	c.draw.connect(func() -> void:
+		var spec: Array = _bonus_icons[slot]
+		if str(spec[0]) == "":
+			return
+		var rect := Rect2(Vector2.ZERO, c.size)
+		UiIcons.draw(c, str(spec[0]), rect, spec[1])
+		if bool(spec[2]):
+			UiIcons.draw(c, "strike", rect, spec[1]))
+	panel_bonus.add_child(c)
+	return c
+
+
+## Icône d'une ligne du bloc bonus ; ne redessine que si la forme, la couleur ou le trait changent.
+func _set_bonus_icon(slot: String, icon: Control, shape: String, color: Color, strike: bool) -> void:
+	var spec := [shape, color, strike]
+	icon.visible = shape != ""
+	if spec != _bonus_icons[slot]:
+		_bonus_icons[slot] = spec
+		icon.queue_redraw()
 
 
 func _block_label(parent: Control, node_name: String, pos: Vector2, font_size: int) -> Label:
@@ -606,18 +660,32 @@ func update_segment(view: Dictionary) -> void:
 	var pu: Dictionary = view.get("powerup", {})
 	panel_bonus.visible = bool(pu.get("visible", false))
 	if panel_bonus.visible:
+		# Ligne du haut : le refus (2 s) prend la place de la réserve ; ligne du bas : le bonus actif.
+		var refused := str(pu.get("refused_text", ""))
 		var held := str(pu.get("held_text", ""))
 		var active := str(pu.get("active_text", ""))
-		bonus_held.text = held if held != "" else active
-		bonus_active.text = active if held != "" else ""
-		bonus_active.visible = bonus_active.text != ""
+		var top_kind := str(pu.get("refused_kind", "")) if refused != "" else str(pu.get("held_kind", ""))
+		bonus_held.text = refused if refused != "" else held
+		bonus_held.visible = bonus_held.text != ""
+		bonus_held.modulate = UiTheme.WARN if refused != "" else _bonus_tint
+		_set_bonus_icon("held", bonus_held_icon, UiIcons.powerup_shape(top_kind) if bonus_held.visible else "",
+			UiTheme.WARN if refused != "" else UiTheme.TEXT, refused != "")
+		bonus_detail.text = str(pu.get("refused_detail", "")) if refused != "" else ""
+		bonus_detail.visible = bonus_detail.text != ""
+		bonus_active.text = active
+		bonus_active.visible = active != ""
+		_set_bonus_icon("active", bonus_active_icon, UiIcons.powerup_shape(str(pu.get("active_kind", ""))) if active != "" else "",
+			BONUS_COLOR, false)
 		var fraction := float(pu.get("fraction", 0.0)) if active != "" else 0.0
 		bonus_bar.visible = active != ""
 		if absf(fraction - _bonus_fraction) > 0.005:
 			_bonus_fraction = fraction
 			bonus_bar.queue_redraw()
 	_fit_block(panel_segment, [[segment_title, 20.0, 32.0], [segment_main, 40.0, 46.0], [segment_detail, 28.0, 28.0]])
-	_fit_block(panel_bonus, [[bonus_held, 32.0, 36.0], [bonus_active, 26.0, 28.0], [bonus_bar, 8.0, 10.0]])
+	_fit_block(panel_bonus, [[bonus_held, 32.0, 36.0], [bonus_detail, 24.0, 26.0], [bonus_active, 30.0, 32.0],
+		[bonus_bar, 8.0, 10.0]])
+	bonus_held_icon.position.y = bonus_held.position.y + (bonus_held.size.y - BONUS_HELD_ICON) / 2.0
+	bonus_active_icon.position.y = bonus_active.position.y + (bonus_active.size.y - BONUS_ACTIVE_ICON) / 2.0
 	_layout_right_column()
 
 
@@ -654,6 +722,9 @@ func update_wind(view: Dictionary, watts := true) -> void:
 	draft_w_label.visible = draft != "" and draft_w != ""
 	if draft != "":
 		draft_label.text = draft
+		var pill := draft_label.get_theme_stylebox("normal") as StyleBoxFlat
+		if pill != null:
+			pill.bg_color = BONUS_COLOR if _draft_boost else DRAFT_COLOR
 		draft_w_label.text = draft_w
 		_place_draft(panel_wind.position.y + (panel_wind.size.y * BLOCK_SCALE + DRAFT_GAP if shown else 0.0))
 	if not shown:
@@ -786,14 +857,20 @@ func _zone_color(zone: int) -> Color:
 
 
 ## Met à jour les valeurs et le profil d'altitude.
-func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = null, s: float = 0.0) -> void:
+## `dir` : sens de la marche (lot N17) ; à rebours, le profil et la prochaine montée regardent vers le départ.
+func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = null, s: float = 0.0, dir := 1) -> void:
 	_route = route
 	_erg_active = state.get("erg") != null
+	# Épreuve de piste (lot VD9, maquettes VD8) : bandeau de l'épreuve à la place de la ligne d'état, bloc des
+	# tours à la place du profil d'altitude (piste plate) ; la séance libre en ERG garde le bandeau ERG.
+	var on_track: bool = state.get("track") != null
 	if profile_panel != null:
-		profile_panel.visible = not _erg_active
+		profile_panel.visible = not _erg_active and not on_track
+	if panel_center != null:
+		panel_center.visible = _erg_active or not on_track
 	var now_s := Time.get_ticks_usec() / 1e6
 	vm.on_state(state, now_s)
-	var lines := HudViewModel.session_lines(state, erg_eval, ftp_w, hr_max_bpm)
+	var lines := HudViewModel.session_lines(state, erg_eval, ftp_w, hr_max_bpm, vm.ridden_m() if state.has("s") else NAN)
 
 	if power_val != null:
 		_set_metric(power_val, lines["power_val"])
@@ -839,7 +916,7 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 
 	# Prochaine montée (rafraîchie avec le profil)
 	if route != null and climb_label != null:
-		var climb: Dictionary = vm.next_climb(route, s)
+		var climb: Dictionary = vm.next_climb(route, s, 300.0, 3.0, dir)
 		if climb.is_empty():
 			climb_label.text = ""
 		elif climb.get("in_progress", false):
@@ -854,10 +931,12 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 
 	# Profil d'altitude (au plus 5 fois par seconde ou si s a avancé d'une colonne ~41 m)
 	var col_step := 5000.0 / 120.0
-	if route != null and (absf(s - _last_profile_s) >= col_step or now_s - _last_profile_time_s >= 0.20):
+	if route != null and (absf(s - _last_profile_s) >= col_step or now_s - _last_profile_time_s >= 0.20 \
+			or dir != _last_profile_dir):
 		_last_profile_s = s
+		_last_profile_dir = dir
 		_last_profile_time_s = now_s
-		_profile_data = vm.profile(route, s)
+		_profile_data = vm.profile(route, s, 500.0, 4500.0, 120, dir)
 		if alt_min_label != null and alt_max_label != null:
 			alt_min_label.text = "%.0f m" % float(_profile_data.get("alt_min", 0.0))
 			alt_max_label.text = "%.0f m" % float(_profile_data.get("alt_max", 0.0))
@@ -898,7 +977,7 @@ func _on_profile_draw() -> void:
 	var from_m: float = float(_profile_data.get("from_m", 0.0))
 	var to_m: float = float(_profile_data.get("to_m", 0.0))
 	if to_m > from_m:
-		for mark in BotsViewModel.profile_marks(_bots_view, from_m, to_m):
+		for mark in BotsViewModel.profile_marks(_bots_view, from_m, to_m, _last_profile_dir):
 			var idx := clampi(int(round((float(mark["rel_m"]) - from_m) / (to_m - from_m) * float(cols - 1))), 0, cols - 1)
 			var bx := x0 + (idx + 0.5) * col_w
 			var by := h - clampf((float(alts[idx]) - alt_min) / alt_range, 0.05, 0.95) * h

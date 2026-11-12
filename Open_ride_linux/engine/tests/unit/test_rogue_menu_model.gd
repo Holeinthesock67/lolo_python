@@ -77,5 +77,22 @@ func _run() -> void:
 	first.configure({"w_prime_j": 20000.0, "w_prime_estimate_j": null, "cp_w": 220.0, "last": null})
 	_check(first.needs_warning() and first.objective() == "endurance", "aucune run : avertissement et choix par défaut")
 
+	# Vies (lot R21) : achat proposé si la réserve n'est pas pleine et que les pièces suffisent
+	var lv = RogueMenu.new()
+	lv.configure({"w_prime_j": 20000.0, "lives": 1, "life_price": 50, "max_lives": 3})
+	lv.on_progression({"coins": 120, "lives": 1})
+	var life: Dictionary = lv.items().filter(func(it): return it["id"] == "life")[0]
+	_check(life["label"] == "Vies : 1 / 3" and life["enabled"], "vies affichées, achat possible")
+	_check(life["detail"] == "Acheter une vie pour 50 pièces ? Solde après : 70", "confirmation de l'achat")
+	lv.on_progression({"coins": 70, "lives": 2})
+	_check(lv.lives == 2 and lv.coins == 70, "réponse progression : vies et pièces à jour")
+	lv.on_progression({"coins": 20, "lives": 2})
+	_check(not lv.can_buy_life() and lv.lives_detail() == "Une vie coûte 50 pièces, solde 20", "pas assez de pièces")
+	lv.on_progression({"coins": 500, "lives": 3})
+	_check(not lv.can_buy_life() and lv.lives_detail() == "Réserve pleine", "réserve pleine")
+	var old = RogueMenu.new()
+	old.configure({"w_prime_j": 20000.0, "lives": 1})
+	_check(not "life" in _ids(old.items()), "core sans prix de vie : pas d'élément Vies")
+
 	print("test_rogue_menu_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

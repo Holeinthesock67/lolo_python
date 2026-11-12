@@ -39,6 +39,8 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any, NamedTuple
 
+from .wind import apparent_yaw_deg
+
 ALPHA_MAX = 0.40          # roue dans la roue
 GAP_MIN_M = 0.3
 DECAY_M = 4.0
@@ -207,7 +209,7 @@ def crosswind_residual(rider_v: float, head_mps: float, cross_mps: float) -> flo
     1 − `CROSSWIND_RESIDUAL_LOSS` (0,8) à 45° de lacet et au-delà."""
     if cross_mps == 0.0:
         return 1.0
-    yaw = math.degrees(math.atan2(abs(cross_mps), max(rider_v + head_mps, 1e-6)))
+    yaw = apparent_yaw_deg(rider_v, head_mps, cross_mps)
     return 1.0 - CROSSWIND_RESIDUAL_LOSS * min(yaw / CROSSWIND_FULL_DEG, 1.0)
 
 

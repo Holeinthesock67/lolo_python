@@ -2,7 +2,9 @@
   "description": "Clavier seul : synonymes de l'appui long (Entrée, Maj+A, Page haut, Page bas), Échap = Y, = et pavé + valent +, flèches gauche et droite, appui ambigu de 0,7 s ignoré avec explication, flèches haut et bas sans effet dans un menu.",
   "voies": ["clavier"],
   "etapes": [
-    {"ecran": "home", "focus": "world", "delai": 15},
+    {"ecran": "home", "elements": ["coach"], "delai": 20},
+    {"note": "la ligne « Séance conseillée » (lot CO5) arrive avec la réponse du core : focus posé sur « Parcours » pour partir du même point", "aller": "world"},
+    {"ecran": "home", "focus": "world"},
     {"touche": "Equal"},
     {"ecran": "home", "focus": "ride"},
     {"touche": "Kp Add"},

@@ -8,6 +8,7 @@ extends SceneTree
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
+const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 
 var _failures := 0
 var _checked := 0
@@ -87,5 +88,44 @@ func _initialize() -> void:
 		TerrainTiles.nearest_route_alt(demo, demo.x[j] + 8.0, demo.z[j] + 5.0)
 	var per_call_ms := (Time.get_ticks_usec() - t0) / 1000.0 / calls
 	_check(PerfBudget.check("route_nearest_alt", per_call_ms), "coût d'un appel près de la route : %.4f ms" % per_call_ms)
+	_test_far_points_cost(demo)
+	_test_height_fn_far_tile(demo)
 	print("test_route_nearest : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
+
+
+## Points à 1 à 3 km de la route (champs des tracteurs, essai r790d : 20 s par tronçon côtier) : les cases
+## occupées seules sont lues au-delà de quelques anneaux, coût borné comme près de la route.
+func _test_far_points_cost(route) -> void:
+	var calls := 600
+	var t0 := Time.get_ticks_usec()
+	for i in range(calls):
+		var j: int = (i * 37) % route.n
+		var a := TAU * float(i) / float(calls)
+		var d := 1000.0 + 2000.0 * float(i % 7) / 6.0
+		TerrainTiles.nearest_route_alt(route, route.x[j] + d * cos(a), route.z[j] + d * sin(a))
+	var per_call_ms := (Time.get_ticks_usec() - t0) / 1000.0 / calls
+	_check(PerfBudget.check("route_nearest_far", per_call_ms), "coût d'un appel à 1-3 km de la route : %.4f ms" % per_call_ms)
+
+
+## terrain_height_fn hors des tuiles proches : tuile lointaine abaissée comme à l'affichage, puis route.
+func _test_height_fn_far_tile(route) -> void:
+	var wd := "user://test_route_nearest.world"
+	var far_dir := wd.path_join("terrain").path_join("far")
+	DirAccess.make_dir_recursive_absolute(far_dir)
+	var hs := PackedFloat32Array()
+	hs.resize(TerrainTiles.SAMPLES * TerrainTiles.SAMPLES)
+	hs.fill(123.0)
+	hs[0] = NAN   # coin (0, 0) inconnu : repli sur la route
+	var f := FileAccess.open(TerrainTiles.tile_path(wd, "far", 0, 0), FileAccess.WRITE)
+	f.store_buffer(hs.to_byte_array())
+	f.close()
+	var h := OsmStreamer.terrain_height_fn(wd, route)
+	var far_dy: float = TerrainTiles.LEVELS["far"]["y_offset"]
+	_check(is_equal_approx(float(h.call(2500.0, 2500.0)), 123.0 + far_dy),
+		"hors des tuiles proches : hauteur de la tuile lointaine (%.2f)" % float(h.call(2500.0, 2500.0)))
+	_check(is_equal_approx(float(h.call(1.0, 1.0)), TerrainTiles.nearest_route_alt(route, 1.0, 1.0)),
+		"lointain inconnu (NaN) : altitude de la route la plus proche")
+	_check(is_equal_approx(float(h.call(-2500.0, -2500.0)), TerrainTiles.nearest_route_alt(route, -2500.0, -2500.0)),
+		"sans tuile : altitude de la route la plus proche")
+	DirAccess.remove_absolute(TerrainTiles.tile_path(wd, "far", 0, 0))

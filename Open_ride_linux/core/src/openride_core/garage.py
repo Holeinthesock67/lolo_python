@@ -134,6 +134,12 @@ class ProgressionService:
             return base
         return equipment_mod.apply_equipment(base, self.profile.equipped, self.catalogue)
 
+    def crosswind_cda_ratio(self, yaw_deg: float) -> float:
+        """Facteur du CdA équipé au lacet du vent apparent (lot P34) ; 1 si la progression est coupée."""
+        if not self.enabled:
+            return 1.0
+        return equipment_mod.crosswind_cda_ratio(self.profile.equipped, self.catalogue, yaw_deg)
+
     def journal_header(self, equipped: bool = True) -> dict[str, Any] | None:
         """`loadout` et `ftp_w` pour l'en-tête du journal ; `None` si la progression est coupée.
 
@@ -265,6 +271,17 @@ class ProgressionService:
             code = "item_locked" if exc.code in ("item_unknown", "already_owned", "item_locked") else exc.code
             raise GarageError(code, str(exc)) from exc
 
+    def buy_life(self) -> None:
+        """Achète une vie du Cyber-Rogue avec les pièces (lot R21) : `item_locked` au maximum, `not_enough_coins`."""
+        try:
+            self._mutate(lambda p: coins_mod.buy_life(self.progress, p, self.ct))
+        except coins_mod.CoinsError as exc:
+            raise GarageError(exc.code, str(exc)) from exc
+
+    def life_offer(self) -> dict[str, int]:
+        """Prix d'une vie et réserve maximale (`hello_ack.config.rogue`, lot R21)."""
+        return {"life_price": self.ct.life_price, "max_lives": self.ct.max_lives}
+
     def set_avatar(self, avatar: Any) -> None:
         try:
             checked = check_avatar({k: v for k, v in avatar.items()
@@ -290,7 +307,8 @@ class ProgressionService:
                       for c in new.challenges if c.id not in done_before] if eligible else []
         gain_s = None
         if records is not None and base is not None:
-            gain_s = equipment_mod.equipment_time_gain(records, self.physics_params(base), base)
+            gain_s = equipment_mod.equipment_time_gain(records, self.physics_params(base), base,
+                                                       cda_ratio=self.crosswind_cda_ratio)
         by_session = coins_mod.coins_by_session(new, self.ct)
         return {
             "type": "xp_result", "v": 1, "eligible": eligible,

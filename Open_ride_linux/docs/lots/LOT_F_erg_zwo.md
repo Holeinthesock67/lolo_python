@@ -194,4 +194,4 @@ Livré le 23 octobre 2026 (PR #6, branche `lot-f-erg-zwo`), recetté et fusionn�
 - `mock_driver.py` : `set_sim_grade` quitte le mode ERG, comme le trainer réel (nécessaire aux tests).
 - Un `sportType` autre que `bike` est refusé ; `author`, `sportType` et `tags` sont notés au niveau DEBUG.
 
-**Reste à faire sur le matériel :** critère 11, un `.zwo` standard exécuté en entier sur le HomeTrainer.
+**Reste à faire sur le matériel :** critère 11, un `.zwo` standard exécuté en entier sur le HomeTrainer : reporté en 5.0 le 1er novembre, puis **abandonné le 12 novembre** (décision du propriétaire, avec la séance `.zwo` complète). Le lecteur `.zwo` et le contrôleur ERG restent ; seul l'import depuis le menu (lot N16) est retiré.

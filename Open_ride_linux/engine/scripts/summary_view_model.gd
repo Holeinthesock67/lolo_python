@@ -7,6 +7,9 @@ extends RefCounted
 ## Pas de class_name : charger par preload("res://scripts/summary_view_model.gd").
 
 const SurvivorHudModel := preload("res://scripts/survivor/survivor_hud_model.gd")
+const GpHudModel := preload("res://scripts/grandprix/gp_hud_model.gd")
+const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
+const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
 
 const KEY_DURATION := "duration_s"
 const KEY_DISTANCE := "distance_m"
@@ -22,6 +25,17 @@ const KEY_BLOCKS := "blocks"
 const KEY_FIT_PATH := "fit_path"
 const KEY_DRAFT_TIME := "draft_time_s"   # lot AS5 : temps dans la roue, énergie économisée à l'abri
 const KEY_DRAFT_KJ := "draft_kj"
+const KEY_POWER_PROFILE := "power_profile"   # lot N20 (révision 1.10) : courbe réduite du graphique du bilan
+const KEY_FTP_TEST := "ftp_test"
+
+## Avertissements du test de FTP (`summary.ftp_test.warnings`), comme `openride-core ftp-test` ; repris par
+## l'Historique et le menu.
+const FTP_WARNINGS := {"too_short": "test trop court", "erratic_cadence": "cadence erratique",
+	"trainer_dropout": "coupure du trainer pendant l'effort", "paused": "pause pendant l'effort"}
+## Tuiles du bilan en tuiles (lot N20) : six au plus, dans cet ordre.
+const MAX_TILES := 6
+## Records battus listés au plus dans le bilan (les suivants : « … et N autres records »).
+const MAX_RECORD_LINES := 3
 
 const COLOR_GREEN := "vert"
 const COLOR_ORANGE := "orange"
@@ -159,7 +173,155 @@ func lines(summary: Dictionary, _mode: String = "", _ftp_w: int = 0) -> Array:
 		out.append_array(wtf_lines(summary["wtf"]))
 	if summary.get("survivor") is Dictionary:   # Dernier survivant (lot DS6) : place, vainqueur, arche par arche
 		out.append_array(SurvivorHudModel.summary_lines(summary["survivor"]))
+	if summary.get("gp") is Dictionary:   # Grand Prix des objets (lot GP8) : place, objets, temps par objet
+		out.append_array(GpHudModel.summary_lines(summary["gp"]))
+	if summary.get("track") is Dictionary:   # Épreuves de piste (lot VD9) : place, temps, tours, record
+		out.append_array(TrackHudModel.summary_lines(summary["track"]))
 
+	return out
+
+
+# --- bilan en tuiles (lot N20, présentation des menus étape 4) ---------------------------------------
+
+static func _num(summary: Dictionary, key: String) -> Variant:
+	var v = summary.get(key, null)
+	return float(v) if v is int or v is float else null
+
+
+## Tuiles du bilan {label, value, unit, sub} : distance, durée, dénivelé, puissance moyenne (puissance
+## normalisée en `sub`), fréquence cardiaque moyenne, cadence moyenne ; une tuile sans donnée est retirée.
+func tiles(summary: Dictionary) -> Array:
+	var out: Array = []
+	var dist = _num(summary, KEY_DISTANCE)
+	if dist != null:
+		out.append({"label": "Distance", "value": _format_fr_float(dist / 1000.0, 2), "unit": "km", "sub": ""})
+	var dur = _num(summary, KEY_DURATION)
+	if dur != null:
+		out.append({"label": "Durée", "value": _format_hms(dur), "unit": "", "sub": ""})
+	var gain = _num(summary, KEY_ELEVATION_GAIN)
+	if gain != null and gain >= 1.0:   # 0 m (ERG, piste plate) : rien à montrer
+		out.append({"label": "Dénivelé", "value": _format_fr_round(gain), "unit": "m", "sub": ""})
+	var avg = _num(summary, KEY_AVG_POWER)
+	if avg != null:
+		var np = _num(summary, KEY_NP)
+		out.append({"label": "Puissance", "value": _format_fr_round(avg), "unit": "W",
+			"sub": ("NP " + _format_fr_round(np)) if np != null else ""})
+	var hr = _num(summary, KEY_AVG_HR)
+	if hr == null and summary.get("hr") is Dictionary:
+		hr = _num(summary["hr"], "avg")
+	if hr != null:
+		out.append({"label": "FC moyenne", "value": _format_fr_round(hr), "unit": "bpm", "sub": ""})
+	var cad = _num(summary, KEY_AVG_CADENCE)
+	if cad == null and summary.get("cadence") is Dictionary:
+		cad = _num(summary["cadence"], "avg")
+	if cad != null:
+		out.append({"label": "Cadence", "value": _format_fr_round(cad), "unit": "rpm", "sub": ""})
+	return out.slice(0, MAX_TILES)
+
+
+## Ligne des chiffres qui ne sont pas en tuile : « IF 0,84 · TSS 62 · Puissance max 612 W · Dans la roue
+## 12 min · 9 kJ économisés » ; "" sans aucun.
+func more_line(summary: Dictionary) -> String:
+	var parts: Array[String] = []
+	var if_val = _num(summary, KEY_IF)
+	if if_val == null:
+		if_val = _num(summary, "if")
+	if if_val != null:
+		parts.append("IF " + _format_fr_float(if_val, 2))
+	var tss = _num(summary, KEY_TSS)
+	if tss != null:
+		parts.append("TSS " + _format_fr_round(tss))
+	var max_p = _num(summary, KEY_MAX_POWER)
+	if max_p != null:
+		parts.append("Puissance max %s W" % _format_fr_round(max_p))
+	var wheel_s = _num(summary, KEY_DRAFT_TIME)
+	if wheel_s != null and wheel_s >= 1.0:
+		parts.append("Dans la roue " + (("%d min" % int(round(wheel_s / 60.0))) if wheel_s >= 60.0
+			else ("%d s" % int(round(wheel_s)))))
+		var kj = _num(summary, KEY_DRAFT_KJ)
+		if kj != null:
+			parts.append("%s kJ économisés" % _format_fr_round(kj))
+	return " · ".join(parts)
+
+
+## Lignes propres à un mode (Cyber-Rogue, WTF, Dernier survivant, Grand Prix), au format de lines() ; [] sinon.
+func mode_lines(summary: Dictionary) -> Array:
+	var out: Array = []
+	if summary.get("rogue") is Dictionary:
+		out.append_array(rogue_lines(summary["rogue"]))
+	if summary.get("wtf") is Dictionary:
+		out.append_array(wtf_lines(summary["wtf"]))
+	if summary.get("survivor") is Dictionary:
+		out.append_array(SurvivorHudModel.summary_lines(summary["survivor"]))
+	if summary.get("gp") is Dictionary:
+		out.append_array(GpHudModel.summary_lines(summary["gp"]))
+	return out
+
+
+## Courbe du graphique du bilan (`summary.power_profile`, révision 1.10) : {power_w, target_w, step_s,
+## max_w} (target_w : [] sans cible ; max_w : plus haute valeur, puissance ou cible) ; {} sans courbe
+## (au moins deux points).
+func power_chart(summary: Dictionary) -> Dictionary:
+	var p = summary.get(KEY_POWER_PROFILE, null)
+	if not (p is Dictionary) or not (p.get("power_w") is Array) or (p["power_w"] as Array).size() < 2:
+		return {}
+	var power: Array = []
+	for w in p["power_w"]:
+		power.append(maxf(float(w), 0.0) if (w is int or w is float) else 0.0)
+	var target: Array = []
+	if p.get("target_w") is Array and (p["target_w"] as Array).size() == power.size():
+		for w in p["target_w"]:
+			target.append(float(w) if (w is int or w is float) else null)
+	var top := 0.0
+	for w in power + target:
+		if w != null:
+			top = maxf(top, float(w))
+	return {"power_w": power, "target_w": target, "step_s": int(p.get("step_s", 1)), "max_w": top}
+
+
+## Records battus pendant la séance (`summary.segments.passes`, `pr` vrai), du dernier au premier (la vue
+## en montre MAX_RECORD_LINES) : {name, time, before} ; `before` : ancien record (`pr_time_s`, révision 1.10) ou
+## « premier temps ». names : identifiant du segment → nom (couche `segments` du parcours).
+func records_beaten(summary: Dictionary, names: Dictionary = {}) -> Array:
+	var segs = summary.get("segments", null)
+	if not (segs is Dictionary) or not (segs.get("passes") is Array):
+		return []
+	var out: Array = []
+	var passes: Array = segs["passes"]
+	for i in range(passes.size() - 1, -1, -1):
+		var p = passes[i]
+		if not (p is Dictionary) or not bool(p.get("pr", false)):
+			continue
+		var sid := str(p.get("segment_id", ""))
+		var prev = p.get("pr_time_s", null)
+		out.append({"name": str(names.get(sid, sid)) + (" (bonus)" if bool(p.get("with_powerup", false)) else ""),
+			"time": SegmentHudModel.time_text(float(p.get("time_s", 0.0)), true),
+			"before": ("avant " + SegmentHudModel.time_text(float(prev), true)) if (prev is int or prev is float)
+				else "premier temps"})
+	return out
+
+
+## Résultat du test de FTP (`summary.ftp_test`, lot O12) pour le bandeau du bilan : {value, before, delta,
+## note, ok} (`value` "" sans FTP calculable, `note` : fiabilité ou avertissements) ; {} sans test.
+func ftp_result(summary: Dictionary) -> Dictionary:
+	var ftp = summary.get(KEY_FTP_TEST, null)
+	if not (ftp is Dictionary):
+		return {}
+	var warnings: Array[String] = []
+	for w in ftp.get("warnings", []):
+		warnings.append(str(FTP_WARNINGS.get(str(w), w)))
+	var out := {"value": "", "before": "", "delta": "", "ok": bool(ftp.get("reliable", false)),
+		"note": ", ".join(warnings) if not warnings.is_empty() else "effort fiable"}
+	var now = ftp.get("ftp_w", null)
+	if not (now is int or now is float):
+		out["note"] = "aucune FTP calculable" + ((" ; " + out["note"]) if not warnings.is_empty() else "")
+		return out
+	out["value"] = "%d W" % int(round(float(now)))
+	var prev = ftp.get("previous_ftp_w", null)
+	if prev is int or prev is float:
+		out["before"] = "avant %d W" % int(round(float(prev)))
+		var d := int(round(float(now))) - int(round(float(prev)))
+		out["delta"] = ("+%d W" % d) if d >= 0 else ("−%d W" % -d)
 	return out
 
 

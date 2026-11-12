@@ -9,7 +9,7 @@ Usage :
 
 `lancer` enchaîne, sans rien écrire dans le vrai dossier personnel (sim_bench.py a son HOME temporaire) :
 
-1. `openride-core demo-biomes --out DOSSIER/routes --json` : les parcours de démonstration du lot U19 et
+1. `openride-core demo-biomes --out DOSSIER/routes --json --recette` : les parcours de démonstration du lot U19 et
    les parts de leurs biomes (`routes/parts.json`) ;
 2. pour chaque qualité : `sim_bench.py --native --probe` sur le tour des six biomes du premier jalon
    (`demo-biomes-tour`, 12 km tenus à `--vitesse` km/h, une capture tous les 500 m : milieu de chaque biome
@@ -110,7 +110,8 @@ def cmd_lancer(args: argparse.Namespace) -> int:
     routes = out / "routes"
     routes.mkdir(parents=True, exist_ok=True)
     env = {**os.environ, "OPENRIDE_ENGINE": str(TESTS_DIR.parent)}
-    p = subprocess.run([sys.executable, "-m", "openride_core", "demo-biomes", "--out", str(routes), "--json"],
+    p = subprocess.run([sys.executable, "-m", "openride_core", "demo-biomes", "--out", str(routes), "--json",
+                        "--recette"],
                        capture_output=True, text=True, env=env)
     if p.returncode != 0:
         print(f"demo-biomes impossible (code {p.returncode}) : {p.stderr.strip()[-400:]}", file=sys.stderr)

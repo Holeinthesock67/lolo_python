@@ -4,7 +4,10 @@ Contrôles : structure et manifeste, nombre de valeurs de chaque tableau de la r
 cohérence entre `length_m`, `n` et `ds_m`, accord manifeste / route, boucle fermée,
 plages de valeurs ; terrain : taille des tuiles, présence des tuiles listées, égalité des
 bords partagés, absence de NaN à moins de 25 m de la route ; segments (format 1.3) : bornes
-dans le parcours, identifiants uniques, types et catégories connus.
+dans le parcours, identifiants uniques, types et catégories connus ; mer et côte (format 1.6, lot U3) :
+aires `sea` refermées au niveau 0, lignes de côte et plages, compteurs du manifeste ; biome (format 1.6, lot U2) :
+présence des tuiles listées, contenu (identifiants, une grille de 289 poids par biome, somme 255 en chaque
+point, 4 biomes au plus, variante régionale du lot U4) et égalité des bords partagés.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from .osm_layers import nearest_chunk_and_y, ring_centroid, signed_area, vegetat
 from .terrain import LEVELS, NEAR, TILE_BYTES, RouteAxis, read_tile, tile_coords, tile_filename
 
 TILE_RE = re.compile(r"tile_(-?\d+)_(-?\d+)\.f32")
+BIOME_TILE_RE = re.compile(r"tile_(-?\d+)_(-?\d+)\.json")
 CHUNK_RE = re.compile(r"chunk_(\d+)\.json")
 RANGES = {
     "lat": (-90.0, 90.0),
@@ -187,6 +191,115 @@ def _check_terrain(world: Path, layers: dict, route: dict | None, problems: list
                         f"{C.BLEND_OUTER_M:.0f} m de la route")
 
 
+def biome_tile_problems(tile: object) -> list[str]:
+    """Règles d'une tuile de biome (§8 quater), y compris celles que le schéma ne peut pas exprimer."""
+    from .biomes import BIOMES, GRID, MAX_BIOMES_PER_TILE, TOTAL
+
+    if not isinstance(tile, dict):
+        return ["n'est pas un objet JSON"]
+    out: list[str] = []
+    if not str(tile.get("version", "")).startswith("1."):
+        out.append(f"version inattendue {tile.get('version')!r}")
+    if tile.get("grid") != GRID:
+        out.append(f"grid {tile.get('grid')!r} au lieu de {GRID}")
+    biomes, weights = tile.get("biomes"), tile.get("weights")
+    if not isinstance(biomes, list) or not 1 <= len(biomes) <= MAX_BIOMES_PER_TILE:
+        return out + [f"biomes : de 1 à {MAX_BIOMES_PER_TILE} identifiants attendus"]
+    unknown = [b for b in biomes if b not in BIOMES]
+    if unknown:
+        out.append(f"biome(s) inconnu(s) {unknown}")
+    if len(set(map(str, biomes))) != len(biomes):
+        out.append("biomes en double")
+    if not isinstance(weights, list) or len(weights) != len(biomes):
+        return out + ["une grille de poids par biome attendue"]
+    n = GRID * GRID
+    if any(not isinstance(g, list) or len(g) != n for g in weights):
+        return out + [f"chaque grille doit compter {n} poids"]
+    if any(not isinstance(v, int) or isinstance(v, bool) or not 0 <= v <= TOTAL for g in weights for v in g):
+        return out + ["poids hors de 0 à 255 ou non entiers"]
+    sums = np.sum(np.asarray(weights, dtype=np.int64), axis=0)
+    bad = int(np.count_nonzero(sums != TOTAL))
+    if bad:
+        out.append(f"{bad} point(s) dont la somme des poids diffère de {TOTAL}")
+    if "variant" not in tile:
+        out.append("variant absent")
+    else:
+        out += _variant_problems(tile["variant"])
+    return out
+
+
+def _variant_problems(variant: object) -> list[str]:
+    """Variante régionale (lot U4) : null, ou {"ground", "roofs"} pris dans l'énumération du contrat."""
+    from .regional import MEMBERS
+
+    if variant is None:
+        return []
+    if not isinstance(variant, dict) or set(variant) != set(MEMBERS):
+        return [f"variant : null ou objet {{ground, roofs}} attendu, reçu {variant!r}"]
+    return [f"variant : {member} {variant[member]!r} inconnu" for member, ids in MEMBERS.items()
+            if variant[member] is not None and variant[member] not in ids]
+
+
+def _biome_grids(tile: dict) -> dict[str, np.ndarray]:
+    from .biomes import GRID
+    return {b: np.asarray(g, dtype=np.int64).reshape(GRID, GRID) for b, g in zip(tile["biomes"], tile["weights"])}
+
+
+def _same_edge(a: dict[str, np.ndarray], b: dict[str, np.ndarray], edge_a, edge_b) -> bool:
+    zero = np.zeros(17, dtype=np.int64)
+    return all(np.array_equal(edge_a(a[k]) if k in a else zero, edge_b(b[k]) if k in b else zero)
+               for k in set(a) | set(b))
+
+
+def _check_biome(world: Path, layers: dict, problems: list[str]) -> None:
+    """Tuiles de biome : présence des tuiles listées, contenu, bords partagés identiques."""
+    from .biomes import BIOMES
+
+    layer = layers.get("biome") if isinstance(layers, dict) else None
+    if not isinstance(layer, dict) or not layer.get("present"):
+        return
+    for key in ("default_biome", "forced"):
+        value = layer.get(key)
+        if value is not None and value not in BIOMES:
+            problems.append(f"biome : {key} inconnu {value!r}")
+    listed = layer.get("tiles") if isinstance(layer.get("tiles"), dict) else {}
+    for level in ("near", "far"):
+        folder = world / "biome" / level
+        grids: dict[tuple[int, int], dict[str, np.ndarray]] = {}
+        for entry in listed.get(level, []) or []:
+            try:
+                ix, iz = int(entry[0]), int(entry[1])
+            except (TypeError, ValueError, IndexError):
+                problems.append(f"biome : entrée de tuile illisible {entry!r}")
+                continue
+            if not (folder / f"tile_{ix}_{iz}.json").is_file():
+                problems.append(f"biome : tuile listée absente {level}/tile_{ix}_{iz}.json")
+        for path in sorted(folder.glob("tile_*.json")):
+            m = BIOME_TILE_RE.fullmatch(path.name)
+            if not m:
+                continue
+            try:
+                tile = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                problems.append(f"biome : {level}/{path.name} illisible : {exc}")
+                continue
+            issues = biome_tile_problems(tile)
+            if issues:
+                problems.extend(f"biome : {level}/{path.name} : {i}" for i in issues)
+                continue
+            grids[(int(m.group(1)), int(m.group(2)))] = _biome_grids(tile)
+        bad_edges = 0
+        for (ix, iz), g in grids.items():
+            east = grids.get((ix + 1, iz))
+            if east is not None and not _same_edge(g, east, lambda a: a[:, -1], lambda b: b[:, 0]):
+                bad_edges += 1
+            south = grids.get((ix, iz + 1))
+            if south is not None and not _same_edge(g, south, lambda a: a[-1, :], lambda b: b[0, :]):
+                bad_edges += 1
+        if bad_edges:
+            problems.append(f"biome : {bad_edges} bord(s) partagé(s) différent(s) au niveau {level}")
+
+
 def _check_ring(ring: object, outer: bool, label: str, problems: list[str]) -> bool:
     if not isinstance(ring, list) or len(ring) < 3:
         problems.append(f"{label} : anneau de moins de 3 sommets")
@@ -256,6 +369,70 @@ def _check_buildings(world: Path, layers: dict, route: dict | None, problems: li
                 expected_k, _ = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)
                 if expected_k != k:
                     problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
+
+
+def _check_sea_area(item: dict, label: str, problems: list[str]) -> None:
+    """Aire `sea` (format 1.6 §8) : anneaux refermés (contrôlés par `_check_ring`) et niveau 0. La mer
+    s'étend jusqu'au bord du terrain : pas de contrôle de distance à la route ni de tronçon, le
+    rangement par tronçon dépend du producteur (compilateur par carrés de 1 km, démo par bandes)."""
+    if item.get("level_y") != C.SEA_LEVEL_Y:
+        problems.append(f"{label} : level_y de la mer {item.get('level_y')!r} (attendu {C.SEA_LEVEL_Y})")
+
+
+def _check_coast(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
+    """Couche côte (format 1.6 §8 quinquies, lot U3) : lignes, plages, tronçons et compteurs."""
+    c_layer = layers.get("coast") if isinstance(layers, dict) else None
+    if not isinstance(c_layer, dict) or not c_layer.get("present"):
+        return
+    folder = world / "coast"
+    if not folder.is_dir():
+        problems.append("coast : dossier absent")
+        return
+    n_lines = n_beaches = 0
+    for chunk_file in sorted(folder.glob("chunk_*.json")):
+        m = CHUNK_RE.fullmatch(chunk_file.name)
+        if not m:
+            continue
+        k = int(m.group(1))
+        data = _load(chunk_file, problems)
+        if data is None:
+            continue
+        name = f"coast/{chunk_file.name}"
+        if not str(data.get("version", "")).startswith("1."):
+            problems.append(f"{name} : version inattendue {data.get('version')!r}")
+        lines = data.get("lines") if isinstance(data.get("lines"), list) else []
+        beaches = data.get("beaches") if isinstance(data.get("beaches"), list) else []
+        if not isinstance(data.get("lines"), list) or not isinstance(data.get("beaches"), list):
+            problems.append(f"{name} : « lines » ou « beaches » n'est pas une liste")
+        for item in lines:
+            n_lines += 1
+            label = f"{name} ({item.get('id', '?') if isinstance(item, dict) else '?'})"
+            if not isinstance(item, dict) or not isinstance(item.get("id"), str) or not item["id"]:
+                problems.append(f"{label} : ligne sans id")
+                continue
+            if item.get("shore") not in C.COAST_SHORES:
+                problems.append(f"{label} : rivage inconnu {item.get('shore')!r}")
+            pts = item.get("points")
+            if (not isinstance(pts, list) or len(pts) < 2
+                    or any(not isinstance(p, list) or len(p) != 2 or not all(_is_number(v) for v in p) for p in pts)):
+                problems.append(f"{label} : points (x, z) invalides")
+                continue
+        for item in beaches:
+            n_beaches += 1
+            label = f"{name} ({item.get('id', '?') if isinstance(item, dict) else '?'})"
+            if not isinstance(item, dict) or not isinstance(item.get("id"), str) or not item["id"]:
+                problems.append(f"{label} : plage sans id")
+                continue
+            if item.get("kind") not in C.COAST_BEACH_KINDS:
+                problems.append(f"{label} : sorte de plage inconnue {item.get('kind')!r}")
+            holes = item.get("holes") if isinstance(item.get("holes"), list) else []
+            _check_ring(item.get("outer"), True, label, problems)
+            for h in holes:
+                _check_ring(h, False, label, problems)
+    if c_layer.get("lines_count") != n_lines or c_layer.get("beaches_count") != n_beaches:
+        problems.append(f"coast : compteurs du manifeste ({c_layer.get('lines_count')} ligne(s), "
+                        f"{c_layer.get('beaches_count')} plage(s)) différents des fichiers "
+                        f"({n_lines}, {n_beaches})")
 
 
 def _check_vegetation(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
@@ -433,7 +610,9 @@ def _check_water(world: Path, layers: dict, route: dict | None, problems: list[s
             outer_ok = _check_ring(outer, True, label, problems)
             for h in holes:
                 _check_ring(h, False, label, problems)
-            if outer_ok and route is not None and axis is not None:
+            if outer_ok and item.get("kind") == "sea":
+                _check_sea_area(item, label, problems)
+            elif outer_ok and route is not None and axis is not None:
                 cx, cz = ring_centroid(outer)
                 expected_k, _ = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)
                 if expected_k != k:
@@ -573,10 +752,12 @@ def verify_world(world: Path) -> list[str]:
             route = None                      # route invalide : pas de contrôle de bande
     layers = manifest.get("layers", {})
     _check_terrain(world, layers, route, problems)
+    _check_biome(world, layers, problems)
     _check_buildings(world, layers, route, problems)
     _check_vegetation(world, layers, route, problems)
     _check_poi(world, layers, route, problems)
     _check_water(world, layers, route, problems)
+    _check_coast(world, layers, route, problems)
     _check_roads(world, layers, route, problems)
     _check_segments(world, layers, route, problems)
     return problems
@@ -600,6 +781,7 @@ def world_info(world: Path) -> dict:
         "grade_clamped_points": mroute.get("grade_clamped_points", 0),
         "alt_source": mroute.get("alt_source", "gpx"),
         "terrain": manifest.get("layers", {}).get("terrain", {"present": False}),
+        "biome": manifest.get("layers", {}).get("biome", {"present": False}),
         "segments": _segments_for_info(world, manifest),
     }
 
