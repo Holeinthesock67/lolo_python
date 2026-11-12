@@ -130,6 +130,8 @@ const BIOME_SPECIES := {
 	"coast": {"birds": "gull", "crows": "gull", "vee": "gull"},
 	"volcanic": {"cow": "goat", "sheep": "goat", "horse": "goat", "deer": "", "hare": ""},
 	"japan": {"cow": "", "sheep": "", "horse": "", "hare": ""},
+	# Lot AT1 : moutons et poneys des landes, goélands des côtes ; les cerfs du rôle `deer` jouent les cerfs élaphes
+	"atlantic_heath": {"cow": "sheep", "vee": "gull"},
 }
 ## Groupes propres à un biome ; `key` : densité du thème qui règle la chance `share` du groupe.
 const BIOME_GROUPS := {

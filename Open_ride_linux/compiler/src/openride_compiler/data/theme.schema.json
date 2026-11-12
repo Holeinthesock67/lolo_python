@@ -150,7 +150,8 @@
         "wetland",
         "coast",
         "volcanic",
-        "japan"
+        "japan",
+        "atlantic_heath"
       ]
     },
     "groundLayer": {
@@ -261,7 +262,10 @@
                       "tree_fern",
                       "reed",
                       "dwarf_shrub",
-                      "vine_row"
+                      "vine_row",
+                      "heather",
+                      "gorse",
+                      "bracken"
                     ]
                   },
                   "weight": {

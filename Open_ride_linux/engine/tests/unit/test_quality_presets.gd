@@ -133,7 +133,7 @@ func _test_presets_table() -> void:
 func _test_living() -> void:
 	var keys := ["aircraft", "ambience_voices", "animals", "birds", "boats", "clouds", "cyclists", "distant_vehicles", "grass_tufts",
 		"grass_tufts_wide",
-		"ground_grass", "ground_rocks", "ground_termites", "passersby", "spectators", "tree_sway", "vehicles", "water_shimmer", "weather_particles"]
+		"ground_grass", "ground_rocks", "ground_termites", "ground_walls", "passersby", "spectators", "tree_sway", "vehicles", "water_shimmer", "weather_particles"]
 	for name in ["low", "medium", "high"]:
 		var l: Dictionary = QualityPresets.living(name)
 		var k := l.keys()
