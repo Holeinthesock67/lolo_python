@@ -29,8 +29,8 @@ extends RefCounted
 ##
 ## Sous-menu ERG (lot N16, contrat v1.3, décision D4 : le core écrit les fichiers) : « Créer un
 ## entraînement » ouvre les paramètres d'intervalles (workout_builder.gd, modifiés sur l'écran de
-## réglage) puis renvoie create_workout {args} ; « Importer un fichier » renvoie list_imports, la
-## réponse `imports` arrive par set_import_candidates() et un choix renvoie import_workout {path}.
+## réglage) puis renvoie create_workout {args} ; l'import de fichiers (list_imports, import_workout) est
+## retiré en révision 1.15 du contrat : un fichier se dépose dans ~/OpenRide/Workouts/.
 ## Réponse `workout_saved` : on_workout_saved(), retour à la liste, focus sur le nouvel entraînement à
 ## son arrivée ; erreur du core (bad_args, busy, workout_invalid, workout_write_failed) sur la ligne d'état.
 ## « Comment ça marche ? » ouvre l'écran « Aide ERG » (workout_help.gd) : un sujet par ligne, son
@@ -106,7 +106,6 @@ const SETTING_EDIT := SettingsViewModel.EDIT_SCREEN
 ## Sous-écran de « Réglages » (Cycliste, Séance, Graphisme, Son, Vent) ; titre et éléments du groupe ouvert.
 const SETTINGS_GROUP := "settings_group"
 const WORKOUT_CREATE := WorkoutBuilder.SCREEN
-const WORKOUT_IMPORT := "workout_import"
 const ROUTE_IMPORT := "route_import"
 ## Ligne d'état pendant la compilation d'une trace importée (lot O23) : secondes écoulées.
 const ROUTE_COMPILING := "Compilation de %s… %d s (la 1re fois dans une région, l'altitude se télécharge)"
@@ -145,7 +144,7 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 ## 1er novembre) : le focus est déjà sur « Terminer et enregistrer ».
 const PAUSE_WORKOUT_DONE := "Entraînement terminé : A maintenu pour terminer et enregistrer"
 ## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
-const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create", MenuModel.IMPORT_WORKOUT_ID: "import",
+const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create",
 	MenuModel.HELP_WORKOUT_ID: "choose", MenuModel.QWK_WORKOUT_ID: "qwk"}
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
@@ -194,9 +193,7 @@ var builder = WorkoutBuilder.new()
 var plan_builder = PlanBuilder.new()
 ## Texte QWKcode en cours de saisie (lot O21) : gardé en sortant de l'écran, vidé après l'enregistrement.
 var qwk = QwkEditor.new()
-## Fichiers proposés à l'import : [{path, file, source, imported}] (message `imports` du core).
-var import_candidates: Array = []
-## Ligne d'état de la liste des entraînements (créé, importé, erreur).
+## Ligne d'état de la liste des entraînements (créé, erreur).
 var workout_message := ""
 var _focus_workout := ""
 ## Traces proposées à l'import (message `route_imports`, lot O23) : [{path, file, source, imported}].
@@ -209,7 +206,7 @@ var route_message_error := false
 var _route_compiling := false
 var _route_import_done := -1
 var _focus_route := ""
-## Dernière demande au core (« create » ou « import ») et dernier request_cmd_id traité : le core
+## Dernière demande au core (« create » ou « qwk ») et dernier request_cmd_id traité : le core
 ## répond à chaque copie renvoyée d'une commande, une seule réponse compte.
 var _workout_request := ""
 var _last_saved_cmd_id := -1
@@ -276,8 +273,6 @@ func _init() -> void:
 	menu.add_screen({"id": SETTING_EDIT, "title": "Réglage", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": ContentsViewModel.SCREEN, "title": "Contenus", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": WORKOUT_CREATE, "title": "Créer un entraînement", "on_back": MenuModel.WORKOUTS,
-		"items": []})
-	menu.add_screen({"id": WORKOUT_IMPORT, "title": "Importer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
 	menu.add_screen({"id": ROUTE_IMPORT, "title": "Importer une trace", "on_back": MenuModel.ROUTES, "items": []})
 	menu.add_screen({"id": WORKOUT_HELP, "title": WorkoutHelp.TITLE, "on_back": MenuModel.WORKOUTS,
@@ -546,7 +541,7 @@ func on_scan_results(msg: Dictionary) -> void:
 		menu.focus_item("save")
 
 
-## Erreur du core : écrans Créer / Importer un entraînement (bad_args, busy, workout_invalid,
+## Erreur du core : écrans Créer un entraînement / QWKcode (bad_args, busy, workout_invalid,
 ## workout_write_failed), sinon écran Appareils (busy, scan_failed, pairing_failed).
 func on_error(code: String, text: String) -> void:
 	if _ftp_pending and code in ["ftp_result_missing", "ftp_result_doubtful", "setting_invalid", "busy"]:
@@ -600,7 +595,7 @@ func on_error(code: String, text: String) -> void:
 		route_message = "Échec : " + text
 		route_message_error = true
 		return
-	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_IMPORT, WORKOUT_QWK] \
+	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_QWK] \
 			and code in ["bad_args", "busy", "workout_invalid", "workout_write_failed"]:
 		workout_failed("Échec : " + text)
 		return
@@ -1117,20 +1112,6 @@ func on_route_import_status(msg: Dictionary) -> bool:
 	return false
 
 
-## Fichiers importables (message `imports` du core, réponse à list_imports).
-func set_import_candidates(found: Array) -> void:
-	import_candidates = found
-	var items: Array = []
-	for i in range(found.size()):
-		var c: Dictionary = found[i]
-		items.append({"id": "file:%d" % i, "label": str(c["file"]),
-			"detail": str(c["source"]) + (", déjà importé" if c.get("imported", false) else "")})
-	if items.is_empty():
-		items.append({"id": "none", "label": "Aucun fichier .zwo, .erg, .mrc ou .qwk", "enabled": false,
-			"detail": "dans Téléchargements, Bureau ou ~/OpenRide/Import"})
-	menu.set_screen_items(WORKOUT_IMPORT, items)
-
-
 ## Réponse `workout_saved` du core {request_cmd_id, workout_id, name, created} (`created` faux : fichier
 ## identique déjà présent) ; vrai si c'est une nouvelle réponse (main.gd redemande alors la liste).
 func on_workout_saved(msg: Dictionary) -> bool:
@@ -1142,7 +1123,7 @@ func on_workout_saved(msg: Dictionary) -> bool:
 	if _workout_request == "qwk":
 		qwk.clear()
 		_refresh_qwk()
-	var text := ("Importé : " if _workout_request == "import" else "Créé : ") + name
+	var text := "Créé : " + name
 	if not msg.get("created", true):
 		text += " (déjà présent)"
 	workout_added(str(msg.get("workout_id", "")), text)
@@ -1219,10 +1200,6 @@ func list_failed(list_name: String) -> void:
 		return
 	if list_name == "route_imports":
 		menu.set_screen_items(ROUTE_IMPORT, [{"id": "none", "label": "Traces à importer indisponibles",
-			"enabled": false, "detail": "core sans réponse"}])
-		return
-	if list_name == "imports":
-		menu.set_screen_items(WORKOUT_IMPORT, [{"id": "none", "label": "Fichiers à importer indisponibles",
 			"enabled": false, "detail": "core sans réponse"}])
 		return
 	var screen := MenuModel.ROUTES if list_name == "routes" else MenuModel.WORKOUTS
@@ -1426,10 +1403,7 @@ func _handle_event(event: String) -> Dictionary:
 			menu.push_screen(WORKOUT_QWK)
 			menu.focus_item(qwk.last_line_id())
 			return {}
-		import_candidates = []
-		menu.set_screen_items(WORKOUT_IMPORT, [{"id": "none", "label": "Recherche des fichiers…", "enabled": false}])
-		menu.push_screen(WORKOUT_IMPORT)
-		return {"action": "list_imports"}
+		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_QWK:
 		return _qwk_item(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_HELP:
@@ -1442,12 +1416,6 @@ func _handle_event(event: String) -> Dictionary:
 		if item_id.begins_with("param:"):
 			settings.begin_with(builder.edit_item(item_id.substr(6)))
 			_refresh_edit()
-		return {}
-	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_IMPORT:
-		var idx := int(str(act["id"]).substr(5))
-		if str(act["id"]).begins_with("file:") and idx < import_candidates.size():
-			_workout_request = "import"
-			return {"action": "import_workout", "path": import_candidates[idx]["path"]}
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") in [MenuModel.READY, RECORDS, RECORD_TABLE]:
 		_handle_records(str(act["screen"]), str(act["id"]))
@@ -2186,7 +2154,7 @@ func state() -> Dictionary:
 	elif st["screen"] in [MenuModel.ROUTES, ROUTE_IMPORT]:
 		st["status"] = route_message
 		st["status_error"] = route_message_error
-	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT, WORKOUT_QWK]:
+	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_QWK]:
 		st["status"] = workout_message
 	elif st["screen"] in [PLANS, PLAN] or st["screen"] in PlanBuilder.SCREENS:
 		st["status"] = plan_message

@@ -27,8 +27,8 @@ extends RefCounted
 ## l'accueil), « Session libre » (SIM, sans entraînement), « Session ERG » (choix de l'entraînement),
 ## « Session simulée » (OpenRide relancé sans matériel ; en session simulée : « Revenir au matériel
 ## réel »), « Réglages », « Quitter ». Sans monde choisi, les sessions passent d'abord par les parcours.
-## « Session ERG » ouvre la liste des entraînements, qui finit par « Créer un entraînement » et
-## « Importer un fichier » (lot N16, traités par menu_flow.gd).
+## « Session ERG » ouvre la liste des entraînements, qui finit par « Créer un entraînement » (lot N16,
+## traité par menu_flow.gd ; « Importer un fichier » retiré le 12 novembre, révision 1.15).
 ## Écrans ajoutés par add_screen() (bilan de fin du lot N4) : valider un élément renvoie
 ## {"action": "item", "screen": écran, "id": élément}, à traiter par l'appelant (menu_flow.gd, lot N6).
 ##
@@ -93,9 +93,8 @@ const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world"
 const DEFAULT_MODES := ["ride", "erg"]
 ## Ligne d'explication d'un mode de l'accueil (lot O22), à droite de son libellé.
 const HOME_DETAILS := {"open_world": "route créée en roulant", "survivor": "à chaque arche, le dernier sort"}
-## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer ou importer un entraînement.
+## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
-const IMPORT_WORKOUT_ID := "_import"
 ## Dernière ligne de la liste : « Comment ça marche ? » ouvre l'aide du sous-menu ERG (workout_help.gd).
 ## « Saisir du QWKcode (clavier) » ouvre la saisie du QWKcode de GoldenCheetah (qwk_editor.gd, lot O21).
 const QWK_WORKOUT_ID := "_qwk"
@@ -740,7 +739,6 @@ func set_items(screen_id: String, items: Array) -> void:
 			clean.append(_item("empty", "Aucun entraînement", false))
 		clean.append(_item(CREATE_WORKOUT_ID, "Créer un entraînement (intervalles)"))
 		clean.append(_item(QWK_WORKOUT_ID, "Saisir du QWKcode (clavier)"))
-		clean.append(_item(IMPORT_WORKOUT_ID, "Importer un fichier"))
 		clean.append(_item(HELP_WORKOUT_ID, "Comment ça marche ?"))
 	var focused_id := ""
 	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
@@ -1035,7 +1033,7 @@ func _validate() -> Dictionary:
 				_back()
 			return {"action": "select_route", "route_id": id}
 		WORKOUTS:
-			if id in [CREATE_WORKOUT_ID, IMPORT_WORKOUT_ID, QWK_WORKOUT_ID, HELP_WORKOUT_ID]:
+			if id in [CREATE_WORKOUT_ID, QWK_WORKOUT_ID, HELP_WORKOUT_ID]:
 				return {"action": "item", "screen": WORKOUTS, "id": id}
 			return choose_workout(null if id == NO_WORKOUT_ID else id)
 		READY:

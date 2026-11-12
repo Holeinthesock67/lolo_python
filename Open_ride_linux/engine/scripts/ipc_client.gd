@@ -22,9 +22,8 @@ signal list_failed(list_name: String, error_message: String)
 signal scan_results_received(msg: Dictionary)
 ## Réglages du menu (lots O3 et O4, contrat v1.3), réponse à list_settings ou set_setting.
 signal settings_received(msg: Dictionary)
-## Sous-menu ERG (lot N16, contrat v1.3, décision D4) : fichiers importables (list_imports, en parties
-## comme routes) et entraînement écrit par le core (create_workout, import_workout).
-signal imports_received(items: Array, msg: Dictionary)
+## Sous-menu ERG (lot N16, contrat v1.3, décision D4) : entraînement écrit par le core (create_workout,
+## create_workout_qwk) ; l'import de fichiers (list_imports, import_workout) est retiré en révision 1.15.
 signal workout_saved_received(msg: Dictionary)
 ## Traces importées depuis le menu des parcours (lot O23, contrat 1.5) : traces importables
 ## (list_route_imports, en parties comme routes) et avancement de l'import (import_route).
@@ -127,7 +126,6 @@ const LIST_RETRY_S := 1.0
 const LIST_MAX_RETRIES := 3
 var _pending_list_routes: Dictionary = {}
 var _pending_list_workouts: Dictionary = {}
-var _pending_list_imports: Dictionary = {}
 var _pending_list_route_imports: Dictionary = {}
 ## Commande du conseil en attente de son message `coach` (lot CO5) : {name, args, cmd_ids, retries, timer}.
 ## Le message `coach` est une grande trame UDP qui peut se perdre : même commande renvoyée (elles sont
@@ -263,8 +261,6 @@ func _process(delta: float) -> void:
 		"Aucune réponse pour la liste des parcours après 3 tentatives", delta)
 	_tick_list(_pending_list_workouts, "list_workouts", "workouts",
 		"Aucune réponse pour la liste des entraînements après 3 tentatives", delta)
-	_tick_list(_pending_list_imports, "list_imports", "imports",
-		"Aucune réponse pour les fichiers à importer après 3 tentatives", delta)
 	_tick_list(_pending_list_route_imports, "list_route_imports", "route_imports",
 		"Aucune réponse pour les traces à importer après 3 tentatives", delta)
 	_tick_coach(delta)
@@ -316,8 +312,6 @@ func _poll_incoming() -> void:
 				_on_list_part(_pending_list_routes, "routes", json_obj)
 			"workouts":
 				_on_list_part(_pending_list_workouts, "workouts", json_obj)
-			"imports":
-				_on_list_part(_pending_list_imports, "imports", json_obj)
 			"workout_saved":
 				workout_saved_received.emit(json_obj)
 			"route_imports":
@@ -620,13 +614,6 @@ func pair_devices(args: Dictionary) -> int:
 	return send_command("pair_devices", args)
 
 
-## Fichiers importables (lot N16, contrat v1.3). Réponse : signal imports_received.
-func list_imports() -> int:
-	var cmd_id := send_command("list_imports", {})
-	_reset_list_request(_pending_list_imports, cmd_id)
-	return cmd_id
-
-
 ## Entraînement par intervalles écrit par le core (lot N16) ; args : les sept paramètres entiers.
 ## Réponse : workout_saved, ou error (bad_args, busy, workout_write_failed).
 func create_workout(args: Dictionary) -> int:
@@ -637,12 +624,6 @@ func create_workout(args: Dictionary) -> int:
 ## error (bad_args, workout_invalid avec le numéro de ligne, busy, workout_write_failed).
 func create_workout_qwk(text: String) -> int:
 	return send_command("create_workout_qwk", {"text": text})
-
-
-## Copie par le core d'un fichier de la dernière réponse `imports` (lot N16). Réponse : workout_saved,
-## ou error (workout_invalid, busy, workout_write_failed).
-func import_workout(path: String) -> int:
-	return send_command("import_workout", {"path": path})
 
 
 ## Traces importables depuis le menu des parcours (lot O23, contrat 1.5). Réponse : signal route_imports_received.
@@ -774,8 +755,6 @@ func _on_list_part(req: Dictionary, list_name: String, msg: Dictionary) -> void:
 	match list_name:
 		"routes":
 			routes_received.emit(items, whole)
-		"imports":
-			imports_received.emit(items, whole)
 		"route_imports":
 			route_imports_received.emit(items, whole)
 		_:

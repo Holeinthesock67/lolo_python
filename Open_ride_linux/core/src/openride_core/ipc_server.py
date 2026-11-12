@@ -25,7 +25,7 @@ CONTRACT_VERSION = 1
 # du 27 octobre ; 127.0.0.1, sans fragmentation). Une trame state plus grande est allégée, les autres jetées.
 MAX_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
-CONTRACT_REV = "1.14"   # fin du Cyber-Rogue (lot R21) ; 1.13 : bonus tactiques (lot TT1, 4.0) ; 1.12 : séance conseillée (CO3, sans changement de rev annoncée jusqu'ici) ; 1.11 : Y maintenu : demi-tour en roulant ; 1.10 : bilan en tuiles (lot N20, #788) ; 1.9 : demi-tour depuis la pause (lot N17) et bots changés en pause, `set_bots` (lot N18) ; 1.8 : collection de cartes (lot BC2, 5.0) ; 1.7 : Grand Prix des objets (lot GP2, 4.0) et épreuves de piste (lot VD6, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
+CONTRACT_REV = "1.15"   # import d'entraînements retiré (12 novembre) ; 1.14 : fin du Cyber-Rogue (lot R21) ; 1.13 : bonus tactiques (lot TT1, 4.0) ; 1.12 : séance conseillée (CO3, sans changement de rev annoncée jusqu'ici) ; 1.11 : Y maintenu : demi-tour en roulant ; 1.10 : bilan en tuiles (lot N20, #788) ; 1.9 : demi-tour depuis la pause (lot N17) et bots changés en pause, `set_bots` (lot N18) ; 1.8 : collection de cartes (lot BC2, 5.0) ; 1.7 : Grand Prix des objets (lot GP2, 4.0) et épreuves de piste (lot VD6, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
 # Modes de jeu proposés au joueur (hello_ack.config.modes, révision 1.3) : l'accueil de l'engine n'affiche que
 # ceux-là. Monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2 ; track : révision 1.7,
 # lot VD6, proposé par l'écran Prêt du vélodrome (lot VD10, pas d'entrée à l'accueil).
@@ -39,7 +39,7 @@ MAX_LIST_DATAGRAM_SIZE = 60000
 # même liste que le contrat ; `garage` et `room` depuis la révision 1.4, le monde ouvert depuis la 1.5,
 # `settings` depuis le 30 octobre : 26 réglages et les thèmes installés passaient 4 096 octets ; l'historique,
 # lot O28 ; le conseil `coach`, lot CO3).
-LIST_MESSAGE_TYPES = ("routes", "workouts", "imports", "route_imports", "plans", "settings", "garage", "room", "contents",
+LIST_MESSAGE_TYPES = ("routes", "workouts", "route_imports", "plans", "settings", "garage", "room", "contents",
                       "places", "world_map", "world_regions", "history", "history_session", "coach", "collection")
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
 
@@ -367,10 +367,10 @@ class IpcServer:
             name = msg["name"]
             args = msg.get("args") or {}
             self.last_heartbeat_time = time.monotonic()
-            # Requêtes : réponse à chaque copie reçue, la réponse a pu se perdre (contrat §4). La création et
-            # l'import d'entraînement sont idempotents (même fichier, même identifiant), lot N16.
-            is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "create_workout_qwk",
-                                "import_workout", "list_route_imports", "import_route",
+            # Requêtes : réponse à chaque copie reçue, la réponse a pu se perdre (contrat §4). La création
+            # d'entraînement est idempotente (même fichier, même identifiant), lot N16.
+            is_query = name in ("list_routes", "list_workouts", "create_workout", "create_workout_qwk",
+                                "list_route_imports", "import_route",
                                 "world_search", "world_map", "world_regions", "list_contents",
                                 "list_history", "history_session", "get_coach", "set_next_race",
                                 "clear_next_race", "set_watch_advice", "clear_watch_advice",

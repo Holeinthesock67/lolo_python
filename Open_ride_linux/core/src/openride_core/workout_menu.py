@@ -1,16 +1,16 @@
-"""Entraînements créés ou importés depuis le menu ERG (lot N16, décision D4 de l'audit IPC du 26 octobre).
+"""Entraînements créés depuis le menu ERG (lot N16, décision D4 de l'audit IPC du 26 octobre).
 
 Le core reste seul à écrire dans le dossier des entraînements (contrat IPC §4) : l'engine envoie les
-paramètres d'un entraînement par intervalles (`create_workout`) ou choisit un fichier dans la liste
-que le core lui a donnée (`list_imports`, puis `import_workout`).
+paramètres d'un entraînement par intervalles (`create_workout`) ou du QWKcode (`create_workout_qwk`).
+L'import de fichiers depuis le menu (`list_imports`, `import_workout`) est retiré depuis la révision
+1.15 du contrat (décision du propriétaire du 12 novembre) : un fichier se dépose à la main dans
+`~/OpenRide/Workouts/`.
 
 - `build_interval_zwo()` : fichier `.zwo` (Warmup, IntervalsT, Cooldown, en % de la FTP) ; mêmes
   paramètres, même fichier ; nom déjà pris par d'autres réglages : suffixe `_2`, `_3`… (lot O20).
-- `import_candidates()` : fichiers `.zwo`, `.erg`, `.mrc` et `.qwk` des dossiers habituels, sans
-  sous-dossiers, les plus récents d'abord (30 au plus).
 - `create_qwk_workout()` : QWKcode saisi au clavier (lot O21), relu puis écrit en `.qwk`.
-- `import_file()` : copie validée (le core relit le fichier avant de l'écrire) ; un fichier identique
-  déjà importé n'est pas recopié, un entraînement différent du même nom prend le suffixe `_2`, `_3`…
+- `_store()` : un fichier identique déjà présent n'est pas réécrit, un entraînement différent du même
+  nom prend le suffixe `_2`, `_3`…
 
 Module pur (fichiers seulement) : session.py le branche sur l'IPC.
 """
@@ -24,7 +24,7 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-from .workout import WORKOUT_SUFFIXES, WorkoutError, load_workout, parse_workout
+from .workout import WORKOUT_SUFFIXES, WorkoutError, parse_workout
 from .workout_formats import parse_qwk
 
 # Bornes des paramètres de `create_workout` (mêmes que l'écran « Créer un entraînement » de l'engine).
@@ -38,13 +38,13 @@ INTERVAL_PARAMS: dict[str, tuple[int, int]] = {
     "cooldown_min": (0, 30),
 }
 
-# Dossiers proposés à l'import, relatifs au dossier personnel, avec le nom affiché.
+# Dossiers fouillés pour les traces à importer (`route_import`, lot O23) et les contenus (`contents`),
+# relatifs au dossier personnel, avec le nom affiché.
 IMPORT_SOURCES: tuple[tuple[str, str], ...] = (
     ("Téléchargements", "Téléchargements"), ("Downloads", "Téléchargements"), ("Bureau", "Bureau"),
     ("Desktop", "Bureau"), ("OpenRide/Import", "OpenRide/Import"), ("", "Dossier personnel"),
 )
 MAX_IMPORT_CANDIDATES = 30
-MAX_IMPORT_BYTES = 1_000_000   # un entraînement fait quelques kilo-octets
 # Texte QWKcode saisi au clavier (`create_workout_qwk`, lot O21) : la commande tient dans un datagramme
 # de 4 096 octets (contrat §2), avec son enveloppe JSON.
 MAX_QWK_TEXT_BYTES = 3000
@@ -52,7 +52,7 @@ QWK_DEFAULT_STEM = "qwkcode"
 
 
 class WorkoutMenuError(Exception):
-    """Refus d'une création ou d'un import : `code` est le code d'erreur IPC à renvoyer."""
+    """Refus d'une création : `code` est le code d'erreur IPC à renvoyer."""
 
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
@@ -181,42 +181,3 @@ def _ids_taken(workouts_dir: Path) -> set[str]:
     if not workouts_dir.is_dir():
         return set()
     return {f.stem for f in workouts_dir.iterdir() if f.suffix.lower() in WORKOUT_SUFFIXES}
-
-
-def import_candidates(home: Path, workouts_dir: Path) -> list[dict[str, Any]]:
-    """Fichiers importables : [{path, file, source, imported}], les plus récents d'abord."""
-    found: list[tuple[float, dict[str, Any]]] = []
-    seen: set[Path] = set()
-    taken = _ids_taken(workouts_dir)
-    for rel, label in IMPORT_SOURCES:
-        directory = home / rel if rel else home
-        try:
-            entries = list(directory.iterdir())
-        except OSError:
-            continue
-        for f in entries:
-            if f.suffix.lower() not in WORKOUT_SUFFIXES or f in seen or not f.is_file():
-                continue
-            seen.add(f)
-            found.append((f.stat().st_mtime, {"path": str(f), "file": f.name, "source": label,
-                                               "imported": f.stem in taken}))
-    found.sort(key=lambda t: (-t[0], t[1]["file"]))
-    return [item for _, item in found[:MAX_IMPORT_CANDIDATES]]
-
-
-def import_file(src: Path, workouts_dir: Path) -> dict[str, Any]:
-    """Copie validée de `src` ; renvoie {workout_id, name, created}."""
-    suffix = src.suffix.lower()
-    if suffix not in WORKOUT_SUFFIXES:
-        raise WorkoutMenuError("workout_invalid", f"{src.name} : format inconnu")
-    try:
-        if src.stat().st_size > MAX_IMPORT_BYTES:
-            raise WorkoutMenuError("workout_invalid", f"{src.name} : fichier trop gros")
-        data = src.read_bytes()
-        workout = load_workout(src)
-    except OSError as exc:
-        raise WorkoutMenuError("workout_invalid", f"{src.name} illisible : {exc}") from exc
-    except WorkoutError as exc:
-        raise WorkoutMenuError("workout_invalid", str(exc)) from exc
-    workout_id, created = _store(workouts_dir, src.stem, suffix, data)
-    return {"workout_id": workout_id, "name": workout.name, "created": created}
