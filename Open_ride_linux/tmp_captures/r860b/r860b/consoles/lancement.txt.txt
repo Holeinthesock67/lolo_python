@@ -1,0 +1,7 @@
+23:00:35 empreinte avant f4f3b501692bfed1988f702c0162932b
+23:00:35 tête e067ead4
+23:00:44 visual_check menus 1280x720:low
+23:03:46 fin rc=0
+23:03:47 empreinte après f4f3b501692bfed1988f702c0162932b
+23:03:47 clone 71e814c8
+23:03:47 FIN
