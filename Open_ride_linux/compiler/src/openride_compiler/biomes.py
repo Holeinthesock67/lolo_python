@@ -43,10 +43,11 @@ import numpy as np
 from . import koppen
 
 BIOME_VERSION = "1.0"
-# Identifiants du lot U0, dans l'ordre de la liste définitive, puis `japan` (lot JP1, 6.0) (Format .world v1 §8 quater).
+# Identifiants du lot U0, dans l'ordre de la liste définitive, puis `japan` (lot JP1, 6.0) et `atlantic_heath`
+# (lot AT1, 6.0) (Format .world v1 §8 quater).
 BIOMES = ("temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
           "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
-          "wetland", "coast", "volcanic", "japan")
+          "wetland", "coast", "volcanic", "japan", "atlantic_heath")
 INDEX = {b: k for k, b in enumerate(BIOMES)}
 NB = len(BIOMES)
 DEFAULT_BIOME = "temperate_grassland"

@@ -1306,6 +1306,98 @@
           3
         ]
       }
+    },
+    "atlantic_heath": {
+      "ground": {
+        "layers": [
+          {
+            "name": "lande et herbe rase",
+            "role": "flat",
+            "color": "#5d7a3c",
+            "texture": null,
+            "scale_m": 6.0
+          },
+          {
+            "name": "granite et schiste",
+            "role": "steep",
+            "color": "#77746c",
+            "texture": null,
+            "scale_m": 12.0
+          },
+          {
+            "name": "neige",
+            "role": "high",
+            "color": "#f2f5f8",
+            "texture": null,
+            "scale_m": 8.0
+          }
+        ],
+        "slope_threshold_deg": 28,
+        "blend_sharpness": 4.0,
+        "high_line_m": 1800
+      },
+      "vegetation": {
+        "species": [
+          {
+            "kind": "heather",
+            "weight": 5
+          },
+          {
+            "kind": "gorse",
+            "weight": 3
+          },
+          {
+            "kind": "bracken",
+            "weight": 4
+          },
+          {
+            "kind": "oak",
+            "weight": 2
+          },
+          {
+            "kind": "birch",
+            "weight": 1
+          },
+          {
+            "kind": "pine",
+            "weight": 1
+          }
+        ],
+        "max_density_per_ha": 260,
+        "treeline_m": 1100
+      },
+      "water": {
+        "color": "#2a4a52",
+        "turbidity": 0.35
+      },
+      "sky": {
+        "fog_density": 0.0016,
+        "haze": 0.3,
+        "light_tint": "#eef2f6"
+      },
+      "ambience": {
+        "volume": 0.6,
+        "birds": 0.6,
+        "insects": 0.2,
+        "layers": {
+          "conifer_wind": 0.5
+        }
+      },
+      "fauna": {
+        "birds": 0.6,
+        "livestock": 0.5,
+        "deer": 0.2
+      },
+      "seasons": {
+        "calendar": "four",
+        "offset_months": 0,
+        "durations_months": [
+          3,
+          3,
+          3,
+          3
+        ]
+      }
     }
   },
   "variants": {

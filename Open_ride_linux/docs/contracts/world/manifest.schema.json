@@ -306,7 +306,8 @@
                 "wetland",
                 "coast",
                 "volcanic",
-                "japan"
+                "japan",
+                "atlantic_heath"
               ]
             },
             "forced": {
@@ -332,7 +333,8 @@
                     "wetland",
                     "coast",
                     "volcanic",
-                    "japan"
+                    "japan",
+                    "atlantic_heath"
                   ]
                 }
               ]
@@ -363,7 +365,8 @@
                   "wetland",
                   "coast",
                   "volcanic",
-                  "japan"
+                  "japan",
+                  "atlantic_heath"
                 ]
               },
               "additionalProperties": {
