@@ -1,5 +1,10 @@
 # Lot WTF9 : lisibilité du mode WTF et objets reconnaissables
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série WTF : gags lisibles et objets reconnaissables | GDScript | WTF8 étape A | Moyenne | En PR (#848), captures à valider |
+
 Série WTF (2.0). Demande du propriétaire : constat WTF8 étape A du 8 novembre (gags peu compréhensibles faute d'annonce, objets mal définis, boule Katamari non identifiée) et règle du 11 novembre « gameplay lisible, expérience fluide, objets reconnaissables, pas de pavés ou de boule roses ».
 
 ## Diagnostic
