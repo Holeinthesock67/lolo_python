@@ -59,6 +59,7 @@ def test_fit_state_does_not_modify_input():
 def test_degradation_order_is_known():
     labels = [label for label, _ in STATE_DEGRADATION]
     assert labels.index("devices") > labels.index("bots (trame avec devices)")
+    assert labels.index("objets des bots (trame avec devices)") < labels.index("bots (trame avec devices)")
     assert labels[-1] == "erg"
 
 
@@ -160,8 +161,8 @@ def test_survivor_with_eleven_opponents_frame_fits_and_validates():
 def test_grandprix_frame_fits_and_validates():
     """Lot GP2 : la pire trame du Grand Prix des objets (objet et effets de chaque bot, objet `gp` au plus lourd)
     est valide et tient dans 4 096 octets sans rien alléger avec 4 adversaires, `devices` compris ; avec 11
-    (lot GP10, pas encore permis, liste allégée du lot PL1), sans rien alléger hors de la trame qui porte
-    `devices`, où seuls les bots manquent (à régler au lot GP10)."""
+    (lot GP10, liste allégée du lot PL1), sans rien alléger hors de la trame qui porte `devices`, où seuls
+    l'objet en réserve et les effets des bots partent (l'engine garde les derniers reçus) : les bots restent."""
     path = Path(__file__).resolve().parents[2] / "docs" / "contracts" / "ipc" / "state.schema.json"
     validator = jsonschema.Draft202012Validator(json.loads(path.read_text(encoding="utf-8")))
     limit = ipc_budget.state_limit("1.7")
@@ -174,7 +175,10 @@ def test_grandprix_frame_fits_and_validates():
     assert [e.message for e in validator.iter_errors(eleven)] == []
     assert sum("fx" in b for b in eleven["bots"]) == 6   # 5 bots proches et un loin à tour de rôle
     out, dropped = fit_state(eleven, limit)
-    assert size(out) <= limit and "bots (trame avec devices)" in dropped and "gp" in out
+    assert size(out) <= limit and "gp" in out and len(out["bots"]) == 11
+    assert dropped[-1] == "objets des bots (trame avec devices)" and "bots (trame avec devices)" not in dropped
+    assert not any("item" in b or "fx" in b for b in out["bots"]) and "fx" in eleven["bots"][0]
+    assert [e.message for e in validator.iter_errors(out)] == []
     eleven.pop("devices")
     assert fit_state(eleven, limit) == (eleven, [])
     assert "1.7 grand prix" in ipc_budget.report() and "1.7 grand prix 11 bots" in ipc_budget.report()
