@@ -1,0 +1,11 @@
+16:34:38 empreinte avant ed77f04c49a967c14c1d88c9c091aba3
+16:34:38 tête 91da30f4
+16:35:18 w17_cap low_branche
+16:42:15 fin rc=1
+16:42:15 w17_cap medium_branche
+16:44:48 fin rc=1
+16:44:49 w17_cap high_branche
+16:51:41 fin rc=1
+16:51:42 empreinte après ed77f04c49a967c14c1d88c9c091aba3
+16:51:42 clone 71e814c8
+16:51:42 FIN

@@ -1,0 +1,23 @@
+== w17_cap (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « open_world » : écran « home », focus « open_world »
+[OK] écran monde ouvert globe : « OpenRide »
+[OK] écran monde ouvert search (contient=['Sarre-Union']) : « OpenRide »
+[OK] écran monde ouvert map : « OpenRide »
+[ÉCHEC] écran monde ouvert setup (contient=['Cap :', 'Biome : automatique (suit la région)']) : « Biome : automatique (suit la région) » absent
+[ÉCHEC] écran monde ouvert setup (contient=['▶ Biome : automatique', 'Biome automatique : le décor suit la région']) : « ▶ Biome : automatique » absent; « Biome automatique : le décor suit la région » absent
+[ÉCHEC] écran monde ouvert setup (contient=['(forcé)', 'Biome forcé']) : « (forcé) » absent; « Biome forcé » absent
+[ÉCHEC] config.toml : render.biome = 'temperate_grassland' : lu : render.biome = None
+[ÉCHEC] écran monde ouvert setup (contient=['▶ Biome : automatique']) : « ▶ Biome : automatique » absent
+[ÉCHEC] passage interrompu après 5 échecs : étape 29 sur 40
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+w17_cap                  clavier  6 ÉCHEC(S)      68 s
+Rapport : ~/mesures-2026-11-01-auto/r852main/w17_low/rapport.html
+1 passage(s) en échec sur 1
