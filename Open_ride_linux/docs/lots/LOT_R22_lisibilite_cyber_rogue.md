@@ -38,6 +38,7 @@ Les règles du jeu ne changent pas : le core dit seulement ce qu'il décidait d�
 - `living_world.gd`, `main.gd` : les fonds d'ambiance du parcours (grillons) se taisent pendant la run ; ils gardaient le volume de la dernière image du menu.
 - Sons : `rogue_refused` (Z refusé) et `rogue_shift_missed` (arche ratée).
 - Bandeau des commandes du mode : A pour choisir, A long pour valider.
+- Bancs : `rogue_bench.py --probe` et `rogue_galerie.py --probe [--speed X]` mesurent la run avec la sonde de performance (lot X13) et jugent les budgets du préréglage (images/s, p99, temps GPU de la vue).
 
 ## 3. Tests
 
@@ -47,7 +48,7 @@ Les règles du jeu ne changent pas : le core dit seulement ce qu'il décidait d�
 
 ## 4. Reste au propriétaire
 
-- Captures low, medium et high sur le PC (galerie `engine/tests/rogue_galerie.py`), budgets GPU 8 / 13 / 16 ms à vérifier avec le décor latéral.
+- Captures low, medium et high sur le PC et budgets GPU 8 / 13 / 16 ms avec le décor latéral : `python3 engine/tests/rogue_galerie.py --godot GODOT --native --probe --speed 4`.
 - Ressenti sur le vélo (10 min).
 - Question ouverte : équilibrage de l'adrénaline (aujourd'hui 0,5 par seconde à la cible, 100 s pour une frappe Z).
 
