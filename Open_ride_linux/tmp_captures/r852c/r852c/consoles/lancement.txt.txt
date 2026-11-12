@@ -1,0 +1,13 @@
+19:04:52 empreinte avant ed77f04c49a967c14c1d88c9c091aba3
+19:04:52 tête ee5d17b0
+19:05:31 w17_cap low
+19:20:37 fin rc=1
+19:22:37 w17_cap medium
+19:36:37 fin rc=1
+19:38:37 w17_cap high
+19:52:45 fin rc=1
+19:54:45 w17_cap low2
+20:08:50 fin rc=1
+20:10:52 empreinte après 58487ae76a6a0df2c178e0dd0293b019
+20:10:52 clone 71e814c8
+20:10:52 FIN
