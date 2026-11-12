@@ -181,7 +181,8 @@ func compute(state: Dictionary, rogue: Dictionary, power_pct: float, events: Arr
 			out["title"] = "Couloir"
 			out["panel"] = false            # l'écran du couloir a son propre bandeau
 	if phase in FIGHT_PHASES:
-		var length := float(state.get("route_length_m", 0.0))
+		var raw_len = state.get("route_length_m", null)
+		var length := float(raw_len) if raw_len is float or raw_len is int else 0.0
 		if length > 0.0:
 			out["title_right"] = "%d m restants" % int(maxf(length - float(rogue.get("s_room", 0.0)), 0.0))
 	for st in nxt:

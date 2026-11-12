@@ -93,7 +93,7 @@ static func layout(length_m: float, p: String, seed_value: int, y_of: Callable, 
 			var key := "pylons_a" if (i + (1 if side > 0 else 0)) % 2 == 0 else "pylons_b"
 			out[key].append(Transform3D(Basis(), Vector3(side * PYLON_X, y + 4.0 - PYLON_H * 0.5, -s)))
 			if rng.randf() < 0.6:
-				var sz := Vector3(rng.randf_range(1.0, 3.0), rng.randf_range(1.5, 5.0), rng.randf_range(1.0, 3.0))
+				var sz := Vector3(rng.randf_range(0.8, 2.2), rng.randf_range(1.2, 3.5), rng.randf_range(0.8, 2.2))
 				var x: float = side * rng.randf_range(BLOCK_X.x, BLOCK_X.y)
 				var b := Basis().scaled(sz)
 				out["blocks"].append(Transform3D(b, Vector3(x, y - 1.0 + rng.randf_range(-3.0, 2.0) + sz.y * 0.5, -s - rng.randf_range(0.0, step))))

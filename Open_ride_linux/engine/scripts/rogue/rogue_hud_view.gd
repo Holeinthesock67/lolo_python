@@ -22,7 +22,6 @@ const BANNER_TEXT := "Salle manquée −10 or"
 const PANEL_W := 400.0
 const SIDE_W := 300.0
 const LEGEND_W := 330.0
-const TONES := {"ok": "energy", "warn": "gold", "danger": "danger", "info": "player"}
 
 
 ## Jauge horizontale : fond, remplissage, trait du seuil (adrénaline) et bord rouge quand elle est basse.
@@ -293,7 +292,14 @@ func set_style(new_preset: String, new_adapted: bool) -> void:
 
 
 func _tone(t: String) -> Color:
-	return Palette.color(TONES.get(t, "player"), adapted)
+	match t:
+		"ok":
+			return UiTheme.OK
+		"warn":
+			return UiTheme.WARN
+		"danger":
+			return UiTheme.DANGER
+	return UiTheme.FOCUS
 
 
 ## Affiche les valeurs du modèle. `bike_pos` : gardé pour l'appelant (le HUD n'est plus posé sur le vélo).
@@ -437,4 +443,4 @@ func _tick(delta: float) -> void:
 		toast_left_s = TOAST_S
 	toast_panel.visible = toast_left_s > 0.0
 	legend_left_s = maxf(legend_left_s - delta, 0.0)
-	legend_panel.visible = legend_left_s > 0.0
+	legend_panel.visible = legend_left_s > 0.0 and panel.visible   # jamais sur les cartes du couloir
