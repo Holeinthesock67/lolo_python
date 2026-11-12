@@ -99,7 +99,7 @@ def test_gravel_way_over_2km_and_perpendicular_way_ignored(tmp_path: Path, monke
     assert abs(on[0] - 500.0) <= 20.0
     assert "dirt" not in route["surface"]
     manifest = _manifest(world)
-    assert manifest["route"]["surface_source"] == "osm" and manifest["format_version"] == "1.6"
+    assert manifest["route"]["surface_source"] == "osm" and manifest["format_version"] == "1.8"
     pct = manifest["stats"]["surface_pct"]
     assert pct["gravel"] == pytest.approx(100.0 * len(on) / route["n"], abs=0.1)
     assert sum(pct.values()) == pytest.approx(100.0, abs=0.2)

@@ -188,6 +188,11 @@
               "type": "number",
               "exclusiveMinimum": 0
             },
+            "horizon_cell_m": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Maille du niveau horizon (lot JP4, format 1.8), présente seulement si ce niveau est écrit."
+            },
             "road_half_width_m": {
               "type": "number",
               "minimum": 0
@@ -208,6 +213,17 @@
                   }
                 },
                 "far": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "horizon": {
                   "type": "array",
                   "items": {
                     "type": "array",
