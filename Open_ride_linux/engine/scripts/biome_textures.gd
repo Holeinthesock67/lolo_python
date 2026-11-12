@@ -27,7 +27,7 @@ const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const SHADER := preload("res://shaders/terrain_biomes.gdshader")
 
 const GRID := 17
-const MAX_LAYERS := 54                 # 18 biomes × 3 couches (terrain_biomes.gdshader MAX_LAYERS)
+const MAX_LAYERS := 57                 # 19 biomes × 3 couches (terrain_biomes.gdshader MAX_LAYERS)
 const ROLES: Array[String] = ["grass", "rock", "snow"]
 ## Force des rides et des dunes du sable par biome (lot U8, biome_rule.w du shader) ; 0 ailleurs.
 const SAND_RELIEF := {"sand_desert": 1.0, "coast": 0.6}

@@ -118,6 +118,7 @@ const BIOME_SKY := {
 	"coast": {"para": 0.9, "para_max": 5, "balloon": 0.35, "paramotor": 0.4},
 	"volcanic": {"para": 0.9, "para_max": 5, "balloon": 0.9, "paramotor": 0.1},
 	"japan": {"para": 0.6, "para_max": 4, "balloon": 0.2, "paramotor": 0.05},
+	"atlantic_heath": {"para": 0.7, "para_max": 4, "balloon": 0.15, "paramotor": 0.15},
 	"high_plateau": {"para": 0.3, "para_max": 2, "balloon": 0.0, "paramotor": 0.0},
 }
 

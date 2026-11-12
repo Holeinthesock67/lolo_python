@@ -137,12 +137,13 @@ const BIOME_ONLY_STYLES := ["chalet", "bois_peint", "pise", "case", "paillote", 
 ## la variante de la tuile (U4) l'emporte toujours, puis le biome dominant du bâtiment, puis STYLE_DEFAULT.
 ## Lot U23 : chalets en montagne, maisons de bois peint au nord, pisé au désert, cases de savane, paillotes de
 ## jungle, pierre sombre des volcans, chaumières des marais ; étape 2 : yourtes de feutre de la steppe.
+## Lot AT1 : maisons de pierre sèche et d'ardoise des landes atlantiques.
 const BIOME_STYLES := {
 	"temperate_grassland": "tuile_plate", "temperate_forest": "tuile_plate", "farmland": "tuile_plate",
 	"boreal_forest": "bois_peint", "alpine": "chalet", "tundra": "bois_peint", "polar": "bois_peint",
 	"mediterranean": "tuile_ronde", "steppe": "yourte", "savanna": "case",
 	"sand_desert": "pise", "rock_desert": "pise", "jungle": "paillote", "wetland": "chaumiere",
-	"coast": "ardoise", "volcanic": "basalte", "japan": "kawara",
+	"coast": "ardoise", "volcanic": "basalte", "japan": "kawara", "atlantic_heath": "pierre_seche",
 	"high_plateau": "altiplano",
 }
 

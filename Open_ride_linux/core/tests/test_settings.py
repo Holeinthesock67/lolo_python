@@ -211,7 +211,7 @@ def test_biome_setting_lot_u16(tmp_path: Path):
     tout de suite ; écrit dans config.toml, porté par `hello_ack.config.biome`, permis pendant une séance."""
     gd = (Path(__file__).resolve().parents[2] / "engine" / "scripts" / "biome_ids.gd").read_text(encoding="utf-8")
     engine_biomes = re.findall(r'"([a-z_]+)"', gd.split("const BIOMES", 1)[1].split("= [", 1)[1].split("]", 1)[0])
-    assert list(config_mod.BIOMES) == engine_biomes and len(engine_biomes) == len(set(engine_biomes)) >= 18
+    assert list(config_mod.BIOMES) == engine_biomes and len(engine_biomes) == len(set(engine_biomes)) >= 19
     b = {i["key"]: i for i in settings.current(Config())}["render.biome"]
     assert (b["group"], b["value"], b["applies"], b["choices"]) == ("graphics", "auto", "now", ["auto", *engine_biomes])
     assert "Automatique" in b["help"]

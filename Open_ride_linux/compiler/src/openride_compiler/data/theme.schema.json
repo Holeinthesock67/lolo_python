@@ -151,6 +151,7 @@
         "coast",
         "volcanic",
         "japan",
+        "atlantic_heath",
         "high_plateau"
       ]
     },
@@ -263,6 +264,9 @@
                       "reed",
                       "dwarf_shrub",
                       "vine_row",
+                      "heather",
+                      "gorse",
+                      "bracken",
                       "bunchgrass"
                     ]
                   },
