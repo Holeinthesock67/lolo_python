@@ -1,0 +1,2 @@
+380:        cfg_lines.append(f'[render]\nquality = "{a.quality}"\nseasons = "{os.environ.get('BANC_SEASONS', 'off')}"\n')
+70:import os

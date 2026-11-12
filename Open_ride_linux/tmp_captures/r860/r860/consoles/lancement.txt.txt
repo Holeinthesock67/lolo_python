@@ -1,0 +1,21 @@
+20:26:58 empreinte avant 58487ae76a6a0df2c178e0dd0293b019
+20:26:58 tête 4a949303
+20:27:07 tests engine
+20:53:10 fin rc=1
+20:53:10 visual_check menus
+21:02:12 fin rc=1
+21:02:12 demo date low
+21:06:20 fin rc=0
+21:06:20 demo date medium
+21:10:27 fin rc=0
+21:10:27 demo date high
+21:14:34 fin rc=0
+21:14:34 demo random low
+21:18:41 fin rc=0
+21:18:41 demo random medium
+21:22:49 fin rc=0
+21:22:49 demo random high
+21:26:56 fin rc=0
+21:26:58 empreinte après 58487ae76a6a0df2c178e0dd0293b019
+21:26:58 clone 71e814c8
+21:26:58 FIN
