@@ -53,8 +53,18 @@
         "pierre_seche",
         "toit_plat_blanc",
         "bois",
-        "kawara"
+        "kawara",
+        "bois_peint"
       ]
+    },
+    "landscapeVariant": {
+      "enum": [
+        "canyon",
+        "fjord",
+        "ile_volcanique",
+        "rizieres"
+      ],
+      "description": "Paysage du lot U25 (6.0) posé sur des biomes existants : canyons rouges, fjords, îles volcaniques, rizières."
     },
     "weightGrid": {
       "type": "array",
@@ -126,6 +136,17 @@
                   "$ref": "#/$defs/roofVariant"
                 }
               ]
+            },
+            "landscape": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/landscapeVariant"
+                }
+              ],
+              "description": "Facultatif (lot U25) : absent = null."
             }
           }
         }
