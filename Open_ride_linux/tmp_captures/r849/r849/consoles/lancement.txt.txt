@@ -1,0 +1,13 @@
+14:25:29 empreinte avant ed77f04c49a967c14c1d88c9c091aba3
+14:25:29 tête e4fcecf1e
+14:26:09 captures_demo demo-circuit
+14:43:15 fin rc=0
+14:43:15 grand_prix circuit low
+14:51:22 fin rc=1
+14:51:22 grand_prix circuit medium
+14:59:27 fin rc=1
+14:59:27 grand_prix circuit high
+15:07:33 fin rc=1
+15:07:34 empreinte après ed77f04c49a967c14c1d88c9c091aba3
+15:07:34 clone 71e814c8
+15:07:34 FIN

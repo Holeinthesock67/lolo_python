@@ -1,0 +1,136 @@
+menus : liste des parcours et écran Prêt de chacun
+== parcours_demo (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus') : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé']) : « Contenus »
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo-circuit »
+[OK] écran routes (titre='Parcours', contient=['Col du lacet', 'Tour des six paysages', 'Route de la côte', 'Montée alpine'], elements=['demo', 'demo-biomes-tour', 'demo-biomes-cote', 'demo-biomes-alpin']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Col du lacet') : « Prêt : session libre — Col du lacet »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo-biomes-tour » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Tour des six paysages']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Tour des six paysages') : « Prêt : session libre — Tour des six paysages »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo-biomes-tour »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo-biomes-cote » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Route de la côte']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Route de la côte') : « Prêt : session libre — Route de la côte »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo-biomes-cote »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo-biomes-alpin » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Montée alpine']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Montée alpine') : « Prêt : session libre — Montée alpine »
+[OK] écran home : « OpenRide »
+[OK] choisir « world » : écran « routes », focus « demo-biomes-alpin »
+[OK] écran routes : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+parcours_demo            clavier  OK              98 s
+Rapport : ~/mesures-2026-11-01-auto/r849/o38/menus/rapport.html
+OK
+demo-circuit (low) : 5 min, captures à 150, 400, 750, 1500, 2250 m
+>>> [1/1] Scénario nominal (5:02)
+== nominal : parcours demo-circuit, 302 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.7 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-circuit à 26.2 s
+[OK] engine vivant jusqu'à la fin : 302 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 6/6 images enregistrées après le chargement, réponse en 0.57 s (médiane), 0.62 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : low appliquée (6 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -5.2 à 5.3 %, pente envoyée -5.5 à 6.1 %
+[OK] médiane 50.9 km/h sur 241 s (attendu 50.0 ± 5.0), de 46.9 à 52.9 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 6 captures
+[OK] fréquence cardiaque au journal : 262 échantillons, 137 à 184 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r849/o38/demo-circuit_low/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-circuit (medium) : 5 min, captures à 150, 400, 750, 1500, 2250 m
+>>> [1/1] Scénario nominal (5:02)
+== nominal : parcours demo-circuit, 302 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 14.4 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-circuit à 24.9 s
+[OK] engine vivant jusqu'à la fin : 302 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 6/6 images enregistrées après le chargement, réponse en 0.60 s (médiane), 0.62 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (6 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -5.2 à 5.3 %, pente envoyée -5.5 à 6.1 %
+[OK] médiane 50.9 km/h sur 242 s (attendu 50.0 ± 5.0), de 46.9 à 52.9 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 6 captures
+[OK] fréquence cardiaque au journal : 263 échantillons, 137 à 184 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r849/o38/demo-circuit_medium/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-circuit (high) : 5 min, captures à 150, 400, 750, 1500, 2250 m
+>>> [1/1] Scénario nominal (5:02)
+== nominal : parcours demo-circuit, 302 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 16.1 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-circuit à 27.0 s
+[OK] engine vivant jusqu'à la fin : 302 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 6/6 images enregistrées après le chargement, réponse en 0.60 s (médiane), 0.64 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : high appliquée (6 capture(s)) ; dernière ligne : high (demandée high, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -5.2 à 5.3 %, pente envoyée -5.5 à 6.1 %
+[OK] médiane 50.9 km/h sur 239 s (attendu 50.0 ± 5.0), de 46.9 à 52.9 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 6 captures
+[OK] fréquence cardiaque au journal : 260 échantillons, 137 à 184 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r849/o38/demo-circuit_high/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+Planche : ~/mesures-2026-11-01-auto/r849/o38/planche.html

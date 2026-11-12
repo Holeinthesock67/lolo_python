@@ -1,0 +1,7 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+59.1;18;6;0;0;0;0;0;voice_bonjour=1
+77.6;18;6;0;0;0;0;0;voice_bonjour=1
+101.6;18;6;0;0;1;1;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+155.5;18;6;1;0;1;2;0;airliner_rumble=2 cow_moo=1 crow_caw=2 voice_allez=1 voice_bonjour=1
+208.9;18;6;1;0;1;2;0;airliner_rumble=2 cow_moo=1 crow_caw=2 vehicle_pass=1 voice_allez=1 voice_bonjour=2
+303.2;18;6;0;0;0;2;0;airliner_rumble=2 cow_moo=1 crow_caw=3 kid_laugh=1 vehicle_pass=1 voice_allez=2 voice_bonjour=2
