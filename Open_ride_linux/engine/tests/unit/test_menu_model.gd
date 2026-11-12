@@ -268,10 +268,10 @@ func _test_lists_and_events() -> void:
 	w.handle("PLUS_SHORT")
 	w.handle("PLUS_SHORT")
 	var ws: Dictionary = w.handle("A_LONG")
-	_check(ws["items"].size() == 6 and ws["items"][1]["label"] == "Aucun entraînement" and _focus_id(ws) == "_sim",
+	_check(ws["items"].size() == 5 and ws["items"][1]["label"] == "Aucun entraînement" and _focus_id(ws) == "_sim",
 		"aucun entraînement : « Sans entraînement (SIM) » reste choisissable")
-	_check(ws["items"][2]["id"] == "_create" and ws["items"][3]["id"] == "_qwk" and ws["items"][4]["id"] == "_import",
-		"sous-menu ERG (N16) : Créer et Importer en fin de liste")
+	_check(ws["items"][2]["id"] == "_create" and ws["items"][3]["id"] == "_qwk" and ws["items"][4]["id"] == "_help",
+		"sous-menu ERG (N16) : Créer, QWKcode et Aide en fin de liste, sans import (révision 1.15)")
 	w.handle("PLUS_SHORT")
 	var wc: Dictionary = w.handle("A_LONG")
 	_check(wc["action"] == {"action": "item", "screen": "workouts", "id": "_create"} and wc["screen"] == "workouts",
