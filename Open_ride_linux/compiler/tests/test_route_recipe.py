@@ -161,6 +161,39 @@ def test_no_path_between_waypoints() -> None:
         rr.route_through(graph, [at(0), at(1500)])
 
 
+def _hairpin_road(surface: str | None = None) -> dict:
+    """Route de 2 km qui sort à 3 km à l'est des points (hors du premier rectangle), tronçon du milieu `surface`."""
+    coords = {1: at(0), 2: at(0, 3000), 3: at(2000, 3000), 9: at(2000)}
+    mid = {"surface": surface} if surface else {}
+    return {"elements": [way(1, [1, 2], coords), way(2, [2, 3], coords, **mid), way(3, [3, 9], coords)]}
+
+
+def _by_margin(full: dict, waypoints: list):
+    """Overpass simulé : le premier rectangle n'a que les voies qui le touchent (pas le tronçon à 3 km à l'est),
+    le rectangle élargi a toute la route."""
+    def fetch(query: str) -> dict:
+        if query == rr.roads_query(rr.bbox_around(waypoints, rr.BBOX_MARGINS_M[1])):
+            return full
+        return {"elements": [w for w in full["elements"] if w["id"] != 2]}
+    return fetch
+
+
+def test_hairpins_outside_first_box_are_found_in_wider_box(tmp_path: Path) -> None:
+    r = rr.load_recipe(recipe(tmp_path, length=8000.0, gain=100.0))
+    climb = rr.build_climb(r, _by_margin(_hairpin_road(), r.waypoints), PROVIDER)
+    assert climb.length_m == pytest.approx(8000.0, abs=50.0)
+
+
+def test_no_path_says_segment_and_unpaved(tmp_path: Path) -> None:
+    r = rr.load_recipe(recipe(tmp_path, length=8000.0, gain=100.0))
+    with pytest.raises(CompileError, match=r"tronçon 1.*non revêtues \(unpaved = true\)"):
+        rr.build_climb(r, fetcher(_hairpin_road("gravel")), PROVIDER)
+    coords = {1: at(0), 2: at(500), 3: at(1500), 9: at(2000)}
+    broken = {"elements": [way(1, [1, 2], coords), way(2, [3, 9], coords)]}
+    with pytest.raises(CompileError, match="même à 6 km des points"):
+        rr.build_climb(r, fetcher(broken), PROVIDER)
+
+
 @pytest.mark.parametrize("length,gain,needle", [(2300.0, 100.0, r"longueur \d+ m au lieu de 2300 m"),
                                                 (2000.0, 150.0, r"dénivelé \d+ m au lieu de 150 m")])
 def test_wrong_reference_is_refused(tmp_path: Path, length: float, gain: float, needle: str) -> None:
