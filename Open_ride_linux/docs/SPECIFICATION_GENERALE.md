@@ -15,7 +15,7 @@
 | Plans de la 2.0 | [2.0/README.md](2.0/README.md) : séries R, T, V et W ; série P dans l'index des lots |
 | Plan de la 3.0 | [3.0/README.md](3.0/README.md) : série U, peloton, écran de démarrage |
 | Plans de la 4.0 | [4.0/README.md](4.0/README.md) : séries TT, GP et VD, Click gauche |
-| Plans de la 5.0 | [5.0/README.md](5.0/README.md) : séries CT, WF, CO et BC, mondes demo, installeur |
+| Plans de la 5.0 | [5.0/README.md](5.0/README.md) : séries CT, CO et BC, mondes demo, installeur |
 | Feuille de route et décisions datées du propriétaire | `/mnt/project-files/feuille-de-route/PLAN_APRES_2_0.md` (hors dépôt) |
 
 En cas de désaccord entre ce document et un document détaillé, le document détaillé fait foi et l'écart est une erreur à corriger ici. Les écarts déjà connus sont listés au §9.
@@ -27,7 +27,7 @@ En cas de désaccord entre ce document et un document détaillé, le document d�
 - **2.0 :** séries R (Cyber-Rogue), T (segments, bonus, bots à profil), V (progression) et W (monde ouvert), plus P7, P18, P19 et P20.
 - **3.0 :** série U (biomes, textures régionales, saisons par biome) et option « gravel » ; écran de démarrage, peloton d'environ 12 bots (PL1) et Dernier survivant à 11 adversaires (DS8) ; FIT accepté par Garmin Connect et GoldenCheetah (X56) ; vent d'après la météo locale, reporté de la 2.0.
 - **4.0 :** séries TT (bonus tactiques), GP (Grand Prix des objets) et VD (vélodrome) ; Click gauche ; constructions et faune par biome (U23) ; panneaux d'approche refaits ; résistance calculée à basse vitesse (RC4, RC5).
-- **5.0 :** séries CT (Course tactique), WF (trainer en Wi-Fi), CO (séance conseillée) et BC (badges et cartes) ; séance `.zwo` complète au Click ; essais de gain de performance GPU ; rendu et bots améliorés en fin de projet ; mondes demo nettoyés ; installeur en un seul fichier, en dernier.
+- **5.0 :** séries CT (Course tactique), CO (séance conseillée) et BC (badges et cartes) ; essais de gain de performance GPU ; rendu et bots améliorés en fin de projet ; mondes demo nettoyés ; installeur en un seul fichier, en dernier.
 - **Socle :** lots sans version (A à M, Q, S, X, Z, RC, Y) qui servent toutes les versions.
 
 **Statuts**
@@ -68,7 +68,6 @@ En cas de désaccord entre ce document et un document détaillé, le document d�
 | Constructions et faune propres à chaque biome | Oui (U23) | |
 | Panneaux d'approche plus grands et plus travaillés | Oui | |
 | Mode « Course tactique » | | Oui (CT) |
-| Trainer en Wi-Fi (Direct Connect), mode de mesures rapides | | Oui (WF, si la mesure WF1 le justifie) |
 | Séance conseillée au menu, suggestion de la montre Garmin | | Oui (CO) |
 | Badges et cartes à collectionner | | Oui (BC) |
 | Mondes demo nettoyés et nommés, puis installeur en un seul fichier | | Oui (O37, J9) |
@@ -151,7 +150,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | 1.0-ERG-2 | Formats `.erg` et `.mrc` de GoldenCheetah | — | O9 | Livré |
 | 1.0-ERG-3 | Test de FTP, plans sur plusieurs semaines, menu Entraînement | — | O10 à O12 | O10, O11 et O12 livrés (O12 : core PR #395, écrans de l'engine PR #396) |
 | 1.0-ERG-4 | Bandeau ERG à l'écran, histogramme, bip à T − 3 s | §6 | N7 | Livré |
-| 1.0-ERG-5 | Boutons de l'ERG selon le plan commun (§7.1) : ± court biais ± 2 %, ± long biais ± 10 %, Z bloc suivant, Y pause | §4.4 | O17 | Livré (O17) ; essai complet au Click reporté en 5.0 avec la séance `.zwo` (5.0-ERG-1) |
+| 1.0-ERG-5 | Boutons de l'ERG selon le plan commun (§7.1) : ± court biais ± 2 %, ± long biais ± 10 %, Z bloc suivant, Y pause | §4.4 | O17 | Livré (O17) ; essai complet au Click retiré du plan le 12/11 (5.0-ERG-1) |
 | 1.0-ERG-6 | ERG dans une session libre depuis l'écran de pause : SIM, ERG libre (puissance cible) ou ERG à cadence verrouillée (cadence ± 10 % depuis l'essai du 1er novembre, puissance adaptée) ; ± = biais de la cible (puissance, ou cadence en ERG cadence), Z = bonus refusé (bonus coupés dans tout ERG, T-Q2 ; corrigé par TT1) | — | O18 | Livré (PR #550) ; plage ± 10 % choisie après l'essai sur le vélo du 1er novembre |
 | 1.0-CMP-1 | Compilateur GPX vers `.world` : route, terrain, OSM, caches | §7 | B1, B2, I3, I4 | Livré |
 | 1.0-CMP-2 | Traces FIT et TCX, archives Garmin, compilation au lancement | §7 | M7, N11, O5 | Livré |
@@ -171,7 +170,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | 1.0-BOT-1 | Bots à puissance constante et fantôme d'une séance passée | §13 | N9 | Livré |
 | 1.0-INS-1 | Lanceur unique, lancement sans terminal, raccourci de bureau | — | K6, L8, N14 | Livré |
 | 1.0-INS-2 | Numéro de version unique, notes de version, guide d'utilisation | — | O2, O6 | Livré (O2, O6) |
-| 1.0-INS-3 | Recette 1.0 sur le matériel et publication `v1.0.0` | — | O8 | Livré : `v1.0.0` et `v1.0.1` publiées le 1er novembre ; lignes 5 et 14 (séance `.zwo`) reportées en 5.0, ligne 21 (FIT) faite en 3.0 (X56), ligne 7 (ceinture Bluetooth) sans objet |
+| 1.0-INS-3 | Recette 1.0 sur le matériel et publication `v1.0.0` | — | O8 | Livré : `v1.0.0` et `v1.0.1` publiées le 1er novembre ; lignes 5 et 14 (séance `.zwo`) retirées du plan le 12/11 (décision du propriétaire), ligne 21 (FIT) faite en 3.0 (X56), ligne 7 (ceinture Bluetooth) sans objet |
 
 **Exigences non fonctionnelles de la 1.0** (SRS §12) : délai trainer vers écran sous 100 ms hors rendu ; boucle stable sur 3 h ; 30 images/s au moins en `low` sur la GTX 1060 ; aucune perte de séance si l'engine plante ; hors ligne une fois le parcours compilé ; seuils de passage à Rust de la SRS §14.1.
 
@@ -319,10 +318,10 @@ Détail : [5.0/README.md](5.0/README.md).
 | Id | Exigence | Lots | Statut |
 | --- | --- | --- | --- |
 | 5.0-CT-1 | Course tactique : réserve W′ symétrique et Burnout, sillage et catapulte, parade et rétro-radar, crédits gagnés en tête et capacités, virages et Apex, circuits générés ; charte cartoon | CT0 à CT12 | CT0 livré (PR #743) ; CT9 maquettes validées le 29 octobre ; reste CT1 à CT8, CT10 à CT12 |
-| 5.0-WF-1 | Trainer en Wi-Fi (Direct Connect) et mode de mesures rapides ; mesure WF1 d'abord, pilote WF2 à WF6 seulement si elle le justifie (gain attendu sous 5 %) | WF0 à WF6 | Planifié (plan seul, cahiers après WF1) |
+| 5.0-WF-1 | Trainer en Wi-Fi (Direct Connect) et mode de mesures rapides ; mesure WF1 d'abord, pilote WF2 à WF6 seulement si elle le justifie (gain attendu sous 5 %) | WF0 à WF6 | Abandonné le 12/11 (décision du propriétaire), trainer gardé en Bluetooth |
 | 5.0-CO-1 | Séance conseillée au menu selon les courses et le besoin (aérobie léger, aérobie intense, anaérobie), suggestion de la montre Garmin, séances de jeu calibrées | CO0 à CO9 | CO0 et CO1 livrés (PR #747) ; CO3 à CO6 et CO9 en revue (PR #770) ; reste CO2, CO7, CO8 |
 | 5.0-BC-1 | Badges et cartes à collectionner, recalculés depuis le journal, visuels générés hors dépôt | BC0 à BC7 | BC0 à BC4 livrés (BC2 : PR #758, révision IPC 1.8) ; BC5 et BC6 en revue (PR #783) ; reste BC7 |
-| 5.0-ERG-1 | Séance `.zwo` complète en ERG au Click : cibles, biais ± 2 % et ± 10 %, bip à T − 3 s, Z, Y, courbes lisibles (lignes 5 et 14 de la recette 1.0) | F, O17, O14 | Code livré ; recette à faire en un bloc de 10 min |
+| 5.0-ERG-1 | Séance `.zwo` complète en ERG au Click : cibles, biais ± 2 % et ± 10 %, bip à T − 3 s, Z, Y, courbes lisibles (lignes 5 et 14 de la recette 1.0) | F, O17, O14 | Abandonné le 12/11 (décision du propriétaire) : recette retirée du plan ; le lecteur `.zwo` livré en 1.0 (1.0-ERG-1) reste |
 | 5.0-RND-1 | Essais de gain de performance GPU (cultures, forêt, alpin : effets d'écran, prépasse de profondeur) jusqu'à tenir les budgets du §8 | Y, [HISTORIQUE_ESSAIS_GRAPHIQUES.md](HISTORIQUE_ESSAIS_GRAPHIQUES.md) §5 | Planifié (décision du 8 novembre) |
 | 5.0-RND-2 | Graphisme et comportement des bots améliorés en toute fin de projet, sous les budgets GPU (série Y restante : Y3, Y4, Y7, Y9, Y12) | Y | Spécifié |
 | 5.0-DEM-1 | Mondes demo gardés dans le jeu de base, nettoyés des artefacts de test et renommés en parcours explicites (demande du 5 novembre), **avant** l'installeur | O37 | En PR (8 novembre) |
@@ -478,7 +477,7 @@ Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS 
 | Mémoire vidéo du décor | — | Niveaux de textures selon la mémoire (P20) | 1 Go au plus | idem |
 | Gigue de la boucle physique | p99 du pas sous 5 ms (SRS §14.1) | Sous 5 ms pendant la génération du monde (W16) | idem | idem |
 | Disque | Caches d'altitude et d'OSM | Cache du monde : 5 Go par défaut | Bibliothèque de textures : 5 Go | idem |
-| Réseau | Hors ligne après compilation | R-NET-1 à R-NET-3 (§3) | Téléchargement de WorldCover par le compilateur ; météo locale au lancement (3.0-VNT-1) | Wi-Fi local du trainer (WF), jamais Internet pendant la séance |
+| Réseau | Hors ligne après compilation | R-NET-1 à R-NET-3 (§3) | Téléchargement de WorldCover par le compilateur ; météo locale au lancement (3.0-VNT-1) | Jamais Internet pendant la séance |
 
 ## 9. Contradictions et points à trancher
 

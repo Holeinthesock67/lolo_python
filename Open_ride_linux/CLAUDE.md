@@ -146,8 +146,8 @@ openride-compiler build trace.gpx --variant basalte,ardoise   # impose la varian
 openride-compiler list                 # liste les parcours (.world et .gpx) et leur statut
 openride-compiler build-all            # compile toutes les traces GPX nouvelles ou modifiées (route,terrain,biome,segments ; --layers pour OSM)
 openride-compiler build trace.gpx --offline --force   # sans réseau, tuiles d'altitude et WorldCover déjà en cache
-openride-compiler build trace.gpx --layers route,terrain,buildings,vegetation,poi,water,roads
-openride-compiler add-layer <nom>.world terrain|biome|buildings|vegetation|poi|water|roads|segments  # régénère une couche seule
+openride-compiler build trace.gpx --layers route,terrain,buildings,vegetation,poi,water,coast,roads
+openride-compiler add-layer <nom>.world terrain|biome|buildings|vegetation|poi|water|coast|roads|segments  # régénère une couche seule
 openride-compiler theme-check ~/OpenRide/Themes/<nom>  # contrôle un thème (défaut : engine/themes/default/)
 openride-compiler theme-list          # liste les thèmes installés et intégrés ; --json
 openride-compiler theme-install SOURCE # installe un thème depuis un dossier ou .zip ; --force
@@ -179,6 +179,7 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
 - **Fichiers embarqués des paquets (lot J4) :** les paquets lisent leurs données dans leur dossier `data/` (`Path(__file__).parent / "data"`), pour marcher installés hors du dépôt ; `theme.schema.json`, le `theme.json` par défaut, `core/workouts/` et `core/plans/` y sont **copiés** (les originaux restent la référence) : après un changement d'un original, recopier (la commande est dans le message de `test_packaging.py`, qui compare octet pour octet).
 - **GDScript :** jamais de `class_name` dans les scripts chargés par la scène principale. L'engine est lancé sans passer par l'éditeur, et Godot ne connaît alors pas les `class_name` : utiliser `preload`.
   - Les fonctions globales de Godot masquent les méthodes de même nom : `route_data.gd` utilise `wrap_s`, et non `wrap`.
+  - Référence de l'API : en cas de doute sur une classe, une méthode ou une propriété, consulter la référence générée par le binaire utilisé (4.7.2, celui de la CI et du PC) plutôt que la mémoire ou la documentation en ligne d'une autre version : `$GODOT --headless --doctool /tmp/godot-doc` (quelques secondes, 1 076 classes), puis `grep` dans `/tmp/godot-doc/doc/classes/*.xml` (hors du dépôt, rien à ajouter à Git). Pas de serveur MCP ni d'addon d'éditeur : l'engine se construit par le code et se teste en ligne de commande.
 - **Tests :**
   - chaque correction ou fonction a son test ;
   - le matériel se simule avec les doublures de `core/tests/test_drivers_session.py` (`FakeClient`, `fake_finder`) et `MockDriver` ;
