@@ -505,9 +505,6 @@ func _ready() -> void:
 		menu_flow.on_scan_results(msg)
 		_refresh_menu())
 	ipc.settings_received.connect(_on_settings)
-	ipc.imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
-		menu_flow.set_import_candidates(items)
-		_refresh_menu())
 	ipc.route_imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
 		menu_flow.set_route_import_candidates(items)
 		_refresh_menu())
@@ -783,8 +780,6 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.pair_devices(act.get("args", {}))
 		"set_setting":
 			ipc.set_setting(str(act["key"]), act["value"])
-		"list_imports":
-			ipc.list_imports()
 		"list_route_imports":
 			ipc.list_route_imports()
 		"import_route":
@@ -821,8 +816,6 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.create_workout(act["args"])
 		"create_workout_qwk":
 			ipc.create_workout_qwk(str(act["text"]))
-		"import_workout":
-			ipc.import_workout(str(act["path"]))
 		"set_difficulty":
 			ipc.send_set_difficulty(int(act["pct"]))
 		"set_ride_mode":   # session libre : SIM, ERG ou ERG cadence depuis la pause (lot O18)

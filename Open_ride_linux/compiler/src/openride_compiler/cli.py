@@ -1,9 +1,9 @@
 """Ligne de commande `openride-compiler` (lot B1 §3.3).
 
     openride-compiler build <trace .gpx|.fit|.tcx|.fit.gz|.tcx.gz|.zip> [--name NOM] [--out DOSSIER] [--out-and-back] [--force]
-                            [--layers route,terrain,biome,buildings,vegetation,poi,water,roads,segments] [--offline]
+                            [--layers route,terrain,biome,buildings,vegetation,poi,water,coast,roads,segments] [--offline]
                             [--biome ID] [--variant GROUND,ROOFS]
-    openride-compiler add-layer <dossier.world> terrain|biome|buildings|vegetation|poi|water|roads|segments [--offline]
+    openride-compiler add-layer <dossier.world> terrain|biome|buildings|vegetation|poi|water|coast|roads|segments [--offline]
                                 [--manual FICHIER.segments.toml] [--biome ID] [--variant GROUND,ROOFS]
     openride-compiler list | build-all [--layers ...] [--biome ID] [--variant GROUND,ROOFS] [--dry-run] [--offline]
     openride-compiler theme-check <dossier du thème>
@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 import time
 from dataclasses import dataclass
@@ -40,14 +41,17 @@ from . import regional as REG
 from .landcover import LandcoverSource, WorldCoverSource
 from .track_formats import read_track, scan_tracks, track_stem
 from .osm import OverpassClient
+from .coast import build_coast, coast_manifest, write_coast_dir
 from .surface import apply_surface, surface_summary
 from .osm_layers import (
+    add_sea_areas,
     build_osm_layers,
     buildings_manifest,
     load_existing_near_tiles,
     poi_manifest,
     replace_layer_dir,
     roads_manifest,
+    sample_terrain_y,
     vegetation_manifest,
     water_manifest,
     write_buildings_dir,
@@ -69,11 +73,13 @@ from .worldgen import measure, region, store
 from .writer import (biome_manifest, build_manifest, normalize_name, replace_biome_dir, replace_manifest,
                      sha256_of, shares_text, write_biome, write_world)
 
-LAYERS = ("route", "terrain", "biome", "buildings", "vegetation", "poi", "water", "roads", "segments")
+LAYERS = ("route", "terrain", "biome", "buildings", "vegetation", "poi", "water", "coast", "roads", "segments")
 # Segments (lot T3) : produits par défaut quand le core est installé, omis avec un avertissement sinon.
 # Biome (lot U2, 3.0) : par défaut aussi ; sans réseau, repli OSM et altitude avec un avertissement.
 DEFAULT_LAYERS = ("route", "terrain", "biome", "segments")
-OSM_LAYERS = ("buildings", "vegetation", "poi", "water", "roads")
+OSM_LAYERS = ("buildings", "vegetation", "poi", "water", "coast", "roads")
+# Couches tirées de la côte OSM (lot U3) : la mer de la couche eau et la couche côte.
+COAST_LAYERS = ("water", "coast")
 
 
 def make_provider(offline: bool, log: Log = stderr_log) -> ElevationProvider:
@@ -156,7 +162,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     a = sub.add_parser("add-layer", help="régénère une couche d'un .world existant")
     a.add_argument("world", type=Path)
-    a.add_argument("layer", choices=["terrain", "biome", "buildings", "vegetation", "poi", "water", "roads",
+    a.add_argument("layer", choices=["terrain", "biome", "buildings", "vegetation", "poi", "water", "coast", "roads",
                                      "segments"])
     a.add_argument("--biome", type=parse_biome, default=None, metavar="ID",
                    help="couche biome : impose ce biome à tout le parcours (255 partout)")
@@ -335,11 +341,17 @@ def cmd_build(args: argparse.Namespace) -> int:
         manifest["layers"]["biome"] = biome_manifest(biome_layer)
 
     osm_res = None
+    coast_res = None
     if any(la in args.layers for la in OSM_LAYERS):
         osm_client = make_osm_client(args.offline)
         responses = osm_client.fetch_for_route(compiled.route, frame)
         near_tiles = tiles.get("near") if tiles is not None else None
         osm_res = build_osm_layers(compiled.route, frame, responses, near_tiles=near_tiles, provider=provider)
+        if any(la in args.layers for la in COAST_LAYERS):
+            coast_res = _coast(compiled.route, frame, osm_client, near_tiles, provider)
+            add_sea_areas(osm_res, coast_res.sea_chunks)
+            if "coast" in args.layers:
+                manifest["layers"]["coast"] = coast_manifest(coast_res)
         if "buildings" in args.layers:
             manifest["layers"]["buildings"] = buildings_manifest(osm_res)
         if "vegetation" in args.layers:
@@ -374,6 +386,8 @@ def cmd_build(args: argparse.Namespace) -> int:
                 write_water_dir(folder / "water", osm_res.water_chunks)
             if "roads" in args.layers:
                 write_roads_dir(folder / "roads", osm_res.roads_chunks)
+        if coast_res is not None and coast_res.present and "coast" in args.layers:
+            write_coast_dir(folder / "coast", coast_res.coast_chunks)
 
     world = write_world(args.out, name, manifest, compiled.route, force=args.force, extra=extra)
     r = compiled.route
@@ -381,6 +395,19 @@ def cmd_build(args: argparse.Namespace) -> int:
           f"{compiled.grade_clamped_points} point(s) limité(s) à ± {C.GRADE_LIMIT_PCT:.0f} %, "
           f"couches {','.join(_layers_written(args.layers, biome_layer))} ({time.monotonic() - t0:.1f} s)")
     return EXIT_OK
+
+
+def _coast(route: dict, frame: LocalFrame, osm_client: OverpassClient, near_tiles, provider):
+    """Côte, mer et plages (lot U3) : requête de la côte sur l'étendue du terrain, puis `build_coast`."""
+    responses = osm_client.fetch_coast(route, frame)
+
+    def height_fn(xs, zs):
+        return sample_terrain_y(xs, zs, frame, near_tiles, provider)
+    res = build_coast(route, frame, responses, height_fn if (near_tiles or provider is not None) else None)
+    if res.present:
+        print(f"côte : {res.lines_count} ligne(s), {res.beaches_count} plage(s), {res.sea_count} aire(s) de mer"
+              + (f", {res.ignored_count} morceau(x) ignoré(s)" if res.ignored_count else ""), file=sys.stderr)
+    return res
 
 
 def _layers_written(layers: tuple[str, ...], biome_layer) -> list[str]:
@@ -497,11 +524,17 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
         return EXIT_OK
 
     osm_client = make_osm_client(args.offline)
-    responses = osm_client.fetch_for_route(route, frame)
     near_tiles = load_existing_near_tiles(world)
     needs_y = args.layer in ("buildings", "poi", "water", "roads")
-    provider = make_provider(args.offline) if (not near_tiles and needs_y) else None
+    # La côte demande le MNT au-delà des tuiles proches (falaises jusqu'au bord de l'étendue).
+    needs_dem = args.layer in COAST_LAYERS
+    provider = make_provider(args.offline) if ((not near_tiles and needs_y) or needs_dem) else None
+    # La couche côte ne lit que la requête de la côte ; les autres lisent les tronçons de la route.
+    responses = [] if args.layer == "coast" else osm_client.fetch_for_route(route, frame)
     osm_res = build_osm_layers(route, frame, responses, near_tiles=near_tiles, provider=provider)
+    if args.layer in COAST_LAYERS:
+        coast_res = _coast(route, frame, osm_client, near_tiles, provider)
+        add_sea_areas(osm_res, coast_res.sea_chunks)
     if args.layer == "buildings":
         replace_layer_dir(world, "buildings", write_buildings_dir, osm_res.buildings_chunks)
         manifest.setdefault("layers", {})["buildings"] = buildings_manifest(osm_res)
@@ -518,6 +551,13 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
         replace_layer_dir(world, "roads", write_roads_dir, osm_res.roads_chunks)
         manifest.setdefault("layers", {})["roads"] = roads_manifest(osm_res)
         count = osm_res.roads_count
+    elif args.layer == "coast":
+        if coast_res.present:
+            replace_layer_dir(world, "coast", write_coast_dir, coast_res.coast_chunks)
+        else:
+            shutil.rmtree(world / "coast", ignore_errors=True)
+        manifest.setdefault("layers", {})["coast"] = coast_manifest(coast_res)
+        count = coast_res.lines_count + coast_res.beaches_count
     else:
         replace_layer_dir(world, "water", write_water_dir, osm_res.water_chunks)
         manifest.setdefault("layers", {})["water"] = water_manifest(osm_res)

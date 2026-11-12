@@ -80,7 +80,7 @@ Cette section est la **liste unique** de l'état des lignes du §4 ; `docs/SUIVI
 | 1, 2 | Faites (outil X29). |
 | 3 | **Faite le 1er novembre** : trainer, deux boîtiers du Click (bouton + identifié), relance depuis l'écran Appareils, passage seul au menu après la connexion. La ceinture du propriétaire n'émet qu'en ANT+ : elle passe par le trainer, qui relaie la fréquence cardiaque (« Ceinture : aucune » dans l'écran Appareils). « Passer » avec un seul boîtier déjà vérifié. |
 | 4 | **Validée par l'usage** (1er novembre, décision du propriétaire) : heures de séances avec braquets au Click. Journaux du 1er novembre sains (aucune erreur, 94 appuis de braquet sur la passe la plus longue), passe d'affilée la plus longue 6 min. |
-| 5, 14 | **Reportées en 5.0** (1er novembre) avec la séance `.zwo` complète. |
+| 5, 14 | **Reportées en 5.0** (1er novembre) avec la séance `.zwo` complète, puis **retirées du plan** le 12 novembre (décision du propriétaire). |
 | 6 | **Validée par l'usage** (1er novembre, décision du propriétaire) : heures d'appuis sur toutes les séances, 108 appuis le 1er novembre, boîtiers revenus seuls à chaque redémarrage ; plus long passage d'affilée relevé 13 min. Une coupure du Click en séance reste à signaler. |
 | 7 | **Sans objet** : pas de ceinture Bluetooth chez le propriétaire (1er novembre). |
 | 8, 9, 10 | Non bloquantes, à relire dans les journaux des séances réelles. |
