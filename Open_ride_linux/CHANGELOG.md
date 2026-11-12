@@ -11,6 +11,13 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Pack « Cols célèbres » : Khardung La (Ladakh), Abra Málaga et Ticlio (Pérou).
 - Choix « hauts plateaux » dans « Biome du décor ».
 
+### Mode WTF lisible et objets reconnaissables (lot WTF9)
+- Sous le nom de chaque gag, une ligne « À toi : … » dit quoi faire (puissance à tenir, Z court pour refuser le plat du chef, rien à faire pour les caméras). Le bandeau grossit un instant à chaque nouveau gag.
+- Au premier passage de chaque gag et de chaque règle permanente (Katamari, cadence, peloton), une légende s'affiche 7 s à droite : ce qui se passe, ce que tu fais. Elle revient à la séance suivante.
+- La carte du Katamari annonce le prochain objet, sa distance et s'il sera ramassé ou fera « boing ».
+- Objets redessinés : la boule du Katamari est couverte d'objets collés (plus de boule rose unie) ; pomme, panneau, voiture, maison et église ont leur forme (plus de cubes de couleur) et sont posés sur la ligne de la boule ; la route qui s'effondre montre une lèvre de bitume déchiquetée, des fissures et des plaques qui basculent ; les plats du chef sont reconnaissables (spaghetti, gelée, accordéon, soufflé, piment).
+- Le rose venait des couleurs choisies, pas d'un shader manquant : aucun matériau ni shader n'est chargé depuis un fichier dans la scène WTF.
+
 ### Import d'entraînements retiré du menu ERG
 - La ligne « Importer un fichier » du sous-menu ERG est retirée (décision du propriétaire du 12 novembre). Un `.zwo`, `.erg`, `.mrc` ou `.qwk` se dépose directement dans `~/OpenRide/Workouts/` ; les entraînements livrés, « Créer un entraînement » et la saisie QWKcode ne changent pas.
 - Contrat IPC, révision 1.15 : `list_imports` et `import_workout` répondent `error` `workout_invalid` (un engine plus ancien reste conforme) ; le message `imports` n'est plus envoyé.
