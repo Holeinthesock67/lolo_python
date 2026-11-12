@@ -34,7 +34,7 @@ Sous 40° de latitude, le terrain ouvert d'ESA WorldCover (prairie, arbustes, so
 
 Références tirées des sites de cols (PJAMM, quaeldich, bikeclimbs) : **à caler sur la mesure du PC** (`route-pack-build`, tolérance 5 %), comme pour les recettes de Hakone. Chacaltaya est écarté : route en terre, en cul-de-sac.
 
-Premier passage PC (12 novembre) : Khardung La et Abra Málaga refusés, « aucun chemin routier permis » : les lacets sortent du rectangle de 1,5 km autour des points. `route_recipe.py` réessaie maintenant avec une marge de 6 km, et un refus dit quel tronçon manque et s'il passerait par une route non revêtue (`unpaved = true`). Banc `--biome high_plateau` : 5,30 / 6,87 / 9,06 ms en low / medium / high (budgets 8 / 13 / 16 ms).
+Premier passage PC (12 novembre) : Khardung La et Abra Málaga refusés, « aucun chemin routier permis » : les lacets sortent du rectangle de 1,5 km autour des points. `route_recipe.py` réessaie maintenant avec une marge de 6 km, et un refus dit quel tronçon manque et s'il passerait par une route non revêtue (`unpaved = true`). Second passage : Ticlio construit (14,6 km, 624 m) ; Khardung La et Abra Málaga n'ont de chemin que par une partie notée non revêtue dans OpenStreetMap, d'où `unpaved = true` dans leurs recettes (même clé que les autres cols en partie non revêtus, sans règle à part). Banc `--biome high_plateau` : 5,30 / 6,87 / 9,06 ms en low / medium / high (budgets 8 / 13 / 16 ms).
 
 ## 5. Essais
 
