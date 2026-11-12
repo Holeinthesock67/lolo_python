@@ -1,0 +1,13 @@
+09:26:57 empreinte avant cd3850c51f3f01752752e767563f7ccd
+09:26:57 tête 36d61794
+09:27:07 pytest core
+09:27:15 fin pytest rc=2
+09:27:15 tests engine
+09:53:04 fin tests rc=0
+09:53:04 menu_bench erg
+09:55:11 fin erg rc=0
+09:55:11 menu_bench sessions
+09:58:08 fin sessions rc=0
+09:58:09 empreinte après cd3850c51f3f01752752e767563f7ccd
+09:58:09 clone 8fc4a132
+09:58:09 FIN

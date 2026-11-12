@@ -1,0 +1,140 @@
+== sessions (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (titre='Parcours', elements=['demo', '_add_route', '_route_help']) : « Parcours »
+[OK] choisir « _route_help » : écran « route_help », focus « help:choose »
+[OK] écran route_help (titre='Aide parcours', contient=['Ajouter une trace', "Fiche d'un parcours (.toml)", 'Sans trace : le monde ouvert']) : « Aide parcours »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (focus='world', contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Col du lacet', focus='start', elements=['start', 'workout', 'change_route', 'bot1', 'ghost', 'records']) : « Prêt : session libre — Col du lacet »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Départ : étape decor ->  » : Départ : étape decor -> 
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] écran menu caché : « Prêt : session libre — Col du lacet »
+[OK] écran pause (titre='Pause', focus='resume', elements=['resume', 'end_save', 'abandon', 'difficulty', 'ride_mode']) : « Pause »
+[OK] choisir « end_save » : écran « home », focus « coach »
+[OK] journal du core : « -> FINISHED » : -> FINISHED
+[OK] écran summary (titre='Fin de séance', elements=['new_session', 'details', 'quit']) : « Fin de séance »
+[OK] fichier ~/OpenRide/Activities/*.fit présent : OpenRide/Activities/2026-11-12_09-55_demo.fit
+[OK] choisir « details » : écran « summary », focus « details »
+[OK] écran summary : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « erg » : écran « workouts », focus « _sim »
+[OK] écran workouts (titre='Session ERG : entraînement', elements=['erg_court', '_create', '_qwk']) : « Session ERG : entraînement »
+[OK] choisir « erg_court » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session ERG — Col du lacet') : « Prêt : session ERG — Col du lacet »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « erg_court|ERG court » : erg_court
+[OK] écran menu caché : « Prêt : session ERG — Col du lacet »
+[OK] journal du core : « Entraînement « .* » démarré » : Entraînement « ERG court (banc simulé) » démarré
+[OK] écran summary : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] choisir « sim » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Session simulée ? OpenRide redémarre sans matériel', focus='no') : « Session simulée ? OpenRide redémarre sans matériel »
+[OK] choisir « yes » : écran « home », focus « sim »
+[OK] l'engine sort avec le code 65 : code 65 annoncé, sortie immédiate en 0.9 s
+[OK] arrêt du core : code de sortie 0
+== sessions (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran home : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (titre='Parcours', elements=['demo', '_add_route', '_route_help']) : « Parcours »
+[OK] choisir « _route_help » : écran « route_help », focus « help:choose »
+[OK] écran route_help (titre='Aide parcours', contient=['Ajouter une trace', "Fiche d'un parcours (.toml)", 'Sans trace : le monde ouvert']) : « Aide parcours »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (focus='world', contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Col du lacet', focus='start', elements=['start', 'workout', 'change_route', 'bot1', 'ghost', 'records']) : « Prêt : session libre — Col du lacet »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Départ : étape decor ->  » : Départ : étape decor -> 
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] écran menu caché : « Prêt : session libre — Col du lacet »
+[OK] écran pause (titre='Pause', focus='resume', elements=['resume', 'end_save', 'abandon', 'difficulty', 'ride_mode']) : « Pause »
+[OK] choisir « end_save » : écran « home », focus « coach »
+[OK] journal du core : « -> FINISHED » : -> FINISHED
+[OK] écran summary (titre='Fin de séance', elements=['new_session', 'details', 'quit']) : « Fin de séance »
+[OK] fichier ~/OpenRide/Activities/*.fit présent : OpenRide/Activities/2026-11-12_09-57_demo.fit
+[OK] choisir « details » : écran « summary », focus « details »
+[OK] écran summary : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « erg » : écran « workouts », focus « _sim »
+[OK] écran workouts (titre='Session ERG : entraînement', elements=['erg_court', '_create', '_qwk']) : « Session ERG : entraînement »
+[OK] choisir « erg_court » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session ERG — Col du lacet') : « Prêt : session ERG — Col du lacet »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « erg_court|ERG court » : erg_court
+[OK] écran menu caché : « Prêt : session ERG — Col du lacet »
+[OK] journal du core : « Entraînement « .* » démarré » : Entraînement « ERG court (banc simulé) » démarré
+[OK] écran summary : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] choisir « sim » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Session simulée ? OpenRide redémarre sans matériel', focus='no') : « Session simulée ? OpenRide redémarre sans matériel »
+[OK] choisir « yes » : écran « home », focus « sim »
+[OK] l'engine sort avec le code 65 : code 65 annoncé, sortie immédiate en 0.9 s
+[OK] arrêt du core : code de sortie 0
+== sessions (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran home : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (titre='Parcours', elements=['demo', '_add_route', '_route_help']) : « Parcours »
+[OK] choisir « _route_help » : écran « route_help », focus « help:choose »
+[OK] écran route_help (titre='Aide parcours', contient=['Ajouter une trace', "Fiche d'un parcours (.toml)", 'Sans trace : le monde ouvert']) : « Aide parcours »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (focus='world', contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session libre — Col du lacet', focus='start', elements=['start', 'workout', 'change_route', 'bot1', 'ghost', 'records']) : « Prêt : session libre — Col du lacet »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Départ : étape decor ->  » : Départ : étape decor -> 
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] écran menu caché : « Prêt : session libre — Col du lacet »
+[OK] écran pause (titre='Pause', focus='resume', elements=['resume', 'end_save', 'abandon', 'difficulty', 'ride_mode']) : « Pause »
+[OK] choisir « end_save » : écran « home », focus « coach »
+[OK] journal du core : « -> FINISHED » : -> FINISHED
+[OK] écran summary (titre='Fin de séance', elements=['new_session', 'details', 'quit']) : « Fin de séance »
+[OK] fichier ~/OpenRide/Activities/*.fit présent : OpenRide/Activities/2026-11-12_09-58_demo.fit
+[OK] choisir « details » : écran « summary », focus « details »
+[OK] écran summary : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « erg » : écran « workouts », focus « _sim »
+[OK] écran workouts (titre='Session ERG : entraînement', elements=['erg_court', '_create', '_qwk']) : « Session ERG : entraînement »
+[OK] choisir « erg_court » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : session ERG — Col du lacet') : « Prêt : session ERG — Col du lacet »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « erg_court|ERG court » : erg_court
+[OK] écran menu caché : « Prêt : session ERG — Col du lacet »
+[OK] journal du core : « Entraînement « .* » démarré » : Entraînement « ERG court (banc simulé) » démarré
+[OK] écran summary : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] choisir « sim » : écran « confirm », focus « no »
+[OK] écran confirm (titre='Session simulée ? OpenRide redémarre sans matériel', focus='no') : « Session simulée ? OpenRide redémarre sans matériel »
+[OK] choisir « yes » : écran « None », focus « None »
+[INFO] souris : gestes joués au clavier (pas de geste de souris) : 1
+[OK] arrêt du core : code de sortie 0
+sessions                 click    OK              67 s
+sessions                 clavier  OK              64 s
+sessions                 souris   OK              45 s
+Rapport : ~/mesures-2026-11-01-auto/r843/menu_sessions/rapport.html
+OK

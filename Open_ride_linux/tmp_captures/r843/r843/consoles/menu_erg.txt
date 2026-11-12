@@ -1,0 +1,74 @@
+== erg (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « erg » : écran « workouts », focus « _sim »
+[OK] écran workouts (elements=['erg_court', '_create', '_qwk', '_help']) : « Session ERG : entraînement »
+[OK] choisir « _help » : écran « workout_help », focus « help:choose »
+[OK] écran workout_help (titre='Aide ERG', contient=['Créer des intervalles', 'Saisie QWKcode (GoldenCheetah)', 'Déposer un fichier']) : « Aide ERG »
+[OK] écran workouts : « Session ERG : entraînement »
+[OK] choisir « _create » : écran « workout_create », focus « param:warmup_min »
+[OK] écran workout_create (titre='Créer un entraînement', contient=['Répétitions — 5', "Puissance de l'effort — 105 % de la FTP"]) : « Créer un entraînement »
+[OK] choisir « param:reps » : écran « workout_create », focus « param:reps »
+[OK] écran workout_create (contient=['Répétitions — 6']) : « Créer un entraînement »
+[OK] choisir « save » : écran « workout_create », focus « save »
+[OK] fichier ~/OpenRide/Workouts/intervalles_6x240s_105.zwo présent : OpenRide/Workouts/intervalles_6x240s_105.zwo
+[OK] écran workouts : « Session ERG : entraînement »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== erg (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran home : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « erg » : écran « workouts », focus « _sim »
+[OK] écran workouts (elements=['erg_court', '_create', '_qwk', '_help']) : « Session ERG : entraînement »
+[OK] choisir « _help » : écran « workout_help », focus « help:choose »
+[OK] écran workout_help (titre='Aide ERG', contient=['Créer des intervalles', 'Saisie QWKcode (GoldenCheetah)', 'Déposer un fichier']) : « Aide ERG »
+[OK] écran workouts : « Session ERG : entraînement »
+[OK] choisir « _create » : écran « workout_create », focus « param:warmup_min »
+[OK] écran workout_create (titre='Créer un entraînement', contient=['Répétitions — 5', "Puissance de l'effort — 105 % de la FTP"]) : « Créer un entraînement »
+[OK] choisir « param:reps » : écran « workout_create », focus « param:reps »
+[OK] écran workout_create (contient=['Répétitions — 6']) : « Créer un entraînement »
+[OK] choisir « save » : écran « workout_create », focus « save »
+[OK] fichier ~/OpenRide/Workouts/intervalles_6x240s_105.zwo présent : OpenRide/Workouts/intervalles_6x240s_105.zwo
+[OK] écran workouts : « Session ERG : entraînement »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== erg (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « erg » : écran « workouts », focus « _sim »
+[OK] écran workouts (elements=['erg_court', '_create', '_qwk', '_help']) : « Session ERG : entraînement »
+[OK] choisir « _help » : écran « workout_help », focus « help:choose »
+[OK] écran workout_help (titre='Aide ERG', contient=['Créer des intervalles', 'Saisie QWKcode (GoldenCheetah)', 'Déposer un fichier']) : « Aide ERG »
+[OK] écran workouts : « Session ERG : entraînement »
+[OK] choisir « _create » : écran « workout_create », focus « param:warmup_min »
+[OK] écran workout_create (titre='Créer un entraînement', contient=['Répétitions — 5', "Puissance de l'effort — 105 % de la FTP"]) : « Créer un entraînement »
+[OK] choisir « param:reps » : écran « workout_create », focus « param:reps »
+[OK] écran workout_create (contient=['Répétitions — 6']) : « Créer un entraînement »
+[OK] choisir « save » : écran « workout_create », focus « save »
+[OK] fichier ~/OpenRide/Workouts/intervalles_6x240s_105.zwo présent : OpenRide/Workouts/intervalles_6x240s_105.zwo
+[OK] écran workouts : « Session ERG : entraînement »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+erg                      click    OK              46 s
+erg                      clavier  OK              45 s
+erg                      souris   OK              36 s
+Rapport : ~/mesures-2026-11-01-auto/r843/menu_erg/rapport.html
+OK
