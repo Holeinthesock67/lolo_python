@@ -261,7 +261,11 @@
                       "tree_fern",
                       "reed",
                       "dwarf_shrub",
-                      "vine_row"
+                      "vine_row",
+                      "sugi",
+                      "hinoki",
+                      "momiji",
+                      "bamboo"
                     ]
                   },
                   "weight": {

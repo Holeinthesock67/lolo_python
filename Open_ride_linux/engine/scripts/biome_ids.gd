@@ -21,10 +21,11 @@ const ROOF_VARIANTS: Array[String] = [
 	"tuile_ronde", "ardoise", "tuile_plate", "pierre_seche", "toit_plat_blanc", "bois", "kawara",
 ]
 
-## Espèces de `vegetation.species` (lot U7).
+## Espèces de `vegetation.species` (lot U7 ; espèces du Japon, lot JP5).
 const SPECIES: Array[String] = [
 	"oak", "beech", "spruce", "pine", "birch", "larch", "olive", "holm_oak", "cypress", "stone_pine",
 	"palm", "acacia", "baobab", "cactus", "tree_fern", "reed", "dwarf_shrub", "vine_row",
+	"sugi", "hinoki", "momiji", "bamboo",
 ]
 
 const GROUND_ROLES: Array[String] = ["flat", "steep", "high"]

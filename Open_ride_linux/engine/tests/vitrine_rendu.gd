@@ -81,6 +81,7 @@ const VIEWS := {
 	"ciel_proche": [Vector3(0.0, 1.4, 0.0), Vector3(8.0, 72.0, -270.0), 22.0],
 	"arbres_temperes": [Vector3(147.0, 5.0, -86.0), Vector3(147.0, 8.0, -120.0), 60.0],
 	"arbres_sud": [Vector3(153.0, 4.0, -128.0), Vector3(153.0, 4.5, -160.0), 60.0],
+	"arbres_japon": [Vector3(142.0, 6.0, -168.0), Vector3(142.0, 10.0, -205.0), 65.0],
 	"ecorces": [Vector3(129.0, 1.8, -112.0), Vector3(129.0, 2.4, -120.0), 55.0],
 	"panneaux": [Vector3(58.5, 1.5, -15.5), Vector3(61.5, 1.3, -22.0), 50.0],
 	"panneau_col": [Vector3(58.6, 2.3, -18.6), Vector3(60.0, 2.3, -22.0), 40.0],
@@ -105,6 +106,8 @@ const PROPS := [
 const TREES_TEMPERATE := ["oak", "birch", "pine", "beech", "spruce", "larch", "generic"]
 const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "acacia", "baobab", "cactus",
 	"tree_fern", "reed", "dwarf_shrub", "vine_row"]
+## Lot JP5 (6.0) : espèces du biome `japan`, troisième rangée (vue `arbres_japon`).
+const TREES_JAPAN := ["sugi", "hinoki", "momiji", "bamboo", "sugi", "momiji"]
 ## Une maison et une grange par style d'architecture (variantes du contrat U1, building_styles.gd), en rangée
 ## loin de la route : les styles que prendront les biomes et les régions de la série U.
 const STYLE_ROW := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]
@@ -455,7 +458,8 @@ func _add_animals(vp: SubViewport) -> void:
 
 ## Arbres en LOD 0 avec le matériau de la scène principale (tree_renderer.gd, balancement au vent compris).
 func _add_trees(vp: SubViewport, preset: String) -> void:
-	var rows := [[TREES_TEMPERATE, 120.0, -120.0, 9.0], [TREES_SOUTH, 120.0, -160.0, 6.0]]
+	var rows := [[TREES_TEMPERATE, 120.0, -120.0, 9.0], [TREES_SOUTH, 120.0, -160.0, 6.0],
+		[TREES_JAPAN, 120.0, -205.0, 9.0]]
 	for row in rows:
 		var kinds: Array = row[0]
 		for i in range(kinds.size()):
