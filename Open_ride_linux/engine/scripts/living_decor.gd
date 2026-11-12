@@ -64,6 +64,7 @@ const RoadsideProps := preload("res://scripts/roadside_props.gd")
 const CrowdModel := preload("res://scripts/crowd_model.gd")
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const PassersbyModel := preload("res://scripts/passersby_model.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 const FOG_PERIOD_S := 0.5
 const SOUND_POLL_S := 0.25          # relevé des sons du décor qui démarrent (P30)
@@ -288,7 +289,7 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 	var layers: Array = osm_streamer.layers_present.duplicate() if osm_streamer != null and not world_dir.is_empty() else []
 	var job := {"gen": _generation, "route": route, "world_dir": world_dir, "layers": layers,
 		"road_width_m": road_width_m, "crowd_all_climbs": crowd_all_climbs, "result": {}}
-	job["task"] = WorkerThreadPool.add_task(_prepare_job.bind(job), false, "décor du parcours")
+	job["task"] = BgTasks.add(_prepare_job.bind(job), false, "décor du parcours")
 	_job = job
 
 
@@ -343,7 +344,7 @@ static func climbs_of(r) -> Array:
 
 func _wait_job() -> void:
 	if not _job.is_empty():
-		WorkerThreadPool.wait_for_task_completion(_job["task"])
+		BgTasks.wait(_job["task"])
 		_job = {}
 
 
@@ -353,11 +354,11 @@ func flush() -> void:
 
 
 func _poll_job(wait: bool = false) -> void:
-	if _job.is_empty() or (not wait and not WorkerThreadPool.is_task_completed(_job["task"])):
+	if _job.is_empty() or (not wait and not BgTasks.done(_job["task"])):
 		return
 	var job := _job
 	_job = {}
-	WorkerThreadPool.wait_for_task_completion(job["task"])
+	BgTasks.wait(job["task"])
 	if int(job["gen"]) != _generation:
 		return
 	var res: Dictionary = job["result"]

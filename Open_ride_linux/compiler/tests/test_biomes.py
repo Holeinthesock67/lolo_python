@@ -32,11 +32,21 @@ def straight_route(length=3000.0):
     return {"x": np.zeros_like(s).tolist(), "z": (-s).tolist(), "alt_m": [500.0] * len(s)}
 
 
+def latitude_bands(lat, lon):
+    """Climat de test : bandes de latitude seules (les latitudes de test ne visent aucun lieu réel)."""
+    return B.latitude_zone_weights(lat)
+
+
+def no_volcano(lat, lon):
+    return np.zeros(np.size(lat), dtype=bool)
+
+
 def layer_at(lat, landcover=None, elevation=None, osm=None, route=None):
     route = route or straight_route()
     frame = LocalFrame.at(lat, 7.0)
     keys = biome_tile_keys(route)
-    inputs = B.Inputs(to_latlon=frame.to_latlon, landcover=landcover, elevation=elevation, osm=osm or ())
+    inputs = B.Inputs(to_latlon=frame.to_latlon, landcover=landcover, elevation=elevation, osm=osm or (),
+                      zones=latitude_bands, volcanic=no_volcano)
     return B.build_biome_layer(keys, route["x"], route["z"], inputs=inputs, sources=["test"]), frame
 
 
@@ -97,13 +107,20 @@ def test_trees_follow_climate_zone(lat, biome):
     assert layer.shares == {biome: 100.0}
 
 
-def test_zone_weights_sum_to_one_and_blend_at_limits():
+def test_latitude_bands_sum_to_one_and_blend_at_limits():
     lat = np.linspace(-90, 90, 721)
-    w = B.zone_weights(lat)
+    w = B.latitude_zone_weights(lat)
     assert np.allclose(w.sum(axis=1), 1.0) and (w >= 0).all()
-    assert B.ZONES[int(np.argmax(B.zone_weights([46.0])[0]))] == "temperate"
-    mid = B.zone_weights([B.ZONE_LIMITS_DEG[3]])[0]
+    assert B.ZONES[int(np.argmax(B.latitude_zone_weights([46.0])[0]))] == "temperate"
+    mid = B.latitude_zone_weights([B.ZONE_LIMITS_DEG[3]])[0]
     assert mid[3] == pytest.approx(0.5) and mid[4] == pytest.approx(0.5)
+
+
+def test_climate_map_zones_sum_to_one_everywhere():
+    lat, lon = np.meshgrid(np.linspace(-89.9, 89.9, 181), np.linspace(-179.9, 179.9, 361))
+    w = B.zone_weights(lat.ravel(), lon.ravel())
+    assert w.shape == (lat.size, len(B.ZONES))
+    assert np.allclose(w.sum(axis=1), 1.0) and (w >= 0).all()
 
 
 # Critère 4 : altitude --------------------------------------------------------------------------
@@ -234,7 +251,7 @@ def test_no_network_falls_back_with_warning(monkeypatch, make_gpx, tmp_path, cap
     world = tmp_path / "repli.world"
     assert verify_world(world) == []
     m = load(world)["layers"]["biome"]
-    assert m["sources"] == ["dem", "latitude"] and m["forced"] is None
+    assert m["sources"] == ["dem", "koppen_1986_2010"] and m["forced"] is None
     assert "attribution" not in m
     assert sum(m["shares"].values()) == pytest.approx(100.0, abs=0.2)
     assert "avertissement : occupation du sol indisponible" in capsys.readouterr().err
@@ -275,11 +292,11 @@ def test_full_build_twice_is_bit_identical(monkeypatch, make_gpx, tmp_path, caps
                           for p in sorted((world / "biome").rglob("*.json"))})
     assert snapshots[0] == snapshots[1] and len(snapshots[0]) > 10
     m = load(tmp_path / "a" / "deux.world")["layers"]["biome"]
-    assert m["sources"] == ["esa_worldcover_2021", "osm", "dem", "latitude"]
+    assert m["sources"] == ["esa_worldcover_2021", "osm", "dem", "koppen_1986_2010"]
     assert "CC BY 4.0" in m["attribution"]
     assert {"temperate_grassland", "farmland"} <= set(m["shares"])
     err = capsys.readouterr().err
-    assert "biomes (sources : esa_worldcover_2021, osm, dem, latitude" in err
+    assert "biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010" in err
     all_tiles = {}
     for name, data in snapshots[0].items():
         level, fname = name.split("/")[0], name.split("/")[1]
