@@ -87,9 +87,9 @@ const CROWNS := {
 	"reed": {"w": 1.4, "col": Color(0.52, 0.56, 0.30, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"dwarf_shrub": {"w": 1.8, "col": Color(0.37, 0.35, 0.21, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"vine_row": {"w": 6.0, "col": Color(0.28, 0.44, 0.16, MAT_LEAVES / 16.0), "shape": "hedge", "cy": 0.6, "ry": 0.4, "trunk_w": 0.0},
-	"heather": {"w": 1.5, "col": Color(0.36, 0.25, 0.30, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"heather": {"w": 2.6, "col": Color(0.36, 0.25, 0.30, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"gorse": {"w": 1.9, "col": Color(0.30, 0.36, 0.14, MAT_NEEDLES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
-	"bracken": {"w": 1.8, "col": Color(0.33, 0.50, 0.18, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"bracken": {"w": 2.6, "col": Color(0.33, 0.50, 0.18, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 }
 
 ## Couleur `rgb` avec la matière `code` dans l'alpha.
@@ -432,10 +432,15 @@ static func _draw(st: SurfaceTool, kind: String) -> bool:
 			for i in range(3):
 				_blob(st, Vector3(-2.0 + 2.0 * i, 1.05, 0), Vector3(1.15, 0.45, 0.4), mat(Color(0.28, 0.44, 0.16), MAT_LEAVES), 3)
 		"heather":
-			# Bruyère : trois coussins bas, mauve sombre et brun-vert mêlés (lot AT1)
-			_blob(st, Vector3(0, 0.28, 0), Vector3(0.6, 0.27, 0.55), mat(Color(0.38, 0.24, 0.32), MAT_LEAVES), 3)
-			_blob(st, Vector3(0.55, 0.2, 0.3), Vector3(0.42, 0.2, 0.4), mat(Color(0.30, 0.30, 0.20), MAT_LEAVES), 3)
-			_blob(st, Vector3(-0.45, 0.2, -0.3), Vector3(0.4, 0.22, 0.42), mat(Color(0.44, 0.27, 0.40), MAT_LEAVES), 3)
+			# Bruyère : plaque de six coussins bas, mauve et brun-vert mêlés, d'environ 2,6 m (lot AT1)
+			var tufts := [[Vector3(0, 0.28, 0), Vector3(0.65, 0.27, 0.6), Color(0.42, 0.25, 0.36)],
+				[Vector3(0.8, 0.2, 0.4), Vector3(0.5, 0.2, 0.45), Color(0.32, 0.31, 0.20)],
+				[Vector3(-0.75, 0.22, -0.35), Vector3(0.5, 0.22, 0.48), Color(0.48, 0.28, 0.44)],
+				[Vector3(-0.3, 0.18, 0.85), Vector3(0.45, 0.18, 0.4), Color(0.36, 0.28, 0.24)],
+				[Vector3(0.45, 0.2, -0.8), Vector3(0.5, 0.2, 0.42), Color(0.45, 0.26, 0.40)],
+				[Vector3(-1.0, 0.16, 0.5), Vector3(0.35, 0.16, 0.35), Color(0.30, 0.32, 0.19)]]
+			for t in tufts:
+				_blob(st, t[0], t[1], mat(t[2], MAT_LEAVES), 3)
 		"gorse":
 			# Ajonc : buisson épineux vert sombre, piqué de fleurs jaunes sur le dessus (lot AT1)
 			_blob(st, Vector3(0, 0.75, 0), Vector3(0.9, 0.78, 0.85), mat(Color(0.18, 0.28, 0.12), MAT_NEEDLES), 4)
@@ -447,12 +452,14 @@ static func _draw(st: SurfaceTool, kind: String) -> bool:
 		"bracken":
 			# Fougère aigle : frondes dressées puis retombantes, feuillage caduc (lot AT1)
 			var frond := mat(Color(0.33, 0.50, 0.18), MAT_FRONDS)
+			# Deux touffes de six frondes, à 1,1 m l'une de l'autre : une plaque d'environ 2,6 m
 			var stem := mat(Color(0.36, 0.30, 0.18), MAT_STEM)
-			for i in range(7):
-				var a := TAU * i / 7.0 + 0.2 * (i % 2)
-				var foot := Vector3(cos(a) * 0.1, 0.3, sin(a) * 0.1)
-				_limb(st, Vector3(cos(a) * 0.04, 0.0, sin(a) * 0.04), foot, 0.025, 0.02, stem, 3)
-				_frond(st, foot, a, 0.85 + 0.1 * (i % 3), 0.7, 0.3, 0.42, frond)
+			for c: Vector3 in [Vector3(-0.55, 0, 0.1), Vector3(0.55, 0, -0.15)]:
+				for i in range(6):
+					var a := TAU * i / 6.0 + 0.3 * (i % 2) + c.x
+					var foot: Vector3 = c + Vector3(cos(a) * 0.1, 0.3, sin(a) * 0.1)
+					_limb(st, c + Vector3(cos(a) * 0.04, 0.0, sin(a) * 0.04), foot, 0.025, 0.02, stem, 3)
+					_frond(st, foot, a, 0.8 + 0.1 * (i % 3), 0.7, 0.3, 0.42, frond)
 		_:
 			return false
 	return true

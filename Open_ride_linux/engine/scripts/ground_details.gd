@@ -60,6 +60,7 @@ const WALL_OFFSET_M := Vector2(1.5, 7.0)
 const WALL_OFFSET_PERIOD_M := 120.0
 const WALL_HEIGHT_M := 1.0
 const WALL_FOOT_M := 0.4            # pierres sous le sol, pour les pentes en travers
+const WALL_LIGHTEN := 0.35          # pierre des murets plus claire que les rochers (lichens, pierre lavée)
 const GRASS_HEIGHT_M := 1.1
 const GRASS_BLADES := 16
 const GRASS_TINTS := [Color(1.0, 1.0, 1.0), Color(1.12, 1.05, 0.85), Color(0.86, 0.84, 0.7), Color(1.2, 1.1, 0.8)]
@@ -331,7 +332,7 @@ func _row_at(kind: String, k: int, slot: int, stations: PackedVector4Array) -> V
 	var yc: float = float(height_at.call(c.x, c.z)) if height_at.is_valid() else st.y
 	var basis := Basis(Vector3.UP, PI * 0.5 - st.w) * Basis(Vector3.BACK, atan2(yb - ya, WALL_PIECE_M))
 	var y := minf(yc, (ya + yb) * 0.5) - 0.05
-	return {"xf": Transform3D(basis, Vector3(c.x, y, c.z)), "color": rock_color(biome, c.x, c.z), "biome": biome}
+	return {"xf": Transform3D(basis, Vector3(c.x, y, c.z)), "color": rock_color(biome, c.x, c.z).lightened(WALL_LIGHTEN), "biome": biome}
 
 
 ## Écart du muret au-delà du dégagement de la route (m) au point `s` du côté `side` : bruit de valeur continu le long
@@ -523,28 +524,35 @@ static func build_wall_mesh() -> ArrayMesh:
 	var half := WALL_PIECE_M * 0.5
 	# Talus : corps du mur, de -WALL_FOOT_M à 0,75 m
 	var body_top := WALL_HEIGHT_M * 0.75
-	_add_box(st, Vector3(-half, -WALL_FOOT_M, -0.4), Vector3(half, 0.0, 0.4), Color(0.8, 0.8, 0.8))
-	_add_slab(st, -half, half, 0.0, body_top, 0.4, 0.25, Color(0.88, 0.88, 0.86))
+	_add_box(st, Vector3(-half, -WALL_FOOT_M, -0.4), Vector3(half, 0.0, 0.4), Color(0.7, 0.7, 0.7))
+	_add_slab(st, -half, half, 0.0, body_top, 0.4, 0.25, Color(0.62, 0.61, 0.58))
 	# Pierres saillantes des deux faces, deux assises
 	for face in [-1.0, 1.0]:
 		for course in range(2):
 			var x := -half
 			var y0 := 0.05 + course * 0.33
 			while x < half - 0.2:
-				var l := minf(rng.randf_range(0.45, 0.9), half - x)
-				var hh := rng.randf_range(0.18, 0.3)
-				var z_out: float = (0.4 - 0.15 * (y0 + hh * 0.5) / body_top) * face
-				var g := rng.randf_range(0.72, 1.05)
-				var z0: float = z_out - face * 0.06
-				_add_box(st, Vector3(x + 0.02, y0, minf(z0, z_out + face * 0.03)), Vector3(x + l - 0.02, y0 + hh, maxf(z0, z_out + face * 0.03)), Color(g, g, g * 0.97), 1 if face > 0.0 else 3)
+				var l := minf(rng.randf_range(0.5, 1.0), half - x)
+				var hh := rng.randf_range(0.16, 0.34)
+				var yj := y0 + rng.randf_range(-0.05, 0.05)
+				var z_out: float = (0.4 - 0.15 * (yj + hh * 0.5) / body_top) * face + rng.randf_range(-0.02, 0.05) * face
+				# Pierres de gris inégaux, un peu chaudes ou froides, quelques-unes tachées de lichen clair
+				var g := rng.randf_range(0.95, 1.35)
+				var warm := rng.randf_range(-0.06, 0.06)
+				var col := Color(g * (1.0 + warm), g, g * (1.0 - warm))
+				if rng.randf() < 0.15:
+					col = Color(g * 1.15, g * 1.18, g * 0.95)
+				var z0: float = z_out - face * 0.08
+				_add_box(st, Vector3(x + 0.03, yj, minf(z0, z_out)), Vector3(x + l - 0.03, yj + hh, maxf(z0, z_out)), col, 1 if face > 0.0 else 3)
 				x += l
 	# Couronnement : pierres de chant serrées
 	var xc := -half
 	while xc < half - 0.1:
 		var w := minf(rng.randf_range(0.25, 0.45), half - xc)
 		var top := body_top + rng.randf_range(0.18, WALL_HEIGHT_M - body_top)
-		var g := rng.randf_range(0.65, 0.95)
-		_add_box(st, Vector3(xc + 0.01, body_top - 0.02, -0.22), Vector3(xc + w - 0.01, top, 0.22), Color(g, g, g))
+		var g := rng.randf_range(0.9, 1.25)
+		var tilt := rng.randf_range(-0.06, 0.06)
+		_add_box(st, Vector3(xc + 0.02 + tilt, body_top - 0.02, -0.22), Vector3(xc + w - 0.02 + tilt, top, 0.22), Color(g, g, g))
 		xc += w
 	return st.commit()
 
