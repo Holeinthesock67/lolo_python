@@ -21,6 +21,8 @@ Le monde ouvert ne connaissait pas les biomes : le générateur n'écrivait pas 
 - **Engine** : `biome_layer.forget_missing`, appelé par `world_streamer.swap_route` pour chaque tuile de terrain arrivée : une absence notée trop tôt est oubliée.
 - **Menu** : 4e ligne « Biome » de l'écran du cap, même réglage que Réglages › Graphisme › Biome du décor (`set_setting` de `render.biome`, aucune commande IPC nouvelle) ; explication sous les lignes, automatique ou forcé. Aide du réglage et guide §4 bis complétés.
 
+- **Col du lacet** (accord du propriétaire, 12 novembre) : le parcours de démonstration reçoit une couche biome synthétique, forêt tempérée et alpages en grandes taches (`core/src/openride_core/synthetic_biome.py`, générateur 0.4.0 ; `engine/demo/demo.world` régénéré, copié par `ensure_demo_world`).
+
 ## 4. Hors périmètre
 
 - Mer et plages (U3, U9 #844) : lot suivant, après la fusion de #844 (le générateur ignore encore l'océan).
@@ -33,4 +35,5 @@ Le monde ouvert ne connaissait pas les biomes : le générateur n'écrivait pas 
 
 ## 6. Recette sur le PC
 
+Scénario `engine/tests/menu_scenarios/w17_cap.json` (`menu_bench.py --native --scenario w17_cap --qualite low|medium|high --captures ecrans`) : recherche par nom, écran du cap, ligne Biome automatique puis forcée, 3 minutes de balade avec une capture par minute.
 Mesures GPU en low, medium et high (budgets 8, 13 et 16 ms) sur `sim_bench.py --world ouvert` et en monde ouvert réel ; captures de l'écran du cap et d'une balade qui change de biome, validées par le propriétaire avant fusion.
