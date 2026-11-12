@@ -921,6 +921,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--synthetic-relief", metavar="LAT,LON", help="relief analytique (tests, sans réseau)")
     ap.add_argument("--tiles-url", metavar="URL", help="TileJSON d'un autre serveur de tuiles (tests, X28)")
     ap.add_argument("--dem-url", metavar="URL", help="autre serveur du relief Copernicus (tests, X28)")
+    ap.add_argument("--landcover-url", metavar="URL",
+                    help="autre source de l'occupation du sol WorldCover, adresse ou dossier (tests, W17)")
     args = ap.parse_args(argv)
 
     def log(m: str) -> None:
@@ -945,7 +947,8 @@ def main(argv: list[str] | None = None) -> int:
     landcover = None
     if not args.synthetic_relief:   # relief analytique (tests) : biomes du climat et du relief seulement
         from ..landcover import WorldCoverSource
-        landcover = WorldCoverSource(offline=not network, log=log)
+        from ..landcover import WORLDCOVER_BASE_URL
+        landcover = WorldCoverSource(offline=not network, log=log, base_url=args.landcover_url or WORLDCOVER_BASE_URL)
     session = WorldSession(cache, provider, send, cfg, args.session, network=network,
                            clock=fake or time.time, log=log, landcover=landcover)
     session.tilejson_url = args.tiles_url
