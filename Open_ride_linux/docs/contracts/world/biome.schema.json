@@ -30,7 +30,8 @@
         "wetland",
         "coast",
         "volcanic",
-        "japan"
+        "japan",
+        "atlantic_heath"
       ]
     },
     "groundVariant": {

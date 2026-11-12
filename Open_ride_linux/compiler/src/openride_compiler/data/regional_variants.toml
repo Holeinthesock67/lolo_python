@@ -182,7 +182,7 @@ lat = [63, 67]
 lon = [-25, -13]
 ground = "basalte"
 
-# Japon (lot JP2, version 6.0) : toits de tuiles kawara, mêmes rectangles que data/japan_zone.toml (biome `japan`).
+# Japon (lot JP2, version 6.0) : toits de tuiles kawara, mêmes rectangles que le biome `japan` de data/biome_zones.toml.
 # Sol : roches volcaniques (andésite, basalte) de l'arc japonais.
 
 [[zone]]

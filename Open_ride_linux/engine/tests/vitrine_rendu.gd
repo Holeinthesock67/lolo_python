@@ -107,7 +107,7 @@ const PROPS := [
 ## Arbres de tree_species.gd (lot U7) et arbre d'avant la série U, en deux rangées loin de la route.
 const TREES_TEMPERATE := ["oak", "birch", "pine", "beech", "spruce", "larch", "generic"]
 const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "acacia", "baobab", "cactus",
-	"tree_fern", "reed", "dwarf_shrub", "vine_row"]
+	"tree_fern", "reed", "dwarf_shrub", "vine_row", "heather", "gorse", "bracken"]
 ## Lot JP5 (6.0) : espèces du biome `japan`, troisième rangée (vue `arbres_japon`).
 const TREES_JAPAN := ["sugi", "hinoki", "momiji", "bamboo", "sugi", "momiji"]
 ## Une maison et une grange par style d'architecture (variantes du contrat U1, building_styles.gd), en rangée

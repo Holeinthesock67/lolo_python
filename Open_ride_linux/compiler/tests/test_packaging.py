@@ -34,7 +34,7 @@ ORIGINAUX = {
     DATA_DIR / "koppen_1986_2010.u8.xz",   # carte des climats de Köppen-Geiger (lot U24)
     DATA_DIR / "koppen_LISEZMOI.md",       # sa provenance et sa licence
     DATA_DIR / "volcanic_areas.toml",      # paysages volcaniques (lot U24)
-    DATA_DIR / "japan_zone.toml",          # zone du biome japan (lot JP2)
+    DATA_DIR / "biome_zones.toml",         # biomes régionaux (lot AT2)
 }
 
 

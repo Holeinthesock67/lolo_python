@@ -289,7 +289,7 @@ func _test_styles_by_biome() -> void:
 	for biome in BuildingStyles.BIOME_STYLES:
 		if not BuildingStyles.STYLES.has(BuildingStyles.BIOME_STYLES[biome]):
 			all_known = false
-	_check(all_known and BuildingStyles.BIOME_STYLES.size() == 17, "17 biomes (U0 et JP1), chacun vers un style connu")
+	_check(all_known and BuildingStyles.BIOME_STYLES.size() == 18, "18 biomes (U0, JP1 et AT1), chacun vers un style connu")
 	var b := _building("maison_desert", [[0.0, 0.0], [10.0, 0.0], [10.0, 8.0], [0.0, 8.0]], 0.0, 6.0)
 	b["style"] = "toit_plat_blanc"
 	var res: Dictionary = BuildingMesh.build([b], _theme)

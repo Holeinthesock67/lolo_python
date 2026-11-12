@@ -118,6 +118,7 @@ const BIOME_SKY := {
 	"coast": {"para": 0.9, "para_max": 5, "balloon": 0.35, "paramotor": 0.4},
 	"volcanic": {"para": 0.9, "para_max": 5, "balloon": 0.9, "paramotor": 0.1},
 	"japan": {"para": 0.6, "para_max": 4, "balloon": 0.2, "paramotor": 0.05},
+	"atlantic_heath": {"para": 0.7, "para_max": 4, "balloon": 0.15, "paramotor": 0.15},
 }
 
 const CAMERA_EYE_M := 1.4          # hauteur de la caméra au-dessus du sol (sol des montgolfières)

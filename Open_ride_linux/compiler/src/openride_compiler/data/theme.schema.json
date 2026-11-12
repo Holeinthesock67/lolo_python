@@ -150,7 +150,8 @@
         "wetland",
         "coast",
         "volcanic",
-        "japan"
+        "japan",
+        "atlantic_heath"
       ]
     },
     "groundLayer": {
@@ -265,7 +266,10 @@
                       "sugi",
                       "hinoki",
                       "momiji",
-                      "bamboo"
+                      "bamboo",
+                      "heather",
+                      "gorse",
+                      "bracken"
                     ]
                   },
                   "weight": {

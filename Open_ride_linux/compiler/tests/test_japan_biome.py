@@ -1,4 +1,4 @@
-"""Lot JP2 (version 6.0) : pose du biome `japan` (zone Japon × climat de Köppen × arbres et arbustes WorldCover)
+"""Lot JP2 (version 6.0) : pose du biome `japan` (table commune `data/biome_zones.toml` : rectangles du Japon × climat de Köppen × arbres et arbustes WorldCover)
 et toit `kawara` des variantes régionales. Lieux publics connus, aucun accès réseau."""
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from openride_compiler.frame import LocalFrame
 from openride_compiler.pipeline import biome_tile_keys
 
 TREES, SHRUB, GRASS, CROP, BARE = 10, 20, 30, 40, 60
+JAPAN = [r.biome for r in B.biome_zones()[0]].index("japan")
 
 
 def layer_at(lat, lon, cls):
@@ -36,14 +37,13 @@ def layer_at(lat, lon, cls):
     (36.0, 138.0, True),        # coin d'un rectangle : borne sud et ouest comprises
 ])
 def test_japan_zone_at_known_places(lat, lon, inside):
-    assert B.in_japan_zone([lat], [lon]).tolist() == [inside]
+    assert (B.regional_rule([lat], [lon]).tolist() == [JAPAN]) == inside
 
 
-def test_japan_zone_table_is_valid():
-    zone = B.japan_zone()
-    assert zone.climates == {"Cfa", "Cfb", "Dfa", "Dfb"}
-    for name, (s, n), (w, e) in zone.boxes:
-        assert -90 <= s < n <= 90 and -180 <= w < e <= 180, name
+def test_japan_rule_of_the_common_table():
+    rule = B.biome_zones()[0][JAPAN]
+    assert (rule.cls, rule.koppen, rule.worldcover) == (202, {"Cfa", "Cfb", "Dfa", "Dfb"}, (TREES, SHRUB))
+    assert B.CLASS_BIOME[202] == ("japan",) * 6
 
 
 def test_forests_and_shrubs_of_japan_are_japan():
@@ -70,7 +70,7 @@ def test_japan_can_be_turned_off_by_injection():
     route = {"x": np.zeros_like(s).tolist(), "z": (-s).tolist(), "alt_m": [500.0] * len(s)}
     inputs = B.Inputs(to_latlon=LocalFrame.at(35.23, 139.07).to_latlon,
                       landcover=lambda la, lo: np.full(np.shape(la), TREES, dtype=np.uint8),
-                      japan=lambda la, lo: np.zeros(np.size(la), dtype=bool))
+                      regional=lambda la, lo: np.full(np.size(la), -1, dtype=np.int64))
     layer = B.build_biome_layer(biome_tile_keys(route), route["x"], route["z"], inputs=inputs)
     assert layer.shares == {"temperate_forest": 100.0}
 
@@ -78,6 +78,6 @@ def test_japan_can_be_turned_off_by_injection():
 def test_regional_kawara_zones_match_the_japan_zone():
     table = regional.load_table()
     kawara = sorted((z.lat, z.lon) for z in table.zones if z.values.get("roofs") == "kawara")
-    assert kawara == sorted((lat, lon) for _, lat, lon in B.japan_zone().boxes)
+    assert kawara == sorted((z.lat, z.lon) for z in B.biome_zones()[1] if z.biome == "japan")
     assert regional.variant_for(35.23, 139.07, {"japan": 1.0}, table) == {"ground": "basalte", "roofs": "kawara"}
     assert regional.variant_for(35.10, 129.04, {"temperate_forest": 1.0}, table).get("roofs") != "kawara"
