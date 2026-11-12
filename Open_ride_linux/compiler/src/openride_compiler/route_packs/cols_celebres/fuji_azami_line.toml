@@ -1,0 +1,8 @@
+name = "Fuji Azami Line (5e station de Subashiri)"
+region = "Shizuoka, mont Fuji"
+country = "Japon"
+side = "depuis Subashiri jusqu'à la 5e station, 2 000 m"
+waypoints = [[35.3680, 138.8700], [35.3650, 138.7760]]
+ref_length_m = 11400
+ref_gain_m = 1150
+tags = ["col", "classique", "japon", "volcan"]

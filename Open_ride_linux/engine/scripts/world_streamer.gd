@@ -83,6 +83,8 @@ const TEST_SEAM_TOL_M := 0.05
 var _view_now: Dictionary = {}
 var _s_now := 0.0
 var osm_streamer: Node3D = null
+## Relief d'horizon (lot JP4, horizon_view.gd), posé par main.gd ; null : pas d'horizon.
+var horizon_view: Node3D = null
 ## Série U (lot U17, première partie) : biome forcé (`--biome=`, "auto" = données du parcours) et modèle de
 ## biome du parcours courant, créé par set_world et transmis aux arbres (U7) et aux animaux (U12). Sol
 ## multi-biome (U6) : chaque tuile de terrain reçoit un matériau de `biome_textures` (terrain_biomes.gdshader) ;
@@ -192,6 +194,17 @@ func set_world(new_route, new_world_dir: String) -> void:
 	_set_biome_model()
 	if osm_streamer != null:
 		osm_streamer.set_world(route, world_dir)
+	if horizon_view != null and has_terrain:
+		_set_horizon_colors()
+		horizon_view.set_world(route, world_dir)
+
+
+## Relief d'horizon (lot JP4) : couleurs du sol du biome du départ (ou du thème 1.x), neige à la limite du thème.
+func _set_horizon_colors() -> void:
+	var ground: Dictionary = biome_model.terrain_theme(start_biome()) if biome_model != null and biome_model.active() \
+		else _theme_dict
+	var u := ThemeRenderParams.terrain_uniforms(ground)
+	horizon_view.set_colors(u["grass_color"], u["rock_color"], u["snow_color"], float(u.get("snow_line_m", 3000.0)))
 
 
 ## Modèle de biome du parcours (couche `biome` du manifeste, forçage `forced_biome`), passé aux arbres et aux
@@ -428,6 +441,8 @@ func clear() -> void:
 		forest_impostors.clear()
 	if osm_streamer != null:
 		osm_streamer.clear()
+	if horizon_view != null:
+		horizon_view.clear()
 	if _ground != null:
 		remove_child(_ground)
 		_ground.mesh = null
