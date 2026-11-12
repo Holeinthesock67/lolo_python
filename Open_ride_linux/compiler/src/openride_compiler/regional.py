@@ -28,7 +28,7 @@ import tomllib
 
 # Énumération fermée du contrat (U1 §4.3, Format .world v1 §8 quater), étendue seulement par ajout.
 GROUNDS = ("gres_rose", "calcaire_blanc", "granite_gris", "schiste_sombre", "basalte", "laterite_rouge", "craie")
-ROOFS = ("tuile_ronde", "ardoise", "tuile_plate", "pierre_seche", "toit_plat_blanc", "bois")
+ROOFS = ("tuile_ronde", "ardoise", "tuile_plate", "pierre_seche", "toit_plat_blanc", "bois", "kawara")
 MEMBERS = {"ground": GROUNDS, "roofs": ROOFS}
 
 ZONE_KEYS = {"name", "lat", "lon", "ground", "roofs"}

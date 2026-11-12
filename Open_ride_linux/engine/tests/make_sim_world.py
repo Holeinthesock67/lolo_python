@@ -36,6 +36,14 @@ import socket
 import sys
 from pathlib import Path
 
+try:
+    from openride_compiler import fake_osm
+except ImportError:   # dépôt sans `pip install -e compiler` : les sources du compilateur
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "compiler" / "src"))
+    from openride_compiler import fake_osm
+# Réponse Overpass fabriquée et route en S, communes avec les parcours de démonstration (lot O37).
+from openride_compiler.fake_osm import COLOURS, Overpass, no_network, road_heading, road_x  # noqa: E402,F401
+
 ORIGIN = (45.09, 6.06)                  # même origine que compiler/tests/conftest.py
 NAME = "village-simule"
 LAYERS = ("buildings", "vegetation", "poi", "water")
@@ -48,10 +56,6 @@ BASE_ALT_M = 400.0
 VILLAGES = [(80.0, 640.0, "Village du Bas"), (4100.0, 4900.0, "Village du Haut")]
 
 
-def no_network(*_args, **_kwargs):
-    raise OSError("réseau interdit pendant la génération du parcours simulé")
-
-
 def altitude(s: float) -> float:
     """Altitude de la route à l'abscisse curviligne approchée `s` (m)."""
     alt = BASE_ALT_M
@@ -60,18 +64,6 @@ def altitude(s: float) -> float:
             break
         alt += (min(s, b) - a) * grade / 100.0
     return alt
-
-
-def road_x(s: float) -> float:
-    """Écart de la route vers l'est (m) : deux grands S."""
-    return 60.0 * math.sin(2.0 * math.pi * s / 1800.0)
-
-
-def road_heading(s: float) -> tuple[float, float]:
-    """Vecteur unitaire (x, z) dans le sens de la route (vers le nord : z décroît)."""
-    dx = 60.0 * 2.0 * math.pi / 1800.0 * math.cos(2.0 * math.pi * s / 1800.0)
-    n = math.hypot(dx, 1.0)
-    return dx / n, -1.0 / n
 
 
 def terrain(x, z):
@@ -86,16 +78,9 @@ def terrain(x, z):
     return base + side
 
 
-class Frame:
+class Frame(fake_osm.Frame):
     def __init__(self) -> None:
-        from openride_compiler.pipeline import utm_transformer, utm_zone_of
-        number, _, south = utm_zone_of(*ORIGIN)
-        self.tr = utm_transformer(number, south)
-        self.e0, self.n0 = self.tr.transform(ORIGIN[1], ORIGIN[0])
-
-    def latlon(self, x: float, z: float) -> tuple[float, float]:
-        lon, lat = self.tr.transform(x + self.e0, self.n0 - z, direction="INVERSE")
-        return float(lat), float(lon)
+        super().__init__(ORIGIN)
 
 
 def write_gpx(path: Path, frame: Frame) -> None:
@@ -109,69 +94,6 @@ def write_gpx(path: Path, frame: Frame) -> None:
                     '<gpx version="1.1" creator="make_sim_world" xmlns="http://www.topografix.com/GPX/1/1">'
                     f"<trk><name>{NAME}</name><trkseg>{''.join(pts)}</trkseg></trk></gpx>\n",
                     encoding="utf-8")
-
-
-class Overpass:
-    """Réponse Overpass fabriquée : éléments au format `out geom`."""
-
-    def __init__(self, frame: Frame, rng: random.Random) -> None:
-        self.frame = frame
-        self.rng = rng
-        self.elements: list[dict] = []
-        self.next_id = 900_000
-        self.counts = {"buildings": 0, "vegetation": 0, "water_lines": 0, "water_areas": 0, "poi": 0}
-
-    def _id(self) -> int:
-        self.next_id += 1
-        return self.next_id
-
-    def _geom(self, ring_xz: list[tuple[float, float]], close: bool = True) -> list[dict]:
-        pts = list(ring_xz) + ([ring_xz[0]] if close else [])
-        out = []
-        for x, z in pts:
-            lat, lon = self.frame.latlon(x, z)
-            out.append({"lat": round(lat, 8), "lon": round(lon, 8)})
-        return out
-
-    def way(self, ring_xz, tags: dict, close: bool = True) -> None:
-        self.elements.append({"type": "way", "id": self._id(), "tags": tags, "geometry": self._geom(ring_xz, close)})
-
-    def node(self, x: float, z: float, tags: dict) -> None:
-        lat, lon = self.frame.latlon(x, z)
-        self.elements.append({"type": "node", "id": self._id(), "lat": round(lat, 8), "lon": round(lon, 8),
-                              "tags": tags})
-        self.counts["poi"] += 1
-
-    def rect_along(self, s: float, offset: float, length: float, depth: float) -> list[tuple[float, float]]:
-        """Rectangle aligné sur la route, centré à `offset` m (positif : à droite) du point `s`."""
-        hx, hz = road_heading(s)
-        nx, nz = -hz, hx                       # normale à droite du sens de marche
-        cx = road_x(s) + nx * offset
-        cz = -s + nz * offset
-        corners = []
-        for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
-            corners.append((cx + hx * a * length / 2 + nx * b * depth / 2,
-                            cz + hz * a * length / 2 + nz * b * depth / 2))
-        return corners
-
-    def band(self, s0: float, s1: float, off0: float, off1: float) -> list[tuple[float, float]]:
-        """Bande le long de la route entre deux distances latérales (forêts, vergers)."""
-        steps = max(2, int((s1 - s0) / 50.0))
-        inner, outer = [], []
-        for k in range(steps + 1):
-            s = s0 + (s1 - s0) * k / steps
-            hx, hz = road_heading(s)
-            nx, nz = -hz, hx
-            inner.append((road_x(s) + nx * off0, -s + nz * off0))
-            outer.append((road_x(s) + nx * off1, -s + nz * off1))
-        return inner + outer[::-1]
-
-    def building(self, s: float, offset: float, tags: dict, length: float, depth: float) -> None:
-        self.way(self.rect_along(s, offset, length, depth), tags)
-        self.counts["buildings"] += 1
-
-
-COLOURS = ["#d9cfc1", "#e8dcc4", "#c9b59a", "#f0e6d2", "#b9a48a", "#e3c9a8", "#d4d0c8"]
 
 
 def build_overpass(frame: Frame, seed: int) -> Overpass:

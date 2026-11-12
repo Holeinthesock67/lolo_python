@@ -1215,6 +1215,95 @@
           3
         ]
       }
+    },
+    "japan": {
+      "ground": {
+        "layers": [
+          {
+            "name": "andosol et mousse",
+            "role": "flat",
+            "color": "#4a6a33",
+            "texture": null,
+            "scale_m": 6.0
+          },
+          {
+            "name": "lave grise",
+            "role": "steep",
+            "color": "#5e5853",
+            "texture": null,
+            "scale_m": 12.0
+          },
+          {
+            "name": "neige",
+            "role": "high",
+            "color": "#f2f5f8",
+            "texture": null,
+            "scale_m": 8.0
+          }
+        ],
+        "slope_threshold_deg": 24,
+        "blend_sharpness": 4.0,
+        "high_line_m": 2600
+      },
+      "vegetation": {
+        "species": [
+          {
+            "kind": "spruce",
+            "weight": 3
+          },
+          {
+            "kind": "cypress",
+            "weight": 2
+          },
+          {
+            "kind": "pine",
+            "weight": 1
+          },
+          {
+            "kind": "beech",
+            "weight": 2
+          },
+          {
+            "kind": "oak",
+            "weight": 1
+          }
+        ],
+        "max_density_per_ha": 600,
+        "treeline_m": 2400
+      },
+      "water": {
+        "color": "#24525a",
+        "turbidity": 0.3
+      },
+      "sky": {
+        "fog_density": 0.0014,
+        "haze": 0.3,
+        "light_tint": "#f3f7f4"
+      },
+      "ambience": {
+        "volume": 0.7,
+        "birds": 0.7,
+        "insects": 0.6,
+        "layers": {
+          "cicadas": 0.6,
+          "conifer_wind": 0.3
+        }
+      },
+      "fauna": {
+        "birds": 0.7,
+        "livestock": 0.05,
+        "deer": 0.5
+      },
+      "seasons": {
+        "calendar": "four",
+        "offset_months": 0,
+        "durations_months": [
+          3,
+          3,
+          3,
+          3
+        ]
+      }
     }
   },
   "variants": {
@@ -1311,6 +1400,17 @@
       "roofs": [
         "#3c3a38",
         "#4e4a44"
+      ]
+    },
+    "kawara": {
+      "walls": [
+        "#e8e2d2",
+        "#5a4636",
+        "#d6cdb8"
+      ],
+      "roofs": [
+        "#4a4f57",
+        "#3f444b"
       ]
     }
   },
