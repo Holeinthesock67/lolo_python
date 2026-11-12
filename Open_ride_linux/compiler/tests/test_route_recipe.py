@@ -241,7 +241,7 @@ def test_recipe_validation(tmp_path: Path, text: str, needle: str) -> None:
 def test_builtin_pack_recipes() -> None:
     folder = rr.pack_dir("cols_celebres")
     recipes = rr.load_recipes(folder)
-    assert len(recipes) == 19   # 16, puis Khardung La, Abra Málaga, Ticlio (lot HP1)
+    assert len(recipes) == 21   # 16 du lot O16, Hakone et Fuji Azami Line (JP6), Khardung La, Abra Málaga, Ticlio (HP1)
     assert {"alpe-d-huez", "mont-ventoux-bedoin", "grand-ballon", "fuji-subaru-line"} <= {r.id for r in recipes}
     assert all("col" in r.tags and len(r.waypoints) >= 2 for r in recipes)
     # Aucune trace dans le dépôt : seulement des recettes et pack.toml.
