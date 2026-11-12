@@ -17,7 +17,7 @@ Annoncer une seule carte à la fois, au bon moment : au bilan, jamais pendant la
 2. Trois cartes gagnées dans la séance : une seule montrée, la plus rare, et « + 2 autres dans la Collection ».
 3. Ajout compatible du message `history` pour le badge ; captures validées.
 
-## Réalisation
+## 3. Livraison (8 novembre 2026, PR #783)
 
 Livré dans la même PR que BC5 (un seul passage sur le PC pour les captures des deux lots).
 
