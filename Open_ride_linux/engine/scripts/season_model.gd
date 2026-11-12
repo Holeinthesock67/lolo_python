@@ -24,6 +24,7 @@ extends RefCounted
 ## -> `{season, progress, calendar}` selon `seasons.calendar` du thème 2.0 (U1 §4.5) :
 ## - `four` : printemps, été, automne, hiver de durées `durations_months`, l'été centré sur le 16 juillet
 ##   (SUMMER_CENTER_M) puis décalé de `offset_months` ; durées 3, 3, 3, 3 : exactement les saisons de P18 ;
+##   `summer_dry` (clé facultative de `seasons`, 0 à 1) : été sec et jaune ;
 ## - `wet_dry` : `dry` puis `wet` (durées dans cet ordre), la saison des pluies centrée sur le 16 août
 ##   (WET_CENTER_M : les pluies suivent le soleil avec un mois de retard) ;
 ## - `polar` : `polar_night`, `polar_rise`, `polar_day`, `polar_set` d'après le soleil de P7 (daylight_model)
@@ -40,9 +41,10 @@ const SEASONS := ["spring", "summer", "autumn", "winter"]
 const WET_DRY := ["dry", "wet"]
 const POLAR := ["polar_night", "polar_rise", "polar_day", "polar_set"]
 const CALENDARS := BiomeIds.CALENDARS
-const DEFAULT_SEASONS := {"calendar": "four", "offset_months": 0, "durations_months": [3, 3, 3, 3]}
+const DEFAULT_SEASONS := {"calendar": "four", "offset_months": 0, "durations_months": [3, 3, 3, 3], "summer_dry": 0.0}
 const SUMMER_CENTER_M := 6.5       # milieu de l'été, en mois depuis le 1er janvier : 16 juillet
 const WET_CENTER_M := 7.5          # milieu de la saison des pluies : 16 août
+const SUMMER_DRY_GRASS := Color(1.04, 0.98, 0.84)   # herbe d'un été sec, au plus fort
 const POLAR_MIN_LAT_DEG := 75.0    # biome polaire plus au sud (biome forcé) : soleil de 75°
 const SNOW_DROP_M := 1200.0        # hiver : limite de neige 1 200 m plus bas (2 200 -> 1 000 m)
 const SNOW_EVERYWHERE_M := 20000.0 # hiver enneigé : neige partout
@@ -141,14 +143,16 @@ static func year_position(season: String, progress: float) -> float:
 
 
 ## Paramètres d'une saison de n'importe quel calendrier ; `none` et saison inconnue : neutres (été).
-static func params(season: String, progress: float = 0.5, snowy: bool = false) -> Dictionary:
+## `summer_dry` (0 à 1, section `seasons` du biome) : été sec et jaune (méditerranéen, steppe), herbe jaunie
+## au cœur de l'été, nulle à ses deux bords (aucune marche avec le printemps et l'automne).
+static func params(season: String, progress: float = 0.5, snowy: bool = false, summer_dry: float = 0.0) -> Dictionary:
 	var cal := calendar_of(season)
 	if season == "none":
 		var n := NEUTRAL.duplicate()
 		n["season"] = "none"
 		return n
 	if cal == "none":
-		return params("summer", progress, snowy)
+		return params("summer", progress, snowy, summer_dry)
 	var table: Array = CALENDAR_KEYS[cal][1]
 	var n_seasons := float((CALENDAR_KEYS[cal][0] as Array).size())
 	var y := fposmod(year_position(season, progress), n_seasons)
@@ -164,14 +168,20 @@ static func params(season: String, progress: float = 0.5, snowy: bool = false) -
 			break
 	t = clampf(t, 0.0, 1.0)
 	var snow := lerpf(float(a["snow"]), float(b["snow"]), t)
+	var dry := lerpf(float(a["dry"]), float(b["dry"]), t)
+	var grass := (a["grass"] as Color).lerp(b["grass"], t)
+	if season == "summer" and summer_dry > 0.0:
+		var k := clampf(summer_dry, 0.0, 1.0) * sin(PI * clampf(progress, 0.0, 1.0))
+		dry = maxf(dry, k)
+		grass = grass.lerp(SUMMER_DRY_GRASS, k)
 	var everywhere := snowy or cal == "polar"
 	return {
 		"leaf_tint": (a["leaf"] as Color).lerp(b["leaf"], t),
 		"autumn": lerpf(float(a["autumn"]), float(b["autumn"]), t),
 		"bare": lerpf(float(a["bare"]), float(b["bare"]), t),
 		"blossom": lerpf(float(a["blossom"]), float(b["blossom"]), t),
-		"grass_tint": (a["grass"] as Color).lerp(b["grass"], t),
-		"grass_dry": lerpf(float(a["dry"]), float(b["dry"]), t),
+		"grass_tint": grass,
+		"grass_dry": dry,
 		"snow_drop_m": snow * (SNOW_EVERYWHERE_M if everywhere else SNOW_DROP_M),
 		"falling_leaves": lerpf(float(a["fall"]), float(b["fall"]), t),
 		"insects": lerpf(float(a["insects"]), float(b["insects"]), t),
@@ -202,6 +212,8 @@ static func seasons_def(biome_def: Variant) -> Dictionary:
 	var off: Variant = d.get("offset_months", 0)
 	if (typeof(off) == TYPE_INT or typeof(off) == TYPE_FLOAT) and is_finite(float(off)):
 		out["offset_months"] = clampf(float(off), -6.0, 6.0)
+	var sd: Variant = d.get("summer_dry", 0.0)
+	out["summer_dry"] = clampf(float(sd), 0.0, 1.0) if (typeof(sd) == TYPE_INT or typeof(sd) == TYPE_FLOAT) and is_finite(float(sd)) else 0.0
 	var dur: Variant = d.get("durations_months", null)
 	var want := 4 if out["calendar"] == "four" else (2 if out["calendar"] != "none" else 1)
 	if typeof(dur) == TYPE_ARRAY and (dur as Array).size() == want:
@@ -316,6 +328,15 @@ static func season_for_biome(biome_def: Variant, month: int, day: int, lat_deg: 
 			out = {"season": "none", "progress": 0.5}
 	out["calendar"] = cal
 	return out
+
+
+## Saison et paramètres d'un biome à une date : `{season, progress, calendar, params}` (`season_for_biome`
+## puis `params`, avec l'été sec du biome) ; `theme` : sa `season` l'emporte (réglage « du thème »).
+static func biome_state(biome_def: Variant, month: int, day: int, lat_deg: float = 45.0, snowy: bool = false,
+		theme: Dictionary = {}) -> Dictionary:
+	var s := season_for_biome(biome_def, month, day, lat_deg, theme)
+	s["params"] = params(s["season"], s["progress"], snowy, float(seasons_def(biome_def)["summer_dry"]))
+	return s
 
 
 ## Mélange des paramètres de saison de plusieurs biomes en un point : `weights` (somme 1) et

@@ -264,12 +264,13 @@ func params(biome: String, season: String = "", progress: float = 0.0, variant: 
 	var sky := ThemeRenderParams.sky_params(sky_theme)
 	# Saison (lot U13) : imposée par l'appel, sinon celle du calendrier du biome à la date posée
 	var snowy := bool(season_date.get("snowy", false))
+	var summer_dry := float(SeasonModel.seasons_def(entry)["summer_dry"])
 	if season == "" and not season_date.is_empty():
 		var s := SeasonModel.season_for_biome(entry, int(season_date["month"]), int(season_date["day"]),
 			float(season_date["lat"]))   # réglage « selon la date » : la saison du thème n'entre pas (comme P19)
 		season = s["season"]
 		progress = float(s["progress"])
-	var season_params: Dictionary = SeasonModel.params(season, progress, snowy) if season != "" else SeasonModel.NEUTRAL.duplicate()
+	var season_params: Dictionary = SeasonModel.params(season, progress, snowy, summer_dry) if season != "" else SeasonModel.NEUTRAL.duplicate()
 	sky["haze"] = float(sky_b.get("haze", 0.0))
 	sky["light_tint"] = ThemeRenderParams._color_or_default(sky_b.get("light_tint", null), "#ffffff")
 

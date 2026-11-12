@@ -156,8 +156,17 @@ func _test_u13_calendars() -> void:
 	_check(taiga_may["season"] == "spring", "taïga du thème (hiver de 5 mois), 15 mai : printemps court (%s)" % taiga_may["season"])
 	_check(SeasonModel.season_for_biome(biomes["tundra"], 9, 25, 68.0)["season"] == "winter", "toundra, 25 septembre : déjà l'hiver")
 	_check(SeasonModel.season_for_biome(biomes["mediterranean"], 5, 15, 43.0)["season"] == "summer", "méditerranéen, 15 mai : déjà l'été (5 mois)")
-	var dry := SeasonModel.params(SeasonModel.season_for_biome(biomes["mediterranean"], 8, 1, 43.0)["season"], 0.5)
-	_check(dry["season"] == "summer", "méditerranéen, août : été")
+	var med := SeasonModel.biome_state(biomes["mediterranean"], 7, 16, 43.0)
+	var tg := SeasonModel.biome_state(biomes["temperate_grassland"], 7, 16, 45.0)
+	_check(med["season"] == "summer" and float(med["params"]["grass_dry"]) > 0.7 and float(tg["params"]["grass_dry"]) == 0.0,
+		"16 juillet : été sec et jaune en méditerranéen (%.2f), prairie neutre" % med["params"]["grass_dry"])
+	_check(float(SeasonModel.biome_state(biomes["steppe"], 7, 16, 48.0)["params"]["grass_dry"]) > 0.6, "steppe : été sec")
+	var edge_gap := 0.0
+	for pr in [[ "spring", 0.995, "summer", 0.005], ["summer", 0.995, "autumn", 0.005]]:
+		var a := SeasonModel.params(pr[0], pr[1], false, 0.8)
+		var b := SeasonModel.params(pr[2], pr[3], false, 0.8)
+		edge_gap = maxf(edge_gap, absf(float(a["grass_dry"]) - float(b["grass_dry"])))
+	_check(edge_gap <= 0.05, "été sec : aucune marche avec le printemps et l'automne (%.3f)" % edge_gap)
 	# Critère 4 : désert de sable, même saison toute l'année, paramètres neutres
 	var seen := {}
 	for m in range(1, 13):

@@ -80,8 +80,8 @@ static func _date_state(theme: Dictionary, month: int, day: int, lat_deg: float,
 	var keys := w.keys()
 	keys.sort()
 	for b in keys:
-		var s := SeasonModel.season_for_biome(biomes.get(b, {}), month, day, lat)
-		by_biome[b] = SeasonModel.params(s["season"], s["progress"], snowy)
+		var s := SeasonModel.biome_state(biomes.get(b, {}), month, day, lat, snowy)
+		by_biome[b] = s["params"]
 		by_biome[b]["progress"] = s["progress"]
 		if float(w[b]) > best_w:
 			best_w = float(w[b])
