@@ -1,0 +1,27 @@
+== w17_cap (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : medium appliquée (fin du journal) ; dernière ligne : medium (demandée medium, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 10.0 s)
+[OK] choisir « open_world » : écran « home », focus « open_world »
+[OK] écran monde ouvert globe : « OpenRide »
+[OK] écran monde ouvert search (contient=['Sarre-Union']) : « OpenRide »
+[OK] écran monde ouvert map : « OpenRide »
+[OK] écran monde ouvert setup (contient=['Cap :', 'Biome : automatique (suit la région)']) : « OpenRide »
+[OK] écran monde ouvert setup (contient=['▶ Biome : automatique', 'Biome automatique : le décor suit la région']) : « OpenRide »
+[OK] écran monde ouvert setup (contient=['(forcé)', 'Biome forcé']) : « OpenRide »
+[OK] config.toml : render.biome = 'temperate_grassland' : OK
+[OK] écran monde ouvert setup (contient=['▶ Biome : automatique']) : « OpenRide »
+[OK] config.toml : render.biome = 'auto' : OK
+[OK] écran monde ouvert False : « OpenRide »
+[OK] journal du engine : « scene_ready id= » : scene_ready id=
+[ÉCHEC] journal du engine : « world_revision rev= » : absent après 120 s
+[OK] journal du core : « WorldCover|biome » : biome
+[OK] qualité réellement appliquée à l'arrêt : medium appliquée (fin du journal) ; dernière ligne : medium (demandée medium, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+w17_cap                  clavier  1 ÉCHEC(S)     361 s
+Rapport : ~/mesures-2026-11-01-auto/r852d/w17_medium/rapport.html
+1 passage(s) en échec sur 1
