@@ -223,3 +223,17 @@ def test_grandprix_bench_captures_fall_just_before_each_box_row_and_after_each_z
     assert 0 < FIRST_ROW_M - settings["first_m"] <= min(60.0, FRAME_AHEAD_M)
     z = [x for x in settings["inputs"] if x.get("key") == "Z"]
     assert len(z) >= 10 and all(float(x["t"]) < settings["duration_s"] for x in z)
+
+
+def test_grandprix_gp4_bench_plays_only_team_car_and_stealth(tmp_path: Path) -> None:
+    """Lot GP4 : le scénario `grand_prix_gp4` écrit un grandprix.toml valide qui ne joue que la voiture d'équipe et le
+    Furtif, tirés dans toutes les tranches, avec le cycliste parti derrière (le Furtif n'est jamais tiré en tête)."""
+    from openride_core.grandprix import items as gp_items
+
+    _, _, settings, _ = sim_bench.resolve_scenario("grand_prix_gp4")
+    assert settings["mode"] == "grandprix"
+    (tmp_path / "grandprix.toml").write_text(sim_bench.toml_text(settings["grandprix"]), encoding="utf-8")
+    table = gp_items.load_table(tmp_path / "grandprix.toml")
+    assert table.enabled == {"team_car", "stealth"}
+    for bracket in gp_items.BRACKETS:
+        assert table.weights[bracket]["team_car"] > 0 and table.weights[bracket]["stealth"] > 0
