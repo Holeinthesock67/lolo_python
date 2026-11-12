@@ -79,7 +79,9 @@ def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
         jsonschema.validate(_json(world / "route.json"), _schema("route"))
         assert manifest["format_version"] == "1.6"
         biome = manifest["layers"]["biome"]
-        assert biome["present"] and biome["forced"] is None and biome["tiles"] == manifest["layers"]["terrain"]["tiles"]
+        terrain_tiles = manifest["layers"]["terrain"]["tiles"]   # niveau horizon (1.8) : sans couche biome
+        assert biome["present"] and biome["forced"] is None
+        assert biome["tiles"] == {lv: terrain_tiles[lv] for lv in ("near", "far")}
         tile_schema = _schema("biome")
         for level in ("near", "far"):
             files = sorted((world / "biome" / level).glob("tile_*.json"))
