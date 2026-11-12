@@ -17,6 +17,7 @@ var _quad: MeshInstance3D
 var _mat: ShaderMaterial
 var _label: Label3D
 var _view: Dictionary = {}
+var _boost := false
 
 
 func _init() -> void:
@@ -27,8 +28,7 @@ func _init() -> void:
 	_mat = ShaderMaterial.new()
 	_mat.shader = GaugeShader
 	_mat.set_shader_parameter("size_m", SIZE_M)
-	var c: Color = UiTheme.DRAFT
-	_mat.set_shader_parameter("fill_color", Color(c.r, c.g, c.b, 1.0).lightened(0.15))
+	_mat.set_shader_parameter("fill_color", _fill_color(false))
 	_mat.render_priority = 1
 	_quad = MeshInstance3D.new()
 	_quad.mesh = mesh
@@ -48,6 +48,19 @@ func _init() -> void:
 	add_child(_label)
 
 
+## Couleur de l'arc : bleu de l'abri, violet des bonus pendant l'Aspiration + (lot TT6).
+static func _fill_color(boost: bool) -> Color:
+	var c: Color = UiTheme.BONUS if boost else UiTheme.DRAFT
+	return Color(c.r, c.g, c.b, 1.0).lightened(0.15)
+
+
+## Aspiration + active (lot TT6) : arc en violet le temps du bonus.
+func set_boost(on: bool) -> void:
+	if on != _boost:
+		_boost = on
+		_mat.set_shader_parameter("fill_color", _fill_color(on))
+
+
 ## `view` : sortie de draft_gauge_model.gd ; `anchor` : position du bot dans le monde (bots_view.gd
 ## anchor_of()), null si le bot n'est pas affiché.
 func update_view(view: Dictionary, anchor: Variant) -> void:
@@ -65,7 +78,7 @@ func update_view(view: Dictionary, anchor: Variant) -> void:
 
 ## Pour les tests graphiques : état affiché et point haut de l'arc dans l'image.
 func test_info(camera: Camera3D) -> Dictionary:
-	var out := {"visible": visible, "bot": str(_view.get("bot", "")), "fill": float(_view.get("fill", 0.0)),
+	var out := {"visible": visible, "bot": str(_view.get("bot", "")), "fill": float(_view.get("fill", 0.0)), "boost": _boost,
 		"text": _label.text if visible and _label.visible else "", "glow": bool(_view.get("glow", false)),
 		"on_screen": false, "point": []}
 	if visible and camera != null and not camera.is_position_behind(global_position):

@@ -1240,6 +1240,20 @@ def _bots_segment_bonus_scene(s: Session) -> None:
                 f"profil {prof[1]:.0f}–{prof[1] + prof[3]:.0f} px, panneau jusqu'à {right[1] + right[3]:.0f} px, "
                 f"segment à {seg[1]:.0f} px")
         s.check_layout("bots_segment_bonus", info)
+    # Lot TT6 (maquettes validées le 8 novembre) : refus de l'Enclume (orange barré, raison et réserve gardée)
+    # au-dessus de la Plume active ; le bloc grandit et l'encart des bots descend, sans chevauchement.
+    core.set_scene(powerup={"held": "anvil", "active": "feather", "remaining_s": 12.0,
+                            "refused": {"kind": "anvil", "reason": "no_descent"}})
+    time.sleep(SETTLE_S)
+    shot = s.capture("bonus_refus_actif")
+    if shot:
+        img, info = shot
+        w = info["widgets"]
+        s.check_texts("bonus_refus_actif", info, {"bonus_held": "Enclume refusée"})
+        bonus, panel = w["bonus_panel"]["rect"], w["bots_panel"]["rect"]
+        s.check("bonus_refus_actif", "bloc bonus à trois lignes au-dessus de l'encart des bots",
+                bonus[3] > 60.0 and bonus[1] + bonus[3] <= panel[1] + 0.5, f"bonus {bonus}, bots {panel}")
+        s.check_layout("bonus_refus_actif", info)
     core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, segment=None, powerup=None)
     time.sleep(SETTLE_S)
 
@@ -2027,6 +2041,30 @@ def _draft_gauge_scene(s: Session) -> None:
         s.check("jauge_abri", "pastille du HUD au même pourcentage", info["widgets"]["draft"]["text"] == "Abri 30 %",
                 f"{info['widgets']['draft']['text']!r}")
         s.check_layout("jauge_abri", info)
+    # Lot TT6 : Aspiration + active, arc et pastille d'abri en violet ; puis Échappée, avatar translucide vu de la
+    # caméra de contrôle derrière lui ; sans bonus, tout redevient comme avant.
+    core.set_scene(powerup={"held": None, "active": "draft_plus", "remaining_s": 30.0})
+    time.sleep(SETTLE_S)
+    shot = s.capture("aspiration_plus")
+    if shot:
+        g = shot[1].get("draft_gauge", {})
+        s.check("aspiration_plus", "Aspiration + : arc violet au-dessus du bot", g.get("visible") and g.get("boost"), f"{g}")
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
+    core.set_scene(powerup={"held": None, "active": "breakaway", "remaining_s": 25.0})
+    time.sleep(SETTLE_S + 1.0)
+    shot = s.capture("echappee_avatar")
+    if shot:
+        av = shot[1].get("avatar", {})
+        s.check("echappee_avatar", "Échappée : avatar translucide dans l'image",
+                av.get("breakaway") and av.get("visible") and av.get("on_screen"), f"{av}")
+    core.set_scene(powerup=None)
+    time.sleep(SETTLE_S)
+    shot = s.capture("echappee_finie")
+    if shot:
+        av, g = shot[1].get("avatar", {}), shot[1].get("draft_gauge", {})
+        s.check("echappee_finie", "sans bonus : avatar opaque, arc bleu", not av.get("breakaway") and not g.get("boost"),
+                f"{av.get('breakaway')}, {g.get('boost')}")
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
     gauge_setting("off")
     shot = s.capture("jauge_abri_retiree")
     if shot:

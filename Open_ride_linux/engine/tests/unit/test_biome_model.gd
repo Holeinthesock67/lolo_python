@@ -206,6 +206,25 @@ func _init() -> void:
 			st["k"] += 1, 5, 1)
 	_check(PerfBudget.check("biome_weights_at", ms / 1000.0), "weights_at : %.2f µs par appel (5 µs indicatif)" % ms)
 
+	# Lot U13 : saison de chaque biome à la date posée, paramètres mélangés par les poids
+	var sm := BiomeModel.new(default_theme)
+	_check(str(sm.params("savanna")["season"]) == "" and float(sm.params("savanna")["season_params"]["ground_wet"]) == 0.0,
+		"sans date : pas de saison, paramètres neutres")
+	sm.set_season_date(7, 15, 12.0)
+	var sav: Dictionary = sm.params("savanna")
+	var tg: Dictionary = sm.params("temperate_grassland")
+	_check(sav["season"] == "wet" and float(sav["season_params"]["ground_wet"]) > 0.5, "15 juillet, 12° : savane en saison des pluies")
+	_check(tg["season"] == "summer" and sm.params("sand_desert")["season"] == "none", "même date : prairie en été, désert sans saison")
+	var mixed: Dictionary = BiomeModel.blend({"savanna": 0.5, "temperate_grassland": 0.5}, {"savanna": sav, "temperate_grassland": tg})
+	_check(is_equal_approx(float(mixed["season_params"]["ground_wet"]), float(sav["season_params"]["ground_wet"]) * 0.5),
+		"mélange savane et prairie : moitié du sol détrempé")
+	sm.set_season_date(7, 15, -12.0)
+	_check(sm.params("savanna")["season"] == "dry", "même date, −12° : savane en saison sèche (cache vidé au changement de date)")
+	_check(sm.params("savanna", "winter", 0.5)["season"] == "winter", "saison imposée à l'appel : l'emporte")
+	sm.clear_season()
+	_check(str(sm.params("savanna")["season"]) == "", "date retirée : plus de saison")
+	_check(sm.params("boreal_forest")["seasons"]["durations_months"] == [2.0, 3.0, 2.0, 5.0], "section seasons du biome lue (taïga : hiver de 5 mois)")
+
 	# Lot U16 : réglage « Biome du décor », chaque biome a son nom français au menu, tous différents
 	var texts: Dictionary = SettingsViewModel.CHOICE_TEXTS["render.biome"]
 	var names := {}
