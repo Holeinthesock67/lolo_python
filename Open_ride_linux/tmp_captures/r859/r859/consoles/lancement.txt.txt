@@ -1,0 +1,13 @@
+20:11:19 empreinte avant 58487ae76a6a0df2c178e0dd0293b019
+20:11:19 tête 689d0a2c
+20:12:00 coupures_village low_branche
+20:14:17 fin rc=1
+20:14:17 coupures_village medium_branche
+20:16:33 fin rc=1
+20:16:33 coupures_village high_branche
+20:18:50 fin rc=1
+20:18:50 vitrine pente
+20:19:07 fin rc=0
+20:19:08 empreinte après 58487ae76a6a0df2c178e0dd0293b019
+20:19:08 clone 71e814c8
+20:19:08 FIN
