@@ -1,0 +1,47 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_sea_mesh
+
+[OK] mer avec île construite
+[OK] aucun triangle sur l'île (0)
+[OK] aire de la mer = carré moins l'île (150000.0 m²)
+[OK] mer posée 0.20 m au-dessus du niveau 0 (pas de scintillement avec le MNT)
+[OK] triangles de la mer vus du dessus
+[OK] couleur de sommet de la mer donnée par color_at
+[OK] aires sea séparées des plans d'eau
+[OK] sans biome : couleur `water` du biome coast
+[OK] sans thème : couleur par défaut
+[OK] sable des plages : sol plat du biome coast
+[OK] horizon à la hauteur demandée
+[OK] anneau d'horizon de 1500 à 30000 m
+[OK] triangles de l'horizon vus du dessus
+[OK] trou central de l'horizon laissé aux aires sea
+[OK] deux rubans d'écume
+[OK] écume du sable côté mer, large de 6 m (x de -6.00 à 0.00)
+[OK] écume plus large au pied des falaises
+[OK] écume au-dessus de la mer
+[OK] triangles de l'écume vus du dessus
+[OK] UV de l'écume : distance le long de la côte, 0 au rivage et 1 au large
+[OK] part toujours couverte de la bande du sable : 2 m sur 6
+[OK] plage construite
+[OK] plage drapée sur le terrain, 0.12 m au-dessus (écart 0.0000 m)
+[OK] aire de la plage gardée (875.0 m²)
+[OK] triangles de plage dans une case de 10 m (10.00 m)
+[OK] galets gris
+[OK] triangles de la plage vus du dessus
+[OK] distance au rivage : 30 m
+[OK] sans rivage : INF
+[OK] couche coast lue : une ligne, une plage
+[OK] rivage, ligne ou plage invalides ignorés
+[OK] couche coast reconnue au manifeste
+[OK] mer, écume et plage dans chaque tronçon, lac à part ({ "osm_water_areas": 2, "osm_sea_": 2, "osm_sea_foam": 2, "osm_beach": 2, "sea_horizon": 1 })
+[OK] un anneau d'horizon pour tout le parcours
+[OK] matériaux : eau pour le lac, shaders de mer, d'écume et de plage pour la côte
+[OK] reflets de l'eau (P12) sans effet sur la mer
+[OK] distance au rivage depuis la route : 70 m
+[OK] tout retiré au changement de parcours
+[OK] parcours sans mer : aucun nœud de mer, d'écume, de plage ni d'horizon ({ "osm_water_areas": 2 })
+test_sea_mesh : 39 vérifications, 0 échecs
+UNIT=test_sea_mesh : rendu, ERG et scénarios IPC sautés
+Résumé :
+  OK     unit/test_sea_mesh : 39 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent

@@ -1,0 +1,1 @@
+demo_biomes : ~/mesures-2026-11-01-auto/r844/mondes/avec/cote.world (coast 100.0 %)

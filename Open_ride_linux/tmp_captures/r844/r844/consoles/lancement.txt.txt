@@ -1,0 +1,25 @@
+12:12:25 empreinte avant cd3850c51f3f01752752e767563f7ccd
+12:12:25 tête 248f3343
+12:12:37 test_sea_mesh
+12:12:38 fin rc=0
+12:12:38 tests engine
+12:41:17 fin rc=1
+12:41:17 monde avec mer
+12:41:19 fin rc=0
+12:41:19 monde sans mer
+12:41:20 fin rc=0
+12:41:50 banc avec low
+12:45:55 fin rc=1
+12:45:55 banc sans low
+12:50:00 fin rc=1
+12:50:00 banc avec medium
+12:54:05 fin rc=1
+12:54:05 banc sans medium
+12:58:11 fin rc=1
+12:58:11 banc avec high
+13:02:16 fin rc=1
+13:02:16 banc sans high
+13:06:21 fin rc=1
+13:06:22 empreinte après e6137aaaec1bb089c6d5eeb0b8041680
+13:06:22 clone ff295a27b
+13:06:22 FIN
