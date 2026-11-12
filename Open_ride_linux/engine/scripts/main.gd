@@ -22,6 +22,7 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const ForestImpostors := preload("res://scripts/forest_impostors.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
+const HorizonView := preload("res://scripts/horizon_view.gd")
 const RoadSurface := preload("res://scripts/road_surface.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
@@ -303,6 +304,13 @@ func _ready() -> void:
 		streamer.add_child(forest)
 		streamer.forest_impostors = forest
 	print("Forêts lointaines : ", "actives" if streamer.forest_impostors.enabled else "coupées")
+	if streamer.horizon_view == null:
+		var horizon = HorizonView.new()
+		horizon.name = "HorizonView"
+		horizon.enabled = bool(cfg.get("horizon", true))
+		streamer.add_child(horizon)
+		streamer.horizon_view = horizon
+		horizon.setup(world_env.environment, sun)
 	if streamer.osm_streamer == null:
 		var osm_st = OsmStreamer.new()
 		osm_st.name = "OsmStreamer"
@@ -717,6 +725,12 @@ func _camera_event(event_name: String) -> bool:
 		return false
 	if event_name.begins_with("A_") and junction_view != null and junction_view.vm.is_visible():
 		return false
+	# Cyber-Rogue (lot R22) : 3 vues propres au mode sur les flèches ; A reste au core (cartes et portes).
+	if rogue_host.is_active():
+		if event_name.begins_with("A_"):
+			return false
+		print("vue Cyber-Rogue : ", rogue_host.scene.cycle_view(1 if event_name == "UP_SHORT" else -1))
+		return true
 	var now_s := Time.get_ticks_usec() / 1000000.0
 	match event_name:
 		"A_SHORT", "UP_SHORT":
@@ -1099,6 +1113,10 @@ func _process(delta: float) -> void:
 		AnimClock.advance(delta)
 	if rogue_host.is_active():
 		_step_rogue_avatar(now)
+		# Lot R22 : les fonds d'ambiance du parcours (grillons, oiseaux) se taisent pendant la run ; sans cet
+		# appel, les lecteurs gardaient le volume de la dernière image du menu (essai du 11 novembre).
+		if living_world != null:
+			living_world.mute_ambience(now / 1000000.0)
 		return      # la scène du Cyber-Rogue a sa propre caméra et son propre décor
 	if _menu_camera(delta):
 		camera_views.snap()
@@ -1990,6 +2008,8 @@ func _on_state_received(state: Dictionary) -> void:
 		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
 		if session_state == "RUNNING" and HudViewModel.is_ftp_warmup(state.get("erg", null)):
 			banner.show_message("controls", HudViewModel.ftp_warmup_text(), CONTROLS_HINT_S)
+		elif session_state == "RUNNING" and str(state.get("mode", "")) == "ROGUE":
+			banner.clear_message("controls")   # lot R22 : le HUD du mode montre les boutons utiles en bas
 		elif session_state == "RUNNING":
 			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null,
 					str(state["erg"].get("kind", "workout")) if state.get("erg", null) is Dictionary else "workout",
@@ -2079,6 +2099,7 @@ func _on_state_received(state: Dictionary) -> void:
 			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s), _quality_name != "low")
 
 	rogue_host.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
+	rogue_host.legends_path = "" if ipc.test_mode else "user://rogue_legendes_vues.json"   # lot R22
 	if rogue_host.update(state, self, [streamer, sun, living_decor, segment_markers], world_env, camera,
 			_quality_name, float(Time.get_ticks_msec()) / 1000.0):
 		ipc.request_rogue_resync()

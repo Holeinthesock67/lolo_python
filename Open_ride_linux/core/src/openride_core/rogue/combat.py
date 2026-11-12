@@ -19,6 +19,15 @@ from .rooms import Room
 FIGHT, RECOVERY, DONE = "FIGHT", "RECOVERY", "DONE"
 Z_SHORT = "Z_SHORT"
 
+# Raisons d'un Z court refusé (lot R22, champ `z_reason` de l'objet `rogue`, révision 1.16).
+Z_REASONS = ("adrenaline", "overheat", "no_target", "no_charge", "no_roc_charge", "no_surge", "no_hack",
+             "cursed", "recovery", "gold")
+# Verdict d'une arche de Perfect Shift ratée (champ `shift_miss`) : trop tôt, trop tard, mauvais sens, aucun
+# changement autour de l'arche. Le verdict tombe SHIFT_LATE_S après la fin de la fenêtre.
+SHIFT_MISS_REASONS = ("early", "late", "wrong_way", "none")
+SHIFT_LATE_S = 1.5          # marge après la fenêtre pour reconnaître un changement « trop tard »
+SHIFT_NEAR_S = 3.0          # au-delà de cet écart à l'arche, le changement ne la concerne pas
+
 
 @dataclass(frozen=True)
 class CombatInputs:
@@ -73,6 +82,11 @@ class CombatState:
     bin_n: int = 0
     crit_second: int = -1              # seconde déjà tirée pour le coup critique
     crit_now: bool = False
+    # lisibilité (lot R22) : retours de la trame en cours et dernier changement de vitesse
+    z_reason: str | None = None        # raison du refus du dernier Z court de la trame (événement z_refused)
+    shift_t_s: float = -1e9            # instant du dernier changement de vitesse (temps de combat)
+    shift_dir: str = ""                # "up" ou "down"
+    shift_miss: tuple = ()             # (raison, écart en s) de l'arche ratée dans la trame, sinon vide
 
 
 # --- aides ---------------------------------------------------------------------------------
@@ -193,8 +207,10 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
     # Perfect Shift
     ps = st.perfect_shifts
     adr = st.adrenaline
+    shift_t, shift_dir = st.shift_t_s, st.shift_dir
     if gear != st.prev_gear:
         direction = "up" if gear > st.prev_gear else "down"
+        shift_t, shift_dir = t, direction
         half = 0.5 * b.ps_window_s * max(v, 0.1)
         for i, m in enumerate(room.markers):
             if m.kind == "arch" and ("arch", i) not in done and m.param == direction and abs(s - m.s_m) <= half:
@@ -203,6 +219,24 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
                 adr += b.perfect_shift_adrenaline
                 events.append("perfect_shift")
                 break
+
+    # verdict des arches ratées (lot R22) : SHIFT_LATE_S après la fenêtre, une fois par arche
+    shift_miss: tuple = ()
+    v_eff = max(v, 0.1)
+    for i, m in enumerate(room.markers):
+        if m.kind != "arch" or ("arch", i) in done or ("arch_seen", i) in done:
+            continue
+        if s > m.s_m + 0.5 * b.ps_window_s * v_eff + SHIFT_LATE_S * v_eff:
+            done.add(("arch_seen", i))
+            t_arch = t - (s - m.s_m) / v_eff
+            dt_shift = shift_t - t_arch
+            if abs(dt_shift) > SHIFT_NEAR_S:
+                shift_miss = ("none", 0.0)
+            elif shift_dir != m.param:
+                shift_miss = ("wrong_way", round(dt_shift, 2))
+            else:
+                shift_miss = ("early" if dt_shift < 0 else "late", round(dt_shift, 2))
+            events.append("shift_missed")
 
     # fenêtre de puissance (aspiration du Puncheur)
     bins, bsum, bn = st.bins, st.bin_sum + inp.power_w * dt, st.bin_n + 1
@@ -273,8 +307,10 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
     # bouton Z court : une seule signification selon le marqueur sous la roue
     rock_armor = dict(st.rock_armor)
     hook_until, grade_scale = st.hook_until_s, st.grade_scale
+    z_reason = None
     if Z_SHORT in inp.buttons:
         used = False
+        reason = None
         for i, m in enumerate(room.markers):
             if m.kind == "purge":
                 lo, hi = _window(m, v, b.strike_window_s)
@@ -282,6 +318,8 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
                     if hacked:
                         hack_kind, forced, hacked = None, None, False
                         events.append("purge")
+                    else:
+                        reason = "no_hack"
                     used = True
             elif m.kind == "strike_target" and ("strike", i) not in done:
                 lo, hi = _window(m, v, b.strike_window_s)
@@ -293,11 +331,15 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
                             charges = 0
                             done.add(("strike", i))
                             events.append("hit")
+                        else:
+                            reason = "overheat" if overheat else "no_charge"
                     elif adr >= b.strike_cost and not overheat:
                         adr -= b.strike_cost
                         hp = max(hp - b.strike_hp_frac * st.enemy_hp_max, 0.0)
                         done.add(("strike", i))
                         events.append("hit")
+                    else:
+                        reason = "overheat" if overheat else "adrenaline"
             elif m.kind == "rock" and ("rock", i) not in done:
                 lo, hi = _window(m, v, b.rock_window_s)
                 if lo <= s <= hi:
@@ -310,20 +352,29 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
                             hp = max(hp - b.rock_hp_frac * st.enemy_hp_max, 0.0)
                             done.add(("rock", i))
                             events.append("hit")
+                    else:
+                        reason = "no_roc_charge"
             elif m.kind == "parry_zone" and ("zone", i) not in done and m.s_m <= s <= m.s_m + m.len_m:
                 used = True
                 if boss:
                     done.add(("zone", i))
                     done.add(("parried", i))
                     events.append("parry")
-                elif len(bins) >= 5:
-                    recent = sum(bins[-2:]) / 2
-                    before = sum(bins[-5:-2]) / 3
-                    if recent > b.hook_power_ratio * before:
+                else:
+                    recent = sum(bins[-2:]) / 2 if len(bins) >= 5 else 0.0
+                    before = sum(bins[-5:-2]) / 3 if len(bins) >= 5 else 0.0
+                    if len(bins) >= 5 and recent > b.hook_power_ratio * before:
                         done.add(("parried", i))
                         events.append("parry")
+                    else:
+                        reason = "no_surge"
             if used:
                 break
+        if not used:
+            reason = "no_target"
+        if reason is not None:
+            z_reason = reason
+            events.append("z_refused")
         if hp <= 0 < st.enemy_hp and down_s is None:
             down_s = s
 
@@ -359,7 +410,8 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
         overheat=overheat, tunnel_s=tunnel_s, charges=charges, roc_s=roc_s, roc_charges=roc_charges,
         hook_until_s=hook_until, grade_scale=grade_scale, hack_kind=hack_kind, forced_gear=forced, hack_t_s=hack_t,
         done_markers=frozenset(done), rock_armor=tuple(sorted(rock_armor.items())), bins=bins,
-        bin_sum=bsum, bin_n=bn, crit_second=crit_sec, crit_now=crit_now)
+        bin_sum=bsum, bin_n=bn, crit_second=crit_sec, crit_now=crit_now, z_reason=z_reason,
+        shift_t_s=shift_t, shift_dir=shift_dir, shift_miss=shift_miss)
 
     # défaite
     if new.shield <= 0:

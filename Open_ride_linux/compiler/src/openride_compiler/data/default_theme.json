@@ -1306,6 +1306,94 @@
           3
         ]
       }
+    },
+    "atlantic_heath": {
+      "ground": {
+        "layers": [
+          {
+            "name": "lande et herbe rase",
+            "role": "flat",
+            "color": "#5a6b3a",
+            "texture": null,
+            "scale_m": 6.0
+          },
+          {
+            "name": "granite et schiste",
+            "role": "steep",
+            "color": "#77746c",
+            "texture": null,
+            "scale_m": 12.0
+          },
+          {
+            "name": "neige",
+            "role": "high",
+            "color": "#f2f5f8",
+            "texture": null,
+            "scale_m": 8.0
+          }
+        ],
+        "slope_threshold_deg": 28,
+        "blend_sharpness": 4.0,
+        "high_line_m": 1800
+      },
+      "vegetation": {
+        "species": [
+          {
+            "kind": "heather",
+            "weight": 10
+          },
+          {
+            "kind": "bracken",
+            "weight": 6
+          },
+          {
+            "kind": "gorse",
+            "weight": 5
+          },
+          {
+            "kind": "oak",
+            "weight": 1
+          },
+          {
+            "kind": "birch",
+            "weight": 1
+          }
+        ],
+        "max_density_per_ha": 320,
+        "treeline_m": 1100
+      },
+      "water": {
+        "color": "#2a4a52",
+        "turbidity": 0.35
+      },
+      "sky": {
+        "fog_density": 0.0016,
+        "haze": 0.3,
+        "light_tint": "#eef2f6"
+      },
+      "ambience": {
+        "volume": 0.6,
+        "birds": 0.6,
+        "insects": 0.2,
+        "layers": {
+          "conifer_wind": 0.5
+        }
+      },
+      "fauna": {
+        "birds": 0.6,
+        "livestock": 0.5,
+        "deer": 0.2
+      },
+      "seasons": {
+        "calendar": "four",
+        "offset_months": 0,
+        "durations_months": [
+          3,
+          3,
+          3,
+          3
+        ]
+      }
     }
   },
   "variants": {
@@ -1414,6 +1502,542 @@
         "#4a4f57",
         "#3f444b"
       ]
+    },
+    "bois_peint": {
+      "walls": [
+        "#9a2f24",
+        "#c9a04a",
+        "#ece6da"
+      ],
+      "roofs": [
+        "#3a3a3a",
+        "#4a2e28"
+      ]
+    }
+  },
+  "landscapes": {
+    "canyon": {
+      "biomes": {
+        "rock_desert": {
+          "ground": {
+            "layers": [
+              {
+                "name": "sable rouge",
+                "role": "flat",
+                "color": "#b5683e",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "grès rouge en strates",
+                "role": "steep",
+                "color": "#a3452a",
+                "texture": null,
+                "scale_m": 12.0
+              }
+            ],
+            "slope_threshold_deg": 16
+          },
+          "vegetation": {
+            "species": [
+              {
+                "kind": "pine",
+                "weight": 2
+              },
+              {
+                "kind": "cypress",
+                "weight": 1
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 3
+              }
+            ],
+            "max_density_per_ha": 25
+          }
+        },
+        "sand_desert": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "dwarf_shrub",
+                "weight": 1
+              }
+            ],
+            "max_density_per_ha": 5
+          }
+        },
+        "steppe": {
+          "ground": {
+            "layers": [
+              {
+                "name": "armoise et terre rouge",
+                "role": "flat",
+                "color": "#9a7a52",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "grès rouge",
+                "role": "steep",
+                "color": "#a3452a",
+                "texture": null,
+                "scale_m": 12.0
+              }
+            ],
+            "slope_threshold_deg": 18
+          },
+          "vegetation": {
+            "species": [
+              {
+                "kind": "pine",
+                "weight": 1
+              },
+              {
+                "kind": "cypress",
+                "weight": 1
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 3
+              }
+            ],
+            "max_density_per_ha": 30
+          }
+        }
+      }
+    },
+    "fjord": {
+      "biomes": {
+        "coast": {
+          "ground": {
+            "layers": [
+              {
+                "name": "herbe rase des rives",
+                "role": "flat",
+                "color": "#5f7a44",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "gneiss sombre",
+                "role": "steep",
+                "color": "#4a4d50",
+                "texture": null,
+                "scale_m": 12.0
+              },
+              {
+                "name": "neige",
+                "role": "high",
+                "color": "#eef2f5",
+                "texture": null,
+                "scale_m": 8.0
+              }
+            ],
+            "slope_threshold_deg": 18,
+            "high_line_m": 1100
+          },
+          "vegetation": {
+            "species": [
+              {
+                "kind": "spruce",
+                "weight": 3
+              },
+              {
+                "kind": "birch",
+                "weight": 4
+              },
+              {
+                "kind": "pine",
+                "weight": 1
+              }
+            ],
+            "max_density_per_ha": 250,
+            "treeline_m": 700
+          }
+        },
+        "boreal_forest": {
+          "ground": {
+            "layers": [
+              {
+                "name": "mousse et myrtilles",
+                "role": "flat",
+                "color": "#4f6440",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "gneiss sombre",
+                "role": "steep",
+                "color": "#4a4d50",
+                "texture": null,
+                "scale_m": 12.0
+              },
+              {
+                "name": "neige",
+                "role": "high",
+                "color": "#eef2f5",
+                "texture": null,
+                "scale_m": 8.0
+              }
+            ],
+            "slope_threshold_deg": 18,
+            "high_line_m": 1100
+          },
+          "vegetation": {
+            "species": [
+              {
+                "kind": "spruce",
+                "weight": 3
+              },
+              {
+                "kind": "birch",
+                "weight": 5
+              },
+              {
+                "kind": "pine",
+                "weight": 1
+              }
+            ],
+            "max_density_per_ha": 450,
+            "treeline_m": 900
+          }
+        },
+        "temperate_forest": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "birch",
+                "weight": 5
+              },
+              {
+                "kind": "spruce",
+                "weight": 3
+              },
+              {
+                "kind": "oak",
+                "weight": 1
+              }
+            ],
+            "max_density_per_ha": 450,
+            "treeline_m": 900
+          }
+        },
+        "temperate_grassland": {
+          "ground": {
+            "layers": [
+              {
+                "name": "pré de fjord",
+                "role": "flat",
+                "color": "#5d7d42",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "gneiss sombre",
+                "role": "steep",
+                "color": "#4a4d50",
+                "texture": null,
+                "scale_m": 12.0
+              },
+              {
+                "name": "neige",
+                "role": "high",
+                "color": "#eef2f5",
+                "texture": null,
+                "scale_m": 8.0
+              }
+            ],
+            "slope_threshold_deg": 18,
+            "high_line_m": 1100
+          },
+          "vegetation": {
+            "species": [
+              {
+                "kind": "birch",
+                "weight": 4
+              },
+              {
+                "kind": "spruce",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 200,
+            "treeline_m": 900
+          }
+        },
+        "alpine": {
+          "ground": {
+            "layers": [
+              {
+                "name": "pelouse rase",
+                "role": "flat",
+                "color": "#647a4c",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "gneiss sombre",
+                "role": "steep",
+                "color": "#4a4d50",
+                "texture": null,
+                "scale_m": 12.0
+              },
+              {
+                "name": "neige",
+                "role": "high",
+                "color": "#eef2f5",
+                "texture": null,
+                "scale_m": 8.0
+              }
+            ],
+            "slope_threshold_deg": 18,
+            "high_line_m": 1100
+          },
+          "vegetation": {
+            "species": [
+              {
+                "kind": "birch",
+                "weight": 3
+              },
+              {
+                "kind": "spruce",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 250,
+            "treeline_m": 900
+          }
+        },
+        "tundra": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "birch",
+                "weight": 1
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 3
+              }
+            ],
+            "max_density_per_ha": 40
+          }
+        }
+      }
+    },
+    "ile_volcanique": {
+      "biomes": {
+        "volcanic": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "pine",
+                "weight": 5
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 120,
+            "treeline_m": 2100
+          }
+        },
+        "temperate_grassland": {
+          "ground": {
+            "layers": [
+              {
+                "name": "herbe sèche sur cendres",
+                "role": "flat",
+                "color": "#7a7f4a",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "basalte",
+                "role": "steep",
+                "color": "#3d3b3a",
+                "texture": null,
+                "scale_m": 12.0
+              },
+              {
+                "name": "neige",
+                "role": "high",
+                "color": "#f2f5f8",
+                "texture": null,
+                "scale_m": 8.0
+              }
+            ],
+            "slope_threshold_deg": 20
+          },
+          "vegetation": {
+            "species": [
+              {
+                "kind": "pine",
+                "weight": 4
+              },
+              {
+                "kind": "holm_oak",
+                "weight": 2
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 1
+              }
+            ],
+            "max_density_per_ha": 250,
+            "treeline_m": 2100
+          }
+        },
+        "temperate_forest": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "holm_oak",
+                "weight": 4
+              },
+              {
+                "kind": "tree_fern",
+                "weight": 1
+              },
+              {
+                "kind": "pine",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 450,
+            "treeline_m": 2100
+          }
+        },
+        "mediterranean": {
+          "ground": {
+            "layers": [
+              {
+                "name": "cendres et genêts",
+                "role": "flat",
+                "color": "#6e6248",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "basalte",
+                "role": "steep",
+                "color": "#3d3b3a",
+                "texture": null,
+                "scale_m": 12.0
+              }
+            ],
+            "slope_threshold_deg": 20
+          },
+          "vegetation": {
+            "species": [
+              {
+                "kind": "pine",
+                "weight": 4
+              },
+              {
+                "kind": "palm",
+                "weight": 1
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 120,
+            "treeline_m": 2100
+          }
+        },
+        "steppe": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "pine",
+                "weight": 1
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 3
+              }
+            ],
+            "max_density_per_ha": 30,
+            "treeline_m": 2100
+          }
+        }
+      }
+    },
+    "rizieres": {
+      "biomes": {
+        "farmland": {
+          "ground": {
+            "layers": [
+              {
+                "name": "rizière en herbe",
+                "role": "flat",
+                "color": "#6aa23a",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "diguette de terre",
+                "role": "steep",
+                "color": "#7a6a4e",
+                "texture": null,
+                "scale_m": 12.0
+              }
+            ],
+            "slope_threshold_deg": 22
+          },
+          "vegetation": {
+            "species": [
+              {
+                "kind": "palm",
+                "weight": 3
+              },
+              {
+                "kind": "reed",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 60
+          }
+        },
+        "wetland": {
+          "ground": {
+            "layers": [
+              {
+                "name": "rizière inondée",
+                "role": "flat",
+                "color": "#5f9440",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "berge",
+                "role": "steep",
+                "color": "#6e6a5c",
+                "texture": null,
+                "scale_m": 12.0
+              }
+            ],
+            "slope_threshold_deg": 22
+          },
+          "vegetation": {
+            "species": [
+              {
+                "kind": "reed",
+                "weight": 4
+              },
+              {
+                "kind": "palm",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 150
+          }
+        }
+      }
     }
   },
   "surfaces": {

@@ -2,13 +2,16 @@
 """Galerie du Cyber-Rogue en low, medium et high côte à côte (lot X51), pour le contrôle visuel R10 à R13 et la charte R17.
 
     engine/tests/rogue_galerie.py --godot GODOT [--objective threshold] [--seed 5] [--size 1280x720]
-                                  [--qualites low,medium,high] [--native] [--out DOSSIER]
+                                  [--qualites low,medium,high] [--native] [--probe] [--speed X] [--out DOSSIER]
 
 Une seule run est jouée dans la vraie séance du core (`rogue_bout_en_bout --trace`, lot X40), puis le banc visuel
 du mode (rogue_bench.py, lot X41) la rejoue à chaque qualité : mêmes moments, mêmes salles. La page
 `galerie.html` met les captures d'un même moment sur une ligne (une colonne par qualité), avec le verdict du banc
 de chaque qualité et les questions du contrôle visuel. Les vérifications automatiques restent celles du banc ;
 la page sert au regard du propriétaire. Code 0 si chaque banc passe, 1 sinon, 2 si Godot ou xvfb-run manque.
+`--probe` (lot R22) ajoute à chaque qualité la sonde de performance et les budgets du préréglage (images/s, p99,
+temps GPU de la vue : 8 / 13 / 16 ms ; rapport `<qualité>/sonde/rapport.html`) ; mesure de référence sur le PC en
+`--native`, de préférence avec `--speed 4` (rejeu moins accéléré, la run domine les gels des captures).
 Bibliothèque standard seulement.
 """
 
@@ -101,6 +104,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--size", default="1280x720")
     ap.add_argument("--qualites", default="low,medium,high")
     ap.add_argument("--native", action="store_true", help="écran réel (GTX 1060), sans Xvfb")
+    ap.add_argument("--probe", action="store_true", help="sonde de performance et budgets GPU (rogue_bench --probe)")
+    ap.add_argument("--speed", type=float, default=None, help="accélération du rejeu (défaut de rogue_bench : ×20)")
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args(argv)
     if not (Path(args.godot).is_file() and os.access(args.godot, os.X_OK)):
@@ -124,7 +129,8 @@ def main(argv: list[str] | None = None) -> int:
         out = root / q
         out.mkdir(exist_ok=True)
         cmd = [sys.executable, str(TESTS / "rogue_bench.py"), "--godot", args.godot, "--trace", str(trace),
-               "--size", args.size, "--quality", q, "--out", str(out)] + (["--native"] if args.native else [])
+               "--size", args.size, "--quality", q, "--out", str(out)] + (["--native"] if args.native else []) \
+            + (["--probe"] if args.probe else []) + (["--speed", str(args.speed)] if args.speed else [])
         print(f"== {q} ==", flush=True)
         with (out / "banc.log").open("w", encoding="utf-8") as log:
             subprocess.run(cmd, env=env, stdout=log, stderr=subprocess.STDOUT, check=False)

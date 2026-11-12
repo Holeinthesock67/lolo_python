@@ -289,7 +289,7 @@ func _test_styles_by_biome() -> void:
 	for biome in BuildingStyles.BIOME_STYLES:
 		if not BuildingStyles.STYLES.has(BuildingStyles.BIOME_STYLES[biome]):
 			all_known = false
-	_check(all_known and BuildingStyles.BIOME_STYLES.size() == 17, "17 biomes (U0 et JP1), chacun vers un style connu")
+	_check(all_known and BuildingStyles.BIOME_STYLES.size() == 18, "18 biomes (U0, JP1 et AT1), chacun vers un style connu")
 	var b := _building("maison_desert", [[0.0, 0.0], [10.0, 0.0], [10.0, 8.0], [0.0, 8.0]], 0.0, 6.0)
 	b["style"] = "toit_plat_blanc"
 	var res: Dictionary = BuildingMesh.build([b], _theme)
@@ -398,6 +398,10 @@ func _test_biome_habitats() -> void:
 	for st in BuildingStyles.BIOME_ONLY_STYLES:
 		all_used = all_used and used.has(st) and BuildingStyles.STYLES.has(st)
 	_check(all_used, "U23 : chacun des %d styles d'habitat est pris par au moins un biome" % BuildingStyles.BIOME_ONLY_STYLES.size())
+	var roofs_ok := true
+	for id in preload("res://scripts/biome_ids.gd").ROOF_VARIANTS:
+		roofs_ok = roofs_ok and BuildingStyles.STYLES.has(id) and BuildingStyles.resolve(id, "savanna") == id
+	_check(roofs_ok, "chaque toit du contrat (bois_peint du lot U25 compris) a son style et l'emporte sur le biome")
 
 	var chalet := BuildingStyles.dress("chalet", BuildingStyles.FAMILY_HOUSE, 1.0, 9.0, 6.0, 0.3, 0.5, 0.5)
 	_check(chalet["wall"] == BuildingStyles.WALL_CHALET and chalet["roof"] == BuildingStyles.ROOF_SLATE

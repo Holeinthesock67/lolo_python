@@ -3,7 +3,7 @@
 
 Usage :
     rogue_bench.py --godot CHEMIN [--objective threshold|endurance|vo2max] [--seed 5] [--trace F.jsonl]
-                   [--size 1280x720] [--quality low] [--speed 20] [--native] [--out DOSSIER]
+                   [--size 1280x720] [--quality low] [--speed 20] [--native] [--probe] [--out DOSSIER]
 
 Sans `--trace`, le banc joue d'abord la run dans la vraie séance du core (`rogue_bout_en_bout`, lot X40) et en garde
 la trace : chaque message que le core envoie à l'engine (`state`, `room`, `loot`, `input`). Il lance ensuite la
@@ -20,6 +20,11 @@ demande une capture puis vérifie :
 - deux salles de suite qui ne donnent pas la même image ;
 - le journal de Godot : aucune erreur ni avertissement de script ; aucune demande `rogue_resync` (les salles
   arrivent avant leurs trames).
+
+Avec `--probe` (lot R22), l'engine écrit sa sonde de performance (`--perf-probe`, lot X13) et `perf_probe.py` relève
+nvidia-smi : rapport `sonde/rapport.html` et vérifications des budgets du préréglage (`perf_targets.json`, lot X14 :
+images/s, p99, temps GPU de la vue, GPU saturé ; à titre indicatif sous Xvfb). Les gels de 1,5 s avant chaque capture
+comptent dans la mesure : à juger avec `--speed` bas (ex. 4) pour que la run elle-même domine.
 
 Sortie : une ligne [OK] / [ÉCHEC] par vérification, `rapport.html` (planche des captures et tableau) et les PNG.
 Code de sortie 0 si tout passe, 1 si une vérification échoue, 2 si Godot ou xvfb-run manque.
@@ -45,8 +50,9 @@ sys.path.insert(0, str(TESTS_DIR))
 sys.path.insert(0, str(ENGINE_DIR.parent / "core" / "src"))
 
 from fake_core import CONTRACT_VERSION, EngineLog, FakeCore, now  # noqa: E402
-from visual_check import (GODOT_ISSUE, GODOT_TOLERATED, Capture, Report, free_udp_ports, mean_abs_diff,  # noqa: E402
+from visual_check import (COACH_MSG, GODOT_ISSUE, GODOT_TOLERATED, Capture, Report, free_udp_ports, mean_abs_diff,  # noqa: E402
                           read_png, write_html)
+import perf_probe  # noqa: E402
 import rendu_jeu  # noqa: E402
 
 HOLD_S = 1.5                     # trame figée avant chaque capture : lissage de la position, ennemi, HUD
@@ -142,7 +148,8 @@ class Bench:
 
     def send_state(self, core: FakeCore, msg: dict) -> None:
         self.seq += 1
-        core.send({**msg, "seq": self.seq})
+        # Accusé des commandes de l'engine (get_coach…) : celui du faux core, pas celui de la trace rejouée.
+        core.send({**msg, "seq": self.seq, "last_cmd_id": core.last_cmd_id})
 
     def capture(self, core: FakeCore, scene: str) -> tuple[Any, dict] | None:
         png = (self.out / f"{len(self.report.captures):02d}_{scene}.png").resolve()
@@ -262,11 +269,19 @@ def run(args, out: Path, report: Report) -> None:
     engine_log.write_text("")
     core = FakeCore(state_port, cmd_port, EngineLog(engine_log))
     core.auto_hello_ack = True
+    # Réponse au conseil du jour (get_coach, lot CO5) : sans elle, l'engine affichait « Commande get_coach sans
+    # réponse du core » sur les captures de l'échauffement et de la pause (galerie R22 du 12 novembre).
+    core.coach = json.loads(json.dumps(COACH_MSG))
     core.start()
     cmd = rendu_jeu.godot_cmd([args.godot, "--path", str(ENGINE_DIR), "--resolution", args.size,
                                "--audio-driver", "Dummy"], args.native, bench.width, bench.height)
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", "--test-mode",
             f"--quality={args.quality}"]
+    sampler = None
+    if args.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
+        cmd.append(f"--perf-probe={(out / 'moteur.csv').resolve()}")
+        sampler = perf_probe.SystemSampler()
+        sampler.start()
     print(f"== Run rejouée ×{args.speed:g} : {len(marks)} captures ==", flush=True)
     with engine_log.open("w") as fh:
         proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, start_new_session=True)
@@ -278,6 +293,8 @@ def run(args, out: Path, report: Report) -> None:
         shots = bench.replay(core, trace, marks)
     finally:
         core.stop()
+        if sampler is not None:
+            sampler.stop()
         try:
             os.killpg(proc.pid, 15)
             proc.wait(timeout=10)
@@ -286,6 +303,18 @@ def run(args, out: Path, report: Report) -> None:
                 os.killpg(proc.pid, 9)
             except ProcessLookupError:
                 pass
+    if sampler is not None:
+        rows = perf_probe.merge(perf_probe.read_engine_csv(out / "moteur.csv"), sampler.rows)
+        summary = perf_probe.write_report(rows, out / "sonde", f"Sonde de performance : Cyber-Rogue {args.quality}",
+                                          real_window=args.native, engine_dir=out)
+        bench.check("sonde", "sonde de performance", summary["rows"] > 0,
+                    f"{summary['rows']} relevés, rapport sonde/rapport.html")
+        for ok, label, measure in summary.get("budgets", []):   # None : indicatif (Xvfb) ou pas de mesure
+            line = f"{'OK' if ok else ('INFO' if ok is None else 'ÉCHEC')} {label} : {measure}"
+            report.notes.append(line)
+            print(f"  [sonde] {line}", flush=True)
+            if ok is not None:
+                bench.check("sonde", label, ok, measure)
     for name, frame, img, info in shots:
         bench.check_shot(name, frame, img, info)
     taken = {n for n, *_ in shots}
@@ -315,6 +344,8 @@ def main() -> int:
     ap.add_argument("--quality", default="low")
     ap.add_argument("--speed", type=float, default=20.0, help="accélération du rejeu (défaut ×20)")
     ap.add_argument("--native", action="store_true", help="écran réel et rendu habituel, sans Xvfb")
+    ap.add_argument("--probe", action="store_true",
+                    help="sonde de performance de l'engine et budgets du préréglage (rapport sonde/)")
     ap.add_argument("--out", type=Path, default=None, help="dossier des captures et du rapport")
     args = ap.parse_args()
     if not (Path(args.godot).is_file() and os.access(args.godot, os.X_OK)):

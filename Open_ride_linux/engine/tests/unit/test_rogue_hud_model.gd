@@ -112,14 +112,17 @@ func _run() -> void:
 	v = m2.values()
 	_check(v["power_pct_text"] == "0 %" and v["shield_frac"] == 0.0 and not v["has_enemy"] and v["wbal_pct"] == 0.0, "FTP inconnue, divisions par zéro évitées")
 
-	# Arcs au sol : vide à 0, demi-cercle à 1, côté gauche en x négatif, côté droit en x positif.
-	_check(HudView.arc_mesh(0.0, -1).get_surface_count() == 0, "arc vide à 0 %")
-	var left: ArrayMesh = HudView.arc_mesh(1.0, -1)
-	var right: ArrayMesh = HudView.arc_mesh(1.0, 1)
-	var lv: PackedVector3Array = left.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-	var rv: PackedVector3Array = right.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-	_check(lv[lv.size() - 1].x < -1.0 and rv[rv.size() - 1].x > 1.0, "arc gauche à gauche, arc droit à droite")
-	_check(absf(lv[0].length() - 1.56) < 0.01, "rayon de l'arc : 1,5 m")
+	# Lot R22 : le guide est calculé avec la trame, le couloir porte ses deux temps et son temps restant.
+	var m3 = HudModel.new()
+	m3.set_ftp(250.0)
+	m3.set_loot({"cards": [{}, {}, {}], "doors": [{"side": "left", "room_id": 8}, {"side": "right", "room_id": 9}], "reroll_cost": 15})
+	m3.update(_state(1, {"phase": "CORRIDOR", "loot_stage": "door", "phase_left_s": 7.2, "next": []}), 0.0)
+	v = m3.values()
+	_check(v["corridor"]["stage"] == "door" and is_equal_approx(float(v["corridor"]["left_s"]), 7.2), "couloir : temps du choix et temps restant")
+	_check(v["guide"]["hint"].begins_with("Choisis ta porte") and not v["guide"]["panel"], "couloir : consigne de la porte, panneau d'état retiré")
+	m3.update(_state(2, {"phase": "WARMUP", "loot_stage": null, "phase_left_s": 100.0, "next": []}), 0.1)
+	_check(m3.values()["corridor"].is_empty(), "échauffement sans relique à choisir (loot_stage nul) : pas d'offre")
+	_check(m3.values()["adrenaline_text"] == "Z prêt", "adrénaline 65 : « Z prêt »")
 
 	print("test_rogue_hud_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

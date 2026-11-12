@@ -104,7 +104,7 @@ const PROPS := [
 ## Arbres de tree_species.gd (lot U7) et arbre d'avant la série U, en deux rangées loin de la route.
 const TREES_TEMPERATE := ["oak", "birch", "pine", "beech", "spruce", "larch", "generic"]
 const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "acacia", "baobab", "cactus",
-	"tree_fern", "reed", "dwarf_shrub", "vine_row"]
+	"tree_fern", "reed", "dwarf_shrub", "vine_row", "heather", "gorse", "bracken"]
 ## Une maison et une grange par style d'architecture (variantes du contrat U1, building_styles.gd), en rangée
 ## loin de la route : les styles que prendront les biomes et les régions de la série U.
 const STYLE_ROW := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]

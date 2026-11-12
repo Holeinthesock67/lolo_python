@@ -4,10 +4,11 @@ extends RefCounted
 ## Pas de class_name : charger par preload("res://scripts/building_styles.gd").
 ##
 ## Un style par variante d'architecture du contrat U1 §4.3 (`tuile_ronde`, `ardoise`, `tuile_plate`,
-## `pierre_seche`, `toit_plat_blanc`, `bois`) : matière et pente du toit, part de toits à croupes, poids des
-## matières de mur des maisons, débord du toit. Lot U23 : sept styles d'habitat propres à un biome, qu'aucune
-## variante régionale ne donne (`chalet` alpin, `bois_peint` nordique, `pise` du désert, `case` de savane,
-## `paillote` de jungle, `basalte` volcanique, `chaumiere` des marais). Avant la série U, tout le parcours prend STYLE_DEFAULT ; en 3.0, chaque bâtiment
+## `pierre_seche`, `toit_plat_blanc`, `bois`, puis `kawara` du lot JP1 et `bois_peint` du lot U25) : matière et
+## pente du toit, part de toits à croupes, poids des matières de mur des maisons, débord du toit. Lot U23 : styles
+## d'habitat propres à un biome (`chalet` alpin, `bois_peint` nordique, devenu variante du contrat au lot U25
+## pour les fjords, `pise` du désert, `case` de savane, `paillote` de jungle, `basalte` volcanique, `chaumiere`
+## des marais, `yourte` de la steppe). Avant la série U, tout le parcours prend STYLE_DEFAULT ; en 3.0, chaque bâtiment
 ## prend la variante régionale de sa tuile (U4, U14) ou, à défaut, le style de son biome dominant (BIOME_STYLES,
 ## biomes du lot U0) : `resolve()`, posé dans la clé `style` du bâtiment avant building_mesh.gd. Les teintes restent celles du thème (`buildings.walls` et
 ## `buildings.roofs`, puis `walls` et `roofs` de la variante en 3.0) pour l'enduit et les tuiles ; les matières
@@ -92,14 +93,15 @@ const STYLES := {
 		"walls": {WALL_PLASTER: 0.5, WALL_WOOD: 0.5},
 		"farm_wall": WALL_WOOD, "worship_roof": ROOF_TILE_ROUND,
 		"palettes": {"tile_round": "kawara", "wood": "wood_dark"}},
-	# Lot U23 : habitat propre au biome (pas de variante régionale U1 équivalente)
-	"chalet": {"roof": ROOF_SLATE, "pitch_deg": 24.0, "hip_share": 0.05, "overhang_m": 1.2,
-		"walls": {WALL_CHALET: 0.7, WALL_STONE: 0.2, WALL_WOOD: 0.1},
-		"farm_wall": WALL_WOOD, "worship_roof": ROOF_SLATE, "palettes": {"wood": "wood_larch"}},
+	# Maisons de bois peint du Nord (lot U23) ; variante du contrat depuis le lot U25 (fjords de Norvège)
 	"bois_peint": {"roof": ROOF_METAL, "pitch_deg": 32.0, "hip_share": 0.05, "overhang_m": 0.5,
 		"walls": {WALL_WOOD: 1.0},
 		"farm_wall": WALL_WOOD, "worship_roof": ROOF_SHINGLE,
 		"palettes": {"wood": "wood_painted", "metal_roof": "metal_roof_dark"}},
+	# Lot U23 : habitat propre au biome (pas de variante régionale U1 équivalente)
+	"chalet": {"roof": ROOF_SLATE, "pitch_deg": 24.0, "hip_share": 0.05, "overhang_m": 1.2,
+		"walls": {WALL_CHALET: 0.7, WALL_STONE: 0.2, WALL_WOOD: 0.1},
+		"farm_wall": WALL_WOOD, "worship_roof": ROOF_SLATE, "palettes": {"wood": "wood_larch"}},
 	"pise": {"roof": ROOF_FLAT, "pitch_deg": 0.0, "hip_share": 0.0, "overhang_m": 0.0,
 		"walls": {WALL_ADOBE: 0.85, WALL_PLASTER: 0.15},
 		"farm_wall": WALL_ADOBE, "worship_roof": ROOF_FLAT,
@@ -125,19 +127,21 @@ const STYLES := {
 		"walls": {WALL_PLASTER: 0.7, WALL_STONE: 0.2, WALL_TIMBER: 0.1},
 		"farm_wall": WALL_WOOD, "worship_roof": ROOF_SLATE, "palettes": {"plaster": "white"}},
 }
-## Styles du lot U23 (vitrine, tests) ; STYLES garde d'abord les sept variantes du contrat (U1, `kawara` du lot JP1).
-const BIOME_ONLY_STYLES := ["chalet", "bois_peint", "pise", "case", "paillote", "basalte", "chaumiere", "yourte"]
+## Styles du lot U23 sans variante du contrat (vitrine, tests) ; STYLES garde d'abord les variantes du contrat
+## (U1, `kawara` du lot JP1, `bois_peint` du lot U25, style U23 devenu variante pour les fjords).
+const BIOME_ONLY_STYLES := ["chalet", "pise", "case", "paillote", "basalte", "chaumiere", "yourte"]
 
 ## Style par défaut de chaque biome du lot U0, quand la tuile n'a pas de variante régionale (U1 `variant` null) :
 ## la variante de la tuile (U4) l'emporte toujours, puis le biome dominant du bâtiment, puis STYLE_DEFAULT.
 ## Lot U23 : chalets en montagne, maisons de bois peint au nord, pisé au désert, cases de savane, paillotes de
 ## jungle, pierre sombre des volcans, chaumières des marais ; étape 2 : yourtes de feutre de la steppe.
+## Lot AT1 : maisons de pierre sèche et d'ardoise des landes atlantiques.
 const BIOME_STYLES := {
 	"temperate_grassland": "tuile_plate", "temperate_forest": "tuile_plate", "farmland": "tuile_plate",
 	"boreal_forest": "bois_peint", "alpine": "chalet", "tundra": "bois_peint", "polar": "bois_peint",
 	"mediterranean": "tuile_ronde", "steppe": "yourte", "savanna": "case",
 	"sand_desert": "pise", "rock_desert": "pise", "jungle": "paillote", "wetland": "chaumiere",
-	"coast": "ardoise", "volcanic": "basalte", "japan": "kawara",
+	"coast": "ardoise", "volcanic": "basalte", "japan": "kawara", "atlantic_heath": "pierre_seche",
 }
 
 ## Teintes propres aux matières (l'enduit et les tuiles prennent celles du thème)

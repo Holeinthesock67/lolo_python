@@ -53,7 +53,7 @@ func _run() -> void:
 	_check(m.take_plays().is_empty(), "trame renvoyée : aucun son de plus")
 	var all_events := {"crit": "rogue_crit", "parry": "rogue_parry", "parry_miss": "rogue_parry_miss", "room_won": "rogue_room_won",
 		"room_fled": "rogue_room_fled", "room_skipped": "rogue_room_skipped", "defeat": "rogue_defeat", "card_taken": "rogue_card_pick",
-		"purge": "rogue_purge"}
+		"purge": "rogue_purge", "z_refused": "rogue_refused", "shift_missed": "rogue_shift_missed"}
 	var t := 10.0
 	var seq := 10
 	var ok := true
