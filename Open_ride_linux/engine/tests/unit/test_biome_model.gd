@@ -190,6 +190,46 @@ func _init() -> void:
 	_check(flats.size() == BiomeIds.BIOMES.size() - 1, "défaut 2.0 : %d couleurs de sol différentes hors alpine (%d)" % [BiomeIds.BIOMES.size() - 1, flats.size()])
 	_check(md.params("sand_desert")["vegetation"]["species"][0]["kind"] == "palm" and md.params("polar")["vegetation"]["species"].is_empty(), "défaut 2.0 : espèces par biome")
 
+	# Paysages (lot U25) : bloc du biome dans le paysage de la variante, biomes de base seulement
+	var fj_var := {"ground": "schiste_sombre", "roofs": "bois_peint", "landscape": "fjord"}
+	var coast_fj: Dictionary = md.params("coast", "", 0.0, fj_var)
+	var coast_plain: Dictionary = md.params("coast")
+	var fj_kinds := []
+	for sp in coast_fj["vegetation"]["species"]:
+		fj_kinds.append(sp["kind"])
+	_check(fj_kinds.has("birch") and not fj_kinds.has("palm") and float(coast_fj["vegetation"]["treeline_m"]) == 700.0,
+		"paysage fjord : côte en bouleaux et épicéas, sans palmier, limite des arbres 700 m")
+	_check(coast_fj["terrain"] == coast_plain["terrain"] and coast_fj["water"] == coast_plain["water"],
+		"paysage fjord : sections non décrites (sol, eau) gardées du biome")
+	_check(md.params("savanna", "", 0.0, fj_var)["vegetation"] == md.params("savanna")["vegetation"],
+		"paysage fjord : biome qui n'est pas une base du paysage inchangé")
+	_check(md.params("coast", "", 0.0, {"ground": "schiste_sombre", "roofs": null})["vegetation"] == coast_plain["vegetation"],
+		"variante sans paysage (tuile d'avant le lot U25) : biome inchangé")
+	_check(md.params("coast", "", 0.0, {"landscape": "lagon"})["vegetation"] == coast_plain["vegetation"],
+		"paysage inconnu du thème : biome inchangé")
+	var vol_iv: Dictionary = md.params("volcanic", "", 0.0, {"landscape": "ile_volcanique"})
+	_check(vol_iv["vegetation"]["species"][0]["kind"] == "pine" and vol_iv["vegetation"]["max_density_per_ha"] > md.params("volcanic")["vegetation"]["max_density_per_ha"],
+		"paysage île volcanique : pinède sur le volcan")
+	var rice: Dictionary = md.params("farmland", "", 0.0, {"landscape": "rizieres"})
+	var rice_kinds := []
+	for sp in rice["vegetation"]["species"]:
+		rice_kinds.append(sp["kind"])
+	_check(rice_kinds.has("palm") and not rice_kinds.has("vine_row"), "paysage rizières : palmiers, pas de vignes")
+	_check(md.params("rock_desert", "", 0.0, {"landscape": "canyon"})["vegetation"]["max_density_per_ha"] > md.params("rock_desert")["vegetation"]["max_density_per_ha"],
+		"paysage canyon : genévriers et pins épars sur le désert de roche")
+	for l in BiomeIds.LANDSCAPES:
+		_check(typeof(default_theme.get("landscapes", {}).get(l, null)) == TYPE_DICTIONARY, "défaut 2.0 : paysage " + l + " décrit")
+
+	# Variante d'un point : tuile proche, forçage --biome= qui l'ignore
+	var tile_l := _flat_tile(["coast"], [255])
+	tile_l["variant"] = fj_var
+	var ml = BiomeModel.new(default_theme, _layer_with({Vector2i(0, 0): tile_l}))
+	_check(ml.variant_at(500.0, 500.0)["landscape"] == "fjord" and ml.building_style_at(500.0, 500.0) == "bois_peint",
+		"variant_at : paysage et toit bois_peint de la tuile")
+	ml.set_forced("coast")
+	_check(ml.variant_at(500.0, 500.0) == null and ml.building_style_at(500.0, 500.0) == "ardoise",
+		"forçage --biome= : variante ignorée")
+
 	# blend : 50/50
 	var bl := BiomeModel.blend({"temperate_grassland": 0.5, "mediterranean": 0.5},
 		{"temperate_grassland": m2.params("temperate_grassland"), "mediterranean": med})

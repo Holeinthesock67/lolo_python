@@ -2,10 +2,10 @@
 
     openride-compiler build <trace .gpx|.fit|.tcx|.fit.gz|.tcx.gz|.zip> [--name NOM] [--out DOSSIER] [--out-and-back] [--force]
                             [--layers route,terrain,biome,buildings,vegetation,poi,water,coast,roads,segments] [--offline]
-                            [--biome ID] [--variant GROUND,ROOFS]
+                            [--biome ID] [--variant GROUND,ROOFS[,LANDSCAPE]]
     openride-compiler add-layer <dossier.world> terrain|biome|buildings|vegetation|poi|water|coast|roads|segments [--offline]
-                                [--manual FICHIER.segments.toml] [--biome ID] [--variant GROUND,ROOFS]
-    openride-compiler list | build-all [--layers ...] [--biome ID] [--variant GROUND,ROOFS] [--dry-run] [--offline]
+                                [--manual FICHIER.segments.toml] [--biome ID] [--variant GROUND,ROOFS[,LANDSCAPE]]
+    openride-compiler list | build-all [--layers ...] [--biome ID] [--variant GROUND,ROOFS[,LANDSCAPE]] [--dry-run] [--offline]
     openride-compiler theme-check <dossier du thème>
     openride-compiler theme-pack <dossier du thème> [--levels 512,1024,2048] [--fix-seams]   (lot P20, Pillow)
     openride-compiler theme-list [--themes-dir D] [--json]
@@ -109,7 +109,7 @@ def parse_biome(text: str) -> str:
 
 
 VARIANT_HELP = ("variante régionale (lot U4) imposée à toutes les tuiles de la couche biome, ex. basalte,ardoise "
-                "(un membre vide reste null)")
+                "ou gres_rose,,canyon (paysage du lot U25 en troisième membre facultatif ; un membre vide reste null)")
 
 
 def parse_variant(text: str) -> dict:
@@ -153,7 +153,7 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--biome", type=parse_biome, default=None, metavar="ID",
                    help="impose ce biome à tout le parcours (255 partout, sans WorldCover ni OSM) ; "
                         "identifiants du Format .world §8 quater")
-    b.add_argument("--variant", type=parse_variant, default=None, metavar="GROUND,ROOFS",
+    b.add_argument("--variant", type=parse_variant, default=None, metavar="GROUND,ROOFS[,LANDSCAPE]",
                    help=VARIANT_HELP)
     b.add_argument("--no-surface", action="store_true",
                    help="ne cherche pas la surface de la route dans OSM (pas de colonne surface, avant U20)")
@@ -166,7 +166,7 @@ def build_parser() -> argparse.ArgumentParser:
                                      "segments"])
     a.add_argument("--biome", type=parse_biome, default=None, metavar="ID",
                    help="couche biome : impose ce biome à tout le parcours (255 partout)")
-    a.add_argument("--variant", type=parse_variant, default=None, metavar="GROUND,ROOFS",
+    a.add_argument("--variant", type=parse_variant, default=None, metavar="GROUND,ROOFS[,LANDSCAPE]",
                    help=VARIANT_HELP)
     a.add_argument("--manual", type=Path, default=None,
                    help="segments : fichier <parcours>.segments.toml (défaut : celui de la trace source, "
@@ -252,7 +252,7 @@ def build_parser() -> argparse.ArgumentParser:
                     help="couches à produire pour chaque trace (défaut : route,terrain,biome,segments)")
     ba.add_argument("--biome", type=parse_biome, default=None, metavar="ID",
                     help="impose ce biome à tous les parcours compilés (255 partout)")
-    ba.add_argument("--variant", type=parse_variant, default=None, metavar="GROUND,ROOFS",
+    ba.add_argument("--variant", type=parse_variant, default=None, metavar="GROUND,ROOFS[,LANDSCAPE]",
                     help=VARIANT_HELP)
     ba.add_argument("--offline", action="store_true",
                     help="interdit le réseau : les tuiles d'altitude et OSM doivent être en cache")

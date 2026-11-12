@@ -239,8 +239,10 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 		# Placement à la densité du biome le plus dense de la tuile, puis éclaircie par biome (assign_species).
 		var dens := 0.0
 		var treeline := -INF
+		# Paysage de la tuile (lot U25) : la densité suit le bloc du biome dans ce paysage.
+		var variant = biome_model.variant_at((tile_x + 0.5) * 1000.0, (tile_z + 0.5) * 1000.0)
 		for b in biome_model.top_biomes(tile_x, tile_z, 4).keys():
-			var bv: Dictionary = biome_model.params(b)["vegetation"]
+			var bv: Dictionary = biome_model.params(b, "", 0.0, variant)["vegetation"]
 			dens = maxf(dens, float(bv["max_density_per_ha"]))
 			treeline = maxf(treeline, 1.0e6 if bv["treeline_m"] == null else float(bv["treeline_m"]))
 		veg["max_density_per_ha"] = dens * clampf(density_factor, 0.0, 1.0)

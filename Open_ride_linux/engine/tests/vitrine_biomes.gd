@@ -8,11 +8,12 @@ extends SceneTree
 ## captures comparables d'un biome à l'autre. La vue `faune` cadre le groupe d'animaux propre au biome.
 ## `--dates` (lot U13) : une série de captures par date (mois-jour), chaque biome dans la saison de son calendrier
 ## à la latitude `--lat` (45° par défaut) : paramètres globaux des saisons et arbres d'hiver posés comme en jeu ;
-## fichiers <biome>_<vue>_<préréglage>_<date>.png et colonne `saison` du CSV.
+## fichiers <biome>_<vue>_<préréglage>_<date>.png et colonne `saison` du CSV. `biome@paysage` (lot U25) : le biome
+## dans un paysage (`coast@fjord`, `volcanic@ile_volcanique`), fichiers <biome>_<paysage>_<vue>_<préréglage>.png.
 ##
 ##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_biomes.gd -- --out DOSSIER \
-##     [--biomes alpine,savanna] [--quality low,medium,high] [--size 1680x1050] \
+##     [--biomes alpine,savanna,coast@fjord] [--quality low,medium,high] [--size 1680x1050] \
 ##     [--compare REF] [--seuil-ssim 0.97] [--tolerance 10] [--max-saturated 5] [--dates 01-15,07-15 --lat 45]
 ##
 ## Écrit DOSSIER/<biome>_<vue>_<préréglage>.png et DOSSIER/vitrine_biomes.csv (biome ; vue ; préréglage ;
@@ -26,6 +27,7 @@ extends SceneTree
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
+const BiomeLayer := preload("res://scripts/biome_layer.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const BiomeTextures := preload("res://scripts/biome_textures.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
@@ -101,10 +103,15 @@ func _run() -> void:
 	for preset in _presets:
 		var applied := VitrineChecks.applied_quality(preset, "vitrine_biomes")
 		for pair in _pairs():
-			var biome: String = pair[0]
+			var name_parts: PackedStringArray = str(pair[0]).split("@")
+			var biome: String = name_parts[0]
+			var landscape: String = name_parts[1] if name_parts.size() > 1 else ""
 			var date: String = pair[1]
-			var model = BiomeModel.new(theme, null)
-			if not model.set_forced(biome):
+			var model = BiomeModel.new(theme, _landscape_layer(biome, landscape) if landscape != "" else null)
+			if landscape != "" and not BiomeIds.LANDSCAPES.has(landscape):
+				printerr("[vitrine_biomes] paysage inconnu : ", landscape)
+				continue
+			if landscape == "" and not model.set_forced(biome):
 				printerr("[vitrine_biomes] biome inconnu : ", biome)
 				continue
 			var season := _apply_season(model, biome, date)
@@ -129,7 +136,7 @@ func _run() -> void:
 				for sp in FaunaRenderer.BIRD_SPECIES:
 					n_birds += fauna.visible_count(sp)
 				var suffix := "" if date == "" else "_" + date
-				var path := _out_dir.path_join("%s_%s_%s%s.png" % [biome, view, preset, suffix])
+				var path := _out_dir.path_join("%s_%s_%s%s.png" % [str(pair[0]).replace("@", "_"), view, preset, suffix])
 				var img := vp.get_texture().get_image()
 				img.save_png(path)
 				# Sol : bas de l'image, route comprise ; la vue `faune` cadre une bête, parfois d'en dessous
@@ -140,7 +147,7 @@ func _run() -> void:
 				var draws := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
 				var objs := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
 				var details: Node = vp.get_node("GroundDetails")
-				csv.store_line("%s;%s;%s;%s;%d;%d;%d;%d;%.1f;%d;%d;%s;%.1f;%d;%d;%d;%.2f;%.3f;%.2f;%.2f;%s" % [biome, view, preset, applied, built["trees"], tris, draws, objs, built["prep_ms"],
+				csv.store_line("%s;%s;%s;%s;%d;%d;%d;%d;%.1f;%d;%d;%s;%.1f;%d;%d;%d;%.2f;%.3f;%.2f;%.2f;%s" % [str(pair[0]), view, preset, applied, built["trees"], tris, draws, objs, built["prep_ms"],
 					n_animals, n_birds, built["species"], built["fauna_ms"], details.get_positions("rock").size(),
 					details.get_positions("grass").size(), details.get_positions("termite").size(), expo["saturated_pct"], expo["luma"],
 					built["atmo"]["heat_haze"], built["atmo"]["humidity"], season["season"]])
@@ -151,6 +158,25 @@ func _run() -> void:
 	SeasonModel.apply_globals(SeasonModel.NEUTRAL)
 	_checks.compare(_out_dir)
 	quit(_checks.exit_code("vitrine_biomes"))
+
+
+## Paysage du lot U25 (`--biomes coast@fjord`) : couche biome en mémoire, tuiles proches de la vitrine tout en
+## `biome` avec la variante `{landscape}`, au lieu du forçage `--biome=` (qui ignore les variantes).
+func _landscape_layer(biome: String, landscape: String):
+	var layer = BiomeLayer.new()
+	var g := []
+	for p in range(289):
+		g.append(255)
+	var errors := PackedStringArray()
+	var t: Dictionary = BiomeLayer.parse_tile({"version": "1.0", "biomes": [biome], "grid": 17, "weights": [g],
+		"variant": {"ground": null, "roofs": null, "landscape": landscape}}, errors)
+	if not errors.is_empty():
+		printerr("[vitrine_biomes] ", errors[0])
+		return null
+	for tz in range(-3, 2):
+		for tx in range(-2, 2):
+			layer.put_tile("near", tx, tz, t)
+	return layer
 
 
 ## Couples (biome, date) dans l'ordre des captures.

@@ -1414,6 +1414,313 @@
         "#4a4f57",
         "#3f444b"
       ]
+    },
+    "bois_peint": {
+      "walls": [
+        "#9a2f24",
+        "#c9a04a",
+        "#ece6da"
+      ],
+      "roofs": [
+        "#3a3a3a",
+        "#4a2e28"
+      ]
+    }
+  },
+  "landscapes": {
+    "canyon": {
+      "biomes": {
+        "rock_desert": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "pine",
+                "weight": 2
+              },
+              {
+                "kind": "cypress",
+                "weight": 1
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 3
+              }
+            ],
+            "max_density_per_ha": 25
+          }
+        },
+        "sand_desert": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "dwarf_shrub",
+                "weight": 1
+              }
+            ],
+            "max_density_per_ha": 5
+          }
+        },
+        "steppe": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "pine",
+                "weight": 1
+              },
+              {
+                "kind": "cypress",
+                "weight": 1
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 3
+              }
+            ],
+            "max_density_per_ha": 30
+          }
+        }
+      }
+    },
+    "fjord": {
+      "biomes": {
+        "coast": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "spruce",
+                "weight": 3
+              },
+              {
+                "kind": "birch",
+                "weight": 4
+              },
+              {
+                "kind": "pine",
+                "weight": 1
+              }
+            ],
+            "max_density_per_ha": 250,
+            "treeline_m": 700
+          }
+        },
+        "boreal_forest": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "spruce",
+                "weight": 3
+              },
+              {
+                "kind": "birch",
+                "weight": 5
+              },
+              {
+                "kind": "pine",
+                "weight": 1
+              }
+            ],
+            "max_density_per_ha": 450,
+            "treeline_m": 900
+          }
+        },
+        "temperate_forest": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "birch",
+                "weight": 5
+              },
+              {
+                "kind": "spruce",
+                "weight": 3
+              },
+              {
+                "kind": "oak",
+                "weight": 1
+              }
+            ],
+            "max_density_per_ha": 450,
+            "treeline_m": 900
+          }
+        },
+        "temperate_grassland": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "birch",
+                "weight": 4
+              },
+              {
+                "kind": "spruce",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 200,
+            "treeline_m": 900
+          }
+        },
+        "alpine": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "birch",
+                "weight": 3
+              },
+              {
+                "kind": "spruce",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 250,
+            "treeline_m": 900
+          }
+        },
+        "tundra": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "birch",
+                "weight": 1
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 3
+              }
+            ],
+            "max_density_per_ha": 40
+          }
+        }
+      }
+    },
+    "ile_volcanique": {
+      "biomes": {
+        "volcanic": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "pine",
+                "weight": 5
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 120,
+            "treeline_m": 2100
+          }
+        },
+        "temperate_grassland": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "pine",
+                "weight": 4
+              },
+              {
+                "kind": "holm_oak",
+                "weight": 2
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 1
+              }
+            ],
+            "max_density_per_ha": 250,
+            "treeline_m": 2100
+          }
+        },
+        "temperate_forest": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "holm_oak",
+                "weight": 4
+              },
+              {
+                "kind": "tree_fern",
+                "weight": 1
+              },
+              {
+                "kind": "pine",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 450,
+            "treeline_m": 2100
+          }
+        },
+        "mediterranean": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "pine",
+                "weight": 4
+              },
+              {
+                "kind": "palm",
+                "weight": 1
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 120,
+            "treeline_m": 2100
+          }
+        },
+        "steppe": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "pine",
+                "weight": 1
+              },
+              {
+                "kind": "dwarf_shrub",
+                "weight": 3
+              }
+            ],
+            "max_density_per_ha": 30,
+            "treeline_m": 2100
+          }
+        }
+      }
+    },
+    "rizieres": {
+      "biomes": {
+        "farmland": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "palm",
+                "weight": 3
+              },
+              {
+                "kind": "reed",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 60
+          }
+        },
+        "wetland": {
+          "vegetation": {
+            "species": [
+              {
+                "kind": "reed",
+                "weight": 4
+              },
+              {
+                "kind": "palm",
+                "weight": 2
+              }
+            ],
+            "max_density_per_ha": 150
+          }
+        }
+      }
     }
   },
   "surfaces": {

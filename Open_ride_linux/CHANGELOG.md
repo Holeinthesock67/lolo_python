@@ -5,6 +5,12 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Canyons, fjords, îles volcaniques et rizières (lot U25, 6.0, partie 1)
+- Quatre paysages célèbres s'ajoutent comme variantes des biomes existants, pas comme biomes : canyons rouges du plateau du Colorado, fjords de Norvège (côte ouest, Nordland, Lofoten), îles volcaniques de l'Atlantique (Canaries, Madère, Açores) et rizières d'Asie du Sud-Est. Le compilateur et le monde ouvert les posent avec la même table à grosse maille que les variantes régionales.
+- Arbres du paysage : bouleaux et épicéas des fjords (sans palmiers ni pins parasols sur la côte, limite des arbres à 700–900 m), pinède canarienne et laurisylve sur les îles volcaniques, palmiers dans les rizières (sans vignes), pins et genévriers épars dans les canyons. Les fjords ont des maisons de bois peint (toit `bois_peint`).
+- Un parcours compilé avant ce lot reste valide ; il faut le recompiler (`add-layer <parcours>.world biome`) pour voir les paysages. Le sol propre à chaque paysage (strates des canyons, terrasses des rizières, cascades des fjords) viendra avec la partie 2.
+- Format `.world` : membre facultatif `landscape` de la variante, toit `bois_peint` ; thème 2.0 : section `landscapes`. `--variant GROUND,ROOFS[,LANDSCAPE]` impose un paysage.
+
 ### Import d'entraînements retiré du menu ERG
 - La ligne « Importer un fichier » du sous-menu ERG est retirée (décision du propriétaire du 12 novembre). Un `.zwo`, `.erg`, `.mrc` ou `.qwk` se dépose directement dans `~/OpenRide/Workouts/` ; les entraînements livrés, « Créer un entraînement » et la saisie QWKcode ne changent pas.
 - Contrat IPC, révision 1.15 : `list_imports` et `import_workout` répondent `error` `workout_invalid` (un engine plus ancien reste conforme) ; le message `imports` n'est plus envoyé.
