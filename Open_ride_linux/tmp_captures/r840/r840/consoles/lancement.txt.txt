@@ -1,0 +1,21 @@
+08:51:22 empreinte avant cd3850c51f3f01752752e767563f7ccd
+08:51:22 tête 3c093def
+08:52:04 vitrine savanna lat 12
+08:53:12 fin rc=0
+08:53:12 vitrine jungle lat 5
+08:54:12 fin rc=0
+08:54:12 vitrine boreal_forest lat 62
+08:55:12 fin rc=0
+08:55:12 vitrine tundra lat 68
+08:55:53 fin rc=0
+08:55:53 vitrine polar lat 78
+08:56:29 fin rc=0
+08:56:29 vitrine mediterranean lat 43
+08:57:17 fin rc=0
+08:57:17 vitrine sand_desert lat 25
+08:58:04 fin rc=0
+08:58:04 vitrine temperate_forest lat 45
+08:59:06 fin rc=0
+08:59:07 empreinte après cd3850c51f3f01752752e767563f7ccd
+08:59:07 clone 8fc4a132
+08:59:07 FIN

@@ -1,0 +1,67 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.312 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce GTX 1060 6GB
+
+[vitrine_biomes] Qualité appliquée : low (demandée low, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_route_low_01-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_bord_low_01-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_haut_low_01-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_faune_low_01-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 13546 triangles, 2 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_route_low_04-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_bord_low_04-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_haut_low_04-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_faune_low_04-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 13546 triangles, 2 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_route_low_07-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_bord_low_07-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_haut_low_07-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_faune_low_07-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 13546 triangles, 2 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_route_low_10-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_bord_low_10-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_haut_low_10-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_faune_low_10-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 13546 triangles, 2 appels de dessin
+[vitrine_biomes] Qualité appliquée : medium (demandée medium, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_route_medium_01-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_bord_medium_01-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_haut_medium_01-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_faune_medium_01-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 13546 triangles, 2 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_route_medium_04-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_bord_medium_04-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_haut_medium_04-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_faune_medium_04-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 13546 triangles, 2 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_route_medium_07-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_bord_medium_07-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_haut_medium_07-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_faune_medium_07-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 13546 triangles, 2 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_route_medium_10-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_bord_medium_10-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_haut_medium_10-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_faune_medium_10-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 13546 triangles, 2 appels de dessin
+[vitrine_biomes] Qualité appliquée : high (demandée high, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_route_high_01-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_bord_high_01-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_haut_high_01-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_faune_high_01-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 13546 triangles, 2 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_route_high_04-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_bord_high_04-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_haut_high_04-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_faune_high_04-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 13546 triangles, 2 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_route_high_07-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_bord_high_07-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_haut_high_07-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_faune_high_07-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 13546 triangles, 2 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_route_high_10-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_bord_high_10-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_haut_high_10-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 14148 triangles, 4 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/polar/polar_faune_high_10-15.png : 0 arbres, 7 bêtes, 0 oiseaux, 13546 triangles, 2 appels de dessin
+[vitrine_biomes] contrôles automatiques : tout passe

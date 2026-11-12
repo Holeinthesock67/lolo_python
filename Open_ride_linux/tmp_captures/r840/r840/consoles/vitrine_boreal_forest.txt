@@ -1,0 +1,67 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.312 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce GTX 1060 6GB
+
+[vitrine_biomes] Qualité appliquée : low (demandée low, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_route_low_01-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 182366 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_bord_low_01-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 150398 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_haut_low_01-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 171398 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_faune_low_01-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 123830 triangles, 65 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_route_low_04-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 182366 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_bord_low_04-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 150398 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_haut_low_04-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 171398 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_faune_low_04-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 123830 triangles, 65 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_route_low_07-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 151586 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_bord_low_07-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 123830 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_haut_low_07-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 142454 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_faune_low_07-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 101258 triangles, 65 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_route_low_10-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 182366 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_bord_low_10-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 150398 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_haut_low_10-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 171398 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_faune_low_10-15.png : 19958 arbres, 7 bêtes, 7 oiseaux, 123830 triangles, 65 appels de dessin
+[vitrine_biomes] Qualité appliquée : medium (demandée medium, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_route_medium_01-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 498976 triangles, 123 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_bord_medium_01-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 365640 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_haut_medium_01-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 435586 triangles, 113 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_faune_medium_01-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 317378 triangles, 65 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_route_medium_04-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 498976 triangles, 123 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_bord_medium_04-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 365640 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_haut_medium_04-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 435586 triangles, 113 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_faune_medium_04-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 317378 triangles, 65 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_route_medium_07-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 405772 triangles, 123 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_bord_medium_07-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 299436 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_haut_medium_07-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 354802 triangles, 113 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_faune_medium_07-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 247718 triangles, 65 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_route_medium_10-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 498976 triangles, 123 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_bord_medium_10-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 365640 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_haut_medium_10-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 435586 triangles, 113 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_faune_medium_10-15.png : 63635 arbres, 7 bêtes, 7 oiseaux, 317378 triangles, 65 appels de dessin
+[vitrine_biomes] Qualité appliquée : high (demandée high, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_route_high_01-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 652202 triangles, 125 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_bord_high_01-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 455448 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_haut_high_01-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 528608 triangles, 111 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_faune_high_01-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 389770 triangles, 65 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_route_high_04-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 652202 triangles, 125 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_bord_high_04-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 455448 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_haut_high_04-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 528608 triangles, 111 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_faune_high_04-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 389770 triangles, 65 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_route_high_07-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 521306 triangles, 125 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_bord_high_07-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 371316 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_haut_high_07-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 432488 triangles, 111 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_faune_high_07-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 308230 triangles, 65 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_route_high_10-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 652202 triangles, 125 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_bord_high_10-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 455448 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_haut_high_10-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 528608 triangles, 111 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/boreal_forest/boreal_forest_faune_high_10-15.png : 80095 arbres, 7 bêtes, 7 oiseaux, 389770 triangles, 65 appels de dessin
+[vitrine_biomes] contrôles automatiques : tout passe

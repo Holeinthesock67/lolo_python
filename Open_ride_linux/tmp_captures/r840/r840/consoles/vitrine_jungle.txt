@@ -1,0 +1,67 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.312 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce GTX 1060 6GB
+
+[vitrine_biomes] Qualité appliquée : low (demandée low, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_route_low_01-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 419896 triangles, 110 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_bord_low_01-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 288112 triangles, 80 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_haut_low_01-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 349892 triangles, 101 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_faune_low_01-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 267004 triangles, 67 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_route_low_04-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 419896 triangles, 110 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_bord_low_04-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 288112 triangles, 80 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_haut_low_04-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 349892 triangles, 101 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_faune_low_04-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 267004 triangles, 67 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_route_low_07-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 347376 triangles, 110 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_bord_low_07-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 243416 triangles, 80 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_haut_low_07-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 296020 triangles, 101 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_faune_low_07-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 221272 triangles, 67 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_route_low_10-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 347376 triangles, 110 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_bord_low_10-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 243416 triangles, 80 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_haut_low_10-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 296020 triangles, 101 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_faune_low_10-15.png : 19714 arbres, 6 bêtes, 24 oiseaux, 221272 triangles, 67 appels de dessin
+[vitrine_biomes] Qualité appliquée : medium (demandée medium, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_route_medium_01-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 1167152 triangles, 125 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_bord_medium_01-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 803884 triangles, 92 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_haut_medium_01-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 954732 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_faune_medium_01-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 781916 triangles, 72 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_route_medium_04-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 1167152 triangles, 125 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_bord_medium_04-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 803884 triangles, 92 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_haut_medium_04-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 954732 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_faune_medium_04-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 781916 triangles, 72 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_route_medium_07-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 966908 triangles, 125 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_bord_medium_07-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 684892 triangles, 92 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_haut_medium_07-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 807472 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_faune_medium_07-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 627108 triangles, 72 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_route_medium_10-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 966908 triangles, 125 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_bord_medium_10-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 684892 triangles, 92 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_haut_medium_10-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 807472 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_faune_medium_10-15.png : 69669 arbres, 6 bêtes, 48 oiseaux, 627108 triangles, 72 appels de dessin
+[vitrine_biomes] Qualité appliquée : high (demandée high, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_route_high_01-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 1441834 triangles, 125 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_bord_high_01-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 1000386 triangles, 92 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_haut_high_01-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 1178402 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_faune_high_01-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 939200 triangles, 71 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_route_high_04-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 1441834 triangles, 125 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_bord_high_04-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 1000386 triangles, 92 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_haut_high_04-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 1178402 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_faune_high_04-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 939200 triangles, 71 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_route_high_07-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 1198966 triangles, 125 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_bord_high_07-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 850462 triangles, 92 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_haut_high_07-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 1000210 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_faune_high_07-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 751980 triangles, 71 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_route_high_10-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 1198966 triangles, 125 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_bord_high_10-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 850462 triangles, 92 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_haut_high_10-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 1000210 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/jungle/jungle_faune_high_10-15.png : 86935 arbres, 6 bêtes, 55 oiseaux, 751980 triangles, 71 appels de dessin
+[vitrine_biomes] contrôles automatiques : tout passe

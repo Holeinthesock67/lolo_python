@@ -1,0 +1,67 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.312 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce GTX 1060 6GB
+
+[vitrine_biomes] Qualité appliquée : low (demandée low, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_route_low_01-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 508766 triangles, 140 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_bord_low_01-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 339412 triangles, 103 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_haut_low_01-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 413068 triangles, 130 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_faune_low_01-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 333548 triangles, 76 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_route_low_04-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 508766 triangles, 140 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_bord_low_04-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 339412 triangles, 103 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_haut_low_04-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 413068 triangles, 130 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_faune_low_04-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 333548 triangles, 76 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_route_low_07-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 286310 triangles, 140 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_bord_low_07-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 203000 triangles, 103 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_haut_low_07-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 246704 triangles, 130 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_faune_low_07-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 175164 triangles, 76 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_route_low_10-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 508766 triangles, 140 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_bord_low_10-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 339412 triangles, 103 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_haut_low_10-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 413068 triangles, 130 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_faune_low_10-15.png : 19714 arbres, 1 bêtes, 24 oiseaux, 333548 triangles, 76 appels de dessin
+[vitrine_biomes] Qualité appliquée : medium (demandée medium, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_route_medium_01-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 1377778 triangles, 162 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_bord_medium_01-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 943544 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_haut_medium_01-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 1126042 triangles, 148 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_faune_medium_01-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 937188 triangles, 80 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_route_medium_04-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 1377778 triangles, 162 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_bord_medium_04-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 943544 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_haut_medium_04-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 1126042 triangles, 148 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_faune_medium_04-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 937188 triangles, 80 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_route_medium_07-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 804446 triangles, 162 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_bord_medium_07-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 581776 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_haut_medium_07-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 688002 triangles, 148 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_faune_medium_07-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 481028 triangles, 80 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_route_medium_10-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 1377778 triangles, 162 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_bord_medium_10-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 943544 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_haut_medium_10-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 1126042 triangles, 148 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_faune_medium_10-15.png : 69669 arbres, 1 bêtes, 32 oiseaux, 937188 triangles, 80 appels de dessin
+[vitrine_biomes] Qualité appliquée : high (demandée high, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_route_high_01-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1744944 triangles, 164 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_bord_high_01-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1176156 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_haut_high_01-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1396506 triangles, 147 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_faune_high_01-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1173116 triangles, 80 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_route_high_04-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1744944 triangles, 164 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_bord_high_04-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1176156 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_haut_high_04-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1396506 triangles, 147 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_faune_high_04-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1173116 triangles, 80 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_route_high_07-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1007476 triangles, 164 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_bord_high_07-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 723180 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_haut_high_07-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 850606 triangles, 147 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_faune_high_07-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 599024 triangles, 80 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_route_high_10-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1744944 triangles, 164 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_bord_high_10-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1176156 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_haut_high_10-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1396506 triangles, 147 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12/u13/temperate_forest/temperate_forest_faune_high_10-15.png : 86935 arbres, 1 bêtes, 32 oiseaux, 1173116 triangles, 80 appels de dessin
+[vitrine_biomes] contrôles automatiques : tout passe
