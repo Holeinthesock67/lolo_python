@@ -169,7 +169,7 @@ func _place(p: Dictionary, route, s_route: float) -> void:
 	node.rotation = Vector3(0.0, -heading, 0.0)
 	var spin := float(p["spin"])
 	match kind:
-		"cheese", "ball":
+		"cheese", "ball", "chunk":
 			node.rotate_object_local(Vector3.RIGHT, spin)
 		"cow", "fish", "tornado":
 			node.rotate_object_local(Vector3.UP, spin)
@@ -199,17 +199,36 @@ static func _make(kind: String) -> MeshInstance3D:
 	var color := Color.WHITE
 	match kind:
 		"chunk":
-			mesh = _merge([
-				[_box(Vector3(4.0, 0.6, WtfSceneModel.CHUNK_M * 0.95)), Vector3.ZERO, ROAD_GREY],
-				[_box(Vector3(4.05, 0.05, WtfSceneModel.CHUNK_M * 0.95)), Vector3(0.0, 0.31, 0.0), ASPHALT],
-				[_box(Vector3(0.15, 0.06, WtfSceneModel.CHUNK_M * 0.6)), Vector3(0.0, 0.33, 0.0), Color.WHITE],
-				[_box(Vector3(3.6, 1.2, WtfSceneModel.CHUNK_M * 0.8)), Vector3(0.0, -0.85, 0.0), EARTH]])
+			# Plaque de route arrachée (lot WTF9) : bitume, bande blanche du bord, couche de gravier puis motte
+			# de terre et cailloux dessous, pour qu'on lise « un morceau de route qui tombe » et pas un pavé.
+			var l := WtfSceneModel.CHUNK_M * 0.9
+			var parts := [[_box(Vector3(4.0, 0.12, l)), Vector3(0.0, 0.0, 0.0), ASPHALT],
+				[_box(Vector3(0.18, 0.02, l * 0.9)), Vector3(1.6, 0.07, 0.0), Color.WHITE],
+				[_box(Vector3(0.15, 0.02, l * 0.4)), Vector3(0.0, 0.07, 0.0), Color.WHITE],
+				[_box(Vector3(3.8, 0.3, l * 0.95)), Vector3(0.0, -0.21, 0.0), Color(0.62, 0.58, 0.52)],
+				[_ball(1.7, 1.6), Vector3(0.0, -0.9, 0.0), EARTH]]
+			for r in [[0.45, -1.2, -1.3, -1.6], [0.35, 1.0, -1.4, 1.2], [0.3, 0.3, -1.6, 2.1], [0.4, -0.6, -1.5, 0.4]]:
+				parts.append([_ball(r[0]), Vector3(r[1], r[2], r[3]), Color(0.5, 0.48, 0.45)])
+			mesh = _merge(parts)
 		"void":
-			# Gouffre : bande sombre posée sur la route derrière le front, bords de terre.
+			# Gouffre derrière le front : fond noir, parois de terre et de roche visibles, lèvre de bitume
+			# déchiquetée côté cycliste (dents), fissures sur la route encore debout devant le front.
 			var half := WtfSceneModel.VOID_LENGTH_M * 0.5
-			mesh = _merge([
-				[_box(Vector3(7.0, 0.05, WtfSceneModel.VOID_LENGTH_M)), Vector3(0.0, 0.03, half), Color(0.04, 0.03, 0.05)],
-				[_box(Vector3(7.2, 0.3, 0.5)), Vector3(0.0, 0.0, 0.25), EARTH]])
+			var parts := [
+				[_box(Vector3(7.0, 0.05, WtfSceneModel.VOID_LENGTH_M)), Vector3(0.0, 0.03, half), Color(0.03, 0.02, 0.04)],
+				[_box(Vector3(6.6, 0.06, WtfSceneModel.VOID_LENGTH_M)), Vector3(0.0, 0.04, half + 1.5), Color(0.0, 0.0, 0.0)],
+				[_box(Vector3(0.6, 0.12, WtfSceneModel.VOID_LENGTH_M)), Vector3(-3.4, 0.06, half), EARTH],
+				[_box(Vector3(0.6, 0.12, WtfSceneModel.VOID_LENGTH_M)), Vector3(3.4, 0.06, half), EARTH],
+				[_box(Vector3(7.0, 0.07, 1.2)), Vector3(0.0, 0.05, 0.6), Color(0.3, 0.2, 0.12)]]
+			for i in 9:
+				# Dents de bitume en lèvre du trou, une sur deux plus longue.
+				var w := 0.75
+				parts.append([_box(Vector3(w * 0.8, 0.08, 0.5 + 0.5 * (i % 2))), Transform3D(Basis(Vector3.UP, 0.35 * (i % 3 - 1)),
+					Vector3(-3.0 + i * w, 0.07, 0.15)), ASPHALT])
+			for c in [[-1.6, -1.5, 0.4], [0.4, -2.6, -0.3], [1.9, -1.2, 0.5], [-0.6, -3.6, 0.2], [1.1, -4.4, -0.4]]:
+				# Fissures noires en zigzag sur la route devant le front (−Z : vers le cycliste).
+				parts.append([_box(Vector3(0.09, 0.03, 1.6)), Transform3D(Basis(Vector3.UP, c[2]), Vector3(c[0], 0.05, c[1])), INK_3D])
+			mesh = _merge(parts)
 		"cheese":
 			# Meule (axe vers la droite) : pâte jaune, croûte orangée sur la tranche, trous ronds peints à plat
 			# sur les deux faces (disques plus sombres, à peine en saillie).
@@ -245,11 +264,7 @@ static func _make(kind: String) -> MeshInstance3D:
 			mesh = c
 			color = Color(0.32, 0.32, 0.4, 0.55)
 		"ball":
-			var s := SphereMesh.new()
-			s.radius = WtfSceneModel.KATA_BALL_M   # × scale = taille de la boule (posée au sol, sans s'y enfoncer)
-			s.height = 2.0 * WtfSceneModel.KATA_BALL_M
-			mesh = s
-			color = WtfHudModel.PINK
+			mesh = _kata_ball_mesh()
 		"fish":
 			mesh = _merge([[_ball(0.25, 0.9), Basis(Vector3.RIGHT, PI / 2.0), WtfHudModel.CYAN],
 				[_box(Vector3(0.05, 0.4, 0.3)), Vector3(0.0, 0.0, 0.55), WtfHudModel.ORANGE],
@@ -289,20 +304,13 @@ static func _make(kind: String) -> MeshInstance3D:
 			mesh = _chef_mesh()
 		_:
 			if kind.begins_with("dish_"):
-				var s := SphereMesh.new()
-				s.radius = 0.3
-				s.height = 0.4
-				mesh = s
-				color = {"dish_spaghetti": WtfHudModel.YELLOW, "dish_jelly": WtfHudModel.GREEN,
-					"dish_musette": WtfHudModel.PURPLE, "dish_souffle": Color(1.0, 0.9, 0.6),
-					"dish_chili": Color(0.9, 0.1, 0.1)}.get(kind, WtfHudModel.PINK)
+				mesh = _dish_mesh(kind.trim_prefix("dish_"))
+				if mesh == null:
+					return null
 			elif kind.begins_with("kata_"):
-				mesh = _box(Vector3(1.0, 1.0, 1.0))
-				color = {"kata_apple": Color(0.9, 0.15, 0.15), "kata_sign": WtfHudModel.YELLOW,
-					"kata_cow": Color.WHITE, "kata_car": WtfHudModel.CYAN, "kata_house": WtfHudModel.ORANGE,
-					"kata_church": WtfHudModel.PURPLE}.get(kind, WtfHudModel.GREEN)
-				if kind == "kata_cow":
-					mesh = _cow_mesh()
+				mesh = _kata_mesh(kind.trim_prefix("kata_"))
+				if mesh == null:
+					return null
 			else:
 				return null
 	var node := MeshInstance3D.new()
@@ -320,6 +328,188 @@ static func _make(kind: String) -> MeshInstance3D:
 		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	node.material_override = mat
 	return node
+
+
+## Boule du Katamari (lot WTF9) : noyau sable couvert d'objets collés (pommes, panneaux, voiturette, vache,
+## maisonnette, bâtons), pour qu'on y lise « une boule qui ramasse tout » et non une sphère unie. Rayon
+## KATA_BALL_M à la taille 1 ; les objets dépassent de ~25 %.
+static func _kata_ball_mesh() -> ArrayMesh:
+	if _cache.has("ball"):
+		return _cache["ball"]
+	var r := WtfSceneModel.KATA_BALL_M
+	var core := SphereMesh.new()
+	core.radius = r
+	core.height = 2.0 * r
+	core.radial_segments = 20
+	core.rings = 10
+	var parts := [[core, Vector3.ZERO, Color(0.86, 0.78, 0.6)]]
+	# Directions réparties sur la sphère (spirale de Fibonacci), un objet par direction.
+	var stuck := []
+	for i in 32:
+		stuck.append(["apple", "sign", "car", "stick", "cow", "apple", "house", "stick"][i % 8])
+	var n := stuck.size()
+	for i in n:
+		var y := 1.0 - 2.0 * (i + 0.5) / n
+		var rad := sqrt(1.0 - y * y)
+		var a := i * 2.39996
+		var dir := Vector3(cos(a) * rad, y, sin(a) * rad)
+		var basis := Basis(Quaternion(Vector3.UP, dir))
+		var at := dir * r * 0.95
+		for piece in _mini(str(stuck[i]), r * 0.28):
+			var xf: Transform3D = Transform3D(basis, at) * piece[1]
+			parts.append([piece[0], xf, piece[2]])
+	_cache["ball"] = _merge(parts)
+	return _cache["ball"]
+
+
+## Petits objets collés sur la boule : pièces [maillage, transformation locale (Y vers l'extérieur), couleur].
+static func _mini(kind: String, k: float) -> Array:
+	match kind:
+		"apple":
+			return [[_ball(k * 0.5), Transform3D(Basis(), Vector3(0, k * 0.35, 0)), Color(0.9, 0.12, 0.12)],
+				[_box(Vector3(k * 0.08, k * 0.3, k * 0.08)), Transform3D(Basis(), Vector3(0, k * 0.9, 0)), Color(0.4, 0.25, 0.1)]]
+		"sign":
+			return [[_box(Vector3(k * 0.1, k * 1.2, k * 0.1)), Transform3D(Basis(), Vector3(0, k * 0.6, 0)), Color(0.75, 0.75, 0.78)],
+				[_box(Vector3(k * 0.8, k * 0.8, k * 0.08)), Transform3D(Basis(Vector3.FORWARD, PI / 4.0), Vector3(0, k * 1.3, 0)), WtfHudModel.YELLOW]]
+		"car":
+			return [[_box(Vector3(k * 1.2, k * 0.4, k * 0.6)), Transform3D(Basis(), Vector3(0, k * 0.3, 0)), WtfHudModel.CYAN],
+				[_box(Vector3(k * 0.6, k * 0.3, k * 0.55)), Transform3D(Basis(), Vector3(0, k * 0.6, 0)), Color(0.75, 0.9, 1.0)]]
+		"cow":
+			return [[_box(Vector3(k * 1.0, k * 0.55, k * 0.5)), Transform3D(Basis(), Vector3(0, k * 0.35, 0)), Color.WHITE],
+				[_box(Vector3(k * 0.4, k * 0.3, k * 0.52)), Transform3D(Basis(), Vector3(k * 0.1, k * 0.45, 0)), INK_3D]]
+		"house":
+			var roof := PrismMesh.new()
+			roof.size = Vector3(k * 0.9, k * 0.4, k * 0.8)
+			return [[_box(Vector3(k * 0.7, k * 0.6, k * 0.7)), Transform3D(Basis(), Vector3(0, k * 0.3, 0)), Color(1.0, 0.95, 0.85)],
+				[roof, Transform3D(Basis(), Vector3(0, k * 0.8, 0)), Color(0.8, 0.25, 0.15)]]
+		_:   # bâton / crayon
+			return [[_box(Vector3(k * 0.12, k * 1.4, k * 0.12)), Transform3D(Basis(Vector3.RIGHT, 0.3), Vector3(0, k * 0.6, 0)), WtfHudModel.GREEN]]
+
+
+## Objets semés sur la route pour le Katamari (lot WTF9), à leur taille 1 (KATA_SCALES les agrandit) : chaque
+## objet a sa forme propre (pomme, panneau triangulaire, vache, voiture, maison, église), base au sol.
+static func _kata_mesh(kind: String) -> Mesh:
+	if _cache.has("kata_" + kind):
+		return _cache["kata_" + kind]
+	var parts := []
+	match kind:
+		"apple":
+			parts = [[_ball(0.5, 0.9), Vector3(0, 0.45, 0), Color(0.9, 0.12, 0.12)],
+				[_ball(0.18), Vector3(-0.15, 0.62, -0.3), Color(1.0, 0.55, 0.5)],
+				[_box(Vector3(0.06, 0.3, 0.06)), Vector3(0, 1.0, 0), Color(0.4, 0.25, 0.1)],
+				[_box(Vector3(0.3, 0.04, 0.15)), Transform3D(Basis(Vector3.FORWARD, 0.4), Vector3(0.15, 1.05, 0)), WtfHudModel.GREEN]]
+		"sign":
+			# Panneau « danger » : poteau gris, triangle blanc bordé de rouge, point d'exclamation.
+			var tri := PrismMesh.new()
+			tri.size = Vector3(1.0, 0.9, 0.06)
+			var inner := PrismMesh.new()
+			inner.size = Vector3(0.7, 0.62, 0.08)
+			parts = [[_box(Vector3(0.08, 1.6, 0.08)), Vector3(0, 0.8, 0), Color(0.7, 0.7, 0.72)],
+				[tri, Vector3(0, 1.95, 0), Color(0.85, 0.08, 0.08)],
+				[inner, Vector3(0, 1.88, 0), Color.WHITE],
+				[_box(Vector3(0.07, 0.24, 0.1)), Vector3(0, 1.93, 0), INK_3D],
+				[_box(Vector3(0.07, 0.06, 0.1)), Vector3(0, 1.74, 0), INK_3D]]
+		"cow":
+			return _cow_mesh()
+		"car":
+			# Voiturette cartoon (face vers −Z) : caisse, cabine vitrée, roues noires, phares.
+			parts = [[_box(Vector3(1.0, 0.45, 2.0)), Vector3(0, 0.45, 0), WtfHudModel.CYAN],
+				[_box(Vector3(0.9, 0.4, 1.0)), Vector3(0, 0.88, 0.15), WtfHudModel.CYAN],
+				[_box(Vector3(0.92, 0.3, 0.9)), Vector3(0, 0.9, 0.15), Color(0.75, 0.9, 1.0)],
+				[_box(Vector3(0.2, 0.12, 0.05)), Vector3(-0.3, 0.5, -1.01), WtfHudModel.YELLOW],
+				[_box(Vector3(0.2, 0.12, 0.05)), Vector3(0.3, 0.5, -1.01), WtfHudModel.YELLOW]]
+			var wheel := CylinderMesh.new()
+			wheel.top_radius = 0.24
+			wheel.bottom_radius = 0.24
+			wheel.height = 0.16
+			for x in [-0.5, 0.5]:
+				for z in [-0.6, 0.6]:
+					parts.append([wheel, Transform3D(Basis(Vector3.FORWARD, PI / 2.0), Vector3(x, 0.24, z)), INK_3D])
+		"house":
+			# Maison : murs crème, toit rouge à deux pans, porte, fenêtres bleues, cheminée.
+			var roof := PrismMesh.new()
+			roof.size = Vector3(1.2, 0.6, 1.1)
+			parts = [[_box(Vector3(1.0, 0.8, 1.0)), Vector3(0, 0.4, 0), Color(1.0, 0.94, 0.8)],
+				[roof, Vector3(0, 1.1, 0), Color(0.82, 0.22, 0.14)],
+				[_box(Vector3(0.22, 0.4, 0.04)), Vector3(0, 0.2, -0.51), Color(0.45, 0.25, 0.1)],
+				[_box(Vector3(0.2, 0.2, 0.04)), Vector3(-0.3, 0.52, -0.51), Color(0.4, 0.7, 0.95)],
+				[_box(Vector3(0.2, 0.2, 0.04)), Vector3(0.3, 0.52, -0.51), Color(0.4, 0.7, 0.95)],
+				[_box(Vector3(0.14, 0.35, 0.14)), Vector3(0.3, 1.3, 0.2), Color(0.6, 0.3, 0.2)]]
+		"church":
+			# Église : nef claire au toit gris, clocher, flèche pointue, croix dorée, rosace, porte.
+			var roof := PrismMesh.new()
+			roof.size = Vector3(0.8, 0.4, 1.4)
+			var spire := CylinderMesh.new()
+			spire.top_radius = 0.0
+			spire.bottom_radius = 0.28
+			spire.height = 0.7
+			spire.radial_segments = 4
+			parts = [[_box(Vector3(0.7, 0.7, 1.4)), Vector3(0, 0.35, 0.2), Color(0.95, 0.92, 0.85)],
+				[roof, Vector3(0, 0.9, 0.2), Color(0.45, 0.47, 0.55)],
+				[_box(Vector3(0.4, 1.4, 0.4)), Vector3(0, 0.7, -0.6), Color(0.95, 0.92, 0.85)],
+				[spire, Vector3(0, 1.75, -0.6), Color(0.45, 0.47, 0.55)],
+				[_box(Vector3(0.04, 0.3, 0.04)), Vector3(0, 2.25, -0.6), WtfHudModel.YELLOW],
+				[_box(Vector3(0.18, 0.04, 0.04)), Vector3(0, 2.3, -0.6), WtfHudModel.YELLOW],
+				[_ball(0.1), Vector3(0, 1.1, -0.81), WtfHudModel.PURPLE],
+				[_box(Vector3(0.18, 0.3, 0.04)), Vector3(0, 0.15, -0.81), Color(0.45, 0.25, 0.1)]]
+		_:
+			return null
+	_cache["kata_" + kind] = _merge(parts)
+	return _cache["kata_" + kind]
+
+
+## Plats du chef (lot WTF9), posés sur une assiette blanche : spaghetti (nid jaune, boulettes, sauce), gelée
+## verte tremblotante, accordéon du bal musette, soufflé doré dans son ramequin, piment rouge.
+static func _dish_mesh(dish: String) -> Mesh:
+	if _cache.has("dish_" + dish):
+		return _cache["dish_" + dish]
+	var plate := CylinderMesh.new()
+	plate.top_radius = 0.32
+	plate.bottom_radius = 0.24
+	plate.height = 0.04
+	var parts := [[plate, Vector3(0, 0.0, 0), Color.WHITE]]
+	match dish:
+		"spaghetti":
+			for i in 4:
+				var t := TorusMesh.new()
+				t.inner_radius = 0.1 - i * 0.02
+				t.outer_radius = 0.16 - i * 0.02
+				parts.append([t, Vector3(0, 0.04 + i * 0.035, 0), WtfHudModel.YELLOW])
+			parts.append([_ball(0.06), Vector3(0, 0.17, 0), Color(0.85, 0.15, 0.1)])
+			parts.append([_ball(0.045), Vector3(0.09, 0.08, 0.05), Color(0.45, 0.22, 0.12)])
+			parts.append([_ball(0.045), Vector3(-0.08, 0.08, -0.06), Color(0.45, 0.22, 0.12)])
+		"jelly":
+			var g := CylinderMesh.new()
+			g.top_radius = 0.12
+			g.bottom_radius = 0.2
+			g.height = 0.22
+			parts.append([g, Vector3(0, 0.13, 0), WtfHudModel.GREEN])
+			parts.append([_ball(0.04), Vector3(0, 0.27, 0), Color(0.9, 0.1, 0.2)])
+		"musette":
+			# Accordéon : deux caissons rouges, soufflet plissé, touches blanches.
+			parts.append([_box(Vector3(0.1, 0.24, 0.16)), Vector3(-0.17, 0.14, 0), Color(0.85, 0.1, 0.15)])
+			parts.append([_box(Vector3(0.1, 0.24, 0.16)), Vector3(0.17, 0.14, 0), Color(0.85, 0.1, 0.15)])
+			for i in 5:
+				parts.append([_box(Vector3(0.035, 0.22, 0.15)), Vector3(-0.09 + i * 0.045, 0.14, 0),
+					INK_3D if i % 2 == 0 else Color(0.95, 0.95, 0.95)])
+			parts.append([_box(Vector3(0.02, 0.2, 0.1)), Vector3(-0.225, 0.14, 0), Color.WHITE])
+		"souffle":
+			var ram := CylinderMesh.new()
+			ram.top_radius = 0.15
+			ram.bottom_radius = 0.14
+			ram.height = 0.14
+			parts.append([ram, Vector3(0, 0.09, 0), Color.WHITE])
+			parts.append([_ball(0.17, 0.2), Vector3(0, 0.2, 0), Color(0.95, 0.75, 0.35)])
+		"chili":
+			var body := CapsuleMesh.new()
+			body.radius = 0.06
+			body.height = 0.4
+			parts.append([body, Transform3D(Basis(Vector3.FORWARD, PI / 2.0 - 0.3), Vector3(0, 0.08, 0)), Color(0.9, 0.08, 0.05)])
+			parts.append([_box(Vector3(0.1, 0.03, 0.03)), Vector3(0.22, 0.15, 0), WtfHudModel.GREEN])
+		_:
+			return null
+	_cache["dish_" + dish] = _merge(parts)
+	return _cache["dish_" + dish]
 
 
 ## Vache cartoon (face vers −Z) : corps blanc à taches noires, tête, museau rose, cornes, pattes, queue.

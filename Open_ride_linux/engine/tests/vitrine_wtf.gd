@@ -7,7 +7,8 @@ extends SceneTree
 ##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_wtf.gd -- --out DOSSIER [--quality low,medium,high]
 ##
-## Écrit DOSSIER/wtf_<gag>_<préréglage>.png. Les temps du GPU se mesurent sur le PC (sim_bench.py).
+## Le HUD du mode (wtf_view.gd : bandeau, consigne « À toi », légende du premier passage) est dessiné par-dessus,
+## comme en séance ; `--hud 0` le retire. Écrit DOSSIER/wtf_<gag>_<préréglage>.png. Les temps du GPU se mesurent sur le PC (sim_bench.py).
 
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
@@ -17,6 +18,8 @@ const TerrainMaterial := preload("res://scripts/terrain_material.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const WtfScene := preload("res://scripts/wtf/wtf_scene.gd")
 const WtfSceneModel := preload("res://scripts/wtf/wtf_scene_model.gd")
+const WtfHudModel := preload("res://scripts/wtf/wtf_hud_model.gd")
+const WtfView := preload("res://scripts/wtf/wtf_view.gd")
 
 const SIZE := Vector2i(1280, 720)
 const SETTLE_FRAMES := 20
@@ -27,15 +30,21 @@ const GAGS := {
 	"lune": {"event": {"id": "gravity", "planet": "moon", "hop_m": 2.5}},
 	"jupiter": {"event": {"id": "gravity", "planet": "jupiter", "hop_m": 0.0}},
 	"envers": {"event": {"id": "upside_down"}},
-	"effondrement": {"event": {"id": "collapse", "gap_m": 130.0}},
+	"effondrement": {"event": {"id": "collapse", "left_s": 42.0, "gap_m": 130.0}},
+	"effondrement_proche": {"event": {"id": "collapse", "left_s": 20.0, "gap_m": 8.0}},
 	"fromage": {"event": {"id": "cheese", "gap_m": 60.0, "squashed": false}},
 	"tornade": {"event": {"id": "storm", "cows": 24}},
 	"cuisine": {"event": {"id": "tiny"}},
 	"pigeon": {"event": {"id": "camera", "view": "pigeon"}},
 	"escargot": {"event": {"id": "camera", "view": "snail"}},
 	"roue": {"event": {"id": "camera", "view": "wheel"}},
-	"chef": {"event": {"id": "chef", "phase": "reveal", "dish": "spaghetti"}},
-	"katamari": {"kata": {"size": 2.0, "next": [[12.0, "cow"], [25.0, "car"], [40.0, "house"]]}},
+	"chef": {"event": {"id": "chef", "phase": "reveal", "dish": "spaghetti", "phase_left_s": 4.0}},
+	"chef_gelee": {"event": {"id": "chef", "phase": "reveal", "dish": "jelly", "phase_left_s": 4.0}},
+	"chef_musette": {"event": {"id": "chef", "phase": "reveal", "dish": "musette", "phase_left_s": 4.0}},
+	"chef_souffle": {"event": {"id": "chef", "phase": "reveal", "dish": "souffle", "phase_left_s": 4.0}},
+	"chef_piment": {"event": {"id": "chef", "phase": "reveal", "dish": "chili", "phase_left_s": 4.0}},
+	"katamari": {"kata": {"size": 2.0, "count": 12, "last": "sign", "next": [[7.0, "apple"], [13.0, "sign"], [22.0, "car"]]}},
+	"katamari_gros": {"kata": {"size": 3.0, "count": 40, "last": "car", "next": [[9.0, "cow"], [20.0, "house"], [42.0, "church"]]}},
 	"poissons": {"clock_h": 14.0, "fish": true},
 }
 
@@ -54,6 +63,7 @@ class StraightRoute:
 var _out_dir := "user://vitrine_wtf"
 var _presets: Array = ["medium"]
 var _only: Array = []
+var _hud := true
 
 
 func _init() -> void:
@@ -65,6 +75,8 @@ func _init() -> void:
 			_presets = Array(args[i + 1].split(","))
 		elif args[i] == "--gags":
 			_only = Array(args[i + 1].split(","))
+		elif args[i] == "--hud":
+			_hud = args[i + 1] != "0"
 	call_deferred("_run")
 
 
@@ -87,10 +99,16 @@ func _run() -> void:
 			vp.add_child(scene)
 			var wtf: Dictionary = (GAGS[gag] as Dictionary).duplicate(true)
 			wtf["points"] = 120
+			var hud = null
+			if _hud:
+				hud = WtfView.new()
+				vp.add_child(hud)
 			var pos := Vector3(RoadBuilder.RIDER_LATERAL_M, 0.0, 0.0)
 			for f in range(SETTLE_FRAMES):
 				var t := 10.0 + f * 0.05
 				scene.step(WtfSceneModel.view(wtf, t, preset), route, 0.0, Callable(), sun)
+				if hud != null:
+					hud.update_view(WtfHudModel.view(wtf), t)
 				cam.fov = 60.0
 				cam.look_at_from_position(pos + Vector3(0.0, 1.9, 4.2), pos + Vector3(0.4, 1.0, -8.0))
 				scene.apply_camera(cam, pos, 0.0, 0.1)
