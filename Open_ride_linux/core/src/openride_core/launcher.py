@@ -56,7 +56,10 @@ Fermeture bloquée de l'engine (lot X55) : l'engine écrit en dernier « Fermetu
 serveurs de Godot (code N) ». Sur le PC (écran réel, pilote NVIDIA), après un clic de souris sur « Quitter »,
 l'arrêt de Godot qui suit restait bloqué, tout le travail du jeu déjà fait (séance, `bye`). Passé
 `ENGINE_SHUTDOWN_S` après cette ligne, le lanceur arrête le processus et retient le code annoncé : 0 ferme
-OpenRide, 64 et 65 relancent comme d'habitude.
+OpenRide, 64 et 65 relancent comme d'habitude. Depuis le lot X58, l'engine s'arrête lui-même (SIGKILL) juste
+après cette ligne, l'arrêt de Godot 4.7 pouvant attendre à jamais ses fils de travail (godotengine/godot#125097) :
+une sortie par SIGKILL après la ligne compte avec le code annoncé, sans attente ; `ENGINE_SHUTDOWN_S` reste le
+filet si le processus ne sort toujours pas.
 
 Lancement sans terminal (lot N14) :
 - premier démarrage : sans `~/OpenRide/config.toml`, il est créé depuis
@@ -119,6 +122,9 @@ ENGINE_ARGS_NOT_FROM_CONFIG: dict[str, str] = {
 EXIT_RELAUNCH = 64
 EXIT_SIM = 65
 ENGINE_DONE = re.compile(r"Fermeture : scène libérée, arrêt des serveurs de Godot \(code (\d+)\)")
+# Lot X58 : l'engine s'arrête lui-même par SIGKILL juste après sa ligne de fin (arrêt de Godot 4.7 bloqué,
+# godotengine/godot#125097) ; -9 direct, 137 à travers un shell (xvfb-run) ou gdb. Le code est celui de la ligne.
+ENGINE_SELF_KILLED = (-9, 128 + 9)
 ENGINE_SHUTDOWN_S = 3.0   # attente de la sortie de Godot après sa dernière ligne (une sortie normale : < 1 s)
 # Options du core en session simulée (remplacent --trainer, --input, --hr, --sim-scenario et --profil) :
 # matériel simulé et profil d'essai (série MJ, lot MJ2).
@@ -598,6 +604,10 @@ class Supervisor:
         """Code de sortie de l'engine, None s'il tourne. Arrêt de Godot bloqué `engine_shutdown_s` après la ligne de
         fin (scène libérée) : processus arrêté, code annoncé par cette ligne retenu."""
         if engine.poll() is not None:
+            if engine.returncode in ENGINE_SELF_KILLED:
+                self._join_readers()   # la ligne de fin peut être encore dans le tuyau
+                if self._engine_done is not None:
+                    return self._engine_done[1]   # sortie immédiate après la ligne de fin (lot X58) : code annoncé
             return engine.returncode
         done = self._engine_done
         if done is None or time.monotonic() - done[0] < self.engine_shutdown_s:

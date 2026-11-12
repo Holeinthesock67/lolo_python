@@ -33,6 +33,7 @@ const BiomeIds := preload("res://scripts/biome_ids.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const ImpostorShader := preload("res://shaders/tree_impostor.gdshader")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 ## Début des imposteurs : fin du LOD 1 des arbres proches (tree_renderer.gd LOD1_MAX_DIST_M).
 const BEGIN_M := 1500.0
@@ -180,9 +181,9 @@ func pending_tiles() -> int:
 ## Relève la tâche finie (pose sa tuile) et lance la suivante. `wait` : attend la tâche en cours (tests, clear).
 func _pump(wait := false) -> void:
 	if _task_id >= 0:
-		if not wait and not WorkerThreadPool.is_task_completed(_task_id):
+		if not wait and not BgTasks.done(_task_id):
 			return
-		WorkerThreadPool.wait_for_task_completion(_task_id)
+		BgTasks.wait(_task_id)
 		_task_id = -1
 		if not _task_cancelled and not _task_result.is_empty():
 			var t0 := Time.get_ticks_usec()
@@ -196,7 +197,7 @@ func _pump(wait := false) -> void:
 		return
 	var q: Dictionary = _queue.pop_front()
 	_task_key = q["key"]
-	_task_id = WorkerThreadPool.add_task(_prepare_task.bind(q), false, "forêt %d:%d" % [q["tile_x"], q["tile_z"]])
+	_task_id = BgTasks.add(_prepare_task.bind(q), false, "forêt %d:%d" % [q["tile_x"], q["tile_z"]])
 
 
 func _prepare_task(q: Dictionary) -> void:

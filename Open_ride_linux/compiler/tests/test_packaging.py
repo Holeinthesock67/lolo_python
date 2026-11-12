@@ -31,6 +31,9 @@ COPIES = {
 # fichiers propres au paquet, sans référence ailleurs dans le dépôt
 ORIGINAUX = {
     DATA_DIR / "regional_variants.toml",   # table des variantes régionales (lot U4)
+    DATA_DIR / "koppen_1986_2010.u8.xz",   # carte des climats de Köppen-Geiger (lot U24)
+    DATA_DIR / "koppen_LISEZMOI.md",       # sa provenance et sa licence
+    DATA_DIR / "volcanic_areas.toml",      # paysages volcaniques (lot U24)
 }
 
 

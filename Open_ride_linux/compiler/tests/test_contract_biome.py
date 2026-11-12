@@ -164,7 +164,7 @@ def test_manifest_with_biome_and_coast_layers() -> None:
     manifest["layers"] = {
         "biome": {
             "present": True, "version": "1.0", "default_biome": "temperate_grassland", "forced": None,
-            "sources": ["esa_worldcover_2021", "osm", "dem", "latitude"],
+            "sources": ["esa_worldcover_2021", "osm", "dem", "koppen_1986_2010"],
             "shares": {"temperate_grassland": 60.0, "mediterranean": 30.0, "coast": 10.0},
             "tiles": {"near": [[0, 0], [0, -1]], "far": [[0, 0]]},
         },
