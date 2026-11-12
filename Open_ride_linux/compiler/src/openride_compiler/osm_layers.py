@@ -1,5 +1,6 @@
 """Construction et écriture atomique des couches OSM (Format .world v1 §6 à §8 ter) : `buildings` et `vegetation`
-(Lot I3), `poi` et `water` (Lot I4), terrains ouverts de `vegetation` et couche `roads` (Lot P22)."""
+(Lot I3), `poi` et `water` (Lot I4), terrains ouverts de `vegetation` et couche `roads` (Lot P22).
+La mer (aires `sea` de la couche eau) vient de `coast.py` (lot U3), ajoutée par `add_sea_areas`."""
 
 from __future__ import annotations
 
@@ -914,6 +915,13 @@ def build_osm_layers(
         roads_count=roads_count,
         osm_date=extract_osm_date(responses),
     )
+
+
+def add_sea_areas(res: OsmLayersResult, sea_chunks: dict[int, list[dict[str, Any]]]) -> None:
+    """Ajoute à la couche eau les aires `sea` du lot U3 (`coast.build_coast`), tronçon par tronçon."""
+    for k in sorted(sea_chunks):
+        res.water_chunks.setdefault(k, {"lines": [], "areas": []})["areas"].extend(sea_chunks[k])
+        res.water_areas_count += len(sea_chunks[k])
 
 
 def buildings_manifest(res: OsmLayersResult) -> dict[str, Any]:

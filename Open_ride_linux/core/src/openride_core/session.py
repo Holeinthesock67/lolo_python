@@ -93,6 +93,8 @@ START_CANCEL_COMMANDS = ("pause", "end_session", "select_workout", "start_run", 
 SHUTDOWN_GRACE_S = 5.0   # délai laissé aux pilotes pour relâcher le trainer et se déconnecter
 MAX_STEP_S = 0.1         # un pas plus long (gel du processus) est borné
 # Biais ERG par appui de + ou − (§7.1) : petit pas ± 2 %, grand pas ± 10 % (cinq pas de BIAS_STEP_PCT).
+# Commandes de l'import d'entraînements (lot N16), retirées en révision 1.15 : refusées par `workout_invalid`.
+RETIRED_IMPORT_COMMANDS = ("list_imports", "import_workout")
 BIAS_STEPS = {InputEvent.PLUS_SHORT: +1, InputEvent.MINUS_SHORT: -1, InputEvent.PLUS_LONG: +5, InputEvent.MINUS_LONG: -5}
 WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révision 1.3)
 VEHICLES_FRAME_EVERY = 3   # liste `vehicles` 10 fois par seconde (lot AS6), extrapolée par l'engine
@@ -396,10 +398,9 @@ class CoreSession:
         self.first_run = False  # premier lancement (`run --first-run`) : contenus de départ installés seuls
         # Appairage depuis le menu (lot N13) : dernière recherche et identification du « + » en cours.
         self._scan_items: list[dict[str, Any]] = []
-        # Menu ERG (lot N16, décision D4 de l'audit IPC) : dossier personnel fouillé par list_imports
-        # et chemins proposés à l'engine, seuls acceptés par import_workout.
+        # Dossier personnel fouillé par list_route_imports (lot O23) ; l'import d'entraînements (N16)
+        # est retiré depuis la révision 1.15 (12 novembre).
         self.import_home = Path.home()
-        self._import_offer: set[str] = set()
         # Traces importées depuis le menu des parcours (lot O23), dans `gpx_dir` : chemins proposés par
         # list_route_imports (seuls acceptés par import_route) et import en cours ({} sans import).
         self._route_import_offer: set[str] = set()
@@ -682,8 +683,13 @@ class CoreSession:
             self._on_plan_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name == "accept_ftp":
             self._accept_ftp(args if isinstance(args, dict) else {}, cmd_id)
-        elif name in ("list_imports", "create_workout", "create_workout_qwk", "import_workout"):
+        elif name in ("create_workout", "create_workout_qwk"):
             self._on_workout_menu_command(name, args, cmd_id)
+        elif name in RETIRED_IMPORT_COMMANDS:
+            # Import d'entraînements retiré (révision 1.15, décision du propriétaire du 12 novembre) :
+            # un engine plus ancien reçoit un refus lisible au lieu d'un silence.
+            self.server.send_error("workout_invalid", "Import d'entraînement retiré : déposer le fichier "
+                                   "dans ~/OpenRide/Workouts/.")
         elif name in ("list_route_imports", "import_route"):
             self._on_route_import_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_garage", "equip", "buy", "buy_life", "set_avatar"):
@@ -1541,7 +1547,7 @@ class CoreSession:
             return
         self._set_setting({"key": "rider.ftp_w", "value": result.ftp_w}, cmd_id)
 
-    # --- entraînements créés ou importés depuis le menu (lot N16, audit IPC D4) ------------------
+    # --- entraînements créés depuis le menu (lot N16, audit IPC D4 ; import retiré en 1.15) -------
 
     def _on_workout_menu_command(self, name: str, args: dict, cmd_id: int) -> None:
         if self.state.session_state in ("RUNNING", "PAUSED"):
@@ -1551,28 +1557,13 @@ class CoreSession:
 
     async def _workout_menu(self, name: str, args: dict, cmd_id: int) -> None:
         from . import workout_menu
-        from .ipc_lists import chunk_list_message, MAX_DATAGRAM_BYTES
 
         try:
-            if name == "list_imports":
-                items = await asyncio.to_thread(workout_menu.import_candidates, self.import_home,
-                                                self.workouts_dir)
-                self._import_offer = {it["path"] for it in items}
-                for m in chunk_list_message("imports", cmd_id, items, False, MAX_DATAGRAM_BYTES):
-                    self.server.send_raw(m)
-                return
             if name == "create_workout":
                 res = await asyncio.to_thread(workout_menu.create_interval_workout, self.workouts_dir, args)
-            elif name == "create_workout_qwk":
-                res = await asyncio.to_thread(workout_menu.create_qwk_workout, self.workouts_dir, args)
             else:
-                path = args.get("path") if isinstance(args, dict) else None
-                if not isinstance(path, str) or path not in self._import_offer:
-                    raise workout_menu.WorkoutMenuError(
-                        "workout_invalid", "Fichier non proposé par list_imports : redemander la liste.")
-                res = await asyncio.to_thread(workout_menu.import_file, Path(path), self.workouts_dir)
-            log.info("Entraînement %s : %s (%s)", "importé" if name == "import_workout" else "créé",
-                     res["workout_id"], "nouveau" if res["created"] else "déjà présent")
+                res = await asyncio.to_thread(workout_menu.create_qwk_workout, self.workouts_dir, args)
+            log.info("Entraînement créé : %s (%s)", res["workout_id"], "nouveau" if res["created"] else "déjà présent")
             self.server.send_raw({"type": "workout_saved", "v": 1, "request_cmd_id": cmd_id, **res})
         except workout_menu.WorkoutMenuError as exc:
             log.warning("Menu ERG : %s refusé : %s", name, exc)
@@ -3060,6 +3051,7 @@ class CoreSession:
                 powerups_on=self.cfg.powerups.mode != "off",
                 powerup_set=self.cfg.powerups.mode if self.cfg.powerups.mode != "off" else "classiques",
                 grade_at=route.grade_at,
+                surface_at=(lambda x: self._surface_here(route, x)) if self.cfg.gravel.mode != "off" else None,
                 loadout=header["loadout"] if header else None, gain_mode=gain_mode)
         from .bots import RefRider, attach_segments, calibrate_bots
 
@@ -3423,6 +3415,8 @@ class CoreSession:
             # Gravel (lot U21) : roulement multiplié, lissé sur 20 m ; vitesse virtuelle en SIM comme en ERG.
             params = self.physics.p if (race or wtf is not None) else self._base_params
             self._gravel_factor = self._gravel_factor_at(route, s)
+            if race:   # Rouleau compresseur (lot TT5) : roulement du bitume, fondu sur 20 m
+                self._gravel_factor = race.surface_factor(self._gravel_factor)
             self.physics.p = replace(params, crr=params.crr * self._gravel_factor)
             self._gravel_offset = surface_physics.grade_offset_pct(params.crr, self._gravel_factor, grade)
         if self.wind.active:   # vent figé en pause : son temps est celui de la séance

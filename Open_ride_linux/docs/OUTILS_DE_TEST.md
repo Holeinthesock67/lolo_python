@@ -173,7 +173,7 @@ python3 engine/tests/menu_bench.py --scenario quitter --voies souris --native --
 | `appareils` | trois | Un seul boîtier du Click : « Passer » ; Réglages → Appareils : recherche, Enregistrer → confirmation (Non : rien d'écrit, Oui : `config.toml`), « Relancer » (code 64) |
 | `sessions` | trois | Parcours choisi, session libre, Y en séance (pause), fin enregistrée, bilan, session ERG, « Session simulée » confirmée (code 65) |
 | `reglages` | trois | Sous-écrans, FTP + 15 W écrite, Y annule une modification, qualité appliquée tout de suite et écrite, ligne de version |
-| `erg` | trois | Créer un entraînement par intervalles (fichier écrit), importer un fichier des Téléchargements |
+| `erg` | trois | Aide ERG, puis créer un entraînement par intervalles (fichier écrit) ; import retiré le 12 novembre |
 | `pause` | trois | Y reprend, curseur de difficulté (`set_difficulty`), « Abandonner » confirmé (Non, puis Oui : bilan, aucun FIT) |
 | `quitter` | trois | « Quitter » : focus sur Non, Non et Y reviennent, Oui ferme l'engine (code 0) |
 | `plans_ftp` | trois | Plans de référence : liste, fiche, démarrage, arrêt confirmé ; test de FTP par rampe jusqu'à « Prêt » |

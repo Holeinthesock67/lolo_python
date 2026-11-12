@@ -86,7 +86,7 @@ Chaque écran du globe explique ce qu'il fait, et le bandeau du bas donne les bo
 
 En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pente de la route ne compte plus.
 
-**Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, **Saisir du QWKcode (clavier)**, **Importer un fichier** `.zwo`, `.erg`, `.mrc` ou `.qwk` trouvé dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`, et **Comment ça marche ?**, l'aide à l'écran qui reprend tout ce qui suit (un sujet par ligne, l'explication dans la carte de droite). Les entraînements livrés sont installés au premier démarrage ; sur une installation plus ancienne, **Réglages**, **Contenus**, **Contenus de départ** les ajoute (A maintenu), sans jamais remplacer un fichier existant.
+**Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, **Saisir du QWKcode (clavier)** et **Comment ça marche ?**, l'aide à l'écran qui reprend tout ce qui suit (un sujet par ligne, l'explication dans la carte de droite). Les entraînements livrés sont installés au premier démarrage ; sur une installation plus ancienne, **Réglages**, **Contenus**, **Contenus de départ** les ajoute (A maintenu), sans jamais remplacer un fichier existant.
 
 **Ajouter un entraînement.** Quatre façons :
 
@@ -105,7 +105,7 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
   `10m@130-220` est une rampe de 130 à 220 W ; `4x 5m@280 r3m@140` fait 4 fois 5 min à 280 W puis 3 min à 140 W. Une erreur donne le numéro de la ligne.
 
   **Au clavier** : **Saisir du QWKcode (clavier)** ouvre l'écran de saisie. Chaque touche s'écrit à la fin de la dernière ligne (lettres, chiffres, `@`, `-`, `%`, espace), **Entrée** commence une ligne, **Retour arrière** efface (et remonte d'une ligne sur une ligne vide). Les flèches ← → mènent à **Enregistrer et choisir** (Entrée enregistre) ou **Tout effacer** ; Échap revient à la liste en gardant le texte. Le fichier `.qwk` prend le nom de la ligne `#` (`qwkcode` sans elle) ; si le texte a une erreur, la ligne d'état la donne et rien n'est écrit. **Dans un fichier** : enregistre-le dans Téléchargements, puis **Importer un fichier**.
-- **Importer** : le fichier est vérifié, puis copié dans `~/OpenRide/Workouts/` ; un fichier déjà importé n'est pas recopié, un autre du même nom reçoit `_2`.
+- **Déposer un fichier** : un `.zwo`, `.erg`, `.mrc` ou `.qwk` copié dans `~/OpenRide/Workouts/` apparaît dans la liste ; invalide, il reste grisé avec son erreur. L'import depuis le menu est retiré depuis le 12 novembre.
 - **À la main** : un fichier posé directement dans `~/OpenRide/Workouts/` apparaît dans la liste. `.zwo` (Zwift) et `.mrc` : puissances en % de la FTP ; `.erg` : watts fixes ; `.qwk` : watts ou %. Un bloc `FreeRide` devient un palier à 50 W. Exemples dans `core/workouts/`.
 
 **Pendant l'ERG.** Le bandeau du bas montre le bloc en cours, le temps restant, la cible et le bloc suivant. Les appuis courts sur « + » et « − » règlent l'intensité de ± 2 %, les appuis longs de ± 10 % ; **Z** passe au bloc suivant et **Y** met la séance en pause. Après le dernier bloc, le bandeau du haut invite à terminer : **Y** puis **A maintenu** (section 4, « Fin d'un entraînement »). Le détail est dans la section 6.

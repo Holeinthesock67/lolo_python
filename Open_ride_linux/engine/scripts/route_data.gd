@@ -268,12 +268,14 @@ var _near_grid := {}          # Vector2i -> PackedInt32Array (indices des points
 var _near_n := -1             # n au moment de la construction : grille périmée si n a changé
 var _near_lo := Vector2i.ZERO # cases extrêmes occupées
 var _near_hi := Vector2i.ZERO
+var _near_cells: Array = []   # cases occupées (Vector2i) : parcours direct quand le point est loin (r790d)
 
 
 ## Grille des points de la route, construite au chargement (avant toute tâche de fond qui la lit).
 func _build_nearest_grid() -> void:
 	_near_grid = {}
 	_near_n = n
+	_near_cells = []
 	for k in range(n):
 		var c := Vector2i(floori(x[k] / NEAREST_CELL_M), floori(z[k] / NEAREST_CELL_M))
 		if k == 0:
@@ -281,6 +283,8 @@ func _build_nearest_grid() -> void:
 			_near_hi = c
 		_near_lo = Vector2i(mini(_near_lo.x, c.x), mini(_near_lo.y, c.y))
 		_near_hi = Vector2i(maxi(_near_hi.x, c.x), maxi(_near_hi.y, c.y))
+		if not _near_grid.has(c):
+			_near_cells.append(c)
 		var ids: PackedInt32Array = _near_grid.get(c, PackedInt32Array())
 		ids.append(k)
 		_near_grid[c] = ids
@@ -296,9 +300,14 @@ func nearest_index(px: float, pz: float) -> int:
 		return _nearest_index_linear(px, pz)
 	var c := Vector2i(floori(px / NEAREST_CELL_M), floori(pz / NEAREST_CELL_M))
 	var max_r := maxi(maxi(absi(c.x - _near_lo.x), absi(c.x - _near_hi.x)), maxi(absi(c.y - _near_lo.y), absi(c.y - _near_hi.y)))
+	# Loin de la route, les anneaux sont presque vides : un point à D mètres lisait (2 D / 50)² cases (6 400 à
+	# 2 km, plusieurs ms par appel ; tracteurs des champs loin de la route, essai r790d : 20 s par tronçon). Au-delà
+	# de r_cap anneaux (autant de cases lues que de cases occupées), parcours des seules cases occupées.
+	var r_cap := maxi(2, int(ceil(sqrt(float(_near_cells.size())) / 2.0)))
 	var best := INF
 	var idx := -1
-	for r in range(max_r + 1):
+	var done := false
+	for r in range(mini(max_r, r_cap) + 1):
 		for cz in range(c.y - r, c.y + r + 1):
 			var edge := cz == c.y - r or cz == c.y + r
 			var step := 1 if edge else 2 * r   # anneau : lignes du haut et du bas entières, colonnes extrêmes sinon
@@ -316,7 +325,24 @@ func nearest_index(px: float, pz: float) -> int:
 		# Un point hors des anneaux 0..r est à plus de r cases du point : au moins r·NEAREST_CELL_M.
 		var reach := float(r) * NEAREST_CELL_M
 		if idx >= 0 and best < reach * reach:
+			done = true
 			break
+	if not done and max_r > r_cap:
+		# Cases occupées dont le bord est à moins de la meilleure distance (égalité gardée : plus petit indice).
+		for cell in _near_cells:
+			var x0: float = cell.x * NEAREST_CELL_M
+			var z0: float = cell.y * NEAREST_CELL_M
+			var bx := maxf(maxf(x0 - px, px - (x0 + NEAREST_CELL_M)), 0.0)
+			var bz := maxf(maxf(z0 - pz, pz - (z0 + NEAREST_CELL_M)), 0.0)
+			if bx * bx + bz * bz > best:
+				continue
+			for k in _near_grid[cell]:
+				var dx: float = x[k] - px
+				var dz: float = z[k] - pz
+				var d := dx * dx + dz * dz
+				if d < best or (d == best and k < idx):
+					best = d
+					idx = k
 	return idx if idx >= 0 else _nearest_index_linear(px, pz)
 
 

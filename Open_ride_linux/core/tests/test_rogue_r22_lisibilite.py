@@ -1,4 +1,4 @@
-"""Lot R22 : lisibilité du Cyber-Rogue côté core (contrat révision 1.15).
+"""Lot R22 : lisibilité du Cyber-Rogue côté core (contrat révision 1.16).
 
 Raison de chaque Z court refusé, verdict des arches de Perfect Shift ratées, temps restant de la phase,
 étapes à venir, temps du choix en couloir, consigne de puissance et avance sur le Firewall en secondes.

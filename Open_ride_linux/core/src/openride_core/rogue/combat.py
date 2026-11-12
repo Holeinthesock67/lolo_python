@@ -19,7 +19,7 @@ from .rooms import Room
 FIGHT, RECOVERY, DONE = "FIGHT", "RECOVERY", "DONE"
 Z_SHORT = "Z_SHORT"
 
-# Raisons d'un Z court refusé (lot R22, champ `z_reason` de l'objet `rogue`, révision 1.15).
+# Raisons d'un Z court refusé (lot R22, champ `z_reason` de l'objet `rogue`, révision 1.16).
 Z_REASONS = ("adrenaline", "overheat", "no_target", "no_charge", "no_roc_charge", "no_surge", "no_hack",
              "cursed", "recovery", "gold")
 # Verdict d'une arche de Perfect Shift ratée (champ `shift_miss`) : trop tôt, trop tard, mauvais sens, aucun

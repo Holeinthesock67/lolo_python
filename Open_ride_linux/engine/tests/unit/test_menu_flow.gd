@@ -470,14 +470,14 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Session ERG
-	_check(_ids(f) == ["_sim", "seuil", "_create", "_qwk", "_import", "_help"],
-		"sous-menu ERG : liste puis Créer, Importer et Aide (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["_sim", "seuil", "_create", "_qwk", "_help"],
+		"sous-menu ERG : liste puis Créer, QWKcode et Aide, sans import (révision 1.15) (%s)" % str(_ids(f)))
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_help" and f.state()["card"].get("name", "") == "Choisir un entraînement",
 		"focus sur Comment ça marche ? : carte de l'aide (%s)" % str(f.state()["card"]))
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_help"
 		and f.state()["title"] == "Aide ERG", "écran Aide ERG")
-	_check(_ids(f) == ["help:choose", "help:create", "help:qwk", "help:import", "help:write", "help:ride"],
+	_check(_ids(f) == ["help:choose", "help:create", "help:qwk", "help:write", "help:ride"],
 		"sujets de l'aide (%s)" % str(_ids(f)))
 	f.handle("PLUS_SHORT")
 	var help_card: Dictionary = f.state()["card"]
@@ -486,8 +486,6 @@ func _test_erg_submenu() -> void:
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_help", "A long sur un sujet : rien")
 	f.handle("Y_SHORT")
 	_check(f.state()["screen"] == "workouts" and _focus_id(f) == "_help", "Y : retour à la liste")
-	f.handle("MINUS_SHORT")
-	_check(f.state()["card"].get("name", "") == "Importer un fichier", "Importer : carte de l'aide")
 	f.handle("MINUS_SHORT")
 	_check(f.state()["card"].get("name", "") == "Saisie QWKcode (GoldenCheetah)", "QWKcode : carte de l'aide")
 	f.handle("MINUS_SHORT")
@@ -529,28 +527,13 @@ func _test_erg_submenu() -> void:
 	act = f.handle("A_LONG")
 	_check(act == {"action": "select_workout", "workout_id": "intervalles_7x240s_105"} and f.state()["screen"] == "ready",
 		"entraînement créé choisi : écran Prêt")
-	# Import.
+	# Fichier déposé à la main dans ~/OpenRide/Workouts/ (l'import du menu est retiré, révision 1.15).
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Changer d'entraînement
 	_check(_focus_id(f) == "intervalles_7x240s_105", "liste ouverte sur le dernier entraînement choisi (lot O32)")
-	f.menu.focus_item("_import")
-	_check(_focus_id(f) == "_import", "focus sur Importer")
-	_check(f.handle("A_LONG") == {"action": "list_imports"} and f.state()["screen"] == "workout_import", "list_imports")
-	f.set_import_candidates([])
-	_check(f.state()["focus"] == -1 and f.state()["items"][0]["label"] == "Aucun fichier .zwo, .erg, .mrc ou .qwk", "aucun fichier")
-	f.set_import_candidates([{"path": "/x/Téléchargements/vo2.zwo", "file": "vo2.zwo", "source": "Téléchargements",
-		"imported": false}, {"path": "/x/b.erg", "file": "b.erg", "source": "Bureau", "imported": true}])
-	_check(f.state()["items"][1]["detail"] == "Bureau, déjà importé", "fichier déjà importé signalé")
-	_check(f.handle("A_LONG") == {"action": "import_workout", "path": "/x/Téléchargements/vo2.zwo"}, "import_workout")
-	f.on_error("workout_invalid", "vo2.zwo : aucun bloc reconnu")
-	_check(f.state()["status"] == "Échec : vo2.zwo : aucun bloc reconnu" and f.state()["screen"] == "workout_import",
-		"échec affiché")
-	f.list_failed("imports")
-	_check(f.state()["items"][0]["label"] == "Fichiers à importer indisponibles", "imports sans réponse")
-	f.on_workout_saved({"request_cmd_id": 12, "workout_id": "vo2", "name": "VO2", "created": false})
-	_check(f.state()["status"] == "Importé : VO2 (déjà présent)", "import : ligne d'état (%s)" % f.state()["status"])
 	f.set_workouts([{"id": "vo2", "name": "VO2", "duration_s": 0, "selectable": false, "error": "aucun bloc reconnu"}])
-	_check(f.state()["screen"] == "workouts" and _focus_id(f) != "vo2", "import invalide : désactivé, pas de focus")
+	_check(f.state()["screen"] == "workouts" and _focus_id(f) != "vo2", "fichier invalide : désactivé, pas de focus")
+	_check(not "_import" in _ids(f), "aucune ligne Importer (%s)" % str(_ids(f)))
 
 const DAY := {"week": 1, "day": "jour1", "date": "2026-10-27", "workout": "ss", "name": "Sweet spot",
 	"duration_s": 2700.0, "tss": 60.8, "done": false}

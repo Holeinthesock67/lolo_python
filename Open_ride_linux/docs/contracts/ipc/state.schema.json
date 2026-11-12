@@ -1805,12 +1805,12 @@
             "null"
           ],
           "minimum": 0,
-          "description": "Facultatif, révision 1.15 (lot R22) : secondes avant la fin de l'échauffement, du couloir, de la récupération ou du retour au calme ; null en salle et au boss."
+          "description": "Facultatif, révision 1.16 (lot R22) : secondes avant la fin de l'échauffement, du couloir, de la récupération ou du retour au calme ; null en salle et au boss."
         },
         "next": {
           "type": "array",
           "maxItems": 2,
-          "description": "Facultatif, révision 1.15 (lot R22) : étapes à venir, la plus proche d'abord.",
+          "description": "Facultatif, révision 1.16 (lot R22) : étapes à venir, la plus proche d'abord.",
           "items": {
             "type": "object",
             "required": [
@@ -1865,7 +1865,7 @@
             "door",
             null
           ],
-          "description": "Facultatif, révision 1.15 (lot R22) : temps du choix en cours (carte puis porte), null sans choix."
+          "description": "Facultatif, révision 1.16 (lot R22) : temps du choix en cours (carte puis porte), null sans choix."
         },
         "target_pct": {
           "type": [
@@ -1876,7 +1876,7 @@
             "lo",
             "hi"
           ],
-          "description": "Facultatif, révision 1.15 (lot R22) : consigne de puissance en % de FTP ; hi null = au moins lo.",
+          "description": "Facultatif, révision 1.16 (lot R22) : consigne de puissance en % de FTP ; hi null = au moins lo.",
           "properties": {
             "lo": {
               "type": "number",
@@ -1897,7 +1897,7 @@
             "null"
           ],
           "minimum": 0,
-          "description": "Facultatif, révision 1.15 (lot R22) : avance sur le Firewall en secondes, à la vitesse du joueur, bornée à 99 ; null hors salle."
+          "description": "Facultatif, révision 1.16 (lot R22) : avance sur le Firewall en secondes, à la vitesse du joueur, bornée à 99 ; null hors salle."
         },
         "z_reason": {
           "type": [
@@ -1917,7 +1917,7 @@
             "gold",
             null
           ],
-          "description": "Facultatif, révision 1.15 (lot R22) : raison du Z court refusé dans cette trame (événement z_refused), sinon null."
+          "description": "Facultatif, révision 1.16 (lot R22) : raison du Z court refusé dans cette trame (événement z_refused), sinon null."
         },
         "shift_miss": {
           "type": [
@@ -1928,7 +1928,7 @@
             "reason",
             "dt_s"
           ],
-          "description": "Facultatif, révision 1.15 (lot R22) : arche de Perfect Shift ratée dans cette trame (événement shift_missed), sinon null.",
+          "description": "Facultatif, révision 1.16 (lot R22) : arche de Perfect Shift ratée dans cette trame (événement shift_missed), sinon null.",
           "properties": {
             "reason": {
               "type": "string",

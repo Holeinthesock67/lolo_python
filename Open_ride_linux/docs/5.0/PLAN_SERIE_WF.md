@@ -1,4 +1,6 @@
-# Plan de la série WF : trainer en Wi-Fi et mesures rapides (version 5.0)
+# Plan de la série WF : trainer en Wi-Fi et mesures rapides (abandonnée)
+
+> **Série abandonnée le 12 novembre 2026** (décision du propriétaire : « On va supprimer lot wifi »). Aucun lot WF ne sera développé ; le trainer reste en Bluetooth. Ce plan est gardé pour l'historique de l'étude. Les leviers de réalisme côté core restent dans la série RC.
 
 Étude du 31 octobre 2026, à la suite de la remarque du propriétaire : « le race mode en wifi aurait un intérêt […] ça permet peut-être de rafraîchir la résistance plus rapidement pour plus de réalisme ». Décision du propriétaire du même jour : **la série va en 5.0**. Rien n'est codé avant la v1.0.0 (gel des fusions hors 1.0), et les lots WF2 à WF6 ne démarrent que si la mesure WF1 les justifie (§4).
 

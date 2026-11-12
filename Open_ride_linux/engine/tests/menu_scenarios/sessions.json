@@ -28,7 +28,7 @@
     {"choisir": "new_session"},
     {"ecran": "home", "contient": ["Parcours : Col du lacet"]},
     {"choisir": "erg"},
-    {"ecran": "workouts", "titre": "Session ERG : entraînement", "elements": ["erg_court", "_create", "_import"]},
+    {"ecran": "workouts", "titre": "Session ERG : entraînement", "elements": ["erg_court", "_create", "_qwk"]},
     {"choisir": "erg_court"},
     {"ecran": "ready", "titre": "Prêt : session ERG — Col du lacet"},
     {"choisir": "start"},

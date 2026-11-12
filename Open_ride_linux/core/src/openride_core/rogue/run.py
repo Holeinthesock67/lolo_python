@@ -554,7 +554,7 @@ class RunEngine:
             "gold": int(self.gold), "windows": self._windows(inp.s_m)[:4], "hack": hack,
             "overheat": bool(cs.overheat) if cs else False, "loot_focus": self.focus,
             "events": list(events)[:4],
-            # révision 1.15 (lot R22, lisibilité) : temps restant, étapes suivantes, consigne, retours des appuis
+            # révision 1.16 (lot R22, lisibilité) : temps restant, étapes suivantes, consigne, retours des appuis
             "phase_left_s": self._phase_left_s(),
             "next": self._next_steps(inp),
             "loot_stage": self.stage if self.phase in (WARMUP, CORRIDOR) else None,

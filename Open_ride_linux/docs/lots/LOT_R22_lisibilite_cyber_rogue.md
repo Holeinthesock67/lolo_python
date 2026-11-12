@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Lisibilité du Cyber-Rogue : HUD hors du centre, consignes et boutons, raison des refus de Z, verdict des arches, légendes, zone Z au sol, couloir en deux temps, décor latéral, 3 vues, ambiance coupée (contrat révision 1.15) | Python, GDScript | R11, R13, R17, R21 | Moyenne | En revue le 12 novembre, **version 2.0** |
+| Lisibilité du Cyber-Rogue : HUD hors du centre, consignes et boutons, raison des refus de Z, verdict des arches, légendes, zone Z au sol, couloir en deux temps, décor latéral, 3 vues, ambiance coupée (contrat révision 1.16) | Python, GDScript | R11, R13, R17, R21 | Moyenne | En revue le 12 novembre, **version 2.0** |
 
 ## 1. Objectif
 
@@ -13,7 +13,7 @@ Maquettes validées par le propriétaire le 12 novembre (`rogue-r22/maquettes/` 
 
 ## 2. Travail fait
 
-### 2.1 Core (contrat révision 1.15, ajouts compatibles)
+### 2.1 Core (contrat révision 1.16, ajouts compatibles)
 
 Champs facultatifs de l'objet `rogue` de `state` (`run.py`) :
 

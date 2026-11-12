@@ -3,7 +3,7 @@ extends RefCounted
 ## Textes de lisibilité du Cyber-Rogue (lot R22, maquettes validées le 12 novembre) : panneau d'état en haut à
 ## gauche, Firewall ou consigne en haut à droite, consigne et boutons utiles en bas, retours des appuis (Z refusé
 ## et sa raison, verdict des arches de Perfect Shift), légende au premier passage de chaque objet. Calcul pur
-## depuis `state.rogue` (révision 1.15), la trame `state` et les repères de la salle (message `room`) ; aucune
+## depuis `state.rogue` (révision 1.16), la trame `state` et les repères de la salle (message `room`) ; aucune
 ## règle de jeu ici. Pas de class_name : preload("res://scripts/rogue/rogue_guide_model.gd").
 
 const ARCHETYPE_NAMES := {"diesel": "Diesel", "puncheur": "Puncheur", "grimpeur": "Grimpeur",

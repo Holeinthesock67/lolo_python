@@ -167,7 +167,7 @@ func _corridor(phase: String, rogue: Dictionary) -> Dictionary:
 	var focus = rogue.get("loot_focus", null)
 	if phase == "WARMUP":
 		if rogue.has("loot_stage") and rogue.get("loot_stage", null) == null:
-			return {}          # révision 1.15 : le core dit qu'aucune relique n'est à choisir
+			return {}          # révision 1.16 : le core dit qu'aucune relique n'est à choisir
 		# Relique de départ (tirée à la 3e minute de l'échauffement) : trois cartes, ni porte ni relance.
 		if _relic_taken:
 			return {}
