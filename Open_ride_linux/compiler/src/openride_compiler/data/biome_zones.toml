@@ -73,3 +73,43 @@ biome = "atlantic_heath"
 name = "irlande"
 lat = [51, 56]
 lon = [-11, -5]
+
+# --- Japon (lot JP2) : forêts de cèdres sugi, cyprès hinoki, érables, bambous et sasa ----------------------
+# Climats humides tempérés et continentaux (Cfa, Cfb, Dfa, Dfb) ; arbres (10) et arbustes (20). Cultures (rizières),
+# bâti, eau, sol nu, neige et étage alpin gardent leur biome. Kyūshū, Shikoku, Honshū et Hokkaidō, sans la Corée ni
+# le continent ; le sud des Kouriles et la pointe sud de Sakhaline (moins de 15 km) y entrent. Okinawa (subtropical)
+# n'y est pas. Mêmes rectangles que les zones `japon_*` de regional_variants.toml (toit `kawara`).
+[biome.japan]
+class = 202
+koppen = ["Cfa", "Cfb", "Dfa", "Dfb"]
+worldcover = [10, 20]
+
+[[zone]]
+biome = "japan"
+name = "kyushu"
+lat = [31, 34]
+lon = [129, 132]
+
+[[zone]]
+biome = "japan"
+name = "chugoku_shikoku"
+lat = [32, 36]
+lon = [130, 136]
+
+[[zone]]
+biome = "japan"
+name = "kinki_chubu_kanto"
+lat = [33, 38]
+lon = [135, 141]
+
+[[zone]]
+biome = "japan"
+name = "tohoku"
+lat = [37, 42]
+lon = [139, 142]
+
+[[zone]]
+biome = "japan"
+name = "hokkaido"
+lat = [41, 46]
+lon = [139, 146]

@@ -76,35 +76,35 @@ def test_table_refuses_decimals_and_unknown_ids():
 
 def test_arid_point_gets_flat_white_roofs():
     v = R.variant_for(25.0, 30.0, {"sand_desert": 0.7, "steppe": 0.3}, tiny_table())
-    assert v == {"ground": "gres_rose", "roofs": "toit_plat_blanc"}
+    assert v == {"ground": "gres_rose", "roofs": "toit_plat_blanc", "landscape": None}
 
 
 def test_far_north_gets_wood():
     v = R.variant_for(62.0, 30.0, {"boreal_forest": 1.0}, tiny_table())
-    assert v == {"ground": "granite_gris", "roofs": "bois"}
+    assert v == {"ground": "granite_gris", "roofs": "bois", "landscape": None}
 
 
 def test_outside_every_zone_is_neutral():
     v = R.variant_for(10.0, -60.0, {"jungle": 1.0}, tiny_table())
-    assert v == {"ground": "calcaire_blanc", "roofs": None}
+    assert v == {"ground": "calcaire_blanc", "roofs": None, "landscape": None}
 
 
 def test_smallest_zone_wins_member_by_member():
     table = tiny_table()
-    assert R.variant_for(44.5, 4.5, {}, table) == {"ground": "basalte", "roofs": "ardoise"}
-    assert R.variant_for(47.0, 2.0, {}, table) == {"ground": "craie", "roofs": "ardoise"}
-    assert R.variant_for(50.0, 2.0, {}, table) == {"ground": "calcaire_blanc", "roofs": None}   # borne nord exclue
+    assert R.variant_for(44.5, 4.5, {}, table) == {"ground": "basalte", "roofs": "ardoise", "landscape": None}
+    assert R.variant_for(47.0, 2.0, {}, table) == {"ground": "craie", "roofs": "ardoise", "landscape": None}
+    assert R.variant_for(50.0, 2.0, {}, table) == {"ground": "calcaire_blanc", "roofs": None, "landscape": None}   # borne nord exclue
 
 
 def test_shipped_rules():
     """Table livrée : règles du cahier (aride, nord, tropiques) ; toits laissés au biome hors des zones."""
-    assert R.variant_for(25.0, 30.0, {"sand_desert": 0.8}) == {"ground": "gres_rose", "roofs": None}
-    assert R.variant_for(62.0, 30.0, {"boreal_forest": 1.0}) == {"ground": "granite_gris", "roofs": None}
-    assert R.variant_for(5.0, -60.0, {"jungle": 1.0}) == {"ground": "laterite_rouge", "roofs": None}
-    assert R.variant_for(-35.0, -60.0, {"steppe": 1.0}) == {"ground": "calcaire_blanc", "roofs": None}
-    assert R.variant_for(10.0, 40.0, {"volcanic": 0.6}) == {"ground": "basalte", "roofs": None}
+    assert R.variant_for(25.0, 30.0, {"sand_desert": 0.8}) == {"ground": "gres_rose", "roofs": None, "landscape": None}
+    assert R.variant_for(62.0, 30.0, {"boreal_forest": 1.0}) == {"ground": "granite_gris", "roofs": None, "landscape": None}
+    assert R.variant_for(5.0, -60.0, {"jungle": 1.0}) == {"ground": "laterite_rouge", "roofs": None, "landscape": None}
+    assert R.variant_for(-35.0, -60.0, {"steppe": 1.0}) == {"ground": "calcaire_blanc", "roofs": None, "landscape": None}
+    assert R.variant_for(10.0, 40.0, {"volcanic": 0.6}) == {"ground": "basalte", "roofs": None, "landscape": None}
     assert R.variant_for(43.5, 5.5, {"mediterranean": 1.0}) == {"ground": "calcaire_blanc",
-                                                                 "roofs": "tuile_ronde"}
+                                                                 "roofs": "tuile_ronde", "landscape": None}
 
 
 # Tuiles : centre des tuiles proches, majorité dans les lointaines -----------------------------------
@@ -125,7 +125,7 @@ def test_near_tile_center_and_far_majority():
     for (ix, iz), tile in tiles["near"].items():
         lat, _ = frame.to_latlon(np.array([(ix + 0.5) * 1000.0]), np.array([(iz + 0.5) * 1000.0]))
         expected = "craie" if 46 <= float(lat[0]) < 47 else "calcaire_blanc"
-        assert tile["variant"] == {"ground": expected, "roofs": None}
+        assert tile["variant"] == {"ground": expected, "roofs": None, "landscape": None}
     grounds = {t["variant"]["ground"] for t in tiles["near"].values()}
     assert grounds == {"craie", "calcaire_blanc"}
     for (fx, fz), far in tiles["far"].items():
@@ -154,7 +154,7 @@ def test_forced_variant_everywhere(make_gpx, tmp_path, capsys):
     world = tmp_path / "v.world"
     tiles = tiles_of(world)
     assert len(tiles) > 2
-    assert all(t["variant"] == {"ground": "basalte", "roofs": "ardoise"} for t in tiles.values())
+    assert all(t["variant"] == {"ground": "basalte", "roofs": "ardoise", "landscape": None} for t in tiles.values())
     assert verify_world(world) == []
     assert "variantes (imposées" in capsys.readouterr().err
 
@@ -165,13 +165,13 @@ def test_forced_variant_with_add_layer_and_empty_member(make_gpx, tmp_path):
     world = tmp_path / "w.world"
     # Trace de conftest près de 45° N 6° E : zone « alpes » de la table, toit laissé au biome.
     assert {json.dumps(t["variant"]) for t in tiles_of(world).values()} == {
-        json.dumps({"ground": "schiste_sombre", "roofs": None})}
+        json.dumps({"ground": "schiste_sombre", "roofs": None, "landscape": None})}
     assert run("add-layer", world, "biome", "--biome", "farmland", "--variant", ",tuile_ronde") == 0
-    assert all(t["variant"] == {"ground": None, "roofs": "tuile_ronde"} for t in tiles_of(world).values())
+    assert all(t["variant"] == {"ground": None, "roofs": "tuile_ronde", "landscape": None} for t in tiles_of(world).values())
     assert verify_world(world) == []
 
 
-@pytest.mark.parametrize("text", ["basalte", "marbre,ardoise", "basalte,chaume", ",", "a,b,c"])
+@pytest.mark.parametrize("text", ["basalte", "marbre,ardoise", "basalte,chaume", ",", ",,", "a,b,c", "basalte,,lagon", "a,b,c,d"])
 def test_bad_variant_is_an_input_error(make_gpx, tmp_path, text):
     gpx = make_gpx("x.gpx", *straight_north())
     with pytest.raises(SystemExit) as exc:
@@ -194,5 +194,62 @@ def test_verify_catches_unknown_variant():
     assert any("marbre" in p for p in biome_tile_problems(tile))
     tile["variant"] = {"ground": "craie"}
     assert any("variant" in p for p in biome_tile_problems(tile))
+    tile["variant"] = {"ground": None, "roofs": None, "landscape": "lagon"}
+    assert any("lagon" in p for p in biome_tile_problems(tile))
+    tile["variant"] = {"ground": "craie", "roofs": None, "landscape": None, "x": 1}
+    assert any("variant" in p for p in biome_tile_problems(tile))
+    tile["variant"] = {"ground": "craie", "roofs": None}          # tuile écrite avant le lot U25
+    assert biome_tile_problems(tile) == []
     tile["variant"] = None
     assert biome_tile_problems(tile) == []
+
+
+# Lot U25 : paysages (canyons, fjords, îles volcaniques, rizières) ------------------------------------
+
+def test_landscape_member_from_zones_only_member_by_member():
+    table = tiny_table(zone=[{"name": "grande", "lat": [40, 50], "lon": [0, 10], "ground": "craie"},
+                             {"name": "paysage", "lat": [44, 46], "lon": [4, 6], "landscape": "fjord"}])
+    assert R.variant_for(45.0, 5.0, {}, table) == {"ground": "craie", "roofs": None, "landscape": "fjord"}
+    assert R.variant_for(42.0, 5.0, {}, table)["landscape"] is None
+    with pytest.raises(ValueError, match="inconnu"):
+        R.parse_table({"zone": [{"name": "z", "lat": [44, 45], "lon": [4, 5], "landscape": "lagon"}]})
+
+
+@pytest.mark.parametrize("lat, lon, shares, expected", [
+    (62.0, 7.0, {"alpine": 1.0}, {"ground": "schiste_sombre", "roofs": "bois_peint", "landscape": "fjord"}),
+    (68.0, 14.0, {"coast": 1.0}, {"ground": "schiste_sombre", "roofs": "bois_peint", "landscape": "fjord"}),
+    (37.0, -111.0, {"rock_desert": 1.0}, {"ground": "gres_rose", "roofs": None, "landscape": "canyon"}),
+    (28.0, -16.0, {"temperate_grassland": 1.0}, {"ground": "basalte", "roofs": None, "landscape": "ile_volcanique"}),
+    (32.5, -17.0, {"temperate_forest": 1.0}, {"ground": "basalte", "roofs": None, "landscape": "ile_volcanique"}),
+    (38.0, -28.0, {"temperate_grassland": 1.0}, {"ground": "basalte", "roofs": None, "landscape": "ile_volcanique"}),
+    (16.0, 108.0, {"farmland": 1.0}, {"ground": "laterite_rouge", "roofs": None, "landscape": "rizieres"}),
+    (-8.5, 115.0, {"farmland": 1.0}, {"ground": "laterite_rouge", "roofs": None, "landscape": "rizieres"}),
+    (46.0, 7.0, {"alpine": 1.0}, {"ground": "schiste_sombre", "roofs": None, "landscape": None}),
+])
+def test_shipped_landscapes(lat, lon, shares, expected):
+    """Table livrée : un point de chaque zone de paysage (degrés ronds), et les Alpes sans paysage."""
+    assert R.variant_for(lat, lon, shares) == expected
+
+
+def test_forced_landscape(make_gpx, tmp_path):
+    gpx = make_gpx("p.gpx", *straight_north())
+    assert run("build", gpx, "--out", tmp_path, "--biome", "rock_desert", "--variant", "gres_rose,,canyon") == 0
+    world = tmp_path / "p.world"
+    assert all(t["variant"] == {"ground": "gres_rose", "roofs": None, "landscape": "canyon"}
+               for t in tiles_of(world).values())
+    assert verify_world(world) == []
+
+
+def test_far_majority_counts_whole_variant():
+    """Une tuile lointaine prend le triplet majoritaire (paysage compris) des tuiles proches."""
+    table = R.parse_table({"neutral": {"ground": "craie"},
+                           "zone": [{"name": "p", "lat": [44, 46], "lon": [4, 6], "landscape": "fjord"}]})
+    near = {(k, 0): B.forced_tiles([(k, 0)], "coast")[(k, 0)] for k in range(5)}
+    tiles = {"near": near, "far": B.forced_tiles([(0, 0)], "coast")}
+
+    def to_latlon(x, z):   # trois tuiles proches dans la zone, deux dehors
+        return np.full_like(x, 45.0), np.where(x < 3000.0, 5.0, 20.0)
+
+    R.assign_variants(tiles, {"near": 1000.0, "far": 5000.0}, to_latlon, table=table)
+    assert R.summary(near) == "craie/—/fjord 3, craie/—/— 2"
+    assert tiles["far"][(0, 0)]["variant"] == {"ground": "craie", "roofs": None, "landscape": "fjord"}
