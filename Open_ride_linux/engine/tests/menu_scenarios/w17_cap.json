@@ -4,6 +4,7 @@
     "clavier"
   ],
   "reseau": true,
+  "caches_reels": true,
   "etapes": [
     {
       "ecran": "home",
@@ -83,12 +84,12 @@
       "touche": "n"
     },
     {
-      "note": "Recherche par nom (Nominatim, réseau) : aucune coordonnée dans le dépôt",
+      "note": "Recherche par nom : bases OSM du cache réel, sinon Nominatim (réseau) ; aucune coordonnée dans le dépôt",
       "monde": "search",
       "contient": [
         "Sarre-Union"
       ],
-      "delai": 30
+      "delai": 60
     },
     {
       "touche": "Enter"
@@ -169,7 +170,7 @@
     {
       "journal": "engine",
       "motif": "world_revision rev=",
-      "delai": 120
+      "delai": 600
     },
     {
       "attendre": 60
