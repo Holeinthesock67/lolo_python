@@ -66,7 +66,7 @@ Budgets du projet : **low 8 ms, medium 13 ms, high 16 ms**. Toute mesure couvre 
 | --- | --- | --- | --- |
 | JP0 | Ce plan et les décisions JP-Q1 à JP-Q5 | — | Petite |
 | JP1 | Contrat : 17e biome `japan` et toit `kawara` dans toutes les énumérations fermées, avec un rendu de base (thème, style de bâtiment, nom au menu) ; les espèces `sugi`, `hinoki`, `momiji`, `bamboo` entrent au contrat avec leurs maillages (JP5) et le niveau `horizon` avec JP4 (cahier `docs/lots/LOT_JP1_contrat_biome_japon.md`) | JP0 | Petite |
-| JP2 | Compilateur : pose de `japan` (zone Japon × Köppen × WorldCover), toit `kawara` dans `regional_variants.toml` | JP1, lot Köppen fusionné | Moyenne |
+| JP2 | Compilateur : pose de `japan` (zone Japon × Köppen × WorldCover), toit `kawara` dans `regional_variants.toml` ; fait le 12/11, cahier `docs/lots/LOT_JP2_pose_biome_japon.md` | JP1, lot Köppen fusionné | Moyenne |
 | JP3 | Engine : thème `japan`, sol, ciel, faune, sons, style `minka`, nom au menu « Biome du décor » | JP1 | Moyenne |
 | JP4 | Niveau de terrain « horizon » : compilateur (tuiles 500 m, 40 km) et engine (maillage, brouillard) ; fait le 12/11, cahier `docs/lots/LOT_JP4_niveau_horizon.md` | JP1 | Moyenne |
 | JP5 | Végétation : maillages `sugi`, `hinoki`, `momiji`, `bamboo` ; torii, lanternes, garde-fous | JP3 | Moyenne |

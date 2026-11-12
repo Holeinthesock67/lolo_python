@@ -70,6 +70,7 @@ ZONE_RAMP_DEG = 2.0
 TREES, SHRUB, GRASS, CROP, BUILT, BARE, SNOW, WATER, WETLAND, MANGROVE, MOSS = 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100
 OSM_SAND = 200          # classe propre au compilateur : `natural=sand`
 VOLCANIC_BARE = 201     # classe propre au compilateur : sol nu dans un paysage volcanique
+JAPAN_FOREST = 202      # classe propre au compilateur : arbres et arbustes de la zone Japon (lot JP2)
 CLASS_BIOME: dict[int, tuple[str | None, ...]] = {
     TREES: ("jungle", "savanna", "mediterranean", "temperate_forest", "boreal_forest", "tundra"),
     SHRUB: ("savanna", "steppe", "mediterranean", "temperate_grassland", "tundra", "tundra"),
@@ -84,6 +85,7 @@ CLASS_BIOME: dict[int, tuple[str | None, ...]] = {
     MOSS: ("tundra",) * 6,
     OSM_SAND: ("sand_desert",) * 6,
     VOLCANIC_BARE: ("volcanic",) * 6,
+    JAPAN_FOREST: ("japan",) * 6,
 }
 NODATA_CLASS = GRASS    # pixel sans donnée, ou pas de WorldCover (repli OSM et altitude)
 
@@ -134,13 +136,15 @@ class OsmArea:
 class Inputs:
     """Sources de la classification. `landcover(lats, lons)` → classes uint8 ; `elevation` → altitudes (m) ;
     `zones(lats, lons)` → parts (n, 6) des zones climatiques (carte de Köppen par défaut) ; `volcanic(lats,
-    lons)` → booléens « paysage volcanique » (table embarquée par défaut)."""
+    lons)` → booléens « paysage volcanique » (table embarquée par défaut) ; `japan(lats, lons)` → booléens
+    « zone du biome japan » (rectangles embarqués × climat de Köppen, lot JP2)."""
     to_latlon: Callable[[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]
     landcover: Callable[[np.ndarray, np.ndarray], np.ndarray] | None = None
     elevation: Callable[[np.ndarray, np.ndarray], np.ndarray] | None = None
     osm: Sequence[OsmArea] = ()
     zones: Callable[[np.ndarray, np.ndarray], np.ndarray] = field(default=lambda lat, lon: zone_weights(lat, lon))
     volcanic: Callable[[np.ndarray, np.ndarray], np.ndarray] = field(default=lambda lat, lon: in_volcanic_area(lat, lon))
+    japan: Callable[[np.ndarray, np.ndarray], np.ndarray] = field(default=lambda lat, lon: in_japan_zone(lat, lon))
 
 
 @dataclass
@@ -213,6 +217,36 @@ def in_volcanic_area(lat: np.ndarray, lon: np.ndarray) -> np.ndarray:
         h = np.sin((la - la0) / 2) ** 2 + np.cos(la) * math.cos(la0) * np.sin((lo - lo0) / 2) ** 2
         out |= 2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(np.clip(h, 0.0, 1.0))) <= a.radius_km
     return out
+
+
+@dataclass(frozen=True)
+class JapanZone:
+    climates: frozenset[str]
+    boxes: tuple[tuple[str, tuple[int, int], tuple[int, int]], ...]   # nom, [sud, nord), [ouest, est)
+
+
+@lru_cache(maxsize=1)
+def japan_zone() -> JapanZone:
+    """Zone du biome `japan` : table embarquée `data/japan_zone.toml` (lot JP2)."""
+    text = resources.files("openride_compiler").joinpath("data", "japan_zone.toml").read_text(encoding="utf-8")
+    data = tomllib.loads(text)
+    boxes = tuple((str(b["name"]), (int(b["lat"][0]), int(b["lat"][1])), (int(b["lon"][0]), int(b["lon"][1])))
+                  for b in data["box"])
+    return JapanZone(frozenset(str(c) for c in data["climates"]), boxes)
+
+
+def in_japan_zone(lat: np.ndarray, lon: np.ndarray) -> np.ndarray:
+    """Booléens (n,) : point dans un rectangle de la zone Japon ET d'un climat de Köppen retenu (pas en mer)."""
+    la = np.asarray(lat, dtype=float).ravel()
+    lo = np.asarray(lon, dtype=float).ravel()
+    zone = japan_zone()
+    inside = np.zeros(len(la), dtype=bool)
+    for _, (s, n), (w, e) in zone.boxes:
+        inside |= (s <= la) & (la < n) & (w <= lo) & (lo < e)
+    if inside.any():
+        codes = koppen.codes(la[inside], lo[inside])
+        inside[np.flatnonzero(inside)] = [c in zone.climates for c in codes]
+    return inside
 
 
 def alpine_line_m(lat: np.ndarray) -> np.ndarray:
@@ -365,6 +399,11 @@ def _raw_weights(pts: _Points, level: BiomeLevel, inputs: Inputs) -> tuple[np.nd
         sub = classes[volcanic]
         sub[(sub == BARE) | (sub == OSM_SAND)] = VOLCANIC_BARE
         classes[volcanic] = sub
+    japan = np.asarray(inputs.japan(lat_p, lon_p), dtype=bool).ravel()
+    if japan.any():      # arbres et arbustes de la zone Japon : sugi, hinoki, érables, bambous (lot JP2)
+        sub = classes[japan]
+        sub[(sub == TREES) | (sub == SHRUB)] = JAPAN_FOREST
+        classes[japan] = sub
     classes = np.clip(classes, 0, 255)
     zw = np.asarray(inputs.zones(lat_p, lon_p), dtype=float).reshape(n, len(ZONES))
     raw = np.zeros(n * NB)

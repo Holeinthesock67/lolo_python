@@ -16,7 +16,7 @@
 #
 # Identifiants (énumération fermée du contrat) :
 #   ground : gres_rose, calcaire_blanc, granite_gris, schiste_sombre, basalte, laterite_rouge, craie
-#   roofs  : tuile_ronde, ardoise, tuile_plate, pierre_seche, toit_plat_blanc, bois
+#   roofs  : tuile_ronde, ardoise, tuile_plate, pierre_seche, toit_plat_blanc, bois, kawara
 
 [neutral]
 ground = "calcaire_blanc"
@@ -181,3 +181,41 @@ name = "islande"
 lat = [63, 67]
 lon = [-25, -13]
 ground = "basalte"
+
+# Japon (lot JP2, version 6.0) : toits de tuiles kawara, mêmes rectangles que data/japan_zone.toml (biome `japan`).
+# Sol : roches volcaniques (andésite, basalte) de l'arc japonais.
+
+[[zone]]
+name = "japon_kyushu"
+lat = [31, 34]
+lon = [129, 132]
+ground = "basalte"
+roofs = "kawara"
+
+[[zone]]
+name = "japon_chugoku_shikoku"
+lat = [32, 36]
+lon = [130, 136]
+ground = "basalte"
+roofs = "kawara"
+
+[[zone]]
+name = "japon_kinki_chubu_kanto"
+lat = [33, 38]
+lon = [135, 141]
+ground = "basalte"
+roofs = "kawara"
+
+[[zone]]
+name = "japon_tohoku"
+lat = [37, 42]
+lon = [139, 142]
+ground = "basalte"
+roofs = "kawara"
+
+[[zone]]
+name = "japon_hokkaido"
+lat = [41, 46]
+lon = [139, 146]
+ground = "basalte"
+roofs = "kawara"
