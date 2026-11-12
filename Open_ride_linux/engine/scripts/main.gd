@@ -22,6 +22,7 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const ForestImpostors := preload("res://scripts/forest_impostors.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
+const HorizonView := preload("res://scripts/horizon_view.gd")
 const RoadSurface := preload("res://scripts/road_surface.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
@@ -303,6 +304,13 @@ func _ready() -> void:
 		streamer.add_child(forest)
 		streamer.forest_impostors = forest
 	print("Forêts lointaines : ", "actives" if streamer.forest_impostors.enabled else "coupées")
+	if streamer.horizon_view == null:
+		var horizon = HorizonView.new()
+		horizon.name = "HorizonView"
+		horizon.enabled = bool(cfg.get("horizon", true))
+		streamer.add_child(horizon)
+		streamer.horizon_view = horizon
+		horizon.setup(world_env.environment, sun)
 	if streamer.osm_streamer == null:
 		var osm_st = OsmStreamer.new()
 		osm_st.name = "OsmStreamer"

@@ -1,9 +1,12 @@
-"""Couche terrain : tuiles d'altitude proches (10 m) et lointaines (50 m) (format §5, lot B2 §3.4).
+"""Couche terrain : tuiles d'altitude proches (10 m), lointaines (50 m) (format §5, lot B2 §3.4) et d'horizon
+(500 m, lot JP4).
 
 - Tuile `tile_<ix>_<iz>.f32` : 101 × 101 `float32` petit-boutistes rangés par ligne ;
   l'échantillon (i, j) est en x = ix·T + i·maille, z = iz·T + j·maille. Bords partagés.
 - Seules les tuiles qui touchent la bande autour de la route sont écrites
-  (± 400 m pour le niveau proche, ± 5 km pour le lointain).
+  (± 400 m pour le niveau proche, ± 5 km pour le lointain, ± 40 km pour l'horizon).
+- Niveau horizon seulement : altitude abaissée de d² / (2 R′), d distance à la route, R′ = 7/6 du rayon
+  terrestre (courbure et réfraction) : les sommets à 25 km sont vus 40 m plus bas, comme en vrai.
 - Chaque échantillon est ramené en latitude et longitude (projection inverse du repère),
   puis interrogé par lots auprès du fournisseur d'altitude.
 - Niveau proche seulement : fondu avec la route. `d` est la distance à l'axe moins la
@@ -46,11 +49,15 @@ class Level:
     tile_m: int
     band_m: float
     blend: bool
+    curvature: bool = False   # altitude abaissée de la courbure terrestre vue depuis la route (horizon)
 
 
 NEAR = Level("near", C.NEAR_CELL_M, C.NEAR_TILE_M, C.NEAR_BAND_M, True)
 FAR = Level("far", C.FAR_CELL_M, C.FAR_TILE_M, C.FAR_BAND_M, False)
 LEVELS = (NEAR, FAR)
+# Lot JP4 : niveau facultatif, sans couche biome ni fondu ; ALL_LEVELS pour l'écriture et `verify`.
+HORIZON = Level("horizon", C.HORIZON_CELL_M, C.HORIZON_TILE_M, C.HORIZON_BAND_M, False, True)
+ALL_LEVELS = (NEAR, FAR, HORIZON)
 
 
 def tile_filename(ix: int, iz: int) -> str:
@@ -158,12 +165,19 @@ def blend(y_mnt: np.ndarray, dist_axis: np.ndarray, y_route: np.ndarray,
     return y
 
 
+def curvature_drop(route_tree: cKDTree, gx: np.ndarray, gz: np.ndarray) -> np.ndarray:
+    """Chute apparente (m) due à la courbure terrestre, réfraction comprise, depuis le point de route le plus proche."""
+    d, _ = route_tree.query(np.column_stack((np.ravel(gx), np.ravel(gz))))
+    return d * d / (2.0 * C.EARTH_RADIUS_M * C.REFRACTION_FACTOR)
+
+
 def build_level(route: dict, frame: LocalFrame, provider: ElevationProvider, level: Level,
                 log: Log = stderr_log) -> dict[tuple[int, int], np.ndarray]:
     """Grilles float32 (101 × 101) de toutes les tuiles d'un niveau."""
     x, z = np.asarray(route["x"], float), np.asarray(route["z"], float)
     keys = select_tiles(x, z, level)
     axis = RouteAxis(x, z, route["alt_m"]) if level.blend else None
+    route_tree = cKDTree(np.column_stack((x, z))) if level.curvature else None
     log(f"terrain {level.name} : {len(keys)} tuile(s) de {level.tile_m} m, maille {level.cell_m} m")
     out: dict[tuple[int, int], np.ndarray] = {}
     for start in range(0, len(keys), TILES_PER_BATCH):
@@ -176,6 +190,8 @@ def build_level(route: dict, frame: LocalFrame, provider: ElevationProvider, lev
         if axis is not None:
             dist, y_route = axis.nearest(gx, gz, C.ROAD_HALF_WIDTH_M + C.BLEND_OUTER_M)
             y = blend(y, dist, y_route)
+        if level.curvature:
+            y = y - curvature_drop(route_tree, gx, gz)
         y32 = y.astype("<f4").reshape(len(batch), N, N)
         for k, key in enumerate(batch):
             out[key] = y32[k]
@@ -322,8 +338,10 @@ def _sync_edges(tiles: dict[tuple[int, int], np.ndarray]) -> None:
 
 
 def build_terrain(route: dict, frame: LocalFrame, provider: ElevationProvider,
-                  log: Log = stderr_log) -> dict[str, dict[tuple[int, int], np.ndarray]]:
-    return {level.name: build_level(route, frame, provider, level, log) for level in LEVELS}
+                  log: Log = stderr_log, horizon: bool = True) -> dict[str, dict[tuple[int, int], np.ndarray]]:
+    """Niveaux proche et lointain, plus l'horizon (lot JP4) sauf `horizon=False` (`--no-horizon`)."""
+    levels = ALL_LEVELS if horizon else LEVELS
+    return {level.name: build_level(route, frame, provider, level, log) for level in levels}
 
 
 def terrain_manifest(tiles: dict[str, dict[tuple[int, int], np.ndarray]],
@@ -336,13 +354,14 @@ def terrain_manifest(tiles: dict[str, dict[tuple[int, int], np.ndarray]],
         "native_resolution_m": provider.native_resolution_m,
         "near_cell_m": C.NEAR_CELL_M,
         "far_cell_m": C.FAR_CELL_M,
+        **({"horizon_cell_m": C.HORIZON_CELL_M} if tiles.get(HORIZON.name) else {}),
         "road_half_width_m": C.ROAD_HALF_WIDTH_M,
         "tiles": {level: [[ix, iz] for ix, iz in sorted(grids)] for level, grids in tiles.items()},
     }
 
 
 def write_terrain(folder: Path, tiles: dict[str, dict[tuple[int, int], np.ndarray]]) -> None:
-    """Écrit `folder/near/…` et `folder/far/…` (folder est le dossier `terrain` ou son temporaire)."""
+    """Écrit `folder/near/…`, `folder/far/…` et `folder/horizon/…` (folder : dossier `terrain` ou son temporaire)."""
     for level, grids in tiles.items():
         d = Path(folder) / level
         d.mkdir(parents=True, exist_ok=True)
