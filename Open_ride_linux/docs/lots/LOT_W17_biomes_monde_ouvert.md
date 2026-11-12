@@ -21,10 +21,11 @@ Le monde ouvert ne connaissait pas les biomes : le générateur n'écrivait pas 
 - **Engine** : `biome_layer.forget_missing`, appelé par `world_streamer.swap_route` pour chaque tuile de terrain arrivée : une absence notée trop tôt est oubliée.
 - **Menu** : 4e ligne « Biome » de l'écran du cap, même réglage que Réglages › Graphisme › Biome du décor (`set_setting` de `render.biome`, aucune commande IPC nouvelle) ; explication sous les lignes, automatique ou forcé. Aide du réglage et guide §4 bis complétés.
 
-- **Col du lacet** (accord du propriétaire, 12 novembre) : le parcours de démonstration reçoit une couche biome synthétique, forêt tempérée et alpages en grandes taches (`core/src/openride_core/synthetic_biome.py`, générateur 0.4.0 ; `engine/demo/demo.world` régénéré, copié par `ensure_demo_world`).
+
 
 ## 4. Hors périmètre
 
+- Couche biome de « Col du lacet » (accord du propriétaire, 12 novembre) : sortie de ce lot le 12 novembre, parce qu'elle change l'image du parcours de démonstration, donc les références des tests graphiques (SSIM, ciel en haut de l'image), et qu'elle demande des captures validées à part. Travail gardé dans `/mnt/project-files/patches/w17_col_du_lacet_biome.patch` (forêt tempérée et alpages, route en alpage, `synthetic_biome.py`), pour un lot suivant.
 - Mer et plages (U3, U9 #844) : lot suivant, après la fusion de #844 (le générateur ignore encore l'océan).
 - Horizon de 40 km du Japon (JP4). La zone Japon du classement (#841) suivra d'elle-même : même règle.
 - Saisons (U13) : branchement dans `main.gd` prévu ailleurs.

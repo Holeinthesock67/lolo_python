@@ -220,8 +220,6 @@ def test_ensure_demo_world_copies_bundled_demo_and_upgrades_old_one(tmp_path):
     world = demo_world.ensure_demo_world(tmp_path)
     assert world == old and (world / "manifest.json").read_bytes() == (repo_demo / "manifest.json").read_bytes()
     assert len(list((world / "terrain").rglob("*.f32"))) == len(list((repo_demo / "terrain").rglob("*.f32")))
-    assert sorted(p.name for p in (world / "biome").rglob("*.json")) == \
-        sorted(p.name for p in (repo_demo / "biome").rglob("*.json"))   # couche biome copiée (lot W17)
     # Démonstration écrite par une version plus ancienne du générateur (terrain sur la chaussée au km 1,74,
     # 7 novembre 2026) : remplacée.
     manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
