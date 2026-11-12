@@ -73,6 +73,7 @@ const VIEWS := {
 	"styles_biomes": [Vector3(-101.0, 40.0, -120.0), Vector3(-101.0, 0.0, -166.0), 60.0],
 	"styles_biomes_pres": [Vector3(-152.0, 2.5, -146.0), Vector3(-136.0, 3.0, -161.0), 60.0],
 	"styles_biomes_pres2": [Vector3(-103.0, 2.5, -146.0), Vector3(-86.0, 3.0, -161.0), 60.0],
+	"maisons_japon": [Vector3(-118.0, 3.5, -207.0), Vector3(-126.0, 3.0, -232.0), 62.0],
 	"faune_biomes": [Vector3(-40.0, 2.0, -2.0), Vector3(-40.0, 1.2, 12.0), 55.0],
 	"habitat_rond": [Vector3(-133.0, 5.0, -179.0), Vector3(-133.0, 1.5, -196.0), 60.0],
 	"habitat_pilotis": [Vector3(-103.0, 2.5, -181.0), Vector3(-103.0, 2.0, -196.0), 60.0],
@@ -114,6 +115,9 @@ const TREES_JAPAN := ["sugi", "hinoki", "momiji", "bamboo", "sugi", "momiji"]
 const STYLE_ROW := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]
 ## Lot U23 : styles d'habitat propres aux biomes, en seconde rangée derrière la première (vues `styles_biomes`).
 const STYLE_ROW_BIOMES := ["chalet", "bois_peint", "pise", "case", "paillote", "basalte", "chaumiere"]
+## Lot JP3 : hameau japonais (style `kawara`) : contour [x0, z0, largeur, profondeur], hauteur, type OSM (vue `maisons_japon`).
+const JAPAN_HAMLET := [[-145.0, -224.0, 11.0, 8.0, 6.5, "house"], [-130.0, -226.0, 9.0, 7.0, 3.6, "house"],
+	[-117.0, -224.0, 12.0, 8.0, 6.5, "house"], [-103.0, -226.0, 6.0, 5.0, 4.5, "shed"], [-138.0, -240.0, 10.0, 7.0, 3.8, "house"]]
 ## Lot U23 étape 2 (vues `habitat_rond`, `habitat_pilotis`, `habitat_yourtes`) : [style, famille OSM, largeur, profondeur, rond, pilotis]
 const ROUND_ROW := [
 	["case", "house", 6.0, 6.0, true, false], ["case", "hut", 5.0, 5.0, true, false], ["case", "house", 7.5, 7.0, true, false],
@@ -522,6 +526,13 @@ func _add_buildings(vp: SubViewport, preset: String) -> void:
 		items.append({"id": "style_biome_case_%d" % j, "outer": [[x0 + 1.0, -168.0], [x0 + 6.0, -168.0], [x0 + 6.0, -173.0], [x0 + 1.0, -173.0]],
 			"holes": [], "base_y": 0.0, "height_m": 2.8, "roof": "flat", "style": STYLE_ROW_BIOMES[j],
 			"hint": {"building": "hut", "colour": null}})
+	for j in range(JAPAN_HAMLET.size()):
+		var hb: Array = JAPAN_HAMLET[j]
+		var hx: float = hb[0]
+		var hz: float = hb[1]
+		items.append({"id": "japon_%d" % j, "outer": [[hx, hz], [hx + hb[2], hz], [hx + hb[2], hz - hb[3]], [hx, hz - hb[3]]],
+			"holes": [], "base_y": 0.0, "height_m": hb[4], "roof": "flat", "style": "kawara",
+			"hint": {"building": hb[5], "colour": null}})
 	var rx := -148.0
 	for j in range(ROUND_ROW.size()):
 		var r: Array = ROUND_ROW[j]
