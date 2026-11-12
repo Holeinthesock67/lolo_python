@@ -28,6 +28,7 @@ const WALL_METAL := 5       # bardage de tôle nervurée
 const WALL_CONCRETE := 6
 const WALL_ADOBE := 7       # terre crue (pisé, banco) : enduit de terre lissé, angles arrondis, fissures
 const WALL_CHALET := 8      # chalet : rez-de-chaussée en moellons, étage en madriers de bois
+const WALL_JAPANESE := 9    # maison japonaise (lot JP3) : soubassement de planches sombres, enduit blanc entre poteaux
 
 ## Ouvertures (code lu par building.gdshader)
 const WINDOWS_NONE := 0
@@ -36,6 +37,7 @@ const WINDOWS_BANDS := 2    # bandeaux vitrés par étage (immeubles, bureaux)
 const WINDOWS_BARN := 3     # jours hauts et grand portail (granges, hangars, ateliers)
 const WINDOWS_CHURCH := 4   # hautes baies cintrées
 const WINDOWS_SHOP := 5     # vitrines au rez-de-chaussée, fenêtres aux étages
+const WINDOWS_SHOJI := 6    # maison japonaise (lot JP3) : shōji et portes à claire-voie, fenêtres à barreaux
 
 ## Matières de toit (code lu par building.gdshader)
 const ROOF_FLAT := 0        # gravillons sur étanchéité
@@ -45,6 +47,7 @@ const ROOF_SLATE := 3       # ardoise ou lauze
 const ROOF_METAL := 4       # bac acier nervuré
 const ROOF_SHINGLE := 5     # bardeaux de bois
 const ROOF_THATCH := 6      # chaume (paille, roseau, feuilles de palme)
+const ROOF_KAWARA := 7      # tuiles kawara grises vernissées (lot JP3)
 
 ## Formes de toit
 const SHAPE_FLAT := "flat"
@@ -69,6 +72,7 @@ const STYLE_DEFAULT := "tuile_plate"
 ## orienté ne dépasse pas `max_m` de long (et pas plus de ROUND_MAX_ELONGATION fois sa largeur), `pitch_deg`
 ## pente du cône, `wall` et `roof` matières propres (sinon celles du style).
 ## stilts : maisons sur pilotis, `share` part des maisons, `height_m` hauteur du plancher au-dessus du sol.
+## house_windows : ouvertures des maisons (WINDOWS_HOUSE sans clé ; shōji du style `kawara`, lot JP3).
 const STYLES := {
 	"tuile_plate": {"roof": ROOF_TILE_FLAT, "pitch_deg": 45.0, "hip_share": 0.2,
 		"walls": {WALL_PLASTER: 0.6, WALL_TIMBER: 0.25, WALL_BRICK: 0.05, WALL_STONE: 0.1},
@@ -88,11 +92,13 @@ const STYLES := {
 	"bois": {"roof": ROOF_SHINGLE, "pitch_deg": 35.0, "hip_share": 0.1,
 		"walls": {WALL_WOOD: 0.85, WALL_PLASTER: 0.15},
 		"farm_wall": WALL_WOOD, "worship_roof": ROOF_SHINGLE},
-	# Lot JP1 : tuiles kawara grises du Japon, toits à croupe (irimoya) à large débord, enduit clair et bois sombre
-	"kawara": {"roof": ROOF_TILE_ROUND, "pitch_deg": 28.0, "hip_share": 0.6, "overhang_m": 0.9,
-		"walls": {WALL_PLASTER: 0.5, WALL_WOOD: 0.5},
-		"farm_wall": WALL_WOOD, "worship_roof": ROOF_TILE_ROUND,
-		"palettes": {"tile_round": "kawara", "wood": "wood_dark"}},
+	# Lot JP1, refait au lot JP3 (« habitations plus japonaises ») : tuiles kawara grises vernissées, toits à croupe
+	# (irimoya) peu pentus à très large débord, murs à poteaux sombres et enduit blanc sur soubassement de planches
+	# brûlées, shōji et portes à claire-voie (`house_windows`) au lieu des fenêtres à volets
+	"kawara": {"roof": ROOF_KAWARA, "pitch_deg": 24.0, "hip_share": 0.75, "overhang_m": 1.2,
+		"walls": {WALL_JAPANESE: 0.8, WALL_WOOD: 0.2}, "house_windows": WINDOWS_SHOJI,
+		"farm_wall": WALL_WOOD, "worship_roof": ROOF_KAWARA,
+		"palettes": {"kawara": "kawara", "wood": "wood_dark", "plaster": "white"}},
 	# Maisons de bois peint du Nord (lot U23) ; variante du contrat depuis le lot U25 (fjords de Norvège)
 	"bois_peint": {"roof": ROOF_METAL, "pitch_deg": 32.0, "hip_share": 0.05, "overhang_m": 0.5,
 		"walls": {WALL_WOOD: 1.0},
@@ -173,7 +179,7 @@ const MATERIAL_COLORS := {
 	"felt": ["#e8e0cc", "#ddd3bb", "#efe9da"],
 	"felt_roof": ["#d9cfb6", "#cfc3a6", "#e2dac6"],
 	# Lot JP1
-	"kawara": ["#4a4f57", "#555a62", "#3f444b", "#5c6168"],
+	"kawara": ["#55575a", "#5e6063", "#4b4d50", "#66686b"],
 	"wood_dark": ["#4a3628", "#3e2e22", "#56402e"],
 }
 
@@ -246,7 +252,7 @@ static func dress(style_name: String, family: String, fill: float, width_m: floa
 		u1: float, u2: float, u3: float, length_m: float = 0.0, u4: float = 1.0, u5: float = 1.0) -> Dictionary:
 	var st := style(style_name)
 	var wall: int = _weighted(st["walls"], u1)
-	var windows := WINDOWS_HOUSE
+	var windows: int = int(st.get("house_windows", WINDOWS_HOUSE))
 	var roof: int = st["roof"]
 	var pitch: float = st["pitch_deg"]
 	var hip: bool = u2 < float(st["hip_share"])
@@ -266,7 +272,7 @@ static func dress(style_name: String, family: String, fill: float, width_m: floa
 			hip = false
 		FAMILY_BLOCK:
 			wall = WALL_CONCRETE if u1 < 0.3 else (WALL_BRICK if u1 > 0.85 else WALL_PLASTER)
-			windows = WINDOWS_BANDS if wall == WALL_CONCRETE else WINDOWS_HOUSE
+			windows = WINDOWS_BANDS if wall == WALL_CONCRETE else int(st.get("house_windows", WINDOWS_HOUSE))
 			pitch *= BLOCK_PITCH_FACTOR
 			hip = hip or u3 < 0.3
 		FAMILY_SHOP:
@@ -357,4 +363,6 @@ static func roof_palette_key(roof: int, style_name: String) -> String:
 			return _palette("thatch", style_name)
 		ROOF_FLAT:
 			return _palette("flat_roof", style_name)
+		ROOF_KAWARA:
+			return _palette("kawara", style_name)
 	return _palette("tile_flat", style_name)

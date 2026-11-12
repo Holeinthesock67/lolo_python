@@ -74,6 +74,13 @@ func _init() -> void:
 		var known: bool = codes.keys().all(func(k): return k >= TreeSpecies.MAT_BARK and k <= TreeSpecies.MAT_FRONDS)
 		var foliage: bool = codes.keys().any(func(k): return k >= TreeSpecies.MAT_LEAVES) or kind in ["cactus", "reed"]
 		_check(known and foliage, "%s : matières %s (écorce 1 à 7, feuillage 8 à 10)" % [kind, str(codes.keys())])
+	# 1 ter. Japon (lot JP5) : quatre espèces, cèdre sugi le plus haut, érable momiji seul caduc (feuillage d'automne)
+	var jp := ["sugi", "hinoki", "momiji", "bamboo"]
+	_check(jp.all(func(k): return BiomeIds.SPECIES.has(k) and TreeSpecies.CROWNS.has(k)), "espèces du Japon connues")
+	_check(TreeSpecies.height_m("sugi") > TreeSpecies.height_m("hinoki") and TreeSpecies.height_m("hinoki") > TreeSpecies.height_m("bamboo")
+		and TreeSpecies.height_m("bamboo") > TreeSpecies.height_m("momiji"), "Japon : sugi > hinoki > bambou > érable")
+	_check(TreeSpecies.is_deciduous("momiji") and not TreeSpecies.is_deciduous("sugi") and not TreeSpecies.is_deciduous("bamboo")
+		and TreeSpecies.build("momiji").has("lod0_bare"), "Japon : érable caduc (charpente d'hiver), sugi et bambou persistants")
 	var cactus_h := (TreeSpecies.build("cactus")["lod0"] as ArrayMesh).get_aabb().end.y
 	var baobab_h := (TreeSpecies.build("baobab")["lod0"] as ArrayMesh).get_aabb().end.y
 	_check(cactus_h >= 1.0 and cactus_h <= 6.0 and baobab_h >= 8.0 and baobab_h <= 20.0, "cactus %.1f m (1 à 6), baobab %.1f m (8 à 20)" % [cactus_h, baobab_h])

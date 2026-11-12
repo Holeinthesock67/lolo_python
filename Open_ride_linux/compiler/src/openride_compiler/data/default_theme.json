@@ -1250,23 +1250,23 @@
       "vegetation": {
         "species": [
           {
-            "kind": "spruce",
+            "kind": "sugi",
+            "weight": 4
+          },
+          {
+            "kind": "hinoki",
             "weight": 3
           },
           {
-            "kind": "cypress",
+            "kind": "momiji",
             "weight": 2
           },
           {
-            "kind": "pine",
-            "weight": 1
+            "kind": "bamboo",
+            "weight": 2
           },
           {
             "kind": "beech",
-            "weight": 2
-          },
-          {
-            "kind": "oak",
             "weight": 1
           }
         ],

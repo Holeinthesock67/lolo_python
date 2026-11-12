@@ -73,6 +73,7 @@ const VIEWS := {
 	"styles_biomes": [Vector3(-101.0, 40.0, -120.0), Vector3(-101.0, 0.0, -166.0), 60.0],
 	"styles_biomes_pres": [Vector3(-152.0, 2.5, -146.0), Vector3(-136.0, 3.0, -161.0), 60.0],
 	"styles_biomes_pres2": [Vector3(-103.0, 2.5, -146.0), Vector3(-86.0, 3.0, -161.0), 60.0],
+	"maisons_japon": [Vector3(-118.0, 3.5, -207.0), Vector3(-126.0, 3.0, -232.0), 62.0],
 	"faune_biomes": [Vector3(-40.0, 2.0, -2.0), Vector3(-40.0, 1.2, 12.0), 55.0],
 	"habitat_rond": [Vector3(-133.0, 5.0, -179.0), Vector3(-133.0, 1.5, -196.0), 60.0],
 	"habitat_pilotis": [Vector3(-103.0, 2.5, -181.0), Vector3(-103.0, 2.0, -196.0), 60.0],
@@ -81,6 +82,7 @@ const VIEWS := {
 	"ciel_proche": [Vector3(0.0, 1.4, 0.0), Vector3(8.0, 72.0, -270.0), 22.0],
 	"arbres_temperes": [Vector3(147.0, 5.0, -86.0), Vector3(147.0, 8.0, -120.0), 60.0],
 	"arbres_sud": [Vector3(153.0, 4.0, -128.0), Vector3(153.0, 4.5, -160.0), 60.0],
+	"arbres_japon": [Vector3(142.0, 6.0, -168.0), Vector3(142.0, 10.0, -205.0), 65.0],
 	"ecorces": [Vector3(129.0, 1.8, -112.0), Vector3(129.0, 2.4, -120.0), 55.0],
 	"panneaux": [Vector3(58.5, 1.5, -15.5), Vector3(61.5, 1.3, -22.0), 50.0],
 	"panneau_col": [Vector3(58.6, 2.3, -18.6), Vector3(60.0, 2.3, -22.0), 40.0],
@@ -88,6 +90,7 @@ const VIEWS := {
 	"panneau_approche_15m": [Vector3(61.0, 1.6, -9.8), Vector3(63.0, 2.0, -24.0), 55.0],
 	"panneau_approche_30m": [Vector3(55.0, 1.5, 4.0), Vector3(63.0, 2.0, -24.0), 55.0],
 	"borne": [Vector3(61.0, 0.9, -17.4), Vector3(61.8, 0.45, -19.5), 40.0],
+	"torii": [Vector3(1.5, 1.6, -42.0), Vector3(0.0, 4.0, -80.0), 60.0],
 	"borne_dos": [Vector3(62.6, 0.9, -21.6), Vector3(61.8, 0.45, -19.5), 40.0],   # face arrière (demi-tour, N17)
 	"portes": [Vector3(-4.0, 1.6, -24.0), Vector3(-9.0, 1.2, -25.0), 60.0],
 	"eolienne": [Vector3(-75.0, 2.0, -150.0), Vector3(-120.0, 55.0, -300.0), 60.0],
@@ -105,11 +108,16 @@ const PROPS := [
 const TREES_TEMPERATE := ["oak", "birch", "pine", "beech", "spruce", "larch", "generic"]
 const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "acacia", "baobab", "cactus",
 	"tree_fern", "reed", "dwarf_shrub", "vine_row", "heather", "gorse", "bracken", "bunchgrass"]
+## Lot JP5 (6.0) : espèces du biome `japan`, troisième rangée (vue `arbres_japon`).
+const TREES_JAPAN := ["sugi", "hinoki", "momiji", "bamboo", "sugi", "momiji"]
 ## Une maison et une grange par style d'architecture (variantes du contrat U1, building_styles.gd), en rangée
 ## loin de la route : les styles que prendront les biomes et les régions de la série U.
 const STYLE_ROW := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]
 ## Lot U23 : styles d'habitat propres aux biomes, en seconde rangée derrière la première (vues `styles_biomes`).
 const STYLE_ROW_BIOMES := ["chalet", "bois_peint", "pise", "case", "paillote", "basalte", "chaumiere", "altiplano"]
+## Lot JP3 : hameau japonais (style `kawara`) : contour [x0, z0, largeur, profondeur], hauteur, type OSM (vue `maisons_japon`).
+const JAPAN_HAMLET := [[-145.0, -224.0, 11.0, 8.0, 6.5, "house"], [-130.0, -226.0, 9.0, 7.0, 3.6, "house"],
+	[-117.0, -224.0, 12.0, 8.0, 6.5, "house"], [-103.0, -226.0, 6.0, 5.0, 4.5, "shed"], [-138.0, -240.0, 10.0, 7.0, 3.8, "house"]]
 ## Lot U23 étape 2 (vues `habitat_rond`, `habitat_pilotis`, `habitat_yourtes`) : [style, famille OSM, largeur, profondeur, rond, pilotis]
 const ROUND_ROW := [
 	["case", "house", 6.0, 6.0, true, false], ["case", "hut", 5.0, 5.0, true, false], ["case", "house", 7.5, 7.0, true, false],
@@ -458,7 +466,8 @@ func _add_animals(vp: SubViewport) -> void:
 
 ## Arbres en LOD 0 avec le matériau de la scène principale (tree_renderer.gd, balancement au vent compris).
 func _add_trees(vp: SubViewport, preset: String) -> void:
-	var rows := [[TREES_TEMPERATE, 120.0, -120.0, 9.0], [TREES_SOUTH, 120.0, -160.0, 6.0]]
+	var rows := [[TREES_TEMPERATE, 120.0, -120.0, 9.0], [TREES_SOUTH, 120.0, -160.0, 6.0],
+		[TREES_JAPAN, 120.0, -205.0, 9.0]]
 	for row in rows:
 		var kinds: Array = row[0]
 		for i in range(kinds.size()):
@@ -486,6 +495,15 @@ func _add_props(vp: SubViewport, preset: String) -> void:
 		node.position = it[1]
 		node.rotation.y = -0.35
 		props.add_child(node)
+	# Lot JP5 : torii au-dessus de la route et lanternes de pierre de part et d'autre (vue `torii`)
+	props.road_width_m = ROAD_WIDTH_M
+	var gate: Node3D = props.build_prop({"kind": "torii", "s": 0.0, "lines": []})
+	gate.position = Vector3(0.0, 0.0, -80.0)
+	props.add_child(gate)
+	for x in [-ROAD_WIDTH_M * 0.5 - 1.5, ROAD_WIDTH_M * 0.5 + 1.5]:
+		var lamp: Node3D = props.build_prop({"kind": "lantern", "s": 0.0, "lines": []})
+		lamp.position = Vector3(x, 0.0, -66.0)
+		props.add_child(lamp)
 
 
 ## Village de BUILDINGS maillé par building_mesh.gd avec le matériau de la scène principale (osm_streamer.gd).
@@ -511,6 +529,13 @@ func _add_buildings(vp: SubViewport, preset: String) -> void:
 		items.append({"id": "style_biome_case_%d" % j, "outer": [[x0 + 1.0, -168.0], [x0 + 6.0, -168.0], [x0 + 6.0, -173.0], [x0 + 1.0, -173.0]],
 			"holes": [], "base_y": 0.0, "height_m": 2.8, "roof": "flat", "style": STYLE_ROW_BIOMES[j],
 			"hint": {"building": "hut", "colour": null}})
+	for j in range(JAPAN_HAMLET.size()):
+		var hb: Array = JAPAN_HAMLET[j]
+		var hx: float = hb[0]
+		var hz: float = hb[1]
+		items.append({"id": "japon_%d" % j, "outer": [[hx, hz], [hx + hb[2], hz], [hx + hb[2], hz - hb[3]], [hx, hz - hb[3]]],
+			"holes": [], "base_y": 0.0, "height_m": hb[4], "roof": "flat", "style": "kawara",
+			"hint": {"building": hb[5], "colour": null}})
 	var rx := -148.0
 	for j in range(ROUND_ROW.size()):
 		var r: Array = ROUND_ROW[j]

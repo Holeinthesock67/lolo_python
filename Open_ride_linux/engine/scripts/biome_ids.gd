@@ -25,10 +25,11 @@ const ROOF_VARIANTS: Array[String] = [
 ## du thème donne, pour chaque biome de base, un bloc partiel fusionné sur celui du biome (biome_model.gd).
 const LANDSCAPES: Array[String] = ["canyon", "fjord", "ile_volcanique", "rizieres"]
 
-## Espèces de `vegetation.species` (lot U7, puis AT1).
+## Espèces de `vegetation.species` (lot U7 ; Japon, lot JP5 ; landes atlantiques, lot AT1).
 const SPECIES: Array[String] = [
 	"oak", "beech", "spruce", "pine", "birch", "larch", "olive", "holm_oak", "cypress", "stone_pine",
 	"palm", "acacia", "baobab", "cactus", "tree_fern", "reed", "dwarf_shrub", "vine_row",
+	"sugi", "hinoki", "momiji", "bamboo",
 	"heather", "gorse", "bracken",   # lot AT1 (6.0) : bruyère, ajonc, fougère aigle des landes atlantiques
 	"bunchgrass",                    # lot HP1 (6.0) : touffe d'ichu des hauts plateaux
 ]
