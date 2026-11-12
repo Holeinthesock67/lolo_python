@@ -103,6 +103,15 @@ func _run() -> void:
 	# HUD diégétique (R11) : le modèle suit la trame, le HUD est dans la scène, le loot est relayé
 	_check(sc.hud_model.is_active() and sc.hud_model.values()["gear_text"] == "01", "modèle du HUD alimenté par la trame")
 	_check(sc.hud_view != null and sc.hud_view.panel != null and sc.hud_view.panel.name == "StatePanel", "HUD dans la scène (panneau d'état du lot R22)")
+	sc._tick_hud(0.016)
+	_check(sc.hud_view.visible, "HUD visible pendant la run")
+	host.update({"mode": "ROGUE", "session_state": "PAUSED", "rogue": _rogue("ROOM", 5, 120.0, 80.0, windows)}, main, classic, we, cam, "low", 102.45)
+	sc._tick_hud(0.016)   # le test n'attend pas d'image : application directe
+	_check(sc.hud_model.values().get("paused", false), "pause : notée par le modèle du HUD")
+	_check(not sc.hud_view.visible, "pause : le HUD du mode se retire sous le menu de pause (lot R22)")
+	host.update({"mode": "ROGUE", "session_state": "RUNNING", "rogue": _rogue("ROOM", 5, 120.0, 80.0, windows)}, main, classic, we, cam, "low", 102.47)
+	sc._tick_hud(0.016)   # le test n'attend pas d'image : application directe
+	_check(sc.hud_view.visible, "reprise : le HUD revient")
 	host.on_loot({"cards": [{}, {}, {}], "doors": [{}, {}], "reroll_cost": 50, "gold": 10})
 	host.update({"mode": "ROGUE", "rogue": _rogue("CORRIDOR", 5, 120.0)}, main, classic, we, cam, "low", 102.5)
 	_check(sc.hud_model.values()["corridor"]["cards"].size() == 3, "cartes du couloir relayées au modèle")

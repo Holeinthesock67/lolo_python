@@ -50,7 +50,7 @@ sys.path.insert(0, str(TESTS_DIR))
 sys.path.insert(0, str(ENGINE_DIR.parent / "core" / "src"))
 
 from fake_core import CONTRACT_VERSION, EngineLog, FakeCore, now  # noqa: E402
-from visual_check import (GODOT_ISSUE, GODOT_TOLERATED, Capture, Report, free_udp_ports, mean_abs_diff,  # noqa: E402
+from visual_check import (COACH_MSG, GODOT_ISSUE, GODOT_TOLERATED, Capture, Report, free_udp_ports, mean_abs_diff,  # noqa: E402
                           read_png, write_html)
 import perf_probe  # noqa: E402
 import rendu_jeu  # noqa: E402
@@ -148,7 +148,8 @@ class Bench:
 
     def send_state(self, core: FakeCore, msg: dict) -> None:
         self.seq += 1
-        core.send({**msg, "seq": self.seq})
+        # Accusé des commandes de l'engine (get_coach…) : celui du faux core, pas celui de la trace rejouée.
+        core.send({**msg, "seq": self.seq, "last_cmd_id": core.last_cmd_id})
 
     def capture(self, core: FakeCore, scene: str) -> tuple[Any, dict] | None:
         png = (self.out / f"{len(self.report.captures):02d}_{scene}.png").resolve()
@@ -268,6 +269,9 @@ def run(args, out: Path, report: Report) -> None:
     engine_log.write_text("")
     core = FakeCore(state_port, cmd_port, EngineLog(engine_log))
     core.auto_hello_ack = True
+    # Réponse au conseil du jour (get_coach, lot CO5) : sans elle, l'engine affichait « Commande get_coach sans
+    # réponse du core » sur les captures de l'échauffement et de la pause (galerie R22 du 12 novembre).
+    core.coach = json.loads(json.dumps(COACH_MSG))
     core.start()
     cmd = rendu_jeu.godot_cmd([args.godot, "--path", str(ENGINE_DIR), "--resolution", args.size,
                                "--audio-driver", "Dummy"], args.native, bench.width, bench.height)

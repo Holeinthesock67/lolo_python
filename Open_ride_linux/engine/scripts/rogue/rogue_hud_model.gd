@@ -118,6 +118,8 @@ func update(state: Dictionary, now_s: float) -> void:
 	var phase := String(rogue.get("phase", ""))
 	_values = {
 		"active": true,
+		# Séance en pause : le menu de pause occupe l'écran, le HUD du mode se retire (R22, galerie du PC).
+		"paused": str(state.get("session_state", "")) == "PAUSED",
 		"phase": phase,
 		"phase_text": PHASE_TEXT.get(phase, ""),
 		"gear_text": "%02d" % maxi(int(state.get("gear", 1)), 1),

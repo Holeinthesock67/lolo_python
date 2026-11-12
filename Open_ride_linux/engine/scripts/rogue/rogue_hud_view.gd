@@ -306,7 +306,7 @@ func _tone(t: String) -> Color:
 func apply(values: Dictionary, bike_pos: Vector3, delta: float) -> void:
 	if panel == null:
 		return
-	visible = bool(values.get("active", false))
+	visible = bool(values.get("active", false)) and not bool(values.get("paused", false))
 	_layer.visible = visible
 	if not visible:
 		return
