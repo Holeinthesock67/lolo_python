@@ -76,6 +76,7 @@ const WtfSoundModel := preload("res://scripts/wtf/wtf_sound_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
 const WorldMenuView := preload("res://scripts/world_menu_view.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const OW_PREFIX := "ow:"
@@ -93,6 +94,7 @@ const MENU_CAMERA_MPS := 4.0
 const EXIT_RELAUNCH := 64
 ## Code de sortie « relancer en session simulée » (menu « Session simulée »).
 const EXIT_SIM := 65
+const QUIT_TASKS_MAX_S := 8.0   # attente des tâches de fond à la fermeture (bg_tasks.gd, lot X58)
 
 @onready var ipc: Node = $IpcClient
 @onready var camera: Camera3D = $Camera3D
@@ -1065,9 +1067,14 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		key_map.reset()   # le relâchement des touches enfoncées ne viendra pas
 	elif what == NOTIFICATION_PREDELETE:
-		# Ligne lue par le lanceur et le banc (ENGINE_DONE de launcher.py) : au-delà, l'arrêt de Godot peut bloquer
-		# (pilote NVIDIA, lot X55) ; ils arrêtent alors le processus et retiennent ce code.
+		# Ligne lue par le lanceur et le banc (ENGINE_DONE de launcher.py) : elle donne le code de sortie.
 		_quit_step("scène libérée, arrêt des serveurs de Godot (code %d)" % _quit_code)
+		if _quit_ms >= 0:
+			# Lot X58 : l'arrêt de Godot 4.7 qui suit peut attendre à jamais ses fils de travail (godotengine/godot
+			# #125097, Main::cleanup → WorkerThreadPool::exit_languages_threads ; r805d : 50 fois sur 50 sur le PC).
+			# Tout le travail du jeu est fait (séance, `bye`, fichiers fermés, tâches de fond attendues) : le processus
+			# s'arrête donc ici. Le lanceur et le banc lisent le code dans la ligne ci-dessus (sortie par SIGKILL).
+			OS.kill(OS.get_process_id())
 
 
 func _process(delta: float) -> void:
@@ -1320,10 +1327,10 @@ func _request_route(route_id) -> void:
 		return
 	if not _route_job.is_empty():
 		# Un chargement est déjà en cours : son résultat sera ignoré (_poll_route_job).
-		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
+		BgTasks.wait(_route_job["task"])
 	var job := {"id": str(route_id), "route": RouteDataScript.new(), "path": path, "ok": false}
 	job["route"].relief_k = _visual_grade_scale   # relief affiché (lot Q2) : toute la scène suit la route
-	job["task"] = WorkerThreadPool.add_task(_load_route_job.bind(job), false, "chargement du parcours")
+	job["task"] = BgTasks.add(_load_route_job.bind(job), false, "chargement du parcours")
 	_route_job = job
 
 
@@ -1333,11 +1340,11 @@ func _load_route_job(job: Dictionary) -> void:
 
 
 func _poll_route_job() -> void:
-	if _route_job.is_empty() or not WorkerThreadPool.is_task_completed(_route_job["task"]):
+	if _route_job.is_empty() or not BgTasks.done(_route_job["task"]):
 		return
 	var job := _route_job
 	_route_job = {}
-	WorkerThreadPool.wait_for_task_completion(job["task"])
+	BgTasks.wait(job["task"])
 	if job["id"] != str(_route_id_requested):
 		return
 	if not job["ok"]:
@@ -2256,9 +2263,18 @@ func _give_cues(state: Dictionary) -> void:
 
 ## Fermeture de l'engine avec le code `code` (0 : quitter, EXIT_RELAUNCH, EXIT_SIM). Le journal date ensuite chaque
 ## étape depuis la demande (« Fermeture : … ») : une fermeture lente dit où elle attend (banc des menus, lot X55).
+## Les nœuds cessent d'être traités, les tâches de fond pas encore démarrées sont sautées et celles qui tournent sont
+## attendues (bg_tasks.gd, au plus QUIT_TASKS_MAX_S) : sinon l'arrêt de Godot peut attendre sans fin son pool de
+## fils (lot X58).
 func _quit(code: int) -> void:
+	if _quit_ms >= 0:
+		return   # fermeture déjà demandée (ses tâches de fond sont en cours d'attente)
 	_quit_ms = Time.get_ticks_msec()
 	_quit_code = code
+	process_mode = Node.PROCESS_MODE_DISABLED   # plus d'image traitée : ni chargement ni tâche de fond nouvelle
+	var got: Array = await BgTasks.drain(get_tree(), QUIT_TASKS_MAX_S)
+	_quit_step("tâches de fond : %d attendues, %d abandonnées sans travail%s" % [got[0], got[2],
+		"" if got[1].is_empty() else ", encore en cours au bout de %.0f s : %s" % [QUIT_TASKS_MAX_S, ", ".join(got[1])]])
 	get_tree().quit(code)
 
 
@@ -2270,7 +2286,7 @@ func _quit_step(what: String) -> void:
 func _exit_tree() -> void:
 	_quit_step("nœuds de la scène sortis (décor, monde et IPC compris)")
 	if not _route_job.is_empty():
-		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
+		BgTasks.wait(_route_job["task"])
 	_probe.close()
 	_quit_step("chargement du parcours et sonde fermés")
 

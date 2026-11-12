@@ -50,6 +50,7 @@ const AmbienceModel := preload("res://scripts/ambience_model.gd")
 const AmbienceSynth := preload("res://scripts/ambience_synth.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 const EVENT_DB := -6.0
 const EVENT_POLYPHONY := 3
 const BELL_INTERVAL_S := 2.2
@@ -423,7 +424,7 @@ func _start_next_bed() -> void:
 	if not _bed_tasks.is_empty() or _bed_queue.is_empty():
 		return
 	var bed: String = _bed_queue.pop_front()
-	_bed_tasks[bed] = WorkerThreadPool.add_task(_bed_task.bind(bed), false, "fond %s" % bed)
+	_bed_tasks[bed] = BgTasks.add(_bed_task.bind(bed), false, "fond %s" % bed)
 
 
 func _set_bed(bed: String, src: Resource) -> void:
@@ -438,10 +439,10 @@ func _collect_beds() -> void:
 	for bed in _bed_tasks.keys():
 		if posed >= BEDS_POSED_PER_FRAME:
 			return
-		if not WorkerThreadPool.is_task_completed(_bed_tasks[bed]):
+		if not BgTasks.done(_bed_tasks[bed]):
 			continue
 		posed += 1
-		WorkerThreadPool.wait_for_task_completion(_bed_tasks[bed])
+		BgTasks.wait(_bed_tasks[bed])
 		_bed_tasks.erase(bed)
 		_bed_mutex.lock()
 		var src = _bed_done.get(bed, null)
@@ -458,7 +459,7 @@ func make_beds_now(beds: Array) -> void:
 			continue
 		_bed_queue.erase(bed)
 		if _bed_tasks.has(bed):
-			WorkerThreadPool.wait_for_task_completion(_bed_tasks[bed])
+			BgTasks.wait(_bed_tasks[bed])
 			_bed_tasks.erase(bed)
 			_bed_mutex.lock()
 			_bed_done.erase(bed)
@@ -481,7 +482,7 @@ func _notification(what: int) -> void:
 	# Une tâche en cours tient une référence à ce nœud : l'attendre avant qu'il disparaisse
 	if what == NOTIFICATION_PREDELETE:
 		for bed in _bed_tasks:
-			WorkerThreadPool.wait_for_task_completion(_bed_tasks[bed])
+			BgTasks.wait(_bed_tasks[bed])
 		_bed_tasks.clear()
 		_bed_queue.clear()
 

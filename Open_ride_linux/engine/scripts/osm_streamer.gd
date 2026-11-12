@@ -30,6 +30,7 @@ const RoadTrafficModel := preload("res://scripts/road_traffic_model.gd")
 const BoatModel := preload("res://scripts/boat_model.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 signal chunk_loaded(k: int, extras: Dictionary)
 signal chunk_freed(k: int)
@@ -123,7 +124,7 @@ func set_world(new_route, new_world_dir: String, manifest: Dictionary = {}, them
 func swap_route(new_route, from_k: int) -> void:
 	for k in _jobs.keys():
 		if k >= from_k:
-			WorkerThreadPool.wait_for_task_completion(_jobs[k]["task"])
+			BgTasks.wait(_jobs[k]["task"])
 			_jobs.erase(k)
 	route = new_route
 	_ready_chunks = _ready_chunks.filter(func(item): return item["k"] < from_k)
@@ -148,7 +149,7 @@ func clear() -> void:
 
 func _wait_all_jobs() -> void:
 	for k in _jobs.keys():
-		WorkerThreadPool.wait_for_task_completion(_jobs[k]["task"])
+		BgTasks.wait(_jobs[k]["task"])
 
 
 func _free_chunk(k: int) -> void:
@@ -208,7 +209,7 @@ func _start_jobs() -> void:
 				"boats": boats_enabled,
 				"biome_model": biome_model,
 			}
-			job["task"] = WorkerThreadPool.add_task(_build_chunk_job.bind(job), false, "OSM chunk %d" % k)
+			job["task"] = BgTasks.add(_build_chunk_job.bind(job), false, "OSM chunk %d" % k)
 			_jobs[k] = job
 
 
@@ -486,9 +487,9 @@ static func _arrays_from_mesh_dict(d: Dictionary) -> Array:
 func _poll_jobs(wait: bool) -> void:
 	for k in _jobs.keys():
 		var job: Dictionary = _jobs[k]
-		if not wait and not WorkerThreadPool.is_task_completed(job["task"]):
+		if not wait and not BgTasks.done(job["task"]):
 			continue
-		WorkerThreadPool.wait_for_task_completion(job["task"])
+		BgTasks.wait(job["task"])
 		_jobs.erase(k)
 		if job["gen"] == _generation and _wanted_chunks.has(k):
 			_ready_chunks.append(job["result"])
