@@ -64,6 +64,12 @@ func _run() -> void:
 	_check(not host.update(wait, main, classic, we, cam, "low", 90.0) and host.is_active(), "attente du départ : scène créée")
 	_check(host.scene.warm_count() == 8 + 6 and host.scene.ribbon.mesh != null and host.scene.ribbon.visible,
 			"attente du départ : un repère de chaque sorte, un ennemi par archétype et un bout de ruban (préchauffage)")
+	var guided := 0
+	for n in host.scene._warm_markers:
+		if n.find_children("*", "Label3D", true, false).size() > 0:
+			guided += 1
+	# Toutes les sortes étiquetées (l'onde du Firewall n'a pas d'étiquette).
+	_check(guided == preload("res://scripts/rogue/marker_guides.gd").TAG_TOKENS.size(), "attente du départ : guides des repères (étiquette, zone Z, portique) préchauffés (lot R22)")
 	_check(host.scene.hud_view.visible and host.scene.hud_view.banner.visible and host.scene.hud_view.holo.text != "",
 			"attente du départ : hologramme, jauges et bandeau du HUD préchauffés")
 	_check(not terrain.visible, "attente du départ : monde classique déjà masqué")

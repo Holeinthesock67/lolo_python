@@ -194,6 +194,9 @@ func warm_up() -> int:
 		var node: Node3D = MarkerViews.make(kind, 20.0, preset, adapted)
 		node.position = Vector3(0.0, 0.0, -10.0 - 4.0 * i)
 		markers_root.add_child(node)
+		# Guides du lot R22 (étiquette, zone Z, portique et anneau des arches) : leurs matériaux et la police de
+		# l'étiquette se compilaient à la première salle (images de 137 ms aux transitions de salle, galerie PC).
+		MarkerGuides.decorate(node, kind, null, 20.0, preset, adapted)
 		_warm_markers.append(node)
 		i += 1
 	markers_root.visible = true
