@@ -2,7 +2,7 @@ extends Node3D
 
 ## Relief d'horizon (lot JP4, version 6.0) : tuiles `terrain/horizon/` du Format .world 1.8 (§5), maille de 500 m
 ## jusqu'à 40 km de la route, pour voir les grands sommets au-delà du brouillard (le mont Fuji depuis Hakone).
-## - Toutes les tuiles sont construites une fois par parcours dans une tâche de fond (TerrainTiles.build_arrays),
+## - Toutes les tuiles sont construites une fois par parcours dans une tâche de fond (bg_tasks.gd, TerrainTiles.build_arrays),
 ##   puis posées d'un coup sur le fil principal ; aucune ombre portée.
 ## - Relief exagéré (lot Q2, `relief_k`, 2,5 par défaut) : plein jusqu'à RELIEF_FULL_M de la route, comme le terrain
 ##   lointain qu'il prolonge, puis ramené au relief réel à RELIEF_REAL_M : le Fuji garde sa vraie silhouette au lieu
@@ -14,6 +14,7 @@ extends Node3D
 ## Pas de class_name (charger par preload).
 
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 const HORIZON_SHADER := preload("res://shaders/horizon.gdshader")
 
 const EXTENT_M := 45000.0           # vue de la caméra : 40 km de tuiles et marge
@@ -60,10 +61,10 @@ func set_world(route, world_dir: String) -> void:
 	if index.is_empty():
 		return
 	_job = {"gen": _generation, "tiles": index.keys(), "out": []}
-	_task = WorkerThreadPool.add_task(_build.bind(_job, route, world_dir), false, "horizon")
+	_task = BgTasks.add(_build.bind(_job, route, world_dir), false, "horizon")
 
 
-## Exécuté dans un fil de WorkerThreadPool.
+## Exécuté dans une tâche de fond (bg_tasks.gd).
 static func _build(job: Dictionary, route, world_dir: String) -> void:
 	var k: float = route.relief_k if route != null else 1.0
 	var alt_orig: float = route.alt_m[0] if route != null and route.n > 0 else 0.0
@@ -125,7 +126,7 @@ static func display_height(alt: float, p: Vector2, probes: PackedVector2Array, k
 func clear() -> void:
 	_generation += 1
 	if _task >= 0:
-		WorkerThreadPool.wait_for_task_completion(_task)
+		BgTasks.wait(_task)
 		_task = -1
 	_job = {}
 	for mi in _instances:
@@ -141,7 +142,7 @@ func tile_count() -> int:
 ## Attend la fin de la tâche de fond et pose les tuiles (essais).
 func flush() -> void:
 	if _task >= 0:
-		WorkerThreadPool.wait_for_task_completion(_task)
+		BgTasks.wait(_task)
 		_task = -1
 		_integrate()
 
@@ -165,7 +166,7 @@ func _integrate() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _task >= 0 and WorkerThreadPool.is_task_completed(_task):
+	if _task >= 0 and BgTasks.done(_task):
 		flush()
 	if _instances.is_empty():
 		return
@@ -182,5 +183,5 @@ func _process(_delta: float) -> void:
 
 func _exit_tree() -> void:
 	if _task >= 0:
-		WorkerThreadPool.wait_for_task_completion(_task)
+		BgTasks.wait(_task)
 		_task = -1

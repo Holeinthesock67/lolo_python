@@ -1,5 +1,10 @@
 # Lot JP6 : parcours Hakone et Fuji (version 6.0, série JP)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Parcours Hakone (route 1 de l'Ekiden) et Fuji Azami Line dans le pack « Cols célèbres » | TOML, Python | JP1 | Petite | En PR le 12 novembre, **version 6.0** |
+
 Plan : `docs/6.0/PLAN_SERIE_JP.md`.
 
 Deux recettes ajoutées au pack « Cols célèbres » (18 recettes) :
