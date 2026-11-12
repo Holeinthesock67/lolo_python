@@ -316,12 +316,14 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 		dens_cap = 0.0
 		for b in BiomeIds.BIOMES:
 			dens_cap = maxf(dens_cap, float(model.params(b)["vegetation"]["max_density_per_ha"]))
+			for l in BiomeIds.LANDSCAPES:   # paysages du lot U25 (bloc du biome dans le paysage)
+				dens_cap = maxf(dens_cap, float(model.params(b, "", 0.0, {"landscape": l})["vegetation"]["max_density_per_ha"]))
 	if dens_cap <= 0.0:
 		return {}
 	var k_cap := dens_cap * VegetationPlacer.NOISE_MAX_FRACTION / 10000.0 * MAX_CROWN_AREA_M2
 	var roads := VegetationPlacer._road_buckets(route, tile, corridor)
 	var generic := crown_look("")
-	var looks := {}        # biome -> VegetationPlacer._species_look
+	var looks := {}        # cache de VegetationPlacer.look_at (biome et paysage de la tuile)
 	var crowns := {}       # indice d'espèce -> crown_look
 	var forced: String = model.forced if biomes_on else ""
 	# Grilles du bruit de densité (mêmes nœuds et mêmes opérations que VegetationPlacer._place_noise)
@@ -387,9 +389,7 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 					biome = b
 					if bdraw < acc:
 						break
-				if not looks.has(biome):
-					looks[biome] = VegetationPlacer._species_look(model, biome)
-				var look: Dictionary = looks[biome]
+				var look: Dictionary = VegetationPlacer.look_at(model, biome, px, pz, looks)
 				density = float(look["density"])
 				treeline = float(look["treeline"])
 				if not look["generic"]:

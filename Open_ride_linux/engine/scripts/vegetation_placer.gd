@@ -438,7 +438,7 @@ static func assign_species(trees: PackedVector4Array, model, tile_density: float
 		near_water: Callable = Callable()) -> Dictionary:
 	var out := PackedVector4Array()
 	var species := PackedByteArray()
-	var looks := {}   # biome -> réglages résolus une fois par appel (_species_look)
+	var looks := {}   # cache de look_at : réglages résolus une fois par appel
 	var forced: String = model.forced
 	var weights: Dictionary = {forced: 1.0} if forced != "" else {}
 	for t in trees:
@@ -454,10 +454,7 @@ static func assign_species(trees: PackedVector4Array, model, tile_density: float
 			biome = b
 			if draw < acc:
 				break
-		var look: Dictionary = looks.get(biome, {})
-		if look.is_empty():
-			look = _species_look(model, biome)
-			looks[biome] = look
+		var look: Dictionary = look_at(model, biome, t.x, t.z, looks)
 		var keep: float = look["density"] / tile_density if tile_density > 0.0 else 1.0
 		if keep < 1.0 and _unit(_mix(h + 11)) >= keep:
 			continue
@@ -482,10 +479,29 @@ static func assign_species(trees: PackedVector4Array, model, tile_density: float
 	return {"trees": out, "species": species}
 
 
+## Réglages de végétation du biome `biome` au point (x, z), avec le paysage de la tuile (lot U25, variante
+## `landscape` : une futaie de pins canariens sur l'île volcanique, des palmiers dans les rizières). `cache` :
+## dictionnaire de l'appelant, gardé le temps d'un appel (variante par tuile proche, réglages par biome et
+## paysage), pour ne résoudre chaque biome qu'une fois.
+static func look_at(model, biome: String, x: float, z: float, cache: Dictionary) -> Dictionary:
+	var cell := Vector2i(floori(x / 1000.0), floori(z / 1000.0))   # tuile proche de la couche biome (1 km)
+	var landscape = cache.get(cell, null)
+	if landscape == null:
+		var v = model.variant_at(x, z)
+		landscape = str(v.get("landscape", "")) if typeof(v) == TYPE_DICTIONARY and typeof(v.get("landscape", null)) == TYPE_STRING else ""
+		cache[cell] = landscape
+	var key: String = biome + "|" + landscape
+	var look: Dictionary = cache.get(key, {})
+	if look.is_empty():
+		look = _species_look(model, biome, {"landscape": landscape} if landscape != "" else null)
+		cache[key] = look
+	return look
+
+
 ## Réglages de végétation d'un biome prêts au tirage : densité, limite des arbres (INF sans limite), arbre
 ## d'avant la série U, poids cumulés et indices des espèces (BiomeIds.SPECIES), désert à palmiers d'oasis.
-static func _species_look(model, biome: String) -> Dictionary:
-	var veg: Dictionary = model.params(biome)["vegetation"]
+static func _species_look(model, biome: String, variant: Variant = null) -> Dictionary:
+	var veg: Dictionary = model.params(biome, "", 0.0, variant)["vegetation"]
 	var cum := PackedFloat32Array()
 	var ids := PackedByteArray()
 	var total := 0.0
