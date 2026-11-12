@@ -199,8 +199,9 @@ func _init() -> void:
 		fj_kinds.append(sp["kind"])
 	_check(fj_kinds.has("birch") and not fj_kinds.has("palm") and float(coast_fj["vegetation"]["treeline_m"]) == 700.0,
 		"paysage fjord : côte en bouleaux et épicéas, sans palmier, limite des arbres 700 m")
-	_check(coast_fj["terrain"] == coast_plain["terrain"] and coast_fj["water"] == coast_plain["water"],
-		"paysage fjord : sections non décrites (sol, eau) gardées du biome")
+	_check(coast_fj["water"] == coast_plain["water"] and coast_fj["terrain"]["grass_color"] == Color.html("#5f7a44")
+		and coast_fj["terrain"]["rock_color"] == Color.html("#4a4d50"),
+		"paysage fjord : herbe verte et gneiss sombre au lieu du sable, eau du biome gardée")
 	_check(md.params("savanna", "", 0.0, fj_var)["vegetation"] == md.params("savanna")["vegetation"],
 		"paysage fjord : biome qui n'est pas une base du paysage inchangé")
 	_check(md.params("coast", "", 0.0, {"ground": "schiste_sombre", "roofs": null})["vegetation"] == coast_plain["vegetation"],

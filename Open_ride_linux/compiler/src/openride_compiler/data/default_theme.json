@@ -1431,6 +1431,25 @@
     "canyon": {
       "biomes": {
         "rock_desert": {
+          "ground": {
+            "layers": [
+              {
+                "name": "sable rouge",
+                "role": "flat",
+                "color": "#b5683e",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "grès rouge en strates",
+                "role": "steep",
+                "color": "#a3452a",
+                "texture": null,
+                "scale_m": 12.0
+              }
+            ],
+            "slope_threshold_deg": 16
+          },
           "vegetation": {
             "species": [
               {
@@ -1461,6 +1480,25 @@
           }
         },
         "steppe": {
+          "ground": {
+            "layers": [
+              {
+                "name": "armoise et terre rouge",
+                "role": "flat",
+                "color": "#9a7a52",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "grès rouge",
+                "role": "steep",
+                "color": "#a3452a",
+                "texture": null,
+                "scale_m": 12.0
+              }
+            ],
+            "slope_threshold_deg": 18
+          },
           "vegetation": {
             "species": [
               {
@@ -1484,6 +1522,33 @@
     "fjord": {
       "biomes": {
         "coast": {
+          "ground": {
+            "layers": [
+              {
+                "name": "herbe rase des rives",
+                "role": "flat",
+                "color": "#5f7a44",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "gneiss sombre",
+                "role": "steep",
+                "color": "#4a4d50",
+                "texture": null,
+                "scale_m": 12.0
+              },
+              {
+                "name": "neige",
+                "role": "high",
+                "color": "#eef2f5",
+                "texture": null,
+                "scale_m": 8.0
+              }
+            ],
+            "slope_threshold_deg": 18,
+            "high_line_m": 1100
+          },
           "vegetation": {
             "species": [
               {
@@ -1504,6 +1569,33 @@
           }
         },
         "boreal_forest": {
+          "ground": {
+            "layers": [
+              {
+                "name": "mousse et myrtilles",
+                "role": "flat",
+                "color": "#4f6440",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "gneiss sombre",
+                "role": "steep",
+                "color": "#4a4d50",
+                "texture": null,
+                "scale_m": 12.0
+              },
+              {
+                "name": "neige",
+                "role": "high",
+                "color": "#eef2f5",
+                "texture": null,
+                "scale_m": 8.0
+              }
+            ],
+            "slope_threshold_deg": 18,
+            "high_line_m": 1100
+          },
           "vegetation": {
             "species": [
               {
@@ -1544,6 +1636,33 @@
           }
         },
         "temperate_grassland": {
+          "ground": {
+            "layers": [
+              {
+                "name": "pré de fjord",
+                "role": "flat",
+                "color": "#5d7d42",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "gneiss sombre",
+                "role": "steep",
+                "color": "#4a4d50",
+                "texture": null,
+                "scale_m": 12.0
+              },
+              {
+                "name": "neige",
+                "role": "high",
+                "color": "#eef2f5",
+                "texture": null,
+                "scale_m": 8.0
+              }
+            ],
+            "slope_threshold_deg": 18,
+            "high_line_m": 1100
+          },
           "vegetation": {
             "species": [
               {
@@ -1560,6 +1679,33 @@
           }
         },
         "alpine": {
+          "ground": {
+            "layers": [
+              {
+                "name": "pelouse rase",
+                "role": "flat",
+                "color": "#647a4c",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "gneiss sombre",
+                "role": "steep",
+                "color": "#4a4d50",
+                "texture": null,
+                "scale_m": 12.0
+              },
+              {
+                "name": "neige",
+                "role": "high",
+                "color": "#eef2f5",
+                "texture": null,
+                "scale_m": 8.0
+              }
+            ],
+            "slope_threshold_deg": 18,
+            "high_line_m": 1100
+          },
           "vegetation": {
             "species": [
               {
@@ -1611,6 +1757,32 @@
           }
         },
         "temperate_grassland": {
+          "ground": {
+            "layers": [
+              {
+                "name": "herbe sèche sur cendres",
+                "role": "flat",
+                "color": "#7a7f4a",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "basalte",
+                "role": "steep",
+                "color": "#3d3b3a",
+                "texture": null,
+                "scale_m": 12.0
+              },
+              {
+                "name": "neige",
+                "role": "high",
+                "color": "#f2f5f8",
+                "texture": null,
+                "scale_m": 8.0
+              }
+            ],
+            "slope_threshold_deg": 20
+          },
           "vegetation": {
             "species": [
               {
@@ -1651,6 +1823,25 @@
           }
         },
         "mediterranean": {
+          "ground": {
+            "layers": [
+              {
+                "name": "cendres et genêts",
+                "role": "flat",
+                "color": "#6e6248",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "basalte",
+                "role": "steep",
+                "color": "#3d3b3a",
+                "texture": null,
+                "scale_m": 12.0
+              }
+            ],
+            "slope_threshold_deg": 20
+          },
           "vegetation": {
             "species": [
               {
@@ -1691,6 +1882,25 @@
     "rizieres": {
       "biomes": {
         "farmland": {
+          "ground": {
+            "layers": [
+              {
+                "name": "rizière en herbe",
+                "role": "flat",
+                "color": "#6aa23a",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "diguette de terre",
+                "role": "steep",
+                "color": "#7a6a4e",
+                "texture": null,
+                "scale_m": 12.0
+              }
+            ],
+            "slope_threshold_deg": 22
+          },
           "vegetation": {
             "species": [
               {
@@ -1706,6 +1916,25 @@
           }
         },
         "wetland": {
+          "ground": {
+            "layers": [
+              {
+                "name": "rizière inondée",
+                "role": "flat",
+                "color": "#5f9440",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "berge",
+                "role": "steep",
+                "color": "#6e6a5c",
+                "texture": null,
+                "scale_m": 12.0
+              }
+            ],
+            "slope_threshold_deg": 22
+          },
           "vegetation": {
             "species": [
               {

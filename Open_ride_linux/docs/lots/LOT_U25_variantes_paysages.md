@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Paysages célèbres posés en variantes des biomes existants (canyons, fjords, îles volcaniques, rizières), partie 1 : contrat, pose, arbres | Python, GDScript | U4, U14, U24 | Moyenne | En PR le 12 novembre, **version 6.0** |
+| Paysages célèbres posés en variantes des biomes existants (canyons, fjords, îles volcaniques, rizières), partie 1 : contrat, pose, sol et arbres | Python, GDScript | U4, U14, U24 | Moyenne | En PR le 12 novembre, **version 6.0** |
 
 ## 1. Objectif
 
@@ -11,7 +11,7 @@
 propriétaire le 12 novembre (« ok 1 à 4 ») : canyons rouges, fjords, îles volcaniques et rizières ne sont
 pas de nouveaux biomes mais des **variantes de biomes existants**, peu coûteuses. Principe « pas d'exception » :
 un paysage qui ne change que la végétation, les toits, la roche ou le sol n'a pas besoin d'un identifiant de
-biome (ni d'une couche de shader de plus, ni d'un menu, ni d'un nom dans l'IPC).
+biome (ni d'un menu, ni d'un nom dans l'IPC ; son sol prend un emplacement de paysage du shader, pas un biome).
 
 ## 2. Ce qui change (partie 1)
 
@@ -41,6 +41,20 @@ biome (ni d'une couche de shader de plus, ni d'un menu, ni d'un nom dans l'IPC).
   `building_style_at`). La végétation suit le paysage de la tuile : `VegetationPlacer.look_at` (arbres
   proches, `assign_species`), densité de la tuile (`tree_renderer.gd`) et bouquets lointains
   (`forest_impostors.gd`, plafond de densité qui compte les paysages).
+- **Sol du paysage** (demande du propriétaire du 12 novembre : « Fjord c'est très jaune le sol ») : le shader
+  des terrains (`terrain_biomes.gdshader`) a un emplacement de sol par biome, puis un par couple
+  (paysage, biome de base) dont le thème décrit `ground` (au plus 16, `BiomeTextures.landscape_slots`) ; une
+  tuile du paysage renvoie ses biomes vers ces emplacements (`slot_of`). Sans rides de sable : le sol du
+  paysage remplace celui du biome. Le changement de sol se fait au bord de la tuile de 1 km où commence la zone
+  (les zones font au moins 1°, une bordure par zone). Thème par défaut :
+
+  | Paysage et biome | Sol plat | Roche des pentes | Règle |
+  | --- | --- | --- | --- |
+  | fjord : côte, prairie, forêt boréale, alpin | herbe rase, pré, mousse, pelouse (verts) | gneiss sombre `#4a4d50` | pente 18°, neige dès 1 100 m |
+  | canyon : désert de roche, steppe | sable rouge, armoise | grès rouge `#a3452a` | pente 16° et 18° |
+  | île volcanique : prairie, méditerranéen | herbe sèche sur cendres, cendres et genêts | basalte `#3d3b3a` | pente 20° |
+  | rizières : cultures, zone humide | rizière verte, rizière inondée | diguette, berge | pente 22° |
+
 - **Thème par défaut** : blocs `vegetation` des quatre paysages (densité maximale 450 arbres/ha, sous le
   plafond de 600 de la forêt tempérée) ; couleurs de la variante `bois_peint`.
 
@@ -66,7 +80,7 @@ construites par code du lot U7. Rien à attribuer.
 2. Le schéma accepte une tuile sans `landscape` et avec chacun des quatre ; il refuse un paysage inconnu ;
    énumérations identiques entre schémas, compilateur et thème par défaut (`test_contract_biome.py`).
 3. Dans l'engine, une côte en fjord n'a plus ni palmiers ni pins parasols et a plus de bouleaux que
-   d'épicéas ; un biome qui n'est pas une base du paysage ne change pas (`test_biome_model.gd`,
+   d'épicéas, et son sol est l'herbe verte et le gneiss sombre (`test_biome_textures.gd`) ; un biome qui n'est pas une base du paysage ne change pas (`test_biome_model.gd`,
    `test_vegetation_biomes.gd`).
 4. Un thème au paysage inconnu, vide ou à l'espèce inconnue est refusé (`test_theme_loader.gd`).
 5. Chaque toit du contrat a son style de bâtiment (`test_building_mesh.gd`).
@@ -77,8 +91,6 @@ construites par code du lot U7. Rien à attribuer.
 
 ## 5. Partie 2 (lot suivant, rendu)
 
-- Sol propre au paysage dans le shader des terrains : aujourd'hui il a une couche par biome (17 × 3) ; il
-  faudra des emplacements par couple biome × paysage présent, ou une teinte par tuile.
 - Canyons : strates colorées dans la couche de pente (bandes d'altitude).
 - Rizières : plans d'eau en gradins dans le relief (le plus coûteux de la série).
 - Fjords : cascades sur les falaises.
@@ -87,5 +99,6 @@ construites par code du lot U7. Rien à attribuer.
 
 ## Livraison
 
-Partie 1 le 12 novembre 2026 (branche `claude/project-thread-ugu7bi`) : contrat, table, thème par défaut,
-engine (végétation, toits), tests compilateur et engine. Captures et bancs PC à faire.
+Partie 1 le 12 novembre 2026 (branche `claude/project-thread-ugu7bi`, PR #851) : contrat, table, thème par
+défaut, engine (sol, végétation, toits), tests compilateur et engine. Captures cloud :
+`/mnt/project-files/captures/u25-paysages-2026-11-12/v2-sol/`. Captures et bancs PC à faire.

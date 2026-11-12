@@ -14,7 +14,10 @@ extends RefCounted
 ##   unies ; chemins cherchés dans le dossier du niveau du pack (`texture_levels`), puis à la racine ;
 ##   ligne de journal (`log_line`) ;
 ## - `tile_material(level, ix, iz)` : copie du matériau de base avec la texture de poids 17 × 17 de la
-##   tuile (RGBA = les 3 biomes les plus présents en low, 4 sinon) et l'indice de chaque biome.
+##   tuile (RGBA = les 3 biomes les plus présents en low, 4 sinon) et l'emplacement de sol de chaque biome ;
+## - paysages (lot U25) : un emplacement de sol de plus par couple (paysage, biome de base) dont le thème décrit
+##   le sol ; une tuile de ce paysage y renvoie ses biomes (roche sombre et herbe des fjords, grès rouge des
+##   canyons…). Sans rides de sable : le sol du paysage remplace celui du biome.
 ## Pas de class_name : charger par preload("res://scripts/biome_textures.gd").
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
@@ -27,7 +30,11 @@ const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const SHADER := preload("res://shaders/terrain_biomes.gdshader")
 
 const GRID := 17
-const MAX_LAYERS := 51                 # 17 biomes × 3 couches (terrain_biomes.gdshader MAX_LAYERS)
+## Emplacements de sol (terrain_biomes.gdshader) : un par biome, puis un par couple (paysage, biome de base) dont
+## le thème décrit le sol (lot U25, `landscapes.<paysage>.biomes.<biome>.ground`), au plus MAX_LANDSCAPE_SLOTS.
+const MAX_LANDSCAPE_SLOTS := 16
+const MAX_SLOTS := 17 + MAX_LANDSCAPE_SLOTS   # BiomeIds.BIOMES + paysages (terrain_biomes.gdshader MAX_SLOTS)
+const MAX_LAYERS := MAX_SLOTS * 3      # 3 couches par emplacement (terrain_biomes.gdshader MAX_LAYERS)
 const ROLES: Array[String] = ["grass", "rock", "snow"]
 ## Force des rides et des dunes du sable par biome (lot U8, biome_rule.w du shader) ; 0 ailleurs.
 const SAND_RELIEF := {"sand_desert": 1.0, "coast": 0.6}
@@ -47,7 +54,7 @@ var texture_px := 0                    # 0 : couleurs unies
 var estimated_bytes := 0
 var compressed := false
 var layers: Array[Dictionary] = []     # {color, inv_scale, texture, normal, a, b}
-var biome_layers := {}                 # biome -> [herbe, roche, neige] (indices dans `layers`)
+var biome_layers := {}                 # emplacement (« biome » ou « biome|paysage ») -> {layers, rule}
 var log_line := ""
 var _tile_materials: Array[ShaderMaterial] = []
 var _shared := {}
@@ -86,10 +93,49 @@ func biomes_in_use() -> Array[String]:
 	return BiomeIds.BIOMES.duplicate()
 
 
+## Couples [biome, paysage] du thème dont le paysage décrit le sol, dans l'ordre des paysages puis des biomes
+## (emplacements 17, 18…, après les biomes) ; au-delà de MAX_LANDSCAPE_SLOTS, le biome garde son sol.
+static func landscape_slots(theme: Dictionary) -> Array:
+	var out := []
+	var all_l = theme.get("landscapes", null)
+	if typeof(all_l) != TYPE_DICTIONARY:
+		return out
+	for l in BiomeIds.LANDSCAPES:
+		var la = all_l.get(l, null)
+		if typeof(la) != TYPE_DICTIONARY or typeof(la.get("biomes", null)) != TYPE_DICTIONARY:
+			continue
+		for b in BiomeIds.BIOMES:
+			var blk = la["biomes"].get(b, null)
+			if typeof(blk) == TYPE_DICTIONARY and typeof(blk.get("ground", null)) == TYPE_DICTIONARY and out.size() < MAX_LANDSCAPE_SLOTS:
+				out.append([b, l])
+	return out
+
+
+## Noms des emplacements de sol, dans l'ordre du shader : les biomes, puis « biome|paysage ».
+static func slot_names(theme: Dictionary) -> Array[String]:
+	var out: Array[String] = BiomeIds.BIOMES.duplicate()
+	for pair in landscape_slots(theme):
+		out.append("%s|%s" % [pair[0], pair[1]])
+	return out
+
+
+## Emplacement de sol d'un biome dans le paysage `landscape` ("" : aucun) : celui du couple s'il existe, sinon
+## celui du biome.
+static func slot_of(theme: Dictionary, biome: String, landscape: String) -> int:
+	if landscape != "":
+		var k := slot_names(theme).find("%s|%s" % [biome, landscape])
+		if k >= 0:
+			return k
+	return BiomeIds.BIOMES.find(biome)
+
+
 func _collect_layers() -> void:
 	var index := {}
-	for b in BiomeIds.BIOMES:
-		var t: Dictionary = model.terrain_theme(b)["terrain"]
+	for slot in slot_names(model.theme):
+		var parts := slot.split("|")
+		var b: String = parts[0]
+		var variant = {"landscape": parts[1]} if parts.size() > 1 else null
+		var t: Dictionary = model.terrain_theme(b, variant)["terrain"]
 		var u := ThemeRenderParams.terrain_uniforms({"terrain": t})
 		var ids: Array[int] = []
 		for r in ROLES:
@@ -102,8 +148,8 @@ func _collect_layers() -> void:
 				index[key] = layers.size()
 				layers.append(entry)
 			ids.append(int(index[key]))
-		biome_layers[b] = {"layers": ids, "rule": Vector4(float(u["slope_threshold_deg"]), float(u["snow_line_m"]),
-			float(u["blend_sharpness"]), float(SAND_RELIEF.get(b, 0.0)))}
+		biome_layers[slot] = {"layers": ids, "rule": Vector4(float(u["slope_threshold_deg"]), float(u["snow_line_m"]),
+			float(u["blend_sharpness"]), float(SAND_RELIEF.get(b, 0.0)) if variant == null else 0.0)}
 
 
 ## Textures des biomes en usage : {"a": [[couche, chemin relatif]], "b": [[couche, chemin relatif]]}.
@@ -112,8 +158,11 @@ func _texture_refs(theme_dir: String) -> Dictionary:
 	if theme_dir == "":
 		return out
 	var seen := {}
-	for b in biomes_in_use():
-		for l in biome_layers[b]["layers"]:
+	var in_use := biomes_in_use()
+	for slot in biome_layers.keys():
+		if not in_use.has(str(slot).get_slice("|", 0)):
+			continue
+		for l in biome_layers[slot]["layers"]:
 			if seen.has(l):
 				continue
 			seen[l] = true
@@ -141,10 +190,13 @@ func _resolve(theme_dir: String, refs: Dictionary, choice: Dictionary) -> Dictio
 func _fill_material(used: Dictionary) -> void:
 	var rules: Array[Vector4] = []
 	var ids: Array[Vector4] = []
-	for b in BiomeIds.BIOMES:
-		var bl: Dictionary = biome_layers[b]
+	for slot in slot_names(model.theme):
+		var bl: Dictionary = biome_layers[slot]
 		rules.append(bl["rule"])
 		ids.append(Vector4(bl["layers"][0], bl["layers"][1], bl["layers"][2], 0.0))
+	while rules.size() < MAX_SLOTS:   # emplacements de paysage inutilisés
+		rules.append(rules[0])
+		ids.append(ids[0])
 	material.set_shader_parameter("biome_rule", rules)
 	material.set_shader_parameter("sand_wind_dir", sand_wind_dir(model.theme))
 	material.set_shader_parameter("biome_layers", ids)
@@ -208,7 +260,8 @@ static func sand_wind_dir(theme: Dictionary) -> Vector2:
 
 
 ## Poids d'une tuile pour le shader : les `max_n` biomes les plus présents de la tuile (niveau `level`)
-## en RGBA d'une image 17 × 17 (point (i, j) au pixel (i, j)), et leurs indices dans BiomeIds.BIOMES (-1 : vide).
+## en RGBA d'une image 17 × 17 (point (i, j) au pixel (i, j)), et l'emplacement de sol de chacun (-1 : vide) :
+## son indice dans BiomeIds.BIOMES, ou celui du couple avec le paysage de la tuile (lot U25, `slot_of`).
 static func tile_weights(biome_model, level: String, ix: int, iz: int, max_n: int) -> Dictionary:
 	var img := Image.create(GRID, GRID, false, Image.FORMAT_RGBA8)
 	var index := Vector4(-1.0, -1.0, -1.0, -1.0)
@@ -232,8 +285,10 @@ static func tile_weights(biome_model, level: String, ix: int, iz: int, max_n: in
 	order.sort_custom(func(a, b): return a[0] > b[0] or (a[0] == b[0] and biomes[a[1]] < biomes[b[1]]))
 	order = order.slice(0, clampi(max_n, 1, 4))
 	var names := []
+	var v = t.get("variant", null)
+	var landscape: String = v["landscape"] if typeof(v) == TYPE_DICTIONARY and typeof(v.get("landscape", null)) == TYPE_STRING else ""
 	for k in range(order.size()):
-		index[k] = BiomeIds.BIOMES.find(biomes[order[k][1]])
+		index[k] = slot_of(biome_model.theme, biomes[order[k][1]], landscape)
 		names.append(biomes[order[k][1]])
 	for j in range(GRID):
 		for i in range(GRID):

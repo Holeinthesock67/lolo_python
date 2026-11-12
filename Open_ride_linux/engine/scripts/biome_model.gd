@@ -214,10 +214,12 @@ func _terrain_dict(ground: Dictionary) -> Dictionary:
 	return base
 
 
-## Section `terrain` au format 1.x du biome (pour TerrainMaterial tant que U6 n'est pas là, et pour les vitrines).
-func terrain_theme(biome: String) -> Dictionary:
+## Section `terrain` au format 1.x du biome (pour TerrainMaterial tant que U6 n'est pas là, et pour les vitrines),
+## dans le paysage de `variant` (lot U25) s'il décrit le sol de ce biome.
+func terrain_theme(biome: String, variant: Variant = null) -> Dictionary:
 	var entry = theme.get("biomes", {}).get(biome, {}) if typeof(theme.get("biomes", null)) == TYPE_DICTIONARY else {}
-	var ground = entry.get("ground", {}) if typeof(entry) == TYPE_DICTIONARY else {}
+	entry = _with_landscape(entry if typeof(entry) == TYPE_DICTIONARY else {}, biome, variant)
+	var ground = entry.get("ground", {})
 	return {"terrain": _terrain_dict(ground if typeof(ground) == TYPE_DICTIONARY else {})}
 
 
