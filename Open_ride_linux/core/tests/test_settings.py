@@ -375,3 +375,31 @@ def test_advanced_settings_and_settings_in_parts(tmp_path: Path):
     for m in parts:
         validator.validate(m)
     assert [it for m in parts for it in m["items"]] == items
+
+
+def test_seasons_random_and_month_lot_u13b(tmp_path: Path):
+    """Lot U13b : `render.seasons` gagne `random` (au hasard, hiver deux fois moins souvent) et `render.month`
+    (date du PC ou mois choisi) suit dans Graphisme, appliqué tout de suite et écrit dans config.toml."""
+    items = {i["key"]: i for i in settings.current(Config())}
+    se, mo = items["render.seasons"], items["render.month"]
+    assert "random" in se["choices"] and "hasard" in se["help"]
+    assert (mo["group"], mo["value"], mo["applies"]) == ("graphics", "pc", "now")
+    assert mo["choices"] == ["pc", "january", "february", "march", "april", "may", "june", "july", "august",
+                             "september", "october", "november", "december"]
+    keys = [i["key"] for i in settings.current(Config())]
+    assert keys.index("render.month") == keys.index("render.seasons") + 1
+    # Les choix de l'engine (settings_view_model.gd) ont tous un libellé français
+    gd = (Path(__file__).resolve().parents[2] / "engine" / "scripts" / "settings_view_model.gd").read_text(encoding="utf-8")
+    for key in ("render.seasons", "render.month"):
+        block = gd.split(f'"{key}": {{', 1)[1].split("}", 1)[0]
+        assert set(re.findall(r'"([a-z]+)":', block)) == set(items[key]["choices"]), key
+    path = tmp_path / "config.toml"
+    path.write_text(START, encoding="utf-8")
+    s, _, errors = _session(tmp_path, path)
+    s._on_command("set_setting", {"key": "render.seasons", "value": "random"}, 2)
+    s._on_command("set_setting", {"key": "render.month", "value": "february"}, 3)
+    assert not errors and s.cfg.render.seasons == "random" and s.cfg.render.month == "february"
+    written = tomllib.loads(path.read_text(encoding="utf-8"))["render"]
+    assert (written["seasons"], written["month"]) == ("random", "february")
+    s._on_command("set_setting", {"key": "render.month", "value": "13"}, 4)
+    assert errors[-1][0] == "setting_invalid"

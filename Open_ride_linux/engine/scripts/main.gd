@@ -171,6 +171,8 @@ var _biome_setting := ""
 const CYCLE_PERIOD_S := 1.0
 var _day_mode := "off"
 var _season_mode := "off"
+var _month_setting := "pc"   # render.month (lot U13b) : date du PC ou mois choisi
+var _random_season := ""     # saison tirée du mode `random` (lot U13b) ; vide : à tirer (parcours chargé)
 var _cycle_at := -INF
 var _season_applied := {}
 var _cycle_test := {}   # message de test « sky_cycle » : heure fixe (`hour`) et date (`date`) imposées
@@ -623,7 +625,8 @@ func _on_settings(msg: Dictionary) -> void:
 	_apply_gravel(str(menu_flow.settings.item("gravel.mode").get("value", "")))
 	_apply_biome(str(menu_flow.settings.item("render.biome").get("value", "")))
 	_apply_cycle_modes(str(menu_flow.settings.item("render.day_night").get("value", "off")),
-		str(menu_flow.settings.item("render.seasons").get("value", "off")))
+		str(menu_flow.settings.item("render.seasons").get("value", "off")), false,
+		str(menu_flow.settings.item("render.month").get("value", "pc")))
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp
@@ -1370,6 +1373,7 @@ func _poll_route_job() -> void:
 		return
 	route = job["route"]
 	_route_loaded_id = job["id"]
+	_random_season = ""   # saisons « au hasard » (lot U13b) : nouveau tirage pour ce parcours
 	if route.live:
 		live_world.adopt(job["path"], route)
 	else:
@@ -1888,14 +1892,19 @@ func _apply_biome(id: String) -> void:
 
 
 ## Jour et nuit, saisons (lot P19) : chaque réglage coupe tout son effet, indépendamment de l'autre.
-func _apply_cycle_modes(day_mode: String, season_mode: String, force: bool = false) -> void:
+## `month` (lot U13b) : réglage `render.month` ; vide : inchangé. Passer en `random` tire une nouvelle saison.
+func _apply_cycle_modes(day_mode: String, season_mode: String, force: bool = false, month: String = "") -> void:
 	var d := day_mode if day_mode in SkyCycle.DAY_MODES else "off"
 	var s := season_mode if season_mode in SkyCycle.SEASON_MODES else "off"
-	if d == _day_mode and s == _season_mode and not force:
+	var m := month if month == "pc" or month in SkyCycle.MONTHS else _month_setting
+	if d == _day_mode and s == _season_mode and m == _month_setting and not force:
 		return
+	if s == "random" and _season_mode != "random":
+		_random_season = ""   # nouveau tirage au prochain pas du cycle
 	_day_mode = d
 	_season_mode = s
-	print("Jour et nuit : %s ; saisons : %s" % [d, s])
+	_month_setting = m
+	print("Jour et nuit : %s ; saisons : %s ; mois : %s" % [d, s, m])
 	_step_cycle(Time.get_ticks_msec() / 1000.0, true)
 
 
@@ -1914,10 +1923,22 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 	var tz: Dictionary = Time.get_time_zone_from_system()
 	var now: Dictionary = Time.get_datetime_dict_from_system()
 	now["bias"] = int(tz.get("bias", 0))
-	var date: Dictionary = _cycle_test["date"] if typeof(_cycle_test.get("date")) == TYPE_DICTIONARY else Time.get_date_dict_from_system()
+	var date: Dictionary = _cycle_test["date"] if typeof(_cycle_test.get("date")) == TYPE_DICTIONARY \
+		else SkyCycle.date_for_month(_month_setting, Time.get_date_dict_from_system())
 	var hour = _cycle_test.get("hour", null)
-	var out := SkyCycle.evaluate(_day_mode, _season_mode, _theme_dict, lat, lon, date,
-		float(_last_state.get("elapsed_s", 0.0)), now, float(hour) if hour != null else NAN)
+	# Mode `random` (lot U13b) : une saison tirée par parcours chargé (pas par révision du monde ouvert).
+	var season_mode := _season_mode
+	if _season_mode == "random":
+		if _random_season == "":
+			_random_season = SkyCycle.random_season(randf())
+			print("Saison tirée au hasard : ", _random_season)
+		season_mode = _random_season
+	# Saison du biome sous la roue (lot U13) : poids des biomes lissés au point du cycliste ; vides sans biome.
+	var weights := {}
+	if season_mode == "date" and atmosphere_view.atmosphere != null:
+		weights = atmosphere_view.atmosphere.smoothed_weights(float(atmosphere_view.current.get("s", 0.0)))
+	var out := SkyCycle.evaluate(_day_mode, season_mode, _theme_dict, lat, lon, date,
+		float(_last_state.get("elapsed_s", 0.0)), now, float(hour) if hour != null else NAN, weights)
 	var light: Dictionary = out["daylight"]
 	if bool(light.get("active", false)) or atmosphere_view.cycle_active():
 		atmosphere_view.set_cycle(light if bool(light.get("active", false)) else {})

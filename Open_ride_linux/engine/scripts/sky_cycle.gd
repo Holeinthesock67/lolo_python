@@ -14,7 +14,8 @@ extends RefCounted
 ##   `date` : saison de la date et de l'hémisphère, selon le calendrier de chaque biome (lot U13) : `weights`
 ##   (biome -> poids au point, biome_model.weights_at) mélange les saisons des biomes présents ; sans poids,
 ##   biome par défaut du thème (thème 1.x ou `temperate_grassland` : saisons de P18) ; `spring` à `winter` :
-##   la saison, au milieu, pour tous les biomes ; enneigement partout l'hiver quand la météo du thème est la neige ;
+##   la saison, au milieu, pour tous les biomes ; `random` : main.gd tire la saison (`random_season`) à chaque
+##   parcours et la passe comme une saison choisie ; enneigement partout l'hiver quand la météo du thème est la neige ;
 ## - `evaluate(day_mode, season_mode, theme, lat, lon, date, elapsed_s, now, hour, weights)` : les deux ensemble.
 
 const DaylightModel := preload("res://scripts/daylight_model.gd")
@@ -23,7 +24,14 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 
 const DAY_MODES := ["off", "theme", "real", "accelerated"]
-const SEASON_MODES := ["off", "theme", "date", "spring", "summer", "autumn", "winter"]
+const SEASON_MODES := ["off", "theme", "date", "random", "spring", "summer", "autumn", "winter"]
+## Mode `random` (lot U13b, demande du propriétaire du 12 novembre) : une saison tirée à chaque parcours,
+## l'hiver deux fois moins souvent que les autres (poids 2, 2, 2, 1 : hiver 1 fois sur 7).
+const RANDOM_WEIGHTS := {"spring": 2.0, "summer": 2.0, "autumn": 2.0, "winter": 1.0}
+## Réglage `render.month` (lot U13b) : `pc` (date du PC) ou un mois, pris au 15.
+const MONTHS := ["january", "february", "march", "april", "may", "june", "july", "august", "september",
+	"october", "november", "december"]
+const MONTH_DAY := 15
 const ACCEL_START_HOUR := 6.0    # journée accélérée : départ à l'aube
 const ACCEL_FACTOR := 24.0       # une journée en une heure de séance
 
@@ -88,6 +96,28 @@ static func _date_state(theme: Dictionary, month: int, day: int, lat_deg: float,
 			best = b
 	return {"active": true, "season": by_biome[best]["season"], "progress": by_biome[best]["progress"],
 		"params": SeasonModel.blend(w, by_biome)}
+
+
+## Saison du mode `random` pour un tirage `u` uniforme dans [0, 1[ (RANDOM_WEIGHTS, dans l'ordre de
+## SeasonModel.SEASONS).
+static func random_season(u: float) -> String:
+	var total := 0.0
+	for k in SeasonModel.SEASONS:
+		total += float(RANDOM_WEIGHTS[k])
+	var x := clampf(u, 0.0, 0.999999) * total
+	for k in SeasonModel.SEASONS:
+		x -= float(RANDOM_WEIGHTS[k])
+		if x < 0.0:
+			return k
+	return SeasonModel.SEASONS[SeasonModel.SEASONS.size() - 1]
+
+
+## Date du cycle selon `render.month` : `pc` (ou inconnu) garde `pc_date` ; un mois : le 15 de ce mois, même année.
+static func date_for_month(month_setting: String, pc_date: Dictionary) -> Dictionary:
+	var i := MONTHS.find(month_setting)
+	if i < 0:
+		return pc_date
+	return {"year": int(pc_date.get("year", 2026)), "month": i + 1, "day": MONTH_DAY}
 
 
 ## `date` : `{year, month, day}` (date du PC) ; `now` : heure locale et fuseau (`bias`), pour `real`.
