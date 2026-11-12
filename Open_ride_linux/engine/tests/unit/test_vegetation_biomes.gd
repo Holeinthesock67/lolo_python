@@ -136,6 +136,7 @@ func _init() -> void:
 		var tr := TreeRenderer.new()
 		tr.biome_model = BiomeModel.new(theme, layer)
 		counts_by[land] = _species_counts(tr.prepare_tile(0, 0, heights, null, theme, 1.0))
+		tr.free()
 	var cf: Dictionary = counts_by["fjord"]
 	var cc: Dictionary = counts_by[""]
 	_check(int(cc.get("stone_pine", 0)) > 0 and not cf.has("stone_pine") and not cf.has("palm")
