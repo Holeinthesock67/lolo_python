@@ -40,6 +40,8 @@ Un son par événement du jeu (noms de l'IPC 1.4). Durées courtes, synthèse mo
 | `rogue_firewall_hum` | Firewall à moins de 30 m | ronflement grave (50 Hz modulé) dont le volume monte quand le mur approche ; alarme de contact : battement lent (2 Hz) ajouté pendant `firewall_contact` | boucle 2 s |
 | `rogue_hack` | début du piratage | rafale de bruit blanc haché (quatre éclats) | 400 ms |
 | `rogue_purge` | balise de purge réussie | balayage descendant puis note claire | 350 ms |
+| `rogue_refused` | Z refusé (`z_refused`, lot R22) | deux notes graves qui descendent, brèves | 220 ms |
+| `rogue_shift_missed` | arche de Perfect Shift ratée (`shift_missed`, lot R22) | petit glissé vers le bas | 160 ms |
 | `rogue_card_pick` | carte choisie | « bip » doux double | 150 ms |
 | `rogue_door` | porte choisie | souffle grave montant | 300 ms |
 | `rogue_reroll` | relance de carte | trois cliquetis rapides | 200 ms |
