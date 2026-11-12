@@ -1,1 +1,11 @@
-~/mesures-2026-11-01-auto/r841/mondes/fuji.world : invalide (1 problème(s)), lancer « verify » pour le détail
+Nom               : fuji
+Longueur          : 13.109 km
+Type              : open
+Pente maximale    : 18.6 %
+Pente minimale    : -16.8 %
+Dénivelé positif  : 1215 m
+Points limités    : 0
+Altitude          : gpx
+Terrain           : 18 tuile(s) proche(s), 16 lointaine(s) (copernicus_glo30)
+Biomes            : temperate_forest 88,5 %, temperate_grassland 7,6 %, volcanic 2,0 %, boreal_forest 1,9 %
+Segments          : 1 montée(s) (cat. HC : 1), 0 sprint(s)

@@ -1,1 +1,9 @@
-openride-compiler : erreur : trace illisible : [Errno 21] Is a directory: '.'
+altitude GPX / MNT : médiane 1.54 m, max 15.28 m, 0.0% des points à plus de 50 m
+altitude de la route : gpx
+segments : 3 montée(s) (cat. 2 : 1, cat. 3 : 1, cat. 4 : 1), 1 sprint(s)
+terrain near : 27 tuile(s) de 1000 m, maille 10 m
+terrain near : 2583 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 17 tuile(s) de 5000 m, maille 50 m
+biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 44 tuile(s)) : temperate_forest 98,9 %, temperate_grassland 0,9 %, rock_desert 0,1 %
+variantes (table régionale, tuiles proches) : calcaire_blanc/— 27
+~/mesures-2026-11-01-auto/r841/mondes/hakone-sans.world : 16.27 km, 1628 points, type open, 0 point(s) limité(s) à ± 25 %, couches route,terrain,biome,segments (2.2 s)

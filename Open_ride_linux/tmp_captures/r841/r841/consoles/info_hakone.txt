@@ -1,1 +1,11 @@
-~/mesures-2026-11-01-auto/r841/mondes/hakone.world : invalide (1 problème(s)), lancer « verify » pour le détail
+Nom               : hakone
+Longueur          : 16.268 km
+Type              : open
+Pente maximale    : 17.3 %
+Pente minimale    : -17.8 %
+Dénivelé positif  : 817 m
+Points limités    : 0
+Altitude          : gpx
+Terrain           : 27 tuile(s) proche(s), 17 lointaine(s) (copernicus_glo30)
+Biomes            : temperate_forest 98,9 %, temperate_grassland 0,9 %, rock_desert 0,1 %
+Segments          : 3 montée(s) (cat. 2 : 1, cat. 3 : 1, cat. 4 : 1), 1 sprint(s)

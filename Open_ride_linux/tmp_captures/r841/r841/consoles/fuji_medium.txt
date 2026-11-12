@@ -1,2 +1,38 @@
 >>> [1/1] Scénario demo (4:00)
-parcours introuvable : ~/mesures-2026-11-01-auto/r841/mondes/fuji.world (demo, demo_long, village, osm, ouvert ou dossier .world)
+== demo : parcours fuji, 240 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 14.2 s après le démarrage du core
+[OK] parcours chargé par l'engine : fuji à 24.9 s
+[OK] engine vivant jusqu'à la fin : 240 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] sonde de performance : 207 relevés, rapport sonde/rapport.html
+[OK] budget medium : images/s : médiane 59.9 (au moins 58)
+[OK] budget medium : temps d'image p99 : 16.7 ms (médiane des p99 de chaque seconde, sous 25 ms)
+[OK] budget medium : GPU de la vue : médiane 8.95 ms (au plus 13 ms)
+[OK] budget medium : GPU saturé : 0.0 % des secondes au-dessus de 95 % de charge (au plus 5 %)
+[OK] à-coups : départ : pire image 74 ms de 20 à 30 s (au plus 150 ms)
+[OK] à-coups : images lentes : 1 seconde(s) avec une image de plus de 50 ms en 3.2 min, 0.3 par minute (au plus 3)
+[OK] à-coups : pire image : 93 ms (au plus 100 ms)
+[OK] à-coups : périodicité en distance : aucune sur 3 image(s) de plus de 50 ms
+[OK] 50/50 images enregistrées après le chargement (+1 avant, hors compte : 1 enregistrée(s)), 1 redemandée(s), réponse en 0.30 s (médiane), 5.72 s au pire : captures de l'engine
+   images par seconde de l'engine : min 1, médiane 59, max 60 (15 relevés)
+[OK] qualité réellement appliquée : medium appliquée (52 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] qualité notée par la sonde : medium sur toute la mesure
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -16.6 à 7.5 %, pente envoyée -10.0 à 12.9 %
+[ÉCHEC] médiane 34.9 km/h sur 177 s (attendu 25.0 ± 2.5), de 31.3 à 71.4 km/h : vitesse imposée 25 km/h
+[OK] décor : aucun contact sur la route : 0 sur 51 captures
+[OK] fréquence cardiaque au journal : 198 échantillons, 91 à 185 bpm
+    NON demo : 1 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r841/fuji_medium/index.html
+=== Banc fini : ÉCHEC (1 vérification(s))
+RÉSULTAT : ÉCHEC (1 vérification(s))
