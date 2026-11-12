@@ -11,6 +11,7 @@ uniform float inner_radius_m = 4500.0;
 uniform float fade_m = 500.0;
 uniform float haze_dist_m = 40000.0;
 uniform float haze_layer_m = 600.0;
+uniform float emerge_m = 8000.0;
 uniform vec4 haze_color : source_color = vec4(0.78, 0.84, 0.9, 1.0);
 uniform vec4 low_color : source_color = vec4(0.30, 0.40, 0.24, 1.0);
 uniform vec4 rock_color : source_color = vec4(0.45, 0.43, 0.40, 1.0);
@@ -44,7 +45,10 @@ void fragment() {
 	float light = ambient + (1.0 - ambient) * max(dot(n, normalize(sun_dir)), 0.0);
 	// Visibilité : décroît avec la distance, nulle pour le relief au niveau de la caméra ou plus bas.
 	float above = clamp((v_world.y - CAMERA_POSITION_WORLD.y) / haze_layer_m, 0.0, 1.0);
-	float vis = exp(-d / haze_dist_m) * above;
+	// Les sommets ne sortent de la brume que progressivement au-delà de la fin du brouillard (sur emerge_m) : le relief
+	// tout juste derrière le terrain lointain reste noyé comme lui (pas de mur gris net en low, essai r841c).
+	float emerge = smoothstep(fog_end_m, fog_end_m + emerge_m, d);
+	float vis = exp(-d / haze_dist_m) * above * emerge;
 	float scene_vis = 1.0 - clamp((d - fog_begin_m) / max(fog_end_m - fog_begin_m, 1.0), 0.0, 1.0);
 	vis = max(vis, scene_vis) * smoothstep(inner_radius_m, inner_radius_m + fade_m, d);
 	ALBEDO = mix(haze_color.rgb, base * light, vis);
