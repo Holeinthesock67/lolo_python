@@ -85,7 +85,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("gearing.start_gear", "Braquet de départ", "ride", 1),
     # Trois jeux de bonus (série TT, lots TT1 et TT7) ; détail de chaque bonus au guide, section 4
     Setting("powerups.mode", "Bonus", "ride",
-            help="Coupé : aucun bonus. Classiques : Plume, Casque aéro, Puissance. Tactiques : les sept, "
+            help="Non : aucun bonus. Classiques : Plume, Casque aéro, Puissance. Tactiques : les sept, "
                  "avec Enclume, Aspiration +, Échappée et Rouleau, tirés selon le terrain devant. "
                  "Z lance le bonus en réserve ; refusé en ERG."),
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
