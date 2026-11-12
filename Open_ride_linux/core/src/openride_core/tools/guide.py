@@ -76,6 +76,16 @@ TRIALS: dict[str, Trial] = {
          "vélo sur le HomeTrainer conseillé : on roule pendant la surveillance"),
         ("6 appuis guidés, puis 30 min de surveillance avec un appui demandé toutes les 5 min",
          "délais, silences et coupures de chaque boîtier sont mesurés par l'outil")),
+    "click_appuis_longs": Trial(
+        "Appuis longs du Zwift Click (correctif R14)", "environ 1 min 30",
+        ("python -m openride_core.tools.click_recette --appuis-longs",),
+        ("les deux boîtiers Click, piles chargées",
+         "le jeu fermé : l'outil tient seul le Click",
+         "pas besoin de pédaler"),
+        ("5 étapes sur un écran fixe : maintenir +, −, A puis Z du bip « appuie » au bip « relâche », "
+         "puis 5 appuis courts rapides sur +",
+         "chaque étape attend un seul appui long ; un appui court en trop fait échouer l'étape",
+         "trames.csv (sans adresse) est le fichier à renvoyer")),
     "fc_recette": Trial(
         "Recette de la fréquence cardiaque (lot X9)", "environ 5 min",
         ("python -m openride_core.tools.fc_recette",),
@@ -111,7 +121,7 @@ TRIALS: dict[str, Trial] = {
         ("les deux boîtiers Click, piles chargées",
          "le jeu fermé : l'outil tient seul le Click",
          "le son du PC allumé : un bip à chaque étape et à chaque appui reçu"),
-        ("17 appuis demandés tour à tour, le boîtier gauche d'abord, flèches en tête (avant son premier redémarrage automatique, environ 50 s après la connexion)",
+        ("18 appuis demandés tour à tour, le boîtier gauche d'abord, flèches en tête (avant son premier redémarrage automatique, environ 50 s après la connexion)",
          "chaque appui reçu s'affiche avec son action dans chaque mode (spécification générale §7.1)")),
     "recette_v10": Trial(
         "Recette de la série V : progression, équipement, avatar (lot V10)", "environ 30 min, dont 2 × 10 min de vélo",

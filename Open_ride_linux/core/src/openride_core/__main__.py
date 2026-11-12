@@ -52,10 +52,13 @@ Sous-commandes disponibles à ce stade :
     openride-core ftp-test [FICHIER] [--accept [--force]] [--history] [--json] [--config FICHIER]
                                       résultat du dernier test de FTP (ou du journal donné),
                                       enregistrement de la nouvelle FTP, historique des tests (lot O10)
-    openride-core demo-biomes [--out DOSSIER] [--json]
+    openride-core demo-biomes [--out DOSSIER] [--json] [--recette]
                                       parcours de démonstration des biomes (tour des six biomes,
                                       tour gravel, côte et mer, alpin) dans le dossier des parcours
                                       (lot U19 ; compilateur requis)
+    openride-core velodromes [--out DOSSIER] [--json]
+                                      piste du vélodrome (250 m, bois, virages relevés) écrite par le
+                                      core dans le dossier des parcours (série VD, lot VD2)
     openride-core profil list [--json] | create NOM | rename ID NOM | delete ID
                                       profils de joueurs : liste, création, renommage, corbeille
                                       (série MJ, lot MJ7)
@@ -374,12 +377,12 @@ def cmd_demo_biomes(args: argparse.Namespace) -> int:
 
     out = args.out or config_mod.ROUTES_DIR
     try:
-        infos = write_biome_demo_worlds(out)
+        infos = write_biome_demo_worlds(out, recette=args.recette)
     except ImportError as exc:
         print(f"openride-core demo-biomes : compilateur non installé ({exc}) ; pip install -e compiler",
               file=sys.stderr)
         return 2
-    except (FileNotFoundError, RuntimeError, ValueError) as exc:
+    except (RuntimeError, ValueError) as exc:
         print(f"openride-core demo-biomes : {exc}", file=sys.stderr)
         return 1
     if args.json:
@@ -388,8 +391,34 @@ def cmd_demo_biomes(args: argparse.Namespace) -> int:
     for info in infos:
         shares = ", ".join(f"{b} {v:.0f} %" for b, v in info["shares"].items())
         gravel = f" ; non revêtu {100.0 - info['surface_pct'].get('paved', 100.0):.0f} %" if info["surface_pct"] else ""
-        print(f"{info['route']} : {info['length_m'] / 1000.0:.1f} km, {shares}{gravel}")
+        print(f"{info['route']} ({info['name']}) : {info['length_m'] / 1000.0:.1f} km, {shares}{gravel}")
     print(f"Parcours écrits dans {out}.")
+    return 0
+
+
+def cmd_velodromes(args: argparse.Namespace) -> int:
+    from . import config as config_mod
+    from . import velodrome
+
+    out = args.out or config_mod.ROUTES_DIR
+    try:
+        worlds = velodrome.write_all(out)
+    except (OSError, velodrome.VelodromeError) as exc:
+        print(f"openride-core velodromes : {exc}", file=sys.stderr)
+        return 1
+    infos = []
+    for world in worlds:
+        venue = json.loads((world / "venue.json").read_text(encoding="utf-8"))
+        g = venue["geometry"]
+        infos.append({"route": world.stem, "path": str(world), "length_m": g["length_m"],
+                      "bank_bend_deg": g["bank_bend_deg"], "bank_straight_deg": g["bank_straight_deg"]})
+    if args.json:
+        print(json.dumps(infos, indent=2, ensure_ascii=False))
+        return 0
+    for info in infos:
+        print(f"{info['route']} : {info['length_m']:.0f} m, virages à {info['bank_bend_deg']:.0f}°, "
+              f"droites à {info['bank_straight_deg']:.0f}°")
+    print(f"Pistes écrites dans {out}.")
     return 0
 
 
@@ -531,6 +560,12 @@ def build_parser() -> argparse.ArgumentParser:
                                              "(lot U19, compilateur requis)")
     dmb.add_argument("--out", type=Path, help="dossier de sortie (défaut : ~/.local/share/openride/routes)")
     dmb.add_argument("--json", action="store_true", help="sortie JSON (parts des biomes et des surfaces)")
+    dmb.add_argument("--recette", action="store_true",
+                     help="variante des bancs et des recettes : noms techniques (lot O37), jamais dans le jeu de base")
+    vel = sub.add_parser("velodromes", help="piste du vélodrome écrite par le core dans le dossier des parcours "
+                                            "(série VD, lot VD2)")
+    vel.add_argument("--out", type=Path, help="dossier de sortie (défaut : ~/.local/share/openride/routes)")
+    vel.add_argument("--json", action="store_true", help="sortie JSON (pistes écrites)")
     prf = sub.add_parser("profil", help="profils de joueurs : liste, création, renommage, corbeille ; "
                                         "profil d'essai (série MJ)")
     prf.add_argument("action", choices=["essai", "list", "create", "rename", "delete"])
@@ -576,7 +611,8 @@ def main(argv: list[str] | None = None) -> int:
             "fit-check": cmd_fit_check,
             "history": cmd_history, "coach": cmd_coach, "devices": cmd_devices,
             "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test,
-            "open-world-save": cmd_open_world_save, "demo-biomes": cmd_demo_biomes, "profil": cmd_profil}[args.command](args)
+            "open-world-save": cmd_open_world_save, "demo-biomes": cmd_demo_biomes, "velodromes": cmd_velodromes,
+            "profil": cmd_profil}[args.command](args)
 
 
 if __name__ == "__main__":

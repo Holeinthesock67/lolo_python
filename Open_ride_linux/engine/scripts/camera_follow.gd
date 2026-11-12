@@ -6,6 +6,8 @@ extends RefCounted
 ## - Correction douce : à chaque trame, l'écart entre la position affichée et la position extrapolée
 ##   de la nouvelle trame est rattrapé linéairement en 150 ms, sans saut.
 ## - Pendant RUNNING la position ne recule jamais ; hors RUNNING elle se cale sur s sans extrapolation.
+## - Sens (lot N17, champ `dir` de la trame) : à rebours, s décroît ; l'extrapolation suit le sens et la position ne
+##   revient jamais en arrière dans ce sens. Le demi-tour se fait en pause : la position se cale sur la trame.
 ## - Boucle : les s reçus sont « déroulés » (passage de la longueur à 0) ; l'appelant applique wrap_s.
 ## - Écart à l'axe (lot AS2) : l'avatar suit `lane_m` du core (placement dans la roue, dépassements) sans
 ##   marche d'escalier entre deux trames (au plus LANE_FOLLOW_MPS), la caméra suit l'avatar avec un lissage de
@@ -30,6 +32,8 @@ var displayed_s := 0.0
 ## Deux dernières trames reçues : {t_us, s, v}.
 var last_frame: Dictionary = {}
 var previous_frame: Dictionary = {}
+## Sens de la dernière trame : 1 dans le sens du parcours, -1 à rebours (lot N17).
+var direction := 1
 
 var _running := false
 var _offset := 0.0          # écart à rattraper au moment de la dernière trame
@@ -54,6 +58,7 @@ func reset() -> void:
 	_last_pitch_time_us = -1
 	_has_pitch = false
 	_has_frame = false
+	direction = 1
 	lane_m = DEFAULT_LANE_M
 	camera_lane_m = DEFAULT_LANE_M
 	_last_lane_time_us = -1
@@ -63,8 +68,11 @@ func has_frame() -> bool:
 	return _has_frame
 
 
-## Enregistre une trame state : s et v du core, reçue à t_us (horloge locale).
-func push_frame(t_us: int, s: float, v: float, running: bool) -> void:
+## Enregistre une trame state : s et v du core, reçue à t_us (horloge locale) ; `dir` : sens (lot N17).
+func push_frame(t_us: int, s: float, v: float, running: bool, dir := 1) -> void:
+	dir = -1 if dir < 0 else 1
+	var turned := dir != direction   # demi-tour : nouvelle référence, sans rattrapage dans l'ancien sens
+	direction = dir
 	if loop_length_m > 0.0 and _has_frame:
 		var raw_prev: float = float(last_frame["s"]) - _unwrap_m
 		if s - raw_prev < -0.5 * loop_length_m:
@@ -75,11 +83,11 @@ func push_frame(t_us: int, s: float, v: float, running: bool) -> void:
 	# Position montrée à t_us (et non displayed_s, calculée à l'image précédente) : sinon chaque trame ajoute le
 	# chemin parcouru depuis cette image au retard, qui s'accumule quand une trame arrive avant chaque image
 	# (~15 images/s en high : jusqu'à 4 m de retard sur le core, les bots semblaient traverser le cycliste).
-	var shown := maxf(displayed_s, _target(t_us)) if _has_frame and _running else displayed_s
+	var shown := _ahead_of(displayed_s, _target(t_us)) if _has_frame and _running and not turned else displayed_s
 	previous_frame = last_frame
 	last_frame = {"t_us": t_us, "s": s_abs, "v": v}
 	_running = running
-	if not running or not _has_frame:
+	if not running or not _has_frame or turned:
 		_offset = 0.0
 		displayed_s = s_abs
 	else:
@@ -93,7 +101,7 @@ func extrapolated(now_us: int) -> float:
 	if not _has_frame:
 		return 0.0
 	var age := clampf((now_us - int(last_frame["t_us"])) / 1e6, 0.0, MAX_EXTRAPOLATION_S)
-	return float(last_frame["s"]) + float(last_frame["v"]) * age
+	return float(last_frame["s"]) + direction * float(last_frame["v"]) * age
 
 
 ## Vrai quand l'extrapolation a atteint sa borne (core muet depuis plus d'1 s) : caméra figée.
@@ -108,8 +116,13 @@ func update(now_us: int) -> float:
 	if not _running:
 		displayed_s = float(last_frame["s"])
 		return displayed_s
-	displayed_s = maxf(displayed_s, _target(now_us))   # jamais de recul pendant RUNNING
+	displayed_s = _ahead_of(displayed_s, _target(now_us))   # jamais de recul pendant RUNNING
 	return displayed_s
+
+
+## La plus avancée des deux positions dans le sens de la marche.
+func _ahead_of(a: float, b: float) -> float:
+	return maxf(a, b) if direction > 0 else minf(a, b)
 
 
 ## Position extrapolée de la dernière trame à now_us, plus l'écart qui reste à rattraper.
@@ -128,7 +141,7 @@ func pitch_deg(route, s: float, v: float, dt_s: float = -1.0) -> float:
 		return 0.0
 	var lookahead := clampf(PITCH_LOOKAHEAD_NOMINAL_M + (v - 8.0) * 0.75, PITCH_LOOKAHEAD_MIN_M, PITCH_LOOKAHEAD_MAX_M)
 	var s_eye: float = route.wrap_s(s)
-	var s_target: float = route.wrap_s(s + lookahead)
+	var s_target: float = route.wrap_s(s + direction * lookahead)   # devant, dans le sens de la marche (lot N17)
 	var eye_pos: Vector3 = route.sample_point(s_eye)
 	var target_pos: Vector3 = route.sample_point(s_target)
 	var dx := target_pos.x - eye_pos.x

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+    <author>OpenRide</author>
+    <name>Sprints 10 × 10 s</name>
+    <description>Sprints (série CO) : échauffement 10 min, 10 × 10 s à 200 % FTP avec 2 min 50 à 50 %, retour au calme 5 min. En ERG la cible monte d'un coup : relancer la cadence juste avant chaque sprint.</description>
+    <sportType>bike</sportType>
+    <workout>
+        <Warmup Duration="600" PowerLow="0.50" PowerHigh="0.75"/>
+        <IntervalsT Repeat="10" OnDuration="10" OffDuration="170" OnPower="2.00" OffPower="0.50"/>
+        <Cooldown Duration="300" PowerLow="0.60" PowerHigh="0.45"/>
+    </workout>
+</workout_file>

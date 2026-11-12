@@ -1075,3 +1075,26 @@ vegetation_kind_and_density = _vegetation_kind_and_density
 water_area_kind = _water_area_kind
 densify_polyline_xz = _densify_polyline_xz
 sample_near_tiles_at = _sample_near_tiles_at
+
+
+def biome_areas(responses: list[dict[str, Any]], frame: LocalFrame) -> list[Any]:
+    """Polygones OSM qui corrigent la classification des biomes (lot U2), projetés dans le repère du parcours.
+
+    Un même élément présent dans plusieurs réponses (tronçons voisins) n'est gardé qu'une fois ; ordre stable
+    (type puis identifiant), pour des tuiles identiques d'une compilation à l'autre."""
+    from .biomes import OsmArea, osm_class
+
+    seen: dict[tuple[str, int], dict[str, Any]] = {}
+    for resp in responses:
+        for el in resp.get("elements", []) or []:
+            if el.get("type") in ("way", "relation") and isinstance(el.get("id"), int):
+                seen.setdefault((el["type"], el["id"]), el)
+    areas: list[Any] = []
+    for key in sorted(seen):
+        el = seen[key]
+        cls = osm_class(el.get("tags") or {})
+        if cls is None:
+            continue
+        polys, _ = _extract_polygons(el, frame)
+        areas.extend(OsmArea(cls, outer, tuple(holes)) for outer, holes in polys)
+    return areas

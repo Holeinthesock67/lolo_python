@@ -80,6 +80,8 @@ GOLDEN_MASKS = ("status", "distance", "time", "erg_remaining", "chart_sim", "cha
 FREEZE_SETTLE_S = 8.0             # --fige : attente du chargement complet des tuiles et du décor avant la vue fixe
 ROUTE_TIMEOUT_S = 20.0
 SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
+SHOT_WAIT_S = 10.0                # réponse à une demande de capture (× rendu_jeu.slowdown en Vulkan logiciel)
+SHOT_SENDS = 3                    # demandes de capture envoyées au plus avant de conclure à une capture manquée
 PENDING_RETRIES = 15              # scènes de référence : captures reprises (1 s d'écart) tant que des tuiles manquent
 SPEED_MPS = 8.0
 # Scènes reproductibles (s fixé, rien ne bouge) : les seules comparées aux images de référence.
@@ -110,7 +112,7 @@ MENU_CATALOG = {
 }
 MENU_DEVICES = {
     "trainer": {"status": "CONNECTED", "name": "HomeTrainer 0001"},
-    "click": [{"status": "CONNECTED", "role": "plus"}, {"status": "LOST", "role": "minus"}],
+    "click": [{"status": "CONNECTED", "side": "plus"}, {"status": "LOST", "side": "minus"}],
     "hr": {"status": "CONNECTED", "name": "Ceinture"},
 }
 
@@ -179,6 +181,48 @@ def overlap(a: list[float], b: list[float]) -> float:
 
 
 # Profil de démonstration du hello_ack (lot V6) : avatar réglé, seuils de danseuse par défaut.
+# Collection de démonstration du message `collection` (série BC, lot BC5) : le vrai catalogue, 17 cartes gagnées à
+# des dates fictives (aucune séance réelle), deux nouvelles ; avancement fictif des autres (61 % de la cible).
+COLLECTION_EARNED = {"premiere_seance": "2026-09-02", "km_100": "2026-09-20", "km_500": "2026-10-21",
+                     "seance_50km": "2026-10-04", "seance_3h": "2026-10-18", "montee_1000": "2026-10-11",
+                     "semaine_3": "2026-09-14", "semaines_4": "2026-10-05", "leve_tot": "2026-09-09",
+                     "leve_tot_10": "2026-11-06", "pause_midi": "2026-09-23", "ftp_premier": "2026-09-30",
+                     "kom_first": "2026-10-02", "rogue_premiere": "2026-10-15", "wtf_premiere": "2026-10-26",
+                     "halloween": "2026-10-29", "solstice": "2026-06-21"}
+COLLECTION_NEW = ["leve_tot_10", "halloween:2026"]
+
+
+def collection_message() -> dict[str, Any]:
+    import tomllib
+    data = tomllib.loads((ENGINE_DIR.parent / "core" / "src" / "openride_core" / "data" / "collection.toml").read_text())
+    cards = [{k: c[k] for k in ("id", "title", "text", "family", "rarity", "visual")} for c in data["cards"]]
+    rules = {c["id"]: c.get("rule", {}) for c in data["cards"]}
+    table = tomllib.loads((ENGINE_DIR.parent / "core" / "src" / "openride_core" / "data" / "progression.toml").read_text())
+    challenges = {ch["id"]: ch["threshold"] for ch in table.get("challenges", [])}
+    earned, remaining = [], []
+    for c in cards:
+        day = COLLECTION_EARNED.get(c["id"])
+        seasonal = c["family"] == "saison"
+        if day is not None:
+            edition = int(day[:4]) if seasonal else None
+            earned.append({**c, "key": f"{c['id']}:{edition}" if seasonal else c["id"], "edition": edition,
+                           "journal": f"{day}_07-00-00.jsonl", "date": day})
+        elif not seasonal:
+            rule = rules[c["id"]]
+            if rule.get("kind") == "defi":
+                target = float(challenges[rule["challenge"]])
+            elif rule.get("kind") == "anniversaire":
+                target = 365.0 * rule.get("years", 1)
+            else:
+                target = float(rule.get("threshold", rule.get("count", 10)))
+            remaining.append({"id": c["id"], "value": round(target * 0.61, 1), "target": target})
+    earned.sort(key=lambda e: e["date"])
+    missing = set(COLLECTION_EARNED) - {e["id"] for e in earned}
+    assert not missing, f"cartes absentes du catalogue : {missing}"
+    return {"cards_count": len(cards), "first_time": True, "cards": cards, "earned": earned, "remaining": remaining,
+            "new": list(COLLECTION_NEW)}
+
+
 # Catalogue de démonstration du message `garage` (lot V7) : un identifiant par `look`, un par emplacement.
 # Lot V8 : états, niveaux, prix et noms pour le Garage ; frame_round, wheels_spoked et kit_plain sont choisis.
 GARAGE_NAMES = {"frame_round": "Polyvalent", "frame_light": "Léger", "frame_aero": "Profilé", "frame_tt": "Contre-la-montre",
@@ -380,14 +424,27 @@ class Session:
         de `capture` le laisserait s'effacer."""
         png = self.out_dir / f"{self.name}_{tag}_attente.png"
         for _ in range(tries):
-            mark = self.core.log.mark()
-            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
-                                "path": str(png), "tag": f"{tag}_attente"})
-            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0 * self.slowdown(), mark)
+            hit = self._shot(png, f"{tag}_attente")
             if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
                 break
             time.sleep(1.0)
         png.unlink(missing_ok=True)
+
+    def _shot(self, png: Path, tag: str):
+        """Demande de capture (`_test` « screenshot ») et ligne « screenshot » de l'engine, None sans réponse. Le
+        datagramme peut se perdre (tampon du socket plein pendant un long chargement, Vulkan logiciel ; démarrage) :
+        sans réponse, la demande est renvoyée, SHOT_SENDS fois en tout. Une capture manquée l'était sans reprise
+        (vue_fixe en lavapipe et attente en natif sur le PC, 8 novembre)."""
+        hit = None
+        for _ in range(SHOT_SENDS):
+            png.unlink(missing_ok=True)
+            mark = self.core.log.mark()
+            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
+                                "path": str(png), "tag": tag})
+            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", SHOT_WAIT_S * self.slowdown(), mark)
+            if hit is not None:
+                break
+        return hit
 
     def capture(self, scene: str) -> tuple[Image, dict[str, Any]] | None:
         png = self.out_dir / f"{self.name}_{scene}.png"
@@ -398,16 +455,14 @@ class Session:
         # sur l'autre, il faisait tomber `vue_fixe` à SSIM 0,96 face à sa référence (PC, 1er novembre).
         tries = PENDING_RETRIES if scene in GOLDEN_SCENES else 1
         for attempt in range(tries):
-            mark = self.core.log.mark()
-            self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
-                                "path": str(png), "tag": scene})
-            hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0 * self.slowdown(), mark)
+            hit = self._shot(png, scene)
             if hit is None or not capture_unsettled(json.loads(hit[1].group(1))):
                 break
             if attempt < tries - 1:
                 time.sleep(1.0)
         if not self.check(scene, "capture enregistrée", hit is not None and png.exists(),
-                          "" if hit else "aucune ligne « screenshot » dans le journal de l'engine"):
+                          "" if hit else f"aucune ligne « screenshot » dans le journal de l'engine après {SHOT_SENDS} "
+                          f"demandes ; PNG {'écrit' if png.exists() else 'absent'}"):
             return None
         info = json.loads(hit[1].group(1))
         if scene in GOLDEN_SCENES:
@@ -571,6 +626,7 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     core = VisualCore(state_port, cmd_port, EngineLog(engine_log))
     core.progression = copy.deepcopy(AVATAR_PROGRESSION)   # le faux core les modifie (achats, choix)
     core.garage = copy.deepcopy(AVATAR_GARAGE)
+    core.collection = collection_message()
     core.start()
     cmd = rendu_jeu.godot_cmd([args.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}",
                                "--audio-driver", "Dummy"], args.native, width, height)
@@ -578,6 +634,8 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes_dir}",
             "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}", f"--living={args.decor_vivant}",
             "--camera=subjective"]   # les scènes d'avant le lot V12 supposent la caméra subjective
+    if getattr(args, "biome", None):
+        cmd.append(f"--biome={args.biome}")   # biome forcé sur tout le parcours (lot U5)
     preset_dir = quality + ("" if args.decor_vivant == "on" else "_sans_vivant") + ("" if v_grade == 1.0 else f"_k{v_grade}")
     gold = Path(args.golden) / ("natif" if args.native else "xvfb") / preset_dir if args.golden else None
     update = {v.strip() for v in args.update_golden.split(",") if v.strip()} if args.update_golden else None
@@ -645,6 +703,11 @@ def _scenes(s: Session) -> None:
     core.streaming = True
     loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
     s.check("vue_fixe", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    # Décor du départ prêt (`scene_ready`, lot O36) avant la première capture : juste après route_loaded, l'engine
+    # construit la scène sans lire ses datagrammes (20 s en llvmpipe sur le PC, 8 novembre) ; le tampon du socket,
+    # plein des trames state, perdait la demande de capture de vue_fixe (journal r801 : aucune réponse avant 126 s).
+    ready = core.log.wait_for(r"^scene_ready id=demo", ROUTE_TIMEOUT_S * s.slowdown())
+    s.check("vue_fixe", "décor du départ prêt", ready is not None, ready[1].string if ready else "aucun scene_ready")
     time.sleep(SETTLE_S if s.freeze_t is None else FREEZE_SETTLE_S)
     shot = s.capture("vue_fixe")
     if shot:
@@ -1124,6 +1187,7 @@ def _scenes(s: Session) -> None:
         img, info = shot
         s.check_banner("erreur", img, info, "route_invalid")
         s.check_layout("erreur", info)
+    _settings_scenes(s)
     _menu_scenes(s)
     _pentes_scenes(s)
     _decor_vivant_scene(s)
@@ -1441,7 +1505,7 @@ def _peloton_face_scene(s: Session) -> None:
 
 def _menu_scenes(s: Session) -> None:
     """Lot N6 : accueil avec l'état des appareils, liste des parcours au Click, bilan de fin ; menus en plein
-    écran du lot « présentation des menus » : accueil entier, sélection en cyan, HUD caché ; étape 2 : carte
+    écran du lot « présentation des menus » : accueil, sélection en cyan, HUD caché ; étape 2 : carte
     de détail (fiche du parcours sous le focus, écran Prêt avec le profil d'altitude du parcours chargé)."""
     core = s.core
     core.set_scene(speed=0.0, s=FIXED_S, session_state="IDLE", devices=MENU_DEVICES, summary=None)
@@ -1451,12 +1515,14 @@ def _menu_scenes(s: Session) -> None:
         img, info = shot
         s.check_texts("menu_accueil", info, {"menu_title": "OpenRide", "menu": "Session libre | Session ERG | Choisir un plan"}, contains=True)
         s.check_texts("menu_accueil", info, {"menu": "Trainer HomeTrainer 0001 : connecté"}, contains=True)
+        # Boîtier gauche muet (lot N19) : raison connue, verrou de Zwift, au lieu d'une erreur.
+        s.check_texts("menu_accueil", info, {"menu": "Click − : verrou Zwift"}, contains=True)
         s.check_layout("menu_accueil", info)
         s.check_banner("menu_accueil", img, info, None)
         m = info["widgets"]["menu"]
         s.check("menu_accueil", "menu en plein écran, HUD de séance caché", m["rect"][2] >= 0.99 * s.width
                 and m["rect"][3] >= 0.99 * s.height and not info["widgets"]["power"]["visible"], f"rectangle {m['rect']}")
-        s.check_texts("menu_accueil", info, {"menu": "Test de FTP | Historique — séances, semaines, tests de FTP | Session simulée | Garage | Réglages"}, contains=True)
+        s.check_texts("menu_accueil", info, {"menu": "Test de FTP | Historique — séances, semaines, tests de FTP | Collection — 17 / 42 cartes | Session simulée | Garage"}, contains=True)
         focus = fraction(img, rect_box(m["rect"]), lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
         s.check("menu_accueil", "sélection très visible (cadre cyan)", focus >= 0.003, f"{focus:.2%} de pixels cyan")
     # Appui long sur A du Click relayé par le core : liste des parcours.
@@ -1486,16 +1552,41 @@ def _menu_scenes(s: Session) -> None:
                 f"{line:.2%} de pixels cyan")
     _records_scene(s)
     _garage_scenes(s)
+    _collection_scenes(s)
+    # Bilan en tuiles (lot N20) : tuiles, courbe réduite de la puissance (révision 1.10), record battu en or.
     core.set_scene(session_state="FINISHED", summary={
         "duration_s": 1805.0, "distance_m": 15230.0, "avg_power_w": 212.0, "np_w": 221.0, "tss": 41.0,
-        "elevation_gain_m": 180.0, "fit_path": "/tmp/openride/seance.fit"})
+        "elevation_gain_m": 180.0, "max_power_w": 560.0, "fit_path": "/tmp/openride/seance.fit",
+        "power_profile": {"step_s": 37, "target_w": None,
+                          "power_w": [190 + (i * 37) % 60 + (330 if i in (17, 38) else 0) for i in range(49)]},
+        "segments": {"more": False, "jerseys": {"sprint": None, "kom": None}, "passes": [
+            {"segment_id": "montee", "kind": "climb", "time_s": 402.3, "with_powerup": False, "pr": True,
+             "pr_time_s": 418.9, "rank": 1, "rank_total": 3, "points": 10}]}})
     time.sleep(1.0)
     shot = s.capture("bilan")
     if shot:
         img, info = shot
-        s.check_texts("bilan", info, {"menu_title": "Fin de séance", "menu": "Distance : 15,23 km"}, contains=True)
+        s.check_texts("bilan", info, {"menu_title": "Fin de séance", "menu": "Distance 15,23 km"}, contains=True)
+        s.check_texts("bilan", info, {"menu": "Puissance 212 W NP 221"}, contains=True)
+        s.check_texts("bilan", info, {"menu": "6:42,3 avant 6:58,9"}, contains=True)
         s.check_texts("bilan", info, {"menu": "[Nouvelle séance]"}, contains=True)
         s.check_layout("bilan", info)
+        card = info["widgets"]["menu_card"]
+        white = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 235 and p[1] > 235 and p[2] > 235, step=1)
+        gold = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 220 and 170 < p[1] < 230 and p[2] < 110, step=1)
+        s.check("bilan", "courbe de la puissance tracée (trait blanc) et record en or", card["visible"]
+                and white >= 0.002 and gold >= 0.0005, f"{white:.2%} de pixels blancs, {gold:.2%} de pixels or")
+    # Lot BC6 : carte gagnée par la séance, annoncée seule au bilan avec « + 2 autres ».
+    halloween = next(e for e in core.collection["earned"] if e["id"] == "halloween")
+    core.set_scene(session_state="FINISHED", summary={
+        "duration_s": 1805.0, "distance_m": 15230.0, "avg_power_w": 212.0, "np_w": 221.0, "tss": 41.0,
+        "elevation_gain_m": 180.0, "fit_path": "/tmp/openride/seance.fit", "collection": {"card": halloween, "others": 2}})
+    time.sleep(1.0)
+    shot = s.capture("bilan_carte")
+    if shot:
+        img, info = shot
+        s.check_texts("bilan_carte", info, {"menu": "NOUVELLE CARTE | Pédaleur citrouille 2026 | Rare · saison | + 2 autres dans la Collection"}, contains=True)
+        s.check_layout("bilan_carte", info)
     _progress_scenes(s)
 
 
@@ -1525,6 +1616,102 @@ def _confirmation_scene(s: Session) -> None:
     time.sleep(0.6)
 
 
+# Réglages de la scène `reglages` (lot N19) : un sous-écran Son avec des volumes en % (curseurs, libellés
+# longs du core compris : aucun ne doit être coupé) et le
+# sous-écran Cycliste (FTP, poids), sans valeur réelle du propriétaire.
+SETTINGS_ITEMS = [
+    {"key": "rider.ftp_w", "label": "FTP", "group": "rider", "type": "int", "value": 250, "min": 50, "max": 600,
+     "step": 5, "unit": "W", "applies": "next_session"},
+    {"key": "rider.weight_kg", "label": "Poids", "group": "rider", "type": "int", "value": 75, "min": 30, "max": 200,
+     "step": 1, "unit": "kg", "applies": "next_session"},
+    {"key": "audio.master_pct", "label": "Général", "group": "sound", "type": "int", "value": 80, "min": 0,
+     "max": 100, "step": 10, "unit": "%", "applies": "now"},
+    {"key": "audio.ride_pct", "label": "Vent et roue libre", "group": "sound", "type": "int", "value": 40,
+     "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
+    {"key": "audio.events_pct", "label": "Bips et événements", "group": "sound", "type": "int", "value": 70,
+     "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
+    {"key": "audio.rogue_sfx_pct", "label": "Cyber-Rogue : bruitages", "group": "sound", "type": "int", "value": 50,
+     "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
+    {"key": "audio.ambience_pct", "label": "Ambiance", "group": "sound", "type": "int", "value": 60,
+     "min": 0, "max": 100, "step": 10, "unit": "%", "applies": "now"},
+]
+# Appareils trouvés par la recherche de la scène `appareils` (adresses factices).
+SCAN_ITEMS = [
+    {"role": "trainer", "name": "HomeTrainer 0001", "address": "C1:1C:00:00:00:01", "rssi": -58, "configured": True},
+    {"role": "click", "name": "Zwift Click", "address": "C1:1C:00:00:00:02", "rssi": -62, "configured": True},
+    {"role": "click", "name": "Zwift Click", "address": "C1:1C:00:00:00:03", "rssi": -70, "configured": True},
+]
+
+
+def _settings_scenes(s: Session) -> None:
+    """Lot N19 (étape 3 des menus) : `reglages` (sous-écran Son, volumes en curseur), `reglage_edition` (poids
+    modifié en place dans sa rangée) et `appareils` (écran Appareils après une recherche, carte du Click avec la
+    raison connue du silence du boîtier gauche). Part de l'accueil et y revient."""
+    core = s.core
+    # Sans `devices` : tout est relié (repli v1), l'écran de connexion passe seul à l'accueil (la pastille du
+    # boîtier gauche muet est vérifiée par `menu_accueil`).
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="IDLE", devices=None, summary=None)
+    time.sleep(SETTLE_S + 3.0)
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": SETTINGS_ITEMS})
+    time.sleep(0.5)
+
+    def press(*events: str, pause: float = 0.25) -> None:
+        for event in events:
+            core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+            time.sleep(pause)
+        time.sleep(0.5)
+
+    # Accueil : − deux fois (Quitter, puis Réglages), A maintenu ; Réglages : Appareils, Contenus, Cycliste, Son.
+    press("MINUS_SHORT", "MINUS_SHORT", "A_LONG")
+    press("PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT", "A_LONG")
+    shot = s.capture("reglages")
+    if shot:
+        img, info = shot
+        s.check_texts("reglages", info, {"menu_title": "Réglages › Son", "menu": "[Général — 80 %]"}, contains=True)
+        s.check_texts("reglages", info, {"menu": "Vent et roue libre — 40 %"}, contains=True)
+        clipped = info.get("menu_clipped", [])
+        s.check("reglages", "libellés des curseurs entiers (pas de « … »)", not clipped, ", ".join(clipped) or "aucun coupé")
+        # Valeurs (« 80 % ») entre le curseur et le bord droit de la liste (x ≈ 595–650 sur 1280, trois rangées).
+        right = (int(s.width * 0.46), int(s.height * 0.16), int(s.width * 0.515), int(s.height * 0.35))
+        value = fraction(img, right, lambda p: min(p) > 150, step=1)
+        s.check("reglages", "valeurs « 80 % » visibles à droite des curseurs", value >= 0.01, f"{value:.2%} de pixels clairs")
+        s.check_layout("reglages", info)
+        m = info["widgets"]["menu"]
+        left = (int(m["rect"][0]), int(m["rect"][1]), int(m["rect"][0] + m["rect"][2] / 2), int(m["rect"][1] + m["rect"][3]))
+        bar = fraction(img, left, lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
+        s.check("reglages", "curseurs des volumes remplis en cyan", bar >= 0.003, f"{bar:.2%} de pixels cyan")
+    # Retour aux Réglages (focus sur Son), Cycliste, Poids modifié en place : + une fois, 76 kg.
+    t_edit = now()
+    press("Y_SHORT", "MINUS_SHORT", "A_LONG", "PLUS_SHORT", "A_LONG", "PLUS_SHORT")
+    shot = s.capture("reglage_edition")
+    if shot:
+        img, info = shot
+        s.check_texts("reglage_edition", info, {"menu_title": "Réglages › Cycliste", "menu": "[Poids — ◀ 76 kg ▶]"}, contains=True)
+        s.check_texts("reglage_edition", info, {"menu": "FTP — 250 W"}, contains=True)
+        s.check_layout("reglage_edition", info)
+    # Y annule (rien n'est écrit), retour aux Réglages ; Appareils en tête ; recherche faite par le core.
+    press("Y_SHORT", "Y_SHORT", "MINUS_SHORT", "MINUS_SHORT", "A_LONG")
+    core.send({"type": "scan_results", "v": CONTRACT_VERSION, "request_cmd_id": 0, "done": True, "items": SCAN_ITEMS,
+               "plus_address": None})
+    time.sleep(0.5)
+    # Pendant la recherche, seul « Retour » est actif et garde le focus : + trois fois, Rechercher, Trainer, Click.
+    press("PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT")
+    shot = s.capture("appareils")
+    if shot:
+        img, info = shot
+        s.check_texts("appareils", info, {"menu_title": "Appareils", "menu": "Trainer — HomeTrainer 0001"}, contains=True)
+        s.check_texts("appareils", info, {"menu": "[Click : identifier le bouton +]"}, contains=True)
+        s.check_texts("appareils", info, {"menu": "Zwift le verrouille environ une minute après la connexion"}, contains=True)
+        s.check_layout("appareils", info)
+    sent = [r.msg.get("name") for r in core.messages("cmd", since=t_edit)]   # commandes depuis l'édition
+    s.check("reglage_edition", "Y annule : aucun set_setting envoyé", "set_setting" not in sent, ", ".join(map(str, sent[-8:])))
+    # Retour à l'accueil (focus resté sur Réglages), puis + deux fois (Quitter, Session libre) : les scènes
+    # suivantes partent de la première entrée, comme au lancement.
+    press("Y_SHORT", "Y_SHORT", "PLUS_SHORT", "PLUS_SHORT", pause=0.4)
+    time.sleep(0.6)
+
+
+
 def _records_scene(s: Session) -> None:
     """Étape 4c des menus : écran Records du parcours (depuis l'écran Prêt) avec la carte du record en or,
     puis la table des temps d'une montée ; retour à l'écran Prêt."""
@@ -1545,6 +1732,9 @@ def _records_scene(s: Session) -> None:
         card = info["widgets"]["menu_card"]
         gold = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 220 and 180 < p[1] < 240 and p[2] < 100, step=1)
         s.check("records", "record en or dans la carte", card["visible"] and gold >= 0.0005, f"{gold:.2%} de pixels or")
+        line = fraction(img, rect_box(card["rect"]), lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
+        s.check("records", "profil du segment tracé dans la carte (trait cyan, lot N20)", line >= 0.002,
+                f"{line:.2%} de pixels cyan")
     core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
     time.sleep(0.6)
     shot = s.capture("records_table")
@@ -1606,6 +1796,78 @@ def _start_screen_scenes(s: Session) -> None:
         s.check("depart_go", "HUD de séance revenu au départ", info["widgets"]["power"]["visible"])
 
 
+# Séance conseillée fabriquée (lot CO5), valeurs des maquettes validées le 7 novembre (lot CO4).
+COACH_MSG = {
+    "type": "coach", "v": CONTRACT_VERSION, "request_cmd_id": 0, "date": "2026-11-07", "need": "intense",
+    "need_label": "aérobie intense", "rule": "R6",
+    "reason": "9 % de ton temps en aérobie intense sur 4 semaines (cible 16 %), dernière séance de ce type il y a 6 jours, forme +4.",
+    "duration_s": 3600, "tss_estimate": 72, "notes": [], "alternatives": ["anaerobic"],
+    "workout": {"id": "seuil_2x20", "name": "Seuil 2 × 20", "need": "intense", "duration_s": 3600, "dominant_zone": "Z4",
+                "tss_estimate": 72},
+    "other_workouts": [{"id": "sweet_spot_3x10", "name": "Sweet Spot 3 × 10", "need": "intense", "duration_s": 3600,
+                        "dominant_zone": "Z4", "tss_estimate": 62},
+                       {"id": "vo2_5x4", "name": "VO2 max 5 × 4", "need": "intense", "duration_s": 3300,
+                        "dominant_zone": "Z5", "tss_estimate": 70}],
+    "route": {"mode": "ride", "label": "Course contre des bots sur un parcours à montées longues", "route_id": "demo",
+              "route_name": "Démo", "laps": 4, "duration_s": 3600, "bots": {"count": 4, "level_pct": 95, "tactics": "classic"},
+              "survivor": None, "predicted_need_s": 1420, "reference_need_s": 1800, "ratio_pct": 79},
+    "details": {"objective": "endurance", "targets_pct": {"light": 80.0, "intense": 16.0, "anaerobic": 4.0},
+                "shares_pct": {"light": 85.0, "intense": 9.0, "anaerobic": 6.0},
+                "deficits_pts": {"light": -5.0, "intense": 7.0, "anaerobic": -2.0}, "sessions_28d": 14,
+                "duration_28d_s": 41100.0, "ctl": 33.9, "atl": 29.5, "form": 4.4, "days_since_hard": 6, "hard_last_7d": 1,
+                "ftp_w": 250.0, "ftp_test_date": "2026-10-28", "ftp_age_days": 10, "profile": None, "profile_weak": "intense",
+                "races": [{"date": "2026-11-05", "kind": "survivor", "place": 3, "cause": "intense"}],
+                "last_by_need": {"light": "2026-11-04", "intense": "2026-11-01", "anaerobic": None}, "plan": None,
+                "next_race": None, "watch": None},
+}
+
+
+def _coach_scenes(s: Session) -> None:
+    """Lot CO5 : séance conseillée au menu, rendu réel de la scène derrière le voile : ligne de l'accueil, conseil
+    (entraînement puis course sous le focus), détail du calcul, autre besoin, prochaine course, montre."""
+    core = s.core
+
+    def press(*events: str, wait: float = 0.5) -> None:
+        for event in events:
+            core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+            time.sleep(wait)
+
+    def focus(item_id: str) -> None:
+        core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "menu_focus", "id": item_id})
+        time.sleep(0.4)
+
+    core.coach = json.loads(json.dumps(COACH_MSG))
+    core.set_scene(speed=0.0, session_state="IDLE", summary=None, start_wait=None, cadence=0.0)
+    time.sleep(1.0)
+    core.send(dict(COACH_MSG))   # réponse au get_coach de l'accueil
+    time.sleep(0.8)
+    shot = s.capture("conseil_accueil")
+    if shot:
+        s.check_texts("conseil_accueil", shot[1], {"menu": "Séance conseillée — aérobie intense · 60 min"}, contains=True)
+        s.check_layout("conseil_accueil", shot[1])
+    focus("coach")
+    press("A_LONG", wait=1.0)
+    for item, scene, text in (("coach_workout", "conseil", "Seuil 2 × 20"), ("coach_race", "conseil_course", "Démo · 4 tours")):
+        focus(item)
+        shot = s.capture(scene)
+        if shot:
+            s.check_texts(scene, shot[1], {"menu_title": "Séance conseillée : aérobie intense", "menu": "Pourquoi : 9 %"}, contains=True)
+            s.check_texts(scene, shot[1], {"menu": text}, contains=True)
+            s.check_layout(scene, shot[1])
+    for item, scene, title in (("coach_detail", "conseil_detail", "Détail du calcul"),
+                               ("coach_need", "conseil_besoin", "Choisir un autre besoin"),
+                               ("coach_race_date", "conseil_prochaine_course", "Ma prochaine course"),
+                               ("coach_watch", "conseil_montre", "Suggestion de ma montre")):
+        focus(item)
+        press("A_LONG", wait=0.8)
+        shot = s.capture(scene)
+        if shot:
+            s.check_texts(scene, shot[1], {"menu_title": title}, contains=True)
+            s.check_layout(scene, shot[1])
+        press("Y_SHORT", wait=0.5)
+    press("Y_SHORT", wait=0.5)
+
+
 def _menus_only(s: Session) -> None:
     """`--menus` : seulement les scènes des menus (accueil, parcours, Prêt, records, garage, bilan,
     progression), pour des captures de menus à chaque qualité en quelques minutes."""
@@ -1622,8 +1884,10 @@ def _menus_only(s: Session) -> None:
     loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
     s.check("menus", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
     time.sleep(SETTLE_S)
+    _settings_scenes(s)
     _menu_scenes(s)
     _start_screen_scenes(s)
+    _coach_scenes(s)
 
 
 def _quality_guard_scenes(s: Session) -> None:
@@ -1689,6 +1953,60 @@ def _quality_guard_scenes(s: Session) -> None:
     if shot:
         s.check("garde_qualite_fin", "qualité portée par la capture", shot[1].get("quality") == wanted,
                 f"{shot[1].get('quality')!r}, attendu {wanted!r}")
+
+
+# Jour, nuit et saisons (lot P19) : heure solaire et date imposées par le message de test « sky_cycle »
+SKY_CYCLE_SHOTS = (
+    ("jour_midi", "theme", "off", 12.0, {"year": 2026, "month": 6, "day": 21}),
+    ("jour_crepuscule", "theme", "off", 19.4, {"year": 2026, "month": 6, "day": 21}),
+    ("jour_heure_bleue", "theme", "off", 20.6, {"year": 2026, "month": 6, "day": 21}),
+    ("jour_nuit", "theme", "off", 23.5, {"year": 2026, "month": 6, "day": 29}),
+    ("saison_automne", "off", "autumn", None, None),
+    ("saison_hiver", "off", "winter", None, None),
+    ("saison_printemps", "off", "spring", None, None),
+)
+
+
+def _sky_cycle_scenes(s: Session) -> None:
+    """Lot P19 : captures du jour et de la nuit (midi, crépuscule, heure bleue, nuit) et des saisons (automne,
+    hiver, printemps) sur le parcours demo, réglages remis à « coupé » à la fin. Contrôles : image de plus en plus
+    sombre du midi à la nuit, nuit jamais noire (route lisible), réglages coupés : retour au soleil d'aujourd'hui."""
+    core = s.core
+    t0 = now()
+    while now() - t0 < 20.0 and "IpcClient attaché" not in core.log.path.read_text(errors="replace"):
+        time.sleep(0.1)
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="RUNNING", power=250.0, cadence=90.0, grade=1.0, grade_sent=1.0,
+                   gear=12, gears_total=24, mode="SIM", erg=None, pause_reason=None,
+                   trainer_status="CONNECTED", input_status="CONNECTED")
+    core.auto_hello_ack = True
+    core.catalog_data = MENU_CATALOG
+    core.streaming = True
+    loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
+    s.check("jour_nuit", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    time.sleep(FREEZE_SETTLE_S * max(1.0, s.slowdown() / 2.0))   # terrain et décor chargés : image de référence
+    base = s.capture("jour_coupe")
+    lums = {}
+    for tag, day, season, hour, date in SKY_CYCLE_SHOTS:
+        mark = core.log.mark()
+        core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "sky_cycle", "day_night": day,
+                       "seasons": season, "hour": hour, "date": date})
+        core.log.wait_for(r"^sky_cycle ", 10.0 * s.slowdown(), mark)
+        time.sleep(2.0 * s.slowdown())
+        shot = s.capture(tag)
+        if shot:
+            lums[tag] = stats(shot[0])["lum"]
+    if all(k in lums for k in ("jour_midi", "jour_crepuscule", "jour_nuit")):
+        s.check("jour_nuit", "image de plus en plus sombre du midi à la nuit",
+                lums["jour_midi"] > lums["jour_crepuscule"] > lums["jour_nuit"],
+                f"luminance midi {lums['jour_midi']:.2f}, crépuscule {lums['jour_crepuscule']:.2f}, nuit {lums['jour_nuit']:.2f}")
+        s.check("jour_nuit", "nuit lisible (image jamais noire)", lums["jour_nuit"] > 0.03, f"luminance {lums['jour_nuit']:.3f}")
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "sky_cycle", "day_night": "off", "seasons": "off",
+                   "hour": None, "date": None})
+    time.sleep(2.0 * s.slowdown())
+    back = s.capture("jour_recoupe")
+    if base and back:
+        a, b = stats(base[0])["lum"], stats(back[0])["lum"]
+        s.check("jour_nuit", "réglages recoupés : image d'avant", abs(a - b) < 0.03, f"luminance {a:.3f} puis {b:.3f}")
 
 
 def _draft_gauge_scene(s: Session) -> None:
@@ -2044,7 +2362,8 @@ def _progress_scenes(s: Session) -> None:
         banner = info["widgets"]["banner"]
         s.check("progression", "bandeau « Niveau 10 ! » affiché", banner["visible"] and "Niveau 10 !" in banner.get("text", ""),
                 f"{banner.get('text')}")
-    # Bilan complet (dix chiffres, abri du lot AS5, fichier FIT, quatre blocs ERG du bilan détaillé) et
+    # Bilan complet (six tuiles et la ligne des autres chiffres, abri du lot AS5, fichier FIT, quatre blocs ERG du
+    # bilan détaillé) et
     # progression : la carte tient au-dessus du bandeau des boutons (suite X22, recette ERG du 28/10).
     core.set_scene(session_state="IDLE", summary=None)
     time.sleep(0.5)
@@ -2068,9 +2387,8 @@ def _progress_scenes(s: Session) -> None:
         if shot:
             img, info = shot
             w = info["widgets"]
-            s.check_texts(scene, info, {"menu": "Puissance max : 400 W"}, contains=True)
-            s.check_texts(scene, info, {"menu": "Dans la roue : 12 min"}, contains=True)
-            s.check_texts(scene, info, {"menu": "Énergie économisée : 9 kJ"}, contains=True)
+            s.check_texts(scene, info, {"menu": "Puissance max 400 W · Dans la roue 12 min · 9 kJ économisés"},
+                          contains=True)
             s.check_texts(scene, info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
             if detailed:
                 s.check_texts(scene, info, {"menu": "Bloc 4 : 182 W pour 183 W"}, contains=True)
@@ -2092,6 +2410,72 @@ def _progress_scenes(s: Session) -> None:
         img, info = shot
         s.check_texts("progression_refusee", info, {"menu": "Séance de moins de 5 minutes : pas d'expérience"}, contains=True)
         s.check_layout("progression_refusee", info)
+
+
+def _collection_scenes(s: Session) -> None:
+    """Lot BC5 : Collection au menu avec le faux core (maquettes BC3) : première ouverture, album par familles,
+    carte gagnée (nouvelle : `collection_seen`, point retiré), carte à gagner avec son avancement, carte de
+    saison ; retour à l'accueil."""
+    core = s.core
+
+    def press(*events: str, wait: float = 0.5) -> None:
+        for event in events:
+            core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+            time.sleep(wait)
+
+    def focus(item_id: str) -> None:
+        core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "menu_focus", "id": item_id})
+        time.sleep(0.4)
+
+    press("Y_SHORT", "Y_SHORT", wait=0.4)   # accueil
+    focus("collection")
+    press("A_LONG", wait=0.4)
+    time.sleep(1.0)
+    shot = s.capture("collection_premiere")
+    if shot:
+        img, info = shot
+        s.check_texts("collection_premiere", info, {"menu": "17 cartes déjà gagnées"}, contains=True)
+        s.check_texts("collection_premiere", info, {"menu": "[Ouvrir la Collection]"}, contains=True)
+        s.check_layout("collection_premiere", info)
+        s.check("collection_premiere", "cartes déjà gagnées notées vues", len(core.collection_seen) == 17,
+                f"{len(core.collection_seen)} clés")
+    press("A_LONG", "Y_SHORT", wait=0.6)   # album, puis accueil
+    core.collection["new"] = list(COLLECTION_NEW)   # deux cartes gagnées depuis (séance d'hier, Halloween)
+    focus("collection")
+    press("A_LONG", wait=1.0)
+    focus("c:leve_tot_10")
+    time.sleep(0.6)
+    shot = s.capture("collection_album")
+    if shot:
+        img, info = shot
+        s.check_texts("collection_album", info, {"menu_title": "Collection", "menu": "Heure | 3 / 4"}, contains=True)
+        s.check_texts("collection_album", info, {"menu": "[c:leve_tot_10]"}, contains=True)
+        s.check_texts("collection_album", info, {"menu": "17 / 42 cartes · 2 nouvelles"}, contains=True)
+        s.check_layout("collection_album", info)
+    press("A_LONG", wait=0.6)
+    shot = s.capture("collection_carte")
+    if shot:
+        img, info = shot
+        s.check_texts("collection_carte", info, {"menu_title": "Chant du coq", "menu": "Gagnée le | 6 novembre 2026"}, contains=True)
+        s.check_texts("collection_carte", info, {"menu": "[Voir la séance]"}, contains=True)
+        s.check_layout("collection_carte", info)
+    press("Y_SHORT", wait=0.4)
+    focus("c:km_1000")
+    press("A_LONG", wait=0.6)
+    shot = s.capture("collection_a_gagner")
+    if shot:
+        img, info = shot
+        s.check_texts("collection_a_gagner", info, {"menu": "Avancement | 610 / 1 000 km"}, contains=True)
+        s.check_layout("collection_a_gagner", info)
+    press("Y_SHORT", wait=0.4)
+    focus("c:halloween")
+    press("A_LONG", wait=0.6)
+    shot = s.capture("collection_saison")
+    if shot:
+        img, info = shot
+        s.check_texts("collection_saison", info, {"menu_title": "Pédaleur citrouille 2026", "menu": "Éditions | 2026"}, contains=True)
+        s.check_layout("collection_saison", info)
+    press("Y_SHORT", "Y_SHORT", wait=0.4)
 
 
 def _garage_scenes(s: Session) -> None:
@@ -2213,9 +2597,16 @@ def main() -> int:
                     help="off : décor vivant coupé, rendu de la 1.0 (références dans <préréglage>_sans_vivant)")
     ap.add_argument("--garde-qualite", action="store_true",
                     help="seulement le garde-fou de la qualité appliquée (démarrage, réglages du core, lot X32)")
+    ap.add_argument("--jour-nuit", action="store_true",
+                    help="seulement les captures du jour, de la nuit et des saisons (lot P19)")
+    ap.add_argument("--biome", default=None, metavar="ID",
+                    help="biome forcé sur tout le parcours (défaut : celui du parcours ; avec --jour-nuit : temperate_forest, "
+                         "feuillus et résineux mêlés pour voir les saisons)")
     ap.add_argument("--lisibilite", action="store_true",
                     help="hauteur des chiffres et contraste des textes du HUD sur chaque capture (lot X22)")
     args = ap.parse_args()
+    if args.jour_nuit and args.biome is None:
+        args.biome = "temperate_forest"
 
     if not (Path(args.godot).is_file() and os.access(args.godot, os.X_OK)):
         print(f"Godot introuvable : {args.godot} (définir GODOT=/chemin/vers/godot)")
@@ -2249,7 +2640,8 @@ def main() -> int:
         shutil.copytree(osm_work / f"{OSM_ROUTE_ID}.world", routes_dir / f"{OSM_ROUTE_ID}.world")
         shutil.rmtree(osm_work, ignore_errors=True)
         for config in [c.strip() for c in args.configs.split(",") if c.strip()]:
-            scenes = _quality_guard_scenes if args.garde_qualite else _menus_only if args.menus else None
+            scenes = (_quality_guard_scenes if args.garde_qualite else _sky_cycle_scenes if args.jour_nuit
+                      else _menus_only if args.menus else None)
             run_config(config, args, routes_dir, out_dir, report, scenes)
     finally:
         shutil.rmtree(routes_dir, ignore_errors=True)

@@ -31,6 +31,7 @@ extends Node3D
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarMesh := preload("res://scripts/avatar_mesh.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 const SWAY_RAD := 0.07
 const STREAK_COUNT := 6
@@ -270,7 +271,7 @@ static func _parts(args: Array) -> Dictionary:
 	var task = _parts_tasks.get(key)
 	_parts_mutex.unlock()
 	if task != null:
-		WorkerThreadPool.wait_for_task_completion(task)
+		BgTasks.wait(task)
 		_parts_mutex.lock()
 		_parts_tasks.erase(key)
 		_parts_mutex.unlock()
@@ -308,7 +309,7 @@ static func request_parts(n: int, st: Dictionary, lk: Dictionary) -> void:
 		return
 	_parts_mutex.lock()
 	if not _parts_arrays.has(key) and not _parts_tasks.has(key):
-		_parts_tasks[key] = WorkerThreadPool.add_task(func() -> void: _store_arrays(key, args))
+		_parts_tasks[key] = BgTasks.add(func() -> void: _store_arrays(key, args))
 	_parts_mutex.unlock()
 
 
@@ -327,7 +328,7 @@ static func wait_parts() -> void:
 	_parts_tasks.clear()
 	_parts_mutex.unlock()
 	for t in tasks:
-		WorkerThreadPool.wait_for_task_completion(t)
+		BgTasks.wait(t)
 
 
 ## Roues sur leurs axes et pédalier sur le boîtier ; le reste du vélo est un seul maillage fixe.

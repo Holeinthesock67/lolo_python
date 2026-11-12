@@ -1,5 +1,5 @@
 {
-  "description": "Contenus de départ depuis Réglages › Contenus (lot O25) : état « à installer », installation par A maintenu sans rien écraser, compte rendu, entraînements, plans et parcours de démonstration présents, listes rechargées.",
+  "description": "Contenus de départ depuis Réglages › Contenus (lot O25) : état « à installer », installation par A maintenu sans rien écraser, compte rendu, entraînements, plans et parcours de démonstration et piste du vélodrome présents, listes rechargées.",
   "fichiers": {"OpenRide/Workouts/endurance_60.zwo": "<workout_file><name>Mon endurance</name><workout><SteadyState Duration=\"600\" Power=\"0.6\"/></workout></workout_file>"},
   "etapes": [
     {"ecran": "home", "delai": 15},
@@ -14,11 +14,12 @@
     {"fichier": "OpenRide/Plans/reprise_4_semaines.toml", "existe": true},
     {"fichier": "OpenRide/Workouts/vo2_5x3.zwo", "existe": true},
     {"fichier": ".local/share/openride/routes/demo-biomes-alpin.world/manifest.json", "existe": true},
+    {"fichier": ".local/share/openride/routes/velodrome-250.world/manifest.json", "existe": true},
     {"journal": "core", "motif": "Contenu « starter » : Ajouté"},
     {"appui": "Y_SHORT"},
     {"ecran": "settings", "focus": "contents"},
     {"appui": "Y_SHORT"},
     {"choisir": "world"},
-    {"ecran": "routes", "contient": ["demo-biomes-alpin"], "delai": 10}
+    {"ecran": "routes", "contient": ["Montée alpine"], "delai": 10}
   ]
 }

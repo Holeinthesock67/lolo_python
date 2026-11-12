@@ -71,6 +71,8 @@ var biome_model = null
 var near_water := Callable()
 ## Maillages et matériaux par espèce, construits à la première rencontre : { index: {lod0, lod1, m0, m1} }.
 var _species := {}
+## Hiver (lot P18, `set_winter`) : feuillus de TreeSpecies.WINTER_BRANCHES dessinés avec leur charpente de branches.
+var winter := false
 
 ## { tile_key: { cell_idx: { lod0: MultiMeshInstance3D, lod1: MultiMeshInstance3D, count: int, center: Vector3 } } }
 var _tiles: Dictionary = {}
@@ -131,6 +133,27 @@ func set_preset(preset_name: String, living_enabled: bool = true) -> void:
 			(_shadow_mmis[species] as MultiMeshInstance3D).material_override = _look(int(species))["m0"]
 
 
+## Maillage proche d'une espèce selon la saison : charpente de branches l'hiver (lot P18).
+func _lod0_of(look: Dictionary) -> Mesh:
+	return look.get("lod0_bare", look["lod0"]) if winter else look["lod0"]
+
+
+## Saisons (lot P18) : vrai dès qu'une part des feuillus est dénudée (`season_model.params` `bare` > 0) ; les
+## maillages proches des feuillus de TreeSpecies.WINTER_BRANCHES prennent leur charpente, sans rien reconstruire.
+func set_winter(on: bool) -> void:
+	if on == winter:
+		return
+	winter = on
+	for tile_cells in _tiles.values():
+		for cell_info in tile_cells.values():
+			for part in cell_info["parts"]:
+				var mmi := part["lod0"] as MultiMeshInstance3D
+				if mmi != null and mmi.multimesh != null:
+					mmi.multimesh.mesh = _lod0_of(_look(int(part["species"])))
+	for species in _shadow_mmis:   # arbres « ombre seule » : même maillage que les arbres affichés
+		(_shadow_mmis[species] as MultiMeshInstance3D).multimesh.mesh = _lod0_of(_look(int(species)))
+
+
 func is_tree_sway() -> bool:
 	return _tree_sway
 
@@ -169,13 +192,18 @@ func _look(index: int) -> Dictionary:
 			for m in [m0, m1]:
 				(m as ShaderMaterial).set_shader_parameter("sway_height_m", float(built["height"]))
 				(m as ShaderMaterial).set_shader_parameter("lod_blend_m", SPECIES_LOD_BLEND_M)
+				# Saisons (lot P18) : feuillage d'automne et arbres dénudés l'hiver pour les espèces caduques
+				(m as ShaderMaterial).set_shader_parameter("deciduous", TreeSpecies.is_deciduous(TreeSpecies.kind_of(index)))
+			# De loin (panneaux croisés), un feuillu nu garde une couronne de rameaux gris-brun au lieu de disparaître
+			(m1 as ShaderMaterial).set_shader_parameter("bare_as_twigs", true)
 			(m0 as ShaderMaterial).set_shader_parameter("shadow_end_m", shadow_end_m)
 			var switch_m := TreeSpecies.lod0_m(TreeSpecies.kind_of(index))
 			if switch_m > 0.0:
 				# Passage touffe par touffe (tree_sway.gdshader) : modèle proche jusqu'à switch_m, lointain au-delà.
 				(m0 as ShaderMaterial).set_shader_parameter("lod_end_m", switch_m)
 				(m1 as ShaderMaterial).set_shader_parameter("lod_begin_m", switch_m)
-		_species[index] = {"lod0": built["lod0"], "lod1": built["lod1"], "m0": m0, "m1": m1}
+		_species[index] = {"lod0": built["lod0"], "lod1": built["lod1"], "m0": m0, "m1": m1,
+			"lod0_bare": built.get("lod0_bare", built["lod0"]) if _tree_sway else built["lod0"]}
 	return _species[index]
 
 
@@ -447,7 +475,7 @@ func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
 	var mm0 := MultiMesh.new()
 	mm0.transform_format = MultiMesh.TRANSFORM_3D
 	mm0.use_colors = true
-	mm0.mesh = look["lod0"]
+	mm0.mesh = _lod0_of(look)
 	mm0.instance_count = count
 	var mm1 := MultiMesh.new()
 	mm1.transform_format = MultiMesh.TRANSFORM_3D
@@ -602,7 +630,7 @@ func _set_shadow_casters(species: int, buf: PackedFloat32Array) -> void:
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
 		mm.use_colors = true
-		mm.mesh = look["lod0"]
+		mm.mesh = _lod0_of(look)
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
 		mmi.material_override = look["m0"]

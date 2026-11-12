@@ -4,11 +4,11 @@ extends RefCounted
 ## partagés par le chargeur de thèmes, la couche biome et le modèle de biome.
 ## Pas de class_name : charger par preload("res://scripts/biome_ids.gd").
 
-## Les seize biomes du lot U0, dans l'ordre de la liste définitive.
+## Les seize biomes du lot U0, dans l'ordre de la liste définitive, puis `japan` (lot JP1, version 6.0).
 const BIOMES: Array[String] = [
 	"temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
 	"polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
-	"wetland", "coast", "volcanic",
+	"wetland", "coast", "volcanic", "japan",
 ]
 
 const DEFAULT_BIOME := "temperate_grassland"
@@ -18,7 +18,7 @@ const GROUND_VARIANTS: Array[String] = [
 	"gres_rose", "calcaire_blanc", "granite_gris", "schiste_sombre", "basalte", "laterite_rouge", "craie",
 ]
 const ROOF_VARIANTS: Array[String] = [
-	"tuile_ronde", "ardoise", "tuile_plate", "pierre_seche", "toit_plat_blanc", "bois",
+	"tuile_ronde", "ardoise", "tuile_plate", "pierre_seche", "toit_plat_blanc", "bois", "kawara",
 ]
 
 ## Espèces de `vegetation.species` (lot U7).

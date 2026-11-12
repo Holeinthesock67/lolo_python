@@ -5,6 +5,7 @@ Construit les réponses aux commandes `list_routes` et `list_workouts`, avec lim
 ERG limités à 30 triplets. Révision 1.3 (lot O12) : fiche des parcours (`stats`, `library`),
 `unit` des entraînements, message `plans` (réponse à `list_plans`, `start_plan`, `stop_plan`).
 Révision 1.5 (lot O28) : messages `history` et `history_session` (historique du menu).
+Révision 1.12 (lot CO3) : message `coach` (séance conseillée, réponse à `get_coach` et aux saisies du conseil).
 """
 
 from __future__ import annotations
@@ -340,6 +341,8 @@ def summary_extras(records: list[dict[str, Any]], events: list[dict[str, Any]],
         "max_power_w": round(max(powers), 1) if powers else None,
         "blocks": blocks,
         "blocks_truncated": blocks_truncated,
+        # Lot N20 (révision 1.10) : courbe réduite de la puissance pour le graphique du bilan.
+        "power_profile": res.get("power_profile") if res else None,
         # Lot AS5 (révision 1.5) : temps dans la roue et énergie économisée, seulement avec des bots.
         **({k: res[k] for k in ("draft_time_s", "draft_kj")} if res and "draft_time_s" in res else {}),
     }
@@ -348,21 +351,32 @@ def summary_extras(records: list[dict[str, Any]], events: list[dict[str, Any]],
 # --- historique (lot O28, révision 1.5) ------------------------------------------------------
 
 MAX_HISTORY_SESSIONS = 60
+MAX_HISTORY_CARDS = 8   # cartes posées sur une séance de l'historique (lot BC6)
 MAX_HISTORY_WEEKS = 8
 MAX_HISTORY_FTP_TESTS = 20
 HISTORY_SESSION_KEYS = ("date", "route", "duration_s", "distance_m", "elevation_gain_m", "avg_power_w",
                         "np_w", "if", "tss", "status", "workout")
 
 
-def build_history_message(request_cmd_id: int, ftp_w: float, activities_dir: Path) -> dict[str, Any]:
+def build_history_message(request_cmd_id: int, ftp_w: float, activities_dir: Path,
+                          earned: list[tuple[float, str]] | None = None) -> dict[str, Any]:
     """Réponse à `list_history` : séances, cumul par semaine et tests de FTP, calculés comme
-    `openride-core history` et `ftp-test --history` (mêmes arrondis, même cache)."""
+    `openride-core history` et `ftp-test --history` (mêmes arrondis, même cache). `earned` : cartes de la
+    collection gagnées (début de la séance, clé), posées sur leur séance (`cards`, révision 1.8, lot BC6)."""
     from . import ftp_test
-    from .tools.history import compute_history
+    from .tools.history import MATCH_TOLERANCE_S, compute_history
 
     hist = compute_history(activities_dir, ftp=ftp_w, weeks=MAX_HISTORY_WEEKS)
-    sessions = [{"id": s["filename"], **{k: s[k] for k in HISTORY_SESSION_KEYS}}
-                for s in hist["sessions"] if s["status"] != "error"]
+    sessions = []
+    for s in hist["sessions"]:
+        if s["status"] == "error":
+            continue
+        entry = {"id": s["filename"], **{k: s[k] for k in HISTORY_SESSION_KEYS}}
+        start = s.get("start_ts")
+        keys = [k for ts, k in earned or [] if start is not None and abs(ts - start) <= MATCH_TOLERANCE_S]
+        if keys:
+            entry["cards"] = keys[:MAX_HISTORY_CARDS]
+        sessions.append(entry)
     unreadable = sum(1 for s in hist["sessions"] if s["status"] == "error")
     tests = []
     for _path, r in reversed(ftp_test.find_results(activities_dir / ".journal")):
@@ -409,6 +423,28 @@ def build_history_session(request_cmd_id: int, session_id: str, path: Path, ftp_
     }
     return {"type": "history_session", "v": 1, "request_cmd_id": request_cmd_id, "id": session_id,
             "summary": summary}
+
+
+COACH_WORKOUT_KEYS = ("id", "name", "need", "dominant_zone", "tss_estimate")
+
+
+def _coach_workout(w: dict[str, Any] | None) -> dict[str, Any] | None:
+    if w is None:
+        return None
+    return {**{k: w[k] for k in COACH_WORKOUT_KEYS}, "duration_s": int(w["duration_min"]) * 60}
+
+
+def build_coach_message(request_cmd_id: int, advice: dict[str, Any]) -> dict[str, Any]:
+    """Message `coach` (lot CO3) depuis le conseil de `coach.advice_today` : mêmes clés que
+    `openride-core coach --json`, durées en secondes ; `route` : séance de jeu calibrée (lot CO9) ou null."""
+    workout = _coach_workout(advice["workout"])
+    return {"type": "coach", "v": 1, "request_cmd_id": request_cmd_id, "date": advice["date"],
+            "need": advice["need"], "need_label": advice["need_label"], "rule": advice["rule"],
+            "reason": advice["reason"], "duration_s": int(advice["duration_min"]) * 60,
+            "tss_estimate": workout["tss_estimate"] if workout else None,
+            "notes": list(advice["notes"]), "alternatives": list(advice["alternatives"]),
+            "workout": workout, "other_workouts": [_coach_workout(w) for w in advice["other_workouts"]],
+            "route": advice.get("route"), "details": advice["details"]}
 
 
 # --- collection de cartes (série BC, lot BC2, contrat IPC révision 1.8) -----------------------
@@ -479,6 +515,24 @@ def build_collection_message(request_cmd_id: int, profile_ctx: Any,
         ],
         "new": [e.key for e in new_cards(col, seen)],
     }
+
+
+def collection_earned(profile_ctx: Any, journal_dir: Path | None = None,
+                      table_path: Path | None = None, now: float | None = None) -> list[tuple[float, str]]:
+    """Cartes gagnées du profil en cours, (début de la séance, clé), pour l'historique (lot BC6)."""
+    from .collection import evaluate, load_catalogue
+    from .config import WORKOUTS_DIR
+    from .garage import CACHE_NAME, workout_duration_finder
+    from .progression import FactsCache, load_table, recompute
+
+    journal_dir = journal_dir or profile_ctx.journal_dir
+    table_path = table_path or getattr(profile_ctx, "table_path", None)
+    table = load_table(table_path)
+    progress = recompute(journal_dir, table, workout_duration_finder(WORKOUTS_DIR),
+                         cache=FactsCache(journal_dir / CACHE_NAME),
+                         counted=profile_ctx.counted_sources, owns=profile_ctx.owns)
+    col = evaluate(progress, load_catalogue(table=table), table, now=now)
+    return [(e.start_ts, e.key) for e in col.earned if e.start_ts is not None]
 
 
 def record_collection_seen(profile_ctx: Any, keys: list[str],

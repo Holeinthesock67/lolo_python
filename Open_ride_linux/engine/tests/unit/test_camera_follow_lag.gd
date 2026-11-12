@@ -30,14 +30,15 @@ func _init() -> void:
 
 ## Roule `seconds` à v m/s : trames du core toutes les `frame_ms` (groupées par `burst`), images toutes les
 ## `image_ms`, chaque trame reçue juste avant l'image qui suit ; renvoie {lag, back, jump} au pire.
-func _ride(frame_ms: float, image_ms: float, burst: int, seconds: float, v: float) -> Dictionary:
+## `dir` = -1 : à rebours après un demi-tour (lot N17), de s0 vers le départ ; écarts comptés dans le sens de la marche.
+func _ride(frame_ms: float, image_ms: float, burst: int, seconds: float, v: float, dir := 1, s0 := 0.0) -> Dictionary:
 	var f = CameraFollow.new()
 	var t_core := 0.0          # s, horloge du core
 	var pending: Array = []    # trames émises pas encore reçues
 	var t_img := 0.0
-	var shown := 0.0
+	var shown := s0
 	var worst := {"lag": 0.0, "back": 0.0, "jump": 0.0}
-	f.push_frame(0, 0.0, v, true)
+	f.push_frame(0, s0, v, true, dir)
 	var next_frame := frame_ms / 1000.0
 	while t_img < seconds:
 		t_img += image_ms / 1000.0
@@ -48,13 +49,13 @@ func _ride(frame_ms: float, image_ms: float, burst: int, seconds: float, v: floa
 		if pending.size() >= burst:
 			var now_us := int(t_img * 1e6) - 1000
 			for t in pending:
-				f.push_frame(now_us, v * t, v, true)
+				f.push_frame(now_us, s0 + dir * v * t, v, true, dir)
 			pending.clear()
 		var s: float = f.update(int(t_img * 1e6))
 		if t_img > 2.0:   # régime établi
-			worst["lag"] = maxf(worst["lag"], v * t_img - s)
-			worst["back"] = maxf(worst["back"], shown - s)
-			worst["jump"] = maxf(worst["jump"], s - shown)
+			worst["lag"] = maxf(worst["lag"], dir * (s0 + dir * v * t_img - s))
+			worst["back"] = maxf(worst["back"], dir * (shown - s))
+			worst["jump"] = maxf(worst["jump"], dir * (s - shown))
 		shown = s
 	return worst
 
@@ -66,6 +67,16 @@ func _run() -> void:
 		_check(w["lag"] < 0.5, "%s : retard au plus %.2f m (< 0,5 m)" % [case[3], w["lag"]])
 		_check(w["back"] <= 0.0001, "%s : jamais de recul" % case[3])
 		_check(w["jump"] < 1.0, "%s : pas de saut (%.2f m par image au plus)" % [case[3], w["jump"]])
+	# Lot N17 : à rebours, même suivi dans l'autre sens ; demi-tour en pause : position calée sur la trame.
+	var rev: Dictionary = _ride(60.0, 66.0, 1, 20.0, 5.5, -1, 3000.0)
+	_check(rev["lag"] < 0.5 and rev["back"] <= 0.0001 and rev["jump"] < 1.0,
+		"à rebours : retard %.2f m, recul %.4f m, saut %.2f m" % [rev["lag"], rev["back"], rev["jump"]])
+	var g = CameraFollow.new()
+	g.push_frame(0, 3000.0, 0.0, false, 1)
+	g.push_frame(100000, 3000.0, 0.0, false, -1)
+	g.push_frame(200000, 3000.0, 8.0, true, -1)
+	_check(g.direction == -1 and g.update(700000) < 3000.0 - 3.0, "après le demi-tour, l'extrapolation va vers le départ")
+	_check(main_code_has_reverse_heading(), "main.gd : cap retourné à rebours (caméra et avatar)")
 	# main.gd : bots placés avant le décor vivant, qui compte les contacts avec les places de cette image.
 	var main_code := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var bots_at := main_code.find("_show_bots(s_route,")
@@ -82,6 +93,11 @@ func _run() -> void:
 		"main.gd : bots de l'image extrapolés à l'instant `now` du cycliste")
 	_check(main_code.contains("follow.push_frame(t_frame_us,") and main_code.contains("else null, t_frame_us)"),
 		"main.gd : cycliste et bots d'une trame reçus à la même heure")
+
+
+func main_code_has_reverse_heading() -> bool:
+	var code := FileAccess.get_file_as_string("res://scripts/main.gd")
+	return code.contains("route.sample_heading_deg(s_route)) + (PI if dir < 0 else 0.0)")
 
 
 ## Cycliste (camera_follow.gd) et bot (bots_view_model.gd) à 9,5 m/s, le bot 1,78 m derrière dans chaque trame

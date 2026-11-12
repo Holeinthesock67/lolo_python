@@ -31,6 +31,69 @@ def _f(x, nd=0, unit=""):
     return "n/d" if x is None else f"{x:.{nd}f}{unit}"
 
 
+# ---------- Sortie longue du dimanche : meilleur créneau météo (règle de Laurent) ----------
+# Home trainer si brouillard, bruine, pluie > 1 mm, neige/orage ou température < 9 °C sur le créneau ;
+# entre 9 et 13 °C, dehors seulement par grand soleil (nuages ≤ 25 % en moyenne) ; à 13 °C et plus, dehors.
+FOG, DRIZZLE = {45, 48}, {51, 53, 55, 56, 57}
+SNOW_STORM = {66, 67, 71, 73, 75, 77, 85, 86, 95, 96, 99}
+RIDE_H, FIRST_START, LAST_START = 2, 9, 14          # 2 h de vélo, départ entre 9 h et 14 h (fini avant la nuit)
+T_MIN, T_SUN, SUN_CLOUD, RAIN_MAX = 9, 13, 25, 1.0
+
+
+def ride_window(rows):
+    """rows : heures du créneau (temp_c, precip_mm, weather_code, cloud_pct). -> dict avec verdict et raisons."""
+    temps = [r["temp_c"] for r in rows if r["temp_c"] is not None]
+    clouds = [r["cloud_pct"] for r in rows if r["cloud_pct"] is not None]
+    codes = [r["weather_code"] for r in rows]
+    w = dict(tmin=min(temps) if temps else None, tmax=max(temps) if temps else None,
+             rain=round(sum(r["precip_mm"] or 0 for r in rows), 1),
+             cloud=round(sum(clouds) / len(clouds)) if clouds else None,
+             fog=sum(c in FOG for c in codes), drizzle=sum(c in DRIZZLE for c in codes),
+             storm=sum(c in SNOW_STORM for c in codes))
+    why = []
+    if w["fog"]: why.append(f"brouillard {w['fog']} h")
+    if w["drizzle"]: why.append(f"bruine {w['drizzle']} h")
+    if w["storm"]: why.append("neige, verglas ou orage")
+    if w["rain"] > RAIN_MAX: why.append(f"pluie {_f(w['rain'], 1)} mm")
+    if w["tmin"] is None: why.append("température inconnue")
+    elif w["tmin"] < T_MIN: why.append(f"{_f(w['tmin'])} °C, sous {T_MIN} °C")
+    elif w["tmin"] < T_SUN and (w["cloud"] is None or w["cloud"] > SUN_CLOUD):
+        why.append(f"{_f(w['tmin'])}–{_f(w['tmax'])} °C sans grand soleil (nuages "
+                   f"{'inconnus' if w['cloud'] is None else str(w['cloud']) + ' %'})")
+    w.update(outside=not why, why=why)
+    return w
+
+
+def sunday_section(con, today):
+    sunday = today + timedelta(days=(6 - today.weekday()) % 7)
+    if (sunday - today).days > 1:          # le coach n'en parle que le samedi et le dimanche
+        return []
+    best = None
+    for start in range(FIRST_START, LAST_START + 1):
+        rows = con.execute("SELECT temp_c, precip_mm, weather_code, cloud_pct FROM weather_hourly "
+                           "WHERE ts>=? AND ts<? ORDER BY ts",
+                           (f"{sunday}T{start:02d}:00", f"{sunday}T{start + RIDE_H:02d}:00")).fetchall()
+        if len(rows) < RIDE_H:
+            continue
+        w = ride_window(rows)
+        w["start"] = start
+        key = (w["outside"], -len(w["why"]), w["tmin"] or -99, -(w["cloud"] if w["cloud"] is not None else 100))
+        if best is None or key > best[0]:
+            best = (key, w)
+    L = ["", f"## Sortie longue du dimanche {sunday.isoformat()} (meilleur créneau de {RIDE_H} h, départ {FIRST_START} h–{LAST_START} h)"]
+    if not best:
+        return L + ["- Prévisions horaires indisponibles : décider le matin même."]
+    w = best[1]
+    L.append(f"- Meilleur créneau : {w['start']} h–{w['start'] + RIDE_H} h · {_f(w['tmin'])}–{_f(w['tmax'])} °C · "
+             f"pluie {_f(w['rain'], 1)} mm · nuages {'n/d' if w['cloud'] is None else str(w['cloud']) + ' %'} · "
+             f"brouillard {w['fog']} h · bruine {w['drizzle']} h")
+    L.append("- Verdict météo : **dehors possible**" if w["outside"]
+             else "- Verdict météo : **home trainer** (" + ", ".join(w["why"]) + ")")
+    L.append(f"  (règle : home trainer si brouillard, bruine, pluie > {RAIN_MAX:g} mm ou < {T_MIN} °C ; "
+             f"{T_MIN}–{T_SUN} °C seulement par grand soleil, nuages ≤ {SUN_CLOUD} %)")
+    return L
+
+
 def snapshot(con, today=None, k_sd=0.75, place=None):
     today = today or date.today()
     iso = lambda d: d.isoformat()
@@ -134,6 +197,7 @@ def snapshot(con, today=None, k_sd=0.75, place=None):
     L += ["", f"## Météo à venir ({place})" if place else "## Météo à venir"]
     for w in con.execute("SELECT * FROM v_weather_daily WHERE day>=? ORDER BY day LIMIT 4", (iso(today),)):
         L.append(f"- {w['day']} : {_f(w['tmin'])}–{_f(w['tmax'])} °C, pluie {_f(w['precip_mm'], 1)} mm, vent max {_f(w['wind_max_kmh'])} km/h")
+    L += sunday_section(con, today)
     return "\n".join(L) + "\n"
 
 

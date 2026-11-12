@@ -36,6 +36,11 @@ signal plans_received(msg: Dictionary)
 ## Historique (lot O28, contrat 1.5) : réponse à list_history et bilan d'une séance (history_session).
 signal history_received(msg: Dictionary)
 signal history_session_received(msg: Dictionary)
+## Collection de cartes (série BC, lot BC5, contrat 1.6) : réponse à list_collection.
+signal collection_received(msg: Dictionary)
+## Séance conseillée (série CO, lot CO5, contrat 1.12) : réponse à get_coach, set_next_race, clear_next_race,
+## set_watch_advice et clear_watch_advice.
+signal coach_received(msg: Dictionary)
 
 ## Monde ouvert (lot W10, contrat 1.5) : avancement de la préparation du monde (`world_status`).
 signal world_status_received(msg: Dictionary)
@@ -49,6 +54,9 @@ signal segment_result_received(msg: Dictionary)
 ## Dernier survivant (révision 1.5, lot DS2) : une élimination, répétée 3 fois par le core (doublons écartés par
 ## survivor_hud_model.gd).
 signal elimination_received(msg: Dictionary)
+## Grand Prix des objets (révision 1.7, lot GP2) : un coureur touché par un objet, répété 3 fois par le core
+## (doublons écartés par grandprix/gp_scene_model.gd).
+signal gp_hit_received(msg: Dictionary)
 ## Garage (lots V3/V7, contrat 1.4) : `garage_received` une fois toutes les parties arrivées (éléments
 ## réunis) ; `progression_received` après chaque succès du Garage.
 signal garage_received(items: Array)
@@ -72,7 +80,7 @@ const EngineArgs := preload("res://scripts/engine_args.gd")
 
 const CONTRACT_VERSION := 1
 ## Révision du contrat annoncée dans hello (champ facultatif rev, révision 1.3).
-const CONTRACT_REV := "1.6"   # série T (T8, T9), monde ouvert (W10 à W12) et peloton (PL1) lus
+const CONTRACT_REV := "1.7"   # série T (T8, T9), monde ouvert (W10 à W12), peloton (PL1) lus ; objet `track` (VD6) annoncé, affiché au lot VD9 ; de la 1.9, `dir` et `u_turn` (lot N17) déjà lus
 ## Version de l'engine, lue dans project.godot (source unique : fichier VERSION, lot O2).
 var engine_version: String = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 const SERVER_HOST := "127.0.0.1"
@@ -121,6 +129,11 @@ var _pending_list_routes: Dictionary = {}
 var _pending_list_workouts: Dictionary = {}
 var _pending_list_imports: Dictionary = {}
 var _pending_list_route_imports: Dictionary = {}
+## Commande du conseil en attente de son message `coach` (lot CO5) : {name, args, cmd_ids, retries, timer}.
+## Le message `coach` est une grande trame UDP qui peut se perdre : même commande renvoyée (elles sont
+## toutes idempotentes) toutes les 3 s, 3 fois au plus ; le calcul du conseil prend jusqu'à 2 s.
+const COACH_RETRY_S := 3.0
+var _pending_coach: Dictionary = {}
 var _hello_acked := false
 ## Hello demandés au fil d'horloge (contrat §5) ; _hello_now : envoyer dès son prochain tour.
 var _hello_lock := Mutex.new()
@@ -254,6 +267,7 @@ func _process(delta: float) -> void:
 		"Aucune réponse pour les fichiers à importer après 3 tentatives", delta)
 	_tick_list(_pending_list_route_imports, "list_route_imports", "route_imports",
 		"Aucune réponse pour les traces à importer après 3 tentatives", delta)
+	_tick_coach(delta)
 
 	_resend_pending(now)
 
@@ -290,10 +304,7 @@ func _poll_incoming() -> void:
 				test_log("hello_ack config=%s" % JSON.stringify(core_config))
 				hello_ack_received.emit(json_obj)
 			"error":
-				var code := str(json_obj.get("code", ""))
-				var message := str(json_obj.get("message", ""))
-				print("Erreur du core : ", code, " : ", message)
-				error_received.emit(code, message)
+				_on_error(str(json_obj.get("code", "")), str(json_obj.get("message", "")))
 			"shutdown":
 				print("Le core s'est arrêté ; retour à l'attente.")
 				test_log("shutdown")
@@ -319,6 +330,10 @@ func _poll_incoming() -> void:
 				history_received.emit(json_obj)
 			"history_session":
 				history_session_received.emit(json_obj)
+			"collection":
+				collection_received.emit(json_obj)
+			"coach":
+				_on_coach(json_obj)
 			"world_status":
 				world_status = json_obj
 				world_status_received.emit(json_obj)
@@ -332,6 +347,8 @@ func _poll_incoming() -> void:
 				segment_result_received.emit(json_obj)
 			"elimination":
 				elimination_received.emit(json_obj)
+			"gp_hit":
+				gp_hit_received.emit(json_obj)
 			"garage":
 				_on_garage_part(json_obj)
 			"progression":
@@ -535,9 +552,54 @@ func list_workouts() -> int:
 	return cmd_id
 
 
+## Séance conseillée (lot CO5, contrat 1.12) : get_coach, set_next_race, clear_next_race, set_watch_advice ou
+## clear_watch_advice. Réponse : signal coach_received (seule la dernière demande compte), relancée sans réponse.
+func coach_command(cmd_name: String, args: Dictionary = {}) -> int:
+	var cmd_id := send_command(cmd_name, args)
+	_pending_coach.clear()
+	_pending_coach.merge({"name": cmd_name, "args": args, "cmd_ids": [cmd_id], "retries": 0, "timer": 0.0})
+	return cmd_id
+
+
+func _on_error(code: String, message: String) -> void:
+	if code == "bad_args":
+		_pending_coach.clear()   # saisie du conseil refusée : la renvoyer ne changerait rien
+	print("Erreur du core : ", code, " : ", message)
+	error_received.emit(code, message)
+
+
+## Message `coach` : émis s'il répond à la demande en cours (ou sans demande en cours), ignoré s'il répond
+## à une demande remplacée depuis.
+func _on_coach(msg: Dictionary) -> void:
+	if _pending_coach.is_empty() or int(msg.get("request_cmd_id", -1)) in _pending_coach["cmd_ids"]:
+		_pending_coach.clear()
+		coach_received.emit(msg)
+
+
+func _tick_coach(delta: float) -> void:
+	if _pending_coach.is_empty():
+		return
+	_pending_coach["timer"] = float(_pending_coach["timer"]) + delta
+	if _pending_coach["timer"] < COACH_RETRY_S:
+		return
+	_pending_coach["timer"] = 0.0
+	_pending_coach["retries"] = int(_pending_coach["retries"]) + 1
+	if _pending_coach["retries"] > LIST_MAX_RETRIES:
+		_pending_coach.clear()
+		list_failed.emit("coach", "Aucune réponse pour la séance conseillée après 3 tentatives")
+		return
+	test_log("coach_retry name=%s retries=%d" % [_pending_coach["name"], _pending_coach["retries"]])
+	_pending_coach["cmd_ids"].append(send_command(str(_pending_coach["name"]), _pending_coach["args"]))
+
+
 ## Modifie la difficulté du trainer pendant la séance (lot Q1, contrat v1.2).
 func send_set_difficulty(pct: int) -> int:
 	return send_command("set_difficulty", {"pct": pct})
+
+
+## Bots de la séance changés sur l'écran de pause (lot N18, contrat 1.9) : même liste que `bots` de `start`.
+func send_set_bots(bots: Array) -> int:
+	return send_command("set_bots", {"bots": bots})
 
 
 ## Compose une run du Cyber-Rogue (lot R13, contrat 1.4) : objective, duration_min, seed, w_prime_j, chassis.
@@ -613,6 +675,17 @@ func list_plans() -> int:
 ## Historique du profil en cours (lot O28, contrat 1.5). Réponse : signal history_received.
 func list_history() -> int:
 	return send_command("list_history", {})
+
+
+## Collection de cartes du profil en cours (lot BC5). Réponse : collection_received.
+func list_collection() -> int:
+	return send_command("list_collection", {})
+
+
+## Cartes montrées au joueur (clés « id » ou « id:année »), notées dans collection_vue.json du profil ;
+## pas de réponse (clé inconnue : error bad_args).
+func collection_seen(keys: Array) -> int:
+	return send_command("collection_seen", {"keys": keys})
 
 
 ## Bilan d'une séance de l'historique (`id` du message `history`). Réponse : history_session_received, ou error bad_args.

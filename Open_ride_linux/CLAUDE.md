@@ -37,7 +37,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 | Dossier | Programme | Rôle |
 | --- | --- | --- |
 | `core/` | `openride-core` (Python, asyncio, bleak) | BLE (HomeTrainer, Click), physique à 50 Hz, braquets, journal, FIT, serveur IPC UDP (état à 30 Hz sur le port 5005, commandes sur le port 5006) |
-| `compiler/` | `openride-compiler` (Python, numpy, scipy, pyproj, rasterio) | GPX vers dossier `.world` : couche route et couche terrain (MNT Copernicus GLO-30 mis en cache dans `~/.cache/openride/dem/`) |
+| `compiler/` | `openride-compiler` (Python, numpy, scipy, pyproj, rasterio) | GPX vers dossier `.world` : couche route, couche terrain (MNT Copernicus GLO-30 mis en cache dans `~/.cache/openride/dem/`) et couche biome (ESA WorldCover 2021 en cache dans `~/.cache/openride/landcover/`, lot U2) |
 | `engine/` | Godot 4.7 (GDScript) | Rendu, HUD, caméra interpolée et extrapolée, bips des appuis |
 
 **Modules clés du core** (`core/src/openride_core/`) :
@@ -49,7 +49,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `recorder.py` : journal, mémoire, FIT ;
 - `route.py`, `catalog.py` : lecture des `.world`, interpolation et catalogue des parcours (`.world` et `.gpx`) ;
 - `route_stats.py` : fiches des parcours (dénivelé, montée principale, durée, difficulté, fiche `.toml`), tri et filtres du catalogue (lot O15) ; copie exacte dans le compilateur ;
-- `demo_world.py` : parcours de démonstration ;
+- `demo_world.py` : parcours de démonstration (`demo`, « Col du lacet » au menu) ; ceux des biomes viennent du compilateur (`openride_compiler.demo_biomes`, lot O37 : noms de parcours du jeu de base, variante `--recette` aux noms techniques pour les bancs) ;
 - `synthetic_terrain.py` : couche terrain synthétique (démonstration et parcours d'essai) ;
 - `workout.py`, `workout_formats.py` : lecture des `.zwo`, des `.erg` et `.mrc` de GoldenCheetah (lot O9) et contrôleur ERG ; `workout_menu.py` : entraînements créés ou importés depuis le menu ERG, écrits par le core seul (sous-menu ERG, décision D4 de l'audit IPC) ;
 - `start_gate.py` : départ au pédalage (lot O36), module pur : après `start`, la séance attend en `READY` le décor du départ (commande `scene_ready` de l'engine, au plus `[depart] attente_decor_s`), le trainer, puis `[depart] duree_s` secondes à `[depart] cadence_rpm` tr/min ; objet `start_wait` de `state` ; `[depart] mode = "immediat"` ou `run --depart immediat` part tout de suite ;
@@ -66,7 +66,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `contents.py` : contenus installables depuis « Réglages › Contenus » (lot O25, contrat IPC révision 1.5, `list_contents`, `install_content`, message `contents`) : contenus de départ (entraînements livrés, deux plans, parcours de démonstration des biomes), installés sans rien écraser, une installation à la fois dans un fil, seuls au premier lancement (`run --first-run`) ; lot O29 : pack « Cols célèbres » (construit et compilé par le compilateur en sous-processus), archives `.zip` de thèmes, de biomes et de parcours trouvées dans Téléchargements, thèmes installés et place disque ;
 - `world_menu.py` : menu du monde ouvert (lot W11, 2.0) : réponses aux commandes `world_search` (liste embarquée `data/places.json`, puis bases locales, puis Nominatim si `[open_world] network`, à la demande et une requête par seconde au plus), `world_map`, `world_regions` et `world_pin` ; les requêtes sur les bases locales passent par `python -m openride_compiler.worldgen.menu_query` (sous-processus, le core ne dépend pas du compilateur) ; réponses en parties de 60 000 octets (`ipc_lists.build_world_messages`) ;
 - `open_world_save.py` : balade du monde ouvert enregistrée en GPX dans `~/OpenRide/GPX/` à la fin d'une séance de plus de 500 m, et commande `openride-core open-world-save <id>` (lot W14) ;
-- `bots.py` : bots à puissance constante et fantôme d'une séance passée (.fit ou .jsonl) (lot N9) ;
+- `bots.py` : bots à puissance constante et fantôme d'une séance passée (.fit ou .jsonl) (lot N9) ; bots changés sur l'écran de pause (`merge_menu_bots`, commande `set_bots`, ligne `bots` du journal, lot N18) ;
 - `bot_tactics.py` : tactique des bots à profil (lot Y10) : relais, attaques, réponses aux départs, fatigue de longue durée et forme du jour, comportements choisis par mode dans une table (prolongée par le vélodrome, lot VD7) ;
 - `traffic.py` : circulation de la route calculée par le core (lot AS6, 2.0, module pur) : portage de `traffic_model.gd` (même tirage, vecteurs partagés `engine/tests/data/traffic_slots_vectors.json`, `tools/traffic_vectors.py`), véhicule lent devant, abri derrière un véhicule et aspiration au dépassement, liste `vehicles` de `state` ;
 - `progression.py` : expérience, niveaux et défis de la série V recalculés depuis le journal, tables dans `data/progression.toml` (lot V2) ;
@@ -77,9 +77,11 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `equipment.py` : catalogue d'équipement, effets bornés sur `PhysicsParams`, conseil par terrain et temps gagné par l'équipement (lot V3) ;
 - `garage.py` : progression branchée dans la séance (profil, équipement appliqué à la physique, commandes du Garage, bilan `xp_result`) (lot V11) ;
 - `coins.py` : pièces (gains, solde recalculé, état des pièces, achats, vies du mode Cyber-Rogue) (lot V3b) ;
-- `coach.py` : séance conseillée (série CO, lot CO1, plan `docs/5.0/PLAN_SERIE_CO.md`) : besoin du jour (aérobie léger, aérobie intense, anaérobie, récupération, test de FTP) et sa raison, depuis l'historique du profil (répartition sur 4 semaines, CTL/ATL, dernière séance dure, profil de puissance, âge de la FTP), règles RG (suggestion de la montre Garmin) et R0 à R7, seuils dans `data/coach.toml`, commande `openride-core coach` ; entraînements classés par besoin et choisis pour le conseil (lot CO2) ; suggestion de la montre gardée pour la journée dans `conseil.json` du profil (lot CO8) ;
+- `coach.py` : séance conseillée (série CO, lot CO1, plan `docs/5.0/PLAN_SERIE_CO.md`) : besoin du jour (aérobie léger, aérobie intense, anaérobie, récupération, test de FTP) et sa raison, depuis l'historique du profil (répartition sur 4 semaines, CTL/ATL, dernière séance dure, profil de puissance, âge de la FTP), règles RG (suggestion de la montre Garmin) et R0 à R7, seuils dans `data/coach.toml`, commande `openride-core coach` ; entraînements classés par besoin et choisis pour le conseil (lot CO2) ; suggestion de la montre gardée pour la journée dans `conseil.json` du profil (lot CO8)  ; contrat du conseil, commande IPC `get_coach` et prochaine course (lot CO3) ; courses disputées et cause de perte (lot CO6) ;
+- `coach_game.py` : séance de jeu calibrée au besoin (série CO, lot CO9) : formats de `[game]` (`data/coach.toml`), parcours du catalogue simulés avec le cycliste virtuel, proposée si 70 % du temps de l'entraînement équivalent est dans les zones du besoin ;
 - `segments.py` : détection des montées et des sprints d'un parcours, segments manuels (série T, lot T2, module pur).
 - `segment_timing.py` : chronométrage des segments : franchissements interpolés, pauses, boucles, relecture du journal (série T, lot T4, module pur).
+- `velodrome.py` : piste du vélodrome (série VD, lots VD2 et VD3, module pur) : `velodrome-250.world` écrit par le core (`openride-core velodromes`), ligne de mesure en droites, clothoïdes et arcs, relèvement continu (colonne `bank_deg`, 12° à 42°), bois (`wood`), couche `venue.json` ; règle de distance R / (R + h cos θ) selon la hauteur sur la piste, air de la salle (`[velodrome]`), vent coupé.
 - `rogue/` : mode Cyber-Rogue de la 2.0, modules purs : W'bal de Skiba, postures de cadence avec hystérésis et table des valeurs `RogueBalance` (série R, lot R2), lue dans le fichier embarqué `balance.toml` avec surcharge facultative `~/OpenRide/rogue_balance.toml` (lot R7) ; châssis, statistiques de runs recalculées depuis le journal et vies (lot R9) ;
 - `wtf/` : mode « What the fuck » (série WTF, lot WTF1), modules purs : catalogue des treize règles désactivables une à une et fichier `~/OpenRide/wtf.toml`, événements à durée limitée, surprise du chef, chef d'orchestre `WtfMode` qui tire les événements, fait vivre les règles permanentes et combine les effets sous des bornes sûres ;
 - `powerups.py` : bonus légèreté, aérodynamique et puissance, arches, valeurs dans `~/OpenRide/powerups.toml` (série T, lot T6, module pur).
@@ -93,11 +95,12 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `plans.py` : plans d'entraînement sur plusieurs semaines (`~/OpenRide/Plans/`, plan actif, séance du jour, suivi d'après l'historique, import d'un dossier, plan maison composé dans le menu par `create_from_library` (lot O30) ; `openride-core plan`, format `docs/contracts/plan_format_v1.md`, lot O11).
 - `ftp_test.py` : test de FTP par rampe (entraînement `ftp_test:ramp`, le test de 20 min est retiré au lot O19, fin de la rampe, FTP proposée, ligne `ftp_test` du journal, `openride-core ftp-test`, lot O10).
 - `surface_physics.py` : option « gravel », roulement multiplié des routes non revêtues (`[gravel]`, colonne `surface` du parcours ou surface imposée), supplément de pente en SIM sous la borne du vent, transition de 20 m, module pur (lot U21).
-- `wind.py` : vent réglable (calme, fixe, en rafales ou du thème), composante de face et supplément de pente en SIM, module pur (lot P2).
+- `wind.py` : vent réglable (calme, fixe, en rafales, du thème ou météo du jour), composante de face et supplément de pente en SIM, module pur (lot P2).
+- `local_weather.py` : vent de la météo du jour (lot P33) : le lanceur le lit chez Open-Meteo (délai 5 s, positions arrondies à 0,1°) dans un cache de 3 h que le core lit sans réseau ; repli sans vent.
 - `draft.py` : aspiration derrière les bots (courbe exponentielle, effet de file, vent de travers, poussée du bot suivi), module pur (lot P3).
 - `road_cyclists.py` : cyclistes du décor proches calculés par le core (portage de `road_cyclists_model.gd`, même graine), sources d'abri `rider:<id>` et liste `riders` de `state`, module pur (lot AS7).
 
-**Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `segments_layer.py` (couche `segments` et fichier `<trace>.segments.toml`, série T, lot T3), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
+**Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `landcover.py` (WorldCover lu par fenêtres, cache par carré de 0,1°, lot U2), `biomes.py` (classification des biomes, numpy sans entrée-sortie, lot U2), `regional.py` et `data/regional_variants.toml` (variante régionale par tuile, table à grosse maille, lot U4), `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `segments_layer.py` (couche `segments` et fichier `<trace>.segments.toml`, série T, lot T3), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
 
 ## Commandes
 
@@ -137,12 +140,14 @@ python -m openride_core.tools.log_report ~/run_trainer.log
 python -m openride_core.tools.workouts install | list | check FICHIER.zwo --ftp 250
 
 # Parcours
-openride-compiler build trace.gpx      # route + terrain ; puis : verify / info
+openride-compiler build trace.gpx      # route + terrain + biome + segments ; puis : verify / info
+openride-compiler build trace.gpx --biome mediterranean   # impose un biome à tout le parcours (lot U2)
+openride-compiler build trace.gpx --variant basalte,ardoise   # impose la variante régionale de toutes les tuiles (lot U4)
 openride-compiler list                 # liste les parcours (.world et .gpx) et leur statut
-openride-compiler build-all            # compile toutes les traces GPX nouvelles ou modifiées (route,terrain ; --layers pour OSM)
-openride-compiler build trace.gpx --offline --force   # sans réseau, tuiles d'altitude déjà en cache
+openride-compiler build-all            # compile toutes les traces GPX nouvelles ou modifiées (route,terrain,biome,segments ; --layers pour OSM)
+openride-compiler build trace.gpx --offline --force   # sans réseau, tuiles d'altitude et WorldCover déjà en cache
 openride-compiler build trace.gpx --layers route,terrain,buildings,vegetation,poi,water,roads
-openride-compiler add-layer <nom>.world terrain|buildings|vegetation|poi|water|roads|segments  # régénère une couche seule
+openride-compiler add-layer <nom>.world terrain|biome|buildings|vegetation|poi|water|roads|segments  # régénère une couche seule
 openride-compiler theme-check ~/OpenRide/Themes/<nom>  # contrôle un thème (défaut : engine/themes/default/)
 openride-compiler theme-list          # liste les thèmes installés et intégrés ; --json
 openride-compiler theme-install SOURCE # installe un thème depuis un dossier ou .zip ; --force
@@ -171,8 +176,10 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
 
 - **Langue :** commentaires, docstrings, messages de journal et documentation en français ; identifiants en anglais.
 - **Python :** 3.11 minimum, et le code doit tourner en 3.14. Aucune entrée-sortie bloquante dans la boucle du core. Le matériel s'isole derrière des interfaces (`MockDriver` et `FtmsDriver` s'échangent).
+- **Fichiers embarqués des paquets (lot J4) :** les paquets lisent leurs données dans leur dossier `data/` (`Path(__file__).parent / "data"`), pour marcher installés hors du dépôt ; `theme.schema.json`, le `theme.json` par défaut, `core/workouts/` et `core/plans/` y sont **copiés** (les originaux restent la référence) : après un changement d'un original, recopier (la commande est dans le message de `test_packaging.py`, qui compare octet pour octet).
 - **GDScript :** jamais de `class_name` dans les scripts chargés par la scène principale. L'engine est lancé sans passer par l'éditeur, et Godot ne connaît alors pas les `class_name` : utiliser `preload`.
   - Les fonctions globales de Godot masquent les méthodes de même nom : `route_data.gd` utilise `wrap_s`, et non `wrap`.
+  - Référence de l'API : en cas de doute sur une classe, une méthode ou une propriété, consulter la référence générée par le binaire utilisé (4.7.2, celui de la CI et du PC) plutôt que la mémoire ou la documentation en ligne d'une autre version : `$GODOT --headless --doctool /tmp/godot-doc` (quelques secondes, 1 076 classes), puis `grep` dans `/tmp/godot-doc/doc/classes/*.xml` (hors du dépôt, rien à ajouter à Git). Pas de serveur MCP ni d'addon d'éditeur : l'engine se construit par le code et se teste en ligne de commande.
 - **Tests :**
   - chaque correction ou fonction a son test ;
   - le matériel se simule avec les doublures de `core/tests/test_drivers_session.py` (`FakeClient`, `fake_finder`) et `MockDriver` ;

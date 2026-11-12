@@ -92,6 +92,7 @@ EXTRA_COLS = {
         ("aerobic_te", "REAL"), ("anaerobic_te", "REAL"), ("te_label", "TEXT"),
         ("z1_s", "REAL"), ("z2_s", "REAL"), ("z3_s", "REAL"), ("z4_s", "REAL"), ("z5_s", "REAL")],
     "strength_sets": [("probability", "REAL"), ("wkt_step", "INTEGER")],
+    "weather_hourly": [("weather_code", "INTEGER"), ("cloud_pct", "REAL")],   # code OMM, nuages %
 }
 
 
