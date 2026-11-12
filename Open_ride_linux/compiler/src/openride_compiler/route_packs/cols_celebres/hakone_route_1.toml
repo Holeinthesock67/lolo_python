@@ -1,8 +1,8 @@
 name = "Hakone, route 1 de l'Ekiden (lac Ashi)"
 region = "Kanagawa, Hakone"
 country = "Japon"
-side = "depuis Hakone-Yumoto par Miyanoshita et le point culminant de la route 1 (874 m) jusqu'au lac Ashi"
-waypoints = [[35.2327, 139.1046], [35.2368, 139.0703], [35.1975, 139.0255]]
+side = "depuis Hakone-Yumoto par Miyanoshita et le point culminant de la route 1 (874 m) jusqu'à Hakone-machi, au bord du lac Ashi (arrivée de l'Ekiden)"
+waypoints = [[35.2327, 139.1046], [35.2368, 139.0703], [35.1920, 139.0275]]
 ref_length_m = 16000
 ref_gain_m = 800
 tags = ["col", "classique", "japon", "lacets"]
