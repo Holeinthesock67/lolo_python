@@ -89,6 +89,8 @@ DESCENT_HOLD_PCT = -0.5         # Enclume : masse en plus suspendue au-dessus, l
 DESCENT_MIN_M = 300.0           # tirage : au moins 300 m d'affilée sous −1,5 %…
 LOOK_AHEAD_M = 5000.0           # … dans les 5 km devant (plan §3)
 LOOK_STEP_M = 25.0
+UNPAVED_MIN_M = 1000.0         # Rouleau compresseur : au moins 1 km non revêtu dans les 5 km devant
+ROLLER_BLEND_M = 20.0          # Rouleau : transitions de 20 m, comme le fondu des surfaces du lot U21
 NEAR_FINISH_M = 400.0          # Échappée : refusée à moins de 400 m de l'arrivée ou de la fin d'un sprint
 DRAFT_PLUS_CAP = 0.55          # Aspiration + : plafond du cœur de groupe de la série AS (AS4)
 DRAFT_PLUS_REACH_M = 25.0      # Aspiration + : portée de l'abri (15 m sans bonus)
@@ -106,7 +108,9 @@ class Context:
     grade_pct: float = 0.0
     has_bots: bool = False
     near_finish: bool = False                         # à moins de 400 m de l'arrivée ou de la fin d'un sprint
+    ds_m: float = 0.0                                 # distance roulée pendant le pas (fondu du Rouleau, TT5)
     descent_ahead: Callable[[], bool] = lambda: False   # calcul paresseux : seulement au tirage
+    gravel_ahead: Callable[[], bool] = lambda: False    # idem : gravel actif et 1 km non revêtu devant (TT5)
 
 
 CONDITIONS: dict[str, Callable[[Context], bool]] = {
@@ -114,7 +118,22 @@ CONDITIONS: dict[str, Callable[[Context], bool]] = {
     "descent_ahead": lambda c: c.descent_ahead(),
     "bots": lambda c: c.has_bots,
     "far_from_finish": lambda c: not c.near_finish,
+    "gravel_ahead": lambda c: c.gravel_ahead(),
 }
+
+
+def unpaved_ahead(surface_at: Callable[[float], str], s: float, length_m: float | None = None) -> bool:
+    """Vrai s'il y a au moins `UNPAVED_MIN_M` non revêtus dans les 5 km devant (`surface_at` : surface
+    effective, option gravel comprise) ; `length_m` : fin d'un parcours ouvert, None pour une boucle."""
+    end = LOOK_AHEAD_M if length_m is None else min(LOOK_AHEAD_M, length_m - s)
+    total, d = 0.0, LOOK_STEP_M / 2.0
+    while d < end:
+        if surface_at(s + d) != "paved":
+            total += LOOK_STEP_M
+            if total >= UNPAVED_MIN_M - 1e-9:
+                return True
+        d += LOOK_STEP_M
+    return False
 
 
 def descent_ahead(grade_at: Callable[[float], float], s: float, length_m: float | None = None) -> bool:
@@ -193,6 +212,11 @@ DEFAULT_TABLE = PowerUpTable(specs={
     "breakaway": PowerUpSpec("breakaway", "breakaway", 1.0, 20.0, "Échappée", sets=("tactiques",),
                              factor_bounds=(1.0, 1.0), draw_if=("bots",),
                              refuse_unless=(("bots", "no_bots"), ("far_from_finish", "near_finish"))),
+    # Rouleau compresseur (lot TT5) : roulement du bitume sur le non revêtu ; `factor` = part du roulement
+    # en plus du gravel qui disparaît (1 : tout), atteinte et perdue sur 20 m.
+    "roller": PowerUpSpec("roller", "crr", 1.0, 30.0, "Rouleau compresseur", sets=("tactiques",),
+                          factor_bounds=(0.0, 1.0), draw_if=("gravel_ahead",),
+                          refuse_unless=(("gravel_ahead", "no_gravel"),)),
 })
 KINDS = tuple(DEFAULT_TABLE.specs)
 LABELS = {k: s.label for k, s in DEFAULT_TABLE.specs.items()}
@@ -319,6 +343,7 @@ class PowerUps:
     refused_left_s: float = 0.0
     uses: list[PowerUpUse] = field(default_factory=list)
     refusals: list[Refusal] = field(default_factory=list)
+    roll_w: float = 0.0                    # part du Rouleau appliquée (0 à 1, fondu de 20 m)
 
     def __post_init__(self) -> None:
         if self.set_name not in SETS:
@@ -369,6 +394,11 @@ class PowerUps:
         return spec.hold_above_grade_pct is not None and ctx.grade_pct > spec.hold_above_grade_pct
 
     def step(self, dt: float, ctx: Context | None = None) -> None:
+        if ctx is not None and ctx.ds_m > 0.0:   # fondu de l'effet `crr` sur la distance roulée (TT5)
+            spec = self._effect()
+            up = ctx.ds_m / ROLLER_BLEND_M
+            self.roll_w = min(1.0, self.roll_w + up) if spec is not None and spec.effect == "crr" \
+                else max(0.0, self.roll_w - up)
         if self.refused is not None:
             self.refused_left_s -= dt
             if self.refused_left_s <= 1e-9:
@@ -403,9 +433,16 @@ class PowerUps:
             return replace(base, mass_kg=base.mass_kg * spec.factor)
         if spec.effect == "cda":
             return replace(base, cda_m2=base.cda_m2 * spec.factor)
-        if spec.effect == "crr":
-            return replace(base, crr=base.crr * spec.factor)
         return base
+
+    def surface_factor(self, gravel_factor: float) -> float:
+        """Facteur de roulement du gravel (lot U21) pendant le Rouleau compresseur (lot TT5) : ramené vers 1
+        (bitume) selon le fondu ; le supplément de pente SIM du gravel, calculé dessus, disparaît aussi."""
+        if self.roll_w <= 0.0:
+            return gravel_factor
+        spec = self.table.specs.get("roller")
+        share = spec.factor if spec is not None else 1.0
+        return 1.0 + (gravel_factor - 1.0) * (1.0 - share * self.roll_w)
 
     def draft_boost(self) -> DraftBoost | None:
         """Abri renforcé pendant un bonus `draft` (Aspiration +, lot TT3) ; None sinon."""

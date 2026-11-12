@@ -37,6 +37,7 @@ const BiomeTextures := preload("res://scripts/biome_textures.gd")
 const TextureLevels := preload("res://scripts/texture_levels.gd")
 const ViewCulling := preload("res://scripts/view_culling.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 const LOOKAHEAD_S := 10.0
 const NEAR_RADIUS_M := 1500.0
@@ -363,7 +364,7 @@ func swap_route(new_route, from_part: int) -> void:
 func _drop_road_chunks(from_part: int) -> void:
 	for key in _jobs.keys():
 		if (key as String).begins_with("road:") and int((key as String).get_slice(":", 1)) >= from_part:
-			WorkerThreadPool.wait_for_task_completion(_jobs[key]["task"])
+			BgTasks.wait(_jobs[key]["task"])
 			_jobs.erase(key)
 	_ready = _ready.filter(func(r): return not ((r["key"] as String).begins_with("road:")
 			and int((r["key"] as String).get_slice(":", 1)) >= from_part))
@@ -614,7 +615,7 @@ func _start_jobs() -> void:
 			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m,
 			"gravel": {"mode": gravel_mode, "surfaces": _surfaces},
 			"near_index": _near_index, "far_index": _far_index}
-		job["task"] = WorkerThreadPool.add_task(_build_job.bind(job), false, "maillage " + key)
+		job["task"] = BgTasks.add(_build_job.bind(job), false, "maillage " + key)
 		_jobs[key] = job
 
 
@@ -700,9 +701,9 @@ static func _display_height_fn(w_dir: String, r) -> Callable:
 func _poll_jobs(wait: bool) -> void:
 	for key in _jobs.keys():
 		var job: Dictionary = _jobs[key]
-		if not wait and not WorkerThreadPool.is_task_completed(job["task"]):
+		if not wait and not BgTasks.done(job["task"]):
 			continue
-		WorkerThreadPool.wait_for_task_completion(job["task"])
+		BgTasks.wait(job["task"])
 		_jobs.erase(key)
 		if job["gen"] == _generation and _wanted.has(key) and not (job["arrays"] as Array).is_empty():
 			var ready_item := {"key": key, "arrays": job["arrays"], "origin": job["origin"], "kind": job["spec"]["kind"]}
@@ -717,7 +718,7 @@ func _poll_jobs(wait: bool) -> void:
 
 func _wait_all_jobs() -> void:
 	for key in _jobs.keys():
-		WorkerThreadPool.wait_for_task_completion(_jobs[key]["task"])
+		BgTasks.wait(_jobs[key]["task"])
 
 
 ## Relève les travaux terminés et crée au plus `max_new` objets de scène (fil principal).
