@@ -143,7 +143,7 @@ func _init() -> void:
 			same = false
 		if p["vegetation"]["max_density_per_ha"] != float(theme["vegetation"]["max_density_per_ha"]):
 			same = false
-	_check(same, "thème 1.x : les 17 biomes ont les paramètres de theme_render_params.gd")
+	_check(same, "thème 1.x : les 18 biomes ont les paramètres de theme_render_params.gd")
 
 	# Thème 2.0 de l'exemple du contrat : clés du biome, repli 1.x pour le reste
 	var v2_dir := "user://theme_v2_test"
@@ -166,7 +166,7 @@ func _init() -> void:
 	_check(jungle["terrain"]["grass_color"] == ref["grass_color"] and jungle["vegetation"]["species"].is_empty(), "biome absent du thème 2.0 : valeurs 1.x")
 	_check(m2.default_biome() == "temperate_grassland" and not m2.active(), "sans couche ni forçage : modèle muet")
 
-	# Thème par défaut 2.0 (U15) : prairie = valeurs 1.x exactes, 17 biomes distincts
+	# Thème par défaut 2.0 (U15) : prairie = valeurs 1.x exactes, 18 biomes distincts
 	var md = BiomeModel.new(default_theme, null)
 	var gp: Dictionary = md.params("temperate_grassland")
 	var same_grass := true

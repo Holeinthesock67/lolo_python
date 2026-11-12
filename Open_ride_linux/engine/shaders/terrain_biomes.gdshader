@@ -8,7 +8,7 @@ render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_sc
 // Textures : deux Texture2DArray pour tout le parcours (biome_textures.gd) ; carte A = couleur et
 // rugosité (alpha), carte B = normale XY et occlusion (bleu). Une couche sans texture garde sa couleur unie.
 
-const int MAX_BIOMES = 17;     // BiomeIds.BIOMES
+const int MAX_BIOMES = 18;     // BiomeIds.BIOMES
 // Emplacements de sol : un par biome, puis un par couple (paysage du lot U25, biome de base) dont le thème
 // donne le sol (biome_textures.gd MAX_LANDSCAPE_SLOTS) ; `biome_index` d'une tuile désigne un emplacement.
 const int MAX_LANDSCAPE_SLOTS = 16;

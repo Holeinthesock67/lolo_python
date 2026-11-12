@@ -1,7 +1,7 @@
 extends SceneTree
 
 ## Sols multi-biomes (lot U6, `biome_textures.gd`) : couches de
-## sol des 17 biomes, biomes en usage, poids d'une tuile (3 biomes en low, 4 sinon, forçage, tuile absente).
+## sol des 18 biomes, biomes en usage, poids d'une tuile (3 biomes en low, 4 sinon, forçage, tuile absente).
 
 const BiomeTextures := preload("res://scripts/biome_textures.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
@@ -44,14 +44,14 @@ func _tile4(biomes: Array, parts: Array) -> Dictionary:
 
 func _run() -> void:
 	# 1. Budget et niveau retenu : test_texture_levels.gd (lot P20)
-	# 2. Couches de sol du thème par défaut 2.0 : les 17 biomes, 3 couches chacun, sans doublon
+	# 2. Couches de sol du thème par défaut 2.0 : les 18 biomes, 3 couches chacun, sans doublon
 	var theme: Dictionary = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
 	var model := BiomeModel.new(theme, BiomeLayer.new())
 	model.set_forced("savanna")
 	var bt := BiomeTextures.new(model, "", "low")
 	var n_slots := BiomeTextures.slot_names(theme).size()
-	_check(bt.biome_layers.size() == n_slots and n_slots > 17 and n_slots <= BiomeTextures.MAX_SLOTS,
-		"17 biomes et %d sols de paysage décrits (au plus %d emplacements)" % [n_slots - 17, BiomeTextures.MAX_SLOTS])
+	_check(bt.biome_layers.size() == n_slots and n_slots > 18 and n_slots <= BiomeTextures.MAX_SLOTS,
+		"18 biomes et %d sols de paysage décrits (au plus %d emplacements)" % [n_slots - 18, BiomeTextures.MAX_SLOTS])
 	_check(bt.layers.size() <= BiomeTextures.MAX_LAYERS, "%d couches de sol distinctes (au plus %d)" % [bt.layers.size(), BiomeTextures.MAX_LAYERS])
 	var sav: Array = bt.biome_layers["savanna"]["layers"]
 	_check((bt.layers[sav[0]]["color"] as Color).is_equal_approx(Color.html("#a08848")), "savane : herbes hautes jaunes #a08848")
@@ -89,7 +89,7 @@ func _run() -> void:
 	var bt2 := BiomeTextures.new(model2, "", "medium")
 	_check(bt2.biomes_in_use() == ["temperate_grassland", "temperate_forest", "alpine"], "parts du manifeste : %s" % str(bt2.biomes_in_use()))
 	var model3 := BiomeModel.new(theme, BiomeLayer.new("res://", {"layers": {"biome": {"present": true}}}))
-	_check(BiomeTextures.new(model3, "", "low").biomes_in_use().size() == 17, "sans parts : les 17 biomes")
+	_check(BiomeTextures.new(model3, "", "low").biomes_in_use().size() == 18, "sans parts : les 18 biomes")
 
 	# 4. Poids d'une tuile : 4 biomes, triés par part ; le plus faible écarté en low
 	var layer := BiomeLayer.new()

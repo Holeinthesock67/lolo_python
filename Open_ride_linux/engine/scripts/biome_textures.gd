@@ -3,7 +3,7 @@ extends RefCounted
 ## Sols multi-biomes du terrain (lot U6, série U, Format .world v1 §9, décision U-Q4).
 ## - À la construction : matériau de base du shader terrain_biomes.gdshader pour tout le parcours, avec
 ##   la règle de pente et d'altitude (L3) et les trois couches de sol (herbe = `flat`, roche = `steep`,
-##   neige = `high`) des 17 biomes, tirées de BiomeModel.terrain_theme (repli sur le thème 1.x) ;
+##   neige = `high`) des 18 biomes, tirées de BiomeModel.terrain_theme (repli sur le thème 1.x) ;
 ## - textures : deux Texture2DArray (carte A = couleur et rugosité dans l'alpha, carte B = normale XY et
 ##   occlusion dans le bleu), une couche par sol texturé des biomes présents (`layers.biome.shares` du
 ##   manifeste, biome forcé, sinon tous), mipmaps, compression en mémoire vidéo quand elle est disponible ;
@@ -33,7 +33,7 @@ const GRID := 17
 ## Emplacements de sol (terrain_biomes.gdshader) : un par biome, puis un par couple (paysage, biome de base) dont
 ## le thème décrit le sol (lot U25, `landscapes.<paysage>.biomes.<biome>.ground`), au plus MAX_LANDSCAPE_SLOTS.
 const MAX_LANDSCAPE_SLOTS := 16
-const MAX_SLOTS := 17 + MAX_LANDSCAPE_SLOTS   # BiomeIds.BIOMES + paysages (terrain_biomes.gdshader MAX_SLOTS)
+const MAX_SLOTS := 18 + MAX_LANDSCAPE_SLOTS   # BiomeIds.BIOMES + paysages (terrain_biomes.gdshader MAX_SLOTS)
 const MAX_LAYERS := MAX_SLOTS * 3      # 3 couches par emplacement (terrain_biomes.gdshader MAX_LAYERS)
 const ROLES: Array[String] = ["grass", "rock", "snow"]
 ## Force des rides et des dunes du sable par biome (lot U8, biome_rule.w du shader) ; 0 ailleurs.
@@ -94,7 +94,7 @@ func biomes_in_use() -> Array[String]:
 
 
 ## Couples [biome, paysage] du thème dont le paysage décrit le sol, dans l'ordre des paysages puis des biomes
-## (emplacements 17, 18…, après les biomes) ; au-delà de MAX_LANDSCAPE_SLOTS, le biome garde son sol.
+## (emplacements 18, 19…, après les biomes) ; au-delà de MAX_LANDSCAPE_SLOTS, le biome garde son sol.
 static func landscape_slots(theme: Dictionary) -> Array:
 	var out := []
 	var all_l = theme.get("landscapes", null)

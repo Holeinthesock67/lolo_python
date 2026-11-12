@@ -308,8 +308,7 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 	details.name = "GroundDetails"
 	vp.add_child(details)
 	var living := QualityPresets.living(preset)
-	details.configure({"rock": int(living["ground_rocks"]), "grass": int(living["ground_grass"]),
-		"termite": int(living["ground_termites"])}, route, model, ROAD_WIDTH_M)
+	details.configure(GroundDetails.budgets(living), route, model, ROAD_WIDTH_M)
 	details.exclusions = [PackedVector2Array([POND.position, Vector2(POND.end.x, POND.position.y), POND.end,
 		Vector2(POND.position.x, POND.end.y)])]
 	for i in range(400):
