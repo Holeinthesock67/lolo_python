@@ -44,6 +44,8 @@ vélodrome des contenus de départ, lot VD10), `fichiers` ({chemin dans le
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
 (`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
 réseau, en quelques secondes : import de traces du lot O23).
+`reseau` (vrai : le scénario a besoin d'Internet, recherche Nominatim et routes OpenStreetMap ; recette du PC,
+jouée seulement quand `--scenario` la nomme, jamais dans la liste par défaut ni en intégration continue, lot W17).
 
 Rapport dans `--out` : `rapport.html` (tableau scénario × voie, vérifications, captures), `resultats.json`
 et `resume.txt`. Une capture est prise à chaque échec, avec l'état du menu. Code de sortie : 0 si toutes les
@@ -150,7 +152,7 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "capture", "relancer", "delai", "voies", "note"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
-             "compilateur", "velodrome", "etapes"}
+             "compilateur", "velodrome", "reseau", "etapes"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -890,7 +892,9 @@ def main(argv: list[str] | None = None) -> int:
         print("xvfb-run introuvable : sudo apt install xvfb xauth, ou --native (fenêtre sur l'écran)")
         return 2
     chosen: list[tuple[str, Path]] = []
-    for name in args.scenario or list(known):
+    # Un scénario `reseau` (données réelles téléchargées : recettes du PC) ne se joue que nommé par --scenario.
+    names = args.scenario or [n for n, p in known.items() if not load_scenario(p).get("reseau")]
+    for name in names:
         path = known.get(name) or Path(name)
         if not path.is_file():
             print(f"scénario inconnu : {name} (--list pour la liste)")

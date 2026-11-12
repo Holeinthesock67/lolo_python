@@ -3,6 +3,7 @@
   "voies": [
     "clavier"
   ],
+  "reseau": true,
   "etapes": [
     {
       "ecran": "home",
