@@ -162,7 +162,7 @@ void fragment() {
 	ALBEDO = shade_layers(grass_c, rock_c, snow_c, w, n_shade, tri_weights,
 		sand * sand_relief(q), VERTEX, VIEW_MATRIX, normal_out);
 	NORMAL = normal_out;
-	ROUGHNESS = rough;
+	ROUGHNESS = rough * (1.0 - 0.35 * season_ground_wet);   // sol détrempé (lot U13)
 	if (w_maps > 0.0) {
 		AO = 1.0 - w_maps + ao;
 	}

@@ -8,9 +8,11 @@ extends RefCounted
 ## - `top_biomes(ix, iz, max_n)` : les `max_n` biomes les plus présents d'une tuile proche, renormalisés ;
 ## - forçage : `forced` (argument `--biome=`, puis `hello_ack.config.biome` avec le lot U16) remplace tous les poids ;
 ## - `params(biome, season, progress, variant)` : paramètres du thème 2.0, repli sur les clés 1.x ;
-##   un thème 1.x donne donc à tous les biomes les paramètres d'aujourd'hui. Saisons : valeurs neutres
-##   tant que P18 et le lot U13 ne sont pas là ;
-## - `blend(weights, params_by_biome)` : mélange numérique des couleurs et des densités en un point ;
+##   un thème 1.x donne donc à tous les biomes les paramètres d'aujourd'hui. Saisons (lot U13) : sans
+##   `season`, celle du calendrier du biome à la date posée par `set_season_date` (season_model.gd
+##   `season_for_biome`) ; `season_params` : paramètres de cette saison (neutres sans date ni saison) ;
+## - `blend(weights, params_by_biome)` : mélange numérique des couleurs et des densités en un point, et des
+##   paramètres de saison de chaque biome (`season_params`, chacun dans sa saison) ;
 ## - `building_style_at(x, z)` (lot U23) : style d'architecture d'un bâtiment (building_styles.gd) : variante
 ##   `roofs` de la tuile si elle en a une, sinon style du biome dominant au point.
 ## Pas de class_name : charger par preload("res://scripts/biome_model.gd").
@@ -20,6 +22,7 @@ const BiomeLayer := preload("res://scripts/biome_layer.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const BuildingStyles := preload("res://scripts/building_styles.gd")
+const SeasonModel := preload("res://scripts/season_model.gd")
 
 const NEAR_M := 1000.0
 const FAR_M := 5000.0
@@ -27,11 +30,12 @@ const CELLS := 16
 const NO_HIGH_LINE_M := 100000.0
 const DEFAULT_WATER_HEX := "#1f5261"   # water_mesh.gd WATER_COLOR
 const DEFAULT_TURBIDITY := 0.3
-const DEFAULT_SEASONS := {"calendar": "four", "offset_months": 0, "durations_months": [3, 3, 3, 3]}
+const DEFAULT_SEASONS := SeasonModel.DEFAULT_SEASONS
 
 var theme: Dictionary
 var layer
 var forced := ""
+var season_date := {}   # {month, day, lat, snowy} (lot U13) ; vide : pas de saison par date
 var _params_cache := {}
 var _mutex := Mutex.new()   # params() appelé depuis les fils de préparation
 
@@ -58,6 +62,28 @@ func set_forced(id: String) -> bool:
 		return false
 	forced = id
 	return true
+
+
+## Date des saisons par biome (lot U13) : chaque biome prend la saison de son calendrier à cette date et à
+## cette latitude (NAN : hémisphère nord) ; `snowy` : météo de neige du thème (hiver enneigé partout).
+func set_season_date(month: int, day: int, lat_deg: float = NAN, snowy: bool = false) -> void:
+	var d := {"month": month, "day": day, "lat": lat_deg, "snowy": snowy}
+	if str(d) == str(season_date):
+		return
+	season_date = d
+	_mutex.lock()
+	_params_cache.clear()
+	_mutex.unlock()
+
+
+## Plus de saison par date : paramètres de saison neutres (réglage « Saisons » coupé).
+func clear_season() -> void:
+	if season_date.is_empty():
+		return
+	season_date = {}
+	_mutex.lock()
+	_params_cache.clear()
+	_mutex.unlock()
 
 
 ## Vrai quand le rendu doit suivre les biomes (couche présente ou forçage) ; faux = rendu d'avant la 3.0.
@@ -201,7 +227,7 @@ func terrain_theme(biome: String) -> Dictionary:
 ## Paramètres de rendu d'un biome pour une saison, l'avancée dans la saison (0 à 1) et une variante.
 ## Un biome absent du thème, ou une clé absente, prend la valeur 1.x du thème.
 func params(biome: String, season: String = "", progress: float = 0.0, variant: Variant = null) -> Dictionary:
-	var key := "%s|%s|%s" % [biome, season, str(variant)]
+	var key := "%s|%s|%s|%s" % [biome, season, str(variant), str(season_date)]
 	_mutex.lock()
 	var hit = _params_cache.get(key, null)
 	_mutex.unlock()
@@ -236,6 +262,15 @@ func params(biome: String, season: String = "", progress: float = 0.0, variant: 
 		s1["fog_density"] = sky_b["fog_density"]
 		sky_theme["sky"] = s1
 	var sky := ThemeRenderParams.sky_params(sky_theme)
+	# Saison (lot U13) : imposée par l'appel, sinon celle du calendrier du biome à la date posée
+	var snowy := bool(season_date.get("snowy", false))
+	var summer_dry := float(SeasonModel.seasons_def(entry)["summer_dry"])
+	if season == "" and not season_date.is_empty():
+		var s := SeasonModel.season_for_biome(entry, int(season_date["month"]), int(season_date["day"]),
+			float(season_date["lat"]))   # réglage « selon la date » : la saison du thème n'entre pas (comme P19)
+		season = s["season"]
+		progress = float(s["progress"])
+	var season_params: Dictionary = SeasonModel.params(season, progress, snowy, summer_dry) if season != "" else SeasonModel.NEUTRAL.duplicate()
 	sky["haze"] = float(sky_b.get("haze", 0.0))
 	sky["light_tint"] = ThemeRenderParams._color_or_default(sky_b.get("light_tint", null), "#ffffff")
 
@@ -247,9 +282,10 @@ func params(biome: String, season: String = "", progress: float = 0.0, variant: 
 		"sky": sky,
 		"ambience": (entry.get("ambience", theme.get("ambience", {})) as Dictionary).duplicate(true),
 		"fauna": (entry.get("fauna", theme.get("fauna", {})) as Dictionary).duplicate(true),
-		"seasons": (entry.get("seasons", DEFAULT_SEASONS) as Dictionary).duplicate(true),
+		"seasons": SeasonModel.seasons_def(entry),
 		"season": season,
 		"season_progress": clampf(progress, 0.0, 1.0),
+		"season_params": season_params,
 		"variant": _variant_params(variant),
 	}
 	_mutex.lock()
@@ -300,4 +336,8 @@ static func blend(weights: Dictionary, params_by_biome: Dictionary) -> Dictionar
 	out["water_color"] = water
 	out["light_tint"] = tint
 	out["species"] = species
+	var seasons := {}
+	for b in weights.keys():
+		seasons[b] = (params_by_biome[b] as Dictionary).get("season_params", SeasonModel.NEUTRAL)
+	out["season_params"] = SeasonModel.blend(weights, seasons)
 	return out

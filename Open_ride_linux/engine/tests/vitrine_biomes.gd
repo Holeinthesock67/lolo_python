@@ -6,11 +6,14 @@ extends SceneTree
 ## brume de chaleur des déserts et de la savane hors `low`), tirés du thème par défaut 2.0 (lot U15) par biome_model.gd. Un étang à droite de la route (oasis des déserts, flamants),
 ## un bois, un pré, un champ et une prairie (zones OSM de la faune d'avant la série U). Sans core ni parcours ;
 ## captures comparables d'un biome à l'autre. La vue `faune` cadre le groupe d'animaux propre au biome.
+## `--dates` (lot U13) : une série de captures par date (mois-jour), chaque biome dans la saison de son calendrier
+## à la latitude `--lat` (45° par défaut) : paramètres globaux des saisons et arbres d'hiver posés comme en jeu ;
+## fichiers <biome>_<vue>_<préréglage>_<date>.png et colonne `saison` du CSV.
 ##
 ##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
 ##     --audio-driver Dummy --script res://tests/vitrine_biomes.gd -- --out DOSSIER \
 ##     [--biomes alpine,savanna] [--quality low,medium,high] [--size 1680x1050] \
-##     [--compare REF] [--seuil-ssim 0.97] [--tolerance 10] [--max-saturated 5]
+##     [--compare REF] [--seuil-ssim 0.97] [--tolerance 10] [--max-saturated 5] [--dates 01-15,07-15 --lat 45]
 ##
 ## Écrit DOSSIER/<biome>_<vue>_<préréglage>.png et DOSSIER/vitrine_biomes.csv (biome ; vue ; préréglage ;
 ## préréglage appliqué ;
@@ -36,6 +39,7 @@ const GroundDetails := preload("res://scripts/ground_details.gd")
 const VitrineChecks := preload("res://tests/vitrine_checks.gd")
 const AtmosphereModel := preload("res://scripts/atmosphere_model.gd")
 const HeatHazeShader := preload("res://shaders/heat_haze.gdshader")
+const SeasonModel := preload("res://scripts/season_model.gd")
 
 const ROAD_WIDTH_M := 6.0
 const GROUND_Y := 100.0
@@ -65,6 +69,8 @@ var _presets: Array = ["low"]
 var _biomes: Array = BiomeIds.BIOMES.duplicate()
 var _size := Vector2i(1280, 720)
 var _checks = VitrineChecks.new()
+var _dates: Array = [""]   # "" : sans saison (rendu d'avant U13)
+var _lat := 45.0
 
 
 func _init() -> void:
@@ -77,6 +83,10 @@ func _init() -> void:
 			_presets = Array(args[i + 1].split(","))
 		elif args[i] == "--biomes":
 			_biomes = Array(args[i + 1].split(","))
+		elif args[i] == "--dates":
+			_dates = Array(args[i + 1].split(","))
+		elif args[i] == "--lat":
+			_lat = float(args[i + 1])
 		elif args[i] == "--size":
 			var wh := args[i + 1].split("x")
 			_size = Vector2i(int(wh[0]), int(wh[1]))
@@ -87,15 +97,19 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(_out_dir)
 	var theme: Dictionary = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
 	var csv := FileAccess.open(_out_dir.path_join("vitrine_biomes.csv"), FileAccess.WRITE)
-	csv.store_line("biome;vue;préréglage;qualite_appliquee;arbres;triangles;appels_dessin;objets;preparation_arbres_ms;betes;oiseaux;especes;placement_faune_ms;rochers;herbes_hautes;termitieres;sol_sature_pct;sol_luminance;brume_chaleur;humidite")
+	csv.store_line("biome;vue;préréglage;qualite_appliquee;arbres;triangles;appels_dessin;objets;preparation_arbres_ms;betes;oiseaux;especes;placement_faune_ms;rochers;herbes_hautes;termitieres;sol_sature_pct;sol_luminance;brume_chaleur;humidite;saison")
 	for preset in _presets:
 		var applied := VitrineChecks.applied_quality(preset, "vitrine_biomes")
-		for biome in _biomes:
+		for pair in _pairs():
+			var biome: String = pair[0]
+			var date: String = pair[1]
 			var model = BiomeModel.new(theme, null)
 			if not model.set_forced(biome):
 				printerr("[vitrine_biomes] biome inconnu : ", biome)
 				continue
+			var season := _apply_season(model, biome, date)
 			var built := _build_world(theme, model, biome, preset)
+			built["trees_node"].set_winter(float(season["season_params"]["bare"]) > 0.0)
 			var vp: SubViewport = built["vp"]
 			for view in VIEWS:
 				var v: Array = VIEWS[view] if view != "faune" else built["fauna_view"]
@@ -114,7 +128,8 @@ func _run() -> void:
 				var n_birds := 0
 				for sp in FaunaRenderer.BIRD_SPECIES:
 					n_birds += fauna.visible_count(sp)
-				var path := _out_dir.path_join("%s_%s_%s.png" % [biome, view, preset])
+				var suffix := "" if date == "" else "_" + date
+				var path := _out_dir.path_join("%s_%s_%s%s.png" % [biome, view, preset, suffix])
 				var img := vp.get_texture().get_image()
 				img.save_png(path)
 				# Sol : bas de l'image, route comprise ; la vue `faune` cadre une bête, parfois d'en dessous
@@ -125,16 +140,38 @@ func _run() -> void:
 				var draws := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
 				var objs := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
 				var details: Node = vp.get_node("GroundDetails")
-				csv.store_line("%s;%s;%s;%s;%d;%d;%d;%d;%.1f;%d;%d;%s;%.1f;%d;%d;%d;%.2f;%.3f;%.2f;%.2f" % [biome, view, preset, applied, built["trees"], tris, draws, objs, built["prep_ms"],
+				csv.store_line("%s;%s;%s;%s;%d;%d;%d;%d;%.1f;%d;%d;%s;%.1f;%d;%d;%d;%.2f;%.3f;%.2f;%.2f;%s" % [biome, view, preset, applied, built["trees"], tris, draws, objs, built["prep_ms"],
 					n_animals, n_birds, built["species"], built["fauna_ms"], details.get_positions("rock").size(),
 					details.get_positions("grass").size(), details.get_positions("termite").size(), expo["saturated_pct"], expo["luma"],
-					built["atmo"]["heat_haze"], built["atmo"]["humidity"]])
+					built["atmo"]["heat_haze"], built["atmo"]["humidity"], season["season"]])
 				print("[vitrine_biomes] %s : %d arbres, %d bêtes, %d oiseaux, %d triangles, %d appels de dessin" % [path, built["trees"], n_animals, n_birds, tris, draws])
 			vp.queue_free()
 			await process_frame
 	csv.close()
+	SeasonModel.apply_globals(SeasonModel.NEUTRAL)
 	_checks.compare(_out_dir)
 	quit(_checks.exit_code("vitrine_biomes"))
+
+
+## Couples (biome, date) dans l'ordre des captures.
+func _pairs() -> Array:
+	var out := []
+	for biome in _biomes:
+		for date in _dates:
+			out.append([biome, date])
+	return out
+
+
+## Saison du biome à la date « mois-jour » (lot U13), posée comme en jeu (paramètres globaux) ; "" : neutre.
+func _apply_season(model, biome: String, date: String) -> Dictionary:
+	if date == "":
+		model.clear_season()
+	else:
+		var md := date.split("-")
+		model.set_season_date(int(md[0]), int(md[1]), _lat)
+	var p: Dictionary = model.params(biome)
+	SeasonModel.apply_globals(p["season_params"])
+	return {"season": p["season"] if str(p["season"]) != "" else "-", "season_params": p["season_params"]}
 
 
 func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Dictionary:
@@ -271,7 +308,7 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 		rect.material = mat
 		layer.add_child(rect)
 		vp.add_child(layer)
-	return {"vp": vp, "atmo": atmo, "trees": trees.get_active_tree_count(), "prep_ms": prep_ms, "fauna_ms": fauna_ms,
+	return {"vp": vp, "atmo": atmo, "trees": trees.get_active_tree_count(), "trees_node": trees, "prep_ms": prep_ms, "fauna_ms": fauna_ms,
 		"species": ",".join(PackedStringArray(species.keys())), "fauna_view": _fauna_view(groups)}
 
 

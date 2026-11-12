@@ -52,5 +52,5 @@ void fragment() {
 	vec3 normal_out;
 	ALBEDO = shade_layers(grass_c, rock_c, snow_c, w, n, tri_weights, 0.0, VERTEX, VIEW_MATRIX, normal_out);
 	NORMAL = normal_out;
-	ROUGHNESS = roughness;
+	ROUGHNESS = roughness * (1.0 - 0.35 * season_ground_wet);   // sol détrempé (lot U13)
 }

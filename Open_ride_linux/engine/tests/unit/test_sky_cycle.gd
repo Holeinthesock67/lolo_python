@@ -51,6 +51,23 @@ func _test_modes() -> void:
 	_check(date["season"]["season"] == "autumn", "selon la date : 15 octobre, automne")
 	var south := SkyCycle.evaluate("off", "date", _theme, -35.0, NAN, OCT_15, 0.0)
 	_check(south["season"]["season"] == "spring", "selon la date au sud : printemps")
+	# Lot U13 : sans poids, biome par défaut du thème (prairie) = P18, chaque jour ; avec poids, saisons des biomes
+	var diffs := 0
+	for m in range(1, 13):
+		for d in [1, 10, 20, 28]:
+			var a := SkyCycle.season_state("date", _theme, m, d, 45.0)
+			var b := SeasonModel.params(SeasonModel.season_for({}, m, d, 45.0)["season"], SeasonModel.season_for({}, m, d, 45.0)["progress"])
+			for k in SeasonModel.NEUTRAL.keys():
+				if str(a["params"][k]) != str(b[k]):
+					diffs += 1
+	_check(diffs == 0, "selon la date, sans poids : paramètres de P18 (%d écarts)" % diffs)
+	var sav := SkyCycle.season_state("date", _theme, 7, 15, 12.0, {"savanna": 1.0})
+	_check(sav["season"] == "wet" and float(sav["params"]["ground_wet"]) > 0.5, "savane, 15 juillet, 12° : saison des pluies")
+	var mix := SkyCycle.season_state("date", _theme, 7, 15, 12.0, {"savanna": 0.25, "sand_desert": 0.75})
+	_check(mix["season"] == "none" and is_equal_approx(float(mix["params"]["ground_wet"]), float(sav["params"]["ground_wet"]) * 0.25),
+		"savane 25 %, désert 75 % : saison du désert, sol détrempé au quart")
+	var forced := SkyCycle.season_state("winter", _theme, 7, 15, 12.0, {"savanna": 1.0})
+	_check(forced["season"] == "winter", "saison imposée par le réglage : tous les biomes")
 	var snowy := SkyCycle.season_state("winter", {"weather": {"kind": "snow"}}, 1, 10, 45.0)
 	_check(float(snowy["params"]["snow_drop_m"]) > 10000.0, "hiver d'un thème neigeux : neige partout")
 	var real := SkyCycle.evaluate("real", "off", _theme, 45.0, 15.0, JUNE_21, 0.0, {"hour": 22, "minute": 0, "second": 0, "bias": 60})
