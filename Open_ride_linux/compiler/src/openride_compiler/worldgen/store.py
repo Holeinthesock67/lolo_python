@@ -13,7 +13,7 @@ Arborescence sous `[open_world] cache_dir` (`~/OpenRide/Cache/monde` par défaut
 
 - Le relief déjà téléchargé par le compilateur (`~/.cache/openride/dem/`) est relu sans copie et
   n'est jamais supprimé : il appartient au compilateur.
-- Éviction au-delà du plafond : carrés générés d'abord (ils se recalculent sans réseau), puis
+- Éviction au-delà du plafond : carrés et tuiles de biome générés d'abord (ils se recalculent sans réseau), puis
   tuiles lointaines, puis données brutes ; chaque fois la moins récemment utilisée d'abord ; les
   entrées préchargées (W-Q4) passent après toutes les autres ; une entrée épinglée ou utilisée par
   la séance en cours n'est jamais supprimée.
@@ -405,7 +405,7 @@ def cmd_cache_info(args) -> int:
     if args.json:
         print(json.dumps(info, ensure_ascii=False, indent=2))
         return 0
-    labels = {"square": "carrés générés", "far": "tuiles lointaines", "dem": "relief",
+    labels = {"square": "carrés générés", "far": "tuiles lointaines", "biome": "tuiles de biome", "dem": "relief",
               "tile": "tuiles vectorielles", "osm": "bases OpenStreetMap"}
     print(f"Cache du monde ouvert : {info['root']}")
     print(f"Taille : {_fmt_bytes(info['bytes'])} sur {_fmt_bytes(info['max_bytes'])}")
@@ -419,7 +419,7 @@ def cmd_cache_info(args) -> int:
 def cmd_cache_clean(args) -> int:
     cache = WorldCache.from_config(args.config, log=lambda _: None)
     generated_only = not args.all
-    what = "tout le cache (épinglés compris)" if args.all else "les carrés et tuiles lointaines générés"
+    what = "tout le cache (épinglés compris)" if args.all else "les carrés, tuiles lointaines et tuiles de biome générés"
     if not args.yes:
         try:
             ok = input(f"Supprimer {what} de {cache.root} ? [o/N] ").strip().lower() in ("o", "oui", "y", "yes")
@@ -442,6 +442,6 @@ def add_info_arguments(p) -> None:
 def add_clean_arguments(p) -> None:
     p.add_argument("--config", type=Path, default=None, help="config.toml (défaut : ~/OpenRide/config.toml)")
     g = p.add_mutually_exclusive_group()
-    g.add_argument("--generated", action="store_true", help="carrés et tuiles lointaines seulement (défaut)")
+    g.add_argument("--generated", action="store_true", help="carrés, tuiles lointaines et biomes seulement (défaut)")
     g.add_argument("--all", action="store_true", help="tout le cache, régions épinglées comprises")
     p.add_argument("--yes", action="store_true", help="sans confirmation")

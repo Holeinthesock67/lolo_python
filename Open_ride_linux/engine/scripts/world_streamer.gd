@@ -340,11 +340,21 @@ func swap_route(new_route, from_part: int) -> void:
 			if not _near_index.has(t):
 				_near_index[t] = true
 				_free_flat_tile(t)
+				_biome_tile_arrived("near", t)
 		for t in far_new:
+			if not _far_index.has(t):
+				_biome_tile_arrived("far", t)
 			_far_index[t] = true
 		has_terrain = not (_near_index.is_empty() and _far_index.is_empty())
 	if osm_streamer != null:
 		osm_streamer.swap_route(new_route, from_part)
+
+
+## Tuile de terrain arrivée en cours de séance (monde vivant) : sa tuile de biome, liée avant elle par le
+## générateur (lot W17), sera lue au lieu du biome par défaut noté si on l'a cherchée trop tôt.
+func _biome_tile_arrived(level: String, t: Vector2i) -> void:
+	if biome_model != null:
+		biome_model.layer.forget_missing(level, t.x, t.y)
 
 
 ## Tronçons de ruban k ≥ `from_part` oubliés (travaux, maillages prêts, instances) : refaits au fil des images.
