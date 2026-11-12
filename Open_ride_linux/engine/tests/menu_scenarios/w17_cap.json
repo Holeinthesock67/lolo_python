@@ -168,8 +168,9 @@
       "delai": 300
     },
     {
+      "note": "Monde ouvert chargé : décor du départ prêt (route du générateur lue par l'engine)",
       "journal": "engine",
-      "motif": "world_revision rev=",
+      "motif": "scene_ready id=",
       "delai": 600
     },
     {
@@ -189,6 +190,12 @@
     },
     {
       "capture": "route_3"
+    },
+    {
+      "note": "Route prolongée par le générateur pendant la balade",
+      "journal": "engine",
+      "motif": "world_revision rev=",
+      "delai": 120
     },
     {
       "journal": "core",
