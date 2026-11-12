@@ -6,7 +6,12 @@ extends Node3D
 ## - Bâtiments extrudés avec jupe de 3 m (building_mesh.gd).
 ## - Eau : cours d'eau en ruban et plans d'eau avec îles (water_mesh.gd).
 ## - Points d'intérêt (poi) pour le modèle sonore.
-## Au plus trois nœuds de maillage par tronçon (bâtiments, cours d'eau, plans d'eau).
+## Au plus six nœuds de maillage par tronçon (bâtiments, cours d'eau, plans d'eau ; lot U9 : mer, écume, plages).
+## Lot U9 : les aires `sea` de la couche eau sont dessinées en mer animée (sea_mesh.gd, shaders/sea.gdshader)
+## au lieu d'un plan d'eau ; couche `coast` : écume le long du rivage et plages drapées sur le terrain ; dès
+## le premier tronçon avec de la mer, un anneau d'horizon (`sea_horizon`) prolonge la mer jusqu'au-delà du
+## brouillard et suit la caméra ; `shore_distance(x, z)` donne la distance au rivage des tronçons chargés
+## (son des vagues, lot U11). Parcours sans mer : aucun de ces nœuds.
 ## Lot P16 : chaque tronçon garde aussi ses contours en x, z (forêts, bâtiments, eaux, avec leur
 ## rectangle englobant) pour le voisinage sonore (ambience_model.gd) et les exclusions des touffes
 ## d'herbe ; `layer_shapes()` les rassemble pour les tronçons chargés (`shapes_version` change à chaque
@@ -31,6 +36,10 @@ const BoatModel := preload("res://scripts/boat_model.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
 const BgTasks := preload("res://scripts/bg_tasks.gd")
+const SeaMesh := preload("res://scripts/sea_mesh.gd")
+const SeaShader := preload("res://shaders/sea.gdshader")
+const SeaFoamShader := preload("res://shaders/sea_foam.gdshader")
+const BeachShader := preload("res://shaders/beach.gdshader")
 
 signal chunk_loaded(k: int, extras: Dictionary)
 signal chunk_freed(k: int)
@@ -48,8 +57,13 @@ var preset_name := "low"
 
 var _building_material: ShaderMaterial
 var _water_material: Material
+var _sea_material: ShaderMaterial      # lot U9 : mer et horizon
+var _foam_material: ShaderMaterial
+var _beach_material: ShaderMaterial
+var _horizon: MeshInstance3D = null
+var _shores_by_chunk: Dictionary = {}  # k -> Array[PackedVector2Array] (lignes de côte, lot U9)
 
-## Clé de tronçon "chunk:k" -> Array[MeshInstance3D] (au plus 3 nœuds)
+## Clé de tronçon "chunk:k" -> Array[MeshInstance3D] (au plus 6 nœuds)
 var _chunk_instances: Dictionary = {}
 var _wanted_chunks: Dictionary = {} # k -> true
 var _jobs: Dictionary = {}          # k -> {task, result, gen}
@@ -77,6 +91,26 @@ func _init_materials() -> void:
 	_building_material = BuildingMesh.make_material()
 	BuildingMesh.apply_preset(_building_material, preset_name)
 	_water_material = WaterMesh.make_material(water_shimmer)
+	_sea_material = ShaderMaterial.new()
+	_sea_material.shader = SeaShader
+	_foam_material = ShaderMaterial.new()
+	_foam_material.shader = SeaFoamShader
+	_beach_material = ShaderMaterial.new()
+	_beach_material.shader = BeachShader
+
+
+## Matériau d'un nœud de tronçon selon sa sorte (meshes_data.kind).
+func _material_for(kind: String) -> Material:
+	match kind:
+		"buildings":
+			return _building_material
+		"sea":
+			return _sea_material
+		"sea_foam":
+			return _foam_material
+		"beach":
+			return _beach_material
+	return _water_material
 
 
 func set_preset(preset: String) -> void:
@@ -99,7 +133,7 @@ func set_water_shimmer(on: bool) -> void:
 	_water_material = WaterMesh.make_material(on)
 	for k in _chunk_instances:
 		for mi in _chunk_instances[k]:
-			if mi is MeshInstance3D and not (mi as MeshInstance3D).name.begins_with("osm_buildings"):
+			if mi is MeshInstance3D and (mi as MeshInstance3D).name.begins_with("osm_water"):
 				(mi as MeshInstance3D).material_override = _water_material
 
 
@@ -143,6 +177,12 @@ func clear() -> void:
 		_free_chunk(k)
 	_pois_by_chunk.clear()
 	_shapes_by_chunk.clear()
+	_shores_by_chunk.clear()
+	if _horizon != null:
+		remove_child(_horizon)
+		_horizon.mesh = null
+		_horizon.free()
+		_horizon = null
 	shapes_version += 1
 	_update_sound_pois()
 
@@ -165,6 +205,7 @@ func _free_chunk(k: int) -> void:
 			mi.free()
 	_chunk_instances.erase(k)
 	_pois_by_chunk.erase(k)
+	_shores_by_chunk.erase(k)
 	if _shapes_by_chunk.erase(k):
 		shapes_version += 1
 	chunk_freed.emit(k)
@@ -188,6 +229,16 @@ func update_window(s_from: float, s_to: float) -> void:
 	_ready_chunks = _ready_chunks.filter(func(item): return _wanted_chunks.has(item["k"]))
 	_start_jobs()
 	_update_sound_pois()
+
+
+## Anneau d'horizon (lot U9) : suit la caméra active à l'horizontale.
+func _process(_delta: float) -> void:
+	if _horizon == null or not is_inside_tree():
+		return
+	var cam := get_viewport().get_camera_3d()
+	if cam != null:
+		var c := cam.global_position
+		_horizon.position = Vector3(c.x, 0.0, c.z)
 
 
 func _start_jobs() -> void:
@@ -230,6 +281,10 @@ func _build_chunk_job(job: Dictionary) -> void:
 
 	var b_items := []
 	var w_items := {"lines": [], "areas": []}
+	# Niveau de la mer affiché (format §8 : `level_y` = 0 ; relief exagéré, lot Q2) et mer du tronçon (lot U9)
+	var sea_y: float = r_disp.display_y(0.0) if r_disp != null else 0.0
+	var sea_info := {}
+	var shores := []
 	var boats := []
 	# 1. Bâtiments
 	var t_buildings := Time.get_ticks_usec()
@@ -313,11 +368,23 @@ func _build_chunk_job(job: Dictionary) -> void:
 							ac["level_y"] = r_disp.display_y(float(ac["level_y"]))
 						scaled_areas.append(ac)
 					areas = scaled_areas
-				var a_mesh := WaterMesh.build_areas(areas)
+				# Lot U9 : la mer (`sea`) a son maillage et son matériau ; les autres aires restent des plans d'eau.
+				var split := SeaMesh.split_areas(areas)
+				var a_mesh := WaterMesh.build_areas(split["inland"])
 				if int(a_mesh.get("built", 0)) > 0:
 					var arr := _arrays_from_mesh_dict(a_mesh)
 					if not arr.is_empty():
 						meshes_data.append({"kind": "water_areas", "arrays": arr})
+				if not (split["sea"] as Array).is_empty():
+					var b_model = job.get("biome_model", null)
+					var color_at := func(x: float, z: float) -> Color:
+						return SeaMesh.sea_color(th, b_model, x, z)
+					var s_mesh := SeaMesh.build_sea(split["sea"], color_at)
+					if int(s_mesh.get("built", 0)) > 0:
+						var arr := _arrays_from_mesh_dict(s_mesh)
+						if not arr.is_empty():
+							meshes_data.append({"kind": "sea", "arrays": arr})
+							sea_info = {"color": s_mesh["color"], "y": sea_y}
 			# Bateaux (Lot P29) : sur l'eau affichée (cours d'eau coupés à la route, relief exagéré appliqué)
 			if bool(job.get("boats", false)):
 				var t_boats := Time.get_ticks_usec()
@@ -327,6 +394,33 @@ func _build_chunk_job(job: Dictionary) -> void:
 	# Étapes de la tâche `osm` (lot U3, r790b : tâches de 20 s sur le parcours côtier, cause à localiser)
 	PerfProbe.task("osm_eau", str(k), (Time.get_ticks_usec() - t_water - boats_us) / 1000.0)
 	PerfProbe.task("osm_bateaux", str(k), boats_us / 1000.0)
+
+	# Côte (lot U9) : écume côté mer des lignes de côte, plages drapées sur le terrain proche
+	var t_coast := Time.get_ticks_usec()
+	if layers.has("coast"):
+		var c_res := OsmLayers.load_chunk(w_dir, "coast", k, job.get("route"))
+		if c_res.get("ok", false):
+			var c_lines: Array = c_res.get("lines", [])
+			shores = SeaMesh.shore_polylines(c_lines)
+			var f_mesh := SeaMesh.build_foam(c_lines, sea_y)
+			if int(f_mesh.get("built", 0)) > 0:
+				var arr := _arrays_from_mesh_dict(f_mesh)
+				if not arr.is_empty():
+					meshes_data.append({"kind": "sea_foam", "arrays": arr})
+			var beaches: Array = c_res.get("beaches", [])
+			if not beaches.is_empty() and job.get("route") != null:
+				var raw_h := terrain_height_fn(w_dir, job["route"])
+				var beach_h := raw_h
+				if v_scale != 1.0:
+					beach_h = func(x: float, z: float) -> float:
+						return r_disp.display_y(float(raw_h.call(x, z)))
+				var sand = SeaMesh.sand_color(th)
+				var p_mesh := SeaMesh.build_beaches(beaches, beach_h, sand)
+				if int(p_mesh.get("built", 0)) > 0:
+					var arr := _arrays_from_mesh_dict(p_mesh)
+					if not arr.is_empty():
+						meshes_data.append({"kind": "beach", "arrays": arr})
+	PerfProbe.task("osm_cote", str(k), (Time.get_ticks_usec() - t_coast) / 1000.0)
 
 	# Forêts (voisinage sonore et animaux : les arbres sont dessinés par tree_renderer.gd)
 	var t_veg := Time.get_ticks_usec()
@@ -401,6 +495,8 @@ func _build_chunk_job(job: Dictionary) -> void:
 		"fauna": fauna,
 		"traffic": traffic,
 		"boats": boats,
+		"sea": sea_info,
+		"shores": shores,
 	}
 
 
@@ -546,12 +642,11 @@ func integrate(max_new: int) -> int:
 			mi.name = "osm_%s_%d" % [kind, k]
 			mi.mesh = mesh
 
+			mi.material_override = _material_for(kind)
 			if kind == "buildings":
-				mi.material_override = _building_material
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 				mi.visibility_range_end = vis_end
 			else:
-				mi.material_override = _water_material
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 			add_child(mi)
@@ -559,6 +654,11 @@ func integrate(max_new: int) -> int:
 			created += 1
 
 		_chunk_instances[k] = nodes
+		if not (item.get("shores", []) as Array).is_empty():
+			_shores_by_chunk[k] = item["shores"]
+		var sea: Dictionary = item.get("sea", {})
+		if _horizon == null and not sea.is_empty():
+			_make_horizon(float(sea["y"]), sea["color"])
 		_shapes_by_chunk[k] = item.get("shapes", {"forests": [], "buildings": [], "waters": []})
 		shapes_version += 1
 		if not (item["pois"] as Array).is_empty():
@@ -569,6 +669,36 @@ func integrate(max_new: int) -> int:
 
 	_start_jobs()
 	return created
+
+
+## Anneau d'horizon de la mer (lot U9), créé une fois par parcours, au premier tronçon qui a de la mer.
+func _make_horizon(sea_y: float, color: Color) -> void:
+	var h := SeaMesh.build_horizon(sea_y - SeaMesh.HORIZON_BELOW_M, color)
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, _arrays_from_mesh_dict(h))
+	_horizon = MeshInstance3D.new()
+	_horizon.name = "sea_horizon"
+	_horizon.mesh = mesh
+	_horizon.material_override = _sea_material
+	_horizon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_horizon)
+	if route != null and route.n >= 2:
+		var p: Vector3 = route.sample_point(0.0)
+		_horizon.position = Vector3(p.x, 0.0, p.z)
+
+
+## Distance (m) de (x, z) au rivage le plus proche des tronçons chargés (lot U9, pour le son des vagues du lot
+## U11) ; INF sans côte chargée.
+func shore_distance(x: float, z: float) -> float:
+	var best := INF
+	for k in _shores_by_chunk:
+		best = minf(best, SeaMesh.shore_distance(_shores_by_chunk[k], x, z))
+	return best
+
+
+## Anneau d'horizon de la mer, ou null (tests).
+func sea_horizon() -> MeshInstance3D:
+	return _horizon
 
 
 ## Contour `[[x, z], …]` -> `{points: PackedVector2Array, rect: Rect2}`.
