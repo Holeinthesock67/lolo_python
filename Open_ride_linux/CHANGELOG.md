@@ -5,6 +5,10 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Biomes sur le « Col du lacet » (lot W17 bis)
+- Le parcours de démonstration « Col du lacet » reçoit une couche biome synthétique : de grandes taches de forêt tempérée (hêtres, chênes, quelques épicéas) à plus de 60 m de la route, entre des alpages au look habituel du col (biome `alpine` : sapins, herbe et roche d'avant la couche biome). La route passe toujours en alpage : vue dégagée et ciel visible comme avant.
+- Générateur `openride-fake-world` 0.4.0 : une démonstration déjà installée est remplacée au prochain lancement, couche biome comprise.
+
 ### Import d'entraînements retiré du menu ERG
 - La ligne « Importer un fichier » du sous-menu ERG est retirée (décision du propriétaire du 12 novembre). Un `.zwo`, `.erg`, `.mrc` ou `.qwk` se dépose directement dans `~/OpenRide/Workouts/` ; les entraînements livrés, « Créer un entraînement » et la saisie QWKcode ne changent pas.
 - Contrat IPC, révision 1.15 : `list_imports` et `import_workout` répondent `error` `workout_invalid` (un engine plus ancien reste conforme) ; le message `imports` n'est plus envoyé.
