@@ -1,0 +1,2 @@
+biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 34 tuile(s)) : japan 90,5 %, temperate_grassland 7,5 %, volcanic 2,0 %
+biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 44 tuile(s)) : japan 99,1 %, temperate_grassland 0,7 %, rock_desert 0,1 %

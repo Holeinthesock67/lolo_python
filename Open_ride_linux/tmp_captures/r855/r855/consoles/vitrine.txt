@@ -1,0 +1,22 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.312 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce GTX 1060 6GB
+
+[vitrine_biomes] Qualité appliquée : low (demandée low, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/mesures-2026-11-01-auto/r855/vitrine/japan_route_low.png : 19714 arbres, 13 bêtes, 14 oiseaux, 273634 triangles, 172 appels de dessin
+[vitrine_biomes] ~/mesures-2026-11-01-auto/r855/vitrine/japan_bord_low.png : 19714 arbres, 13 bêtes, 14 oiseaux, 215596 triangles, 129 appels de dessin
+[vitrine_biomes] ~/mesures-2026-11-01-auto/r855/vitrine/japan_haut_low.png : 19714 arbres, 13 bêtes, 14 oiseaux, 246808 triangles, 163 appels de dessin
+[vitrine_biomes] ~/mesures-2026-11-01-auto/r855/vitrine/japan_faune_low.png : 19714 arbres, 13 bêtes, 14 oiseaux, 181264 triangles, 98 appels de dessin
+[vitrine_biomes] Qualité appliquée : medium (demandée medium, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/mesures-2026-11-01-auto/r855/vitrine/japan_route_medium.png : 69669 arbres, 13 bêtes, 14 oiseaux, 820396 triangles, 202 appels de dessin
+[vitrine_biomes] ~/mesures-2026-11-01-auto/r855/vitrine/japan_bord_medium.png : 69669 arbres, 13 bêtes, 14 oiseaux, 575906 triangles, 150 appels de dessin
+[vitrine_biomes] ~/mesures-2026-11-01-auto/r855/vitrine/japan_haut_medium.png : 69669 arbres, 13 bêtes, 14 oiseaux, 680932 triangles, 183 appels de dessin
+[vitrine_biomes] ~/mesures-2026-11-01-auto/r855/vitrine/japan_faune_medium.png : 69669 arbres, 13 bêtes, 14 oiseaux, 521434 triangles, 118 appels de dessin
+[vitrine_biomes] Qualité appliquée : high (demandée high, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/mesures-2026-11-01-auto/r855/vitrine/japan_route_high.png : 86935 arbres, 13 bêtes, 14 oiseaux, 1004168 triangles, 204 appels de dessin
+[vitrine_biomes] ~/mesures-2026-11-01-auto/r855/vitrine/japan_bord_high.png : 86935 arbres, 13 bêtes, 14 oiseaux, 713104 triangles, 150 appels de dessin
+[vitrine_biomes] ~/mesures-2026-11-01-auto/r855/vitrine/japan_haut_high.png : 86935 arbres, 13 bêtes, 14 oiseaux, 834128 triangles, 182 appels de dessin
+[vitrine_biomes] ~/mesures-2026-11-01-auto/r855/vitrine/japan_faune_high.png : 86935 arbres, 13 bêtes, 14 oiseaux, 650630 triangles, 120 appels de dessin
+[vitrine_biomes] contrôles automatiques : tout passe

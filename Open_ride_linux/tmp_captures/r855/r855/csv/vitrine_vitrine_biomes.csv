@@ -1,0 +1,13 @@
+biome;vue;préréglage;qualite_appliquee;arbres;triangles;appels_dessin;objets;preparation_arbres_ms;betes;oiseaux;especes;placement_faune_ms;rochers;herbes_hautes;termitieres;sol_sature_pct;sol_luminance;brume_chaleur;humidite;saison
+japan;route;low;low;19714;273634;172;172;138.7;13;14;monkey,bird;4.9;0;0;0;0.00;0.330;0.00;0.60;-
+japan;bord;low;low;19714;215596;129;129;138.7;13;14;monkey,bird;4.9;0;0;0;0.00;0.395;0.00;0.60;-
+japan;haut;low;low;19714;246808;163;163;138.7;13;14;monkey,bird;4.9;0;0;0;0.00;0.358;0.00;0.60;-
+japan;faune;low;low;19714;181264;98;98;138.7;13;14;monkey,bird;4.9;0;0;0;nan;nan;0.00;0.60;-
+japan;route;medium;medium;69669;820396;202;202;179.5;13;14;monkey,bird;1.8;0;0;0;0.00;0.330;0.00;0.60;-
+japan;bord;medium;medium;69669;575906;150;150;179.5;13;14;monkey,bird;1.8;0;0;0;0.00;0.394;0.00;0.60;-
+japan;haut;medium;medium;69669;680932;183;183;179.5;13;14;monkey,bird;1.8;0;0;0;0.00;0.312;0.00;0.60;-
+japan;faune;medium;medium;69669;521434;118;118;179.5;13;14;monkey,bird;1.8;0;0;0;nan;nan;0.00;0.60;-
+japan;route;high;high;86935;1004168;204;204;212.8;13;14;monkey,bird;1.9;0;0;0;0.00;0.330;0.00;0.60;-
+japan;bord;high;high;86935;713104;150;150;212.8;13;14;monkey,bird;1.9;0;0;0;0.00;0.392;0.00;0.60;-
+japan;haut;high;high;86935;834128;182;182;212.8;13;14;monkey,bird;1.9;0;0;0;0.00;0.298;0.00;0.60;-
+japan;faune;high;high;86935;650630;120;120;212.8;13;14;monkey,bird;1.9;0;0;0;nan;nan;0.00;0.60;-
