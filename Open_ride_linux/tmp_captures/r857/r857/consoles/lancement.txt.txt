@@ -1,0 +1,17 @@
+17:34:55 empreinte avant ed77f04c49a967c14c1d88c9c091aba3
+17:34:55 tête 6e6ab99d
+17:36:05 demo low_branche
+17:40:12 fin demo low rc=0
+17:40:12 demo medium_branche
+17:44:19 fin demo medium rc=0
+17:44:19 demo high_branche
+17:48:26 fin demo high rc=0
+17:48:26 tour_visuel low_branche
+17:49:13 fin rc=0
+17:49:13 tour_visuel medium_branche
+17:49:35 fin rc=0
+17:49:35 tour_visuel high_branche
+17:49:59 fin rc=0
+17:50:01 empreinte après ed77f04c49a967c14c1d88c9c091aba3
+17:50:01 clone 71e814c8
+17:50:01 FIN

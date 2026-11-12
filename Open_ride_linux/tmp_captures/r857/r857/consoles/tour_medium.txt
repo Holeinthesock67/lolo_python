@@ -1,0 +1,7 @@
+== Tour visuel : demo, 4 point(s), préréglage medium ==
+[OK] pied_montee à 200 m (subjective) : 1507104 triangles, 307 appels, 0 tuile(s) en attente
+[OK] sommet à 1500 m (follow_far) : 1854325 triangles, 414 appels, 0 tuile(s) en attente
+[OK] pluie à 2200 m (side) : 1641082 triangles, 296 appels, 0 tuile(s) en attente
+[OK] sprint à 3000 m (follow_near) : 1749248 triangles, 368 appels, 0 tuile(s) en attente
+Planche : ~/mesures-2026-11-01-auto/r857/tour_medium/planche.html
+RÉSULTAT : tour complet

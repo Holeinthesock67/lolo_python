@@ -1,0 +1,7 @@
+== Tour visuel : demo, 4 point(s), préréglage high ==
+[OK] pied_montee à 200 m (subjective) : 2036294 triangles, 311 appels, 0 tuile(s) en attente
+[OK] sommet à 1500 m (follow_far) : 2155655 triangles, 404 appels, 0 tuile(s) en attente
+[OK] pluie à 2200 m (side) : 2047768 triangles, 307 appels, 0 tuile(s) en attente
+[OK] sprint à 3000 m (follow_near) : 2099852 triangles, 403 appels, 0 tuile(s) en attente
+Planche : ~/mesures-2026-11-01-auto/r857/tour_high/planche.html
+RÉSULTAT : tour complet

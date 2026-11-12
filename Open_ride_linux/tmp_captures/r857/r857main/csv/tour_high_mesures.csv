@@ -1,0 +1,5 @@
+point;s_m;camera;triangles;appels_de_dessin;maillages;images_s;tuiles_en_attente;capture
+pied_montee;200;subjective;1076436;209;25;12;0;01_pied_montee.png
+sommet;1500;follow_far;1452028;320;27;60;0;02_sommet.png
+pluie;2200;side;1460618;236;26;60;0;03_pluie.png
+sprint;3000;follow_near;1449744;276;26;60;0;04_sprint.png
