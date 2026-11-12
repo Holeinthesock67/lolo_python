@@ -60,7 +60,7 @@ const ALBEDO := {
 	"musk_ox": Color(0.2, 0.15, 0.11),
 	"goat": Color(0.82, 0.8, 0.74),
 	"monkey": Color(0.45, 0.36, 0.26),
-	"llama": Color(0.62, 0.45, 0.28),
+	"llama": Color(0.78, 0.66, 0.5),
 	"yak": Color(0.13, 0.1, 0.08),
 }
 ## Lot Y14 : zones de couleur des maillages (CUSTOM0.x) : robe (ALBEDO), teinte d'appoint (ACCENT : mufle et
@@ -127,7 +127,7 @@ const LIGHT := {
 const PATCHES := {"bird": 0.0, "cow": 0.4, "sheep": 0.0, "deer": 0.0, "horse": 0.0, "hare": 0.0, "gull": 0.0, "parrot": 0.0,
 	"zebra": 0.0, "giraffe": 0.55, "reindeer": 0.0, "dromedary": 0.0, "ibex": 0.0, "marmot": 0.0, "flamingo": 0.0, "heron": 0.0,
 	"elephant": 0.0, "antelope": 0.0, "polar_bear": 0.0, "musk_ox": 0.0, "goat": 0.3, "monkey": 0.0,
-	"llama": 0.35, "yak": 0.15}
+	"llama": 0.0, "yak": 0.15}
 ## Lot U12 : rayures de la robe (par mètre, 0 = aucune ; zèbre) et descente de la tête qui broute (m).
 const STRIPES := {"zebra": 5.0}
 const GRAZE_M := {"giraffe": 0.9, "dromedary": 0.2, "marmot": 0.12, "hare": 0.2, "flamingo": 0.7, "heron": 0.5,
@@ -1122,7 +1122,7 @@ static func _build_wader(leg_h: float, neck_h: float, flamingo: bool) -> ArrayMe
 
 
 ## Lama (lot HP1) : corps laineux sur pattes fines, long cou droit presque vertical, petite tête aux longues
-## oreilles en banane, queue courte relevée ; robe pie (PATCHES), 1,8 m à la tête.
+## oreilles en banane, queue courte relevée ; robe beige unie, 2 m aux oreilles.
 static func _build_llama() -> ArrayMesh:
 	var m := PeopleMesh.Builder.new()
 	m.region = FAUNA_COAT
