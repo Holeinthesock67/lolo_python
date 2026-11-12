@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Biome `high_plateau` complet : contrat, thème, touffes d'ichu, lamas et yacks, maisons d'adobe, règle de pose au compilateur, trois cols de recette | Python, GDScript, JSON | U24, JP1 | Moyenne | En PR le 12 novembre, **version 6.0** |
+| Biome `high_plateau` complet : contrat, thème, touffes d'ichu, lamas et yacks, maisons d'adobe, règle de pose au compilateur, col de Ticlio | Python, GDScript, JSON | U24, JP1 | Moyenne | En PR le 12 novembre, **version 6.0** |
 
 ## 1. Objectif
 
@@ -28,13 +28,11 @@ Sous 40° de latitude, le terrain ouvert d'ESA WorldCover (prairie, arbustes, so
 
 | Recette | Départ → arrivée | Longueur et dénivelé de référence |
 | --- | --- | --- |
-| `khardung_la` | Leh → col (5 359 m) | 39 km, 2 200 m |
-| `abra_malaga` | Ollantaytambo → col (4 316 m) | 43 km, 1 550 m |
 | `ticlio` | Casapalca → col (4 818 m) | 14,6 km, 625 m (mesure du PC du 12 novembre : 14 566 m, 624 m) |
 
 Références tirées des sites de cols (PJAMM, quaeldich, bikeclimbs) : **à caler sur la mesure du PC** (`route-pack-build`, tolérance 5 %), comme pour les recettes de Hakone. Chacaltaya est écarté : route en terre, en cul-de-sac.
 
-Premier passage PC (12 novembre) : Khardung La et Abra Málaga refusés, « aucun chemin routier permis » : les lacets sortent du rectangle de 1,5 km autour des points. `route_recipe.py` réessaie maintenant avec une marge de 6 km, et un refus dit quel tronçon manque et s'il passerait par une route non revêtue (`unpaved = true`). Second passage : Ticlio construit (14,6 km, 624 m) ; Khardung La et Abra Málaga n'ont de chemin que par une partie notée non revêtue dans OpenStreetMap, d'où `unpaved = true` dans leurs recettes (même clé que les autres cols en partie non revêtus, sans règle à part). Banc `--biome high_plateau` : 5,30 / 6,87 / 9,06 ms en low / medium / high (budgets 8 / 13 / 16 ms).
+Premier passage PC (12 novembre) : Khardung La et Abra Málaga refusés, « aucun chemin routier permis » : les lacets sortent du rectangle de 1,5 km autour des points. `route_recipe.py` réessaie maintenant avec une marge de 6 km, et un refus dit quel tronçon manque et s'il passerait par une route non revêtue (`unpaved = true`). Second passage : Ticlio construit (14,6 km, 624 m) ; Khardung La et Abra Málaga n'ont de chemin que par une partie notée non revêtue dans OpenStreetMap, d'où `unpaved = true` dans leurs recettes (même clé que les autres cols en partie non revêtus, sans règle à part). Troisième passage, avec `unpaved = true` : le plus court chemin prend des pistes plus courtes que la route (Khardung La 27,4 km et 1 859 m au lieu de 39 km ; Abra Málaga 26,6 km au lieu de 43 km). **Décision du propriétaire (12 novembre) : fusion avec Ticlio seul** ; Khardung La et Abra Málaga reviennent dans un lot à part, avec des points de passage pris sur la vraie route (données OSM lues sur le PC). Banc `--biome high_plateau` : 5,30 / 6,87 / 9,06 ms en low / medium / high (budgets 8 / 13 / 16 ms).
 
 ## 5. Essais
 

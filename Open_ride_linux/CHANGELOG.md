@@ -8,7 +8,8 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 ### Nouveau biome : hauts plateaux (lot HP1, 6.0)
 - Biome « hauts plateaux » (Altiplano, Tibet, Ladakh) : herbe jaune d'ichu en touffes, sol ocre, roche brun-rouge, air sec et très clair, lacs bleu profond ; lamas, vigognes et yacks ; maisons basses d'adobe à toit de paille.
 - Le compilateur le pose seul sur le terrain ouvert au-dessus de 3 300 à 3 800 m sous 40° de latitude, sur les parcours comme dans le monde ouvert ; neige et glaciers restent alpins, les Alpes ne changent pas.
-- Pack « Cols célèbres » : Khardung La (Ladakh), Abra Málaga et Ticlio (Pérou).
+- Pack « Cols célèbres » : Ticlio (Pérou, 4 818 m).
+- Construction des cols : une route en lacets qui sort de la zone chargée autour des points est cherchée dans une zone plus large ; un refus dit quel tronçon manque et si une route non revêtue passerait.
 - Choix « hauts plateaux » dans « Biome du décor ».
 
 ### Mode WTF lisible et objets reconnaissables (lot WTF9)
