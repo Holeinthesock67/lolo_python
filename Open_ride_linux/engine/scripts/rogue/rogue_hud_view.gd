@@ -405,7 +405,8 @@ func _hint(g: Dictionary) -> void:
 		row.add_theme_constant_override("separation", 6)
 		chip.add_child(row)
 		var cap := PanelContainer.new()
-		cap.add_theme_stylebox_override("panel", UiTheme.keycap_style(on))
+		# Une seule couleur pour l'action à faire : le cadre or du bouton ; la touche garde son bord neutre (R22).
+		cap.add_theme_stylebox_override("panel", UiTheme.keycap_style(false))
 		cap.add_child(_lbl(16, UiTheme.TEXT, str(k[0])))
 		row.add_child(cap)
 		row.add_child(_lbl(16, UiTheme.TEXT, str(k[1])))

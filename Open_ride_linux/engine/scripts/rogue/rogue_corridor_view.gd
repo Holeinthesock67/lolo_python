@@ -24,13 +24,11 @@ const ARCHETYPE_OBJECTS := {"diesel": "enemy_diesel", "puncheur": "enemy_puncher
 	"sprinteur": "enemy_sprinter", "saboteur": "enemy_saboteur", "boss": "boss_chimera"}
 const CARD_COUNT := 3
 ## Relique de départ, offerte pendant l'échauffement (`corridor.relic`) : ni porte ni relance.
-const RELIC_TEXT := "Relique de départ : A court ou flèches pour choisir, A long pour la prendre"
 const DOOR_SIZE := Vector2(320.0, 150.0)
 
 var root: VBoxContainer
 var cards: Array = []              # PanelContainer
 var doors: Array = []              # DoorPortal
-var reroll: Label
 var _key := ""
 ## Bandeau du haut (lot R22) : les deux temps du choix et le temps restant.
 var header: HBoxContainer
@@ -130,9 +128,6 @@ func _ready() -> void:
 		var d := DoorPortal.new()
 		door_row.add_child(d)
 		doors.append(d)
-	reroll = UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM)
-	reroll.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	root.add_child(reroll)
 	header = HBoxContainer.new()
 	header.name = "Steps"
 	header.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -242,15 +237,7 @@ func apply(corridor: Dictionary) -> void:
 			dd["side"] = "both"
 		_fill_door(doors[i], dd, 3 + i == focus or (single and stage == "door"))
 	(doors[1] as Control).visible = not single
-	var cost := int(corridor.get("reroll_cost", 0))
-	if bool(corridor.get("relic", false)):
-		reroll.text = RELIC_TEXT
-	elif stage == "card":
-		reroll.text = "Z : relancer les cartes pour %d or (tu as %d or)%s" % [cost, int(corridor.get("gold", 0)),
-			"" if bool(corridor.get("can_reroll", true)) else " : or insuffisant"]
-	else:
-		reroll.text = ""
-	reroll.visible = reroll.text != ""
+	# Relance et relique : consigne et prix dans les boutons du HUD (rogue_guide_model.gd), plus de ligne ici (R22).
 	var st := step_texts(corridor)
 	step_card.text = st[0]
 	step_door.text = st[1]

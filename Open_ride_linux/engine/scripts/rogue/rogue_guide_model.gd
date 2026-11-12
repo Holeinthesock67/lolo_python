@@ -54,6 +54,8 @@ var seen_legends: Dictionary = {} # sortes d'objets déjà expliquées
 var store_path := ""
 var _toasts: Array = []           # [{title, sub, tone}]
 var _legend: Array = []           # [titre, texte] à afficher, vide sinon
+## Relance des cartes du couloir (message `loot`, posé par rogue_hud_model) : prix affiché dans le bouton Z.
+var reroll_cost := 0
 
 
 ## Relit les légendes déjà vues (fichier JSON {sorte: true}) ; fichier absent ou illisible : aucune.
@@ -247,7 +249,7 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 	elif phase == "CORRIDOR":
 		if stage == "card":
 			hint = "Choisis une carte, puis prends-la"
-			keys = [["A / ← →", "changer", ""], ["A long", "prendre la carte", "on"], ["Z", "relancer les cartes", ""], ["Y", "pause", ""]]
+			keys = [["A / ← →", "changer", ""], ["A long", "prendre la carte", "on"], reroll_key(reroll_cost, int(rogue.get("gold", 0))), ["Y", "pause", ""]]
 		elif stage == "door":
 			hint = "Choisis ta porte, puis entre"
 			keys = [["A / ← →", "gauche / droite", ""], ["A long", "entrer", "on"], ["Y", "pause", ""]]
@@ -303,6 +305,13 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 	out["hint"] = hint
 	out["keys"] = keys
 	out["tone"] = tone
+
+
+## Bouton Z du couloir : prix de la relance et or du joueur, estompé si l'or manque (lot R22).
+static func reroll_key(cost: int, gold: int) -> Array:
+	if gold < cost:
+		return ["Z", "relancer (%d or, tu as %d : pas assez)" % [cost, gold], "off"]
+	return ["Z", "relancer (%d or, tu as %d)" % [cost, gold], ""]
 
 
 func _feedback(rogue: Dictionary, events: Array, adr: int) -> void:

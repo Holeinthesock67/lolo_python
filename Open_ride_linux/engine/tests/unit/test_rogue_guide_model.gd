@@ -52,6 +52,14 @@ func _run() -> void:
 	o = g.compute(st, _rogue({"phase": "WARMUP", "loot_stage": "card", "target_pct": {"lo": 55, "hi": 65}}), 58.0, [])
 	_check(o["hint"].begins_with("Relique") and o["keys"][1][0] == "A long", "relique : A long pour la prendre")
 
+	# Couloir : prix de la relance dans le bouton Z (plus de ligne à part), estompé sans assez d'or.
+	g.reroll_cost = 15
+	o = g.compute(st, _rogue({"phase": "CORRIDOR", "loot_stage": "card", "gold": 20}), 58.0, [])
+	_check(o["keys"][2] == ["Z", "relancer (15 or, tu as 20)", ""], "couloir : Z relancer avec le prix et l'or")
+	o = g.compute(st, _rogue({"phase": "CORRIDOR", "loot_stage": "card", "gold": 10}), 58.0, [])
+	_check(o["keys"][2][2] == "off" and o["keys"][2][1].ends_with("pas assez)"), "couloir : relance estompée sans assez d'or")
+	g.reroll_cost = 0
+
 	# Salle : titre, distance restante, Firewall en secondes et ses couleurs.
 	o = g.compute(st, _rogue(), 92.0, [])
 	_check(o["title"] == "Salle 3/9 · Puncheur" and o["title_right"] == "620 m restants", "salle : titre et 620 m restants")

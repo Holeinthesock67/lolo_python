@@ -48,6 +48,7 @@ func set_ftp(ftp_w: float) -> void:
 func set_loot(msg: Dictionary) -> void:
 	_loot = msg
 	_relic_taken = false
+	guide.reroll_cost = int(msg.get("reroll_cost", 0))
 
 
 func is_active() -> bool:
