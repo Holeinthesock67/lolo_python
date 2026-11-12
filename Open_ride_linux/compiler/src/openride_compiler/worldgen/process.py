@@ -20,7 +20,11 @@ Organisation :
   engagée passe à moins de 10 km de son bord ; hors ligne, seules les arêtes dont le relief est
   sur le PC sont engagées (sinon demi-tour), et la séance ne s'arrête jamais pour attendre ;
 - tuiles vectorielles en échec (X28) : la cellule reste « incomplète », ses tuiles sont redemandées
-  après leur recul à chaque `progress`, et le graphe est complété dès qu'elles arrivent.
+  après leur recul à chaque `progress`, et le graphe est complété dès qu'elles arrivent ;
+- biomes (W17) : chaque carré et chaque tuile lointaine reçoit sa tuile de biome (`biome_tiles`, même
+  règle que le compilateur), liée avant le terrain ; l'occupation du sol WorldCover se télécharge à
+  l'ouverture pour le départ, puis en avance dans un fil, comme le relief ; ensuite le calcul ne lit
+  que le cache (sinon tuile « sans WorldCover », recalculée à la séance suivante).
 """
 
 from __future__ import annotations
@@ -42,6 +46,7 @@ import numpy as np
 
 from .. import __version__
 from .. import constants as C
+from .. import koppen
 from ..cache import Downloader, Log
 from ..elevation import COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationProvider, SyntheticProvider, copernicus_tile_name
 from ..errors import CompileError
@@ -50,6 +55,7 @@ from .edge_profile import EdgeProfile, NodeAltitudes, concat, edge_profile, spli
 from .graph import Branch, Edge, RoadGraph
 from .navigator import Navigator
 from .osmdb import OsmDb
+from . import biome_tiles
 from .squares import FarKey, SquareKey, SquareQueue, generate_far, generate_square, lonlat_bbox, zone_frame
 from .store import WorldCache, read_open_world_config
 
@@ -170,7 +176,7 @@ class WorldSession:
     def __init__(self, cache: WorldCache, provider: ElevationProvider, send: Callable[[dict], None],
                  config: dict[str, Any] | None = None, session_dir: Path | None = None,
                  network: bool = True, clock: Callable[[], float] = time.time, log: Log | None = None,
-                 db: OsmDb | None = None) -> None:
+                 db: OsmDb | None = None, landcover=None) -> None:
         cfg = dict(config or {})
         self.horizon_m = float(cfg.get("horizon_m", 3000.0))
         self.offer_m = float(cfg.get("offer_m", 300.0))
@@ -209,6 +215,11 @@ class WorldSession:
         self.dirty_tiles = False
         self.offline_reported = False
         self.relief_jobs: dict[str, threading.Thread] = {}
+        # Occupation du sol des biomes (W17) : source WorldCover ou None (biomes du climat et du relief)
+        self.landcover = landcover
+        self.landcover_jobs: set[tuple[int, int]] = set()
+        self._landcover_queue: queue.Queue[tuple[int, int]] = queue.Queue()
+        self._landcover_thread: threading.Thread | None = None
         self.stats = {"squares_generated": 0, "squares_cached": 0, "far_generated": 0, "downloads": 0,
                       "bad_lines": 0}
         self._last_evict = -math.inf
