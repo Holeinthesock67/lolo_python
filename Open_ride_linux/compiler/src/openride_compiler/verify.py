@@ -22,7 +22,7 @@ import numpy as np
 from . import constants as C
 from . import segments_layer as SEG
 from .osm_layers import nearest_chunk_and_y, ring_centroid, signed_area, vegetation_chunk_and_y
-from .terrain import LEVELS, NEAR, TILE_BYTES, RouteAxis, read_tile, tile_coords, tile_filename
+from .terrain import ALL_LEVELS, NEAR, TILE_BYTES, RouteAxis, read_tile, tile_coords, tile_filename
 
 TILE_RE = re.compile(r"tile_(-?\d+)_(-?\d+)\.f32")
 BIOME_TILE_RE = re.compile(r"tile_(-?\d+)_(-?\d+)\.json")
@@ -138,7 +138,7 @@ def _check_terrain(world: Path, layers: dict, route: dict | None, problems: list
         return
     listed = terrain.get("tiles") if isinstance(terrain.get("tiles"), dict) else {}
     grids: dict[str, dict[tuple[int, int], np.ndarray]] = {}
-    for level in LEVELS:
+    for level in ALL_LEVELS:
         level_grids: dict[tuple[int, int], np.ndarray] = {}
         folder = world / "terrain" / level.name
         for tile in sorted(folder.glob("tile_*.f32")):

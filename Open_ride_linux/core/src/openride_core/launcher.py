@@ -116,6 +116,7 @@ ENGINE_ARGS_NOT_FROM_CONFIG: dict[str, str] = {
     "--forest": "banc avant/après du lot Y5 (forêts lointaines coupées)",
     "--crowd": "bancs du lot Y21 (spectateurs sur toutes les montées)",
     "--camera-height": "bancs du lot Y5 (vue follow_far plus haute, par-dessus les arbres proches)",
+    "--horizon": "bancs du lot JP4 (avec et sans relief d'horizon)",
 }
 
 # Code de sortie de l'engine : « tout relancer » (menu « Appareils », lot N13 ; engine/scripts/main.gd).

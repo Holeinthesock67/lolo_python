@@ -157,6 +157,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help=VARIANT_HELP)
     b.add_argument("--no-surface", action="store_true",
                    help="ne cherche pas la surface de la route dans OSM (pas de colonne surface, avant U20)")
+    b.add_argument("--no-horizon", action="store_true",
+                   help="pas de niveau de terrain horizon (relief à 500 m jusqu'à 40 km, lot JP4)")
     b.add_argument("--offline", action="store_true",
                    help="interdit le réseau : les tuiles d'altitude et OSM doivent être en cache")
 
@@ -168,6 +170,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="couche biome : impose ce biome à tout le parcours (255 partout)")
     a.add_argument("--variant", type=parse_variant, default=None, metavar="GROUND,ROOFS[,LANDSCAPE]",
                    help=VARIANT_HELP)
+    a.add_argument("--no-horizon", action="store_true",
+                   help="terrain : pas de niveau horizon (relief à 500 m jusqu'à 40 km, lot JP4)")
     a.add_argument("--manual", type=Path, default=None,
                    help="segments : fichier <parcours>.segments.toml (défaut : celui de la trace source, "
                         "cherché à côté du .world puis dans ~/OpenRide/GPX)")
@@ -329,7 +333,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     frame = LocalFrame.from_manifest(manifest)
     tiles = None
     if "terrain" in args.layers:
-        tiles = build_terrain(compiled.route, frame, provider)
+        tiles = build_terrain(compiled.route, frame, provider, horizon=not getattr(args, "no_horizon", False))
         manifest["layers"]["terrain"] = terrain_manifest(tiles, provider)
 
     forced = getattr(args, "biome", None)
@@ -514,7 +518,7 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
         return EXIT_OK
     if args.layer == "terrain":
         provider = make_provider(args.offline)
-        tiles = build_terrain(route, frame, provider)
+        tiles = build_terrain(route, frame, provider, horizon=not getattr(args, "no_horizon", False))
         replace_terrain_dir(world, tiles)
         manifest.setdefault("layers", {})["terrain"] = terrain_manifest(tiles, provider)
         manifest["format_version"] = C.FORMAT_VERSION
@@ -959,6 +963,7 @@ def cmd_build_all(args: argparse.Namespace) -> int:
                 layers=args.layers,
                 offline=args.offline,
                 no_surface=False,
+                no_horizon=False,
                 biome=getattr(args, "biome", None),
                 variant=getattr(args, "variant", None),
             )

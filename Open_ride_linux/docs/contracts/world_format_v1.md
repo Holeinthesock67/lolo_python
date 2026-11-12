@@ -132,6 +132,7 @@ Le terrain est une grille d'altitudes dans le repère du monde, en deux niveaux 
 | --- | --- | --- | --- | --- |
 | Proche | `terrain/near/` | 10 m | 1 000 m × 1 000 m, 101 × 101 échantillons | ± 400 m |
 | Lointain | `terrain/far/` | 50 m | 5 000 m × 5 000 m, 101 × 101 échantillons | ± 5 km |
+| Horizon (depuis 1.8, facultatif) | `terrain/horizon/` | 500 m | 50 000 m × 50 000 m, 101 × 101 échantillons | ± 40 km |
 
 **Fichier de tuile `tile_<ix>_<iz>.f32`**
 
@@ -143,6 +144,8 @@ Le terrain est une grille d'altitudes dans le repère du monde, en deux niveaux 
 **Cohérence avec la route.** Les altitudes sont déjà corrigées par le compilateur : autour du ruban, le terrain suit l'altitude lissée de la route, puis se fond progressivement dans le MNT entre 4 m et 25 m du bord. L'engine n'a donc aucune correction à faire et la route ne flotte pas ni ne s'enterre. Ponts et tunnels sont traités comme du terrain ordinaire en v1.
 
 **Terrain lointain.** Il masque le bord du terrain proche. Les tuiles lointaines recouvrent le terrain proche ; l'engine dessine le proche à son altitude exacte et le lointain 2 m plus bas que ses valeurs, pour éviter le scintillement entre les deux niveaux sans rapprocher le terrain proche de la chaussée.
+
+**Horizon (depuis 1.8, lot JP4).** Niveau facultatif, pour voir les grands sommets au-delà du brouillard (le mont Fuji depuis Hakone, à 25–30 km). Altitudes du MNT sans fondu avec la route, abaissées de la courbure terrestre vue depuis la route : `d² / (2 R′)`, où `d` est la distance horizontale au point de route le plus proche et `R′` = 7/6 × 6 371 km (réfraction comprise). Pas de couche biome à ce niveau. L'engine ne le dessine qu'au-delà du terrain lointain, avec sa propre brume ; un lecteur plus ancien l'ignore. `--no-horizon` (build, add-layer terrain) ne l'écrit pas ; `layers.terrain.horizon_cell_m` et `tiles.horizon` ne sont présents que s'il est écrit.
 
 **Manifeste :** `terrain.sources` indique le MNT utilisé (`copernicus_glo30`, `ign_rge_alti`), avec sa résolution native, pour que le compilateur sache quand régénérer.
 
@@ -501,7 +504,8 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.7 | 7 novembre 2026 | Ajout compatible (lot VD1, série VD de la 4.0, partie format) : colonne facultative `bank_deg` de la route et surface `wood` (§4) ; couche facultative `venue.json` (§8 sexies), entrée `layers.venue` du manifeste et schéma `venue.schema.json` ; `route.surface_source` peut valoir `venue` et `stats.surface_pct` compter `wood`. Vecteurs de test de la route complétés (relèvement de la boucle). Un `.world` 1.6 reste valide. La partie IPC du lot VD1 (objet `track` de `state`) attend les épreuves (lot VD6) |
 | 1.7 | 9 novembre 2026 | Sans changement du format (lot U24) : la zone climatique des biomes vient de la carte de Köppen-Geiger embarquée dans le compilateur ; `layers.biome.sources` nomme `koppen_1986_2010` au lieu de `latitude` (texte libre, rien à changer côté lecture) |
 | 1.7 | 9 novembre 2026 | Ajout compatible (lot JP1, série JP de la 6.0) : 17e biome `japan` (Japon : montagnes humides) dans l'énumération des biomes (§8 quater, `biome`, `manifest` et `theme`), toit `kawara` dans celle des variantes régionales (§8 quater et §9) ; entrée `biomes.japan` et variante `kawara` du thème par défaut. Énumérations étendues seulement par ajout ; aucun monde n'écrit encore `japan` avant le lot JP2 |
-| 1.7 | 12 novembre 2026 | Ajout compatible (lot U25, 6.0, variantes de paysage) : membre facultatif `landscape` de `variant` (`canyon`, `fjord`, `ile_volcanique`, `rizieres` ; absent = `null`) et toit `bois_peint` (§8 quater) ; section `landscapes` du thème 2.0 (§9) ; paysages et toit posés par des zones à grosse maille de la table des variantes régionales du compilateur. Un `.world` sans `landscape` reste valide |
+| 1.8 | 12 novembre 2026 | Ajout compatible (lot JP4, série JP de la 6.0) : niveau de terrain facultatif `terrain/horizon/` (maille 500 m, tuiles de 50 km, ± 40 km, courbure terrestre comprise, §5) ; `layers.terrain.horizon_cell_m` et `tiles.horizon` ; option `--no-horizon` |
+| 1.8 | 12 novembre 2026 | Ajout compatible (lot U25, 6.0, variantes de paysage) : membre facultatif `landscape` de `variant` (`canyon`, `fjord`, `ile_volcanique`, `rizieres` ; absent = `null`) et toit `bois_peint` (§8 quater) ; section `landscapes` du thème 2.0 (§9) ; paysages et toit posés par des zones à grosse maille de la table des variantes régionales du compilateur. Un `.world` sans `landscape` reste valide |
 
 ## 13. Monde vivant (monde ouvert, série W)
 
