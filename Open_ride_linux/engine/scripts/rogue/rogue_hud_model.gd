@@ -8,6 +8,8 @@ extends RefCounted
 ## Trame sans objet `rogue` : modèle vide (active = false), jamais d'erreur.
 ## Événements : ceux d'une trame ne sont rendus qu'une fois, même si la trame est renvoyée (même `seq`).
 
+const GuideModel := preload("res://scripts/rogue/rogue_guide_model.gd")
+
 const SMOOTH_S := 0.3
 const ADRENALINE_MAX := 100.0
 const ADRENALINE_Z := 50.0          # seuil de l'attaque Z
@@ -34,6 +36,7 @@ var _values: Dictionary = {}
 var _pending_events: Array = []
 var _loot: Dictionary = {}
 var _relic_taken := false          # relique de l'échauffement prise (événement card_taken) : l'offre se cache
+var guide = GuideModel.new()       # textes de lisibilité (lot R22)
 
 
 ## FTP du coureur, tirée de hello_ack.config.ftp_w.
@@ -83,6 +86,7 @@ func update(state: Dictionary, now_s: float) -> void:
 	if not _active:
 		_pending_events = []
 	_active = true
+	var fresh_events: Array = rogue.get("events", []) if fresh else []
 	if fresh:
 		for ev in rogue.get("events", []):
 			_pending_events.append(String(ev))
@@ -137,6 +141,13 @@ func update(state: Dictionary, now_s: float) -> void:
 		"room_text": "%d/%d" % [int(rogue.get("room_index", 1)), int(rogue.get("rooms_total", 1))],
 		"corridor": _corridor(phase, rogue),
 		"hack": _hack(hack),
+		"guide": guide.compute(state, rogue, _smooth["power_pct"], fresh_events),
+		"loot_stage": rogue.get("loot_stage", null),
+		"phase_left_s": rogue.get("phase_left_s", null),
+		"next": rogue.get("next", []),
+		"shield_text": "%d" % int(roundf(float(rogue.get("shield", 0.0)))),
+		"adrenaline_text": "Z prêt" if float(rogue.get("adrenaline", 0.0)) >= ADRENALINE_Z else "%d/%d" % [int(floor(float(rogue.get("adrenaline", 0.0)))), int(ADRENALINE_Z)],
+		"posture_text": {"ROC": "ROC", "FLUIDE": "FLUIDE", "VELOCE": "VÉLOCE", "ARRET": "ARRÊT"}.get(posture, posture),
 	}
 
 
@@ -152,11 +163,13 @@ func _corridor(phase: String, rogue: Dictionary) -> Dictionary:
 		return {}
 	var focus = rogue.get("loot_focus", null)
 	if phase == "WARMUP":
+		if rogue.has("loot_stage") and rogue.get("loot_stage", null) == null:
+			return {}          # révision 1.15 : le core dit qu'aucune relique n'est à choisir
 		# Relique de départ (tirée à la 3e minute de l'échauffement) : trois cartes, ni porte ni relance.
 		if _relic_taken:
 			return {}
 		return {"cards": _loot.get("cards", []), "doors": [], "focus": -1 if focus == null else int(focus),
-			"reroll_cost": 0, "can_reroll": false, "relic": true}
+			"reroll_cost": 0, "can_reroll": false, "relic": true, "stage": "card", "left_s": null, "gold": int(rogue.get("gold", 0))}
 	if phase != "CORRIDOR":
 		return {}
 	return {
@@ -165,6 +178,10 @@ func _corridor(phase: String, rogue: Dictionary) -> Dictionary:
 		"focus": -1 if focus == null else int(focus),
 		"reroll_cost": int(_loot.get("reroll_cost", 0)),
 		"can_reroll": int(rogue.get("gold", 0)) >= int(_loot.get("reroll_cost", 0)),
+		# lot R22 : temps du choix (carte puis porte, `null` une fois la porte prise), temps restant, or
+		"stage": rogue.get("loot_stage", "card" if not rogue.has("loot_stage") else null),
+		"left_s": rogue.get("phase_left_s", null),
+		"gold": int(rogue.get("gold", 0)),
 	}
 
 

@@ -102,7 +102,7 @@ func _run() -> void:
 	_check(sc.ribbon_y(150.0) > sc.ribbon_y(50.0), "le ruban monte")
 	# HUD diégétique (R11) : le modèle suit la trame, le HUD est dans la scène, le loot est relayé
 	_check(sc.hud_model.is_active() and sc.hud_model.values()["gear_text"] == "01", "modèle du HUD alimenté par la trame")
-	_check(sc.hud_view != null and sc.hud_view.get_node_or_null("ShieldArc") != null, "HUD dans la scène")
+	_check(sc.hud_view != null and sc.hud_view.panel != null and sc.hud_view.panel.name == "StatePanel", "HUD dans la scène (panneau d'état du lot R22)")
 	host.on_loot({"cards": [{}, {}, {}], "doors": [{}, {}], "reroll_cost": 50, "gold": 10})
 	host.update({"mode": "ROGUE", "rogue": _rogue("CORRIDOR", 5, 120.0)}, main, classic, we, cam, "low", 102.5)
 	_check(sc.hud_model.values()["corridor"]["cards"].size() == 3, "cartes du couloir relayées au modèle")
@@ -118,6 +118,7 @@ func _run() -> void:
 	sc.enemy_view.set_archetype("diesel")
 	# échauffement : pas de ruban, mais le vélo avance sur la grille de la distance de la run (recette R14 du
 	# 8 novembre : l'échauffement figé passait pour un blocage)
+	host.on_loot({})     # plus d'offre en cours : l'échauffement montre son panneau (lot R22)
 	host.update({"mode": "ROGUE", "s": 400.0, "rogue": _rogue("WARMUP", 0, 0.0)}, main, classic, we, cam, "low", 103.0)
 	_check(not sc.ribbon.visible and not sc.firewall.visible, "échauffement : ni ruban ni Firewall")
 	await process_frame
@@ -134,7 +135,7 @@ func _run() -> void:
 	# préchauffage (2 novembre) : la synthèse ne bloque pas l'image du départ, les flux arrivent ensuite
 	_check(sc.audio.threaded and not sc.audio.streams_ready(), "sons : synthèse en tâche de fond, pas sur l'image du départ")
 	sc.audio.finish_now()
-	_check(sc.audio.streams_ready() and sc.audio.streams.size() == 25, "sons : 25 flux installés à la fin de la synthèse")
+	_check(sc.audio.streams_ready() and sc.audio.streams.size() == 27, "sons : 27 flux installés à la fin de la synthèse")
 	_check(sc.audio.music_players.values().all(func(mp): return mp.stream != null),
 			"musique : les couches ont leur flux à la fin de la synthèse")
 	# sortie

@@ -20,9 +20,15 @@ const RogueAudio := preload("res://scripts/rogue/rogue_audio.gd")
 const CameraFx := preload("res://scripts/rogue/rogue_camera_fx.gd")
 const SheetScript := preload("res://scripts/rogue/rogue_style_sheet.gd")
 const RIBBON_SHADER := preload("res://scripts/rogue/ribbon.gdshader")
+const MarkerGuides := preload("res://scripts/rogue/marker_guides.gd")
+const SideDecor := preload("res://scripts/rogue/rogue_side_decor.gd")
 
 ## Phases où le ruban est affiché (hors échauffement, retour au calme et bilan : vide et grille).
 const RIBBON_PHASES := ["ROOM", "CORRIDOR", "BOSS", "RECOVERY"]
+## Vues de la caméra (lot R22, choix du propriétaire du 12 novembre : 3 vues sur les flèches haut et bas) :
+## [recul, hauteur, visée devant] en mètres. 0 : derrière (vue d'origine), 1 : haute, 2 : proche.
+const VIEWS := [[6.0, 2.4, 14.0], [12.0, 6.5, 26.0], [3.2, 1.5, 10.0]]
+const VIEW_NAMES := ["derrière", "haute", "proche"]
 const CAMERA_BACK_M := 6.0
 const CAMERA_UP_M := 2.4
 const CAMERA_LOOK_AHEAD_M := 14.0
@@ -46,7 +52,11 @@ var grid: MeshInstance3D
 var markers_root: Node3D
 var shown_room_id := -1
 var ribbon_visible := false
-var markers: Array = []           # {node, kind, s, len}
+var markers: Array = []           # {node, kind, s, len, guides}
+var view_index := 0               # vue de la caméra (VIEWS)
+var side_decor: Node3D            # rogue_side_decor.gd (lot R22)
+var _v_mps := 0.0                 # vitesse du joueur (state.v) : longueur des zones Z et anneau des arches
+var _decor_mode := ""             # "room:<id>" ou "strip"
 var _stations: Array = []
 var _s_target := 0.0
 var _s_disp := 0.0
@@ -99,6 +109,11 @@ func _ready() -> void:
 	_ribbon_mat = ShaderMaterial.new()
 	_ribbon_mat.shader = RIBBON_SHADER
 	ribbon.material_override = _ribbon_mat
+	side_decor = SideDecor.new()
+	side_decor.name = "SideDecor"
+	side_decor.preset = preset
+	side_decor.adapted = adapted
+	add_child(side_decor)
 	enemy_view = EnemyViews.new()
 	enemy_view.name = "Enemy"
 	enemy_view.preset = preset
@@ -128,6 +143,9 @@ func set_style(new_preset: String, new_adapted: bool) -> void:
 	grid.material_override = Materials.grid(preset, adapted)
 	bike.material_override = Materials.edge("player", 2.0, preset, adapted)
 	firewall.set_style(preset, adapted)
+	if side_decor != null:
+		side_decor.set_style(preset, adapted)
+		_decor_mode = ""
 	if hud_view != null:
 		hud_view.set_style(preset, adapted)
 	if enemy_view != null:
@@ -160,7 +178,10 @@ func _build_room(room_id: int) -> void:
 		var s_mid := float(mk["s_m"]) + float(mk["len_m"]) * 0.5
 		node.position = Vector3(0.0, RibbonBuilder.y_at(_stations, s_mid), -s_mid)
 		markers_root.add_child(node)
-		markers.append({"node": node, "kind": kind, "s": float(mk["s_m"]), "len": float(mk["len_m"])})
+		# Lot R22 : étiquette, zone où Z est accepté, portique et anneau d'approche des arches.
+		var guides: Dictionary = MarkerGuides.decorate(node, kind, mk.get("param", null), float(mk["len_m"]), preset, adapted)
+		markers.append({"node": node, "kind": kind, "s": float(mk["s_m"]), "len": float(mk["len_m"]), "guides": guides})
+	hud_model.guide.set_room(room_id, r["markers"])
 
 
 ## Préchauffage (lot Y20), pendant l'écran d'attente du départ : un bout de ruban plat et un repère de chaque
@@ -225,6 +246,7 @@ func on_state(rogue: Dictionary, now_s: float, run_s: float = 0.0) -> void:
 	markers_root.visible = ribbon.visible
 	firewall.visible = ribbon.visible
 	_s_target = float(rogue.get("s_room", 0.0)) if ribbon.visible else maxf(run_s, 0.0)
+	_place_decor(rid)
 	_gap_m = float(rogue.get("firewall_gap_m", 150.0))
 	if ribbon.visible:
 		var windows: Array = rogue.get("windows", [])
@@ -244,6 +266,7 @@ func on_hud(state: Dictionary, now_s: float) -> void:
 	var events: Array = hud_model.take_events()
 	_hud_events.append_array(events)
 	hud_view.show_events(events)
+	hud_view.push_feedback(hud_model.guide.take_toasts(), hud_model.guide.take_legend())
 	var summary = state.get("summary", null)
 	var result := "victory"
 	if typeof(summary) == TYPE_DICTIONARY and typeof(summary.get("rogue", null)) == TYPE_DICTIONARY:
@@ -252,6 +275,29 @@ func on_hud(state: Dictionary, now_s: float) -> void:
 	_enemy_rogue = state.get("rogue", null)
 	_enemy_seq = int(state.get("seq", -1))
 	_grade_pct = float(state.get("grade", 0.0))
+	_v_mps = maxf(float(state.get("v", 0.0)), 0.0)
+
+
+## Décor latéral (lot R22) : le long du ruban en salle, sinon la bande plate qui suit le joueur.
+func _place_decor(rid: int) -> void:
+	if side_decor == null:
+		return
+	var want := ("room:%d" % rid) if ribbon.visible else "strip"
+	if want != _decor_mode:
+		_decor_mode = want
+		if ribbon.visible:
+			side_decor.build_room(_stations, float(store.room(rid)["length_m"]), rid)
+		else:
+			side_decor.build_strip()
+	if not ribbon.visible:
+		side_decor.follow_strip(_s_target)
+
+
+## Vue suivante (`step` = 1, flèche haut) ou précédente (−1, flèche bas), en boucle. Renvoie le nom de la vue.
+func cycle_view(step: int) -> String:
+	view_index = posmod(view_index + step, VIEWS.size())
+	_place_camera()
+	return VIEW_NAMES[view_index]
 
 
 func _process(delta: float) -> void:
@@ -259,6 +305,7 @@ func _process(delta: float) -> void:
 	if absf(_s_disp - _s_target) > 50.0:
 		_s_disp = _s_target       # saut de salle : pas de glissement
 	_update_pose()
+	_tick_guides()
 	_tick_hud(delta)
 	_tick_enemy(delta)
 
@@ -285,6 +332,13 @@ func rider_pitch_deg() -> float:
 	return rad_to_deg(atan((ribbon_y(_s_disp + 1.0) - ribbon_y(_s_disp - 1.0)) * 0.5))
 
 
+func _tick_guides() -> void:
+	if not ribbon.visible:
+		return
+	for m in markers:
+		MarkerGuides.update(m.get("guides", {}), m["kind"], m["s"], m["len"], _s_disp, _v_mps)
+
+
 func _tick_enemy(delta: float) -> void:
 	# Le modèle tourne à chaque image sur la dernière trame ; une trame déjà vue (même seq) ne rejoue pas ses événements.
 	enemy_model.update(_enemy_rogue, _enemy_seq, _grade_pct, delta, effects_ok)
@@ -309,8 +363,10 @@ func _place_camera() -> void:
 	if camera == null:
 		return
 	var y := ribbon_y(_s_disp)
-	var eye := Vector3(0.0, y + CAMERA_UP_M, -(_s_disp - CAMERA_BACK_M))
-	var target := Vector3(0.0, ribbon_y(_s_disp + CAMERA_LOOK_AHEAD_M) + 0.5, -(_s_disp + CAMERA_LOOK_AHEAD_M))
+	var view: Array = VIEWS[view_index]
+	var eye := Vector3(0.0, y + float(view[1]), -(_s_disp - float(view[0])))
+	var ahead := float(view[2])
+	var target := Vector3(0.0, ribbon_y(_s_disp + ahead) + 0.5, -(_s_disp + ahead))
 	camera.fov = camera_fx.fov_deg()
 	camera.look_at_from_position(eye + camera_fx.shake_offset(), target)
 
@@ -324,4 +380,8 @@ func test_info() -> Dictionary:
 		"corridor": corridor_view.visible, "hud": hud_view.visible,
 		"holo": hud_view.holo.text if hud_view.visible and hud_view.holo.visible else "",
 		"gauges": hud_view.gauges.text if hud_view.visible and hud_view.gauges.visible else "",
-		"banner": hud_view.banner.visible}
+		"banner": hud_view.banner.visible,
+		# lot R22
+		"view": VIEW_NAMES[view_index], "decor": side_decor.instance_total() if side_decor != null else 0,
+		"hint": hud_view.hint_label.text if hud_view.hint_panel.visible else "",
+		"side": hud_view.side_big.text if hud_view.side_panel.visible else ""}

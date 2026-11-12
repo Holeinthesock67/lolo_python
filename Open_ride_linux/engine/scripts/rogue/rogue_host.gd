@@ -14,6 +14,8 @@ const LEAVE_GRACE_S := 1.0         # mode ROGUE sans attente ni run : la scène 
 var store = RoomStore.new()
 var last_loot: Dictionary = {}
 var ftp_w := 0.0                   # hello_ack.config.ftp_w
+## Légendes déjà vues (lot R22) : fichier posé par main.gd hors mode test ; vide : en mémoire seulement.
+var legends_path := ""
 var scene = null                   # rogue_scene.gd
 var resync_requests := 0          # demandes `rogue_resync` émises (lues par main.gd)
 var _hidden: Array = []           # [Node3D, était visible]
@@ -90,6 +92,7 @@ func _enter(parent: Node, classic: Array, world_env: WorldEnvironment, camera: C
 	scene.store = store
 	scene.preset = preset
 	scene.hud_model.set_ftp(ftp_w)
+	scene.hud_model.guide.load_seen(legends_path)    # lot R22 : légende une seule fois par objet
 	scene.hud_model.set_loot(last_loot)
 	parent.add_child(scene)
 	for n in classic:
