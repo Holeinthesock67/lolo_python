@@ -1,0 +1,51 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+27.3;0;0;0;0;0;0;0;
+31.9;1;78;0;0;0;0;0;
+33.5;1;78;0;0;0;0;0;
+33.9;1;78;0;0;0;0;0;
+38.2;1;78;0;0;0;0;0;
+38.8;1;78;0;0;0;0;0;
+40.0;1;78;0;0;0;0;0;
+46.0;1;78;0;0;0;0;0;
+47.3;1;78;0;0;0;0;0;
+52.0;1;78;0;0;0;0;0;
+58.0;1;78;0;0;0;0;0;
+62.0;1;78;0;0;0;0;0;
+62.3;1;78;0;0;0;0;0;
+64.0;1;78;0;0;0;0;0;
+70.0;1;78;0;0;0;0;0;
+76.0;1;78;0;0;0;0;0;
+77.0;1;78;0;0;0;0;0;
+77.3;1;78;0;0;0;0;0;
+82.0;1;78;0;0;0;0;0;
+88.0;1;78;0;0;0;0;0;
+92.0;1;78;0;0;0;1;0;airliner_rumble=1
+92.3;1;78;0;0;0;1;0;airliner_rumble=1
+94.0;1;78;0;0;1;1;0;airliner_rumble=1
+100.0;1;78;0;0;1;1;0;airliner_rumble=1 voice_allez=1
+106.0;1;78;0;0;1;1;0;airliner_rumble=1 voice_allez=1
+107.3;1;78;0;0;1;1;0;airliner_rumble=1 voice_allez=1
+112.0;1;78;0;0;1;1;0;airliner_rumble=1 voice_allez=1
+118.0;1;78;0;0;1;1;0;airliner_rumble=1 voice_allez=1
+122.3;1;78;0;0;1;1;0;airliner_rumble=1 voice_allez=1
+124.0;1;78;0;0;1;1;0;airliner_rumble=1 voice_allez=1
+130.0;1;78;0;0;1;1;0;airliner_rumble=1 voice_allez=1
+136.0;1;78;0;0;2;2;0;airliner_rumble=2 voice_allez=1
+137.3;1;78;0;0;2;2;0;airliner_rumble=2 voice_allez=1
+142.0;1;78;0;0;2;2;0;airliner_rumble=2 voice_allez=1
+148.0;1;78;0;0;2;2;0;airliner_rumble=2 voice_allez=1
+152.0;1;78;0;0;1;2;0;airliner_rumble=2 voice_allez=1
+152.3;1;78;0;0;1;2;0;airliner_rumble=2 voice_allez=1
+154.0;1;78;0;0;1;2;0;airliner_rumble=2 voice_allez=1
+160.0;1;78;0;0;1;2;0;airliner_rumble=2 voice_allez=1
+166.0;1;78;0;0;1;2;0;airliner_rumble=2 voice_allez=1
+167.3;1;78;0;0;1;2;0;airliner_rumble=2 voice_allez=1
+172.0;1;78;0;0;3;2;0;airliner_rumble=2 voice_allez=1
+178.0;1;78;0;0;3;2;0;airliner_rumble=2 voice_allez=1
+182.3;1;78;0;0;3;2;0;airliner_rumble=2 voice_allez=1
+184.0;1;78;0;0;2;2;0;airliner_rumble=2 voice_allez=1
+197.3;1;78;0;0;2;2;0;airliner_rumble=2 voice_allez=1
+202.0;1;78;0;0;2;2;0;airliner_rumble=2 voice_allez=1
+212.3;1;78;0;0;2;2;0;airliner_rumble=2 voice_allez=1
+227.3;1;78;0;0;2;2;0;airliner_rumble=2 voice_allez=2
+241.1;1;78;0;0;2;2;0;airliner_rumble=2 voice_allez=2
