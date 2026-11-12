@@ -46,6 +46,8 @@ global uniform vec3 wind_dir;
 global uniform vec3 season_grass_tint;
 global uniform float season_grass_dry;
 global uniform float season_snow_drop_m;
+// Sol détrempé de la saison des pluies (lot U13) : plus sombre hors neige, plus brillant (terrain*.gdshader).
+global uniform float season_ground_wet;
 global uniform float wind_strength;
 global uniform float wind_phase;
 #include "res://shaders/surface_detail.gdshaderinc"
@@ -223,6 +225,9 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 	float surface_h = grass_h * w_grass + rock_h * w_rock + snow_h * w_snow + extra_h;
 	normal_out = sd_bump(normal_out, vertex, surface_h);   // hors branche (dérivées) ; surface_h = 0 : normale inchangée
 
+	if (season_ground_wet > 0.0) {
+		final_color *= 1.0 - 0.22 * season_ground_wet * (1.0 - w_snow);
+	}
 	if (cloud_shadow_enabled && cloud_shadow_coverage > 0.0) {
 		final_color *= 1.0 - cloud_shadow_strength * _cloud_density(v_world_pos.xz + cloud_shadow_offset);
 	}

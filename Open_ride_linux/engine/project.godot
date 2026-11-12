@@ -59,6 +59,10 @@ season_snow_drop_m={
 "type": "float",
 "value": 0.0
 }
+season_ground_wet={
+"type": "float",
+"value": 0.0
+}
 wind_dir={
 "type": "vec3",
 "value": Vector3(0, 0, 0)
