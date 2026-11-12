@@ -290,15 +290,13 @@ Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = inten
 - [ ] Cible tenue, biais ± 2 % visible
 - **Journaux :** `openride-core summary` (cible et écart par bloc, biais).
 
-### E2. Importer un exercice (N16)
+### E2. Importer un exercice (N16) : retiré
 
-- **Prérequis :** un fichier `.zwo`, `.erg` ou `.mrc` dans `~/Téléchargements` (par exemple une copie de `core/workouts/tempo_2x15.erg`, ou un export GoldenCheetah, qui reste sur le PC).
-- **Étapes :** Session ERG → « Importer un fichier » → choisir le fichier ; refaire l'import du même fichier.
-- **Attendu :** fichiers proposés du plus récent au plus ancien avec leur dossier ; copie dans `~/OpenRide/Workouts/`, « Importé : … » ; second import du même fichier : marqué « déjà importé », pas de doublon ; un fichier différent du même nom prend le suffixe `_2`.
-- [ ] Import et choix
-- [ ] Pas de doublon ni d'écrasement
+L'import d'entraînements depuis le menu est retiré le 12 novembre (décision du propriétaire, révision 1.15 de l'IPC) : plus d'essai. Un fichier se dépose dans `~/OpenRide/Workouts/`.
 
 ### E3. `sweet_spot_3x10` complet (O8 ligne 5)
+
+**Retiré du plan le 12 novembre** (décision du propriétaire, séance `.zwo` complète abandonnée) : essai facultatif.
 
 - **Étapes :** choisir `sweet_spot_3x10` (60 min : échauffement 10 min, 3 × 10 min à 90 % de la FTP, récupérations 5 min à 55 %, retour au calme 5 min) et le rouler en entier, ou au moins jusqu'à la fin du premier effort (20 min).
 - **Attendu :** cibles calculées sur la FTP des réglages ; cibles tenues ; biais ± 2 % ; bips ; bandeau lisible à 2 m.

@@ -290,7 +290,8 @@ def build_biome(route: dict, frame: LocalFrame, keys: dict[str, list[tuple[int, 
                 forced: str | None = None, provider: ElevationProvider | None = None,
                 landcover=None, osm_client=None, offline: bool = False, log=None,
                 forced_variant: dict | None = None):
-    """Couche biome (lot U2) : biome imposé, ou classification WorldCover + OSM + altitude + latitude.
+    """Couche biome (lot U2) : biome imposé, ou classification WorldCover + OSM + altitude + climat (carte de
+    Köppen embarquée, lot U24).
 
     Sans `--offline`, une source injoignable est remplacée par un repli (OSM et altitude seules, ou
     altitude seule) avec un avertissement ; avec `--offline`, une donnée absente du cache est une erreur.
@@ -315,7 +316,7 @@ def build_biome(route: dict, frame: LocalFrame, keys: dict[str, list[tuple[int, 
             if offline:
                 raise
             log(f"avertissement : occupation du sol indisponible ({exc}) ; biomes tirés d'OSM, de l'altitude "
-                "et de la latitude seulement")
+                "et du climat seulement")
     areas = []
     if osm_client is not None:
         try:
@@ -327,7 +328,7 @@ def build_biome(route: dict, frame: LocalFrame, keys: dict[str, list[tuple[int, 
             log(f"avertissement : polygones OSM des biomes indisponibles ({exc}) ; classification sans OSM")
     if provider is not None:
         sources.append("dem")
-    sources.append("latitude")
+    sources.append(B.koppen.SOURCE)
     inputs = B.Inputs(to_latlon=frame.to_latlon, landcover=lc_fn,
                       elevation=provider.elevations if provider is not None else None, osm=areas)
     return B.build_biome_layer(keys, route["x"], route["z"], inputs=inputs, sources=sources,

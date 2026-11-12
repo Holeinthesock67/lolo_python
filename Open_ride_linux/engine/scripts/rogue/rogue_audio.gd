@@ -12,6 +12,7 @@ extends Node
 const AudioMix := preload("res://scripts/audio_mix.gd")
 const Synth := preload("res://scripts/rogue/rogue_sound_synth.gd")
 const Model := preload("res://scripts/rogue/rogue_sound_model.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 const BEAT_HZ := 2.0
 
@@ -67,7 +68,7 @@ func prepare() -> void:
 		if custom != null:
 			_customs[sound] = custom
 	if threaded:
-		_task_id = WorkerThreadPool.add_task(_render_all, false, "Synthèse des sons du Cyber-Rogue")
+		_task_id = BgTasks.add(_render_all, false, "Synthèse des sons du Cyber-Rogue")
 	else:
 		_render_all()
 		_install()
@@ -113,19 +114,19 @@ func streams_ready() -> bool:
 ## Attend la fin de la synthèse et installe les flux (tests, sortie du mode).
 func finish_now() -> void:
 	if _task_id >= 0:
-		WorkerThreadPool.wait_for_task_completion(_task_id)
+		BgTasks.wait(_task_id)
 		_task_id = -1
 		_install()
 
 
 func _poll_task() -> void:
-	if _task_id >= 0 and WorkerThreadPool.is_task_completed(_task_id):
+	if _task_id >= 0 and BgTasks.done(_task_id):
 		finish_now()
 
 
 func _exit_tree() -> void:
 	if _task_id >= 0:
-		WorkerThreadPool.wait_for_task_completion(_task_id)
+		BgTasks.wait(_task_id)
 		_task_id = -1
 
 
