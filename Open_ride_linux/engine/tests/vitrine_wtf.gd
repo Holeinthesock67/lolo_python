@@ -46,7 +46,12 @@ const GAGS := {
 	"katamari": {"kata": {"size": 2.0, "count": 12, "last": "sign", "next": [[7.0, "apple"], [13.0, "sign"], [22.0, "car"]]}},
 	"katamari_gros": {"kata": {"size": 3.0, "count": 40, "last": "car", "next": [[9.0, "cow"], [20.0, "house"], [42.0, "church"]]}},
 	"poissons": {"clock_h": 14.0, "fish": true},
+	"objets_katamari": {"kata": {"size": 1.0, "count": 0}},   # vue faite à la main : OBJECTS_VIEW
 }
+## Les six objets du Katamari au sol, sans la boule qui les cache, à leur taille de jeu (KATA_SCALES), de part
+## et d'autre de la route : [sorte, devant (m), à droite (m)].
+const OBJECTS := [["apple", 6.0, 2.6], ["sign", 7.5, -2.2], ["cow", 11.0, 2.8], ["car", 15.0, -3.2],
+	["house", 26.0, 6.0], ["church", 40.0, -9.0]]
 
 
 ## Route droite à plat vers −Z (interface de route_data.gd utilisée par wtf_scene.gd).
@@ -106,7 +111,11 @@ func _run() -> void:
 			var pos := Vector3(RoadBuilder.RIDER_LATERAL_M, 0.0, 0.0)
 			for f in range(SETTLE_FRAMES):
 				var t := 10.0 + f * 0.05
-				scene.step(WtfSceneModel.view(wtf, t, preset), route, 0.0, Callable(), sun)
+				var v := WtfSceneModel.view(wtf, t, preset)
+				if gag == "objets_katamari":
+					v["props"] = OBJECTS.map(func(o): return {"kind": "kata_" + o[0], "ds": o[1], "lateral": o[2], "up": 0.0,
+						"scale": float(WtfSceneModel.KATA_SCALES[o[0]]), "spin": 0.0})
+				scene.step(v, route, 0.0, Callable(), sun)
 				if hud != null:
 					hud.update_view(WtfHudModel.view(wtf), t)
 				cam.fov = 60.0

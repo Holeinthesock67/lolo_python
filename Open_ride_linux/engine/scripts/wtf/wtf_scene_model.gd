@@ -42,7 +42,7 @@ const KITCHEN := [["plate", 5.0, -4.0, 1.6], ["cup", 8.0, 4.0, 1.8], ["fork", 13
 const SHOW_BEHIND_M := 16.0
 const VOID_LENGTH_M := 80.0     # gouffre derrière le front de l'effondrement
 const DISH_SCALE := 1.6       # plats du chef sur leur assiette (lot WTF9), lisibles à 3 m
-const KATA_SCALES := {"apple": 0.3, "sign": 1.0, "cow": 1.4, "car": 1.8, "house": 4.0, "church": 7.0}
+const KATA_SCALES := {"apple": 1.0, "sign": 1.0, "cow": 1.4, "car": 1.8, "house": 4.0, "church": 7.0}
 
 
 ## Vue complète ; `wtf` absent ou nul : rien. `t` : horloge de l'engine (s), pour les mouvements continus.

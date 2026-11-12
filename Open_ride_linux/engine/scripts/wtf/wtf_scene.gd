@@ -396,8 +396,8 @@ static func _kata_mesh(kind: String) -> Mesh:
 		"apple":
 			parts = [[_ball(0.5, 0.9), Vector3(0, 0.45, 0), Color(0.9, 0.12, 0.12)],
 				[_ball(0.18), Vector3(-0.15, 0.62, -0.3), Color(1.0, 0.55, 0.5)],
-				[_box(Vector3(0.06, 0.3, 0.06)), Vector3(0, 1.0, 0), Color(0.4, 0.25, 0.1)],
-				[_box(Vector3(0.3, 0.04, 0.15)), Transform3D(Basis(Vector3.FORWARD, 0.4), Vector3(0.15, 1.05, 0)), WtfHudModel.GREEN]]
+				[_box(Vector3(0.1, 0.4, 0.1)), Vector3(0, 1.0, 0), Color(0.4, 0.25, 0.1)],
+				[_box(Vector3(0.5, 0.05, 0.28)), Transform3D(Basis(Vector3.FORWARD, 0.5), Vector3(0.24, 1.08, 0)), Color(0.2, 0.7, 0.15)]]
 		"sign":
 			# Panneau « danger » : poteau gris, triangle blanc bordé de rouge, point d'exclamation.
 			var tri := PrismMesh.new()
