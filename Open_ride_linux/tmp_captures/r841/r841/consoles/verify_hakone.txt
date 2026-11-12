@@ -1,0 +1,2 @@
+~/mesures-2026-11-01-auto/r841/mondes/hakone.world : 1 problème(s)
+  - dossier introuvable : ~/mesures-2026-11-01-auto/r841/mondes/hakone.world
