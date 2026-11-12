@@ -1,0 +1,8 @@
+name = "Ticlio (Abra Anticona)"
+region = "Lima, Carretera Central"
+country = "Pérou"
+side = "depuis Casapalca jusqu'au col (4 818 m)"
+waypoints = [[-11.6497, -76.2343], [-11.5968, -76.1906]]
+ref_length_m = 16000
+ref_gain_m = 670
+tags = ["col", "haute-altitude", "hauts-plateaux", "andes"]

@@ -1,0 +1,8 @@
+name = "Khardung La"
+region = "Ladakh"
+country = "Inde"
+side = "depuis Leh jusqu'au col (5 359 m)"
+waypoints = [[34.1640, 77.5850], [34.2783, 77.6044]]
+ref_length_m = 39000
+ref_gain_m = 2200
+tags = ["col", "haute-altitude", "hauts-plateaux", "himalaya"]

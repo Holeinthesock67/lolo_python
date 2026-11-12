@@ -19,6 +19,7 @@ BIOMES = [
     "temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
     "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
     "wetland", "coast", "volcanic", "japan",   # 17e biome : lot JP1 (6.0)
+    "high_plateau",                            # lot HP1 (6.0)
 ]
 
 

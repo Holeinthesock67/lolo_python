@@ -21,7 +21,11 @@ Méthode, point par point de la grille 17 × 17 de chaque tuile (cases de 62,5 m
    2 cases** (noyau binomial 5 × 5) : pas de frontière droite. Un point sans vote reçoit le biome de prairie
    de sa zone.
 4. **Altitude :** au-dessus d'un seuil qui dépend de la latitude (1 800 m à 45°), part `alpine` croissante,
-   nulle 300 m sous le seuil, complète 600 m au-dessus.
+   nulle 300 m sous le seuil, complète 600 m au-dessus. **Hauts plateaux** (lot HP1) : sous 40° de latitude,
+   le terrain ouvert (prairie, arbustes, sol nu, mousses, sable) vote `high_plateau` pour une part `p`
+   croissante de 3 300 à 3 800 m (`plateau_part`, à l'étape 1, échantillon par échantillon) ; la part
+   `alpine` de l'altitude devient `a × (1 − p)`. Neige et glaciers restent `alpine`, forêts, cultures,
+   zones humides et laves gardent leur biome. Même règle pour les parcours et le monde ouvert.
 5. **Quatre biomes au plus par tuile** (les plus forts de la tuile) ; un point commun à plusieurs tuiles ne
    garde que les biomes admis par toutes, puis ses poids sont renormalisés à 255 (plus forts restes).
 
@@ -43,10 +47,10 @@ import numpy as np
 from . import koppen
 
 BIOME_VERSION = "1.0"
-# Identifiants du lot U0, dans l'ordre de la liste définitive, puis `japan` (lot JP1, 6.0) (Format .world v1 §8 quater).
+# Identifiants du lot U0, dans l'ordre de la liste définitive, puis `japan` (lot JP1, 6.0) et `high_plateau` (lot HP1, 6.0) (Format .world v1 §8 quater).
 BIOMES = ("temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
           "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
-          "wetland", "coast", "volcanic", "japan")
+          "wetland", "coast", "volcanic", "japan", "high_plateau")
 INDEX = {b: k for k, b in enumerate(BIOMES)}
 NB = len(BIOMES)
 DEFAULT_BIOME = "temperate_grassland"
@@ -105,6 +109,10 @@ ALPINE_LINE_45_M = 1800.0
 ALPINE_LINE_PER_DEG_M = 75.0     # le seuil monte de 75 m par degré vers l'équateur
 ALPINE_LINE_MIN_M, ALPINE_LINE_MAX_M = 600.0, 4200.0
 ALPINE_BELOW_M, ALPINE_ABOVE_M = 300.0, 600.0
+# Hauts plateaux (lot HP1) : terrain ouvert au-dessus de 3 300 à 3 800 m, sous 38 à 42° de latitude.
+PLATEAU_LOW_M, PLATEAU_FULL_M = 3300.0, 3800.0
+PLATEAU_LAT_FULL_DEG, PLATEAU_LAT_ZERO_DEG = 38.0, 42.0
+PLATEAU_CLASSES = (GRASS, SHRUB, BARE, MOSS, OSM_SAND)
 
 
 @dataclass(frozen=True)
@@ -226,6 +234,16 @@ def alpine_part(alt_m: np.ndarray, lat: np.ndarray) -> np.ndarray:
     line = alpine_line_m(lat)
     t = (alt - (line - ALPINE_BELOW_M)) / (ALPINE_BELOW_M + ALPINE_ABOVE_M)
     return np.where(np.isfinite(t), np.clip(t, 0.0, 1.0), 0.0)
+
+
+def plateau_part(alt_m: np.ndarray, lat: np.ndarray) -> np.ndarray:
+    """Part `high_plateau` (0 à 1) du terrain ouvert : altitude de PLATEAU_LOW_M à PLATEAU_FULL_M, fois latitude
+    de PLATEAU_LAT_ZERO_DEG à PLATEAU_LAT_FULL_DEG ; 0 si altitude inconnue."""
+    alt = np.asarray(alt_m, dtype=float)
+    a = np.abs(np.asarray(lat, dtype=float))
+    t_alt = (alt - PLATEAU_LOW_M) / (PLATEAU_FULL_M - PLATEAU_LOW_M)
+    t_lat = np.clip((PLATEAU_LAT_ZERO_DEG - a) / (PLATEAU_LAT_ZERO_DEG - PLATEAU_LAT_FULL_DEG), 0.0, 1.0)
+    return np.where(np.isfinite(t_alt), np.clip(t_alt, 0.0, 1.0), 0.0) * t_lat
 
 
 def _class_table() -> np.ndarray:
@@ -369,10 +387,19 @@ def _raw_weights(pts: _Points, level: BiomeLevel, inputs: Inputs) -> tuple[np.nd
     zw = np.asarray(inputs.zones(lat_p, lon_p), dtype=float).reshape(n, len(ZONES))
     raw = np.zeros(n * NB)
     rows = np.repeat(np.arange(n, dtype=np.int64), SUB * SUB)
+    # Hauts plateaux : part `p` des votes du terrain ouvert donnée à `high_plateau`, le reste à son biome.
+    keep = np.ones(n * SUB * SUB)
+    if inputs.elevation is not None:
+        p = plateau_part(np.asarray(inputs.elevation(lat_p, lon_p), dtype=float).ravel(), lat_p)
+        if p.any():
+            open_ = np.isin(classes.ravel(), PLATEAU_CLASSES)
+            share = np.repeat(p, SUB * SUB) * open_
+            keep -= share
+            raw[np.arange(n) * NB + INDEX["high_plateau"]] += share.reshape(n, SUB * SUB).sum(axis=1) / (SUB * SUB)
     for z in range(len(ZONES)):
         b = CLASS_TABLE[classes.ravel(), z]
         ok = b >= 0
-        w = np.repeat(zw[:, z], SUB * SUB)[ok] / (SUB * SUB)
+        w = (np.repeat(zw[:, z], SUB * SUB) * keep)[ok] / (SUB * SUB)
         raw += np.bincount(rows[ok] * NB + b[ok], weights=w, minlength=n * NB)
     return raw.reshape(n, NB), zw, lat_p
 
@@ -445,7 +472,7 @@ def classify_level(keys: Sequence[tuple[int, int]], level: BiomeLevel, inputs: I
     w = w / total[:, None]
     if inputs.elevation is not None:
         alt = np.asarray(inputs.elevation(lat_c, lon_c), dtype=float)
-        a = alpine_part(alt, lat_c)
+        a = alpine_part(alt, lat_c) * (1.0 - plateau_part(alt, lat_c))   # hauts plateaux : pas d'alpage
         w *= (1.0 - a)[:, None]
         w[:, INDEX["alpine"]] += a
 

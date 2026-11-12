@@ -104,12 +104,12 @@ const PROPS := [
 ## Arbres de tree_species.gd (lot U7) et arbre d'avant la série U, en deux rangées loin de la route.
 const TREES_TEMPERATE := ["oak", "birch", "pine", "beech", "spruce", "larch", "generic"]
 const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "acacia", "baobab", "cactus",
-	"tree_fern", "reed", "dwarf_shrub", "vine_row"]
+	"tree_fern", "reed", "dwarf_shrub", "vine_row", "bunchgrass"]
 ## Une maison et une grange par style d'architecture (variantes du contrat U1, building_styles.gd), en rangée
 ## loin de la route : les styles que prendront les biomes et les régions de la série U.
 const STYLE_ROW := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]
 ## Lot U23 : styles d'habitat propres aux biomes, en seconde rangée derrière la première (vues `styles_biomes`).
-const STYLE_ROW_BIOMES := ["chalet", "bois_peint", "pise", "case", "paillote", "basalte", "chaumiere"]
+const STYLE_ROW_BIOMES := ["chalet", "bois_peint", "pise", "case", "paillote", "basalte", "chaumiere", "altiplano"]
 ## Lot U23 étape 2 (vues `habitat_rond`, `habitat_pilotis`, `habitat_yourtes`) : [style, famille OSM, largeur, profondeur, rond, pilotis]
 const ROUND_ROW := [
 	["case", "house", 6.0, 6.0, true, false], ["case", "hut", 5.0, 5.0, true, false], ["case", "house", 7.5, 7.0, true, false],
@@ -143,6 +143,9 @@ const ANIMALS := [
 	["musk_ox", Vector3(-30.0, 0.0, 16.0), -1.9, 0.6, 1.0], ["goat", Vector3(-36.5, 0.0, 6.5), 2.8, 0.2, 1.0],
 	["goat", Vector3(-35.0, 0.0, 7.5), -2.0, 0.7, 0.0], ["monkey", Vector3(-44.0, 0.0, 5.5), 2.4, 0.4, 1.0],
 	["monkey", Vector3(-43.2, 0.0, 6.4), -2.9, 0.8, 1.0],
+	# Lot HP1 : lamas et yack des hauts plateaux
+	["llama", Vector3(-26.0, 0.0, 9.0), 2.5, 0.3, 1.0], ["llama", Vector3(-24.6, 0.0, 10.2), -2.2, 0.6, 0.0],
+	["yak", Vector3(-22.0, 0.0, 15.0), -2.1, 0.4, 1.0],
 ]
 
 

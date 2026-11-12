@@ -150,7 +150,8 @@
         "wetland",
         "coast",
         "volcanic",
-        "japan"
+        "japan",
+        "high_plateau"
       ]
     },
     "groundLayer": {
@@ -261,7 +262,8 @@
                       "tree_fern",
                       "reed",
                       "dwarf_shrub",
-                      "vine_row"
+                      "vine_row",
+                      "bunchgrass"
                     ]
                   },
                   "weight": {

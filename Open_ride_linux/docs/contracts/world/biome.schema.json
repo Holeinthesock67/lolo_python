@@ -30,7 +30,8 @@
         "wetland",
         "coast",
         "volcanic",
-        "japan"
+        "japan",
+        "high_plateau"
       ]
     },
     "groundVariant": {

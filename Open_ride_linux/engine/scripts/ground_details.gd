@@ -36,8 +36,8 @@ const ROCK_SHAPES := 3
 const KINDS: Array[String] = ["rock", "grass", "termite"]
 ## Probabilité qu'une place d'une sorte soit remplie dans un biome (0 ou absent : jamais).
 const DENSITY := {
-	"rock": {"alpine": 0.9, "rock_desert": 1.0, "sand_desert": 0.5, "tundra": 0.5, "volcanic": 1.0},
-	"grass": {"savanna": 1.0, "steppe": 0.7},
+	"rock": {"alpine": 0.9, "rock_desert": 1.0, "sand_desert": 0.5, "tundra": 0.5, "volcanic": 1.0, "high_plateau": 0.6},
+	"grass": {"savanna": 1.0, "steppe": 0.7, "high_plateau": 0.8},   # hauts plateaux (lot HP1) : touffes d'ichu près de la route
 	"termite": {"savanna": 1.0},
 }
 ## Rayon au sol de l'objet à l'échelle 1 (m), pour la distance à la route.

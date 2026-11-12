@@ -155,6 +155,35 @@ def test_alpine_line_depends_on_latitude():
     assert B.alpine_part(np.array([1499.0, np.nan]), np.array([45.0, 45.0])).tolist() == [0.0, 0.0]
 
 
+# Lot HP1 : hauts plateaux ---------------------------------------------------------------------
+
+def test_plateau_part_needs_altitude_and_low_latitude():
+    lat = np.array([16.0, 16.0, 16.0, 40.0, 45.0, -16.0, 16.0])
+    alt = np.array([3000.0, 3550.0, 4200.0, 4200.0, 4200.0, 4200.0, np.nan])
+    assert B.plateau_part(alt, lat).tolist() == [0.0, 0.5, 1.0, 0.5, 0.0, 1.0, 0.0]
+
+
+@pytest.mark.parametrize("lat", [16.0, 34.0])
+def test_high_open_land_at_low_latitude_is_high_plateau(lat):
+    layer, _ = layer_at(lat, landcover=const(GRASS), elevation=lambda la, lo: np.full(np.shape(la), 4300.0))
+    assert layer.shares == {"high_plateau": 100.0}
+    check_tiles(layer.tiles["near"])
+
+
+def test_high_plateau_keeps_snow_and_trees():
+    """Neige → `alpine`, forêt → biome de forêt : seul le terrain ouvert devient haut plateau."""
+    def mix(lat, lon):            # moitié ouest neige, moitié est forêt
+        return np.where(np.asarray(lon) < 7.0, 70, TREES).astype(np.uint8)
+    route = {"x": [0.0] * 301, "z": (-np.arange(301) * 10.0).tolist(), "alt_m": [4300.0] * 301}
+    layer, _ = layer_at(16.0, landcover=mix, elevation=lambda la, lo: np.full(np.shape(la), 4300.0), route=route)
+    assert "high_plateau" not in layer.shares and layer.shares.get("alpine", 0) > 0
+
+
+def test_alps_stay_alpine_above_42():
+    layer, _ = layer_at(45.0, landcover=const(GRASS), elevation=lambda la, lo: np.full(np.shape(la), 4300.0))
+    assert layer.shares == {"alpine": 100.0}
+
+
 # Critère 5 : tuiles voisines, sommes, quatre biomes ------------------------------------------
 
 def test_mosaic_keeps_rules_on_shared_edges():

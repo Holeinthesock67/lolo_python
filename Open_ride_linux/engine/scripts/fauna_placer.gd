@@ -130,6 +130,7 @@ const BIOME_SPECIES := {
 	"coast": {"birds": "gull", "crows": "gull", "vee": "gull"},
 	"volcanic": {"cow": "goat", "sheep": "goat", "horse": "goat", "deer": "", "hare": ""},
 	"japan": {"cow": "", "sheep": "", "horse": "", "hare": ""},
+	"high_plateau": {"cow": "yak", "sheep": "llama", "horse": "llama", "deer": "llama", "hare": ""},
 }
 ## Groupes propres à un biome ; `key` : densité du thème qui règle la chance `share` du groupe.
 const BIOME_GROUPS := {
@@ -177,6 +178,11 @@ const BIOME_GROUPS := {
 	],
 	# Lot JP1 : macaques du Japon en lisière ; les cerfs du rôle `deer` jouent les cerfs sika
 	"japan": [{"species": "monkey", "kind": "herd", "n": Vector2i(3, 8), "road_m": Vector2(12.0, 60.0), "min_m": 10.0, "share": 0.6, "key": "deer"}],
+	# Lot HP1 : lamas et vigognes (rôle `deer`, même maillage) des Andes, yacks de l'Himalaya, sur les pentes douces
+	"high_plateau": [
+		{"species": "llama", "kind": "herd", "n": Vector2i(4, 12), "road_m": Vector2(30.0, 240.0), "min_m": 20.0, "share": 0.8, "key": "livestock", "max_slope": 0.7},
+		{"species": "yak", "kind": "herd", "n": Vector2i(3, 8), "road_m": Vector2(50.0, 300.0), "min_m": 30.0, "share": 0.5, "key": "livestock", "max_slope": 0.6},
+	],
 }
 
 const MASK32 := 0xFFFFFFFF

@@ -3,7 +3,7 @@ extends RefCounted
 ## Sols multi-biomes du terrain (lot U6, série U, Format .world v1 §9, décision U-Q4).
 ## - À la construction : matériau de base du shader terrain_biomes.gdshader pour tout le parcours, avec
 ##   la règle de pente et d'altitude (L3) et les trois couches de sol (herbe = `flat`, roche = `steep`,
-##   neige = `high`) des 17 biomes, tirées de BiomeModel.terrain_theme (repli sur le thème 1.x) ;
+##   neige = `high`) de tous les biomes (BiomeIds.BIOMES), tirées de BiomeModel.terrain_theme (repli sur le thème 1.x) ;
 ## - textures : deux Texture2DArray (carte A = couleur et rugosité dans l'alpha, carte B = normale XY et
 ##   occlusion dans le bleu), une couche par sol texturé des biomes présents (`layers.biome.shares` du
 ##   manifeste, biome forcé, sinon tous), mipmaps, compression en mémoire vidéo quand elle est disponible ;
@@ -27,7 +27,7 @@ const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const SHADER := preload("res://shaders/terrain_biomes.gdshader")
 
 const GRID := 17
-const MAX_LAYERS := 51                 # 17 biomes × 3 couches (terrain_biomes.gdshader MAX_LAYERS)
+const MAX_LAYERS := 54                 # 18 biomes × 3 couches (terrain_biomes.gdshader MAX_LAYERS)
 const ROLES: Array[String] = ["grass", "rock", "snow"]
 ## Force des rides et des dunes du sable par biome (lot U8, biome_rule.w du shader) ; 0 ailleurs.
 const SAND_RELIEF := {"sand_desert": 1.0, "coast": 0.6}
