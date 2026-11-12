@@ -335,7 +335,7 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
         for ack in acks:
             assert_valid(ack)
             assert ack["rev"] == "1.16" and ack["config"]["modes"] == ["ride", "erg", "open_world", "rogue", "wtf", "survivor",
-                                                         "track"]
+                                                         "track", "grandprix"]
             # écran Prêt du vélodrome (lot VD10) : épreuves et réglages du core, sans passer 4 096 octets
             assert ack["config"]["track"] == track_mod.menu_options()
             assert list(ack["config"]["track"]["events"]) == list(track_mod.EVENTS)
