@@ -1,0 +1,63 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.312 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce GTX 1060 6GB
+
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_lune_low.png : { "active": true, "props": {  }, "tint": true, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_jupiter_low.png : { "active": true, "props": {  }, "tint": true, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_envers_low.png : { "active": true, "props": {  }, "tint": false, "roll_deg": 180.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_effondrement_low.png : { "active": true, "props": { "void": 1, "chunk": 4 }, "tint": false, "roll_deg": 0.0, "camera": "flee", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_effondrement_proche_low.png : { "active": true, "props": { "void": 1, "chunk": 4 }, "tint": false, "roll_deg": 0.0, "camera": "flee", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_fromage_low.png : { "active": true, "props": { "cheese": 1 }, "tint": false, "roll_deg": 0.0, "camera": "cheese", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_tornade_low.png : { "active": true, "props": { "cow": 8, "tornado": 1 }, "tint": true, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_cuisine_low.png : { "active": true, "props": { "plate": 2, "cup": 2, "fork": 2 }, "tint": false, "roll_deg": 0.0, "camera": "tiny", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_pigeon_low.png : { "active": true, "props": {  }, "tint": false, "roll_deg": 0.0, "camera": "pigeon", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_escargot_low.png : { "active": true, "props": {  }, "tint": false, "roll_deg": 0.0, "camera": "snail", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_roue_low.png : { "active": true, "props": {  }, "tint": false, "roll_deg": 0.0, "camera": "wheel", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_low.png : { "active": true, "props": { "chef": 1, "dish_spaghetti": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_gelee_low.png : { "active": true, "props": { "chef": 1, "dish_jelly": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_musette_low.png : { "active": true, "props": { "chef": 1, "dish_musette": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_souffle_low.png : { "active": true, "props": { "chef": 1, "dish_souffle": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_piment_low.png : { "active": true, "props": { "chef": 1, "dish_chili": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_katamari_low.png : { "active": true, "props": { "ball": 1, "kata_apple": 1, "kata_sign": 1, "kata_car": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_katamari_gros_low.png : { "active": true, "props": { "ball": 1, "kata_cow": 1, "kata_house": 1, "kata_church": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_poissons_low.png : { "active": true, "props": { "fish": 6 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_objets_katamari_low.png : { "active": true, "props": { "kata_apple": 1, "kata_sign": 1, "kata_cow": 1, "kata_car": 1, "kata_house": 1, "kata_church": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_lune_medium.png : { "active": true, "props": {  }, "tint": true, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_jupiter_medium.png : { "active": true, "props": {  }, "tint": true, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_envers_medium.png : { "active": true, "props": {  }, "tint": false, "roll_deg": 180.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_effondrement_medium.png : { "active": true, "props": { "void": 1, "chunk": 6 }, "tint": false, "roll_deg": 0.0, "camera": "flee", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_effondrement_proche_medium.png : { "active": true, "props": { "void": 1, "chunk": 6 }, "tint": false, "roll_deg": 0.0, "camera": "flee", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_fromage_medium.png : { "active": true, "props": { "cheese": 1 }, "tint": false, "roll_deg": 0.0, "camera": "cheese", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_tornade_medium.png : { "active": true, "props": { "cow": 16, "tornado": 1 }, "tint": true, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_cuisine_medium.png : { "active": true, "props": { "plate": 2, "cup": 2, "fork": 2 }, "tint": false, "roll_deg": 0.0, "camera": "tiny", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_pigeon_medium.png : { "active": true, "props": {  }, "tint": false, "roll_deg": 0.0, "camera": "pigeon", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_escargot_medium.png : { "active": true, "props": {  }, "tint": false, "roll_deg": 0.0, "camera": "snail", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_roue_medium.png : { "active": true, "props": {  }, "tint": false, "roll_deg": 0.0, "camera": "wheel", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_medium.png : { "active": true, "props": { "chef": 1, "dish_spaghetti": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_gelee_medium.png : { "active": true, "props": { "chef": 1, "dish_jelly": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_musette_medium.png : { "active": true, "props": { "chef": 1, "dish_musette": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_souffle_medium.png : { "active": true, "props": { "chef": 1, "dish_souffle": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_piment_medium.png : { "active": true, "props": { "chef": 1, "dish_chili": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_katamari_medium.png : { "active": true, "props": { "ball": 1, "kata_apple": 1, "kata_sign": 1, "kata_car": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_katamari_gros_medium.png : { "active": true, "props": { "ball": 1, "kata_cow": 1, "kata_house": 1, "kata_church": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_poissons_medium.png : { "active": true, "props": { "fish": 12 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_objets_katamari_medium.png : { "active": true, "props": { "kata_apple": 1, "kata_sign": 1, "kata_cow": 1, "kata_car": 1, "kata_house": 1, "kata_church": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_lune_high.png : { "active": true, "props": {  }, "tint": true, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_jupiter_high.png : { "active": true, "props": {  }, "tint": true, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_envers_high.png : { "active": true, "props": {  }, "tint": false, "roll_deg": 180.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_effondrement_high.png : { "active": true, "props": { "void": 1, "chunk": 8 }, "tint": false, "roll_deg": 0.0, "camera": "flee", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_effondrement_proche_high.png : { "active": true, "props": { "void": 1, "chunk": 8 }, "tint": false, "roll_deg": 0.0, "camera": "flee", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_fromage_high.png : { "active": true, "props": { "cheese": 1 }, "tint": false, "roll_deg": 0.0, "camera": "cheese", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_tornade_high.png : { "active": true, "props": { "cow": 24, "tornado": 1 }, "tint": true, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_cuisine_high.png : { "active": true, "props": { "plate": 2, "cup": 2, "fork": 2 }, "tint": false, "roll_deg": 0.0, "camera": "tiny", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_pigeon_high.png : { "active": true, "props": {  }, "tint": false, "roll_deg": 0.0, "camera": "pigeon", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_escargot_high.png : { "active": true, "props": {  }, "tint": false, "roll_deg": 0.0, "camera": "snail", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_roue_high.png : { "active": true, "props": {  }, "tint": false, "roll_deg": 0.0, "camera": "wheel", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_high.png : { "active": true, "props": { "chef": 1, "dish_spaghetti": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_gelee_high.png : { "active": true, "props": { "chef": 1, "dish_jelly": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_musette_high.png : { "active": true, "props": { "chef": 1, "dish_musette": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_souffle_high.png : { "active": true, "props": { "chef": 1, "dish_souffle": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_chef_piment_high.png : { "active": true, "props": { "chef": 1, "dish_chili": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_katamari_high.png : { "active": true, "props": { "ball": 1, "kata_apple": 1, "kata_sign": 1, "kata_car": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_katamari_gros_high.png : { "active": true, "props": { "ball": 1, "kata_cow": 1, "kata_house": 1, "kata_church": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_poissons_high.png : { "active": true, "props": { "fish": 20 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
+[vitrine_wtf] ~/mesures-2026-11-01-auto/r848/vitrine/wtf_objets_katamari_high.png : { "active": true, "props": { "kata_apple": 1, "kata_sign": 1, "kata_cow": 1, "kata_car": 1, "kata_house": 1, "kata_church": 1 }, "tint": false, "roll_deg": 0.0, "camera": "", "skins": 0 }
