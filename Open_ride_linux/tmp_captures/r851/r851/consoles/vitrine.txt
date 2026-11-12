@@ -1,0 +1,157 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.312 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce GTX 1060 6GB
+
+[vitrine_biomes] Qualité appliquée : low (demandée low, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_route_low.png : 3541 arbres, 0 bêtes, 24 oiseaux, 38362 triangles, 111 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_bord_low.png : 3541 arbres, 0 bêtes, 24 oiseaux, 33918 triangles, 88 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_haut_low.png : 3541 arbres, 0 bêtes, 24 oiseaux, 37388 triangles, 106 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_faune_low.png : 3541 arbres, 0 bêtes, 24 oiseaux, 28884 triangles, 54 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_fjord_route_low.png : 10709 arbres, 0 bêtes, 24 oiseaux, 98110 triangles, 119 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_fjord_bord_low.png : 10709 arbres, 0 bêtes, 24 oiseaux, 74366 triangles, 88 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_fjord_haut_low.png : 10709 arbres, 0 bêtes, 24 oiseaux, 87144 triangles, 109 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_fjord_faune_low.png : 10709 arbres, 0 bêtes, 24 oiseaux, 56840 triangles, 58 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_route_low.png : 430 arbres, 6 bêtes, 0 oiseaux, 28460 triangles, 40 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_bord_low.png : 430 arbres, 6 bêtes, 0 oiseaux, 34112 triangles, 34 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_haut_low.png : 430 arbres, 6 bêtes, 0 oiseaux, 34116 triangles, 40 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_faune_low.png : 430 arbres, 6 bêtes, 0 oiseaux, 33624 triangles, 23 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_ile_volcanique_route_low.png : 5083 arbres, 6 bêtes, 0 oiseaux, 46254 triangles, 80 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_ile_volcanique_bord_low.png : 5083 arbres, 6 bêtes, 0 oiseaux, 49134 triangles, 64 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_ile_volcanique_haut_low.png : 5083 arbres, 6 bêtes, 0 oiseaux, 51832 triangles, 76 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_ile_volcanique_faune_low.png : 5083 arbres, 6 bêtes, 0 oiseaux, 46770 triangles, 46 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_route_low.png : 17071 arbres, 0 bêtes, 7 oiseaux, 218490 triangles, 122 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_bord_low.png : 17071 arbres, 0 bêtes, 7 oiseaux, 158246 triangles, 91 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_haut_low.png : 17071 arbres, 0 bêtes, 7 oiseaux, 187010 triangles, 110 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_faune_low.png : 17071 arbres, 0 bêtes, 7 oiseaux, 158246 triangles, 91 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_ile_volcanique_route_low.png : 10709 arbres, 0 bêtes, 7 oiseaux, 74196 triangles, 119 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_ile_volcanique_bord_low.png : 10709 arbres, 0 bêtes, 7 oiseaux, 55442 triangles, 87 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_ile_volcanique_haut_low.png : 10709 arbres, 0 bêtes, 7 oiseaux, 64692 triangles, 107 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_ile_volcanique_faune_low.png : 10709 arbres, 0 bêtes, 7 oiseaux, 55442 triangles, 87 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_route_low.png : 430 arbres, 4 bêtes, 0 oiseaux, 33128 triangles, 66 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_bord_low.png : 430 arbres, 4 bêtes, 0 oiseaux, 32904 triangles, 48 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_haut_low.png : 430 arbres, 4 bêtes, 0 oiseaux, 32848 triangles, 59 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_faune_low.png : 430 arbres, 4 bêtes, 0 oiseaux, 32088 triangles, 31 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_canyon_route_low.png : 1081 arbres, 4 bêtes, 0 oiseaux, 36512 triangles, 101 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_canyon_bord_low.png : 1081 arbres, 4 bêtes, 0 oiseaux, 35886 triangles, 85 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_canyon_haut_low.png : 1081 arbres, 4 bêtes, 0 oiseaux, 35934 triangles, 91 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_canyon_faune_low.png : 1081 arbres, 4 bêtes, 0 oiseaux, 35236 triangles, 61 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_route_low.png : 5083 arbres, 12 bêtes, 0 oiseaux, 55746 triangles, 111 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_bord_low.png : 5083 arbres, 12 bêtes, 0 oiseaux, 63054 triangles, 92 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_haut_low.png : 5083 arbres, 12 bêtes, 0 oiseaux, 67694 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_faune_low.png : 5083 arbres, 12 bêtes, 0 oiseaux, 58832 triangles, 66 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage low
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_rizieres_route_low.png : 2606 arbres, 12 bêtes, 0 oiseaux, 45836 triangles, 79 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_rizieres_bord_low.png : 2606 arbres, 12 bêtes, 0 oiseaux, 40188 triangles, 61 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_rizieres_haut_low.png : 2606 arbres, 12 bêtes, 0 oiseaux, 40660 triangles, 70 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_rizieres_faune_low.png : 2606 arbres, 12 bêtes, 0 oiseaux, 38844 triangles, 45 appels de dessin
+[vitrine_biomes] Qualité appliquée : medium (demandée medium, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_route_medium.png : 9420 arbres, 0 bêtes, 48 oiseaux, 90694 triangles, 117 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_bord_medium.png : 9420 arbres, 0 bêtes, 48 oiseaux, 72754 triangles, 89 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_haut_medium.png : 9420 arbres, 0 bêtes, 48 oiseaux, 85230 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_faune_medium.png : 9420 arbres, 0 bêtes, 48 oiseaux, 56324 triangles, 56 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_fjord_route_medium.png : 28955 arbres, 0 bêtes, 48 oiseaux, 244352 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_fjord_bord_medium.png : 28955 arbres, 0 bêtes, 48 oiseaux, 187600 triangles, 91 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_fjord_haut_medium.png : 28955 arbres, 0 bêtes, 48 oiseaux, 218580 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_fjord_faune_medium.png : 28955 arbres, 0 bêtes, 48 oiseaux, 133366 triangles, 58 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_route_medium.png : 1192 arbres, 6 bêtes, 0 oiseaux, 61324 triangles, 43 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_bord_medium.png : 1192 arbres, 6 bêtes, 0 oiseaux, 66344 triangles, 36 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_haut_medium.png : 1192 arbres, 6 bêtes, 0 oiseaux, 64668 triangles, 40 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_faune_medium.png : 1192 arbres, 6 bêtes, 0 oiseaux, 65340 triangles, 27 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_ile_volcanique_route_medium.png : 13712 arbres, 6 bêtes, 0 oiseaux, 119524 triangles, 84 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_ile_volcanique_bord_medium.png : 13712 arbres, 6 bêtes, 0 oiseaux, 105716 triangles, 64 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_ile_volcanique_haut_medium.png : 13712 arbres, 6 bêtes, 0 oiseaux, 114932 triangles, 77 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_ile_volcanique_faune_medium.png : 13712 arbres, 6 bêtes, 0 oiseaux, 101042 triangles, 48 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_route_medium.png : 46096 arbres, 0 bêtes, 7 oiseaux, 574878 triangles, 122 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_bord_medium.png : 46096 arbres, 0 bêtes, 7 oiseaux, 417202 triangles, 91 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_haut_medium.png : 46096 arbres, 0 bêtes, 7 oiseaux, 491434 triangles, 111 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_faune_medium.png : 46096 arbres, 0 bêtes, 7 oiseaux, 417202 triangles, 91 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_ile_volcanique_route_medium.png : 28955 arbres, 0 bêtes, 7 oiseaux, 189088 triangles, 121 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_ile_volcanique_bord_medium.png : 28955 arbres, 0 bêtes, 7 oiseaux, 141650 triangles, 91 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_ile_volcanique_haut_medium.png : 28955 arbres, 0 bêtes, 7 oiseaux, 166722 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_ile_volcanique_faune_medium.png : 28955 arbres, 0 bêtes, 7 oiseaux, 141650 triangles, 91 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_route_medium.png : 1192 arbres, 4 bêtes, 0 oiseaux, 66340 triangles, 77 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_bord_medium.png : 1192 arbres, 4 bêtes, 0 oiseaux, 65456 triangles, 63 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_haut_medium.png : 1192 arbres, 4 bêtes, 0 oiseaux, 64088 triangles, 72 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_faune_medium.png : 1192 arbres, 4 bêtes, 0 oiseaux, 64556 triangles, 44 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_canyon_route_medium.png : 2949 arbres, 4 bêtes, 0 oiseaux, 74506 triangles, 114 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_canyon_bord_medium.png : 2949 arbres, 4 bêtes, 0 oiseaux, 71732 triangles, 90 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_canyon_haut_medium.png : 2949 arbres, 4 bêtes, 0 oiseaux, 71870 triangles, 105 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_canyon_faune_medium.png : 2949 arbres, 4 bêtes, 0 oiseaux, 70222 triangles, 66 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_route_medium.png : 13712 arbres, 12 bêtes, 0 oiseaux, 137038 triangles, 120 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_bord_medium.png : 13712 arbres, 12 bêtes, 0 oiseaux, 136542 triangles, 93 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_haut_medium.png : 13712 arbres, 12 bêtes, 0 oiseaux, 147852 triangles, 113 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_faune_medium.png : 13712 arbres, 12 bêtes, 0 oiseaux, 124672 triangles, 71 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage medium
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_rizieres_route_medium.png : 6931 arbres, 12 bêtes, 0 oiseaux, 92596 triangles, 81 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_rizieres_bord_medium.png : 6931 arbres, 12 bêtes, 0 oiseaux, 75644 triangles, 62 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_rizieres_haut_medium.png : 6931 arbres, 12 bêtes, 0 oiseaux, 82728 triangles, 73 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_rizieres_faune_medium.png : 6931 arbres, 12 bêtes, 0 oiseaux, 67464 triangles, 45 appels de dessin
+[vitrine_biomes] Qualité appliquée : high (demandée high, source vitrine)
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_route_high.png : 11410 arbres, 0 bêtes, 74 oiseaux, 113488 triangles, 118 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_bord_high.png : 11410 arbres, 0 bêtes, 74 oiseaux, 90966 triangles, 88 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_haut_high.png : 11410 arbres, 0 bêtes, 74 oiseaux, 105462 triangles, 109 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_faune_high.png : 11410 arbres, 0 bêtes, 74 oiseaux, 73750 triangles, 56 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_fjord_route_high.png : 36332 arbres, 0 bêtes, 74 oiseaux, 318220 triangles, 122 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_fjord_bord_high.png : 36332 arbres, 0 bêtes, 74 oiseaux, 239170 triangles, 91 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_fjord_haut_high.png : 36332 arbres, 0 bêtes, 74 oiseaux, 277916 triangles, 112 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/coast_fjord_faune_high.png : 36332 arbres, 0 bêtes, 74 oiseaux, 169310 triangles, 58 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_route_high.png : 1408 arbres, 6 bêtes, 0 oiseaux, 109904 triangles, 44 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_bord_high.png : 1408 arbres, 6 bêtes, 0 oiseaux, 113900 triangles, 35 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_haut_high.png : 1408 arbres, 6 bêtes, 0 oiseaux, 115020 triangles, 42 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_faune_high.png : 1408 arbres, 6 bêtes, 0 oiseaux, 113824 triangles, 27 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_ile_volcanique_route_high.png : 17071 arbres, 6 bêtes, 0 oiseaux, 182136 triangles, 84 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_ile_volcanique_bord_high.png : 17071 arbres, 6 bêtes, 0 oiseaux, 165882 triangles, 65 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_ile_volcanique_haut_high.png : 17071 arbres, 6 bêtes, 0 oiseaux, 177036 triangles, 78 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/volcanic_ile_volcanique_faune_high.png : 17071 arbres, 6 bêtes, 0 oiseaux, 157760 triangles, 48 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_route_high.png : 57699 arbres, 0 bêtes, 7 oiseaux, 723454 triangles, 122 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_bord_high.png : 57699 arbres, 0 bêtes, 7 oiseaux, 520674 triangles, 91 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_haut_high.png : 57699 arbres, 0 bêtes, 7 oiseaux, 614742 triangles, 110 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_faune_high.png : 57699 arbres, 0 bêtes, 7 oiseaux, 520674 triangles, 91 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_ile_volcanique_route_high.png : 36332 arbres, 0 bêtes, 7 oiseaux, 227398 triangles, 120 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_ile_volcanique_bord_high.png : 36332 arbres, 0 bêtes, 7 oiseaux, 176442 triangles, 91 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_ile_volcanique_haut_high.png : 36332 arbres, 0 bêtes, 7 oiseaux, 204954 triangles, 111 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/temperate_grassland_ile_volcanique_faune_high.png : 36332 arbres, 0 bêtes, 7 oiseaux, 176442 triangles, 91 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_route_high.png : 1408 arbres, 4 bêtes, 0 oiseaux, 114684 triangles, 77 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_bord_high.png : 1408 arbres, 4 bêtes, 0 oiseaux, 113104 triangles, 61 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_haut_high.png : 1408 arbres, 4 bêtes, 0 oiseaux, 114244 triangles, 75 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_faune_high.png : 1408 arbres, 4 bêtes, 0 oiseaux, 112576 triangles, 43 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_canyon_route_high.png : 3541 arbres, 4 bêtes, 0 oiseaux, 125736 triangles, 113 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_canyon_bord_high.png : 3541 arbres, 4 bêtes, 0 oiseaux, 122050 triangles, 89 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_canyon_haut_high.png : 3541 arbres, 4 bêtes, 0 oiseaux, 124144 triangles, 106 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/rock_desert_canyon_faune_high.png : 3541 arbres, 4 bêtes, 0 oiseaux, 120400 triangles, 65 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_route_high.png : 17071 arbres, 12 bêtes, 0 oiseaux, 178338 triangles, 123 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_bord_high.png : 17071 arbres, 12 bêtes, 0 oiseaux, 163164 triangles, 95 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_haut_high.png : 17071 arbres, 12 bêtes, 0 oiseaux, 179028 triangles, 113 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_faune_high.png : 17071 arbres, 12 bêtes, 0 oiseaux, 143822 triangles, 70 appels de dessin
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage high
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_rizieres_route_high.png : 8768 arbres, 12 bêtes, 0 oiseaux, 113776 triangles, 82 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_rizieres_bord_high.png : 8768 arbres, 12 bêtes, 0 oiseaux, 88440 triangles, 62 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_rizieres_haut_high.png : 8768 arbres, 12 bêtes, 0 oiseaux, 99228 triangles, 74 appels de dessin
+[vitrine_biomes] ~/OpenRide/mesures/2026-11-12-u25/farmland_rizieres_faune_high.png : 8768 arbres, 12 bêtes, 0 oiseaux, 78192 triangles, 45 appels de dessin
+[vitrine_biomes] contrôles automatiques : tout passe
