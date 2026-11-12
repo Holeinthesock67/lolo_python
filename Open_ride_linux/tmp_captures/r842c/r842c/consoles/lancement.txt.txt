@@ -1,0 +1,7 @@
+11:46:01 empreinte avant cd3850c51f3f01752752e767563f7ccd
+11:46:01 tête 768d6e4e
+11:46:46 rogue_galerie --native
+12:12:05 fin rc=1 durée 1519 s
+12:12:07 empreinte après cd3850c51f3f01752752e767563f7ccd
+12:12:07 clone 8fc4a132
+12:12:07 FIN

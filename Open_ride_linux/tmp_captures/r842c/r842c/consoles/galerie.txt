@@ -1,0 +1,7 @@
+== low ==
+   low : OK 102/102
+== medium ==
+   medium : ÉCHEC 101/102
+== high ==
+   high : ÉCHEC 101/102
+Galerie : ~/mesures-2026-11-01-auto/r842c/galerie/galerie.html
