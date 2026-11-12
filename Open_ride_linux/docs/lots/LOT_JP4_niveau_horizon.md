@@ -42,3 +42,15 @@ lointain s'arrête à 5 km de la route. Le niveau est générique : tout parcour
 
 - Au cloud (Vulkan logiciel), une bande bleu sombre (terrain lointain dans le brouillard) sépare la route de
   l'horizon, avec ou sans ce lot : à juger sur le PC.
+
+## Mesures sur le PC (12/11, GTX 1060, Hakone route 1, 240 s)
+
+| Qualité | GPU avec horizon | GPU sans horizon | Coût | Pire image avec / sans |
+| --- | --- | --- | --- | --- |
+| low | 5,36 ms | 5,29 ms | + 0,07 ms | 42 / 38 ms |
+| medium | 8,04 ms | 8,04 ms | 0,00 ms | 58 / 42 ms |
+| high | 10,11 ms | 9,97 ms | + 0,14 ms | 44 / 33 ms |
+
+Coût sous les + 0,2 à 0,5 ms visés, budgets (8 / 13 / 16 ms) tenus. Le fond gris uni vu en low vers 0,1 km est
+identique sans horizon (roche du terrain proche) : il ne vient pas de ce lot. Captures cloud validées par le
+propriétaire le 12/11.
