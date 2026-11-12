@@ -12,8 +12,6 @@ from __future__ import annotations
 import math
 import random
 
-import numpy as np
-
 
 def no_network(*_args, **_kwargs):
     raise OSError("réseau interdit pendant la génération d'un parcours synthétique")
@@ -57,10 +55,12 @@ class SRoad(Road):
 
     def s_of(self, x, z):
         """Abscisse de la route la plus proche (approchée par la distance vers le nord, à 1 % près)."""
+        import numpy as np
         return np.clip(-np.asarray(z, dtype=float), 0.0, self.length_m)
 
     def locate(self, x, z):
         """(abscisse, écart latéral signé, positif à droite du sens de marche) de chaque point (x, z)."""
+        import numpy as np
         s = self.s_of(x, z)
         return s, np.asarray(x, dtype=float) - 60.0 * np.sin(2.0 * np.pi * s / 1800.0)
 
@@ -77,6 +77,7 @@ class LoopRoad(Road):
     INSIDE = 1           # côté de l'intérieur de la boucle (droite du sens de marche)
 
     def __init__(self, length_m: float, lobes: tuple[tuple[int, float, float], ...] = ()) -> None:
+        import numpy as np   # importés à l'usage : le core lit `demo_biomes` dans un fil (liste des contenus)
         from scipy.spatial import cKDTree
 
         t = np.linspace(0.0, 2.0 * np.pi, 20001)
@@ -101,6 +102,7 @@ class LoopRoad(Road):
         return int(round((s % self.length_m) / self.STEP))
 
     def xz(self, s: float) -> tuple[float, float]:
+        import numpy as np
         s = s % self.length_m
         return float(np.interp(s, self._s, self._x)), float(np.interp(s, self._s, self._z))
 
@@ -110,6 +112,7 @@ class LoopRoad(Road):
 
     def radius_min(self) -> float:
         """Plus petit rayon de virage (m), mesuré sur 20 m."""
+        import numpy as np
         k = int(round(10.0 / self.STEP))
         h = np.unwrap(np.arctan2(self._hx, -self._hz))
         turn = np.abs(h[2 * k:] - h[:-2 * k])
@@ -119,6 +122,7 @@ class LoopRoad(Road):
         return self.locate(x, z)[0]
 
     def locate(self, x, z):
+        import numpy as np
         x = np.asarray(x, dtype=float)
         z = np.asarray(z, dtype=float)
         _, i = self._tree.query(np.column_stack((x.ravel(), z.ravel())))

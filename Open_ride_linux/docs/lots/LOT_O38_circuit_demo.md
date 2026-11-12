@@ -23,6 +23,8 @@ Un parcours en boucle dans les contenus de départ, utilisable sans trace du jou
 - `compiler/src/openride_compiler/demo_biomes.py` : `--circuit` et l'entrée `demo-circuit` de `DEMO_SET`, nom au menu **« Circuit des Prés »**. Boucle de 3 000 m parcourue dans le sens horaire (intérieur à droite), un seul biome (prairie tempérée), départ au « Hameau des Prés ». Relief analytique `circuit_relief` sous la route et autour : la boucle revient forcément à son altitude de départ ; pente de −5 à +5 %, 37 m de montée par tour ; une courbe en S serrée (rayon d'environ 50 m) au troisième quart. Décor : hameau et église au départ, prés avec bétail, cultures et bois à l'extérieur, verger, broussailles, pré et étang à l'intérieur (bandes de 120 m au plus : l'autre rive est à plus de 450 m), deux fermes, deux éoliennes. Le compilateur reconnaît la boucle (fin sur le départ, `type` `loop`).
 - Contenus de départ (`contents.py`) : le circuit s'ajoute aux parcours manquants à la prochaine installation des contenus de départ, comme tout parcours de `GAME_DEMOS` ; rien d'autre n'est réécrit. Le détail du menu dit « N parcours de démonstration ».
 - `engine/tests/captures_demo.py` : le circuit fait partie des parcours capturés ; un circuit a en plus des captures aux quarts du tour.
+- `engine/tests/menu_scenarios/parcours_demo.json` : le circuit dans la liste des parcours et sur l'écran « Prêt ».
+- Piège trouvé par la CI (banc des menus) : `fake_osm` importait numpy au chargement ; le core lit `demo_biomes` dans un fil pour la liste des contenus, et cet import bloquait la boucle 1,4 s (l'engine relançait son `hello` et la liste des contenus n'arrivait jamais). numpy et scipy sont importés à l'usage, comme dans `demo_biomes`.
 
 ## 4. Critères d'acceptation
 
