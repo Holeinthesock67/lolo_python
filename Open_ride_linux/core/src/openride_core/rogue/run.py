@@ -205,6 +205,8 @@ class RunEngine:
 
     def step(self, dt: float, inp: RunInputs) -> RunOutputs:
         self._journal: list = []
+        self._z_reason = None               # lot R22 : retours valables pour la trame en cours seulement
+        self._shift_miss = None
         if not self._hash_logged:
             self._hash_logged = True
             self._journal.append(f"rogue balance hash={balance_hash(self.b)}")
@@ -333,6 +335,12 @@ class RunEngine:
                                               self.b.cards_offered, self.deck)
                     self.focus = None
                     messages.append(self._loot_message())
+                else:
+                    self._z_reason = "gold"         # lot R22 : relance refusée, or insuffisant
+                    events.append("z_refused")
+            elif name == "Z_SHORT":
+                self._z_reason = "no_target"        # Z ne fait rien ici (relique, porte) : on le dit
+                events.append("z_refused")
 
     def _corridor(self, dt, inp, messages, events) -> float:
         step = self._step
@@ -367,7 +375,13 @@ class RunEngine:
         buttons = set(inp.buttons)
         if "cursed" in self.deck and inp.gear == b.cursed_gear:
             mult *= b.cursed_mult
+            if "Z_SHORT" in buttons and cs.phase == "FIGHT":
+                self._z_reason = "cursed"          # lot R22 : le refus se dit
+                events.append("z_refused")
             buttons.discard("Z_SHORT")
+        elif "Z_SHORT" in buttons and cs.phase == RECOVERY:
+            self._z_reason = "recovery"
+            events.append("z_refused")
         if "overdrive" in self.deck:
             if self.overdrive_until and t >= self.overdrive_until:
                 self.overdrive_until = 0.0
@@ -405,6 +419,10 @@ class RunEngine:
                           w_bal_j=self.wbal.w_bal_j, run_gold=0.0 if self.lives > self.lives_used else self.gold)
         cs, ev = combat_step(cs, ci, room, bx, dt)
         events += ev
+        if "z_refused" in ev:
+            self._z_reason = cs.z_reason
+        if "shift_missed" in ev and cs.shift_miss:
+            self._shift_miss = {"reason": cs.shift_miss[0], "dt_s": cs.shift_miss[1]}
         # effets de cartes après le pas
         shield, adr = cs.shield, cs.adrenaline
         if "shifter" in self.deck:
@@ -536,7 +554,87 @@ class RunEngine:
             "gold": int(self.gold), "windows": self._windows(inp.s_m)[:4], "hack": hack,
             "overheat": bool(cs.overheat) if cs else False, "loot_focus": self.focus,
             "events": list(events)[:4],
+            # révision 1.16 (lot R22, lisibilité) : temps restant, étapes suivantes, consigne, retours des appuis
+            "phase_left_s": self._phase_left_s(),
+            "next": self._next_steps(inp),
+            "loot_stage": self.stage if self.phase in (WARMUP, CORRIDOR) else None,
+            "target_pct": self._target_pct(inp),
+            "firewall_gap_s": self._firewall_gap_s(gap, inp),
+            "z_reason": getattr(self, "_z_reason", None) if "z_refused" in events else None,
+            "shift_miss": getattr(self, "_shift_miss", None) if "shift_missed" in events else None,
         }
+
+    def _phase_left_s(self) -> float | None:
+        """Secondes avant la fin de la phase : échauffement, couloir, récupération, retour au calme ; en salle,
+        estimation au temps nominal de la salle (`null` si inconnue)."""
+        if self.phase in (WARMUP, CORRIDOR, COOLDOWN):
+            return round(max(self._step.nominal_s - self.t_phase, 0.0), 1)
+        if self.phase == "RECOVERY" and self.combat is not None:
+            return round(max(self.b.recovery_s - self.combat.recovery_s, 0.0), 1)
+        return None
+
+    def _room_left_s(self, inp) -> float | None:
+        if self.room is None:
+            return None
+        from .combat import _time_at
+        s = min(max(inp.s_m, 0.0), self.room.length_m)
+        return round(max(self.room.time_s[-1] - _time_at(self.room, s), 0.0), 1)
+
+    def _next_steps(self, inp) -> list:
+        """Au plus deux étapes à venir : `{kind, in_s, archetype}` ; `kind` parmi `relic`, `room`, `corridor`,
+        `boss`, `cooldown`, `results`. `in_s` : secondes avant l'étape (estimation en salle, `null` si inconnue)."""
+        out: list = []
+        if self.phase == RESULTS:
+            return out
+        left = self._phase_left_s()
+        if self.phase in (ROOM, BOSS):
+            left = self._room_left_s(inp)
+        if self.phase == WARMUP and not self.relic_offered:
+            out.append({"kind": "relic", "in_s": round(max(self.b.warmup_relic_s - self.t_phase, 0.0), 1),
+                        "archetype": None})
+        if self.phase == CORRIDOR and self.door_steps:
+            pick = self.door_pick if self.focus not in (3, 4) else self.focus - 3
+            out.append({"kind": "room", "in_s": left, "archetype": self.door_steps[pick].archetype})
+            return out[:2]
+        if self.phase == "RECOVERY":
+            left = None
+        if self.phase == COOLDOWN:
+            out.append({"kind": "results", "in_s": left, "archetype": None})
+            return out[:2]
+        if self.phase == BOSS and self.boss_phase is not None and self.boss_phase < 3:
+            out.append({"kind": "boss", "in_s": left, "archetype": "boss"})
+            return out[:2]
+        i = self.idx + 1
+        if self.phase == BOSS:      # dernière phase du boss : la suite est le retour au calme
+            while i < len(self.sc.steps) and self.sc.steps[i].kind == "boss":
+                i += 1
+        if i < len(self.sc.steps):
+            nxt = self.sc.steps[i]
+            out.append({"kind": nxt.kind, "in_s": left,
+                        "archetype": nxt.archetype if nxt.kind in ("room", "boss") else None})
+        return out[:2]
+
+    def _target_pct(self, inp) -> dict | None:
+        """Consigne de puissance en % de FTP : `{lo, hi}` (`hi` nul : « au moins `lo` »)."""
+        b = self.b
+        if self.phase == WARMUP:
+            u = min(self.t_phase / max(self._step.nominal_s, 1e-9), 1.0)
+            mid = b.warmup_frac_from + (b.warmup_frac_to - b.warmup_frac_from) * u
+            return {"lo": round(mid * 100 - 5), "hi": round(mid * 100 + 5)}
+        if self.phase == COOLDOWN:
+            return {"lo": 0, "hi": round(b.cooldown_frac * 100)}
+        if self.phase in (ROOM, BOSS) and self.room is not None:
+            from .combat import target_at
+            return {"lo": round(target_at(self.room, max(inp.s_m, 0.0)) * 100), "hi": None}
+        return None
+
+    def _firewall_gap_s(self, gap_m: float, inp) -> float | None:
+        """Avance sur le Firewall en secondes, à la vitesse du joueur (bornée à 99 s) ; `null` hors salle."""
+        if self.firewall is None or self.phase not in (ROOM, BOSS, "RECOVERY"):
+            return None
+        if gap_m <= 0.0:
+            return 0.0
+        return round(min(gap_m / max(inp.v_mps, 1.0), 99.0), 1)
 
     # --- reprise ------------------------------------------------------------------------------
 

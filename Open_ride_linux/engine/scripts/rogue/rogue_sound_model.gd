@@ -32,7 +32,7 @@ const EVENT_SOUNDS := {
 	"perfect_shift": "rogue_perfect_shift", "hit": "rogue_hit", "crit": "rogue_crit", "parry": "rogue_parry",
 	"parry_miss": "rogue_parry_miss", "room_won": "rogue_room_won", "room_fled": "rogue_room_fled",
 	"room_skipped": "rogue_room_skipped", "defeat": "rogue_defeat", "card_taken": "rogue_card_pick",
-	"purge": "rogue_purge",
+	"purge": "rogue_purge", "z_refused": "rogue_refused", "shift_missed": "rogue_shift_missed",
 }
 ## Priorité des sons (le plus haut garde sa voix à saturation) : défaite > boss > salle > Perfect Shift > parade
 ## > impact > le reste.
