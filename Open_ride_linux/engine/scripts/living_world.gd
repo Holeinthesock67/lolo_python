@@ -166,6 +166,14 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	return last_wind
 
 
+## Fonds d'ambiance coupés (lot R22, run du Cyber-Rogue) : même descente rapide qu'en pause, sans rien d'autre.
+func mute_ambience(now_s: float) -> void:
+	if sound_player == null:
+		return
+	neigh["paused"] = true
+	sound_player.update_ambience(neigh, now_s)
+
+
 ## Voisinage sonore autour de `p` : seuls les contours dont le rectangle touche le cercle d'écoute.
 func describe_near(p: Vector3) -> Dictionary:
 	_refresh_shapes()
