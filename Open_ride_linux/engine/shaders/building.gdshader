@@ -705,7 +705,9 @@ void fragment() {
 		}
 		vec3 c_before = col;
 		float open_h = 0.0;     // relief des ouvertures (portes)
-		if (openings == WIN_HOUSE) {
+		// Aucune ouverture sous le rez-de-chaussée (socle relevé du côté aval d'une pente, jupe enterrée)
+		if (uv.y < 0.0) {
+		} else if (openings == WIN_HOUSE) {
 			house_openings(uv, seg, eave, seed, wall != WALL_CONCRETE && wall != WALL_METAL, col, rough, open_h);
 		} else if (openings == WIN_BANDS) {
 			band_openings(uv, eave, col, rough);
