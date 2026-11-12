@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Espèces `sugi`, `hinoki`, `momiji`, `bamboo` au contrat du thème et dans l'engine ; biome `japan` du thème par défaut | GDScript, JSON | JP1 | Moyenne | En PR le 12 novembre, **version 6.0** |
+| Espèces `sugi`, `hinoki`, `momiji`, `bamboo` au contrat du thème et dans l'engine ; biome `japan` du thème par défaut ; torii et lanternes des montées | GDScript, JSON | JP1 | Moyenne | En PR le 12 novembre, **version 6.0** |
 
 Plan : `docs/6.0/PLAN_SERIE_JP.md`.
 
@@ -22,11 +22,18 @@ Plan : `docs/6.0/PLAN_SERIE_JP.md`.
   hinoki 3, momiji 2, bambou 2, hêtre 1.
 - Vitrine `engine/tests/vitrine_rendu.gd` : rangée et vue `arbres_japon`.
 
+- Bord de route (`roadside_model.gd`, `roadside_props.gd`, `living_decor.gd`) : une montée qui commence dans le
+  biome `japan` reçoit un torii vermillon au-dessus de la route, 20 m après son pied (comme le grand torii de
+  Hakone-Yumoto sur la route 1), et une paire de lanternes de pierre (tōrō) 12 m après son sommet. Le biome
+  est lu sur la couche biome du parcours (tuiles sous verrou, dans la tâche de fond du décor). Vue `torii` de la
+  vitrine.
+
 ## Reporté
 
-Torii, lanternes de pierre et garde-fous japonais (objets du bord de route) : lot à part, avec JP3.
+Garde-fous japonais et maisons minka : avec JP3.
 
 ## Critères
 
 1. `engine/tests/unit/test_vegetation_biomes.gd` vert (budget de triangles, matières, hauteurs, saisons).
-2. Captures `arbres_japon` low / medium / high validées par le propriétaire.
+2. `engine/tests/unit/test_roadside_model.gd` vert (torii et lanternes seulement dans le biome `japan`).
+3. Captures `arbres_japon` et `torii` low / medium / high validées par le propriétaire.

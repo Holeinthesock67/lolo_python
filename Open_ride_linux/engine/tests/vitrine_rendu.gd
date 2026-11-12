@@ -89,6 +89,7 @@ const VIEWS := {
 	"panneau_approche_15m": [Vector3(61.0, 1.6, -9.8), Vector3(63.0, 2.0, -24.0), 55.0],
 	"panneau_approche_30m": [Vector3(55.0, 1.5, 4.0), Vector3(63.0, 2.0, -24.0), 55.0],
 	"borne": [Vector3(61.0, 0.9, -17.4), Vector3(61.8, 0.45, -19.5), 40.0],
+	"torii": [Vector3(1.5, 1.6, -42.0), Vector3(0.0, 4.0, -80.0), 60.0],
 	"borne_dos": [Vector3(62.6, 0.9, -21.6), Vector3(61.8, 0.45, -19.5), 40.0],   # face arrière (demi-tour, N17)
 	"portes": [Vector3(-4.0, 1.6, -24.0), Vector3(-9.0, 1.2, -25.0), 60.0],
 	"eolienne": [Vector3(-75.0, 2.0, -150.0), Vector3(-120.0, 55.0, -300.0), 60.0],
@@ -487,6 +488,15 @@ func _add_props(vp: SubViewport, preset: String) -> void:
 		node.position = it[1]
 		node.rotation.y = -0.35
 		props.add_child(node)
+	# Lot JP5 : torii au-dessus de la route et lanternes de pierre de part et d'autre (vue `torii`)
+	props.road_width_m = ROAD_WIDTH_M
+	var gate: Node3D = props.build_prop({"kind": "torii", "s": 0.0, "lines": []})
+	gate.position = Vector3(0.0, 0.0, -80.0)
+	props.add_child(gate)
+	for x in [-ROAD_WIDTH_M * 0.5 - 1.5, ROAD_WIDTH_M * 0.5 + 1.5]:
+		var lamp: Node3D = props.build_prop({"kind": "lantern", "s": 0.0, "lines": []})
+		lamp.position = Vector3(x, 0.0, -66.0)
+		props.add_child(lamp)
 
 
 ## Village de BUILDINGS maillé par building_mesh.gd avec le matériau de la scène principale (osm_streamer.gd).
