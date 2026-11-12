@@ -64,6 +64,7 @@ const RoadsideProps := preload("res://scripts/roadside_props.gd")
 const CrowdModel := preload("res://scripts/crowd_model.gd")
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const PassersbyModel := preload("res://scripts/passersby_model.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 const FOG_PERIOD_S := 0.5
 const SOUND_POLL_S := 0.25          # relevé des sons du décor qui démarrent (P30)
@@ -76,6 +77,7 @@ var living: Dictionary = {}
 var theme: Dictionary = {}
 var weather: Dictionary = {}
 var weather_eval: Dictionary = {}
+var season_falling_leaves := 0.0   # densité des feuilles qui tombent de la saison (lot P19, season_model.gd)
 var sound_player = null
 var world_streamer = null
 var osm_streamer = null
@@ -287,7 +289,7 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 	var layers: Array = osm_streamer.layers_present.duplicate() if osm_streamer != null and not world_dir.is_empty() else []
 	var job := {"gen": _generation, "route": route, "world_dir": world_dir, "layers": layers,
 		"road_width_m": road_width_m, "crowd_all_climbs": crowd_all_climbs, "result": {}}
-	job["task"] = WorkerThreadPool.add_task(_prepare_job.bind(job), false, "décor du parcours")
+	job["task"] = BgTasks.add(_prepare_job.bind(job), false, "décor du parcours")
 	_job = job
 
 
@@ -342,7 +344,7 @@ static func climbs_of(r) -> Array:
 
 func _wait_job() -> void:
 	if not _job.is_empty():
-		WorkerThreadPool.wait_for_task_completion(_job["task"])
+		BgTasks.wait(_job["task"])
 		_job = {}
 
 
@@ -352,11 +354,11 @@ func flush() -> void:
 
 
 func _poll_job(wait: bool = false) -> void:
-	if _job.is_empty() or (not wait and not WorkerThreadPool.is_task_completed(_job["task"])):
+	if _job.is_empty() or (not wait and not BgTasks.done(_job["task"])):
 		return
 	var job := _job
 	_job = {}
-	WorkerThreadPool.wait_for_task_completion(job["task"])
+	BgTasks.wait(job["task"])
 	if int(job["gen"]) != _generation:
 		return
 	var res: Dictionary = job["result"]
@@ -460,6 +462,10 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	_rider_lane_m = _lane_of(state, RoadBuilder.RIDER_LATERAL_M)   # placement dans la roue (lot AS2)
 	var wheel: Vector3 = _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * _rider_lane_m
 	particles.update_dust(wheel, back, 0.0 if paused else rider_v, surface_here)
+	# Feuilles qui tombent (saisons, lots P18 et P19) : près des forêts seulement, au vent
+	if season_falling_leaves > 0.0 or particles.get_emitter("leaves") != null and particles.get_emitter("leaves").emitting:
+		var forest_dist := float(living_world.neigh.get("forest_dist_m", INF)) if living_world != null else INF
+		particles.update_leaves(WeatherParticles.leaves_intensity(season_falling_leaves, forest_dist), wind_eval)
 	if sound_player != null and sound_player.get("model") != null:
 		sound_player.model.set_surface(surface_here)
 	if world_streamer != null and world_streamer.has_method("set_road_wetness"):

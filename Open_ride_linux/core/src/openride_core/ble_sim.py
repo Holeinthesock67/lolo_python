@@ -721,7 +721,7 @@ class SimClickBox(SimDevice):
     def write(self, uuid: str, data: bytes) -> None:
         if uuid != zwift_click.ZWIFT_SYNC_RX:
             super().write(uuid, data)
-        if data == zwift_click.RIDE_ON:
+        if data.startswith(zwift_click.RIDE_ON):   # RideOn seul, ou première écriture de l'activation (lot K9)
             self.ride_on_count += 1
             self.ride_on = True
             if self.unlock_on_ride_on and self.ride_on_count >= 2:

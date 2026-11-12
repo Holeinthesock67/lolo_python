@@ -56,7 +56,10 @@ Fermeture bloquée de l'engine (lot X55) : l'engine écrit en dernier « Fermetu
 serveurs de Godot (code N) ». Sur le PC (écran réel, pilote NVIDIA), après un clic de souris sur « Quitter »,
 l'arrêt de Godot qui suit restait bloqué, tout le travail du jeu déjà fait (séance, `bye`). Passé
 `ENGINE_SHUTDOWN_S` après cette ligne, le lanceur arrête le processus et retient le code annoncé : 0 ferme
-OpenRide, 64 et 65 relancent comme d'habitude.
+OpenRide, 64 et 65 relancent comme d'habitude. Depuis le lot X58, l'engine s'arrête lui-même (SIGKILL) juste
+après cette ligne, l'arrêt de Godot 4.7 pouvant attendre à jamais ses fils de travail (godotengine/godot#125097) :
+une sortie par SIGKILL après la ligne compte avec le code annoncé, sans attente ; `ENGINE_SHUTDOWN_S` reste le
+filet si le processus ne sort toujours pas.
 
 Lancement sans terminal (lot N14) :
 - premier démarrage : sans `~/OpenRide/config.toml`, il est créé depuis
@@ -113,12 +116,16 @@ ENGINE_ARGS_NOT_FROM_CONFIG: dict[str, str] = {
     "--forest": "banc avant/après du lot Y5 (forêts lointaines coupées)",
     "--crowd": "bancs du lot Y21 (spectateurs sur toutes les montées)",
     "--camera-height": "bancs du lot Y5 (vue follow_far plus haute, par-dessus les arbres proches)",
+    "--horizon": "bancs du lot JP4 (avec et sans relief d'horizon)",
 }
 
 # Code de sortie de l'engine : « tout relancer » (menu « Appareils », lot N13 ; engine/scripts/main.gd).
 EXIT_RELAUNCH = 64
 EXIT_SIM = 65
 ENGINE_DONE = re.compile(r"Fermeture : scène libérée, arrêt des serveurs de Godot \(code (\d+)\)")
+# Lot X58 : l'engine s'arrête lui-même par SIGKILL juste après sa ligne de fin (arrêt de Godot 4.7 bloqué,
+# godotengine/godot#125097) ; -9 direct, 137 à travers un shell (xvfb-run) ou gdb. Le code est celui de la ligne.
+ENGINE_SELF_KILLED = (-9, 128 + 9)
 ENGINE_SHUTDOWN_S = 3.0   # attente de la sortie de Godot après sa dernière ligne (une sortie normale : < 1 s)
 # Options du core en session simulée (remplacent --trainer, --input, --hr, --sim-scenario et --profil) :
 # matériel simulé et profil d'essai (série MJ, lot MJ2).
@@ -365,6 +372,11 @@ class Supervisor:
     theme_name: str = ""               # thème choisi, daté au démarrage dans la bibliothèque (lot U15)
     themes_dir: Path | None = None     # ~/OpenRide/Themes ; None : rien n'est daté
     active_profile_path: Path | None = None   # `.profil_actif` écrit par le core (lot MJ7) ; None : ignoré
+    # Vent du jour (lot P33) : lit la météo si `[wind] mode = "local"` et renvoie la ligne du journal (None :
+    # rien lu) ; appelé dans un fil à part, jamais par le core ; None : jamais de lecture.
+    local_wind: Callable[[], str | None] | None = None
+    local_wind_check_s: float = 60.0   # le réglage du menu est relu à ce rythme
+    local_wind_retry_s: float = 15 * 60.0   # après un échec (hors ligne)
 
     started_pids: list[int] = field(default_factory=list, init=False)
     restarts: int = field(default=0, init=False)
@@ -379,6 +391,32 @@ class Supervisor:
     _log_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
     _readers: list[threading.Thread] = field(default_factory=list, init=False)
     _engine_done: tuple[float, int] | None = field(default=None, init=False)   # (heure, code) de la ligne de fin
+    _local_wind_thread: threading.Thread | None = field(default=None, init=False)
+    _next_local_wind: float = field(default=0.0, init=False)
+
+    # --- vent du jour (lot P33) -------------------------------------------------------
+
+    def _local_wind_tick(self, force: bool = False) -> None:
+        """Lance la lecture du vent du jour dans un fil à part ; ni le lanceur ni le core ne l'attendent."""
+        if self.local_wind is None:
+            return
+        busy = self._local_wind_thread is not None and self._local_wind_thread.is_alive()
+        if busy or (not force and self.clock() < self._next_local_wind):
+            return
+        self._next_local_wind = self.clock() + self.local_wind_check_s
+        self._local_wind_thread = threading.Thread(target=self._local_wind_work, name="vent-du-jour", daemon=True)
+        self._local_wind_thread.start()
+
+    def _local_wind_work(self) -> None:
+        try:
+            line = self.local_wind() if self.local_wind is not None else None
+        except Exception as exc:   # hors ligne, délai, configuration illisible : séances sans vent
+            self._next_local_wind = self.clock() + self.local_wind_retry_s
+            self._say_warning(f"vent du jour indisponible ({exc}) : séances sans vent ; "
+                              f"nouvel essai dans {self.local_wind_retry_s / 60:.0f} min.")
+            return
+        if line:
+            self._say(line)
 
     # --- journal -----------------------------------------------------------------------
 
@@ -567,6 +605,10 @@ class Supervisor:
         """Code de sortie de l'engine, None s'il tourne. Arrêt de Godot bloqué `engine_shutdown_s` après la ligne de
         fin (scène libérée) : processus arrêté, code annoncé par cette ligne retenu."""
         if engine.poll() is not None:
+            if engine.returncode in ENGINE_SELF_KILLED:
+                self._join_readers()   # la ligne de fin peut être encore dans le tuyau
+                if self._engine_done is not None:
+                    return self._engine_done[1]   # sortie immédiate après la ligne de fin (lot X58) : code annoncé
             return engine.returncode
         done = self._engine_done
         if done is None or time.monotonic() - done[0] < self.engine_shutdown_s:
@@ -627,6 +669,7 @@ class Supervisor:
 
             if self.themes_dir is not None and self.theme_name:
                 record_theme_use(self.themes_dir, self.theme_name)
+            self._local_wind_tick(force=True)   # parcours compilés : leurs départs sont connus
             core = self._start_core()
             deadline = self.clock() + self.startup_grace_s
             while self.clock() < deadline and core.poll() is None and self._stop_signal is None:
@@ -647,6 +690,7 @@ class Supervisor:
             core_crashes: list[float] = []
             while True:
                 time.sleep(self.poll_s)
+                self._local_wind_tick()
                 if self._stop_signal is not None:
                     self._say(f"signal {signal.Signals(self._stop_signal).name} reçu : arrêt de la séance.")
                     return self._finish(core, engine, 0)
@@ -883,6 +927,29 @@ def worldmenu_command(env: dict[str, str] | None = None) -> list[str]:
     return [sys.executable, "-m", "openride_compiler.worldgen.menu_query"]
 
 
+def local_wind_reader(config_path: Path | None, ctx, routes_root: Path | None = None,
+                      cache_path: Path | None = None) -> Callable[[], str | None]:
+    """Lecture du vent du jour pour le superviseur (lot P33) : relit `[wind] mode` (fichier de la machine et
+    profil choisi au menu, lot MJ7) et ne touche au réseau qu'en mode `local`."""
+    from . import config as config_mod
+    from . import local_weather, profiles
+
+    def read() -> str | None:
+        current = ctx
+        wanted = profiles.read_active()
+        if wanted is not None and wanted not in (ctx.id, profiles.TRIAL_ID):
+            try:
+                current = profiles.ProfileContext.for_id(wanted)
+            except profiles.ProfileContextError:
+                pass
+        profile_file = current.root / profiles.FILE_NAME if current.id is not None else None
+        if config_mod.load(config_path, profile_file).wind.mode != "local":
+            return None
+        return local_weather.refresh(routes_root or config_mod.ROUTES_DIR, cache_path)
+
+    return read
+
+
 def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) -> Supervisor:
     """Construit le superviseur réel ; lève `ConfigError` ou `FileNotFoundError` avec un message lisible."""
     from . import config as config_mod
@@ -945,6 +1012,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
         theme_name=cfg.render.theme,
         themes_dir=THEMES_DIR,
         active_profile_path=profiles.active_file(),
+        local_wind=local_wind_reader(config_path, ctx),
     )
 
 

@@ -290,15 +290,13 @@ Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = inten
 - [ ] Cible tenue, biais ± 2 % visible
 - **Journaux :** `openride-core summary` (cible et écart par bloc, biais).
 
-### E2. Importer un exercice (N16)
+### E2. Importer un exercice (N16) : retiré
 
-- **Prérequis :** un fichier `.zwo`, `.erg` ou `.mrc` dans `~/Téléchargements` (par exemple une copie de `core/workouts/tempo_2x15.erg`, ou un export GoldenCheetah, qui reste sur le PC).
-- **Étapes :** Session ERG → « Importer un fichier » → choisir le fichier ; refaire l'import du même fichier.
-- **Attendu :** fichiers proposés du plus récent au plus ancien avec leur dossier ; copie dans `~/OpenRide/Workouts/`, « Importé : … » ; second import du même fichier : marqué « déjà importé », pas de doublon ; un fichier différent du même nom prend le suffixe `_2`.
-- [ ] Import et choix
-- [ ] Pas de doublon ni d'écrasement
+L'import d'entraînements depuis le menu est retiré le 12 novembre (décision du propriétaire, révision 1.15 de l'IPC) : plus d'essai. Un fichier se dépose dans `~/OpenRide/Workouts/`.
 
 ### E3. `sweet_spot_3x10` complet (O8 ligne 5)
+
+**Retiré du plan le 12 novembre** (décision du propriétaire, séance `.zwo` complète abandonnée) : essai facultatif.
 
 - **Étapes :** choisir `sweet_spot_3x10` (60 min : échauffement 10 min, 3 × 10 min à 90 % de la FTP, récupérations 5 min à 55 %, retour au calme 5 min) et le rouler en entier, ou au moins jusqu'à la fin du premier effort (20 min).
 - **Attendu :** cibles calculées sur la FTP des réglages ; cibles tenues ; biais ± 2 % ; bips ; bandeau lisible à 2 m.
@@ -377,8 +375,8 @@ Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = inten
 ### G3. Test guidé des boutons du Click, 5 min (plan des boutons, spécification générale §7.1)
 
 - **Prérequis :** les deux boîtiers, piles chargées, jeu fermé, son du PC allumé (`python -m openride_core.tools.guide bips` pour régler le volume). Pas besoin de pédaler.
-- **Étapes :** essai à blanc `python -m openride_core.tools.boutons_click --sim` (3 min, sans matériel : un cycliste simulé fait les appuis, on regarde seulement) ; puis `python -m openride_core.tools.boutons_click`. Réveiller les deux boîtiers, puis faire les 17 appuis demandés un par un : boîtier gauche d'abord (flèches gauche, droite, haut, bas ; puis − court, long, moyen d'environ 0,7 s), sans traîner : Zwift le verrouille environ 50 s après sa connexion et l'outil le redémarre alors (environ 4 s sans boutons, comme dans le jeu ; s'il reste muet, l'outil l'annonce « muet » et saute ses étapes), puis le droit (+ court, long, moyen ; B court et long ; A court et long ; Y ; Z court et long). Chaque étape commence par un bip et passe seule à la suivante 4 s après l'appui reconnu, le temps de lire l'encadré (`--lecture` pour changer) ; 30 s au plus pour appuyer (`--delai`).
-- **Attendu :** chaque appui reçu s'affiche dans un encadré, vert si c'est celui demandé, jaune sinon : événement décodé (`A_LONG`…), touche et boîtier, puis l'action de l'appui dans chaque mode (menus, SIM, ERG, Cyber-Rogue, monde ouvert) telle que l'écrit le tableau §7.1 ; un bip d'appui (court : une note, long : deux notes montantes, ni court ni long : une note grave) ; un verdict à la fin, « 17/17 appuis reconnus ». L'encadré montre le plan des boutons, celui du code depuis O17 (ERG : ± long = biais ± 10 %, Z = bloc suivant ; essai J7).
+- **Étapes :** essai à blanc `python -m openride_core.tools.boutons_click --sim` (3 min, sans matériel : un cycliste simulé fait les appuis, on regarde seulement) ; puis `python -m openride_core.tools.boutons_click`. Réveiller les deux boîtiers, puis faire les 18 appuis demandés un par un : boîtier gauche d'abord (flèches gauche, droite, haut, bas ; puis − court, long, moyen d'environ 0,7 s), sans traîner : Zwift le verrouille environ 50 s après sa connexion et l'outil le redémarre alors (environ 4 s sans boutons, comme dans le jeu ; s'il reste muet, l'outil l'annonce « muet » et saute ses étapes), puis le droit (+ court, long, moyen ; B court et long ; A court et long ; Y ; Z court et long). Chaque étape commence par un bip et passe seule à la suivante 4 s après l'appui reconnu, le temps de lire l'encadré (`--lecture` pour changer) ; 30 s au plus pour appuyer (`--delai`).
+- **Attendu :** chaque appui reçu s'affiche dans un encadré, vert si c'est celui demandé, jaune sinon : événement décodé (`A_LONG`…), touche et boîtier, puis l'action de l'appui dans chaque mode (menus, SIM, ERG, Cyber-Rogue, monde ouvert) telle que l'écrit le tableau §7.1 ; un bip d'appui (court : une note, long : deux notes montantes, ni court ni long : une note grave) ; un verdict à la fin, « 17/18 appuis reconnus ». L'encadré montre le plan des boutons, celui du code depuis O17 (ERG : ± long = biais ± 10 %, Z = bloc suivant ; essai J7).
 - [ ] Essai à blanc OK
 - [ ] Boîtier gauche : 7 appuis reconnus (sinon minute du silence notée, voir J5)
 - [ ] Boîtier droit : 10 appuis reconnus

@@ -37,6 +37,10 @@ const INFO := {
 	"reed": {"height": 2.2, "deciduous": false},
 	"dwarf_shrub": {"height": 0.8, "deciduous": false},
 	"vine_row": {"height": 1.6, "deciduous": true, "lod0_m": 200.0},
+	# Lot AT1 : plantes basses des landes atlantiques ; la fougère aigle roussit à l'automne et disparaît l'hiver.
+	"heather": {"height": 0.55, "deciduous": false, "lod0_m": 150.0},
+	"gorse": {"height": 1.6, "deciduous": false, "lod0_m": 150.0},
+	"bracken": {"height": 1.0, "deciduous": true, "lod0_m": 150.0},
 }
 
 ## Matière de chaque face, portée par l'alpha de la couleur du sommet (code / 16) et dessinée par
@@ -83,6 +87,9 @@ const CROWNS := {
 	"reed": {"w": 1.4, "col": Color(0.52, 0.56, 0.30, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"dwarf_shrub": {"w": 1.8, "col": Color(0.37, 0.35, 0.21, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"vine_row": {"w": 6.0, "col": Color(0.28, 0.44, 0.16, MAT_LEAVES / 16.0), "shape": "hedge", "cy": 0.6, "ry": 0.4, "trunk_w": 0.0},
+	"heather": {"w": 2.6, "col": Color(0.36, 0.25, 0.30, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"gorse": {"w": 1.9, "col": Color(0.30, 0.36, 0.14, MAT_NEEDLES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"bracken": {"w": 2.6, "col": Color(0.33, 0.50, 0.18, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 }
 
 ## Couleur `rgb` avec la matière `code` dans l'alpha.
@@ -268,10 +275,78 @@ static func _cross(width: float, height: float, col: Color) -> ArrayMesh:
 
 # --- Espèces ----------------------------------------------------------------------------------
 
-## Renvoie {"lod0": ArrayMesh, "lod1": ArrayMesh, "height": float, "deciduous": bool}.
+## Renvoie {"lod0": ArrayMesh, "lod1": ArrayMesh, "height": float, "deciduous": bool} ; feuillus de
+## WINTER_BRANCHES : aussi "lod0_bare", le même arbre avec sa charpente de branches pour l'hiver (lot P18).
 static func build(kind: String) -> Dictionary:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	if not _draw(st, kind):
+		return {}
+	var mesh := st.commit()
+	var h := height_m(kind)
+	var out := {"lod0": mesh, "lod1": _profile(CROWNS[kind], h), "height": h, "deciduous": is_deciduous(kind)}
+	# Saisons (lot P18) : même arbre avec sa charpente de branches, pris l'hiver par tree_renderer.gd (le feuillage
+	# y est replié par tree_sway.gdshader) ; l'été garde le maillage sans branches, au même coût qu'avant.
+	if WINTER_BRANCHES.has(kind):
+		var bare := SurfaceTool.new()
+		bare.begin(Mesh.PRIMITIVE_TRIANGLES)
+		_draw(bare, kind)
+		_winter_branches(bare, kind)
+		out["lod0_bare"] = bare.commit()
+	return out
+
+
+## Charpente des feuillus pour l'hiver : point de départ (haut du fût), centre et rayons du houppier, nombre de
+## branches maîtresses, écorce, flèche (prolongement du fût jusqu'au sommet).
+const WINTER_BRANCHES := {
+	"oak": {"base": Vector3(0, 4.8, 0), "c": Vector3(0.6, 8.8, 0.3), "r": Vector3(4.6, 4.0, 4.4), "n": 7, "bark": BARK, "r0": 0.2},
+	"beech": {"base": Vector3(0, 7.0, 0), "c": Vector3(0, 11.5, 0), "r": Vector3(3.6, 5.2, 3.6), "n": 5, "bark": BARK_SMOOTH, "r0": 0.16},
+	"birch": {"base": Vector3(0.2, 5.5, 0), "c": Vector3(0.2, 8.8, 0), "r": Vector3(2.0, 3.6, 2.0), "n": 5, "bark": BARK_WHITE, "r0": 0.08},
+	"larch": {"base": Vector3(0, 3.6, 0), "c": Vector3(0, 10.0, 0), "r": Vector3(3.2, 7.0, 3.2), "n": 8, "bark": BARK_RED, "r0": 0.1, "whorls": true},
+	"vine_row": {"cordon": true},
+}
+
+
+static func _winter_branches(st: SurfaceTool, kind: String) -> void:
+	var w: Dictionary = WINTER_BRANCHES[kind]
+	if w.get("cordon", false):
+		# Vigne taillée : fil de palissage et sarments nus le long du rang
+		var cane := mat(Color(0.36, 0.27, 0.18), MAT_STEM)
+		_limb(st, Vector3(-3.0, 1.0, 0), Vector3(3.0, 1.0, 0), 0.03, 0.03, cane, 3)
+		for i in range(4):
+			var x := -3.0 + 2.0 * i
+			_limb(st, Vector3(x, 1.0, 0), Vector3(x + 0.5, 1.45, 0.15), 0.025, 0.012, cane, 3)
+			_limb(st, Vector3(x, 1.0, 0), Vector3(x - 0.45, 1.4, -0.15), 0.025, 0.012, cane, 3)
+		return
+	var base: Vector3 = w["base"]
+	var c: Vector3 = w["c"]
+	var r: Vector3 = w["r"]
+	var bark: Color = w["bark"]
+	var r0 := float(w["r0"])
+	var n := int(w["n"])
+	# Flèche : le fût prolongé jusqu'au sommet du houppier
+	var top := c + Vector3(0, r.y * 0.85, 0)
+	_limb(st, base - Vector3(0, 0.3, 0), top, r0 * 1.2, 0.03, bark, 4)
+	for i in range(n):
+		var a := TAU * (i + 0.37 * (i % 2)) / n
+		var whorls: bool = w.get("whorls", false)
+		var start := base.lerp(top, (0.15 + 0.7 * i / float(n)) if whorls else 0.1 * (i % 3))
+		var lift := 0.15 if whorls else 0.25 + 0.45 * float((i * 7) % 5) / 4.0
+		var reach := (1.0 - 0.6 * i / float(n)) if whorls else 0.92
+		var tip := Vector3(c.x + cos(a) * r.x * reach, (start.y + 0.6) if whorls else c.y + (lift - 0.2) * r.y, c.z + sin(a) * r.z * reach)
+		if whorls:
+			tip.y = start.y - 0.3   # branches du mélèze un peu tombantes
+		_limb(st, start, tip, r0, 0.025, bark, 4)
+		# Deux rameaux par branche, partis aux deux tiers, vers le haut et de côté
+		var mid := start.lerp(tip, 0.6)
+		var side := Vector3(-sin(a), 0, cos(a))
+		for k: float in [-1.0, 1.0]:
+			var twig: Vector3 = tip.lerp(mid, 0.3) + side * k * r.x * 0.3 + Vector3(0, r.y * (0.12 if whorls else 0.3), 0)
+			_limb(st, mid, twig, r0 * 0.4, 0.012, bark, 3)
+
+
+## Géométrie de l'espèce ; faux pour une espèce inconnue.
+static func _draw(st: SurfaceTool, kind: String) -> bool:
 	match kind:
 		"oak":
 			_limb(st, Vector3.ZERO, Vector3(0, 5.5, 0), 0.45, 0.32, BARK)
@@ -356,12 +431,38 @@ static func build(kind: String) -> Dictionary:
 				_limb(st, Vector3(x, 0, 0), Vector3(x, 1.4, 0), 0.04, 0.04, mat(Color(0.40, 0.33, 0.24), MAT_STEM), 4)
 			for i in range(3):
 				_blob(st, Vector3(-2.0 + 2.0 * i, 1.05, 0), Vector3(1.15, 0.45, 0.4), mat(Color(0.28, 0.44, 0.16), MAT_LEAVES), 3)
+		"heather":
+			# Bruyère : plaque de six coussins bas, mauve et brun-vert mêlés, d'environ 2,6 m (lot AT1)
+			var tufts := [[Vector3(0, 0.28, 0), Vector3(0.65, 0.27, 0.6), Color(0.42, 0.25, 0.36)],
+				[Vector3(0.8, 0.2, 0.4), Vector3(0.5, 0.2, 0.45), Color(0.32, 0.31, 0.20)],
+				[Vector3(-0.75, 0.22, -0.35), Vector3(0.5, 0.22, 0.48), Color(0.48, 0.28, 0.44)],
+				[Vector3(-0.3, 0.18, 0.85), Vector3(0.45, 0.18, 0.4), Color(0.36, 0.28, 0.24)],
+				[Vector3(0.45, 0.2, -0.8), Vector3(0.5, 0.2, 0.42), Color(0.45, 0.26, 0.40)],
+				[Vector3(-1.0, 0.16, 0.5), Vector3(0.35, 0.16, 0.35), Color(0.30, 0.32, 0.19)]]
+			for t in tufts:
+				_blob(st, t[0], t[1], mat(t[2], MAT_LEAVES), 3)
+		"gorse":
+			# Ajonc : buisson épineux vert sombre, piqué de fleurs jaunes sur le dessus (lot AT1)
+			_blob(st, Vector3(0, 0.75, 0), Vector3(0.9, 0.78, 0.85), mat(Color(0.18, 0.28, 0.12), MAT_NEEDLES), 4)
+			_blob(st, Vector3(0.55, 0.5, 0.35), Vector3(0.5, 0.5, 0.5), mat(Color(0.20, 0.30, 0.13), MAT_NEEDLES), 3)
+			var flower := mat(Color(0.86, 0.72, 0.16), MAT_LEAVES)
+			for i in range(5):
+				var a := TAU * i / 5.0 + 0.4
+				_blob(st, Vector3(cos(a) * 0.5, 1.15 + 0.12 * (i % 2), sin(a) * 0.45), Vector3(0.28, 0.16, 0.26), flower, 3)
+		"bracken":
+			# Fougère aigle : frondes dressées puis retombantes, feuillage caduc (lot AT1)
+			var frond := mat(Color(0.33, 0.50, 0.18), MAT_FRONDS)
+			# Deux touffes de six frondes, à 1,1 m l'une de l'autre : une plaque d'environ 2,6 m
+			var stem := mat(Color(0.36, 0.30, 0.18), MAT_STEM)
+			for c: Vector3 in [Vector3(-0.55, 0, 0.1), Vector3(0.55, 0, -0.15)]:
+				for i in range(6):
+					var a := TAU * i / 6.0 + 0.3 * (i % 2) + c.x
+					var foot: Vector3 = c + Vector3(cos(a) * 0.1, 0.3, sin(a) * 0.1)
+					_limb(st, c + Vector3(cos(a) * 0.04, 0.0, sin(a) * 0.04), foot, 0.025, 0.02, stem, 3)
+					_frond(st, foot, a, 0.8 + 0.1 * (i % 3), 0.7, 0.3, 0.42, frond)
 		_:
-			return {}
-	var mesh := st.commit()
-	var h := height_m(kind)
-	return {"lod0": mesh, "lod1": _profile(CROWNS[kind], h), "height": h,
-		"deciduous": is_deciduous(kind)}
+			return false
+	return true
 
 
 ## Triangles d'un maillage (contrôle du budget de 300 triangles en LOD 0).

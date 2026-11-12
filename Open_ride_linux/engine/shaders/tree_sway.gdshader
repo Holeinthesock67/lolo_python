@@ -24,6 +24,13 @@ global uniform vec3 wind_dir;
 global uniform float wind_strength;
 global uniform float wind_gust;
 global uniform float wind_phase;
+// Saisons (lot P18, season_model.gd) : valeurs par défaut de project.godot = été, rendu inchangé.
+global uniform vec3 season_leaf_tint;
+global uniform float season_autumn;
+global uniform float season_bare;
+global uniform float season_blossom;
+global uniform vec3 season_grass_tint;
+global uniform float season_grass_dry;
 
 uniform float sway_amplitude_m = 0.45;   // déplacement de la cime par vent de 60 km/h, en mètres
 uniform float sway_height_m = 5.4;       // hauteur du modèle (cime)
@@ -59,10 +66,20 @@ uniform bool normals_up_both_sides = false;
 uniform vec3 foliage_tint : source_color = vec3(1.0);
 // Herbe : pied plus sombre, pointe plus claire (0 = aucun dégradé ; arbres : toujours 0)
 uniform float root_darken : hint_range(0.0, 1.0) = 0.0;
+// Saisons (lot P18) : espèce à feuilles caduques (feuillage d'automne, dénudée l'hiver), herbe (jaunie),
+// verger (en fleurs au printemps). Posés par tree_renderer.gd, grass_tufts.gd et ground_details.gd.
+uniform bool deciduous = false;
+uniform bool grass = false;
+uniform bool orchard = false;
+// Panneaux croisés de loin : un feuillu nu garde une couronne de rameaux gris-brun (feuillage non replié).
+uniform bool bare_as_twigs = false;
+const vec3 SEASON_DRY_GRASS = vec3(0.62, 0.6, 0.32);
 
 // Position du sommet dans l'objet (avant le vent : les motifs suivent l'arbre) et décalage propre à l'arbre.
 varying vec3 v_obj;
 varying vec3 v_shift;
+varying float v_pick;   // tirage propre à l'arbre (palette d'automne)
+varying float v_bare;   // 1 : arbre nu cet hiver
 
 void vertex() {
 	vec3 dir = use_local_wind ? local_wind_dir : wind_dir;
@@ -73,6 +90,16 @@ void vertex() {
 	v_obj = VERTEX;
 	// Décalage continu (ajouté à la position, jamais haché dans fragment()) : chaque arbre a ses motifs
 	v_shift = vec3(offset * 7.3, offset * 1.7, offset * 5.1);
+	v_pick = fract(offset * 5.37);
+	// Hiver (lot P18) : feuillage d'une part des feuillus replié en un point (aucun pixel, aucune défausse).
+	v_bare = 0.0;
+	if (deciduous && season_bare > 0.0 && fract(offset * 3.71) < season_bare) {
+		v_bare = 1.0;
+		int leaf_code = int(floor(COLOR.a * 16.0 + 0.5));
+		if (leaf_code >= 8 && !bare_as_twigs) {   // feuilles, aiguilles et frondes (fougère aigle, lot AT1)
+			VERTEX = vec3(0.0);
+		}
+	}
 	float freq = sway_frequency_hz * (1.0 + 0.6 * wind_gust);
 	float swing = 0.55 + 0.45 * sin(wind_phase * freq * 6.2831853 + offset);
 	float amp = sway_amplitude_m * strength * (1.0 + 0.8 * wind_gust) * h * h * swing;
@@ -121,6 +148,21 @@ void fragment() {
 	}
 	int code = int(floor(COLOR.a * 16.0 + 0.5));
 	vec3 col = COLOR.rgb * srgb(foliage_tint);   // teinte en sRGB, convertie à l'écriture
+	if (deciduous && code >= 8) {   // feuilles, aiguilles et frondes caduques
+		// Automne : jaune, orange ou roux selon l'arbre, à la luminosité de la feuille ; puis teinte de la saison
+		vec3 hue = v_pick < 0.4 ? vec3(0.95, 0.74, 0.18) : (v_pick < 0.75 ? vec3(0.92, 0.45, 0.12) : vec3(0.62, 0.24, 0.10));
+		float lum = dot(col, vec3(0.3, 0.59, 0.11));
+		col = mix(col, hue * lum * 2.4, season_autumn * (0.7 + 0.3 * v_pick));
+		col *= season_leaf_tint;
+		if (bare_as_twigs && v_bare > 0.5) {
+			// Rameaux nus vus de loin : gris-brun, plus sombres au cœur
+			col = vec3(0.30, 0.26, 0.23) * (0.8 + 0.5 * v_pick);
+			code = 7;   // motif des tiges, sans reflets de feuilles
+		}
+	}
+	if (grass) {
+		col = mix(col, col * 0.55 + SEASON_DRY_GRASS * 0.45, season_grass_dry) * season_grass_tint;
+	}
 	float rough = roughness_value;
 	float through = 0.0;   // part de lumière qui traverse les feuilles
 	vec3 p = v_obj + v_shift;
@@ -186,6 +228,11 @@ void fragment() {
 			col *= mix(0.55, 1.3, clamp(m, 0.0, 1.0));
 			// Reflets jaunes des feuilles au soleil
 			col = mix(col, col * vec3(1.18, 1.12, 0.7), smoothstep(0.62, 0.9, leaf) * 0.45);
+			if (orchard && code == 8 && season_blossom > 0.0) {
+				// Vergers en fleurs : bouquets blancs et roses sur le feuillage
+				float bloom = smoothstep(0.58, 0.68, n3(p * 6.0 + 23.0)) * season_blossom;
+				col = mix(col, mix(vec3(1.0, 0.96, 0.97), vec3(0.98, 0.78, 0.86), v_pick), bloom);
+			}
 			through = code == 9 ? 0.25 : 0.5;
 			rough = 0.8;
 		}

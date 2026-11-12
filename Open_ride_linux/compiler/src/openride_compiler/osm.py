@@ -110,6 +110,45 @@ def build_overpass_query(bboxes: list[tuple[float, float, float, float]]) -> str
     return f"[out:json][timeout:60];\n(\n{union_body}\n);\nout body geom;\n"
 
 
+def build_coast_query(bbox: tuple[float, float, float, float]) -> str:
+    """Requête Overpass de la côte (lot U3) sur l'étendue du terrain : lignes de côte, plages, sable
+    et falaises. Les chemins reviennent entiers (`out body geom`), au-delà de la boîte comprise."""
+    south, west, north, east = bbox
+    b = f"({south:.5f},{west:.5f},{north:.5f},{east:.5f})"
+    parts = [
+        f'  way["natural"="coastline"]{b};',
+        f'  way["natural"~"^(beach|sand)$"]{b};',
+        f'  relation["natural"~"^(beach|sand)$"]{b};',
+        f'  way["natural"="cliff"]{b};',
+    ]
+    return "[out:json][timeout:90];\n(\n" + "\n".join(parts) + "\n);\nout body geom;\n"
+
+
+# Couche biome (lot U2) : occupations du sol qui corrigent WorldCover, dans une bande plus large que les
+# couches de décor (les tuiles de biome proches débordent la bande de 400 m). Requête à part : le cache des
+# autres couches (même requête, même empreinte) reste valable.
+BIOME_BAND_M = 1000.0
+BIOME_LANDUSE = ("farmland", "orchard", "vineyard")
+BIOME_NATURAL = ("sand", "wetland", "glacier", "scrub", "heath")
+
+
+def build_biome_query(bboxes: list[tuple[float, float, float, float]]) -> str:
+    """Requête Overpass QL des polygones qui corrigent la classification des biomes (lot U2)."""
+    parts: list[str] = []
+    landuse = "|".join(BIOME_LANDUSE)
+    natural = "|".join(BIOME_NATURAL)
+    for south, west, north, east in bboxes:
+        b = f"({south:.5f},{west:.5f},{north:.5f},{east:.5f})"
+        parts.extend([
+            f'  way["landuse"~"^({landuse})$"]{b};',
+            f'  relation["landuse"~"^({landuse})$"]{b};',
+            f'  way["natural"~"^({natural})$"]{b};',
+            f'  relation["natural"~"^({natural})$"]{b};',
+        ])
+    union_body = "\n".join(parts)
+    return f"[out:json][timeout:90];\n(\n{union_body}\n);\nout body geom;\n"
+
+
 def query_hash(query: str) -> str:
     return hashlib.sha256(query.encode("utf-8")).hexdigest()
 
@@ -203,6 +242,11 @@ class OverpassClient:
             f"échec de la requête Overpass après {RETRIES} reprises : {last_error}"
         )
 
+    def fetch_coast(self, route: dict[str, Any], frame: LocalFrame) -> list[dict[str, Any]]:
+        """Réponse Overpass de la côte sur l'étendue des tuiles lointaines du terrain (lot U3)."""
+        from .coast import coast_bbox
+        return [self.fetch_query(build_coast_query(coast_bbox(route, frame)))]
+
     def fetch_for_route(
         self,
         route: dict[str, Any],
@@ -216,3 +260,14 @@ class OverpassClient:
             q = build_overpass_query(packet)
             responses.append(self.fetch_query(q))
         return responses
+
+    def fetch_biome_for_route(
+        self,
+        route: dict[str, Any],
+        frame: LocalFrame,
+        chunks_per_packet: int = CHUNKS_PER_PACKET,
+    ) -> list[dict[str, Any]]:
+        """Réponses Overpass des polygones de la couche biome (lot U2), par paquets de tronçons."""
+        bboxes = chunk_bboxes(route, frame, band_m=BIOME_BAND_M)
+        return [self.fetch_query(build_biome_query(bboxes[i:i + chunks_per_packet]))
+                for i in range(0, len(bboxes), chunks_per_packet)]

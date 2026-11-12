@@ -7,10 +7,13 @@ extends RefCounted
 ##   lointaine), somme ramenée à 1 ; sans couche biome, biome par défaut ;
 ## - `top_biomes(ix, iz, max_n)` : les `max_n` biomes les plus présents d'une tuile proche, renormalisés ;
 ## - forçage : `forced` (argument `--biome=`, puis `hello_ack.config.biome` avec le lot U16) remplace tous les poids ;
-## - `params(biome, season, progress, variant)` : paramètres du thème 2.0, repli sur les clés 1.x ;
-##   un thème 1.x donne donc à tous les biomes les paramètres d'aujourd'hui. Saisons : valeurs neutres
-##   tant que P18 et le lot U13 ne sont pas là ;
-## - `blend(weights, params_by_biome)` : mélange numérique des couleurs et des densités en un point ;
+## - `params(biome, season, progress, variant)` : paramètres du thème 2.0, repli sur les clés 1.x ; le paysage
+##   de la variante (lot U25, `landscape`) remplace des clés du bloc des seuls biomes qu'il décrit ;
+##   un thème 1.x donne donc à tous les biomes les paramètres d'aujourd'hui. Saisons (lot U13) : sans
+##   `season`, celle du calendrier du biome à la date posée par `set_season_date` (season_model.gd
+##   `season_for_biome`) ; `season_params` : paramètres de cette saison (neutres sans date ni saison) ;
+## - `blend(weights, params_by_biome)` : mélange numérique des couleurs et des densités en un point, et des
+##   paramètres de saison de chaque biome (`season_params`, chacun dans sa saison) ;
 ## - `building_style_at(x, z)` (lot U23) : style d'architecture d'un bâtiment (building_styles.gd) : variante
 ##   `roofs` de la tuile si elle en a une, sinon style du biome dominant au point.
 ## Pas de class_name : charger par preload("res://scripts/biome_model.gd").
@@ -20,6 +23,7 @@ const BiomeLayer := preload("res://scripts/biome_layer.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const BuildingStyles := preload("res://scripts/building_styles.gd")
+const SeasonModel := preload("res://scripts/season_model.gd")
 
 const NEAR_M := 1000.0
 const FAR_M := 5000.0
@@ -27,11 +31,12 @@ const CELLS := 16
 const NO_HIGH_LINE_M := 100000.0
 const DEFAULT_WATER_HEX := "#1f5261"   # water_mesh.gd WATER_COLOR
 const DEFAULT_TURBIDITY := 0.3
-const DEFAULT_SEASONS := {"calendar": "four", "offset_months": 0, "durations_months": [3, 3, 3, 3]}
+const DEFAULT_SEASONS := SeasonModel.DEFAULT_SEASONS
 
 var theme: Dictionary
 var layer
 var forced := ""
+var season_date := {}   # {month, day, lat, snowy} (lot U13) ; vide : pas de saison par date
 var _params_cache := {}
 var _mutex := Mutex.new()   # params() appelé depuis les fils de préparation
 
@@ -58,6 +63,28 @@ func set_forced(id: String) -> bool:
 		return false
 	forced = id
 	return true
+
+
+## Date des saisons par biome (lot U13) : chaque biome prend la saison de son calendrier à cette date et à
+## cette latitude (NAN : hémisphère nord) ; `snowy` : météo de neige du thème (hiver enneigé partout).
+func set_season_date(month: int, day: int, lat_deg: float = NAN, snowy: bool = false) -> void:
+	var d := {"month": month, "day": day, "lat": lat_deg, "snowy": snowy}
+	if str(d) == str(season_date):
+		return
+	season_date = d
+	_mutex.lock()
+	_params_cache.clear()
+	_mutex.unlock()
+
+
+## Plus de saison par date : paramètres de saison neutres (réglage « Saisons » coupé).
+func clear_season() -> void:
+	if season_date.is_empty():
+		return
+	season_date = {}
+	_mutex.lock()
+	_params_cache.clear()
+	_mutex.unlock()
 
 
 ## Vrai quand le rendu doit suivre les biomes (couche présente ou forçage) ; faux = rendu d'avant la 3.0.
@@ -157,13 +184,9 @@ func dominant_at(x: float, z: float) -> String:
 ## `roofs` de la tuile (U4) l'emporte, puis le biome dominant ; un forçage `--biome=` ignore les variantes.
 func building_style_at(x: float, z: float) -> String:
 	var roofs := ""
-	if forced == "" and layer.present:
-		var t: Dictionary = layer.tile("near", floori(x / NEAR_M), floori(z / NEAR_M))
-		if t.is_empty():
-			t = layer.tile("far", floori(x / FAR_M), floori(z / FAR_M))
-		var v = t.get("variant", null)
-		if typeof(v) == TYPE_DICTIONARY and typeof(v.get("roofs", null)) == TYPE_STRING:
-			roofs = v["roofs"]
+	var v = variant_at(x, z)
+	if typeof(v) == TYPE_DICTIONARY and typeof(v.get("roofs", null)) == TYPE_STRING:
+		roofs = v["roofs"]
 	return BuildingStyles.resolve(roofs, dominant_at(x, z))
 
 
@@ -191,17 +214,19 @@ func _terrain_dict(ground: Dictionary) -> Dictionary:
 	return base
 
 
-## Section `terrain` au format 1.x du biome (pour TerrainMaterial tant que U6 n'est pas là, et pour les vitrines).
-func terrain_theme(biome: String) -> Dictionary:
+## Section `terrain` au format 1.x du biome (pour TerrainMaterial tant que U6 n'est pas là, et pour les vitrines),
+## dans le paysage de `variant` (lot U25) s'il décrit le sol de ce biome.
+func terrain_theme(biome: String, variant: Variant = null) -> Dictionary:
 	var entry = theme.get("biomes", {}).get(biome, {}) if typeof(theme.get("biomes", null)) == TYPE_DICTIONARY else {}
-	var ground = entry.get("ground", {}) if typeof(entry) == TYPE_DICTIONARY else {}
+	entry = _with_landscape(entry if typeof(entry) == TYPE_DICTIONARY else {}, biome, variant)
+	var ground = entry.get("ground", {})
 	return {"terrain": _terrain_dict(ground if typeof(ground) == TYPE_DICTIONARY else {})}
 
 
 ## Paramètres de rendu d'un biome pour une saison, l'avancée dans la saison (0 à 1) et une variante.
 ## Un biome absent du thème, ou une clé absente, prend la valeur 1.x du thème.
 func params(biome: String, season: String = "", progress: float = 0.0, variant: Variant = null) -> Dictionary:
-	var key := "%s|%s|%s" % [biome, season, str(variant)]
+	var key := "%s|%s|%s|%s" % [biome, season, str(variant), str(season_date)]
 	_mutex.lock()
 	var hit = _params_cache.get(key, null)
 	_mutex.unlock()
@@ -210,6 +235,7 @@ func params(biome: String, season: String = "", progress: float = 0.0, variant: 
 	var entry: Dictionary = {}
 	if typeof(theme.get("biomes", null)) == TYPE_DICTIONARY and typeof(theme["biomes"].get(biome, null)) == TYPE_DICTIONARY:
 		entry = theme["biomes"][biome]
+	entry = _with_landscape(entry, biome, variant)
 	var ground: Dictionary = entry.get("ground", {}) if typeof(entry.get("ground", null)) == TYPE_DICTIONARY else {}
 	var terrain := ThemeRenderParams.terrain_uniforms({"terrain": _terrain_dict(ground)})
 
@@ -236,6 +262,15 @@ func params(biome: String, season: String = "", progress: float = 0.0, variant: 
 		s1["fog_density"] = sky_b["fog_density"]
 		sky_theme["sky"] = s1
 	var sky := ThemeRenderParams.sky_params(sky_theme)
+	# Saison (lot U13) : imposée par l'appel, sinon celle du calendrier du biome à la date posée
+	var snowy := bool(season_date.get("snowy", false))
+	var summer_dry := float(SeasonModel.seasons_def(entry)["summer_dry"])
+	if season == "" and not season_date.is_empty():
+		var s := SeasonModel.season_for_biome(entry, int(season_date["month"]), int(season_date["day"]),
+			float(season_date["lat"]))   # réglage « selon la date » : la saison du thème n'entre pas (comme P19)
+		season = s["season"]
+		progress = float(s["progress"])
+	var season_params: Dictionary = SeasonModel.params(season, progress, snowy, summer_dry) if season != "" else SeasonModel.NEUTRAL.duplicate()
 	sky["haze"] = float(sky_b.get("haze", 0.0))
 	sky["light_tint"] = ThemeRenderParams._color_or_default(sky_b.get("light_tint", null), "#ffffff")
 
@@ -247,15 +282,52 @@ func params(biome: String, season: String = "", progress: float = 0.0, variant: 
 		"sky": sky,
 		"ambience": (entry.get("ambience", theme.get("ambience", {})) as Dictionary).duplicate(true),
 		"fauna": (entry.get("fauna", theme.get("fauna", {})) as Dictionary).duplicate(true),
-		"seasons": (entry.get("seasons", DEFAULT_SEASONS) as Dictionary).duplicate(true),
+		"seasons": SeasonModel.seasons_def(entry),
 		"season": season,
 		"season_progress": clampf(progress, 0.0, 1.0),
+		"season_params": season_params,
 		"variant": _variant_params(variant),
 	}
 	_mutex.lock()
 	_params_cache[key] = out
 	_mutex.unlock()
 	return out
+
+
+## Bloc du biome dans le paysage de la variante (lot U25) : `landscapes.<paysage>.biomes.<biome>` du thème,
+## fusionné section par section sur le bloc du biome (une clé donnée remplace celle du biome, un tableau
+## comme `species` ou `layers` est remplacé en entier). Biome qui n'est pas une base du paysage, variante sans
+## paysage ou thème sans `landscapes` : bloc du biome inchangé.
+func _with_landscape(entry: Dictionary, biome: String, variant: Variant) -> Dictionary:
+	if typeof(variant) != TYPE_DICTIONARY or typeof(variant.get("landscape", null)) != TYPE_STRING:
+		return entry
+	var all_l = theme.get("landscapes", null)
+	if typeof(all_l) != TYPE_DICTIONARY or typeof(all_l.get(variant["landscape"], null)) != TYPE_DICTIONARY:
+		return entry
+	var bases = all_l[variant["landscape"]].get("biomes", null)
+	if typeof(bases) != TYPE_DICTIONARY or typeof(bases.get(biome, null)) != TYPE_DICTIONARY:
+		return entry
+	var out := entry.duplicate(true)
+	var over: Dictionary = bases[biome]
+	for section in over.keys():
+		if typeof(over[section]) == TYPE_DICTIONARY and typeof(out.get(section, null)) == TYPE_DICTIONARY:
+			var merged: Dictionary = out[section]
+			for k in over[section].keys():
+				merged[k] = (over[section] as Dictionary)[k]
+		else:
+			out[section] = over[section]
+	return out
+
+
+## Variante régionale (lots U4 et U25) de la tuile proche, sinon lointaine, qui contient (x, z) ; null sans
+## couche biome ou sous un forçage `--biome=`, qui ignore les variantes.
+func variant_at(x: float, z: float) -> Variant:
+	if forced != "" or not layer.present:
+		return null
+	var t: Dictionary = layer.tile("near", floori(x / NEAR_M), floori(z / NEAR_M))
+	if t.is_empty():
+		t = layer.tile("far", floori(x / FAR_M), floori(z / FAR_M))
+	return t.get("variant", null)
 
 
 ## Entrées `variants` du thème pour le couple {ground, roofs} d'une tuile ({} si aucune).
@@ -300,4 +372,8 @@ static func blend(weights: Dictionary, params_by_biome: Dictionary) -> Dictionar
 	out["water_color"] = water
 	out["light_tint"] = tint
 	out["species"] = species
+	var seasons := {}
+	for b in weights.keys():
+		seasons[b] = (params_by_biome[b] as Dictionary).get("season_params", SeasonModel.NEUTRAL)
+	out["season_params"] = SeasonModel.blend(weights, seasons)
 	return out

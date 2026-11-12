@@ -143,7 +143,7 @@ func _init() -> void:
 			same = false
 		if p["vegetation"]["max_density_per_ha"] != float(theme["vegetation"]["max_density_per_ha"]):
 			same = false
-	_check(same, "thème 1.x : les 16 biomes ont les paramètres de theme_render_params.gd")
+	_check(same, "thème 1.x : les 18 biomes ont les paramètres de theme_render_params.gd")
 
 	# Thème 2.0 de l'exemple du contrat : clés du biome, repli 1.x pour le reste
 	var v2_dir := "user://theme_v2_test"
@@ -166,7 +166,7 @@ func _init() -> void:
 	_check(jungle["terrain"]["grass_color"] == ref["grass_color"] and jungle["vegetation"]["species"].is_empty(), "biome absent du thème 2.0 : valeurs 1.x")
 	_check(m2.default_biome() == "temperate_grassland" and not m2.active(), "sans couche ni forçage : modèle muet")
 
-	# Thème par défaut 2.0 (U15) : prairie = valeurs 1.x exactes, 16 biomes distincts
+	# Thème par défaut 2.0 (U15) : prairie = valeurs 1.x exactes, 18 biomes distincts
 	var md = BiomeModel.new(default_theme, null)
 	var gp: Dictionary = md.params("temperate_grassland")
 	var same_grass := true
@@ -187,8 +187,49 @@ func _init() -> void:
 	for id in BiomeIds.BIOMES:
 		if id != "alpine":
 			flats[md.params(id)["terrain"]["grass_color"].to_html()] = true
-	_check(flats.size() == 15, "défaut 2.0 : 15 couleurs de sol différentes hors alpine (%d)" % flats.size())
+	_check(flats.size() == BiomeIds.BIOMES.size() - 1, "défaut 2.0 : %d couleurs de sol différentes hors alpine (%d)" % [BiomeIds.BIOMES.size() - 1, flats.size()])
 	_check(md.params("sand_desert")["vegetation"]["species"][0]["kind"] == "palm" and md.params("polar")["vegetation"]["species"].is_empty(), "défaut 2.0 : espèces par biome")
+
+	# Paysages (lot U25) : bloc du biome dans le paysage de la variante, biomes de base seulement
+	var fj_var := {"ground": "schiste_sombre", "roofs": "bois_peint", "landscape": "fjord"}
+	var coast_fj: Dictionary = md.params("coast", "", 0.0, fj_var)
+	var coast_plain: Dictionary = md.params("coast")
+	var fj_kinds := []
+	for sp in coast_fj["vegetation"]["species"]:
+		fj_kinds.append(sp["kind"])
+	_check(fj_kinds.has("birch") and not fj_kinds.has("palm") and float(coast_fj["vegetation"]["treeline_m"]) == 700.0,
+		"paysage fjord : côte en bouleaux et épicéas, sans palmier, limite des arbres 700 m")
+	_check(coast_fj["water"] == coast_plain["water"] and coast_fj["terrain"]["grass_color"] == Color.html("#5f7a44")
+		and coast_fj["terrain"]["rock_color"] == Color.html("#4a4d50"),
+		"paysage fjord : herbe verte et gneiss sombre au lieu du sable, eau du biome gardée")
+	_check(md.params("savanna", "", 0.0, fj_var)["vegetation"] == md.params("savanna")["vegetation"],
+		"paysage fjord : biome qui n'est pas une base du paysage inchangé")
+	_check(md.params("coast", "", 0.0, {"ground": "schiste_sombre", "roofs": null})["vegetation"] == coast_plain["vegetation"],
+		"variante sans paysage (tuile d'avant le lot U25) : biome inchangé")
+	_check(md.params("coast", "", 0.0, {"landscape": "lagon"})["vegetation"] == coast_plain["vegetation"],
+		"paysage inconnu du thème : biome inchangé")
+	var vol_iv: Dictionary = md.params("volcanic", "", 0.0, {"landscape": "ile_volcanique"})
+	_check(vol_iv["vegetation"]["species"][0]["kind"] == "pine" and vol_iv["vegetation"]["max_density_per_ha"] > md.params("volcanic")["vegetation"]["max_density_per_ha"],
+		"paysage île volcanique : pinède sur le volcan")
+	var rice: Dictionary = md.params("farmland", "", 0.0, {"landscape": "rizieres"})
+	var rice_kinds := []
+	for sp in rice["vegetation"]["species"]:
+		rice_kinds.append(sp["kind"])
+	_check(rice_kinds.has("palm") and not rice_kinds.has("vine_row"), "paysage rizières : palmiers, pas de vignes")
+	_check(md.params("rock_desert", "", 0.0, {"landscape": "canyon"})["vegetation"]["max_density_per_ha"] > md.params("rock_desert")["vegetation"]["max_density_per_ha"],
+		"paysage canyon : genévriers et pins épars sur le désert de roche")
+	for l in BiomeIds.LANDSCAPES:
+		_check(typeof(default_theme.get("landscapes", {}).get(l, null)) == TYPE_DICTIONARY, "défaut 2.0 : paysage " + l + " décrit")
+
+	# Variante d'un point : tuile proche, forçage --biome= qui l'ignore
+	var tile_l := _flat_tile(["coast"], [255])
+	tile_l["variant"] = fj_var
+	var ml = BiomeModel.new(default_theme, _layer_with({Vector2i(0, 0): tile_l}))
+	_check(ml.variant_at(500.0, 500.0)["landscape"] == "fjord" and ml.building_style_at(500.0, 500.0) == "bois_peint",
+		"variant_at : paysage et toit bois_peint de la tuile")
+	ml.set_forced("coast")
+	_check(ml.variant_at(500.0, 500.0) == null and ml.building_style_at(500.0, 500.0) == "ardoise",
+		"forçage --biome= : variante ignorée")
 
 	# blend : 50/50
 	var bl := BiomeModel.blend({"temperate_grassland": 0.5, "mediterranean": 0.5},
@@ -206,12 +247,32 @@ func _init() -> void:
 			st["k"] += 1, 5, 1)
 	_check(PerfBudget.check("biome_weights_at", ms / 1000.0), "weights_at : %.2f µs par appel (5 µs indicatif)" % ms)
 
+	# Lot U13 : saison de chaque biome à la date posée, paramètres mélangés par les poids
+	var sm := BiomeModel.new(default_theme)
+	_check(str(sm.params("savanna")["season"]) == "" and float(sm.params("savanna")["season_params"]["ground_wet"]) == 0.0,
+		"sans date : pas de saison, paramètres neutres")
+	sm.set_season_date(7, 15, 12.0)
+	var sav: Dictionary = sm.params("savanna")
+	var tg: Dictionary = sm.params("temperate_grassland")
+	_check(sav["season"] == "wet" and float(sav["season_params"]["ground_wet"]) > 0.5, "15 juillet, 12° : savane en saison des pluies")
+	_check(tg["season"] == "summer" and sm.params("sand_desert")["season"] == "none", "même date : prairie en été, désert sans saison")
+	var mixed: Dictionary = BiomeModel.blend({"savanna": 0.5, "temperate_grassland": 0.5}, {"savanna": sav, "temperate_grassland": tg})
+	_check(is_equal_approx(float(mixed["season_params"]["ground_wet"]), float(sav["season_params"]["ground_wet"]) * 0.5),
+		"mélange savane et prairie : moitié du sol détrempé")
+	sm.set_season_date(7, 15, -12.0)
+	_check(sm.params("savanna")["season"] == "dry", "même date, −12° : savane en saison sèche (cache vidé au changement de date)")
+	_check(sm.params("savanna", "winter", 0.5)["season"] == "winter", "saison imposée à l'appel : l'emporte")
+	sm.clear_season()
+	_check(str(sm.params("savanna")["season"]) == "", "date retirée : plus de saison")
+	_check(sm.params("boreal_forest")["seasons"]["durations_months"] == [2.0, 3.0, 2.0, 5.0], "section seasons du biome lue (taïga : hiver de 5 mois)")
+
 	# Lot U16 : réglage « Biome du décor », chaque biome a son nom français au menu, tous différents
 	var texts: Dictionary = SettingsViewModel.CHOICE_TEXTS["render.biome"]
 	var names := {}
 	for id in ["auto"] + BiomeIds.BIOMES:
 		names[str(texts.get(id, ""))] = true
-	_check(texts.size() == 17 and names.size() == 17 and not names.has(""), "render.biome : 17 noms français distincts")
+	var n_choices := BiomeIds.BIOMES.size() + 1
+	_check(texts.size() == n_choices and names.size() == n_choices and not names.has(""), "render.biome : %d noms français distincts" % n_choices)
 	_check(SettingsViewModel.format_value({"key": "render.biome"}, "savanna") == "savane", "render.biome : savanna = savane")
 
 	print("test_biome_model : %d vérifications, %d échecs" % [_checked, _failures])

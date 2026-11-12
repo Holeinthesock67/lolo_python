@@ -8,7 +8,7 @@ Usage :
     reglage_image.py planche DOSSIER
     reglage_image.py --list
 
-`lancer` génère les parcours de démonstration (`openride-core demo-biomes`), puis pour chaque qualité et
+`lancer` génère les parcours de démonstration (`openride-core demo-biomes --recette`), puis pour chaque qualité et
 chaque variante roule le tour des six biomes (`sim_bench.py --native`, une capture par kilomètre, avec
 OPENRIDE_RENDER_DIAG = réglages proposés de la qualité + ceux de la variante). `planche` met côte à côte,
 pour chaque qualité, la capture du milieu de chaque biome sous chaque variante (`planche_<qualité>.jpg`,
@@ -55,7 +55,8 @@ def cmd_lancer(args: argparse.Namespace) -> int:
     routes = out / "routes"
     routes.mkdir(parents=True, exist_ok=True)
     env = {**os.environ, "OPENRIDE_ENGINE": str(TESTS_DIR.parent)}
-    p = subprocess.run([sys.executable, "-m", "openride_core", "demo-biomes", "--out", str(routes), "--json"],
+    p = subprocess.run([sys.executable, "-m", "openride_core", "demo-biomes", "--out", str(routes), "--json",
+                        "--recette"],
                        capture_output=True, text=True, env=env)
     tour = routes / f"{recette_u18.TOUR_WORLD}.world"
     if p.returncode != 0 or not tour.is_dir():

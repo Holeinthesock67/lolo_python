@@ -281,13 +281,13 @@ if [ -z "$terrain_count" ] || echo "$TERRAIN_OUT" | grep -q -E "SCRIPT ERROR|ERR
 record "test_terrain_coherence (terrain proche et lointain)" "$terrain_rc" "${terrain_count#*: }"
 
 echo "== Rien du paysage sur la chaussée, sur les parcours de démonstration (31 octobre) =="
-# demo.world ci-dessus et les quatre parcours de demo-biomes (compilateur installé) : herbe, détails de sol,
+# demo.world ci-dessus et les quatre parcours de demo-biomes, variante de recette avec le tour gravel (compilateur installé) : herbe, détails de sol,
 # arbres et terrain contrôlés contre la route réelle, sur tout le parcours.
 # Aussi la démo embarquée (res://demo, installation neuve) et le monde ouvert simulé (série W) ; le sol affiché
 # est comparé à la route dans les deux sens (route enfoncée ou qui lévite, 4 novembre).
 HERBE_WORLDS=("$ROUTES_DIR/demo.world" "res://demo/demo.world")
 HERBE_DIR="$(mktemp -d -t openride-herbe.XXXXXX)"   # à part : ROUTES_DIR sert de catalogue aux scénarios IPC
-if python3 "$ENGINE_DIR/tests/make_biome_world.py" --demo-set --out "$HERBE_DIR" >/dev/null 2>&1; then
+if python3 "$ENGINE_DIR/tests/make_biome_world.py" --demo-set --recette --out "$HERBE_DIR" >/dev/null 2>&1; then
   for w in "$HERBE_DIR"/demo-biomes-*.world; do HERBE_WORLDS+=("$w"); done
 else
   echo "parcours demo-biomes non produits (compilateur installé ?) : contrôle incomplet, compté en échec"

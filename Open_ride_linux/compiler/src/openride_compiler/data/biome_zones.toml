@@ -1,0 +1,75 @@
+# Biomes régionaux (lot AT2, 6.0) : table commune à tous les biomes qui ne se déduisent pas de la seule zone
+# climatique (Atlantique et landes, puis Japon au lot JP2). Lue par biomes.py, donc par le compilateur des
+# parcours GPX et par le générateur du monde ouvert (classify_level), avec la même règle.
+#
+# Règle, point par point de la grille des biomes : si le point est dans un rectangle `[[zone]]` d'un biome et que
+# son code de Köppen (module koppen, carte embarquée du lot U24) est dans la liste `koppen` de ce biome, ses
+# échantillons dont la classe ESA WorldCover (ou la classe OSM corrigée) est dans `worldcover` prennent la classe
+# propre au compilateur `class`, qui vote pour ce biome dans toutes les zones climatiques. Les autres classes
+# (arbres hors liste, cultures, eau, bâti, neige…) gardent leur biome habituel.
+#
+# Rectangles en degrés entiers, bornes `[min, max]` avec min <= valeur < max ; le premier rectangle qui contient le
+# point l'emporte. Table établie à la main pour ce lot, sans données importées ; ajouter une ligne suffit.
+
+# --- Atlantique et landes (lot AT2) : landes de bruyère et d'ajonc, fougère aigle, prés, murets --------------
+# Climat océanique (Cfb, Cfc ; Csb pour la Galice et le Minho) ; arbustes (20), prairie et landes (30, et
+# `natural=heath` d'OSM qui donne la classe 20), mousses et lichens (100). Les forêts restent forêt tempérée et les
+# cultures restent cultures.
+[biome.atlantic_heath]
+class = 203
+koppen = ["Cfb", "Cfc", "Csb"]
+worldcover = [20, 30, 100]
+
+[[zone]]
+biome = "atlantic_heath"
+name = "galice_minho"
+lat = [41, 44]
+lon = [-10, -7]
+
+[[zone]]
+biome = "atlantic_heath"
+name = "asturies_cantabrie"
+lat = [42, 44]
+lon = [-7, -3]
+
+[[zone]]
+biome = "atlantic_heath"
+name = "pays_basque"
+lat = [43, 44]
+lon = [-3, -1]
+
+[[zone]]
+biome = "atlantic_heath"
+name = "bretagne"
+lat = [47, 49]
+lon = [-5, -2]
+
+[[zone]]
+biome = "atlantic_heath"
+name = "cornouailles_devon"
+lat = [49, 51]
+lon = [-6, -3]
+
+[[zone]]
+biome = "atlantic_heath"
+name = "pays_de_galles"
+lat = [51, 54]
+lon = [-5, -3]
+
+[[zone]]
+biome = "atlantic_heath"
+name = "pennines_lacs"
+lat = [53, 56]
+lon = [-4, -1]
+
+[[zone]]
+biome = "atlantic_heath"
+name = "ecosse"
+lat = [55, 59]
+lon = [-8, -1]
+
+[[zone]]
+biome = "atlantic_heath"
+name = "irlande"
+lat = [51, 56]
+lon = [-11, -5]

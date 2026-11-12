@@ -52,7 +52,8 @@ func _run() -> void:
 	m.update(_rogue({"events": ["perfect_shift", "hit"]}), 5, 2, 1.01)
 	_check(m.take_plays().is_empty(), "trame renvoyée : aucun son de plus")
 	var all_events := {"crit": "rogue_crit", "parry": "rogue_parry", "parry_miss": "rogue_parry_miss", "room_won": "rogue_room_won",
-		"room_fled": "rogue_room_fled", "room_skipped": "rogue_room_skipped", "defeat": "rogue_defeat", "card_taken": "rogue_card_pick"}
+		"room_fled": "rogue_room_fled", "room_skipped": "rogue_room_skipped", "defeat": "rogue_defeat", "card_taken": "rogue_card_pick",
+		"purge": "rogue_purge", "z_refused": "rogue_refused", "shift_missed": "rogue_shift_missed"}
 	var t := 10.0
 	var seq := 10
 	var ok := true
@@ -62,7 +63,7 @@ func _run() -> void:
 		mm.update(_rogue({"events": [ev]}), 5, 2, t + 0.1)
 		ok = ok and mm.take_plays() == [all_events[ev]]
 	_check(ok, "chaque événement du core a son son")
-	_check(Synth.SOUNDS.has("rogue_boss_won") and Synth.SOUNDS.has("rogue_chest"), "sons sans signal présents dans la table")
+	_check(Synth.SOUNDS.has("rogue_boss_won") and Synth.SOUNDS.has("rogue_chest"), "sons dérivés présents dans la table")
 
 	# Sons dérivés
 	var d = SoundModel.new()
@@ -80,6 +81,9 @@ func _run() -> void:
 	d.update(_rogue({"archetype": null, "phase": "COOLDOWN", "boss_phase": null, "shield": 80.0, "gold": 10, "events": ["room_won"]}), 6, 7, 6.0)
 	var plays: Array = d.take_plays()
 	_check("rogue_boss_won" in plays and not "rogue_room_won" in plays, "boss battu : fanfare du boss à la place de la salle gagnée")
+	_check("rogue_chest" in plays, "retour au calme : coffre de fin (lot R21)")
+	d.update(_rogue({"archetype": null, "phase": "COOLDOWN", "boss_phase": null, "shield": 80.0, "gold": 10}), 6, 70, 6.5)
+	_check(not "rogue_chest" in d.take_plays(), "coffre une seule fois")
 	var w = SoundModel.new()
 	w.update(_rogue(), 5, 1, 0.0)
 	w.update(_rogue({"archetype": null, "phase": "CORRIDOR", "events": ["room_won"]}), 5, 2, 1.0)

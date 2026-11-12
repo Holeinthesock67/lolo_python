@@ -60,7 +60,7 @@ def test_manifest_terrain_block(world):
     assert t["near_cell_m"] == 10 and t["far_cell_m"] == 50
     assert len(t["tiles"]["near"]) > 0 and len(t["tiles"]["far"]) > 0
     assert manifest["route"]["alt_source"] == "synthetic"
-    assert manifest["format_version"] == "1.6"
+    assert manifest["format_version"] == "1.8"
 
 
 # Critère 2 : tuile proche ------------------------------------------------------------------
@@ -361,7 +361,9 @@ def test_build_terrain_direct():
     route = {"x": [0.0, 0.0], "z": [0.0, -10.0], "alt_m": [5.0, 5.0]}
     frame = LocalFrame.at(*ORIGIN)
     tiles = build_terrain(route, frame, SyntheticProvider(*ORIGIN, lambda x, z: 0 * x + 7.0), log=lambda m: None)
-    assert set(tiles) == {"near", "far"}
+    assert set(tiles) == {"near", "far", "horizon"}
+    assert set(build_terrain(route, frame, SyntheticProvider(*ORIGIN, lambda x, z: 0 * x + 7.0), log=lambda m: None,
+                             horizon=False)) == {"near", "far"}
     g = tiles["near"][(0, 0)]
     assert g.dtype == np.dtype("<f4") and g.shape == (101, 101)
     assert g[0, 0] == pytest.approx(4.95)            # sur l'axe : route − 5 cm
@@ -429,3 +431,25 @@ def test_straight_road_untouched():
     tiles = {k: g.copy() for k, g in terrain.build_level(
         route, frame, SyntheticProvider(*ORIGIN, lambda x, z: 0 * x + 9.0), NEAR, log=lambda m: None).items()}
     assert terrain.clear_road(tiles, route["x"], route["z"], route["alt_m"]) == 0
+
+
+# --- niveau horizon (lot JP4) ---------------------------------------------------------------------
+
+def test_horizon_level_curvature_and_manifest():
+    """Horizon : tuiles de 50 km à 500 m, MNT sans fondu, abaissé de d² / (2 R′) depuis la route."""
+    from openride_compiler.terrain import HORIZON, terrain_manifest
+    route = {"x": [0.0, 0.0], "z": [0.0, -10.0], "alt_m": [5.0, 5.0]}
+    frame = LocalFrame.at(*ORIGIN)
+    tiles = build_terrain(route, frame, SyntheticProvider(*ORIGIN, lambda x, z: 0 * x + 1000.0), log=lambda m: None)
+    hz = tiles["horizon"]
+    assert HORIZON.cell_m == 500 and HORIZON.tile_m == 50000 and (0, 0) in hz and (-1, -1) in hz
+    g = hz[(0, 0)]
+    assert g[0, 0] == pytest.approx(1000.0)                      # sur la route : pas de chute
+    d = float(np.hypot(30000.0, 40000.0))                       # échantillon (60, 80) à 50 km de la route
+    r = C.EARTH_RADIUS_M * C.REFRACTION_FACTOR
+    assert g[80, 60] == pytest.approx(1000.0 - d * d / (2.0 * r), abs=0.05)
+    assert 140.0 < 1000.0 - g[80, 60] < 180.0                    # environ 168 m à 50 km
+    m = terrain_manifest(tiles, SyntheticProvider(*ORIGIN))
+    assert m["horizon_cell_m"] == 500 and [0, 0] in m["tiles"]["horizon"]
+    assert "horizon_cell_m" not in terrain_manifest({"near": tiles["near"], "far": tiles["far"]},
+                                                    SyntheticProvider(*ORIGIN))

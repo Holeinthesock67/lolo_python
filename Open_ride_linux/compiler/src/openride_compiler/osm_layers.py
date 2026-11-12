@@ -1,5 +1,6 @@
 """Construction et écriture atomique des couches OSM (Format .world v1 §6 à §8 ter) : `buildings` et `vegetation`
-(Lot I3), `poi` et `water` (Lot I4), terrains ouverts de `vegetation` et couche `roads` (Lot P22)."""
+(Lot I3), `poi` et `water` (Lot I4), terrains ouverts de `vegetation` et couche `roads` (Lot P22).
+La mer (aires `sea` de la couche eau) vient de `coast.py` (lot U3), ajoutée par `add_sea_areas`."""
 
 from __future__ import annotations
 
@@ -916,6 +917,13 @@ def build_osm_layers(
     )
 
 
+def add_sea_areas(res: OsmLayersResult, sea_chunks: dict[int, list[dict[str, Any]]]) -> None:
+    """Ajoute à la couche eau les aires `sea` du lot U3 (`coast.build_coast`), tronçon par tronçon."""
+    for k in sorted(sea_chunks):
+        res.water_chunks.setdefault(k, {"lines": [], "areas": []})["areas"].extend(sea_chunks[k])
+        res.water_areas_count += len(sea_chunks[k])
+
+
 def buildings_manifest(res: OsmLayersResult) -> dict[str, Any]:
     return {
         "present": True,
@@ -1075,3 +1083,26 @@ vegetation_kind_and_density = _vegetation_kind_and_density
 water_area_kind = _water_area_kind
 densify_polyline_xz = _densify_polyline_xz
 sample_near_tiles_at = _sample_near_tiles_at
+
+
+def biome_areas(responses: list[dict[str, Any]], frame: LocalFrame) -> list[Any]:
+    """Polygones OSM qui corrigent la classification des biomes (lot U2), projetés dans le repère du parcours.
+
+    Un même élément présent dans plusieurs réponses (tronçons voisins) n'est gardé qu'une fois ; ordre stable
+    (type puis identifiant), pour des tuiles identiques d'une compilation à l'autre."""
+    from .biomes import OsmArea, osm_class
+
+    seen: dict[tuple[str, int], dict[str, Any]] = {}
+    for resp in responses:
+        for el in resp.get("elements", []) or []:
+            if el.get("type") in ("way", "relation") and isinstance(el.get("id"), int):
+                seen.setdefault((el["type"], el["id"]), el)
+    areas: list[Any] = []
+    for key in sorted(seen):
+        el = seen[key]
+        cls = osm_class(el.get("tags") or {})
+        if cls is None:
+            continue
+        polys, _ = _extract_polygons(el, frame)
+        areas.extend(OsmArea(cls, outer, tuple(holes)) for outer, holes in polys)
+    return areas

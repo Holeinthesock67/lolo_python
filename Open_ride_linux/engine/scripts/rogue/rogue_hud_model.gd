@@ -8,6 +8,8 @@ extends RefCounted
 ## Trame sans objet `rogue` : modèle vide (active = false), jamais d'erreur.
 ## Événements : ceux d'une trame ne sont rendus qu'une fois, même si la trame est renvoyée (même `seq`).
 
+const GuideModel := preload("res://scripts/rogue/rogue_guide_model.gd")
+
 const SMOOTH_S := 0.3
 const ADRENALINE_MAX := 100.0
 const ADRENALINE_Z := 50.0          # seuil de l'attaque Z
@@ -17,6 +19,13 @@ const MAX_POWER_PCT := 999.0
 
 # Posture -> jeton de couleur de la charte R17.
 const POSTURE_TOKEN := {"ROC": "gold", "FLUIDE": "neutral", "VELOCE": "glitch", "ARRET": "grid"}
+## Phases sans salle : une ligne dit ce qui se passe (recette R14 du 8 novembre : l'échauffement muet de 6 min
+## passait pour un blocage).
+## Phases où le Firewall poursuit le joueur ; ailleurs le core envoie un écart nul, ni affiché ni en rouge
+## (recette R14 : « FW 0 m » rouge pendant l'échauffement).
+const FIREWALL_PHASES := ["ROOM", "BOSS", "RECOVERY"]
+const PHASE_TEXT := {"WARMUP": "Échauffement : roule souple, la première salle arrive",
+	"COOLDOWN": "Retour au calme : roule souple jusqu'au bilan"}
 
 var _ftp_w: float = 0.0
 var _active: bool = false
@@ -26,6 +35,8 @@ var _smooth: Dictionary = {}
 var _values: Dictionary = {}
 var _pending_events: Array = []
 var _loot: Dictionary = {}
+var _relic_taken := false          # relique de l'échauffement prise (événement card_taken) : l'offre se cache
+var guide = GuideModel.new()       # textes de lisibilité (lot R22)
 
 
 ## FTP du coureur, tirée de hello_ack.config.ftp_w.
@@ -36,6 +47,8 @@ func set_ftp(ftp_w: float) -> void:
 ## Dernier message `loot` (cartes, portes, coût de relance) ; vide hors couloir.
 func set_loot(msg: Dictionary) -> void:
 	_loot = msg
+	_relic_taken = false
+	guide.reroll_cost = int(msg.get("reroll_cost", 0))
 
 
 func is_active() -> bool:
@@ -74,9 +87,12 @@ func update(state: Dictionary, now_s: float) -> void:
 	if not _active:
 		_pending_events = []
 	_active = true
+	var fresh_events: Array = rogue.get("events", []) if fresh else []
 	if fresh:
 		for ev in rogue.get("events", []):
 			_pending_events.append(String(ev))
+			if String(ev) == "card_taken" and String(rogue.get("phase", "")) == "WARMUP":
+				_relic_taken = true
 
 	var power_pct := 0.0
 	if _ftp_w > 0.0:
@@ -102,7 +118,10 @@ func update(state: Dictionary, now_s: float) -> void:
 	var phase := String(rogue.get("phase", ""))
 	_values = {
 		"active": true,
+		# Séance en pause : le menu de pause occupe l'écran, le HUD du mode se retire (R22, galerie du PC).
+		"paused": str(state.get("session_state", "")) == "PAUSED",
 		"phase": phase,
+		"phase_text": PHASE_TEXT.get(phase, ""),
 		"gear_text": "%02d" % maxi(int(state.get("gear", 1)), 1),
 		"power_pct": _smooth["power_pct"],
 		"power_pct_text": "%d %%" % int(roundf(_smooth["power_pct"])),
@@ -118,12 +137,20 @@ func update(state: Dictionary, now_s: float) -> void:
 		"enemy_pct": _smooth["enemy_pct"],
 		"has_enemy": enemy_max > 0.0,
 		"firewall_gap_m": _smooth["firewall_gap_m"],
-		"firewall_danger": _smooth["firewall_gap_m"] < FIREWALL_DANGER_M,
+		"has_firewall": phase in FIREWALL_PHASES,
+		"firewall_danger": phase in FIREWALL_PHASES and _smooth["firewall_gap_m"] < FIREWALL_DANGER_M,
 		"overheat": bool(rogue.get("overheat", false)),
 		"gold": int(rogue.get("gold", 0)),
 		"room_text": "%d/%d" % [int(rogue.get("room_index", 1)), int(rogue.get("rooms_total", 1))],
 		"corridor": _corridor(phase, rogue),
 		"hack": _hack(hack),
+		"guide": guide.compute(state, rogue, _smooth["power_pct"], fresh_events),
+		"loot_stage": rogue.get("loot_stage", null),
+		"phase_left_s": rogue.get("phase_left_s", null),
+		"next": rogue.get("next", []),
+		"shield_text": "%d" % int(roundf(float(rogue.get("shield", 0.0)))),
+		"adrenaline_text": "Z prêt" if float(rogue.get("adrenaline", 0.0)) >= ADRENALINE_Z else "%d/%d" % [int(floor(float(rogue.get("adrenaline", 0.0)))), int(ADRENALINE_Z)],
+		"posture_text": {"ROC": "ROC", "FLUIDE": "FLUIDE", "VELOCE": "VÉLOCE", "ARRET": "ARRÊT"}.get(posture, posture),
 	}
 
 
@@ -135,15 +162,29 @@ func _blend(key: String, target: float, alpha: float) -> void:
 
 
 func _corridor(phase: String, rogue: Dictionary) -> Dictionary:
-	if phase != "CORRIDOR" or _loot.is_empty():
+	if _loot.is_empty():
 		return {}
 	var focus = rogue.get("loot_focus", null)
+	if phase == "WARMUP":
+		if rogue.has("loot_stage") and rogue.get("loot_stage", null) == null:
+			return {}          # révision 1.16 : le core dit qu'aucune relique n'est à choisir
+		# Relique de départ (tirée à la 3e minute de l'échauffement) : trois cartes, ni porte ni relance.
+		if _relic_taken:
+			return {}
+		return {"cards": _loot.get("cards", []), "doors": [], "focus": -1 if focus == null else int(focus),
+			"reroll_cost": 0, "can_reroll": false, "relic": true, "stage": "card", "left_s": null, "gold": int(rogue.get("gold", 0))}
+	if phase != "CORRIDOR":
+		return {}
 	return {
 		"cards": _loot.get("cards", []),
 		"doors": _loot.get("doors", []),
 		"focus": -1 if focus == null else int(focus),
 		"reroll_cost": int(_loot.get("reroll_cost", 0)),
 		"can_reroll": int(rogue.get("gold", 0)) >= int(_loot.get("reroll_cost", 0)),
+		# lot R22 : temps du choix (carte puis porte, `null` une fois la porte prise), temps restant, or
+		"stage": rogue.get("loot_stage", "card" if not rogue.has("loot_stage") else null),
+		"left_s": rogue.get("phase_left_s", null),
+		"gold": int(rogue.get("gold", 0)),
 	}
 
 

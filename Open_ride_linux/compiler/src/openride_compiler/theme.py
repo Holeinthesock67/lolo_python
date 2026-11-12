@@ -5,6 +5,11 @@
 - niveaux de textures et provenance des images du pack (lot P20) : ``texture_levels.py`` ;
 - ``resolve_theme(theme_dir)`` : fusionne récursivement ``theme.json`` avec le thème par
   défaut ``engine/themes/default/theme.json`` (source unique des valeurs par défaut).
+
+Le schéma et le ``theme.json`` par défaut sont lus dans les copies embarquées du paquet
+(``data/theme.schema.json`` et ``data/default_theme.json``, lot J4), pour que ``theme-check``
+marche aussi installé hors du dépôt ; les références restent ``docs/contracts/world/`` et
+``engine/themes/default/`` (``tests/test_packaging.py`` vérifie l'identité octet pour octet).
 """
 
 from __future__ import annotations
@@ -19,9 +24,10 @@ from typing import Any, Literal
 import jsonschema
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SCHEMA_PATH = REPO_ROOT / "docs" / "contracts" / "world" / "theme.schema.json"
-DEFAULT_THEME_DIR = REPO_ROOT / "engine" / "themes" / "default"
-DEFAULT_THEME_PATH = DEFAULT_THEME_DIR / "theme.json"
+DATA_DIR = Path(__file__).resolve().parent / "data"
+SCHEMA_PATH = DATA_DIR / "theme.schema.json"                 # copie de docs/contracts/world/theme.schema.json
+DEFAULT_THEME_PATH = DATA_DIR / "default_theme.json"         # copie de engine/themes/default/theme.json
+DEFAULT_THEME_DIR = REPO_ROOT / "engine" / "themes" / "default"   # dossier (textures) : dépôt ou engine installé
 
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
 JPEG_SOF_MARKERS = frozenset({
@@ -237,7 +243,7 @@ def resolve_theme(theme_dir: Path) -> dict[str, Any]:
     return _deep_merge(default_theme, user_theme)
 
 
-V2_KEYS = ("default_biome", "biomes", "variants", "surfaces")
+V2_KEYS = ("default_biome", "biomes", "variants", "landscapes", "surfaces")
 
 
 def without_biomes(theme: dict[str, Any]) -> dict[str, Any]:

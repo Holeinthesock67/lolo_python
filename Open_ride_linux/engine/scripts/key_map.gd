@@ -3,11 +3,12 @@ extends RefCounted
 ## Clavier = Click, touche pour touche (lot O17, décision D6 ; tableau du clavier de la spécification
 ## générale §7.1, seule référence), sans nœud. Traduit l'appui et le relâchement d'une touche en événement
 ## du Click, avec les seuils du décodeur du core (zwift_click.PressClassifier) : court sous 0,5 s, long à
-## 0,9 s ou plus ; entre les deux, PLUS_UNCLEAR ou MINUS_UNCLEAR pour + et −, rien pour A et Z. Y et les
-## flèches n'ont qu'un événement, quelle que soit la durée. L'événement part au relâchement, comme au Click.
+## 0,9 s ou plus ; entre les deux, PLUS_UNCLEAR ou MINUS_UNCLEAR pour + et −, rien pour A et Z. Y n'a pas de
+## zone floue (long à 0,9 s ou plus, court en dessous : une pause ne se perd jamais) ; les flèches n'ont qu'un
+## événement, quelle que soit la durée. L'événement part au relâchement, comme au Click.
 ##
 ## Synonymes de l'appui long (claviers où il est malcommode) : Page haut (+ long), Page bas (− long),
-## Maj+A et Entrée (A long), Maj+Z (Z long) ; Échap vaut Y. Les lettres sont lues comme imprimées sur la
+## Maj+A et Entrée (A long), Maj+Y (Y long), Maj+Z (Z long) ; Échap vaut Y court. Les lettres sont lues comme imprimées sur la
 ## touche (`keycode`, AZERTY comme QWERTY). Aucune touche n'a d'autre rôle que celui de son bouton.
 ##
 ## L'appelant (main.gd) fait de l'événement ce qu'il ferait de celui du Click : en menu, menu_model.gd ;
@@ -21,17 +22,19 @@ const LONG_MIN_S := 0.9
 const MEASURED := {
 	KEY_PLUS: "PLUS", KEY_EQUAL: "PLUS", KEY_KP_ADD: "PLUS",
 	KEY_MINUS: "MINUS", KEY_KP_SUBTRACT: "MINUS",
-	KEY_A: "A", KEY_Z: "Z",
+	KEY_A: "A", KEY_Z: "Z", KEY_Y: "Y",
 }
+## Boutons mesurés sans zone floue : long à 0,9 s ou plus, court en dessous (Y : la pause ne se perd jamais).
+const NO_DEAD_ZONE := ["Y"]
 ## Touche -> événement fixe, quelle que soit la durée (Y, flèches, synonymes de l'appui long).
 const FIXED := {
-	KEY_Y: "Y_SHORT", KEY_ESCAPE: "Y_SHORT",
+	KEY_ESCAPE: "Y_SHORT",
 	KEY_PAGEUP: "PLUS_LONG", KEY_PAGEDOWN: "MINUS_LONG",
 	KEY_ENTER: "A_LONG", KEY_KP_ENTER: "A_LONG",
 	KEY_LEFT: "LEFT_SHORT", KEY_RIGHT: "RIGHT_SHORT", KEY_UP: "UP_SHORT", KEY_DOWN: "DOWN_SHORT",
 }
-## Avec Maj : appui long de la lettre (Maj+A, Maj+Z).
-const SHIFT_LONG := {KEY_A: "A_LONG", KEY_Z: "Z_LONG"}
+## Avec Maj : appui long de la lettre (Maj+A, Maj+Y, Maj+Z).
+const SHIFT_LONG := {KEY_A: "A_LONG", KEY_Y: "Y_LONG", KEY_Z: "Z_LONG"}
 
 var _down := {}   # touche enfoncée -> {t: instant de l'appui, shift: Maj tenue à l'appui}
 
@@ -50,6 +53,8 @@ static func event_for(keycode: int, shift: bool, held_s: float) -> String:
 	if not MEASURED.has(keycode):
 		return ""
 	var button: String = MEASURED[keycode]
+	if button in NO_DEAD_ZONE:
+		return button + ("_LONG" if held_s >= LONG_MIN_S else "_SHORT")
 	if held_s < SHORT_MAX_S:
 		return button + "_SHORT"
 	if held_s >= LONG_MIN_S:

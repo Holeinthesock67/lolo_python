@@ -59,6 +59,7 @@ class RecordEntry:
     avg_power_w: float | None = None
     avg_wkg: float | None = None
     loadout: tuple[tuple[str, str], ...] | None = None   # (emplacement, pièce) triés ; None : inconnu
+    distance_m: float | None = None   # épreuve de piste à durée fixe (record de l'heure, lot VD6)
 
     def to_dict(self) -> dict:
         d = {"time_s": round(self.time_s, 2), "date": self.date,
@@ -66,7 +67,13 @@ class RecordEntry:
              "avg_wkg": None if self.avg_wkg is None else round(self.avg_wkg, 2)}
         if self.loadout is not None:   # absent des records d'avant le lot V5 et sans progression
             d["loadout"] = dict(self.loadout)
+        if self.distance_m is not None:
+            d["distance_m"] = round(self.distance_m, 1)
         return d
+
+    def sort_key(self) -> tuple:
+        """Meilleur d'abord : le temps le plus court, puis, à temps égal (durée fixe), la plus grande distance."""
+        return (self.time_s, -(self.distance_m or 0.0), self.date)
 
     @classmethod
     def from_dict(cls, d: dict) -> "RecordEntry":
@@ -77,9 +84,9 @@ class RecordEntry:
             raise RecordsError(f"record incomplet : {d!r}") from exc
         if not math.isfinite(time_s) or time_s <= 0:
             raise RecordsError(f"temps de record invalide : {time_s}")
-        p, w = d.get("avg_power_w"), d.get("avg_wkg")
+        p, w, dist = d.get("avg_power_w"), d.get("avg_wkg"), d.get("distance_m")
         return cls(time_s, date, None if p is None else float(p), None if w is None else float(w),
-                   loadout_key(d.get("loadout")))
+                   loadout_key(d.get("loadout")), None if dist is None else float(dist))
 
 
 def loadout_key(loadout: object) -> tuple[tuple[str, str], ...] | None:
@@ -168,10 +175,11 @@ class RecordBook:
 
     def _insert(self, route_id: str, segment_id: str, table: str, entry: RecordEntry) -> int | None:
         entries = self.routes.setdefault(route_id, {}).setdefault(segment_id, {}).setdefault(table, [])
-        if any(e.date == entry.date and abs(e.time_s - entry.time_s) < 0.005 for e in entries):
+        if any(e.date == entry.date and abs(e.time_s - entry.time_s) < 0.005
+               and abs((e.distance_m or 0.0) - (entry.distance_m or 0.0)) < 0.05 for e in entries):
             return None          # même passage déjà noté (rejeu d'un journal déjà lu)
         entries.append(entry)
-        entries.sort(key=lambda e: (e.time_s, e.date))
+        entries.sort(key=RecordEntry.sort_key)
         del entries[TOP_N:]
         return entries.index(entry) + 1 if entry in entries else None
 
@@ -187,6 +195,18 @@ class RecordBook:
                             RecordEntry(p.time_s, date, p.avg_power_w, p.avg_wkg, loadout_key(loadout)))
         prev_s = prev.time_s if prev else None
         return AddResult(rank, rank == 1, prev_s, None if prev_s is None else p.time_s - prev_s)
+
+    def add_track(self, route_id: str, result: dict, date: str, avg_power_w: float | None = None,
+                  loadout: dict | None = None) -> AddResult:
+        """Note le résultat chronométré d'une épreuve de piste (`TrackEvent.record()`, lot VD6) dans la table
+        « sans bonus » de la piste : une table par épreuve (`track:kilo`, `track:hour`…)."""
+        table = table_of(False)
+        prev = self.best(route_id, result["id"], False)
+        entry = RecordEntry(float(result["time_s"]), date, avg_power_w, None, loadout_key(loadout),
+                            None if result.get("distance_m") is None else float(result["distance_m"]))
+        rank = self._insert(route_id, result["id"], table, entry)
+        prev_s = prev.time_s if prev else None
+        return AddResult(rank, rank == 1, prev_s, None if prev_s is None else entry.time_s - prev_s)
 
     # --- en direct et classement ---------------------------------------------------------
 

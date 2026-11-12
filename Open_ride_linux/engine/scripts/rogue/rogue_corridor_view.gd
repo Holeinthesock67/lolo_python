@@ -23,13 +23,21 @@ const ARCHETYPE_HINTS := {"diesel": "Rampe longue et régulière", "puncheur": "
 const ARCHETYPE_OBJECTS := {"diesel": "enemy_diesel", "puncheur": "enemy_puncher", "grimpeur": "enemy_climber",
 	"sprinteur": "enemy_sprinter", "saboteur": "enemy_saboteur", "boss": "boss_chimera"}
 const CARD_COUNT := 3
+## Relique de départ, offerte pendant l'échauffement (`corridor.relic`) : ni porte ni relance.
 const DOOR_SIZE := Vector2(320.0, 150.0)
 
 var root: VBoxContainer
 var cards: Array = []              # PanelContainer
 var doors: Array = []              # DoorPortal
-var reroll: Label
 var _key := ""
+## Bandeau du haut (lot R22) : les deux temps du choix et le temps restant.
+var header: HBoxContainer
+var step_card: Label
+var step_door: Label
+var timer_label: Label
+var card_row: HBoxContainer
+var door_row: HBoxContainer
+const HINT_BAR_PX := 110.0        # place laissée en bas à la consigne et aux boutons du HUD (lot R22)
 
 
 ## Portail cintré : arc surbaissé posé sur deux montants, chambranle intérieur, clé de voûte, seuil lumineux.
@@ -98,12 +106,12 @@ func _ready() -> void:
 	root.offset_top = UiTheme.GAP
 	root.offset_left = UiTheme.MARGIN
 	root.offset_right = -UiTheme.MARGIN
-	root.offset_bottom = -UiTheme.GAP
+	root.offset_bottom = -HINT_BAR_PX
 	root.alignment = BoxContainer.ALIGNMENT_END
 	root.add_theme_constant_override("separation", UiTheme.GAP)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
-	var card_row := HBoxContainer.new()
+	card_row = HBoxContainer.new()
 	card_row.add_theme_constant_override("separation", UiTheme.GAP)
 	root.add_child(card_row)
 	for _i in CARD_COUNT:
@@ -112,7 +120,7 @@ func _ready() -> void:
 		card_row.add_child(p)
 		cards.append(p)
 	# Deux portes de part et d'autre du couloir, centrées, un passage entre elles
-	var door_row := HBoxContainer.new()
+	door_row = HBoxContainer.new()
 	door_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	door_row.add_theme_constant_override("separation", int(DOOR_SIZE.x * 0.5))
 	root.add_child(door_row)
@@ -120,9 +128,51 @@ func _ready() -> void:
 		var d := DoorPortal.new()
 		door_row.add_child(d)
 		doors.append(d)
-	reroll = UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM)
-	reroll.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	root.add_child(reroll)
+	header = HBoxContainer.new()
+	header.name = "Steps"
+	header.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	header.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	header.offset_top = UiTheme.GAP
+	header.alignment = BoxContainer.ALIGNMENT_CENTER
+	header.add_theme_constant_override("separation", 10)
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(header)
+	step_card = _step_chip(header)
+	step_door = _step_chip(header)
+	timer_label = _step_chip(header)
+
+
+func _step_chip(parent: Control) -> Label:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UiTheme.chip_style(UiTheme.LINE))
+	parent.add_child(p)
+	var l := UiTheme.label(UiTheme.DETAIL_SIZE, UiTheme.TEXT)
+	p.add_child(l)
+	return l
+
+
+## Textes du bandeau des deux temps (lot R22) : [carte, porte, minuteur], et l'étape en cours (`card`, `door`, "").
+static func step_texts(corridor: Dictionary) -> Array:
+	var stage = corridor.get("stage", "card")
+	var relic := bool(corridor.get("relic", false))
+	var focus := int(corridor.get("focus", -1))
+	var doors: Array = corridor.get("doors", [])
+	var c := "1. Choisis %s" % ("ta relique" if relic else "une carte")
+	if stage != "card":
+		c = "1. Carte prise ✔"
+	var d := "2. Choisis ta porte"
+	if one_way(doors):
+		d = "2. Puis : %s" % archetype_name(str(doors[0].get("archetype", "")))
+	elif stage == null and focus < 0 and not relic:
+		d = "2. Porte prise ✔"
+	var left = corridor.get("left_s", null)
+	var t := "" if left == null else "⏱ %d s" % int(ceil(float(left)))
+	return [c, "" if relic else d, t, "" if stage == null else str(stage)]
+
+
+## Vrai quand les deux portes mènent à la même salle (dernier couloir avant le boss) : une seule porte affichée.
+static func one_way(doors: Array) -> bool:
+	return doors.size() == 2 and int(doors[0].get("room_id", -1)) == int(doors[1].get("room_id", -2))
 
 
 ## Couleur d'une carte : jeton de l'objet `card_<type>` du catalogue R17.
@@ -142,7 +192,12 @@ static func archetype_name(archetype: String) -> String:
 
 
 static func side_text(door: Dictionary) -> String:
-	return "← Porte de gauche" if str(door.get("side", "")) == "left" else "Porte de droite →"
+	match str(door.get("side", "")):
+		"left":
+			return "← Porte de gauche"
+		"right":
+			return "Porte de droite →"
+	return "Une seule porte"          # lot R22 : les deux côtés mènent à la même salle
 
 
 ## Texte d'une porte sur une ligne : côté et archétype de la salle derrière.
@@ -150,7 +205,7 @@ static func door_text(door: Dictionary) -> String:
 	return "%s : %s" % [side_text(door), archetype_name(str(door.get("archetype", "")))]
 
 
-## `corridor` : {cards, doors, focus, reroll_cost, can_reroll} ou {} hors couloir.
+## `corridor` : {cards, doors, focus, reroll_cost, can_reroll, relic (facultatif)} ou {} hors couloir.
 func apply(corridor: Dictionary) -> void:
 	if root == null:
 		return
@@ -158,19 +213,41 @@ func apply(corridor: Dictionary) -> void:
 	if not visible:
 		_key = ""
 		return
-	var key := str(corridor.hash())
+	var keyed := corridor.duplicate()
+	keyed["left_s"] = null if corridor.get("left_s", null) == null else int(ceil(float(corridor["left_s"])))
+	var key := str(keyed.hash())
 	if key == _key:
 		return
 	_key = key
 	var focus := int(corridor.get("focus", -1))
+	var stage = corridor.get("stage", "card")
 	var card_list: Array = corridor.get("cards", [])
 	for i in CARD_COUNT:
 		_fill_card(cards[i], card_list[i] if i < card_list.size() else {}, i == focus)
+	# Lot R22 : le groupe qui n'est pas à choisir s'estompe ; les cartes disparaissent une fois prises.
+	card_row.visible = stage == "card"
 	var door_list: Array = corridor.get("doors", [])
+	door_row.visible = not door_list.is_empty()
+	door_row.modulate.a = 1.0 if stage != "card" else 0.45
+	var single := one_way(door_list)
 	for i in 2:
-		_fill_door(doors[i], door_list[i] if i < door_list.size() else {}, 3 + i == focus)
-	var cost := int(corridor.get("reroll_cost", 0))
-	reroll.text = "Relancer les cartes : %d or%s" % [cost, "" if bool(corridor.get("can_reroll", true)) else " (or insuffisant)"]
+		var dd: Dictionary = door_list[i] if i < door_list.size() else {}
+		if single:
+			dd = dd.duplicate()
+			dd["side"] = "both"
+		_fill_door(doors[i], dd, 3 + i == focus or (single and stage == "door"))
+	(doors[1] as Control).visible = not single
+	# Relance et relique : consigne et prix dans les boutons du HUD (rogue_guide_model.gd), plus de ligne ici (R22).
+	var st := step_texts(corridor)
+	step_card.text = st[0]
+	step_door.text = st[1]
+	timer_label.text = st[2]
+	step_door.get_parent().visible = st[1] != ""
+	timer_label.get_parent().visible = st[2] != ""
+	step_card.add_theme_color_override("font_color", UiTheme.GOLD if stage == "card" else UiTheme.DIM)
+	step_door.add_theme_color_override("font_color", UiTheme.GOLD if stage == "door" else UiTheme.DIM)
+	var left = corridor.get("left_s", null)
+	timer_label.add_theme_color_override("font_color", UiTheme.WARN if left != null and float(left) < 8.0 else UiTheme.OK)
 
 
 static func _clear(panel: Control) -> void:

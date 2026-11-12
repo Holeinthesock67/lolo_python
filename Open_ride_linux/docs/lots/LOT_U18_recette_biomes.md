@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Recette sur le PC et le vélo : biomes du premier jalon, performances, mémoire vidéo, gravel | — | U17, U19 à U22 | Moyenne | Non : propriétaire (matériel), **version 3.0** (issue #348) |
+| Recette sur le PC et le vélo : biomes du premier jalon, performances, mémoire vidéo, gravel | — | U17, U19 à U22 | Moyenne | Livré le 12 novembre (recette faite, deux réserves au § Résultats), propriétaire (matériel), **version 3.0** (issue #348) |
 
 ## 1. Objectif
 
@@ -27,7 +27,7 @@ U17 livré ; U19 à U22 livrés pour la partie gravel.
 4. Choisir « Gravier » au menu, rouler 10 min en SIM sur une trace habituelle (revêtue), puis 10 min en ERG ; puis « Chemins réels » sur un parcours de démonstration à portions non revêtues ou en monde ouvert.
 5. Récupérer les journaux (`~/OpenRide/Logs/`) et les lignes `[perf-rendu]`.
 
-La partie PC sans vélo (étapes 2 et 3, étape 7bt de la file du PC) tient en une commande : `python3 engine/tests/recette_u18.py lancer` (outil du 5 novembre, voir `docs/OUTILS_DE_TEST.md`). L'étape 1 attend le lot U2 (classification des biomes au compilateur), pas encore livré ; l'étape 4 est la séance vélo 7bu : 10 min sur `demo-biomes-gravel` avec « Gravel : chemins réels », 5 min en SIM puis 5 min en ERG libre (bascule par l'écran de pause), jugées ensuite par `python3 engine/tests/recette_u18.py gravel` sur le journal de la séance. « Gravier » imposé sur une trace revêtue applique le même roulement que les portions `gravel` du parcours de démonstration : il n'a pas de bloc à lui.
+La partie PC sans vélo (étapes 2 et 3, étape 7bt de la file du PC) tient en une commande : `python3 engine/tests/recette_u18.py lancer` (outil du 5 novembre, voir `docs/OUTILS_DE_TEST.md`). L'étape 1 demande le lot U2 (classification des biomes au compilateur, PR #734 du 6 novembre) : `openride-compiler build <trace> --force` affiche la ligne « biomes (sources : …) » avec la part de chaque biome ; l'étape 4 est la séance vélo 7bu : 10 min sur `demo-biomes-gravel` avec « Gravel : chemins réels », 5 min en SIM puis 5 min en ERG libre (bascule par l'écran de pause), jugées ensuite par `python3 engine/tests/recette_u18.py gravel` sur le journal de la séance. « Gravier » imposé sur une trace revêtue applique le même roulement que les portions `gravel` du parcours de démonstration : il n'a pas de bloc à lui.
 
 ## 5. Critères
 
@@ -44,3 +44,20 @@ Un compte rendu dans la PR de recette (chiffres seulement, aucune coordonnée r�
 ## Résultats de la partie PC (5 novembre)
 
 Étape 7bt sur main 555280f : §5.1 tenu en low (60 images/s, p99 16,7 à 16,9 ms sur les six biomes) ; §5.2 tenu (330 Mo de textures en high, mais sans le pack de sols des biomes : à refaire avec le pack) ; §5.3 frontières fondues sur la planche, à valider par le propriétaire ; budgets GPU de `perf_targets.json` dépassés en medium et high (et en low sur quatre biomes). Montagnes du fond trop sombres en medium et high. Étude et pistes : `docs/ETUDE_OPTIMISATION_RENDU_2026-11-05.md`.
+
+## 7. Livraison
+
+Recette faite du 5 au 12 novembre, détail ci-dessous.
+
+## Résultats de l'étape vélo gravel (8 novembre)
+
+Séances G et G2 sur une ligne droite plate dédiée (bitume, gravier, bitume, terre), « Gravel : chemins réels ». En SIM, 10 à 20 W de plus au même braquet sur le gravier et la terre. En ERG à 100 W, puissance tenue à ± 1 W de moyenne sur les trois surfaces, vitesse plus faible de 1 à 1,8 km/h sur le gravier et la terre. §5.4 tenu. Une première séance du 7 novembre, roulée avec « gravier » imposé à toute la route, ne comptait pas : `recette_u18.py gravel` signale désormais ce cas (PR #760).
+
+## Résultats de l'étape 1 (9 au 12 novembre)
+
+Aucune trace personnelle sur le PC : l'étape a été faite sur six cols du pack « Cols célèbres » (parcours publics, climats variés). Première passe (U2, zones climatiques d'après la latitude) : Galibier, Ballon d'Alsace et Ventoux justes, Angliru et Fuji classés à tort en méditerranéen, Teide sans volcanique. Corrigé par le lot U24 (PR #833, carte de Köppen-Geiger et paysages volcaniques) : Angliru forêt tempérée 72 %, Fuji forêt tempérée 59 % et boréale 35 %, Teide prairie 59 % et volcanique 31 %, Galibier alpin 51 %, Ventoux forêt 63 % et rocaille 12 %. Captures des six cols validées par le propriétaire.
+
+## Réserves
+
+1. Budgets GPU de `perf_targets.json` encore dépassés en medium et high sur les cultures et la forêt : suivi par le lot de la PR #732.
+2. §5.2 (textures sous 1 Go en high) mesuré sans le pack de sols des biomes : à refaire quand il sera installé.

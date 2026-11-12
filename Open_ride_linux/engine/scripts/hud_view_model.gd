@@ -13,6 +13,7 @@ extends RefCounted
 ## (vitesse, cadence, puissance) : 0. Valeur hors des bornes plausibles ci-dessous : « — ».
 
 const ErgView := preload("res://scripts/erg_view.gd")
+const RiddenDistance := preload("res://scripts/ridden_distance.gd")
 
 const NO_VALUE := "—"
 
@@ -42,10 +43,9 @@ const CLIMB_MAX_DIP_M := 50.0
 var _has_state: bool = false
 var _state_time_s: float = 0.0
 var _raw: Dictionary = {}
-# Distance parcourue : le core envoie `s` cumulé (une boucle ne le remet pas à zéro) ; si `s` repart
-# quand même en arrière de plus d'une demi-longueur sur une boucle, un tour est ajouté.
-var _laps: int = 0
-var _last_s: float = NAN
+# Distance parcourue (ridden_distance.gd) : `s` cumulé du core, tours d'une boucle ramenée sur le tour compris,
+# et toujours croissante après un demi-tour (lot N17), où `s` décroît.
+var _ridden = RiddenDistance.new()
 
 
 static func _finite(value: Variant) -> bool:
@@ -72,7 +72,7 @@ static func _clean(value: Variant, hi: float, clamp_negative := true) -> float:
 ## la cadence cible.
 static func controls_text(erg: bool, kind := "workout", rogue := false) -> String:
 	if rogue:   # colonne Cyber-Rogue du plan des boutons (spécification générale §7.1)
-		return "Click : Y = pause · + / − = vitesse · Z = attaque, long = carte active · ↑ / ↓ = vue   (clavier : mêmes touches)"
+		return "Click : Y = pause · + / − = vitesse · Z = attaque, long = carte active · A = choisir, long = valider · ↑ / ↓ = vue   (clavier : mêmes touches)"
 	if erg and kind == "cadence":
 		return "Click : Y = pause · + / − = cadence cible ± 2 %, long ± 10 % · ↑ / ↓ = vue   (clavier : mêmes touches)"
 	if erg and kind == "free":
@@ -123,6 +123,14 @@ static func dropout_mark_text(event_name: String, session_state: String, rogue: 
 	if event_name != "Z_LONG" or session_state != "RUNNING" or rogue or in_menu:
 		return ""
 	return "Repère « décrochage » noté au journal"
+
+
+## Y maintenu en roulant (spécification générale §7.1, révision 1.11) : le core ne relaie Y_LONG pendant RUNNING
+## qu'après avoir fait demi-tour (sinon il met en pause) ; l'écran le confirme. Texte vide hors de ce cas.
+static func u_turn_press_text(event_name: String, session_state: String, in_menu: bool) -> String:
+	if event_name != "Y_LONG" or session_state != "RUNNING" or in_menu:
+		return ""
+	return "Demi-tour"
 
 
 static func format_hms(seconds: float) -> String:
@@ -176,19 +184,15 @@ func reset() -> void:
 	_has_state = false
 	_state_time_s = 0.0
 	_raw = {}
-	_laps = 0
-	_last_s = NAN
+	_ridden.reset()
 
 
 ## Enregistre une trame `state` (contrat IPC §3) reçue à l'instant `now_s`.
 func on_state(state: Dictionary, now_s: float) -> void:
 	var length := _clean(state.get("route_length_m", null), MAX_DISTANCE_M)
-	var s_now := _clean(state.get("s", null), MAX_DISTANCE_M)
-	if not is_nan(s_now) and not is_nan(_last_s) and not is_nan(length) and length > 0.0 \
-			and s_now < _last_s - length * 0.5:
-		_laps += 1
-	if not is_nan(s_now):
-		_last_s = s_now
+	# position brute (négative possible à rebours sur une boucle déroulée, lot N17)
+	var ridden: float = _ridden.push(_clean(state.get("s", null), MAX_DISTANCE_M, false), _clean(state.get("t", null), MAX_ELAPSED_S),
+		length if not is_nan(length) else 0.0)
 	var gears_total = state.get("gears_total", 24)
 	var gear = state.get("gear", null)
 	var hr := _clean(state.get("hr", null), MAX_HR_BPM)
@@ -202,7 +206,7 @@ func on_state(state: Dictionary, now_s: float) -> void:
 		"gear": int(gear) if _finite(gear) else -1,
 		"gears_total": int(gears_total) if _finite(gears_total) and int(gears_total) > 0 else 24,
 		"grade_pct": _clean(state.get("grade", null), MAX_GRADE_PCT, false),
-		"distance_m": NAN if is_nan(s_now) else s_now + _laps * (length if not is_nan(length) else 0.0),
+		"distance_m": ridden,
 		"elapsed_s": _clean(state.get("t", null), MAX_ELAPSED_S),
 	}
 	_has_state = true
@@ -230,6 +234,17 @@ func evaluate(now_s: float) -> Dictionary:
 	return out
 
 
+## Sens de la trame (champ `dir`, révision 1.9, lot N17) : -1 à rebours après un demi-tour, 1 sinon (absent).
+static func direction_of(state: Dictionary) -> int:
+	var d = state.get("dir", 1)
+	return -1 if (d is int or d is float) and float(d) < 0.0 else 1
+
+
+## Distance parcourue de la dernière trame (m, NAN avant la première) : croissante après un demi-tour.
+func ridden_m() -> float:
+	return _ridden.distance_m
+
+
 ## Altitude et pente à une position déjà ramenée par wrap_s : même interpolation linéaire que
 ## route_data.sample(), sans le calcul de position (Catmull-Rom) inutile ici. Calcul en float 64 bits.
 static func _alt_grade(route, pos: float) -> Array:
@@ -245,7 +260,8 @@ static func _alt_grade(route, pos: float) -> Array:
 ## est tronquée à [0, longueur], sans valeur inventée, et les colonnes couvrent la partie restante.
 ## Renvoie points (Vector2(distance relative en m, altitude en m)), s_abs (positions sur la route),
 ## alts (altitudes en float 64 bits), grades, grade_class, marker_index, alt_min, alt_max (marge de 5 %).
-func profile(route, s: float, behind_m := 500.0, ahead_m := 4500.0, columns := 120) -> Dictionary:
+## `dir` = -1 à rebours (lot N17) : « devant » va vers le départ du parcours et les pentes changent de signe.
+func profile(route, s: float, behind_m := 500.0, ahead_m := 4500.0, columns := 120, dir := 1) -> Dictionary:
 	var out := {"points": PackedVector2Array(), "s_abs": PackedFloat64Array(), "alts": PackedFloat64Array(),
 		"grades": PackedFloat64Array(), "grade_class": PackedStringArray(), "marker_index": -1,
 		"alt_min": 0.0, "alt_max": 0.0, "from_m": 0.0, "to_m": 0.0}
@@ -255,8 +271,9 @@ func profile(route, s: float, behind_m := 500.0, ahead_m := 4500.0, columns := 1
 	var from_rel := -maxf(0.0, behind_m)
 	var to_rel := maxf(0.0, ahead_m)
 	if not route.is_loop():
-		from_rel = maxf(from_rel, -here)
-		to_rel = minf(to_rel, route.length_m - here)
+		var left_ahead: float = route.length_m - here if dir > 0 else here
+		from_rel = maxf(from_rel, -(route.length_m - left_ahead))
+		to_rel = minf(to_rel, left_ahead)
 	out["from_m"] = from_rel
 	out["to_m"] = to_rel
 	var span := to_rel - from_rel
@@ -266,10 +283,10 @@ func profile(route, s: float, behind_m := 500.0, ahead_m := 4500.0, columns := 1
 	var best := INF
 	for c in range(columns):
 		var rel := from_rel + step * c
-		var pos: float = route.wrap_s(here + rel)
+		var pos: float = route.wrap_s(here + dir * rel)
 		var ag := _alt_grade(route, pos)
 		var alt: float = ag[0]
-		var gr: float = ag[1]
+		var gr: float = ag[1] * dir
 		out["points"].append(Vector2(rel, alt))
 		out["s_abs"].append(pos)
 		out["alts"].append(alt)
@@ -291,11 +308,12 @@ func profile(route, s: float, behind_m := 500.0, ahead_m := 4500.0, columns := 1
 ## (ou descente) de plus de CLIMB_MAX_DIP_M. Si `s` est dans une montée, renvoie ce qu'il en reste
 ## (start_m = 0, in_progress = vrai). Recherche jusqu'à la fin (parcours ouvert) ou sur un tour (boucle).
 ## Renvoie {start_m, length_m, avg_grade_pct, gain_m, in_progress} ou {} s'il n'y en a pas.
-func next_climb(route, s: float, min_length_m := 300.0, min_grade_pct := 3.0) -> Dictionary:
+## `dir` = -1 à rebours (lot N17) : recherche vers le départ du parcours.
+func next_climb(route, s: float, min_length_m := 300.0, min_grade_pct := 3.0, dir := 1) -> Dictionary:
 	if route == null or route.n < 2 or not is_finite(s):
 		return {}
 	var here: float = route.wrap_s(s)
-	var horizon: float = route.length_m if route.is_loop() else route.length_m - here
+	var horizon: float = route.length_m if route.is_loop() else (route.length_m - here if dir > 0 else here)
 	var steps := int(floor(horizon / CLIMB_STEP_M))
 	var start := -1.0
 	var last_up := -1.0     # fin du dernier pas montant de la montée en cours
@@ -306,15 +324,15 @@ func next_climb(route, s: float, min_length_m := 300.0, min_grade_pct := 3.0) ->
 		var ended := k == steps or d2 <= d
 		var up := false
 		if not ended:
-			var a0: float = _alt_grade(route, route.wrap_s(here + d))[0]
-			var a1: float = _alt_grade(route, route.wrap_s(here + d2))[0]
+			var a0: float = _alt_grade(route, route.wrap_s(here + dir * d))[0]
+			var a1: float = _alt_grade(route, route.wrap_s(here + dir * d2))[0]
 			up = (a1 - a0) / (d2 - d) * 100.0 >= CLIMB_START_PCT
 		if up:
 			if start < 0.0:
 				start = d
 			last_up = d2
 		if start >= 0.0 and (ended or (not up and d - last_up >= CLIMB_MAX_DIP_M)):
-			var res := _climb(route, here, start, last_up, min_length_m, min_grade_pct)
+			var res := _climb(route, here, start, last_up, min_length_m, min_grade_pct, dir)
 			if not res.is_empty():
 				return res
 			start = -1.0
@@ -324,12 +342,13 @@ func next_climb(route, s: float, min_length_m := 300.0, min_grade_pct := 3.0) ->
 	return {}
 
 
-func _climb(route, here: float, start: float, end: float, min_length_m: float, min_grade_pct: float) -> Dictionary:
+func _climb(route, here: float, start: float, end: float, min_length_m: float, min_grade_pct: float,
+		dir := 1) -> Dictionary:
 	var length := end - start
 	if length <= 0.0:
 		return {}
-	var a0: float = _alt_grade(route, route.wrap_s(here + start))[0]
-	var a1: float = _alt_grade(route, route.wrap_s(here + end))[0]
+	var a0: float = _alt_grade(route, route.wrap_s(here + dir * start))[0]
+	var a1: float = _alt_grade(route, route.wrap_s(here + dir * end))[0]
 	var avg := (a1 - a0) / length * 100.0
 	if length < min_length_m or avg < min_grade_pct:
 		return {}
@@ -342,8 +361,10 @@ func _climb(route, here: float, start: float, end: float, min_length_m: float, m
 ## (biais) et non le braquet : la ligne du braquet le dit, et la cible envoyée au trainer remplace la
 ## pente envoyée (le trainer est en mode puissance). La fréquence cardiaque absente s'affiche « — ».
 ## `ftp_w` et `hr_max_bpm` (config de hello_ack) donnent les zones de la puissance affichée et de la
-## fréquence cardiaque (`power_zone`, `hr_zone`, -1 sans référence ni mesure).
-static func session_lines(state: Dictionary, erg_view: Dictionary, ftp_w := 0.0, hr_max_bpm := 0.0) -> Dictionary:
+## fréquence cardiaque (`power_zone`, `hr_zone`, -1 sans référence ni mesure). `ridden_m` : distance parcourue
+## (ridden_m(), croissante après un demi-tour, lot N17) ; NAN : la position `s` de la trame.
+static func session_lines(state: Dictionary, erg_view: Dictionary, ftp_w := 0.0, hr_max_bpm := 0.0,
+		ridden_m := NAN) -> Dictionary:
 	var p := _clean(state.get("power", null), MAX_POWER_W)
 	var p3s := _clean(state.get("power_3s", state.get("power", null)), MAX_POWER_W)
 	var v := _clean(float(state.get("v", NAN)) * 3.6 if _finite(state.get("v", null)) else NAN, MAX_SPEED_KMH)
@@ -351,7 +372,7 @@ static func session_lines(state: Dictionary, erg_view: Dictionary, ftp_w := 0.0,
 	var hr := _clean(state.get("hr", null), MAX_HR_BPM)
 	var grade := _clean(state.get("grade", null), MAX_GRADE_PCT, false)
 	var grade_sent := _clean(state.get("grade_sent", state.get("grade", null)), MAX_GRADE_PCT, false)
-	var s := _clean(state.get("s", null), MAX_DISTANCE_M)
+	var s := _clean(state.get("s", null), MAX_DISTANCE_M) if is_nan(ridden_m) else ridden_m
 	var t := _clean(state.get("t", null), MAX_ELAPSED_S)
 	var gears_total = state.get("gears_total", 24)
 	var gtot: int = int(gears_total) if _finite(gears_total) and int(gears_total) > 0 else 24

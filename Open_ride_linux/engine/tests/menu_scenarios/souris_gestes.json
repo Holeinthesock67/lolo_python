@@ -2,7 +2,9 @@
   "description": "Souris seule : clic gauche sur un élément sans focus (focus puis validation), élément hors de la partie affichée amené par la molette, molette bas et haut, clic droit = retour, clic gauche hors des éléments sans effet.",
   "voies": ["souris"],
   "etapes": [
-    {"ecran": "home", "focus": "world", "delai": 15},
+    {"ecran": "home", "elements": ["coach"], "delai": 20},
+    {"note": "la ligne « Séance conseillée » (lot CO5) arrive avec la réponse du core : focus posé sur « Parcours » pour partir du même point", "aller": "world"},
+    {"ecran": "home", "focus": "world"},
     {"souris": "wheel_down"},
     {"ecran": "home", "focus": "ride"},
     {"souris": "wheel_up"},

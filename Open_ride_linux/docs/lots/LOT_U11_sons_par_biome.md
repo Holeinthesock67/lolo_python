@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : sons d'ambiance par biome (extension de P9) | GDScript | U5, P9 (U9 utile) | Moyenne | En PR (8 novembre), **version 3.0** (issue #341) |
+| Engine : sons d'ambiance par biome (extension de P9) | GDScript | U5, P9 (U9 utile) | Moyenne | Livré le 8 novembre (PR #787), **version 3.0** (issue #341) |
 
 ## 1. Objectif
 
@@ -54,3 +54,23 @@ Sons enregistrés, sons du vélo sur le gravier (U22).
 - Thème par défaut : `layers` de quatorze biomes (la prairie, la steppe n'en ont pas) ; contrat (écart au §6, ajout compatible sans changement de version) : clé facultative `ambience.layers` dans `world_format_v1.md` §9 et `theme.schema.json`.
 - Vagues : U9 n'étant pas là, la distance au rivage vient des eaux `sea` déjà chargées (parcours de démonstration U19 `--sea`).
 - Écoute : `engine/tests/ambience_export.gd` (scène de 20 s par biome, chaque fond seul).
+
+## 10. Suite du banc r787 (9 novembre 2026)
+
+**Mesure.** Banc PC r787 (nuit du 8 au 9 novembre, captures `a01eed21`) : `ambience_layer_frame` = 1,87 ms pour un budget de 2 ms, alors que la PR annonçait 0,44 ms. Sur la même passe, `ambience_evaluate` (le modèle seul) vaut 0,06 ms sur le PC.
+
+**Pourquoi l'écart.**
+- La mesure est la **pire image** d'une seule série d'environ 87 images, pas une médiane : un seul échantillon décide. Les 0,44 ms venaient d'une machine cloud au repos ; le PC avait en même temps le bureau, l'indexeur de fichiers (`localsearch`, 13 % d'un cœur) et deux fils de travail qui synthétisaient les fonds. Une préemption du fil principal pendant la mesure suffit à faire 1 ms de plus.
+- Le modèle (0,06 ms) et l'ajout des tâches ne pèsent pas. Ce que l'image faisait de plus, c'était la **pose** : création de l'`AudioStreamWAV` et copie des échantillons (environ 500 Ko par fond, `to_wav`), affectation au lecteur et `play()`, et pour **deux fonds dans la même image** (vagues et mouettes finissent ensemble).
+- Faute de détail par étape dans la mesure de la PR, la part de chaque cause n'est pas connue : la nouvelle mesure ci-dessous la donne.
+
+**Changements.**
+- Le fil de travail rend le flux complet (`_bed_source` : `to_wav(pcm16(bed_samples(…)))`, copie comprise) ; le fil principal ne fait plus que l'affecter au lecteur.
+- Au plus un fond posé par image (`BEDS_POSED_PER_FRAME = 1`) ; les suivants le sont aux images d'après, ce qui ne s'entend pas (montée depuis `FADE_FLOOR_DB`).
+- `update_ambience` garde le temps de ses trois étapes dans `ambience_us` (modèle, pose, lecteurs).
+- `test_sound_player` mesure en low, medium et high (4, 6 et 8 voix, voisinage mêlé littoral, méditerranée, alpage, forêt et rivière, jusqu'à 8 fonds) : médiane, p95 et pire image pendant la fabrication, aux images de pose, puis sur 120 images tout posé (témoin : bruit de la machine seule), et le détail par étape de la pire image. Le budget `ambience_layer_frame` (2 ms) reste sur la pire image, pour rester comparable au banc r787.
+
+**Mesure PC r829 (9 novembre, c07181ab, i3-6100, 4 fils).** Pire image `ambience_layer_frame` : low 0,382 ms, medium 0,508 ms, high 0,513 ms (1,87 ms avant, budget 2 ms) ; pire image de pose 0,34 / 0,32 / 0,33 ms ; témoin tout posé 0,97 / 1,35 / 0,87 ms, au-dessus des images de fabrication : les pointes restantes viennent de la machine.
+
+
+**CI de #829 (9 novembre), banc des menus.** Le scénario `profils` (Click) a échoué deux fois : focus sur « new » au lieu de « p:cycliste-a », engine muet 28,5 s à l'écran « Qui roule ? ». Le décor du menu tourne déjà `update_ambience`, qui demandait d'un coup tous les fonds audibles (jusqu'à 8 synthèses de basse priorité). Les tâches de basse priorité du pool de Godot sont servies dans l'ordre : le chargement du parcours, le monde vivant et le décor, que le fil principal attend (`wait_for_task_completion`), passaient derrière. Correction : **un seul fond en fabrication à la fois** (file `_bed_queue`, `beds_running()` ≤ 1, vérifié par `test_sound_player` en low, medium et high). Les fonds suivants arrivent l'un après l'autre (environ 0,1 à 0,2 s chacun sur le PC) et montent depuis `FADE_FLOOR_DB`, donc l'attente ne s'entend pas. Boucles de mesure du test bornées en temps (30 et 60 s) et non plus en images.

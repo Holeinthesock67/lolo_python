@@ -209,6 +209,7 @@ func _tuft_material(lod_begin: float, lod_end: float) -> ShaderMaterial:
 	m.set_shader_parameter("lod_blend_m", LOD_BLEND_M)
 	m.set_shader_parameter("normals_up_both_sides", true)
 	m.set_shader_parameter("root_darken", clampf(RenderDiag.number("herbe_degrade", 0.0), 0.0, 1.0))
+	m.set_shader_parameter("grass", true)   # herbe jaunie selon la saison (lot P18)
 	return m
 
 

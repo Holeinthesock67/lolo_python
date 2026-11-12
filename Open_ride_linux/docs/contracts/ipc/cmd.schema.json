@@ -51,6 +51,7 @@
         "list_garage",
         "equip",
         "buy",
+        "buy_life",
         "set_avatar",
         "list_plans",
         "start_plan",
@@ -79,10 +80,17 @@
         "scene_ready",
         "list_history",
         "history_session",
+        "get_coach",
+        "set_next_race",
+        "clear_next_race",
+        "set_watch_advice",
+        "clear_watch_advice",
         "list_collection",
         "collection_seen",
         "list_mode_options",
-        "set_mode_option"
+        "set_mode_option",
+        "set_bots",
+        "u_turn"
       ]
     },
     "args": {

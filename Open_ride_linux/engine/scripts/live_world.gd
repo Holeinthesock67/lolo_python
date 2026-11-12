@@ -15,6 +15,7 @@ extends RefCounted
 ## Pas de class_name (charger par preload).
 
 const RouteData := preload("res://scripts/route_data.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 const PREVIEW_AHEAD_M := 1500.0
 const RECENTER_STEP_M := 1000.0
@@ -84,7 +85,7 @@ func adopt(dir: String, loaded_route) -> void:
 
 func close() -> void:
 	if _task >= 0:
-		WorkerThreadPool.wait_for_task_completion(_task)
+		BgTasks.wait(_task)
 		_task = -1
 	route = null
 	junctions = []
@@ -126,7 +127,7 @@ func _maybe_start() -> void:
 		from_part = 0                # révisions manquées : on ne sait plus ce qui a changé
 	_result = {}
 	_running_rev = live_rev
-	_task = WorkerThreadPool.add_task(_read_job.bind(world_dir, from_part, route, live_rev), false, "monde vivant")
+	_task = BgTasks.add(_read_job.bind(world_dir, from_part, route, live_rev), false, "monde vivant")
 
 
 ## Exécuté dans un fil de WorkerThreadPool : lit les parties, assemble une nouvelle route, lit les carrefours.
@@ -146,7 +147,7 @@ func _read_job(dir: String, from_part: int, base, live_rev: int) -> void:
 ## Fil principal : applique une lecture terminée. Renvoie {} s'il n'y a rien de neuf, sinon
 ## {revision, from_part, route, junctions} (route déjà échangée) ; en cas d'échec {error, revision}.
 func poll() -> Dictionary:
-	if _task < 0 or not WorkerThreadPool.is_task_completed(_task):
+	if _task < 0 or not BgTasks.done(_task):
 		_maybe_start()
 		return {}
 	return _finish()
@@ -160,7 +161,7 @@ func wait_poll() -> Dictionary:
 
 
 func _finish() -> Dictionary:
-	WorkerThreadPool.wait_for_task_completion(_task)
+	BgTasks.wait(_task)
 	_task = -1
 	var res := _result
 	_result = {}

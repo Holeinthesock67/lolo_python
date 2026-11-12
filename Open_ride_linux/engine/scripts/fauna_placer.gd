@@ -129,6 +129,9 @@ const BIOME_SPECIES := {
 	"wetland": {"crows": ""},
 	"coast": {"birds": "gull", "crows": "gull", "vee": "gull"},
 	"volcanic": {"cow": "goat", "sheep": "goat", "horse": "goat", "deer": "", "hare": ""},
+	"japan": {"cow": "", "sheep": "", "horse": "", "hare": ""},
+	# Lot AT1 : moutons et poneys des landes, goélands des côtes ; les cerfs du rôle `deer` jouent les cerfs élaphes
+	"atlantic_heath": {"cow": "sheep", "vee": "gull"},
 }
 ## Groupes propres à un biome ; `key` : densité du thème qui règle la chance `share` du groupe.
 const BIOME_GROUPS := {
@@ -174,6 +177,8 @@ const BIOME_GROUPS := {
 		{"species": "parrot", "kind": "birds", "n": Vector2i(5, 12), "road_m": Vector2(25.0, 110.0), "min_m": 0.0, "share": 0.9, "key": "birds"},
 		{"species": "monkey", "kind": "herd", "n": Vector2i(4, 9), "road_m": Vector2(12.0, 50.0), "min_m": 10.0, "share": 0.8, "key": "deer"},
 	],
+	# Lot JP1 : macaques du Japon en lisière ; les cerfs du rôle `deer` jouent les cerfs sika
+	"japan": [{"species": "monkey", "kind": "herd", "n": Vector2i(3, 8), "road_m": Vector2(12.0, 60.0), "min_m": 10.0, "share": 0.6, "key": "deer"}],
 }
 
 const MASK32 := 0xFFFFFFFF

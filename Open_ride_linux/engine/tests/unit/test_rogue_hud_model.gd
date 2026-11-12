@@ -86,20 +86,43 @@ func _run() -> void:
 	_check(v["corridor"]["reroll_cost"] == 100 and not v["corridor"]["can_reroll"], "relance trop chère pour 85 d'or")
 	_check(v["hack"]["locked"] and v["hack"]["forced_gear"] == 3 and is_equal_approx(v["hack"]["until_s"], 4.5), "piratage : pignon imposé et durée")
 
+	# Échauffement (recette R14 du 8 novembre) : une ligne dit ce qui se passe ; la relique de départ s'affiche
+	# sans porte ni relance, puis se cache quand elle est prise.
+	var mw = HudModel.new()
+	mw.update(_state(1, {"phase": "WARMUP"}), 0.0)
+	v = mw.values()
+	_check(String(v["phase_text"]).begins_with("Échauffement") and v["corridor"].is_empty(), "échauffement : ligne de phase, pas d'offre")
+	_check(not v["has_firewall"] and not v["firewall_danger"], "échauffement : pas de Firewall, pas d'alerte rouge")
+	mw.set_loot({"cards": [{"id": "r1"}, {"id": "r2"}, {"id": "r3"}], "doors": [{"side": "left"}, {"side": "right"}],
+		"reroll_cost": 50, "gold": 0})
+	mw.update(_state(2, {"phase": "WARMUP", "loot_focus": 0}), 0.1)
+	v = mw.values()
+	_check(v["corridor"].get("relic", false) and v["corridor"]["cards"].size() == 3 and v["corridor"]["doors"].is_empty()
+		and v["corridor"]["focus"] == 0 and not v["corridor"]["can_reroll"], "échauffement : relique de départ, 3 cartes, ni porte ni relance")
+	mw.update(_state(3, {"phase": "WARMUP", "events": ["card_taken"]}), 0.2)
+	_check(mw.values()["corridor"].is_empty(), "relique prise : offre cachée")
+	mw.update(_state(4, {"phase": "ROOM"}), 0.3)
+	_check(mw.values()["phase_text"] == "" and mw.values()["corridor"].is_empty(), "en salle : ni ligne de phase ni offre")
+	mw.update(_state(5, {"phase": "COOLDOWN"}), 0.4)
+	_check(String(mw.values()["phase_text"]).begins_with("Retour au calme"), "retour au calme : ligne de phase")
+
 	# Cas limites : FTP inconnue, bouclier nul, ennemi absent.
 	var m2 = HudModel.new()
 	m2.update(_state(1, {"shield_max": 0.0, "enemy_hp_max": 0.0, "w_prime_j": 0.0}), 0.0)
 	v = m2.values()
 	_check(v["power_pct_text"] == "0 %" and v["shield_frac"] == 0.0 and not v["has_enemy"] and v["wbal_pct"] == 0.0, "FTP inconnue, divisions par zéro évitées")
 
-	# Arcs au sol : vide à 0, demi-cercle à 1, côté gauche en x négatif, côté droit en x positif.
-	_check(HudView.arc_mesh(0.0, -1).get_surface_count() == 0, "arc vide à 0 %")
-	var left: ArrayMesh = HudView.arc_mesh(1.0, -1)
-	var right: ArrayMesh = HudView.arc_mesh(1.0, 1)
-	var lv: PackedVector3Array = left.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-	var rv: PackedVector3Array = right.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-	_check(lv[lv.size() - 1].x < -1.0 and rv[rv.size() - 1].x > 1.0, "arc gauche à gauche, arc droit à droite")
-	_check(absf(lv[0].length() - 1.56) < 0.01, "rayon de l'arc : 1,5 m")
+	# Lot R22 : le guide est calculé avec la trame, le couloir porte ses deux temps et son temps restant.
+	var m3 = HudModel.new()
+	m3.set_ftp(250.0)
+	m3.set_loot({"cards": [{}, {}, {}], "doors": [{"side": "left", "room_id": 8}, {"side": "right", "room_id": 9}], "reroll_cost": 15})
+	m3.update(_state(1, {"phase": "CORRIDOR", "loot_stage": "door", "phase_left_s": 7.2, "next": []}), 0.0)
+	v = m3.values()
+	_check(v["corridor"]["stage"] == "door" and is_equal_approx(float(v["corridor"]["left_s"]), 7.2), "couloir : temps du choix et temps restant")
+	_check(v["guide"]["hint"].begins_with("Choisis ta porte") and not v["guide"]["panel"], "couloir : consigne de la porte, panneau d'état retiré")
+	m3.update(_state(2, {"phase": "WARMUP", "loot_stage": null, "phase_left_s": 100.0, "next": []}), 0.1)
+	_check(m3.values()["corridor"].is_empty(), "échauffement sans relique à choisir (loot_stage nul) : pas d'offre")
+	_check(m3.values()["adrenaline_text"] == "Z prêt", "adrénaline 65 : « Z prêt »")
 
 	print("test_rogue_hud_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

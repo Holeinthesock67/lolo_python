@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série TT : engine, icônes des sept bonus, état refusé, compte à rebours, jauge d'abri en couleur, avatar semi-transparent de l'Échappée | GDScript | TT1 ; TT3 à TT5 pour les effets | Moyenne | Prêt (version 4.0) ; maquettes validées avant le code |
+| Série TT : engine, icônes des sept bonus, état refusé, compte à rebours, jauge d'abri en couleur, avatar semi-transparent de l'Échappée | GDScript | TT1 ; TT3 à TT5 pour les effets | Moyenne | En revue (version 4.0) ; maquettes validées le 8 novembre ; captures à valider, banc low, medium, high sur le PC à faire |
 
 Série TT (bonus tactiques, version 4.0). Plan de la série : `docs/4.0/PLAN_SERIE_TT.md`, recommandations retenues par le propriétaire le 29 octobre (« ok pour tout », §6 du plan). Cahier rédigé le 8 novembre 2026 (le plan les annonçait, aucun n'existait).
 

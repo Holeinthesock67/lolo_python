@@ -9,6 +9,7 @@ extends SceneTree
 const BoatModel := preload("res://scripts/boat_model.gd")
 const BoatRenderer := preload("res://scripts/boat_renderer.gd")
 const BoatMesh := preload("res://scripts/boat_mesh.gd")
+const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 
@@ -282,6 +283,7 @@ func _run() -> void:
 	_check(PerfBudget.check("boats_view_frame", v_ms), "affichage des bateaux en %.4f ms par image" % v_ms)
 	view.queue_free()
 	sp.queue_free()
+	_test_shore_dist_road_box()
 	await process_frame
 	print("test_boat_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
@@ -312,3 +314,25 @@ func _test_meshes() -> void:
 	_check(absf(w.end.z - 1.0) < 1e-4 and w.position.z >= -1e-4 and absf(w.position.y - 0.03) < 1e-4, "sillage de longueur 1 à plat sur l'eau")
 	var cs: Array = BoatMesh.colors("sailboat", 5)
 	_check(cs[0] == BoatMesh.SAILBOAT_PAINT[1], "couleurs reprises modulo leur palette")
+
+
+## Lot U3 (r790) : la route n'est parcourue que si sa boîte englobante est assez proche ; même distance
+## au bord qu'en parcourant toute la route, près de la route comme au large.
+func _test_shore_dist_road_box() -> void:
+	var road := PackedVector2Array()
+	for i in range(200):
+		road.append(Vector2(-3000.0 + 15.0 * i, 40.0 * sin(i / 9.0)))
+	var shape := _shape_of(_sea())
+	shape["road"] = road
+	shape["margin"] = BoatModel.SEA_MARGIN_M
+	var with_box := shape.duplicate()
+	with_box["road_rect"] = BoatModel._rect(road)
+	var worst := 0.0
+	for p in [Vector2(-2500.0, 60.0), Vector2(0.0, 300.0), Vector2(-1000.0, -2500.0), Vector2(8000.0, 5000.0),
+			Vector2(-19000.0, 6500.0), Vector2(5.0, -3.0)]:
+		var brute := BoatModel._ring_dist(shape["outer"], p)
+		for i in range(road.size() - 1):
+			brute = minf(brute, FaunaPlacer._seg_dist(p, road[i], road[i + 1]) - BoatModel.ROAD_CLEAR_M + BoatModel.SEA_MARGIN_M)
+		worst = maxf(worst, absf(BoatModel._shore_dist(with_box, p) - brute))
+		worst = maxf(worst, absf(BoatModel._shore_dist(shape, p) - brute))
+	_check(worst < 1e-3, "distance au bord avec la boîte de la route : écart %.6f m au calcul complet" % worst)

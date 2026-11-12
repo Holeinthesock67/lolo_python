@@ -1,0 +1,250 @@
+# Table d'ébauche des variantes régionales (lot U4, série U, version 3.0 ; Format .world v1 §8 quater).
+#
+# Chaque tuile de la couche biome reçoit un objet {"ground", "roofs", "landscape"} : roches et terres,
+# architecture, paysage (lot U25, version 6.0).
+# Les deux membres se choisissent séparément, dans cet ordre :
+#   1. la plus petite zone [[zone]] qui contient le centre de la tuile et qui donne ce membre ;
+#   2. la première règle générale [[rule]] qui s'applique et qui donne ce membre ;
+#   3. la variante neutre [neutral] ;
+#   4. sinon le membre reste null (l'engine garde alors ce que donne le biome).
+#
+# Grosse maille seulement : bornes en degrés ENTIERS (une zone fait au moins 1° × 1°), aucune coordonnée
+# plus fine. Les zones françaises suivent les grandes régions géologiques, pas les départements.
+#
+# Toits : une zone ne donne `roofs` que là où l'architecture régionale se distingue du style par biome de
+# l'engine (building_styles.gd, BIOME_STYLES, lot U23 : chalet en montagne, pisé au désert, case en savane…).
+# Les règles générales et la variante neutre ne donnent pas de toit : hors des zones, le biome décide.
+#
+# Identifiants (énumération fermée du contrat) :
+#   ground : gres_rose, calcaire_blanc, granite_gris, schiste_sombre, basalte, laterite_rouge, craie
+#   roofs  : tuile_ronde, ardoise, tuile_plate, pierre_seche, toit_plat_blanc, bois, kawara, bois_peint
+#   landscape : canyon, fjord, ile_volcanique, rizieres
+#
+# Paysage (lot U25) : variante d'un paysage célèbre posée sur des biomes existants au lieu d'un biome
+# complet. L'engine ne l'applique qu'aux biomes de base que le thème décrit pour ce paysage (section
+# `landscapes`) : une zone de fjords ne change donc rien à une tuile de steppe. Les paysages sont posés par les
+# zones de cette table (grosse maille, comme les autres membres).
+
+[neutral]
+ground = "calcaire_blanc"
+
+# --- règles générales (ordre = priorité) ---------------------------------------------------------------
+# `biomes` + `min_share` : part cumulée de ces biomes dans la tuile (0 à 1) ;
+# `abs_lat_min` / `abs_lat_max` : |latitude| en degrés entiers, bornes comprises.
+
+[[rule]]
+name = "volcanique"
+biomes = ["volcanic"]
+min_share = 0.5
+ground = "basalte"
+
+[[rule]]
+name = "aride"
+biomes = ["sand_desert", "rock_desert"]
+min_share = 0.5
+ground = "gres_rose"
+
+[[rule]]
+name = "bouclier_nordique"
+abs_lat_min = 58
+ground = "granite_gris"
+
+[[rule]]
+name = "tropiques"
+abs_lat_max = 23
+ground = "laterite_rouge"
+
+# --- zones (lat = [sud, nord], lon = [ouest, est], degrés entiers) ----------------------------------------
+# France
+
+[[zone]]
+name = "bassin_parisien"
+lat = [47, 50]
+lon = [0, 4]
+ground = "calcaire_blanc"
+roofs = "ardoise"
+
+[[zone]]
+name = "craie_du_nord"
+lat = [49, 51]
+lon = [0, 4]
+ground = "craie"
+roofs = "tuile_plate"
+
+[[zone]]
+name = "champagne"
+lat = [48, 50]
+lon = [3, 5]
+ground = "craie"
+roofs = "tuile_plate"
+
+[[zone]]
+name = "massif_armoricain"
+lat = [47, 49]
+lon = [-5, -1]
+ground = "granite_gris"
+roofs = "ardoise"
+
+[[zone]]
+name = "lorraine"
+lat = [48, 50]
+lon = [5, 7]
+ground = "calcaire_blanc"
+roofs = "tuile_ronde"
+
+[[zone]]
+name = "vosges_alsace"
+lat = [47, 49]
+lon = [6, 8]
+ground = "gres_rose"
+roofs = "tuile_plate"
+
+[[zone]]
+name = "bourgogne_jura"
+lat = [46, 48]
+lon = [4, 7]
+ground = "calcaire_blanc"
+roofs = "tuile_plate"
+
+[[zone]]
+name = "massif_central"
+lat = [44, 47]
+lon = [1, 5]
+ground = "granite_gris"
+roofs = "ardoise"
+
+[[zone]]
+name = "auvergne_volcanique"
+lat = [45, 46]
+lon = [2, 4]
+ground = "basalte"
+roofs = "ardoise"
+
+[[zone]]
+name = "aquitaine"
+lat = [43, 46]
+lon = [-2, 1]
+ground = "calcaire_blanc"
+roofs = "tuile_ronde"
+
+[[zone]]
+name = "pyrenees"
+lat = [42, 43]
+lon = [-2, 3]
+ground = "schiste_sombre"
+
+[[zone]]
+name = "alpes"
+lat = [44, 47]
+lon = [5, 8]
+ground = "schiste_sombre"
+
+[[zone]]
+name = "provence_languedoc"
+lat = [43, 44]
+lon = [3, 8]
+ground = "calcaire_blanc"
+roofs = "tuile_ronde"
+
+[[zone]]
+name = "corse"
+lat = [41, 43]
+lon = [8, 10]
+ground = "granite_gris"
+roofs = "tuile_ronde"
+
+# Europe, très grossièrement
+
+[[zone]]
+name = "iles_britanniques"
+lat = [50, 59]
+lon = [-11, 2]
+ground = "schiste_sombre"
+roofs = "ardoise"
+
+[[zone]]
+name = "plaine_du_nord"
+lat = [50, 55]
+lon = [3, 15]
+ground = "craie"
+roofs = "tuile_plate"
+
+[[zone]]
+name = "peninsule_iberique"
+lat = [36, 44]
+lon = [-10, 4]
+ground = "calcaire_blanc"
+roofs = "tuile_ronde"
+
+[[zone]]
+name = "italie"
+lat = [37, 46]
+lon = [7, 19]
+ground = "calcaire_blanc"
+roofs = "tuile_ronde"
+
+[[zone]]
+name = "islande"
+lat = [63, 67]
+lon = [-25, -13]
+ground = "basalte"
+
+# --- paysages (lot U25, version 6.0) ---------------------------------------------------------------------
+# Canyons rouges : plateau du Colorado (Utah, Arizona, ouest du Colorado). Biomes de base : déserts, steppe.
+
+[[zone]]
+name = "plateau_du_colorado"
+lat = [34, 41]
+lon = [-114, -106]
+ground = "gres_rose"
+landscape = "canyon"
+
+# Fjords de Norvège : côte ouest, puis Nordland et Lofoten. Roche sombre, maisons de bois peint.
+
+[[zone]]
+name = "fjords_ouest"
+lat = [58, 65]
+lon = [4, 10]
+ground = "schiste_sombre"
+roofs = "bois_peint"
+landscape = "fjord"
+
+[[zone]]
+name = "fjords_nord"
+lat = [65, 71]
+lon = [10, 20]
+ground = "schiste_sombre"
+roofs = "bois_peint"
+landscape = "fjord"
+
+# Îles volcaniques de l'Atlantique : Canaries, Madère, Açores (pinède canarienne, laurisylve).
+
+[[zone]]
+name = "canaries"
+lat = [27, 30]
+lon = [-19, -13]
+ground = "basalte"
+landscape = "ile_volcanique"
+
+[[zone]]
+name = "madere"
+lat = [32, 34]
+lon = [-18, -16]
+ground = "basalte"
+landscape = "ile_volcanique"
+
+[[zone]]
+name = "acores"
+lat = [36, 40]
+lon = [-32, -24]
+ground = "basalte"
+landscape = "ile_volcanique"
+
+# Rizières d'Asie du Sud-Est et du sud de la Chine : seules les tuiles de cultures et de zones humides
+# changent (le thème n'y décrit que ces biomes).
+
+[[zone]]
+name = "rizieres_asie"
+lat = [-11, 27]
+lon = [95, 126]
+landscape = "rizieres"

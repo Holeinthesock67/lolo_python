@@ -30,6 +30,7 @@ const RoadTrafficModel := preload("res://scripts/road_traffic_model.gd")
 const BoatModel := preload("res://scripts/boat_model.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
+const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 signal chunk_loaded(k: int, extras: Dictionary)
 signal chunk_freed(k: int)
@@ -123,7 +124,7 @@ func set_world(new_route, new_world_dir: String, manifest: Dictionary = {}, them
 func swap_route(new_route, from_k: int) -> void:
 	for k in _jobs.keys():
 		if k >= from_k:
-			WorkerThreadPool.wait_for_task_completion(_jobs[k]["task"])
+			BgTasks.wait(_jobs[k]["task"])
 			_jobs.erase(k)
 	route = new_route
 	_ready_chunks = _ready_chunks.filter(func(item): return item["k"] < from_k)
@@ -148,7 +149,7 @@ func clear() -> void:
 
 func _wait_all_jobs() -> void:
 	for k in _jobs.keys():
-		WorkerThreadPool.wait_for_task_completion(_jobs[k]["task"])
+		BgTasks.wait(_jobs[k]["task"])
 
 
 func _free_chunk(k: int) -> void:
@@ -208,7 +209,7 @@ func _start_jobs() -> void:
 				"boats": boats_enabled,
 				"biome_model": biome_model,
 			}
-			job["task"] = WorkerThreadPool.add_task(_build_chunk_job.bind(job), false, "OSM chunk %d" % k)
+			job["task"] = BgTasks.add(_build_chunk_job.bind(job), false, "OSM chunk %d" % k)
 			_jobs[k] = job
 
 
@@ -262,6 +263,8 @@ func _build_chunk_job(job: Dictionary) -> void:
 
 	PerfProbe.task("batiments", str(k), (Time.get_ticks_usec() - t_buildings) / 1000.0)
 	# 2. Eau (lines et areas)
+	var t_water := Time.get_ticks_usec()
+	var boats_us := 0
 	if layers.has("water"):
 		var w_res := OsmLayers.load_chunk(w_dir, "water", k, job.get("route"))
 		if w_res.get("ok", false):
@@ -317,10 +320,16 @@ func _build_chunk_job(job: Dictionary) -> void:
 						meshes_data.append({"kind": "water_areas", "arrays": arr})
 			# Bateaux (Lot P29) : sur l'eau affichée (cours d'eau coupés à la route, relief exagéré appliqué)
 			if bool(job.get("boats", false)):
+				var t_boats := Time.get_ticks_usec()
 				var road := road_polyline(job["route"], k) if job.get("route") != null else PackedVector2Array()
 				boats = BoatModel.water_paths(areas, lines, road)
+				boats_us = Time.get_ticks_usec() - t_boats
+	# Étapes de la tâche `osm` (lot U3, r790b : tâches de 20 s sur le parcours côtier, cause à localiser)
+	PerfProbe.task("osm_eau", str(k), (Time.get_ticks_usec() - t_water - boats_us) / 1000.0)
+	PerfProbe.task("osm_bateaux", str(k), boats_us / 1000.0)
 
 	# Forêts (voisinage sonore et animaux : les arbres sont dessinés par tree_renderer.gd)
+	var t_veg := Time.get_ticks_usec()
 	var veg_items := []
 	if layers.has("vegetation"):
 		var v_res := OsmLayers.load_chunk(w_dir, "vegetation", k, job.get("route"))
@@ -336,6 +345,8 @@ func _build_chunk_job(job: Dictionary) -> void:
 		if poi_res.get("ok", false):
 			pois = poi_res.get("items", [])
 
+	PerfProbe.task("osm_veg_poi", str(k), (Time.get_ticks_usec() - t_veg) / 1000.0)
+	var t_fauna := Time.get_ticks_usec()
 	# 4. Animaux (Lot P17, placement de P11) et tracteurs des champs (P25) : posés sur les tuiles proches
 	# du terrain
 	var fauna := []
@@ -357,6 +368,8 @@ func _build_chunk_job(job: Dictionary) -> void:
 			"biome_model": job.get("biome_model", null),
 		})
 
+	PerfProbe.task("osm_faune", str(k), (Time.get_ticks_usec() - t_fauna) / 1000.0)
+	var t_traffic := Time.get_ticks_usec()
 	# 5. Circulation des routes voisines et tracteurs des champs (Lot P25)
 	if bool(job.get("traffic", false)) and job.get("route") != null:
 		if layers.has("roads"):
@@ -374,8 +387,11 @@ func _build_chunk_job(job: Dictionary) -> void:
 						scaled.append(lc)
 					lines = scaled
 				traffic.append_array(RoadTrafficModel.road_paths(lines))
+		var t_fields := Time.get_ticks_usec()
 		traffic.append_array(RoadTrafficModel.field_paths(veg_items, height_at))
+		PerfProbe.task("osm_champs", str(k), (Time.get_ticks_usec() - t_fields) / 1000.0)
 
+	PerfProbe.task("osm_circulation", str(k), (Time.get_ticks_usec() - t_traffic) / 1000.0)
 	PerfProbe.task("osm", str(k), (Time.get_ticks_usec() - t0) / 1000.0)
 	job["result"] = {
 		"k": k,
@@ -388,18 +404,31 @@ func _build_chunk_job(job: Dictionary) -> void:
 	}
 
 
-## Hauteur du terrain proche en (x, z), lue dans les tuiles `near` du parcours (cache par tuile) ; repli
-## sur l'altitude de la route la plus proche sans tuile. Sans nœud : utilisable dans une tâche de fond.
+## Hauteur du terrain proche en (x, z), lue dans les tuiles `near` du parcours (cache par tuile) ; hors des
+## tuiles proches, tuile lointaine (`far`, abaissée comme à l'affichage), puis altitude de la route la plus
+## proche. Les champs loin de la route (tracteurs, lot P25) sont posés sur le lointain : avant, chaque point
+## de rang cherchait la route la plus proche (20 s par tronçon côtier, essai r790d). Sans nœud : utilisable
+## dans une tâche de fond.
 static func terrain_height_fn(w_dir: String, r) -> Callable:
 	var cache := {}
+	var far_cache := {}
+	var far_dy: float = TerrainTiles.LEVELS["far"]["y_offset"]
 	return func(x: float, z: float) -> float:
 		var t := TerrainTiles.tile_of("near", x, z)
 		if not cache.has(t):
 			cache[t] = TerrainTiles.load_filled(w_dir, "near", t.x, t.y, r)
 		var h: PackedFloat32Array = cache[t]
-		if h.is_empty():
-			return TerrainTiles.nearest_route_alt(r, x, z)
-		return TerrainTiles.mesh_height_at(h, "near", t.x, t.y, x, z)
+		if not h.is_empty():
+			return TerrainTiles.mesh_height_at(h, "near", t.x, t.y, x, z)
+		var ft := TerrainTiles.tile_of("far", x, z)
+		if not far_cache.has(ft):
+			far_cache[ft] = TerrainTiles.load_tile(w_dir, "far", ft.x, ft.y)
+		var fh: PackedFloat32Array = far_cache[ft]
+		if not fh.is_empty():
+			var y := TerrainTiles.mesh_height_at(fh, "far", ft.x, ft.y, x, z)
+			if not is_nan(y):
+				return y + far_dy
+		return TerrainTiles.nearest_route_alt(r, x, z)
 
 
 ## Axe de la route (x, z) sur le tronçon k, élargi de 200 m de part et d'autre.
@@ -486,9 +515,9 @@ static func _arrays_from_mesh_dict(d: Dictionary) -> Array:
 func _poll_jobs(wait: bool) -> void:
 	for k in _jobs.keys():
 		var job: Dictionary = _jobs[k]
-		if not wait and not WorkerThreadPool.is_task_completed(job["task"]):
+		if not wait and not BgTasks.done(job["task"]):
 			continue
-		WorkerThreadPool.wait_for_task_completion(job["task"])
+		BgTasks.wait(job["task"])
 		_jobs.erase(k)
 		if job["gen"] == _generation and _wanted_chunks.has(k):
 			_ready_chunks.append(job["result"])

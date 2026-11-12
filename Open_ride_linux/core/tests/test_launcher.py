@@ -68,6 +68,12 @@ if mode.startswith("hang:"):               # hang:CODE : ligne de fin de l'engin
         sys.exit(0)                         # relancé : se ferme normalement
     while True:
         time.sleep(0.05)
+if mode.startswith("selfkill:"):           # selfkill:CODE : ligne de fin puis SIGKILL sur soi (engine, lot X58)
+    print(f"Fermeture : scène libérée, arrêt des serveurs de Godot (code {mode[9:]}), 150 ms après la demande.",
+          flush=True)
+    if len((marks / f"{role}_start").read_text().split()) > 1:
+        sys.exit(0)                         # relancé : se ferme normalement
+    os.kill(os.getpid(), signal.SIGKILL)
 if mode.startswith("exit0"):              # exit0:T : se ferme normalement au bout de T s
     time.sleep(float(mode.split(":")[1]))
     sys.exit(0)
@@ -168,6 +174,19 @@ def test_engine_stuck_after_its_last_line_is_stopped_with_announced_code(fake, c
     assert sup.run() == 0
     assert any("arrêt de Godot bloqué" in m and f"code {code} retenu" in m for m in said)
     assert sup.relaunches == (1 if code else 0) and sup.restarts == 0   # ni plantage, ni relance perdue
+    assert count(fake.marks, "engine_start") == (2 if code else 1)
+    assert_no_orphans(sup)
+
+
+@pytest.mark.parametrize("code", [0, launcher.EXIT_RELAUNCH])
+def test_engine_killing_itself_after_its_last_line_keeps_announced_code_without_wait(fake, code):
+    # Lot X58 : l'engine s'arrête lui-même (SIGKILL) après « scène libérée » ; ni plantage ni attente de 3 s.
+    sup, said = fake(engine=f"selfkill:{code}", engine_shutdown_s=30.0)
+    t0 = time.monotonic()
+    assert sup.run() == 0
+    assert time.monotonic() - t0 < 20.0
+    assert not any("arrêt de Godot bloqué" in m or "plant" in m for m in said)
+    assert sup.relaunches == (1 if code else 0) and sup.restarts == 0
     assert count(fake.marks, "engine_start") == (2 if code else 1)
     assert_no_orphans(sup)
 

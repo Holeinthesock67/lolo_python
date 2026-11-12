@@ -82,8 +82,9 @@ Forme produite par `WtfMode.frame` (environ 300 octets avec quatre bots, sous 1 
 | [WTF6](../lots/LOT_WTF6_decor_bots_camera.md) | Engine : Katamari, peloton délirant, horloge et poissons, vélo minuscule, caméras | WTF2, WTF4 | Grande |
 | [WTF7](../lots/LOT_WTF7_hud_chef.md) | Engine : HUD des défis et des œufs, surprise du chef, bilan, sons | WTF2, WTF4 | Moyenne |
 | [WTF8](../lots/LOT_WTF8_recette.md) | Recette sur le vélo (étapes de 10 min) et banc `low`, `medium`, `high` | WTF3 à WTF7 | Petite |
+| [WTF9](../lots/LOT_WTF9_lisibilite_objets.md) | Lisibilité : consigne et légende de chaque gag, objets redessinés (Katamari, effondrement, plats) | WTF8 étape A | Moyenne |
 
-Ordre : WTF1 ──► WTF2 ──► WTF3 ; WTF1 ──► WTF4 ; WTF2, WTF4 ──► WTF5, WTF6, WTF7 ──► WTF8.
+Ordre : WTF1 ──► WTF2 ──► WTF3 ; WTF1 ──► WTF4 ; WTF2, WTF4 ──► WTF5, WTF6, WTF7 ──► WTF8 ; WTF8 étape A ──► WTF9 ──► WTF8 étape B.
 
 ## 7. Questions ouvertes (réponses par défaut appliquées en attendant)
 

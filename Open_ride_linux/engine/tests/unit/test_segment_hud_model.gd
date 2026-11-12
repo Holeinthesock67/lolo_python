@@ -7,6 +7,7 @@ extends SceneTree
 
 const Model := preload("res://scripts/segment_hud_model.gd")
 const HudView := preload("res://scripts/hud_view.gd")
+const UiTheme := preload("res://scripts/ui_theme.gd")
 
 const SEGMENTS := [
 	{"id": "climb2", "name": "Montée 2", "type": "climb", "category": "3"},
@@ -78,7 +79,8 @@ func _run() -> void:
 	var none: Dictionary = m.view({}, 40.0)["powerup"]
 	_check(not none["visible"], "ERG ou option coupée (pas de champ powerup) : bloc bonus caché")
 	var held: Dictionary = m.view({"powerup": {"held": "aero", "active": null, "remaining_s": 0.0}}, 40.0)["powerup"]
-	_check(held["visible"] and held["held_text"] == "Z : Aéro" and held["active_text"] == "", "réserve : « Z : Aéro »")
+	_check(held["visible"] and held["held_text"] == "Z : Casque aéro" and held["held_kind"] == "aero" and held["active_text"] == "",
+		"réserve : « Z : Casque aéro »")
 	_check(not m.view({"powerup": {"held": null, "active": null, "remaining_s": 0.0}}, 40.0)["powerup"]["visible"],
 		"ni réserve ni bonus actif : bloc caché")
 	var on: Dictionary = m.view({"powerup": {"held": null, "active": "light", "remaining_s": 15.0}}, 41.0)["powerup"]
@@ -90,6 +92,17 @@ func _run() -> void:
 	on = m.view({"powerup": {"held": "draft_plus", "active": "breakaway", "remaining_s": 20.0,
 		"refused": {"kind": "anvil", "reason": "no_descent"}}}, 60.0)["powerup"]
 	_check(on["held_text"] == "Z : Aspiration +" and on["active_text"] == "Échappée · 20 s", "bonus tactiques (%s)" % str(on))
+	# Lot TT6 : icônes nommées, refus de 2 s (accord du nom, raison, réserve gardée)
+	_check(on["held_kind"] == "draft_plus" and on["active_kind"] == "breakaway" and on["refused_kind"] == "anvil"
+		and on["refused_text"] == "Enclume refusée" and on["refused_detail"] == "pas de descente",
+		"refus : « Enclume refusée », « pas de descente » (%s)" % str(on))
+	var erg: Dictionary = m.view({"powerup": {"held": "aero", "active": null, "remaining_s": 0.0,
+		"refused": {"kind": "aero", "reason": "erg"}}}, 62.0)["powerup"]
+	_check(erg["visible"] and erg["refused_text"] == "Casque aéro refusé" and erg["refused_detail"] == "coupé en ERG",
+		"ERG d'une session libre : « Casque aéro refusé », « coupé en ERG » (%s)" % str(erg))
+	var odd: Dictionary = m.view({"powerup": {"held": "roller", "active": null, "remaining_s": 0.0,
+		"refused": {"kind": "roller", "reason": "raison_de_demain"}}}, 63.0)["powerup"]
+	_check(odd["refused_detail"] == "gardé en réserve", "raison inconnue : « gardé en réserve »")
 	on = m.view({"powerup": {"held": "bonus_de_demain", "active": null, "remaining_s": 0.0}}, 61.0)["powerup"]
 	_check(on["visible"] and on["held_text"] == "Z : Bonus", "valeur inconnue : nom neutre (%s)" % str(on))
 	_check(Model.time_text(3725.0) == "62:05" and Model.time_text(59.96, true) == "1:00,0", "format des temps")
@@ -104,12 +117,32 @@ func _hud_blocks(m) -> void:
 	hud.update_segment(m.view({}, 100.0))
 	_check(not hud.panel_segment.visible and not hud.panel_bonus.visible, "trame sans segment ni powerup : HUD d'aujourd'hui")
 	hud.update_segment(m.view(_seg({"elapsed_s": 20.0, "gap_to_pr_s": -1.0}), 100.0)
-		.merged({"powerup": {"visible": true, "held_text": "Z : Aéro", "active_text": "", "fraction": 0.0}}, true))
+		.merged({"powerup": {"visible": true, "held_text": "Z : Casque aéro", "held_kind": "aero", "active_text": "", "fraction": 0.0}}, true))
 	_check(hud.panel_segment.visible and hud.segment_main.text == "0:20" and hud.panel_bonus.visible
-		and hud.bonus_held.text == "Z : Aéro", "blocs segment et bonus affichés")
+		and hud.bonus_held.text == "Z : Casque aéro" and hud.bonus_held_icon.visible and not hud.bonus_active_icon.visible,
+		"blocs segment et bonus affichés, icône de la réserve")
 	var right: Rect2 = hud.panel_right.get_rect()
 	var seg_rect: Rect2 = hud.panel_segment.get_rect()
 	var bonus_rect: Rect2 = hud.panel_bonus.get_rect()
 	_check(not right.intersects(seg_rect) and not seg_rect.intersects(bonus_rect) and seg_rect.position.y >= right.end.y,
 		"blocs empilés sous le panneau de droite, sans chevauchement (%s, %s, %s)" % [right, seg_rect, bonus_rect])
+	# Lot TT6 : refus en orange barré à la place de la réserve, bonus actif en violet dessous
+	hud.update_segment(m.view({"powerup": {"held": "anvil", "active": "feather", "remaining_s": 12.0,
+		"refused": {"kind": "anvil", "reason": "no_descent"}}}, 200.0))
+	_check(hud.bonus_held.text == "Enclume refusée" and hud.bonus_held.modulate == UiTheme.WARN and hud.bonus_detail.visible
+		and hud._bonus_icons["held"] == ["pu_anvil", UiTheme.WARN, true] and hud._bonus_icons["active"][0] == "pu_feather"
+		and hud.bonus_active.text == "Plume · 12 s" and hud.bonus_bar.visible, "refus barré en orange, Plume active (%s)" % str(hud._bonus_icons))
+	_check(hud.bonus_held.position.y < hud.bonus_detail.position.y and hud.bonus_detail.position.y < hud.bonus_active.position.y
+		and absf(hud.bonus_held_icon.position.y + HudView.BONUS_HELD_ICON / 2.0 - hud.bonus_held.position.y - hud.bonus_held.size.y / 2.0) < 1.0,
+		"lignes empilées, icône centrée sur sa ligne")
+	hud.update_segment(m.view({"powerup": {"held": null, "active": "roller", "remaining_s": 25.0}}, 201.0))
+	_check(not hud.bonus_held.visible and not hud.bonus_held_icon.visible and hud.bonus_active.visible
+		and hud._bonus_icons["active"][0] == "pu_roller", "bonus actif seul : une ligne et son icône")
+	hud.set_draft_boost(true)
+	hud.update_wind({"visible": false, "draft_text": "Abri 55 %"})
+	var pill := hud.draft_label.get_theme_stylebox("normal") as StyleBoxFlat
+	_check(pill.bg_color == HudView.BONUS_COLOR, "Aspiration + : pastille d'abri violette")
+	hud.set_draft_boost(false)
+	hud.update_wind({"visible": false, "draft_text": "Abri 30 %"})
+	_check(pill.bg_color == HudView.DRAFT_COLOR, "sans bonus : pastille bleue")
 	hud.queue_free()

@@ -134,9 +134,10 @@
         "surface_source": {
           "enum": [
             "osm",
-            "none"
+            "none",
+            "venue"
           ],
-          "description": "Origine de la colonne surface de route.json (format 1.6, lot U1) ; absent = none."
+          "description": "Origine de la colonne surface de route.json (format 1.6, lot U1 ; venue : surface de la piste d'un vélodrome, 1.7) ; absent = none."
         }
       }
     },
@@ -187,6 +188,11 @@
               "type": "number",
               "exclusiveMinimum": 0
             },
+            "horizon_cell_m": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Maille du niveau horizon (lot JP4, format 1.8), présente seulement si ce niveau est écrit."
+            },
             "road_half_width_m": {
               "type": "number",
               "minimum": 0
@@ -207,6 +213,17 @@
                   }
                 },
                 "far": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "horizon": {
                   "type": "array",
                   "items": {
                     "type": "array",
@@ -304,7 +321,9 @@
                 "jungle",
                 "wetland",
                 "coast",
-                "volcanic"
+                "volcanic",
+                "japan",
+                "atlantic_heath"
               ]
             },
             "forced": {
@@ -329,7 +348,9 @@
                     "jungle",
                     "wetland",
                     "coast",
-                    "volcanic"
+                    "volcanic",
+                    "japan",
+                    "atlantic_heath"
                   ]
                 }
               ]
@@ -359,7 +380,9 @@
                   "jungle",
                   "wetland",
                   "coast",
-                  "volcanic"
+                  "volcanic",
+                  "japan",
+                  "atlantic_heath"
                 ]
               },
               "additionalProperties": {
@@ -422,6 +445,29 @@
               "type": [
                 "string",
                 "null"
+              ]
+            }
+          }
+        },
+        "venue": {
+          "type": "object",
+          "required": [
+            "present"
+          ],
+          "description": "Couche facultative venue.json (format 1.7, lot VD1) : lieu fermé, aujourd'hui le vélodrome.",
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "version": {
+              "type": "string"
+            },
+            "file": {
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "velodrome"
               ]
             }
           }
@@ -521,7 +567,8 @@
               "paved",
               "compacted",
               "gravel",
-              "dirt"
+              "dirt",
+              "wood"
             ]
           },
           "additionalProperties": {

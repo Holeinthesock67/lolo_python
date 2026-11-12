@@ -64,6 +64,11 @@ func _test_view() -> void:
 	_check(gauge.visible and gauge.global_position.is_equal_approx(anchor + Vector3.UP * DraftGauge.HEIGHT_M),
 		"posée au-dessus du bot (%s)" % str(gauge.global_position))
 	_check(gauge.test_info(null)["text"] == "30 %", "texte « 30 % » sous l'arc")
+	gauge.set_boost(true)
+	_check(gauge.test_info(null)["boost"] and gauge._mat.get_shader_parameter("fill_color") == DraftGauge._fill_color(true)
+		and DraftGauge._fill_color(true) != DraftGauge._fill_color(false), "Aspiration + : arc violet (lot TT6)")
+	gauge.set_boost(false)
+	_check(gauge._mat.get_shader_parameter("fill_color") == DraftGauge._fill_color(false), "fin du bonus : arc bleu")
 	_check(bots.anchor_of("absent") == null, "bot non affiché : pas de position")
 	gauge.update_view(v, null)
 	_check(not gauge.visible, "bot non affiché : jauge cachée")

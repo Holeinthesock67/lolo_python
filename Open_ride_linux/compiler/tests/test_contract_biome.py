@@ -18,7 +18,8 @@ DEFAULT_THEME = REPO / "engine" / "themes" / "default" / "theme.json"
 BIOMES = [
     "temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
     "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
-    "wetland", "coast", "volcanic",
+    "wetland", "coast", "volcanic", "japan",   # 17e biome : lot JP1 (6.0)
+    "atlantic_heath",                         # 18e biome : lot AT1 (6.0)
 ]
 
 
@@ -65,12 +66,36 @@ def test_biome_tile_with_wrong_sum_is_refused() -> None:
     lambda t: t["weights"][1].pop(),
     lambda t: t.__setitem__("variant", "calcaire_blanc"),
     lambda t: t["variant"].__setitem__("ground", "tuile_ronde"),
+    lambda t: t["variant"].__setitem__("landscape", "lagon"),
+    lambda t: t["variant"].__setitem__("landscape", "fjord") or t["variant"].__setitem__("x", 1),
 ])
 def test_biome_tile_schema_refuses(change) -> None:
     tile = load(BIOME_TILE)
     change(tile)
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(tile, schema("biome"))
+
+
+@pytest.mark.parametrize("landscape", [None, "canyon", "fjord", "ile_volcanique", "rizieres"])
+def test_biome_tile_landscape_member_is_optional(landscape) -> None:
+    """Lot U25 : membre `landscape` facultatif de la variante, toit `bois_peint`."""
+    tile = load(BIOME_TILE)
+    jsonschema.validate(tile, schema("biome"))          # sans `landscape` (tuile d'avant le lot U25)
+    tile["variant"] = {"ground": "schiste_sombre", "roofs": "bois_peint", "landscape": landscape}
+    jsonschema.validate(tile, schema("biome"))
+
+
+def test_landscape_enum_matches_compiler_and_theme() -> None:
+    from openride_compiler import regional
+    assert schema("biome")["$defs"]["landscapeVariant"]["enum"] == list(regional.LANDSCAPES)
+    assert schema("biome")["$defs"]["roofVariant"]["enum"] == list(regional.ROOFS)
+    assert schema("biome")["$defs"]["groundVariant"]["enum"] == list(regional.GROUNDS)
+    theme_schema = schema("theme")
+    assert theme_schema["properties"]["landscapes"]["propertyNames"]["enum"] == list(regional.LANDSCAPES)
+    assert set(theme_schema["properties"]["variants"]["propertyNames"]["enum"]) == set(regional.GROUNDS + regional.ROOFS)
+    theme = load(DEFAULT_THEME)
+    assert sorted(theme["landscapes"]) == sorted(regional.LANDSCAPES)
+    assert set(theme["variants"]) == set(regional.GROUNDS + regional.ROOFS)
 
 
 def test_biome_ids_match_lot_u0() -> None:
@@ -90,7 +115,7 @@ def test_theme_2_0_example_and_default_theme_are_valid() -> None:
     jsonschema.validate(one_x, theme_schema)
 
 
-def test_default_theme_2_0_has_sixteen_biomes_and_keeps_1_x_grassland() -> None:
+def test_default_theme_2_0_has_all_biomes_and_keeps_1_x_grassland() -> None:
     """Lot U15 : thème par défaut 2.0 en couleurs unies ; la prairie et le biome alpin reprennent exactement le 1.x."""
     default = load(DEFAULT_THEME)
     assert default["version"] == "2.0" and list(default["biomes"]) == BIOMES
@@ -105,7 +130,7 @@ def test_default_theme_2_0_has_sixteen_biomes_and_keeps_1_x_grassland() -> None:
     assert veg["max_density_per_ha"] == default["vegetation"]["max_density_per_ha"]
     assert veg["treeline_m"] == default["vegetation"]["treeline_m"]
     # Biome alpin au look du parcours de démonstration (choix du propriétaire, 30 octobre) : terrain 1.x et
-    # arbre d'avant la série U (pas de `species`) ; les 15 autres biomes ont chacun leur couleur de sol.
+    # arbre d'avant la série U (pas de `species`) ; tous les autres biomes ont chacun leur couleur de sol.
     alpine = default["biomes"]["alpine"]
     alpine_by_role = {layer["role"]: layer for layer in alpine["ground"]["layers"]}
     for role, key in (("flat", "grass"), ("steep", "rock"), ("high", "snow")):
@@ -116,7 +141,7 @@ def test_default_theme_2_0_has_sixteen_biomes_and_keeps_1_x_grassland() -> None:
     assert alpine["vegetation"]["max_density_per_ha"] == default["vegetation"]["max_density_per_ha"]
     assert alpine["vegetation"]["treeline_m"] == default["vegetation"]["treeline_m"]
     flats = {b["ground"]["layers"][0]["color"] for name, b in default["biomes"].items() if name != "alpine"}
-    assert len(flats) == 15
+    assert len(flats) == len(BIOMES) - 1
     for biome in default["biomes"].values():
         assert sum(biome["seasons"]["durations_months"]) == 12
         for layer in biome["ground"]["layers"]:
@@ -164,7 +189,7 @@ def test_manifest_with_biome_and_coast_layers() -> None:
     manifest["layers"] = {
         "biome": {
             "present": True, "version": "1.0", "default_biome": "temperate_grassland", "forced": None,
-            "sources": ["esa_worldcover_2021", "osm", "dem", "latitude"],
+            "sources": ["esa_worldcover_2021", "osm", "dem", "koppen_1986_2010"],
             "shares": {"temperate_grassland": 60.0, "mediterranean": 30.0, "coast": 10.0},
             "tiles": {"near": [[0, 0], [0, -1]], "far": [[0, 0]]},
         },

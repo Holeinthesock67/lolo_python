@@ -226,4 +226,22 @@ func _render() -> void:
 	view.set_route(long, 5000.0, 6.0)
 	_check(view.warm_count() == 0, "nouveau parcours : préchauffage précédent retiré")
 	cam.queue_free()
+	_two_faces(view)
 	view.queue_free()
+
+
+## Demi-tour (lot N17) : bandeau imprimé des deux côtés, dos du départ d'un parcours en ligne « Arrivée ».
+func _two_faces(view) -> void:
+	var gate: Node3D = view.build_mark({"kind": "start", "style": "sprint_start", "s": 0.0, "side": 0,
+		"lines": ["Sprint", "Col du test · 2,0 km"]})
+	var front := []
+	var back := []
+	for c in gate.get_children():
+		if c is Label3D:
+			((front if (c as Label3D).basis.z.z > 0.5 else back) as Array).append((c as Label3D).text)
+	_check(front.size() == 2 and back == front and front[0] == "SPRINT",
+		"bandeau à deux faces, même texte des deux côtés (%s / %s)" % [str(front), str(back)])
+	gate.free()
+	_check(SegmentMarkers.back_lines({"style": "route_start", "lines": ["Départ"]}) == ["Arrivée"]
+		and SegmentMarkers.back_lines({"style": "route_line", "lines": ["Départ · Arrivée"]}) == ["Départ · Arrivée"],
+		"dos du départ d'un parcours en ligne : « Arrivée » (fin de séance à rebours)")

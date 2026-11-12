@@ -42,6 +42,12 @@ uniform vec3 grass_dry_color : source_color = vec3(0.62, 0.6, 0.32);
 // lot Y22 : le sol vu de loin n'est plus d'une seule teinte là où les touffes 3D s'arrêtent ; 0 = aucune.
 uniform float macro_variation : hint_range(0.0, 1.0) = 0.0;
 global uniform vec3 wind_dir;
+// Saisons (lot P18, season_model.gd) : herbe jaunie, limite de neige abaissée ; été par défaut (inchangé).
+global uniform vec3 season_grass_tint;
+global uniform float season_grass_dry;
+global uniform float season_snow_drop_m;
+// Sol détrempé de la saison des pluies (lot U13) : plus sombre hors neige, plus brillant (terrain*.gdshader).
+global uniform float season_ground_wet;
 global uniform float wind_strength;
 global uniform float wind_phase;
 #include "res://shaders/surface_detail.gdshaderinc"
@@ -84,7 +90,7 @@ vec3 layer_weights(vec3 n, float alt, float slope_threshold, float snow_line, fl
 	float t_rock = smoothstep(slope_threshold - half_band, slope_threshold + half_band, slope_deg);
 
 	// Neige au-dessus de snow_line, fondue sur snow_melt_band_m, absente sur la roche raide
-	float snow_alt = smoothstep(snow_line, snow_line + snow_melt_band_m, alt);
+	float snow_alt = smoothstep(snow_line - season_snow_drop_m, snow_line - season_snow_drop_m + snow_melt_band_m, alt);
 	float snow_slope = 1.0 - smoothstep(steep_snow_start_deg, steep_snow_max_deg, slope_deg);
 	float w_snow = clamp(snow_alt * snow_slope, 0.0, 1.0);
 
@@ -150,6 +156,7 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 		// Plaques plus sèches ou plus vertes (H2)
 		float dry = smoothstep(0.45, 0.8, sd_noise(q / 120.0 + vec2(3.7, 1.9)) * 0.7 + sd_noise(q / 40.0) * 0.3) * relief;
 		vec3 g = mix(c, c * 0.55 + grass_dry_color * 0.45, dry * 0.6);
+		g = mix(g, g * 0.55 + grass_dry_color * 0.45, season_grass_dry) * season_grass_tint;
 		if (macro_variation * relief > 0.0) {
 			// Prés plus ou moins mûrs (plaques de 90 à 250 m) : casse la teinte unique des collines vue de loin.
 			// La somme de deux bruits lissés reste près de 0,5 : contraste ×3 pour que les plaques se voient
@@ -218,6 +225,9 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 	float surface_h = grass_h * w_grass + rock_h * w_rock + snow_h * w_snow + extra_h;
 	normal_out = sd_bump(normal_out, vertex, surface_h);   // hors branche (dérivées) ; surface_h = 0 : normale inchangée
 
+	if (season_ground_wet > 0.0) {
+		final_color *= 1.0 - 0.22 * season_ground_wet * (1.0 - w_snow);
+	}
 	if (cloud_shadow_enabled && cloud_shadow_coverage > 0.0) {
 		final_color *= 1.0 - cloud_shadow_strength * _cloud_density(v_world_pos.xz + cloud_shadow_offset);
 	}

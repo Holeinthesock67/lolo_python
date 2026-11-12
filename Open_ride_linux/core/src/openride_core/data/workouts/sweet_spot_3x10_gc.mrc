@@ -1,0 +1,30 @@
+[COURSE HEADER]
+VERSION = 2
+UNITS = ENGLISH
+DESCRIPTION = Sweet Spot 3 x 10 min (format GoldenCheetah, % FTP)
+FILE NAME = sweet_spot_3x10_gc.mrc
+MINUTES PERCENT
+[END COURSE HEADER]
+[COURSE DATA]
+0.00	50
+10.00	75
+10.00	90
+20.00	90
+20.00	55
+25.00	55
+25.00	90
+35.00	90
+35.00	55
+40.00	55
+40.00	90
+50.00	90
+50.00	55
+55.00	55
+55.00	60
+60.00	45
+[END COURSE DATA]
+[COURSE TEXT]
+600	Premier bloc sweet spot : 90 % de la FTP	10
+1500	Deuxième bloc	10
+2400	Dernier bloc !	10
+[END COURSE TEXT]

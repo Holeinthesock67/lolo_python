@@ -40,6 +40,8 @@ Un son par événement du jeu (noms de l'IPC 1.4). Durées courtes, synthèse mo
 | `rogue_firewall_hum` | Firewall à moins de 30 m | ronflement grave (50 Hz modulé) dont le volume monte quand le mur approche ; alarme de contact : battement lent (2 Hz) ajouté pendant `firewall_contact` | boucle 2 s |
 | `rogue_hack` | début du piratage | rafale de bruit blanc haché (quatre éclats) | 400 ms |
 | `rogue_purge` | balise de purge réussie | balayage descendant puis note claire | 350 ms |
+| `rogue_refused` | Z refusé (`z_refused`, lot R22) | deux notes graves qui descendent, brèves | 220 ms |
+| `rogue_shift_missed` | arche de Perfect Shift ratée (`shift_missed`, lot R22) | petit glissé vers le bas | 160 ms |
 | `rogue_card_pick` | carte choisie | « bip » doux double | 150 ms |
 | `rogue_door` | porte choisie | souffle grave montant | 300 ms |
 | `rogue_reroll` | relance de carte | trois cliquetis rapides | 200 ms |
@@ -111,7 +113,7 @@ Aucune (les événements existent déjà dans l'IPC 1.4). Réglages `[audio] rog
 
 Livré : synthèse de 25 sons et de 3 couches de musique (20 s, 96 battements par minute), modèle de déclenchement (un son par événement, sons dérivés des changements d'état, plafond de 8 voix, 60 ms entre deux sons identiques, priorités, boucles lissées à 12 dB/s, couches de musique avec fondu de 2 s), bus `RogueSfx` (70 %) et `RogueMusic` (40 %), remplacement par `~/OpenRide/Sounds/<nom>.ogg`.
 
-Écarts avec le cahier d'origine : les tests de synthèse sont dans `tests/unit` et non `tests/render`, un nœud séparé `rogue_audio.gd` porte les lecteurs au lieu de `sound_player.gd` ; la purge et le coffre ont un son mais aucun déclencheur (pas de signal) ; les clés `audio.rogue_sfx_pct` et `audio.rogue_music_pct` n'existaient pas côté core (ajoutées par R19 le 30 octobre) ; la mesure de synthèse est donnée par le test (limite large de 2 s), l'objectif de 300 ms se vérifie sur le PC. Reste : écoute par le propriétaire.
+Écarts avec le cahier d'origine : les tests de synthèse sont dans `tests/unit` et non `tests/render`, un nœud séparé `rogue_audio.gd` porte les lecteurs au lieu de `sound_player.gd` ; la purge et le coffre avaient un son sans déclencheur, déclenchés depuis le lot R21 (événement `purge`, entrée dans `COOLDOWN`) ; les clés `audio.rogue_sfx_pct` et `audio.rogue_music_pct` n'existaient pas côté core (ajoutées par R19 le 30 octobre) ; la mesure de synthèse est donnée par le test (limite large de 2 s), l'objectif de 300 ms se vérifie sur le PC. Reste : écoute par le propriétaire.
 
 Lot X51 (30 octobre) : le niveau de départ bas (−18 dB) n'était pas appliqué, et 20 sons sur 25 passaient au-dessus du vent à 60 km/h. `MODE_DB = −12 dB` sur tous les lecteurs du mode les ramène à −18 dB du plein niveau avec le bus à 70 %. Le piratage et la relance de carte, trop aigus (24 % et 35 % d'énergie au-dessus de 4 kHz), sont filtrés comme le bouclier touché. Mesures : `engine/tests/unit/test_rogue_sound_levels.gd` ; écoute : `engine/tests/rogue_ecoute.py`.
 

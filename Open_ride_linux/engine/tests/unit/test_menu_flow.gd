@@ -127,6 +127,40 @@ func _test_pause_after_workout_done() -> void:
 	_check(h.state()["status"] == MenuFlow.PAUSE_REASONS["trainer_lost"], "pause subie : la raison passe avant l'invite")
 
 
+## Lot N17 : « Faire demi-tour » proposé sur un parcours seulement (mêmes refus que le core), commande u_turn
+## après confirmation, retour à la pause ; distance de la fiche de la pause croissante à rebours.
+func _test_u_turn_entry() -> void:
+	_check(MenuFlow.u_turn_allowed_of({"route_id": "vosges", "mode": "SIM"}), "demi-tour : parcours en SIM")
+	_check(MenuFlow.u_turn_allowed_of({"route_id": "vosges", "mode": "ERG"}), "demi-tour : parcours en ERG")
+	_check(not MenuFlow.u_turn_allowed_of({"route_id": "ow:abc", "mode": "SIM"}), "pas de demi-tour en monde ouvert")
+	_check(not MenuFlow.u_turn_allowed_of({"route_id": null, "mode": "ROGUE"}), "pas de demi-tour en run Cyber-Rogue")
+	_check(not MenuFlow.u_turn_allowed_of({"route_id": "vosges", "survivor": {}}), "pas de demi-tour en Dernier survivant")
+	_check(not MenuFlow.u_turn_allowed_of({"route_id": "vosges", "gp": {}}), "pas de demi-tour en Grand Prix")
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "RUNNING", "route_id": "vosges", "mode": "SIM", "t": 600.0, "s": 3000.0})
+	f.on_state({"session_state": "PAUSED", "pause_reason": "user", "route_id": "vosges", "mode": "SIM",
+		"t": 600.0, "s": 3000.0})
+	var ids: Array = []
+	for it in f.state()["items"]:
+		ids.append(str(it["id"]))
+	_check(ids.slice(0, 4) == ["resume", "end_save", "abandon", "u_turn"], "pause : Faire demi-tour après Abandonner (%s)" % str(ids))
+	for i in range(3):
+		f.handle("PLUS_SHORT")
+	_check(_focus_id(f) == "u_turn", "focus sur Faire demi-tour")
+	f.handle("A_LONG")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "u_turn"}, "Oui : commande u_turn")
+	_check(f.state()["screen"] == "pause", "retour à la pause après le demi-tour")
+	f.on_state({"session_state": "PAUSED", "pause_reason": "user", "route_id": "vosges", "mode": "SIM", "dir": -1,
+		"t": 600.0, "s": 3000.0})
+	f.on_state({"session_state": "RUNNING", "route_id": "vosges", "mode": "SIM", "dir": -1, "t": 700.0, "s": 2600.0})
+	f.on_state({"session_state": "PAUSED", "pause_reason": "user", "route_id": "vosges", "mode": "SIM", "dir": -1,
+		"t": 700.0, "s": 2600.0})
+	var tiles: Array = f.card(f.state()).get("tiles", [])
+	_check(not tiles.is_empty() and str(tiles[1]["value"]) == "3,4", "fiche de la pause : 3,4 km parcourus à rebours (%s)" % str(tiles))
+
+
 func _test_abandon_and_summary_quit() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true   # écran de connexion : _test_connect_screen
@@ -189,10 +223,19 @@ func _test_view() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # détails
 	v.update_display(f.state(), state, f.summary, f.show_details)
-	_check(v.summary.visible and not v.devices.visible and v.summary.text().contains("Distance : 15,00 km"),
+	_check(v.summary.visible and not v.devices.visible and v.summary.text().contains("Distance 15,00 km"),
 			"bilan : %s" % v.summary.text())
 	_check(v.summary.fit_label.text.contains("seance.fit"), "fichier FIT : %s" % v.summary.fit_label.text)
 	_check(v.summary.blocks_box.get_child_count() == 2, "bilan détaillé : un bloc par ligne")
+	# Paliers de `fit` quand la carte ne tient pas même resserrée : blocs sur deux colonnes, courbe cachée.
+	v.summary.update_display({"duration_s": 1800.0, "distance_m": 15000.0, "blocks": [[1, 200.0, 200.0]],
+			"power_profile": {"step_s": 10, "power_w": [150, 200, 180], "target_w": null}}, true)
+	v.summary.fit(600.0, func() -> bool: return false)
+	_check(v.summary.blocks_box.columns == 2 and not v.summary.chart_box.visible,
+			"bilan trop haut : blocs sur deux colonnes, courbe de puissance cachée")
+	v.summary.fit(600.0, func() -> bool: return true)
+	_check(v.summary.blocks_box.columns == 1 and v.summary.chart_box.visible,
+			"bilan qui tient : un bloc par ligne, courbe affichée")
 	v.free()
 
 
@@ -326,6 +369,7 @@ func _test_relaunch_setting() -> void:
 	_check(f.state()["items"].size() == 1, "valeur du lancement remise : plus de relance")
 	_check(SettingsViewModel.format_value(feel, "ftms") == "par le trainer (essai)"
 		and SettingsViewModel.format_value({"key": "wind.mode"}, "gusty") == "en rafales"
+		and SettingsViewModel.format_value({"key": "wind.mode"}, "local") == "météo du jour"
 		and SettingsViewModel.format_value({"key": "render.theme"}, "default") == "par défaut",
 		"légendes du vent et du thème en français")
 	var bool_it := {"key": "futur.interrupteur", "type": "choice", "choices": ["on", "off"]}
@@ -407,8 +451,7 @@ func _test_settings_screen() -> void:
 	# Curseur de difficulté sur l'écran de pause : set_difficulty, sans config.toml.
 	f.on_state({"session_state": "RUNNING", "difficulty_pct": 50})
 	f.on_state({"session_state": "PAUSED", "difficulty_pct": 50})
-	f.handle("MINUS_SHORT")   # dernière ligne : mode de la session libre (lot O18)
-	f.handle("MINUS_SHORT")
+	f.menu.focus_item("difficulty")   # sous Abandonner ; puis mode (lot O18) et bots (lot N18)
 	_check(_focus_id(f) == "difficulty" and f.state()["items"][3]["detail"] == "50 %" and f.state()["items"][3]["bar"] == 50,
 			"pause : curseur de difficulté")
 	f.handle("A_LONG")
@@ -427,14 +470,14 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Session ERG
-	_check(_ids(f) == ["_sim", "seuil", "_create", "_qwk", "_import", "_help"],
-		"sous-menu ERG : liste puis Créer, Importer et Aide (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["_sim", "seuil", "_create", "_qwk", "_help"],
+		"sous-menu ERG : liste puis Créer, QWKcode et Aide, sans import (révision 1.15) (%s)" % str(_ids(f)))
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_help" and f.state()["card"].get("name", "") == "Choisir un entraînement",
 		"focus sur Comment ça marche ? : carte de l'aide (%s)" % str(f.state()["card"]))
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_help"
 		and f.state()["title"] == "Aide ERG", "écran Aide ERG")
-	_check(_ids(f) == ["help:choose", "help:create", "help:qwk", "help:import", "help:write", "help:ride"],
+	_check(_ids(f) == ["help:choose", "help:create", "help:qwk", "help:write", "help:ride"],
 		"sujets de l'aide (%s)" % str(_ids(f)))
 	f.handle("PLUS_SHORT")
 	var help_card: Dictionary = f.state()["card"]
@@ -443,8 +486,6 @@ func _test_erg_submenu() -> void:
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_help", "A long sur un sujet : rien")
 	f.handle("Y_SHORT")
 	_check(f.state()["screen"] == "workouts" and _focus_id(f) == "_help", "Y : retour à la liste")
-	f.handle("MINUS_SHORT")
-	_check(f.state()["card"].get("name", "") == "Importer un fichier", "Importer : carte de l'aide")
 	f.handle("MINUS_SHORT")
 	_check(f.state()["card"].get("name", "") == "Saisie QWKcode (GoldenCheetah)", "QWKcode : carte de l'aide")
 	f.handle("MINUS_SHORT")
@@ -486,28 +527,13 @@ func _test_erg_submenu() -> void:
 	act = f.handle("A_LONG")
 	_check(act == {"action": "select_workout", "workout_id": "intervalles_7x240s_105"} and f.state()["screen"] == "ready",
 		"entraînement créé choisi : écran Prêt")
-	# Import.
+	# Fichier déposé à la main dans ~/OpenRide/Workouts/ (l'import du menu est retiré, révision 1.15).
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Changer d'entraînement
 	_check(_focus_id(f) == "intervalles_7x240s_105", "liste ouverte sur le dernier entraînement choisi (lot O32)")
-	f.menu.focus_item("_import")
-	_check(_focus_id(f) == "_import", "focus sur Importer")
-	_check(f.handle("A_LONG") == {"action": "list_imports"} and f.state()["screen"] == "workout_import", "list_imports")
-	f.set_import_candidates([])
-	_check(f.state()["focus"] == -1 and f.state()["items"][0]["label"] == "Aucun fichier .zwo, .erg, .mrc ou .qwk", "aucun fichier")
-	f.set_import_candidates([{"path": "/x/Téléchargements/vo2.zwo", "file": "vo2.zwo", "source": "Téléchargements",
-		"imported": false}, {"path": "/x/b.erg", "file": "b.erg", "source": "Bureau", "imported": true}])
-	_check(f.state()["items"][1]["detail"] == "Bureau, déjà importé", "fichier déjà importé signalé")
-	_check(f.handle("A_LONG") == {"action": "import_workout", "path": "/x/Téléchargements/vo2.zwo"}, "import_workout")
-	f.on_error("workout_invalid", "vo2.zwo : aucun bloc reconnu")
-	_check(f.state()["status"] == "Échec : vo2.zwo : aucun bloc reconnu" and f.state()["screen"] == "workout_import",
-		"échec affiché")
-	f.list_failed("imports")
-	_check(f.state()["items"][0]["label"] == "Fichiers à importer indisponibles", "imports sans réponse")
-	f.on_workout_saved({"request_cmd_id": 12, "workout_id": "vo2", "name": "VO2", "created": false})
-	_check(f.state()["status"] == "Importé : VO2 (déjà présent)", "import : ligne d'état (%s)" % f.state()["status"])
 	f.set_workouts([{"id": "vo2", "name": "VO2", "duration_s": 0, "selectable": false, "error": "aucun bloc reconnu"}])
-	_check(f.state()["screen"] == "workouts" and _focus_id(f) != "vo2", "import invalide : désactivé, pas de focus")
+	_check(f.state()["screen"] == "workouts" and _focus_id(f) != "vo2", "fichier invalide : désactivé, pas de focus")
+	_check(not "_import" in _ids(f), "aucune ligne Importer (%s)" % str(_ids(f)))
 
 const DAY := {"week": 1, "day": "jour1", "date": "2026-10-27", "workout": "ss", "name": "Sweet spot",
 	"duration_s": 2700.0, "tss": 60.8, "done": false}
@@ -613,8 +639,9 @@ func _test_ftp_flow() -> void:
 	f.on_state({"session_state": "RUNNING"})
 	var ftp := {"test": "ramp", "ftp_w": 262, "previous_ftp_w": 250, "warnings": ["trainer_dropout"], "reliable": false}
 	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 1500.0, "ftp_test": ftp}})
-	_check(f.state()["status"] == "Nouvelle FTP : 262 W (avant 250 W) ; coupure du trainer pendant l'effort",
-		"bilan : nouvelle FTP et avertissement (%s)" % f.state()["status"])
+	_check(f.state()["status"] == "" and f.summary_model.ftp_result(f.summary) == {"value": "262 W", "before": "avant 250 W",
+		"delta": "+12 W", "ok": false, "note": "coupure du trainer pendant l'effort"},
+		"bilan : nouvelle FTP et avertissement au bandeau du bilan, rien sous le titre (lot N20)")
 	_check(_ids(f) == ["accept_ftp", "keep_ftp", "new_session", "details", "quit"] and _focus_id(f) == "accept_ftp",
 		"Accepter / Garder en tête du bilan")
 	_check(f.handle("A_LONG") == {"action": "accept_ftp", "force": false}, "accept_ftp")
@@ -637,8 +664,8 @@ func _test_ftp_flow() -> void:
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {"ftp_test": {"test": "ramp", "ftp_w": null,
 		"previous_ftp_w": 250, "warnings": ["too_short"], "reliable": false}}})
-	_check(f.state()["status"] == "Test de FTP : aucune FTP calculable ; test trop court" and _ids(f)[0] == "new_session",
-		"sans FTP calculable : rien à accepter")
+	_check(f.state()["status"] == "" and f.summary_model.ftp_result(f.summary)["note"] == "aucune FTP calculable ; test trop court"
+		and _ids(f)[0] == "new_session", "sans FTP calculable : rien à accepter, raison au bandeau du bilan")
 
 
 ## Bibliothèque de parcours (lot O12, critère 3) : filtrer « col », trier par dénivelé, lancer le premier.
@@ -969,6 +996,7 @@ func _init() -> void:
 	_test_full_session()
 	_test_abandon_and_summary_quit()
 	_test_pause_after_workout_done()
+	_test_u_turn_entry()
 	_test_view()
 	print("test_menu_flow : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

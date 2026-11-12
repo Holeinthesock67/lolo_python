@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série CT : simulateur d'équilibrage de la Course tactique | Python | Y10, T13 | Moyenne | En PR (7 novembre) ; rapport `docs/5.0/RAPPORT_EQUILIBRAGE_CT0.md` |
+| Série CT : simulateur d'équilibrage de la Course tactique | Python | Y10, T13 | Moyenne | Livré le 7 novembre (PR #743) ; rapport `docs/5.0/RAPPORT_EQUILIBRAGE_CT0.md` |
 
 Série CT (version 5.0, mode « Course tactique »). Plan de la série : `docs/5.0/PLAN_SERIE_CT.md`.
 

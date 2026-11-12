@@ -17,6 +17,7 @@ extends RefCounted
 
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
+const CoachViewModel := preload("res://scripts/coach_view_model.gd")
 
 ## Écran de modification des champs de l'avatar du Garage (V8) : seul réglage qui garde son écran
 ## (aperçu 3D à côté), les autres se modifient en place dans leur liste.
@@ -40,12 +41,14 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
 ## Option « gravel » (lot U16, road_surface.gd) : `gravel.mode` prend `off` / `auto` / `compacted` / `gravel` / `dirt` ;
-## biome du décor (lot U16, biome_ids.gd) : `render.biome` prend `auto` ou un des seize biomes, noms du plan U §2.
+## biome du décor (lot U16, biome_ids.gd) : `render.biome` prend `auto` ou un des dix-huit biomes, noms du plan U §2.
 ## Lot O26 : décor vivant (booléen du fichier, `on` / `off` au menu), ressenti et mode du vent, thème par défaut.
 ## Pilotage du trainer (lots RC1-RC3) : `trainer.control` prend `resistance` / `sim`.
 ## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
+## Jour et nuit, saisons (lot P19) : `render.day_night` et `render.seasons`, coupés par défaut.
 ## Départ de la séance (lot O36) : `depart.mode` prend `pedalage` / `immediat`.
 ## Dernier survivant (lot DS2) : écart de niveau des bots et suite donnée à l'élimination du cycliste.
+## Séance conseillée (lot CO5) : `coach.objectif` ; champs des saisies du conseil (CoachViewModel.KEY_PREFIX).
 const CHOICE_TEXTS := {
 	"depart.mode": {"pedalage": "au pédalage", "immediat": "immédiat"},
 	"powerups.mode": {"off": "non", "classiques": "classiques", "tactiques": "tactiques"},   # contrat 1.13 (TT1)
@@ -62,10 +65,14 @@ const CHOICE_TEXTS := {
 		"farmland": "vignobles et cultures", "boreal_forest": "forêt boréale", "alpine": "haute montagne",
 		"tundra": "toundra", "polar": "polaire", "mediterranean": "méditerranéen", "steppe": "steppe",
 		"savanna": "savane", "sand_desert": "désert de sable", "rock_desert": "désert de roche", "jungle": "jungle",
-		"wetland": "zones humides", "coast": "littoral", "volcanic": "volcanique"},
+		"wetland": "zones humides", "coast": "littoral", "volcanic": "volcanique",
+		"japan": "Japon", "atlantic_heath": "Atlantique et landes"},
 	"render.living": {"on": "oui", "off": "non (rendu de la 1.0)"},
+	"render.day_night": {"off": "coupé", "theme": "heure du thème", "real": "heure du PC", "accelerated": "une journée en une heure"},
+	"render.seasons": {"off": "coupées", "theme": "celle du thème", "date": "selon la date", "spring": "printemps",
+		"summer": "été", "autumn": "automne", "winter": "hiver"},
 	"render.theme": {"default": "par défaut"},
-	"wind.mode": {"off": "coupé", "fixed": "constant", "gusty": "en rafales", "theme": "celui du thème"},
+	"wind.mode": {"off": "coupé", "fixed": "constant", "gusty": "en rafales", "theme": "celui du thème", "local": "météo du jour"},
 	"wind.feel": {"grade": "par la pente", "ftms": "par le trainer (essai)"},
 	"open_world.network": {"on": "oui", "off": "non (hors ligne)"},
 	"progression.enabled": {"on": "oui", "off": "non (sans Garage)"},
@@ -73,6 +80,7 @@ const CHOICE_TEXTS := {
 	"trainer.control": {"resistance": "résistance calculée", "sim": "SIM du trainer"},
 	"survivor.spread": {"tight": "serré (± 3 %)", "normal": "normal (± 8 %)", "wide": "large (± 15 %)"},
 	"survivor.after_out": {"ride": "continuer à rouler", "end": "terminer la séance"},
+	"coach.objectif": {"endurance": "endurance", "courses": "courses", "grimpeur": "grimpeur"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
 
@@ -139,6 +147,8 @@ static func format_value(it: Dictionary, value) -> String:
 		return slider(int(value))
 	if str(it.get("key", "")).begins_with(GarageViewModel.KEY_PREFIX):
 		return GarageViewModel.format_edit(str(it["key"]), int(value))
+	if str(it.get("key", "")).begins_with(CoachViewModel.KEY_PREFIX):
+		return CoachViewModel.format_edit(str(it["key"]), value, str(it.get("base_date", "")))
 	if it.has("format"):
 		return WorkoutBuilder.format_param(it, value)
 	var texts: Dictionary = CHOICE_TEXTS.get(str(it.get("key", "")), BOOL_TEXTS if it.get("choices", []) == BOOL_CHOICES else {})
@@ -336,6 +346,8 @@ func commit() -> Dictionary:
 	if str(e["key"]).begins_with(GarageViewModel.KEY_PREFIX):
 		return {"action": "garage_set", "key": str(e["key"]).substr(GarageViewModel.KEY_PREFIX.length()),
 			"value": int(e["value"])}
+	if str(e["key"]).begins_with(CoachViewModel.KEY_PREFIX):
+		return {"action": "coach_set", "key": str(e["key"]).substr(CoachViewModel.KEY_PREFIX.length()), "value": e["value"]}
 	if str(e["key"]).begins_with(WorkoutBuilder.KEY_PREFIX):
 		return {"action": "builder_set", "key": str(e["key"]).substr(WorkoutBuilder.KEY_PREFIX.length()),
 			"value": int(e["value"])}
