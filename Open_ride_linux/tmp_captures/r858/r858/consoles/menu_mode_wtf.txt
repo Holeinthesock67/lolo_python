@@ -1,0 +1,95 @@
+== mode_wtf (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran home (elements=['wtf']) : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (elements=['demo']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « wtf » : écran « wtf_rules », focus « rule:gravity »
+[OK] écran wtf_rules (titre='Mode WTF : 13 règles sur 13', elements=['rule:gravity', 'rule:chef', 'all_on', 'launch']) : « Mode WTF : 13 règles sur 13 »
+[OK] choisir « rule:camera » : écran « wtf_rules », focus « rule:camera »
+[OK] écran wtf_rules (titre='Mode WTF : 12 règles sur 13', contient=['Caméras improbables : non']) : « Mode WTF : 12 règles sur 13 »
+[OK] fichier ~/OpenRide/wtf.toml présent : OpenRide/wtf.toml
+[OK] choisir « all_on » : écran « wtf_rules », focus « launch »
+[OK] écran wtf_rules (titre='Mode WTF : 13 règles sur 13', contient=['Caméras improbables : oui']) : « Mode WTF : 13 règles sur 13 »
+[OK] choisir « rule:camera » : écran « wtf_rules », focus « rule:camera »
+[OK] choisir « launch » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : mode WTF — Col du lacet', focus='start', elements=['start', 'wtf_rules', 'change_route', 'bot1', 'ghost']) : « Prêt : mode WTF — Col du lacet »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Mode WTF : 12 règle » : Mode WTF : 12 règle
+[OK] écran menu caché : « Prêt : mode WTF — Col du lacet »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== mode_wtf (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home (elements=['wtf']) : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (elements=['demo']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « wtf » : écran « wtf_rules », focus « rule:gravity »
+[OK] écran wtf_rules (titre='Mode WTF : 13 règles sur 13', elements=['rule:gravity', 'rule:chef', 'all_on', 'launch']) : « Mode WTF : 13 règles sur 13 »
+[OK] choisir « rule:camera » : écran « wtf_rules », focus « rule:camera »
+[OK] écran wtf_rules (titre='Mode WTF : 12 règles sur 13', contient=['Caméras improbables : non']) : « Mode WTF : 12 règles sur 13 »
+[OK] fichier ~/OpenRide/wtf.toml présent : OpenRide/wtf.toml
+[OK] choisir « all_on » : écran « wtf_rules », focus « launch »
+[OK] écran wtf_rules (titre='Mode WTF : 13 règles sur 13', contient=['Caméras improbables : oui']) : « Mode WTF : 13 règles sur 13 »
+[OK] choisir « rule:camera » : écran « wtf_rules », focus « rule:camera »
+[OK] choisir « launch » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : mode WTF — Col du lacet', focus='start', elements=['start', 'wtf_rules', 'change_route', 'bot1', 'ghost']) : « Prêt : mode WTF — Col du lacet »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Mode WTF : 12 règle » : Mode WTF : 12 règle
+[OK] écran menu caché : « Prêt : mode WTF — Col du lacet »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== mode_wtf (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home (elements=['wtf']) : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (elements=['demo']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « wtf » : écran « wtf_rules », focus « rule:gravity »
+[OK] écran wtf_rules (titre='Mode WTF : 13 règles sur 13', elements=['rule:gravity', 'rule:chef', 'all_on', 'launch']) : « Mode WTF : 13 règles sur 13 »
+[OK] choisir « rule:camera » : écran « wtf_rules », focus « rule:camera »
+[OK] écran wtf_rules (titre='Mode WTF : 12 règles sur 13', contient=['Caméras improbables : non']) : « Mode WTF : 12 règles sur 13 »
+[OK] fichier ~/OpenRide/wtf.toml présent : OpenRide/wtf.toml
+[OK] choisir « all_on » : écran « wtf_rules », focus « launch »
+[OK] écran wtf_rules (titre='Mode WTF : 13 règles sur 13', contient=['Caméras improbables : oui']) : « Mode WTF : 13 règles sur 13 »
+[OK] choisir « rule:camera » : écran « wtf_rules », focus « rule:camera »
+[OK] choisir « launch » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : mode WTF — Col du lacet', focus='start', elements=['start', 'wtf_rules', 'change_route', 'bot1', 'ghost']) : « Prêt : mode WTF — Col du lacet »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Mode WTF : 12 règle » : Mode WTF : 12 règle
+[OK] écran menu caché : « Prêt : mode WTF — Col du lacet »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+mode_wtf                 click    OK              56 s
+mode_wtf                 clavier  OK              55 s
+mode_wtf                 souris   OK              47 s
+Rapport : ~/mesures-2026-11-01-auto/r858/menu_mode_wtf/rapport.html
+OK

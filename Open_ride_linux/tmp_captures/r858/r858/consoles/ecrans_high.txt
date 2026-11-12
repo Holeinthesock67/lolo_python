@@ -1,0 +1,46 @@
+== grand_prix (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home (elements=['grandprix']) : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (elements=['demo']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « grandprix » : écran « ready », focus « change_route »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Col du lacet', contient=['trop court (10 km)', 'Objets : tous'], elements=['start', 'change_route', 'set:grandprix.opponents', 'set:grandprix.distance_km', 'set:bots.level_pct', 'set:grandprix.chaos', 'set:grandprix.box_every_m', 'gp_items']) : « Prêt : Grand Prix des objets — Col du lacet »
+[OK] choisir « set:grandprix.distance_km » : écran « ready », focus « set:grandprix.distance_km »
+[OK] écran ready : « Prêt : Grand Prix des objets — Col du lacet »
+[OK] écran ready (contient=['course de 5 km']) : « Prêt : Grand Prix des objets — Col du lacet »
+[OK] config.toml : grandprix.distance_km = 5 : OK
+[OK] choisir « gp_items » : écran « gp_items », focus « item:gel »
+[OK] écran gp_items (titre='Grand Prix : 13 objets sur 13', elements=['item:gel', 'item:stealth', 'all_on']) : « Grand Prix : 13 objets sur 13 »
+[OK] choisir « item:storm » : écran « gp_items », focus « item:storm »
+[OK] écran gp_items (titre='Grand Prix : 12 objets sur 13', contient=["Nuage d'orage : non"]) : « Grand Prix : 12 objets sur 13 »
+[OK] fichier ~/OpenRide/grandprix.toml présent : OpenRide/grandprix.toml
+[OK] choisir « all_on » : écran « gp_items », focus « item:gel »
+[OK] écran gp_items (titre='Grand Prix : 13 objets sur 13', contient=["Nuage d'orage : oui"]) : « Grand Prix : 13 objets sur 13 »
+[OK] choisir « item:storm » : écran « gp_items », focus « item:storm »
+[OK] écran ready (contient=['Objets : 12 sur 13']) : « Prêt : Grand Prix des objets — Col du lacet »
+[OK] choisir « change_route » : écran « routes », focus « demo »
+[OK] écran routes (elements=['demo', 'velodrome-250']) : « Parcours »
+[OK] choisir « velodrome-250 » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Vélodrome 250 m', contient=['3 tours, 0,8 km', 'Tours du circuit'], elements=['start', 'change_route', 'set:grandprix.opponents', 'set:grandprix.laps', 'set:bots.level_pct', 'set:grandprix.chaos', 'set:grandprix.box_every_m', 'gp_items']) : « Prêt : Grand Prix des objets — Vélodrome 250 m »
+[OK] choisir « change_route » : écran « routes », focus « velodrome-250 »
+[OK] écran routes (elements=['demo']) : « Parcours »
+[OK] choisir « demo » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Col du lacet', contient=['course de 5 km']) : « Prêt : Grand Prix des objets — Col du lacet »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Grand Prix des objets : 4 adversaires, 5.0 km, 12 objet » : Grand Prix des objets : 4 adversaires, 5.0 km, 12 objet
+[OK] écran menu caché : « Prêt : Grand Prix des objets — Col du lacet »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+grand_prix               clavier  OK              81 s
+Rapport : ~/mesures-2026-11-01-auto/r858/ecrans_high/rapport.html
+OK

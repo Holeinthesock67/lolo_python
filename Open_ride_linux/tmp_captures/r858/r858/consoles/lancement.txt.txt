@@ -1,0 +1,19 @@
+18:21:36 empreinte avant ed77f04c49a967c14c1d88c9c091aba3
+18:21:36 tête b84c951e
+18:21:47 tests engine
+18:48:31 fin rc=0
+18:48:31 menu_bench grand_prix
+18:51:56 fin rc=0
+18:51:56 menu_bench dernier_survivant
+18:54:19 fin rc=0
+18:54:19 menu_bench mode_wtf
+18:56:57 fin rc=0
+18:56:57 captures grand_prix low
+18:58:16 fin rc=0
+18:58:16 captures grand_prix medium
+18:59:36 fin rc=0
+18:59:36 captures grand_prix high
+19:00:58 fin rc=0
+19:00:59 empreinte après ed77f04c49a967c14c1d88c9c091aba3
+19:00:59 clone 71e814c8
+19:00:59 FIN

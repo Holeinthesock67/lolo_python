@@ -1,0 +1,86 @@
+== dernier_survivant (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home (elements=['survivor']) : « OpenRide » (engine muet 8.5 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (elements=['demo']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « survivor » : écran « ready », focus « change_route »
+[OK] écran ready (titre='Prêt : Dernier survivant — Col du lacet', contient=['trop court ('], elements=['start', 'change_route', 'set:survivor.opponents', 'set:survivor.spacing_km', 'set:bots.level_pct', 'set:survivor.spread', 'set:survivor.after_out']) : « Prêt : Dernier survivant — Col du lacet »
+[OK] choisir « set:survivor.opponents » : écran « ready », focus « set:survivor.opponents »
+[OK] écran ready : « Prêt : Dernier survivant — Col du lacet »
+[OK] écran ready (contient=['Adversaires — ◀ 2 ▶']) : « Prêt : Dernier survivant — Col du lacet »
+[OK] écran ready (contient=['2 arches sur 4 km']) : « Prêt : Dernier survivant — Col du lacet »
+[OK] config.toml : survivor.opponents = 2 : OK
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Dernier survivant : 2 adversaires » : Dernier survivant : 2 adversaires
+[OK] écran menu caché : « Prêt : Dernier survivant — Col du lacet »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== dernier_survivant (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran home (elements=['survivor']) : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (elements=['demo']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « survivor » : écran « ready », focus « change_route »
+[OK] écran ready (titre='Prêt : Dernier survivant — Col du lacet', contient=['trop court ('], elements=['start', 'change_route', 'set:survivor.opponents', 'set:survivor.spacing_km', 'set:bots.level_pct', 'set:survivor.spread', 'set:survivor.after_out']) : « Prêt : Dernier survivant — Col du lacet »
+[OK] choisir « set:survivor.opponents » : écran « ready », focus « set:survivor.opponents »
+[OK] écran ready : « Prêt : Dernier survivant — Col du lacet »
+[OK] écran ready (contient=['Adversaires — ◀ 2 ▶']) : « Prêt : Dernier survivant — Col du lacet »
+[OK] écran ready (contient=['2 arches sur 4 km']) : « Prêt : Dernier survivant — Col du lacet »
+[OK] config.toml : survivor.opponents = 2 : OK
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Dernier survivant : 2 adversaires » : Dernier survivant : 2 adversaires
+[OK] écran menu caché : « Prêt : Dernier survivant — Col du lacet »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== dernier_survivant (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.3 s
+[OK] écran home (elements=['survivor']) : « OpenRide » (engine muet 9.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (elements=['demo']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[OK] écran home (contient=['Parcours : Col du lacet']) : « OpenRide »
+[OK] choisir « survivor » : écran « ready », focus « change_route »
+[OK] écran ready (titre='Prêt : Dernier survivant — Col du lacet', contient=['trop court ('], elements=['start', 'change_route', 'set:survivor.opponents', 'set:survivor.spacing_km', 'set:bots.level_pct', 'set:survivor.spread', 'set:survivor.after_out']) : « Prêt : Dernier survivant — Col du lacet »
+[OK] choisir « set:survivor.opponents » : écran « ready », focus « set:survivor.opponents »
+[OK] écran ready : « Prêt : Dernier survivant — Col du lacet »
+[OK] écran ready (contient=['Adversaires — ◀ 2 ▶']) : « Prêt : Dernier survivant — Col du lacet »
+[OK] écran ready (contient=['2 arches sur 4 km']) : « Prêt : Dernier survivant — Col du lacet »
+[OK] config.toml : survivor.opponents = 2 : OK
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Dernier survivant : 2 adversaires » : Dernier survivant : 2 adversaires
+[OK] écran menu caché : « Prêt : Dernier survivant — Col du lacet »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+dernier_survivant        click    OK              51 s
+dernier_survivant        clavier  OK              51 s
+dernier_survivant        souris   OK              41 s
+Rapport : ~/mesures-2026-11-01-auto/r858/menu_dernier_survivant/rapport.html
+OK
