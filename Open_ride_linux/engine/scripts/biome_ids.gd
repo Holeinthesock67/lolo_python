@@ -19,8 +19,11 @@ const GROUND_VARIANTS: Array[String] = [
 	"gres_rose", "calcaire_blanc", "granite_gris", "schiste_sombre", "basalte", "laterite_rouge", "craie",
 ]
 const ROOF_VARIANTS: Array[String] = [
-	"tuile_ronde", "ardoise", "tuile_plate", "pierre_seche", "toit_plat_blanc", "bois", "kawara",
+	"tuile_ronde", "ardoise", "tuile_plate", "pierre_seche", "toit_plat_blanc", "bois", "kawara", "bois_peint",
 ]
+## Paysages (lot U25, 6.0) : troisième membre `landscape` de la variante d'une tuile ; la section `landscapes`
+## du thème donne, pour chaque biome de base, un bloc partiel fusionné sur celui du biome (biome_model.gd).
+const LANDSCAPES: Array[String] = ["canyon", "fjord", "ile_volcanique", "rizieres"]
 
 ## Espèces de `vegetation.species` (lot U7 ; Japon, lot JP5 ; landes atlantiques, lot AT1).
 const SPECIES: Array[String] = [

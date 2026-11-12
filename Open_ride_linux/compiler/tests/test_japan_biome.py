@@ -79,5 +79,5 @@ def test_regional_kawara_zones_match_the_japan_zone():
     table = regional.load_table()
     kawara = sorted((z.lat, z.lon) for z in table.zones if z.values.get("roofs") == "kawara")
     assert kawara == sorted((z.lat, z.lon) for z in B.biome_zones()[1] if z.biome == "japan")
-    assert regional.variant_for(35.23, 139.07, {"japan": 1.0}, table) == {"ground": "basalte", "roofs": "kawara"}
+    assert regional.variant_for(35.23, 139.07, {"japan": 1.0}, table) == {"ground": "basalte", "roofs": "kawara", "landscape": None}
     assert regional.variant_for(35.10, 129.04, {"temperate_forest": 1.0}, table).get("roofs") != "kawara"

@@ -7,7 +7,8 @@ extends RefCounted
 ##   lointaine), somme ramenée à 1 ; sans couche biome, biome par défaut ;
 ## - `top_biomes(ix, iz, max_n)` : les `max_n` biomes les plus présents d'une tuile proche, renormalisés ;
 ## - forçage : `forced` (argument `--biome=`, puis `hello_ack.config.biome` avec le lot U16) remplace tous les poids ;
-## - `params(biome, season, progress, variant)` : paramètres du thème 2.0, repli sur les clés 1.x ;
+## - `params(biome, season, progress, variant)` : paramètres du thème 2.0, repli sur les clés 1.x ; le paysage
+##   de la variante (lot U25, `landscape`) remplace des clés du bloc des seuls biomes qu'il décrit ;
 ##   un thème 1.x donne donc à tous les biomes les paramètres d'aujourd'hui. Saisons (lot U13) : sans
 ##   `season`, celle du calendrier du biome à la date posée par `set_season_date` (season_model.gd
 ##   `season_for_biome`) ; `season_params` : paramètres de cette saison (neutres sans date ni saison) ;
@@ -183,13 +184,9 @@ func dominant_at(x: float, z: float) -> String:
 ## `roofs` de la tuile (U4) l'emporte, puis le biome dominant ; un forçage `--biome=` ignore les variantes.
 func building_style_at(x: float, z: float) -> String:
 	var roofs := ""
-	if forced == "" and layer.present:
-		var t: Dictionary = layer.tile("near", floori(x / NEAR_M), floori(z / NEAR_M))
-		if t.is_empty():
-			t = layer.tile("far", floori(x / FAR_M), floori(z / FAR_M))
-		var v = t.get("variant", null)
-		if typeof(v) == TYPE_DICTIONARY and typeof(v.get("roofs", null)) == TYPE_STRING:
-			roofs = v["roofs"]
+	var v = variant_at(x, z)
+	if typeof(v) == TYPE_DICTIONARY and typeof(v.get("roofs", null)) == TYPE_STRING:
+		roofs = v["roofs"]
 	return BuildingStyles.resolve(roofs, dominant_at(x, z))
 
 
@@ -217,10 +214,12 @@ func _terrain_dict(ground: Dictionary) -> Dictionary:
 	return base
 
 
-## Section `terrain` au format 1.x du biome (pour TerrainMaterial tant que U6 n'est pas là, et pour les vitrines).
-func terrain_theme(biome: String) -> Dictionary:
+## Section `terrain` au format 1.x du biome (pour TerrainMaterial tant que U6 n'est pas là, et pour les vitrines),
+## dans le paysage de `variant` (lot U25) s'il décrit le sol de ce biome.
+func terrain_theme(biome: String, variant: Variant = null) -> Dictionary:
 	var entry = theme.get("biomes", {}).get(biome, {}) if typeof(theme.get("biomes", null)) == TYPE_DICTIONARY else {}
-	var ground = entry.get("ground", {}) if typeof(entry) == TYPE_DICTIONARY else {}
+	entry = _with_landscape(entry if typeof(entry) == TYPE_DICTIONARY else {}, biome, variant)
+	var ground = entry.get("ground", {})
 	return {"terrain": _terrain_dict(ground if typeof(ground) == TYPE_DICTIONARY else {})}
 
 
@@ -236,6 +235,7 @@ func params(biome: String, season: String = "", progress: float = 0.0, variant: 
 	var entry: Dictionary = {}
 	if typeof(theme.get("biomes", null)) == TYPE_DICTIONARY and typeof(theme["biomes"].get(biome, null)) == TYPE_DICTIONARY:
 		entry = theme["biomes"][biome]
+	entry = _with_landscape(entry, biome, variant)
 	var ground: Dictionary = entry.get("ground", {}) if typeof(entry.get("ground", null)) == TYPE_DICTIONARY else {}
 	var terrain := ThemeRenderParams.terrain_uniforms({"terrain": _terrain_dict(ground)})
 
@@ -292,6 +292,42 @@ func params(biome: String, season: String = "", progress: float = 0.0, variant: 
 	_params_cache[key] = out
 	_mutex.unlock()
 	return out
+
+
+## Bloc du biome dans le paysage de la variante (lot U25) : `landscapes.<paysage>.biomes.<biome>` du thème,
+## fusionné section par section sur le bloc du biome (une clé donnée remplace celle du biome, un tableau
+## comme `species` ou `layers` est remplacé en entier). Biome qui n'est pas une base du paysage, variante sans
+## paysage ou thème sans `landscapes` : bloc du biome inchangé.
+func _with_landscape(entry: Dictionary, biome: String, variant: Variant) -> Dictionary:
+	if typeof(variant) != TYPE_DICTIONARY or typeof(variant.get("landscape", null)) != TYPE_STRING:
+		return entry
+	var all_l = theme.get("landscapes", null)
+	if typeof(all_l) != TYPE_DICTIONARY or typeof(all_l.get(variant["landscape"], null)) != TYPE_DICTIONARY:
+		return entry
+	var bases = all_l[variant["landscape"]].get("biomes", null)
+	if typeof(bases) != TYPE_DICTIONARY or typeof(bases.get(biome, null)) != TYPE_DICTIONARY:
+		return entry
+	var out := entry.duplicate(true)
+	var over: Dictionary = bases[biome]
+	for section in over.keys():
+		if typeof(over[section]) == TYPE_DICTIONARY and typeof(out.get(section, null)) == TYPE_DICTIONARY:
+			var merged: Dictionary = out[section]
+			for k in over[section].keys():
+				merged[k] = (over[section] as Dictionary)[k]
+		else:
+			out[section] = over[section]
+	return out
+
+
+## Variante régionale (lots U4 et U25) de la tuile proche, sinon lointaine, qui contient (x, z) ; null sans
+## couche biome ou sous un forçage `--biome=`, qui ignore les variantes.
+func variant_at(x: float, z: float) -> Variant:
+	if forced != "" or not layer.present:
+		return null
+	var t: Dictionary = layer.tile("near", floori(x / NEAR_M), floori(z / NEAR_M))
+	if t.is_empty():
+		t = layer.tile("far", floori(x / FAR_M), floori(z / FAR_M))
+	return t.get("variant", null)
 
 
 ## Entrées `variants` du thème pour le couple {ground, roofs} d'une tuile ({} si aucune).

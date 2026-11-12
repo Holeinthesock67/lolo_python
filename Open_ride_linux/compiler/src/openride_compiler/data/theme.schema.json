@@ -412,6 +412,25 @@
           "exclusiveMinimum": 0
         }
       }
+    },
+    "landscape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "biomes"
+      ],
+      "properties": {
+        "biomes": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/biomeId"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/biome"
+          }
+        }
+      }
     }
   },
   "properties": {
@@ -690,13 +709,29 @@
           "pierre_seche",
           "toit_plat_blanc",
           "bois",
-          "kawara"
+          "kawara",
+          "bois_peint"
         ]
       },
       "additionalProperties": {
         "$ref": "#/$defs/variant"
       },
       "description": "Thème 2.0 (lot U1) : variantes régionales ; roches et terres (rock_color, soil_color) ou architecture (walls, roofs)."
+    },
+    "landscapes": {
+      "type": "object",
+      "propertyNames": {
+        "enum": [
+          "canyon",
+          "fjord",
+          "ile_volcanique",
+          "rizieres"
+        ]
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/landscape"
+      },
+      "description": "Thème 2.0 (lot U25, 6.0) : paysages posés sur des biomes existants ; pour chaque biome de base, bloc partiel fusionné sur le bloc du biome (même forme que biomes.<id>) dans les tuiles de ce paysage."
     },
     "surfaces": {
       "type": "object",
