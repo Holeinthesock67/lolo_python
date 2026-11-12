@@ -6,6 +6,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_wtf_scene.gd
 
 const M := preload("res://scripts/wtf/wtf_scene_model.gd")
+const WtfHudModel := preload("res://scripts/wtf/wtf_hud_model.gd")
 const WtfScene := preload("res://scripts/wtf/wtf_scene.gd")
 
 var _failures := 0
@@ -61,7 +62,7 @@ func _run() -> void:
 	_check(_ev({"id": "upside_down", "left_s": 30})["roll_deg"] == 180.0, "monde à l'envers : caméra retournée")
 	var col := _ev({"id": "collapse", "gap_m": 40.0, "left_s": 30})
 	var chunks: Array = col["props"].filter(func(p): return p["kind"] == "chunk")
-	_check(chunks.size() == 6 and chunks[0]["ds"] == -M.SHOW_BEHIND_M and chunks[1]["ds"] < -M.SHOW_BEHIND_M,
+	_check(chunks.size() == 6 and is_equal_approx(chunks[0]["ds"], -M.SHOW_BEHIND_M - 0.5 * M.CHUNK_M) and chunks[1]["ds"] < -M.SHOW_BEHIND_M,
 		"effondrement à 40 m : front montré à %.0f m derrière, tronçons plus loin" % M.SHOW_BEHIND_M)
 	_check(chunks[3]["up"] < chunks[1]["up"], "les tronçons les plus loin sont tombés plus bas")
 	_check(col["camera"] == "flee" and _kinds(col).get("void", 0) == 1, "effondrement : vue vers l'arrière, gouffre posé")
@@ -149,6 +150,19 @@ func _run() -> void:
 	_check(cow_node.mesh.get_surface_count() == 1 and (cow_node.material_override as StandardMaterial3D).vertex_color_use_as_albedo,
 		"vache en un seul maillage à couleurs : un appel de dessin")
 	cow_node.free()
+	# Lot WTF9 : chaque objet a sa forme et plusieurs couleurs (plus de cube ou de boule unis).
+	for kind in ["ball", "chunk", "void", "kata_apple", "kata_sign", "kata_cow", "kata_car", "kata_house", "kata_church",
+			"dish_spaghetti", "dish_jelly", "dish_musette", "dish_souffle", "dish_chili"]:
+		var node: MeshInstance3D = WtfScene._make(kind)
+		var ok := node != null and node.mesh is ArrayMesh and node.mesh.get_surface_count() == 1
+		var colors := {}
+		if ok:
+			for c in (node.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_COLOR]:
+				colors[c.to_html()] = true
+		_check(ok and colors.size() >= 2 and not colors.has(WtfHudModel.PINK.to_html()),
+			"WTF9 : %s en un maillage, %d couleurs, sans rose uni" % [kind, colors.size()])
+		if node != null:
+			node.free()
 	var snail := WtfScene.camera_goal("snail", Vector3.ZERO, 0.0, 0.0)
 	_check(snail.origin.y < 0.5, "vue de l'escargot au ras du sol")
 
