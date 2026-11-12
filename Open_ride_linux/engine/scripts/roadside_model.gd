@@ -17,6 +17,10 @@ extends RefCounted
 ## l'aller, et les bornes (numérotées sur leurs deux faces par roadside_props.gd) restent à droite.
 ## Un objet qui tomberait dans l'eau (surface d'eau ou cours d'eau, donc
 ## aussi sur un pont) est avancé par pas de NUDGE_M, au plus MAX_NUDGE_M, sinon abandonné.
+## Japon (lot JP5, version 6.0) : avec `biome_at` (biome dominant en (x, z)), une montée qui commence dans le biome
+## `japan` reçoit un `torii` au-dessus de la route à son pied (`side` 0 : centré sur la chaussée, comme le grand
+## torii de Hakone-Yumoto sur la route 1) et une paire de lanternes de pierre `lantern` au sommet, une de chaque
+## côté, LANTERN_AFTER_M après le panneau du sommet.
 ## `paint_marks(climbs)` : chiffres des kilomètres restants peints sur la chaussée, de 5 à 1 km du
 ## sommet, `[{s, digit}]`, pour road_markings.gdshader.
 ## Textes en français, nombres au format français (espace des milliers, virgule décimale).
@@ -31,6 +35,8 @@ const SIDE_OFFSET_M := 1.5          # du bord de la chaussée
 const NUDGE_M := 10.0
 const MAX_NUDGE_M := 100.0
 const WATER_MARGIN_M := 2.0
+const TORII_AFTER_START_M := 20.0
+const LANTERN_AFTER_M := 12.0
 
 
 ## Entier au format français : « 1 234 ».
@@ -61,11 +67,15 @@ static func approach_texts(km: int, avg_pct: float) -> Array:
 
 ## Position d'un objet du bord de route, à SIDE_OFFSET_M du bord de la chaussée, côté `side` (1 : droite du
 ## parcours, -1 : gauche).
+## `side` 0 : sur l'axe de la chaussée (torii au-dessus de la route).
 static func prop_position(route, s: float, road_width_m: float = RoadBuilder.ROAD_WIDTH_M, side: int = 1) -> Vector3:
 	var smp: Dictionary = route.sample(s)
+	var p := Vector3(smp["x"], smp["y"], smp["z"])
+	if side == 0:
+		return p
 	var h := deg_to_rad(float(smp["heading_deg"]))
 	var right := Vector3(cos(h), 0.0, sin(h))
-	return Vector3(smp["x"], smp["y"], smp["z"]) + right * (-1.0 if side < 0 else 1.0) * (road_width_m * 0.5 + SIDE_OFFSET_M)
+	return p + right * (-1.0 if side < 0 else 1.0) * (road_width_m * 0.5 + SIDE_OFFSET_M)
 
 
 static func _in_water(p: Vector3, water: Dictionary) -> bool:
@@ -118,12 +128,22 @@ static func _summit_name(route, summit_s: float, pois: Array) -> String:
 
 
 static func items(route, climbs: Array, pois: Array = [], water: Dictionary = {},
-		road_width_m: float = RoadBuilder.ROAD_WIDTH_M) -> Array:
+		road_width_m: float = RoadBuilder.ROAD_WIDTH_M, biome_at: Callable = Callable()) -> Array:
 	var out := []
 	if route == null:
 		return out
 	for c in climbs:
 		var summit_s := float(c["summit_s"])
+		if biome_at.is_valid():
+			var foot: Vector3 = route.sample_point(float(c["start_s"]))
+			if str(biome_at.call(foot.x, foot.z)) == "japan":
+				var st := _dry_s(route, minf(float(c["start_s"]) + TORII_AFTER_START_M, summit_s), water, road_width_m, 0)
+				if not is_nan(st):
+					out.append({"kind": "torii", "s": st, "side": 0, "text": "", "lines": []})
+				for side in [1, -1]:
+					var sl := _dry_s(route, minf(summit_s + LANTERN_AFTER_M, route.length_m - 1.0), water, road_width_m, side)
+					if not is_nan(sl):
+						out.append({"kind": "lantern", "s": sl, "side": side, "text": "", "lines": []})
 		var name := _summit_name(route, summit_s, pois)
 		var alt_txt := "%s m" % format_int(int(round(float(c["summit_alt_m"]))))
 		for side in [1, -1]:   # un panneau pour chaque sens de marche (demi-tour, lot N17)

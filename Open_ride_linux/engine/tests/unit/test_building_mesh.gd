@@ -443,11 +443,23 @@ func _test_biome_habitats() -> void:
 	_check(all_palettes, "toute palette propre à un style existe dans MATERIAL_COLORS")
 
 	# Code d'habillage : décodage du shader (building.gdshader) pour les plus grandes valeurs
-	var d := {"wall": BuildingStyles.WALL_CHALET, "windows": BuildingStyles.WINDOWS_SHOP, "roof": BuildingStyles.ROOF_THATCH}
+	var d := {"wall": BuildingStyles.WALL_JAPANESE, "windows": BuildingStyles.WINDOWS_SHOJI, "roof": BuildingStyles.ROOF_KAWARA}
 	var code := int(BuildingMesh.dress_code(d, true, 1000.0))
-	_check(code % 16 == BuildingStyles.WALL_CHALET and (code / 16) % 8 == BuildingStyles.WINDOWS_SHOP
-		and (code / 128) % 8 == BuildingStyles.ROOF_THATCH and (code / 1024) % 2 == 1 and code / 2048 == 4000
+	_check(code % 16 == BuildingStyles.WALL_JAPANESE and (code / 16) % 8 == BuildingStyles.WINDOWS_SHOJI
+		and (code / 128) % 8 == BuildingStyles.ROOF_KAWARA and (code / 1024) % 2 == 1 and code / 2048 == 4000
 		and code < 16777216, "code d'habillage : mur, ouvertures, toit, partie, égout relus comme le shader (%d)" % code)
+
+	# Maison japonaise (lot JP3) : tuiles kawara, murs à poteaux sur soubassement de planches, shōji ; grange en bois
+	var minka := BuildingStyles.dress("kawara", BuildingStyles.FAMILY_HOUSE, 1.0, 8.0, 6.0, 0.1, 0.1, 0.9)
+	var kura := BuildingStyles.dress("kawara", BuildingStyles.FAMILY_FARM, 1.0, 8.0, 5.0, 0.1, 0.1, 0.9)
+	_check(minka["wall"] == BuildingStyles.WALL_JAPANESE and minka["windows"] == BuildingStyles.WINDOWS_SHOJI
+		and minka["roof"] == BuildingStyles.ROOF_KAWARA and minka["shape"] == BuildingStyles.SHAPE_HIPPED
+		and float(minka["overhang_m"]) >= 1.0 and kura["wall"] == BuildingStyles.WALL_WOOD
+		and BuildingStyles.roof_palette_key(BuildingStyles.ROOF_KAWARA, "kawara") == "kawara"
+		and BuildingStyles.wall_palette_key(BuildingStyles.WALL_JAPANESE, "kawara") == "white",
+		"Japon : maison à shōji sous kawara, large débord, croupe ; dépendance en bois")
+	_check(BuildingStyles.dress("tuile_plate", BuildingStyles.FAMILY_HOUSE, 1.0, 8.0, 6.0, 0.1, 0.1, 0.9)["windows"] == BuildingStyles.WINDOWS_HOUSE,
+		"ailleurs : fenêtres à volets inchangées")
 
 	# Modèle de biome : forçage et rendu d'avant la série U
 	var model = BiomeModel.new(_theme)

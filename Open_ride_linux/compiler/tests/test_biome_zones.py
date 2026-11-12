@@ -18,7 +18,7 @@ TREES, SHRUB, GRASS, CROP, MOSS = 10, 20, 30, 40, 100
 
 def test_table_is_valid():
     rules, zones = B.biome_zones()
-    assert [r.biome for r in rules] == ["atlantic_heath"]
+    assert [r.biome for r in rules] == ["atlantic_heath", "japan"]   # japan : lot JP2
     assert all(r.biome in B.BIOMES and r.cls >= 202 and B.CLASS_BIOME[r.cls] == (r.biome,) * len(B.ZONES) for r in rules)
     assert len({r.cls for r in rules}) == len(rules)
     assert len({z.name for z in zones}) == len(zones) and {z.biome for z in zones} <= {r.biome for r in rules}
