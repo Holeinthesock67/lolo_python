@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série BC : ligne « Collection » de l'accueil, album par familles, carte agrandie, « Voir la séance » vers l'historique, cartes vues envoyées au core | GDScript | BC2, BC3 (validé), BC4 | Moyenne | En PR avec BC6 (captures low, medium et high à valider) |
+| Série BC : ligne « Collection » de l'accueil, album par familles, carte agrandie, « Voir la séance » vers l'historique, cartes vues envoyées au core | GDScript | BC2, BC3 (validé), BC4 | Moyenne | Livré le 8 novembre (PR #783, avec BC6) ; captures low, medium et high à valider pendant la recette BC7 |
 
 Série BC (version 5.0, badges et cartes à collectionner, demande du propriétaire du 7 novembre 2026). Plan de la série : `docs/5.0/PLAN_SERIE_BC.md`.
 
