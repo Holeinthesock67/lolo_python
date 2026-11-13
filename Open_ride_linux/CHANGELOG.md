@@ -8,6 +8,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 ### Nettoyage après l'import de fichiers (lot NT2)
 - `_on_command_failed` (main.gd) ne cite plus `list_imports`, retirée en révision 1.15 : les listes sans bandeau « sans réponse du core » sont celles que le client IPC relance (`IpcClient.LIST_COMMANDS`), testées par `test_list_commands.gd`.
 
+### Grand Prix : plus de frôlements entre coureurs (lot GP12)
+- Un coureur sur une voie imposée (esquive, flèches) double et s'écarte comme les autres au lieu de rouler dans la roue d'un plus lent de sa voie.
+- Un objet (coup de fouet, super-forme, glissade du coureur de devant) ne pousse plus personne dans la roue devant : on freine roue contre roue, cycliste compris (vitesse virtuelle seulement, la pente envoyée ne change pas).
 ### Un circuit en boucle livré avec le jeu (lot O38)
 - Nouveau parcours de démonstration « Circuit des Prés » : une boucle de 3 km dans les prés, départ au hameau, montées et descentes jusqu'à 5 %, une courbe en S serrée, étang et verger au milieu. Le Grand Prix des objets et toute course en tours s'y jouent sans trace personnelle.
 - Ajouté à la prochaine installation des contenus de départ ; aucun autre parcours n'est réécrit. Trace, relief et décor sont entièrement inventés (aucune donnée réelle).
