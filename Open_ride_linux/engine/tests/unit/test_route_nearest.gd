@@ -90,6 +90,7 @@ func _initialize() -> void:
 	_check(PerfBudget.check("route_nearest_alt", per_call_ms), "coût d'un appel près de la route : %.4f ms" % per_call_ms)
 	_test_far_points_cost(demo)
 	_test_height_fn_far_tile(demo)
+	_test_ground_max_along()
 	print("test_route_nearest : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
 
@@ -128,4 +129,25 @@ func _test_height_fn_far_tile(route) -> void:
 		"lointain inconnu (NaN) : altitude de la route la plus proche")
 	_check(is_equal_approx(float(h.call(-2500.0, -2500.0)), TerrainTiles.nearest_route_alt(route, -2500.0, -2500.0)),
 		"sans tuile : altitude de la route la plus proche")
+	# Pose des bâtiments : sans repli sur la route (NaN hors des tuiles), tuiles partagées entre fonctions
+	var tiles := {}
+	var g := OsmStreamer.terrain_height_fn(wd, route, false, tiles)
+	_check(is_nan(float(g.call(-2500.0, -2500.0))), "sans repli sur la route : NaN hors des tuiles")
+	_check(is_equal_approx(float(g.call(2500.0, 2500.0)), 123.0 + far_dy), "sans repli : tuile lointaine lue")
+	_check(tiles.has("far") and not (tiles["far"] as Dictionary).is_empty(), "tuiles lues rangées dans le cache partagé")
 	DirAccess.remove_absolute(TerrainTiles.tile_path(wd, "far", 0, 0))
+
+
+## Terrain le plus haut le long d'un contour de bâtiment (rez-de-chaussée relevé sur une pente) : sommets et
+## points tous les 4 m, hauteurs non finies ignorées.
+func _test_ground_max_along() -> void:
+	var slope := func(x: float, z: float) -> float: return 100.0 + 0.1 * z
+	var ring := [[0.0, 0.0], [10.0, 0.0], [10.0, 12.0], [0.0, 12.0]]
+	_check(is_equal_approx(float(OsmStreamer.ground_max_along(ring, slope)), 101.2),
+		"pente de 10 % sur 12 m : terrain le plus haut 101,2 m")
+	var bump := func(x: float, z: float) -> float: return 100.0 + (3.0 if absf(x - 4.0) < 0.5 and z == 0.0 else 0.0)
+	_check(is_equal_approx(float(OsmStreamer.ground_max_along([[0.0, 0.0], [16.0, 0.0], [16.0, 5.0]], bump)), 103.0),
+		"butte au milieu d'un côté de 16 m : vue par les points intermédiaires")
+	var none := func(x: float, z: float) -> float: return NAN
+	_check(OsmStreamer.ground_max_along(ring, none) == null, "aucune hauteur connue : null (pas de relèvement)")
+	_check(OsmStreamer.ground_max_along([], slope) == null, "contour vide : null")

@@ -5,6 +5,19 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Nouveau biome : hauts plateaux (lot HP1, 6.0)
+- Biome « hauts plateaux » (Altiplano, Tibet, Ladakh) : herbe jaune d'ichu en touffes, sol ocre, roche brun-rouge, air sec et très clair, lacs bleu profond ; lamas, vigognes et yacks ; maisons basses d'adobe à toit de paille.
+- Le compilateur le pose seul sur le terrain ouvert au-dessus de 3 300 à 3 800 m sous 40° de latitude, sur les parcours comme dans le monde ouvert ; neige et glaciers restent alpins, les Alpes ne changent pas.
+- Pack « Cols célèbres » : Ticlio (Pérou, 4 818 m).
+- Construction des cols : une route en lacets qui sort de la zone chargée autour des points est cherchée dans une zone plus large ; un refus dit quel tronçon manque et si une route non revêtue passerait.
+- Choix « hauts plateaux » dans « Biome du décor ».
+
+### Canyons, fjords, îles volcaniques et rizières (lot U25, 6.0, partie 1)
+- Quatre paysages célèbres s'ajoutent comme variantes des biomes existants, pas comme biomes : canyons rouges du plateau du Colorado, fjords de Norvège (côte ouest, Nordland, Lofoten), îles volcaniques de l'Atlantique (Canaries, Madère, Açores) et rizières d'Asie du Sud-Est. Le compilateur et le monde ouvert les posent avec la même table à grosse maille que les variantes régionales.
+- Arbres du paysage : bouleaux et épicéas des fjords (sans palmiers ni pins parasols sur la côte, limite des arbres à 700–900 m), pinède canarienne et laurisylve sur les îles volcaniques, palmiers dans les rizières (sans vignes), pins et genévriers épars dans les canyons. Les fjords ont des maisons de bois peint (toit `bois_peint`).
+- Sol du paysage : herbe verte et gneiss sombre au bord des fjords (au lieu du sable jaune de la côte), sable et grès rouges des canyons, cendres et basalte des îles, rizières vert vif.
+- Un parcours compilé avant ce lot reste valide ; il faut le recompiler (`add-layer <parcours>.world biome`) pour voir les paysages. Strates des canyons, terrasses en eau des rizières et cascades des fjords viendront avec la partie 2.
+- Format `.world` : membre facultatif `landscape` de la variante, toit `bois_peint` ; thème 2.0 : section `landscapes`. `--variant GROUND,ROOFS[,LANDSCAPE]` impose un paysage.
 ### Mode WTF lisible et objets reconnaissables (lot WTF9)
 - Sous le nom de chaque gag, une ligne « À toi : … » dit quoi faire (puissance à tenir, Z court pour refuser le plat du chef, rien à faire pour les caméras). Le bandeau grossit un instant à chaque nouveau gag.
 - Au premier passage de chaque gag et de chaque règle permanente (Katamari, cadence, peloton), une légende s'affiche 7 s à droite : ce qui se passe, ce que tu fais. Elle revient à la séance suivante.

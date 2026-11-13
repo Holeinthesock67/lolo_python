@@ -203,18 +203,20 @@ DEFAULT_TABLE = PowerUpTable(specs={
     "anvil": PowerUpSpec("anvil", "mass", 1.6, 15.0, "Enclume", sets=("tactiques",), factor_bounds=(1.0, 2.5),
                          draw_if=("descent_ahead",), refuse_unless=(("descending", "no_descent"),),
                          hold_above_grade_pct=DESCENT_HOLD_PCT),
-    # Aspiration + (lot TT3) : abri × 1,5 plafonné au cœur de groupe d'AS4, portée 15 → 25 m.
-    "draft_plus": PowerUpSpec("draft_plus", "draft", 1.5, 40.0, "Aspiration +", sets=("tactiques",),
+    # Durées de l'Aspiration +, de l'Échappée et du Rouleau ajustées au banc du lot TT8 (40, 20 et 30 s avant ;
+# `tools/bonus_bench.py`, rapport `docs/4.0/RAPPORT_EQUILIBRAGE_TT8.md`).
+# Aspiration + (lot TT3) : abri × 1,5 plafonné au cœur de groupe d'AS4, portée 15 → 25 m.
+    "draft_plus": PowerUpSpec("draft_plus", "draft", 1.5, 35.0, "Aspiration +", sets=("tactiques",),
                               factor_bounds=(1.0, 2.0), draw_if=("bots",), refuse_unless=(("bots", "no_bots"),),
                               cap=DRAFT_PLUS_CAP, reach_m=DRAFT_PLUS_REACH_M),
     # Échappée (lot TT4, Burrito et Fantôme fusionnés) : les bots derrière ne reçoivent plus ton abri et
     # ne répondent pas à ton attaque. Même ligne d'effet que le Furtif du Grand Prix (GP4).
-    "breakaway": PowerUpSpec("breakaway", "breakaway", 1.0, 20.0, "Échappée", sets=("tactiques",),
+    "breakaway": PowerUpSpec("breakaway", "breakaway", 1.0, 30.0, "Échappée", sets=("tactiques",),
                              factor_bounds=(1.0, 1.0), draw_if=("bots",),
                              refuse_unless=(("bots", "no_bots"), ("far_from_finish", "near_finish"))),
     # Rouleau compresseur (lot TT5) : roulement du bitume sur le non revêtu ; `factor` = part du roulement
     # en plus du gravel qui disparaît (1 : tout), atteinte et perdue sur 20 m.
-    "roller": PowerUpSpec("roller", "crr", 1.0, 30.0, "Rouleau compresseur", sets=("tactiques",),
+    "roller": PowerUpSpec("roller", "crr", 1.0, 25.0, "Rouleau compresseur", sets=("tactiques",),
                           factor_bounds=(0.0, 1.0), draw_if=("gravel_ahead",),
                           refuse_unless=(("gravel_ahead", "no_gravel"),)),
 })

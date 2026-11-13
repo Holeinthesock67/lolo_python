@@ -138,7 +138,50 @@ func _run() -> void:
 		props.remove_chunk(k)
 	await process_frame
 	_check(props.prop_count() == 0 and props.get_child_count() == 0, "tronçons retirés : plus aucun objet")
+	_test_japan(route, climbs, props)
+	for k in range(16):
+		props.remove_chunk(k)
+	await process_frame
+	_check(props.prop_count() == 0 and props.get_child_count() == 0, "tronçons retirés : plus aucun objet")
 	props.queue_free()
 	await process_frame
 	print("test_roadside_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
+
+
+## Japon (lot JP5) : torii au pied des montées du biome japan, lanternes de part et d'autre du sommet.
+func _test_japan(route, climbs: Array, props) -> void:
+	var plain: Array = RoadsideModel.items(route, climbs, [], {}, 6.0)
+	_check(plain.filter(func(it): return it["kind"] in ["torii", "lantern"]).is_empty(), "hors du Japon : ni torii ni lanterne")
+	var other := func(_x: float, _z: float) -> String: return "temperate_forest"
+	_check(RoadsideModel.items(route, climbs, [], {}, 6.0, other).filter(func(it): return it["kind"] == "torii").is_empty(),
+		"biome tempéré : pas de torii")
+	var japan := func(_x: float, _z: float) -> String: return "japan"
+	var items: Array = RoadsideModel.items(route, climbs, [], {}, 6.0, japan)
+	var torii := items.filter(func(it): return it["kind"] == "torii")
+	var lanterns := items.filter(func(it): return it["kind"] == "lantern")
+	_check(torii.size() == climbs.size() and int(torii[0]["side"]) == 0
+		and absf(float(torii[0]["s"]) - float(climbs[0]["start_s"]) - RoadsideModel.TORII_AFTER_START_M) < 1.0,
+		"biome japan : un torii au pied de chaque montée, sur l'axe de la route (%d)" % torii.size())
+	_check(lanterns.size() == 2 * climbs.size() and int(lanterns[0]["side"]) != int(lanterns[1]["side"])
+		and float(lanterns[0]["s"]) > float(climbs[0]["summit_s"]), "deux lanternes de pierre après le sommet, une de chaque côté")
+	var c: Vector3 = route.sample_point(float(torii[0]["s"]))
+	_check(RoadsideModel.prop_position(route, float(torii[0]["s"]), 6.0, 0).is_equal_approx(c), "torii centré sur la chaussée")
+	props.road_width_m = 6.0
+	for k in range(16):
+		props.add_chunk(route, k, RoadsideModel.for_chunk(items, k))
+	var gate: Node3D = null
+	for k in range(16):
+		for n in props._chunks.get(k, []):
+			if str((n as Node3D).name).begins_with("torii"):
+				gate = n
+	var span := 0.0
+	var top := 0.0
+	if gate != null:
+		for mi in gate.get_children():
+			if mi is MeshInstance3D:
+				var bb: AABB = (mi as MeshInstance3D).mesh.get_aabb()
+				span = maxf(span, bb.size.x)
+				top = maxf(top, bb.end.y)
+	_check(gate != null and span > 6.0 + 2.0 * RoadsideProps.TORII_MARGIN_M and top >= 7.0,
+		"torii par-dessus la route : %.1f m de large, %.1f m de haut" % [span, top])

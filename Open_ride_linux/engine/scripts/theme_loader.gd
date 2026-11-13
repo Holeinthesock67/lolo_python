@@ -299,7 +299,7 @@ static func _validate_texture_levels(v: Variant, errors: PackedStringArray) -> v
 
 
 ## Clés du thème 2.0 absentes du thème par défaut tant qu'il est en 1.x.
-const V2_KEYS := ["default_biome", "biomes", "variants", "surfaces"]
+const V2_KEYS := ["default_biome", "biomes", "variants", "landscapes", "surfaces"]
 
 
 static func _is_v2(data: Dictionary) -> bool:
@@ -409,6 +409,23 @@ static func _validate_v2(data: Dictionary, errors: PackedStringArray) -> void:
 							for item in va[arr_key]:
 								if not _is_hex_color(item):
 									errors.append("variants." + str(id) + "." + arr_key + " : couleur #RRGGBB invalide")
+	if data.has("landscapes"):
+		if typeof(data["landscapes"]) != TYPE_DICTIONARY:
+			errors.append("landscapes : doit être un objet")
+		else:
+			for id in data["landscapes"].keys():
+				var label := "landscapes." + str(id)
+				var la = data["landscapes"][id]
+				if not BiomeIds.LANDSCAPES.has(id):
+					errors.append("landscapes : paysage inconnu " + str(id))
+				elif typeof(la) != TYPE_DICTIONARY or typeof(la.get("biomes", null)) != TYPE_DICTIONARY or la["biomes"].is_empty():
+					errors.append(label + " : objet {biomes: {...}} non vide attendu")
+				else:
+					for b in la["biomes"].keys():
+						if not BiomeIds.is_biome(b):
+							errors.append(label + ".biomes : biome inconnu " + str(b))
+						else:
+							_validate_biome(la["biomes"][b], label + ".biomes." + str(b), errors)
 	if data.has("surfaces"):
 		if typeof(data["surfaces"]) != TYPE_DICTIONARY:
 			errors.append("surfaces : doit être un objet")
@@ -546,7 +563,7 @@ static func load_theme(theme_dir: String) -> Dictionary:
 	return {"theme": merged, "warnings": warnings, "errors": errors, "theme_dir": theme_dir}
 
 
-## Thème sans ses clés 2.0 (`default_biome`, `biomes`, `variants`, `surfaces`).
+## Thème sans ses clés 2.0 (`default_biome`, `biomes`, `variants`, `landscapes`, `surfaces`).
 static func without_biomes(theme: Dictionary) -> Dictionary:
 	var out := theme.duplicate(true)
 	for key in V2_KEYS:

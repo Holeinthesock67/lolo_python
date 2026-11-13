@@ -16,12 +16,18 @@ Méthode, point par point de la grille 17 × 17 de chaque tuile (cases de 62,5 m
    classe donne un biome par zone (`CLASS_BIOME`) : arbres → forêt tempérée ou boréale, cultures → `farmland`,
    prairie → prairie ou steppe, sol nu → désert de sable ou de roche, neige → `polar` ou `alpine`, etc. ; eau
    et bâti ne votent pas. Dans un paysage volcanique connu (`data/volcanic_areas.toml`), le sol nu et le
-   sable OSM (`natural=sand` : cendres, lapilli) donnent `volcanic`.
+   sable OSM (`natural=sand` : cendres, lapilli) donnent `volcanic`. Dans un rectangle d'un biome régional
+   (`data/biome_zones.toml`, lot AT2 : Atlantique et landes), sous un climat de Köppen de sa liste, les classes de
+   sa liste donnent ce biome (classe propre au compilateur, 203 pour `atlantic_heath`).
 3. **Bruit de bord déterministe** (hachage des indices globaux du point, donc de `ix`, `iz`) puis **flou de
    2 cases** (noyau binomial 5 × 5) : pas de frontière droite. Un point sans vote reçoit le biome de prairie
    de sa zone.
 4. **Altitude :** au-dessus d'un seuil qui dépend de la latitude (1 800 m à 45°), part `alpine` croissante,
-   nulle 300 m sous le seuil, complète 600 m au-dessus.
+   nulle 300 m sous le seuil, complète 600 m au-dessus. **Hauts plateaux** (lot HP1) : sous 40° de latitude,
+   le terrain ouvert (prairie, arbustes, sol nu, mousses, sable) vote `high_plateau` pour une part `p`
+   croissante de 3 300 à 3 800 m (`plateau_part`, à l'étape 1, échantillon par échantillon) ; la part
+   `alpine` de l'altitude devient `a × (1 − p)`. Neige et glaciers restent `alpine`, forêts, cultures,
+   zones humides et laves gardent leur biome. Même règle pour les parcours et le monde ouvert.
 5. **Quatre biomes au plus par tuile** (les plus forts de la tuile) ; un point commun à plusieurs tuiles ne
    garde que les biomes admis par toutes, puis ses poids sont renormalisés à 255 (plus forts restes).
 
@@ -43,10 +49,12 @@ import numpy as np
 from . import koppen
 
 BIOME_VERSION = "1.0"
-# Identifiants du lot U0, dans l'ordre de la liste définitive, puis `japan` (lot JP1, 6.0) (Format .world v1 §8 quater).
+# Identifiants du lot U0, dans l'ordre de la liste définitive, puis `japan` (lot JP1, 6.0) et `atlantic_heath`
+# (lot AT1, 6.0) et `high_plateau` (lot HP1, 6.0) (Format .world v1 §8 quater).
 BIOMES = ("temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
           "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
-          "wetland", "coast", "volcanic", "japan")
+          "wetland", "coast", "volcanic", "japan", "atlantic_heath",
+          "high_plateau")
 INDEX = {b: k for k, b in enumerate(BIOMES)}
 NB = len(BIOMES)
 DEFAULT_BIOME = "temperate_grassland"
@@ -70,6 +78,7 @@ ZONE_RAMP_DEG = 2.0
 TREES, SHRUB, GRASS, CROP, BUILT, BARE, SNOW, WATER, WETLAND, MANGROVE, MOSS = 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 100
 OSM_SAND = 200          # classe propre au compilateur : `natural=sand`
 VOLCANIC_BARE = 201     # classe propre au compilateur : sol nu dans un paysage volcanique
+# Classes 202 et suivantes : biomes régionaux de `data/biome_zones.toml` (ajoutées à CLASS_BIOME plus bas).
 CLASS_BIOME: dict[int, tuple[str | None, ...]] = {
     TREES: ("jungle", "savanna", "mediterranean", "temperate_forest", "boreal_forest", "tundra"),
     SHRUB: ("savanna", "steppe", "mediterranean", "temperate_grassland", "tundra", "tundra"),
@@ -86,6 +95,70 @@ CLASS_BIOME: dict[int, tuple[str | None, ...]] = {
     VOLCANIC_BARE: ("volcanic",) * 6,
 }
 NODATA_CLASS = GRASS    # pixel sans donnée, ou pas de WorldCover (repli OSM et altitude)
+
+
+# --- biomes régionaux (lot AT2) -------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class RegionalBiome:
+    """Biome régional de `data/biome_zones.toml` : classe propre au compilateur, codes de Köppen et classes
+    WorldCover qui le donnent dans ses rectangles."""
+    biome: str
+    cls: int
+    koppen: frozenset[str]
+    worldcover: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class RegionalZone:
+    biome: str
+    name: str
+    lat: tuple[int, int]
+    lon: tuple[int, int]
+
+
+@lru_cache(maxsize=1)
+def biome_zones() -> tuple[tuple[RegionalBiome, ...], tuple[RegionalZone, ...]]:
+    """Biomes régionaux et rectangles de la table embarquée `data/biome_zones.toml`."""
+    text = resources.files("openride_compiler").joinpath("data", "biome_zones.toml").read_text(encoding="utf-8")
+    data = tomllib.loads(text)
+    rules = tuple(RegionalBiome(b, int(r["class"]), frozenset(r["koppen"]), tuple(int(c) for c in r["worldcover"]))
+                  for b, r in data.get("biome", {}).items())
+    zones = tuple(RegionalZone(str(z["biome"]), str(z["name"]), (int(z["lat"][0]), int(z["lat"][1])),
+                               (int(z["lon"][0]), int(z["lon"][1]))) for z in data.get("zone", []))
+    return rules, zones
+
+
+def regional_rule(lat: np.ndarray, lon: np.ndarray, codes: Sequence[str | None] | None = None) -> np.ndarray:
+    """Indice (n,) dans `biome_zones()[0]` du biome régional de chaque point, −1 sinon : premier rectangle qui
+    contient le point, et code de Köppen du point (`codes`, carte embarquée par défaut) dans la liste du biome."""
+    rules, zones = biome_zones()
+    la = np.asarray(lat, dtype=float).ravel()
+    lo = np.asarray(lon, dtype=float).ravel()
+    out = np.full(len(la), -1, dtype=np.int64)
+    if not len(la):
+        return out
+    index = {r.biome: k for k, r in enumerate(rules)}
+    for z in zones:
+        inside = (out < 0) & (la >= z.lat[0]) & (la < z.lat[1]) & (lo >= z.lon[0]) & (lo < z.lon[1])
+        out[inside] = index[z.biome]
+    if (out >= 0).any():
+        code = codes if codes is not None else koppen.codes(la, lo)
+        ok = np.array([k >= 0 and code[i] in rules[k].koppen for i, k in enumerate(out.tolist())], dtype=bool)
+        out[~ok] = -1
+    return out
+
+
+def regional_class(rule: int, classes: np.ndarray) -> np.ndarray:
+    """Classes d'échantillons d'un point du biome régional `rule` : celles de sa liste prennent sa classe."""
+    if rule < 0:
+        return classes
+    r = biome_zones()[0][rule]
+    return np.where(np.isin(classes, r.worldcover), r.cls, classes)
+
+
+for _rule in biome_zones()[0]:
+    CLASS_BIOME[_rule.cls] = (_rule.biome,) * len(ZONES)
 
 # Corrections OSM : (clé, valeur) → classe, par priorité croissante (le dernier polygone posé l'emporte).
 OSM_RULES: tuple[tuple[str, str, int], ...] = (
@@ -105,6 +178,10 @@ ALPINE_LINE_45_M = 1800.0
 ALPINE_LINE_PER_DEG_M = 75.0     # le seuil monte de 75 m par degré vers l'équateur
 ALPINE_LINE_MIN_M, ALPINE_LINE_MAX_M = 600.0, 4200.0
 ALPINE_BELOW_M, ALPINE_ABOVE_M = 300.0, 600.0
+# Hauts plateaux (lot HP1) : terrain ouvert au-dessus de 3 300 à 3 800 m, sous 38 à 42° de latitude.
+PLATEAU_LOW_M, PLATEAU_FULL_M = 3300.0, 3800.0
+PLATEAU_LAT_FULL_DEG, PLATEAU_LAT_ZERO_DEG = 38.0, 42.0
+PLATEAU_CLASSES = (GRASS, SHRUB, BARE, MOSS, OSM_SAND)
 
 
 @dataclass(frozen=True)
@@ -134,13 +211,15 @@ class OsmArea:
 class Inputs:
     """Sources de la classification. `landcover(lats, lons)` → classes uint8 ; `elevation` → altitudes (m) ;
     `zones(lats, lons)` → parts (n, 6) des zones climatiques (carte de Köppen par défaut) ; `volcanic(lats,
-    lons)` → booléens « paysage volcanique » (table embarquée par défaut)."""
+    lons)` → booléens « paysage volcanique » (table embarquée par défaut) ; `regional(lats, lons)` → indice du
+    biome régional de chaque point, −1 sinon (`regional_rule`, table `data/biome_zones.toml` par défaut)."""
     to_latlon: Callable[[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]
     landcover: Callable[[np.ndarray, np.ndarray], np.ndarray] | None = None
     elevation: Callable[[np.ndarray, np.ndarray], np.ndarray] | None = None
     osm: Sequence[OsmArea] = ()
     zones: Callable[[np.ndarray, np.ndarray], np.ndarray] = field(default=lambda lat, lon: zone_weights(lat, lon))
     volcanic: Callable[[np.ndarray, np.ndarray], np.ndarray] = field(default=lambda lat, lon: in_volcanic_area(lat, lon))
+    regional: Callable[[np.ndarray, np.ndarray], np.ndarray] = field(default=lambda lat, lon: regional_rule(lat, lon))
 
 
 @dataclass
@@ -226,6 +305,16 @@ def alpine_part(alt_m: np.ndarray, lat: np.ndarray) -> np.ndarray:
     line = alpine_line_m(lat)
     t = (alt - (line - ALPINE_BELOW_M)) / (ALPINE_BELOW_M + ALPINE_ABOVE_M)
     return np.where(np.isfinite(t), np.clip(t, 0.0, 1.0), 0.0)
+
+
+def plateau_part(alt_m: np.ndarray, lat: np.ndarray) -> np.ndarray:
+    """Part `high_plateau` (0 à 1) du terrain ouvert : altitude de PLATEAU_LOW_M à PLATEAU_FULL_M, fois latitude
+    de PLATEAU_LAT_ZERO_DEG à PLATEAU_LAT_FULL_DEG ; 0 si altitude inconnue."""
+    alt = np.asarray(alt_m, dtype=float)
+    a = np.abs(np.asarray(lat, dtype=float))
+    t_alt = (alt - PLATEAU_LOW_M) / (PLATEAU_FULL_M - PLATEAU_LOW_M)
+    t_lat = np.clip((PLATEAU_LAT_ZERO_DEG - a) / (PLATEAU_LAT_ZERO_DEG - PLATEAU_LAT_FULL_DEG), 0.0, 1.0)
+    return np.where(np.isfinite(t_alt), np.clip(t_alt, 0.0, 1.0), 0.0) * t_lat
 
 
 def _class_table() -> np.ndarray:
@@ -365,14 +454,27 @@ def _raw_weights(pts: _Points, level: BiomeLevel, inputs: Inputs) -> tuple[np.nd
         sub = classes[volcanic]
         sub[(sub == BARE) | (sub == OSM_SAND)] = VOLCANIC_BARE
         classes[volcanic] = sub
+    regional = np.asarray(inputs.regional(lat_p, lon_p), dtype=np.int64).ravel()
+    for rule in np.unique(regional[regional >= 0]).tolist():   # biomes régionaux (lot AT2)
+        rows_r = regional == rule
+        classes[rows_r] = regional_class(int(rule), classes[rows_r])
     classes = np.clip(classes, 0, 255)
     zw = np.asarray(inputs.zones(lat_p, lon_p), dtype=float).reshape(n, len(ZONES))
     raw = np.zeros(n * NB)
     rows = np.repeat(np.arange(n, dtype=np.int64), SUB * SUB)
+    # Hauts plateaux : part `p` des votes du terrain ouvert donnée à `high_plateau`, le reste à son biome.
+    keep = np.ones(n * SUB * SUB)
+    if inputs.elevation is not None:
+        p = plateau_part(np.asarray(inputs.elevation(lat_p, lon_p), dtype=float).ravel(), lat_p)
+        if p.any():
+            open_ = np.isin(classes.ravel(), PLATEAU_CLASSES)
+            share = np.repeat(p, SUB * SUB) * open_
+            keep -= share
+            raw[np.arange(n) * NB + INDEX["high_plateau"]] += share.reshape(n, SUB * SUB).sum(axis=1) / (SUB * SUB)
     for z in range(len(ZONES)):
         b = CLASS_TABLE[classes.ravel(), z]
         ok = b >= 0
-        w = np.repeat(zw[:, z], SUB * SUB)[ok] / (SUB * SUB)
+        w = (np.repeat(zw[:, z], SUB * SUB) * keep)[ok] / (SUB * SUB)
         raw += np.bincount(rows[ok] * NB + b[ok], weights=w, minlength=n * NB)
     return raw.reshape(n, NB), zw, lat_p
 
@@ -445,7 +547,7 @@ def classify_level(keys: Sequence[tuple[int, int]], level: BiomeLevel, inputs: I
     w = w / total[:, None]
     if inputs.elevation is not None:
         alt = np.asarray(inputs.elevation(lat_c, lon_c), dtype=float)
-        a = alpine_part(alt, lat_c)
+        a = alpine_part(alt, lat_c) * (1.0 - plateau_part(alt, lat_c))   # hauts plateaux : pas d'alpage
         w *= (1.0 - a)[:, None]
         w[:, INDEX["alpine"]] += a
 

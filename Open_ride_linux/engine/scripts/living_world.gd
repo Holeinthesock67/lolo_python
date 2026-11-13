@@ -102,8 +102,7 @@ func set_route(route, road_width_m: float = 6.0) -> void:
 	if grass != null:
 		grass.biome_model = model
 	if ground_details != null:
-		ground_details.configure({"rock": int(living.get("ground_rocks", 0)), "grass": int(living.get("ground_grass", 0)),
-			"termite": int(living.get("ground_termites", 0))}, route, model, road_width_m)
+		ground_details.configure(GroundDetails.budgets(living), route, model, road_width_m)
 		ground_details.exclusions = _exclusions()
 		ground_details.height_at = _terrain_height(route)
 	_neigh_at = -INF
