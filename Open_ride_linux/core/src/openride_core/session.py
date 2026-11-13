@@ -328,6 +328,7 @@ class CoreSession:
         self._world_src: tuple[Route, Path, dict] | None = None   # route, dossier et manifeste du .world choisi
         self._suction = 0.0           # aspiration d'un véhicule qui double (lot AS6)
         self._escorts: list[traffic_mod.Vehicle] = []   # voitures d'équipe du Grand Prix en cours (lot GP4)
+        self._escort_shown: set[str] = set()            # coureurs dont la voiture est déjà devant eux (lot GP4)
         self._draft_w: int | None = None   # watts économisés à l'abri, à partir de 0,02 d'abri (lot AS5)
         self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
         self.route: Route | None = None
@@ -2567,20 +2568,32 @@ class CoreSession:
 
     def _gp_escorts(self) -> list[traffic_mod.Vehicle]:
         """Voitures d'équipe en cours (lot GP4) : véhicule d'AS6 juste devant le coureur remorqué, à sa vitesse et
-        sur sa ligne ; identifiant `tc<rang du coureur>`, court et stable (budget de la trame `state`)."""
+        sur sa ligne ; identifiant `tc<rang du coureur>`, court et stable (budget de la trame `state`). La voiture
+        se glisse devant son coureur dès que la place est libre (aucun autre coureur sous sa carrosserie), puis y
+        reste jusqu'à la fin de l'effet ; le coureur et sa voiture se placent d'un bloc (`_update_draft`)."""
         gp = self.grandprix
         if gp is None:
             return []
         where = {GP_ME: (self.physics.s, self.physics.v, self._lane.m)}
         where.update({b.id: (b.s, b.v, b.lane.m) for b in self.bots if getattr(b, "lane", None) is not None})
         ids = list(gp.racers)
+        towed = dict(gp.escorts())
+        self._escort_shown &= set(towed)
         out: list[traffic_mod.Vehicle] = []
-        for rid, kind in gp.escorts():
+        for rid, kind in sorted(towed.items()):
             if rid not in where:
                 continue
             s, v, lane_m = where[rid]
             ahead = draft_mod.BIKE_LENGTH_M * 0.5 + ESCORT_GAP_M + traffic_mod.KINDS[kind]["length"] * 0.5
-            out.append(traffic_mod.Vehicle(f"tc{ids.index(rid)}", kind, ESCORT_COLOR, s + ahead, 1, v, v, lane_m))
+            car = traffic_mod.Vehicle(f"tc{ids.index(rid)}", kind, ESCORT_COLOR, s + ahead, 1, v, v, lane_m)
+            if rid not in self._escort_shown:
+                reach_s = car.length * 0.5 + draft_mod.BIKE_LENGTH_M * 0.5
+                reach_m = car.half_width + draft_mod.RIDER_WIDTH_M * 0.5
+                if any(abs(o_s - car.s) < reach_s and abs(o_m - car.lateral) < reach_m
+                       for o, (o_s, _, o_m) in where.items() if o != rid):
+                    continue          # place prise : la voiture attend derrière le coureur devant
+                self._escort_shown.add(rid)
+            out.append(car)
         return out
 
     def _racing_bots(self) -> list[Any]:
@@ -3061,6 +3074,7 @@ class CoreSession:
         self.road_cyclists = None     # cyclistes du décor aussi (lot AS7)
         self._suction = 0.0
         self._escorts = []
+        self._escort_shown = set()
         if route is None:
             return
         try:
@@ -3774,8 +3788,24 @@ class CoreSession:
         self._escorts = self._gp_escorts()
         cars = self._escorts + [v for v in near if v.dir == 1]   # voiture d'équipe (lot GP4) : un véhicule d'AS6
         reverse = self.physics.direction < 0   # à rebours (lot N17) : personne dans le même sens, ni abri ni placement
-        runners = [] if reverse else [(self.physics.s, self.physics.v, self._lane)]
-        runners += [(b.s, b.v, b.lane) for b in self.bots   # éliminé : placement coupé, il glisse au bas-côté
+        # Voiture d'équipe (lot GP4) : le coureur remorqué et sa voiture se placent d'un seul bloc (gabarit de la
+        # voiture, du pare-chocs avant à la roue arrière) : le bloc double les coureurs plus lents et les autres
+        # l'évitent, la voiture ne passe plus à travers un coureur devant
+        towed = dict(self.grandprix.escorts()) if self.grandprix is not None else {}
+        blocks: list[tuple[draft_mod.Lane, float, float]] = []
+
+        def runner(rid: str, s: float, v: float, lane: draft_mod.Lane) -> tuple[float, float, draft_mod.Lane]:
+            kind = towed.get(rid)
+            if kind is None:
+                return s, v, lane
+            car = traffic_mod.KINDS[kind]
+            ahead = ESCORT_GAP_M + car["length"]
+            blocks.append((lane, lane.length, lane.half_width))
+            lane.length, lane.half_width = lane.length + ahead, max(car["half_width"], lane.half_width)
+            return s + ahead * 0.5, v, lane
+
+        runners = [] if reverse else [runner(GP_ME, self.physics.s, self.physics.v, self._lane)]
+        runners += [runner(b.id, b.s, b.v, b.lane) for b in self.bots   # éliminé : placement coupé, il glisse au bas-côté
                     if getattr(b, "kind", "constant") == "constant" and getattr(b, "lane", None) is not None
                     and (length is None or is_loop or b.s < length)]   # arrivé : arrêté sur la ligne, hors du jeu (lot PL1)
         runners += [(v.s, v.speed_mps, draft_mod.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width,
@@ -3783,6 +3813,8 @@ class CoreSession:
         runners += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders if r.dir == 1]
         draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None,
                                self._half_at(route))
+        for lane, bike_length, bike_half in blocks:
+            lane.length, lane.half_width = bike_length, bike_half
 
         cross = cross_at(heading_deg)
         rider = None if reverse else \

@@ -186,3 +186,37 @@ def test_escort_sits_just_ahead_of_its_rider(env):
     gap = car.s - car.length * 0.5 - s.physics.s - draft.BIKE_LENGTH_M * 0.5
     assert gap == pytest.approx(ESCORT_GAP_M, abs=s.physics.v * DT + 1e-6)
     assert car.lateral == pytest.approx(s._lane.m, abs=0.05)
+
+
+def test_team_car_never_overlaps_a_rider(env):
+    """Banc du 13 novembre (44 contacts voiture d'équipe / bot) : la voiture d'un coureur remorqué ne passe jamais
+    sous un autre coureur. Elle se glisse devant dès que la place est libre, puis le bloc coureur et voiture double
+    les plus lents (placement AS2 au gabarit de la voiture). Pire cas : tous les bots remorqués sans arrêt."""
+    make, run, _, _ = env
+    s, _, errors = make(6950)
+    s.cfg.ride.vehicle_draft = "on"
+    s._on_command("start", {"mode": "grandprix"}, 2)
+    assert not errors
+    gp = s.grandprix
+    run(s, 20.0)
+    shown = 0
+    for _ in range(40):
+        for b in s.bots:
+            r = gp.racers[b.id]
+            if r.held is None and not any(a.item == "team_car" and a.until_t > gp.clock for a in r.fx):
+                r.held, r.charges = "team_car", 1
+                assert gp.use(b.id)
+        for _ in range(25):
+            run(s, DT)
+            places = {ME: (s.physics.s, s._lane.m), **{b.id: (b.s, b.lane.m) for b in s.bots}}
+            ids = list(gp.racers)
+            for car in s._escorts:
+                shown += 1
+                towed = ids[int(car.id[2:])]
+                for rid, (o_s, o_m) in places.items():
+                    if rid == towed:
+                        continue
+                    overlap = (abs(car.s - o_s) < car.length * 0.5 + draft.BIKE_LENGTH_M * 0.5
+                               and abs(car.lateral - o_m) < car.half_width + draft.RIDER_WIDTH_M * 0.5)
+                    assert not overlap, (car.id, rid, car.s - o_s, car.lateral - o_m)
+    assert shown > 1000                                       # les voitures roulent bien devant leurs bots
