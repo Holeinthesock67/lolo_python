@@ -105,6 +105,7 @@ class ConstantPowerBot:
         self.wheel: tuple[float, float] | None = None   # roue suivie : écart (m) et vitesse du coureur devant
         self.push = 0.0                        # poussée du coureur qui suit de près
         self.power_factor = 1.0                # mamie à l'attaque du mode WTF (lot WTF2)
+        self.shelters = True                   # faux pendant le Furtif du Grand Prix (lot GP4) : n'abrite personne
         # Écart à l'axe (lot AS2), posé par draft.update_lanes ; départage stable des bots partis côte à côte
         self.lane = Lane(BOT_LANE_M, BOT_LANE_M, rank=1 + zlib.crc32(self.id.encode()) % 65536)
 

@@ -223,3 +223,25 @@ def test_grandprix_bench_captures_fall_just_before_each_box_row_and_after_each_z
     assert 0 < FIRST_ROW_M - settings["first_m"] <= min(60.0, FRAME_AHEAD_M)
     z = [x for x in settings["inputs"] if x.get("key") == "Z"]
     assert len(z) >= 10 and all(float(x["t"]) < settings["duration_s"] for x in z)
+
+
+@pytest.mark.parametrize("scenario, item", [("grand_prix_gp4_voiture", "team_car"),
+                                            ("grand_prix_gp4_furtif", "stealth")])
+def test_grandprix_gp4_bench_plays_only_its_item(tmp_path: Path, scenario: str, item: str) -> None:
+    """Lot GP4 : chaque scénario écrit un grandprix.toml valide qui ne joue que son objet, tiré dans toutes les tranches,
+    appuie sur Z autour de chaque rangée de boîtes et capture juste après chaque rangée (objets des bots)."""
+    from openride_core.grandprix import items as gp_items
+    from openride_core.grandprix.boxes import row_positions
+    from openride_core.grandprix.effects import CHAOS
+
+    _, _, settings, _ = sim_bench.resolve_scenario(scenario)
+    assert settings["mode"] == "grandprix"
+    (tmp_path / "grandprix.toml").write_text(sim_bench.toml_text(settings["grandprix"]), encoding="utf-8")
+    table = gp_items.load_table(tmp_path / "grandprix.toml")
+    assert table.enabled == {item}
+    assert all(table.weights[b][item] > 0 for b in gp_items.BRACKETS)
+    gp = settings["config"]["grandprix"]
+    rows = row_positions(gp["distance_km"] * 1000.0, gp["box_every_m"] / CHAOS[gp["chaos"]], None)
+    assert [round(r) for r in rows[:4]] == [round(m - 30) for m in settings["at_m"][::2]]
+    z = [x["t"] for x in settings["inputs"] if x.get("key") == "Z"]
+    assert len(z) >= 30 and max(z) < settings["duration_s"]

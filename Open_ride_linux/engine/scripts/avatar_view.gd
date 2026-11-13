@@ -49,6 +49,7 @@ const SHADOW_PARTS := ["torso", "thigh", "shin", "upper_arm", "forearm", "head",
 var lod := 0
 var ghost_alpha := 1.0
 var breakaway := false
+var _alpha_before := 1.0
 var shadow_max_lod := 0
 var settings: Dictionary = AvatarModel.DEFAULTS.duplicate()
 var looks: Dictionary = EquipmentMeshes.DEFAULT_LOOK.duplicate()
@@ -100,7 +101,9 @@ func set_breakaway(on: bool) -> void:
 	if on == breakaway:
 		return
 	breakaway = on
-	ghost_alpha = BREAKAWAY_ALPHA if on else 1.0
+	if on:
+		_alpha_before = ghost_alpha   # bot fantôme (GHOST_ALPHA) : retrouvé à la fin du Furtif (lot GP4)
+	ghost_alpha = BREAKAWAY_ALPHA if on else _alpha_before
 	_mats.clear()
 	_rebuild()
 
