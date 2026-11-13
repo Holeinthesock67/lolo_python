@@ -1188,6 +1188,7 @@ def _scenes(s: Session) -> None:
         s.check_banner("erreur", img, info, "route_invalid")
         s.check_layout("erreur", info)
     _settings_scenes(s)
+    _graphics_settings_scene(s)
     _menu_scenes(s)
     _pentes_scenes(s)
     _decor_vivant_scene(s)
@@ -1711,6 +1712,67 @@ def _settings_scenes(s: Session) -> None:
     time.sleep(0.6)
 
 
+# Réglages › Graphisme de la scène `reglages_graphisme` (lot U13b) : jour et nuit, saisons « au hasard » et mois
+# choisi, avec la légende des saisons dans la carte de détail.
+GRAPHICS_SETTINGS_ITEMS = [
+    {"key": "render.day_night", "label": "Jour et nuit", "group": "graphics", "value": "off", "applies": "now",
+     "type": "choice", "choices": ["off", "theme", "real", "accelerated"]},
+    {"key": "render.seasons", "label": "Saisons", "group": "graphics", "value": "random", "applies": "now",
+     "type": "choice", "choices": ["off", "theme", "date", "random", "spring", "summer", "autumn", "winter"],
+     "help": "Coupées : l'été, comme avant. Selon le thème, selon la date (mois ci-dessous, hémisphère du "
+             "parcours, calendrier de chaque biome), au hasard à chaque parcours (hiver deux fois moins "
+             "souvent) ou une saison au choix : feuillages d'automne, arbres nus et neige plus bas l'hiver."},
+    {"key": "render.month", "label": "Mois", "group": "graphics", "value": "february", "applies": "now",
+     "type": "choice", "choices": ["pc", "january", "february", "march", "april", "may", "june", "july", "august",
+                                   "september", "october", "november", "december"],
+     "help": "Date du PC, ou un mois au choix (le 15) : saisons « selon la date » et longueur du jour."},
+]
+
+
+def _graphics_settings_scene(s: Session) -> None:
+    """Lot U13b : `reglages_graphisme` (Réglages › Graphisme, « Saisons — au hasard » et « Mois — février »,
+    focus sur Saisons et sa légende) puis `reglage_mois_edition` (mois changé en place, mars). Part de l'accueil
+    (première entrée) et y revient ; les réglages des autres scènes sont renvoyés à la fin."""
+    core = s.core
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": GRAPHICS_SETTINGS_ITEMS})
+    time.sleep(0.5)
+
+    def press(*events: str, pause: float = 0.25) -> None:
+        for event in events:
+            core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+            time.sleep(pause)
+        time.sleep(0.5)
+
+    # Accueil : − deux fois (Quitter, puis Réglages) ; Réglages : Appareils, Contenus, Graphisme (seul groupe).
+    press("MINUS_SHORT", "MINUS_SHORT", "A_LONG")
+    press("PLUS_SHORT", "PLUS_SHORT", "A_LONG")
+    press("PLUS_SHORT")   # focus sur Saisons
+    shot = s.capture("reglages_graphisme")
+    if shot:
+        img, info = shot
+        s.check_texts("reglages_graphisme", info, {"menu_title": "Réglages › Graphisme", "menu": "Saisons — au hasard"},
+                      contains=True)
+        s.check_texts("reglages_graphisme", info, {"menu": "Mois — février"}, contains=True)
+        clipped = info.get("menu_clipped", [])
+        s.check("reglages_graphisme", "libellés entiers (pas de « … »)", not clipped, ", ".join(clipped) or "aucun coupé")
+        s.check_layout("reglages_graphisme", info)
+    # Mois : + une fois, A maintenu (édition en place), + : mars ; Y annule sans rien écrire.
+    t_edit = now()
+    press("PLUS_SHORT", "A_LONG", "PLUS_SHORT")
+    shot = s.capture("reglage_mois_edition")
+    if shot:
+        img, info = shot
+        s.check_texts("reglage_mois_edition", info, {"menu": "Mois — ◀ mars ▶"}, contains=True)
+        s.check_layout("reglage_mois_edition", info)
+    press("Y_SHORT")
+    sent = [r.msg.get("name") for r in core.messages("cmd", since=t_edit)]
+    s.check("reglage_mois_edition", "Y annule : aucun set_setting envoyé", "set_setting" not in sent,
+            ", ".join(map(str, sent[-8:])))
+    # Retour à l'accueil, puis + deux fois (Quitter, Session libre) : première entrée, comme au lancement.
+    press("Y_SHORT", "Y_SHORT", "PLUS_SHORT", "PLUS_SHORT", pause=0.4)
+    core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": SETTINGS_ITEMS})
+    time.sleep(0.6)
+
 
 def _records_scene(s: Session) -> None:
     """Étape 4c des menus : écran Records du parcours (depuis l'écran Prêt) avec la carte du record en or,
@@ -1885,6 +1947,7 @@ def _menus_only(s: Session) -> None:
     s.check("menus", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
     time.sleep(SETTLE_S)
     _settings_scenes(s)
+    _graphics_settings_scene(s)
     _menu_scenes(s)
     _start_screen_scenes(s)
     _coach_scenes(s)
