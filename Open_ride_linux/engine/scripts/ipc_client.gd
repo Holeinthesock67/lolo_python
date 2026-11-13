@@ -127,6 +127,9 @@ var _pending: Array[Dictionary] = []
 ## Relance des listes v1.1 (contrat §4) : une seconde sans réponse complète, 3 fois au plus.
 const LIST_RETRY_S := 1.0
 const LIST_MAX_RETRIES := 3
+## Listes relancées par le client : sans réponse, le menu l'indique (signal list_failed) et main.gd
+## n'affiche pas de bandeau « sans réponse du core » (list_imports retirée en révision 1.15, lot NT2).
+const LIST_COMMANDS: Array[String] = ["list_routes", "list_workouts", "list_route_imports"]
 var _pending_list_routes: Dictionary = {}
 var _pending_list_workouts: Dictionary = {}
 var _pending_list_route_imports: Dictionary = {}

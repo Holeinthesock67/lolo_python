@@ -93,7 +93,8 @@ class RenderConfig:
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
     texture_level: str = "auto"    # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high
     day_night: str = "off"   # jour et nuit (lot P19) : off (soleil fixe d'aujourd'hui), theme, real (heure du PC) ou accelerated
-    seasons: str = "off"     # saisons (lot P19) : off (l'été d'aujourd'hui), theme, date, spring, summer, autumn ou winter
+    seasons: str = "off"     # saisons (lot P19) : off (l'été d'aujourd'hui), theme, date, random, spring, summer, autumn ou winter
+    month: str = "pc"        # mois des saisons et du jour (lot U13b) : pc (date du PC) ou january à december (le 15 du mois)
 
 
 @dataclass
@@ -430,7 +431,9 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
     ("render", "day_night"): ("off", "theme", "real", "accelerated"),
-    ("render", "seasons"): ("off", "theme", "date", "spring", "summer", "autumn", "winter"),
+    ("render", "seasons"): ("off", "theme", "date", "random", "spring", "summer", "autumn", "winter"),
+    ("render", "month"): ("pc", "january", "february", "march", "april", "may", "june", "july", "august",
+                          "september", "october", "november", "december"),
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),

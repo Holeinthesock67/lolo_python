@@ -95,6 +95,32 @@ func _test_modes() -> void:
 			"heure du PC : 22 h, soleil couché")
 
 
+## Lot U13b : saison au hasard (hiver deux fois moins souvent) et mois choisi au menu.
+func _test_random_and_month() -> void:
+	var counts := {"spring": 0, "summer": 0, "autumn": 0, "winter": 0}
+	var n := 7000
+	for i in range(n):
+		counts[SkyCycle.random_season((float(i) + 0.5) / n)] += 1
+	_check(counts["winter"] == 1000 and counts["spring"] == 2000 and counts["summer"] == 2000 and counts["autumn"] == 2000,
+		"au hasard : hiver 1 fois sur 7, les autres 2 fois sur 7 (%s)" % str(counts))
+	_check(SkyCycle.random_season(0.0) == "spring" and SkyCycle.random_season(1.0) == "winter", "au hasard : bornes du tirage")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 12
+	var w := 0
+	for i in range(14000):
+		if SkyCycle.random_season(rng.randf()) == "winter":
+			w += 1
+	_check(w > 1800 and w < 2200, "au hasard, tirages réels : environ 2 000 hivers sur 14 000 (%d)" % w)
+	_check("random" in SkyCycle.SEASON_MODES, "mode « au hasard » connu du cycle")
+	var pc := {"year": 2026, "month": 11, "day": 12}
+	_check(SkyCycle.date_for_month("pc", pc) == pc and SkyCycle.date_for_month("lune", pc) == pc, "mois : date du PC par défaut")
+	var feb := SkyCycle.date_for_month("february", pc)
+	_check(feb == {"year": 2026, "month": 2, "day": 15}, "mois choisi : le 15 février de l'année du PC")
+	var boreal := SkyCycle.season_state("date", _theme, int(feb["month"]), int(feb["day"]), 62.0, {"boreal_forest": 1.0})
+	_check(boreal["season"] == "winter", "février choisi, taïga à 62° : hiver")
+	var july := SkyCycle.date_for_month("july", pc)
+	var sav := SkyCycle.season_state("date", _theme, int(july["month"]), int(july["day"]), 12.0, {"savanna": 1.0})
+	_check(sav["season"] == "wet", "juillet choisi, savane à 12° : saison des pluies")
 ## Secondes de journée accélérée (départ à 6 h, 45°, 21 juin) pour arriver à l'heure solaire `h`.
 func _accel_s(h: float) -> float:
 	var half := DaylightModel.half_day_hours(45.0, DaylightModel.day_of_year(2026, 6, 21))
@@ -140,6 +166,7 @@ func _test_view() -> void:
 func _init() -> void:
 	_theme = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
 	_test_modes()
+	_test_random_and_month()
 	_test_view()
 	print("test_sky_cycle : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
