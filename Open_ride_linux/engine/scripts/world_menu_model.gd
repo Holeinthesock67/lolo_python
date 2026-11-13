@@ -12,7 +12,8 @@ extends RefCounted
 ## écrit, Y efface (texte vide : retour), A maintenu passe aux résultats ; résultats — − et + choisissent,
 ## A valide, Z revient à la grille, Y quitte la recherche. Au clavier, on tape le nom et la liste garde la main. Carte — gauche, droite, − (nord) et + (sud) déplacent le curseur
 ## de 100 m (appui long : 500 m), accroché à la route la plus proche, A valide. Cap — − et + changent de ligne
-## (cap, navigation, longueur), gauche et droite changent la valeur, A démarre. Y revient d'un écran.
+## (cap, navigation, longueur), gauche et droite changent la valeur, A démarre : préchargement, puis la balade
+## part dès que le monde est prêt (`on_session`, lot W18). Y revient d'un écran.
 
 const TextEntry := preload("res://scripts/text_entry.gd")
 const QUERY_MAX := 40
@@ -374,6 +375,23 @@ func on_error(code: String, message: String) -> void:
 ## La séance est prête : le menu se ferme.
 func is_loading() -> bool:
 	return state == LOADING
+
+
+## État de la séance reçu pendant le préchargement (lot W18) : le monde ouvert prêt (`READY`, parcours
+## « ow:… »), le menu se ferme et la balade démarre tout de suite, sans repasser par l'accueil ni par
+## l'écran Prêt (départ au pédalage du lot O36) : {action: "start"} ; déjà en route : {action: "close"} ;
+## sinon {} (préchargement en cours, ou un autre parcours).
+func on_session(session_state: String, route_id: String) -> Dictionary:
+	if state != LOADING or not route_id.begins_with("ow:"):
+		return {}
+	match session_state:
+		"READY":
+			state = SETUP
+			return {"action": "start"}
+		"RUNNING", "PAUSED":
+			state = SETUP
+			return {"action": "close"}
+	return {}
 
 
 # --- géométrie -------------------------------------------------------------------------------
