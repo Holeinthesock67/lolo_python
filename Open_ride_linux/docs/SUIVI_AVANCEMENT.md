@@ -401,6 +401,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 ### Après la 1.0 : réglages de séance au menu (lots N17 et N18, rédigés le 27 octobre)
 - [ ] Demi-tour sur la route depuis l'écran de pause (lot N17) : en PR le 8 novembre (contrat IPC 1.9, core, écran de pause, caméra et HUD dans le nouveau sens ; critères 2 et 3 vérifiés en simulé par `core/tests/test_u_turn.py`, critère 4 par `test_menu_model.gd` et `test_menu_flow.gd` ; captures des 3 qualités à valider).
 - [ ] Bots réglés depuis les menus (lot N18, PR du 8 novembre) : écran Prêt déjà livré (O7, O35, PL1) et gardé par profil (O32) ; écran de pause, commande `set_bots` (révision 1.9) et ligne `bots` du journal dans la PR ; pas de liste en double dans Réglages ni `config.toml` (choix du propriétaire du 8 novembre) ; captures 3 qualités à valider.
+- [ ] Grand Prix sans frôlement entre coureurs (lot GP12, PR du 12 novembre) : voie imposée qui double et s'écarte, freinage roue contre roue après les objets ; 40 courses simulées sans contact ; banc PC low, medium, high à faire.
 - [ ] Décor lisible après un demi-tour : bornes et panneau de col des deux côtés, bandeaux de portique à deux faces (lot N21, en PR le 8 novembre).
 
 ### Version 2.0 : segments, bonus et maillots (série T)

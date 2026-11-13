@@ -27,7 +27,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from .bots import FULL_FRAME_BOTS, light_frame
+from .bots import BRAKE_GAP_M, FULL_FRAME_BOTS, light_frame
 from .classic import ClassicRace, GainJob
 from .config import BOUNDS as CONFIG_BOUNDS, GPX_DIR, OPENRIDE_HOME, PLANS_DIR, WORKOUTS_DIR, Config
 from .equipment import segment_time_gain
@@ -2879,10 +2879,26 @@ class CoreSession:
         for b in self.bots:
             if b.id in speeds:
                 b.physics.v = speeds[b.id]
+        self._brake_grandprix_wheels([b for b in self.bots if b.id in speeds])
         self._sync_grandprix_lanes()
         for msg in gp.due_results(self._t_session):
             self.server.send_raw(msg)
         self._flush_grandprix_journal(gp)
+
+    def _brake_grandprix_wheels(self, racing: list) -> None:
+        """Lot GP12 : un objet ne pousse personne dans la roue devant. Après les objets (coup de fouet, super-forme,
+        glissade du coureur de devant), l'enfermement du lot PL1 (`draft.blocked_by`) est recalculé avec les
+        nouvelles vitesses, du premier au dernier, et chacun, cycliste compris (vitesse virtuelle), freine roue
+        contre roue comme un bot (`BRAKE_GAP_M`) : le freinage se transmet le long d'une file dans le même pas."""
+        route = self.route
+        length, loop = (route.length_m, route.is_loop) if route else (None, False)
+        field = [(self.physics, self._lane)] + [(b.physics, b.lane) for b in racing]
+        field.sort(key=lambda r: -r[0].s)
+        for phys, lane in field:
+            others = [(p.s, p.v, ln) for p, ln in field if ln is not lane]
+            lane.blocked = draft_mod.blocked_by(phys.s, phys.v, lane, lane.target, others, length, loop)
+            if lane.blocked is not None and lane.blocked[0] <= BRAKE_GAP_M:
+                phys.v = min(phys.v, lane.blocked[1])
 
     def _sync_grandprix_lanes(self) -> None:
         """Voie forcée (cycliste : A court, flèches ; bot : esquive du lot GP3) : le placement vise le centre de
@@ -2895,9 +2911,9 @@ class CoreSession:
         for rid, lane, auto, home in lanes:
             target = gp.lane_target(rid) if gp is not None else None
             if target is None:
-                lane.auto, lane.home = auto, home
-            else:
-                lane.auto, lane.home = False, GP_LANE_CENTRES_M[target]
+                lane.auto, lane.follow, lane.home = auto, True, home
+            else:   # lot GP12 : voie tenue, mais il double et s'écarte comme les autres (plus de frôlement)
+                lane.auto, lane.follow, lane.home = True, False, GP_LANE_CENTRES_M[target]
 
     def _grandprix_press(self, event: str) -> bool:
         """Boutons du mode (spécification §7.1) : Z court utilise l'objet ; A court change de voie quand le choix
