@@ -2035,11 +2035,33 @@ class CoreSession:
             self.race.drop_segments(removed)
             self.race.add_segments(added)
         self._segments = tuple(live.accepted)
+        self._write_ow_segments(ow, s)
         for seg in added:
             log.info("Monde ouvert : %s « %s » retenue de %.0f à %.0f m.",
                      "montée" if seg.type == "climb" else "sprint", seg.name, seg.s_start, seg.s_end)
         if removed:
             log.info("Monde ouvert : %d segment(s) retiré(s), route changée après un carrefour.", len(removed))
+
+    def _write_ow_segments(self, ow: OpenWorld, s: float) -> None:
+        """Lot W21 : `segments.json` du monde vivant, que l'engine relit pour poser portiques et panneaux ;
+        écrit hors de la boucle à 50 Hz."""
+        if ow.folder is None or ow.route is None or self._ow_segments is None:
+            return
+        layer = ow_segments.live_layer(self._ow_segments.accepted, ow.route.base_m, s)
+        folder = ow.folder
+
+        def write() -> None:
+            try:
+                ow_segments.write_live_layer(folder, layer)
+            except OSError as exc:
+                log.warning("Segments du monde ouvert non écrits pour l'engine : %s", exc)
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            write()
+            return
+        self._spawn(asyncio.to_thread(write))
 
     def _save_ow_index(self) -> None:
         """Index des segments du monde ouvert écrit hors de la boucle à 50 Hz, avec les records."""

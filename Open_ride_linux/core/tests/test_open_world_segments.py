@@ -114,3 +114,36 @@ def test_route_window_from_a_live_route_like_object():
 
     win = route_window(Live(), 3000.0)
     assert win.s[0] == pytest.approx(3000.0) and win.s[-1] == pytest.approx(500.0 + 9990.0)
+
+
+# --- lot W21 : couche du monde vivant et arches sans fin ----------------------------------------------
+
+def test_live_layer_is_valid_and_relative_to_the_generator_route(tmp_path):
+    import json
+
+    import jsonschema
+    from pathlib import Path
+
+    from openride_core.open_world_segments import live_layer, write_live_layer
+    live = LiveSegments()
+    live.update(window(6000.0, shift=1000.0), 1000.0)
+    layer = live_layer(live.accepted, base_m=1000.0, s_now=1000.0)
+    schema = json.loads((Path(__file__).resolve().parents[2] / "docs" / "contracts" / "world"
+                         / "segments.schema.json").read_text())
+    jsonschema.validate(layer, schema)
+    (c,) = [x for x in layer["segments"] if x["type"] == "climb"]
+    assert c["s_start"] == pytest.approx(2000.0, abs=20)        # repère de la route du générateur
+    write_live_layer(tmp_path, layer)
+    assert json.loads((tmp_path / "segments.json").read_text()) == layer
+    assert not list(tmp_path.glob("*.tmp"))
+    # segments finis loin derrière : retirés du fichier
+    assert live_layer(live.accepted, base_m=1000.0, s_now=9000.0)["segments"] == []
+
+
+def test_endless_arches_every_step():
+    from openride_core.powerups import ArchSchedule
+    arches = ArchSchedule(2000.0, math.inf)
+    assert arches.positions == []
+    assert arches.crossed(0.0, 1999.0) == 0 and arches.crossed(1999.0, 2000.0) == 1
+    assert arches.crossed(2000.0, 2001.0) == 0 and arches.crossed(1000.0, 9000.0) == 4
+    assert arches.crossed(100_000.0, 100_000.0) == 0

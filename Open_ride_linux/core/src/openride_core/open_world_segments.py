@@ -26,6 +26,7 @@ import hashlib
 import json
 import math
 import os
+import threading
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Sequence
@@ -195,3 +196,30 @@ class LiveSegments:
         elif removed:
             self._last_sprint_s = max(s.s_start for s in self.accepted if s.type == "sprint")
         return removed
+
+
+# --- couche `segments.json` du monde vivant (lot W21) -----------------------------------------------
+
+LIVE_FILE = "segments.json"          # même nom et même schéma que la couche segments d'un `.world` (§8 bis)
+LIVE_KEEP_BEHIND_M = 2000.0          # segments finis plus loin derrière : retirés du fichier
+LIVE_MAX = 200                       # `maxItems` du schéma
+
+
+def live_layer(segments: Sequence[Segment], base_m: float, s_now: float) -> dict[str, Any]:
+    """Couche `segments.json` du monde vivant : segments retenus, en distance de la route du générateur
+    (`s` − `base_m`), sans ceux finis plus de 2 km derrière ni ceux d'avant une relance du générateur."""
+    keep = [seg for seg in segments if seg.s_end >= s_now - LIVE_KEEP_BEHIND_M and seg.s_start >= base_m]
+    out = []
+    for seg in keep[-LIVE_MAX:]:
+        d = seg.to_dict()
+        d["s_start"] = round(seg.s_start - base_m, 1)
+        d["s_end"] = round(seg.s_end - base_m, 1)
+        out.append(d)
+    return {"version": "1.0", "segments": out}
+
+
+def write_live_layer(folder: Path, layer: dict[str, Any]) -> None:
+    """Écriture atomique dans le dossier de séance (l'engine la relit quand le fichier change)."""
+    tmp = Path(folder) / f"{LIVE_FILE}.{threading.get_ident()}.tmp"   # deux écritures en même temps : chacune le sien
+    tmp.write_text(json.dumps(layer, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, Path(folder) / LIVE_FILE)
