@@ -91,6 +91,7 @@ const VIEWS := {
 	"panneau_approche_30m": [Vector3(55.0, 1.5, 4.0), Vector3(63.0, 2.0, -24.0), 55.0],
 	"borne": [Vector3(61.0, 0.9, -17.4), Vector3(61.8, 0.45, -19.5), 40.0],
 	"torii": [Vector3(1.5, 1.6, -42.0), Vector3(0.0, 4.0, -80.0), 60.0],
+	"glissiere": [Vector3(1.5, 1.5, -50.0), Vector3(-4.5, 0.7, -64.0), 55.0],   # lot JP8
 	"borne_dos": [Vector3(62.6, 0.9, -21.6), Vector3(61.8, 0.45, -19.5), 40.0],   # face arrière (demi-tour, N17)
 	"portes": [Vector3(-4.0, 1.6, -24.0), Vector3(-9.0, 1.2, -25.0), 60.0],
 	"eolienne": [Vector3(-75.0, 2.0, -150.0), Vector3(-120.0, 55.0, -300.0), 60.0],
@@ -504,6 +505,11 @@ func _add_props(vp: SubViewport, preset: String) -> void:
 		var lamp: Node3D = props.build_prop({"kind": "lantern", "s": 0.0, "lines": []})
 		lamp.position = Vector3(x, 0.0, -66.0)
 		props.add_child(lamp)
+	# Lot JP8 : glissière blanche à gauche de la route, avant et après le torii (vues `torii` et `glissiere`)
+	var rail := MeshInstance3D.new()
+	rail.mesh = RoadsideProps.guardrail_mesh(StraightRoute.new(), 50.0, 120.0, -1, ROAD_WIDTH_M)
+	rail.material_override = props._mats["guardrail"]
+	props.add_child(rail)
 
 
 ## Village de BUILDINGS maillé par building_mesh.gd avec le matériau de la scène principale (osm_streamer.gd).

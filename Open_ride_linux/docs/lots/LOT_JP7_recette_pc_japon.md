@@ -29,4 +29,4 @@ japonais. Sur la vraie route d'Hakone, les torii sont au pied des montées, dans
 
 ## Reste
 
-Garde-fous de la route au Japon (reportés du lot JP5).
+Garde-fous de la route au Japon : lot JP8 (`docs/lots/LOT_JP8_glissieres_japon.md`).
