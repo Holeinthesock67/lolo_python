@@ -72,4 +72,4 @@ Aucune, sauf l'ajout éventuel des réglages d'heure et de saison au contrat du 
 
 ## 8. Hors périmètre
 
-- Éclairage public, phare du vélo, fenêtres éclairées (lot ultérieur si souhaité).
+- Éclairage public, phare du vélo, fenêtres éclairées (lot ultérieur si souhaité) : fait par le lot P35 (13 novembre).

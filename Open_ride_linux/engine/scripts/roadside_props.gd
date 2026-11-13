@@ -22,6 +22,7 @@ extends Node3D
 
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
 const PropShader := preload("res://shaders/props.gdshader")
+const NightLights := preload("res://scripts/night_lights.gd")
 ## Matières de props.gdshader (lot Y8 étape 3) et faux relief par préréglage, comme les bâtiments.
 const KIND_BOARD := 0
 const KIND_POST := 1
@@ -319,6 +320,14 @@ static func guardrail_mesh(route, s0: float, s1: float, side: int, road_w: float
 	return _commit(st, Vector2(s1 - s0, GUARDRAIL_POST_H))
 
 
+## Foyer de la lanterne (lot P35) : un peu plus large que la chambre de lumière de pierre, il en éclaire les faces.
+static func lantern_light_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	NightLights.box(st, Vector3(0.0, 1.535, 0.0), Vector3(0.51, 0.22, 0.51), NightLights.WARM_COLOR, 9)
+	return st.commit()
+
+
 ## Lanterne de pierre (tōrō, lot JP5), environ 2,2 m, pied à y = 0.
 static func lantern_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
@@ -569,6 +578,8 @@ func build_prop(item: Dictionary) -> Node3D:
 		_mesh(root, _meshes[key + "_black"], _mats["torii_black"], Vector3.ZERO)
 	elif kind == "lantern":
 		_mesh(root, _shared("lantern", lantern_mesh), _mats["stone"], Vector3.ZERO)
+		# Lot P35 : foyer qui s'allume la nuit (caché quand le jour et la nuit est coupé)
+		_mesh(root, _shared("lantern_light", lantern_light_mesh), NightLights.lamp_material(), Vector3.ZERO)
 	else:
 		var spec: Dictionary = BOARD[kind]
 		var lay := board_layout(kind, lines)
