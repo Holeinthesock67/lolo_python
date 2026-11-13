@@ -2112,6 +2112,51 @@
           }
         }
       }
+    },
+    "volcan_actif": {
+      "biomes": {
+        "volcanic": {
+          "ground": {
+            "layers": [
+              {
+                "name": "scories noires fumantes",
+                "role": "flat",
+                "color": "#1f1a19",
+                "texture": null,
+                "scale_m": 6.0
+              },
+              {
+                "name": "basalte rougeoyant",
+                "role": "steep",
+                "color": "#3b1c14",
+                "texture": null,
+                "scale_m": 12.0
+              }
+            ],
+            "slope_threshold_deg": 22,
+            "blend_sharpness": 4.0,
+            "high_line_m": null
+          },
+          "vegetation": {
+            "species": [
+              {
+                "kind": "dwarf_shrub",
+                "weight": 1
+              }
+            ],
+            "max_density_per_ha": 2,
+            "treeline_m": null
+          }
+        }
+      },
+      "fire": {
+        "lava": "#ff5a10",
+        "lava_hot": "#ffd24a",
+        "crust": "#141010",
+        "smoke": "#3b3432",
+        "glow": "#ff6a20",
+        "density": 1.5
+      }
     }
   },
   "surfaces": {

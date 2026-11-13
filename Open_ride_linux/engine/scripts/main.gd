@@ -1252,6 +1252,8 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 		PerfProbe.mark_since("decor", "", t_step)
 		t_step = Time.get_ticks_usec()
 	_step_cycle(now_s)
+	if living_world != null and living_world.volcano != null:
+		atmosphere_view.set_fire(living_world.volcano.fire_level, living_world.volcano.glow_color)
 	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
 	if moon_view != null:
 		moon_view.update(camera.global_position, atmosphere_view.cycle)

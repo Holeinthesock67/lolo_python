@@ -5,6 +5,10 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Un volcan en flammes (lot DB2)
+- Nouveau parcours de démonstration « Volcan en flammes » : une boucle de 8 km dans un volcan en éruption, de la plaine de cendres à la crête du cratère (220 m de montée, 9,6 % au plus) et retour. On roule entre des coulées et des lacs de lave, dans les braises et la fumée, et le cratère crache des gerbes de lave. Trace, relief et décor sont inventés.
+- Nouveau paysage « volcan actif » du thème : coulées et lacs de lave qui rougeoient de jour comme de nuit, braises autour du cycliste, panaches de fumée, gerbes de lave, lueur orange sur la brume. La lave reste toujours à 14 m au moins de la route. En qualité basse, ni gerbes ni lumières, et moins de braises.
+
 ### Un parcours de démonstration pour les nouveaux paysages (lot DB1)
 - Nouveau parcours « Tour des nouveaux paysages » : 14 km du bord d'un fjord jusqu'au sommet des hauts plateaux, par les landes atlantiques, les rizières, un village japonais, une île volcanique et un canyon rouge (2 km chacun, 285 m de montée, 6,5 % au plus). Trace, relief et décor sont entièrement inventés.
 - Il remplace au jeu de base le « Tour des six paysages », la « Route de la côte » et la « Montée alpine » : une installation neuve ne les ajoute plus, mais ils restent installés chez ceux qui les ont déjà. Le « Col du lacet », le « Circuit des Prés » et le vélodrome ne changent pas.

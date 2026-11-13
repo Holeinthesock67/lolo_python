@@ -38,6 +38,7 @@ var layer
 var forced := ""
 var season_date := {}   # {month, day, lat, snowy} (lot U13) ; vide : pas de saison par date
 var _params_cache := {}
+var _fire_cache := {}       # paysage -> feu (fire_of)
 var _mutex := Mutex.new()   # params() appelé depuis les fils de préparation
 
 
@@ -328,6 +329,55 @@ func variant_at(x: float, z: float) -> Variant:
 	if t.is_empty():
 		t = layer.tile("far", floori(x / FAR_M), floori(z / FAR_M))
 	return t.get("variant", null)
+
+
+## Feu du paysage (démo « Volcan en flammes ») : section `landscapes.<paysage>.fire` du thème complétée par
+## FIRE_DEFAULTS, {} si le paysage n'en a pas. Une seule règle pour tout l'engine : une tuile dont le paysage a un
+## feu est en feu (lave de volcano_fx.gd, pas d'herbe de grass_tufts.gd).
+const FIRE_DEFAULTS := {"lava": "#ff5a10", "lava_hot": "#ffd24a", "crust": "#141010", "smoke": "#3b3432",
+	"glow": "#ff6a20", "density": 1.0}
+
+
+func fire_of(landscape: String) -> Dictionary:
+	_mutex.lock()
+	var hit = _fire_cache.get(landscape, null)
+	_mutex.unlock()
+	if hit != null:
+		return hit
+	var out := _fire_entry(landscape)
+	_mutex.lock()
+	_fire_cache[landscape] = out
+	_mutex.unlock()
+	return out
+
+
+func _fire_entry(landscape: String) -> Dictionary:
+	var all_l = theme.get("landscapes", null)
+	if landscape == "" or typeof(all_l) != TYPE_DICTIONARY or typeof(all_l.get(landscape, null)) != TYPE_DICTIONARY \
+			or typeof(all_l[landscape].get("fire", null)) != TYPE_DICTIONARY:
+		return {}
+	var out := FIRE_DEFAULTS.duplicate()
+	var f: Dictionary = all_l[landscape]["fire"]
+	for k in f:
+		out[k] = f[k]
+	return out
+
+
+## Feu de la tuile qui contient (x, z) (`fire_of` de son paysage) ; {} hors feu.
+func fire_at(x: float, z: float) -> Dictionary:
+	var v = variant_at(x, z)
+	if typeof(v) != TYPE_DICTIONARY or typeof(v.get("landscape", null)) != TYPE_STRING:
+		return {}
+	return fire_of(v["landscape"])
+
+
+## Premier paysage du thème qui a un feu (ordre de BiomeIds.LANDSCAPES) : son feu, ou {}.
+func any_fire() -> Dictionary:
+	for l in BiomeIds.LANDSCAPES:
+		var f := fire_of(l)
+		if not f.is_empty():
+			return f
+	return {}
 
 
 ## Entrées `variants` du thème pour le couple {ground, roofs} d'une tuile ({} si aucune).

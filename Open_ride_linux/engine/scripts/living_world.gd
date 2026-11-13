@@ -24,6 +24,7 @@ const WindViewModel := preload("res://scripts/wind_view_model.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const GrassTufts := preload("res://scripts/grass_tufts.gd")
 const GroundDetails := preload("res://scripts/ground_details.gd")
+const VolcanoFx := preload("res://scripts/volcano_fx.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SkyClouds := preload("res://scripts/sky_clouds.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
@@ -40,6 +41,7 @@ var preset := "low"
 var living: Dictionary = {}
 var grass: Node3D = null
 var ground_details: Node3D = null     # rochers, herbes hautes, termitières des biomes (lot U8)
+var volcano: Node3D = null            # lave, braises, fumées des paysages en feu (démo « Volcan en flammes »)
 var sky_material: Material = null
 var terrain_material: Material = null
 var sound_player = null
@@ -85,6 +87,10 @@ func configure(preset_name: String, living_enabled: bool, theme: Dictionary, env
 		ground_details = GroundDetails.new()
 		ground_details.name = "GroundDetails"
 		add_child(ground_details)
+	if volcano == null:
+		volcano = VolcanoFx.new()
+		volcano.name = "VolcanoFx"
+		add_child(volcano)
 	if _route != null:
 		set_route(_route)
 
@@ -107,6 +113,9 @@ func set_route(route, road_width_m: float = 6.0) -> void:
 		ground_details.configure(GroundDetails.budgets(living), route, model, road_width_m)
 		ground_details.exclusions = _exclusions()
 		ground_details.height_at = _terrain_height(route)
+	if volcano != null:
+		volcano.height_at = _terrain_height(route)
+		volcano.configure(VolcanoFx.budgets_of(living), route, model)
 	_neigh_at = -INF
 
 
@@ -148,6 +157,10 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		ground_details.set_apparent_wind(wind.apparent(rider_v, heading_deg))
 		ground_details.update(cam_s)
 		PerfProbe.mark_since("sol", "%d" % int(floor(cam_s)), t_ground)
+	if volcano != null:
+		var t_fire := Time.get_ticks_usec()
+		volcano.update(cam_pos, cam_s, dt_s)
+		PerfProbe.mark_since("feu", "%d" % int(floor(cam_s)), t_fire)
 	SkyClouds.update(sky_material, last_wind, dt_s)
 	if terrain_material is ShaderMaterial:
 		var shadow := SkyClouds.terrain_shadow_params(sky_material, str(living.get("clouds", "off")))
