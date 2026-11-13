@@ -61,6 +61,7 @@ const ClimbDetector := preload("res://scripts/climb_detector.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
 const RoadsideProps := preload("res://scripts/roadside_props.gd")
+const StreetLights := preload("res://scripts/street_lights.gd")
 const CrowdModel := preload("res://scripts/crowd_model.gd")
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const PassersbyModel := preload("res://scripts/passersby_model.gd")
@@ -100,6 +101,7 @@ var sky_view: Node3D = null
 var boats = BoatModel.new()
 var boats_view: Node3D = null
 var props: Node3D = null
+var street_lights: Node3D = null   # luminaires publics des villages (lot P35)
 var crowd_all_climbs := false       # --crowd=all (bancs, lot Y21) : spectateurs sur toutes les montées
 var crowd = CrowdModel.new()
 var crowd_view: Node3D = null
@@ -148,6 +150,7 @@ var _fog_boost := 0.0
 var _valley_alt := 0.0
 var _valley_at_s := -INF
 var _sun_elevation_deg := 45.0
+var _theme_sun_deg := 45.0      # hauteur du soleil du thème, quand le jour et la nuit (P19) est coupé
 
 
 func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p_environment: Environment = null,
@@ -170,6 +173,7 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 	crowd_view.set_preset(preset, enabled)
 	passersby_view.set_preset(preset, enabled)
 	props.set_preset(QualityPresets.applied_name(preset))
+	street_lights.set_preset(QualityPresets.applied_name(preset))
 	turbines.set_preset(QualityPresets.applied_name(preset))
 	traffic.set_budget(int(living.get("vehicles", 0)))
 	road_traffic.set_budget(int(living.get("distant_vehicles", 0)))
@@ -178,7 +182,8 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 	cyclists_view.set_quality(QualityPresets.applied_name(preset))
 	sky.set_budget(int(living.get("aircraft", 0)))
 	boats.set_budget(int(living.get("boats", 0)))
-	_sun_elevation_deg = float(ThemeRenderParams.sky_params(theme)["sun_elevation_deg"])
+	_theme_sun_deg = float(ThemeRenderParams.sky_params(theme)["sun_elevation_deg"])
+	_sun_elevation_deg = _theme_sun_deg
 	turbines.visible = enabled
 	flags.visible = enabled
 	if world_streamer != null:
@@ -232,6 +237,9 @@ func _build_nodes() -> void:
 	props = RoadsideProps.new()
 	props.name = "RoadsideProps"
 	add_child(props)
+	street_lights = StreetLights.new()
+	street_lights.name = "StreetLights"
+	add_child(street_lights)
 	crowd_view = CrowdRenderer.new()
 	crowd_view.name = "Spectators"
 	add_child(crowd_view)
@@ -268,6 +276,7 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 	_route = route
 	_road_width_m = road_width_m
 	props.road_width_m = road_width_m
+	street_lights.road_width_m = road_width_m
 	prepared = false
 	climbs = []
 	pois = []
@@ -281,6 +290,10 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 	flags.set_points([])
 	for k in _loaded_chunks.keys():
 		props.remove_chunk(k)
+	street_lights.clear()
+	if enabled and route != null:
+		for k in _loaded_chunks.keys():
+			street_lights.add_chunk(route, k, _chunk_buildings(k))
 	_valley_at_s = -INF
 	if world_streamer != null and world_streamer.has_method("set_road_marks"):
 		world_streamer.set_road_marks({})
@@ -407,16 +420,33 @@ func _on_chunk_loaded(k: int, extras: Dictionary) -> void:
 		fauna.set_chunk(k, groups)
 	road_traffic.set_chunk(k, extras.get("traffic", []))
 	boats.set_chunk(k, extras.get("boats", []))
+	if _route != null:
+		street_lights.add_chunk(_route, k, _chunk_buildings(k))
 	if prepared:
 		props.add_chunk(_route, k, RoadsideModel.for_chunk(roadside_items, k))
 
 
+## Contours des bâtiments du tronçon `k` (osm_streamer.gd), pour les luminaires (lot P35).
+func _chunk_buildings(k: int) -> Array:
+	if osm_streamer == null:
+		return []
+	var sh: Dictionary = osm_streamer.get("_shapes_by_chunk").get(k, {})
+	return sh.get("buildings", [])
+
+
 func _on_chunk_freed(k: int) -> void:
 	_loaded_chunks.erase(k)
+	street_lights.remove_chunk(k)
 	fauna.remove_chunk(k)
 	road_traffic.remove_chunk(k)
 	boats.remove_chunk(k)
 	props.remove_chunk(k)
+
+
+## Hauteur du soleil du jour et de la nuit (P19, posée par main.gd) : phares et feux des véhicules et des
+## bateaux allumés au coucher ; NAN (jour et nuit coupé) : soleil du thème.
+func set_sun_elevation(deg: float) -> void:
+	_sun_elevation_deg = _theme_sun_deg if is_nan(deg) else deg
 
 
 ## Brouillard de référence (RenderQuality.apply_fog, posé par atmosphere_view.gd) : la brume le rapproche.
@@ -458,6 +488,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	# Météo (P8)
 	weather_eval = WeatherModel.evaluate(weather, alt_m, _valley_alt_at(cam_s), wind_eval)
 	particles.update(cam_pos, weather_eval)
+	street_lights.update(cam_pos, now_s)   # lot P35 : projecteurs sous les luminaires proches, la nuit
 	# Gravel (U22) : surface sous la roue, poussière derrière elle par temps sec et crissement des pneus
 	surface_here = world_streamer.surface_at(cam_s) if world_streamer != null and world_streamer.has_method("surface_at") else "paved"
 	var back := Vector3(-sin(h), 0.0, cos(h))

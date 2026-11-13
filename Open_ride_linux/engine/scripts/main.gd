@@ -53,6 +53,9 @@ const VEHICLE_PREFIX := "veh:"   # `draft_bot` d'un véhicule de la route (lot A
 const RIDER_PREFIX := "rider:"   # `draft_bot` d'un cycliste du décor (lot AS7, road_cyclists.py du core)
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
+const BikeLights := preload("res://scripts/bike_lights.gd")
+const MoonView := preload("res://scripts/moon_view.gd")
+const Fireflies := preload("res://scripts/fireflies.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
 const WorkoutChartModel := preload("res://scripts/workout_chart_model.gd")
 const WorkoutChartView := preload("res://scripts/workout_chart_view.gd")
@@ -66,6 +69,7 @@ const LivingWorld := preload("res://scripts/living_world.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
 const AtmosphereView := preload("res://scripts/atmosphere_view.gd")
 const SkyCycle := preload("res://scripts/sky_cycle.gd")
+const NightLights := preload("res://scripts/night_lights.gd")
 const SeasonModel := preload("res://scripts/season_model.gd")
 const VelodromeHall := preload("res://scripts/velodrome_hall.gd")
 const SegmentMarkers := preload("res://scripts/segment_markers.gd")
@@ -234,6 +238,9 @@ var _draft := {"draft": null, "draft_bot": null}   # champs `draft` et `draft_bo
 ## « side » ou « » sans), qui montre l'avatar sans changer la caméra du jeu.
 var avatar_model = AvatarModel.new()
 var avatar_view: Node3D
+var bike_lights: Node3D = null   # lot P35 : phare et feu arrière du joueur, la nuit
+var moon_view: MeshInstance3D = null   # lot P35 : lune avec sa phase, la nuit
+var fireflies: GPUParticles3D = null   # lot P35 : lucioles des nuits douces
 var _avatar_cam := ""
 ## Courbes de la séance (lot O14) : un modèle, deux vues (bandeau ERG, panneau SIM), taille par réglage.
 var chart_model = WorkoutChartModel.new()
@@ -366,6 +373,13 @@ func _ready() -> void:
 	add_child(draft_gauge)
 	avatar_view = AvatarView.new()
 	add_child(avatar_view)
+	bike_lights = BikeLights.new()
+	add_child(bike_lights)
+	moon_view = MoonView.new()
+	add_child(moon_view)
+	fireflies = Fireflies.new()
+	add_child(fireflies)
+	fireflies.set_preset(QualityPresets.applied_name(_quality_name))
 	_configure_avatar()
 	segment_markers = SegmentMarkers.new()
 	segment_markers.name = "SegmentMarkers"
@@ -583,6 +597,8 @@ func _on_settings(msg: Dictionary) -> void:
 		load_guard.reset(QualityPresets.image(_quality_name), _forward_plus())
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
+		if fireflies != null:
+			fireflies.set_preset(QualityPresets.applied_name(_quality_name))
 		if velodrome_hall != null:
 			velodrome_hall.set_quality(_quality_name)
 		_apply_indoor()
@@ -1233,6 +1249,11 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 		t_step = Time.get_ticks_usec()
 	_step_cycle(now_s)
 	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
+	if moon_view != null:
+		moon_view.update(camera.global_position, atmosphere_view.cycle)
+	if fireflies != null and living_world != null:
+		fireflies.update(camera.global_position, str(living_world.season), float(living_world.rain),
+			_dominant_biome(living_world.neigh.get("biomes", {})))
 	PerfProbe.mark_since("atmosphere", "", t_step)
 
 
@@ -1775,6 +1796,8 @@ func _step_avatar(pos: Vector3, heading: float, roll: float, now_us: int, pitch_
 	var paused := session_state == "PAUSED"
 	avatar_model.update(now_us / 1000000.0, _last_state.get("cadence", null), _last_state.get("power", null),
 		_last_state.get("grade", null), paused)
+	if bike_lights != null:
+		bike_lights.place(pos, Vector3(deg_to_rad(pitch_deg), -heading, roll))
 	if not avatar_view.visible:
 		return
 	avatar_view.apply(avatar_model)
@@ -1907,12 +1930,28 @@ func _apply_cycle_modes(day_mode: String, season_mode: String, force: bool = fal
 	_step_cycle(Time.get_ticks_msec() / 1000.0, true)
 
 
+## Biome le plus présent d'un dictionnaire de poids (voisinage sonore de living_world.gd, lot U11) ; "" sans poids.
+static func _dominant_biome(weights: Variant) -> String:
+	var best := ""
+	var w := 0.0
+	if typeof(weights) == TYPE_DICTIONARY:
+		for b in weights:
+			if float(weights[b]) > w:
+				w = float(weights[b])
+				best = str(b)
+	return best
+
+
 ## Lumière de l'heure et paramètres de la saison posés dans la scène ; `force` : tout de suite.
 func _step_cycle(now_s: float, force: bool = false) -> void:
 	if not force and now_s - _cycle_at < CYCLE_PERIOD_S:
 		return
 	_cycle_at = now_s
-	if _day_mode == "off" and _season_mode == "off" and not atmosphere_view.cycle_active() and _season_applied.is_empty():
+	# Vélodrome (salle éclairée, VD5) : ni jour ni nuit, quel que soit le réglage (13 novembre)
+	var indoor: bool = route != null and route.is_track()
+	var day_mode := SkyCycle.effective_day_mode(_day_mode, indoor)
+	if day_mode == "off" and _season_mode == "off" and not atmosphere_view.cycle_active() and _season_applied.is_empty() \
+			and not NightLights.enabled:
 		return
 	var lat := NAN
 	var lon := NAN
@@ -1924,11 +1963,22 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 	now["bias"] = int(tz.get("bias", 0))
 	var date: Dictionary = _cycle_test["date"] if typeof(_cycle_test.get("date")) == TYPE_DICTIONARY else Time.get_date_dict_from_system()
 	var hour = _cycle_test.get("hour", null)
-	var out := SkyCycle.evaluate(_day_mode, _season_mode, _theme_dict, lat, lon, date,
+	var out := SkyCycle.evaluate(day_mode, _season_mode, _theme_dict, lat, lon, date,
 		float(_last_state.get("elapsed_s", 0.0)), now, float(hour) if hour != null else NAN)
 	var light: Dictionary = out["daylight"]
-	if bool(light.get("active", false)) or atmosphere_view.cycle_active():
-		atmosphere_view.set_cycle(light if bool(light.get("active", false)) else {})
+	var lit := bool(light.get("active", false))
+	if lit or atmosphere_view.cycle_active():
+		atmosphere_view.set_cycle(light if lit else {})
+		if indoor:
+			_apply_indoor()   # lumière de la salle reposée par-dessus le ciel d'aujourd'hui
+	# Lot P35 : sons d'ambiance à l'heure de la scène, phares des véhicules au coucher, lumières de nuit
+	if living_world != null:
+		living_world.solar_hour = float(light["solar_hour"]) if lit else NAN
+	if living_decor != null:
+		living_decor.set_sun_elevation(float(light["sun_elevation_deg"]) if lit else NAN)
+	var glow := NightLights.level(light)
+	if glow != NightLights.current or lit != NightLights.enabled:
+		NightLights.apply(glow, lit)
 	var season: Dictionary = out["season"]
 	var params: Dictionary = season["params"] if bool(season["active"]) else {}
 	if params != _season_applied:

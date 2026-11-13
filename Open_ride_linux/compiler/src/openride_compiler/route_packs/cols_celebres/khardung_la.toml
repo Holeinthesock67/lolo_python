@@ -1,0 +1,11 @@
+name = "Khardung La"
+region = "Ladakh"
+country = "Inde"
+side = "depuis Leh (Fort Road) jusqu'au col (5 359 m)"
+waypoints = [[34.1637, 77.5849], [34.2783, 77.6044]]
+# Mesure sur la route OSM et le MNT Copernicus (13 novembre) : 37 058 m, 1 858 m (Leh 3 502 m, col 5 358 m).
+ref_length_m = 37100
+ref_gain_m = 1860
+# Les 14 derniers kilomètres (Leh Khardung La Road, au-delà de South Pullu) sont notés en gravier dans OpenStreetMap.
+unpaved = true
+tags = ["col", "haute-altitude", "hauts-plateaux", "himalaya"]

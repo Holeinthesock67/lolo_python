@@ -6,8 +6,9 @@ Une recette (`<id>.toml`) décrit une montée publique et célèbre par quelques
 
 1. télécharge par Overpass (cache `~/.cache/openride/osm/`, comme les couches OSM) les routes
    ouvertes aux vélos autour des points : `highway` hors autoroute, sans `bicycle=no` ni accès
-   interdit, chemins non revêtus exclus sauf `unpaved = true` dans la recette ; les sens uniques
-   sont respectés ;
+   interdit, routes non revêtues exclues sauf `unpaved = true` dans la recette ; les pistes et
+   sentiers (`track`, `path`) non revêtus restent exclus même alors (ils coupaient les lacets de
+   Khardung La et d'Abra Málaga, lot HP2) ; les sens uniques sont respectés ;
 2. accroche chaque point au nœud routier le plus proche (au plus `SNAP_MAX_M`, sinon refus) et
    relie les points successifs par le plus court chemin (Dijkstra). Les routes sont chargées dans
    un rectangle élargi de `BBOX_MARGINS_M[0]` autour des points ; sans chemin, le rectangle est
@@ -54,12 +55,13 @@ TOLERANCE = 0.05
 GAIN_SMOOTH_M = 300.0   # moyenne glissante du profil avant le calcul du dénivelé contrôlé
 EARTH_R = 6371008.8
 
-# Routes retenues ; `track`, `path` et `cycleway` non revêtus seulement avec `unpaved = true`.
+# Routes retenues ; revêtement non goudronné seulement avec `unpaved = true` ; `track` et `path` seulement revêtus.
 HIGHWAYS = ("trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link", "tertiary",
             "tertiary_link", "unclassified", "residential", "living_street", "service", "road", "cycleway",
             "track", "path")
 UNPAVED = {"unpaved", "gravel", "fine_gravel", "dirt", "earth", "ground", "grass", "mud", "sand", "compacted",
            "pebblestone", "rock"}
+PAVED_TRACK = ("asphalt", "paved", "concrete")   # piste ou sentier retenu seulement avec ce revêtement
 RECIPE_KEYS = {"name", "description", "region", "country", "tags", "waypoints", "ref_length_m", "ref_gain_m",
                "side", "unpaved", "credits"}
 
@@ -175,12 +177,11 @@ def way_allowed(tags: dict[str, str], unpaved_ok: bool) -> bool:
     if tags.get("motorroad") == "yes" and bicycle not in ("yes", "designated"):
         return False
     surface = tags.get("surface", "")
-    if not unpaved_ok:
-        if surface in UNPAVED:
-            return False
-        if hw in ("track", "path") and surface not in ("asphalt", "paved", "concrete"):
-            return False
-    return True
+    # Une piste ou un sentier n'est jamais la route d'un col, même avec `unpaved = true` (lot HP2) :
+    # la clé ouvre les routes au revêtement non goudronné, pas les raccourcis entre les lacets.
+    if hw in ("track", "path") and surface not in PAVED_TRACK:
+        return False
+    return unpaved_ok or surface not in UNPAVED
 
 
 def _oneway(tags: dict[str, str]) -> int:

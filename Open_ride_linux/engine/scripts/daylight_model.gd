@@ -13,6 +13,10 @@ extends RefCounted
 ## - `stars(elevation_deg)` : 0 au-dessus de l'horizon, 1 sous −18°, pour le ciel de P6 ;
 ## - `clock(mode, hour, factor, elapsed_s, now, lon_deg)` -> heure solaire ; `days_elapsed` : jours passés
 ##   en heure accélérée (P19 suit la saison quand la date change) ;
+## - `accelerated(hour, factor, elapsed_s, night_share, lat, day_of_year)` -> `{solar_hour, days}` : heure
+##   accélérée dont la nuit (soleil sous NIGHT_DEG) ne prend que `night_share` du cycle (journée accélérée du
+##   réglage : 12 min de nuit pour 48 min de jour) ; l'horloge va plus vite la nuit, plus lentement le jour ;
+##   jour ou nuit polaire : allure constante ; `tod.night_share` absent (NAN) : `clock`, allure constante ;
 ## - `moon_illumination(unix_days)` : part éclairée de la lune (0 nouvelle lune, 1 pleine lune) ;
 ## - `evaluate(tod, lat, lon, day_of_year, elapsed_s, now, unix_days)` : tout en un ; `tod` vient de
 ##   `ThemeRenderParams.time_of_day_params` ; `tod.present` faux (thème sans `sky.time_of_day`) : soleil et
@@ -29,8 +33,8 @@ const NIGHT_DEG := -6.0              # fin du crépuscule civil
 const ASTRO_NIGHT_DEG := -18.0       # nuit noire, étoiles pleines
 const SYNODIC_DAYS := 29.530588
 const NEW_MOON_UNIX_DAYS := 10962.759   # nouvelle lune du 6 janvier 2000, 18 h 14 UTC (jours depuis 1970)
-const MOON_ENERGY := 0.18            # énergie de la lune pleine, en part du soleil du thème
-const MOON_AMBIENT := 0.08           # lumière ambiante ajoutée par la lune pleine
+const MOON_ENERGY := 0.26            # énergie de la lune pleine, en part du soleil du thème
+const MOON_AMBIENT := 0.10           # lumière ambiante ajoutée par la lune pleine
 const MOON_COLOR := Color(0.72, 0.80, 1.0)
 const MOON_MIN_ELEVATION_DEG := 25.0    # la lune éclaire toujours d'assez haut pour des ombres lisibles
 const MAX_ACCEL_FACTOR := 1440.0     # une journée par minute au plus
@@ -38,8 +42,9 @@ const MAX_ACCEL_FACTOR := 1440.0     # une journée par minute au plus
 ## Paliers de lumière, de la nuit noire au plein jour : élévation (°), puis multiplicateurs des valeurs de
 ## jour du thème. Interpolation linéaire entre deux paliers voisins : aucune marche.
 const STOPS := [
-	{"el": -18.0, "sun": Color(1.0, 0.55, 0.35), "sun_e": 0.0, "amb": Color(0.32, 0.38, 0.62), "amb_e": 0.0,
-		"top": Color(0.03, 0.04, 0.10), "hor": Color(0.06, 0.08, 0.16), "fog": Color(0.06, 0.08, 0.15)},
+	# Nuit éclaircie le 13 novembre (lot P35, « c'est trop sombre ») : ciel bleu nuit, horizon plus clair
+	{"el": -18.0, "sun": Color(1.0, 0.55, 0.35), "sun_e": 0.0, "amb": Color(0.36, 0.42, 0.68), "amb_e": 0.0,
+		"top": Color(0.05, 0.07, 0.17), "hor": Color(0.11, 0.14, 0.27), "fog": Color(0.10, 0.12, 0.22)},
 	{"el": -6.0, "sun": Color(1.0, 0.55, 0.35), "sun_e": 0.0, "amb": Color(0.38, 0.45, 0.75), "amb_e": 0.10,
 		"top": Color(0.10, 0.15, 0.36), "hor": Color(0.24, 0.27, 0.50), "fog": Color(0.22, 0.25, 0.42)},
 	{"el": -2.0, "sun": Color(1.0, 0.55, 0.35), "sun_e": 0.0, "amb": Color(0.55, 0.58, 0.85), "amb_e": 0.25,
@@ -100,7 +105,7 @@ static func stars(elevation_deg: float) -> float:
 	return smoothstep(0.0, ASTRO_NIGHT_DEG, elevation_deg)
 
 
-static func light(elevation_deg: float, moon_illum: float = 0.0, min_ambient: float = 0.12) -> Dictionary:
+static func light(elevation_deg: float, moon_illum: float = 0.0, min_ambient: float = ThemeRenderParams.DEFAULT_MIN_AMBIENT) -> Dictionary:
 	var e := clampf(elevation_deg, STOPS[0]["el"], LIGHT_DAY_DEG)
 	var i := 0
 	while i < STOPS.size() - 2 and e > float(STOPS[i + 1]["el"]):
@@ -143,6 +148,44 @@ static func clock(mode: String, hour: float, factor: float, elapsed_s: float, no
 			return fposmod(hour, 24.0)
 
 
+## Demi-durée du jour (h) : soleil au-dessus de NIGHT_DEG (crépuscule compris) ; 0 nuit polaire, 12 jour polaire.
+static func half_day_hours(lat_deg: float, doy: float) -> float:
+	var phi := deg_to_rad(clampf(lat_deg, -89.9, 89.9))
+	var dec := deg_to_rad(declination_deg(doy))
+	var c := (sin(deg_to_rad(NIGHT_DEG)) - sin(phi) * sin(dec)) / (cos(phi) * cos(dec))
+	return rad_to_deg(acos(clampf(c, -1.0, 1.0))) / 15.0
+
+
+## Part du cycle (0 à 1, depuis l'aube) de l'heure solaire `h`, la nuit prenant `share` du cycle.
+static func accel_phase(h: float, half_day: float, share: float) -> float:
+	var dawn := 12.0 - half_day
+	var dusk := 12.0 + half_day
+	var x := fposmod(h - dawn, 24.0)
+	if x <= dusk - dawn:
+		return x / (2.0 * half_day) * (1.0 - share)
+	return (1.0 - share) + (x - (dusk - dawn)) / (24.0 - 2.0 * half_day) * share
+
+
+## Heure solaire d'une part du cycle (inverse de `accel_phase`).
+static func accel_hour(u: float, half_day: float, share: float) -> float:
+	var v := fposmod(u, 1.0)
+	if v <= 1.0 - share:
+		return fposmod(12.0 - half_day + v / (1.0 - share) * 2.0 * half_day, 24.0)
+	return fposmod(12.0 + half_day + (v - (1.0 - share)) / share * (24.0 - 2.0 * half_day), 24.0)
+
+
+static func accelerated(hour: float, factor: float, elapsed_s: float, night_share: float, lat_deg: float,
+		doy: float) -> Dictionary:
+	var f := clampf(factor, 0.0, MAX_ACCEL_FACTOR)
+	var half := half_day_hours(DEFAULT_LATITUDE_DEG if is_nan(lat_deg) else lat_deg, doy)
+	var share := clampf(night_share, 0.01, 0.99)
+	if is_nan(night_share) or half <= 0.0 or half >= 12.0:
+		return {"solar_hour": clock("accelerated", hour, f, elapsed_s), "days": days_elapsed("accelerated", hour, f, elapsed_s)}
+	var u0 := accel_phase(hour, half, share)
+	var total := u0 + maxf(elapsed_s, 0.0) * f / 3600.0 / 24.0
+	return {"solar_hour": accel_hour(total, half, share), "days": int(floor(total - u0 + fposmod(hour, 24.0) / 24.0))}
+
+
 ## Jours entiers passés depuis le départ en heure accélérée (0 dans les autres modes).
 static func days_elapsed(mode: String, hour: float, factor: float, elapsed_s: float) -> int:
 	if mode != "accelerated":
@@ -167,10 +210,15 @@ static func evaluate(tod: Dictionary, lat_deg: float, lon_deg: float, doy: float
 	var hour := float(tod.get("hour", 12.0))
 	var factor := float(tod.get("factor", 1.0))
 	var solar := clock(mode, hour, factor, elapsed_s, now, lon_deg)
-	var day := doy + days_elapsed(mode, hour, factor, elapsed_s)
+	var days := days_elapsed(mode, hour, factor, elapsed_s)
+	if mode == "accelerated" and not is_nan(float(tod.get("night_share", NAN))):
+		var acc := accelerated(hour, factor, elapsed_s, float(tod["night_share"]), lat, doy)
+		solar = float(acc["solar_hour"])
+		days = int(acc["days"])
+	var day := doy + days
 	var sun := sun_position(lat, day, solar)
-	var illum := 0.0 if is_nan(unix_days) else moon_illumination(unix_days + days_elapsed(mode, hour, factor, elapsed_s))
-	var out := light(float(sun["elevation_deg"]), illum, float(tod.get("min_ambient", 0.12)))
+	var illum := 0.0 if is_nan(unix_days) else moon_illumination(unix_days + days)
+	var out := light(float(sun["elevation_deg"]), illum, float(tod.get("min_ambient", ThemeRenderParams.DEFAULT_MIN_AMBIENT)))
 	out["sun_elevation_deg"] = sun["elevation_deg"]
 	out["sun_azimuth_deg"] = sun["azimuth_deg"]
 	out["sun_direction"] = direction(sun["elevation_deg"], sun["azimuth_deg"])
