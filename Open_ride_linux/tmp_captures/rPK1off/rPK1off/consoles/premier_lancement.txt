@@ -1,0 +1,12 @@
+2026-11-13 22:52:28,198 INFO    core Difficulté du trainer : 50 %
+2026-11-13 22:52:28,198 INFO    core Rampe de pente du trainer : +4.0 %/s (montée), -8.0 %/s (descente)
+2026-11-13 22:52:28,200 INFO    ipc_server IPC démarré : écoute des commandes sur 127.0.0.1:5006, émission d'état vers 127.0.0.1:5005
+2026-11-13 22:52:28,201 INFO    core Core démarré (trainer=mock, entrées=keyboard).
+2026-11-13 22:52:28,202 INFO    input Pas de terminal interactif : entrées clavier désactivées
+2026-11-13 22:53:28,208 INFO    core Perf : pas p50 0.13 / p99 0.21 / max 0.37 ms ; retard p99 1.6 / max 4.8 ms ; CPU 3.4 %
+2026-11-13 22:53:28,208 INFO    core Gigue : physique p50 0.35 p99 0.95 max 3.84 ms ; state p99 14.60 max 15.85 ms (3000 pas)
+2026-11-13 22:54:28,212 INFO    core Perf : pas p50 0.13 / p99 0.23 / max 0.98 ms ; retard p99 1.9 / max 5.5 ms ; CPU 3.5 %
+2026-11-13 22:54:28,213 INFO    core Gigue : physique p50 0.30 p99 1.10 max 4.83 ms ; state p99 14.65 max 15.84 ms (3000 pas)
+2026-11-13 22:55:27,445 INFO    core Gigue (séance entière) : physique p50 0.30 p99 1.00 max 4.83 ms ; state p99 14.65 max 16.27 ms (8961 pas)
+2026-11-13 22:55:27,446 INFO    core Arrêt du core…
+2026-11-13 22:55:27,447 INFO    ipc_server IPC arrêté.

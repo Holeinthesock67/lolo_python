@@ -1,0 +1,10 @@
+22:48:33 empreinte avant adbe16314ebd628346bae8971666af44
+22:48:33 tête 0a11f0f0
+22:48:34 construction
+22:52:27 fin rc=0
+22:52:27 premier lancement hors réseau
+22:55:27 fin rc=124
+22:55:27 paquet copié dans paquet_cols
+22:55:29 empreinte après adbe16314ebd628346bae8971666af44
+22:55:29 clone bac8ec77
+22:55:29 FIN
