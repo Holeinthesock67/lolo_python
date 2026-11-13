@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Glissières blanches à l'extérieur des virages serrés dans le biome `japan` (garde-fous reportés du lot JP5) | GDScript | JP5 | Petite | En PR le 13 novembre, **version 6.0** |
+| Glissières blanches à l'extérieur des virages serrés dans le biome `japan` (garde-fous reportés du lot JP5) | GDScript | JP5 | Petite | **Livré le 13 novembre** (PR #863), **version 6.0** |
 
 Plan : `docs/6.0/PLAN_SERIE_JP.md` (§ repères : « garde-fous orange et blancs des routes japonaises »).
 Demande du propriétaire le 13/11 (« Oui » aux garde-fous reportés).
@@ -32,4 +32,8 @@ Demande du propriétaire le 13/11 (« Oui » aux garde-fous reportés).
 ## Essais
 
 - Captures cloud low / medium / high : `/mnt/project-files/captures/jp8-glissieres-2026-11-13/`, à valider par le propriétaire.
-- Coût attendu : quelques centaines de triangles par virage, un appel de dessin par morceau. Banc PC sur Hakone dans les trois qualités, à comparer à r855.
+- Coût attendu : quelques centaines de triangles par virage, un appel de dessin par morceau.
+- Banc PC r863 (13/11, tête `d7dc3af6`, Hakone 240 s) : GPU low / medium / high 5,27 / 8,57 / 10,46 ms contre
+  5,37 / 8,61 / 10,39 ms en r855 sans glissières, écart nul ; pires images 48 / 91 / 66 ms ; seul contrôle en échec,
+  la vitesse imposée du banc (comme en r855). Planche medium aux `--at-m` 25, 2730, 4602, 6957, 9002 et 12877
+  (`engine/tests/liste_glissieres.gd`) : glissières visibles à l'extérieur des lacets.
