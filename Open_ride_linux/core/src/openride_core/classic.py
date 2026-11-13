@@ -91,6 +91,7 @@ class ClassicRace:
     seed: int | None = None
     loadout: dict | None = None                             # cadre et roues de la séance (lot V5)
     gain_mode: str = "off"                                  # voir GAIN_MODES
+    open_ended: bool = False                                # monde ouvert (lot W20) : segments ajoutés en roulant
     passes: list[dict] = field(default_factory=list)       # passages du cycliste, pour le bilan
     journal: list[dict] = field(default_factory=list)      # lignes à écrire au journal
     book_dirty: bool = False
@@ -98,7 +99,7 @@ class ClassicRace:
     def __post_init__(self) -> None:
         segs = list(self.segments)
         self._by_id = {s.id: s for s in segs}
-        self.timer = SegmentTimer(segs, self.length_m, self.loop, self.rider_mass_kg)
+        self.timer = SegmentTimer(segs, self._timer_length(), self.loop, self.rider_mass_kg)
         self._bot_timers: dict[str, SegmentTimer] = {}
         self._bot_times: dict[tuple[str, int], dict[str, float]] = {}   # (segment, tour) → {bot: temps}
         self.standings = Standings(segs)
@@ -106,7 +107,7 @@ class ClassicRace:
         self.powerups = (PowerUps(self.table, seed=self.seed, set_name=self.powerup_set) if self.table
                          else PowerUps(seed=self.seed, set_name=self.powerup_set))
         every = self.powerups.table.arch_every_m if self.powerups_on else 0.0
-        self.arches = ArchSchedule(every, self.length_m, self.loop)
+        self.arches = ArchSchedule(every, self._timer_length(), self.loop)   # sans fin en monde ouvert (W21)
         self._prev_s: float | None = None
         self._s = 0.0
         self._has_bots = False
@@ -116,6 +117,34 @@ class ClassicRace:
         self.gain_jobs: list[GainJob] = []
         if self.gain_mode not in GAIN_MODES:
             raise ValueError(f"gain_mode inconnu : {self.gain_mode}")
+
+    def _timer_length(self) -> float:
+        """Longueur vue par les chronomètres : sans fin en monde ouvert (la route s'allonge en roulant)."""
+        return math.inf if self.open_ended else self.length_m
+
+    def add_segments(self, segs: Iterable[Any]) -> None:
+        """Monde ouvert (lot W20) : montées et sprints retenus en roulant, chronométrés comme les autres."""
+        segs = list(segs)
+        if not segs:
+            return
+        for seg in segs:
+            self._by_id[seg.id] = seg
+            self.standings._segs[seg.id] = seg
+            self.timer.add(seg)
+            for timer in self._bot_timers.values():
+                timer.add(seg)
+        self.segments = tuple(sorted(list(self.segments) + segs, key=lambda x: x.s_start))
+
+    def drop_segments(self, ids: Iterable[str]) -> None:
+        """Monde ouvert (lot W20) : segments dont la route a changé, retirés avant d'être finis."""
+        ids = set(ids)
+        if not ids:
+            return
+        for sid in ids:
+            self.timer.drop(sid)
+            for timer in self._bot_timers.values():
+                timer.drop(sid)
+        self.segments = tuple(x for x in self.segments if x.id not in ids)
 
     def start(self, t: float, s: float, bots: Iterable[Any] = ()) -> None:
         """Position de départ du cycliste et des bots : un segment qui commence là est chronométré."""
@@ -134,7 +163,7 @@ class ClassicRace:
     def _bot_timer(self, bot_id: str) -> SegmentTimer:
         timer = self._bot_timers.get(bot_id)
         if timer is None:
-            timer = self._bot_timers[bot_id] = SegmentTimer(list(self.segments), self.length_m, self.loop)
+            timer = self._bot_timers[bot_id] = SegmentTimer(list(self.segments), self._timer_length(), self.loop)
         return timer
 
     # --- pas de séance (50 Hz, RUNNING seulement) -----------------------------------------

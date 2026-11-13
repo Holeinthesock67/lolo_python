@@ -223,6 +223,37 @@ func set_route(route, arch_every_m: float = Model.DEFAULT_ARCH_EVERY_M, p_road_w
 	_starts = Model.starts(marks)
 
 
+## Monde ouvert (lot W21) : route prolongée ou réécrite depuis `from_s`, ou segments trouvés en roulant.
+## Les marques sont recalculées (portiques, panneaux, arches jusqu'au bout de la route connue) ; un nœud déjà
+## en scène est gardé si sa marque n'a pas changé et qu'elle est avant `from_s` (route inchangée sous elle),
+## pour ne pas faire clignoter un portique proche.
+func refresh(route, arch_every_m: float, from_s: float = INF) -> void:
+	_route = route
+	var segs = route.get("segments") if route != null else []
+	if typeof(segs) != TYPE_ARRAY:
+		segs = []
+	var fresh: Array = Model.items(route, segs, arch_every_m, false) if route != null else []
+	var index := {}
+	for i in range(fresh.size()):
+		index[mark_key(fresh[i])] = i
+	var kept := {}
+	for i in _nodes.keys():
+		var node: Node3D = _nodes[i]
+		var key := mark_key(marks[i]) if i < marks.size() else ""
+		if index.has(key) and float(marks[i]["s"]) < from_s:
+			kept[index[key]] = node
+		else:
+			node.queue_free()
+	_nodes = kept
+	marks = fresh
+	_starts = Model.starts(marks)
+
+
+## Clé d'une marque (lot W21) : sorte, segment, position au décimètre et textes.
+static func mark_key(m: Dictionary) -> String:
+	return "%s|%s|%.1f|%s" % [m.get("kind", ""), m.get("segment_id", ""), float(m.get("s", 0.0)), str(m.get("lines", []))]
+
+
 func clear() -> void:
 	_drop_warm()
 	_clear_elim()

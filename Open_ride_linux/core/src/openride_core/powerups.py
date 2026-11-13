@@ -283,7 +283,9 @@ class ArchSchedule:
         self.length_m = float(length_m)
         self.loop = loop
         self.positions: list[float] = []
-        if every_m > 0:
+        self.every_m = float(every_m)
+        self.endless = math.isinf(self.length_m) and not loop   # monde ouvert (lot W21) : une arche tous les every_m
+        if every_m > 0 and not self.endless:
             k = 1
             while k * every_m < self.length_m - 1e-6:
                 self.positions.append(k * every_m)
@@ -291,6 +293,8 @@ class ArchSchedule:
 
     def crossed(self, s_prev: float, s: float) -> int:
         """Nombre d'arches franchies entre deux positions cumulées (`s_prev` exclu, `s` inclus)."""
+        if self.endless and self.every_m > 0:
+            return max(0, math.floor(s / self.every_m) - math.floor(max(s_prev, 0.0) / self.every_m)) if s > s_prev else 0
         if s <= s_prev or not self.positions:
             return 0
         if not self.loop:
