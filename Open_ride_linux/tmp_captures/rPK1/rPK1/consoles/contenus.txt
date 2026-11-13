@@ -1,0 +1,80 @@
+== contenus (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 12.5 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus', contient=['Contenus de départ — en partie installé']) : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé', 'Ajouté : 9 entraînement(s), 2 plan(s), 5 parcours.']) : « Contenus »
+[OK] fichier ~/OpenRide/Plans/reprise_4_semaines.toml présent : OpenRide/Plans/reprise_4_semaines.toml
+[OK] fichier ~/OpenRide/Workouts/vo2_5x3.zwo présent : OpenRide/Workouts/vo2_5x3.zwo
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-alpin.world/manifest.json présent : .local/share/openride/routes/demo-biomes-alpin.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-circuit.world/manifest.json présent : .local/share/openride/routes/demo-circuit.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/velodrome-250.world/manifest.json présent : .local/share/openride/routes/velodrome-250.world/manifest.json
+[OK] journal du core : « Contenu « starter » : Ajouté » : Contenu « starter » : Ajouté
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo-circuit »
+[OK] écran routes (contient=['Montée alpine', 'Circuit des Prés']) : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 11.5 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus', contient=['Contenus de départ — en partie installé']) : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé', 'Ajouté : 9 entraînement(s), 2 plan(s), 5 parcours.']) : « Contenus »
+[OK] fichier ~/OpenRide/Plans/reprise_4_semaines.toml présent : OpenRide/Plans/reprise_4_semaines.toml
+[OK] fichier ~/OpenRide/Workouts/vo2_5x3.zwo présent : OpenRide/Workouts/vo2_5x3.zwo
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-alpin.world/manifest.json présent : .local/share/openride/routes/demo-biomes-alpin.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-circuit.world/manifest.json présent : .local/share/openride/routes/demo-circuit.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/velodrome-250.world/manifest.json présent : .local/share/openride/routes/velodrome-250.world/manifest.json
+[OK] journal du core : « Contenu « starter » : Ajouté » : Contenu « starter » : Ajouté
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo-circuit »
+[OK] écran routes (contient=['Montée alpine', 'Circuit des Prés']) : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== contenus (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 11.0 s)
+[OK] choisir « settings » : écran « settings », focus « devices »
+[OK] écran settings (titre='Réglages') : « Réglages »
+[OK] choisir « contents » : écran « contents », focus «  »
+[OK] écran contents (titre='Contenus', contient=['Contenus de départ — en partie installé']) : « Contenus »
+[OK] choisir « content:starter » : écran « contents », focus « content:starter »
+[OK] écran contents (contient=['Contenus de départ — installé', 'Ajouté : 9 entraînement(s), 2 plan(s), 5 parcours.']) : « Contenus »
+[OK] fichier ~/OpenRide/Plans/reprise_4_semaines.toml présent : OpenRide/Plans/reprise_4_semaines.toml
+[OK] fichier ~/OpenRide/Workouts/vo2_5x3.zwo présent : OpenRide/Workouts/vo2_5x3.zwo
+[OK] fichier ~/.local/share/openride/routes/demo-biomes-alpin.world/manifest.json présent : .local/share/openride/routes/demo-biomes-alpin.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/demo-circuit.world/manifest.json présent : .local/share/openride/routes/demo-circuit.world/manifest.json
+[OK] fichier ~/.local/share/openride/routes/velodrome-250.world/manifest.json présent : .local/share/openride/routes/velodrome-250.world/manifest.json
+[OK] journal du core : « Contenu « starter » : Ajouté » : Contenu « starter » : Ajouté
+[OK] écran settings (focus='contents') : « Réglages »
+[OK] choisir « world » : écran « routes », focus « demo-circuit »
+[OK] écran routes (contient=['Montée alpine', 'Circuit des Prés']) : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+contenus                 click    OK              66 s
+contenus                 clavier  OK              65 s
+contenus                 souris   OK              59 s
+Rapport : ~/mesures-2026-11-01-auto/rPK1/contenus/rapport.html
+OK

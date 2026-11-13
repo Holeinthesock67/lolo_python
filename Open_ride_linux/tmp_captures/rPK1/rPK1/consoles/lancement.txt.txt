@@ -1,0 +1,34 @@
+14:17:11 empreinte avant 574f6af5f29a4633ff7a35a8347a0241
+14:17:11 tête a212131b
+14:17:24 construction
+14:31:09 fin rc=2 durée 825 s
+14:31:09 verify/info
+14:31:09 fin
+14:31:09 passo-dello-stelvio longueur , at-m 0,800
+14:31:09 banc passo-dello-stelvio low
+14:31:10 fin rc=1
+14:31:10 banc passo-dello-stelvio medium
+14:31:10 fin rc=1
+14:31:10 banc passo-dello-stelvio high
+14:31:10 fin rc=1
+14:31:10 ticlio longueur , at-m 0,800
+14:31:10 banc ticlio low
+14:31:11 fin rc=1
+14:31:11 banc ticlio medium
+14:31:11 fin rc=1
+14:31:11 banc ticlio high
+14:31:11 fin rc=1
+14:31:11 hakone-route-1 longueur , at-m 0,800
+14:31:11 banc hakone-route-1 low
+14:31:12 fin rc=1
+14:31:12 banc hakone-route-1 medium
+14:31:12 fin rc=1
+14:31:12 banc hakone-route-1 high
+14:31:12 fin rc=1
+14:31:12 contenus
+14:34:22 fin rc=0
+14:34:22 premier lancement sans réseau
+14:34:22 fin rc=1
+14:34:23 empreinte après 574f6af5f29a4633ff7a35a8347a0241
+14:34:23 clone 71e814c8
+14:34:23 FIN

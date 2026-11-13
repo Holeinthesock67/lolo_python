@@ -1,0 +1,21 @@
+build_pack_base : 19 col(s) à construire, dossier de travail /tmp/openride-pack-base.mraVk5
+build_pack_base : construit : alpe_d_huez (57 s) 
+build_pack_base : construit : alto_de_l_angliru (32 s) 
+build_pack_base : construit : ballon_d_alsace (55 s) 
+build_pack_base : construit : col_de_la_madeleine (35 s) 
+build_pack_base : construit : col_du_galibier (35 s) 
+build_pack_base : construit : col_du_tourmalet (47 s) 
+build_pack_base : construit : fuji_azami_line (51 s) 
+build_pack_base : construit : fuji_subaru_line (41 s) 
+build_pack_base : construit : grand_ballon (45 s) 
+build_pack_base : construit : grand_colombier (42 s) 
+build_pack_base : construit : hakone_route_1 (45 s) 
+build_pack_base : construit : irohazaka (53 s) irohazaka : 9.4 km, 452 m de dénivelé positif
+build_pack_base : construit : monte_zoncolan (31 s) 
+build_pack_base : construit : mont_ventoux_bedoin (41 s) 
+build_pack_base : construit : norikura_echo_line (43 s) 
+build_pack_base : construit : passo_dello_stelvio (44 s) 
+build_pack_base : construit : planche_des_belles_filles (40 s) 
+build_pack_base : construit : teide_vilaflor (47 s) 
+build_pack_base : construit : ticlio (41 s) ticlio : 14.6 km, 624 m de dénivelé positif
+build_pack_base : aucun col construit
