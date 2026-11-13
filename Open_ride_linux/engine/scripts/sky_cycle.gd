@@ -15,6 +15,7 @@ extends RefCounted
 ##   (biome -> poids au point, biome_model.weights_at) mélange les saisons des biomes présents ; sans poids,
 ##   biome par défaut du thème (thème 1.x ou `temperate_grassland` : saisons de P18) ; `spring` à `winter` :
 ##   la saison, au milieu, pour tous les biomes ; enneigement partout l'hiver quand la météo du thème est la neige ;
+## - `effective_day_mode(mode, indoor)` : coupé dans le vélodrome ;
 ## - `evaluate(day_mode, season_mode, theme, lat, lon, date, elapsed_s, now, hour, weights)` : les deux ensemble.
 
 const DaylightModel := preload("res://scripts/daylight_model.gd")
@@ -27,6 +28,12 @@ const SEASON_MODES := ["off", "theme", "date", "spring", "summer", "autumn", "wi
 const ACCEL_START_HOUR := 6.0    # journée accélérée : départ à l'aube
 const ACCEL_FACTOR := 24.0       # une journée en une heure de séance
 const ACCEL_NIGHT_SHARE := 0.2   # la nuit dure le quart du jour (12 min de nuit, 48 min de jour ; 13/11)
+
+
+## Réglage `render.day_night` appliqué à la scène : coupé en salle (vélodrome, demande du 13 novembre : pas de
+## nuit dans une salle éclairée), le réglage sinon.
+static func effective_day_mode(mode: String, indoor: bool) -> String:
+	return "off" if indoor else mode
 
 
 static func daylight_params(mode: String, theme: Dictionary) -> Dictionary:

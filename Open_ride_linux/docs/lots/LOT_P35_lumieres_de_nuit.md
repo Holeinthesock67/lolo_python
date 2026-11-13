@@ -33,6 +33,10 @@ Les fonds d'ambiance (oiseaux du matin, insectes du soir, grenouilles la nuit, `
 
 Le cycle reste d'une heure de séance, départ à 6 h. La nuit (soleil sous −6°) n'en prend que le cinquième (12 min), le jour crépuscules compris les quatre cinquièmes (48 min) : l'horloge va plus vite la nuit et plus lentement le jour, selon la durée du jour du lieu et de la date (`DaylightModel.accelerated`, `SkyCycle.ACCEL_NIGHT_SHARE` = 0,2). Jour ou nuit polaire : allure constante. Une heure accélérée d'un thème (`sky.time_of_day.mode = "accelerated"`) garde son allure constante (pas de `night_share`).
 
+## 4 bis. Vélodrome : pas de nuit
+
+Demande du 13 novembre (« Pas de nuit dans vélodrome ») : la salle du vélodrome (VD5) est éclairée ; le jour et la nuit y est coupé quel que soit le réglage (`SkyCycle.effective_day_mode`), donc ni nuit, ni lampes, ni phare. La lumière de la salle est reposée si le cycle était actif sur le parcours précédent.
+
 ## 5. Tests et outils
 
 - `tests/unit/test_night_lights.gd` : allumage, globaux, lampes du vélo et de l'avatar, luminaires (seulement près des maisons, côtés alternés, crosse au-dessus de la chaussée, projecteurs par préréglage), éclairage du vélo.

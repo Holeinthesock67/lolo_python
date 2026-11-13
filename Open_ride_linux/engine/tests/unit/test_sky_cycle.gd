@@ -60,6 +60,8 @@ func _test_modes() -> void:
 		"journée accélérée : 6 h du lendemain après une heure (%.2f h)" % back["solar_hour"])
 	var polar: Dictionary = SkyCycle.evaluate("accelerated", "off", _theme, 80.0, NAN, JUNE_21, 900.0)["daylight"]
 	_check(is_equal_approx(polar["solar_hour"], 12.0), "jour polaire : allure constante (%.2f h)" % polar["solar_hour"])
+	_check(SkyCycle.effective_day_mode("accelerated", true) == "off" and SkyCycle.effective_day_mode("real", false) == "real",
+		"vélodrome (salle) : ni jour ni nuit ; dehors : le réglage")
 	var th := SkyCycle.evaluate("theme", "theme", _theme, 45.0, NAN, JUNE_21, 600.0)
 	_check(th["daylight"]["active"] and is_equal_approx(th["daylight"]["solar_hour"], 14.0), "heure du thème : 14 h fixe")
 	_check(th["season"]["season"] == "summer", "saison du thème par défaut : été")

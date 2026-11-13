@@ -1911,7 +1911,11 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 	if not force and now_s - _cycle_at < CYCLE_PERIOD_S:
 		return
 	_cycle_at = now_s
-	if _day_mode == "off" and _season_mode == "off" and not atmosphere_view.cycle_active() and _season_applied.is_empty():
+	# Vélodrome (salle éclairée, VD5) : ni jour ni nuit, quel que soit le réglage (13 novembre)
+	var indoor: bool = route != null and route.is_track()
+	var day_mode := SkyCycle.effective_day_mode(_day_mode, indoor)
+	if day_mode == "off" and _season_mode == "off" and not atmosphere_view.cycle_active() and _season_applied.is_empty() \
+			and not NightLights.enabled:
 		return
 	var lat := NAN
 	var lon := NAN
@@ -1923,12 +1927,14 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 	now["bias"] = int(tz.get("bias", 0))
 	var date: Dictionary = _cycle_test["date"] if typeof(_cycle_test.get("date")) == TYPE_DICTIONARY else Time.get_date_dict_from_system()
 	var hour = _cycle_test.get("hour", null)
-	var out := SkyCycle.evaluate(_day_mode, _season_mode, _theme_dict, lat, lon, date,
+	var out := SkyCycle.evaluate(day_mode, _season_mode, _theme_dict, lat, lon, date,
 		float(_last_state.get("elapsed_s", 0.0)), now, float(hour) if hour != null else NAN)
 	var light: Dictionary = out["daylight"]
 	var lit := bool(light.get("active", false))
 	if lit or atmosphere_view.cycle_active():
 		atmosphere_view.set_cycle(light if lit else {})
+		if indoor:
+			_apply_indoor()   # lumière de la salle reposée par-dessus le ciel d'aujourd'hui
 	# Lot P35 : sons d'ambiance à l'heure de la scène, phares des véhicules au coucher, lumières de nuit
 	if living_world != null:
 		living_world.solar_hour = float(light["solar_hour"]) if lit else NAN
