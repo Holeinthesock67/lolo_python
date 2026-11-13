@@ -5,6 +5,7 @@ extends SceneTree
 ## `atmosphere_view.gd`.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_sky_cycle.gd
 
+const DaylightModel := preload("res://scripts/daylight_model.gd")
 const SkyCycle := preload("res://scripts/sky_cycle.gd")
 const SeasonModel := preload("res://scripts/season_model.gd")
 const AtmosphereView := preload("res://scripts/atmosphere_view.gd")
@@ -40,8 +41,27 @@ func _test_modes() -> void:
 			and season_only["season"]["season"] == "winter", "saisons seules : jour et nuit coupé")
 	var acc0 := SkyCycle.evaluate("accelerated", "off", _theme, 45.0, NAN, JUNE_21, 0.0)
 	_check(is_equal_approx(acc0["daylight"]["solar_hour"], SkyCycle.ACCEL_START_HOUR), "journée accélérée : départ à 6 h")
-	var acc := SkyCycle.evaluate("accelerated", "off", _theme, 45.0, NAN, JUNE_21, 45.0 * 60.0)
-	_check(is_equal_approx(fposmod(acc["daylight"]["solar_hour"] + 12.0, 24.0), 12.0), "journée accélérée : minuit après 18 h de journée, 45 min (%.2f h)" % acc["daylight"]["solar_hour"])
+	var acc := SkyCycle.evaluate("accelerated", "off", _theme, 45.0, NAN, JUNE_21, _accel_s(0.0))
+	_check(is_equal_approx(fposmod(acc["daylight"]["solar_hour"] + 12.0, 24.0), 12.0), "journée accélérée : minuit (%.2f h)" % acc["daylight"]["solar_hour"])
+	# 13 novembre : la nuit (soleil sous −6°) ne dure que le quart du jour, et le cycle reste d'une heure
+	var nov := {"year": 2026, "month": 11, "day": 13}
+	var night_s := 0.0
+	var day_s := 0.0
+	for i in range(3600):
+		var e: Dictionary = SkyCycle.evaluate("accelerated", "off", _theme, 48.9, NAN, nov, float(i))["daylight"]
+		if float(e["sun_elevation_deg"]) < DaylightModel.NIGHT_DEG:
+			night_s += 1.0
+		else:
+			day_s += 1.0
+	_check(absf(night_s - 720.0) < 20.0 and absf(day_s - 2880.0) < 20.0,
+		"journée accélérée de novembre : 12 min de nuit, 48 min de jour (%d s / %d s)" % [night_s, day_s])
+	var back: Dictionary = SkyCycle.evaluate("accelerated", "off", _theme, 48.9, NAN, nov, 3600.0)["daylight"]
+	_check(is_equal_approx(back["solar_hour"], SkyCycle.ACCEL_START_HOUR) and int(back["day_of_year"]) == DaylightModel.day_of_year(2026, 11, 13) + 1,
+		"journée accélérée : 6 h du lendemain après une heure (%.2f h)" % back["solar_hour"])
+	var polar: Dictionary = SkyCycle.evaluate("accelerated", "off", _theme, 80.0, NAN, JUNE_21, 900.0)["daylight"]
+	_check(is_equal_approx(polar["solar_hour"], 12.0), "jour polaire : allure constante (%.2f h)" % polar["solar_hour"])
+	_check(SkyCycle.effective_day_mode("accelerated", true) == "off" and SkyCycle.effective_day_mode("real", false) == "real",
+		"vélodrome (salle) : ni jour ni nuit ; dehors : le réglage")
 	var th := SkyCycle.evaluate("theme", "theme", _theme, 45.0, NAN, JUNE_21, 600.0)
 	_check(th["daylight"]["active"] and is_equal_approx(th["daylight"]["solar_hour"], 14.0), "heure du thème : 14 h fixe")
 	_check(th["season"]["season"] == "summer", "saison du thème par défaut : été")
@@ -101,6 +121,12 @@ func _test_random_and_month() -> void:
 	var july := SkyCycle.date_for_month("july", pc)
 	var sav := SkyCycle.season_state("date", _theme, int(july["month"]), int(july["day"]), 12.0, {"savanna": 1.0})
 	_check(sav["season"] == "wet", "juillet choisi, savane à 12° : saison des pluies")
+## Secondes de journée accélérée (départ à 6 h, 45°, 21 juin) pour arriver à l'heure solaire `h`.
+func _accel_s(h: float) -> float:
+	var half := DaylightModel.half_day_hours(45.0, DaylightModel.day_of_year(2026, 6, 21))
+	var share := SkyCycle.ACCEL_NIGHT_SHARE
+	var u := fposmod(DaylightModel.accel_phase(h, half, share) - DaylightModel.accel_phase(SkyCycle.ACCEL_START_HOUR, half, share), 1.0)
+	return u * 3600.0
 
 
 func _test_view() -> void:
@@ -116,13 +142,13 @@ func _test_view() -> void:
 	view.set_world(_theme, null, null, false)
 	var day_energy: float = sun.light_energy
 	var day_basis: Basis = sun.basis
-	var night: Dictionary = SkyCycle.evaluate("accelerated", "off", _theme, 45.0, NAN, JUNE_21, 3600.0 * 19.0 / 24.0)["daylight"]
+	var night: Dictionary = SkyCycle.evaluate("accelerated", "off", _theme, 45.0, NAN, JUNE_21, _accel_s(1.0))["daylight"]
 	view.set_cycle(night)
 	_check(sun.light_energy < day_energy * 0.25, "nuit : soleil remplacé par la lune, faible (%.3f)" % sun.light_energy)
 	_check(env.ambient_light_sky_contribution < 0.2 and env.ambient_light_color.get_luminance() > 0.0,
 			"nuit : lumière ambiante de la nuit, route lisible")
 	_check((env.sky.sky_material as PhysicalSkyMaterial).night_sky != null, "nuit : ciel étoilé")
-	var noon: Dictionary = SkyCycle.evaluate("accelerated", "off", _theme, 45.0, NAN, JUNE_21, 3600.0 * 6.0 / 24.0)["daylight"]
+	var noon: Dictionary = SkyCycle.evaluate("accelerated", "off", _theme, 45.0, NAN, JUNE_21, _accel_s(12.0))["daylight"]
 	view.set_cycle(noon)
 	_check(is_equal_approx(sun.light_energy, day_energy) and env.ambient_light_sky_contribution > 0.95
 			and (env.sky.sky_material as PhysicalSkyMaterial).night_sky == null, "midi : lumière du thème, pas d'étoiles")
@@ -130,7 +156,7 @@ func _test_view() -> void:
 	view.set_cycle({})
 	_check(is_equal_approx(sun.light_energy, day_energy) and sun.basis.is_equal_approx(day_basis)
 			and is_equal_approx(env.ambient_light_sky_contribution, 1.0), "réglage coupé : soleil et lumière d'aujourd'hui")
-	var dusk: Dictionary = SkyCycle.evaluate("accelerated", "off", _theme, 45.0, NAN, JUNE_21, 3600.0 * 13.6 / 24.0)["daylight"]
+	var dusk: Dictionary = SkyCycle.evaluate("accelerated", "off", _theme, 45.0, NAN, JUNE_21, _accel_s(19.6))["daylight"]
 	view.set_cycle(dusk)
 	_check(sun.light_color.b < sun.light_color.r * 0.8, "crépuscule : soleil orangé (%s)" % sun.light_color)
 	view.queue_free()

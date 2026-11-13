@@ -45,8 +45,8 @@ const BUDGET_KEYS := {"rock": "ground_rocks", "grass": "ground_grass", "termite"
 const LAYOUT := {"rock": "scatter", "grass": "scatter", "termite": "scatter", "wall": "row"}
 ## Probabilité qu'une place d'une sorte soit remplie dans un biome (0 ou absent : jamais).
 const DENSITY := {
-	"rock": {"alpine": 0.9, "rock_desert": 1.0, "sand_desert": 0.5, "tundra": 0.5, "volcanic": 1.0, "atlantic_heath": 0.25},
-	"grass": {"savanna": 1.0, "steppe": 0.7},
+	"rock": {"alpine": 0.9, "rock_desert": 1.0, "sand_desert": 0.5, "tundra": 0.5, "volcanic": 1.0, "atlantic_heath": 0.25, "high_plateau": 0.6},
+	"grass": {"savanna": 1.0, "steppe": 0.7, "high_plateau": 0.8},   # hauts plateaux (lot HP1) : touffes d'ichu près de la route
 	"termite": {"savanna": 1.0},
 	"wall": {"atlantic_heath": 0.85},
 }

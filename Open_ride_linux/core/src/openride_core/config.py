@@ -89,7 +89,7 @@ class RenderConfig:
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
     draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
-    biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des dix-huit de BIOMES, forcé partout
+    biome: str = "auto"   # biome du décor (lot U16) : auto (données du parcours) ou un des biomes de BIOMES, forcé partout
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
     texture_level: str = "auto"    # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high
     day_night: str = "off"   # jour et nuit (lot P19) : off (soleil fixe d'aujourd'hui), theme, real (heure du PC) ou accelerated
@@ -415,11 +415,11 @@ ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
 ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 
 # Valeurs permises des champs textuels à choix fermé.
-# Les dix-huit biomes : seize de la série U (lot U0), `japan` (lot JP1) et `atlantic_heath` (lot AT1) (Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
+# Les biomes : seize de la série U (lot U0), `japan` (lot JP1) `atlantic_heath` (lot AT1) et `high_plateau` (lot HP1) (Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
 BIOMES: tuple[str, ...] = (
     "temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
     "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
-    "wetland", "coast", "volcanic", "japan", "atlantic_heath",
+    "wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau",
 )
 
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
@@ -557,15 +557,7 @@ DEV_KEYS: dict[tuple[str, str], str] = {
     ("ride", "traffic_bench_s"): "passages forcés de véhicules proches pour sim_bench (lot AS6)",
 }
 # Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
-PENDING_KEYS: dict[tuple[str, str], str] = {
-    # Grand Prix des objets (série GP, 4.0) : pas d'entrée à l'accueil avant GP9, donc pas de réglage au menu
-    # (point A2 des oublis du 8 novembre) ; la séance les lit déjà (`start` avec `mode` « grandprix »).
-    ("grandprix", "opponents"): "GP9",
-    ("grandprix", "laps"): "GP9",
-    ("grandprix", "distance_km"): "GP9",
-    ("grandprix", "chaos"): "GP9",
-    ("grandprix", "box_every_m"): "GP9",
-}
+PENDING_KEYS: dict[tuple[str, str], str] = {}   # vide depuis le lot GP9 (réglages du Grand Prix)
 
 
 def is_profile_key(section: str, key: str) -> bool:

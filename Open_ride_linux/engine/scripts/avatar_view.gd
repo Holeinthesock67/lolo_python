@@ -32,6 +32,7 @@ const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarMesh := preload("res://scripts/avatar_mesh.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
 const BgTasks := preload("res://scripts/bg_tasks.gd")
+const NightLights := preload("res://scripts/night_lights.gd")
 
 const SWAY_RAD := 0.07
 const STREAK_COUNT := 6
@@ -56,6 +57,7 @@ var view := "subjective"
 var _dims: Dictionary = {}
 var _frame_spec: Dictionary = {}
 var _bike: Node3D          # vélo seul : se balance en danseuse
+var _lamps: MeshInstance3D = null   # phare et feu arrière (lot P35), visibles la nuit seulement
 var _rig: Node3D           # cycliste et vélo
 var _streaks: Node3D
 var _speed_kmh := 0.0
@@ -238,6 +240,7 @@ func _rebuild() -> void:
 		_number.visible = int(settings["number"]) > 0
 		_rig.add_child(_number)
 	_place_bike()
+	_build_lamps()
 	_build_streaks()
 	apply_pose(0.0, false)
 
@@ -341,6 +344,20 @@ func _place_bike() -> void:
 		m.position = AvatarMesh.BB
 
 
+## Phare et feu arrière (lot P35) sur le vélo des niveaux 0 et 1, cachés quand le jour et la nuit est coupé.
+func _build_lamps() -> void:
+	_lamps = null
+	if lod > 1 or ghost_alpha < 1.0:
+		return
+	_lamps = MeshInstance3D.new()
+	_lamps.name = "Lamps"
+	_lamps.mesh = NightLights.bike_lamps_mesh()
+	_lamps.material_override = NightLights.lamp_material()
+	_lamps.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_lamps.visible = NightLights.enabled
+	_bike.add_child(_lamps)
+
+
 func _build_streaks() -> void:
 	_streaks = null
 	if lod > 1:
@@ -417,6 +434,8 @@ func apply_pose(angle: float, standing: bool) -> void:
 		var lean := AvatarMesh.STANDING_LEAN if standing else AvatarMesh.SEATED_LEAN + float(_frame_spec.get("lean_add", 0.0))
 		_number.position = p["hip"].lerp(p["shoulder"], 0.55) + Vector3(0.0, sin(lean), cos(lean)) * (AvatarMesh.BACK_DEPTH * float(_dims["bs"]) + 0.02)
 		_number.rotation = Vector3(-lean, 0.0, 0.0)
+	if _lamps != null:
+		_lamps.visible = NightLights.enabled
 	# Danseuse : le vélo se balance d'un côté à l'autre, au rythme du pédalier (une oscillation par tour).
 	_bike.rotation.z = sin(angle) * SWAY_RAD if standing else 0.0
 	_rig.rotation.z = sin(angle) * SWAY_RAD * 0.35 if standing else 0.0

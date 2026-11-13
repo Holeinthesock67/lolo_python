@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Niveau de terrain « horizon » (500 m, 40 km, courbure de la Terre) pour voir le Fuji depuis Hakone ; format .world 1.8 | Python, GDScript, JSON | JP1 | Moyenne | En PR le 12 novembre, **version 6.0** |
+| Niveau de terrain « horizon » (500 m, 40 km, courbure de la Terre) pour voir le Fuji depuis Hakone ; format .world 1.8 | Python, GDScript, JSON | JP1 | Moyenne | **Livré le 12 novembre** (PR #841), **version 6.0** |
 
 Plan : `docs/6.0/PLAN_SERIE_JP.md`. Dépend de JP1 (fusionné, #832).
 
@@ -12,7 +12,7 @@ Plan : `docs/6.0/PLAN_SERIE_JP.md`. Dépend de JP1 (fusionné, #832).
 Voir les grands sommets au-delà du brouillard : le mont Fuji est à 20–30 km de Hakone, alors que le terrain
 lointain s'arrête à 5 km de la route. Le niveau est générique : tout parcours compilé en 1.8 en profite.
 
-## Compilateur
+## Livraison : compilateur
 
 - Format `.world` 1.8 (ajout compatible) : tuiles `terrain/horizon/tile_<ix>_<iz>.f32`, 101 × 101 float32, maille
   de 500 m, tuiles de 50 km, bande de 40 km autour de la route ; `terrain.horizon_cell_m` au manifeste.

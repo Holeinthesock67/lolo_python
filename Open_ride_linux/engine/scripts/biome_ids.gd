@@ -5,11 +5,11 @@ extends RefCounted
 ## Pas de class_name : charger par preload("res://scripts/biome_ids.gd").
 
 ## Les seize biomes du lot U0, dans l'ordre de la liste définitive, puis `japan` (lot JP1)
-## et `atlantic_heath` (lot AT1), version 6.0.
+## `atlantic_heath` (lot AT1) et `high_plateau` (lot HP1), version 6.0.
 const BIOMES: Array[String] = [
 	"temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
 	"polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
-	"wetland", "coast", "volcanic", "japan", "atlantic_heath",
+	"wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau",
 ]
 
 const DEFAULT_BIOME := "temperate_grassland"
@@ -31,6 +31,7 @@ const SPECIES: Array[String] = [
 	"palm", "acacia", "baobab", "cactus", "tree_fern", "reed", "dwarf_shrub", "vine_row",
 	"sugi", "hinoki", "momiji", "bamboo",
 	"heather", "gorse", "bracken",   # lot AT1 (6.0) : bruyère, ajonc, fougère aigle des landes atlantiques
+	"bunchgrass",                    # lot HP1 (6.0) : touffe d'ichu des hauts plateaux
 ]
 
 const GROUND_ROLES: Array[String] = ["flat", "steep", "high"]

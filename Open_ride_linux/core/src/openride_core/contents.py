@@ -4,8 +4,8 @@ Le joueur n'a besoin d'aucune commande pour remplir sa bibliothèque : chaque co
 message `contents` (`list_contents`), installé par `install_content`, toujours sans rien écraser.
 
 - `starter` (« Contenus de départ ») : les entraînements livrés (`core/workouts/`), les deux plans de
-  départ (`core/plans/`), les trois parcours de démonstration des biomes (`openride-core
-  demo-biomes`, lot U19) et la piste du vélodrome (`openride-core velodromes`, lot VD10, écrite par le
+  départ (`core/plans/`), les parcours de démonstration des biomes et le circuit (`openride-core
+  demo-biomes`, lots U19 et O38) et la piste du vélodrome (`openride-core velodromes`, lot VD10, écrite par le
   core sans compilateur). Installé seul au premier lancement (`run --first-run`), puis proposé dans
   le menu pour une installation existante. Rien n'est téléchargé.
 
@@ -126,7 +126,7 @@ def starter_detail(parts: dict[str, tuple[int, int]]) -> str:
     w, p, r = parts["workouts"][1], parts["plans"][1], parts["routes"][1]
     v = parts["velodromes"][1]
     text = f"{w} entraînements, {p} plans de départ"
-    text += f", {r} parcours de démonstration des biomes" if r else ""
+    text += f", {r} parcours de démonstration" if r else ""
     return text + (f", {v} piste de vélodrome" if v == 1 else f", {v} pistes de vélodrome" if v else "")
 
 

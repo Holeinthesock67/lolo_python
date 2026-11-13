@@ -46,6 +46,8 @@ const INFO := {
 	"heather": {"height": 0.55, "deciduous": false, "lod0_m": 150.0},
 	"gorse": {"height": 1.6, "deciduous": false, "lod0_m": 150.0},
 	"bracken": {"height": 1.0, "deciduous": true, "lod0_m": 150.0},
+	# Lot HP1 : touffe d'ichu des hauts plateaux, basse et claire ; modèle lointain dès 120 m comme les plantes basses
+	"bunchgrass": {"height": 0.7, "deciduous": false, "lod0_m": 120.0},
 }
 
 ## Matière de chaque face, portée par l'alpha de la couleur du sommet (code / 16) et dessinée par
@@ -99,6 +101,7 @@ const CROWNS := {
 	"heather": {"w": 2.6, "col": Color(0.36, 0.25, 0.30, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"gorse": {"w": 1.9, "col": Color(0.30, 0.36, 0.14, MAT_NEEDLES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"bracken": {"w": 2.6, "col": Color(0.33, 0.50, 0.18, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"bunchgrass": {"w": 0.9, "col": Color(0.66, 0.58, 0.34, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 }
 
 ## Couleur `rgb` avec la matière `code` dans l'alpha.
@@ -434,6 +437,21 @@ static func _draw(st: SurfaceTool, kind: String) -> bool:
 		"dwarf_shrub":
 			_blob(st, Vector3(0, 0.4, 0), Vector3(0.8, 0.45, 0.7), mat(Color(0.35, 0.36, 0.20), MAT_LEAVES), 3)
 			_blob(st, Vector3(0.6, 0.3, 0.4), Vector3(0.5, 0.32, 0.5), mat(Color(0.40, 0.34, 0.22), MAT_LEAVES), 3)
+		"bunchgrass":
+			# Touffe d'ichu (lot HP1) : 14 brins fins et raides qui s'écartent du pied, paille dorée, teintes variées ;
+			# chaque brin vu des deux côtés (2 triangles, matière des frondes), sur un pied serré et plus vert.
+			_blob(st, Vector3(0, 0.07, 0), Vector3(0.13, 0.11, 0.13), mat(Color(0.46, 0.45, 0.26), MAT_LEAVES), 3)
+			for i in range(14):
+				var a := TAU * i / 14.0 + 0.37 * float(i % 3)
+				var lean := 0.12 + 0.05 * float(i % 4)
+				var h := 0.5 + 0.07 * float((i * 5) % 4)
+				var dir := Vector3(cos(a), 0, sin(a))
+				var base := dir * 0.06
+				var tip := dir * (0.06 + lean + 0.1 * h) + Vector3(0, h, 0)
+				var w := Vector3(-dir.z, 0, dir.x) * 0.025
+				var col := mat(Color(0.70, 0.62, 0.36).lerp(Color(0.52, 0.50, 0.28), 0.3 * float(i % 3)), MAT_FRONDS)
+				_tri(st, base - w, tip, base + w, col)
+				_tri(st, base + w, tip, base - w, shade(col, 0.9))
 		"vine_row":
 			# Rang de 6 m : piquets et ceps sous une haie de feuillage basse, orienté selon x.
 			for i in range(4):

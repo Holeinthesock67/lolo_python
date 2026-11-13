@@ -41,7 +41,7 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
 ## Option « gravel » (lot U16, road_surface.gd) : `gravel.mode` prend `off` / `auto` / `compacted` / `gravel` / `dirt` ;
-## biome du décor (lot U16, biome_ids.gd) : `render.biome` prend `auto` ou un des dix-huit biomes, noms du plan U §2.
+## biome du décor (lot U16, biome_ids.gd) : `render.biome` prend `auto` ou un des biomes de biome_ids.gd, noms du plan U §2.
 ## Lot O26 : décor vivant (booléen du fichier, `on` / `off` au menu), ressenti et mode du vent, thème par défaut.
 ## Pilotage du trainer (lots RC1-RC3) : `trainer.control` prend `resistance` / `sim`.
 ## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
@@ -67,7 +67,8 @@ const CHOICE_TEXTS := {
 		"tundra": "toundra", "polar": "polaire", "mediterranean": "méditerranéen", "steppe": "steppe",
 		"savanna": "savane", "sand_desert": "désert de sable", "rock_desert": "désert de roche", "jungle": "jungle",
 		"wetland": "zones humides", "coast": "littoral", "volcanic": "volcanique",
-		"japan": "Japon", "atlantic_heath": "Atlantique et landes"},
+		"japan": "Japon", "atlantic_heath": "Atlantique et landes",
+		"high_plateau": "hauts plateaux"},
 	"render.living": {"on": "oui", "off": "non (rendu de la 1.0)"},
 	"render.day_night": {"off": "coupé", "theme": "heure du thème", "real": "heure du PC", "accelerated": "une journée en une heure"},
 	"render.seasons": {"off": "coupées", "theme": "celle du thème", "date": "selon la date", "random": "au hasard",
@@ -84,6 +85,7 @@ const CHOICE_TEXTS := {
 	"trainer.control": {"resistance": "résistance calculée", "sim": "SIM du trainer"},
 	"survivor.spread": {"tight": "serré (± 3 %)", "normal": "normal (± 8 %)", "wide": "large (± 15 %)"},
 	"survivor.after_out": {"ride": "continuer à rouler", "end": "terminer la séance"},
+	"grandprix.chaos": {"soft": "doux (objets × 0,7)", "normal": "normal", "wild": "fou (objets × 1,3)"},
 	"coach.objectif": {"endurance": "endurance", "courses": "courses", "grimpeur": "grimpeur"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
