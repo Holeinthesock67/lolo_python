@@ -31,6 +31,14 @@ textures/vram_compression/import_etc2_astc=true
 
 [shader_globals]
 
+night_glow={
+"type": "float",
+"value": 0.0
+}
+night_lamps={
+"type": "float",
+"value": 0.0
+}
 season_leaf_tint={
 "type": "vec3",
 "value": Vector3(1, 1, 1)
