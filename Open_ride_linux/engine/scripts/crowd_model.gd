@@ -19,6 +19,7 @@ extends RefCounted
 ## d'un dépassement de bot récent (`observe_bots`, PASS_BOOST pendant PASS_BOOST_S).
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
+const RoadsideGround := preload("res://scripts/roadside_ground.gd")
 
 const ZONE_M := 1000.0
 const MIN_CLIMB_M := 3000.0
@@ -70,8 +71,10 @@ static func _in_water(p: Vector3, water: Dictionary) -> bool:
 	return false
 
 
+## `ground_at` : sol affiché (x, z) -> y (RoadsideGround.ground_fn), pieds posés sur le sol visible ; vide :
+## hauteur de la route.
 func configure(route, climbs: Array, water: Dictionary = {}, crowd_all_climbs: bool = false,
-		seed: int = 0, road_width_m: float = DEFAULT_ROAD_WIDTH_M) -> void:
+		seed: int = 0, road_width_m: float = DEFAULT_ROAD_WIDTH_M, ground_at: Callable = Callable()) -> void:
 	spectators.clear()
 	groups.clear()
 	states.clear()
@@ -105,7 +108,8 @@ func configure(route, climbs: Array, water: Dictionary = {}, crowd_all_climbs: b
 					var right := Vector3(cos(hd), 0.0, sin(hd))
 					var edge := lerpf(EDGE_M.x, EDGE_M.y, _u(VegetationPlacer._mix(hk + 1)))
 					var lateral := float(side) * (half + edge)
-					var pos := Vector3(smp["x"], smp["y"], smp["z"]) + right * lateral
+					var axis := Vector3(smp["x"], smp["y"], smp["z"])
+					var pos := RoadsideGround.on_ground(ground_at, axis + right * lateral, axis, right, half)
 					if _in_water(pos, water):
 						continue
 					var to_road := -right * float(side)

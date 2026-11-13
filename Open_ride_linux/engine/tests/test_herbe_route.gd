@@ -13,6 +13,11 @@ extends SceneTree
 ##   une couche biome : le rayon de l'objet hors de la chaussée ;
 ## - arbres semés au bruit (vegetation_placer.gd) sur les tuiles que touche la route : à au moins TREE_CLEAR_M
 ##   du bord ;
+## - objets du bord de route posés sur le sol (13 novembre 2026, « les bornes kilométriques lévitent ») : bornes,
+##   panneaux, torii et lanternes (roadside_props.gd, appuis de chaque maillage au sol), balises (street_lights.gd),
+##   spectateurs (crowd_model.gd) et passants (passersby_model.gd), aux deux reliefs : sol visible = le plus haut du
+##   sol affiché (_ground_fn) et de la chaussée, du bas-côté et du talus (road_builder.gd) à la distance réelle de
+##   l'axe ; aucun appui en l'air (FOOT_AIR_TOL_M), aucun objet enfoui (FOOT_BURIED_MAX_M) ;
 ## - sol affiché sous la chaussée (_ground_fn, même choix que world_streamer.gd : tuile proche, sinon lointaine,
 ##   sinon tuile plate ; sol plat sans couche terrain) : en travers de la chaussée tous les SECTION_STEP_M mètres,
 ##   au moins TERRAIN_SINK_MIN_M sous la route (route enfoncée sous l'herbe ou le terrain) ; et la route
@@ -36,6 +41,13 @@ const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
+const RoadsideModel := preload("res://scripts/roadside_model.gd")
+const RoadsideProps := preload("res://scripts/roadside_props.gd")
+const RoadsideGround := preload("res://scripts/roadside_ground.gd")
+const StreetLights := preload("res://scripts/street_lights.gd")
+const CrowdModel := preload("res://scripts/crowd_model.gd")
+const PassersbyModel := preload("res://scripts/passersby_model.gd")
+const LivingDecor := preload("res://scripts/living_decor.gd")
 
 const ROAD_HALF_M := RoadBuilder.ROAD_WIDTH_M * 0.5
 ## Écart minimal au bord de la chaussée (m) : touffe (rayon et brins penchés), tronc d'arbre.
@@ -51,6 +63,12 @@ const WorldStreamer := preload("res://scripts/world_streamer.gd")
 const SECTION_STEP_M := 2.0
 const ACROSS_STEP_M := 1.0
 const WORST_SHOWN := 5
+## Objets du bord de route (13 novembre 2026 : « les bornes kilométriques lévitent ») : aucun appui à plus de
+## FOOT_AIR_TOL_M au-dessus du sol visible, et l'appui le plus bas pas enterré de plus de FOOT_BURIED_MAX_M.
+const FOOT_AIR_TOL_M := 0.01
+const FOOT_BURIED_MAX_M := 0.06
+const AXIS_SEARCH_M := 15.0
+const AXIS_SEARCH_STEP_M := 0.25
 
 var _failures := 0
 var _checked := 0
@@ -104,6 +122,7 @@ func _run(wd: String, k: float, theme: Dictionary) -> void:
 	var corridor := ROAD_HALF_M + maxf(TUFT_CLEAR_M, TREE_CLEAR_M) + 2.0
 	var road := VegetationPlacer._road_buckets(route, bounds, corridor)
 	_check_terrain(tag, route, ground_at)
+	_check_roadside(tag, wd, route, ground_at, road)
 	if k != 1.0:
 		return   # placement du décor : mêmes x et z au relief de séance, seule la pente change (contrôlé à ×k)
 	_check_tufts(tag, route, height_at, road)
@@ -206,6 +225,98 @@ func _check_terrain(tag: String, route, ground_at: Callable) -> void:
 		tag, TERRAIN_SINK_MIN_M * 100.0, n, worst_up, above.size(), "" if above.is_empty() else " — " + _worst(above)])
 	_check(floating.is_empty(), "%s : route posée sur le sol ou sur ses talus (sol au plus %.2f m sous la route ; %d coupes sur remblai de plus de %.1f m, %d sans appui)%s" % [
 		tag, -worst_down, banks, FLOAT_TOL_M, floating.size(), "" if floating.is_empty() else " — " + _worst(floating)])
+
+
+## Sol visible en (x, z) : sol affiché, ou chaussée, bas-côté et talus là où ils sont au-dessus. La coupe de
+## road_builder.gd est tracée le long de la normale au cap : on cherche, tous les AXIS_SEARCH_STEP_M à moins de
+## AXIS_SEARCH_M de l'abscisse `s` annoncée par l'objet (un spectateur est tiré à quelques mètres de sa place), la
+## coupe qui passe par le point (écart le long du cap le plus petit), et on y lit la distance en travers et la
+## hauteur de la route.
+static func _visible_ground(ground_at: Callable, route, s: float, p: Vector3) -> float:
+	var best := INF
+	var d := INF
+	var road_y := 0.0
+	var t := maxf(0.0, s - AXIS_SEARCH_M)
+	while t <= minf(route.length_m, s + AXIS_SEARCH_M):
+		var a: Vector3 = route.sample_point(t)
+		var h := deg_to_rad(route.sample_heading_deg(t))
+		var v := Vector2(p.x - a.x, p.z - a.z)
+		var along := absf(v.dot(Vector2(sin(h), -cos(h))))
+		var across := absf(v.dot(Vector2(cos(h), sin(h))))
+		if along < best and across < 20.0:
+			best = along
+			d = across
+			road_y = a.y
+		t += AXIS_SEARCH_STEP_M
+	return maxf(float(ground_at.call(p.x, p.z)), RoadsideGround.road_surface_y(road_y, d, ROAD_HALF_M))
+
+
+## Un objet : `feet` (monde), écarts au sol visible ; ajoute aux listes `air` et `buried` s'il est en défaut.
+func _foot_check(what: String, s: float, feet: PackedVector3Array, foot_y: float, ground_at: Callable, road: Dictionary,
+		route, air: Array, buried: Array, worst: Array) -> void:
+	var up := -INF   # appui le plus en l'air
+	var down := INF  # enfoncement de l'appui le moins enterré
+	for f in feet:
+		var gap := foot_y - _visible_ground(ground_at, route, s, f)
+		up = maxf(up, gap)
+		down = minf(down, -gap)
+	worst[0] = maxf(worst[0], up)
+	worst[1] = maxf(worst[1], down)
+	var txt := "%s s = %.0f m (%.1f, %.1f)" % [what, s, feet[0].x, feet[0].z]
+	if up > FOOT_AIR_TOL_M:
+		air.append([up, "%s : %+.2f m en l'air" % [txt, up]])
+	elif down > FOOT_BURIED_MAX_M:
+		buried.append([down, "%s : enfoui de %.2f m" % [txt, down]])
+
+
+func _check_roadside(tag: String, wd: String, route, ground_at: Callable, road: Dictionary) -> void:
+	var air := []
+	var buried := []
+	var worst := [-INF, -INF]
+	var n := 0
+	var ground := RoadsideGround.ground_fn(wd, route)
+	# Bornes, panneaux, torii, lanternes : posés par add_chunk comme en séance
+	var props = RoadsideProps.new()
+	props.road_width_m = RoadBuilder.ROAD_WIDTH_M
+	props.ground_at = ground
+	root.add_child(props)
+	var items: Array = RoadsideModel.items(route, LivingDecor.climbs_of(route), [], {}, RoadBuilder.ROAD_WIDTH_M)
+	var chunks := int(ceil(route.length_m / LivingDecor.CHUNK_M))
+	for k in range(maxi(1, chunks)):
+		props.add_chunk(route, k, RoadsideModel.for_chunk(items, k))
+	for c in props.get_children():
+		if not c.has_meta("label") and not c.name.begins_with("torii") and not c.name.begins_with("lantern"):
+			continue   # glissières : maillage sur le bas-côté, en coordonnées du monde
+		var prop := c as Node3D
+		var feet := PackedVector3Array()
+		for f in RoadsideProps.feet(prop):
+			feet.append(prop.transform * f)
+		_foot_check(str(prop.name), float(str(prop.name).split("_")[1]), feet, prop.transform.origin.y, ground_at,
+			road, route, air, buried, worst)
+		n += 1
+	props.free()
+	# Balises (sans bâtiment : pas de luminaire)
+	for k in range(maxi(1, chunks)):
+		for it in StreetLights.post_positions(route, k, [], RoadBuilder.ROAD_WIDTH_M, ground):
+			var p: Vector3 = it["pos"]
+			_foot_check("balise", float(it["s"]), PackedVector3Array([p]), p.y, ground_at, road, route, air, buried, worst)
+			n += 1
+	# Spectateurs de toutes les montées et passants
+	var cm = CrowdModel.new()
+	cm.configure(route, LivingDecor.climbs_of(route), {}, true, 0, RoadBuilder.ROAD_WIDTH_M, ground)
+	for sp in cm.spectators:
+		var p: Vector3 = sp["pos"]
+		_foot_check("spectateur", float(sp["s"]), PackedVector3Array([p]), p.y, ground_at, road, route, air, buried, worst)
+		n += 1
+	var pm = PassersbyModel.new()
+	pm.configure(route, [], {}, 0, RoadBuilder.ROAD_WIDTH_M, [], ground)
+	for person in pm.people:
+		var p: Vector3 = person["pos"]
+		_foot_check("passant", float(person["s"]), PackedVector3Array([p]), p.y, ground_at, road, route, air, buried, worst)
+		n += 1
+	_check(air.is_empty() and buried.is_empty(),
+		"%s : objets du bord de route posés sur le sol (%d objets, appui le plus haut %+.2f m, le plus enfoncé %.2f m ; %d en l'air, %d enfouis)%s" % [
+		tag, n, worst[0], worst[1], air.size(), buried.size(), "" if air.is_empty() and buried.is_empty() else " — " + _worst(air + buried)])
 
 
 func _check_tufts(tag: String, route, height_at: Callable, road: Dictionary) -> void:
