@@ -243,8 +243,7 @@ func _check_details(tag: String, wd: String, route, height_at: Callable, road: D
 	var living := QualityPresets.living("high")
 	var gd = GroundDetails.new()
 	root.add_child(gd)
-	gd.configure({"rock": int(living["ground_rocks"]), "grass": int(living["ground_grass"]),
-		"termite": int(living["ground_termites"])}, route, model, RoadBuilder.ROAD_WIDTH_M)
+	gd.configure(GroundDetails.budgets(living), route, model, RoadBuilder.ROAD_WIDTH_M)
 	gd.height_at = height_at
 	var bad := []
 	var placed := 0

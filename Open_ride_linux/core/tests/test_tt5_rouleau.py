@@ -20,7 +20,7 @@ def ctx(ds: float = 0.0, gravel: bool = True) -> Context:
 
 def test_table_line():
     s = DEFAULT_TABLE.specs["roller"]
-    assert (s.effect, s.factor, s.duration_s, s.sets) == ("crr", 1.0, 30.0, ("tactiques",))
+    assert (s.effect, s.factor, s.duration_s, s.sets) == ("crr", 1.0, 25.0, ("tactiques",))
     assert s.draw_if == ("gravel_ahead",) and s.refuse_unless == (("gravel_ahead", "no_gravel"),)
 
 
@@ -73,7 +73,7 @@ def test_sim_gravel_offset_disappears():
 
 
 def test_gain_in_ideal_terrain():
-    """Gravier (× 2,5) sur le plat, 250 W : gain d'environ 2,5 s (plan §2), mesuré 60 s après l'appui."""
+    """Gravier (× 2,5) sur le plat, 250 W : 2,0 s mesurés 60 s après l'appui (2,5 s à 30 s avant le banc TT8)."""
     dt, grade = 0.02, 0.0
     rough = PhysicsParams(mass_kg=PLAN.mass_kg, cda_m2=PLAN.cda_m2, crr=PLAN.crr * G)
     v = steady_speed(250.0, grade, rough)
@@ -89,4 +89,4 @@ def test_gain_in_ideal_terrain():
         a.step(250.0, grade, 0.0, dt)
         b.step(250.0, grade, 0.0, dt)
         pu.step(dt, ctx(a.s - s0))
-    assert (a.s - b.s) / v == pytest.approx(2.5, abs=0.5)
+    assert (a.s - b.s) / v == pytest.approx(1.98, abs=0.1)

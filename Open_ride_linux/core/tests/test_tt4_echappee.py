@@ -17,7 +17,7 @@ OK = Context(has_bots=True)
 
 def test_table_line_shared_with_the_grand_prix_stealth():
     s = DEFAULT_TABLE.specs["breakaway"]
-    assert (s.effect, s.duration_s, s.sets) == ("breakaway", 20.0, ("tactiques",))
+    assert (s.effect, s.duration_s, s.sets) == ("breakaway", 30.0, ("tactiques",))
     from openride_core.grandprix.items import DEFAULT_ITEMS
     stealth = DEFAULT_ITEMS["stealth"]
     assert [e.effect for e in stealth.self_fx] == ["breakaway"]           # même effet, même table

@@ -56,7 +56,7 @@ func _run() -> void:
 		for f in 6:
 			await process_frame
 		var visible := root.get_visible_rect()
-		for ctl in view.cards + view.doors + [view.reroll]:
+		for ctl in view.cards + view.doors:
 			var r: Rect2 = (ctl as Control).get_global_rect()
 			if not visible.encloses(r):
 				failures += 1

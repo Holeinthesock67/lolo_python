@@ -71,6 +71,8 @@ const SIGN_WHITE := Color(0.95, 0.95, 0.93)
 const SLOPE_COLORS := [[3, Color(0.10, 0.55, 0.25)], [6, Color(0.10, 0.36, 0.75)], [9, Color(0.80, 0.12, 0.10)],
 	[1000, Color(0.08, 0.08, 0.09)]]
 const LAYER_DEPTH_M := 0.006
+const TORII_H := 7.5             # torii (lot JP5) : hauteur, piliers à TORII_MARGIN_M des bords de la chaussée
+const TORII_MARGIN_M := 2.0
 const BOLD_EMBOLDEN := 0.7
 
 var road_width_m := 6.0
@@ -86,7 +88,18 @@ func _init() -> void:
 	_mats["km"] = _material(KIND_KM, Color(0.95, 0.95, 0.93))
 	(_mats["km"] as ShaderMaterial).set_shader_parameter("head_from_m", KM_PLINTH_H + KM_BODY_H)
 	_mats["approach_board"] = _material(KIND_BOARD, SIGN_WHITE)
+	# Japon (lot JP5) : torii vermillon à chapeau noir, lanternes de pierre
+	_mats["torii_red"] = _plain(Color(0.78, 0.20, 0.10), 0.7)
+	_mats["torii_black"] = _plain(Color(0.08, 0.08, 0.08), 0.6)
+	_mats["stone"] = _plain(Color(0.55, 0.54, 0.50), 0.95)
 	(_mats["approach_board"] as ShaderMaterial).set_shader_parameter("border_color", INK_DARK)
+
+
+static func _plain(color: Color, roughness: float) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = color
+	m.roughness = roughness
+	return m
 
 
 static func _material(kind: int, color: Color) -> ShaderMaterial:
@@ -101,7 +114,8 @@ static func _material(kind: int, color: Color) -> ShaderMaterial:
 func set_preset(preset_name: String) -> void:
 	_relief = float(RELIEF.get(preset_name, 1.0))
 	for m in _mats.values():
-		(m as ShaderMaterial).set_shader_parameter("relief", _relief)
+		if m is ShaderMaterial:   # torii et lanternes (lot JP5) : matériaux unis, sans faux relief
+			(m as ShaderMaterial).set_shader_parameter("relief", _relief)
 
 
 var _relief := 1.0
@@ -216,6 +230,77 @@ static func posts_mesh(xs: Array, height: float, board_bottom: float) -> ArrayMe
 		for y in [board_bottom + 0.12, height - 0.12]:
 			st.append_from(clamp, 0, Transform3D(Basis(), Vector3(x, y - height * 0.5, z + 0.005)))
 	return _commit(st, Vector2(2.0 * POST_R, height))
+
+
+## Torii (lot JP5) au-dessus d'une chaussée de `road_w` : piliers à TORII_MARGIN_M des bords. Deux maillages,
+## partie vermillon (piliers, traverse nuki, poutre shimaki, montant central) et chapeau noir (kasagi), pied à y = 0.
+static func torii_meshes(road_w: float) -> Array:
+	var half := road_w * 0.5 + TORII_MARGIN_M
+	var red := SurfaceTool.new()
+	red.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var pillar := CylinderMesh.new()
+	pillar.top_radius = 0.32
+	pillar.bottom_radius = 0.38
+	pillar.height = TORII_H - 0.6
+	pillar.radial_segments = 10
+	pillar.rings = 1
+	for x in [-half, half]:
+		red.append_from(pillar, 0, Transform3D(Basis(), Vector3(x, pillar.height * 0.5, 0.0)))
+	var nuki := BoxMesh.new()
+	nuki.size = Vector3(half * 2.0 + 1.2, 0.32, 0.24)
+	red.append_from(nuki, 0, Transform3D(Basis(), Vector3(0.0, TORII_H * 0.72, 0.0)))
+	var shimaki := BoxMesh.new()
+	shimaki.size = Vector3(half * 2.0 + 2.2, 0.32, 0.42)
+	red.append_from(shimaki, 0, Transform3D(Basis(), Vector3(0.0, TORII_H - 0.45, 0.0)))
+	var post := BoxMesh.new()
+	post.size = Vector3(0.3, TORII_H * 0.28 - 0.6, 0.2)
+	red.append_from(post, 0, Transform3D(Basis(), Vector3(0.0, TORII_H * 0.72 + post.size.y * 0.5, 0.0)))
+	var black := SurfaceTool.new()
+	black.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var kasagi := BoxMesh.new()
+	kasagi.size = Vector3(half * 2.0 + 3.4, 0.36, 0.62)
+	black.append_from(kasagi, 0, Transform3D(Basis(), Vector3(0.0, TORII_H - 0.11, 0.0)))
+	# Bouts relevés du kasagi
+	for sx in [-1.0, 1.0]:
+		var tip := BoxMesh.new()
+		tip.size = Vector3(1.2, 0.3, 0.6)
+		black.append_from(tip, 0, Transform3D(Basis(Vector3.BACK, sx * 0.18), Vector3(sx * (half + 1.7), TORII_H + 0.02, 0.0)))
+	return [_commit(red, Vector2(half * 2.0, TORII_H)), _commit(black, Vector2(half * 2.0, 0.4))]
+
+
+## Lanterne de pierre (tōrō, lot JP5), environ 2,2 m, pied à y = 0.
+static func lantern_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var y := 0.0
+	for part in [[BoxMesh, Vector3(0.8, 0.25, 0.8)], [CylinderMesh, Vector3(0.16, 0.9, 0.16)],
+			[BoxMesh, Vector3(0.72, 0.16, 0.72)], [BoxMesh, Vector3(0.5, 0.45, 0.5)]]:
+		var m: PrimitiveMesh = part[0].new()
+		var size: Vector3 = part[1]
+		if m is BoxMesh:
+			(m as BoxMesh).size = size
+		else:
+			(m as CylinderMesh).top_radius = size.x
+			(m as CylinderMesh).bottom_radius = size.x * 1.2
+			(m as CylinderMesh).height = size.y
+			(m as CylinderMesh).radial_segments = 6
+			(m as CylinderMesh).rings = 1
+		st.append_from(m, 0, Transform3D(Basis(), Vector3(0.0, y + size.y * 0.5, 0.0)))
+		y += size.y
+	var roof := CylinderMesh.new()
+	roof.top_radius = 0.06
+	roof.bottom_radius = 0.6
+	roof.height = 0.38
+	roof.radial_segments = 6
+	roof.rings = 1
+	st.append_from(roof, 0, Transform3D(Basis(), Vector3(0.0, y + 0.19, 0.0)))
+	var knob := SphereMesh.new()
+	knob.radius = 0.1
+	knob.height = 0.2
+	knob.radial_segments = 6
+	knob.rings = 3
+	st.append_from(knob, 0, Transform3D(Basis(), Vector3(0.0, y + 0.44, 0.0)))
+	return _commit(st, Vector2(0.8, y + 0.54))
 
 
 ## Borne kilométrique : socle, fût et tête en demi-cercle, centrée verticalement.
@@ -423,6 +508,16 @@ func build_prop(item: Dictionary) -> Node3D:
 				root.add_child(head)
 	elif kind == "approach":
 		label = _build_approach(root, item)
+	elif kind == "torii":
+		var key := "torii_%d" % roundi(road_width_m * 100.0)
+		if not _meshes.has(key + "_red"):
+			var meshes: Array = torii_meshes(road_width_m)
+			_meshes[key + "_red"] = meshes[0]
+			_meshes[key + "_black"] = meshes[1]
+		_mesh(root, _meshes[key + "_red"], _mats["torii_red"], Vector3.ZERO)
+		_mesh(root, _meshes[key + "_black"], _mats["torii_black"], Vector3.ZERO)
+	elif kind == "lantern":
+		_mesh(root, _shared("lantern", lantern_mesh), _mats["stone"], Vector3.ZERO)
 	else:
 		var spec: Dictionary = BOARD[kind]
 		var lay := board_layout(kind, lines)
@@ -455,12 +550,14 @@ func add_chunk(route, k: int, chunk_items: Array) -> void:
 	for it in chunk_items:
 		var prop := build_prop(it)
 		var s := float(it["s"])
-		var side := -1 if int(it.get("side", 1)) < 0 else 1
+		var raw_side := int(it.get("side", 1))
+		var side := 0 if raw_side == 0 else (-1 if raw_side < 0 else 1)
 		var pos := RoadsideModel.prop_position(route, s, road_width_m, side)
 		var h := deg_to_rad(route.sample_heading_deg(s))
 		var fwd := Vector3(sin(h), 0.0, -cos(h))
-		# +z local (face du panneau) vers le cycliste qui arrive : vers -fwd à droite, vers +fwd à gauche (rebours)
-		var face := -fwd * float(side)
+		# +z local (face du panneau) vers le cycliste qui arrive : vers -fwd à droite, vers +fwd à gauche (rebours) ;
+		# torii (side 0) : en travers de la route, face au cycliste qui arrive
+		var face := -fwd * float(side if side != 0 else 1)
 		prop.transform = Transform3D(Basis(Vector3.UP, atan2(face.x, face.z)), pos)
 		add_child(prop)
 		nodes.append(prop)
