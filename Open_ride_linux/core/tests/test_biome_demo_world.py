@@ -266,7 +266,7 @@ def test_circuit_loop(demo_set: Path, mbw) -> None:
 def test_volcan_loop(demo_set: Path, mbw) -> None:
     """Volcan en flammes (13 novembre) : boucle fermée de 8 km dans le paysage `volcan_actif` (toutes les tuiles),
     pente d'au plus 10 %, une montée de 200 à 240 m jusqu'à la crête du cratère à mi-boucle, cratère creusé à côté
-    de la route (côté extérieur), relief borné jusqu'à l'horizon."""
+    de la route (à l'intérieur de la boucle), relief borné jusqu'à l'horizon, pas de mur au départ."""
     import numpy as np
 
     world = demo_set / "demo-volcan.world"
@@ -286,13 +286,17 @@ def test_volcan_loop(demo_set: Path, mbw) -> None:
     plan = mbw.Plan(("volcanic",), False, False, circuit="volcan")
     terrain = mbw.make_terrain(plan)
     px, pz = plan.road.xz(plan.length_m / 2.0)
-    r0 = float(np.hypot(px, pz))
-    cx, cz = px * (1.0 + mbw.VOLCAN_RIM_M / r0), pz * (1.0 + mbw.VOLCAN_RIM_M / r0)
+    cx, cz = mbw.volcano_crater(plan.road)
     rim = float(terrain(np.array([px]), np.array([pz]))[0])
     crater = float(terrain(np.array([cx]), np.array([cz]))[0])
     assert crater < rim - 60.0, (crater, rim)
     far = terrain(np.linspace(-40000.0, 40000.0, 81), np.linspace(40000.0, -40000.0, 81))
     assert float(np.max(np.abs(far))) < 400.0
+    # Départ : terrain à 200 m de part et d'autre à moins de 40 m de la route (pas de mur dans la plaine)
+    sx, sz = plan.road.xz(0.0)
+    hx, hz = plan.road.heading(0.0)
+    sides = terrain(np.array([sx - hz * 200.0, sx + hz * 200.0]), np.array([sz + hx * 200.0, sz - hx * 200.0]))
+    assert float(np.max(np.abs(sides - route["alt_m"][0]))) < 40.0, sides
 
 
 def test_circuit_grand_prix_in_laps(demo_set: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

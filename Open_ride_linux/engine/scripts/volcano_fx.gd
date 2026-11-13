@@ -114,8 +114,8 @@ func configure(p_budgets: Dictionary, route_data, model, seed_value: int = 0) ->
 		var l := OmniLight3D.new()
 		l.name = "LueurLave%d" % i
 		l.light_color = glow_color
-		l.light_energy = 4.0
-		l.omni_range = 45.0
+		l.light_energy = 6.0
+		l.omni_range = 60.0
 		l.omni_attenuation = 1.2
 		l.shadow_enabled = false
 		l.visible = false
@@ -169,16 +169,19 @@ func features_of_chunk(k: int) -> Array:
 	var density := clampf(float(fire.get("density", 1.0)), 0.0, 2.0)
 	for side_i in range(2):
 		var h := VegetationPlacer.hash3(fx_seed ^ 0x7A11, k, side_i)
-		if float(h & 0xFF) / 256.0 < 0.55 * density:
+		if float(h & 0xFF) / 256.0 < 0.6 * density:
 			var flow := _flow(k, side_i, h)
 			if not flow.is_empty():
 				out.append(flow)
-	for slot in range(3):
+	for slot in range(4):
 		var h := VegetationPlacer.hash3(fx_seed ^ 0x3E21, k, slot)
-		if float(h & 0xFF) / 256.0 < 0.25 * density:
-			var r := 6.0 + float((h >> 8) & 0xFF) / 255.0 * 20.0
+		# Places 0 à 2 : mares près de la route ; place 3 : grand lac loin d'elle (fond de cratère, plaine)
+		var big := slot == 3
+		if float(h & 0xFF) / 256.0 < (0.2 if big else 0.25) * density:
+			var r := (30.0 + float((h >> 8) & 0xFF) / 255.0 * 35.0) if big else (10.0 + float((h >> 8) & 0xFF) / 255.0 * 20.0)
+			var reach := 220.0 if big else 130.0
 			var c := _offset_point(s0 + float((h >> 16) & 0xFF) / 255.0 * CHUNK_M, (1.0 if h & 0x1000000 == 0 else -1.0),
-				ROAD_CLEAR_M + r + 6.0 + float((h >> 25) & 0x7F) / 127.0 * 130.0)
+				ROAD_CLEAR_M + r + 6.0 + float((h >> 25) & 0x7F) / 127.0 * reach)
 			if road_distance(c.x, c.y) >= ROAD_CLEAR_M + r * 1.15 and not fire_at(c.x, c.y).is_empty():
 				out.append({"kind": "pool", "center": c, "radius": r})
 	for slot in range(2):
@@ -195,8 +198,9 @@ func features_of_chunk(k: int) -> Array:
 ## près d'une portion de la route (le plus long morceau est gardé).
 func _flow(k: int, side_i: int, h: int) -> Dictionary:
 	var side := 1.0 if side_i == 0 else -1.0
-	var width := 8.0 + float((h >> 8) & 0xFF) / 255.0 * 16.0
-	var off0 := ROAD_CLEAR_M + width * 0.5 + 10.0 + float((h >> 16) & 0xFF) / 255.0 * 60.0
+	var width := 14.0 + float((h >> 8) & 0xFF) / 255.0 * 20.0
+	# Fleuves de lave le long de la route, assez près pour se voir quand la route suit une crête
+	var off0 := ROAD_CLEAR_M + width * 0.5 + 10.0 + float((h >> 16) & 0xFF) / 255.0 * 30.0
 	var len_m := 70.0 + float((h >> 24) & 0x3F) / 63.0 * 30.0
 	var start := float(k) * CHUNK_M + (CHUNK_M - len_m) * float((h >> 4) & 0xF) / 15.0
 	var phase := float((h >> 12) & 0xF)
@@ -270,22 +274,29 @@ func _add_flow(st: SurfaceTool, pts: PackedVector2Array, width: float, yf: float
 
 
 func _add_pool(st: SurfaceTool, c: Vector2, r: float, yf: float) -> void:
-	var n := 14
-	var ring := []
-	var inner := []
+	# Anneaux concentriques tous les 8 m environ : un grand lac épouse le terrain comme une mare
+	var n := clampi(int(r * 0.8), 14, 48)
+	var rings := clampi(int(r / 8.0), 2, 8)
 	var h := VegetationPlacer.hash3(fx_seed ^ 0x6B7, int(c.x), int(c.y))
+	var edge := PackedFloat32Array()
 	for i in range(n):
-		var a := TAU * float(i) / float(n)
-		var rr := r * (0.82 + 0.3 * float((h >> (i % 24)) & 0x7) / 7.0)
-		var q := c + Vector2(cos(a), sin(a)) * rr
-		var qi := c + Vector2(cos(a), sin(a)) * rr * 0.7
-		ring.append([Vector3(q.x, _y(q.x, q.y, yf) + LIFT_M, q.y), 0.0])
-		inner.append([Vector3(qi.x, _y(qi.x, qi.y, yf) + LIFT_M, qi.y), 1.0])
+		edge.append(r * (0.82 + 0.3 * float((h >> (i % 24)) & 0x7) / 7.0))
 	var center := [Vector3(c.x, _y(c.x, c.y, yf) + LIFT_M, c.y), 1.0]
-	for i in range(n):
-		var j := (i + 1) % n
-		_tri(st, center, inner[i], inner[j])
-		_quad(st, inner[i], ring[i], ring[j], inner[j])
+	var prev := []
+	for j in range(1, rings + 1):
+		var f := float(j) / float(rings)
+		var ring := []
+		for i in range(n):
+			var a := TAU * float(i) / float(n)
+			var q := c + Vector2(cos(a), sin(a)) * edge[i] * f
+			ring.append([Vector3(q.x, _y(q.x, q.y, yf) + LIFT_M, q.y), 0.0 if j == rings else 1.0])
+		for i in range(n):
+			var k := (i + 1) % n
+			if j == 1:
+				_tri(st, center, ring[i], ring[k])
+			else:
+				_quad(st, prev[i], ring[i], ring[k], prev[k])
+		prev = ring
 
 
 static func _vert(st: SurfaceTool, v: Array) -> void:
@@ -481,11 +492,11 @@ static func _make_embers(n: int, color: Color) -> GPUParticles3D:
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = Vector3(28.0, 1.5, 28.0)
+	pm.emission_box_extents = Vector3(18.0, 2.0, 18.0)
 	pm.direction = Vector3(0, 1, 0)
 	pm.spread = 25.0
-	pm.initial_velocity_min = 1.0
-	pm.initial_velocity_max = 3.5
+	pm.initial_velocity_min = 1.5
+	pm.initial_velocity_max = 4.5
 	pm.gravity = Vector3(0, 0.4, 0)
 	pm.turbulence_enabled = true
 	pm.turbulence_noise_strength = 1.2
@@ -496,7 +507,7 @@ static func _make_embers(n: int, color: Color) -> GPUParticles3D:
 		Color(0.6, 0.1, 0.05, 0)]), PackedFloat32Array([0.0, 0.1, 0.6, 1.0]))
 	p.process_material = pm
 	var q := QuadMesh.new()
-	q.size = Vector2(0.09, 0.09)
+	q.size = Vector2(0.16, 0.16)
 	q.material = _billboard_material(color.lightened(0.3), 6.0)
 	p.draw_pass_1 = q
 	p.emitting = false
@@ -508,7 +519,7 @@ static func _make_embers(n: int, color: Color) -> GPUParticles3D:
 static func _make_plume(smoke: Color, glow: Color) -> GPUParticles3D:
 	var p := GPUParticles3D.new()
 	p.name = "Panache"
-	p.amount = 28
+	p.amount = 32
 	p.lifetime = 9.0
 	p.preprocess = 9.0
 	p.local_coords = false
@@ -537,7 +548,7 @@ static func _make_plume(smoke: Color, glow: Color) -> GPUParticles3D:
 		PackedFloat32Array([0.0, 0.08, 0.35, 1.0]))
 	p.process_material = pm
 	var q := QuadMesh.new()
-	q.size = Vector2(4.0, 4.0)
+	q.size = Vector2(6.0, 6.0)
 	q.material = _billboard_material(Color.WHITE, 0.0)
 	p.draw_pass_1 = q
 	p.emitting = false

@@ -124,11 +124,12 @@ VOLCAN_BIOME = "volcanic"
 VOLCAN_LOBES = ((2, 0.18, 0.4), (3, 0.08, 1.3))
 VOLCAN_VARIANT = {"ground": "basalte", "roofs": None, "landscape": "volcan_actif"}
 VOLCAN_CLIMB_M = 220.0       # montée du départ à la crête (pente au plus 220 π / 8 000 ≈ 8,6 %, ondulations comprises 10 %)
-VOLCAN_RIM_M = 300.0         # centre du cratère à 300 m de la route, côté extérieur de la boucle, à mi-boucle :
-                             # la route suit la crête, le cratère s'ouvre sur le côté
-VOLCAN_CRATER_M = 280.0      # rayon du creux du cratère, juste en deçà de la route
-VOLCAN_DEPTH_M = 130.0       # profondeur du cratère sous sa crête
-VOLCAN_CONE_M = 2200.0       # largeur du cône (relief loin de la route)
+VOLCAN_RIM_M = 620.0         # centre du cratère à 620 m de la route, à l'intérieur de la boucle, à mi-boucle : la route
+                             # tourne du même côté que la crête et la suit sur un bon kilomètre, cratère à droite
+VOLCAN_CRATER_M = 600.0      # rayon du creux du cratère, juste en deçà de la route
+VOLCAN_DEPTH_M = 150.0       # profondeur du cratère sous sa crête
+VOLCAN_WALL_M = 140.0        # largeur des parois du cratère (pente moyenne d'environ 45 %), fond plat au-delà
+VOLCAN_CONE_M = 1300.0       # largeur du cône (relief loin de la route)
 VOLCAN_ROAD_M = 220.0        # au-delà, le relief ne suit plus le profil de la route mais le cône
 GAME_DEMOS = tuple(name for name, *_, base in DEMO_SET if base)     # écrits par les contenus de départ
 RETIRED_DEMOS = tuple(name for name, *_, base in DEMO_SET if not base)
@@ -324,17 +325,22 @@ def circuit_relief(x, z):
             - 12.0 * np.exp(-((x - 260.0) ** 2 + (z - 200.0) ** 2) / 90000.0) + _soft_cap(x / 60.0, 15.0, 30.0))
 
 
+def volcano_crater(road) -> tuple[float, float]:
+    """Centre du cratère : à `VOLCAN_RIM_M` de la route à mi-boucle, vers l'intérieur de la boucle (son centre)."""
+    px, pz = road.xz(road.length_m / 2.0)
+    r0 = math.hypot(px, pz)
+    return px * (1.0 - VOLCAN_RIM_M / r0), pz * (1.0 - VOLCAN_RIM_M / r0)
+
+
 def volcano_relief(road):
     """Relief du volcan en flammes, construit sur la boucle `road` : profil de la route en cosinus surélevé (départ
     au plus bas, crête du cratère à mi-boucle, `VOLCAN_CLIMB_M` de montée, petites ondulations) ; loin de la route,
-    un cône centré sur le cratère, creusé d'un cratère de `VOLCAN_CRATER_M` de rayon dont la route suit la crête
-    (`VOLCAN_RIM_M`) ; entre les deux, fondu sur
+    un cône centré sur le cratère (à l'intérieur de la boucle), creusé d'un cratère de `VOLCAN_CRATER_M` de rayon dont
+    la route suit la crête (`VOLCAN_RIM_M`) ; entre les deux, fondu sur
     `VOLCAN_ROAD_M` (le profil de la route ne fait jamais de marche au milieu de la boucle). Borné partout."""
     import numpy as np
     length = road.length_m
-    px, pz = road.xz(length / 2.0)
-    r0 = math.hypot(px, pz)
-    cx, cz = px * (1.0 + VOLCAN_RIM_M / r0), pz * (1.0 + VOLCAN_RIM_M / r0)
+    cx, cz = volcano_crater(road)
     peak = BASE_ALT_M + VOLCAN_CLIMB_M
 
     def profile(s):
@@ -345,7 +351,9 @@ def volcano_relief(road):
     def field(x, z):
         r = np.hypot(x - cx, z - cz)
         cone = peak * np.exp(-(r / VOLCAN_CONE_M) ** 2)
-        crater = -VOLCAN_DEPTH_M * np.clip(1.0 - r / VOLCAN_CRATER_M, 0.0, 1.0) ** 1.5
+        # Parois raides sur VOLCAN_WALL_M puis fond plat (lacs de lave du paysage `volcan_actif`)
+        t = np.clip((VOLCAN_CRATER_M - r) / VOLCAN_WALL_M, 0.0, 1.0)
+        crater = -VOLCAN_DEPTH_M * t * t * (3.0 - 2.0 * t)
         crest = 15.0 * np.exp(-((r - VOLCAN_RIM_M) / 70.0) ** 2)
         return cone + crater + crest + 8.0 * np.sin(x / 190.0) * np.cos(z / 230.0)
 

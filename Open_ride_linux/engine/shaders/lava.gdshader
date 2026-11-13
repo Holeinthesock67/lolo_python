@@ -10,7 +10,7 @@ uniform vec3 lava_color : source_color = vec3(1.0, 0.35, 0.06);
 uniform vec3 lava_hot : source_color = vec3(1.0, 0.82, 0.3);
 uniform vec3 crust_color : source_color = vec3(0.08, 0.06, 0.05);
 uniform float flow_mps = 0.6;
-uniform float energy = 3.0;
+uniform float energy = 5.0;
 
 varying vec3 world_pos;
 

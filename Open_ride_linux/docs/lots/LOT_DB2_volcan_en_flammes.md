@@ -32,7 +32,7 @@ Un parcours spectaculaire livré avec le jeu, sans réseau : on roule entre des 
 
 Nœud du décor vivant (`living_world.gd`, comme `ground_details.gd`) :
 
-- **Coulées** : rubans de 8 à 24 m de large et de 70 à 100 m de long, à peu près parallèles à la route, à 14 m au moins de l'axe (jusqu'à 100 m) ; **lacs** de 6 à 26 m de rayon jusqu'à 190 m de la route ; **évents** jusqu'à 230 m. Densité du thème par défaut : 1,5 (« exagéré »). Placement déterministe par tronçon de 100 m (3 derrière, 14 devant la caméra), coupé là où il passerait trop près d'une autre portion de la route (épingles, boucles : `road_clearance.gd`). Les rubans épousent le terrain.
+- **Coulées** : rubans de 14 à 34 m de large et de 70 à 100 m de long, à peu près parallèles à la route, à 14 m au moins de l'axe (jusqu'à 100 m) ; **mares** de 10 à 30 m de rayon jusqu'à 190 m de la route, **grands lacs** de 30 à 65 m de rayon jusqu'à 370 m (fond du cratère, plaine), en anneaux concentriques qui épousent le terrain ; **évents** jusqu'à 230 m. Densité du thème par défaut : 1,5 (« exagéré »). Placement déterministe par tronçon de 100 m (3 derrière, 14 devant la caméra), coupé là où il passerait trop près d'une autre portion de la route (épingles, boucles : `road_clearance.gd`). Les rubans épousent le terrain.
 - **Lave** : un maillage par tronçon, shader `lava.gdshader` (croûte noire en plaques, fissures orange à jaunes qui pulsent, courant), émissif, posée 0,5 m au-dessus du terrain et rapprochée de la caméra de 1,5 % de sa distance (3 m au plus) pour ne jamais s'enfoncer entre les triangles du terrain.
 - **Braises** autour du cycliste, **panaches** de fumée sur les évents les plus proches, **gerbes** de lave sur les grands lacs (rayon ≥ 14 m), **lumières** orange sur la lave la plus proche.
 - **Lueur** : `fire_level` (0 à 1, montée en 2 s) rougit la brume de l'horizon, la lumière du soleil et l'horizon du ciel, assombrit de cendre le haut du ciel et les nuages (`atmosphere_view.gd`, `set_fire`).
@@ -43,8 +43,8 @@ Budgets (`quality_presets.gd`, `living`) :
 | Qualité | Braises | Panaches | Gerbes | Lumières |
 | --- | --- | --- | --- | --- |
 | low | 80 | 1 | 0 | 0 |
-| medium | 300 | 3 | 1 | 2 |
-| high | 800 | 6 | 2 | 4 |
+| medium | 300 | 3 | 1 | 3 |
+| high | 800 | 6 | 2 | 6 |
 
 La lave au sol (shader seul) est à toutes les qualités. Décor vivant coupé : ni lave ni particules.
 
@@ -53,7 +53,7 @@ La lave au sol (shader seul) est à toutes les qualités. Décor vivant coupé :
 `openride_compiler.demo_biomes` : la table `LOOPS` réunit les boucles de démonstration (« Circuit des Prés » du lot O38 et « Volcan en flammes »), chacune avec sa longueur, ses lobes, son relief, son décor et la variante de ses tuiles. `--volcan` écrit la boucle seule.
 
 - 8 km, biome `volcanic`, variante `{basalte, —, volcan_actif}` sur toutes les tuiles.
-- Profil : départ au plus bas dans la plaine de cendres, montée régulière de 220 m (9,6 % au plus) jusqu'à la crête du cratère à mi-boucle, descente par l'autre flanc. Loin de la route, un cône centré sur le cratère (300 m de la route, côté extérieur), creusé de 130 m ; la route suit sa crête, le cratère s'ouvre sur le côté ; fondu sur 220 m entre le profil de la route et le cône.
+- Profil : départ au plus bas dans la plaine de cendres, montée régulière de 220 m (9,6 % au plus) jusqu'à la crête du cratère à mi-boucle, descente par l'autre flanc. Loin de la route, un cône centré sur le cratère (620 m de la route à mi-boucle, à l'intérieur de la boucle), creusé de 150 m : parois raides sur 140 m, fond plat de 920 m de diamètre où la lave fait des lacs. La route tourne du même côté que la crête et la longe à moins de 90 m sur 1,2 km ; fondu sur 220 m entre le profil de la route et le cône.
 - Décor OSM : « Hameau des Scories » au départ (maisons de basalte), « Belvédère des Coulées », refuge et « Cratère du Brasier » sur la crête.
 - Jeu de base : installé par les contenus de départ, comme les autres démonstrations.
 
