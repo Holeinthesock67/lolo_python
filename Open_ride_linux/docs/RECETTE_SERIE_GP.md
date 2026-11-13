@@ -1,7 +1,7 @@
 # Recette de la série GP – Grand Prix des objets (lot GP11)
 
-Date de préparation : 12 novembre 2026  
-Code : `main` après GP1, GP2, GP3, GP5, GP6, GP7 et GP8 ; les étapes sur le vélo attendent **GP9** (entrée du mode et réglages au menu) ; l'étape 5 attend aussi **GP4** (voiture d'équipe et Furtif).  
+Date de préparation : 12 novembre 2026, mise à jour le 13 novembre (GP9 et O38 fusionnés)  
+Code : `main` après GP1 à GP3 et GP5 à GP9, et O38 (circuit de démonstration) ; l'étape 5 complète attend **GP4** (voiture d'équipe et Furtif).  
 Machine cible : PC du propriétaire (GTX 1060, écran 1 920 × 1 080), home trainer et Click  
 Cahier : [LOT_GP11_recette.md](lots/LOT_GP11_recette.md) ; plan : [PLAN_SERIE_GP.md](4.0/PLAN_SERIE_GP.md)
 
@@ -74,7 +74,7 @@ Remarque : …
 
 ## 3. Course sur circuit à 2 bots (10 minutes au plus)
 
-Un de tes parcours en boucle (trace qui revient à son départ : « circuit » au menu), 2 adversaires, autant de tours qu'il en tient en 10 minutes (un tour de 2 à 4 km, 1 à 3 tours), chaos normal. Le jeu de base ne livre aucun circuit à ce jour : sans parcours en boucle dans ta bibliothèque, note-le en remarque et passe à l'étape suivante.
+Parcours « Circuit des Prés » (boucle de 3 km livrée avec le jeu, lot O38 ; s'il manque au menu : Réglages › Contenus › contenus de départ), **2 tours**, 2 adversaires, chaos normal. Arrête-toi à l'arrivée ou au bout de 10 minutes (vers 30 km/h, les 6 km tiennent juste) ; si l'arrivée n'est pas passée, coche-la plus tard avec une course d'un tour.
 
 - [ ] « tour 1 / N » puis « tour 2 / N » en haut à droite ; les rangées de boîtes restent aux mêmes endroits d'un tour à l'autre.
 - [ ] Arrivée au bon tour, bilan avec le nombre de tours.
