@@ -69,7 +69,7 @@ Budgets du projet : **low 8 ms, medium 13 ms, high 16 ms**. Toute mesure couvre 
 | JP2 | Compilateur : pose de `japan` (zone Japon × Köppen × WorldCover), toit `kawara` dans `regional_variants.toml` ; fait le 12/11, cahier `docs/lots/LOT_JP2_pose_biome_japon.md` | JP1, lot Köppen fusionné | Moyenne |
 | JP3 | Engine : thème `japan`, sol, ciel, faune, sons, style `minka` (maisons faites le 12/11, cahier `docs/lots/LOT_JP3_maisons_japonaises.md`), nom au menu « Biome du décor » | JP1 | Moyenne |
 | JP4 | Niveau de terrain « horizon » : compilateur (tuiles 500 m, 40 km) et engine (maillage, brouillard) ; fait le 12/11, cahier `docs/lots/LOT_JP4_niveau_horizon.md` | JP1 | Moyenne |
-| JP5 | Végétation : maillages `sugi`, `hinoki`, `momiji`, `bamboo` ; torii, lanternes, garde-fous (reportés) ; espèces faites le 12/11, cahier `docs/lots/LOT_JP5_vegetation_japon.md` | JP3 | Moyenne |
+| JP5 | Végétation : maillages `sugi`, `hinoki`, `momiji`, `bamboo` ; torii, lanternes ; garde-fous reportés au lot JP8 (cahier `docs/lots/LOT_JP8_glissieres_japon.md`) ; espèces faites le 12/11, cahier `docs/lots/LOT_JP5_vegetation_japon.md` | JP3 | Moyenne |
 | JP6 | Parcours : Route 1 de l'Ekiden et Fuji Azami Line dans le pack « Cols célèbres » (Turnpike écartée : interdite aux vélos) ; fait le 12/11, cahier `docs/lots/LOT_JP6_parcours_hakone_fuji.md` | JP2 | Petite |
 | JP7 | Recette sur le PC : compiler Hakone et Fuji, captures low / medium / high à valider par le propriétaire, banc GPU trois qualités ; faite le 12/11 (r855, Hakone 90,5 % japan, GPU 5,37 / 8,61 / 10,39 ms), cahier `docs/lots/LOT_JP7_recette_pc_japon.md` | JP2 à JP6 | Petite |
 

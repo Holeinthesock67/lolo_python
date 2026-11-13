@@ -40,6 +40,7 @@ const TrackHudModel := preload("res://scripts/track/track_hud_model.gd")
 const TrackView := preload("res://scripts/track/track_view.gd")
 const GpScene := preload("res://scripts/grandprix/gp_scene.gd")
 const GpSoundModel := preload("res://scripts/grandprix/gp_sound_model.gd")
+const GpItems := preload("res://scripts/grandprix/gp_items.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -175,6 +176,8 @@ var _biome_setting := ""
 const CYCLE_PERIOD_S := 1.0
 var _day_mode := "off"
 var _season_mode := "off"
+var _month_setting := "pc"   # render.month (lot U13b) : date du PC ou mois choisi
+var _random_season := ""     # saison tirée du mode `random` (lot U13b) ; vide : à tirer (parcours chargé)
 var _cycle_at := -INF
 var _season_applied := {}
 var _cycle_test := {}   # message de test « sky_cycle » : heure fixe (`hour`) et date (`date`) imposées
@@ -642,7 +645,8 @@ func _on_settings(msg: Dictionary) -> void:
 	_apply_gravel(str(menu_flow.settings.item("gravel.mode").get("value", "")))
 	_apply_biome(str(menu_flow.settings.item("render.biome").get("value", "")))
 	_apply_cycle_modes(str(menu_flow.settings.item("render.day_night").get("value", "off")),
-		str(menu_flow.settings.item("render.seasons").get("value", "off")))
+		str(menu_flow.settings.item("render.seasons").get("value", "off")), false,
+		str(menu_flow.settings.item("render.month").get("value", "pc")))
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp
@@ -1399,6 +1403,7 @@ func _poll_route_job() -> void:
 		return
 	route = job["route"]
 	_route_loaded_id = job["id"]
+	_random_season = ""   # saisons « au hasard » (lot U13b) : nouveau tirage pour ce parcours
 	if route.live:
 		live_world.adopt(job["path"], route)
 	else:
@@ -1919,14 +1924,19 @@ func _apply_biome(id: String) -> void:
 
 
 ## Jour et nuit, saisons (lot P19) : chaque réglage coupe tout son effet, indépendamment de l'autre.
-func _apply_cycle_modes(day_mode: String, season_mode: String, force: bool = false) -> void:
+## `month` (lot U13b) : réglage `render.month` ; vide : inchangé. Passer en `random` tire une nouvelle saison.
+func _apply_cycle_modes(day_mode: String, season_mode: String, force: bool = false, month: String = "") -> void:
 	var d := day_mode if day_mode in SkyCycle.DAY_MODES else "off"
 	var s := season_mode if season_mode in SkyCycle.SEASON_MODES else "off"
-	if d == _day_mode and s == _season_mode and not force:
+	var m := month if month == "pc" or month in SkyCycle.MONTHS else _month_setting
+	if d == _day_mode and s == _season_mode and m == _month_setting and not force:
 		return
+	if s == "random" and _season_mode != "random":
+		_random_season = ""   # nouveau tirage au prochain pas du cycle
 	_day_mode = d
 	_season_mode = s
-	print("Jour et nuit : %s ; saisons : %s" % [d, s])
+	_month_setting = m
+	print("Jour et nuit : %s ; saisons : %s ; mois : %s" % [d, s, m])
 	_step_cycle(Time.get_ticks_msec() / 1000.0, true)
 
 
@@ -1961,10 +1971,22 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 	var tz: Dictionary = Time.get_time_zone_from_system()
 	var now: Dictionary = Time.get_datetime_dict_from_system()
 	now["bias"] = int(tz.get("bias", 0))
-	var date: Dictionary = _cycle_test["date"] if typeof(_cycle_test.get("date")) == TYPE_DICTIONARY else Time.get_date_dict_from_system()
+	var date: Dictionary = _cycle_test["date"] if typeof(_cycle_test.get("date")) == TYPE_DICTIONARY \
+		else SkyCycle.date_for_month(_month_setting, Time.get_date_dict_from_system())
 	var hour = _cycle_test.get("hour", null)
-	var out := SkyCycle.evaluate(day_mode, _season_mode, _theme_dict, lat, lon, date,
-		float(_last_state.get("elapsed_s", 0.0)), now, float(hour) if hour != null else NAN)
+	# Mode `random` (lot U13b) : une saison tirée par parcours chargé (pas par révision du monde ouvert).
+	var season_mode := _season_mode
+	if _season_mode == "random":
+		if _random_season == "":
+			_random_season = SkyCycle.random_season(randf())
+			print("Saison tirée au hasard : ", _random_season)
+		season_mode = _random_season
+	# Saison du biome sous la roue (lot U13) : poids des biomes lissés au point du cycliste ; vides sans biome.
+	var weights := {}
+	if season_mode == "date" and atmosphere_view.atmosphere != null:
+		weights = atmosphere_view.atmosphere.smoothed_weights(float(atmosphere_view.current.get("s", 0.0)))
+	var out := SkyCycle.evaluate(day_mode, season_mode, _theme_dict, lat, lon, date,
+		float(_last_state.get("elapsed_s", 0.0)), now, float(hour) if hour != null else NAN, weights)
 	var light: Dictionary = out["daylight"]
 	var lit := bool(light.get("active", false))
 	if lit or atmosphere_view.cycle_active():
@@ -2020,7 +2042,7 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
-	if cmd_name in ["list_routes", "list_workouts", "list_imports", "list_route_imports"]:
+	if cmd_name in IpcClientScript.LIST_COMMANDS:
 		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
 
@@ -2129,7 +2151,9 @@ func _on_state_received(state: Dictionary) -> void:
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)), HudViewModel.direction_of(state))
 		var pu_view: Dictionary = segment_hud.view(state, Time.get_ticks_msec() / 1000.0)
 		hud.update_segment(pu_view)
-		_show_power_up_effects(str(pu_view["powerup"].get("active_kind", "")))
+		var gp_state = state.get("gp", null)   # Furtif du Grand Prix (lot GP4) : même avatar que l'Échappée
+		_show_power_up_effects("breakaway" if gp_state is Dictionary and GpItems.unseen(gp_state.get("fx", null))
+			else str(pu_view["powerup"].get("active_kind", "")))
 		wtf_view.update_view(WtfHudModel.view(state.get("wtf", null)))
 		_update_survivor(state, in_session)
 		_update_grandprix(state, in_session)
