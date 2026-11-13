@@ -1,0 +1,11 @@
+00:16:39 empreinte avant ae4a98b754a67122b530e16b668cec9a
+00:16:39 tête 1705823d
+00:17:19 demo low_main
+00:22:46 fin rc=1
+00:22:46 demo medium_main
+00:28:14 fin rc=1
+00:28:14 demo high_main
+00:33:41 fin rc=1
+00:33:42 empreinte après ae4a98b754a67122b530e16b668cec9a
+00:33:42 clone bac8ec77
+00:33:42 FIN

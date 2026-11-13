@@ -1,0 +1,11 @@
+23:59:35 empreinte avant ae4a98b754a67122b530e16b668cec9a
+23:59:35 tête 868a9886
+00:00:15 demo low_branche
+00:05:42 fin rc=1
+00:05:42 demo medium_branche
+00:11:10 fin rc=1
+00:11:10 demo high_branche
+00:16:37 fin rc=1
+00:16:39 empreinte après ae4a98b754a67122b530e16b668cec9a
+00:16:39 clone bac8ec77
+00:16:39 FIN
