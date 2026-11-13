@@ -701,6 +701,16 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 		return
 	_core_seq = seq
 	var full := list.size() >= CORE_LIST_MAX
+	# Lot DB1 (banc r866b) : liste pleine, le core ne donne que les CORE_LIST_MAX plus proches ; un cycliste qu'il ne
+	# donne pas est plus loin que le plus loin de la liste : une copie de l'engine plus près (FILE_GAP_M de marge)
+	# est à une place périmée et quitte la route, au lieu de rouler au travers de ceux du core
+	var reach := NEAR_M - CORE_MARGIN_M
+	if full:
+		reach = 0.0
+		for item in list:
+			if typeof(item) == TYPE_DICTIONARY:
+				reach = maxf(reach, absf(float(item.get("s", rider_s)) - rider_s))
+		reach += FILE_GAP_M
 	var by_id := {}
 	for g in groups:
 		if str(g["case"]) == "core":
@@ -753,7 +763,7 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 			cm["col"] = 0
 			members.append(cm)
 		for m in cg["members"]:
-			if not seen.has(str(m["id"])) and _still_on_road(cg, m, rider_s, full):
+			if not seen.has(str(m["id"])) and _still_on_road(cg, m, rider_s, reach):
 				members.append(m)
 		cg["members"] = members
 		cg["dir"] = dir
@@ -769,7 +779,7 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 			continue
 		var members := []
 		for m in g["members"]:
-			if not seen.has(str(m["id"])) and _still_on_road(g, m, rider_s, full):
+			if not seen.has(str(m["id"])) and _still_on_road(g, m, rider_s, reach):
 				members.append(m)
 		if members.is_empty():
 			continue
@@ -803,11 +813,11 @@ func _to_decor(g: Dictionary) -> void:
 		m.erase("lane_rate")
 
 
-## Faux si le core dit que le membre `m` du groupe `g` n'est plus sur la route : liste pas pleine et membre à moins
-## de NEAR_M − CORE_MARGIN_M du cycliste.
-func _still_on_road(g: Dictionary, m: Dictionary, rider_s: float, full: bool) -> bool:
+## Faux si le core dit que le membre `m` du groupe `g` n'est plus sur la route : membre absent de la liste à moins de
+## `reach` du cycliste (NEAR_M − CORE_MARGIN_M ; liste pleine : le plus loin de la liste plus FILE_GAP_M, lot DB1).
+func _still_on_road(g: Dictionary, m: Dictionary, rider_s: float, reach: float) -> bool:
 	var s_m := float(g["s"]) - float(g["dir"]) * float(m["dl"])
-	return full or absf(s_m - rider_s) >= NEAR_M - CORE_MARGIN_M
+	return absf(s_m - rider_s) >= reach
 
 
 ## Membre de l'engine d'identifiant `id`, retiré de son groupe (vide si l'engine ne l'a pas tiré).
