@@ -5,11 +5,14 @@ extends Node3D
 ## alternant les côtés, là où un bâtiment est à moins de NEAR_BUILDING_M de la route ; rien en rase campagne.
 ## Un MultiMesh par tronçon (un appel de dessin) ; la tête s'allume par night_lamp.gdshader (`night_glow`), et
 ## tout disparaît quand le jour et la nuit est coupé (`night_lamps`, image d'aujourd'hui).
+## Hors des villages, balises de bord de route (poteaux blancs à catadioptres orange, tous les POST_SPACING_M des
+## deux côtés) qui brillent la nuit comme dans les phares : la route se devine au loin (13 novembre, « ajoute des
+## éléments lumineux »). Un second MultiMesh par tronçon.
 ## La lumière portée sur la route vient d'une petite réserve de projecteurs (SpotLight3D, sans ombre) posés
 ## sous les luminaires les plus proches de la caméra : LIGHTS_BY_PRESET (aucun en `low`).
 ##
-## - `positions(route, k, buildings, road_width_m)` -> `[{s, side, pos, heading}]` et `lamp_transform(item)`
-##   (fonctions pures, testées) ;
+## - `positions(route, k, buildings, road_width_m)` -> `[{s, side, pos, heading}]`, `post_positions(...)` (balises,
+##   même forme) et `lamp_transform(item)` (fonctions pures, testées) ;
 ## - `add_chunk(route, k, buildings)` / `remove_chunk(k)` ; `set_preset(name)` ;
 ## - `update(cam_pos)` une fois par image : réserve de projecteurs, énergie selon NightLights.current.
 ## Pas de class_name : charger par preload("res://scripts/street_lights.gd").
@@ -29,6 +32,12 @@ const SPOT_ENERGY := 8.0
 const SPOT_RANGE_M := 16.0
 const SPOT_ANGLE_DEG := 70.0
 const REFRESH_S := 0.25
+const POST_SPACING_M := 50.0
+const POST_OFFSET_M := 0.5              # du bord de la chaussée
+const POST_H := 1.0
+const POST_WHITE := Color(0.88, 0.88, 0.85)
+const REFLECTOR := Color(1.0, 0.55, 0.12)
+const REFLECTOR_ENERGY := 3.5
 
 var road_width_m := RoadBuilder.ROAD_WIDTH_M
 var _chunks: Dictionary = {}            # k -> {node, points: Array[Vector3] (têtes)}
@@ -36,6 +45,7 @@ var _spots: Array[SpotLight3D] = []
 var _budget := 0
 var _refresh_at := -INF
 static var _mesh: ArrayMesh = null
+static var _post_mesh: ArrayMesh = null
 
 
 static func _near_building(p: Vector2, buildings: Array) -> bool:
@@ -76,8 +86,8 @@ static func lamp_mesh() -> ArrayMesh:
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		var pole := Color(0.22, 0.23, 0.24)
-		NightLights.box(st, Vector3(0.0, POLE_H * 0.5, 0.0), Vector3(0.12, POLE_H, 0.12), pole)
-		NightLights.box(st, Vector3(-ARM_M * 0.5, POLE_H - 0.05, 0.0), Vector3(ARM_M, 0.07, 0.07), pole)
+		NightLights.box(st, Vector3(0.0, POLE_H * 0.5, 0.0), Vector3(0.12, POLE_H, 0.12), pole, 0, pole)
+		NightLights.box(st, Vector3(-ARM_M * 0.5, POLE_H - 0.05, 0.0), Vector3(ARM_M, 0.07, 0.07), pole, 0, pole)
 		NightLights.box(st, Vector3(-ARM_M, POLE_H - 0.14, 0.0), Vector3(0.55, 0.16, 0.26), NightLights.WARM_COLOR, 9)
 		_mesh = st.commit()
 	return _mesh
@@ -88,6 +98,37 @@ static func lamp_transform(it: Dictionary) -> Transform3D:
 	var h := float(it["heading"])
 	var to_road := -Vector3(cos(h), 0.0, sin(h)) * float(it["side"])
 	return Transform3D(Basis(Vector3.UP, atan2(to_road.z, -to_road.x)), it["pos"])
+
+
+## Balises hors des villages : des deux côtés, tous les POST_SPACING_M, là où aucun bâtiment n'est proche.
+static func post_positions(route, k: int, buildings: Array, width_m: float = RoadBuilder.ROAD_WIDTH_M) -> Array:
+	var out := []
+	if route == null:
+		return out
+	var s := ceilf(k * CHUNK_M / POST_SPACING_M) * POST_SPACING_M
+	var end := minf((k + 1) * CHUNK_M, float(route.length_m))
+	while s < end:
+		var c: Vector3 = route.sample_point(s)
+		if not _near_building(Vector2(c.x, c.z), buildings):
+			var h := deg_to_rad(float(route.sample_heading_deg(s)))
+			var right := Vector3(cos(h), 0.0, sin(h))
+			for side in [1, -1]:
+				out.append({"s": s, "side": side, "pos": c + right * float(side) * (width_m * 0.5 + POST_OFFSET_M),
+					"heading": h})
+		s += POST_SPACING_M
+	return out
+
+
+## Balise : poteau blanc, bande noire, catadioptre orange devant et derrière ; pied à l'origine.
+static func post_mesh() -> ArrayMesh:
+	if _post_mesh == null:
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		NightLights.box(st, Vector3(0.0, POST_H * 0.5, 0.0), Vector3(0.12, POST_H, 0.1), POST_WHITE, 0, POST_WHITE)
+		NightLights.box(st, Vector3(0.0, POST_H - 0.2, 0.0), Vector3(0.102, 0.12, 0.102), NightLights.HOUSING)
+		NightLights.box(st, Vector3(0.0, POST_H - 0.11, 0.0), Vector3(0.08, 0.16, 0.106), REFLECTOR, 9)
+		_post_mesh = st.commit()
+	return _post_mesh
 
 
 func set_preset(name: String) -> void:
@@ -111,31 +152,48 @@ func set_preset(name: String) -> void:
 func add_chunk(route, k: int, buildings: Array) -> void:
 	remove_chunk(k)
 	var items := positions(route, k, buildings, road_width_m)
-	if items.is_empty():
+	var posts := post_positions(route, k, buildings, road_width_m)
+	var nodes: Array[Node] = []
+	var heads: Array[Vector3] = []
+	if not items.is_empty():
+		var xfs := []
+		for it in items:
+			var xf := lamp_transform(it)
+			xfs.append(xf)
+			heads.append(xf * Vector3(-ARM_M, POLE_H - 0.2, 0.0))
+		nodes.append(_multimesh("StreetLights%d" % k, lamp_mesh(), xfs, NightLights.lamp_material()))
+	if not posts.is_empty():
+		var xfs := []
+		for it in posts:
+			xfs.append(Transform3D(Basis(Vector3.UP, -float(it["heading"])), it["pos"]))
+		nodes.append(_multimesh("RoadPosts%d" % k, post_mesh(), xfs, NightLights.lamp_material(REFLECTOR_ENERGY)))
+	if nodes.is_empty():
 		return
+	_chunks[k] = {"nodes": nodes, "heads": heads, "posts": posts.size()}
+	_refresh_at = -INF
+
+
+func _multimesh(node_name: String, mesh: Mesh, xfs: Array, mat: Material) -> MultiMeshInstance3D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = lamp_mesh()
-	mm.instance_count = items.size()
-	var heads: Array[Vector3] = []
-	for i in range(items.size()):
-		var xf := lamp_transform(items[i])
-		mm.set_instance_transform(i, xf)
-		heads.append(xf * Vector3(-ARM_M, POLE_H - 0.2, 0.0))
+	mm.mesh = mesh
+	mm.instance_count = xfs.size()
+	for i in range(xfs.size()):
+		mm.set_instance_transform(i, xfs[i])
 	var mi := MultiMeshInstance3D.new()
-	mi.name = "StreetLights%d" % k
+	mi.name = node_name
 	mi.multimesh = mm
-	mi.material_override = NightLights.lamp_material()
+	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
-	_chunks[k] = {"node": mi, "heads": heads}
-	_refresh_at = -INF
+	return mi
 
 
 func remove_chunk(k: int) -> void:
 	if not _chunks.has(k):
 		return
-	(_chunks[k]["node"] as Node).queue_free()
+	for n in _chunks[k]["nodes"]:
+		(n as Node).queue_free()
 	_chunks.erase(k)
 	_refresh_at = -INF
 
@@ -143,6 +201,13 @@ func remove_chunk(k: int) -> void:
 func clear() -> void:
 	for k in _chunks.keys():
 		remove_chunk(k)
+
+
+func post_count() -> int:
+	var n := 0
+	for k in _chunks:
+		n += int(_chunks[k]["posts"])
+	return n
 
 
 func count() -> int:

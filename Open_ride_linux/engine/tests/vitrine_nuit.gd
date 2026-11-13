@@ -1,13 +1,14 @@
 extends SceneTree
 
 ## Vitrine des lumières de nuit (lot P35) : rue de village (maisons, commerces, immeuble), luminaires publics,
-## lanterne de pierre, cycliste avec phare et feu arrière, à plusieurs heures du 13 novembre (48,9° N) :
+## lanterne de pierre, cycliste avec phare et feu arrière, balises de la route hors du village, lune, étoiles et
+## lucioles, à plusieurs heures du 13 novembre (48,9° N) :
 ## jour et nuit coupé (image d'aujourd'hui), midi, coucher, nuit. Mêmes fonctions que la scène principale :
 ## daylight_model.gd / atmosphere_view.gd (lumière de l'heure), night_lights.gd, building_mesh.gd,
 ## street_lights.gd, bike_lights.gd, avatar_view.gd, roadside_props.gd.
 ##
 ##   xvfb-run -a $GODOT --path engine --rendering-driver vulkan --rendering-method forward_plus \
-##     --audio-driver Dummy --script res://tests/vitrine_nuit.gd -- --out DOSSIER [--preset medium]
+##     --audio-driver Dummy --script res://tests/vitrine_nuit.gd -- --out DOSSIER [--preset medium] [--ciel physique]
 ##
 ## Écrit DOSSIER/nuit_<preset>_<heure>_<vue>.png et DOSSIER/vitrine_nuit.csv (heure ; hauteur du soleil ;
 ## lumières ; luminance moyenne).
@@ -25,6 +26,9 @@ const AvatarView := preload("res://scripts/avatar_view.gd")
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const RoadsideProps := preload("res://scripts/roadside_props.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
+const SkyClouds := preload("res://scripts/sky_clouds.gd")
+const MoonView := preload("res://scripts/moon_view.gd")
+const Fireflies := preload("res://scripts/fireflies.gd")
 
 const SIZE := Vector2i(1280, 720)
 const SETTLE_FRAMES := 24
@@ -49,11 +53,14 @@ const HOUSES := [
 const VIEWS := {
 	"rue": [Vector3(1.2, 2.2, -12.0), Vector3(1.0, 1.6, -60.0)],
 	"subjective": [Vector3(1.5, 1.6, -18.3), Vector3(1.2, 1.2, -60.0)],
+	"campagne": [Vector3(1.5, 1.6, -175.0), Vector3(1.2, 1.0, -260.0)],
+	"ciel": [Vector3(1.5, 1.6, -18.3), Vector3.ZERO],   # vers la lune
 }
 const RIDER_POS := Vector3(1.5, GROUND_Y, -18.0)
 
 var _out_dir := "user://vitrine_nuit"
 var _preset := "medium"
+var _sky := "nuages"
 
 
 func _init() -> void:
@@ -63,11 +70,13 @@ func _init() -> void:
 			_out_dir = args[i + 1]
 		elif args[i] == "--preset":
 			_preset = args[i + 1]
+		elif args[i] == "--ciel":
+			_sky = args[i + 1]
 	call_deferred("_run")
 
 
 func _route():
-	var n := 41
+	var n := 81
 	var d := {"version": "1.0", "ds_m": 5.0, "n": n, "length_m": 5.0 * (n - 1), "type": "open",
 		"lat": [], "lon": [], "alt_m": [], "x": [], "z": [], "grade_pct": [], "heading_deg": []}
 	for i in range(n):
@@ -97,7 +106,9 @@ func _run() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
 	env.sky = Sky.new()
-	env.sky.sky_material = PhysicalSkyMaterial.new()
+	# Ciel du jeu par beau temps peu nuageux (sky_clouds.gdshader, préréglages medium et high), ou ciel physique
+	env.sky.sky_material = PhysicalSkyMaterial.new() if _sky == "physique" else \
+		SkyClouds.build_material({"coverage": 0.25}, "layered" if _preset == "high" else "flat")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = _preset != "low"
@@ -121,9 +132,18 @@ func _run() -> void:
 		atmo.set_cycle(light if lit else {})
 		NightLights.apply(NightLights.level(light), lit)
 		for view in VIEWS:
-			cam.look_at_from_position(VIEWS[view][0] + Vector3(0, GROUND_Y, 0), VIEWS[view][1] + Vector3(0, GROUND_Y, 0), Vector3.UP)
+			var from: Vector3 = VIEWS[view][0] + Vector3(0, GROUND_Y, 0)
+			var to: Vector3 = VIEWS[view][1] + Vector3(0, GROUND_Y, 0)
+			if view == "ciel":
+				if not lit:
+					continue
+				var md: Vector3 = light["moon_direction"]
+				to = from + Vector3(md.x, maxf(md.y, 0.25), md.z) * 100.0
+			cam.look_at_from_position(from, to, Vector3.UP)
 			var sl = vp.get_node("StreetLights")
 			sl.update(cam.global_position, float(Time.get_ticks_msec()) + 1000.0)
+			(vp.get_node("Moon") as MeshInstance3D).call("update", cam.global_position, light)
+			(vp.get_node("Fireflies") as GPUParticles3D).call("update", cam.global_position, "summer", 0.0, "temperate_grassland")
 			(vp.get_node("BikeLights") as Node3D).call("place", RIDER_POS, Vector3.ZERO)
 			(vp.get_node("Avatar") as Node3D).call("apply_pose", 0.8, false)
 			for _f in range(SETTLE_FRAMES):
@@ -229,6 +249,10 @@ func _build_world(vp: SubViewport, theme: Dictionary) -> void:
 	av.position = RIDER_POS
 	var bl = BikeLights.new()
 	vp.add_child(bl)
+	vp.add_child(MoonView.new())
+	var ff = Fireflies.new()
+	vp.add_child(ff)
+	ff.set_preset(_preset)
 	var cam := Camera3D.new()
 	cam.name = "Camera"
 	cam.fov = 65.0

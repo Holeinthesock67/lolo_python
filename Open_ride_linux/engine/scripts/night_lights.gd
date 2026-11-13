@@ -21,7 +21,8 @@ const LampShader := preload("res://shaders/night_lamp.gdshader")
 
 static var current := 0.0
 static var enabled := false
-static var _lamp_mat: ShaderMaterial = null
+static var _lamp_mats: Dictionary = {}
+const HOUSING := Color(0.08, 0.08, 0.09)   # boîtier, mât
 
 
 static func level(daylight: Dictionary) -> float:
@@ -38,16 +39,20 @@ static func apply(value: float, on: bool) -> void:
 	RenderingServer.global_shader_parameter_set("night_lamps", 1.0 if on else 0.0)
 
 
-static func lamp_material() -> ShaderMaterial:
-	if _lamp_mat == null:
-		_lamp_mat = ShaderMaterial.new()
-		_lamp_mat.shader = LampShader
-	return _lamp_mat
+## Matériau partagé des lampes ; `energy` : éclat du verre allumé (4 : lampe ; moins : catadioptre).
+static func lamp_material(energy: float = 4.0) -> ShaderMaterial:
+	if not _lamp_mats.has(energy):
+		var m := ShaderMaterial.new()
+		m.shader = LampShader
+		m.set_shader_parameter("energy", energy)
+		_lamp_mats[energy] = m
+	return _lamp_mats[energy]
 
 
 ## Boîte de `size` centrée en `c` dans `st`, couleur `color` ; `glass_face` : face qui s'allume, −1 avant (−z),
-## 1 arrière (+z), 2 dessous, 9 toutes ; 0 : boîtier sombre seulement.
-static func box(st: SurfaceTool, c: Vector3, size: Vector3, color: Color, glass_face: int = 0) -> void:
+## 1 arrière (+z), 2 dessous, 9 toutes ; 0 : boîtier seulement ; les autres faces ont la couleur `body`.
+static func box(st: SurfaceTool, c: Vector3, size: Vector3, color: Color, glass_face: int = 0,
+		body: Color = HOUSING) -> void:
 	var h := size * 0.5
 	var faces := [
 		[Vector3(0, 0, -1), Vector3(1, 0, 0), Vector3(0, 1, 0), -1],
@@ -64,7 +69,7 @@ static func box(st: SurfaceTool, c: Vector3, size: Vector3, color: Color, glass_
 		var col := color
 		col.a = 1.0 if glass_face == 9 or (glass_face != 0 and int(f[3]) == glass_face) else 0.0
 		if col.a == 0.0:
-			col = Color(0.08, 0.08, 0.09, 0.0)
+			col = Color(body.r, body.g, body.b, 0.0)
 		var o := c + n * h
 		var du := u * h
 		var dv := v * h

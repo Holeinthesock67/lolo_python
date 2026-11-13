@@ -11,6 +11,8 @@ const BikeLights := preload("res://scripts/bike_lights.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const AvatarModel := preload("res://scripts/avatar_model.gd")
+const MoonView := preload("res://scripts/moon_view.gd")
+const Fireflies := preload("res://scripts/fireflies.gd")
 
 var _failures := 0
 var _checked := 0
@@ -133,13 +135,39 @@ func _test_street() -> void:
 		if c is SpotLight3D and not c.is_queued_for_deletion():
 			spots += 1
 	_check(spots == 0, "low : luminaires dessinés, aucun projecteur")
+	var posts := StreetLights.post_positions(route, 0, village)
+	var in_village := false
+	for it in posts:
+		in_village = in_village or int(it["s"]) in [300, 400, 500]
+	_check(posts.size() == 2 * 17 and not in_village, "balises des deux côtés, aucune près des maisons (%d)" % posts.size())
+	_check(StreetLights.post_positions(route, 0, []).size() == 2 * 20, "rase campagne : balises tous les 50 m des deux côtés")
+	_check(sl.post_count() == posts.size(), "balises du tronçon dessinées (%d)" % sl.post_count())
 	sl.remove_chunk(0)
-	_check(sl.count() == 0, "tronçon libéré : luminaires retirés")
+	_check(sl.count() == 0 and sl.post_count() == 0, "tronçon libéré : luminaires et balises retirés")
 	sl.queue_free()
+
+
+func _test_sky() -> void:
+	var moon = MoonView.new()
+	root.add_child(moon)
+	moon.update(Vector3.ZERO, {})
+	_check(not moon.visible, "lune cachée de jour et quand le jour et la nuit est coupé")
+	moon.update(Vector3(10, 0, 0), {"active": true, "stars": 1.0, "moon_illumination": 0.6,
+		"moon_direction": Vector3(0, 1, -1).normalized()})
+	_check(moon.visible and moon.position.distance_to(Vector3(10, 0, 0) + Vector3(0, 1, -1).normalized() * MoonView.DIST_M) < 0.01,
+		"lune la nuit, dans sa direction, loin devant le décor")
+	moon.update(Vector3.ZERO, {"active": true, "stars": 1.0, "moon_illumination": 0.0, "moon_direction": Vector3.UP})
+	_check(not moon.visible, "nouvelle lune : rien à voir")
+	moon.queue_free()
+	_check(Fireflies.wanted(1.0, "summer", 0.0, "temperate_forest"), "lucioles : nuit d'été en forêt")
+	_check(not Fireflies.wanted(1.0, "winter", 0.0, "temperate_forest") and not Fireflies.wanted(1.0, "summer", 0.5, "wetland")
+		and not Fireflies.wanted(0.2, "summer", 0.0, "wetland") and not Fireflies.wanted(1.0, "summer", 0.0, "sand_desert"),
+		"pas de lucioles l'hiver, sous la pluie, au crépuscule ni au désert")
 
 
 func _init() -> void:
 	_test_level()
+	_test_sky()
 	_test_bike()
 	_test_street()
 	NightLights.apply(0.0, false)

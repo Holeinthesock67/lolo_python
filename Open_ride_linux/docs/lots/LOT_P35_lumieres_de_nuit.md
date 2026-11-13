@@ -25,6 +25,18 @@ Une seule règle pour tout ce qui est neuf : **les lampes existent dès que « J
 | Lanternes de pierre (Japon, JP5) | `roadside_props.gd` : foyer qui s'allume | 1 appel de dessin par lanterne |
 | Phares des voitures, camions, bateaux | Déjà prévus (P25) mais calés sur le soleil fixe du thème : `living_decor.set_sun_elevation` leur donne le soleil du cycle | Aucun |
 
+## 2 bis. Nuit plus claire, ciel étoilé, éléments lumineux en plus (retours du 13 novembre au matin)
+
+Retours sur la planche de nuit et le banc PC r862 : « C'est trop sombre, ajoute des éléments lumineux pour ajouter de la vie », « Pas d'étoiles ou de lune ? » (ciel noir uni en jeu).
+
+- **Cause du ciel noir :** en jeu, le ciel à nuages (`sky_clouds.gdshader`, medium et high) dessinait des étoiles d'environ un pixel, peu brillantes, et des nuages de nuit presque noirs qui les cachaient ; le ciel physique (`night_sky`) avait des étoiles d'un pixel, perdues au rééchantillonnage. La lune n'était pas dessinée du tout (seule sa lumière existait).
+- **Étoiles :** points ronds plus gros et plus brillants, teinte bleutée à dorée ; étoiles du ciel physique en 2 × 2 pixels ; la nuit, nuages moitié moins opaques.
+- **Lune :** `moon_view.gd` + `moon.gdshader`, disque face à la caméra loin devant le décor, dans la direction de la lune, avec sa phase réelle (part éclairée, lumière cendrée, halo) ; elle ne dépend pas du ciel utilisé. Nouvelle lune : rien.
+- **Nuit plus claire :** ciel bleu nuit et horizon plus clairs (paliers de `daylight_model.gd`), lumière ambiante minimale 0,18 (au lieu de 0,12), gain de nuit 3,0 (au lieu de 2,5), lune plus forte (0,26).
+- **Enseignes :** le bandeau des commerces s'allume de sa couleur la nuit (`building.gdshader`, `SIGN_GLOW`).
+- **Balises de bord de route :** hors des villages, poteaux blancs à catadioptres orange tous les 50 m des deux côtés (`street_lights.gd`, un MultiMesh par tronçon) : la route se devine au loin.
+- **Lucioles :** `fireflies.gd`, particules vert-jaune autour du cycliste les nuits sans pluie, hors hiver et hors biomes secs ou froids : 0 / 60 / 120 (low / medium / high), un appel de dessin.
+
 ## 3. Sons d'ambiance à l'heure de la scène
 
 Les fonds d'ambiance (oiseaux du matin, insectes du soir, grenouilles la nuit, `ambience_model.gd`) lisaient l'heure du PC : en journée accélérée, ils ne suivaient pas l'image. `living_world.solar_hour` (posé par `main.gd`) leur donne l'heure solaire de la scène ; jour et nuit coupé : heure du PC, comme avant.
@@ -41,7 +53,7 @@ Demande du 13 novembre (« Pas de nuit dans vélodrome ») : la salle du vélodr
 
 - `tests/unit/test_night_lights.gd` : allumage, globaux, lampes du vélo et de l'avatar, luminaires (seulement près des maisons, côtés alternés, crosse au-dessus de la chaussée, projecteurs par préréglage), éclairage du vélo.
 - `tests/unit/test_sky_cycle.gd` : 12 min de nuit et 48 min de jour un 13 novembre à 48,9° N, retour à 6 h du lendemain après une heure, jour polaire.
-- `tests/vitrine_nuit.gd` : rue de village à quatre heures (coupé, midi, coucher, nuit), vues de poursuite et subjective, CSV des luminances.
+- `tests/vitrine_nuit.gd` : rue de village à quatre heures (coupé, midi, coucher, nuit), vues de poursuite, subjective, campagne (balises) et ciel (lune), ciel à nuages du jeu (`--ciel physique` pour l'autre), CSV des luminances.
 
 ## 6. Reste à faire
 

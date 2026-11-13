@@ -54,6 +54,8 @@ const RIDER_PREFIX := "rider:"   # `draft_bot` d'un cycliste du décor (lot AS7,
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const BikeLights := preload("res://scripts/bike_lights.gd")
+const MoonView := preload("res://scripts/moon_view.gd")
+const Fireflies := preload("res://scripts/fireflies.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
 const WorkoutChartModel := preload("res://scripts/workout_chart_model.gd")
 const WorkoutChartView := preload("res://scripts/workout_chart_view.gd")
@@ -237,6 +239,8 @@ var _draft := {"draft": null, "draft_bot": null}   # champs `draft` et `draft_bo
 var avatar_model = AvatarModel.new()
 var avatar_view: Node3D
 var bike_lights: Node3D = null   # lot P35 : phare et feu arrière du joueur, la nuit
+var moon_view: MeshInstance3D = null   # lot P35 : lune avec sa phase, la nuit
+var fireflies: GPUParticles3D = null   # lot P35 : lucioles des nuits douces
 var _avatar_cam := ""
 ## Courbes de la séance (lot O14) : un modèle, deux vues (bandeau ERG, panneau SIM), taille par réglage.
 var chart_model = WorkoutChartModel.new()
@@ -371,6 +375,11 @@ func _ready() -> void:
 	add_child(avatar_view)
 	bike_lights = BikeLights.new()
 	add_child(bike_lights)
+	moon_view = MoonView.new()
+	add_child(moon_view)
+	fireflies = Fireflies.new()
+	add_child(fireflies)
+	fireflies.set_preset(QualityPresets.applied_name(_quality_name))
 	_configure_avatar()
 	segment_markers = SegmentMarkers.new()
 	segment_markers.name = "SegmentMarkers"
@@ -585,6 +594,8 @@ func _on_settings(msg: Dictionary) -> void:
 		load_guard.reset(QualityPresets.image(_quality_name), _forward_plus())
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
+		if fireflies != null:
+			fireflies.set_preset(QualityPresets.applied_name(_quality_name))
 		if velodrome_hall != null:
 			velodrome_hall.set_quality(_quality_name)
 		_apply_indoor()
@@ -1230,6 +1241,11 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 		t_step = Time.get_ticks_usec()
 	_step_cycle(now_s)
 	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
+	if moon_view != null:
+		moon_view.update(camera.global_position, atmosphere_view.cycle)
+	if fireflies != null and living_world != null:
+		fireflies.update(camera.global_position, str(living_world.season), float(living_world.rain),
+			_dominant_biome(living_world.neigh.get("biomes", {})))
 	PerfProbe.mark_since("atmosphere", "", t_step)
 
 
@@ -1904,6 +1920,18 @@ func _apply_cycle_modes(day_mode: String, season_mode: String, force: bool = fal
 	_season_mode = s
 	print("Jour et nuit : %s ; saisons : %s" % [d, s])
 	_step_cycle(Time.get_ticks_msec() / 1000.0, true)
+
+
+## Biome le plus présent d'un dictionnaire de poids (voisinage sonore de living_world.gd, lot U11) ; "" sans poids.
+static func _dominant_biome(weights: Variant) -> String:
+	var best := ""
+	var w := 0.0
+	if typeof(weights) == TYPE_DICTIONARY:
+		for b in weights:
+			if float(weights[b]) > w:
+				w = float(weights[b])
+				best = str(b)
+	return best
 
 
 ## Lumière de l'heure et paramètres de la saison posés dans la scène ; `force` : tout de suite.

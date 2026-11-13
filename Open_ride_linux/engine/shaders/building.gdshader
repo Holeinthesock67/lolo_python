@@ -15,7 +15,7 @@ render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_sc
 //   + 128 × matière du toit + 1024 × toit + 2048 × hauteur des murs au quart de mètre.
 //
 // Lumières de nuit (lot P35) : chaque ouverture vitrée dit, dans `glow`, si elle est éclairée de l'intérieur
-// (tirage par fenêtre, LIT_SHARE des fenêtres, plus pour les vitrines) ; le global `night_glow` (0 de jour et
+// (tirage par fenêtre, LIT_SHARE des fenêtres, plus pour les vitrines ; SIGN_GLOW : enseigne des commerces) ; le global `night_glow` (0 de jour et
 // jour et nuit coupé, 1 la nuit, night_lights.gd) allume ces fenêtres d'une lumière chaude. De jour : rien.
 
 #include "res://shaders/surface_detail.gdshaderinc"
@@ -29,6 +29,7 @@ const float LIT_SHARE = 0.4;            // part des fenêtres éclairées la nui
 const float SHOP_LIT_SHARE = 0.75;      // vitrines
 const vec3 WINDOW_WARM = vec3(1.0, 0.72, 0.42);   // lumière d'intérieur (sRGB)
 const float WINDOW_GLOW_E = 1.6;
+const float SIGN_GLOW = 2.0;            // valeur de `glow` d'une enseigne : lumière de sa propre couleur
 
 const float FLOOR_H = 3.0;
 const float PLINTH_H = 0.55;
@@ -473,6 +474,7 @@ void shop_openings(vec2 uv, float seg, float eave, float seed, inout vec3 col, i
 			col = vec3(0.2, 0.21, 0.22);
 		} else if (sign_band > 0.0) {
 			col = shutter_color(fract(seed * 3.0));
+			glow = SIGN_GLOW;   // enseigne éclairée la nuit, de sa couleur (lot P35)
 		}
 	} else {
 		float shop_h = 0.0;
@@ -754,7 +756,8 @@ void fragment() {
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	if (night_glow > 0.0 && glow > 0.0) {
-		EMISSION = lineaire(WINDOW_WARM) * (glow * night_glow * WINDOW_GLOW_E);
+		vec3 light_col = glow >= SIGN_GLOW ? lineaire(mix(col, vec3(1.0), 0.25)) * 1.4 : lineaire(WINDOW_WARM) * glow;
+		EMISSION = light_col * (night_glow * WINDOW_GLOW_E);
 	}
 	// Hors de toute branche : les dérivées d'écran de sd_bump sont fausses dans un flot non uniforme
 	// (points clairs au bord des fenêtres)

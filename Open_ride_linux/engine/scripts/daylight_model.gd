@@ -33,8 +33,8 @@ const NIGHT_DEG := -6.0              # fin du crépuscule civil
 const ASTRO_NIGHT_DEG := -18.0       # nuit noire, étoiles pleines
 const SYNODIC_DAYS := 29.530588
 const NEW_MOON_UNIX_DAYS := 10962.759   # nouvelle lune du 6 janvier 2000, 18 h 14 UTC (jours depuis 1970)
-const MOON_ENERGY := 0.18            # énergie de la lune pleine, en part du soleil du thème
-const MOON_AMBIENT := 0.08           # lumière ambiante ajoutée par la lune pleine
+const MOON_ENERGY := 0.26            # énergie de la lune pleine, en part du soleil du thème
+const MOON_AMBIENT := 0.10           # lumière ambiante ajoutée par la lune pleine
 const MOON_COLOR := Color(0.72, 0.80, 1.0)
 const MOON_MIN_ELEVATION_DEG := 25.0    # la lune éclaire toujours d'assez haut pour des ombres lisibles
 const MAX_ACCEL_FACTOR := 1440.0     # une journée par minute au plus
@@ -42,8 +42,9 @@ const MAX_ACCEL_FACTOR := 1440.0     # une journée par minute au plus
 ## Paliers de lumière, de la nuit noire au plein jour : élévation (°), puis multiplicateurs des valeurs de
 ## jour du thème. Interpolation linéaire entre deux paliers voisins : aucune marche.
 const STOPS := [
-	{"el": -18.0, "sun": Color(1.0, 0.55, 0.35), "sun_e": 0.0, "amb": Color(0.32, 0.38, 0.62), "amb_e": 0.0,
-		"top": Color(0.03, 0.04, 0.10), "hor": Color(0.06, 0.08, 0.16), "fog": Color(0.06, 0.08, 0.15)},
+	# Nuit éclaircie le 13 novembre (lot P35, « c'est trop sombre ») : ciel bleu nuit, horizon plus clair
+	{"el": -18.0, "sun": Color(1.0, 0.55, 0.35), "sun_e": 0.0, "amb": Color(0.36, 0.42, 0.68), "amb_e": 0.0,
+		"top": Color(0.05, 0.07, 0.17), "hor": Color(0.11, 0.14, 0.27), "fog": Color(0.10, 0.12, 0.22)},
 	{"el": -6.0, "sun": Color(1.0, 0.55, 0.35), "sun_e": 0.0, "amb": Color(0.38, 0.45, 0.75), "amb_e": 0.10,
 		"top": Color(0.10, 0.15, 0.36), "hor": Color(0.24, 0.27, 0.50), "fog": Color(0.22, 0.25, 0.42)},
 	{"el": -2.0, "sun": Color(1.0, 0.55, 0.35), "sun_e": 0.0, "amb": Color(0.55, 0.58, 0.85), "amb_e": 0.25,
@@ -104,7 +105,7 @@ static func stars(elevation_deg: float) -> float:
 	return smoothstep(0.0, ASTRO_NIGHT_DEG, elevation_deg)
 
 
-static func light(elevation_deg: float, moon_illum: float = 0.0, min_ambient: float = 0.12) -> Dictionary:
+static func light(elevation_deg: float, moon_illum: float = 0.0, min_ambient: float = ThemeRenderParams.DEFAULT_MIN_AMBIENT) -> Dictionary:
 	var e := clampf(elevation_deg, STOPS[0]["el"], LIGHT_DAY_DEG)
 	var i := 0
 	while i < STOPS.size() - 2 and e > float(STOPS[i + 1]["el"]):
@@ -217,7 +218,7 @@ static func evaluate(tod: Dictionary, lat_deg: float, lon_deg: float, doy: float
 	var day := doy + days
 	var sun := sun_position(lat, day, solar)
 	var illum := 0.0 if is_nan(unix_days) else moon_illumination(unix_days + days)
-	var out := light(float(sun["elevation_deg"]), illum, float(tod.get("min_ambient", 0.12)))
+	var out := light(float(sun["elevation_deg"]), illum, float(tod.get("min_ambient", ThemeRenderParams.DEFAULT_MIN_AMBIENT)))
 	out["sun_elevation_deg"] = sun["elevation_deg"]
 	out["sun_azimuth_deg"] = sun["azimuth_deg"]
 	out["sun_direction"] = direction(sun["elevation_deg"], sun["azimuth_deg"])
