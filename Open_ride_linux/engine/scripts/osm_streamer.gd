@@ -279,8 +279,8 @@ func _build_chunk_job(job: Dictionary) -> void:
 	var r_disp = job.get("route")
 	var v_scale: float = r_disp.relief_k if r_disp != null else 1.0
 
-	# Hauteur du terrain affiché (tuiles proches, puis lointaines) : pose des bâtiments, des animaux et des
-	# tracteurs
+	# Hauteur du terrain affiché (tuiles proches, puis lointaines) : pose des bâtiments, des animaux, des
+	# tracteurs et des plages (lot U9)
 	var height_at := Callable()
 	var ground_at := Callable()
 	if job.get("route") != null:
@@ -422,13 +422,9 @@ func _build_chunk_job(job: Dictionary) -> void:
 					meshes_data.append({"kind": "sea_foam", "arrays": arr})
 			var beaches: Array = c_res.get("beaches", [])
 			if not beaches.is_empty() and job.get("route") != null:
-				var raw_h := terrain_height_fn(w_dir, job["route"])
-				var beach_h := raw_h
-				if v_scale != 1.0:
-					beach_h = func(x: float, z: float) -> float:
-						return r_disp.display_y(float(raw_h.call(x, z)))
+				# Même hauteur affichée que les bâtiments et les animaux (tuiles lues une fois par tronçon)
 				var sand = SeaMesh.sand_color(th)
-				var p_mesh := SeaMesh.build_beaches(beaches, beach_h, sand)
+				var p_mesh := SeaMesh.build_beaches(beaches, height_at, sand)
 				if int(p_mesh.get("built", 0)) > 0:
 					var arr := _arrays_from_mesh_dict(p_mesh)
 					if not arr.is_empty():
