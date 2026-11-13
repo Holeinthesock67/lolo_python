@@ -10,6 +10,10 @@ extends Control
 ## - Katamari et horloge à gauche, sous la carte du gag ; les cartes s'empilent sans trou. Pendant un gag
 ##   à carte, Katamari et horloge se réduisent à une seule ligne pour que la pile ne descende pas sur la route
 ##   (pile bornée à STACK_MAX_FRAC de la hauteur de l'écran de base 1280 × 720, vérifiée par le test).
+## - lot WTF9 (lisibilité) : sous le nom du gag, une ligne « À toi : … » dit quoi faire ; le bandeau grossit
+##   un instant à chaque nouveau gag (annonce) ; au premier passage de chaque règle dans la séance, une
+##   légende (ce qui se passe, ce que tu fais) s'affiche LEGEND_S secondes à droite ; la carte du
+##   Katamari annonce le prochain objet et s'il sera ramassé.
 ## Ne décide rien : affiche la sortie de wtf_hud_model.gd (update_view). Enfant du HUD : caché avec lui
 ## quand un menu plein écran est ouvert. Pas de class_name : preload("res://scripts/wtf/wtf_view.gd").
 
@@ -30,7 +34,13 @@ const TEXT_SIZE := 16
 const VALUE_SIZE := 22
 const NOTE_SIZE := 13
 const BAR_H := 10
-const PROMPT_TOP := BANNER_TOP + 64.0
+const STACK_GAP := 10.0       # entre bandeau, invite et légende
+const LEGEND_S := 7.0         # durée d'une légende au premier passage
+const LEGEND_W := 330.0
+const LEGEND_TOP := 300.0     # à droite, sous la colonne de droite du HUD (TOP_MARGIN 20 + COLUMN_H 259) : au
+                              # centre, sous le bandeau, elle cachait le gag (vitrine du 12/11)
+const POP_S := 0.5            # annonce d'un nouveau gag : le bandeau grossit puis revient
+const POP_SCALE := 1.15
 const STACK_MAX_FRAC := 0.75
 
 var _view: Dictionary = {}
@@ -52,6 +62,17 @@ var _kata_line: Label
 var _kata_bar: ProgressBar
 var _clock: PanelContainer
 var _clock_text: Label
+var _banner_do: Label
+var _kata_next: Label
+var _legend: PanelContainer
+var _legend_title: Label
+var _legend_what: Label
+var _legend_do: Label
+var _seen: Dictionary = {}        # clé de légende -> secondes déjà montrées dans la séance
+var _legend_key := ""
+var _last_s := -1.0
+var _banner_id := ""              # gag du bandeau (texte), pour l'annonce
+var _pop_left := 0.0
 
 
 func _init() -> void:
@@ -69,9 +90,10 @@ func _build() -> void:
 	_banner.offset_left = -BANNER_W / 2.0
 	_banner.offset_right = BANNER_W / 2.0
 	_banner.offset_top = BANNER_TOP
+	var bcol := _vbox(_banner)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
-	_banner.add_child(row)
+	bcol.add_child(row)
 	_banner_text = _label(TITLE_SIZE, INK)
 	_banner_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_banner_text.clip_text = true
@@ -79,6 +101,9 @@ func _build() -> void:
 	_banner_points = _label(TEXT_SIZE, INK)
 	for l in [_banner_text, _banner_time, _banner_points]:
 		row.add_child(l)
+	_banner_do = _label(TEXT_SIZE + 2, INK)
+	_banner_do.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bcol.add_child(_banner_do)
 
 	_card = _panel(Color.WHITE)
 	_card.offset_left = SIDE_LEFT
@@ -99,7 +124,7 @@ func _build() -> void:
 	_prompt.anchor_right = 0.5
 	_prompt.offset_left = -BANNER_W / 2.0
 	_prompt.offset_right = BANNER_W / 2.0
-	_prompt.offset_top = PROMPT_TOP
+	_prompt.offset_top = BANNER_TOP
 	_prompt_text = _label(TEXT_SIZE + 4, Color.WHITE)
 	_prompt_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.add_child(_prompt_text)
@@ -112,8 +137,25 @@ func _build() -> void:
 	_kata_line = _label(NOTE_SIZE, INK)
 	_kata_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_kata_bar = _bar(WtfHudModel.GREEN)
-	for c in [_kata_title, _kata_line, _kata_bar]:
+	_kata_next = _label(NOTE_SIZE, INK)
+	_kata_next.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	for c in [_kata_title, _kata_line, _kata_bar, _kata_next]:
 		kcol.add_child(c)
+
+	_legend = _panel(Color.WHITE)
+	_legend.anchor_left = 1.0
+	_legend.anchor_right = 1.0
+	_legend.offset_left = -SIDE_LEFT - LEGEND_W
+	_legend.offset_right = -SIDE_LEFT
+	_legend.offset_top = LEGEND_TOP
+	var lcol := _vbox(_legend)
+	_legend_title = _label(TEXT_SIZE + 4, INK)
+	_legend_what = _label(TEXT_SIZE, INK)
+	_legend_do = _label(TEXT_SIZE, INK)
+	for l in [_legend_title, _legend_what, _legend_do]:
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	for l in [_legend_title, _legend_what, _legend_do]:
+		lcol.add_child(l)
 
 	_clock = _panel(WtfHudModel.CYAN)
 	_clock.offset_left = SIDE_LEFT
@@ -121,15 +163,22 @@ func _build() -> void:
 	_clock_text = _label(TEXT_SIZE, INK)
 	_clock.add_child(_clock_text)
 
-	for p in [_banner, _card, _prompt, _kata, _clock]:
+	for p in [_banner, _card, _prompt, _legend, _kata, _clock]:
 		add_child(p)
 
 
-## `view` : sortie de wtf_hud_model.gd view().
-func update_view(view: Dictionary) -> void:
+## `view` : sortie de wtf_hud_model.gd view(). `now_s` : horloge en secondes (tests) ; par défaut celle du
+## moteur.
+func update_view(view: Dictionary, now_s := -1.0) -> void:
 	_view = view
 	visible = bool(view.get("visible", false))
+	var now := now_s if now_s >= 0.0 else Time.get_ticks_msec() / 1000.0
+	var dt := clampf(now - _last_s, 0.0, 0.5) if _last_s >= 0.0 else 0.0
+	_last_s = now
 	if not visible:
+		_seen.clear()   # séance finie : la séance suivante remontre les légendes
+		_legend_key = ""
+		_banner_id = ""
 		return
 	var b: Dictionary = view.get("banner", {})
 	_banner.visible = not b.is_empty()
@@ -138,6 +187,17 @@ func update_view(view: Dictionary) -> void:
 		_banner_text.text = str(b.get("text", ""))
 		_banner_time.text = str(b.get("time", ""))
 		_banner_points.text = str(b.get("points", ""))
+		var todo := str(b.get("do", ""))
+		_banner_do.text = ("À toi : " + todo) if todo != "" else ""
+		_banner_do.visible = todo != ""
+		if _banner_text.text != _banner_id:
+			_pop_left = POP_S if _banner_text.text != "MODE WTF" else 0.0   # nouveau gag ou nouvelle phase
+			_banner_id = _banner_text.text
+	_pop_left = maxf(_pop_left - dt, 0.0)
+	var pop := 1.0 + (POP_SCALE - 1.0) * sin(PI * _pop_left / POP_S) if _pop_left > 0.0 else 1.0
+	_banner.pivot_offset = Vector2(BANNER_W / 2.0, 0.0)
+	_banner.scale = Vector2.ONE * pop
+	_update_legend(view.get("legend_keys", []), dt)
 	var c: Dictionary = view.get("card", {})
 	_card.visible = not c.is_empty()
 	if _card.visible:
@@ -161,6 +221,8 @@ func update_view(view: Dictionary) -> void:
 		_kata_line.visible = not compact
 		_kata_bar.visible = not compact
 		_kata_bar.value = float(k.get("bar", 0.0))
+		_kata_next.text = str(k.get("next", ""))
+		_kata_next.visible = not compact and _kata_next.text != ""
 	var h: Dictionary = view.get("clock", {})
 	var clock_text := ""
 	if not h.is_empty():
@@ -178,7 +240,26 @@ func update_view(view: Dictionary) -> void:
 			panel.offset_top = y
 			y += panel.get_combined_minimum_size().y + SIDE_GAP
 	_stack_bottom = y - SIDE_GAP
+	# L'invite du chef juste sous le bandeau, quelle que soit sa hauteur (une ou deux lignes).
+	_prompt.offset_top = BANNER_TOP + _banner.get_combined_minimum_size().y + STACK_GAP
 
+
+## Légende au premier passage (à droite, sous la colonne du HUD) : la première clé pas encore vue (gag en tête) est montrée LEGEND_S secondes
+## au total ; un gag qui commence passe devant une règle permanente, qui reprend ensuite.
+func _update_legend(keys: Array, dt: float) -> void:
+	if _legend_key != "":
+		_seen[_legend_key] = float(_seen.get(_legend_key, 0.0)) + dt
+	_legend_key = ""
+	for key in keys:
+		if WtfHudModel.LEGENDS.has(key) and float(_seen.get(key, 0.0)) < LEGEND_S:
+			_legend_key = str(key)
+			break
+	_legend.visible = _legend_key != ""
+	if _legend.visible:
+		var l: Array = WtfHudModel.LEGENDS[_legend_key]
+		_legend_title.text = "NOUVEAU : " + str(l[0])
+		_legend_what.text = str(l[1])
+		_legend_do.text = "À toi : " + str(l[2])
 
 ## Pour les tests graphiques et le banc des menus : textes affichés.
 func test_info() -> Dictionary:
@@ -188,7 +269,11 @@ func test_info() -> Dictionary:
 		"kata": _kata_title.text if visible and _kata.visible else "",
 		"clock": _clock_text.text if visible and _clock.visible else "",
 		"card_top": _card.offset_top, "kata_top": _kata.offset_top, "clock_top": _clock.offset_top,
-		"stack_bottom": _stack_bottom, "prompt_top": _prompt.offset_top, "kata_compact": not _kata_bar.visible}
+		"stack_bottom": _stack_bottom, "prompt_top": _prompt.offset_top, "kata_compact": not _kata_bar.visible,
+		"do": _banner_do.text if visible and _banner_do.visible else "",
+		"legend": _legend_title.text if visible and _legend.visible else "", "legend_top": _legend.offset_top,
+		"banner_bottom": BANNER_TOP + _banner.get_combined_minimum_size().y, "pop": _banner.scale.x,
+		"kata_next": _kata_next.text if visible and _kata_next.visible else ""}
 
 
 static func _style(fill: Color) -> StyleBoxFlat:

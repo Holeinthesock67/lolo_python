@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série BC : encart d'une carte nouvelle au bilan de fin de séance (« + N autres »), petit badge sur la séance dans l'historique (O28), message de première ouverture | Python + GDScript | BC2, BC3 (validé) | Petite | En PR avec BC5 (captures low, medium et high à valider) |
+| Série BC : encart d'une carte nouvelle au bilan de fin de séance (« + N autres »), petit badge sur la séance dans l'historique (O28), message de première ouverture | Python + GDScript | BC2, BC3 (validé) | Petite | Livré le 8 novembre (PR #783, avec BC5) ; captures low, medium et high à valider pendant la recette BC7 |
 
 Série BC (version 5.0, badges et cartes à collectionner, demande du propriétaire du 7 novembre 2026). Plan de la série : `docs/5.0/PLAN_SERIE_BC.md`.
 
@@ -17,7 +17,7 @@ Annoncer une seule carte à la fois, au bon moment : au bilan, jamais pendant la
 2. Trois cartes gagnées dans la séance : une seule montrée, la plus rare, et « + 2 autres dans la Collection ».
 3. Ajout compatible du message `history` pour le badge ; captures validées.
 
-## Réalisation
+## 3. Livraison (8 novembre 2026, PR #783)
 
 Livré dans la même PR que BC5 (un seul passage sur le PC pour les captures des deux lots).
 

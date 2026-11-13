@@ -238,6 +238,23 @@ def test_pl1_blocked_by_a_slower_rider_in_its_line():
     assert d.blocked_by(10.0, 9.0, d.Lane(1.2, 1.2, auto=False), 1.2, [front]) is None
 
 
+def test_gp12_held_lane_passes_but_never_takes_a_wheel():
+    """Lot GP12 : voie tenue (`follow` faux, voie imposée du Grand Prix) : derrière un coureur à la même vitesse, il
+    garde sa place au lieu de prendre la roue ; plus vite dans la ligne d'un plus lent, il double à gauche et peut
+    être enfermé ; placement coupé (`auto` faux) : sa place quoi qu'il arrive, jamais enfermé."""
+    held = d.Lane(1.45, 1.45, follow=False)
+    same = (10.0 + d.BIKE_LENGTH_M + 5.0, 8.0, d.Lane(2.2, 2.2))
+    assert d.lane_target(10.0, 8.0, held, [same]) == (pytest.approx(1.45), False)
+    assert d.lane_target(10.0, 8.0, d.Lane(1.45, 1.45), [same])[0] == pytest.approx(2.2)   # placement : sa roue
+    slow = (10.0 + d.BIKE_LENGTH_M + 1.0, 6.0, d.Lane(1.45, 1.45))
+    target, passing = d.lane_target(10.0, 9.0, held, [slow])
+    assert passing and target == pytest.approx(1.45 - d.PASS_OFFSET_M)
+    assert d.blocked_by(10.0, 9.0, held, 1.45, [slow]) is not None
+    fixed = d.Lane(1.45, 1.45, auto=False)
+    assert d.lane_target(10.0, 9.0, fixed, [slow]) == (1.45, False)
+    assert d.blocked_by(10.0, 9.0, fixed, 1.45, [slow]) is None
+
+
 def test_pl1_update_lanes_sets_blocked_on_each_lane():
     a, b = d.Lane(1.2, 1.2), d.Lane(1.2, 1.2)
     d.update_lanes([(10.0, 8.3, a), (10.0 + d.BIKE_LENGTH_M + 0.4, 8.0, b)], 0.02)   # trop peu plus vite pour doubler

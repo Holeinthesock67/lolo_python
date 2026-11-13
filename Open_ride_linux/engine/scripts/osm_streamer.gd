@@ -279,6 +279,15 @@ func _build_chunk_job(job: Dictionary) -> void:
 	var r_disp = job.get("route")
 	var v_scale: float = r_disp.relief_k if r_disp != null else 1.0
 
+	# Hauteur du terrain affiché (tuiles proches, puis lointaines) : pose des bâtiments, des animaux et des
+	# tracteurs
+	var height_at := Callable()
+	var ground_at := Callable()
+	if job.get("route") != null:
+		var tiles := {}
+		height_at = _displayed(terrain_height_fn(w_dir, job["route"], true, tiles), r_disp, v_scale)
+		ground_at = _displayed(terrain_height_fn(w_dir, job["route"], false, tiles), r_disp, v_scale)
+
 	var b_items := []
 	var w_items := {"lines": [], "areas": []}
 	# Niveau de la mer affiché (format §8 : `level_y` = 0 ; relief exagéré, lot Q2) et mer du tronçon (lot U9)
@@ -299,12 +308,16 @@ func _build_chunk_job(job: Dictionary) -> void:
 				# Lot U23 : style d'architecture du biome (ou de la variante) au centre de chaque bâtiment
 				var b_model = job.get("biome_model", null)
 				var styled: bool = b_model != null and b_model.active()
-				if v_scale != 1.0 or styled:
+				var grounded := ground_at.is_valid()
+				if v_scale != 1.0 or styled or grounded:
 					var dressed_items: Array = []
 					for b in items:
 						var bc: Dictionary = b.duplicate()
 						if v_scale != 1.0 and bc.has("base_y"):
 							bc["base_y"] = r_disp.display_y(float(bc["base_y"]))
+						if grounded:
+							# Terrain le plus haut le long des façades : rez-de-chaussée relevé sur une pente
+							bc["ground_max_y"] = ground_max_along(bc.get("outer", []), ground_at)
 						if styled and not bc.has("style"):
 							var c: Vector2 = (_shape(bc.get("outer", []))["rect"] as Rect2).get_center()
 							bc["style"] = b_model.building_style_at(c.x, c.y)
@@ -445,14 +458,6 @@ func _build_chunk_job(job: Dictionary) -> void:
 	# du terrain
 	var fauna := []
 	var traffic := []
-	var height_at := Callable()
-	if (bool(job.get("fauna", false)) or bool(job.get("traffic", false))) and job.get("route") != null:
-		height_at = terrain_height_fn(w_dir, job["route"])
-		if v_scale != 1.0:
-			# Posés sur le relief exagéré, comme le terrain affiché (lot Q2)
-			var raw_height := height_at
-			height_at = func(x: float, z: float) -> float:
-				return r_disp.display_y(float(raw_height.call(x, z)))
 	if bool(job.get("fauna", false)) and job.get("route") != null:
 		var fz = th.get("fauna", {})
 		fauna = FaunaPlacer.place_chunk(k, veg_items, pois, job["route"], fz if typeof(fz) == TYPE_DICTIONARY else {}, {
@@ -500,14 +505,48 @@ func _build_chunk_job(job: Dictionary) -> void:
 	}
 
 
+## Hauteur lue sur le relief exagéré quand `v_scale` ≠ 1, comme le terrain affiché (lot Q2)
+static func _displayed(fn: Callable, r_disp, v_scale: float) -> Callable:
+	if v_scale == 1.0:
+		return fn
+	return func(x: float, z: float) -> float:
+		var y := float(fn.call(x, z))
+		return y if is_nan(y) else float(r_disp.display_y(y))
+
+
+## Pas des points lus le long des façades pour `ground_max_along` (m)
+const GROUND_SAMPLE_M := 4.0
+
+
+## Terrain le plus haut le long du contour `outer` ([[x, z], …]) : sommets et points tous les GROUND_SAMPLE_M
+## sur chaque côté. null si le contour est vide ou si aucune hauteur n'est finie.
+static func ground_max_along(outer: Array, height_at: Callable):
+	var best := -INF
+	var n := outer.size()
+	for i in range(n):
+		var a = outer[i]
+		var b = outer[(i + 1) % n]
+		if typeof(a) != TYPE_ARRAY or typeof(b) != TYPE_ARRAY or a.size() < 2 or b.size() < 2:
+			continue
+		var pa := Vector2(float(a[0]), float(a[1]))
+		var pb := Vector2(float(b[0]), float(b[1]))
+		var steps := maxi(1, ceili(pa.distance_to(pb) / GROUND_SAMPLE_M))
+		for j in range(steps):
+			var p := pa.lerp(pb, float(j) / steps)
+			var y := float(height_at.call(p.x, p.y))
+			if is_finite(y) and y > best:
+				best = y
+	return best if is_finite(best) else null
+
+
 ## Hauteur du terrain proche en (x, z), lue dans les tuiles `near` du parcours (cache par tuile) ; hors des
 ## tuiles proches, tuile lointaine (`far`, abaissée comme à l'affichage), puis altitude de la route la plus
 ## proche. Les champs loin de la route (tracteurs, lot P25) sont posés sur le lointain : avant, chaque point
 ## de rang cherchait la route la plus proche (20 s par tronçon côtier, essai r790d). Sans nœud : utilisable
-## dans une tâche de fond.
-static func terrain_height_fn(w_dir: String, r) -> Callable:
-	var cache := {}
-	var far_cache := {}
+## dans une tâche de fond. `caches` : tuiles lues, partagées entre plusieurs fonctions. `route_fallback` faux : NAN hors des tuiles (pose des bâtiments, sans deviner).
+static func terrain_height_fn(w_dir: String, r, route_fallback: bool = true, caches: Dictionary = {}) -> Callable:
+	var cache: Dictionary = caches.get_or_add("near", {})
+	var far_cache: Dictionary = caches.get_or_add("far", {})
 	var far_dy: float = TerrainTiles.LEVELS["far"]["y_offset"]
 	return func(x: float, z: float) -> float:
 		var t := TerrainTiles.tile_of("near", x, z)
@@ -524,6 +563,8 @@ static func terrain_height_fn(w_dir: String, r) -> Callable:
 			var y := TerrainTiles.mesh_height_at(fh, "far", ft.x, ft.y, x, z)
 			if not is_nan(y):
 				return y + far_dy
+		if not route_fallback:
+			return NAN
 		return TerrainTiles.nearest_route_alt(r, x, z)
 
 

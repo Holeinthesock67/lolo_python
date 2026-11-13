@@ -108,7 +108,7 @@
         "biome": {
           "type": "string",
           "pattern": "^(auto|[a-z_]+)$",
-          "description": "Biome du décor (lot U16) : `[render] biome` du core, `auto` ou un des dix-sept biomes, pour information."
+          "description": "Biome du décor (lot U16) : `[render] biome` du core, `auto` ou un des biomes de la liste du Format .world v1 §8 quater, pour information."
         },
         "modes": {
           "type": "array",

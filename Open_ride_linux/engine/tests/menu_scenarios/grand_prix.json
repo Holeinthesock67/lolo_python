@@ -1,0 +1,236 @@
+{
+  "description": "Grand Prix des objets (lot GP9) : entrée de l'accueil, écran Prêt du mode sur le parcours de démo (5 km en ligne : « Lancer » désactivé avec la course de 10 km par défaut), distance ramenée à 5 km au Click (config.toml écrit par le core), écran des objets (un objet coupé, grandprix.toml écrit par le core, « Tout activer »), retour à l'écran Prêt, circuit (piste du vélodrome des contenus de départ : tours au lieu de la distance), retour au parcours de démo, lancement, départ du mode dans le journal du core, fin sans enregistrement et bilan. Captures nommées gp9_accueil, gp9_pret, gp9_objets et gp9_pret_boucle pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15,
+      "elements": [
+        "grandprix"
+      ]
+    },
+    {
+      "choisir": "world"
+    },
+    {
+      "ecran": "routes",
+      "elements": [
+        "demo"
+      ]
+    },
+    {
+      "choisir": "demo"
+    },
+    {
+      "ecran": "home",
+      "contient": [
+        "Parcours : Col du lacet"
+      ]
+    },
+    {
+      "capture": "gp9_accueil"
+    },
+    {
+      "choisir": "grandprix"
+    },
+    {
+      "ecran": "ready",
+      "titre": "Prêt : Grand Prix des objets — Col du lacet",
+      "elements": [
+        "start",
+        "change_route",
+        "set:grandprix.opponents",
+        "set:grandprix.distance_km",
+        "set:bots.level_pct",
+        "set:grandprix.chaos",
+        "set:grandprix.box_every_m",
+        "gp_items"
+      ],
+      "contient": [
+        "trop court (10 km)",
+        "Objets : tous"
+      ],
+      "absent": [
+        "Bot 1",
+        "Fantôme de la dernière séance",
+        "Passer en session ERG",
+        "Tours du circuit"
+      ],
+      "delai": 5
+    },
+    {
+      "capture": "gp9_pret"
+    },
+    {
+      "choisir": "set:grandprix.distance_km"
+    },
+    {
+      "ecran": "ready",
+      "edition": true
+    },
+    {
+      "appui": [
+        "MINUS_SHORT",
+        "MINUS_SHORT",
+        "MINUS_SHORT",
+        "MINUS_SHORT",
+        "MINUS_SHORT"
+      ]
+    },
+    {
+      "appui": "A_LONG"
+    },
+    {
+      "ecran": "ready",
+      "edition": false,
+      "contient": [
+        "course de 5 km"
+      ],
+      "absent": [
+        "trop court ("
+      ]
+    },
+    {
+      "config": {
+        "grandprix.distance_km": 5
+      }
+    },
+    {
+      "choisir": "gp_items"
+    },
+    {
+      "ecran": "gp_items",
+      "titre": "Grand Prix : 13 objets sur 13",
+      "elements": [
+        "item:gel",
+        "item:stealth",
+        "all_on"
+      ],
+      "delai": 5
+    },
+    {
+      "capture": "gp9_objets"
+    },
+    {
+      "choisir": "item:storm"
+    },
+    {
+      "ecran": "gp_items",
+      "titre": "Grand Prix : 12 objets sur 13",
+      "contient": [
+        "Nuage d'orage : non"
+      ]
+    },
+    {
+      "fichier": "OpenRide/grandprix.toml"
+    },
+    {
+      "choisir": "all_on"
+    },
+    {
+      "ecran": "gp_items",
+      "titre": "Grand Prix : 13 objets sur 13",
+      "contient": [
+        "Nuage d'orage : oui"
+      ]
+    },
+    {
+      "choisir": "item:storm"
+    },
+    {
+      "appui": "Y_SHORT"
+    },
+    {
+      "ecran": "ready",
+      "contient": [
+        "Objets : 12 sur 13"
+      ]
+    },
+    {
+      "choisir": "change_route"
+    },
+    {
+      "ecran": "routes",
+      "elements": [
+        "demo",
+        "velodrome-250"
+      ]
+    },
+    {
+      "choisir": "velodrome-250"
+    },
+    {
+      "ecran": "ready",
+      "titre": "Prêt : Grand Prix des objets — Vélodrome 250 m",
+      "elements": [
+        "start",
+        "change_route",
+        "set:grandprix.opponents",
+        "set:grandprix.laps",
+        "set:bots.level_pct",
+        "set:grandprix.chaos",
+        "set:grandprix.box_every_m",
+        "gp_items"
+      ],
+      "contient": [
+        "3 tours, 0,8 km",
+        "Tours du circuit"
+      ],
+      "absent": [
+        "Distance en ligne"
+      ],
+      "delai": 5
+    },
+    {
+      "capture": "gp9_pret_boucle"
+    },
+    {
+      "choisir": "change_route"
+    },
+    {
+      "ecran": "routes",
+      "elements": [
+        "demo"
+      ]
+    },
+    {
+      "choisir": "demo"
+    },
+    {
+      "ecran": "ready",
+      "titre": "Prêt : Grand Prix des objets — Col du lacet",
+      "contient": [
+        "course de 5 km"
+      ]
+    },
+    {
+      "choisir": "start"
+    },
+    {
+      "journal": "core",
+      "motif": "Grand Prix des objets : 4 adversaires, 5.0 km, 12 objet",
+      "delai": 15
+    },
+    {
+      "menu_cache": true
+    },
+    {
+      "commande": "end_session",
+      "args": {
+        "save": false
+      }
+    },
+    {
+      "note": "lignes du bilan du mode vérifiées par test_gp_hud.gd (vue du bilan, pas éléments du menu)",
+      "ecran": "summary",
+      "titre": "Fin de séance",
+      "delai": 10
+    },
+    {
+      "choisir": "new_session"
+    },
+    {
+      "ecran": "home"
+    }
+  ],
+  "velodrome": true
+}

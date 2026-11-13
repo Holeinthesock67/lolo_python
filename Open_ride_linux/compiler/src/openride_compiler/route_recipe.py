@@ -6,10 +6,14 @@ Une recette (`<id>.toml`) décrit une montée publique et célèbre par quelques
 
 1. télécharge par Overpass (cache `~/.cache/openride/osm/`, comme les couches OSM) les routes
    ouvertes aux vélos autour des points : `highway` hors autoroute, sans `bicycle=no` ni accès
-   interdit, chemins non revêtus exclus sauf `unpaved = true` dans la recette ; les sens uniques
-   sont respectés ;
+   interdit, routes non revêtues exclues sauf `unpaved = true` dans la recette ; les pistes et
+   sentiers (`track`, `path`) non revêtus restent exclus même alors (ils coupaient les lacets de
+   Khardung La et d'Abra Málaga, lot HP2) ; les sens uniques sont respectés ;
 2. accroche chaque point au nœud routier le plus proche (au plus `SNAP_MAX_M`, sinon refus) et
-   relie les points successifs par le plus court chemin (Dijkstra) ;
+   relie les points successifs par le plus court chemin (Dijkstra). Les routes sont chargées dans
+   un rectangle élargi de `BBOX_MARGINS_M[0]` autour des points ; sans chemin, le rectangle est
+   élargi à la marge suivante (route de col en lacets qui sort du premier rectangle, lot HP1). Un
+   refus dit quel tronçon manque et s'il passerait par des routes non revêtues (`unpaved = true`) ;
 3. ré-échantillonne tous les `STEP_M` mètres, prend l'altitude du MNT (Copernicus par défaut), la
    remplace par une interpolation linéaire entre les deux entrées dans les tunnels et sur les ponts
    (le MNT y donne la montagne ou le fond de vallée, pas la route) et contrôle longueur et dénivelé
@@ -44,18 +48,20 @@ BUILTIN_PACKS_DIR = Path(__file__).resolve().parent / "route_packs"
 PACK_FILE = "pack.toml"
 OSM_CREDITS = "© contributeurs OpenStreetMap, ODbL ; altitude Copernicus GLO-30"
 BBOX_MARGIN_M = 1500.0
+BBOX_MARGINS_M = (BBOX_MARGIN_M, 6000.0)   # marges essayées dans l'ordre (lot HP1)
 SNAP_MAX_M = 250.0
 STEP_M = 10.0
 TOLERANCE = 0.05
 GAIN_SMOOTH_M = 300.0   # moyenne glissante du profil avant le calcul du dénivelé contrôlé
 EARTH_R = 6371008.8
 
-# Routes retenues ; `track`, `path` et `cycleway` non revêtus seulement avec `unpaved = true`.
+# Routes retenues ; revêtement non goudronné seulement avec `unpaved = true` ; `track` et `path` seulement revêtus.
 HIGHWAYS = ("trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link", "tertiary",
             "tertiary_link", "unclassified", "residential", "living_street", "service", "road", "cycleway",
             "track", "path")
 UNPAVED = {"unpaved", "gravel", "fine_gravel", "dirt", "earth", "ground", "grass", "mud", "sand", "compacted",
            "pebblestone", "rock"}
+PAVED_TRACK = ("asphalt", "paved", "concrete")   # piste ou sentier retenu seulement avec ce revêtement
 RECIPE_KEYS = {"name", "description", "region", "country", "tags", "waypoints", "ref_length_m", "ref_gain_m",
                "side", "unpaved", "credits"}
 
@@ -171,12 +177,11 @@ def way_allowed(tags: dict[str, str], unpaved_ok: bool) -> bool:
     if tags.get("motorroad") == "yes" and bicycle not in ("yes", "designated"):
         return False
     surface = tags.get("surface", "")
-    if not unpaved_ok:
-        if surface in UNPAVED:
-            return False
-        if hw in ("track", "path") and surface not in ("asphalt", "paved", "concrete"):
-            return False
-    return True
+    # Une piste ou un sentier n'est jamais la route d'un col, même avec `unpaved = true` (lot HP2) :
+    # la clé ouvre les routes au revêtement non goudronné, pas les raccourcis entre les lacets.
+    if hw in ("track", "path") and surface not in PAVED_TRACK:
+        return False
+    return unpaved_ok or surface not in UNPAVED
 
 
 def _oneway(tags: dict[str, str]) -> int:
@@ -259,20 +264,47 @@ def shortest_path(g: RoadGraph, start: int, goal: int) -> list[int]:
                 dist[v], prev[v] = nd, u
                 heapq.heappush(heap, (nd, v))
     if goal not in dist:
-        raise CompileError("aucun chemin routier permis entre deux points de passage successifs")
+        raise NoPathError("aucun chemin routier permis entre deux points de passage successifs")
     path = [goal]
     while path[-1] != start:
         path.append(prev[path[-1]])
     return path[::-1]
 
 
+class NoPathError(CompileError):
+    """Pas de chemin permis entre deux points de passage successifs."""
+
+
 def route_nodes(g: RoadGraph, waypoints: list[tuple[float, float]]) -> list[int]:
     """Nœuds du graphe passant par les points de passage dans l'ordre."""
     ids = [snap(g, *wp) for wp in waypoints]
     nodes: list[int] = [ids[0]]
-    for a, b in zip(ids, ids[1:]):
-        nodes.extend(shortest_path(g, a, b)[1:])
+    for k, (a, b) in enumerate(zip(ids, ids[1:])):
+        try:
+            nodes.extend(shortest_path(g, a, b)[1:])
+        except NoPathError as exc:
+            (la, lo), (lb, ob) = waypoints[k], waypoints[k + 1]
+            raise NoPathError(f"{exc} (tronçon {k + 1}, de ({la:.4f}, {lo:.4f}) à ({lb:.4f}, {ob:.4f}))") from None
     return nodes
+
+
+def _routed_graph(recipe: Recipe, fetch: Callable[[str], dict[str, Any]]) -> tuple[RoadGraph, list[int]]:
+    """Graphe et nœuds du parcours : rectangle de BBOX_MARGINS_M[0], puis des marges suivantes s'il faut."""
+    for margin in BBOX_MARGINS_M:
+        response = fetch(roads_query(bbox_around(recipe.waypoints, margin)))
+        g = build_graph([response], unpaved_ok=recipe.unpaved)
+        try:
+            return g, route_nodes(g, recipe.waypoints)
+        except NoPathError as exc:
+            error = exc
+    if not recipe.unpaved:   # diagnostic : chemin par des routes non revêtues ?
+        try:
+            route_nodes(build_graph([response], unpaved_ok=True), recipe.waypoints)
+        except CompileError:
+            pass
+        else:
+            raise CompileError(f"{error} ; un chemin existe par des routes non revêtues (unpaved = true)")
+    raise CompileError(f"{error} ; même à {BBOX_MARGINS_M[-1] / 1000:.0f} km des points (point de passage à ajouter)")
 
 
 def route_through(g: RoadGraph, waypoints: list[tuple[float, float]]) -> list[tuple[float, float]]:
@@ -379,9 +411,7 @@ def checked_gain(alt: list[float], step_m: float = STEP_M, smooth_m: float = GAI
 
 
 def build_climb(recipe: Recipe, fetch: Callable[[str], dict[str, Any]], provider: ElevationProvider) -> BuiltClimb:
-    response = fetch(roads_query(bbox_around(recipe.waypoints)))
-    g = build_graph([response], unpaved_ok=recipe.unpaved)
-    nodes = route_nodes(g, recipe.waypoints)
+    g, nodes = _routed_graph(recipe, fetch)
     flags = [(a, b) in g.off_ground for a, b in zip(nodes, nodes[1:])]
     pts, pt_flags = resample_flagged([g.coords[n] for n in nodes], flags)
     alt = [float(a) for a in provider.elevations(np.array([p[0] for p in pts]), np.array([p[1] for p in pts]))]
