@@ -19,6 +19,8 @@ BIOMES = [
     "temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
     "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
     "wetland", "coast", "volcanic", "japan",   # 17e biome : lot JP1 (6.0)
+    "atlantic_heath",                         # 18e biome : lot AT1 (6.0)
+    "high_plateau",                            # lot HP1 (6.0)
 ]
 
 
@@ -65,12 +67,36 @@ def test_biome_tile_with_wrong_sum_is_refused() -> None:
     lambda t: t["weights"][1].pop(),
     lambda t: t.__setitem__("variant", "calcaire_blanc"),
     lambda t: t["variant"].__setitem__("ground", "tuile_ronde"),
+    lambda t: t["variant"].__setitem__("landscape", "lagon"),
+    lambda t: t["variant"].__setitem__("landscape", "fjord") or t["variant"].__setitem__("x", 1),
 ])
 def test_biome_tile_schema_refuses(change) -> None:
     tile = load(BIOME_TILE)
     change(tile)
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(tile, schema("biome"))
+
+
+@pytest.mark.parametrize("landscape", [None, "canyon", "fjord", "ile_volcanique", "rizieres"])
+def test_biome_tile_landscape_member_is_optional(landscape) -> None:
+    """Lot U25 : membre `landscape` facultatif de la variante, toit `bois_peint`."""
+    tile = load(BIOME_TILE)
+    jsonschema.validate(tile, schema("biome"))          # sans `landscape` (tuile d'avant le lot U25)
+    tile["variant"] = {"ground": "schiste_sombre", "roofs": "bois_peint", "landscape": landscape}
+    jsonschema.validate(tile, schema("biome"))
+
+
+def test_landscape_enum_matches_compiler_and_theme() -> None:
+    from openride_compiler import regional
+    assert schema("biome")["$defs"]["landscapeVariant"]["enum"] == list(regional.LANDSCAPES)
+    assert schema("biome")["$defs"]["roofVariant"]["enum"] == list(regional.ROOFS)
+    assert schema("biome")["$defs"]["groundVariant"]["enum"] == list(regional.GROUNDS)
+    theme_schema = schema("theme")
+    assert theme_schema["properties"]["landscapes"]["propertyNames"]["enum"] == list(regional.LANDSCAPES)
+    assert set(theme_schema["properties"]["variants"]["propertyNames"]["enum"]) == set(regional.GROUNDS + regional.ROOFS)
+    theme = load(DEFAULT_THEME)
+    assert sorted(theme["landscapes"]) == sorted(regional.LANDSCAPES)
+    assert set(theme["variants"]) == set(regional.GROUNDS + regional.ROOFS)
 
 
 def test_biome_ids_match_lot_u0() -> None:

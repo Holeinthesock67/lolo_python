@@ -49,6 +49,8 @@ var neigh_updates := 0               # voisinages recalculés (tests)
 var last_wind: Dictionary = {}
 var rain := 0.0                      # pluie de la météo (P8), posée par living_decor.gd (P17)
 var season := "summer"               # saison du thème (`season`) tant que P18 ne la fait pas avancer (U11)
+## Heure solaire de la scène (jour et nuit P19, posée par main.gd) ; NAN (jour et nuit coupé) : heure du PC.
+var solar_hour := NAN
 var _neigh_at := -INF
 var _shapes_version := -1
 var _shapes: Dictionary = {"forests": [], "buildings": [], "waters": []}
@@ -102,8 +104,7 @@ func set_route(route, road_width_m: float = 6.0) -> void:
 	if grass != null:
 		grass.biome_model = model
 	if ground_details != null:
-		ground_details.configure({"rock": int(living.get("ground_rocks", 0)), "grass": int(living.get("ground_grass", 0)),
-			"termite": int(living.get("ground_termites", 0))}, route, model, road_width_m)
+		ground_details.configure(GroundDetails.budgets(living), route, model, road_width_m)
 		ground_details.exclusions = _exclusions()
 		ground_details.height_at = _terrain_height(route)
 	_neigh_at = -INF
@@ -161,6 +162,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		neigh["paused"] = paused
 		neigh["rain"] = rain
 		neigh["season"] = season
+		neigh["solar_hour"] = solar_hour
 		sound_player.update_ambience(neigh, now_s)
 		sound_player.update_bells(NAN, now_s)
 	return last_wind

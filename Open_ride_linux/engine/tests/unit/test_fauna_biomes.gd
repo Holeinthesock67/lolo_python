@@ -187,7 +187,7 @@ func _init() -> void:
 				total += 1
 				if absf((p as Vector3).z) < FaunaPlacer.MIN_ROAD_CLEARANCE_M:
 					road_ok = false
-	_check(total > 0 and road_ok, "17 biomes : %d bêtes et oiseaux posés, aucun à moins de %.0f m de l'axe" % [total, FaunaPlacer.MIN_ROAD_CLEARANCE_M])
+	_check(total > 0 and road_ok, "%d biomes : %d bêtes et oiseaux posés, aucun à moins de %.0f m de l'axe" % [BiomeIds.BIOMES.size(), total, FaunaPlacer.MIN_ROAD_CLEARANCE_M])
 
 	# 6. Même graine, même faune ; biomes mêlés : densités mélangées et espèces des deux biomes
 	_check(str(_place(route, _model("savanna"))) == str(sav), "même graine, même savane")
@@ -269,7 +269,7 @@ func _init() -> void:
 			if not FaunaRenderer.SPECIES.has(sp):
 				all_rendered = false
 				printerr("  espèce sans maillage : %s (%s)" % [sp, biome])
-	_check(all_rendered, "U23 : toute espèce placée dans les 17 biomes a son maillage (fauna_renderer.gd SPECIES)")
+	_check(all_rendered, "U23 : toute espèce placée dans tous les biomes a son maillage (fauna_renderer.gd SPECIES)")
 
 	# 9. world_streamer.gd : biome forcé transmis aux arbres et aux animaux, sol aux couleurs du biome ; « auto »
 	#    sans couche biome : rendu d'avant la série U

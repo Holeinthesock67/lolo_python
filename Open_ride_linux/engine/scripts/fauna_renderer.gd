@@ -24,6 +24,7 @@ extends Node3D
 ## `birds` est partagé par toutes les espèces d'oiseaux, le budget `animals` par toutes les bêtes au sol.
 ## Lot U23 : éléphant et antilope (savane), ours blanc et bœuf musqué (polaire, toundra), chèvre (volcans,
 ## Méditerranée), singe (jungle).
+## Lot HP1 : lama et yack (hauts plateaux).
 ## Tous les nœuds sont créés à l'initialisation ; aucun n'est créé ensuite.
 
 const FaunaBehaviour := preload("res://scripts/fauna_behaviour.gd")
@@ -34,7 +35,7 @@ const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const BIRD_SPECIES := ["bird", "gull", "parrot"]
 const GROUND_SPECIES := ["cow", "sheep", "deer", "horse", "hare",
 	"zebra", "giraffe", "reindeer", "dromedary", "ibex", "marmot", "flamingo", "heron",
-	"elephant", "antelope", "polar_bear", "musk_ox", "goat", "monkey"]
+	"elephant", "antelope", "polar_bear", "musk_ox", "goat", "monkey", "llama", "yak"]
 const SPECIES := BIRD_SPECIES + GROUND_SPECIES
 const ALBEDO := {
 	"bird": Color(0.12, 0.12, 0.14),
@@ -59,6 +60,8 @@ const ALBEDO := {
 	"musk_ox": Color(0.2, 0.15, 0.11),
 	"goat": Color(0.82, 0.8, 0.74),
 	"monkey": Color(0.45, 0.36, 0.26),
+	"llama": Color(0.78, 0.66, 0.5),
+	"yak": Color(0.13, 0.1, 0.08),
 }
 ## Lot Y14 : zones de couleur des maillages (CUSTOM0.x) : robe (ALBEDO), teinte d'appoint (ACCENT : mufle et
 ## mamelle, tête et pattes noires du mouton, bec), sombre (sabots, yeux, truffe), corne, clair (LIGHT : face et
@@ -92,6 +95,8 @@ const ACCENT := {
 	"musk_ox": Color(0.55, 0.47, 0.36),
 	"goat": Color(0.4, 0.3, 0.22),
 	"monkey": Color(0.75, 0.6, 0.5),
+	"llama": Color(0.25, 0.2, 0.16),
+	"yak": Color(0.86, 0.84, 0.8),
 }
 const LIGHT := {
 	"bird": Color(0.3, 0.3, 0.32),
@@ -116,14 +121,18 @@ const LIGHT := {
 	"musk_ox": Color(0.82, 0.78, 0.7),
 	"goat": Color(0.95, 0.94, 0.9),
 	"monkey": Color(0.62, 0.52, 0.42),
+	"llama": Color(0.93, 0.9, 0.84),
+	"yak": Color(0.9, 0.88, 0.84),
 }
 const PATCHES := {"bird": 0.0, "cow": 0.4, "sheep": 0.0, "deer": 0.0, "horse": 0.0, "hare": 0.0, "gull": 0.0, "parrot": 0.0,
 	"zebra": 0.0, "giraffe": 0.55, "reindeer": 0.0, "dromedary": 0.0, "ibex": 0.0, "marmot": 0.0, "flamingo": 0.0, "heron": 0.0,
-	"elephant": 0.0, "antelope": 0.0, "polar_bear": 0.0, "musk_ox": 0.0, "goat": 0.3, "monkey": 0.0}
+	"elephant": 0.0, "antelope": 0.0, "polar_bear": 0.0, "musk_ox": 0.0, "goat": 0.3, "monkey": 0.0,
+	"llama": 0.0, "yak": 0.15}
 ## Lot U12 : rayures de la robe (par mètre, 0 = aucune ; zèbre) et descente de la tête qui broute (m).
 const STRIPES := {"zebra": 5.0}
 const GRAZE_M := {"giraffe": 0.9, "dromedary": 0.2, "marmot": 0.12, "hare": 0.2, "flamingo": 0.7, "heron": 0.5,
-	"elephant": 0.3, "polar_bear": 0.35, "musk_ox": 0.25, "goat": 0.35, "monkey": 0.12}
+	"elephant": 0.3, "polar_bear": 0.35, "musk_ox": 0.25, "goat": 0.35, "monkey": 0.12,
+	"llama": 0.35, "yak": 0.3}
 const DEFAULT_GRAZE_M := 0.45
 const RESELECT_M := 20.0
 const HERD_UPDATE_EVERY := 4
@@ -464,6 +473,10 @@ static func build_mesh(sp: String) -> ArrayMesh:
 			return _build_ibex(0.45, 0.85)
 		"monkey":
 			return _build_monkey()
+		"llama":
+			return _build_llama()
+		"yak":
+			return _build_yak()
 		_:
 			return _build_deer()
 
@@ -1105,4 +1118,67 @@ static func _build_wader(leg_h: float, neck_h: float, flamingo: bool) -> ArrayMe
 	for sx in [-1.0, 1.0]:
 		m.ellipsoid(top + Vector3(sx * 0.025, 0.03, 0.05), Vector3(0.008, 0.008, 0.008), -90.0, 3)   # yeux
 	m.uv = Vector2.ZERO
+	return m.commit()
+
+
+## Lama (lot HP1) : corps laineux sur pattes fines, long cou droit presque vertical, petite tête aux longues
+## oreilles en banane, queue courte relevée ; robe beige unie, 2 m aux oreilles.
+static func _build_llama() -> ArrayMesh:
+	var m := PeopleMesh.Builder.new()
+	m.region = FAUNA_COAT
+	m.prism(Vector3(0.0, 0.98, -0.42), Vector3(0.0, 1.0, 0.36), Vector2(0.27, 0.3), Vector2(0.27, 0.31))   # tronc laineux
+	m.ellipsoid(Vector3(0.0, 0.98, -0.42), Vector3(0.27, 0.3, 0.2))
+	m.ellipsoid(Vector3(0.0, 1.0, 0.36), Vector3(0.27, 0.31, 0.2))
+	m.ellipsoid(Vector3(0.0, 0.72, 0.0), Vector3(0.24, 0.12, 0.5), -90.0, 3)   # toison qui pend sous le ventre
+	for lx in [-1.0, 1.0]:
+		for lz in [-0.4, 0.34]:
+			_leg(m, lx * 0.13, lz, 0.78, 0.1, 0.04, FAUNA_COAT)
+	m.region = FAUNA_COAT
+	m.prism(Vector3(0.0, 1.1, 0.42), Vector3(0.0, 1.66, 0.5), Vector2(0.14, 0.16), Vector2(0.11, 0.12), SIDES, 1.0)   # cou droit et laineux
+	m.uv = Vector2(0.0, 1.0)
+	m.prism(Vector3(0.0, 1.74, 0.46), Vector3(0.0, 1.66, 0.76), Vector2(0.075, 0.09), Vector2(0.045, 0.055))   # tête
+	m.region = FAUNA_ACCENT
+	m.ellipsoid(Vector3(0.0, 1.65, 0.77), Vector3(0.045, 0.04, 0.035), -90.0, 3)   # museau
+	m.region = FAUNA_DARK
+	for sx in [-1.0, 1.0]:
+		m.ellipsoid(Vector3(sx * 0.065, 1.76, 0.6), Vector3(0.014, 0.014, 0.014), -90.0, 3)   # yeux
+		m.region = FAUNA_COAT
+		m.prism(Vector3(sx * 0.045, 1.8, 0.5), Vector3(sx * 0.07, 1.98, 0.54), Vector2(0.024, 0.014), Vector2(0.01, 0.007), 4)   # oreilles en banane
+		m.region = FAUNA_DARK
+	m.uv = Vector2.ZERO
+	m.region = FAUNA_COAT
+	m.prism(Vector3(0.0, 1.1, -0.6), Vector3(0.0, 0.98, -0.72), Vector2(0.06, 0.06), Vector2(0.04, 0.04), 4)   # queue relevée
+	return m.commit()
+
+
+## Yack (lot HP1) : grand bœuf sombre à bosse d'épaules, longue frange de poils jusqu'aux genoux, queue en
+## panache, cornes claires qui s'écartent puis montent ; quelques bêtes pie (PATCHES).
+static func _build_yak() -> ArrayMesh:
+	var m := PeopleMesh.Builder.new()
+	m.region = FAUNA_COAT
+	m.prism(Vector3(0.0, 1.05, -0.7), Vector3(0.0, 1.15, 0.55), Vector2(0.38, 0.42), Vector2(0.4, 0.5))   # tronc
+	m.ellipsoid(Vector3(0.0, 1.05, -0.7), Vector3(0.38, 0.42, 0.26))
+	m.ellipsoid(Vector3(0.0, 1.15, 0.55), Vector3(0.4, 0.5, 0.26))
+	m.ellipsoid(Vector3(0.0, 1.55, 0.35), Vector3(0.26, 0.2, 0.36), 0.0, 3)   # bosse
+	# Frange de poils : prisme évasé du ventre à 0,45 m du sol, pattes visibles dessous
+	m.prism(Vector3(0.0, 0.85, -0.1), Vector3(0.0, 0.45, -0.1), Vector2(0.42, 0.66), Vector2(0.48, 0.74), SIDES)
+	for lx in [-1.0, 1.0]:
+		for lz in [-0.6, 0.48]:
+			_leg(m, lx * 0.22, lz, 0.75, 0.08, 0.05, FAUNA_COAT)
+	m.region = FAUNA_COAT
+	m.prism(Vector3(0.0, 1.2, 0.75), Vector3(0.0, 1.08, 0.98), Vector2(0.22, 0.28), Vector2(0.18, 0.22), SIDES, 1.0)   # cou
+	m.uv = Vector2(0.0, 1.0)
+	m.prism(Vector3(0.0, 1.12, 0.96), Vector3(0.0, 0.92, 1.26), Vector2(0.15, 0.17), Vector2(0.09, 0.1))   # tête basse
+	m.region = FAUNA_LIGHT
+	m.ellipsoid(Vector3(0.0, 0.9, 1.27), Vector3(0.07, 0.055, 0.045), -90.0, 3)   # museau clair
+	m.region = FAUNA_DARK
+	for sx in [-1.0, 1.0]:
+		m.ellipsoid(Vector3(sx * 0.1, 1.06, 1.12), Vector3(0.014, 0.014, 0.014), -90.0, 3)   # yeux
+		m.region = FAUNA_HORN
+		m.prism(Vector3(sx * 0.08, 1.2, 1.02), Vector3(sx * 0.28, 1.24, 1.0), Vector2(0.04, 0.04), Vector2(0.032, 0.032), 5)   # cornes vers l'extérieur
+		m.prism(Vector3(sx * 0.28, 1.24, 1.0), Vector3(sx * 0.32, 1.46, 1.06), Vector2(0.032, 0.032), Vector2(0.01, 0.01), 5)   # puis vers le haut
+		m.region = FAUNA_DARK
+	m.uv = Vector2.ZERO
+	m.region = FAUNA_COAT
+	m.prism(Vector3(0.0, 1.2, -0.92), Vector3(0.0, 0.55, -1.0), Vector2(0.03, 0.03), Vector2(0.09, 0.07), 5)   # queue en panache
 	return m.commit()
