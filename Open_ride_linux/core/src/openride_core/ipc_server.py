@@ -28,12 +28,13 @@ MAX_DATAGRAM_SIZE = 4096
 CONTRACT_REV = "1.16"   # lisibilité du Cyber-Rogue (lot R22) ; 1.15 : import d'entraînements retiré (12 novembre) ; 1.14 : fin du Cyber-Rogue (lot R21) ; 1.13 : bonus tactiques (lot TT1, 4.0) ; 1.12 : séance conseillée (CO3, sans changement de rev annoncée jusqu'ici) ; 1.11 : Y maintenu : demi-tour en roulant ; 1.10 : bilan en tuiles (lot N20, #788) ; 1.9 : demi-tour depuis la pause (lot N17) et bots changés en pause, `set_bots` (lot N18) ; 1.8 : collection de cartes (lot BC2, 5.0) ; 1.7 : Grand Prix des objets (lot GP2, 4.0) et épreuves de piste (lot VD6, 4.0) ; 1.6 : peloton de 11 bots et un fantôme (lot PL1)
 # Modes de jeu proposés au joueur (hello_ack.config.modes, révision 1.3) : l'accueil de l'engine n'affiche que
 # ceux-là. Monde ouvert : révision 1.5, lot W9 ; rogue : lot R8 ; wtf : lot WTF2 ; survivor : lot DS2 ; track : révision 1.7,
-# lot VD6, proposé par l'écran Prêt du vélodrome (lot VD10, pas d'entrée à l'accueil).
-CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor", "track")
+# lot VD6, proposé par l'écran Prêt du vélodrome (lot VD10, pas d'entrée à l'accueil) ; grandprix : révision 1.7,
+# lot GP2, annoncé au lot GP9 avec son entrée à l'accueil.
+CORE_MODES = ("ride", "erg", "open_world", "rogue", "wtf", "survivor", "track", "grandprix")
 # Modes que le core sait lancer (`start` avec `mode`) mais pas encore annoncés, avec le lot qui les annoncera
 # en même temps que leur entrée à l'accueil (même règle que `config.PENDING_KEYS`) ; ce lot les passe dans
-# CORE_MODES. Grand Prix des objets : révision 1.7, lot GP2, annoncé au lot GP9.
-PENDING_MODES: dict[str, str] = {"grandprix": "GP9"}
+# CORE_MODES. Aucun depuis le lot GP9 (Grand Prix des objets annoncé).
+PENDING_MODES: dict[str, str] = {}
 MAX_LIST_DATAGRAM_SIZE = 60000
 # Messages en parties (`part`, `parts`), `plans` et `settings` : 60 000 octets au plus par datagramme (contrat §2,
 # même liste que le contrat ; `garage` et `room` depuis la révision 1.4, le monde ouvert depuis la 1.5,

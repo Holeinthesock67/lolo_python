@@ -289,6 +289,8 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 	var layers: Array = osm_streamer.layers_present.duplicate() if osm_streamer != null and not world_dir.is_empty() else []
 	var job := {"gen": _generation, "route": route, "world_dir": world_dir, "layers": layers,
 		"road_width_m": road_width_m, "crowd_all_climbs": crowd_all_climbs, "result": {}}
+	var bm = _active_biome_model()   # torii et lanternes des montées du biome japan (lot JP5) ; tuiles lues sous verrou
+	job["biome_at"] = Callable(bm, "dominant_at") if bm != null else Callable()
 	job["task"] = BgTasks.add(_prepare_job.bind(job), false, "décor du parcours")
 	_job = job
 
@@ -330,7 +332,7 @@ static func _prepare_job(job: Dictionary) -> void:
 		marks[k].append(m)
 	job["result"] = {
 		"climbs": found, "pois": all_pois, "crowd": cm, "passersby": pm, "marks": marks,
-		"items": RoadsideModel.items(r, found, all_pois, water),
+		"items": RoadsideModel.items(r, found, all_pois, water, road_w, job["biome_at"]),
 	}
 
 

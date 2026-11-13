@@ -37,6 +37,17 @@ const INFO := {
 	"reed": {"height": 2.2, "deciduous": false},
 	"dwarf_shrub": {"height": 0.8, "deciduous": false},
 	"vine_row": {"height": 1.6, "deciduous": true, "lod0_m": 200.0},
+	# Japon (lot JP5, version 6.0)
+	"sugi": {"height": 26.0, "deciduous": false},
+	"hinoki": {"height": 18.0, "deciduous": false},
+	"momiji": {"height": 7.0, "deciduous": true},
+	"bamboo": {"height": 11.0, "deciduous": false},
+	# Lot AT1 : plantes basses des landes atlantiques ; la fougère aigle roussit à l'automne et disparaît l'hiver.
+	"heather": {"height": 0.55, "deciduous": false, "lod0_m": 150.0},
+	"gorse": {"height": 1.6, "deciduous": false, "lod0_m": 150.0},
+	"bracken": {"height": 1.0, "deciduous": true, "lod0_m": 150.0},
+	# Lot HP1 : touffe d'ichu des hauts plateaux, basse et claire ; modèle lointain dès 120 m comme les plantes basses
+	"bunchgrass": {"height": 0.7, "deciduous": false, "lod0_m": 120.0},
 }
 
 ## Matière de chaque face, portée par l'alpha de la couleur du sommet (code / 16) et dessinée par
@@ -83,6 +94,14 @@ const CROWNS := {
 	"reed": {"w": 1.4, "col": Color(0.52, 0.56, 0.30, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"dwarf_shrub": {"w": 1.8, "col": Color(0.37, 0.35, 0.21, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"vine_row": {"w": 6.0, "col": Color(0.28, 0.44, 0.16, MAT_LEAVES / 16.0), "shape": "hedge", "cy": 0.6, "ry": 0.4, "trunk_w": 0.0},
+	"sugi": {"w": 4.4, "col": Color(0.10, 0.22, 0.12, MAT_NEEDLES / 16.0), "shape": "cone", "cy": 7.0, "ry": 0.0, "trunk_w": 0.6},
+	"hinoki": {"w": 5.6, "col": Color(0.13, 0.27, 0.13, MAT_NEEDLES / 16.0), "shape": "cone", "cy": 3.5, "ry": 0.0, "trunk_w": 0.45},
+	"momiji": {"w": 7.0, "col": Color(0.30, 0.48, 0.17, MAT_LEAVES / 16.0), "shape": "round", "cy": 4.8, "ry": 2.0, "trunk_w": 0.3},
+	"bamboo": {"w": 4.4, "col": Color(0.42, 0.56, 0.24, MAT_LEAVES / 16.0), "shape": "round", "cy": 8.6, "ry": 2.6, "trunk_w": 0.8},
+	"heather": {"w": 2.6, "col": Color(0.36, 0.25, 0.30, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"gorse": {"w": 1.9, "col": Color(0.30, 0.36, 0.14, MAT_NEEDLES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"bracken": {"w": 2.6, "col": Color(0.33, 0.50, 0.18, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"bunchgrass": {"w": 0.9, "col": Color(0.66, 0.58, 0.34, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 }
 
 ## Couleur `rgb` avec la matière `code` dans l'alpha.
@@ -297,6 +316,7 @@ const WINTER_BRANCHES := {
 	"birch": {"base": Vector3(0.2, 5.5, 0), "c": Vector3(0.2, 8.8, 0), "r": Vector3(2.0, 3.6, 2.0), "n": 5, "bark": BARK_WHITE, "r0": 0.08},
 	"larch": {"base": Vector3(0, 3.6, 0), "c": Vector3(0, 10.0, 0), "r": Vector3(3.2, 7.0, 3.2), "n": 8, "bark": BARK_RED, "r0": 0.1, "whorls": true},
 	"vine_row": {"cordon": true},
+	"momiji": {"base": Vector3(0, 2.4, 0), "c": Vector3(0, 4.8, 0), "r": Vector3(3.2, 2.0, 3.0), "n": 6, "bark": BARK_SMOOTH, "r0": 0.1},
 }
 
 
@@ -417,6 +437,21 @@ static func _draw(st: SurfaceTool, kind: String) -> bool:
 		"dwarf_shrub":
 			_blob(st, Vector3(0, 0.4, 0), Vector3(0.8, 0.45, 0.7), mat(Color(0.35, 0.36, 0.20), MAT_LEAVES), 3)
 			_blob(st, Vector3(0.6, 0.3, 0.4), Vector3(0.5, 0.32, 0.5), mat(Color(0.40, 0.34, 0.22), MAT_LEAVES), 3)
+		"bunchgrass":
+			# Touffe d'ichu (lot HP1) : 14 brins fins et raides qui s'écartent du pied, paille dorée, teintes variées ;
+			# chaque brin vu des deux côtés (2 triangles, matière des frondes), sur un pied serré et plus vert.
+			_blob(st, Vector3(0, 0.07, 0), Vector3(0.13, 0.11, 0.13), mat(Color(0.46, 0.45, 0.26), MAT_LEAVES), 3)
+			for i in range(14):
+				var a := TAU * i / 14.0 + 0.37 * float(i % 3)
+				var lean := 0.12 + 0.05 * float(i % 4)
+				var h := 0.5 + 0.07 * float((i * 5) % 4)
+				var dir := Vector3(cos(a), 0, sin(a))
+				var base := dir * 0.06
+				var tip := dir * (0.06 + lean + 0.1 * h) + Vector3(0, h, 0)
+				var w := Vector3(-dir.z, 0, dir.x) * 0.025
+				var col := mat(Color(0.70, 0.62, 0.36).lerp(Color(0.52, 0.50, 0.28), 0.3 * float(i % 3)), MAT_FRONDS)
+				_tri(st, base - w, tip, base + w, col)
+				_tri(st, base + w, tip, base - w, shade(col, 0.9))
 		"vine_row":
 			# Rang de 6 m : piquets et ceps sous une haie de feuillage basse, orienté selon x.
 			for i in range(4):
@@ -424,6 +459,74 @@ static func _draw(st: SurfaceTool, kind: String) -> bool:
 				_limb(st, Vector3(x, 0, 0), Vector3(x, 1.4, 0), 0.04, 0.04, mat(Color(0.40, 0.33, 0.24), MAT_STEM), 4)
 			for i in range(3):
 				_blob(st, Vector3(-2.0 + 2.0 * i, 1.05, 0), Vector3(1.15, 0.45, 0.4), mat(Color(0.28, 0.44, 0.16), MAT_LEAVES), 3)
+		# --- Japon (lot JP5, version 6.0) ---
+		"sugi":
+			# Cèdre du Japon : fût droit à l'écorce rousse, houppier étroit et pointu, étages de rameaux sombres
+			_limb(st, Vector3.ZERO, Vector3(0, 9.0, 0), 0.42, 0.3, BARK_RED)
+			_cone(st, 7.0, 15.0, 2.2, mat(Color(0.09, 0.21, 0.11), MAT_NEEDLES))
+			_cone(st, 12.0, 20.5, 1.8, mat(Color(0.10, 0.22, 0.12), MAT_NEEDLES))
+			_cone(st, 17.5, 26.0, 1.2, mat(Color(0.11, 0.24, 0.12), MAT_NEEDLES))
+		"hinoki":
+			# Cyprès hinoki : cône plus large et plus clair, quatre étages arrondis
+			_limb(st, Vector3.ZERO, Vector3(0, 4.5, 0), 0.32, 0.26, BARK_RED)
+			_cone(st, 3.5, 9.0, 2.8, mat(Color(0.12, 0.26, 0.12), MAT_NEEDLES))
+			_cone(st, 7.0, 12.5, 2.3, mat(Color(0.13, 0.28, 0.13), MAT_NEEDLES))
+			_cone(st, 10.5, 15.5, 1.7, mat(Color(0.14, 0.30, 0.14), MAT_NEEDLES))
+			_cone(st, 13.5, 18.0, 1.0, mat(Color(0.15, 0.31, 0.14), MAT_NEEDLES))
+		"momiji":
+			# Érable du Japon : tronc court et tortueux, houppier étalé en ombrelle (rouge en automne, P18)
+			_limb(st, Vector3.ZERO, Vector3(0.3, 2.6, 0.1), 0.2, 0.15, BARK_SMOOTH)
+			_limb(st, Vector3(0.3, 2.4, 0.1), Vector3(-1.4, 3.8, 0.4), 0.11, 0.07, BARK_SMOOTH, 4)
+			_limb(st, Vector3(0.3, 2.4, 0.1), Vector3(1.8, 3.6, -0.5), 0.11, 0.07, BARK_SMOOTH, 4)
+			_blob(st, Vector3(0, 4.9, 0), Vector3(3.6, 1.9, 3.4), mat(Color(0.30, 0.48, 0.17), MAT_LEAVES))
+			_blob(st, Vector3(-1.6, 4.0, 0.7), Vector3(2.0, 1.2, 1.8), mat(Color(0.33, 0.50, 0.18), MAT_LEAVES), 3)
+			_blob(st, Vector3(1.8, 4.1, -0.6), Vector3(1.9, 1.1, 1.8), mat(Color(0.28, 0.46, 0.16), MAT_LEAVES), 3)
+		"bamboo":
+			# Bosquet de bambous : sept chaumes fins et clairs en deux tronçons, arqués vers l'extérieur, chacun
+			# coiffé d'un panache de feuilles allongé qui retombe ; un panache central plus haut
+			var culm := mat(Color(0.52, 0.60, 0.30), MAT_STEM)
+			for i in range(7):
+				var a := TAU * i / 7.0 + 0.25 * (i % 2)
+				var out := Vector3(cos(a), 0, sin(a))
+				var r := 0.2 + 0.15 * (i % 3)
+				var h := 9.0 + 0.8 * (i % 3)
+				var base := out * r
+				var mid := out * (r + 0.4) + Vector3(0, h * 0.55, 0)
+				var top := out * (r + 1.6) + Vector3(0, h, 0)
+				_limb(st, base, mid, 0.06, 0.05, culm, 3)
+				_limb(st, mid, top, 0.05, 0.03, culm, 3)
+				var leaf := mat(Color(0.40 + 0.03 * (i % 3), 0.56, 0.22), MAT_LEAVES)
+				_blob(st, top.lerp(mid, 0.3) + out * 0.5 - Vector3(0, 0.6, 0), Vector3(1.1, 2.0, 1.1), leaf, 3)
+			_blob(st, Vector3(0, 9.0, 0), Vector3(1.6, 2.6, 1.6), mat(Color(0.42, 0.57, 0.24), MAT_LEAVES), 3)
+		"heather":
+			# Bruyère : plaque de six coussins bas, mauve et brun-vert mêlés, d'environ 2,6 m (lot AT1)
+			var tufts := [[Vector3(0, 0.28, 0), Vector3(0.65, 0.27, 0.6), Color(0.42, 0.25, 0.36)],
+				[Vector3(0.8, 0.2, 0.4), Vector3(0.5, 0.2, 0.45), Color(0.32, 0.31, 0.20)],
+				[Vector3(-0.75, 0.22, -0.35), Vector3(0.5, 0.22, 0.48), Color(0.48, 0.28, 0.44)],
+				[Vector3(-0.3, 0.18, 0.85), Vector3(0.45, 0.18, 0.4), Color(0.36, 0.28, 0.24)],
+				[Vector3(0.45, 0.2, -0.8), Vector3(0.5, 0.2, 0.42), Color(0.45, 0.26, 0.40)],
+				[Vector3(-1.0, 0.16, 0.5), Vector3(0.35, 0.16, 0.35), Color(0.30, 0.32, 0.19)]]
+			for t in tufts:
+				_blob(st, t[0], t[1], mat(t[2], MAT_LEAVES), 3)
+		"gorse":
+			# Ajonc : buisson épineux vert sombre, piqué de fleurs jaunes sur le dessus (lot AT1)
+			_blob(st, Vector3(0, 0.75, 0), Vector3(0.9, 0.78, 0.85), mat(Color(0.18, 0.28, 0.12), MAT_NEEDLES), 4)
+			_blob(st, Vector3(0.55, 0.5, 0.35), Vector3(0.5, 0.5, 0.5), mat(Color(0.20, 0.30, 0.13), MAT_NEEDLES), 3)
+			var flower := mat(Color(0.86, 0.72, 0.16), MAT_LEAVES)
+			for i in range(5):
+				var a := TAU * i / 5.0 + 0.4
+				_blob(st, Vector3(cos(a) * 0.5, 1.15 + 0.12 * (i % 2), sin(a) * 0.45), Vector3(0.28, 0.16, 0.26), flower, 3)
+		"bracken":
+			# Fougère aigle : frondes dressées puis retombantes, feuillage caduc (lot AT1)
+			var frond := mat(Color(0.33, 0.50, 0.18), MAT_FRONDS)
+			# Deux touffes de six frondes, à 1,1 m l'une de l'autre : une plaque d'environ 2,6 m
+			var stem := mat(Color(0.36, 0.30, 0.18), MAT_STEM)
+			for c: Vector3 in [Vector3(-0.55, 0, 0.1), Vector3(0.55, 0, -0.15)]:
+				for i in range(6):
+					var a := TAU * i / 6.0 + 0.3 * (i % 2) + c.x
+					var foot: Vector3 = c + Vector3(cos(a) * 0.1, 0.3, sin(a) * 0.1)
+					_limb(st, c + Vector3(cos(a) * 0.04, 0.0, sin(a) * 0.04), foot, 0.025, 0.02, stem, 3)
+					_frond(st, foot, a, 0.8 + 0.1 * (i % 3), 0.7, 0.3, 0.42, frond)
 		_:
 			return false
 	return true

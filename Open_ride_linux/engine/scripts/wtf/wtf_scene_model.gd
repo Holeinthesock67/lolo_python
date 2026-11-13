@@ -41,7 +41,8 @@ const KITCHEN := [["plate", 5.0, -4.0, 1.6], ["cup", 8.0, 4.0, 1.8], ["fork", 13
 ## vraie distance est dans le bandeau du HUD) ; plus loin, la vue « fuite » n'en montrait qu'un point (PC 7cn-ter).
 const SHOW_BEHIND_M := 16.0
 const VOID_LENGTH_M := 80.0     # gouffre derrière le front de l'effondrement
-const KATA_SCALES := {"apple": 0.3, "sign": 1.0, "cow": 1.4, "car": 1.8, "house": 4.0, "church": 7.0}
+const DISH_SCALE := 1.6       # plats du chef sur leur assiette (lot WTF9), lisibles à 3 m
+const KATA_SCALES := {"apple": 1.0, "sign": 1.0, "cow": 1.4, "car": 1.8, "house": 4.0, "church": 7.0}
 
 
 ## Vue complète ; `wtf` absent ou nul : rien. `t` : horloge de l'engine (s), pour les mouvements continus.
@@ -66,7 +67,9 @@ static func view(wtf: Variant, t: float, quality := "medium") -> Dictionary:
 			for o in nxt:
 				if typeof(o) == TYPE_ARRAY and o.size() >= 2:
 					var kind := str(o[1])
-					props.append(_prop("kata_" + kind, float(o[0]), 0.0, 0.0, float(KATA_SCALES.get(kind, 1.0)), 0.0))
+					# Sur la ligne de la boule (lot WTF9) : on voit la boule arriver dessus.
+					props.append(_prop("kata_" + kind, float(o[0]), KATA_LATERAL_M + KATA_BALL_M * size, 0.0,
+						float(KATA_SCALES.get(kind, 1.0)), 0.0))
 	if wtf.has("clock_h"):
 		out["sun_hour"] = fposmod(float(wtf["clock_h"]), 24.0)
 		if bool(wtf.get("fish", false)):
@@ -95,7 +98,10 @@ static func _event(ev: Dictionary, t: float, n: Dictionary, out: Dictionary, pro
 			props.append(_prop("void", -gap, 0.0, 0.0, 1.0, 0.0))
 			for i in int(n["chunks"]):
 				# Le front de l'effondrement à `gap` m derrière, les tronçons plus loin déjà tombés.
-				props.append(_prop("chunk", -gap - i * CHUNK_M, 0.0, -0.6 * i * i, 1.0, 0.25 * i))
+				# Plaques qui basculent dans le trou, un bord dressé (lot WTF9) : enfoncées sous le sol, on ne les
+				# voyait plus (vitrine du 12/11). Basculées d'un côté puis de l'autre, de plus en plus.
+				props.append(_prop("chunk", -gap - (i + 0.5) * CHUNK_M, (0.8 if i % 2 == 0 else -0.8) * minf(i, 2.0),
+					0.3 - 0.35 * i, 1.0, (0.35 + 0.18 * i) * (1.0 if i % 2 == 0 else -1.0)))
 		"cheese":
 			var gap := minf(float(ev.get("gap_m", 0.0)), CHEESE_SHOW_M)
 			var squashed := bool(ev.get("squashed", false))
@@ -124,7 +130,7 @@ static func _event(ev: Dictionary, t: float, n: Dictionary, out: Dictionary, pro
 				var dish := str(ev.get("dish", ""))
 				if dish != "" and dish != "<null>":
 					props.append(_prop("dish_" + dish, 1.2 if phase == "eat" else 3.0, -0.6 if phase == "reveal" else 0.0,
-						1.3 + 0.3 * float(ev.get("souffle", 0.0)), 1.0, t))
+						1.3 + 0.3 * float(ev.get("souffle", 0.0)), DISH_SCALE, t))
 			if phase == "eat":
 				match str(ev.get("dish", "")):
 					"jelly":

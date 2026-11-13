@@ -43,6 +43,13 @@ const ROUND_SALT := 0x3C6EF372
 const STILTS_SALT := 0x7F4A7C15
 const STILT_MAX_POSTS := 12
 const STILT_UV_LIFT_M := 0.6
+## Pose sur un terrain en pente : `base_y` est le point le plus bas du terrain sous l'empreinte (compilateur,
+## format .world §6). Le côté amont des façades était donc enterré (socle et bas des fenêtres sous l'herbe).
+## Quand l'engine connaît le terrain le plus haut le long du contour (`ground_max_y`, posé par osm_streamer.gd),
+## le rez-de-chaussée est relevé à ce niveau, au plus FLOOR_LIFT_MAX_M ; le côté aval montre un socle plus haut,
+## dessiné par le shader (v < PLINTH_H, aucune ouverture sous v = 0). Tolérance : GROUND_TOL_M.
+const FLOOR_LIFT_MAX_M := 4.0
+const GROUND_TOL_M := 0.05
 
 
 ## FNV-1a 32 bits sur les octets UTF-8 : hachage déterministe indépendant de la plateforme.
@@ -626,6 +633,15 @@ static func _pick(palette: Array[Color], u: float) -> Color:
 	return palette[mini(int(u * palette.size()), palette.size() - 1)]
 
 
+## Relèvement du rez-de-chaussée (m) d'un bâtiment posé à `base_y` dont le terrain le plus haut le long du
+## contour est `ground_max_y` (null ou absent : aucun relèvement).
+static func floor_lift(base_y: float, ground_max_y) -> float:
+	if not _is_number(ground_max_y):
+		return 0.0
+	var lift := float(ground_max_y) - base_y - GROUND_TOL_M
+	return clampf(lift, 0.0, FLOOR_LIFT_MAX_M)
+
+
 ## Construit les tableaux de maillage pour la liste de bâtiments d'un tronçon. `style_name` : variante
 ## d'architecture du contrat U1 §4.3 (building_styles.gd), la même pour tout le tronçon avant le lot U14.
 static func build(buildings: Array, theme: Dictionary, skirt_m: float = 0.0,
@@ -675,7 +691,8 @@ static func build(buildings: Array, theme: Dictionary, skirt_m: float = 0.0,
 			continue
 		var base_y := float(base_y_raw)
 		var height_m := float(height_raw)
-		var top_y := base_y + height_m
+		var floor_ref_y := base_y + floor_lift(base_y, b.get("ground_max_y", null))
+		var top_y := floor_ref_y + height_m
 
 		var roof_kind := str(b.get("roof", "flat"))
 		if b.has("roof") and not (roof_kind in ALLOWED_ROOFS):
@@ -811,12 +828,12 @@ static func build(buildings: Array, theme: Dictionary, skirt_m: float = 0.0,
 		var wall_code := dress_code(dress, false, height_m)
 		var roof_code := dress_code(dress, true, height_m)
 		var wall_base_y := base_y - skirt_m
-		var uv_base_y := base_y
+		var uv_base_y := floor_ref_y
 		var stilts_m := float(dress.get("stilts_m", 0.0))
 		if stilts_m > 0.0:
 			# Pilotis (U23 étape 2) : plancher relevé de `stilts_m`, poteaux de bois aux angles, dessous en voliges.
 			# Les murs partent du plancher, sans socle (v commence au-dessus du socle dessiné par le shader).
-			var floor_y := base_y + stilts_m
+			var floor_y := floor_ref_y + stilts_m
 			top_y = floor_y + height_m
 			wall_base_y = floor_y
 			uv_base_y = floor_y - STILT_UV_LIFT_M

@@ -243,7 +243,7 @@ def resolve_theme(theme_dir: Path) -> dict[str, Any]:
     return _deep_merge(default_theme, user_theme)
 
 
-V2_KEYS = ("default_biome", "biomes", "variants", "surfaces")
+V2_KEYS = ("default_biome", "biomes", "variants", "landscapes", "surfaces")
 
 
 def without_biomes(theme: dict[str, Any]) -> dict[str, Any]:

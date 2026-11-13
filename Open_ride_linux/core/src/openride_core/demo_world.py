@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Callable
 
 from .segments import Profile, detect_segments
+from .synthetic_biome import add_biome_layer
 from .synthetic_terrain import add_terrain_layer
 
 EARTH_R = 6_371_000.0
@@ -123,10 +124,11 @@ def build_segments(route: dict) -> list[dict]:
 
 # Version du générateur, portée par le manifeste (`compiler.version`). 0.2.0 (7 novembre 2026) : terrain proche
 # dégagé sous la chaussée (`synthetic_terrain.clear_road`) ; 0.3.0 (8 novembre 2026, lot O37) : la
-# démonstration porte son nom de parcours `DEMO_TITLE`. Une démonstration plus ancienne du dossier des
+# démonstration porte son nom de parcours `DEMO_TITLE` ; 0.4.0 (12 novembre 2026, lot W17) : couche biome
+# synthétique (forêt et alpages, `synthetic_biome.py`). Une démonstration plus ancienne du dossier des
 # parcours est remplacée par `ensure_demo_world`.
 FAKE_WORLD_NAME = "openride-fake-world"
-FAKE_WORLD_VERSION = "0.3.0"
+FAKE_WORLD_VERSION = "0.4.0"
 
 
 def build_manifest(name: str, route: dict, created: str | None = None,
@@ -176,8 +178,10 @@ def write_world(out_dir: Path, name: str, length_m: float, created: str | None =
 def write_demo_world(out_dir: Path) -> Path:
     """Écrit le parcours de démonstration commun au core et à l'engine, avec sa couche terrain
     synthétique (`synthetic_terrain.py`) : sans elle, l'engine pose un sol plat sous l'altitude la plus
-    basse et la route, qui monte de 120 m, semble léviter (constat du 4 novembre 2026)."""
-    return add_terrain_layer(write_world(out_dir, DEMO_NAME, DEMO_LENGTH_M, created=DEMO_CREATED, title=DEMO_TITLE))
+    basse et la route, qui monte de 120 m, semble léviter (constat du 4 novembre 2026). Couche biome
+    synthétique depuis le lot W17, comme tout parcours compilé (sinon le biome par défaut partout)."""
+    world = write_world(out_dir, DEMO_NAME, DEMO_LENGTH_M, created=DEMO_CREATED, title=DEMO_TITLE)
+    return add_biome_layer(add_terrain_layer(world))
 
 
 def _demo_needs_rewrite(world: Path) -> bool:
@@ -232,6 +236,8 @@ def ensure_demo_world(routes_root: Path, engine_dir: Path | None = None) -> Path
         return world
     world.mkdir(parents=True, exist_ok=True)
     shutil.copytree(bundled / "terrain", world / "terrain", dirs_exist_ok=True)
+    if (bundled / "biome").is_dir():
+        shutil.copytree(bundled / "biome", world / "biome", dirs_exist_ok=True)
     for name in ("route.json", "segments.json", "manifest.json"):
         shutil.copyfile(bundled / name, world / name)
     return world

@@ -22,6 +22,7 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const ForestImpostors := preload("res://scripts/forest_impostors.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
+const HorizonView := preload("res://scripts/horizon_view.gd")
 const RoadSurface := preload("res://scripts/road_surface.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
@@ -303,6 +304,13 @@ func _ready() -> void:
 		streamer.add_child(forest)
 		streamer.forest_impostors = forest
 	print("Forêts lointaines : ", "actives" if streamer.forest_impostors.enabled else "coupées")
+	if streamer.horizon_view == null:
+		var horizon = HorizonView.new()
+		horizon.name = "HorizonView"
+		horizon.enabled = bool(cfg.get("horizon", true))
+		streamer.add_child(horizon)
+		streamer.horizon_view = horizon
+		horizon.setup(world_env.environment, sun)
 	if streamer.osm_streamer == null:
 		var osm_st = OsmStreamer.new()
 		osm_st.name = "OsmStreamer"
@@ -535,6 +543,9 @@ func _ready() -> void:
 		_refresh_menu())
 	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_wtf_rules(msg)
+		_refresh_menu())
+	ipc.mode_options_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_mode_options(msg)
 		_refresh_menu())
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
@@ -810,6 +821,11 @@ func _run_menu_action(act: Dictionary) -> void:
 		"set_wtf_rules":   # une commande set_wtf_rule par règle basculée (lot WTF3)
 			for r in act.get("list", []):
 				ipc.send_command("set_wtf_rule", {"id": str(r["id"]), "on": bool(r["on"])})
+		"list_mode_options":   # options d'un mode (objets du Grand Prix, lot GP9), réponse `mode_options`
+			ipc.send_command("list_mode_options", {"mode": str(act["mode"])})
+		"set_mode_options":   # une commande set_mode_option par option basculée (lot GP9)
+			for o in act.get("list", []):
+				ipc.send_command("set_mode_option", {"mode": str(act["mode"]), "id": str(o["id"]), "on": bool(o["on"])})
 		"start_plan":
 			ipc.start_plan(str(act["id"]), act.get("start_date", null))
 		"stop_plan":

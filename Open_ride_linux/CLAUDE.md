@@ -51,6 +51,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `route_stats.py` : fiches des parcours (dénivelé, montée principale, durée, difficulté, fiche `.toml`), tri et filtres du catalogue (lot O15) ; copie exacte dans le compilateur ;
 - `demo_world.py` : parcours de démonstration (`demo`, « Col du lacet » au menu) ; ceux des biomes viennent du compilateur (`openride_compiler.demo_biomes`, lot O37 : noms de parcours du jeu de base, variante `--recette` aux noms techniques pour les bancs) ;
 - `synthetic_terrain.py` : couche terrain synthétique (démonstration et parcours d'essai) ;
+- `synthetic_biome.py` : couche biome synthétique du « Col du lacet » (forêt tempérée loin de la route, alpages `alpine`) ;
 - `workout.py`, `workout_formats.py` : lecture des `.zwo`, des `.erg` et `.mrc` de GoldenCheetah (lot O9) et contrôleur ERG ; `workout_menu.py` : entraînements créés depuis le menu ERG, écrits par le core seul (sous-menu ERG, décision D4 de l'audit IPC ; import de fichiers retiré le 12 novembre, révision 1.15) ;
 - `start_gate.py` : départ au pédalage (lot O36), module pur : après `start`, la séance attend en `READY` le décor du départ (commande `scene_ready` de l'engine, au plus `[depart] attente_decor_s`), le trainer, puis `[depart] duree_s` secondes à `[depart] cadence_rpm` tr/min ; objet `start_wait` de `state` ; `[depart] mode = "immediat"` ou `run --depart immediat` part tout de suite ;
 - `route_import.py` : traces importées depuis le menu des parcours (lot O23) : traces des dossiers habituels, copie dans `~/OpenRide/GPX/` sans écrasement, puis `openride-compiler build` de cette trace dans un processus à part, sans relancer (commandes `list_route_imports` et `import_route`) ;
@@ -100,7 +101,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `draft.py` : aspiration derrière les bots (courbe exponentielle, effet de file, vent de travers, poussée du bot suivi), module pur (lot P3).
 - `road_cyclists.py` : cyclistes du décor proches calculés par le core (portage de `road_cyclists_model.gd`, même graine), sources d'abri `rider:<id>` et liste `riders` de `state`, module pur (lot AS7).
 
-**Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `landcover.py` (WorldCover lu par fenêtres, cache par carré de 0,1°, lot U2), `biomes.py` (classification des biomes, numpy sans entrée-sortie, lot U2), `regional.py` et `data/regional_variants.toml` (variante régionale par tuile, table à grosse maille, lot U4), `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `segments_layer.py` (couche `segments` et fichier `<trace>.segments.toml`, série T, lot T3), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
+**Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `landcover.py` (WorldCover lu par fenêtres, cache par carré de 0,1°, lot U2), `biomes.py` (classification des biomes, numpy sans entrée-sortie, lot U2), `regional.py` et `data/regional_variants.toml` (variante régionale par tuile, table à grosse maille, lot U4 ; paysages canyons, fjords, îles volcaniques et rizières, lot U25), `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `segments_layer.py` (couche `segments` et fichier `<trace>.segments.toml`, série T, lot T3), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
 
 ## Commandes
 
@@ -142,7 +143,7 @@ python -m openride_core.tools.workouts install | list | check FICHIER.zwo --ftp 
 # Parcours
 openride-compiler build trace.gpx      # route + terrain + biome + segments ; puis : verify / info
 openride-compiler build trace.gpx --biome mediterranean   # impose un biome à tout le parcours (lot U2)
-openride-compiler build trace.gpx --variant basalte,ardoise   # impose la variante régionale de toutes les tuiles (lot U4)
+openride-compiler build trace.gpx --variant basalte,ardoise   # impose la variante régionale de toutes les tuiles (lot U4) ; 3e membre facultatif : paysage (gres_rose,,canyon, lot U25)
 openride-compiler list                 # liste les parcours (.world et .gpx) et leur statut
 openride-compiler build-all            # compile toutes les traces GPX nouvelles ou modifiées (route,terrain,biome,segments ; --layers pour OSM)
 openride-compiler build trace.gpx --offline --force   # sans réseau, tuiles d'altitude et WorldCover déjà en cache

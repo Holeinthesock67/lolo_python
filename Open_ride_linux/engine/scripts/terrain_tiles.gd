@@ -18,6 +18,8 @@ extends RefCounted
 const SAMPLES := 101
 const CELLS := SAMPLES - 1
 const FAR_DROP_M := 2.0
+## Horizon (lot JP4) : dessiné bien plus bas que ses valeurs (maille de 500 m) pour rester sous le lointain.
+const HORIZON_DROP_M := 30.0
 ## Terrain lointain abaissé sous la route (carve_under_route) : demi-largeur dégagée autour de
 ## l'axe (chaussée de 6 m et bas-côtés de 0,5 m) et marge sous l'altitude de la route.
 const ROAD_CLEAR_HALF_M := 4.0
@@ -31,6 +33,7 @@ const EDGE_BLEND_M := 50.0
 const LEVELS := {
 	"near": {"dir": "near", "cell": 10.0, "size": 1000.0, "y_offset": 0.0},
 	"far": {"dir": "far", "cell": 50.0, "size": 5000.0, "y_offset": -FAR_DROP_M},
+	"horizon": {"dir": "horizon", "cell": 500.0, "size": 50000.0, "y_offset": -HORIZON_DROP_M},
 }
 
 

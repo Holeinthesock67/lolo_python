@@ -8,8 +8,12 @@ render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_sc
 // Textures : deux Texture2DArray pour tout le parcours (biome_textures.gd) ; carte A = couleur et
 // rugosité (alpha), carte B = normale XY et occlusion (bleu). Une couche sans texture garde sa couleur unie.
 
-const int MAX_BIOMES = 17;     // BiomeIds.BIOMES
-const int MAX_LAYERS = 51;     // biome_textures.gd MAX_LAYERS
+const int MAX_BIOMES = 19;     // BiomeIds.BIOMES
+// Emplacements de sol : un par biome, puis un par couple (paysage du lot U25, biome de base) dont le thème
+// donne le sol (biome_textures.gd MAX_LANDSCAPE_SLOTS) ; `biome_index` d'une tuile désigne un emplacement.
+const int MAX_LANDSCAPE_SLOTS = 16;
+const int MAX_SLOTS = MAX_BIOMES + MAX_LANDSCAPE_SLOTS;
+const int MAX_LAYERS = MAX_SLOTS * 3;   // biome_textures.gd MAX_LAYERS
 
 // Par tuile : poids des 4 biomes (RGBA, grille 17 × 17 du format, filtrage linéaire), indice de chaque
 // biome dans les tableaux (-1 : canal vide), rectangle de la tuile dans le monde (x, z, côté, côté)
@@ -21,8 +25,8 @@ uniform float blend_noise : hint_range(0.0, 1.0) = 0.6;
 
 // Par biome : (seuil de pente en degrés, limite de la couche haute en m, netteté du mélange, force des
 // rides et dunes du sable) et indices des couches (herbe, roche, neige, -)
-uniform vec4 biome_rule[MAX_BIOMES];
-uniform vec4 biome_layers[MAX_BIOMES];
+uniform vec4 biome_rule[MAX_SLOTS];
+uniform vec4 biome_layers[MAX_SLOTS];
 // Par couche : (couleur unie, 1 / échelle en m) et (indice dans ground_a, indice dans ground_b, -, -) ; -1 : pas de texture
 uniform vec4 layer_color[MAX_LAYERS];
 uniform vec4 layer_maps[MAX_LAYERS];
