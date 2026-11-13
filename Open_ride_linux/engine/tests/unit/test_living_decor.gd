@@ -407,6 +407,46 @@ func _run() -> void:
 	_check(real_ws.road_material_for(3) is StandardMaterial3D, "world_streamer : sans décor vivant, matériau de la 1.0")
 	real_ws.free()
 
+	# 7. Monde ouvert : route prolongée en roulant (13/11, « même qualité globale que les circuits précalculés »).
+	# Le décor du bord de route suit la route connue, sans retirer les véhicules ni les cyclistes en cours.
+	var short_d: Dictionary = _route_dict.duplicate(true)
+	var keep := 251
+	for key in ["lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg"]:
+		short_d[key] = (short_d[key] as Array).slice(0, keep)
+	short_d["n"] = keep
+	short_d["length_m"] = 2500.0
+	var r_short = RouteData.new()
+	r_short.load_route_dict(short_d)
+	var r_full = RouteData.new()
+	r_full.load_route_dict(_route_dict)
+	dec.set_route(r_short, WORLD, 6.0)
+	dec.flush()
+	osm.update_window(0.0, LENGTH_M)
+	osm.flush()
+	var last_km := func() -> float:
+		var m := 0.0
+		for it in dec.roadside_items:
+			if it["kind"] == "km" or it["kind"] == "summit":
+				m = maxf(m, float(it["s"]))
+		return m
+	var short_last: float = last_km.call()
+	var props_short: int = dec.props.prop_count()
+	var ext0: int = dec.extensions
+	dec.traffic.vehicles.append({"s": 100.0, "témoin": true})
+	dec.cyclists.groups.append({"s": 120.0, "témoin": true})
+	dec.extend_route(r_short)   # première révision encore en préparation…
+	dec.extend_route(r_full)    # …la suivante attend, et seule la dernière compte
+	dec.flush()
+	dec.flush()
+	_check(dec.extensions == ext0 + 2 and dec.prepared, "monde ouvert : deux prolongations appliquées dans l'ordre (%d)" % (dec.extensions - ext0))
+	_check(short_last <= 2500.0 and last_km.call() > 3500.0,
+		"monde ouvert : bornes et panneaux au-delà de la route connue au départ (dernier à %.0f m, puis %.0f m)" % [short_last, last_km.call()])
+	_check(dec.props.prop_count() > props_short, "monde ouvert : objets reposés sur les tronçons affichés (%d → %d)" % [props_short, dec.props.prop_count()])
+	_check(dec.traffic.route == r_full and dec.cyclists.route == r_full
+		and dec.traffic.vehicles.any(func(v): return v.has("témoin")) and dec.cyclists.groups.any(func(g): return g.has("témoin")),
+		"monde ouvert : véhicules et cyclistes gardés sur la route prolongée")
+	_check(dec.crowd.spectators.any(func(sp): return float(sp["s"]) > 3000.0), "monde ouvert : spectateurs du sommet de la route prolongée")
+
 	for nd in [dec, dv, hud, off, mid]:
 		nd.queue_free()
 	await process_frame

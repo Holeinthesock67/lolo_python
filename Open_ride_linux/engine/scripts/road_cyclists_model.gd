@@ -127,6 +127,14 @@ func configure(route_data, climbs: Array, pois: Array, cyclist_budget: int, rng_
 	road_width_m = p_road_width_m
 	half_width_at = p_half_width_at
 	traffic = traffic_model
+	extend_route(route_data, climbs, pois)
+	reset()
+
+
+## Route prolongée du monde ouvert (même début, abscisses gardées) : nouvelle route, montées et villages, sans
+## retirer les groupes en cours.
+func extend_route(route_data, climbs: Array, pois: Array) -> void:
+	route = route_data
 	_villages.clear()
 	for p in pois:
 		if typeof(p) == TYPE_DICTIONARY and str(p.get("kind", "")) == "village":
@@ -135,7 +143,6 @@ func configure(route_data, climbs: Array, pois: Array, cyclist_budget: int, rng_
 	for c in climbs:
 		if typeof(c) == TYPE_DICTIONARY:
 			_climbs.append(Vector2(float(c.get("start_s", 0.0)), float(c.get("summit_s", c.get("end_s", 0.0)))))
-	reset()
 
 
 func reset() -> void:
