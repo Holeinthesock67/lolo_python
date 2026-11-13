@@ -33,7 +33,7 @@ Le générateur possède la route engagée : c'est lui qui la prolonge et la ré
 | `type` | Champs | Sens |
 | --- | --- | --- |
 | `status` | `phase` (`dem`, `osm`, `tiles`, `generate`, `ready`, `error`), `done_bytes`, `total_bytes` (ou `null`), `squares_ready`, `squares_needed`, `message`, `data` (`cached`, `downloading`, `offline`, `missing`) | Avancement ; `phase` = `ready` quand la séance peut démarrer. Le core le relaie en `world_status` |
-| `revision` | `rev`, `length_m`, `changed_from_part`, `junctions` (nombre de carrefours dans `junctions.json`) | De nouveaux fichiers sont prêts |
+| `revision` | `rev`, `length_m`, `changed_from_part`, `junctions` (nombre de carrefours dans `junctions.json`), `finish_m` (facultatif, lot W19 : nombre ou `null`) | De nouveaux fichiers sont prêts. `finish_m` : arrivée de la séance sur la route engagée, en distance depuis le début de la route du générateur, en `destination` (point de la route le plus proche de la cible, au premier nœud à moins de 200 m de la cible ou au nœud du graphe le plus proche d'elle) et en `loop` (point le plus proche du départ, au retour) ; `null` ou absent en `ride` et tant que l'arrivée n'est pas engagée. Un choix de branche qui quitte la route de l'arrivée la remet à `null` jusqu'à ce que le navigateur la repose ; le core termine la séance quand le cycliste l'atteint |
 | `error` | `code` (`world_unavailable`, `branch_locked`, `unknown_junction`, `internal`), `message` | Erreur ; `world_unavailable` pendant `open` met fin à la préparation |
 | `closed` | — | Réponse à `close` |
 
@@ -84,3 +84,4 @@ gen  → {"type":"closed"}
 | Version | Date | Changement |
 | --- | --- | --- |
 | 1 | 26 octobre 2026 | Première version (lot W1) |
+| 1 (ajout) | 13 novembre 2026 | Champ facultatif `finish_m` du message `revision` (lot W19, arrivée en destination et en boucle) ; un core plus ancien l'ignore, un générateur plus ancien ne l'envoie pas (pas d'arrivée, comme avant) |

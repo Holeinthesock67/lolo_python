@@ -284,3 +284,70 @@ def test_process_end_to_end_and_second_session_reuses_cache(grid, tmp_path) -> N
     out2, err2 = _run_process(tmp_path, cache_dir, msgs)
     assert out2[-1]["type"] == "closed"
     assert "carrés générés 0," in err2 and "tuiles lointaines générées 0," in err2 and "téléchargements 0," in err2
+
+
+# --- lot W19 : arrivée en destination et en boucle ------------------------------------------------
+
+def _ride_to(s: WorldSession, s_m: float, step: float = 500.0) -> None:
+    pos = 0.0
+    while pos < s_m:
+        pos = min(s_m, pos + step)
+        s.handle({"type": "progress", "s_m": pos, "v_mps": 8.0})
+
+
+def _route_point(s: WorldSession, s_m: float) -> tuple[float, float]:
+    for leg in s.legs:
+        if leg.s0 <= s_m <= leg.s1 + 1e-6:
+            k = int(np.argmin(np.abs(leg.profile.s + leg.s0 - s_m)))
+            return float(leg.profile.x[k]), float(leg.profile.z[k])
+    raise AssertionError(f"{s_m} hors de la route engagée")
+
+
+def test_ride_has_no_finish(grid, tmp_path) -> None:
+    s, rec = session(tmp_path, grid)
+    s.handle(open_msg())
+    _ride_to(s, 6000.0)
+    assert all(m["finish_m"] is None for m in rec.of("revision"))
+    assert s.finish_m is None
+
+
+def test_destination_finish_near_target(grid, tmp_path) -> None:
+    s, rec = session(tmp_path, grid)
+    lat, lon = latlon(E_REF + 2250, N_REF + 1000)        # carrefour de la grille à ~2,2 km du départ
+    s.handle({**open_msg(), "nav": "destination", "target": {"lat": lat, "lon": lon}})
+    _ride_to(s, 1500.0)
+    finish = [m["finish_m"] for m in rec.of("revision") if m["finish_m"] is not None]
+    assert finish, "l'arrivée doit être annoncée dès qu'elle entre dans la route engagée"
+    assert finish[-1] == pytest.approx(s.finish_m, abs=0.01)
+    assert 1500.0 < finish[-1] < 6000.0
+    # cible au milieu d'une route, à 250 m des deux carrefours : l'arrivée est le point de la route le plus proche
+    x, z = _route_point(s, s.finish_m)
+    assert math.hypot(x - (E_REF + 2250), z + (N_REF + 1000)) <= 15.0
+    # la route continue au-delà de l'arrivée (jamais de pause avant la ligne)
+    assert s.length_m > s.finish_m
+
+
+def test_loop_finish_close_to_length(grid, tmp_path) -> None:
+    s, rec = session(tmp_path, grid)
+    s.handle({**open_msg(), "nav": "loop", "loop_km": 8.0})
+    _ride_to(s, 9000.0)
+    assert s.finish_m is not None
+    assert 4000.0 <= s.finish_m <= 9500.0
+    x, z = _route_point(s, s.finish_m)
+    start_x, start_z = s.nav.start_xz
+    assert math.hypot(x - start_x, z - start_z) <= 15.0
+
+
+def test_choice_away_from_finish_moves_it(grid, tmp_path) -> None:
+    s, rec = session(tmp_path, grid)
+    lat, lon = latlon(E_REF + 2250, N_REF + 1000)
+    s.handle({**open_msg(), "nav": "destination", "target": {"lat": lat, "lon": lon}})
+    assert s.finish_m is not None
+    j = min(s.junctions.values(), key=lambda j: j.s_m)
+    assert j.s_m < s.finish_m
+    other = next(k for k in range(len(j.branches)) if k != j.default)
+    s.handle({"type": "choose", "junction_id": j.id, "branch": other})
+    last = rec.of("revision")[-1]
+    # nouvelle arrivée reposée par le navigateur (ou annoncée plus tard), jamais l'ancienne étape effacée
+    assert s.finish_leg is None or s.finish_leg < len(s.legs)
+    assert last["finish_m"] == (round(s.finish_m, 2) if s.finish_m is not None else None)

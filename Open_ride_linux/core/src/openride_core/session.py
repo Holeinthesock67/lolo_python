@@ -3660,6 +3660,10 @@ class CoreSession:
             # à rebours (lot N17), le départ du parcours est l'arrivée
             log.info("Arrivée atteinte%s.", "" if d > 0 else " (retour au départ après un demi-tour)")
             self._finish(True)
+        elif self.openworld is not None and self.openworld.finish_s is not None and st.s >= self.openworld.finish_s:
+            # lot W19 : destination atteinte, ou boucle revenue au départ
+            log.info("Monde ouvert : arrivée atteinte (%s, %.0f m).", self.openworld.nav, st.s)
+            self._finish(True)
         elif self._survivor_end_pending:   # éliminé, réglage « terminer la séance » (lot DS2)
             self._survivor_end_pending = False
             self._finish(True)
