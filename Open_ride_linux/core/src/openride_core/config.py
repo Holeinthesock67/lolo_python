@@ -554,15 +554,7 @@ DEV_KEYS: dict[tuple[str, str], str] = {
     ("ride", "traffic_bench_s"): "passages forcés de véhicules proches pour sim_bench (lot AS6)",
 }
 # Clés à relier au menu, avec le lot qui le fera ; le lot les retire d'ici en les ajoutant au menu.
-PENDING_KEYS: dict[tuple[str, str], str] = {
-    # Grand Prix des objets (série GP, 4.0) : pas d'entrée à l'accueil avant GP9, donc pas de réglage au menu
-    # (point A2 des oublis du 8 novembre) ; la séance les lit déjà (`start` avec `mode` « grandprix »).
-    ("grandprix", "opponents"): "GP9",
-    ("grandprix", "laps"): "GP9",
-    ("grandprix", "distance_km"): "GP9",
-    ("grandprix", "chaos"): "GP9",
-    ("grandprix", "box_every_m"): "GP9",
-}
+PENDING_KEYS: dict[tuple[str, str], str] = {}   # vide depuis le lot GP9 (réglages du Grand Prix)
 
 
 def is_profile_key(section: str, key: str) -> bool:
