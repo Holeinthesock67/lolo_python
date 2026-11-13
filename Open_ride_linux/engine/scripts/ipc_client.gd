@@ -67,6 +67,9 @@ signal room_received(msg: Dictionary)
 signal loot_received(msg: Dictionary)
 ## Règles du mode « What the fuck » (révision 1.5, lot WTF2) : réponse à list_wtf_rules et set_wtf_rule.
 signal wtf_rules_received(msg: Dictionary)
+## Options d'un mode (révision 1.7, lot GP2 ; écran des objets du Grand Prix, lot GP9) : réponse à
+## list_mode_options et set_mode_option.
+signal mode_options_received(msg: Dictionary)
 ## Profils de joueurs (lot MJ8, contrat 1.5) : réponse à list_profiles, create_profile, rename_profile,
 ## delete_profile (un seul datagramme).
 signal profiles_received(msg: Dictionary)
@@ -361,6 +364,8 @@ func _poll_incoming() -> void:
 				loot_received.emit(json_obj)
 			"wtf_rules":
 				wtf_rules_received.emit(json_obj)
+			"mode_options":
+				mode_options_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
