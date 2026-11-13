@@ -34,7 +34,9 @@ const QualityPresets := preload("res://scripts/quality_presets.gd")
 const FaunaShader := preload("res://shaders/fauna.gdshader")
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
 
-const BIRD_SPECIES := ["bird", "gull", "parrot", "fish", "fish_blue", "turtle", "ray"]
+## Nageurs du fond marin : même mode « vol » que les oiseaux, mais corps le long de z et nageoires qui battent.
+const SWIM_SPECIES := ["fish", "fish_blue", "turtle", "ray"]
+const BIRD_SPECIES := ["bird", "gull", "parrot"] + SWIM_SPECIES
 const GROUND_SPECIES := ["cow", "sheep", "deer", "horse", "hare",
 	"zebra", "giraffe", "reindeer", "dromedary", "ibex", "marmot", "flamingo", "heron",
 	"elephant", "antelope", "polar_bear", "musk_ox", "goat", "monkey", "llama", "yak"]

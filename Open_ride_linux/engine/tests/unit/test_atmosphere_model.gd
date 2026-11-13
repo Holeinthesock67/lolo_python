@@ -168,7 +168,7 @@ func _test_underwater() -> void:
 	_check(float(land["underwater"]) == 0.0, "prairie : pas sous l'eau")
 	for q in ["low", "medium", "high"]:
 		var reef := _params("reef", day, CLEAR, q)
-		var end_m := RenderQuality.fog_range(q, true)["end"] * float(reef["fog_end_factor"])
+		var end_m: float = float(RenderQuality.fog_range(q, true)["end"]) * float(reef["fog_end_factor"])
 		_check(float(reef["underwater"]) == 1.0 and absf(end_m - AtmosphereModel.UNDER_FOG_END_M) < 1.0,
 			"fond marin (%s) : brouillard plein à %.0f m" % [q, end_m])
 	var reef := _params("reef", day, CLEAR, "high")

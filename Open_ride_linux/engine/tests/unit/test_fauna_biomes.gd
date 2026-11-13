@@ -303,8 +303,8 @@ func _init() -> void:
 	# 11. Lot SM1 : fond marin à 20 m sous la surface : seulement des poissons, des tortues et des raies, en bandes
 	# qui tournent entre le sol et la surface (niveau 0), ni bête au sol ni oiseau
 	var reef := []
-	for k in range(CHUNKS):
-		reef.append_array(FaunaPlacer.place_chunk(k, _areas(k), [], route, _theme["fauna"],
+	for ck in range(CHUNKS):
+		reef.append_array(FaunaPlacer.place_chunk(ck, _areas(ck), [], route, _theme["fauna"],
 			{"height_at": Callable(self, "_seabed"), "biome_model": _model("reef")}))
 	var cr := _species(reef)
 	var only_sea := not reef.is_empty()

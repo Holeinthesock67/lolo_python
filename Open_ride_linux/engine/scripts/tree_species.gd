@@ -107,8 +107,8 @@ const CROWNS := {
 	"bracken": {"w": 2.6, "col": Color(0.33, 0.50, 0.18, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"bunchgrass": {"w": 0.9, "col": Color(0.66, 0.58, 0.34, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"kelp": {"w": 2.6, "col": Color(0.46, 0.40, 0.14, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
-	"coral": {"w": 2.0, "col": Color(0.92, 0.90, 0.86, 1.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
-	"sea_fan": {"w": 2.0, "col": Color(0.92, 0.90, 0.88, 1.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"coral": {"w": 2.0, "col": Color(0.92, 0.90, 0.86, MAT_LEAVES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"sea_fan": {"w": 2.0, "col": Color(0.92, 0.90, 0.88, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 }
 
 ## Couleur `rgb` avec la matière `code` dans l'alpha.
@@ -499,10 +499,11 @@ static func _draw(st: SurfaceTool, kind: String) -> bool:
 					_frond(st, base, a + (1.3 if k % 2 == 0 else -1.3), 1.4, 0.5, 0.3, 0.32, col)
 				_frond(st, top, a, 1.6, 0.4, 0.6, 0.4, mat(Color(0.52, 0.44, 0.15), MAT_FRONDS))
 		"coral":
-			# Corail branchu (acropore) : buissons de branches qui fourchent deux fois, bouts clairs ; couleur unie
-			# (alpha 1) presque blanche, colorée par la teinte d'instance tirée dans PALETTES (tree_renderer.gd).
-			var body := Color(0.92, 0.90, 0.86, 1.0)
-			var tips := Color(1.0, 1.0, 0.97, 1.0)
+			# Corail branchu (acropore) : buissons de branches (matière des tiges) qui fourchent deux fois, bouts
+			# clairs (matière des feuilles) ; couleur presque blanche, colorée par la teinte d'instance tirée dans
+			# PALETTES (tree_renderer.gd).
+			var body := mat(Color(0.92, 0.90, 0.86), MAT_STEM)
+			var tips := mat(Color(1.0, 1.0, 0.97), MAT_LEAVES)
 			_blob(st, Vector3(0, 0.15, 0), Vector3(0.45, 0.2, 0.45), shade(body, 0.8), 3)
 			for i in range(7):
 				var a := TAU * i / 7.0 + 0.3 * float(i % 2)
@@ -516,9 +517,9 @@ static func _draw(st: SurfaceTool, kind: String) -> bool:
 					_limb(st, tip, tip + (tip - knee).normalized() * 0.12, 0.03, 0.01, tips, 3)
 		"sea_fan":
 			# Gorgone en éventail : pied court puis éventail plat dressé (plan x-y), dessiné des deux côtés,
-			# nervures plus sombres en rayons ; un petit éventail de côté.
-			var fan := Color(0.92, 0.90, 0.88, 1.0)
-			_limb(st, Vector3.ZERO, Vector3(0, 0.35, 0), 0.06, 0.05, shade(fan, 0.6), 4)
+			# nervures plus sombres en rayons ; un petit éventail de côté. Matière des frondes (faces doubles).
+			var fan := mat(Color(0.92, 0.90, 0.88), MAT_FRONDS)
+			_limb(st, Vector3.ZERO, Vector3(0, 0.35, 0), 0.06, 0.05, mat(Color(0.55, 0.54, 0.53), MAT_STEM), 4)
 			for f in range(2):
 				var c := Vector3(0.0, 0.35, 0.0) if f == 0 else Vector3(0.25, 0.25, 0.15)
 				var r := 1.6 if f == 0 else 0.9
