@@ -77,6 +77,16 @@ func _init() -> void:
 	_check(a["heading_deg"] == 90 and a["nav"] == "ride" and a["seed"] == 0 and not a.has("loop_km") and not a.has("target"),
 		"cap 90°, balade, graine, rien d'autre")
 	_check(m.state == "loading" and m.is_loading(), "préchargement")
+	# Lot W18 : le monde prêt, la balade part tout de suite (plus de retour à l'accueil ni d'écran Prêt).
+	_check(m.on_session("LOADING", "ow:ow-1").is_empty(), "W18 : préchargement en cours, rien")
+	_check(m.on_session("READY", "demo").is_empty() and m.is_loading(), "W18 : autre parcours (fond du menu), rien")
+	_check(m.on_session("READY", "ow:ow-1") == {"action": "start"} and not m.is_loading(), "W18 : monde prêt, départ demandé")
+	_check(m.on_session("READY", "ow:ow-1").is_empty(), "W18 : départ demandé une seule fois")
+	m.state = "loading"
+	_check(m.on_session("RUNNING", "ow:ow-1") == {"action": "close"}, "W18 : déjà en route, le menu se ferme seulement")
+	m.state = "setup"
+	_check(m.on_session("READY", "ow:ow-1").is_empty(), "W18 : hors préchargement, rien")
+	m.state = "loading"
 
 	# Recherche au Click (lot O31) : Z ouvre la grille, + et − changent de case, Z écrit, A maintenu montre
 	# les résultats, Y revient à la grille puis efface ; texte vide, Y revient au globe.
@@ -143,6 +153,21 @@ func _init() -> void:
 	_check(m.loop_km == 40.0, "longueur de boucle par pas de 5 km : 40")
 	act = m.handle("A_SHORT")
 	_check(act["args"]["nav"] == "loop" and act["args"]["loop_km"] == 40.0, "départ en boucle de 40 km")
+
+	# Lot W17 : ligne « Biome » de l'écran du cap, même réglage que Réglages › Graphisme
+	m = Model.new()
+	m.handle("A_SHORT")
+	m.on_map({"roads": [{"c": "t", "xz": [0, 0, 100, 0]}]})
+	m.handle("A_SHORT")
+	m.handle("MINUS_SHORT")                 # de la ligne du cap à la dernière : biome
+	_check(Model.FIELDS[m.field_index] == "biome" and m.biome == "auto", "cap : ligne biome, automatique par défaut")
+	act = m.handle("RIGHT_SHORT")
+	_check(act == {"action": "set_setting", "key": "render.biome", "value": "temperate_grassland"}, "biome : ▶ force le premier biome (réglage render.biome)")
+	act = m.handle("LEFT_SHORT")
+	_check(act["value"] == "auto" and m.biome == "auto", "biome : ◀ revient à automatique")
+	act = m.handle("LEFT_SHORT")
+	_check(act["value"] == m.biome and m.biome != "auto" and m.state == "setup", "biome : ◀ depuis automatique, dernier biome de la liste")
+	_check(m.handle("PLUS_SHORT").is_empty() and m.field_index == 0, "ligne suivante : retour au cap, sans commande")
 
 	# Retours.
 	m = Model.new()

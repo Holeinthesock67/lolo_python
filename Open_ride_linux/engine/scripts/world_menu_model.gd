@@ -12,9 +12,11 @@ extends RefCounted
 ## écrit, Y efface (texte vide : retour), A maintenu passe aux résultats ; résultats — − et + choisissent,
 ## A valide, Z revient à la grille, Y quitte la recherche. Au clavier, on tape le nom et la liste garde la main. Carte — gauche, droite, − (nord) et + (sud) déplacent le curseur
 ## de 100 m (appui long : 500 m), accroché à la route la plus proche, A valide. Cap — − et + changent de ligne
-## (cap, navigation, longueur), gauche et droite changent la valeur, A démarre. Y revient d'un écran.
+## (cap, navigation, longueur), gauche et droite changent la valeur, A démarre : préchargement, puis la balade
+## part dès que le monde est prêt (`on_session`, lot W18). Y revient d'un écran.
 
 const TextEntry := preload("res://scripts/text_entry.gd")
+const BiomeIds := preload("res://scripts/biome_ids.gd")
 const QUERY_MAX := 40
 
 const GLOBE := "globe"
@@ -36,7 +38,8 @@ const LOOP_MAX_KM := 200.0
 const M_PER_DEG := 111320.0
 const NAVS := ["ride", "destination", "loop"]
 const NAV_LABELS := {"ride": "Balade", "destination": "Destination", "loop": "Boucle"}
-const FIELDS := ["heading", "nav", "extra"]
+## Lignes de l'écran du cap ; « biome » (lot W17) montre et change le réglage « Biome du décor » (render.biome).
+const FIELDS := ["heading", "nav", "extra", "biome"]
 const ATTRIBUTIONS := "© OpenStreetMap, OpenMapTiles, Copernicus, NASA, Natural Earth"
 
 var state := GLOBE
@@ -68,6 +71,8 @@ var nav := "ride"
 var loop_km := 30.0
 var target: Variant = null
 var field_index := 0
+## Réglage « Biome du décor » en vigueur (« auto » ou un biome forcé), posé à l'ouverture du menu.
+var biome := "auto"
 var seed_value := 0
 ## Régions du cache (`world_regions`) : {id, name, pinned, bbox}.
 var regions: Array = []
@@ -265,9 +270,9 @@ func _on_setup(event: String) -> Dictionary:
 		"PLUS_SHORT":
 			field_index = (field_index + 1) % FIELDS.size()
 		"LEFT_SHORT":
-			_change_field(-1)
+			return _change_field(-1)
 		"RIGHT_SHORT":
-			_change_field(1)
+			return _change_field(1)
 		"A_SHORT", "A_LONG":
 			if nav == "destination" and target == null:
 				_open_search(true)
@@ -276,7 +281,9 @@ func _on_setup(event: String) -> Dictionary:
 	return {}
 
 
-func _change_field(direction: int) -> void:
+## Valeur de la ligne en focus changée ; la ligne du biome renvoie la commande du réglage (même réglage que
+## Réglages › Graphisme › Biome du décor, enregistré par le core).
+func _change_field(direction: int) -> Dictionary:
 	match FIELDS[field_index]:
 		"heading":
 			heading_deg = fposmod(heading_deg + direction * HEADING_STEP_DEG, 360.0)
@@ -287,6 +294,11 @@ func _change_field(direction: int) -> void:
 				loop_km = clampf(loop_km + direction * LOOP_STEP_KM, LOOP_MIN_KM, LOOP_MAX_KM)
 			elif nav == "destination":
 				target = null           # nouvelle destination : A ouvre la recherche
+		"biome":
+			var ids: Array = ["auto"] + Array(BiomeIds.BIOMES)
+			biome = ids[(maxi(0, ids.find(biome)) + direction + ids.size()) % ids.size()]
+			return {"action": "set_setting", "key": "render.biome", "value": biome}
+	return {}
 
 
 ## Saisie de texte (clavier) : sur le globe, ouvre la recherche ; en recherche, complète le nom.
@@ -374,6 +386,23 @@ func on_error(code: String, message: String) -> void:
 ## La séance est prête : le menu se ferme.
 func is_loading() -> bool:
 	return state == LOADING
+
+
+## État de la séance reçu pendant le préchargement (lot W18) : le monde ouvert prêt (`READY`, parcours
+## « ow:… »), le menu se ferme et la balade démarre tout de suite, sans repasser par l'accueil ni par
+## l'écran Prêt (départ au pédalage du lot O36) : {action: "start"} ; déjà en route : {action: "close"} ;
+## sinon {} (préchargement en cours, ou un autre parcours).
+func on_session(session_state: String, route_id: String) -> Dictionary:
+	if state != LOADING or not route_id.begins_with("ow:"):
+		return {}
+	match session_state:
+		"READY":
+			state = SETUP
+			return {"action": "start"}
+		"RUNNING", "PAUSED":
+			state = SETUP
+			return {"action": "close"}
+	return {}
 
 
 # --- géométrie -------------------------------------------------------------------------------

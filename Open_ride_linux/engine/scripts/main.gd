@@ -875,6 +875,7 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.start_run(act.get("args", {}))
 		"open_world_menu":
 			world_menu_view.open()
+			world_menu_view.vm.biome = streamer.forced_biome   # ligne « Biome » de l'écran du cap (lot W17)
 			ipc.send_command("world_regions")
 		"list_garage":
 			ipc.request_garage()
@@ -928,6 +929,8 @@ func _run_world_action(act: Dictionary) -> void:
 			ipc.send_command("world_pin", {"region_id": act["region_id"], "pinned": act["pinned"]})
 		"start_open_world":
 			ipc.send_command("start_open_world", act["args"])
+		"set_setting":   # ligne « Biome » de l'écran du cap (lot W17) : même réglage que le menu des réglages
+			ipc.set_setting(str(act["key"]), act["value"])
 
 
 func _on_world_menu_received(kind: String, msg: Dictionary) -> void:
@@ -2087,10 +2090,14 @@ func _on_state_received(state: Dictionary) -> void:
 	var route_id = state.get("route_id", null)
 	if live_world.route != null:
 		live_world.on_open_world(ipc.open_world)
-	if world_menu_view != null and world_menu_view.visible and world_menu_view.vm.is_loading() \
-			and session_state in ["READY", "RUNNING"] and str(route_id).begins_with(OW_PREFIX):
-		world_menu_view.close()     # le monde est prêt : l'écran Prêt du menu prend le relais
-		_refresh_menu()
+	if world_menu_view != null and world_menu_view.visible:
+		# Le monde est prêt : le menu se ferme et la balade démarre (départ au pédalage, lot W18).
+		var ow_act: Dictionary = world_menu_view.vm.on_session(session_state, str(route_id))
+		if not ow_act.is_empty():
+			world_menu_view.close()
+			if ow_act["action"] == "start":
+				_run_menu_action(ow_act)
+			_refresh_menu()
 	if (route_id == null or str(route_id) == "") and menu_flow.is_visible():
 		route_id = DEMO_ROUTE_ID   # aucun parcours choisi : la démo tourne en fond des menus (lot N6)
 	if route_id != _route_id_requested:
