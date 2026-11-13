@@ -304,7 +304,8 @@ static func texture_budget_bytes(name: String) -> int:
 ## parapentes et montgolfières. `boats` (P29) : bateaux des lacs, des canaux, des rivières et de la mer.
 ## `cyclists` (P28) : cyclistes du décor sur la route du parcours.
 ## `ground_rocks`, `ground_grass`, `ground_termites` (U8) : rochers épars, herbes hautes et termitières des biomes
-## (ground_details.gd), seulement quand le parcours a des biomes.
+## (ground_details.gd), seulement quand le parcours a des biomes. `ground_walls` (AT1) : tronçons de muret de 6 m des
+## landes atlantiques sur les 5 tronçons de route de 60 m autour de la caméra (100 : les deux côtés en entier).
 ## `grass_tufts`, `grass_tufts_wide` (Y22) : touffes de la bande du bord et de la bande large, jusqu'à 80 m du bord
 ## de la route, sur 9 tronçons de 40 m (grass_tufts.gd).
 const LIVING := {
@@ -313,6 +314,7 @@ const LIVING := {
 		"ground_rocks": 240,
 		"ground_grass": 600,
 		"ground_termites": 15,
+		"ground_walls": 100,
 		"grass_tufts": 2250,
 		"grass_tufts_wide": 1500,
 		"clouds": "flat",
@@ -334,6 +336,7 @@ const LIVING := {
 		"ground_rocks": 600,
 		"ground_grass": 2000,
 		"ground_termites": 30,
+		"ground_walls": 100,
 		"grass_tufts": 12000,
 		"grass_tufts_wide": 7500,
 		"clouds": "flat",
@@ -355,6 +358,7 @@ const LIVING := {
 		"ground_rocks": 1200,
 		"ground_grass": 5000,
 		"ground_termites": 50,
+		"ground_walls": 100,
 		"grass_tufts": 30000,
 		"grass_tufts_wide": 12000,
 		"clouds": "layered",

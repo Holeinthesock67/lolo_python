@@ -12,6 +12,7 @@ const BuildingStyles := preload("res://scripts/building_styles.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
+const BiomeIds := preload("res://scripts/biome_ids.gd")
 
 const FLAT := "toit_plat_blanc"
 
@@ -289,7 +290,7 @@ func _test_styles_by_biome() -> void:
 	for biome in BuildingStyles.BIOME_STYLES:
 		if not BuildingStyles.STYLES.has(BuildingStyles.BIOME_STYLES[biome]):
 			all_known = false
-	_check(all_known and BuildingStyles.BIOME_STYLES.size() == 17, "17 biomes (U0 et JP1), chacun vers un style connu")
+	_check(all_known and BuildingStyles.BIOME_STYLES.keys() == Array(BiomeIds.BIOMES), "%d biomes de biome_ids.gd, chacun vers un style connu" % BiomeIds.BIOMES.size())
 	var b := _building("maison_desert", [[0.0, 0.0], [10.0, 0.0], [10.0, 8.0], [0.0, 8.0]], 0.0, 6.0)
 	b["style"] = "toit_plat_blanc"
 	var res: Dictionary = BuildingMesh.build([b], _theme)
@@ -398,6 +399,10 @@ func _test_biome_habitats() -> void:
 	for st in BuildingStyles.BIOME_ONLY_STYLES:
 		all_used = all_used and used.has(st) and BuildingStyles.STYLES.has(st)
 	_check(all_used, "U23 : chacun des %d styles d'habitat est pris par au moins un biome" % BuildingStyles.BIOME_ONLY_STYLES.size())
+	var roofs_ok := true
+	for id in preload("res://scripts/biome_ids.gd").ROOF_VARIANTS:
+		roofs_ok = roofs_ok and BuildingStyles.STYLES.has(id) and BuildingStyles.resolve(id, "savanna") == id
+	_check(roofs_ok, "chaque toit du contrat (bois_peint du lot U25 compris) a son style et l'emporte sur le biome")
 
 	var chalet := BuildingStyles.dress("chalet", BuildingStyles.FAMILY_HOUSE, 1.0, 9.0, 6.0, 0.3, 0.5, 0.5)
 	_check(chalet["wall"] == BuildingStyles.WALL_CHALET and chalet["roof"] == BuildingStyles.ROOF_SLATE
@@ -439,11 +444,23 @@ func _test_biome_habitats() -> void:
 	_check(all_palettes, "toute palette propre à un style existe dans MATERIAL_COLORS")
 
 	# Code d'habillage : décodage du shader (building.gdshader) pour les plus grandes valeurs
-	var d := {"wall": BuildingStyles.WALL_CHALET, "windows": BuildingStyles.WINDOWS_SHOP, "roof": BuildingStyles.ROOF_THATCH}
+	var d := {"wall": BuildingStyles.WALL_JAPANESE, "windows": BuildingStyles.WINDOWS_SHOJI, "roof": BuildingStyles.ROOF_KAWARA}
 	var code := int(BuildingMesh.dress_code(d, true, 1000.0))
-	_check(code % 16 == BuildingStyles.WALL_CHALET and (code / 16) % 8 == BuildingStyles.WINDOWS_SHOP
-		and (code / 128) % 8 == BuildingStyles.ROOF_THATCH and (code / 1024) % 2 == 1 and code / 2048 == 4000
+	_check(code % 16 == BuildingStyles.WALL_JAPANESE and (code / 16) % 8 == BuildingStyles.WINDOWS_SHOJI
+		and (code / 128) % 8 == BuildingStyles.ROOF_KAWARA and (code / 1024) % 2 == 1 and code / 2048 == 4000
 		and code < 16777216, "code d'habillage : mur, ouvertures, toit, partie, égout relus comme le shader (%d)" % code)
+
+	# Maison japonaise (lot JP3) : tuiles kawara, murs à poteaux sur soubassement de planches, shōji ; grange en bois
+	var minka := BuildingStyles.dress("kawara", BuildingStyles.FAMILY_HOUSE, 1.0, 8.0, 6.0, 0.1, 0.1, 0.9)
+	var kura := BuildingStyles.dress("kawara", BuildingStyles.FAMILY_FARM, 1.0, 8.0, 5.0, 0.1, 0.1, 0.9)
+	_check(minka["wall"] == BuildingStyles.WALL_JAPANESE and minka["windows"] == BuildingStyles.WINDOWS_SHOJI
+		and minka["roof"] == BuildingStyles.ROOF_KAWARA and minka["shape"] == BuildingStyles.SHAPE_HIPPED
+		and float(minka["overhang_m"]) >= 1.0 and kura["wall"] == BuildingStyles.WALL_WOOD
+		and BuildingStyles.roof_palette_key(BuildingStyles.ROOF_KAWARA, "kawara") == "kawara"
+		and BuildingStyles.wall_palette_key(BuildingStyles.WALL_JAPANESE, "kawara") == "white",
+		"Japon : maison à shōji sous kawara, large débord, croupe ; dépendance en bois")
+	_check(BuildingStyles.dress("tuile_plate", BuildingStyles.FAMILY_HOUSE, 1.0, 8.0, 6.0, 0.1, 0.1, 0.9)["windows"] == BuildingStyles.WINDOWS_HOUSE,
+		"ailleurs : fenêtres à volets inchangées")
 
 	# Modèle de biome : forçage et rendu d'avant la série U
 	var model = BiomeModel.new(_theme)
@@ -452,6 +469,42 @@ func _test_biome_habitats() -> void:
 	_check(model.building_style_at(10.0, 10.0) == "chalet", "biome forcé alpine : chalets")
 	model.set_forced("savanna")
 	_check(model.building_style_at(-500.0, 2500.0) == "case", "biome forcé savanna : cases")
+
+
+# Pente : `base_y` est le terrain le plus bas sous l'empreinte ; avec le terrain le plus haut le long des
+# façades (`ground_max_y`, osm_streamer.gd), le rez-de-chaussée est relevé (fenêtres hors du sol côté amont),
+# les murs partent toujours de base_y − jupe, v = 0 au plancher, relèvement borné.
+func _test_slope_floor_lift() -> void:
+	_check(BuildingMesh.floor_lift(100.0, null) == 0.0, "sans ground_max_y : aucun relèvement")
+	_check(BuildingMesh.floor_lift(100.0, 99.0) == 0.0, "terrain plus bas que base_y : aucun relèvement")
+	_check(absf(BuildingMesh.floor_lift(100.0, 101.5) - (1.5 - BuildingMesh.GROUND_TOL_M)) < 1e-6,
+		"pente de 1,5 m le long des façades : rez-de-chaussée relevé de 1,45 m")
+	_check(BuildingMesh.floor_lift(100.0, 130.0) == BuildingMesh.FLOOR_LIFT_MAX_M, "relèvement borné")
+	var ring := [[0.0, 0.0], [10.0, 0.0], [10.0, 8.0], [0.0, 8.0]]
+	var flat_b := _building("b_plat", ring, 100.0, 6.0)
+	var slope_b := _building("b_pente", ring, 100.0, 6.0)
+	slope_b["ground_max_y"] = 101.55
+	var res: Dictionary = BuildingMesh.build([flat_b], _theme, 3.0, FLAT)
+	var res_s: Dictionary = BuildingMesh.build([slope_b], _theme, 3.0, FLAT)
+	var top := -INF
+	var top_s := -INF
+	var bottom_s := INF
+	for v in res["vertices"]:
+		top = maxf(top, v.y)
+	for v in res_s["vertices"]:
+		top_s = maxf(top_s, v.y)
+		bottom_s = minf(bottom_s, v.y)
+	_check(absf(top_s - top - 1.5) < 1e-4, "toit relevé de 1,5 m avec le plancher (%.2f → %.2f)" % [top, top_s])
+	_check(absf(bottom_s - 97.0) < 1e-4, "murs toujours depuis base_y − jupe (min_y = %.2f)" % bottom_s)
+	# v des murs : 0 au plancher relevé, négatif sur le socle aval (aucune ouverture dessinée sous v = 0)
+	var verts: PackedVector3Array = res_s["vertices"]
+	var uvs: PackedVector2Array = res_s["uvs"]
+	var norms: PackedVector3Array = res_s["normals"]
+	var v_ok := true
+	for i in range(verts.size()):
+		if absf(norms[i].y) < 0.1 and absf(verts[i].y - 97.0) < 1e-4:
+			v_ok = v_ok and absf(uvs[i].y - (97.0 - 101.5)) < 1e-4
+	_check(v_ok, "v des murs mesuré depuis le plancher relevé (pied du mur à v = −4,5 m)")
 
 
 func _init() -> void:
@@ -469,5 +522,6 @@ func _init() -> void:
 	_test_styles_by_biome()
 	_test_biome_habitats()
 	_test_round_and_stilts()
+	_test_slope_floor_lift()
 	print("test_building_mesh : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

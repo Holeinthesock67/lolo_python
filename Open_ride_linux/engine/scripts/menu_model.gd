@@ -89,10 +89,17 @@ const TRACK_OPTION_PREFIX := "track:"
 ## liste que le core annoncera dans hello_ack.config (2.0, PLAN_SERIE_R §6) ; absente : DEFAULT_MODES.
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
 const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert",
-	"rogue": "Cyber-Rogue", "wtf": "Mode WTF", "survivor": "Dernier survivant"}
+	"rogue": "Cyber-Rogue", "wtf": "Mode WTF", "survivor": "Dernier survivant", "grandprix": "Grand Prix des objets"}
 const DEFAULT_MODES := ["ride", "erg"]
 ## Ligne d'explication d'un mode de l'accueil (lot O22), à droite de son libellé.
-const HOME_DETAILS := {"open_world": "route créée en roulant", "survivor": "à chaque arche, le dernier sort"}
+const HOME_DETAILS := {"open_world": "route créée en roulant", "survivor": "à chaque arche, le dernier sort",
+	"grandprix": "course contre les bots, objets à lancer"}
+## Modes à écran Prêt de réglages (Dernier survivant, lot DS7 ; Grand Prix des objets, lot GP9) : le core
+## compose le plateau, l'écran montre « Lancer », le parcours, les réglages du mode (`mode_rows`) et, pour le
+## Grand Prix, la ligne « Objets ».
+const SETTINGS_MODES := ["survivor", "grandprix"]
+## Ligne « Objets » de l'écran Prêt du Grand Prix (lot GP9) : ouvre l'écran des objets (menu_flow.gd).
+const GP_ITEMS_ID := "gp_items"
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
 ## Dernière ligne de la liste : « Comment ça marche ? » ouvre l'aide du sous-menu ERG (workout_help.gd).
@@ -141,13 +148,15 @@ var _workouts_return: String = ROUTES
 var world_id := ""
 var world_name := ""
 ## Mode de la séance préparée : "free" (session libre, SIM), "erg", "rogue", "wtf" (mode « What the fuck »,
-## SIM seulement, lot WTF3) ou "survivor" (Dernier survivant, SIM seulement, lot DS7).
+## SIM seulement, lot WTF3), "survivor" (Dernier survivant, SIM seulement, lot DS7) ou "grandprix" (Grand Prix
+## des objets, SIM seulement, lot GP9).
 var mode := "free"
-## Écran Prêt du Dernier survivant (lot DS7), posé par menu_flow.gd : rangées des réglages du mode
-## (SettingsViewModel.row, ids « set:clé ») et ligne « Lancer » ({enabled, detail} : « 4 arches sur 8 km », ou
-## parcours trop court).
-var survivor_rows: Array = []
-var survivor_launch := {"enabled": true, "detail": ""}
+## Écran Prêt d'un mode de SETTINGS_MODES (lots DS7 et GP9), posé par menu_flow.gd : rangées des réglages du
+## mode (SettingsViewModel.row, ids « set:clé »), ligne « Lancer » ({enabled, detail} : « 4 arches sur 8 km »,
+## « 3 tours, 12,0 km », ou parcours trop court) et, pour le Grand Prix, détail de la ligne « Objets ».
+var mode_rows: Array = []
+var mode_launch := {"enabled": true, "detail": ""}
+var gp_items_label := "Objets"
 ## Vélodrome (lot VD10) : parcours qui sont des pistes, épreuves du core (épreuve → réglage → [défaut, valeurs]),
 ## épreuve choisie et valeurs choisies par épreuve.
 var track_ids: Array = []
@@ -283,10 +292,11 @@ func _refresh_home() -> void:
 			"Fantôme de la dernière séance : " + ("oui" if ghost else "non"))]
 		_screens[READY]["title"] = "Prêt : " + start_name + ("" if world_name == "" else " — " + world_name)
 		return
-	if mode == "survivor":
-		_screens[READY]["items"] = [_item("start", "Lancer", bool(survivor_launch.get("enabled", true)),
-			str(survivor_launch.get("detail", ""))), _item("change_route", "Changer de parcours")] + survivor_rows
-		_screens[READY]["title"] = "Prêt : Dernier survivant" + ("" if world_name == "" else " — " + world_name)
+	if mode in SETTINGS_MODES:
+		_screens[READY]["items"] = [_item("start", "Lancer", bool(mode_launch.get("enabled", true)),
+			str(mode_launch.get("detail", ""))), _item("change_route", "Changer de parcours")] + mode_rows \
+			+ ([_item(GP_ITEMS_ID, gp_items_label)] if mode == "grandprix" else [])
+		_screens[READY]["title"] = "Prêt : " + str(HOME_MODES[mode]) + ("" if world_name == "" else " — " + world_name)
 		return
 	if is_track():
 		_screens[READY]["items"] = _track_items()
@@ -480,11 +490,14 @@ func prepare_wtf() -> Dictionary:
 	return state()
 
 
-## Séance du Dernier survivant (lot DS7) : SIM, `mode` « survivor » au `start`, adversaires composés par le core
-## d'après les réglages `survivor.*` ; ouvre l'écran Prêt, ou les parcours d'abord sans monde choisi.
-func prepare_survivor() -> Dictionary:
+## Séance d'un mode de SETTINGS_MODES : Dernier survivant (lot DS7, réglages `survivor.*`) ou Grand Prix des
+## objets (lot GP9, réglages `grandprix.*`) ; SIM, `mode` au `start`, adversaires composés par le core ; ouvre
+## l'écran Prêt, ou les parcours d'abord sans monde choisi.
+func prepare_settings_mode(m: String) -> Dictionary:
 	_clear_start()
-	mode = "survivor"
+	mode = m
+	mode_rows = []
+	mode_launch = {"enabled": true, "detail": ""}
 	_refresh_home()
 	if world_id == "":
 		_routes_return = READY
@@ -494,17 +507,19 @@ func prepare_survivor() -> Dictionary:
 	return state()
 
 
-## Réglages et ligne « Lancer » de l'écran Prêt du Dernier survivant (menu_flow.gd).
-func set_survivor_ready(rows: Array, launch: Dictionary) -> void:
-	survivor_rows = []
+## Réglages, ligne « Lancer » et, au Grand Prix, libellé de la ligne « Objets » de l'écran Prêt d'un mode de
+## SETTINGS_MODES (menu_flow.gd).
+func set_mode_ready(rows: Array, launch: Dictionary, items_label := "Objets") -> void:
+	mode_rows = []
 	for it in rows:   # lignes de réglage (SettingsViewModel.row) remises au format des éléments du menu
 		var e := _item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)), str(it.get("detail", "")))
 		for k in ["bar", "editing"]:
 			if it.has(k):
 				e[k] = it[k]
-		survivor_rows.append(e)
-	survivor_launch = launch
-	if mode == "survivor":
+		mode_rows.append(e)
+	mode_launch = launch
+	gp_items_label = items_label
+	if mode in SETTINGS_MODES:
 		_refresh_home()
 		# « Lancer » grisé (parcours trop court) : le focus n'y reste pas, il passe à la ligne active suivante
 		if _screen == READY and (_focus < 0 or _focus >= _items().size() or not _items()[_focus]["enabled"]):
@@ -519,8 +534,8 @@ func _clear_start() -> void:
 ## Arguments de `start` : séance préparée (plan_day, ftp_test) et bots choisis ({} si rien).
 func _start_args() -> Dictionary:
 	var out := start_args.duplicate()
-	if mode == "survivor":   # le core compose le plateau : pas d'argument `bots`
-		return {"mode": "survivor"}
+	if mode in SETTINGS_MODES:   # le core compose le plateau : pas d'argument `bots`
+		return {"mode": mode}
 	if is_track():   # vélodrome (lot VD10) : le core compose aussi le plateau
 		var choice := {"event": track_event}
 		for o in track_events.get(track_event, {}):
@@ -709,7 +724,7 @@ func reset() -> void:
 	bot_choices = last_bots.duplicate()
 	ghost = last_ghost
 	peloton = last_peloton
-	if mode in ["rogue", "wtf", "survivor", "coach"]:
+	if mode in ["rogue", "wtf", "coach"] or mode in SETTINGS_MODES:
 		mode = "free"
 	_refresh_home()
 	_open(HOME, false)
@@ -1017,7 +1032,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "interrupted", "coach":
+				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "interrupted", "coach":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
@@ -1039,7 +1054,7 @@ func _validate() -> Dictionary:
 		READY:
 			match id:
 				"start":
-					if not mode in ["rogue", "survivor", "coach"]:   # bots de la séance notés aussi par le core (lot O32)
+					if not (mode in ["rogue", "coach"] or mode in SETTINGS_MODES):   # bots de la séance notés aussi par le core (lot O32)
 						last_bots = bot_choices.duplicate()
 						last_ghost = ghost
 						last_peloton = peloton
@@ -1063,11 +1078,11 @@ func _validate() -> Dictionary:
 				"change_route":
 					_routes_return = READY
 					_open(ROUTES)
-				"rogue_change", "wtf_rules":
+				"rogue_change", "wtf_rules", GP_ITEMS_ID:
 					return {"action": "item", "screen": READY, "id": id}
 				"records":   # écran « Records » (série T, lot T10), traité par menu_flow.gd
 					return {"action": "item", "screen": READY, "id": id}
-				_:   # réglages du Dernier survivant (« set:clé », lot DS7) : modifiés en place par menu_flow.gd
+				_:   # réglages d'un mode de SETTINGS_MODES (« set:clé », lots DS7 et GP9) : modifiés en place par menu_flow.gd
 					if id.begins_with(TRACK_OPTION_PREFIX):
 						_cycle_track_option(id.substr(TRACK_OPTION_PREFIX.length()))
 					elif id.begins_with("set:"):

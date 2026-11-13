@@ -68,6 +68,11 @@ extends RefCounted
 ## en place par set_setting, puis « Lancer » avec la longueur de course, désactivé sur un parcours trop court) ;
 ## `start` part avec `mode` « survivor » et sans `bots` ; un refus du core (`bad_args`) s'affiche sur la
 ## ligne d'état.
+## Grand Prix des objets (série GP, lot GP9, contrat 1.7) : « Grand Prix des objets » à l'accueil (quand le core
+## l'annonce) ouvre l'écran Prêt du mode comme le Dernier survivant : parcours, réglages `grandprix.*` et
+## « Niveau des bots » (tours sur un circuit, distance sur un parcours en ligne), « Objets » (une case par objet,
+## list_mode_options et set_mode_option, grandprix/gp_items_menu_model.gd), « Lancer » avec la longueur de la
+## course, désactivé sur un parcours en ligne trop court ; `start` part avec `mode` « grandprix » sans `bots`.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
@@ -86,13 +91,17 @@ const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 const WtfRulesModel := preload("res://scripts/wtf/wtf_rules_model.gd")
+const GpItemsMenuModel := preload("res://scripts/grandprix/gp_items_menu_model.gd")
 ## Dernier survivant (lot DS7) : réglages de l'écran Prêt du mode, dans l'ordre du plan (§4).
 const SURVIVOR_OPPONENTS := [2, 11]     # bornes de survivor.opponents et survivor.spacing_km (config.py)
 const SURVIVOR_SPACING_KM := [1, 3]
-## Aide des touches sur une ligne de réglage de l'écran Prêt du mode (essai du 4 novembre).
-const SURVIVOR_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la valeur, A maintenu pour enregistrer, Y pour annuler."
+## Aide des touches sur une ligne de réglage de l'écran Prêt d'un mode (essai du 4 novembre).
+const MODE_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la valeur, A maintenu pour enregistrer, Y pour annuler."
 const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "survivor.spread", "survivor.after_out"]
 const SURVIVOR_PREFIX := "Survivant : "
+## Grand Prix des objets (lot GP9) : bornes de grandprix.distance_km (config.py), préfixe des libellés du core.
+const GP_DISTANCE_KM := [5, 30]
+const GP_PREFIX := "Grand Prix : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
 const CollectionViewModel := preload("res://scripts/collection_view_model.gd")
@@ -235,6 +244,7 @@ var records = RecordsViewModel.new()
 var rogue = RogueMenuModel.new()
 ## Règles du mode WTF (lot WTF3), telles que le core les a renvoyées.
 var wtf = WtfRulesModel.new()
+var gp_items = GpItemsMenuModel.new()
 ## `start_run` accusé par le core depuis le dernier lancement : l'écran d'attente peut céder la place à Prêt.
 var _rogue_acked := false
 ## Garage (lot V8) : catalogue, progression et brouillon de l'avatar.
@@ -318,6 +328,8 @@ func _init() -> void:
 	menu.set_screen_items(RogueMenuModel.LOADING, [{"id": "wait", "label": "Composition de la run…", "enabled": false}])
 	menu.add_screen({"id": WtfRulesModel.SCREEN, "title": "Mode WTF", "on_back": MenuModel.HOME, "items": []})
 	_refresh_wtf()
+	menu.add_screen({"id": GpItemsMenuModel.SCREEN, "title": "Grand Prix : objets", "on_back": MenuModel.READY, "items": []})
+	_refresh_gp_items()
 	menu.add_screen({"id": GarageViewModel.SCREEN, "title": "Garage", "on_back": MenuModel.HOME, "items": []})
 	for screen in [GarageViewModel.BIKE, GarageViewModel.OUTFIT, GarageViewModel.AVATAR]:
 		menu.add_screen({"id": screen, "title": "Garage", "on_back": GarageViewModel.SCREEN, "items": []})
@@ -521,7 +533,7 @@ func set_versions(engine_v: String, core_v: String) -> void:
 func on_settings(msg: Dictionary) -> void:
 	settings.on_settings(msg)
 	_refresh_settings()
-	_refresh_survivor()
+	_refresh_mode_ready()
 	_refresh_coach()   # objectif et temps disponible de l'écran du conseil
 	if _ftp_pending:
 		_ftp_pending = false
@@ -583,7 +595,7 @@ func on_error(code: String, text: String) -> void:
 		contents.on_error(code, text)
 		_refresh_contents()
 		return
-	if (code == "bot_invalid" or (code == "bad_args" and (menu.mode == "survivor" or menu.is_track()))) and menu.current_screen() == MenuModel.READY:
+	if (code == "bot_invalid" or (code == "bad_args" and (menu.mode in MenuModel.SETTINGS_MODES or menu.is_track()))) and menu.current_screen() == MenuModel.READY:
 		ready_message = "Échec : " + text
 		return
 	if _plan_request != "" and code in ["plan_invalid", "busy"]:
@@ -1210,8 +1222,8 @@ func list_failed(list_name: String) -> void:
 ## Événement du Click ou du clavier (PLUS_SHORT…) ; renvoie l'action à exécuter ({} sinon).
 func handle(event: String) -> Dictionary:
 	var act := _handle_event(event)
-	if menu.mode == "survivor":
-		_refresh_survivor()   # parcours choisi, réglage modifié : longueur de course et rangées à jour
+	if menu.mode in MenuModel.SETTINGS_MODES:
+		_refresh_mode_ready()   # parcours choisi, réglage modifié : longueur de course et rangées à jour
 	return act
 
 
@@ -1270,9 +1282,24 @@ func _handle_event(event: String) -> Dictionary:
 		return {"action": "list_wtf_rules"}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "survivor":
 		ready_message = ""
-		menu.prepare_survivor()
-		_refresh_survivor()
+		menu.prepare_settings_mode("survivor")
+		_refresh_mode_ready()
 		return {"action": "select_workout", "workout_id": null}   # SIM seulement : le core refuse un entraînement ERG
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "grandprix":
+		ready_message = ""
+		menu.prepare_settings_mode("grandprix")
+		_refresh_mode_ready()
+		# SIM seulement (le core refuse un entraînement ERG) ; objets demandés pour la ligne « Objets »
+		return {"action": "sequence", "list": [{"action": "select_workout", "workout_id": null},
+			{"action": "list_mode_options", "mode": GpItemsMenuModel.MODE}]}
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]) == MenuModel.GP_ITEMS_ID:
+		_refresh_gp_items()
+		menu.push_screen(GpItemsMenuModel.SCREEN)
+		return {"action": "list_mode_options", "mode": GpItemsMenuModel.MODE}
+	if act.get("action", "") == "item" and act.get("screen", "") == GpItemsMenuModel.SCREEN:
+		var gp_act: Dictionary = gp_items.handle(str(act["id"]))
+		_refresh_gp_items()
+		return gp_act
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]).begins_with("set:"):
 		if settings.begin(str(act["id"]).substr(4)):
 			_refresh_edit()
@@ -1473,43 +1500,93 @@ func _handle_event(event: String) -> Dictionary:
 	return act
 
 
-# --- Dernier survivant (lot DS7) -------------------------------------------------------------------
+# --- Écran Prêt des modes à réglages : Dernier survivant (lot DS7), Grand Prix des objets (lot GP9) ---------
 
-## Écran Prêt du Dernier survivant : réglages du mode modifiés en place (set_setting, repris à la séance
-## suivante), puis « Lancer » avec la longueur de course, désactivé sur un parcours ouvert trop court (le
-## core le refuse aussi : `bad_args`).
-func _refresh_survivor() -> void:
+## Écran Prêt du mode en cours (MenuModel.SETTINGS_MODES) : réglages du mode modifiés en place (set_setting,
+## repris à la séance suivante), puis « Lancer » avec la longueur de course, désactivé sur un parcours trop
+## court (le core le refuse aussi : `bad_args`) ; rien hors de ces modes.
+func _refresh_mode_ready() -> void:
+	var route := _route_entry(menu.world_id)
+	if menu.mode == "survivor":
+		menu.set_mode_ready(_mode_rows(SURVIVOR_KEYS, SURVIVOR_PREFIX),
+			survivor_launch(int(settings.item("survivor.opponents").get("value", 4)),
+			int(settings.item("survivor.spacing_km").get("value", 2)), route))
+	elif menu.mode == "grandprix":
+		menu.set_mode_ready(_mode_rows(grandprix_keys(route), GP_PREFIX),
+			grandprix_launch(int(settings.item("grandprix.laps").get("value", 3)),
+			int(settings.item("grandprix.distance_km").get("value", 10)), route), gp_items.ready_label())
+
+
+## Rangées des réglages `keys` (absents du message `settings` : sautés), libellés sans le préfixe du mode.
+func _mode_rows(keys: Array, prefix: String) -> Array:
 	var rows: Array = []
-	for key in SURVIVOR_KEYS:
+	for key in keys:
 		var it: Dictionary = settings.item(key)
 		if it.is_empty():
 			continue
 		var editing: Dictionary = settings.editing if str(settings.editing.get("key", "")) == key else {}
 		var row: Dictionary = SettingsViewModel.row("set:" + key, it, editing)
-		row["label"] = survivor_label(str(row["label"]))
+		row["label"] = mode_label(str(row["label"]), prefix)
 		rows.append(row)
-	menu.set_survivor_ready(rows, survivor_launch(int(settings.item("survivor.opponents").get("value", 4)),
-		int(settings.item("survivor.spacing_km").get("value", 2)), _route_entry(menu.world_id)))
+	return rows
 
 
 ## Ligne d'état de l'écran Prêt du mode : pourquoi « Lancer » est grisé et quoi changer, sinon l'aide des touches
 ## quand le focus est sur une ligne de réglage.
-func _survivor_status(st: Dictionary) -> void:
-	var advice := str(menu.survivor_launch.get("advice", ""))
+func _mode_status(st: Dictionary) -> void:
+	var advice := str(menu.mode_launch.get("advice", ""))
 	var items: Array = st.get("items", [])
 	var focus := int(st.get("focus", -1))
 	var on_setting := focus >= 0 and focus < items.size() and str(items[focus].get("id", "")).begins_with("set:")
 	if advice != "":
-		st["status"] = advice + ("\n" + SURVIVOR_EDIT_HELP if on_setting and settings.editing.is_empty() else "")
+		st["status"] = advice + ("\n" + MODE_EDIT_HELP if on_setting and settings.editing.is_empty() else "")
 		st["status_error"] = true
 	elif on_setting and settings.editing.is_empty():
-		st["status"] = SURVIVOR_EDIT_HELP
+		st["status"] = MODE_EDIT_HELP
 
 
 ## Libellé d'un réglage sur l'écran du mode : « Survivant : adversaires » devient « Adversaires ».
 static func survivor_label(label: String) -> String:
-	var short := label.trim_prefix(SURVIVOR_PREFIX)
+	return mode_label(label, SURVIVOR_PREFIX)
+
+
+## Libellé sans le préfixe du mode, majuscule en tête : « Grand Prix : chaos » devient « Chaos ».
+static func mode_label(label: String, prefix: String) -> String:
+	var short := label.trim_prefix(prefix)
 	return short.left(1).to_upper() + short.substr(1) if short != "" else label
+
+
+## Réglages de l'écran Prêt du Grand Prix, dans l'ordre du plan (§4.4) : tours sur un circuit, distance sur un
+## parcours en ligne, les deux tant que le parcours est inconnu.
+static func grandprix_keys(route: Dictionary) -> Array:
+	var loop := str(route.get("route_type", "")) == "loop"
+	var course: Array = ["grandprix.laps"] if loop else (["grandprix.distance_km"] if not route.is_empty()
+		else ["grandprix.laps", "grandprix.distance_km"])
+	return ["grandprix.opponents"] + course + ["bots.level_pct", "grandprix.chaos", "grandprix.box_every_m"]
+
+
+## Ligne « Lancer » du Grand Prix : {enabled, detail, advice}. Circuit : tours et longueur de la course ; en
+## ligne : distance, désactivé si le parcours est plus court (le core refuse aussi le départ, `bad_args`).
+static func grandprix_launch(laps: int, distance_km: int, route: Dictionary) -> Dictionary:
+	var length = route.get("length_m", null)
+	if route.is_empty() or length == null:
+		return {"enabled": true, "detail": "", "advice": ""}
+	if str(route.get("route_type", "")) == "loop":
+		return {"enabled": true, "detail": "%d tour%s, %s" % [laps, "s" if laps > 1 else "",
+			CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
+	if float(length) < distance_km * 1000.0:
+		return {"enabled": false, "detail": "trop court (%d km)" % distance_km,
+			"advice": grandprix_advice(distance_km, float(length))}
+	return {"enabled": true, "detail": "course de %d km" % distance_km, "advice": ""}
+
+
+## Explication entière de « Lancer » grisé au Grand Prix (ligne d'état de l'écran Prêt).
+static func grandprix_advice(distance_km: int, length_m: float) -> String:
+	var text := "Lancer grisé : course de %d km, parcours de %s.\n" % [distance_km, CatalogModel._format_fr_km(length_m)]
+	var fits := mini(int(floor(length_m / 1000.0 + 1e-9)), GP_DISTANCE_KM[1])
+	if fits < GP_DISTANCE_KM[0]:
+		return text + "Choisis un parcours plus long ou un circuit."
+	return text + "Possible : %d km au plus, sinon change de parcours." % fits
 
 
 ## Ligne « Lancer » : {enabled, detail}. `route` : élément de la liste des parcours ({} : inconnu).
@@ -1644,6 +1721,20 @@ func _launch_rogue(act: Dictionary) -> Dictionary:
 ## Écran des règles du mode WTF (lot WTF3).
 func _refresh_wtf() -> void:
 	menu.set_screen_items(WtfRulesModel.SCREEN, wtf.items(), wtf.title())
+
+
+## Écran des objets du Grand Prix (lot GP9) et ligne « Objets » de son écran Prêt.
+func _refresh_gp_items() -> void:
+	menu.set_screen_items(GpItemsMenuModel.SCREEN, gp_items.items(), gp_items.title())
+	_refresh_mode_ready()
+
+
+## Message `mode_options` du core (liste, ou réponse à set_mode_option) ; les règles WTF passent encore par
+## l'alias `wtf_rules` (contrat 1.7).
+func on_mode_options(msg: Dictionary) -> void:
+	if str(msg.get("mode", "")) == GpItemsMenuModel.MODE:
+		gp_items.on_options(msg)
+		_refresh_gp_items()
 
 
 ## Message `wtf_rules` du core (liste, ou réponse à set_wtf_rule).
@@ -2082,7 +2173,7 @@ func _refresh_edit() -> void:
 			menu.set_screen_items(WORKOUT_CREATE, builder.menu_items(str(settings.editing.get("key", "")),
 				settings.editing.get("value", 0)))
 		MenuModel.READY:
-			_refresh_survivor()
+			_refresh_mode_ready()
 		CoachViewModel.SCREEN, CoachViewModel.RACE, CoachViewModel.WATCH:
 			_refresh_coach()
 		_:
@@ -2164,8 +2255,8 @@ func state() -> Dictionary:
 		st["status"] = summary_message
 	elif st["screen"] == MenuModel.READY:
 		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
-		if menu.mode == "survivor" and ready_message == "":
-			_survivor_status(st)
+		if menu.mode in MenuModel.SETTINGS_MODES and ready_message == "":
+			_mode_status(st)
 	elif st["screen"] in GarageViewModel.SCREENS:
 		st["status"] = garage.message
 	elif st["screen"] in [INTERRUPTED, MenuModel.HOME]:
@@ -2328,8 +2419,8 @@ func _launch_coach_race() -> Dictionary:
 			if not settings.item(pair[0]).is_empty():
 				settings.item(pair[0])["value"] = pair[1]   # affiché tout de suite, le core confirme ensuite
 			list.append({"action": "set_setting", "key": pair[0], "value": pair[1]})
-		menu.prepare_survivor()
-		_refresh_survivor()
+		menu.prepare_settings_mode("survivor")
+		_refresh_mode_ready()
 	else:
 		menu.prepare_coach_race("course conseillée", {"bots": coach.race_bots(MenuModel.PELOTON_PROFILES)}
 			if not coach.race_bots(MenuModel.PELOTON_PROFILES).is_empty() else {}, coach.race_ready_text())

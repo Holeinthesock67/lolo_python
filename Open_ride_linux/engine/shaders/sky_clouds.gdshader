@@ -113,11 +113,16 @@ void sky() {
 	vec3 sky = mix(sky_top_color.rgb, sky_horizon_color.rgb, clamp(pow(1.0 - v_angle, 0.6 / sky_curve), 0.0, 1.0));
 	sky *= sky_energy;
 	if (stars > 0.0 && EYEDIR.y > 0.0) {
-		// Une étoile au plus par case d'environ 0,3° ; éclat tiré de la case, plus faible près de l'horizon
-		vec3 cell = floor(EYEDIR * 380.0);
+		// Une étoile au plus par case d'environ 0,25° : point rond au centre de la case (assez gros pour se voir
+		// à l'écran, lot P35), éclat et teinte tirés de la case, plus faible près de l'horizon
+		vec3 q = EYEDIR * 230.0;
+		vec3 cell = floor(q);
 		float h = _hash21(cell.xy + cell.z * 17.31);
-		float star = smoothstep(0.9965, 1.0, h) * smoothstep(0.0, 0.25, EYEDIR.y);
-		sky += vec3(0.9, 0.92, 1.0) * star * stars * 1.4;
+		float star = smoothstep(0.985, 1.0, h);
+		float d = length(fract(q) - 0.5);
+		star *= smoothstep(0.42, 0.08, d) * smoothstep(0.0, 0.2, EYEDIR.y);
+		vec3 tint = mix(vec3(0.75, 0.82, 1.0), vec3(1.0, 0.9, 0.75), _hash21(cell.zy + 3.7));
+		sky += tint * star * stars * 2.2;
 	}
 
 	// Nuages, avant le soleil : le disque solaire reste visible à travers une couche fine seulement
@@ -147,7 +152,8 @@ void sky() {
 		// Nuage plus sombre en son cœur, éclairé côté soleil
 		float sun_side = LIGHT0_ENABLED ? clamp(dot(LIGHT0_DIRECTION, EYEDIR) * 0.5 + 0.5, 0.0, 1.0) : 0.5;
 		vec3 cloud = cloud_color.rgb * mix(0.9, 1.0, sun_side) * mix(1.0, 0.88, alpha * alpha) * sky_energy;
-		sky = mix(sky, cloud, alpha * 0.95);
+		// La nuit, nuages plus légers : les étoiles passent entre eux (lot P35)
+		sky = mix(sky, cloud, alpha * 0.95 * (1.0 - 0.5 * stars));
 	}
 
 	vec3 ground = mix(ground_bottom_color.rgb, ground_horizon_color.rgb, clamp(pow(1.0 + v_angle, 0.6 / ground_curve), 0.0, 1.0));

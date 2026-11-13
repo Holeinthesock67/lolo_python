@@ -72,7 +72,7 @@ static func _clean(value: Variant, hi: float, clamp_negative := true) -> float:
 ## la cadence cible.
 static func controls_text(erg: bool, kind := "workout", rogue := false) -> String:
 	if rogue:   # colonne Cyber-Rogue du plan des boutons (spécification générale §7.1)
-		return "Click : Y = pause · + / − = vitesse · Z = attaque, long = carte active · ↑ / ↓ = vue   (clavier : mêmes touches)"
+		return "Click : Y = pause · + / − = vitesse · Z = attaque, long = carte active · A = choisir, long = valider · ↑ / ↓ = vue   (clavier : mêmes touches)"
 	if erg and kind == "cadence":
 		return "Click : Y = pause · + / − = cadence cible ± 2 %, long ± 10 % · ↑ / ↓ = vue   (clavier : mêmes touches)"
 	if erg and kind == "free":
