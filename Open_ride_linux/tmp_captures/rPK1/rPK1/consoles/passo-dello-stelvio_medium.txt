@@ -1,2 +1,37 @@
->>> [1/1] Scénario demo (2:20)
-parcours introuvable : paquet/packs/cols_celebres/routes/passo-dello-stelvio.world (demo, demo_long, village, osm, ouvert ou dossier .world)
+>>> [1/1] Scénario demo (27:27)
+== demo : parcours passo-dello-stelvio, 1647 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.1 s après le démarrage du core
+[OK] parcours chargé par l'engine : passo-dello-stelvio à 28.1 s
+[OK] engine vivant jusqu'à la fin : 1647 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] sonde de performance : 1612 relevés, rapport sonde/rapport.html
+[OK] budget medium : images/s : médiane 60.0 (au moins 58)
+[OK] budget medium : temps d'image p99 : 16.7 ms (médiane des p99 de chaque seconde, sous 25 ms)
+[OK] budget medium : GPU de la vue : médiane 8.58 ms (au plus 13 ms)
+[OK] budget medium : GPU saturé : 0.0 % des secondes au-dessus de 95 % de charge (au plus 5 %)
+[OK] à-coups : départ : pire image 69 ms de 20 à 30 s (au plus 150 ms)
+[OK] à-coups : images lentes : 39 seconde(s) avec une image de plus de 50 ms en 26.7 min, 1.5 par minute (au plus 3)
+[ÉCHEC] à-coups : pire image : 137 ms (au plus 100 ms)
+[OK] à-coups : périodicité en distance : aucune sur 45 image(s) de plus de 50 ms
+[OK] 36/36 images enregistrées après le chargement (+2 avant, hors compte : 2 enregistrée(s)), réponse en 0.29 s (médiane), 4.64 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (38 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] qualité notée par la sonde : medium sur toute la mesure
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -0.2 à 14.9 %, pente envoyée 0.0 à 16.0 %
+[ÉCHEC] médiane 73.2 km/h sur 1227 s (attendu 60.0 ± 6.0), de 61.9 à 77.2 km/h : vitesse imposée 60 km/h
+[ÉCHEC] décor : aucun contact sur la route : 4 (dernier : oncoming / core à 58 m (écarts à l'axe -2.5 et -2.5 m))
+[OK] fréquence cardiaque au journal : 1248 échantillons, 173 à 185 bpm
+    NON demo : 4 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rPK1/passo-dello-stelvio_medium/index.html
+=== Banc fini : ÉCHEC (4 vérification(s))
+RÉSULTAT : ÉCHEC (4 vérification(s))
