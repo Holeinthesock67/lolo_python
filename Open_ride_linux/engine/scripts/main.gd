@@ -53,6 +53,7 @@ const VEHICLE_PREFIX := "veh:"   # `draft_bot` d'un véhicule de la route (lot A
 const RIDER_PREFIX := "rider:"   # `draft_bot` d'un cycliste du décor (lot AS7, road_cyclists.py du core)
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
+const BikeLights := preload("res://scripts/bike_lights.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
 const WorkoutChartModel := preload("res://scripts/workout_chart_model.gd")
 const WorkoutChartView := preload("res://scripts/workout_chart_view.gd")
@@ -66,6 +67,7 @@ const LivingWorld := preload("res://scripts/living_world.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
 const AtmosphereView := preload("res://scripts/atmosphere_view.gd")
 const SkyCycle := preload("res://scripts/sky_cycle.gd")
+const NightLights := preload("res://scripts/night_lights.gd")
 const SeasonModel := preload("res://scripts/season_model.gd")
 const VelodromeHall := preload("res://scripts/velodrome_hall.gd")
 const SegmentMarkers := preload("res://scripts/segment_markers.gd")
@@ -234,6 +236,7 @@ var _draft := {"draft": null, "draft_bot": null}   # champs `draft` et `draft_bo
 ## « side » ou « » sans), qui montre l'avatar sans changer la caméra du jeu.
 var avatar_model = AvatarModel.new()
 var avatar_view: Node3D
+var bike_lights: Node3D = null   # lot P35 : phare et feu arrière du joueur, la nuit
 var _avatar_cam := ""
 ## Courbes de la séance (lot O14) : un modèle, deux vues (bandeau ERG, panneau SIM), taille par réglage.
 var chart_model = WorkoutChartModel.new()
@@ -366,6 +369,8 @@ func _ready() -> void:
 	add_child(draft_gauge)
 	avatar_view = AvatarView.new()
 	add_child(avatar_view)
+	bike_lights = BikeLights.new()
+	add_child(bike_lights)
 	_configure_avatar()
 	segment_markers = SegmentMarkers.new()
 	segment_markers.name = "SegmentMarkers"
@@ -1767,6 +1772,8 @@ func _step_avatar(pos: Vector3, heading: float, roll: float, now_us: int, pitch_
 	var paused := session_state == "PAUSED"
 	avatar_model.update(now_us / 1000000.0, _last_state.get("cadence", null), _last_state.get("power", null),
 		_last_state.get("grade", null), paused)
+	if bike_lights != null:
+		bike_lights.place(pos, Vector3(deg_to_rad(pitch_deg), -heading, roll))
 	if not avatar_view.visible:
 		return
 	avatar_view.apply(avatar_model)
@@ -1919,8 +1926,17 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 	var out := SkyCycle.evaluate(_day_mode, _season_mode, _theme_dict, lat, lon, date,
 		float(_last_state.get("elapsed_s", 0.0)), now, float(hour) if hour != null else NAN)
 	var light: Dictionary = out["daylight"]
-	if bool(light.get("active", false)) or atmosphere_view.cycle_active():
-		atmosphere_view.set_cycle(light if bool(light.get("active", false)) else {})
+	var lit := bool(light.get("active", false))
+	if lit or atmosphere_view.cycle_active():
+		atmosphere_view.set_cycle(light if lit else {})
+	# Lot P35 : sons d'ambiance à l'heure de la scène, phares des véhicules au coucher, lumières de nuit
+	if living_world != null:
+		living_world.solar_hour = float(light["solar_hour"]) if lit else NAN
+	if living_decor != null:
+		living_decor.set_sun_elevation(float(light["sun_elevation_deg"]) if lit else NAN)
+	var glow := NightLights.level(light)
+	if glow != NightLights.current or lit != NightLights.enabled:
+		NightLights.apply(glow, lit)
 	var season: Dictionary = out["season"]
 	var params: Dictionary = season["params"] if bool(season["active"]) else {}
 	if params != _season_applied:

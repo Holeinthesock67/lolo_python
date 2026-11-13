@@ -8,7 +8,7 @@ extends RefCounted
 ## - `daylight_params(mode, theme)` -> paramètres de `DaylightModel.evaluate` pour `render.day_night` :
 ##   `off` (et thème sans heure en `theme`) : `present` faux, soleil fixe d'aujourd'hui ; `theme` : heure du
 ##   thème (`sky.time_of_day`) ; `real` : heure du PC ; `accelerated` : une journée en une heure (×24) depuis
-##   ACCEL_START_HOUR ;
+##   ACCEL_START_HOUR, la nuit ne durant que le quart du jour (ACCEL_NIGHT_SHARE du cycle) ;
 ## - `season_state(mode, theme, month, day, lat)` -> `{active, season, progress, params}` pour `render.seasons` :
 ##   `off` : inactive (paramètres de l'été, rendu d'aujourd'hui) ; `theme` : saison du thème, l'été sans ;
 ##   `date` : saison de la date et de l'hémisphère, selon le calendrier de chaque biome (lot U13) : `weights`
@@ -26,6 +26,7 @@ const DAY_MODES := ["off", "theme", "real", "accelerated"]
 const SEASON_MODES := ["off", "theme", "date", "spring", "summer", "autumn", "winter"]
 const ACCEL_START_HOUR := 6.0    # journée accélérée : départ à l'aube
 const ACCEL_FACTOR := 24.0       # une journée en une heure de séance
+const ACCEL_NIGHT_SHARE := 0.2   # la nuit dure le quart du jour (12 min de nuit, 48 min de jour ; 13/11)
 
 
 static func daylight_params(mode: String, theme: Dictionary) -> Dictionary:
@@ -41,6 +42,7 @@ static func daylight_params(mode: String, theme: Dictionary) -> Dictionary:
 			tod["mode"] = "accelerated"
 			tod["hour"] = ACCEL_START_HOUR
 			tod["factor"] = ACCEL_FACTOR
+			tod["night_share"] = ACCEL_NIGHT_SHARE
 		_:
 			tod["present"] = false
 	return tod
