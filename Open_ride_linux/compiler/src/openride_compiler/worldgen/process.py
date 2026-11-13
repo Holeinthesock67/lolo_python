@@ -193,6 +193,7 @@ class WorldSession:
         self.opened = False
         self.closed = False
         self.legs: list[Leg] = []
+        self.finish_leg: int | None = None   # W19 : étape au bout de laquelle la destination ou la boucle arrive
         self.s_m = 0.0
         self.rev = 0
         self.profiles: dict[str, EdgeProfile] = {}
@@ -431,6 +432,25 @@ class WorldSession:
     def length_m(self) -> float:
         return self.legs[-1].s1 if self.legs else 0.0
 
+    @property
+    def finish_m(self) -> float | None:
+        """Arrivée de la séance sur la route engagée (lot W19) : nœud où le navigateur annonce `arrived`
+        en destination ou en boucle ; `None` en balade et tant que l'arrivée n'est pas dans la route engagée."""
+        if self.finish_leg is None or self.finish_leg >= len(self.legs):
+            return None
+        aim = self.nav.target_xz if self.nav.mode == "destination" else self.nav.start_xz
+        if aim is None:
+            return self.legs[self.finish_leg].s1
+        # point de la route le plus proche de la cible (ou du départ en boucle), autour du nœud d'arrivée
+        best_d, best_s = math.inf, self.legs[self.finish_leg].s1
+        for leg in self.legs[self.finish_leg:self.finish_leg + 2]:
+            p = leg.profile
+            d = np.hypot(p.x - aim[0], p.z - aim[1])
+            k = int(np.argmin(d))
+            if float(d[k]) < best_d:
+                best_d, best_s = float(d[k]), leg.s0 + float(p.s[k])
+        return best_s
+
     def _history(self, upto: int) -> list[str]:
         return [leg.edge_id for leg in self.legs[:upto + 1]]
 
@@ -449,6 +469,9 @@ class WorldSession:
             self._ensure_around_node(last.to_node)
             c = self.nav.choose(last.to_node, last.edge_id, self._history(i))
             self.nav_default[i] = (c.branch_edge_id, c.forward)
+            if c.arrived and self.finish_leg is None and self.nav.mode != "ride":
+                self.finish_leg = i
+                self.log(f"arrivée ({self.nav.mode}) posée à {last.s1:.0f} m")
             if c.phase == "u_turn" and not self.graph.edges[c.branch_edge_id].allows(c.forward):
                 self.data_state = "missing"
                 self.status("ready", "plus de route connue", "missing")
@@ -559,8 +582,10 @@ class WorldSession:
             except (ValueError, OSError):
                 pass
         self.dirty_tiles = False
+        finish = self.finish_m
         self.send({"type": "revision", "rev": self.rev, "length_m": round(self.length_m, 2),
-                   "changed_from_part": changed_from_part, "junctions": len(junctions)})
+                   "changed_from_part": changed_from_part, "junctions": len(junctions),
+                   "finish_m": round(finish, 2) if finish is not None else None})
 
     def _write_live(self, parts: int, changed_from_part: int) -> None:
         near = sorted([k.ix - int(self.e0) // 1000, int(self.n0) // 1000 - k.i_n - 1] for k in self.ready)
@@ -601,6 +626,8 @@ class WorldSession:
             self._publish(_part_of(j.s_m - self.lock_m))
             return
         del self.legs[j.leg + 1:]
+        if self.finish_leg is not None and self.finish_leg > j.leg:
+            self.finish_leg = None        # l'arrivée était sur la route quittée : le navigateur la repose
         for k in [k for k in self.nav_default if k > j.leg]:
             del self.nav_default[k]
         self._preview_cache = {k: v for k, v in self._preview_cache.items() if k[0] <= j.leg}

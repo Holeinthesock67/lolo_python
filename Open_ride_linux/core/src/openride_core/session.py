@@ -45,6 +45,8 @@ from .mock_driver import MockDriver
 from .garage import GarageError, ProgressionService, estimate_w_prime, workout_duration_finder
 from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
 from .open_world_save import save_ride
+from . import open_world_segments as ow_segments
+from .open_world_segments import LiveSegments, OwIndex
 from .physics import PhysicsParams, RiderPhysics, draft_saving_w, equilibrium_speed, resistive_force
 from . import surface_physics, velodrome
 from . import powerups as powerups_mod, profiles
@@ -86,6 +88,7 @@ log = logging.getLogger("core")
 DT_PHYSICS = 0.02        # 50 Hz
 SCAN_ATTEMPTS = 3        # recherche du menu Appareils : essais si BlueZ répond « InProgress »
 DT_STATE = 1.0 / 30.0    # 30 Hz
+OW_SEGMENTS_PERIOD_S = 2.0   # monde ouvert : montées et sprints recherchés sur la route connue (lot W20)
 STATS_PERIOD_S = 60.0
 # Commandes qui annulent un départ au pédalage en attente (lot O36) ; un nouveau `start` le remplace.
 START_CANCEL_COMMANDS = ("pause", "end_session", "select_workout", "start_run", "start_open_world",
@@ -414,6 +417,8 @@ class CoreSession:
         self._identify: dict[str, Any] | None = None
         # Monde ouvert (lot W9) : générateur et route engagée ; `worldgen_cmd` remplace la commande (essais).
         self.openworld: OpenWorld | None = None
+        self._ow_segments: LiveSegments | None = None   # montées et sprints du monde ouvert (lot W20)
+        self._ow_seg_at = -1e9
         self.worldgen_cmd: list[str] | None = None
         self.worldmenu: Any = None                 # WorldMenu du lot W11, créé à la première demande ; remplaçable (essais)
         self.worldgen_args: list[str] = []
@@ -1983,6 +1988,10 @@ class CoreSession:
                 self._sync_erg_state()
                 self.state.route_id = f"ow:{ow.id}"
                 self.state.route_length_m = ow.route.length_m
+                # lot W20 : plus aucun segment du parcours chargé avant ; ceux du monde ouvert viennent en roulant
+                self._segments = ()
+                self._ow_segments = LiveSegments(index=OwIndex.load(self._ow_index_path()))
+                self._ow_seg_at = -1e9
                 self.physics.place(0.0)
                 self.state.dir = None
                 self._set_session_clock(0.0)
@@ -1996,12 +2005,62 @@ class CoreSession:
             self.state.route_length_m = ow.route.length_m
         s = self.physics.s
         self.state.open_world = ow.state_field(s)
+        self._ow_segments_tick(ow, s, now_mono)
         if st == "RUNNING" and ow.should_pause(s):
             log.warning("Plus de route connue devant (%.0f m) : pause.", ow.known_ahead(s))
             self._set_state("PAUSED", "world_data")
         elif st == "PAUSED" and self.state.pause_reason == "world_data" and ow.can_resume(s):
             log.info("Route de nouveau connue (%.0f m) : reprise.", ow.known_ahead(s))
             self._set_state("RUNNING")
+
+    def _ow_index_path(self) -> Path:
+        """Index des segments du monde ouvert du profil, à côté de ses records (lot W20)."""
+        return Path(self.records_path).with_name(ow_segments.INDEX_NAME)
+
+    def _ow_segments_tick(self, ow: OpenWorld, s: float, now_mono: float) -> None:
+        """Montées et sprints du monde ouvert (lot W20) : détectés sur la route connue toutes les
+        `OW_SEGMENTS_PERIOD_S` secondes, ajoutés au mode classique, retirés si la route change sous eux."""
+        live = self._ow_segments
+        if live is None or ow.route is None or not ow.route.ready or now_mono - self._ow_seg_at < OW_SEGMENTS_PERIOD_S:
+            return
+        self._ow_seg_at = now_mono
+        try:
+            win = ow_segments.route_window(ow.route, s - ow_segments.BEHIND_M)
+        except WorldError:
+            return
+        added, removed = live.update(win, s)
+        if not added and not removed:
+            return
+        if self.race is not None:
+            self.race.drop_segments(removed)
+            self.race.add_segments(added)
+        self._segments = tuple(live.accepted)
+        for seg in added:
+            log.info("Monde ouvert : %s « %s » retenue de %.0f à %.0f m.",
+                     "montée" if seg.type == "climb" else "sprint", seg.name, seg.s_start, seg.s_end)
+        if removed:
+            log.info("Monde ouvert : %d segment(s) retiré(s), route changée après un carrefour.", len(removed))
+
+    def _save_ow_index(self) -> None:
+        """Index des segments du monde ouvert écrit hors de la boucle à 50 Hz, avec les records."""
+        live = self._ow_segments
+        if live is None or not live.index.dirty or not self._records_writable:
+            return
+        snapshot, path = copy.deepcopy(live.index), self._ow_index_path()
+        live.index.dirty = False
+
+        def save() -> None:
+            try:
+                snapshot.save(path)
+            except OSError as exc:
+                log.error("Index des segments du monde ouvert non écrit (%s) : %s", path, exc)
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            save()
+            return
+        self._spawn(asyncio.to_thread(save))
 
     def _set_session_clock(self, t: float) -> None:
         """Remet le temps de séance (nouveau parcours, reprise d'un journal) ; la fenêtre de la puissance 3 s
@@ -3108,8 +3167,10 @@ class CoreSession:
         plain = PhysicsParams.from_config(self.cfg)
         gain_mode = "off" if header is None else ("zero" if self._base_params == plain else "compute")
         if classic:
+            ow = self.openworld is not None   # lot W20 : records communs à toutes les balades, segments en roulant
             self.race = ClassicRace(
-                route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
+                route_id=ow_segments.RECORDS_ROUTE_ID if ow else (self.state.route_id or "demo"),
+                segments=self._segments, length_m=route.length_m, open_ended=ow,
                 loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
                 powerups_on=self.cfg.powerups.mode != "off",
                 powerup_set=self.cfg.powerups.mode if self.cfg.powerups.mode != "off" else "classiques",
@@ -3151,6 +3212,7 @@ class CoreSession:
         if race.book_dirty:
             race.book_dirty = False
             self._save_records(race.book)
+            self._save_ow_index()   # lot W20 : identifiants des segments du monde ouvert qui ont un record
 
     def _segment_gain(self, job: GainJob) -> None:
         """`equipment_gain_s` d'un passage (lot V5) : simulation hors de la boucle à 50 Hz."""
@@ -3659,6 +3721,10 @@ class CoreSession:
                 (st.s >= route.length_m if d > 0 else st.s <= 0.0):   # ni une boucle, ni le monde ouvert
             # à rebours (lot N17), le départ du parcours est l'arrivée
             log.info("Arrivée atteinte%s.", "" if d > 0 else " (retour au départ après un demi-tour)")
+            self._finish(True)
+        elif self.openworld is not None and self.openworld.finish_s is not None and st.s >= self.openworld.finish_s:
+            # lot W19 : destination atteinte, ou boucle revenue au départ
+            log.info("Monde ouvert : arrivée atteinte (%s, %.0f m).", self.openworld.nav, st.s)
             self._finish(True)
         elif self._survivor_end_pending:   # éliminé, réglage « terminer la séance » (lot DS2)
             self._survivor_end_pending = False
