@@ -112,11 +112,14 @@ class Lane:
     roue à prendre ; `auto` faux : le coureur garde `home` (placement coupé) et les autres l'évitent ;
     `rank` départage deux coureurs à la même place (départ groupé) : le plus grand passe à gauche.
     Lot AS6 : `half_width` et `length` d'un véhicule de la circulation (ceux d'un vélo par défaut) ; on
-    le suit dans sa ligne, on le double et on le longe à la même distance de sa carrosserie qu'un vélo."""
+    le suit dans sa ligne, on le double et on le longe à la même distance de sa carrosserie qu'un vélo.
+    `follow` faux (voie tenue, lot GP12 : voie imposée du Grand Prix) : placement automatique sans prendre de roue
+    ni d'éventail, la cible reste `home` ; il double, garde son couloir et s'enferme comme les autres."""
 
     m: float
     home: float
     auto: bool = True
+    follow: bool = True
     rank: int = 0
     half_width: float = RIDER_WIDTH_M / 2.0
     length: float = BIKE_LENGTH_M
@@ -435,6 +438,7 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
     qui se chevauchent, ou qui se toucheront dans `SIDE_LOOK_S`, devant comme derrière) borne la cible
     à `SIDE_CLEAR_M` de lui, du côté où l'on est déjà ; à écart égal, celui de derrière (à la même place,
     celui de plus grand `rank` ; face à un coureur figé, toujours soi) passe à gauche. Coincé entre deux coureurs trop proches : le milieu du couloir.
+    Voie tenue (`lane.follow` faux, lot GP12) : ni roue ni éventail, `home` au lieu de la roue ; dépassement et couloir inchangés.
     `others` : (s, v, Lane) des autres coureurs, positions du pas précédent. Placement coupé : `home`.
     """
     if not lane.auto:
@@ -497,6 +501,8 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
             left_bound = max(left_bound, o_lane.m + clear)
     if pass_left is not None:
         target, passing = pass_left, True
+    elif not lane.follow:
+        pass                                         # voie tenue (lot GP12) : sa place, sans roue ni éventail
     elif lead is not None:
         d, o_v, o_lane, reach = lead
         gap = d - reach
