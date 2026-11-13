@@ -1,0 +1,11 @@
+name = "Abra Málaga"
+region = "Cusco, vallée sacrée"
+country = "Pérou"
+side = "depuis Ollantaytambo par la PE-28B jusqu'au col (4 316 m)"
+waypoints = [[-13.2585, -72.2633], [-13.1390, -72.3016]]
+# Mesure sur la route OSM et le MNT Copernicus (13 novembre) : 42 749 m, 1 579 m (Ollantaytambo 2 849 m, col 4 316 m).
+ref_length_m = 42700
+ref_gain_m = 1580
+# Le premier kilomètre de la PE-28B, à la sortie d'Ollantaytambo, est noté en terre dans OpenStreetMap.
+unpaved = true
+tags = ["col", "haute-altitude", "hauts-plateaux", "andes"]
