@@ -50,6 +50,7 @@ extends RefCounted
 ## Pas de class_name : charger par preload("res://scripts/bots_view_model.gd").
 
 const UiTheme := preload("res://scripts/ui_theme.gd")
+const GpItems := preload("res://scripts/grandprix/gp_items.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const VISIBLE_M := 300.0
 const NAME_M := 50.0
@@ -163,7 +164,8 @@ func push(bots, t_us: int) -> void:
 			"s": float(b["s"]), "v": float(b.get("v", 0.0)) if (b.get("v") is float or b.get("v") is int) else 0.0,
 			"gap_s": float(gap) if (gap is float or gap is int) else null, "t_us": t_us, "offset": 0.0,
 			"lane_m": float(b["lane_m"]) if (b.get("lane_m") is float or b.get("lane_m") is int) else null,
-			"out": int(b["out"]) if (b.get("out") is float or b.get("out") is int) else null}
+			"out": int(b["out"]) if (b.get("out") is float or b.get("out") is int) else null,
+			"unseen": GpItems.unseen(b.get("fx", null))}   # Furtif du Grand Prix (lot GP4) : avatar translucide
 		if shown.has(item["id"]):
 			var off := gap_m(item["s"], float(shown[item["id"]]), loop_length_m)
 			item["offset"] = off if absf(off) < SNAP_M else 0.0
@@ -212,7 +214,8 @@ func view(rider_s: float, rider_v: float, now_us: int) -> Array:
 		var gm := gap_m(rider_s, s, loop_length_m)
 		var gs: float = b["gap_s"] if b["gap_s"] != null else gap_seconds(gm, rider_v, b["v"])
 		var item := {"id": b["id"], "name": b["name"], "kind": b["kind"], "s": s, "v": b["v"], "lane_m": b["lane_m"], "out": b["out"], "gap_m": gm, "gap_s": gs,
-			"visible": absf(gm) < VISIBLE_M, "show_name": absf(gm) < NAME_M, "color": color_of(b["kind"], b["profile"])}
+			"visible": absf(gm) < VISIBLE_M, "show_name": absf(gm) < NAME_M, "color": color_of(b["kind"], b["profile"]),
+			"unseen": b["unseen"]}
 		for key in PROFILE_FIELDS:
 			item[key] = b[key]
 		out.append(item)

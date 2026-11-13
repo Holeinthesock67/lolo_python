@@ -45,7 +45,8 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## Lot O26 : décor vivant (booléen du fichier, `on` / `off` au menu), ressenti et mode du vent, thème par défaut.
 ## Pilotage du trainer (lots RC1-RC3) : `trainer.control` prend `resistance` / `sim`.
 ## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
-## Jour et nuit, saisons (lot P19) : `render.day_night` et `render.seasons`, coupés par défaut.
+## Jour et nuit, saisons (lot P19) : `render.day_night` et `render.seasons`, coupés par défaut ; `render.month`
+## (lot U13b) : date du PC ou mois choisi.
 ## Départ de la séance (lot O36) : `depart.mode` prend `pedalage` / `immediat`.
 ## Dernier survivant (lot DS2) : écart de niveau des bots et suite donnée à l'élimination du cycliste.
 ## Séance conseillée (lot CO5) : `coach.objectif` ; champs des saisies du conseil (CoachViewModel.KEY_PREFIX).
@@ -70,8 +71,11 @@ const CHOICE_TEXTS := {
 		"high_plateau": "hauts plateaux"},
 	"render.living": {"on": "oui", "off": "non (rendu de la 1.0)"},
 	"render.day_night": {"off": "coupé", "theme": "heure du thème", "real": "heure du PC", "accelerated": "une journée en une heure"},
-	"render.seasons": {"off": "coupées", "theme": "celle du thème", "date": "selon la date", "spring": "printemps",
-		"summer": "été", "autumn": "automne", "winter": "hiver"},
+	"render.seasons": {"off": "coupées", "theme": "celle du thème", "date": "selon la date", "random": "au hasard",
+		"spring": "printemps", "summer": "été", "autumn": "automne", "winter": "hiver"},
+	"render.month": {"pc": "date du PC", "january": "janvier", "february": "février", "march": "mars", "april": "avril",
+		"may": "mai", "june": "juin", "july": "juillet", "august": "août", "september": "septembre",
+		"october": "octobre", "november": "novembre", "december": "décembre"},
 	"render.theme": {"default": "par défaut"},
 	"wind.mode": {"off": "coupé", "fixed": "constant", "gusty": "en rafales", "theme": "celui du thème", "local": "météo du jour"},
 	"wind.feel": {"grade": "par la pente", "ftms": "par le trainer (essai)"},

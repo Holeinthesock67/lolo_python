@@ -279,7 +279,7 @@ def _group_draft(rider_s: float, lane_m: float | None, shelters: list[tuple[floa
     found = []
     reach = _GROUP_REACH_M + max(cutoff_m - GAP_CUTOFF_M, 0.0)
     for s, b, b_lane, size in shelters:
-        if b is skip:
+        if b is skip or not getattr(b, "shelters", True):   # Échappée (TT4), Furtif du Grand Prix (GP4)
             continue
         d = ahead_distance(rider_s, s, length_m, is_loop)
         if 0.0 < d <= reach:

@@ -1,0 +1,287 @@
+{
+  "description": "Lot GP4, voiture d'équipe car_a 2 m devant le cycliste : course de `grand_prix` (démonstration de 5 km, 4 bots, chaos fou : rangées de boîtes à 500, 1 269, 2 038 et 2 808 m) où seul cet objet est joué et tiré dans toutes les tranches (`bench.grandprix`). Le cycliste roule à 200 W, derrière les bots. Z toutes les 3 s autour de chaque rangée (de 6 s avant à 18 s après le passage attendu) pour l'utiliser dès la fin de la roulette, capture 1,5 s après chaque appui ; captures en distance 30 et 50 m après chaque rangée (objets des bots). À lancer avec `--camera follow_far` (la vue subjective ne montre ni l'avatar ni la voiture). Banc GPU en low, medium et high (8, 13 et 16 ms).",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 200,
+    "cadence_rpm": 90
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [],
+  "inputs": [
+    {
+      "t": 84,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 87,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 90,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 93,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 96,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 99,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 102,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 105,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 108,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 220,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 223,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 226,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 229,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 232,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 235,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 238,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 241,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 244,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 344,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 347,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 350,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 353,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 356,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 359,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 362,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 365,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 368,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 474,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 477,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 480,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 483,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 486,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 489,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 492,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 495,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    },
+    {
+      "t": 498,
+      "key": "Z",
+      "recette": "GP4 : voiture d'équipe car_a 2 m devant le cycliste"
+    }
+  ],
+  "bench": {
+    "world": "demo",
+    "mode": "grandprix",
+    "config": {
+      "grandprix": {
+        "opponents": 4,
+        "distance_km": 5,
+        "chaos": "wild",
+        "box_every_m": 1000
+      },
+      "bots": {
+        "level_pct": 100
+      }
+    },
+    "duration_s": 520,
+    "expect": [
+      {
+        "log": "core",
+        "motif": "Grand Prix des objets : 4 adversaires",
+        "recette": "GP7",
+        "label": "séance lancée en Grand Prix des objets à 4 adversaires"
+      },
+      {
+        "log": "engine",
+        "motif": "\\[test\\] event_sound kind=gp_roulette",
+        "min": 1,
+        "recette": "GP7",
+        "label": "boîte prise : roulette jouée par l'engine"
+      },
+      {
+        "log": "engine",
+        "motif": "\\[test\\] event_sound kind=gp_(lancer|sonnette|klaxon)",
+        "min": 1,
+        "recette": "GP7",
+        "label": "objet utilisé au Z : lancer, sonnette ou klaxon joué par l'engine"
+      },
+      {
+        "log": "core",
+        "motif": "Grand Prix : objet utilisé",
+        "min": 1,
+        "recette": "GP4",
+        "label": "voiture d'équipe ou Furtif utilisé au Z par le cycliste"
+      }
+    ],
+    "grandprix": {
+      "items": {
+        "gel": false,
+        "gel_x3": false,
+        "bottle": false,
+        "bottle_x3": false,
+        "musette": false,
+        "musette_x3": false,
+        "homing": false,
+        "storm": false,
+        "star": false,
+        "bell": false,
+        "headwind": false,
+        "team_car": true,
+        "stealth": false
+      },
+      "weights.lead": {
+        "team_car": 100
+      },
+      "weights.lt5": {
+        "team_car": 100
+      },
+      "weights.5to15": {
+        "team_car": 100
+      },
+      "weights.gt15": {
+        "team_car": 100
+      }
+    },
+    "at_m": [
+      530,
+      550,
+      1299,
+      1319,
+      2068,
+      2088,
+      2838,
+      2858
+    ]
+  }
+}
