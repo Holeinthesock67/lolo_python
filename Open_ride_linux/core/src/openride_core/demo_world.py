@@ -14,7 +14,8 @@ sous le nom `DEMO_TITLE`, lot O37) est écrit par `write_demo_world` avec une da
 couche terrain synthétique, pour être identique octet pour octet :
     python -m openride_core.tools.fake_world --demo --out ../engine/demo
 
-Les parcours de démonstration des biomes (lot U19 ; trois dans le jeu de base, le tour gravel en plus pour les recettes, lot O37) sont écrits par `write_biome_demo_worlds`, qui
+Les parcours de démonstration des biomes (lot U19 ; trois dans le jeu de base, le tour gravel en plus pour les recettes, lot O37) et le
+circuit en boucle « Circuit des Prés » (lot O38, courses en tours) sont écrits par `write_biome_demo_worlds`, qui
 appelle le générateur du compilateur `openride_compiler.demo_biomes` (lot O37 ; compilateur requis) :
     openride-core demo-biomes [--out DOSSIER] [--recette]
 
@@ -273,7 +274,7 @@ def biome_demo_outdated(world: Path) -> bool:
 
 def write_biome_demo_worlds(out_dir: Path, recette: bool = False) -> list[dict]:
     """Écrit les parcours de démonstration des biomes (lot U19) dans `out_dir` : tour des six biomes, côte avec
-    la mer, alpin. Renvoie le résumé de chacun. `recette` : variante des bancs et des recettes (noms
+    la mer, alpin, et le circuit en boucle (lot O38). Renvoie le résumé de chacun. `recette` : variante des bancs et des recettes (noms
     techniques, lot O37), avec en plus le tour avec un tiers de gravel ; jamais dans le jeu de base.
     Lève ImportError sans le compilateur."""
     return _biome_demo_module().write_demo_set(Path(out_dir), recette=recette)

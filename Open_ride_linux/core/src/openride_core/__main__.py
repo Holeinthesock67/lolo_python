@@ -54,8 +54,9 @@ Sous-commandes disponibles à ce stade :
                                       enregistrement de la nouvelle FTP, historique des tests (lot O10)
     openride-core demo-biomes [--out DOSSIER] [--json] [--recette]
                                       parcours de démonstration des biomes (tour des six biomes,
-                                      tour gravel, côte et mer, alpin) dans le dossier des parcours
-                                      (lot U19 ; compilateur requis)
+                                      côte et mer, alpin ; tour gravel avec --recette) et circuit en
+                                      boucle dans le dossier des parcours (lots U19 et O38 ;
+                                      compilateur requis)
     openride-core velodromes [--out DOSSIER] [--json]
                                       piste du vélodrome (250 m, bois, virages relevés) écrite par le
                                       core dans le dossier des parcours (série VD, lot VD2)
@@ -556,8 +557,8 @@ def build_parser() -> argparse.ArgumentParser:
     ows.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     ows.add_argument("--gpx-dir", type=Path, help="dossier des traces (défaut : ~/OpenRide/GPX)")
     ows.add_argument("--journal-dir", type=Path, help="journaux (défaut : ~/OpenRide/Activities/.journal)")
-    dmb = sub.add_parser("demo-biomes", help="parcours de démonstration des biomes dans le dossier des parcours "
-                                             "(lot U19, compilateur requis)")
+    dmb = sub.add_parser("demo-biomes", help="parcours de démonstration des biomes et circuit dans le dossier des "
+                                             "parcours (lots U19 et O38, compilateur requis)")
     dmb.add_argument("--out", type=Path, help="dossier de sortie (défaut : ~/.local/share/openride/routes)")
     dmb.add_argument("--json", action="store_true", help="sortie JSON (parts des biomes et des surfaces)")
     dmb.add_argument("--recette", action="store_true",
