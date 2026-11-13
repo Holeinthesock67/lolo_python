@@ -96,14 +96,18 @@ def test_shared_border_is_bit_identical_and_road_is_flat(db, tmp_path) -> None:
     b = generate_square(SquareKey(ZONE, IX + 1, IN), db, prov, c)
     ya, yb = near(a), near(b)
     assert ya[:, 100].tobytes() == yb[:, 0].tobytes()
-    # La route suit la ligne j = 50 (N = 1000 IN + 500) : le terrain y vaut le profil − 5 cm.
+    # La route suit la ligne j = 50 (N = 1000 IN + 500) : le terrain y vaut le profil − 5 cm, sauf au croisement
+    # (E = 1000 IX + 400, colonnes 40 et 41) où la route tertiaire monte à 30 % : le garde-fou de la chaussée
+    # (13/11) y abaisse le sommet sous la route, jamais au-dessus.
     graph, profiles = squares.square_edges(SquareKey(ZONE, IX, IN), db, prov)
     main = sorted((profiles[k] for k, e in graph.edges.items() if e.road_class == "s"), key=lambda p: p.x[0])
     assert [p.edge_id for p in main] == ["1:0", "1:10"] and main[0].x[-1] == main[1].x[0]
     xs, alt = np.concatenate([p.x for p in main]), np.concatenate([p.alt_m for p in main])
     cols = np.arange(0, 101)
     expect = np.interp(IX * 1000 + 10.0 * cols, xs, alt) - C.ROAD_SINK_M
-    assert np.abs(ya[50, :].astype(float) - expect).max() < 2e-3
+    gap = ya[50, :].astype(float) - expect
+    away = np.abs(cols - 40.5) > 1.0
+    assert np.abs(gap[away]).max() < 2e-3 and gap.max() < 2e-3
     # Loin des routes (coin sud-ouest), relief seul.
     gx, gz = squares.grid_xz(SquareKey(ZONE, IX, IN), 10)
     lat, lon = FRAME.to_latlon(gx[100, 0:1], gz[100, 0:1])
@@ -235,3 +239,44 @@ def test_zero_length_road_has_no_profile(db, tmp_path) -> None:
     assert any(e.degenerate for e in graph.edges.values())
     assert profiles and all(not graph.edges[k].degenerate for k in profiles)
     generate_square(SquareKey(ZONE, IX, IN), db0, provider(), cache(tmp_path / "cache0"))
+
+
+def _square_excess(key: SquareKey, folder, db, prov) -> float:
+    """Plus grand dépassement (m) du maillage du carré au-dessus de la chaussée moins ROAD_SINK_M, sur toutes les
+    routes fondues du carré (ponts et tunnels exceptés), aux points de chaussée tous les mètres."""
+    from openride_compiler import terrain
+    graph, profiles = squares.square_edges(key, db, prov)
+    x0, z0 = key.corner
+    tiles = {(x0 // 1000, z0 // 1000): near(folder).astype(float)}
+    worst = -math.inf
+    for k in sorted(profiles):
+        e = graph.edges[k]
+        for px, pz, pa, hw in squares.axis_pieces(profiles[k], squares.half_width(e.road_class), e.spans):
+            ex, _x, _z = terrain.terrain_excess(tiles, px, pz, pa, half_width=hw)
+            if len(ex):
+                worst = max(worst, float(ex.max()))
+    return worst
+
+
+def test_square_terrain_never_covers_road(tmp_path) -> None:
+    """13/11 (« même qualité que les circuits précalculés ») : comme le compilateur (terrain.clear_road, 31/10),
+    aucun triangle du maillage de 10 m ne dépasse la chaussée, même en diagonale sur un flanc raide ; les bords
+    communs des carrés restent identiques au bit près."""
+    w = OsmDbWriter(tmp_path / "osm.sqlite", "test", "test/flanc")
+    e0, n0 = IX * 1000 - 300, IN * 1000 - 300
+    pts = [lonlat(e0 + 23.0 * i, n0 + 17.0 * i) for i in range(0, 120)]    # diagonale qui traverse 4 carrés
+    w.add_road(1, {"highway": "secondary"}, list(range(1, len(pts) + 1)), pts)
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    db = OsmDb(tmp_path / "osm.sqlite")
+    lon, lat = lonlat(E_REF, N_REF)
+    # flanc à 35 % en travers de la route, avec des bosses de 20 m
+    prov = SyntheticProvider(lat, lon, lambda x, z: 400.0 + 0.35 * (x - z) + 6.0 * np.sin(x / 20.0) * np.cos(z / 17.0))
+    c = cache(tmp_path / "cache")
+    out = {}
+    for di in (0, 1):
+        for dn in (0, 1):
+            key = SquareKey(ZONE, IX + di, IN + dn)
+            out[(di, dn)] = generate_square(key, db, prov, c)
+            assert _square_excess(key, out[(di, dn)], db, prov) <= 1e-3, key
+    assert near(out[(0, 0)])[:, 100].tobytes() == near(out[(1, 0)])[:, 0].tobytes()
+    assert near(out[(0, 1)])[100, :].tobytes() == near(out[(0, 0)])[0, :].tobytes()
