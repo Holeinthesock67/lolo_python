@@ -11,7 +11,8 @@ extends Node3D
 ## La lumière portée sur la route vient d'une petite réserve de projecteurs (SpotLight3D, sans ombre) posés
 ## sous les luminaires les plus proches de la caméra : LIGHTS_BY_PRESET (aucun en `low`).
 ##
-## - `positions(route, k, buildings, road_width_m)` -> `[{s, side, pos, heading}]`, `post_positions(...)` (balises,
+## - `positions(route, k, buildings, road_width_m, ground_at)` -> `[{s, side, pos, heading}]`, pied sur le sol
+##   visible (roadside_ground.gd), `post_positions(...)` (balises,
 ##   même forme) et `lamp_transform(item)` (fonctions pures, testées) ;
 ## - `add_chunk(route, k, buildings)` / `remove_chunk(k)` ; `set_preset(name)` ;
 ## - `update(cam_pos)` une fois par image : réserve de projecteurs, énergie selon NightLights.current.
@@ -20,6 +21,7 @@ extends Node3D
 const NightLights := preload("res://scripts/night_lights.gd")
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
+const RoadsideGround := preload("res://scripts/roadside_ground.gd")
 
 const CHUNK_M := 1000.0                 # osm_streamer.gd CHUNK_M
 const SPACING_M := 32.0
@@ -40,6 +42,8 @@ const REFLECTOR := Color(1.0, 0.55, 0.12)
 const REFLECTOR_ENERGY := 3.5
 
 var road_width_m := RoadBuilder.ROAD_WIDTH_M
+## Sol affiché (x, z) -> y, posé par living_decor.gd (RoadsideGround.ground_fn) ; vide : hauteur de la route.
+var ground_at: Callable = Callable()
 var _chunks: Dictionary = {}            # k -> {node, points: Array[Vector3] (têtes)}
 var _spots: Array[SpotLight3D] = []
 var _budget := 0
@@ -62,7 +66,8 @@ static func _near_building(p: Vector2, buildings: Array) -> bool:
 	return false
 
 
-static func positions(route, k: int, buildings: Array, width_m: float = RoadBuilder.ROAD_WIDTH_M) -> Array:
+static func positions(route, k: int, buildings: Array, width_m: float = RoadBuilder.ROAD_WIDTH_M,
+		ground_at: Callable = Callable()) -> Array:
 	var out := []
 	if route == null or buildings.is_empty():
 		return out
@@ -74,7 +79,8 @@ static func positions(route, k: int, buildings: Array, width_m: float = RoadBuil
 			var side := 1 if int(round(s / SPACING_M)) % 2 == 0 else -1
 			var h := deg_to_rad(float(route.sample_heading_deg(s)))
 			var right := Vector3(cos(h), 0.0, sin(h))
-			var pos := c + right * float(side) * (width_m * 0.5 + SIDE_OFFSET_M)
+			var pos := RoadsideGround.on_ground(ground_at, c + right * float(side) * (width_m * 0.5 + SIDE_OFFSET_M),
+				c, right, width_m * 0.5)
 			out.append({"s": s, "side": side, "pos": pos, "heading": h})
 		s += SPACING_M
 	return out
@@ -101,7 +107,8 @@ static func lamp_transform(it: Dictionary) -> Transform3D:
 
 
 ## Balises hors des villages : des deux côtés, tous les POST_SPACING_M, là où aucun bâtiment n'est proche.
-static func post_positions(route, k: int, buildings: Array, width_m: float = RoadBuilder.ROAD_WIDTH_M) -> Array:
+static func post_positions(route, k: int, buildings: Array, width_m: float = RoadBuilder.ROAD_WIDTH_M,
+		ground_at: Callable = Callable()) -> Array:
 	var out := []
 	if route == null:
 		return out
@@ -113,7 +120,8 @@ static func post_positions(route, k: int, buildings: Array, width_m: float = Roa
 			var h := deg_to_rad(float(route.sample_heading_deg(s)))
 			var right := Vector3(cos(h), 0.0, sin(h))
 			for side in [1, -1]:
-				out.append({"s": s, "side": side, "pos": c + right * float(side) * (width_m * 0.5 + POST_OFFSET_M),
+				var pos := c + right * float(side) * (width_m * 0.5 + POST_OFFSET_M)
+				out.append({"s": s, "side": side, "pos": RoadsideGround.on_ground(ground_at, pos, c, right, width_m * 0.5),
 					"heading": h})
 		s += POST_SPACING_M
 	return out
@@ -151,8 +159,8 @@ func set_preset(name: String) -> void:
 
 func add_chunk(route, k: int, buildings: Array) -> void:
 	remove_chunk(k)
-	var items := positions(route, k, buildings, road_width_m)
-	var posts := post_positions(route, k, buildings, road_width_m)
+	var items := positions(route, k, buildings, road_width_m, ground_at)
+	var posts := post_positions(route, k, buildings, road_width_m, ground_at)
 	var nodes: Array[Node] = []
 	var heads: Array[Vector3] = []
 	if not items.is_empty():

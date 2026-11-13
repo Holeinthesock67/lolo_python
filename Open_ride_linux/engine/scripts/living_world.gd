@@ -24,7 +24,7 @@ const WindViewModel := preload("res://scripts/wind_view_model.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const GrassTufts := preload("res://scripts/grass_tufts.gd")
 const GroundDetails := preload("res://scripts/ground_details.gd")
-const OsmStreamer := preload("res://scripts/osm_streamer.gd")
+const RoadsideGround := preload("res://scripts/roadside_ground.gd")
 const SkyClouds := preload("res://scripts/sky_clouds.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
@@ -221,11 +221,7 @@ func _refresh_shapes() -> void:
 func _terrain_height(route) -> Callable:
 	if osm_streamer == null or route == null or not "world_dir" in osm_streamer or str(osm_streamer.world_dir) == "":
 		return Callable()
-	var raw := OsmStreamer.terrain_height_fn(osm_streamer.world_dir, route)
-	if route.relief_k == 1.0:
-		return raw
-	return func(x: float, z: float) -> float:
-		return route.display_y(float(raw.call(x, z)))
+	return RoadsideGround.ground_fn(str(osm_streamer.world_dir), route)
 
 
 ## Bâtiments et plans d'eau : pas de touffe d'herbe ni de détail de sol dedans.

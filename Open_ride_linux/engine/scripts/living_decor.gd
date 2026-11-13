@@ -61,6 +61,7 @@ const ClimbDetector := preload("res://scripts/climb_detector.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
 const RoadsideProps := preload("res://scripts/roadside_props.gd")
+const RoadsideGround := preload("res://scripts/roadside_ground.gd")
 const StreetLights := preload("res://scripts/street_lights.gd")
 const CrowdModel := preload("res://scripts/crowd_model.gd")
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
@@ -277,6 +278,10 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 	_road_width_m = road_width_m
 	props.road_width_m = road_width_m
 	street_lights.road_width_m = road_width_m
+	# Pieds des objets du bord de route sur le sol visible (roadside_ground.gd) ; fil principal : sa propre fonction
+	var ground_at := RoadsideGround.ground_fn(world_dir, route) if enabled else Callable()
+	props.ground_at = ground_at
+	street_lights.ground_at = ground_at
 	prepared = false
 	climbs = []
 	pois = []
@@ -333,10 +338,11 @@ static func _prepare_job(job: Dictionary) -> void:
 				all_pois.append_array(p.get("items", []))
 	var road_w: float = job["road_width_m"]
 	var found: Array = climbs_of(r)
+	var ground_at := RoadsideGround.ground_fn(w_dir, r)   # tâche de fond : sa propre fonction (cache de tuiles)
 	var cm = CrowdModel.new()
-	cm.configure(r, found, water, bool(job["crowd_all_climbs"]), 0, road_w)
+	cm.configure(r, found, water, bool(job["crowd_all_climbs"]), 0, road_w, ground_at)
 	var pm = PassersbyModel.new()
-	pm.configure(r, buildings, water, 0, road_w, PassersbyModel.crowd_zones(found, bool(job["crowd_all_climbs"])))
+	pm.configure(r, buildings, water, 0, road_w, PassersbyModel.crowd_zones(found, bool(job["crowd_all_climbs"])), ground_at)
 	var marks := {}
 	for m in RoadsideModel.paint_marks(found):
 		var k := int(floor(float(m["s"]) / CHUNK_M))
