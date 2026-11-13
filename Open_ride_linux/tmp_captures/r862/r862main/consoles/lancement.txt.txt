@@ -1,0 +1,11 @@
+06:36:45 empreinte avant ab9fcb827460488fb1d2725e5e0f114d
+06:36:45 tête 330e4ad1
+06:37:25 demo off low_main
+06:41:33 fin rc=0
+06:41:33 demo off medium_main
+06:45:40 fin rc=0
+06:45:40 demo off high_main
+06:49:47 fin rc=0
+06:49:48 empreinte après ab9fcb827460488fb1d2725e5e0f114d
+06:49:48 clone 71e814c8
+06:49:48 FIN

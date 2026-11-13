@@ -1,0 +1,46 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+27.6;0;0;0;0;0;0;0;
+33.4;0;0;0;0;0;4;0;
+38.2;11;0;0;0;0;4;0;
+41.7;11;0;0;0;0;4;0;
+42.2;11;0;0;0;0;4;0;
+42.4;11;0;0;0;0;4;0;
+42.6;11;0;0;0;0;4;0;
+46.0;11;0;0;0;0;4;0;
+52.0;11;0;0;0;0;4;0;
+58.0;11;0;0;0;0;4;0;
+62.0;11;0;0;0;0;4;0;
+62.6;11;0;0;0;0;4;0;
+64.0;11;0;0;0;0;4;0;
+70.0;11;0;0;0;0;4;0;
+76.0;11;0;0;0;0;4;0;
+77.0;11;0;0;0;0;4;0;
+82.0;11;0;0;0;0;4;0;dog_bark=1
+88.0;11;0;0;0;0;4;0;dog_bark=1
+92.0;11;0;0;0;0;4;0;airliner_rumble=1 dog_bark=1
+92.6;11;0;0;0;0;4;0;airliner_rumble=1 dog_bark=1
+94.0;11;0;0;0;0;4;0;airliner_rumble=1 dog_bark=1
+100.0;11;0;0;0;0;4;0;airliner_rumble=1 dog_bark=1
+106.0;11;0;0;0;0;4;0;airliner_rumble=1 dog_bark=2
+112.0;11;0;0;0;1;4;0;airliner_rumble=1 dog_bark=2
+118.0;11;0;0;0;1;4;0;airliner_rumble=1 dog_bark=2
+122.6;11;0;0;0;1;4;0;airliner_rumble=1 dog_bark=2
+124.0;11;0;0;0;1;4;0;airliner_rumble=1 dog_bark=2
+130.0;11;0;0;0;1;4;0;airliner_rumble=1 dog_bark=2
+136.0;11;0;0;0;3;4;0;airliner_rumble=2 dog_bark=2
+142.0;11;0;0;0;3;4;0;airliner_rumble=2 dog_bark=2
+148.0;11;0;0;0;3;4;0;airliner_rumble=2 dog_bark=2
+152.0;11;0;0;0;2;4;0;airliner_rumble=2 dog_bark=2
+152.6;11;0;0;0;2;4;0;airliner_rumble=2 dog_bark=2
+154.0;11;0;0;0;2;4;0;airliner_rumble=2 dog_bark=2
+160.0;11;0;0;0;2;4;0;airliner_rumble=2 dog_bark=2
+166.0;11;0;0;0;2;4;0;airliner_rumble=2 dog_bark=2 voice_allez=1
+172.0;11;0;0;0;2;4;0;airliner_rumble=2 dog_bark=2 voice_allez=1
+178.0;11;0;0;0;2;4;0;airliner_rumble=2 dog_bark=2 voice_allez=1
+182.6;11;0;0;0;2;4;0;airliner_rumble=2 dog_bark=2 voice_allez=1
+184.0;11;0;0;0;2;4;0;airliner_rumble=2 dog_bark=2 voice_allez=1
+202.0;12;0;0;0;0;4;0;airliner_rumble=2 dog_bark=2 voice_allez=2
+212.6;12;0;0;0;0;4;0;airliner_rumble=2 dog_bark=2 voice_allez=2
+242.6;12;0;0;0;0;4;0;airliner_rumble=2 dog_bark=2 voice_allez=2
+272.6;12;0;0;0;1;4;0;airliner_rumble=2 dog_bark=2 voice_allez=2
+301.2;12;0;0;0;1;4;0;airliner_rumble=2 dog_bark=2 voice_allez=2

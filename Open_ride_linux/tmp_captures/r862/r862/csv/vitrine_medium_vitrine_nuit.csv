@@ -1,0 +1,9 @@
+préréglage;heure;soleil_deg;lumières;vue;luminance
+medium;coupe;40.0;0.00;rue;0.458
+medium;coupe;40.0;0.00;subjective;0.448
+medium;midi;22.5;0.00;rue;0.376
+medium;midi;22.5;0.00;subjective;0.373
+medium;coucher;-1.9;0.72;rue;0.102
+medium;coucher;-1.9;0.72;subjective;0.130
+medium;nuit;-42.9;1.00;rue;0.098
+medium;nuit;-42.9;1.00;subjective;0.130
