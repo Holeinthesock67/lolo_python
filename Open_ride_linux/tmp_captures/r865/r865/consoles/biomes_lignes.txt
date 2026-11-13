@@ -1,0 +1,2 @@
+biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 69 tuile(s)) : boreal_forest 40,4 %, high_plateau 39,5 %, temperate_grassland 11,6 %, farmland 7,7 %, tundra 0,8 %
+biomes (sources : esa_worldcover_2021, osm, dem, koppen_1986_2010, 58 tuile(s)) : high_plateau 92,6 %, alpine 5,1 %, sand_desert 1,1 %, farmland 0,9 %, tundra 0,3 %

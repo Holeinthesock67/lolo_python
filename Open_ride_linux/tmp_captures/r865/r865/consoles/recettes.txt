@@ -1,0 +1,6 @@
+requête Overpass (dcd39b316d…)…
+  abra-malaga : 42.7 km, 1579 m de dénivelé positif
+requête Overpass (a63dbd7bb4…)…
+  khardung-la : 37.1 km, 1858 m de dénivelé positif
+Pack écrit dans ~/mesures-2026-11-01-auto/r865/pack/cols-celebres : 2 col(s) construit(s), 0 refusé(s).
+Pack « cols-celebres » installé : 2 trace(s) dans ~/OpenRide/GPX/cols-celebres. Compiler : openride-compiler build-all

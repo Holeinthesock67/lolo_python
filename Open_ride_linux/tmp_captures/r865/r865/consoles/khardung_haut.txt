@@ -1,0 +1,28 @@
+>>> [1/1] Scénario demo (3:00)
+== demo : parcours khardungla, 180 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 14.4 s après le démarrage du core
+[OK] parcours chargé par l'engine : khardungla à 25.6 s
+[OK] engine vivant jusqu'à la fin : 180 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 38/38 images enregistrées après le chargement (+1 avant, hors compte : 1 enregistrée(s)), 1 redemandée(s), réponse en 0.22 s (médiane), 5.59 s au pire : captures de l'engine
+   images par seconde de l'engine : min 1, médiane 60, max 60 (5 relevés)
+[OK] qualité réellement appliquée : medium appliquée (40 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -10.4 à 6.8 %, pente envoyée -10.0 à 10.9 %
+[ÉCHEC] médiane 34.1 km/h sur 115 s (attendu 25.0 ± 2.5), de 30.8 à 37.2 km/h : vitesse imposée 25 km/h
+[OK] décor : aucun contact sur la route : 0 sur 39 captures
+[OK] fréquence cardiaque au journal : 136 échantillons, 102 à 185 bpm
+    NON demo : 1 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r865/khardung_haut/index.html
+=== Banc fini : ÉCHEC (1 vérification(s))
+RÉSULTAT : ÉCHEC (1 vérification(s))
