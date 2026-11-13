@@ -5,6 +5,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Pack « Cols célèbres » livré avec le jeu (lot PK1)
+- Le pack des cols célèbres fait partie du jeu de base : construit une fois (`scripts/build_pack_base.sh`), livré déjà compilé dans le paquet, il s'installe au premier démarrage avec les contenus de départ, sans réseau et sans rien écraser.
+- Écran « Réglages › Contenus » : sans réseau ni confirmation quand le paquet porte le pack ; crédits OpenStreetMap (ODbL), Copernicus et WorldCover sur la ligne du pack et au §10 du guide d'utilisation.
 ### Biomes sur le « Col du lacet » (lot W17 bis)
 - Le parcours de démonstration « Col du lacet » reçoit une couche biome synthétique : de grandes taches de forêt tempérée (hêtres, chênes, quelques épicéas) à plus de 60 m de la route, entre des alpages au look habituel du col (biome `alpine` : sapins, herbe et roche d'avant la couche biome). La route passe toujours en alpage : vue dégagée et ciel visible comme avant.
 - Générateur `openride-fake-world` 0.4.0 : une démonstration déjà installée est remplacée au prochain lancement, couche biome comprise.
