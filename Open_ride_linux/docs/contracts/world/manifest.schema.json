@@ -323,7 +323,8 @@
                 "coast",
                 "volcanic",
                 "japan",
-                "atlantic_heath"
+                "atlantic_heath",
+                "high_plateau"
               ]
             },
             "forced": {
@@ -350,7 +351,8 @@
                     "coast",
                     "volcanic",
                     "japan",
-                    "atlantic_heath"
+                    "atlantic_heath",
+                    "high_plateau"
                   ]
                 }
               ]
@@ -382,7 +384,8 @@
                   "coast",
                   "volcanic",
                   "japan",
-                  "atlantic_heath"
+                  "atlantic_heath",
+                  "high_plateau"
                 ]
               },
               "additionalProperties": {

@@ -1394,6 +1394,80 @@
           3
         ]
       }
+    },
+    "high_plateau": {
+      "ground": {
+        "layers": [
+          {
+            "name": "ichu et sol ocre de l'Altiplano",
+            "role": "flat",
+            "color": "#86774f",
+            "texture": null,
+            "scale_m": 6.0
+          },
+          {
+            "name": "roche brun-rouge",
+            "role": "steep",
+            "color": "#7d5d48",
+            "texture": null,
+            "scale_m": 12.0
+          },
+          {
+            "name": "neige",
+            "role": "high",
+            "color": "#f2f5f8",
+            "texture": null,
+            "scale_m": 8.0
+          }
+        ],
+        "slope_threshold_deg": 24,
+        "blend_sharpness": 4.0,
+        "high_line_m": 5200
+      },
+      "vegetation": {
+        "species": [
+          {
+            "kind": "bunchgrass",
+            "weight": 5
+          },
+          {
+            "kind": "dwarf_shrub",
+            "weight": 1
+          }
+        ],
+        "max_density_per_ha": 60,
+        "treeline_m": null
+      },
+      "water": {
+        "color": "#2a5d88",
+        "turbidity": 0.05
+      },
+      "sky": {
+        "fog_density": 0.0002,
+        "haze": 0.0,
+        "light_tint": "#eef3ff"
+      },
+      "ambience": {
+        "volume": 0.45,
+        "birds": 0.2,
+        "insects": 0.05,
+        "layers": {
+          "singing_sand": 0.25
+        }
+      },
+      "fauna": {
+        "birds": 0.3,
+        "livestock": 0.6,
+        "deer": 0.4
+      },
+      "seasons": {
+        "calendar": "wet_dry",
+        "offset_months": 0,
+        "durations_months": [
+          7,
+          5
+        ]
+      }
     }
   },
   "variants": {

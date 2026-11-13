@@ -107,14 +107,14 @@ const PROPS := [
 ## Arbres de tree_species.gd (lot U7) et arbre d'avant la série U, en deux rangées loin de la route.
 const TREES_TEMPERATE := ["oak", "birch", "pine", "beech", "spruce", "larch", "generic"]
 const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "acacia", "baobab", "cactus",
-	"tree_fern", "reed", "dwarf_shrub", "vine_row", "heather", "gorse", "bracken"]
+	"tree_fern", "reed", "dwarf_shrub", "vine_row", "heather", "gorse", "bracken", "bunchgrass"]
 ## Lot JP5 (6.0) : espèces du biome `japan`, troisième rangée (vue `arbres_japon`).
 const TREES_JAPAN := ["sugi", "hinoki", "momiji", "bamboo", "sugi", "momiji"]
 ## Une maison et une grange par style d'architecture (variantes du contrat U1, building_styles.gd), en rangée
 ## loin de la route : les styles que prendront les biomes et les régions de la série U.
 const STYLE_ROW := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]
 ## Lot U23 : styles d'habitat propres aux biomes, en seconde rangée derrière la première (vues `styles_biomes`).
-const STYLE_ROW_BIOMES := ["chalet", "bois_peint", "pise", "case", "paillote", "basalte", "chaumiere"]
+const STYLE_ROW_BIOMES := ["chalet", "bois_peint", "pise", "case", "paillote", "basalte", "chaumiere", "altiplano"]
 ## Lot JP3 : hameau japonais (style `kawara`) : contour [x0, z0, largeur, profondeur], hauteur, type OSM (vue `maisons_japon`).
 const JAPAN_HAMLET := [[-145.0, -224.0, 11.0, 8.0, 6.5, "house"], [-130.0, -226.0, 9.0, 7.0, 3.6, "house"],
 	[-117.0, -224.0, 12.0, 8.0, 6.5, "house"], [-103.0, -226.0, 6.0, 5.0, 4.5, "shed"], [-138.0, -240.0, 10.0, 7.0, 3.8, "house"]]
@@ -151,6 +151,9 @@ const ANIMALS := [
 	["musk_ox", Vector3(-30.0, 0.0, 16.0), -1.9, 0.6, 1.0], ["goat", Vector3(-36.5, 0.0, 6.5), 2.8, 0.2, 1.0],
 	["goat", Vector3(-35.0, 0.0, 7.5), -2.0, 0.7, 0.0], ["monkey", Vector3(-44.0, 0.0, 5.5), 2.4, 0.4, 1.0],
 	["monkey", Vector3(-43.2, 0.0, 6.4), -2.9, 0.8, 1.0],
+	# Lot HP1 : lamas et yack des hauts plateaux
+	["llama", Vector3(-38.5, 0.0, 19.0), 1.6, 0.3, 1.0], ["llama", Vector3(-36.8, 0.0, 20.0), -1.4, 0.6, 1.0],
+	["yak", Vector3(-43.0, 0.0, 21.0), 1.9, 0.4, 1.0],
 ]
 
 

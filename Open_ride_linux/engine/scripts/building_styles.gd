@@ -132,10 +132,15 @@ const STYLES := {
 	"chaumiere": {"roof": ROOF_THATCH, "pitch_deg": 50.0, "hip_share": 0.45, "overhang_m": 0.5,
 		"walls": {WALL_PLASTER: 0.7, WALL_STONE: 0.2, WALL_TIMBER: 0.1},
 		"farm_wall": WALL_WOOD, "worship_roof": ROOF_SLATE, "palettes": {"plaster": "white"}},
+	# Lot HP1 : maisons basses des hauts plateaux, murs d'adobe et de pierre, toit de paille d'ichu peu pentu, églises
+	# coloniales en tuiles rondes
+	"altiplano": {"roof": ROOF_THATCH, "pitch_deg": 26.0, "hip_share": 0.1, "overhang_m": 0.3,
+		"walls": {WALL_ADOBE: 0.7, WALL_STONE: 0.3},
+		"farm_wall": WALL_STONE, "worship_roof": ROOF_TILE_ROUND, "palettes": {"plaster": "adobe"}},
 }
 ## Styles du lot U23 sans variante du contrat (vitrine, tests) ; STYLES garde d'abord les variantes du contrat
 ## (U1, `kawara` du lot JP1, `bois_peint` du lot U25, style U23 devenu variante pour les fjords).
-const BIOME_ONLY_STYLES := ["chalet", "pise", "case", "paillote", "basalte", "chaumiere", "yourte"]
+const BIOME_ONLY_STYLES := ["chalet", "pise", "case", "paillote", "basalte", "chaumiere", "yourte", "altiplano"]
 
 ## Style par défaut de chaque biome du lot U0, quand la tuile n'a pas de variante régionale (U1 `variant` null) :
 ## la variante de la tuile (U4) l'emporte toujours, puis le biome dominant du bâtiment, puis STYLE_DEFAULT.
@@ -148,6 +153,7 @@ const BIOME_STYLES := {
 	"mediterranean": "tuile_ronde", "steppe": "yourte", "savanna": "case",
 	"sand_desert": "pise", "rock_desert": "pise", "jungle": "paillote", "wetland": "chaumiere",
 	"coast": "ardoise", "volcanic": "basalte", "japan": "kawara", "atlantic_heath": "pierre_seche",
+	"high_plateau": "altiplano",
 }
 
 ## Teintes propres aux matières (l'enduit et les tuiles prennent celles du thème)

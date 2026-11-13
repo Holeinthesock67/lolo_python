@@ -20,6 +20,7 @@ BIOMES = [
     "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
     "wetland", "coast", "volcanic", "japan",   # 17e biome : lot JP1 (6.0)
     "atlantic_heath",                         # 18e biome : lot AT1 (6.0)
+    "high_plateau",                            # lot HP1 (6.0)
 ]
 
 

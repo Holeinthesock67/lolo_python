@@ -5,6 +5,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_theme_loader.gd
 
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
+const BiomeIds := preload("res://scripts/biome_ids.gd")
 
 var _failures := 0
 var _checked := 0
@@ -81,7 +82,7 @@ func _init() -> void:
 	var default_1x := ThemeLoader.without_biomes(default_theme)
 	default_1x["version"] = "1.2"
 	_check(_dicts_equal(min_res["theme"], default_1x), "minimal: égal clé par clé à default, sans le pack de biomes (U15)")
-	_check(default_theme["version"] == "2.0" and default_theme["biomes"].size() == 18, "default : thème 2.0 à 18 biomes (U15, JP1, AT1)")
+	_check(default_theme["version"] == "2.0" and default_theme["biomes"].size() == BiomeIds.BIOMES.size(), "default : thème 2.0, un bloc par biome de biome_ids.gd (U15, JP1, HP1)")
 	# Un thème 1.0 reste lu sans erreur ni avertissement : les clés 1.2 viennent du défaut
 	var old_dir := base_tmp.path_join("ancien")
 	_write_theme(old_dir, '{"version": "1.0"}\n')
