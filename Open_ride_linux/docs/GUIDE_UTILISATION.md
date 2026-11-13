@@ -35,7 +35,7 @@ Pour mettre à jour, cliquez sur l'icône **OpenRide – Mettre à jour**. La mi
 
 ## 3. Premier démarrage et appairage
 
-Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/OpenRide/` (parcours, entraînements, séances, réglages), installe les contenus de départ (les entraînements livrés, deux plans et deux parcours de démonstration, sans rien télécharger : « Tour des nouveaux paysages », 14 km du fjord aux hauts plateaux par les landes atlantiques, les rizières, le Japon, une île volcanique et un canyon rouge, et un circuit en boucle de 3 km pour les courses en tours, « Circuit des Prés » ; avec eux, le « Col du lacet », toujours là) et ouvre l'écran **Connexion des appareils**.
+Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/OpenRide/` (parcours, entraînements, séances, réglages), installe les contenus de départ (les entraînements livrés, deux plans et trois parcours de démonstration, sans rien télécharger : « Tour des nouveaux paysages », 14 km du fjord aux hauts plateaux par les landes atlantiques, les rizières, le Japon, une île volcanique et un canyon rouge, « Route des Érables », 6 km de montée douce au Japon entre forêts de cèdres, villages aux toits de tuiles et belvédères, et un circuit en boucle de 3 km pour les courses en tours, « Circuit des Prés » ; avec eux, le « Col du lacet », toujours là) et ouvre l'écran **Connexion des appareils**.
 
 1. Allumez le trainer (pédalez un peu pour le réveiller) et les boîtiers du Click.
 2. L'écran cherche les appareils. Quand tout est relié, il passe seul au menu. Avec un seul boîtier du Click, ou sans Click, choisissez **Passer**.

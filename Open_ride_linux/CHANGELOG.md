@@ -5,6 +5,10 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Une démonstration du Japon : la « Route des Érables » (lot DJ1)
+- Nouveau parcours de démonstration livré avec le jeu : 6 km de montée douce (1 à 5 %, 200 m) dans le biome Japon, entre forêts de cèdres et d'érables, trois villages aux toits de tuiles kawara, torii et lanternes, jusqu'au belvédère du « Col des Cèdres ». Trace, relief et décor sont entièrement inventés.
+- Il s'ajoute à la prochaine installation des contenus de départ, sans rien réécrire ; Hakone et le Fuji restent dans le pack Cols célèbres.
+
 ### Un parcours de démonstration pour les nouveaux paysages (lot DB1)
 - Nouveau parcours « Tour des nouveaux paysages » : 14 km du bord d'un fjord jusqu'au sommet des hauts plateaux, par les landes atlantiques, les rizières, un village japonais, une île volcanique et un canyon rouge (2 km chacun, 285 m de montée, 6,5 % au plus). Trace, relief et décor sont entièrement inventés.
 - Il remplace au jeu de base le « Tour des six paysages », la « Route de la côte » et la « Montée alpine » : une installation neuve ne les ajoute plus, mais ils restent installés chez ceux qui les ont déjà. Le « Col du lacet », le « Circuit des Prés » et le vélodrome ne changent pas.

@@ -25,8 +25,12 @@ de la 6.0 (`PAYSAGES`) : fjord (côte avec la mer), landes atlantiques, rizière
 rouge, hauts plateaux. Chaque bloc porte, en plus de son biome, la variante régionale de ses tuiles (sol, toits
 et paysage du lot U25, champ `variant` de la couche biome), comme `--variant` du compilateur mais bloc par bloc.
 
-Jeu de base (lots O37, O38 et DB1) : les parcours de `DEMO_SET` marqués pour le jeu de base (le tour des nouveaux
-paysages et le circuit) portent au menu un nom de parcours (`name` du manifeste) et leurs lieux des noms inventés
+Route des Érables (lot DJ1) : `--biome japan`, six kilomètres dans le biome Japon (trois blocs de 2 km : forêts,
+villages aux toits kawara, belvédères, sommet au « Col des Cèdres »), avec la variante régionale d'une vraie route
+japonaise (`BIOME_VARIANTS`) ; démonstration du Japon en plus de Hakone et du Fuji du pack Cols célèbres.
+
+Jeu de base (lots O37, O38, DB1 et DJ1) : les parcours de `DEMO_SET` marqués pour le jeu de base (le tour des
+nouveaux paysages, la route des Érables et le circuit) portent au menu un nom de parcours (`name` du manifeste) et leurs lieux des noms inventés
 (`PLACE_NAMES`) ; l'identifiant de fichier ne change pas. Le tour des six paysages, la route de la côte et la
 montée alpine sont sortis du jeu de base par le lot DB1 (décision du propriétaire du 12 novembre) : ils ne
 s'installent plus sur un jeu neuf, restent installés chez un joueur qui les a, et servent aux bancs. Variante de
@@ -41,6 +45,7 @@ ses parcours de démonstration.
     python -m openride_compiler.demo_biomes --out DOSSIER --biome alpine
     python -m openride_compiler.demo_biomes --out DOSSIER --circuit
     python -m openride_compiler.demo_biomes --out DOSSIER --paysages [--recette]
+    python -m openride_compiler.demo_biomes --out DOSSIER --biome japan
     → DOSSIER/<id>.world/ et DOSSIER/<id>.json (parts des biomes et des surfaces)
 
 Origine inventée au degré entier (45° N, 2° E : latitude tempérée de l'hémisphère nord, aucune ville au
@@ -90,7 +95,10 @@ GENERATOR = "openride-demo-biomes"    # `compiler.name` du manifeste (« make_bi
 # Le circuit (lot O38) est le parcours en boucle du jeu de base : courses en tours, Grand Prix des objets.
 # Lot DB1 (décision du propriétaire du 12 novembre) : le tour des nouveaux paysages remplace au jeu de base le tour
 # des six paysages, la route de la côte et la montée alpine, gardés pour les bancs et les recettes.
+# Démonstration Japon (lot DJ1, décision du propriétaire du 13 novembre) : six kilomètres dans le seul biome `japan`,
+# en plus de Hakone et du Fuji du pack Cols célèbres ; construite comme la montée alpine (un biome, trois blocs).
 DEMO_SET = (("demo-biomes-paysages", "Tour des nouveaux paysages", "paysages", False, True, True),
+            ("demo-japon", "Route des Érables", "japan", False, False, True),
             ("demo-biomes-tour", "Tour des six paysages", "tour", False, False, False),
             ("demo-biomes-gravel", "demo-biomes-gravel", "tour", True, False, False),
             ("demo-biomes-cote", "Route de la côte", "coast", False, True, False),
@@ -109,6 +117,9 @@ PAYSAGES = (("coast", "fjord", "schiste_sombre", "bois_peint"),
             ("rock_desert", "canyon", "gres_rose", None),
             ("high_plateau", None, None, None))
 PAYSAGES_BIOMES = tuple(b for b, *_ in PAYSAGES)
+# Variante régionale des parcours d'un seul biome (lot DJ1) : celle que le compilateur donne à une vraie route de
+# la région (zones `japon_*` de data/regional_variants.toml : sol basalte, toits kawara, test_japon_demo).
+BIOME_VARIANTS = {"japan": {"ground": "basalte", "roofs": "kawara", "landscape": None}}
 # Circuit de démonstration (lot O38) : boucle de 3 km (un tour de 5 à 7 minutes), prairie, départ au hameau.
 CIRCUIT_M = 3000.0
 CIRCUIT_BIOME = "temperate_grassland"
@@ -131,8 +142,9 @@ PLACE_NAMES = {
     "lande": ("Hameau des Murets",),
     "lande_vue": ("Pointe des Ajoncs",),
     "rizieres": ("Village des Rizières",),
-    "japon": ("Village des Érables",),
-    "japon_vue": ("Belvédère des Cerisiers",),
+    # Route des Érables (lot DJ1) : trois blocs `japan` ; le dernier belvédère est le sommet du parcours.
+    "japon": ("Village des Érables", "Hameau du Torii", "Village des Lanternes"),
+    "japon_vue": ("Belvédère des Cerisiers", "Belvédère du Lac", "Col des Cèdres"),
     "volcan": ("Cratère des Fumerolles",),
     "canyon": ("Belvédère du Canyon Rouge",),
     "plateau": ("Col des Lamas",),
@@ -795,6 +807,12 @@ def paysages_variants() -> tuple[dict | None, ...]:
     return tuple(out)
 
 
+def biome_variants(biomes: tuple[str, ...]) -> tuple[dict | None, ...] | None:
+    """Variante régionale de chaque bloc d'un parcours de biomes (lot DJ1, `BIOME_VARIANTS`) ; None sans aucune."""
+    out = tuple(dict(BIOME_VARIANTS[b]) if b in BIOME_VARIANTS else None for b in biomes)
+    return out if any(out) else None
+
+
 def write_demo_set(out: Path, seed: int = 0, recette: bool = False) -> list[dict]:
     """Parcours de `openride-core demo-biomes` : tour des nouveaux paysages et circuit (jeu de base, lot DB1) ;
     `recette` : variante des bancs et des recettes (noms techniques), avec en plus les parcours sortis du jeu de
@@ -803,9 +821,9 @@ def write_demo_set(out: Path, seed: int = 0, recette: bool = False) -> list[dict
     for name, title, which, gravel, sea, base in DEMO_SET:
         if not (base or recette):
             continue
-        variants = paysages_variants() if which == "paysages" else None
         biomes = (TOUR if which == "tour" else PAYSAGES_BIOMES if which == "paysages"
                   else (CIRCUIT_BIOME,) if which == "circuit" else (which,) * 3)
+        variants = paysages_variants() if which == "paysages" else biome_variants(biomes)
         infos.append(generate(out, name, biomes, gravel=gravel, sea=sea, seed=seed, title=title, recette=recette,
                               circuit=which == "circuit", variants=variants))
     return infos
@@ -815,7 +833,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", required=True, type=Path, help="dossier de sortie (créé si besoin)")
     what = parser.add_mutually_exclusive_group(required=True)
-    what.add_argument("--biome", choices=TOUR, help="un seul biome sur 6 km")
+    what.add_argument("--biome", choices=TOUR + ("japan",), help="un seul biome sur 6 km")
     what.add_argument("--tour", action="store_true", help="les six biomes du premier jalon, 2 km chacun")
     what.add_argument("--circuit", action="store_true", help="la boucle de 3 km du circuit de démonstration (prairie)")
     what.add_argument("--paysages", action="store_true",
@@ -839,7 +857,7 @@ def main(argv: list[str] | None = None) -> int:
                                  else "biomes-paysages" if args.paysages else f"biomes-{args.biome}")
             infos = [generate(args.out, name, biomes, gravel=args.gravel, sea=args.sea or args.paysages,
                               seed=args.seed, title=args.title, recette=args.recette, circuit=args.circuit,
-                              variants=paysages_variants() if args.paysages else None)]
+                              variants=paysages_variants() if args.paysages else biome_variants(biomes))]
     except (RuntimeError, ValueError) as exc:
         print(f"demo_biomes : {exc}", file=sys.stderr)
         return 1
