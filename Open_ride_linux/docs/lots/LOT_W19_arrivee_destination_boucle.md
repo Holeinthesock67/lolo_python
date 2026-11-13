@@ -42,4 +42,4 @@ Distance restante jusqu'à l'arrivée affichée au HUD (demanderait un champ de 
 
 ## Livraison
 
-Branche `claude/project-thread-49nsz6`, PR à venir (13 novembre).
+Branche `claude/project-thread-49nsz6`, PR #873 (13 novembre).
