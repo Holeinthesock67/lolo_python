@@ -5,6 +5,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Biomes sur le « Col du lacet » (lot W17 bis)
+- Le parcours de démonstration « Col du lacet » reçoit une couche biome synthétique : de grandes taches de forêt tempérée (hêtres, chênes, quelques épicéas) à plus de 60 m de la route, entre des alpages au look habituel du col (biome `alpine` : sapins, herbe et roche d'avant la couche biome). La route passe toujours en alpage : vue dégagée et ciel visible comme avant.
+- Générateur `openride-fake-world` 0.4.0 : une démonstration déjà installée est remplacée au prochain lancement, couche biome comprise.
 ### Nouveau biome : hauts plateaux (lot HP1, 6.0)
 - Biome « hauts plateaux » (Altiplano, Tibet, Ladakh) : herbe jaune d'ichu en touffes, sol ocre, roche brun-rouge, air sec et très clair, lacs bleu profond ; lamas, vigognes et yacks ; maisons basses d'adobe à toit de paille.
 - Le compilateur le pose seul sur le terrain ouvert au-dessus de 3 300 à 3 800 m sous 40° de latitude, sur les parcours comme dans le monde ouvert ; neige et glaciers restent alpins, les Alpes ne changent pas.
