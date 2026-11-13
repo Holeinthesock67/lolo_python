@@ -74,7 +74,7 @@ func _test_crowns() -> void:
 	_check(oak["deciduous"] and not spruce["deciduous"] and not ForestImpostors.crown_look("")["deciduous"],
 			"saisons (P18) : chêne caduc, épicéa et arbre d'avant la série U persistants")
 	_check(oak["base"] > 0.3 and oak["base"] < 0.5 and spruce["base"] < 0.2, "pied de couronne : chêne %.2f, épicéa %.2f" % [oak["base"], spruce["base"]])
-	var low := ["cactus", "reed", "dwarf_shrub", "vine_row"]
+	var low := ["cactus", "reed", "dwarf_shrub", "vine_row", "heather", "gorse", "bracken", "bunchgrass"]
 	_check(low.all(func(k): return ForestImpostors.crown_look(k).is_empty()), "plantes basses écartées des forêts lointaines")
 	_check(ForestImpostors.crown_look("")["height"] == ForestImpostors.GENERIC_HEIGHT_M, "arbre d'avant la série U (5,4 m)")
 	var q := ForestImpostors.build_quad()

@@ -116,6 +116,44 @@ func _run() -> void:
 	_check(not view.test_info()["kata_compact"], "vue : sans gag, Katamari complet")
 	view.update_view(WtfHudModel.view(null))
 	_check(not view.test_info()["visible"], "vue cachée hors mode WTF")
+
+	# Lot WTF9 (lisibilité, règle du 11/11) : chaque gag dit quoi faire, légende au premier passage.
+	for ev in [{"id": "gravity", "planet": "moon"}, {"id": "gravity", "planet": "jupiter"}, {"id": "upside_down"},
+			{"id": "collapse"}, {"id": "cheese"}, {"id": "micro", "kind": "sprint"}, {"id": "eggs"}, {"id": "tiny"},
+			{"id": "storm"}, {"id": "camera", "view": "pigeon"}, {"id": "chef", "phase": "arrive"},
+			{"id": "chef", "phase": "reveal", "dish": "chili"}, {"id": "chef", "phase": "eat", "dish": "jelly"}]:
+		var v := _ev(ev)
+		_check(str(v["banner"]["do"]) != "" and WtfHudModel.legend_key(ev) != "" and v["legend_keys"][0] == WtfHudModel.legend_key(ev),
+			"WTF9 : %s %s dit quoi faire et a sa légende" % [ev["id"], str(ev.get("phase", ev.get("planet", "")))])
+	var both: Dictionary = WtfHudModel.view({"points": 0, "event": {"id": "storm", "left_s": 30},
+		"kata": {"size": 1.2, "count": 1, "next": [[14.6, "cow"]]}, "clock_h": 10.0, "skins": {"b1": "whale"}})
+	_check(both["legend_keys"] == ["storm", "katamari", "clock", "peloton"], "WTF9 : légende du gag avant celles des règles permanentes")
+	_check(both["kata"]["next"] == "Prochain : une vache à 15 m · trop gros, boing ! (× 1,4)", "WTF9 : Katamari annonce un « boing »")
+	_check(WtfHudModel.view({"kata": {"size": 2.0, "next": [[7.0, "apple"]]}})["kata"]["next"]
+		== "Prochain : une pomme à 7 m · ramassé", "WTF9 : Katamari annonce un ramassage")
+	var lv = WtfView.new()
+	root.add_child(lv)
+	var t := 100.0
+	lv.update_view(both, t)
+	_check(lv.test_info()["legend"] == "NOUVEAU : TORNADE DE VACHES" and lv.test_info()["do"].begins_with("À toi : "),
+		"WTF9 : premier passage, légende du gag et consigne sous le bandeau")
+	t += WtfView.POP_S / 2.0
+	lv.update_view(both, t)
+	_check(lv.test_info()["pop"] > 1.1, "WTF9 : annonce, le bandeau grossit au nouveau gag")
+	while t < 100.0 + WtfView.LEGEND_S + 0.2:
+		t += 0.1
+		lv.update_view(both, t)
+	_check(lv.test_info()["legend"] == "NOUVEAU : KATAMARI", "WTF9 : légende vue %d s, la suivante prend la place" % int(WtfView.LEGEND_S))
+	_check(is_equal_approx(lv.test_info()["pop"], 1.0), "WTF9 : le bandeau revient à sa taille")
+	while t < 100.0 + 4.0 * WtfView.LEGEND_S + 1.0:
+		t += 0.1
+		lv.update_view(both, t)
+	_check(lv.test_info()["legend"] == "", "WTF9 : toutes vues, plus de légende")
+	_check(lv.test_info()["legend_top"] >= WtfView.LEGEND_TOP, "WTF9 : légende à droite, sous la colonne du HUD")
+	lv.update_view(WtfHudModel.view(null), t + 1.0)
+	lv.update_view(both, t + 2.0)
+	_check(lv.test_info()["legend"] == "NOUVEAU : TORNADE DE VACHES", "WTF9 : nouvelle séance, légendes remontrées")
+	lv.queue_free()
 	view.queue_free()
 	print("test_wtf_hud_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

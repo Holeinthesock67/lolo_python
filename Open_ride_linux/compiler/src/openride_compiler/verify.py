@@ -229,15 +229,17 @@ def biome_tile_problems(tile: object) -> list[str]:
 
 
 def _variant_problems(variant: object) -> list[str]:
-    """Variante régionale (lot U4) : null, ou {"ground", "roofs"} pris dans l'énumération du contrat."""
-    from .regional import MEMBERS
+    """Variante régionale (lot U4) : null, ou {"ground", "roofs"} et `landscape` facultatif (lot U25), pris
+    dans l'énumération du contrat."""
+    from .regional import MEMBERS, REQUIRED_MEMBERS
 
     if variant is None:
         return []
-    if not isinstance(variant, dict) or set(variant) != set(MEMBERS):
-        return [f"variant : null ou objet {{ground, roofs}} attendu, reçu {variant!r}"]
+    if (not isinstance(variant, dict) or not set(REQUIRED_MEMBERS) <= set(variant)
+            or not set(variant) <= set(MEMBERS)):
+        return [f"variant : null ou objet {{ground, roofs[, landscape]}} attendu, reçu {variant!r}"]
     return [f"variant : {member} {variant[member]!r} inconnu" for member, ids in MEMBERS.items()
-            if variant[member] is not None and variant[member] not in ids]
+            if variant.get(member) is not None and variant[member] not in ids]
 
 
 def _biome_grids(tile: dict) -> dict[str, np.ndarray]:
