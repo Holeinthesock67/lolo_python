@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Style `kawara` façon minka : murs bois sombre et enduit blanc à poteaux apparents, shoji et portes à claire-voie, tuiles kawara en rangs, toits en croupe à grand débord | GLSL, GDScript | JP1 | Moyenne | En PR le 12 novembre, **version 6.0** |
+| Style `kawara` façon minka : murs bois sombre et enduit blanc à poteaux apparents, shoji et portes à claire-voie, tuiles kawara en rangs, toits en croupe à grand débord | GLSL, GDScript | JP1 | Moyenne | **Livré le 12 novembre** (PR #855), **version 6.0** |
 
 Plan : `docs/6.0/PLAN_SERIE_JP.md`. Demande du user le 12/11 : « des habitations plus japonaises ».
 
