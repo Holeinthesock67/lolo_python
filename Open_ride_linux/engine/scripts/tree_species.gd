@@ -48,6 +48,10 @@ const INFO := {
 	"bracken": {"height": 1.0, "deciduous": true, "lod0_m": 150.0},
 	# Lot HP1 : touffe d'ichu des hauts plateaux, basse et claire ; modèle lointain dès 120 m comme les plantes basses
 	"bunchgrass": {"height": 0.7, "deciduous": false, "lod0_m": 120.0},
+	# Lot SM1 : fond marin du parcours sous-marin ; laminaire haute qui ondule, coraux et gorgones bas
+	"kelp": {"height": 9.0, "deciduous": false, "sway": 4.0},
+	"coral": {"height": 1.4, "deciduous": false, "lod0_m": 150.0, "sway": 0.0},
+	"sea_fan": {"height": 2.0, "deciduous": false, "lod0_m": 150.0, "sway": 0.6},
 }
 
 ## Matière de chaque face, portée par l'alpha de la couleur du sommet (code / 16) et dessinée par
@@ -102,6 +106,9 @@ const CROWNS := {
 	"gorse": {"w": 1.9, "col": Color(0.30, 0.36, 0.14, MAT_NEEDLES / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"bracken": {"w": 2.6, "col": Color(0.33, 0.50, 0.18, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 	"bunchgrass": {"w": 0.9, "col": Color(0.66, 0.58, 0.34, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"kelp": {"w": 2.6, "col": Color(0.46, 0.40, 0.14, MAT_FRONDS / 16.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"coral": {"w": 2.0, "col": Color(0.92, 0.90, 0.86, 1.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
+	"sea_fan": {"w": 2.0, "col": Color(0.92, 0.90, 0.88, 1.0), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0},
 }
 
 ## Couleur `rgb` avec la matière `code` dans l'alpha.
@@ -112,6 +119,25 @@ static func mat(rgb: Color, code: int) -> Color:
 ## Couleur assombrie de `f`, matière gardée.
 static func shade(col: Color, f: float) -> Color:
 	return Color(col.r * f, col.g * f, col.b * f, col.a)
+
+
+## Couleurs d'instance tirées arbre par arbre (lot SM1) : coraux et gorgones de toutes les couleurs ; une espèce
+## absente garde la teinte d'aujourd'hui (gris de ± 8 % autour du blanc).
+const PALETTES := {
+	"coral": [Color(1.0, 0.52, 0.30), Color(1.0, 0.56, 0.70), Color(0.66, 0.42, 0.90), Color(1.0, 0.86, 0.36),
+		Color(0.40, 0.82, 0.76), Color(0.95, 0.36, 0.36)],
+	"sea_fan": [Color(0.70, 0.22, 0.48), Color(0.92, 0.30, 0.26), Color(1.0, 0.62, 0.22), Color(0.95, 0.85, 0.30)],
+}
+
+
+static func palette(kind: String) -> Array:
+	return PALETTES.get(kind, [])
+
+
+## Facteur du balancement de tree_sway.gdshader (lot SM1) : 1 pour un arbre, 0 pour un corail rigide, 4 pour une
+## laminaire que le courant couche.
+static func sway_factor(kind: String) -> float:
+	return float(INFO.get(kind, {}).get("sway", 1.0))
 
 
 static func index_of(kind: String) -> int:
@@ -452,6 +478,59 @@ static func _draw(st: SurfaceTool, kind: String) -> bool:
 				var col := mat(Color(0.70, 0.62, 0.36).lerp(Color(0.52, 0.50, 0.28), 0.3 * float(i % 3)), MAT_FRONDS)
 				_tri(st, base - w, tip, base + w, col)
 				_tri(st, base + w, tip, base - w, shade(col, 0.9))
+		# --- Fond marin (lot SM1) ---
+		"kelp":
+			# Laminaire géante : cinq stipes souples qui montent du crampon en s'écartant, lames dorées alternées
+			# le long de chacun (frondes vues des deux côtés), une grande lame au sommet. Ondule avec tree_sway.
+			_blob(st, Vector3(0, 0.12, 0), Vector3(0.35, 0.18, 0.35), mat(Color(0.30, 0.24, 0.10), MAT_STEM), 3)
+			for i in range(5):
+				var a := TAU * i / 5.0 + 0.4
+				var dir := Vector3(cos(a), 0, sin(a))
+				var h := 7.2 + 0.45 * float((i * 3) % 4)
+				var mid := dir * 0.55 + Vector3(0, h * 0.5, 0)
+				var top := dir * 0.9 + Vector3(0, h, 0)
+				var stem := mat(Color(0.36, 0.30, 0.12), MAT_STEM)
+				_limb(st, dir * 0.1, mid, 0.05, 0.04, stem, 3)
+				_limb(st, mid, top, 0.04, 0.03, stem, 3)
+				for k in range(4):
+					var t := 0.22 + 0.19 * k
+					var base := dir * (0.1 + 0.8 * t) + Vector3(0, h * t, 0)
+					var col := mat(Color(0.50, 0.42, 0.14).lerp(Color(0.34, 0.36, 0.12), 0.25 * float((i + k) % 3)), MAT_FRONDS)
+					_frond(st, base, a + (1.3 if k % 2 == 0 else -1.3), 1.4, 0.5, 0.3, 0.32, col)
+				_frond(st, top, a, 1.6, 0.4, 0.6, 0.4, mat(Color(0.52, 0.44, 0.15), MAT_FRONDS))
+		"coral":
+			# Corail branchu (acropore) : buissons de branches qui fourchent deux fois, bouts clairs ; couleur unie
+			# (alpha 1) presque blanche, colorée par la teinte d'instance tirée dans PALETTES (tree_renderer.gd).
+			var body := Color(0.92, 0.90, 0.86, 1.0)
+			var tips := Color(1.0, 1.0, 0.97, 1.0)
+			_blob(st, Vector3(0, 0.15, 0), Vector3(0.45, 0.2, 0.45), shade(body, 0.8), 3)
+			for i in range(7):
+				var a := TAU * i / 7.0 + 0.3 * float(i % 2)
+				var dir := Vector3(cos(a), 0, sin(a))
+				var knee := dir * 0.35 + Vector3(0, 0.55 + 0.1 * float(i % 3), 0)
+				_limb(st, dir * 0.12 + Vector3(0, 0.15, 0), knee, 0.07, 0.05, body, 4)
+				for j in range(2):
+					var b := a + (0.45 if j == 0 else -0.45)
+					var tip := knee + Vector3(cos(b), 0, sin(b)) * 0.35 + Vector3(0, 0.6 + 0.12 * float((i + j) % 3), 0)
+					_limb(st, knee, tip, 0.045, 0.03, body, 3)
+					_limb(st, tip, tip + (tip - knee).normalized() * 0.12, 0.03, 0.01, tips, 3)
+		"sea_fan":
+			# Gorgone en éventail : pied court puis éventail plat dressé (plan x-y), dessiné des deux côtés,
+			# nervures plus sombres en rayons ; un petit éventail de côté.
+			var fan := Color(0.92, 0.90, 0.88, 1.0)
+			_limb(st, Vector3.ZERO, Vector3(0, 0.35, 0), 0.06, 0.05, shade(fan, 0.6), 4)
+			for f in range(2):
+				var c := Vector3(0.0, 0.35, 0.0) if f == 0 else Vector3(0.25, 0.25, 0.15)
+				var r := 1.6 if f == 0 else 0.9
+				var n := 7
+				for i in range(n):
+					var a0 := PI * (0.12 + 0.76 * float(i) / n)
+					var a1 := PI * (0.12 + 0.76 * float(i + 1) / n)
+					var p0 := c + Vector3(cos(a0) * r * 0.75, sin(a0) * r, 0.0)
+					var p1 := c + Vector3(cos(a1) * r * 0.75, sin(a1) * r, 0.0)
+					var col := fan if i % 2 == 0 else shade(fan, 0.85)
+					_tri(st, c, p1, p0, col, Vector3.BACK)
+					_tri(st, c, p0, p1, shade(col, 0.9), Vector3.FORWARD)
 		"vine_row":
 			# Rang de 6 m : piquets et ceps sous une haie de feuillage basse, orienté selon x.
 			for i in range(4):

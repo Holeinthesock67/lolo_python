@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Captures des cinq parcours de démonstration du jeu de base (lots O37 et O38), à valider par le propriétaire.
+"""Captures des six parcours de démonstration du jeu de base (lots O37, O38 et SM1), à valider par le propriétaire.
 
     python3 engine/tests/captures_demo.py lancer [--out DOSSIER] [--qualites medium] [--vitesse 50]
                                                  [--parcours demo,demo-biomes-alpin] [--native] [--sans-menus]
@@ -13,7 +13,7 @@
    du sommet (100, 70, 50, 40 et 30 m avant, en 1920×1080 pour que son nom se lise). Le sommet est le point le plus
    haut de la route ; un parcours sans montée n'a que les captures du début. Un circuit (lot O38) a en plus des
    captures aux quarts du tour.
-3. `menu_bench.py --scenario parcours_demo --captures ecrans` : liste des parcours avec leurs cinq noms et
+3. `menu_bench.py --scenario parcours_demo --captures ecrans` : liste des parcours avec leurs noms et
    écran « Prêt » de chacun.
 4. `DOSSIER/planche.html` : toutes les captures, rangées par parcours et par qualité.
 
@@ -36,7 +36,8 @@ from pathlib import Path
 TESTS_DIR = Path(__file__).resolve().parent
 ENGINE_DIR = TESTS_DIR.parent
 REPO = ENGINE_DIR.parent
-ROUTES = ("demo", "demo-biomes-tour", "demo-biomes-cote", "demo-biomes-alpin", "demo-circuit")   # tour gravel : recette seule (9 novembre) ; circuit : lot O38
+ROUTES = ("demo", "demo-biomes-tour", "demo-biomes-cote", "demo-biomes-alpin", "demo-circuit",
+          "demo-recif")   # tour gravel : recette seule (9 novembre) ; circuit : lot O38 ; récif sous la mer : lot SM1
 START_MARKS_M = (150.0, 400.0)
 SUMMIT_BEFORE_M = (100.0, 70.0, 50.0, 40.0, 30.0)   # plusieurs : un spectateur peut cacher le panneau (r811c)
 MIN_CLIMB_M = 30.0                 # dénivelé sous lequel le parcours n'a pas de sommet à montrer
@@ -129,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--godot", type=Path, help="exécutable Godot (défaut : celui des bancs)")
     run.add_argument("--qualites", default="medium", help="low, medium, high séparées par des virgules (défaut medium)")
     run.add_argument("--vitesse", type=float, default=50.0, help="vitesse tenue en km/h (défaut 50)")
-    run.add_argument("--parcours", default=",".join(ROUTES), help="identifiants séparés par des virgules (défaut : les cinq)")
+    run.add_argument("--parcours", default=",".join(ROUTES), help="identifiants séparés par des virgules (défaut : les six)")
     run.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel, sans Xvfb")
     run.add_argument("--sans-menus", action="store_true", help="sans le banc des menus")
     args = ap.parse_args(argv)

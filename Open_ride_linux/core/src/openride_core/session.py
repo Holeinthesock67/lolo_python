@@ -3722,6 +3722,9 @@ class CoreSession:
         choisi, limite de neige du thème, graine de l'engine."""
         if route is None or not self.cfg.render.living or self._track is not None:
             return None   # vélodrome : salle couverte, pas de circulation (l'engine n'y pose pas le décor vivant)
+        src = self._world_src
+        if src and src[0] is route and traffic_mod.underwater_route(src[2]):
+            return None   # sous l'eau (lot SM1) : ni voitures ni cyclistes du décor, comme living_decor.gd
         if self.traffic is None or self.traffic.route is not route:
             src = self._world_src
             villages = traffic_mod.load_villages(src[1], src[2], route.length_m) if src and src[0] is route else []

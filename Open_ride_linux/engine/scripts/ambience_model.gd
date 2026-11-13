@@ -55,10 +55,10 @@ const SEA_FULL_M := 30.0
 
 ## Fonds des biomes (lot U11, selon `layers` du thème) ; BEDS : les six fonds de P9 (selon le voisinage), puis eux.
 const BIOME_BEDS := ["cicadas", "jungle_chorus", "conifer_wind", "cowbells", "waves", "gulls", "frogs",
-	"singing_sand", "ice_cracks", "fumaroles"]
+	"singing_sand", "ice_cracks", "fumaroles", "underwater"]
 const BEDS := ["forest_birds", "field_insects", "water_flow", "village_murmur", "high_wind", "rain",
 	"cicadas", "jungle_chorus", "conifer_wind", "cowbells", "waves", "gulls", "frogs",
-	"singing_sand", "ice_cracks", "fumaroles"]
+	"singing_sand", "ice_cracks", "fumaroles", "underwater"]
 ## Niveau de chaque fond à plein gain et volume général 1 (dB) : sous les bips du Click.
 const BED_MAX_DB := {
 	"forest_birds": -14.0,
@@ -77,6 +77,7 @@ const BED_MAX_DB := {
 	"singing_sand": -19.0,
 	"ice_cracks": -17.0,
 	"fumaroles": -18.0,
+	"underwater": -14.0,   # lot SM1 : fond marin
 }
 ## Facteur de saison des fonds de biome [printemps, été, automne, hiver] ; saison inconnue : 1.
 const SEASONS := ["spring", "summer", "autumn", "winter"]
@@ -91,12 +92,14 @@ const SEASON_GAIN := {
 	"singing_sand": [1.0, 1.0, 1.0, 1.0],
 	"ice_cracks": [0.6, 0.3, 0.6, 1.0],
 	"fumaroles": [1.0, 1.0, 1.0, 1.0],
+	"underwater": [1.0, 1.0, 1.0, 1.0],
 }
 ## Profil horaire des fonds de biome : `day` = insects_day_factor, `light` = jour des oiseaux ramené de 0 à 1,
 ## `dusk` = surtout le soir et la nuit, `always` = toute la journée.
 const HOUR_PROFILE := {
 	"cicadas": "day", "jungle_chorus": "always", "conifer_wind": "always", "cowbells": "light", "waves": "always",
 	"gulls": "light", "frogs": "dusk", "singing_sand": "always", "ice_cracks": "always", "fumaroles": "always",
+	"underwater": "always",
 }
 const WATER_KIND_GAIN := {"river": 1.0, "stream": 0.8, "canal": 0.4, "lake": 0.35, "pond": 0.25}
 

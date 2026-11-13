@@ -15,7 +15,7 @@ couche terrain synthétique, pour être identique octet pour octet :
     python -m openride_core.tools.fake_world --demo --out ../engine/demo
 
 Les parcours de démonstration des biomes (lot U19 ; trois dans le jeu de base, le tour gravel en plus pour les recettes, lot O37) et le
-circuit en boucle « Circuit des Prés » (lot O38, courses en tours) sont écrits par `write_biome_demo_worlds`, qui
+circuit en boucle « Circuit des Prés » (lot O38, courses en tours) et le récif sous la mer « Récif des tortues » (lot SM1) sont écrits par `write_biome_demo_worlds`, qui
 appelle le générateur du compilateur `openride_compiler.demo_biomes` (lot O37 ; compilateur requis) :
     openride-core demo-biomes [--out DOSSIER] [--recette]
 

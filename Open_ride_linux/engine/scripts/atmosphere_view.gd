@@ -13,6 +13,9 @@ extends Node
 ## que lui), lumière, horizon et brouillard prennent les multiplicateurs de l'heure, la lumière ambiante descend
 ## vers la lumière minimale de la nuit, et le ciel s'éteint avec ses étoiles (ciel physique : étoiles en quatre
 ## niveaux ; ciel nuageux de P6 : `stars` et couleurs de `sky_clouds.gdshader`). Inactif : rendu d'aujourd'hui.
+## Sous l'eau (lot SM1, `underwater` d'atmosphere_model.gd, fond marin `reef`) : le brouillard noie aussi le ciel
+## (fog_sky_affect de 0 à 1), la surface de la mer vue d'en dessous suit la caméra au niveau 0
+## (shaders/sea_ceiling.gdshader) et des bulles montent autour d'elle ; tout est caché hors de l'eau.
 ## Pas de class_name : charger par preload("res://scripts/atmosphere_view.gd").
 
 const AtmosphereModel := preload("res://scripts/atmosphere_model.gd")
@@ -20,6 +23,7 @@ const RenderQuality := preload("res://scripts/render_quality.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const SkyClouds := preload("res://scripts/sky_clouds.gd")
 const HeatHazeShader := preload("res://shaders/heat_haze.gdshader")
+const SeaCeilingShader := preload("res://shaders/sea_ceiling.gdshader")
 
 const PERIOD_S := 0.25
 const FOG_EPS := 0.002       # écart de fog_end_factor qui justifie de reposer le brouillard
@@ -29,6 +33,13 @@ const HORIZON_AHEAD_M := 5000.0
 const NIGHT_AMBIENT_GAIN := 3.0   # lumière ambiante de la nuit (route lisible) : couleur × énergie de daylight_model × gain
 const STAR_LEVELS := 4
 const STAR_COUNT := 2200
+## Sous l'eau (lot SM1)
+const UNDER_EPS := 0.01            # part du fond marin sous laquelle la surface et les bulles sont cachées
+const SEA_LEVEL_Y := 0.0           # niveau de la mer du format (aires `sea`, lot U3)
+const CEILING_SIZE_M := 1200.0     # carré de la surface, au-delà du brouillard de l'eau
+const BUBBLES := 96
+const BUBBLE_BOX_M := Vector3(18.0, 2.0, 18.0)   # demi-côtés de la boîte d'émission, sous la caméra
+const BUBBLE_BELOW_M := 5.0
 
 var environment: Environment
 var sun: DirectionalLight3D
@@ -45,6 +56,8 @@ var _at := -INF
 var _haze_rect: ColorRect = null
 var cycle := {}              # sortie de DaylightModel.evaluate (lot P19) ; vide ou inactive : soleil fixe
 var _ambient_base := {}      # lumière ambiante de la scène avant le jour et la nuit
+var _ceiling: MeshInstance3D = null    # surface vue d'en dessous (lot SM1)
+var _bubbles: GPUParticles3D = null
 static var _star_textures := []
 
 
@@ -69,6 +82,53 @@ func setup(env: Environment, sun_light: DirectionalLight3D) -> void:
 	_haze_rect.visible = false
 	layer.add_child(_haze_rect)
 	add_child(layer)
+	_make_underwater()
+
+
+## Surface vue d'en dessous et bulles (lot SM1), cachées jusqu'à ce que la caméra passe sous l'eau.
+func _make_underwater() -> void:
+	_ceiling = MeshInstance3D.new()
+	_ceiling.name = "SeaCeiling"
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(CEILING_SIZE_M, CEILING_SIZE_M)
+	_ceiling.mesh = plane
+	var mat := ShaderMaterial.new()
+	mat.shader = SeaCeilingShader
+	_ceiling.material_override = mat
+	_ceiling.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_ceiling.visible = false
+	add_child(_ceiling)
+	_bubbles = GPUParticles3D.new()
+	_bubbles.name = "Bubbles"
+	_bubbles.amount = BUBBLES
+	_bubbles.lifetime = 9.0
+	_bubbles.preprocess = 9.0
+	_bubbles.local_coords = false
+	_bubbles.visibility_aabb = AABB(-BUBBLE_BOX_M - Vector3(4.0, 4.0, 4.0), (BUBBLE_BOX_M + Vector3(4.0, 20.0, 4.0)) * 2.0)
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = BUBBLE_BOX_M
+	pm.direction = Vector3.UP
+	pm.spread = 8.0
+	pm.initial_velocity_min = 0.8
+	pm.initial_velocity_max = 1.6
+	pm.gravity = Vector3(0.0, 0.25, 0.0)
+	pm.scale_min = 0.5
+	pm.scale_max = 1.4
+	_bubbles.process_material = pm
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.07, 0.07)
+	var qm := StandardMaterial3D.new()
+	qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	qm.albedo_color = Color(0.9, 0.98, 1.0, 0.55)
+	quad.material = qm
+	_bubbles.draw_pass_1 = quad
+	_bubbles.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_bubbles.emitting = false
+	_bubbles.visible = false
+	add_child(_bubbles)
 
 
 ## Thème, modèle de biome et parcours chargés (changement de thème ou de parcours) : atmosphère du départ.
@@ -153,6 +213,10 @@ func step(now_s: float, s_route: float, camera: Camera3D, weather_eval: Dictiona
 			_apply(p)
 		else:
 			current["s"] = s_route
+	if _ceiling != null and _ceiling.visible and camera != null:
+		var c := camera.global_position
+		_ceiling.global_position = Vector3(c.x, SEA_LEVEL_Y, c.z)
+		_bubbles.global_position = Vector3(c.x, minf(c.y - BUBBLE_BELOW_M, SEA_LEVEL_Y - BUBBLE_BOX_M.y), c.z)
 	if _haze_rect.visible and camera != null:
 		var ahead := -camera.global_transform.basis.z
 		ahead.y = 0.0
@@ -171,6 +235,8 @@ static func _differs(a: Dictionary, b: Dictionary) -> bool:
 		return true
 	if absf(float(a["heat_haze"]) - float(b["heat_haze"])) > HEAT_EPS:
 		return true
+	if absf(float(a.get("underwater", 0.0)) - float(b.get("underwater", 0.0))) > COLOR_EPS:
+		return true
 	for k in ["light_energy_factor", "ambient_energy", "stars"]:
 		if absf(float(a.get(k, 1.0)) - float(b.get(k, 1.0))) > COLOR_EPS:
 			return true
@@ -188,6 +254,11 @@ func _apply(p: Dictionary) -> void:
 	if environment != null:
 		RenderQuality.apply_fog(environment, quality, has_terrain, p["horizon_color"], float(p["fog_density"]),
 			float(p["fog_end_factor"]))
+		# Sous l'eau (lot SM1) : le ciel, le soleil et les nuages se perdent dans l'eau
+		var u := float(p.get("underwater", 0.0))
+		if u > 0.0:
+			environment.fog_sky_affect = lerpf(RenderQuality.FOG_SKY_AFFECT, 1.0, u)
+			environment.volumetric_fog_sky_affect = environment.fog_sky_affect
 		if living_decor != null:
 			living_decor.set_fog_base(environment)
 	if sun != null:
@@ -195,10 +266,28 @@ func _apply(p: Dictionary) -> void:
 		sun.light_color = p["light_tint"]
 		sun.light_energy = _sun_energy * float(p["light_energy_factor"])
 	_apply_sky(p)
+	_apply_underwater(p)
 	if _haze_rect != null:
 		var heat := float(p["heat_haze"])
 		_haze_rect.visible = heat > 0.0
 		(_haze_rect.material as ShaderMaterial).set_shader_parameter("strength", heat)
+
+
+## Surface et bulles (lot SM1) : visibles avec le fond marin sous la caméra, à sa part ; couleurs de l'eau.
+func _apply_underwater(p: Dictionary) -> void:
+	if _ceiling == null:
+		return
+	var u := float(p.get("underwater", 0.0))
+	var on := u > UNDER_EPS
+	_ceiling.visible = on
+	_bubbles.visible = on
+	_bubbles.emitting = on
+	if on:
+		var mat := _ceiling.material_override as ShaderMaterial
+		var water: Color = p["horizon_color"]
+		mat.set_shader_parameter("strength", u)
+		mat.set_shader_parameter("deep_color", water)
+		mat.set_shader_parameter("bright_color", water.lerp(Color(0.85, 0.98, 1.0), 0.75))
 
 
 ## Lumière ambiante et ciel de l'heure (lot P19) ; sans jour et nuit, valeurs de la scène remises.
@@ -284,4 +373,6 @@ func test_info() -> Dictionary:
 		"cycle": cycle_active(),
 		"sun_energy": sun.light_energy if sun != null else 0.0,
 		"stars": float(current.get("stars", 0.0)),
+		"underwater": float(current.get("underwater", 0.0)),
+		"sea_ceiling": _ceiling != null and _ceiling.visible,
 	}

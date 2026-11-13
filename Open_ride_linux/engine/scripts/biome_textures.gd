@@ -33,7 +33,7 @@ const GRID := 17
 ## Emplacements de sol (terrain_biomes.gdshader) : un par biome, puis un par couple (paysage, biome de base) dont
 ## le thème décrit le sol (lot U25, `landscapes.<paysage>.biomes.<biome>.ground`), au plus MAX_LANDSCAPE_SLOTS.
 const MAX_LANDSCAPE_SLOTS := 16
-const MAX_SLOTS := 19 + MAX_LANDSCAPE_SLOTS   # BiomeIds.BIOMES + paysages (terrain_biomes.gdshader MAX_SLOTS)
+const MAX_SLOTS := 20 + MAX_LANDSCAPE_SLOTS   # BiomeIds.BIOMES + paysages (terrain_biomes.gdshader MAX_SLOTS)
 const MAX_LAYERS := MAX_SLOTS * 3      # 3 couches par emplacement (terrain_biomes.gdshader MAX_LAYERS)
 const ROLES: Array[String] = ["grass", "rock", "snow"]
 ## Force des rides et des dunes du sable par biome (lot U8, biome_rule.w du shader) ; 0 ailleurs.
@@ -199,6 +199,9 @@ func _fill_material(used: Dictionary) -> void:
 		ids.append(ids[0])
 	material.set_shader_parameter("biome_rule", rules)
 	material.set_shader_parameter("sand_wind_dir", sand_wind_dir(model.theme))
+	# Reflets de la surface sur le fond marin (lot SM1) : emplacement du biome `reef` (le premier des biomes sous
+	# l'eau d'atmosphere_model.gd ; aucun paysage ne s'y rattache)
+	material.set_shader_parameter("caustic_slot", BiomeIds.BIOMES.find("reef"))
 	material.set_shader_parameter("biome_layers", ids)
 	var arrays := {"a": _make_array(used["a"], "a", false), "b": _make_array(used["b"], "b", true)}
 	var colors: Array[Vector4] = []

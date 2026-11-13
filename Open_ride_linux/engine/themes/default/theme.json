@@ -1468,6 +1468,76 @@
           5
         ]
       }
+    },
+    "reef": {
+      "ground": {
+        "layers": [
+          {
+            "name": "sable corallien",
+            "role": "flat",
+            "color": "#d9cfa6",
+            "texture": null,
+            "scale_m": 6.0
+          },
+          {
+            "name": "roche du récif et coraux encroûtants",
+            "role": "steep",
+            "color": "#8a6f66",
+            "texture": null,
+            "scale_m": 12.0
+          }
+        ],
+        "slope_threshold_deg": 22,
+        "blend_sharpness": 4.0,
+        "high_line_m": null
+      },
+      "vegetation": {
+        "species": [
+          {
+            "kind": "kelp",
+            "weight": 3
+          },
+          {
+            "kind": "coral",
+            "weight": 4
+          },
+          {
+            "kind": "sea_fan",
+            "weight": 2
+          }
+        ],
+        "max_density_per_ha": 260,
+        "treeline_m": null
+      },
+      "water": {
+        "color": "#1a7f9a",
+        "turbidity": 0.25
+      },
+      "sky": {
+        "fog_density": 0.004,
+        "haze": 0.0,
+        "light_tint": "#b8f0ff"
+      },
+      "ambience": {
+        "volume": 0.6,
+        "birds": 0.0,
+        "insects": 0.0,
+        "layers": {
+          "underwater": 1.0
+        }
+      },
+      "fauna": {
+        "birds": 1.0,
+        "livestock": 0.0,
+        "deer": 0.8
+      },
+      "seasons": {
+        "calendar": "none",
+        "offset_months": 0,
+        "durations_months": [
+          12
+        ]
+      }
     }
   },
   "variants": {

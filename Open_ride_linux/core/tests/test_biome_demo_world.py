@@ -5,7 +5,8 @@ Parts des biomes du tour (10 à 25 %), somme des poids 255 en chaque point, un t
 `--gravel`, côte et mer avec `--sea`, validité (`verify` du compilateur et schémas), coordonnées au degré
 entier, deux générations identiques au bit près. Lot O37 : noms de parcours et de lieux du jeu de base, variante
 de recette aux noms techniques, démonstrations d'avant le lot O37 remplacées à l'installation. Lot O38 : le circuit
-de démonstration (boucle fermée de 3 km) et une course du Grand Prix des objets en tours dessus.
+de démonstration (boucle fermée de 3 km) et une course du Grand Prix des objets en tours dessus. Lot SM1 : le récif
+sous la mer (boucle de 8 km, biome `reef`), sans circulation ni cyclistes du décor au core.
 """
 
 from __future__ import annotations
@@ -69,11 +70,11 @@ def _json(path: Path) -> dict:
 
 
 def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
-    """Jeu de base : quatre parcours (le tour gravel retiré le 9 novembre, le circuit ajouté par le lot O38) ;
-    recette : les cinq."""
+    """Jeu de base : cinq parcours (le tour gravel retiré le 9 novembre, le circuit ajouté par le lot O38, le récif
+    par le lot SM1) ; recette : les six."""
     names = sorted(p.name for p in demo_set.glob("*.world"))
     assert names == ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-tour.world",
-                     "demo-circuit.world"]
+                     "demo-circuit.world", "demo-recif.world"]
     assert sorted(p.name for p in recette_set.glob("*.world")) == sorted(names + ["demo-biomes-gravel.world"])
     for world in [*demo_set.glob("*.world"), recette_set / "demo-biomes-gravel.world"]:
         assert verify_world(world) == [], world.name
@@ -141,7 +142,8 @@ def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> Non
     """Lot O37 : nom de parcours au menu, aucun « Fictif » ni nom technique dans les fichiers livrés."""
     titles = {name: title for name, title, *_, base in mbw.DEMO_SET if base}
     assert titles == {"demo-biomes-tour": "Tour des six paysages", "demo-biomes-cote": "Route de la côte",
-                      "demo-biomes-alpin": "Montée alpine", "demo-circuit": "Circuit des Prés"}
+                      "demo-biomes-alpin": "Montée alpine", "demo-circuit": "Circuit des Prés",
+                      "demo-recif": "Récif des tortues"}
     assert mbw.RETIRED_DEMOS == ("demo-biomes-gravel",) and not (demo_set / "demo-biomes-gravel.world").exists()
     for name, title in titles.items():
         world = demo_set / f"{name}.world"
@@ -191,7 +193,7 @@ def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path, rece
                                                       "compiler": {"name": "make_biome_world"}}), encoding="utf-8")
     assert biome_demo_outdated(routes / "demo-biomes-tour.world") and not biome_demo_outdated(mine)
     written, note = contents.install_biome_demos(routes)
-    assert note == "" and sorted(written) == ["demo-biomes-cote", "demo-biomes-tour", "demo-circuit"]
+    assert note == "" and sorted(written) == ["demo-biomes-cote", "demo-biomes-tour", "demo-circuit", "demo-recif"]
     assert not gravel.exists()
     assert _json(old)["name"] == "Tour des six paysages"
     assert _json(mine / "manifest.json")["name"] == "Mon alpin"
@@ -218,8 +220,8 @@ def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert main(["demo-biomes", "--out", str(tmp_path)]) == 0
     out = capsys.readouterr().out
     assert "demo-biomes-tour (Tour des six paysages) : " in out and "demo-biomes-gravel" not in out
-    assert "demo-circuit (Circuit des Prés) : " in out
-    assert len(list(tmp_path.glob("*.world"))) == 4
+    assert "demo-circuit (Circuit des Prés) : " in out and "demo-recif (Récif des tortues) : " in out
+    assert len(list(tmp_path.glob("*.world"))) == 5
 
 
 def test_circuit_loop(demo_set: Path, mbw) -> None:
@@ -279,3 +281,35 @@ def test_circuit_grand_prix_in_laps(demo_set: Path, tmp_path: Path, monkeypatch:
     assert gp.lap_m == pytest.approx(s.route.length_m) and gp.length_m == pytest.approx(2 * s.route.length_m)
     in_lap = [round((r - gp.origin_m) % gp.lap_m, 1) for r in gp.boxes.rows]
     assert in_lap and len(in_lap) == 2 * len(set(in_lap))   # mêmes rangées de boîtes à chaque tour
+
+
+def test_recif_loop_under_the_sea(demo_set: Path, mbw) -> None:
+    """Lot SM1 : boucle fermée de 8 km dans le seul biome `reef`, route de −30 à −10 m (sous la mer, pentes douces),
+    relief tout entier sous REEF_TOP_M (le récif ne sort jamais de l'eau), lieux nommés, aucune construction, et ni
+    circulation ni cyclistes du décor au core."""
+    import numpy as np
+    from openride_core import traffic
+    from openride_core.route import load_world
+
+    world = demo_set / "demo-recif.world"
+    route = _json(world / "route.json")
+    manifest = _json(world / "manifest.json")
+    assert route["type"] == "loop" and route["length_m"] == pytest.approx(mbw.REEF_M, abs=5.0)
+    assert manifest["layers"]["biome"]["shares"] == {"reef": 100.0}
+    assert -30.0 <= min(route["alt_m"]) and max(route["alt_m"]) <= -10.0
+    assert -4.0 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 4.0
+    assert (route["x"][0], route["z"][0], route["alt_m"][0]) == (route["x"][-1], route["z"][-1], route["alt_m"][-1])
+    info = _json(demo_set / "demo-recif.json")
+    assert info["generated"]["buildings"] == 0 and info["generated"]["poi"] == 4
+    plan = mbw.Plan(("reef",), False, False, loop="recif")
+    terrain = mbw.make_terrain(plan)
+    xs, zs = np.meshgrid(np.linspace(-3000.0, 3000.0, 121), np.linspace(-3000.0, 3000.0, 121))
+    assert float(np.max(terrain(xs, zs))) <= mbw.REEF_TOP_M
+    # La route garde l'altitude du relief : le plafond n'agit qu'au-dessus de REEF_TOP_M − REEF_SOFT_M
+    s = np.arange(0.0, mbw.REEF_M, 50.0)
+    x, z = zip(*(plan.road.xz(v) for v in s))
+    assert np.allclose(terrain(np.array(x), np.array(z)), mbw.reef_relief(np.array(x), np.array(z)), atol=0.05)
+    names = "".join(f.read_text(encoding="utf-8") for f in (world / "poi").glob("*.json"))
+    assert all(n in names for n in ("Lagon des Tortues", "Forêt des Laminaires", "Jardin de Corail", "Tombant Bleu"))
+    assert traffic.underwater_route(manifest) and not traffic.underwater_route(_json(demo_set / "demo-circuit.world" / "manifest.json"))
+    assert load_world(world).route.is_loop

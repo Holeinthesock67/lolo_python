@@ -61,6 +61,11 @@ func _flat(_x: float, _z: float) -> float:
 	return 250.0
 
 
+## Fond marin plat à 20 m sous la surface (lot SM1).
+func _seabed(_x: float, _z: float) -> float:
+	return -20.0
+
+
 ## Zones OSM d'un tronçon : un bois, un pré et un champ de chaque côté de la route.
 func _areas(k: int) -> Array:
 	var x0 := k * 1000.0
@@ -294,6 +299,29 @@ func _init() -> void:
 	ws.free()
 	trees.free()
 	osm.free()
+
+	# 11. Lot SM1 : fond marin à 20 m sous la surface : seulement des poissons, des tortues et des raies, en bandes
+	# qui tournent entre le sol et la surface (niveau 0), ni bête au sol ni oiseau
+	var reef := []
+	for k in range(CHUNKS):
+		reef.append_array(FaunaPlacer.place_chunk(k, _areas(k), [], route, _theme["fauna"],
+			{"height_at": Callable(self, "_seabed"), "biome_model": _model("reef")}))
+	var cr := _species(reef)
+	var only_sea := not reef.is_empty()
+	var inside := true
+	for g in reef:
+		only_sea = only_sea and str(g["type"]) == "birds" and str(g["species"]) in ["fish", "fish_blue", "turtle", "ray"]
+		if str(g["type"]) == "birds":
+			var cy := float((g["center"] as Vector3).y)
+			for m in g["members"]:
+				var top := cy + float(m["h"]) + FaunaPlacer.BIRD_WAVE_M
+				var low := cy + float(m["h"]) - FaunaPlacer.BIRD_WAVE_M
+				inside = inside and top < 0.0 and low > -20.0
+	_check(only_sea and cr.has("fish") and cr.has("turtle"), "fond marin : poissons, tortues et raies seulement %s" % str(cr))
+	_check(inside, "fond marin : toutes les bandes nagent entre le fond (−20 m) et la surface")
+	for sp in ["fish", "fish_blue", "turtle", "ray"]:
+		_check(sp in FaunaRenderer.BIRD_SPECIES and FaunaRenderer.build_mesh(sp).get_surface_count() > 0,
+			"fond marin : maillage de « %s »" % sp)
 
 	print("test_fauna_biomes : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

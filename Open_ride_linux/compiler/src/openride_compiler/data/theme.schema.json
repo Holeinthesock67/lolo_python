@@ -105,6 +105,11 @@
               "type": "number",
               "minimum": 0,
               "maximum": 1
+            },
+            "underwater": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
             }
           }
         }
@@ -152,7 +157,8 @@
         "volcanic",
         "japan",
         "atlantic_heath",
-        "high_plateau"
+        "high_plateau",
+        "reef"
       ]
     },
     "groundLayer": {
@@ -271,7 +277,10 @@
                       "heather",
                       "gorse",
                       "bracken",
-                      "bunchgrass"
+                      "bunchgrass",
+                      "kelp",
+                      "coral",
+                      "sea_fan"
                     ]
                   },
                   "weight": {

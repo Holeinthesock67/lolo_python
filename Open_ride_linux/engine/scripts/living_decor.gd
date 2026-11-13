@@ -65,6 +65,7 @@ const StreetLights := preload("res://scripts/street_lights.gd")
 const CrowdModel := preload("res://scripts/crowd_model.gd")
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const PassersbyModel := preload("res://scripts/passersby_model.gd")
+const AtmosphereModel := preload("res://scripts/atmosphere_model.gd")
 const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 const FOG_PERIOD_S := 0.5
@@ -107,6 +108,7 @@ var crowd = CrowdModel.new()
 var crowd_view: Node3D = null
 var passersby = PassersbyModel.new()
 var passersby_view: Node3D = null
+var underwater := false             # parcours sous l'eau (lot SM1, AtmosphereModel.route_underwater)
 
 var climbs: Array = []
 var pois: Array = []
@@ -175,12 +177,12 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 	props.set_preset(QualityPresets.applied_name(preset))
 	street_lights.set_preset(QualityPresets.applied_name(preset))
 	turbines.set_preset(QualityPresets.applied_name(preset))
-	traffic.set_budget(int(living.get("vehicles", 0)))
+	traffic.set_budget(0 if underwater else int(living.get("vehicles", 0)))
 	road_traffic.set_budget(int(living.get("distant_vehicles", 0)))
 	road_traffic_view.set_budget(int(living.get("distant_vehicles", 0)))
-	cyclists.set_budget(int(living.get("cyclists", 0)))
+	cyclists.set_budget(0 if underwater else int(living.get("cyclists", 0)))
 	cyclists_view.set_quality(QualityPresets.applied_name(preset))
-	sky.set_budget(int(living.get("aircraft", 0)))
+	sky.set_budget(0 if underwater else int(living.get("aircraft", 0)))
 	boats.set_budget(int(living.get("boats", 0)))
 	_theme_sun_deg = float(ThemeRenderParams.sky_params(theme)["sun_elevation_deg"])
 	_sun_elevation_deg = _theme_sun_deg
@@ -274,6 +276,7 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 	_wait_job()
 	_generation += 1
 	_route = route
+	underwater = false
 	_road_width_m = road_width_m
 	props.road_width_m = road_width_m
 	street_lights.road_width_m = road_width_m
@@ -304,6 +307,9 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 		"road_width_m": road_width_m, "crowd_all_climbs": crowd_all_climbs, "result": {}}
 	var bm = _active_biome_model()   # torii et lanternes des montées du biome japan (lot JP5) ; tuiles lues sous verrou
 	job["biome_at"] = Callable(bm, "dominant_at") if bm != null else Callable()
+	# Parcours sous l'eau (lot SM1) : ni circulation, ni cyclistes du décor, ni spectateurs, passants ou objets du bord
+	underwater = AtmosphereModel.route_underwater(bm, route) >= AtmosphereModel.UNDERWATER_ROUTE
+	job["underwater"] = underwater
 	job["task"] = BgTasks.add(_prepare_job.bind(job), false, "décor du parcours")
 	_job = job
 
@@ -333,10 +339,12 @@ static func _prepare_job(job: Dictionary) -> void:
 				all_pois.append_array(p.get("items", []))
 	var road_w: float = job["road_width_m"]
 	var found: Array = climbs_of(r)
+	var uw := bool(job.get("underwater", false))   # sous l'eau (lot SM1) : ni spectateurs ni passants
+	var people: Array = [] if uw else found
 	var cm = CrowdModel.new()
-	cm.configure(r, found, water, bool(job["crowd_all_climbs"]), 0, road_w)
+	cm.configure(r, people, water, bool(job["crowd_all_climbs"]) and not uw, 0, road_w)
 	var pm = PassersbyModel.new()
-	pm.configure(r, buildings, water, 0, road_w, PassersbyModel.crowd_zones(found, bool(job["crowd_all_climbs"])))
+	pm.configure(r, [] if uw else buildings, water, 0, road_w, PassersbyModel.crowd_zones(people, bool(job["crowd_all_climbs"]) and not uw))
 	var marks := {}
 	for m in RoadsideModel.paint_marks(found):
 		var k := int(floor(float(m["s"]) / CHUNK_M))
@@ -345,7 +353,7 @@ static func _prepare_job(job: Dictionary) -> void:
 		marks[k].append(m)
 	job["result"] = {
 		"climbs": found, "pois": all_pois, "crowd": cm, "passersby": pm, "marks": marks,
-		"items": RoadsideModel.items(r, found, all_pois, water, road_w, job["biome_at"]),
+		"items": [] if uw else RoadsideModel.items(r, found, all_pois, water, road_w, job["biome_at"]),
 	}
 
 
@@ -384,7 +392,7 @@ func _poll_job(wait: bool = false) -> void:
 	crowd_view.setup(crowd, sound_player)
 	passersby = res["passersby"]
 	passersby_view.setup_passersby(passersby, sound_player)
-	traffic.configure(_route, theme, pois, int(living.get("vehicles", 0)))
+	traffic.configure(_route, theme, pois, 0 if underwater else int(living.get("vehicles", 0)))
 	# Option gravel : seuls tracteurs et motos sur les chemins (surface effective de world_streamer)
 	traffic.unpaved_at = Callable()
 	if world_streamer != null and world_streamer.has_method("surface_at"):
@@ -393,9 +401,9 @@ func _poll_job(wait: bool = false) -> void:
 	var half_at := Callable()
 	if world_streamer != null and world_streamer.has_method("rideable_half"):
 		half_at = func(s: float) -> float: return world_streamer.rideable_half(s, _road_width_m)
-	cyclists.configure(_route, climbs, pois, int(living.get("cyclists", 0)), 0, _road_width_m, traffic, half_at)
+	cyclists.configure(_route, climbs, pois, 0 if underwater else int(living.get("cyclists", 0)), 0, _road_width_m, traffic, half_at)
 	sky.biome_model = _active_biome_model()
-	sky.configure(_route, theme, climbs, int(living.get("aircraft", 0)))
+	sky.configure(_route, theme, climbs, 0 if underwater else int(living.get("aircraft", 0)))
 	turbines.set_points(pois)
 	flags.set_points(pois)
 	if world_streamer != null and world_streamer.has_method("set_road_marks"):
