@@ -3,13 +3,13 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Contrat : 17e biome `japan` (Japon : montagnes humides) et toit `kawara`, reconnus partout avec un rendu de base | Python, GDScript, JSON | JP0 | Petite | En PR le 9 novembre, **version 6.0** |
+| Contrat : 17e biome `japan` (Japon : montagnes humides) et toit `kawara`, reconnus partout avec un rendu de base | Python, GDScript, JSON | JP0 | Petite | **Livré le 11 novembre** (PR #832), **version 6.0** |
 
 ## 1. Objectif
 
 Premier lot de la série JP (`docs/6.0/PLAN_SERIE_JP.md`, plan validé par le propriétaire le 9 novembre). Ajouter le biome `japan` et la variante de toit `kawara` à toutes les énumérations fermées, pour que les lots suivants (pose au compilateur JP2, rendu JP3 à JP5, parcours JP6) n'aient plus de liste à toucher. Une seule liste, à jour partout (principe « pas d'exception »).
 
-## 2. Contenu livré
+## 2. Livraison
 
 | Où | Changement |
 | --- | --- |

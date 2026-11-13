@@ -17,6 +17,14 @@ extends RefCounted
 ## l'aller, et les bornes (numérotées sur leurs deux faces par roadside_props.gd) restent à droite.
 ## Un objet qui tomberait dans l'eau (surface d'eau ou cours d'eau, donc
 ## aussi sur un pont) est avancé par pas de NUDGE_M, au plus MAX_NUDGE_M, sinon abandonné.
+## Japon (lot JP5, version 6.0) : avec `biome_at` (biome dominant en (x, z)), une montée qui commence dans le biome
+## `japan` reçoit un `torii` au-dessus de la route à son pied (`side` 0 : centré sur la chaussée, comme le grand
+## torii de Hakone-Yumoto sur la route 1) et une paire de lanternes de pierre `lantern` au sommet, une de chaque
+## côté, LANTERN_AFTER_M après le panneau du sommet.
+## Glissières (garde-fous, lot JP8) : dans un biome de GUARDRAIL_BIOMES (routes de montagne du Japon), une
+## glissière `guardrail` borde l'extérieur de chaque virage plus serré que GUARDRAIL_RADIUS_M (côté `side` opposé
+## au sens du virage), prolongée de GUARDRAIL_PAD_M de part et d'autre ; `s` et `s_end` bornent chaque morceau,
+## coupé aux tronçons de 1 km pour que `for_chunk` le range d'un seul tenant.
 ## `paint_marks(climbs)` : chiffres des kilomètres restants peints sur la chaussée, de 5 à 1 km du
 ## sommet, `[{s, digit}]`, pour road_markings.gdshader.
 ## Textes en français, nombres au format français (espace des milliers, virgule décimale).
@@ -31,6 +39,15 @@ const SIDE_OFFSET_M := 1.5          # du bord de la chaussée
 const NUDGE_M := 10.0
 const MAX_NUDGE_M := 100.0
 const WATER_MARGIN_M := 2.0
+const TORII_AFTER_START_M := 20.0
+const LANTERN_AFTER_M := 12.0
+const GUARDRAIL_BIOMES := ["japan"]
+const GUARDRAIL_RADIUS_M := 150.0
+const GUARDRAIL_PROBE_M := 15.0      # demi-corde de la mesure du virage
+const GUARDRAIL_STEP_M := 5.0
+const GUARDRAIL_PAD_M := 15.0
+const GUARDRAIL_MIN_M := 24.0
+const GUARDRAIL_BIOME_STEP_M := 50.0
 
 
 ## Entier au format français : « 1 234 ».
@@ -61,11 +78,15 @@ static func approach_texts(km: int, avg_pct: float) -> Array:
 
 ## Position d'un objet du bord de route, à SIDE_OFFSET_M du bord de la chaussée, côté `side` (1 : droite du
 ## parcours, -1 : gauche).
+## `side` 0 : sur l'axe de la chaussée (torii au-dessus de la route).
 static func prop_position(route, s: float, road_width_m: float = RoadBuilder.ROAD_WIDTH_M, side: int = 1) -> Vector3:
 	var smp: Dictionary = route.sample(s)
+	var p := Vector3(smp["x"], smp["y"], smp["z"])
+	if side == 0:
+		return p
 	var h := deg_to_rad(float(smp["heading_deg"]))
 	var right := Vector3(cos(h), 0.0, sin(h))
-	return Vector3(smp["x"], smp["y"], smp["z"]) + right * (-1.0 if side < 0 else 1.0) * (road_width_m * 0.5 + SIDE_OFFSET_M)
+	return p + right * (-1.0 if side < 0 else 1.0) * (road_width_m * 0.5 + SIDE_OFFSET_M)
 
 
 static func _in_water(p: Vector3, water: Dictionary) -> bool:
@@ -118,12 +139,22 @@ static func _summit_name(route, summit_s: float, pois: Array) -> String:
 
 
 static func items(route, climbs: Array, pois: Array = [], water: Dictionary = {},
-		road_width_m: float = RoadBuilder.ROAD_WIDTH_M) -> Array:
+		road_width_m: float = RoadBuilder.ROAD_WIDTH_M, biome_at: Callable = Callable()) -> Array:
 	var out := []
 	if route == null:
 		return out
 	for c in climbs:
 		var summit_s := float(c["summit_s"])
+		if biome_at.is_valid():
+			var foot: Vector3 = route.sample_point(float(c["start_s"]))
+			if str(biome_at.call(foot.x, foot.z)) == "japan":
+				var st := _dry_s(route, minf(float(c["start_s"]) + TORII_AFTER_START_M, summit_s), water, road_width_m, 0)
+				if not is_nan(st):
+					out.append({"kind": "torii", "s": st, "side": 0, "text": "", "lines": []})
+				for side in [1, -1]:
+					var sl := _dry_s(route, minf(summit_s + LANTERN_AFTER_M, route.length_m - 1.0), water, road_width_m, side)
+					if not is_nan(sl):
+						out.append({"kind": "lantern", "s": sl, "side": side, "text": "", "lines": []})
 		var name := _summit_name(route, summit_s, pois)
 		var alt_txt := "%s m" % format_int(int(round(float(c["summit_alt_m"]))))
 		for side in [1, -1]:   # un panneau pour chaque sens de marche (demi-tour, lot N17)
@@ -142,6 +173,7 @@ static func items(route, climbs: Array, pois: Array = [], water: Dictionary = {}
 				out.append({"kind": "approach", "s": sa, "side": 1, "text": "\n".join(lines), "lines": lines,
 					"name": name, "km": km, "pct": int(round(avg)),
 					"alt_m": int(round(float(route.sample(sa)["alt_m"])))})
+	out.append_array(guardrails(route, biome_at))
 	var n_km := int(floor(route.length_m / 1000.0 + 1e-6))
 	for k in range(1, n_km + 1):
 		var s := k * 1000.0
@@ -152,6 +184,53 @@ static func items(route, climbs: Array, pois: Array = [], water: Dictionary = {}
 			out.append({"kind": "km", "s": sk, "side": 1, "text": "km %d" % k, "lines": ["km %d" % k]})
 	out.sort_custom(func(a, b): return a["s"] < b["s"] or (a["s"] == b["s"] and (a["kind"] < b["kind"]
 		or (a["kind"] == b["kind"] and int(a["side"]) > int(b["side"])))))
+	return out
+
+
+## Glissières des virages serrés dans les biomes de GUARDRAIL_BIOMES (lot JP8), morceaux d'au plus un tronçon.
+static func guardrails(route, biome_at: Callable) -> Array:
+	var out := []
+	if route == null or not biome_at.is_valid():
+		return out
+	var length: float = route.length_m
+	var runs := []   # [s0, s1, side]
+	var cur := []
+	var biome_ok := false
+	var biome_s := -INF
+	var s := 0.0
+	while s <= length:
+		if s - biome_s >= GUARDRAIL_BIOME_STEP_M:
+			var p: Vector3 = route.sample_point(s)
+			biome_ok = GUARDRAIL_BIOMES.has(str(biome_at.call(p.x, p.z)))
+			biome_s = s
+		var side := 0
+		if biome_ok:
+			var a := maxf(0.0, s - GUARDRAIL_PROBE_M)
+			var b := minf(length, s + GUARDRAIL_PROBE_M)
+			var turn := wrapf(deg_to_rad(route.sample_heading_deg(b) - route.sample_heading_deg(a)), -PI, PI)
+			if b - a > 1.0 and absf(turn) / (b - a) >= 1.0 / GUARDRAIL_RADIUS_M:
+				side = -1 if turn > 0.0 else 1   # cap croissant : virage à droite, glissière à gauche
+		if side != 0:
+			if not cur.is_empty() and int(cur[2]) == side and s - float(cur[1]) <= 2.0 * GUARDRAIL_PAD_M:
+				cur[1] = s
+			else:
+				if not cur.is_empty():
+					runs.append(cur)
+				cur = [s, s, side]
+		s += GUARDRAIL_STEP_M
+	if not cur.is_empty():
+		runs.append(cur)
+	for r in runs:
+		var s0 := maxf(0.0, float(r[0]) - GUARDRAIL_PAD_M)
+		var s1 := minf(length, float(r[1]) + GUARDRAIL_PAD_M)
+		if s1 - s0 < GUARDRAIL_MIN_M:
+			continue
+		var a := s0
+		while a < s1 - 1e-6:
+			var b := minf(s1, (floor(a / 1000.0) + 1.0) * 1000.0)
+			if b - a >= 2.0:
+				out.append({"kind": "guardrail", "s": a, "s_end": b, "side": int(r[2]), "text": "", "lines": []})
+			a = b
 	return out
 
 

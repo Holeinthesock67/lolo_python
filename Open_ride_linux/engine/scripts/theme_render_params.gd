@@ -37,7 +37,7 @@ const TIME_OF_DAY_MODES := ["fixed", "real", "accelerated"]
 const DEFAULT_TIME_OF_DAY_HOUR := 14.0
 const DEFAULT_TIME_OF_DAY_FACTOR := 1.0
 const MAX_TIME_OF_DAY_FACTOR := 1440.0
-const DEFAULT_MIN_AMBIENT := 0.12   # lumière ambiante minimale la nuit : route toujours lisible
+const DEFAULT_MIN_AMBIENT := 0.18   # lumière ambiante minimale la nuit : route toujours lisible
 
 # Nuages (Lot P6, thème 1.2 `sky.clouds`)
 const DEFAULT_CLOUD_COVERAGE := 0.3

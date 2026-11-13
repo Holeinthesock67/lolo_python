@@ -22,6 +22,7 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const ForestImpostors := preload("res://scripts/forest_impostors.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
+const HorizonView := preload("res://scripts/horizon_view.gd")
 const RoadSurface := preload("res://scripts/road_surface.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
@@ -52,6 +53,9 @@ const VEHICLE_PREFIX := "veh:"   # `draft_bot` d'un véhicule de la route (lot A
 const RIDER_PREFIX := "rider:"   # `draft_bot` d'un cycliste du décor (lot AS7, road_cyclists.py du core)
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
+const BikeLights := preload("res://scripts/bike_lights.gd")
+const MoonView := preload("res://scripts/moon_view.gd")
+const Fireflies := preload("res://scripts/fireflies.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
 const WorkoutChartModel := preload("res://scripts/workout_chart_model.gd")
 const WorkoutChartView := preload("res://scripts/workout_chart_view.gd")
@@ -65,6 +69,7 @@ const LivingWorld := preload("res://scripts/living_world.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
 const AtmosphereView := preload("res://scripts/atmosphere_view.gd")
 const SkyCycle := preload("res://scripts/sky_cycle.gd")
+const NightLights := preload("res://scripts/night_lights.gd")
 const SeasonModel := preload("res://scripts/season_model.gd")
 const VelodromeHall := preload("res://scripts/velodrome_hall.gd")
 const SegmentMarkers := preload("res://scripts/segment_markers.gd")
@@ -233,6 +238,9 @@ var _draft := {"draft": null, "draft_bot": null}   # champs `draft` et `draft_bo
 ## « side » ou « » sans), qui montre l'avatar sans changer la caméra du jeu.
 var avatar_model = AvatarModel.new()
 var avatar_view: Node3D
+var bike_lights: Node3D = null   # lot P35 : phare et feu arrière du joueur, la nuit
+var moon_view: MeshInstance3D = null   # lot P35 : lune avec sa phase, la nuit
+var fireflies: GPUParticles3D = null   # lot P35 : lucioles des nuits douces
 var _avatar_cam := ""
 ## Courbes de la séance (lot O14) : un modèle, deux vues (bandeau ERG, panneau SIM), taille par réglage.
 var chart_model = WorkoutChartModel.new()
@@ -303,6 +311,13 @@ func _ready() -> void:
 		streamer.add_child(forest)
 		streamer.forest_impostors = forest
 	print("Forêts lointaines : ", "actives" if streamer.forest_impostors.enabled else "coupées")
+	if streamer.horizon_view == null:
+		var horizon = HorizonView.new()
+		horizon.name = "HorizonView"
+		horizon.enabled = bool(cfg.get("horizon", true))
+		streamer.add_child(horizon)
+		streamer.horizon_view = horizon
+		horizon.setup(world_env.environment, sun)
 	if streamer.osm_streamer == null:
 		var osm_st = OsmStreamer.new()
 		osm_st.name = "OsmStreamer"
@@ -358,6 +373,13 @@ func _ready() -> void:
 	add_child(draft_gauge)
 	avatar_view = AvatarView.new()
 	add_child(avatar_view)
+	bike_lights = BikeLights.new()
+	add_child(bike_lights)
+	moon_view = MoonView.new()
+	add_child(moon_view)
+	fireflies = Fireflies.new()
+	add_child(fireflies)
+	fireflies.set_preset(QualityPresets.applied_name(_quality_name))
 	_configure_avatar()
 	segment_markers = SegmentMarkers.new()
 	segment_markers.name = "SegmentMarkers"
@@ -536,6 +558,9 @@ func _ready() -> void:
 	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_wtf_rules(msg)
 		_refresh_menu())
+	ipc.mode_options_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_mode_options(msg)
+		_refresh_menu())
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
 		_refresh_menu())
@@ -572,6 +597,8 @@ func _on_settings(msg: Dictionary) -> void:
 		load_guard.reset(QualityPresets.image(_quality_name), _forward_plus())
 		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
+		if fireflies != null:
+			fireflies.set_preset(QualityPresets.applied_name(_quality_name))
 		if velodrome_hall != null:
 			velodrome_hall.set_quality(_quality_name)
 		_apply_indoor()
@@ -717,6 +744,12 @@ func _camera_event(event_name: String) -> bool:
 		return false
 	if event_name.begins_with("A_") and junction_view != null and junction_view.vm.is_visible():
 		return false
+	# Cyber-Rogue (lot R22) : 3 vues propres au mode sur les flèches ; A reste au core (cartes et portes).
+	if rogue_host.is_active():
+		if event_name.begins_with("A_"):
+			return false
+		print("vue Cyber-Rogue : ", rogue_host.scene.cycle_view(1 if event_name == "UP_SHORT" else -1))
+		return true
 	var now_s := Time.get_ticks_usec() / 1000000.0
 	match event_name:
 		"A_SHORT", "UP_SHORT":
@@ -804,6 +837,11 @@ func _run_menu_action(act: Dictionary) -> void:
 		"set_wtf_rules":   # une commande set_wtf_rule par règle basculée (lot WTF3)
 			for r in act.get("list", []):
 				ipc.send_command("set_wtf_rule", {"id": str(r["id"]), "on": bool(r["on"])})
+		"list_mode_options":   # options d'un mode (objets du Grand Prix, lot GP9), réponse `mode_options`
+			ipc.send_command("list_mode_options", {"mode": str(act["mode"])})
+		"set_mode_options":   # une commande set_mode_option par option basculée (lot GP9)
+			for o in act.get("list", []):
+				ipc.send_command("set_mode_option", {"mode": str(act["mode"]), "id": str(o["id"]), "on": bool(o["on"])})
 		"start_plan":
 			ipc.start_plan(str(act["id"]), act.get("start_date", null))
 		"stop_plan":
@@ -1099,6 +1137,10 @@ func _process(delta: float) -> void:
 		AnimClock.advance(delta)
 	if rogue_host.is_active():
 		_step_rogue_avatar(now)
+		# Lot R22 : les fonds d'ambiance du parcours (grillons, oiseaux) se taisent pendant la run ; sans cet
+		# appel, les lecteurs gardaient le volume de la dernière image du menu (essai du 11 novembre).
+		if living_world != null:
+			living_world.mute_ambience(now / 1000000.0)
 		return      # la scène du Cyber-Rogue a sa propre caméra et son propre décor
 	if _menu_camera(delta):
 		camera_views.snap()
@@ -1207,6 +1249,11 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 		t_step = Time.get_ticks_usec()
 	_step_cycle(now_s)
 	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
+	if moon_view != null:
+		moon_view.update(camera.global_position, atmosphere_view.cycle)
+	if fireflies != null and living_world != null:
+		fireflies.update(camera.global_position, str(living_world.season), float(living_world.rain),
+			_dominant_biome(living_world.neigh.get("biomes", {})))
 	PerfProbe.mark_since("atmosphere", "", t_step)
 
 
@@ -1749,6 +1796,8 @@ func _step_avatar(pos: Vector3, heading: float, roll: float, now_us: int, pitch_
 	var paused := session_state == "PAUSED"
 	avatar_model.update(now_us / 1000000.0, _last_state.get("cadence", null), _last_state.get("power", null),
 		_last_state.get("grade", null), paused)
+	if bike_lights != null:
+		bike_lights.place(pos, Vector3(deg_to_rad(pitch_deg), -heading, roll))
 	if not avatar_view.visible:
 		return
 	avatar_view.apply(avatar_model)
@@ -1881,12 +1930,28 @@ func _apply_cycle_modes(day_mode: String, season_mode: String, force: bool = fal
 	_step_cycle(Time.get_ticks_msec() / 1000.0, true)
 
 
+## Biome le plus présent d'un dictionnaire de poids (voisinage sonore de living_world.gd, lot U11) ; "" sans poids.
+static func _dominant_biome(weights: Variant) -> String:
+	var best := ""
+	var w := 0.0
+	if typeof(weights) == TYPE_DICTIONARY:
+		for b in weights:
+			if float(weights[b]) > w:
+				w = float(weights[b])
+				best = str(b)
+	return best
+
+
 ## Lumière de l'heure et paramètres de la saison posés dans la scène ; `force` : tout de suite.
 func _step_cycle(now_s: float, force: bool = false) -> void:
 	if not force and now_s - _cycle_at < CYCLE_PERIOD_S:
 		return
 	_cycle_at = now_s
-	if _day_mode == "off" and _season_mode == "off" and not atmosphere_view.cycle_active() and _season_applied.is_empty():
+	# Vélodrome (salle éclairée, VD5) : ni jour ni nuit, quel que soit le réglage (13 novembre)
+	var indoor: bool = route != null and route.is_track()
+	var day_mode := SkyCycle.effective_day_mode(_day_mode, indoor)
+	if day_mode == "off" and _season_mode == "off" and not atmosphere_view.cycle_active() and _season_applied.is_empty() \
+			and not NightLights.enabled:
 		return
 	var lat := NAN
 	var lon := NAN
@@ -1898,11 +1963,22 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 	now["bias"] = int(tz.get("bias", 0))
 	var date: Dictionary = _cycle_test["date"] if typeof(_cycle_test.get("date")) == TYPE_DICTIONARY else Time.get_date_dict_from_system()
 	var hour = _cycle_test.get("hour", null)
-	var out := SkyCycle.evaluate(_day_mode, _season_mode, _theme_dict, lat, lon, date,
+	var out := SkyCycle.evaluate(day_mode, _season_mode, _theme_dict, lat, lon, date,
 		float(_last_state.get("elapsed_s", 0.0)), now, float(hour) if hour != null else NAN)
 	var light: Dictionary = out["daylight"]
-	if bool(light.get("active", false)) or atmosphere_view.cycle_active():
-		atmosphere_view.set_cycle(light if bool(light.get("active", false)) else {})
+	var lit := bool(light.get("active", false))
+	if lit or atmosphere_view.cycle_active():
+		atmosphere_view.set_cycle(light if lit else {})
+		if indoor:
+			_apply_indoor()   # lumière de la salle reposée par-dessus le ciel d'aujourd'hui
+	# Lot P35 : sons d'ambiance à l'heure de la scène, phares des véhicules au coucher, lumières de nuit
+	if living_world != null:
+		living_world.solar_hour = float(light["solar_hour"]) if lit else NAN
+	if living_decor != null:
+		living_decor.set_sun_elevation(float(light["sun_elevation_deg"]) if lit else NAN)
+	var glow := NightLights.level(light)
+	if glow != NightLights.current or lit != NightLights.enabled:
+		NightLights.apply(glow, lit)
 	var season: Dictionary = out["season"]
 	var params: Dictionary = season["params"] if bool(season["active"]) else {}
 	if params != _season_applied:
@@ -1944,7 +2020,7 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
-	if cmd_name in ["list_routes", "list_workouts", "list_imports", "list_route_imports"]:
+	if cmd_name in IpcClientScript.LIST_COMMANDS:
 		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
 
@@ -1990,6 +2066,8 @@ func _on_state_received(state: Dictionary) -> void:
 		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
 		if session_state == "RUNNING" and HudViewModel.is_ftp_warmup(state.get("erg", null)):
 			banner.show_message("controls", HudViewModel.ftp_warmup_text(), CONTROLS_HINT_S)
+		elif session_state == "RUNNING" and str(state.get("mode", "")) == "ROGUE":
+			banner.clear_message("controls")   # lot R22 : le HUD du mode montre les boutons utiles en bas
 		elif session_state == "RUNNING":
 			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null,
 					str(state["erg"].get("kind", "workout")) if state.get("erg", null) is Dictionary else "workout",
@@ -2079,6 +2157,7 @@ func _on_state_received(state: Dictionary) -> void:
 			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s), _quality_name != "low")
 
 	rogue_host.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
+	rogue_host.legends_path = "" if ipc.test_mode else "user://rogue_legendes_vues.json"   # lot R22
 	if rogue_host.update(state, self, [streamer, sun, living_decor, segment_markers], world_env, camera,
 			_quality_name, float(Time.get_ticks_msec()) / 1000.0):
 		ipc.request_rogue_resync()

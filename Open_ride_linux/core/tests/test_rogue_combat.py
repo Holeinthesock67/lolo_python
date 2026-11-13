@@ -182,7 +182,8 @@ def test_strike_needs_adrenaline_and_consumes_it():
                 buttons=frozenset({"Z_SHORT"}))
     st = combat_start(room, 1)
     low, ev = combat_step(replace(st, adrenaline=40.0), CombatInputs(**base), room, B, DT)
-    assert ev == () and low.enemy_hp == st.enemy_hp
+    assert "hit" not in ev and "z_refused" in ev and low.enemy_hp == st.enemy_hp
+    assert low.z_reason == "adrenaline"         # lot R22 : la raison du refus est dite
     hit, ev = combat_step(replace(st, adrenaline=60.0), CombatInputs(**base), room, B, DT)
     assert "hit" in ev and hit.adrenaline == pytest.approx(10.0)
     assert st.enemy_hp - hit.enemy_hp == pytest.approx(0.06 * st.enemy_hp_max)
@@ -284,7 +285,10 @@ def test_z_outside_markers_and_other_buttons_do_nothing():
     base = dict(power_w=0, cadence_rpm=85, posture="ARRET", gear=6, ftp_w=250, s_m=5.0, v_mps=8)
     for button in ("Z_SHORT", "Z_LONG", "Y", "A_SHORT", "A_LONG"):
         new, ev = combat_step(st, CombatInputs(buttons=frozenset({button}), **base), room, B, DT)
-        assert ev == () and new.adrenaline == 90.0 and new.enemy_hp == st.enemy_hp
+        assert new.adrenaline == 90.0 and new.enemy_hp == st.enemy_hp
+        # lot R22 : Z court sans objet sous la roue est refusé avec sa raison ; les autres boutons, rien
+        assert ev == (("z_refused",) if button == "Z_SHORT" else ())
+        assert new.z_reason == ("no_target" if button == "Z_SHORT" else None)
 
 
 def test_overheat_only_in_endurance():

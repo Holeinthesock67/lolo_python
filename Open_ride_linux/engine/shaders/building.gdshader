@@ -13,12 +13,23 @@ render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_sc
 //   la pente, ou x, z pour un toit plat) ;
 // - UV2 : x = longueur du segment de mur (m), y = code d'habillage : matière du mur + 16 × ouvertures
 //   + 128 × matière du toit + 1024 × toit + 2048 × hauteur des murs au quart de mètre.
+//
+// Lumières de nuit (lot P35) : chaque ouverture vitrée dit, dans `glow`, si elle est éclairée de l'intérieur
+// (tirage par fenêtre, LIT_SHARE des fenêtres, plus pour les vitrines ; SIGN_GLOW : enseigne des commerces) ; le global `night_glow` (0 de jour et
+// jour et nuit coupé, 1 la nuit, night_lights.gd) allume ces fenêtres d'une lumière chaude. De jour : rien.
 
 #include "res://shaders/surface_detail.gdshaderinc"
 #include "res://shaders/couleur_srgb.gdshaderinc"
 
 // Faux relief (0 en `low` : motifs dessinés en couleur seulement)
 uniform float relief = 1.0;
+global uniform float night_glow;
+
+const float LIT_SHARE = 0.4;            // part des fenêtres éclairées la nuit
+const float SHOP_LIT_SHARE = 0.75;      // vitrines
+const vec3 WINDOW_WARM = vec3(1.0, 0.72, 0.42);   // lumière d'intérieur (sRGB)
+const float WINDOW_GLOW_E = 1.6;
+const float SIGN_GLOW = 2.0;            // valeur de `glow` d'une enseigne : lumière de sa propre couleur
 
 const float FLOOR_H = 3.0;
 const float PLINTH_H = 0.55;
@@ -32,6 +43,7 @@ const int WALL_METAL = 5;
 const int WALL_CONCRETE = 6;
 const int WALL_ADOBE = 7;
 const int WALL_CHALET = 8;
+const int WALL_JAPANESE = 9;   // lot JP3 : soubassement de planches brûlées, enduit blanc entre poteaux sombres
 
 const int WIN_NONE = 0;
 const int WIN_HOUSE = 1;
@@ -39,6 +51,7 @@ const int WIN_BANDS = 2;
 const int WIN_BARN = 3;
 const int WIN_CHURCH = 4;
 const int WIN_SHOP = 5;
+const int WIN_SHOJI = 6;       // lot JP3 : panneaux coulissants shōji, porte à claire-voie, fenêtres à barreaux
 
 const int ROOF_FLAT = 0;
 const int ROOF_TILE_FLAT = 1;
@@ -47,6 +60,7 @@ const int ROOF_SLATE = 3;
 const int ROOF_METAL = 4;
 const int ROOF_SHINGLE = 5;
 const int ROOF_THATCH = 6;
+const int ROOF_KAWARA = 7;     // lot JP3 : tuiles kawara grises vernissées, rangs bombés marqués
 
 varying float v_under;
 
@@ -164,6 +178,31 @@ void chalet(vec2 uv, vec3 tint, inout vec3 col, inout float h) {
 	h = (1.0 - min(joint, 1.0)) * 0.008 * vis + rim * 0.01;
 }
 
+// Maison japonaise (lot JP3) : soubassement de planches sombres (yakisugi) jusqu'à 1,1 m, enduit blanc au-dessus,
+// poteaux et poutres de bois sombre qui découpent le mur en travées d'environ 1,8 m (ken).
+void japanese_wall(vec2 uv, float seg, float eave, vec3 tint, inout vec3 col, inout float h) {
+	vec3 beam = vec3(0.17, 0.12, 0.08);
+	if (uv.y < 1.1) {
+		wood(uv, vec3(0.20, 0.15, 0.11), col, h);
+		return;
+	}
+	plaster(uv, tint, col, h);
+	// Poteaux tous les ken au rez-de-chaussée, tous les deux ken à l'étage ; bandeau sombre de l'auvent (hisashi)
+	// entre les niveaux, sablière sous l'égout
+	float bw = seg / max(1.0, floor(seg / 1.8));
+	if (uv.y > FLOOR_H) {
+		bw = seg / max(1.0, floor(seg / 3.6));
+	}
+	float lx = fract(uv.x / bw) * bw;
+	float t = 0.08;
+	bool post = lx < t || lx > bw - t || uv.x < t * 1.6 || uv.x > seg - t * 1.6;
+	bool rail = abs(uv.y - 1.15) < 0.06 || abs(uv.y - FLOOR_H) < 0.2 || abs(uv.y - eave) < 0.12;
+	if ((post || rail) && uv.y < eave + 0.05) {
+		col = beam * (0.85 + 0.3 * sd_noise(vec2(uv.x * 6.0, uv.y * 1.2)));
+		h = 0.008;
+	}
+}
+
 // ---------- Ouvertures : fenêtre, volets, porte ----------
 
 // Fenêtre de `w` × `ht` m centrée en lx, de ly0 à ly0 + ht ; renvoie 1 dans le vitrage, 0,5 dans le cadre
@@ -181,6 +220,11 @@ vec3 glass(vec2 l, float seed) {
 	return mix(g, vec3(0.55, 0.52, 0.46), curtain * 0.35);
 }
 
+// 1 si la fenêtre de clé `key` est éclairée la nuit, tirage stable (clé arrondie par l'appelant)
+float lit_window(float key, float share) {
+	return step(sd_hash(vec2(key * 17.13, key * 3.71 + 0.5)), share);
+}
+
 vec3 shutter_color(float seed) {
 	int k = int(seed * 5.0);
 	if (k == 0) return vec3(0.25, 0.38, 0.27);
@@ -193,7 +237,7 @@ vec3 shutter_color(float seed) {
 // Porte d'entrée dans sa travée (l : mètres, x centré sur la travée, y depuis le sol) : encadrement de pierre
 // à harpes et clé de linteau, seuil, vantail à panneaux moulurés, à lames et pentures ou vitré en partie haute,
 // imposte vitrée, poignée et plaque de propreté. Renvoie false hors de l'encadrement (le mur reste visible).
-bool house_door(vec2 l, float seed, inout vec3 col, inout float rough, inout float h) {
+bool house_door(vec2 l, float seed, inout vec3 col, inout float rough, inout float h, inout float glow) {
 	const float W = 0.5;            // demi-largeur du vantail
 	const float SILL = 0.12;        // dessus du seuil
 	const float LEAF_TOP = 2.05;
@@ -248,6 +292,7 @@ bool house_door(vec2 l, float seed, inout vec3 col, inout float rough, inout flo
 		float ang = atan(c.x, c.y);
 		float ray = step(abs(fract(ang / 0.45 + 0.5) - 0.5), 0.05) * step(0.06, length(c));
 		col = mix(glass(l + vec2(0.0, 0.6), seed), mix(paint, vec3(0.85, 0.84, 0.8), 0.55), ray);
+		glow = lit_window(seed + 0.5, LIT_SHARE) * (1.0 - ray);
 		h = -0.012 + 0.006 * ray;
 		rough = mix(0.08, 0.55, ray);
 		return true;
@@ -282,6 +327,7 @@ bool house_door(vec2 l, float seed, inout vec3 col, inout float rough, inout flo
 			if (pane > 0.0) {
 				float bar = step(abs(d.x), 0.018) + step(abs(d.y - (mid + leaf_h) * 0.5), 0.018);
 				col = mix(glass(l, seed), paint, min(bar, 1.0));
+				glow = lit_window(seed + 0.5, LIT_SHARE) * (1.0 - min(bar, 1.0));
 				h = -0.016 + 0.006 * min(bar, 1.0);
 				rough = mix(0.06, 0.5, min(bar, 1.0));
 				return true;
@@ -309,7 +355,7 @@ bool house_door(vec2 l, float seed, inout vec3 col, inout float rough, inout flo
 }
 
 // Bâtiment avec fenêtres à volets (maisons), par travées d'environ 3,2 m ; porte sur certains murs
-void house_openings(vec2 uv, float seg, float eave, float seed, bool shutters, inout vec3 col, inout float rough, inout float h) {
+void house_openings(vec2 uv, float seg, float eave, float seed, bool shutters, inout vec3 col, inout float rough, inout float h, inout float glow) {
 	float nb = floor(seg / 3.2);
 	if (nb < 1.0) {
 		return;
@@ -326,7 +372,7 @@ void house_openings(vec2 uv, float seg, float eave, float seed, bool shutters, i
 	float door_cell = floor(sd_hash(vec2(seed * 5.0, seg)) * nb);
 	if (fi == 0.0 && cell == door_cell && wall_id < 0.55 && seg > 4.0) {
 		// Travée de la porte : ni fenêtre ni volets autour
-		house_door(l, seed, col, rough, h);
+		house_door(l, seed, col, rough, h, glow);
 		return;
 	}
 	float w = window_mask(l, 1.05, 0.9, 1.35, 0.07);
@@ -335,6 +381,7 @@ void house_openings(vec2 uv, float seg, float eave, float seed, bool shutters, i
 		// Vitrage et petits bois
 		float bar = max(step(abs(l.x), 0.02), step(abs(l.y - 1.9), 0.02));
 		col = mix(glass(l, seed + cell), vec3(0.85, 0.84, 0.8), bar);
+		glow = lit_window(seed + cell * 0.137 + fi * 0.291, LIT_SHARE) * (1.0 - bar);
 		rough = mix(0.08, 0.6, bar);
 	} else if (w > 0.0) {
 		col = vec3(0.86, 0.85, 0.8);
@@ -350,7 +397,7 @@ void house_openings(vec2 uv, float seg, float eave, float seed, bool shutters, i
 }
 
 // Bandeaux vitrés par étage, meneaux tous les 1,5 m
-void band_openings(vec2 uv, float eave, inout vec3 col, inout float rough) {
+void band_openings(vec2 uv, float eave, float seed, inout vec3 col, inout float rough, inout float glow) {
 	float fi = floor(uv.y / FLOOR_H);
 	float ly = uv.y - fi * FLOOR_H;
 	if (fi < 0.0 || (fi + 1.0) * FLOOR_H > eave + 0.4 || ly < 0.9 || ly > 2.5) {
@@ -358,17 +405,19 @@ void band_openings(vec2 uv, float eave, inout vec3 col, inout float rough) {
 	}
 	float mull = step(fract(uv.x / 1.5), 0.05);
 	col = mix(glass(vec2(uv.x, ly), fi), vec3(0.5, 0.52, 0.54), mull);
+	glow = lit_window(seed + fi * 0.291 + floor(uv.x / 4.5) * 0.137, LIT_SHARE) * (1.0 - mull);
 	rough = mix(0.08, 0.4, mull);
 }
 
 // Jours hauts et grand portail (granges, hangars, ateliers)
-void barn_openings(vec2 uv, float seg, float eave, float seed, inout vec3 col, inout float rough) {
+void barn_openings(vec2 uv, float seg, float eave, float seed, inout vec3 col, inout float rough, inout float glow) {
 	if (eave > 3.2) {
 		float nb = max(1.0, floor(seg / 3.0));
 		vec2 l = vec2((fract(uv.x / (seg / nb)) - 0.5) * (seg / nb), uv.y);
 		float w = window_mask(l, 1.6, eave - 1.3, 0.6, 0.05);
 		if (w > 0.0) {
 			col = w > 0.75 ? glass(l, seed) * 0.8 : vec3(0.35, 0.33, 0.3);
+			glow = w > 0.75 ? 0.5 * lit_window(seed + floor(uv.x / (seg / nb)) * 0.137, LIT_SHARE * 0.5) : 0.0;
 			rough = 0.2;
 		}
 	}
@@ -386,7 +435,7 @@ void barn_openings(vec2 uv, float seg, float eave, float seed, inout vec3 col, i
 }
 
 // Hautes baies cintrées (églises)
-void church_openings(vec2 uv, float seg, float eave, float seed, inout vec3 col, inout float rough) {
+void church_openings(vec2 uv, float seg, float eave, float seed, inout vec3 col, inout float rough, inout float glow) {
 	float nb = floor(seg / 4.0);
 	if (nb < 1.0 || eave < 4.5) {
 		return;
@@ -403,13 +452,14 @@ void church_openings(vec2 uv, float seg, float eave, float seed, inout vec3 col,
 		vec3 stained = mix(vec3(0.12, 0.16, 0.3), vec3(0.35, 0.12, 0.1), sd_hash(floor(l * vec2(4.0, 2.9)) + seed));
 		col = mix(stained, vec3(0.08), lead);
 		rough = 0.15;
+		glow = 0.5 * lit_window(seed, LIT_SHARE) * (1.0 - lead);
 	} else if (frame) {
 		col = col * 1.12;
 	}
 }
 
 // Vitrines au rez-de-chaussée, fenêtres aux étages
-void shop_openings(vec2 uv, float seg, float eave, float seed, inout vec3 col, inout float rough) {
+void shop_openings(vec2 uv, float seg, float eave, float seed, inout vec3 col, inout float rough, inout float glow) {
 	if (uv.y < FLOOR_H) {
 		float nb = max(1.0, floor(seg / 4.5));
 		float bw = seg / nb;
@@ -419,14 +469,63 @@ void shop_openings(vec2 uv, float seg, float eave, float seed, inout vec3 col, i
 		if (w > 0.75) {
 			col = glass(l, seed) * 1.2;
 			rough = 0.06;
+			glow = lit_window(seed + floor(uv.x / bw) * 0.137, SHOP_LIT_SHARE);
 		} else if (w > 0.0) {
 			col = vec3(0.2, 0.21, 0.22);
 		} else if (sign_band > 0.0) {
 			col = shutter_color(fract(seed * 3.0));
+			glow = SIGN_GLOW;   // enseigne éclairée la nuit, de sa couleur (lot P35)
 		}
 	} else {
 		float shop_h = 0.0;
-		house_openings(uv, seg, eave, seed, false, col, rough, shop_h);
+		house_openings(uv, seg, eave, seed, false, col, rough, shop_h, glow);
+	}
+}
+
+// Maison japonaise (lot JP3) : au rez-de-chaussée, une travée sur trois en porte coulissante à claire-voie (koshi),
+// les autres en panneaux shōji (papier clair, quadrillage de baguettes) ; à l'étage, fenêtres basses à barreaux.
+void shoji_openings(vec2 uv, float seg, float eave, float seed, inout vec3 col, inout float rough, inout float h, inout float glow) {
+	float nb = floor(seg / 1.8);
+	if (nb < 1.0) {
+		return;
+	}
+	float bw = seg / nb;
+	float cell = floor(uv.x / bw);
+	vec2 l = vec2((fract(uv.x / bw) - 0.5) * bw, uv.y);
+	vec3 frame_col = vec3(0.16, 0.11, 0.07);
+	float lat_vis = sd_visible(uv, 0.05);
+	if (uv.y < FLOOR_H && eave > 2.4) {
+		float pick = sd_hash(vec2(cell, seed * 13.0 + seg));
+		float w = bw - 0.18;
+		float top = min(2.15, eave - 0.2);
+		if (box(l, vec2(-w * 0.5, 0.45), vec2(w * 0.5, top)) < 0.5) {
+			return;
+		}
+		bool frame = abs(l.x) > w * 0.5 - 0.06 || l.y < 0.51 || l.y > top - 0.06 || abs(l.x) < 0.03;
+		if (frame) {
+			col = frame_col;
+		} else if (pick < 0.3) {
+			// Porte à claire-voie : baguettes verticales serrées sur fond sombre
+			float slat = step(fract(l.x / 0.05), 0.45);
+			col = mix(vec3(0.05, 0.04, 0.03), vec3(0.30, 0.20, 0.12), mix(0.5, slat, lat_vis));
+		} else {
+			// Shōji : papier clair, baguettes tous les 0,3 m en largeur et 0,25 m en hauteur, bas en bois plein
+			float kx = step(fract(l.x / 0.3 + 0.5), 0.07);
+			float ky = step(fract(l.y / 0.25), 0.08);
+			vec3 paper = vec3(0.90, 0.87, 0.78) * (0.95 + 0.05 * sd_noise(l * 4.0));
+			col = l.y < 0.85 ? vec3(0.28, 0.19, 0.12) : mix(paper, frame_col * 1.4, max(kx, ky) * lat_vis);
+			glow = l.y < 0.85 ? 0.0 : 0.6 * lit_window(seed + cell * 0.137, LIT_SHARE) * (1.0 - max(kx, ky) * lat_vis);
+		}
+		rough = 0.8;
+		h = -0.01;
+	} else if (uv.y > FLOOR_H + 0.8 && uv.y < FLOOR_H + 1.6 && uv.y < eave - 0.3) {
+		float w = min(1.2, bw - 0.4);
+		if (box(l, vec2(-w * 0.5, FLOOR_H + 0.8), vec2(w * 0.5, FLOOR_H + 1.6)) < 0.5) {
+			return;
+		}
+		float bar = step(fract(l.x / 0.1), 0.5);
+		col = mix(vec3(0.06, 0.05, 0.04), vec3(0.24, 0.16, 0.10), mix(0.5, bar, lat_vis));
+		h = -0.008;
 	}
 }
 
@@ -487,6 +586,21 @@ void roof_tile_round(vec2 uv, vec3 tint, inout vec3 col, inout float h, inout fl
 	col = mix(tint * 0.88, t, vis);
 	h = ((0.5 + 0.5 * c) * 0.03 + smoothstep(0.0, 0.15, f) * smoothstep(1.0, 0.85, f) * 0.008) * vis;
 	rough = 0.8;
+}
+
+// Kawara (lot JP3) : tuiles grises vernissées en rangs bombés serrés (0,26 m), creux sombres, bord de rang marqué,
+// léger reflet ; faîtage et rives gardent la teinte du thème.
+void roof_kawara(vec2 uv, vec3 tint, inout vec3 col, inout float h, inout float rough) {
+	float c = sin(uv.x * 6.2832 / 0.26);
+	float row = floor(uv.y / 0.3);
+	float f = fract(uv.y / 0.3);
+	float vis = sd_visible(uv, 0.26);
+	vec2 cell = vec2(floor(uv.x / 0.26), row);
+	float crest = 0.5 + 0.5 * c;
+	vec3 t = tint * (0.88 + 0.15 * sd_hash(cell)) * (0.6 + 0.55 * crest) * (1.0 - 0.35 * step(f, 0.08));
+	col = mix(tint * 0.85, t, vis);
+	h = (crest * 0.045 + smoothstep(0.0, 0.12, f) * smoothstep(1.0, 0.9, f) * 0.01) * vis;
+	rough = 0.42;
 }
 
 void roof_slate(vec2 uv, vec3 tint, float rows, float width, inout vec3 col, inout float h, inout float rough) {
@@ -558,6 +672,7 @@ void fragment() {
 	float h = 0.0;
 	float rough = 0.85;
 	float metal = 0.0;
+	float glow = 0.0;       // fenêtre éclairée la nuit (lot P35)
 
 	if (is_roof && v_under > 0.5) {
 		// Voliges sous le débord, dans l'ombre
@@ -577,6 +692,8 @@ void fragment() {
 			rough = 0.85;
 		} else if (roof == ROOF_THATCH) {
 			roof_thatch(uv, tint, col, h, rough);
+		} else if (roof == ROOF_KAWARA) {
+			roof_kawara(uv, tint, col, h, rough);
 		} else {
 			roof_flat(uv, tint, col, h, rough);
 		}
@@ -595,6 +712,8 @@ void fragment() {
 			adobe(uv, tint, col, h);
 		} else if (wall == WALL_CHALET) {
 			chalet(uv, tint, col, h);
+		} else if (wall == WALL_JAPANESE) {
+			japanese_wall(uv, seg, eave, tint, col, h);
 		} else {
 			plaster(uv, tint, col, h);
 			if (wall == WALL_TIMBER) {
@@ -604,7 +723,7 @@ void fragment() {
 		// Salissures au pied du mur, plus marquées sur l'enduit
 		col *= mix(0.8, 1.0, smoothstep(PLINTH_H, PLINTH_H + 1.4, uv.y));
 		// Socle de pierre ou de béton, avec un léger débord
-		if (uv.y < PLINTH_H && wall != WALL_METAL) {
+		if (uv.y < PLINTH_H && wall != WALL_METAL && wall != WALL_JAPANESE) {
 			vec3 p = vec3(0.42, 0.4, 0.37);
 			float pn = sd_noise(uv / vec2(0.5, 0.25));
 			col = p * (0.85 + 0.25 * pn);
@@ -612,16 +731,20 @@ void fragment() {
 		}
 		vec3 c_before = col;
 		float open_h = 0.0;     // relief des ouvertures (portes)
-		if (openings == WIN_HOUSE) {
-			house_openings(uv, seg, eave, seed, wall != WALL_CONCRETE && wall != WALL_METAL, col, rough, open_h);
+		// Aucune ouverture sous le rez-de-chaussée (socle relevé du côté aval d'une pente, jupe enterrée)
+		if (uv.y < 0.0) {
+		} else if (openings == WIN_HOUSE) {
+			house_openings(uv, seg, eave, seed, wall != WALL_CONCRETE && wall != WALL_METAL, col, rough, open_h, glow);
 		} else if (openings == WIN_BANDS) {
-			band_openings(uv, eave, col, rough);
+			band_openings(uv, eave, seed, col, rough, glow);
 		} else if (openings == WIN_BARN) {
-			barn_openings(uv, seg, eave, seed, col, rough);
+			barn_openings(uv, seg, eave, seed, col, rough, glow);
 		} else if (openings == WIN_CHURCH) {
-			church_openings(uv, seg, eave, seed, col, rough);
+			church_openings(uv, seg, eave, seed, col, rough, glow);
 		} else if (openings == WIN_SHOP) {
-			shop_openings(uv, seg, eave, seed, col, rough);
+			shop_openings(uv, seg, eave, seed, col, rough, glow);
+		} else if (openings == WIN_SHOJI) {
+			shoji_openings(uv, seg, eave, seed, col, rough, open_h, glow);
 		}
 		if (col != c_before) {
 			metal = 0.0;
@@ -632,6 +755,10 @@ void fragment() {
 	ALBEDO = lineaire(col);
 	ROUGHNESS = rough;
 	METALLIC = metal;
+	if (night_glow > 0.0 && glow > 0.0) {
+		vec3 light_col = glow >= SIGN_GLOW ? lineaire(mix(col, vec3(1.0), 0.25)) * 1.4 : lineaire(WINDOW_WARM) * glow;
+		EMISSION = light_col * (night_glow * WINDOW_GLOW_E);
+	}
 	// Hors de toute branche : les dérivées d'écran de sd_bump sont fausses dans un flot non uniforme
 	// (points clairs au bord des fenêtres)
 	if (relief > 0.0) {

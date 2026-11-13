@@ -2,8 +2,9 @@
 
 Sans entrée-sortie hors la lecture de la table embarquée `data/regional_variants.toml`.
 
-Une variante est un couple `{"ground": …, "roofs": …}` (roches et terres, architecture) ; chaque membre se
-choisit séparément : la plus petite zone de la table qui contient le point et qui donne ce membre, puis la
+Une variante est un objet `{"ground": …, "roofs": …, "landscape": …}` (roches et terres, architecture, paysage
+du lot U25 : canyons, fjords, îles volcaniques, rizières, appliqué par l'engine aux seuls biomes de base du
+paysage, section `landscapes` du thème) ; chaque membre se choisit séparément : la plus petite zone de la table qui contient le point et qui donne ce membre, puis la
 première règle générale qui s'applique (part de biomes, latitude) et qui le donne, puis la variante neutre ;
 sinon le membre reste `null` (l'engine garde ce que donne le biome, lot U23 pour les bâtiments).
 
@@ -28,12 +29,16 @@ import tomllib
 
 # Énumération fermée du contrat (U1 §4.3, Format .world v1 §8 quater), étendue seulement par ajout.
 GROUNDS = ("gres_rose", "calcaire_blanc", "granite_gris", "schiste_sombre", "basalte", "laterite_rouge", "craie")
-ROOFS = ("tuile_ronde", "ardoise", "tuile_plate", "pierre_seche", "toit_plat_blanc", "bois", "kawara")
-MEMBERS = {"ground": GROUNDS, "roofs": ROOFS}
+ROOFS = ("tuile_ronde", "ardoise", "tuile_plate", "pierre_seche", "toit_plat_blanc", "bois", "kawara", "bois_peint")
+LANDSCAPES = ("canyon", "fjord", "ile_volcanique", "rizieres")
+MEMBERS = {"ground": GROUNDS, "roofs": ROOFS, "landscape": LANDSCAPES}
+# Membres toujours présents dans une tuile ; `landscape` (lot U25) est facultatif : absent = null (tuiles
+# écrites avant le lot U25).
+REQUIRED_MEMBERS = ("ground", "roofs")
 
-ZONE_KEYS = {"name", "lat", "lon", "ground", "roofs"}
-RULE_KEYS = {"name", "biomes", "min_share", "abs_lat_min", "abs_lat_max", "ground", "roofs"}
-NEUTRAL_KEYS = {"ground", "roofs"}
+ZONE_KEYS = {"name", "lat", "lon", *MEMBERS}
+RULE_KEYS = {"name", "biomes", "min_share", "abs_lat_min", "abs_lat_max", *MEMBERS}
+NEUTRAL_KEYS = set(MEMBERS)
 TABLE_KEYS = {"neutral", "rule", "zone"}
 
 
@@ -117,7 +122,7 @@ def parse_table(data: Mapping) -> Table:
             raise ValueError(f"{where} : hors du globe")
         values = _values(where, z)
         if not values:
-            raise ValueError(f"{where} : ni ground ni roofs")
+            raise ValueError(f"{where} : aucun membre ({', '.join(MEMBERS)})")
         zones.append(Zone(name=str(z.get("name", k)), lat=lat, lon=lon, values=values))
     names = [z.name for z in zones]
     if len(set(names)) != len(names):
@@ -128,7 +133,7 @@ def parse_table(data: Mapping) -> Table:
         _check_keys(where, r, RULE_KEYS)
         values = _values(where, r)
         if not values:
-            raise ValueError(f"{where} : ni ground ni roofs")
+            raise ValueError(f"{where} : aucun membre ({', '.join(MEMBERS)})")
         for key in ("abs_lat_min", "abs_lat_max"):
             if key in r and (not isinstance(r[key], int) or isinstance(r[key], bool)):
                 raise ValueError(f"{where} : {key} attendu en degrés entiers")
@@ -167,7 +172,7 @@ def default_table() -> Table:
 
 def variant_for(lat: float, lon: float, biome_shares: Mapping[str, float],
                 table: Table | None = None) -> dict[str, str | None]:
-    """Variante `{"ground", "roofs"}` d'un point (membre `None` si rien ne le donne)."""
+    """Variante `{"ground", "roofs", "landscape"}` d'un point (membre `None` si rien ne le donne)."""
     table = table or default_table()
     out: dict[str, str | None] = {}
     zones = [z for z in table.zones if z.contains(lat, lon)]          # déjà triées, la plus petite d'abord
@@ -183,18 +188,19 @@ def variant_for(lat: float, lon: float, biome_shares: Mapping[str, float],
 
 
 def parse_forced(text: str) -> dict[str, str | None]:
-    """`--variant GROUND,ROOFS` ; un membre vide laisse `null` (par exemple `basalte,`)."""
+    """`--variant GROUND,ROOFS[,LANDSCAPE]` ; un membre vide ou omis reste `null` (par exemple `basalte,`)."""
     parts = text.split(",")
-    if len(parts) != 2:
-        raise ValueError(f"variante attendue GROUND,ROOFS, reçu {text!r}")
+    if not len(REQUIRED_MEMBERS) <= len(parts) <= len(MEMBERS):
+        raise ValueError(f"variante attendue GROUND,ROOFS[,LANDSCAPE], reçu {text!r}")
+    parts += [""] * (len(MEMBERS) - len(parts))
     out: dict[str, str | None] = {}
     for (member, ids), value in zip(MEMBERS.items(), parts):
         value = value.strip()
         if value and value not in ids:
             raise ValueError(f"{member} {value!r} inconnu (possibles : {', '.join(ids)})")
         out[member] = value or None
-    if out["ground"] is None and out["roofs"] is None:
-        raise ValueError("variante vide : donner au moins GROUND ou ROOFS")
+    if all(v is None for v in out.values()):
+        raise ValueError("variante vide : donner au moins GROUND, ROOFS ou LANDSCAPE")
     return out
 
 
@@ -203,8 +209,8 @@ def tile_shares(tile: Mapping) -> dict[str, float]:
     return {name: float(np.mean(grid)) / 255.0 for name, grid in zip(tile["biomes"], tile["weights"])}
 
 
-def _key(variant: Mapping[str, str | None]) -> tuple[str, str]:
-    return (variant.get("ground") or "", variant.get("roofs") or "")
+def _key(variant: Mapping[str, str | None]) -> tuple[str, ...]:
+    return tuple(variant.get(m) or "" for m in MEMBERS)
 
 
 def assign_variants(tiles: dict[str, dict[tuple[int, int], dict]], tile_m: Mapping[str, float],
@@ -242,7 +248,7 @@ def assign_variants(tiles: dict[str, dict[tuple[int, int], dict]], tile_m: Mappi
         return
     ratio = tile_m[far] / tile_m[near]
     votes: dict[tuple[int, int], Counter] = {}
-    examples: dict[tuple[str, str], dict] = {}
+    examples: dict[tuple[str, ...], dict] = {}
     for (ix, iz), tile in near_tiles.items():
         cx, cz = (ix + 0.5) / ratio, (iz + 0.5) / ratio     # centre de la tuile proche, en tuiles lointaines
         owner = (int(np.floor(cx)), int(np.floor(cz)))
@@ -262,7 +268,7 @@ def assign_variants(tiles: dict[str, dict[tuple[int, int], dict]], tile_m: Mappi
 
 
 def summary(tiles: Mapping[tuple[int, int], Mapping]) -> str:
-    """Rapport court des variantes d'un niveau : « calcaire_blanc/tuile_ronde 12, granite_gris/— 3 »."""
+    """Rapport court des variantes d'un niveau : « calcaire_blanc/tuile_ronde/— 12, gres_rose/—/canyon 3 »."""
     count = Counter(_key(t.get("variant") or {}) for t in tiles.values())
-    parts = [f"{g or '—'}/{r or '—'} {n}" for (g, r), n in sorted(count.items(), key=lambda kv: (-kv[1], kv[0]))]
+    parts = ["/".join(v or "—" for v in k) + f" {n}" for k, n in sorted(count.items(), key=lambda kv: (-kv[1], kv[0]))]
     return ", ".join(parts) if parts else "aucune tuile"

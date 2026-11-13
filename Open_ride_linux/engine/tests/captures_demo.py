@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Captures des quatre parcours de démonstration du jeu de base (lot O37), à valider par le propriétaire.
+"""Captures des cinq parcours de démonstration du jeu de base (lots O37 et O38), à valider par le propriétaire.
 
     python3 engine/tests/captures_demo.py lancer [--out DOSSIER] [--qualites medium] [--vitesse 50]
                                                  [--parcours demo,demo-biomes-alpin] [--native] [--sans-menus]
@@ -11,8 +11,9 @@
    choisies (`--at-m`), scénario `nominal` : début de parcours (150 et 400 m, après le compte à rebours) et
    approche du panneau
    du sommet (100, 70, 50, 40 et 30 m avant, en 1920×1080 pour que son nom se lise). Le sommet est le point le plus
-   haut de la route ; un parcours sans montée n'a que les captures du début.
-3. `menu_bench.py --scenario parcours_demo --captures ecrans` : liste des parcours avec leurs quatre noms et
+   haut de la route ; un parcours sans montée n'a que les captures du début. Un circuit (lot O38) a en plus des
+   captures aux quarts du tour.
+3. `menu_bench.py --scenario parcours_demo --captures ecrans` : liste des parcours avec leurs cinq noms et
    écran « Prêt » de chacun.
 4. `DOSSIER/planche.html` : toutes les captures, rangées par parcours et par qualité.
 
@@ -35,10 +36,11 @@ from pathlib import Path
 TESTS_DIR = Path(__file__).resolve().parent
 ENGINE_DIR = TESTS_DIR.parent
 REPO = ENGINE_DIR.parent
-ROUTES = ("demo", "demo-biomes-tour", "demo-biomes-cote", "demo-biomes-alpin")   # tour gravel : recette seule (9 novembre)
+ROUTES = ("demo", "demo-biomes-tour", "demo-biomes-cote", "demo-biomes-alpin", "demo-circuit")   # tour gravel : recette seule (9 novembre) ; circuit : lot O38
 START_MARKS_M = (150.0, 400.0)
 SUMMIT_BEFORE_M = (100.0, 70.0, 50.0, 40.0, 30.0)   # plusieurs : un spectateur peut cacher le panneau (r811c)
 MIN_CLIMB_M = 30.0                 # dénivelé sous lequel le parcours n'a pas de sommet à montrer
+LOOP_PARTS = 4                     # circuit : captures aux quarts du tour
 LOAD_S = 90.0                      # chargement, compte à rebours et départ au pédalage
 RIDE_MARGIN = 1.3                  # vitesse moyenne sous la vitesse tenue (départ, pentes) : r811b roulait 48 km/h
 
@@ -64,6 +66,8 @@ def marks_for(world: Path) -> tuple[list[float], float]:
     top = max(range(len(alt)), key=lambda i: alt[i])
     summit = min(top * float(route["ds_m"]), float(route["length_m"]))
     marks = [m for m in START_MARKS_M if m < route["length_m"]]
+    if route.get("type") == "loop":    # circuit (lot O38) : aussi aux quarts du tour
+        marks += [route["length_m"] * k / LOOP_PARTS for k in range(1, LOOP_PARTS)]
     if alt[top] - min(alt) >= MIN_CLIMB_M and summit > max(START_MARKS_M) + max(SUMMIT_BEFORE_M):
         marks += [summit - d for d in SUMMIT_BEFORE_M]
     return sorted(marks), max(marks) + 20.0

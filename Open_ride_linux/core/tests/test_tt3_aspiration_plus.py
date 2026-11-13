@@ -1,4 +1,4 @@
-"""Lot TT3 : bonus Aspiration + (abri × 1,5 plafonné à 0,55, portée 25 m, 40 s, avec des bots)."""
+"""Lot TT3 : bonus Aspiration + (abri × 1,5 plafonné à 0,55, portée 25 m, 35 s, avec des bots)."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def boosted() -> PowerUps:
 
 def test_table_line():
     s = DEFAULT_TABLE.specs["draft_plus"]
-    assert (s.effect, s.factor, s.duration_s, s.cap, s.reach_m) == ("draft", 1.5, 40.0, 0.55, 25.0)
+    assert (s.effect, s.factor, s.duration_s, s.cap, s.reach_m) == ("draft", 1.5, 35.0, 0.55, 25.0)
     assert s.sets == ("tactiques",)
 
 
@@ -74,8 +74,9 @@ def test_no_boost_without_the_bonus_or_when_held_off():
 
 
 def _gain(alpha0: float, horizon_s: float = 60.0, dt: float = 0.02) -> float:
-    """Temps gagné par un cycliste qui passe de l'abri `alpha0` à l'abri renforcé pendant 40 s (250 W, plat)."""
+    """Temps gagné en passant de l'abri `alpha0` à l'abri renforcé pendant le bonus (250 W, plat)."""
     alpha1 = min(alpha0 * 1.5, 0.55)
+    duration = DEFAULT_TABLE.specs["draft_plus"].duration_s
     warm = RiderPhysics(PLAN, 0.0, 10.0)
     for _ in range(int(400 / dt)):
         warm.step(250.0, 0.0, 0.0, dt, alpha_draft=alpha0)
@@ -84,16 +85,17 @@ def _gain(alpha0: float, horizon_s: float = 60.0, dt: float = 0.02) -> float:
     t = 0.0
     while t < horizon_s - 1e-9:
         t += dt
-        a.step(250.0, 0.0, 0.0, dt, alpha_draft=alpha1 if t <= 40.0 else alpha0)
+        a.step(250.0, 0.0, 0.0, dt, alpha_draft=alpha1 if t <= duration else alpha0)
         b.step(250.0, 0.0, 0.0, dt, alpha_draft=alpha0)
     return (a.s - b.s) / v
 
 
 def test_gain_on_the_flat():
-    """Roue dans la roue à 1,9 m de la roue (α = 0,27) : 2,2 s, dans la cible de 1,5 à 2,5 s. Collé (0,5 m,
-    α = 0,38, plafonné à 0,55) : 3,3 s, au-dessus de la cible : valeur du plan gardée, ajustement au lot TT8."""
+    """Roue dans la roue à 1,9 m de la roue (α = 0,27) : 2,0 s, dans la cible de 1,5 à 2,5 s. Collé (0,5 m,
+    α = 0,38, plafonné à 0,55) : 2,9 s (3,3 s à 40 s avant le banc TT8), le cas le plus favorable : médiane du
+    banc 2,1 s de 0,5 à 2,5 m de la roue."""
     assert 1.5 <= _gain(draft.draft_coefficient(1.9)) <= 2.5
-    assert _gain(draft.draft_coefficient(0.5)) == pytest.approx(3.3, abs=0.1)
+    assert _gain(draft.draft_coefficient(0.5)) == pytest.approx(2.94, abs=0.1)
 
 
 def test_sim_feel_follows_the_draft():
