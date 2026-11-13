@@ -512,6 +512,7 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.8 | 12 novembre 2026 | Ajout compatible (lot U25, 6.0, variantes de paysage) : membre facultatif `landscape` de `variant` (`canyon`, `fjord`, `ile_volcanique`, `rizieres` ; absent = `null`) et toit `bois_peint` (§8 quater) ; section `landscapes` du thème 2.0 (§9) ; paysages et toit posés par des zones à grosse maille de la table des variantes régionales du compilateur. Un `.world` sans `landscape` reste valide |
 | 1.8 | 12 novembre 2026 | Ajout compatible (lots AT1 et AT2, 6.0) : 18e biome `atlantic_heath` (Atlantique et landes) dans l'énumération des biomes (§8 quater, `biome`, `manifest` et `theme`), espèces `heather`, `gorse`, `bracken` de `biomes.<id>.vegetation.species` (§9) ; entrée `biomes.atlantic_heath` du thème par défaut ; le compilateur pose le biome d'après la table embarquée `data/biome_zones.toml` (rectangles × Köppen × classes WorldCover), commune aux parcours et au monde ouvert |
 | 1.8 | 12 novembre 2026 | Ajout compatible (lot HP1, 6.0) : biome `high_plateau` (hauts plateaux : Altiplano, Tibet, Ladakh) dans l'énumération des biomes (§8 quater, `biome`, `manifest` et `theme`), espèce `bunchgrass` dans `vegetation.species` du thème (§9) ; entrée `biomes.high_plateau` du thème par défaut ; un lecteur plus ancien refuse ces identifiants comme tout identifiant inconnu |
+| 1.8 | 12 novembre 2026 | Ajout compatible (lot W17, sans changement des schémas) : couche biome des mondes vivants (§13), une tuile par tuile proche et lointaine, liée avant le terrain ; `layers.biome` du manifeste dès l'ouverture |
 
 ## 13. Monde vivant (monde ouvert, série W)
 
@@ -527,6 +528,7 @@ ow-20261026-201500.world/
   route/part_<k>.json      route engagée, par parties de 1 km
   terrain/near/tile_<ix>_<iz>.f32, terrain/far/tile_<ix>_<iz>.f32
   buildings/tile_<ix>_<iz>.json, vegetation/…, water/…, poi/…
+  biome/near/tile_<ix>_<iz>.json, biome/far/tile_<ix>_<iz>.json   depuis le lot W17
 ```
 
 **Origine et grille.** L'origine est le coin de la grille de 5 km de la zone UTM le plus proche du départ : `E0` et `N0` sont des multiples de 5 000 m. Le manifeste porte `live: true`, `origin_kind: "utm_grid"`, `origin` (latitude, longitude et altitude de ce coin, `utm_zone`) et `grid: {"near_m": 1000, "far_m": 5000, "e0": E0, "n0": N0}`. Les tuiles de la séance coïncident donc avec une grille globale : la tuile proche `(ix, iz)` est le carré global `IX = E0 / 1000 + ix`, `IN = N0 / 1000 − iz − 1` (indices de l'est et du nord, en kilomètres) ; même règle à 5 km pour les tuiles lointaines. Toute la séance reste dans la zone UTM du départ. Dans le manifeste, `route` décrit la route à l'ouverture (`file` = `route/`, longueur et nombre de points de la première révision) ; la longueur courante est dans `live.json`.
@@ -547,6 +549,8 @@ ow-20261026-201500.world/
 **Route par parties** (schéma `route_part.schema.json`). `route/part_<k>.json` a les colonnes de `route.json` (§4) plus `s0_m` = 1 000 × `k`. La partie `k` contient les points de `s` = 1 000 `k` à `s` = 1 000 (`k` + 1) inclus, au pas de 10 m (la dernière partie s'arrête à `length_m`) ; le bord est partagé avec la partie suivante. `s` est croissant, `type` vaut `open`. Une partie publiée n'est réécrite qu'au-delà du point de verrouillage du carrefour dont la branche change : `changed_from_part` dit à partir de quelle partie relire. La route assemblée suit la règle d'interpolation du §4.
 
 **Couches par carré.** Le terrain garde le format du §5. Les couches `buildings`, `vegetation`, `water` et `poi` sont rangées par tuile proche, `<couche>/tile_<ix>_<iz>.json`, avec les schémas des fichiers `chunk_<k>.json` (§6 à §8), à une différence près : **les coordonnées horizontales sont relatives au coin de la tuile** (`x − 1 000 ix`, `z − 1 000 iz`) ; les altitudes `y`, `base_y` et `level_y` restent absolues. Ainsi les carrés du cache, communs à toutes les séances, sont liés dans le dossier de séance (liens symboliques) sans être réécrits. Un objet appartient à la tuile qui contient son centre.
+
+**Couche biome (lot W17).** Le générateur écrit une tuile de biome (§8 quater, inchangée) pour chaque tuile proche et chaque tuile lointaine, avec la règle du compilateur (WorldCover, OSM, altitude, carte de Köppen, variante régionale) ; elle est liée **avant** la tuile de terrain de mêmes indices et ne change plus pendant la séance. Le manifeste porte `layers.biome` dès l'ouverture, avec `present: true`, `forced: null`, `shares: {}` et des listes `tiles` vides : les tuiles présentes sont celles de `live.json`. Une tuile de terrain sans fichier de biome prend le biome par défaut, comme au §8 quater ; un lecteur qui a cherché trop tôt la tuile de biome d'une tuile de terrain arrivée ensuite doit la relire.
 
 **`junctions.json`** (schéma `junctions.schema.json`), réécrit de façon atomique : carrefours à moins de 3 km devant le cycliste.
 

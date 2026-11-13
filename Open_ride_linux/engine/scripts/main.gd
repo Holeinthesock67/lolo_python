@@ -874,6 +874,7 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.start_run(act.get("args", {}))
 		"open_world_menu":
 			world_menu_view.open()
+			world_menu_view.vm.biome = streamer.forced_biome   # ligne « Biome » de l'écran du cap (lot W17)
 			ipc.send_command("world_regions")
 		"list_garage":
 			ipc.request_garage()
@@ -927,6 +928,8 @@ func _run_world_action(act: Dictionary) -> void:
 			ipc.send_command("world_pin", {"region_id": act["region_id"], "pinned": act["pinned"]})
 		"start_open_world":
 			ipc.send_command("start_open_world", act["args"])
+		"set_setting":   # ligne « Biome » de l'écran du cap (lot W17) : même réglage que le menu des réglages
+			ipc.set_setting(str(act["key"]), act["value"])
 
 
 func _on_world_menu_received(kind: String, msg: Dictionary) -> void:

@@ -144,6 +144,21 @@ func _init() -> void:
 	act = m.handle("A_SHORT")
 	_check(act["args"]["nav"] == "loop" and act["args"]["loop_km"] == 40.0, "départ en boucle de 40 km")
 
+	# Lot W17 : ligne « Biome » de l'écran du cap, même réglage que Réglages › Graphisme
+	m = Model.new()
+	m.handle("A_SHORT")
+	m.on_map({"roads": [{"c": "t", "xz": [0, 0, 100, 0]}]})
+	m.handle("A_SHORT")
+	m.handle("MINUS_SHORT")                 # de la ligne du cap à la dernière : biome
+	_check(Model.FIELDS[m.field_index] == "biome" and m.biome == "auto", "cap : ligne biome, automatique par défaut")
+	act = m.handle("RIGHT_SHORT")
+	_check(act == {"action": "set_setting", "key": "render.biome", "value": "temperate_grassland"}, "biome : ▶ force le premier biome (réglage render.biome)")
+	act = m.handle("LEFT_SHORT")
+	_check(act["value"] == "auto" and m.biome == "auto", "biome : ◀ revient à automatique")
+	act = m.handle("LEFT_SHORT")
+	_check(act["value"] == m.biome and m.biome != "auto" and m.state == "setup", "biome : ◀ depuis automatique, dernier biome de la liste")
+	_check(m.handle("PLUS_SHORT").is_empty() and m.field_index == 0, "ligne suivante : retour au cap, sans commande")
+
 	# Retours.
 	m = Model.new()
 	m.handle("A_SHORT")

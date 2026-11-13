@@ -1,0 +1,230 @@
+{
+  "description": "Lot W17, recette sur le PC : monde ouvert lancé depuis une recherche par nom (réseau), écran du cap avec la ligne « Biome » automatique puis forcée (même réglage que Réglages › Graphisme, remis en automatique), puis 3 minutes de balade avec une capture par minute. À lancer en low, medium et high, sur la branche et sur main (sur main, les vérifications de la ligne Biome échouent : seules les captures de route et les mesures comptent).",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15
+    },
+    {
+      "choisir": "open_world"
+    },
+    {
+      "monde": "globe",
+      "delai": 10
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "s"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "a"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "r"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "r"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "e"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "Space"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "u"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "n"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "i"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "o"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "n"
+    },
+    {
+      "note": "Recherche par nom : bases OSM du cache réel, sinon Nominatim (réseau) ; aucune coordonnée dans le dépôt",
+      "monde": "search",
+      "contient": [
+        "Sarre-Union"
+      ],
+      "delai": 60
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "monde": "map",
+      "absent": [
+        "Chargement de la carte"
+      ],
+      "delai": 90
+    },
+    {
+      "capture": "carte"
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "monde": "setup",
+      "contient": [
+        "Cap :",
+        "Biome : automatique (suit la région)"
+      ]
+    },
+    {
+      "note": "Lot W17 : « − » remonte de la ligne du cap à la dernière, celle du biome",
+      "touche": "Minus"
+    },
+    {
+      "monde": "setup",
+      "contient": [
+        "▶ Biome : automatique",
+        "Biome automatique : le décor suit la région"
+      ]
+    },
+    {
+      "capture": "cap_auto"
+    },
+    {
+      "touche": "Right"
+    },
+    {
+      "monde": "setup",
+      "contient": [
+        "(forcé)",
+        "Biome forcé"
+      ]
+    },
+    {
+      "config": {
+        "render.biome": "temperate_grassland"
+      }
+    },
+    {
+      "capture": "cap_force"
+    },
+    {
+      "touche": "Left"
+    },
+    {
+      "monde": "setup",
+      "contient": [
+        "▶ Biome : automatique"
+      ]
+    },
+    {
+      "config": {
+        "render.biome": "auto"
+      }
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "monde": false,
+      "delai": 300
+    },
+    {
+      "note": "Monde ouvert préchargé : route engagée, séance prête",
+      "journal": "core",
+      "motif": "Monde ouvert prêt",
+      "delai": 600
+    },
+    {
+      "note": "Accueil : parcours ow:… chargé ; Session libre ouvre l'écran Prêt",
+      "ecran": "home",
+      "delai": 30
+    },
+    {
+      "choisir": "ride"
+    },
+    {
+      "ecran": "ready",
+      "delai": 15
+    },
+    {
+      "capture": "pret"
+    },
+    {
+      "choisir": "start"
+    },
+    {
+      "note": "Départ au pédalage : le cycliste simulé roule à 180 W",
+      "journal": "core",
+      "motif": "-> RUNNING",
+      "delai": 120
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "route_1"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "route_2"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "route_3"
+    },
+    {
+      "note": "Route prolongée par le générateur pendant la balade",
+      "journal": "engine",
+      "motif": "world_revision rev=",
+      "delai": 120
+    },
+    {
+      "journal": "core",
+      "motif": "WorldCover|biome",
+      "delai": 5
+    }
+  ]
+}
