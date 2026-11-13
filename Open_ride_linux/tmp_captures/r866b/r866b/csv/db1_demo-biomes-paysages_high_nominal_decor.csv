@@ -1,0 +1,28 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+64.0;2;21;0;0;0;0;5;
+82.8;2;21;0;0;0;0;6;voice_allez=1
+125.4;2;21;0;0;1;1;6;airliner_rumble=1 raptor_cry=1 voice_allez=1
+207.2;6;26;0;0;4;2;5;airliner_rumble=2 raptor_cry=1 voice_allez=1
+225.0;9;26;0;0;4;2;4;airliner_rumble=2 raptor_cry=1 voice_allez=1
+266.9;31;26;1;0;4;2;2;airliner_rumble=2 raptor_cry=1 vehicle_pass=1 voice_allez=1
+348.1;78;46;1;1;2;3;0;airliner_rumble=2 paramotor_buzz=1 raptor_cry=1 sheep_baa=1 tractor_engine=1 vehicle_pass=1 voice_allez=3
+365.6;78;46;1;1;3;3;0;airliner_rumble=2 paramotor_buzz=1 raptor_cry=1 sheep_baa=1 tractor_engine=1 vehicle_pass=1 voice_allez=3
+408.1;78;65;0;1;3;4;0;airliner_rumble=2 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 sheep_baa=1 tractor_engine=1 vehicle_pass=1 voice_allez=3
+489.3;80;66;1;1;14;7;0;airliner_rumble=3 crow_caw=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 sheep_baa=1 tractor_engine=1 vehicle_pass=2 voice_allez=4
+507.0;80;66;0;1;9;7;0;airliner_rumble=3 crow_caw=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 sheep_baa=1 tractor_engine=1 vehicle_pass=2 voice_allez=4
+548.5;76;66;1;0;8;6;0;airliner_rumble=3 crow_caw=1 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=1 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=4
+628.8;59;66;1;0;11;5;0;airliner_rumble=3 crow_caw=1 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=2 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=6
+646.1;59;66;1;0;11;5;0;airliner_rumble=3 crow_caw=1 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=2 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=6
+687.3;47;61;1;0;6;5;0;airliner_rumble=3 crow_caw=1 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=2 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=7 voice_bonjour=1
+766.7;16;61;1;0;10;5;0;airliner_rumble=3 crow_caw=1 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=3 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=7 voice_bonjour=1
+783.9;16;61;1;0;11;5;0;airliner_rumble=3 crow_caw=1 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=3 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=7 voice_bonjour=1
+825.3;16;55;1;0;6;4;0;airliner_rumble=3 crow_caw=1 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=3 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=7 voice_bonjour=1
+905.6;15;55;1;0;5;6;0;airliner_rumble=5 crow_caw=1 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=3 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=8 voice_bonjour=1
+922.9;15;55;1;0;5;6;0;airliner_rumble=5 crow_caw=1 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=3 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=9 voice_bonjour=1
+964.6;15;50;1;0;5;6;0;airliner_rumble=5 crow_caw=2 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=3 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=11 voice_bonjour=1
+1037.8;15;50;0;0;0;7;0;airliner_rumble=6 crow_caw=2 crowd_cheer=1 dog_bark=2 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=4 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=12 voice_bonjour=1
+1039.9;15;50;0;0;0;7;0;airliner_rumble=6 crow_caw=2 crowd_cheer=1 dog_bark=2 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=4 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=12 voice_bonjour=1
+1041.3;15;50;0;0;0;7;0;airliner_rumble=6 crow_caw=3 crowd_cheer=1 dog_bark=2 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=4 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=12 voice_bonjour=1
+1042.0;15;50;0;0;0;7;0;airliner_rumble=6 crow_caw=3 crowd_cheer=1 dog_bark=2 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=4 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=12 voice_bonjour=1
+1042.7;15;50;0;0;0;7;0;airliner_rumble=6 crow_caw=3 crowd_cheer=1 dog_bark=2 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=4 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=12 voice_bonjour=1
+1425.0;15;50;0;0;0;8;0;airliner_rumble=7 crow_caw=3 crowd_cheer=1 dog_bark=2 helicopter_rotor=1 kid_laugh=1 paramotor_buzz=1 raptor_cry=16 sheep_baa=1 tractor_engine=1 vehicle_pass=3 voice_allez=12 voice_bonjour=1

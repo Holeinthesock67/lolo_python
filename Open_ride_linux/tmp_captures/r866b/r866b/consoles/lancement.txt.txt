@@ -1,0 +1,15 @@
+14:34:58 empreinte avant 574f6af5f29a4633ff7a35a8347a0241
+14:34:58 tête db9f2b4e
+14:35:40 menus
+14:40:15 fin rc=0
+14:40:15 captures_demo
+15:51:50 fin rc=1
+15:51:50 banc low
+16:11:15 fin rc=1
+16:11:15 banc medium
+16:30:42 fin rc=1
+16:30:42 banc high
+16:50:07 fin rc=1
+16:50:09 empreinte après 574f6af5f29a4633ff7a35a8347a0241
+16:50:09 clone 71e814c8
+16:50:09 FIN
