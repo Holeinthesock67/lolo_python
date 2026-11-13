@@ -90,6 +90,16 @@ def test_unpaved_allowed_by_recipe(tmp_path: Path) -> None:
     assert rr.path_length_m(rr.route_through(graph, [at(0), at(2000)])) == pytest.approx(2000.0, abs=20.0)
 
 
+@pytest.mark.parametrize("tags", [{"highway": "track"}, {"highway": "track", "surface": "gravel"},
+                                  {"highway": "path", "surface": "dirt"}])
+def test_unpaved_recipe_still_skips_tracks(tags: dict) -> None:
+    # `unpaved = true` ouvre la route en gravier, pas la piste qui coupe les lacets (lot HP2).
+    path = rr.route_through(rr.build_graph([two_roads(tags)], unpaved_ok=True), [at(0), at(2000)])
+    assert rr.path_length_m(path) == pytest.approx(2800.0, abs=20.0)
+    paved = rr.build_graph([two_roads({"highway": "track", "surface": "asphalt"})], unpaved_ok=True)
+    assert rr.path_length_m(rr.route_through(paved, [at(0), at(2000)])) == pytest.approx(2000.0, abs=20.0)
+
+
 def test_oneway_in_direction_and_cycle_exception() -> None:
     assert rr.path_length_m(rr.route_through(rr.build_graph([two_roads({"oneway": "yes"})]),
                                              [at(0), at(2000)])) == pytest.approx(2000.0, abs=20.0)
@@ -274,7 +284,7 @@ def test_recipe_validation(tmp_path: Path, text: str, needle: str) -> None:
 def test_builtin_pack_recipes() -> None:
     folder = rr.pack_dir("cols_celebres")
     recipes = rr.load_recipes(folder)
-    assert len(recipes) == 19   # 16 du lot O16, Hakone et Fuji Azami Line (JP6), Ticlio (HP1)
+    assert len(recipes) == 21   # 16 du lot O16, Hakone et Fuji Azami Line (JP6), Ticlio (HP1), Khardung La et Abra Málaga (HP2)
     assert {"alpe-d-huez", "mont-ventoux-bedoin", "grand-ballon", "fuji-subaru-line"} <= {r.id for r in recipes}
     assert all("col" in r.tags and len(r.waypoints) >= 2 for r in recipes)
     # Aucune trace dans le dépôt : seulement des recettes et pack.toml.
