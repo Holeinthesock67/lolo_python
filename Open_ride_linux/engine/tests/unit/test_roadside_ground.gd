@@ -7,6 +7,8 @@ extends SceneTree
 const RoadsideGround := preload("res://scripts/roadside_ground.gd")
 const RoadsideProps := preload("res://scripts/roadside_props.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
+const RouteDataScript := preload("res://scripts/route_data.gd")
+const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 
 var _failures := 0
 var _checked := 0
@@ -75,6 +77,34 @@ func _run() -> void:
 	km.free()
 	sign.free()
 	props.queue_free()
+
+	# Monde ouvert : tuile écrite pendant la séance, après une première lecture (tuile absente alors)
+	var route = RouteDataScript.new()
+	_check(route.load_world_dir("res://demo/demo.world"), "démo lisible")
+	var dir := OS.get_user_data_dir().path_join("test_roadside_ground_%d" % Time.get_ticks_usec())
+	DirAccess.make_dir_recursive_absolute(dir)
+	var p0: Vector3 = route.sample_point(100.0)
+	var ground := RoadsideGround.ground_fn(dir, route)
+	var before := float(ground.call(p0.x + 5.0, p0.z))
+	_check(absf(before - TerrainTiles.nearest_route_alt(route, p0.x + 5.0, p0.z)) < 1e-3, "tuile absente : altitude de la route")
+	var t := TerrainTiles.tile_of("near", p0.x + 5.0, p0.z)
+	var path := TerrainTiles.tile_path(dir, "near", t.x, t.y)
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var heights := PackedFloat32Array()
+	heights.resize(TerrainTiles.SAMPLES * TerrainTiles.SAMPLES)
+	heights.fill(before - 3.0)
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_buffer(heights.to_byte_array())
+	f.close()
+	_check(absf(float(ground.call(p0.x + 5.0, p0.z)) - before) < 1e-3, "tuile relue au plus tôt MISSING_RETRY_MS plus tard")
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < RoadsideGround.MISSING_RETRY_MS + 50:
+		await process_frame
+	var after := float(ground.call(p0.x + 5.0, p0.z))
+	_check(absf(after - (before - 3.0)) < 1e-3, "tuile écrite pendant la séance : relue ensuite (%.2f, attendu %.2f)" % [after, before - 3.0])
+	DirAccess.remove_absolute(path)
+	for d in [path.get_base_dir(), path.get_base_dir().get_base_dir(), dir]:
+		DirAccess.remove_absolute(d)
 	await process_frame
 	print("test_roadside_ground : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

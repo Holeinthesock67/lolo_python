@@ -19,13 +19,17 @@ const RoadBuilder := preload("res://scripts/road_builder.gd")
 
 ## Enfoncement du pied sous le sol affiché (m) : ni jour sous le socle, ni socle noyé.
 const FOOT_SINK_M := 0.03
+## Délai avant de relire une tuile absente (ms).
+const MISSING_RETRY_MS := 2000
 
 
 ## Hauteur affichée du terrain en (x, z), comme world_streamer.gd la dessine, relief exagéré compris
 ## (`route.display_y`, lots Q2 et Y15) : tuile proche, sinon tuile lointaine abaissée de son `y_offset`
 ## (TerrainTiles.LEVELS, ajouté après l'exagération comme dans TerrainTiles.build_arrays), sinon altitude de la
 ## route la plus proche. Vide sans dossier de parcours. Chaque appel a son propre cache de tuiles : une fonction
-## par fil.
+## par fil. Monde ouvert (série W) : les tuiles s'écrivent pendant la séance ; une tuile absente est relue au
+## plus tôt MISSING_RETRY_MS plus tard (sans cela, une tuile lue avant d'être écrite restait vide, et l'objet
+## retombait à la hauteur de la route).
 static func ground_fn(world_dir: String, route) -> Callable:
 	if route == null or world_dir == "":
 		return Callable()
@@ -34,10 +38,11 @@ static func ground_fn(world_dir: String, route) -> Callable:
 		for level in ["near", "far"]:
 			var t := TerrainTiles.tile_of(level, x, z)
 			var key := Vector3i(t.x, t.y, 0 if level == "near" else 1)
-			if not cache.has(key):
-				cache[key] = TerrainTiles.load_filled(world_dir, level, t.x, t.y, route) if level == "near" \
-					else TerrainTiles.load_tile(world_dir, level, t.x, t.y)
-			var h: PackedFloat32Array = cache[key]
+			var now := Time.get_ticks_msec()
+			if not cache.has(key) or (cache[key][0].is_empty() and now - int(cache[key][1]) >= MISSING_RETRY_MS):
+				cache[key] = [TerrainTiles.load_filled(world_dir, level, t.x, t.y, route) if level == "near" \
+					else TerrainTiles.load_tile(world_dir, level, t.x, t.y), now]
+			var h: PackedFloat32Array = cache[key][0]
 			if h.is_empty():
 				continue
 			var y := TerrainTiles.mesh_height_at(h, level, t.x, t.y, x, z)
