@@ -63,8 +63,9 @@ for id in "${IDS[@]}"; do
     fi
 done
 
-BUILT_DIR="${BUILD}/${PACK}"
-ls "${BUILT_DIR}"/*.gpx >/dev/null 2>&1 || die "aucun col construit"
+# route-pack-build écrit dans BUILD/<nom normalisé du pack> (cols-celebres) : on prend le seul dossier écrit.
+BUILT_DIR="$(find "${BUILD}" -mindepth 1 -maxdepth 1 -type d ! -name '.*' | head -n 1)"
+[[ -n "${BUILT_DIR}" ]] && ls "${BUILT_DIR}"/*.gpx >/dev/null 2>&1 || die "aucun col construit"
 ${COMPILER} route-pack-install "${BUILT_DIR}" --gpx-dir "${GPX}" --force >/dev/null
 PACK_FOLDER="$(find "${GPX}" -mindepth 1 -maxdepth 1 -type d ! -name '.*' | head -n 1)"
 [[ -n "${PACK_FOLDER}" ]] || die "pack non installé dans ${GPX}"

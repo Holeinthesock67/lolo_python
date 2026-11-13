@@ -73,6 +73,22 @@ static func known(kind: String) -> bool:
 	return LABELS.has(kind)
 
 
+## Objets qui portent la marque `breakaway` de l'Échappée (TT4) : le Furtif (lot GP4, items.py `self_fx`).
+const UNSEEN := ["stealth"]
+
+
+## Vrai quand un coureur est sous le Furtif (lot GP4) : `fx` du cycliste (`gp.fx`, [[objet, reste], ...]) ou d'un
+## bot (`bots[].fx`, [objet, ...]). Son avatar est alors translucide, comme pendant l'Échappée (lot TT6).
+static func unseen(fx) -> bool:
+	if not (fx is Array):
+		return false
+	for e in fx:
+		var kind = e[0] if e is Array and not e.is_empty() else e
+		if kind is String and UNSEEN.has(kind):
+			return true
+	return false
+
+
 ## Contour de la pastille d'une forme, centrée sur `c`, de rayon `r`.
 static func shape_points(form: String, c: Vector2, r: float) -> PackedVector2Array:
 	match form:

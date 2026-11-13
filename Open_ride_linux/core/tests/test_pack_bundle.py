@@ -180,7 +180,7 @@ if args[0] == "route-pack-build":
     if cid == "ticlio":
         print("  refusé : ticlio : longueur hors tolérance", file=sys.stderr)
         sys.exit(1)
-    out = opt("--out") / "cols_celebres"
+    out = opt("--out") / "cols-celebres"   # comme route_recipe.build_pack : nom normalisé (tiret)
     out.mkdir(parents=True, exist_ok=True)
     (out / "pack.toml").write_text('name = "Cols célèbres"\\n', encoding="utf-8")
     (out / f"{cid}.gpx").write_text(f"<gpx>{cid}</gpx>", encoding="utf-8")

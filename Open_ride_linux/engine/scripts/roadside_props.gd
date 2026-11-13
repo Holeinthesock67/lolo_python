@@ -22,6 +22,7 @@ extends Node3D
 
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
 const PropShader := preload("res://shaders/props.gdshader")
+const NightLights := preload("res://scripts/night_lights.gd")
 ## Matières de props.gdshader (lot Y8 étape 3) et faux relief par préréglage, comme les bâtiments.
 const KIND_BOARD := 0
 const KIND_POST := 1
@@ -74,6 +75,13 @@ const LAYER_DEPTH_M := 0.006
 const TORII_H := 7.5             # torii (lot JP5) : hauteur, piliers à TORII_MARGIN_M des bords de la chaussée
 const TORII_MARGIN_M := 2.0
 const BOLD_EMBOLDEN := 0.7
+## Glissière (lot JP8) : lisse en W blanche sur poteaux, à GUARDRAIL_OFFSET_M du bord de la chaussée
+const GUARDRAIL_OFFSET_M := 0.5
+const GUARDRAIL_STEP_M := 2.0
+const GUARDRAIL_POST_EVERY := 2       # un poteau tous les 2 pas (4 m)
+const GUARDRAIL_POST_H := 0.95
+## Bandes de la lisse : [bas, haut, retrait vers la route] (profil en W simplifié)
+const GUARDRAIL_BANDS := [[0.58, 0.68, 0.0], [0.68, 0.77, 0.07], [0.77, 0.87, 0.0]]
 
 var road_width_m := 6.0
 var _chunks: Dictionary = {}        # k -> Array[Node3D]
@@ -92,6 +100,7 @@ func _init() -> void:
 	_mats["torii_red"] = _plain(Color(0.78, 0.20, 0.10), 0.7)
 	_mats["torii_black"] = _plain(Color(0.08, 0.08, 0.08), 0.6)
 	_mats["stone"] = _plain(Color(0.55, 0.54, 0.50), 0.95)
+	_mats["guardrail"] = _plain(Color(0.92, 0.92, 0.90), 0.45)   # glissières blanches des routes japonaises
 	(_mats["approach_board"] as ShaderMaterial).set_shader_parameter("border_color", INK_DARK)
 
 
@@ -266,6 +275,57 @@ static func torii_meshes(road_w: float) -> Array:
 		tip.size = Vector3(1.2, 0.3, 0.6)
 		black.append_from(tip, 0, Transform3D(Basis(Vector3.BACK, sx * 0.18), Vector3(sx * (half + 1.7), TORII_H + 0.02, 0.0)))
 	return [_commit(red, Vector2(half * 2.0, TORII_H)), _commit(black, Vector2(half * 2.0, 0.4))]
+
+
+## Glissière (lot JP8) le long de la route, de `s0` à `s1`, côté `side`, en coordonnées du monde : lisse en W
+## (bandes doubles faces) et poteaux tous les GUARDRAIL_POST_EVERY pas. Rend null si le morceau est trop court.
+static func guardrail_mesh(route, s0: float, s1: float, side: int, road_w: float) -> ArrayMesh:
+	var n := int(ceil((s1 - s0) / GUARDRAIL_STEP_M))
+	if n < 1:
+		return null
+	var sd := -1.0 if side < 0 else 1.0
+	var off := road_w * 0.5 + GUARDRAIL_OFFSET_M
+	var pts := []    # [base, dehors (vers l'extérieur de la route)]
+	for i in range(n + 1):
+		var s := minf(s1, s0 + i * GUARDRAIL_STEP_M)
+		var smp: Dictionary = route.sample(s)
+		var h := deg_to_rad(float(smp["heading_deg"]))
+		var out := Vector3(cos(h), 0.0, sin(h)) * sd
+		pts.append([Vector3(smp["x"], smp["y"], smp["z"]) + out * off, out])
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(n):
+		var a: Vector3 = pts[i][0]
+		var b: Vector3 = pts[i + 1][0]
+		var oa: Vector3 = pts[i][1]
+		var ob: Vector3 = pts[i + 1][1]
+		var nrm := -(oa + ob).normalized()   # face vers la route
+		for band in GUARDRAIL_BANDS:
+			var y0 := Vector3.UP * float(band[0])
+			var y1 := Vector3.UP * float(band[1])
+			var ia := -oa * float(band[2])
+			var ib := -ob * float(band[2])
+			var q := [a + ia + y0, b + ib + y0, b + ib + y1, a + ia + y1]
+			for f in [1.0, -1.0]:
+				_tri(st, q[0], q[1], q[2], nrm * f)
+				_tri(st, q[0], q[2], q[3], nrm * f)
+	st.index()   # la lisse indexée avant les poteaux (append_from indexé) : sinon ses sommets sont perdus
+	var post := BoxMesh.new()
+	post.size = Vector3(0.12, GUARDRAIL_POST_H + 0.3, 0.12)
+	for i in range(0, n + 1, GUARDRAIL_POST_EVERY):
+		var base: Vector3 = pts[i][0]
+		var o: Vector3 = pts[i][1]
+		var basis := Basis(Vector3.UP, atan2(o.x, o.z))
+		st.append_from(post, 0, Transform3D(basis, base + o * 0.1 + Vector3.UP * (GUARDRAIL_POST_H - 0.3) * 0.5))
+	return _commit(st, Vector2(s1 - s0, GUARDRAIL_POST_H))
+
+
+## Foyer de la lanterne (lot P35) : un peu plus large que la chambre de lumière de pierre, il en éclaire les faces.
+static func lantern_light_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	NightLights.box(st, Vector3(0.0, 1.535, 0.0), Vector3(0.51, 0.22, 0.51), NightLights.WARM_COLOR, 9)
+	return st.commit()
 
 
 ## Lanterne de pierre (tōrō, lot JP5), environ 2,2 m, pied à y = 0.
@@ -518,6 +578,8 @@ func build_prop(item: Dictionary) -> Node3D:
 		_mesh(root, _meshes[key + "_black"], _mats["torii_black"], Vector3.ZERO)
 	elif kind == "lantern":
 		_mesh(root, _shared("lantern", lantern_mesh), _mats["stone"], Vector3.ZERO)
+		# Lot P35 : foyer qui s'allume la nuit (caché quand le jour et la nuit est coupé)
+		_mesh(root, _shared("lantern_light", lantern_light_mesh), NightLights.lamp_material(), Vector3.ZERO)
 	else:
 		var spec: Dictionary = BOARD[kind]
 		var lay := board_layout(kind, lines)
@@ -548,6 +610,15 @@ func add_chunk(route, k: int, chunk_items: Array) -> void:
 	remove_chunk(k)
 	var nodes: Array[Node3D] = []
 	for it in chunk_items:
+		if it["kind"] == "guardrail":   # lot JP8 : maillage le long de la route, en coordonnées du monde
+			var mesh := guardrail_mesh(route, float(it["s"]), float(it["s_end"]), int(it["side"]), road_width_m)
+			if mesh != null:
+				var rail := Node3D.new()
+				rail.name = "guardrail_%d" % int(it["s"])
+				_mesh(rail, mesh, _mats["guardrail"], Vector3.ZERO)
+				add_child(rail)
+				nodes.append(rail)
+			continue
 		var prop := build_prop(it)
 		var s := float(it["s"])
 		var raw_side := int(it.get("side", 1))

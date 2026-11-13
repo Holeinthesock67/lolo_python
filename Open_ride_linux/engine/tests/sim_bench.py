@@ -43,7 +43,8 @@ Appuis et attentes (lot X33, `sim_bench_inputs.py`) : section `inputs` (touche d
 séance (biais et cible ERG, bloc, pause et reprise) et une capture juste après ; `bench.expect` (lignes du
 journal de séance, motifs des journaux du core et de l'engine, éléments du HUD, fichiers du HOME), chaque
 attente avec son renvoi à l'étape de la recette ; `bench.powerups` (contenu de `~/OpenRide/powerups.toml`,
-ex. arches rapprochées) et `bench.bot_profiles` (`--bot-profile` du core). Série DS : `bench.mode` (ou `--mode`) donne
+ex. arches rapprochées), `bench.grandprix` (contenu de `~/OpenRide/grandprix.toml`, ex. objets du lot GP4 seuls,
+scénario `grand_prix_gp4`) et `bench.bot_profiles` (`--bot-profile` du core). Série DS : `bench.mode` (ou `--mode`) donne
 le mode de la séance (`start.mode`, ex. `survivor`, scénario `dernier_survivant`) et `bench.config` des sections
 ajoutées à config.toml (ex. `{"survivor": {"opponents": 2}}`). Lot AS6 : scénario `circulation_proche`
 (`[ride] traffic_bench_s`, passages forcés d'un tracteur lent puis d'un camion qui double) et `bench.vehicle_draft_expect`
@@ -321,6 +322,7 @@ class Bench:
         self.inputs: list[dict[str, Any]] = settings.get("inputs", [])
         self.expect: list[dict[str, Any]] = settings.get("expect", [])
         self.powerups: dict[str, Any] | None = settings.get("powerups")
+        self.grandprix: dict[str, Any] | None = settings.get("grandprix")   # grandprix.toml (lot GP4)
         self.bot_profiles = [str(p) for p in settings.get("bot_profiles", [])]
         # Série DS : mode de la séance (`start.mode`, ex. survivor) et sections ajoutées à config.toml
         # (`bench.config`, ex. {"survivor": {"opponents": 2}}) ; --mode l'emporte sur `bench.mode`.
@@ -368,9 +370,10 @@ class Bench:
         home = tmp / "home"
         home.mkdir()
         self.home = home
-        if self.powerups is not None:
-            (home / "OpenRide").mkdir()
-            (home / "OpenRide" / "powerups.toml").write_text(toml_text(self.powerups), encoding="utf-8")
+        for name, table in (("powerups.toml", self.powerups), ("grandprix.toml", self.grandprix)):
+            if table is not None:
+                (home / "OpenRide").mkdir(exist_ok=True)
+                (home / "OpenRide" / name).write_text(toml_text(table), encoding="utf-8")
         routes = home / ".local" / "share" / "openride" / "routes"
         route_id = prepare_world(self.world, routes, tmp)
         state_port, cmd_port = free_udp_ports(2)

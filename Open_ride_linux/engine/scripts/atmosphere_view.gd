@@ -26,7 +26,7 @@ const FOG_EPS := 0.002       # écart de fog_end_factor qui justifie de reposer 
 const COLOR_EPS := 0.002     # écart de couleur (par composante)
 const HEAT_EPS := 0.01
 const HORIZON_AHEAD_M := 5000.0
-const NIGHT_AMBIENT_GAIN := 2.5   # lumière ambiante de la nuit (route lisible) : couleur × énergie de daylight_model × gain
+const NIGHT_AMBIENT_GAIN := 3.0   # lumière ambiante de la nuit (route lisible) : couleur × énergie de daylight_model × gain
 const STAR_LEVELS := 4
 const STAR_COUNT := 2200
 
@@ -263,8 +263,11 @@ static func star_texture(stars: float) -> Texture2D:
 		for lv in range(1, STAR_LEVELS + 1):
 			var img := Image.create(2048, 1024, false, Image.FORMAT_RGB8)
 			for s in pts:
-				var b := float(s[2]) * float(lv) / STAR_LEVELS
-				img.set_pixel(int(s[0]), int(s[1]), Color(b, b, b * 1.05))
+				# Points de 2 × 2 pixels : un seul pixel se perd au rééchantillonnage du ciel (lot P35)
+				var b := minf(1.0, float(s[2]) * float(lv) / STAR_LEVELS * 1.6)
+				for dx in range(2):
+					for dy in range(2):
+						img.set_pixel((int(s[0]) + dx) % 2048, mini(int(s[1]) + dy, 1023), Color(b, b, minf(1.0, b * 1.05)))
 			_star_textures.append(ImageTexture.create_from_image(img))
 	return _star_textures[level - 1]
 
