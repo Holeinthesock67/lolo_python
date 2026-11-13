@@ -15,8 +15,13 @@ extends Node3D
 ##   roche du biome ou de la variante régionale de la tuile. Herbes hautes (savane, steppe) : gerbes de brins
 ##   comme les touffes de P5 mais hautes et dorées, balancées par le vent apparent (tree_sway.gdshader), effacées
 ##   avant 60 m. Termitières (savane) : rares.
-## - Budgets : `living(preset)` de quality_presets.gd (`ground_rocks`, `ground_grass`, `ground_termites`),
-##   à zéro quand le décor vivant est coupé.
+## - Murets de pierre sèche (landes atlantiques, lot AT1) : tronçons de `WALL_PIECE_M` mis bout à bout le long de la
+##   route, des deux côtés, alignés sur le cap ; leur écart au bord suit un bruit continu le long de la route
+##   (`wall_offset`), avec des brèches tirées par place. Pierre de la roche du biome ou de la variante régionale.
+## - Disposition : `scatter` (place tirée au hasard dans la bande, orientation au hasard) ou `row` (places en file le
+##   long de la route, orientées selon le cap), selon LAYOUT.
+## - Budgets : `living(preset)` de quality_presets.gd (`ground_rocks`, `ground_grass`, `ground_termites`,
+##   `ground_walls`, lus par `budgets`), à zéro quand le décor vivant est coupé.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RenderDiag := preload("res://scripts/render_diag.gd")
@@ -33,15 +38,29 @@ const BAND_M := {"rock": 60.0, "grass": 60.0, "termite": 30.0}
 const MAX_PER_FRAME := 50           # places remplies par image : un tronçon de high en ~25 images (0,4 s)
 const GRID_M := 25.0
 const ROCK_SHAPES := 3
-const KINDS: Array[String] = ["rock", "grass", "termite"]
+const KINDS: Array[String] = ["rock", "grass", "termite", "wall"]
+## Clé du budget de chaque sorte dans `living(preset)` (quality_presets.gd).
+const BUDGET_KEYS := {"rock": "ground_rocks", "grass": "ground_grass", "termite": "ground_termites", "wall": "ground_walls"}
+## Disposition de chaque sorte : `scatter` (au hasard dans la bande) ou `row` (en file le long de la route).
+const LAYOUT := {"rock": "scatter", "grass": "scatter", "termite": "scatter", "wall": "row"}
 ## Probabilité qu'une place d'une sorte soit remplie dans un biome (0 ou absent : jamais).
 const DENSITY := {
-	"rock": {"alpine": 0.9, "rock_desert": 1.0, "sand_desert": 0.5, "tundra": 0.5, "volcanic": 1.0},
-	"grass": {"savanna": 1.0, "steppe": 0.7},
+	"rock": {"alpine": 0.9, "rock_desert": 1.0, "sand_desert": 0.5, "tundra": 0.5, "volcanic": 1.0, "atlantic_heath": 0.25, "high_plateau": 0.6},
+	"grass": {"savanna": 1.0, "steppe": 0.7, "high_plateau": 0.8},   # hauts plateaux (lot HP1) : touffes d'ichu près de la route
 	"termite": {"savanna": 1.0},
+	"wall": {"atlantic_heath": 0.85},
 }
 ## Rayon au sol de l'objet à l'échelle 1 (m), pour la distance à la route.
-const RADIUS_M := {"rock": 0.6, "grass": 0.3, "termite": 0.9}
+const RADIUS_M := {"rock": 0.6, "grass": 0.3, "termite": 0.9, "wall": 0.4}
+## Murets (lot AT1) : longueur d'un tronçon, places par côté et par tronçon de route, écart au bord de la route
+## (entre WALL_OFFSET_M.x et .y, bruit continu de période WALL_OFFSET_PERIOD_M), hauteur hors sol.
+const WALL_PIECE_M := 6.0
+const WALL_PER_SIDE := int(CHUNK_M / WALL_PIECE_M)
+const WALL_OFFSET_M := Vector2(1.5, 7.0)
+const WALL_OFFSET_PERIOD_M := 120.0
+const WALL_HEIGHT_M := 1.0
+const WALL_FOOT_M := 0.4            # pierres sous le sol, pour les pentes en travers
+const WALL_LIGHTEN := 0.35          # pierre des murets plus claire que les rochers (lichens, pierre lavée)
 const GRASS_HEIGHT_M := 1.1
 const GRASS_BLADES := 16
 const GRASS_TINTS := [Color(1.0, 1.0, 1.0), Color(1.12, 1.05, 0.85), Color(0.86, 0.84, 0.7), Color(1.2, 1.1, 0.8)]
@@ -91,6 +110,8 @@ func configure(budgets: Dictionary, route_data, model, road_width_m: float = 6.0
 	for kind in KINDS:
 		var shapes := ROCK_SHAPES if kind == "rock" else 1
 		var per_chunk := int(budgets.get(kind, 0)) / shapes / groups
+		if LAYOUT[kind] == "row":
+			per_chunk = mini(per_chunk, 2 * WALL_PER_SIDE)
 		if per_chunk <= 0:
 			continue
 		for shape in range(shapes):
@@ -115,6 +136,14 @@ func configure(budgets: Dictionary, route_data, model, road_width_m: float = 6.0
 			_layers.append({"kind": kind, "shape": shape, "mm": mm, "per_chunk": per_chunk, "pos": pos, "on": on})
 	if not _layers.is_empty():
 		_road = RoadClearance.new(route, GRID_M)
+
+
+## Budgets de `configure` tirés des budgets du décor vivant `living(preset)` (quality_presets.gd).
+static func budgets(living: Dictionary) -> Dictionary:
+	var out := {}
+	for kind in KINDS:
+		out[kind] = int(living.get(BUDGET_KEYS[kind], 0))
+	return out
 
 
 func get_capacity(kind: String) -> int:
@@ -215,6 +244,8 @@ func chunk_stations(k: int) -> PackedVector4Array:
 ## Objet de la place `slot` du tronçon `k` pour la sorte `kind` (forme `shape` des rochers) :
 ## {xf, color, biome} ou null (hors route, trop près de la route, exclu, pas dans ce biome).
 func detail_at(kind: String, shape: int, k: int, slot: int, stations: PackedVector4Array = PackedVector4Array()) -> Variant:
+	if LAYOUT[kind] == "row":
+		return _row_at(kind, k, slot, stations)
 	var salt := (KINDS.find(kind) + 1) * 0x1F3 + shape * 0x3B
 	var h := VegetationPlacer.hash3(detail_seed ^ (0x5D17 + salt), k, slot)
 	var h2 := VegetationPlacer.hash3(detail_seed ^ (0x2E83 + salt), k, slot)
@@ -261,6 +292,60 @@ func detail_at(kind: String, shape: int, k: int, slot: int, stations: PackedVect
 		"termite":
 			color = TERMITE_COLOR
 	return {"xf": Transform3D(basis.scaled(Vector3.ONE * scale_f), Vector3(px, py, pz)), "color": color, "biome": biome}
+
+
+## Place `slot` d'une sorte en file (murets) sur le tronçon `k` : côté `slot % 2`, tronçon de mur `slot / 2`,
+## aligné sur le cap, penché selon la pente le long de la route ; null dans une brèche, hors du biome, trop près
+## de la route (aux deux bouts) ou dans une exclusion.
+func _row_at(kind: String, k: int, slot: int, stations: PackedVector4Array) -> Variant:
+	var side := 1.0 if slot % 2 == 0 else -1.0
+	var piece := slot / 2
+	var s_mid := float(k) * CHUNK_M + (float(piece) + 0.5) * WALL_PIECE_M
+	if not route.is_loop() and (s_mid - WALL_PIECE_M * 0.5 < 0.0 or s_mid + WALL_PIECE_M * 0.5 > route.length_m):
+		return null
+	if stations.is_empty():
+		stations = chunk_stations(k)
+	var salt := (KINDS.find(kind) + 1) * 0x1F3
+	var h := VegetationPlacer.hash3(detail_seed ^ (0x5D17 + salt), k, slot)
+	var fi := (s_mid - float(k) * CHUNK_M) / 5.0
+	var i0 := mini(int(fi), stations.size() - 2)
+	var st := stations[i0].lerp(stations[i0 + 1], fi - i0)
+	st.w = lerp_angle(stations[i0].w, stations[i0 + 1].w, fi - i0)
+	var right := Vector3(cos(st.w), 0.0, sin(st.w))
+	var along := Vector3(sin(st.w), 0.0, -cos(st.w))
+	var off: float = road_half_width_m + ROAD_CLEAR_M + RADIUS_M[kind] + wall_offset(s_mid, side)
+	var c: Vector3 = Vector3(st.x, 0.0, st.z) + right * off * side
+	var biome := _pick_biome(c.x, c.z, h)
+	if float((h >> 8) & 0xFF) / 256.0 >= float(DENSITY[kind].get(biome, 0.0)):
+		return null
+	var a: Vector3 = c - along * WALL_PIECE_M * 0.5
+	var b: Vector3 = c + along * WALL_PIECE_M * 0.5
+	var clear: float = road_half_width_m + ROAD_CLEAR_M + RADIUS_M[kind]
+	for p in [a, c, b]:
+		if road_distance(p.x, p.z) < clear:
+			return null
+		for poly in exclusions:
+			if Geometry2D.is_point_in_polygon(Vector2(p.x, p.z), poly):
+				return null
+	var ya: float = float(height_at.call(a.x, a.z)) if height_at.is_valid() else st.y
+	var yb: float = float(height_at.call(b.x, b.z)) if height_at.is_valid() else st.y
+	var yc: float = float(height_at.call(c.x, c.z)) if height_at.is_valid() else st.y
+	var basis := Basis(Vector3.UP, PI * 0.5 - st.w) * Basis(Vector3.BACK, atan2(yb - ya, WALL_PIECE_M))
+	var y := minf(yc, (ya + yb) * 0.5) - 0.05
+	return {"xf": Transform3D(basis, Vector3(c.x, y, c.z)), "color": rock_color(biome, c.x, c.z).lightened(WALL_LIGHTEN), "biome": biome}
+
+
+## Écart du muret au-delà du dégagement de la route (m) au point `s` du côté `side` : bruit de valeur continu le long
+## de la route (nœuds tous les WALL_OFFSET_PERIOD_M), entre WALL_OFFSET_M.x et WALL_OFFSET_M.y.
+func wall_offset(s: float, side: float) -> float:
+	var t := s / WALL_OFFSET_PERIOD_M
+	var n := int(floor(t))
+	var f := t - n
+	var salt := 0x3A11 if side > 0.0 else 0x7C29
+	var v0 := float(VegetationPlacer.hash3(detail_seed ^ salt, n, 0) & 0xFFFF) / 65535.0
+	var v1 := float(VegetationPlacer.hash3(detail_seed ^ salt, n + 1, 0) & 0xFFFF) / 65535.0
+	f = f * f * (3.0 - 2.0 * f)
+	return lerpf(WALL_OFFSET_M.x, WALL_OFFSET_M.y, lerpf(v0, v1, f))
 
 
 ## Échelle d'un objet : rochers surtout petits (0,4 à 2), herbes 0,8 à 1,3, termitières 1 à 2 (1,6 à 3,2 m de haut).
@@ -317,6 +402,8 @@ func _mesh_for(kind: String, shape: int) -> Mesh:
 			return build_rock_mesh(shape)
 		"grass":
 			return build_grass_mesh()
+		"wall":
+			return build_wall_mesh()
 	return build_termite_mesh()
 
 
@@ -423,6 +510,78 @@ static func build_grass_mesh() -> ArrayMesh:
 			st.set_normal(n)
 			st.add_vertex(v[0])
 	return st.commit()
+
+
+## Muret de pierre sèche (lot AT1) : tronçon de WALL_PIECE_M selon x, centré, en deux assises de pierres de
+## longueurs et de hauteurs inégales sur un talus trapézoïdal (0,8 m de large au pied, 0,5 m en haut), pied
+## enterré de WALL_FOOT_M, pierres de couronnement posées de chant ; teintes de gris par pierre (la couleur
+## d'instance donne la roche). Moins de 500 triangles.
+static func build_wall_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 0x3D11E7
+	var half := WALL_PIECE_M * 0.5
+	# Talus : corps du mur, de -WALL_FOOT_M à 0,75 m
+	var body_top := WALL_HEIGHT_M * 0.75
+	_add_box(st, Vector3(-half, -WALL_FOOT_M, -0.4), Vector3(half, 0.0, 0.4), Color(0.7, 0.7, 0.7))
+	_add_slab(st, -half, half, 0.0, body_top, 0.4, 0.25, Color(0.62, 0.61, 0.58))
+	# Pierres saillantes des deux faces, deux assises
+	for face in [-1.0, 1.0]:
+		for course in range(2):
+			var x := -half
+			var y0 := 0.05 + course * 0.33
+			while x < half - 0.2:
+				var l := minf(rng.randf_range(0.5, 1.0), half - x)
+				var hh := rng.randf_range(0.16, 0.34)
+				var yj := y0 + rng.randf_range(-0.05, 0.05)
+				var z_out: float = (0.4 - 0.15 * (yj + hh * 0.5) / body_top) * face + rng.randf_range(-0.02, 0.05) * face
+				# Pierres de gris inégaux, un peu chaudes ou froides, quelques-unes tachées de lichen clair
+				var g := rng.randf_range(0.95, 1.35)
+				var warm := rng.randf_range(-0.06, 0.06)
+				var col := Color(g * (1.0 + warm), g, g * (1.0 - warm))
+				if rng.randf() < 0.15:
+					col = Color(g * 1.15, g * 1.18, g * 0.95)
+				var z0: float = z_out - face * 0.08
+				_add_box(st, Vector3(x + 0.03, yj, minf(z0, z_out)), Vector3(x + l - 0.03, yj + hh, maxf(z0, z_out)), col, 1 if face > 0.0 else 3)
+				x += l
+	# Couronnement : pierres de chant serrées
+	var xc := -half
+	while xc < half - 0.1:
+		var w := minf(rng.randf_range(0.25, 0.45), half - xc)
+		var top := body_top + rng.randf_range(0.18, WALL_HEIGHT_M - body_top)
+		var g := rng.randf_range(0.9, 1.25)
+		var tilt := rng.randf_range(-0.06, 0.06)
+		_add_box(st, Vector3(xc + 0.02 + tilt, body_top - 0.02, -0.22), Vector3(xc + w - 0.02 + tilt, top, 0.22), Color(g, g, g))
+		xc += w
+	return st.commit()
+
+
+## Pavé aligné sur les axes de `a` à `b` (dessus et quatre côtés, pas de dessous) : 10 triangles ; `hidden` : indice
+## (1 à 4) d'un côté caché à ne pas dessiner (côté collé au mur des pierres saillantes), 8 triangles.
+static func _add_box(st: SurfaceTool, a: Vector3, b: Vector3, color: Color, hidden: int = -1) -> void:
+	var c := (a + b) * 0.5
+	var p := [Vector3(a.x, a.y, a.z), Vector3(b.x, a.y, a.z), Vector3(b.x, a.y, b.z), Vector3(a.x, a.y, b.z),
+		Vector3(a.x, b.y, a.z), Vector3(b.x, b.y, a.z), Vector3(b.x, b.y, b.z), Vector3(a.x, b.y, b.z)]
+	var quads := [[4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]]
+	for qi in range(quads.size()):
+		if qi == hidden:
+			continue
+		var q: Array = quads[qi]
+		var shade := 1.0 if qi == 0 else 0.9
+		var col := Color(color.r * shade, color.g * shade, color.b * shade)
+		_add_face(st, p[q[0]], p[q[1]], p[q[2]], (p[q[0]] + p[q[2]]) * 0.5 - c, col)
+		_add_face(st, p[q[0]], p[q[2]], p[q[3]], (p[q[0]] + p[q[2]]) * 0.5 - c, col)
+
+
+## Talus trapézoïdal de x0 à x1 : demi-largeur `w0` en y0, `w1` en y1 (deux faces inclinées, deux bouts, dessus).
+static func _add_slab(st: SurfaceTool, x0: float, x1: float, y0: float, y1: float, w0: float, w1: float, color: Color) -> void:
+	var c := Vector3((x0 + x1) * 0.5, (y0 + y1) * 0.5, 0.0)
+	var p := [Vector3(x0, y0, -w0), Vector3(x1, y0, -w0), Vector3(x1, y0, w0), Vector3(x0, y0, w0),
+		Vector3(x0, y1, -w1), Vector3(x1, y1, -w1), Vector3(x1, y1, w1), Vector3(x0, y1, w1)]
+	for q in [[4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]]:
+		_add_face(st, p[q[0]], p[q[1]], p[q[2]], (p[q[0]] + p[q[2]]) * 0.5 - c, color)
+		_add_face(st, p[q[0]], p[q[2]], p[q[3]], (p[q[0]] + p[q[2]]) * 0.5 - c, color)
 
 
 ## Termitière : cône bosselé de 1,6 m à 8 côtés et deux cheminées plus fines.

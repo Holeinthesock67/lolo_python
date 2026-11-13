@@ -102,8 +102,7 @@ func set_route(route, road_width_m: float = 6.0) -> void:
 	if grass != null:
 		grass.biome_model = model
 	if ground_details != null:
-		ground_details.configure({"rock": int(living.get("ground_rocks", 0)), "grass": int(living.get("ground_grass", 0)),
-			"termite": int(living.get("ground_termites", 0))}, route, model, road_width_m)
+		ground_details.configure(GroundDetails.budgets(living), route, model, road_width_m)
 		ground_details.exclusions = _exclusions()
 		ground_details.height_at = _terrain_height(route)
 	_neigh_at = -INF
@@ -164,6 +163,14 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		sound_player.update_ambience(neigh, now_s)
 		sound_player.update_bells(NAN, now_s)
 	return last_wind
+
+
+## Fonds d'ambiance coupés (lot R22, run du Cyber-Rogue) : même descente rapide qu'en pause, sans rien d'autre.
+func mute_ambience(now_s: float) -> void:
+	if sound_player == null:
+		return
+	neigh["paused"] = true
+	sound_player.update_ambience(neigh, now_s)
 
 
 ## Voisinage sonore autour de `p` : seuls les contours dont le rectangle touche le cercle d'écoute.

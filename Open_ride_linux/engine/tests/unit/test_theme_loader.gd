@@ -5,6 +5,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_theme_loader.gd
 
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
+const BiomeIds := preload("res://scripts/biome_ids.gd")
 
 var _failures := 0
 var _checked := 0
@@ -81,7 +82,7 @@ func _init() -> void:
 	var default_1x := ThemeLoader.without_biomes(default_theme)
 	default_1x["version"] = "1.2"
 	_check(_dicts_equal(min_res["theme"], default_1x), "minimal: égal clé par clé à default, sans le pack de biomes (U15)")
-	_check(default_theme["version"] == "2.0" and default_theme["biomes"].size() == 17, "default : thème 2.0 à 17 biomes (U15, JP1)")
+	_check(default_theme["version"] == "2.0" and default_theme["biomes"].size() == BiomeIds.BIOMES.size(), "default : thème 2.0, un bloc par biome de biome_ids.gd (U15, JP1, HP1)")
 	# Un thème 1.0 reste lu sans erreur ni avertissement : les clés 1.2 viennent du défaut
 	var old_dir := base_tmp.path_join("ancien")
 	_write_theme(old_dir, '{"version": "1.0"}\n')
@@ -194,6 +195,14 @@ func _init() -> void:
 	var v2_res := ThemeLoader.load_theme(v2_dir)
 	_check(v2_res["errors"].size() == 0 and v2_res["warnings"].size() == 0, "thème 2.0 : 0 erreur, 0 avertissement")
 	_check(v2_res["theme"]["version"] == "2.0" and v2_res["theme"]["terrain"] == default_theme["terrain"], "thème 2.0 : clés 1.x du défaut gardées")
+	# Paysage (lot U25) : bloc partiel d'un biome de base, accepté sans avertissement
+	var land_dir := base_tmp.path_join("v2_landscape")
+	_write_theme(land_dir, JSON.stringify({"version": "2.0", "landscapes": {"fjord": {"biomes": {"coast": {
+		"vegetation": {"species": [{"kind": "birch", "weight": 1}], "max_density_per_ha": 200}}}}}}))
+	var land_res := ThemeLoader.load_theme(land_dir)
+	_check(land_res["errors"].size() == 0 and land_res["warnings"].size() == 0 and land_res["theme"].has("landscapes"),
+		"thème 2.0 avec paysage fjord : 0 erreur, 0 avertissement")
+	_check(not ThemeLoader.without_biomes(land_res["theme"]).has("landscapes"), "without_biomes retire aussi les paysages")
 	var v2_bad := [
 		{"version": "2.0", "default_biome": "desert"},
 		{"version": "2.0", "biomes": {"lune": {}}},
@@ -201,6 +210,10 @@ func _init() -> void:
 		{"version": "2.0", "biomes": {"alpine": {"vegetation": {"species": [{"kind": "banana", "weight": 1}]}}}},
 		{"version": "2.0", "biomes": {"savanna": {"seasons": {"calendar": "monsoon"}}}},
 		{"version": "2.0", "variants": {"brique": {}}},
+		{"version": "2.0", "landscapes": {"lagon": {"biomes": {"coast": {}}}}},
+		{"version": "2.0", "landscapes": {"fjord": {"biomes": {}}}},
+		{"version": "2.0", "landscapes": {"fjord": {"biomes": {"lune": {}}}}},
+		{"version": "2.0", "landscapes": {"fjord": {"biomes": {"coast": {"vegetation": {"species": [{"kind": "banana", "weight": 1}]}}}}}},
 		{"version": "3.0"},
 	]
 	for idx in range(v2_bad.size()):
