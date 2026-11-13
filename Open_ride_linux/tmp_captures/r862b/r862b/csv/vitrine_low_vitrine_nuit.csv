@@ -1,0 +1,16 @@
+préréglage;heure;soleil_deg;lumières;vue;luminance
+low;coupe;40.0;0.00;rue;0.681
+low;coupe;40.0;0.00;subjective;0.653
+low;coupe;40.0;0.00;campagne;0.672
+low;midi;22.5;0.00;rue;0.637
+low;midi;22.5;0.00;subjective;0.611
+low;midi;22.5;0.00;campagne;0.626
+low;midi;22.5;0.00;ciel;0.737
+low;coucher;-1.9;0.72;rue;0.301
+low;coucher;-1.9;0.72;subjective;0.296
+low;coucher;-1.9;0.72;campagne;0.296
+low;coucher;-1.9;0.72;ciel;0.361
+low;nuit;-42.9;1.00;rue;0.113
+low;nuit;-42.9;1.00;subjective;0.129
+low;nuit;-42.9;1.00;campagne;0.094
+low;nuit;-42.9;1.00;ciel;0.069

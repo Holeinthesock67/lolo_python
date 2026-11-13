@@ -1,0 +1,46 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+30.3;0;0;0;0;0;0;0;
+39.7;23;0;0;0;0;4;0;
+45.0;23;0;0;0;0;4;0;
+45.4;23;0;0;0;0;4;0;
+45.7;23;0;0;0;0;4;0;
+45.9;23;0;0;0;0;4;0;
+46.1;23;0;0;0;0;4;0;
+46.4;23;0;0;0;0;4;0;
+52.0;23;0;0;0;0;4;0;
+58.0;23;0;0;0;0;4;0;
+62.0;23;0;0;0;0;4;0;
+64.0;23;0;0;0;0;4;0;
+65.3;23;0;0;0;0;4;0;
+70.0;23;0;0;0;0;4;0;
+76.0;23;0;0;0;0;4;0;voice_bonjour=1
+77.0;23;0;0;0;0;4;0;voice_bonjour=1
+82.0;23;0;0;0;0;4;0;voice_bonjour=1
+88.0;23;0;0;0;0;4;0;voice_bonjour=1
+92.0;23;0;0;0;0;4;0;voice_bonjour=1
+94.0;23;0;0;0;0;4;0;voice_bonjour=1
+95.3;23;0;0;0;0;4;0;voice_bonjour=1
+100.0;23;0;0;0;0;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+106.0;23;0;0;0;0;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+112.0;23;0;0;0;0;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+118.0;23;0;0;0;1;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+124.0;23;0;0;0;1;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+125.3;23;0;0;0;1;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+130.0;23;0;0;0;1;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+136.0;23;0;0;0;1;5;0;airliner_rumble=1 voice_allez=1 voice_bonjour=1
+142.0;23;0;0;0;3;6;0;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+148.0;23;0;0;0;3;6;0;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+152.0;23;0;0;0;3;6;0;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+154.0;23;0;0;0;3;6;0;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+155.3;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+160.0;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+166.0;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=1 voice_bonjour=1
+172.0;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=1
+178.0;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=1
+184.0;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=1
+185.3;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=2 voice_bonjour=1
+202.0;23;0;0;0;2;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+215.3;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+245.3;23;0;0;0;0;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+275.3;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1
+301.2;23;0;0;0;1;6;0;airliner_rumble=2 voice_allez=3 voice_bonjour=1

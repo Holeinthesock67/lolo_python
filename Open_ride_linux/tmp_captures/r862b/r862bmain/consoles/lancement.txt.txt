@@ -1,0 +1,11 @@
+08:45:39 empreinte avant dbee3a95ee91f3978782b42fc5c9d25b
+08:45:39 tête 7046328d
+08:46:18 demo off low_main
+08:50:26 fin rc=0
+08:50:26 demo off medium_main
+08:54:33 fin rc=0
+08:54:33 demo off high_main
+08:58:41 fin rc=0
+08:58:42 empreinte après dbee3a95ee91f3978782b42fc5c9d25b
+08:58:42 clone 71e814c8
+08:58:42 FIN
