@@ -1328,6 +1328,8 @@ func _poll_live_world() -> void:
 		streamer.swap_route(route, int(upd["from_part"]))
 		if living_world != null:
 			living_world.set_route(route, float(streamer.get("_road_width_m")))
+		if living_decor != null:   # bornes, panneaux, spectateurs, véhicules… sur toute la route connue
+			living_decor.extend_route(route)
 		ipc.test_log("world_revision rev=%d length_m=%.1f from_part=%d" % [upd["revision"], route.length_m, upd["from_part"]])
 	elif upd.has("error"):
 		print("Monde ouvert : révision %d illisible : %s" % [upd["revision"], upd["error"]])

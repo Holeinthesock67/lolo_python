@@ -105,18 +105,24 @@ var _core_seq: int = -1            # dernière trame `state` dont la liste `vehi
 
 ## `theme` fusionné (theme_loader.gd), `pois` les points d'intérêt (seuls les `village` comptent).
 func configure(route_data, theme: Dictionary, pois: Array, vehicle_budget: int, rng_seed: int = 0) -> void:
-	route = route_data
 	budget = maxi(0, vehicle_budget)
 	seed = rng_seed
-	_villages.clear()
-	for p in pois:
-		if typeof(p) == TYPE_DICTIONARY and str(p.get("kind", "")) == "village":
-			_villages.append(Vector2(float(p.get("x", 0.0)), float(p.get("z", 0.0))))
+	extend_route(route_data, pois)
 	var terrain = theme.get("terrain", {})
 	_snow_line_m = DEFAULT_SNOW_LINE_M
 	if typeof(terrain) == TYPE_DICTIONARY and (typeof(terrain.get("snow_line_m")) == TYPE_INT or typeof(terrain.get("snow_line_m")) == TYPE_FLOAT):
 		_snow_line_m = float(terrain["snow_line_m"])
 	reset()
+
+
+## Route prolongée du monde ouvert (même début, abscisses gardées) : nouvelle route et villages, sans retirer
+## les véhicules en cours.
+func extend_route(route_data, pois: Array) -> void:
+	route = route_data
+	_villages.clear()
+	for p in pois:
+		if typeof(p) == TYPE_DICTIONARY and str(p.get("kind", "")) == "village":
+			_villages.append(Vector2(float(p.get("x", 0.0)), float(p.get("z", 0.0))))
 
 
 func reset() -> void:

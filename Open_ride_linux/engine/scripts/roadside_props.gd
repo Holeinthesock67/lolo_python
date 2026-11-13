@@ -21,6 +21,7 @@ extends Node3D
 ## Maillages partagés, gardés par dimensions (peu de tailles différentes sur un parcours).
 
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
+const RoadsideGround := preload("res://scripts/roadside_ground.gd")
 const PropShader := preload("res://shaders/props.gdshader")
 const NightLights := preload("res://scripts/night_lights.gd")
 ## Matières de props.gdshader (lot Y8 étape 3) et faux relief par préréglage, comme les bâtiments.
@@ -78,12 +79,16 @@ const BOLD_EMBOLDEN := 0.7
 ## Glissière (lot JP8) : lisse en W blanche sur poteaux, à GUARDRAIL_OFFSET_M du bord de la chaussée
 const GUARDRAIL_OFFSET_M := 0.5
 const GUARDRAIL_STEP_M := 2.0
+## Maillage qui commence à moins de FEET_MAX_Y_M du pied : il touche le sol (voir feet()).
+const FEET_MAX_Y_M := 0.05
 const GUARDRAIL_POST_EVERY := 2       # un poteau tous les 2 pas (4 m)
 const GUARDRAIL_POST_H := 0.95
 ## Bandes de la lisse : [bas, haut, retrait vers la route] (profil en W simplifié)
 const GUARDRAIL_BANDS := [[0.58, 0.68, 0.0], [0.68, 0.77, 0.07], [0.77, 0.87, 0.0]]
 
 var road_width_m := 6.0
+## Sol affiché (x, z) -> y, posé par living_decor.gd (RoadsideGround.ground_fn) ; vide : hauteur de la route.
+var ground_at: Callable = Callable()
 var _chunks: Dictionary = {}        # k -> Array[Node3D]
 var _meshes: Dictionary = {}        # gardés ici : maillages partagés, par clé de dimensions
 var _mats: Dictionary = {}
@@ -606,6 +611,24 @@ static func letter_height_m(prop: Node3D) -> float:
 	return label.font_size * label.pixel_size
 
 
+## Appuis d'un objet construit par build_prop (repère local, au sol) : coins de l'emprise de chaque maillage
+## qui touche le sol (socle de la borne, poteaux, piliers du torii, lanterne) ; les plaques en hauteur n'en sont pas.
+static func feet(prop: Node3D) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	for c in prop.get_children():
+		if not c is MeshInstance3D or (c as MeshInstance3D).mesh == null:
+			continue
+		var box: AABB = (c as MeshInstance3D).transform * (c as MeshInstance3D).mesh.get_aabb()
+		if box.position.y > FEET_MAX_Y_M:
+			continue
+		for x in [box.position.x, box.end.x]:
+			for z in [box.position.z, box.end.z]:
+				out.append(Vector3(x, 0.0, z))
+	if out.is_empty():
+		out.append(Vector3.ZERO)
+	return out
+
+
 func add_chunk(route, k: int, chunk_items: Array) -> void:
 	remove_chunk(k)
 	var nodes: Array[Node3D] = []
@@ -629,7 +652,11 @@ func add_chunk(route, k: int, chunk_items: Array) -> void:
 		# +z local (face du panneau) vers le cycliste qui arrive : vers -fwd à droite, vers +fwd à gauche (rebours) ;
 		# torii (side 0) : en travers de la route, face au cycliste qui arrive
 		var face := -fwd * float(side if side != 0 else 1)
-		prop.transform = Transform3D(Basis(Vector3.UP, atan2(face.x, face.z)), pos)
+		var xf := Transform3D(Basis(Vector3.UP, atan2(face.x, face.z)), pos)
+		# Pied sur le sol visible, au plus bas des appuis (roadside_ground.gd, 13/11 : bornes qui lévitaient)
+		xf.origin.y = RoadsideGround.foot_y(ground_at, xf, RoadsideModel.prop_position(route, s, road_width_m, 0),
+			Vector3(cos(h), 0.0, sin(h)), road_width_m * 0.5, feet(prop))
+		prop.transform = xf
 		add_child(prop)
 		nodes.append(prop)
 	_chunks[k] = nodes
