@@ -22,6 +22,8 @@ from openride_core.grandprix.mode import LANE_CENTRES_M
 from openride_core.input_providers import NullProvider
 from openride_core.mock_driver import MockDriver
 from openride_core.session import CoreSession
+from openride_core.draft import BIKE_LENGTH_M
+from openride_core.tools.bots_race import contacts
 from openride_core.tools.route_vectors import _route
 
 IPC_DIR = Path(__file__).resolve().parents[2] / "docs" / "contracts" / "ipc"
@@ -228,14 +230,15 @@ def test_lane_buttons_and_pause(env):
     gp = s.grandprix
     assert gp.lane_target(ME) is None and s._lane.auto
     assert s._grandprix_press("RIGHT_SHORT") and gp.lane_target(ME) == 2
-    assert not s._lane.auto and s._lane.home == LANE_CENTRES_M[2]
+    # lot GP12 : voie tenue (sans roue ni éventail), mais il double et s'écarte comme les autres
+    assert s._lane.auto and not s._lane.follow and s._lane.home == LANE_CENTRES_M[2]
     assert s._grandprix_press("LEFT_SHORT") and gp.lane_target(ME) == 1
     assert not s._grandprix_press("A_SHORT") or frame(s)["gp"]["pick"]   # A court : seulement si choix affiché
     gp.objects.add("bottle", s.physics.s + 60.0, 1, gp.clock, 90.0)
     assert frame(s)["gp"]["pick"] and s._grandprix_press("A_SHORT") and gp.lane_target(ME) == 2
     assert s._grandprix_press("A_LONG") and gp.lane_target(ME) is None
     run(s, 0.1)
-    assert s._lane.auto and s._lane.home == pytest.approx(1.2)
+    assert s._lane.auto and s._lane.follow and s._lane.home == pytest.approx(1.2)
     assert not s._grandprix_press("A_LONG") and not s._grandprix_press("UP_SHORT")   # vue de caméra
     # Pause : objets figés, puis 3 s sans coup reçu après la reprise
     clock = gp.clock
@@ -247,6 +250,71 @@ def test_lane_buttons_and_pause(env):
     run(s, 0.1)
     assert gp.grace_until == pytest.approx(clock + 3.0, abs=0.05)
     assert not errors
+
+
+def _contacts(s: CoreSession) -> set[tuple[str, str]]:
+    """Paires de coureurs encore en course qui se touchent (règle du banc, lot PL1 : `bots_race.contacts`)."""
+    gp = s.grandprix
+    runners = [(b.id, b.s, b.lane.m) for b in s.bots if gp.racers[b.id].finished is None]
+    if gp.racers[ME].finished is None:
+        runners.append((ME, s.physics.s, s._lane.m))
+    return contacts(runners)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("chaos", ["normal", "wild"])
+def test_gp12_three_laps_without_contact(env, chaos):
+    """Lot GP12 : course de 3 tours à 4 adversaires, le cycliste lance tout ce qu'il reçoit : aucun contact entre
+    coureurs (voies imposées qui doublent, objets qui ne poussent personne dans une roue). Avant : 1 à 3 frôlements."""
+    make, run, _, _ = env
+    s, _, errors = make(6880 if chaos == "normal" else 6890)
+    s.cfg.grandprix.chaos = chaos
+    s._on_command("start", {"mode": "grandprix"}, 2)
+    assert s.grandprix is not None and s.grandprix.chaos == chaos
+    s.grandprix.rng.seed(0)                               # tirage des boîtes fixé : esquives et coups pendant la course
+    touching: set[tuple[str, str]] = set()
+    new: list[tuple[float, tuple[str, str]]] = []
+    forced = [0]
+
+    def check(sess):
+        nonlocal touching
+        if sess.grandprix is None:                        # arrivée du cycliste : bilan
+            return
+        now = _contacts(sess)
+        new.extend((round(sess._t_session, 2), p) for p in now - touching)
+        touching = now
+        forced[0] += any(sess.grandprix.lane_target(r) is not None for r in sess.grandprix.racers)
+        if sess.grandprix.racers[ME].held:
+            sess._grandprix_press("Z_SHORT")
+
+    run(s, 1200, check, every=1)
+    assert s.state.session_state == "FINISHED" and not errors
+    assert forced[0] > 0                                  # des voies imposées pendant la course
+    assert new == []
+
+
+def test_gp12_object_never_pushes_into_a_wheel(env):
+    """Lot GP12 : file de trois coureurs roue dans la roue ; celui de devant glisse (bidon) : les deux suivants
+    freinent dans le même pas, quel que soit l'ordre des bots ; un coup de fouet ne pousse pas dans la roue devant."""
+    make, run, _, _ = env
+    s, _, _ = make(6900, opponents=3)
+    s._on_command("start", {"mode": "grandprix"}, 2)
+    run(s, 0.1)
+    a, b, c = s.bots[:3]
+    base = s.physics.s + 50.0
+    for bot, k in ((c, 0), (a, 1), (b, 2)):              # c devant, puis a, puis b : ordre de la liste mélangé
+        bot.physics.s, bot.physics.v = base - k * (BIKE_LENGTH_M + 0.05), 10.0
+        bot.lane.m = bot.lane.target = bot.lane.home = 1.45
+        bot.lane.rate, bot.lane.blocked = 0.0, None
+    s.physics.v = 8.0
+    s._brake_grandprix_wheels(s.bots)
+    assert a.lane.blocked is None and b.lane.blocked is None   # même vitesse : aucun enfermé
+    c.physics.v = 7.0                                    # glissade du premier
+    s._brake_grandprix_wheels(s.bots)
+    assert a.physics.v == pytest.approx(7.0) and b.physics.v == pytest.approx(7.0)
+    a.physics.v, b.physics.v, c.physics.v = 10.0, 10.0 * 1.4, 10.0   # coup de fouet du dernier
+    s._brake_grandprix_wheels(s.bots)
+    assert b.physics.v == pytest.approx(10.0)
 
 
 def test_mode_options_and_wtf_alias(env):
@@ -297,16 +365,18 @@ def test_classic_ride_unchanged_after_grandprix(env):
     assert s._lane.auto and s._lane.home == pytest.approx(1.2)
 
 
-def test_settings_and_mode_pending_until_gp9_bounds_kept():
-    """Avant GP9 (écran du mode) : réglages `grandprix.*` hors du menu et mode non annoncé, rangés avec leur
-    lot ; la séance garde les bornes du fichier, et `start` lance le mode (lots GP7 et GP8)."""
+def test_settings_listed_and_mode_announced():
+    """Lot GP9 : les cinq réglages `grandprix.*` sont au menu, après ceux du Dernier survivant, et le mode est
+    annoncé dans `hello_ack.config.modes` ; plus rien n'attend son lot."""
     from openride_core import config as config_mod
     from openride_core.ipc_server import CORE_MODES, PENDING_MODES
-    gp_keys = {("grandprix", k) for k in ("opponents", "laps", "distance_km", "chaos", "box_every_m")}
-    assert not any(st.section == "grandprix" for st in settings.SETTINGS)
-    assert all(config_mod.PENDING_KEYS[k] == "GP9" for k in gp_keys)
-    assert PENDING_MODES == {"grandprix": "GP9"} and "grandprix" not in CORE_MODES
-    assert config_mod.BOUNDS[("grandprix", "opponents")] == (2, 4)
-    assert config_mod.CHOICES[("grandprix", "chaos")] == ("soft", "normal", "wild")
-    gc = Config().grandprix
-    assert (gc.box_every_m, gc.laps, gc.distance_km) == (1500, 3, 10)
+    keys = [st.key for st in settings.SETTINGS]
+    gp = ["grandprix.opponents", "grandprix.laps", "grandprix.distance_km", "grandprix.chaos", "grandprix.box_every_m"]
+    assert keys[keys.index("survivor.after_out") + 1:keys.index("survivor.after_out") + 6] == gp
+    assert not any(k[0] == "grandprix" for k in config_mod.PENDING_KEYS)
+    assert "grandprix" in CORE_MODES and "grandprix" not in PENDING_MODES
+    items = {it["key"]: it for it in settings.current(Config())}
+    assert (items["grandprix.opponents"]["min"], items["grandprix.opponents"]["max"]) == (2, 4)
+    assert items["grandprix.chaos"]["choices"] == ["soft", "normal", "wild"]
+    assert items["grandprix.box_every_m"]["step"] == 500 and items["grandprix.box_every_m"]["value"] == 1500
+    assert items["grandprix.laps"]["value"] == 3 and items["grandprix.distance_km"]["value"] == 10

@@ -3,23 +3,23 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Compilateur : biome `japan` posé sur les forêts et broussailles du Japon (zone × Köppen × WorldCover), toit `kawara` | Python, TOML | JP1, U24 | Moyenne | En PR le 12 novembre, **version 6.0** |
+| Compilateur : biome `japan` posé sur les forêts et broussailles du Japon (zone × Köppen × WorldCover), toit `kawara` | Python, TOML | JP1, U24 | Moyenne | **Livré le 12 novembre** (PR #855), **version 6.0** |
 
 Plan : `docs/6.0/PLAN_SERIE_JP.md`. Dépend de JP1 (#832) et du lot Köppen U24 (#833), fusionnés.
 
-## Règle
+## Livraison : règle
 
 Un point de la couche biome prend `japan` quand les trois conditions sont réunies :
 
-1. il est dans un des rectangles de `compiler/src/openride_compiler/data/japan_zone.toml` (degrés entiers :
+1. il est dans un des rectangles `japan` de la table commune `compiler/src/openride_compiler/data/biome_zones.toml` (lot AT2, degrés entiers :
    Kyūshū, Shikoku, Honshū, Hokkaidō ; ni la Corée, ni le continent, ni Okinawa) ;
 2. son climat de Köppen (carte embarquée du lot U24) est `Cfa`, `Cfb`, `Dfa` ou `Dfb` ;
 3. sa classe WorldCover est arbres (10) ou arbustes (20) : cèdres sugi, cyprès hinoki, érables, bambous, sasa.
 
 Les autres classes gardent leur biome : rizières et cultures (`farmland`), prairies, bâti, eau, sol nu (le sol nu
-du Fuji reste `volcanic`), neige ; l'étage alpin d'après l'altitude s'applique comme ailleurs. Même mécanique
-que les paysages volcaniques (classe propre au compilateur `JAPAN_FOREST` = 202), injectable par
-`Inputs.japan` pour les essais.
+du Fuji reste `volcanic`), neige ; l'étage alpin d'après l'altitude s'applique comme ailleurs. Classe propre au
+compilateur 202 (`[biome.japan]` de la table commune), injectable par `Inputs.regional` pour les essais. La première
+version avait sa propre table `japan_zone.toml` ; elle a été rangée dans la table commune avant la fusion (#855).
 
 ## Variantes régionales
 

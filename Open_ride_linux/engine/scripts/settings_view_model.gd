@@ -81,6 +81,7 @@ const CHOICE_TEXTS := {
 	"trainer.control": {"resistance": "résistance calculée", "sim": "SIM du trainer"},
 	"survivor.spread": {"tight": "serré (± 3 %)", "normal": "normal (± 8 %)", "wide": "large (± 15 %)"},
 	"survivor.after_out": {"ride": "continuer à rouler", "end": "terminer la séance"},
+	"grandprix.chaos": {"soft": "doux (objets × 0,7)", "normal": "normal", "wild": "fou (objets × 1,3)"},
 	"coach.objectif": {"endurance": "endurance", "courses": "courses", "grimpeur": "grimpeur"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }

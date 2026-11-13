@@ -558,6 +558,9 @@ func _ready() -> void:
 	ipc.wtf_rules_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_wtf_rules(msg)
 		_refresh_menu())
+	ipc.mode_options_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_mode_options(msg)
+		_refresh_menu())
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
 		_refresh_menu())
@@ -834,6 +837,11 @@ func _run_menu_action(act: Dictionary) -> void:
 		"set_wtf_rules":   # une commande set_wtf_rule par règle basculée (lot WTF3)
 			for r in act.get("list", []):
 				ipc.send_command("set_wtf_rule", {"id": str(r["id"]), "on": bool(r["on"])})
+		"list_mode_options":   # options d'un mode (objets du Grand Prix, lot GP9), réponse `mode_options`
+			ipc.send_command("list_mode_options", {"mode": str(act["mode"])})
+		"set_mode_options":   # une commande set_mode_option par option basculée (lot GP9)
+			for o in act.get("list", []):
+				ipc.send_command("set_mode_option", {"mode": str(act["mode"]), "id": str(o["id"]), "on": bool(o["on"])})
 		"start_plan":
 			ipc.start_plan(str(act["id"]), act.get("start_date", null))
 		"stop_plan":
