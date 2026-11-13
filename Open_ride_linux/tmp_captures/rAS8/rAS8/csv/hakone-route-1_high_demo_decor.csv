@@ -1,0 +1,51 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+31.8;0;0;0;0;0;0;0;
+35.9;0;0;0;0;0;2;0;
+40.7;14;3;0;0;0;2;0;
+41.8;76;18;0;0;0;2;0;
+45.9;76;18;0;0;0;2;0;
+46.4;76;18;0;0;0;2;0;
+46.7;76;18;0;0;0;2;0;
+47.0;76;18;0;0;0;2;0;
+51.8;76;18;0;0;0;2;0;
+52.0;76;18;0;0;0;2;0;
+58.0;76;18;0;0;0;2;0;
+62.0;76;18;0;0;0;2;0;
+64.0;76;18;0;0;0;2;0;
+66.8;76;18;0;0;0;2;0;
+70.0;76;18;0;0;0;2;0;
+76.0;76;18;0;0;0;2;0;
+77.0;76;18;0;0;0;2;0;
+81.8;76;18;0;0;0;2;0;
+82.1;76;18;0;0;0;2;0;
+88.0;76;18;0;0;1;2;0;
+92.0;76;18;0;0;1;2;0;
+94.0;76;18;0;0;1;2;0;
+96.8;76;18;0;0;1;2;0;
+100.0;76;18;0;0;1;3;0;airliner_rumble=1
+106.0;76;18;0;0;1;3;0;airliner_rumble=1
+111.8;76;18;0;0;1;3;0;airliner_rumble=1 raptor_cry=1
+112.1;76;18;0;0;1;3;0;airliner_rumble=1 raptor_cry=1
+118.0;76;18;0;0;2;3;0;airliner_rumble=1 raptor_cry=1
+124.0;76;18;0;0;2;3;0;airliner_rumble=1 raptor_cry=1
+126.8;76;18;0;0;2;3;0;airliner_rumble=1 raptor_cry=1
+130.0;76;18;0;0;2;3;0;airliner_rumble=1 raptor_cry=1
+136.0;76;18;0;0;2;3;0;airliner_rumble=1 raptor_cry=1
+141.8;76;18;0;0;1;3;0;airliner_rumble=1 raptor_cry=2
+142.1;76;18;0;0;1;3;0;airliner_rumble=1 raptor_cry=2
+148.0;76;18;0;0;3;4;0;airliner_rumble=2 raptor_cry=2
+152.0;76;18;0;0;3;4;0;airliner_rumble=2 raptor_cry=2
+154.0;76;18;0;0;3;4;0;airliner_rumble=2 raptor_cry=2
+156.8;76;18;0;0;3;4;0;airliner_rumble=2 raptor_cry=2
+160.0;76;18;0;0;3;4;0;airliner_rumble=2 raptor_cry=2
+166.0;76;18;0;0;3;4;0;airliner_rumble=2 raptor_cry=2
+171.8;76;18;0;0;3;4;0;airliner_rumble=2 raptor_cry=3
+172.0;76;18;0;0;3;4;0;airliner_rumble=2 raptor_cry=3
+178.0;76;18;0;0;3;4;0;airliner_rumble=2 raptor_cry=3
+184.0;76;18;0;0;2;4;0;airliner_rumble=2 raptor_cry=3
+186.8;76;18;0;0;2;4;0;airliner_rumble=2 raptor_cry=3
+201.8;76;18;0;0;3;4;0;airliner_rumble=2 crow_caw=1 raptor_cry=3
+202.0;76;18;0;0;3;4;0;airliner_rumble=2 crow_caw=1 raptor_cry=3
+216.8;76;18;0;0;1;4;0;airliner_rumble=2 crow_caw=1 raptor_cry=3
+231.8;76;18;0;0;2;4;0;airliner_rumble=2 crow_caw=1 raptor_cry=3
+241.2;76;18;0;0;1;4;0;airliner_rumble=2 crow_caw=1 raptor_cry=3

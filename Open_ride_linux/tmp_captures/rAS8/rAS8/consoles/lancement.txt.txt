@@ -1,0 +1,23 @@
+22:56:04 empreinte avant adbe16314ebd628346bae8971666af44
+22:56:04 tête cff6ea26
+22:56:15 banc hakone-route-1 low
+23:00:21 fin rc=1
+23:00:21 banc hakone-route-1 medium
+23:04:26 fin rc=1
+23:04:26 banc hakone-route-1 high
+23:08:31 fin rc=1
+23:08:31 banc passo-dello-stelvio low
+23:12:35 fin rc=1
+23:12:35 banc passo-dello-stelvio medium
+23:16:40 fin rc=1
+23:16:40 banc passo-dello-stelvio high
+23:20:45 fin rc=1
+23:20:45 banc ticlio low
+23:24:50 fin rc=1
+23:24:50 banc ticlio medium
+23:28:54 fin rc=1
+23:28:54 banc ticlio high
+23:32:59 fin rc=1
+23:33:00 empreinte après adbe16314ebd628346bae8971666af44
+23:33:00 clone bac8ec77
+23:33:00 FIN
