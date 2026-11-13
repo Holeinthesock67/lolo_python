@@ -1,0 +1,19 @@
+16:50:39 empreinte avant 574f6af5f29a4633ff7a35a8347a0241
+16:50:39 tête 264b457c
+16:50:49 visual_check menus 1280x720:low
+16:53:55 fin rc=0
+16:53:55 demo date low
+16:58:03 fin rc=0
+16:58:03 demo date medium
+17:02:10 fin rc=0
+17:02:10 demo date high
+17:06:18 fin rc=0
+17:06:18 demo random low
+17:10:25 fin rc=0
+17:10:25 demo random medium
+17:14:32 fin rc=0
+17:14:32 demo random high
+17:18:40 fin rc=1
+17:18:41 empreinte après 574f6af5f29a4633ff7a35a8347a0241
+17:18:41 clone 71e814c8
+17:18:41 FIN
