@@ -1,0 +1,76 @@
+>>> [1/1] Scénario grand_prix_gp4_furtif (8:40)
+== grand_prix_gp4_furtif : parcours demo, 520 s, SIM ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.2 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo à 26.5 s
+[OK] engine vivant jusqu'à la fin : 520 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] sonde de performance : 482 relevés, rapport sonde/rapport.html
+[OK] budget high : images/s : médiane 60.0 (au moins 55)
+[OK] budget high : temps d'image p99 : 16.7 ms (médiane des p99 de chaque seconde, sous 25 ms)
+[OK] budget high : GPU de la vue : médiane 9.10 ms (au plus 16 ms)
+[OK] budget high : GPU saturé : 0.0 % des secondes au-dessus de 95 % de charge (au plus 5 %)
+[OK] à-coups : départ : pire image 143 ms de 20 à 30 s (au plus 150 ms)
+[ÉCHEC] à-coups : images lentes : 48 seconde(s) avec une image de plus de 50 ms en 7.8 min, 6.1 par minute (au plus 3)
+[ÉCHEC] à-coups : pire image : 150 ms (au plus 100 ms)
+[OK] à-coups : périodicité en distance : aucune sur 70 image(s) de plus de 50 ms
+[OK] 43/43 images enregistrées après le chargement, réponse en 0.28 s (médiane), 1.98 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : high appliquée (43 capture(s)) ; dernière ligne : high (demandée high, source cli)
+[OK] qualité notée par la sonde : high sur toute la mesure
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 1.0 à 4.5 %, pente envoyée 0.1 à 2.6 %
+[ÉCHEC] décor : aucun contact sur la route : 4 (dernier : bot / cycliste à -2 m (écarts à l'axe 1.2 et 1.2 m))
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 84 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 87 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 90 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 93 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 96 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 99 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 102 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 105 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 108 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 220 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 223 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 226 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 229 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 232 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 235 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 238 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 241 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 244 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 344 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 347 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 350 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 353 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 356 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 359 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 362 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 365 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 368 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 474 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 477 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 480 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 483 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 486 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 489 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 492 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 495 s : touche jouée par l'engine : « key done » lu
+[OK] [GP4 : avatar du cycliste et d'un bot translucides sous le Furtif] touche Z à 498 s : touche jouée par l'engine : « key done » lu
+[OK] [GP7] séance lancée en Grand Prix des objets à 4 adversaires : 1 (au moins 1 attendu)
+[OK] [GP7] boîte prise : roulette jouée par l'engine : 3 (au moins 1 attendu)
+[OK] [GP7] objet utilisé au Z : lancer, sonnette ou klaxon joué par l'engine : 3 (au moins 1 attendu)
+[OK] [GP4] voiture d'équipe ou Furtif utilisé au Z par le cycliste : 3 (au moins 1 attendu)
+[OK] fréquence cardiaque au journal : 479 échantillons, 138 à 154 bpm
+    NON grand_prix_gp4_furtif : 3 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rgp4c/furtif_high/index.html
+=== Banc fini : ÉCHEC (3 vérification(s))
+RÉSULTAT : ÉCHEC (3 vérification(s))
