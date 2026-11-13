@@ -255,11 +255,12 @@ def _triangles(px, pz, level: Level):
 
 
 def terrain_excess(tiles: dict[tuple[int, int], np.ndarray], x, z, alt, level: Level = None,
-                   sink: float = C.ROAD_SINK_M) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+                   sink: float = C.ROAD_SINK_M,
+                   half_width: float = C.ROAD_HALF_WIDTH_M) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Dépassement (m) du maillage `tiles` au-dessus de la chaussée moins `sink`, aux points de
     `road_samples` couverts par une tuile sans NaN : (excès, x, z). Positif : terrain trop haut."""
     level = level or NEAR
-    px, pz, pa = road_samples(x, z, alt)
+    px, pz, pa = road_samples(x, z, alt, half_width)
     if len(px) == 0:
         return np.empty(0), px, pz
     ti, tj, i, j, corners, w = _triangles(px, pz, level)

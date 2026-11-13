@@ -1610,7 +1610,8 @@ func _test_menu_state(req: String) -> Dictionary:
 		"hint": menu_view.hint_text(), "devices": menu_view.devices.text() if menu_view.devices.visible else "",
 		"card": menu_view.card.text() if menu_view.card.visible else "", "session_state": menu_flow.session_state, "world_menu": world,
 		"rogue": rogue_host.is_active(), "hud": hud.visible,
-		"markers": segment_markers != null and segment_markers.visible, "quality": _quality_name}
+		"markers": segment_markers != null and segment_markers.visible, "quality": _quality_name,
+		"s_m": float(_last_state.get("s", 0.0)) if _last_state.get("s", null) != null else 0.0}
 
 
 ## Décor posé en plusieurs images après les tuiles : tronçons d'herbe du bord pas encore remplis (lot Y22) et

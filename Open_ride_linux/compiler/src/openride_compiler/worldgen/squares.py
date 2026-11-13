@@ -42,13 +42,13 @@ from .. import constants as C
 from .. import osm_layers as L
 from ..elevation import ElevationProvider
 from ..frame import LocalFrame, utm_transformer
-from ..terrain import blend
+from ..terrain import blend, road_samples
 from .edge_profile import EdgeProfile, NodeAltitudes, edge_profile
 from .graph import RoadGraph
 from .osmdb import OsmDb
 from .store import WorldCache
 
-WORLDGEN_VERSION = 1
+WORLDGEN_VERSION = 2            # 2 (13/11) : garde-fou de la chaussée, carrés déjà en cache recalculés
 SQUARE_M = 1000
 FAR_M = 5000
 MARGIN_M = 50.0
@@ -119,10 +119,11 @@ class FarKey(SquareKey):
         return WorldCache.far_key(self.zone, self.ix, self.i_n)
 
 
-def grid_xz(key: SquareKey, step_m: int) -> tuple[np.ndarray, np.ndarray]:
-    """Coordonnées de zone des 101 × 101 échantillons, tableau [ligne j, colonne i], en entiers exacts."""
+def grid_xz(key: SquareKey, step_m: int, ring: int = 0) -> tuple[np.ndarray, np.ndarray]:
+    """Coordonnées de zone des 101 × 101 échantillons, tableau [ligne j, colonne i], en entiers exacts ;
+    `ring` cases de plus tout autour (garde-fou de la chaussée)."""
     x0, z0 = key.corner
-    k = np.arange(C.TILE_SAMPLES, dtype=np.int64) * step_m
+    k = np.arange(-ring, C.TILE_SAMPLES + ring, dtype=np.int64) * step_m
     return np.meshgrid((x0 + k).astype(float), (z0 + k).astype(float))
 
 
@@ -246,7 +247,9 @@ def square_edges(key: SquareKey, db: OsmDb, provider: ElevationProvider,
 
 def square_terrain(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProfile],
                    provider: ElevationProvider, frame: LocalFrame) -> np.ndarray:
-    gx, gz = grid_xz(key, NEAR_STEP_M)
+    """Relief du carré fondu avec ses routes, puis garde-fou de la chaussée (clear_square_road) calculé sur
+    une case de plus tout autour : les sommets des bords communs reçoivent la même valeur dans les deux carrés."""
+    gx, gz = grid_xz(key, NEAR_STEP_M, ring=1)
     lat, lon = frame.to_latlon(gx.ravel(), gz.ravel())
     y = np.asarray(provider.elevations(lat, lon), dtype=float)
     pieces = []
@@ -254,8 +257,66 @@ def square_terrain(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgePro
         e = graph.edges[k]
         pieces += axis_pieces(profiles[k], half_width(e.road_class), e.spans)
     dist, y_road = RoadsAxis(pieces).nearest(gx.ravel(), gz.ravel(), C.BLEND_OUTER_M)
-    y = blend(y, dist, y_road, half_width=0.0)
-    return y.astype("<f4").reshape(C.TILE_SAMPLES, C.TILE_SAMPLES)
+    y = blend(y, dist, y_road, half_width=0.0).reshape(gx.shape)
+    y = clear_square_road(y, float(gx[0, 0]), float(gz[0, 0]), NEAR_STEP_M, pieces, (dist <= 0.0).reshape(gx.shape))
+    return y[1:-1, 1:-1].astype("<f4")
+
+
+def clear_square_road(y: np.ndarray, x0: float, z0: float, step: float, pieces: list,
+                      on_road: np.ndarray | None = None) -> np.ndarray:
+    """Garde-fou de la chaussée du monde ouvert (13/11, comme `terrain.clear_road` des circuits) : aucun triangle
+    du maillage (découpage de terrain_tiles.gd) ne dépasse la chaussée moins ROAD_SINK_M. Pour chaque point de
+    chaussée sous un triangle trop haut, les sommets hors de la chaussée descendent juste assez ; chaque sommet
+    garde le plus bas des abaissements demandés. Tout est
+    calculé sur le relief d'origine : la valeur d'un sommet ne dépend que du relief et des routes autour de lui, pas
+    de l'ordre des calculs ni de l'emprise du carré (bords communs identiques au bit près). `y` : grille [j, i] dont l'échantillon (0, 0) est en
+    (x0, z0) ; rendue abaissée."""
+    n_j, n_i = y.shape
+    if on_road is None:
+        on_road = np.zeros(y.shape, dtype=bool)
+    clamp = np.full(y.shape, np.inf)
+    for px_axis, pz_axis, alt_axis, hw in pieces:
+        px, pz, pa = road_samples(px_axis, pz_axis, alt_axis, hw)
+        if len(px) == 0:
+            continue
+        fx, fz = (px - x0) / step, (pz - z0) / step
+        gi, gj = np.floor(fx).astype(np.int64), np.floor(fz).astype(np.int64)
+        inside = (gi >= 0) & (gi < n_i - 1) & (gj >= 0) & (gj < n_j - 1)
+        if not inside.any():
+            continue
+        fx, fz, gi, gj, pa = fx[inside], fz[inside], gi[inside], gj[inside], pa[inside]
+        u, v = fx - gi, fz - gj
+        low = u + v <= 1.0
+        # coins (di, dj) et poids : bas (a, b, c) ou haut (d, c, b), comme terrain._triangles
+        ci = np.where(low[:, None], np.array([[0, 1, 0]]), np.array([[1, 0, 1]]))
+        cj = np.where(low[:, None], np.array([[0, 0, 1]]), np.array([[1, 1, 0]]))
+        w = np.where(low[:, None], np.column_stack((1.0 - u - v, u, v)),
+                     np.column_stack((u + v - 1.0, 1.0 - u, 1.0 - v)))
+        vi, vj = gi[:, None] + ci, gj[:, None] + cj
+        hv = y[vj, vi]
+        h = (w * hv).sum(axis=1)
+        limit = pa - C.ROAD_SINK_M
+        bad = np.isfinite(h) & (h > limit + 1e-4)
+        if not bad.any():
+            continue
+        hb, wb = hv[bad], w[bad]
+        top = limit[bad, None]
+        lim = top - 1e-3
+        need = h[bad] - lim[:, 0]
+        # Sommets hors de la chaussée seulement, et au besoin sous la route : ceux de la chaussée sont à sa hauteur
+        # (fondu) ; sur une route en pente, le sommet voisin de l'axe est plus haut que ce point sans dépasser la
+        # route chez lui, et l'abaisser ferait léviter la route. Un triangle tout entier sur la chaussée (carrefour)
+        # abaisse ses sommets au-dessus de la route, en proportion de leur dépassement.
+        lower = ~on_road[vj[bad], vi[bad]] & (wb > 1e-9)
+        alone = ~lower.any(axis=1)
+        lower[alone] = hb[alone] > top[alone]
+        weight = np.where(lower, wb * np.where(alone[:, None], hb - lim, 1.0), 0.0).sum(axis=1)
+        step_v = need / np.where(weight > 0, weight, 1.0)
+        # hors chaussée : chaque sommet descend de la même hauteur `step_v` ; triangle sur la chaussée : en
+        # proportion du dépassement (alpha ≤ 1)
+        cand = np.where(alone[:, None], hb - np.minimum(step_v, 1.0)[:, None] * (hb - lim), hb - step_v[:, None])
+        np.minimum.at(clamp, (vj[bad][lower], vi[bad][lower]), cand[lower])
+    return np.minimum(y, clamp)
 
 
 def _ring_xz(frame: LocalFrame, coords, outer: bool) -> list[list[float]] | None:
