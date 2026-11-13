@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Captures des cinq parcours de démonstration du jeu de base (lots O37 et O38), à valider par le propriétaire.
+"""Captures des parcours de démonstration du jeu de base (lots O37, O38 et DB1), à valider par le propriétaire.
 
     python3 engine/tests/captures_demo.py lancer [--out DOSSIER] [--qualites medium] [--vitesse 50]
                                                  [--parcours demo,demo-biomes-alpin] [--native] [--sans-menus]
@@ -12,13 +12,13 @@
    approche du panneau
    du sommet (100, 70, 50, 40 et 30 m avant, en 1920×1080 pour que son nom se lise). Le sommet est le point le plus
    haut de la route ; un parcours sans montée n'a que les captures du début. Un circuit (lot O38) a en plus des
-   captures aux quarts du tour.
-3. `menu_bench.py --scenario parcours_demo --captures ecrans` : liste des parcours avec leurs cinq noms et
+   captures aux quarts du tour ; un tour à plusieurs biomes (lot DB1), à 150, 400 et 1 000 m de chaque bloc de 2 km.
+3. `menu_bench.py --scenario parcours_demo --captures ecrans` : liste des parcours avec leurs noms et
    écran « Prêt » de chacun.
 4. `DOSSIER/planche.html` : toutes les captures, rangées par parcours et par qualité.
 
 Prérequis : Godot (`--godot` ou `OPENRIDE_GODOT`, comme les bancs), compilateur installé, xvfb-run sans
-`--native`. Durée : environ 45 min par qualité à 50 km/h (tour de 12 km), plus 2 min de menus.
+`--native`. Durée : environ 50 min par qualité à 50 km/h (tour des nouveaux paysages de 14 km), plus 2 min de menus.
 Code de sortie : 0 si tous les bancs passent, 1 sinon.
 """
 
@@ -36,11 +36,14 @@ from pathlib import Path
 TESTS_DIR = Path(__file__).resolve().parent
 ENGINE_DIR = TESTS_DIR.parent
 REPO = ENGINE_DIR.parent
-ROUTES = ("demo", "demo-biomes-tour", "demo-biomes-cote", "demo-biomes-alpin", "demo-circuit")   # tour gravel : recette seule (9 novembre) ; circuit : lot O38
+# Jeu de base (lot DB1) : tour, côte et alpin sortis le 12 novembre, tour gravel le 9 novembre (recette seule).
+ROUTES = ("demo", "demo-biomes-paysages", "demo-circuit")
 START_MARKS_M = (150.0, 400.0)
 SUMMIT_BEFORE_M = (100.0, 70.0, 50.0, 40.0, 30.0)   # plusieurs : un spectateur peut cacher le panneau (r811c)
 MIN_CLIMB_M = 30.0                 # dénivelé sous lequel le parcours n'a pas de sommet à montrer
 LOOP_PARTS = 4                     # circuit : captures aux quarts du tour
+BLOCK_M = 2000.0                   # parcours à plusieurs biomes (lot DB1) : un bloc de 2 km par biome
+BLOCK_MARKS_M = (150.0, 400.0, 1000.0)   # captures dans chaque bloc : entrée (après la transition) et milieu
 LOAD_S = 90.0                      # chargement, compte à rebours et départ au pédalage
 RIDE_MARGIN = 1.3                  # vitesse moyenne sous la vitesse tenue (départ, pentes) : r811b roulait 48 km/h
 
@@ -68,6 +71,11 @@ def marks_for(world: Path) -> tuple[list[float], float]:
     marks = [m for m in START_MARKS_M if m < route["length_m"]]
     if route.get("type") == "loop":    # circuit (lot O38) : aussi aux quarts du tour
         marks += [route["length_m"] * k / LOOP_PARTS for k in range(1, LOOP_PARTS)]
+    info = world.with_suffix(".json")   # résumé écrit par demo-biomes à côté du parcours
+    biomes = json.loads(info.read_text(encoding="utf-8")).get("biomes", []) if info.is_file() else []
+    if len(set(biomes)) > 1 and route.get("type") != "loop":   # tour (lot DB1) : chaque bloc, entrée et milieu
+        marks += [k * BLOCK_M + d for k in range(len(biomes)) for d in BLOCK_MARKS_M
+                  if k * BLOCK_M + d < route["length_m"] and k * BLOCK_M + d not in marks]
     if alt[top] - min(alt) >= MIN_CLIMB_M and summit > max(START_MARKS_M) + max(SUMMIT_BEFORE_M):
         marks += [summit - d for d in SUMMIT_BEFORE_M]
     return sorted(marks), max(marks) + 20.0
@@ -129,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--godot", type=Path, help="exécutable Godot (défaut : celui des bancs)")
     run.add_argument("--qualites", default="medium", help="low, medium, high séparées par des virgules (défaut medium)")
     run.add_argument("--vitesse", type=float, default=50.0, help="vitesse tenue en km/h (défaut 50)")
-    run.add_argument("--parcours", default=",".join(ROUTES), help="identifiants séparés par des virgules (défaut : les cinq)")
+    run.add_argument("--parcours", default=",".join(ROUTES), help="identifiants séparés par des virgules (défaut : ceux du jeu de base)")
     run.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel, sans Xvfb")
     run.add_argument("--sans-menus", action="store_true", help="sans le banc des menus")
     args = ap.parse_args(argv)

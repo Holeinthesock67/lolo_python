@@ -1,5 +1,5 @@
 {
-  "description": "Contenus de départ depuis Réglages › Contenus (lot O25) : état « à installer », installation par A maintenu sans rien écraser, compte rendu, entraînements, plans et parcours de démonstration (dont le circuit, lot O38) et piste du vélodrome présents, listes rechargées.",
+  "description": "Contenus de départ depuis Réglages › Contenus (lot O25) : état « à installer », installation par A maintenu sans rien écraser, compte rendu, entraînements, plans et parcours de démonstration (tour des nouveaux paysages et circuit, lots O38 et DB1) et piste du vélodrome présents, listes rechargées.",
   "fichiers": {"OpenRide/Workouts/endurance_60.zwo": "<workout_file><name>Mon endurance</name><workout><SteadyState Duration=\"600\" Power=\"0.6\"/></workout></workout_file>"},
   "etapes": [
     {"ecran": "home", "delai": 15},
@@ -9,11 +9,11 @@
     {"ecran": "contents", "titre": "Contenus", "contient": ["Contenus de départ — en partie installé"], "delai": 10},
     {"capture": "contenus_avant"},
     {"choisir": "content:starter"},
-    {"ecran": "contents", "contient": ["Contenus de départ — installé", "Ajouté : 9 entraînement(s), 2 plan(s), 5 parcours."], "delai": 30},
+    {"ecran": "contents", "contient": ["Contenus de départ — installé", "Ajouté : 9 entraînement(s), 2 plan(s), 3 parcours."], "delai": 30},
     {"capture": "contenus_apres"},
     {"fichier": "OpenRide/Plans/reprise_4_semaines.toml", "existe": true},
     {"fichier": "OpenRide/Workouts/vo2_5x3.zwo", "existe": true},
-    {"fichier": ".local/share/openride/routes/demo-biomes-alpin.world/manifest.json", "existe": true},
+    {"fichier": ".local/share/openride/routes/demo-biomes-paysages.world/manifest.json", "existe": true},
     {"fichier": ".local/share/openride/routes/demo-circuit.world/manifest.json", "existe": true},
     {"fichier": ".local/share/openride/routes/velodrome-250.world/manifest.json", "existe": true},
     {"journal": "core", "motif": "Contenu « starter » : Ajouté"},
@@ -21,6 +21,6 @@
     {"ecran": "settings", "focus": "contents"},
     {"appui": "Y_SHORT"},
     {"choisir": "world"},
-    {"ecran": "routes", "contient": ["Montée alpine", "Circuit des Prés"], "delai": 10}
+    {"ecran": "routes", "contient": ["Tour des nouveaux paysages", "Circuit des Prés"], "delai": 10}
   ]
 }
