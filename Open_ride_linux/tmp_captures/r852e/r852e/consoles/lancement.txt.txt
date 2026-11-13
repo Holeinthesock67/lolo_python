@@ -1,0 +1,11 @@
+23:33:34 empreinte avant adbe16314ebd628346bae8971666af44
+23:33:34 tête 2296aba0
+23:34:15 w17_cap low
+23:40:28 fin rc=1
+23:42:28 w17_cap medium
+23:48:42 fin rc=1
+23:50:42 w17_cap high
+23:57:09 fin rc=1
+23:59:10 empreinte après ae4a98b754a67122b530e16b668cec9a
+23:59:10 clone bac8ec77
+23:59:10 FIN
