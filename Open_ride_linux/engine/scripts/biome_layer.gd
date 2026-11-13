@@ -108,6 +108,17 @@ func tile(level: String, ix: int, iz: int) -> Dictionary:
 	return out
 
 
+## Monde vivant (lot W17) : la tuile `(ix, iz)` vient d'arriver ; une absence notée plus tôt est oubliée pour
+## que la prochaine lecture la trouve. Une tuile déjà lue n'est jamais relue (le générateur ne la change pas
+## pendant la séance).
+func forget_missing(level: String, ix: int, iz: int) -> void:
+	var key := Vector3i(ix, iz, 0 if level == "near" else 1)
+	_mutex.lock()
+	if _cache.has(key) and (_cache[key] as Dictionary).is_empty():
+		_cache.erase(key)
+	_mutex.unlock()
+
+
 ## Injecte une tuile déjà construite (tests, parcours générés en mémoire).
 func put_tile(level: String, ix: int, iz: int, t: Dictionary) -> void:
 	present = true

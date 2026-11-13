@@ -7,12 +7,13 @@ Arborescence sous `[open_world] cache_dir` (`~/OpenRide/Cache/monde` par défaut
     brut/tuiles/14/<x>/<y>.mvt           tuiles vectorielles OpenFreeMap (W13)
     genere/<zone>/<IX>_<IN>/             carré de 1 km de la grille fixe de la zone UTM (W7)
     genere/<zone>/far/<IX5>_<IN5>.f32    tuile lointaine de 5 km
+    genere/<zone>/biome/near|far/<IX>_<IN>.json   tuile de biome d'un carré ou d'une tuile lointaine (W17)
     seances/<id>.world/                  mondes vivants des séances (W8)
     index.sqlite                         une ligne par entrée : taille, dernière utilisation, versions
 
 - Le relief déjà téléchargé par le compilateur (`~/.cache/openride/dem/`) est relu sans copie et
   n'est jamais supprimé : il appartient au compilateur.
-- Éviction au-delà du plafond : carrés générés d'abord (ils se recalculent sans réseau), puis
+- Éviction au-delà du plafond : carrés et tuiles de biome générés d'abord (ils se recalculent sans réseau), puis
   tuiles lointaines, puis données brutes ; chaque fois la moins récemment utilisée d'abord ; les
   entrées préchargées (W-Q4) passent après toutes les autres ; une entrée épinglée ou utilisée par
   la séance en cours n'est jamais supprimée.
@@ -36,8 +37,8 @@ from ..elevation import CopernicusGlo30Provider, copernicus_tile_name
 from ..errors import CompileError
 
 GB = 1_000_000_000
-KINDS = ("square", "far", "dem", "tile", "osm")
-EVICTION_RANK = {"square": 0, "far": 1, "dem": 2, "tile": 2, "osm": 2}
+KINDS = ("square", "far", "biome", "dem", "tile", "osm")
+EVICTION_RANK = {"square": 0, "biome": 0, "far": 1, "dem": 2, "tile": 2, "osm": 2}
 LAYER_FILES = ("buildings", "vegetation", "water", "poi")
 
 # Valeurs par défaut de la section [open_world] (mêmes que `openride_core.config.OpenWorldConfig`).
@@ -217,6 +218,10 @@ class WorldCache:
     def far_path(self, zone: str, ix5: int, in5: int) -> Path:
         return self.root / "genere" / zone / "far" / f"{ix5}_{in5}.f32"
 
+    def biome_path(self, zone: str, level: str, ix: int, i_n: int) -> Path:
+        """Tuile de biome (lot W17) du carré (`near`) ou de la tuile lointaine (`far`)."""
+        return self.root / "genere" / zone / "biome" / level / f"{ix}_{i_n}.json"
+
     def sessions_dir(self) -> Path:
         return self.root / "seances"
 
@@ -227,6 +232,10 @@ class WorldCache:
     @staticmethod
     def far_key(zone: str, ix5: int, in5: int) -> str:
         return f"far:{zone}/{ix5}_{in5}"
+
+    @staticmethod
+    def biome_key(zone: str, level: str, ix: int, i_n: int) -> str:
+        return f"biome:{zone}/{level}/{ix}_{i_n}"
 
     # --- liens vers une séance (format §13) ----------------------------------------------------
 
@@ -240,7 +249,9 @@ class WorldCache:
         gx, gn = self.global_index(e0, n0, ix, iz)
         src = self.square_dir(zone, gx, gn)
         made = []
-        pairs = [(src / "near.f32", Path("terrain") / "near" / f"tile_{ix}_{iz}.f32")]
+        # Biome d'abord (W17) : quand l'engine découvre la tuile de terrain, sa tuile de biome est déjà là.
+        pairs = [(self.biome_path(zone, "near", gx, gn), Path("biome") / "near" / f"tile_{ix}_{iz}.json"),
+                 (src / "near.f32", Path("terrain") / "near" / f"tile_{ix}_{iz}.f32")]
         pairs += [(src / f"{layer}.json", Path(layer) / f"tile_{ix}_{iz}.json") for layer in LAYER_FILES]
         for target, rel in pairs:
             if target.is_file():
@@ -252,6 +263,9 @@ class WorldCache:
         target = self.far_path(zone, gx, gn)
         if not target.is_file():
             return None
+        biome = self.biome_path(zone, "far", gx, gn)
+        if biome.is_file():
+            _symlink(biome, Path(session_dir) / "biome" / "far" / f"tile_{fx}_{fz}.json")
         return _symlink(target, Path(session_dir) / "terrain" / "far" / f"tile_{fx}_{fz}.f32")
 
     # --- régions et épinglage ------------------------------------------------------------------
@@ -308,7 +322,7 @@ class WorldCache:
         return removed
 
     def clean(self, generated_only: bool = True, include_pinned: bool = False) -> list[str]:
-        kinds = ("square", "far") if generated_only else KINDS
+        kinds = ("square", "far", "biome") if generated_only else KINDS
         removed = []
         for e in self.entries():
             if e.kind in kinds and (include_pinned or not e.pinned):
@@ -358,6 +372,9 @@ class WorldCache:
                 add(f"square:{zone.name}/{sq.name}", "square", sq, versions)
             for f in sorted((zone / "far").glob("*.f32")):
                 add(f"far:{zone.name}/{f.stem}", "far", f)
+            for level in ("near", "far"):
+                for f in sorted((zone / "biome" / level).glob("*.json")):
+                    add(f"biome:{zone.name}/{level}/{f.stem}", "biome", f)
         self.db.execute("UPDATE entries SET pinned = 1 WHERE region IN (SELECT region FROM regions WHERE pinned = 1)")
         if found:
             self.log(f"index du cache reconstruit : {found} entrée(s)")
@@ -388,7 +405,7 @@ def cmd_cache_info(args) -> int:
     if args.json:
         print(json.dumps(info, ensure_ascii=False, indent=2))
         return 0
-    labels = {"square": "carrés générés", "far": "tuiles lointaines", "dem": "relief",
+    labels = {"square": "carrés générés", "far": "tuiles lointaines", "biome": "tuiles de biome", "dem": "relief",
               "tile": "tuiles vectorielles", "osm": "bases OpenStreetMap"}
     print(f"Cache du monde ouvert : {info['root']}")
     print(f"Taille : {_fmt_bytes(info['bytes'])} sur {_fmt_bytes(info['max_bytes'])}")
@@ -402,7 +419,7 @@ def cmd_cache_info(args) -> int:
 def cmd_cache_clean(args) -> int:
     cache = WorldCache.from_config(args.config, log=lambda _: None)
     generated_only = not args.all
-    what = "tout le cache (épinglés compris)" if args.all else "les carrés et tuiles lointaines générés"
+    what = "tout le cache (épinglés compris)" if args.all else "les carrés, tuiles lointaines et tuiles de biome générés"
     if not args.yes:
         try:
             ok = input(f"Supprimer {what} de {cache.root} ? [o/N] ").strip().lower() in ("o", "oui", "y", "yes")
@@ -425,6 +442,6 @@ def add_info_arguments(p) -> None:
 def add_clean_arguments(p) -> None:
     p.add_argument("--config", type=Path, default=None, help="config.toml (défaut : ~/OpenRide/config.toml)")
     g = p.add_mutually_exclusive_group()
-    g.add_argument("--generated", action="store_true", help="carrés et tuiles lointaines seulement (défaut)")
+    g.add_argument("--generated", action="store_true", help="carrés, tuiles lointaines et biomes seulement (défaut)")
     g.add_argument("--all", action="store_true", help="tout le cache, régions épinglées comprises")
     p.add_argument("--yes", action="store_true", help="sans confirmation")

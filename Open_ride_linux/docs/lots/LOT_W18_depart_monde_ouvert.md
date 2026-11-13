@@ -25,8 +25,8 @@ Constat du banc des biomes en monde ouvert (PR #852, 13 novembre) : après **Dé
 
 ## 5. Recette
 
-Sur le PC : monde ouvert, départ choisi, **Démarrer** : après le préchargement, l'écran « START YOUR ENGINES » paraît sans passer par l'accueil ; pédaler : la balade part. Le scénario `w17_cap` (PR #852) passe encore par **Session libre** ; après fusion des deux lots, il attendra seulement « -> RUNNING ».
+Sur le PC : monde ouvert, départ choisi, **Démarrer** : après le préchargement, l'écran « START YOUR ENGINES » paraît sans passer par l'accueil ; pédaler : la balade part. Banc : `menu_bench.py --native --scenario w17_cap` (scénario des biomes en monde ouvert, PR #852, fusionnée dans cette branche) : après « Monde ouvert prêt », il attend la commande `start` envoyée par l'engine, capture l'écran du départ (`depart`), puis « -> RUNNING » et 3 minutes de balade. Cette PR se fusionne après la PR #852.
 
 ## 6. Livraison
 
-- Branche `claude/project-thread-oft1se-w18`, PR à valider.
+- Branche `claude/project-thread-oft1se-w18`, PR #872 à valider ; contient la PR #852 (à fusionner d'abord).
