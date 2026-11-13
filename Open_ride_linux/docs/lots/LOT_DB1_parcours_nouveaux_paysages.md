@@ -31,6 +31,17 @@ Un parcours livré avec le jeu, sans réseau, qui fait traverser au joueur les b
 - `engine/tests/menu_scenarios/parcours_demo.json` et `contenus.json` : liste du jeu de base, anciens noms absents.
 - `engine/tests/run_engine_tests.sh` : le contrôle « rien du paysage sur la chaussée » prend aussi le nouveau tour (même motif `demo-biomes-*`).
 
+## 3 bis. Correctifs après le banc r866 (13 novembre)
+
+Le banc r866 (tête 553119a3) : GPU 5,51 / 8,85 / 10,91 ms (dans les budgets), menus bons, mais deux défauts.
+
+- **Ciel zébré de grandes bandes grises en éventail.** Le relief synthétique (`make_terrain`) ajoutait `far_slope × (d − 162 m)` sans borne : à 5 km (tuiles lointaines) 5,8 km d'altitude, à 40 km (horizon du lot JP4) 27,6 km, vus comme des murs dans le ciel. La pente lointaine s'adoucit désormais jusqu'à un palier (`_soft_cap`, `FAR_RISE_M` = 800 m : 360 m en montagne, 440 m pour les parois du canyon) ; même borne pour la pente est-ouest du circuit au-delà de 900 m (`circuit_relief`), la route et ses abords proches ne changent pas. Après : au plus 940 m sur tous les niveaux, horizon compris (le −361 m de l'horizon est la courbure terrestre du lot JP4, voulue). Test `test_far_relief_bounded`.
+- **Milliers de contacts entre cyclistes du décor** (2 558 / 2 971 / 4 143 au banc, surtout core/core). Reproduits dans le core (`RoadCyclists` sur le tour : 1 436 core/core, 18 core/cycliste) ; trois causes, corrigées à l'identique dans `road_cyclists.py` et `road_cyclists_model.gd` (relevé de parité régénéré) :
+  1. un groupe ralentissait pour celui qui le suivait (`slowest` prenait aussi ceux de derrière) : `limit` ne prend que ceux de devant ;
+  2. le suiveur se réglait sur la vitesse annoncée du premier et non sur son allure réelle (gêné lui-même dans une montée) : `pace()` / `_pace()`, vitesse du dernier pas ;
+  3. un `overtake` rabattu puis gêné devant le cycliste repassait à gauche en traversant sa ligne juste devant lui : il ne passe à gauche qu'avec la place de finir son écart (`FILE_GAP_M + (v − v_cycliste) × CROSS_S`, 3 s), sinon il se laisse distancer ; à hauteur ou devant, il reste à droite et se laisse doubler.
+  Après : 0 contact core/core et core/cycliste sur toutes les démonstrations (jeu de base et recette) à 25, 40 et 50 km/h. Test `test_decor_cyclists_never_touch` (il échoue sur l'ancien modèle).
+
 ## 4. Critères d'acceptation
 
 1. `core/tests/test_biome_demo_world.py` : jeu de base = tour des nouveaux paysages + circuit ; recette = en plus tour, gravel, côte, alpin ; parts des sept biomes égales (14,3 % ± 0,6) ; variante de chaque tuile proche = celle de son bloc ; les quatre paysages présents ; aucun paysage sur le biome d'un bloc voisin ; mer le long du fjord ; sommet au dernier bloc, 200 m de montée au moins ; aucun « Fictif » ; anciennes démonstrations O37 laissées telles quelles chez le joueur.
@@ -63,4 +74,4 @@ done
 
 ## 6. Livraison
 
-PR du 13 novembre (branche `claude/project-thread-aj6qj0`), partie de la branche de #849 (O38, « Circuit des Prés ») : main à remettre dans la branche après la fusion de #849. Reste : recette PC (section 5), validation de la planche par le propriétaire, puis go de fusion.
+PR du 13 novembre (branche `claude/project-thread-aj6qj0`), main remise après #849 et #865. Banc r866 rejoué après les correctifs de la section 3 bis. Reste : recette PC (section 5), validation de la planche par le propriétaire, puis go de fusion.

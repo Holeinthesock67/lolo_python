@@ -8,6 +8,8 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 ### Un parcours de démonstration pour les nouveaux paysages (lot DB1)
 - Nouveau parcours « Tour des nouveaux paysages » : 14 km du bord d'un fjord jusqu'au sommet des hauts plateaux, par les landes atlantiques, les rizières, un village japonais, une île volcanique et un canyon rouge (2 km chacun, 285 m de montée, 6,5 % au plus). Trace, relief et décor sont entièrement inventés.
 - Il remplace au jeu de base le « Tour des six paysages », la « Route de la côte » et la « Montée alpine » : une installation neuve ne les ajoute plus, mais ils restent installés chez ceux qui les ont déjà. Le « Col du lacet », le « Circuit des Prés » et le vélodrome ne changent pas.
+- Ciel des parcours de démonstration : le relief lointain s'arrête en montagnes de quelques centaines de mètres au lieu de monter à des kilomètres vers l'horizon (plus de grandes bandes grises en éventail dans le ciel).
+- Cyclistes du décor : un groupe ne ralentit plus pour celui qui le suit, le suiveur se règle sur l'allure réelle du premier, et un cycliste qui vous double ne traverse votre ligne qu'avec assez de place ; plus aucun contact entre eux ni avec vous sur les démonstrations.
 ### Grand Prix : plus de frôlements entre coureurs (lot GP12)
 - Un coureur sur une voie imposée (esquive, flèches) double et s'écarte comme les autres au lieu de rouler dans la roue d'un plus lent de sa voie.
 - Un objet (coup de fouet, super-forme, glissade du coureur de devant) ne pousse plus personne dans la roue devant : on freine roue contre roue, cycliste compris (vitesse virtuelle seulement, la pente envoyée ne change pas).

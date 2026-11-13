@@ -333,3 +333,49 @@ def test_paysages_tour(demo_set: Path, mbw) -> None:
     assert "Col des Lamas" in pois and "Belvédère du Canyon Rouge" in pois
     info = _json(demo_set / "demo-biomes-paysages.json")
     assert info["coast"]["sea_areas"] > 0 and info["generated"]["buildings"] > 0
+
+
+def test_far_relief_bounded(demo_set: Path, recette_set: Path) -> None:
+    """Lot DB1 (banc r866, ciel zébré) : le relief lointain des démonstrations reste un paysage de collines et de
+    montagnes jusqu'à l'horizon (40 km), au plus 600 m au-dessus du point le plus haut de la route ; plus bas, seule
+    la courbure terrestre de l'horizon (au plus 400 m à 57 km)."""
+    np = pytest.importorskip("numpy")
+    worlds = sorted(demo_set.glob("*.world")) + sorted(recette_set.glob("*.world"))
+    assert len(worlds) >= 7
+    for world in worlds:
+        alt = _json(world / "route.json")["alt_m"]
+        for level in ("near", "far", "horizon"):
+            tiles = [np.fromfile(f, dtype=np.float32) for f in (world / "terrain" / level).glob("*.f32")]
+            assert tiles, (world.name, level)
+            hi = max(float(t.max()) for t in tiles)
+            lo = min(float(t.min()) for t in tiles)
+            assert hi <= max(alt) + 600.0, (world.name, level, hi)
+            assert lo >= min(min(alt), 0.0) - 25.0 - (400.0 if level == "horizon" else 0.0), (world.name, level, lo)
+
+
+def test_decor_cyclists_never_touch(demo_set: Path, recette_set: Path) -> None:
+    """Lot DB1 (banc r866, des milliers de contacts) : sur chaque démonstration, à 25, 40 et 50 km/h, aucun cycliste
+    du décor n'en touche un autre (groupes différents) ni le cycliste (à moins de 1,7 m en long et 0,6 m en travers,
+    comme le compte de `living_decor.gd`)."""
+    import itertools
+
+    from openride_core import road_cyclists as rc
+    from openride_core.route import load_world
+
+    worlds = sorted(demo_set.glob("demo-*.world")) + sorted(recette_set.glob("demo-biomes-*.world"))
+    for world in worlds:
+        route = load_world(world).route
+        for kmh in (25.0, 40.0, 50.0):
+            model = rc.RoadCyclists(route, rc.climbs_for(route, []), [], seed=rc.SEED)
+            s, v, dt = 0.0, kmh / 3.6, 1.0 / 30.0
+            while s < route.length_m - 50.0:
+                model.update(s, v, dt)
+                riders = model.state_list(s)
+                for r in riders:
+                    assert not (abs(r["s"] - s) < 1.7 and abs(r["lane_m"] - rc.RIDER_LATERAL_M) < 0.6), \
+                        (world.name, kmh, round(s), r["id"])
+                for a, b in itertools.combinations(riders, 2):
+                    if a["id"].rsplit("-", 1)[0] != b["id"].rsplit("-", 1)[0]:
+                        assert not (abs(a["s"] - b["s"]) < 1.7 and abs(a["lane_m"] - b["lane_m"]) < 0.6), \
+                            (world.name, kmh, round(s), a["id"], b["id"])
+                s += v * dt

@@ -160,6 +160,7 @@ GRADE = {
     "high_plateau": lambda u: 1.5 + 1.0 * math.sin(u / 320.0),
 }
 # Relief de part et d'autre de la route : (pente des flancs, pente au-delà de 160 m, amplitude des collines).
+FAR_RISE_M = 800.0   # longueur de la pente lointaine : palier à far_slope × 800 m (360 m en montagne)
 SIDES = {
     "coast": (0.03, 0.02, 4.0),
     "mediterranean": (0.10, 0.08, 40.0),
@@ -287,7 +288,15 @@ def circuit_relief(x, z):
     x = np.asarray(x, dtype=float)
     z = np.asarray(z, dtype=float)
     return (BASE_ALT_M + 40.0 + 14.0 * np.sin(x / 210.0 + 0.6) * np.cos(z / 260.0)
-            - 12.0 * np.exp(-((x - 260.0) ** 2 + (z - 200.0) ** 2) / 90000.0) + x / 60.0)
+            - 12.0 * np.exp(-((x - 260.0) ** 2 + (z - 200.0) ** 2) / 90000.0) + _soft_cap(x / 60.0, 15.0, 30.0))
+
+
+def _soft_cap(v, knee: float, rise: float):
+    """`v` tel quel jusqu'à ±`knee`, puis un palier doux à ±(`knee` + `rise`) (lot DB1) : un relief analytique
+    reste borné jusqu'à l'horizon (40 km) sans changer près de la route."""
+    import numpy as np
+    a = np.abs(v)
+    return np.sign(v) * np.where(a <= knee, a, knee + rise * (1.0 - np.exp(-(a - knee) / rise)))
 
 
 def _ramp(t: float) -> float:
@@ -312,7 +321,10 @@ def make_terrain(plan: Plan):
                 continue
             ramp = np.clip((d - 40.0) / 260.0, 0.0, 1.0)
             bump = hills * ramp * (0.5 + 0.5 * np.sin(x / 310.0) * np.cos(z / 270.0))
-            side += w * (slope * np.clip(d - 12.0, 0.0, 150.0) + far_slope * np.clip(d - 162.0, 0.0, None) + bump)
+            # Lot DB1 : au-delà de 162 m, la pente lointaine s'adoucit jusqu'à un palier (`FAR_RISE_M`) : sans borne,
+            # les tuiles lointaines et d'horizon (jusqu'à 40 km) montaient à plusieurs kilomètres, en murs dans le ciel
+            far = _soft_cap(np.clip(d - 162.0, 0.0, None), 0.0, FAR_RISE_M)
+            side += w * (slope * np.clip(d - 12.0, 0.0, 150.0) + far_slope * far + bump)
         if plan.sea:
             sea = weights.get("coast", 0.0) * (np.sign(dx) == SEA_SIDE)
             # Plage de la route au niveau 0 entre 36 et 70 m de l'axe, puis fond marin jusqu'à −25 m.
