@@ -27,6 +27,7 @@ Demande du propriétaire le 13/11 (« Oui » aux garde-fous reportés).
   - virage à droite de 50 m : glissière à gauche, coupée à 1 km ;
   - maillage complet et hauteur de la glissière.
 - Vitrine : vue `glissiere`. La glissière se voit aussi dans la vue `torii`.
+- `engine/tests/liste_glissieres.gd -- --world DOSSIER.world` : liste les glissières d'un parcours compilé (comme si tout le parcours était au Japon) et donne la liste `--at-m` des planches des bancs.
 
 ## Essais
 
