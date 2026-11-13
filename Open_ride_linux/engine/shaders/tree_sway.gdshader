@@ -96,7 +96,7 @@ void vertex() {
 	if (deciduous && season_bare > 0.0 && fract(offset * 3.71) < season_bare) {
 		v_bare = 1.0;
 		int leaf_code = int(floor(COLOR.a * 16.0 + 0.5));
-		if ((leaf_code == 8 || leaf_code == 9) && !bare_as_twigs) {
+		if (leaf_code >= 8 && !bare_as_twigs) {   // feuilles, aiguilles et frondes (fougère aigle, lot AT1)
 			VERTEX = vec3(0.0);
 		}
 	}
@@ -148,7 +148,7 @@ void fragment() {
 	}
 	int code = int(floor(COLOR.a * 16.0 + 0.5));
 	vec3 col = COLOR.rgb * srgb(foliage_tint);   // teinte en sRGB, convertie à l'écriture
-	if (deciduous && (code == 8 || code == 9)) {
+	if (deciduous && code >= 8) {   // feuilles, aiguilles et frondes caduques
 		// Automne : jaune, orange ou roux selon l'arbre, à la luminosité de la feuille ; puis teinte de la saison
 		vec3 hue = v_pick < 0.4 ? vec3(0.95, 0.74, 0.18) : (v_pick < 0.75 ? vec3(0.92, 0.45, 0.12) : vec3(0.62, 0.24, 0.10));
 		float lum = dot(col, vec3(0.3, 0.59, 0.11));

@@ -80,13 +80,16 @@ func _model(biome: String) -> Variant:
 
 func _budgets(preset: String, enabled: bool = true) -> Dictionary:
 	var l := QualityPresets.living(preset, enabled)
-	return {"rock": l["ground_rocks"], "grass": l["ground_grass"], "termite": l["ground_termites"]}
+	return GroundDetails.budgets(l)
 
 
 ## Parcourt le parcours jusqu'à `end_m` (tout par défaut, pas de 60 m) et renvoie les positions vues, sans doublon, par sorte.
 func _sweep(g, route, end_m: float = INF) -> Dictionary:
-	var out := {"rock": PackedVector3Array(), "grass": PackedVector3Array(), "termite": PackedVector3Array()}
-	var seen := {"rock": {}, "grass": {}, "termite": {}}   # chaque objet une fois (il reste vu sur plusieurs pas)
+	var out := {}
+	var seen := {}   # chaque objet une fois (il reste vu sur plusieurs pas)
+	for kind in GroundDetails.KINDS:
+		out[kind] = PackedVector3Array()
+		seen[kind] = {}
 	var s := 0.0
 	while s <= minf(route.length_m, end_m):
 		for i in range(200):
@@ -132,7 +135,7 @@ func _run() -> void:
 			g.get_capacity("rock"), g.get_capacity("grass"), g.get_capacity("termite"), str(b)])
 		g.free()
 	var b_off := _budgets("high", false)
-	_check(b_off["rock"] == 0 and b_off["grass"] == 0 and b_off["termite"] == 0, "décor vivant coupé : budgets à zéro")
+	_check(b_off.values().all(func(v): return v == 0) and b_off.size() == GroundDetails.KINDS.size(), "décor vivant coupé : budgets à zéro %s" % str(b_off))
 
 	# 3. Savane : herbes hautes et termitières, pas de rochers ; aucun objet à moins de 3 m du bord
 	var gs = GroundDetails.new()
@@ -175,7 +178,7 @@ func _run() -> void:
 	var gp = GroundDetails.new()
 	gp.configure(_budgets("high"), route, _model("temperate_grassland"), ROAD_WIDTH_M, 7)
 	var pra := _sweep(gp, route, 1000.0)
-	_check(pra["rock"].size() + pra["grass"].size() + pra["termite"].size() == 0, "prairie tempérée : aucun détail")
+	_check(pra.values().all(func(a): return a.is_empty()), "prairie tempérée : aucun détail (ni muret)")
 
 	# 6. Placement déterministe
 	var ga2 = GroundDetails.new()
@@ -221,5 +224,53 @@ func _run() -> void:
 				good += 1
 		_check(good == v.size() / 3, "%s : %d faces sur %d tournées vers l'extérieur" % [pair[0], good, v.size() / 3])
 
-	for n in [gs, ga, gp, ga2, gv]:
+	# 9. Landes atlantiques (lot AT1) : murets des deux côtés, alignés sur la route, jamais à moins de 3 m du bord
+	# (bouts compris), quelques rochers ; capacité de 2 côtés × 10 tronçons par tronçon de route
+	var gw = GroundDetails.new()
+	gw.configure(_budgets("high"), route, _model("atlantic_heath"), ROAD_WIDTH_M, 7)
+	_check(gw.get_capacity("wall") == 2 * GroundDetails.WALL_PER_SIDE * (GroundDetails.CHUNKS_BEHIND + GroundDetails.CHUNKS_AHEAD + 1),
+		"landes : %d places de muret" % gw.get_capacity("wall"))
+	var atl := _sweep(gw, route, 2300.0)
+	var walls: PackedVector3Array = atl["wall"]
+	var expected := 2.0 * 2300.0 / GroundDetails.WALL_PIECE_M
+	_check(walls.size() > expected * 0.6 and walls.size() < expected and atl["grass"].is_empty() and atl["termite"].is_empty(),
+		"landes : %d tronçons de muret sur 2,3 km (au plus %d, brèches comprises), %d rochers" % [walls.size(), int(expected), atl["rock"].size()])
+	var wall_min := INF
+	var aligned := 0
+	var ends_ok := true
+	var clear := ROAD_WIDTH_M / 2.0 + GroundDetails.ROAD_CLEAR_M
+	for k in range(int(2300.0 / GroundDetails.CHUNK_M)):
+		var st := gw.chunk_stations(k)
+		for slot in range(gw.get_capacity("wall") / (GroundDetails.CHUNKS_BEHIND + GroundDetails.CHUNKS_AHEAD + 1)):
+			var d: Variant = gw.detail_at("wall", 0, k, slot, st)
+			if d == null:
+				continue
+			var xf: Transform3D = d["xf"]
+			var axis := Vector2(xf.basis.x.x, xf.basis.x.z).normalized()
+			var near: Dictionary = route.sample(float(k) * GroundDetails.CHUNK_M + (float(slot / 2) + 0.5) * GroundDetails.WALL_PIECE_M)
+			var hd := deg_to_rad(float(near["heading_deg"]))
+			if absf(axis.dot(Vector2(sin(hd), -cos(hd)))) > 0.99:
+				aligned += 1
+			for e in [-0.5, 0.0, 0.5]:
+				var q: Vector3 = xf * Vector3(e * GroundDetails.WALL_PIECE_M, 0.0, 0.0)
+				var dd := _road_distance(route, q)
+				wall_min = minf(wall_min, dd)
+				ends_ok = ends_ok and dd >= clear + GroundDetails.RADIUS_M["wall"] - 0.3
+	_check(aligned > 0 and aligned >= walls.size() * 0.9, "landes : %d murets alignés sur le cap de la route (sur %d)" % [aligned, walls.size()])
+	_check(ends_ok, "landes : bout de muret le plus proche à %.2f m de l'axe (bord + 3 m = %.1f m)" % [wall_min, clear])
+	var wall := GroundDetails.build_wall_mesh()
+	var wb := wall.get_aabb()
+	_check(is_equal_approx(wb.size.x, GroundDetails.WALL_PIECE_M) and wb.end.y <= GroundDetails.WALL_HEIGHT_M + 0.01 and wb.end.y > 0.8
+		and is_equal_approx(wb.position.y, -GroundDetails.WALL_FOOT_M) and wb.size.z <= 0.9 and wall.get_faces().size() / 3 < 500,
+		"muret : %s, %d triangles" % [str(wb), wall.get_faces().size() / 3])
+	var wa: Array = wall.surface_get_arrays(0)
+	var wv: PackedVector3Array = wa[Mesh.ARRAY_VERTEX]
+	var wn: PackedVector3Array = wa[Mesh.ARRAY_NORMAL]
+	var front := 0
+	for i in range(0, wv.size(), 3):
+		if wn[i].dot((wv[i + 1] - wv[i]).cross(wv[i + 2] - wv[i])) < 0.0:
+			front += 1
+	_check(front == wv.size() / 3, "muret : %d faces sur %d dans l'ordre avant de Godot" % [front, wv.size() / 3])
+
+	for n in [gs, ga, gp, ga2, gv, gw]:
 		n.free()
