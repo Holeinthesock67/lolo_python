@@ -168,10 +168,34 @@
       "delai": 300
     },
     {
-      "note": "Monde ouvert chargé : décor du départ prêt (route du générateur lue par l'engine)",
-      "journal": "engine",
-      "motif": "scene_ready id=",
+      "note": "Monde ouvert préchargé : route engagée, séance prête",
+      "journal": "core",
+      "motif": "Monde ouvert prêt",
       "delai": 600
+    },
+    {
+      "note": "Accueil : parcours ow:… chargé ; Session libre ouvre l'écran Prêt",
+      "ecran": "home",
+      "delai": 30
+    },
+    {
+      "choisir": "ride"
+    },
+    {
+      "ecran": "ready",
+      "delai": 15
+    },
+    {
+      "capture": "pret"
+    },
+    {
+      "choisir": "start"
+    },
+    {
+      "note": "Départ au pédalage : le cycliste simulé roule à 180 W",
+      "journal": "core",
+      "motif": "-> RUNNING",
+      "delai": 120
     },
     {
       "attendre": 60
