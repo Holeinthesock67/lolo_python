@@ -120,7 +120,8 @@ var _last_bots_s: Array = []      # abscisses des bots à l'image précédente (
 var _core_seq := -1                 # trame de la dernière liste `riders` reprise (lot AS7)
 var direction: int = 1             # sens de marche du cycliste (lot N23) : -1 à rebours, `route` est alors retourné
 var base_route = null              # parcours dans son sens, quel que soit le sens de marche
-var _base_climbs: Array = []       # montées du parcours dans son sens (aucune à rebours avant le lot N24)
+var _base_climbs: Array = []       # montées du parcours dans son sens
+var _back_climbs: Array = []       # montées du retour dans le repère retourné (lot N24, set_back_climbs)
 
 
 ## `climbs` : montées de living_decor.gd (`start_s`, `summit_s`) ; `pois` : seuls les `village` comptent.
@@ -146,6 +147,21 @@ func configure(route_data, climbs: Array, pois: Array, cyclist_budget: int, rng_
 	reset()
 
 
+## Lot N24 : montées du retour (climb_detector.gd `detect_back`, repère du parcours, pied au-dessus du sommet), gardées
+## dans le repère retourné pour le demi-tour. Après `configure`.
+func set_back_climbs(back: Array) -> void:
+	_back_climbs.clear()
+	if base_route == null:
+		return
+	var length := float(base_route.length_m)
+	for c in back:
+		if typeof(c) == TYPE_DICTIONARY:
+			_back_climbs.append(Vector2(RouteMirror.flip_s(length, float(c.get("start_s", 0.0))),
+				RouteMirror.flip_s(length, float(c.get("summit_s", 0.0)))))
+	if direction < 0:
+		_climbs = _back_climbs.duplicate()
+
+
 ## Abscisse du parcours `s` dans le repère du modèle (u = L - s à rebours, lot N23) ; réciproque.
 func model_s(s: float) -> float:
 	return s if direction > 0 or route == null else RouteMirror.flip_s(float(route.length_m), s)
@@ -155,14 +171,14 @@ func model_s(s: float) -> float:
 ## parcours). Le modèle roule ensuite sur le parcours retourné ; les groupes déjà là restent à leur place : ceux qui
 ## allaient dans son sens viennent en face, ceux d'en face qui l'avaient croisé roulent devant lui (`ahead`), ceux
 ## d'en face pas encore croisés, désormais dans son dos, quittent la route ; ceux du core (`core`) restent au core.
-## Aucune montée à rebours tant que celles du retour ne sont pas détectées (lot N24). Vrai si le sens a changé.
+## À rebours, les montées sont celles du retour (lot N24). Vrai si le sens a changé.
 func set_direction(dir: int, rider_s: float = NAN) -> bool:
 	var d := -1 if dir < 0 else 1
 	if d == direction or base_route == null:
 		return false
 	direction = d
 	route = base_route if d > 0 else RouteMirror.new(base_route)
-	_climbs = _base_climbs.duplicate() if d > 0 else []
+	_climbs = _base_climbs.duplicate() if d > 0 else _back_climbs.duplicate()
 	var rider := NAN if is_nan(rider_s) else model_s(rider_s)
 	var length := float(base_route.length_m)
 	var kept := []

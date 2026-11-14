@@ -10,6 +10,9 @@ const TrafficModel := preload("res://scripts/traffic_model.gd")
 const RoadCyclistsModel := preload("res://scripts/road_cyclists_model.gd")
 const RouteMirror := preload("res://scripts/route_mirror.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
+const ClimbDetector := preload("res://scripts/climb_detector.gd")
+const RoadsideModel := preload("res://scripts/roadside_model.gd")
+const RoadBuilder := preload("res://scripts/road_builder.gd")
 
 const LENGTH_M := 30000.0
 const DT := 0.1
@@ -30,13 +33,18 @@ func _check(cond: bool, msg: String) -> void:
 
 ## Route droite vers l'est, en montée de 3 % jusqu'à 10 km puis plate.
 func _route():
+	return _route_with(func(s: float) -> float: return 3.0 if s < 10000.0 else 0.0)
+
+
+## Route droite vers l'est de LENGTH_M, pente `grade.call(s)`.
+func _route_with(grade: Callable):
 	var ds := 10.0
 	var n := int(LENGTH_M / ds) + 1
 	var cols := {"lat": [], "lon": [], "alt_m": [], "x": [], "z": [], "grade_pct": [], "heading_deg": []}
 	var alt := 400.0
 	for i in range(n):
 		var s := i * ds
-		var g := 3.0 if s < 10000.0 else 0.0
+		var g: float = grade.call(s)
 		cols["lat"].append(48.9)
 		cols["lon"].append(7.1)
 		cols["alt_m"].append(alt)
@@ -148,7 +156,7 @@ func _test_cyclists(route) -> void:
 		for r in cm.riders():
 			var p: Vector2 = before[str(r["id"])]
 			kept_ok = kept_ok and is_equal_approx(cm.model_s(float(r["s"])), p.x) and is_equal_approx(-float(r["lateral"]), p.y)
-		kept_ok = kept_ok and cm._climbs.is_empty()
+		kept_ok = kept_ok and cm._climbs.is_empty()   # pas de set_back_climbs ici : aucune montée du retour
 		while s > 2000.0:
 			var u: float = cm.model_s(s)
 			cm.update(u, V_MPS, DT)
@@ -164,6 +172,52 @@ func _test_cyclists(route) -> void:
 	_check(kept_ok, "au demi-tour, les cyclistes déjà là restent à leur place ; montées vides à rebours, rendues à l'aller")
 
 
+## Lot N24 : colline montée de 2 à 5 km, redescendue de 5 à 8 km ; au retour, la montée va de 8 à 5 km.
+func _test_way_back_climbs() -> void:
+	var route = _route_with(func(s: float) -> float: return 6.0 if s >= 2000.0 and s < 5000.0 else (-6.0 if s >= 5000.0 and s < 8000.0 else 0.0))
+	var fwd: Array = ClimbDetector.detect(route)
+	var back: Array = ClimbDetector.detect_back(route)
+	_check(fwd.size() == 1 and back.size() == 1, "une montée à l'aller, une au retour (%d, %d)" % [fwd.size(), back.size()])
+	if fwd.size() != 1 or back.size() != 1:
+		return
+	var b: Dictionary = back[0]
+	_check(int(b["dir"]) == -1 and absf(float(b["start_s"]) - 8000.0) < 150.0 and absf(float(b["summit_s"]) - 5000.0) < 150.0,
+		"montée du retour : pied vers 8 km, sommet vers 5 km (%.0f → %.0f m)" % [float(b["start_s"]), float(b["summit_s"])])
+	var items: Array = RoadsideModel.items(route, fwd + back)
+	var summits := 0
+	var back_approach := []
+	for it in items:
+		if str(it["kind"]) == "summit":
+			summits += 1
+		if str(it["kind"]) == "approach" and int(it["side"]) < 0:
+			back_approach.append(it)
+	_check(summits == 2, "sommet partagé : un seul panneau de col par côté (%d)" % summits)
+	var ok := back_approach.size() == 3
+	for it in back_approach:   # « Sommet à 3, 2, 1 km » en aval du sommet, pente du retour positive
+		var km := int(it["km"])
+		ok = ok and absf(float(it["s"]) - (float(b["summit_s"]) + km * 1000.0)) < 1.0 and int(it["pct"]) >= 5
+	_check(ok, "panneaux d'approche du retour à gauche, à 3, 2 et 1 km du sommet, pente de 6 %% (%s)" % str(back_approach.map(func(i): return [i["s"], i["km"], i["pct"]])))
+	var marks: Array = RoadsideModel.paint_marks(fwd + back)
+	var back_marks := marks.filter(func(m): return int(m["dir"]) < 0)
+	ok = back_marks.size() == 3
+	for m in back_marks:
+		ok = ok and absf(float(m["s"]) - (float(b["summit_s"]) + int(m["digit"]) * 1000.0)) < 1.0
+	_check(ok, "chiffres peints du retour : 3, 2, 1 en aval du sommet (%d)" % back_marks.size())
+	var mat := ShaderMaterial.new()
+	RoadBuilder.set_marks(mat, back_marks)
+	var arr: PackedVector2Array = mat.get_shader_parameter("marks")
+	_check(arr.size() == 8 and arr[0].y < 0.0, "chiffre du retour négatif pour le shader (%s)" % str(arr[0]))
+	var cm = RoadCyclistsModel.new()
+	cm.configure(route, fwd, [], 12, 1)
+	cm.set_back_climbs(back)
+	cm.set_direction(-1, 9000.0)
+	var c: Vector2 = cm._climbs[0] if cm._climbs.size() == 1 else Vector2(-1, -1)
+	_check(absf(c.x - (LENGTH_M - float(b["start_s"]))) < 1.0 and absf(c.y - (LENGTH_M - float(b["summit_s"]))) < 1.0,
+		"cyclistes du décor à rebours : montée du retour dans le repère retourné (%s)" % str(c))
+	cm.set_direction(1, 9000.0)
+	_check(cm._climbs.size() == 1 and absf(cm._climbs[0].y - float(fwd[0]["summit_s"])) < 1.0, "de nouveau à l'aller : montée de l'aller")
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -173,5 +227,6 @@ func _run() -> void:
 	_test_mirror(route)
 	_test_traffic(route)
 	_test_cyclists(route)
+	_test_way_back_climbs()
 	print("test_decor_rebours : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

@@ -1,0 +1,11 @@
+{
+  "description": "Montées du retour (lot N24) : monde de test du village, en SIM à 400 W, demi-tour sans arrêt par Y maintenu après la descente (vers 4,3 km), puis remontée à rebours de la descente de l'aller : panneau d'approche « Sommet à 1 km » à gauche et chiffre 1 peint sur l'autre voie, lisibles dans le sens de marche ; captures toutes les 5 s, en low, medium et high.",
+  "trainer": {"appear_at": 0.3, "connect_delay_s": 0.3},
+  "rider": {"strategy": "constante", "watts": 400, "cadence_rpm": 90},
+  "click": {"appear_at": 0.5, "connect_delay_s": 0.3},
+  "hr": {"appear_at": 0.5, "connect_delay_s": 0.2},
+  "events": [
+    {"t": 495, "action": "press", "button": "Y", "duration_s": 1.2}
+  ],
+  "bench": {"world": "village", "duration_s": 680, "every_s": 5}
+}

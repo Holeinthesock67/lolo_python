@@ -342,20 +342,22 @@ static func _prepare_job(job: Dictionary) -> void:
 	var road_w: float = job["road_width_m"]
 	var found: Array = climbs_of(r)
 	var uw := bool(job.get("underwater", false))   # sous l'eau (lot SM1) : ni spectateurs ni passants
+	# Lot N24 : montées du retour (après un demi-tour), panneaux d'approche et chiffres peints dans les deux sens
+	var back: Array = ClimbDetector.detect_back(r)
 	var people: Array = [] if uw else found
 	var cm = CrowdModel.new()
 	cm.configure(r, people, water, bool(job["crowd_all_climbs"]) and not uw, 0, road_w)
 	var pm = PassersbyModel.new()
 	pm.configure(r, [] if uw else buildings, water, 0, road_w, PassersbyModel.crowd_zones(people, bool(job["crowd_all_climbs"]) and not uw))
 	var marks := {}
-	for m in RoadsideModel.paint_marks(found):
+	for m in RoadsideModel.paint_marks(found + back):
 		var k := int(floor(float(m["s"]) / CHUNK_M))
 		if not marks.has(k):
 			marks[k] = []
 		marks[k].append(m)
 	job["result"] = {
-		"climbs": found, "pois": all_pois, "crowd": cm, "passersby": pm, "marks": marks,
-		"items": [] if uw else RoadsideModel.items(r, found, all_pois, water, road_w, job["biome_at"]),
+		"climbs": found, "climbs_back": back, "pois": all_pois, "crowd": cm, "passersby": pm, "marks": marks,
+		"items": [] if uw else RoadsideModel.items(r, found + back, all_pois, water, road_w, job["biome_at"]),
 	}
 
 
@@ -404,6 +406,7 @@ func _poll_job(wait: bool = false) -> void:
 	if world_streamer != null and world_streamer.has_method("rideable_half"):
 		half_at = func(s: float) -> float: return world_streamer.rideable_half(s, _road_width_m)
 	cyclists.configure(_route, climbs, pois, 0 if underwater else int(living.get("cyclists", 0)), 0, _road_width_m, traffic, half_at)
+	cyclists.set_back_climbs(res["climbs_back"])   # montées du retour, celles des cyclistes du décor à rebours (N24)
 	sky.biome_model = _active_biome_model()
 	sky.configure(_route, theme, climbs, 0 if underwater else int(living.get("aircraft", 0)))
 	turbines.set_points(pois)

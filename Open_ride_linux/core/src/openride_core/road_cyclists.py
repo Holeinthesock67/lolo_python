@@ -372,15 +372,15 @@ class RoadCyclists:
         """Lot N23 : le cycliste a fait demi-tour (`rider_s` : sa place sur le parcours). Le modèle roule ensuite
         sur le parcours retourné ; les groupes déjà là restent à leur place : ceux qui allaient dans son sens
         viennent en face, ceux d'en face qui l'avaient croisé roulent devant lui (cas `ahead`), ceux d'en face
-        pas encore croisés, désormais dans son dos, quittent la route. Montées : aucune à rebours
-        tant que celles du retour ne sont pas détectées (lot N24). Vrai si le sens a changé."""
+        pas encore croisés, désormais dans son dos, quittent la route. Montées : celles du retour,
+        détectées sur le parcours retourné comme l'engine (lot N24). Vrai si le sens a changé."""
         d = -1 if direction < 0 else 1
         if d == self.direction:
             return False
         length = self.base_route.length_m
         self.direction = d
         self.route = self.base_route if d > 0 else MirroredRoute(self.base_route)
-        self.climbs = list(self._base_climbs) if d > 0 else []
+        self.climbs = list(self._base_climbs) if d > 0 else detect_climbs(self.route)   # montées du retour (N24)
         rider = None if rider_s is None else self.model_s(rider_s)
         kept = []
         for g in self.groups:
