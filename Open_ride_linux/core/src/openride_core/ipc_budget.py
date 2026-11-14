@@ -82,6 +82,17 @@ def _drop_power_profile(d: dict[str, Any]) -> None:
         d["summary"].pop("power_profile", None)
 
 
+def _bot_items_if_devices(d: dict[str, Any]) -> None:
+    # Lot GP10 : objet en réserve et effets des bots du Grand Prix (`item`, `fx`), gardés par l'engine depuis la
+    # dernière trame qui les portait (comme `bots.LIGHT_ROTATED`), quittent la trame qui porte `devices`
+    # avant les bots eux-mêmes : à 11 adversaires, elle dépassait 4 096 octets.
+    if "devices" in d:
+        for bot in d.get("bots") or []:
+            if isinstance(bot, dict):
+                bot.pop("item", None)
+                bot.pop("fx", None)
+
+
 def _bots_if_devices(d: dict[str, Any]) -> None:
     if "devices" in d:
         d.pop("bots", None)
@@ -93,6 +104,7 @@ def _bots_if_devices(d: dict[str, Any]) -> None:
 STATE_DEGRADATION: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("textes raccourcis", _shorten_texts),
     ("noms des bots raccourcis", _short_bot_names),
+    ("objets des bots (trame avec devices)", _bot_items_if_devices),   # lot GP10 : l'engine garde les derniers reçus
     ("bots (trame avec devices)", _bots_if_devices),
     ("devices", _drop("devices")),
     # Lot N20 (révision 1.10) : la courbe du bilan part avant le bilan lui-même ; l'engine garde la dernière reçue.

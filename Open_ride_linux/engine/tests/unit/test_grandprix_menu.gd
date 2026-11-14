@@ -39,7 +39,7 @@ func _item(f, id: String) -> Dictionary:
 
 const SETTINGS := {"type": "settings", "v": 1, "items": [
 	{"key": "bots.level_pct", "label": "Niveau des bots", "type": "int", "value": 100, "min": 50, "max": 150, "step": 5, "unit": "%", "group": "ride", "applies": "next_session"},
-	{"key": "grandprix.opponents", "label": "Grand Prix : adversaires", "type": "int", "value": 4, "min": 2, "max": 4, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
+	{"key": "grandprix.opponents", "label": "Grand Prix : adversaires", "type": "int", "value": 4, "min": 2, "max": 11, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.laps", "label": "Grand Prix : tours du circuit", "type": "int", "value": 3, "min": 1, "max": 5, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.distance_km", "label": "Grand Prix : distance en ligne", "type": "int", "value": 10, "min": 5, "max": 30, "step": 1, "unit": "km", "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.chaos", "label": "Grand Prix : chaos", "type": "choice", "value": "normal", "choices": ["soft", "normal", "wild"], "group": "ride", "applies": "next_session"},

@@ -232,7 +232,7 @@ class SurvivorConfig:
 class GrandPrixConfig:
     """Mode « Grand Prix des objets » (série GP, lot GP2) : plateau, format de la course et objets.
     Les objets joués et leurs valeurs sont dans `~/OpenRide/grandprix.toml` (`grandprix.items`)."""
-    opponents: int = 4             # adversaires (2 à 4 ; 11 avec le lot GP10)
+    opponents: int = 4             # adversaires (2 à 11 depuis le lot GP10, peloton du lot PL1)
     laps: int = 3                  # circuit : nombre de tours (1 à 5)
     distance_km: int = 10          # parcours en ligne : distance de la course (5 à 30 km)
     chaos: str = "normal"          # force et fréquence des objets : soft (× 0,7), normal, wild (× 1,3)
@@ -394,7 +394,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("ride", "traffic_bench_s"): (0, 600),
     ("survivor", "opponents"): (2, 11),         # lot DS8 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
     ("survivor", "spacing_km"): (1, 3),
-    ("grandprix", "opponents"): (2, 4),         # lot GP2 ; 2 à 11 avec le lot GP10
+    ("grandprix", "opponents"): (2, 11),        # lot GP10 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
     ("grandprix", "laps"): (1, 5),
     ("grandprix", "distance_km"): (5, 30),
     ("grandprix", "box_every_m"): (1000, 3000),

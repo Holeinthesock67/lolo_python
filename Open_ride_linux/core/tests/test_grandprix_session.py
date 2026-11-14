@@ -146,6 +146,41 @@ def test_three_laps_four_bots_frames_hits_and_bilan(env):
     assert s.grandprix is None and s.state.gp is None
 
 
+def test_eleven_bots_full_race_frames_fit_with_devices(env):
+    """Lot GP10 : course de 3 tours à 11 adversaires sans erreur ; chaque trame est valide et tient dans
+    4 096 octets, y compris celle qui porte `devices` (une sur 30), qui garde ses 11 bots : seuls l'objet en
+    réserve et les effets des bots en partent si besoin (l'engine garde les derniers reçus)."""
+    from openride_core.ipc_budget import fit_state, size, worst_state
+
+    make, run, frame, _ = env
+    s, _, errors = make(6805, opponents=11)
+    s._on_command("start", {"mode": "grandprix"}, 2)
+    assert not errors and [type(b) for b in s.bots] == [ProfileBot] * 11
+    state_v = validator("state")
+    devices = worst_state("1.4")["devices"]               # appareils au plus lourd
+    seen = []
+
+    def check(sess):
+        sess._frame_count += 1
+        d = frame(sess)
+        state_v.validate(d)
+        assert size(d) <= STATE_LIMIT_BYTES               # trame ordinaire : rien à alléger
+        assert sum("fx" in b for b in d["bots"]) == 6     # 5 bots proches et un loin à tour de rôle
+        out, dropped = fit_state({**d, "devices": devices}, STATE_LIMIT_BYTES)
+        state_v.validate(out)
+        assert size(out) <= STATE_LIMIT_BYTES and len(out["bots"]) == 11 and "gp" in out
+        assert "bots (trame avec devices)" not in dropped
+        seen.append(d["gp"])
+        if d["gp"]["held"]:
+            sess._grandprix_press("Z_SHORT")
+
+    run(s, 1500, check)
+    assert s.state.session_state == "FINISHED" and not errors
+    assert {f["of"] for f in seen} == {12}
+    summary = s.state.summary["gp"]
+    assert 1 <= summary["place"] <= 12 and summary["of"] == 12 and summary["laps"] == 3
+
+
 def test_grade_sent_ignores_objects(env, monkeypatch):
     """Pas à pas, la pente envoyée d'une course avec objets (coups de fouet, glissade) est celle d'une séance
     sans objets placée à la même position, à la même vitesse virtuelle et au même abri."""
@@ -376,7 +411,7 @@ def test_settings_listed_and_mode_announced():
     assert not any(k[0] == "grandprix" for k in config_mod.PENDING_KEYS)
     assert "grandprix" in CORE_MODES and "grandprix" not in PENDING_MODES
     items = {it["key"]: it for it in settings.current(Config())}
-    assert (items["grandprix.opponents"]["min"], items["grandprix.opponents"]["max"]) == (2, 4)
+    assert (items["grandprix.opponents"]["min"], items["grandprix.opponents"]["max"]) == (2, 11)   # lot GP10 : peloton du lot PL1
     assert items["grandprix.chaos"]["choices"] == ["soft", "normal", "wild"]
     assert items["grandprix.box_every_m"]["step"] == 500 and items["grandprix.box_every_m"]["value"] == 1500
     assert items["grandprix.laps"]["value"] == 3 and items["grandprix.distance_km"]["value"] == 10
