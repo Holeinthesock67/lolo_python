@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Recettes Khardung La et Abra Málaga dans le pack `cols_celebres` ; `unpaved = true` n'ouvre plus les pistes | Python, TOML | HP1, O16 | Petite | En PR le 13 novembre, **version 6.0** |
+| Recettes Khardung La et Abra Málaga dans le pack `cols_celebres` ; `unpaved = true` n'ouvre plus les pistes | Python, TOML | HP1, O16 | Petite | **Livré le 13 novembre** (PR #865), **version 6.0** |
 
 ## 1. Objectif
 
@@ -31,3 +31,7 @@ Aucune trace dans le dépôt : seulement les recettes. Crédits du pack inchang�
 - Cloud : `compiler/tests/test_route_recipe.py` (pack de 21 recettes, piste non revêtue écartée même avec `unpaved = true`, piste revêtue gardée), suite compilateur complète.
 - PC (file du fil de fusion) : `route-pack-build cols_celebres --only khardung_la,abra_malaga --install` puis compilation des deux traces (part `high_plateau`) et banc trois qualités sur `khardung_la` (budgets low 8, medium 13, high 16 ms) ; captures validées par le propriétaire avant fusion.
 - Pack de base livré hors git (décision du 12 novembre) : lot à part, avant l'installateur J9.
+
+## 5. Livraison
+
+PR #865, fusionnée le 13 novembre 2026. Statut remis à jour le 14 novembre d'après les PR fusionnées (statut précédent : « En PR le 13 novembre »).
