@@ -385,3 +385,19 @@ def test_bench_forced_passes_alternate_tractor_then_overtaking_truck():
     assert tractor.cruise_mps == pytest.approx(v * tr.BENCH_SLOW_SPEED_FRAC)   # rattrapé, jamais semé
     assert truck.dir == 1 and truck.cruise_mps > v and not truck.slow
     assert off.bench_forced == 0 and all(int(x.id[1:]) < tr.TEST_SLOT0 for x in off.vehicles)
+
+
+def test_underwater_route_has_no_traffic() -> None:
+    """Lot SM1 : un parcours dont la route est au moins pour moitié dans un biome sous l'eau (`reef`) n'a ni
+    circulation ni cyclistes du décor ; manifeste sans couche biome ou illisible : la circulation d'avant."""
+    from openride_core.traffic import underwater_route
+
+    def m(shares):
+        return {"layers": {"biome": {"present": True, "shares": shares}}}
+
+    assert underwater_route(m({"reef": 100.0}))
+    assert underwater_route(m({"reef": 50.0, "coast": 50.0}))
+    assert not underwater_route(m({"reef": 49.9, "coast": 50.1}))
+    assert not underwater_route(m({"temperate_grassland": 100.0}))
+    assert not underwater_route({"layers": {}}) and not underwater_route(None)
+    assert not underwater_route(m({"reef": True}))

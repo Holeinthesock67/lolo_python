@@ -2,7 +2,9 @@
 
 Le braquet n'agit que sur la pente envoyée au trainer, jamais sur la vitesse virtuelle :
     G_eff = (G_terrain + G_base) * R_k - G_base
-avec R_k en progression géométrique entre R_min et R_max. G_eff ne change jamais de signe par
+avec R_k en progression géométrique entre R_min et R_max (0,455 à 2,60 depuis le 14 novembre, soit environ
+8 % par clic ; une même loi pour tous les modes). Sur une piste, toute la gamme est multipliée par
+`[velodrome] gear_scale` (1,25) : donnée du lieu, pas une exception de la loi. G_eff ne change jamais de signe par
 rapport au terrain : un petit braquet adoucit une montée sans la transformer en descente.
 """
 
@@ -43,15 +45,17 @@ class Gearing:
         self.k = max(self.k - n, 1)
         return self.k
 
-    def effective_grade(self, terrain_grade_pct: float, difficulty: float = 1.0) -> float:
+    def effective_grade(self, terrain_grade_pct: float, difficulty: float = 1.0, scale: float = 1.0) -> float:
         """Pente à envoyer au trainer pour le braquet courant, bornée à la plage autorisée.
+
+        `scale` multiplie le rapport du braquet (`[velodrome] gear_scale` sur une piste, 1 ailleurs).
 
         `difficulty` (coefficient de difficulté, SRS §5) multiplie la pente effective avant le
         bornage ; la vitesse virtuelle, elle, utilise toujours la pente réelle. Un résultat NaN
         donne 0 % : le bornage `min`/`max` le laisserait passer jusqu'à l'encodage FTMS.
         """
         g_base = self.cfg.g_base_pct
-        g = ((terrain_grade_pct + g_base) * self.ratio - g_base) * difficulty
+        g = ((terrain_grade_pct + g_base) * self.ratio * scale - g_base) * difficulty
         if math.isnan(g):
             return 0.0
         # Essai du 24 octobre : en braquets 3 à 5 sur 3 % (G_base 4 %), le trainer recevait une

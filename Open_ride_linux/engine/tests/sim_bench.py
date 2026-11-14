@@ -92,6 +92,7 @@ import quality_guard  # noqa: E402
 import rendu_jeu  # noqa: E402
 import sim_bench_inputs as inputs_mod  # noqa: E402
 from openride_core import sim_scenarios  # noqa: E402
+from openride_core.config import CHOICES as CONFIG_CHOICES  # noqa: E402
 from openride_core.tools.guide import Guide  # noqa: E402
 
 BENCH_SCENARIOS_DIR = TESTS_DIR / "sim_bench_scenarios"
@@ -380,7 +381,8 @@ class Bench:
         cfg_lines = [f"[ipc]\nport_state = {state_port}\nport_commands = {cmd_port}\n"]
         # Le core renvoie [render] quality à l'engine au démarrage (réglages O4) : sans cette ligne, sa valeur
         # par défaut (low) remplaçait --quality et un banc « medium » mesurait du low.
-        cfg_lines.append(f'[render]\nquality = "{a.quality}"\n')
+        cfg_lines.append(render_section(a.quality, getattr(a, "seasons", None), getattr(a, "day_night", None),
+                                        getattr(a, "month", None)))
         if self.difficulty is not None:
             cfg_lines.append(f"[trainer]\ndifficulty_pct = {float(self.difficulty)}\n")
         if self.config:
@@ -1036,7 +1038,7 @@ pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overfl
 <h1>Banc simulé : {html.escape(b.name)}</h1>
 <p>{html.escape(str(b.spec.get("description", "")))}<br>Parcours <b>{html.escape(b.world)}</b>,
 {f"ERG {html.escape(str(b.workout))}" if b.workout else "SIM"}, {b.duration:.0f} s,
-{f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {html.escape(b.applied_quality or "?")} (qualité appliquée ; demandée {b.args.quality})
+{f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {html.escape(b.applied_quality or "?")} (qualité appliquée ; demandée {b.args.quality}){html.escape(cycle_note(b.args))}
 {f"(écran réel, affichage {b.args.display})" if b.args.native else "(Xvfb, Vulkan logiciel, Forward+)"}.</p>
 <h2>Vérifications</h2><table>{rows}</table>
 {'<p><a href="sonde/rapport.html">Sonde de performance du moteur</a> (lot X13).</p>' if b.probe_summary else ""}
@@ -1081,6 +1083,23 @@ def home_changes(before: dict, after: dict, out: Path, home: Path) -> list[str]:
             changed.add(p)
     return sorted(changed)
 
+## Section [render] du config.toml du banc : la qualité, et les saisons, le jour et la nuit, le mois s'ils sont
+## demandés (banc rS1 du 14 novembre : le banc mesurait toujours l'été, réglages coupés). Une seule section
+## [render] : une table répétée rendrait le TOML illisible, d'où l'option plutôt que `bench.config`.
+def render_section(quality: str, seasons: str | None = None, day_night: str | None = None,
+                   month: str | None = None) -> str:
+    lines = ["[render]", f'quality = "{quality}"']
+    for key, value in (("seasons", seasons), ("day_night", day_night), ("month", month)):
+        if value:
+            lines.append(f'{key} = "{value}"')
+    return "\n".join(lines) + "\n"
+
+def cycle_note(args: Any) -> str:
+    """Saisons, jour et nuit, mois demandés au banc, pour l'en-tête du rapport (vide : réglages coupés)."""
+    parts = [f"{label} {getattr(args, key, None)}" for key, label in
+             (("seasons", "saisons"), ("day_night", "jour et nuit"), ("month", "mois")) if getattr(args, key, None)]
+    return "".join(", " + p for p in parts)
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
@@ -1098,6 +1117,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--difficulty", type=float, help="[trainer] difficulty_pct de la configuration")
     ap.add_argument("--size", default="1280x720")
     ap.add_argument("--quality", default="low", help="low, medium, high (défaut low)")
+    ap.add_argument("--seasons", choices=CONFIG_CHOICES[("render", "seasons")],
+                    help="réglage render.seasons de la séance (défaut : off, l'été d'aujourd'hui ; "
+                         "ex. autumn ou winter pour mesurer feuilles qui tombent et arbres d'hiver)")
+    ap.add_argument("--day-night", choices=CONFIG_CHOICES[("render", "day_night")],
+                    help="réglage render.day_night de la séance (défaut : off, soleil fixe)")
+    ap.add_argument("--month", choices=CONFIG_CHOICES[("render", "month")],
+                    help="réglage render.month de la séance (saisons « date » ; défaut : pc)")
     ap.add_argument("--speed-kmh", type=float, help="vitesse tenue par le trainer simulé (difficulté 100 %%, lot X35)")
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel, sans Xvfb")
     ap.add_argument("--camera", default="subjective", choices=("subjective", "follow_near", "follow_far", "side"),

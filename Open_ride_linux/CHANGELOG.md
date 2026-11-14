@@ -5,6 +5,16 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Un récif sous la mer livré avec le jeu (lot SM1)
+- Nouveau parcours de démonstration « Récif des tortues » : une boucle de 8 km au fond de la mer, de 11 à 26 m sous la surface. On passe par le Lagon des Tortues, la Forêt des Laminaires, le Jardin de Corail et le Tombant Bleu.
+- Nouveau biome « fond marin » (`reef`) : sable corallien et roche du récif, laminaires de 9 m qui ondulent, coraux et gorgones de toutes les couleurs, bancs de poissons jaunes et bleus, tortues et raies, son sourd de la mer et bulles.
+- Ambiance sous l'eau : brouillard bleu proche (à 230 m environ, quel que soit le préréglage), ciel noyé dans l'eau, surface ondulante vue d'en dessous, reflets mouvants sur le sable, bulles qui montent, lumière qui tombe d'en haut. Ni voitures, ni cyclistes du décor, ni spectateurs sous l'eau. Le vélo et l'entraînement ne changent pas.
+- Choix « fond marin » dans « Biome du décor ». Le compilateur ne le pose jamais sur un parcours réel.
+
+### Pack « Cols célèbres » livré avec le jeu (lot PK1)
+- Le pack des cols célèbres fait partie du jeu de base : construit une fois (`scripts/build_pack_base.sh`), livré déjà compilé dans le paquet, il s'installe au premier démarrage avec les contenus de départ, sans réseau et sans rien écraser.
+- Écran « Réglages › Contenus » : sans réseau ni confirmation quand le paquet porte le pack ; crédits OpenStreetMap (ODbL), Copernicus et WorldCover sur la ligne du pack et au §10 du guide d'utilisation.
+- Liste des parcours : un parcours dont la fiche (`<trace>.toml`) porte un nom s'affiche sous ce nom (« Abra Málaga », « Alpe d'Huez ») au lieu de son identifiant (« abra-malaga ») ; l'identifiant ne change pas.
 ### Nettoyage après l'import de fichiers (lot NT2)
 - `_on_command_failed` (main.gd) ne cite plus `list_imports`, retirée en révision 1.15 : les listes sans bandeau « sans réponse du core » sont celles que le client IPC relance (`IpcClient.LIST_COMMANDS`), testées par `test_list_commands.gd`.
 
@@ -56,6 +66,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - `[drivers] click_reset_locked` devient un choix : `"reset"` (défaut, comme avant), `"keep"` ou `"off"` ; les anciens `true` et `false` sont toujours lus.
 - `"keep"` essaie de garder le boîtier gauche déverrouillé (activation complète et réponse `ff 04 00`) et ne le redémarre que si Zwift le verrouille quand même. Essai sur le vélo du 8 novembre : sans effet sous le firmware 1.2.0 (verrou toujours vers 50 s), `"reset"` reste donc le défaut.
 - Journal : durée de chaque fenêtre de boutons du boîtier gauche ; `click_recette --verrou keep --attente-rappel 8` compte les appuis perdus par tranche de 10 min.
+
+### Mer animée, écume et plages (lot U9)
+- La mer des parcours côtiers n'est plus un plan d'eau immobile : vagues animées, reflets plus clairs vers l'horizon, couleur de l'eau du biome (littoral turquoise par défaut). Elle se prolonge jusqu'au-delà du brouillard.
+- Écume qui va et vient le long du rivage, plus large au pied des falaises ; plages de sable ou de galets posées sur le terrain.
+- Parcours sans mer : rien ne change, aucun coût.
 
 ### Mer, côte et plages dans les parcours compilés (lot U3)
 - Un parcours compilé avec la couche eau reçoit la mer, tirée des lignes de côte d'OpenStreetMap et refermée sur le bord du terrain, îles comprises.
