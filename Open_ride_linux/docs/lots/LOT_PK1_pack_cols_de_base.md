@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Pack « Cols célèbres » livré de base : construit une fois sur le PC (`scripts/build_pack_base.sh`), rangé dans le paquet hors git avec un manifeste, installé sans réseau au premier lancement avec les contenus de départ, crédits OpenStreetMap / Copernicus / WorldCover | Python + Bash | O16, O25, O29, HP1, CL1 (recette) | Moyenne | En PR le 13 novembre |
+| Pack « Cols célèbres » livré de base : construit une fois sur le PC (`scripts/build_pack_base.sh`), rangé dans le paquet hors git avec un manifeste, installé sans réseau au premier lancement avec les contenus de départ, crédits OpenStreetMap / Copernicus / WorldCover | Python + Bash | O16, O25, O29, HP1, CL1 (recette) | Moyenne | **Livré le 14 novembre** (PR #867) ; reste la recette PC |
 
 ## 1. Objectif
 
@@ -42,3 +42,7 @@ Depuis `~/Games/lolo_python/Open_ride_linux`, branche du lot, après CL1 si fusi
 5. **Premier lancement sans réseau** : profil neuf (`HOME` temporaire), réseau coupé (`unshare -rn` ou Wi-Fi coupé), `openride --trainer mock --input keyboard` : les contenus de départ installent les cols, ils sont dans la liste des parcours, rien n'est compilé au lancement (`~/OpenRide/Logs/`).
 
 **Part du propriétaire** : valider la planche et dire si le poids total convient.
+
+## 6. Livraison
+
+PR #867, fusionnée le 14 novembre 2026. Statut remis à jour le 14 novembre d'après les PR fusionnées (statut précédent : « En PR le 13 novembre »). Reste la recette PC du §5 (construction du paquet, contrôle, bancs, captures, premier lancement sans réseau) et la part du propriétaire.
