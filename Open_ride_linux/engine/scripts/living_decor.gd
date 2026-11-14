@@ -545,7 +545,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	# Cyclistes du décor (P28), figés en pause, qui laissent la place aux bots ; lot AS7 : cyclistes proches
 	# calculés par le core (liste `riders`, une trame sur trois)
 	if typeof(state.get("riders")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
-		cyclists.sync_core(state["riders"], int(state["seq"]), cam_s)
+		cyclists.sync_core(state["riders"], int(state["seq"]), cam_s,
+				float(state["s"]) if typeof(state.get("s")) in [TYPE_INT, TYPE_FLOAT] else NAN)
 	cyclists.update(cam_s, rider_v, dt_s, paused, bot_places)
 	cyclists_view.update(dt_s, paused, cam_s)
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)

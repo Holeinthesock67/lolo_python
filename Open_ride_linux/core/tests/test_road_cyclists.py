@@ -437,3 +437,40 @@ def test_rideable_half_matches_engine_rules() -> None:
     assert 1.5 < sp.rideable_half_m(R(), 100.0, "auto", widths, 6.0) < 3.0
     assert sp.rideable_half_m(R(), 50.0, "dirt", widths, 6.0) == pytest.approx(1.25)
     assert sp.rideable_half_m(R(), 200.0, "off", widths, 6.0) == 3.0
+
+
+def _flat_route(length_m: float = 40000.0) -> Route:
+    """Route droite et plate vers l'est, comme celle du rejeu core → engine du lot AS9."""
+    ds = 10.0
+    n = int(length_m / ds) + 1
+    cols: dict[str, list[float]] = {k: [] for k in ("lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg")}
+    for i in range(n):
+        for k, v in (("lat", 48.9), ("lon", 7.1), ("alt_m", 200.0), ("x", i * ds), ("z", 0.0),
+                     ("grade_pct", 0.0), ("heading_deg", 90.0)):
+            cols[k].append(v)
+    return Route({"version": "1.0", "ds_m": ds, "n": n, "length_m": (n - 1) * ds, "type": "open", **cols})
+
+
+@pytest.mark.parametrize("kmh", [55.0, 65.0, 75.0])
+def test_no_contact_at_high_speed(kmh: float) -> None:
+    """Lot AS9 (banc r879b du 14/11 sur le volcan, 50 à 65 km/h) : à vitesse tenue, aucun cycliste du décor ne
+    touche le cycliste ni un cycliste d'un autre groupe (critère de `living_decor._count_contacts` : 1,7 m en
+    long, 0,6 m en travers). Avant le correctif, un groupe `overtake` rabattu devant le cycliste puis ralenti
+    par un groupe lent ressortait à gauche devant lui et traversait sa ligne (65 km/h, graines 0 et 2)."""
+    route = _flat_route()
+    v = kmh / 3.6
+    hits = []
+    for seed in range(4):
+        m = rc.RoadCyclists(route, (), (), seed=seed)
+        dt = 1.0 / 50.0
+        s = 300.0
+        for k in range(int(600.0 / dt)):
+            m.update(s, v, dt)
+            if k % 5 == 0:
+                items = [(r.group, r.s, r.lane_m) for r in m.riders()] + [("cycliste", s, rc.RIDER_LATERAL_M)]
+                for i, a in enumerate(items):
+                    for b in items[i + 1:]:
+                        if a[0] != b[0] and abs(a[1] - b[1]) < 1.7 and abs(a[2] - b[2]) < 0.6:
+                            hits.append((seed, round(k * dt, 1), a[0], b[0], round(a[1] - s, 2), a[2], b[2]))
+            s += v * dt
+    assert not hits, f"{len(hits)} contacts, ex. {hits[:3]}"

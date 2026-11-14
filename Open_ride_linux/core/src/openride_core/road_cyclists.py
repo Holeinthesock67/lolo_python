@@ -75,6 +75,7 @@ SIDE_ARRIVE_MPS = 0.1     # ... à au moins 0,1 m/s jusqu'à y être
 DL_SPEED_MPS = 1.0        # passage de deux de front à la file (et retour) : recul ou retour d'un membre
 SIDE_LOOK_M = 2.5
 SIDE_CLEAR_M = 0.8
+SIDE_CROSS_S = MIN_CENTRE_M / SIDE_SPEED_MPS   # lot AS9 : temps d'un écart d'une place à la voisine
 SPEED_PERIOD_S = 1.0
 SALUT_EVERY = 3
 ROLL_N = 3.9
@@ -120,6 +121,11 @@ def _lerp(a: float, b: float, t: float) -> float:
 
 def _move_toward(a: float, b: float, delta: float) -> float:
     return b if abs(b - a) <= delta else a + math.copysign(delta, b - a)
+
+
+def _step_mps(g: Any) -> float:
+    """Vitesse du dernier pas d'un groupe (lot AS9), sa vitesse tant qu'il n'a pas roulé."""
+    return g.speed_mps if g.step_mps is None else g.step_mps
 
 
 def _sign(x: float) -> float:
@@ -297,6 +303,7 @@ class Group:
     bot: bool = False          # bot vu comme un groupe d'un cycliste (lot P32)
     held: bool = False         # lot AS7 : `overtake` rabattu qui garde sa vitesse
     half: float = 3.0          # demi-largeur roulable sous la tête du groupe (`_half_at`)
+    step_mps: float | None = None   # lot AS9 : vitesse du dernier pas (`_side_blocked`), sinon `speed_mps`
 
     @property
     def size(self) -> int:
@@ -588,7 +595,7 @@ class RoadCyclists:
                     m.dl = _move_toward(m.dl, m.dl0, DL_SPEED_MPS * dt_s)
 
     def _side_step(self, g: Group, m: Member, dt_s: float, rider_s: float,
-                   bots: Sequence[tuple[float, float]]) -> None:
+                   bots: Sequence[tuple[float, float]], rider_v: float = 0.0) -> None:
         """Écart latéral vers sa place sans à-coup : vitesse au plus SIDE_SPEED_MPS, approche en SIDE_TAU_S,
         accélération et freinage au plus SIDE_ACCEL_MPS2 (arrêt sur la place, sans la dépasser)."""
         lat0 = m.lateral
@@ -600,7 +607,7 @@ class RoadCyclists:
         lat1 = lat0 + v1 * dt_s
         if (target - lat1) * d <= 0.0:   # arrivé : posé sur sa place
             lat1, v1 = target, 0.0
-        if self._side_blocked(g, g.s - g.dir * m.dl, lat0, lat1, rider_s, bots):
+        if self._side_blocked(g, g.s - g.dir * m.dl, lat0, lat1, rider_s, bots, rider_v):
             lat1, v1 = lat0, 0.0
         m.lateral, m.lat_v = lat1, v1
 
@@ -623,13 +630,21 @@ class RoadCyclists:
         rel_now = g.s - rider_s
         if case == "overtake":
             tail_now = rel_now - (g.size - 1) * FILE_GAP_M
-            if g.side == "right" and rel_now >= -PASS_START_M and tail_now < MERGE_AHEAD_M:
+            # Lot AS9 : il ne sort pour doubler que derrière le cycliste, à plus de SIDE_LOOK_M de sa roue (ralenti
+            # devant lui par un groupe lent, c'est le cycliste qui le double : il reste sur sa droite au lieu de
+            # traverser sa ligne)
+            if g.side == "right" and -PASS_START_M <= rel_now < -SIDE_LOOK_M and tail_now < MERGE_AHEAD_M:
                 if near:
                     spd_now = min(spd_now, rider_v)
                 else:
                     g.side = "left"
             elif g.side == "left" and tail_now > MERGE_AHEAD_M and not near:
                 g.side = "right"
+            # Lot AS9 : sorti tout près derrière le cycliste, il ne s'approche pas à moins de SIDE_LOOK_M de sa roue
+            # tant qu'il n'est pas hors de sa ligne
+            if (g.side == "left" and rel_now < 0.0 and dt_s > 0.0
+                    and abs(g.lateral() - RIDER_LATERAL_M) < MIN_CENTRE_M - 1e-3):
+                spd_now = min(spd_now, max(0.0, -SIDE_LOOK_M - rel_now) / dt_s)
         # Lot P32 : un groupe qui en rattrape un autre du même sens le double vers l'axe (voir l'engine)
         g.pass_lat = None
         alongside = self._caught_groups(g)
@@ -679,13 +694,14 @@ class RoadCyclists:
             elif blocking or not faster:
                 spd_now = min(spd_now, slowest - FALL_BACK_MPS)
         g.s += direction * spd_now * dt_s
+        g.step_mps = spd_now
         rel = g.s - rider_s
         rel0 = rel if g.last_rel is None else g.last_rel
         g.last_rel = rel
         # En file près d'un bot (`ahead`, sur l'accotement) et sur un chemin étroit (tous les cas)
         self._formation(g, self._narrow(g.half) or (case == "ahead" and near), dt_s)
         for m in members:
-            self._side_step(g, m, dt_s, rider_s, bots)
+            self._side_step(g, m, dt_s, rider_s, bots, rider_v)
         if case == "ahead":
             tail = g.size * FILE_GAP_M
             if not g.passed and rel - tail < 0.0 <= rel0 - tail:
@@ -728,20 +744,33 @@ class RoadCyclists:
         return out
 
     def _side_blocked(self, g: Group, s: float, lat0: float, lat1: float, rider_s: float,
-                      bots: Sequence[tuple[float, float]]) -> bool:
+                      bots: Sequence[tuple[float, float]], rider_v: float = 0.0) -> bool:
+        """Vrai si passer de `lat0` à `lat1` à l'abscisse `s` rapprocherait un membre de `g` à moins de
+        SIDE_CLEAR_M d'un cycliste d'un autre groupe, d'un bot ou du cycliste (lot P32). Lot AS9 : on regarde
+        à SIDE_LOOK_M, plus le chemin que l'autre et lui se rapprochent en SIDE_CROSS_S (à 65 km/h, un groupe
+        ralenti à 25 km/h voit le cycliste arriver de 10 m)."""
         if abs(lat1 - lat0) < 1e-6:
             return False
+        g_vel = g.dir * _step_mps(g)
+
+        def close(o_s: float, o_vel: float) -> bool:
+            ds = o_s - s
+            closing = (g_vel - o_vel) * (1.0 if ds >= 0.0 else -1.0)
+            return abs(ds) < SIDE_LOOK_M + max(0.0, closing) * SIDE_CROSS_S
+
         near = []
-        if abs(rider_s - s) < SIDE_LOOK_M:
+        if close(rider_s, rider_v):
             near.append(RIDER_LATERAL_M)
-        for b, b_lat in bots:
-            if abs(float(b) - s) < SIDE_LOOK_M:
+        for i, (b, b_lat) in enumerate(bots):
+            b_v = self._bot_groups[i].speed_mps if i < len(self._bot_groups) else rider_v
+            if close(float(b), b_v):
                 near.append(float(b_lat))
         for h in self.groups:
-            if h is g or abs(h.s - s) > SIDE_LOOK_M + h.size * FILE_GAP_M:
+            h_vel = h.dir * _step_mps(h)
+            if h is g or abs(h.s - s) > SIDE_LOOK_M + abs(g_vel - h_vel) * SIDE_CROSS_S + h.size * FILE_GAP_M:
                 continue
             for m in h.members:
-                if abs(h.s - h.dir * m.dl - s) < SIDE_LOOK_M:
+                if close(h.s - h.dir * m.dl, h_vel):
                     near.append(m.lateral)
         for o_lat in near:
             d1 = abs(lat1 - o_lat)
