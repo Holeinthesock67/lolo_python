@@ -40,7 +40,8 @@
               "village",
               "viewpoint",
               "wind_turbine",
-              "flag"
+              "flag",
+              "wreck"
             ]
           },
           "x": {
@@ -66,6 +67,11 @@
             "type": "number",
             "exclusiveMinimum": 0,
             "description": "Facultatif (format 1.2) : hauteur du mât d'une éolienne (wind_turbine), d'après OSM height."
+          },
+          "length_m": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Facultatif (format 1.8, lot SM2) : longueur d'une épave (wreck), d'après OSM length."
           }
         }
       }

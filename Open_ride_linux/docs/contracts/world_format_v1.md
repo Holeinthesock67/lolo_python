@@ -224,7 +224,7 @@ Deux couches facultatives, chacune en fichiers `chunk_<k>.json`.
 }
 ```
 
-- `kind` : `church_bell`, `river`, `livestock`, `village`, `viewpoint` ; depuis la version 1.2 (lot P1), `wind_turbine` (OSM `power=generator` avec `generator:source=wind`, `height_m` facultatif d'après la balise `height`) et `flag` (OSM `man_made=flagpole`) ; une valeur inconnue est ignorée.
+- `kind` : `church_bell`, `river`, `livestock`, `village`, `viewpoint` ; depuis la version 1.2 (lot P1), `wind_turbine` (OSM `power=generator` avec `generator:source=wind`, `height_m` facultatif d'après la balise `height`) et `flag` (OSM `man_made=flagpole`) ; depuis 1.8 (lot SM2), `wreck` : épave de navire (OSM `historic=wreck`, `length_m` facultatif d'après la balise `length`, 42 m sans balise), posée sur le fond ; une valeur inconnue est ignorée.
 - `radius_m` : distance d'audibilité ou de visibilité.
 - L'engine associe un son à chaque `kind` selon le thème ou la configuration audio ; `name` sert à l'affichage éventuel.
 
@@ -513,6 +513,7 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.8 | 12 novembre 2026 | Ajout compatible (lots AT1 et AT2, 6.0) : 18e biome `atlantic_heath` (Atlantique et landes) dans l'énumération des biomes (§8 quater, `biome`, `manifest` et `theme`), espèces `heather`, `gorse`, `bracken` de `biomes.<id>.vegetation.species` (§9) ; entrée `biomes.atlantic_heath` du thème par défaut ; le compilateur pose le biome d'après la table embarquée `data/biome_zones.toml` (rectangles × Köppen × classes WorldCover), commune aux parcours et au monde ouvert |
 | 1.8 | 12 novembre 2026 | Ajout compatible (lot HP1, 6.0) : biome `high_plateau` (hauts plateaux : Altiplano, Tibet, Ladakh) dans l'énumération des biomes (§8 quater, `biome`, `manifest` et `theme`), espèce `bunchgrass` dans `vegetation.species` du thème (§9) ; entrée `biomes.high_plateau` du thème par défaut ; un lecteur plus ancien refuse ces identifiants comme tout identifiant inconnu |
 | 1.8 | 13 novembre 2026 | Ajout compatible (lot SM1, parcours de démonstration sous-marin) : biome `reef` (fond marin : récif, laminaires, coraux) dans l'énumération des biomes (§8 quater, `biome`, `manifest` et `theme`), espèces `kelp`, `coral`, `sea_fan` dans `vegetation.species` du thème (§9) ; entrée `biomes.reef` du thème par défaut. Le compilateur ne pose jamais `reef` sur un parcours réel : seul le générateur des démos l'emploie. L'engine rend le poids de `reef` sous la caméra comme une ambiance sous l'eau (brouillard bleu proche, surface vue d'en dessous, lumière d'en haut) |
+| 1.8 | 14 novembre 2026 | Ajout compatible (lot SM2, épave du Récif des tortues) : point d'intérêt `wreck` (OSM `historic=wreck`) avec `length_m` facultatif (§8, `poi.schema.json`). La requête Overpass ne change pas (cache des parcours compilés gardé) : l'épave vient des données fournies au compilateur, comme celle du parcours de démonstration du récif. Un lecteur plus ancien l'ignore |
 
 ## 13. Monde vivant (monde ouvert, série W)
 

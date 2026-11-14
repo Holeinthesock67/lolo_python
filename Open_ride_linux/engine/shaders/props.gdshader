@@ -13,7 +13,11 @@ shader_type spatial;
 //   4 nacelle : capot à panneaux et grilles d'aération ;
 //   5 pale : bord d'attaque usé vers le bout, salissure ;
 //   6 couche peinte d'un panneau d'approche (fond coloré, bandeau, filet) : film plat de `base_color`, avec en option
-//     un pictogramme dessiné à l'encre `ink_color` (`picto` : 1 cycliste).
+//     un pictogramme dessiné à l'encre `ink_color` (`picto` : 1 cycliste) ;
+//   7 épave (lot SM2, wrecks.gd), pièce `part` : 0 coque et pont, 1 timonerie, 2 mât et cheminée. Acier rouillé
+//     (coulures sous le liston, plaques de tôle), concrétions claires et algues vertes sur les faces tournées vers
+//     le haut, pont de planches pourries ; coque : hublots sous le liston, brèche sombre au flanc tribord ;
+//     timonerie : vitres noyées (bande sombre) ; sable qui remonte sur le bas de la pièce.
 // Dimensions de la pièce : UV2 (largeur, hauteur) pour les maillages construits par roadside_props.gd, sinon
 // `size_m` ; les pièces sont centrées sur l'origine.
 // La couleur de la pièce est `base_color` ; le texte des panneaux reste un Label3D posé devant la face.
@@ -29,6 +33,7 @@ uniform float head_from_m = 0.58;         // borne : hauteur du bas de la tête 
 uniform vec3 border_color : source_color = vec3(0.95, 0.95, 0.93);   // panneau : liseré de la face
 uniform int picto = 0;                    // couche peinte : 0 aucun, 1 cycliste
 uniform vec3 ink_color : source_color = vec3(0.08);
+uniform int part = 0;                     // épave (kind 7) : 0 coque, 1 timonerie, 2 tubes
 
 // Distance à un segment
 float sd_seg(vec2 p, vec2 a, vec2 b) {
@@ -168,6 +173,56 @@ void fragment() {
 			float aa = 0.012;
 			col = mix(col, ink_color, picto_cyclist(q, aa));
 		}
+	} else if (kind == 7) {
+		// Épave : acier rouillé et plaques de tôle, coulures, concrétions et algues sur le dessus
+		float up = v_obj_normal.y;
+		float grain = sd_noise(p.xz * 3.0 + p.yy * 2.0);
+		float plates = 1.0 - smoothstep(0.0, 0.04, min(abs(fract(p.z / 3.0) - 0.5), abs(fract(p.y / 1.5) - 0.5)) - 0.46);
+		float rust = smoothstep(0.35, 0.8, sd_noise(vec2(p.z * 0.8 + p.x * 0.8, p.y * 0.25)) + 0.3 * grain);
+		col = mix(col, lineaire(vec3(0.42, 0.22, 0.10)), rust * 0.75);
+		col *= 1.0 - 0.18 * plates;
+		// Coulures verticales sous le haut de la pièce
+		float drip = smoothstep(0.55, 0.9, sd_noise(vec2((p.z + p.x) * 2.5, p.y * 0.15)));
+		col = mix(col, lineaire(vec3(0.30, 0.15, 0.07)), drip * 0.5);
+		h = plates * 0.01 + grain * 0.004;
+		rough = 0.85;
+		metal = 0.25 * (1.0 - rust);
+		if (part == 0) {
+			bool side = abs(v_obj_normal.x) > 0.55 && up < 0.6;
+			// Hublots : rangée sous le liston, sur l'avant et le milieu
+			vec2 ph = vec2(fract(p.z / 2.2) - 0.5, (ground - 0.72 * v_extent.y) / 2.2);
+			float port = side && p.z > -0.3 * v_extent.z && p.z < 0.3 * v_extent.z ? smoothstep(0.17, 0.13, length(ph)) : 0.0;
+			col = mix(col, lineaire(vec3(0.03, 0.05, 0.06)), port);
+			// Brèche au flanc tribord, vers l'avant : trou sombre à bord déchiqueté
+			vec2 bq = vec2((p.z - 0.12 * v_extent.z) / 3.2, (ground - 0.42 * v_extent.y) / 1.4);
+			float breach = v_obj_normal.x > 0.4 ? smoothstep(1.0, 0.85, length(bq) + 0.25 * sd_noise(p.zy * 2.0)) : 0.0;
+			col = mix(col, lineaire(vec3(0.015, 0.02, 0.025)), breach);
+			h -= breach * 0.05;
+			if (up > 0.7) {
+				// Pont : planches pourries, joints sombres, quelques planches manquantes
+				float plank = fract(p.x / 0.35);
+				float gap = smoothstep(0.08, 0.0, min(plank, 1.0 - plank));
+				float missing = step(0.8, sd_noise(vec2(floor(p.x / 0.35) * 7.0, p.z * 0.4)));
+				col = lineaire(vec3(0.24, 0.19, 0.13)) * (0.8 + 0.3 * sd_noise(vec2(p.x * 3.0, p.z * 0.6)));
+				col = mix(col, lineaire(vec3(0.03)), max(gap * 0.7, missing));
+				h = -gap * 0.01;
+				metal = 0.0;
+				rough = 0.95;
+			}
+		} else if (part == 1) {
+			// Vitres de la timonerie : bande sombre au tiers haut, montants réguliers
+			float win = step(0.55, ground / v_extent.y) * step(ground / v_extent.y, 0.85) * step(abs(up), 0.5);
+			float mullion = smoothstep(0.06, 0.0, abs(fract((p.x + p.z) / 1.1) - 0.5) - 0.42);
+			col = mix(col, lineaire(vec3(0.02, 0.04, 0.05)), win * (1.0 - mullion));
+		}
+		// Algues et concrétions sur les faces tournées vers le haut, plus denses par taches
+		float cover = smoothstep(0.2, 0.8, up) * smoothstep(0.3, 0.7, sd_noise(p.xz * 0.7));
+		float crust = smoothstep(0.72, 0.8, sd_noise(p.xz * 5.0 + p.yy * 5.0)) * fine;
+		col = mix(col, lineaire(vec3(0.18, 0.30, 0.14)) * (0.8 + 0.4 * grain), cover * 0.8);
+		col = mix(col, lineaire(vec3(0.78, 0.66, 0.60)), crust * 0.55);
+		h += crust * 0.01;
+		// Sable qui remonte sur le bas de la pièce
+		col = mix(col, lineaire(vec3(0.72, 0.66, 0.51)), (1.0 - smoothstep(0.0, 0.25 * v_extent.y, ground + 0.4 * sd_noise(p.xz * 0.8))) * 0.8 * float(part == 0));
 	} else {
 		// Pale : bord d'attaque (côté +x) usé et sali vers le bout
 		float wear = smoothstep(0.25 * v_extent.x, 0.5 * v_extent.x, p.x) * smoothstep(-0.1, 0.5, p.y / v_extent.y);

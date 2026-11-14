@@ -45,6 +45,7 @@ const WeatherParticles := preload("res://scripts/weather_particles.gd")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 const WindTurbines := preload("res://scripts/wind_turbines.gd")
 const Flags := preload("res://scripts/flags.gd")
+const Wrecks := preload("res://scripts/wrecks.gd")
 const WaterMesh := preload("res://scripts/water_mesh.gd")
 const TrafficModel := preload("res://scripts/traffic_model.gd")
 const TrafficRenderer := preload("res://scripts/traffic_renderer.gd")
@@ -90,6 +91,7 @@ var particles: Node3D = null
 var fauna: Node3D = null
 var turbines: Node3D = null
 var flags: Node3D = null
+var wrecks: Node3D = null   # épaves des points `wreck` (lot SM2)
 var traffic = TrafficModel.new()
 var traffic_view: Node3D = null
 var road_traffic = RoadTrafficModel.new()
@@ -177,6 +179,7 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 	props.set_preset(QualityPresets.applied_name(preset))
 	street_lights.set_preset(QualityPresets.applied_name(preset))
 	turbines.set_preset(QualityPresets.applied_name(preset))
+	wrecks.set_preset(QualityPresets.applied_name(preset))
 	traffic.set_budget(0 if underwater else int(living.get("vehicles", 0)))
 	road_traffic.set_budget(int(living.get("distant_vehicles", 0)))
 	road_traffic_view.set_budget(int(living.get("distant_vehicles", 0)))
@@ -188,6 +191,7 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 	_sun_elevation_deg = _theme_sun_deg
 	turbines.visible = enabled
 	flags.visible = enabled
+	wrecks.visible = enabled
 	if world_streamer != null:
 		if world_streamer.has_method("set_road_markings"):
 			world_streamer.set_road_markings(enabled)
@@ -216,6 +220,9 @@ func _build_nodes() -> void:
 	flags = Flags.new()
 	flags.name = "Flags"
 	add_child(flags)
+	wrecks = Wrecks.new()
+	wrecks.name = "Wrecks"
+	add_child(wrecks)
 	traffic_view = TrafficRenderer.new()
 	traffic_view.name = "Traffic"
 	add_child(traffic_view)
@@ -291,6 +298,7 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 	passersby.configure(null)
 	turbines.set_points([])
 	flags.set_points([])
+	wrecks.set_points([])
 	for k in _loaded_chunks.keys():
 		props.remove_chunk(k)
 	street_lights.clear()
@@ -406,6 +414,7 @@ func _poll_job(wait: bool = false) -> void:
 	sky.configure(_route, theme, climbs, 0 if underwater else int(living.get("aircraft", 0)))
 	turbines.set_points(pois)
 	flags.set_points(pois)
+	wrecks.set_points(pois)
 	if world_streamer != null and world_streamer.has_method("set_road_marks"):
 		world_streamer.set_road_marks(res["marks"])
 	for k in _loaded_chunks:
@@ -531,6 +540,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	wave2_frames += 1
 	turbines.update(wind_eval, cam_pos, dt_s)
 	flags.update(wind_eval, dt_s)
+	wrecks.update(cam_pos)
 	if osm_streamer != null:
 		WaterMesh.update_shimmer(osm_streamer.water_material(), wind_eval, dt_s)
 	if not prepared:
