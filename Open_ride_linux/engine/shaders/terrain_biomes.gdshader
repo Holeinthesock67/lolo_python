@@ -46,7 +46,7 @@ global uniform float anim_time;
 uniform int caustic_slot = -1;
 const float CAUSTIC_NEAR_M = 25.0;
 const float CAUSTIC_FAR_M = 70.0;
-const float CAUSTIC_GAIN = 0.55;
+const float CAUSTIC_GAIN = 0.32;
 
 // Réseau de lignes claires qui ondulent : deux interférences de sinus déformés, sans texture.
 float caustic(vec2 p, float t) {

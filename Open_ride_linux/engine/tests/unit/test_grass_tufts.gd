@@ -423,17 +423,25 @@ class _DesertModel:
 		return {"sand_desert": dry, "temperate_meadow": 1.0 - dry}
 
 
+class _ReefModel:
+	func active() -> bool:
+		return true
+
+	func weights_at(_x: float, _z: float) -> Dictionary:
+		return {"reef": 1.0}
+
+
 ## Désert (03/11) : herbe sèche (teintes DRY_TINTS) et clairsemée ; hors désert ou sans modèle, herbe d'avant.
 func _test_desert() -> void:
 	var g = GrassTufts.new()
-	_check(g.dry_draw(0, 0, Vector3.ZERO) == 0, "sans modèle de biome : herbe d'avant")
+	_check(g.style_draw(0, 0, Vector3.ZERO) == 0, "sans modèle de biome : herbe d'avant")
 	var m := _DesertModel.new()
 	g.biome_model = m
 	var kept := 0
 	var green_in_desert := 0
 	var n := 400
 	for slot in range(n):
-		var d: int = g.dry_draw(3, slot, Vector3.ZERO)
+		var d: int = g.style_draw(3, slot, Vector3.ZERO)
 		green_in_desert += 1 if d == 0 else 0
 		kept += 1 if d == 1 else 0
 	_check(green_in_desert == 0, "désert pur : jamais d'herbe verte")
@@ -442,11 +450,25 @@ func _test_desert() -> void:
 	m.dry = 0.0
 	var green := 0
 	for slot in range(n):
-		green += 1 if g.dry_draw(3, slot, Vector3.ZERO) == 0 else 0
+		green += 1 if g.style_draw(3, slot, Vector3.ZERO) == 0 else 0
 	_check(green == n, "prairie : toutes les touffes d'avant")
 	for t in GrassTufts.DRY_TINTS:
 		var c: Color = t * Color(0.4, 0.56, 0.24)
 		_check(c.r > c.g and c.g > c.b, "teinte sèche %s : paille ou ocre (rouge > vert > bleu)" % c.to_html(false))
+	# Fond marin (lot SM1) : herbier sombre vert-bleu, clairsemé, jamais d'herbe des prés
+	var reef := _ReefModel.new()
+	g.biome_model = reef
+	var sea := 0
+	var meadow := 0
+	for slot in range(n):
+		var d: int = g.style_draw(3, slot, Vector3.ZERO)
+		sea += 1 if d == 2 else 0
+		meadow += 1 if d == 0 else 0
+	_check(meadow == 0 and absf(float(sea) / n - GrassTufts.SEA_KEEP) < 0.08,
+		"fond marin : herbier seulement, %.0f %% des places gardées (cible %.0f %%)" % [float(sea) / n * 100.0, GrassTufts.SEA_KEEP * 100.0])
+	for t in GrassTufts.SEA_TINTS:
+		var c: Color = t * Color(0.4, 0.56, 0.24)
+		_check(c.g > c.r and c.b > c.r and c.g < 0.5, "teinte d'herbier %s : sombre, vert-bleu" % c.to_html(false))
 	g.free()
 
 

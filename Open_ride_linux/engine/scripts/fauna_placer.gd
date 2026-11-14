@@ -191,9 +191,9 @@ const BIOME_GROUPS := {
 	# du fond (`agl` : hauteur du centre au-dessus du sol, `min_agl` : écart au sol le plus haut sous l'orbite) et
 	# toujours sous la surface (`below_y` : niveau de la mer, 0) ; `radius` : rayon de l'orbite.
 	"reef": [
-		{"species": "fish", "kind": "birds", "n": Vector2i(10, 18), "road_m": Vector2(10.0, 45.0), "min_m": 0.0, "share": 1.0, "key": "birds",
+		{"species": "fish", "kind": "birds", "n": Vector2i(14, 24), "road_m": Vector2(6.0, 30.0), "min_m": 0.0, "share": 1.0, "key": "birds",
 			"agl": Vector2(3.0, 6.0), "min_agl": 1.5, "below_y": 0.0, "radius": Vector2(6.0, 12.0)},
-		{"species": "fish_blue", "kind": "birds", "n": Vector2i(8, 16), "road_m": Vector2(20.0, 80.0), "min_m": 0.0, "share": 0.8, "key": "birds",
+		{"species": "fish_blue", "kind": "birds", "n": Vector2i(12, 20), "road_m": Vector2(8.0, 45.0), "min_m": 0.0, "share": 1.0, "key": "birds",
 			"agl": Vector2(4.0, 8.0), "min_agl": 1.5, "below_y": 0.0, "radius": Vector2(8.0, 16.0)},
 		{"species": "turtle", "kind": "birds", "n": Vector2i(1, 2), "road_m": Vector2(12.0, 50.0), "min_m": 0.0, "share": 0.8, "key": "deer",
 			"agl": Vector2(3.0, 6.0), "min_agl": 1.5, "below_y": 0.0, "radius": Vector2(10.0, 18.0)},

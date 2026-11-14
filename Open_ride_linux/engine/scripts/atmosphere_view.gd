@@ -287,7 +287,7 @@ func _apply_underwater(p: Dictionary) -> void:
 		var water: Color = p["horizon_color"]
 		mat.set_shader_parameter("strength", u)
 		mat.set_shader_parameter("deep_color", water)
-		mat.set_shader_parameter("bright_color", water.lerp(Color(0.85, 0.98, 1.0), 0.75))
+		mat.set_shader_parameter("bright_color", water.lerp(Color(0.85, 0.98, 1.0), 0.45))
 
 
 ## Lumière ambiante et ciel de l'heure (lot P19) ; sans jour et nuit, valeurs de la scène remises.

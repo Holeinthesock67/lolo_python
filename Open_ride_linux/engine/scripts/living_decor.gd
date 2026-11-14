@@ -495,6 +495,9 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	var rider_pos := cam_pos - Vector3(0.0, 1.4, 0.0)
 	# Météo (P8)
 	weather_eval = WeatherModel.evaluate(weather, alt_m, _valley_alt_at(cam_s), wind_eval)
+	if underwater:   # lot SM1 (14/11 : « pas de neige sous l'eau ») : ni pluie, ni neige, ni route mouillée
+		for key in ["rain", "snow", "wetness"]:
+			weather_eval[key] = 0.0
 	particles.update(cam_pos, weather_eval)
 	street_lights.update(cam_pos, now_s)   # lot P35 : projecteurs sous les luminaires proches, la nuit
 	# Gravel (U22) : surface sous la roue, poussière derrière elle par temps sec et crissement des pneus
@@ -504,9 +507,10 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	var wheel: Vector3 = _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * _rider_lane_m
 	particles.update_dust(wheel, back, 0.0 if paused else rider_v, surface_here)
 	# Feuilles qui tombent (saisons, lots P18 et P19) : près des forêts seulement, au vent
-	if season_falling_leaves > 0.0 or particles.get_emitter("leaves") != null and particles.get_emitter("leaves").emitting:
+	var falling := 0.0 if underwater else season_falling_leaves   # pas de feuilles qui tombent sous l'eau (SM1)
+	if falling > 0.0 or particles.get_emitter("leaves") != null and particles.get_emitter("leaves").emitting:
 		var forest_dist := float(living_world.neigh.get("forest_dist_m", INF)) if living_world != null else INF
-		particles.update_leaves(WeatherParticles.leaves_intensity(season_falling_leaves, forest_dist), wind_eval)
+		particles.update_leaves(WeatherParticles.leaves_intensity(falling, forest_dist), wind_eval)
 	if sound_player != null and sound_player.get("model") != null:
 		sound_player.model.set_surface(surface_here)
 	if world_streamer != null and world_streamer.has_method("set_road_wetness"):

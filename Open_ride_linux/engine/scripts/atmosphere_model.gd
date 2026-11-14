@@ -55,7 +55,7 @@ const POLAR_TINT := Color(0.86, 0.91, 1.0)
 const UNDERWATER_BIOMES := ["reef"]
 const UNDER_FOG_END_M := 230.0        # eau claire d'un lagon : on voit à 200 m environ
 const UNDER_HORIZON := 0.8            # horizon = couleur de l'eau du biome × 0,8
-const UNDER_LIGHT := 0.7              # lumière du soleil filtrée par l'eau
+const UNDER_LIGHT := 0.55             # lumière du soleil filtrée par l'eau (14/11 : sable moins blanc)
 const UNDER_SUN_DIR := Vector3(0.2, 0.95, -0.25)   # lumière qui tombe de la surface, presque verticale
 
 var model

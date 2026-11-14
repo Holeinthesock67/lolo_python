@@ -498,7 +498,7 @@ static func build_mesh(sp: String) -> ArrayMesh:
 		"yak":
 			return _build_yak()
 		"fish", "fish_blue":
-			return _build_fish()
+			return _scaled(_build_fish(), FISH_SCALE)
 		"turtle":
 			return _build_turtle()
 		"ray":
@@ -1217,6 +1217,19 @@ static func _fin(m, pts: Array) -> void:
 	for i in range(1, pts.size() - 1):
 		for p in [pts[0], pts[i], pts[i + 1]]:
 			m.vertex(p, Vector3.RIGHT, 0.0)
+
+
+## Poissons grossis de moitié (planche rSM1 du 14/11 : « petits et rares ») : 0,8 m, lisibles depuis la route.
+const FISH_SCALE := 1.5
+
+
+## Copie de `mesh` (une surface) à l'échelle `f`, poids (UV) et zones (CUSTOM0) gardés.
+static func _scaled(mesh: ArrayMesh, f: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_custom_format(0, SurfaceTool.CUSTOM_RGBA_FLOAT)
+	st.append_from(mesh, 0, Transform3D(Basis().scaled(Vector3.ONE * f), Vector3.ZERO))
+	return st.commit()
 
 
 ## Poisson de récif (chirurgien) : corps haut et plat, queue en croissant et nageoires à la couleur d'appoint,
