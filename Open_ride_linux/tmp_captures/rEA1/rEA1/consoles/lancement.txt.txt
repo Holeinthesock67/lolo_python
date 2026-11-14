@@ -1,0 +1,23 @@
+17:26:38 empreinte avant ee12095d86f222d8ff6fa3fcf6b7d847
+17:26:38 tête cc00e1a4
+17:26:48 pytest compilateur
+17:31:41 fin rc=0
+17:31:41 tests graphiques
+18:20:39 fin rc=1
+18:20:39 ea1_lac low
+18:27:41 fin rc=0
+18:29:11 ea1_lac medium
+18:36:14 fin rc=0
+18:37:44 ea1_lac high
+18:44:37 fin rc=0
+18:46:07 build irohazaka (~/OpenRide/GPX/cols-celebres/irohazaka.gpx)
+18:48:19 fin rc=0
+18:48:19 irohazaka low_branche
+19:08:34 fin rc=1
+19:08:34 irohazaka medium_branche
+19:28:49 fin rc=1
+19:28:49 irohazaka high_branche
+19:49:04 fin rc=1
+19:49:05 empreinte après 0718934cdf33d85a6d0b27339a349843
+19:49:05 clone be29640f
+19:49:05 FIN

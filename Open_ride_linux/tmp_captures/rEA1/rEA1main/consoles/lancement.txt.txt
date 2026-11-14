@@ -1,0 +1,13 @@
+19:49:06 empreinte avant 0718934cdf33d85a6d0b27339a349843
+19:49:06 tête be29640f
+19:49:15 build irohazaka (~/OpenRide/GPX/cols-celebres/irohazaka.gpx)
+19:49:22 fin rc=0
+19:49:22 irohazaka low_main
+20:09:38 fin rc=1
+20:09:38 irohazaka medium_main
+20:29:53 fin rc=1
+20:29:53 irohazaka high_main
+20:50:08 fin rc=1
+20:50:09 empreinte après 0718934cdf33d85a6d0b27339a349843
+20:50:09 clone be29640f
+20:50:09 FIN
