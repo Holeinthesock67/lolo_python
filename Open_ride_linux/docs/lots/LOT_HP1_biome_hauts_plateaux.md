@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Biome `high_plateau` complet : contrat, thème, touffes d'ichu, lamas et yacks, maisons d'adobe, règle de pose au compilateur, col de Ticlio | Python, GDScript, JSON | U24, JP1 | Moyenne | En PR le 12 novembre, **version 6.0** |
+| Biome `high_plateau` complet : contrat, thème, touffes d'ichu, lamas et yacks, maisons d'adobe, règle de pose au compilateur, col de Ticlio | Python, GDScript, JSON | U24, JP1 | Moyenne | **Livré le 13 novembre** (PR #854), **version 6.0** |
 
 ## 1. Objectif
 
@@ -44,3 +44,7 @@ Premier passage PC (12 novembre) : Khardung La et Abra Málaga refusés, « aucu
 - Sons propres (vent d'altitude, cris des lamas) : fonds U11 existants pour l'instant.
 - Variante de toit en tôle (calamina) et habitat tibétain à toit plat : à voir après les captures.
 - Ordre des identifiants avec le lot Atlantique : `atlantic_heath` 18e, `high_plateau` 19e une fois les deux fusionnés ; le second à fusionner remet main dans sa branche et place son identifiant après l'autre.
+
+## 7. Livraison
+
+PR #854, fusionnée le 13 novembre 2026. Statut remis à jour le 14 novembre d'après les PR fusionnées (statut précédent : « En PR le 12 novembre »).
