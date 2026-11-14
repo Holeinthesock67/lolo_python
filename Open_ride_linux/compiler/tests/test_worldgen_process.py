@@ -284,3 +284,47 @@ def test_process_end_to_end_and_second_session_reuses_cache(grid, tmp_path) -> N
     out2, err2 = _run_process(tmp_path, cache_dir, msgs)
     assert out2[-1]["type"] == "closed"
     assert "carrés générés 0," in err2 and "tuiles lointaines générées 0," in err2 and "téléchargements 0," in err2
+
+
+# --- impasse en balade : demi-tour de la route engagée -------------------------------------------
+
+def impasse_db(path: Path, end_km: int = 3) -> Path:
+    """Route est-ouest de −5 km à `end_km` km (une seule voie, aucune autre branche) : impasse aux deux bouts."""
+    w = OsmDbWriter(path, "test", "test/impasse")
+    pts = list(range(-5000, end_km * 1000 + 1, 100))
+    w.add_road(700, {"highway": "tertiary"}, [30_000 + k for k in range(len(pts))],
+               [lonlat(E_REF + d, N_REF) for d in pts])
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    return path
+
+
+def test_ride_into_a_dead_end_turns_back_without_gap_or_pause(tmp_path) -> None:
+    s, rec = session(tmp_path, impasse_db(tmp_path / "impasse.sqlite"))
+    s.handle(open_msg(E_REF + 100, N_REF, 90.0))           # départ vers l'est, l'impasse à 2,9 km
+    for k in range(1, 41):
+        s.handle({"type": "progress", "s_m": 250.0 * k, "v_mps": 8})
+        if s.has_work():
+            s.work()
+    # Jamais « plus de route connue » : la route revient sur elle-même et continue vers l'ouest.
+    assert not any(m["type"] == "status" and m.get("data") == "missing" for m in rec.msgs)
+    assert s.length_m >= 10_000.0 + 3000.0
+    route = s._route_columns()
+    x, z, sc = (np.asarray(route[k], dtype=float) for k in ("x", "z", "s"))
+    # Route continue : pas de trou entre deux points, abscisse croissante.
+    assert np.all(np.diff(sc) > 0.0)
+    assert float(np.max(np.hypot(np.diff(x), np.diff(z)))) < 60.0
+    # Le bout de l'impasse est atteint une seule fois, puis la route repart vers l'ouest sur la même voie.
+    e0 = s.e0
+    k_end = int(np.argmax(x))
+    assert float(x[k_end]) + e0 == pytest.approx(E_REF + 3000, abs=1.0)
+    assert sc[k_end] == pytest.approx(2900.0, abs=5.0)
+    k_west = k_end + int(np.argmin(x[k_end:]))               # l'autre bout (−5 km) : nouveau demi-tour
+    assert float(x[k_west]) + e0 == pytest.approx(E_REF - 5000, abs=1.0)
+    assert np.all(np.diff(x[k_end:k_west]) < 0.0)            # retour d'un seul tenant vers l'ouest
+    assert float(np.ptp(z)) < 1.0                           # toujours sur la même route
+    h = np.asarray(route["heading_deg"], dtype=float)
+    assert h[k_end - 5] == pytest.approx(90.0, abs=2.0) and h[k_end + 5] == pytest.approx(270.0, abs=2.0)
+    # Pente inversée au retour : même altitude au même endroit, dans l'autre sens.
+    alt = np.asarray(route["alt_m"] if "alt_m" in route else route["y"], dtype=float)
+    k_back = k_end + int(np.argmin(np.abs(x[k_end:] - x[k_end - 10])))
+    assert alt[k_back] == pytest.approx(alt[k_end - 10], abs=0.5)
