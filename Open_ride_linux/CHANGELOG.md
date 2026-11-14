@@ -14,9 +14,10 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Il remplace au jeu de base le « Tour des six paysages », la « Route de la côte » et la « Montée alpine » : une installation neuve ne les ajoute plus, mais ils restent installés chez ceux qui les ont déjà. Le « Col du lacet », le « Circuit des Prés » et le vélodrome ne changent pas.
 - Ciel des parcours de démonstration : le relief lointain s'arrête en montagnes de quelques centaines de mètres au lieu de monter à des kilomètres vers l'horizon (plus de grandes bandes grises en éventail dans le ciel).
 - Cyclistes du décor : un groupe ne ralentit plus pour celui qui le suit, le suiveur se règle sur l'allure réelle du premier, et un cycliste qui vous double ne traverse votre ligne qu'avec assez de place ; plus aucun contact entre eux ni avec vous sur les démonstrations.
-
+- Cyclistes du décor nombreux autour de vous : ceux que le core ne transmet pas (plus de six à moins de 60 m) ne restent plus à une place périmée tout près de vous.
 ### Nettoyage après l'import de fichiers (lot NT2)
 - `_on_command_failed` (main.gd) ne cite plus `list_imports`, retirée en révision 1.15 : les listes sans bandeau « sans réponse du core » sont celles que le client IPC relance (`IpcClient.LIST_COMMANDS`), testées par `test_list_commands.gd`.
+
 ### Grand Prix : plus de frôlements entre coureurs (lot GP12)
 - Un coureur sur une voie imposée (esquive, flèches) double et s'écarte comme les autres au lieu de rouler dans la roue d'un plus lent de sa voie.
 - Un objet (coup de fouet, super-forme, glissade du coureur de devant) ne pousse plus personne dans la roue devant : on freine roue contre roue, cycliste compris (vitesse virtuelle seulement, la pente envoyée ne change pas).
@@ -65,6 +66,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - `[drivers] click_reset_locked` devient un choix : `"reset"` (défaut, comme avant), `"keep"` ou `"off"` ; les anciens `true` et `false` sont toujours lus.
 - `"keep"` essaie de garder le boîtier gauche déverrouillé (activation complète et réponse `ff 04 00`) et ne le redémarre que si Zwift le verrouille quand même. Essai sur le vélo du 8 novembre : sans effet sous le firmware 1.2.0 (verrou toujours vers 50 s), `"reset"` reste donc le défaut.
 - Journal : durée de chaque fenêtre de boutons du boîtier gauche ; `click_recette --verrou keep --attente-rappel 8` compte les appuis perdus par tranche de 10 min.
+
+### Mer animée, écume et plages (lot U9)
+- La mer des parcours côtiers n'est plus un plan d'eau immobile : vagues animées, reflets plus clairs vers l'horizon, couleur de l'eau du biome (littoral turquoise par défaut). Elle se prolonge jusqu'au-delà du brouillard.
+- Écume qui va et vient le long du rivage, plus large au pied des falaises ; plages de sable ou de galets posées sur le terrain.
+- Parcours sans mer : rien ne change, aucun coût.
 
 ### Mer, côte et plages dans les parcours compilés (lot U3)
 - Un parcours compilé avec la couche eau reçoit la mer, tirée des lignes de côte d'OpenStreetMap et refermée sur le bord du terrain, îles comprises.
