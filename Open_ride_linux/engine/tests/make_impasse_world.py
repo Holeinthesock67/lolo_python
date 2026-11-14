@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Monde vivant d'une impasse (fin de parcours du 14 novembre) : le vrai générateur du monde ouvert (W8) en
 balade sur une route fictive sans autre branche, en mer au large de la Camargue (aucun lieu réel), départ
-vers l'est à 2,9 km du bout de l'impasse. La route engagée y fait demi-tour sur place et repart vers l'ouest.
+vers l'est à 2,9 km du bout de l'impasse. La route engagée y tourne dans une boucle de retournement et repart vers l'ouest.
 
 Le dossier écrit se charge comme un parcours ordinaire (`sim_bench.py --world DOSSIER.world`) : il montre à
-l'écran le demi-tour de la route dans l'impasse (captures autour de 2 900 m)."""
+l'écran la boucle de retournement (captures de 2 880 à 3 040 m)."""
 
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ def build(out: Path, ride_m: float = 8000.0) -> Path:
     shutil.rmtree(dest, ignore_errors=True)
     shutil.copytree(seance, dest, symlinks=False)           # tuiles du cache recopiées : dossier autonome
     manifest = json.loads((dest / "manifest.json").read_text(encoding="utf-8"))
-    print(f"{dest} : {s.length_m:.0f} m de route, demi-tour de l'impasse à {IMPASSE_M:.0f} m "
+    print(f"{dest} : {s.length_m:.0f} m de route, boucle de retournement à {IMPASSE_M:.0f} m "
           f"(manifeste {manifest.get('id', NAME)})")
     shutil.rmtree(work, ignore_errors=True)
     return dest

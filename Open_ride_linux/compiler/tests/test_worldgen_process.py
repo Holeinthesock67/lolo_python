@@ -310,21 +310,46 @@ def test_ride_into_a_dead_end_turns_back_without_gap_or_pause(tmp_path) -> None:
     assert s.length_m >= 10_000.0 + 3000.0
     route = s._route_columns()
     x, z, sc = (np.asarray(route[k], dtype=float) for k in ("x", "z", "s"))
+    e0, n0 = s.e0, s.n0
     # Route continue : pas de trou entre deux points, abscisse croissante.
     assert np.all(np.diff(sc) > 0.0)
-    assert float(np.max(np.hypot(np.diff(x), np.diff(z)))) < 60.0
-    # Le bout de l'impasse est atteint une seule fois, puis la route repart vers l'ouest sur la même voie.
-    e0 = s.e0
-    k_end = int(np.argmax(x))
+    assert float(np.max(np.hypot(np.diff(x), np.diff(z)))) < 15.0
+    # Boucle de retournement au bout de l'impasse : la route passe au bout, tourne dans une boucle d'au plus
+    # 50 m au-delà et de 20 m de part et d'autre, puis reprend la même voie vers l'ouest.
+    k_end = int(np.argmin(np.abs(sc - 2900.0)))
     assert float(x[k_end]) + e0 == pytest.approx(E_REF + 3000, abs=1.0)
-    assert sc[k_end] == pytest.approx(2900.0, abs=5.0)
-    k_west = k_end + int(np.argmin(x[k_end:]))               # l'autre bout (−5 km) : nouveau demi-tour
-    assert float(x[k_west]) + e0 == pytest.approx(E_REF - 5000, abs=1.0)
-    assert np.all(np.diff(x[k_end:k_west]) < 0.0)            # retour d'un seul tenant vers l'ouest
-    assert float(np.ptp(z)) < 1.0                           # toujours sur la même route
+    turn = (sc > 2900.0) & (sc < 2900.0 + 140.0)
+    assert 30.0 < float(np.max(x[turn])) + e0 - (E_REF + 3000) < 50.0
+    assert 15.0 < float(np.max(np.abs(z[turn] + N_REF - n0))) < 22.0
+    k_back = int(np.argmin(np.abs(sc - (2900.0 + 140.0))))
+    assert float(z[k_back]) + N_REF - n0 == pytest.approx(0.0, abs=0.5)    # de retour sur la voie
+    # Plus de cap retourné sur place : au plus 45° entre deux points (10 m), jamais 180°.
     h = np.asarray(route["heading_deg"], dtype=float)
-    assert h[k_end - 5] == pytest.approx(90.0, abs=2.0) and h[k_end + 5] == pytest.approx(270.0, abs=2.0)
-    # Pente inversée au retour : même altitude au même endroit, dans l'autre sens.
-    alt = np.asarray(route["alt_m"] if "alt_m" in route else route["y"], dtype=float)
-    k_back = k_end + int(np.argmin(np.abs(x[k_end:] - x[k_end - 10])))
-    assert alt[k_back] == pytest.approx(alt[k_end - 10], abs=0.5)
+    dh = np.abs((np.diff(h) + 180.0) % 360.0 - 180.0)
+    assert float(np.max(dh)) < 45.0
+    assert h[k_end - 5] == pytest.approx(90.0, abs=2.0) and h[k_back + 5] == pytest.approx(270.0, abs=2.0)
+    # L'autre bout (−5 km) a aussi sa boucle ; retour d'un seul tenant vers l'ouest entre les deux.
+    k_west = k_back + int(np.argmin(x[k_back:]))
+    assert float(x[k_west]) + e0 < E_REF - 5000 - 30.0
+    assert np.all(np.diff(x[k_back:k_west - 20]) < 0.0)
+    # Pentes bornées dans la boucle ; même altitude au même endroit, à l'aller et au retour.
+    alt = np.asarray(route["alt_m"], dtype=float)
+    k_same = int(np.argmin(np.abs(x[:k_end] - x[k_back])))          # même endroit, à l'aller
+    assert alt[k_back] == pytest.approx(alt[k_same], abs=0.5)
+    assert float(np.max(np.abs(np.asarray(route["grade_pct"])[turn]))) <= 25.0   # la boucle suit le relief
+
+
+def test_turnaround_loop_closes_on_the_dead_end() -> None:
+    from openride_compiler.worldgen.edge_profile import turnaround_points
+    for prev in ((0.0, 0.0), (10.0, -7.0), (-3.0, 12.0)):
+        end = (100.0, 50.0)
+        p = turnaround_points(end, prev)
+        assert tuple(p[0]) == end and np.hypot(*(p[-1] - np.array(end))) < 1e-6
+        steps = np.hypot(*np.diff(p, axis=0).T)
+        assert float(np.max(steps)) < 1.01
+        # cap continu : départ dans le sens d'arrivée, retour dans le sens opposé
+        d0 = (p[1] - p[0]) / steps[0]
+        d1 = (p[-1] - p[-2]) / steps[-1]
+        a = np.array(end) - np.array(prev)
+        a = a / np.hypot(*a)
+        assert float(d0 @ a) > 0.99 and float(d1 @ a) < -0.99

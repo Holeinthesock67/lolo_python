@@ -46,7 +46,8 @@ from ..cache import Downloader, Log
 from ..elevation import COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationProvider, SyntheticProvider, copernicus_tile_name
 from ..errors import CompileError
 from ..pipeline import sample_positions
-from .edge_profile import EdgeProfile, NodeAltitudes, concat, edge_profile, split_parts
+from .edge_profile import (EdgeProfile, NodeAltitudes, concat, edge_profile, split_parts, turnaround_points,
+                           with_turnaround)
 from .graph import Branch, Edge, RoadGraph
 from .navigator import Navigator
 from .osmdb import OsmDb
@@ -434,9 +435,20 @@ class WorldSession:
     def _history(self, upto: int) -> list[str]:
         return [leg.edge_id for leg in self.legs[:upto + 1]]
 
-    def _append_leg(self, edge_id: str, forward: bool, to_node: int) -> None:
+    def _append_leg(self, edge_id: str, forward: bool, to_node: int, turnaround: bool = False) -> None:
+        """Étape suivante ; `turnaround` : demi-tour au bout d'une impasse, la même arête reprise en sens inverse
+        après une boucle de retournement (14 novembre : plus de cap retourné sur place)."""
         e = self.graph.edges[edge_id]
-        self.legs.append(Leg(edge_id, forward, to_node, self._profile(e, forward), self.length_m))
+        p = self._profile(e, forward)
+        if turnaround and self.legs and len(self.legs[-1].profile.x) >= 2:
+            last = self.legs[-1].profile
+            prev = (float(last.x[-2]), float(last.z[-2]))
+            loop = turnaround_points((float(p.x[0]), float(p.z[0])), prev)
+            far = loop[int(np.argmax(np.hypot(loop[:, 0] - p.x[0], loop[:, 1] - p.z[0])))]
+            lat, lon = self.frame.to_latlon(np.array([far[0]]), np.array([far[1]]))
+            if relief_has(self.provider, float(lat[0]), float(lon[0])):   # hors ligne au bord du relief : sur place
+                p = with_turnaround(p, prev, self.provider, self.frame)
+        self.legs.append(Leg(edge_id, forward, to_node, p, self.length_m))
 
     def _extend(self) -> bool:
         """Prolonge la route engagée jusqu'à l'horizon (plus une marge) ; vrai si elle a changé."""
@@ -453,7 +465,7 @@ class WorldSession:
                 self.data_state = "missing"
                 self.status("ready", "plus de route connue", "missing")
                 break
-            self._append_leg(c.branch_edge_id, c.forward, c.to_node)
+            self._append_leg(c.branch_edge_id, c.forward, c.to_node, turnaround=c.phase == "u_turn")
         return True
 
     def _route_columns(self) -> dict[str, Any]:
