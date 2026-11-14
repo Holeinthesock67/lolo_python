@@ -11,6 +11,7 @@ extends SceneTree
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
+const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 
@@ -115,9 +116,34 @@ func _test_tree_generation_and_determinism() -> void:
 	_check(height_exact, "pied de chaque arbre à moins de 5 cm de la surface dessinée")
 	_check(below_treeline, "aucun arbre au-dessus de treeline_m")
 
-	# Instanciation sur la scène
-	renderer.add_tile(prep1)
+	# Instanciation sur la scène (fil principal). Banc rDB3 du 14/11 : 100 à 170 ms d'image pour une tuile dense de
+	# taïga ou de jungle quand add_tile remplissait les MultiMesh arbre par arbre ; tampons désormais préparés par
+	# prepare_tile dans le fil de travail.
+	var add_ms := PerfBudget.measure_ms(func(): renderer.add_tile(prep1), 3, 0)
+	_check(PerfBudget.check("tree_tile_add", add_ms), "pose d'une tuile de %d arbres sur le fil principal (%.2f ms)" % [total_trees, add_ms])
 	_check(renderer.get_active_tree_count() == total_trees, "arbres actifs = %d" % total_trees)
+
+	# Tampons du fil de travail = arbres de la case : position, orientation (hash de la position) et teinte grise.
+	var same_xf := true
+	for cell_idx in renderer._tiles[Vector2i(0, 0)].keys():
+		var trees_c: PackedVector4Array = cells1[cell_idx]
+		var mm: MultiMesh = renderer._tiles[Vector2i(0, 0)][cell_idx]["parts"][0]["lod0"].multimesh
+		var buf := mm.buffer   # rendu sans écran : get_instance_transform ne relit rien, le tampon oui
+		if mm.instance_count != trees_c.size() or buf.size() != 16 * trees_c.size():
+			same_xf = false
+			continue
+		for k in [0, trees_c.size() - 1]:
+			var t := trees_c[k]
+			var angle := float(VegetationPlacer.hash3(0x5EED, int(t.x), int(t.z)) & 0xFFFF) / 65536.0 * TAU
+			var b := Basis(Vector3.UP, angle).scaled(Vector3.ONE * t.w)
+			var want := [b.x.x, b.y.x, b.z.x, t.x, b.x.y, b.y.y, b.z.y, t.y, b.x.z, b.y.z, b.z.z, t.z]
+			for j in range(12):
+				if absf(buf[16 * k + j] - float(want[j])) > 1e-3:
+					same_xf = false
+			var c := buf[16 * k + 12]
+			if buf[16 * k + 13] != c or buf[16 * k + 14] != c or absf(c - 1.0) > 0.081 or buf[16 * k + 15] != 1.0:
+				same_xf = false
+	_check(same_xf, "tampons préparés dans le fil de travail : transformations et teintes de chaque arbre")
 
 	# Vérification des MultiMeshInstance3D et distances LOD
 	var cell_info: Dictionary = renderer._tiles[Vector2i(0, 0)]

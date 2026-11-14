@@ -69,6 +69,12 @@ LANE_FREE_M = 100.0
 MIN_CENTRE_M = MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M
 GROUP_CLEAR_M = 30.0
 VEHICLE_CLEAR_M = 60.0
+# Lot DB3 (banc rDB3, Route du Grand Nord : 53 à 106 contacts) : un groupe ne double jamais un véhicule du même sens.
+# Lancé dans une descente (60 km/h), il rattrapait un utilitaire à 54 km/h et le doublait par la droite, au bord de la
+# chaussée, à 1 m de sa carrosserie. Il se cale désormais sur sa vitesse, de VEHICLE_FOLLOW_M derrière jusqu'à
+# VEHICLE_ALONGSIDE_M à sa hauteur (moitié du plus long véhicule et une marge), comme derrière un groupe plus lent.
+VEHICLE_FOLLOW_M = 25.0
+VEHICLE_ALONGSIDE_M = 8.0
 SIDE_SPEED_MPS = 1.5      # écart latéral : vitesse au plus, ...
 SIDE_ACCEL_MPS2 = 2.0     # ... accélération au plus (on s'écarte et on se rabat sans à-coup, essai du 7/11)
 SIDE_TAU_S = 0.5          # ... et approche de la place visée,
@@ -698,6 +704,7 @@ class RoadCyclists:
                     spd_now = min(spd_now, limit)
             elif blocking or not faster:
                 spd_now = min(spd_now, limit - FALL_BACK_MPS)
+        spd_now = self._behind_vehicles(g, spd_now)
         g.s += direction * spd_now * dt_s
         g.moved_mps = max(spd_now, 0.0)
         rel = g.s - rider_s
@@ -732,6 +739,17 @@ class RoadCyclists:
             else:
                 g.behind_t = 0.0
             g.best_rel = max(g.best_rel, rel)
+
+    def _behind_vehicles(self, g: Group, spd_now: float) -> float:
+        """Vitesse bornée par celle d'un véhicule du même sens juste devant ou à sa hauteur (lot DB3) : un groupe
+        ne double jamais la circulation, ni à droite ni à gauche."""
+        for v in self.vehicles:
+            if int(self._field(v, "dir", g.dir)) != g.dir:
+                continue
+            gap = (float(self._field(v, "s", math.inf)) - g.s) * g.dir
+            if -VEHICLE_ALONGSIDE_M < gap < VEHICLE_FOLLOW_M:
+                spd_now = min(spd_now, max(float(self._field(v, "speed_mps", spd_now)), 0.0))
+        return spd_now
 
     def _caught_groups(self, g: Group) -> list[Group]:
         direction = g.dir

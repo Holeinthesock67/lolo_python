@@ -8,6 +8,9 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 ### Une démonstration pour chaque biome (lot DB3)
 - Deux nouveaux parcours de démonstration, pour que chaque biome du jeu ait le sien. La « Route du Sud » fait 12 km des oliviers au delta : maquis méditerranéen, steppe et campement de yourtes, dunes et oasis, savane et village de cases, jungle, puis zones humides et village sur pilotis (2 km chacun). La « Route du Grand Nord » est une boucle de 10 km : taïga et lac, toundra et refuge, banquise et station polaire au point le plus haut, puis retour par la toundra et la taïga.
 - Trace, relief et décor entièrement inventés (aucune donnée réelle). Les deux parcours sont ajoutés à la prochaine installation des contenus de départ ; aucun autre parcours n'est réécrit.
+- Cyclistes du décor : dans une descente, un cycliste plus rapide qu'une voiture qui roule dans son sens reste derrière elle au lieu de la doubler par le bord de la route (contacts vus sur la boucle du Grand Nord et le volcan).
+- Plus d'herbe verte dans la neige : aucune touffe sur la banquise, et une herbe rase et rousse, clairsemée, dans la toundra.
+- Moins d'à-coups en entrant dans une forêt dense (taïga, jungle, savane) : les arbres d'une nouvelle tuile sont préparés en tâche de fond, la pose sur l'image ne prend plus qu'environ une milliseconde au lieu de 100 à 170 ms.
 
 ### Un volcan en flammes (lot DB2)
 - Nouveau parcours de démonstration « Volcan en flammes » : une boucle de 8 km dans un volcan en éruption, de la plaine de cendres à la crête du cratère (220 m de montée, 9,6 % au plus) et retour. On roule entre des coulées et des lacs de lave, dans les braises et la fumée, et le cratère crache des gerbes de lave. Trace, relief et décor sont inventés.

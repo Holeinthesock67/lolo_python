@@ -90,7 +90,11 @@ const BLADE_WIDTH_M := 0.035
 const TINTS := [Color(1.0, 1.0, 1.0), Color(0.78, 0.88, 0.78), Color(1.12, 1.08, 0.78), Color(1.3, 1.15, 0.72)]
 ## Désert (sable ou pierre, retour du propriétaire 03/11) : herbe sèche, paille et ocre, plus clairsemée.
 ## Le biome d'une touffe est tiré selon les poids du modèle de biome (`biome_model`, nul : herbe d'avant).
-const DRY_BIOMES := ["sand_desert", "rock_desert"]
+## Toundra (lot DB3, 14/11) : herbe rase et rousse, clairsemée, comme le désert.
+const DRY_BIOMES := ["sand_desert", "rock_desert", "tundra"]
+## Sol de neige ou de glace (polaire, lot DB3, banc rDB3 du 14/11 : touffes vertes dans la neige) : aucune touffe.
+## Tiré selon le poids du biome, comme le désert : la banquise s'éclaircit sans marche dans le fondu de 300 m.
+const BARE_BIOMES := ["polar"]
 const DRY_TINTS := [Color(1.55, 0.95, 1.2), Color(1.75, 1.05, 1.15), Color(1.35, 0.8, 0.95), Color(1.9, 1.2, 1.45)]
 ## Part des places gardées dans le désert (touffes plus espacées qu'en prairie).
 const DRY_KEEP := 0.45
@@ -425,23 +429,28 @@ func _set_box(g: int, box: AABB) -> void:
 
 
 ## Touffe du désert ? 0 : herbe d'avant ; 1 : herbe sèche ; −1 : place laissée vide (désert clairsemé, ou paysage
-## en feu : rien ne pousse sur la lave et les scories, démo « Volcan en flammes »).
+## en feu : rien ne pousse sur la lave et les scories, démo « Volcan en flammes » ; neige et glace de `BARE_BIOMES`).
 func dry_draw(k: int, slot: int, origin: Vector3) -> int:
 	if biome_model == null or not biome_model.active():
 		return 0
 	if not biome_model.fire_at(origin.x, origin.z).is_empty():
 		return -1
 	var w: Dictionary = biome_model.weights_at(origin.x, origin.z)
+	var bare_w := 0.0
+	for b in BARE_BIOMES:
+		bare_w += float(w.get(b, 0.0))
 	var dry_w := 0.0
 	for b in DRY_BIOMES:
 		dry_w += float(w.get(b, 0.0))
-	if dry_w <= 0.0:
+	if bare_w + dry_w <= 0.0:
 		return 0
 	var h := VegetationPlacer.hash3(tuft_seed ^ 0x5D17, k, slot)
-	if float(h & 0xFFFF) / 65536.0 >= dry_w:
+	var u := float(h & 0xFFFF) / 65536.0
+	if u < bare_w:
+		return -1
+	if u >= bare_w + dry_w:
 		return 0
 	return 1 if float((h >> 16) & 0xFFFF) / 65536.0 < DRY_KEEP else -1
-
 
 ## Vrai quand tous les tronçons de la fenêtre sont remplis.
 func is_settled() -> bool:

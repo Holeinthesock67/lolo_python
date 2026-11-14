@@ -452,10 +452,45 @@ func _test_desert() -> void:
 	g.free()
 
 
+class _SnowModel:
+	var polar := 1.0
+	func active() -> bool:
+		return true
+	func weights_at(_x: float, _z: float) -> Dictionary:
+		return {"polar": polar, "tundra": 1.0 - polar}
+	func fire_at(_x: float, _z: float) -> Dictionary:
+		return {}
+
+
+## Lot DB3 (banc rDB3 du 14/11, touffes vertes dans la neige) : aucune touffe sur la banquise, herbe sèche et
+## clairsemée dans la toundra, éclaircissement progressif dans le fondu entre les deux.
+func _test_snow() -> void:
+	var g = GrassTufts.new()
+	var m := _SnowModel.new()
+	g.biome_model = m
+	var n := 400
+	var counts := []
+	for p in [1.0, 0.5, 0.0]:
+		m.polar = p
+		var kept := 0
+		var green := 0
+		for slot in range(n):
+			var d: int = g.dry_draw(5, slot, Vector3.ZERO)
+			kept += 1 if d == 1 else 0
+			green += 1 if d == 0 else 0
+		_check(green == 0, "banquise %.0f %% : jamais d'herbe verte" % (p * 100.0))
+		counts.append(kept)
+	_check(counts[0] == 0, "banquise pure : aucune touffe")
+	_check(absf(float(counts[2]) / n - GrassTufts.DRY_KEEP) < 0.08, "toundra : herbe sèche clairsemée (%d / %d)" % [counts[2], n])
+	_check(counts[0] < counts[1] and counts[1] < counts[2], "fondu banquise / toundra sans marche : %s" % str(counts))
+	g.free()
+
+
 func _init() -> void:
 	_test_blades_and_tints()
 	_test_far_lod()
 	_test_wide_band()
+	_test_snow()
 	_test_tree_materials()
 	_test_budget_and_low()
 	_test_determinism_and_exclusions()

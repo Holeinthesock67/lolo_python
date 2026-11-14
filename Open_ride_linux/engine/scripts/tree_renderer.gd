@@ -358,6 +358,13 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 		cells[cell_idx].append(tree)
 		cell_species[cell_idx].append(tree_species[k] if biomes_on else TreeSpecies.GENERIC)
 
+	# Tampons des MultiMesh calculés ici, dans le fil de travail (banc rDB3 du 14/11 : 100 à 170 ms d'image sur le fil
+	# principal pour une tuile dense de taïga ou de jungle quand add_tile les remplissait arbre par arbre).
+	var with_buckets := shadow_buckets_on()
+	var cell_groups: Array = []
+	for i in range(16):
+		cell_groups.append(group_cell(cells[i], cell_species[i], with_buckets))
+
 	var t_end := Time.get_ticks_usec()
 	last_profile = {
 		"total_ms": (t_end - t_start) / 1000.0,
@@ -374,8 +381,66 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 		"tile_key": Vector2i(tile_x, tile_z),
 		"cells": cells,
 		"species": cell_species,
+		"groups": cell_groups,
 		"tile_origin": Vector3(tile_origin_x, 0.0, tile_origin_z),
 	}
+
+
+## Vrai quand les arbres proches ont des MultiMesh « ombre seule » par carré (`shadow_end_m`, update_shadows).
+func shadow_buckets_on() -> bool:
+	return shadow_end_m > 0.0 and not RenderDiag.has("sans_ombres_arbres")
+
+
+## Arbres d'une case groupés par espèce, par ordre d'espèce : [{species, count, buffer, buckets?}], `buffer` au format
+## de MultiMesh.buffer (TRANSFORM_3D et couleurs : 16 flottants par arbre, comme `add_to_bucket`). Sans état de
+## scène : exécutable dans un fil de travail (prepare_tile).
+static func group_cell(tree_list: PackedVector4Array, sp: PackedByteArray, with_buckets: bool) -> Array:
+	var groups := {}
+	for i in range(tree_list.size()):
+		var key := int(sp[i]) if i < sp.size() else TreeSpecies.GENERIC
+		if not groups.has(key):
+			groups[key] = []   # Array (référence) : un tableau compact serait copié par groups[key]
+		(groups[key] as Array).append(tree_list[i])
+	var keys := groups.keys()
+	keys.sort()
+	var out := []
+	for key in keys:
+		out.append(instance_group(int(key), PackedVector4Array(groups[key]), with_buckets))
+	return out
+
+
+## Tampon d'instances d'une espèce (orientation et teinte tirées de la position) et carrés d'ombre.
+static func instance_group(species: int, tree_list: PackedVector4Array, with_buckets: bool) -> Dictionary:
+	var count := tree_list.size()
+	var vine := species == TreeSpecies.index_of("vine_row")
+	var buf := PackedFloat32Array()
+	buf.resize(count * 16)
+	var buckets := {}
+	for i in range(count):
+		var t := tree_list[i]
+		var px := t.x
+		var pz := t.z
+		var scale_f := t.w
+		var h_rot := VegetationPlacer.hash3(0x5EED, int(px), int(pz))
+		var angle := float(h_rot & 0xFFFF) / 65536.0 * TAU
+		if vine:
+			# Rangs de vigne parallèles dans toute la case (orientation tirée par case de 250 m).
+			angle = float(VegetationPlacer.hash3(0x7111, int(floor(px / CELL_SIZE_M)), int(floor(pz / CELL_SIZE_M))) & 0x3) * 0.25 * PI
+			scale_f = 1.0
+		var b := Basis(Vector3.UP, angle).scaled(Vector3.ONE * scale_f)
+		var h_col := VegetationPlacer.hash3(0xCAFE, int(px), int(pz))
+		var c := 1.0 + (float(h_col & 0xFF) / 255.0 - 0.5) * 0.16
+		var j := i * 16
+		buf[j] = b.x.x; buf[j + 1] = b.y.x; buf[j + 2] = b.z.x; buf[j + 3] = px
+		buf[j + 4] = b.x.y; buf[j + 5] = b.y.y; buf[j + 6] = b.z.y; buf[j + 7] = t.y
+		buf[j + 8] = b.x.z; buf[j + 9] = b.y.z; buf[j + 10] = b.z.z; buf[j + 11] = pz
+		buf[j + 12] = c; buf[j + 13] = c; buf[j + 14] = c; buf[j + 15] = 1.0
+		if with_buckets:
+			add_to_bucket(buckets, Transform3D(b, Vector3(px, t.y, pz)), Color(c, c, c, 1.0))
+	var g := {"species": species, "count": count, "buffer": buf}
+	if with_buckets:
+		g["buckets"] = buckets
+	return g
 
 
 ## Retire les arbres situés dans l'emprise d'un bâtiment (anneau `outer`) ou à moins de
@@ -426,6 +491,7 @@ func add_tile(data: Dictionary) -> void:
 	var tile_cells := {}
 	var cells_data: Array = data["cells"]
 	var species_data: Array = data.get("species", [])
+	var groups_data: Array = data.get("groups", [])
 	var tile_x: int = data["tile_x"]
 	var tile_z: int = data["tile_z"]
 
@@ -444,20 +510,13 @@ func add_tile(data: Dictionary) -> void:
 		var center_y := sum_y / float(tree_list.size())
 		var cell_center := Vector3(center_x, center_y, center_z)
 
-		# Arbres de la case groupés par espèce (une seule espèce, GENERIC, sans biome).
-		var groups := {}
-		var sp: PackedByteArray = species_data[cell_idx] if cell_idx < species_data.size() else PackedByteArray()
-		for i in range(tree_list.size()):
-			var key := int(sp[i]) if i < sp.size() else TreeSpecies.GENERIC
-			if not groups.has(key):
-				groups[key] = []   # Array (référence) : un tableau compact serait copié par groups[key]
-			(groups[key] as Array).append(tree_list[i])
-
+		# Arbres de la case groupés par espèce (une seule espèce, GENERIC, sans biome), tampons préparés par
+		# prepare_tile dans le fil de travail ; calculés ici pour une tuile préparée sans eux.
+		var groups: Array = groups_data[cell_idx] if cell_idx < groups_data.size() else group_cell(
+			tree_list, species_data[cell_idx] if cell_idx < species_data.size() else PackedByteArray(), shadow_buckets_on())
 		var parts := []
-		var keys := groups.keys()
-		keys.sort()
-		for key in keys:
-			parts.append(_make_part(int(key), PackedVector4Array(groups[key])))
+		for g in groups:
+			parts.append(_make_part(g))
 
 		tile_cells[cell_idx] = {
 			"parts": parts,
@@ -470,50 +529,23 @@ func add_tile(data: Dictionary) -> void:
 	_tiles[tile_key] = tile_cells
 
 
-## Paire de MultiMeshInstance3D (LOD 0 et LOD 1) des arbres d'une espèce dans une case.
-func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
+## Paire de MultiMeshInstance3D (LOD 0 et LOD 1) des arbres d'une espèce dans une case (groupe de `group_cell`).
+func _make_part(g: Dictionary) -> Dictionary:
+	var species := int(g["species"])
+	var count := int(g["count"])
 	var look := _look(species)
-	var count := tree_list.size()
 	var mm0 := MultiMesh.new()
 	mm0.transform_format = MultiMesh.TRANSFORM_3D
 	mm0.use_colors = true
 	mm0.mesh = _lod0_of(look)
 	mm0.instance_count = count
+	mm0.buffer = g["buffer"]
 	var mm1 := MultiMesh.new()
 	mm1.transform_format = MultiMesh.TRANSFORM_3D
 	mm1.use_colors = true
 	mm1.mesh = look["lod1"]
 	mm1.instance_count = count
-	var vine := species == TreeSpecies.index_of("vine_row")
-	var with_shadow_buckets := shadow_end_m > 0.0 and not RenderDiag.has("sans_ombres_arbres")
-	var buckets := {}
-
-	for i in range(count):
-		var t := tree_list[i]
-		var px := t.x
-		var py := t.y
-		var pz := t.z
-		var scale_f := t.w
-
-		var h_rot := VegetationPlacer.hash3(0x5EED, int(px), int(pz))
-		var angle := float(h_rot & 0xFFFF) / 65536.0 * TAU
-		if vine:
-			# Rangs de vigne parallèles dans toute la case (orientation tirée par case de 250 m).
-			angle = float(VegetationPlacer.hash3(0x7111, int(floor(px / CELL_SIZE_M)), int(floor(pz / CELL_SIZE_M))) & 0x3) * 0.25 * PI
-			scale_f = 1.0
-		var basis := Basis(Vector3.UP, angle).scaled(Vector3.ONE * scale_f)
-		var xform := Transform3D(basis, Vector3(px, py, pz))
-
-		var h_col := VegetationPlacer.hash3(0xCAFE, int(px), int(pz))
-		var tint := (float(h_col & 0xFF) / 255.0 - 0.5) * 0.16
-		var col := Color(1.0 + tint, 1.0 + tint, 1.0 + tint, 1.0)
-
-		mm0.set_instance_transform(i, xform)
-		mm0.set_instance_color(i, col)
-		mm1.set_instance_transform(i, xform)
-		mm1.set_instance_color(i, col)
-		if with_shadow_buckets:
-			add_to_bucket(buckets, xform, col)
+	mm1.buffer = g["buffer"]
 
 	var mmi0 := MultiMeshInstance3D.new()
 	mmi0.multimesh = mm0
@@ -534,8 +566,8 @@ func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
 	mmi1.visibility_range_end = LOD1_MAX_DIST_M
 	add_child(mmi1)
 	var part := {"lod0": mmi0, "lod1": mmi1, "species": species, "count": count}
-	if with_shadow_buckets:
-		part["buckets"] = buckets
+	if g.has("buckets"):
+		part["buckets"] = g["buckets"]
 	return part
 
 
