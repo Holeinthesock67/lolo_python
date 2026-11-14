@@ -1,0 +1,46 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_fauna_biomes
+
+[OK] prairie tempérée : faune identique à celle d'avant la série U (14 groupes)
+[OK] modèle sans couche ni forçage : faune d'avant la série U
+[OK] savane : zèbres et girafes { "bird": 52, "cow": 24, "zebra": 62, "giraffe": 11, "antelope": 89, "elephant": 11 }
+[OK] savane : zèbres et girafes à plus de 150 m de la route
+[OK] savane : ni chevreuil ni lièvre
+[OK] montagne : bouquetins et marmottes { "horse": 5, "marmot": 7, "bird": 24, "ibex": 16, "cow": 13, "sheep": 9 }
+[OK] toundra : rennes, pas de bétail { "hare": 3, "bird": 24, "reindeer": 49, "musk_ox": 5 }
+[OK] jungle : perroquets, et pour seuls autres oiseaux les rapaces { "parrot": 151, "bird": 3, "monkey": 21 }
+[OK] littoral : mouettes { "gull": 188, "horse": 2, "bird": 3, "cow": 4, "sheep": 4 }
+[OK] désert sans eau : aucun troupeau loin des prés, ni vache ni gibier { "dromedary": 24, "bird": 1 }
+[OK] oasis : 17 dromadaires, tous près de l'eau
+[OK] zone humide : flamants et hérons { "bird": 57, "horse": 2, "flamingo": 103, "heron": 5, "cow": 4, "sheep": 4, "hare": 1 }
+[OK] 20 biomes : 1062 bêtes et oiseaux posés, aucun à moins de 4 m de l'axe
+[OK] même graine, même savane
+[OK] densité mélangée : chevreuil 0.401 (moyenne pondérée de 0,7 et 0,1)
+[OK] savane et prairie mêlées : zèbres et bétail { "bird": 43, "horse": 5, "hare": 1, "zebra": 20, "giraffe": 7, "antelope": 27, "cow": 19, "elephant": 4 }
+[OK] mouettes : 14 groupes s'envolent au passage, sans croassement
+[OK] low : 20 bêtes affichées (budget 20)
+[OK] low : 24 oiseaux affichés (budget 24)
+[OK] low : 10 espèces à l'écran
+[OK] U23 savane : éléphants et antilopes { "bird": 52, "cow": 24, "zebra": 62, "giraffe": 11, "antelope": 89, "elephant": 11 }
+[OK] U23 : éléphants et ours blancs à plus de 150 m de la route
+[OK] U23 pôle : bœufs musqués et ours blancs, ni chevreuil ni bétail { "musk_ox": 16, "bird": 1, "polar_bear": 1 }
+[OK] U23 toundra : bœufs musqués avec les rennes { "hare": 3, "bird": 24, "reindeer": 49, "musk_ox": 5 }
+[OK] U23 volcans : chèvres, pas de vaches ni de moutons { "goat": 37, "bird": 3 }
+[OK] U23 jungle : singes { "parrot": 151, "bird": 3, "monkey": 21 }
+[OK] U23 : toute espèce placée dans tous les biomes a son maillage (fauna_renderer.gd SPECIES)
+[textures] décor : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage 
+[textures] sols des biomes : 0 cartes, niveau couleurs unies, 0 Mo estimés, aucune texture, préréglage 
+[OK] --biome=savanna : arbres et animaux suivent la savane, sol couleur sable
+[OK] --biome=savanna : tuiles de terrain au shader multi-biome (U6)
+[OK] --biome=auto sans couche biome : arbres, animaux et sol d'avant la série U
+[OK] fond marin : poissons, tortues et raies seulement { "fish": 161, "turtle": 9, "fish_blue": 114, "ray": 5 }
+[OK] fond marin : toutes les bandes nagent entre le fond (−20 m) et la surface
+[OK] fond marin : maillage de « fish »
+[OK] fond marin : maillage de « fish_blue »
+[OK] fond marin : maillage de « turtle »
+[OK] fond marin : maillage de « ray »
+test_fauna_biomes : 36 vérifications, 0 échecs
+UNIT=test_fauna_biomes : rendu, ERG et scénarios IPC sautés
+Résumé :
+  OK     unit/test_fauna_biomes : 36 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent

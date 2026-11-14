@@ -1,0 +1,86 @@
+demo-recif (low) : 11 min, captures à 150, 400, 2000, 4000, 6000 m
+>>> [1/1] Scénario nominal (10:53)
+== nominal : parcours demo-recif, 653 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.1 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-recif à 27.3 s
+[OK] engine vivant jusqu'à la fin : 653 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 6/6 images enregistrées après le chargement, réponse en 0.47 s (médiane), 0.48 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : low appliquée (6 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -1.4 à 1.4 %, pente envoyée -1.4 à 1.8 %
+[OK] médiane 50.7 km/h sur 589 s (attendu 50.0 ± 5.0), de 46.4 à 51.3 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 6 captures
+[OK] fréquence cardiaque au journal : 610 échantillons, 172 à 185 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rSM1/sm1/demo-recif_low/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-recif (medium) : 11 min, captures à 150, 400, 2000, 4000, 6000 m
+>>> [1/1] Scénario nominal (10:53)
+== nominal : parcours demo-recif, 653 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.2 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-recif à 28.1 s
+[OK] engine vivant jusqu'à la fin : 653 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 6/6 images enregistrées après le chargement, réponse en 0.51 s (médiane), 0.52 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (6 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -1.4 à 1.4 %, pente envoyée -1.4 à 1.8 %
+[OK] médiane 50.7 km/h sur 587 s (attendu 50.0 ± 5.0), de 46.4 à 51.3 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 6 captures
+[OK] fréquence cardiaque au journal : 608 échantillons, 174 à 185 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rSM1/sm1/demo-recif_medium/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-recif (high) : 11 min, captures à 150, 400, 2000, 4000, 6000 m
+>>> [1/1] Scénario nominal (10:53)
+== nominal : parcours demo-recif, 653 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.4 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-recif à 28.4 s
+[ÉCHEC] engine vivant : engine arrêté à 493 s
+[ÉCHEC] engine vivant jusqu'à la fin : code de sortie -6
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[ÉCHEC] 5/6 images enregistrées après le chargement, 1 redemandée(s), réponse en 0.51 s (médiane), 0.52 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : high appliquée (5 capture(s)) ; dernière ligne : high (demandée high, source cli)
+[ÉCHEC] erreurs et avertissements de Godot : ERROR: Couldn't wait for Vulkan fence (VkResult error -4). | ERROR: Printing last known breadcrumbs in reverse order (last executed first). | ERROR: Searching last breadcrumb. We've sent up to ID: 56583
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -1.4 à 1.4 %, pente envoyée -1.4 à 1.8 %
+[OK] médiane 50.5 km/h sur 422 s (attendu 50.0 ± 5.0), de 46.4 à 51.3 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 5 captures
+[OK] fréquence cardiaque au journal : 443 échantillons, 174 à 185 bpm
+    NON nominal : 4 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rSM1/sm1/demo-recif_high/index.html
+=== Banc fini : ÉCHEC (4 vérification(s))
+RÉSULTAT : ÉCHEC (4 vérification(s))
+Planche : ~/mesures-2026-11-01-auto/rSM1/sm1/planche.html

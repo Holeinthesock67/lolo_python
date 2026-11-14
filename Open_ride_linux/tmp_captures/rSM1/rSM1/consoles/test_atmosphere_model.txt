@@ -1,0 +1,52 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_atmosphere_model
+
+[OK] prairie : pas sous l'eau
+[OK] fond marin (low) : brouillard plein à 230 m
+[OK] fond marin (medium) : brouillard plein à 230 m
+[OK] fond marin (high) : brouillard plein à 230 m
+[OK] fond marin : horizon de la couleur de l'eau
+[OK] fond marin : lumière d'en haut
+[OK] fond marin : lumière filtrée
+[OK] moitié fond marin : underwater = 0,5
+[OK] sans modèle : pas sous l'eau
+[OK] prairie : densité du brouillard du thème (0.0008)
+[OK] prairie : horizon de main._apply_sky_params
+[OK] prairie : lumière blanche, soleil et brouillard de profondeur inchangés
+[OK] prairie : ni brume de chaleur ni humidité
+[OK] prairie : soleil du thème (40°)
+[OK] prairie -> désert : densité du brouillard au plus 0.80 % d'écart par 10 m
+[OK] prairie -> désert : brume de chaleur au plus 0.010 par 10 m
+[OK] avant et après le passage : densités de la prairie et du désert
+[OK] poids moyennés de somme 1 (1.000000)
+[OK] fenêtre de 500 m : le désert entre dans la moyenne 250 m avant le début du passage
+[OK] heure fixe du thème : 14 h
+[OK] désert à 14 h, temps clair : brume de chaleur 1.00
+[OK] désert sous la pluie : la pluie l'emporte (brume 0.00)
+[OK] savane dans la brume : pas de brume de chaleur
+[OK] préréglage low : brume de chaleur coupée
+[OK] désert de roche et savane : brume de chaleur
+[OK] temperate_grassland : pas de brume de chaleur
+[OK] jungle : pas de brume de chaleur
+[OK] polar : pas de brume de chaleur
+[OK] steppe : pas de brume de chaleur
+[OK] mediterranean : pas de brume de chaleur
+[OK] brume de chaleur l'après-midi seulement (10 h, 15 h, 21 h)
+[OK] heure inconnue : brume pleine
+[OK] jungle : air lourd (brouillard à 60 %, soleil à 75 %)
+[OK] zone humide : humidité 0.60
+[OK] montagne : ciel net, brouillard non rapproché
+[OK] 75° N : soleil rasant (18°)
+[OK] 48° N : soleil du thème, même en biome polaire
+[OK] 75° N : lumière plus froide
+[OK] 75° N : direction du soleil plus basse
+[OK] latitude inconnue : soleil du thème
+[PERF] atmosphere_at : 0.1187 ms, budget 0.2000 ms
+[OK] coût de at (cache chaud) : 0.1187 ms
+test_atmosphere_model : 41 vérifications, 0 échecs
+UNIT=test_atmosphere_model : rendu, ERG et scénarios IPC sautés
+Budgets de temps (OPENRIDE_PERF=report) : 1 mesures, 0 dépassement(s)
+  atmosphere_at : 0.1187 ms, budget 0.2000 ms
+Résumé :
+  OK     unit/test_atmosphere_model : 41 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent
