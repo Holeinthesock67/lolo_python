@@ -1,0 +1,13 @@
+11:37:04 empreinte avant 5d7fed5c0d03fa8ecfc67b774321f9cf
+11:37:04 tête 8db237da
+11:37:44 captures_demo
+12:10:47 fin rc=0
+12:10:47 banc low
+12:23:52 fin rc=0
+12:23:52 banc medium
+12:36:58 fin rc=1
+12:36:58 banc high
+12:50:03 fin rc=0
+12:50:05 empreinte après 5d7fed5c0d03fa8ecfc67b774321f9cf
+12:50:05 clone a1d20388
+12:50:05 FIN
