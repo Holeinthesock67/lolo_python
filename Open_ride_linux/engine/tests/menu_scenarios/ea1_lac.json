@@ -1,0 +1,183 @@
+{
+  "description": "Lot EA1, recette sur le PC : monde ouvert lancé depuis le village de Talloires (rive est du lac d'Annecy, réseau), 5 minutes de balade le long du lac avec une capture par minute : niveau de l'eau, rive, sol qui ne perce plus la surface. À lancer en low, medium et high, sur la branche puis sur main pour comparer (les carrés du cache se refont d'eux-mêmes : la version du générateur change).",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15
+    },
+    {
+      "choisir": "open_world"
+    },
+    {
+      "monde": "globe",
+      "delai": 10
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "t"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "a"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "l"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "l"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "o"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "i"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "r"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "e"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "s"
+    },
+    {
+      "note": "Recherche par nom d'un village au bord du lac d'Annecy (route en rive est) : bases OSM du cache réel, sinon Nominatim ; aucune coordonnée dans le dépôt",
+      "monde": "search",
+      "contient": [
+        "Talloires"
+      ],
+      "delai": 60
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "monde": "map",
+      "absent": [
+        "Chargement de la carte"
+      ],
+      "delai": 90
+    },
+    {
+      "capture": "carte"
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "monde": "setup",
+      "contient": [
+        "Cap :"
+      ]
+    },
+    {
+      "capture": "cap"
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "monde": false,
+      "delai": 300
+    },
+    {
+      "note": "Monde ouvert préchargé : route engagée, séance prête",
+      "journal": "core",
+      "motif": "Monde ouvert prêt",
+      "delai": 600
+    },
+    {
+      "ecran": "home",
+      "delai": 30
+    },
+    {
+      "choisir": "ride"
+    },
+    {
+      "ecran": "ready",
+      "delai": 15
+    },
+    {
+      "choisir": "start"
+    },
+    {
+      "note": "Départ au pédalage : le cycliste simulé roule à 180 W",
+      "journal": "core",
+      "motif": "-> RUNNING",
+      "delai": 120
+    },
+    {
+      "attendre": 20
+    },
+    {
+      "capture": "rive_depart"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "rive_1"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "rive_2"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "rive_3"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "rive_4"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "rive_5"
+    },
+    {
+      "note": "Route prolongée par le générateur pendant la balade",
+      "journal": "engine",
+      "motif": "world_revision rev=",
+      "delai": 120
+    }
+  ]
+}

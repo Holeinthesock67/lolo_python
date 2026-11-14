@@ -40,6 +40,6 @@ Demande du propriétaire du 14 novembre (série EA, `docs/6.0/PLAN_SERIE_EA.md`)
 ## 6. Recette sur le PC
 
 - Suites `compiler` (pytest) et tests graphiques (`run_visual_tests.sh`) : le « Circuit des Prés » a un étang, ses références peuvent bouger un peu (niveau de l'étang).
-- Monde ouvert au bord d'un grand lac (par exemple le lac d'Annecy, la route qui longe la rive ouest), 10 minutes au plus : `sim_bench.py --world ouvert` en low, medium et high (budgets 8, 13 et 16 ms), captures de la rive, du lac au loin et d'un pont ; journal du générateur (temps par carré).
-- Un parcours compilé avec la couche eau près d'un lac de barrage (`--layers route,terrain,water`) : captures du barrage et de la rive.
+- Monde ouvert au bord d'un lac : scénario `engine/tests/menu_scenarios/ea1_lac.json` (recherche « talloires », rive est du lac d'Annecy, 5 minutes, une capture par minute ; en-têtes `reseau` et `caches_reels` du banc des menus, repris du lot W17), `menu_bench.py --native --scenario ea1_lac --qualite low|medium|high --captures ecrans`, sur la branche puis sur `main` ; GPU (budgets 8, 13 et 16 ms) et temps par carré du générateur.
+- Parcours compilé : Irohazaka du pack « Cols célèbres » (arrivée au lac Chūzenji, exutoire des chutes de Kegon) compilé avec `--layers route,terrain,biome,water`, `sim_bench.py --world <dossier> --at-m …` sur les derniers 600 m, low, medium et high, branche et `main`.
 - Captures validées par le propriétaire avant fusion.

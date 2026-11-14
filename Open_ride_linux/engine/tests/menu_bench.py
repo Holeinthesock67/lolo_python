@@ -44,6 +44,11 @@ vélodrome des contenus de départ, lot VD10), `fichiers` ({chemin dans le
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
 (`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
 réseau, en quelques secondes : import de traces du lot O23).
+`reseau` (vrai : le scénario a besoin d'Internet, recherche Nominatim et routes OpenStreetMap ; recette du PC,
+jouée seulement quand `--scenario` la nomme, jamais dans la liste par défaut ni en intégration continue, lot W17).
+`caches_reels` (vrai : le générateur du monde ouvert lit et complète les caches du vrai dossier personnel :
+`~/OpenRide/Cache/monde` (régions OSM, tuiles vectorielles, monde généré) et `~/.cache/openride/` (relief, WorldCover,
+OSM) ; le reste du HOME reste temporaire ; recette du PC, lot W17).
 
 Rapport dans `--out` : `rapport.html` (tableau scénario × voie, vérifications, captures), `resultats.json`
 et `resume.txt`. Une capture est prise à chaque échec, avec l'état du menu. Code de sortie : 0 si toutes les
@@ -82,6 +87,14 @@ TESTS_DIR = Path(__file__).resolve().parent
 ENGINE_DIR = TESTS_DIR.parent
 REPO = ENGINE_DIR.parent
 SCENARIOS_DIR = TESTS_DIR / "menu_scenarios"
+REAL_HOME = Path.home()      # avant tout changement de HOME : caches réels des scénarios `caches_reels`
+
+
+def real_caches_env() -> dict[str, str]:
+    """Caches du compilateur (relief, WorldCover, OSM) du vrai dossier personnel."""
+    base = REAL_HOME / ".cache" / "openride"
+    return {"OPENRIDE_DEM_CACHE": str(base / "dem"), "OPENRIDE_LANDCOVER_CACHE": str(base / "landcover"),
+            "OPENRIDE_OSM_CACHE": str(base / "osm")}
 sys.path.insert(0, str(TESTS_DIR))
 sys.path.insert(0, str(REPO / "core" / "src"))
 
@@ -150,7 +163,7 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "capture", "relancer", "delai", "voies", "note"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
-             "compilateur", "velodrome", "etapes"}
+             "compilateur", "velodrome", "reseau", "caches_reels", "etapes"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -608,12 +621,18 @@ class Run:
         self.state_port, self.cmd_port = free_udp_ports(2)
         self.config = self.tmp / "config.toml"
         self.config.write_text(f"[ipc]\nport_state = {self.state_port}\nport_commands = {self.cmd_port}\n"
-                               + config_text({**BASE_CONFIG, **doc.get("config", {}),
+                               + config_text({**BASE_CONFIG, **self.real_caches_config(), **doc.get("config", {}),
                                              **({"render.quality": self.args.qualite} if self.args.qualite else {})}),
                                encoding="utf-8")
         self.control = self.tmp / "click.jsonl"
         scen = {**APPAREILS[doc.get("appareils", "prets")], "control_file": str(self.control)}
         (self.tmp / "scenario.json").write_text(json.dumps(scen), encoding="utf-8")
+
+    def real_caches_config(self) -> dict:
+        """Cache du monde ouvert du vrai dossier personnel (en-tête `caches_reels`)."""
+        if not self.doc.get("caches_reels"):
+            return {}
+        return {"open_world.cache_dir": str(REAL_HOME / "OpenRide" / "Cache" / "monde")}
 
     def start(self, n: int = 0) -> bool:
         a = self.args
@@ -621,6 +640,8 @@ class Run:
                "PYTHONPATH": os.pathsep.join([str(REPO / "core" / "src"), str(REPO / "compiler" / "src")])}
         for k in ("XDG_DATA_HOME", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "OPENRIDE_COMPILER"):
             env.pop(k, None)
+        if self.doc.get("caches_reels"):
+            env.update(real_caches_env())
         if self.doc.get("compilateur") == "doublure":
             env["OPENRIDE_COMPILER"] = shlex.join([sys.executable, str(REPO / "core" / "tests" / "data" / "stub_compiler.py")])
         suffix = f"_{n}" if n else ""
@@ -890,7 +911,9 @@ def main(argv: list[str] | None = None) -> int:
         print("xvfb-run introuvable : sudo apt install xvfb xauth, ou --native (fenêtre sur l'écran)")
         return 2
     chosen: list[tuple[str, Path]] = []
-    for name in args.scenario or list(known):
+    # Un scénario `reseau` (données réelles téléchargées : recettes du PC) ne se joue que nommé par --scenario.
+    names = args.scenario or [n for n, p in known.items() if not load_scenario(p).get("reseau")]
+    for name in names:
         path = known.get(name) or Path(name)
         if not path.is_file():
             print(f"scénario inconnu : {name} (--list pour la liste)")
