@@ -73,7 +73,7 @@ def test_unreadable_files_start_again(tmp_path):
 
 def test_cross_key_error_without_line_gives_no_proposal(tmp_path):
     cfg = tmp_path / "config.toml"
-    cfg.write_text("[gearing]\nratio_max = 0.5\n", encoding="utf-8")   # ratio_min (défaut) ≥ ratio_max
+    cfg.write_text("[gearing]\nratio_max = 0.4\n", encoding="utf-8")   # ratio_min (défaut) ≥ ratio_max
     exc = load_error(cfg, None)
     assert (exc.section, exc.key) == ("gearing", "ratio_min")
     assert config_repair.proposal(exc, cfg, None, None) is None   # rien à remettre : message seul
