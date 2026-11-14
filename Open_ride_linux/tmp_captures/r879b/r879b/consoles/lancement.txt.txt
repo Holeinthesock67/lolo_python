@@ -1,0 +1,13 @@
+20:50:27 empreinte avant 0718934cdf33d85a6d0b27339a349843
+20:50:27 tête 927d6bca
+20:51:06 captures_demo
+21:24:09 fin rc=1
+21:24:09 banc low
+21:37:14 fin rc=0
+21:37:14 banc medium
+21:50:19 fin rc=0
+21:50:19 banc high
+22:03:26 fin rc=1
+22:03:28 empreinte après 0718934cdf33d85a6d0b27339a349843
+22:03:28 clone be29640f
+22:03:28 FIN
