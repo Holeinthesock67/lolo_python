@@ -106,6 +106,7 @@ var street_lights: Node3D = null   # luminaires publics des villages (lot P35)
 var crowd_all_climbs := false       # --crowd=all (bancs, lot Y21) : spectateurs sur toutes les montées
 var crowd = CrowdModel.new()
 var crowd_view: Node3D = null
+var _crowds: Array = []              # [aller, retour] (lot N24) : `crowd` est celle du sens de marche
 var passersby = PassersbyModel.new()
 var passersby_view: Node3D = null
 var underwater := false             # parcours sous l'eau (lot SM1, AtmosphereModel.route_underwater)
@@ -290,6 +291,7 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 	cyclists.configure(null, [], [], 0)
 	sky.configure(null, theme, [], 0)
 	crowd.configure(null, [])
+	_crowds = []
 	passersby.configure(null)
 	turbines.set_points([])
 	flags.set_points([])
@@ -347,6 +349,8 @@ static func _prepare_job(job: Dictionary) -> void:
 	var people: Array = [] if uw else found
 	var cm = CrowdModel.new()
 	cm.configure(r, people, water, bool(job["crowd_all_climbs"]) and not uw, 0, road_w)
+	var cm_back = CrowdModel.new()   # spectateurs des montées du retour, affichés après un demi-tour (N24)
+	cm_back.configure(r, [] if uw else back, water, bool(job["crowd_all_climbs"]) and not uw, 0, road_w)
 	var pm = PassersbyModel.new()
 	pm.configure(r, [] if uw else buildings, water, 0, road_w, PassersbyModel.crowd_zones(people, bool(job["crowd_all_climbs"]) and not uw))
 	var marks := {}
@@ -356,7 +360,7 @@ static func _prepare_job(job: Dictionary) -> void:
 			marks[k] = []
 		marks[k].append(m)
 	job["result"] = {
-		"climbs": found, "climbs_back": back, "pois": all_pois, "crowd": cm, "passersby": pm, "marks": marks,
+		"climbs": found, "climbs_back": back, "pois": all_pois, "crowd": cm, "crowd_back": cm_back, "passersby": pm, "marks": marks,
 		"items": [] if uw else RoadsideModel.items(r, found + back, all_pois, water, road_w, job["biome_at"]),
 	}
 
@@ -392,7 +396,8 @@ func _poll_job(wait: bool = false) -> void:
 	climbs = res["climbs"]
 	pois = res["pois"]
 	roadside_items = res["items"]
-	crowd = res["crowd"]
+	_crowds = [res["crowd"], res["crowd_back"]]
+	crowd = _crowds[1] if _dir < 0 else _crowds[0]
 	crowd_view.setup(crowd, sound_player)
 	passersby = res["passersby"]
 	passersby_view.setup_passersby(passersby, sound_player)
@@ -409,6 +414,8 @@ func _poll_job(wait: bool = false) -> void:
 	cyclists.set_back_climbs(res["climbs_back"])   # montées du retour, celles des cyclistes du décor à rebours (N24)
 	sky.biome_model = _active_biome_model()
 	sky.configure(_route, theme, climbs, 0 if underwater else int(living.get("aircraft", 0)))
+	sky.set_back_climbs([] if underwater else res["climbs_back"])
+	sky.set_direction(_dir)
 	turbines.set_points(pois)
 	flags.set_points(pois)
 	if world_streamer != null and world_streamer.has_method("set_road_marks"):
@@ -554,6 +561,10 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	var d = state.get("dir", 1)
 	_dir = -1 if (d is int or d is float) and float(d) < 0.0 else 1
 	traffic.set_direction(_dir)
+	sky.set_direction(_dir)
+	if _crowds.size() == 2 and crowd != _crowds[1 if _dir < 0 else 0]:   # foule des montées du sens suivi (N24)
+		crowd = _crowds[1 if _dir < 0 else 0]
+		crowd_view.setup(crowd, sound_player)
 	cyclists.set_direction(_dir, cam_s)
 	_model_s = traffic.model_s(cam_s)
 	var bots_m: Array = []

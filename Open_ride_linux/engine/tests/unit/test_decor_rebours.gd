@@ -13,6 +13,8 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const ClimbDetector := preload("res://scripts/climb_detector.gd")
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
+const CrowdModel := preload("res://scripts/crowd_model.gd")
+const SkyTrafficModel := preload("res://scripts/sky_traffic_model.gd")
 
 const LENGTH_M := 30000.0
 const DT := 0.1
@@ -216,6 +218,37 @@ func _test_way_back_climbs() -> void:
 		"cyclistes du décor à rebours : montée du retour dans le repère retourné (%s)" % str(c))
 	cm.set_direction(1, 9000.0)
 	_check(cm._climbs.size() == 1 and absf(cm._climbs[0].y - float(fwd[0]["summit_s"])) < 1.0, "de nouveau à l'aller : montée de l'aller")
+	# Spectateurs : dernier kilomètre de la montée du retour, en aval du sommet (5 à 6 km), denses vers le sommet
+	var crowd = CrowdModel.new()
+	crowd.configure(route, back, {}, false, 0)
+	var n_in := 0
+	var near_top := 0
+	for sp in crowd.spectators:
+		var sp_s := float(sp["s"])
+		if sp_s >= float(b["summit_s"]) and sp_s <= float(b["summit_s"]) + CrowdModel.ZONE_M:
+			n_in += 1
+			if sp_s < float(b["summit_s"]) + CrowdModel.ZONE_M * 0.5:
+				near_top += 1
+	_check(crowd.spectators.size() > 10 and n_in == crowd.spectators.size() and near_top * 2 > n_in,
+		"spectateurs du retour en aval du sommet, plus nombreux près du sommet (%d dont %d près du sommet)" % [n_in, near_top])
+	# Parapentes : au-dessus du sommet de l'aller, puis de celui du retour après un demi-tour, puis de nouveau
+	var placed := false
+	for sd in range(20):
+		var sky = SkyTrafficModel.new()
+		sky.configure(route, {}, fwd, 4, sd)
+		sky.set_back_climbs(back)
+		var fwd_ids: Array = sky.paragliders.map(func(q): return str(q["id"]))
+		var fwd_ok: bool = sky.paragliders.all(func(q): return absf((q["centre"] as Vector3).x - float(fwd[0]["summit_s"])) < 400.0)
+		sky.set_direction(-1)
+		if sky.paragliders.is_empty():
+			continue
+		var back_ok: bool = sky.paragliders.all(func(q): return str(q["id"]).begins_with("p1000_") and absf((q["centre"] as Vector3).x - float(b["summit_s"])) < 400.0)
+		sky.set_direction(1)
+		var again: Array = sky.paragliders.map(func(q): return str(q["id"]))
+		_check(fwd_ok and back_ok and again == fwd_ids, "parapentes : sommet de l'aller, du retour après le demi-tour, de l'aller ensuite (graine %d)" % sd)
+		placed = true
+		break
+	_check(placed, "des parapentes au-dessus de la montée du retour pour au moins une graine")
 
 
 func _init() -> void:
