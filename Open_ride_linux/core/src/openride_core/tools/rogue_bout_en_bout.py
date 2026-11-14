@@ -17,6 +17,8 @@ W'bal et le mur, pente du trainer relâchée ; `rogue_resync` qui renvoie la der
 `room` et `loot` valides pour les schémas du contrat (si `jsonschema` est installé) et sous la limite de
 taille ; séance terminée d'elle-même après les résultats, avec `summary.rogue` ; journal relu (`rogue_run`,
 instantanés de chaque phase, enregistrements en mode ROGUE) ; durée de la run proche de celle demandée.
+Lot R23 : un Z sans cible pendant l'échauffement, puis chaque Z court vérifié avec un seul retour dans les trames
+(`z_ok` ou `z_refused`) ; en endurance, 20 s trop fort dans la première salle : surchauffe annoncée, dite, finie.
 Le journal, le FIT et la progression restent dans un dossier temporaire.
 
 Code de sortie : 0 si toutes les vérifications passent, 1 sinon, 2 pour un appel invalide.
@@ -127,14 +129,26 @@ def run(objective: str = "threshold", duration_min: int = 30, seed: int = 5, pro
         rep.add(s.state.session_state == "RUNNING" and s.state.mode == "ROGUE", "run lancée (start)",
                 f"séance {s.state.session_state}, mode {s.state.mode}")
         bot = Bot(rg.engine, prof, seed, body=s.physics)
-        pressed = {"Z": 0, "A": 0, "gear": 0}
+        pressed = {"Z": 0, "A": 0, "gear": 0, "Z_SHORT": 0}
         pause: dict[str, Any] = {}
         results_at: float | None = None
         limit = 3 * duration_min * 60.0
         frames = 0
+        first_id: int | None = None      # première salle (surchauffe voulue du lot R23)
         while s._t_session < limit and s.state.session_state == "RUNNING":
             e = rg.engine
-            bot_step(s, bot, driver, pressed)
+            if e.phase == "WARMUP" and e.t_phase >= WARMUP_Z_S and not pressed.get("warmup_z"):
+                # lot R23 : un Z sans cible pendant l'échauffement, qui doit être refusé avec sa raison
+                pressed["warmup_z"] = 1
+                pressed["Z_SHORT"] += 1
+                s._handle_input(InputEvent.Z_SHORT)
+            # lot R23 : en endurance, 20 s trop fort au début de la première salle (plafond + 15 points) : la
+            # surchauffe doit être annoncée, puis dite, puis finir quand le cycliste redescend
+            if first_id is None and e.phase == "ROOM":
+                first_id = e.room_id
+            hot = (objective == "endurance" and e.phase == "ROOM" and e.room_id == first_id
+                   and HOT_FROM_S <= e.t_phase < HOT_FROM_S + HOT_S)
+            bot_step(s, bot, driver, pressed, extra_frac=HOT_EXTRA if hot else 0.0)
             frames += 1
             if not pause and e.phase == "ROOM" and s.physics.s > 0 and e.t_phase >= PAUSE_AFTER_S:
                 pause = _pause_and_resume(s, sent)
@@ -164,6 +178,10 @@ def run(objective: str = "threshold", duration_min: int = 30, seed: int = 5, pro
     return rep
 
 
+WARMUP_Z_S = 60.0                # Z sans cible à 1 min de l'échauffement (lot R23)
+HOT_FROM_S, HOT_S, HOT_EXTRA = 45.0, 20.0, 0.15   # surchauffe voulue en endurance (lot R23)
+
+
 def new_session(tmp: Path, prof: Any, inputs: list | None = None) -> tuple[CoreSession, MockDriver, list]:
     """Vraie séance du core sur un trainer simulé, journal et profil dans `tmp`, messages vers l'engine relevés."""
     cfg = Config()
@@ -181,19 +199,26 @@ def new_session(tmp: Path, prof: Any, inputs: list | None = None) -> tuple[CoreS
     return s, driver, sent
 
 
-def bot_step(s: CoreSession, bot: Bot, driver: MockDriver, pressed: dict) -> float:
+def bot_step(s: CoreSession, bot: Bot, driver: MockDriver, pressed: dict, extra_frac: float = 0.0) -> float:
     """Un pas d'une seconde : le cycliste simulé appuie, pédale, puis la séance avance. Renvoie sa puissance."""
     rg = s.rogue
     power, cadence, buttons, _ = bot.decide()
+    if extra_frac:
+        from ..rogue.combat import overheat_limit, target_at
+        e = rg.engine
+        tgt = target_at(e.room, max(s.physics.s, 0.0))
+        power = (overheat_limit(tgt, e._eff_balance()) + extra_frac) * s.cfg.rider.ftp_w
     for _ in range(round(abs(bot.gear - rg.gear))):   # braquet voulu : appuis courts sur + ou −
         s._handle_input(GEAR_PRESS[1 if bot.gear > rg.gear else -1])
         pressed["gear"] = pressed.get("gear", 0) + 1
     for b in sorted(buttons):
         s._handle_input(InputEvent(b))
         pressed[b[0]] = pressed.get(b[0], 0) + 1
+        pressed[b] = pressed.get(b, 0) + 1
     driver.base_power_w, driver.base_cadence_rpm = power, cadence
     s._step(DT, time.monotonic())
     bot.gear = rg.gear                           # braquet imposé (piratage) ou refusé
+    s._fill_rogue_frame()                        # comme la boucle de la séance : événements depuis la trame (R23)
     s.server.send_state(s.state)
     return power
 
@@ -260,6 +285,22 @@ def _check_run(rep: Report, s: CoreSession, rg: Any, sent: list, pressed: dict, 
             "appuis du cycliste reçus par la run (Z, A, braquets)",
             f"Z {pressed['Z']}, A {pressed['A']}, braquets {pressed['gear']} ; Perfect Shifts {summ['perfect_shifts']}, "
             f"cartes {len(summ['cards'])}")
+    frames = [m["rogue"] for _, m in sent if m.get("type") == "state" and m.get("rogue")]
+    ok_n = sum(r["events"].count("z_ok") for r in frames)
+    ref_n = sum(r["events"].count("z_refused") for r in frames)
+    warm = [r.get("z_reason") for r in frames if r.get("phase") == "WARMUP" and "z_refused" in r["events"]]
+    rep.add(ok_n + ref_n == pressed["Z_SHORT"] and warm == ["no_target"],
+            "chaque Z court a un retour dans les trames (z_ok ou z_refused, lot R23)",
+            f"{pressed['Z_SHORT']} Z court(s) : {ok_n} accepté(s), {ref_n} refusé(s) ; échauffement : {warm}")
+    if rep.objective == "endurance":
+        causes = [((r.get("adrenaline_trend") or {}).get("cause"), (r.get("adrenaline_trend") or {}).get("overheat_in_s"),
+                   bool(r.get("overheat"))) for r in frames if r.get("phase") == "ROOM"]
+        soon = any(c[1] is not None for c in causes)
+        hot = [i for i, c in enumerate(causes) if c[2]]
+        melt = all(causes[i][0] == "overheat" for i in hot)
+        ended = bool(hot) and any(not c[2] for c in causes[hot[-1] + 1:])
+        rep.add(soon and bool(hot) and melt and ended, "surchauffe annoncée, dite, puis finie (endurance, lot R23)",
+                f"annonce {soon}, {len(hot)} trame(s) en surchauffe, cause « overheat » {melt}, fin {ended}")
     if not pause:
         rep.add(False, "pause par Y dans une salle", "aucune salle de plus de 30 s")
     else:

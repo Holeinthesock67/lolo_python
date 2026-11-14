@@ -33,12 +33,14 @@ const EVENT_SOUNDS := {
 	"parry_miss": "rogue_parry_miss", "room_won": "rogue_room_won", "room_fled": "rogue_room_fled",
 	"room_skipped": "rogue_room_skipped", "defeat": "rogue_defeat", "card_taken": "rogue_card_pick",
 	"purge": "rogue_purge", "z_refused": "rogue_refused", "shift_missed": "rogue_shift_missed",
+	"z_ok": "rogue_z_ok",
 }
-## Priorité des sons (le plus haut garde sa voix à saturation) : défaite > boss > salle > Perfect Shift > parade
-## > impact > le reste.
+## Priorité des sons (le plus haut garde sa voix à saturation) : défaite > boss > salle > réponse à Z (accepté ou
+## refusé, lot R23) > Perfect Shift > parade > impact > le reste.
 const PRIORITY := {
 	"rogue_defeat": 100, "rogue_boss_won": 90, "rogue_boss_phase": 90, "rogue_room_won": 80,
 	"rogue_room_fled": 80, "rogue_room_skipped": 80, "rogue_result": 80, "rogue_result_lost": 80,
+	"rogue_z_ok": 75, "rogue_refused": 75,   # lot R23 : la réponse à un appui n'est jamais couverte
 	"rogue_perfect_shift": 70, "rogue_parry": 60, "rogue_parry_miss": 60, "rogue_crit": 55, "rogue_hit": 50,
 }
 const DEFAULT_PRIORITY := 10

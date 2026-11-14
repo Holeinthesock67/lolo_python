@@ -67,6 +67,10 @@ ROOM_CAPTURE_M = 120.0           # capture d'une salle à 120 m de son début
 WARMUP_CAPTURE_S = 20.0
 CORRIDOR_CAPTURE_S = 3.0         # après l'offre de cartes
 COOLDOWN_CAPTURE_S = 10.0
+# Lot R23 : retours des appuis et surchauffe, vue sur le vélo (trois flèches haut depuis la vue par défaut).
+SURCHAUFFE_CAPTURE_S = 3.0       # après le début de la surchauffe
+VIEW_PRESSES = 3
+RIDER_VIEW_ROOM_M = 300.0        # vue sur le vélo à 300 m de la première salle
 FIGHT = ("ROOM", "BOSS")
 DARK_MIN_LUM = 0.01              # scène néon : fond sombre, mais jamais noire
 UNIFORM_MIN_STD = 0.02
@@ -99,7 +103,7 @@ def moments(trace: list[tuple[float, dict]]) -> list[tuple[int, str]]:
     """(indice du message `state`, nom) des captures, dans l'ordre de la trace."""
     out: list[tuple[int, str]] = []
     seen: set[str] = set()
-    t_warmup = t_cool = loot_t = None
+    t_warmup = t_cool = loot_t = t_hot = None
 
     def add(i: int, name: str) -> None:
         if name not in seen:
@@ -115,6 +119,23 @@ def moments(trace: list[tuple[float, dict]]) -> list[tuple[int, str]]:
         st = m.get("session_state")
         rg = m.get("rogue") or {}
         ph = rg.get("phase")
+        ev = rg.get("events") or []
+        trend = rg.get("adrenaline_trend") or {}
+        if st == "RUNNING":                      # lot R23 : retours des appuis et surchauffe
+            if "z_refused" in ev:
+                add(i, "z_refuse_" + {"WARMUP": "echauffement"}.get(ph, "salle"))
+            elif "z_ok" in ev and ph in FIGHT:
+                add(i, "z_accepte")
+            if ph in FIGHT and trend.get("overheat_in_s") is not None:
+                add(i, "surchauffe_proche")
+            if ph in FIGHT and rg.get("overheat"):
+                t_hot = t if t_hot is None else t_hot
+                if t - t_hot >= SURCHAUFFE_CAPTURE_S:
+                    add(i, "surchauffe")
+            else:
+                t_hot = None
+            if ph == "ROOM" and float(rg.get("s_room") or 0.0) >= RIDER_VIEW_ROOM_M:
+                add(i, "vue_sur_le_velo")
         if st == "PAUSED":
             add(i, "pause")
         elif st == "FINISHED":
@@ -179,6 +200,10 @@ class Bench:
             else:
                 core.send(m)
             if i in at:
+                rider = at[i] == "vue_sur_le_velo"
+                if rider:                               # lot R23 : flèche haut jusqu'à la 4e vue
+                    for _ in range(VIEW_PRESSES):
+                        core.send({"type": "input", "event": "UP_SHORT"})
                 held = now()
                 while now() - held < HOLD_S or (not self.ready and now() - held < READY_TIMEOUT_S):
                     time.sleep(1.0 / FRAME_HZ)
@@ -187,6 +212,9 @@ class Bench:
                 self.check(at[i], "scène du mode prête avant la capture", self.ready,
                            "" if self.ready else f"pas de « scene_ready id=rogue » en {READY_TIMEOUT_S:.0f} s")
                 shot = self.capture(core, at[i])
+                if rider:                               # retour à la vue par défaut
+                    for _ in range(VIEW_PRESSES):
+                        core.send({"type": "input", "event": "DOWN_SHORT"})
                 start += now() - held                  # le temps du gel ne compte pas dans la trace
                 if shot is not None:
                     shots.append((at[i], m, shot[0], shot[1]))
@@ -234,6 +262,19 @@ class Bench:
             self.check(name, "HUD classique caché pendant la run", not classic, ", ".join(classic) or "caché")
         if name == "couloir_cartes":
             self.check(name, "écran des cartes du couloir", bool(ri.get("corridor")), "")
+        # lot R23 : vitesse toujours affichée, retour de chaque Z, surchauffe dite, vue sur le vélo
+        if frame.get("session_state") == "RUNNING":
+            want = "%02d" % int(frame.get("gear", 1))
+            self.check(name, "pavé VITESSE", ri.get("gear") == want, f"affiché {ri.get('gear') or '—'}, trame {want}")
+        if name.startswith("z_"):
+            self.check(name, "retour du Z affiché (texte et anneau)", bool(ri.get("toast")) and bool(ri.get("z_ring")),
+                       f"« {ri.get('toast') or '—'} », anneau {ri.get('z_ring')}")
+        if name == "surchauffe":
+            self.check(name, "surchauffe dite à l'écran", "SURCHAUFFE" in (ri.get("hint") or ""), ri.get("hint") or "—")
+        if name == "surchauffe_proche":
+            self.check(name, "surchauffe annoncée avant", "surchauffe dans" in (ri.get("hint") or ""), ri.get("hint") or "—")
+        if name == "vue_sur_le_velo":
+            self.check(name, "vue sur le vélo", ri.get("view") == "sur le vélo", ri.get("view") or "—")
 
 
 def image_stats(img) -> tuple[float, float, float]:

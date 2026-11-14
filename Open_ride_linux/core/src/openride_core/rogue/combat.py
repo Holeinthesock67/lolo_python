@@ -25,6 +25,12 @@ Z_REASONS = ("adrenaline", "overheat", "no_target", "no_charge", "no_roc_charge"
 # Verdict d'une arche de Perfect Shift ratée (champ `shift_miss`) : trop tôt, trop tard, mauvais sens, aucun
 # changement autour de l'arche. Le verdict tombe SHIFT_LATE_S après la fin de la fenêtre.
 SHIFT_MISS_REASONS = ("early", "late", "wrong_way", "none")
+# Action d'un Z court accepté (lot R23, événement `z_ok` et champ `z_action`, révision 1.17) : chaque Z court d'une
+# run donne exactement un retour, `z_ok` avec son action ou `z_refused` avec sa raison.
+Z_ACTIONS = ("strike", "charges", "rock", "rock_chip", "parry", "purge", "reroll")
+# Tendance de l'adrénaline (champ `adrenaline_trend.cause`, révision 1.17) : monte à la cible, stable sous la
+# cible, fond en surchauffe, stable à l'arrêt ou pleine ; `none` hors combat.
+ADRENALINE_CAUSES = ("gain", "below", "overheat", "stopped", "full", "none")
 SHIFT_LATE_S = 1.5          # marge après la fenêtre pour reconnaître un changement « trop tard »
 SHIFT_NEAR_S = 3.0          # au-delà de cet écart à l'arche, le changement ne la concerne pas
 
@@ -87,9 +93,20 @@ class CombatState:
     shift_t_s: float = -1e9            # instant du dernier changement de vitesse (temps de combat)
     shift_dir: str = ""                # "up" ou "down"
     shift_miss: tuple = ()             # (raison, écart en s) de l'arche ratée dans la trame, sinon vide
+    # retours (lot R23) : action du Z accepté et tendance de l'adrénaline du pas
+    z_action: str | None = None        # action du dernier Z court accepté du pas (événement z_ok)
+    adr_rate: float = 0.0              # variation continue de l'adrénaline (par seconde), hors gains ponctuels
+    adr_cause: str = "none"            # cause de cette variation (ADRENALINE_CAUSES)
 
 
 # --- aides ---------------------------------------------------------------------------------
+
+def overheat_limit(target: float, b: RogueBalance) -> float:
+    """Seuil de surchauffe (endurance), en fraction de la FTP : `overheat_frac`, jamais sous la cible + la marge.
+    Lot R23 : les phases 2 et 3 du boss d'endurance demandent jusqu'à 85 % ; avec un seuil fixe à 75 %, tenir la
+    consigne faisait fondre l'adrénaline. Une seule règle : le plafond est toujours au-dessus de la cible."""
+    return max(b.overheat_frac, target + b.overheat_margin)
+
 
 def m_gear(gear: int, b: RogueBalance) -> float:
     return 1.0 + b.gear_step * (gear - b.gear_ref)
@@ -181,9 +198,10 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
 
     if st.phase == RECOVERY:
         rec = st.recovery_s + dt
+        idle = {"adr_rate": 0.0, "adr_cause": "none", "z_reason": None, "z_action": None}
         if rec >= b.recovery_s:
-            return replace(st, t_s=t, recovery_s=b.recovery_s, phase=DONE), ()
-        return replace(st, t_s=t, recovery_s=rec), ()
+            return replace(st, t_s=t, recovery_s=b.recovery_s, phase=DONE, **idle), ()
+        return replace(st, t_s=t, recovery_s=rec, **idle), ()
 
     s, v = inp.s_m, inp.v_mps
     ftp = max(inp.ftp_w, 1.0)
@@ -246,20 +264,26 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
 
     # surchauffe (objectif endurance seulement)
     over_s, overheat = st.over_s, False
-    if inp.objective == "endurance" and frac > b.overheat_frac:
+    if inp.objective == "endurance" and frac > overheat_limit(tgt, b):
         over_s += dt
         overheat = over_s > b.overheat_after_s
     else:
         over_s = 0.0
 
-    # adrénaline
+    # adrénaline (lot R23 : la cause et le débit sont dits à l'engine)
+    adr_rate, adr_cause = 0.0, "below"
     if overheat:
-        adr -= b.overheat_adrenaline_per_s * dt
-    elif frac >= tgt and inp.posture != ARRET:
+        adr_rate, adr_cause = -b.overheat_adrenaline_per_s, "overheat"
+    elif inp.posture == ARRET:
+        adr_cause = "stopped"
+    elif frac >= tgt:
         mult = b.adrenaline_roc_mult if inp.posture == ROC else (
             b.adrenaline_veloce_mult if inp.posture == VELOCE else 1.0)
-        adr += b.adrenaline_per_s * mult * dt
+        adr_rate, adr_cause = b.adrenaline_per_s * mult, "gain"
+    adr += adr_rate * dt
     adr = min(max(adr, 0.0), b.adrenaline_max)
+    if adr_cause == "gain" and adr >= b.adrenaline_max:
+        adr_rate, adr_cause = 0.0, "full"
 
     # dégâts par seconde
     hp, down_s = st.enemy_hp, st.down_s_m
@@ -307,10 +331,10 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
     # bouton Z court : une seule signification selon le marqueur sous la roue
     rock_armor = dict(st.rock_armor)
     hook_until, grade_scale = st.hook_until_s, st.grade_scale
-    z_reason = None
+    z_reason = z_action = None
     if Z_SHORT in inp.buttons:
         used = False
-        reason = None
+        reason = action = None
         for i, m in enumerate(room.markers):
             if m.kind == "purge":
                 lo, hi = _window(m, v, b.strike_window_s)
@@ -318,6 +342,7 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
                     if hacked:
                         hack_kind, forced, hacked = None, None, False
                         events.append("purge")
+                        action = "purge"
                     else:
                         reason = "no_hack"
                     used = True
@@ -331,6 +356,7 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
                             charges = 0
                             done.add(("strike", i))
                             events.append("hit")
+                            action = "charges"
                         else:
                             reason = "overheat" if overheat else "no_charge"
                     elif adr >= b.strike_cost and not overheat:
@@ -338,6 +364,7 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
                         hp = max(hp - b.strike_hp_frac * st.enemy_hp_max, 0.0)
                         done.add(("strike", i))
                         events.append("hit")
+                        action = "strike"
                     else:
                         reason = "overheat" if overheat else "adrenaline"
             elif m.kind == "rock" and ("rock", i) not in done:
@@ -348,10 +375,12 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
                         roc_charges -= 1
                         left = rock_armor.get(i, int(m.param or 1)) - 1
                         rock_armor[i] = left
+                        action = "rock_chip"
                         if left <= 0:
                             hp = max(hp - b.rock_hp_frac * st.enemy_hp_max, 0.0)
                             done.add(("rock", i))
                             events.append("hit")
+                            action = "rock"
                     else:
                         reason = "no_roc_charge"
             elif m.kind == "parry_zone" and ("zone", i) not in done and m.s_m <= s <= m.s_m + m.len_m:
@@ -360,12 +389,14 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
                     done.add(("zone", i))
                     done.add(("parried", i))
                     events.append("parry")
+                    action = "parry"
                 else:
                     recent = sum(bins[-2:]) / 2 if len(bins) >= 5 else 0.0
                     before = sum(bins[-5:-2]) / 3 if len(bins) >= 5 else 0.0
                     if len(bins) >= 5 and recent > b.hook_power_ratio * before:
                         done.add(("parried", i))
                         events.append("parry")
+                        action = "parry"
                     else:
                         reason = "no_surge"
             if used:
@@ -375,6 +406,9 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
         if reason is not None:
             z_reason = reason
             events.append("z_refused")
+        elif action is not None:
+            z_action = action
+            events.append("z_ok")
         if hp <= 0 < st.enemy_hp and down_s is None:
             down_s = s
 
@@ -411,6 +445,7 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
         hook_until_s=hook_until, grade_scale=grade_scale, hack_kind=hack_kind, forced_gear=forced, hack_t_s=hack_t,
         done_markers=frozenset(done), rock_armor=tuple(sorted(rock_armor.items())), bins=bins,
         bin_sum=bsum, bin_n=bn, crit_second=crit_sec, crit_now=crit_now, z_reason=z_reason,
+        z_action=z_action, adr_rate=adr_rate, adr_cause=adr_cause,
         shift_t_s=shift_t, shift_dir=shift_dir, shift_miss=shift_miss)
 
     # défaite

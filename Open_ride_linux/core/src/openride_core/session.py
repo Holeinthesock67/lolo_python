@@ -1215,7 +1215,7 @@ class CoreSession:
         st.t, st.s, st.v = self._t_session, self._rogue_dist, self.physics.v
         st.grade, st.grade_sent = round(out.grade_enemy, 2), round(self._grade_sent, 2)
         st.power, st.power_3s, st.cadence, st.hr = m.power_w, round(p3, 1), m.cadence_rpm, m.hr_bpm
-        st.gear, st.rogue = rg.gear, out.rogue
+        st.gear, st.rogue = rg.gear, out.rogue   # événements de la trame : _fill_rogue_frame à l'envoi (lot R23)
         if self._rec and self._t_session >= self._next_record:
             self._next_record += 1.0
             self._rec.record(Record(
@@ -2483,6 +2483,15 @@ class CoreSession:
             self.wtf.table = table
         log.info("Mode WTF : règle %s %s.", rule, "allumée" if on else "coupée")
         return True
+
+    def _fill_rogue_frame(self) -> None:
+        """Objet `rogue` de la trame : état du dernier pas et événements de tous les pas depuis la trame
+        précédente (lot R23 : la boucle tourne à 50 Hz, la trame part à 30 Hz)."""
+        if self.rogue is None:
+            return
+        frame = self.rogue.take_frame()
+        if frame is not None:
+            self.state.rogue = frame
 
     def _fill_wtf_frame(self) -> None:
         st = self.state
@@ -4122,6 +4131,7 @@ class CoreSession:
                 self._fill_survivor_frame()
                 self._fill_grandprix_frame()
                 self._fill_track_frame()
+                self._fill_rogue_frame()
                 self._lighten_bots_frame()
                 self.server.send_state(self.state)
             if now >= next_stats:

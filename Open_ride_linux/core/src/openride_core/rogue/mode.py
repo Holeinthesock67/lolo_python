@@ -33,6 +33,11 @@ GEAR_BUTTONS = ("PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG")
 GAME_BUTTONS = ("Z_SHORT", "Z_LONG", "A_SHORT", "A_LONG", "LEFT_SHORT", "RIGHT_SHORT")
 KEPT_MESSAGES = 12                      # messages `room` et `loot` gardés pour `rogue_resync`
 JOURNAL_ROUTE_ID = "rogue"              # parcours inscrit au journal d'une run (la trame `state` porte route_id null)
+# Événements de jeu gardés pour la prochaine trame `state` (lot R23) : le core fait un pas à 50 Hz, la trame part à
+# 30 Hz ; les événements de tous les pas depuis la trame précédente partent ensemble, une seule fois.
+FRAME_EVENTS_MAX = 6
+# Retours qui accompagnent un événement : la valeur du dernier pas qui l'a produit est gardée jusqu'à la trame.
+FRAME_FEEDBACK = (("z_refused", "z_reason"), ("z_ok", "z_action"), ("shift_missed", "shift_miss"))
 RESULTS_HOLD_S = 3.0                    # phase RESULTS montée à l'engine (jingle de fin) avant FINISHED et le bilan
 
 
@@ -149,6 +154,8 @@ class RogueMode:
         self.phase = ""
         self.sent: list[dict] = []          # messages `room` et `loot` récents, renvoyés par `rogue_resync`
         self.out: RunOutputs | None = None
+        self._frame_events: list[str] = []  # événements des pas depuis la dernière trame (take_frame)
+        self._frame_feedback: dict[str, Any] = {}
         self.results_s = 0.0                # temps passé en RESULTS ; la séance se termine après RESULTS_HOLD_S
         self.hash = balance_hash(self.balance)
 
@@ -191,6 +198,10 @@ class RogueMode:
         self.buttons.clear()
         out = e.step(dt, inp)
         self.out = out
+        self._frame_events += out.rogue["events"]
+        for ev, key in FRAME_FEEDBACK:
+            if ev in out.rogue["events"]:
+                self._frame_feedback[key] = out.rogue.get(key)
         if out.force_gear:
             self.gear = out.force_gear
             self.shift_pending = True
@@ -209,6 +220,20 @@ class RogueMode:
         if self.finished:
             self.results_s += dt
         return out, lines
+
+    def take_frame(self) -> dict | None:
+        """Objet `rogue` de la trame `state` à envoyer : l'état du dernier pas, avec les événements de tous les pas
+        depuis la trame précédente (au plus FRAME_EVENTS_MAX, les plus anciens d'abord) et leurs retours. Les
+        événements partent une seule fois : la trame suivante ne les répète pas (lot R23 ; avant, seuls ceux du
+        dernier pas partaient, et 2 pas sur 5 étaient perdus)."""
+        if self.out is None:
+            return None
+        frame = dict(self.out.rogue)
+        frame["events"] = self._frame_events[:FRAME_EVENTS_MAX]
+        for ev, key in FRAME_FEEDBACK:
+            frame[key] = self._frame_feedback.get(key) if ev in frame["events"] else None
+        self._frame_events, self._frame_feedback = [], {}
+        return frame
 
     def target_grade(self, rate_up: float, rate_down: float, dt: float) -> tuple[float, bool]:
         """Pente envoyée après la rampe propre au mode ; immédiate au changement de braquet."""

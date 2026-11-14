@@ -1782,7 +1782,9 @@ func _step_rogue_avatar(now_us: int) -> void:
 	if avatar_view == null or banner.has_message("core_lost"):
 		return
 	_bank_roll = 0.0
-	avatar_view.set_visible_for_view("follow_near" if camera_views.has_avatar else "subjective")   # sans avatar : rien (2.0-CAM-3)
+	# sans avatar : rien (2.0-CAM-3) ; vue « sur le vélo » du mode (lot R23) : caché, comme en vue subjective
+	var shown: bool = camera_views.has_avatar and not rogue_host.scene.is_rider_view()
+	avatar_view.set_visible_for_view("follow_near" if shown else "subjective")
 	avatar_view.scale = Vector3.ONE
 	_step_avatar(rogue_host.scene.rider_point(), 0.0, 0.0, now_us, rogue_host.scene.rider_pitch_deg())
 

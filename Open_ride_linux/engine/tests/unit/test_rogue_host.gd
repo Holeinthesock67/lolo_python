@@ -150,7 +150,7 @@ func _run() -> void:
 	# préchauffage (2 novembre) : la synthèse ne bloque pas l'image du départ, les flux arrivent ensuite
 	_check(sc.audio.threaded and not sc.audio.streams_ready(), "sons : synthèse en tâche de fond, pas sur l'image du départ")
 	sc.audio.finish_now()
-	_check(sc.audio.streams_ready() and sc.audio.streams.size() == 27, "sons : 27 flux installés à la fin de la synthèse")
+	_check(sc.audio.streams_ready() and sc.audio.streams.size() == 28, "sons : 28 flux installés à la fin de la synthèse")
 	_check(sc.audio.music_players.values().all(func(mp): return mp.stream != null),
 			"musique : les couches ont leur flux à la fin de la synthèse")
 	# sortie

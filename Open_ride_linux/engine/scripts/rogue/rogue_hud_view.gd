@@ -8,7 +8,9 @@ extends Node3D
 ## - en bas, la consigne du moment et les boutons utiles ;
 ## - au centre haut, les retours des appuis (Z refusé et sa raison, verdict des arches), quelques secondes ;
 ## - à droite, la légende d'un objet la première fois qu'il apparaît ;
-## - le bandeau « Salle manquée » et le grésillement rouge (R11).
+## - le bandeau « Salle manquée » et le grésillement rouge (R11) ;
+## - lot R23 : anneau au centre à chaque Z court (or : accepté, rouge : refusé), pavé VITESSE en bas à droite dans
+##   toutes les phases (s'allume à chaque changement), tendance de l'adrénaline sous sa jauge, nom de la vue.
 ## Ne calcule rien : elle dessine les valeurs de rogue_hud_model.gd (clé `guide` : rogue_guide_model.gd).
 
 const Palette := preload("res://scripts/rogue/neon_palette.gd")
@@ -22,6 +24,40 @@ const BANNER_TEXT := "Salle manquée −10 or"
 const PANEL_W := 400.0
 const SIDE_W := 300.0
 const LEGEND_W := 330.0
+const PULSE_S := 0.45               # anneau du Z (lot R23)
+const GEAR_FLASH_S := 0.6
+const VIEW_NAME_S := 1.5
+
+
+## Anneau qui s'ouvre au centre de l'écran à chaque Z court (lot R23) : or si accepté, rouge si refusé.
+class ZPulse extends Control:
+	var left_s := 0.0
+	var color := Color.WHITE
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_anchors_preset(Control.PRESET_FULL_RECT)
+
+	func fire(c: Color) -> void:
+		color = c
+		left_s = PULSE_S
+		queue_redraw()
+
+	func tick(delta: float) -> void:
+		if left_s <= 0.0:
+			return
+		left_s = maxf(left_s - delta, 0.0)
+		queue_redraw()
+
+	func _draw() -> void:
+		if left_s <= 0.0:
+			return
+		var u := 1.0 - left_s / PULSE_S                 # 0 → 1 pendant l'anneau
+		var c := size * Vector2(0.5, 0.68)             # sous le retour écrit, sur la route devant la roue
+		var r := lerpf(36.0, minf(size.x, size.y) * 0.2, u)
+		var col := Color(color, 0.9 * (1.0 - u))
+		draw_arc(c, r, 0.0, TAU, 64, col, lerpf(14.0, 3.0, u), true)
+		draw_arc(c, r * 0.72, 0.0, TAU, 48, Color(col, col.a * 0.5), lerpf(6.0, 1.5, u), true)
 
 
 ## Jauge horizontale : fond, remplissage, trait du seuil (adrénaline) et bord rouge quand elle est basse.
@@ -90,6 +126,15 @@ var legend_left_s := 0.0
 var _toasts: Array = []
 var _layer: CanvasLayer
 var _keys_key := ""
+var z_pulse: ZPulse                 # lot R23
+var gear_panel: PanelContainer
+var gear_value: Label
+var gear_title: Label
+var gear_flash_s := 0.0
+var _gear_shown := -1
+var adr_trend_label: Label
+var view_label: Label
+var view_left_s := 0.0
 
 
 func _ready() -> void:
@@ -107,6 +152,19 @@ func _ready() -> void:
 	_build_hint()
 	_build_toast()
 	_build_legend()
+	_build_gear()
+	z_pulse = ZPulse.new()
+	z_pulse.name = "ZPulse"
+	_layer.add_child(z_pulse)
+	view_label = _lbl(26, UiTheme.TEXT)
+	view_label.name = "ViewName"
+	view_label.set_anchors_preset(Control.PRESET_CENTER)
+	view_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	view_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	view_label.add_theme_constant_override("outline_size", 6)
+	view_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	view_label.visible = false
+	_layer.add_child(view_label)
 	banner = Label.new()
 	banner.text = BANNER_TEXT
 	banner.visible = false
@@ -183,6 +241,11 @@ func _build_panel() -> void:
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		r.add_child(val)
 		bars[spec[0]] = [g, val, r]
+		if spec[0] == "adrenaline":   # lot R23 : la tendance (monte, stable, fond) sous la jauge
+			adr_trend_label = _lbl(15, UiTheme.DIM)
+			adr_trend_label.name = "AdrenalineTrend"
+			adr_trend_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			box.add_child(adr_trend_label)
 	holo = _lbl(19)
 	holo.name = "Hologram"
 	box.add_child(holo)
@@ -281,12 +344,51 @@ func _build_legend() -> void:
 	box.add_child(legend_text)
 
 
+## Pavé VITESSE (lot R23) : en bas à droite, au-dessus des boutons, visible dans toutes les phases.
+func _build_gear() -> void:
+	gear_panel = PanelContainer.new()
+	gear_panel.name = "GearPanel"
+	gear_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	gear_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	gear_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	gear_panel.offset_right = -16
+	gear_panel.offset_bottom = -116
+	gear_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_layer.add_child(gear_panel)
+	var box := VBoxContainer.new()
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override("separation", 0)
+	gear_panel.add_child(box)
+	gear_title = _lbl(15, UiTheme.DIM, "VITESSE")
+	gear_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(gear_title)
+	gear_value = _lbl(52, UiTheme.TEXT, "06")
+	gear_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(gear_value)
+
+
+## Anneau du Z court de la trame (« ok » ou « refused », lot R23).
+func pulse(kind: String) -> void:
+	if z_pulse == null or kind == "":
+		return
+	z_pulse.fire(UiTheme.GOLD if kind == "ok" else UiTheme.DANGER)
+
+
+## Nom de la vue, 1,5 s au centre, à chaque changement (lot R23).
+func show_view_name(text: String) -> void:
+	if view_label == null:
+		return
+	view_label.text = "Vue : %s" % text
+	view_left_s = VIEW_NAME_S
+
+
 func set_style(new_preset: String, new_adapted: bool) -> void:
 	preset = new_preset
 	adapted = new_adapted
 	if panel == null:
 		return
 	panel.add_theme_stylebox_override("panel", _box_style(Color(Palette.color("player", adapted), 0.55)))
+	gear_panel.add_theme_stylebox_override("panel", _box_style(Color(Palette.color("player", adapted), 0.55)))
 	hint_panel.add_theme_stylebox_override("panel", _box_style(Color(1, 1, 1, 0.25)))
 	legend_panel.add_theme_stylebox_override("panel", _box_style(Palette.color("gold", adapted)))
 
@@ -336,6 +438,16 @@ func apply(values: Dictionary, bike_pos: Vector3, delta: float) -> void:
 	holo.text = "Vitesse %s   %s FTP   %s rpm   %s" % [values.get("gear_text", ""), values.get("power_pct_text", ""),
 		values.get("cadence_text", ""), values.get("posture_text", "")]
 	holo.modulate = Palette.color(str(values.get("posture_token", "neutral")), adapted)
+	var trend := str(g.get("adr_trend", ""))
+	adr_trend_label.text = trend
+	adr_trend_label.visible = fight and trend != ""
+	adr_trend_label.add_theme_color_override("font_color", UiTheme.DANGER if bool(values.get("overheat", false)) else UiTheme.DIM)
+	var gear := int(values.get("gear", 1))
+	if gear != _gear_shown:
+		if _gear_shown >= 0:
+			gear_flash_s = GEAR_FLASH_S
+		_gear_shown = gear
+		gear_value.text = "%02d" % gear
 	gauges.text = "\n".join(g.get("next_lines", []))
 	_side(g, choosing)
 	_hint(g)
@@ -431,6 +543,16 @@ func _tick(delta: float) -> void:
 	var lit := glitch_left_s > 0.0 and int(glitch_left_s * 4.0) % 2 == 1
 	glitch_rect.color.a = 0.35 if lit else 0.0
 	toast_left_s = maxf(toast_left_s - delta, 0.0)
+	# Retour d'un Z (lot R23) : il passe tout de suite, devant les retours en attente.
+	var urgent := -1
+	for i in _toasts.size():
+		if bool(_toasts[i].get("now", false)):
+			urgent = i
+	if urgent >= 0:
+		var u: Dictionary = _toasts[urgent]
+		_toasts = _toasts.filter(func(t): return not bool(t.get("now", false)))
+		_toasts.push_front(u)
+		toast_left_s = 0.0
 	if toast_left_s <= 0.0 and not _toasts.is_empty():
 		var t: Dictionary = _toasts.pop_front()
 		if _toasts.size() > 2:          # pas de file sans fin : seuls les retours récents comptent
@@ -443,5 +565,13 @@ func _tick(delta: float) -> void:
 		toast_panel.add_theme_stylebox_override("panel", _box_style(c))
 		toast_left_s = TOAST_S
 	toast_panel.visible = toast_left_s > 0.0
+	z_pulse.tick(delta)
+	gear_flash_s = maxf(gear_flash_s - delta, 0.0)
+	var lit_gear := gear_flash_s > 0.0
+	gear_value.add_theme_color_override("font_color", UiTheme.GOLD if lit_gear else UiTheme.TEXT)
+	gear_panel.scale = Vector2.ONE * (1.0 + 0.12 * gear_flash_s / GEAR_FLASH_S)
+	gear_panel.pivot_offset = gear_panel.size * 0.5
+	view_left_s = maxf(view_left_s - delta, 0.0)
+	view_label.visible = view_left_s > 0.0
 	legend_left_s = maxf(legend_left_s - delta, 0.0)
 	legend_panel.visible = legend_left_s > 0.0 and panel.visible   # jamais sur les cartes du couloir

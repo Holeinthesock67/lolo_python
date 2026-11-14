@@ -1778,7 +1778,7 @@
         },
         "events": {
           "type": "array",
-          "maxItems": 4,
+          "maxItems": 6,
           "items": {
             "type": "string",
             "enum": [
@@ -1795,7 +1795,8 @@
               "card_taken",
               "purge",
               "z_refused",
-              "shift_missed"
+              "shift_missed",
+              "z_ok"
             ]
           }
         },
@@ -1876,7 +1877,7 @@
             "lo",
             "hi"
           ],
-          "description": "Facultatif, révision 1.16 (lot R22) : consigne de puissance en % de FTP ; hi null = au moins lo.",
+          "description": "Facultatif, révision 1.16 (lot R22) : consigne de puissance en % de FTP ; hi null = au moins lo ; révision 1.17 (lot R23) : en endurance, hi = seuil de surchauffe (au moins la cible + 10 points).",
           "properties": {
             "lo": {
               "type": "number",
@@ -1941,6 +1942,55 @@
             },
             "dt_s": {
               "type": "number"
+            }
+          }
+        },
+        "z_action": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "strike",
+            "charges",
+            "rock",
+            "rock_chip",
+            "parry",
+            "purge",
+            "reroll",
+            null
+          ],
+          "description": "Facultatif, révision 1.17 (lot R23) : action du Z court accepté dans cette trame (événement z_ok), sinon null."
+        },
+        "adrenaline_trend": {
+          "type": "object",
+          "required": [
+            "rate_per_s",
+            "cause",
+            "overheat_in_s"
+          ],
+          "description": "Facultatif, révision 1.17 (lot R23) : débit continu de l'adrénaline par seconde (hors gains ponctuels), sa cause et les secondes avant la surchauffe.",
+          "properties": {
+            "rate_per_s": {
+              "type": "number"
+            },
+            "cause": {
+              "type": "string",
+              "enum": [
+                "gain",
+                "below",
+                "overheat",
+                "stopped",
+                "full",
+                "none"
+              ]
+            },
+            "overheat_in_s": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
             }
           }
         }
