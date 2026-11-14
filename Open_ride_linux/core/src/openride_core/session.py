@@ -293,6 +293,7 @@ class CoreSession:
         # (fixée par les essais : `bots_race`), groupes et relais relus par `bot_tactics.update_field`
         self.bot_tactics_mode = "classic"
         self.bot_tactics_seed: int | None = None
+        self._race_seed = 0   # graine de la séance en cours, tirée par `_new_race`
         self._field = bot_tactics.Field()
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
@@ -627,7 +628,8 @@ class CoreSession:
             self._sync_erg_state()
         if game_mode == "wtf":
             self._start_wtf()
-        self._new_race(classic=self.wtf is None and game_mode not in ("survivor", "grandprix", "track"))
+        self._new_race(classic=self.wtf is None and game_mode not in ("survivor", "grandprix", "track"),
+                       tactics=self._track_tactics() if game_mode == "track" else None)
         if game_mode == "survivor":
             self._start_survivor()
         if game_mode == "grandprix":
@@ -2718,20 +2720,23 @@ class CoreSession:
         ents = [track_mod.Entrant(track_mod.ME, "Toi")] + [
             track_mod.Entrant(b.id, b.name, level=float(getattr(b, "level_pct", None) or 0.0)) for b in self.bots]
         lap = self._track.length_m if self._track is not None else track_mod.LAP_M
-        seed = self.bot_tactics_seed if self.bot_tactics_seed is not None else bot_tactics.seed_from(time.time())
+        seed = self._race_seed   # graine de `_new_race`, qui a déjà donné aux bots la tactique de l'épreuve
         self.track_event = track_mod.make(event, ents, settings, lap_m=lap, seed=seed)
         self.track_event.start(self._t_session, self._track_positions())
         # Lot VD7 : les bots courent l'épreuve (consignes de `track.bot_plan`, comportements de `bot_tactics`)
-        level = settings.get("bot_tactics", "none")
-        paced = issubclass(track_mod.EVENTS[event].cls, track_mod.Pursuit)
-        bot_tactics.start_race(self.bots, seed, bot_tactics.track_mode(level, paced))
-        self._field = bot_tactics.Field()
         self._race_field = bot_tactics.RaceField(seed)
         self._track_plan = track_plan_mod.BotPlan(self.track_event, {b.id: getattr(b, "profile", "rouleur")
                                                                      for b in self.bots}, seed)
         if self._rec:
             self._rec.game({"kind": "track_start", "ts": round(time.time(), 3), "event": event, **settings})
         log.info("Épreuve de piste : %s, %s.", event, ", ".join(f"{k} = {v}" for k, v in settings.items()) or "réglages par défaut")
+
+    def _track_tactics(self) -> str:
+        """Ligne de `bot_tactics.MODE_TACTICS` de l'épreuve choisie (réglage « Tactique des bots », lot VD7)."""
+        assert self._track_choice is not None
+        event, settings = self._track_choice
+        paced = issubclass(track_mod.EVENTS[event].cls, track_mod.Pursuit)
+        return bot_tactics.track_mode(settings.get("bot_tactics", "none"), paced)
 
     def _track_positions(self) -> dict[str, tuple[float, float]]:
         pos = {b.id: (b.s, b.v) for b in self.bots}
@@ -3080,12 +3085,17 @@ class CoreSession:
 
     # --- mode classique de la série T (lot T7) ------------------------------------------
 
-    def _new_race(self, classic: bool = True) -> None:
+    def _new_race(self, classic: bool = True, tactics: str | None = None) -> None:
         """Segments, records, bonus, maillots et écarts de la séance qui commence.
 
-        `classic` faux (mode WTF) : pas de segments, de records ni de bonus, seulement les bots calibrés."""
+        `classic` faux (mode WTF) : pas de segments, de records ni de bonus, seulement les bots calibrés.
+        `tactics` : ligne de `bot_tactics.MODE_TACTICS` imposée par le mode (épreuve de piste) ; None : celle
+        du mode classique, ou « none » hors du mode classique."""
         route = self.route
         self.race = None
+        # Graine de la séance, tirée une fois : les bots, l'épreuve de piste et ses consignes la partagent.
+        self._race_seed = (self.bot_tactics_seed if self.bot_tactics_seed is not None
+                           else bot_tactics.seed_from(time.time()))
         self.traffic = None           # circulation retirée à chaque départ (lot AS6)
         self.road_cyclists = None     # cyclistes du décor aussi (lot AS7)
         self._suction = 0.0
@@ -3125,8 +3135,8 @@ class CoreSession:
         scales = calibrate_bots(self.bots, route, rider, self.cfg.bots.level_pct, self._segments,
                                 self.cfg.bike.mass_kg, bot_params=plain)
         # Lot Y10 : tactique après le calibrage (forme du jour sur la CP calibrée), le mode classique seul
-        seed = self.bot_tactics_seed if self.bot_tactics_seed is not None else bot_tactics.seed_from(time.time())
-        mode = self.bot_tactics_mode if classic else "none"
+        seed = self._race_seed
+        mode = tactics if tactics is not None else (self.bot_tactics_mode if classic else "none")
         bot_tactics.start_race(self.bots, seed, mode)
         self._field = bot_tactics.Field()
         if any(getattr(b, "tactics", None) is not None for b in self.bots):
