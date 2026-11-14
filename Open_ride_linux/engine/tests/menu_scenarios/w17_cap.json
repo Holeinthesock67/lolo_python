@@ -210,12 +210,6 @@
       "capture": "route_3"
     },
     {
-      "note": "Route prolongée par le générateur pendant la balade",
-      "journal": "engine",
-      "motif": "world_revision rev=",
-      "delai": 120
-    },
-    {
       "journal": "core",
       "motif": "WorldCover|biome",
       "delai": 5
