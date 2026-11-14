@@ -480,6 +480,7 @@ static func _billboard_material(color: Color, glow: float) -> StandardMaterial3D
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED if glow > 0.0 else BaseMaterial3D.SHADING_MODE_PER_PIXEL
 	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true   # couleurs du dégradé des particules en sRGB (test_rendu_jeu)
 	m.albedo_color = color
 	m.albedo_texture = _soft_texture()
 	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
