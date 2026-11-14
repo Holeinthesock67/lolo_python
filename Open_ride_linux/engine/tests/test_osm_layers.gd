@@ -63,6 +63,8 @@ func _test_compiled_world(world_dir: String, expected_path: String) -> void:
 	route.load_world_dir(world_dir)
 	var all_chunks: Array[int] = OsmLayers.chunks_for_window(0.0, route.length_m, route)
 	for layer in OsmLayers.OSM_LAYERS:
+		if not (expected["files"] as Dictionary).has(layer):   # coast (lot U9) : absente des données de make_osm_world.py
+			continue
 		var totals := {}
 		var ignored := 0
 		var files: Dictionary = expected["files"][layer]
