@@ -84,7 +84,7 @@ func _run() -> void:
 	_check(GuideModel.adrenaline_trend_text({"phase": "ROOM"}) == "", "sans le champ (core ancien) : pas de tendance")
 
 	o = g.compute(st, _rogue({"hack": {"locked": true, "forced_gear": null, "until_s": 99.0}}), 72.0, [])
-	_check(o["keys"][0] == ["Z", "purger (sur la balise)", "on"], "piratage : le bouton Z dit « purger »")
+	_check(o["keys"][0] == ["Z", "débloquer (sur la borne)", "on"], "piratage : le bouton Z dit « débloquer »")
 
 	# Légende de la surchauffe à la première salle d'endurance.
 	var g2 = GuideModel.new()

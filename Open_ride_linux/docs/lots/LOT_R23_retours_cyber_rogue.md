@@ -38,7 +38,7 @@ Principe : une seule règle pour tous les appuis, sans cas particulier. **Chaque
 
 ### 3.2 Engine
 
-- `rogue_guide_model.gd` : retour pour chaque `z_ok` (« FRAPPE ! −6 % », « Charges : −N % », « Rocher brisé », « Rocher entamé », « Parade ! », « Piratage purgé », « Cartes relancées ») ; texte de `no_target` selon la phase (« Z sert en salle : première salle dans 4:12 ») ; bandeau de surchauffe permanent en rouge (« SURCHAUFFE : adrénaline −2/s, Z bloqué · descends sous 75 % FTP ») et alerte orange avant (« Au-dessus de 75 % FTP : surchauffe dans 3 s ») ; consigne en plage « 70–75 % FTP » en endurance.
+- `rogue_guide_model.gd` : retour pour chaque `z_ok` (« FRAPPE ! −6 % », « Charges : −N % », « Rocher brisé », « Rocher entamé », « Parade ! », « Vitesses débloquées », « Cartes relancées ») ; texte de `no_target` selon la phase (« Z sert en salle : première salle dans 4:12 ») ; bandeau de surchauffe permanent en rouge (« SURCHAUFFE : adrénaline −2/s, Z bloqué · descends sous 75 % FTP ») et alerte orange avant (« Au-dessus de 75 % FTP : surchauffe dans 3 s ») ; consigne en plage « 70–75 % FTP » en endurance.
 - Jauge d'adrénaline : tendance écrite à côté (« +0,5/s », « −2/s surchauffe », « stable : sous la cible »).
 - `rogue_hud_view.gd` : anneau qui s'ouvre au centre de l'écran à chaque Z (or si accepté, rouge si refusé) et pastille Z qui clignote ; pavé **VITESSE NN** toujours visible en bas à droite, dans toutes les phases, qui s'allume à chaque changement.
 - Sons : `rogue_z_ok` (nouveau, net et court) à chaque Z accepté, en plus du son de l'action ; priorité de `rogue_refused` et `rogue_z_ok` relevée pour ne jamais être couverts.

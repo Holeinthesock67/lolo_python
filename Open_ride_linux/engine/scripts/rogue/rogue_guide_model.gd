@@ -22,7 +22,7 @@ const OVERHEAT_RATE_DEFAULT := 2.0  # adrénaline perdue par seconde en surchauf
 const FIGHT_PHASES := ["ROOM", "BOSS"]
 
 ## Étiquette flottante au-dessus de chaque objet (lisible de loin, en majuscules courtes).
-const MARKER_TAGS := {"strike_target": "Z !", "purge": "PURGE : Z", "rock": "ROCHER : Z", "parry_zone": "PARADE : Z",
+const MARKER_TAGS := {"strike_target": "Z !", "purge": "DÉBLOQUER : Z", "rock": "ROCHER : Z", "parry_zone": "PARADE : Z",
 	"tunnel": "%d rpm", "pad": "≥ %d %% · vitesse 10+", "arch": "%s"}
 ## Légende montrée la première fois que le joueur croise chaque sorte d'objet (et le Firewall).
 const LEGENDS := {
@@ -31,7 +31,7 @@ const LEGENDS := {
 	"tunnel": ["Nouveau : tunnel de cadence", "Tiens la cadence affichée (± 3 rpm) dans le tunnel vert : chaque 10 s donne une charge pour la prochaine cible Z."],
 	"pad": ["Nouveau : pavé de sprint", "En vitesse 10 ou plus, au-dessus de la puissance affichée, tes dégâts sont multipliés sur le pavé."],
 	"parry_zone": ["Nouveau : zone de parade", "Relance fort la puissance puis appuie sur Z dans la zone. Sinon, le coup te retire du bouclier."],
-	"purge": ["Nouveau : balise de purge", "Pendant un piratage (vitesse bloquée ou imposée), appuie sur Z sur la balise pour l'arrêter."],
+	"purge": ["Nouveau : borne de déblocage", "Le Saboteur pirate tes vitesses : elles restent bloquées, ou une vitesse t'est imposée. Sur cette borne, appuie sur Z pour les débloquer."],
 	"rock": ["Nouveau : rocher", "Roule en Roc (sous 70 rpm) pour gagner des charges, puis Z sur le rocher pour le briser."],
 	"overheat": ["Nouveau : surchauffe (endurance)", "En salle d'endurance, reste dans la plage de la consigne. Au-dessus du plafond (75 % FTP, ou la cible + 10 points si elle est plus haute) pendant 5 s, tu surchauffes : l'adrénaline fond de 2 par seconde et Z est bloqué jusqu'à ce que tu redescendes."],
 	"firewall": ["Le Firewall", "Un mur roule derrière toi à la puissance de la salle. S'il te touche, ton bouclier fond et tu perds de l'or. Tiens la consigne pour garder ton avance."],
@@ -43,7 +43,7 @@ const Z_REASON_TEXT := {
 	"no_charge": ["Z refusé : aucune charge", "Tiens la cadence dans les tunnels verts pour charger"],
 	"no_roc_charge": ["Z refusé : aucune charge de Roc", "Roule en Roc (sous 70 rpm) pour charger"],
 	"no_surge": ["Parade ratée : pas de relance", "Accélère fort juste avant d'appuyer sur Z"],
-	"no_hack": ["Z : aucun piratage à purger", "La balise ne sert que pendant un piratage"],
+	"no_hack": ["Z : rien à débloquer", "La borne ne sert que si tes vitesses sont bloquées ou imposées"],
 	"cursed": ["Z bloqué par la carte Maudit", "Quitte la vitesse 10 pour frapper"],
 	"recovery": ["Z indisponible pendant la récupération", "Roule souple, le combat reprend bientôt"],
 	"gold": ["Relance refusée : pas assez d'or", ""],
@@ -55,7 +55,7 @@ const Z_ACTION_TEXT := {
 	"rock": ["ROCHER BRISÉ !", "−8 % PV de l'ennemi"],
 	"rock_chip": ["Rocher entamé", "Encore Z (charge de Roc) pour le briser"],
 	"parry": ["PARADE !", ""],
-	"purge": ["PIRATAGE PURGÉ", "Tes vitesses sont libres"],
+	"purge": ["VITESSES DÉBLOQUÉES", "Tu peux de nouveau changer de vitesse"],
 	"reroll": ["Cartes relancées", ""],
 }
 ## Z sans effet (raison `no_target`) : ce qu'il faut attendre, selon la phase (lot R23).
@@ -308,9 +308,9 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 			hint = "Trop fort : au-dessus de %d %% FTP, surchauffe dans %d s" % [limit, maxi(int(ceil(float(soon))), 1)]
 			tone = "warn"
 		elif hack is Dictionary:
-			hint = "Piratage ! Vitesse %s : Z sur la balise de purge pour l'arrêter" % ("bloquée" if bool(hack.get("locked", false)) else "imposée")
+			hint = "Vitesses %s par le Saboteur : Z sur la borne pour les débloquer" % ("bloquées" if bool(hack.get("locked", false)) else "imposées")
 			tone = "warn"
-			keys[0] = ["Z", "purger (sur la balise)", "on"]   # lot R23 : le bouton dit ce que Z fait maintenant
+			keys[0] = ["Z", "débloquer (sur la borne)", "on"]   # lot R23 : le bouton dit ce que Z fait maintenant
 		elif not ups.is_empty():
 			var u: Dictionary = ups[0]
 			var d := int(round(float(u["d_m"])))
@@ -334,7 +334,7 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 				"parry_zone":
 					hint = "Parade : relance la puissance puis Z" if now else "Zone de parade dans %d m : prépare une relance puis Z" % d
 				"purge":
-					hint = "Balise de purge : Z seulement pendant un piratage" if now else "Balise de purge dans %d m" % d
+					hint = "Borne de déblocage : Z seulement si tes vitesses sont bloquées" if now else "Borne de déblocage dans %d m" % d
 				"rock":
 					hint = "Rocher : Z (charges de Roc)" if now else "Rocher dans %d m : roule en Roc pour charger, puis Z" % d
 		if hint == "":
