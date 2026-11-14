@@ -32,7 +32,7 @@ propriétaire : banc `demo-recif` en low, medium et high (budgets GPU 8, 13 et 1
 l'arrivée (7 600 à 7 900 m) à valider avant fusion.
 
 Parcours déjà installé avant ce lot : `install_biome_demos` ne réécrit pas une démonstration présente. Pour voir
-l'épave sur un jeu déjà installé, effacer `~/OpenRide/Routes/demo-recif.world` avant de relancer (les bancs
+l'épave sur un jeu déjà installé, effacer `demo-recif.world` du dossier des parcours (`~/.local/share/openride/routes/` par défaut) avant de relancer (les bancs
 réécrivent leurs parcours, eux).
 
 ## 4. Limites
