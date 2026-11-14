@@ -1,0 +1,7 @@
+t_s,fps,maillages,appels_de_dessin,qualite,capture
+32.9,1.0,14,577.0,low,000_t032.png
+62.9,60.0,33,229.0,low,001_t062.png
+92.9,59.0,33,235.0,low,002_t092.png
+122.9,59.0,35,238.0,low,003_t122.png
+152.9,60.0,35,229.0,low,004_t152.png
+181.1,59.0,35,290.0,low,005_fin.png
