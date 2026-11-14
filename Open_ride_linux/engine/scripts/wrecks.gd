@@ -35,9 +35,9 @@ const KIND_WRECK := 7
 const PART_HULL := 0
 const PART_HOUSE := 1
 const PART_TUBE := 2
-const HULL_COLOR := Color(0.36, 0.20, 0.14)    # peinture de coque passée, rouge brun
-const HOUSE_COLOR := Color(0.70, 0.68, 0.60)   # timonerie : blanc cassé terni
-const TUBE_COLOR := Color(0.40, 0.26, 0.16)    # mât et cheminée : acier rouillé
+const HULL_COLOR := Color(0.62, 0.34, 0.26)    # peinture de coque passée, rouge brun
+const HOUSE_COLOR := Color(0.86, 0.84, 0.76)   # timonerie : blanc cassé terni
+const TUBE_COLOR := Color(0.64, 0.40, 0.24)    # mât et cheminée : acier rouillé
 
 ## Coupe de la coque, du liston à la quille, en fractions de la demi-largeur et de la hauteur.
 const SECTION := [[1.0, 1.0], [1.0, 0.45], [0.8, 0.16], [0.35, 0.02], [0.0, 0.0]]

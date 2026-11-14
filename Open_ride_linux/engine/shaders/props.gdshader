@@ -174,19 +174,21 @@ void fragment() {
 			col = mix(col, ink_color, picto_cyclist(q, aa));
 		}
 	} else if (kind == 7) {
-		// Épave : acier rouillé et plaques de tôle, coulures, concrétions et algues sur le dessus
+		// Épave : acier rouillé et plaques de tôle, coulures, concrétions et algues (couleurs claires : sous l'eau,
+		// la lumière vient d'en haut et les flancs verticaux ne reçoivent que l'ambiance)
 		float up = v_obj_normal.y;
 		float grain = sd_noise(p.xz * 3.0 + p.yy * 2.0);
-		float plates = 1.0 - smoothstep(0.0, 0.04, min(abs(fract(p.z / 3.0) - 0.5), abs(fract(p.y / 1.5) - 0.5)) - 0.46);
+		vec2 pl = abs(fract(vec2(p.z / 3.0, p.y / 1.5)) - 0.5);
+		float plates = smoothstep(0.46, 0.5, max(pl.x, pl.y));
 		float rust = smoothstep(0.35, 0.8, sd_noise(vec2(p.z * 0.8 + p.x * 0.8, p.y * 0.25)) + 0.3 * grain);
-		col = mix(col, lineaire(vec3(0.42, 0.22, 0.10)), rust * 0.75);
-		col *= 1.0 - 0.18 * plates;
+		col = mix(col, lineaire(vec3(0.66, 0.40, 0.22)), rust * 0.75);
+		col *= 1.0 - 0.25 * plates;
 		// Coulures verticales sous le haut de la pièce
 		float drip = smoothstep(0.55, 0.9, sd_noise(vec2((p.z + p.x) * 2.5, p.y * 0.15)));
-		col = mix(col, lineaire(vec3(0.30, 0.15, 0.07)), drip * 0.5);
+		col = mix(col, lineaire(vec3(0.45, 0.24, 0.12)), drip * 0.45);
 		h = plates * 0.01 + grain * 0.004;
 		rough = 0.85;
-		metal = 0.25 * (1.0 - rust);
+		metal = 0.1 * (1.0 - rust);
 		if (part == 0) {
 			bool side = abs(v_obj_normal.x) > 0.55 && up < 0.6;
 			// Hublots : rangée sous le liston, sur l'avant et le milieu
@@ -203,7 +205,7 @@ void fragment() {
 				float plank = fract(p.x / 0.35);
 				float gap = smoothstep(0.08, 0.0, min(plank, 1.0 - plank));
 				float missing = step(0.8, sd_noise(vec2(floor(p.x / 0.35) * 7.0, p.z * 0.4)));
-				col = lineaire(vec3(0.24, 0.19, 0.13)) * (0.8 + 0.3 * sd_noise(vec2(p.x * 3.0, p.z * 0.6)));
+				col = lineaire(vec3(0.46, 0.37, 0.27)) * (0.8 + 0.3 * sd_noise(vec2(p.x * 3.0, p.z * 0.6)));
 				col = mix(col, lineaire(vec3(0.03)), max(gap * 0.7, missing));
 				h = -gap * 0.01;
 				metal = 0.0;
@@ -216,10 +218,11 @@ void fragment() {
 			col = mix(col, lineaire(vec3(0.02, 0.04, 0.05)), win * (1.0 - mullion));
 		}
 		// Algues et concrétions sur les faces tournées vers le haut, plus denses par taches
-		float cover = smoothstep(0.2, 0.8, up) * smoothstep(0.3, 0.7, sd_noise(p.xz * 0.7));
-		float crust = smoothstep(0.72, 0.8, sd_noise(p.xz * 5.0 + p.yy * 5.0)) * fine;
-		col = mix(col, lineaire(vec3(0.18, 0.30, 0.14)) * (0.8 + 0.4 * grain), cover * 0.8);
-		col = mix(col, lineaire(vec3(0.78, 0.66, 0.60)), crust * 0.55);
+		// (les flancs en gardent des plaques : éponges et coraux encroûtants)
+		float cover = mix(0.3, 1.0, smoothstep(0.2, 0.8, up)) * smoothstep(0.35, 0.7, sd_noise(p.xz * 0.7 + p.yy * 0.5));
+		float crust = smoothstep(0.66, 0.76, sd_noise(p.xz * 2.5 + p.yy * 2.5));
+		col = mix(col, lineaire(vec3(0.42, 0.58, 0.30)) * (0.8 + 0.4 * grain), cover * 0.8);
+		col = mix(col, lineaire(vec3(0.88, 0.76, 0.70)), crust * 0.6);
 		h += crust * 0.01;
 		// Sable qui remonte sur le bas de la pièce
 		col = mix(col, lineaire(vec3(0.72, 0.66, 0.51)), (1.0 - smoothstep(0.0, 0.25 * v_extent.y, ground + 0.4 * sd_noise(p.xz * 0.8))) * 0.8 * float(part == 0));

@@ -27,7 +27,7 @@ Pas d'exception propre au récif : l'épave est un point d'intérêt du format, 
 ## 3. Coût attendu et recette PC
 
 Une épave visible à la fois : cinq maillages (coque de 260 triangles, boîte, deux cylindres), trois matières,
-aucune mise à jour par image hors du tri tous les 50 m (moins de 1 µs mesuré). Recette à faire sur le PC du
+aucune mise à jour par image hors du tri tous les 50 m (moins de 1 µs mesuré). Aperçu au cloud (Vulkan logiciel, medium, épave déplacée à 330 m du départ pour la capture) : caboteur reconnaissable de 80 à 150 m, aucune erreur de Godot. Recette à faire sur le PC du
 propriétaire : banc `demo-recif` en low, medium et high (budgets GPU 8, 13 et 16 ms), captures de l'approche de
 l'arrivée (7 600 à 7 900 m) à valider avant fusion.
 
