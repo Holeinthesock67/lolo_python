@@ -424,10 +424,13 @@ func _set_box(g: int, box: AABB) -> void:
 	_far_mmi[g].visibility_range_end = fade_end() + radius
 
 
-## Touffe du désert ? 0 : herbe d'avant ; 1 : herbe sèche ; −1 : place laissée vide (désert clairsemé).
+## Touffe du désert ? 0 : herbe d'avant ; 1 : herbe sèche ; −1 : place laissée vide (désert clairsemé, ou paysage
+## en feu : rien ne pousse sur la lave et les scories, démo « Volcan en flammes »).
 func dry_draw(k: int, slot: int, origin: Vector3) -> int:
 	if biome_model == null or not biome_model.active():
 		return 0
+	if not biome_model.fire_at(origin.x, origin.z).is_empty():
+		return -1
 	var w: Dictionary = biome_model.weights_at(origin.x, origin.z)
 	var dry_w := 0.0
 	for b in DRY_BIOMES:

@@ -1252,6 +1252,8 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 		PerfProbe.mark_since("decor", "", t_step)
 		t_step = Time.get_ticks_usec()
 	_step_cycle(now_s)
+	if living_world != null and living_world.volcano != null:
+		atmosphere_view.set_fire(living_world.volcano.fire_level, living_world.volcano.glow_color)
 	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
 	if moon_view != null:
 		moon_view.update(camera.global_position, atmosphere_view.cycle)
@@ -2003,6 +2005,9 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 		NightLights.apply(glow, lit)
 	var season: Dictionary = out["season"]
 	var params: Dictionary = season["params"] if bool(season["active"]) else {}
+	# Pas de neige dans un paysage en feu (DB2, volcano_fx.gd `melt_snow`) : la limite ne descend plus l'hiver
+	if not params.is_empty() and living_world != null and living_world.get("volcano") != null:
+		params = living_world.volcano.melt_snow(params)
 	if params != _season_applied:
 		_season_applied = params
 		var p: Dictionary = params if not params.is_empty() else SeasonModel.NEUTRAL

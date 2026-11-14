@@ -45,6 +45,13 @@ var _at := -INF
 var _haze_rect: ColorRect = null
 var cycle := {}              # sortie de DaylightModel.evaluate (lot P19) ; vide ou inactive : soleil fixe
 var _ambient_base := {}      # lumière ambiante de la scène avant le jour et la nuit
+var fire_level := 0.0        # paysage en feu autour de la caméra (volcano_fx.gd), 0 à 1
+var fire_color := Color("#ff6a20")
+const FIRE_HORIZON := 0.55   # part de la lueur dans la brume de l'horizon quand tout brûle
+const FIRE_LIGHT := 0.15     # part de la lueur dans la lumière du soleil
+const FIRE_SKY := 0.7        # part de la lueur dans l'horizon du ciel (le haut du ciel s'assombrit de cendres)
+const ASH_TOP := Color(0.55, 0.38, 0.32)
+const SMOKE_CLOUD := Color(0.5, 0.42, 0.4)
 static var _star_textures := []
 
 
@@ -124,8 +131,37 @@ func _params_at(s: float, weather: Dictionary) -> Dictionary:
 			"light_tint": Color.WHITE, "light_energy_factor": 1.0, "heat_haze": 0.0, "sun_direction": sky["sun_direction"]}
 	if cycle_active():
 		_with_cycle(p)
+	_with_fire(p)
 	p["s"] = s
 	return p
+
+
+## Lueur d'un paysage en feu (démo « Volcan en flammes ») : brume rougie et lumière orangée, après l'heure.
+func set_fire(level: float, color: Color) -> void:
+	fire_level = clampf(level, 0.0, 1.0)
+	fire_color = color
+
+
+func _with_fire(p: Dictionary) -> void:
+	if fire_level <= 0.0:
+		return
+	p["horizon_color"] = (p["horizon_color"] as Color).lerp(fire_color * 0.8, FIRE_HORIZON * fire_level)
+	p["light_tint"] = (p["light_tint"] as Color).lerp(fire_color.lightened(0.4), FIRE_LIGHT * fire_level)
+	p["fire"] = fire_level
+
+
+## Multiplicateurs du ciel (haut, horizon, nuages) : ceux de l'heure, puis la lueur et la cendre du feu.
+func _sky_mults(p: Dictionary) -> Array:
+	var on := p.has("ambient_energy")
+	var top: Color = (p["sky_top"] as Color) if on else Color.WHITE
+	var hz: Color = (p["sky_horizon"] as Color) if on else Color.WHITE
+	var cloud := hz
+	var f := float(p.get("fire", 0.0))
+	if f > 0.0:
+		top = top.lerp(top * ASH_TOP, 0.6 * f)
+		hz = hz.lerp(hz * fire_color * 1.5, FIRE_SKY * f)
+		cloud = cloud.lerp(cloud * SMOKE_CLOUD, 0.7 * f)
+	return [top, hz, cloud]
 
 
 ## Multiplicateurs de l'heure (DaylightModel.light) sur les paramètres du biome ou du thème.
@@ -171,7 +207,7 @@ static func _differs(a: Dictionary, b: Dictionary) -> bool:
 		return true
 	if absf(float(a["heat_haze"]) - float(b["heat_haze"])) > HEAT_EPS:
 		return true
-	for k in ["light_energy_factor", "ambient_energy", "stars"]:
+	for k in ["light_energy_factor", "ambient_energy", "stars", "fire"]:
 		if absf(float(a.get(k, 1.0)) - float(b.get(k, 1.0))) > COLOR_EPS:
 			return true
 	for k in ["horizon_color", "light_tint"]:
@@ -229,23 +265,23 @@ func _apply_sky(p: Dictionary) -> void:
 		# Ciel à nuages : couleurs du ciel de base (celles de sky_clouds.gd) multipliées par celles de l'heure.
 		# (get_shader_parameter rend null pour un paramètre resté à sa valeur par défaut : test sur le shader.)
 		var sm := mat as ShaderMaterial
-		sm.set_shader_parameter("sky_top_color", SkyClouds.SKY_TOP * ((p["sky_top"] as Color) if on else Color.WHITE))
+		var mults := _sky_mults(p)
+		sm.set_shader_parameter("sky_top_color", SkyClouds.SKY_TOP * (mults[0] as Color))
 		if not sm.has_meta("base_horizon"):
 			var h: Variant = sm.get_shader_parameter("sky_horizon_color")
 			sm.set_meta("base_horizon", h if h != null else SkyClouds.SKY_HORIZON)
-		sm.set_shader_parameter("sky_horizon_color",
-			(sm.get_meta("base_horizon") as Color) * ((p["sky_horizon"] as Color) if on else Color.WHITE))
+		sm.set_shader_parameter("sky_horizon_color", (sm.get_meta("base_horizon") as Color) * (mults[1] as Color))
 		if not sm.has_meta("base_cloud"):
 			var c: Variant = sm.get_shader_parameter("cloud_color")
 			sm.set_meta("base_cloud", c if c != null else Color(0.957, 0.969, 0.984))
 		# Nuages éclairés comme l'horizon : orangés au coucher, sombres la nuit
-		sm.set_shader_parameter("cloud_color",
-			(sm.get_meta("base_cloud") as Color) * ((p["sky_horizon"] as Color) if on else Color.WHITE))
+		sm.set_shader_parameter("cloud_color", (sm.get_meta("base_cloud") as Color) * (mults[2] as Color))
 		sm.set_shader_parameter("stars", stars)
 	elif mat is ProceduralSkyMaterial:   # ciel sans nuages (et moteur Compatibility) : couleurs seulement, sans étoiles
 		var pm := mat as ProceduralSkyMaterial
-		pm.sky_top_color = SkyClouds.SKY_TOP * ((p["sky_top"] as Color) if on else Color.WHITE)
-		pm.sky_horizon_color = SkyClouds.SKY_HORIZON * ((p["sky_horizon"] as Color) if on else Color.WHITE)
+		var mults := _sky_mults(p)
+		pm.sky_top_color = SkyClouds.SKY_TOP * (mults[0] as Color)
+		pm.sky_horizon_color = SkyClouds.SKY_HORIZON * (mults[1] as Color)
 
 
 ## Ciel étoilé du ciel physique, en STAR_LEVELS niveaux de clarté (le ciel physique l'ajoute sans pondération) :

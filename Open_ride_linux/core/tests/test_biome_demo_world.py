@@ -74,7 +74,7 @@ def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
     """Jeu de base : le tour des nouveaux paysages et le circuit (lots O38 et DB1) ; recette : en plus les
     parcours sortis du jeu de base (tour gravel le 9 novembre ; tour, côte et alpin au lot DB1)."""
     names = sorted(p.name for p in demo_set.glob("*.world"))
-    assert names == ["demo-biomes-paysages.world", "demo-circuit.world"]
+    assert names == ["demo-biomes-paysages.world", "demo-circuit.world", "demo-volcan.world"]
     retired = ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-gravel.world",
                "demo-biomes-tour.world"]
     assert sorted(p.name for p in recette_set.glob("*.world")) == sorted(names + retired)
@@ -143,7 +143,8 @@ def test_integer_degree_coordinates_in_repo(mbw) -> None:
 def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> None:
     """Lot O37 : nom de parcours au menu, aucun « Fictif » ni nom technique dans les fichiers livrés."""
     titles = {name: title for name, title, *_, base in mbw.DEMO_SET if base}
-    assert titles == {"demo-biomes-paysages": "Tour des nouveaux paysages", "demo-circuit": "Circuit des Prés"}
+    assert titles == {"demo-biomes-paysages": "Tour des nouveaux paysages", "demo-circuit": "Circuit des Prés",
+                      "demo-volcan": "Volcan en flammes"}
     assert mbw.RETIRED_DEMOS == ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
     assert not any((demo_set / f"{n}.world").exists() for n in mbw.RETIRED_DEMOS)
     for name, title in titles.items():
@@ -202,7 +203,7 @@ def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path, rece
         kept[n] = f.read_bytes()
     assert biome_demo_outdated(routes / "demo-circuit.world") and not biome_demo_outdated(mine)
     written, note = contents.install_biome_demos(routes)
-    assert note == "" and written == ["demo-circuit"]
+    assert note == "" and written == ["demo-circuit", "demo-volcan"]
     assert not gravel.exists()
     assert _json(old)["name"] == "Circuit des Prés"
     assert _json(mine / "manifest.json")["name"] == "Mes paysages"
@@ -231,7 +232,8 @@ def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     out = capsys.readouterr().out
     assert "demo-biomes-paysages (Tour des nouveaux paysages) : 14.2 km" in out and "demo-biomes-gravel" not in out
     assert "demo-circuit (Circuit des Prés) : " in out and "demo-biomes-tour" not in out
-    assert len(list(tmp_path.glob("*.world"))) == 2
+    assert "demo-volcan (Volcan en flammes) : 8.0 km" in out
+    assert len(list(tmp_path.glob("*.world"))) == 3
 
 
 def test_circuit_loop(demo_set: Path, mbw) -> None:
@@ -259,6 +261,42 @@ def test_circuit_loop(demo_set: Path, mbw) -> None:
            if min(abs(i - j), len(pts) - abs(i - j)) * road.STEP > 700.0]
     assert min(far) > 400.0
     assert _json(demo_set / "demo-circuit.json")["generated"]["water_areas"] == 1   # l'étang de l'intérieur
+
+
+def test_volcan_loop(demo_set: Path, mbw) -> None:
+    """Volcan en flammes (13 novembre) : boucle fermée de 8 km dans le paysage `volcan_actif` (toutes les tuiles),
+    pente d'au plus 10 %, une montée de 200 à 240 m jusqu'à la crête du cratère à mi-boucle, cratère creusé à côté
+    de la route (à l'intérieur de la boucle), relief borné jusqu'à l'horizon, pas de mur au départ."""
+    import numpy as np
+
+    world = demo_set / "demo-volcan.world"
+    route = _json(world / "route.json")
+    manifest = _json(world / "manifest.json")
+    assert route["type"] == "loop" and route["length_m"] == pytest.approx(mbw.VOLCAN_M, abs=5.0)
+    assert manifest["layers"]["biome"]["shares"] == {"volcanic": 100.0}
+    assert max(abs(g) for g in route["grade_pct"]) <= 10.0
+    alt = np.array(route["alt_m"])
+    climb = float(np.clip(np.diff(alt), 0.0, None).sum())
+    assert 200.0 <= climb <= 240.0, climb
+    top = int(np.argmax(alt))
+    assert abs(top * route["ds_m"] - route["length_m"] / 2.0) < 400.0, top
+    for level in ("near", "far"):
+        for tile in (world / "biome" / level).glob("*.json"):
+            assert _json(tile)["variant"] == mbw.VOLCAN_VARIANT, tile.name
+    plan = mbw.Plan(("volcanic",), False, False, circuit="volcan")
+    terrain = mbw.make_terrain(plan)
+    px, pz = plan.road.xz(plan.length_m / 2.0)
+    cx, cz = mbw.volcano_crater(plan.road)
+    rim = float(terrain(np.array([px]), np.array([pz]))[0])
+    crater = float(terrain(np.array([cx]), np.array([cz]))[0])
+    assert crater < rim - 60.0, (crater, rim)
+    far = terrain(np.linspace(-40000.0, 40000.0, 81), np.linspace(40000.0, -40000.0, 81))
+    assert float(np.max(np.abs(far))) < 400.0
+    # Départ : terrain à 200 m de part et d'autre à moins de 40 m de la route (pas de mur dans la plaine)
+    sx, sz = plan.road.xz(0.0)
+    hx, hz = plan.road.heading(0.0)
+    sides = terrain(np.array([sx - hz * 200.0, sx + hz * 200.0]), np.array([sz + hx * 200.0, sz - hx * 200.0]))
+    assert float(np.max(np.abs(sides - route["alt_m"][0]))) < 40.0, sides
 
 
 def test_circuit_grand_prix_in_laps(demo_set: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -306,7 +344,7 @@ def test_paysages_tour(demo_set: Path, mbw) -> None:
     assert {"atlantic_heath", "japan", "high_plateau"} <= set(shares)
     assert all(v == pytest.approx(100.0 / 7, abs=0.6) for v in shares.values()), shares
     landscapes = {landscape for _, landscape, *_ in mbw.PAYSAGES if landscape}
-    assert landscapes == set(LANDSCAPES)
+    assert landscapes == set(LANDSCAPES) - {"volcan_actif"}   # le volcan en feu a sa propre boucle
     seen = set()
     for f in (world / "biome" / "near").glob("tile_*.json"):
         tile = _json(f)

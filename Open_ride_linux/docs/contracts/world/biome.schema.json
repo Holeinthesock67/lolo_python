@@ -63,9 +63,10 @@
         "canyon",
         "fjord",
         "ile_volcanique",
-        "rizieres"
+        "rizieres",
+        "volcan_actif"
       ],
-      "description": "Paysage du lot U25 (6.0) posé sur des biomes existants : canyons rouges, fjords, îles volcaniques, rizières."
+      "description": "Paysage du lot U25 (6.0) posé sur des biomes existants : canyons rouges, fjords, îles volcaniques, rizières ; volcan actif (lave et feu)."
     },
     "weightGrid": {
       "type": "array",

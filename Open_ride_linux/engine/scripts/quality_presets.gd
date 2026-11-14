@@ -308,9 +308,16 @@ static func texture_budget_bytes(name: String) -> int:
 ## landes atlantiques sur les 5 tronçons de route de 60 m autour de la caméra (100 : les deux côtés en entier).
 ## `grass_tufts`, `grass_tufts_wide` (Y22) : touffes de la bande du bord et de la bande large, jusqu'à 80 m du bord
 ## de la route, sur 9 tronçons de 40 m (grass_tufts.gd).
+## `volcano_embers`, `volcano_plumes`, `volcano_fountains`, `volcano_lights` (démo « Volcan en flammes ») : braises autour
+## de la caméra, panaches de fumée, gerbes de lave et lumières orange des paysages en feu (volcano_fx.gd) ; la lave
+## au sol (shader seul) reste à toutes les qualités.
 const LIVING := {
 	"low": {
 		"tree_sway": true,
+		"volcano_embers": 80,
+		"volcano_plumes": 1,
+		"volcano_fountains": 0,
+		"volcano_lights": 0,
 		"ground_rocks": 240,
 		"ground_grass": 600,
 		"ground_termites": 15,
@@ -333,6 +340,10 @@ const LIVING := {
 	},
 	"medium": {
 		"tree_sway": true,
+		"volcano_embers": 300,
+		"volcano_plumes": 3,
+		"volcano_fountains": 1,
+		"volcano_lights": 3,
 		"ground_rocks": 600,
 		"ground_grass": 2000,
 		"ground_termites": 30,
@@ -355,6 +366,10 @@ const LIVING := {
 	},
 	"high": {
 		"tree_sway": true,
+		"volcano_embers": 800,
+		"volcano_plumes": 6,
+		"volcano_fountains": 2,
+		"volcano_lights": 6,
 		"ground_rocks": 1200,
 		"ground_grass": 5000,
 		"ground_termites": 50,

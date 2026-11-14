@@ -426,6 +426,8 @@ static func _validate_v2(data: Dictionary, errors: PackedStringArray) -> void:
 							errors.append(label + ".biomes : biome inconnu " + str(b))
 						else:
 							_validate_biome(la["biomes"][b], label + ".biomes." + str(b), errors)
+					if la.has("fire"):
+						_validate_fire(la["fire"], label + ".fire", errors)
 	if data.has("surfaces"):
 		if typeof(data["surfaces"]) != TYPE_DICTIONARY:
 			errors.append("surfaces : doit être un objet")
@@ -646,3 +648,23 @@ static func decor_texture_count(theme: Dictionary) -> int:
 		if texture_path(theme, k) != "":
 			n += 1
 	return n
+
+
+## Section `fire` d'un paysage (démo « Volcan en flammes ») : couleurs #RRGGBB et densité de 0 à 2, toutes
+## facultatives ; clé inconnue refusée.
+const FIRE_COLORS := ["lava", "lava_hot", "crust", "smoke", "glow"]
+
+
+static func _validate_fire(fire: Variant, label: String, errors: PackedStringArray) -> void:
+	if typeof(fire) != TYPE_DICTIONARY:
+		errors.append(label + " : doit être un objet")
+		return
+	for k in fire.keys():
+		if k in FIRE_COLORS:
+			if not _is_hex_color(fire[k]):
+				errors.append(label + "." + str(k) + " : couleur #RRGGBB invalide")
+		elif k == "density":
+			if not (typeof(fire[k]) in [TYPE_INT, TYPE_FLOAT]) or float(fire[k]) < 0.0 or float(fire[k]) > 2.0:
+				errors.append(label + ".density : nombre de 0 à 2 attendu")
+		else:
+			errors.append(label + " : clé inconnue " + str(k))

@@ -23,7 +23,7 @@ const ROOF_VARIANTS: Array[String] = [
 ]
 ## Paysages (lot U25, 6.0) : troisième membre `landscape` de la variante d'une tuile ; la section `landscapes`
 ## du thème donne, pour chaque biome de base, un bloc partiel fusionné sur celui du biome (biome_model.gd).
-const LANDSCAPES: Array[String] = ["canyon", "fjord", "ile_volcanique", "rizieres"]
+const LANDSCAPES: Array[String] = ["canyon", "fjord", "ile_volcanique", "rizieres", "volcan_actif"]
 
 ## Espèces de `vegetation.species` (lot U7 ; Japon, lot JP5 ; landes atlantiques, lot AT1).
 const SPECIES: Array[String] = [

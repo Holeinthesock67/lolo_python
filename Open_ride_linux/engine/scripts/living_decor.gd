@@ -487,6 +487,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	var rider_pos := cam_pos - Vector3(0.0, 1.4, 0.0)
 	# Météo (P8)
 	weather_eval = WeatherModel.evaluate(weather, alt_m, _valley_alt_at(cam_s), wind_eval)
+	if living_world != null and living_world.get("volcano") != null:
+		weather_eval = living_world.volcano.melt_snow(weather_eval)   # pas de neige dans un paysage en feu (DB2)
 	particles.update(cam_pos, weather_eval)
 	street_lights.update(cam_pos, now_s)   # lot P35 : projecteurs sous les luminaires proches, la nuit
 	# Gravel (U22) : surface sous la roue, poussière derrière elle par temps sec et crissement des pneus

@@ -106,6 +106,12 @@ class LoopRoad(Road):
         s = s % self.length_m
         return float(np.interp(s, self._s, self._x)), float(np.interp(s, self._s, self._z))
 
+    def xz_np(self, s):
+        """`xz` sur un tableau d'abscisses : (x, z) en tableaux."""
+        import numpy as np
+        s = np.asarray(s, dtype=float) % self.length_m
+        return np.interp(s, self._s, self._x), np.interp(s, self._s, self._z)
+
     def heading(self, s: float) -> tuple[float, float]:
         i = self._at(s)
         return float(self._hx[i]), float(self._hz[i])

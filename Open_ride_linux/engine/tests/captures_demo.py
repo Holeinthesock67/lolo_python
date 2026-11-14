@@ -37,7 +37,7 @@ TESTS_DIR = Path(__file__).resolve().parent
 ENGINE_DIR = TESTS_DIR.parent
 REPO = ENGINE_DIR.parent
 # Jeu de base (lot DB1) : tour, côte et alpin sortis le 12 novembre, tour gravel le 9 novembre (recette seule).
-ROUTES = ("demo", "demo-biomes-paysages", "demo-circuit")
+ROUTES = ("demo", "demo-biomes-paysages", "demo-circuit", "demo-volcan")
 START_MARKS_M = (150.0, 400.0)
 SUMMIT_BEFORE_M = (100.0, 70.0, 50.0, 40.0, 30.0)   # plusieurs : un spectateur peut cacher le panneau (r811c)
 MIN_CLIMB_M = 30.0                 # dénivelé sous lequel le parcours n'a pas de sommet à montrer
