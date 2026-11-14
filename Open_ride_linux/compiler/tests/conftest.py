@@ -99,6 +99,7 @@ def offline_and_synthetic(request, monkeypatch, tmp_path):
     temporaire, MNT synthétique pour la CLI."""
     monkeypatch.setenv("OPENRIDE_DEM_CACHE", str(tmp_path / "dem-cache"))
     monkeypatch.setenv("OPENRIDE_OSM_CACHE", str(tmp_path / "osm-cache"))
+    monkeypatch.setenv("OPENRIDE_PAQUET", str(tmp_path / "paquet-absent"))   # lot PK1 : pas de pack du PC
     if request.node.get_closest_marker("network"):
         return
     connect, create_connection = socket.socket.connect, socket.create_connection

@@ -206,6 +206,7 @@ func update_view(view: Array, route) -> void:
 			lod = 2
 		node.set_meta("lod", lod)
 		var av := _avatar(node, lod)
+		av.set_breakaway(bool(b.get("unseen", false)))   # Furtif du Grand Prix (lot GP4)
 		var phase := fposmod(s / RoadCyclistsModel.DEVELOPMENT_M, 1.0)
 		var standing := float(smp.get("grade_pct", 0.0)) >= STANDING_GRADE_PCT
 		av.apply_pose(phase * TAU, standing)

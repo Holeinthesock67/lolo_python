@@ -103,6 +103,8 @@ class ItemSpec:
     warn_s: float = 0.0               # délai entre l'arrivée sur la cible et le coup (nuage d'orage)
     splash_fx: tuple[EffectSpec, ...] = ()   # effets sur les coureurs à moins de `splash_m` de la cible
     shot: str = ""                    # objet posé ou lancé tel que l'engine le dessine (vide : `id`)
+    escort: str = ""                  # véhicule d'AS6 (sorte de `traffic.KINDS`) devant le lanceur pendant ses
+    #                                   effets à durée : la séance le dessine et en donne l'abri (voiture d'équipe, GP4)
 
     def __post_init__(self) -> None:
         if self.target not in TARGETS or self.form not in FORMS:
@@ -144,7 +146,7 @@ DEFAULT_ITEMS: dict[str, ItemSpec] = {s.id: s for s in (
     ItemSpec("headwind", target="ahead", form="duration", hit_fx=(EffectSpec("wind", 5.0, 6.0),)),
     ItemSpec("team_car", target="self", form="duration",
              self_fx=(EffectSpec("immune", 1.0, 6.0), EffectSpec("speed_floor", 1.5, 6.0),
-                      EffectSpec("cap", 1.5, 6.0))),
+                      EffectSpec("cap", 1.5, 6.0)), escort="car_a"),
     ItemSpec("stealth", target="self", form="duration", self_fx=(EffectSpec("breakaway", 1.0, 10.0),),
              steal_m=50.0),
 )}

@@ -28,7 +28,8 @@ from ..route_objects import RouteObjects, Runner
 from .brain import BotBrain
 from .boxes import BOX_EVERY_KM, LANES, ROULETTE_S, BoxRows, row_positions
 from .draw import DrawContext, draw
-from .effects import CHAOS, DURATIONS, IMPULSES, Active, EffectSpec, apply_speed, gain_s, is_immune, wind_of
+from .effects import (CHAOS, DURATIONS, IMPULSES, Active, EffectSpec, apply_speed, gain_s, is_immune, is_unseen,
+                      wind_of)
 from .items import DEFAULT_TABLE, ITEM_IDS, SHIELDS, GrandPrixError, ItemSpec, ItemTable
 
 ME = "me"
@@ -256,6 +257,25 @@ class GrandPrixMode:
     def wind_mps(self, rid: str) -> float:
         """Vent de face virtuel en plus du vent réel (m/s), pour la physique seulement."""
         return wind_of(self.racers[rid].fx)
+
+    def unseen(self, rid: str) -> bool:
+        """Furtif en cours (marque `breakaway`, lot GP4) : le coureur n'abrite personne, les bots ne voient pas
+        ses attaques ; appliqué par la séance comme l'Échappée de TT4."""
+        r = self.racers.get(rid)
+        return r is not None and r.finished is None and is_unseen(r.fx)
+
+    def escorts(self) -> list[tuple[str, str]]:
+        """Véhicules d'escorte en cours (voiture d'équipe, lot GP4) : (coureur, sorte du véhicule d'AS6), un par
+        coureur, tant que dure un effet à durée d'un objet qui en a un. La séance place le véhicule devant le
+        coureur, l'envoie dans la liste `vehicles` et en tire l'abri (ressenti seulement)."""
+        out: list[tuple[str, str]] = []
+        for r in self._racing():
+            for a in r.fx:
+                spec = self.table.items.get(a.item)
+                if spec is not None and spec.escort and a.by == r.id and a.until_t > self.clock:
+                    out.append((r.id, spec.escort))
+                    break
+        return sorted(out)
 
     # --- voies ----------------------------------------------------------------------------------
 

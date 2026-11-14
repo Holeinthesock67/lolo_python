@@ -3,13 +3,14 @@ extends SceneTree
 ## Tests sans écran de l'affichage du « Grand Prix des objets » (série GP, lot GP8) : objet `gp` de la trame
 ## `state` (contrat 1.7) traduit en case d'objet, place, bande de course, voies et avertissements ; lignes
 ## du bilan (`summary.gp`) ; pastilles des treize objets ; vue construite et remplie sans plantage.
-## Cas du cahier GP8 : valeurs absentes, 12 coureurs.
+## Cas du cahier GP8 : valeurs absentes, 12 coureurs. Lot GP4 : Furtif lu dans `fx` (avatar translucide).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_gp_hud.gd
 
 const Model := preload("res://scripts/grandprix/gp_hud_model.gd")
 const View := preload("res://scripts/grandprix/gp_view.gd")
 const Items := preload("res://scripts/grandprix/gp_items.gd")
 const SummaryViewModel := preload("res://scripts/summary_view_model.gd")
+const BotsModel := preload("res://scripts/bots_view_model.gd")
 
 var _failures := 0
 var _checked := 0
@@ -187,6 +188,17 @@ func _run() -> void:
 	_check(shapes.size() == 5, "cinq formes de pastille")
 	_check(Items.shape_points("shield", Vector2.ZERO, 10.0).size() == 8 and Items.shape_points("circle", Vector2.ZERO, 10.0).size() == 24,
 		"contours des pastilles")
+
+	# Furtif (lot GP4) : avatar translucide, cycliste (`gp.fx`, [[objet, reste]]) ou bot (`bots[].fx`, [objet])
+	_check(Items.unseen([["stealth", 9.5]]) and Items.unseen(["gel", "stealth"]), "Furtif : vu dans les deux formes de fx")
+	_check(not Items.unseen([["team_car", 5.0]]) and not Items.unseen([]) and not Items.unseen(null), "Furtif : absent")
+	var bvm = BotsModel.new()
+	bvm.push([{"id": "bot1", "kind": "profile", "s": 10.0, "fx": ["stealth"]},
+		{"id": "bot2", "kind": "profile", "s": 5.0, "fx": []}], 0)
+	var unseen := {}
+	for bv in bvm.view(0.0, 0.0, 0):
+		unseen[bv["id"]] = bv.get("unseen", false)
+	_check(unseen.get("bot1", false) and not unseen.get("bot2", true), "Furtif : bot translucide seulement sous l'objet")
 
 	# Vue : construite, remplie et dessinée sans erreur
 	var view = View.new()

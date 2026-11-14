@@ -134,8 +134,11 @@ SETTINGS: tuple[Setting, ...] = (
             help="Coupé : soleil fixe, comme avant. Heure du thème, heure du PC, ou une journée en une heure : "
                  "aube, coucher orangé et nuit étoilée, route toujours lisible."),
     Setting("render.seasons", "Saisons", "graphics", applies="now",
-            help="Coupées : l'été, comme avant. Selon le thème, selon la date (hémisphère du parcours) ou une "
-                 "saison au choix : feuillages d'automne, arbres nus et neige plus bas l'hiver."),
+            help="Coupées : l'été, comme avant. Selon le thème, selon la date (mois ci-dessous, hémisphère du "
+                 "parcours, calendrier de chaque biome), au hasard à chaque parcours (hiver deux fois moins "
+                 "souvent) ou une saison au choix : feuillages d'automne, arbres nus et neige plus bas l'hiver."),
+    Setting("render.month", "Mois", "graphics", applies="now",   # lot U13b
+            help="Date du PC, ou un mois au choix (le 15) : saisons « selon la date » et longueur du jour."),
     Setting("render.living", "Décor vivant", "graphics", applies="relaunch"),   # lot O26
     Setting("render.visual_grade_scale", "Relief exagéré", "graphics", 25, "%", "relaunch", 100),
     # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
