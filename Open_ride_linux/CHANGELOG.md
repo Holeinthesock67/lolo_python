@@ -5,9 +5,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
-### Une épave au Récif des tortues (lot SM2)
+### Une épave et une piste de sable au Récif des tortues (lot SM2)
 - Un vieux caboteur rouillé, couché sur le flanc dans le sable, attend à 120 m de l'arrivée du « Récif des tortues » : coque couverte d'algues, hublots, brèche dans le flanc, timonerie, cheminée penchée et mât cassé tombé sur le pont.
 - Les parcours peuvent porter des épaves (point d'intérêt `wreck`, d'après la balise OSM `historic=wreck`).
+- Sous la mer, la route devient une piste de sable sans marquage, fondue dans le fond ; le vélo et l'entraînement ne changent pas. Un thème peut donner ainsi à chaque biome l'aspect de sa chaussée (`biomes.<id>.road`).
+- Plus de promeneur debout au bord de la route sous l'eau.
 
 ### Un récif sous la mer livré avec le jeu (lot SM1)
 - Nouveau parcours de démonstration « Récif des tortues » : une boucle de 8 km au fond de la mer, de 11 à 26 m sous la surface. On passe par le Lagon des Tortues, la Forêt des Laminaires, le Jardin de Corail et le Tombant Bleu.

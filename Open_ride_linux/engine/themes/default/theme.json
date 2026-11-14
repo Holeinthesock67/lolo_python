@@ -1491,6 +1491,9 @@
         "blend_sharpness": 4.0,
         "high_line_m": null
       },
+      "road": {
+        "color": "#c2b38f"
+      },
       "vegetation": {
         "species": [
           {

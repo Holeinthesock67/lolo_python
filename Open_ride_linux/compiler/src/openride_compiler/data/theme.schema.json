@@ -369,6 +369,19 @@
               "description": "Durée de chaque saison du calendrier, dans son ordre (four : printemps, été, automne, hiver ; wet_dry : saison sèche, saison des pluies ; polar : jour, nuit) ; somme 12."
             }
           }
+        },
+        "road": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "color"
+          ],
+          "properties": {
+            "color": {
+              "$ref": "#/$defs/hexColor"
+            }
+          },
+          "description": "Facultatif (lot SM2) : aspect de la chaussée là où le biome domine, piste non revêtue de cette couleur sans marquage (la physique ne change pas ; une portion réellement non revêtue de l'option gravel garde sa surface). Absent : route du parcours."
         }
       }
     },

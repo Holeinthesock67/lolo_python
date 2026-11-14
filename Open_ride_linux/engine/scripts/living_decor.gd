@@ -352,7 +352,8 @@ static func _prepare_job(job: Dictionary) -> void:
 	var cm = CrowdModel.new()
 	cm.configure(r, people, water, bool(job["crowd_all_climbs"]) and not uw, 0, road_w)
 	var pm = PassersbyModel.new()
-	pm.configure(r, [] if uw else buildings, water, 0, road_w, PassersbyModel.crowd_zones(people, bool(job["crowd_all_climbs"]) and not uw))
+	# Sous l'eau, aucun passant : ni au village ni en campagne (14/11 : un promeneur restait au bord du récif)
+	pm.configure(null if uw else r, buildings, water, 0, road_w, PassersbyModel.crowd_zones(people, bool(job["crowd_all_climbs"]) and not uw))
 	var marks := {}
 	for m in RoadsideModel.paint_marks(found):
 		var k := int(floor(float(m["s"]) / CHUNK_M))
