@@ -68,6 +68,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - `"keep"` essaie de garder le boîtier gauche déverrouillé (activation complète et réponse `ff 04 00`) et ne le redémarre que si Zwift le verrouille quand même. Essai sur le vélo du 8 novembre : sans effet sous le firmware 1.2.0 (verrou toujours vers 50 s), `"reset"` reste donc le défaut.
 - Journal : durée de chaque fenêtre de boutons du boîtier gauche ; `click_recette --verrou keep --attente-rappel 8` compte les appuis perdus par tranche de 10 min.
 
+### Mer animée, écume et plages (lot U9)
+- La mer des parcours côtiers n'est plus un plan d'eau immobile : vagues animées, reflets plus clairs vers l'horizon, couleur de l'eau du biome (littoral turquoise par défaut). Elle se prolonge jusqu'au-delà du brouillard.
+- Écume qui va et vient le long du rivage, plus large au pied des falaises ; plages de sable ou de galets posées sur le terrain.
+- Parcours sans mer : rien ne change, aucun coût.
+
 ### Mer, côte et plages dans les parcours compilés (lot U3)
 - Un parcours compilé avec la couche eau reçoit la mer, tirée des lignes de côte d'OpenStreetMap et refermée sur le bord du terrain, îles comprises.
 - Nouvelle couche `coast` (`--layers …,coast` ou `add-layer coast`) : le rivage (falaise, sable, galets ou roche) et les plages qui touchent la côte, pour la mer animée de la 3.0 (U9).
