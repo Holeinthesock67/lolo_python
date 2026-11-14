@@ -215,9 +215,9 @@ def test_grimpeur_rock_needs_charges():
     z = CombatInputs(power_w=0, cadence_rpm=60, posture="ROC", gear=6, ftp_w=250, s_m=rock.s_m, v_mps=5.0,
                      buttons=frozenset({"Z_SHORT"}))
     st, ev = combat_step(st, z, room, B, DT)
-    assert ev == () and st.roc_charges == 1
+    assert ev == ("z_ok",) and st.z_action == "rock_chip" and st.roc_charges == 1   # rocher entamé (lot R23)
     st, ev = combat_step(st, z, room, B, DT)
-    assert "hit" in ev and st.roc_charges == 0
+    assert "hit" in ev and st.z_action == "rock" and st.roc_charges == 0
     assert st.enemy_hp_max - st.enemy_hp == pytest.approx(0.08 * st.enemy_hp_max, rel=1e-6)
 
 

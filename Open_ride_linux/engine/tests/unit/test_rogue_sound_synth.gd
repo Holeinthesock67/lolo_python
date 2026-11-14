@@ -52,7 +52,7 @@ func _run() -> void:
 			bad_loop.append(sound)
 	var synth_ms := float(Time.get_ticks_usec() - t0) / 1000.0
 	print("[mesure] synthèse des %d sons : %.0f ms" % [Synth.names().size(), synth_ms])
-	_check(Synth.names().size() == 27, "27 sons dans la table (les 24 de la liste, le bilan de défaite, le refus de Z et l'arche ratée du lot R22)")
+	_check(Synth.names().size() == 28, "28 sons dans la table (les 24 de la liste, le bilan de défaite, le refus de Z et l'arche ratée du lot R22, Z accepté du lot R23)")
 	_check(bad_len.is_empty(), "durée de chaque son conforme à la liste %s" % str(bad_len))
 	_check(bad_peak.is_empty(), "crête entre 0,05 et −3 dBFS pour chaque son %s" % str(bad_peak))
 	_check(bad_loop.is_empty(), "boucles (surchauffe, ronflement) sans coupure aux extrémités %s" % str(bad_loop))

@@ -205,7 +205,8 @@ class RunEngine:
 
     def step(self, dt: float, inp: RunInputs) -> RunOutputs:
         self._journal: list = []
-        self._z_reason = None               # lot R22 : retours valables pour la trame en cours seulement
+        self._z_reason = None               # lot R22 : retours valables pour le pas en cours seulement
+        self._z_action = None               # lot R23 : action du Z accepté
         self._shift_miss = None
         if not self._hash_logged:
             self._hash_logged = True
@@ -229,6 +230,11 @@ class RunEngine:
         elif self.phase == COOLDOWN:
             if self.t_phase >= self._step.nominal_s:
                 self._finish_run()
+        if "Z_SHORT" in inp.buttons and "z_ok" not in events and "z_refused" not in events:
+            # lot R23 : chaque Z court a un retour ; sans effet ici (échauffement, couloir sans choix, retour au
+            # calme, bilan) : refus « rien à frapper », que l'engine explique selon la phase.
+            self._z_reason = "no_target"
+            events.append("z_refused")
         out_phase = self.phase
         return RunOutputs(
             phase=out_phase, grade_enemy=grade, grade_sent=grade_sent(grade, inp.gear, self.b),
@@ -335,6 +341,8 @@ class RunEngine:
                                               self.b.cards_offered, self.deck)
                     self.focus = None
                     messages.append(self._loot_message())
+                    self._z_action = "reroll"       # lot R23 : la relance réussie a son retour
+                    events.append("z_ok")
                 else:
                     self._z_reason = "gold"         # lot R22 : relance refusée, or insuffisant
                     events.append("z_refused")
@@ -421,6 +429,8 @@ class RunEngine:
         events += ev
         if "z_refused" in ev:
             self._z_reason = cs.z_reason
+        if "z_ok" in ev:
+            self._z_action = cs.z_action
         if "shift_missed" in ev and cs.shift_miss:
             self._shift_miss = {"reason": cs.shift_miss[0], "dt_s": cs.shift_miss[1]}
         # effets de cartes après le pas
@@ -562,7 +572,21 @@ class RunEngine:
             "firewall_gap_s": self._firewall_gap_s(gap, inp),
             "z_reason": getattr(self, "_z_reason", None) if "z_refused" in events else None,
             "shift_miss": getattr(self, "_shift_miss", None) if "shift_missed" in events else None,
+            # révision 1.17 (lot R23) : action du Z accepté, tendance de l'adrénaline
+            "z_action": getattr(self, "_z_action", None) if "z_ok" in events else None,
+            "adrenaline_trend": self._adrenaline_trend(),
         }
+
+    def _adrenaline_trend(self) -> dict:
+        """Débit continu de l'adrénaline (par seconde), sa cause et, au-dessus du seuil de surchauffe sans y être
+        encore, les secondes avant qu'elle commence (lot R23)."""
+        cs = self.combat
+        if cs is None or self.phase not in (ROOM, BOSS):
+            return {"rate_per_s": 0.0, "cause": "none", "overheat_in_s": None}
+        soon = None
+        if cs.over_s > 0.0 and not cs.overheat:
+            soon = round(max(self.b.overheat_after_s - cs.over_s, 0.0), 1)
+        return {"rate_per_s": round(cs.adr_rate, 2), "cause": cs.adr_cause, "overheat_in_s": soon}
 
     def _phase_left_s(self) -> float | None:
         """Secondes avant la fin de la phase : échauffement, couloir, récupération, retour au calme ; en salle,
@@ -625,7 +649,12 @@ class RunEngine:
             return {"lo": 0, "hi": round(b.cooldown_frac * 100)}
         if self.phase in (ROOM, BOSS) and self.room is not None:
             from .combat import target_at
-            return {"lo": round(target_at(self.room, max(inp.s_m, 0.0)) * 100), "hi": None}
+            # lot R23 : en endurance, le plafond est le seuil de surchauffe (au-delà, l'adrénaline fond)
+            from .combat import overheat_limit
+            tgt = target_at(self.room, max(inp.s_m, 0.0))
+            lo = round(tgt * 100)
+            hi = round(overheat_limit(tgt, self._eff_balance()) * 100) if self.cur_spec.objective == "endurance" else None
+            return {"lo": lo, "hi": hi}
         return None
 
     def _firewall_gap_s(self, gap_m: float, inp) -> float | None:

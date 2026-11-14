@@ -27,8 +27,11 @@ const SideDecor := preload("res://scripts/rogue/rogue_side_decor.gd")
 const RIBBON_PHASES := ["ROOM", "CORRIDOR", "BOSS", "RECOVERY"]
 ## Vues de la caméra (lot R22, choix du propriétaire du 12 novembre : 3 vues sur les flèches haut et bas) :
 ## [recul, hauteur, visée devant] en mètres. 0 : derrière (vue d'origine), 1 : haute, 2 : proche.
-const VIEWS := [[6.0, 2.4, 14.0], [12.0, 6.5, 26.0], [3.2, 1.5, 10.0]]
-const VIEW_NAMES := ["derrière", "haute", "proche"]
+## Vues : [recul derrière le vélo, hauteur des yeux, point visé devant] (m). Lot R23 : 4e vue « sur le vélo », les
+## yeux du cycliste à 1,4 m (avatar caché, comme la vue subjective du mode classique).
+const VIEWS := [[6.0, 2.4, 14.0], [12.0, 6.5, 26.0], [3.2, 1.5, 10.0], [-0.2, 1.4, 18.0]]
+const VIEW_NAMES := ["derrière", "haute", "proche", "sur le vélo"]
+const RIDER_VIEW := 3
 const CAMERA_BACK_M := 6.0
 const CAMERA_UP_M := 2.4
 const CAMERA_LOOK_AHEAD_M := 14.0
@@ -270,6 +273,7 @@ func on_hud(state: Dictionary, now_s: float) -> void:
 	_hud_events.append_array(events)
 	hud_view.show_events(events)
 	hud_view.push_feedback(hud_model.guide.take_toasts(), hud_model.guide.take_legend())
+	hud_view.pulse(str(hud_model.values().get("z_pulse", "")))
 	var summary = state.get("summary", null)
 	var result := "victory"
 	if typeof(summary) == TYPE_DICTIONARY and typeof(summary.get("rogue", null)) == TYPE_DICTIONARY:
@@ -300,7 +304,14 @@ func _place_decor(rid: int) -> void:
 func cycle_view(step: int) -> String:
 	view_index = posmod(view_index + step, VIEWS.size())
 	_place_camera()
+	if hud_view != null:
+		hud_view.show_view_name(VIEW_NAMES[view_index])
 	return VIEW_NAMES[view_index]
+
+
+## Vrai en vue « sur le vélo » : l'avatar se cache, la caméra est dans sa tête (lot R23).
+func is_rider_view() -> bool:
+	return view_index == RIDER_VIEW
 
 
 func _process(delta: float) -> void:
@@ -367,6 +378,7 @@ func _place_camera() -> void:
 		return
 	var y := ribbon_y(_s_disp)
 	var view: Array = VIEWS[view_index]
+	bike.visible = view_index != RIDER_VIEW      # vue sur le vélo : la roue repère passerait sous la caméra
 	var eye := Vector3(0.0, y + float(view[1]), -(_s_disp - float(view[0])))
 	var ahead := float(view[2])
 	var target := Vector3(0.0, ribbon_y(_s_disp + ahead) + 0.5, -(_s_disp + ahead))
@@ -387,4 +399,8 @@ func test_info() -> Dictionary:
 		# lot R22
 		"view": VIEW_NAMES[view_index], "decor": side_decor.instance_total() if side_decor != null else 0,
 		"hint": hud_view.hint_label.text if hud_view.hint_panel.visible else "",
-		"side": hud_view.side_big.text if hud_view.side_panel.visible else ""}
+		"side": hud_view.side_big.text if hud_view.side_panel.visible else "",
+		# lot R23
+		"gear": hud_view.gear_value.text if hud_view.visible and hud_view.gear_panel.visible else "",
+		"toast": hud_view.toast_title.text if hud_view.toast_panel.visible else "",
+		"z_ring": hud_view.z_pulse.left_s > 0.0}

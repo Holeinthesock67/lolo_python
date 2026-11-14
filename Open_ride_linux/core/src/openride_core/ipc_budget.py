@@ -391,7 +391,8 @@ def worst_state(revision: str) -> dict[str, Any]:
 
 
 def worst_rogue_state() -> dict[str, Any]:
-    """Trame `state` la plus lourde du mode `ROGUE` (révision 1.4, série R) : 4 fenêtres, 4 événements."""
+    """Trame `state` la plus lourde du mode `ROGUE` (révision 1.4, série R ; 1.16 et 1.17, lots R22 et R23) :
+    4 fenêtres, 6 événements, tous les champs de lisibilité."""
     d = worst_state("1.3")
     for key in ("erg", "bots", "draft", "draft_bot"):
         d.pop(key, None)
@@ -406,7 +407,14 @@ def worst_rogue_state() -> dict[str, Any]:
         "windows": [{"kind": "strike_target", "s_start": 99_999.99, "s_end": 99_999.99}] * 4,
         "hack": {"locked": True, "forced_gear": 12, "until_s": 99_999.99},
         "overheat": True, "loot_focus": 4,
-        "events": ["firewall_contact", "room_skipped", "perfect_shift", "parry_miss"],
+        "events": ["firewall_contact", "room_skipped", "perfect_shift", "parry_miss", "shift_missed", "z_refused"],
+        # révision 1.16 (lot R22) et 1.17 (lot R23) : lisibilité et retours des appuis
+        "phase_left_s": 99_999.9,
+        "next": [{"kind": "corridor", "in_s": 99_999.9, "archetype": "sprinteur"}] * 2,
+        "loot_stage": "door", "target_pct": {"lo": 999, "hi": 999}, "firewall_gap_s": 99.9,
+        "z_reason": "no_roc_charge", "shift_miss": {"reason": "wrong_way", "dt_s": -9.99},
+        "z_action": "rock_chip",
+        "adrenaline_trend": {"rate_per_s": -99.99, "cause": "overheat", "overheat_in_s": 99.9},
     }
     return d
 

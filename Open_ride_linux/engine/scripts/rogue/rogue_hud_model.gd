@@ -123,6 +123,9 @@ func update(state: Dictionary, now_s: float) -> void:
 		"phase": phase,
 		"phase_text": PHASE_TEXT.get(phase, ""),
 		"gear_text": "%02d" % maxi(int(state.get("gear", 1)), 1),
+		# lot R23 : pavé de la vitesse engagée, visible dans toutes les phases
+		"gear": maxi(int(state.get("gear", 1)), 1),
+		"gears_total": maxi(int(state.get("gears_total", 12)), 1),
 		"power_pct": _smooth["power_pct"],
 		"power_pct_text": "%d %%" % int(roundf(_smooth["power_pct"])),
 		"cadence_text": "%d" % int(roundf(_smooth["cadence_rpm"])),
@@ -145,6 +148,7 @@ func update(state: Dictionary, now_s: float) -> void:
 		"corridor": _corridor(phase, rogue),
 		"hack": _hack(hack),
 		"guide": guide.compute(state, rogue, _smooth["power_pct"], fresh_events),
+		"z_pulse": _take_pulse(),
 		"loot_stage": rogue.get("loot_stage", null),
 		"phase_left_s": rogue.get("phase_left_s", null),
 		"next": rogue.get("next", []),
@@ -152,6 +156,13 @@ func update(state: Dictionary, now_s: float) -> void:
 		"adrenaline_text": "Z prêt" if float(rogue.get("adrenaline", 0.0)) >= ADRENALINE_Z else "%d/%d" % [int(floor(float(rogue.get("adrenaline", 0.0)))), int(ADRENALINE_Z)],
 		"posture_text": {"ROC": "ROC", "FLUIDE": "FLUIDE", "VELOCE": "VÉLOCE", "ARRET": "ARRÊT"}.get(posture, posture),
 	}
+
+
+## Retour du dernier Z court de la trame pour l'anneau de la vue (« ok », « refused », vide), une seule fois.
+func _take_pulse() -> String:
+	var p: String = guide.z_pulse
+	guide.z_pulse = ""
+	return p
 
 
 func _blend(key: String, target: float, alpha: float) -> void:
