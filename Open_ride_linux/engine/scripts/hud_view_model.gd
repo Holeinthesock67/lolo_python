@@ -240,6 +240,25 @@ static func direction_of(state: Dictionary) -> int:
 	return -1 if (d is int or d is float) and float(d) < 0.0 else 1
 
 
+## Demi-tour automatique au bout d'un parcours en ligne pendant un entraînement ERG ou un test de FTP (lot N26) :
+## le sens change (`dir`) en roulant, à un bout du parcours, avec un entraînement en cours. Texte vide sinon (Y
+## maintenu au milieu du parcours : `u_turn_press_text`).
+const END_U_TURN_TEXT := "Bout du parcours : demi-tour, l'entraînement continue"
+const END_U_TURN_M := 3.0
+
+static func end_u_turn_text(prev_dir: int, state: Dictionary) -> String:
+	if prev_dir == direction_of(state) or str(state.get("session_state", "")) != "RUNNING":
+		return ""
+	var erg = state.get("erg", null)
+	var length = state.get("route_length_m", null)
+	if not erg is Dictionary or str(erg.get("kind", "workout")) != "workout" or not (length is int or length is float):
+		return ""
+	var s := float(state.get("s", -1.0))
+	if s <= END_U_TURN_M or s >= float(length) - END_U_TURN_M:
+		return END_U_TURN_TEXT
+	return ""
+
+
 ## Distance parcourue de la dernière trame (m, NAN avant la première) : croissante après un demi-tour.
 func ridden_m() -> float:
 	return _ridden.distance_m

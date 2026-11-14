@@ -2202,6 +2202,22 @@ class CoreSession:
         self._note_u_turn()
         return True
 
+    def _u_turn_at_end(self, route: Route) -> bool:
+        """Bout d'un parcours en ligne pendant un entraînement ERG ou un test de FTP (lot N26) : demi-tour
+        automatique sans s'arrêter, comme Y maintenu, au lieu de couper l'entraînement à l'arrivée. Vrai si le
+        demi-tour est fait ; faux hors entraînement (entraînement fini, SIM, ERG libre) ou quand le demi-tour
+        est refusé (course à élimination, Grand Prix) : l'arrivée termine alors la séance."""
+        if not isinstance(self.erg, ErgController) or self._u_turn_refusal("RUNNING") is not None:
+            return False
+        self.physics.s = min(max(self.physics.s, 0.0), route.length_m)   # pas au-delà du bout de la route
+        self.physics.u_turn(keep_speed=True)
+        if self.race is not None:
+            self.race.pause("user")   # passage de segment ou de sprint en cours annulé, comme Y maintenu
+        log.info("Bout du parcours pendant l'entraînement « %s » : demi-tour automatique.",
+                 self.erg.workout.name)
+        self._note_u_turn()
+        return True
+
     def _note_u_turn(self) -> None:
         """Sens du parcours dans `state`, événement `u_turn` au journal (communs à la pause et à Y maintenu)."""
         d = self.physics.direction
@@ -3657,9 +3673,10 @@ class CoreSession:
 
         if route and not route.is_loop and self.openworld is None and \
                 (st.s >= route.length_m if d > 0 else st.s <= 0.0):   # ni une boucle, ni le monde ouvert
-            # à rebours (lot N17), le départ du parcours est l'arrivée
-            log.info("Arrivée atteinte%s.", "" if d > 0 else " (retour au départ après un demi-tour)")
-            self._finish(True)
+            if not self._u_turn_at_end(route):
+                # à rebours (lot N17), le départ du parcours est l'arrivée
+                log.info("Arrivée atteinte%s.", "" if d > 0 else " (retour au départ après un demi-tour)")
+                self._finish(True)
         elif self._survivor_end_pending:   # éliminé, réglage « terminer la séance » (lot DS2)
             self._survivor_end_pending = False
             self._finish(True)

@@ -191,6 +191,7 @@ var _start_wait = StartWaitModel.new()
 const ROGUE_SCENE_ID := "rogue"   # `scene_ready.route_id` de la scène du Cyber-Rogue (lot Y20)
 var start_screen: Control = null   # écran d'attente « Start your engines » (start_screen.gd)
 var _was_start_waiting := false
+var _dir := 1                  # sens de la dernière trame (lot N26 : demi-tour automatique au bout du parcours)
 var _bias_locked := false     # test de FTP : + et − bloqués pendant la rampe (rappel à l'entrée)
 var _route_loaded_id := ""   # parcours affiché (chargé par _poll_route_job), "" avant le premier
 
@@ -2063,6 +2064,10 @@ func _on_state_received(state: Dictionary) -> void:
 		banner.show_message("workout_done", done_text)
 	else:
 		banner.clear_message("workout_done")
+	var end_turn := HudViewModel.end_u_turn_text(_dir, state)
+	if end_turn != "":
+		banner.show_message("press", end_turn, PRESS_HINT_S)
+	_dir = HudViewModel.direction_of(state)
 	_check_latency(state)
 	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)
