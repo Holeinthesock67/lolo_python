@@ -29,6 +29,9 @@ un demi-tour sur le parcours retourné (principe du projet : pas d'exception, un
   détectées (lot N24), rendues au demi-tour suivant.
 - `session.py` : circulation et cyclistes tenus dans ce repère, listes `vehicles` et `riders` de l'état toujours dans
   le repère du parcours (protocole inchangé), abri et aspiration toujours coupés à rebours (N17).
+- Placement du cycliste à rebours (AS2) : il se place parmi les véhicules et les cyclistes du décor de son sens,
+  dans le repère de la circulation, et double le tracteur lent devant lui (banc cloud du 14/11 : 4 contacts
+  « tractor / cycliste » sans ce placement). Les bots, en face, n'en font pas partie.
 - `living_decor.gd` : lit `dir` de l'état, convertit les listes du core et les places des bots ; `road_users` et
   `vehicle_places` restent dans le repère du parcours ; contacts comptés dans le repère de la circulation.
 - Banc simulé : scénario `circulation_rebours` (village, demi-tour par Y maintenu à 60 s, passages forcés du banc

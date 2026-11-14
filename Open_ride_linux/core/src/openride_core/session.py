@@ -3777,6 +3777,9 @@ class CoreSession:
         is_loop = bool(route and route.is_loop)
         near: list[traffic_mod.Vehicle] = []
         riders: list[road_cyclists_mod.Rider] = []
+        near_m: list[traffic_mod.Vehicle] = []        # mêmes listes dans le repère de la circulation (lot N23)
+        riders_m: list[road_cyclists_mod.Rider] = []
+        rider_u = self.physics.s
         if traffic is not None:
             # Lot N23 : à rebours, circulation et cyclistes du décor roulent sur le parcours retourné (u = L - s),
             # où le cycliste avance encore vers les u croissants, sur la droite de son sens de marche ; les bots,
@@ -3793,20 +3796,26 @@ class CoreSession:
                 cyclists.set_direction(d, self.physics.s)
                 cyclists.vehicles = traffic.vehicles
                 cyclists.update(rider_u, self.physics.v, dt, bots=bot_places)
-                riders = [cyclists.on_route(r) for r in cyclists.near(rider_u)]
+                riders_m = cyclists.near(rider_u)
+                riders = [cyclists.on_route(r) for r in riders_m]
             others = [traffic_mod.Other(s, lat, d) for s, lat in bot_places]
             others += [traffic_mod.Other(r.s, r.lane_m, r.dir) for r in (cyclists.riders() if cyclists else [])]
             others.append(traffic_mod.Other(rider_u, self._lane.m, 1))
             traffic.update(rider_u, self.physics.v, dt, others=others)
-            near = [traffic.on_route(v) for v in traffic.near(rider_u)]
+            near_m = traffic.near(rider_u)
+            near = [traffic.on_route(v) for v in near_m]
         ws = self._wind_sample if self.wind.active else None
 
         def cross_at(heading: float) -> float:
             return cross_component(ws, heading) if ws else 0.0
 
-        def wind_at(s: float) -> tuple[float, float]:
-            heading = route.sample(s).heading_deg
-            return head_component(ws, heading), cross_at(heading)
+        def wind_on(road: Any) -> Callable[[float], tuple[float, float]]:
+            def wind_at(s: float) -> tuple[float, float]:
+                heading = road.sample(s).heading_deg
+                return head_component(ws, heading), cross_at(heading)
+            return wind_at
+
+        wind_at = wind_on(route) if route else None
 
         racing = self._racing_bots()   # un bot éliminé (Dernier survivant) n'abrite plus personne
         unseen = self._unseen_ids()
@@ -3840,6 +3849,17 @@ class CoreSession:
         runners += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders if r.dir == 1]
         draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None,
                                self._half_at(route))
+        if reverse and traffic is not None:
+            # Lot N23 : à rebours, le cycliste se place parmi les véhicules et les cyclistes du décor de son sens
+            # (il double le tracteur lent devant lui), dans le repère de la circulation (u = L - s) ; les bots, en
+            # face, n'en sont pas
+            half = self._half_at(route)
+            back = [(rider_u, self.physics.v, self._lane)]
+            back += [(v.s, v.speed_mps, draft_mod.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width,
+                                                        length=v.length)) for v in near_m if v.dir == 1]
+            back += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders_m if r.dir == 1]
+            draft_mod.update_lanes(back, dt, length, is_loop, wind_on(traffic.route) if ws else None,
+                                   (lambda u: half(traffic.model_s(u))) if half else None)
         for lane, bike_length, bike_half in blocks:
             lane.length, lane.half_width = bike_length, bike_half
 

@@ -134,3 +134,26 @@ def test_session_shows_vehicles_and_cyclists_after_u_turn(tmp_path, monkeypatch)
     # Le tracteur du banc est posé devant le cycliste dans son sens de marche : vers les s décroissants
     assert any(v["dir"] == -1 and v["rel"] < 0.0 for v in seen_v)
     assert traffic.bench_forced >= 2
+
+
+def test_rider_passes_slow_tractor_after_u_turn(tmp_path, monkeypatch) -> None:
+    """À rebours, le cycliste se place encore parmi les véhicules de son sens (placement d'AS2) : il double le
+    tracteur lent posé devant lui au lieu de lui rouler dessus (banc `circulation_rebours` du 14/11 : 4 contacts)."""
+    s, _ = make_session(tmp_path, monkeypatch, 7160)
+    ride_until(s, lambda: s.physics.s >= 3000.0)
+    u_turn(s)
+    ride_until(s, lambda: s.physics.s <= 2900.0 and s.physics.v > 6.0)
+    traffic = s.traffic
+    tractor = traffic.place_for_test(traffic.model_s(s.physics.s), "tractor", 1, 30.0, s.physics.v * 3.6 * 0.6)
+    worst = 99.0
+
+    def watch() -> bool:
+        nonlocal worst
+        rel = tractor.s - traffic.model_s(s.physics.s)
+        if abs(rel) < tractor.length / 2 + tr.CYCLIST_HALF_LENGTH_M:
+            worst = min(worst, abs(tractor.lateral - s._lane.m) - tractor.half_width - tr.RIDER_HALF_WIDTH_M)
+        return rel < -30.0
+
+    ride_until(s, watch)
+    assert worst < 99.0                               # il l'a bien longé
+    assert worst > 0.3                                # sans le toucher
