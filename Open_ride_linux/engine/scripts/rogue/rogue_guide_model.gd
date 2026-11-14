@@ -305,7 +305,7 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 			hint = "SURCHAUFFE : descends sous %d %% FTP · adrénaline −%s/s, Z bloqué" % [limit, _num(melt)]
 			tone = "danger"
 		elif soon != null:
-			hint = "Trop fort : au-dessus de %d %% FTP, surchauffe dans %d s" % [limit, int(ceil(float(soon)))]
+			hint = "Trop fort : au-dessus de %d %% FTP, surchauffe dans %d s" % [limit, maxi(int(ceil(float(soon))), 1)]
 			tone = "warn"
 		elif hack is Dictionary:
 			hint = "Piratage ! Vitesse %s : Z sur la balise de purge pour l'arrêter" % ("bloquée" if bool(hack.get("locked", false)) else "imposée")

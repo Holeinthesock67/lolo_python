@@ -71,6 +71,8 @@ func _run() -> void:
 	_check(o["adr_trend"] == "▲ +0,5/s", "tendance : ▲ +0,5/s")
 	o = g.compute(st, _rogue({"adrenaline_trend": {"rate_per_s": 0.5, "cause": "gain", "overheat_in_s": 2.4}}), 80.0, [])
 	_check(o["hint"] == "Trop fort : au-dessus de 75 % FTP, surchauffe dans 3 s" and o["tone"] == "warn", "alerte : surchauffe dans 3 s")
+	o = g.compute(st, _rogue({"adrenaline_trend": {"rate_per_s": 0.5, "cause": "gain", "overheat_in_s": 0.0}}), 80.0, [])
+	_check(o["hint"].ends_with("surchauffe dans 1 s"), "alerte : jamais « dans 0 s »")
 	o = g.compute(st, _rogue({"overheat": true, "adrenaline": 60.0,
 		"adrenaline_trend": {"rate_per_s": -2.0, "cause": "overheat", "overheat_in_s": null}}), 85.0, [])
 	_check(o["hint"] == "SURCHAUFFE : descends sous 75 % FTP · adrénaline −2/s, Z bloqué" and o["tone"] == "danger", "surchauffe : bandeau rouge et sortie")
