@@ -83,6 +83,8 @@ const CARD_ON_TEXT := {
 	"overdrive": ["OVERDRIVE !", "Dégâts ×2 pendant 8 s"],
 	"heal": ["SOIN ACTIF", "+1 de bouclier par seconde"],
 	"cursed": ["MAUDIT ACTIF", "Dégâts ×1,35 · Z bloqué"],
+	"springboard": ["TREMPLIN !", "+15 d'adrénaline · dégâts ×1,5 pendant 5 s"],
+	"polarity": ["INVERSION !", "La montée devient une descente pendant 8 s"],
 }
 ## Actions de Z qui touchent l'ennemi ou un obstacle : l'écran fait un éclair (lot R23, demande du propriétaire).
 const ATTACK_ACTIONS := ["strike", "charges", "rock", "rock_chip", "parry"]

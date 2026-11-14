@@ -144,7 +144,7 @@ func _run() -> void:
 	g3.z_pulse = ""
 	g3.compute(st, _rogue({"card_on": "cursed"}), 72.0, ["card_on"])
 	_check(g3.take_toasts()[0]["title"] == "MAUDIT ACTIF", "Maudit actif")
-	for c in ["overdrive", "heal", "cursed"]:
+	for c in ["overdrive", "heal", "cursed", "springboard", "polarity"]:
 		_check(GuideModel.CARD_ON_TEXT.has(c), "texte de la carte « %s »" % c)
 	_check(SoundModel.EVENT_SOUNDS.get("card_on", "") == "rogue_card_on" and Synth.names().has("rogue_card_on"), "son de la carte déclenchée")
 	var view2 = HudView.new()

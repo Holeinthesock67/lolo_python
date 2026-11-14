@@ -406,10 +406,12 @@ class RunEngine:
             if self.prev_raw <= b.springboard_grade < raw:
                 self.spring_until = t + b.springboard_s
                 self._spring_adr = b.springboard_adrenaline
+                self._card_fired("springboard", t, events, rearm=False)
             if t < self.spring_until:
                 mult *= b.springboard_mult
         if "polarity" in self.deck and "Z_LONG" in inp.buttons and not self.inversion_used:
             self.inversion_used, self.inversion_until = True, t + b.inversion_s
+            self._card_fired("polarity", t, events, rearm=False)
         self.prev_raw = raw
         g = raw
         if "roller" in self.deck:

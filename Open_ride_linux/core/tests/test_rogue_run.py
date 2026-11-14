@@ -313,8 +313,9 @@ def test_springboard_after_descent():
     up = next(s for s, g in e.room.profile if g > 3.0 and s > down)
     step_in_room(e, down, gear=4, n=round(2.5 / DT))                  # posture Fluide installée ; toute vitesse (R23)
     e.combat = replace(e.combat, adrenaline=0.0)
-    step_in_room(e, up, gear=4)
+    out = step_in_room(e, up, gear=4)
     assert e.combat.adrenaline >= 15.0 - 1.0
+    assert out.rogue["card_on"] == "springboard"                     # lot R23 : le tremplin se dit
     hp = e.combat.enemy_hp
     step_in_room(e, up, gear=9, power=250.0, n=round(1 / DT))
     boosted = hp - e.combat.enemy_hp

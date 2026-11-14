@@ -1969,7 +1969,7 @@
             "null"
           ],
           "maxLength": 24,
-          "description": "Facultatif, révision 1.17 (lot R23) : carte du deck qui vient de se déclencher dans cette trame (événement card_on : overdrive, heal, cursed, condition de puissance ou de cadence atteinte), sinon null."
+          "description": "Facultatif, révision 1.17 (lot R23) : carte du deck qui vient de se déclencher dans cette trame (événement card_on : overdrive, heal, cursed, springboard, polarity, condition de puissance ou de cadence atteinte), sinon null."
         },
         "adrenaline_trend": {
           "type": "object",
