@@ -232,6 +232,7 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 - [ ] Panne rejouée (lot M5) : après la prochaine coupure réelle, `python -m openride_core.tools.log_scenario -o ~/panne.json` puis `scripts/openride-dev.sh --trainer sim --input sim --hr sim --sim-scenario ~/panne.json --autostart`.
 - [ ] Parcours FIT (lot M7) : exporter de Garmin Connect le FIT d'origine d'une vraie sortie, `openride-compiler build sortie.fit`, puis rouler le parcours ; signaler si Garmin Connect livre un `.fit.gz` ou un `.zip` (non lus).
 - [ ] Journal du lanceur (lot M8) : lancer par l'icône du bureau, quitter, puis `python -m openride_core.tools.log_report` sans argument ; vérifier que `~/run_trainer.log` pointe vers `~/OpenRide/Logs/openride_…log`, que l'ancien journal est devenu `run_trainer.log.ancien` et que les lignes `[engine]` de Godot y sont.
+- [ ] Grand Prix des objets (lot GP11 ; étape 5 complète après GP4) : [recette](RECETTE_SERIE_GP.md), banc `grand_prix` en low, medium et high puis quatre étapes de 10 min sur le vélo ; bilan par `python -m openride_core.tools.gp_recette`.
 - [ ] Délai entre un appui et l'écriture de la commande au HomeTrainer.
 - [ ] Click : cause des déconnexions spontanées (environ 2 en 3 minutes le 22 octobre, reconnexion en 4 s environ).
 - [ ] Images par seconde de Godot, à relever quand le décor sera chargé (lot E1).
