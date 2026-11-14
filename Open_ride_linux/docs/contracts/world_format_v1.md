@@ -240,6 +240,7 @@ Deux couches facultatives, chacune en fichiers `chunk_<k>.json`.
 
 - `lines` : cours d'eau, points (x, z, y) dans le repère du monde ; `width_m` est la largeur, 2 m par défaut.
 - `areas` : plans d'eau, avec `level_y` pour l'altitude de la surface. `kind` : `lake`, `pond`, `reservoir` ; depuis 1.6 (lot U1), `sea` : polygone de mer refermé sur le bord de l'étendue du terrain (`level_y` = 0), dont le rivage est décrit par la couche côte (§8 quinquies).
+- Règle du compilateur et du générateur du monde ouvert depuis le lot EA1 (sans changement du format) : `level_y` d'un lac, d'un étang ou d'un réservoir est la médiane du MNT dans le plan d'eau à plus de 30 m de toute rive (grille de 30 m alignée sur le repère), plafonnée au quart le plus bas de la rive ; trop petit, le minimum de la rive. Le terrain (niveaux proche et lointain) est abaissé sous ces plans d'eau à `level_y − 1` m au plus, îles et chaussée hors pont exceptées. La mer garde `level_y` = 0 et son terrain.
 - Ces deux couches arrivent au sprint 6 ; le format est figé dès maintenant pour qu'un parcours compilé plus tôt puisse recevoir ces couches plus tard.
 
 ## 8 bis. Couche segments (depuis 1.3)
@@ -512,6 +513,7 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.8 | 12 novembre 2026 | Ajout compatible (lot U25, 6.0, variantes de paysage) : membre facultatif `landscape` de `variant` (`canyon`, `fjord`, `ile_volcanique`, `rizieres` ; absent = `null`) et toit `bois_peint` (§8 quater) ; section `landscapes` du thème 2.0 (§9) ; paysages et toit posés par des zones à grosse maille de la table des variantes régionales du compilateur. Un `.world` sans `landscape` reste valide |
 | 1.8 | 12 novembre 2026 | Ajout compatible (lots AT1 et AT2, 6.0) : 18e biome `atlantic_heath` (Atlantique et landes) dans l'énumération des biomes (§8 quater, `biome`, `manifest` et `theme`), espèces `heather`, `gorse`, `bracken` de `biomes.<id>.vegetation.species` (§9) ; entrée `biomes.atlantic_heath` du thème par défaut ; le compilateur pose le biome d'après la table embarquée `data/biome_zones.toml` (rectangles × Köppen × classes WorldCover), commune aux parcours et au monde ouvert |
 | 1.8 | 12 novembre 2026 | Ajout compatible (lot HP1, 6.0) : biome `high_plateau` (hauts plateaux : Altiplano, Tibet, Ladakh) dans l'énumération des biomes (§8 quater, `biome`, `manifest` et `theme`), espèce `bunchgrass` dans `vegetation.species` du thème (§9) ; entrée `biomes.high_plateau` du thème par défaut ; un lecteur plus ancien refuse ces identifiants comme tout identifiant inconnu |
+| 1.8 | 14 novembre 2026 | Sans changement du format (lot EA1, série EA) : niveau `level_y` des lacs, étangs et réservoirs pris dans le MNT du plan d'eau (médiane à plus de 30 m des rives, plafonnée au quart le plus bas de la rive), terrain proche et lointain abaissé dessous à `level_y − 1` m (§8, couche eau) ; le monde ouvert suit la même règle (`WORLDGEN_VERSION` 2, carrés du cache refaits) |
 
 ## 13. Monde vivant (monde ouvert, série W)
 

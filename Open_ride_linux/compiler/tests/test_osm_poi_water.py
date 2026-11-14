@@ -146,7 +146,8 @@ def test_offline_and_add_layer_water_preserves_other_layers(fake_overpass_poi_wa
     for rel in ("poi/chunk_0.json", "water/chunk_0.json", "water/chunk_1.json", "water/chunk_2.json"):
         assert (w1 / rel).read_bytes() == (w2 / rel).read_bytes()
 
-    # add-layer water sur un parcours existant ne modifie ni route.json, ni terrain, ni poi
+    # add-layer water sur un parcours existant ne modifie ni route.json, ni poi ; le terrain est abaissé
+    # sous les plans d'eau (lot EA1), exactement comme par `build` avec la couche eau
     out3 = tmp_path / "run3"
     assert run("build", gpx, "--out", out3, "--layers", "route,terrain,poi", "--offline") == 0
     w3 = out3 / "water-repro.world"
@@ -162,7 +163,11 @@ def test_offline_and_add_layer_water_preserves_other_layers(fake_overpass_poi_wa
 
     assert sha256_file(w3 / "route.json") == route_sha
     assert {p.name: sha256_file(p) for p in sorted((w3 / "poi").glob("*.json"))} == poi_shas
-    assert {p.relative_to(w3): sha256_file(p) for p in sorted((w3 / "terrain").rglob("*.f32"))} == terrain_shas
+    after = {p.relative_to(w3): sha256_file(p) for p in sorted((w3 / "terrain").rglob("*.f32"))}
+    assert after != terrain_shas and set(after) == set(terrain_shas)
+    assert after == {p.relative_to(w1): sha256_file(p) for p in sorted((w1 / "terrain").rglob("*.f32"))}
+    assert run("add-layer", w3, "water", "--offline") == 0          # rejouée : rien ne bouge
+    assert {p.relative_to(w3): sha256_file(p) for p in sorted((w3 / "terrain").rglob("*.f32"))} == after
 
 
 # Critère 6 : verify rejette un kind inconnu dans poi ---------------------------------------------

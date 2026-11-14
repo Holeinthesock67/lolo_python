@@ -406,6 +406,26 @@ def compute_contour_min_y(
     return round(float(fallback_y), 2)
 
 
+def water_level_y(
+    outer: list[list[float]],
+    holes: list[list[list[float]]],
+    frame: LocalFrame,
+    near_tiles: dict[tuple[int, int], np.ndarray] | None = None,
+    provider: ElevationProvider | None = None,
+    fallback_y: float = 0.0,
+) -> float:
+    """Niveau d'un plan d'eau (lot EA1, `water_terrain.lake_level`) : MNT brut s'il y en a un (le relief
+    proche est fondu avec la route et abaissé sous l'eau), sinon tuiles proches, sinon `fallback_y`."""
+    from .water_terrain import lake_level
+
+    def height(xs: np.ndarray, zs: np.ndarray) -> np.ndarray:
+        fb = np.full(len(xs), fallback_y, dtype=float)
+        return sample_terrain_y(xs, zs, frame, None if provider is not None else near_tiles, provider, fb)
+
+    level = lake_level(outer, holes, height)
+    return round(float(fallback_y), 2) if level is None else level
+
+
 def compute_water_width(kind: str, tags: dict[str, Any]) -> float:
     """Largeur d'un cours d'eau (`width_m`) : étiquette `width`, sinon valeur par type (§8, Lot I4 §4.2)."""
     raw_w = tags.get("width")
@@ -886,7 +906,7 @@ def build_osm_layers(
                     vegetation_count += 1
 
                 if water_area_kind is not None:
-                    level_y = compute_contour_min_y(outer, frame, near_tiles, provider, fallback_y=y_route)
+                    level_y = water_level_y(outer, holes, frame, near_tiles, provider, fallback_y=y_route)
                     w_area_obj = {
                         "id": item_id,
                         "kind": water_area_kind,

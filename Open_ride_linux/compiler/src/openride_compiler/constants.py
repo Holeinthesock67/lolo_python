@@ -104,6 +104,14 @@ COAST_VERSION = "1.0"
 COAST_SHORES = ("sand", "shingle", "rock", "cliff")
 COAST_BEACH_KINDS = ("sand", "shingle")
 SEA_LEVEL_Y = 0.0                         # niveau de la mer (contrat §8 : `level_y` = 0)
+
+# Lot EA1 : niveau des plans d'eau et sol abaissé dessous (`water_terrain.py`).
+INLAND_WATER_KINDS = ("lake", "pond", "reservoir")   # la mer garde son niveau 0 (U3) et son sol
+LAKE_SAMPLE_M = 30.0          # maille des échantillons du MNT dans un plan d'eau (pixel GLO-30), alignée sur le repère
+LAKE_SHORE_CLEAR_M = 30.0     # échantillons gardés pour le niveau : à plus d'un pixel du MNT de toute rive
+LAKE_SHORE_STEP_M = 10.0      # pas des échantillons de la rive
+LAKE_SHORE_QUANTILE = 0.25    # plafond du niveau : quart le plus bas de la rive (un exutoire seul ne compte pas)
+WATER_SINK_M = 1.0            # sol sous un plan d'eau : au plus 1 m sous la surface
 COAST_CLIFF_DIST_M = 30.0                 # `natural=cliff` à moins de 30 m : rivage `cliff`
 COAST_CLIFF_SLOPE_DEG = 45.0              # ou pente du MNT au-dessus de 45° côté terre
 COAST_SLOPE_OFFSETS_M = (0.0, 10.0, 20.0, 30.0)   # points du MNT pris vers la terre pour la pente
