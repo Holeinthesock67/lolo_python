@@ -18,6 +18,8 @@ extends Node3D
 ##   orange : réserves de nœuds posées sur les évents et les lacs les plus proches (toutes les `PICK_PERIOD_S`).
 ## - `fire_level` (0 à 1, lissé) et `glow_color` : lus par main.gd pour teinter brume et lumière
 ##   (atmosphere_view.gd `set_fire`).
+## - `melt_snow(d)` : pas de neige dans un paysage en feu (chute de neige de la météo, limite de neige abaissée
+##   par la saison), dans la mesure de `fire_level` ; même règle que l'herbe (biome_model.gd `fire_at`).
 ## - Budgets : `living(preset)` de quality_presets.gd (`volcano_embers`, `volcano_plumes`, `volcano_fountains`,
 ##   `volcano_lights`) ; la lave elle-même reste à toutes les qualités (shader seul).
 
@@ -45,6 +47,7 @@ var biome_model = null
 var height_at := Callable()
 var fx_seed := 0
 var fire_level := 0.0
+var _fire_started := false     # première image depuis configure : lueur posée sans montée
 var glow_color := Color("#ff6a20")
 var budgets := {"embers": 0, "plumes": 0, "fountains": 0, "lights": 0}
 
@@ -81,6 +84,7 @@ func configure(p_budgets: Dictionary, route_data, model, seed_value: int = 0) ->
 	_chunk_feats.clear()
 	_road = null
 	fire_level = 0.0
+	_fire_started = false
 	_pick_at = -INF
 	if route == null or biome_model == null or not _has_fire_theme():
 		_slot_chunk = PackedInt64Array()
@@ -316,6 +320,20 @@ static func _quad(st: SurfaceTool, a: Array, b: Array, c: Array, d: Array) -> vo
 	_tri(st, a, c, d)
 
 
+## Pas de neige dans un paysage en feu : copie de `d` dont la neige est retirée dans la mesure de `fire_level`.
+## Sert à la météo évaluée (`snow`, weather_model.gd : la neige qui tombe fond, rien ne la remplace) et aux
+## paramètres de saison (`snow_drop_m`, season_model.gd : la limite de neige n'est plus abaissée l'hiver).
+## Hors feu (`fire_level` nul), `d` est rendu tel quel.
+func melt_snow(d: Dictionary) -> Dictionary:
+	if fire_level <= 0.0 or not (d.has("snow") or d.has("snow_drop_m")):
+		return d
+	var out := d.duplicate()
+	for k in ["snow", "snow_drop_m"]:
+		if out.has(k):
+			out[k] = float(out[k]) * (1.0 - fire_level)
+	return out
+
+
 ## Une fois par image : fenêtre de tronçons autour de `cam_s`, réserves posées sur les éléments proches,
 ## braises sur la caméra et `fire_level`.
 func update(cam_pos: Vector3, cam_s: float, dt_s: float) -> void:
@@ -338,8 +356,10 @@ func update(cam_pos: Vector3, cam_s: float, dt_s: float) -> void:
 		_build_chunk(int(job[0]), int(job[1]))
 		built += 1
 	var target := 0.0 if fire_at(cam_pos.x, cam_pos.z).is_empty() else 1.0
-	# Scène figée (captures, pas nul) : la lueur prend tout de suite sa valeur
-	fire_level = target if dt_s <= 0.0 else move_toward(fire_level, target, FIRE_RATE * dt_s)
+	# Scène figée (captures, pas nul) ou première image du parcours : la lueur prend tout de suite sa valeur
+	# (pas de neige ni de ciel froid pendant deux secondes au départ d'un volcan)
+	fire_level = target if dt_s <= 0.0 or not _fire_started else move_toward(fire_level, target, FIRE_RATE * dt_s)
+	_fire_started = true
 	if _embers != null:
 		_embers.position = cam_pos
 		_embers.emitting = fire_level > 0.05

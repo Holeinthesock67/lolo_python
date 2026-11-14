@@ -14,6 +14,7 @@ const RoadClearance := preload("res://scripts/road_clearance.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const GrassTufts := preload("res://scripts/grass_tufts.gd")
 const AtmosphereView := preload("res://scripts/atmosphere_view.gd")
+const SeasonModel := preload("res://scripts/season_model.gd")
 
 var _failures := 0
 var _checked := 0
@@ -29,6 +30,7 @@ func _init() -> void:
 	_test_no_fire(theme)
 	_test_budgets(theme)
 	_test_grass_and_sky(theme)
+	_test_no_snow(theme)
 	print("test_volcano_fx : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -210,3 +212,37 @@ func _test_grass_and_sky(theme: Dictionary) -> void:
 	_check((p["horizon_color"] as Color).r > (p["horizon_color"] as Color).b and (m[1] as Color).r > (m[1] as Color).b
 		and (m[0] as Color).get_luminance() < 1.0, "lueur : brume et horizon rougis, haut du ciel assombri")
 	av.free()
+
+
+## Pas de neige dans un paysage en feu (user, 14 novembre) : ni chute de neige ni limite abaissée l'hiver, même
+## par temps de neige ; lueur posée dès la première image (pas de neige au départ) ; hors feu, rien ne change.
+func _test_no_snow(theme: Dictionary) -> void:
+	var route = _hairpin()
+	var fx = VolcanoFx.new()
+	root.add_child(fx)
+	fx.configure({"embers": 300, "plumes": 3, "fountains": 1, "lights": 2}, route, _model(theme, "volcan_actif"))
+	var snowing := {"rain": 0.0, "snow": 0.8, "fog_boost": 0.1}
+	_check(fx.melt_snow(snowing)["snow"] == 0.8, "avant de rouler : neige inchangée")
+	fx.update(Vector3(0.0, 501.0, -200.0), 200.0, 1.0 / 30.0)
+	_check(fx.fire_level == 1.0, "première image dans le feu : lueur tout de suite (%.2f)" % fx.fire_level)
+	_check(float(fx.melt_snow(snowing)["snow"]) == 0.0 and snowing["snow"] == 0.8,
+		"météo de neige dans le feu : plus de neige qui tombe (copie)")
+	var winter := SeasonModel.params("winter", 0.5, true)
+	_check(float(winter["snow_drop_m"]) > 0.0 and float(fx.melt_snow(winter)["snow_drop_m"]) == 0.0,
+		"hiver enneigé dans le feu : limite de neige non abaissée")
+	fx.queue_free()
+	var plain = VolcanoFx.new()
+	root.add_child(plain)
+	plain.configure({"embers": 300}, route, _model(theme, null))
+	plain.update(Vector3(0.0, 501.0, -200.0), 200.0, 1.0 / 30.0)
+	_check(plain.melt_snow(snowing)["snow"] == 0.8, "hors feu : la neige tombe comme avant")
+	plain.queue_free()
+	var fire_model = _model(theme, "volcan_actif")
+	fire_model.set_season_date(1, 15, 45.0, true)
+	var v := {"ground": "basalte", "roofs": null, "landscape": "volcan_actif"}
+	_check(float(fire_model.params("volcanic", "", 0.0, v)["season_params"]["snow_drop_m"]) == 0.0,
+		"biome_model : tuile en feu, janvier enneigé, pas de neige")
+	var cold_model = _model(theme, null)
+	cold_model.set_season_date(1, 15, 45.0, true)
+	_check(float(cold_model.params("volcanic", "", 0.0, null)["season_params"]["snow_drop_m"]) > 0.0,
+		"biome_model : volcanique sans feu, janvier enneigé, neige d'avant")

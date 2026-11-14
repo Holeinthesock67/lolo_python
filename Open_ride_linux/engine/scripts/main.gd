@@ -2005,6 +2005,9 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 		NightLights.apply(glow, lit)
 	var season: Dictionary = out["season"]
 	var params: Dictionary = season["params"] if bool(season["active"]) else {}
+	# Pas de neige dans un paysage en feu (DB2, volcano_fx.gd `melt_snow`) : la limite ne descend plus l'hiver
+	if not params.is_empty() and living_world != null and living_world.get("volcano") != null:
+		params = living_world.volcano.melt_snow(params)
 	if params != _season_applied:
 		_season_applied = params
 		var p: Dictionary = params if not params.is_empty() else SeasonModel.NEUTRAL

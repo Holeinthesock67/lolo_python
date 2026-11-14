@@ -37,6 +37,7 @@ Nœud du décor vivant (`living_world.gd`, comme `ground_details.gd`) :
 - **Braises** autour du cycliste, **panaches** de fumée sur les évents les plus proches, **gerbes** de lave sur les grands lacs (rayon ≥ 14 m), **lumières** orange sur la lave la plus proche.
 - **Lueur** : `fire_level` (0 à 1, montée en 2 s) rougit la brume de l'horizon, la lumière du soleil et l'horizon du ciel, assombrit de cendre le haut du ciel et les nuages (`atmosphere_view.gd`, `set_fire`).
 - Règle unique dans `biome_model.gd` (`fire_of`, `fire_at`) : une tuile dont le paysage a un feu est en feu. `grass_tufts.gd` n'y pose aucune touffe d'herbe (rien ne pousse sur la lave).
+- **Pas de neige** (demande du 14 novembre, « pas de neige dans le parcours volcan ») : même règle, quelle que soit la date ou la météo choisie. Dans `biome_model.gd`, `params` ne descend jamais la limite de neige d'une tuile en feu. Dans `volcano_fx.gd`, `melt_snow` retire, dans la mesure de `fire_level`, la neige qui tombe (météo évaluée, `living_decor.gd`) et la limite de neige abaissée par la saison (paramètres globaux, `main.gd`). La lueur est posée dès la première image du parcours : il n'y a donc pas de neige au départ.
 
 Budgets (`quality_presets.gd`, `living`) :
 
@@ -59,7 +60,7 @@ La lave au sol (shader seul) est à toutes les qualités. Décor vivant coupé :
 
 ## 4. Tests
 
-- `engine/tests/unit/test_volcano_fx.gd` : thème par défaut valide, `fire` invalide refusé, coulées, lacs et évents posés dans le paysage, aucun à moins de 14 m de l'axe sur une épingle (portion d'en face comprise), placement déterministe, maillage, lueur (et scène figée), rien hors du paysage ni sur `ile_volcanique`, budgets par qualité.
+- `engine/tests/unit/test_volcano_fx.gd` : thème par défaut valide, `fire` invalide refusé, coulées, lacs et évents posés dans le paysage, aucun à moins de 14 m de l'axe sur une épingle (portion d'en face comprise), placement déterministe, maillage, lueur (et scène figée), rien hors du paysage ni sur `ile_volcanique`, budgets par qualité, pas de neige dans le feu (météo de neige, hiver enneigé, tuile en feu de `biome_model`), neige inchangée hors du feu.
 - `core/tests/test_biome_demo_world.py` : `test_volcan_loop` (boucle de 8 km, pente ≤ 10 %, 200 à 240 m de montée, sommet à mi-boucle, variante sur toutes les tuiles, cratère creusé, relief borné jusqu'à 40 km) ; jeu de base à trois parcours générés.
 - `compiler/tests/test_contract_biome.py` : `volcan_actif` accepté par le contrat.
 - Scénarios de menus `parcours_demo` et `contenus` : « Volcan en flammes » dans la liste et sur l'écran Prêt.
@@ -72,4 +73,6 @@ La lave au sol (shader seul) est à toutes les qualités. Décor vivant coupé :
 
 ## Livraison
 
-- 13 novembre : PR ouverte (partie de la branche de #866, DB1). Reste : recette PC et validation des captures.
+- 13 novembre : PR #879 ouverte (partie de la branche de #866, DB1).
+- 14 novembre : pas de neige dans un paysage en feu.
+- Reste : recette PC et validation des captures.

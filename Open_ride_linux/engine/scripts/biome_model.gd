@@ -272,6 +272,11 @@ func params(biome: String, season: String = "", progress: float = 0.0, variant: 
 		season = s["season"]
 		progress = float(s["progress"])
 	var season_params: Dictionary = SeasonModel.params(season, progress, snowy, summer_dry) if season != "" else SeasonModel.NEUTRAL.duplicate()
+	# Paysage en feu (DB2) : pas de neige, la limite ne descend jamais (comme volcano_fx.gd `melt_snow` en roulant)
+	if typeof(variant) == TYPE_DICTIONARY and typeof(variant.get("landscape", null)) == TYPE_STRING \
+			and not fire_of(variant["landscape"]).is_empty():
+		season_params = season_params.duplicate()
+		season_params["snow_drop_m"] = 0.0
 	sky["haze"] = float(sky_b.get("haze", 0.0))
 	sky["light_tint"] = ThemeRenderParams._color_or_default(sky_b.get("light_tint", null), "#ffffff")
 
@@ -333,7 +338,7 @@ func variant_at(x: float, z: float) -> Variant:
 
 ## Feu du paysage (démo « Volcan en flammes ») : section `landscapes.<paysage>.fire` du thème complétée par
 ## FIRE_DEFAULTS, {} si le paysage n'en a pas. Une seule règle pour tout l'engine : une tuile dont le paysage a un
-## feu est en feu (lave de volcano_fx.gd, pas d'herbe de grass_tufts.gd).
+## feu est en feu (lave de volcano_fx.gd, pas d'herbe de grass_tufts.gd, pas de neige : `params`, `melt_snow`).
 const FIRE_DEFAULTS := {"lava": "#ff5a10", "lava_hot": "#ffd24a", "crust": "#141010", "smoke": "#3b3432",
 	"glow": "#ff6a20", "density": 1.0}
 
