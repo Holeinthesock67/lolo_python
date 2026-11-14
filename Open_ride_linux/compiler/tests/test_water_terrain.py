@@ -155,3 +155,44 @@ def test_open_world_lake_cut_in_two_pieces_has_one_level_and_sunk_ground(tmp_pat
     assert na[50, -1] == pytest.approx(200.0 - C.WATER_SINK_M)    # sous le lac, au bord commun
     assert nb[50, 30] == pytest.approx(200.0 - C.WATER_SINK_M)    # sous le second morceau
     assert na[50, 0] > 200.0                                       # berge, hors du lac
+
+
+def _brute_contain(px, pz, rings):
+    inside = np.zeros(len(px), dtype=bool)
+    for r in rings:
+        n = len(r)
+        for a in range(n):
+            (xi, zi), (xj, zj) = r[a], r[a - 1]
+            crosses = (zi > pz) != (zj > pz)
+            x_cut = (xj - xi) * (pz - zi) / ((zj - zi) or 1e-12) + xi
+            inside ^= crosses & (px < x_cut)
+    return inside
+
+
+def test_scanline_matches_brute_force_on_star_with_island() -> None:
+    rng = np.random.default_rng(7)
+    t = np.linspace(0, 2 * np.pi, 41, endpoint=False)
+    rad = 300 + 120 * np.sin(5 * t)
+    outer = np.column_stack((rad * np.cos(t), rad * np.sin(t)))
+    island = np.array([[-40.0, -30.0], [-40.0, 30.0], [50.0, 30.0], [50.0, -30.0]])
+    rings = [outer, island]
+    gx, gz = np.meshgrid(np.arange(-450.0, 451.0, 10.0), np.arange(-450.0, 451.0, 10.0))
+    px = np.concatenate([gx.ravel(), rng.uniform(-450, 450, 2000)])
+    pz = np.concatenate([gz.ravel(), rng.uniform(-450, 450, 2000)])
+    assert np.array_equal(WT.rings_contain(px, pz, rings), _brute_contain(px, pz, rings))
+
+
+def test_big_lake_is_fast() -> None:
+    """Recette rEA1 du 14/11 : un lac de la taille du lac d'Annecy (5 000 sommets, 14 × 3 km) coûtait 2,7 s par
+    carré au générateur (route en pause « en cours de chargement ») ; balayage par lignes et maille élargie."""
+    import time
+    t = np.linspace(0, 2 * np.pi, 5000, endpoint=False)
+    r = 1 + 0.1 * np.sin(7 * t)
+    outer = np.column_stack((7000 * r * np.cos(t), 1500 * r * np.sin(t))).tolist()
+    t0 = time.perf_counter()
+    level = WT.lake_level(outer, [], lambda xs, zs: np.full(len(xs), 447.0))
+    gx, gz = np.meshgrid(np.arange(0.0, 1001.0, 10.0), np.arange(0.0, 1001.0, 10.0))
+    y = np.full(gx.shape, 450.0)
+    n = WT.sink_grid(gx, gz, y, WT.inland_areas([{"kind": "lake", "level_y": level, "outer": outer, "holes": []}]))
+    assert level == 447.0 and n == gx.size
+    assert time.perf_counter() - t0 < 0.5

@@ -29,7 +29,8 @@ from . import constants as C
 
 HeightFn = Callable[[np.ndarray, np.ndarray], np.ndarray]
 
-_EDGE_BLOCK = 256   # arêtes traitées ensemble (mémoire : bloc × points)
+_ROW_CELLS = 4_000_000   # lignes × arêtes traitées ensemble (mémoire)
+_MAX_LEVEL_SAMPLES = 20_000   # échantillons du MNT au plus pour le niveau d'un grand lac
 
 
 def _ring_array(ring: Iterable) -> np.ndarray:
@@ -40,23 +41,40 @@ def _ring_array(ring: Iterable) -> np.ndarray:
 
 
 def rings_contain(px: np.ndarray, pz: np.ndarray, rings: list[np.ndarray]) -> np.ndarray:
-    """Points dans le polygone (pair-impair sur tous les anneaux : contour moins îles)."""
+    """Points dans le polygone (pair-impair sur tous les anneaux : contour moins îles).
+
+    Balayage par lignes : les points d'une grille partagent peu de valeurs de z ; pour chacune, les
+    abscisses où les arêtes coupent la ligne sont triées une fois, puis comptées à droite de chaque point
+    (coût en lignes × arêtes, et non points × arêtes : un grand lac de 5 000 sommets reste rapide).
+    """
     px = np.asarray(px, dtype=float).ravel()
     pz = np.asarray(pz, dtype=float).ravel()
     inside = np.zeros(px.shape, dtype=bool)
-    for r in rings:
-        if len(r) < 3:
-            continue
-        xi, zi = r[:, 0], r[:, 1]
-        xj, zj = np.roll(xi, 1), np.roll(zi, 1)
-        for b in range(0, len(r), _EDGE_BLOCK):
-            sl = slice(b, b + _EDGE_BLOCK)
-            a_x, a_z, b_x, b_z = xi[sl, None], zi[sl, None], xj[sl, None], zj[sl, None]
-            crosses = (a_z > pz[None, :]) != (b_z > pz[None, :])
-            dz = np.where(b_z - a_z == 0.0, 1e-12, b_z - a_z)
-            x_cut = (b_x - a_x) * (pz[None, :] - a_z) / dz + a_x
-            hit = crosses & (px[None, :] < x_cut)
-            inside ^= (np.count_nonzero(hit, axis=0) % 2).astype(bool)
+    rings = [r for r in rings if len(r) >= 3]
+    if not len(px) or not rings:
+        return inside
+    ax = np.concatenate([r[:, 0] for r in rings])
+    az = np.concatenate([r[:, 1] for r in rings])
+    bx = np.concatenate([np.roll(r[:, 0], 1) for r in rings])
+    bz = np.concatenate([np.roll(r[:, 1], 1) for r in rings])
+    dz = np.where(bz - az == 0.0, 1e-12, bz - az)
+    uz, row = np.unique(pz, return_inverse=True)
+    order = np.argsort(row, kind="stable")
+    starts = np.searchsorted(row[order], np.arange(len(uz) + 1))
+    block = max(1, _ROW_CELLS // len(ax))
+    for b0 in range(0, len(uz), block):
+        zz = uz[b0:b0 + block, None]
+        crosses = (az[None, :] > zz) != (bz[None, :] > zz)
+        cut = np.where(crosses, (bx - ax)[None, :] * (zz - az[None, :]) / dz[None, :] + ax[None, :], np.inf)
+        cut.sort(axis=1)
+        n_cross = np.count_nonzero(crosses, axis=1)
+        for k in range(len(zz)):
+            n = int(n_cross[k])
+            if n == 0:
+                continue
+            idx = order[starts[b0 + k]:starts[b0 + k + 1]]
+            right = n - np.searchsorted(cut[k, :n], px[idx], side="right")
+            inside[idx] = (right % 2).astype(bool)
     return inside
 
 
@@ -84,8 +102,11 @@ def lake_level(outer: list, holes: list, height: HeightFn) -> float | None:
     ys_shore = ys_shore[np.isfinite(ys_shore)]
     if len(ys_shore) == 0:
         return None
-    s = C.LAKE_SAMPLE_M
     o = rings[0]
+    # maille de 30 m, élargie par multiples entiers pour un grand lac (au plus _MAX_LEVEL_SAMPLES dans
+    # l'emprise) : elle ne dépend que du polygone, donc reste la même pour toute tuile qui le calcule
+    area = float((o[:, 0].max() - o[:, 0].min()) * (o[:, 1].max() - o[:, 1].min()))
+    s = C.LAKE_SAMPLE_M * max(1, int(np.ceil(np.sqrt(area / (C.LAKE_SAMPLE_M ** 2 * _MAX_LEVEL_SAMPLES)))))
     xs = np.arange(np.floor(o[:, 0].min() / s) * s, o[:, 0].max() + s, s)
     zs = np.arange(np.floor(o[:, 1].min() / s) * s, o[:, 1].max() + s, s)
     gx, gz = (a.ravel() for a in np.meshgrid(xs, zs))
