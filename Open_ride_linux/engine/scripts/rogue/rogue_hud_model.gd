@@ -93,6 +93,8 @@ func update(state: Dictionary, now_s: float) -> void:
 	# lot R23 : dégâts reçus (bouclier qui baisse : coup non paré, Firewall), une fois par trame nouvelle
 	var shield_now := float(rogue.get("shield", 0.0))
 	var hurt := fresh and is_finite(_prev_shield) and shield_now < _prev_shield - 0.01
+	# Firewall au contact : le bouclier fond sans arrêt, les bords rouges battent tant que dure le contact
+	hurt = hurt or (String(rogue.get("phase", "")) in FIREWALL_PHASES and float(rogue.get("firewall_gap_m", 1.0)) <= 0.0)
 	if fresh:
 		_prev_shield = shield_now
 	if fresh:

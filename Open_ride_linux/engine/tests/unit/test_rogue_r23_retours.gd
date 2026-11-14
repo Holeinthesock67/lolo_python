@@ -168,6 +168,8 @@ func _run() -> void:
 	_check(view2.hurt_flash_s > 0.0, "dégâts reçus : bords rouges")
 	hm2.update({"seq": 11, "gear": 6, "power_3s": 180.0, "rogue": _rogue({"shield": 25.0})}, 0.2)
 	_check(not hm2.values()["hurt"], "même trame : pas de nouveaux dégâts")
+	hm2.update({"seq": 12, "gear": 6, "power_3s": 180.0, "rogue": _rogue({"shield": 25.0, "firewall_gap_m": 0.0})}, 0.3)
+	_check(hm2.values()["hurt"], "Firewall au contact : bords rouges tant qu'il touche")
 	var g5 = GuideModel.new()
 	g5.compute(st, _rogue(), 72.0, ["parry_miss"])
 	_check(g5.take_toasts()[0]["title"] == "TOUCHÉ ! Coup non paré", "coup non paré : « TOUCHÉ ! »")

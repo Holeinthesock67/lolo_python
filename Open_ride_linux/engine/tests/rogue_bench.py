@@ -127,6 +127,8 @@ def moments(trace: list[tuple[float, dict]]) -> list[tuple[int, str]]:
                 add(i, "z_refuse_" + {"WARMUP": "echauffement"}.get(ph, "salle"))
             elif "z_ok" in ev and ph in FIGHT:
                 add(i, "z_accepte")
+                if rg.get("z_action") in ("strike", "charges", "rock", "rock_chip", "parry"):
+                    add(i, "attaque_reussie")
             if ph in FIGHT and trend.get("overheat_in_s") is not None:
                 add(i, "surchauffe_proche")
             if ph in FIGHT and rg.get("overheat"):
@@ -288,6 +290,8 @@ class Bench:
             self.check(name, "surchauffe annoncée avant", "surchauffe dans" in (ri.get("hint") or ""), ri.get("hint") or "—")
         if name == "echauffement":
             self.check(name, "bandeau des règles", "RÈGLES" in (ri.get("rules") or ""), (ri.get("rules") or "—")[:60])
+        if name == "attaque_reussie":
+            self.check(name, "éclair de l'attaque réussie", bool(ri.get("flash")), ri.get("toast") or "—")
         if name == "invite_z":
             self.check(name, "invite de Z au centre", (ri.get("z_call") or "").startswith("Z :"), ri.get("z_call") or "—")
         if name == "degats_recus":

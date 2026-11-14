@@ -348,6 +348,8 @@ func _build_hint() -> void:
 	rules_strip.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	rules_strip.offset_top = -152
 	rules_strip.offset_bottom = -114
+	rules_strip.offset_left = 16
+	rules_strip.offset_right = -132     # laisse la place au pavé VITESSE
 	rules_strip.clip_contents = true
 	rules_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var strip_style := StyleBoxFlat.new()
@@ -572,7 +574,7 @@ func _hint(g: Dictionary) -> void:
 	if rules != rules_label.text:
 		rules_label.text = rules
 		rules_label.reset_size()
-		rules_label.position.x = rules_strip.size.x if rules_strip.size.x > 0.0 else 1280.0
+		rules_label.position.x = 16.0    # le début se lit tout de suite, puis le bandeau défile
 	rules_strip.visible = rules != ""
 	var call := str(g.get("z_call", ""))
 	if call != "" and not z_call_label.visible:
