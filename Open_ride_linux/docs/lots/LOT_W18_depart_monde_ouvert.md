@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Départ direct en monde ouvert : après le préchargement, la balade part au pédalage sans repasser par l'accueil | GDScript | W11, O36 (livrés) | Petite | En revue (PR à valider : essai sur le PC) |
+| Départ direct en monde ouvert : après le préchargement, la balade part au pédalage sans repasser par l'accueil | GDScript | W11, O36 (livrés) | Petite | En revue (banc PC r872b passé le 14 novembre ; PR à valider) |
 
 ## 1. Objectif
 
@@ -29,4 +29,5 @@ Sur le PC : monde ouvert, départ choisi, **Démarrer** : après le préchargeme
 
 ## 6. Livraison
 
-- Branche `claude/project-thread-oft1se-w18`, PR #872 à valider ; contient la PR #852 (à fusionner d'abord).
+- Branche `claude/project-thread-oft1se-w18`, PR #872 à valider (la PR #852, qu'elle contenait, est fusionnée).
+- Banc PC r872b (low, 14 novembre) : après « Monde ouvert prêt », l'écran « START YOUR ENGINES » paraît sans passer par l'accueil, puis 3 minutes de balade.
