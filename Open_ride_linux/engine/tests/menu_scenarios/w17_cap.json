@@ -1,5 +1,5 @@
 {
-  "description": "Lot W17, recette sur le PC : monde ouvert lancé depuis une recherche par nom (réseau), écran du cap avec la ligne « Biome » automatique puis forcée (même réglage que Réglages › Graphisme, remis en automatique), puis 3 minutes de balade avec une capture par minute. À lancer en low, medium et high, sur la branche et sur main (sur main, les vérifications de la ligne Biome échouent : seules les captures de route et les mesures comptent).",
+  "description": "Lot W17, recette sur le PC : monde ouvert lancé depuis une recherche par nom (réseau), écran du cap avec la ligne « Biome » automatique puis forcée (même réglage que Réglages › Graphisme, remis en automatique), puis départ direct de la balade après le préchargement (lot W18) et 3 minutes de balade avec une capture par minute. À lancer en low, medium et high, sur la branche et sur main (sur main, les vérifications de la ligne Biome échouent : seules les captures de route et les mesures comptent).",
   "voies": [
     "clavier"
   ],
@@ -174,22 +174,16 @@
       "delai": 600
     },
     {
-      "note": "Accueil : parcours ow:… chargé ; Session libre ouvre l'écran Prêt",
-      "ecran": "home",
-      "delai": 30
+      "note": "Lot W18 : le monde prêt, l'engine envoie start de lui-même (départ au pédalage), sans accueil ni écran Prêt",
+      "journal": "core",
+      "motif": "Commande start ",
+      "delai": 60
     },
     {
-      "choisir": "ride"
+      "attendre": 2
     },
     {
-      "ecran": "ready",
-      "delai": 15
-    },
-    {
-      "capture": "pret"
-    },
-    {
-      "choisir": "start"
+      "capture": "depart"
     },
     {
       "note": "Départ au pédalage : le cycliste simulé roule à 180 W",

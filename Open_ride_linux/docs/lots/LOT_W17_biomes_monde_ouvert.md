@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Biomes dans le monde ouvert : couche biome calculée par le générateur, relue par l'engine en roulant, ligne « Biome » expliquée sur l'écran du cap | Python + GDScript | W8, W10, W11, U2, U4, U5, U16, U24 (livrés) | Moyenne | En revue (PR à valider : mesures low, medium, high et captures) |
+| Biomes dans le monde ouvert : couche biome calculée par le générateur, relue par l'engine en roulant, ligne « Biome » expliquée sur l'écran du cap | Python + GDScript | W8, W10, W11, U2, U4, U5, U16, U24 (livrés) | Moyenne | **Livré le 14 novembre** (PR #852) |
 
 ## 1. Objectif
 
@@ -38,3 +38,7 @@ Le monde ouvert ne connaissait pas les biomes : le générateur n'écrivait pas 
 
 Scénario `engine/tests/menu_scenarios/w17_cap.json` (`menu_bench.py --native --scenario w17_cap --qualite low|medium|high --captures ecrans`) : recherche par nom, écran du cap, ligne Biome automatique puis forcée, 3 minutes de balade avec une capture par minute. Il a besoin d'Internet (recherche Nominatim, routes OpenStreetMap) : l'en-tête `"reseau": true` le sort de la liste par défaut du banc et de l'intégration continue, il ne se joue que nommé par `--scenario`. L'en-tête `"caches_reels": true` lui fait lire et compléter les caches du vrai dossier personnel (`~/OpenRide/Cache/monde`, `~/.cache/openride/`) : régions OSM, tuiles vectorielles, relief et WorldCover déjà téléchargés servent, le reste du HOME reste temporaire.
 Mesures GPU en low, medium et high (budgets 8, 13 et 16 ms) sur `sim_bench.py --world ouvert` et en monde ouvert réel ; captures de l'écran du cap et d'une balade qui change de biome, validées par le propriétaire avant fusion.
+
+## Livraison
+
+PR #852, fusionnée le 14 novembre 2026. Bancs PC r852f (medium) et r872b (low) : écran du cap (Biome automatique puis forcé), départ, 3 minutes de balade autour du départ choisi, captures rangées dans la bibliothèque du projet. Hors lot : la couche biome de « Col du lacet » (lot à part), mer et plages en monde ouvert (lot suivant).

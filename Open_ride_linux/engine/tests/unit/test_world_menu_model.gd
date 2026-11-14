@@ -77,6 +77,16 @@ func _init() -> void:
 	_check(a["heading_deg"] == 90 and a["nav"] == "ride" and a["seed"] == 0 and not a.has("loop_km") and not a.has("target"),
 		"cap 90°, balade, graine, rien d'autre")
 	_check(m.state == "loading" and m.is_loading(), "préchargement")
+	# Lot W18 : le monde prêt, la balade part tout de suite (plus de retour à l'accueil ni d'écran Prêt).
+	_check(m.on_session("LOADING", "ow:ow-1").is_empty(), "W18 : préchargement en cours, rien")
+	_check(m.on_session("READY", "demo").is_empty() and m.is_loading(), "W18 : autre parcours (fond du menu), rien")
+	_check(m.on_session("READY", "ow:ow-1") == {"action": "start"} and not m.is_loading(), "W18 : monde prêt, départ demandé")
+	_check(m.on_session("READY", "ow:ow-1").is_empty(), "W18 : départ demandé une seule fois")
+	m.state = "loading"
+	_check(m.on_session("RUNNING", "ow:ow-1") == {"action": "close"}, "W18 : déjà en route, le menu se ferme seulement")
+	m.state = "setup"
+	_check(m.on_session("READY", "ow:ow-1").is_empty(), "W18 : hors préchargement, rien")
+	m.state = "loading"
 
 	# Recherche au Click (lot O31) : Z ouvre la grille, + et − changent de case, Z écrit, A maintenu montre
 	# les résultats, Y revient à la grille puis efface ; texte vide, Y revient au globe.
