@@ -1,6 +1,7 @@
 extends RefCounted
 
-## Lecture des couches OpenStreetMap d'un `.world` (Lot K4, Format .world v1 §2, §6, §7, §8, §8 ter et §10),
+## Lecture des couches OpenStreetMap d'un `.world` (Lot K4, Format .world v1 §2, §6, §7, §8, §8 ter, §8 quinquies
+## et §10 ; couche `coast` lue depuis le lot U9),
 ## sans aucun nœud ni affichage. Le rendu (bâtiments extrudés, forêts, eau, sons) reste au lot E4.
 ## Pas de class_name : charger par preload("res://scripts/osm_layers.gd").
 ##
@@ -11,8 +12,8 @@ extends RefCounted
 
 const SUPPORTED_MAJOR := 1
 const CHUNK_LENGTH_M := 1000.0
-const OSM_LAYERS := ["buildings", "vegetation", "poi", "water", "roads"]
-const KNOWN_LAYERS := ["terrain", "buildings", "vegetation", "poi", "water", "roads"]
+const OSM_LAYERS := ["buildings", "vegetation", "poi", "water", "roads", "coast"]   # coast : lot U9
+const KNOWN_LAYERS := ["terrain", "buildings", "vegetation", "poi", "water", "roads", "coast"]
 
 const BUILDING_ROOFS := ["flat", "gabled"]
 const VEGETATION_KINDS := ["wood", "scrub", "orchard", "meadow", "farmland", "grassland"]   # 1.5 : terrains ouverts (P22)
@@ -20,6 +21,8 @@ const VEGETATION_OPEN_KINDS := ["meadow", "farmland", "grassland"]
 const POI_KINDS := ["church_bell", "river", "livestock", "village", "viewpoint", "wind_turbine", "flag"]   # 1.2 : P12
 const WATER_LINE_KINDS := ["river", "stream", "canal"]
 const WATER_AREA_KINDS := ["lake", "pond", "reservoir", "sea"]   # 1.6 : sea (lot U1)
+const SHORE_KINDS := ["sand", "shingle", "rock", "cliff"]   # 1.6 : couche coast (lot U1, lue par U9)
+const BEACH_KINDS := ["sand", "shingle"]
 const ROAD_KINDS := ["motorway", "trunk", "primary", "secondary", "tertiary", "unclassified", "residential", "track"]   # 1.5 : P22
 
 
@@ -120,6 +123,21 @@ static func _valid_water_area(a: Dictionary) -> bool:
 		and _is_number(a.get("level_y", null))
 
 
+static func _valid_coast_line(l: Dictionary) -> bool:
+	var pts = l.get("points", null)
+	if not (_has_id(l) and str(l.get("shore", "")) in SHORE_KINDS and typeof(pts) == TYPE_ARRAY
+			and (pts as Array).size() >= 2):
+		return false
+	for p in pts:
+		if not _is_point(p, 2):
+			return false
+	return true
+
+
+static func _valid_beach(b: Dictionary) -> bool:
+	return _has_id(b) and _has_rings(b) and str(b.get("kind", "")) in BEACH_KINDS
+
+
 ## Garde les éléments valides de `doc[key]` ; renvoie [éléments, nombre ignoré] ou null si la liste manque.
 static func _filter(doc: Dictionary, key: String, valid: Callable) -> Variant:
 	var raw = doc.get(key, null)
@@ -140,7 +158,8 @@ static func chunk_path(world_dir: String, layer: String, k: int) -> String:
 
 
 ## Lit `<layer>/chunk_<k>.json`. Renvoie {ok, items, ignored, error, version} ; pour `water`, aussi
-## `lines` et `areas` (items = lines puis areas).
+## `lines` et `areas` (items = lines puis areas) ; pour `coast` (lot U9), `lines` et `beaches` (items = lines
+## puis beaches).
 ## Monde vivant (lot W10, format §13) : avec `route` vivante, lit à la place les fichiers de carré
 ## `tile_<ix>_<iz>.json` que touche le tronçon k, coordonnées rendues absolues (voir `load_chunk_live`).
 static func load_chunk(world_dir: String, layer: String, k: int, route = null) -> Dictionary:
@@ -198,9 +217,9 @@ static func chunk_tiles(route, k: int) -> Array:
 ## prêt) ; `ok` est vrai si au moins un carré a été lu ou si aucun n'était attendu.
 static func load_chunk_live(world_dir: String, layer: String, k: int, route) -> Dictionary:
 	var res := {"ok": true, "items": [], "ignored": 0, "error": "", "version": "1.0"}
-	if layer == "water":
-		res["lines"] = []
-		res["areas"] = []
+	var lists: Array = _LISTS.get(layer, [])
+	for key in lists:
+		res[key] = []
 	for t in chunk_tiles(route, k):
 		var path := tile_path(world_dir, layer, t.x, t.y)
 		if not FileAccess.file_exists(path):
@@ -211,10 +230,13 @@ static func load_chunk_live(world_dir: String, layer: String, k: int, route) -> 
 			continue
 		(res["items"] as Array).append_array(one["items"])
 		res["ignored"] = int(res["ignored"]) + int(one["ignored"])
-		if layer == "water":
-			(res["lines"] as Array).append_array(one["lines"])
-			(res["areas"] as Array).append_array(one["areas"])
+		for key in lists:
+			(res[key] as Array).append_array(one[key])
 	return res
+
+
+## Couches à plusieurs listes : leurs listes, dans l'ordre de `items`.
+const _LISTS := {"water": ["lines", "areas"], "coast": ["lines", "beaches"]}
 
 
 static func _shift_ring(ring: Variant, off: Vector2) -> void:
@@ -250,13 +272,13 @@ static func _make_absolute(doc: Dictionary, layer: String, off: Vector2) -> void
 				if typeof(p) == TYPE_DICTIONARY and _is_number(p.get("x", null)) and _is_number(p.get("z", null)):
 					p["x"] = float(p["x"]) + off.x
 					p["z"] = float(p["z"]) + off.y
-		"water", "roads":
+		"water", "roads", "coast":
 			var lines = doc.get("lines", [])
 			if typeof(lines) == TYPE_ARRAY:
 				for l in lines:
 					if typeof(l) == TYPE_DICTIONARY:
 						_shift_ring(l.get("points", null), off)
-			var areas = doc.get("areas", [])
+			var areas = doc.get("beaches" if layer == "coast" else "areas", [])
 			if typeof(areas) == TYPE_ARRAY:
 				for a in areas:
 					if typeof(a) != TYPE_DICTIONARY:
@@ -319,6 +341,16 @@ static func _load_file(path: String, layer: String, offset: Vector2) -> Dictiona
 			res["areas"] = areas[0]
 			res["items"] = lines[0] + areas[0]
 			res["ignored"] = lines[1] + areas[1]
+		"coast":
+			var c_lines = _filter(doc, "lines", _valid_coast_line)
+			var beaches = _filter(doc, "beaches", _valid_beach)
+			if c_lines == null or beaches == null:
+				res["error"] = "listes « lines » et « beaches » attendues dans " + path
+				return res
+			res["lines"] = c_lines[0]
+			res["beaches"] = beaches[0]
+			res["items"] = c_lines[0] + beaches[0]
+			res["ignored"] = c_lines[1] + beaches[1]
 	res["ok"] = true
 	return res
 
