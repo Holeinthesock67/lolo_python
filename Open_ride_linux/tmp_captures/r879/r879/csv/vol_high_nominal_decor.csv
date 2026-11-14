@@ -1,0 +1,26 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+78.3;0;19;0;0;0;6;0;
+108.3;0;19;0;0;1;6;0;voice_bonjour=1
+138.3;0;19;0;0;3;7;0;airliner_rumble=1 dog_bark=1 voice_bonjour=1
+168.3;0;19;0;0;2;8;0;airliner_rumble=2 dog_bark=1 voice_bonjour=1
+198.3;0;19;0;0;1;8;0;airliner_rumble=2 dog_bark=1 voice_bonjour=1
+228.3;0;19;0;0;3;8;0;airliner_rumble=2 dog_bark=1 voice_bonjour=1
+258.3;0;19;0;0;6;8;0;airliner_rumble=2 dog_bark=2 voice_bonjour=1
+288.3;0;19;0;0;3;8;0;airliner_rumble=2 dog_bark=2 voice_bonjour=1
+318.3;0;19;0;0;4;8;0;airliner_rumble=2 dog_bark=2 voice_bonjour=1
+348.3;0;19;0;0;6;8;0;airliner_rumble=2 crowd_cheer=1 dog_bark=2 voice_bonjour=1
+378.3;0;19;1;0;8;9;0;airliner_rumble=2 crowd_cheer=1 dog_bark=2 paramotor_buzz=1 vehicle_pass=1 voice_bonjour=1
+408.3;0;19;1;0;7;9;0;airliner_rumble=2 crowd_cheer=1 dog_bark=2 paramotor_buzz=1 vehicle_pass=1 voice_bonjour=1
+438.3;0;19;1;0;4;10;0;airliner_rumble=2 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_bonjour=1
+468.3;0;19;1;0;4;10;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_bonjour=1
+498.3;0;19;1;0;4;10;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_allez=1 voice_bonjour=1
+528.3;0;19;1;0;6;9;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_allez=1 voice_bonjour=1
+558.3;0;19;0;0;10;8;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_allez=1 voice_bonjour=1
+588.3;0;19;0;0;10;8;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_allez=1 voice_bonjour=1
+618.3;0;19;0;0;10;8;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_allez=2 voice_bonjour=1
+648.3;0;19;0;0;7;7;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_allez=2 voice_bonjour=1
+678.3;0;19;0;0;7;7;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_allez=2 voice_bonjour=1
+708.3;0;19;0;0;0;7;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_allez=3 voice_bonjour=1
+738.3;0;19;0;0;0;7;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_allez=4 voice_bonjour=1
+768.3;0;19;0;0;0;7;0;airliner_rumble=3 crowd_cheer=1 dog_bark=4 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_allez=4 voice_bonjour=1
+781.4;0;19;0;0;0;7;0;airliner_rumble=3 crowd_cheer=1 dog_bark=4 helicopter_rotor=1 paramotor_buzz=1 vehicle_pass=1 voice_allez=4 voice_bonjour=1
