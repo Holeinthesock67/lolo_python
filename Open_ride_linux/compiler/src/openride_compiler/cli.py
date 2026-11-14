@@ -27,7 +27,7 @@ import json
 import shutil
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as _dc_replace
 from pathlib import Path
 
 from . import __version__
@@ -828,7 +828,13 @@ def fallback_catalog(routes_dir: Path, gpx_dir: Path) -> list[CatalogEntry]:
         if gpath not in matched:
             entries.append(CatalogEntry(norm, track_stem(gpath.name)[0], "to_compile", None, None, False, gpath,
                                         None, library=_library_for(gpath, None)))
-    return [demo, *sorted(entries, key=lambda e: (e.id, e.name))]
+    return [demo, *sorted((_named(e) for e in entries), key=lambda e: (e.id, e.name))]
+
+
+def _named(entry: CatalogEntry) -> CatalogEntry:
+    """Nom de la fiche saisie quand elle en porte un (comme `openride_core.catalog._named`)."""
+    name = (entry.library or {}).get("name")
+    return _dc_replace(entry, name=name) if isinstance(name, str) and name.strip() else entry
 
 
 def _print_conflicts(gpx_dir: Path) -> None:
