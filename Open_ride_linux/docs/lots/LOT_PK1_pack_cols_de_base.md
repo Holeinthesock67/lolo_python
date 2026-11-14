@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Pack « Cols célèbres » livré de base : construit une fois sur le PC (`scripts/build_pack_base.sh`), rangé dans le paquet hors git avec un manifeste, installé sans réseau au premier lancement avec les contenus de départ, crédits OpenStreetMap / Copernicus / WorldCover | Python + Bash | O16, O25, O29, HP1, CL1 (recette) | Moyenne | **Livré le 14 novembre** (PR #867) ; reste la recette PC |
+| Pack « Cols célèbres » livré de base : construit une fois sur le PC (`scripts/build_pack_base.sh`), rangé dans le paquet hors git avec un manifeste, installé sans réseau au premier lancement avec les contenus de départ, crédits OpenStreetMap / Copernicus / WorldCover | Python + Bash | O16, O25, O29, HP1, CL1 (recette) | Moyenne | **Livré le 14 novembre** (PR #867) ; recette PC passée |
 
 ## 1. Objectif
 
@@ -45,4 +45,14 @@ Depuis `~/Games/lolo_python/Open_ride_linux`, branche du lot, après CL1 si fusi
 
 ## 6. Livraison
 
-PR #867, fusionnée le 14 novembre 2026. Statut remis à jour le 14 novembre d'après les PR fusionnées (statut précédent : « En PR le 13 novembre »). Reste la recette PC du §5 (construction du paquet, contrôle, bancs, captures, premier lancement sans réseau) et la part du propriétaire.
+PR #867, fusionnée le 14 novembre 2026. Statut remis à jour le 14 novembre d'après les PR fusionnées (statut précédent : « En PR le 13 novembre »). Recette PC du §5 passée en entier (file PC) :
+
+- **Construction** (essai `rPK1`, main 0a11f0f0) : 21 cols construits, paquet de 46,8 Mo, 1 775 s.
+- **Contrôle** : `pack_bundle verify`, 2 020 fichiers, 0 écart.
+- **Bancs** (GPU low / medium / high, budgets 8 / 13 / 16 ms) : Stelvio 5,26 / 8,58 / 10,43 ms, Ticlio 5,26 / 8,98 / 11,53 ms, Hakone 5,44 / 8,50 ms (high relevé ensuite). Les contacts du décor (4 à 390 avant AS8) tombent à 0 partout avec AS8 (essai `rAS8` : Hakone 5,31 / 8,64 / 10,57 ms, Stelvio 5,66 / 9,41 / 11,47 ms, Ticlio 5,48 / 9,16 / 12,58 ms, pire image 117 ms au plus).
+- **Premier lancement sans réseau** (essai `rPK1off2`) : 10 entraînements, 2 plans, 5 parcours et 21 cols installés, aucune compilation ni requête Overpass.
+- **Captures** : `pk1_hors_reseau.png`, `pk1_cols_medium.png`, `pk1_contenus.png`.
+
+Reste : la validation des planches et du poids total par le propriétaire, puis l'essai J4 du lot O16 (un col roulé).
+
+**Profil réel du propriétaire (14 novembre) :** `~/OpenRide/GPX/cols-celebres/` existe déjà, avec un `pack.toml` « Cols célèbres » et seulement Khardung La et Abra Málaga (essai HP2). `pack_bundle.install` voit alors le pack comme installé et ne copie ni les 19 autres traces ni leurs parcours (règle PK1-3, jamais d'écrasement). Avant l'essai J4, mettre ce dossier de côté (par exemple dans `~/OpenRide/Sauvegardes/`), puis installer depuis **Réglages › Contenus**.
