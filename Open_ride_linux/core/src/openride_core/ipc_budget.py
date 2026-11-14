@@ -413,7 +413,7 @@ def worst_rogue_state() -> dict[str, Any]:
         "next": [{"kind": "corridor", "in_s": 99_999.9, "archetype": "sprinteur"}] * 2,
         "loot_stage": "door", "target_pct": {"lo": 999, "hi": 999}, "firewall_gap_s": 99.9,
         "z_reason": "no_roc_charge", "shift_miss": {"reason": "wrong_way", "dt_s": -9.99},
-        "z_action": "rock_chip",
+        "z_action": "rock_chip", "card_on": "x" * 24,
         "adrenaline_trend": {"rate_per_s": -99.99, "cause": "overheat", "overheat_in_s": 99.9},
     }
     return d

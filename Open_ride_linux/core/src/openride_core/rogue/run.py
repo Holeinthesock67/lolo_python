@@ -67,7 +67,6 @@ class RunOutputs:
     phase: str
     grade_enemy: float                   # pente de l'ennemi après cartes
     grade_sent: float                    # pente envoyée au trainer (formule centrée, bornée)
-    force_gear: int | None               # retour automatique d'Overdrive : à appliquer une fois
     rogue: dict                          # objet `rogue` de `state`
     messages: list = field(default_factory=list)    # messages `room` et `loot` à émettre
     journal: list = field(default_factory=list)
@@ -114,7 +113,8 @@ class RunEngine:
         self.overdrive_ready_at = 0.0
         self.inversion_until = 0.0
         self.inversion_used = False
-        self.force_gear: int | None = None
+        self.card_was: dict = {}            # lot R23 : condition de carte remplie au pas précédent
+        self.card_said_at: dict = {}        # lot R23 : dernier `card_on` de chaque carte
         # couloir et relique
         self.loot_id = 0
         self.stage: str | None = None       # "card", "door" ou None
@@ -207,6 +207,7 @@ class RunEngine:
         self._journal: list = []
         self._z_reason = None               # lot R22 : retours valables pour le pas en cours seulement
         self._z_action = None               # lot R23 : action du Z accepté
+        self._card_on = None                # lot R23 : carte qui vient de se déclencher
         self._shift_miss = None
         if not self._hash_logged:
             self._hash_logged = True
@@ -215,7 +216,6 @@ class RunEngine:
         events: list = []
         self.t_total += dt
         self.t_phase += dt
-        self.force_gear = None
         self.last_gear = inp.gear
         self.posture = posture_step(self.posture, inp.cadence_rpm, inp.power_w, dt, self.b)
         self.wbal = wbal_step(self.wbal, inp.power_w, inp.cadence_rpm, dt, cp_w=self.cp_w,
@@ -238,7 +238,7 @@ class RunEngine:
         out_phase = self.phase
         return RunOutputs(
             phase=out_phase, grade_enemy=grade, grade_sent=grade_sent(grade, inp.gear, self.b),
-            force_gear=self.force_gear, rogue=self._state(inp, events), messages=messages,
+            rogue=self._state(inp, events), messages=messages,
             journal=list(self._journal), finished=self.phase == RESULTS)
 
     # --- échauffement et couloirs -------------------------------------------------------------
@@ -286,7 +286,7 @@ class RunEngine:
 
     def _loot_message(self) -> dict:
         pool = cardlib.ALL
-        cards = [{"id": c, "name": pool[c].name, "kind": pool[c].kind, "text": pool[c].text,
+        cards = [{"id": c, "name": pool[c].name, "kind": pool[c].kind, "text": cardlib.card_text(c, self.rider.ftp_w, self.b),
                   "replaces_gear": pool[c].replaces_gear} for c in self.offer]
         if self.door_steps:
             doors = [{"side": side, "room_id": rid, "archetype": spec.archetype}
@@ -381,7 +381,9 @@ class RunEngine:
         # cartes : effets sur la pente et les dégâts
         mult = 1.0
         buttons = set(inp.buttons)
-        if "cursed" in self.deck and inp.gear == b.cursed_gear:
+        # lot R23 : cartes déclenchées à la puissance ou à la cadence, jamais par une vitesse imposée
+        hard = inp.power_w > b.cursed_power_frac * inp.ftp_w
+        if "cursed" in self.deck and hard:
             mult *= b.cursed_mult
             if "Z_SHORT" in buttons and cs.phase == "FIGHT":
                 self._z_reason = "cursed"          # lot R22 : le refus se dit
@@ -394,13 +396,14 @@ class RunEngine:
             if self.overdrive_until and t >= self.overdrive_until:
                 self.overdrive_until = 0.0
                 self.overdrive_ready_at = t + b.overdrive_cooldown_s
-                self.force_gear = b.overdrive_back_gear
-            elif not self.overdrive_until and inp.gear == 12 and t >= self.overdrive_ready_at:
+            elif (not self.overdrive_until and inp.power_w > b.overdrive_power_frac * inp.ftp_w
+                  and t >= self.overdrive_ready_at and cs.phase == "FIGHT"):
                 self.overdrive_until = t + b.overdrive_s
+                self._card_fired("overdrive", t, events, rearm=False)
         if self.overdrive_until:
             mult *= b.overdrive_mult
         if "springboard" in self.deck:
-            if self.prev_raw <= b.springboard_grade < raw and inp.gear >= b.springboard_min_gear:
+            if self.prev_raw <= b.springboard_grade < raw:
                 self.spring_until = t + b.springboard_s
                 self._spring_adr = b.springboard_adrenaline
             if t < self.spring_until:
@@ -416,8 +419,6 @@ class RunEngine:
                 g = b.roller_cap_grade
         if t < self.inversion_until:
             g = min(max(-g, b.inversion_floor), b.room_grade_max)
-        if self.overdrive_until:
-            g += b.overdrive_grade_pts
 
         if self.phase == "RECOVERY":
             g = 0.0
@@ -442,8 +443,12 @@ class RunEngine:
         if getattr(self, "_spring_adr", 0.0):
             adr += self._spring_adr
             self._spring_adr = 0.0
-        if "heal" in self.deck and inp.gear == 1 and inp.cadence_rpm > b.heal_cadence_rpm and cs.phase == "FIGHT":
+        healing = ("heal" in self.deck and inp.cadence_rpm > b.heal_cadence_rpm
+                   and inp.power_w < b.heal_power_frac * inp.ftp_w and cs.phase == "FIGHT")
+        if healing:
             shield += b.heal_per_s * dt
+        self._card_edge("cursed", "cursed" in self.deck and hard and cs.phase == "FIGHT", t, events)
+        self._card_edge("heal", healing, t, events)
         cs = replace(cs, shield=min(shield, bx.shield_max), adrenaline=min(adr, b.adrenaline_max))
         self.combat = cs
         self.shield = cs.shield
@@ -574,8 +579,24 @@ class RunEngine:
             "shift_miss": getattr(self, "_shift_miss", None) if "shift_missed" in events else None,
             # révision 1.17 (lot R23) : action du Z accepté, tendance de l'adrénaline
             "z_action": getattr(self, "_z_action", None) if "z_ok" in events else None,
+            "card_on": getattr(self, "_card_on", None) if "card_on" in events else None,
             "adrenaline_trend": self._adrenaline_trend(),
         }
+
+    def _card_fired(self, card_id: str, t: float, events: list, rearm: bool = True) -> None:
+        """Lot R23 : une carte vient de se déclencher (condition de puissance ou de cadence atteinte) : un seul
+        `card_on` par pas, et pas de nouvelle annonce de la même carte avant `card_on_rearm_s`."""
+        if rearm and t - self.card_said_at.get(card_id, -1e9) < self.b.card_on_rearm_s:
+            return
+        self.card_said_at[card_id] = t
+        if "card_on" not in events:
+            events.append("card_on")
+            self._card_on = card_id
+
+    def _card_edge(self, card_id: str, on: bool, t: float, events: list) -> None:
+        if on and not self.card_was.get(card_id, False):
+            self._card_fired(card_id, t, events)
+        self.card_was[card_id] = on
 
     def _adrenaline_trend(self) -> dict:
         """Débit continu de l'adrénaline (par seconde), sa cause et, au-dessus du seuil de surchauffe sans y être

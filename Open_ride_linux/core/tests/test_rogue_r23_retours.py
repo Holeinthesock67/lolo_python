@@ -217,3 +217,56 @@ def test_overheat_limit_never_below_the_target():
         p = 250.0 * (target_at(room, s) + 0.05)
         st, _ = combat_step(st, CombatInputs(**_base(s_m=s, power_w=p, objective="endurance")), room, B, DT)
         assert not st.overheat
+
+
+# --- cartes : seuils en watts, déclenchement annoncé (choix du propriétaire du 14 novembre) --------------------
+
+def test_card_texts_give_watts_from_the_ftp():
+    from openride_core.rogue.cards import ALL, card_text
+    assert card_text("overdrive", 250, B).startswith("Pousse au-dessus de 375 W")
+    assert "sous 150 W" in card_text("heal", 250, B)
+    assert card_text("cursed", 300, B).startswith("Au-dessus de 300 W")
+    for cid, card in ALL.items():
+        text = card_text(cid, 250, B)
+        assert "{" not in text and "% de ta FTP" not in text and "vitesse 1" not in text.lower().replace("vitesse 1,", "")
+        assert card.replaces_gear is None and card.kind != "gear"
+
+
+def test_loot_message_carries_the_watts():
+    e = engine()
+    r = Rider(e)
+    while e.phase != "CORRIDOR" and r.t < 2000:
+        r.run(max_s=r.t + DT)
+    e.offer = ("overdrive", "heal", "cursed")
+    msg = e._loot_message()
+    assert [c["text"].split(" W")[0][-3:] for c in msg["cards"]] == ["375", "150", "250"]
+    assert all(c["replaces_gear"] is None for c in msg["cards"])
+
+
+def test_card_on_once_per_trigger():
+    e = fight_engine(deck=("overdrive", "cursed"))
+    out = step_in_room(e, 300.0, power=200.0)
+    assert "card_on" not in out.rogue["events"] and out.rogue["card_on"] is None
+    out = step_in_room(e, 300.0, power=400.0)                     # 160 % : Overdrive (et Maudit, annoncé ensuite)
+    assert out.rogue["events"].count("card_on") == 1 and out.rogue["card_on"] == "overdrive"
+    jsonschema.validate(out.rogue, ROGUE_SCHEMA)
+    seen = []
+    for _ in range(round(3.0 / DT)):
+        o = step_in_room(e, 300.0, power=400.0)
+        if "card_on" in o.rogue["events"]:
+            seen.append(o.rogue["card_on"])
+    assert seen == []                                                # Maudit a déjà passé son seuil au même pas
+    step_in_room(e, 300.0, power=200.0)
+    out = step_in_room(e, 300.0, power=280.0)                        # repasse au-dessus de la FTP, moins de 5 s après
+    assert "card_on" not in out.rogue["events"]
+    step_in_room(e, 300.0, power=200.0, n=round(6.0 / DT))
+    out = step_in_room(e, 300.0, power=280.0)
+    assert out.rogue["card_on"] == "cursed"
+
+
+def test_heal_announced_when_spinning_light():
+    e = fight_engine(deck=("heal",))
+    out = step_in_room(e, 300.0, power=120.0, cadence=100.0)
+    assert out.rogue["card_on"] == "heal"
+    out = step_in_room(e, 300.0, power=120.0, cadence=100.0)
+    assert "card_on" not in out.rogue["events"]

@@ -37,11 +37,13 @@ var _pending_events: Array = []
 var _loot: Dictionary = {}
 var _relic_taken := false          # relique de l'échauffement prise (événement card_taken) : l'offre se cache
 var guide = GuideModel.new()       # textes de lisibilité (lot R22)
+var _prev_shield := NAN            # lot R23 : bouclier de la trame précédente, pour dire les dégâts reçus
 
 
 ## FTP du coureur, tirée de hello_ack.config.ftp_w.
 func set_ftp(ftp_w: float) -> void:
 	_ftp_w = ftp_w if is_finite(ftp_w) and ftp_w > 0.0 else 0.0
+	guide.ftp_w = _ftp_w             # lot R23 : consignes écrites en watts
 
 
 ## Dernier message `loot` (cartes, portes, coût de relance) ; vide hors couloir.
@@ -88,6 +90,11 @@ func update(state: Dictionary, now_s: float) -> void:
 		_pending_events = []
 	_active = true
 	var fresh_events: Array = rogue.get("events", []) if fresh else []
+	# lot R23 : dégâts reçus (bouclier qui baisse : coup non paré, Firewall), une fois par trame nouvelle
+	var shield_now := float(rogue.get("shield", 0.0))
+	var hurt := fresh and is_finite(_prev_shield) and shield_now < _prev_shield - 0.01
+	if fresh:
+		_prev_shield = shield_now
 	if fresh:
 		for ev in rogue.get("events", []):
 			_pending_events.append(String(ev))
@@ -127,7 +134,8 @@ func update(state: Dictionary, now_s: float) -> void:
 		"gear": maxi(int(state.get("gear", 1)), 1),
 		"gears_total": maxi(int(state.get("gears_total", 12)), 1),
 		"power_pct": _smooth["power_pct"],
-		"power_pct_text": "%d %%" % int(roundf(_smooth["power_pct"])),
+		# lot R23 : la puissance en watts (« 180 W ») ; en % de FTP seulement si la FTP est inconnue
+		"power_text": GuideModel.watts(_smooth["power_pct"], _ftp_w, 1),
 		"cadence_text": "%d" % int(roundf(_smooth["cadence_rpm"])),
 		"posture": posture,
 		"posture_token": POSTURE_TOKEN.get(posture, "neutral"),
@@ -149,6 +157,7 @@ func update(state: Dictionary, now_s: float) -> void:
 		"hack": _hack(hack),
 		"guide": guide.compute(state, rogue, _smooth["power_pct"], fresh_events),
 		"z_pulse": _take_pulse(),
+		"hurt": hurt,
 		"loot_stage": rogue.get("loot_stage", null),
 		"phase_left_s": rogue.get("phase_left_s", null),
 		"next": rogue.get("next", []),

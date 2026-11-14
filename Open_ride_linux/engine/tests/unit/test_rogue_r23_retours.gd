@@ -33,7 +33,7 @@ func _rogue(over: Dictionary = {}) -> Dictionary:
 	var r := {"phase": "ROOM", "room_id": 3, "room_index": 2, "rooms_total": 9, "archetype": "diesel",
 		"boss_phase": null, "s_room": 500.0, "adrenaline": 32.0, "firewall_gap_m": 96.0, "firewall_gap_s": 12.0,
 		"hack": null, "events": [], "phase_left_s": null, "next": [], "loot_stage": null, "overheat": false,
-		"target_pct": {"lo": 70, "hi": 75}, "z_reason": null, "z_action": null, "shift_miss": null,
+		"target_pct": {"lo": 70, "hi": 75}, "z_reason": null, "z_action": null, "card_on": null, "shift_miss": null,
 		"adrenaline_trend": {"rate_per_s": 0.5, "cause": "gain", "overheat_in_s": null}}
 	r.merge(over, true)
 	return r
@@ -49,7 +49,7 @@ func _run() -> void:
 	g.compute(st, _rogue({"z_action": "strike"}), 72.0, ["hit", "z_ok"])
 	var t: Array = g.take_toasts()
 	_check(t.size() == 1 and t[0]["title"] == "FRAPPE ! −6 % PV" and t[0]["tone"] == "ok" and t[0]["now"], "Z accepté : « FRAPPE ! », tout de suite")
-	_check(g.z_pulse == "ok", "Z accepté : anneau or")
+	_check(g.z_pulse == "hit", "attaque réussie : anneau or et éclair")
 	g.z_pulse = ""
 	g.compute(st, _rogue({"z_action": "rock_chip"}), 72.0, ["z_ok"])
 	_check(g.take_toasts()[0]["title"] == "Rocher entamé", "rocher entamé")
@@ -134,6 +134,88 @@ func _run() -> void:
 	sm.update(_rogue({"events": ["hit", "z_ok"]}), 6, 1, 1.0)
 	var plays: Array = sm.take_plays()
 	_check(plays.has("rogue_z_ok") and plays.has("rogue_hit"), "frappe : son du Z et impact")
+
+	# Carte déclenchée (seuil de puissance ou de cadence atteint) : message, anneau vert et son.
+	var g3 = GuideModel.new()
+	g3.compute(st, _rogue({"card_on": "overdrive"}), 72.0, ["card_on"])
+	t = g3.take_toasts()
+	_check(t.size() == 1 and t[0]["title"] == "OVERDRIVE !" and t[0]["sub"] == "Dégâts ×2 pendant 8 s" and t[0]["now"], "Overdrive déclenché : message tout de suite")
+	_check(g3.z_pulse == "card", "carte déclenchée : anneau")
+	g3.z_pulse = ""
+	g3.compute(st, _rogue({"card_on": "cursed"}), 72.0, ["card_on"])
+	_check(g3.take_toasts()[0]["title"] == "MAUDIT ACTIF", "Maudit actif")
+	for c in ["overdrive", "heal", "cursed"]:
+		_check(GuideModel.CARD_ON_TEXT.has(c), "texte de la carte « %s »" % c)
+	_check(SoundModel.EVENT_SOUNDS.get("card_on", "") == "rogue_card_on" and Synth.names().has("rogue_card_on"), "son de la carte déclenchée")
+	var view2 = HudView.new()
+	root.add_child(view2)
+	await process_frame
+	view2.pulse("card")
+	_check(view2.z_pulse.left_s > 0.0 and view2.z_pulse.color == view2.UiTheme.OK, "anneau vert à la carte déclenchée")
+	view2.pulse("hit")
+	_check(view2.hit_flash_s > 0.0 and view2.z_pulse.color == view2.UiTheme.GOLD, "attaque réussie : éclair et anneau or")
+	view2.apply(hm.values(), Vector3.ZERO, 0.1)
+	_check(view2.hit_flash.color.a > 0.0 and view2.hit_flash.color.a < 0.45, "l'éclair s'éteint en 0,25 s")
+	view2.pulse("ok")
+	_check(view2.z_pulse.color == view2.UiTheme.GOLD, "relance ou déblocage : anneau or seul")
+	var hm2 = HudModel.new()
+	hm2.set_ftp(250.0)
+	hm2.update({"seq": 10, "gear": 6, "power_3s": 180.0, "rogue": _rogue({"shield": 40.0})}, 0.0)
+	_check(not hm2.values()["hurt"], "première trame : pas de dégâts")
+	hm2.update({"seq": 11, "gear": 6, "power_3s": 180.0, "rogue": _rogue({"shield": 25.0, "events": ["parry_miss"]})}, 0.1)
+	_check(hm2.values()["hurt"], "bouclier qui baisse : dégâts reçus")
+	view2.apply(hm2.values(), Vector3.ZERO, 0.016)
+	_check(view2.hurt_flash_s > 0.0, "dégâts reçus : bords rouges")
+	hm2.update({"seq": 11, "gear": 6, "power_3s": 180.0, "rogue": _rogue({"shield": 25.0})}, 0.2)
+	_check(not hm2.values()["hurt"], "même trame : pas de nouveaux dégâts")
+	var g5 = GuideModel.new()
+	g5.compute(st, _rogue(), 72.0, ["parry_miss"])
+	_check(g5.take_toasts()[0]["title"] == "TOUCHÉ ! Coup non paré", "coup non paré : « TOUCHÉ ! »")
+	view2.queue_free()
+
+	# Invite « Z : FRAPPE ! » tant que Z agit maintenant, rien en approche ni sans adrénaline.
+	var g4 = GuideModel.new()
+	g4.set_room(3, [{"kind": "strike_target", "s_m": 500.0, "len_m": 10.0, "param": null},
+		{"kind": "parry_zone", "s_m": 800.0, "len_m": 20.0, "param": null}])
+	o = g4.compute(st, _rogue({"s_room": 505.0, "adrenaline": 60.0, "archetype": "grimpeur"}), 72.0, [])
+	_check(o["z_call"] == "Z : FRAPPE !", "cible sous la roue, Z prêt : « Z : FRAPPE ! »")
+	o = g4.compute(st, _rogue({"s_room": 505.0, "adrenaline": 20.0, "archetype": "grimpeur"}), 72.0, [])
+	_check(o["z_call"] == "", "sans adrénaline : pas d'invite")
+	o = g4.compute(st, _rogue({"s_room": 450.0, "adrenaline": 60.0, "archetype": "grimpeur"}), 72.0, [])
+	_check(o["z_call"] == "", "cible à 50 m : pas encore d'invite")
+	o = g4.compute(st, _rogue({"s_room": 805.0, "adrenaline": 20.0, "archetype": "grimpeur"}), 72.0, [])
+	_check(o["z_call"] == "Z : PARADE !", "zone de parade : « Z : PARADE ! »")
+	o = g4.compute(st, _rogue({"s_room": 505.0, "adrenaline": 60.0, "overheat": true, "archetype": "grimpeur"}), 85.0, [])
+	_check(o["z_call"] == "", "surchauffe : pas d'invite (Z bloqué)")
+
+	# Consignes en watts dès que la FTP est connue (lot R23 : jamais de % à calculer).
+	var gw = GuideModel.new()
+	gw.ftp_w = 250.0
+	o = gw.compute(st, _rogue(), 72.0, [])
+	_check(o["fw"]["sub"] == "Garde 175–190 W", "Firewall : garde 175–190 W")
+	o = gw.compute(st, _rogue({"overheat": true, "adrenaline_trend": {"rate_per_s": -2.0, "cause": "overheat", "overheat_in_s": null}}), 85.0, [])
+	_check(o["hint"] == "SURCHAUFFE : descends sous 190 W · adrénaline −2/s, Z bloqué", "surchauffe en watts")
+	o = gw.compute(st, _rogue({"phase": "WARMUP", "target_pct": {"lo": 55, "hi": 65}, "phase_left_s": 200.0}), 58.0, [])
+	_check(o["consigne"]["big"] == "140–165 W" and o["consigne"]["sub"] == "Tu es à 145 W ✔", "échauffement : 140–165 W, tu es à 145 W")
+	gw.compute(st, _rogue({"z_reason": "cursed"}), 110.0, ["z_refused"])
+	_check(gw.take_toasts()[0]["sub"] == "Redescends sous 250 W pour frapper", "Maudit : sortie en watts")
+	_check(GuideModel.watts(72.0, 0.0) == "72 % FTP" and GuideModel.watts(72.0, 250.0) == "180 W", "watts, ou % sans FTP")
+
+	# Bandeau des règles : à l'échauffement seulement, et il défile.
+	var gr = GuideModel.new()
+	o = gr.compute(st, _rogue({"phase": "WARMUP", "phase_left_s": 200.0}), 60.0, [])
+	_check(o["rules"].begins_with("RÈGLES DU CYBER-ROGUE") and "Firewall" in o["rules"] and "surchauffe" in o["rules"], "échauffement : bandeau des règles")
+	_check(gr.compute(st, _rogue(), 72.0, [])["rules"] == "", "en salle : pas de bandeau")
+	var view3 = HudView.new()
+	root.add_child(view3)
+	await process_frame
+	var hm3 = HudModel.new()
+	hm3.update({"seq": 20, "gear": 6, "power_3s": 150.0, "rogue": _rogue({"phase": "WARMUP", "phase_left_s": 200.0})}, 0.0)
+	view3.apply(hm3.values(), Vector3.ZERO, 0.016)
+	var x0: float = view3.rules_label.position.x
+	view3.apply(hm3.values(), Vector3.ZERO, 0.5)
+	_check(view3.rules_strip.visible and view3.rules_label.position.x < x0, "le bandeau défile")
+	view3.queue_free()
 
 	# Vues du mode : 4, la dernière sur le vélo.
 	_check(RogueScene.VIEW_NAMES == ["derrière", "haute", "proche", "sur le vélo"] and RogueScene.RIDER_VIEW == 3, "4 vues, la 4e sur le vélo")

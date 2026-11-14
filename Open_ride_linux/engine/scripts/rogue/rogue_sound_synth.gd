@@ -38,6 +38,7 @@ const SOUNDS := {
 	"rogue_purge": [0.35, false],
 	"rogue_refused": [0.22, false],
 	"rogue_z_ok": [0.18, false],
+	"rogue_card_on": [0.32, false],
 	"rogue_shift_missed": [0.16, false],
 	"rogue_card_pick": [0.15, false],
 	"rogue_door": [0.30, false],
@@ -182,6 +183,11 @@ static func render(sound: String) -> PackedFloat32Array:
 			# Z accepté (lot R23) : deux notes qui montent, nettes et brèves, le miroir de « refusé ».
 			_note(b, 0.0, 494.0, 494.0, 0.07, 0.7, 5.0)
 			_note(b, 0.07, 740.0, 740.0, 0.11, 0.7, 5.0)
+		"rogue_card_on":
+			# Carte déclenchée (lot R23) : trois notes qui montent, plus longues que la réponse à Z.
+			_note(b, 0.0, 523.0, 523.0, 0.09, 0.6, 3.0)
+			_note(b, 0.09, 659.0, 659.0, 0.09, 0.6, 3.0)
+			_note(b, 0.18, 1047.0, 1047.0, 0.14, 0.7, 3.0)
 		"rogue_shift_missed":
 			# Arche de Perfect Shift ratée (lot R22) : petit glissé vers le bas.
 			_note(b, 0.0, 520.0, 390.0, 0.16, 0.5, 4.0)

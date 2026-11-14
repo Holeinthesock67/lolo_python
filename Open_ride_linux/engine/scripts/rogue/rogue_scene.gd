@@ -403,4 +403,7 @@ func test_info() -> Dictionary:
 		# lot R23
 		"gear": hud_view.gear_value.text if hud_view.visible and hud_view.gear_panel.visible else "",
 		"toast": hud_view.toast_title.text if hud_view.toast_panel.visible else "",
-		"z_ring": hud_view.z_pulse.left_s > 0.0}
+		"z_ring": hud_view.z_pulse.left_s > 0.0,
+		"z_call": hud_view.z_call_label.text if hud_view.visible and hud_view.z_call_label.visible else "",
+		"rules": hud_view.rules_label.text if hud_view.visible and hud_view.rules_strip.visible else "",
+		"hurt": hud_view.hurt_flash_s > 0.0, "flash": hud_view.hit_flash_s > 0.0}

@@ -33,7 +33,7 @@ const LEGENDS := {
 	"parry_zone": ["Nouveau : zone de parade", "Relance fort la puissance puis appuie sur Z dans la zone. Sinon, le coup te retire du bouclier."],
 	"purge": ["Nouveau : borne de déblocage", "Le Saboteur pirate tes vitesses : elles restent bloquées, ou une vitesse t'est imposée. Sur cette borne, appuie sur Z pour les débloquer."],
 	"rock": ["Nouveau : rocher", "Roule en Roc (sous 70 rpm) pour gagner des charges, puis Z sur le rocher pour le briser."],
-	"overheat": ["Nouveau : surchauffe (endurance)", "En salle d'endurance, reste dans la plage de la consigne. Au-dessus du plafond (75 % FTP, ou la cible + 10 points si elle est plus haute) pendant 5 s, tu surchauffes : l'adrénaline fond de 2 par seconde et Z est bloqué jusqu'à ce que tu redescendes."],
+	"overheat": ["Nouveau : surchauffe (endurance)", "En salle d'endurance, reste dans la plage de la consigne. Au-dessus du plafond de la plage pendant 5 s, tu surchauffes : l'adrénaline fond de 2 par seconde et Z est bloqué jusqu'à ce que tu redescendes."],
 	"firewall": ["Le Firewall", "Un mur roule derrière toi à la puissance de la salle. S'il te touche, ton bouclier fond et tu perds de l'or. Tiens la consigne pour garder ton avance."],
 }
 const Z_REASON_TEXT := {
@@ -44,7 +44,7 @@ const Z_REASON_TEXT := {
 	"no_roc_charge": ["Z refusé : aucune charge de Roc", "Roule en Roc (sous 70 rpm) pour charger"],
 	"no_surge": ["Parade ratée : pas de relance", "Accélère fort juste avant d'appuyer sur Z"],
 	"no_hack": ["Z : rien à débloquer", "La borne ne sert que si tes vitesses sont bloquées ou imposées"],
-	"cursed": ["Z bloqué par la carte Maudit", "Quitte la vitesse 10 pour frapper"],
+	"cursed": ["Z bloqué par la carte Maudit", "Redescends sous %s pour frapper"],
 	"recovery": ["Z indisponible pendant la récupération", "Roule souple, le combat reprend bientôt"],
 	"gold": ["Relance refusée : pas assez d'or", ""],
 }
@@ -58,6 +58,34 @@ const Z_ACTION_TEXT := {
 	"purge": ["VITESSES DÉBLOQUÉES", "Tu peux de nouveau changer de vitesse"],
 	"reroll": ["Cartes relancées", ""],
 }
+## Invite animée au centre de l'écran tant qu'un Z court agit maintenant (lot R23, demande du propriétaire :
+## « une animation pour lancer l'action ») : cible à frapper, zone de parade, rocher, borne de déblocage.
+const Z_CALL := {"strike_target": "Z : FRAPPE !", "parry_zone": "Z : PARADE !", "rock": "Z : ROCHER !",
+	"purge": "Z : DÉBLOQUE !"}
+## Règles du jeu, en bandeau défilant pendant l'échauffement (lot R23, demande du propriétaire).
+const RULES := [
+	"RÈGLES DU CYBER-ROGUE",
+	"Tiens la consigne de puissance : l'adrénaline monte",
+	"Z frappe l'ennemi quand ta roue passe sur l'anneau rouge, avec 50 d'adrénaline ou plus",
+	"Le Firewall te poursuit : roule au-dessus de la consigne pour garder ton avance, sinon ton bouclier fond",
+	"Endurance : reste dans la plage ; au-dessus du plafond pendant 5 s, c'est la surchauffe (adrénaline qui fond, Z bloqué)",
+	"Arche : change de vitesse dans le sens de la flèche quand l'anneau touche l'arche (Perfect Shift : +10 d'adrénaline)",
+	"Zone de parade : relance la puissance puis Z, sinon tu perds du bouclier",
+	"Rocher : roule en Roc (cadence basse, en force) pour charger, puis Z",
+	"Couloir : A pour choisir une carte puis une porte, Z pour relancer les cartes contre de l'or",
+	"Les cartes se déclenchent toutes seules quand tu atteins leur puissance ou leur cadence",
+	"↑ ↓ : changer de vue",
+]
+## Seuil de la carte Maudit en % de FTP (`cursed_power_frac` de balance.toml, lot R23), pour écrire sa sortie en watts.
+const CURSED_PCT := 100.0
+## Carte qui vient de se déclencher (lot R23, événement `card_on`, champ `card_on`) : seuil atteint, effet en cours.
+const CARD_ON_TEXT := {
+	"overdrive": ["OVERDRIVE !", "Dégâts ×2 pendant 8 s"],
+	"heal": ["SOIN ACTIF", "+1 de bouclier par seconde"],
+	"cursed": ["MAUDIT ACTIF", "Dégâts ×1,35 · Z bloqué"],
+}
+## Actions de Z qui touchent l'ennemi ou un obstacle : l'écran fait un éclair (lot R23, demande du propriétaire).
+const ATTACK_ACTIONS := ["strike", "charges", "rock", "rock_chip", "parry"]
 ## Z sans effet (raison `no_target`) : ce qu'il faut attendre, selon la phase (lot R23).
 const NO_TARGET_TEXT := {
 	"WARMUP": ["Z : pas encore de cible", "Z sert en salle · première salle dans %s"],
@@ -75,8 +103,11 @@ var _toasts: Array = []           # [{title, sub, tone}]
 var _legend: Array = []           # [titre, texte] à afficher, vide sinon
 ## Relance des cartes du couloir (message `loot`, posé par rogue_hud_model) : prix affiché dans le bouton Z.
 var reroll_cost := 0
-## Dernier retour d'un Z court de la trame (lot R23) : « ok », « refused » ou vide ; la vue dessine l'anneau.
+## Dernier retour de la trame (lot R23) : « hit » (attaque réussie), « ok », « refused » (Z court), « card » (carte
+## déclenchée) ou vide ; la vue dessine l'anneau, et l'éclair pour « hit ».
 var z_pulse := ""
+## FTP du coureur (posée par rogue_hud_model) : consignes écrites en watts (lot R23) ; 0 : en % de FTP.
+var ftp_w := 0.0
 
 
 ## Relit les légendes déjà vues (fichier JSON {sorte: true}) ; fichier absent ou illisible : aucune.
@@ -179,7 +210,7 @@ func compute(state: Dictionary, rogue: Dictionary, power_pct: float, events: Arr
 	var target = rogue.get("target_pct", null)
 	var nxt: Array = rogue.get("next", []) if rogue.get("next", null) is Array else []
 	var out := {"phase": phase, "panel": true, "title": "", "title_right": "", "countdown": "", "countdown_label": "",
-		"next_lines": [], "fw": {}, "consigne": {}, "hint": "", "keys": [], "tone": "info"}
+		"next_lines": [], "fw": {}, "consigne": {}, "hint": "", "keys": [], "tone": "info", "z_call": ""}
 	var arch := str(rogue.get("archetype", ""))
 	var room_txt := "Salle %d/%d" % [int(rogue.get("room_index", 1)), int(rogue.get("rooms_total", 1))]
 	var left = rogue.get("phase_left_s", null)
@@ -230,7 +261,7 @@ func compute(state: Dictionary, rogue: Dictionary, power_pct: float, events: Arr
 			level = "warn"
 		var tgt_lo := int(target.get("lo", 0)) if target is Dictionary else 0
 		var tgt_hi = target.get("hi", null) if target is Dictionary else null
-		var band := target_band(tgt_lo, tgt_hi)
+		var band := target_band(tgt_lo, tgt_hi, ftp_w)
 		var sub := "Garde %s" % band if tgt_lo > 0 else ""
 		if level == "warn" and tgt_lo > 0:
 			sub = "Accélère : %s" % band
@@ -240,10 +271,11 @@ func compute(state: Dictionary, rogue: Dictionary, power_pct: float, events: Arr
 	elif target is Dictionary and phase in ["WARMUP", "COOLDOWN"]:
 		var lo := int(target.get("lo", 0))
 		var hi = target.get("hi", null)
-		var big := ("≤ %d %% FTP" % int(hi)) if lo <= 0 and hi != null else (("%d–%d %% FTP" % [lo, int(hi)]) if hi != null else "≥ %d %% FTP" % lo)
+		var big := ("≤ %s" % watts(float(hi), ftp_w)) if lo <= 0 and hi != null else target_band(lo, hi, ftp_w)
 		var inside := power_pct >= float(lo) and (hi == null or power_pct <= float(hi))
-		out["consigne"] = {"big": big, "sub": "Tu es à %d %%%s" % [int(round(power_pct)), " ✔" if inside else ""], "ok": inside}
+		out["consigne"] = {"big": big, "sub": "Tu es à %s%s" % [watts(power_pct, ftp_w, 1).trim_suffix(" FTP"), " ✔" if inside else ""], "ok": inside}
 	out["adr_trend"] = adrenaline_trend_text(rogue)
+	out["rules"] = "     •     ".join(RULES) if phase == "WARMUP" else ""
 	_hint(out, state, rogue, phase, z_ready, adr, target)
 	_feedback(rogue, events, adr)
 	_legends(rogue, phase)
@@ -302,15 +334,17 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 			var melt := OVERHEAT_RATE_DEFAULT
 			if trend is Dictionary:
 				melt = absf(float(trend.get("rate_per_s", -OVERHEAT_RATE_DEFAULT)))
-			hint = "SURCHAUFFE : descends sous %d %% FTP · adrénaline −%s/s, Z bloqué" % [limit, _num(melt)]
+			hint = "SURCHAUFFE : descends sous %s · adrénaline −%s/s, Z bloqué" % [watts(limit, ftp_w), _num(melt)]
 			tone = "danger"
 		elif soon != null:
-			hint = "Trop fort : au-dessus de %d %% FTP, surchauffe dans %d s" % [limit, maxi(int(ceil(float(soon))), 1)]
+			hint = "Trop fort : au-dessus de %s, surchauffe dans %d s" % [watts(limit, ftp_w), maxi(int(ceil(float(soon))), 1)]
 			tone = "warn"
 		elif hack is Dictionary:
 			hint = "Vitesses %s par le Saboteur : Z sur la borne pour les débloquer" % ("bloquées" if bool(hack.get("locked", false)) else "imposées")
 			tone = "warn"
 			keys[0] = ["Z", "débloquer (sur la borne)", "on"]   # lot R23 : le bouton dit ce que Z fait maintenant
+			if not ups.is_empty() and str(ups[0]["kind"]) == "purge" and bool(ups[0]["inside"]):
+				out["z_call"] = Z_CALL["purge"]
 		elif not ups.is_empty():
 			var u: Dictionary = ups[0]
 			var d := int(round(float(u["d_m"])))
@@ -319,6 +353,8 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 				"strike_target":
 					if now:
 						hint = "Appuie sur Z maintenant" if z_ready or str(rogue.get("archetype", "")) == "diesel" else "Cible Z : adrénaline %d/50, pas encore assez" % adr
+						if z_ready or str(rogue.get("archetype", "")) == "diesel":
+							out["z_call"] = Z_CALL["strike_target"]
 					else:
 						hint = "Cible Z dans %d m : appuie sur Z quand la roue passe sur l'anneau" % d
 					if z_ready:
@@ -330,18 +366,22 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 				"tunnel":
 					hint = ("Tunnel : tiens %d rpm" % int(round(float(u["param"] if u["param"] != null else 90.0)))) + ("" if now else " (dans %d m)" % d)
 				"pad":
-					hint = ("Pavé : vitesse 10+ et ≥ %d %% FTP" % int(round(float(u["param"] if u["param"] != null else 1.4) * 100.0))) + ("" if now else " (dans %d m)" % d)
+					hint = ("Pavé : vitesse 10+ et ≥ %s" % watts(float(u["param"] if u["param"] != null else 1.4) * 100.0, ftp_w)) + ("" if now else " (dans %d m)" % d)
 				"parry_zone":
 					hint = "Parade : relance la puissance puis Z" if now else "Zone de parade dans %d m : prépare une relance puis Z" % d
+					if now:
+						out["z_call"] = Z_CALL["parry_zone"]
 				"purge":
 					hint = "Borne de déblocage : Z seulement si tes vitesses sont bloquées" if now else "Borne de déblocage dans %d m" % d
 				"rock":
 					hint = "Rocher : Z (charges de Roc)" if now else "Rocher dans %d m : roule en Roc pour charger, puis Z" % d
+					if now:
+						out["z_call"] = Z_CALL["rock"]
 		if hint == "":
 			if z_ready:
 				hint = "Z prêt : vise la prochaine cible"
 			elif tgt_lo > 0:
-				hint = "Tiens %s pour remplir l'adrénaline (%d/50)" % [target_band(tgt_lo, tgt_hi), adr]
+				hint = "Tiens %s pour remplir l'adrénaline (%d/50)" % [target_band(tgt_lo, tgt_hi, ftp_w), adr]
 			else:
 				hint = "Tiens la puissance pour remplir l'adrénaline (%d/50)" % adr
 	out["hint"] = hint
@@ -349,11 +389,21 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 	out["tone"] = tone
 
 
-## Consigne de puissance en texte : « ≥ 70 % FTP », ou « 70–75 % FTP » quand elle a un plafond (endurance, R23).
-static func target_band(lo: int, hi: Variant) -> String:
+## Puissance en texte (lot R23 : le joueur lit des watts, jamais un % à calculer) : « 175 W », arrondi à `step` W
+## (5 W pour une consigne, 1 W pour la mesure) ; « 70 % FTP » seulement si la FTP est inconnue.
+static func watts(pct: float, ftp: float, step: int = 5) -> String:
+	if ftp <= 0.0:
+		return "%d %% FTP" % int(round(pct))
+	return "%d W" % (int(round(pct * ftp / 100.0 / float(step))) * step)
+
+
+## Consigne de puissance en texte : « ≥ 175 W », ou « 175–190 W » quand elle a un plafond (endurance, R23).
+static func target_band(lo: int, hi: Variant, ftp: float = 0.0) -> String:
 	if hi == null or int(hi) <= lo:
-		return "≥ %d %% FTP" % lo if hi == null else "%d %% FTP" % lo
-	return "%d–%d %% FTP" % [lo, int(hi)]
+		return "≥ %s" % watts(lo, ftp) if hi == null else watts(lo, ftp)
+	if ftp <= 0.0:
+		return "%d–%d %% FTP" % [lo, int(hi)]
+	return "%s–%s" % [watts(lo, ftp).trim_suffix(" W"), watts(int(hi), ftp)]
 
 
 ## Tendance de l'adrénaline (champ `adrenaline_trend`, révision 1.17) : « +0,5/s », « −2/s surchauffe »,
@@ -400,6 +450,8 @@ func _feedback(rogue: Dictionary, events: Array, adr: int) -> void:
 					t = NO_TARGET_TEXT[phase]
 					var sub: String = t[1]
 					t = [t[0], (sub % clock(rogue.get("phase_left_s", 0.0))) if "%s" in sub else sub]
+				elif reason == "cursed":
+					t = [t[0], t[1] % watts(CURSED_PCT, ftp_w)]
 				var title: String = t[0] % adr if reason == "adrenaline" else t[0]
 				# Z : retour immédiat (lot R23), il remplace le retour affiché au lieu d'attendre son tour
 				_toasts.append({"title": title, "sub": t[1], "tone": "warn", "now": true})
@@ -407,7 +459,13 @@ func _feedback(rogue: Dictionary, events: Array, adr: int) -> void:
 			"z_ok":
 				var a: Array = Z_ACTION_TEXT.get(str(rogue.get("z_action", "")), ["Z !", ""])
 				_toasts.append({"title": a[0], "sub": a[1], "tone": "ok", "now": true})
-				z_pulse = "ok"
+				# attaque réussie (frappe, charges, rocher, parade) : anneau et éclair ; sinon anneau seul
+				z_pulse = "hit" if str(rogue.get("z_action", "")) in ATTACK_ACTIONS else "ok"
+			"card_on":
+				var c: Array = CARD_ON_TEXT.get(str(rogue.get("card_on", "")), ["Carte déclenchée", ""])
+				_toasts.append({"title": c[0], "sub": c[1], "tone": "warn" if str(rogue.get("card_on", "")) == "cursed" else "ok", "now": true})
+				if z_pulse == "":
+					z_pulse = "card"
 			"shift_missed":
 				var miss = rogue.get("shift_miss", null)
 				if miss is Dictionary:
@@ -424,7 +482,10 @@ func _feedback(rogue: Dictionary, events: Array, adr: int) -> void:
 			"perfect_shift":
 				_toasts.append({"title": "PERFECT SHIFT +10", "sub": "", "tone": "ok"})
 			"firewall_contact":
-				_toasts.append({"title": "LE FIREWALL TE TOUCHE", "sub": "Passe au-dessus de la consigne pour le distancer · Roc protège (−30 %)", "tone": "danger"})
+				_toasts.append({"title": "TOUCHÉ PAR LE FIREWALL", "sub": "Ton bouclier fond : passe au-dessus de la consigne pour le distancer · Roc protège (−30 %)", "tone": "danger", "now": true})
+			"parry_miss":
+				# lot R23 : les dégâts reçus se disent, comme les attaques réussies
+				_toasts.append({"title": "TOUCHÉ ! Coup non paré", "sub": "Bouclier entamé · dans la zone de parade : relance la puissance puis Z", "tone": "danger", "now": true})
 
 
 static func _signed(dt: float) -> String:

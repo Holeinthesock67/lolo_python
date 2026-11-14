@@ -37,7 +37,7 @@ JOURNAL_ROUTE_ID = "rogue"              # parcours inscrit au journal d'une run 
 # 30 Hz ; les événements de tous les pas depuis la trame précédente partent ensemble, une seule fois.
 FRAME_EVENTS_MAX = 6
 # Retours qui accompagnent un événement : la valeur du dernier pas qui l'a produit est gardée jusqu'à la trame.
-FRAME_FEEDBACK = (("z_refused", "z_reason"), ("z_ok", "z_action"), ("shift_missed", "shift_miss"))
+FRAME_FEEDBACK = (("z_refused", "z_reason"), ("z_ok", "z_action"), ("card_on", "card_on"), ("shift_missed", "shift_miss"))
 RESULTS_HOLD_S = 3.0                    # phase RESULTS montée à l'engine (jingle de fin) avant FINISHED et le bilan
 
 
@@ -202,8 +202,6 @@ class RogueMode:
         for ev, key in FRAME_FEEDBACK:
             if ev in out.rogue["events"]:
                 self._frame_feedback[key] = out.rogue.get(key)
-        if out.force_gear:
-            self.gear = out.force_gear
             self.shift_pending = True
         physics.step(power_w, out.grade_enemy, 0.0, dt)       # vitesse virtuelle sur la pente de l'ennemi
         new_room = e.room_id != self.room_id

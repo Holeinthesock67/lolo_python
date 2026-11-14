@@ -44,6 +44,30 @@ Principe : une seule règle pour tous les appuis, sans cas particulier. **Chaque
 - Sons : `rogue_z_ok` (nouveau, net et court) à chaque Z accepté, en plus du son de l'action ; priorité de `rogue_refused` et `rogue_z_ok` relevée pour ne jamais être couverts.
 - `rogue_scene.gd` : 4e vue « sur le vélo » (yeux à 1,4 m, avatar caché), ordre derrière, haute, proche, sur le vélo ; le nom de la vue s'affiche 1,5 s à chaque changement.
 
+### 3.3 Cartes sans vitesse imposée (choix du propriétaire, 14 novembre)
+
+Le propriétaire a trouvé la carte Overdrive incompréhensible (« pousser fort pendant 8 secondes est bien plus simple ; pourquoi imposer des vitesses ? », de même pour Soin). Une seule règle pour les cartes, comme pour les objets des salles : elles se déclenchent à la puissance ou à la cadence, jamais par une vitesse imposée.
+
+| Carte | Avant | Depuis R23 |
+| --- | --- | --- |
+| Overdrive | vitesse 12 : +4 points de pente, dégâts ×2 pendant 8 s, puis retour forcé en 6 | au-dessus de 150 % de la FTP (`overdrive_power_frac`) : dégâts ×2 pendant 8 s, recharge 45 s ; pente inchangée, plus de retour forcé (`RunOutputs.force_gear` retiré) |
+| Soin | vitesse 1 au-dessus de 95 rpm | au-dessus de 95 rpm et sous 60 % de la FTP (`heal_power_frac`) : +1 de bouclier par seconde |
+| Maudit | vitesse 10 : dégâts ×1,35, Z sans effet | au-dessus de 100 % de la FTP (`cursed_power_frac`) : dégâts ×1,35, Z refusé (raison `cursed`) |
+| Tremplin cinétique | en bas d'une descente, en vitesse 9 ou plus | en bas de chaque descente, quelle que soit la vitesse |
+
+Les trois premières passent du type `gear` au type `module` ; `replaces_gear` reste `null` dans `loot`. Les textes de toutes les cartes et reliques sont réécrits en français simple (ce qu'il faut faire, ce que ça change, combien de temps). Clés retirées de `balance.toml` : `overdrive_grade_pts`, `overdrive_back_gear`, `cursed_gear`, `springboard_min_gear` (une surcharge `~/OpenRide/rogue_balance.toml` qui les contient est refusée avec « clé inconnue »).
+
+### 3.4 Retours de l'essai des captures (14 novembre, midi)
+
+Demandes du propriétaire en lisant la planche :
+
+- **Watts partout** : « 150 % et 60 % de FTP demandent un calcul ; donne directement la puissance ». Textes des cartes calculés par le core pour la FTP du coureur (`cards.card_text`, arrondi à 5 W) ; consignes, plage d'endurance, surchauffe, pavé et sortie de Maudit écrits en watts par l'engine (`GuideModel.watts`, FTP de `hello_ack`) ; puissance du panneau d'état en watts.
+- **Carte déclenchée** : événement `card_on` et champ `card_on` (révision 1.17) : Overdrive à son déclenchement, Soin et Maudit au passage de leur condition (au plus une annonce par carte toutes les 5 s, `card_on_rearm_s`) ; son `rogue_card_on`, anneau vert, message (« OVERDRIVE ! », « SOIN ACTIF », « MAUDIT ACTIF »).
+- **Lancer l'action** : invite « Z : FRAPPE ! », « Z : PARADE ! », « Z : ROCHER ! », « Z : DÉBLOQUE ! » qui bat au centre de l'écran tant que Z agit (`z_call` du guide).
+- **Savoir si l'attaque a porté** : en plus du son et de l'anneau or, éclair blanc et or de tout l'écran (0,25 s) pour une frappe, des charges, un rocher ou une parade.
+- **Dégâts reçus** : bords rouges qui clignotent tant que le bouclier baisse, « TOUCHÉ ! Coup non paré » et « TOUCHÉ PAR LE FIREWALL ».
+- **Règles** : bandeau défilant des règles pendant l'échauffement.
+
 ## 4. Tests
 
 - `core/tests/test_rogue_r23_retours.py` : aucun événement perdu à 50 Hz / 30 Hz, chaque Z donne un seul retour dans toutes les phases, actions de `z_ok`, tendance de l'adrénaline (gain, sous la cible, surchauffe, compte à rebours), plage de la consigne en endurance, schéma.

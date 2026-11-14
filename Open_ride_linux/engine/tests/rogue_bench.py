@@ -104,6 +104,7 @@ def moments(trace: list[tuple[float, dict]]) -> list[tuple[int, str]]:
     out: list[tuple[int, str]] = []
     seen: set[str] = set()
     t_warmup = t_cool = loot_t = t_hot = None
+    prev_shield = None
 
     def add(i: int, name: str) -> None:
         if name not in seen:
@@ -136,6 +137,18 @@ def moments(trace: list[tuple[float, dict]]) -> list[tuple[int, str]]:
                 t_hot = None
             if ph == "ROOM" and float(rg.get("s_room") or 0.0) >= RIDER_VIEW_ROOM_M:
                 add(i, "vue_sur_le_velo")
+            # lot R23 (retours du 14 novembre midi) : invite de Z, carte déclenchée, dégâts reçus
+            s_room = float(rg.get("s_room") or 0.0)
+            if ph in FIGHT and float(rg.get("adrenaline") or 0.0) >= 50.0 and any(
+                    w.get("kind") == "strike_target" and w["s_start"] - 3.0 <= s_room <= w["s_end"] + 3.0
+                    for w in rg.get("windows") or []):
+                add(i, "invite_z")
+            if "card_on" in ev:
+                add(i, "carte_declenchee")
+            shield = rg.get("shield")
+            if ph in FIGHT and prev_shield is not None and shield is not None and shield < prev_shield - 0.01:
+                add(i, "degats_recus")
+            prev_shield = shield if ph in FIGHT else None
         if st == "PAUSED":
             add(i, "pause")
         elif st == "FINISHED":
@@ -273,6 +286,14 @@ class Bench:
             self.check(name, "surchauffe dite à l'écran", "SURCHAUFFE" in (ri.get("hint") or ""), ri.get("hint") or "—")
         if name == "surchauffe_proche":
             self.check(name, "surchauffe annoncée avant", "surchauffe dans" in (ri.get("hint") or ""), ri.get("hint") or "—")
+        if name == "echauffement":
+            self.check(name, "bandeau des règles", "RÈGLES" in (ri.get("rules") or ""), (ri.get("rules") or "—")[:60])
+        if name == "invite_z":
+            self.check(name, "invite de Z au centre", (ri.get("z_call") or "").startswith("Z :"), ri.get("z_call") or "—")
+        if name == "degats_recus":
+            self.check(name, "bords rouges des dégâts", bool(ri.get("hurt")), "")
+        if name == "carte_declenchee":
+            self.check(name, "carte déclenchée dite", bool(ri.get("toast")), ri.get("toast") or "—")
         if name == "vue_sur_le_velo":
             self.check(name, "vue sur le vélo", ri.get("view") == "sur le vélo", ri.get("view") or "—")
 

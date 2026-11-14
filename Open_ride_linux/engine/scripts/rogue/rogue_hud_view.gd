@@ -134,6 +134,18 @@ var gear_flash_s := 0.0
 var _gear_shown := -1
 var adr_trend_label: Label
 var view_label: Label
+var hit_flash: ColorRect          # lot R23 : éclair de tout l'écran à une attaque réussie
+var hurt_flash: ColorRect         # lot R23 : bords rouges quand le bouclier baisse (dégâts reçus)
+var hurt_flash_s := 0.0
+var rules_strip: Control           # lot R23 : bandeau défilant des règles pendant l'échauffement
+var rules_label: Label
+const RULES_SPEED := 90.0          # px/s
+const HURT_FLASH_S := 0.45
+const HURT_EDGE := 0.08          # épaisseur des bords rouges, en part de l'écran
+var z_call_label: Label            # lot R23 : invite « Z : FRAPPE ! » tant que Z agit maintenant
+var _z_call_t := 0.0
+var hit_flash_s := 0.0
+const HIT_FLASH_S := 0.25
 var view_left_s := 0.0
 
 
@@ -165,6 +177,42 @@ func _ready() -> void:
 	view_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	view_label.visible = false
 	_layer.add_child(view_label)
+	hit_flash = ColorRect.new()
+	hit_flash.name = "HitFlash"
+	hit_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hit_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hit_flash.color = Color(1.0, 0.95, 0.75, 0.0)
+	_layer.add_child(hit_flash)
+	hurt_flash = ColorRect.new()
+	hurt_flash.name = "HurtFlash"
+	hurt_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hurt_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hurt_flash.color = Color(0, 0, 0, 0)
+	var vignette := ShaderMaterial.new()
+	vignette.shader = Shader.new()
+	vignette.shader.code = """shader_type canvas_item;
+uniform float strength = 0.0;
+uniform float edge = 0.08;
+void fragment() {
+	vec2 d = min(UV, 1.0 - UV);
+	float k = 1.0 - smoothstep(0.0, edge, min(d.x, d.y));
+	COLOR = vec4(1.0, 0.12, 0.2, k * strength);
+}"""
+	hurt_flash.material = vignette
+	_layer.add_child(hurt_flash)
+	z_call_label = _lbl(52, UiTheme.GOLD)
+	z_call_label.name = "ZCall"
+	z_call_label.anchor_left = 0.5
+	z_call_label.anchor_right = 0.5
+	z_call_label.anchor_top = 0.30
+	z_call_label.anchor_bottom = 0.30
+	z_call_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	z_call_label.grow_vertical = Control.GROW_DIRECTION_BOTH
+	z_call_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	z_call_label.add_theme_constant_override("outline_size", 10)
+	z_call_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	z_call_label.visible = false
+	_layer.add_child(z_call_label)
 	banner = Label.new()
 	banner.text = BANNER_TEXT
 	banner.visible = false
@@ -294,6 +342,25 @@ func _build_hint() -> void:
 	hint_label = _lbl(24)
 	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint_panel.add_child(hint_label)
+	# lot R23 : bandeau des règles, au-dessus de la consigne, qui défile de droite à gauche (échauffement)
+	rules_strip = Panel.new()
+	rules_strip.name = "RulesStrip"
+	rules_strip.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	rules_strip.offset_top = -152
+	rules_strip.offset_bottom = -114
+	rules_strip.clip_contents = true
+	rules_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var strip_style := StyleBoxFlat.new()
+	strip_style.bg_color = Color(UiTheme.NIGHT, 0.8)
+	strip_style.border_color = Color(UiTheme.GOLD, 0.6)
+	strip_style.border_width_top = 2
+	strip_style.border_width_bottom = 2
+	rules_strip.add_theme_stylebox_override("panel", strip_style)
+	rules_strip.visible = false
+	_layer.add_child(rules_strip)
+	rules_label = _lbl(22, UiTheme.TEXT)
+	rules_label.position = Vector2(0, 4)
+	rules_strip.add_child(rules_label)
 	keys_row = HBoxContainer.new()
 	keys_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	keys_row.add_theme_constant_override("separation", 12)
@@ -367,11 +434,14 @@ func _build_gear() -> void:
 	box.add_child(gear_value)
 
 
-## Anneau du Z court de la trame (« ok » ou « refused », lot R23).
+## Anneau de la trame (lot R23) : Z accepté (or), Z refusé (rouge), carte déclenchée (vert) ; attaque réussie : anneau
+## or et éclair blanc et or de tout l'écran.
 func pulse(kind: String) -> void:
 	if z_pulse == null or kind == "":
 		return
-	z_pulse.fire(UiTheme.GOLD if kind == "ok" else UiTheme.DANGER)
+	z_pulse.fire({"ok": UiTheme.GOLD, "hit": UiTheme.GOLD, "card": UiTheme.OK}.get(kind, UiTheme.DANGER))
+	if kind == "hit":
+		hit_flash_s = HIT_FLASH_S
 
 
 ## Nom de la vue, 1,5 s au centre, à chaque changement (lot R23).
@@ -412,6 +482,9 @@ func apply(values: Dictionary, bike_pos: Vector3, delta: float) -> void:
 	_layer.visible = visible
 	if not visible:
 		return
+	# dégâts reçus : les bords rouges se rallument tant que le bouclier baisse (au plus toutes les 0,45 s)
+	if bool(values.get("hurt", false)) and hurt_flash_s < HURT_FLASH_S * 0.5:
+		hurt_flash_s = HURT_FLASH_S
 	position = bike_pos
 	var g: Dictionary = values.get("guide", {})
 	var phase := str(values.get("phase", ""))
@@ -435,7 +508,7 @@ func apply(values: Dictionary, bike_pos: Vector3, delta: float) -> void:
 		float(values.get("adrenaline_z_mark", 0.5)), false)
 	_bar("wbal", phase != "CORRIDOR", float(values.get("wbal_pct", 0.0)) / 100.0, "energy",
 		"%d %%" % int(roundf(float(values.get("wbal_pct", 0.0)))), -1.0, bool(values.get("wbal_low", false)))
-	holo.text = "Vitesse %s   %s FTP   %s rpm   %s" % [values.get("gear_text", ""), values.get("power_pct_text", ""),
+	holo.text = "Vitesse %s   %s   %s rpm   %s" % [values.get("gear_text", ""), values.get("power_text", ""),
 		values.get("cadence_text", ""), values.get("posture_text", "")]
 	holo.modulate = Palette.color(str(values.get("posture_token", "neutral")), adapted)
 	var trend := str(g.get("adr_trend", ""))
@@ -495,6 +568,17 @@ func _side(g: Dictionary, choosing: bool) -> void:
 
 
 func _hint(g: Dictionary) -> void:
+	var rules := str(g.get("rules", ""))
+	if rules != rules_label.text:
+		rules_label.text = rules
+		rules_label.reset_size()
+		rules_label.position.x = rules_strip.size.x if rules_strip.size.x > 0.0 else 1280.0
+	rules_strip.visible = rules != ""
+	var call := str(g.get("z_call", ""))
+	if call != "" and not z_call_label.visible:
+		_z_call_t = 0.0
+	z_call_label.text = call
+	z_call_label.visible = call != "" and panel.visible
 	hint_label.text = str(g.get("hint", ""))
 	hint_panel.visible = hint_label.text != ""
 	var tone := str(g.get("tone", "info"))
@@ -572,6 +656,22 @@ func _tick(delta: float) -> void:
 	gear_panel.scale = Vector2.ONE * (1.0 + 0.12 * gear_flash_s / GEAR_FLASH_S)
 	gear_panel.pivot_offset = gear_panel.size * 0.5
 	view_left_s = maxf(view_left_s - delta, 0.0)
+	hit_flash_s = maxf(hit_flash_s - delta, 0.0)
+	if rules_strip.visible:
+		rules_label.position.x -= RULES_SPEED * delta
+		if rules_label.position.x < -rules_label.size.x:
+			rules_label.position.x = rules_strip.size.x
+	hurt_flash_s = maxf(hurt_flash_s - delta, 0.0)
+	(hurt_flash.material as ShaderMaterial).set_shader_parameter("strength", 0.85 * hurt_flash_s / HURT_FLASH_S)
+	(hurt_flash.material as ShaderMaterial).set_shader_parameter("edge", HURT_EDGE)
+	hit_flash.color.a = 0.45 * hit_flash_s / HIT_FLASH_S
+	if z_call_label.visible:
+		# battement 3 fois par seconde : l'invite grossit et s'éclaire, pour qu'on la voie du coin de l'œil
+		_z_call_t += delta
+		var beat := 0.5 + 0.5 * sin(TAU * 3.0 * _z_call_t)
+		z_call_label.pivot_offset = z_call_label.size * 0.5
+		z_call_label.scale = Vector2.ONE * (1.0 + 0.12 * beat)
+		z_call_label.modulate.a = 0.7 + 0.3 * beat
 	view_label.visible = view_left_s > 0.0
 	legend_left_s = maxf(legend_left_s - delta, 0.0)
 	legend_panel.visible = legend_left_s > 0.0 and panel.visible   # jamais sur les cartes du couloir
