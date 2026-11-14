@@ -30,6 +30,8 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any, NamedTuple
 
+from .route_mirror import MirroredRoute, flip_s
+
 MASK32 = 0xFFFFFFFF
 
 SLOT_M = 250.0
@@ -351,7 +353,53 @@ class RoadCyclists:
         self.half_width_at = half_width_at
         self.vehicles: list[Any] = []     # circulation du core (lot AS6) : attributs/clés `s`, `dir`
         self.groups: list[Group] = []
+        self.direction = 1                # sens de marche du cycliste (lot N23) : -1 à rebours, `route` retourné
+        self.base_route = route
+        self._base_climbs = list(self.climbs)
         self.reset()
+
+    def model_s(self, s: float) -> float:
+        """Abscisse du parcours `s` dans le repère du modèle (`u = L - s` à rebours, lot N23) ; réciproque."""
+        return s if self.direction > 0 else flip_s(self.route.length_m, s)
+
+    def on_route(self, r: Rider) -> Rider:
+        """Copie de `r` dans le repère du parcours (abscisse, sens, écart à l'axe), pour l'état et l'abri."""
+        if self.direction > 0:
+            return r
+        return r._replace(s=self.model_s(r.s), dir=-r.dir, lane_m=-r.lane_m)
+
+    def set_direction(self, direction: int, rider_s: float | None = None) -> bool:
+        """Lot N23 : le cycliste a fait demi-tour (`rider_s` : sa place sur le parcours). Le modèle roule ensuite
+        sur le parcours retourné ; les groupes déjà là restent à leur place : ceux qui allaient dans son sens
+        viennent en face, ceux d'en face qui l'avaient croisé roulent devant lui (cas `ahead`), ceux d'en face
+        pas encore croisés, désormais dans son dos, quittent la route. Montées : aucune à rebours
+        tant que celles du retour ne sont pas détectées (lot N24). Vrai si le sens a changé."""
+        d = -1 if direction < 0 else 1
+        if d == self.direction:
+            return False
+        length = self.base_route.length_m
+        self.direction = d
+        self.route = self.base_route if d > 0 else MirroredRoute(self.base_route)
+        self.climbs = list(self._base_climbs) if d > 0 else []
+        rider = None if rider_s is None else self.model_s(rider_s)
+        kept = []
+        for g in self.groups:
+            g.s, g.dir = flip_s(length, g.s), -g.dir
+            for m in g.members:
+                m.lateral = -m.lateral
+                m.lat_v = -m.lat_v
+            g.pass_lat, g.last_rel, g.behind_t, g.held = None, None, 0.0, False
+            if g.dir < 0:
+                g.case, g.side = "oncoming", "left"
+            elif rider is not None and g.s < rider:
+                continue                      # désormais dans son dos, dans son sens : il quitte la route
+            else:
+                g.case, g.side, g.passed = "ahead", "right", False
+            kept.append(g)
+        self.groups = kept
+        self._started = False   # cases suivantes tirées depuis la place du cycliste dans le nouveau repère
+        self._last_bots_s = []
+        return True
 
     def reset(self) -> None:
         self.groups = []
@@ -422,7 +470,7 @@ class RoadCyclists:
     def _half_at(self, s: float) -> float:
         half = self.road_width_m * 0.5
         if self.half_width_at is not None:
-            half = min(half, float(self.half_width_at(s)))
+            half = min(half, float(self.half_width_at(self.model_s(s))))
         return max(half, EDGE_IN_M)
 
     @staticmethod
@@ -452,12 +500,13 @@ class RoadCyclists:
             if ev and self.rider_count() + ev["size"] <= self.budget:
                 self._spawn(ev, rider_s, rider_v, bots)
         self._bot_groups = []
+        bot_dir = self.direction   # les bots gardent le sens du parcours : en face à rebours (lot N23)
         for i, (b, b_lat) in enumerate(bots):
             v_b = rider_v
             if i < len(self._last_bots_s) and dt_s > 0.0:
-                v_b = max(0.0, (b - self._last_bots_s[i]) / dt_s)
+                v_b = max(0.0, bot_dir * (b - self._last_bots_s[i]) / dt_s)
             self._bot_groups.append(Group(
-                id=f"bot{i}", case="bot", dir=1, s=float(b), flat_mps=v_b, delta_mps=0.0, power_w=0.0,
+                id=f"bot{i}", case="bot", dir=bot_dir, s=float(b), flat_mps=v_b, delta_mps=0.0, power_w=0.0,
                 speed_mps=v_b, salut=False, bot=True,
                 members=[Member(dl=0.0, col=0, jersey=0, look=0, phase=0.0, index=0, lateral=float(b_lat))]))
         self._last_bots_s = [float(b) for b, _ in bots]
@@ -786,14 +835,19 @@ class RoadCyclists:
         """Liste `riders` de `state` (au centimètre, comme `vehicles` du lot AS6) : au plus STATE_MAX
         cyclistes à moins de NEAR_M, du plus proche au plus loin, `{id, s, dir, v, lane_m, look}` ; `v` est
         positive dans le sens `dir` ; `look` (20 bits) : maillot (`look % 8`) et tenue (`look >> 4`) de P28."""
-        return [{"id": r.id, "s": round(r.s, 2), "dir": r.dir, "v": round(r.v, 2), "lane_m": round(r.lane_m, 2),
-                 "look": r.appearance} for r in self.near(rider_s)]
+        return state_items(self.near(rider_s))
 
     def near(self, rider_s: float) -> list[Rider]:
         """Au plus STATE_MAX cyclistes à moins de NEAR_M du cycliste, du plus proche au plus loin."""
         close = [r for r in self.riders() if abs(r.s - rider_s) < NEAR_M]
         close.sort(key=lambda r: abs(r.s - rider_s))
         return close[:STATE_MAX]
+
+
+def state_items(riders: Iterable[Rider]) -> list[dict[str, Any]]:
+    """Éléments de la liste `riders` de `state` (voir `RoadCyclists.state_list`)."""
+    return [{"id": r.id, "s": round(r.s, 2), "dir": r.dir, "v": round(r.v, 2), "lane_m": round(r.lane_m, 2),
+             "look": r.appearance} for r in riders]
 
 
 def source_id(rider_id: str) -> str:

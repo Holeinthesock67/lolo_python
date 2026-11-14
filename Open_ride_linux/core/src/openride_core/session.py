@@ -3727,7 +3727,7 @@ class CoreSession:
         src = self._world_src
         if src and src[0] is route and traffic_mod.underwater_route(src[2]):
             return None   # sous l'eau (lot SM1) : ni voitures ni cyclistes du décor, comme living_decor.gd
-        if self.traffic is None or self.traffic.route is not route:
+        if self.traffic is None or self.traffic.base_route is not route:
             src = self._world_src
             villages = traffic_mod.load_villages(src[1], src[2], route.length_m) if src and src[0] is route else []
             self.traffic = traffic_mod.Traffic(
@@ -3745,7 +3745,7 @@ class CoreSession:
         traffic = self._traffic_for(route)
         if traffic is None:
             return None
-        if self.road_cyclists is None or self.road_cyclists.route is not route:
+        if self.road_cyclists is None or self.road_cyclists.base_route is not route:
             self.road_cyclists = road_cyclists_mod.RoadCyclists(
                 route, road_cyclists_mod.climbs_for(route, self._segments), traffic.villages,
                 seed=road_cyclists_mod.SEED, half_width_at=self._half_at(route))
@@ -3778,21 +3778,27 @@ class CoreSession:
         near: list[traffic_mod.Vehicle] = []
         riders: list[road_cyclists_mod.Rider] = []
         if traffic is not None:
-            bot_places = [(b.s, draft_mod.BOT_LANE_M if draft_mod.lane_of(b) is None else draft_mod.lane_of(b))
-                          for b in self.bots]
+            # Lot N23 : à rebours, circulation et cyclistes du décor roulent sur le parcours retourné (u = L - s),
+            # où le cycliste avance encore vers les u croissants, sur la droite de son sens de marche ; les bots,
+            # qui gardent le sens du parcours, y viennent en face
+            d = self.physics.direction
+            traffic.set_direction(d)
+            rider_u = traffic.model_s(self.physics.s)
+            bot_places = [(traffic.model_s(b.s), d * (draft_mod.BOT_LANE_M if draft_mod.lane_of(b) is None
+                                                       else draft_mod.lane_of(b))) for b in self.bots]
             # Lot AS7 : cyclistes du décor d'abord, comme living_decor.gd, qui laissent la place aux bots ;
             # ils voient les véhicules du pas précédent et sont des obstacles pour la circulation
             cyclists = self._road_cyclists_for(route)
             if cyclists is not None:
+                cyclists.set_direction(d, self.physics.s)
                 cyclists.vehicles = traffic.vehicles
-                cyclists.update(self.physics.s, self.physics.v, dt, bots=bot_places)
-                riders = cyclists.near(self.physics.s)
-            others = [traffic_mod.Other(s, lat) for s, lat in bot_places]
+                cyclists.update(rider_u, self.physics.v, dt, bots=bot_places)
+                riders = [cyclists.on_route(r) for r in cyclists.near(rider_u)]
+            others = [traffic_mod.Other(s, lat, d) for s, lat in bot_places]
             others += [traffic_mod.Other(r.s, r.lane_m, r.dir) for r in (cyclists.riders() if cyclists else [])]
-            d = self.physics.direction   # à rebours (lot N17) : le cycliste roule sur l'autre moitié de la route
-            others.append(traffic_mod.Other(self.physics.s, d * self._lane.m, d))
-            traffic.update(self.physics.s, self.physics.v, dt, others=others)
-            near = traffic.near(self.physics.s)
+            others.append(traffic_mod.Other(rider_u, self._lane.m, 1))
+            traffic.update(rider_u, self.physics.v, dt, others=others)
+            near = [traffic.on_route(v) for v in traffic.near(rider_u)]
         ws = self._wind_sample if self.wind.active else None
 
         def cross_at(heading: float) -> float:
@@ -3875,7 +3881,7 @@ class CoreSession:
             return
         cars = [v for v in self._escorts if abs(v.s - self.physics.s) < traffic_mod.NEAR_M]
         if traffic is not None:
-            cars += traffic.near(self.physics.s)
+            cars += [traffic.on_route(v) for v in traffic.near(traffic.model_s(self.physics.s))]
         if traffic is not None or cars:
             self.state.vehicles = traffic_mod.state_list(cars[:traffic_mod.NEAR_MAX])
 
@@ -3884,7 +3890,8 @@ class CoreSession:
         cyclists = self.road_cyclists
         self.state.riders = None
         if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == 0:
-            self.state.riders = cyclists.state_list(self.physics.s)
+            self.state.riders = road_cyclists_mod.state_items(
+                cyclists.on_route(r) for r in cyclists.near(cyclists.model_s(self.physics.s)))
 
     def _fill_wind_frame(self) -> None:
         """Champ `wind` une trame sur quinze, jamais dans la trame qui porte `devices` (taille de la trame)."""

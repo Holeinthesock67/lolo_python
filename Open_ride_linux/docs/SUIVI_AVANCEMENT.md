@@ -405,6 +405,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Bots réglés depuis les menus (lot N18, PR du 8 novembre) : écran Prêt déjà livré (O7, O35, PL1) et gardé par profil (O32) ; écran de pause, commande `set_bots` (révision 1.9) et ligne `bots` du journal dans la PR ; pas de liste en double dans Réglages ni `config.toml` (choix du propriétaire du 8 novembre) ; captures 3 qualités à valider.
 - [ ] Grand Prix sans frôlement entre coureurs (lot GP12, PR du 12 novembre) : voie imposée qui double et s'écarte, freinage roue contre roue après les objets ; 40 courses simulées sans contact ; banc PC low, medium, high à faire.
 - [ ] Décor lisible après un demi-tour : bornes et panneau de col des deux côtés, bandeaux de portique à deux faces (lot N21, en PR le 8 novembre).
+- [ ] Voitures, camions, tracteurs et cyclistes du décor aussi après un demi-tour (lot N23, en PR le 14 novembre).
 
 ### Version 2.0 : segments, bonus et maillots (série T)
 - [x] Contrat (T1), détection (T2), couche du compilateur (T3) et modules purs (T4, T5, T6, T14, T16), 27 octobre.

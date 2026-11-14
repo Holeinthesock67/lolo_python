@@ -1,0 +1,17 @@
+{
+  "description": "Circulation et cyclistes du décor à rebours (lot N23) : monde de test du village, 4 min en SIM à 300 W, demi-tour sans arrêt par Y maintenu à 60 s, puis retour ; passages forcés du banc toutes les 20 s (tracteur lent devant, camion qui double), dans le sens de marche après le demi-tour aussi ; captures toutes les 10 s, en low, medium et high.",
+  "trainer": {"appear_at": 0.3, "connect_delay_s": 0.3},
+  "rider": {"strategy": "constante", "watts": 300, "cadence_rpm": 90},
+  "click": {"appear_at": 0.5, "connect_delay_s": 0.3},
+  "hr": {"appear_at": 0.5, "connect_delay_s": 0.2},
+  "events": [
+    {"t": 60, "action": "press", "button": "Y", "duration_s": 1.2}
+  ],
+  "bench": {
+    "world": "village",
+    "duration_s": 240,
+    "every_s": 10,
+    "decor_expect": ["vehicles"],
+    "config": {"ride": {"traffic_bench_s": 20}}
+  }
+}
