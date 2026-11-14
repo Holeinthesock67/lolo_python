@@ -1,0 +1,41 @@
+06:43:11 empreinte avant 74e35470417af6f8a18893ab5f7e6ebd
+06:43:11 tête dfec5e38
+06:43:52 temperate_forest off low
+06:47:00 fin rc=0
+06:47:00 temperate_forest off medium
+06:50:07 fin rc=0
+06:50:07 temperate_forest off high
+06:53:15 fin rc=1
+06:53:15 temperate_forest autumn low
+06:56:23 fin rc=0
+06:56:23 temperate_forest autumn medium
+06:59:31 fin rc=0
+06:59:31 temperate_forest autumn high
+07:02:39 fin rc=0
+07:02:39 temperate_forest winter low
+07:05:47 fin rc=0
+07:05:47 temperate_forest winter medium
+07:08:54 fin rc=0
+07:08:54 temperate_forest winter high
+07:12:02 fin rc=0
+07:12:02 farmland off low
+07:15:10 fin rc=0
+07:15:10 farmland off medium
+07:18:17 fin rc=0
+07:18:17 farmland off high
+07:21:25 fin rc=0
+07:21:25 farmland autumn low
+07:24:33 fin rc=0
+07:24:33 farmland autumn medium
+07:27:41 fin rc=0
+07:27:41 farmland autumn high
+07:30:48 fin rc=0
+07:30:48 farmland winter low
+07:33:55 fin rc=0
+07:33:55 farmland winter medium
+07:37:03 fin rc=0
+07:37:03 farmland winter high
+07:40:10 fin rc=0
+07:40:11 empreinte après 74e35470417af6f8a18893ab5f7e6ebd
+07:40:11 clone bac8ec77
+07:40:11 FIN
