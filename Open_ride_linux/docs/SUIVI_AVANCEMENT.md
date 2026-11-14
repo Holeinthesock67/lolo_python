@@ -404,7 +404,8 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Demi-tour sur la route depuis l'écran de pause (lot N17) : en PR le 8 novembre (contrat IPC 1.9, core, écran de pause, caméra et HUD dans le nouveau sens ; critères 2 et 3 vérifiés en simulé par `core/tests/test_u_turn.py`, critère 4 par `test_menu_model.gd` et `test_menu_flow.gd` ; captures des 3 qualités à valider).
 - [ ] Bots réglés depuis les menus (lot N18, PR du 8 novembre) : écran Prêt déjà livré (O7, O35, PL1) et gardé par profil (O32) ; écran de pause, commande `set_bots` (révision 1.9) et ligne `bots` du journal dans la PR ; pas de liste en double dans Réglages ni `config.toml` (choix du propriétaire du 8 novembre) ; captures 3 qualités à valider.
 - [ ] Grand Prix sans frôlement entre coureurs (lot GP12, PR du 12 novembre) : voie imposée qui double et s'écarte, freinage roue contre roue après les objets ; 40 courses simulées sans contact ; banc PC low, medium, high à faire.
-- [ ] Décor lisible après un demi-tour : bornes et panneau de col des deux côtés, bandeaux de portique à deux faces (lot N21, en PR le 8 novembre).
+- [x] Décor lisible après un demi-tour : bornes et panneau de col des deux côtés, bandeaux de portique à deux faces (lot N21, fusionné le 9 novembre, #812).
+- [ ] Décor chargé devant à rebours : portiques, herbe, détails du sol et gags WTF dans le sens de la marche (lot N22, en PR le 14 novembre).
 
 ### Version 2.0 : segments, bonus et maillots (série T)
 - [x] Contrat (T1), détection (T2), couche du compilateur (T3) et modules purs (T4, T5, T6, T14, T16), 27 octobre.
