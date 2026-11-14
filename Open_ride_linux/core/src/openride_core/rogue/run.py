@@ -21,7 +21,7 @@ from .wbal import WbalState, wbal_initial, wbal_step
 
 WARMUP, ROOM, CORRIDOR, BOSS = "WARMUP", "ROOM", "CORRIDOR", "BOSS"
 COOLDOWN, RESULTS = "COOLDOWN", "RESULTS"
-WINDOW_KINDS = ("arch", "strike_target", "parry_zone", "pad", "purge", "tunnel")
+WINDOW_KINDS = ("arch", "strike_target", "parry_zone", "pad", "purge", "tunnel", "rock")   # rock : lot R23
 
 
 @dataclass(frozen=True)

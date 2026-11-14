@@ -175,19 +175,23 @@ func _run() -> void:
 	_check(g5.take_toasts()[0]["title"] == "TOUCHÉ ! Coup non paré", "coup non paré : « TOUCHÉ ! »")
 	view2.queue_free()
 
-	# Invite « Z : FRAPPE ! » tant que Z agit maintenant, rien en approche ni sans adrénaline.
+	# Invite « Z : FRAPPE ! » d'après les fenêtres du core, tant que Z agit ; rien en approche, sans adrénaline, en surchauffe.
+	var wins := [{"kind": "strike_target", "s_start": 497.0, "s_end": 510.0}, {"kind": "parry_zone", "s_start": 800.0, "s_end": 820.0},
+		{"kind": "rock", "s_start": 900.0, "s_end": 903.0}]
 	var g4 = GuideModel.new()
-	g4.set_room(3, [{"kind": "strike_target", "s_m": 500.0, "len_m": 10.0, "param": null},
-		{"kind": "parry_zone", "s_m": 800.0, "len_m": 20.0, "param": null}])
-	o = g4.compute(st, _rogue({"s_room": 505.0, "adrenaline": 60.0, "archetype": "grimpeur"}), 72.0, [])
+	o = g4.compute(st, _rogue({"windows": wins, "s_room": 505.0, "adrenaline": 60.0, "archetype": "grimpeur"}), 72.0, [])
 	_check(o["z_call"] == "Z : FRAPPE !", "cible sous la roue, Z prêt : « Z : FRAPPE ! »")
-	o = g4.compute(st, _rogue({"s_room": 505.0, "adrenaline": 20.0, "archetype": "grimpeur"}), 72.0, [])
+	o = g4.compute(st, _rogue({"windows": wins, "s_room": 505.0, "adrenaline": 20.0, "archetype": "grimpeur"}), 72.0, [])
 	_check(o["z_call"] == "", "sans adrénaline : pas d'invite")
-	o = g4.compute(st, _rogue({"s_room": 450.0, "adrenaline": 60.0, "archetype": "grimpeur"}), 72.0, [])
+	o = g4.compute(st, _rogue({"windows": wins, "s_room": 505.0, "adrenaline": 20.0, "archetype": "diesel"}), 72.0, [])
+	_check(o["z_call"] == "Z : FRAPPE !", "Diesel : charges de tunnel, invite sans adrénaline")
+	o = g4.compute(st, _rogue({"windows": wins, "s_room": 450.0, "adrenaline": 60.0, "archetype": "grimpeur"}), 72.0, [])
 	_check(o["z_call"] == "", "cible à 50 m : pas encore d'invite")
-	o = g4.compute(st, _rogue({"s_room": 805.0, "adrenaline": 20.0, "archetype": "grimpeur"}), 72.0, [])
+	o = g4.compute(st, _rogue({"windows": wins, "s_room": 805.0, "adrenaline": 20.0, "archetype": "grimpeur"}), 72.0, [])
 	_check(o["z_call"] == "Z : PARADE !", "zone de parade : « Z : PARADE ! »")
-	o = g4.compute(st, _rogue({"s_room": 505.0, "adrenaline": 60.0, "overheat": true, "archetype": "grimpeur"}), 85.0, [])
+	o = g4.compute(st, _rogue({"windows": wins, "s_room": 901.0, "adrenaline": 20.0, "archetype": "grimpeur"}), 72.0, [])
+	_check(o["z_call"] == "Z : ROCHER !", "rocher : « Z : ROCHER ! »")
+	o = g4.compute(st, _rogue({"windows": wins, "s_room": 505.0, "adrenaline": 60.0, "overheat": true, "archetype": "grimpeur"}), 85.0, [])
 	_check(o["z_call"] == "", "surchauffe : pas d'invite (Z bloqué)")
 
 	# Consignes en watts dès que la FTP est connue (lot R23 : jamais de % à calculer).

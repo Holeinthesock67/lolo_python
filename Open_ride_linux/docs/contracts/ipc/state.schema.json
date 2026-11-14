@@ -1727,7 +1727,8 @@
                   "parry_zone",
                   "pad",
                   "purge",
-                  "tunnel"
+                  "tunnel",
+                  "rock"
                 ]
               },
               "s_start": {

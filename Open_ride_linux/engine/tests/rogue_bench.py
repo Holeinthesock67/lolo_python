@@ -142,7 +142,7 @@ def moments(trace: list[tuple[float, dict]]) -> list[tuple[int, str]]:
             # lot R23 (retours du 14 novembre midi) : invite de Z, carte déclenchée, dégâts reçus
             s_room = float(rg.get("s_room") or 0.0)
             if ph in FIGHT and float(rg.get("adrenaline") or 0.0) >= 50.0 and any(
-                    w.get("kind") == "strike_target" and w["s_start"] - 3.0 <= s_room <= w["s_end"] + 3.0
+                    w.get("kind") == "strike_target" and w["s_start"] <= s_room <= w["s_end"]
                     for w in rg.get("windows") or []):
                 add(i, "invite_z")
             if "card_on" in ev:

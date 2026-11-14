@@ -345,8 +345,6 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 			hint = "Vitesses %s par le Saboteur : Z sur la borne pour les débloquer" % ("bloquées" if bool(hack.get("locked", false)) else "imposées")
 			tone = "warn"
 			keys[0] = ["Z", "débloquer (sur la borne)", "on"]   # lot R23 : le bouton dit ce que Z fait maintenant
-			if not ups.is_empty() and str(ups[0]["kind"]) == "purge" and bool(ups[0]["inside"]):
-				out["z_call"] = Z_CALL["purge"]
 		elif not ups.is_empty():
 			var u: Dictionary = ups[0]
 			var d := int(round(float(u["d_m"])))
@@ -355,8 +353,6 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 				"strike_target":
 					if now:
 						hint = "Appuie sur Z maintenant" if z_ready or str(rogue.get("archetype", "")) == "diesel" else "Cible Z : adrénaline %d/50, pas encore assez" % adr
-						if z_ready or str(rogue.get("archetype", "")) == "diesel":
-							out["z_call"] = Z_CALL["strike_target"]
 					else:
 						hint = "Cible Z dans %d m : appuie sur Z quand la roue passe sur l'anneau" % d
 					if z_ready:
@@ -371,14 +367,10 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 					hint = ("Pavé : vitesse 10+ et ≥ %s" % watts(float(u["param"] if u["param"] != null else 1.4) * 100.0, ftp_w)) + ("" if now else " (dans %d m)" % d)
 				"parry_zone":
 					hint = "Parade : relance la puissance puis Z" if now else "Zone de parade dans %d m : prépare une relance puis Z" % d
-					if now:
-						out["z_call"] = Z_CALL["parry_zone"]
 				"purge":
 					hint = "Borne de déblocage : Z seulement si tes vitesses sont bloquées" if now else "Borne de déblocage dans %d m" % d
 				"rock":
 					hint = "Rocher : Z (charges de Roc)" if now else "Rocher dans %d m : roule en Roc pour charger, puis Z" % d
-					if now:
-						out["z_call"] = Z_CALL["rock"]
 		if hint == "":
 			if z_ready:
 				hint = "Z prêt : vise la prochaine cible"
@@ -389,6 +381,32 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 	out["hint"] = hint
 	out["keys"] = keys
 	out["tone"] = tone
+	out["z_call"] = z_call(rogue, z_ready, bool(rogue.get("overheat", false))) if phase in FIGHT_PHASES else ""
+
+
+## Invite de Z (lot R23) : d'après les fenêtres d'acceptation du core (`windows`), la même règle que le core, et non
+## d'après la consigne affichée : une cible frappable (adrénaline prête, ou charges du Diesel), une zone de parade, un
+## rocher, une borne de déblocage pendant un piratage. Rien en surchauffe (Z bloqué).
+static func z_call(rogue: Dictionary, z_ready: bool, overheat: bool) -> String:
+	if overheat:
+		return ""
+	var s := float(rogue.get("s_room", 0.0))
+	var hacked := rogue.get("hack", null) is Dictionary
+	for w in rogue.get("windows", []):
+		if not (w is Dictionary) or s < float(w.get("s_start", 0.0)) or s > float(w.get("s_end", -1.0)):
+			continue
+		match str(w.get("kind", "")):
+			"strike_target":
+				if z_ready or str(rogue.get("archetype", "")) == "diesel":
+					return Z_CALL["strike_target"]
+			"parry_zone":
+				return Z_CALL["parry_zone"]
+			"rock":
+				return Z_CALL["rock"]
+			"purge":
+				if hacked:
+					return Z_CALL["purge"]
+	return ""
 
 
 ## Puissance en texte (lot R23 : le joueur lit des watts, jamais un % à calculer) : « 175 W », arrondi à `step` W
