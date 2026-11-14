@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "~/mesures-2026-11-01-auto/tmp/wt_row6main/Open_ride_linux/engine/tests/menu_bench.py", line 924, in <module>
+    code = main()
+  File "~/mesures-2026-11-01-auto/tmp/wt_row6main/Open_ride_linux/engine/tests/menu_bench.py", line 902, in main
+    doc = load_scenario(path)
+  File "~/mesures-2026-11-01-auto/tmp/wt_row6main/Open_ride_linux/engine/tests/menu_bench.py", line 220, in load_scenario
+    raise ScenarioError(f"{path.name} : clés inconnues {sorted(unknown)}")
+ScenarioError: ow_6km.json : clés inconnues ['caches_reels', 'reseau']
