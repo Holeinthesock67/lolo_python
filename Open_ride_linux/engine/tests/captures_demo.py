@@ -12,7 +12,7 @@
    approche du panneau
    du sommet (100, 70, 50, 40 et 30 m avant, en 1920×1080 pour que son nom se lise). Le sommet est le point le plus
    haut de la route ; un parcours sans montée n'a que les captures du début. Un circuit (lot O38) a en plus des
-   captures aux quarts du tour ; un tour à plusieurs biomes (lot DB1), à 150, 400 et 1 000 m de chaque bloc de 2 km.
+   captures aux quarts du tour ; un parcours en blocs de 2 km (lots DB1, DJ1), à 150, 400 et 1 000 m de chaque bloc.
 3. `menu_bench.py --scenario parcours_demo --captures ecrans` : liste des parcours avec leurs noms et
    écran « Prêt » de chacun.
 4. `DOSSIER/planche.html` : toutes les captures, rangées par parcours et par qualité.
@@ -36,8 +36,9 @@ from pathlib import Path
 TESTS_DIR = Path(__file__).resolve().parent
 ENGINE_DIR = TESTS_DIR.parent
 REPO = ENGINE_DIR.parent
-# Jeu de base (lot DB1) : tour, côte et alpin sortis le 12 novembre, tour gravel le 9 novembre (recette seule).
-ROUTES = ("demo", "demo-biomes-paysages", "demo-circuit")
+# Jeu de base (lots DB1 et DJ1) : tour, côte et alpin sortis le 12 novembre, tour gravel le 9 novembre (recette
+# seule) ; route des Érables (Japon) ajoutée le 13 novembre.
+ROUTES = ("demo", "demo-biomes-paysages", "demo-japon", "demo-circuit")
 START_MARKS_M = (150.0, 400.0)
 SUMMIT_BEFORE_M = (100.0, 70.0, 50.0, 40.0, 30.0)   # plusieurs : un spectateur peut cacher le panneau (r811c)
 MIN_CLIMB_M = 30.0                 # dénivelé sous lequel le parcours n'a pas de sommet à montrer
@@ -73,7 +74,7 @@ def marks_for(world: Path) -> tuple[list[float], float]:
         marks += [route["length_m"] * k / LOOP_PARTS for k in range(1, LOOP_PARTS)]
     info = world.with_suffix(".json")   # résumé écrit par demo-biomes à côté du parcours
     biomes = json.loads(info.read_text(encoding="utf-8")).get("biomes", []) if info.is_file() else []
-    if len(set(biomes)) > 1 and route.get("type") != "loop":   # tour (lot DB1) : chaque bloc, entrée et milieu
+    if len(biomes) > 1 and route.get("type") != "loop":   # blocs de 2 km (lots DB1, DJ1) : chaque bloc, entrée et milieu
         marks += [k * BLOCK_M + d for k in range(len(biomes)) for d in BLOCK_MARKS_M
                   if k * BLOCK_M + d < route["length_m"] and k * BLOCK_M + d not in marks]
     if alt[top] - min(alt) >= MIN_CLIMB_M and summit > max(START_MARKS_M) + max(SUMMIT_BEFORE_M):
