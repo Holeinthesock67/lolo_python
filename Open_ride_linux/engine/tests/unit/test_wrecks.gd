@@ -6,6 +6,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_wrecks.gd
 
 const Wrecks := preload("res://scripts/wrecks.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -106,9 +107,9 @@ func _test_points() -> void:
 	var t0 := Time.get_ticks_usec()
 	for f in range(60):
 		w.update(Vector3(float(f), 0.0, 0.0))
-	var per_frame_us := float(Time.get_ticks_usec() - t0) / 60.0
+	var per_frame_ms := float(Time.get_ticks_usec() - t0) / 60.0 / 1000.0
 	_check(w.active_count() == Wrecks.MAX_ACTIVE, "10 épaves : %d affichées au plus" % Wrecks.MAX_ACTIVE)
-	_check(per_frame_us < 200.0, "coût par image %.1f µs (< 200 µs)" % per_frame_us)
+	_check(PerfBudget.check("wrecks_frame", per_frame_ms), "mise à jour de 10 épaves en %.4f ms par image" % per_frame_ms)
 	w.set_points([])
 	w.update(Vector3.ZERO)
 	_check(w.active_count() == 0, "parcours sans épave : rien d'affiché")
