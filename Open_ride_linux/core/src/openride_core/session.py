@@ -3514,7 +3514,9 @@ class CoreSession:
             self.driver.set_target_power(erg.target_w)
         else:
             # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
-            target = self.gearing.effective_grade(ahead, self.difficulty_pct / 100.0)
+            # Piste : toute la gamme décalée vers le dur (`[velodrome] gear_scale`, 14 novembre).
+            gear_scale = self.cfg.velodrome.gear_scale if track is not None else 1.0
+            target = self.gearing.effective_grade(ahead, self.difficulty_pct / 100.0, gear_scale)
             if (self.wind.active and wcfg.feel == "grade") or draft > 0.0:
                 # Vent et abri ressentis : supplément de pente avant la limitation de variation et les
                 # bornes. Avec feel = "ftms", le vent part dans la commande 0x11 et seul l'abri passe ici.

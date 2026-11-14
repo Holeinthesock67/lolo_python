@@ -189,6 +189,7 @@ def _trace(tmp: Path, monkeypatch: pytest.MonkeyPatch, mode: str, toml: str = ""
     (tmp / "powerups.toml").write_text(toml, encoding="utf-8")
     cfg = Config()
     cfg.powerups.mode = mode
+    cfg.gearing.ratio_min, cfg.gearing.ratio_max = 0.65, 2.00   # braquets des empreintes (avant le 14 novembre)
     cfg.ipc.port_state, cfg.ipc.port_commands = 7990, 7991
     s = CoreSession(cfg, driver=MockDriver(base_power_w=250.0, ramp_amplitude_w=0.0), inputs=[NullProvider()],
                     journal_dir=tmp / "j", routes_root=tmp / "r", workouts_dir=tmp / "w",
