@@ -76,6 +76,7 @@ const RIDER_LATERAL_M := RoadBuilder.RIDER_LATERAL_M
 const BOT_LATERAL_M := RoadBuilder.BOT_LATERAL_M
 const BOT_LOOK_M := 30.0
 const FALL_BACK_MPS := 0.5
+const CROSS_S := 3.0   # lot DB1 : un `overtake` met 3 s à passer de droite à gauche du cycliste (2,6 m, SIDE_*)
 const CATCH_M := 4.0                  # un groupe en rattrape un autre à 4 m de sa queue (lot P32)
 const LANE_FREE_M := 100.0
 const MIN_CENTRE_M := MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M
@@ -490,11 +491,17 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 	var rel_now := float(g["s"]) - rider_s
 	if case_name == "overtake":
 		var tail_now := rel_now - float(members.size() - 1) * FILE_GAP_M
+		# Lot DB1 : il ne se met sur la gauche (en traversant la ligne du cycliste) qu'avec la place de finir son écart
+		# avant d'arriver sur lui ; plus près derrière, il se laisse distancer jusqu'à l'avoir ; déjà à sa hauteur ou
+		# devant (gêné dans une montée), il reste à droite et se laisse doubler
+		var cross_m := FILE_GAP_M + maxf(float(g["speed_mps"]) - rider_v, 0.0) * CROSS_S
 		if str(g["side"]) == "right" and rel_now >= -PASS_START_M and tail_now < MERGE_AHEAD_M:
 			if near:
 				spd_now = minf(spd_now, rider_v)       # un bot à côté : attend derrière, sur la droite
-			else:
+			elif rel_now < -cross_m:
 				g["side"] = "left"
+			elif rel_now < 0.0:
+				spd_now = minf(spd_now, rider_v - FALL_BACK_MPS)
 		elif str(g["side"]) == "left" and tail_now > MERGE_AHEAD_M and not near:
 			g["side"] = "right"
 	# Lot P32 : un groupe qui en rattrape un autre du même sens le double vers l'axe si la voie d'en face est
@@ -521,10 +528,16 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 				var h_lat := _group_lateral(h)
 				if absf(pass_lat - h_lat) < MIN_CENTRE_M:
 					pass_lat = h_lat - signf(h_lat) * MIN_CENTRE_M
+		# Lot DB1 : `slowest` (tous, devant et derrière) décide s'il double ; `limit` (ceux de devant seuls, à la vitesse
+		# où ils avancent vraiment) règle sa vitesse : un groupe ne ralentit jamais pour celui qui le suit, et celui qui
+		# suit se règle sur l'allure réelle du premier, gêné lui-même, pas sur l'annoncée
 		var slowest := INF
+		var limit := INF
 		var blocking := false     # encore sur la trajectoire d'un groupe qu'il n'a pas dépassé
 		for h in near_groups:
 			slowest = minf(slowest, float(h["speed_mps"]))
+			if (float(h["s"]) - float(g["s"])) * dir > 0.0:
+				limit = minf(limit, _pace(h))
 			# encore derrière lui, un de ses membres sur sa ligne (la queue se décale après la tête)
 			if (float(g["s"]) - float(h["s"])) * dir < 0.0 and _closest_lateral(g, _group_lateral(h)) < MIN_CENTRE_M - 0.05:
 				blocking = true
@@ -537,23 +550,26 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 			if through or (absf(pass_lat - h_lat) < MIN_CENTRE_M - 0.05 and absf(pass_lat - h_lat) < absf(cur - h_lat)):
 				crossing = true
 				slowest = minf(slowest, float(h["speed_mps"]))
+				if (float(h["s"]) - float(g["s"])) * dir > 0.0:
+					limit = minf(limit, _pace(h))
 				if (float(g["s"]) - float(h["s"])) * dir < 0.0:
 					blocking = true
 		var faster := spd_now > slowest
 		var out := not blocking     # déjà écarté de ceux qu'il double : il finit
 		if crossing:
 			if blocking:
-				spd_now = minf(spd_now, slowest - FALL_BACK_MPS)
+				spd_now = minf(spd_now, limit - FALL_BACK_MPS)
 		elif faster and (out or _lane_free_for(g, rider_s) and (dir == -1 or absf(pass_lat - RIDER_LATERAL_M) >= MIN_CENTRE_M
 				or absf(float(g["s"]) - rider_s) > PASS_START_M)):
 			if absf(pass_lat - own) > 1e-3:
 				g["pass_lat"] = pass_lat
 			if blocking:
-				spd_now = minf(spd_now, slowest)
+				spd_now = minf(spd_now, limit)
 		elif blocking or not faster:
-			spd_now = minf(spd_now, slowest - FALL_BACK_MPS)
+			spd_now = minf(spd_now, limit - FALL_BACK_MPS)
 	spd_now = _yield_to_core(g, spd_now, rider_s, bots)
 	g["s"] = float(g["s"]) + float(dir) * spd_now * dt_s
+	g["moved_mps"] = maxf(spd_now, 0.0)
 	var rel := float(g["s"]) - rider_s
 	var rel0 := float(g.get("last_rel", rel))
 	g["last_rel"] = rel
@@ -583,6 +599,12 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 			else:
 				g["behind_t"] = 0.0
 			g["best_rel"] = maxf(float(g["best_rel"]), rel)
+
+
+## Lot DB1 : vitesse à laquelle un groupe avance vraiment (celle de son dernier pas, gênes comprises), sinon
+## l'annoncée ; un bot (`_bot_groups`) n'a que celle-ci.
+func _pace(h: Dictionary) -> float:
+	return float(h.get("moved_mps", h["speed_mps"]))
 
 
 ## Lot AS8 (recette rPK1 du 13/11 : contacts « ahead / core » et « oncoming / core » vers 60 m sur les cols) :
@@ -755,6 +777,16 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 		return
 	_core_seq = seq
 	var full := list.size() >= CORE_LIST_MAX
+	# Lot DB1 (banc r866b) : liste pleine, le core ne donne que les CORE_LIST_MAX plus proches ; un cycliste qu'il ne
+	# donne pas est plus loin que le plus loin de la liste : une copie de l'engine plus près (FILE_GAP_M de marge)
+	# est à une place périmée et quitte la route, au lieu de rouler au travers de ceux du core
+	var reach := NEAR_M - CORE_MARGIN_M
+	if full:
+		reach = 0.0
+		for item in list:
+			if typeof(item) == TYPE_DICTIONARY:
+				reach = maxf(reach, absf(float(item.get("s", rider_s)) - rider_s))
+		reach += FILE_GAP_M
 	var by_id := {}
 	for g in groups:
 		if str(g["case"]) == "core":
@@ -807,7 +839,7 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 			cm["col"] = 0
 			members.append(cm)
 		for m in cg["members"]:
-			if not seen.has(str(m["id"])) and _still_on_road(cg, m, rider_s, full):
+			if not seen.has(str(m["id"])) and _still_on_road(cg, m, rider_s, reach):
 				members.append(m)
 		cg["members"] = members
 		cg["dir"] = dir
@@ -823,7 +855,7 @@ func sync_core(list: Array, seq: int, rider_s: float) -> void:
 			continue
 		var members := []
 		for m in g["members"]:
-			if not seen.has(str(m["id"])) and _still_on_road(g, m, rider_s, full):
+			if not seen.has(str(m["id"])) and _still_on_road(g, m, rider_s, reach):
 				members.append(m)
 		if members.is_empty():
 			continue
@@ -857,11 +889,11 @@ func _to_decor(g: Dictionary) -> void:
 		m.erase("lane_rate")
 
 
-## Faux si le core dit que le membre `m` du groupe `g` n'est plus sur la route : liste pas pleine et membre à moins
-## de NEAR_M − CORE_MARGIN_M du cycliste.
-func _still_on_road(g: Dictionary, m: Dictionary, rider_s: float, full: bool) -> bool:
+## Faux si le core dit que le membre `m` du groupe `g` n'est plus sur la route : membre absent de la liste à moins de
+## `reach` du cycliste (NEAR_M − CORE_MARGIN_M ; liste pleine : le plus loin de la liste plus FILE_GAP_M, lot DB1).
+func _still_on_road(g: Dictionary, m: Dictionary, rider_s: float, reach: float) -> bool:
 	var s_m := float(g["s"]) - float(g["dir"]) * float(m["dl"])
-	return full or absf(s_m - rider_s) >= NEAR_M - CORE_MARGIN_M
+	return absf(s_m - rider_s) >= reach
 
 
 ## Membre de l'engine d'identifiant `id`, retiré de son groupe (vide si l'engine ne l'a pas tiré).

@@ -20,11 +20,19 @@ Circuit (lot O38) : `--circuit`, boucle fermée de 3 km dans un seul biome (prai
 `circuit_relief` sous la route et autour (la boucle revient à son altitude de départ), hameau au départ, prés,
 cultures, verger, étang à l'intérieur ; le parcours en boucle du jeu de base (courses en tours, Grand Prix).
 
-Jeu de base (lots O37 et O38) : les quatre parcours de `DEMO_SET` marqués pour le jeu de base portent au menu un nom
-de parcours (`name` du manifeste) et leurs lieux des noms inventés (`PLACE_NAMES`) ; l'identifiant de fichier
-(`demo-biomes-tour`…) ne change pas. Variante de recette (`recette=True`, `--recette`) pour les bancs et les
-fiches de recette : les quatre parcours, dont le tour gravel, nom de parcours égal à l'identifiant et lieux
-« Fictif », comme avant le lot O37 ; jamais dans le jeu de base.
+Tour des nouveaux paysages (lot DB1) : `--paysages`, sept blocs de 2 km qui montrent les biomes et les paysages
+de la 6.0 (`PAYSAGES`) : fjord (côte avec la mer), landes atlantiques, rizières, Japon, île volcanique, canyon
+rouge, hauts plateaux. Chaque bloc porte, en plus de son biome, la variante régionale de ses tuiles (sol, toits
+et paysage du lot U25, champ `variant` de la couche biome), comme `--variant` du compilateur mais bloc par bloc.
+
+Jeu de base (lots O37, O38 et DB1) : les parcours de `DEMO_SET` marqués pour le jeu de base (le tour des nouveaux
+paysages et le circuit) portent au menu un nom de parcours (`name` du manifeste) et leurs lieux des noms inventés
+(`PLACE_NAMES`) ; l'identifiant de fichier ne change pas. Le tour des six paysages, la route de la côte et la
+montée alpine sont sortis du jeu de base par le lot DB1 (décision du propriétaire du 12 novembre) : ils ne
+s'installent plus sur un jeu neuf, restent installés chez un joueur qui les a, et servent aux bancs. Variante de
+recette (`recette=True`, `--recette`) pour les bancs et les fiches de recette : tous les parcours, dont le tour
+gravel, nom de parcours égal à l'identifiant et lieux « Fictif », comme avant le lot O37 ; jamais dans le jeu de
+base.
 Vit dans le compilateur (et non plus dans `engine/tests/`) pour qu'un jeu installé sans les tests produise
 ses parcours de démonstration.
 
@@ -32,6 +40,7 @@ ses parcours de démonstration.
     python -m openride_compiler.demo_biomes --out DOSSIER --tour [--gravel] [--sea] [--recette]
     python -m openride_compiler.demo_biomes --out DOSSIER --biome alpine
     python -m openride_compiler.demo_biomes --out DOSSIER --circuit
+    python -m openride_compiler.demo_biomes --out DOSSIER --paysages [--recette]
     → DOSSIER/<id>.world/ et DOSSIER/<id>.json (parts des biomes et des surfaces)
 
 Origine inventée au degré entier (45° N, 2° E : latitude tempérée de l'hémisphère nord, aucune ville au
@@ -79,11 +88,27 @@ GENERATOR = "openride-demo-biomes"    # `compiler.name` du manifeste (« make_bi
 # Le tour gravel n'est que de recette (décision du propriétaire du 9 novembre) : le gravel étant coupé par
 # défaut, il s'affichait et se roulait comme le tour asphalté.
 # Le circuit (lot O38) est le parcours en boucle du jeu de base : courses en tours, Grand Prix des objets.
-DEMO_SET = (("demo-biomes-tour", "Tour des six paysages", "tour", False, False, True),
+# Lot DB1 (décision du propriétaire du 12 novembre) : le tour des nouveaux paysages remplace au jeu de base le tour
+# des six paysages, la route de la côte et la montée alpine, gardés pour les bancs et les recettes.
+DEMO_SET = (("demo-biomes-paysages", "Tour des nouveaux paysages", "paysages", False, True, True),
+            ("demo-biomes-tour", "Tour des six paysages", "tour", False, False, False),
             ("demo-biomes-gravel", "demo-biomes-gravel", "tour", True, False, False),
-            ("demo-biomes-cote", "Route de la côte", "coast", False, True, True),
-            ("demo-biomes-alpin", "Montée alpine", "alpine", False, False, True),
+            ("demo-biomes-cote", "Route de la côte", "coast", False, True, False),
+            ("demo-biomes-alpin", "Montée alpine", "alpine", False, False, False),
             ("demo-circuit", "Circuit des Prés", "circuit", False, False, True))
+# Tour des nouveaux paysages (lot DB1) : par bloc de 2 km, (biome, paysage du lot U25, sol, toits) ; le paysage,
+# le sol et les toits forment la variante régionale des tuiles du bloc (`None` : ce que donne le biome). Ordre
+# choisi pour que deux blocs voisins ne partagent aucun biome de base de leurs paysages (section `landscapes`
+# du thème) : la transition de 300 m d'un bloc ne prend jamais le paysage de son voisin. Départ au bord de la
+# mer, arrivée au sommet des hauts plateaux.
+PAYSAGES = (("coast", "fjord", "schiste_sombre", "bois_peint"),
+            ("atlantic_heath", None, "granite_gris", "ardoise"),
+            ("farmland", "rizieres", "laterite_rouge", None),
+            ("japan", None, None, "kawara"),
+            ("volcanic", "ile_volcanique", "basalte", None),
+            ("rock_desert", "canyon", "gres_rose", None),
+            ("high_plateau", None, None, None))
+PAYSAGES_BIOMES = tuple(b for b, *_ in PAYSAGES)
 # Circuit de démonstration (lot O38) : boucle de 3 km (un tour de 5 à 7 minutes), prairie, départ au hameau.
 CIRCUIT_M = 3000.0
 CIRCUIT_BIOME = "temperate_grassland"
@@ -100,9 +125,24 @@ PLACE_NAMES = {
     "hameau": ("Hameau des Prés", "Les Granges", "Hameau du Ruisseau"),
     "etang": ("Étang des Saules", "Étang du Moulin", "Étang aux Hérons"),
     "col": ("Col des Edelweiss", "Belvédère du Glacier", "Belvédère des Marmottes"),
+    # Tour des nouveaux paysages (lot DB1) : un bloc par biome, un nom par clé.
+    "fjord": ("Port-Bouleau",),
+    "fjord_vue": ("Belvédère du Fjord",),
+    "lande": ("Hameau des Murets",),
+    "lande_vue": ("Pointe des Ajoncs",),
+    "rizieres": ("Village des Rizières",),
+    "japon": ("Village des Érables",),
+    "japon_vue": ("Belvédère des Cerisiers",),
+    "volcan": ("Cratère des Fumerolles",),
+    "canyon": ("Belvédère du Canyon Rouge",),
+    "plateau": ("Col des Lamas",),
 }
 RECETTE_PLACE_NAMES = {"port": "Port Fictif", "pointe": "Pointe Fictive", "mas": "Mas Fictif",
-                       "hameau": "Hameau Fictif", "etang": "Étang Fictif", "col": "Col Fictif"}
+                       "hameau": "Hameau Fictif", "etang": "Étang Fictif", "col": "Col Fictif",
+                       "fjord": "Port Fictif", "fjord_vue": "Pointe Fictive", "lande": "Hameau Fictif",
+                       "lande_vue": "Pointe Fictive", "rizieres": "Village Fictif", "japon": "Village Fictif",
+                       "japon_vue": "Belvédère Fictif", "volcan": "Cratère Fictif", "canyon": "Belvédère Fictif",
+                       "plateau": "Col Fictif"}
 
 # Pente de la route (%) dans un bloc, selon la position u (m) dans le bloc.
 GRADE = {
@@ -112,8 +152,15 @@ GRADE = {
     "farmland": lambda u: 2.5 * math.sin(2.0 * math.pi * u / 700.0),
     "temperate_forest": lambda u: 4.0 + 1.0 * math.sin(u / 200.0),
     "alpine": lambda u: 7.5 + 1.5 * math.sin(u / 350.0),
+    # Lot DB1 : landes ondulées, vallée japonaise, flanc du volcan, fond de canyon, haut plateau presque plat.
+    "atlantic_heath": lambda u: 1.0 + 1.5 * math.sin(u / 230.0),
+    "japan": lambda u: 3.0 + 2.0 * math.sin(u / 240.0),
+    "volcanic": lambda u: 5.0 + 1.5 * math.sin(u / 300.0),
+    "rock_desert": lambda u: 2.0 + 2.5 * math.sin(u / 280.0),
+    "high_plateau": lambda u: 1.5 + 1.0 * math.sin(u / 320.0),
 }
 # Relief de part et d'autre de la route : (pente des flancs, pente au-delà de 160 m, amplitude des collines).
+FAR_RISE_M = 800.0   # longueur de la pente lointaine : palier à far_slope × 800 m (360 m en montagne)
 SIDES = {
     "coast": (0.03, 0.02, 4.0),
     "mediterranean": (0.10, 0.08, 40.0),
@@ -121,6 +168,11 @@ SIDES = {
     "farmland": (0.06, 0.04, 25.0),
     "temperate_forest": (0.12, 0.15, 30.0),
     "alpine": (0.25, 0.45, 80.0),
+    "atlantic_heath": (0.05, 0.04, 12.0),
+    "japan": (0.15, 0.25, 50.0),
+    "volcanic": (0.12, 0.20, 60.0),
+    "rock_desert": (0.25, 0.55, 60.0),        # parois du canyon
+    "high_plateau": (0.03, 0.04, 25.0),
 }
 
 
@@ -132,10 +184,14 @@ class Plan:
     sur le relief `circuit_relief` (la boucle revient forcément à son altitude de départ)."""
 
     def __init__(self, biomes: tuple[str, ...], gravel: bool, sea: bool, recette: bool = False,
-                 circuit: bool = False) -> None:
+                 circuit: bool = False, variants: tuple[dict | None, ...] | None = None) -> None:
         if circuit and len(set(biomes)) != 1:
             raise ValueError("circuit : un seul biome")
+        if variants is not None and len(variants) != len(biomes):
+            raise ValueError("une variante par bloc")
         self.biomes = biomes
+        # Variante régionale de chaque bloc (lot DB1) : {"ground", "roofs", "landscape"} ou None.
+        self.variants = tuple(variants) if variants is not None else (None,) * len(biomes)
         self.recette = recette
         self.gravel = gravel
         self.circuit = circuit
@@ -169,6 +225,15 @@ class Plan:
         biome = self.biomes[i]
         k = self.biomes[i + 1:].count(biome) if key == "col" else self.biomes[:i].count(biome)
         return PLACE_NAMES[key][k % len(PLACE_NAMES[key])]
+
+    def block(self, s: float) -> int:
+        """Bloc de 2 km de l'abscisse `s`."""
+        return min(max(int(s // BLOCK_M), 0), len(self.biomes) - 1)
+
+    def decor(self, i: int) -> str:
+        """Clé du décor du bloc `i` dans `BLOCKS` : son paysage (lot DB1), sinon son biome."""
+        variant = self.variants[i]
+        return (variant or {}).get("landscape") or self.biomes[i]
 
     def weights(self, s: float) -> dict[str, float]:
         """Part (0 à 1) de chaque biome à l'abscisse `s` : fondu linéaire de 300 m centré sur chaque limite."""
@@ -223,7 +288,15 @@ def circuit_relief(x, z):
     x = np.asarray(x, dtype=float)
     z = np.asarray(z, dtype=float)
     return (BASE_ALT_M + 40.0 + 14.0 * np.sin(x / 210.0 + 0.6) * np.cos(z / 260.0)
-            - 12.0 * np.exp(-((x - 260.0) ** 2 + (z - 200.0) ** 2) / 90000.0) + x / 60.0)
+            - 12.0 * np.exp(-((x - 260.0) ** 2 + (z - 200.0) ** 2) / 90000.0) + _soft_cap(x / 60.0, 15.0, 30.0))
+
+
+def _soft_cap(v, knee: float, rise: float):
+    """`v` tel quel jusqu'à ±`knee`, puis un palier doux à ±(`knee` + `rise`) (lot DB1) : un relief analytique
+    reste borné jusqu'à l'horizon (40 km) sans changer près de la route."""
+    import numpy as np
+    a = np.abs(v)
+    return np.sign(v) * np.where(a <= knee, a, knee + rise * (1.0 - np.exp(-(a - knee) / rise)))
 
 
 def _ramp(t: float) -> float:
@@ -248,7 +321,10 @@ def make_terrain(plan: Plan):
                 continue
             ramp = np.clip((d - 40.0) / 260.0, 0.0, 1.0)
             bump = hills * ramp * (0.5 + 0.5 * np.sin(x / 310.0) * np.cos(z / 270.0))
-            side += w * (slope * np.clip(d - 12.0, 0.0, 150.0) + far_slope * np.clip(d - 162.0, 0.0, None) + bump)
+            # Lot DB1 : au-delà de 162 m, la pente lointaine s'adoucit jusqu'à un palier (`FAR_RISE_M`) : sans borne,
+            # les tuiles lointaines et d'horizon (jusqu'à 40 km) montaient à plusieurs kilomètres, en murs dans le ciel
+            far = _soft_cap(np.clip(d - 162.0, 0.0, None), 0.0, FAR_RISE_M)
+            side += w * (slope * np.clip(d - 12.0, 0.0, 150.0) + far_slope * far + bump)
         if plan.sea:
             sea = weights.get("coast", 0.0) * (np.sign(dx) == SEA_SIDE)
             # Plage de la route au niveau 0 entre 36 et 70 m de l'axe, puis fond marin jusqu'à −25 m.
@@ -268,9 +344,9 @@ def build_overpass(frame, plan: Plan, seed: int) -> sim.Overpass:
     if plan.circuit:
         _circuit(op, rng, plan)
         return op
-    for i, biome in enumerate(plan.biomes):
+    for i in range(len(plan.biomes)):
         s0 = i * BLOCK_M
-        BLOCKS[biome](op, rng, s0, s0 + BLOCK_M, plan, i)
+        BLOCKS[plan.decor(i)](op, rng, s0, s0 + BLOCK_M, plan, i)
     return op
 
 
@@ -390,8 +466,87 @@ def _circuit(op, rng, plan):
         op.node(*op.point(s, out * 280.0), {"power": "generator", "generator:source": "wind", "height": "95"})
 
 
+# --- Tour des nouveaux paysages (lot DB1) : un décor par bloc, choisi par le paysage du bloc ou son biome ---
+
+def _fjord(op, rng, s0, s1, plan, i):
+    """Fjord : la mer à gauche (`--sea`), maisons de bois peint et bois de conifères côté terre, belvédère."""
+    land = -SEA_SIDE
+    _houses(op, rng, s0 + 250.0, s0 + 650.0, (land,), ["#8c2f2a", "#c9a227", "#f2efe6", "#5a6e7f"],
+            plan.place("fjord", i), church=False)
+    _veg(op, s0 + 700.0, s1 - 100.0, land, 22.0, 260.0, {"natural": "wood"})
+    if not plan.sea:
+        _veg(op, s0 + 100.0, s1 - 100.0, -land, 22.0, 140.0, {"natural": "grassland"})
+    op.node(*op.point(s0 + 1300.0, land * 25.0), {"tourism": "viewpoint", "name": plan.place("fjord_vue", i)})
+
+
+def _atlantic(op, rng, s0, s1, plan, i):
+    """Landes atlantiques : bruyères et ajoncs des deux côtés, prés, hameau de granit (les murets viennent du
+    biome, lot AT1)."""
+    _veg(op, s0 + 100.0, s0 + 1200.0, 1, 22.0, 260.0, {"natural": "heath"})
+    _veg(op, s0 + 100.0, s1 - 100.0, -1, 22.0, 260.0, {"natural": "heath"})
+    _veg(op, s0 + 1300.0, s1 - 100.0, 1, 22.0, 200.0, {"landuse": "meadow", "animal": "sheep"})
+    _veg(op, s0 + 1250.0, s0 + 1600.0, -1, 200.0, 300.0, {"natural": "scrub"})
+    _houses(op, rng, s0 + 700.0, s0 + 1000.0, (1, -1), ["#9a9a94", "#b4b1a8", "#e8e4da"], plan.place("lande", i),
+            gap=(30.0, 45.0), church=False)
+    op.node(*op.point(s0 + 1500.0, -25.0), {"tourism": "viewpoint", "name": plan.place("lande_vue", i)})
+
+
+def _paddies(op, rng, s0, s1, plan, i):
+    """Rizières : cultures des deux côtés (le paysage du lot U25 en fait des rizières), un village, un ruisseau."""
+    for side in (-1, 1):
+        _veg(op, s0 + 100.0, s0 + 850.0, side, 22.0, 300.0, {"landuse": "farmland"})
+        _veg(op, s0 + 1200.0, s1 - 100.0, side, 22.0, 300.0, {"landuse": "farmland"})
+    _houses(op, rng, s0 + 900.0, s0 + 1150.0, (-1, 1), ["#c9b28f", "#a8835a", "#e0d2b4"], plan.place("rizieres", i),
+            gap=(30.0, 45.0), church=False)
+    mid = s0 + 1500.0
+    op.way([op.point(mid, d) for d in range(-250, 251, 25)], {"waterway": "stream"}, close=False)
+    op.counts["water_lines"] += 1
+
+
+def _japan(op, rng, s0, s1, plan, i):
+    """Japon : forêt sur les pentes, village aux toits de tuiles (`kawara`), étang, belvédère."""
+    _veg(op, s0 + 50.0, s0 + 700.0, 1, 20.0, 300.0, {"landuse": "forest"})
+    _veg(op, s0 + 50.0, s1 - 50.0, -1, 20.0, 300.0, {"landuse": "forest"})
+    _veg(op, s0 + 1300.0, s1 - 50.0, 1, 20.0, 300.0, {"landuse": "forest"})
+    _veg(op, s0 + 750.0, s0 + 1250.0, 1, 60.0, 200.0, {"landuse": "farmland"})
+    _houses(op, rng, s0 + 800.0, s0 + 1200.0, (1,), ["#3b3330", "#f1ece2", "#6b4e3a"], plan.place("japon", i),
+            gap=(22.0, 30.0), church=False)
+    op.node(*op.point(s0 + 1700.0, -25.0), {"tourism": "viewpoint", "name": plan.place("japon_vue", i)})
+
+
+def _volcanic_island(op, rng, s0, s1, plan, i):
+    """Île volcanique : prairies et broussailles sur le flanc, quelques maisons blanches, belvédère du cratère."""
+    _veg(op, s0 + 100.0, s1 - 100.0, 1, 22.0, 220.0, {"natural": "grassland"})
+    _veg(op, s0 + 100.0, s0 + 1100.0, -1, 22.0, 220.0, {"natural": "scrub"})
+    _veg(op, s0 + 1200.0, s1 - 100.0, -1, 22.0, 180.0, {"natural": "grassland"})
+    for s in (s0 + 350.0, s0 + 900.0):
+        op.building(s, 24.0, {"building": "house", "building:levels": "1", "building:colour": "#f4f1ea"}, 11.0, 8.0)
+    op.node(*op.point(s1 - 200.0, -25.0), {"tourism": "viewpoint", "name": plan.place("volcan", i)})
+
+
+def _canyon(op, rng, s0, s1, plan, i):
+    """Canyon rouge : broussailles clairsemées entre les parois, un ranch, belvédère."""
+    _veg(op, s0 + 150.0, s0 + 900.0, 1, 30.0, 160.0, {"natural": "scrub"})
+    _veg(op, s0 + 1200.0, s1 - 150.0, -1, 30.0, 160.0, {"natural": "scrub"})
+    op.building(s0 + 600.0, -30.0, {"building": "farm", "building:levels": "1", "building:colour": "#b5683e"}, 14.0, 9.0)
+    op.building(s0 + 620.0, -45.0, {"building": "barn", "height": "6 m", "building:colour": "#8a5a3a"}, 12.0, 9.0)
+    op.node(*op.point(s0 + 1100.0, 25.0), {"tourism": "viewpoint", "name": plan.place("canyon", i)})
+
+
+def _plateau(op, rng, s0, s1, plan, i):
+    """Hauts plateaux : herbes rases à perte de vue, quelques maisons de terre, le sommet du tour en fin de bloc."""
+    for side in (-1, 1):
+        _veg(op, s0 + 100.0, s1 - 100.0, side, 22.0, 300.0, {"natural": "grassland"})
+    for s in (s0 + 500.0, s0 + 1300.0):
+        op.building(s, -26.0, {"building": "house", "building:levels": "1", "building:colour": "#a07a55"}, 10.0, 7.0)
+    op.node(*op.point(s1 - 150.0, -25.0), {"tourism": "viewpoint", "name": plan.place("plateau", i)})
+
+
 BLOCKS = {"coast": _coast, "mediterranean": _mediterranean, "temperate_grassland": _grassland,
-          "farmland": _farmland, "temperate_forest": _forest, "alpine": _alpine}
+          "farmland": _farmland, "temperate_forest": _forest, "alpine": _alpine,
+          # lot DB1 : décor par paysage (U25) ou par biome de la 6.0
+          "fjord": _fjord, "atlantic_heath": _atlantic, "rizieres": _paddies, "japan": _japan,
+          "ile_volcanique": _volcanic_island, "canyon": _canyon, "high_plateau": _plateau}
 
 
 class Frame(sim.Frame):
@@ -432,7 +587,24 @@ def biome_tile(plan: Plan, size: float, ix: int, iz: int) -> dict:
     if len(used) > 4:
         raise ValueError(f"tuile {ix}_{iz} : {len(used)} biomes (4 au plus)")
     return {"version": "1.0", "biomes": used, "grid": GRID,
-            "weights": [[p.get(b, 0) for p in points] for b in used], "variant": None}
+            "weights": [[p.get(b, 0) for p in points] for b in used], "variant": tile_variant(plan, size, ix, iz)}
+
+
+def tile_variant(plan: Plan, size: float, ix: int, iz: int) -> dict | None:
+    """Variante régionale d'une tuile (lot DB1) : celle du bloc qui couvre le plus de points de la tuile (à
+    égalité, le premier sur la route). Les tuiles proches de 1 km tombent chacune dans un seul bloc de 2 km."""
+    if not any(plan.variants):
+        return None
+    import numpy as np
+    k = np.arange(GRID) * size / (GRID - 1)
+    x, z = np.meshgrid(ix * size + k, iz * size + k)
+    counts: dict[int, int] = {}
+    for s in plan.road.s_of(x, z).ravel():
+        b = plan.block(float(s))
+        counts[b] = counts.get(b, 0) + 1
+    best = min(counts, key=lambda b: (-counts[b], b))
+    variant = plan.variants[best]
+    return dict(variant) if variant else None
 
 
 def write_biome_layer(world: Path, plan: Plan, manifest: dict, route: dict) -> dict[str, float]:
@@ -563,14 +735,17 @@ def _offline_compiler(payload: bytes, terrain, cache: Path):
 
 
 def generate(out: Path, name: str, biomes: tuple[str, ...], gravel: bool = False, sea: bool = False,
-             seed: int = 0, title: str | None = None, recette: bool = False, circuit: bool = False) -> dict:
+             seed: int = 0, title: str | None = None, recette: bool = False, circuit: bool = False,
+             variants: tuple[dict | None, ...] | None = None) -> dict:
     """Écrit `out/<name>.world` et `out/<name>.json` ; renvoie le résumé (parts des biomes et des surfaces).
     `title` : nom affiché au menu (`name` du manifeste) ; sans lui ou avec `recette`, l'identifiant `name`.
-    `circuit` : la boucle du circuit de démonstration (lot O38) au lieu de la route ouverte, un seul biome."""
-    unknown = [b for b in biomes if b not in FIRST_MILESTONE]
+    `circuit` : la boucle du circuit de démonstration (lot O38) au lieu de la route ouverte, un seul biome.
+    `variants` : variante régionale de chaque bloc (lot DB1, voir `PAYSAGES`)."""
+    plan = Plan(biomes, gravel, sea, recette, circuit, variants)
+    unknown = [plan.decor(i) for i in range(len(biomes)) if plan.decor(i) not in BLOCKS or biomes[i] not in GRADE]
     if unknown:
-        raise ValueError(f"biome hors du premier jalon : {', '.join(unknown)} ({', '.join(TOUR)})")
-    plan = Plan(biomes, gravel, sea, recette, circuit)
+        raise ValueError(f"biome sans décor de démonstration : {', '.join(unknown)} (premier jalon : "
+                         f"{', '.join(TOUR)} ; nouveaux paysages : --paysages)")
     out.mkdir(parents=True, exist_ok=True)
     frame = Frame()
     op = build_overpass(frame, plan, seed)
@@ -611,16 +786,28 @@ def generate(out: Path, name: str, biomes: tuple[str, ...], gravel: bool = False
     return info
 
 
+def paysages_variants() -> tuple[dict | None, ...]:
+    """Variante régionale de chaque bloc du tour des nouveaux paysages (lot DB1)."""
+    out = []
+    for _biome, landscape, ground, roofs in PAYSAGES:
+        variant = {"ground": ground, "roofs": roofs, "landscape": landscape}
+        out.append(variant if any(variant.values()) else None)
+    return tuple(out)
+
+
 def write_demo_set(out: Path, seed: int = 0, recette: bool = False) -> list[dict]:
-    """Parcours de `openride-core demo-biomes` : tour, côte avec mer, alpin, circuit ; `recette` : variante des
-    bancs et des recettes (noms techniques), avec en plus le tour gravel."""
+    """Parcours de `openride-core demo-biomes` : tour des nouveaux paysages et circuit (jeu de base, lot DB1) ;
+    `recette` : variante des bancs et des recettes (noms techniques), avec en plus les parcours sortis du jeu de
+    base (tour des six paysages, côte avec la mer, alpin, tour gravel)."""
     infos = []
     for name, title, which, gravel, sea, base in DEMO_SET:
         if not (base or recette):
             continue
-        biomes = TOUR if which == "tour" else (CIRCUIT_BIOME,) if which == "circuit" else (which,) * 3
+        variants = paysages_variants() if which == "paysages" else None
+        biomes = (TOUR if which == "tour" else PAYSAGES_BIOMES if which == "paysages"
+                  else (CIRCUIT_BIOME,) if which == "circuit" else (which,) * 3)
         infos.append(generate(out, name, biomes, gravel=gravel, sea=sea, seed=seed, title=title, recette=recette,
-                              circuit=which == "circuit"))
+                              circuit=which == "circuit", variants=variants))
     return infos
 
 
@@ -631,6 +818,8 @@ def main(argv: list[str] | None = None) -> int:
     what.add_argument("--biome", choices=TOUR, help="un seul biome sur 6 km")
     what.add_argument("--tour", action="store_true", help="les six biomes du premier jalon, 2 km chacun")
     what.add_argument("--circuit", action="store_true", help="la boucle de 3 km du circuit de démonstration (prairie)")
+    what.add_argument("--paysages", action="store_true",
+                      help="le tour des nouveaux paysages (lot DB1) : sept blocs de 2 km, mer le long du fjord")
     what.add_argument("--demo-set", action="store_true", help="les parcours de demo-biomes (le tour gravel en plus avec --recette)")
     parser.add_argument("--gravel", action="store_true", help="un tiers de la route en gravel ou dirt")
     parser.add_argument("--sea", action="store_true", help="côte inventée et mer le long du biome coast")
@@ -644,10 +833,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.demo_set:
             infos = write_demo_set(args.out, args.seed, args.recette)
         else:
-            biomes = TOUR if args.tour else (CIRCUIT_BIOME,) if args.circuit else (args.biome,) * 3
-            name = args.name or ("biomes-tour" if args.tour else "circuit" if args.circuit else f"biomes-{args.biome}")
-            infos = [generate(args.out, name, biomes, gravel=args.gravel, sea=args.sea, seed=args.seed,
-                              title=args.title, recette=args.recette, circuit=args.circuit)]
+            biomes = (TOUR if args.tour else (CIRCUIT_BIOME,) if args.circuit else PAYSAGES_BIOMES if args.paysages
+                      else (args.biome,) * 3)
+            name = args.name or ("biomes-tour" if args.tour else "circuit" if args.circuit
+                                 else "biomes-paysages" if args.paysages else f"biomes-{args.biome}")
+            infos = [generate(args.out, name, biomes, gravel=args.gravel, sea=args.sea or args.paysages,
+                              seed=args.seed, title=args.title, recette=args.recette, circuit=args.circuit,
+                              variants=paysages_variants() if args.paysages else None)]
     except (RuntimeError, ValueError) as exc:
         print(f"demo_biomes : {exc}", file=sys.stderr)
         return 1

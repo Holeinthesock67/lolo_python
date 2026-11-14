@@ -5,7 +5,9 @@ Parts des biomes du tour (10 à 25 %), somme des poids 255 en chaque point, un t
 `--gravel`, côte et mer avec `--sea`, validité (`verify` du compilateur et schémas), coordonnées au degré
 entier, deux générations identiques au bit près. Lot O37 : noms de parcours et de lieux du jeu de base, variante
 de recette aux noms techniques, démonstrations d'avant le lot O37 remplacées à l'installation. Lot O38 : le circuit
-de démonstration (boucle fermée de 3 km) et une course du Grand Prix des objets en tours dessus.
+de démonstration (boucle fermée de 3 km) et une course du Grand Prix des objets en tours dessus. Lot DB1 : le
+tour des nouveaux paysages (sept blocs, variante régionale par bloc) remplace au jeu de base le tour des six
+paysages, la route de la côte et la montée alpine, gardés en recette et jamais enlevés chez un joueur.
 """
 
 from __future__ import annotations
@@ -69,13 +71,14 @@ def _json(path: Path) -> dict:
 
 
 def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
-    """Jeu de base : quatre parcours (le tour gravel retiré le 9 novembre, le circuit ajouté par le lot O38) ;
-    recette : les cinq."""
+    """Jeu de base : le tour des nouveaux paysages et le circuit (lots O38 et DB1) ; recette : en plus les
+    parcours sortis du jeu de base (tour gravel le 9 novembre ; tour, côte et alpin au lot DB1)."""
     names = sorted(p.name for p in demo_set.glob("*.world"))
-    assert names == ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-tour.world",
-                     "demo-circuit.world"]
-    assert sorted(p.name for p in recette_set.glob("*.world")) == sorted(names + ["demo-biomes-gravel.world"])
-    for world in [*demo_set.glob("*.world"), recette_set / "demo-biomes-gravel.world"]:
+    assert names == ["demo-biomes-paysages.world", "demo-circuit.world"]
+    retired = ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-gravel.world",
+               "demo-biomes-tour.world"]
+    assert sorted(p.name for p in recette_set.glob("*.world")) == sorted(names + retired)
+    for world in [*demo_set.glob("*.world"), *(recette_set / n for n in retired)]:
         assert verify_world(world) == [], world.name
         manifest = _json(world / "manifest.json")
         jsonschema.validate(manifest, _schema("manifest"))
@@ -96,16 +99,16 @@ def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
                 assert all(sum(g[i] for g in tile["weights"]) == 255 for i in range(289)), f.name
 
 
-def test_tour_shares_between_10_and_25(demo_set: Path, mbw) -> None:
-    shares = _json(demo_set / "demo-biomes-tour.world" / "manifest.json")["layers"]["biome"]["shares"]
+def test_tour_shares_between_10_and_25(recette_set: Path, mbw) -> None:
+    shares = _json(recette_set / "demo-biomes-tour.world" / "manifest.json")["layers"]["biome"]["shares"]
     assert set(shares) == set(mbw.TOUR)
     assert all(10.0 <= v <= 25.0 for v in shares.values()), shares
     assert sum(shares.values()) == pytest.approx(100.0, abs=0.5)
-    single = _json(demo_set / "demo-biomes-alpin.world" / "manifest.json")["layers"]["biome"]
+    single = _json(recette_set / "demo-biomes-alpin.world" / "manifest.json")["layers"]["biome"]
     assert single["shares"] == {"alpine": 100.0} and single["default_biome"] == "alpine"
 
 
-def test_gravel_one_third_unpaved(demo_set: Path, recette_set: Path) -> None:
+def test_gravel_one_third_unpaved(recette_set: Path) -> None:
     world = recette_set / "demo-biomes-gravel.world"
     route = _json(world / "route.json")
     unpaved = sum(1 for v in route["surface"] if v in ("gravel", "dirt")) / route["n"]
@@ -114,11 +117,11 @@ def test_gravel_one_third_unpaved(demo_set: Path, recette_set: Path) -> None:
     manifest = _json(world / "manifest.json")
     assert manifest["route"]["surface_source"] == "osm"
     assert manifest["stats"]["surface_pct"]["paved"] == pytest.approx(100.0 * (1 - unpaved), abs=0.2)
-    assert "surface" not in _json(demo_set / "demo-biomes-tour.world" / "route.json")
+    assert "surface" not in _json(recette_set / "demo-biomes-tour.world" / "route.json")
 
 
-def test_sea_coast_layer_and_sea_areas(demo_set: Path) -> None:
-    world = demo_set / "demo-biomes-cote.world"
+def test_sea_coast_layer_and_sea_areas(recette_set: Path) -> None:
+    world = recette_set / "demo-biomes-cote.world"
     manifest = _json(world / "manifest.json")
     coast = manifest["layers"]["coast"]
     assert coast["present"] and coast["lines_count"] >= 6 and coast["beaches_count"] >= 1
@@ -127,7 +130,7 @@ def test_sea_coast_layer_and_sea_areas(demo_set: Path) -> None:
     seas = [a for f in (world / "water").glob("chunk_*.json") for a in _json(f)["areas"] if a["kind"] == "sea"]
     assert seas and all(a["level_y"] == 0.0 for a in seas)
     assert manifest["layers"]["water"]["areas_count"] == len(seas)
-    assert "coast" not in _json(demo_set / "demo-biomes-tour.world" / "manifest.json")["layers"]
+    assert "coast" not in _json(recette_set / "demo-biomes-tour.world" / "manifest.json")["layers"]
 
 
 def test_integer_degree_coordinates_in_repo(mbw) -> None:
@@ -140,9 +143,9 @@ def test_integer_degree_coordinates_in_repo(mbw) -> None:
 def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> None:
     """Lot O37 : nom de parcours au menu, aucun « Fictif » ni nom technique dans les fichiers livrés."""
     titles = {name: title for name, title, *_, base in mbw.DEMO_SET if base}
-    assert titles == {"demo-biomes-tour": "Tour des six paysages", "demo-biomes-cote": "Route de la côte",
-                      "demo-biomes-alpin": "Montée alpine", "demo-circuit": "Circuit des Prés"}
-    assert mbw.RETIRED_DEMOS == ("demo-biomes-gravel",) and not (demo_set / "demo-biomes-gravel.world").exists()
+    assert titles == {"demo-biomes-paysages": "Tour des nouveaux paysages", "demo-circuit": "Circuit des Prés"}
+    assert mbw.RETIRED_DEMOS == ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
+    assert not any((demo_set / f"{n}.world").exists() for n in mbw.RETIRED_DEMOS)
     for name, title in titles.items():
         world = demo_set / f"{name}.world"
         manifest = _json(world / "manifest.json")
@@ -150,7 +153,7 @@ def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> Non
         for f in world.rglob("*.json"):
             text = f.read_text(encoding="utf-8")
             assert "Fictif" not in text and "Fictive" not in text and "make_biome_world" not in text, f
-    assert _json(demo_set / "demo-biomes-alpin.json")["name"] == "Montée alpine"
+    assert _json(demo_set / "demo-biomes-paysages.json")["name"] == "Tour des nouveaux paysages"
 
 
 def test_place_names_per_block(mbw) -> None:
@@ -173,28 +176,37 @@ def test_recette_variant_keeps_technical_names(tmp_path: Path) -> None:
 
 
 def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path, recette_set: Path) -> None:
-    """Une démonstration écrite avant le lot O37 (`make_biome_world`) est remplacée, le tour gravel d'avant lui
-    enlevé ; un parcours du joueur au même identifiant, jamais."""
+    """Une démonstration du jeu de base écrite avant le lot O37 (`make_biome_world`) est remplacée, une
+    démonstration sortie du jeu de base et d'avant lui enlevée ; un parcours du joueur au même identifiant, jamais.
+    Lot DB1 : le tour, la côte et l'alpin écrits par le lot O37 restent installés chez le joueur, tels quels."""
     routes = tmp_path / "routes"
-    shutil.copytree(demo_set / "demo-biomes-tour.world", routes / "demo-biomes-tour.world")
-    old = routes / "demo-biomes-tour.world" / "manifest.json"
+    shutil.copytree(demo_set / "demo-circuit.world", routes / "demo-circuit.world")
+    old = routes / "demo-circuit.world" / "manifest.json"
     manifest = _json(old)
-    manifest.update(name="demo-biomes-tour", compiler={"name": "make_biome_world", "version": "2.0.0"})
+    manifest.update(name="demo-circuit", compiler={"name": "make_biome_world", "version": "2.0.0"})
     old.write_text(json.dumps(manifest), encoding="utf-8")
-    mine = routes / "demo-biomes-alpin.world"
+    mine = routes / "demo-biomes-paysages.world"
     mine.mkdir(parents=True)
-    (mine / "manifest.json").write_text(json.dumps({"name": "Mon alpin", "compiler": {"name": "openride-compiler"}}),
+    (mine / "manifest.json").write_text(json.dumps({"name": "Mes paysages", "compiler": {"name": "openride-compiler"}}),
                                         encoding="utf-8")
     gravel = routes / "demo-biomes-gravel.world"
     shutil.copytree(recette_set / "demo-biomes-gravel.world", gravel)
     (gravel / "manifest.json").write_text(json.dumps({**_json(gravel / "manifest.json"),
                                                       "compiler": {"name": "make_biome_world"}}), encoding="utf-8")
-    assert biome_demo_outdated(routes / "demo-biomes-tour.world") and not biome_demo_outdated(mine)
+    kept = {}
+    for n in ("demo-biomes-tour", "demo-biomes-cote", "demo-biomes-alpin"):   # installés par le lot O37
+        shutil.copytree(recette_set / f"{n}.world", routes / f"{n}.world")
+        f = routes / f"{n}.world" / "manifest.json"
+        f.write_text(json.dumps({**_json(f), "compiler": {"name": "openride-demo-biomes", "version": "1"}}),
+                     encoding="utf-8")
+        kept[n] = f.read_bytes()
+    assert biome_demo_outdated(routes / "demo-circuit.world") and not biome_demo_outdated(mine)
     written, note = contents.install_biome_demos(routes)
-    assert note == "" and sorted(written) == ["demo-biomes-cote", "demo-biomes-tour", "demo-circuit"]
+    assert note == "" and written == ["demo-circuit"]
     assert not gravel.exists()
-    assert _json(old)["name"] == "Tour des six paysages"
-    assert _json(mine / "manifest.json")["name"] == "Mon alpin"
+    assert _json(old)["name"] == "Circuit des Prés"
+    assert _json(mine / "manifest.json")["name"] == "Mes paysages"
+    assert all((routes / f"{n}.world" / "manifest.json").read_bytes() == b for n, b in kept.items())
 
 
 def test_two_generations_are_identical(tmp_path: Path, mbw) -> None:
@@ -208,7 +220,7 @@ def test_two_generations_are_identical(tmp_path: Path, mbw) -> None:
 
 
 def test_unknown_biome_refused(tmp_path: Path, mbw) -> None:
-    with pytest.raises(ValueError, match="premier jalon"):
+    with pytest.raises(ValueError, match="sans décor de démonstration : volcanic"):
         mbw.generate(tmp_path, "x", ("volcanic",))
     with pytest.raises(SystemExit):
         mbw.main(["--out", str(tmp_path), "--biome", "volcanic"])
@@ -217,9 +229,9 @@ def test_unknown_biome_refused(tmp_path: Path, mbw) -> None:
 def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert main(["demo-biomes", "--out", str(tmp_path)]) == 0
     out = capsys.readouterr().out
-    assert "demo-biomes-tour (Tour des six paysages) : " in out and "demo-biomes-gravel" not in out
-    assert "demo-circuit (Circuit des Prés) : " in out
-    assert len(list(tmp_path.glob("*.world"))) == 4
+    assert "demo-biomes-paysages (Tour des nouveaux paysages) : 14.2 km" in out and "demo-biomes-gravel" not in out
+    assert "demo-circuit (Circuit des Prés) : " in out and "demo-biomes-tour" not in out
+    assert len(list(tmp_path.glob("*.world"))) == 2
 
 
 def test_circuit_loop(demo_set: Path, mbw) -> None:
@@ -279,3 +291,91 @@ def test_circuit_grand_prix_in_laps(demo_set: Path, tmp_path: Path, monkeypatch:
     assert gp.lap_m == pytest.approx(s.route.length_m) and gp.length_m == pytest.approx(2 * s.route.length_m)
     in_lap = [round((r - gp.origin_m) % gp.lap_m, 1) for r in gp.boxes.rows]
     assert in_lap and len(in_lap) == 2 * len(set(in_lap))   # mêmes rangées de boîtes à chaque tour
+
+
+def test_paysages_tour(demo_set: Path, mbw) -> None:
+    """Lot DB1 : sept blocs de 2 km, un par biome ou paysage de la 6.0, un septième chacun ; chaque tuile proche
+    porte la variante (sol, toits, paysage du lot U25) de son bloc ; mer le long du fjord ; montée au sommet des
+    hauts plateaux ; aucun paysage posé sur le biome du bloc voisin."""
+    from openride_compiler.regional import LANDSCAPES
+
+    world = demo_set / "demo-biomes-paysages.world"
+    manifest = _json(world / "manifest.json")
+    shares = manifest["layers"]["biome"]["shares"]
+    assert list(shares) == list(mbw.PAYSAGES_BIOMES)
+    assert {"atlantic_heath", "japan", "high_plateau"} <= set(shares)
+    assert all(v == pytest.approx(100.0 / 7, abs=0.6) for v in shares.values()), shares
+    landscapes = {landscape for _, landscape, *_ in mbw.PAYSAGES if landscape}
+    assert landscapes == set(LANDSCAPES)
+    seen = set()
+    for f in (world / "biome" / "near").glob("tile_*.json"):
+        tile = _json(f)
+        iz = int(f.stem.split("_")[2])
+        block = min(max(-iz - 1, 0) // 2, len(mbw.PAYSAGES) - 1)    # tuile de 1 km vers le nord : bloc de 2 km
+        assert tile["variant"] == mbw.paysages_variants()[block], f.name
+        if tile["variant"] and tile["variant"]["landscape"]:
+            seen.add(tile["variant"]["landscape"])
+    assert seen == landscapes
+    theme = json.loads((REPO / "engine" / "themes" / "default" / "theme.json").read_text(encoding="utf-8"))
+    for i, (biome, landscape, *_) in enumerate(mbw.PAYSAGES):
+        bases = theme["landscapes"][landscape]["biomes"] if landscape else {}
+        assert not landscape or biome in bases
+        for j in (i - 1, i + 1):
+            if 0 <= j < len(mbw.PAYSAGES):
+                assert mbw.PAYSAGES[j][0] not in bases, (landscape, mbw.PAYSAGES[j][0])
+    assert manifest["layers"]["coast"]["present"]
+    route = _json(world / "route.json")
+    assert route["length_m"] == pytest.approx(7 * mbw.BLOCK_M, rel=0.02)
+    assert max(route["grade_pct"]) <= 8.0 and min(route["grade_pct"]) >= -4.0
+    top = max(range(route["n"]), key=lambda i: route["alt_m"][i])
+    assert top * route["ds_m"] > 6 * mbw.BLOCK_M and route["alt_m"][top] - route["alt_m"][0] >= 200.0
+    pois = "".join(f.read_text(encoding="utf-8") for f in (world / "poi").glob("*.json"))
+    assert "Col des Lamas" in pois and "Belvédère du Canyon Rouge" in pois
+    info = _json(demo_set / "demo-biomes-paysages.json")
+    assert info["coast"]["sea_areas"] > 0 and info["generated"]["buildings"] > 0
+
+
+def test_far_relief_bounded(demo_set: Path, recette_set: Path) -> None:
+    """Lot DB1 (banc r866, ciel zébré) : le relief lointain des démonstrations reste un paysage de collines et de
+    montagnes jusqu'à l'horizon (40 km), au plus 600 m au-dessus du point le plus haut de la route ; plus bas, seule
+    la courbure terrestre de l'horizon (au plus 400 m à 57 km)."""
+    np = pytest.importorskip("numpy")
+    worlds = sorted(demo_set.glob("*.world")) + sorted(recette_set.glob("*.world"))
+    assert len(worlds) >= 7
+    for world in worlds:
+        alt = _json(world / "route.json")["alt_m"]
+        for level in ("near", "far", "horizon"):
+            tiles = [np.fromfile(f, dtype=np.float32) for f in (world / "terrain" / level).glob("*.f32")]
+            assert tiles, (world.name, level)
+            hi = max(float(t.max()) for t in tiles)
+            lo = min(float(t.min()) for t in tiles)
+            assert hi <= max(alt) + 600.0, (world.name, level, hi)
+            assert lo >= min(min(alt), 0.0) - 25.0 - (400.0 if level == "horizon" else 0.0), (world.name, level, lo)
+
+
+def test_decor_cyclists_never_touch(demo_set: Path, recette_set: Path) -> None:
+    """Lot DB1 (banc r866, des milliers de contacts) : sur chaque démonstration, à 25, 40 et 50 km/h, aucun cycliste
+    du décor n'en touche un autre (groupes différents) ni le cycliste (à moins de 1,7 m en long et 0,6 m en travers,
+    comme le compte de `living_decor.gd`)."""
+    import itertools
+
+    from openride_core import road_cyclists as rc
+    from openride_core.route import load_world
+
+    worlds = sorted(demo_set.glob("demo-*.world")) + sorted(recette_set.glob("demo-biomes-*.world"))
+    for world in worlds:
+        route = load_world(world).route
+        for kmh in (25.0, 40.0, 50.0):
+            model = rc.RoadCyclists(route, rc.climbs_for(route, []), [], seed=rc.SEED)
+            s, v, dt = 0.0, kmh / 3.6, 1.0 / 30.0
+            while s < route.length_m - 50.0:
+                model.update(s, v, dt)
+                riders = model.state_list(s)
+                for r in riders:
+                    assert not (abs(r["s"] - s) < 1.7 and abs(r["lane_m"] - rc.RIDER_LATERAL_M) < 0.6), \
+                        (world.name, kmh, round(s), r["id"])
+                for a, b in itertools.combinations(riders, 2):
+                    if a["id"].rsplit("-", 1)[0] != b["id"].rsplit("-", 1)[0]:
+                        assert not (abs(a["s"] - b["s"]) < 1.7 and abs(a["lane_m"] - b["lane_m"]) < 0.6), \
+                            (world.name, kmh, round(s), a["id"], b["id"])
+                s += v * dt

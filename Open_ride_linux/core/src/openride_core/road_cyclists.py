@@ -63,6 +63,7 @@ RIDER_LATERAL_M = 1.2     # RoadBuilder.RIDER_LATERAL_M (lot P32)
 BOT_LATERAL_M = 2.1       # RoadBuilder.BOT_LATERAL_M (lot P32)
 BOT_LOOK_M = 30.0
 FALL_BACK_MPS = 0.5
+CROSS_S = 3.0            # lot DB1 : un `overtake` met 3 s à passer de droite à gauche du cycliste (2,6 m, SIDE_*)
 CATCH_M = 4.0
 LANE_FREE_M = 100.0
 MIN_CENTRE_M = MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M
@@ -297,6 +298,11 @@ class Group:
     bot: bool = False          # bot vu comme un groupe d'un cycliste (lot P32)
     held: bool = False         # lot AS7 : `overtake` rabattu qui garde sa vitesse
     half: float = 3.0          # demi-largeur roulable sous la tête du groupe (`_half_at`)
+    moved_mps: float | None = None   # lot DB1 : vitesse du dernier pas, gênes comprises (None : pas encore bougé)
+
+    def pace(self) -> float:
+        """Vitesse à laquelle il avance vraiment (lot DB1) : celle de son dernier pas, sinon l'annoncée."""
+        return self.speed_mps if self.moved_mps is None else self.moved_mps
 
     @property
     def size(self) -> int:
@@ -623,11 +629,17 @@ class RoadCyclists:
         rel_now = g.s - rider_s
         if case == "overtake":
             tail_now = rel_now - (g.size - 1) * FILE_GAP_M
+            # Lot DB1 : il ne se met sur la gauche (en traversant la ligne du cycliste) qu'avec la place de finir son
+            # écart avant d'arriver sur lui ; plus près derrière, il se laisse distancer jusqu'à l'avoir ; déjà à sa
+            # hauteur ou devant (gêné dans une montée), il reste à droite et se laisse doubler
+            cross_m = FILE_GAP_M + max(g.speed_mps - rider_v, 0.0) * CROSS_S
             if g.side == "right" and rel_now >= -PASS_START_M and tail_now < MERGE_AHEAD_M:
                 if near:
                     spd_now = min(spd_now, rider_v)
-                else:
+                elif rel_now < -cross_m:
                     g.side = "left"
+                elif rel_now < 0.0:
+                    spd_now = min(spd_now, rider_v - FALL_BACK_MPS)
             elif g.side == "left" and tail_now > MERGE_AHEAD_M and not near:
                 g.side = "right"
         # Lot P32 : un groupe qui en rattrape un autre du même sens le double vers l'axe (voir l'engine)
@@ -647,10 +659,16 @@ class RoadCyclists:
                     h_lat = h.lateral()
                     if abs(pass_lat - h_lat) < MIN_CENTRE_M:
                         pass_lat = h_lat - _sign(h_lat) * MIN_CENTRE_M
+            # Lot DB1 : `slowest` (tous, devant et derrière) décide s'il double ; `limit` (ceux de devant seuls, à
+            # la vitesse où ils avancent vraiment) règle sa vitesse : un groupe ne ralentit jamais pour celui qui le
+            # suit, et celui qui suit se règle sur l'allure réelle du premier, gêné lui-même, pas sur l'annoncée
             slowest = math.inf
+            limit = math.inf
             blocking = False
             for h in near_groups:
                 slowest = min(slowest, h.speed_mps)
+                if (h.s - g.s) * direction > 0.0:
+                    limit = min(limit, h.pace())
                 # encore derrière lui, un de ses membres sur sa ligne (la queue se décale après la tête)
                 if (g.s - h.s) * direction < 0.0 and min(abs(m.lateral - h.lateral()) for m in members) < MIN_CENTRE_M - 0.05:
                     blocking = True
@@ -662,23 +680,26 @@ class RoadCyclists:
                                and abs(pass_lat - h_lat) < abs(cur - h_lat)):
                     crossing = True
                     slowest = min(slowest, h.speed_mps)
+                    if (h.s - g.s) * direction > 0.0:
+                        limit = min(limit, h.pace())
                     if (g.s - h.s) * direction < 0.0:
                         blocking = True
             faster = spd_now > slowest
             out = not blocking
             if crossing:
                 if blocking:
-                    spd_now = min(spd_now, slowest - FALL_BACK_MPS)
+                    spd_now = min(spd_now, limit - FALL_BACK_MPS)
             elif faster and (out or self._lane_free_for(g, rider_s) and (
                     direction == -1 or abs(pass_lat - RIDER_LATERAL_M) >= MIN_CENTRE_M
                     or abs(g.s - rider_s) > PASS_START_M)):
                 if abs(pass_lat - own) > 1e-3:
                     g.pass_lat = pass_lat
                 if blocking:
-                    spd_now = min(spd_now, slowest)
+                    spd_now = min(spd_now, limit)
             elif blocking or not faster:
-                spd_now = min(spd_now, slowest - FALL_BACK_MPS)
+                spd_now = min(spd_now, limit - FALL_BACK_MPS)
         g.s += direction * spd_now * dt_s
+        g.moved_mps = max(spd_now, 0.0)
         rel = g.s - rider_s
         rel0 = rel if g.last_rel is None else g.last_rel
         g.last_rel = rel
