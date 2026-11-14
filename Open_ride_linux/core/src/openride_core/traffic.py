@@ -74,6 +74,10 @@ FOLLOW_GAP_M = 25.0
 MIN_SPACING_M = 60.0
 MAX_GRADE_PCT = 8.0
 DEFAULT_SNOW_LINE_M = 2200.0
+# Parcours sous l'eau (lot SM1) : biomes rendus sous l'eau par l'engine (atmosphere_model.gd UNDERWATER_BIOMES) ;
+# à UNDERWATER_SHARE_PCT % de la route et plus, ni circulation ni cyclistes du décor (comme dans un vélodrome).
+UNDERWATER_BIOMES = ("reef",)
+UNDERWATER_SHARE_PCT = 50.0
 RIDER_HALF_WIDTH_M = draft.RIDER_WIDTH_M / 2.0
 LATERAL_CLEARANCE_M = 1.5
 RIDER_LATERAL_M = draft.RIDER_LANE_M      # RoadBuilder.RIDER_LATERAL_M
@@ -135,6 +139,21 @@ SUCTION_MIN_REL_MPS = 0.5
 
 
 # --- tirage (vegetation_placer.gd) -----------------------------------------------------------------
+
+
+def underwater_route(manifest: Any) -> bool:
+    """Vrai si les biomes sous l'eau couvrent au moins UNDERWATER_SHARE_PCT % de la route (`layers.biome.shares`
+    du manifeste, en %) ; faux sans couche biome ou manifeste illisible (lot SM1)."""
+    biome = manifest.get("layers", {}).get("biome") if isinstance(manifest, dict) else None
+    shares = biome.get("shares") if isinstance(biome, dict) else None
+    if not isinstance(shares, dict):
+        return False
+    total = 0.0
+    for b in UNDERWATER_BIOMES:
+        v = shares.get(b, 0.0)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            total += float(v)
+    return total >= UNDERWATER_SHARE_PCT
 
 def _mix(h: int) -> int:
     h &= MASK32

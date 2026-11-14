@@ -71,8 +71,8 @@ class TrainerConfig:
 class GearingConfig:
     n_gears: int = 24
     start_gear: int = 12
-    ratio_min: float = 0.65    # 0,40 à 3,00 avant le 28 octobre : petits braquets à plat, moitié haute inutile
-    ratio_max: float = 2.00
+    ratio_min: float = 0.455   # 0,65 × 0,7 : étagement élargi le 14 novembre (0,65 à 2,00 depuis le 28 octobre)
+    ratio_max: float = 2.60    # 2,00 × 1,3
     g_base_pct: float = 2.0
     long_press_gears: int = 10    # appui long en SIM : braquets sautés (3 était plus lent que des appuis courts)
 
@@ -171,6 +171,7 @@ class VelodromeConfig:
     """Vélodrome (série VD, lot VD3, plan §4.1) : bois de la piste et air de la salle couverte."""
     factor_wood: float = 0.6       # multiplicateur du crr du bitume sur la piste en bois
     temperature_c: float = 24.0    # température de la salle : densité de l'air
+    gear_scale: float = 1.25       # tous les rapports multipliés sur la piste (14 novembre) : braquets plus durs
 
 
 @dataclass
@@ -383,6 +384,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("gravel", "factor_gravel"): (1, 3),
     ("gravel", "factor_dirt"): (1, 3),
     ("velodrome", "factor_wood"): (0.3, 1),
+    ("velodrome", "gear_scale"): (0.5, 2),
     ("velodrome", "temperature_c"): (5, 40),
     ("avatar", "standing_grade_pct"): (3, 15),
     ("avatar", "standing_power_pct"): (100, 300),
@@ -415,11 +417,11 @@ ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
 ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 
 # Valeurs permises des champs textuels à choix fermé.
-# Les biomes : seize de la série U (lot U0), `japan` (lot JP1) `atlantic_heath` (lot AT1) et `high_plateau` (lot HP1) (Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
+# Les biomes : seize de la série U (lot U0), `japan` (lot JP1) `atlantic_heath` (lot AT1) `high_plateau` (lot HP1) et `reef` (fond marin, lot SM1) (Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
 BIOMES: tuple[str, ...] = (
     "temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
     "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
-    "wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau",
+    "wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau", "reef",
 )
 
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
@@ -531,6 +533,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("gravel", "factor_gravel"): "roulement des routes non revêtues",
     ("gravel", "factor_dirt"): "roulement des routes non revêtues",
     ("velodrome", "factor_wood"): "roulement de la piste en bois du vélodrome",
+    ("velodrome", "gear_scale"): "braquets de la piste du vélodrome",
     ("velodrome", "temperature_c"): "air de la salle du vélodrome",
     ("avatar", "standing_grade_pct"): "seuil de la danseuse",
     ("avatar", "standing_power_pct"): "seuil de la danseuse",

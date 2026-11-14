@@ -27,7 +27,7 @@ import json
 import logging
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .config import GPX_DIR, ROUTES_DIR
@@ -287,5 +287,12 @@ def list_routes(routes_root: Path = ROUTES_DIR, gpx_dir: Path = GPX_DIR) -> list
             )
         )
 
-    other_entries = sorted(world_entries + uncompiled_entries, key=lambda e: (e.id, e.name))
+    other_entries = sorted((_named(e) for e in world_entries + uncompiled_entries), key=lambda e: (e.id, e.name))
     return [demo_entry, *other_entries]
+
+
+def _named(entry: RouteEntry) -> RouteEntry:
+    """Nom affiché : celui de la fiche saisie (`name` du `<trace>.toml`, « Abra Málaga ») quand elle en porte un,
+    sinon celui du `.world` (identifiant normalisé pour une trace compilée, « abra-malaga »). L'identifiant ne change pas."""
+    name = (entry.library or {}).get("name")
+    return replace(entry, name=name) if isinstance(name, str) and name.strip() else entry

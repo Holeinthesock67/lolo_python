@@ -62,6 +62,7 @@ const REMOVE_AHEAD_M := 1200.0
 const PASS_START_M := 30.0
 const MERGE_AHEAD_M := 20.0
 const GIVE_UP_S := 60.0
+const YIELD_S := 3.0                  # lot AS8 : un groupe de l'engine s'écarte d'un groupe du core à 3 s de sa queue
 const NEAR_M := 60.0                  # lot AS7 : cyclistes calculés par le core (liste `riders`)
 const CORE_MARGIN_M := 5.0            # ... un cycliste absent de la liste à moins de 55 m n'est plus sur la route
 const CORE_LIST_MAX := 6              # ... liste pleine : ceux qu'elle ne donne pas peuvent encore rouler
@@ -551,6 +552,7 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 				spd_now = minf(spd_now, slowest)
 		elif blocking or not faster:
 			spd_now = minf(spd_now, slowest - FALL_BACK_MPS)
+	spd_now = _yield_to_core(g, spd_now, rider_s, bots)
 	g["s"] = float(g["s"]) + float(dir) * spd_now * dt_s
 	var rel := float(g["s"]) - rider_s
 	var rel0 := float(g.get("last_rel", rel))
@@ -581,6 +583,80 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 			else:
 				g["behind_t"] = 0.0
 			g["best_rel"] = maxf(float(g["best_rel"]), rel)
+
+
+## Lot AS8 (recette rPK1 du 13/11 : contacts « ahead / core » et « oncoming / core » vers 60 m sur les cols) :
+## un groupe du core ne voit pas ceux de l'engine, c'est donc toujours celui qui voit l'autre qui l'évite. Un groupe
+## de l'engine rattrapé par un groupe du core plus rapide de son sens, sur sa ligne, s'écarte vers sa gauche (vers
+## l'axe, comme pour doubler) de MIN_CENTRE_M dès que le groupe du core est à moins de YIELD_S secondes de sa queue,
+## et le laisse passer sur sa place ; s'il ne peut pas s'écarter (cycliste à côté, bot, autre groupe sur la place
+## visée) ou qu'il n'est pas encore sorti de la ligne, il roule à la vitesse du groupe du core quand celui-ci est
+## à moins de CATCH_M. Il se rabat ensuite sans se poser sur lui (`_side_blocked`). Les groupes d'en face gardent
+## leurs écarts. Rend la vitesse du pas.
+func _yield_to_core(g: Dictionary, spd_now: float, rider_s: float, bots: Array) -> float:
+	var dir := int(g["dir"])
+	var members: Array = g["members"]
+	var g_head := float(g["s"]) * dir
+	var g_tail := g_head - float(members.size() - 1) * FILE_GAP_M
+	var chasers := []
+	for h in groups:
+		if str(h["case"]) != "core" or int(h["dir"]) != dir:
+			continue
+		var v_h := float(h["speed_mps"])
+		var h_head := float(h["s"]) * dir
+		var h_tail := h_head - float((h["members"] as Array).size() - 1) * FILE_GAP_M
+		if v_h <= spd_now or h_tail > g_head:
+			continue                        # pas plus rapide, ou déjà passé devant lui
+		if h_head < g_tail - CATCH_M - maxf(0.0, v_h - spd_now) * YIELD_S:
+			continue                        # encore loin
+		chasers.append(h)
+	if chasers.is_empty():
+		return spd_now
+	# Place visée : à MIN_CENTRE_M à gauche (dans son sens) du plus à gauche des groupes du core qui arrivent
+	var yield_lat := _left_most(chasers, dir) - float(dir) * MIN_CENTRE_M
+	var cur := _group_lateral(g)
+	var lanes := []
+	for h in groups:
+		if is_same(h, g) or chasers.has(h):
+			continue
+		if absf(float(h["s"]) - float(g["s"])) < BOT_LOOK_M + float(members.size() + (h["members"] as Array).size()) * FILE_GAP_M:
+			for m in h["members"]:
+				lanes.append(float(m["lateral"]))
+	for b in bots:
+		if absf(float(b["s"]) - float(g["s"])) < BOT_LOOK_M + float(members.size()) * FILE_GAP_M:
+			lanes.append(float(b["lateral"]))
+	if absf(float(g["s"]) - rider_s) < PASS_START_M + float(members.size()) * FILE_GAP_M:
+		lanes.append(RIDER_LATERAL_M)
+	var free := true
+	for lat in lanes:
+		if absf(yield_lat - float(lat)) < MIN_CENTRE_M - 0.05 or (float(lat) > minf(cur, yield_lat) and float(lat) < maxf(cur, yield_lat)):
+			free = false
+			break
+	if free:
+		g["pass_lat"] = minf(yield_lat, float(g.get("pass_lat", yield_lat))) if dir == 1 else maxf(yield_lat, float(g.get("pass_lat", yield_lat)))
+	# Tant qu'il est sur la ligne d'un groupe du core tout proche, il roule à sa vitesse
+	for h in chasers:
+		var h_head := float(h["s"]) * dir
+		if h_head >= g_tail - CATCH_M and _lateral_gap(g, h) < MIN_CENTRE_M - 0.05:
+			spd_now = maxf(spd_now, float(h["speed_mps"]))
+	return spd_now
+
+
+## Écart à l'axe du membre le plus à gauche (dans le sens `dir`) des groupes `gs`.
+static func _left_most(gs: Array, dir: int) -> float:
+	var best := INF if dir == 1 else -INF
+	for h in gs:
+		for m in h["members"]:
+			best = minf(best, float(m["lateral"])) if dir == 1 else maxf(best, float(m["lateral"]))
+	return best
+
+
+## Plus petit écart en travers entre un membre de `g` et un membre de `h`.
+func _lateral_gap(g: Dictionary, h: Dictionary) -> float:
+	var best := INF
+	for m in h["members"]:
+		best = minf(best, _closest_lateral(g, float(m["lateral"])))
+	return best
 
 
 ## Groupes du même sens que `g` (et bots) qui le chevauchent, dont la queue est à moins de CATCH_M devant sa tête
