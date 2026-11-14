@@ -373,6 +373,25 @@ def read_tile(path: Path) -> np.ndarray:
     return np.frombuffer(Path(path).read_bytes(), dtype="<f4").reshape(N, N)
 
 
+def load_terrain_tiles(world: Path) -> dict[str, dict[tuple[int, int], np.ndarray]]:
+    """Tuiles de tous les niveaux d'un `.world` (copies modifiables), pour les réécrire (lot EA1)."""
+    out: dict[str, dict[tuple[int, int], np.ndarray]] = {}
+    for level in ALL_LEVELS:
+        d = Path(world) / "terrain" / level.name
+        if not d.is_dir():
+            continue
+        grids = {}
+        for p in sorted(d.glob("tile_*.f32")):
+            parts = p.stem.split("_")
+            try:
+                grids[(int(parts[1]), int(parts[2]))] = read_tile(p).copy()
+            except (ValueError, IndexError, OSError):
+                continue
+        if grids:
+            out[level.name] = grids
+    return out
+
+
 def replace_terrain_dir(world: Path, tiles: dict[str, dict[tuple[int, int], np.ndarray]]) -> None:
     """Remplace `world/terrain` de façon atomique : dossier temporaire voisin, puis renommage."""
     world = Path(world)
