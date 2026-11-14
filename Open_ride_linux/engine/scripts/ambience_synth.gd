@@ -13,7 +13,7 @@ extends RefCounted
 ##
 ## Lot U11 : dix fonds propres aux biomes (AmbienceModel.BIOME_BEDS) : cigales, chorus de la jungle, vent dans
 ## les résineux, sonnailles, vagues, mouettes, grenouilles, sable qui chante, craquements de la banquise,
-## fumerolles. Le niveau de chaque fond ne varie que par AmbienceModel (biome, saison, heure, vent, rivage).
+## fumerolles ; fond marin du lot SM1 (`underwater`). Le niveau de chaque fond ne varie que par AmbienceModel (biome, saison, heure, vent, rivage).
 
 const MIX_RATE := 22050
 ## Durée de la boucle de chaque fond (s). Fonds de P9 : 2 s. Fonds de U11 faits d'événements espacés
@@ -22,6 +22,7 @@ const LOOP_S := {
 	"forest_birds": 2.0, "field_insects": 2.0, "water_flow": 2.0, "village_murmur": 2.0, "high_wind": 2.0, "rain": 2.0,
 	"cicadas": 3.0, "jungle_chorus": 6.0, "conifer_wind": 4.0, "cowbells": 6.0, "waves": 24.0, "gulls": 7.0,
 	"frogs": 5.0, "singing_sand": 4.0, "ice_cracks": 7.0, "fumaroles": 4.0,
+	"underwater": 6.0,
 }
 
 
@@ -313,6 +314,25 @@ static func bed_samples(bed: String) -> PackedFloat32Array:
 			for k in range(36):
 				_strike(buf, rng.randi_range(0, n - 1), rng.randf_range(120.0, 260.0), rng.randf_range(0.04, 0.09),
 					[1.0, 1.6], [1.0, 0.3], [30.0, 45.0], 0.12)
+		"underwater":
+			# Fond marin (lot SM1) : grondement très sourd qui enfle lentement (houle lointaine, deux cycles
+			# entiers par boucle) et bulles qui montent : courts sifflements dont la note grimpe en s'éteignant.
+			var noise := _noise(rng, n)
+			var rumble := periodic_lowpass(noise, 0.004, 14.0)
+			var swell := _fq(0.33, float(LOOP_S["underwater"]))
+			for i in range(n):
+				var t := float(i) / MIX_RATE
+				buf[i] = rumble[i] * (0.65 + 0.35 * sin(TAU * swell * t))
+			for k in range(28):
+				var start := rng.randi_range(0, n - 1)
+				var f0 := rng.randf_range(380.0, 1100.0)
+				var amp := rng.randf_range(0.05, 0.14)
+				var dur := rng.randf_range(0.03, 0.07)
+				var phase := 0.0
+				for i in range(int(dur * MIX_RATE)):
+					var t := float(i) / MIX_RATE
+					phase += TAU * f0 * (1.0 + 1.8 * t / dur) / MIX_RATE
+					buf[(start + i) % n] += amp * sin(phase) * exp(-t / (dur * 0.35)) * minf(1.0, t / 0.002)
 		_:
 			return PackedFloat32Array()
 	return buf

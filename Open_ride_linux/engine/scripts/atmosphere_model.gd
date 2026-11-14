@@ -22,6 +22,11 @@ extends RefCounted
 ##   l'emporte) et par le préréglage (`heat_haze` de QualityPresets.IMAGE, faux en `low`) ;
 ## - `sun_elevation_deg`, `sun_direction` : au-delà de 66° de latitude, soleil rasant (POLAR_MAX_SUN_DEG)
 ##   et lumière froide (POLAR_TINT).
+## - `underwater` (0 à 1, lot SM1) : poids des biomes sous l'eau (UNDERWATER_BIOMES, le fond marin `reef`) ; il
+##   tire l'horizon vers l'eau du biome (`water.color`, assombrie de UNDER_HORIZON), rapproche le brouillard à
+##   UNDER_FOG_END_M quel que soit le préréglage, fait venir la lumière d'en haut (UNDER_SUN_DIR), plus faible
+##   (UNDER_LIGHT), et coupe la brume de chaleur ; atmosphere_view.gd y ajoute le ciel noyé dans l'eau, la surface
+##   vue d'en dessous et les bulles.
 ## Prairie tempérée (`temperate_grassland`) : brouillard, horizon et soleil d'aujourd'hui.
 
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
@@ -46,6 +51,12 @@ const POLAR_LAT_DEG := 66.0
 const POLAR_FULL_LAT_DEG := 70.0
 const POLAR_MAX_SUN_DEG := 18.0
 const POLAR_TINT := Color(0.86, 0.91, 1.0)
+## Sous l'eau (lot SM1)
+const UNDERWATER_BIOMES := ["reef"]
+const UNDER_FOG_END_M := 230.0        # eau claire d'un lagon : on voit à 200 m environ
+const UNDER_HORIZON := 0.8            # horizon = couleur de l'eau du biome × 0,8
+const UNDER_LIGHT := 0.55             # lumière du soleil filtrée par l'eau (14/11 : sable moins blanc)
+const UNDER_SUN_DIR := Vector3(0.2, 0.95, -0.25)   # lumière qui tombe de la surface, presque verticale
 
 var model
 var pos_at: Callable       # s (m) -> Vector2(x, z) du monde
@@ -89,10 +100,15 @@ static func params_at(biome_model, weights: Dictionary, daylight: Dictionary, we
 		quality: String) -> Dictionary:
 	var by_biome := {}
 	var heat_w := 0.0
+	var under_w := 0.0
+	var under_water := Color(0, 0, 0)
 	for b in weights.keys():
 		by_biome[b] = biome_model.params(b)
 		if b in HEAT_BIOMES:
 			heat_w += float(weights[b])
+		if b in UNDERWATER_BIOMES:
+			under_w += float(weights[b])
+			under_water += (by_biome[b]["water"]["color"] as Color) * float(weights[b])
 	var mix: Dictionary = biome_model.blend(weights, by_biome)
 	var fog_density := float(mix["fog_density"])
 	var humidity := humidity_of(fog_density)
@@ -116,7 +132,7 @@ static func params_at(biome_model, weights: Dictionary, daylight: Dictionary, we
 		heat = heat_w * heat_hour_factor(float(daylight.get("solar_hour", NAN))) \
 			* (1.0 - smoothstep(0.0, WEATHER_WINS_AT, blocked))
 
-	return {
+	var out := {
 		"fog_density": fog_density,
 		"fog_end_factor": 1.0 - HUMID_FOG_END * humidity,
 		"horizon_color": RenderQuality.FOG_COLOR.lerp(RenderQuality.HAZE_COLOR, float(mix["haze"]) * HAZE_HORIZON) * tint,
@@ -126,7 +142,41 @@ static func params_at(biome_model, weights: Dictionary, daylight: Dictionary, we
 		"heat_haze": clampf(heat, 0.0, 1.0),
 		"sun_elevation_deg": elev,
 		"sun_direction": sun_dir,
+		"underwater": 0.0,
 	}
+	if under_w > 0.0:
+		_with_underwater(out, clampf(under_w, 0.0, 1.0), under_water / under_w, quality)
+	return out
+
+
+## Sous l'eau (lot SM1) : part `u` du fond marin, eau `water` (couleur moyenne des biomes sous l'eau).
+static func _with_underwater(p: Dictionary, u: float, water: Color, quality: String) -> void:
+	var end_m := maxf(QualityPresets.fog_end_m(quality), 1.0)
+	p["underwater"] = u
+	p["fog_end_factor"] = lerpf(float(p["fog_end_factor"]), minf(UNDER_FOG_END_M / end_m, 1.0), u)
+	p["horizon_color"] = (p["horizon_color"] as Color).lerp(water * UNDER_HORIZON, u)
+	p["light_energy_factor"] = float(p["light_energy_factor"]) * lerpf(1.0, UNDER_LIGHT, u)
+	p["sun_direction"] = (p["sun_direction"] as Vector3).lerp(UNDER_SUN_DIR.normalized(), u).normalized()
+	p["heat_haze"] = float(p["heat_haze"]) * (1.0 - u)
+
+
+## Part (0 à 1) des biomes sous l'eau le long de `route` (lot SM1) : moyenne de leurs poids en ROUTE_PROBES points
+## régulièrement espacés. Un parcours surtout sous l'eau (UNDERWATER_ROUTE et plus) n'a ni circulation, ni
+## cyclistes du décor, ni spectateurs, ni passants (living_decor.gd ; même règle au core, traffic.py).
+const ROUTE_PROBES := 32
+const UNDERWATER_ROUTE := 0.5
+
+
+static func route_underwater(biome_model, route) -> float:
+	if biome_model == null or not biome_model.active() or route == null or route.n < 2:
+		return 0.0
+	var total := 0.0
+	for i in range(ROUTE_PROBES):
+		var p: Vector3 = route.sample_point(route.length_m * (i + 0.5) / ROUTE_PROBES)
+		var w: Dictionary = biome_model.weights_at(p.x, p.z)
+		for b in UNDERWATER_BIOMES:
+			total += float(w.get(b, 0.0))
+	return total / ROUTE_PROBES
 
 
 func _weights_at_step(k: int) -> Dictionary:

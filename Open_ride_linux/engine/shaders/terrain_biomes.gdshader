@@ -8,7 +8,7 @@ render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_sc
 // Textures : deux Texture2DArray pour tout le parcours (biome_textures.gd) ; carte A = couleur et
 // rugosité (alpha), carte B = normale XY et occlusion (bleu). Une couche sans texture garde sa couleur unie.
 
-const int MAX_BIOMES = 19;     // BiomeIds.BIOMES
+const int MAX_BIOMES = 20;     // BiomeIds.BIOMES
 // Emplacements de sol : un par biome, puis un par couple (paysage du lot U25, biome de base) dont le thème
 // donne le sol (biome_textures.gd MAX_LANDSCAPE_SLOTS) ; `biome_index` d'une tuile désigne un emplacement.
 const int MAX_LANDSCAPE_SLOTS = 16;
@@ -39,6 +39,23 @@ const float RIPPLE_M = 0.3;
 const float DUNE_M = 40.0;
 const float DUNE_H_M = 1.2;
 const float RIPPLE_H_M = 0.012;
+// Fond marin (lot SM1) : reflets mouvants de la surface (caustiques) sur le sol de l'emplacement `caustic_slot`
+// (biome `reef`, -1 : aucun), de pleine force jusqu'à CAUSTIC_NEAR_M de la caméra, éteints à CAUSTIC_FAR_M
+// (au-delà, le motif fin scintillerait) ; ajoutés en émission : visibles quelle que soit la lumière.
+global uniform float anim_time;
+uniform int caustic_slot = -1;
+const float CAUSTIC_NEAR_M = 25.0;
+const float CAUSTIC_FAR_M = 70.0;
+const float CAUSTIC_GAIN = 0.32;
+
+// Réseau de lignes claires qui ondulent : deux interférences de sinus déformés, sans texture.
+float caustic(vec2 p, float t) {
+	vec2 a = p * 0.45 + vec2(t * 0.30, t * 0.20);
+	float c1 = sin(a.x + sin(a.y * 1.3 + t * 0.7)) * sin(a.y * 1.1 + sin(a.x * 0.9 - t * 0.6));
+	vec2 b = p * 0.71 - vec2(t * 0.25, -t * 0.15);
+	float c2 = sin(b.x * 1.2 + sin(b.y + t * 0.5)) * sin(b.y * 0.8 + sin(b.x * 1.4 + t * 0.4));
+	return pow(clamp(1.0 - abs(c1 * 0.6 + c2 * 0.4), 0.0, 1.0), 6.0);
+}
 
 #include "res://shaders/terrain_shade.gdshaderinc"
 // layer_color : couleurs sRGB des couches (Vector4), converties en linéaire comme les textures `ground_a`.
@@ -169,5 +186,16 @@ void fragment() {
 	ROUGHNESS = rough * (1.0 - 0.35 * season_ground_wet);   // sol détrempé (lot U13)
 	if (w_maps > 0.0) {
 		AO = 1.0 - w_maps + ao;
+	}
+	if (caustic_slot >= 0) {
+		float uw = 0.0;
+		for (int k = 0; k < 4; k++) {
+			uw += int(biome_index[k]) == caustic_slot ? wb[k] : 0.0;
+		}
+		float fade = 1.0 - smoothstep(CAUSTIC_NEAR_M, CAUSTIC_FAR_M, length(VERTEX));
+		if (uw * fade > 0.01) {
+			// Plus forts sur les sols tournés vers la surface
+			EMISSION = ALBEDO * caustic(q, anim_time) * CAUSTIC_GAIN * uw * fade * clamp(n.y, 0.0, 1.0);
+		}
 	}
 }

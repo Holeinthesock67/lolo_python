@@ -153,7 +153,7 @@ const BIOME_STYLES := {
 	"mediterranean": "tuile_ronde", "steppe": "yourte", "savanna": "case",
 	"sand_desert": "pise", "rock_desert": "pise", "jungle": "paillote", "wetland": "chaumiere",
 	"coast": "ardoise", "volcanic": "basalte", "japan": "kawara", "atlantic_heath": "pierre_seche",
-	"high_plateau": "altiplano",
+	"high_plateau": "altiplano", "reef": "ardoise",   # lot SM1 : le parcours sous-marin n'a pas de maison
 }
 
 ## Teintes propres aux matières (l'enduit et les tuiles prennent celles du thème)

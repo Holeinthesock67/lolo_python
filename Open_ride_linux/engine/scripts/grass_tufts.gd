@@ -88,12 +88,18 @@ const BLADES := 12
 const BLADE_WIDTH_M := 0.035
 ## Teintes d'instance (multiplient la couleur des sommets) : fraîche, sombre, jaunie, sèche.
 const TINTS := [Color(1.0, 1.0, 1.0), Color(0.78, 0.88, 0.78), Color(1.12, 1.08, 0.78), Color(1.3, 1.15, 0.72)]
-## Désert (sable ou pierre, retour du propriétaire 03/11) : herbe sèche, paille et ocre, plus clairsemée.
-## Le biome d'une touffe est tiré selon les poids du modèle de biome (`biome_model`, nul : herbe d'avant).
-const DRY_BIOMES := ["sand_desert", "rock_desert"]
+## Sortes de touffes selon le biome, tirées selon les poids du modèle de biome (`biome_model`, nul : herbe d'avant) :
+## 0 herbe d'avant ; 1 désert (sable ou pierre, retour du propriétaire 03/11) : herbe sèche, paille et ocre, plus
+## clairsemée ; 2 fond marin (lot SM1, 14/11 : « pas de neige sous l'eau », l'herbe des prés n'y a pas sa place) :
+## herbier sombre vert-bleu, clairsemé.
+const STYLE_OF_BIOME := {"sand_desert": 1, "rock_desert": 1, "reef": 2}
 const DRY_TINTS := [Color(1.55, 0.95, 1.2), Color(1.75, 1.05, 1.15), Color(1.35, 0.8, 0.95), Color(1.9, 1.2, 1.45)]
-## Part des places gardées dans le désert (touffes plus espacées qu'en prairie).
+const SEA_TINTS := [Color(0.55, 0.75, 1.25), Color(0.5, 0.7, 1.3), Color(0.65, 0.8, 1.1), Color(0.45, 0.62, 1.4)]
+## Part des places gardées (touffes plus espacées qu'en prairie).
 const DRY_KEEP := 0.45
+const SEA_KEEP := 0.35
+const STYLE_TINTS := [TINTS, DRY_TINTS, SEA_TINTS]
+const STYLE_KEEP := [1.0, DRY_KEEP, SEA_KEEP]
 ## Fondu avec la distance (mètres) : éclaircissement à partir de THIN_START_M, effacement complet à FADE_END_M,
 ## avant la fin de la fenêtre de tronçons devant la caméra (CHUNKS_AHEAD × CHUNK_M).
 ## Lot Y22, 6 novembre (« l'herbe ne va pas assez loin devant », « une fondue vers l'avant ») : éclaircissement
@@ -335,11 +341,11 @@ func update(cam_s: float) -> void:
 			if xf == null:
 				continue
 			var x: Transform3D = xf
-			var dry := dry_draw(k, slot, x.origin)
-			if dry < 0:
+			var style := style_draw(k, slot, x.origin)
+			if style < 0:
 				continue
-			var col: Color = (DRY_TINTS if dry == 1 else TINTS)[tint_index(k, slot)]
-			if dry == 0:   # bout de l'herbe fondu dans la teinte du sol (Y22-13)
+			var col: Color = (STYLE_TINTS[style] as Array)[tint_index(k, slot)]
+			if style == 0:   # bout de l'herbe fondu dans la teinte du sol (Y22-13)
 				col = col.lerp(GROUND_TINT, GROUND_BLEND * smoothstep(GROUND_BLEND_FROM_M, WIDE_BAND_MAX_M, lateral_at(k, slot)))
 			var pick := pick_of(k, slot)
 			var custom := Color(pick, 0.0, 0.0, 0.0)
@@ -424,20 +430,20 @@ func _set_box(g: int, box: AABB) -> void:
 	_far_mmi[g].visibility_range_end = fade_end() + radius
 
 
-## Touffe du désert ? 0 : herbe d'avant ; 1 : herbe sèche ; −1 : place laissée vide (désert clairsemé).
-func dry_draw(k: int, slot: int, origin: Vector3) -> int:
+## Sorte de la touffe (STYLE_OF_BIOME, 0 : herbe d'avant) ou −1 : place laissée vide (sorte clairsemée).
+func style_draw(k: int, slot: int, origin: Vector3) -> int:
 	if biome_model == null or not biome_model.active():
 		return 0
 	var w: Dictionary = biome_model.weights_at(origin.x, origin.z)
-	var dry_w := 0.0
-	for b in DRY_BIOMES:
-		dry_w += float(w.get(b, 0.0))
-	if dry_w <= 0.0:
-		return 0
 	var h := VegetationPlacer.hash3(tuft_seed ^ 0x5D17, k, slot)
-	if float(h & 0xFFFF) / 65536.0 >= dry_w:
-		return 0
-	return 1 if float((h >> 16) & 0xFFFF) / 65536.0 < DRY_KEEP else -1
+	var u := float(h & 0xFFFF) / 65536.0
+	var acc := 0.0
+	for b in STYLE_OF_BIOME:
+		acc += float(w.get(b, 0.0))
+		if u < acc:
+			var style: int = STYLE_OF_BIOME[b]
+			return style if float((h >> 16) & 0xFFFF) / 65536.0 < float(STYLE_KEEP[style]) else -1
+	return 0
 
 
 ## Vrai quand tous les tronçons de la fenêtre sont remplis.

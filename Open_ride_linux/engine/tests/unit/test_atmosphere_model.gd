@@ -159,8 +159,35 @@ func _test_cost() -> void:
 	_check(PerfBudget.check("atmosphere_at", ms), "coût de at (cache chaud) : %.4f ms" % ms)
 
 
+## Lot SM1 : fond marin `reef` : brouillard de l'eau proche (UNDER_FOG_END_M) en low comme en high, horizon de la
+## couleur de l'eau, lumière d'en haut et plus faible, pas de brume de chaleur ; à moitié, la moitié de l'effet ;
+## parcours sous l'eau d'après les poids le long de la route.
+func _test_underwater() -> void:
+	var day := AtmosphereModel.daylight_from_theme(_theme, 45.0)
+	var land := _params("temperate_grassland", day, CLEAR, "high")
+	_check(float(land["underwater"]) == 0.0, "prairie : pas sous l'eau")
+	for q in ["low", "medium", "high"]:
+		var reef := _params("reef", day, CLEAR, q)
+		var end_m: float = float(RenderQuality.fog_range(q, true)["end"]) * float(reef["fog_end_factor"])
+		_check(float(reef["underwater"]) == 1.0 and absf(end_m - AtmosphereModel.UNDER_FOG_END_M) < 1.0,
+			"fond marin (%s) : brouillard plein à %.0f m" % [q, end_m])
+	var reef := _params("reef", day, CLEAR, "high")
+	var water := Color("#1a7f9a") * AtmosphereModel.UNDER_HORIZON
+	var hc: Color = reef["horizon_color"]
+	_check(absf(hc.r - water.r) < 0.01 and absf(hc.g - water.g) < 0.01 and absf(hc.b - water.b) < 0.01,
+		"fond marin : horizon de la couleur de l'eau")
+	_check((reef["sun_direction"] as Vector3).y > 0.9 and (reef["sun_direction"] as Vector3).y > (land["sun_direction"] as Vector3).y,
+		"fond marin : lumière d'en haut")
+	_check(float(reef["light_energy_factor"]) < float(land["light_energy_factor"]), "fond marin : lumière filtrée")
+	var m = BiomeModel.new(_theme, null)
+	var half := AtmosphereModel.params_at(m, {"reef": 0.5, "coast": 0.5}, day, CLEAR, "high")
+	_check(is_equal_approx(float(half["underwater"]), 0.5), "moitié fond marin : underwater = 0,5")
+	_check(is_equal_approx(AtmosphereModel.route_underwater(null, null), 0.0), "sans modèle : pas sous l'eau")
+
+
 func _init() -> void:
 	_theme = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
+	_test_underwater()
 	_test_grassland_unchanged()
 	_test_transition()
 	_test_heat_haze()

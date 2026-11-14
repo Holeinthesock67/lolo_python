@@ -25,6 +25,8 @@ extends Node3D
 ## Lot U23 : éléphant et antilope (savane), ours blanc et bœuf musqué (polaire, toundra), chèvre (volcans,
 ## Méditerranée), singe (jungle).
 ## Lot HP1 : lama et yack (hauts plateaux).
+## Lot SM1 : poissons jaunes et bleus, tortue et raie du fond marin, dans les bandes « oiseaux » (orbites de
+## fauna_behaviour.gd) ; nageoires et ailes battent lentement (FLAP_HZ), la queue des poissons ne bat pas.
 ## Tous les nœuds sont créés à l'initialisation ; aucun n'est créé ensuite.
 
 const FaunaBehaviour := preload("res://scripts/fauna_behaviour.gd")
@@ -32,7 +34,9 @@ const QualityPresets := preload("res://scripts/quality_presets.gd")
 const FaunaShader := preload("res://shaders/fauna.gdshader")
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
 
-const BIRD_SPECIES := ["bird", "gull", "parrot"]
+## Nageurs du fond marin : même mode « vol » que les oiseaux, mais corps le long de z et nageoires qui battent.
+const SWIM_SPECIES := ["fish", "fish_blue", "turtle", "ray"]
+const BIRD_SPECIES := ["bird", "gull", "parrot"] + SWIM_SPECIES
 const GROUND_SPECIES := ["cow", "sheep", "deer", "horse", "hare",
 	"zebra", "giraffe", "reindeer", "dromedary", "ibex", "marmot", "flamingo", "heron",
 	"elephant", "antelope", "polar_bear", "musk_ox", "goat", "monkey", "llama", "yak"]
@@ -62,6 +66,10 @@ const ALBEDO := {
 	"monkey": Color(0.45, 0.36, 0.26),
 	"llama": Color(0.78, 0.66, 0.5),
 	"yak": Color(0.13, 0.1, 0.08),
+	"fish": Color(0.98, 0.82, 0.12),
+	"fish_blue": Color(0.12, 0.38, 0.92),
+	"turtle": Color(0.42, 0.36, 0.2),
+	"ray": Color(0.24, 0.26, 0.3),
 }
 ## Lot Y14 : zones de couleur des maillages (CUSTOM0.x) : robe (ALBEDO), teinte d'appoint (ACCENT : mufle et
 ## mamelle, tête et pattes noires du mouton, bec), sombre (sabots, yeux, truffe), corne, clair (LIGHT : face et
@@ -97,6 +105,10 @@ const ACCENT := {
 	"monkey": Color(0.75, 0.6, 0.5),
 	"llama": Color(0.25, 0.2, 0.16),
 	"yak": Color(0.86, 0.84, 0.8),
+	"fish": Color(0.98, 0.98, 0.95),
+	"fish_blue": Color(0.98, 0.85, 0.15),
+	"turtle": Color(0.55, 0.6, 0.38),
+	"ray": Color(0.9, 0.9, 0.88),
 }
 const LIGHT := {
 	"bird": Color(0.3, 0.3, 0.32),
@@ -123,17 +135,23 @@ const LIGHT := {
 	"monkey": Color(0.62, 0.52, 0.42),
 	"llama": Color(0.93, 0.9, 0.84),
 	"yak": Color(0.9, 0.88, 0.84),
+	"fish": Color(0.1, 0.1, 0.12),
+	"fish_blue": Color(0.05, 0.08, 0.2),
+	"turtle": Color(0.82, 0.76, 0.55),
+	"ray": Color(0.9, 0.9, 0.88),
 }
 const PATCHES := {"bird": 0.0, "cow": 0.4, "sheep": 0.0, "deer": 0.0, "horse": 0.0, "hare": 0.0, "gull": 0.0, "parrot": 0.0,
 	"zebra": 0.0, "giraffe": 0.55, "reindeer": 0.0, "dromedary": 0.0, "ibex": 0.0, "marmot": 0.0, "flamingo": 0.0, "heron": 0.0,
 	"elephant": 0.0, "antelope": 0.0, "polar_bear": 0.0, "musk_ox": 0.0, "goat": 0.3, "monkey": 0.0,
-	"llama": 0.0, "yak": 0.15}
+	"llama": 0.0, "yak": 0.15, "fish": 0.0, "fish_blue": 0.0, "turtle": 0.0, "ray": 0.25}
 ## Lot U12 : rayures de la robe (par mètre, 0 = aucune ; zèbre) et descente de la tête qui broute (m).
 const STRIPES := {"zebra": 5.0}
 const GRAZE_M := {"giraffe": 0.9, "dromedary": 0.2, "marmot": 0.12, "hare": 0.2, "flamingo": 0.7, "heron": 0.5,
 	"elephant": 0.3, "polar_bear": 0.35, "musk_ox": 0.25, "goat": 0.35, "monkey": 0.12,
 	"llama": 0.35, "yak": 0.3}
 const DEFAULT_GRAZE_M := 0.45
+## Lot SM1 : battement lent des nageoires (Hz) ; les autres espèces volantes gardent celui du shader (6 Hz).
+const FLAP_HZ := {"fish": 3.0, "fish_blue": 3.0, "turtle": 0.6, "ray": 0.45}
 const RESELECT_M := 20.0
 const HERD_UPDATE_EVERY := 4
 ## Lot P23 : échelle de la silhouette d'oiseau (0,9 m d'envergure) et battement d'ailes (INSTANCE_CUSTOM.z)
@@ -195,6 +213,8 @@ static func make_material(sp: String) -> ShaderMaterial:
 	mat.set_shader_parameter("patches", PATCHES[sp])
 	mat.set_shader_parameter("stripes", float(STRIPES.get(sp, 0.0)))
 	mat.set_shader_parameter("graze_m", float(GRAZE_M.get(sp, DEFAULT_GRAZE_M)))
+	if FLAP_HZ.has(sp):
+		mat.set_shader_parameter("flap_hz", float(FLAP_HZ[sp]))
 	return mat
 
 
@@ -477,6 +497,12 @@ static func build_mesh(sp: String) -> ArrayMesh:
 			return _build_llama()
 		"yak":
 			return _build_yak()
+		"fish", "fish_blue":
+			return _scaled(_build_fish(), FISH_SCALE)
+		"turtle":
+			return _build_turtle()
+		"ray":
+			return _build_ray()
 		_:
 			return _build_deer()
 
@@ -1181,4 +1207,87 @@ static func _build_yak() -> ArrayMesh:
 	m.uv = Vector2.ZERO
 	m.region = FAUNA_COAT
 	m.prism(Vector3(0.0, 1.2, -0.92), Vector3(0.0, 0.55, -1.0), Vector2(0.03, 0.03), Vector2(0.09, 0.07), 5)   # queue en panache
+	return m.commit()
+
+
+# --- Fond marin (lot SM1) : centrés comme l'oiseau, avant vers +z ---
+
+## Face plate verticale (plan y-z, nageoire dorsale ou caudale), vue des deux côtés (shader sans élimination).
+static func _fin(m, pts: Array) -> void:
+	for i in range(1, pts.size() - 1):
+		for p in [pts[0], pts[i], pts[i + 1]]:
+			m.vertex(p, Vector3.RIGHT, 0.0)
+
+
+## Poissons grossis de moitié (planche rSM1 du 14/11 : « petits et rares ») : 0,8 m, lisibles depuis la route.
+const FISH_SCALE := 1.5
+
+
+## Copie de `mesh` (une surface) à l'échelle `f`, poids (UV) et zones (CUSTOM0) gardés.
+static func _scaled(mesh: ArrayMesh, f: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_custom_format(0, SurfaceTool.CUSTOM_RGBA_FLOAT)
+	st.append_from(mesh, 0, Transform3D(Basis().scaled(Vector3.ONE * f), Vector3.ZERO))
+	return st.commit()
+
+
+## Poisson de récif (chirurgien) : corps haut et plat, queue en croissant et nageoires à la couleur d'appoint,
+## pectorales qui battent ; 0,5 m de long, lisible de 10 à 30 m dans un banc.
+static func _build_fish() -> ArrayMesh:
+	var m := PeopleMesh.Builder.new()
+	m.region = FAUNA_COAT
+	m.ellipsoid(Vector3(0.0, 0.0, 0.0), Vector3(0.05, 0.14, 0.22))
+	m.region = FAUNA_LIGHT
+	m.ellipsoid(Vector3(0.0, -0.01, 0.17), Vector3(0.035, 0.07, 0.06), -90.0, 3)   # museau clair
+	m.region = FAUNA_ACCENT
+	_fin(m, [Vector3(0.0, 0.0, -0.18), Vector3(0.0, 0.13, -0.33), Vector3(0.0, 0.03, -0.28), Vector3(0.0, -0.03, -0.28), Vector3(0.0, -0.13, -0.33)])   # queue
+	_fin(m, [Vector3(0.0, 0.12, 0.08), Vector3(0.0, 0.2, -0.04), Vector3(0.0, 0.11, -0.16)])   # dorsale
+	_fin(m, [Vector3(0.0, -0.12, 0.04), Vector3(0.0, -0.18, -0.06), Vector3(0.0, -0.1, -0.15)])   # anale
+	for sx in [-1.0, 1.0]:
+		_flat(m, [Vector3(sx * 0.04, -0.02, 0.06), Vector3(sx * 0.14, -0.05, -0.02), Vector3(sx * 0.05, -0.03, -0.04)], -1.0)   # pectorales
+	m.region = FAUNA_DARK
+	for sx in [-1.0, 1.0]:
+		m.ellipsoid(Vector3(sx * 0.035, 0.04, 0.13), Vector3(0.016, 0.016, 0.016), -90.0, 3)   # yeux
+	return m.commit()
+
+
+## Tortue verte : carapace bombée à écailles plus claires (appoint), tête, quatre palettes ; les palettes avant
+## battent lentement ; 1,1 m de long.
+static func _build_turtle() -> ArrayMesh:
+	var m := PeopleMesh.Builder.new()
+	m.region = FAUNA_COAT
+	m.ellipsoid(Vector3(0.0, 0.0, 0.0), Vector3(0.38, 0.14, 0.5), 0.0, 4)   # carapace (dessus)
+	m.region = FAUNA_LIGHT
+	m.ellipsoid(Vector3(0.0, 0.0, 0.0), Vector3(0.36, 0.08, 0.48), -90.0, 3)   # plastron
+	m.region = FAUNA_ACCENT
+	m.ellipsoid(Vector3(0.0, 0.13, -0.02), Vector3(0.22, 0.04, 0.3), 0.0, 3)   # écailles plus claires du dos
+	m.prism(Vector3(0.0, 0.02, 0.45), Vector3(0.0, 0.05, 0.62), Vector2(0.07, 0.07), Vector2(0.075, 0.075), 6)   # cou
+	m.ellipsoid(Vector3(0.0, 0.05, 0.66), Vector3(0.08, 0.07, 0.1), -90.0, 4)   # tête
+	for sx in [-1.0, 1.0]:
+		_flat(m, [Vector3(sx * 0.28, 0.0, 0.25), Vector3(sx * 0.78, -0.02, 0.1), Vector3(sx * 0.8, -0.02, 0.0), Vector3(sx * 0.3, 0.0, 0.1)], -1.0)   # palettes avant
+		_flat(m, [Vector3(sx * 0.25, 0.0, -0.35), Vector3(sx * 0.45, 0.0, -0.55), Vector3(sx * 0.32, 0.0, -0.58), Vector3(sx * 0.15, 0.0, -0.42)], 0.0)   # palettes arrière
+	m.region = FAUNA_DARK
+	for sx in [-1.0, 1.0]:
+		m.ellipsoid(Vector3(sx * 0.055, 0.08, 0.7), Vector3(0.015, 0.015, 0.015), -90.0, 3)
+	return m.commit()
+
+
+## Raie léopard : losange plat de 2,2 m d'envergure à taches claires (PATCHES), ventre blanc, longue queue fine ;
+## les ailes ondulent lentement.
+static func _build_ray() -> ArrayMesh:
+	var m := PeopleMesh.Builder.new()
+	m.region = FAUNA_COAT
+	m.ellipsoid(Vector3(0.0, 0.0, 0.0), Vector3(0.22, 0.07, 0.5), -90.0, 4)   # corps
+	for sx in [-1.0, 1.0]:
+		var wing := [Vector2(0.1, 0.45), Vector2(0.55, 0.2), Vector2(1.1, -0.05), Vector2(0.6, -0.2), Vector2(0.1, -0.4)]
+		var pts := []
+		for w in wing:
+			pts.append(Vector3(sx * w.x, 0.0, w.y))
+		_flat(m, pts, -1.0)
+	m.region = FAUNA_ACCENT
+	m.prism(Vector3(0.0, 0.0, -0.45), Vector3(0.0, 0.0, -1.9), Vector2(0.025, 0.025), Vector2(0.005, 0.005), 4)   # queue
+	m.region = FAUNA_DARK
+	for sx in [-1.0, 1.0]:
+		m.ellipsoid(Vector3(sx * 0.1, 0.05, 0.38), Vector3(0.018, 0.018, 0.018), -90.0, 3)
 	return m.commit()

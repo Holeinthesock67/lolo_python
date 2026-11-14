@@ -191,6 +191,11 @@ func _look(index: int) -> Dictionary:
 			m1 = sway_material(true, true)
 			for m in [m0, m1]:
 				(m as ShaderMaterial).set_shader_parameter("sway_height_m", float(built["height"]))
+				var sway := TreeSpecies.sway_factor(TreeSpecies.kind_of(index))
+				if sway != 1.0:   # laminaires couchées par le courant, coraux immobiles (lot SM1)
+					# (get_shader_parameter rend null pour un paramètre resté à sa valeur par défaut, 0,45 m)
+					var base: Variant = (m as ShaderMaterial).get_shader_parameter("sway_amplitude_m")
+					(m as ShaderMaterial).set_shader_parameter("sway_amplitude_m", (float(base) if base != null else 0.45) * sway)
 				(m as ShaderMaterial).set_shader_parameter("lod_blend_m", SPECIES_LOD_BLEND_M)
 				# Saisons (lot P18) : feuillage d'automne et arbres dénudés l'hiver pour les espèces caduques
 				(m as ShaderMaterial).set_shader_parameter("deciduous", TreeSpecies.is_deciduous(TreeSpecies.kind_of(index)))
@@ -485,6 +490,7 @@ func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
 	mm1.mesh = look["lod1"]
 	mm1.instance_count = count
 	var vine := species == TreeSpecies.index_of("vine_row")
+	var palette := TreeSpecies.palette(TreeSpecies.kind_of(species))
 	var with_shadow_buckets := shadow_end_m > 0.0 and not RenderDiag.has("sans_ombres_arbres")
 	var buckets := {}
 
@@ -507,6 +513,9 @@ func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
 		var h_col := VegetationPlacer.hash3(0xCAFE, int(px), int(pz))
 		var tint := (float(h_col & 0xFF) / 255.0 - 0.5) * 0.16
 		var col := Color(1.0 + tint, 1.0 + tint, 1.0 + tint, 1.0)
+		if not palette.is_empty():   # coraux et gorgones (lot SM1) : une couleur de la palette par arbre
+			col = (palette[(h_col >> 8) % palette.size()] as Color) * (1.0 + tint)
+			col.a = 1.0
 
 		mm0.set_instance_transform(i, xform)
 		mm0.set_instance_color(i, col)
