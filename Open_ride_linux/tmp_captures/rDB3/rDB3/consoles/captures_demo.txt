@@ -1,0 +1,169 @@
+demo-biomes-sud (low) : 19 min, captures à 150, 400, 1000, 2150, 2400, 3000, 4150, 4400, 5000, 6150, 6400, 7000, 7970, 8000, 8020, 8030, 8040, 8150, 8400, 9000, 10150, 10400, 11000 m
+>>> [1/1] Scénario nominal (18:41)
+== nominal : parcours demo-biomes-sud, 1121 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.4 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-sud à 28.4 s
+[OK] engine vivant jusqu'à la fin : 1121 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 24/24 images enregistrées après le chargement, réponse en 0.52 s (médiane), 0.56 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : low appliquée (24 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -3.4 à 5.0 %, pente envoyée -3.6 à 5.8 %
+[OK] médiane 51.0 km/h sur 841 s (attendu 50.0 ± 5.0), de 48.9 à 52.3 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 2 (dernier : core / core à 20 m (écarts à l'axe 2.2 et 2.5 m))
+[OK] fréquence cardiaque au journal : 862 échantillons, 153 à 185 bpm
+    NON nominal : 2 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rDB3/demo-biomes-sud_low/index.html
+=== Banc fini : ÉCHEC (2 vérification(s))
+RÉSULTAT : ÉCHEC (2 vérification(s))
+demo-biomes-nord (low) : 13 min, captures à 150, 400, 2500, 4430, 4460, 4480, 4490, 4500, 5000, 7500 m
+>>> [1/1] Scénario nominal (13:14)
+== nominal : parcours demo-biomes-nord, 794 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.7 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-nord à 28.7 s
+[OK] engine vivant jusqu'à la fin : 794 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 11/11 images enregistrées après le chargement, réponse en 0.43 s (médiane), 0.50 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : low appliquée (11 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -6.2 à 5.4 %, pente envoyée -6.7 à 6.3 %
+[OK] médiane 51.1 km/h sur 727 s (attendu 50.0 ± 5.0), de 48.0 à 55.0 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 72 (dernier : van / core à 53 m (écarts à l'axe 1.1 et 2.5 m))
+[OK] fréquence cardiaque au journal : 748 échantillons, 89 à 185 bpm
+    NON nominal : 1 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rDB3/demo-biomes-nord_low/index.html
+=== Banc fini : ÉCHEC (1 vérification(s))
+RÉSULTAT : ÉCHEC (1 vérification(s))
+demo-biomes-sud (medium) : 19 min, captures à 150, 400, 1000, 2150, 2400, 3000, 4150, 4400, 5000, 6150, 6400, 7000, 7970, 8000, 8020, 8030, 8040, 8150, 8400, 9000, 10150, 10400, 11000 m
+>>> [1/1] Scénario nominal (18:41)
+== nominal : parcours demo-biomes-sud, 1121 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.6 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-sud à 29.5 s
+[OK] engine vivant jusqu'à la fin : 1121 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 24/24 images enregistrées après le chargement, réponse en 0.54 s (médiane), 0.57 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (24 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -3.4 à 5.0 %, pente envoyée -3.6 à 5.8 %
+[OK] médiane 51.0 km/h sur 841 s (attendu 50.0 ± 5.0), de 48.8 à 52.3 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 7 (dernier : core / core à 18 m (écarts à l'axe 2.3 et 2.5 m))
+[OK] fréquence cardiaque au journal : 862 échantillons, 153 à 185 bpm
+    NON nominal : 2 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rDB3/demo-biomes-sud_medium/index.html
+=== Banc fini : ÉCHEC (2 vérification(s))
+RÉSULTAT : ÉCHEC (2 vérification(s))
+demo-biomes-nord (medium) : 13 min, captures à 150, 400, 2500, 4430, 4460, 4480, 4490, 4500, 5000, 7500 m
+>>> [1/1] Scénario nominal (13:14)
+== nominal : parcours demo-biomes-nord, 794 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.8 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-nord à 29.7 s
+[OK] engine vivant jusqu'à la fin : 794 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 11/11 images enregistrées après le chargement, réponse en 0.49 s (médiane), 0.51 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (11 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -6.2 à 5.4 %, pente envoyée -6.7 à 6.3 %
+[OK] médiane 51.1 km/h sur 723 s (attendu 50.0 ± 5.0), de 48.0 à 55.0 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 85 (dernier : van / core à 53 m (écarts à l'axe 1.1 et 2.5 m))
+[OK] fréquence cardiaque au journal : 744 échantillons, 89 à 185 bpm
+    NON nominal : 1 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rDB3/demo-biomes-nord_medium/index.html
+=== Banc fini : ÉCHEC (1 vérification(s))
+RÉSULTAT : ÉCHEC (1 vérification(s))
+demo-biomes-sud (high) : 19 min, captures à 150, 400, 1000, 2150, 2400, 3000, 4150, 4400, 5000, 6150, 6400, 7000, 7970, 8000, 8020, 8030, 8040, 8150, 8400, 9000, 10150, 10400, 11000 m
+>>> [1/1] Scénario nominal (18:41)
+== nominal : parcours demo-biomes-sud, 1121 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.6 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-sud à 29.7 s
+[OK] engine vivant jusqu'à la fin : 1121 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 24/24 images enregistrées après le chargement, réponse en 0.56 s (médiane), 0.63 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : high appliquée (24 capture(s)) ; dernière ligne : high (demandée high, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -3.4 à 5.0 %, pente envoyée -3.6 à 5.8 %
+[OK] médiane 51.0 km/h sur 841 s (attendu 50.0 ± 5.0), de 48.8 à 52.3 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 24 captures
+[OK] fréquence cardiaque au journal : 862 échantillons, 153 à 185 bpm
+    NON nominal : 1 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rDB3/demo-biomes-sud_high/index.html
+=== Banc fini : ÉCHEC (1 vérification(s))
+RÉSULTAT : ÉCHEC (1 vérification(s))
+demo-biomes-nord (high) : 13 min, captures à 150, 400, 2500, 4430, 4460, 4480, 4490, 4500, 5000, 7500 m
+>>> [1/1] Scénario nominal (13:14)
+== nominal : parcours demo-biomes-nord, 794 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.9 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-nord à 29.8 s
+[OK] engine vivant jusqu'à la fin : 794 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 11/11 images enregistrées après le chargement, réponse en 0.49 s (médiane), 0.54 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : high appliquée (11 capture(s)) ; dernière ligne : high (demandée high, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -6.2 à 5.4 %, pente envoyée -6.7 à 6.3 %
+[OK] médiane 51.1 km/h sur 717 s (attendu 50.0 ± 5.0), de 48.0 à 55.0 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 17 (dernier : van / core à 53 m (écarts à l'axe 1.1 et 2.5 m))
+[OK] fréquence cardiaque au journal : 738 échantillons, 89 à 185 bpm
+    NON nominal : 1 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rDB3/demo-biomes-nord_high/index.html
+=== Banc fini : ÉCHEC (1 vérification(s))
+RÉSULTAT : ÉCHEC (1 vérification(s))
+Planche : ~/mesures-2026-11-01-auto/rDB3/planche.html
