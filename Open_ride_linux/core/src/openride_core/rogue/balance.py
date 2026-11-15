@@ -146,14 +146,16 @@ class RogueBalance:
     relic_ps_window_bonus_s: float = 0.3   # relique de réflexes : fenêtre de Perfect Shift en plus (s)
     # Châssis (R9) : valeurs neutres, modifiées seulement par `progress.apply_chassis`
     gold_mult: float = 1.0   # multiplicateur de l'or gagné (châssis Collecteur)
-    adrenaline_start: float = 0.0   # adrénaline au début de chaque salle (châssis Survolté)
+    adrenaline_start: float = 0.0   # adrénaline minimale au début de chaque salle (châssis Survolté) ; sinon celle de la salle d'avant (lot R23)
     # Scénariste (R15) : durée de la run -> (échauffement min, nombre de salles, salle moyenne min,
     # couloir min, boss min, poids des trois phases, retour au calme min)
     calendars: dict = field(default_factory=lambda: {   # durée de la run (min) -> échauffement min, salles, salle moyenne min, couloir min, boss min, poids des phases, retour au calme min
-        30: (6.0, 2, 4.0, 2.0, 7.0, (2.0, 3.0, 1.0), 5.0),
-        45: (8.0, 4, 3.5, 2.0, 10.0, (3.0, 4.0, 1.5), 5.0),
-        60: (10.0, 6, 3.5, 2.0, 10.0, (3.0, 4.0, 1.5), 7.0),
-        90: (10.0, 10, 4.0, 2.0, 12.0, (4.0, 5.0, 1.5), 8.0),
+        # lot R23 (essai du 15 novembre) : couloirs de 45 s au lieu de 2 min, le temps gagné va aux salles
+        # (salle moyenne de 4,5 min environ, 5 min au plus : taille du message `room`) et le reste au boss : la durée de la run ne change pas.
+        30: (6.0, 2, 4.5, 0.75, 8.5, (2.0, 3.0, 1.0), 5.0),
+        45: (8.0, 4, 4.5, 0.75, 11.0, (3.0, 4.0, 1.5), 5.0),
+        60: (10.0, 6, 4.5, 0.75, 11.5, (3.0, 4.0, 1.5), 7.0),
+        90: (10.0, 10, 4.75, 0.75, 17.0, (4.0, 5.0, 1.5), 8.0),
     })
     room_min_s: float = 180.0           # salles de 3 à 5 minutes
     room_max_s: float = 300.0   # durée maximale d'une salle (s)
@@ -165,7 +167,9 @@ class RogueBalance:
     })
     sprinter_extra: str = "sprinteur"   # seuil : Sprinteur au plus une fois (il remplace une porte)
     late_margin_s: float = 120.0        # retard toléré avant de raccourcir les couloirs
-    corridor_min_s: float = 60.0   # durée minimale d'un couloir raccourci (s)
+    corridor_min_s: float = 30.0   # durée minimale d'un couloir raccourci (s)
+    boss_fit_min: float = 0.75   # phases du boss raccourcies au plus à 75 % en cas de retard (lot R23)
+    boss_fit_max: float = 1.6   # phases du boss rallongées au plus de 60 % en cas d'avance (lot R23)
     skip_gold_penalty: float = 10.0   # or perdu pour une salle retirée
     # Profils par archétype et par objectif (valeurs de départ du cahier R3 §4.2)
     room_profiles: dict = field(default_factory=lambda: {   # profils des salles par archétype et par objectif (voir le cahier R3)

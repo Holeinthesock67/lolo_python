@@ -298,3 +298,91 @@ def test_overheat_ignores_raw_spikes_under_the_ceiling():
                                    power_avg_w=hi_w - 5.0))
     assert not out.rogue["overheat"]
 
+
+
+def test_adrenaline_carried_to_the_next_room_and_boss_phase():
+    # essai du 15 novembre : remise à 0 à chaque phase, la phase 3 du boss (85 s) ne permettait aucune frappe
+    e = engine()
+    r = Rider(e)
+    while e.phase not in ("ROOM", "BOSS") and r.t < 3000:
+        r.run(max_s=r.t + DT)
+    first = e.room_id
+    e.combat = replace(e.combat, adrenaline=42.0)
+    while e.room_id == first and r.t < 4000:
+        r.run(max_s=r.t + DT)
+    assert e.combat.adrenaline >= 42.0 - 1.0
+
+
+# --- essai du 15 novembre : couloir court, cause de la défaite, boss qui remplit le temps restant -------
+
+def test_corridors_last_45_s_and_runs_keep_their_duration():
+    from openride_core.rogue.scenario import compose_run
+    for d in (30, 45, 60, 90):
+        for objective in ("endurance", "threshold", "vo2max"):
+            sc = compose_run(objective, d, 5)
+            corridors = [s for s in sc.steps if s.kind == "corridor"]
+            assert corridors and all(s.nominal_s == 45.0 for s in corridors)
+            total = sum(s.nominal_s + (s.doors[0].nominal_s if s.doors else 0.0) for s in sc.steps)
+            assert abs(total - d * 60.0) < 1.0, (d, objective, total)
+            rooms = [s.nominal_s for s in sc.steps if s.kind == "room"] + [x.nominal_s for s in corridors for x in s.doors[:1]]
+            assert all(B.room_min_s <= x <= B.room_max_s for x in rooms)
+
+
+def test_long_rooms_are_split_under_the_datagram_limit():
+    from openride_core.ipc_budget import encode
+    from openride_core.ipc_server import MAX_DATAGRAM_SIZE
+    room = generate_room("boss", "phase2", "endurance", 480.0, RIDER, 7, B)
+    parts = room.to_messages(3)
+    assert len(parts) >= 2 and all(len(encode(m)) <= MAX_DATAGRAM_SIZE for m in parts)
+    assert [m["part"] for m in parts] == list(range(1, len(parts) + 1)) and {m["parts"] for m in parts} == {len(parts)}
+    whole = room.to_message(3)
+    assert sum((m["profile"] for m in parts), []) == whole["profile"]
+    assert sum((m["markers"] for m in parts), []) == whole["markers"]
+    for m in parts:
+        jsonschema.validate(m, _room_schema())
+    short = generate_room("diesel", "", "endurance", 120.0, RIDER, 8, B).to_messages(4)
+    assert len(short) == 1 and short[0]["parts"] == 1
+
+
+def _room_schema():
+    import json
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    return json.loads((root / "docs/contracts/ipc/room.schema.json").read_text(encoding="utf-8"))
+
+
+def test_boss_fills_the_time_left():
+    e = engine()
+    boss = [i for i, s in enumerate(e.sc.steps) if s.kind == "boss"]
+    planned = sum(e.sc.steps[i].nominal_s for i in boss)
+    e.idx, e.t_total = boss[0], 0.0
+    before_cool = sum(s.nominal_s + (s.doors[0].nominal_s if s.doors else 0.0) for s in e.sc.steps[:boss[0]])
+    e.t_total = before_cool - 60.0                     # une minute d'avance (salle finie plus vite)
+    e._fit_boss_to_time_left()
+    after = sum(e.sc.steps[i].nominal_s for i in boss)
+    assert after == pytest.approx(planned + 60.0, abs=1.0)
+    e.t_total = before_cool - 60.0 + 5.0               # sous 15 s d'écart : rien ne bouge
+    e._fit_boss_to_time_left()
+    assert sum(e.sc.steps[i].nominal_s for i in boss) == pytest.approx(after, abs=0.01)
+
+
+def test_summary_says_why_the_run_was_lost():
+    from openride_core.rogue.run import RunEngine, RunInputs, Scenario, Step
+    steps = (Step("warmup", 1.0),) + tuple(Step("boss", 20.0, "boss", f"phase{k}", "endurance") for k in (1, 2, 3)) \
+        + (Step("cooldown", 5.0),)
+    e = RunEngine(Scenario("endurance", 30, 3, steps), RIDER, 20000.0, 250.0, B)
+    s_m, rid, t = 0.0, None, 0.0
+    while e.phase not in ("COOLDOWN", "RESULTS") and t < 600.0:   # roule sans jamais frapper
+        if e.room_id != rid:
+            rid, s_m = e.room_id, 0.0
+        e.step(DT, RunInputs(power_w=60, cadence_rpm=85, gear=6, ftp_w=250, s_m=s_m, v_mps=8.0))
+        s_m += 8.0 * DT
+        t += DT
+    summary = e.summary()
+    cause = summary["end_cause"]
+    assert summary["boss"] == "fled" and cause["cause"] == "boss_time" and cause["boss_phase"] == 3
+    assert 1 <= cause["enemy_pct"] <= 100
+    e.result = "victory"
+    assert e.summary()["end_cause"] is None
+    e2 = engine()
+    assert e2.abandon()["end_cause"] == {"cause": "abandoned", "boss_phase": None, "enemy_pct": None}

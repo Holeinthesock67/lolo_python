@@ -17,6 +17,9 @@ const ANNOUNCE_M := 120.0
 ## Écart au Firewall (s) : vert au-delà de WARN, orange entre DANGER et WARN, rouge en dessous.
 const FW_WARN_S := 10.0
 const FW_DANGER_S := 5.0
+## Lot R23 (essai du 15 novembre) : distance avant la fin d'une salle (ou de la phase 3 du boss) à partir de laquelle
+## le guide dit ce qu'il reste à l'ennemi : la salle se finit au bout de sa distance, gagnée ou non.
+const END_WARN_M := 300.0
 const TOAST_S := 2.5
 const OVERHEAT_RATE_DEFAULT := 2.0  # adrénaline perdue par seconde en surchauffe, si le core ne la dit pas
 const FIGHT_PHASES := ["ROOM", "BOSS"]
@@ -327,6 +330,7 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 		var gap_m := float(rogue.get("firewall_gap_m", 1.0))
 		var hack = rogue.get("hack", null)
 		var ups := upcoming(float(rogue.get("s_room", 0.0)))
+		var end_warn := room_end_text(state, rogue)
 		var limit := int(tgt_hi) if tgt_hi != null else 75
 		if gap_m <= 0.0:
 			hint = "Accélère ! Le Firewall te touche"
@@ -340,6 +344,9 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 			tone = "danger"
 		elif soon != null:
 			hint = "Trop fort : au-dessus de %s, surchauffe dans %d s" % [watts(limit, ftp_w), maxi(int(ceil(float(soon))), 1)]
+			tone = "warn"
+		elif end_warn != "" and not (not ups.is_empty() and bool(ups[0]["inside"])):
+			hint = end_warn
 			tone = "warn"
 		elif hack is Dictionary:
 			hint = "Vitesses %s par le Saboteur : Z sur la borne pour les débloquer" % ("bloquées" if bool(hack.get("locked", false)) else "imposées")
@@ -382,6 +389,25 @@ func _hint(out: Dictionary, state: Dictionary, rogue: Dictionary, phase: String,
 	out["keys"] = keys
 	out["tone"] = tone
 	out["z_call"] = z_call(rogue, z_ready, bool(rogue.get("overheat", false))) if phase in FIGHT_PHASES else ""
+
+
+## Fin proche d'une salle encore debout (lot R23) : « Fin de salle dans 200 m : ennemi encore à 60 % » ; au boss,
+## seule la phase 3 décide de la run. "" loin de la fin, ennemi à terre ou longueur inconnue.
+static func room_end_text(state: Dictionary, rogue: Dictionary) -> String:
+	var raw_len = state.get("route_length_m", null)
+	var length := float(raw_len) if raw_len is float or raw_len is int else 0.0
+	var hp_max := float(rogue.get("enemy_hp_max", 0.0))
+	var hp := float(rogue.get("enemy_hp", 0.0))
+	var phase = rogue.get("boss_phase", null)
+	if length <= 0.0 or hp_max <= 0.0 or hp <= 0.0 or (phase != null and int(phase) < 3):
+		return ""
+	var left := length - float(rogue.get("s_room", 0.0))
+	if left > END_WARN_M or left < 0.0:
+		return ""
+	var pct := clampi(int(ceil(hp / hp_max * 100.0)), 1, 100)
+	if phase != null:
+		return "Fin du boss dans %d m : boss encore à %d %%" % [int(left), pct]
+	return "Fin de salle dans %d m : ennemi encore à %d %%" % [int(left), pct]
 
 
 ## Invite de Z (lot R23) : d'après les fenêtres d'acceptation du core (`windows`), la même règle que le core, et non

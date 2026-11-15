@@ -129,18 +129,22 @@ room_max_s = 300.0   # durée maximale d'une salle (s)
 room_spread_s = 60.0   # écart de tirage de la durée d'une salle (s)
 sprinter_extra = "sprinteur"   # seuil : Sprinteur au plus une fois (il remplace une porte)
 late_margin_s = 120.0   # retard toléré avant de raccourcir les couloirs
-corridor_min_s = 60.0   # durée minimale d'un couloir raccourci (s)
+corridor_min_s = 30.0   # durée minimale d'un couloir raccourci (s)
+boss_fit_min = 0.75   # phases du boss raccourcies au plus à 75 % en cas de retard (lot R23)
+boss_fit_max = 1.6   # phases du boss rallongées au plus de 60 % en cas d'avance (lot R23)
 skip_gold_penalty = 10.0   # or perdu pour une salle retirée
 gold_mult = 1.0   # multiplicateur de l'or gagné (châssis Collecteur)
-adrenaline_start = 0.0   # adrénaline au début de chaque salle (châssis Survolté)
+adrenaline_start = 0.0   # adrénaline minimale au début de chaque salle (châssis Survolté) ; sinon celle de la salle d'avant (lot R23)
 
 # Scénariste (R15) : durée de la run en minutes -> [échauffement min, nombre de salles, salle moyenne min,
 # couloir min, boss min, poids des trois phases, retour au calme min]
 [calendars]
-"30" = [6.0, 2, 4.0, 2.0, 7.0, [2.0, 3.0, 1.0], 5.0]
-"45" = [8.0, 4, 3.5, 2.0, 10.0, [3.0, 4.0, 1.5], 5.0]
-"60" = [10.0, 6, 3.5, 2.0, 10.0, [3.0, 4.0, 1.5], 7.0]
-"90" = [10.0, 10, 4.0, 2.0, 12.0, [4.0, 5.0, 1.5], 8.0]
+# Lot R23 (essai du 15 novembre) : couloirs de 45 s au lieu de 2 min ; le temps gagné va aux salles (4,5 min en
+# moyenne, 5 min au plus : taille du message `room`) et le reste au boss, la durée de la run ne change pas.
+"30" = [6.0, 2, 4.5, 0.75, 8.5, [2.0, 3.0, 1.0], 5.0]
+"45" = [8.0, 4, 4.5, 0.75, 11.0, [3.0, 4.0, 1.5], 5.0]
+"60" = [10.0, 6, 4.5, 0.75, 11.5, [3.0, 4.0, 1.5], 7.0]
+"90" = [10.0, 10, 4.75, 0.75, 17.0, [4.0, 5.0, 1.5], 8.0]
 
 # Archétypes disponibles par objectif
 [reservoirs]

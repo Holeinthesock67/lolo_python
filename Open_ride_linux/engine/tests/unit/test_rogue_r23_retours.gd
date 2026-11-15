@@ -11,6 +11,7 @@ const HudView := preload("res://scripts/rogue/rogue_hud_view.gd")
 const SoundModel := preload("res://scripts/rogue/rogue_sound_model.gd")
 const Synth := preload("res://scripts/rogue/rogue_sound_synth.gd")
 const RogueScene := preload("res://scripts/rogue/rogue_scene.gd")
+const SummaryModel := preload("res://scripts/summary_view_model.gd")
 
 var _failures := 0
 var _checked := 0
@@ -226,6 +227,36 @@ func _run() -> void:
 	# Vues du mode : 4, la dernière sur le vélo.
 	_check(RogueScene.VIEW_NAMES == ["derrière", "haute", "proche", "sur le vélo"] and RogueScene.RIDER_VIEW == 3, "4 vues, la 4e sur le vélo")
 	_check(float(RogueScene.VIEWS[3][1]) == 1.4, "vue sur le vélo : yeux à 1,4 m")
+
+	# Essai du 15 novembre : fin de salle annoncée avec ce qu'il reste à l'ennemi ; au boss, la phase 3 seulement.
+	var hp := {"enemy_hp": 60.0, "enemy_hp_max": 100.0}
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0}))) == "Fin de salle dans 200 m : ennemi encore à 60 %",
+		"fin de salle dans 200 m, ennemi à 60 %")
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 500.0}))) == "", "loin de la fin : rien")
+	_check(GuideModel.room_end_text(st, _rogue({"s_room": 920.0, "enemy_hp": 0.0, "enemy_hp_max": 100.0})) == "", "ennemi à terre : rien")
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0, "phase": "BOSS", "boss_phase": 2}))) == "",
+		"boss phase 2 : rien (seule la phase 3 décide)")
+	_check(GuideModel.room_end_text(st, _rogue(hp.merged({"s_room": 920.0, "phase": "BOSS", "boss_phase": 3}))) == "Fin du boss dans 200 m : boss encore à 60 %",
+		"boss phase 3 : fin annoncée")
+	var g_end = GuideModel.new()
+	var out2: Dictionary = g_end.compute(st, _rogue(hp.merged({"s_room": 920.0, "adrenaline": 10.0})), 72.0, [])
+	_check(out2["hint"] == "Fin de salle dans 200 m : ennemi encore à 60 %" and out2["tone"] == "warn", "fin de salle au guide : %s" % out2["hint"])
+
+	# Bilan : la cause de la défaite en une phrase, et ce qu'il fallait faire ; plus de « fui ».
+	var sum_m = SummaryModel.new()
+	var vd: Dictionary = sum_m.verdict({"rogue": {"result": "defeat", "boss": "fled",
+		"end_cause": {"cause": "boss_time", "boss_phase": 3, "enemy_pct": 42}}})
+	_check(vd["text"] == "Défaite : la phase 3 du boss s'est finie avec encore 42 % de PV au boss." and "FRAPPE" in vd["tip"] and vd["tone"] == "warn",
+		"défaite au temps : %s" % str(vd))
+	vd = sum_m.verdict({"rogue": {"result": "defeat", "end_cause": {"cause": "boss_shield", "boss_phase": 2, "enemy_pct": 70}}})
+	_check("bouclier est tombé à zéro face au boss (phase 2)" in vd["text"] and "PARADE" in vd["tip"], "défaite au bouclier")
+	_check(sum_m.verdict({"rogue": {"result": "victory", "end_cause": null}})["tone"] == "ok", "victoire")
+	_check(sum_m.verdict({"distance_m": 1000.0}).is_empty(), "séance sans mode : pas de verdict")
+	var rl: Array = sum_m.rogue_lines({"result": "defeat", "boss": "fled"})
+	var rlabels := []
+	for ln in rl:
+		rlabels.append("%s : %s" % [ln["label"], ln["value"]])
+	_check("Boss : non vaincu" in rlabels and "Salles non gagnées / sautées : 0 / 0" in rlabels, "bilan sans « fui » : %s" % str(rlabels))
 
 	print("test_rogue_r23_retours : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

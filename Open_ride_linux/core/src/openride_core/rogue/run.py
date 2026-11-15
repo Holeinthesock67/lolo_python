@@ -8,6 +8,7 @@ la session (R8) fournit la position dans la salle et la vitesse, et applique la 
 
 from __future__ import annotations
 
+import math
 import pickle
 from dataclasses import dataclass, field, replace
 
@@ -48,6 +49,11 @@ class Scenario:
     def rooms_total(self) -> int:
         return sum(1 for s in self.steps if s.kind == "room") + sum(
             1 for s in self.steps if s.kind == "corridor" and s.doors)
+
+
+def _plan_end_s(sc) -> float:
+    """Fin prévue d'un scénario : somme des étapes, la salle jouée après un couloir à portes comprise."""
+    return sum(st.nominal_s + (st.doors[0].nominal_s if st.kind == "corridor" and st.doors else 0.0) for st in sc.steps)
 
 
 @dataclass(frozen=True)
@@ -97,6 +103,7 @@ class RunEngine:
         self.relics: tuple = ()
         self.gold = 0.0
         self.shield = balance.shield_max
+        self.adrenaline = 0.0               # lot R23 : gardée d'une salle et d'une phase du boss à l'autre
         self.last_gear = balance.gear_ref
         self.next_room_id = 1
         self.rooms_started = 0
@@ -131,6 +138,8 @@ class RunEngine:
         self.rooms_won = self.rooms_fled = self.rooms_skipped = self.defeats = 0
         self.perfect_shifts = 0
         self.boss = "not_reached"
+        self.end_cause: dict | None = None   # lot R23 : cause de la défaite, au bilan
+        self.plan_end_s = _plan_end_s(scenario)   # lot R23 : fin prévue au départ, que le boss vise
         self.result: str | None = None
         self.rooms_total0 = scenario.rooms_total
         self._spring_adr = 0.0
@@ -155,10 +164,29 @@ class RunEngine:
         if self.phase == ROOM:
             messages += self._start_room(self._step, self._take_room_id(), None, inp.gear, inp.s_m)
         elif self.phase == BOSS:
+            self._fit_boss_to_time_left()
             n = sum(1 for s in self.sc.steps[:self.idx + 1] if s.kind == "boss")
             messages += self._start_room(self._step, self._take_room_id(), n, inp.gear, inp.s_m)
         elif self.phase == CORRIDOR:
             self._enter_corridor(inp, messages)
+
+    def _fit_boss_to_time_left(self) -> None:
+        """Lot R23 : le boss remplit le temps qui reste avant le retour au calme, d'après la fin prévue du scénario. Une salle finie en avance (carte
+        Rouleau compresseur, rouleur plus fort que prévu) rallonge les phases restantes au lieu de raccourcir la run ;
+        un retard les raccourcit. Facteur borné à [`boss_fit_min`, `boss_fit_max`], écart de moins de 15 s ignoré."""
+        steps = list(self.sc.steps)
+        rest = [i for i in range(self.idx, len(steps)) if steps[i].kind == "boss"]
+        after = sum(st.nominal_s for st in steps[rest[-1] + 1:]) if rest else 0.0
+        plan = getattr(self, "plan_end_s", None) or _plan_end_s(self.sc)
+        left = plan - self.t_total - after              # fin prévue au départ (la durée choisie pour une run composée)
+        planned = sum(steps[i].nominal_s for i in rest)
+        if not rest or planned <= 0 or abs(left - planned) < 15.0:
+            return
+        k = min(max(left / planned, self.b.boss_fit_min), self.b.boss_fit_max)
+        for i in rest:
+            steps[i] = replace(steps[i], nominal_s=round(steps[i].nominal_s * k, 1))
+        self.sc = replace(self.sc, steps=tuple(steps))
+        self._journal.append(f"rogue boss_fit k={k:.2f} left={left:.0f}")
 
     @property
     def _step(self) -> Step:
@@ -191,7 +219,7 @@ class RunEngine:
         self.room_id, self.boss_phase, self.cur_spec = room_id, boss_phase, spec
         bx = self._eff_balance()
         self.combat = replace(combat_start(self.room, self.sc.seed * 1000 + room_id, bx, shield=self.shield, gear=gear),
-                              adrenaline=bx.adrenaline_start)
+                              adrenaline=max(getattr(self, "adrenaline", 0.0), bx.adrenaline_start))
         self.firewall = Firewall(self.room, self.rider, bx, player_s=s_m)
         self.gold_lost_seen = 0.0
         self.inversion_used = False
@@ -200,7 +228,7 @@ class RunEngine:
         self.rooms_started += 1
         self._journal.append(f"rogue room id={room_id} archetype={spec.archetype} variant={self.room.variant} "
                              f"length={self.room.length_m:.0f}")
-        return [self.room.to_message(room_id)]
+        return self.room.to_messages(room_id)
 
     # --- boucle -----------------------------------------------------------------------------
 
@@ -279,7 +307,7 @@ class RunEngine:
             room = generate_room(spec.archetype, spec.variant, spec.objective, spec.nominal_s,
                                  self.rider, self.sc.seed * 1000 + rid, self.b)
             self._previews[rid] = room          # la salle choisie est reprise telle quelle au lieu d'être recalculée
-            messages.append(room.to_message(rid))
+            messages.extend(room.to_messages(rid))
 
     def _open_offer(self, offer: tuple, stage: str, messages: list) -> None:
         self.offer, self.stage, self.focus = offer, stage, None
@@ -456,6 +484,7 @@ class RunEngine:
         cs = replace(cs, shield=min(shield, bx.shield_max), adrenaline=min(adr, b.adrenaline_max))
         self.combat = cs
         self.shield = cs.shield
+        self.adrenaline = cs.adrenaline
         lost = cs.gold_lost - self.gold_lost_seen
         self.gold_lost_seen = cs.gold_lost
         self.gold = max(self.gold - lost, 0.0)
@@ -487,8 +516,11 @@ class RunEngine:
         if boss:
             if cs.outcome == "boss_fled":
                 self.boss = "fled"
+                self.end_cause = {"cause": "boss_shield", "boss_phase": self.boss_phase, "enemy_pct": self._enemy_pct(cs)}
             elif self.boss_phase == 3:
                 self.boss = "won" if cs.outcome == "won" else "fled"
+                if cs.outcome != "won":
+                    self.end_cause = {"cause": "boss_time", "boss_phase": 3, "enemy_pct": self._enemy_pct(cs)}
             elif self.boss == "not_reached":
                 self.boss = "in_progress"
         self.room, self.combat, self.firewall = None, None, None
@@ -511,6 +543,13 @@ class RunEngine:
         self._enter(min(self.idx + 1, len(self.sc.steps) - 1))
         self._begin(inp, messages)
 
+    @staticmethod
+    def _enemy_pct(cs) -> int:
+        """PV restants de l'ennemi en % entier (au moins 1 tant qu'il en reste : « 0 % » serait faux)."""
+        if cs.enemy_hp <= 0 or cs.enemy_hp_max <= 0:
+            return 0
+        return max(1, min(100, math.ceil(cs.enemy_hp / cs.enemy_hp_max * 100.0)))
+
     # --- fin de run ---------------------------------------------------------------------------
 
     def _finish_run(self) -> None:
@@ -522,6 +561,7 @@ class RunEngine:
         """Run arrêtée par `end_session` avant les résultats : bilan `abandoned`, sans perte d'or."""
         if self.phase != RESULTS:
             self.result = "abandoned"
+            self.end_cause = {"cause": "abandoned", "boss_phase": self.boss_phase, "enemy_pct": None}
             if self.boss == "in_progress":
                 self.boss = "fled"
         return self.summary()
@@ -535,7 +575,16 @@ class RunEngine:
                 "rooms_skipped": self.rooms_skipped, "rooms_total": self.rooms_total0,
                 "defeats": self.defeats, "boss": boss, "gold": int(self.gold),
                 "cards": list(self.relics + self.deck), "perfect_shifts": self.perfect_shifts,
-                "unlocks": []}
+                "unlocks": [],
+                # révision 1.17 (lot R23) : pourquoi la run est perdue (null en victoire)
+                "end_cause": None if self.result == "victory" else self._end_cause_or_default()}
+
+    def _end_cause_or_default(self) -> dict:
+        cause = getattr(self, "end_cause", None)
+        if cause is not None:
+            return dict(cause)
+        return {"cause": "boss_time" if self.boss != "not_reached" else "abandoned", "boss_phase": None,
+                "enemy_pct": None}
 
     # --- état pour l'engine -------------------------------------------------------------------
 

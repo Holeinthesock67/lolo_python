@@ -103,6 +103,23 @@ func _ids_route(items: Array, index: int) -> String:
 	return str(items[index]["id"])
 
 
+## Bilan de fin (lot R23, essai du 15 novembre) : « Retour à l'accueil » en tête, et Y (Retour) y mène aussi,
+## pour tous les modes (Cyber-Rogue compris) ; le bilan ne revient pas avec les copies que le core renvoie.
+func _test_summary_back_goes_home() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "RUNNING", "mode": "ROGUE"})
+	f.on_state({"session_state": "FINISHED", "mode": "ROGUE", "summary": {"duration_s": 1800.0, "distance_m": 12000.0,
+		"rogue": {"result": "defeat"}}})
+	_check(f.state()["screen"] == "summary" and _focus_id(f) == "new_session"
+			and f.state()["items"][0]["label"] == "Retour à l'accueil", "bilan : « Retour à l'accueil » en tête")
+	var act: Dictionary = f.handle("Y_SHORT")
+	_check(act.get("action", "") == "list" and f.state()["screen"] == "home",
+			"Y sur le bilan : accueil et listes redemandées (%s)" % str(act))
+	f.on_state({"session_state": "FINISHED", "mode": "ROGUE", "summary": {"duration_s": 1800.0}})
+	_check(f.state()["screen"] == "home", "les copies du bilan ne le rouvrent pas")
+
+
 ## Invite de fin de séance (1er novembre) : entraînement fini, la pause s'ouvre sur « Terminer et enregistrer »
 ## et le dit sur sa ligne d'état ; une pause ordinaire garde Reprendre en premier.
 func _test_pause_after_workout_done() -> void:
@@ -996,6 +1013,7 @@ func _init() -> void:
 	_test_full_session()
 	_test_abandon_and_summary_quit()
 	_test_pause_after_workout_done()
+	_test_summary_back_goes_home()
 	_test_u_turn_entry()
 	_test_view()
 	print("test_menu_flow : %d vérifications, %d échecs" % [_checked, _failures])

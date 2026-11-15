@@ -31,7 +31,7 @@ SNAPSHOT_PHASES = ("WARMUP", "ROOM", "CORRIDOR", "BOSS", "COOLDOWN")
 FIGHT_PHASES = ("ROOM", "BOSS")
 GEAR_BUTTONS = ("PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG")
 GAME_BUTTONS = ("Z_SHORT", "Z_LONG", "A_SHORT", "A_LONG", "LEFT_SHORT", "RIGHT_SHORT")
-KEPT_MESSAGES = 12                      # messages `room` et `loot` gardés pour `rogue_resync`
+KEPT_MESSAGES = 16                      # messages `room` (parties comprises) et `loot` gardés pour `rogue_resync`
 JOURNAL_ROUTE_ID = "rogue"              # parcours inscrit au journal d'une run (la trame `state` porte route_id null)
 # Événements de jeu gardés pour la prochaine trame `state` (lot R23) : le core fait un pas à 50 Hz, la trame part à
 # 30 Hz ; les événements de tous les pas depuis la trame précédente partent ensemble, une seule fois.

@@ -579,6 +579,44 @@
                 "type": "string",
                 "maxLength": 24
               }
+            },
+            "end_cause": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "description": "Facultatif, révision 1.17 (lot R23) : pourquoi la run est perdue ; null en victoire.",
+              "required": [
+                "cause",
+                "boss_phase",
+                "enemy_pct"
+              ],
+              "properties": {
+                "cause": {
+                  "type": "string",
+                  "enum": [
+                    "boss_time",
+                    "boss_shield",
+                    "abandoned"
+                  ]
+                },
+                "boss_phase": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1,
+                  "maximum": 3
+                },
+                "enemy_pct": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              }
             }
           }
         },
