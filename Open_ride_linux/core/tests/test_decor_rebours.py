@@ -159,3 +159,37 @@ def test_rider_passes_slow_tractor_after_u_turn(tmp_path, monkeypatch) -> None:
     ride_until(s, watch)
     assert worst < 99.0                               # il l'a bien longé
     assert worst > 0.3                                # sans le toucher
+
+
+
+@pytest.mark.parametrize("kind", ["tractor", "car_a", "truck"])
+def test_vehicles_met_before_u_turn_never_touch_the_rider_after_it(tmp_path, monkeypatch, kind: str) -> None:
+    """Lot AS10 (banc rAS10b, « montees_retour » : « tractor / cycliste » 30/27/14) : le véhicule croisé avant le
+    demi-tour roule ensuite devant le cycliste, dans son sens ; il était marqué « a fini de doubler » et prenait la
+    voie de gauche à moins de 30 m devant lui, où le cycliste plus rapide le doublait. Celui qui doublait le
+    cycliste vient en face, sur sa voie. Aucun ne touche le cycliste, qui double le plus lent à gauche."""
+    s, _ = make_session(tmp_path, monkeypatch, 7340 + 10 * ["tractor", "car_a", "truck"].index(kind))
+    ride_until(s, lambda: s.physics.s >= 3000.0, dt=DT)
+    t = s.traffic
+    t.budget = 0                                             # seulement les véhicules posés ici
+    t.vehicles.clear()
+    me = s.physics.s
+    t.place_for_test(me, kind, -1, -40.0, 25.0)              # croisé, 40 m derrière
+    over = t.place_for_test(me, "truck", 1, -3.0, 60.0, lateral=tr.lane_lateral("truck"))
+    over.committed = True                                    # il doublait le cycliste
+    u_turn(s)
+    worst, ahead_left = 99.0, 0
+
+    def look() -> bool:
+        nonlocal worst, ahead_left
+        u = t.model_s(s.physics.s)
+        for v in t.vehicles:
+            if abs(v.s - u) < v.length * 0.5 + 0.85:
+                worst = min(worst, abs(v.lateral - s._lane.m) - v.half_width - tr.RIDER_HALF_WIDTH_M)
+            if v.dir == 1 and 0.0 < v.s - u < tr.PASS_ZONE_M[1] and v.lateral < tr.RIGHT_LANE_M - 0.05:
+                ahead_left += 1                              # devant lui dans son sens, mais pas sur sa voie
+        return s.physics.s <= 1500.0
+
+    ride_until(s, look, dt=DT)
+    assert ahead_left == 0
+    assert worst > 0.0

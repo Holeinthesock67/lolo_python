@@ -65,6 +65,18 @@ Rien de propre à un parcours : les mêmes règles (core `road_cyclists.py`, `tr
      plus loin. Correctif : `riders()` donne la vitesse où il roule (`_step_mps`) ; celui qui rattrape un groupe devant lui
      se règle sur sa vitesse réelle (derrière lui, la vitesse voulue : pas de ralentissement en cascade).
 
+7. **Banc rAS10b (tête d49063be) : volcan et demo_long à 0 en low, medium et high ; « montees_retour --crowd all »
+   30 / 27 / 14 contacts, « tractor / cycliste à ±1 m ».** Cause générale, au demi-tour (`traffic.set_direction`,
+   lot N23) : le véhicule croisé avant le demi-tour roule ensuite devant le cycliste, dans son sens ; il était marqué
+   « a fini de doubler » (`passed`, `committed`), et `_move_overtaker` garde la voie de gauche à un véhicule engagé
+   tant qu'il est à moins de `PASS_ZONE_M[1]` (30 m) devant : le tracteur à 25 km/h passait à gauche juste quand le
+   cycliste, plus rapide, le doublait (journal : 25 m devant, en train de passer à gauche ; puis 2,1 m à gauche de
+   l'axe à côté du cycliste à 0,9 m). Correctif : devant dans le même sens, c'est un véhicule lent devant, comme celui
+   que pose `place_for_test` (`slow` : sa voie de droite, il ne double pas, doublé par le cycliste il redevient un
+   dépassant). Celui qui doublait le cycliste vient en face : il rejoint sa voie d'un coup au lieu de traverser
+   devant lui. L'engine ne fait que prolonger les véhicules du core à moins de 60 m ; au-delà, son modèle garde
+   « a fini de doubler » (plus de 30 m devant : voie de droite, sa vitesse), et la règle du croisé y est la même.
+
 Pas d'exception par parcours : le monde ouvert passe par les mêmes fonctions (`_update_draft`, `living_decor.gd`).
 
 ## 3. Tests
@@ -73,7 +85,9 @@ Pas d'exception par parcours : le monde ouvert passe par les mêmes fonctions (`
   `test_state_list_is_short_and_near` (10) ; `test_draft_lane.py::test_closing_fast_on_a_slower_rider_never_brushes_him` ;
   `test_traffic.py::test_reverse_rider_passes_slow_tractor_on_the_left` ; banc rAS10 :
   `test_draft_lane.py::test_no_return_into_the_wheel_of_a_rider_still_caught` (0,67 m avant le correctif, 0,81 après) et
-  `test_road_cyclists.py::test_group_caught_behind_a_held_group_never_touches_it` (contacts dans 64 cas sur 72 avant) ; budgets de trame (`test_ipc_budget.py`,
+  `test_road_cyclists.py::test_group_caught_behind_a_held_group_never_touches_it` (contacts dans 64 cas sur 72 avant) ;
+  banc rAS10b : `test_decor_rebours.py::test_vehicles_met_before_u_turn_never_touch_the_rider_after_it` (tracteur,
+  voiture, camion : 99 pas sur la voie de gauche devant le cycliste avant le correctif, 0 après) ; budgets de trame (`test_ipc_budget.py`,
   `test_peloton.py`, `test_traffic.py`) et contrat 1.18 (`test_contract_ipc.py`). Les nouveaux échouent sans le correctif.
 - Engine : `test_road_cyclists_limit.gd` § 4 (groupe rendu par le core : 3,0 m en 0,5 s au lieu de 9,5) et § 5 (dépassement
   à côté du cycliste là où il est).
