@@ -1,0 +1,14 @@
+17:20:12 empreinte avant e0570322495285034123882e5491329d
+17:20:12 tête 91380469
+17:20:52 w17_cap low
+17:25:04 fin rc=0
+17:25:04 rapport sonde rc=0
+17:26:34 w17_cap medium
+17:30:54 fin rc=0
+17:30:54 rapport sonde rc=0
+17:32:24 w17_cap high
+17:36:47 fin rc=0
+17:36:47 rapport sonde rc=0
+17:38:18 empreinte après c22c2adb5ae366ddabdae892db25629e
+17:38:18 clone 214ad0b2
+17:38:18 FIN
