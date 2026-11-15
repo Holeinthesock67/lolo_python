@@ -37,7 +37,8 @@ TESTS_DIR = Path(__file__).resolve().parent
 ENGINE_DIR = TESTS_DIR.parent
 REPO = ENGINE_DIR.parent
 ROUTES = ("demo", "demo-biomes-tour", "demo-biomes-cote", "demo-biomes-alpin", "demo-circuit",
-          "demo-recif")   # tour gravel : recette seule (9 novembre) ; circuit : lot O38 ; récif sous la mer : lot SM1
+          "demo-recif", "demo-volcan")   # tour gravel : recette seule (9 novembre) ; circuit : lot O38 ; récif sous
+                                         # la mer : lot SM1 ; volcan en flammes : lot DB2
 START_MARKS_M = (150.0, 400.0)
 SUMMIT_BEFORE_M = (100.0, 70.0, 50.0, 40.0, 30.0)   # plusieurs : un spectateur peut cacher le panneau (r811c)
 MIN_CLIMB_M = 30.0                 # dénivelé sous lequel le parcours n'a pas de sommet à montrer
