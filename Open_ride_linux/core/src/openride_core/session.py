@@ -36,7 +36,7 @@ from .hr_monitor import HeartRateProvider
 from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
-from . import config_edit, last_choices, latency_log, local_weather
+from . import config_edit, last_choices, latency_log, local_weather, seance_file
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import Record
@@ -4033,6 +4033,38 @@ class CoreSession:
                  self.rogue.phase)
         return rs
 
+    def check_autostart_commands(self, commands: list[tuple[str, dict]]) -> None:
+        """Vérifie les parcours et entraînements d'une séance verrouillée avant d'ouvrir les ports (lot EP1)."""
+        for name, args in commands:
+            if name == "select_route":
+                self.check_autostart(str(args.get("route_id") or ""), None)
+            elif name == "select_workout" and args.get("workout_id"):
+                try:
+                    self._load_workout(str(args["workout_id"]))
+                except WorkoutError as exc:
+                    raise AutostartError(f"entraînement « {args['workout_id']} » refusé : {exc}") from exc
+
+    def _play_autostart(self, commands: list[tuple[str, dict]]) -> None:
+        """Joue la séance verrouillée comme les menus l'auraient fait (lot EP1) ; `AutostartError` au premier
+        refus du core : aucune séance ne part à moitié réglée ni sur la partie d'avant."""
+        refused: list[str] = []
+        send_error = self.server.send_error
+
+        def note(code: str, message: str) -> None:
+            refused.append(f"{code} : {message}")
+            send_error(code, message)
+
+        self.server.send_error = note   # type: ignore[method-assign]
+        try:
+            for name, args in commands:
+                self._on_command(name, dict(args), 0)
+                if refused:
+                    raise AutostartError(f"séance verrouillée refusée à « {name} » ({refused[0]})")
+        finally:
+            self.server.send_error = send_error   # type: ignore[method-assign]
+        if self.state.session_state == "READY" and self._start_gate is None:
+            raise AutostartError(f"séance verrouillée non partie (état {self.state.session_state})")
+
     def check_autostart(self, route_id: str, workout_id: str | None) -> None:
         """Vérifie parcours et entraînement d'un `--autostart` avant d'ouvrir les ports (lot J1).
 
@@ -4054,7 +4086,8 @@ class CoreSession:
                 raise AutostartError(f"entraînement « {workout_id} » refusé : {exc}") from exc
 
     async def run(self, autostart: bool = False, route_id: str = "demo",
-                  workout_id: str | None = None, resume: Path | None = None, game_mode: str | None = None) -> None:
+                  workout_id: str | None = None, resume: Path | None = None, game_mode: str | None = None,
+                  commands: list[tuple[str, dict]] | None = None) -> None:
         """Boucle de séance. Avec `autostart` : select_route, select_workout éventuel, puis start (avec
         `mode` = `game_mode` s'il est donné : `wtf` ou `survivor`, bancs du PC).
 
@@ -4063,8 +4096,10 @@ class CoreSession:
         lancement ; `autostart` garde la reprise automatique dès que l'engine et le trainer
         sont là (essais sans menu).
         """
+        if commands is None:   # `--route`, `--workout`, `--mode` : la liste courte, même chemin qu'un fichier
+            commands = seance_file.from_options(route_id, workout_id, game_mode)
         if autostart and resume is None:
-            self.check_autostart(route_id, workout_id)
+            self.check_autostart_commands(commands)
         # W' estimé (lot R16) : attendu au plus 3 s avant d'ouvrir les ports, pour être dans le premier hello_ack ;
         # au-delà, il arrive au hello_ack suivant (engine relancé ou reconnecté).
         await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
@@ -4092,10 +4127,11 @@ class CoreSession:
                 self._set_state("IDLE")
         elif autostart:
             self._autoresume = True
-            self._on_command("select_route", {"route_id": route_id}, 0)
-            if workout_id:
-                self._on_command("select_workout", {"workout_id": workout_id}, 0)
-            self._on_command("start", {"mode": game_mode} if game_mode else {}, 0)
+            try:
+                self._play_autostart(commands)
+            except AutostartError:
+                await self._shutdown(tasks)
+                raise
         else:
             self._preselect_last_route()   # lot O32 : le menu s'ouvre sur le dernier parcours du profil
         if self.first_run:
