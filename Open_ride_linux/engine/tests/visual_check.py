@@ -1570,7 +1570,7 @@ def _menu_scenes(s: Session) -> None:
         s.check_texts("bilan", info, {"menu_title": "Fin de séance", "menu": "Distance 15,23 km"}, contains=True)
         s.check_texts("bilan", info, {"menu": "Puissance 212 W NP 221"}, contains=True)
         s.check_texts("bilan", info, {"menu": "6:42,3 avant 6:58,9"}, contains=True)
-        s.check_texts("bilan", info, {"menu": "[Retour à l'accueil]"}, contains=True)
+        s.check_texts("bilan", info, {"menu": "[Nouvelle séance]"}, contains=True)
         s.check_layout("bilan", info)
         card = info["widgets"]["menu_card"]
         white = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 235 and p[1] > 235 and p[2] > 235, step=1)

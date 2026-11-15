@@ -950,11 +950,6 @@ func _back() -> Dictionary:
 			return _resume_action()   # retour depuis la pause = Reprendre
 		HOME:
 			return {}
-	# Écran dont le retour vaut un de ses éléments (bilan de fin : Y = « Retour à l'accueil », lot R23) : une seule
-	# règle pour tous les modes, la touche Retour n'est jamais sans effet sur un écran sans écran d'avant.
-	var back_item := str(_screens.get(_screen, {}).get("back_item", ""))
-	if back_item != "":
-		return {"action": "item", "screen": _screen, "id": back_item}
 	if not _stack.is_empty():
 		_screen = _stack.pop_back()
 		var previous: int = _focus_stack.pop_back()

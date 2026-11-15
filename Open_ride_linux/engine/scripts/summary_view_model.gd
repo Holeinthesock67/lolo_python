@@ -500,9 +500,8 @@ func menu_screen() -> Dictionary:
 		"id": "summary",
 		"title": "Fin de séance",
 		"on_back": "",
-		"back_item": "new_session",   # Y (Retour) ramène aussi à l'accueil (lot R23 : bilan sans issue au vélo)
 		"items": [
-			{"id": "new_session", "label": "Retour à l'accueil", "enabled": true, "detail": ""},
+			{"id": "new_session", "label": "Nouvelle séance", "enabled": true, "detail": ""},
 			{"id": "details", "label": "Voir le bilan détaillé", "enabled": true, "detail": ""},
 			{"id": "quit", "label": "Quitter", "enabled": true, "detail": ""}
 		]
