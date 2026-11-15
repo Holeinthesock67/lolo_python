@@ -201,6 +201,7 @@ PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
 | Menus (26 octobre) : la souris n'agit pas | Les menus n'avaient jamais géré la souris (Click et clavier seulement) | Clic gauche = valider l'élément, clic droit = retour, molette = choisir |
 | Menus (26 octobre) : impossible de valider au Click | Valider demandait un appui long sur + (0,9 s) ; les appuis de 0,5 à 0,9 s étaient ignorés sans rien dire et l'aide était cachée sur l'accueil | Plan des boutons sans exception (spécification générale §7.1, 27 octobre) : ± court et A court défilent, ± long sautent de cinq, A long valide, Y revient, Z ne fait rien ; tous les boutons du Click au contrat IPC (révision 1.3) ; aide des commandes toujours visible ; appui ambigu expliqué par un bandeau ; rappel des commandes au départ de la séance |
 | Écran Appareils (26 octobre) : « scan_failed … InProgress » | La recherche du menu partait pendant celle du Click ou du trainer ; BlueZ n'en accepte qu'une | La recherche attend son tour (verrou Bluetooth commun) et est refaite deux fois après 1 s si BlueZ reste occupé |
+| Liste des parcours à 8 images/s (15 novembre, pack des cols installé) | Le menu entier était refait à chaque trame du core (30/s) et à chaque événement, plusieurs fois par image lente ; chaque rangée reposait couleurs et styles, ce qui remettait en forme tous les libellés | Une mise à jour du menu par image ; rangées et carte inchangées laissées telles quelles ; ligne `[perf-menu]` au journal (lot ML1) |
 
 ### Défauts relevés par l'audit du 23 octobre
 Corrigés le jour même par les lots C, A, D et H1 à H4 :
@@ -411,6 +412,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Décor lisible après un demi-tour : bornes et panneau de col des deux côtés, bandeaux de portique à deux faces (lot N21, fusionné le 9 novembre, #812).
 - [ ] Décor chargé devant à rebours : portiques, herbe, détails du sol et gags WTF dans le sens de la marche (lot N22, en PR le 14 novembre).
 - [ ] Voitures, camions, tracteurs et cyclistes du décor aussi après un demi-tour (lot N23, en PR le 14 novembre).
+- [ ] Montées du retour : panneaux d'approche, chiffres peints, spectateurs et parapentes après un demi-tour (lot N24, en PR le 14 novembre).
 
 ### Version 2.0 : segments, bonus et maillots (série T)
 - [x] Contrat (T1), détection (T2), couche du compilateur (T3) et modules purs (T4, T5, T6, T14, T16), 27 octobre.
