@@ -433,7 +433,7 @@ func _run() -> void:
 	var props_short: int = dec.props.prop_count()
 	var ext0: int = dec.extensions
 	dec.traffic.vehicles.append({"s": 100.0, "témoin": true})
-	dec.cyclists.groups.append({"s": 120.0, "témoin": true})
+	dec.cyclists.groups.append({"s": 120.0, "members": [], "témoin": true})
 	dec.extend_route(r_short)   # première révision encore en préparation…
 	dec.extend_route(r_full)    # …la suivante attend, et seule la dernière compte
 	dec.flush()
