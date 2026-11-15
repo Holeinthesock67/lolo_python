@@ -24,7 +24,7 @@ Suite de W20, demandée par le propriétaire le 13 novembre (« Oui » au lot W2
 
 ## 3. Contrats
 
-Aucune révision IPC (la 1.17 reste libre). Le format `.world` reste en 1.8 : une ligne au journal et un paragraphe au §13 de `world_format_v1.md` disent que le core écrit `segments.json` dans le dossier d'un monde vivant.
+Aucune révision IPC (la 1.17 reste libre). Le format `.world` ne change pas : une ligne au journal et un paragraphe au §13 de `world_format_v1.md` disent que le core écrit `segments.json` dans le dossier d'un monde vivant.
 
 ## 4. Critères d'acceptation
 

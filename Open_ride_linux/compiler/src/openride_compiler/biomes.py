@@ -50,11 +50,12 @@ from . import koppen
 
 BIOME_VERSION = "1.0"
 # Identifiants du lot U0, dans l'ordre de la liste définitive, puis `japan` (lot JP1, 6.0) et `atlantic_heath`
-# (lot AT1, 6.0) et `high_plateau` (lot HP1, 6.0) (Format .world v1 §8 quater).
+# (lot AT1, 6.0) et `high_plateau` (lot HP1, 6.0) (Format .world v1 §8 quater), puis `reef` (fond marin, lot SM1) :
+# jamais voté ici (aucune donnée réelle ne le donne), seul le générateur des démos l'emploie.
 BIOMES = ("temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
           "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
           "wetland", "coast", "volcanic", "japan", "atlantic_heath",
-          "high_plateau")
+          "high_plateau", "reef")
 INDEX = {b: k for k, b in enumerate(BIOMES)}
 NB = len(BIOMES)
 DEFAULT_BIOME = "temperate_grassland"

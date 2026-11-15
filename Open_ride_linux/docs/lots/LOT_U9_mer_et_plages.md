@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Engine : mer animée, écume et plages | GDScript + shader | U3, U6 | Moyenne | Oui, après U3 et U6, **version 3.0** (issue #339) |
+| Engine : mer animée, écume et plages | GDScript + shader | U3, U6 | Moyenne | En PR, **version 3.0** (issue #339, lancé le 12 novembre) |
 
 ## 1. Objectif
 
@@ -46,3 +46,13 @@ Aucune (U1).
 ## 8. Hors périmètre
 
 Réflexions en temps réel, marées, bateaux.
+
+## Livraison
+
+En PR le 12 novembre (branche `claude/project-thread-av8dbm`).
+
+- `engine/scripts/sea_mesh.gd` : maillage de la mer (triangulation de `water_mesh.gd`, îles en trous), posé `SURFACE_OFFSET_M` = 0,2 m au-dessus de `level_y` (le MNT vaut 0 sur la mer : risque de scintillement noté au lot U3) ; couleur de sommet d'après `water` des biomes au centre de chaque aire, mêlés selon leurs poids (`biome_model.gd`), sinon `water` du biome `coast` du thème ; anneau d'horizon (`build_horizon`, 1 m sous la mer, de 1,5 à 30 km, il suit la caméra) à la place du « grand plan » : sous les aires `sea`, au-dessus du lointain abaissé de 2 m ; écume (`build_foam`) côté mer des lignes de côte ; plages drapées (`build_beaches`) à la maille de 10 m du terrain proche, 0,12 m au-dessus ; `shore_distance`.
+- `engine/shaders/sea.gdshader` (quatre ondes de gravité sur les normales, amplitude équivalente totale 0,30 m, atténuées au loin, fresnel), `sea_foam.gdshader` (va-et-vient de 2 à 6 m au sable et aux galets, 2 à 4 m à la roche, 6 à 12 m au pied des falaises), `beach.gdshader` ; horloge `anim_time` (`anim_clock.gd`), figée dans les tests graphiques.
+- `engine/scripts/osm_layers.gd` : couche `coast` (`lines`, `beaches`, rivages et sortes de plage contrôlés). `engine/scripts/osm_streamer.gd` : nœuds `osm_sea_k`, `osm_sea_foam_k`, `osm_beach_k`, anneau `sea_horizon`, `shore_distance(x, z)`, étape `osm_cote` de la sonde de performance ; reflets de l'eau (P12) limités aux nœuds `osm_water_*`.
+- Écart au §4 : les plages ne passent pas par le shader du terrain (U6) mais par un maillage drapé du tronçon OSM, sans toucher au terrain ni à `world_streamer.gd` ; couleur du sable : sol plat du biome `coast` du thème.
+- Tests : `engine/tests/unit/test_sea_mesh.gd` (critères 2 et 4), `engine/tests/render/test_sea_render.gd` (critère 3). Critère 5 (coût par image) : essai sur le PC en low, medium et high.
