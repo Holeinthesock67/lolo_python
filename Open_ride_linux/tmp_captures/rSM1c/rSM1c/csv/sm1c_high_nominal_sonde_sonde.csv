@@ -1,0 +1,2 @@
+t_s;unix_s;fps;frame_p50_ms;frame_p99_ms;frame_max_ms;cpu_ms;gpu_ms;draw_calls;objects;primitives;vram_mb;texture_mb;buffer_mb;static_mb;nodes;near_tiles;far_tiles;osm_chunks;trees;culled_near;capture;capture_max_ms;preset;gpu_util_pct;gpu_mem_mb;gpu_mem_total_mb;gpu_temp_c;gpu_clock_mhz;core_rss_mb;core_cpu_pct;godot_rss_mb;godot_cpu_pct
+11.99;1794743693.12;7.50;133.33;133.33;133.33;0.00;0.00;0.00;0.00;0.00;0.00;0.00;0.00;111.69;1851.00;0.00;0.00;0.00;0.00;0.00;0.00;0.00;high;31.00;992.00;6144.00;49.00;1949.00;121.65;11.18;2065.57;290.69

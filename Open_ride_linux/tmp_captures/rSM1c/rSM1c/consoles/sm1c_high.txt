@@ -1,0 +1,32 @@
+>>> [1/1] Scénario nominal (12:00)
+== nominal : parcours recif, 720 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 27.6 s après le démarrage du core
+[ÉCHEC] parcours chargé par l'engine : recif non chargé en 30 s
+[ÉCHEC] engine vivant : engine arrêté à 58 s
+[ÉCHEC] engine vivant jusqu'à la fin : code de sortie 0
+[ÉCHEC] fin de séance : dernier état lu : ?
+[OK] arrêt du core : code de sortie 0
+[OK] sonde de performance : 1 relevés, rapport sonde/rapport.html
+[INFO] budget high : images/s : pas de mesure
+[INFO] budget high : temps d'image p99 : pas de mesure
+[INFO] budget high : GPU de la vue : pas de mesure
+[INFO] budget high : GPU saturé : pas de mesure (nvidia-smi absent)
+[OK] à-coups : périodicité en distance : aucune sur 0 image(s) de plus de 50 ms
+[ÉCHEC] 0/1 images enregistrées après le chargement, 1 redemandée(s) : captures de l'engine
+[OK] qualité réellement appliquée : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] qualité notée par la sonde : high sur toute la mesure
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[ÉCHEC] journal et FIT écrits : 0 journal(aux), 0 FIT
+[OK] log_report : analyse du journal du core lue
+[ÉCHEC] aucun échantillon de vitesse au journal : vitesse imposée 50 km/h
+[ÉCHEC] fréquence cardiaque au journal : aucune fréquence cardiaque
+    NON nominal : 8 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rSM1c/sm1c_high/index.html
+=== Banc fini : ÉCHEC (8 vérification(s))
+RÉSULTAT : ÉCHEC (8 vérification(s))
