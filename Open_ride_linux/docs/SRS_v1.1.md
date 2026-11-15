@@ -465,7 +465,7 @@ traffic_bench_s = 0          # bancs seulement (sim_bench, scénario circulation
 [depart]                     # départ de la séance (lot O36) ; mode et cadence réglables dans le menu
 mode = "pedalage"            # pedalage : attend le décor, le trainer et le pédalage ; immediat : part à « Démarrer »
 cadence_rpm = 30             # cadence à tenir pour partir, 10 à 90 tr/min (40 W si le trainer ne donne pas la cadence)
-duree_s = 3                  # secondes de pédalage cumulées, 0 à 10 ; à-coups de moins de 2 s tolérés
+duree_s = 1                  # secondes de pédalage cumulées (cadence ou 40 W), 0 à 10 ; à-coups de moins de 2 s tolérés
 attente_decor_s = 60         # au plus, si l'engine ne dit pas son décor prêt (ancien engine, sans engine), 0 à 600
 [survivor]                   # mode « Dernier survivant » (série DS, lot DS2), réglable dans le menu
 opponents = 4                # adversaires, 2 à 4 : une arche par adversaire

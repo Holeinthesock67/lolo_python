@@ -8,8 +8,8 @@ l'ordre, chacune vérifiée à chaque pas de la boucle :
    cours, contrat IPC révision 1.5) ; au plus `attente_decor_s` secondes, pour un engine qui ne
    l'envoie pas (ancien engine, séance sans engine) ;
 2. `trainer` : le trainer donne des mesures ;
-3. `pedalage` : `duree_s` secondes de pédalage cumulées à au moins `cadence_rpm` tr/min (ou
-   `POWER_W` W quand le trainer ne donne pas la cadence) ; un à-coup sous le seuil de moins de
+3. `pedalage` : `duree_s` secondes de pédalage cumulées à au moins `cadence_rpm` tr/min ou
+   `POWER_W` W (la cadence du trainer arrive en retard, la puissance tout de suite) ; un à-coup sous le seuil de moins de
    `TOLERANCE_S` secondes ne remet pas le compte à zéro, au-delà il redescend aussi vite qu'il monte.
 
 Le décor et le trainer peuvent revenir en arrière (engine relancé, trainer perdu) : l'étape
@@ -21,14 +21,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 PHASES = ("decor", "trainer", "pedalage")
-POWER_W = 40.0        # pédalage reconnu à la puissance quand la cadence manque
+POWER_W = 40.0        # pédalage reconnu à la puissance, même quand la cadence est encore basse
 TOLERANCE_S = 2.0     # à-coup toléré sous le seuil sans perdre le compte
 
 
 @dataclass
 class StartGate:
     cadence_rpm: float = 30.0
-    duree_s: float = 3.0
+    duree_s: float = 1.0
     attente_decor_s: float = 60.0
     immediate: bool = False
 
@@ -44,9 +44,10 @@ class StartGate:
         return self.phase == "open"
 
     def pedalling(self, cadence_rpm: float | None, power_w: float | None) -> bool:
-        if cadence_rpm is not None and cadence_rpm > 0.0:
-            return cadence_rpm >= self.cadence_rpm
-        return power_w is not None and power_w >= POWER_W
+        # La cadence du trainer arrive plusieurs secondes après les premiers coups de pédale, la puissance
+        # tout de suite (journaux du 15 novembre) : l'une ou l'autre suffit.
+        return (cadence_rpm is not None and cadence_rpm >= self.cadence_rpm) \
+            or (power_w is not None and power_w >= POWER_W)
 
     def update(self, dt: float, *, scene_ready: bool, trainer_connected: bool,
                cadence_rpm: float | None, power_w: float | None) -> bool:
