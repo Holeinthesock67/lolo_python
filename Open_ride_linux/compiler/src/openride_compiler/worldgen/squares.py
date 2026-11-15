@@ -15,7 +15,7 @@ Contenu d'un carré (`genere/<zone>/<IX>_<IN>/`) :
 - `buildings.json`, `vegetation.json`, `water.json`, `poi.json`, `coast.json` : mêmes schémas que
   les `chunk_<k>.json`, coordonnées relatives au coin nord-ouest du carré (x − 1000 IX,
   z + 1000 (IN + 1)) ; un objet appartient au seul carré qui contient son centre, sauf la mer et
-  la côte, découpées au carré (lot W19, `square_coast.py`) ;
+  la côte, découpées au carré (lot W23, `square_coast.py`) ;
 - `edges.json` : arêtes dont le premier nœud est dans le carré, avec leur profil, dans le repère
   de zone (pour la route engagée, W8) ;
 - `meta.json` : versions (générateur, schéma et date de la base, relief) et nombres d'objets.

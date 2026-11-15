@@ -1,4 +1,4 @@
-# Lot W19 – Mer et plages en monde ouvert
+# Lot W23 – Mer et plages en monde ouvert
 
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
@@ -29,7 +29,7 @@ Les parcours compilés au bord de la mer ont, depuis U3 et U9, une mer animée j
 
 ## 5. Recette
 
-Sur le PC, avec le réseau (tuiles OpenFreeMap et relief Copernicus de la côte basque) : `python3 engine/tests/menu_bench.py --native --scenario w19_mer --qualite low` (puis `medium`, `high`), sonde de performance comprise. Le scénario cherche « biarritz » dans la liste des villes, accepte le départ et le cap, attend « Monde ouvert prêt » et une ligne « mer ( » du générateur, puis capture le départ et trois vues de la balade. Juger : mer animée et écume visibles, plage au bord, horizon marin, budgets GPU (8, 13 et 16 ms) et images de plus de 50 et 100 ms.
+Sur le PC, avec le réseau (tuiles OpenFreeMap et relief Copernicus de la côte basque) : `python3 engine/tests/menu_bench.py --native --scenario w23_mer --qualite low` (puis `medium`, `high`), sonde de performance comprise. Le scénario cherche « biarritz » dans la liste des villes, accepte le départ et le cap, attend « Monde ouvert prêt » et une ligne « mer ( » du générateur, puis capture le départ et trois vues de la balade. Juger : mer animée et écume visibles, plage au bord, horizon marin, budgets GPU (8, 13 et 16 ms) et images de plus de 50 et 100 ms.
 
 ## 6. Hors périmètre
 

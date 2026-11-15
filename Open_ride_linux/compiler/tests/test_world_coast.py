@@ -1,4 +1,4 @@
-"""Mer, côte et plages du monde ouvert (lot W19) : tuiles vectorielles, base locale, carrés."""
+"""Mer, côte et plages du monde ouvert (lot W23) : tuiles vectorielles, base locale, carrés."""
 
 from __future__ import annotations
 

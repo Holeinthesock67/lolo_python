@@ -14,7 +14,7 @@ graphe (W4) et le générateur (W7) ont besoin :
 petit-boutistes. Les voies exclues du monde ouvert (`road_class` = `x`) sont gardées pour la carte
 du menu, jamais pour le graphe.
 
-Schéma 2 (lot W19, mer et plages du monde ouvert) : mêmes tables, sortes en plus : lignes de côte
+Schéma 2 (lot W23, mer et plages du monde ouvert) : mêmes tables, sortes en plus : lignes de côte
 `coastline` (la mer à droite du sens de la ligne, règle d'OSM) et falaises `cliff`, plages `beach`
 (`natural=beach` ou `natural=sand`, avec `surface`). Une base de schéma 1 n'a pas la côte : elle est
 refusée, puis reconstruite (tuiles vectorielles, depuis les fichiers du cache) ou retéléchargée
@@ -35,7 +35,7 @@ from typing import Any, Iterable, Sequence
 
 from ..errors import CompileError
 
-SCHEMA_VERSION = 2   # 2 : côte, falaises et plages (lot W19)
+SCHEMA_VERSION = 2   # 2 : côte, falaises et plages (lot W23)
 BATCH_ROWS = 10_000
 
 # --- classes de route (contrat W1, LOT_W1 §4.5) ---------------------------------------------------

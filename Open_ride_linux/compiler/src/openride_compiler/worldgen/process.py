@@ -374,7 +374,7 @@ class WorldSession:
                 "vegetation": {"present": True, "version": C.VEGETATION_VERSION, "source": "osm"},
                 "poi": {"present": True, "version": C.POI_VERSION},
                 "water": {"present": True, "version": C.WATER_VERSION},
-                "coast": {"present": True, "version": C.COAST_VERSION},     # lot W19 : mer et plages
+                "coast": {"present": True, "version": C.COAST_VERSION},     # lot W23 : mer et plages
                 "biome": biome_tiles.manifest_block(self._biome_sources()),
             },
             "live": True, "origin_kind": "utm_grid",
@@ -387,7 +387,7 @@ class WorldSession:
         return sources + ["osm", "dem", koppen.SOURCE]
 
     def _log_coast(self, key: SquareKey) -> None:
-        """Ligne du journal pour un carré avec mer ou côte (W19), lue dans son `meta.json`."""
+        """Ligne du journal pour un carré avec mer ou côte (W23), lue dans son `meta.json`."""
         try:
             meta = json.loads((self.cache.square_dir(key.zone, key.ix, key.i_n) / "meta.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):

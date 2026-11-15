@@ -184,7 +184,7 @@ func _init() -> void:
 	var again := OsmLayers.load_chunk(layers_dir, "buildings", 0, live_route)
 	_check(again["items"].size() == 1 and again["items"][0]["outer"][0][0] == 1012.0, "relecture : mêmes coordonnées (aucune accumulation)")
 	_check(OsmLayers.load_chunk(layers_dir, "water", 1, live_route)["ok"], "couche absente : aucun carré, pas d'erreur")
-	# Lot W19 : mer (aire `sea` de la couche eau) et côte du carré, relatives au coin comme le reste.
+	# Lot W23 : mer (aire `sea` de la couche eau) et côte du carré, relatives au coin comme le reste.
 	_write_json(layers_dir.path_join("water").path_join("tile_1_0.json"), {"version": "1.0", "lines": [], "areas": [
 		{"id": "sea_1_0_0", "kind": "sea", "level_y": 0.0, "outer": [[0.0, 0.0], [0.0, 400.0], [1000.0, 400.0], [1000.0, 0.0]], "holes": []}]})
 	_write_json(layers_dir.path_join("coast").path_join("tile_1_0.json"), {"version": "1.0",

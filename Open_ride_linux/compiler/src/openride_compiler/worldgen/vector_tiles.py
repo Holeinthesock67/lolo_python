@@ -17,7 +17,7 @@ aucune différence.
   quantifiées à 1e-7°. Voies : identifiant négatif tiré de la tuile, de l'objet et du morceau.
 - Bâtiments : gardés dans la tuile qui contient leur centre (ils sont entiers dans la marge) ;
   autres surfaces découpées au carré de la tuile (Sutherland-Hodgman).
-- Côte (lot W19) : les tuiles n'ont pas de ligne de côte, mais la mer (`water`, classe `ocean`) ; ses
+- Côte (lot W23) : les tuiles n'ont pas de ligne de côte, mais la mer (`water`, classe `ocean`) ; ses
   bords découpés au carré de la tuile, sauf ceux qui longent le bord de la tuile, deviennent des lignes
   `coastline` orientées comme dans OSM (la mer à droite) ; les plages sont le sable de `landcover`
   (`sand`, sous-classes `beach` et `sand`). La base reçoit ainsi la même chose qu'un extrait régional.
@@ -187,7 +187,7 @@ class TileDb:
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
         if self.path.is_file() and _schema_of(self.path) != str(SCHEMA_VERSION):
-            # Base d'un ancien schéma (W19 : sans la côte) : refaite, les tuiles se relisent du cache.
+            # Base d'un ancien schéma (W23 : sans la côte) : refaite, les tuiles se relisent du cache.
             for suffix in ("", "-wal", "-shm", "-journal"):
                 Path(f"{self.path}{suffix}").unlink(missing_ok=True)
         fresh = not self.path.is_file()

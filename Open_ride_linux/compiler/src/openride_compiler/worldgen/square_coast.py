@@ -1,4 +1,4 @@
-"""Mer, côte et plages d'un carré du monde ouvert (lot W19, format §13).
+"""Mer, côte et plages d'un carré du monde ouvert (lot W23, format §13).
 
 Même calcul que le compilateur (lot U3, `coast.py`), appliqué au carré de 1 km au lieu de l'étendue
 d'un parcours :

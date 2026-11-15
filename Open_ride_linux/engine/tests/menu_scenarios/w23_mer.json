@@ -1,5 +1,5 @@
 {
-  "description": "Lot W19, recette sur le PC : monde ouvert au départ d'une ville côtière (Biarritz, recherche par nom), mer, écume, plages et horizon marin du monde vivant ; départ direct (W18) et 3 minutes de balade, une capture par minute. À lancer en low, medium et high (réseau : tuiles OpenFreeMap et relief Copernicus de la côte basque).",
+  "description": "Lot W23, recette sur le PC : monde ouvert au départ d'une ville côtière (Biarritz, recherche par nom), mer, écume, plages et horizon marin du monde vivant ; départ direct (W18) et 3 minutes de balade, une capture par minute. À lancer en low, medium et high (réseau : tuiles OpenFreeMap et relief Copernicus de la côte basque).",
   "voies": [
     "clavier"
   ],
@@ -112,7 +112,7 @@
       "delai": 600
     },
     {
-      "note": "Lot W19 : le générateur a écrit la mer et la côte d'au moins un carré",
+      "note": "Lot W23 : le générateur a écrit la mer et la côte d'au moins un carré",
       "journal": "core",
       "motif": "mer \\(",
       "delai": 120
