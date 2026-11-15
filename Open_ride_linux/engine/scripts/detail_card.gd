@@ -24,6 +24,7 @@ var chart: Control
 var lines_label: Label
 var _tiles: Array[PanelContainer] = []
 var _sheet: Dictionary = {}
+var _shown_once := false
 
 
 func _init() -> void:
@@ -81,6 +82,9 @@ func chart_kind() -> String:
 
 
 func update_display(sheet: Dictionary) -> void:
+	if sheet == _sheet and _shown_once:   # même fiche : rien à reposer ni à redessiner
+		return
+	_shown_once = true
 	_sheet = sheet
 	title_label.text = str(sheet.get("title", ""))
 	title_label.visible = title_label.text != ""
