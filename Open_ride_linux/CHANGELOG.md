@@ -11,6 +11,12 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - La liste « Parcours » de l'accueil ne montre plus la piste ni les parcours du Grand Prix ; après un de ces modes, la session libre repart sur votre dernier parcours libre.
 - Chaque mode retient son dernier parcours. Une trace entre dans un mode par l'étiquette de sa fiche (`tags = ["grandprix"]`).
 
+### Grand Prix plus lisible (lot GP14, essai du 15 novembre)
+- Une rangée de boîtes tous les 500 m par défaut (au lieu de 1 km). Une boîte prise disparaît de la route et réapparaît 2 s plus tard.
+- Distance par défaut : tout le parcours quand il est plus court que la distance réglée (« course de 5 km (tout le parcours) ») ; « Lancer » n'est grisé que sous 1 km.
+- Coup reçu : bandeau « Touché ! Bidon glissant 2 s » et contour de l'écran à la couleur de l'objet tant que l'effet dure, en plus du son et de l'onomatopée (pas de flash plein écran).
+- Panneaux de segment (« Sommet dans 500 m », « Sprint dans 1 km ») : plaque blanche cadrée de noir sur poteaux, comme les panneaux d'approche des cols, au lieu d'une caisse blanche.
+
 ### Un récif sous la mer livré avec le jeu (lot SM1)
 - Nouveau parcours de démonstration « Récif des tortues » : une boucle de 8 km au fond de la mer, de 11 à 26 m sous la surface. On passe par le Lagon des Tortues, la Forêt des Laminaires, le Jardin de Corail et le Tombant Bleu.
 - Nouveau biome « fond marin » (`reef`) : sable corallien et roche du récif, laminaires de 9 m qui ondulent, coraux et gorgones de toutes les couleurs, bancs de poissons jaunes et bleus, tortues et raies, son sourd de la mer et bulles.

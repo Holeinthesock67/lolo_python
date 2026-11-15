@@ -235,9 +235,10 @@ class GrandPrixConfig:
     Les objets joués et leurs valeurs sont dans `~/OpenRide/grandprix.toml` (`grandprix.items`)."""
     opponents: int = 4             # adversaires (2 à 4 ; 11 avec le lot GP10)
     laps: int = 3                  # circuit : nombre de tours (1 à 5)
-    distance_km: int = 10          # parcours en ligne : distance de la course (5 à 30 km)
+    distance_km: int = 10          # parcours en ligne : distance de la course (5 à 30 km), au plus le parcours (lot GP14)
     chaos: str = "normal"          # force et fréquence des objets : soft (× 0,7), normal, wild (× 1,3)
-    box_every_m: int = 1500        # écart des rangées de boîtes (1000 à 3000 m, pas de 500 m)
+    box_every_m: int = 500         # écart des rangées de boîtes (500 à 3000 m, pas de 500 m ; 500 par défaut depuis le
+                                   # lot GP14, essai du 15 novembre : « pas assez d'objets »)
 
 
 @dataclass
@@ -399,7 +400,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("grandprix", "opponents"): (2, 4),         # lot GP2 ; 2 à 11 avec le lot GP10
     ("grandprix", "laps"): (1, 5),
     ("grandprix", "distance_km"): (5, 30),
-    ("grandprix", "box_every_m"): (1000, 3000),
+    ("grandprix", "box_every_m"): (500, 3000),
     ("audio", "master_pct"): (0, 100),
     ("audio", "ride_pct"): (0, 100),
     ("audio", "ambience_pct"): (0, 100),

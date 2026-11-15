@@ -29,8 +29,15 @@ Un mode peut avoir ses propres parcours, reconnus à une étiquette de leur fich
 - Tests : `core/tests/test_mode_routes.py`, `engine/tests/unit/test_mode_routes.gd`, `test_track_menu.gd` repris ; scénarios `menu_bench` `velodrome` (accueil › Vélodrome) et `grand_prix` (parcours d'essai `grand_prix_parcours`).
 - Guide : `GUIDE_UTILISATION.md` (modes à parcours propres, vélodrome, Grand Prix).
 
-## 4. Reste
+## 4. Retours de l'essai du 15 novembre (GP14, même PR)
 
-- Banc PC : `menu_bench` `grand_prix` et `velodrome` en `low`, `medium` et `high` (captures de l'accueil et des écrans Prêt à valider par le propriétaire).
+- Boîtes : une rangée tous les 500 m par défaut (`box_every_m`, 500 à 3 000 m) ; une boîte prise disparaît jusqu'à sa reformation (REFORM_S = 2 s, inchangé) : `state.gp.boxes` part de 30 m derrière et `state.gp.boxes_gone` liste `[rang, voie]` des boîtes prises (`BoxRows.near`, `BoxRows.gone`).
+- Distance : la course dure au plus le parcours (`distance_km` borné par la longueur restante) ; « Lancer » n'est grisé que sous 1 km (`MIN_COURSE_M`).
+- Coup reçu : tant qu'un effet d'attaque, de piège ou contre la tête court sur le cycliste, le bandeau d'avertissement dit « Touché ! Bidon glissant 2 s » et le contour de l'écran prend la couleur de l'objet (`gp_hud_model.hit_view`) ; une menace en vue passe avant ; son et onomatopée inchangés ; jamais de flash plein écran.
+- Panneaux de segment (« Sommet dans 500 m » au km 1 du Col du lacet, à gauche) : plaque blanche cadrée de noir sur poteaux à colliers, construite par `roadside_props.build_board` (même plaque que les panneaux du bord de route) au lieu d'une caisse blanche.
+
+## 5. Reste
+
+- Banc PC : `menu_bench` `grand_prix` et `velodrome` en `low`, `medium` et `high` (captures de l'accueil et des écrans Prêt à valider par le propriétaire) ; captures GP14 : coup reçu (bandeau et contour) et panneaux du km 1 du Col du lacet.
 - GP13b : Boucle de la Corniche (boucle de 2,5 km, méditerranéen) et Route des Vignes (6 km en ligne, vallonnée), routes revêtues sans épingle et test des routes larges ; bancs `grand_prix` et `grand_prix_onze`.
 - Recette GP11 (#845) : étape 2 sur la Route des Vignes après GP13b.

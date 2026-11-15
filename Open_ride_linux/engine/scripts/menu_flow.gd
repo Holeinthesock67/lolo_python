@@ -99,8 +99,9 @@ const SURVIVOR_SPACING_KM := [1, 3]
 const MODE_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la valeur, A maintenu pour enregistrer, Y pour annuler."
 const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "survivor.spread", "survivor.after_out"]
 const SURVIVOR_PREFIX := "Survivant : "
-## Grand Prix des objets (lot GP9) : bornes de grandprix.distance_km (config.py), préfixe des libellés du core.
-const GP_DISTANCE_KM := [5, 30]
+## Course en ligne la plus courte du Grand Prix (lot GP14, `grandprix.boxes.MIN_COURSE_M` du core).
+const GP_MIN_COURSE_M := 1000.0
+## Grand Prix des objets (lot GP9) : préfixe des libellés du core.
 const GP_PREFIX := "Grand Prix : "
 const ProfilesViewModel := preload("res://scripts/profiles_view_model.gd")
 const HistoryViewModel := preload("res://scripts/history_view_model.gd")
@@ -1585,7 +1586,8 @@ static func grandprix_keys(route: Dictionary) -> Array:
 
 
 ## Ligne « Lancer » du Grand Prix : {enabled, detail, advice}. Circuit : tours et longueur de la course ; en
-## ligne : distance, désactivé si le parcours est plus court (le core refuse aussi le départ, `bad_args`).
+## ligne : distance, au plus le parcours (lot GP14 : « tout le parcours ») ; désactivé sous GP_MIN_COURSE_M (le
+## core refuse aussi le départ, `bad_args`).
 static func grandprix_launch(laps: int, distance_km: int, route: Dictionary) -> Dictionary:
 	var length = route.get("length_m", null)
 	if route.is_empty() or length == null:
@@ -1593,19 +1595,15 @@ static func grandprix_launch(laps: int, distance_km: int, route: Dictionary) -> 
 	if str(route.get("route_type", "")) == "loop":
 		return {"enabled": true, "detail": "%d tour%s, %s" % [laps, "s" if laps > 1 else "",
 			CatalogModel._format_fr_km(laps * float(length))], "advice": ""}
+	if float(length) < GP_MIN_COURSE_M:
+		return {"enabled": false, "detail": "parcours trop court",
+			"advice": "Lancer grisé : parcours de %s, %d km au moins.\nChoisis un autre parcours du Grand Prix." % [
+				CatalogModel._format_fr_km(float(length)), int(GP_MIN_COURSE_M / 1000.0)]}
 	if float(length) < distance_km * 1000.0:
-		return {"enabled": false, "detail": "trop court (%d km)" % distance_km,
-			"advice": grandprix_advice(distance_km, float(length))}
+		return {"enabled": true, "detail": "course de %s (tout le parcours)" % CatalogModel._format_fr_km(float(length)),
+			"advice": ""}
 	return {"enabled": true, "detail": "course de %d km" % distance_km, "advice": ""}
 
-
-## Explication entière de « Lancer » grisé au Grand Prix (ligne d'état de l'écran Prêt).
-static func grandprix_advice(distance_km: int, length_m: float) -> String:
-	var text := "Lancer grisé : course de %d km, parcours de %s.\n" % [distance_km, CatalogModel._format_fr_km(length_m)]
-	var fits := mini(int(floor(length_m / 1000.0 + 1e-9)), GP_DISTANCE_KM[1])
-	if fits < GP_DISTANCE_KM[0]:
-		return text + "Choisis un parcours plus long ou un circuit."
-	return text + "Possible : %d km au plus, sinon change de parcours." % fits
 
 
 ## Ligne « Lancer » : {enabled, detail}. `route` : élément de la liste des parcours ({} : inconnu).

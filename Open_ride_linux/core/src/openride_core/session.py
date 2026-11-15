@@ -2863,17 +2863,20 @@ class CoreSession:
 
     def _grandprix_course(self) -> tuple[float, float | None]:
         """Longueur de la course et d'un tour (circuit) d'après `[grandprix]` ; `GrandPrixError` si le parcours
-        ne s'y prête pas (monde ouvert, sans distance de course ; parcours en ligne plus court que la course)."""
+        ne s'y prête pas (monde ouvert, sans distance de course ; parcours en ligne de moins de 1 km). En ligne, la
+        course ne dépasse jamais le parcours (lot GP14, essai du 15 novembre) : `distance_km` ou ce qu'il en reste."""
         gc = self.cfg.grandprix
         route = self.route
         if self.openworld is not None or route is None:
             raise GrandPrixError("le monde ouvert n'a pas de distance de course")
         if route.is_loop:
             return gc.laps * route.length_m, route.length_m
-        length = gc.distance_km * 1000.0
-        if self.physics.s + length > route.length_m + 1e-6:
-            raise GrandPrixError(f"parcours trop court pour une course de {gc.distance_km} km "
-                                 f"({route.length_m / 1000.0:.1f} km)")
+        from .grandprix.boxes import MIN_COURSE_M
+
+        length = min(gc.distance_km * 1000.0, route.length_m - self.physics.s)
+        if length < MIN_COURSE_M - 1e-6:
+            raise GrandPrixError(f"parcours trop court pour une course ({route.length_m / 1000.0:.1f} km, "
+                                 f"{MIN_COURSE_M / 1000.0:.0f} km au moins)")
         return length, None
 
     def _grandprix_field(self, args: dict) -> list[Any] | None:
@@ -2894,7 +2897,7 @@ class CoreSession:
             if not 1 <= gc.opponents <= MAX_CONSTANT_BOTS:
                 raise GrandPrixError(f"adversaires : {gc.opponents} refusé (1 à {MAX_CONSTANT_BOTS})")
             if gc.box_every_m / 1000.0 not in BOX_EVERY_KM:
-                raise GrandPrixError(f"écart des boîtes : {gc.box_every_m} m refusé (pas de 500 m)")
+                raise GrandPrixError(f"écart des boîtes : {gc.box_every_m} m refusé (500 à 3 000 m, pas de 500 m)")
             if gc.chaos not in CHAOS:
                 raise GrandPrixError(f"chaos : {gc.chaos!r} refusé ({', '.join(CHAOS)})")
             self._grandprix_course()

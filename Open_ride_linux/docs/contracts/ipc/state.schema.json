@@ -2482,7 +2482,21 @@
           "items": {
             "type": "integer"
           },
-          "description": "Rangées de boîtes à venir (s au mètre)."
+          "description": "Rangées de boîtes de 30 m derrière à 400 m devant (s au mètre ; à venir seulement avant le lot GP14)."
+        },
+        "boxes_gone": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {"type": "integer", "minimum": 0, "maximum": 1},
+              {"type": "integer", "minimum": 0, "maximum": 2}
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Facultatif, révision 1.19 (lot GP14) : boîtes prises, pas encore reformées : [rang dans boxes, voie] ; absent si aucune."
         },
         "pick": {
           "type": "boolean",

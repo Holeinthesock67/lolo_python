@@ -344,7 +344,8 @@ def worst_grandprix_state(opponents: int = 4) -> dict[str, Any]:
                "lane": 2, "auto": False, "fx": [[k, 99.9] for k in longest],
                "warn": [GP_LONGEST_SHOT, 399.9],
                "obj": [[ID_MAX, GP_LONGEST_SHOT, 123_456.7, -1] for _ in range(12)],
-               "boxes": [199_999, 199_999], "pick": True, "lap": [5, 5]}
+               "boxes": [199_999, 199_999], "pick": True, "lap": [5, 5],
+               "boxes_gone": [[k, lane] for k in range(2) for lane in range(3)]}   # lot GP14 : six boîtes prises
     return d
 
 
