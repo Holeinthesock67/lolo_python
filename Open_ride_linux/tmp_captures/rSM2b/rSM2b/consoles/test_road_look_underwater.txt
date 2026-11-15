@@ -1,0 +1,19 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_road_look_underwater
+
+[OK] thème par défaut : seul le fond marin donne un aspect de chaussée (["reef"])
+[OK] piste du fond marin couleur sable (c2b38f)
+[OK] part de la piste = poids du biome, couleur du biome
+[OK] autre biome : bitume
+[OK] option gravel coupée : bitume en prairie, piste sur le fond marin
+[OK] piste de la largeur de la route (physique et cyclistes inchangés)
+[OK] sans aspect par biome : tableaux d'avant (pas de couleurs)
+[OK] tronçon sur le fond marin : piste couleur sable, sans marquage (a = 0)
+[OK] même géométrie que le bitume
+[OK] à l'air libre : promeneurs en campagne (15)
+[OK] sous l'eau : aucun passant (0)
+test_road_look_underwater : 11 vérifications, 0 échecs
+UNIT=test_road_look_underwater : rendu, ERG et scénarios IPC sautés
+Résumé :
+  OK     unit/test_road_look_underwater : 11 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent
