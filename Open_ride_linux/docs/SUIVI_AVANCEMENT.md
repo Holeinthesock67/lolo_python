@@ -466,3 +466,4 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Bots à puissance constante et fantôme d'une séance passée, côté core (lot N9) ; affichage à rédiger.
 
 - [x] **Cw de la commande SIM corrigé** (29 octobre) : FTMS, comme ANT+ FE-C, définit Cw = ρ · CdA (sans le ½) et le trainer applique lui-même ½ · Cw · v². Le core envoyait 0,5 · ρ · CdA (0,20 au lieu de 0,39 pour CdA 0,32 m²), donc un trainer trop mou à vitesse de volant élevée (l'air comptait pour moitié). Corrigé dans `ftms.py`, `ftms_driver.py` (dont la libération) et le trainer simulé `ble_sim.py` ; réglage existant `[bike] cda_m2`.
+- [ ] Bots réglés sur la durée de la course et l'objectif (lot BT1, PR du 15 novembre empilée sur #900) : `bot_effort.py`, réglage commun « Objectif des bots » (Tempo par défaut), vélodrome par épreuve ; banc `bots_race` en Tempo et À fond sur le PC et essai de 2 × 10 min (Tempo puis Endurance) à faire.

@@ -39,6 +39,7 @@ func _item(f, id: String) -> Dictionary:
 
 const SETTINGS := {"type": "settings", "v": 1, "items": [
 	{"key": "bots.level_pct", "label": "Niveau des bots", "type": "int", "value": 100, "min": 50, "max": 150, "step": 5, "unit": "%", "group": "ride", "applies": "next_session"},
+	{"key": "bots.objective", "label": "Objectif des bots", "type": "choice", "value": "tempo", "choices": ["recovery", "endurance", "tempo", "threshold", "max"], "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.opponents", "label": "Grand Prix : adversaires", "type": "int", "value": 4, "min": 2, "max": 4, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.laps", "label": "Grand Prix : tours du circuit", "type": "int", "value": 3, "min": 1, "max": 5, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.distance_km", "label": "Grand Prix : distance en ligne", "type": "int", "value": 10, "min": 5, "max": 30, "step": 1, "unit": "km", "group": "ride", "applies": "next_session"},
@@ -78,7 +79,7 @@ func _run() -> void:
 	_check(act.get("action", "") == "select_route" and f.state()["screen"] == "ready", "parcours choisi : écran Prêt")
 	_check(str(f.state()["title"]) == "Prêt : Grand Prix des objets — Longue", "titre du mode (%s)" % f.state()["title"])
 	_check(_ids(f) == ["start", "change_route", "set:grandprix.opponents", "set:grandprix.distance_km", "set:bots.level_pct",
-		"set:grandprix.chaos", "set:grandprix.box_every_m", "gp_items"],
+		"set:bots.objective", "set:grandprix.chaos", "set:grandprix.box_every_m", "gp_items"],
 		"parcours en ligne : Lancer, parcours, réglages avec la distance, Objets (%s)" % str(_ids(f)))
 	_check(_item(f, "start")["label"] == "Lancer" and _item(f, "start")["detail"] == "course de 10 km" and _item(f, "start")["enabled"],
 		"Lancer : distance de la course")
@@ -159,7 +160,7 @@ func _run() -> void:
 
 	_check(MenuFlow.grandprix_launch(3, 10, {}) == {"enabled": true, "detail": "", "advice": ""}, "parcours inconnu : Lancer actif")
 	_check(MenuFlow.grandprix_keys({}) == ["grandprix.opponents", "grandprix.laps", "grandprix.distance_km", "bots.level_pct",
-		"grandprix.chaos", "grandprix.box_every_m"], "parcours inconnu : tours et distance")
+		"bots.objective", "grandprix.chaos", "grandprix.box_every_m"], "parcours inconnu : tours et distance")
 	_check(MenuFlow.grandprix_launch(1, 10, {"length_m": 4000.0, "route_type": "loop"})["detail"] == "1 tour, 4,0 km", "un tour au singulier")
 	_check(MenuFlow.grandprix_advice(10, 3000.0).ends_with("Choisis un parcours plus long ou un circuit."), "parcours trop court pour toute distance")
 	_check(MenuFlow.grandprix_advice(10, 45000.0).ends_with("Possible : 30 km au plus, sinon change de parcours."), "borne haute de la distance")

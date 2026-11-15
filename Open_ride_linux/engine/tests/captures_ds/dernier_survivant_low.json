@@ -7,7 +7,8 @@
     "render.quality": "low",
     "survivor.opponents": 2,
     "survivor.spacing_km": 1,
-    "bots.level_pct": 74,
+    "bots.level_pct": 82,
+    "bots.objective": "tempo",
     "survivor.spread": "normal"
   },
   "etapes": [
