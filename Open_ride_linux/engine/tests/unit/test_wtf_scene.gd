@@ -116,6 +116,11 @@ func _run() -> void:
 	_check(info["active"] and info["props"] == {"cheese": 1}, "nœud : meule posée")
 	var wheel: Node3D = scene.find_child("Wtf_cheese", true, false)
 	_check(wheel != null and is_equal_approx(wheel.global_position.z, -(100.0 - M.CHEESE_SHOW_M)), "meule posée derrière le cycliste")
+	scene.direction = -1   # lot N22 : à rebours après un demi-tour, « derrière » = vers la fin du parcours
+	scene.step(cheese, route, 100.0, bots, sun)
+	_check(is_equal_approx(wheel.global_position.z, -(100.0 + M.CHEESE_SHOW_M)) and wheel.global_transform.basis.x.x < -0.99,
+		"à rebours : meule derrière le cycliste dans son sens de marche, tournée comme lui")
+	scene.direction = 1
 	scene.step(amb, route, 100.0, bots, sun)
 	info = scene.test_info()
 	_check(not info["props"].has("cheese") and info["props"].get("fish", 0) == 6, "objets du gag fini cachés, poissons posés")

@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| 1.x série N : bornes, panneau de col et portiques lisibles après un demi-tour | GDScript | N17 (aucun code de N17 requis) | Petite | En PR : engine seul, captures low/medium/high à valider (8 novembre), **version 1.x** |
+| 1.x série N : bornes, panneau de col et portiques lisibles après un demi-tour | GDScript | N17 (aucun code de N17 requis) | Petite | Fait : fusionné le 9 novembre (#812), **version 1.x** |
 
 ## 1. Objectif
 

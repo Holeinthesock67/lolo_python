@@ -1168,6 +1168,7 @@ func _process(delta: float) -> void:
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
 		# À rebours (lot N17), cap retourné : la caméra et l'avatar regardent vers le départ du parcours.
 		var dir: int = follow.direction
+		_set_direction(dir)   # décor chargé et affiché devant, dans le sens de la marche (lots N17, N22)
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route)) + (PI if dir < 0 else 0.0)
 		# Écart à l'axe (lot AS2) : l'avatar suit `lane_m` du core, la caméra le suit avec 0,5 s de lissage.
 		# `lane_m` est dans le repère de la route ; avec le cap retourné, l'écart se compte à droite du cycliste.
@@ -1210,7 +1211,6 @@ func _process(delta: float) -> void:
 		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
 		_probe.distance_m = s_route
 		var t_step := Time.get_ticks_usec()
-		streamer.direction = dir   # tronçons et tuiles chargés devant, dans le sens de la marche (lot N17)
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		PerfProbe.mark_since("fenetre", "", t_step)
 		# Bots placés avant le décor vivant : ses cyclistes, ses véhicules et son compte des contacts lisent les
@@ -1234,6 +1234,18 @@ func _process(delta: float) -> void:
 
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
 ## Core non joignable : pas appelé (_process fige toute la scène), donc ni nuages ni herbe qui bougent.
+## Sens de la marche (1, ou -1 à rebours après un demi-tour) donné à tout ce qui charge ou pose le décor devant
+## la caméra : tronçons et tuiles (N17), portiques, herbe, détails du sol et gags WTF (N22).
+func _set_direction(dir: int) -> void:
+	streamer.direction = dir
+	if segment_markers != null:
+		segment_markers.direction = dir
+	if wtf_scene != null:
+		wtf_scene.direction = dir
+	if living_world != null:
+		living_world.direction = dir
+
+
 func _step_living(delta: float, s_route: float, v: float) -> void:
 	if living_world == null or route == null or route.is_track():   # salle couverte : ni météo ni décor vivant
 		return
@@ -1276,7 +1288,7 @@ func _menu_camera(delta: float) -> bool:
 	camera.fov = _base_fov
 	camera.rotation.y = -heading
 	camera.rotation.x = deg_to_rad(CameraViews.camera_pitch_deg(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS)))
-	streamer.direction = 1   # le décor des menus avance dans le sens du parcours (lot N17)
+	_set_direction(1)   # le décor des menus avance dans le sens du parcours (lots N17, N22)
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
 	_step_living(delta, _menu_s, MENU_CAMERA_MPS)
 	return true
