@@ -1,0 +1,14 @@
+08:40:24 empreinte avant befdfd1dfd226ba57ab329788d8dbbaf
+08:40:24 tête bc80b16e
+08:41:04 w17_cap low
+08:45:18 fin rc=0
+08:45:19 rapport sonde rc=0
+08:46:49 w17_cap medium
+08:51:15 fin rc=0
+08:51:16 rapport sonde rc=1
+08:52:46 w17_cap high
+08:57:11 fin rc=0
+08:57:11 rapport sonde rc=1
+08:58:42 empreinte après 114c3c4fb9fdd81fc5d6f7c5dff3b9f2
+08:58:42 clone be29640f
+08:58:42 FIN
