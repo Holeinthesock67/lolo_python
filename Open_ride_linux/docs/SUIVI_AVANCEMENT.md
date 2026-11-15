@@ -410,6 +410,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Décor lisible après un demi-tour : bornes et panneau de col des deux côtés, bandeaux de portique à deux faces (lot N21, fusionné le 9 novembre, #812).
 - [ ] Décor chargé devant à rebours : portiques, herbe, détails du sol et gags WTF dans le sens de la marche (lot N22, en PR le 14 novembre).
 - [ ] Voitures, camions, tracteurs et cyclistes du décor aussi après un demi-tour (lot N23, en PR le 14 novembre).
+- [ ] Montées du retour : panneaux d'approche, chiffres peints, spectateurs et parapentes après un demi-tour (lot N24, en PR le 14 novembre).
 - [ ] Arches de bonus comptées à rebours après un demi-tour, une fois chacune par tour (lot N25, en PR le 14 novembre).
 
 ### Version 2.0 : segments, bonus et maillots (série T)
