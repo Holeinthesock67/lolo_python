@@ -453,8 +453,8 @@ Ces essais s'ajoutent aux blocs A à H ; chacun dit s'il se fait sur le vélo. L
 
 - **Étapes :** `openride-compiler route-pack-build cols_celebres --install` (plusieurs minutes, OpenStreetMap et altitudes) ; `openride-compiler route-pack-list` ; rouler un col au choix.
 - **Attendu :** chaque col construit est contrôlé à ± 5 % (longueur et dénivelé de la recette) ; une trace hors tolérance est refusée avec un message qui nomme le col et le point de passage à corriger ; les cols acceptés apparaissent dans la bibliothèque.
-- [ ] Pack construit, écarts notés
-- [ ] Un col roulé
+- [x] Pack construit, écarts notés (essai `rcols` du 8 novembre, 16/16 ; paquet `rPK1` du 14 novembre, 21 cols, contrôle sans écart)
+- [x] Un col roulé (15 novembre, Alpe d'Huez, 2,2 km en 11 min, note 5/5 ; 21 cols au menu sans compilation ; pente affichée de 13 à 14 % dans les premiers lacets, un peu au-dessus des 10 à 11,5 % connus)
 
 ### J5. Boîtier gauche du Click (Q6), sur le vélo
 

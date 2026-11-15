@@ -11,6 +11,12 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Cyber-Rogue : au départ d'une run, le décor du parcours d'avant (tuiles, arbres, forêts, bâtiments, horizon) est vidé au lieu d'être seulement caché ; le parcours du menu est rechargé en entier au retour (arbres de l'Alpe d'Huez encore chargés pendant la run, essai du 15 novembre).
 - Nouvelle ligne `[perf-menu]` du journal de l'engine, toutes les 30 s quand un menu est affiché : nombre de mises à jour, temps moyen et maximal, écran.
 
+### Une épave et une piste de sable au Récif des tortues (lot SM2)
+- Un vieux caboteur rouillé, couché sur le flanc dans le sable, attend à 120 m de l'arrivée du « Récif des tortues » : coque couverte d'algues, hublots, brèche dans le flanc, timonerie, cheminée penchée et mât cassé tombé sur le pont.
+- Les parcours peuvent porter des épaves (point d'intérêt `wreck`, d'après la balise OSM `historic=wreck`).
+- Sous la mer, la route devient une piste de sable sans marquage, fondue dans le fond ; le vélo et l'entraînement ne changent pas. Un thème peut donner ainsi à chaque biome l'aspect de sa chaussée (`biomes.<id>.road`).
+- Plus de promeneur debout au bord de la route sous l'eau.
+
 ### Un volcan en flammes (lot DB2)
 - Nouveau parcours de démonstration « Volcan en flammes » : une boucle de 8 km dans un volcan en éruption, de la plaine de cendres à la crête du cratère (220 m de montée, 9,6 % au plus) et retour. On roule entre des coulées et des lacs de lave, dans les braises et la fumée, et le cratère crache des gerbes de lave. Trace, relief et décor sont inventés.
 - Nouveau paysage « volcan actif » du thème : coulées et lacs de lave qui rougeoient de jour comme de nuit, braises autour du cycliste, panaches de fumée, gerbes de lave, lueur orange sur la brume. La lave reste toujours à 14 m au moins de la route. En qualité basse, ni gerbes ni lumières, et moins de braises.
