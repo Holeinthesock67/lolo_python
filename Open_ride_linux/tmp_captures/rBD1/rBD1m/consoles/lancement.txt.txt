@@ -1,0 +1,11 @@
+19:45:39 empreinte avant c22c2adb5ae366ddabdae892db25629e
+19:45:39 tête 4fdca8b2
+19:46:18 dernier_survivant_onze low
+19:54:29 fin rc=0
+19:54:29 dernier_survivant_onze medium
+20:02:40 fin rc=0
+20:02:40 dernier_survivant_onze high
+20:10:51 fin rc=0
+20:10:52 empreinte après c22c2adb5ae366ddabdae892db25629e
+20:10:52 clone 214ad0b2
+20:10:52 FIN
