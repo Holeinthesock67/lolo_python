@@ -1,0 +1,20 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_road_cyclists_limit
+
+[OK] trois cyclistes, aucun doublon (3)
+[OK] membres hors liste d'un groupe donné par le core : dans le groupe du core
+[OK] ... à leur place dans la file derrière la tête du core (-61.60, -63.70)
+[OK] groupe à cheval sur la limite des 60 m : aucun contact en 2 s ([])
+[OK] tête sortie de la liste par l'avant : gardée à sa place, pas posée sur le suivant ([56.0, 53.9000000000001])
+[OK] place du core recalée sur le cycliste affiché (-2.10 m, attendu −2,10)
+[OK] pas extrapolé une fois de plus à l'image de sa reprise (-2.100 m)
+[OK] extrapolé aux images suivantes
+[OK] écart de plus de 50 m (saut, boucle) : pas de recalage
+[OK] groupe sorti de la liste rendu au décor
+[OK] groupe rendu par le core : garde sa vitesse (3.00 m en 0,5 s, attendu ~3)
+[OK] dépassement à MIN_CENTRE_M à gauche du cycliste là où il est (-1.00 m)
+test_road_cyclists_limit : 12 vérifications, 0 échecs
+UNIT=test_road_cyclists_limit : rendu, ERG et scénarios IPC sautés
+Résumé :
+  OK     unit/test_road_cyclists_limit : 12 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent

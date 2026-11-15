@@ -1,0 +1,21 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+34.1;19;0;0;0;0;4;0;raptor_cry=1
+64.1;19;0;0;0;0;4;0;raptor_cry=1
+94.1;19;0;0;0;2;4;0;airliner_rumble=1 raptor_cry=2 voice_allez=1
+124.1;24;0;0;0;2;4;0;airliner_rumble=1 crow_caw=1 raptor_cry=2 voice_allez=1
+154.1;24;0;0;0;2;4;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=1
+184.1;18;0;0;0;3;4;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=1
+214.1;18;0;0;0;4;4;0;airliner_rumble=2 crow_caw=1 crowd_cheer=1 raptor_cry=2 voice_allez=2
+244.1;11;0;0;0;4;4;0;airliner_rumble=2 crow_caw=1 crowd_cheer=1 raptor_cry=2 voice_allez=2
+274.1;11;0;0;0;3;4;0;airliner_rumble=2 crow_caw=1 crowd_cheer=1 raptor_cry=2 voice_allez=2
+304.1;7;0;0;0;6;4;0;airliner_rumble=2 crow_caw=1 crowd_cheer=1 raptor_cry=2 voice_allez=2
+334.1;7;0;0;0;5;4;0;airliner_rumble=2 crow_caw=1 crowd_cheer=1 raptor_cry=2 voice_allez=3
+364.1;15;0;0;0;4;4;0;airliner_rumble=2 crow_caw=1 crowd_cheer=1 paramotor_buzz=1 raptor_cry=2 voice_allez=3
+394.1;15;0;0;0;4;4;0;airliner_rumble=2 crow_caw=1 crowd_cheer=1 paramotor_buzz=1 raptor_cry=2 voice_allez=4
+424.1;16;0;0;0;4;4;0;airliner_rumble=2 crow_caw=1 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 voice_allez=5
+454.1;9;0;0;0;4;4;0;airliner_rumble=3 crow_caw=1 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=2 voice_allez=5
+484.1;15;0;0;0;4;4;0;airliner_rumble=3 crow_caw=1 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=2 voice_allez=5
+514.1;15;0;0;0;3;4;0;airliner_rumble=3 crow_caw=1 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=2 voice_allez=5
+544.1;15;0;0;0;5;4;0;airliner_rumble=3 crow_caw=1 crowd_cheer=1 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=2 voice_allez=5
+574.1;15;0;0;0;5;4;0;airliner_rumble=3 crow_caw=1 crowd_cheer=2 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=2 voice_allez=5
+601.3;15;0;0;0;4;4;0;airliner_rumble=3 crow_caw=1 crowd_cheer=2 helicopter_rotor=1 paramotor_buzz=2 raptor_cry=2 voice_allez=5
