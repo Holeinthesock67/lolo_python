@@ -1,0 +1,42 @@
+>>> [1/1] Scénario course_bots_140 (2:30)
+== course_bots_140 : parcours demo, 150 s, SIM ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 24.6 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo à 40.5 s
+[OK] engine vivant jusqu'à la fin : 150 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] sonde de performance : 101 relevés, rapport sonde/rapport.html
+[OK] budget low : images/s : médiane 57.7 (au moins 55)
+[ÉCHEC] budget low : temps d'image p99 : 30.8 ms (médiane des p99 de chaque seconde, sous 25 ms)
+[OK] budget low : GPU de la vue : médiane 5.04 ms (au plus 8 ms)
+[OK] budget low : GPU saturé : 0.0 % des secondes au-dessus de 95 % de charge (au plus 5 %)
+[OK] à-coups : départ : pire image 143 ms de 20 à 30 s et avant le premier mètre (au plus 150 ms)
+[ÉCHEC] à-coups : images lentes : 28 seconde(s) avec une image de plus de 50 ms en 1.6 min, 17.9 par minute (au plus 3)
+[ÉCHEC] à-coups : pire image : 150 ms (au plus 100 ms)
+[OK] à-coups : périodicité en distance : aucune sur 45 image(s) de plus de 50 ms
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.35 s (médiane), 2.32 s au pire : captures de l'engine
+   images par seconde de l'engine : min 1, médiane 46, max 60 (7 relevés)
+[OK] qualité réellement appliquée : low appliquée (8 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] qualité notée par la sonde : low sur toute la mesure
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 2.5 à 3.5 %, pente envoyée 0.2 à 1.9 %
+[OK] décor : aucun contact sur la route : 0 sur 8 captures
+[OK] [T11 §8] bots à profil calibrés au départ (niveau des bots) : 1 (au moins 1 attendu)
+[OK] [T11 §8] encart des bots affiché : captures 6 (au moins 1 attendu), ex. 001_t060.png : « Grimpeur  216 W · 3,6 W/kg »
+[OK] [T11 §8] écart au bot affiché : captures 6 (au moins 1 attendu), ex. 001_t060.png : « +0,6 s »
+[OK] [T11 §8] voisin de devant (▲) dans l'encart : captures 7 (au moins 1 attendu), ex. 001_t060.png : « Rouleur  248 W · 3,4 W/kg »
+[OK] [T11 §8] voisin de derrière (▼) dans l'encart : captures 1 (au moins 1 attendu), ex. 001_t060.png : « Diesel  244 W · 3,3 W/kg »
+[OK] fréquence cardiaque au journal : 91 échantillons, 126 à 132 bpm
+    NON course_bots_140 : 3 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/rBT1/cb_low/index.html
+=== Banc fini : ÉCHEC (3 vérification(s))
+RÉSULTAT : ÉCHEC (3 vérification(s))
