@@ -1,0 +1,29 @@
+# Vélodrome 250 m, élimination contre 7 bots (VD6, VD7, VD9, VD10).
+id = "velodrome-elimination"
+but = "Vélodrome, élimination à 7 : bots qui courent l'épreuve, tableau, cloche, éliminations lisibles"
+duree_max_s = 600
+commandes = [
+  { cmd = "select_route", args = { route_id = "velodrome-250" } },
+  { cmd = "start", args = { mode = "track", track = { event = "elimination", opponents = 7 } } },
+]
+questions = [
+  "Vélodrome : bots crédibles sur 5 ?",
+  "Tableau, cloche et éliminations lisibles ? (oui/non + remarque)",
+]
+
+[[etapes]]
+quand = { kind = "event", event = "start" }
+dire = "Départ. Roule à {cible} watts dans le peloton."
+
+[[etapes]]
+quand = { kind = "track", event = "out" }
+dire = "Premier éliminé. As-tu vu qui sort, et entendu le signal ?"
+
+[[etapes]]
+quand = { kind = "track", event = "bell" }
+dire = "La cloche : reste devant le dernier jusqu'à la ligne, à {cible:115} watts."
+
+[[etapes]]
+quand = { kind = "track", event = "out", rider = "me" }
+dire = "Tu es éliminé. Continue à rouler tranquille, regarde si les bots finissent la course."
+attente_max_s = 420
