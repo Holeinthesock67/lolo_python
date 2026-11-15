@@ -265,7 +265,8 @@ class Bench:
                        f"affichée {ri.get('room_shown')}, trame {rg.get('room_id')}")
             self.check(name, "ruban, repères et Firewall", ri.get("ribbon") and ri.get("markers", 0) > 0 and ri.get("firewall"),
                        f"ruban {ri.get('ribbon')}, {ri.get('markers')} repère(s), Firewall {ri.get('firewall')}")
-            self.check(name, "ennemi affiché", bool(ri.get("enemy")), f"archétype {ri.get('enemy_archetype') or '—'}")
+            if float(rg.get("enemy_hp", 1.0)) > 0.0:   # ennemi abattu : il s'efface (adrénaline gardée, lot R23)
+                self.check(name, "ennemi affiché", bool(ri.get("enemy")), f"archétype {ri.get('enemy_archetype') or '—'}")
         if frame.get("session_state") == "RUNNING":
             if ri.get("corridor"):   # l'écran du couloir occupe le centre : hologramme retiré
                 self.check(name, "hologramme retiré au couloir", not ri.get("holo"), ri.get("holo") or "retiré")
