@@ -878,6 +878,7 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.start_run(act.get("args", {}))
 		"open_world_menu":
 			world_menu_view.open()
+			world_menu_view.vm.biome = streamer.forced_biome   # ligne « Biome » de l'écran du cap (lot W17)
 			ipc.send_command("world_regions")
 		"list_garage":
 			ipc.request_garage()
@@ -931,6 +932,8 @@ func _run_world_action(act: Dictionary) -> void:
 			ipc.send_command("world_pin", {"region_id": act["region_id"], "pinned": act["pinned"]})
 		"start_open_world":
 			ipc.send_command("start_open_world", act["args"])
+		"set_setting":   # ligne « Biome » de l'écran du cap (lot W17) : même réglage que le menu des réglages
+			ipc.set_setting(str(act["key"]), act["value"])
 
 
 func _on_world_menu_received(kind: String, msg: Dictionary) -> void:
@@ -1165,6 +1168,7 @@ func _process(delta: float) -> void:
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
 		# À rebours (lot N17), cap retourné : la caméra et l'avatar regardent vers le départ du parcours.
 		var dir: int = follow.direction
+		_set_direction(dir)   # décor chargé et affiché devant, dans le sens de la marche (lots N17, N22)
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route)) + (PI if dir < 0 else 0.0)
 		# Écart à l'axe (lot AS2) : l'avatar suit `lane_m` du core, la caméra le suit avec 0,5 s de lissage.
 		# `lane_m` est dans le repère de la route ; avec le cap retourné, l'écart se compte à droite du cycliste.
@@ -1207,7 +1211,6 @@ func _process(delta: float) -> void:
 		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
 		_probe.distance_m = s_route
 		var t_step := Time.get_ticks_usec()
-		streamer.direction = dir   # tronçons et tuiles chargés devant, dans le sens de la marche (lot N17)
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		PerfProbe.mark_since("fenetre", "", t_step)
 		# Bots placés avant le décor vivant : ses cyclistes, ses véhicules et son compte des contacts lisent les
@@ -1231,6 +1234,18 @@ func _process(delta: float) -> void:
 
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
 ## Core non joignable : pas appelé (_process fige toute la scène), donc ni nuages ni herbe qui bougent.
+## Sens de la marche (1, ou -1 à rebours après un demi-tour) donné à tout ce qui charge ou pose le décor devant
+## la caméra : tronçons et tuiles (N17), portiques, herbe, détails du sol et gags WTF (N22).
+func _set_direction(dir: int) -> void:
+	streamer.direction = dir
+	if segment_markers != null:
+		segment_markers.direction = dir
+	if wtf_scene != null:
+		wtf_scene.direction = dir
+	if living_world != null:
+		living_world.direction = dir
+
+
 func _step_living(delta: float, s_route: float, v: float) -> void:
 	if living_world == null or route == null or route.is_track():   # salle couverte : ni météo ni décor vivant
 		return
@@ -1252,6 +1267,8 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 		PerfProbe.mark_since("decor", "", t_step)
 		t_step = Time.get_ticks_usec()
 	_step_cycle(now_s)
+	if living_world != null and living_world.volcano != null:
+		atmosphere_view.set_fire(living_world.volcano.fire_level, living_world.volcano.glow_color)
 	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
 	if moon_view != null:
 		moon_view.update(camera.global_position, atmosphere_view.cycle)
@@ -1273,7 +1290,7 @@ func _menu_camera(delta: float) -> bool:
 	camera.fov = _base_fov
 	camera.rotation.y = -heading
 	camera.rotation.x = deg_to_rad(CameraViews.camera_pitch_deg(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS)))
-	streamer.direction = 1   # le décor des menus avance dans le sens du parcours (lot N17)
+	_set_direction(1)   # le décor des menus avance dans le sens du parcours (lots N17, N22)
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
 	_step_living(delta, _menu_s, MENU_CAMERA_MPS)
 	return true
@@ -2005,6 +2022,9 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 		NightLights.apply(glow, lit)
 	var season: Dictionary = out["season"]
 	var params: Dictionary = season["params"] if bool(season["active"]) else {}
+	# Pas de neige dans un paysage en feu (DB2, volcano_fx.gd `melt_snow`) : la limite ne descend plus l'hiver
+	if not params.is_empty() and living_world != null and living_world.get("volcano") != null:
+		params = living_world.volcano.melt_snow(params)
 	if params != _season_applied:
 		_season_applied = params
 		var p: Dictionary = params if not params.is_empty() else SeasonModel.NEUTRAL
@@ -2110,10 +2130,14 @@ func _on_state_received(state: Dictionary) -> void:
 	var route_id = state.get("route_id", null)
 	if live_world.route != null:
 		live_world.on_open_world(ipc.open_world)
-	if world_menu_view != null and world_menu_view.visible and world_menu_view.vm.is_loading() \
-			and session_state in ["READY", "RUNNING"] and str(route_id).begins_with(OW_PREFIX):
-		world_menu_view.close()     # le monde est prêt : l'écran Prêt du menu prend le relais
-		_refresh_menu()
+	if world_menu_view != null and world_menu_view.visible:
+		# Le monde est prêt : le menu se ferme et la balade démarre (départ au pédalage, lot W18).
+		var ow_act: Dictionary = world_menu_view.vm.on_session(session_state, str(route_id))
+		if not ow_act.is_empty():
+			world_menu_view.close()
+			if ow_act["action"] == "start":
+				_run_menu_action(ow_act)
+			_refresh_menu()
 	if (route_id == null or str(route_id) == "") and menu_flow.is_visible():
 		route_id = DEMO_ROUTE_ID   # aucun parcours choisi : la démo tourne en fond des menus (lot N6)
 	if route_id != _route_id_requested:

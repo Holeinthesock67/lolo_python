@@ -119,6 +119,22 @@ func _run() -> void:
 	var route = _route()
 	_check(route.length_m >= 5000.0, "parcours de %.1f km à épingle" % (route.length_m / 1000.0))
 
+	# Lot N22 : fenêtre de tronçons dans le sens de la marche, aussi à rebours après un demi-tour (N17)
+	var gd = GroundDetails.new()
+	gd.configure(_budgets("high"), route, _model("savanna"), ROAD_WIDTH_M)
+	var kc := int(floor(1200.0 / GroundDetails.CHUNK_M))
+	gd.update(1200.0)
+	var fw := Array(gd._slot_chunk)
+	fw.sort()
+	gd.direction = -1
+	gd.update(1200.0)
+	var bw := Array(gd._slot_chunk)
+	bw.sort()
+	_check(fw == range(kc - GroundDetails.CHUNKS_BEHIND, kc + GroundDetails.CHUNKS_AHEAD + 1)
+		and bw == range(kc - GroundDetails.CHUNKS_AHEAD, kc + GroundDetails.CHUNKS_BEHIND + 1),
+		"fenêtre devant la caméra dans les deux sens de marche (%s / %s)" % [str(fw), str(bw)])
+	gd.free()
+
 	# 1. Sans modèle de biome : rien n'est créé
 	var g0 = GroundDetails.new()
 	g0.configure(_budgets("high"), route, null, ROAD_WIDTH_M)

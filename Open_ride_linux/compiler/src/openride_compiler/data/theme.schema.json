@@ -105,6 +105,11 @@
               "type": "number",
               "minimum": 0,
               "maximum": 1
+            },
+            "underwater": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
             }
           }
         }
@@ -152,7 +157,8 @@
         "volcanic",
         "japan",
         "atlantic_heath",
-        "high_plateau"
+        "high_plateau",
+        "reef"
       ]
     },
     "groundLayer": {
@@ -271,7 +277,10 @@
                       "heather",
                       "gorse",
                       "bracken",
-                      "bunchgrass"
+                      "bunchgrass",
+                      "kelp",
+                      "coral",
+                      "sea_fan"
                     ]
                   },
                   "weight": {
@@ -431,6 +440,36 @@
           "additionalProperties": {
             "$ref": "#/$defs/biome"
           }
+        },
+        "fire": {
+          "$ref": "#/$defs/fire"
+        }
+      }
+    },
+    "fire": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Feu du paysage (démo « Volcan en flammes », version 6.0) : lave, braises, fumée et lueur des tuiles du paysage ; toutes les clés sont facultatives.",
+      "properties": {
+        "lava": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "lava_hot": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "crust": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "smoke": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "glow": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "density": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
         }
       }
     }
@@ -727,7 +766,8 @@
           "canyon",
           "fjord",
           "ile_volcanique",
-          "rizieres"
+          "rizieres",
+          "volcan_actif"
         ]
       },
       "additionalProperties": {

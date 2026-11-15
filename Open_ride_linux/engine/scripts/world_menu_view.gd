@@ -7,6 +7,7 @@ extends Control
 ## (button_bar.gd, aide de button_help.gd) donne en bas les boutons du Click et les touches du clavier.
 ## Pas de class_name (charger par preload).
 
+const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const UiTheme := preload("res://scripts/ui_theme.gd")
 const ButtonBar := preload("res://scripts/button_bar.gd")
 const ButtonHelp := preload("res://scripts/button_help.gd")
@@ -35,6 +36,11 @@ const STATE_HELP := {
 	Model.MAP: "Le curseur reste accroché à la route la plus proche : c'est le point de départ.",
 	Model.SETUP: "En roulant, un panneau annonce chaque carrefour : ◀ ▶ ou A choisissent la branche, A maintenu la valide, jusqu'à 30 m avant ; sinon la navigation choisit.",
 	Model.LOADING: "Le monde se télécharge et se prépare autour du départ. Au même endroit la prochaine fois, rien n'est retéléchargé.",
+}
+## Ligne « Biome » de l'écran du cap (lot W17) : biome automatique ou forcé, ce qui change à l'écran.
+const BIOME_HELP := {
+	"auto": "Biome automatique : le décor suit la région traversée, d'après l'occupation du sol, le climat et l'altitude (forêts, cultures, montagne, désert…). Il change en roulant : sol, arbres, animaux, ciel et sons. Sans données, prairie tempérée.",
+	"forced": "Biome forcé : ce biome habille toute la balade, où que tu roules (sol, arbres, animaux, ciel et sons). Automatique rend la main à la région. Même réglage que Réglages › Graphisme › Biome du décor.",
 }
 const NAV_HELP := {
 	"ride": "Balade : le jeu garde le cap et préfère les petites routes.",
@@ -281,7 +287,7 @@ func _body_text() -> String:
 		Model.MAP:
 			return "Choisis le point de départ sur une route" + ("" if vm.map_ready else "\nChargement de la carte…")
 		Model.SETUP:
-			var rows := ["Cap : %d°" % int(vm.heading_deg), "Navigation : " + Model.NAV_LABELS[vm.nav], _extra_text()]
+			var rows := ["Cap : %d°" % int(vm.heading_deg), "Navigation : " + Model.NAV_LABELS[vm.nav], _extra_text(), biome_text()]
 			for i in range(rows.size()):
 				rows[i] = ("▶ " if i == vm.field_index else "   ") + rows[i]
 			if vm.last_error != "":
@@ -307,6 +313,14 @@ func grid_lines() -> Array:
 	return lines
 
 
+## Ligne du biome : « Automatique (suit la région) » ou le nom du biome forcé (noms du menu des réglages).
+func biome_text() -> String:
+	if vm.biome == "auto":
+		return "Biome : automatique (suit la région)"
+	var name := str(SettingsViewModel.CHOICE_TEXTS["render.biome"].get(vm.biome, vm.biome))
+	return "Biome : %s (forcé)" % name
+
+
 func _extra_text() -> String:
 	match vm.nav:
 		"loop":
@@ -319,7 +333,9 @@ func _extra_text() -> String:
 ## Explication de l'état affiché, sous les lignes (au réglage du cap, aussi celle de la navigation).
 func _help_text() -> String:
 	var text := str(STATE_HELP.get(vm.state, ""))
-	if vm.state == Model.SETUP:
+	if vm.state == Model.SETUP and Model.FIELDS[vm.field_index] == "biome":
+		text = str(BIOME_HELP["auto" if vm.biome == "auto" else "forced"])
+	elif vm.state == Model.SETUP:
 		text = str(NAV_HELP.get(vm.nav, "")) + "\n" + text
 	return text
 

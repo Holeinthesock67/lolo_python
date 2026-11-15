@@ -5,6 +5,17 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Un volcan en flammes (lot DB2)
+- Nouveau parcours de démonstration « Volcan en flammes » : une boucle de 8 km dans un volcan en éruption, de la plaine de cendres à la crête du cratère (220 m de montée, 9,6 % au plus) et retour. On roule entre des coulées et des lacs de lave, dans les braises et la fumée, et le cratère crache des gerbes de lave. Trace, relief et décor sont inventés.
+- Nouveau paysage « volcan actif » du thème : coulées et lacs de lave qui rougeoient de jour comme de nuit, braises autour du cycliste, panaches de fumée, gerbes de lave, lueur orange sur la brume. La lave reste toujours à 14 m au moins de la route. En qualité basse, ni gerbes ni lumières, et moins de braises.
+- Jamais de neige dans un paysage en feu, quels que soient la date et la météo choisies : ni neige qui tombe, ni sol enneigé l'hiver.
+
+### Un récif sous la mer livré avec le jeu (lot SM1)
+- Nouveau parcours de démonstration « Récif des tortues » : une boucle de 8 km au fond de la mer, de 11 à 26 m sous la surface. On passe par le Lagon des Tortues, la Forêt des Laminaires, le Jardin de Corail et le Tombant Bleu.
+- Nouveau biome « fond marin » (`reef`) : sable corallien et roche du récif, laminaires de 9 m qui ondulent, coraux et gorgones de toutes les couleurs, bancs de poissons jaunes et bleus, tortues et raies, son sourd de la mer et bulles.
+- Ambiance sous l'eau : brouillard bleu proche (à 230 m environ, quel que soit le préréglage), ciel noyé dans l'eau, surface ondulante vue d'en dessous, reflets mouvants sur le sable, bulles qui montent, lumière qui tombe d'en haut. Ni voitures, ni cyclistes du décor, ni spectateurs sous l'eau. Le vélo et l'entraînement ne changent pas.
+- Choix « fond marin » dans « Biome du décor ». Le compilateur ne le pose jamais sur un parcours réel.
+
 ### Pack « Cols célèbres » livré avec le jeu (lot PK1)
 - Le pack des cols célèbres fait partie du jeu de base : construit une fois (`scripts/build_pack_base.sh`), livré déjà compilé dans le paquet, il s'installe au premier démarrage avec les contenus de départ, sans réseau et sans rien écraser.
 - Écran « Réglages › Contenus » : sans réseau ni confirmation quand le paquet porte le pack ; crédits OpenStreetMap (ODbL), Copernicus et WorldCover sur la ligne du pack et au §10 du guide d'utilisation.

@@ -293,6 +293,7 @@ class CoreSession:
         # (fixée par les essais : `bots_race`), groupes et relais relus par `bot_tactics.update_field`
         self.bot_tactics_mode = "classic"
         self.bot_tactics_seed: int | None = None
+        self._race_seed = 0   # graine de la séance en cours, tirée par `_new_race`
         self._field = bot_tactics.Field()
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
@@ -627,7 +628,8 @@ class CoreSession:
             self._sync_erg_state()
         if game_mode == "wtf":
             self._start_wtf()
-        self._new_race(classic=self.wtf is None and game_mode not in ("survivor", "grandprix", "track"))
+        self._new_race(classic=self.wtf is None and game_mode not in ("survivor", "grandprix", "track"),
+                       tactics=self._track_tactics() if game_mode == "track" else None)
         if game_mode == "survivor":
             self._start_survivor()
         if game_mode == "grandprix":
@@ -2727,20 +2729,23 @@ class CoreSession:
         ents = [track_mod.Entrant(track_mod.ME, "Toi")] + [
             track_mod.Entrant(b.id, b.name, level=float(getattr(b, "level_pct", None) or 0.0)) for b in self.bots]
         lap = self._track.length_m if self._track is not None else track_mod.LAP_M
-        seed = self.bot_tactics_seed if self.bot_tactics_seed is not None else bot_tactics.seed_from(time.time())
+        seed = self._race_seed   # graine de `_new_race`, qui a déjà donné aux bots la tactique de l'épreuve
         self.track_event = track_mod.make(event, ents, settings, lap_m=lap, seed=seed)
         self.track_event.start(self._t_session, self._track_positions())
         # Lot VD7 : les bots courent l'épreuve (consignes de `track.bot_plan`, comportements de `bot_tactics`)
-        level = settings.get("bot_tactics", "none")
-        paced = issubclass(track_mod.EVENTS[event].cls, track_mod.Pursuit)
-        bot_tactics.start_race(self.bots, seed, bot_tactics.track_mode(level, paced))
-        self._field = bot_tactics.Field()
         self._race_field = bot_tactics.RaceField(seed)
         self._track_plan = track_plan_mod.BotPlan(self.track_event, {b.id: getattr(b, "profile", "rouleur")
                                                                      for b in self.bots}, seed)
         if self._rec:
             self._rec.game({"kind": "track_start", "ts": round(time.time(), 3), "event": event, **settings})
         log.info("Épreuve de piste : %s, %s.", event, ", ".join(f"{k} = {v}" for k, v in settings.items()) or "réglages par défaut")
+
+    def _track_tactics(self) -> str:
+        """Ligne de `bot_tactics.MODE_TACTICS` de l'épreuve choisie (réglage « Tactique des bots », lot VD7)."""
+        assert self._track_choice is not None
+        event, settings = self._track_choice
+        paced = issubclass(track_mod.EVENTS[event].cls, track_mod.Pursuit)
+        return bot_tactics.track_mode(settings.get("bot_tactics", "none"), paced)
 
     def _track_positions(self) -> dict[str, tuple[float, float]]:
         pos = {b.id: (b.s, b.v) for b in self.bots}
@@ -3089,12 +3094,17 @@ class CoreSession:
 
     # --- mode classique de la série T (lot T7) ------------------------------------------
 
-    def _new_race(self, classic: bool = True) -> None:
+    def _new_race(self, classic: bool = True, tactics: str | None = None) -> None:
         """Segments, records, bonus, maillots et écarts de la séance qui commence.
 
-        `classic` faux (mode WTF) : pas de segments, de records ni de bonus, seulement les bots calibrés."""
+        `classic` faux (mode WTF) : pas de segments, de records ni de bonus, seulement les bots calibrés.
+        `tactics` : ligne de `bot_tactics.MODE_TACTICS` imposée par le mode (épreuve de piste) ; None : celle
+        du mode classique, ou « none » hors du mode classique."""
         route = self.route
         self.race = None
+        # Graine de la séance, tirée une fois : les bots, l'épreuve de piste et ses consignes la partagent.
+        self._race_seed = (self.bot_tactics_seed if self.bot_tactics_seed is not None
+                           else bot_tactics.seed_from(time.time()))
         self.traffic = None           # circulation retirée à chaque départ (lot AS6)
         self.road_cyclists = None     # cyclistes du décor aussi (lot AS7)
         self._suction = 0.0
@@ -3134,8 +3144,8 @@ class CoreSession:
         scales = calibrate_bots(self.bots, route, rider, self.cfg.bots.level_pct, self._segments,
                                 self.cfg.bike.mass_kg, bot_params=plain)
         # Lot Y10 : tactique après le calibrage (forme du jour sur la CP calibrée), le mode classique seul
-        seed = self.bot_tactics_seed if self.bot_tactics_seed is not None else bot_tactics.seed_from(time.time())
-        mode = self.bot_tactics_mode if classic else "none"
+        seed = self._race_seed
+        mode = tactics if tactics is not None else (self.bot_tactics_mode if classic else "none")
         bot_tactics.start_race(self.bots, seed, mode)
         self._field = bot_tactics.Field()
         if any(getattr(b, "tactics", None) is not None for b in self.bots):
@@ -3733,7 +3743,10 @@ class CoreSession:
         choisi, limite de neige du thème, graine de l'engine."""
         if route is None or not self.cfg.render.living or self._track is not None:
             return None   # vélodrome : salle couverte, pas de circulation (l'engine n'y pose pas le décor vivant)
-        if self.traffic is None or self.traffic.route is not route:
+        src = self._world_src
+        if src and src[0] is route and traffic_mod.underwater_route(src[2]):
+            return None   # sous l'eau (lot SM1) : ni voitures ni cyclistes du décor, comme living_decor.gd
+        if self.traffic is None or self.traffic.base_route is not route:
             src = self._world_src
             villages = traffic_mod.load_villages(src[1], src[2], route.length_m) if src and src[0] is route else []
             self.traffic = traffic_mod.Traffic(
@@ -3751,7 +3764,7 @@ class CoreSession:
         traffic = self._traffic_for(route)
         if traffic is None:
             return None
-        if self.road_cyclists is None or self.road_cyclists.route is not route:
+        if self.road_cyclists is None or self.road_cyclists.base_route is not route:
             self.road_cyclists = road_cyclists_mod.RoadCyclists(
                 route, road_cyclists_mod.climbs_for(route, self._segments), traffic.villages,
                 seed=road_cyclists_mod.SEED, half_width_at=self._half_at(route))
@@ -3783,30 +3796,45 @@ class CoreSession:
         is_loop = bool(route and route.is_loop)
         near: list[traffic_mod.Vehicle] = []
         riders: list[road_cyclists_mod.Rider] = []
+        near_m: list[traffic_mod.Vehicle] = []        # mêmes listes dans le repère de la circulation (lot N23)
+        riders_m: list[road_cyclists_mod.Rider] = []
+        rider_u = self.physics.s
         if traffic is not None:
-            bot_places = [(b.s, draft_mod.BOT_LANE_M if draft_mod.lane_of(b) is None else draft_mod.lane_of(b))
-                          for b in self.bots]
+            # Lot N23 : à rebours, circulation et cyclistes du décor roulent sur le parcours retourné (u = L - s),
+            # où le cycliste avance encore vers les u croissants, sur la droite de son sens de marche ; les bots,
+            # qui gardent le sens du parcours, y viennent en face
+            d = self.physics.direction
+            traffic.set_direction(d)
+            rider_u = traffic.model_s(self.physics.s)
+            bot_places = [(traffic.model_s(b.s), d * (draft_mod.BOT_LANE_M if draft_mod.lane_of(b) is None
+                                                       else draft_mod.lane_of(b))) for b in self.bots]
             # Lot AS7 : cyclistes du décor d'abord, comme living_decor.gd, qui laissent la place aux bots ;
             # ils voient les véhicules du pas précédent et sont des obstacles pour la circulation
             cyclists = self._road_cyclists_for(route)
             if cyclists is not None:
+                cyclists.set_direction(d, self.physics.s)
                 cyclists.vehicles = traffic.vehicles
-                cyclists.update(self.physics.s, self.physics.v, dt, bots=bot_places)
-                riders = cyclists.near(self.physics.s)
-            others = [traffic_mod.Other(s, lat) for s, lat in bot_places]
+                cyclists.update(rider_u, self.physics.v, dt, bots=bot_places)
+                riders_m = cyclists.near(rider_u)
+                riders = [cyclists.on_route(r) for r in riders_m]
+            others = [traffic_mod.Other(s, lat, d) for s, lat in bot_places]
             others += [traffic_mod.Other(r.s, r.lane_m, r.dir) for r in (cyclists.riders() if cyclists else [])]
-            d = self.physics.direction   # à rebours (lot N17) : le cycliste roule sur l'autre moitié de la route
-            others.append(traffic_mod.Other(self.physics.s, d * self._lane.m, d))
-            traffic.update(self.physics.s, self.physics.v, dt, others=others)
-            near = traffic.near(self.physics.s)
+            others.append(traffic_mod.Other(rider_u, self._lane.m, 1))
+            traffic.update(rider_u, self.physics.v, dt, others=others)
+            near_m = traffic.near(rider_u)
+            near = [traffic.on_route(v) for v in near_m]
         ws = self._wind_sample if self.wind.active else None
 
         def cross_at(heading: float) -> float:
             return cross_component(ws, heading) if ws else 0.0
 
-        def wind_at(s: float) -> tuple[float, float]:
-            heading = route.sample(s).heading_deg
-            return head_component(ws, heading), cross_at(heading)
+        def wind_on(road: Any) -> Callable[[float], tuple[float, float]]:
+            def wind_at(s: float) -> tuple[float, float]:
+                heading = road.sample(s).heading_deg
+                return head_component(ws, heading), cross_at(heading)
+            return wind_at
+
+        wind_at = wind_on(route) if route else None
 
         racing = self._racing_bots()   # un bot éliminé (Dernier survivant) n'abrite plus personne
         unseen = self._unseen_ids()
@@ -3840,6 +3868,17 @@ class CoreSession:
         runners += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders if r.dir == 1]
         draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None,
                                self._half_at(route))
+        if reverse and traffic is not None:
+            # Lot N23 : à rebours, le cycliste se place parmi les véhicules et les cyclistes du décor de son sens
+            # (il double le tracteur lent devant lui), dans le repère de la circulation (u = L - s) ; les bots, en
+            # face, n'en sont pas
+            half = self._half_at(route)
+            back = [(rider_u, self.physics.v, self._lane)]
+            back += [(v.s, v.speed_mps, draft_mod.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width,
+                                                        length=v.length)) for v in near_m if v.dir == 1]
+            back += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders_m if r.dir == 1]
+            draft_mod.update_lanes(back, dt, length, is_loop, wind_on(traffic.route) if ws else None,
+                                   (lambda u: half(traffic.model_s(u))) if half else None)
         for lane, bike_length, bike_half in blocks:
             lane.length, lane.half_width = bike_length, bike_half
 
@@ -3881,7 +3920,7 @@ class CoreSession:
             return
         cars = [v for v in self._escorts if abs(v.s - self.physics.s) < traffic_mod.NEAR_M]
         if traffic is not None:
-            cars += traffic.near(self.physics.s)
+            cars += [traffic.on_route(v) for v in traffic.near(traffic.model_s(self.physics.s))]
         if traffic is not None or cars:
             self.state.vehicles = traffic_mod.state_list(cars[:traffic_mod.NEAR_MAX])
 
@@ -3890,7 +3929,8 @@ class CoreSession:
         cyclists = self.road_cyclists
         self.state.riders = None
         if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == 0:
-            self.state.riders = cyclists.state_list(self.physics.s)
+            self.state.riders = road_cyclists_mod.state_items(
+                cyclists.on_route(r) for r in cyclists.near(cyclists.model_s(self.physics.s)))
 
     def _fill_wind_frame(self) -> None:
         """Champ `wind` une trame sur quinze, jamais dans la trame qui porte `devices` (taille de la trame)."""
