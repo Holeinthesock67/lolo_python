@@ -482,6 +482,11 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
         gap = abs(d) - reach                         # roue à roue (2 m de plus le long d'un véhicule), devant ou derrière
         closing = (v - o_v) if d > 0.0 else (o_v - v)   # > 0 : on se rapproche
         look_s = SIDE_LOOK_S + _side_time(lane, o_lane)
+        # Lot AS10 (banc rAS10 du volcan, « core / cycliste », écarts 2,5 et 1,9) : déjà hors de sa ligne, on regarde en
+        # plus le temps de s'en écarter de nouveau (SIDE_CLEAR_M à LANE_RATE_MPS) ; on revenait dans la roue de celui
+        # qu'on rattrapait encore (0,45 m/s, dépassement abandonné sous PASS_SPEED_MPS) et l'écart arrivait trop tard
+        if abs(lane.m - o_lane.m) > 0.05:
+            look_s += SIDE_CLEAR_M / LANE_RATE_MPS
         if not (gap < 0.0 or closing > 0.0 and gap < max(PASS_TOUCH_GAP_M, closing * look_s)):
             continue
         dx = lane.m - o_lane.m

@@ -4,7 +4,8 @@ extends SceneTree
 ## (listes `riders` du vrai core à 10 Hz, cycliste à vitesse tenue) dans road_cyclists_model.gd, comme living_decor.gd :
 ## images à 60 Hz avec 2 % d'à-coups de 30 à 80 ms, trames `state` à 30 Hz reçues 5 ms plus tard, cycliste affiché
 ## extrapolé comme camera_follow.gd, `sync_core` puis `update` ; compte les contacts comme living_decor._count_contacts
-## (1,7 m en long, 0,6 m en travers, cycliste compris).
+## (1,7 m en long, 0,6 m en travers, cycliste compris). Lot AS10 : une trace peut porter la place du cycliste en travers
+## (`lane_m`, 4e champ de chaque liste) et sa vitesse (5e champ, cycliste d'un banc rejoué), et une boucle (`type`).
 ## Lancement : godot --headless --path engine --script res://tests/rejeu_cyclistes_core.gd -- TRACE.json [BUDGET]
 const Model := preload("res://scripts/road_cyclists_model.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
@@ -20,10 +21,15 @@ func _run() -> void:
 	var L := float(data["length_m"])
 	var n := int(L / 10.0) + 1
 	var cols := {"lat": [], "lon": [], "alt_m": [], "x": [], "z": [], "grade_pct": [], "heading_deg": []}
+	# Lot AS10 : boucle (`type` « loop », cercle de même longueur) pour rejouer un passage de ligne
+	var loop := str(data.get("type", "open")) == "loop"
+	var radius := L / TAU
 	for i in range(n):
+		var a := TAU * i * 10.0 / L
 		cols["lat"].append(48.9); cols["lon"].append(7.1); cols["alt_m"].append(200.0)
-		cols["x"].append(i * 10.0); cols["z"].append(0.0); cols["grade_pct"].append(0.0); cols["heading_deg"].append(90.0)
-	var d := {"version": "1.0", "ds_m": 10.0, "n": n, "length_m": L, "type": "open"}
+		cols["x"].append(radius * sin(a) if loop else i * 10.0); cols["z"].append(radius * (1.0 - cos(a)) if loop else 0.0)
+		cols["grade_pct"].append(0.0); cols["heading_deg"].append(fposmod(90.0 - rad_to_deg(a), 360.0) if loop else 90.0)
+	var d := {"version": "1.0", "ds_m": 10.0, "n": n, "length_m": L, "type": "loop" if loop else "open"}
 	d.merge(cols)
 	var route = RouteDataScript.new()
 	route.load_route_dict(d)
@@ -43,6 +49,9 @@ func _run() -> void:
 	var seq := 0
 	var last_list := {}
 	var shown := 0
+	var moving: bool = frames[0].size() > 4   # 5e champ : vitesse du cycliste (trace d'un banc rejoué)
+	var fk := 0
+	var lane := 1.2   # lot AS10 : place du cycliste en travers (`lane_m` de la trame, 4e champ), 1,2 m sans placement
 	while now < t_end:
 		var dt := 1.0 / 60.0
 		if rng.randf() < 0.02:
@@ -51,6 +60,16 @@ func _run() -> void:
 		# trame state à 30 Hz : position du core au temps de la trame, reçue 5 ms plus tard
 		var t_state := floorf((now - 0.005) * 30.0) / 30.0
 		var core_s := s0 + v * t_state
+		if moving:   # lot AS10 : trace d'un banc (s et v du cycliste à chaque liste), s au temps de la trame
+			var k := clampi(fk, 0, frames.size() - 2)
+			while k < frames.size() - 2 and float(frames[k + 1][0]) <= t_state:
+				k += 1
+			fk = k
+			var f0: Array = frames[k]
+			var f1: Array = frames[k + 1]
+			var u := clampf((t_state - float(f0[0])) / maxf(1e-6, float(f1[0]) - float(f0[0])), 0.0, 1.0)
+			core_s = lerpf(float(f0[1]), float(f1[1]), u)
+			v = lerpf(float(f0[4]), float(f1[4]), u)
 		var cam_s := core_s + v * (now - t_state)
 		var pending := []
 		while fi < frames.size() and float(frames[fi][0]) + 0.005 <= now:
@@ -65,12 +84,14 @@ func _run() -> void:
 			for r in pending[2]:
 				last_list[r[0]] = [snappedf(float(r[1]) - float(pending[1]), 0.01), r[4]]
 			last_list["n"] = pending[2].size()
+			if pending.size() > 3:
+				lane = float(pending[3])
 			var fs := float(pending[1])
 			# trame de la liste : s à son temps
 			m.sync_core(list, seq, cam_s, fs)
-		m.update(cam_s, v, dt)
+		m.update(cam_s, v, dt, false, [], lane)
 		var items: Array = m.riders()
-		items.append({"s": cam_s, "lateral": 1.2, "group": {"case": "cycliste"}, "id": "you"})
+		items.append({"s": cam_s, "lateral": lane, "group": {"case": "cycliste"}, "id": "you"})
 		for i in range(items.size()):
 			for j in range(i + 1, items.size()):
 				var a: Dictionary = items[i]

@@ -45,8 +45,25 @@ Rien de propre à un parcours : les mêmes règles (core `road_cyclists.py`, `tr
    (course des bots `bots_race` : mêmes écarts, aucun contact à 11 bots). Vaut aussi pour les véhicules (même placement).
 5. **À rebours, pas de placement.** Après un demi-tour (lot N17), le placement était coupé (« personne dans le même
    sens ») ; depuis la circulation et les cyclistes du décor à rebours, le cycliste passait au travers d'un tracteur lent
-   de son sens. Correctif : `_reverse_runners` place le cycliste parmi les véhicules et cyclistes du décor de sens −1,
-   dans son repère (abscisse L − s, écarts changés de signe) ; ni abri ni bots à rebours, comme avant.
+   de son sens. Le lot N23 (#892, fusionné dans main le 15 novembre) fait rouler circulation et cyclistes du décor sur le
+   parcours retourné et y place le cycliste : AS10 reprend ce repère (le `_reverse_runners` d'AS10 est retiré à la mise à
+   jour avec main) et y donne aux cyclistes du décor la vraie place du cycliste (`rider_lane`, à droite de son sens).
+6. **Banc rAS10 du volcan (après les correctifs 1 à 5) : 87 / 81 / 82 contacts, « core / cycliste à 0 m (2,5 et 1,9) ».**
+   Rejoué en séance du core (vrai `_step`, vitesse du cycliste lue dans `seance.jsonl` du banc, boucle de 8 km au profil
+   du volcan) puis dans l'engine (`rejeu_cyclistes_core.gd`), deux causes, toutes deux générales :
+   - **Retour dans la roue de celui qu'on rattrape encore** (`draft.lane_target`). Dans la roue d'un cycliste du décor à
+     peine plus lent, le cycliste ralentit dans la montée ; il sort le doubler, puis l'écart de vitesse passe sous
+     `PASS_SPEED_MPS` (0,5 m/s) : il reprend sa roue alors qu'il le rattrape encore à 0,45 m/s, et l'écart latéral
+     (`SIDE_CLEAR_M`, dès qu'on toucherait sa roue dans `SIDE_LOOK_S`) arrivait trop tard : il finissait à 0,6 m de lui.
+     Correctif : déjà hors de la ligne de l'autre, on regarde en plus le temps de s'en écarter de nouveau
+     (`SIDE_CLEAR_M / LANE_RATE_MPS`) ; dans sa roue, rien ne change (abri, Grand Prix GP12 inchangés). Un premier essai
+     (dépassement fini tant qu'on va plus vite) coupait l'abri dans la roue d'un bot (0,165 au lieu de 0,2) : abandonné.
+   - **Vitesse annoncée, pas vitesse réelle** (`road_cyclists.py` et `road_cyclists_model.gd`). Un groupe retenu derrière
+     un groupe lent roulait 4 m/s moins vite que sa vitesse voulue (`speed_mps`) ; le groupe qui le rattrapait se réglait
+     sur cette vitesse voulue et venait se poser à côté de lui (« overtake / overtake »), et la liste `riders` l'annonçait
+     aussi (`v`) : placement du cycliste, abri, extrapolation de l'engine et reprise au décor (`_to_decor`) le croyaient
+     plus loin. Correctif : `riders()` donne la vitesse où il roule (`_step_mps`) ; celui qui rattrape un groupe devant lui
+     se règle sur sa vitesse réelle (derrière lui, la vitesse voulue : pas de ralentissement en cascade).
 
 Pas d'exception par parcours : le monde ouvert passe par les mêmes fonctions (`_update_draft`, `living_decor.gd`).
 
@@ -54,7 +71,9 @@ Pas d'exception par parcours : le monde ouvert passe par les mêmes fonctions (`
 
 - Core : `test_road_cyclists.py::test_groups_avoid_the_rider_where_he_is`, `::test_riders_frame_never_carries_vehicles`,
   `test_state_list_is_short_and_near` (10) ; `test_draft_lane.py::test_closing_fast_on_a_slower_rider_never_brushes_him` ;
-  `test_traffic.py::test_reverse_rider_passes_slow_tractor_on_the_left` ; budgets de trame (`test_ipc_budget.py`,
+  `test_traffic.py::test_reverse_rider_passes_slow_tractor_on_the_left` ; banc rAS10 :
+  `test_draft_lane.py::test_no_return_into_the_wheel_of_a_rider_still_caught` (0,67 m avant le correctif, 0,81 après) et
+  `test_road_cyclists.py::test_group_caught_behind_a_held_group_never_touches_it` (contacts dans 64 cas sur 72 avant) ; budgets de trame (`test_ipc_budget.py`,
   `test_peloton.py`, `test_traffic.py`) et contrat 1.18 (`test_contract_ipc.py`). Les nouveaux échouent sans le correctif.
 - Engine : `test_road_cyclists_limit.gd` § 4 (groupe rendu par le core : 3,0 m en 0,5 s au lieu de 9,5) et § 5 (dépassement
   à côté du cycliste là où il est).
@@ -66,6 +85,11 @@ Pas d'exception par parcours : le monde ouvert passe par les mêmes fonctions (`
 | --- | --- | --- |
 | AS9 (#893) | 7 / 60 | 367 |
 | AS10 | 0 / 60 | 0 |
+
+Banc rAS10 du volcan rejoué (séance du core avec la vitesse du banc, puis engine aux budgets 4, 8 et 16) : avant le
+point 6, 8 contacts « cycliste / overtake » et 1 010 « overtake / overtake » dans le core, 2 307 dans l'engine (dont
+« core / cycliste » à 2,5 et 2,3) ; après, 0 partout. `rejeu_cyclistes_core.gd` lit maintenant aussi la place du
+cycliste en travers et sa vitesse à chaque liste, et une boucle.
 
 Séance du core à vitesse tenue (vrai `_step`, placement automatique, cases chargées à 75 %, 30 à 65 km/h, 900 s) :
 aucun contact avec la vraie place du cycliste. Placement seul (36 à 52 km/h derrière un coureur lent) : écart mini 0,55 m

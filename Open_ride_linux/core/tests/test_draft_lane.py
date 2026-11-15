@@ -302,3 +302,24 @@ def test_closing_fast_on_a_slower_rider_never_brushes_him():
                     if abs(s_me - s_o) < d.BIKE_LENGTH_M:
                         worst = min(worst, abs(me.m - other.m))
     assert worst >= d.SIDE_CLEAR_M
+
+
+def test_no_return_into_the_wheel_of_a_rider_still_caught():
+    """Lot AS10 (banc rAS10 du volcan, « core / cycliste », écarts 2,5 et 1,9) : dans la roue d'un coureur à peine plus
+    lent, le cycliste qui ralentit (montée) sort le doubler puis, l'écart de vitesse passé sous PASS_SPEED_MPS, revenait
+    sur sa ligne alors qu'il le rattrapait encore ; hors de sa ligne, il regarde aussi le temps de s'en écarter."""
+    worst = 99.0
+    for decel in (0.05, 0.09, 0.15):
+        for v0 in (16.3, 16.7, 17.2):
+            for gap in (4.0, 6.0, 9.0):
+                me = d.Lane(2.5, 2.5)
+                other = d.Lane(2.5, 2.5, auto=False)
+                s_me, s_o, v_o = 0.0, gap, 15.55
+                for k in range(int(20.0 / 0.02)):
+                    v_me = max(v_o + 0.05, v0 - decel * k * 0.02)
+                    d.update_lanes([(s_me, v_me, me), (s_o, v_o, other)], 0.02)
+                    s_me += v_me * 0.02
+                    s_o += v_o * 0.02
+                    if abs(s_me - s_o) < d.BIKE_LENGTH_M:
+                        worst = min(worst, abs(me.m - other.m))
+    assert worst >= d.RIDER_WIDTH_M + 0.2   # 0,67 m avant le correctif

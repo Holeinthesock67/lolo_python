@@ -11,7 +11,8 @@ extends Node3D
 ##   la fenêtre (`thin_start_m`, `fade_end_m` du shader) pour ne pas surgir.
 ## - Placement déterministe (graine, numéro de tronçon, numéro de place) sur une bande de
 ##   `BAND_MIN_M` à `BAND_MAX_M` du bord de la route, des deux côtés, autour de la caméra : tronçons
-##   de `CHUNK_M` mètres, `CHUNKS_BEHIND` derrière et `CHUNKS_AHEAD` devant.
+##   de `CHUNK_M` mètres, `CHUNKS_BEHIND` derrière et `CHUNKS_AHEAD` devant, dans le sens de la marche
+##   (`direction`, -1 à rebours après un demi-tour : lot N22).
 ## - Pas de touffe sur la route, dans un bâtiment ou dans l'eau (polygones `exclusions`, x et z) ;
 ##   densité réduite avec la pente du terrain (`height_at`, facultatif).
 ## - Garde-fou de la chaussée : une touffe est toujours à `ROAD_CLEAR_M` au moins du bord de la route,
@@ -140,6 +141,7 @@ var _near_mmi: Array[MultiMeshInstance3D] = []
 var _far_mmi: Array[MultiMeshInstance3D] = []
 var _near_material: ShaderMaterial = null
 var _far_material: ShaderMaterial = null
+var direction := 1                    # sens de la marche : -1 à rebours après un demi-tour (lots N17, N22)
 var _slot_chunk: PackedInt64Array = PackedInt64Array()   # tronçon occupant chaque groupe de places
 var _filled := PackedInt32Array()                         # places déjà calculées du tronçon de chaque groupe
 var _far_count := PackedInt32Array()                      # touffes lointaines de chaque groupe
@@ -299,9 +301,12 @@ func set_apparent_wind(apparent: Vector3) -> void:
 func update(cam_s: float) -> void:
 	if _near_mm.is_empty() or route == null:
 		return
-	var first := int(floor(cam_s / CHUNK_M)) - CHUNKS_BEHIND
+	# Fenêtre dans le sens de la marche (lot N22) : CHUNKS_BEHIND derrière et CHUNKS_AHEAD devant la caméra,
+	# devant = s décroissant à rebours après un demi-tour (N17) ; tronçons pris du plus proche au plus loin
+	var cam_k := int(floor(cam_s / CHUNK_M))
 	var groups := _slot_chunk.size()
-	for k in range(first, first + groups):
+	for n in range(groups):
+		var k := cam_k + direction * (n - CHUNKS_BEHIND)
 		var g := posmod(k, groups)
 		if _slot_chunk[g] != k:
 			_slot_chunk[g] = k
@@ -313,13 +318,13 @@ func update(cam_s: float) -> void:
 	var budget := maxi(MAX_PER_FRAME, ceili(float(_per_chunk) / FILL_FRAMES))
 	var t_start := Time.get_ticks_usec()
 	var far_min_keep := keep_at(LOD_SWITCH_M - LOD_BLEND_M)
-	var cam_k := first + CHUNKS_BEHIND
 	while budget > 0 and not _queue.is_empty():
 		var qi := _next_job(cam_k)
 		var job: Array = _queue[qi]
 		var g: int = job[0]
 		var k: int = job[1]
-		var urgent := k >= cam_k - CHUNKS_BEHIND and k - cam_k <= URGENT_AHEAD
+		var ahead := direction * (k - cam_k)
+		var urgent := ahead >= -CHUNKS_BEHIND and ahead <= URGENT_AHEAD
 		if Time.get_ticks_usec() - t_start >= (URGENT_FRAME_US if urgent else MAX_FRAME_US):
 			break
 		var j: int = job[2]
@@ -383,7 +388,7 @@ func _next_job(cam_k: int) -> int:
 	var best := 0
 	var best_rank := INF
 	for i in range(_queue.size()):
-		var d: int = int(_queue[i][1]) - cam_k
+		var d: int = direction * (int(_queue[i][1]) - cam_k)   # tronçons d'avance dans le sens de la marche
 		var rank := float(d) if d >= 0 else (0.5 if d >= -CHUNKS_BEHIND else 1.0e6 - d)
 		if rank < best_rank:
 			best_rank = rank
@@ -430,10 +435,13 @@ func _set_box(g: int, box: AABB) -> void:
 	_far_mmi[g].visibility_range_end = fade_end() + radius
 
 
-## Sorte de la touffe (STYLE_OF_BIOME, 0 : herbe d'avant) ou −1 : place laissée vide (sorte clairsemée).
+## Sorte de la touffe (STYLE_OF_BIOME, 0 : herbe d'avant) ou −1 : place laissée vide (sorte clairsemée, ou paysage
+## en feu : rien ne pousse sur la lave et les scories, biome_model.gd `fire_at`, lot DB2).
 func style_draw(k: int, slot: int, origin: Vector3) -> int:
 	if biome_model == null or not biome_model.active():
 		return 0
+	if not biome_model.fire_at(origin.x, origin.z).is_empty():
+		return -1
 	var w: Dictionary = biome_model.weights_at(origin.x, origin.z)
 	var h := VegetationPlacer.hash3(tuft_seed ^ 0x5D17, k, slot)
 	var u := float(h & 0xFFFF) / 65536.0

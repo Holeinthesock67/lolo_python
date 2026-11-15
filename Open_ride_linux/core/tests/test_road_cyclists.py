@@ -506,3 +506,46 @@ def test_riders_frame_never_carries_vehicles(tmp_path, monkeypatch):
         frame = s.state.to_dict()
         assert not (frame.get("vehicles") is not None and frame.get("riders") is not None)
         assert (frame.get("riders") is not None) == (n % 3 == 1)
+
+
+def _held_train(rider_v: float, a_rel: float, a_v: float, b_rel: float, c_rel: float) -> tuple[int, float]:
+    """Trois groupes `overtake` derrière le cycliste, à gauche : A retenu (`held`) à `a_v`, B (2) et C (4) plus vite."""
+    m = rc.RoadCyclists(_flat_route(), (), (), seed=0)
+    s, v, dt = 1000.0, rider_v, 0.02
+    m.update(s, v, dt)
+    m.groups = []
+    a = m.place_for_test(s, v, "overtake", a_rel, 1)
+    a.held, a.power_w = True, rc.power_for(a_v)
+    b = m.place_for_test(s, v, "overtake", b_rel, 2)
+    c = m.place_for_test(s, v, "overtake", c_rel, 4)
+    for g in (a, b, c):
+        g.side = "left"
+        for mm in g.members:
+            mm.lateral = m._target_lateral(g, mm)
+    hits, worst_dv = 0, 0.0
+    for _ in range(int(40.0 / dt)):
+        before = {g.id: g.s for g in m.groups}
+        m.update(s, v, dt)
+        s += v * dt
+        for g in m.groups:
+            if g.id in before:
+                r = next(r for r in m.riders() if r.group == g.id)
+                worst_dv = max(worst_dv, abs(r.v - (g.s - before[g.id]) / dt))
+        rs = m.riders()
+        for i, p in enumerate(rs):
+            for q in rs[i + 1:]:
+                if p.group != q.group and abs(p.s - q.s) < 1.7 and abs(p.lane_m - q.lane_m) < 0.6:
+                    hits += 1
+    return hits, worst_dv
+
+
+@pytest.mark.parametrize("rider_v,a_rel,a_v,b_rel,c_rel", [
+    (10.0, -8.0, 8.0, -25.0, -45.0), (13.0, -15.0, 10.0, -35.0, -60.0), (15.0, -15.0, 12.0, -35.0, -45.0)])
+def test_group_caught_behind_a_held_group_never_touches_it(rider_v, a_rel, a_v, b_rel, c_rel) -> None:
+    """Lot AS10 (banc rAS10 du volcan, groupes `overtake` superposés derrière le cycliste) : un groupe retenu derrière
+    un groupe lent roule moins vite que sa vitesse voulue ; celui qui le rattrape se règle sur la vitesse où il roule
+    (`_step_mps`), et `riders()` donne cette vitesse (placement du cycliste, abri, extrapolation de l'engine). Avant le
+    correctif : contacts dans 64 cas sur 72 de cette famille, 4 m/s d'écart entre `v` et la vitesse réelle."""
+    hits, worst_dv = _held_train(rider_v, a_rel, a_v, b_rel, c_rel)
+    assert hits == 0
+    assert worst_dv < 0.05
