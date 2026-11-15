@@ -82,7 +82,8 @@ def test_team_car_drawn_and_felt_as_shelter_only(env, monkeypatch):
     lisse la pente envoyée vers le bas seulement (jamais au-dessus de celle sans abri), avec les rampes de
     l'abri (lissage d'une seconde), puis disparaît avec l'effet."""
     make, run, frame, _ = env
-    s, _, errors = make(6900)
+    # Lot BT1 : bots à l'objectif par défaut du jeu (Tempo), allure proche de la séance d'avant
+    s, _, errors = make(6900, objective="tempo")
     s.cfg.ride.vehicle_draft = "on"
     s._on_command("start", {"mode": "grandprix"}, 2)
     assert not errors
@@ -193,7 +194,8 @@ def test_team_car_never_overlaps_a_rider(env):
     sous un autre coureur. Elle se glisse devant dès que la place est libre, puis le bloc coureur et voiture double
     les plus lents (placement AS2 au gabarit de la voiture). Pire cas : tous les bots remorqués sans arrêt."""
     make, run, _, _ = env
-    s, _, errors = make(6950)
+    # Lot BT1 : bots à l'objectif par défaut du jeu (Tempo), allure proche de la séance d'avant
+    s, _, errors = make(6950, objective="tempo")
     s.cfg.ride.vehicle_draft = "on"
     s._on_command("start", {"mode": "grandprix"}, 2)
     assert not errors
