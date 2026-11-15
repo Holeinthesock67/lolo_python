@@ -2228,9 +2228,12 @@ func _on_state_received(state: Dictionary) -> void:
 
 	rogue_host.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	rogue_host.legends_path = "" if ipc.test_mode else "user://rogue_legendes_vues.json"   # lot R22
+	var rogue_before: bool = rogue_host.is_active()
 	if rogue_host.update(state, self, [streamer, sun, living_decor, segment_markers], world_env, camera,
 			_quality_name, float(Time.get_ticks_msec()) / 1000.0):
 		ipc.request_rogue_resync()
+	if rogue_host.is_active() and not rogue_before:
+		_release_route_world()
 	if menu_view != null:
 		_sync_hud(_full_screen_menu())   # entrée et sortie de la run dans la même trame
 
@@ -2241,6 +2244,19 @@ func _on_state_received(state: Dictionary) -> void:
 		_play_event(jingle)
 	for jingle in wtf_sounds.on_state(state.get("wtf", null)):
 		_play_event(jingle)
+
+
+## Le Cyber-Rogue a sa propre scène : le décor du parcours d'avant (tuiles, arbres, forêts, OSM, horizon) est
+## vidé, pas seulement caché (règle du propriétaire : quitter une partie ferme tout ; arbres de l'Alpe d'Huez
+## encore chargés au départ d'une run, essai du 15 novembre). À la sortie, le parcours du menu est rechargé
+## en entier (_request_route), comme tout changement de parcours.
+func _release_route_world() -> void:
+	var trees: int = streamer.tree_renderer.get_active_tree_count() if streamer.tree_renderer != null else 0
+	streamer.clear()
+	_route_id_requested = null
+	_route_loaded_id = ""
+	print("Cyber-Rogue : décor du parcours vidé (%d arbres libérés)" % trees)
+	ipc.test_log("route_world_released trees=%d" % trees)
 
 
 ## Taille des courbes (lot O14) : ERG à la place de l'histogramme, SIM dans son panneau.
