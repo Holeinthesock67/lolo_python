@@ -1695,6 +1695,10 @@ func _avatar_info() -> Dictionary:
 
 
 func _test_screenshot(path: String, tag: String) -> void:
+	# Menu à jour de la dernière commande avant l'image (mise à jour une fois par image depuis le lot ML1) :
+	# sous Xvfb à 1 ou 2 images/s, la capture pouvait montrer l'écran d'avant (« Garage : avatar » au lieu de
+	# « Taille », garage_modif de visual_check.py).
+	_flush_menu()
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	var err := img.save_png(path) if path != "" else ERR_FILE_BAD_PATH
