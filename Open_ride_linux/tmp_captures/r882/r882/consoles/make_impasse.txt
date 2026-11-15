@@ -1,0 +1,1 @@
+~/mesures-2026-11-01-auto/r882/impasse/impasse.world : 11034 m de route, boucle de retournement à 2900 m (manifeste impasse)
