@@ -1,31 +1,35 @@
-# Recette : étagement élargi des 24 braquets et braquets de la piste (14 et 15 novembre 2026)
+# Recette : étagement des 24 braquets et braquets de la piste (14 et 15 novembre 2026)
 
-## 15 novembre : 30 % de plus dans les deux sens
+## 15 novembre : pas fixe de 0,5 point par clic
 
-Demande du propriétaire : élargir encore l'étagement de 30 % vers les petits rapports et vers les grands. Même loi, mêmes bornes, même décalage de la piste ; seuls les deux bouts changent.
+Remarques du propriétaire après ses sorties : pas assez de différence entre les braquets, braquet 1 trop dur dans certaines pentes, braquet 24 trop facile en descente. Les trois venaient de la loi multiplicative (G_eff = (G + 2) × R_k − 2) : sur le plat, un clic valait 0,16 point (≈ 5 W) ; dans un mur, le braquet 1 gardait une forte pente ; au-delà de − 2 %, un grand rapport rendait la descente encore plus descendante. Loi choisie le 15 novembre (carte de décision) :
 
-| | 14 novembre | 15 novembre |
+G_eff = G_terrain × difficulté + (k − 12) × 0,5 + décalage du lieu (+ 0,5 point sur la piste, 0 ailleurs)
+
+| | Avant (14 novembre) | Après (15 novembre) |
 | --- | --- | --- |
-| Rapport du braquet 1 (`[gearing] ratio_min`) | 0,455 | 0,3185 (× 0,7) |
-| Rapport du braquet 24 (`[gearing] ratio_max`) | 2,60 | 3,38 (× 1,3) |
-| Pas par clic | 7,9 % | 10,8 % |
-| Braquet 12 (départ) | 1,05 | 0,99 |
+| Réglages | `ratio_min` 0,455, `ratio_max` 2,60, `g_base_pct` 2, `[velodrome] gear_scale` 1,25 | `neutral_gear` 12, `step_pct` 0,5, `[velodrome] gear_offset_pct` 0,5 |
+| Un clic sur le plat | 0,16 point (≈ 5 W à 55 tr/min) | 0,5 point (≈ 17 W) |
+| Braquet 1 sur 12 %, difficulté 50 % | 2,2 % | 0,5 % |
+| Braquet 24 sur − 4 %, difficulté 100 % | − 7,2 % (braquet 1 : − 2,9 %) | + 2 % (on appuie) |
 
-Pente envoyée au trainer, difficulté 100 %, sans vent ni abri (entre parenthèses : force à la roue, modèle du 28 octobre ≈ 16 N + 6,6 N par point de pente) :
+Pente envoyée au trainer, difficulté 50 %, sans vent ni abri :
 
-| Braquet | Plat | 3,6 % | 6 % | Piste, plat (× 1,25, hors bois) |
-| --- | --- | --- | --- | --- |
-| 1 | −1,36 % (−20 %) | 0,00 % (−18 %) | 0,55 % (−27 %) | −1,20 % |
-| 12 | −0,03 % (−5 %) | 3,52 % (−5 %) | 5,89 % (−6 %) | 0,46 % |
-| 24 | 4,76 % (+28 %) | 16 % borne (+23 %) | 16 % borne | 6,45 % |
+| Braquet | − 6 % | − 4 % | Plat | 3,6 % | 6 % | 12 % |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | − 8,5 % | − 7,5 % | − 5,5 % | 0 % | 0 % | 0,5 % |
+| 6 | − 6 % | − 5 % | − 3 % | 0 % | 0 % | 3 % |
+| 12 | − 3 % | − 2 % | 0 % | 1,8 % | 3 % | 6 % |
+| 18 | 0 % | 1 % | 3 % | 4,8 % | 6 % | 9 % |
+| 24 | 3 % | 4 % | 6 % | 7,8 % | 9 % | 12 % |
 
-Points à juger en sortie (pas d'essai dédié, choix du propriétaire du 14 novembre) :
+Limites connues, à juger en sortie :
 
-- Braquet 1 : une montée jusqu'à 4,3 % est envoyée plate (braquet 2 : jusqu'à 3,5 %). C'est ce qu'avait corrigé la plage du 28 octobre ; la règle du signe garantit seulement qu'une montée ne devient jamais une descente.
-- Braquet 24 : à 100 % de difficulté, la borne de +16 % est atteinte dès 3,3 % de pente (8,1 % à 50 %) ; au-delà, les derniers clics ne changent plus rien.
-- Le départ au braquet 12 est environ 5 % plus léger qu'hier.
+- Une montée reste au moins plate (règle du 24 octobre) : dans une montée douce, les plus petits braquets donnent tous du plat (sur 3,6 % à 50 %, braquets 1 à 8).
+- Avec le trainer mesuré le 28 octobre (16 N + 6,6 N par point), la résistance ne baisse plus sous − 2,4 % environ : sur le plat, les braquets 1 à 7 se sentent pareil (le plus léger possible) ; chaque clic au-dessus se sent.
+- Les clés `ratio_min`, `ratio_max`, `g_base_pct` et `[velodrome] gear_scale` encore écrites dans `~/OpenRide/config.toml` sont ignorées avec un avertissement au lancement.
 
-L'ERG, la vitesse virtuelle, les bots, le calibrage et les contacts n'utilisent pas les braquets : rien ne change pour eux. Contrat IPC inchangé (`gears_total` seul).
+L'ERG, la vitesse virtuelle, les bots, le calibrage et les contacts n'utilisent pas les braquets : rien ne change pour eux. Contrat IPC inchangé (`gears_total` seul). Les séances EB et EBP ci-dessous restent valables (le propriétaire juge en sortie, sans essai dédié).
 
 ## 14 novembre
 
