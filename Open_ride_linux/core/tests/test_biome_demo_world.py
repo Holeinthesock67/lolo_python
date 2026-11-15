@@ -338,7 +338,7 @@ def test_recif_loop_under_the_sea(demo_set: Path, mbw) -> None:
     assert -4.0 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 4.0
     assert (route["x"][0], route["z"][0], route["alt_m"][0]) == (route["x"][-1], route["z"][-1], route["alt_m"][-1])
     info = _json(demo_set / "demo-recif.json")
-    assert info["generated"]["buildings"] == 0 and info["generated"]["poi"] == 4
+    assert info["generated"]["buildings"] == 0 and info["generated"]["poi"] == 5   # quatre lieux et l'épave (SM2)
     plan = mbw.Plan(("reef",), False, False, loop="recif")
     terrain = mbw.make_terrain(plan)
     xs, zs = np.meshgrid(np.linspace(-3000.0, 3000.0, 121), np.linspace(-3000.0, 3000.0, 121))
@@ -351,3 +351,22 @@ def test_recif_loop_under_the_sea(demo_set: Path, mbw) -> None:
     assert all(n in names for n in ("Lagon des Tortues", "Forêt des Laminaires", "Jardin de Corail", "Tombant Bleu"))
     assert traffic.underwater_route(manifest) and not traffic.underwater_route(_json(demo_set / "demo-circuit.world" / "manifest.json"))
     assert load_world(world).route.is_loop
+
+
+def test_recif_wreck_before_finish(demo_set: Path, mbw) -> None:
+    """Lot SM2 : une épave (`wreck`, longueur 42 m) couchée sur le sable avant l'arrivée du récif, à 45 m du bord
+    de la route, hors des forêts de laminaires, posée sur le fond, assez profond pour que le navire (moins de 8 m
+    au-dessus du fond, wrecks.gd) reste à plus de 2 m sous la surface ; nommée au menu du jeu de base."""
+    import math
+
+    world = demo_set / "demo-recif.world"
+    route = _json(world / "route.json")
+    points = [p for f in sorted((world / "poi").glob("chunk_*.json")) for p in _json(f)["points"]]
+    wrecks = [p for p in points if p["kind"] == "wreck"]
+    assert len(wrecks) == 1
+    w = wrecks[0]
+    assert w["name"] == "Épave de la Belle-Tortue" and w["length_m"] == 42.0 and w["radius_m"] == 400
+    i = round(mbw.REEF_WRECK_S / route["ds_m"])
+    assert math.dist((w["x"], w["z"]), (route["x"][i], route["z"][i])) == pytest.approx(mbw.REEF_WRECK_OFFSET_M, abs=1.0)
+    assert route["length_m"] - mbw.REEF_WRECK_S <= 200.0   # vue en approchant de l'arrivée
+    assert w["y"] + 8.0 < -2.0
