@@ -1,0 +1,11 @@
+05:50:52 empreinte avant befdfd1dfd226ba57ab329788d8dbbaf
+05:50:52 tête bc80b16e
+05:51:31 demi_tour low_main
+05:55:48 fin rc=1
+05:55:48 demi_tour medium_main
+06:00:06 fin rc=1
+06:00:06 demi_tour high_main
+06:04:23 fin rc=1
+06:04:24 empreinte après befdfd1dfd226ba57ab329788d8dbbaf
+06:04:24 clone be29640f
+06:04:24 FIN
