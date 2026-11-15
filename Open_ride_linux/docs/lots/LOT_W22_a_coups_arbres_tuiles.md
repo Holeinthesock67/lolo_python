@@ -1,4 +1,4 @@
-# Lot W19 – À-coups des arbres à l'entrée d'une tuile proche
+# Lot W22 – À-coups des arbres à l'entrée d'une tuile proche
 
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
@@ -29,7 +29,7 @@ Sonde de la rW17g rejouée en low, medium et high (scénario `w17_cap`, départ 
 
 ## Livraison
 
-Branche `claude/project-thread-vtfee2`, PR #906. Banc PC rW19 du 15 novembre (tête 91380469, `w17_cap`, sonde ; fichiers dans la bibliothèque du projet, `w19_a_coups.tar.gz`) :
+Branche `claude/project-thread-vtfee2`, PR #906. Banc PC rW19 du 15 novembre (nom donné avant la renumérotation du lot ; tête 91380469, `w17_cap`, sonde ; fichiers dans la bibliothèque du projet, `w19_a_coups.tar.gz`) :
 
 | Qualité | GPU médian (budget) | Images lentes/min, avant → après | Pire image, avant → après | Saccades > 50 ms, avant → après |
 | --- | --- | --- | --- | --- |
