@@ -71,7 +71,7 @@
           "length_m": {
             "type": "number",
             "exclusiveMinimum": 0,
-            "description": "Facultatif (format 1.8, lot SM2) : longueur d'une épave (wreck), d'après OSM length."
+            "description": "Facultatif (format 1.9, lot SM2) : longueur d'une épave (wreck), d'après OSM length."
           }
         }
       }

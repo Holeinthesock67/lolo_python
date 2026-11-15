@@ -33,6 +33,7 @@ const WARM_DIST_M := 2.0
 const WARM_SCALE := 0.0005
 const WARM_FRAMES := 3
 
+var direction := 1             # sens de la marche : -1 à rebours après un demi-tour (lots N17, N22)
 var _view: Dictionary = {}
 var _pools: Dictionary = {}   # kind -> Array[MeshInstance3D]
 var _used: Dictionary = {}    # kind -> nombre utilisé à cette image
@@ -162,8 +163,10 @@ func _place(p: Dictionary, route, s_route: float) -> void:
 	var node := _take(kind)
 	if node == null:
 		return
-	var s: float = route.wrap_s(s_route + float(p["ds"]))
-	var heading := deg_to_rad(float(route.sample_heading_deg(s)))
+	# `ds` devant et `lateral` à droite du cycliste, dans le sens de la marche (lot N22) : à rebours après un
+	# demi-tour (N17), cap retourné, donc droite et face des objets retournées aussi
+	var s: float = route.wrap_s(s_route + direction * float(p["ds"]))
+	var heading := deg_to_rad(float(route.sample_heading_deg(s))) + (PI if direction < 0 else 0.0)
 	var right := Vector3(cos(heading), 0.0, sin(heading))
 	node.global_position = route.sample_point(s) + right * float(p["lateral"]) + Vector3.UP * float(p["up"])
 	node.rotation = Vector3(0.0, -heading, 0.0)

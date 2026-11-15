@@ -1,4 +1,4 @@
-"""Lot SM2 : épaves de navire (`wreck`, OSM `historic=wreck`) de la couche poi (format 1.8, ajout compatible).
+"""Lot SM2 : épaves de navire (`wreck`, OSM `historic=wreck`) de la couche poi (format 1.9, ajout compatible).
 
 Données OSM fictives générées autour du parcours de test (aucune coordonnée réelle).
 """

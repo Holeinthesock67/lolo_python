@@ -37,11 +37,12 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
 from . import draft
+from .route_mirror import MirroredRoute, flip_s
 
 MASK32 = 0xFFFFFFFF
 
@@ -288,6 +289,45 @@ class Traffic:
     bench_every_s: float = 0.0     # > 0 : passage forcé toutes les N s (bancs seulement, `[ride] traffic_bench_s`)
     bench_forced: int = 0
     _bench_t: float = 0.0
+    direction: int = 1             # sens de marche du cycliste (lot N23) : -1 à rebours, `route` est alors retourné
+    _base_route: Any = None
+
+    @property
+    def base_route(self) -> Any:
+        """Parcours dans son sens (celui que la session a donné), quel que soit le sens de marche."""
+        return self._base_route if self._base_route is not None else self.route
+
+    def model_s(self, s: float) -> float:
+        """Abscisse du parcours `s` dans le repère du modèle (`u = L - s` à rebours, lot N23) ; réciproque."""
+        return s if self.direction > 0 or self.route is None else flip_s(self.route.length_m, s)
+
+    def on_route(self, v: Vehicle) -> Vehicle:
+        """Copie de `v` dans le repère du parcours (abscisse, sens et écart à l'axe), pour l'état et l'abri."""
+        if self.direction > 0:
+            return v
+        return replace(v, s=self.model_s(v.s), dir=-v.dir, lateral=-v.lateral)
+
+    def set_direction(self, direction: int) -> bool:
+        """Lot N23 : le cycliste a fait demi-tour. Le modèle roule ensuite sur le parcours retourné, où il avance
+        encore vers les u croissants ; les véhicules déjà là restent à leur place (abscisse, sens, voie convertis) :
+        celui qui suivait le cycliste vient en face, celui qui l'avait croisé roule devant lui. Vrai si le sens a
+        changé."""
+        d = -1 if direction < 0 else 1
+        if d == self.direction or self.route is None:
+            return False
+        base = self.base_route
+        self._base_route = base
+        rider = None if self._last_rider_s is None else self.model_s(self._last_rider_s)
+        self.direction = d
+        self.route = base if d > 0 else MirroredRoute(base)
+        rider = None if rider is None else self.model_s(rider)
+        for v in self.vehicles:
+            v.s, v.dir, v.lateral = flip_s(base.length_m, v.s), -v.dir, -v.lateral
+            ahead = rider is not None and v.s > rider
+            v.slow, v.hold_s = False, None
+            v.passed = v.committed = v.dir == 1 and ahead   # déjà devant dans le même sens : il a fini de doubler
+        self._last_rider_s = None   # cases suivantes tirées depuis la place du cycliste dans le nouveau repère
+        return True
 
     def reset(self) -> None:
         self.vehicles.clear()
@@ -335,7 +375,7 @@ class Traffic:
             return True
         lo, hi = min(s_a, s_b), max(s_a, s_b)
         n = int((hi - lo) / UNPAVED_STEP_M) + 1
-        return not any(self.unpaved_at(lo + (hi - lo) * i / n) for i in range(n + 1))
+        return not any(self.unpaved_at(self.model_s(lo + (hi - lo) * i / n)) for i in range(n + 1))
 
     def _segment_ok(self, s: float) -> bool:
         if self.route is None or s < 0.0 or s > self.route.length_m:
