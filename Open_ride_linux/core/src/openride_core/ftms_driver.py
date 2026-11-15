@@ -37,13 +37,17 @@ TRACE_IBD_EVERY_S = 0.9   # avec trace_ftms : une ligne de mesures par notificat
 # Frein lâché par le trainer (29 octobre : 449 W puis 0 W en 2 s, à 73 tr/min et 31 km/h, sans erreur
 # ni statut) : puissance qui passe de plus de BRAKE_LOSS_FROM_W à moins de BRAKE_LOSS_TO_W en
 # BRAKE_LOSS_WINDOW_S, pédales et volant encore en mouvement ; une reprise de contrôle au plus
-# toutes les BRAKE_LOSS_COOLDOWN_S.
+# toutes les BRAKE_LOSS_COOLDOWN_S. La chute n'est un frein lâché que si, BRAKE_LOSS_CONFIRM_S plus tard,
+# la puissance est toujours sous BRAKE_LOSS_TO_W, les pédales tournent encore et le volant roule : la
+# puissance d'un cycliste qui arrête de pédaler tombe une seconde avant sa cadence (journaux du 15 novembre,
+# fins de salle du Cyber-Rogue à 586 s et 990 s, roue libre de 20 à 14 km/h).
 BRAKE_LOSS_FROM_W = 200.0
 BRAKE_LOSS_TO_W = 10.0
 BRAKE_LOSS_WINDOW_S = 3.0
 BRAKE_LOSS_MIN_RPM = 40.0
 BRAKE_LOSS_MIN_KMH = 15.0
 BRAKE_LOSS_COOLDOWN_S = 10.0
+BRAKE_LOSS_CONFIRM_S = 1.0
 BRAKE_BACK_W = 50.0   # puissance qui revient après la reprise : le frein est revenu
 BRAKE_BACK_WINDOW_S = 15.0
 ERG_EPSILON_W = 1.0
@@ -370,6 +374,7 @@ class FtmsDriver:
         self._loaded_at = float("-inf")   # dernier instant à plus de BRAKE_LOSS_FROM_W
         self._loaded_w = 0.0
         self._brake_lost_at: float | None = None
+        self._brake_drop: tuple | None = None   # chute à confirmer : (instant, W avant, W après, tr/min, km/h)
         self._hr_ibd: int | None = None
         self._hr_service: int | None = None
         self._hr_relay_val: int | None = None
@@ -715,18 +720,29 @@ class FtmsDriver:
         want = self._want
         loaded = want.mode != "erg" or want.value >= 100.0   # ERG à 0 W (repos d'un bloc) : pas de frein attendu
         speed_ok = self._trainer_speed_kmh is None or self._trainer_speed_kmh >= BRAKE_LOSS_MIN_KMH
-        if (power_w < BRAKE_LOSS_TO_W and now - self._loaded_at <= BRAKE_LOSS_WINDOW_S and loaded
-                and self._cadence >= BRAKE_LOSS_MIN_RPM and speed_ok
-                and now - self._last_brake_loss_at >= BRAKE_LOSS_COOLDOWN_S):
-            self._last_brake_loss_at = now
-            self._brake_lost_at = now
-            self.brake_losses += 1
-            speed = "—" if self._trainer_speed_kmh is None else f"{self._trainer_speed_kmh:.0f} km/h"
-            log.warning("Trainer : le frein a lâché (%.0f W puis %.0f W à %.0f tr/min, volant %s) ; "
-                        "contrôle repris et consigne renvoyée", self._loaded_w, power_w, self._cadence, speed)
-            self._emit("brake_loss", from_w=round(self._loaded_w), to_w=round(power_w),
-                       cadence_rpm=round(self._cadence), speed_kmh=self._trainer_speed_kmh)
-            self._forget_sent()   # nouvelle prise de contrôle et renvoi de la consigne au prochain tour
+        # pédales qui tournent sans puissance ; le volant n'est jugé qu'à la chute (il ralentit ensuite, frein
+        # lâché comme roue libre)
+        if not (power_w < BRAKE_LOSS_TO_W and loaded and self._cadence >= BRAKE_LOSS_MIN_RPM):
+            self._brake_drop = None          # puissance revenue, ou le cycliste a cessé de pédaler
+            return
+        if self._brake_drop is None:
+            if (speed_ok and now - self._loaded_at <= BRAKE_LOSS_WINDOW_S
+                    and now - self._last_brake_loss_at >= BRAKE_LOSS_COOLDOWN_S):
+                self._brake_drop = (now, self._loaded_w, power_w, self._cadence, self._trainer_speed_kmh)
+            return
+        drop_at, from_w, to_w, cadence, speed_kmh = self._brake_drop
+        if now - drop_at < BRAKE_LOSS_CONFIRM_S:
+            return
+        self._brake_drop = None
+        self._last_brake_loss_at = now
+        self._brake_lost_at = now
+        self.brake_losses += 1
+        speed = "—" if speed_kmh is None else f"{speed_kmh:.0f} km/h"
+        log.warning("Trainer : le frein a lâché (%.0f W puis %.0f W à %.0f tr/min, volant %s) ; "
+                    "contrôle repris et consigne renvoyée", from_w, to_w, cadence, speed)
+        self._emit("brake_loss", from_w=round(from_w), to_w=round(to_w),
+                   cadence_rpm=round(cadence), speed_kmh=speed_kmh)
+        self._forget_sent()   # nouvelle prise de contrôle et renvoi de la consigne au prochain tour
 
     def _trace_ibd(self, now: float) -> None:
         """Avec trace_ftms : ce que le trainer annonce lui-même (vitesse du volant, niveau de

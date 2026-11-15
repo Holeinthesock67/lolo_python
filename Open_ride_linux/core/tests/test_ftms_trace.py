@@ -373,14 +373,14 @@ def test_brake_loss_is_detected_and_control_taken_again(caplog):
     drv.set_sim_grade(2.8)
     drv._last_sent = ("sim", 2.8)
     with caplog.at_level(logging.INFO, logger="ftms_driver"):
-        _drive(drv, now, [(0.0, 449, 73), (2.0, 449, 73), (4.0, 0, 73), (6.0, 0, 0)])
+        _drive(drv, now, [(0.0, 449, 73), (2.0, 449, 73), (4.0, 0, 73), (5.0, 0, 72), (6.0, 0, 0)])
     msgs = [r.getMessage() for r in caplog.records]
     assert drv.brake_losses == 1 and drv._last_sent is None
     assert sum("le frein a lâché (449 W puis 0 W à 73 tr/min, volant 30 km/h)" in m for m in msgs) == 1
 
     with caplog.at_level(logging.INFO, logger="ftms_driver"):
         _drive(drv, now, [(7.0, 320, 70)])
-    assert any(m.startswith("Trainer : puissance revenue (320 W) 3.0 s") for m in
+    assert any(m.startswith("Trainer : puissance revenue (320 W) 2.0 s") for m in
                (r.getMessage() for r in caplog.records))
 
 
@@ -388,6 +388,9 @@ def test_brake_loss_is_detected_and_control_taken_again(caplog):
     ([(0.0, 449, 73), (5.0, 0, 73)], ("sim", 2.8), "chute trop lente (plus de 3 s)"),
     ([(0.0, 150, 73), (2.0, 0, 73)], ("sim", 2.8), "pas de charge avant la chute"),
     ([(0.0, 449, 73), (2.0, 0, 20)], ("sim", 2.8), "cycliste qui a cessé de pédaler"),
+    # 15 novembre (fins de salle du Cyber-Rogue) : la puissance tombe une seconde avant la cadence
+    ([(0.0, 449, 73), (1.0, 0, 73), (2.0, 0, 0), (3.0, 0, 0)], ("sim", 2.8), "arrêt de pédalage, cadence en retard"),
+    ([(0.0, 449, 73), (1.0, 0, 73), (2.0, 300, 75), (3.0, 300, 75)], ("sim", 2.8), "creux d'une seconde"),
     ([(0.0, 300, 80), (2.0, 0, 80)], ("erg", 0.0), "repos d'un bloc ERG à 0 W"),
 ])
 def test_no_brake_loss_when_the_rider_or_the_workout_explains_it(frames, mode_value, why):
@@ -405,8 +408,9 @@ def test_brake_loss_retried_at_most_every_ten_seconds():
     now = [100.0]
     drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
     drv.set_sim_grade(1.0)
-    _drive(drv, now, [(0.0, 400, 80), (1.0, 0, 80), (2.0, 400, 80), (3.0, 0, 80), (12.0, 400, 80), (13.0, 0, 80)])
-    assert drv.brake_losses == 2   # 1 s et 13 s : jamais deux fois en moins de 10 s
+    _drive(drv, now, [(0.0, 400, 80), (1.0, 0, 80), (2.0, 0, 80), (3.0, 400, 80), (4.0, 0, 80), (5.0, 0, 80),
+                      (13.0, 400, 80), (14.0, 0, 80), (15.0, 0, 80)])
+    assert drv.brake_losses == 2   # 2 s et 15 s : jamais deux fois en moins de 10 s
 
 
 # --- 7. Spin Down Status et statuts à paramètres (hypothèse du 29 octobre) -------------------------
@@ -434,7 +438,7 @@ def test_ftms_events_reach_the_journal_sink():
     drv.event_sink = got.append
     drv._on_status(None, bytearray([0x14, 0x02]))
     drv._on_training_status(None, bytearray([0x00, 0x0d]))
-    _drive(drv, now, [(0, 450, 80), (1, 440, 80), (2, 5, 80)])
+    _drive(drv, now, [(0, 450, 80), (1, 440, 80), (2, 5, 80), (3, 5, 80)])
     drv.set_sim_grade(2.0)
     kinds = [(g["event"], g.get("code"), g.get("data")) for g in got]
     assert ("status", "0x14", "02") in kinds and ("training_status", None, "000d") in kinds
