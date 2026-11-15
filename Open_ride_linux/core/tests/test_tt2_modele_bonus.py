@@ -13,6 +13,7 @@ import pytest
 
 from openride_core import classic, fit_export, powerups, profile
 from openride_core.config import Config
+from openride_core.gearing import Gearing
 from openride_core.grandprix import effects as gp_effects
 from openride_core.input_providers import NullProvider
 from openride_core.mock_driver import MockDriver
@@ -189,6 +190,14 @@ def _trace(tmp: Path, monkeypatch: pytest.MonkeyPatch, mode: str, toml: str = ""
     (tmp / "powerups.toml").write_text(toml, encoding="utf-8")
     cfg = Config()
     cfg.powerups.mode = mode
+    # Braquets des empreintes : loi multiplicative d'avant le 15 novembre, plage 0,65–2,00 (braquet 12 : 1,11).
+    r12 = 0.65 * (2.00 / 0.65) ** (11 / 23)
+
+    def old_law(self, terrain, difficulty=1.0, place=0.0):
+        g = ((terrain + 2.0) * r12 - 2.0) * difficulty
+        g = max(g, 0.0) if terrain > 0 else min(g, 0.0) if terrain < 0 else g
+        return min(max(g, self.grade_min), self.grade_max)
+    monkeypatch.setattr(Gearing, "effective_grade", old_law)
     cfg.ipc.port_state, cfg.ipc.port_commands = 7990, 7991
     s = CoreSession(cfg, driver=MockDriver(base_power_w=250.0, ramp_amplitude_w=0.0), inputs=[NullProvider()],
                     journal_dir=tmp / "j", routes_root=tmp / "r", workouts_dir=tmp / "w",

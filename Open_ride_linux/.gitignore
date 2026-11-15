@@ -17,3 +17,6 @@ spike_reports/
 # Mesure de couverture
 .coverage
 htmlcov/
+
+# Paquet du jeu (lot PK1) : pack des cols construit sur le PC, livré par l'installateur, jamais versionné
+/paquet/

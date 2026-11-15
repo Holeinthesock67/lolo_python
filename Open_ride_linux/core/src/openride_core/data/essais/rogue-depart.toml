@@ -1,0 +1,30 @@
+# Cyber-Rogue : début de run en endurance (R22, R23), consignes calées sur les vraies phases de la run.
+id = "rogue-depart"
+but = "Cyber-Rogue : fin de l'échauffement annoncée, première salle, Z expliqué, écart de l'ennemi lisible"
+duree_max_s = 600
+commandes = [
+  { cmd = "start_run", args = { objective = "endurance", duration_min = 30 } },
+  { cmd = "start", args = {} },
+]
+questions = [
+  "Cyber-Rogue : savoir quoi faire à tout moment, sur 5 ?",
+  "Z et ses refus expliqués, avec un son ? (oui/non + remarque)",
+]
+
+[[etapes]]
+quand = { kind = "event", event = "start" }
+dire = "Échauffement à {cible:80} watts. Le jeu dit-il le temps restant et la suite ?"
+
+[[etapes]]
+quand = { kind = "rogue", event = "phase", "phase!=" = "WARMUP" }
+dire = "L'échauffement est fini. Roule à {cible} watts."
+attente_max_s = 480
+
+[[etapes]]
+quand = { kind = "rogue", event = "room_start" }
+dire = "Première salle. Appuie sur Z quand l'anneau est plein. Le jeu te dit-il pourquoi s'il refuse ?"
+
+[[etapes]]
+quand = { kind = "rogue", event = "room_won" }
+dire = "Salle gagnée. Regarde l'écart de l'ennemi derrière, en secondes."
+attente_max_s = 300
