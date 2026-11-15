@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| À-coups du monde ouvert avec biomes : arbres d'une tuile proche instanciés sans calcul par arbre sur le fil principal | GDScript | W17 (livré) | Petite | En revue (banc PC low, medium et high à passer) |
+| À-coups du monde ouvert avec biomes : arbres d'une tuile proche instanciés sans calcul par arbre sur le fil principal | GDScript | W17 (livré) | Petite | En revue (banc PC rW19 passé le 15 novembre ; go du propriétaire attendu) |
 
 ## 1. Objectif
 
@@ -29,4 +29,12 @@ Sonde de la rW17g rejouée en low, medium et high (scénario `w17_cap`, départ 
 
 ## Livraison
 
-Branche `claude/project-thread-vtfee2`.
+Branche `claude/project-thread-vtfee2`, PR #906. Banc PC rW19 du 15 novembre (tête 91380469, `w17_cap`, sonde ; fichiers dans la bibliothèque du projet, `w19_a_coups.tar.gz`) :
+
+| Qualité | GPU médian (budget) | Images lentes/min, avant → après | Pire image, avant → après | Saccades > 50 ms, avant → après |
+| --- | --- | --- | --- | --- |
+| low | 5,47 ms (8) | 0,3 → 0 | 71 → 50 ms | 22 → 6 |
+| medium | 7,46 ms (13) | 3,8 → 0 | 133 → 40 ms | 109 → 7 |
+| high | 8,41 ms (16) | 2,0 → 0,3 | 131 → 68 ms | 32 → 32 |
+
+Plus aucune saccade « arbres ». Reste en high 25 saccades « herbe » (18 avant) : sujet d'un lot suivant.
