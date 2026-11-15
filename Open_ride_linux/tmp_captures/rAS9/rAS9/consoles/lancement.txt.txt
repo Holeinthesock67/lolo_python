@@ -1,0 +1,18 @@
+01:50:40 empreinte avant befdfd1dfd226ba57ab329788d8dbbaf
+01:50:40 tête c06b4183
+01:50:49 volcan : ~/mesures-2026-11-01-auto/r879c/vol/routes/demo-volcan.world
+01:51:20 banc volcan low
+02:01:25 fin rc=1
+02:01:25 banc volcan medium
+02:11:30 fin rc=1
+02:11:30 banc volcan high
+02:21:35 fin rc=1
+02:21:35 banc demo_long low
+02:31:46 fin rc=1
+02:31:46 banc demo_long medium
+02:41:56 fin rc=1
+02:41:56 banc demo_long high
+02:52:07 fin rc=1
+02:52:09 empreinte après befdfd1dfd226ba57ab329788d8dbbaf
+02:52:09 clone be29640f
+02:52:09 FIN
