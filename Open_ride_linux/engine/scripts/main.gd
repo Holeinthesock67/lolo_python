@@ -118,6 +118,9 @@ var _first_state_logged := false
 var _route_id_requested = null
 ## Profil d'altitude du dernier parcours chargé, pour la carte de détail des menus : {id, profile}.
 var _route_profile := {}
+var _menu_dirty := false   # contenu du menu à redessiner à la prochaine image (_flush_menu)
+## Mises à jour du menu depuis la dernière ligne [perf-menu] (toutes les 30 s, avec [perf-rendu]).
+var _menu_perf := {"n": 0, "total_ms": 0.0, "max_ms": 0.0, "screen": ""}
 ## Monde ouvert (lot W10) : suit les révisions du monde que le générateur prolonge ; inactif hors monde ouvert.
 var live_world = LiveWorld.new()
 ## Panneau du carrefour et attributions (lot W12) ; null avant _ready.
@@ -1042,17 +1045,35 @@ func _full_screen_menu() -> bool:
 	return menu_view.visible or (world_menu_view != null and world_menu_view.visible)
 
 
+## Visibilité du menu et du HUD tout de suite ; contenu du menu redessiné une fois par image (_flush_menu) :
+## chaque trame `state` (30 Hz) et chaque événement demandent un rafraîchissement, et une image lente en
+## recevait plusieurs, chacune refaisant toute la liste (liste des parcours à 8 i/s, essai du 15 novembre).
 func _refresh_menu() -> void:
 	if menu_view == null:
 		return
 	var shown: bool = menu_flow.is_visible() and not (world_menu_view != null and world_menu_view.visible)
 	menu_view.visible = shown
 	_sync_hud(_full_screen_menu())
-	if shown:
-		var st: Dictionary = menu_flow.state()
-		if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
-			st["card"]["profile"] = _route_profile["profile"]
-		menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
+	_menu_dirty = _menu_dirty or shown
+
+
+## Contenu du menu demandé depuis la dernière image : une seule mise à jour, avec l'état le plus récent.
+func _flush_menu() -> void:
+	if not _menu_dirty or menu_view == null:
+		return
+	_menu_dirty = false
+	if not menu_view.visible:
+		return
+	var st: Dictionary = menu_flow.state()
+	if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
+		st["card"]["profile"] = _route_profile["profile"]
+	var t0 := Time.get_ticks_usec()
+	menu_view.update_display(st, _last_state, menu_flow.shown_summary(), menu_flow.show_details)
+	var ms := (Time.get_ticks_usec() - t0) / 1000.0
+	_menu_perf["n"] += 1
+	_menu_perf["total_ms"] += ms
+	_menu_perf["max_ms"] = maxf(_menu_perf["max_ms"], ms)
+	_menu_perf["screen"] = str(st["screen"])
 
 
 ## Jingle d'événement (lot T17), joué par SoundPlayer sur le bus « Events » ; nom vide : rien.
@@ -1123,6 +1144,7 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
+	_flush_menu()
 	var menu_shown: bool = menu_flow.is_visible() or (world_menu_view != null and world_menu_view.visible)
 	var mouse := DisplayMode.mouse_mode(menu_shown)
 	if Input.mouse_mode != mouse:
@@ -1319,6 +1341,10 @@ func _record_frame_perf(delta: float) -> void:
 			var ground_mb: float = streamer.biome_textures.estimated_bytes / 1048576.0 if streamer.biome_textures != null else 0.0
 			print("[perf-rendu] images/s moy %.1f ; temps d'image p50 %.1f / p99 %.1f / max %.1f ms ; arbres %d ; appels de dessin %d ; préréglage %s ; textures du sol %.0f Mo" % [
 				avg_fps, p50, p99, max_ms, trees, draw_calls, _quality_name, ground_mb])
+			if _menu_perf["n"] > 0:   # coût du menu affiché (lag de la liste des parcours, essai du 15 novembre)
+				print("[perf-menu] %d mises à jour du menu ; moy %.2f / max %.2f ms ; dernier écran %s" % [_menu_perf["n"],
+					_menu_perf["total_ms"] / _menu_perf["n"], _menu_perf["max_ms"], _menu_perf["screen"]])
+				_menu_perf = {"n": 0, "total_ms": 0.0, "max_ms": 0.0, "screen": ""}
 		_frame_times.clear()
 		_last_perf_log_us = now
 
@@ -1605,6 +1631,7 @@ func _test_mouse(kind: String, item: String, at) -> void:
 ## rangées affichées avec leur rectangle en pixels, aide des boutons, pastilles des appareils, carte de détail, séance,
 ## monde ouvert, Cyber-Rogue.
 func _test_menu_state(req: String) -> Dictionary:
+	_flush_menu()   # rangées affichées à jour de la dernière demande
 	var st: Dictionary = menu_flow.state()
 	var items: Array = []
 	for it in st["items"]:

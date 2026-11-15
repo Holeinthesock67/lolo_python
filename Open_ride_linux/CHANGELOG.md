@@ -5,6 +5,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Liste des parcours fluide (lot ML1)
+- Le menu n'est plus redessiné à chaque trame du core (30 par seconde) ni à chaque événement : une seule mise à jour par image, avec l'état le plus récent. Une image lente en recevait plusieurs, et la liste des parcours (pack des cols installé) tombait à 8 images par seconde (essai du 15 novembre).
+- Rangées et carte de détail inchangées ne sont plus reposées : reposer couleurs et styles faisait remettre en forme tous les libellés de la liste.
+- Nouvelle ligne `[perf-menu]` du journal de l'engine, toutes les 30 s quand un menu est affiché : nombre de mises à jour, temps moyen et maximal, écran.
+
 ### Un récif sous la mer livré avec le jeu (lot SM1)
 - Nouveau parcours de démonstration « Récif des tortues » : une boucle de 8 km au fond de la mer, de 11 à 26 m sous la surface. On passe par le Lagon des Tortues, la Forêt des Laminaires, le Jardin de Corail et le Tombant Bleu.
 - Nouveau biome « fond marin » (`reef`) : sable corallien et roche du récif, laminaires de 9 m qui ondulent, coraux et gorgones de toutes les couleurs, bancs de poissons jaunes et bleus, tortues et raies, son sourd de la mer et bulles.
