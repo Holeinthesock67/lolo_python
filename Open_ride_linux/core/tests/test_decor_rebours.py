@@ -48,7 +48,11 @@ def _traffic_out_and_back(seed: int, seen_dirs: set[int]) -> tuple[int, int]:
     out = t.spawned_total
     assert t.set_direction(-1) and not t.set_direction(-1)
     # Les véhicules déjà là ne bougent pas au demi-tour : mêmes places dans le repère du parcours
-    assert [(v.id, v.s, v.dir, v.lateral) for v in map(t.on_route, t.vehicles)] == pytest.approx(before)
+    after = [(v.id, v.s, v.dir, v.lateral) for v in map(t.on_route, t.vehicles)]
+    assert [(i, d) for i, _, d, _ in after] == [(i, d) for i, _, d, _ in before]
+    # pytest.approx ne compare pas des tuples imbriqués (Python 3.11 de la CI) : abscisse et écart un à un
+    for (_, s_a, _, lat_a), (_, s_b, _, lat_b) in zip(after, before):
+        assert s_a == pytest.approx(s_b) and lat_a == pytest.approx(lat_b)
 
     def back(s: float) -> None:
         t.update(t.model_s(s), 8.3, DT)
