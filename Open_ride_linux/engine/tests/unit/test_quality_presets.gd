@@ -133,12 +133,13 @@ func _test_presets_table() -> void:
 func _test_living() -> void:
 	var keys := ["aircraft", "ambience_voices", "animals", "birds", "boats", "clouds", "cyclists", "distant_vehicles", "grass_tufts",
 		"grass_tufts_wide",
-		"ground_grass", "ground_rocks", "ground_termites", "ground_walls", "passersby", "spectators", "tree_sway", "vehicles", "water_shimmer", "weather_particles"]
+		"ground_grass", "ground_rocks", "ground_termites", "ground_walls", "passersby", "spectators", "tree_sway", "vehicles",
+		"volcano_embers", "volcano_fountains", "volcano_lights", "volcano_plumes", "water_shimmer", "weather_particles"]
 	for name in ["low", "medium", "high"]:
 		var l: Dictionary = QualityPresets.living(name)
 		var k := l.keys()
 		k.sort()
-		_check(k == keys, "living(%s) : les 19 budgets attendus (dont les 3 détails de sol du lot U8 et la bande large d'Y22)" % name)
+		_check(k == keys, "living(%s) : les 24 budgets attendus (dont les 3 détails de sol du lot U8, la bande large d'Y22 et le feu du lot DB2)" % name)
 	var low: Dictionary = QualityPresets.living("low")
 	_check(low["tree_sway"] == true and low["grass_tufts"] == 2250 and low["clouds"] == "flat"
 		and low["weather_particles"] == 600 and low["birds"] == 24 and low["animals"] == 20
