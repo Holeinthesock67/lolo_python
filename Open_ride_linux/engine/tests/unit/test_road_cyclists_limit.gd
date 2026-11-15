@@ -141,5 +141,30 @@ func _run() -> void:
 	m4.sync_core([{"id": "c78-0", "s": s + 10.0, "dir": 1, "v": v, "lane_m": 2.0, "look": 1}], 1, s, s + 400.0)
 	_check(absf(float(_by_id(m4)["c78-0"]["s"]) - (s + 10.0)) < 1e-3, "écart de plus de 50 m (saut, boucle) : pas de recalage")
 
+	# 4. Lot AS10 : un groupe que le core a donné puis rendu au décor (au-delà des 60 m) garde sa vitesse, même doublé
+	# par un groupe du core plus rapide sur sa ligne (le core le voit et le fait doubler) : il ne roule plus à côté de
+	# lui à sa vitesse (contacts « core / ahead » vers −60 m à 65 km/h)
+	var m5 = _model(route, s, v)
+	var slow_list := [{"id": "c50-0", "s": s - 56.5, "dir": 1, "v": 6.0, "lane_m": 1.8, "look": 1},
+		{"id": "c51-0", "s": s - 58.0, "dir": 1, "v": 19.0, "lane_m": 1.4, "look": 1}]
+	m5.sync_core(slow_list, 1, s, s)
+	m5.update(s, v, 1.0 / 60.0)
+	m5.sync_core([{"id": "c51-0", "s": s - 57.7, "dir": 1, "v": 19.0, "lane_m": 1.4, "look": 1}], 2, s, s)
+	_check(str(_by_id(m5)["c50-0"]["group"]["case"]) == "ahead", "groupe sorti de la liste rendu au décor")
+	var s50 := float(_by_id(m5)["c50-0"]["s"])
+	for _i in range(30):
+		m5.update(s, v, 1.0 / 60.0)
+	var moved := float(_by_id(m5).get("c50-0", {"s": NAN})["s"]) - s50
+	_check(moved > 2.0 and moved < 4.0, "groupe rendu par le core : garde sa vitesse (%.2f m en 0,5 s, attendu ~3)" % moved)
+
+	# 5. Lot AS10 : les groupes évitent le cycliste à sa vraie place en travers (`lane_m` de la trame)
+	var m6 = _model(route, s, v)
+	m6.update(s, v, 1.0 / 60.0, false, [], 0.3)
+	m6.place_for_test(s, v, "overtake", -20.0, 1)
+	var og: Dictionary = m6.groups[-1]
+	og["side"] = "left"
+	_check(absf(m6._base_lateral(og, og["members"][0]) - (0.3 - Model.MIN_CENTRE_M)) < 1e-6,
+		"dépassement à MIN_CENTRE_M à gauche du cycliste là où il est (%.2f m)" % m6._base_lateral(og, og["members"][0]))
+
 	print("test_road_cyclists_limit : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

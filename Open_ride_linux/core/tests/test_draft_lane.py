@@ -282,3 +282,23 @@ def test_side_guard_never_closes_in_on_a_rider_alongside():
     manual = Lane(m=1.0, home=2.9, auto=False)   # lot DS8 : bot éliminé qui se range, il attend d'être dépassé
     assert side_guard(100.0, manual, 2.9, [(100.5, 8.0, other)]) == pytest.approx(1.6 - clear)
     assert side_guard(100.0, manual, 2.9, [(102.5, 8.0, other)]) == 2.9   # coureur passé : il se range
+
+
+def test_closing_fast_on_a_slower_rider_never_brushes_him():
+    """Lot AS10 (banc du volcan du 15/11, « core / cycliste à 0 m », écarts 2,5 et 1,9) : rattrapé vite, un coureur
+    plus lent n'attire plus le cycliste dans sa roue avant le dépassement (il serrait vers sa ligne puis s'en écartait
+    trop tard : 0,55 m de 36 à 52 km/h) ; il le double sans jamais passer à moins de SIDE_CLEAR_M de lui."""
+    worst = 99.0
+    for kmh in range(26, 70, 4):
+        for slow_kmh in (12, 20, 28):
+            for gap in (10.0, 16.0, 25.0):
+                me = d.Lane(d.RIDER_LANE_M, d.RIDER_LANE_M)
+                other = d.Lane(2.5, 2.5, auto=False)
+                s_me, s_o, v_me, v_o = 0.0, gap, kmh / 3.6, slow_kmh / 3.6
+                for _ in range(int(15.0 / 0.02)):
+                    d.update_lanes([(s_me, v_me, me), (s_o, v_o, other)], 0.02)
+                    s_me += v_me * 0.02
+                    s_o += v_o * 0.02
+                    if abs(s_me - s_o) < d.BIKE_LENGTH_M:
+                        worst = min(worst, abs(me.m - other.m))
+    assert worst >= d.SIDE_CLEAR_M

@@ -201,10 +201,11 @@ def test_overtake_group_holds_its_speed_once_merged(route: Route) -> None:
 
 
 def test_state_list_is_short_and_near(route: Route) -> None:
-    """Liste `riders` de `state` : au plus 6 cyclistes à moins de 60 m, du plus proche au plus loin."""
+    """Liste `riders` de `state` : au plus 10 cyclistes (lot AS10, 6 avant) à moins de 60 m, du plus proche au plus loin."""
     m = rc.RoadCyclists(route, (), (), 0, 7)
     s = 5000.0
     m.place_for_test(s, 8.0, "ahead", 10.0, 4, abreast=True)
+    m.place_for_test(s, 8.0, "ahead", 30.0, 4)
     m.place_for_test(s, 8.0, "oncoming", 45.0, 3)
     m.place_for_test(s, 8.0, "ahead", 200.0, 2)
     lst = m.state_list(s)
@@ -218,8 +219,8 @@ def test_state_list_is_short_and_near(route: Route) -> None:
     by_id = {r.id: r for r in m.riders()}
     for e in lst:     # maillot et tenue de P28 retrouvés dans `look`
         assert e["look"] % 8 == by_id[e["id"]].jersey and (e["look"] >> 4) == by_id[e["id"]].look & 0xFFFF
-    # Trame pleine (5 bots, 4 véhicules, 6 cyclistes) sous 4 096 octets : test_ipc_budget.py (critère 5)
-    assert len(json.dumps(lst, separators=(",", ":"))) < 6 * 90
+    # Trame pleine (5 bots, 10 cyclistes) sous 4 096 octets : test_ipc_budget.py (critère 5)
+    assert rc.STATE_MAX == 10 and len(json.dumps(lst, separators=(",", ":"))) < rc.STATE_MAX * 90
 
 
 def test_sources_ids_and_draft_bot() -> None:
@@ -274,7 +275,7 @@ def test_session_decor_group_shelters_rider(tmp_path, monkeypatch):
     assert 0.30 <= best <= 0.45
     assert who is not None and who.startswith("rider:" + g.id + "-")
     assert abs(s._lane.m - g.members[-1].lateral) < 0.3      # dans la ligne du groupe
-    s._frame_count = 0
+    s._frame_count = 1                         # lot AS10 : la trame qui suit celle de `vehicles`
     s._fill_riders_frame()
     riders = s.state.to_dict()["riders"]
     assert len(riders) == 3 and {r["id"] for r in riders} == {f"{g.id}-{m.index}" for m in g.members}
@@ -474,3 +475,34 @@ def test_no_contact_at_high_speed(kmh: float) -> None:
                             hits.append((seed, round(k * dt, 1), a[0], b[0], round(a[1] - s, 2), a[2], b[2]))
             s += v * dt
     assert not hits, f"{len(hits)} contacts, ex. {hits[:3]}"
+
+
+@pytest.mark.parametrize("lane", [0.3, 1.2])
+def test_groups_avoid_the_rider_where_he_is(lane: float) -> None:
+    """Lot AS10 : les groupes évitent le cycliste à sa vraie place en travers (`rider_lane`, `lane_m` du lot AS2),
+    pas à 1,2 m : cycliste tenu près de l'axe (en dépassement, 0,3 m), aucun groupe ne le touche ; avant, ceux qui le
+    doublaient passaient à 1,2 − 1,3 m, sur lui (74 à 431 contacts de 25 à 55 km/h)."""
+    route = _flat_route()
+    hits = 0
+    for kmh in (25.0, 55.0):
+        for seed in range(2):
+            m = rc.RoadCyclists(route, (), (), seed=seed)
+            s, v = 300.0, kmh / 3.6
+            for k in range(int(400.0 * 50)):
+                m.update(s, v, 0.02, rider_lane=lane)
+                if k % 5 == 0:
+                    hits += sum(1 for r in m.riders() if abs(r.s - s) < 1.7 and abs(r.lane_m - lane) < 0.6)
+                s += v * 0.02
+    assert hits == 0
+
+
+def test_riders_frame_never_carries_vehicles(tmp_path, monkeypatch):
+    """Lot AS10 (révision 1.18) : la liste `riders` part dans la trame qui suit celle de `vehicles`, jamais avec elle."""
+    s, g = decor_session(tmp_path, monkeypatch, 6202, rel_m=20.0)
+    for n in range(6):
+        s._frame_count = n
+        s._fill_vehicles_frame()
+        s._fill_riders_frame()
+        frame = s.state.to_dict()
+        assert not (frame.get("vehicles") is not None and frame.get("riders") is not None)
+        assert (frame.get("riders") is not None) == (n % 3 == 1)

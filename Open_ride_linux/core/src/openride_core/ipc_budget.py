@@ -24,6 +24,8 @@ import copy
 import json
 from typing import Any, Callable
 
+from . import road_cyclists
+
 MAX_DATAGRAM_SIZE = 1400          # cible de toutes les révisions, et limite jusqu'à la 1.2
 TRACK_FRAME_MAX = 800             # objet `track` de `state` (révision 1.7, lot VD6) : majorant de `worst_track`
 STATE_LIMIT_1_3 = 4096            # limite de `state` depuis la révision 1.3 (ipc_server.MAX_DATAGRAM_SIZE, tout message depuis la 1.5)
@@ -39,6 +41,7 @@ MAX_TEXT = {
 
 # Textes de remplissage : lettres accentuées (2 octets en UTF-8) pour le pire cas.
 _FILL = "Fantôme éé à ô û"
+
 
 
 def encode(msg: dict[str, Any]) -> bytes:
@@ -194,12 +197,26 @@ def _extras_1_5(d: dict[str, Any]) -> None:
                        "next": {"id": "j" + "9" * 23, "d_m": 2999.9, "default": 3, "chosen": 3, "locked": True,
                                 "b": [[-179, "p", -99.9], [-90, "s", 99.9], [90, "m", -12.3], [179, "k", 12.3]]},
                        "data": "downloading"}
-    # Lot AS6 : au plus 4 véhicules proches, chacun au plus long (identifiant de case, sorte la plus longue)
-    d["vehicles"] = [{"id": "v1000099", "kind": "tractor", "color": 7, "s": 123_456.79 + i, "dir": -1,
-                      "v": 22.22, "lane_m": -2.33} for i in range(4)]
-    # Lot AS7 : au plus 6 cyclistes du décor proches, identifiants de case et d'apparence au plus long
-    d["riders"] = [{"id": "c1000099-5", "s": 123_456.79 + i, "dir": -1, "v": 19.44, "lane_m": -2.33,
-                    "look": 1_048_575} for i in range(6)]
+    # Lot AS7 : cyclistes du décor proches ; lot AS10 (révision 1.18) : au plus 10, dans la trame qui suit celle de
+    # `vehicles`, jamais avec elle : la trame la plus lourde porte l'une ou l'autre liste, la plus longue des deux
+    vehicles, riders = worst_vehicles(), worst_riders()
+    if size({"riders": riders}) >= size({"vehicles": vehicles}):
+        d["riders"] = riders
+    else:
+        d["vehicles"] = vehicles
+
+
+def worst_vehicles() -> list[dict[str, Any]]:
+    """Lot AS6 : au plus 4 véhicules proches, chacun au plus long (identifiant de case, sorte la plus longue)."""
+    return [{"id": "v1000099", "kind": "tractor", "color": 7, "s": 123_456.79 + i, "dir": -1,
+             "v": 22.22, "lane_m": -2.33} for i in range(4)]
+
+
+def worst_riders() -> list[dict[str, Any]]:
+    """Lot AS7 : cyclistes du décor proches (lot AS10 : au plus `STATE_MAX`, 10), identifiants de case et
+    d'apparence au plus long."""
+    return [{"id": "c1000099-5", "s": 123_456.79 + i, "dir": -1, "v": 19.44, "lane_m": -2.33,
+             "look": 1_048_575} for i in range(road_cyclists.STATE_MAX)]
 
 
 PELOTON_BOTS = 12   # lot PL1 : 11 bots et un fantôme (bots.MAX_BOTS)

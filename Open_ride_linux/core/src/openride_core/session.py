@@ -98,6 +98,7 @@ RETIRED_IMPORT_COMMANDS = ("list_imports", "import_workout")
 BIAS_STEPS = {InputEvent.PLUS_SHORT: +1, InputEvent.MINUS_SHORT: -1, InputEvent.PLUS_LONG: +5, InputEvent.MINUS_LONG: -5}
 WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révision 1.3)
 VEHICLES_FRAME_EVERY = 3   # liste `vehicles` 10 fois par seconde (lot AS6), extrapolée par l'engine
+RIDERS_FRAME_AT = 1        # lot AS10 : liste `riders` (10 Hz aussi) dans la trame qui suit celle de `vehicles`
 ESCORT_GAP_M = traffic_mod.DRAFT_REF_GAP_M   # voiture d'équipe (lot GP4) : 3 m du pare-chocs à la roue avant (abri de référence d'AS6)
 ESCORT_COLOR = 0           # teinte de la voiture d'équipe (indice des couleurs de la circulation)
 TRAFFIC_SEED = 0         # graine de la circulation : celle de traffic_model.gd (lot AS6)
@@ -3795,7 +3796,9 @@ class CoreSession:
             cyclists = self._road_cyclists_for(route)
             if cyclists is not None:
                 cyclists.vehicles = traffic.vehicles
-                cyclists.update(self.physics.s, self.physics.v, dt, bots=bot_places)
+                # Lot AS10 : à la vraie place du cycliste en travers (repère de la route, comme pour la circulation)
+                cyclists.update(self.physics.s, self.physics.v, dt, bots=bot_places,
+                                rider_lane=self.physics.direction * self._lane.m)
                 riders = cyclists.near(self.physics.s)
             others = [traffic_mod.Other(s, lat) for s, lat in bot_places]
             others += [traffic_mod.Other(r.s, r.lane_m, r.dir) for r in (cyclists.riders() if cyclists else [])]
@@ -3818,7 +3821,7 @@ class CoreSession:
             b.shelters = b.id not in unseen
         self._escorts = self._gp_escorts()
         cars = self._escorts + [v for v in near if v.dir == 1]   # voiture d'équipe (lot GP4) : un véhicule d'AS6
-        reverse = self.physics.direction < 0   # à rebours (lot N17) : personne dans le même sens, ni abri ni placement
+        reverse = self.physics.direction < 0   # à rebours (lot N17) : ni abri ni bots ; placement parmi ceux du même sens (AS10)
         # Voiture d'équipe (lot GP4) : le coureur remorqué et sa voiture se placent d'un seul bloc (gabarit de la
         # voiture, du pare-chocs avant à la roue arrière) : le bloc double les coureurs plus lents et les autres
         # l'évitent, la voiture ne passe plus à travers un coureur devant
@@ -3842,8 +3845,18 @@ class CoreSession:
         runners += [(v.s, v.speed_mps, draft_mod.Lane(v.lateral, v.lateral, auto=False, half_width=v.half_width,
                                                        length=v.length)) for v in near if v.dir == 1]
         runners += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders if r.dir == 1]
-        draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None,
-                               self._half_at(route))
+        if reverse:
+            # Lot AS10 (banc #892 du 15/11, « tractor / cycliste à 1 m » après le demi-tour, sur main aussi) : à rebours,
+            # le cycliste se place comme à l'aller parmi ceux qui roulent dans son sens (véhicules et cyclistes du décor
+            # de sens −1), dans son repère : abscisse retournée (L − s), écarts à l'axe changés de signe
+            runners = self._reverse_runners(route, near, riders)
+            length_r = length if length is not None else 0.0
+            half = self._half_at(route)
+            draft_mod.update_lanes(runners, dt, length, is_loop, None,
+                                   (lambda x: half(length_r - x)) if half is not None else None)
+        else:
+            draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None,
+                                   self._half_at(route))
         for lane, bike_length, bike_half in blocks:
             lane.length, lane.half_width = bike_length, bike_half
 
@@ -3876,6 +3889,18 @@ class CoreSession:
             if base is not None:
                 bot.params.cda_m2 = base * (1.0 - getattr(bot, "push", 0.0))
 
+    def _reverse_runners(self, route: Route | None, near: list[traffic_mod.Vehicle],
+                         riders: list[road_cyclists_mod.Rider]) -> list[tuple[float, float, draft_mod.Lane]]:
+        """Coureurs du placement à rebours (lot AS10), dans le repère du cycliste : lui (`self._lane`, son écart à
+        l'axe compté vers sa droite), puis les véhicules et cyclistes du décor qui roulent dans son sens (`dir` −1),
+        abscisse L − s et écart à l'axe changé de signe, placement coupé (ils gardent leur voie)."""
+        length = route.length_m if route else 0.0
+        out = [(length - self.physics.s, self.physics.v, self._lane)]
+        out += [(length - v.s, v.speed_mps, draft_mod.Lane(-v.lateral, -v.lateral, auto=False, half_width=v.half_width,
+                                                            length=v.length)) for v in near if v.dir == -1]
+        out += [(length - r.s, r.v, draft_mod.Lane(-r.lane_m, -r.lane_m, auto=False)) for r in riders if r.dir == -1]
+        return out
+
     def _fill_vehicles_frame(self) -> None:
         """Liste `vehicles` une trame sur trois (10 Hz, lot AS6) : au plus 4 véhicules à moins de 150 m, les
         voitures d'équipe du Grand Prix d'abord (lot GP4)."""
@@ -3890,10 +3915,11 @@ class CoreSession:
             self.state.vehicles = traffic_mod.state_list(cars[:traffic_mod.NEAR_MAX])
 
     def _fill_riders_frame(self) -> None:
-        """Liste `riders` avec `vehicles` (10 Hz, lot AS7) : au plus 6 cyclistes du décor à moins de 60 m."""
+        """Liste `riders` (10 Hz, lot AS7) : cyclistes du décor à moins de 60 m. Lot AS10 (révision 1.18) : au plus 10,
+        dans la trame qui suit celle de `vehicles`, jamais avec elle (la trame la plus chargée reste sous 4 096 octets)."""
         cyclists = self.road_cyclists
         self.state.riders = None
-        if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == 0:
+        if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == RIDERS_FRAME_AT:
             self.state.riders = cyclists.state_list(self.physics.s)
 
     def _fill_wind_frame(self) -> None:

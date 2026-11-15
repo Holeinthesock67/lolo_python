@@ -82,6 +82,7 @@ LANE_ACCEL_MPS2 = 1.6     # accélération latérale maximale : pas d'à-coup
 LANE_TAU_S = 0.6          # approche de la cible
 FOLLOW_LOOK_M = 15.0      # placement dans la roue d'un coureur à moins de 15 m devant
 FOLLOW_SPEED_TOL_MPS = 0.5   # « même vitesse » : pas plus de 0,5 m/s plus vite que soi
+FOLLOW_CLOSE_MPS = 1.5    # lot AS10 : pas de roue prise chez celui qu'on rattrape à plus de 1,5 m/s (5,4 km/h)
 PASS_SPEED_MPS = 0.5      # dépassement : plus de 0,5 m/s plus vite...
 PASS_GAP_M = 3.0          # ... à moins de 3 m de sa roue
 PASS_TOUCH_GAP_M = 0.2    # roue contre roue en se rapprochant, quel que soit l'écart de vitesse : on se décale
@@ -506,7 +507,10 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
     elif lead is not None:
         d, o_v, o_lane, reach = lead
         gap = d - reach
-        if o_v <= v + FOLLOW_SPEED_TOL_MPS:
+        # Lot AS10 (banc du volcan à 55 km/h : « core / cycliste à 0 m », écarts 2,5 et 1,9) : pas dans la roue de celui
+        # qu'on rattrape vite (plus de FOLLOW_CLOSE_MPS) ; on serrait vers sa ligne pour s'en écarter au dernier moment
+        # (frôlé à 0,55 m de 36 à 52 km/h) ; dans un paquet, rien ne change
+        if v - FOLLOW_CLOSE_MPS <= o_v <= v + FOLLOW_SPEED_TOL_MPS:
             target = echelon_lane(o_lane.m, gap, v, head_mps, cross_mps)
     elif leads:
         shift = crosswind_shift_m(1.0, v, head_mps, cross_mps)

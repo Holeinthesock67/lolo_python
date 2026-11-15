@@ -86,7 +86,7 @@ AIR_K = 0.21
 SEED = 0                  # graine de living_decor.gd (`cyclists.configure(…, 0, …)`)
 CORE_BUDGET = 16          # living(high).cyclists : les groupes proches ne dépendent plus du préréglage
 NEAR_M = 60.0             # cyclistes envoyés à l'engine dans `state` (devant ou derrière)
-STATE_MAX = 6
+STATE_MAX = 10            # lot AS10 : jusqu'à 10 à moins de 60 m (6 avant : liste pleine au cœur des groupes)
 SOURCE_ID_PREFIX = "rider:"   # `draft_bot` d'un cycliste du décor : « rider:<id> »
 APPEARANCE_MASK = 0xFFFFF     # `look` de la liste `riders` : 20 bits bas du tirage du cycliste
 
@@ -371,6 +371,7 @@ class RoadCyclists:
         self._clock = 0.0
         self._bot_groups: list[Group] = []
         self._last_bots_s: list[float] = []
+        self.rider_lane = RIDER_LATERAL_M   # lot AS10 : vraie place du cycliste en travers (`lane_m`)
 
     def rider_count(self) -> int:
         return sum(g.size for g in self.groups)
@@ -443,9 +444,12 @@ class RoadCyclists:
         return half - EDGE_IN_M < RIDER_LATERAL_M + MIN_CENTRE_M - 1e-6
 
     def update(self, rider_s: float, rider_v: float, dt_s: float, paused: bool = False,
-               bots: Sequence[tuple[float, float]] = ()) -> None:
+               bots: Sequence[tuple[float, float]] = (), rider_lane: float | None = None) -> None:
         """Une image : `rider_s`, `rider_v` (m/s) du cycliste ; `bots` : places des bots `(s, lateral)`
-        (comme `bots_view_model.places()` de l'engine)."""
+        (comme `bots_view_model.places()` de l'engine) ; `rider_lane` : écart à l'axe du cycliste (`lane_m`, lot
+        AS2), RIDER_LATERAL_M sans placement. Lot AS10 : les groupes évitent le cycliste là où il est, pas à 1,2 m."""
+        if rider_lane is not None:
+            self.rider_lane = float(rider_lane)
         self.last_event = {}
         if paused:
             return
@@ -572,7 +576,7 @@ class RoadCyclists:
         if g.case == "oncoming":
             return -(edge + col)
         if g.case == "overtake" and g.side == "left":
-            return RIDER_LATERAL_M - MIN_CENTRE_M
+            return self.rider_lane - MIN_CENTRE_M
         if g.bot_near and not self._narrow(g.half):
             return max(edge, BOT_LATERAL_M + MIN_CENTRE_M)
         return edge + col
@@ -643,7 +647,7 @@ class RoadCyclists:
             # Lot AS9 : sorti tout près derrière le cycliste, il ne s'approche pas à moins de SIDE_LOOK_M de sa roue
             # tant qu'il n'est pas hors de sa ligne
             if (g.side == "left" and rel_now < 0.0 and dt_s > 0.0
-                    and abs(g.lateral() - RIDER_LATERAL_M) < MIN_CENTRE_M - 1e-3):
+                    and abs(g.lateral() - self.rider_lane) < MIN_CENTRE_M - 1e-3):
                 spd_now = min(spd_now, max(0.0, -SIDE_LOOK_M - rel_now) / dt_s)
         # Lot P32 : un groupe qui en rattrape un autre du même sens le double vers l'axe (voir l'engine)
         g.pass_lat = None
@@ -685,7 +689,7 @@ class RoadCyclists:
                 if blocking:
                     spd_now = min(spd_now, slowest - FALL_BACK_MPS)
             elif faster and (out or self._lane_free_for(g, rider_s) and (
-                    direction == -1 or abs(pass_lat - RIDER_LATERAL_M) >= MIN_CENTRE_M
+                    direction == -1 or abs(pass_lat - self.rider_lane) >= MIN_CENTRE_M
                     or abs(g.s - rider_s) > PASS_START_M)):
                 if abs(pass_lat - own) > 1e-3:
                     g.pass_lat = pass_lat
@@ -760,7 +764,7 @@ class RoadCyclists:
 
         near = []
         if close(rider_s, rider_v):
-            near.append(RIDER_LATERAL_M)
+            near.append(self.rider_lane)
         for i, (b, b_lat) in enumerate(bots):
             b_v = self._bot_groups[i].speed_mps if i < len(self._bot_groups) else rider_v
             if close(float(b), b_v):

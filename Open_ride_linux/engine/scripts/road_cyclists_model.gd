@@ -65,7 +65,7 @@ const GIVE_UP_S := 60.0
 const YIELD_S := 3.0                  # lot AS8 : un groupe de l'engine s'écarte d'un groupe du core à 3 s de sa queue
 const NEAR_M := 60.0                  # lot AS7 : cyclistes calculés par le core (liste `riders`)
 const CORE_MARGIN_M := 5.0            # ... un cycliste absent de la liste à moins de 55 m n'est plus sur la route
-const CORE_LIST_MAX := 6              # ... liste pleine : ceux qu'elle ne donne pas peuvent encore rouler
+const CORE_LIST_MAX := 10             # ... liste pleine (lot AS10 : 10, au lieu de 6) : ceux qu'elle ne donne pas peuvent encore rouler
 const CORE_SHIFT_MAX_M := 50.0        # lot AS9 : écart cycliste affiché / du core au-delà duquel on ne recale pas
 const ABREAST_M := 0.6
 const FILE_GAP_M := 2.1               # d'axe à axe en file : vélo de 1,7 m et 0,4 m de roue à roue
@@ -119,6 +119,7 @@ var _clock := 0.0
 var _bot_groups: Array = []        # bots de l'image, comme des groupes (lot P32)
 var _last_bots_s: Array = []      # abscisses des bots à l'image précédente (vitesse estimée)
 var _core_seq := -1                 # trame de la dernière liste `riders` reprise (lot AS7)
+var rider_lane := RIDER_LATERAL_M   # lot AS10 : vraie place du cycliste en travers (`lane_m` de la trame)
 
 
 ## `climbs` : montées de living_decor.gd (`start_s`, `summit_s`) ; `pois` : seuls les `village` comptent.
@@ -265,7 +266,11 @@ func _grade_at(s: float, dir: int) -> float:
 
 ## Une image : `rider_s`, `rider_v` (m/s) du cycliste ; `bots` : places des bots [{s, lateral}]
 ## (bots_view_model.places()).
-func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, bots: Array = []) -> void:
+## Lot AS10 : `lane` : écart à l'axe du cycliste (`lane_m` de la trame, lot AS2) ; les groupes l'évitent là où il
+## est (NAN : sa dernière place connue, RIDER_LATERAL_M au départ).
+func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, bots: Array = [], lane: float = NAN) -> void:
+	if not is_nan(lane):
+		rider_lane = lane
 	last_event = {}
 	if route == null or paused:
 		return
@@ -416,7 +421,7 @@ func _base_lateral(g: Dictionary, m: Dictionary) -> float:
 			return -(edge + col)
 		"overtake":
 			if str(g["side"]) == "left":
-				return RIDER_LATERAL_M - MIN_CENTRE_M
+				return rider_lane - MIN_CENTRE_M
 	if bool(g.get("bot_near", false)) and not _narrow(half):
 		return maxf(edge, BOT_LATERAL_M + MIN_CENTRE_M)
 	return edge + col
@@ -509,7 +514,7 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 		# Lot AS9 : sorti tout près derrière le cycliste, il ne s'approche pas à moins de SIDE_LOOK_M de sa roue tant
 		# qu'il n'est pas hors de sa ligne
 		if str(g["side"]) == "left" and rel_now < 0.0 and dt_s > 0.0 \
-				and absf(_group_lateral(g) - RIDER_LATERAL_M) < MIN_CENTRE_M - 1e-3:
+				and absf(_group_lateral(g) - rider_lane) < MIN_CENTRE_M - 1e-3:
 			spd_now = minf(spd_now, maxf(0.0, -SIDE_LOOK_M - rel_now) / dt_s)
 	# Lot P32 : un groupe qui en rattrape un autre du même sens le double vers l'axe si la voie d'en face est
 	# libre et que le cycliste n'est pas à côté ; il reste à la vitesse de l'autre tant qu'il ne s'est pas écarté,
@@ -558,7 +563,7 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 		if crossing:
 			if blocking:
 				spd_now = minf(spd_now, slowest - FALL_BACK_MPS)
-		elif faster and (out or _lane_free_for(g, rider_s) and (dir == -1 or absf(pass_lat - RIDER_LATERAL_M) >= MIN_CENTRE_M
+		elif faster and (out or _lane_free_for(g, rider_s) and (dir == -1 or absf(pass_lat - rider_lane) >= MIN_CENTRE_M
 				or absf(float(g["s"]) - rider_s) > PASS_START_M)):
 			if absf(pass_lat - own) > 1e-3:
 				g["pass_lat"] = pass_lat
@@ -609,6 +614,11 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 ## à moins de CATCH_M. Il se rabat ensuite sans se poser sur lui (`_side_blocked`). Les groupes d'en face gardent
 ## leurs écarts. Rend la vitesse du pas.
 func _yield_to_core(g: Dictionary, spd_now: float, rider_s: float, bots: Array) -> float:
+	# Lot AS10 : un groupe que le core a donné (sorti de la liste, `_to_decor`) roule aussi chez le core, qui le voit
+	# et le fait doubler à sa vraie place : il garde sa vitesse au lieu de rouler à celle du groupe du core qui le double
+	# (contacts « core / ahead » vers −60 m à 65 km/h : il restait à côté de lui pendant que le core le rabattait)
+	if g.get("core_known", false):
+		return spd_now
 	var dir := int(g["dir"])
 	var members: Array = g["members"]
 	var g_head := float(g["s"]) * dir
@@ -641,7 +651,7 @@ func _yield_to_core(g: Dictionary, spd_now: float, rider_s: float, bots: Array) 
 		if absf(float(b["s"]) - float(g["s"])) < BOT_LOOK_M + float(members.size()) * FILE_GAP_M:
 			lanes.append(float(b["lateral"]))
 	if absf(float(g["s"]) - rider_s) < PASS_START_M + float(members.size()) * FILE_GAP_M:
-		lanes.append(RIDER_LATERAL_M)
+		lanes.append(rider_lane)
 	var free := true
 	for lat in lanes:
 		if absf(yield_lat - float(lat)) < MIN_CENTRE_M - 0.05 or (float(lat) > minf(cur, yield_lat) and float(lat) < maxf(cur, yield_lat)):
@@ -701,7 +711,7 @@ func _side_blocked(g: Dictionary, s: float, lat0: float, lat1: float, rider_s: f
 	var g_vel := float(g["dir"]) * _step_mps(g)
 	var near := []
 	if _closing_near(s, g_vel, rider_s, rider_v):
-		near.append(RIDER_LATERAL_M)
+		near.append(rider_lane)
 	for i in range(bots.size()):
 		var b_v := float(_bot_groups[i]["speed_mps"]) if i < _bot_groups.size() else rider_v
 		if _closing_near(s, g_vel, float(bots[i]["s"]), b_v):
@@ -931,6 +941,7 @@ static func _anchor(m: Dictionary, dl_shift: float, old_head: float, head: float
 ## les autres groupes au lieu de rouler au travers (banc E1 du 5/11 : contacts « core / ahead » à 2,5 m de l'axe).
 func _to_decor(g: Dictionary) -> void:
 	g.erase("core")
+	g["core_known"] = true              # lot AS10 : le core le fait encore rouler (`_yield_to_core`)
 	var dir := int(g["dir"])
 	var v := float(g["speed_mps"])
 	g["case"] = "oncoming" if dir < 0 else "ahead"
