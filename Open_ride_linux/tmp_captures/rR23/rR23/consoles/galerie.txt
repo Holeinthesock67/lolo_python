@@ -1,0 +1,7 @@
+== low ==
+   low : OK 205/205
+== medium ==
+   medium : ÉCHEC 204/205
+== high ==
+   high : ÉCHEC 204/205
+Galerie : ~/mesures-2026-11-01-auto/rR23/galerie/galerie.html

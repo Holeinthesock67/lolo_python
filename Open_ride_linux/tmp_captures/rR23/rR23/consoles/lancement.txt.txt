@@ -1,0 +1,7 @@
+04:02:07 empreinte avant befdfd1dfd226ba57ab329788d8dbbaf
+04:02:07 tête 5458f890
+04:02:47 rogue_galerie --native
+04:28:12 fin rc=1 durée 1525 s
+04:28:13 empreinte après befdfd1dfd226ba57ab329788d8dbbaf
+04:28:13 clone be29640f
+04:28:13 FIN
