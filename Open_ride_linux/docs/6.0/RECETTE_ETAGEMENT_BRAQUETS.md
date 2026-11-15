@@ -1,4 +1,33 @@
-# Recette : étagement élargi des 24 braquets et braquets de la piste (14 novembre 2026)
+# Recette : étagement élargi des 24 braquets et braquets de la piste (14 et 15 novembre 2026)
+
+## 15 novembre : 30 % de plus dans les deux sens
+
+Demande du propriétaire : élargir encore l'étagement de 30 % vers les petits rapports et vers les grands. Même loi, mêmes bornes, même décalage de la piste ; seuls les deux bouts changent.
+
+| | 14 novembre | 15 novembre |
+| --- | --- | --- |
+| Rapport du braquet 1 (`[gearing] ratio_min`) | 0,455 | 0,3185 (× 0,7) |
+| Rapport du braquet 24 (`[gearing] ratio_max`) | 2,60 | 3,38 (× 1,3) |
+| Pas par clic | 7,9 % | 10,8 % |
+| Braquet 12 (départ) | 1,05 | 0,99 |
+
+Pente envoyée au trainer, difficulté 100 %, sans vent ni abri (entre parenthèses : force à la roue, modèle du 28 octobre ≈ 16 N + 6,6 N par point de pente) :
+
+| Braquet | Plat | 3,6 % | 6 % | Piste, plat (× 1,25, hors bois) |
+| --- | --- | --- | --- | --- |
+| 1 | −1,36 % (−20 %) | 0,00 % (−18 %) | 0,55 % (−27 %) | −1,20 % |
+| 12 | −0,03 % (−5 %) | 3,52 % (−5 %) | 5,89 % (−6 %) | 0,46 % |
+| 24 | 4,76 % (+28 %) | 16 % borne (+23 %) | 16 % borne | 6,45 % |
+
+Points à juger en sortie (pas d'essai dédié, choix du propriétaire du 14 novembre) :
+
+- Braquet 1 : une montée jusqu'à 4,3 % est envoyée plate (braquet 2 : jusqu'à 3,5 %). C'est ce qu'avait corrigé la plage du 28 octobre ; la règle du signe garantit seulement qu'une montée ne devient jamais une descente.
+- Braquet 24 : à 100 % de difficulté, la borne de +16 % est atteinte dès 3,3 % de pente (8,1 % à 50 %) ; au-delà, les derniers clics ne changent plus rien.
+- Le départ au braquet 12 est environ 5 % plus léger qu'hier.
+
+L'ERG, la vitesse virtuelle, les bots, le calibrage et les contacts n'utilisent pas les braquets : rien ne change pour eux. Contrat IPC inchangé (`gears_total` seul).
+
+## 14 novembre
 
 Demande du propriétaire après les essais physiques du 14 novembre : braquet 1 plus facile de 30 %, braquet 24 plus dur de 30 %, dans tous les modes ; sur la piste du vélodrome, la même gamme décalée en plus de 25 % vers le dur.
 

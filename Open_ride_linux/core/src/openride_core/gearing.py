@@ -2,8 +2,8 @@
 
 Le braquet n'agit que sur la pente envoyée au trainer, jamais sur la vitesse virtuelle :
     G_eff = (G_terrain + G_base) * R_k - G_base
-avec R_k en progression géométrique entre R_min et R_max (0,455 à 2,60 depuis le 14 novembre, soit environ
-8 % par clic ; une même loi pour tous les modes). Sur une piste, toute la gamme est multipliée par
+avec R_k en progression géométrique entre R_min et R_max (0,3185 à 3,38 depuis le 15 novembre, soit environ
+11 % par clic ; une même loi pour tous les modes). Sur une piste, toute la gamme est multipliée par
 `[velodrome] gear_scale` (1,25) : donnée du lieu, pas une exception de la loi. G_eff ne change jamais de signe par
 rapport au terrain : un petit braquet adoucit une montée sans la transformer en descente.
 """

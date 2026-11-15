@@ -71,8 +71,8 @@ class TrainerConfig:
 class GearingConfig:
     n_gears: int = 24
     start_gear: int = 12
-    ratio_min: float = 0.455   # 0,65 × 0,7 : étagement élargi le 14 novembre (0,65 à 2,00 depuis le 28 octobre)
-    ratio_max: float = 2.60    # 2,00 × 1,3
+    ratio_min: float = 0.3185  # 0,455 × 0,7 : étagement élargi encore le 15 novembre (0,455 à 2,60 le 14, 0,65 à 2,00 le 28 octobre)
+    ratio_max: float = 3.38    # 2,60 × 1,3
     g_base_pct: float = 2.0
     long_press_gears: int = 10    # appui long en SIM : braquets sautés (3 était plus lent que des appuis courts)
 
