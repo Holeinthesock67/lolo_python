@@ -77,6 +77,7 @@ const STYLES := {
 }
 
 var road_width_m := 6.0
+var direction := 1                  # sens de la marche : -1 à rebours après un demi-tour (lots N17, N22)
 var marks: Array = []
 var _starts := PackedFloat64Array()
 var _route = null
@@ -240,7 +241,10 @@ func update(cam_s: float, arches_on: bool) -> void:
 	if _route == null or marks.is_empty():
 		return
 	var want := {}
-	for i in Model.window(_starts, cam_s, float(_route.length_m), _route.is_loop()):
+	# Fenêtre dans le sens de la marche (lot N22) : AHEAD_M devant et BEHIND_M derrière, devant = s décroissant à rebours
+	var up := Model.AHEAD_M if direction > 0 else Model.BEHIND_M
+	var down := Model.BEHIND_M if direction > 0 else Model.AHEAD_M
+	for i in Model.window(_starts, cam_s, float(_route.length_m), _route.is_loop(), up, down):
 		if marks[i]["kind"] == "arch" and not arches_on:
 			continue
 		if marks[i]["kind"] in ["start", "finish"] and _near_elim(float(marks[i]["s"])):
@@ -324,7 +328,7 @@ func _update_elim(cam_s: float) -> void:
 		return
 	for e in _elim:
 		var k := int(e["arch"])
-		var d := _ahead_of(float(e["s"]), cam_s)
+		var d := direction * _ahead_of(float(e["s"]), cam_s)   # dans le sens de la marche (lot N22)
 		var want := d >= -Model.BEHIND_M and d <= Model.AHEAD_M
 		if want and not _elim_nodes.has(k):
 			var node := build_mark(e)

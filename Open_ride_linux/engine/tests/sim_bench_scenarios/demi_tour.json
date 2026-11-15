@@ -1,0 +1,11 @@
+{
+  "description": "Demi-tour en roulant (lots N17, N22) : 4 min sur la démo en SIM à 300 W, demi-tour sans arrêt par Y maintenu à 140 s, puis retour vers le départ ; pour mesurer avec la sonde le décor chargé devant à rebours (portiques, herbe, détails du sol), en low, medium et high.",
+  "trainer": {"appear_at": 0.3, "connect_delay_s": 0.3},
+  "rider": {"strategy": "constante", "watts": 300, "cadence_rpm": 90},
+  "click": {"appear_at": 0.5, "connect_delay_s": 0.3},
+  "hr": {"appear_at": 0.5, "connect_delay_s": 0.2},
+  "events": [
+    {"t": 140, "action": "press", "button": "Y", "duration_s": 1.2}
+  ],
+  "bench": {"world": "demo", "duration_s": 240, "every_s": 30}
+}
