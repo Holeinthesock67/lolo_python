@@ -30,7 +30,7 @@ import tomllib
 # Énumération fermée du contrat (U1 §4.3, Format .world v1 §8 quater), étendue seulement par ajout.
 GROUNDS = ("gres_rose", "calcaire_blanc", "granite_gris", "schiste_sombre", "basalte", "laterite_rouge", "craie")
 ROOFS = ("tuile_ronde", "ardoise", "tuile_plate", "pierre_seche", "toit_plat_blanc", "bois", "kawara", "bois_peint")
-LANDSCAPES = ("canyon", "fjord", "ile_volcanique", "rizieres")
+LANDSCAPES = ("canyon", "fjord", "ile_volcanique", "rizieres", "volcan_actif")
 MEMBERS = {"ground": GROUNDS, "roofs": ROOFS, "landscape": LANDSCAPES}
 # Membres toujours présents dans une tuile ; `landscape` (lot U25) est facultatif : absent = null (tuiles
 # écrites avant le lot U25).
