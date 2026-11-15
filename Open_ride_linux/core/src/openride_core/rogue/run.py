@@ -60,6 +60,7 @@ class RunInputs:
     v_mps: float = 0.0
     buttons: frozenset = frozenset()     # Z_SHORT, Z_LONG, A_SHORT, A_LONG ; les vitesses sont à la session
     input_lost: bool = False             # Click perdu : le Firewall s'arrête
+    power_avg_w: float | None = None     # lot R23 : puissance affichée (moyenne de 3 s), juge consignes et seuils
 
 
 @dataclass
@@ -382,7 +383,8 @@ class RunEngine:
         mult = 1.0
         buttons = set(inp.buttons)
         # lot R23 : cartes déclenchées à la puissance ou à la cadence, jamais par une vitesse imposée
-        hard = inp.power_w > b.cursed_power_frac * inp.ftp_w
+        shown_w = inp.power_avg_w if inp.power_avg_w is not None else inp.power_w   # seuils des cartes : affichée
+        hard = shown_w > b.cursed_power_frac * inp.ftp_w
         if "cursed" in self.deck and hard:
             mult *= b.cursed_mult
             if "Z_SHORT" in buttons and cs.phase == "FIGHT":
@@ -396,7 +398,7 @@ class RunEngine:
             if self.overdrive_until and t >= self.overdrive_until:
                 self.overdrive_until = 0.0
                 self.overdrive_ready_at = t + b.overdrive_cooldown_s
-            elif (not self.overdrive_until and inp.power_w > b.overdrive_power_frac * inp.ftp_w
+            elif (not self.overdrive_until and shown_w > b.overdrive_power_frac * inp.ftp_w
                   and t >= self.overdrive_ready_at and cs.phase == "FIGHT"):
                 self.overdrive_until = t + b.overdrive_s
                 self._card_fired("overdrive", t, events, rearm=False)
@@ -424,7 +426,7 @@ class RunEngine:
 
         if self.phase == "RECOVERY":
             g = 0.0
-        ci = CombatInputs(power_w=inp.power_w, cadence_rpm=inp.cadence_rpm, posture=self.posture.posture,
+        ci = CombatInputs(power_w=inp.power_w, power_avg_w=inp.power_avg_w, cadence_rpm=inp.cadence_rpm, posture=self.posture.posture,
                           gear=inp.gear, ftp_w=inp.ftp_w, s_m=inp.s_m, v_mps=inp.v_mps, contact=contact,
                           buttons=frozenset(buttons), objective=self.cur_spec.objective, card_mult=mult,
                           w_bal_j=self.wbal.w_bal_j, run_gold=0.0 if self.lives > self.lives_used else self.gold)
@@ -446,7 +448,7 @@ class RunEngine:
             adr += self._spring_adr
             self._spring_adr = 0.0
         healing = ("heal" in self.deck and inp.cadence_rpm > b.heal_cadence_rpm
-                   and inp.power_w < b.heal_power_frac * inp.ftp_w and cs.phase == "FIGHT")
+                   and shown_w < b.heal_power_frac * inp.ftp_w and cs.phase == "FIGHT")
         if healing:
             shield += b.heal_per_s * dt
         self._card_edge("cursed", "cursed" in self.deck and hard and cs.phase == "FIGHT", t, events)

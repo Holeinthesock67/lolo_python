@@ -1199,7 +1199,8 @@ class CoreSession:
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
         input_lost = bool(clicks) and self.state.input_status != "CONNECTED"
         ts = time.time()
-        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts)
+        p3 = self._power_3s(m.power_w)   # lot R23 : la puissance affichée juge les consignes du mode
+        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts, power_avg_w=p3)
         for msg in out.messages:
             self.server.send_raw(msg)
         if self._rec:
@@ -1210,7 +1211,6 @@ class CoreSession:
         self._feed_road_mass()
         self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
         self._rogue_dist += self.physics.v * dt
-        p3 = self._power_3s(m.power_w)
         st = self.state
         st.t, st.s, st.v = self._t_session, self._rogue_dist, self.physics.v
         st.grade, st.grade_sent = round(out.grade_enemy, 2), round(self._grade_sent, 2)

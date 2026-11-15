@@ -270,3 +270,31 @@ def test_heal_announced_when_spinning_light():
     assert out.rogue["card_on"] == "heal"
     out = step_in_room(e, 300.0, power=120.0, cadence=100.0)
     assert "card_on" not in out.rogue["events"]
+
+
+# --- essai du 15 novembre : consignes jugées sur la puissance affichée (moyenne de 3 s) ----------------------
+
+def test_target_judged_on_displayed_power_not_raw_spikes():
+    room = generate_room("diesel", "", "threshold", 240.0, RIDER, 1)
+    st = combat_start(room, 1)
+    from openride_core.rogue.combat import target_at
+    tgt_w = target_at(room, 5.0) * 250
+    # puissance brute qui oscille de ± 60 W autour de la consigne, moyenne affichée à la consigne
+    gained = 0.0
+    for k in range(round(10.0 / DT)):
+        raw = tgt_w + (60.0 if k % 2 else -60.0)
+        st, _ = combat_step(st, CombatInputs(**_base(s_m=5.0 + 0.01 * k, power_w=raw, power_avg_w=tgt_w - 3.0)), room, B, DT)
+    assert st.adrenaline == pytest.approx(10.0 * B.adrenaline_per_s, abs=0.1)   # 5 W de marge : tout compte
+
+
+def test_overheat_ignores_raw_spikes_under_the_ceiling():
+    e = fight_engine(first="diesel", objective="endurance")
+    out = step_in_room(e, 5.0, power=150.0)
+    hi_w = out.rogue["target_pct"]["hi"] / 100 * 250
+    from openride_core.rogue.run import RunInputs
+    for k in range(round(8.0 / DT)):
+        raw = hi_w + (80.0 if k % 2 else -80.0)
+        out = e.step(DT, RunInputs(power_w=raw, cadence_rpm=85, gear=6, ftp_w=250, s_m=6.0 + 0.01 * k, v_mps=8.0,
+                                   power_avg_w=hi_w - 5.0))
+    assert not out.rogue["overheat"]
+

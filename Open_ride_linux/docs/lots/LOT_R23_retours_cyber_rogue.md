@@ -68,6 +68,11 @@ Demandes du propriétaire en lisant la planche :
 - **Dégâts reçus** : bords rouges qui clignotent tant que le bouclier baisse, « TOUCHÉ ! Coup non paré » et « TOUCHÉ PAR LE FIREWALL ».
 - **Règles** : bandeau défilant des règles pendant l'échauffement.
 
+### 3.5 Essai sur le vélo du 15 novembre
+
+- **Puissance impossible à tenir** : les consignes (gain d'adrénaline, surchauffe, parade, pavé) et les seuils des cartes étaient jugés sur la puissance brute du trainer (écart type de 60 à 90 W par minute en salle, variation d'une seconde à l'autre de 11 W en médiane, plus de 36 W une fois sur dix), alors que l'écran montre la moyenne de 3 s. Ils se jugent désormais sur cette moyenne affichée (`RunInputs.power_avg_w`, `CombatInputs.power_avg_w`), à `target_grace_w` (5 W, l'arrondi de l'affichage) près ; les dégâts par seconde, le W'bal et les postures gardent la puissance brute.
+- Les « décrochages » du frein du journal étaient des arrêts de pédalage en fin de salle (cadence à 0, roue libre) : rien à corriger ici.
+
 ## 4. Tests
 
 - `core/tests/test_rogue_r23_retours.py` : aucun événement perdu à 50 Hz / 30 Hz, chaque Z donne un seul retour dans toutes les phases, actions de `z_ok`, tendance de l'adrénaline (gain, sous la cible, surchauffe, compte à rebours), plage de la consigne en endurance, schéma.

@@ -184,7 +184,7 @@ class RogueMode:
         return self.engine.room is not None and self.engine.phase in FIGHT_PHASES
 
     def step(self, dt: float, power_w: float, cadence_rpm: float, physics: RiderPhysics, input_lost: bool,
-             ts: float) -> tuple[RunOutputs, list[dict]]:
+             ts: float, power_avg_w: float | None = None) -> tuple[RunOutputs, list[dict]]:
         """Un pas à `dt` s. Rend les sorties du moteur et les lignes à écrire au journal.
 
         La distance de la salle est celle de `physics.s` : remise à zéro hors des salles, de sorte que
@@ -194,7 +194,7 @@ class RogueMode:
         fight = self.in_fight
         inp = RunInputs(power_w=power_w, cadence_rpm=cadence_rpm, gear=self.gear, ftp_w=self.cfg.rider.ftp_w,
                         s_m=physics.s if fight else 0.0, v_mps=physics.v, buttons=frozenset(self.buttons),
-                        input_lost=input_lost)
+                        input_lost=input_lost, power_avg_w=power_avg_w)
         self.buttons.clear()
         out = e.step(dt, inp)
         self.out = out

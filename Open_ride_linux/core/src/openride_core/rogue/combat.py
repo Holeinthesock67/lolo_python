@@ -50,6 +50,9 @@ class CombatInputs:
     card_mult: float = 1.0          # m_cards (R6)
     w_bal_j: float = 0.0
     run_gold: float = 0.0           # or de la run (perte de 25 % en cas de défaite)
+    # lot R23 (essai du 15 novembre) : puissance affichée (moyenne de 3 s) ; les consignes se jugent sur elle, pas
+    # sur la puissance brute du trainer (60 à 90 W d'écart type en salle). None : la puissance brute.
+    power_avg_w: float | None = None
 
 
 @dataclass(frozen=True)
@@ -205,7 +208,9 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
 
     s, v = inp.s_m, inp.v_mps
     ftp = max(inp.ftp_w, 1.0)
-    frac = inp.power_w / ftp
+    frac = inp.power_w / ftp                                   # brute : dégâts par seconde
+    shown = (inp.power_avg_w if inp.power_avg_w is not None else inp.power_w) / ftp   # affichée : consignes
+    grace = b.target_grace_w / ftp                             # l'affichage arrondit les consignes à 5 W
     tgt = target_at(room, s)
     boss = room.archetype == "boss"
 
@@ -264,7 +269,7 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
 
     # surchauffe (objectif endurance seulement)
     over_s, overheat = st.over_s, False
-    if inp.objective == "endurance" and frac > overheat_limit(tgt, b):
+    if inp.objective == "endurance" and shown > overheat_limit(tgt, b) + grace:
         over_s += dt
         overheat = over_s > b.overheat_after_s
     else:
@@ -276,7 +281,7 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
         adr_rate, adr_cause = -b.overheat_adrenaline_per_s, "overheat"
     elif inp.posture == ARRET:
         adr_cause = "stopped"
-    elif frac >= tgt:
+    elif shown >= tgt - grace:
         mult = b.adrenaline_roc_mult if inp.posture == ROC else (
             b.adrenaline_veloce_mult if inp.posture == VELOCE else 1.0)
         adr_rate, adr_cause = b.adrenaline_per_s * mult, "gain"
@@ -301,7 +306,7 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
         pad = False
         if not overheat:
             for m in room.markers:
-                if (m.kind == "pad" and m.s_m <= s <= m.s_m + m.len_m and frac >= float(m.param or 0.0)
+                if (m.kind == "pad" and m.s_m <= s <= m.s_m + m.len_m and shown >= float(m.param or 0.0) - grace
                         and gear >= b.pad_min_gear):
                     pad = True
             if pad:
@@ -421,7 +426,7 @@ def combat_step(state: CombatState, inp: CombatInputs, room: Room,
                 if not boss:
                     hook_until, grade_scale = t + b.hook_s, b.hook_grade_mult
                 continue
-            under = frac < tgt
+            under = shown < tgt - grace
             if boss or under:
                 shield -= b.unparried_hit
                 events.append("parry_miss")
