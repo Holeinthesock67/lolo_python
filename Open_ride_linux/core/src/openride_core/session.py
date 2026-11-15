@@ -2043,6 +2043,9 @@ class CoreSession:
         self.state.route_id = route_id
         self.state.route_length_m = world.route.length_m
         self.physics.place(0.0)
+        # la trame aussi : sinon, jusqu'au départ, elle gardait la position de la séance d'avant et l'engine
+        # préparait le décor là-bas (cycliste et décor figés à la 2e partie, 15 novembre)
+        self.state.t, self.state.s, self.state.v = 0.0, 0.0, 0.0
         self.state.dir = None
         self._set_session_clock(0.0)
         log.info("Parcours « %s » chargé : %.0f m, type %s", route_id, world.route.length_m,
