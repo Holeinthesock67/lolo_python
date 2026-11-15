@@ -1,0 +1,15 @@
+20:11:06 empreinte avant c22c2adb5ae366ddabdae892db25629e
+20:11:06 tête 149bd3f6
+20:11:47 menus
+20:15:55 fin rc=0
+20:15:55 captures_demo
+21:27:29 fin rc=1
+21:27:29 banc low
+21:46:54 fin rc=1
+21:46:54 banc medium
+22:06:20 fin rc=1
+22:06:20 banc high
+22:25:45 fin rc=1
+22:25:47 empreinte après c22c2adb5ae366ddabdae892db25629e
+22:25:47 clone 214ad0b2b
+22:25:47 FIN
