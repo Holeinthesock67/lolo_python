@@ -12,9 +12,10 @@ Contenu d'un carré (`genere/<zone>/<IX>_<IN>/`) :
 - `near.f32` : 101 × 101 `float32` (format §5), échantillon (i, j) en E = 1000 IX + 10 i,
   N = 1000 (IN + 1) − 10 j ; relief fondu avec **toutes** les routes qui passent à moins de 50 m
   du carré (arêtes canoniques de W4, profils de W5), ponts et tunnels exceptés ;
-- `buildings.json`, `vegetation.json`, `water.json`, `poi.json` : mêmes schémas que les
-  `chunk_<k>.json`, coordonnées relatives au coin nord-ouest du carré (x − 1000 IX,
-  z + 1000 (IN + 1)) ; un objet appartient au seul carré qui contient son centre ;
+- `buildings.json`, `vegetation.json`, `water.json`, `poi.json`, `coast.json` : mêmes schémas que
+  les `chunk_<k>.json`, coordonnées relatives au coin nord-ouest du carré (x − 1000 IX,
+  z + 1000 (IN + 1)) ; un objet appartient au seul carré qui contient son centre, sauf la mer et
+  la côte, découpées au carré (lot W19, `square_coast.py`) ;
 - `edges.json` : arêtes dont le premier nœud est dans le carré, avec leur profil, dans le repère
   de zone (pour la route engagée, W8) ;
 - `meta.json` : versions (générateur, schéma et date de la base, relief) et nombres d'objets.
@@ -45,7 +46,8 @@ from ..frame import LocalFrame, utm_transformer
 from ..terrain import blend
 from .edge_profile import EdgeProfile, NodeAltitudes, edge_profile
 from .graph import RoadGraph
-from .osmdb import OsmDb
+from .osmdb import OsmDb, WATERWAY_KINDS
+from .square_coast import square_coast
 from .store import WorldCache
 
 WORLDGEN_VERSION = 1
@@ -273,7 +275,8 @@ def _rel(points, x0: float, z0: float) -> list[list[float]]:
 
 def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: ElevationProvider,
                   frame: LocalFrame) -> dict[str, dict[str, Any]]:
-    """Bâtiments, végétation, eau et points d'intérêt du carré, coordonnées relatives à son coin."""
+    """Bâtiments, végétation, eau (mer comprise), côte et points d'intérêt du carré, coordonnées
+    relatives à son coin."""
     x0, z0 = key.corner
     near_tiles = {(key.ix, -(key.i_n + 1)): near}
     buildings: list[dict] = []
@@ -281,7 +284,8 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
     water: dict[str, list[dict]] = {"lines": [], "areas": []}
     poi: list[dict] = []
     m = AREA_SEARCH_M
-    for a in db.areas_in(lonlat_bbox(frame, x0 - m, z0 - m, x0 + key.size_m + m, z0 + key.size_m + m)):
+    for a in db.areas_in(lonlat_bbox(frame, x0 - m, z0 - m, x0 + key.size_m + m, z0 + key.size_m + m),
+                         kinds=("building", "water", *VEGETATION_DENSITY)):
         outer = _ring_xz(frame, a.outer, True)
         if outer is None:
             continue
@@ -306,7 +310,7 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
                 "outer": _rel(outer, x0, z0), "holes": [_rel(h, x0, z0) for h in holes]})
 
     bbox = lonlat_bbox(frame, x0, z0, x0 + key.size_m, z0 + key.size_m)
-    for line in db.lines_in(bbox):
+    for line in db.lines_in(bbox, kinds=WATERWAY_KINDS):
         lon = np.array([c[0] for c in line.coords], float)
         lat = np.array([c[1] for c in line.coords], float)
         xs, zs = frame.to_xz(lat, lon)
@@ -342,11 +346,23 @@ def square_layers(key: SquareKey, db: OsmDb, near: np.ndarray, provider: Elevati
         poi.append({"id": p.osm_id, "kind": kind, "x": round(x - x0, 2), "y": round(float(y[0]), 2),
                     "z": round(z - z0, 2), "radius_m": radius, "name": p.name})
 
+    def height_fn(xs: np.ndarray, zs: np.ndarray) -> np.ndarray:
+        return L.sample_terrain_y(np.asarray(xs, float), np.asarray(zs, float), frame, near_tiles, provider)
+
+    sea, coast = square_coast(x0, z0, key.size_m, db, frame,
+                              lambda a, b, c, d: lonlat_bbox(frame, a, b, c, d), height_fn, f"{key.ix}_{key.i_n}")
+    for a in sea:
+        water["areas"].append({**a, "outer": _rel(a["outer"], x0, z0), "holes": [_rel(h, x0, z0) for h in a["holes"]]})
+    coast["lines"] = [{**c, "points": _rel(c["points"], x0, z0)} for c in coast["lines"]]
+    coast["beaches"] = [{**b, "outer": _rel(b["outer"], x0, z0), "holes": [_rel(h, x0, z0) for h in b["holes"]]}
+                        for b in coast["beaches"]]
+
     return {
         "buildings": {"version": C.BUILDINGS_VERSION, "buildings": buildings},
         "vegetation": {"version": C.VEGETATION_VERSION, "areas": vegetation},
         "water": {"version": C.WATER_VERSION, **water},
         "poi": {"version": C.POI_VERSION, "points": poi},
+        "coast": coast,
     }
 
 
@@ -407,7 +423,9 @@ def generate_square(key: SquareKey, db: OsmDb, provider: ElevationProvider, cach
     layers = square_layers(key, db, near, provider, frame)
     counts = {"edges": len(profiles), "buildings": len(layers["buildings"]["buildings"]),
               "vegetation": len(layers["vegetation"]["areas"]), "water_lines": len(layers["water"]["lines"]),
-              "water_areas": len(layers["water"]["areas"]), "poi": len(layers["poi"]["points"])}
+              "water_areas": len(layers["water"]["areas"]), "poi": len(layers["poi"]["points"]),
+              "sea": sum(1 for a in layers["water"]["areas"] if a["kind"] == "sea"),
+              "coast_lines": len(layers["coast"]["lines"]), "beaches": len(layers["coast"]["beaches"])}
     meta = {"zone": key.zone, "ix": key.ix, "in": key.i_n, "corner": list(key.corner), "versions": versions,
             "counts": counts}
     files = {"near.f32": np.ascontiguousarray(near, dtype="<f4").tobytes(),

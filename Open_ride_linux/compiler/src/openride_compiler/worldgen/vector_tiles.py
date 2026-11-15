@@ -17,6 +17,10 @@ aucune différence.
   quantifiées à 1e-7°. Voies : identifiant négatif tiré de la tuile, de l'objet et du morceau.
 - Bâtiments : gardés dans la tuile qui contient leur centre (ils sont entiers dans la marge) ;
   autres surfaces découpées au carré de la tuile (Sutherland-Hodgman).
+- Côte (lot W19) : les tuiles n'ont pas de ligne de côte, mais la mer (`water`, classe `ocean`) ; ses
+  bords découpés au carré de la tuile, sauf ceux qui longent le bord de la tuile, deviennent des lignes
+  `coastline` orientées comme dans OSM (la mer à droite) ; les plages sont le sable de `landcover`
+  (`sand`, sous-classes `beach` et `sand`). La base reçoit ainsi la même chose qu'un extrait régional.
 - Une tuile versée deux fois ne crée pas de doublon (table `tiles_loaded`).
 - Préchargement (W-Q4) : départs des séances passées (première partie de route de chaque séance du
   cache), classés par fréquence puis récence ; tuiles et relief à moins de `prefetch_radius_km`,
@@ -60,6 +64,8 @@ _CLASS = {"motorway": "x", "trunk": "x", "primary": "p", "secondary": "s", "tert
 _PLACE = {"city", "town", "village", "hamlet"}
 _LANDCOVER = {"wood": "wood", "forest": "wood", "scrub": "scrub", "orchard": "orchard"}
 _WATER_AREA = {"lake": "lake", "pond": "pond", "reservoir": "reservoir", "basin": "reservoir"}
+_SEA_CLASS = "ocean"
+_BEACH = {"beach": "beach", "sand": "sand"}       # sous-classe du sable de `landcover` → `natural`
 
 
 # --- identifiants -------------------------------------------------------------------------------
@@ -163,11 +169,27 @@ def clip_polygon(ring: list[tuple[float, float]], x0: float, y0: float, x1: floa
 
 # --- base des tuiles --------------------------------------------------------------------------------
 
+def _schema_of(path: Path) -> str | None:
+    try:
+        con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        try:
+            row = con.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return None
+    return row[0] if row else None
+
+
 class TileDb:
     """Base `tuiles.sqlite` au schéma de W3, remplie tuile par tuile."""
 
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
+        if self.path.is_file() and _schema_of(self.path) != str(SCHEMA_VERSION):
+            # Base d'un ancien schéma (W19 : sans la côte) : refaite, les tuiles se relisent du cache.
+            for suffix in ("", "-wal", "-shm", "-journal"):
+                Path(f"{self.path}{suffix}").unlink(missing_ok=True)
         fresh = not self.path.is_file()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(self.path, isolation_level=None)
@@ -283,6 +305,52 @@ def _road_tags(t: dict[str, Any]) -> tuple[dict[str, Any], str] | None:
     return tags, rc
 
 
+def _shoelace(ring: list[tuple[float, float]]) -> float:
+    return 0.5 * sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(ring, ring[1:] + ring[:1]))
+
+
+def _on_side(a: tuple[float, float], b: tuple[float, float], box: tuple[int, int, int, int]) -> bool:
+    """Le côté [a, b] longe un bord de la tuile (découpe, pas la côte)."""
+    return any(a[i] == v and b[i] == v for i, v in ((0, box[0]), (0, box[2]), (1, box[1]), (1, box[3])))
+
+
+def coast_runs(ring: list[tuple[float, float]], outer: bool, box: tuple[int, int, int, int]) -> list[list[tuple[float, float]]]:
+    """Lignes de côte d'un anneau de mer découpé à la tuile (pixels globaux, y vers le bas).
+
+    Orientation d'OSM, la mer à droite dans le repère (est, nord) : contour horaire en (est, nord),
+    donc d'aire positive en pixels (y vers le bas), trous (îles) en sens inverse. Les côtés qui
+    longent le bord de la tuile sont retirés ; un anneau sans côté au bord reste fermé (premier point
+    répété à la fin).
+    """
+    pts = [p for i, p in enumerate(ring) if i == 0 or p != ring[i - 1]]
+    if len(pts) > 1 and pts[0] == pts[-1]:
+        pts = pts[:-1]
+    if len(pts) < 3:
+        return []
+    if (_shoelace(pts) > 0) != outer:
+        pts = pts[::-1]
+    m = len(pts)
+    border = [_on_side(pts[i], pts[(i + 1) % m], box) for i in range(m)]
+    if not any(border):
+        return [pts + [pts[0]]]
+    start = (border.index(True) + 1) % m        # premier côté après un côté de bord
+    runs: list[list[tuple[float, float]]] = []
+    cur: list[tuple[float, float]] = []
+    for k in range(m):
+        i = (start + k) % m
+        if border[i]:
+            if len(cur) >= 2:
+                runs.append(cur)
+            cur = []
+            continue
+        if not cur:
+            cur = [pts[i]]
+        cur.append(pts[(i + 1) % m])
+    if len(cur) >= 2:
+        runs.append(cur)
+    return runs
+
+
 def convert_tile(x: int, y: int, layers: dict[str, mvt.Layer]) -> dict[str, list[tuple[tuple, BBox]]]:
     """Lignes à insérer (sans identifiant de ligne) pour chaque table, avec leur emprise."""
     out: dict[str, list[tuple[tuple, BBox]]] = {"roads": [], "areas": [], "lines": [], "points": []}
@@ -340,11 +408,24 @@ def convert_tile(x: int, y: int, layers: dict[str, mvt.Layer]) -> dict[str, list
                     if t.get("colour"):
                         tags["colour"] = str(t["colour"])
                 elif lname in ("landcover", "landuse"):
-                    kind = _LANDCOVER.get(str(t.get("subclass", ""))) or _LANDCOVER.get(str(t.get("class", "")))
-                    if kind is None:
-                        continue
-                    tags = {"natural": "wood"} if kind == "wood" else {"natural": "scrub"} if kind == "scrub" \
-                        else {"landuse": "orchard"}
+                    if lname == "landcover" and t.get("class") == "sand" and str(t.get("subclass", "")) in _BEACH:
+                        kind, tags = "beach", {"natural": _BEACH[str(t["subclass"])]}
+                    else:
+                        kind = _LANDCOVER.get(str(t.get("subclass", ""))) or _LANDCOVER.get(str(t.get("class", "")))
+                        if kind is None:
+                            continue
+                        tags = {"natural": "wood"} if kind == "wood" else {"natural": "scrub"} if kind == "scrub" \
+                            else {"landuse": "orchard"}
+                elif t.get("class") == _SEA_CLASS:
+                    for k, poly in enumerate(f.geometry):
+                        rings = [(poly["outer"], True)] + [(h, False) for h in poly["holes"]]
+                        for r, (ring, is_outer) in enumerate(rings):
+                            clipped = clip_polygon([glob(p) for p in ring], *box)
+                            for n, run in enumerate(coast_runs(clipped, is_outer, box)):
+                                coords = [lonlat(px, py, E) for px, py in run]
+                                out["lines"].append(((f"v{x}_{y}_{fi}_{k}_{r}_{n}", "coastline", "{}",
+                                                      osmdb.pack_coords(coords)), osmdb.bbox_of(coords)))
+                    continue
                 else:
                     water = _WATER_AREA.get(str(t.get("class", "")))
                     if water is None or t.get("intermittent") == 1:

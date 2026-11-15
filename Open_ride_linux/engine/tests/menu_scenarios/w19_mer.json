@@ -1,0 +1,157 @@
+{
+  "description": "Lot W19, recette sur le PC : monde ouvert au départ d'une ville côtière (Biarritz, recherche par nom), mer, écume, plages et horizon marin du monde vivant ; départ direct (W18) et 3 minutes de balade, une capture par minute. À lancer en low, medium et high (réseau : tuiles OpenFreeMap et relief Copernicus de la côte basque).",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15
+    },
+    {
+      "choisir": "open_world"
+    },
+    {
+      "monde": "globe",
+      "delai": 10
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "b"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "i"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "a"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "r"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "r"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "i"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "t"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "z"
+    },
+    {
+      "note": "Recherche par nom : liste embarquée des villes (places.json), ville côtière publique",
+      "monde": "search",
+      "contient": [
+        "Biarritz"
+      ],
+      "delai": 60
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "monde": "map",
+      "absent": [
+        "Chargement de la carte"
+      ],
+      "delai": 90
+    },
+    {
+      "capture": "carte"
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "monde": "setup",
+      "contient": [
+        "Cap :"
+      ]
+    },
+    {
+      "capture": "cap"
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "monde": false,
+      "delai": 300
+    },
+    {
+      "note": "Monde ouvert préchargé : route engagée, séance prête",
+      "journal": "core",
+      "motif": "Monde ouvert prêt",
+      "delai": 600
+    },
+    {
+      "note": "Lot W19 : le générateur a écrit la mer et la côte d'au moins un carré",
+      "journal": "core",
+      "motif": "mer \\(",
+      "delai": 120
+    },
+    {
+      "note": "Lot W18 : départ au pédalage envoyé par l'engine",
+      "journal": "core",
+      "motif": "Commande start ",
+      "delai": 60
+    },
+    {
+      "attendre": 2
+    },
+    {
+      "capture": "depart"
+    },
+    {
+      "note": "Départ au pédalage : le cycliste simulé roule à 180 W",
+      "journal": "core",
+      "motif": "-> RUNNING",
+      "delai": 120
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "route_1"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "route_2"
+    },
+    {
+      "attendre": 60
+    },
+    {
+      "capture": "route_3"
+    }
+  ]
+}

@@ -1,18 +1,24 @@
-"""Base locale OpenStreetMap du monde ouvert (lot W3, schéma version 1, partagé avec W13).
+"""Base locale OpenStreetMap du monde ouvert (lot W3, schéma version 2, partagé avec W13).
 
 Une base SQLite par région (`brut/osm/<region>.sqlite` du cache, W2) ne garde que ce dont le
 graphe (W4) et le générateur (W7) ont besoin :
 
     meta(key, value)                     schema_version, source, region, osm_date, bbox, created
     roads(id, osm_id, highway, road_class, surface, bridge, tunnel, layer, oneway, name, junction, nodes, coords)
-    areas(id, osm_id, kind, tags, geom)  building, wood, scrub, orchard, water
-    lines(id, osm_id, kind, tags, coords) river, stream, canal
+    areas(id, osm_id, kind, tags, geom)  building, wood, scrub, orchard, water, beach
+    lines(id, osm_id, kind, tags, coords) river, stream, canal, coastline, cliff
     points(id, osm_id, kind, name, lon, lat)
     roads_rt, areas_rt, lines_rt, points_rt : index R-tree (id, min_lon, max_lon, min_lat, max_lat)
 
 `nodes` : identifiants de nœuds int64 petit-boutistes ; `coords` : paires (lon, lat) float64
 petit-boutistes. Les voies exclues du monde ouvert (`road_class` = `x`) sont gardées pour la carte
 du menu, jamais pour le graphe.
+
+Schéma 2 (lot W19, mer et plages du monde ouvert) : mêmes tables, sortes en plus : lignes de côte
+`coastline` (la mer à droite du sens de la ligne, règle d'OSM) et falaises `cliff`, plages `beach`
+(`natural=beach` ou `natural=sand`, avec `surface`). Une base de schéma 1 n'a pas la côte : elle est
+refusée, puis reconstruite (tuiles vectorielles, depuis les fichiers du cache) ou retéléchargée
+(`region update`).
 """
 
 from __future__ import annotations
@@ -29,7 +35,7 @@ from typing import Any, Iterable, Sequence
 
 from ..errors import CompileError
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2   # 2 : côte, falaises et plages (lot W19)
 BATCH_ROWS = 10_000
 
 # --- classes de route (contrat W1, LOT_W1 §4.5) ---------------------------------------------------
@@ -52,11 +58,13 @@ UNPAVED = {"unpaved", "gravel", "fine_gravel", "compacted", "dirt", "earth", "gr
 _SERVICE_EXCLUDED = {"parking_aisle", "driveway", "drive-through", "emergency_access"}
 _NO_ACCESS = {"no", "private"}
 
-AREA_KINDS = ("building", "wood", "scrub", "orchard", "water")
-LINE_KINDS = ("river", "stream", "canal")
+AREA_KINDS = ("building", "wood", "scrub", "orchard", "water", "beach")
+WATERWAY_KINDS = ("river", "stream", "canal")
+COAST_LINE_KINDS = ("coastline", "cliff")
+LINE_KINDS = (*WATERWAY_KINDS, *COAST_LINE_KINDS)
 PLACE_KINDS = ("city", "town", "village", "hamlet")
 SEARCH_KINDS = (*PLACE_KINDS, "mountain_pass")
-AREA_TAGS = ("height", "building:levels", "building", "colour", "natural", "landuse", "water", "name")
+AREA_TAGS = ("height", "building:levels", "building", "colour", "natural", "landuse", "water", "name", "surface")
 
 
 def road_class(tags: dict[str, Any]) -> str | None:
@@ -95,12 +103,18 @@ def area_kind(tags: dict[str, Any]) -> str | None:
         return "water"
     if tags.get("natural") == "water" and tags.get("water") not in ("river", "stream", "canal", "ditch", "drain"):
         return "water"
+    if tags.get("natural") in ("beach", "sand"):
+        return "beach"
     return None
 
 
 def line_kind(tags: dict[str, Any]) -> str | None:
+    """Cours d'eau (`waterway`), puis ligne de côte et falaise (`natural`, schéma 2)."""
     w = tags.get("waterway")
-    return w if w in LINE_KINDS else None
+    if w in WATERWAY_KINDS:
+        return w
+    n = tags.get("natural")
+    return n if n in COAST_LINE_KINDS else None
 
 
 def point_kind(tags: dict[str, Any]) -> str | None:
@@ -443,9 +457,13 @@ class OsmDb:
                                 [[tuple(p) for p in h] for h in geom["holes"]]))
         return out
 
-    def lines_in(self, bbox: BBox) -> list[Line]:
+    def lines_in(self, bbox: BBox, kinds: Iterable[str] | None = None) -> list[Line]:
+        extra, args = "", ()
+        if kinds is not None:
+            kinds = tuple(kinds)
+            extra, args = f" AND o.kind IN ({','.join('?' * len(kinds))})", kinds
         out = []
-        for r in self._query("lines", "o.*", bbox):
+        for r in self._query("lines", "o.*", bbox, extra, args):
             coords = unpack_coords(r[4])
             if polyline_touches(coords, bbox):
                 out.append(Line(r[0], r[1], r[2], json.loads(r[3]), coords))
