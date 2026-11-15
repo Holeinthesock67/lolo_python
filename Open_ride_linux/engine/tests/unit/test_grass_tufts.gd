@@ -444,6 +444,8 @@ class _DesertModel:
 		return true
 	func weights_at(_x: float, _z: float) -> Dictionary:
 		return {"sand_desert": dry, "temperate_meadow": 1.0 - dry}
+	func fire_at(_x: float, _z: float) -> Dictionary:
+		return {}   # pas de paysage en feu (biome_model.gd `fire_at`, DB2)
 
 
 class _ReefModel:
@@ -452,6 +454,9 @@ class _ReefModel:
 
 	func weights_at(_x: float, _z: float) -> Dictionary:
 		return {"reef": 1.0}
+
+	func fire_at(_x: float, _z: float) -> Dictionary:
+		return {}   # pas de paysage en feu (biome_model.gd `fire_at`, DB2)
 
 
 ## Désert (03/11) : herbe sèche (teintes DRY_TINTS) et clairsemée ; hors désert ou sans modèle, herbe d'avant.
