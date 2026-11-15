@@ -66,3 +66,18 @@ Le champ `level_pct` de l'élément `{ "kind": "profile" }` de l'argument `bots`
 - **Contrat** : une ligne dans l'historique de la révision 1.5 ; SRS : section `[bots]`.
 - **Tests** : `core/tests/test_bots_calibration.py` (critères 2 à 6), `engine/tests/unit/test_menu_flow.gd` (profils au menu, argument de `start`).
 - **Abri (lot AS1, 29 octobre)** : le calibrage reste calculé sans abri. En séance, un bot qui roule en groupe ou dans la roue du cycliste s'abrite : il peut donc finir plus tôt que le temps visé.
+
+## 10. Échelle commune du plateau (15 novembre 2026)
+
+- **Constat (essai vélo du 15 novembre)** : « le sprinteur va trop fort ». Chaque profil avait sa propre échelle, réglée pour finir dans le temps du cycliste de référence. Sur un parcours qui monte, le sprinteur recevait donc un gros supplément de puissance et montait presque aussi vite que le grimpeur.
+- **Choix du propriétaire (carte « Échelle unique »)** : `calibrate_bots` calcule **une seule échelle par niveau**, celle du profil de référence `CALIBRATION_PROFILE` (le rouleur), et la donne à tous les profils de ce niveau. Le rouleur finit dans le temps du cycliste de référence ; les autres gardent les écarts de leur profil. `calibrate` reste la fonction pure de calibrage d'un profil.
+- **Écarts mesurés à 100 %** (temps d'arrivée ÷ temps du cycliste de référence, sans abri) :
+
+| Parcours | Grimpeur | Rouleur | Sprinteur | Diesel |
+| --- | --- | --- | --- | --- |
+| Démonstration (Col du lacet) | +2,7 % | 0 | +11,6 % | −4,4 % |
+| Plat de 20 km | +5,2 % | 0 | +3,8 % | −3,2 % |
+| Col de 10 km à 7 % | −12,2 % | 0 | +14,6 % | −9,6 % |
+
+- Le diesel (3,8 W/kg sur 75 kg, W′ de 10 kJ) finit devant le rouleur partout : c'est la table `PROFILES`, inchangée.
+- **Tests** : `test_bots_calibration.py::test_one_scale_for_the_whole_field_keeps_the_profiles_apart` (une échelle, rouleur au temps de référence, grimpeur devant et sprinteur derrière au col), `test_calibrate_bots_uses_bot_level_then_setting_once_per_level`.

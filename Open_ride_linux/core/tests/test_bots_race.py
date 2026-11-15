@@ -19,9 +19,13 @@ def test_bots_at_the_rider_level_finish_with_the_rider(short_routes, route):
     out = br.race(route, 85.0, ["climber", "rouleur", "sprinter", "diesel"])
     assert out["rider_finish_s"] is not None
     assert [r["profile"] for r in out["bots"]] == ["climber", "rouleur", "sprinter", "diesel"]
+    # Échelle commune du plateau (15 novembre) : seul le rouleur, qui la fixe, est jugé ; les autres s'en écartent
+    # selon leur profil (le grimpeur gagne la montée, le sprinteur y lâche)
     for r in out["bots"]:
-        assert r["finish_s"] is not None and abs(r["gap_pct"]) <= br.GAP_LIMIT_PCT, r
-    assert all(c["ok"] for c in out["checks"]) and len(out["checks"]) == 6   # dont les contacts (lot PL1)
+        assert r["finish_s"] is not None, r
+        if r["profile"] == br.CALIBRATION_PROFILE:
+            assert abs(r["gap_pct"]) <= br.GAP_LIMIT_PCT, r
+    assert all(c["ok"] for c in out["checks"]) and len(out["checks"]) == 3   # rouleur, trame, contacts (lot PL1)
     assert 0 < out["state_max_bytes"] <= 4096 and out["contacts"] == 0
 
 
@@ -67,5 +71,6 @@ def test_command_line_codes_and_json(short_routes, capsys):
 
 
 def test_text_table(short_routes):
-    text = br.format_text(br.race("plat", 85.0, ["diesel"]))
-    assert "Course des bots sur plat (1.5 km)" in text and "Diesel" in text and "[OK] Diesel au niveau du cycliste" in text
+    text = br.format_text(br.race("plat", 85.0, ["rouleur", "diesel"]))
+    assert "Course des bots sur plat (1.5 km)" in text and "Diesel" in text and "[OK] Rouleur au niveau du cycliste" in text
+    assert "Diesel au niveau du cycliste" not in text   # seul le rouleur, qui fixe l'échelle, est jugé

@@ -308,5 +308,5 @@ def test_calibration_holds_within_two_percent_on_average(monkeypatch):
     gaps = []
     for seed in range(1, 4):
         out = br.race("col", 85.0, ["climber", "rouleur", "diesel"], seed=seed)
-        gaps += [r["gap_pct"] for r in out["bots"]]
+        gaps += [r["gap_pct"] for r in out["bots"] if r["profile"] == br.CALIBRATION_PROFILE]   # échelle du rouleur
     assert abs(sum(gaps) / len(gaps)) <= 2.0, gaps
