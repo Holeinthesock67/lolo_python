@@ -48,8 +48,16 @@ def _traffic_out_and_back(seed: int, seen_dirs: set[int]) -> tuple[int, int]:
     before = [(v.id, v.s, v.dir, v.lateral) for v in t.vehicles]
     out = t.spawned_total
     assert t.set_direction(-1) and not t.set_direction(-1)
-    # Les véhicules déjà là ne bougent pas au demi-tour : mêmes places dans le repère du parcours
-    assert [(v.id, v.s, v.dir, v.lateral) for v in map(t.on_route, t.vehicles)] == pytest.approx(before)
+    # Les véhicules déjà là ne bougent pas au demi-tour : mêmes places dans le repère du parcours ; lot AS10 : celui
+    # qui doublait le cycliste vient en face et rejoint sa voie d'un coup, comme le cycliste
+    def place(vid: str, s: float, d: int, lat: float) -> tuple[str, int, float, float]:
+        kind = next(v.kind for v in t.vehicles if v.id == vid)
+        if d == 1 and -lat > tr.oncoming_lateral(kind):     # en face dans le repère du modèle retourné
+            lat = -tr.oncoming_lateral(kind)
+        return vid, d, round(s, 6), round(lat, 6)
+
+    after = [(v.id, v.dir, round(v.s, 6), round(v.lateral, 6)) for v in map(t.on_route, t.vehicles)]
+    assert after == [place(*b) for b in before]
 
     def back(s: float) -> None:
         t.update(t.model_s(s), 8.3, DT)
