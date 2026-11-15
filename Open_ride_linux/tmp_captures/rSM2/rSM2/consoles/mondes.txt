@@ -1,0 +1,7 @@
+usage: python -m openride_compiler.demo_biomes [-h] --out OUT
+                                               (--biome {coast,mediterranean,temperate_grassland,farmland,temperate_forest,alpine} |
+                                               --tour | --circuit | --recif |
+                                               --demo-set) [--gravel] [--sea]
+                                               [--name NAME] [--title TITLE]
+                                               [--recette] [--seed SEED]
+python -m openride_compiler.demo_biomes: error: one of the arguments --biome --tour --circuit --recif --demo-set is required

@@ -1,0 +1,27 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_wrecks
+
+[OK] coque : triangles (783 sommets)
+[OK] coque : 42.0 m de long, 8.0 m de large
+[OK] coque fermée : aucune face tournée vers l'intérieur (0)
+[OK] sens des faces : celui des primitives de Godot (boîte de référence)
+[OK] normales du flanc tribord vers +x ((0.967128, 0.254253, -0.004442))
+[OK] étrave relevée et pointue, tableau arrière plus étroit que le maître-bau
+[OK] points `wreck` seuls retenus (3)
+[OK] trois épaves affichées, aucun nœud créé
+[OK] épave enfoncée dans le sable (quille à -13.50 m pour un fond à −12 m)
+[OK] épave couchée sur le flanc (16.2°)
+[OK] navire de 7.2 m au-dessus du fond (moins de 8 m : sous la surface du récif)
+[OK] échelle de `length_m` (63 m : ×1.50), longueur invalide remise à 42 m (×1.00)
+[OK] même pose à chaque chargement (cap tiré de l'id)
+[OK] 10 épaves : 4 affichées au plus
+[PERF] wrecks_frame : 0.0022 ms, budget 0.0500 ms
+[OK] mise à jour de 10 épaves en 0.0022 ms par image
+[OK] parcours sans épave : rien d'affiché
+test_wrecks : 16 vérifications, 0 échecs
+UNIT=test_wrecks : rendu, ERG et scénarios IPC sautés
+Budgets de temps (OPENRIDE_PERF=report) : 1 mesures, 0 dépassement(s)
+  wrecks_frame : 0.0022 ms, budget 0.0500 ms
+Résumé :
+  OK     unit/test_wrecks : 16 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent

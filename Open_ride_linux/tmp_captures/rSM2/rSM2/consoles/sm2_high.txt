@@ -1,0 +1,2 @@
+>>> [1/1] Scénario nominal (12:00)
+parcours introuvable : ~/mesures-2026-11-01-auto/rSM2/routes/demo-recif.world (demo, demo_long, village, osm, ouvert ou dossier .world)
