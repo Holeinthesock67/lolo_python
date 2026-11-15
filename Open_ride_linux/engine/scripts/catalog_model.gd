@@ -28,7 +28,7 @@ static func _format_fr_duration(seconds: float) -> String:
 ## Étiquettes de la bibliothèque (`library.tags`, lot O15), sans doublon, triées.
 ## Étiquettes affichées autrement que leur identifiant (minuscules sans accent du manifeste) : filtre
 ## « Vélodrome » de la liste des parcours (lot VD10).
-const TAG_LABELS := {"velodrome": "Vélodrome"}
+const TAG_LABELS := {"velodrome": "Vélodrome", "grandprix": "Grand Prix"}
 
 
 static func tag_label(tag: String) -> String:
@@ -37,12 +37,34 @@ static func tag_label(tag: String) -> String:
 
 ## Parcours qui sont des pistes de vélodrome (étiquette « velodrome » de la fiche, lot VD10).
 static func track_route_ids(raw_routes: Array) -> Array:
+	return tagged_route_ids(raw_routes, "velodrome")
+
+
+## Parcours d'une étiquette de la fiche, dans l'ordre de la liste.
+static func tagged_route_ids(raw_routes: Array, tag: String) -> Array:
 	var out: Array = []
 	for item in raw_routes:
 		if item is Dictionary and item.get("library") is Dictionary and item["library"].get("tags") is Array \
-				and "velodrome" in item["library"]["tags"].map(func(t): return str(t)):
+				and tag in item["library"]["tags"].map(func(t): return str(t)):
 			out.append(str(item.get("id", "")))
 	return out
+
+
+## Parcours de chaque mode à parcours propres (lot GP13) : `table` mode → étiquette (hello_ack.config.mode_routes).
+static func mode_route_ids(raw_routes: Array, table: Dictionary) -> Dictionary:
+	var out := {}
+	for m in table:
+		out[str(m)] = tagged_route_ids(raw_routes, str(table[m]))
+	return out
+
+
+## Parcours d'une liste : ceux du mode `mode` (lot GP13), ou les parcours libres pour "" (aucun parcours d'un mode).
+static func routes_of_mode(raw_routes: Array, by_mode: Dictionary, mode: String) -> Array:
+	var taken: Array = []
+	for m in by_mode:
+		taken.append_array(by_mode[m])
+	return raw_routes.filter(func(r): return r is Dictionary and (
+		str(r.get("id", "")) in by_mode.get(mode, []) if mode != "" else not str(r.get("id", "")) in taken))
 
 
 static func route_tags(raw_routes: Array) -> Array:

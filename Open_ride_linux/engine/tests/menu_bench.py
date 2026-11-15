@@ -40,7 +40,8 @@ En-tête d'un scénario : `description`, `voies` (défaut : les trois), `apparei
 `config` ({clé: valeur} écrite dans config.toml avant le lancement), `entrainement` (vrai : `erg_court.zwo`
 dans ~/OpenRide/Workouts), `telechargements` ({fichier: nom de l'entraînement} dans ~/Téléchargements), `plans`
 (vrai : plans de référence de `core/plans/` installés dans ~/OpenRide/Plans), `velodrome` (vrai : piste du
-vélodrome des contenus de départ, lot VD10), `fichiers` ({chemin dans le
+vélodrome des contenus de départ, lot VD10), `grand_prix_parcours` (vrai : deux parcours d'essai du Grand Prix,
+étiquette « grandprix » : `gp-ligne`, copie de la démo de 5 km, et `gp-boucle`, copie de la piste de 250 m, lot GP13), `fichiers` ({chemin dans le
 HOME: contenu}, texte ou objet JSON, posés avant le lancement : records, profil…), `archives` ({chemin .zip dans le HOME: {nom: contenu, "@dossier": dossier du dépôt rangé dans l'archive}}, lot O29), `compilateur`
 (`doublure` : `core/tests/data/stub_compiler.py` à la place d'`openride-compiler`, par `OPENRIDE_COMPILER` ; sans
 réseau, en quelques secondes : import de traces du lot O23).
@@ -163,7 +164,7 @@ STEP_KEYS = {"appui", "choisir", "aller", "touche", "maj", "duree_ms", "souris",
              "menu_cache", "config", "journal", "motif", "fichier", "existe", "sortie", "commande", "args",
              "attendre", "capture", "relancer", "delai", "voies", "note"}
 HEAD_KEYS = {"description", "voies", "appareils", "config", "entrainement", "telechargements", "plans", "fichiers", "archives",
-             "compilateur", "velodrome", "reseau", "caches_reels", "etapes"}
+             "compilateur", "velodrome", "grand_prix_parcours", "reseau", "caches_reels", "etapes"}
 
 
 def descendants(pid: int) -> list[int]:
@@ -198,6 +199,22 @@ def threads_of(pid: int) -> list[str]:
         key = f"{name} ({state}, {wchan if wchan != '0' else '-'})"
         counts[key] = counts.get(key, 0) + 1
     return [f"{k} ×{n}" if n > 1 else k for k, n in counts.items()]
+
+
+def write_grand_prix_routes(routes: Path) -> None:
+    """Parcours d'essai du Grand Prix (lot GP13) : `gp-ligne` (démo de 5 km en ligne) et `gp-boucle` (piste de 250 m
+    en boucle), copiés et étiquetés « grandprix » : parcours du mode, absents de la liste générale."""
+    from openride_core.velodrome import write_velodrome
+
+    shutil.copytree(ENGINE_DIR / "demo" / "demo.world", routes / "gp-ligne.world")
+    with tempfile.TemporaryDirectory() as tmp:
+        shutil.copytree(write_velodrome(Path(tmp)), routes / "gp-boucle.world")
+    for rid, name in (("gp-ligne", "Course en ligne (essai)"), ("gp-boucle", "Boucle (essai)")):
+        mpath = routes / f"{rid}.world" / "manifest.json"
+        manifest = json.loads(mpath.read_text(encoding="utf-8"))
+        manifest["name"] = name
+        manifest["library"] = {**(manifest.get("library") or {}), "name": name, "tags": ["grandprix"]}
+        mpath.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def write_archive(path: Path, members: dict[str, Any]) -> None:
@@ -603,6 +620,8 @@ class Run:
         if doc.get("velodrome"):   # piste du vélodrome des contenus de départ (lot VD10)
             from openride_core.contents import install_velodromes
             install_velodromes(self.routes)
+        if doc.get("grand_prix_parcours"):   # parcours d'essai du Grand Prix (lot GP13), sans le compilateur
+            write_grand_prix_routes(self.routes)
         if doc.get("plans"):
             from openride_core.plans import install_builtin
             install_builtin(self.home / "OpenRide" / "Plans", self.home / "OpenRide" / "Workouts")

@@ -5,6 +5,12 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Vélodrome et Grand Prix à l'accueil, avec leurs propres parcours (lot GP13)
+- « Vélodrome » à l'accueil : l'écran Prêt du vélodrome s'ouvre directement sur la piste.
+- Le Grand Prix des objets s'ouvre sur ses propres parcours (le Circuit des Prés pour commencer) et non plus sur le dernier parcours roulé ; « Changer de parcours » ne montre que ses parcours.
+- La liste « Parcours » de l'accueil ne montre plus la piste ni les parcours du Grand Prix ; après un de ces modes, la session libre repart sur votre dernier parcours libre.
+- Chaque mode retient son dernier parcours. Une trace entre dans un mode par l'étiquette de sa fiche (`tags = ["grandprix"]`).
+
 ### Un récif sous la mer livré avec le jeu (lot SM1)
 - Nouveau parcours de démonstration « Récif des tortues » : une boucle de 8 km au fond de la mer, de 11 à 26 m sous la surface. On passe par le Lagon des Tortues, la Forêt des Laminaires, le Jardin de Corail et le Tombant Bleu.
 - Nouveau biome « fond marin » (`reef`) : sable corallien et roche du récif, laminaires de 9 m qui ondulent, coraux et gorgones de toutes les couleurs, bancs de poissons jaunes et bleus, tortues et raies, son sourd de la mer et bulles.

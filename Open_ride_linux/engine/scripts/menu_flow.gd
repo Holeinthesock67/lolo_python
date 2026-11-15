@@ -230,6 +230,8 @@ var plan_message := ""
 var _plan_request := ""
 ## Liste brute des parcours (fiche de l'écran Prêt) ; tri et étiquette choisis dans la liste.
 var routes_raw: Array = []
+## Liste des parcours affichée pour ce mode (MenuModel.routes_mode, lot GP13) : refaite quand il change.
+var _routes_mode_shown := ""
 var route_sort := 0
 var route_tag := ""
 var _workouts_raw: Array = []
@@ -631,22 +633,29 @@ func lists_needed() -> void:
 
 func set_routes(raw: Array) -> void:
 	routes_raw = raw
+	for r in raw:
+		if r is Dictionary and str(r.get("id", "")) != "":
+			route_names[str(r["id"])] = str(r.get("name", r["id"]))
+	# Parcours propres aux modes (lot GP13) : la liste montre ceux du mode de l'écran Prêt, ou les parcours libres
+	var by_mode: Dictionary = CatalogModel.mode_route_ids(raw, menu.mode_routes)
+	menu.set_mode_route_ids(by_mode, route_names)   # dont les pistes, écran Prêt du vélodrome (lot VD10)
+	_routes_mode_shown = menu.routes_mode
+	raw = CatalogModel.routes_of_mode(raw, by_mode, menu.routes_mode)
 	var tags: Array = CatalogModel.route_tags(raw)
 	if route_tag != "" and not route_tag in tags:
 		route_tag = ""
 	var items: Array = catalog.route_items(raw, CatalogModel.ROUTE_SORTS[route_sort][0], route_tag)
 	if items.is_empty() and route_tag != "":
 		items.append({"id": "empty", "label": "Aucun parcours « %s »" % CatalogModel.tag_label(route_tag), "enabled": false})
+	elif items.is_empty() and menu.routes_mode != "":
+		items.append({"id": "empty", "label": "Aucun parcours pour ce mode", "enabled": false,
+			"detail": "Réglages › Contenus › contenus de départ"})
 	if not raw.is_empty():
 		items.append({"id": MenuModel.SORT_ROUTES_ID, "label": "Trier par : " + CatalogModel.ROUTE_SORTS[route_sort][1]})
 		if not tags.is_empty():
 			items.append({"id": MenuModel.FILTER_ROUTES_ID,
 				"label": "Étiquette : " + (CatalogModel.tag_label(route_tag) if route_tag != "" else "toutes")})
 	menu.set_items(MenuModel.ROUTES, items)
-	menu.set_track_ids(CatalogModel.track_route_ids(raw))   # écran Prêt du vélodrome (lot VD10)
-	for r in raw:
-		if r is Dictionary and str(r.get("id", "")) != "":
-			route_names[str(r["id"])] = str(r.get("name", r["id"]))
 	if menu.world_id != "" and route_names.has(menu.world_id):
 		menu.set_world(menu.world_id, route_names[menu.world_id])
 	_refresh_interrupted()   # nom du parcours de la séance interrompue
@@ -1222,6 +1231,12 @@ func list_failed(list_name: String) -> void:
 ## Événement du Click ou du clavier (PLUS_SHORT…) ; renvoie l'action à exécuter ({} sinon).
 func handle(event: String) -> Dictionary:
 	var act := _handle_event(event)
+	if menu.routes_mode != _routes_mode_shown and not routes_raw.is_empty():
+		set_routes(routes_raw)   # liste d'un mode, ou liste générale (lot GP13)
+	var pick := menu.take_pending_route()
+	if pick != "":   # parcours du mode, ou retour au parcours libre (lot GP13) : envoyé au core
+		var route_act := {"action": "select_route", "route_id": pick}
+		act = route_act if act.is_empty() else {"action": "sequence", "list": [act, route_act]}
 	if menu.mode in MenuModel.SETTINGS_MODES:
 		_refresh_mode_ready()   # parcours choisi, réglage modifié : longueur de course et rangées à jour
 	return act
@@ -1285,6 +1300,10 @@ func _handle_event(event: String) -> Dictionary:
 		menu.prepare_settings_mode("survivor")
 		_refresh_mode_ready()
 		return {"action": "select_workout", "workout_id": null}   # SIM seulement : le core refuse un entraînement ERG
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "track":
+		ready_message = ""
+		menu.prepare_track()   # Vélodrome à l'accueil (lot GP13) : session libre sur la piste
+		return {"action": "select_workout", "workout_id": null}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "grandprix":
 		ready_message = ""
 		menu.prepare_settings_mode("grandprix")

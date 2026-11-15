@@ -103,6 +103,10 @@ REEF_BIOME = "reef"
 REEF_LOBES = ((2, 0.22, 0.4), (3, 0.12, 1.3), (5, 0.04, 0.2))
 REEF_TOP_M = -4.0           # le récif ne monte jamais au-dessus (sous le niveau de la mer, 0)
 REEF_SOFT_M = 3.0           # plafond adouci sur les 3 derniers mètres
+# Étiquettes des parcours de démonstration (fiche `library.tags` du manifeste) : un parcours d'un mode à parcours
+# propres (lot GP13, `openride_core.mode_routes`) ne se court que dans ce mode : le Circuit des Prés est au Grand
+# Prix des objets (décision du propriétaire du 15 novembre). Recette comprise : les bancs passent par le même menu.
+DEMO_TAGS = {"demo-circuit": ("grandprix",)}
 GAME_DEMOS = tuple(name for name, *_, base in DEMO_SET if base)     # écrits par les contenus de départ
 RETIRED_DEMOS = tuple(name for name, *_, base in DEMO_SET if not base)
 # Lieux du jeu de base : un nom par bloc du même biome (trois blocs au plus), dans l'ordre de la route ; le col
@@ -683,6 +687,8 @@ def generate(out: Path, name: str, biomes: tuple[str, ...], gravel: bool = False
     manifest["created"] = CREATED
     manifest["name"] = name if recette or not title else title
     manifest["compiler"] = {"name": GENERATOR, "version": manifest["compiler"]["version"]}
+    if DEMO_TAGS.get(name):
+        manifest["library"] = {"tags": sorted(DEMO_TAGS[name])}
     (world / "route.json").write_text(json.dumps(route, separators=(",", ":")), encoding="utf-8")
     (world / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     info = {"route": name, "name": manifest["name"], "length_m": route["length_m"], "type": route["type"],

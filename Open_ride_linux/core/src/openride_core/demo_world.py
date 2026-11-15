@@ -263,13 +263,27 @@ def retired_biome_demo_names() -> list[str]:
 
 def biome_demo_outdated(world: Path) -> bool:
     """Vrai si `world` est une démonstration des biomes écrite avant le lot O37 (générateur
-    `make_biome_world` des tests de l'engine : nom technique au menu, lieux « Fictif »)."""
+    `make_biome_world` des tests de l'engine : nom technique au menu, lieux « Fictif »), ou par le générateur
+    actuel sans les étiquettes qu'il pose aujourd'hui (`DEMO_TAGS`, lot GP13) : remplacée par les contenus de départ."""
     try:
         manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
     compiler = manifest.get("compiler") if isinstance(manifest, dict) else None
-    return isinstance(compiler, dict) and compiler.get("name") == "make_biome_world"
+    if not isinstance(compiler, dict):
+        return False
+    if compiler.get("name") == "make_biome_world":
+        return True
+    # lot GP13 : démonstration du générateur actuel écrite avant ses étiquettes de mode (Circuit des Prés hors du
+    # Grand Prix) ; jamais un parcours du joueur (autre générateur), ni sans le compilateur
+    try:
+        module = _biome_demo_module()
+    except ImportError:
+        return False
+    if compiler.get("name") != getattr(module, "GENERATOR", None):
+        return False
+    from .mode_routes import tags_of
+    return sorted(tags_of(manifest)) != sorted(getattr(module, "DEMO_TAGS", {}).get(world.name.removesuffix(".world"), ()))
 
 
 def write_biome_demo_worlds(out_dir: Path, recette: bool = False) -> list[dict]:

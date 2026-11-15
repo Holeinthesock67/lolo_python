@@ -1,29 +1,11 @@
 {
-  "description": "Grand Prix des objets (lot GP9) : entrée de l'accueil, écran Prêt du mode sur le parcours de démo (5 km en ligne : « Lancer » désactivé avec la course de 10 km par défaut), distance ramenée à 5 km au Click (config.toml écrit par le core), écran des objets (un objet coupé, grandprix.toml écrit par le core, « Tout activer »), retour à l'écran Prêt, circuit (piste du vélodrome des contenus de départ : tours au lieu de la distance), retour au parcours de démo, lancement, départ du mode dans le journal du core, fin sans enregistrement et bilan. Captures nommées gp9_accueil, gp9_pret, gp9_objets et gp9_pret_boucle pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
+  "description": "Grand Prix des objets (lot GP9) : entrée de l'accueil, (lot GP13 : parcours du mode seulement, liste du mode sans le Col du lacet) écran Prêt du mode sur la course en ligne d'essai (copie de la démo, 5 km en ligne : « Lancer » désactivé avec la course de 10 km par défaut), distance ramenée à 5 km au Click (config.toml écrit par le core), écran des objets (un objet coupé, grandprix.toml écrit par le core, « Tout activer »), retour à l'écran Prêt, boucle d'essai (copie de la piste, étiquette « grandprix » : tours au lieu de la distance), retour à la course en ligne, lancement, départ du mode dans le journal du core, fin sans enregistrement et bilan. Captures nommées gp9_accueil, gp9_pret, gp9_objets et gp9_pret_boucle pour la validation du propriétaire (lancer avec --qualite low, medium et high).",
   "etapes": [
     {
       "ecran": "home",
       "delai": 15,
       "elements": [
         "grandprix"
-      ]
-    },
-    {
-      "choisir": "world"
-    },
-    {
-      "ecran": "routes",
-      "elements": [
-        "demo"
-      ]
-    },
-    {
-      "choisir": "demo"
-    },
-    {
-      "ecran": "home",
-      "contient": [
-        "Parcours : Col du lacet"
       ]
     },
     {
@@ -34,7 +16,31 @@
     },
     {
       "ecran": "ready",
-      "titre": "Prêt : Grand Prix des objets — Col du lacet",
+      "elements": [
+        "start",
+        "change_route",
+        "gp_items"
+      ]
+    },
+    {
+      "choisir": "change_route"
+    },
+    {
+      "ecran": "routes",
+      "elements": [
+        "gp-boucle",
+        "gp-ligne"
+      ],
+      "absent": [
+        "Col du lacet"
+      ]
+    },
+    {
+      "choisir": "gp-ligne"
+    },
+    {
+      "ecran": "ready",
+      "titre": "Prêt : Grand Prix des objets — Course en ligne (essai)",
       "elements": [
         "start",
         "change_route",
@@ -151,16 +157,16 @@
     {
       "ecran": "routes",
       "elements": [
-        "demo",
-        "velodrome-250"
+        "gp-boucle",
+        "gp-ligne"
       ]
     },
     {
-      "choisir": "velodrome-250"
+      "choisir": "gp-boucle"
     },
     {
       "ecran": "ready",
-      "titre": "Prêt : Grand Prix des objets — Vélodrome 250 m",
+      "titre": "Prêt : Grand Prix des objets — Boucle (essai)",
       "elements": [
         "start",
         "change_route",
@@ -189,15 +195,15 @@
     {
       "ecran": "routes",
       "elements": [
-        "demo"
+        "gp-ligne"
       ]
     },
     {
-      "choisir": "demo"
+      "choisir": "gp-ligne"
     },
     {
       "ecran": "ready",
-      "titre": "Prêt : Grand Prix des objets — Col du lacet",
+      "titre": "Prêt : Grand Prix des objets — Course en ligne (essai)",
       "contient": [
         "course de 5 km"
       ]
@@ -232,5 +238,5 @@
       "ecran": "home"
     }
   ],
-  "velodrome": true
+  "grand_prix_parcours": true
 }
