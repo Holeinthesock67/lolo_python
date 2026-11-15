@@ -108,6 +108,9 @@ CIRCUIT_LOBES = ((2, 0.3, 0.0), (3, 0.15, 0.5), (4, 0.05, 2.0))   # (k, amplitud
 REEF_M = 8000.0
 REEF_BIOME = "reef"
 REEF_LOBES = ((2, 0.22, 0.4), (3, 0.12, 1.3), (5, 0.04, 0.2))
+REEF_WRECK_S = 7880.0       # lot SM2 : épave 120 m avant l'arrivée (sable entre la forêt du retour et le lagon)
+REEF_WRECK_OFFSET_M = 45.0  # à 45 m du bord de la route, côté extérieur
+REEF_WRECK_LENGTH_M = 42.0
 REEF_TOP_M = -4.0           # le récif ne monte jamais au-dessus (sous le niveau de la mer, 0)
 REEF_SOFT_M = 3.0           # plafond adouci sur les 3 derniers mètres
 # Volcan en flammes (lot DB2, demande du 13 novembre : « parcours démo exagéré feu et flammes », en boucle) : 8 km,
@@ -141,6 +144,7 @@ PLACE_NAMES = {
     "laminaires": ("Forêt des Laminaires",),
     "corail": ("Jardin de Corail",),
     "tombant": ("Tombant Bleu",),
+    "epave": ("Épave de la Belle-Tortue",),
     # Volcan en flammes : hameau du départ, belvédère des coulées, crête du cratère.
     "scories": ("Hameau des Scories",),
     "coulees": ("Belvédère des Coulées",),
@@ -149,7 +153,8 @@ PLACE_NAMES = {
 RECETTE_PLACE_NAMES = {"port": "Port Fictif", "pointe": "Pointe Fictive", "mas": "Mas Fictif",
                        "hameau": "Hameau Fictif", "etang": "Étang Fictif", "col": "Col Fictif",
                        "lagon": "Lagon Fictif", "laminaires": "Laminaires Fictives", "corail": "Corail Fictif",
-                       "tombant": "Tombant Fictif", "scories": "Hameau Fictif", "coulees": "Belvédère Fictif",
+                       "tombant": "Tombant Fictif", "epave": "Épave Fictive",
+                       "scories": "Hameau Fictif", "coulees": "Belvédère Fictif",
                        "brasier": "Cratère Fictif"}
 
 # Pente de la route (%) dans un bloc, selon la position u (m) dans le bloc.
@@ -540,6 +545,10 @@ def _recif(op, rng, plan):
     op.node(*op.point(6000.0, out * 30.0), {"tourism": "viewpoint", "name": plan.place("tombant", 0)})
     _veg(op, 6700.0, 7800.0, inside, 14.0, 180.0, {"natural": "wood"})
     _veg(op, 6800.0, 7700.0, out, 14.0, 220.0, {"natural": "wood"})
+    # Lot SM2 : épave d'un caboteur couchée sur le sable avant l'arrivée, côté extérieur, vue de loin en
+    # approchant de la ligne (hors des forêts, entre le retour par les laminaires et le lagon).
+    op.node(*op.point(REEF_WRECK_S, out * REEF_WRECK_OFFSET_M),
+            {"historic": "wreck", "length": f"{REEF_WRECK_LENGTH_M:g}", "name": plan.place("epave", 0)})
 
 
 def _volcan(op, rng, plan):
