@@ -190,10 +190,11 @@ static func section_s(route, k: int) -> PackedFloat64Array:
 ## Tableaux de maillage (Mesh.ARRAY_MAX) du tronçon k.
 ## Hauteurs à l'échelle du relief affiché (`route.relief_k`, lot Q2) : l'axe suit `sample()["y"]`, la pente des normales
 ## est multipliée par le même facteur.
-## Option « gravel » (lot U22) : `gravel` = {mode, surfaces} (road_surface.gd) ; mode `off`, ou `auto` sur une
+## Option « gravel » (lot U22) : `gravel` = {mode, surfaces, look} (road_surface.gd ; `look` : aspect par biome, SM2) ; mode `off`, ou `auto` sur une
 ## route sans portion non revêtue : tableaux identiques à ceux d'avant U22. Sinon chaque coupe prend la largeur
 ## de sa surface (bords irréguliers, biseau de 5 m), COLOR = couleur de la surface avec a = 1 − part non revêtue,
-## UV2.x = demi-largeur de la chaussée à cette coupe ; UV.x reste rapporté à la largeur du bitume (le shader des
+## UV2.x = demi-largeur de la chaussée à cette coupe, UV2.y = 1 quand le bas-côté prend aussi la couleur (aspect par
+## biome, lot SM2 : piste de sable sans bord sombre) ; UV.x reste rapporté à la largeur du bitume (le shader des
 ## marquages retrouve l'écart à l'axe en mètres).
 ## Amorces (k = −1 ou chunk_count) : même coupe, axe prolongé (axis_sample), hauteurs lead_heights (`height_at` :
 ## (x, z) -> hauteur affichée du terrain, vide sans terrain).
@@ -206,7 +207,8 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 	var drops := [SHOULDER_DROP_M, 0.0, 0.0, 0.0, 0.0, SHOULDER_DROP_M]
 	var total_width := 2.0 * outer
 	var mode := str(gravel.get("mode", "off"))
-	var unpaved_on := RoadSurface.active(route, mode)
+	var look: Dictionary = gravel.get("look", {})   # aspect de la chaussée par biome (lot SM2)
+	var unpaved_on := RoadSurface.active(route, mode) or RoadSurface.look_active(look)
 	var surfaces: Dictionary = gravel.get("surfaces", {}) if unpaved_on else {}
 	if unpaved_on and surfaces.is_empty():
 		surfaces = RoadSurface.surfaces_of({})
@@ -224,7 +226,7 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 	for i_cut in range(s_values.size()):
 		var s_cut: float = s_values[i_cut]
 		if unpaved_on:
-			var sec := RoadSurface.section(route, s_cut, mode, surfaces, road_width_m)
+			var sec := RoadSurface.section(route, s_cut, mode, surfaces, road_width_m, look)
 			var l: float = sec["left_m"]
 			var r: float = sec["right_m"]
 			offsets = [-l - SHOULDER_WIDTH_M, -l, -l, r, r, r + SHOULDER_WIDTH_M]
@@ -232,7 +234,7 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 			var col := Color(tint.r, tint.g, tint.b, 1.0 - float(sec["weight"]))
 			for v in range(VERTS_PER_SECTION):
 				colors.append(col)
-				uv2s.append(Vector2(0.5 * (l + r), 0.0))
+				uv2s.append(Vector2(0.5 * (l + r), float(sec.get("verge", 0.0))))
 		var smp: Dictionary = axis_sample(route, s_cut) if is_lead else route.sample(s_cut)
 		var center := Vector3(smp["x"], smp["y"], smp["z"])
 		var h := deg_to_rad(float(smp["heading_deg"]))
