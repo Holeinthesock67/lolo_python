@@ -136,6 +136,8 @@ void fragment() {
 	float cobble = sd_noise(p / 0.12);
 	vec3 unpaved_col = lineaire(COLOR.rgb) * (1.0 + (grit.y - 0.5) * 0.3 * gravel_vis + (cobble - 0.5) * 0.12 + macro * 0.15);
 	asphalt = mix(asphalt, unpaved_col, unpaved);
+	// Aspect de la chaussée par biome (lot SM2, UV2.y = 1) : le bas-côté se fond dans la piste, un peu plus sombre
+	verge = mix(verge, unpaved_col * 0.92, clamp(UV2.y, 0.0, 1.0) * unpaved);
 	vec3 base = mix(verge, asphalt, on_road);
 	ALBEDO = mix(base, line_color, paint) * (1.0 - 0.45 * wetness);
 	float rough = mix(0.97, mix(0.9 - 0.14 * track + 0.06 * patch, 0.97, unpaved), on_road);

@@ -33,6 +33,7 @@ extends RefCounted
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
+const RouteMirror := preload("res://scripts/route_mirror.gd")
 
 const SLOT_M := 250.0
 const BASE_RATE := 0.03
@@ -99,12 +100,15 @@ var _villages: Array = []          # Vector2 (x, z)
 var _snow_line_m: float = DEFAULT_SNOW_LINE_M
 var _next_slot: int = 0
 var _last_rider_s: float = NAN
+var direction: int = 1             # sens de marche du cycliste (lot N23) : -1 à rebours, `route` est alors retourné
+var base_route = null              # parcours dans son sens, quel que soit le sens de marche
 var _others: Array = []            # cyclistes du décor et bots de la dernière image : {s, lateral, dir}
 var _core_seq: int = -1            # dernière trame `state` dont la liste `vehicles` a été reprise (lot AS6)
 
 
 ## `theme` fusionné (theme_loader.gd), `pois` les points d'intérêt (seuls les `village` comptent).
 func configure(route_data, theme: Dictionary, pois: Array, vehicle_budget: int, rng_seed: int = 0) -> void:
+	direction = 1
 	budget = maxi(0, vehicle_budget)
 	seed = rng_seed
 	extend_route(route_data, pois)
@@ -116,13 +120,49 @@ func configure(route_data, theme: Dictionary, pois: Array, vehicle_budget: int, 
 
 
 ## Route prolongée du monde ouvert (même début, abscisses gardées) : nouvelle route et villages, sans retirer
-## les véhicules en cours.
+## les véhicules en cours. À rebours (lot N23), le parcours retourné s'allonge par son début : les véhicules
+## gardent leur place sur la route (u = L - s décalé de l'allongement).
 func extend_route(route_data, pois: Array) -> void:
-	route = route_data
+	var grown := 0.0 if base_route == null or route_data == null else float(route_data.length_m) - float(base_route.length_m)
+	base_route = route_data
+	route = route_data if direction > 0 or route_data == null else RouteMirror.new(route_data)
+	if direction < 0:
+		for v in vehicles:
+			v["s"] = float(v["s"]) + grown
 	_villages.clear()
 	for p in pois:
 		if typeof(p) == TYPE_DICTIONARY and str(p.get("kind", "")) == "village":
 			_villages.append(Vector2(float(p.get("x", 0.0)), float(p.get("z", 0.0))))
+
+
+## Abscisse du parcours `s` dans le repère du modèle (u = L - s à rebours, lot N23) ; réciproque.
+func model_s(s: float) -> float:
+	return s if direction > 0 or route == null else RouteMirror.flip_s(float(route.length_m), s)
+
+
+## Lot N23 (jumeau de traffic.py `set_direction`) : le cycliste a fait demi-tour. Le modèle roule ensuite sur le
+## parcours retourné ; les véhicules déjà là restent à leur place (abscisse, sens, voie convertis) : celui qui suivait
+## le cycliste vient en face, celui qui l'avait croisé roule devant lui. Vrai si le sens a changé.
+func set_direction(dir: int) -> bool:
+	var d := -1 if dir < 0 else 1
+	if d == direction or base_route == null:
+		return false
+	var rider := NAN if is_nan(_last_rider_s) else model_s(_last_rider_s)
+	direction = d
+	route = base_route if d > 0 else RouteMirror.new(base_route)
+	if not is_nan(rider):
+		rider = model_s(rider)
+	var length := float(base_route.length_m)
+	for v in vehicles:
+		v["s"] = RouteMirror.flip_s(length, float(v["s"]))
+		v["dir"] = -int(v["dir"])
+		v["lateral"] = -float(v["lateral"])
+		v.erase("hold_s")
+		var ahead := not is_nan(rider) and float(v["s"]) > rider
+		v["passed"] = int(v["dir"]) == 1 and ahead   # déjà devant dans le même sens : il a fini de doubler
+		v["committed"] = v["passed"]
+	_last_rider_s = NAN   # cases suivantes tirées depuis la place du cycliste dans le nouveau repère
+	return true
 
 
 func reset() -> void:
@@ -220,7 +260,7 @@ func _kind_ok(kind: String, s_a: float, s_b: float) -> bool:
 	var hi := maxf(s_a, s_b)
 	var n := int((hi - lo) / UNPAVED_STEP_M) + 1
 	for i in range(n + 1):
-		if bool(unpaved_at.call(lo + (hi - lo) * float(i) / float(n))):
+		if bool(unpaved_at.call(model_s(lo + (hi - lo) * float(i) / float(n)))):
 			return false
 	return true
 
