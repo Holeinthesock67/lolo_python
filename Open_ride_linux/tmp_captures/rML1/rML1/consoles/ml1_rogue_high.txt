@@ -1,0 +1,38 @@
+== ml1_rogue (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home (elements=['rogue']) : « OpenRide » (engine muet 12.5 s)
+[OK] choisir « world » : écran « routes », focus « abra-malaga »
+[OK] écran routes : « Parcours »
+[OK] choisir « alpe-d-huez » : écran « home », focus « world »
+[OK] écran home (contient=['Alpe']) : « OpenRide »
+[OK] journal du engine : « route_loaded id=alpe-d-huez » : route_loaded id=alpe-d-huez
+[OK] choisir « rogue » : écran « rogue_start », focus « objective »
+[OK] écran rogue_start : « Départ Cyber-Rogue »
+[OK] choisir « launch » : écran « confirm », focus « no »
+[OK] écran confirm : « Cyber-Rogue : en VO2max, des efforts au-delà de 140 % de la FTP sont possibles. Sortie sans pénalité à tout moment. Lancer ? »
+[OK] choisir « yes » : écran « rogue_loading », focus «  »
+[OK] écran ready (titre='Prêt : Cyber-Rogue') : « Prêt : Cyber-Rogue »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] journal du engine : « Cyber-Rogue : décor du parcours vidé » : Cyber-Rogue : décor du parcours vidé
+[OK] écran pause : « Pause »
+[OK] choisir « abandon » : écran « confirm », focus « no »
+[OK] écran confirm : « Abandonner la séance ? »
+[OK] choisir « yes » : écran « home », focus « coach »
+[OK] journal du core : « -> FINISHED » : -> FINISHED
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home (contient=['Alpe']) : « OpenRide »
+[OK] choisir « ride » : écran « ready », focus « start »
+[OK] écran ready : « Prêt : session libre — Alpe d'Huez »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] qualité réellement appliquée à l'arrêt : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+ml1_rogue                clavier  OK             148 s
+Rapport : ~/mesures-2026-11-01-auto/rML1/rogue_high/rapport.html
+OK

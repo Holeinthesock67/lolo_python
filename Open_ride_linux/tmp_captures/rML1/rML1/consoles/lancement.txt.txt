@@ -1,0 +1,23 @@
+16:16:01 empreinte avant e0570322495285034123882e5491329d
+16:16:01 tête b2c675d1
+16:16:42 ml1 low
+16:20:49 fin rc=1
+16:20:49 lignes perf : 15
+16:21:09 ml1 medium
+16:25:17 fin rc=1
+16:25:17 lignes perf : 15
+16:25:37 ml1 high
+16:29:40 fin rc=1
+16:29:40 lignes perf : 15
+16:30:00 ml1_rogue low
+16:32:29 fin rc=0
+16:32:29 lignes : 21
+16:32:49 ml1_rogue medium
+16:35:16 fin rc=0
+16:35:16 lignes : 21
+16:35:36 ml1_rogue high
+16:38:04 fin rc=0
+16:38:04 lignes : 21
+16:38:26 empreinte après e0570322495285034123882e5491329d
+16:38:26 clone 214ad0b2
+16:38:26 FIN

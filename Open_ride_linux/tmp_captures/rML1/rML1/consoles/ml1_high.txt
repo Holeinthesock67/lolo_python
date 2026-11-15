@@ -1,0 +1,20 @@
+== ml1_parcours (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 13.5 s)
+[OK] choisir « world » : écran « routes », focus « abra-malaga »
+[OK] écran routes (titre='Parcours', contient=['Alpe']) : « Parcours »
+[OK] écran home : « OpenRide »
+[OK] choisir « grandprix » : écran « routes », focus « abra-malaga »
+[ÉCHEC] écran ready : écran « routes »
+[ÉCHEC] choisir « change_route » : écran « routes », focus « abra-malaga »
+[OK] écran routes : « Parcours »
+[OK] qualité réellement appliquée à l'arrêt : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+ml1_parcours             clavier  2 ÉCHEC(S)     243 s
+Rapport : ~/mesures-2026-11-01-auto/rML1/high/rapport.html
+1 passage(s) en échec sur 1
