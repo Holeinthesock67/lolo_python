@@ -510,6 +510,8 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	if underwater:   # lot SM1 (14/11 : « pas de neige sous l'eau ») : ni pluie, ni neige, ni route mouillée
 		for key in ["rain", "snow", "wetness"]:
 			weather_eval[key] = 0.0
+	if living_world != null and living_world.get("volcano") != null:
+		weather_eval = living_world.volcano.melt_snow(weather_eval)   # pas de neige dans un paysage en feu (DB2)
 	particles.update(cam_pos, weather_eval)
 	street_lights.update(cam_pos, now_s)   # lot P35 : projecteurs sous les luminaires proches, la nuit
 	# Gravel (U22) : surface sous la roue, poussière derrière elle par temps sec et crissement des pneus
