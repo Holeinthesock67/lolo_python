@@ -40,7 +40,21 @@ func _init() -> void:
 			regions[int(custom[i * 4] + 0.5)] = true
 		_check(regions.has(FaunaRenderer.FAUNA_COAT) and regions.has(FaunaRenderer.FAUNA_DARK),
 			"%s : robe et parties sombres (zones %s)" % [sp, str(regions.keys())])
-		if sp in FaunaRenderer.BIRD_SPECIES:
+		if sp in FaunaRenderer.SWIM_SPECIES:
+			# Nageurs : corps immobile sur l'axe (poids 0), nageoires qui battent (poids > 0), yeux à l'avant (+z)
+			var axis_ok := true
+			var flaps := false
+			var eye_z := -INF
+			for i in range(verts.size()):
+				if absf(verts[i].x) < 0.03:
+					axis_ok = axis_ok and uvs[i].x == 0.0
+				flaps = flaps or uvs[i].x > 0.5
+				if int(custom[i * 4] + 0.5) == FaunaRenderer.FAUNA_DARK:
+					eye_z = maxf(eye_z, verts[i].z)
+			_check(axis_ok and flaps, "%s : corps immobile, nageoires qui battent" % sp)
+			_check(eye_z > 0.5 * hi.z and hi.z > 0.15, "%s : tête et yeux vers +z" % sp)
+			_check(hi.z - lo.z > 0.4 and hi.z - lo.z < 3.0, "%s : longueur %.2f m" % [sp, hi.z - lo.z])
+		elif sp in FaunaRenderer.BIRD_SPECIES:
 			# Ailes le long de x (0,9 m d'envergure), poids 0 à l'attache et 1 au bout ; bec vers +z
 			var root_ok := true
 			var tip_ok := true

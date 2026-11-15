@@ -169,6 +169,7 @@ def test_manifest_sheet_and_library_are_read(tmp_path: Path) -> None:
                 {"stats": stored, "library": {"name": "Neuf", "tags": ["col"]}})
     e = next(e for e in catalog.list_routes(tmp_path / "routes", tmp_path / "GPX") if e.id == "neuf")
     assert e.stats["gain_m"] == 1234.0 and e.library == {"name": "Neuf", "tags": ["col"]}
+    assert e.id == "neuf" and e.name == "Neuf"   # nom de la fiche affiché, identifiant inchangé
     write_world(tmp_path / "r2", "vieux", col_then_flat(), {"stats": {**stored, "version": 0}})
     e = next(e for e in catalog.list_routes(tmp_path / "r2", tmp_path / "GPX") if e.id == "vieux")
     assert e.stats["gain_m"] == pytest.approx(700.0, abs=1.0)    # version ancienne : recalculée
@@ -187,5 +188,17 @@ def test_pack_subfolder_tracks_and_sidecars(tmp_path: Path, caplog) -> None:
     entries = {e.id: e for e in catalog.list_routes(tmp_path / "routes", gpx)}
     assert set(entries) == {"demo", "col-a", "plat"}
     assert entries["col-a"].status == "to_compile" and entries["col-a"].library == {"tags": ["col"]}
+    assert entries["col-a"].name == "Col A"      # fiche sans nom : nom de la trace
     assert entries["plat"].library is None
     assert any("fiche de parcours ignorée" in r.getMessage() for r in caplog.records)
+
+
+def test_library_name_is_shown_for_a_compiled_pack_route(tmp_path: Path) -> None:
+    """Col du pack compilé : « abra-malaga » au catalogue avant le 14/11, maintenant le nom de sa fiche."""
+    gpx = tmp_path / "GPX" / "cols-celebres"
+    gpx.mkdir(parents=True)
+    (gpx / "abra-malaga.gpx").write_text("<gpx/>", encoding="utf-8")
+    (gpx / "abra-malaga.toml").write_text('name = "Abra Málaga"\ntags = ["col"]\n', encoding="utf-8")
+    write_world(tmp_path / "routes", "abra-malaga", col_then_flat(), {})
+    e = next(e for e in catalog.list_routes(tmp_path / "routes", tmp_path / "GPX") if e.id == "abra-malaga")
+    assert e.name == "Abra Málaga"
