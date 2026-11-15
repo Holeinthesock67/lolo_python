@@ -43,6 +43,7 @@ const GpSoundModel := preload("res://scripts/grandprix/gp_sound_model.gd")
 const GpItems := preload("res://scripts/grandprix/gp_items.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
+const LiveCue := preload("res://scripts/live_cue.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
@@ -223,6 +224,9 @@ const ERG_BEEP_LEVEL := 0.6
 const CUE_BEEP := [[880.0, 0.15], [1320.0, 0.25]]
 
 var _cues = CueModel.new()
+## Consigne en direct du guide des essais physiques (live_cue.gd, lot EP3) : bandeau seul, la voix et les sons
+## viennent du guide.
+var _live_cue = LiveCue.new()
 ## Menus (lot N6) : déroulé (menu_flow.gd) et affichage (menu_view.gd), plein écran sur une couche
 ## au-dessus du HUD, qui est caché pendant un menu (lot « présentation des menus »).
 var menu_flow = MenuFlow.new()
@@ -1267,6 +1271,8 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 		PerfProbe.mark_since("decor", "", t_step)
 		t_step = Time.get_ticks_usec()
 	_step_cycle(now_s)
+	if living_world != null and living_world.volcano != null:
+		atmosphere_view.set_fire(living_world.volcano.fire_level, living_world.volcano.glow_color)
 	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
 	if moon_view != null:
 		moon_view.update(camera.global_position, atmosphere_view.cycle)
@@ -2018,6 +2024,9 @@ func _step_cycle(now_s: float, force: bool = false) -> void:
 		NightLights.apply(glow, lit)
 	var season: Dictionary = out["season"]
 	var params: Dictionary = season["params"] if bool(season["active"]) else {}
+	# Pas de neige dans un paysage en feu (DB2, volcano_fx.gd `melt_snow`) : la limite ne descend plus l'hiver
+	if not params.is_empty() and living_world != null and living_world.get("volcano") != null:
+		params = living_world.volcano.melt_snow(params)
 	if params != _season_applied:
 		_season_applied = params
 		var p: Dictionary = params if not params.is_empty() else SeasonModel.NEUTRAL
@@ -2144,6 +2153,11 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if running and route != null:
 		_give_cues(state)
+	if running:
+		var live: Dictionary = _live_cue.poll(Time.get_ticks_msec())
+		if not live.is_empty():
+			banner.show_message("cue", live["text"], live["duration_s"])
+			print("[essai] consigne en direct (%s) : %s" % [live["kind"], live["text"]])
 	var in_session := running or session_state == "PAUSED"
 	# Keirin (lot VD9) : le derny roule avec les bots (même extrapolation, même dessin), nommé « Derny ».
 	bots_model.push(TrackHudModel.bots_with_pacer(state) if in_session else null, t_frame_us)
