@@ -277,6 +277,43 @@ class AutostartError(Exception):
     """Parcours ou entraînement demandé au lancement (`--route`, `--workout`) refusé."""
 
 
+def escort_block(s: float, lane: draft_mod.Lane, kind: str | None,
+                 blocks: list[tuple[draft_mod.Lane, float, float]]) -> float:
+    """Voiture d'équipe (lot GP4) : le coureur remorqué et sa voiture comptent d'un seul bloc (gabarit de la
+    voiture, du pare-chocs avant à la roue arrière), pour le placement (lot AS2) comme pour le freinage roue
+    contre roue (lot PL1). Agrandit `lane` au gabarit du bloc (rendu par `escort_unblock`) et rend la position du
+    milieu du bloc ; sans voiture (`kind` None), `s` tel quel."""
+    if kind is None:
+        return s
+    car = traffic_mod.KINDS[kind]
+    ahead = ESCORT_GAP_M + car["length"]
+    blocks.append((lane, lane.length, lane.half_width))
+    lane.length, lane.half_width = lane.length + ahead, max(car["half_width"], lane.half_width)
+    return s + ahead * 0.5
+
+
+def _closest_gap(d0: float, dd: float) -> float:
+    """Plus petit écart |d0 + x·dd| pour x de 0 à 1 : écart le plus serré entre deux coureurs pendant l'horizon."""
+    if d0 * (d0 + dd) <= 0.0:
+        return 0.0
+    return min(abs(d0), abs(d0 + dd))
+
+
+def _footprints_meet(a: tuple[float, float, float, float], a_v: float, b: tuple[float, float, float, float],
+                     b_v: float, look_s: float) -> bool:
+    """Deux emprises (`CoreSession._footprint`) côte à côte en travers qui se touchent, à BLOCK_MIN_GAP_M près,
+    maintenant ou d'ici `look_s` secondes à leurs vitesses."""
+    if abs(a[2] - b[2]) >= a[3] + b[3]:
+        return False
+    return _closest_gap(b[0] - a[0], (b_v - a_v) * look_s) < a[1] + b[1] + draft_mod.BLOCK_MIN_GAP_M
+
+
+def escort_unblock(blocks: list[tuple[draft_mod.Lane, float, float]]) -> None:
+    """Rend aux coureurs remorqués le gabarit de leur vélo (après `escort_block`)."""
+    for lane, bike_length, bike_half in blocks:
+        lane.length, lane.half_width = bike_length, bike_half
+
+
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
                  journal_dir: Path | None = None, routes_root: Path | None = None,
@@ -2607,6 +2644,7 @@ class CoreSession:
             return []
         where = {GP_ME: (self.physics.s, self.physics.v, self._lane.m)}
         where.update({b.id: (b.s, b.v, b.lane.m) for b in self.bots if getattr(b, "lane", None) is not None})
+        look = draft_mod.BLOCK_LOOK_S
         ids = list(gp.racers)
         towed = dict(gp.escorts())
         self._escort_shown &= set(towed)
@@ -2618,14 +2656,35 @@ class CoreSession:
             ahead = draft_mod.BIKE_LENGTH_M * 0.5 + ESCORT_GAP_M + traffic_mod.KINDS[kind]["length"] * 0.5
             car = traffic_mod.Vehicle(f"tc{ids.index(rid)}", kind, ESCORT_COLOR, s + ahead, 1, v, v, lane_m)
             if rid not in self._escort_shown:
-                reach_s = car.length * 0.5 + draft_mod.BIKE_LENGTH_M * 0.5
-                reach_m = car.half_width + draft_mod.RIDER_WIDTH_M * 0.5
-                if any(abs(o_s - car.s) < reach_s and abs(o_m - car.lateral) < reach_m
-                       for o, (o_s, _, o_m) in where.items() if o != rid):
+                # Place libre sous tout le bloc coureur et voiture (`escort_block`), de la roue arrière du coureur au
+                # pare-chocs avant, face aux vélos des autres et aux blocs déjà en route, maintenant et pendant
+                # BLOCK_LOOK_S, à BLOCK_MIN_GAP_M près (lot PL1) : le coureur remorqué roule plus vite que celui
+                # qu'il rattrape, la voiture n'apparaît ni sur lui ni pour passer sous lui une fraction de seconde après
+                mine = self._footprint(s, lane_m, kind)
+                if any(_footprints_meet(mine, v, self._footprint(o_s, o_m, towed.get(o) if o in self._escort_shown
+                                                                  else None), o_v, look)
+                       for o, (o_s, o_v, o_m) in where.items() if o != rid):
                     continue          # place prise : la voiture attend derrière le coureur devant
                 self._escort_shown.add(rid)
             out.append(car)
         return out
+
+    @staticmethod
+    def _footprint(s: float, lane_m: float, kind: str | None) -> tuple[float, float, float, float]:
+        """Emprise d'un coureur (lot GP4) : (milieu, demi-longueur, écart à l'axe, demi-largeur), celle du bloc
+        coureur et voiture quand sa voiture d'équipe roule devant lui (`kind`)."""
+        lane = draft_mod.Lane(lane_m, lane_m)
+        mid = escort_block(s, lane, kind, [])
+        return mid, 0.5 * lane.length, lane_m, lane.half_width
+
+    def _escort_kinds(self) -> dict[str, str]:
+        """Coureurs dont la voiture d'équipe roule devant eux (lot GP4) et type de la voiture : eux seuls se placent
+        et freinent au gabarit du bloc coureur et voiture (`escort_block`) ; celui dont la voiture attend que la
+        place se libère reste un vélo."""
+        gp = self.grandprix
+        if gp is None:
+            return {}
+        return {rid: kind for rid, kind in gp.escorts() if rid in self._escort_shown}
 
     def _racing_bots(self) -> list[Any]:
         """Bots qui comptent pour l'abri : tous, sauf les éliminés du Dernier survivant."""
@@ -2947,7 +3006,11 @@ class CoreSession:
                               self._lane.m, g)}
         for b in self.bots:
             g = grade_at(b.s)
-            out[b.id] = GpRider(b.s, b.v, equilibrium_speed(float(getattr(b, "power_w", 0.0)), g, b.params),
+            # Vitesse d'équilibre à la puissance voulue, avant l'enfermement du lot PL1 : un coureur remorqué
+            # (voiture d'équipe, GP4) enfermé freine à la vitesse de celui devant (`_brake_grandprix_wheels`),
+            # il ne s'arrête pas net
+            drive_w = getattr(b, "unblocked_w", getattr(b, "power_w", 0.0))
+            out[b.id] = GpRider(b.s, b.v, equilibrium_speed(float(drive_w), g, b.params),
                                 b.lane.m, g)
         return out
 
@@ -2974,13 +3037,19 @@ class CoreSession:
         contre roue comme un bot (`BRAKE_GAP_M`) : le freinage se transmet le long d'une file dans le même pas."""
         route = self.route
         length, loop = (route.length_m, route.is_loop) if route else (None, False)
-        field = [(self.physics, self._lane)] + [(b.physics, b.lane) for b in racing]
-        field.sort(key=lambda r: -r[0].s)
-        for phys, lane in field:
-            others = [(p.s, p.v, ln) for p, ln in field if ln is not lane]
-            lane.blocked = draft_mod.blocked_by(phys.s, phys.v, lane, lane.target, others, length, loop)
+        towed = self._escort_kinds()
+        blocks: list[tuple[draft_mod.Lane, float, float]] = []
+        # Voiture d'équipe (lot GP4) : le coureur remorqué freine au gabarit de son bloc, comme il se place
+        # (`_update_draft`) : sa voiture ne passe plus sous le coureur plus lent devant lui
+        field = [(self.physics, self._lane, GP_ME)] + [(b.physics, b.lane, b.id) for b in racing]
+        place = {id(ln): escort_block(p.s, ln, towed.get(rid), blocks) for p, ln, rid in field}
+        field.sort(key=lambda r: -place[id(r[1])])
+        for phys, lane, _ in field:
+            others = [(place[id(ln)], p.v, ln) for p, ln, _ in field if ln is not lane]
+            lane.blocked = draft_mod.blocked_by(place[id(lane)], phys.v, lane, lane.target, others, length, loop)
             if lane.blocked is not None and lane.blocked[0] <= BRAKE_GAP_M:
                 phys.v = min(phys.v, lane.blocked[1])
+        escort_unblock(blocks)
 
     def _sync_grandprix_lanes(self) -> None:
         """Voie forcée (cycliste : A court, flèches ; bot : esquive du lot GP3) : le placement vise le centre de
@@ -3870,18 +3939,11 @@ class CoreSession:
         # Voiture d'équipe (lot GP4) : le coureur remorqué et sa voiture se placent d'un seul bloc (gabarit de la
         # voiture, du pare-chocs avant à la roue arrière) : le bloc double les coureurs plus lents et les autres
         # l'évitent, la voiture ne passe plus à travers un coureur devant
-        towed = dict(self.grandprix.escorts()) if self.grandprix is not None else {}
+        towed = self._escort_kinds()
         blocks: list[tuple[draft_mod.Lane, float, float]] = []
 
         def runner(rid: str, s: float, v: float, lane: draft_mod.Lane) -> tuple[float, float, draft_mod.Lane]:
-            kind = towed.get(rid)
-            if kind is None:
-                return s, v, lane
-            car = traffic_mod.KINDS[kind]
-            ahead = ESCORT_GAP_M + car["length"]
-            blocks.append((lane, lane.length, lane.half_width))
-            lane.length, lane.half_width = lane.length + ahead, max(car["half_width"], lane.half_width)
-            return s + ahead * 0.5, v, lane
+            return escort_block(s, lane, towed.get(rid), blocks), v, lane
 
         runners = [] if reverse else [runner(GP_ME, self.physics.s, self.physics.v, self._lane)]
         runners += [runner(b.id, b.s, b.v, b.lane) for b in self.bots   # éliminé : placement coupé, il glisse au bas-côté
@@ -3903,8 +3965,7 @@ class CoreSession:
             back += [(r.s, r.v, draft_mod.Lane(r.lane_m, r.lane_m, auto=False)) for r in riders_m if r.dir == 1]
             draft_mod.update_lanes(back, dt, length, is_loop, wind_on(traffic.route) if ws else None,
                                    (lambda u: half(traffic.model_s(u))) if half else None)
-        for lane, bike_length, bike_half in blocks:
-            lane.length, lane.half_width = bike_length, bike_half
+        escort_unblock(blocks)
 
         cross = cross_at(heading_deg)
         rider = None if reverse else \
