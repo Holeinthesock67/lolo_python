@@ -184,6 +184,45 @@ def test_eleven_bots_full_race_frames_fit_with_devices(env):
     assert 1 <= summary["place"] <= 12 and summary["of"] == 12 and summary["laps"] == 3
 
 
+def test_eleven_bots_on_a_line_route_no_contact_and_queue_after_the_line(env):
+    """Lot GP10, banc rgp10d du 16 novembre (35 contacts en low) : sur la démonstration de 5 km, course de 5 km à
+    11 adversaires, chaos fou, les bots arrivés avant le cycliste s'empilaient au même mètre au bout du parcours.
+    La ligne est posée `GP_RUNOUT_M` avant le bout, les bots arrivés s'arrêtent en file (`END_GAP_M`) après elle :
+    aucun contact de toute la course (règle du banc : moins de 1,7 m roue à roue et de 0,6 m en travers)."""
+    from openride_core.session import END_GAP_M, GP_RUNOUT_M
+
+    make, run, _, _ = env
+    s, _, errors = make(6806, opponents=11, route_id="demo", distance_km=5, level_pct=100)
+    s.cfg.grandprix.chaos, s.cfg.grandprix.box_every_m = "wild", 1000
+    s._on_command("start", {"mode": "grandprix"}, 2)
+    assert not errors
+    end = s.route.length_m
+    assert s.grandprix.length_m == pytest.approx(end - s.physics.s - GP_RUNOUT_M)
+    contacts: list[tuple] = []
+    queued: list[list[float]] = []
+
+    def check(sess):
+        if sess.state.session_state != "RUNNING":
+            return
+        riders = [("me", sess.physics.s, sess._lane.m)] + [(b.id, b.s, b.lane.m) for b in sess.bots]
+        for i, (na, sa, la) in enumerate(riders):
+            for nb, sb, lb in riders[i + 1:]:
+                if abs(sa - sb) < 1.7 and abs(la - lb) < 0.6:
+                    contacts.append((na, nb, round(sa, 2), round(sb, 2)))
+        stopped = sorted((b.s for b in sess.bots if b.s > end - GP_RUNOUT_M), reverse=True)
+        if stopped:
+            queued.append(stopped)
+        if sess.grandprix is not None and sess.grandprix.racers[ME].held:
+            sess._grandprix_press("Z_SHORT")
+
+    run(s, 1500, check, every=1)
+    assert s.state.session_state == "FINISHED" and not errors
+    assert not contacts, contacts[:5]
+    assert queued and max(len(q) for q in queued) >= 2       # des bots arrivés avant le cycliste
+    last = queued[-1]
+    assert all(a - b >= END_GAP_M - 1e-6 for a, b in zip(last, last[1:]))
+
+
 def test_grade_sent_ignores_objects(env, monkeypatch):
     """Pas à pas, la pente envoyée d'une course avec objets (coups de fouet, glissade) est celle d'une séance
     sans objets placée à la même position, à la même vitesse virtuelle et au même abri."""
@@ -238,7 +277,8 @@ def test_start_refusals_and_erg_refused(env):
     make, run, _, _ = env
     s, _, errors = make(6830, route_id="demo")           # parcours en ligne de 5 km, course de 10 km
     s._on_command("start", {"mode": "grandprix"}, 2)     # lot GP14 : la course suit le parcours
-    assert not errors and s.state.session_state == "RUNNING" and s.grandprix.length_m == pytest.approx(5000.0)
+    # lot GP10 : ligne posée 30 m avant le bout (file des bots arrivés)
+    assert not errors and s.state.session_state == "RUNNING" and s.grandprix.length_m == pytest.approx(4970.0)
     s, _, errors = make(6840)
     s._on_command("start", {"mode": "grandprix", "bots": []}, 2)
     assert errors[-1][0] == "bad_args" and s.state.session_state == "READY"
@@ -257,7 +297,7 @@ def test_start_refusals_and_erg_refused(env):
     assert errors[-1][0] == "busy" and s.state.mode == "SIM"
     s, _, errors = make(6850, route_id="demo", distance_km=5)
     s._on_command("start", {"mode": "grandprix"}, 2)
-    assert not errors and s.grandprix.lap_m is None and s.grandprix.length_m == 5000.0
+    assert not errors and s.grandprix.lap_m is None and s.grandprix.length_m == 4970.0   # lot GP10 : ligne 30 m avant le bout
 
 
 def test_lane_buttons_and_pause(env):

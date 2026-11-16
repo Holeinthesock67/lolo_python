@@ -131,6 +131,7 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ### Grand Prix des objets à 11 adversaires (lot GP10)
 - Le Grand Prix des objets accepte jusqu'à 11 adversaires (au lieu de 4) grâce au peloton (réglage « Adversaires » de l'écran Prêt du mode).
+- Au bout d'un parcours en ligne, les bots arrivés s'arrêtent en file au lieu de s'empiler au même endroit ; au Grand Prix, la ligne est posée 30 m avant le bout du parcours.
 - La trame qui porte l'état des appareils garde ses bots à 11 adversaires : seuls leurs objets et effets en partent pour cette trame-là, l'écran garde les derniers reçus.
 
 ### Dernier survivant à 11 adversaires (lot DS8)
