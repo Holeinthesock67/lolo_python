@@ -68,7 +68,7 @@ const CHOICE_TEXTS := {
 		"savanna": "savane", "sand_desert": "désert de sable", "rock_desert": "désert de roche", "jungle": "jungle",
 		"wetland": "zones humides", "coast": "littoral", "volcanic": "volcanique",
 		"japan": "Japon", "atlantic_heath": "Atlantique et landes",
-		"high_plateau": "hauts plateaux"},
+		"high_plateau": "hauts plateaux", "reef": "fond marin"},
 	"render.living": {"on": "oui", "off": "non (rendu de la 1.0)"},
 	"render.day_night": {"off": "coupé", "theme": "heure du thème", "real": "heure du PC", "accelerated": "une journée en une heure"},
 	"render.seasons": {"off": "coupées", "theme": "celle du thème", "date": "selon la date", "random": "au hasard",

@@ -8,6 +8,7 @@ la session (R8) fournit la position dans la salle et la vitesse, et applique la 
 
 from __future__ import annotations
 
+import math
 import pickle
 from dataclasses import dataclass, field, replace
 
@@ -21,7 +22,7 @@ from .wbal import WbalState, wbal_initial, wbal_step
 
 WARMUP, ROOM, CORRIDOR, BOSS = "WARMUP", "ROOM", "CORRIDOR", "BOSS"
 COOLDOWN, RESULTS = "COOLDOWN", "RESULTS"
-WINDOW_KINDS = ("arch", "strike_target", "parry_zone", "pad", "purge", "tunnel")
+WINDOW_KINDS = ("arch", "strike_target", "parry_zone", "pad", "purge", "tunnel", "rock")   # rock : lot R23
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,11 @@ class Scenario:
             1 for s in self.steps if s.kind == "corridor" and s.doors)
 
 
+def _plan_end_s(sc) -> float:
+    """Fin prévue d'un scénario : somme des étapes, la salle jouée après un couloir à portes comprise."""
+    return sum(st.nominal_s + (st.doors[0].nominal_s if st.kind == "corridor" and st.doors else 0.0) for st in sc.steps)
+
+
 @dataclass(frozen=True)
 class RunInputs:
     power_w: float
@@ -60,6 +66,7 @@ class RunInputs:
     v_mps: float = 0.0
     buttons: frozenset = frozenset()     # Z_SHORT, Z_LONG, A_SHORT, A_LONG ; les vitesses sont à la session
     input_lost: bool = False             # Click perdu : le Firewall s'arrête
+    power_avg_w: float | None = None     # lot R23 : puissance affichée (moyenne de 3 s), juge consignes et seuils
 
 
 @dataclass
@@ -67,7 +74,6 @@ class RunOutputs:
     phase: str
     grade_enemy: float                   # pente de l'ennemi après cartes
     grade_sent: float                    # pente envoyée au trainer (formule centrée, bornée)
-    force_gear: int | None               # retour automatique d'Overdrive : à appliquer une fois
     rogue: dict                          # objet `rogue` de `state`
     messages: list = field(default_factory=list)    # messages `room` et `loot` à émettre
     journal: list = field(default_factory=list)
@@ -97,6 +103,7 @@ class RunEngine:
         self.relics: tuple = ()
         self.gold = 0.0
         self.shield = balance.shield_max
+        self.adrenaline = 0.0               # lot R23 : gardée d'une salle et d'une phase du boss à l'autre
         self.last_gear = balance.gear_ref
         self.next_room_id = 1
         self.rooms_started = 0
@@ -114,7 +121,8 @@ class RunEngine:
         self.overdrive_ready_at = 0.0
         self.inversion_until = 0.0
         self.inversion_used = False
-        self.force_gear: int | None = None
+        self.card_was: dict = {}            # lot R23 : condition de carte remplie au pas précédent
+        self.card_said_at: dict = {}        # lot R23 : dernier `card_on` de chaque carte
         # couloir et relique
         self.loot_id = 0
         self.stage: str | None = None       # "card", "door" ou None
@@ -130,6 +138,8 @@ class RunEngine:
         self.rooms_won = self.rooms_fled = self.rooms_skipped = self.defeats = 0
         self.perfect_shifts = 0
         self.boss = "not_reached"
+        self.end_cause: dict | None = None   # lot R23 : cause de la défaite, au bilan
+        self.plan_end_s = _plan_end_s(scenario)   # lot R23 : fin prévue au départ, que le boss vise
         self.result: str | None = None
         self.rooms_total0 = scenario.rooms_total
         self._spring_adr = 0.0
@@ -154,10 +164,29 @@ class RunEngine:
         if self.phase == ROOM:
             messages += self._start_room(self._step, self._take_room_id(), None, inp.gear, inp.s_m)
         elif self.phase == BOSS:
+            self._fit_boss_to_time_left()
             n = sum(1 for s in self.sc.steps[:self.idx + 1] if s.kind == "boss")
             messages += self._start_room(self._step, self._take_room_id(), n, inp.gear, inp.s_m)
         elif self.phase == CORRIDOR:
             self._enter_corridor(inp, messages)
+
+    def _fit_boss_to_time_left(self) -> None:
+        """Lot R23 : le boss remplit le temps qui reste avant le retour au calme, d'après la fin prévue du scénario. Une salle finie en avance (carte
+        Rouleau compresseur, rouleur plus fort que prévu) rallonge les phases restantes au lieu de raccourcir la run ;
+        un retard les raccourcit. Facteur borné à [`boss_fit_min`, `boss_fit_max`], écart de moins de 15 s ignoré."""
+        steps = list(self.sc.steps)
+        rest = [i for i in range(self.idx, len(steps)) if steps[i].kind == "boss"]
+        after = sum(st.nominal_s for st in steps[rest[-1] + 1:]) if rest else 0.0
+        plan = getattr(self, "plan_end_s", None) or _plan_end_s(self.sc)
+        left = plan - self.t_total - after              # fin prévue au départ (la durée choisie pour une run composée)
+        planned = sum(steps[i].nominal_s for i in rest)
+        if not rest or planned <= 0 or abs(left - planned) < 15.0:
+            return
+        k = min(max(left / planned, self.b.boss_fit_min), self.b.boss_fit_max)
+        for i in rest:
+            steps[i] = replace(steps[i], nominal_s=round(steps[i].nominal_s * k, 1))
+        self.sc = replace(self.sc, steps=tuple(steps))
+        self._journal.append(f"rogue boss_fit k={k:.2f} left={left:.0f}")
 
     @property
     def _step(self) -> Step:
@@ -190,7 +219,7 @@ class RunEngine:
         self.room_id, self.boss_phase, self.cur_spec = room_id, boss_phase, spec
         bx = self._eff_balance()
         self.combat = replace(combat_start(self.room, self.sc.seed * 1000 + room_id, bx, shield=self.shield, gear=gear),
-                              adrenaline=bx.adrenaline_start)
+                              adrenaline=max(getattr(self, "adrenaline", 0.0), bx.adrenaline_start))
         self.firewall = Firewall(self.room, self.rider, bx, player_s=s_m)
         self.gold_lost_seen = 0.0
         self.inversion_used = False
@@ -199,13 +228,15 @@ class RunEngine:
         self.rooms_started += 1
         self._journal.append(f"rogue room id={room_id} archetype={spec.archetype} variant={self.room.variant} "
                              f"length={self.room.length_m:.0f}")
-        return [self.room.to_message(room_id)]
+        return self.room.to_messages(room_id)
 
     # --- boucle -----------------------------------------------------------------------------
 
     def step(self, dt: float, inp: RunInputs) -> RunOutputs:
         self._journal: list = []
-        self._z_reason = None               # lot R22 : retours valables pour la trame en cours seulement
+        self._z_reason = None               # lot R22 : retours valables pour le pas en cours seulement
+        self._z_action = None               # lot R23 : action du Z accepté
+        self._card_on = None                # lot R23 : carte qui vient de se déclencher
         self._shift_miss = None
         if not self._hash_logged:
             self._hash_logged = True
@@ -214,7 +245,6 @@ class RunEngine:
         events: list = []
         self.t_total += dt
         self.t_phase += dt
-        self.force_gear = None
         self.last_gear = inp.gear
         self.posture = posture_step(self.posture, inp.cadence_rpm, inp.power_w, dt, self.b)
         self.wbal = wbal_step(self.wbal, inp.power_w, inp.cadence_rpm, dt, cp_w=self.cp_w,
@@ -229,10 +259,15 @@ class RunEngine:
         elif self.phase == COOLDOWN:
             if self.t_phase >= self._step.nominal_s:
                 self._finish_run()
+        if "Z_SHORT" in inp.buttons and "z_ok" not in events and "z_refused" not in events:
+            # lot R23 : chaque Z court a un retour ; sans effet ici (échauffement, couloir sans choix, retour au
+            # calme, bilan) : refus « rien à frapper », que l'engine explique selon la phase.
+            self._z_reason = "no_target"
+            events.append("z_refused")
         out_phase = self.phase
         return RunOutputs(
             phase=out_phase, grade_enemy=grade, grade_sent=grade_sent(grade, inp.gear, self.b),
-            force_gear=self.force_gear, rogue=self._state(inp, events), messages=messages,
+            rogue=self._state(inp, events), messages=messages,
             journal=list(self._journal), finished=self.phase == RESULTS)
 
     # --- échauffement et couloirs -------------------------------------------------------------
@@ -272,7 +307,7 @@ class RunEngine:
             room = generate_room(spec.archetype, spec.variant, spec.objective, spec.nominal_s,
                                  self.rider, self.sc.seed * 1000 + rid, self.b)
             self._previews[rid] = room          # la salle choisie est reprise telle quelle au lieu d'être recalculée
-            messages.append(room.to_message(rid))
+            messages.extend(room.to_messages(rid))
 
     def _open_offer(self, offer: tuple, stage: str, messages: list) -> None:
         self.offer, self.stage, self.focus = offer, stage, None
@@ -280,7 +315,7 @@ class RunEngine:
 
     def _loot_message(self) -> dict:
         pool = cardlib.ALL
-        cards = [{"id": c, "name": pool[c].name, "kind": pool[c].kind, "text": pool[c].text,
+        cards = [{"id": c, "name": pool[c].name, "kind": pool[c].kind, "text": cardlib.card_text(c, self.rider.ftp_w, self.b),
                   "replaces_gear": pool[c].replaces_gear} for c in self.offer]
         if self.door_steps:
             doors = [{"side": side, "room_id": rid, "archetype": spec.archetype}
@@ -335,6 +370,8 @@ class RunEngine:
                                               self.b.cards_offered, self.deck)
                     self.focus = None
                     messages.append(self._loot_message())
+                    self._z_action = "reroll"       # lot R23 : la relance réussie a son retour
+                    events.append("z_ok")
                 else:
                     self._z_reason = "gold"         # lot R22 : relance refusée, or insuffisant
                     events.append("z_refused")
@@ -373,7 +410,10 @@ class RunEngine:
         # cartes : effets sur la pente et les dégâts
         mult = 1.0
         buttons = set(inp.buttons)
-        if "cursed" in self.deck and inp.gear == b.cursed_gear:
+        # lot R23 : cartes déclenchées à la puissance ou à la cadence, jamais par une vitesse imposée
+        shown_w = inp.power_avg_w if inp.power_avg_w is not None else inp.power_w   # seuils des cartes : affichée
+        hard = shown_w > b.cursed_power_frac * inp.ftp_w
+        if "cursed" in self.deck and hard:
             mult *= b.cursed_mult
             if "Z_SHORT" in buttons and cs.phase == "FIGHT":
                 self._z_reason = "cursed"          # lot R22 : le refus se dit
@@ -386,19 +426,22 @@ class RunEngine:
             if self.overdrive_until and t >= self.overdrive_until:
                 self.overdrive_until = 0.0
                 self.overdrive_ready_at = t + b.overdrive_cooldown_s
-                self.force_gear = b.overdrive_back_gear
-            elif not self.overdrive_until and inp.gear == 12 and t >= self.overdrive_ready_at:
+            elif (not self.overdrive_until and shown_w > b.overdrive_power_frac * inp.ftp_w
+                  and t >= self.overdrive_ready_at and cs.phase == "FIGHT"):
                 self.overdrive_until = t + b.overdrive_s
+                self._card_fired("overdrive", t, events, rearm=False)
         if self.overdrive_until:
             mult *= b.overdrive_mult
         if "springboard" in self.deck:
-            if self.prev_raw <= b.springboard_grade < raw and inp.gear >= b.springboard_min_gear:
+            if self.prev_raw <= b.springboard_grade < raw:
                 self.spring_until = t + b.springboard_s
                 self._spring_adr = b.springboard_adrenaline
+                self._card_fired("springboard", t, events, rearm=False)
             if t < self.spring_until:
                 mult *= b.springboard_mult
         if "polarity" in self.deck and "Z_LONG" in inp.buttons and not self.inversion_used:
             self.inversion_used, self.inversion_until = True, t + b.inversion_s
+            self._card_fired("polarity", t, events, rearm=False)
         self.prev_raw = raw
         g = raw
         if "roller" in self.deck:
@@ -408,12 +451,10 @@ class RunEngine:
                 g = b.roller_cap_grade
         if t < self.inversion_until:
             g = min(max(-g, b.inversion_floor), b.room_grade_max)
-        if self.overdrive_until:
-            g += b.overdrive_grade_pts
 
         if self.phase == "RECOVERY":
             g = 0.0
-        ci = CombatInputs(power_w=inp.power_w, cadence_rpm=inp.cadence_rpm, posture=self.posture.posture,
+        ci = CombatInputs(power_w=inp.power_w, power_avg_w=inp.power_avg_w, cadence_rpm=inp.cadence_rpm, posture=self.posture.posture,
                           gear=inp.gear, ftp_w=inp.ftp_w, s_m=inp.s_m, v_mps=inp.v_mps, contact=contact,
                           buttons=frozenset(buttons), objective=self.cur_spec.objective, card_mult=mult,
                           w_bal_j=self.wbal.w_bal_j, run_gold=0.0 if self.lives > self.lives_used else self.gold)
@@ -421,6 +462,8 @@ class RunEngine:
         events += ev
         if "z_refused" in ev:
             self._z_reason = cs.z_reason
+        if "z_ok" in ev:
+            self._z_action = cs.z_action
         if "shift_missed" in ev and cs.shift_miss:
             self._shift_miss = {"reason": cs.shift_miss[0], "dt_s": cs.shift_miss[1]}
         # effets de cartes après le pas
@@ -432,11 +475,16 @@ class RunEngine:
         if getattr(self, "_spring_adr", 0.0):
             adr += self._spring_adr
             self._spring_adr = 0.0
-        if "heal" in self.deck and inp.gear == 1 and inp.cadence_rpm > b.heal_cadence_rpm and cs.phase == "FIGHT":
+        healing = ("heal" in self.deck and inp.cadence_rpm > b.heal_cadence_rpm
+                   and shown_w < b.heal_power_frac * inp.ftp_w and cs.phase == "FIGHT")
+        if healing:
             shield += b.heal_per_s * dt
+        self._card_edge("cursed", "cursed" in self.deck and hard and cs.phase == "FIGHT", t, events)
+        self._card_edge("heal", healing, t, events)
         cs = replace(cs, shield=min(shield, bx.shield_max), adrenaline=min(adr, b.adrenaline_max))
         self.combat = cs
         self.shield = cs.shield
+        self.adrenaline = cs.adrenaline
         lost = cs.gold_lost - self.gold_lost_seen
         self.gold_lost_seen = cs.gold_lost
         self.gold = max(self.gold - lost, 0.0)
@@ -468,8 +516,11 @@ class RunEngine:
         if boss:
             if cs.outcome == "boss_fled":
                 self.boss = "fled"
+                self.end_cause = {"cause": "boss_shield", "boss_phase": self.boss_phase, "enemy_pct": self._enemy_pct(cs)}
             elif self.boss_phase == 3:
                 self.boss = "won" if cs.outcome == "won" else "fled"
+                if cs.outcome != "won":
+                    self.end_cause = {"cause": "boss_time", "boss_phase": 3, "enemy_pct": self._enemy_pct(cs)}
             elif self.boss == "not_reached":
                 self.boss = "in_progress"
         self.room, self.combat, self.firewall = None, None, None
@@ -492,6 +543,13 @@ class RunEngine:
         self._enter(min(self.idx + 1, len(self.sc.steps) - 1))
         self._begin(inp, messages)
 
+    @staticmethod
+    def _enemy_pct(cs) -> int:
+        """PV restants de l'ennemi en % entier (au moins 1 tant qu'il en reste : « 0 % » serait faux)."""
+        if cs.enemy_hp <= 0 or cs.enemy_hp_max <= 0:
+            return 0
+        return max(1, min(100, math.ceil(cs.enemy_hp / cs.enemy_hp_max * 100.0)))
+
     # --- fin de run ---------------------------------------------------------------------------
 
     def _finish_run(self) -> None:
@@ -503,6 +561,7 @@ class RunEngine:
         """Run arrêtée par `end_session` avant les résultats : bilan `abandoned`, sans perte d'or."""
         if self.phase != RESULTS:
             self.result = "abandoned"
+            self.end_cause = {"cause": "abandoned", "boss_phase": self.boss_phase, "enemy_pct": None}
             if self.boss == "in_progress":
                 self.boss = "fled"
         return self.summary()
@@ -516,7 +575,16 @@ class RunEngine:
                 "rooms_skipped": self.rooms_skipped, "rooms_total": self.rooms_total0,
                 "defeats": self.defeats, "boss": boss, "gold": int(self.gold),
                 "cards": list(self.relics + self.deck), "perfect_shifts": self.perfect_shifts,
-                "unlocks": []}
+                "unlocks": [],
+                # révision 1.17 (lot R23) : pourquoi la run est perdue (null en victoire)
+                "end_cause": None if self.result == "victory" else self._end_cause_or_default()}
+
+    def _end_cause_or_default(self) -> dict:
+        cause = getattr(self, "end_cause", None)
+        if cause is not None:
+            return dict(cause)
+        return {"cause": "boss_time" if self.boss != "not_reached" else "abandoned", "boss_phase": None,
+                "enemy_pct": None}
 
     # --- état pour l'engine -------------------------------------------------------------------
 
@@ -562,7 +630,37 @@ class RunEngine:
             "firewall_gap_s": self._firewall_gap_s(gap, inp),
             "z_reason": getattr(self, "_z_reason", None) if "z_refused" in events else None,
             "shift_miss": getattr(self, "_shift_miss", None) if "shift_missed" in events else None,
+            # révision 1.17 (lot R23) : action du Z accepté, tendance de l'adrénaline
+            "z_action": getattr(self, "_z_action", None) if "z_ok" in events else None,
+            "card_on": getattr(self, "_card_on", None) if "card_on" in events else None,
+            "adrenaline_trend": self._adrenaline_trend(),
         }
+
+    def _card_fired(self, card_id: str, t: float, events: list, rearm: bool = True) -> None:
+        """Lot R23 : une carte vient de se déclencher (condition de puissance ou de cadence atteinte) : un seul
+        `card_on` par pas, et pas de nouvelle annonce de la même carte avant `card_on_rearm_s`."""
+        if rearm and t - self.card_said_at.get(card_id, -1e9) < self.b.card_on_rearm_s:
+            return
+        self.card_said_at[card_id] = t
+        if "card_on" not in events:
+            events.append("card_on")
+            self._card_on = card_id
+
+    def _card_edge(self, card_id: str, on: bool, t: float, events: list) -> None:
+        if on and not self.card_was.get(card_id, False):
+            self._card_fired(card_id, t, events)
+        self.card_was[card_id] = on
+
+    def _adrenaline_trend(self) -> dict:
+        """Débit continu de l'adrénaline (par seconde), sa cause et, au-dessus du seuil de surchauffe sans y être
+        encore, les secondes avant qu'elle commence (lot R23)."""
+        cs = self.combat
+        if cs is None or self.phase not in (ROOM, BOSS):
+            return {"rate_per_s": 0.0, "cause": "none", "overheat_in_s": None}
+        soon = None
+        if cs.over_s > 0.0 and not cs.overheat:
+            soon = round(max(self.b.overheat_after_s - cs.over_s, 0.0), 1)
+        return {"rate_per_s": round(cs.adr_rate, 2), "cause": cs.adr_cause, "overheat_in_s": soon}
 
     def _phase_left_s(self) -> float | None:
         """Secondes avant la fin de la phase : échauffement, couloir, récupération, retour au calme ; en salle,
@@ -625,7 +723,12 @@ class RunEngine:
             return {"lo": 0, "hi": round(b.cooldown_frac * 100)}
         if self.phase in (ROOM, BOSS) and self.room is not None:
             from .combat import target_at
-            return {"lo": round(target_at(self.room, max(inp.s_m, 0.0)) * 100), "hi": None}
+            # lot R23 : en endurance, le plafond est le seuil de surchauffe (au-delà, l'adrénaline fond)
+            from .combat import overheat_limit
+            tgt = target_at(self.room, max(inp.s_m, 0.0))
+            lo = round(tgt * 100)
+            hi = round(overheat_limit(tgt, self._eff_balance()) * 100) if self.cur_spec.objective == "endurance" else None
+            return {"lo": lo, "hi": hi}
         return None
 
     def _firewall_gap_s(self, gap_m: float, inp) -> float | None:

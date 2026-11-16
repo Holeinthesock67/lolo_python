@@ -100,9 +100,13 @@ func _run() -> void:
 		"cycliste que l'engine n'a pas tiré : sens, maillot et tenue tirés de `look`")
 	m.update(s, 7.0, 0.5)
 	got = _by_id(m)
+	_check(absf(float(got["c1000000-0"]["s"]) - (s + 21.0)) < 1e-6 and absf(float(got["c9-0"]["s"]) - (s - 30.0)) < 1e-6,
+		"image de la reprise : déjà à leur place, pas extrapolés une fois de plus (lot AS9)")
+	m.update(s, 7.0, 0.5)
+	got = _by_id(m)
 	_check(absf(float(got["c1000000-0"]["s"]) - (s + 24.0)) < 1e-6 and absf(float(got["c9-0"]["s"]) - (s - 34.0)) < 1e-6,
 		"extrapolés entre deux listes, dans leur sens")
-	_check(absf(float(got["c1000000-0"]["lateral"]) - 2.4) < 0.01, "écart du core rejoint en 0,5 s (%.3f m)" % float(got["c1000000-0"]["lateral"]))
+	_check(absf(float(got["c1000000-0"]["lateral"]) - 2.4) < 0.01, "écart du core rejoint en 1 s (%.3f m)" % float(got["c1000000-0"]["lateral"]))
 	m.sync_core([], 3, s)
 	_check(_by_id(m).size() == 5, "même trame : liste reprise une seule fois")
 	m.sync_core([list[0]], 6, s)
@@ -112,7 +116,7 @@ func _run() -> void:
 	_check(got.has("c5-0") and not got["c5-0"]["group"].has("core") and str(got["c5-0"]["group"]["case"]) == "ahead",
 		"cycliste à 61 m sorti de la liste : rendu au décor de l'engine (groupe « ahead »)")
 	m.update(s, 7.0, 0.5)
-	_check(absf(float(_by_id(m)["c5-0"]["s"]) - (s + 58.0 + 6.0)) < 1e-3, "... à sa dernière vitesse (6 m/s, deux pas de 0,5 s)")
+	_check(absf(float(_by_id(m)["c5-0"]["s"]) - (s + 58.0 + 6.0)) < 1e-3, "... à sa dernière vitesse (6 m/s, un pas de 0,5 s au core et un au décor)")
 	# Banc E1 du 5/11 : le groupe rendu au décor rattrape un groupe plus lent sur sa voie ; il le double au lieu
 	# de rouler au travers
 	m.sync_core([], 7, s)   # le core ne donne plus personne : les cyclistes du core proches quittent la route
@@ -135,8 +139,7 @@ func _run() -> void:
 	_check(overlap == 0 and got.has("c5-0") and float(got["c5-0"]["s"]) > s + 75.0 + 40.0 * 5.0 + 5.0,
 		"groupe rendu au décor : double le plus lent sans le traverser (%d images l'une dans l'autre, écart en travers %.2f m au plus près)" % [overlap, closest])
 
-	# Liste pleine : les cyclistes qu'elle ne donne pas peuvent encore rouler au-delà du plus loin de la liste (lot DB1 :
-	# plus près, leur place est périmée et ils quittent la route)
+	# Liste pleine : les cyclistes proches qu'elle ne donne pas peuvent encore rouler
 	var m2 = _model(route)
 	m2.place_for_test(s, 7.0, "ahead", 10.0, 1)
 	m2.place_for_test(s, 7.0, "ahead", 40.0, 1)
@@ -145,7 +148,7 @@ func _run() -> void:
 		full.append({"id": "c%d-0" % (50 + i), "s": s + 2.0 * i, "dir": -1, "v": 7.0, "lane_m": -2.5, "look": i})
 	m2.sync_core(full, 1, s)
 	got = _by_id(m2)
-	_check(got.size() == Model.CORE_LIST_MAX + 1 and not got.has("c1000000-0") and got.has("c1000001-0"),
-		"liste pleine : cycliste de l'engine à 10 m (pas plus loin que la liste) retiré, à 40 m gardé (%d)" % got.size())
+	_check(got.size() == Model.CORE_LIST_MAX + 2 and got.has("c1000000-0") and got.has("c1000001-0"),
+		"liste pleine : cyclistes proches de l'engine gardés (%d)" % got.size())
 	print("test_road_cyclists_core : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

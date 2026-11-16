@@ -71,9 +71,8 @@ class TrainerConfig:
 class GearingConfig:
     n_gears: int = 24
     start_gear: int = 12
-    ratio_min: float = 0.65    # 0,40 à 3,00 avant le 28 octobre : petits braquets à plat, moitié haute inutile
-    ratio_max: float = 2.00
-    g_base_pct: float = 2.0
+    neutral_gear: int = 12     # braquet neutre : la pente envoyée est celle du terrain × la difficulté
+    step_pct: float = 0.5      # points de pente ajoutés par clic (15 novembre : pas fixe, remplace les rapports R_k)
     long_press_gears: int = 10    # appui long en SIM : braquets sautés (3 était plus lent que des appuis courts)
 
 
@@ -171,6 +170,7 @@ class VelodromeConfig:
     """Vélodrome (série VD, lot VD3, plan §4.1) : bois de la piste et air de la salle couverte."""
     factor_wood: float = 0.6       # multiplicateur du crr du bitume sur la piste en bois
     temperature_c: float = 24.0    # température de la salle : densité de l'air
+    gear_offset_pct: float = 0.5   # toute la gamme décalée vers le dur sur la piste (14 novembre, en points de pente depuis le 15)
 
 
 @dataclass
@@ -355,9 +355,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("trainer", "resistance_inertia_pct"): (0, 100),
     ("gearing", "n_gears"): (2, 40),
     ("gearing", "start_gear"): (1, 40),
-    ("gearing", "ratio_min"): (0.1, 5),
-    ("gearing", "ratio_max"): (0.1, 5),
-    ("gearing", "g_base_pct"): (-10, 10),
+    ("gearing", "step_pct"): (0.05, 2),
     ("gearing", "long_press_gears"): (1, 10),
     ("ipc", "port_state"): (1024, 65535),
     ("ipc", "port_commands"): (1024, 65535),
@@ -383,6 +381,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("gravel", "factor_gravel"): (1, 3),
     ("gravel", "factor_dirt"): (1, 3),
     ("velodrome", "factor_wood"): (0.3, 1),
+    ("velodrome", "gear_offset_pct"): (-5, 5),
     ("velodrome", "temperature_c"): (5, 40),
     ("avatar", "standing_grade_pct"): (3, 15),
     ("avatar", "standing_power_pct"): (100, 300),
@@ -415,11 +414,11 @@ ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
 ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 
 # Valeurs permises des champs textuels à choix fermé.
-# Les biomes : seize de la série U (lot U0), `japan` (lot JP1) `atlantic_heath` (lot AT1) et `high_plateau` (lot HP1) (Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
+# Les biomes : seize de la série U (lot U0), `japan` (lot JP1) `atlantic_heath` (lot AT1) `high_plateau` (lot HP1) et `reef` (fond marin, lot SM1) (Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
 BIOMES: tuple[str, ...] = (
     "temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
     "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
-    "wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau",
+    "wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau", "reef",
 )
 
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
@@ -508,9 +507,8 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("trainer", "resistance_n_per_pct_kmh"): "étalonnage de la résistance calculée (lots RC1 à RC4), corrigé en roulant",
     ("trainer", "resistance_inertia_pct"): "inertie de la résistance calculée, abandonnée le 1er novembre (coupée par défaut)",
     ("gearing", "n_gears"): "boîte de vitesses virtuelle",
-    ("gearing", "ratio_min"): "boîte de vitesses virtuelle",
-    ("gearing", "ratio_max"): "boîte de vitesses virtuelle",
-    ("gearing", "g_base_pct"): "boîte de vitesses virtuelle",
+    ("gearing", "neutral_gear"): "boîte de vitesses virtuelle",
+    ("gearing", "step_pct"): "boîte de vitesses virtuelle",
     ("gearing", "long_press_gears"): "boîte de vitesses virtuelle",
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
@@ -531,6 +529,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("gravel", "factor_gravel"): "roulement des routes non revêtues",
     ("gravel", "factor_dirt"): "roulement des routes non revêtues",
     ("velodrome", "factor_wood"): "roulement de la piste en bois du vélodrome",
+    ("velodrome", "gear_offset_pct"): "braquets de la piste du vélodrome",
     ("velodrome", "temperature_c"): "air de la salle du vélodrome",
     ("avatar", "standing_grade_pct"): "seuil de la danseuse",
     ("avatar", "standing_power_pct"): "seuil de la danseuse",
@@ -664,9 +663,9 @@ def validate(cfg: Config, source: str = "config.toml") -> Config:
     if not 1 <= g.start_gear <= g.n_gears:
         raise ConfigError(f"{source}, [gearing] start_gear : {g.start_gear} hors de 1 à n_gears ({g.n_gears})",
                           section="gearing", key="start_gear")
-    if g.ratio_min >= g.ratio_max:
-        raise ConfigError(f"{source}, [gearing] ratio_min : doit être inférieur à ratio_max",
-                          section="gearing", key="ratio_min")
+    if not 1 <= g.neutral_gear <= g.n_gears:
+        raise ConfigError(f"{source}, [gearing] neutral_gear : {g.neutral_gear} hors de 1 à n_gears ({g.n_gears})",
+                          section="gearing", key="neutral_gear")
     if t.grade_min_pct >= t.grade_max_pct:
         raise ConfigError(f"{source}, [trainer] grade_min_pct : doit être inférieur à grade_max_pct",
                           section="trainer", key="grade_min_pct")

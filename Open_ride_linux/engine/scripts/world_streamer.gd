@@ -317,6 +317,17 @@ func _get_osm_items(t: Vector2i, layer: String) -> Array:
 
 
 ## Option « gravel » changée en cours de route (lot U22) : les tronçons de ruban sont reconstruits.
+## Aspect de la chaussée par biome (lot SM2, `biomes.<id>.road` du thème) : {weights_at, looks}, vide sans couche
+## de biome active ou sans biome qui en donne un.
+func _road_look() -> Dictionary:
+	if biome_model == null or not biome_model.active():
+		return {}
+	var looks := RoadSurface.biome_looks(_theme_dict)
+	if looks.is_empty():
+		return {}
+	return {"weights_at": Callable(biome_model, "weights_at"), "looks": looks}
+
+
 func set_gravel_mode(mode: String) -> void:
 	if mode == gravel_mode or not (mode in RoadSurface.MODES):
 		return
@@ -353,11 +364,21 @@ func swap_route(new_route, from_part: int) -> void:
 			if not _near_index.has(t):
 				_near_index[t] = true
 				_free_flat_tile(t)
+				_biome_tile_arrived("near", t)
 		for t in far_new:
+			if not _far_index.has(t):
+				_biome_tile_arrived("far", t)
 			_far_index[t] = true
 		has_terrain = not (_near_index.is_empty() and _far_index.is_empty())
 	if osm_streamer != null:
 		osm_streamer.swap_route(new_route, from_part)
+
+
+## Tuile de terrain arrivée en cours de séance (monde vivant) : sa tuile de biome, liée avant elle par le
+## générateur (lot W17), sera lue au lieu du biome par défaut noté si on l'a cherchée trop tôt.
+func _biome_tile_arrived(level: String, t: Vector2i) -> void:
+	if biome_model != null:
+		biome_model.layer.forget_missing(level, t.x, t.y)
 
 
 ## Tronçons de ruban k ≥ `from_part` oubliés (travaux, maillages prêts, instances) : refaits au fil des images.
@@ -613,7 +634,7 @@ func _start_jobs() -> void:
 			break
 		var job := {"key": key, "spec": _wanted[key], "arrays": [], "origin": Vector3.ZERO, "gen": _generation,
 			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m,
-			"gravel": {"mode": gravel_mode, "surfaces": _surfaces},
+			"gravel": {"mode": gravel_mode, "surfaces": _surfaces, "look": _road_look()},
 			"near_index": _near_index, "far_index": _far_index}
 		job["task"] = BgTasks.add(_build_job.bind(job), false, "maillage " + key)
 		_jobs[key] = job

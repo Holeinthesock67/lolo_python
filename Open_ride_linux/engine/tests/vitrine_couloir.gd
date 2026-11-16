@@ -9,6 +9,8 @@ extends SceneTree
 ##
 ## Écrit DOSSIER/couloir_<focus>_<taille>.png ; code de sortie 1 si un bloc (carte, porte, relance) dépasse
 ## de l'écran.
+## --cards FICHIER.json (lot R23) : liste de cartes `{name, kind, text}` (par exemple le catalogue réel du core),
+## montrées 3 par 3, une capture par groupe : DOSSIER/cartes_<n>_<taille>.png.
 
 const CorridorView := preload("res://scripts/rogue/rogue_corridor_view.gd")
 const NeonPalette := preload("res://scripts/rogue/neon_palette.gd")
@@ -26,6 +28,7 @@ const FOCUS := {"carte": 1, "porte_gauche": 3, "porte_droite": 4}
 
 var _out_dir := "user://vitrine_couloir"
 var _size := Vector2i(1280, 720)
+var _cards_path := ""
 
 
 func _init() -> void:
@@ -36,6 +39,8 @@ func _init() -> void:
 		elif args[i] == "--size":
 			var wh := args[i + 1].split("x")
 			_size = Vector2i(int(wh[0]), int(wh[1]))
+		elif args[i] == "--cards":
+			_cards_path = args[i + 1]
 	call_deferred("_run")
 
 
@@ -49,9 +54,21 @@ func _run() -> void:
 	var view = CorridorView.new()
 	root.add_child(view)
 	var failures := 0
-	for name in FOCUS:
-		var c: Dictionary = CORRIDOR.duplicate(true)
-		c["focus"] = FOCUS[name]
+	var shots := {}
+	if _cards_path != "":
+		var all: Array = JSON.parse_string(FileAccess.get_file_as_string(_cards_path))
+		for k in range(0, all.size(), 3):
+			var c: Dictionary = CORRIDOR.duplicate(true)
+			c["cards"] = all.slice(k, k + 3)
+			c["focus"] = 1
+			shots["cartes_%d" % (k / 3 + 1)] = c
+	else:
+		for name in FOCUS:
+			var c: Dictionary = CORRIDOR.duplicate(true)
+			c["focus"] = FOCUS[name]
+			shots["couloir_" + name] = c
+	for name in shots:
+		var c: Dictionary = shots[name]
 		view.apply(c)
 		for f in 6:
 			await process_frame
@@ -62,7 +79,7 @@ func _run() -> void:
 				failures += 1
 				printerr("[ÉCHEC] %s : %s sort de l'écran %s" % [name, str(r), str(visible)])
 		var img := root.get_texture().get_image()
-		var path := _out_dir.path_join("couloir_%s_%dx%d.png" % [name, _size.x, _size.y])
+		var path := _out_dir.path_join("%s_%dx%d.png" % [name, _size.x, _size.y])
 		img.save_png(path)
 		print("[vitrine] %s" % path)
 	print("vitrine_couloir : %d dépassement(s)" % failures)

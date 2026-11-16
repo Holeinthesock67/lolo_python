@@ -20,7 +20,11 @@ Organisation :
   engagée passe à moins de 10 km de son bord ; hors ligne, seules les arêtes dont le relief est
   sur le PC sont engagées (sinon demi-tour), et la séance ne s'arrête jamais pour attendre ;
 - tuiles vectorielles en échec (X28) : la cellule reste « incomplète », ses tuiles sont redemandées
-  après leur recul à chaque `progress`, et le graphe est complété dès qu'elles arrivent.
+  après leur recul à chaque `progress`, et le graphe est complété dès qu'elles arrivent ;
+- biomes (W17) : chaque carré et chaque tuile lointaine reçoit sa tuile de biome (`biome_tiles`, même
+  règle que le compilateur), liée avant le terrain ; l'occupation du sol WorldCover se télécharge à
+  l'ouverture pour le départ, puis en avance dans un fil, comme le relief ; ensuite le calcul ne lit
+  que le cache (sinon tuile « sans WorldCover », recalculée à la séance suivante).
 """
 
 from __future__ import annotations
@@ -42,6 +46,7 @@ import numpy as np
 
 from .. import __version__
 from .. import constants as C
+from .. import koppen
 from ..cache import Downloader, Log
 from ..elevation import COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationProvider, SyntheticProvider, copernicus_tile_name
 from ..errors import CompileError
@@ -50,6 +55,7 @@ from .edge_profile import EdgeProfile, NodeAltitudes, concat, edge_profile, spli
 from .graph import Branch, Edge, RoadGraph
 from .navigator import Navigator
 from .osmdb import OsmDb
+from . import biome_tiles
 from .squares import FarKey, SquareKey, SquareQueue, generate_far, generate_square, lonlat_bbox, zone_frame
 from .store import WorldCache, read_open_world_config
 
@@ -170,7 +176,7 @@ class WorldSession:
     def __init__(self, cache: WorldCache, provider: ElevationProvider, send: Callable[[dict], None],
                  config: dict[str, Any] | None = None, session_dir: Path | None = None,
                  network: bool = True, clock: Callable[[], float] = time.time, log: Log | None = None,
-                 db: OsmDb | None = None) -> None:
+                 db: OsmDb | None = None, landcover=None) -> None:
         cfg = dict(config or {})
         self.horizon_m = float(cfg.get("horizon_m", 3000.0))
         self.offer_m = float(cfg.get("offer_m", 300.0))
@@ -209,8 +215,13 @@ class WorldSession:
         self.dirty_tiles = False
         self.offline_reported = False
         self.relief_jobs: dict[str, threading.Thread] = {}
+        # Occupation du sol des biomes (W17) : source WorldCover ou None (biomes du climat et du relief)
+        self.landcover = landcover
+        self.landcover_jobs: set[tuple[int, int]] = set()
+        self._landcover_queue: queue.Queue[tuple[int, int]] = queue.Queue()
+        self._landcover_thread: threading.Thread | None = None
         self.stats = {"squares_generated": 0, "squares_cached": 0, "far_generated": 0, "downloads": 0,
-                      "bad_lines": 0}
+                      "bad_lines": 0, "biome_tiles": 0}
         self._last_evict = -math.inf
         self.data_state = "cached"
 
@@ -363,11 +374,26 @@ class WorldSession:
                 "vegetation": {"present": True, "version": C.VEGETATION_VERSION, "source": "osm"},
                 "poi": {"present": True, "version": C.POI_VERSION},
                 "water": {"present": True, "version": C.WATER_VERSION},
+                "biome": biome_tiles.manifest_block(self._biome_sources()),
             },
             "live": True, "origin_kind": "utm_grid",
             "grid": {"near_m": 1000, "far_m": 5000, "e0": self.e0, "n0": self.n0},
         }
         _write_json(self.session_dir / "manifest.json", manifest, indent=2)
+
+    def _biome_sources(self) -> list[str]:
+        sources = [self.landcover.name] if self.landcover is not None else []
+        return sources + ["osm", "dem", koppen.SOURCE]
+
+    def _biome(self, key: SquareKey) -> None:
+        """Tuile de biome du carré ou de la tuile lointaine (W17) ; une erreur laisse le biome par défaut."""
+        try:
+            biome_tiles.generate(key, self.frame, self.provider, self.cache, self.landcover,
+                                 db=None if isinstance(key, FarKey) else self.db,
+                                 network=self.network and not self.opened, log=self.log)
+            self.stats["biome_tiles"] += 1
+        except Exception as exc:  # noqa: BLE001 - le décor garde le biome par défaut, la séance continue
+            self.log(f"biome {key.ix}_{key.i_n} non calculé : {exc!r}")
 
     # --- graphe et profils --------------------------------------------------------------------
 
@@ -583,6 +609,7 @@ class WorldSession:
             self._request_squares()
             self._request_far()
             self._prefetch_relief()
+            self._prefetch_landcover()
             self._publish(_part_of(old - REWRITE_BACK_M))
         self._maybe_evict()
 
@@ -678,6 +705,7 @@ class WorldSession:
                 self.failed.add(key)
                 return True
             self.stats["squares_cached" if had else "squares_generated"] += 1
+            self._biome(key)
             ix, iz = key.ix - int(self.e0) // 1000, int(self.n0) // 1000 - key.i_n - 1
             self.cache.link_square(self.session_dir, self.zone, self.e0, self.n0, ix, iz)
             self.ready.add(key)
@@ -695,6 +723,7 @@ class WorldSession:
                 return True
             if not had:
                 self.stats["far_generated"] += 1
+            self._biome(fk)
             fx, fz = fk.ix - int(self.e0) // 5000, int(self.n0) // 5000 - fk.i_n - 1
             self.cache.link_far(self.session_dir, self.zone, self.e0, self.n0, fx, fz)
             self.far_ready.add(fk)
@@ -729,6 +758,45 @@ class WorldSession:
                 self.log(f"relief en avance : {name}")
                 th.start()
 
+    def _prefetch_landcover(self) -> None:
+        """Carrés WorldCover de 0,1° autour du bout de la route engagée (W17), lus dans un fil."""
+        lc = self.landcover
+        if not self.network or lc is None or not hasattr(lc, "square_path"):
+            return
+        from ..landcover import square_keys
+        end = self.legs[-1].profile
+        lat, lon = float(end.lat[-1]), float(end.lon[-1])
+        dlat = RELIEF_AHEAD_M / 111_000.0
+        dlon = dlat / max(0.1, math.cos(math.radians(lat)))
+        la = np.linspace(lat - dlat, lat + dlat, 5)
+        lo = np.linspace(lon - dlon, lon + dlon, 5)
+        glat, glon = np.meshgrid(la, lo)
+        for a, b in np.unique(square_keys(glat.ravel(), glon.ravel()), axis=0).tolist():
+            sq = (int(a), int(b))
+            if sq in self.landcover_jobs or lc.square_path(*sq).is_file():
+                continue
+            self.landcover_jobs.add(sq)
+            self._landcover_queue.put(sq)
+        if not self._landcover_queue.empty() and self._landcover_thread is None:
+            self._landcover_thread = threading.Thread(target=self._landcover_worker, name="worldcover", daemon=True)
+            self._landcover_thread.start()
+
+    def _landcover_worker(self) -> None:
+        """Fil de préchargement : sa propre source WorldCover (réseau), qui n'écrit que des fichiers du cache."""
+        lc = self.landcover
+        assert lc is not None
+        fetcher = type(lc)(cache_dir=lc.dir.parent, offline=False, log=self.log, base_url=lc.base_url,
+                           reader=lc.reader)
+        while True:
+            a, b = self._landcover_queue.get()
+            try:
+                fetcher.prepare(np.array([(a + 0.5) / 10.0]), np.array([(b + 0.5) / 10.0]))
+                fetcher.squares.clear()
+                self.stats["downloads"] += 1
+            except Exception as exc:  # noqa: BLE001 - réessayé au prochain passage
+                self.log(f"WorldCover {a}_{b} non téléchargé : {exc}")
+                self.landcover_jobs.discard((a, b))
+
     def _download_tile(self, la: int, lo: int) -> None:
         prov = self.provider
         assert isinstance(prov, CopernicusGlo30Provider)
@@ -746,7 +814,9 @@ class WorldSession:
     # --- cache et fermeture ---------------------------------------------------------------------
 
     def in_use(self) -> set[str]:
-        return {k.cache_key for k in self.ready} | {k.cache_key for k in self.far_ready}
+        biome = {self.cache.biome_key(k.zone, biome_tiles.level_of(k).name, k.ix, k.i_n)
+                 for k in (*self.ready, *self.far_ready)}
+        return {k.cache_key for k in self.ready} | {k.cache_key for k in self.far_ready} | biome
 
     def _maybe_evict(self) -> None:
         now = self.clock()
@@ -851,6 +921,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--synthetic-relief", metavar="LAT,LON", help="relief analytique (tests, sans réseau)")
     ap.add_argument("--tiles-url", metavar="URL", help="TileJSON d'un autre serveur de tuiles (tests, X28)")
     ap.add_argument("--dem-url", metavar="URL", help="autre serveur du relief Copernicus (tests, X28)")
+    ap.add_argument("--landcover-url", metavar="URL",
+                    help="autre source de l'occupation du sol WorldCover, adresse ou dossier (tests, W17)")
     args = ap.parse_args(argv)
 
     def log(m: str) -> None:
@@ -872,8 +944,13 @@ def main(argv: list[str] | None = None) -> int:
                                    else CopernicusGlo30Provider(offline=not network, log=log,
                                                                 base_url=args.dem_url or COPERNICUS_BASE_URL))
     fake = FakeClock() if args.fake_clock else None
+    landcover = None
+    if not args.synthetic_relief:   # relief analytique (tests) : biomes du climat et du relief seulement
+        from ..landcover import WorldCoverSource
+        from ..landcover import WORLDCOVER_BASE_URL
+        landcover = WorldCoverSource(offline=not network, log=log, base_url=args.landcover_url or WORLDCOVER_BASE_URL)
     session = WorldSession(cache, provider, send, cfg, args.session, network=network,
-                           clock=fake or time.time, log=log)
+                           clock=fake or time.time, log=log, landcover=landcover)
     session.tilejson_url = args.tiles_url
     log(f"openride-worldgen {__version__} prêt ({'réseau autorisé' if network else 'hors ligne'})")
     return serve(session, sys.stdin, fake)
