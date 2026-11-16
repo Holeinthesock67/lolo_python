@@ -1235,6 +1235,9 @@ func _process(delta: float) -> void:
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		_step_avatar(pos, float(pose["yaw"]), float(pose["roll"]), now, pitch_deg)
 		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
+		# Objets portés par le vélo (œufs sur le porte-bagages), dans le repère du vélo affiché, même caché.
+		wtf_scene.follow_rider(Transform3D(Basis.from_euler(Vector3(deg_to_rad(pitch_deg), -float(pose["yaw"]),
+			float(pose["roll"]))).scaled(Vector3.ONE * wtf_scene.rider_scale()), pos))
 		_probe.distance_m = s_route
 		var t_step := Time.get_ticks_usec()
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)

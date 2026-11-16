@@ -46,6 +46,7 @@ const GAGS := {
 	"katamari": {"kata": {"size": 2.0, "count": 12, "last": "sign", "next": [[7.0, "apple"], [13.0, "sign"], [22.0, "car"]]}},
 	"katamari_gros": {"kata": {"size": 3.0, "count": 40, "last": "car", "next": [[9.0, "cow"], [20.0, "house"], [42.0, "church"]]}},
 	"poissons": {"clock_h": 14.0, "fish": true},
+	"oeufs": {"event": {"id": "eggs", "eggs": 4, "left_m": 600.0, "left_s": 90.0}},
 	"objets_katamari": {"kata": {"size": 1.0, "count": 0}},   # vue faite à la main : OBJECTS_VIEW
 }
 ## Les six objets du Katamari au sol, sans la boule qui les cache, à leur taille de jeu (KATA_SCALES), de part
@@ -127,6 +128,8 @@ func _run() -> void:
 					avatar.position = pos + Vector3.UP * scene.hop_m()
 				if scene.has_method("rider_scale"):
 					avatar.scale = Vector3.ONE * scene.rider_scale()
+				if scene.has_method("follow_rider"):
+					scene.follow_rider(Transform3D(Basis.from_scale(avatar.scale), avatar.position))
 				await process_frame
 			var path := _out_dir.path_join("wtf_%s_%s.png" % [gag, preset])
 			vp.get_texture().get_image().save_png(path)
