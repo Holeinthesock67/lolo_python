@@ -100,7 +100,7 @@ def test_road_cyclists_keep_coming_after_u_turn() -> None:
     spawned = c.spawned_total
     places = {r.id: (r.s, r.lane_m) for r in c.riders()}
     assert c.set_direction(-1, s)
-    assert c.climbs == []                             # montées du retour : lot N24
+    assert c.climbs == []                             # parcours plat : pas de montée du retour (lot N24)
     for r in map(c.on_route, c.riders()):             # rien ne saute au demi-tour
         assert (r.s, r.lane_m) == pytest.approx(places[r.id])
     dirs: set[int] = set()
@@ -201,3 +201,20 @@ def test_vehicles_met_before_u_turn_never_touch_the_rider_after_it(tmp_path, mon
     ride_until(s, look, dt=DT)
     assert ahead_left == 0
     assert worst > 0.0
+
+
+def test_cyclists_use_the_climbs_of_the_way_back() -> None:
+    """Lot N24 : à rebours, les montées des cyclistes du décor sont celles du retour, détectées sur le parcours
+    retourné comme climb_detector.gd `detect_back` : une colline montée de 0 à 3 km se redescend de 3 à 6 km."""
+    route = straight_route(9000.0, grade=lambda s: 6.0 if s < 3000.0 else (-6.0 if s < 6000.0 else 0.0))
+    c = rc.RoadCyclists(route, climbs=rc.detect_climbs(route), seed=rc.SEED)
+    (start, summit), = c.climbs
+    assert summit == pytest.approx(3000.0, abs=150.0)
+    c.set_direction(-1, 8000.0)
+    (u0, u1), = c.climbs
+    assert c.climbs == rc.detect_climbs(MirroredRoute(route))
+    # Repère retourné : la montée du retour va de s ≈ 6 km (pied) à s ≈ 3 km (sommet)
+    assert flip_s(route.length_m, u0) == pytest.approx(6000.0, abs=150.0)
+    assert flip_s(route.length_m, u1) == pytest.approx(3000.0, abs=150.0)
+    c.set_direction(1, 8000.0)
+    assert c.climbs == [(start, summit)]
