@@ -36,7 +36,7 @@ from .hr_monitor import HeartRateProvider
 from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
-from . import config_edit, last_choices, latency_log, local_weather
+from . import config_edit, last_choices, latency_log, local_weather, seance_file
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import Record
@@ -98,6 +98,7 @@ RETIRED_IMPORT_COMMANDS = ("list_imports", "import_workout")
 BIAS_STEPS = {InputEvent.PLUS_SHORT: +1, InputEvent.MINUS_SHORT: -1, InputEvent.PLUS_LONG: +5, InputEvent.MINUS_LONG: -5}
 WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révision 1.3)
 VEHICLES_FRAME_EVERY = 3   # liste `vehicles` 10 fois par seconde (lot AS6), extrapolée par l'engine
+RIDERS_FRAME_AT = 1        # lot AS10 : liste `riders` (10 Hz aussi) dans la trame qui suit celle de `vehicles`
 ESCORT_GAP_M = traffic_mod.DRAFT_REF_GAP_M   # voiture d'équipe (lot GP4) : 3 m du pare-chocs à la roue avant (abri de référence d'AS6)
 ESCORT_COLOR = 0           # teinte de la voiture d'équipe (indice des couleurs de la circulation)
 TRAFFIC_SEED = 0         # graine de la circulation : celle de traffic_model.gd (lot AS6)
@@ -1201,7 +1202,8 @@ class CoreSession:
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
         input_lost = bool(clicks) and self.state.input_status != "CONNECTED"
         ts = time.time()
-        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts)
+        p3 = self._power_3s(m.power_w)   # lot R23 : la puissance affichée juge les consignes du mode
+        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts, power_avg_w=p3)
         for msg in out.messages:
             self.server.send_raw(msg)
         if self._rec:
@@ -1212,12 +1214,11 @@ class CoreSession:
         self._feed_road_mass()
         self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
         self._rogue_dist += self.physics.v * dt
-        p3 = self._power_3s(m.power_w)
         st = self.state
         st.t, st.s, st.v = self._t_session, self._rogue_dist, self.physics.v
         st.grade, st.grade_sent = round(out.grade_enemy, 2), round(self._grade_sent, 2)
         st.power, st.power_3s, st.cadence, st.hr = m.power_w, round(p3, 1), m.cadence_rpm, m.hr_bpm
-        st.gear, st.rogue = rg.gear, out.rogue
+        st.gear, st.rogue = rg.gear, out.rogue   # événements de la trame : _fill_rogue_frame à l'envoi (lot R23)
         if self._rec and self._t_session >= self._next_record:
             self._next_record += 1.0
             self._rec.record(Record(
@@ -2489,6 +2490,15 @@ class CoreSession:
         log.info("Mode WTF : règle %s %s.", rule, "allumée" if on else "coupée")
         return True
 
+    def _fill_rogue_frame(self) -> None:
+        """Objet `rogue` de la trame : état du dernier pas et événements de tous les pas depuis la trame
+        précédente (lot R23 : la boucle tourne à 50 Hz, la trame part à 30 Hz)."""
+        if self.rogue is None:
+            return
+        frame = self.rogue.take_frame()
+        if frame is not None:
+            self.state.rogue = frame
+
     def _fill_wtf_frame(self) -> None:
         st = self.state
         if self.wtf is None or st.session_state not in ("RUNNING", "PAUSED"):
@@ -3527,9 +3537,9 @@ class CoreSession:
             self.driver.set_target_power(erg.target_w)
         else:
             # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
-            # Piste : toute la gamme décalée vers le dur (`[velodrome] gear_scale`, 14 novembre).
-            gear_scale = self.cfg.velodrome.gear_scale if track is not None else 1.0
-            target = self.gearing.effective_grade(ahead, self.difficulty_pct / 100.0, gear_scale)
+            # Piste : toute la gamme décalée vers le dur (`[velodrome] gear_offset_pct`, 14 et 15 novembre).
+            place = self.cfg.velodrome.gear_offset_pct if track is not None else 0.0
+            target = self.gearing.effective_grade(ahead, self.difficulty_pct / 100.0, place)
             if (self.wind.active and wcfg.feel == "grade") or draft > 0.0:
                 # Vent et abri ressentis : supplément de pente avant la limitation de variation et les
                 # bornes. Avec feel = "ftms", le vent part dans la commande 0x11 et seul l'abri passe ici.
@@ -3808,7 +3818,8 @@ class CoreSession:
             if cyclists is not None:
                 cyclists.set_direction(d, self.physics.s)
                 cyclists.vehicles = traffic.vehicles
-                cyclists.update(rider_u, self.physics.v, dt, bots=bot_places)
+                # Lot AS10 : à la vraie place du cycliste en travers (repère du décor, lot N23 : à droite de son sens)
+                cyclists.update(rider_u, self.physics.v, dt, bots=bot_places, rider_lane=self._lane.m)
                 riders_m = cyclists.near(rider_u)
                 riders = [cyclists.on_route(r) for r in riders_m]
             others = [traffic_mod.Other(s, lat, d) for s, lat in bot_places]
@@ -3836,7 +3847,7 @@ class CoreSession:
             b.shelters = b.id not in unseen
         self._escorts = self._gp_escorts()
         cars = self._escorts + [v for v in near if v.dir == 1]   # voiture d'équipe (lot GP4) : un véhicule d'AS6
-        reverse = self.physics.direction < 0   # à rebours (lot N17) : personne dans le même sens, ni abri ni placement
+        reverse = self.physics.direction < 0   # à rebours (lot N17) : ni abri ni bots ; placement parmi ceux du même sens (AS10)
         # Voiture d'équipe (lot GP4) : le coureur remorqué et sa voiture se placent d'un seul bloc (gabarit de la
         # voiture, du pare-chocs avant à la roue arrière) : le bloc double les coureurs plus lents et les autres
         # l'évitent, la voiture ne passe plus à travers un coureur devant
@@ -3919,10 +3930,11 @@ class CoreSession:
             self.state.vehicles = traffic_mod.state_list(cars[:traffic_mod.NEAR_MAX])
 
     def _fill_riders_frame(self) -> None:
-        """Liste `riders` avec `vehicles` (10 Hz, lot AS7) : au plus 6 cyclistes du décor à moins de 60 m."""
+        """Liste `riders` (10 Hz, lot AS7) : cyclistes du décor à moins de 60 m. Lot AS10 (révision 1.18) : au plus 10,
+        dans la trame qui suit celle de `vehicles`, jamais avec elle (la trame la plus chargée reste sous 4 096 octets)."""
         cyclists = self.road_cyclists
         self.state.riders = None
-        if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == 0:
+        if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == RIDERS_FRAME_AT:
             self.state.riders = road_cyclists_mod.state_items(
                 cyclists.on_route(r) for r in cyclists.near(cyclists.model_s(self.physics.s)))
 
@@ -4036,6 +4048,38 @@ class CoreSession:
                  self.rogue.phase)
         return rs
 
+    def check_autostart_commands(self, commands: list[tuple[str, dict]]) -> None:
+        """Vérifie les parcours et entraînements d'une séance verrouillée avant d'ouvrir les ports (lot EP1)."""
+        for name, args in commands:
+            if name == "select_route":
+                self.check_autostart(str(args.get("route_id") or ""), None)
+            elif name == "select_workout" and args.get("workout_id"):
+                try:
+                    self._load_workout(str(args["workout_id"]))
+                except WorkoutError as exc:
+                    raise AutostartError(f"entraînement « {args['workout_id']} » refusé : {exc}") from exc
+
+    def _play_autostart(self, commands: list[tuple[str, dict]]) -> None:
+        """Joue la séance verrouillée comme les menus l'auraient fait (lot EP1) ; `AutostartError` au premier
+        refus du core : aucune séance ne part à moitié réglée ni sur la partie d'avant."""
+        refused: list[str] = []
+        send_error = self.server.send_error
+
+        def note(code: str, message: str) -> None:
+            refused.append(f"{code} : {message}")
+            send_error(code, message)
+
+        self.server.send_error = note   # type: ignore[method-assign]
+        try:
+            for name, args in commands:
+                self._on_command(name, dict(args), 0)
+                if refused:
+                    raise AutostartError(f"séance verrouillée refusée à « {name} » ({refused[0]})")
+        finally:
+            self.server.send_error = send_error   # type: ignore[method-assign]
+        if self.state.session_state == "READY" and self._start_gate is None:
+            raise AutostartError(f"séance verrouillée non partie (état {self.state.session_state})")
+
     def check_autostart(self, route_id: str, workout_id: str | None) -> None:
         """Vérifie parcours et entraînement d'un `--autostart` avant d'ouvrir les ports (lot J1).
 
@@ -4057,7 +4101,8 @@ class CoreSession:
                 raise AutostartError(f"entraînement « {workout_id} » refusé : {exc}") from exc
 
     async def run(self, autostart: bool = False, route_id: str = "demo",
-                  workout_id: str | None = None, resume: Path | None = None, game_mode: str | None = None) -> None:
+                  workout_id: str | None = None, resume: Path | None = None, game_mode: str | None = None,
+                  commands: list[tuple[str, dict]] | None = None) -> None:
         """Boucle de séance. Avec `autostart` : select_route, select_workout éventuel, puis start (avec
         `mode` = `game_mode` s'il est donné : `wtf` ou `survivor`, bancs du PC).
 
@@ -4066,8 +4111,10 @@ class CoreSession:
         lancement ; `autostart` garde la reprise automatique dès que l'engine et le trainer
         sont là (essais sans menu).
         """
+        if commands is None:   # `--route`, `--workout`, `--mode` : la liste courte, même chemin qu'un fichier
+            commands = seance_file.from_options(route_id, workout_id, game_mode)
         if autostart and resume is None:
-            self.check_autostart(route_id, workout_id)
+            self.check_autostart_commands(commands)
         # W' estimé (lot R16) : attendu au plus 3 s avant d'ouvrir les ports, pour être dans le premier hello_ack ;
         # au-delà, il arrive au hello_ack suivant (engine relancé ou reconnecté).
         await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
@@ -4095,10 +4142,11 @@ class CoreSession:
                 self._set_state("IDLE")
         elif autostart:
             self._autoresume = True
-            self._on_command("select_route", {"route_id": route_id}, 0)
-            if workout_id:
-                self._on_command("select_workout", {"workout_id": workout_id}, 0)
-            self._on_command("start", {"mode": game_mode} if game_mode else {}, 0)
+            try:
+                self._play_autostart(commands)
+            except AutostartError:
+                await self._shutdown(tasks)
+                raise
         else:
             self._preselect_last_route()   # lot O32 : le menu s'ouvre sur le dernier parcours du profil
         if self.first_run:
@@ -4167,6 +4215,7 @@ class CoreSession:
                 self._fill_survivor_frame()
                 self._fill_grandprix_frame()
                 self._fill_track_frame()
+                self._fill_rogue_frame()
                 self._lighten_bots_frame()
                 self.server.send_state(self.state)
             if now >= next_stats:
