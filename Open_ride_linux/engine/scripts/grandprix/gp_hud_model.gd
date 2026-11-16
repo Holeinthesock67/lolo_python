@@ -12,7 +12,8 @@ extends RefCounted
 ## - `lanes` : trois traits de voie, voie choisie en blanc ou en gris en placement automatique, aide des
 ##   boutons (« Bidon glissant en vue : A ou ← → » quand A change de voie et qu'un objet est en vue) ;
 ## - `warn` : menace sur le cycliste (« Musette guidée derrière ! », flèche vers le bas, contour de l'écran
-##   et chevrons en bas), ou orage lancé vers un autre premier (« Orage vers le premier », sans contour).
+##   et chevrons en bas), ou orage lancé vers un autre premier (« Orage vers le premier », sans contour) ;
+##   sans menace, coup reçu en cours (« Touché ! Bidon glissant 2 s », contour de la couleur de l'objet, lot GP14).
 ## Objet `gp` de `state` et éléments de `bots` (`item`, `fx`, `name` : les bots loin ne les portent qu'à tour de
 ## rôle, le modèle garde les derniers reçus). Ne décide rien : le core arbitre tout.
 ## Lignes du bilan (`summary.gp`) : summary_lines(). Pas de class_name :
@@ -228,6 +229,21 @@ func warn_view(gp: Dictionary) -> Dictionary:
 			if o is Array and o.size() >= 2 and str(o[1]) == "storm":
 				return {"text": "Orage vers le premier", "kind": "storm", "arrow": "up", "color": Items.SLING,
 					"outline": false, "chevrons": false}
+	return hit_view(gp)
+
+
+## Coup reçu (lot GP14, essai du 15/11 : « rien ne visualise la prise de coup ») : tant qu'un effet d'attaque,
+## de piège ou contre la tête court sur le cycliste, bandeau « Touché ! Bidon glissant 2 s » et contour de la
+## couleur de l'objet (pas de flash plein écran) ; {} sinon. Le son part de gp_sound_model.gd on_hit.
+func hit_view(gp: Dictionary) -> Dictionary:
+	var fx = gp.get("fx", null)
+	if not fx is Array:
+		return {}
+	for e in fx:
+		if e is Array and e.size() >= 2 and Items.family(str(e[0])) in Items.HIT_FAMILIES:
+			var kind := str(e[0])
+			return {"text": "Touché ! %s %d s" % [Items.label(kind), int(ceil(_num(e[1], 0.0)))], "kind": kind,
+				"arrow": "", "color": Items.color(kind), "outline": true, "chevrons": false, "hit": true}
 	return {}
 
 

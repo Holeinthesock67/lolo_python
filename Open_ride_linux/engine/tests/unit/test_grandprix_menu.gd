@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Tests sans écran du menu du Grand Prix des objets (série GP, lot GP9) : entrée de l'accueil selon `modes`,
 ## écran Prêt du mode (réglages `grandprix.*` et niveau des bots modifiés en place, tours sur un circuit ou
-## distance en ligne, parcours trop court refusé), ligne « Objets » et écran des objets (list_mode_options,
+## distance en ligne au plus le parcours, lot GP14), ligne « Objets » et écran des objets (list_mode_options,
 ## set_mode_option, réponse `mode_options`), `start` avec `mode` « grandprix » sans `bots`, retour à l'accueil.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_grandprix_menu.gd
 
@@ -43,7 +43,7 @@ const SETTINGS := {"type": "settings", "v": 1, "items": [
 	{"key": "grandprix.laps", "label": "Grand Prix : tours du circuit", "type": "int", "value": 3, "min": 1, "max": 5, "step": 1, "unit": "", "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.distance_km", "label": "Grand Prix : distance en ligne", "type": "int", "value": 10, "min": 5, "max": 30, "step": 1, "unit": "km", "group": "ride", "applies": "next_session"},
 	{"key": "grandprix.chaos", "label": "Grand Prix : chaos", "type": "choice", "value": "normal", "choices": ["soft", "normal", "wild"], "group": "ride", "applies": "next_session"},
-	{"key": "grandprix.box_every_m", "label": "Grand Prix : écart des boîtes", "type": "int", "value": 1500, "min": 1000, "max": 3000, "step": 500, "unit": "m", "group": "ride", "applies": "next_session"}]}
+	{"key": "grandprix.box_every_m", "label": "Grand Prix : écart des boîtes", "type": "int", "value": 1500, "min": 500, "max": 3000, "step": 500, "unit": "m", "group": "ride", "applies": "next_session"}]}
 
 const ROUTES := [{"id": "long", "name": "Longue", "status": "ready", "length_m": 25000.0, "route_type": "point_to_point"},
 	{"id": "court", "name": "Courte", "status": "ready", "length_m": 7000.0, "route_type": "point_to_point"},
@@ -141,14 +141,12 @@ func _run() -> void:
 	f.on_error("bad_args", "Grand Prix : parcours trop court")
 	_check(str(f.state()["status"]).begins_with("Échec : Grand Prix"), "refus du core sur la ligne d'état")
 
-	# Parcours en ligne trop court : Lancer désactivé ; circuit : tours
+	# Parcours en ligne plus court que la distance : la course suit le parcours (lot GP14) ; circuit : tours
 	f.menu.set_world("court", "Courte")
 	f.handle("MINUS_SHORT")
-	_check(not _item(f, "start")["enabled"] and str(_item(f, "start")["detail"]) == "trop court (11 km)",
-		"parcours en ligne trop court : Lancer désactivé")
-	_check(f.state()["status"].begins_with("Lancer grisé : course de 11 km, parcours de 7,0 km.") and f.state()["status_error"],
-		"ligne d'état : pourquoi Lancer est grisé (%s)" % f.state()["status"])
-	_check(f.state()["status"].contains("Possible : 7 km au plus"), "ligne d'état : distance qui tient")
+	_check(_item(f, "start")["enabled"] and str(_item(f, "start")["detail"]) == "course de 7,0 km (tout le parcours)",
+		"parcours en ligne plus court : course sur tout le parcours (%s)" % _item(f, "start")["detail"])
+	_check(not f.state().has("status_error") or not f.state()["status_error"], "pas d'erreur sur la ligne d'état")
 	f.menu.set_world("boucle", "Boucle")
 	f.handle("MINUS_SHORT")
 	_check("set:grandprix.laps" in _ids(f) and not "set:grandprix.distance_km" in _ids(f), "circuit : tours, pas de distance")
@@ -161,8 +159,8 @@ func _run() -> void:
 	_check(MenuFlow.grandprix_keys({}) == ["grandprix.opponents", "grandprix.laps", "grandprix.distance_km", "bots.level_pct",
 		"grandprix.chaos", "grandprix.box_every_m"], "parcours inconnu : tours et distance")
 	_check(MenuFlow.grandprix_launch(1, 10, {"length_m": 4000.0, "route_type": "loop"})["detail"] == "1 tour, 4,0 km", "un tour au singulier")
-	_check(MenuFlow.grandprix_advice(10, 3000.0).ends_with("Choisis un parcours plus long ou un circuit."), "parcours trop court pour toute distance")
-	_check(MenuFlow.grandprix_advice(10, 45000.0).ends_with("Possible : 30 km au plus, sinon change de parcours."), "borne haute de la distance")
+	_check(not MenuFlow.grandprix_launch(3, 10, {"length_m": 800.0, "route_type": "point_to_point"})["enabled"],
+		"parcours de moins de 1 km : Lancer désactivé")
 	_check(MenuFlow.mode_label("Grand Prix : écart des boîtes", MenuFlow.GP_PREFIX) == "Écart des boîtes", "libellé court")
 	print("test_grandprix_menu : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

@@ -36,6 +36,7 @@ from .hr_monitor import HeartRateProvider
 from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
+from . import mode_routes as mode_routes_mod
 from . import config_edit, last_choices, latency_log, local_weather, seance_file
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
@@ -399,7 +400,8 @@ class CoreSession:
                           "difficulty_pct": round(self.difficulty_pct), "gravel": cfg.gravel.mode,
                           "biome": cfg.render.biome,
                           "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances"),
-                          "track": track_mod.menu_options()})
+                          "track": track_mod.menu_options(),
+                          "mode_routes": mode_routes_mod.hello_block()})   # lot GP13, révision 1.19
         self._publish_progression()
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
@@ -528,7 +530,7 @@ class CoreSession:
             route_id = str(args.get("route_id") or "demo")
             self._select_route(route_id, previous=st)
             if self.state.session_state == "READY" and self.state.route_id == route_id:
-                self._remember("route_id", route_id, cmd_id)
+                self._remember_route(route_id, cmd_id)
         elif name == "select_workout":
             # Accepté aussi après une séance (FINISHED, ERROR) : le menu choisit l'entraînement avant
             # le parcours, et le core reste en FINISHED jusqu'au select_route suivant.
@@ -1034,6 +1036,23 @@ class CoreSession:
             choices = last_choices.remember(last_choices.path_for(self.profile_ctx.root), key, value)
         except OSError as exc:
             log.warning("Dernier choix non enregistré (%s) : %s", key, exc)
+            return
+        self.server.hello_config["last_choices"] = choices
+
+    def _remember_route(self, route_id: str, cmd_id: int) -> None:
+        """Parcours choisi au menu (lot GP13) : celui d'un mode à parcours propres (Vélodrome, Grand Prix,
+        `mode_routes.py`) est gardé pour ce mode, sans remplacer le dernier parcours libre rechargé au démarrage."""
+        src = getattr(self, "_world_src", None)
+        mode = mode_routes_mod.mode_of(src[2]) if src is not None else None
+        if mode is None:
+            self._remember("route_id", route_id, cmd_id)
+            return
+        if cmd_id <= 0 or self.profile_ctx.id is None or (self.sim is not None and self.config_path is None):
+            return
+        try:
+            choices = last_choices.remember_mode_route(last_choices.path_for(self.profile_ctx.root), mode, route_id)
+        except OSError as exc:
+            log.warning("Dernier parcours du mode %s non enregistré : %s", mode, exc)
             return
         self.server.hello_config["last_choices"] = choices
 
@@ -2913,17 +2932,20 @@ class CoreSession:
 
     def _grandprix_course(self) -> tuple[float, float | None]:
         """Longueur de la course et d'un tour (circuit) d'après `[grandprix]` ; `GrandPrixError` si le parcours
-        ne s'y prête pas (monde ouvert, sans distance de course ; parcours en ligne plus court que la course)."""
+        ne s'y prête pas (monde ouvert, sans distance de course ; parcours en ligne de moins de 1 km). En ligne, la
+        course ne dépasse jamais le parcours (lot GP14, essai du 15 novembre) : `distance_km` ou ce qu'il en reste."""
         gc = self.cfg.grandprix
         route = self.route
         if self.openworld is not None or route is None:
             raise GrandPrixError("le monde ouvert n'a pas de distance de course")
         if route.is_loop:
             return gc.laps * route.length_m, route.length_m
-        length = gc.distance_km * 1000.0
-        if self.physics.s + length > route.length_m + 1e-6:
-            raise GrandPrixError(f"parcours trop court pour une course de {gc.distance_km} km "
-                                 f"({route.length_m / 1000.0:.1f} km)")
+        from .grandprix.boxes import MIN_COURSE_M
+
+        length = min(gc.distance_km * 1000.0, route.length_m - self.physics.s)
+        if length < MIN_COURSE_M - 1e-6:
+            raise GrandPrixError(f"parcours trop court pour une course ({route.length_m / 1000.0:.1f} km, "
+                                 f"{MIN_COURSE_M / 1000.0:.0f} km au moins)")
         return length, None
 
     def _grandprix_field(self, args: dict) -> list[Any] | None:
@@ -2944,7 +2966,7 @@ class CoreSession:
             if not 1 <= gc.opponents <= MAX_CONSTANT_BOTS:
                 raise GrandPrixError(f"adversaires : {gc.opponents} refusé (1 à {MAX_CONSTANT_BOTS})")
             if gc.box_every_m / 1000.0 not in BOX_EVERY_KM:
-                raise GrandPrixError(f"écart des boîtes : {gc.box_every_m} m refusé (pas de 500 m)")
+                raise GrandPrixError(f"écart des boîtes : {gc.box_every_m} m refusé (500 à 3 000 m, pas de 500 m)")
             if gc.chaos not in CHAOS:
                 raise GrandPrixError(f"chaos : {gc.chaos!r} refusé ({', '.join(CHAOS)})")
             self._grandprix_course()
