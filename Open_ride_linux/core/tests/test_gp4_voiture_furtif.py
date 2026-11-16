@@ -205,6 +205,7 @@ def test_team_car_never_overlaps_a_rider(env, level_pct):
     gp = s.grandprix
     run(s, 20.0)
     shown = 0
+    cars: set[str] = set()
     for _ in range(40):
         for b in s.bots:
             r = gp.racers[b.id]
@@ -217,6 +218,7 @@ def test_team_car_never_overlaps_a_rider(env, level_pct):
             ids = list(gp.racers)
             for car in s._escorts:
                 shown += 1
+                cars.add(car.id)
                 towed = ids[int(car.id[2:])]
                 for rid, (o_s, o_m) in places.items():
                     if rid == towed:
@@ -224,7 +226,9 @@ def test_team_car_never_overlaps_a_rider(env, level_pct):
                     overlap = (abs(car.s - o_s) < car.length * 0.5 + draft.BIKE_LENGTH_M * 0.5
                                and abs(car.lateral - o_m) < car.half_width + draft.RIDER_WIDTH_M * 0.5)
                     assert not overlap, (car.id, rid, car.s - o_s, car.lateral - o_m)
-    assert shown > 1000                                       # les voitures roulent bien devant leurs bots
+    # Les voitures roulent bien devant leurs bots : plus de 5 s de voiture en tout. Elles attendent que la place soit
+    # libre (bloc entier, BLOCK_LOOK_S) : à 150 %, dans le plateau serré, une seule voiture passe, 301 trames
+    assert cars and shown > 250, (cars, shown)
 
 
 def test_towed_bot_held_up_rides_at_the_speed_ahead(env):
