@@ -10,7 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 LANES = 3
-BOX_EVERY_KM = (1.0, 1.5, 2.0, 2.5, 3.0)   # réglage du menu par pas de 500 m (lot GP2)
+BOX_EVERY_KM = (0.5, 1.0, 1.5, 2.0, 2.5, 3.0)   # réglage du menu par pas de 500 m (lot GP2 ; 500 m depuis GP14)
+MIN_COURSE_M = 1000.0   # course en ligne la plus courte (lot GP14 : la course suit le parcours)
 FIRST_ROW_M = 500.0
 FINISH_CLEAR_M = 200.0
 REFORM_S = 2.0
@@ -58,3 +59,12 @@ class BoxRows:
 
     def ahead(self, s: float, ahead_m: float) -> list[float]:
         return [x for x in self.rows if s < x <= s + ahead_m]
+
+    def near(self, s: float, behind_m: float, ahead_m: float, limit: int) -> list[int]:
+        """Rangées (index) de `behind_m` derrière à `ahead_m` devant `s`, `limit` au plus (lot GP14 : la rangée
+        que l'on vient de passer reste montrée, voies prises comprises)."""
+        return [i for i, x in enumerate(self.rows) if s - behind_m < x <= s + ahead_m][:limit]
+
+    def gone(self, rows: list[int], t: float) -> list[list[int]]:
+        """Boîtes prises et pas encore reformées : [rang dans `rows`, voie]."""
+        return [[k, lane] for k, i in enumerate(rows) for lane in range(LANES) if not self.present(i, lane, t)]

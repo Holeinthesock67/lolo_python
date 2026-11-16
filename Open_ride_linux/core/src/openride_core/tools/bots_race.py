@@ -6,12 +6,13 @@
 La vraie séance (`CoreSession`, avec son calibrage des bots du lot T13, ses segments et ses maillots)
 tourne au pas fixe de 20 ms sans trainer ni engine : le cycliste roule à `--rider-pct` % de sa FTP
 (`MockDriver`, puissance constante), les bots à profil sont calibrés au niveau `--niveau` (% de la FTP,
-par défaut celui du cycliste : ils doivent alors finir avec lui). Les bots qui finissent après le cycliste
+par défaut celui du cycliste ; une seule échelle par niveau, celle du rouleur, qui doit alors finir avec lui ;
+les autres profils gardent leurs écarts : grimpeur devant en montée, sprinteur derrière). Les bots qui finissent après le cycliste
 continuent avec la même physique jusqu'à l'arrivée.
 
 Tableau par bot : temps d'arrivée, écart avec le cycliste, W′ le plus bas, maillots ; trame `state` la plus
 grande ; contacts entre coureurs (lot PL1 : deux vélos qui se chevauchent en long et en travers, comptés à chaque
-début de contact, jusqu'à l'arrivée du cycliste). Jusqu'à 11 bots (peloton du lot PL1), trame allégée comme en séance. Échec (code 1) si un bot
+début de contact, jusqu'à l'arrivée du cycliste). Jusqu'à 11 bots (peloton du lot PL1), trame allégée comme en séance. Échec (code 1) si un rouleur
 calibré au niveau du cycliste finit à plus de 2 % de lui, si une trame `state` dépasse la limite du contrat
 (4 096 octets) ou s'il y a un contact ; code 2 pour un profil, un parcours ou un appel
 invalide. Parcours `plat` (20 km à 0 %) et `col` (2 km de plat puis 8 km à 7 %) : écrits à la volée.
@@ -29,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import fit_export
-from ..bots import MAX_CONSTANT_BOTS, PROFILES, ProfileBot, profile_bot_names
+from ..bots import CALIBRATION_PROFILE, MAX_CONSTANT_BOTS, PROFILES, ProfileBot, profile_bot_names
 from ..config import Config
 from ..draft import BIKE_LENGTH_M, RIDER_WIDTH_M
 from ..demo_world import write_world
@@ -183,6 +184,8 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
     checks = []
     if abs(level - rider_pct) < 1e-9:
         for r in rows:
+            if r["profile"] != CALIBRATION_PROFILE:   # échelle commune (15 novembre) : seul le rouleur est jugé
+                continue
             ok = r["gap_pct"] is not None and abs(r["gap_pct"]) <= GAP_LIMIT_PCT
             checks.append((ok, f"{r['name']} au niveau du cycliste : écart {r['gap_pct']} % (au plus {GAP_LIMIT_PCT:g} %)"))
     checks.append((biggest <= STATE_LIMIT_1_3, f"trame state la plus grande : {biggest} octets (limite {STATE_LIMIT_1_3})"))

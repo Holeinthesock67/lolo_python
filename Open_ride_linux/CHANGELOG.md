@@ -5,6 +5,23 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Un parcours de démonstration pour les nouveaux paysages (lot DB1)
+- Nouveau parcours « Tour des nouveaux paysages » : 14 km du bord d'un fjord jusqu'au sommet des hauts plateaux, par les landes atlantiques, les rizières, un village japonais, une île volcanique et un canyon rouge (2 km chacun, 285 m de montée, 6,5 % au plus). Trace, relief et décor sont entièrement inventés.
+- Il remplace au jeu de base le « Tour des six paysages », la « Route de la côte » et la « Montée alpine » : une installation neuve ne les ajoute plus, mais ils restent installés chez ceux qui les ont déjà. Le « Col du lacet », le « Circuit des Prés », le « Récif des tortues », le « Volcan en flammes » et le vélodrome ne changent pas.
+- Ciel des parcours de démonstration : le relief lointain s'arrête en montagnes de quelques centaines de mètres au lieu de monter à des kilomètres vers l'horizon (plus de grandes bandes grises en éventail dans le ciel).
+
+### Vélodrome et Grand Prix à l'accueil, avec leurs propres parcours (lot GP13)
+- « Vélodrome » à l'accueil : l'écran Prêt du vélodrome s'ouvre directement sur la piste.
+- Le Grand Prix des objets s'ouvre sur ses propres parcours (le Circuit des Prés pour commencer) et non plus sur le dernier parcours roulé ; « Changer de parcours » ne montre que ses parcours.
+- La liste « Parcours » de l'accueil ne montre plus la piste ni les parcours du Grand Prix ; après un de ces modes, la session libre repart sur votre dernier parcours libre.
+- Chaque mode retient son dernier parcours. Une trace entre dans un mode par l'étiquette de sa fiche (`tags = ["grandprix"]`).
+
+### Grand Prix plus lisible (lot GP14, essai du 15 novembre)
+- Une rangée de boîtes tous les 500 m par défaut (au lieu de 1 km). Une boîte prise disparaît de la route et réapparaît 2 s plus tard.
+- Distance par défaut : tout le parcours quand il est plus court que la distance réglée (« course de 5 km (tout le parcours) ») ; « Lancer » n'est grisé que sous 1 km.
+- Coup reçu : bandeau « Touché ! Bidon glissant 2 s » et contour de l'écran à la couleur de l'objet tant que l'effet dure, en plus du son et de l'onomatopée (pas de flash plein écran).
+- Panneaux de segment (« Sommet dans 500 m », « Sprint dans 1 km ») : plaque blanche cadrée de noir sur poteaux, comme les panneaux d'approche des cols, au lieu d'une caisse blanche.
+
 ### Liste des parcours fluide (lot ML1)
 - Le menu n'est plus redessiné à chaque trame du core (30 par seconde) ni à chaque événement : une seule mise à jour par image, avec l'état le plus récent. Une image lente en recevait plusieurs, et la liste des parcours (pack des cols installé) tombait à 8 images par seconde (essai du 15 novembre).
 - Rangées et carte de détail inchangées ne sont plus reposées : reposer couleurs et styles faisait remettre en forme tous les libellés de la liste.
