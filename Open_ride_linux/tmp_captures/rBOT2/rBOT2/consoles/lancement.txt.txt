@@ -1,0 +1,29 @@
+11:02:23 empreinte avant c22c2adb5ae366ddabdae892db25629e
+11:02:23 tête b0c79d20d
+11:02:24 pytest bots
+11:04:17 fin rc=0
+11:04:17 bots_race branche demo
+11:04:34 fin rc=0
+11:04:34 bots_race branche plat
+11:05:24 fin rc=0
+11:05:24 bots_race branche col
+11:06:22 fin rc=0
+11:06:22 bots_race branche 11 bots
+11:07:01 fin rc=0
+11:07:01 bots_race main demo
+11:07:19 fin rc=0
+11:07:19 bots_race main plat
+11:08:11 fin rc=0
+11:08:11 bots_race main col
+11:09:13 fin rc=0
+11:09:13 bots_race main 11 bots
+11:09:51 fin rc=0
+11:10:30 course_bots low
+11:13:07 fin rc=0
+11:13:07 course_bots medium
+11:15:43 fin rc=0
+11:15:43 course_bots high
+11:18:20 fin rc=0
+11:18:22 empreinte après c22c2adb5ae366ddabdae892db25629e
+11:18:22 clone 214ad0b2b
+11:18:22 FIN
