@@ -1,0 +1,15 @@
+03:00:35 empreinte avant c22c2adb5ae366ddabdae892db25629e
+03:00:35 tête 8e49dcd8
+03:00:45 tests engine
+03:27:18 fin rc=0
+03:27:18 pytest track
+03:27:33 fin rc=0
+03:28:03 menus low
+03:36:41 fin rc=0
+03:37:01 menus medium
+03:45:50 fin rc=0
+03:46:10 menus high
+03:55:05 fin rc=0
+03:55:27 empreinte après c22c2adb5ae366ddabdae892db25629e
+03:55:27 clone 214ad0b2
+03:55:27 FIN
