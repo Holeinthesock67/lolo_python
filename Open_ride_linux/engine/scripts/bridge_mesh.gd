@@ -37,6 +37,7 @@ const RAIL_COLOR := Color(0.33, 0.35, 0.38)
 static func make_material() -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.vertex_color_use_as_albedo = true
+	mat.vertex_color_is_srgb = true
 	mat.roughness = 0.9
 	mat.metallic = 0.0
 	mat.cull_mode = BaseMaterial3D.CULL_BACK
