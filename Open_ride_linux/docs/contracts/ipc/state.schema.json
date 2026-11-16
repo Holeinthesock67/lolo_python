@@ -1414,8 +1414,8 @@
     },
     "riders": {
       "type": "array",
-      "maxItems": 6,
-      "description": "Facultatif, révision 1.5 (lot AS7) : cyclistes du décor à moins de 60 m du cycliste, calculés par le core (au plus 6, du plus proche au plus loin), envoyés avec `vehicles` une trame sur trois (10 Hz) et extrapolés par l'engine entre deux ; absent des autres trames et sans décor vivant.",
+      "maxItems": 10,
+      "description": "Facultatif, révision 1.5 (lot AS7) : cyclistes du décor à moins de 60 m du cycliste, calculés par le core (au plus 6, du plus proche au plus loin), envoyés avec `vehicles` une trame sur trois (10 Hz) et extrapolés par l'engine entre deux ; absent des autres trames et sans décor vivant. Révision 1.18 (lot AS10) : au plus 10, toujours une trame sur trois (10 Hz), mais dans la trame qui suit celle de `vehicles`, jamais avec elle.",
       "items": {
         "type": "object",
         "required": [

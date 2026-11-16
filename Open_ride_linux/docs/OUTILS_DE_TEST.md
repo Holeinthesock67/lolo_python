@@ -87,6 +87,8 @@ Protocole pas à pas sur le PC et le vélo (tout sur `main` depuis le 27 octobre
 | `python -m openride_core.tools.log_scenario` | Convertit un journal du core (panne vue sur le vélo) en scénario simulé |
 | `engine/tests/fake_core.py` | Faux core (bibliothèque standard) pour tester l'engine seul |
 
+**Rejeu core → engine des cyclistes du décor (lot AS9) :** `python3 engine/tests/rejeu_cyclistes_core.py --godot $GODOT [--kmh 55,65] [--seeds 0,1] [--budgets 4,8,16] [--duration 900]` fait rouler le vrai core à vitesse tenue sur une route droite (liste `riders` à 10 Hz), rejoue ses listes dans `road_cyclists_model.gd` comme `living_decor.gd` (images à 60 Hz avec à-coups, cycliste affiché extrapolé) et compte les contacts du core seul et de l'engine avec le critère du banc (`living_decor._count_contacts`) ; sans écran ni matériel, code 1 s'il y a un contact.
+
 ## 3. Banc d'essai simulé (`engine/tests/sim_bench.py`)
 
 Vrai core sur Bluetooth simulé (trainer, paire de Click, ceinture) et vraie scène Godot, sous Xvfb ou dans une fenêtre (`--native`). Le banc capture l'écran à intervalle régulier et juste après chaque événement du scénario, vérifie ce qui doit se voir, puis écrit un rapport HTML (vérifications, courbes altitude, puissance et cible, fréquence cardiaque, pente et pente envoyée, braquet, vitesse, planche des captures, bandeau, `summary`, `log_report`, lignes d'événements du journal du core).

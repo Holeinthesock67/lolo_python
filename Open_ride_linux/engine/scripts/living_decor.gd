@@ -585,7 +585,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		bots_m.append({"s": traffic.model_s(float(b["s"])), "lateral": _dir * float(b["lateral"])})
 	if typeof(state.get("riders")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
 		cyclists.sync_core(_core_list(state["riders"]), int(state["seq"]), _model_s)
-	cyclists.update(_model_s, rider_v, dt_s, paused, bots_m)
+	cyclists.update(_model_s, rider_v, dt_s, paused, bots_m, _dir * _rider_lane_m)   # lot AS10 : à sa vraie place (repère du décor)
 	cyclists_view.update(dt_s, paused, _model_s)
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
 	headlights = TrafficModel.headlights(weather_eval, _sun_elevation_deg)

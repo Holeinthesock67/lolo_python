@@ -94,8 +94,12 @@ func _traffic_out_and_back(route, rng_seed: int, out: Dictionary) -> void:
 		out["flip_errors"] = int(out["flip_errors"]) + 1
 	for v in tm.vehicles:   # mêmes places dans le repère du parcours
 		var p: Vector3 = before[str(v["id"])]
+		# Lot AS10 : celui qui doublait le cycliste vient en face ; il rejoint sa voie d'un coup, comme le cycliste
+		var lat := -p.z
+		if int(v["dir"]) == -1 and lat > tm.oncoming_lateral(str(v["kind"])):
+			lat = tm.oncoming_lateral(str(v["kind"]))
 		if not (is_equal_approx(tm.model_s(float(v["s"])), p.x) and -int(v["dir"]) == int(p.y)
-				and is_equal_approx(-float(v["lateral"]), p.z)):
+				and is_equal_approx(float(v["lateral"]), lat)):
 			out["jumps"] = int(out["jumps"]) + 1
 	while s > 2000.0:
 		var u: float = tm.model_s(s)
