@@ -1,0 +1,538 @@
+demo (low) : 9 min, captures à 150, 400, 4900, 4930, 4950, 4960, 4970 m
+>>> [1/1] Scénario nominal (9:17)
+== nominal : parcours demo, 557 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.8 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo à 29.2 s
+[OK] engine vivant jusqu'à la fin : 557 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.49 s (médiane), 0.51 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : low appliquée (8 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 0.6 à 4.5 %, pente envoyée 0.1 à 4.5 %
+[OK] médiane 52.0 km/h sur 332 s (attendu 50.0 ± 5.0), de 48.1 à 53.1 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 2 (dernier : core / core à 16 m (écarts à l'axe 2.3 et 2.5 m))
+[OK] fréquence cardiaque au journal : 353 échantillons, 173 à 185 bpm
+    NON nominal : 2 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo_low/index.html
+=== Banc fini : ÉCHEC (2 vérification(s))
+RÉSULTAT : ÉCHEC (2 vérification(s))
+demo-biomes-tour (low) : 20 min, captures à 150, 400, 12032, 12062, 12082, 12092, 12102 m
+>>> [1/1] Scénario nominal (20:25)
+== nominal : parcours demo-biomes-tour, 1225 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.6 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-tour à 28.9 s
+[OK] engine vivant jusqu'à la fin : 1225 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.60 s (médiane), 0.60 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : low appliquée (8 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -2.5 à 8.9 %, pente envoyée -2.5 à 8.9 %
+[OK] médiane 50.1 km/h sur 858 s (attendu 50.0 ± 5.0), de 45.8 à 51.4 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 59 (dernier : core / cycliste à 1 m (écarts à l'axe -0.1 et -0.7 m))
+[OK] fréquence cardiaque au journal : 879 échantillons, 174 à 185 bpm
+    NON nominal : 2 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-biomes-tour_low/index.html
+=== Banc fini : ÉCHEC (2 vérification(s))
+RÉSULTAT : ÉCHEC (2 vérification(s))
+demo-biomes-cote (low) : 2 min, captures à 150, 400 m
+>>> [1/1] Scénario nominal (2:09)
+== nominal : parcours demo-biomes-cote, 129 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.5 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-cote à 28.7 s
+[OK] engine vivant jusqu'à la fin : 129 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 3/3 images enregistrées après le chargement, réponse en 0.51 s (médiane), 0.51 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : low appliquée (3 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -0.2 à 0.3 %, pente envoyée -0.2 à 0.3 %
+[OK] médiane 49.8 km/h sur 60 s (attendu 50.0 ± 5.0), de 45.8 à 50.1 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 3 captures
+[OK] fréquence cardiaque au journal : 81 échantillons, 175 à 185 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-biomes-cote_low/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-biomes-alpin (low) : 11 min, captures à 150, 400, 5964, 5994, 6014, 6024, 6034 m
+>>> [1/1] Scénario nominal (10:57)
+== nominal : parcours demo-biomes-alpin, 657 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.6 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-alpin à 28.8 s
+[OK] engine vivant jusqu'à la fin : 657 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.59 s (médiane), 0.61 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : low appliquée (8 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 5.9 à 9.0 %, pente envoyée 0.1 à 9.0 %
+[OK] médiane 50.4 km/h sur 419 s (attendu 50.0 ± 5.0), de 48.3 à 50.9 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 8 captures
+[OK] fréquence cardiaque au journal : 440 échantillons, 174 à 185 bpm
+    NON nominal : 1 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-biomes-alpin_low/index.html
+=== Banc fini : ÉCHEC (1 vérification(s))
+RÉSULTAT : ÉCHEC (1 vérification(s))
+demo-circuit (low) : 5 min, captures à 150, 400, 750, 1500, 2250 m
+>>> [1/1] Scénario nominal (5:02)
+== nominal : parcours demo-circuit, 302 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.6 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-circuit à 28.6 s
+[OK] engine vivant jusqu'à la fin : 302 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 6/6 images enregistrées après le chargement, réponse en 0.51 s (médiane), 0.57 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : low appliquée (6 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -5.2 à 5.3 %, pente envoyée -5.2 à 5.3 %
+[OK] médiane 50.0 km/h sur 238 s (attendu 50.0 ± 5.0), de 45.5 à 51.9 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 6 captures
+[OK] fréquence cardiaque au journal : 259 échantillons, 140 à 184 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-circuit_low/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-recif (low) : 11 min, captures à 150, 400, 2000, 4000, 6000 m
+>>> [1/1] Scénario nominal (10:53)
+== nominal : parcours demo-recif, 653 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.5 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-recif à 28.8 s
+[OK] engine vivant jusqu'à la fin : 653 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 6/6 images enregistrées après le chargement, réponse en 0.48 s (médiane), 0.50 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : low appliquée (6 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -1.4 à 1.4 %, pente envoyée -1.4 à 1.4 %
+[OK] médiane 50.0 km/h sur 587 s (attendu 50.0 ± 5.0), de 45.4 à 50.4 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 6 captures
+[OK] fréquence cardiaque au journal : 607 échantillons, 174 à 185 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-recif_low/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-volcan (low) : 11 min, captures à 150, 400, 2000, 3990, 4000, 4020, 4040, 4050, 4060, 6000 m
+>>> [1/1] Scénario nominal (10:53)
+== nominal : parcours demo-volcan, 653 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.4 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-volcan à 28.7 s
+[OK] engine vivant jusqu'à la fin : 653 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 11/11 images enregistrées après le chargement, réponse en 0.50 s (médiane), 0.63 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : low appliquée (11 capture(s)) ; dernière ligne : low (demandée low, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -9.6 à 9.7 %, pente envoyée -9.6 à 9.7 %
+[OK] médiane 50.4 km/h sur 585 s (attendu 50.0 ± 5.0), de 45.8 à 67.9 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 11 captures
+[OK] fréquence cardiaque au journal : 606 échantillons, 87 à 185 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-volcan_low/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo (medium) : 9 min, captures à 150, 400, 4900, 4930, 4950, 4960, 4970 m
+>>> [1/1] Scénario nominal (9:17)
+== nominal : parcours demo, 557 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.6 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo à 29.4 s
+[OK] engine vivant jusqu'à la fin : 557 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.50 s (médiane), 0.53 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (8 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 0.6 à 4.5 %, pente envoyée 0.1 à 4.5 %
+[OK] médiane 52.0 km/h sur 332 s (attendu 50.0 ± 5.0), de 48.1 à 53.2 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 8 captures
+[OK] fréquence cardiaque au journal : 353 échantillons, 173 à 185 bpm
+    NON nominal : 1 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo_medium/index.html
+=== Banc fini : ÉCHEC (1 vérification(s))
+RÉSULTAT : ÉCHEC (1 vérification(s))
+demo-biomes-tour (medium) : 20 min, captures à 150, 400, 12032, 12062, 12082, 12092, 12102 m
+>>> [1/1] Scénario nominal (20:25)
+== nominal : parcours demo-biomes-tour, 1225 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.4 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-tour à 29.6 s
+[OK] engine vivant jusqu'à la fin : 1225 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.60 s (médiane), 0.64 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (8 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -2.5 à 8.9 %, pente envoyée -2.5 à 8.9 %
+[OK] médiane 50.1 km/h sur 858 s (attendu 50.0 ± 5.0), de 45.8 à 51.4 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 73 (dernier : core / cycliste à 1 m (écarts à l'axe -0.1 et -0.7 m))
+[OK] fréquence cardiaque au journal : 879 échantillons, 176 à 185 bpm
+    NON nominal : 2 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-biomes-tour_medium/index.html
+=== Banc fini : ÉCHEC (2 vérification(s))
+RÉSULTAT : ÉCHEC (2 vérification(s))
+demo-biomes-cote (medium) : 2 min, captures à 150, 400 m
+>>> [1/1] Scénario nominal (2:09)
+== nominal : parcours demo-biomes-cote, 129 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.4 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-cote à 29.6 s
+[OK] engine vivant jusqu'à la fin : 129 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 3/3 images enregistrées après le chargement, réponse en 0.52 s (médiane), 0.53 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (3 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -0.2 à 0.3 %, pente envoyée -0.2 à 0.3 %
+[OK] médiane 49.8 km/h sur 58 s (attendu 50.0 ± 5.0), de 45.8 à 50.1 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 3 captures
+[OK] fréquence cardiaque au journal : 79 échantillons, 176 à 185 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-biomes-cote_medium/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-biomes-alpin (medium) : 11 min, captures à 150, 400, 5964, 5994, 6014, 6024, 6034 m
+>>> [1/1] Scénario nominal (10:57)
+== nominal : parcours demo-biomes-alpin, 657 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.5 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-alpin à 29.9 s
+[OK] engine vivant jusqu'à la fin : 657 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.59 s (médiane), 0.62 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (8 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 5.9 à 9.0 %, pente envoyée 0.1 à 9.0 %
+[OK] médiane 50.4 km/h sur 419 s (attendu 50.0 ± 5.0), de 48.3 à 50.9 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 39 (dernier : overtake / core à -61 m (écarts à l'axe 1.9 et 2.5 m))
+[OK] fréquence cardiaque au journal : 440 échantillons, 177 à 185 bpm
+    NON nominal : 2 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-biomes-alpin_medium/index.html
+=== Banc fini : ÉCHEC (2 vérification(s))
+RÉSULTAT : ÉCHEC (2 vérification(s))
+demo-circuit (medium) : 5 min, captures à 150, 400, 750, 1500, 2250 m
+>>> [1/1] Scénario nominal (5:02)
+== nominal : parcours demo-circuit, 302 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.5 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-circuit à 29.4 s
+[OK] engine vivant jusqu'à la fin : 302 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 6/6 images enregistrées après le chargement, réponse en 0.54 s (médiane), 0.56 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (6 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -5.2 à 5.3 %, pente envoyée -5.2 à 5.3 %
+[OK] médiane 50.0 km/h sur 236 s (attendu 50.0 ± 5.0), de 45.5 à 51.9 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 6 captures
+[OK] fréquence cardiaque au journal : 257 échantillons, 140 à 184 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-circuit_medium/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-recif (medium) : 11 min, captures à 150, 400, 2000, 4000, 6000 m
+>>> [1/1] Scénario nominal (10:53)
+== nominal : parcours demo-recif, 653 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.5 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-recif à 29.5 s
+[OK] engine vivant jusqu'à la fin : 653 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 6/6 images enregistrées après le chargement, réponse en 0.51 s (médiane), 0.52 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (6 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -1.4 à 1.4 %, pente envoyée -1.4 à 1.4 %
+[OK] médiane 50.0 km/h sur 585 s (attendu 50.0 ± 5.0), de 45.8 à 50.4 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 6 captures
+[OK] fréquence cardiaque au journal : 606 échantillons, 175 à 185 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-recif_medium/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-volcan (medium) : 11 min, captures à 150, 400, 2000, 3990, 4000, 4020, 4040, 4050, 4060, 6000 m
+>>> [1/1] Scénario nominal (10:53)
+== nominal : parcours demo-volcan, 653 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.9 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-volcan à 29.8 s
+[OK] engine vivant jusqu'à la fin : 653 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 11/11 images enregistrées après le chargement, réponse en 0.51 s (médiane), 0.58 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : medium appliquée (11 capture(s)) ; dernière ligne : medium (demandée medium, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -9.6 à 9.7 %, pente envoyée -9.6 à 9.7 %
+[OK] médiane 50.4 km/h sur 583 s (attendu 50.0 ± 5.0), de 45.8 à 67.9 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 2 (dernier : core / core à 21 m (écarts à l'axe 2.5 et 2.5 m))
+[OK] fréquence cardiaque au journal : 604 échantillons, 87 à 185 bpm
+    NON nominal : 1 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-volcan_medium/index.html
+=== Banc fini : ÉCHEC (1 vérification(s))
+RÉSULTAT : ÉCHEC (1 vérification(s))
+demo (high) : 9 min, captures à 150, 400, 4900, 4930, 4950, 4960, 4970 m
+>>> [1/1] Scénario nominal (9:17)
+== nominal : parcours demo, 557 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.8 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo à 29.6 s
+[OK] engine vivant jusqu'à la fin : 557 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.50 s (médiane), 0.53 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : high appliquée (8 capture(s)) ; dernière ligne : high (demandée high, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 0.6 à 4.5 %, pente envoyée 0.1 à 4.5 %
+[OK] médiane 52.0 km/h sur 332 s (attendu 50.0 ± 5.0), de 48.1 à 53.1 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 3 (dernier : core / core à 18 m (écarts à l'axe 2.4 et 2.5 m))
+[OK] fréquence cardiaque au journal : 353 échantillons, 174 à 185 bpm
+    NON nominal : 2 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo_high/index.html
+=== Banc fini : ÉCHEC (2 vérification(s))
+RÉSULTAT : ÉCHEC (2 vérification(s))
+demo-biomes-tour (high) : 20 min, captures à 150, 400, 12032, 12062, 12082, 12092, 12102 m
+>>> [1/1] Scénario nominal (20:25)
+== nominal : parcours demo-biomes-tour, 1225 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.7 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-tour à 29.7 s
+[OK] engine vivant jusqu'à la fin : 1225 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.56 s (médiane), 0.58 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : high appliquée (8 capture(s)) ; dernière ligne : high (demandée high, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -2.5 à 8.9 %, pente envoyée -2.5 à 8.9 %
+[OK] médiane 50.1 km/h sur 858 s (attendu 50.0 ± 5.0), de 45.8 à 51.4 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 98 (dernier : core / cycliste à 1 m (écarts à l'axe -0.1 et -0.7 m))
+[OK] fréquence cardiaque au journal : 879 échantillons, 176 à 185 bpm
+    NON nominal : 2 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-biomes-tour_high/index.html
+=== Banc fini : ÉCHEC (2 vérification(s))
+RÉSULTAT : ÉCHEC (2 vérification(s))
+demo-biomes-cote (high) : 2 min, captures à 150, 400 m
+>>> [1/1] Scénario nominal (2:09)
+== nominal : parcours demo-biomes-cote, 129 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.6 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-cote à 29.7 s
+[OK] engine vivant jusqu'à la fin : 129 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 3/3 images enregistrées après le chargement, réponse en 0.55 s (médiane), 0.58 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : high appliquée (3 capture(s)) ; dernière ligne : high (demandée high, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -0.2 à 0.3 %, pente envoyée -0.2 à 0.3 %
+[OK] médiane 49.8 km/h sur 58 s (attendu 50.0 ± 5.0), de 45.8 à 50.1 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 3 captures
+[OK] fréquence cardiaque au journal : 79 échantillons, 176 à 185 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-biomes-cote_high/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-biomes-alpin (high) : 11 min, captures à 150, 400, 5964, 5994, 6014, 6024, 6034 m
+>>> [1/1] Scénario nominal (10:57)
+== nominal : parcours demo-biomes-alpin, 657 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.5 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-biomes-alpin à 29.5 s
+[OK] engine vivant jusqu'à la fin : 657 s
+[ÉCHEC] fin de séance : dernier état lu : RUNNING
+[OK] arrêt du core : code de sortie 0
+[OK] 8/8 images enregistrées après le chargement, réponse en 0.58 s (médiane), 0.63 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : high appliquée (8 capture(s)) ; dernière ligne : high (demandée high, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours 5.9 à 9.0 %, pente envoyée 0.1 à 9.0 %
+[OK] médiane 50.4 km/h sur 419 s (attendu 50.0 ± 5.0), de 48.3 à 50.9 km/h : vitesse imposée 50 km/h
+[ÉCHEC] décor : aucun contact sur la route : 6 (dernier : oncoming / core à 57 m (écarts à l'axe -2.5 et -2.5 m))
+[OK] fréquence cardiaque au journal : 440 échantillons, 175 à 185 bpm
+    NON nominal : 2 échec(s)
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-biomes-alpin_high/index.html
+=== Banc fini : ÉCHEC (2 vérification(s))
+RÉSULTAT : ÉCHEC (2 vérification(s))
+demo-circuit (high) : 5 min, captures à 150, 400, 750, 1500, 2250 m
+>>> [1/1] Scénario nominal (5:02)
+== nominal : parcours demo-circuit, 302 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.7 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-circuit à 29.5 s
+[OK] engine vivant jusqu'à la fin : 302 s
+[OK] fin de séance : FINISHED après end_session
+[OK] arrêt du core : code de sortie 0
+[OK] 6/6 images enregistrées après le chargement, réponse en 0.54 s (médiane), 0.57 s au pire : captures de l'engine
+[OK] qualité réellement appliquée : high appliquée (6 capture(s)) ; dernière ligne : high (demandée high, source cli)
+[OK] erreurs et avertissements de Godot : aucun
+[OK] rendu du jeu (Forward+) : Vulkan, Forward+
+[INFO] aucune tuile n'apparaît dans le champ à moins de 1 km : 0 apparition(s)
+[INFO] jointures des tuiles proches voisines : 0 bord(s) disjoint(s)
+[OK] exceptions du core : 0 trace(s) Python dans core.log
+[OK] journal et FIT écrits : 1 journal(aux), 1 FIT
+[OK] openride-core summary : bilan lu
+[OK] log_report : analyse du journal du core lue
+   pente du parcours -5.2 à 5.3 %, pente envoyée -5.2 à 5.3 %
+[OK] médiane 50.0 km/h sur 236 s (attendu 50.0 ± 5.0), de 45.5 à 51.9 km/h : vitesse imposée 50 km/h
+[OK] décor : aucun contact sur la route : 0 sur 6 captures
+[OK] fréquence cardiaque au journal : 257 échantillons, 140 à 184 bpm
+    OK  nominal : OK
+[OK] HOME réel inchangé : oui
+Rapport : ~/mesures-2026-11-01-auto/r869c/demos/demo-circuit_high/index.html
+=== Banc fini : banc simulé OK
+RÉSULTAT : banc simulé OK
+demo-recif (high) : 11 min, captures à 150, 400, 2000, 4000, 6000 m
+>>> [1/1] Scénario nominal (10:53)
+== nominal : parcours demo-recif, 653 s, SIM, difficulté 100.0 % ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.6 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-recif à 29.6 s
