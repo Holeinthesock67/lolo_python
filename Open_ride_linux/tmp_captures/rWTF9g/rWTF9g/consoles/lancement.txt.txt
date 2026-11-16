@@ -1,0 +1,23 @@
+07:55:54 empreinte avant c22c2adb5ae366ddabdae892db25629e
+07:55:54 tête c03882c2b
+07:56:34 gag katamari low
+07:58:02 fin rc=0
+07:58:02 gag katamari medium
+07:59:33 fin rc=0
+07:59:33 gag katamari high
+08:01:05 fin rc=0
+08:01:05 gag cheese low
+08:02:33 fin rc=0
+08:02:33 gag cheese medium
+08:04:04 fin rc=0
+08:04:04 gag cheese high
+08:05:36 fin rc=0
+08:05:36 gag eggs low
+08:07:03 fin rc=0
+08:07:03 gag eggs medium
+08:08:34 fin rc=0
+08:08:34 gag eggs high
+08:10:05 fin rc=0
+08:10:07 empreinte après c22c2adb5ae366ddabdae892db25629e
+08:10:07 clone 214ad0b2b
+08:10:07 FIN

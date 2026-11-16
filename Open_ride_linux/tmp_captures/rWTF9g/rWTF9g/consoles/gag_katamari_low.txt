@@ -1,0 +1,21 @@
+== katamari_low (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home (elements=['wtf']) : « OpenRide » (engine muet 11.5 s)
+[OK] choisir « wtf » : écran « wtf_rules », focus « rule:gravity »
+[OK] écran wtf_rules : « Mode WTF : 1 règles sur 13 »
+[OK] choisir « launch » : écran « routes », focus « demo »
+[OK] écran routes : « Parcours »
+[OK] choisir « demo » : écran « ready », focus « start »
+[OK] écran ready : « Prêt : mode WTF — Col du lacet »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Mode WTF » : Mode WTF
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+katamari_low             click    OK              88 s
+Rapport : ~/mesures-2026-11-01-auto/rWTF9g/gag/katamari_low/rapport.html
+OK
