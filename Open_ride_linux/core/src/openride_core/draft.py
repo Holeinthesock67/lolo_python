@@ -605,7 +605,10 @@ def side_guard(s: float, lane: Lane, target: float, others: Iterable[tuple[float
     chevauchent les siennes garde au moins la largeur d'un coureur plus `SIDE_GUARD_M` d'écart latéral, plus la
     distance pour arrêter son glissement vers lui (`LANE_ACCEL_MPS2`), du côté où l'on est déjà ; dans sa roue (sans chevauchement), rien ne change.
     Placement coupé compris (lot DS8) : un bot éliminé du Dernier survivant qui se range au bas-côté (`home`) attend
-    que le coureur à sa hauteur l'ait dépassé au lieu de lui couper la route (à 11 adversaires, banc du 6 novembre)."""
+    que le coureur à sa hauteur l'ait dépassé au lieu de lui couper la route (à 11 adversaires, banc du 6 novembre).
+    Coincé entre deux coureurs (garde de gauche au-delà de celle de droite) : le milieu des deux gardes, quel que soit
+    l'ordre des coureurs (frottement de deux sprinteurs au banc du 15 novembre, échelle commune du plateau)."""
+    left, right = -math.inf, math.inf
     for o_s, _, o_lane in others:
         d = ahead_distance(s, o_s, length_m, is_loop)
         reach = _side_reach(lane, o_lane)
@@ -620,14 +623,16 @@ def side_guard(s: float, lane: Lane, target: float, others: Iterable[tuple[float
         clear = RIDER_WIDTH_M + SIDE_GUARD_M + _wider(lane) + _wider(o_lane)
         # à la même place, celui de derrière (ou de plus grand `rank`) garde la gauche, comme dans `lane_target` :
         # sans cela, deux coureurs collés s'écartent du même côté sans fin
-        left = lane.m < o_lane.m or (lane.m == o_lane.m and (d > 0.0 or (d == 0.0 and lane.rank > o_lane.rank)))
-        toward = lane.rate if left else -lane.rate   # vitesse latérale vers lui
+        on_left = lane.m < o_lane.m or (lane.m == o_lane.m and (d > 0.0 or (d == 0.0 and lane.rank > o_lane.rank)))
+        toward = lane.rate if on_left else -lane.rate   # vitesse latérale vers lui
         clear += max(toward, 0.0) ** 2 / (2.0 * LANE_ACCEL_MPS2)     # et la distance pour s'arrêter en travers
-        if left:
-            target = min(target, o_lane.m - clear)
+        if on_left:
+            right = min(right, o_lane.m - clear)
         else:
-            target = max(target, o_lane.m + clear)
-    return target
+            left = max(left, o_lane.m + clear)
+    if left > right:
+        return 0.5 * (left + right)     # coincé entre deux coureurs à sa hauteur : le milieu, comme `lane_target`
+    return min(max(target, left), right)
 
 
 def blocked_by(s: float, v: float, lane: Lane, target: float, others: Iterable[tuple[float, float, Lane]],

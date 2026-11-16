@@ -748,20 +748,28 @@ def calibrate(profile: str, route: Any, level_pct: float, rider: RefRider, segme
     return math.exp(best[1])
 
 
+CALIBRATION_PROFILE = "rouleur"   # profil qui fixe l'échelle commune du plateau (`calibrate_bots`)
+
+
 def calibrate_bots(bots: list[Any], route: Any, rider: RefRider, level_pct: float, segments: tuple = (),
                    bike_mass_kg: float = DEFAULT_BIKE_MASS_KG,
                    bot_params: PhysicsParams | None = None) -> dict[tuple[str, float], float]:
-    """Calibre les bots à profil de la séance (niveau du bot, `level_pct` du réglage sinon) ; un calcul
-    par couple (profil, niveau). Renvoie les échelles trouvées. `bot_params` : voir `calibrate`."""
+    """Calibre les bots à profil de la séance (niveau du bot, `level_pct` du réglage sinon) : une seule
+    échelle par niveau, celle du profil de référence (`CALIBRATION_PROFILE`, le rouleur), donnée à tous
+    les profils de ce niveau (choix du propriétaire, 15 novembre). Le rouleur finit dans le temps du
+    cycliste de référence ; les autres gardent leurs écarts : le grimpeur gagne les montées, le sprinteur
+    y lâche et revient sur le plat et au sprint. Renvoie les échelles trouvées, par couple
+    (`CALIBRATION_PROFILE`, niveau). `bot_params` : voir `calibrate`."""
     scales: dict[tuple[str, float], float] = {}
     prof: RouteProfile | None = None
     for b in bots:
         if not isinstance(b, ProfileBot):
             continue
-        key = (b.profile, float(b.level_pct if b.level_pct is not None else level_pct))
+        key = (CALIBRATION_PROFILE, float(b.level_pct if b.level_pct is not None else level_pct))
         if key not in scales:
             prof = prof or RouteProfile(route)
-            scales[key] = calibrate(b.profile, route, key[1], rider, segments, bike_mass_kg, prof, bot_params)
+            scales[key] = calibrate(CALIBRATION_PROFILE, route, key[1], rider, segments, bike_mass_kg, prof,
+                                    bot_params)
         b.set_scale(scales[key])
     return scales
 

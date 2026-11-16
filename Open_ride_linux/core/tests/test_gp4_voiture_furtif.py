@@ -107,8 +107,9 @@ def test_team_car_drawn_and_felt_as_shelter_only(env, monkeypatch):
     assert s._grandprix_press("Z_SHORT")
     run(s, 12.0)
     # 6 s de voiture au plus : elle attend que la place devant soit libre pendant BLOCK_LOOK_S (ici, un bot à
-    # rattraper la retient un peu moins d'une demi-seconde), puis reste jusqu'à la fin de l'effet
-    assert vehicles and 6.0 / DT - 30 <= len(vehicles) <= 6.0 / DT + 3
+    # rattraper la retient moins d'une seconde : 0,66 s avec l'échelle des bots de #900), puis reste jusqu'à la fin
+    # de l'effet
+    assert vehicles and 6.0 / DT - 50 <= len(vehicles) <= 6.0 / DT + 3
     car = vehicles[0][0]
     assert (car["id"], car["kind"], car["dir"]) == ("tc0", "car_a", 1)
     state_v = validator("state")

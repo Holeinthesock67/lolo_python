@@ -61,4 +61,4 @@ Mesures au cloud (tous les bots remorqués sans arrêt, trames de 20 ms où une 
 | Objectif « max », 4 bots, 100 s, 100 / 120 / 150 % | — | 0 / 0 / 6 |
 | Objectif « max », 11 bots, 100 s, 100 / 120 / 150 % | — | 210 / 0 / 19 |
 
-Il reste de brefs frôlements de quelques centimètres au flanc de la voiture, à 11 bots tous remorqués en même temps. La voiture attend parfois un peu avant d'apparaître (moins d'une demi-seconde dans `test_team_car_drawn_and_felt_as_shelter_only`).
+Il reste de brefs frôlements de quelques centimètres au flanc de la voiture, à 11 bots tous remorqués en même temps. La voiture attend parfois un peu avant d'apparaître (moins d'une seconde dans `test_team_car_drawn_and_felt_as_shelter_only` : 0,66 s avec l'échelle des bots de #900).
