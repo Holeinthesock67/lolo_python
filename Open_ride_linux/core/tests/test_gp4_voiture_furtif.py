@@ -82,7 +82,8 @@ def test_team_car_drawn_and_felt_as_shelter_only(env, monkeypatch):
     lisse la pente envoyée vers le bas seulement (jamais au-dessus de celle sans abri), avec les rampes de
     l'abri (lissage d'une seconde), puis disparaît avec l'effet."""
     make, run, frame, _ = env
-    s, _, errors = make(6900)
+    # Lot BT1 : bots à l'objectif par défaut du jeu (Tempo), allure proche de la séance d'avant
+    s, _, errors = make(6900, objective="tempo")
     s.cfg.ride.vehicle_draft = "on"
     s._on_command("start", {"mode": "grandprix"}, 2)
     assert not errors
@@ -199,6 +200,7 @@ def test_team_car_never_overlaps_a_rider(env, level_pct):
     Niveaux 100 à 150 % : avant le correctif, la voiture d'un bot bien plus fort que le cycliste passait sous lui
     (('tc3', 'me', 3.10, 0.40) à 120 %, commentaire de #909)."""
     make, run, _, _ = env
+    # bots à fond (objectif « max » de make, lot BT1) : pire cas des bots plus forts que le cycliste
     s, _, errors = make(6950, level_pct=level_pct)
     s.cfg.ride.vehicle_draft = "on"
     s._on_command("start", {"mode": "grandprix"}, 2)

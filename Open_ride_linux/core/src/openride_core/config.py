@@ -209,6 +209,10 @@ class PowerupsConfig:
 class BotsConfig:
     """Bots à profil du mode classique (série T, lot T13) : calibrés au départ sur la FTP du cycliste."""
     level_pct: int = 100           # niveau des bots, en % de la FTP (50 à 150 ; 110 : plus forts que toi)
+    # objectif de la séance (lot BT1) : part de l'effort tenable sur la durée de la course visée par les bots
+    # (recovery 55 %, endurance 65 %, tempo 80 %, threshold 92 %, max 100 % : bot_effort.OBJECTIVES) ; au
+    # vélodrome, l'objectif suit l'épreuve
+    objective: str = "tempo"
 
 
 @dataclass
@@ -451,6 +455,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("survivor", "after_out"): ("ride", "end"),
     ("coach", "objectif"): ("endurance", "courses", "grimpeur"),
     ("grandprix", "chaos"): ("soft", "normal", "wild"),
+    ("bots", "objective"): ("recovery", "endurance", "tempo", "threshold", "max"),   # bot_effort.OBJECTIVES
 }
 
 
@@ -462,7 +467,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("trainer", "difficulty_pct"),
     ("gearing", "start_gear"),
     ("powerups", "mode"),
-    ("bots", "level_pct"),
+    ("bots", "level_pct"), ("bots", "objective"),
     ("gravel", "mode"),
     ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),

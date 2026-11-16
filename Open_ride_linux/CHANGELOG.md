@@ -9,6 +9,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Nouveau parcours de démonstration livré avec le jeu : 6 km de montée douce (1 à 5 %, 200 m) dans le biome Japon, entre forêts de cèdres et d'érables, trois villages aux toits de tuiles kawara, torii et lanternes, jusqu'au belvédère du « Col des Cèdres ». Trace, relief et décor sont entièrement inventés.
 - Il s'ajoute à la prochaine installation des contenus de départ, sans rien réécrire ; Hakone et le Fuji restent dans le pack Cols célèbres.
 
+### Bots réglés sur la durée de la course et l'objectif (lot BT1)
+- Les bots visent ce qu'un cycliste tient sur la durée de la course : 120 % de la FTP sur 5 min, 100 % sur 1 h, 88 % sur 2 h, puis une part selon l'objectif.
+- Nouveau réglage « Objectif des bots » (récupération 55 %, endurance 65 %, tempo 80 % par défaut, seuil 92 %, à fond 100 %), commun à tous les modes et gardé d'une séance à l'autre ; aussi sur les écrans Prêt du Dernier survivant et du Grand Prix. « Niveau des bots » reste un réglage fin.
+- Au vélodrome, l'objectif suit l'épreuve : à fond pour les contre-la-montre, tempo pour les courses en groupe et la séance libre.
+
 ### Un parcours de démonstration pour les nouveaux paysages (lot DB1)
 - Nouveau parcours « Tour des nouveaux paysages » : 14 km du bord d'un fjord jusqu'au sommet des hauts plateaux, par les landes atlantiques, les rizières, un village japonais, une île volcanique et un canyon rouge (2 km chacun, 285 m de montée, 6,5 % au plus). Trace, relief et décor sont entièrement inventés.
 - Il remplace au jeu de base le « Tour des six paysages », la « Route de la côte » et la « Montée alpine » : une installation neuve ne les ajoute plus, mais ils restent installés chez ceux qui les ont déjà. Le « Col du lacet », le « Circuit des Prés », le « Récif des tortues », le « Volcan en flammes » et le vélodrome ne changent pas.
