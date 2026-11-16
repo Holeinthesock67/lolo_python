@@ -2136,6 +2136,8 @@ func _on_state_received(state: Dictionary) -> void:
 		start_screen.show_go()
 	else:
 		start_screen.show_wait(null, 0.0)
+		if str(state.get("session_state", "")) != "RUNNING":   # séance finie ou en pause : pas de feux sur le bilan
+			start_screen.cancel_go()
 	_was_start_waiting = waiting
 	_refresh_menu()
 	var new_session_state := str(state.get("session_state", ""))
