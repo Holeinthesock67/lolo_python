@@ -25,7 +25,7 @@ from collections import deque
 from dataclasses import replace
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 from .bots import BRAKE_GAP_M, FULL_FRAME_BOTS, light_frame
 from .classic import ClassicRace, GainJob
@@ -2634,7 +2634,8 @@ class CoreSession:
             out.update(b.id for b in self.bots if gp.unseen(b.id))
         return frozenset(out)
 
-    def _gp_escorts(self) -> list[traffic_mod.Vehicle]:
+    def _gp_escorts(self, road: Sequence[tuple[tuple[float, float, float, float], float]] = ()) \
+            -> list[traffic_mod.Vehicle]:
         """Voitures d'équipe en cours (lot GP4) : véhicule d'AS6 juste devant le coureur remorqué, à sa vitesse et
         sur sa ligne ; identifiant `tc<rang du coureur>`, court et stable (budget de la trame `state`). La voiture
         se glisse devant son coureur dès que la place est libre (aucun autre coureur sous sa carrosserie), puis y
@@ -2663,7 +2664,8 @@ class CoreSession:
                 mine = self._footprint(s, lane_m, kind)
                 if any(_footprints_meet(mine, v, self._footprint(o_s, o_m, towed.get(o) if o in self._escort_shown
                                                                   else None), o_v, look)
-                       for o, (o_s, o_v, o_m) in where.items() if o != rid):
+                       for o, (o_s, o_v, o_m) in where.items() if o != rid) \
+                        or any(_footprints_meet(mine, v, foot, o_v, look) for foot, o_v in road):
                     continue          # place prise : la voiture attend derrière le coureur devant
                 self._escort_shown.add(rid)
             out.append(car)
@@ -3890,6 +3892,7 @@ class CoreSession:
         riders: list[road_cyclists_mod.Rider] = []
         near_m: list[traffic_mod.Vehicle] = []        # mêmes listes dans le repère de la circulation (lot N23)
         riders_m: list[road_cyclists_mod.Rider] = []
+        road_users: list[Any] = []                    # tous les usagers de la route (voitures d'équipe, lot GP4)
         rider_u = self.physics.s
         if traffic is not None:
             # Lot N23 : à rebours, circulation et cyclistes du décor roulent sur le parcours retourné (u = L - s),
@@ -3916,6 +3919,8 @@ class CoreSession:
             traffic.update(rider_u, self.physics.v, dt, others=others)
             near_m = traffic.near(rider_u)
             near = [traffic.on_route(v) for v in near_m]
+            road_users = [traffic.on_route(v) for v in traffic.vehicles]
+            road_users += [cyclists.on_route(r) for r in (cyclists.riders() if cyclists else [])]
         ws = self._wind_sample if self.wind.active else None
 
         def cross_at(heading: float) -> float:
@@ -3933,7 +3938,13 @@ class CoreSession:
         unseen = self._unseen_ids()
         for b in self.bots:   # Furtif (lot GP4) : le bot n'abrite plus ceux qui le suivent
             b.shelters = b.id not in unseen
-        self._escorts = self._gp_escorts()
+        # Usagers de la route (lots AS6 et AS7) : circulation et cyclistes du décor, dans les deux sens, vitesse
+        # comptée dans le sens du parcours ; la voiture d'équipe n'apparaît pas sur eux ni juste avant de les croiser
+        road = [((u.s, u.length * 0.5, u.lateral, u.half_width), u.dir * u.speed_mps)
+                if isinstance(u, traffic_mod.Vehicle) else
+                ((u.s, 0.5 * draft_mod.BIKE_LENGTH_M, u.lane_m, 0.5 * draft_mod.RIDER_WIDTH_M), u.dir * u.v)
+                for u in road_users]
+        self._escorts = self._gp_escorts(road)
         cars = self._escorts + [v for v in near if v.dir == 1]   # voiture d'équipe (lot GP4) : un véhicule d'AS6
         reverse = self.physics.direction < 0   # à rebours (lot N17) : ni abri ni bots ; placement parmi ceux du même sens (AS10)
         # Voiture d'équipe (lot GP4) : le coureur remorqué et sa voiture se placent d'un seul bloc (gabarit de la

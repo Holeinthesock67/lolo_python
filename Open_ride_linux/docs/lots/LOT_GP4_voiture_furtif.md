@@ -62,3 +62,11 @@ Mesures au cloud (tous les bots remorqués sans arrêt, trames de 20 ms où une 
 | Objectif « max », 11 bots, 100 s, 100 / 120 / 150 % | — | 210 / 0 / 19 |
 
 Il reste de brefs frôlements de quelques centimètres au flanc de la voiture, à 11 bots tous remorqués en même temps. La voiture attend parfois un peu avant d'apparaître (moins d'une seconde dans `test_team_car_drawn_and_felt_as_shelter_only` : 0,66 s avec l'échelle des bots de #900).
+
+## 7. Correctif : voiture d'équipe sur un usager de la route (16 novembre 2026)
+
+Constat (banc rGP4v de #912, low, medium et high : 11, 6 et 6 contacts « car_a / core ») : la voiture d'équipe d'un bot, 34 m derrière le cycliste, touchait un cycliste du décor (lot AS7, « core » dans le compteur de l'engine) sur l'accotement droit. Les écarts à l'axe étaient de 2,1 m pour la voiture et de 3,4 m pour le cycliste. Le même défaut se reproduit au cloud de l'autre côté : un bot remorqué qui double à -1,4 m pousse sa voiture sur un cycliste venant en face à -2,5 m, pendant 14 à 16 trames.
+
+- **Carrosserie bornée comme un vélo** (`draft.lane_target`). Les bornes de la chaussée (`PASS_LANE_MIN_M`, `LANE_MIN_M`, `LANE_MAX_M`) valent pour les bords du coureur, pas pour son axe. Un coureur plus large qu'un vélo, comme le bloc coureur et voiture, est resserré de sa largeur en plus (`_wider`). Sa carrosserie ne va donc jamais là où le bord d'un vélo ne va pas.
+- **Usagers de la route à l'apparition** (`_gp_escorts`). La voiture n'apparaît ni sur un véhicule de la circulation ni sur un cycliste du décor, dans les deux sens, ni juste avant de les croiser (`BLOCK_LOOK_S`).
+- **Tests.** `test_team_car_never_meets_road_users` (lent) : parcours demo, tous les coureurs remorqués à 190, 200 et 210 W ; 14 à 16 trames de contact avant le correctif, 0 après. `test_wide_runner_keeps_its_body_on_the_bike_bounds` (`test_draft_lane.py`).

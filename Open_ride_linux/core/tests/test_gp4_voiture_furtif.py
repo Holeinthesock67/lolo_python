@@ -255,3 +255,45 @@ def test_towed_bot_held_up_rides_at_the_speed_ahead(env):
             for b in s.bots:
                 if b.id in towed:
                     assert b.v > 1.0, (b.id, gp.clock)          # jamais arrêté net sous la voiture d'équipe
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("watts", [190, 200, 210])
+def test_team_car_never_meets_road_users(env, monkeypatch, watts):
+    """Banc rGP4v du 16 novembre (contacts « car_a / core ») : la voiture d'équipe d'un bot ne touche ni un cycliste
+    du décor (lot AS7) ni un véhicule de la circulation. Sa carrosserie reste sur la chaussée permise à un vélo
+    (`draft.lane_target`, bornes au gabarit du bloc) : un bot remorqué qui double ne la pousse plus sur un
+    cycliste venant en face ; elle n'apparaît pas sur un usager de la route. Parcours demo (circulation et
+    cyclistes du décor), tous les coureurs remorqués dès que possible. Avant : 14 à 16 trames de contact avec un
+    cycliste venant en face à 190, 200 et 210 W."""
+    import test_grandprix_session as tgs
+    from openride_core import demo_world
+    monkeypatch.setattr(tgs, "POWER_W", float(watts))
+    make, run, _, tmp = env
+    demo_world.write_demo_world(tmp / "routes")
+    s, _, errors = make(6970, route_id="demo", distance_km=5)
+    s.cfg.grandprix.chaos, s.cfg.grandprix.box_every_m = "wild", 1000
+    s.cfg.ride.vehicle_draft = "on"
+    s._on_command("start", {"mode": "grandprix"}, 2)
+    assert not errors
+    gp = s.grandprix
+    shown = met = 0
+    t = 0.0
+    while s.state.session_state == "RUNNING" and t < 900.0:
+        run(s, DT)
+        t += DT
+        if int(t / DT) % 150 == 0:                            # toutes les 3 s environ (cadence du banc de recherche)
+            for rid in [ME] + [b.id for b in s.bots]:
+                r = gp.racers[rid]
+                if r.held is None and not any(a.item == "team_car" and a.until_t > gp.clock for a in r.fx):
+                    r.held, r.charges = "team_car", 1
+                    gp.use(rid)
+        users = [(u.s, u.lane_m, draft.BIKE_LENGTH_M * 0.5, draft.RIDER_WIDTH_M * 0.5)
+                 for u in (s.road_cyclists.on_route(r) for r in s.road_cyclists.riders())]
+        users += [(v.s, v.lateral, v.length * 0.5, v.half_width)
+                  for v in (s.traffic.on_route(x) for x in s.traffic.vehicles)]
+        for car in s._escorts:
+            shown += 1
+            met += any(abs(car.s - u_s) < car.length * 0.5 + half_len and abs(car.lateral - u_m) < car.half_width + half_w
+                       for u_s, u_m, half_len, half_w in users)
+    assert shown > 1000 and met == 0, (shown, met)
