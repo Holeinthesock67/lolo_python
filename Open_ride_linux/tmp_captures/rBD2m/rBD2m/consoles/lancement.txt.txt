@@ -10,3 +10,14 @@
 fatal: '~/mesures-2026-11-01-auto/tmp/wt_rBD2m' existe déjà
 05:31:29 ÉCHEC worktree
 05:31:29 FIN
+05:56:32 empreinte avant c22c2adb5ae366ddabdae892db25629e
+05:56:32 tête 85d3578bc
+05:57:11 ds11_200 low
+06:05:22 fin rc=0
+06:05:22 ds11_200 medium
+06:13:32 fin rc=0
+06:13:32 ds11_200 high
+06:21:42 fin rc=0
+06:21:43 empreinte après c22c2adb5ae366ddabdae892db25629e
+06:21:43 clone 214ad0b2b
+06:21:43 FIN
