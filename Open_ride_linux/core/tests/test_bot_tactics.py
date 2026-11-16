@@ -310,3 +310,17 @@ def test_calibration_holds_within_two_percent_on_average(monkeypatch):
         out = br.race("col", 85.0, ["climber", "rouleur", "diesel"], seed=seed)
         gaps += [r["gap_pct"] for r in out["bots"] if r["profile"] == br.CALIBRATION_PROFILE]   # échelle du rouleur
     assert abs(sum(gaps) / len(gaps)) <= 2.0, gaps
+
+
+@pytest.mark.parametrize("wheel_gap_m, caught", [(1.0, True), (2.0, False)])
+def test_a_chase_ends_one_wheel_gap_behind_even_on_a_climb(wheel_gap_m, caught):
+    # banc du col (16 novembre) : à 16 km/h, 0,3 s d'axe à axe valait moins d'une longueur de vélo ; le rouleur
+    # restait en chasse à 1 m de la roue du grimpeur jusqu'au sommet. L'écart se mesure de roue à roue (AS1)
+    bot = ProfileBot("rouleur", bot_id="b1")
+    bot.tactics.start(1, "essai")
+    bot.physics.s, bot.physics.v = 600.0, 4.6
+    bot.tactics.respond_to, bot.tactics.respond_until = bt.RIDER_ID, 1e9
+    field = bt.Field()
+    field.t = bt.RESPONSE_START_S
+    bt.update_field(field, [bot], (600.0 + draft.BIKE_LENGTH_M + wheel_gap_m, 4.6), bt.TICK_S)
+    assert (bot.tactics.respond_to is None) is caught
