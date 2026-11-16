@@ -404,6 +404,7 @@ class ProfileBot(ConstantPowerBot):
         self.w_prime_j = self.spec.w_prime_j * scale
         self.peak_w = self.spec.peak_wkg * self.spec.mass_kg * scale
         self.power_w = self.cp_w
+        self.unblocked_w = self.cp_w   # puissance voulue avant l'enfermement du lot PL1 (vitesse du Grand Prix)
         self.wbal: WbalState = wbal_initial(self.w_prime_j)
         self._peak_key: tuple | None = None    # sprint (id, tour) dont le pic est entamé
         self._peak_used_s = 0.0
@@ -518,14 +519,17 @@ class ProfileBot(ConstantPowerBot):
                 tactical = False
                 if hint.wheel[0] <= BRAKE_GAP_M:
                     self.physics.v = min(self.physics.v, hint.wheel[1])   # roue contre roue : pas plus vite
+        unblocked = power
         if (self.wheel is not None and not tactical) or self.lane.blocked is not None:
             here = route.sample(self.physics.s) if route is not None else None
             grade, alt = (here.grade_pct, here.alt_m) if here else (0.0, 0.0)
             if self.wheel is not None and not tactical:
                 power = self._follow_power(power, grade, alt)
+            unblocked = power
             power = self._blocked_power(power, grade, alt)   # lot PL1 : enfermé, même en attaque
-        if power > self.cp_w and self.wbal.w_bal_j <= 0.0:
-            power = self.cp_w
+        if self.wbal.w_bal_j <= 0.0:
+            power, unblocked = min(power, self.cp_w), min(unblocked, self.cp_w)
+        self.unblocked_w = unblocked
         if power == self.peak_w and self.peak_w > 0:
             self._peak_used_s += dt
         self.power_w = power
