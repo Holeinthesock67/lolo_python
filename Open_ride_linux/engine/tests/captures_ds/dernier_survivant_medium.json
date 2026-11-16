@@ -34,7 +34,7 @@
     {
       "ecran": "home",
       "contient": [
-        "Parcours : demo"
+        "Parcours : Col du lacet"
       ]
     },
     {
@@ -42,7 +42,7 @@
     },
     {
       "ecran": "ready",
-      "titre": "Prêt : Dernier survivant — demo",
+      "titre": "Prêt : Dernier survivant — Col du lacet",
       "contient": [
         "2 arches sur 2 km"
       ]
