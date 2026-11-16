@@ -223,7 +223,7 @@ func _test_river_surface_follows_vertex_levels() -> void:
 	var res: Dictionary = WaterMesh.build_areas([river])
 	var stats := _mesh_area_and_up(res)
 	var verts: PackedVector3Array = res["vertices"]
-	var ok := res["built"] == 1 and absf(stats["area"] - (24000.0 - 800.0)) < 1.0 and stats["all_up"]
+	var ok: bool = res["built"] == 1 and absf(stats["area"] - (24000.0 - 800.0)) < 1.0 and stats["all_up"]
 	var lo := INF
 	var hi := -INF
 	for v: Vector3 in verts:
@@ -240,7 +240,7 @@ func _test_river_surface_follows_vertex_levels() -> void:
 	var bad: Dictionary = river.duplicate(true)
 	bad["outer_y"] = [100.0, 99.0]
 	var flat: Dictionary = WaterMesh.build_areas([bad])
-	var all_flat := flat["built"] == 1
+	var all_flat: bool = flat["built"] == 1
 	for v: Vector3 in flat["vertices"]:
 		if not is_equal_approx(v.y, 99.0):
 			all_flat = false
