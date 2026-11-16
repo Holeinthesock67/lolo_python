@@ -62,11 +62,12 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     (world / "route.json").write_text(json.dumps(loop_route()), encoding="utf-8")
 
     def make(port: int, opponents: int = 4, laps: int = 3, distance_km: int = 10, route_id: str = "anneau",
-             level_pct: int = 100) -> tuple[CoreSession, list, list]:
+             level_pct: int = 100, objective: str = "max") -> tuple[CoreSession, list, list]:
         cfg = Config()
         cfg.ipc.port_state, cfg.ipc.port_commands = port, port + 1
         cfg.grandprix.opponents, cfg.grandprix.laps, cfg.grandprix.distance_km = opponents, laps, distance_km
         cfg.bots.level_pct = level_pct
+        cfg.bots.objective = objective   # lot BT1 : scénarios écrits pour des bots à fond (puissances du cycliste)
         cfg.ride.vehicle_draft = "off"
         s = CoreSession(cfg, driver=MockDriver(base_power_w=POWER_W, ramp_amplitude_w=0.0),
                         inputs=[NullProvider()], journal_dir=tmp_path / "journal",
@@ -113,6 +114,8 @@ def test_three_laps_four_bots_frames_hits_and_bilan(env):
     seen: list[dict] = []
 
     def check(sess):
+        if sess.state.session_state != "RUNNING":   # arrivée pendant ce pas : plus de trame `gp` (bilan vérifié plus bas)
+            return
         d = frame(sess)
         state_v.validate(d)
         assert len(json.dumps(d, ensure_ascii=False).encode()) < STATE_LIMIT_BYTES
