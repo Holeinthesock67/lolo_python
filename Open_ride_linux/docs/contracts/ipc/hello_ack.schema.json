@@ -78,6 +78,11 @@
             "route_id": {"type": "string", "minLength": 1},
             "workout_id": {"type": "string", "minLength": 1},
             "bots": {"type": "array", "maxItems": 12, "items": {"type": "object", "required": ["kind"], "properties": {"kind": {"type": "string"}}}},
+            "mode_routes": {
+              "type": "object",
+              "description": "Facultatif, révision 1.19 (lot GP13) : dernier parcours de chaque mode à parcours propres, mode → route_id.",
+              "additionalProperties": {"type": "string", "minLength": 1}
+            },
             "open_world": {
               "type": "object",
               "required": ["lat", "lon", "nav"],
@@ -233,6 +238,11 @@
         "open_world_dir": {
           "type": "string",
           "description": "Facultatif (révision 1.5, lot W1) : dossier des séances de monde ouvert ; `route_id` `ow:<id>` désigne `<open_world_dir>/<id>.world`."
+        },
+        "mode_routes": {
+          "type": "object",
+          "description": "Facultatif, révision 1.19 (lot GP13) : modes qui ont leurs propres parcours, mode → étiquette de la fiche des parcours (`library.tags`).",
+          "additionalProperties": {"type": "string", "minLength": 1}
         },
         "track": {
           "type": "object",

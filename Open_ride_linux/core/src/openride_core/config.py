@@ -71,9 +71,8 @@ class TrainerConfig:
 class GearingConfig:
     n_gears: int = 24
     start_gear: int = 12
-    ratio_min: float = 0.65    # 0,40 à 3,00 avant le 28 octobre : petits braquets à plat, moitié haute inutile
-    ratio_max: float = 2.00
-    g_base_pct: float = 2.0
+    neutral_gear: int = 12     # braquet neutre : la pente envoyée est celle du terrain × la difficulté
+    step_pct: float = 0.5      # points de pente ajoutés par clic (15 novembre : pas fixe, remplace les rapports R_k)
     long_press_gears: int = 10    # appui long en SIM : braquets sautés (3 était plus lent que des appuis courts)
 
 
@@ -93,7 +92,8 @@ class RenderConfig:
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
     texture_level: str = "auto"    # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high
     day_night: str = "off"   # jour et nuit (lot P19) : off (soleil fixe d'aujourd'hui), theme, real (heure du PC) ou accelerated
-    seasons: str = "off"     # saisons (lot P19) : off (l'été d'aujourd'hui), theme, date, spring, summer, autumn ou winter
+    seasons: str = "off"     # saisons (lot P19) : off (l'été d'aujourd'hui), theme, date, random, spring, summer, autumn ou winter
+    month: str = "pc"        # mois des saisons et du jour (lot U13b) : pc (date du PC) ou january à december (le 15 du mois)
 
 
 @dataclass
@@ -170,6 +170,7 @@ class VelodromeConfig:
     """Vélodrome (série VD, lot VD3, plan §4.1) : bois de la piste et air de la salle couverte."""
     factor_wood: float = 0.6       # multiplicateur du crr du bitume sur la piste en bois
     temperature_c: float = 24.0    # température de la salle : densité de l'air
+    gear_offset_pct: float = 0.5   # toute la gamme décalée vers le dur sur la piste (14 novembre, en points de pente depuis le 15)
 
 
 @dataclass
@@ -233,9 +234,10 @@ class GrandPrixConfig:
     Les objets joués et leurs valeurs sont dans `~/OpenRide/grandprix.toml` (`grandprix.items`)."""
     opponents: int = 4             # adversaires (2 à 11 depuis le lot GP10, peloton du lot PL1)
     laps: int = 3                  # circuit : nombre de tours (1 à 5)
-    distance_km: int = 10          # parcours en ligne : distance de la course (5 à 30 km)
+    distance_km: int = 10          # parcours en ligne : distance de la course (5 à 30 km), au plus le parcours (lot GP14)
     chaos: str = "normal"          # force et fréquence des objets : soft (× 0,7), normal, wild (× 1,3)
-    box_every_m: int = 1500        # écart des rangées de boîtes (1000 à 3000 m, pas de 500 m)
+    box_every_m: int = 500         # écart des rangées de boîtes (500 à 3000 m, pas de 500 m ; 500 par défaut depuis le
+                                   # lot GP14, essai du 15 novembre : « pas assez d'objets »)
 
 
 @dataclass
@@ -354,9 +356,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("trainer", "resistance_inertia_pct"): (0, 100),
     ("gearing", "n_gears"): (2, 40),
     ("gearing", "start_gear"): (1, 40),
-    ("gearing", "ratio_min"): (0.1, 5),
-    ("gearing", "ratio_max"): (0.1, 5),
-    ("gearing", "g_base_pct"): (-10, 10),
+    ("gearing", "step_pct"): (0.05, 2),
     ("gearing", "long_press_gears"): (1, 10),
     ("ipc", "port_state"): (1024, 65535),
     ("ipc", "port_commands"): (1024, 65535),
@@ -382,6 +382,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("gravel", "factor_gravel"): (1, 3),
     ("gravel", "factor_dirt"): (1, 3),
     ("velodrome", "factor_wood"): (0.3, 1),
+    ("velodrome", "gear_offset_pct"): (-5, 5),
     ("velodrome", "temperature_c"): (5, 40),
     ("avatar", "standing_grade_pct"): (3, 15),
     ("avatar", "standing_power_pct"): (100, 300),
@@ -396,7 +397,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("grandprix", "opponents"): (2, 11),        # lot GP10 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
     ("grandprix", "laps"): (1, 5),
     ("grandprix", "distance_km"): (5, 30),
-    ("grandprix", "box_every_m"): (1000, 3000),
+    ("grandprix", "box_every_m"): (500, 3000),
     ("audio", "master_pct"): (0, 100),
     ("audio", "ride_pct"): (0, 100),
     ("audio", "ambience_pct"): (0, 100),
@@ -414,11 +415,11 @@ ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
 ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 
 # Valeurs permises des champs textuels à choix fermé.
-# Les biomes : seize de la série U (lot U0), `japan` (lot JP1) `atlantic_heath` (lot AT1) et `high_plateau` (lot HP1) (Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
+# Les biomes : seize de la série U (lot U0), `japan` (lot JP1) `atlantic_heath` (lot AT1) `high_plateau` (lot HP1) et `reef` (fond marin, lot SM1) (Format .world v1 §8 quater), dans l'ordre de engine/scripts/biome_ids.gd.
 BIOMES: tuple[str, ...] = (
     "temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
     "polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
-    "wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau",
+    "wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau", "reef",
 )
 
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
@@ -430,7 +431,9 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
     ("render", "day_night"): ("off", "theme", "real", "accelerated"),
-    ("render", "seasons"): ("off", "theme", "date", "spring", "summer", "autumn", "winter"),
+    ("render", "seasons"): ("off", "theme", "date", "random", "spring", "summer", "autumn", "winter"),
+    ("render", "month"): ("pc", "january", "february", "march", "april", "may", "june", "july", "august",
+                          "september", "october", "november", "december"),
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),
@@ -505,9 +508,8 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("trainer", "resistance_n_per_pct_kmh"): "étalonnage de la résistance calculée (lots RC1 à RC4), corrigé en roulant",
     ("trainer", "resistance_inertia_pct"): "inertie de la résistance calculée, abandonnée le 1er novembre (coupée par défaut)",
     ("gearing", "n_gears"): "boîte de vitesses virtuelle",
-    ("gearing", "ratio_min"): "boîte de vitesses virtuelle",
-    ("gearing", "ratio_max"): "boîte de vitesses virtuelle",
-    ("gearing", "g_base_pct"): "boîte de vitesses virtuelle",
+    ("gearing", "neutral_gear"): "boîte de vitesses virtuelle",
+    ("gearing", "step_pct"): "boîte de vitesses virtuelle",
     ("gearing", "long_press_gears"): "boîte de vitesses virtuelle",
     ("render", "load_guard"): "garde-fou de charge, coupé pour les mesures",
     ("drivers", "click_short_max_s"): "seuils d'appui du Click",
@@ -528,6 +530,7 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("gravel", "factor_gravel"): "roulement des routes non revêtues",
     ("gravel", "factor_dirt"): "roulement des routes non revêtues",
     ("velodrome", "factor_wood"): "roulement de la piste en bois du vélodrome",
+    ("velodrome", "gear_offset_pct"): "braquets de la piste du vélodrome",
     ("velodrome", "temperature_c"): "air de la salle du vélodrome",
     ("avatar", "standing_grade_pct"): "seuil de la danseuse",
     ("avatar", "standing_power_pct"): "seuil de la danseuse",
@@ -661,9 +664,9 @@ def validate(cfg: Config, source: str = "config.toml") -> Config:
     if not 1 <= g.start_gear <= g.n_gears:
         raise ConfigError(f"{source}, [gearing] start_gear : {g.start_gear} hors de 1 à n_gears ({g.n_gears})",
                           section="gearing", key="start_gear")
-    if g.ratio_min >= g.ratio_max:
-        raise ConfigError(f"{source}, [gearing] ratio_min : doit être inférieur à ratio_max",
-                          section="gearing", key="ratio_min")
+    if not 1 <= g.neutral_gear <= g.n_gears:
+        raise ConfigError(f"{source}, [gearing] neutral_gear : {g.neutral_gear} hors de 1 à n_gears ({g.n_gears})",
+                          section="gearing", key="neutral_gear")
     if t.grade_min_pct >= t.grade_max_pct:
         raise ConfigError(f"{source}, [trainer] grade_min_pct : doit être inférieur à grade_max_pct",
                           section="trainer", key="grade_min_pct")

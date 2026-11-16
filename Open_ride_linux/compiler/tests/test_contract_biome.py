@@ -21,6 +21,7 @@ BIOMES = [
     "wetland", "coast", "volcanic", "japan",   # 17e biome : lot JP1 (6.0)
     "atlantic_heath",                         # 18e biome : lot AT1 (6.0)
     "high_plateau",                            # lot HP1 (6.0)
+    "reef",                                    # lot SM1 (fond marin, démo sous-marine)
 ]
 
 
@@ -77,7 +78,7 @@ def test_biome_tile_schema_refuses(change) -> None:
         jsonschema.validate(tile, schema("biome"))
 
 
-@pytest.mark.parametrize("landscape", [None, "canyon", "fjord", "ile_volcanique", "rizieres"])
+@pytest.mark.parametrize("landscape", [None, "canyon", "fjord", "ile_volcanique", "rizieres", "volcan_actif"])
 def test_biome_tile_landscape_member_is_optional(landscape) -> None:
     """Lot U25 : membre `landscape` facultatif de la variante, toit `bois_peint`."""
     tile = load(BIOME_TILE)

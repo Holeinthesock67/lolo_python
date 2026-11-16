@@ -281,7 +281,7 @@ if [ -z "$terrain_count" ] || echo "$TERRAIN_OUT" | grep -q -E "SCRIPT ERROR|ERR
 record "test_terrain_coherence (terrain proche et lointain)" "$terrain_rc" "${terrain_count#*: }"
 
 echo "== Rien du paysage sur la chaussée, sur les parcours de démonstration (31 octobre) =="
-# demo.world ci-dessus et les quatre parcours de demo-biomes, variante de recette avec le tour gravel (compilateur installé) : herbe, détails de sol,
+# demo.world ci-dessus et les parcours de demo-biomes, variante de recette avec le tour gravel et le tour des nouveaux paysages (lot DB1) (compilateur installé) : herbe, détails de sol,
 # arbres et terrain contrôlés contre la route réelle, sur tout le parcours.
 # Aussi la démo embarquée (res://demo, installation neuve) et le monde ouvert simulé (série W) ; le sol affiché
 # est comparé à la route dans les deux sens (route enfoncée ou qui lévite, 4 novembre).

@@ -9,7 +9,8 @@ coureur, jamais la pente envoyée au trainer ni la puissance mesurée :
 - `cap` : v ≤ facteur × v_éq pendant la durée (averse du nuage d'orage) ;
 - `immune` : aucun coup reçu pendant la durée ;
 - `wind` : vent de face virtuel de `facteur` m/s pendant la durée, sans ressenti (vent contraire) ;
-- `breakaway` : marque de l'Échappée de la série TT (lot TT4) ; son effet sur l'abri vient avec GP4.
+- `breakaway` : marque de l'Échappée de la série TT (lot TT4) : le coureur n'abrite plus ceux qui le suivent
+  et les bots ne voient pas ses attaques (lot GP4, `is_unseen`, appliqué par la séance comme pour TT4).
 
 Depuis le lot TT2, ces lignes sont celles de la table unique des bonus de la 4.0 : `EffectSpec` et les
 listes d'effets sont dans `powerups.py` (un seul système, plan GP §5), ce module n'en garde que
@@ -24,7 +25,7 @@ from ..physics import PhysicsParams, RiderPhysics, steady_speed
 from ..powerups import DURATIONS, EFFECTS, HITS, IMPULSES, MULTIPLIERS, EffectSpec
 
 __all__ = ["CHAOS", "DURATIONS", "EFFECTS", "GAIN_HORIZON_S", "HITS", "IMPULSES", "MULTIPLIERS", "Active",
-           "EffectSpec", "apply_speed", "gain_s", "is_immune", "wind_of"]
+           "EffectSpec", "apply_speed", "gain_s", "is_immune", "is_unseen", "wind_of"]
 
 CHAOS = {"soft": 0.7, "normal": 1.0, "wild": 1.3}      # doux, normal, fou (plan §4.4)
 GAIN_HORIZON_S = 60.0                                  # écart mesuré 60 s après l'effet (plan §3)
@@ -59,6 +60,11 @@ def wind_of(active: list[Active]) -> float:
 
 def is_immune(active: list[Active]) -> bool:
     return any(a.spec.effect == "immune" for a in active)
+
+
+def is_unseen(active: list[Active]) -> bool:
+    """Marque `breakaway` en cours (Furtif, lot GP4) : ni abri donné, ni attaque vue des bots."""
+    return any(a.spec.effect == "breakaway" for a in active)
 
 
 def gain_s(effects: tuple[EffectSpec, ...] | list[EffectSpec], power_w: float = 250.0, grade_pct: float = 0.0,
