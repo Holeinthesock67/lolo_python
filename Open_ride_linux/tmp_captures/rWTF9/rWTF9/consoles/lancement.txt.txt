@@ -1,0 +1,33 @@
+06:49:13 empreinte avant c22c2adb5ae366ddabdae892db25629e
+06:49:13 tête 57b36f721
+06:49:23 test_wtf_scene
+06:49:24 fin rc=0
+06:49:24 vitrine_wtf
+06:50:30 fin rc=0
+06:51:00 gag katamari low
+06:52:43 fin rc=1
+06:52:43 gag katamari medium
+06:54:28 fin rc=1
+06:54:28 gag katamari high
+06:56:13 fin rc=1
+06:56:13 gag cheese low
+06:57:56 fin rc=1
+06:57:56 gag cheese medium
+06:59:41 fin rc=1
+06:59:41 gag cheese high
+07:01:26 fin rc=1
+07:01:26 gag eggs low
+07:03:10 fin rc=1
+07:03:10 gag eggs medium
+07:04:54 fin rc=1
+07:04:54 gag eggs high
+07:06:40 fin rc=1
+07:06:40 banc wtf low
+07:11:47 fin rc=0
+07:11:47 banc wtf medium
+07:16:54 fin rc=1
+07:16:54 banc wtf high
+07:22:01 fin rc=1
+07:22:02 empreinte après c22c2adb5ae366ddabdae892db25629e
+07:22:02 clone 214ad0b2b
+07:22:02 FIN

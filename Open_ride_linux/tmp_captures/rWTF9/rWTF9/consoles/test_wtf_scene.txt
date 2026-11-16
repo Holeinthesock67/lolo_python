@@ -1,0 +1,83 @@
+== Tests unitaires (tests/unit/, lot K1) ==
+-- test_wtf_scene
+
+[OK] hors mode WTF : rien
+[OK] entre deux gags, règles permanentes coupées : rien à poser
+[OK] Lune : voile gris et bonds
+[OK] Jupiter : voile rougeâtre, pas de bond
+[OK] monde à l'envers : caméra retournée
+[OK] effondrement à 40 m : front montré à 16 m derrière, tronçons plus loin
+[OK] les tronçons les plus loin sont tombés plus bas
+[OK] effondrement : vue vers l'arrière, gouffre posé
+[OK] fromage à 80 m : meule montrée à 10 m derrière
+[OK] fromage : vue de biais depuis le bas-côté, la meule se voit
+[OK] écrasé : meule sur le cycliste
+[OK] tornade : 8 vaches en low, 24 en high
+[OK] la tornade se remplit peu à peu
+[OK] vaches cartoon assez grosses et assez près pour être vues
+[OK] tempête : ciel sombre
+[OK] vélo minuscule : cuisine géante
+[OK] vélo minuscule : cycliste réduit
+[OK] caméra escargot
+[OK] chef qui arrive : tandem, plat caché
+[OK] révélation : chef et plat
+[OK] gelée mangée : voile vert, plus de chef
+[OK] œufs : carton de 4 œufs intacts sur le porte-bagages, derrière la selle
+[OK] œufs : nombre borné à 0–6
+[OK] meule : roule sur la route
+[OK] Katamari : boule et objets à venir
+[OK] la boule grossit
+[OK] boule poussée à droite, hors du centre de l'image
+[OK] la boule roule sur son rayon affiché
+[OK] la boule affichée cesse de grossir à × 3
+[OK] pluie de poissons : 6 en low
+[OK] heure ramenée à 0–24 h
+[OK] costumes et attaque transmis
+[OK] soleil : midi haut, minuit sous l'horizon
+[OK] nœud : meule posée
+[OK] meule posée derrière le cycliste
+[OK] à rebours : meule derrière le cycliste dans son sens de marche, tournée comme lui
+[OK] objets du gag fini cachés, poissons posés
+[OK] costume posé sur le bot affiché
+[OK] soleil réglé par l'horloge
+[OK] fin du mode : soleil rendu, tout caché
+[OK] boule (sens 1) : roule vers l'avant de 0,3 / r rad pour 0,3 m
+[OK] boule : un saut de 200 m ne la fait pas tourner
+[OK] boule (sens -1) : roule vers l'avant de 0,3 / r rad pour 0,3 m
+[OK] boule : un saut de 200 m ne la fait pas tourner
+[OK] œufs : carton posé sur le porte-bagages du vélo affiché
+[OK] œufs : carton penché avec le vélo, à sa taille cartoon
+[OK] œuf cassé : carton à 3 œufs
+[OK] roulis à mi-chemin après 0,5 s
+[OK] monde retourné après 1 s
+[OK] vue du pigeon : caméra en hauteur
+[OK] cycliste réduit en 1 s
+[OK] Lune : la caméra suit le bond, cycliste rendu à sa taille
+[OK] vache en un seul maillage à couleurs : un appel de dessin
+[OK] WTF9 : ball en un maillage, 12 couleurs, sans rose uni
+[OK] WTF9 : chunk en un maillage, 5 couleurs, sans rose uni
+[OK] WTF9 : void en un maillage, 6 couleurs, sans rose uni
+[OK] WTF9 : kata_apple en un maillage, 4 couleurs, sans rose uni
+[OK] WTF9 : kata_sign en un maillage, 4 couleurs, sans rose uni
+[OK] WTF9 : kata_cow en un maillage, 4 couleurs, sans rose uni
+[OK] WTF9 : kata_car en un maillage, 4 couleurs, sans rose uni
+[OK] WTF9 : kata_house en un maillage, 5 couleurs, sans rose uni
+[OK] WTF9 : kata_church en un maillage, 5 couleurs, sans rose uni
+[OK] WTF9 : dish_spaghetti en un maillage, 4 couleurs, sans rose uni
+[OK] WTF9 : dish_jelly en un maillage, 3 couleurs, sans rose uni
+[OK] WTF9 : dish_musette en un maillage, 4 couleurs, sans rose uni
+[OK] WTF9 : dish_souffle en un maillage, 2 couleurs, sans rose uni
+[OK] WTF9 : dish_chili en un maillage, 3 couleurs, sans rose uni
+[OK] WTF9 : eggs_6 en un maillage, 4 couleurs, sans rose uni
+[OK] WTF9 : eggs_0 en un maillage, 5 couleurs, sans rose uni
+[OK] vue de l'escargot au ras du sol
+[OK] préchauffage : rien hors du mode WTF
+[OK] préchauffage : 3 exemplaires (3 attendus)
+[OK] préchauffage : exemplaires minuscules devant la caméra
+[OK] préchauffage retiré après 3 images
+[OK] préchauffage fait une seule fois
+test_wtf_scene : 75 vérifications, 0 échecs
+UNIT=test_wtf_scene : rendu, ERG et scénarios IPC sautés
+Résumé :
+  OK     unit/test_wtf_scene : 75 vérifications, 0 échecs
+RÉSULTAT : tous les tests de l'engine passent
