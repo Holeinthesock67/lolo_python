@@ -15,17 +15,26 @@ def short_routes(monkeypatch):
 
 
 @pytest.mark.parametrize("route", ["plat", "col"])
-def test_bots_at_the_rider_level_finish_with_the_rider(short_routes, route):
-    out = br.race(route, 85.0, ["climber", "rouleur", "sprinter", "diesel"])
+def test_the_rouleur_at_the_rider_level_finishes_with_the_rider(short_routes, route):
+    # Échelle commune du plateau (15 novembre) : le rouleur la fixe ; seul, sans roue ni départ à suivre, il finit
+    # avec le cycliste. Dans un champ, il peut suivre un départ (réponse du lot Y10) : c'est de la course, pas du
+    # calibrage (banc du col court du 16 novembre : 1 km de montée dans la roue du grimpeur)
+    out = br.race(route, 85.0, ["rouleur"])
+    assert out["rider_finish_s"] is not None
+    (r,) = out["bots"]
+    assert r["finish_s"] is not None and abs(r["gap_pct"]) <= br.GAP_LIMIT_PCT, r
+    assert all(c["ok"] for c in out["checks"]) and len(out["checks"]) == 3   # rouleur, trame, contacts (lot PL1)
+
+
+def test_the_field_keeps_its_profiles_apart_on_the_climb(short_routes):
+    out = br.race("col", 85.0, ["climber", "rouleur", "sprinter", "diesel"])
     assert out["rider_finish_s"] is not None
     assert [r["profile"] for r in out["bots"]] == ["climber", "rouleur", "sprinter", "diesel"]
-    # Échelle commune du plateau (15 novembre) : seul le rouleur, qui la fixe, est jugé ; les autres s'en écartent
-    # selon leur profil (le grimpeur gagne la montée, le sprinteur y lâche)
-    for r in out["bots"]:
-        assert r["finish_s"] is not None, r
-        if r["profile"] == br.CALIBRATION_PROFILE:
-            assert abs(r["gap_pct"]) <= br.GAP_LIMIT_PCT, r
-    assert all(c["ok"] for c in out["checks"]) and len(out["checks"]) == 3   # rouleur, trame, contacts (lot PL1)
+    assert all(r["finish_s"] is not None for r in out["bots"])
+    gap = {r["profile"]: r["gap_pct"] for r in out["bots"]}
+    # le grimpeur gagne la montée, le sprinteur y lâche ; personne ne dépasse le grimpeur
+    assert gap["climber"] < -5.0 and gap["sprinter"] > 5.0
+    assert min(gap.values()) == gap["climber"]
     assert 0 < out["state_max_bytes"] <= 4096 and out["contacts"] == 0
 
 
