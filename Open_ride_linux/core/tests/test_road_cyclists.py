@@ -201,10 +201,11 @@ def test_overtake_group_holds_its_speed_once_merged(route: Route) -> None:
 
 
 def test_state_list_is_short_and_near(route: Route) -> None:
-    """Liste `riders` de `state` : au plus 6 cyclistes à moins de 60 m, du plus proche au plus loin."""
+    """Liste `riders` de `state` : au plus 10 cyclistes (lot AS10, 6 avant) à moins de 60 m, du plus proche au plus loin."""
     m = rc.RoadCyclists(route, (), (), 0, 7)
     s = 5000.0
     m.place_for_test(s, 8.0, "ahead", 10.0, 4, abreast=True)
+    m.place_for_test(s, 8.0, "ahead", 30.0, 4)
     m.place_for_test(s, 8.0, "oncoming", 45.0, 3)
     m.place_for_test(s, 8.0, "ahead", 200.0, 2)
     lst = m.state_list(s)
@@ -218,8 +219,8 @@ def test_state_list_is_short_and_near(route: Route) -> None:
     by_id = {r.id: r for r in m.riders()}
     for e in lst:     # maillot et tenue de P28 retrouvés dans `look`
         assert e["look"] % 8 == by_id[e["id"]].jersey and (e["look"] >> 4) == by_id[e["id"]].look & 0xFFFF
-    # Trame pleine (5 bots, 4 véhicules, 6 cyclistes) sous 4 096 octets : test_ipc_budget.py (critère 5)
-    assert len(json.dumps(lst, separators=(",", ":"))) < 6 * 90
+    # Trame pleine (5 bots, 10 cyclistes) sous 4 096 octets : test_ipc_budget.py (critère 5)
+    assert rc.STATE_MAX == 10 and len(json.dumps(lst, separators=(",", ":"))) < rc.STATE_MAX * 90
 
 
 def test_sources_ids_and_draft_bot() -> None:
@@ -274,7 +275,7 @@ def test_session_decor_group_shelters_rider(tmp_path, monkeypatch):
     assert 0.30 <= best <= 0.45
     assert who is not None and who.startswith("rider:" + g.id + "-")
     assert abs(s._lane.m - g.members[-1].lateral) < 0.3      # dans la ligne du groupe
-    s._frame_count = 0
+    s._frame_count = 1                         # lot AS10 : la trame qui suit celle de `vehicles`
     s._fill_riders_frame()
     riders = s.state.to_dict()["riders"]
     assert len(riders) == 3 and {r["id"] for r in riders} == {f"{g.id}-{m.index}" for m in g.members}
@@ -437,3 +438,114 @@ def test_rideable_half_matches_engine_rules() -> None:
     assert 1.5 < sp.rideable_half_m(R(), 100.0, "auto", widths, 6.0) < 3.0
     assert sp.rideable_half_m(R(), 50.0, "dirt", widths, 6.0) == pytest.approx(1.25)
     assert sp.rideable_half_m(R(), 200.0, "off", widths, 6.0) == 3.0
+
+
+def _flat_route(length_m: float = 40000.0) -> Route:
+    """Route droite et plate vers l'est, comme celle du rejeu core → engine du lot AS9."""
+    ds = 10.0
+    n = int(length_m / ds) + 1
+    cols: dict[str, list[float]] = {k: [] for k in ("lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg")}
+    for i in range(n):
+        for k, v in (("lat", 48.9), ("lon", 7.1), ("alt_m", 200.0), ("x", i * ds), ("z", 0.0),
+                     ("grade_pct", 0.0), ("heading_deg", 90.0)):
+            cols[k].append(v)
+    return Route({"version": "1.0", "ds_m": ds, "n": n, "length_m": (n - 1) * ds, "type": "open", **cols})
+
+
+@pytest.mark.parametrize("kmh", [55.0, 65.0, 75.0])
+def test_no_contact_at_high_speed(kmh: float) -> None:
+    """Lot AS9 (banc r879b du 14/11 sur le volcan, 50 à 65 km/h) : à vitesse tenue, aucun cycliste du décor ne
+    touche le cycliste ni un cycliste d'un autre groupe (critère de `living_decor._count_contacts` : 1,7 m en
+    long, 0,6 m en travers). Avant le correctif, un groupe `overtake` rabattu devant le cycliste puis ralenti
+    par un groupe lent ressortait à gauche devant lui et traversait sa ligne (65 km/h, graines 0 et 2)."""
+    route = _flat_route()
+    v = kmh / 3.6
+    hits = []
+    for seed in range(4):
+        m = rc.RoadCyclists(route, (), (), seed=seed)
+        dt = 1.0 / 50.0
+        s = 300.0
+        for k in range(int(600.0 / dt)):
+            m.update(s, v, dt)
+            if k % 5 == 0:
+                items = [(r.group, r.s, r.lane_m) for r in m.riders()] + [("cycliste", s, rc.RIDER_LATERAL_M)]
+                for i, a in enumerate(items):
+                    for b in items[i + 1:]:
+                        if a[0] != b[0] and abs(a[1] - b[1]) < 1.7 and abs(a[2] - b[2]) < 0.6:
+                            hits.append((seed, round(k * dt, 1), a[0], b[0], round(a[1] - s, 2), a[2], b[2]))
+            s += v * dt
+    assert not hits, f"{len(hits)} contacts, ex. {hits[:3]}"
+
+
+@pytest.mark.parametrize("lane", [0.3, 1.2])
+def test_groups_avoid_the_rider_where_he_is(lane: float) -> None:
+    """Lot AS10 : les groupes évitent le cycliste à sa vraie place en travers (`rider_lane`, `lane_m` du lot AS2),
+    pas à 1,2 m : cycliste tenu près de l'axe (en dépassement, 0,3 m), aucun groupe ne le touche ; avant, ceux qui le
+    doublaient passaient à 1,2 − 1,3 m, sur lui (74 à 431 contacts de 25 à 55 km/h)."""
+    route = _flat_route()
+    hits = 0
+    for kmh in (25.0, 55.0):
+        for seed in range(2):
+            m = rc.RoadCyclists(route, (), (), seed=seed)
+            s, v = 300.0, kmh / 3.6
+            for k in range(int(400.0 * 50)):
+                m.update(s, v, 0.02, rider_lane=lane)
+                if k % 5 == 0:
+                    hits += sum(1 for r in m.riders() if abs(r.s - s) < 1.7 and abs(r.lane_m - lane) < 0.6)
+                s += v * 0.02
+    assert hits == 0
+
+
+def test_riders_frame_never_carries_vehicles(tmp_path, monkeypatch):
+    """Lot AS10 (révision 1.18) : la liste `riders` part dans la trame qui suit celle de `vehicles`, jamais avec elle."""
+    s, g = decor_session(tmp_path, monkeypatch, 6202, rel_m=20.0)
+    for n in range(6):
+        s._frame_count = n
+        s._fill_vehicles_frame()
+        s._fill_riders_frame()
+        frame = s.state.to_dict()
+        assert not (frame.get("vehicles") is not None and frame.get("riders") is not None)
+        assert (frame.get("riders") is not None) == (n % 3 == 1)
+
+
+def _held_train(rider_v: float, a_rel: float, a_v: float, b_rel: float, c_rel: float) -> tuple[int, float]:
+    """Trois groupes `overtake` derrière le cycliste, à gauche : A retenu (`held`) à `a_v`, B (2) et C (4) plus vite."""
+    m = rc.RoadCyclists(_flat_route(), (), (), seed=0)
+    s, v, dt = 1000.0, rider_v, 0.02
+    m.update(s, v, dt)
+    m.groups = []
+    a = m.place_for_test(s, v, "overtake", a_rel, 1)
+    a.held, a.power_w = True, rc.power_for(a_v)
+    b = m.place_for_test(s, v, "overtake", b_rel, 2)
+    c = m.place_for_test(s, v, "overtake", c_rel, 4)
+    for g in (a, b, c):
+        g.side = "left"
+        for mm in g.members:
+            mm.lateral = m._target_lateral(g, mm)
+    hits, worst_dv = 0, 0.0
+    for _ in range(int(40.0 / dt)):
+        before = {g.id: g.s for g in m.groups}
+        m.update(s, v, dt)
+        s += v * dt
+        for g in m.groups:
+            if g.id in before:
+                r = next(r for r in m.riders() if r.group == g.id)
+                worst_dv = max(worst_dv, abs(r.v - (g.s - before[g.id]) / dt))
+        rs = m.riders()
+        for i, p in enumerate(rs):
+            for q in rs[i + 1:]:
+                if p.group != q.group and abs(p.s - q.s) < 1.7 and abs(p.lane_m - q.lane_m) < 0.6:
+                    hits += 1
+    return hits, worst_dv
+
+
+@pytest.mark.parametrize("rider_v,a_rel,a_v,b_rel,c_rel", [
+    (10.0, -8.0, 8.0, -25.0, -45.0), (13.0, -15.0, 10.0, -35.0, -60.0), (15.0, -15.0, 12.0, -35.0, -45.0)])
+def test_group_caught_behind_a_held_group_never_touches_it(rider_v, a_rel, a_v, b_rel, c_rel) -> None:
+    """Lot AS10 (banc rAS10 du volcan, groupes `overtake` superposés derrière le cycliste) : un groupe retenu derrière
+    un groupe lent roule moins vite que sa vitesse voulue ; celui qui le rattrape se règle sur la vitesse où il roule
+    (`_step_mps`), et `riders()` donne cette vitesse (placement du cycliste, abri, extrapolation de l'engine). Avant le
+    correctif : contacts dans 64 cas sur 72 de cette famille, 4 m/s d'écart entre `v` et la vitesse réelle."""
+    hits, worst_dv = _held_train(rider_v, a_rel, a_v, b_rel, c_rel)
+    assert hits == 0
+    assert worst_dv < 0.05

@@ -98,6 +98,7 @@ RETIRED_IMPORT_COMMANDS = ("list_imports", "import_workout")
 BIAS_STEPS = {InputEvent.PLUS_SHORT: +1, InputEvent.MINUS_SHORT: -1, InputEvent.PLUS_LONG: +5, InputEvent.MINUS_LONG: -5}
 WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révision 1.3)
 VEHICLES_FRAME_EVERY = 3   # liste `vehicles` 10 fois par seconde (lot AS6), extrapolée par l'engine
+RIDERS_FRAME_AT = 1        # lot AS10 : liste `riders` (10 Hz aussi) dans la trame qui suit celle de `vehicles`
 ESCORT_GAP_M = traffic_mod.DRAFT_REF_GAP_M   # voiture d'équipe (lot GP4) : 3 m du pare-chocs à la roue avant (abri de référence d'AS6)
 ESCORT_COLOR = 0           # teinte de la voiture d'équipe (indice des couleurs de la circulation)
 TRAFFIC_SEED = 0         # graine de la circulation : celle de traffic_model.gd (lot AS6)
@@ -3805,7 +3806,8 @@ class CoreSession:
             if cyclists is not None:
                 cyclists.set_direction(d, self.physics.s)
                 cyclists.vehicles = traffic.vehicles
-                cyclists.update(rider_u, self.physics.v, dt, bots=bot_places)
+                # Lot AS10 : à la vraie place du cycliste en travers (repère du décor, lot N23 : à droite de son sens)
+                cyclists.update(rider_u, self.physics.v, dt, bots=bot_places, rider_lane=self._lane.m)
                 riders_m = cyclists.near(rider_u)
                 riders = [cyclists.on_route(r) for r in riders_m]
             others = [traffic_mod.Other(s, lat, d) for s, lat in bot_places]
@@ -3833,7 +3835,7 @@ class CoreSession:
             b.shelters = b.id not in unseen
         self._escorts = self._gp_escorts()
         cars = self._escorts + [v for v in near if v.dir == 1]   # voiture d'équipe (lot GP4) : un véhicule d'AS6
-        reverse = self.physics.direction < 0   # à rebours (lot N17) : personne dans le même sens, ni abri ni placement
+        reverse = self.physics.direction < 0   # à rebours (lot N17) : ni abri ni bots ; placement parmi ceux du même sens (AS10)
         # Voiture d'équipe (lot GP4) : le coureur remorqué et sa voiture se placent d'un seul bloc (gabarit de la
         # voiture, du pare-chocs avant à la roue arrière) : le bloc double les coureurs plus lents et les autres
         # l'évitent, la voiture ne passe plus à travers un coureur devant
@@ -3916,10 +3918,11 @@ class CoreSession:
             self.state.vehicles = traffic_mod.state_list(cars[:traffic_mod.NEAR_MAX])
 
     def _fill_riders_frame(self) -> None:
-        """Liste `riders` avec `vehicles` (10 Hz, lot AS7) : au plus 6 cyclistes du décor à moins de 60 m."""
+        """Liste `riders` (10 Hz, lot AS7) : cyclistes du décor à moins de 60 m. Lot AS10 (révision 1.18) : au plus 10,
+        dans la trame qui suit celle de `vehicles`, jamais avec elle (la trame la plus chargée reste sous 4 096 octets)."""
         cyclists = self.road_cyclists
         self.state.riders = None
-        if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == 0:
+        if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == RIDERS_FRAME_AT:
             self.state.riders = road_cyclists_mod.state_items(
                 cyclists.on_route(r) for r in cyclists.near(cyclists.model_s(self.physics.s)))
 

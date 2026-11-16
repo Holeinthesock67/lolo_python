@@ -100,9 +100,13 @@ func _run() -> void:
 		"cycliste que l'engine n'a pas tiré : sens, maillot et tenue tirés de `look`")
 	m.update(s, 7.0, 0.5)
 	got = _by_id(m)
+	_check(absf(float(got["c1000000-0"]["s"]) - (s + 21.0)) < 1e-6 and absf(float(got["c9-0"]["s"]) - (s - 30.0)) < 1e-6,
+		"image de la reprise : déjà à leur place, pas extrapolés une fois de plus (lot AS9)")
+	m.update(s, 7.0, 0.5)
+	got = _by_id(m)
 	_check(absf(float(got["c1000000-0"]["s"]) - (s + 24.0)) < 1e-6 and absf(float(got["c9-0"]["s"]) - (s - 34.0)) < 1e-6,
 		"extrapolés entre deux listes, dans leur sens")
-	_check(absf(float(got["c1000000-0"]["lateral"]) - 2.4) < 0.01, "écart du core rejoint en 0,5 s (%.3f m)" % float(got["c1000000-0"]["lateral"]))
+	_check(absf(float(got["c1000000-0"]["lateral"]) - 2.4) < 0.01, "écart du core rejoint en 1 s (%.3f m)" % float(got["c1000000-0"]["lateral"]))
 	m.sync_core([], 3, s)
 	_check(_by_id(m).size() == 5, "même trame : liste reprise une seule fois")
 	m.sync_core([list[0]], 6, s)
@@ -112,7 +116,7 @@ func _run() -> void:
 	_check(got.has("c5-0") and not got["c5-0"]["group"].has("core") and str(got["c5-0"]["group"]["case"]) == "ahead",
 		"cycliste à 61 m sorti de la liste : rendu au décor de l'engine (groupe « ahead »)")
 	m.update(s, 7.0, 0.5)
-	_check(absf(float(_by_id(m)["c5-0"]["s"]) - (s + 58.0 + 6.0)) < 1e-3, "... à sa dernière vitesse (6 m/s, deux pas de 0,5 s)")
+	_check(absf(float(_by_id(m)["c5-0"]["s"]) - (s + 58.0 + 6.0)) < 1e-3, "... à sa dernière vitesse (6 m/s, un pas de 0,5 s au core et un au décor)")
 	# Banc E1 du 5/11 : le groupe rendu au décor rattrape un groupe plus lent sur sa voie ; il le double au lieu
 	# de rouler au travers
 	m.sync_core([], 7, s)   # le core ne donne plus personne : les cyclistes du core proches quittent la route
