@@ -5,9 +5,9 @@ Usage : e2e_check.py --godot CHEMIN [--engine-routes-dir DOSSIER] [--keep]
 
 Lance `openride-core run --trainer mock --input none --autostart` puis l'engine en `--test-mode`,
 chacun avec un HOME temporaire et des ports UDP libres, et vérifie le dialogue réel :
-hello / hello_ack, débit des trames `state`, même parcours `demo` des deux côtés, commande
-`input_event` envoyée par le script, perte de l'engine (PAUSED engine_lost), `end_session`
-(FINISHED, résumé conforme à `state.schema.json`, fichier FIT), HOME réel inchangé.
+hello / hello_ack, débit des trames `state`, même parcours `demo` des deux côtés, départ au
+pédalage (RUNNING), commande `input_event` envoyée par le script une fois la séance partie, perte
+de l'engine (PAUSED engine_lost), `end_session` (FINISHED, résumé conforme à `state.schema.json`, fichier FIT), HOME réel inchangé.
 
 Chaque vérification imprime une ligne [OK] ou [ÉCHEC] avec sa mesure. Code de sortie 0 si tout
 passe, 1 sinon ; en cas d'échec, les journaux sont gardés dans le dossier temporaire indiqué.
@@ -37,6 +37,7 @@ STATE_SCHEMA = ENGINE_DIR.parent / "docs" / "contracts" / "ipc" / "state.schema.
 START_GEAR = 12
 INPUT_CMD_ID = 10_000          # au-dessus des cmd_id de l'engine : le core l'accepte
 TOTAL_BUDGET_S = 60.0
+START_WAIT_S = 20.0            # départ au pédalage (lot O36) : décor prêt puis 3 s de pédalage du trainer simulé
 # Mêmes tolérances que run_engine_tests.sh (avertissements connus du mode sans écran).
 # Même tolérance que run_engine_tests.sh : le rendu factice des tests sans écran signale `Parameter "m" is null`
 # pour les maillages générés par le code (avatar du lot V6), sans conséquence.
@@ -248,10 +249,14 @@ def run(godot: Path, engine_routes_dir: Path | None, keep: bool) -> int:
         route = engine.wait_for(r"\[test\] route_loaded id=demo length_m=([0-9.]+)", 5.0)
         engine_length = float(route[1].group(1)) if route else None
 
-        # 3. input_event envoyé au core : relayé à l'engine (bip) et braquet changé. Le braquet ne change qu'en
-        # séance lancée : attendre la fin du départ au pédalage (lot O36, READY -> RUNNING), sinon l'appui
-        # arrive parfois pendant l'étape « pédalage » et le braquet reste au départ (CI du 16/11).
-        core.wait_for(r"Séance : READY -> RUNNING", 15.0)
+        # 3. input_event envoyé au core : relayé à l'engine (bip) et braquet changé. Le braquet ne change
+        # qu'en RUNNING : après `start`, le core attend en READY le décor (`scene_ready`) puis 3 s de
+        # pédalage (lot O36), ce qui tombe à peu près à la fin des 5 s de trames ci-dessus. Sans cette
+        # attente, un + envoyé quelques ms avant le départ était relayé (bip) mais ignoré (gear 12 → 12).
+        running = core.wait_for(r"Séance : \S+ -> RUNNING", START_WAIT_S)
+        r.check(running is not None, "départ de la séance",
+                f"RUNNING {running[0] - core.t_start:.2f} s après le lancement du core" if running
+                else f"pas de RUNNING en {START_WAIT_S:.0f} s (départ au pédalage)")
         t_cmd = now()
         send_cmd(cmd_port, INPUT_CMD_ID, "input_event", {"event": "PLUS_SHORT"})
         treated = core.wait_for(rf"Commande traitée : id={INPUT_CMD_ID} name=input_event", 3.0, after=t_cmd)
