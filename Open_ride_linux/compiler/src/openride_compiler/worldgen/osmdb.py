@@ -5,7 +5,7 @@ graphe (W4) et le générateur (W7) ont besoin :
 
     meta(key, value)                     schema_version, source, region, osm_date, bbox, created
     roads(id, osm_id, highway, road_class, surface, bridge, tunnel, layer, oneway, name, junction, nodes, coords)
-    areas(id, osm_id, kind, tags, geom)  building, wood, scrub, orchard, water
+    areas(id, osm_id, kind, tags, geom)  building, wood, scrub, orchard, water, river (EA3)
     lines(id, osm_id, kind, tags, coords) river, stream, canal
     points(id, osm_id, kind, name, lon, lat)
     roads_rt, areas_rt, lines_rt, points_rt : index R-tree (id, min_lon, max_lon, min_lat, max_lat)
@@ -52,7 +52,7 @@ UNPAVED = {"unpaved", "gravel", "fine_gravel", "compacted", "dirt", "earth", "gr
 _SERVICE_EXCLUDED = {"parking_aisle", "driveway", "drive-through", "emergency_access"}
 _NO_ACCESS = {"no", "private"}
 
-AREA_KINDS = ("building", "wood", "scrub", "orchard", "water")
+AREA_KINDS = ("building", "wood", "scrub", "orchard", "water", "river")   # river : lot EA3
 LINE_KINDS = ("river", "stream", "canal")
 PLACE_KINDS = ("city", "town", "village", "hamlet")
 SEARCH_KINDS = (*PLACE_KINDS, "mountain_pass")
@@ -93,7 +93,11 @@ def area_kind(tags: dict[str, Any]) -> str | None:
         return "orchard"
     if tags.get("landuse") == "reservoir":
         return "water"
-    if tags.get("natural") == "water" and tags.get("water") not in ("river", "stream", "canal", "ditch", "drain"):
+    if tags.get("natural") == "water" and tags.get("water") == "river":
+        # lot EA3 : grande rivière en surface, sorte à part (un générateur d'avant EA3 ne la lit pas) ;
+        # base refaite par `region-add` pour la voir
+        return "river"
+    if tags.get("natural") == "water" and tags.get("water") not in ("stream", "canal", "ditch", "drain"):
         return "water"
     return None
 
