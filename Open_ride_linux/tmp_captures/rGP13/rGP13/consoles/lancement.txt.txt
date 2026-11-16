@@ -1,0 +1,29 @@
+02:08:13 empreinte avant c22c2adb5ae366ddabdae892db25629e
+02:08:13 tête 9ce04b828
+02:08:53 grand_prix low
+02:13:05 fin rc=0
+02:13:20 velodrome low
+02:16:39 fin rc=0
+02:16:54 grand_prix medium
+02:21:16 fin rc=0
+02:21:31 velodrome medium
+02:24:56 fin rc=0
+02:25:11 grand_prix high
+02:29:37 fin rc=0
+02:29:52 velodrome high
+02:33:19 fin rc=0
+02:33:34 gp touché medium
+02:41:41 fin rc=1
+02:41:41 lignes coups : 39
+02:41:41 gp touché high
+02:49:50 fin rc=1
+02:49:50 lignes coups : 41
+02:49:50 km1 lacet low
+02:53:17 fin rc=0
+02:53:17 km1 lacet medium
+02:56:44 fin rc=0
+02:56:44 km1 lacet high
+03:00:11 fin rc=0
+03:00:12 empreinte après c22c2adb5ae366ddabdae892db25629e
+03:00:12 clone 214ad0b2
+03:00:12 FIN

@@ -1,0 +1,134 @@
+== grand_prix (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home (elements=['grandprix']) : « OpenRide » (engine muet 12.0 s)
+[OK] choisir « grandprix » : écran « ready », focus « start »
+[OK] écran ready (elements=['start', 'change_route', 'gp_items']) : « Prêt : Grand Prix des objets — Boucle (essai) »
+[OK] choisir « change_route » : écran « routes », focus « gp-boucle »
+[OK] écran routes (elements=['gp-boucle', 'gp-ligne']) : « Parcours »
+[OK] choisir « gp-ligne » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Course en ligne (essai)', contient=['course de 5,0 km (tout le parcours)', 'Objets : tous'], elements=['start', 'change_route', 'set:grandprix.opponents', 'set:grandprix.distance_km', 'set:bots.level_pct', 'set:grandprix.chaos', 'set:grandprix.box_every_m', 'gp_items']) : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] choisir « set:grandprix.distance_km » : écran « ready », focus « set:grandprix.distance_km »
+[OK] écran ready : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] écran ready (contient=['course de 5 km']) : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] config.toml : grandprix.distance_km = 5 : OK
+[OK] choisir « gp_items » : écran « gp_items », focus « item:gel »
+[OK] écran gp_items (titre='Grand Prix : 13 objets sur 13', elements=['item:gel', 'item:stealth', 'all_on']) : « Grand Prix : 13 objets sur 13 »
+[OK] choisir « item:storm » : écran « gp_items », focus « item:storm »
+[OK] écran gp_items (titre='Grand Prix : 12 objets sur 13', contient=["Nuage d'orage : non"]) : « Grand Prix : 12 objets sur 13 »
+[OK] fichier ~/OpenRide/grandprix.toml présent : OpenRide/grandprix.toml
+[OK] choisir « all_on » : écran « gp_items », focus « item:gel »
+[OK] écran gp_items (titre='Grand Prix : 13 objets sur 13', contient=["Nuage d'orage : oui"]) : « Grand Prix : 13 objets sur 13 »
+[OK] choisir « item:storm » : écran « gp_items », focus « item:storm »
+[OK] écran ready (contient=['Objets : 12 sur 13']) : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] choisir « change_route » : écran « routes », focus « gp-ligne »
+[OK] écran routes (elements=['gp-boucle', 'gp-ligne']) : « Parcours »
+[OK] choisir « gp-boucle » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Boucle (essai)', contient=['3 tours, 0,8 km', 'Tours du circuit'], elements=['start', 'change_route', 'set:grandprix.opponents', 'set:grandprix.laps', 'set:bots.level_pct', 'set:grandprix.chaos', 'set:grandprix.box_every_m', 'gp_items']) : « Prêt : Grand Prix des objets — Boucle (essai) »
+[OK] choisir « change_route » : écran « routes », focus « gp-boucle »
+[OK] écran routes (elements=['gp-ligne']) : « Parcours »
+[OK] choisir « gp-ligne » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Course en ligne (essai)', contient=['course de 5 km']) : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Grand Prix des objets : 4 adversaires, 5.0 km, 12 objet » : Grand Prix des objets : 4 adversaires, 5.0 km, 12 objet
+[OK] écran menu caché : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== grand_prix (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home (elements=['grandprix']) : « OpenRide » (engine muet 12.0 s)
+[OK] choisir « grandprix » : écran « ready », focus « start »
+[OK] écran ready (elements=['start', 'change_route', 'gp_items']) : « Prêt : Grand Prix des objets — Boucle (essai) »
+[OK] choisir « change_route » : écran « routes », focus « gp-boucle »
+[OK] écran routes (elements=['gp-boucle', 'gp-ligne']) : « Parcours »
+[OK] choisir « gp-ligne » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Course en ligne (essai)', contient=['course de 5,0 km (tout le parcours)', 'Objets : tous'], elements=['start', 'change_route', 'set:grandprix.opponents', 'set:grandprix.distance_km', 'set:bots.level_pct', 'set:grandprix.chaos', 'set:grandprix.box_every_m', 'gp_items']) : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] choisir « set:grandprix.distance_km » : écran « ready », focus « set:grandprix.distance_km »
+[OK] écran ready : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] écran ready (contient=['course de 5 km']) : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] config.toml : grandprix.distance_km = 5 : OK
+[OK] choisir « gp_items » : écran « gp_items », focus « item:gel »
+[OK] écran gp_items (titre='Grand Prix : 13 objets sur 13', elements=['item:gel', 'item:stealth', 'all_on']) : « Grand Prix : 13 objets sur 13 »
+[OK] choisir « item:storm » : écran « gp_items », focus « item:storm »
+[OK] écran gp_items (titre='Grand Prix : 12 objets sur 13', contient=["Nuage d'orage : non"]) : « Grand Prix : 12 objets sur 13 »
+[OK] fichier ~/OpenRide/grandprix.toml présent : OpenRide/grandprix.toml
+[OK] choisir « all_on » : écran « gp_items », focus « item:gel »
+[OK] écran gp_items (titre='Grand Prix : 13 objets sur 13', contient=["Nuage d'orage : oui"]) : « Grand Prix : 13 objets sur 13 »
+[OK] choisir « item:storm » : écran « gp_items », focus « item:storm »
+[OK] écran ready (contient=['Objets : 12 sur 13']) : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] choisir « change_route » : écran « routes », focus « gp-ligne »
+[OK] écran routes (elements=['gp-boucle', 'gp-ligne']) : « Parcours »
+[OK] choisir « gp-boucle » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Boucle (essai)', contient=['3 tours, 0,8 km', 'Tours du circuit'], elements=['start', 'change_route', 'set:grandprix.opponents', 'set:grandprix.laps', 'set:bots.level_pct', 'set:grandprix.chaos', 'set:grandprix.box_every_m', 'gp_items']) : « Prêt : Grand Prix des objets — Boucle (essai) »
+[OK] choisir « change_route » : écran « routes », focus « gp-boucle »
+[OK] écran routes (elements=['gp-ligne']) : « Parcours »
+[OK] choisir « gp-ligne » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Course en ligne (essai)', contient=['course de 5 km']) : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Grand Prix des objets : 4 adversaires, 5.0 km, 12 objet » : Grand Prix des objets : 4 adversaires, 5.0 km, 12 objet
+[OK] écran menu caché : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== grand_prix (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home (elements=['grandprix']) : « OpenRide » (engine muet 12.0 s)
+[OK] choisir « grandprix » : écran « ready », focus « start »
+[OK] écran ready (elements=['start', 'change_route', 'gp_items']) : « Prêt : Grand Prix des objets — Boucle (essai) »
+[OK] choisir « change_route » : écran « routes », focus « gp-boucle »
+[OK] écran routes (elements=['gp-boucle', 'gp-ligne']) : « Parcours »
+[OK] choisir « gp-ligne » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Course en ligne (essai)', contient=['course de 5,0 km (tout le parcours)', 'Objets : tous'], elements=['start', 'change_route', 'set:grandprix.opponents', 'set:grandprix.distance_km', 'set:bots.level_pct', 'set:grandprix.chaos', 'set:grandprix.box_every_m', 'gp_items']) : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] choisir « set:grandprix.distance_km » : écran « ready », focus « set:grandprix.distance_km »
+[OK] écran ready : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] écran ready (contient=['course de 5 km']) : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] config.toml : grandprix.distance_km = 5 : OK
+[OK] choisir « gp_items » : écran « gp_items », focus « item:gel »
+[OK] écran gp_items (titre='Grand Prix : 13 objets sur 13', elements=['item:gel', 'item:stealth', 'all_on']) : « Grand Prix : 13 objets sur 13 »
+[OK] choisir « item:storm » : écran « gp_items », focus « item:storm »
+[OK] écran gp_items (titre='Grand Prix : 12 objets sur 13', contient=["Nuage d'orage : non"]) : « Grand Prix : 12 objets sur 13 »
+[OK] fichier ~/OpenRide/grandprix.toml présent : OpenRide/grandprix.toml
+[OK] choisir « all_on » : écran « gp_items », focus « item:gel »
+[OK] écran gp_items (titre='Grand Prix : 13 objets sur 13', contient=["Nuage d'orage : oui"]) : « Grand Prix : 13 objets sur 13 »
+[OK] choisir « item:storm » : écran « gp_items », focus « item:storm »
+[OK] écran ready (contient=['Objets : 12 sur 13']) : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] choisir « change_route » : écran « routes », focus « gp-ligne »
+[OK] écran routes (elements=['gp-boucle', 'gp-ligne']) : « Parcours »
+[OK] choisir « gp-boucle » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Boucle (essai)', contient=['3 tours, 0,8 km', 'Tours du circuit'], elements=['start', 'change_route', 'set:grandprix.opponents', 'set:grandprix.laps', 'set:bots.level_pct', 'set:grandprix.chaos', 'set:grandprix.box_every_m', 'gp_items']) : « Prêt : Grand Prix des objets — Boucle (essai) »
+[OK] choisir « change_route » : écran « routes », focus « gp-boucle »
+[OK] écran routes (elements=['gp-ligne']) : « Parcours »
+[OK] choisir « gp-ligne » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Grand Prix des objets — Course en ligne (essai)', contient=['course de 5 km']) : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Grand Prix des objets : 4 adversaires, 5.0 km, 12 objet » : Grand Prix des objets : 4 adversaires, 5.0 km, 12 objet
+[OK] écran menu caché : « Prêt : Grand Prix des objets — Course en ligne (essai) »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+grand_prix               click    OK              99 s
+grand_prix               clavier  OK              90 s
+grand_prix               souris   OK              76 s
+Rapport : ~/mesures-2026-11-01-auto/rGP13/grand_prix_high/rapport.html
+OK

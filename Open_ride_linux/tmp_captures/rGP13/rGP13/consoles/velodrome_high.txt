@@ -1,0 +1,77 @@
+== velodrome (click) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home (contient=['Vélodrome']) : « OpenRide » (engine muet 12.0 s)
+[OK] choisir « track » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Vélodrome 250 m', contient=['Lancer : Séance libre', 'Épreuve : Séance libre'], elements=['start', 'track_event', 'track:opponents', 'track:bot_tactics', 'workout', 'change_route']) : « Prêt : Vélodrome 250 m »
+[OK] choisir « track_event » : écran « ready », focus « track_event »
+[OK] écran ready (contient=['Épreuve : Poursuite individuelle', 'Distance : 4 km']) : « Prêt : Vélodrome 250 m »
+[OK] écran ready (contient=['Épreuve : Course aux points', 'Tours : 40']) : « Prêt : Vélodrome 250 m »
+[OK] choisir « track:laps » : écran « ready », focus « track:laps »
+[OK] écran ready (contient=['Tours : 60']) : « Prêt : Vélodrome 250 m »
+[OK] écran ready (contient=['Tours : 20', 'Lancer : Course aux points']) : « Prêt : Vélodrome 250 m »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Épreuve de piste : points, opponents = 7, laps = 20 » : Épreuve de piste : points, opponents = 7, laps = 20
+[OK] écran menu caché : « Prêt : Vélodrome 250 m »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== velodrome (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home (contient=['Vélodrome']) : « OpenRide » (engine muet 12.0 s)
+[OK] choisir « track » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Vélodrome 250 m', contient=['Lancer : Séance libre', 'Épreuve : Séance libre'], elements=['start', 'track_event', 'track:opponents', 'track:bot_tactics', 'workout', 'change_route']) : « Prêt : Vélodrome 250 m »
+[OK] choisir « track_event » : écran « ready », focus « track_event »
+[OK] écran ready (contient=['Épreuve : Poursuite individuelle', 'Distance : 4 km']) : « Prêt : Vélodrome 250 m »
+[OK] écran ready (contient=['Épreuve : Course aux points', 'Tours : 40']) : « Prêt : Vélodrome 250 m »
+[OK] choisir « track:laps » : écran « ready », focus « track:laps »
+[OK] écran ready (contient=['Tours : 60']) : « Prêt : Vélodrome 250 m »
+[OK] écran ready (contient=['Tours : 20', 'Lancer : Course aux points']) : « Prêt : Vélodrome 250 m »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Épreuve de piste : points, opponents = 7, laps = 20 » : Épreuve de piste : points, opponents = 7, laps = 20
+[OK] écran menu caché : « Prêt : Vélodrome 250 m »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+== velodrome (souris) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home (contient=['Vélodrome']) : « OpenRide » (engine muet 12.0 s)
+[OK] choisir « track » : écran « ready », focus « start »
+[OK] écran ready (titre='Prêt : Vélodrome 250 m', contient=['Lancer : Séance libre', 'Épreuve : Séance libre'], elements=['start', 'track_event', 'track:opponents', 'track:bot_tactics', 'workout', 'change_route']) : « Prêt : Vélodrome 250 m »
+[OK] choisir « track_event » : écran « ready », focus « track_event »
+[OK] écran ready (contient=['Épreuve : Poursuite individuelle', 'Distance : 4 km']) : « Prêt : Vélodrome 250 m »
+[OK] écran ready (contient=['Épreuve : Course aux points', 'Tours : 40']) : « Prêt : Vélodrome 250 m »
+[OK] choisir « track:laps » : écran « ready », focus « track:laps »
+[OK] écran ready (contient=['Tours : 60']) : « Prêt : Vélodrome 250 m »
+[OK] écran ready (contient=['Tours : 20', 'Lancer : Course aux points']) : « Prêt : Vélodrome 250 m »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Épreuve de piste : points, opponents = 7, laps = 20 » : Épreuve de piste : points, opponents = 7, laps = 20
+[OK] écran menu caché : « Prêt : Vélodrome 250 m »
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+velodrome                click    OK              75 s
+velodrome                clavier  OK              73 s
+velodrome                souris   OK              58 s
+Rapport : ~/mesures-2026-11-01-auto/rGP13/velodrome_high/rapport.html
+OK
