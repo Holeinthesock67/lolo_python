@@ -65,6 +65,8 @@ adrenaline_veloce_mult = 1.5   # Véloce : multiplicateur de cette recharge
 perfect_shift_adrenaline = 10.0   # adrénaline gagnée par Perfect Shift réussi
 ps_window_s = 1.5   # fenêtre de Perfect Shift centrée sur l'arche (R0)
 overheat_frac = 0.75   # surchauffe (endurance) : seuil de puissance, en fraction de la FTP
+overheat_margin = 0.10   # surchauffe : jamais sous la cible + cette marge (lot R23 : boss d'endurance à 85 %)
+target_grace_w = 5.0   # consignes jugées sur la puissance affichée (3 s), à 5 W près (arrondi de l'affichage, lot R23)
 overheat_after_s = 5.0   # surchauffe : durée au-delà du seuil avant qu'elle commence (s)
 overheat_adrenaline_per_s = 2.0   # surchauffe : adrénaline perdue par seconde
 long_press_gears = 3   # vitesses sautées par un appui long sur + ou B
@@ -100,19 +102,19 @@ gear_grade_pts = 1.0   # formule centrée (Q2) : + (vitesse − 6) × 1 point
 roller_cap_grade = 6.0   # Rouleau compresseur
 roller_hold_s = 3.0   # Rouleau compresseur : durée de maintien à 6 % après la pente (s)
 springboard_grade = -1.0   # Tremplin cinétique
-springboard_min_gear = 9   # Tremplin cinétique : vitesse minimale
 springboard_adrenaline = 15.0   # Tremplin cinétique : adrénaline gagnée
 springboard_s = 5.0   # Tremplin cinétique : durée du bonus de dégâts (s)
 springboard_mult = 1.5   # Tremplin cinétique : multiplicateur de dégâts
-overdrive_grade_pts = 4.0   # Overdrive : points de pente ajoutés
+overdrive_power_frac = 1.5   # Overdrive : déclenché au-dessus de cette part de la FTP (lot R23)
 overdrive_mult = 2.0   # Overdrive : multiplicateur de dégâts
 overdrive_s = 8.0   # Overdrive : durée (s)
 overdrive_cooldown_s = 45.0   # Overdrive : recharge (s)
-overdrive_back_gear = 6   # Overdrive : vitesse de retour automatique
 heal_cadence_rpm = 95.0   # Soin : cadence minimale (rpm)
+heal_power_frac = 0.6   # Soin : puissance maximale, part de la FTP (lot R23)
 heal_per_s = 1.0   # Soin : bouclier gagné par seconde
-cursed_gear = 10   # Maudit : vitesse concernée
+cursed_power_frac = 1.0   # Maudit : effet au-dessus de cette part de la FTP (lot R23)
 cursed_mult = 1.35   # Maudit : multiplicateur de dégâts
+card_on_rearm_s = 5.0   # carte déclenchée : pas de nouvel annonce de la même carte avant ce délai (s, lot R23)
 shifter_window_mult = 2.0   # Shifter électronique : multiplicateur de la fenêtre de Perfect Shift
 shifter_window_max_s = 3.0   # Shifter électronique : fenêtre maximale (s)
 shifter_shield = 3.0   # Shifter électronique : bouclier gagné par réussite
@@ -127,18 +129,22 @@ room_max_s = 300.0   # durée maximale d'une salle (s)
 room_spread_s = 60.0   # écart de tirage de la durée d'une salle (s)
 sprinter_extra = "sprinteur"   # seuil : Sprinteur au plus une fois (il remplace une porte)
 late_margin_s = 120.0   # retard toléré avant de raccourcir les couloirs
-corridor_min_s = 60.0   # durée minimale d'un couloir raccourci (s)
+corridor_min_s = 30.0   # durée minimale d'un couloir raccourci (s)
+boss_fit_min = 0.75   # phases du boss raccourcies au plus à 75 % en cas de retard (lot R23)
+boss_fit_max = 1.6   # phases du boss rallongées au plus de 60 % en cas d'avance (lot R23)
 skip_gold_penalty = 10.0   # or perdu pour une salle retirée
 gold_mult = 1.0   # multiplicateur de l'or gagné (châssis Collecteur)
-adrenaline_start = 0.0   # adrénaline au début de chaque salle (châssis Survolté)
+adrenaline_start = 0.0   # adrénaline minimale au début de chaque salle (châssis Survolté) ; sinon celle de la salle d'avant (lot R23)
 
 # Scénariste (R15) : durée de la run en minutes -> [échauffement min, nombre de salles, salle moyenne min,
 # couloir min, boss min, poids des trois phases, retour au calme min]
 [calendars]
-"30" = [6.0, 2, 4.0, 2.0, 7.0, [2.0, 3.0, 1.0], 5.0]
-"45" = [8.0, 4, 3.5, 2.0, 10.0, [3.0, 4.0, 1.5], 5.0]
-"60" = [10.0, 6, 3.5, 2.0, 10.0, [3.0, 4.0, 1.5], 7.0]
-"90" = [10.0, 10, 4.0, 2.0, 12.0, [4.0, 5.0, 1.5], 8.0]
+# Lot R23 (essai du 15 novembre) : couloirs de 45 s au lieu de 2 min ; le temps gagné va aux salles (4,5 min en
+# moyenne, 5 min au plus : taille du message `room`) et le reste au boss, la durée de la run ne change pas.
+"30" = [6.0, 2, 4.5, 0.75, 8.5, [2.0, 3.0, 1.0], 5.0]
+"45" = [8.0, 4, 4.5, 0.75, 11.0, [3.0, 4.0, 1.5], 5.0]
+"60" = [10.0, 6, 4.5, 0.75, 11.5, [3.0, 4.0, 1.5], 7.0]
+"90" = [10.0, 10, 4.75, 0.75, 17.0, [4.0, 5.0, 1.5], 8.0]
 
 # Archétypes disponibles par objectif
 [reservoirs]

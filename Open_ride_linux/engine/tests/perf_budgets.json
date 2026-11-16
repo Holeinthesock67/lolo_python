@@ -1,6 +1,7 @@
 {
   "_doc": "Budgets de temps des tests de l'engine (lot X2, perf_budget.gd). budget_ms : seuil du cahier pour le PC cible ; ci_ms : machines partagées de GitHub (variable CI). Mémoire (lot X19) : budget_kb et ci_kb en Ko. Remplacement par machine : ~/OpenRide/perf_budgets.json, {\"nom\": ms ou Ko}.",
   "tree_tile_high": {"budget_ms": 150, "ci_ms": 170, "lot": "E3 / O1"},
+  "tree_add_tile": {"budget_ms": 4, "ci_ms": 12, "lot": "W17 (à-coups des arbres à l'entrée d'une tuile proche, 15/11 : 100 à 157 ms sur le PC avant, tampons calculés dans la tâche de fond ; 0,4 à 0,6 ms au cloud)"},
   "forest_far_tile": {"budget_ms": 400, "ci_ms": 800, "lot": "Y5 (forêts lointaines : une tuile lointaine de 5 km, tâche de fond)"},
   "vegetation_tile_max": {"budget_ms": 50, "ci_ms": 150, "lot": "K3"},
   "building_mesh_500": {"budget_ms": 150, "ci_ms": 300, "lot": "L1 / Y8 (toits à pans, découpe par pans, habillage : maillage dans une tâche de fond)"},
@@ -26,6 +27,7 @@
   "weather_particles_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P8"},
   "fauna_frame_200": {"budget_ms": 0.45, "ci_ms": 1.35, "lot": "P11 / P23"},
   "turbines_flags_frame": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P12"},
+  "wrecks_frame": {"budget_ms": 0.05, "ci_ms": 0.2, "lot": "SM2"},
   "crowd_frame_200": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P15"},
   "ambience_evaluate": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P9"},
   "grass_tufts_frame": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P5"},

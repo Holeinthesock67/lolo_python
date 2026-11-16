@@ -10,6 +10,30 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Nouveau réglage « Objectif des bots » (récupération 55 %, endurance 65 %, tempo 80 % par défaut, seuil 92 %, à fond 100 %), commun à tous les modes et gardé d'une séance à l'autre ; aussi sur les écrans Prêt du Dernier survivant et du Grand Prix. « Niveau des bots » reste un réglage fin.
 - Au vélodrome, l'objectif suit l'épreuve : à fond pour les contre-la-montre, tempo pour les courses en groupe et la séance libre.
 
+### Vélodrome et Grand Prix à l'accueil, avec leurs propres parcours (lot GP13)
+- « Vélodrome » à l'accueil : l'écran Prêt du vélodrome s'ouvre directement sur la piste.
+- Le Grand Prix des objets s'ouvre sur ses propres parcours (le Circuit des Prés pour commencer) et non plus sur le dernier parcours roulé ; « Changer de parcours » ne montre que ses parcours.
+- La liste « Parcours » de l'accueil ne montre plus la piste ni les parcours du Grand Prix ; après un de ces modes, la session libre repart sur votre dernier parcours libre.
+- Chaque mode retient son dernier parcours. Une trace entre dans un mode par l'étiquette de sa fiche (`tags = ["grandprix"]`).
+
+### Grand Prix plus lisible (lot GP14, essai du 15 novembre)
+- Une rangée de boîtes tous les 500 m par défaut (au lieu de 1 km). Une boîte prise disparaît de la route et réapparaît 2 s plus tard.
+- Distance par défaut : tout le parcours quand il est plus court que la distance réglée (« course de 5 km (tout le parcours) ») ; « Lancer » n'est grisé que sous 1 km.
+- Coup reçu : bandeau « Touché ! Bidon glissant 2 s » et contour de l'écran à la couleur de l'objet tant que l'effet dure, en plus du son et de l'onomatopée (pas de flash plein écran).
+- Panneaux de segment (« Sommet dans 500 m », « Sprint dans 1 km ») : plaque blanche cadrée de noir sur poteaux, comme les panneaux d'approche des cols, au lieu d'une caisse blanche.
+
+### Liste des parcours fluide (lot ML1)
+- Le menu n'est plus redessiné à chaque trame du core (30 par seconde) ni à chaque événement : une seule mise à jour par image, avec l'état le plus récent. Une image lente en recevait plusieurs, et la liste des parcours (pack des cols installé) tombait à 8 images par seconde (essai du 15 novembre).
+- Rangées et carte de détail inchangées ne sont plus reposées : reposer couleurs et styles faisait remettre en forme tous les libellés de la liste.
+- Cyber-Rogue : au départ d'une run, le décor du parcours d'avant (tuiles, arbres, forêts, bâtiments, horizon) est vidé au lieu d'être seulement caché ; le parcours du menu est rechargé en entier au retour (arbres de l'Alpe d'Huez encore chargés pendant la run, essai du 15 novembre).
+- Nouvelle ligne `[perf-menu]` du journal de l'engine, toutes les 30 s quand un menu est affiché : nombre de mises à jour, temps moyen et maximal, écran.
+
+### Une épave et une piste de sable au Récif des tortues (lot SM2)
+- Un vieux caboteur rouillé, couché sur le flanc dans le sable, attend à 120 m de l'arrivée du « Récif des tortues » : coque couverte d'algues, hublots, brèche dans le flanc, timonerie, cheminée penchée et mât cassé tombé sur le pont.
+- Les parcours peuvent porter des épaves (point d'intérêt `wreck`, d'après la balise OSM `historic=wreck`).
+- Sous la mer, la route devient une piste de sable sans marquage, fondue dans le fond ; le vélo et l'entraînement ne changent pas. Un thème peut donner ainsi à chaque biome l'aspect de sa chaussée (`biomes.<id>.road`).
+- Plus de promeneur debout au bord de la route sous l'eau.
+
 ### Un volcan en flammes (lot DB2)
 - Nouveau parcours de démonstration « Volcan en flammes » : une boucle de 8 km dans un volcan en éruption, de la plaine de cendres à la crête du cratère (220 m de montée, 9,6 % au plus) et retour. On roule entre des coulées et des lacs de lave, dans les braises et la fumée, et le cratère crache des gerbes de lave. Trace, relief et décor sont inventés.
 - Nouveau paysage « volcan actif » du thème : coulées et lacs de lave qui rougeoient de jour comme de nuit, braises autour du cycliste, panaches de fumée, gerbes de lave, lueur orange sur la brume. La lave reste toujours à 14 m au moins de la route. En qualité basse, ni gerbes ni lumières, et moins de braises.

@@ -54,7 +54,7 @@ def test_choices(section: str, key: str) -> None:
     ({"drivers": {"trainer": 3}}, "[drivers] trainer"),
     ({"rider": 250}, "[rider]"),
     ({"gearing": {"start_gear": 30}}, "[gearing] start_gear"),
-    ({"gearing": {"ratio_min": 2.0, "ratio_max": 1.0}}, "[gearing] ratio_min"),
+    ({"gearing": {"neutral_gear": 0}}, "[gearing] neutral_gear"),
     ({"trainer": {"grade_min_pct": 0.0, "grade_max_pct": 0.0}}, "[trainer] grade_min_pct"),
     ({"ipc": {"port_state": 6000, "port_commands": 6000}}, "[ipc] port_commands"),
 ])
