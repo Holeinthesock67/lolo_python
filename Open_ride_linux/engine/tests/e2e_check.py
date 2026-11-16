@@ -248,7 +248,10 @@ def run(godot: Path, engine_routes_dir: Path | None, keep: bool) -> int:
         route = engine.wait_for(r"\[test\] route_loaded id=demo length_m=([0-9.]+)", 5.0)
         engine_length = float(route[1].group(1)) if route else None
 
-        # 3. input_event envoyé au core : relayé à l'engine (bip) et braquet changé.
+        # 3. input_event envoyé au core : relayé à l'engine (bip) et braquet changé. Le braquet ne change qu'en
+        # séance lancée : attendre la fin du départ au pédalage (lot O36, READY -> RUNNING), sinon l'appui
+        # arrive parfois pendant l'étape « pédalage » et le braquet reste au départ (CI du 16/11).
+        core.wait_for(r"Séance : READY -> RUNNING", 15.0)
         t_cmd = now()
         send_cmd(cmd_port, INPUT_CMD_ID, "input_event", {"event": "PLUS_SHORT"})
         treated = core.wait_for(rf"Commande traitée : id={INPUT_CMD_ID} name=input_event", 3.0, after=t_cmd)
