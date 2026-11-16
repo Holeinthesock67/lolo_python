@@ -38,6 +38,6 @@ Un mode peut avoir ses propres parcours, reconnus à une étiquette de leur fich
 
 ## 5. Reste
 
-- Banc PC : `menu_bench` `grand_prix` et `velodrome` en `low`, `medium` et `high` (captures de l'accueil et des écrans Prêt à valider par le propriétaire) ; captures GP14 : coup reçu (bandeau et contour) et panneaux du km 1 du Col du lacet.
+- Banc PC : `menu_bench` `grand_prix` et `velodrome` en `low`, `medium` et `high` (captures de l'accueil et des écrans Prêt à valider par le propriétaire) ; captures GP14 : coup reçu (bandeau et contour) et panneaux du km 1 du Col du lacet, vus 15 m avant (`--at-m 485,985` : « Sommet dans 1 km » à 500 m, « Sommet dans 500 m » à 1 000 m, à gauche).
 - GP13b : Boucle de la Corniche (boucle de 2,5 km, méditerranéen) et Route des Vignes (6 km en ligne, vallonnée), routes revêtues sans épingle et test des routes larges ; bancs `grand_prix` et `grand_prix_onze`.
 - Recette GP11 (#845) : étape 2 sur la Route des Vignes après GP13b.
