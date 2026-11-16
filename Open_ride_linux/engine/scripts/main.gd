@@ -1949,6 +1949,9 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
 	menu_flow.menu.set_track_events(ipc.core_config.get("track"))   # écran Prêt du vélodrome (lot VD10)
+	menu_flow.menu.set_mode_routes(ipc.core_config.get("mode_routes"))   # parcours propres aux modes (lot GP13)
+	if not menu_flow.routes_raw.is_empty():
+		menu_flow.set_routes(menu_flow.routes_raw)   # table reçue après la liste : parcours des modes recalculés
 	menu_flow.on_hello_interrupted(ipc.core_config.get("interrupted"))   # lot O34
 	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
 	# Derniers choix du profil (lot O32) : bot, fantôme, entraînement, départ du monde ouvert.

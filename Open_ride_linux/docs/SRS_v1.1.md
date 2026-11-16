@@ -479,7 +479,7 @@ opponents = 4                # adversaires, 2 à 4 (bots à profil)
 laps = 3                     # tours sur un circuit, 1 à 5
 distance_km = 10             # longueur sur un parcours en ligne, 5 à 30 km
 chaos = "normal"             # forces et fréquence des objets : "soft" (× 0,7), "normal" (× 1), "wild" (× 1,3)
-box_every_m = 1500           # écart des rangées de boîtes, 1 000 à 3 000 m par pas de 500 m
+box_every_m = 500            # écart des rangées de boîtes, 500 à 3 000 m par pas de 500 m (500 depuis le lot GP14)
 [audio]                      # volumes en % (0 : coupé), réglables dans le menu, voir docs/AUDIO.md
 master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre

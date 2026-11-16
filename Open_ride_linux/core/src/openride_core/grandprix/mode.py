@@ -43,6 +43,8 @@ RESUME_GRACE_S = 3.0
 CHARGE_GAP_S = 1.0                   # une charge par seconde au plus
 DROP_BEHIND_M, LAUNCH_AHEAD_M = 2.0, 2.0
 FRAME_BEHIND_M, FRAME_AHEAD_M, FRAME_OBJECTS = 100.0, 400.0, 12
+# Rangées de boîtes de la trame (lot GP14) : celle que l'on vient de passer reste 30 m (vue de derrière), deux au plus
+BOXES_BEHIND_M, FRAME_BOX_ROWS = 30.0, 2
 RESULT_REPEAT = 3
 V_FLOOR = 1.0                        # m/s : vitesse plancher des écarts en temps
 LOSS_DT_S = 0.1                      # pas de l'estimation du temps perdu (`loss_s`)
@@ -487,6 +489,7 @@ class GrandPrixMode:
         r = self.racers[rid]
         now = self.clock
         objs = self.objects.near(r.s, FRAME_BEHIND_M, FRAME_AHEAD_M, FRAME_OBJECTS)
+        rows = self.boxes.near(r.s, BOXES_BEHIND_M, FRAME_AHEAD_M, FRAME_BOX_ROWS)
         warn = None
         threats = [(o.s, o.kind) for o in self.objects if o.target == rid and o.owner != rid]
         threats += [(r.s, b.item) for b in self.bursts if b.target == rid]
@@ -501,9 +504,12 @@ class GrandPrixMode:
             "warn": warn,
             "obj": [[o.id, self.table.items[o.kind].shot_kind, round(o.s, 1), o.lane if o.lane is not None else -1]
                     for o in objs],
-            "boxes": [round(x) for x in self.boxes.ahead(r.s, FRAME_AHEAD_M)][:2],   # rangées fixes : au mètre
+            "boxes": [round(self.boxes.rows[i]) for i in rows],   # rangées fixes : au mètre
             "pick": self.lane_choice_shown(rid),   # lot GP2 : A court change de voie (sinon vue suivante)
         }
+        gone = self.boxes.gone(rows, now)   # lot GP14 : boîtes prises, absentes jusqu'à leur retour
+        if gone:
+            out["boxes_gone"] = gone
         if self.lap_m:
             lap = min(int(max(r.s - self.origin_m, 0.0) // self.lap_m) + 1, max(int(round(self.length_m / self.lap_m)), 1))
             out["lap"] = [lap, max(int(round(self.length_m / self.lap_m)), 1)]
