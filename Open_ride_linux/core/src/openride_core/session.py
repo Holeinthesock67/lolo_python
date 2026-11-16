@@ -385,6 +385,7 @@ class CoreSession:
         self.grandprix: GrandPrixMode | None = None   # mode « Grand Prix des objets » (lot GP2)
         self.track_event: track_mod.TrackEvent | None = None   # épreuve de piste en cours (lot VD6)
         self._track_choice: tuple[str, dict] | None = None     # épreuve et réglages choisis au `start`
+        self._bot_effort_now: Any = None   # course des bots de la séance (`bot_effort.Effort`, lot BT1)
         self._track_plan: Any = None                            # consignes des bots de l'épreuve (lot VD7)
         self._race_field: bot_tactics.RaceField | None = None   # comportements de course (lot VD7)
         self._records_writable = True
@@ -669,7 +670,7 @@ class CoreSession:
         if game_mode == "wtf":
             self._start_wtf()
         self._new_race(classic=self.wtf is None and game_mode not in ("survivor", "grandprix", "track"),
-                       tactics=self._track_tactics() if game_mode == "track" else None)
+                       tactics=self._track_tactics() if game_mode == "track" else None, game_mode=game_mode)
         if game_mode == "survivor":
             self._start_survivor()
         if game_mode == "grandprix":
@@ -1369,7 +1370,8 @@ class CoreSession:
             attach_segments(profiled, self._segments)
             calibrate_bots(profiled, self.route, RefRider(self.cfg.rider.ftp_w, self._base_params),
                            self.cfg.bots.level_pct, self._segments, self.cfg.bike.mass_kg,
-                           bot_params=PhysicsParams.from_config(self.cfg))
+                           bot_params=PhysicsParams.from_config(self.cfg),
+                           effort=self._bot_effort_now or self._bot_effort(None))
             mode = self.bot_tactics_mode if self.race is not None else "none"
             seed = self.bot_tactics_seed if self.bot_tactics_seed is not None else bot_tactics.seed_from(time.time())
             bot_tactics.start_race(profiled, seed, mode)
@@ -1378,6 +1380,16 @@ class CoreSession:
         if self.wtf is not None:
             for b in fresh:
                 self.wtf.bot_skin(b.id)
+
+    def _log_bot_effort(self) -> None:
+        """Ligne du journal du core : objectif, durée estimée et puissance visée des bots (lot BT1)."""
+        eff = self._bot_effort_now
+        targets = sorted({b.effort_target for b in self.bots if getattr(b, "effort_target", None)})
+        if eff is None or not targets:
+            return
+        ftp = self.cfg.rider.ftp_w
+        log.info("Effort des bots (%s) : %s.", eff.objective, ", ".join(
+            f"{pct:.0f} % de la FTP ({ftp * pct / 100.0:.0f} W) sur ≈ {dur / 60.0:.0f} min" for pct, dur in targets))
 
     def _journal_bots(self, reason: str) -> None:
         """Ligne `bots` du journal (lot N18) : bots de la séance au départ (s'il y en a) et à chaque `set_bots`."""
@@ -3189,13 +3201,33 @@ class CoreSession:
 
     # --- mode classique de la série T (lot T7) ------------------------------------------
 
-    def _new_race(self, classic: bool = True, tactics: str | None = None) -> None:
+    def _bot_effort(self, game_mode: str | None) -> Any:
+        """Course des bots (lot BT1, `bot_effort.Effort`) : objectif commun `bots.objective` et longueur de la
+        course du mode (Grand Prix : tours ou distance ; ailleurs un passage du parcours) ; au vélodrome,
+        objectif et longueur de l'épreuve (`bot_effort.track_effort`)."""
+        from . import bot_effort
+
+        if game_mode == "track" and self._track_choice is not None:
+            event, settings = self._track_choice
+            lap = self._track.length_m if self._track is not None else track_mod.LAP_M
+            return bot_effort.track_effort(event, settings, lap)
+        course_m = None
+        if game_mode == "grandprix":
+            try:
+                course_m = self._grandprix_course()[0]
+            except GrandPrixError:
+                course_m = None
+        return bot_effort.Effort(self.cfg.bots.objective, course_m)
+
+    def _new_race(self, classic: bool = True, tactics: str | None = None, game_mode: str | None = None) -> None:
         """Segments, records, bonus, maillots et écarts de la séance qui commence.
 
         `classic` faux (mode WTF) : pas de segments, de records ni de bonus, seulement les bots calibrés.
         `tactics` : ligne de `bot_tactics.MODE_TACTICS` imposée par le mode (épreuve de piste) ; None : celle
-        du mode classique, ou « none » hors du mode classique."""
+        du mode classique, ou « none » hors du mode classique. `game_mode` : mode de la séance, pour l'effort
+        des bots (`_bot_effort`, lot BT1)."""
         route = self.route
+        self._bot_effort_now = self._bot_effort(game_mode)
         self.race = None
         # Graine de la séance, tirée une fois : les bots, l'épreuve de piste et ses consignes la partagent.
         self._race_seed = (self.bot_tactics_seed if self.bot_tactics_seed is not None
@@ -3237,7 +3269,7 @@ class CoreSession:
         # Niveau des bots (lot T13) : cycliste équipé (lot V5), bots sans équipement (leur physique de séance).
         rider = RefRider(self.cfg.rider.ftp_w, self._base_params)
         scales = calibrate_bots(self.bots, route, rider, self.cfg.bots.level_pct, self._segments,
-                                self.cfg.bike.mass_kg, bot_params=plain)
+                                self.cfg.bike.mass_kg, bot_params=plain, effort=self._bot_effort_now)
         # Lot Y10 : tactique après le calibrage (forme du jour sur la CP calibrée), le mode classique seul
         seed = self._race_seed
         mode = tactics if tactics is not None else (self.bot_tactics_mode if classic else "none")
@@ -3248,6 +3280,7 @@ class CoreSession:
         if scales:
             log.info("Bots calibrés en %.0f ms : %s.", 1000.0 * (time.perf_counter() - t0),
                      ", ".join(f"{p} à {lv:g} % : CP × {k:.2f}" for (p, lv), k in scales.items()))
+            self._log_bot_effort()
         if self.race is None:
             return
         self.race.start(self._t_session, self.physics.s, self.bots)

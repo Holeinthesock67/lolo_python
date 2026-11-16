@@ -1,11 +1,12 @@
 """Course des bots en temps accéléré (lot X27) : calibrage et stratégies des bots à profil, sans vélo.
 
     python -m openride_core.tools.bots_race --route demo|plat|col|FICHIER.world --rider-pct 85 \\
-        --bots climber,rouleur,sprinter,diesel [--ftp 250] [--niveau 85] [--json]
+        --bots climber,rouleur,sprinter,diesel [--ftp 250] [--niveau 85] [--objectif max] [--json]
 
 La vraie séance (`CoreSession`, avec son calibrage des bots du lot T13, ses segments et ses maillots)
-tourne au pas fixe de 20 ms sans trainer ni engine : le cycliste roule à `--rider-pct` % de sa FTP
-(`MockDriver`, puissance constante), les bots à profil sont calibrés au niveau `--niveau` (% de la FTP,
+tourne au pas fixe de 20 ms sans trainer ni engine : le cycliste roule à l'effort d'un bot de niveau
+`--rider-pct` (lot BT1 : FTP × courbe de puissance sur la durée de la course × objectif `--objectif` × niveau ;
+`MockDriver`, puissance constante), les bots à profil sont calibrés au niveau `--niveau` (% de la FTP,
 par défaut celui du cycliste ; une seule échelle par niveau, celle du rouleur, qui doit alors finir avec lui ;
 les autres profils gardent leurs écarts : grimpeur devant en montée, sprinteur derrière). Les bots qui finissent après le cycliste
 continuent avec la même physique jusqu'à l'arrivée.
@@ -30,7 +31,8 @@ from pathlib import Path
 from typing import Any
 
 from .. import fit_export
-from ..bots import CALIBRATION_PROFILE, MAX_CONSTANT_BOTS, PROFILES, ProfileBot, profile_bot_names
+from ..bots import (CALIBRATION_PROFILE, MAX_CONSTANT_BOTS, PROFILES, ProfileBot, RefRider, RouteProfile,
+                    effort_target, profile_bot_names)
 from ..config import Config
 from ..draft import BIKE_LENGTH_M, RIDER_WIDTH_M
 from ..demo_world import write_world
@@ -87,7 +89,8 @@ def prepare_route(route: str, routes_root: Path) -> str:
 
 
 def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0,
-         level_pct: float | None = None, dt: float = DT, seed: int = SEED) -> dict[str, Any]:
+         level_pct: float | None = None, dt: float = DT, seed: int = SEED,
+         objective: str = "max") -> dict[str, Any]:
     unknown = [p for p in profiles if p not in PROFILES]
     if unknown:
         raise RaceError(f"profil(s) de bot inconnu(s) : {', '.join(unknown)} ({', '.join(PROFILES)})")
@@ -107,6 +110,7 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
         cfg.depart.mode = "immediat"   # banc sans engine ni cycliste : départ à la commande start (lot O36)
         cfg.rider.ftp_w = ftp_w
         cfg.bots.level_pct = round(level)
+        cfg.bots.objective = objective       # lot BT1 : effort visé sur la durée de la course
         cfg.powerups.mode = "off"            # course sans bonus : seuls la physique et les stratégies jouent
         names = profile_bot_names(profiles)
         bots = [ProfileBot(p, bot_id=f"b{i + 1}", name=n, bike_mass_kg=cfg.bike.mass_kg)
@@ -125,6 +129,11 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
         if s.route is None:
             raise RaceError(f"parcours {route} refusé par la séance")
         s._on_command("start", {}, 2)
+        # Lot BT1 : le cycliste roule à l'effort d'un bot de niveau `rider_pct` pour cette course (courbe de
+        # puissance × objectif), la règle des bots : à niveau égal, le rouleur finit avec lui.
+        rider_eff, race_s = effort_target(RouteProfile(s.route), RefRider(ftp_w, s._base_params), rider_pct,
+                                          s._bot_effort_now)
+        s.driver.base_power_w = ftp_w * rider_eff / 100.0
         length = s.route.length_m
         finish: dict[str, float] = {}
         wmin = {b.id: 100.0 for b in bots}
@@ -192,6 +201,7 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
     checks.append((n_contacts == 0, f"contacts entre coureurs : {n_contacts}"
                    + (f" (premier : {first_contact})" if first_contact else "")))
     return {"route": route, "length_m": round(length, 1), "rider_pct": rider_pct, "level_pct": level, "ftp_w": ftp_w,
+            "objective": objective, "rider_power_w": round(ftp_w * rider_eff / 100.0, 1), "race_s_est": round(race_s, 1),
             "rider_finish_s": None if rider_t is None else round(rider_t, 1), "bots": rows,
             "rider_jerseys": sorted(k for k, v in (jerseys or {}).items() if v == "me"),
             "segment_results": len(results), "state_max_bytes": biggest, "contacts": n_contacts,
@@ -200,8 +210,9 @@ def race(route: str, rider_pct: float, profiles: list[str], ftp_w: float = 250.0
 
 
 def format_text(out: dict[str, Any]) -> str:
-    lines = [f"Course des bots sur {out['route']} ({out['length_m'] / 1000:.1f} km) : cycliste à {out['rider_pct']:g} % "
-             f"de {out['ftp_w']:g} W, bots au niveau {out['level_pct']:g} %",
+    lines = [f"Course des bots sur {out['route']} ({out['length_m'] / 1000:.1f} km) : cycliste au niveau {out['rider_pct']:g} % "
+             f"de {out['ftp_w']:g} W, bots au niveau {out['level_pct']:g} %, objectif {out['objective']}",
+             f"Effort : {out['rider_power_w']:g} W sur ≈ {out['race_s_est'] / 60:.0f} min (courbe de puissance × objectif, lot BT1)",
              f"Cycliste : arrivée en {out['rider_finish_s']} s ; {out['segment_results']} résultat(s) de segment ; "
              f"maillots {', '.join(out['rider_jerseys']) or '—'}",
              "", f"  {'bot':<12} {'profil':<9} {'échelle':>7} {'arrivée':>9} {'écart':>8} {'W′ min':>7}  maillots"]
@@ -223,6 +234,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--bots", default="climber,rouleur,sprinter,diesel", help="profils séparés par des virgules")
     ap.add_argument("--ftp", type=float, default=250.0)
     ap.add_argument("--niveau", type=float, help="niveau des bots en %% de la FTP (défaut : celui du cycliste)")
+    ap.add_argument("--objectif", default="max", help="objectif de la course (recovery, endurance, tempo, threshold, max)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
     profiles = [p.strip() for p in args.bots.split(",") if p.strip()]
@@ -230,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
         print("aucun bot demandé", file=sys.stderr)
         return 2
     try:
-        out = race(args.route, args.rider_pct, profiles, args.ftp, args.niveau)
+        out = race(args.route, args.rider_pct, profiles, args.ftp, args.niveau, objective=args.objectif)
     except RaceError as exc:
         print(f"ÉCHEC : {exc}", file=sys.stderr)
         return 2
