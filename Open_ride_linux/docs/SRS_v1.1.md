@@ -37,7 +37,7 @@ La v1.1 garde le découplage matériel/rendu et le modèle 1D sur rail, et corri
 | Physique | Dans Godot | Dans le core Python | Source de vérité unique ; l'enregistrement survit à un plantage du rendu ; testable sans Godot |
 | IPC | Trame JSON sans version | Versionné, numéro de séquence, heartbeat | Détecter les pertes et les incompatibilités |
 | Intégration de la vitesse | P/v avec seuil v_min | Bilan d'énergie cinétique | Stable à l'arrêt, plus de contournement |
-| Braquets | R1 = 0,55, R24 = 1,85 | R1 = 0,455, R24 = 2,60, étagement calculé ; × 1,25 sur la piste du vélodrome | Rapport 7,5 (0,40 à 3,00) le 24 octobre pour sentir un braquet sur le plat, ramené à 3,1 le 28 octobre (en petit braquet, une montée devenait plate), élargi à 5,7 le 14 novembre après les essais : étagement pas assez marqué, braquets trop légers sur la piste |
+| Braquets | R1 = 0,55, R24 = 1,85 | Pas fixe de 0,5 point de pente par clic, braquet 12 neutre (− 5,5 % à + 6 %) ; + 0,5 point sur la piste du vélodrome | Rapports multiplicatifs de 0,40 à 3,00 (24 octobre), 0,65 à 2,00 (28 octobre), 0,455 à 2,60 (14 novembre) ; pas fixe le 15 novembre : clics trop peu sensibles sur le plat, braquet 1 trop dur dans les murs, braquet 24 le plus facile en descente |
 | Zwift Click | Appuis longs actifs en SIM | Appuis longs : ± 10 vitesses en SIM (essai du 24 octobre), biais ± 10 % en ERG ; Z : bloc suivant en ERG (lot O17) | Changer vite de braquet en côte ; même famille d'action dans chaque mode (spécification générale §7.1) |
 | Route | B-spline | Polyligne à 10 m lissée | Une B-spline ne passe pas par les points du tracé |
 | Altitude | API à points | Tuiles raster avec cache | Pas de limite de débit, parcours longs possibles |
@@ -119,17 +119,17 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 
 La chaîne reste sur le pignon fixe du Zwift Cog ; le braquet n'agit que sur la résistance ressentie, donc sur la cadence pour une puissance donnée. La vitesse virtuelle est calculée avec la puissance mesurée et la pente réelle du terrain, jamais avec le braquet.
 
-- Index `k` de 1 à 24, 12 au lancement.
-- Rapport géométrique entre R_min = 0,455 et R_max = 2,60 (rapport 5,7, soit environ 7,9 % par clic) ; R_12 vaut alors environ 1,05, ce qui est accepté comme « neutre ». Le 14 novembre, après les essais sur le vélo, le propriétaire a demandé un braquet 1 plus facile de 30 % et un braquet 24 plus dur de 30 % : les deux bouts de la plage 0,65–2,00 ont été multipliés par 0,7 et 1,3, avec la même loi pour tous les modes. Au braquet 1 à 50 % de difficulté, une montée de 3,6 % donne alors 0,27 % (plus facile, toujours une montée). Jusqu'au 28 octobre, la plage allait de 0,40 à 3,00 : en braquet 1 à 50 % de difficulté, une montée de 3,6 % devenait une consigne de 0,12 %, donc une route plate, et la moitié haute de la plage dépassait 180 W sur 3,6 %. La plage resserrée a été choisie par le propriétaire après l'étude des petits braquets : au braquet 1, la même montée donne 0,82 %, et chaque clic se sent sur toute la plage.
-- Pente envoyée au trainer :
+- Index `k` de 1 à 24, 12 au lancement ; le braquet 12 est neutre (`[gearing] neutral_gear`).
+- Pente envoyée au trainer (loi du 15 novembre, choisie par le propriétaire) :
 
 ```latex
-G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
+G_{eff} = G_{terrain} \cdot d + (k - k_{neutre}) \cdot p + D_{lieu}
 ```
 
-- G_base = 2 % (résistance de base sur le plat, équivalent du roulement et de l'air). Essayé à 4 % le 24 octobre : en petit braquet, une montée de 3 % devenait une descente pour le trainer. Le résultat ne change jamais de signe par rapport au terrain (une montée reste au moins plate, une descente aussi), puis il est limité à −10 % / +16 %.
-- Sur une piste de vélodrome (parcours avec couche `venue`), chaque rapport est multiplié par `[velodrome] gear_scale` (1,25 par défaut, 0,5 à 2) : toute la gamme est décalée vers le dur, l'étagement ne change pas. Choix du propriétaire du 14 novembre : à plat, avec le bois (− 0,16 point) et l'abri du peloton (jusqu'à − 1,9 point), le braquet 24 ne se sentait presque plus. Avec 1,25, le braquet 24 donne + 4,5 % à plat sans abri.
-- R_min, R_max, G_base et le nombre de vitesses sont dans la configuration (§11) : la formule est heuristique et se règle au ressenti.
+- d : coefficient de difficulté (§5), qui ne touche que le terrain ; p = `[gearing] step_pct` = 0,5 point de pente par clic (braquet 1 : − 5,5 %, braquet 24 : + 6 %) ; D_lieu = `[velodrome] gear_offset_pct` = + 0,5 point sur une piste de vélodrome (parcours avec couche `venue`), 0 ailleurs : donnée du lieu, pas une exception de la loi.
+- Un clic vaut le même écart partout, en montée, sur le plat et en descente, soit environ 3,3 N à la roue (≈ 17 W à 55 tr/min avec le trainer mesuré le 28 octobre : 16 N + 6,6 N par point de pente). Une montée reste au moins plate (essai du 24 octobre : un petit braquet ne doit pas transformer une montée en descente) ; une descente peut devenir une montée pour le trainer dans les grands braquets, comme sur un vrai vélo où l'on appuie en descente. Le résultat est ensuite limité à − 10 % / + 16 %.
+- Historique : jusqu'au 15 novembre, le braquet multipliait la pente, G_eff = (G_terrain + 2) · R_k − 2, avec R_k géométrique (0,40–3,00 le 24 octobre, 0,65–2,00 le 28 octobre après l'étude des petits braquets, 0,455–2,60 le 14 novembre, piste × 1,25). Remarques du propriétaire du 15 novembre après les sorties : pas assez de différence entre les braquets (sur le plat, un clic ne valait que 0,16 point, environ 5 W), le braquet 1 trop dur dans les fortes pentes (12 % à 50 % de difficulté : 2,2 % envoyés), et en descente le braquet 24 le plus facile (au-delà de − 2 %, multiplier par un grand rapport rendait la consigne plus descendante : à − 5 %, − 9,8 % au braquet 24 contre − 3,4 % au braquet 1). Le pas fixe règle les trois : 0,5 point par clic, 0,5 % au braquet 1 sur 12 % à 50 %, + 2 % au braquet 24 sur − 4 % à 100 %.
+- Le nombre de vitesses, le braquet neutre, le pas et le décalage de la piste sont dans la configuration (§11) : la loi se règle au ressenti.
 
 ### 4.4 Actions du Click en v1
 
@@ -372,9 +372,8 @@ resistance_inertia_pct = 0.0  # mode résistance : part de l'inertie m × a (mas
 [gearing]
 n_gears = 24
 start_gear = 12
-ratio_min = 0.455
-ratio_max = 2.60
-g_base_pct = 2.0
+neutral_gear = 12
+step_pct = 0.5
 long_press_gears = 10
 
 [drivers]
@@ -448,7 +447,7 @@ factor_dirt = 3.0            # sur la terre, 1 à 3
 [velodrome]
 factor_wood = 0.6            # roulement multiplié sur la piste en bois du vélodrome, 0,3 à 1 (série VD, lot VD3)
 temperature_c = 24.0         # température de la salle couverte, 5 à 40 °C : densité de l'air
-gear_scale = 1.25            # rapports des braquets multipliés sur la piste, 0,5 à 2 (14 novembre)
+gear_offset_pct = 0.5         # décalage des braquets sur la piste, points de pente, −5 à 5 (14 et 15 novembre)
 [progression]
 enabled = true               # niveau, pièces, équipement et Garage (série V) ; false : comme avant la 2.0 (menu : Avancé, lot O27)
 [avatar]
@@ -480,7 +479,7 @@ opponents = 4                # adversaires, 2 à 4 (bots à profil)
 laps = 3                     # tours sur un circuit, 1 à 5
 distance_km = 10             # longueur sur un parcours en ligne, 5 à 30 km
 chaos = "normal"             # forces et fréquence des objets : "soft" (× 0,7), "normal" (× 1), "wild" (× 1,3)
-box_every_m = 1500           # écart des rangées de boîtes, 1 000 à 3 000 m par pas de 500 m
+box_every_m = 500            # écart des rangées de boîtes, 500 à 3 000 m par pas de 500 m (500 depuis le lot GP14)
 [audio]                      # volumes en % (0 : coupé), réglables dans le menu, voir docs/AUDIO.md
 master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre

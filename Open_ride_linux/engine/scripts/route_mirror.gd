@@ -9,11 +9,14 @@ extends RefCounted
 
 var base = null
 var length_m: float = 0.0
+var n: int = 0                     # points du parcours (climb_detector.gd, lot N24)
 
 
 func _init(p_base) -> void:
 	base = p_base
 	length_m = float(base.length_m)
+	var bn = base.get("n")
+	n = int(bn) if bn != null else 0
 
 
 ## Abscisse dans l'autre repère ; l'opération est sa propre réciproque.
