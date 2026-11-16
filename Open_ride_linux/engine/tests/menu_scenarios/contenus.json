@@ -22,6 +22,6 @@
     {"ecran": "settings", "focus": "contents"},
     {"appui": "Y_SHORT"},
     {"choisir": "world"},
-    {"ecran": "routes", "contient": ["Tour des nouveaux paysages", "Circuit des Prés"], "delai": 10}
+    {"ecran": "routes", "contient": ["Tour des nouveaux paysages", "Volcan en flammes"], "absent": ["Circuit des Prés", "Montée alpine"], "delai": 10}
   ]
 }

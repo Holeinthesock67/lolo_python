@@ -138,6 +138,10 @@ REEF_WRECK_OFFSET_M = 45.0  # à 45 m du bord de la route, côté extérieur
 REEF_WRECK_LENGTH_M = 42.0
 REEF_TOP_M = -4.0           # le récif ne monte jamais au-dessus (sous le niveau de la mer, 0)
 REEF_SOFT_M = 3.0           # plafond adouci sur les 3 derniers mètres
+# Étiquettes des parcours de démonstration (fiche `library.tags` du manifeste) : un parcours d'un mode à parcours
+# propres (lot GP13, `openride_core.mode_routes`) ne se court que dans ce mode : le Circuit des Prés est au Grand
+# Prix des objets (décision du propriétaire du 15 novembre). Recette comprise : les bancs passent par le même menu.
+DEMO_TAGS = {"demo-circuit": ("grandprix",)}
 # Volcan en flammes (lot DB2, demande du 13 novembre : « parcours démo exagéré feu et flammes », en boucle) : 8 km,
 # biome volcanique dans le paysage `volcan_actif` (lave, braises, fumées : engine volcano_fx.gd), départ dans la plaine
 # de cendres, montée régulière jusqu'à la crête du cratère à mi-boucle, descente par l'autre flanc.
@@ -972,6 +976,8 @@ def generate(out: Path, name: str, biomes: tuple[str, ...], gravel: bool = False
     manifest["created"] = CREATED
     manifest["name"] = name if recette or not title else title
     manifest["compiler"] = {"name": GENERATOR, "version": manifest["compiler"]["version"]}
+    if DEMO_TAGS.get(name):
+        manifest["library"] = {"tags": sorted(DEMO_TAGS[name])}
     (world / "route.json").write_text(json.dumps(route, separators=(",", ":")), encoding="utf-8")
     (world / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     info = {"route": name, "name": manifest["name"], "length_m": route["length_m"], "type": route["type"],

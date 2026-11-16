@@ -1235,6 +1235,9 @@ func _process(delta: float) -> void:
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		_step_avatar(pos, float(pose["yaw"]), float(pose["roll"]), now, pitch_deg)
 		avatar_view.scale = Vector3.ONE * wtf_scene.rider_scale()   # vélo minuscule dans la cuisine géante
+		# Objets portés par le vélo (œufs sur le porte-bagages), dans le repère du vélo affiché, même caché.
+		wtf_scene.follow_rider(Transform3D(Basis.from_euler(Vector3(deg_to_rad(pitch_deg), -float(pose["yaw"]),
+			float(pose["roll"]))).scaled(Vector3.ONE * wtf_scene.rider_scale()), pos))
 		_probe.distance_m = s_route
 		var t_step := Time.get_ticks_usec()
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
@@ -1946,6 +1949,9 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
 	menu_flow.menu.set_track_events(ipc.core_config.get("track"))   # écran Prêt du vélodrome (lot VD10)
+	menu_flow.menu.set_mode_routes(ipc.core_config.get("mode_routes"))   # parcours propres aux modes (lot GP13)
+	if not menu_flow.routes_raw.is_empty():
+		menu_flow.set_routes(menu_flow.routes_raw)   # table reçue après la liste : parcours des modes recalculés
 	menu_flow.on_hello_interrupted(ipc.core_config.get("interrupted"))   # lot O34
 	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
 	# Derniers choix du profil (lot O32) : bot, fantôme, entraînement, départ du monde ouvert.

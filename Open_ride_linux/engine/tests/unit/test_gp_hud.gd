@@ -103,6 +103,17 @@ func _run() -> void:
 	storm["obj"] = [[18, "storm", 1700.0, -1]]
 	w = m.view(_state(storm), 0.0)["warn"]
 	_check(w["text"] == "Orage vers le premier" and not w["outline"] and w["arrow"] == "up", "orage vers un autre : sans contour")
+	# Coup reçu (GP14) : bandeau et contour tant que l'effet court, la menace passe avant
+	var hit := GP.duplicate()
+	hit["fx"] = [["gel", 3.0], ["bottle", 1.4]]
+	w = m.view(_state(hit), 0.0)["warn"]
+	_check(w.get("hit", false) and w["text"] == "Touché ! Bidon glissant 2 s" and w["outline"] and not w["chevrons"]
+		and w["arrow"] == "" and w["color"] == Items.color("bottle"), "coup reçu : bandeau « Touché ! » et contour (%s)" % str(w))
+	hit["warn"] = ["homing", 42.0]
+	_check(not m.view(_state(hit), 0.0)["warn"].get("hit", false), "menace en vue : l'avertissement passe avant le coup reçu")
+	hit["warn"] = null
+	hit["fx"] = [["gel", 3.0]]
+	_check(m.view(_state(hit), 0.0)["warn"].is_empty(), "effet sur soi : pas de bandeau")
 
 	# Voies : placement automatique, A garde la vue (pick faux)
 	var auto := GP.duplicate()
