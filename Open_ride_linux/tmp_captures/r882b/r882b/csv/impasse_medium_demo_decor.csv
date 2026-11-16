@@ -1,0 +1,43 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+28.7;0;0;0;0;0;0;0;
+36.1;41;0;0;0;0;4;0;
+37.3;41;0;0;0;0;4;0;
+37.6;41;0;0;0;0;4;0;
+37.9;41;0;0;0;0;4;0;
+40.0;41;0;0;0;0;4;0;
+46.0;41;0;0;0;0;4;0;
+52.0;41;0;0;0;0;4;0;
+58.0;41;0;0;0;0;4;0;raptor_cry=1
+62.0;41;0;0;0;0;4;0;raptor_cry=1
+64.0;41;0;0;0;0;4;0;raptor_cry=1
+70.0;41;0;0;0;0;4;0;raptor_cry=1
+76.0;41;0;0;0;0;4;0;raptor_cry=1
+77.0;41;0;0;0;0;4;0;raptor_cry=1
+82.0;41;0;0;0;0;4;0;raptor_cry=2
+88.0;41;0;0;0;0;4;0;raptor_cry=2
+92.0;41;0;0;0;0;5;0;airliner_rumble=1 raptor_cry=2
+94.0;41;0;0;0;0;5;0;airliner_rumble=1 raptor_cry=2
+100.0;41;0;0;0;0;5;0;airliner_rumble=1 raptor_cry=2
+106.0;41;0;0;0;0;5;0;airliner_rumble=1 raptor_cry=2
+112.0;41;0;0;0;1;5;0;airliner_rumble=1 raptor_cry=2
+118.0;41;0;0;0;1;5;0;airliner_rumble=1 raptor_cry=2
+124.0;41;0;0;0;1;5;0;airliner_rumble=1 raptor_cry=2
+130.0;41;0;0;0;1;5;0;airliner_rumble=1 raptor_cry=2
+136.0;41;0;0;0;1;6;0;airliner_rumble=2 raptor_cry=2
+142.0;41;0;0;0;1;6;0;airliner_rumble=2 raptor_cry=2
+148.0;41;0;0;0;1;6;0;airliner_rumble=2 raptor_cry=2
+152.0;41;0;0;0;1;6;0;airliner_rumble=2 raptor_cry=2
+154.0;41;0;0;0;1;6;0;airliner_rumble=2 raptor_cry=2
+160.0;42;0;0;0;1;6;0;airliner_rumble=2 raptor_cry=2
+166.0;42;0;0;0;1;6;0;airliner_rumble=2 raptor_cry=2
+172.0;42;0;0;0;0;6;0;airliner_rumble=2 raptor_cry=2
+178.0;42;0;0;0;0;6;0;airliner_rumble=2 raptor_cry=2
+184.0;42;0;0;0;0;6;0;airliner_rumble=2 raptor_cry=2
+202.0;42;0;0;0;0;6;0;airliner_rumble=2 raptor_cry=2
+357.5;45;0;0;0;2;7;0;airliner_rumble=2 crow_caw=2 paramotor_buzz=1 raptor_cry=3
+360.7;48;0;0;0;2;7;0;airliner_rumble=2 crow_caw=2 paramotor_buzz=1 raptor_cry=3
+363.0;48;0;0;0;2;7;0;airliner_rumble=2 crow_caw=2 paramotor_buzz=1 raptor_cry=3
+365.2;48;0;0;0;2;7;0;airliner_rumble=2 crow_caw=2 paramotor_buzz=1 raptor_cry=3
+367.5;48;0;0;0;2;7;0;airliner_rumble=2 crow_caw=2 paramotor_buzz=1 raptor_cry=3
+369.6;34;0;0;0;2;7;0;airliner_rumble=2 crow_caw=2 paramotor_buzz=1 raptor_cry=3
+471.3;43;0;1;0;2;8;0;airliner_rumble=3 crow_caw=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=5 vehicle_pass=1
