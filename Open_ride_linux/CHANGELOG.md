@@ -10,6 +10,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Nouveau réglage « Objectif des bots » (récupération 55 %, endurance 65 %, tempo 80 % par défaut, seuil 92 %, à fond 100 %), commun à tous les modes et gardé d'une séance à l'autre ; aussi sur les écrans Prêt du Dernier survivant et du Grand Prix. « Niveau des bots » reste un réglage fin.
 - Au vélodrome, l'objectif suit l'épreuve : à fond pour les contre-la-montre, tempo pour les courses en groupe et la séance libre.
 
+### Un parcours de démonstration pour les nouveaux paysages (lot DB1)
+- Nouveau parcours « Tour des nouveaux paysages » : 14 km du bord d'un fjord jusqu'au sommet des hauts plateaux, par les landes atlantiques, les rizières, un village japonais, une île volcanique et un canyon rouge (2 km chacun, 285 m de montée, 6,5 % au plus). Trace, relief et décor sont entièrement inventés.
+- Il remplace au jeu de base le « Tour des six paysages », la « Route de la côte » et la « Montée alpine » : une installation neuve ne les ajoute plus, mais ils restent installés chez ceux qui les ont déjà. Le « Col du lacet », le « Circuit des Prés », le « Récif des tortues », le « Volcan en flammes » et le vélodrome ne changent pas.
+- Ciel des parcours de démonstration : le relief lointain s'arrête en montagnes de quelques centaines de mètres au lieu de monter à des kilomètres vers l'horizon (plus de grandes bandes grises en éventail dans le ciel).
+
 ### Vélodrome et Grand Prix à l'accueil, avec leurs propres parcours (lot GP13)
 - « Vélodrome » à l'accueil : l'écran Prêt du vélodrome s'ouvre directement sur la piste.
 - Le Grand Prix des objets s'ouvre sur ses propres parcours (le Circuit des Prés pour commencer) et non plus sur le dernier parcours roulé ; « Changer de parcours » ne montre que ses parcours.
