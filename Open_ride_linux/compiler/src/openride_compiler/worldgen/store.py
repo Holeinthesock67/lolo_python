@@ -217,6 +217,10 @@ class WorldCache:
     def far_path(self, zone: str, ix5: int, in5: int) -> Path:
         return self.root / "genere" / zone / "far" / f"{ix5}_{in5}.f32"
 
+    def far_water_path(self, zone: str, ix5: int, in5: int) -> Path:
+        """Niveau des grands lacs d'une tuile lointaine (lot EA2), à côté de son relief ; supprimé avec lui."""
+        return self.far_path(zone, ix5, in5).with_suffix(".water")
+
     def sessions_dir(self) -> Path:
         return self.root / "seances"
 
@@ -252,6 +256,13 @@ class WorldCache:
         target = self.far_path(zone, gx, gn)
         if not target.is_file():
             return None
+        water = self.far_water_path(zone, gx, gn)
+        link_w = Path(session_dir) / "water" / "far" / f"tile_{fx}_{fz}.f32"
+        if water.is_file():
+            link_w.parent.mkdir(parents=True, exist_ok=True)
+            _symlink(water, link_w)
+        elif link_w.is_symlink():
+            link_w.unlink()
         return _symlink(target, Path(session_dir) / "terrain" / "far" / f"tile_{fx}_{fz}.f32")
 
     # --- régions et épinglage ------------------------------------------------------------------
@@ -285,6 +296,8 @@ class WorldCache:
             shutil.rmtree(path, ignore_errors=True)
         else:
             path.unlink(missing_ok=True)
+            if e.kind == "far":
+                path.with_suffix(".water").unlink(missing_ok=True)   # eau lointaine (lot EA2)
         self.db.execute("DELETE FROM entries WHERE key = ?", (e.key,))
 
     def evict(self, in_use: Iterable[str] = ()) -> list[str]:

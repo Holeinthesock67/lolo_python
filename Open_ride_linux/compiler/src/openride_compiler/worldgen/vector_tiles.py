@@ -512,6 +512,20 @@ class TileSource:
                 self.cache.mark_used(tile_key(*k))
         return have
 
+    def load_present(self, bbox: BBox) -> int:
+        """Tuiles de l'emprise déjà sur le PC versées dans la base, sans téléchargement (eau lointaine, lot EA2)."""
+        n = 0
+        for x, y in tiles_for_bbox(bbox):
+            if self.db.loaded(x, y) or not self.path(x, y).is_file():
+                continue
+            try:
+                self.db.load(x, y, self.path(x, y).read_bytes())
+                n += 1
+            except mvt.MvtError as exc:
+                self.log(f"tuile {ZOOM}/{x}/{y} illisible, supprimée : {exc}")
+                self.path(x, y).unlink(missing_ok=True)
+        return n
+
     def ensure(self, bbox: BBox, prefetch: bool = False, wait_s: float = 0.0) -> int:
         """Tuiles de l'emprise téléchargées si possible et versées dans la base ; renvoie leur nombre.
 
