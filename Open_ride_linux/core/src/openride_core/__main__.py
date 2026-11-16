@@ -182,6 +182,15 @@ def _run_session(cfg, bots_list: list, args: argparse.Namespace, lock=None) -> i
     from .session import AutostartError, CoreSession
     from .sim_scenarios import SimScenarioError
 
+    commands = None
+    if getattr(args, "seance", None):
+        from .seance_file import SeanceError, load as load_seance
+
+        try:
+            commands = load_seance(args.seance)
+        except SeanceError as exc:
+            print(f"openride-core : {exc}", file=sys.stderr)
+            return 1
     try:
         session = CoreSession(cfg, bots=bots_list, config_path=args.config)
     except SimScenarioError as exc:
@@ -194,7 +203,8 @@ def _run_session(cfg, bots_list: list, args: argparse.Namespace, lock=None) -> i
         session._note_profile()
     try:
         asyncio.run(session.run(autostart=args.autostart, route_id=args.route or "demo",
-                                workout_id=args.workout, resume=args.resume, game_mode=args.mode))
+                                workout_id=args.workout, resume=args.resume, game_mode=args.mode,
+                                commands=commands))
     except AutostartError as exc:
         logging.getLogger("openride_core").error("Séance non lancée : %s", exc)
         print(f"openride-core : {exc}", file=sys.stderr)
@@ -467,6 +477,10 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--mode", choices=["ride", "wtf", "survivor", "grandprix"],
                      help="avec --autostart : mode de la séance (argument `mode` de start ; bancs du PC, "
                           "ex. survivor pour le Dernier survivant, grandprix pour le Grand Prix des objets)")
+    run.add_argument("--seance", type=Path, metavar="FICHIER",
+                     help="avec --autostart : séance verrouillée (lot EP1), fichier JSON de commandes du menu "
+                          "jouées au lancement (parcours, bots, mode, épreuve, run Cyber-Rogue) ; exclut "
+                          "--route, --workout, --ftp-test et --mode")
     run.add_argument("--depart", choices=["pedalage", "immediat"],
                      help="départ de la séance (lot O36) : pedalage attend le décor, le trainer et le "
                           "pédalage ; immediat part à la commande start (défaut : [depart] mode)")
@@ -591,9 +605,17 @@ def main(argv: list[str] | None = None) -> int:
             print("openride-core run : erreur : --workout et --ftp-test s'excluent", file=sys.stderr)
             raise SystemExit(2)
         args.workout = f"ftp_test:{args.ftp_test}"   # un test de FTP se roule comme un entraînement
+    if args.command == "run" and args.seance:
+        mixed = [opt for opt, val in (("--route", args.route), ("--workout", args.workout),
+                                      ("--mode", args.mode)) if val]
+        if mixed:
+            print(f"openride-core run : erreur : --seance exclut {' et '.join(mixed)} (le fichier dit tout)",
+                  file=sys.stderr)
+            raise SystemExit(2)
     if args.command == "run" and not args.autostart:
         given = [opt for opt, val in (("--route", args.route), ("--workout", args.workout and not args.ftp_test),
-                                      ("--ftp-test", args.ftp_test), ("--mode", args.mode)) if val]
+                                      ("--ftp-test", args.ftp_test), ("--mode", args.mode),
+                                      ("--seance", args.seance)) if val]
         if given:
             print(f"openride-core run : erreur : {' et '.join(given)} demande --autostart (sans lui,"
                   " l'engine choisit le parcours et l'entraînement)", file=sys.stderr)

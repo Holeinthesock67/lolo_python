@@ -351,8 +351,34 @@ func wtf_lines(wtf: Dictionary) -> Array:
 
 
 const ROGUE_RESULTS := {"victory": "Victoire", "defeat": "Défaite", "abandoned": "Abandon"}
-const ROGUE_BOSS := {"won": "vaincu", "fled": "fui", "not_reached": "non atteint"}
+# Lot R23 : « non vaincu » et non « fui » : une salle ou une phase se finit au bout de sa distance, gagnée ou non.
+const ROGUE_BOSS := {"won": "vaincu", "fled": "non vaincu", "not_reached": "non atteint"}
 const ROGUE_OBJECTIVES := {"endurance": "Endurance", "threshold": "Seuil", "vo2max": "VO2max"}
+
+
+## Verdict du bilan (lot R23, essai du 15 novembre : « je n'ai pas compris pourquoi la défaite ») : en une phrase,
+## le résultat et sa cause, puis ce qu'il fallait faire ; {} pour un bilan sans verdict (modes sans résultat).
+## {text, tip, tone}, tone parmi "ok", "warn".
+func verdict(summary: Dictionary) -> Dictionary:
+	var rogue = summary.get("rogue", null)
+	if not (rogue is Dictionary):
+		return {}
+	var result := str(rogue.get("result", ""))
+	if result == "victory":
+		return {"text": "Victoire : boss vaincu !", "tip": "", "tone": "ok"}
+	var end = rogue.get("end_cause", null)
+	var cause := str(end.get("cause", "")) if end is Dictionary else ""
+	var phase = end.get("boss_phase", null) if end is Dictionary else null
+	var pct = end.get("enemy_pct", null) if end is Dictionary else null
+	if result == "abandoned" or cause == "abandoned":
+		return {"text": "Run arrêtée avant la fin : pas de victoire possible.", "tip": "", "tone": "warn"}
+	if cause == "boss_shield":
+		return {"text": "Défaite : ton bouclier est tombé à zéro face au boss%s." % ((" (phase %d)" % int(phase)) if phase != null else ""),
+			"tip": "À faire : Z à chaque « Z : PARADE ! », reste devant le Firewall.", "tone": "warn"}
+	var left := (" avec encore %d %% de PV" % int(pct)) if pct != null else " avant ses PV"
+	return {"text": "Défaite : la phase 3 du boss s'est finie%s au boss." % left,
+		"tip": "À faire : tiens ta plage de watts, puis Z à chaque « Z : FRAPPE ! ».",
+		"tone": "warn"}
 
 
 ## Lignes du bilan d'une run du Cyber-Rogue (lot R13, `summary.rogue`) : résultat, salles, boss, or, cartes,
@@ -363,7 +389,7 @@ func rogue_lines(rogue: Dictionary) -> Array:
 	out.append({"label": "Cyber-Rogue", "value": "%s, %d min" % [obj, int(rogue.get("duration_min", 0))], "unit": ""})
 	out.append({"label": "Résultat", "value": str(ROGUE_RESULTS.get(str(rogue.get("result", "")), "—")), "unit": ""})
 	out.append({"label": "Salles gagnées", "value": "%d / %d" % [int(rogue.get("rooms_won", 0)), int(rogue.get("rooms_total", 0))], "unit": ""})
-	out.append({"label": "Salles fuies ou manquées", "value": "%d / %d" % [int(rogue.get("rooms_fled", 0)), int(rogue.get("rooms_skipped", 0))], "unit": ""})
+	out.append({"label": "Salles non gagnées / sautées", "value": "%d / %d" % [int(rogue.get("rooms_fled", 0)), int(rogue.get("rooms_skipped", 0))], "unit": ""})
 	out.append({"label": "Boss", "value": str(ROGUE_BOSS.get(str(rogue.get("boss", "")), "—")), "unit": ""})
 	out.append({"label": "Or", "value": str(int(rogue.get("gold", 0))), "unit": ""})
 	out.append({"label": "Cartes", "value": str((rogue.get("cards", []) as Array).size()), "unit": ""})
