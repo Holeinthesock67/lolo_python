@@ -22,6 +22,6 @@
     {"ecran": "settings", "focus": "contents"},
     {"appui": "Y_SHORT"},
     {"choisir": "world"},
-    {"ecran": "routes", "contient": ["Montée alpine", "Circuit des Prés"], "delai": 10}
+    {"ecran": "routes", "contient": ["Montée alpine", "Volcan en flammes"], "absent": ["Circuit des Prés"], "delai": 10}
   ]
 }
