@@ -1,0 +1,29 @@
+11:18:29 empreinte avant c22c2adb5ae366ddabdae892db25629e
+11:18:29 tête 2bfc44885
+11:18:30 pytest
+11:22:47 fin rc=0
+11:22:47 bots_race tempo demo
+11:23:06 fin rc=0
+11:23:06 bots_race tempo plat
+11:23:59 fin rc=0
+11:23:59 bots_race tempo col
+11:25:17 fin rc=0
+11:25:17 bots_race tempo 11
+11:26:00 fin rc=0
+11:26:00 bots_race max demo
+11:26:17 fin rc=0
+11:26:17 bots_race max plat
+11:27:06 fin rc=0
+11:27:06 bots_race max col
+11:28:07 fin rc=0
+11:28:07 bots_race max 11
+11:28:44 fin rc=0
+11:29:23 captures_ds low
+11:36:18 fin rc=1
+11:36:34 captures_ds medium
+11:43:31 fin rc=1
+11:43:46 captures_ds high
+11:50:44 fin rc=1
+11:51:01 empreinte après c22c2adb5ae366ddabdae892db25629e
+11:51:01 clone 214ad0b2b
+11:51:01 FIN
