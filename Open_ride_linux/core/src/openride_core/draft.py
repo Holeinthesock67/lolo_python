@@ -609,9 +609,12 @@ def side_guard(s: float, lane: Lane, target: float, others: Iterable[tuple[float
         if abs(d) >= reach + (SIDE_GUARD_M if behind_diagonal else 0.0):
             continue
         clear = RIDER_WIDTH_M + SIDE_GUARD_M + _wider(lane) + _wider(o_lane)
-        toward = lane.rate if lane.m <= o_lane.m else -lane.rate   # vitesse latérale vers lui
+        # à la même place, celui de derrière (ou de plus grand `rank`) garde la gauche, comme dans `lane_target` :
+        # sans cela, deux coureurs collés s'écartent du même côté sans fin
+        left = lane.m < o_lane.m or (lane.m == o_lane.m and (d > 0.0 or (d == 0.0 and lane.rank > o_lane.rank)))
+        toward = lane.rate if left else -lane.rate   # vitesse latérale vers lui
         clear += max(toward, 0.0) ** 2 / (2.0 * LANE_ACCEL_MPS2)     # et la distance pour s'arrêter en travers
-        if lane.m <= o_lane.m:
+        if left:
             target = min(target, o_lane.m - clear)
         else:
             target = max(target, o_lane.m + clear)

@@ -106,7 +106,9 @@ def test_team_car_drawn_and_felt_as_shelter_only(env, monkeypatch):
     me.held, me.charges = "team_car", 1
     assert s._grandprix_press("Z_SHORT")
     run(s, 12.0)
-    assert vehicles and len(vehicles) == pytest.approx(6.0 / DT, abs=3)   # 6 s de voiture
+    # 6 s de voiture au plus : elle attend que la place devant soit libre pendant BLOCK_LOOK_S (ici, un bot à
+    # rattraper la retient un peu moins d'une demi-seconde), puis reste jusqu'à la fin de l'effet
+    assert vehicles and 6.0 / DT - 30 <= len(vehicles) <= 6.0 / DT + 3
     car = vehicles[0][0]
     assert (car["id"], car["kind"], car["dir"]) == ("tc0", "car_a", 1)
     state_v = validator("state")
@@ -188,12 +190,15 @@ def test_escort_sits_just_ahead_of_its_rider(env):
     assert car.lateral == pytest.approx(s._lane.m, abs=0.05)
 
 
-def test_team_car_never_overlaps_a_rider(env):
+@pytest.mark.parametrize("level_pct", [100, 110, 120, 130, 140, 150])
+def test_team_car_never_overlaps_a_rider(env, level_pct):
     """Banc du 13 novembre (44 contacts voiture d'équipe / bot) : la voiture d'un coureur remorqué ne passe jamais
     sous un autre coureur. Elle se glisse devant dès que la place est libre, puis le bloc coureur et voiture double
-    les plus lents (placement AS2 au gabarit de la voiture). Pire cas : tous les bots remorqués sans arrêt."""
+    les plus lents (placement AS2 au gabarit de la voiture). Pire cas : tous les bots remorqués sans arrêt.
+    Niveaux 100 à 150 % : avant le correctif, la voiture d'un bot bien plus fort que le cycliste passait sous lui
+    (('tc3', 'me', 3.10, 0.40) à 120 %, commentaire de #909)."""
     make, run, _, _ = env
-    s, _, errors = make(6950)
+    s, _, errors = make(6950, level_pct=level_pct)
     s.cfg.ride.vehicle_draft = "on"
     s._on_command("start", {"mode": "grandprix"}, 2)
     assert not errors
@@ -220,3 +225,28 @@ def test_team_car_never_overlaps_a_rider(env):
                                and abs(car.lateral - o_m) < car.half_width + draft.RIDER_WIDTH_M * 0.5)
                     assert not overlap, (car.id, rid, car.s - o_s, car.lateral - o_m)
     assert shown > 1000                                       # les voitures roulent bien devant leurs bots
+
+
+def test_towed_bot_held_up_rides_at_the_speed_ahead(env):
+    """Bot remorqué enfermé derrière un coureur plus lent (lot PL1) : sa vitesse du Grand Prix suit la puissance
+    voulue avant l'enfermement (`unblocked_w`), puis il freine à la vitesse de celui devant. Avant, la puissance
+    coupée par l'enfermement donnait une vitesse d'équilibre nulle : il s'arrêtait net une trame sur deux."""
+    make, run, _, _ = env
+    s, _, errors = make(6960, level_pct=150)
+    s.cfg.ride.vehicle_draft = "on"
+    s._on_command("start", {"mode": "grandprix"}, 2)
+    assert not errors
+    gp = s.grandprix
+    run(s, 20.0)
+    for _ in range(20):
+        for b in s.bots:
+            r = gp.racers[b.id]
+            if r.held is None and not any(a.item == "team_car" and a.until_t > gp.clock for a in r.fx):
+                r.held, r.charges = "team_car", 1
+                gp.use(b.id)
+        for _ in range(25):
+            run(s, DT)
+            towed = dict(gp.escorts())
+            for b in s.bots:
+                if b.id in towed:
+                    assert b.v > 1.0, (b.id, gp.clock)          # jamais arrêté net sous la voiture d'équipe
