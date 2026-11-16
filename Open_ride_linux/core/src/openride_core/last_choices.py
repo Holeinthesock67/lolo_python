@@ -1,7 +1,8 @@
 """Derniers choix du menu, mémorisés par profil (lot O32, module pur hors lecture et écriture du fichier).
 
 Le core note dans `<profil>/derniers_choix.json` ce que le joueur a choisi au menu et que le core a
-accepté : parcours (`select_route`), entraînement (`select_workout`), bots et fantôme (`start`), départ du
+accepté : parcours (`select_route`) ; parcours d'un mode à parcours propres (Vélodrome, Grand Prix, lot GP13,
+`mode_routes.py`) gardé à part, par mode, dans `mode_routes`, sans toucher au dernier parcours libre ; entraînement (`select_workout`), bots et fantôme (`start`), départ du
 monde ouvert (`start_open_world`). Le fichier est publié dans `hello_ack.config.last_choices` (contrat IPC
 révision 1.5) : le core recharge lui-même le dernier parcours au démarrage et au changement de profil,
 l'engine reprend les autres choix sur ses écrans. Le Cyber-Rogue garde sa dernière run par le journal
@@ -20,8 +21,10 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .mode_routes import MODE_ROUTE_TAGS
+
 FILE_NAME = "derniers_choix.json"
-KEYS = ("route_id", "workout_id", "bots", "open_world")
+KEYS = ("route_id", "workout_id", "bots", "open_world", "mode_routes")
 MAX_BOTS = 12   # 11 bots et un fantôme (contrat IPC §4, `start` ; lot PL1, 5 jusqu'à la 2.0)
 _ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 NAVS = ("ride", "destination", "loop")
@@ -50,6 +53,11 @@ def clean(key: str, value: Any) -> Any:
         if not all(isinstance(b, dict) and isinstance(b.get("kind"), str) for b in value):
             return None
         return [dict(b) for b in value]
+    if key == "mode_routes":   # lot GP13 : {mode: parcours}, modes de la table seulement
+        if not isinstance(value, dict):
+            return None
+        out_routes = {m: r for m, r in value.items() if m in MODE_ROUTE_TAGS and clean("route_id", r) is not None}
+        return out_routes or None
     if key == "open_world":
         if not _valid_point(value) or value.get("nav", "ride") not in NAVS:
             return None
@@ -94,3 +102,10 @@ def remember(path: Path, key: str, value: Any) -> dict[str, Any]:
     tmp.write_text(json.dumps(choices, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     os.replace(tmp, path)
     return choices
+
+
+def remember_mode_route(path: Path, mode: str, route_id: str) -> dict[str, Any]:
+    """Dernier parcours du mode `mode` (lot GP13), les autres modes gardés ; mêmes règles que `remember`."""
+    routes = dict(load(path).get("mode_routes") or {})
+    routes[mode] = route_id
+    return remember(path, "mode_routes", routes)
