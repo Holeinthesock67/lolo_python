@@ -5,3 +5,8 @@
 05:18:24 ds11_200 medium
 05:26:34 fin rc=0
 05:26:34 ds11_200 high
+05:31:29 empreinte avant c22c2adb5ae366ddabdae892db25629e
+05:31:29 tête 85d3578bc
+fatal: '~/mesures-2026-11-01-auto/tmp/wt_rBD2m' existe déjà
+05:31:29 ÉCHEC worktree
+05:31:29 FIN
