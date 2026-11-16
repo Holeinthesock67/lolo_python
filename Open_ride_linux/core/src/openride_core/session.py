@@ -98,6 +98,7 @@ RETIRED_IMPORT_COMMANDS = ("list_imports", "import_workout")
 BIAS_STEPS = {InputEvent.PLUS_SHORT: +1, InputEvent.MINUS_SHORT: -1, InputEvent.PLUS_LONG: +5, InputEvent.MINUS_LONG: -5}
 WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révision 1.3)
 VEHICLES_FRAME_EVERY = 3   # liste `vehicles` 10 fois par seconde (lot AS6), extrapolée par l'engine
+RIDERS_FRAME_AT = 1        # lot AS10 : liste `riders` (10 Hz aussi) dans la trame qui suit celle de `vehicles`
 ESCORT_GAP_M = traffic_mod.DRAFT_REF_GAP_M   # voiture d'équipe (lot GP4) : 3 m du pare-chocs à la roue avant (abri de référence d'AS6)
 ESCORT_COLOR = 0           # teinte de la voiture d'équipe (indice des couleurs de la circulation)
 TRAFFIC_SEED = 0         # graine de la circulation : celle de traffic_model.gd (lot AS6)
@@ -1201,7 +1202,8 @@ class CoreSession:
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
         input_lost = bool(clicks) and self.state.input_status != "CONNECTED"
         ts = time.time()
-        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts)
+        p3 = self._power_3s(m.power_w)   # lot R23 : la puissance affichée juge les consignes du mode
+        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts, power_avg_w=p3)
         for msg in out.messages:
             self.server.send_raw(msg)
         if self._rec:
@@ -1212,12 +1214,11 @@ class CoreSession:
         self._feed_road_mass()
         self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
         self._rogue_dist += self.physics.v * dt
-        p3 = self._power_3s(m.power_w)
         st = self.state
         st.t, st.s, st.v = self._t_session, self._rogue_dist, self.physics.v
         st.grade, st.grade_sent = round(out.grade_enemy, 2), round(self._grade_sent, 2)
         st.power, st.power_3s, st.cadence, st.hr = m.power_w, round(p3, 1), m.cadence_rpm, m.hr_bpm
-        st.gear, st.rogue = rg.gear, out.rogue
+        st.gear, st.rogue = rg.gear, out.rogue   # événements de la trame : _fill_rogue_frame à l'envoi (lot R23)
         if self._rec and self._t_session >= self._next_record:
             self._next_record += 1.0
             self._rec.record(Record(
@@ -2485,6 +2486,15 @@ class CoreSession:
             self.wtf.table = table
         log.info("Mode WTF : règle %s %s.", rule, "allumée" if on else "coupée")
         return True
+
+    def _fill_rogue_frame(self) -> None:
+        """Objet `rogue` de la trame : état du dernier pas et événements de tous les pas depuis la trame
+        précédente (lot R23 : la boucle tourne à 50 Hz, la trame part à 30 Hz)."""
+        if self.rogue is None:
+            return
+        frame = self.rogue.take_frame()
+        if frame is not None:
+            self.state.rogue = frame
 
     def _fill_wtf_frame(self) -> None:
         st = self.state
@@ -3805,7 +3815,8 @@ class CoreSession:
             if cyclists is not None:
                 cyclists.set_direction(d, self.physics.s)
                 cyclists.vehicles = traffic.vehicles
-                cyclists.update(rider_u, self.physics.v, dt, bots=bot_places)
+                # Lot AS10 : à la vraie place du cycliste en travers (repère du décor, lot N23 : à droite de son sens)
+                cyclists.update(rider_u, self.physics.v, dt, bots=bot_places, rider_lane=self._lane.m)
                 riders_m = cyclists.near(rider_u)
                 riders = [cyclists.on_route(r) for r in riders_m]
             others = [traffic_mod.Other(s, lat, d) for s, lat in bot_places]
@@ -3833,7 +3844,7 @@ class CoreSession:
             b.shelters = b.id not in unseen
         self._escorts = self._gp_escorts()
         cars = self._escorts + [v for v in near if v.dir == 1]   # voiture d'équipe (lot GP4) : un véhicule d'AS6
-        reverse = self.physics.direction < 0   # à rebours (lot N17) : personne dans le même sens, ni abri ni placement
+        reverse = self.physics.direction < 0   # à rebours (lot N17) : ni abri ni bots ; placement parmi ceux du même sens (AS10)
         # Voiture d'équipe (lot GP4) : le coureur remorqué et sa voiture se placent d'un seul bloc (gabarit de la
         # voiture, du pare-chocs avant à la roue arrière) : le bloc double les coureurs plus lents et les autres
         # l'évitent, la voiture ne passe plus à travers un coureur devant
@@ -3916,10 +3927,11 @@ class CoreSession:
             self.state.vehicles = traffic_mod.state_list(cars[:traffic_mod.NEAR_MAX])
 
     def _fill_riders_frame(self) -> None:
-        """Liste `riders` avec `vehicles` (10 Hz, lot AS7) : au plus 6 cyclistes du décor à moins de 60 m."""
+        """Liste `riders` (10 Hz, lot AS7) : cyclistes du décor à moins de 60 m. Lot AS10 (révision 1.18) : au plus 10,
+        dans la trame qui suit celle de `vehicles`, jamais avec elle (la trame la plus chargée reste sous 4 096 octets)."""
         cyclists = self.road_cyclists
         self.state.riders = None
-        if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == 0:
+        if cyclists is not None and self._frame_count % VEHICLES_FRAME_EVERY == RIDERS_FRAME_AT:
             self.state.riders = road_cyclists_mod.state_items(
                 cyclists.on_route(r) for r in cyclists.near(cyclists.model_s(self.physics.s)))
 
@@ -4200,6 +4212,7 @@ class CoreSession:
                 self._fill_survivor_frame()
                 self._fill_grandprix_frame()
                 self._fill_track_frame()
+                self._fill_rogue_frame()
                 self._lighten_bots_frame()
                 self.server.send_state(self.state)
             if now >= next_stats:

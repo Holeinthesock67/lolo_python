@@ -579,6 +579,44 @@
                 "type": "string",
                 "maxLength": 24
               }
+            },
+            "end_cause": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "description": "Facultatif, révision 1.17 (lot R23) : pourquoi la run est perdue ; null en victoire.",
+              "required": [
+                "cause",
+                "boss_phase",
+                "enemy_pct"
+              ],
+              "properties": {
+                "cause": {
+                  "type": "string",
+                  "enum": [
+                    "boss_time",
+                    "boss_shield",
+                    "abandoned"
+                  ]
+                },
+                "boss_phase": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1,
+                  "maximum": 3
+                },
+                "enemy_pct": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              }
             }
           }
         },
@@ -1376,8 +1414,8 @@
     },
     "riders": {
       "type": "array",
-      "maxItems": 6,
-      "description": "Facultatif, révision 1.5 (lot AS7) : cyclistes du décor à moins de 60 m du cycliste, calculés par le core (au plus 6, du plus proche au plus loin), envoyés avec `vehicles` une trame sur trois (10 Hz) et extrapolés par l'engine entre deux ; absent des autres trames et sans décor vivant.",
+      "maxItems": 10,
+      "description": "Facultatif, révision 1.5 (lot AS7) : cyclistes du décor à moins de 60 m du cycliste, calculés par le core (au plus 6, du plus proche au plus loin), envoyés avec `vehicles` une trame sur trois (10 Hz) et extrapolés par l'engine entre deux ; absent des autres trames et sans décor vivant. Révision 1.18 (lot AS10) : au plus 10, toujours une trame sur trois (10 Hz), mais dans la trame qui suit celle de `vehicles`, jamais avec elle.",
       "items": {
         "type": "object",
         "required": [
@@ -1727,7 +1765,8 @@
                   "parry_zone",
                   "pad",
                   "purge",
-                  "tunnel"
+                  "tunnel",
+                  "rock"
                 ]
               },
               "s_start": {
@@ -1778,7 +1817,7 @@
         },
         "events": {
           "type": "array",
-          "maxItems": 4,
+          "maxItems": 6,
           "items": {
             "type": "string",
             "enum": [
@@ -1795,7 +1834,9 @@
               "card_taken",
               "purge",
               "z_refused",
-              "shift_missed"
+              "shift_missed",
+              "z_ok",
+              "card_on"
             ]
           }
         },
@@ -1876,7 +1917,7 @@
             "lo",
             "hi"
           ],
-          "description": "Facultatif, révision 1.16 (lot R22) : consigne de puissance en % de FTP ; hi null = au moins lo.",
+          "description": "Facultatif, révision 1.16 (lot R22) : consigne de puissance en % de FTP ; hi null = au moins lo ; révision 1.17 (lot R23) : en endurance, hi = seuil de surchauffe (au moins la cible + 10 points).",
           "properties": {
             "lo": {
               "type": "number",
@@ -1941,6 +1982,63 @@
             },
             "dt_s": {
               "type": "number"
+            }
+          }
+        },
+        "z_action": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "strike",
+            "charges",
+            "rock",
+            "rock_chip",
+            "parry",
+            "purge",
+            "reroll",
+            null
+          ],
+          "description": "Facultatif, révision 1.17 (lot R23) : action du Z court accepté dans cette trame (événement z_ok), sinon null."
+        },
+        "card_on": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 24,
+          "description": "Facultatif, révision 1.17 (lot R23) : carte du deck qui vient de se déclencher dans cette trame (événement card_on : overdrive, heal, cursed, springboard, polarity, condition de puissance ou de cadence atteinte), sinon null."
+        },
+        "adrenaline_trend": {
+          "type": "object",
+          "required": [
+            "rate_per_s",
+            "cause",
+            "overheat_in_s"
+          ],
+          "description": "Facultatif, révision 1.17 (lot R23) : débit continu de l'adrénaline par seconde (hors gains ponctuels), sa cause et les secondes avant la surchauffe.",
+          "properties": {
+            "rate_per_s": {
+              "type": "number"
+            },
+            "cause": {
+              "type": "string",
+              "enum": [
+                "gain",
+                "below",
+                "overheat",
+                "stopped",
+                "full",
+                "none"
+              ]
+            },
+            "overheat_in_s": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
             }
           }
         }
