@@ -51,13 +51,21 @@ extends RefCounted
 ## Records (série T, lot T10) : l'écran Prêt finit par « Records du parcours », qui renvoie une action
 ## « item » de l'écran Prêt (écrans des records ouverts par menu_flow.gd).
 ##
-## Vélodrome (série VD, lot VD10) : sur une piste (`track_ids`, parcours d'étiquette « velodrome » posés par
-## menu_flow.gd) et en session libre ou ERG, l'écran Prêt devient celui du vélodrome : « Lancer : épreuve »,
+## Vélodrome (série VD, lot VD10 ; à l'accueil depuis le lot GP13) : sur une piste (`track_ids`, parcours du mode
+## « track » posés par menu_flow.gd), entré par Accueil › « Vélodrome » (`route_mode` « track ») et en session libre ou ERG, l'écran Prêt devient celui du vélodrome : « Lancer : épreuve »,
 ## « Épreuve : … » (A long : épreuve suivante), un réglage par ligne (« Tours : 40 », A long : valeur suivante),
 ## valeurs et défauts du core (`hello_ack.config.track`, set_track_events), « Changer d'entraînement » ou
 ## « Passer en session ERG » en séance libre seulement (la seule épreuve qui accepte l'ERG), « Changer de
 ## parcours ». `start` part avec `mode` « track » et `track` = {event, réglages}. Passer à une autre épreuve en
 ## ERG revient en SIM (sans entraînement). Les choix restent jusqu'à la fermeture de l'engine.
+##
+## Parcours propres à un mode (lot GP13, demande du propriétaire du 15 novembre) : règle unique, table du core
+## `hello_ack.config.mode_routes` (mode → étiquette, set_mode_routes()). Un parcours d'un mode n'est que dans ce mode :
+## la liste générale « Parcours » ne le montre pas, la liste ouverte depuis l'écran Prêt du mode ne montre que les
+## siens (`routes_mode`, filtre appliqué par menu_flow.gd). Accueil › « Vélodrome » ou « Grand Prix des objets » :
+## écran Prêt sur le dernier parcours du mode (last_choices.mode_routes), sinon le premier ; une séance hors de
+## ces modes repart sur le dernier parcours libre (`free_world_id`). Le parcours changé ainsi par le menu est
+## rendu par take_pending_route(), envoyé au core par menu_flow.gd (`select_route`).
 ##
 ## Séance conseillée (série CO, lot CO5) : « Séance conseillée » en tête de l'accueil, sous le profil, quand le core a
 ## répondu à get_coach (set_coach_home()) ; elle renvoie une action « item » de l'accueil (écrans de menu_flow.gd).
@@ -89,11 +97,12 @@ const TRACK_OPTION_PREFIX := "track:"
 ## liste que le core annoncera dans hello_ack.config (2.0, PLAN_SERIE_R §6) ; absente : DEFAULT_MODES.
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
 const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert",
-	"rogue": "Cyber-Rogue", "wtf": "Mode WTF", "survivor": "Dernier survivant", "grandprix": "Grand Prix des objets"}
+	"rogue": "Cyber-Rogue", "wtf": "Mode WTF", "survivor": "Dernier survivant", "grandprix": "Grand Prix des objets",
+	"track": "Vélodrome"}
 const DEFAULT_MODES := ["ride", "erg"]
 ## Ligne d'explication d'un mode de l'accueil (lot O22), à droite de son libellé.
 const HOME_DETAILS := {"open_world": "route créée en roulant", "survivor": "à chaque arche, le dernier sort",
-	"grandprix": "course contre les bots, objets à lancer"}
+	"grandprix": "course contre les bots, objets à lancer", "track": "épreuves sur la piste, en SIM ou en ERG"}
 ## Modes à écran Prêt de réglages (Dernier survivant, lot DS7 ; Grand Prix des objets, lot GP9) : le core
 ## compose le plateau, l'écran montre « Lancer », le parcours, les réglages du mode (`mode_rows`) et, pour le
 ## Grand Prix, la ligne « Objets ».
@@ -160,6 +169,19 @@ var gp_items_label := "Objets"
 ## Vélodrome (lot VD10) : parcours qui sont des pistes, épreuves du core (épreuve → réglage → [défaut, valeurs]),
 ## épreuve choisie et valeurs choisies par épreuve.
 var track_ids: Array = []
+## Parcours propres à un mode (lot GP13) : table du core (mode → étiquette), parcours de chaque mode dans l'ordre de
+## la liste, noms des parcours, mode dont l'écran Prêt utilise les parcours ("" : parcours libres), parcours
+## montrés par la liste ouverte ("" : liste générale), dernier parcours de chaque mode, dernier parcours libre,
+## parcours changé par le menu à envoyer au core.
+var mode_routes: Dictionary = {}
+var mode_route_ids: Dictionary = {}
+var route_names: Dictionary = {}
+var route_mode := ""
+var routes_mode := ""
+var last_mode_routes: Dictionary = {}
+var free_world_id := ""
+var free_world_name := ""
+var _pending_route := ""
 var track_events: Dictionary = {}
 var track_event := "free"
 var track_values: Dictionary = {}
@@ -255,7 +277,7 @@ func _init() -> void:
 
 
 func _refresh_home() -> void:
-	var world := world_name if world_name != "" else "à choisir"
+	var world := free_world_name if free_world_name != "" else "à choisir"   # dernier parcours libre (lot GP13)
 	var items := [_item("world", "Parcours : " + world)]
 	if coach_detail != "":
 		items.push_front(_item("coach", "Séance conseillée", true, coach_detail))
@@ -324,7 +346,7 @@ func _refresh_home() -> void:
 
 ## Écran Prêt du vélodrome : piste choisie, session libre ou ERG, épreuves reçues du core.
 func is_track() -> bool:
-	return world_id in track_ids and mode in ["free", "erg"] and not track_events.is_empty()
+	return route_mode == "track" and world_id in track_ids and mode in ["free", "erg"] and not track_events.is_empty()
 
 
 ## Épreuves et réglages du core (hello_ack.config.track) ; null ou absent : pas d'écran Prêt du vélodrome.
@@ -337,8 +359,103 @@ func set_track_events(block) -> void:
 
 ## Parcours qui sont des pistes (étiquette « velodrome » de la fiche), posés à chaque liste des parcours.
 func set_track_ids(ids: Array) -> void:
-	track_ids = ids.duplicate()
+	var by_mode := mode_route_ids.duplicate()
+	by_mode["track"] = ids.duplicate()
+	set_mode_route_ids(by_mode)
+
+
+## Table du core (`hello_ack.config.mode_routes`, lot GP13) : mode → étiquette de ses parcours ; null : aucune.
+func set_mode_routes(table) -> void:
+	mode_routes = table.duplicate() if table is Dictionary else {}
 	_refresh_home()
+
+
+## Parcours de chaque mode (CatalogModel.mode_route_ids) et noms des parcours, à chaque liste des parcours.
+func set_mode_route_ids(by_mode: Dictionary, names = null) -> void:
+	mode_route_ids = by_mode.duplicate(true)
+	track_ids = (mode_route_ids.get("track", []) as Array).duplicate()
+	if names is Dictionary:
+		route_names = names.duplicate()
+	if free_world_id != "" and route_mode_of(free_world_id) != "":   # parcours passé dans un mode
+		free_world_id = ""
+		free_world_name = ""
+	elif free_world_id != "" and route_names.has(free_world_id):
+		free_world_name = str(route_names[free_world_id])
+	_refresh_home()
+
+
+## Mode auquel appartient un parcours ("" : parcours libre).
+func route_mode_of(id: String) -> String:
+	for m in mode_route_ids:
+		if id in mode_route_ids[m]:
+			return str(m)
+	return ""
+
+
+## Parcours changé par le menu (choix du mode, retour au parcours libre) à envoyer au core ; "" sinon. Une fois.
+func take_pending_route() -> String:
+	var id := _pending_route
+	_pending_route = ""
+	return id
+
+
+## Parcours de l'écran Prêt qui va s'ouvrir (lot GP13) : dans un mode à parcours propres, son dernier parcours
+## (ou le premier) s'il n'y est pas déjà ; hors de ces modes, le dernier parcours libre si l'on est sur celui
+## d'un mode (aucun parcours sinon : la liste s'ouvre).
+func _pick_route() -> void:
+	var pick := ""
+	if route_mode != "":
+		var ids: Array = mode_route_ids.get(route_mode, [])
+		if world_id in ids or ids.is_empty():
+			return
+		var last := str(last_mode_routes.get(route_mode, ""))
+		pick = last if last in ids else str(ids[0])
+	elif world_id != "" and route_mode_of(world_id) != "":
+		pick = free_world_id
+	else:
+		return
+	world_id = pick
+	world_name = str(route_names.get(pick, pick)) if pick != "" else ""
+	_pending_route = pick
+	_refresh_home()
+
+
+## Vrai si l'écran Prêt n'a pas de parcours qui convienne : la liste des parcours s'ouvre d'abord.
+func _needs_route() -> bool:
+	if world_id == "":
+		return true
+	if route_mode != "":
+		return not world_id in mode_route_ids.get(route_mode, [])
+	return route_mode_of(world_id) != ""
+
+
+## Écran Prêt de la séance préparée, ou la liste des parcours d'abord sans parcours qui convienne.
+func _open_ready() -> void:
+	_pick_route()
+	if _needs_route():
+		_routes_return = READY
+		_open_routes()
+	else:
+		_open(READY)
+
+
+## Liste des parcours : ceux du mode de l'écran Prêt quand on vient de lui, sinon la liste générale.
+func _open_routes(replace := false) -> void:
+	routes_mode = route_mode if _routes_return == READY else ""
+	if replace:
+		_replace_top(ROUTES)
+	else:
+		_open(ROUTES)
+
+
+## Vélodrome à l'accueil (lot GP13) : session libre sur une piste, écran Prêt du vélodrome.
+func prepare_track() -> Dictionary:
+	_clear_start()
+	mode = "free"
+	route_mode = "track"
+	_refresh_home()
+	_open_ready()
+	return state()
 
 
 ## Valeur choisie d'un réglage de l'épreuve choisie (défaut du core sinon).
@@ -395,6 +512,9 @@ func _cycle_track_option(option_id: String) -> void:
 func set_world(id: String, name: String) -> void:
 	world_id = id
 	world_name = name if name != "" else id
+	if id != "" and route_mode_of(id) == "":   # dernier parcours libre, montré à l'accueil (lot GP13)
+		free_world_id = id
+		free_world_name = world_name
 	_refresh_home()
 
 
@@ -429,12 +549,9 @@ func prepare_start(name: String, args: Dictionary) -> Dictionary:
 	start_name = name
 	start_args = args.duplicate()
 	mode = "erg"
+	route_mode = ""
 	_refresh_home()
-	if world_id == "":
-		_routes_return = READY
-		_open(ROUTES)
-	else:
-		_open(READY)
+	_open_ready()
 	return state()
 
 
@@ -445,6 +562,7 @@ func prepare_coach_race(name: String, args: Dictionary, ready_text: String) -> D
 	start_args = args.duplicate(true)
 	coach_ready = ready_text
 	mode = "coach"
+	route_mode = ""
 	bot_choices = []
 	peloton = 0
 	ghost = false
@@ -461,14 +579,15 @@ func choose_workout(workout) -> Dictionary:
 		last_workout = str(workout)   # noté aussi par le core (lot O32)
 	_clear_start()
 	_refresh_home()
-	if _screen == WORKOUTS and _workouts_return == READY:
+	if _screen == WORKOUTS and _workouts_return == READY:   # écran Prêt du mode gardé (vélodrome en ERG)
 		_back()
-	elif world_id == "":
+		return {"action": "select_workout", "workout_id": workout}
+	route_mode = ""
+	_refresh_home()
+	_pick_route()
+	if _needs_route():
 		_routes_return = READY
-		if _screen == WORKOUTS:
-			_replace_top(ROUTES)
-		else:
-			_open(ROUTES)
+		_open_routes(_screen == WORKOUTS)
 	elif _screen == WORKOUTS:
 		_go(READY)
 	else:
@@ -481,12 +600,9 @@ func choose_workout(workout) -> Dictionary:
 func prepare_wtf() -> Dictionary:
 	_clear_start()
 	mode = "wtf"
+	route_mode = ""
 	_refresh_home()
-	if world_id == "":
-		_routes_return = READY
-		_open(ROUTES)
-	else:
-		_open(READY)
+	_open_ready()
 	return state()
 
 
@@ -498,12 +614,9 @@ func prepare_settings_mode(m: String) -> Dictionary:
 	mode = m
 	mode_rows = []
 	mode_launch = {"enabled": true, "detail": ""}
+	route_mode = m if mode_routes.has(m) else ""   # Grand Prix : ses parcours seulement (lot GP13)
 	_refresh_home()
-	if world_id == "":
-		_routes_return = READY
-		_open(ROUTES)
-	else:
-		_open(READY)
+	_open_ready()
 	return state()
 
 
@@ -613,6 +726,7 @@ func _refresh_pause() -> void:
 func set_last_choices(choices) -> void:
 	var c: Dictionary = choices if choices is Dictionary else {}
 	last_workout = str(c["workout_id"]) if c.get("workout_id") is String else ""
+	last_mode_routes = c["mode_routes"].duplicate() if c.get("mode_routes") is Dictionary else {}   # lot GP13
 	last_bots = []
 	last_ghost = false
 	var in_peloton := 0
@@ -726,6 +840,7 @@ func reset() -> void:
 	peloton = last_peloton
 	if mode in ["rogue", "wtf", "coach"] or mode in SETTINGS_MODES:
 		mode = "free"
+	route_mode = ""
 	_refresh_home()
 	_open(HOME, false)
 
@@ -1024,16 +1139,13 @@ func _validate() -> Dictionary:
 			match id:
 				"world":
 					_routes_return = HOME
-					_open(ROUTES)
+					_open_routes()
 				"ride":
 					mode = "free"
+					route_mode = ""
 					_clear_start()
 					_refresh_home()
-					if world_id == "":
-						_routes_return = READY
-						_open(ROUTES)
-					else:
-						_open(READY)
+					_open_ready()
 					return {"action": "select_workout", "workout_id": null}
 				"erg":
 					_workouts_return = HOME
@@ -1049,7 +1161,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "interrupted", "coach":
+				"plan", "ftp", "history", "collection", "rogue", "garage", "profile", "wtf", "survivor", "grandprix", "track", "interrupted", "coach":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID, ADD_ROUTE_ID, HELP_ROUTES_ID]:
@@ -1094,7 +1206,7 @@ func _validate() -> Dictionary:
 					_open(WORKOUTS)
 				"change_route":
 					_routes_return = READY
-					_open(ROUTES)
+					_open_routes()
 				"rogue_change", "wtf_rules", GP_ITEMS_ID:
 					return {"action": "item", "screen": READY, "id": id}
 				"records":   # écran « Records » (série T, lot T10), traité par menu_flow.gd

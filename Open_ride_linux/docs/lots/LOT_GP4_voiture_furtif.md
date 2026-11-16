@@ -39,3 +39,26 @@ Ajouter les deux objets qui reposent sur d'autres séries : la Voiture d'équipe
 - **Tests.** `core/tests/test_gp4_voiture_furtif.py` : escorte pendant 6 s seulement et donnée propre à la voiture ; Furtif 10 s et vol à 40 m ; vol refusé à 60 m et sans coureur devant ; bot sous Furtif sans abri donné ; séance : voiture `tc0` de sorte `car_a` dans `vehicles` (schéma `state` et budget de 4 096 octets), abri ressenti borné, rampe d'au plus 0,6 × (1 − e^(−0,02)) par pas, pente envoyée jamais au-dessus de celle sans abri au même pas et plus basse derrière la voiture ; réglage `vehicle_draft` coupé respecté ; `_unseen_ids` et `shelters` des bots ; place de la voiture devant le coureur. Moteur : `engine/tests/test_gp_hud.gd` (`unseen`).
 - **Banc.** Scénarios `engine/tests/sim_bench_scenarios/grand_prix_gp4_voiture.json` et `grand_prix_gp4_furtif.json` : course de `grand_prix` où seul l'objet du scénario est joué et tiré dans toutes les tranches (`bench.grandprix`, nouveau : écrit `~/OpenRide/grandprix.toml` comme `bench.powerups`), cycliste à 200 W derrière les bots, Z toutes les 3 s autour de chaque rangée de boîtes, captures 30 et 50 m après chaque rangée ; `python3 engine/tests/sim_bench.py --scenario grand_prix_gp4_voiture --camera follow_far --quality low|medium|high` (vue subjective : ni avatar ni voiture à l'écran ; premier passage du 12 novembre, un seul scénario mixte en vue subjective, n'a montré que la pastille du Furtif).
 - **Reste.** Captures en low, medium et high (cycliste sous Furtif, bot sous Furtif, voiture d'équipe devant le cycliste) et mesure GPU au banc `grand_prix` sur le PC, validées par le propriétaire avant la fusion.
+
+## 6. Correctif : voiture sous un coureur plus lent (16 novembre 2026)
+
+Constat (commentaire de #909) : la voiture d'un bot remorqué nettement plus fort que le cycliste passait sous lui, sur `main` comme sur #900 : `('tc3', 'me', 3.10, 0.40)` au niveau 120 %, dès 110 %. Quatre causes, une seule règle : **le coureur remorqué et sa voiture comptent d'un bloc partout**.
+
+- **Freinage au gabarit du bloc.** Le Grand Prix recalcule l'enfermement du lot PL1 après les objets (`_brake_grandprix_wheels`) au gabarit du vélo seul : le bot remorqué ne freinait jamais pour sa voiture. `escort_block` et `escort_unblock` (session) donnent le même bloc au placement (`_update_draft`) et à ce freinage.
+- **Vitesse du bot remorqué enfermé.** La vitesse d'équilibre du Grand Prix se calculait sur la puissance déjà coupée par l'enfermement : 0 W, donc vitesse nulle une trame sur deux. Les bots à profil gardent `unblocked_w`, la puissance voulue avant l'enfermement ; le Grand Prix part de celle-ci, puis le freinage ramène le bot à la vitesse de celui devant.
+- **Apparition de la voiture.** Elle n'apparaît que si tout le bloc (du vélo du coureur au pare-chocs avant) ne touche ni un vélo ni un bloc déjà en route, maintenant et pendant `BLOCK_LOOK_S`, à `BLOCK_MIN_GAP_M` près. Seuls les coureurs dont la voiture est affichée se placent et freinent en bloc (`_escort_kinds`) ; celui dont la voiture attend reste un vélo.
+- **Deux coureurs à la même place** (`draft.side_guard`) : ils s'écartaient du même côté sans fin (jusqu'à 20 m de l'axe). Celui de derrière, ou de plus grand `rank`, garde la gauche, comme dans `lane_target`.
+
+Mesures au cloud (tous les bots remorqués sans arrêt, trames de 20 ms où une voiture touche un coureur) :
+
+| Banc | Avant | Après |
+| --- | --- | --- |
+| Test du lot (4 bots, 20 s), niveaux 100 à 150 % | échec dès 110 % | 0 contact |
+| 4 bots, 100 s, niveaux 80 à 200 % | échec dès 110 % | 0 contact |
+| 4 bots, 100 s, 100 / 120 / 150 % | 0 / 74 / 347 | 0 / 0 / 0 |
+| 11 bots, 100 s, 100 / 120 / 150 % | 133 / 503 / 798 | 31 / 429 / 193 |
+| Objectif « max » (#909 + #900), test du lot, 100 à 150 % | — | 0 contact |
+| Objectif « max », 4 bots, 100 s, 100 / 120 / 150 % | — | 0 / 0 / 6 |
+| Objectif « max », 11 bots, 100 s, 100 / 120 / 150 % | — | 210 / 0 / 19 |
+
+Il reste de brefs frôlements de quelques centimètres au flanc de la voiture, à 11 bots tous remorqués en même temps. La voiture attend parfois un peu avant d'apparaître (moins d'une seconde dans `test_team_car_drawn_and_felt_as_shelter_only` : 0,66 s avec l'échelle des bots de #900).
