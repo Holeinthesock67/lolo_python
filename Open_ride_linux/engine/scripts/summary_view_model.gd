@@ -501,7 +501,8 @@ func menu_screen() -> Dictionary:
 		"title": "Fin de séance",
 		"on_back": "",
 		"items": [
-			{"id": "new_session", "label": "Nouvelle séance", "enabled": true, "detail": ""},
+			{"id": "replay", "label": "Rejouer", "enabled": true, "detail": "même parcours, même mode"},
+			{"id": "new_session", "label": "Menu principal", "enabled": true, "detail": ""},
 			{"id": "details", "label": "Voir le bilan détaillé", "enabled": true, "detail": ""},
 			{"id": "quit", "label": "Quitter", "enabled": true, "detail": ""}
 		]
@@ -519,9 +520,13 @@ func attach_to_menu(menu: RefCounted) -> void:
 ## Traite une action issue du menu de fin de séance selon les règles de K5.
 func handle_action(item_id: String, menu: RefCounted) -> Dictionary:
 	match item_id:
-		"new_session":
+		"new_session":   # « Menu principal » (15 novembre : « Nouvelle séance » ne disait pas qu'il ramène à l'accueil)
 			if menu != null and menu.has_method("reset"):
 				menu.reset()
+			return {"action": "new_session"}
+		"replay":        # même parcours, même mode et mêmes choix : écran Prêt, l'accueil derrière lui
+			if menu != null and menu.has_method("replay"):
+				menu.replay()
 			return {"action": "new_session"}
 		"details":
 			return {"action": "details"}

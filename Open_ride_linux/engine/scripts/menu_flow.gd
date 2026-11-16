@@ -144,7 +144,7 @@ const FTP_TESTS := [
 	["ramp", "Rampe", "≈ 25 min : +20 W par minute jusqu'à ne plus tenir ; FTP = 75 % de la meilleure minute",
 		"test de FTP (rampe)"]]
 const FTP_HINT := "Sur une boucle : l'arrivée d'un parcours arrête le test"
-const SUMMARY_BASE_IDS := ["new_session", "details", "quit"]
+const SUMMARY_BASE_IDS := ["replay", "new_session", "details", "quit"]
 ## Ligne d'état de l'écran de pause selon `state.pause_reason` (contrat IPC) : le HUD est caché pendant
 ## un menu, la raison de la pause s'affiche donc sous le titre. Pause demandée (`user`) : rien.
 const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion en cours…",
