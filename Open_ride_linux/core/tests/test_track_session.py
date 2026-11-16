@@ -169,3 +169,33 @@ def test_erg_only_in_free_session(env):
     s2._on_command("start", {"mode": "track", "track": {"event": "free", "opponents": 0}}, 2)
     s2._on_command("set_ride_mode", {"mode": "erg", "target_w": 200}, 3)
     assert not [e for e in errors2 if e[0] == "busy"]
+
+
+def test_second_elimination_in_a_row_starts_from_scratch(env, caplog):
+    """Essai du 14 novembre : élimination courue jusqu'au bout (cycliste éliminé), bilan, « Nouvelle séance »
+    (select_route du même vélodrome), même épreuve relancée : rien de la course d'avant ne reste."""
+    make, run, _ = env
+    s, errors = make(6830, power_w=150.0)
+    args = {"mode": "track", "track": {"event": "elimination", "opponents": 7, "bot_tactics": "full"}}
+    s._on_command("start", args, 2)
+    run(s, 900, until=lambda sess: sess.track_event is not None and sess.track_event.finished)
+    first = s.track_event
+    assert first is not None and first.finished and first.riders["me"].out is not None
+    s._on_command("end_session", {"save": True}, 3)
+    assert s.state.session_state == "FINISHED" and s.state.track is None
+    s._on_command("select_route", {"route_id": velodrome.TRACK_ID}, 4)
+    caplog.clear()
+    with caplog.at_level("INFO"):
+        s._on_command("start", args, 5)
+    assert not errors and s.state.session_state == "RUNNING" and s.track_event is not first
+    run(s, 10)
+    f = s.state.track
+    assert f["eliminated"] == [] and f["alive"] == 8 and not f["finished"] and f["lap"] == 1
+    assert s.track_event.riders["me"].out is None and s.physics.s < 250.0
+    validator().validate(s.state.to_dict())
+    # Tactique des bots : celle de l'épreuve (« complète »), une seule graine pour les bots et l'épreuve
+    tactics = [b.tactics for b in s.bots if getattr(b, "tactics", None) is not None]
+    assert tactics and {t.mode for t in tactics} == {"track_full"}
+    assert {t.seed for t in tactics} == {s.track_event.seed}
+    lines = [r.getMessage() for r in caplog.records if r.getMessage().startswith("Tactique des bots")]
+    assert len(lines) == 1 and lines[0].startswith("Tactique des bots : track_full")

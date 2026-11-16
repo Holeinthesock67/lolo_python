@@ -120,6 +120,7 @@ const BIOME_SKY := {
 	"japan": {"para": 0.6, "para_max": 4, "balloon": 0.2, "paramotor": 0.05},
 	"atlantic_heath": {"para": 0.7, "para_max": 4, "balloon": 0.15, "paramotor": 0.15},
 	"high_plateau": {"para": 0.3, "para_max": 2, "balloon": 0.0, "paramotor": 0.0},
+	"reef": {"para": 0.0, "para_max": 1, "balloon": 0.0, "paramotor": 0.0},   # lot SM1 : sous l'eau, rien ne vole
 }
 
 const CAMERA_EYE_M := 1.4          # hauteur de la caméra au-dessus du sol (sol des montgolfières)
@@ -130,6 +131,11 @@ var clock_s := 0.0
 var coverage := 0.0
 var craft: Array = []
 var paragliders: Array = []        # {id, centre, radius, phase, dir, color}
+var direction := 1                 # sens de marche (lot N24) : -1 après un demi-tour
+var _route = null
+var _climbs_fwd: Array = []
+var _climbs_back: Array = []
+const BACK_ID0 := 1000             # montées du retour : tirages et noms à part (« p1000_0 »…)
 var biome_model = null             # biome_model.gd actif, ou null : biome par défaut (lot P31)
 var _anchors: Dictionary = {}      # clé du vol -> Vector3 (caméra au premier calcul)
 var _anchor_sky: Dictionary = {}   # clé du vol -> ciel du biome à la place de la caméra (BIOME_SKY)
@@ -162,10 +168,42 @@ func configure(route, theme: Dictionary, climbs: Array, aircraft_budget: int, rn
 	_anchors.clear()
 	_anchor_sky.clear()
 	paragliders.clear()
+	_route = route
+	_climbs_fwd = climbs
+	_climbs_back = []
+	direction = 1
+	_place_paragliders(climbs, 0)
+
+
+## Montées du retour (climb_detector.detect_back, lot N24) : leurs parapentes après un demi-tour.
+func set_back_climbs(back: Array) -> void:
+	_climbs_back = back
+	if direction < 0:
+		_place_paragliders(_climbs_back, BACK_ID0)
+
+
+## Sens de marche (lot N24) : les parapentes ne volent qu'au-dessus des montées du sens suivi (à l'aller,
+## rien ne change ; après un demi-tour, ceux des montées du retour).
+func set_direction(d: int) -> void:
+	d = -1 if d < 0 else 1
+	if d == direction:
+		return
+	direction = d
+	if d < 0:
+		_place_paragliders(_climbs_back, BACK_ID0)
+	else:
+		_place_paragliders(_climbs_fwd, 0)
+
+
+## Parapentes des montées `climbs` ; `id0` décale les tirages et les noms (montées du retour).
+func _place_paragliders(climbs: Array, id0: int) -> void:
+	paragliders.clear()
+	var route = _route
 	if route == null:
 		return
-	for i in range(climbs.size()):
-		var c: Dictionary = climbs[i]
+	for ci in range(climbs.size()):
+		var i := ci + id0
+		var c: Dictionary = climbs[ci]
 		if float(c.get("gain_m", 0.0)) < PARA_MIN_GAIN_M:
 			continue
 		var s := float(c.get("summit_s", 0.0))
@@ -188,6 +226,7 @@ func configure(route, theme: Dictionary, climbs: Array, aircraft_budget: int, rn
 				"dir": 1.0 if _h(i, 0x9B03, j) < 0.5 else -1.0,
 				"color": int(_h(i, 0x9B04, j) * 16.0),
 			})
+
 
 
 func set_budget(n: int) -> void:

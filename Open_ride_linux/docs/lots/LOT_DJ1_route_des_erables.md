@@ -26,7 +26,7 @@ Un parcours court et lisible, livré avec le jeu sans réseau, qui montre le bio
   - Noms inventés : villages « Village des Érables », « Hameau du Torii », « Village des Lanternes » ; belvédères « Belvédère des Cerisiers », « Belvédère du Lac », puis le sommet « Col des Cèdres ». « Fictif » en recette. Le bloc Japon du tour des nouveaux paysages garde ses noms (premier de chaque liste).
   - `BIOME_VARIANTS` et `biome_variants()` : un parcours d'un seul biome prend la variante régionale d'une vraie route de sa région ; pour `japan`, celle des zones `japon_*` de `data/regional_variants.toml` (sol `basalte`, toits `kawara`), vérifiée par le test contre `regional.variant_for`. Ligne de commande : `--biome japan`.
 - `engine/tests/captures_demo.py` : `demo-japon` dans les parcours du jeu de base ; tout parcours en blocs de 2 km (et non plus seulement à plusieurs biomes) a ses captures à 150, 400 et 1 000 m de chaque bloc (les villages sont vers 1 000 m).
-- `engine/tests/menu_scenarios/parcours_demo.json` et `contenus.json` : « Route des Érables » dans la liste et sur l'écran Prêt ; 4 parcours ajoutés au premier lancement.
+- `engine/tests/menu_scenarios/parcours_demo.json` et `contenus.json` : « Route des Érables » dans la liste et sur l'écran Prêt ; 6 parcours ajoutés au premier lancement (avec le récif et le volcan).
 
 ## 4. Critères d'acceptation
 
@@ -42,7 +42,7 @@ Depuis `~/Games/lolo_python/Open_ride_linux`, branche du lot à jour.
 cd ~/Games/lolo_python/Open_ride_linux
 OUT=~/OpenRide/captures/dj1
 
-# 1. Profil neuf : contenus de départ (4 parcours), liste des parcours (Col du lacet, Tour des nouveaux paysages, Route des Érables, Circuit des Prés)
+# 1. Profil neuf : contenus de départ (6 parcours), liste des parcours (Col du lacet, Tour des nouveaux paysages, Route des Érables, Volcan en flammes ; Circuit des Prés par le Grand Prix)
 python3 engine/tests/menu_bench.py --scenario contenus --scenario parcours_demo --captures ecrans --native --out $OUT/menus
 
 # 2. Captures : 150, 400 et 1 000 m de chaque bloc, approche du sommet, en low, medium et high (≈ 15 min par qualité)
@@ -60,4 +60,4 @@ done
 
 ## 6. Livraison
 
-PR du 13 novembre (branche `claude/project-thread-lruwjz`), **partie de la branche de DB1 (#866)** dont elle reprend le décor et le relief Japon : à fusionner après #866, base remise sur `main` une fois #866 fusionnée. Reste : recette PC (section 5), validation de la planche par le propriétaire, puis go de fusion.
+PR du 13 novembre (branche `claude/project-thread-lruwjz`), d'abord partie de la branche de DB1 (#866) dont elle reprend le décor et le relief Japon ; #866 fusionnée le 16 novembre, main remise dans la branche (récif SM1, volcan DB2, Circuit des Prés ouvert par le Grand Prix, GP13) et base de la PR passée sur `main`. Banc rDJ1d sur l'ancienne tête (bbce94e9), à rejouer sur la nouvelle. Reste : recette PC (section 5), validation de la planche par le propriétaire, puis go de fusion.

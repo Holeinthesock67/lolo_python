@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Captures des parcours de démonstration du jeu de base (lots O37, O38 et DB1), à valider par le propriétaire.
+"""Captures des parcours de démonstration du jeu de base (lots O37, O38, SM1, DB1 et DB2), à valider par le propriétaire.
 
     python3 engine/tests/captures_demo.py lancer [--out DOSSIER] [--qualites medium] [--vitesse 50]
                                                  [--parcours demo,demo-biomes-alpin] [--native] [--sans-menus]
@@ -36,9 +36,9 @@ from pathlib import Path
 TESTS_DIR = Path(__file__).resolve().parent
 ENGINE_DIR = TESTS_DIR.parent
 REPO = ENGINE_DIR.parent
-# Jeu de base (lots DB1 et DJ1) : tour, côte et alpin sortis le 12 novembre, tour gravel le 9 novembre (recette
-# seule) ; route des Érables (Japon) ajoutée le 13 novembre.
-ROUTES = ("demo", "demo-biomes-paysages", "demo-japon", "demo-circuit")
+# Jeu de base (lot DB1) : tour, côte et alpin sortis le 12 novembre, tour gravel le 9 novembre (recette seule) ;
+# circuit : lot O38 ; récif sous la mer : lot SM1 ; volcan en flammes : lot DB2 ; route des Érables (Japon) : lot DJ1.
+ROUTES = ("demo", "demo-biomes-paysages", "demo-japon", "demo-circuit", "demo-recif", "demo-volcan")
 START_MARKS_M = (150.0, 400.0)
 SUMMIT_BEFORE_M = (100.0, 70.0, 50.0, 40.0, 30.0)   # plusieurs : un spectateur peut cacher le panneau (r811c)
 MIN_CLIMB_M = 30.0                 # dénivelé sous lequel le parcours n'a pas de sommet à montrer

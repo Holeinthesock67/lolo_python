@@ -5,11 +5,12 @@ extends RefCounted
 ## Pas de class_name : charger par preload("res://scripts/biome_ids.gd").
 
 ## Les seize biomes du lot U0, dans l'ordre de la liste définitive, puis `japan` (lot JP1)
-## `atlantic_heath` (lot AT1) et `high_plateau` (lot HP1), version 6.0.
+## `atlantic_heath` (lot AT1) et `high_plateau` (lot HP1), version 6.0, puis `reef` (fond marin, lot SM1 :
+## parcours de démonstration sous-marin, rendu sous l'eau par atmosphere_model.gd).
 const BIOMES: Array[String] = [
 	"temperate_grassland", "temperate_forest", "farmland", "boreal_forest", "alpine", "tundra",
 	"polar", "mediterranean", "steppe", "savanna", "sand_desert", "rock_desert", "jungle",
-	"wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau",
+	"wetland", "coast", "volcanic", "japan", "atlantic_heath", "high_plateau", "reef",
 ]
 
 const DEFAULT_BIOME := "temperate_grassland"
@@ -23,7 +24,7 @@ const ROOF_VARIANTS: Array[String] = [
 ]
 ## Paysages (lot U25, 6.0) : troisième membre `landscape` de la variante d'une tuile ; la section `landscapes`
 ## du thème donne, pour chaque biome de base, un bloc partiel fusionné sur celui du biome (biome_model.gd).
-const LANDSCAPES: Array[String] = ["canyon", "fjord", "ile_volcanique", "rizieres"]
+const LANDSCAPES: Array[String] = ["canyon", "fjord", "ile_volcanique", "rizieres", "volcan_actif"]
 
 ## Espèces de `vegetation.species` (lot U7 ; Japon, lot JP5 ; landes atlantiques, lot AT1).
 const SPECIES: Array[String] = [
@@ -32,6 +33,7 @@ const SPECIES: Array[String] = [
 	"sugi", "hinoki", "momiji", "bamboo",
 	"heather", "gorse", "bracken",   # lot AT1 (6.0) : bruyère, ajonc, fougère aigle des landes atlantiques
 	"bunchgrass",                    # lot HP1 (6.0) : touffe d'ichu des hauts plateaux
+	"kelp", "coral", "sea_fan",      # lot SM1 : laminaire, corail branchu, gorgone en éventail du fond marin
 ]
 
 const GROUND_ROLES: Array[String] = ["flat", "steep", "high"]

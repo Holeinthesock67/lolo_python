@@ -121,7 +121,7 @@ def test_u_turn_at_3_km_ends_at_km_0_with_6_km(tmp_path, monkeypatch) -> None:
 
 def test_grade_sent_opposite_on_same_stretch(tmp_path, monkeypatch) -> None:
     s, drv = make_session(tmp_path, monkeypatch, 7102)
-    s.gearing.ratios = [1.0] * len(s.gearing.ratios)   # braquet neutre : pente envoyée = pente × difficulté
+    s.gearing.k = s.gearing.cfg.neutral_gear   # braquet neutre : pente envoyée = pente × difficulté
     ride_until(s, lambda: s.physics.s >= 1500.0)
     forward_sent, forward_grade = drv.sim_grade_pct, s.state.grade
     ride_until(s, lambda: s.physics.s >= 2500.0)

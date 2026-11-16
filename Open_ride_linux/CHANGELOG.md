@@ -11,10 +11,48 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ### Un parcours de démonstration pour les nouveaux paysages (lot DB1)
 - Nouveau parcours « Tour des nouveaux paysages » : 14 km du bord d'un fjord jusqu'au sommet des hauts plateaux, par les landes atlantiques, les rizières, un village japonais, une île volcanique et un canyon rouge (2 km chacun, 285 m de montée, 6,5 % au plus). Trace, relief et décor sont entièrement inventés.
-- Il remplace au jeu de base le « Tour des six paysages », la « Route de la côte » et la « Montée alpine » : une installation neuve ne les ajoute plus, mais ils restent installés chez ceux qui les ont déjà. Le « Col du lacet », le « Circuit des Prés » et le vélodrome ne changent pas.
+- Il remplace au jeu de base le « Tour des six paysages », la « Route de la côte » et la « Montée alpine » : une installation neuve ne les ajoute plus, mais ils restent installés chez ceux qui les ont déjà. Le « Col du lacet », le « Circuit des Prés », le « Récif des tortues », le « Volcan en flammes » et le vélodrome ne changent pas.
 - Ciel des parcours de démonstration : le relief lointain s'arrête en montagnes de quelques centaines de mètres au lieu de monter à des kilomètres vers l'horizon (plus de grandes bandes grises en éventail dans le ciel).
-- Cyclistes du décor : un groupe ne ralentit plus pour celui qui le suit, le suiveur se règle sur l'allure réelle du premier, et un cycliste qui vous double ne traverse votre ligne qu'avec assez de place ; plus aucun contact entre eux ni avec vous sur les démonstrations.
-- Cyclistes du décor nombreux autour de vous : ceux que le core ne transmet pas (plus de six à moins de 60 m) ne restent plus à une place périmée tout près de vous.
+
+### Vélodrome et Grand Prix à l'accueil, avec leurs propres parcours (lot GP13)
+- « Vélodrome » à l'accueil : l'écran Prêt du vélodrome s'ouvre directement sur la piste.
+- Le Grand Prix des objets s'ouvre sur ses propres parcours (le Circuit des Prés pour commencer) et non plus sur le dernier parcours roulé ; « Changer de parcours » ne montre que ses parcours.
+- La liste « Parcours » de l'accueil ne montre plus la piste ni les parcours du Grand Prix ; après un de ces modes, la session libre repart sur votre dernier parcours libre.
+- Chaque mode retient son dernier parcours. Une trace entre dans un mode par l'étiquette de sa fiche (`tags = ["grandprix"]`).
+
+### Grand Prix plus lisible (lot GP14, essai du 15 novembre)
+- Une rangée de boîtes tous les 500 m par défaut (au lieu de 1 km). Une boîte prise disparaît de la route et réapparaît 2 s plus tard.
+- Distance par défaut : tout le parcours quand il est plus court que la distance réglée (« course de 5 km (tout le parcours) ») ; « Lancer » n'est grisé que sous 1 km.
+- Coup reçu : bandeau « Touché ! Bidon glissant 2 s » et contour de l'écran à la couleur de l'objet tant que l'effet dure, en plus du son et de l'onomatopée (pas de flash plein écran).
+- Panneaux de segment (« Sommet dans 500 m », « Sprint dans 1 km ») : plaque blanche cadrée de noir sur poteaux, comme les panneaux d'approche des cols, au lieu d'une caisse blanche.
+
+### Liste des parcours fluide (lot ML1)
+- Le menu n'est plus redessiné à chaque trame du core (30 par seconde) ni à chaque événement : une seule mise à jour par image, avec l'état le plus récent. Une image lente en recevait plusieurs, et la liste des parcours (pack des cols installé) tombait à 8 images par seconde (essai du 15 novembre).
+- Rangées et carte de détail inchangées ne sont plus reposées : reposer couleurs et styles faisait remettre en forme tous les libellés de la liste.
+- Cyber-Rogue : au départ d'une run, le décor du parcours d'avant (tuiles, arbres, forêts, bâtiments, horizon) est vidé au lieu d'être seulement caché ; le parcours du menu est rechargé en entier au retour (arbres de l'Alpe d'Huez encore chargés pendant la run, essai du 15 novembre).
+- Nouvelle ligne `[perf-menu]` du journal de l'engine, toutes les 30 s quand un menu est affiché : nombre de mises à jour, temps moyen et maximal, écran.
+
+### Une épave et une piste de sable au Récif des tortues (lot SM2)
+- Un vieux caboteur rouillé, couché sur le flanc dans le sable, attend à 120 m de l'arrivée du « Récif des tortues » : coque couverte d'algues, hublots, brèche dans le flanc, timonerie, cheminée penchée et mât cassé tombé sur le pont.
+- Les parcours peuvent porter des épaves (point d'intérêt `wreck`, d'après la balise OSM `historic=wreck`).
+- Sous la mer, la route devient une piste de sable sans marquage, fondue dans le fond ; le vélo et l'entraînement ne changent pas. Un thème peut donner ainsi à chaque biome l'aspect de sa chaussée (`biomes.<id>.road`).
+- Plus de promeneur debout au bord de la route sous l'eau.
+
+### Un volcan en flammes (lot DB2)
+- Nouveau parcours de démonstration « Volcan en flammes » : une boucle de 8 km dans un volcan en éruption, de la plaine de cendres à la crête du cratère (220 m de montée, 9,6 % au plus) et retour. On roule entre des coulées et des lacs de lave, dans les braises et la fumée, et le cratère crache des gerbes de lave. Trace, relief et décor sont inventés.
+- Nouveau paysage « volcan actif » du thème : coulées et lacs de lave qui rougeoient de jour comme de nuit, braises autour du cycliste, panaches de fumée, gerbes de lave, lueur orange sur la brume. La lave reste toujours à 14 m au moins de la route. En qualité basse, ni gerbes ni lumières, et moins de braises.
+- Jamais de neige dans un paysage en feu, quels que soient la date et la météo choisies : ni neige qui tombe, ni sol enneigé l'hiver.
+
+### Un récif sous la mer livré avec le jeu (lot SM1)
+- Nouveau parcours de démonstration « Récif des tortues » : une boucle de 8 km au fond de la mer, de 11 à 26 m sous la surface. On passe par le Lagon des Tortues, la Forêt des Laminaires, le Jardin de Corail et le Tombant Bleu.
+- Nouveau biome « fond marin » (`reef`) : sable corallien et roche du récif, laminaires de 9 m qui ondulent, coraux et gorgones de toutes les couleurs, bancs de poissons jaunes et bleus, tortues et raies, son sourd de la mer et bulles.
+- Ambiance sous l'eau : brouillard bleu proche (à 230 m environ, quel que soit le préréglage), ciel noyé dans l'eau, surface ondulante vue d'en dessous, reflets mouvants sur le sable, bulles qui montent, lumière qui tombe d'en haut. Ni voitures, ni cyclistes du décor, ni spectateurs sous l'eau. Le vélo et l'entraînement ne changent pas.
+- Choix « fond marin » dans « Biome du décor ». Le compilateur ne le pose jamais sur un parcours réel.
+
+### Pack « Cols célèbres » livré avec le jeu (lot PK1)
+- Le pack des cols célèbres fait partie du jeu de base : construit une fois (`scripts/build_pack_base.sh`), livré déjà compilé dans le paquet, il s'installe au premier démarrage avec les contenus de départ, sans réseau et sans rien écraser.
+- Écran « Réglages › Contenus » : sans réseau ni confirmation quand le paquet porte le pack ; crédits OpenStreetMap (ODbL), Copernicus et WorldCover sur la ligne du pack et au §10 du guide d'utilisation.
+- Liste des parcours : un parcours dont la fiche (`<trace>.toml`) porte un nom s'affiche sous ce nom (« Abra Málaga », « Alpe d'Huez ») au lieu de son identifiant (« abra-malaga ») ; l'identifiant ne change pas.
 ### Nettoyage après l'import de fichiers (lot NT2)
 - `_on_command_failed` (main.gd) ne cite plus `list_imports`, retirée en révision 1.15 : les listes sans bandeau « sans réponse du core » sont celles que le client IPC relance (`IpcClient.LIST_COMMANDS`), testées par `test_list_commands.gd`.
 

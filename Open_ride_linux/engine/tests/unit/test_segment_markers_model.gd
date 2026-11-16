@@ -193,6 +193,12 @@ func _render() -> void:
 	_check(shown == ["panel@2660", "start@2860"], "avant le sprint : panneau des 200 m et portique (%s)" % str(shown))
 	_check(view.active_node_count() > 0 and view.active_node_count() < MAX_NODES,
 		"budget : %d nœuds actifs (moins de %d)" % [view.active_node_count(), MAX_NODES])
+	view.direction = -1   # lot N22 : à rebours, les marques vers le départ sont « devant »
+	view.update(3100.0, true)
+	_check(_summary(view.shown()) == ["start@2860"], "à rebours : portique 240 m devant vers le départ (%s)" % str(_summary(view.shown())))
+	view.direction = 1
+	view.update(3100.0, true)
+	_check(not _summary(view.shown()).has("start@2860"), "même endroit dans le sens du parcours : portique 240 m derrière, retiré")
 	view.update(4500.0, true)
 	_check(view.shown().is_empty() and view.active_node_count() == 0, "aucun segment proche : aucun nœud")
 	var long = ClimbTest.make_route(12000.0, Callable(self, "_flat"))

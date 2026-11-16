@@ -29,3 +29,16 @@ Série WTF (2.0). Demande du propriétaire : constat WTF8 étape A du 8 novembre
 - Captures `vitrine_wtf.gd` en `low`, `medium`, `high` à valider par le propriétaire avant fusion.
 - Banc GPU low/medium/high sur le PC (budgets 8, 13, 16 ms) : les objets restent des primitives fusionnées, coût attendu négligeable ; à mesurer par la file PC (`sim_bench.py`).
 - Puis WTF8 étape B sur le vélo (5 min, plan des essais du 14 novembre).
+
+## Retouches du 15 novembre (séance WTF sur le vélo)
+
+Constats du propriétaire : « où sont les œufs à l'écran ? » (le gag des œufs était joué, jingle et cinq casses au journal, mais rien n'était posé en 3D : seule la carte du HUD le montrait) et « la boule tourne dans le faux sens » (rotation `t × 4` liée à l'horloge, de signe opposé au roulement vers l'avant, et sans rapport avec la vitesse).
+
+| Fichier | Changement |
+| --- | --- |
+| `wtf_scene_model.gd` | Champs `roll_r` et `rider` de chaque objet. Boule du Katamari (rayon affiché) et meule (`CHEESE_RADIUS_M`) : `roll_r`, plus de `spin` lié à l'horloge. Livraison d'œufs : carton `eggs_<intacts>` sur le porte-bagages (`EGG_RACK_BACK_M`, `EGG_RACK_UP_M`, `EGG_SCALE` cartoon), `rider` vrai ; `EGGS_TOTAL` copie de `Eggs.EGGS` du core. |
+| `wtf_scene.gd` | Règle unique de roulement : un objet à `roll_r` tourne de −d / r autour de son axe à droite pour d mètres parcourus dans le sens de la marche (à rebours compris), sans tourner sur un saut de plus de 5 m. `follow_rider(xform)` : objets `rider` posés dans le repère du vélo affiché (voie, cap, pente, penché, taille). Carton d'œufs : plateau 2 × 3, sangles, œufs intacts debout, œufs cassés en flaque blanche et jaune (un maillage, cache par nombre d'œufs). |
+| `main.gd` | `follow_rider` appelé après la pose de l'avatar, avec la pose du vélo. |
+| `tests/vitrine_wtf.gd` | Gag `oeufs` (4 œufs sur 6). |
+
+Vérifications : `test_wtf_scene` (boule qui roule vers l'avant de d / r dans les deux sens, pas de rotation sur un saut, carton sur le porte-bagages et penché avec le vélo, nombre d'œufs borné, carton à 6 et 0 œufs en un maillage à plusieurs couleurs). Planche cloud `vitrine_wtf.gd --gags oeufs` low/medium/high ; rotation de la boule à juger sur le PC (image fixe en vitrine).
