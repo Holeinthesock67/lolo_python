@@ -82,6 +82,7 @@ LANE_ACCEL_MPS2 = 1.6     # accélération latérale maximale : pas d'à-coup
 LANE_TAU_S = 0.6          # approche de la cible
 FOLLOW_LOOK_M = 15.0      # placement dans la roue d'un coureur à moins de 15 m devant
 FOLLOW_SPEED_TOL_MPS = 0.5   # « même vitesse » : pas plus de 0,5 m/s plus vite que soi
+FOLLOW_CLOSE_MPS = 1.5    # lot AS10 : pas de roue prise chez celui qu'on rattrape à plus de 1,5 m/s (5,4 km/h)
 PASS_SPEED_MPS = 0.5      # dépassement : plus de 0,5 m/s plus vite...
 PASS_GAP_M = 3.0          # ... à moins de 3 m de sa roue
 PASS_TOUCH_GAP_M = 0.2    # roue contre roue en se rapprochant, quel que soit l'écart de vitesse : on se décale
@@ -481,6 +482,11 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
         gap = abs(d) - reach                         # roue à roue (2 m de plus le long d'un véhicule), devant ou derrière
         closing = (v - o_v) if d > 0.0 else (o_v - v)   # > 0 : on se rapproche
         look_s = SIDE_LOOK_S + _side_time(lane, o_lane)
+        # Lot AS10 (banc rAS10 du volcan, « core / cycliste », écarts 2,5 et 1,9) : déjà hors de sa ligne, on regarde en
+        # plus le temps de s'en écarter de nouveau (SIDE_CLEAR_M à LANE_RATE_MPS) ; on revenait dans la roue de celui
+        # qu'on rattrapait encore (0,45 m/s, dépassement abandonné sous PASS_SPEED_MPS) et l'écart arrivait trop tard
+        if abs(lane.m - o_lane.m) > 0.05:
+            look_s += SIDE_CLEAR_M / LANE_RATE_MPS
         if not (gap < 0.0 or closing > 0.0 and gap < max(PASS_TOUCH_GAP_M, closing * look_s)):
             continue
         dx = lane.m - o_lane.m
@@ -506,7 +512,10 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
     elif lead is not None:
         d, o_v, o_lane, reach = lead
         gap = d - reach
-        if o_v <= v + FOLLOW_SPEED_TOL_MPS:
+        # Lot AS10 (banc du volcan à 55 km/h : « core / cycliste à 0 m », écarts 2,5 et 1,9) : pas dans la roue de celui
+        # qu'on rattrape vite (plus de FOLLOW_CLOSE_MPS) ; on serrait vers sa ligne pour s'en écarter au dernier moment
+        # (frôlé à 0,55 m de 36 à 52 km/h) ; dans un paquet, rien ne change
+        if v - FOLLOW_CLOSE_MPS <= o_v <= v + FOLLOW_SPEED_TOL_MPS:
             target = echelon_lane(o_lane.m, gap, v, head_mps, cross_mps)
     elif leads:
         shift = crosswind_shift_m(1.0, v, head_mps, cross_mps)
