@@ -1,0 +1,9 @@
+21:58:54 empreinte avant 50c8bec07ac24d03a30225630c5c9dba
+21:58:54 tête 0a2960f42
+21:59:04 mondes sud et nord
+21:59:09 fin
+21:59:39 captures_demo
+23:36:35 fin rc=1
+23:36:37 empreinte après 50c8bec07ac24d03a30225630c5c9dba
+23:36:37 clone 214ad0b2b
+23:36:37 FIN
