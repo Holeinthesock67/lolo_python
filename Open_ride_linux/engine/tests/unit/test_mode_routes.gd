@@ -78,6 +78,10 @@ func _run() -> void:
 	_check(CatalogModel.routes_of_mode(ROUTES, by_mode, "grandprix").map(func(r): return r["id"]) == ["demo-circuit", "vignes"],
 		"parcours du Grand Prix")
 	_check(CatalogModel.tag_label("grandprix") == "Grand Prix", "étiquette « Grand Prix »")
+	var c: Dictionary = CatalogModel.route_sheet({"id": "gp", "name": "Course", "length_m": 5000.0,
+		"library": {"region": null, "tags": ["grandprix"], "description": null}})
+	_check(c["lines"].has("Grand Prix") and not str(c["lines"]).contains("<null>"),
+		"fiche sans description : « Grand Prix », jamais « <null> » (%s)" % str(c["lines"]))
 
 	# Liste générale : ni la piste ni les parcours du Grand Prix
 	var f = _flow({"route_id": "alpe"})

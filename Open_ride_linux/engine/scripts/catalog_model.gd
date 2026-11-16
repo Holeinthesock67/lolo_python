@@ -130,7 +130,8 @@ static func route_sheet(item: Dictionary) -> Dictionary:
 			for t in lib["tags"]:
 				words.append(tag_label(str(t)))
 		var head := ", ".join(words)
-		var desc := str(lib.get("description", ""))
+		var raw_desc = lib.get("description", null)   # fiche sans description : null (essai rGP13, « <null> »)
+		var desc := "" if raw_desc == null else str(raw_desc)
 		var line := head + (" — " if head != "" and desc != "" else "") + desc
 		if line != "":
 			lines.append(line)
