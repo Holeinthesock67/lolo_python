@@ -1,4 +1,4 @@
-"""Lot GP8 : noms, familles et charges des objets du Grand Prix identiques dans le core et dans l'engine.
+"""Lots GP8 et GP4 : noms, familles, charges et Furtif des objets du Grand Prix identiques dans le core et l'engine.
 
 L'engine (`engine/scripts/grandprix/gp_items.gd`) recopie la liste des objets, leurs noms et leurs familles
 pour la case d'objet, la bande de course et le bilan ; le core en est la référence (`grandprix/items.py`).
@@ -32,3 +32,10 @@ def test_ids_labels_families_match_core():
 def test_charges_match_core():
     charges = {k: int(v) for k, v in re.findall(r'"(\w+)": (\d+)', _const("CHARGES"))}
     assert charges == {i: s.charges for i, s in items.DEFAULT_TABLE.items.items() if s.charges > 1}
+
+
+def test_unseen_items_match_core():
+    """Lot GP4 : objets dont l'avatar est translucide (marque `breakaway` du Furtif) identiques au core."""
+    unseen = re.findall(r'"(\w+)"', _const("UNSEEN"))
+    assert unseen == [i for i, s in items.DEFAULT_TABLE.items.items()
+                      if any(e.effect == "breakaway" for e in s.self_fx)]

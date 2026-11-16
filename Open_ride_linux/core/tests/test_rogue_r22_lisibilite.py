@@ -73,9 +73,9 @@ def test_run_reports_cursed_and_gold_refusals():
     e = fight_engine(first="grimpeur", deck=("cursed",))
     m = next(m for m in e.room.markers if m.kind == "strike_target")
     e.combat = replace(e.combat, adrenaline=80.0)
-    out = step_in_room(e, m.s_m, gear=10, buttons=("Z_SHORT",))
+    out = step_in_room(e, m.s_m, power=280.0, buttons=("Z_SHORT",))
     assert "z_refused" in out.rogue["events"] and out.rogue["z_reason"] == "cursed"
-    out = step_in_room(e, m.s_m + 1.0, gear=10)
+    out = step_in_room(e, m.s_m + 1.0, power=280.0)
     assert out.rogue["z_reason"] is None
     jsonschema.validate(out.rogue, ROGUE_SCHEMA)
 

@@ -20,7 +20,8 @@ import time
 import pytest
 
 from openride_core import settings
-from openride_core.bots import (CALIBRATION_DT, PROFILES, BotError, ConstantPowerBot, ProfileBot, RefRider,
+from openride_core.bots import (CALIBRATION_DT, CALIBRATION_PROFILE, PROFILES, BotError, ConstantPowerBot,
+                                ProfileBot, RefRider,
                                 RouteProfile, bots_from_menu, calibrate, calibrate_bots, ride_time)
 from openride_core.config import Config
 from openride_core.demo_world import build_route
@@ -116,10 +117,10 @@ def test_climber_leads_the_climb_and_finishes_with_the_diesel():
     assert abs(t_c - t_d) / t_d < 0.01, "arrivée ensemble"
 
 
-def test_calibrate_bots_uses_bot_level_then_setting_once_per_pair():
+def test_calibrate_bots_uses_bot_level_then_setting_once_per_level():
     route, segments = SYNTHETIC["plat"]
     bots = [ProfileBot("rouleur", bot_id="a"), ProfileBot("rouleur", bot_id="b", level_pct=110.0),
-            ProfileBot("rouleur", bot_id="c"), ConstantPowerBot(200.0)]
+            ProfileBot("climber", bot_id="c"), ConstantPowerBot(200.0)]
     scales = calibrate_bots(bots, route, RIDER, 90.0, segments, BIKE)
     assert set(scales) == {("rouleur", 90.0), ("rouleur", 110.0)}
     assert bots[0].scale == bots[2].scale == scales[("rouleur", 90.0)] < bots[1].scale
@@ -163,7 +164,8 @@ def test_session_calibrates_at_start_and_refuses_bad_level(tmp_path, monkeypatch
         assert s.state.session_state == "RUNNING"
         rider = RefRider(s.cfg.rider.ftp_w, PhysicsParams.from_config(s.cfg))
         for b, level in zip(s.bots, (90.0, 110.0)):
-            assert b.scale == calibrate("climber", s.route, level, rider, tuple(s._segments), s.cfg.bike.mass_kg)
+            assert b.scale == calibrate(CALIBRATION_PROFILE, s.route, level, rider, tuple(s._segments),
+                                        s.cfg.bike.mass_kg)
             assert b.to_dict()["cp_w"] == round(b.cp_w, 1)
         assert s.bots[0].cp_w < s.bots[1].cp_w
         s._on_command("end_session", {"save": False}, 5)
@@ -185,4 +187,23 @@ def test_four_bots_on_100_km_under_half_a_second():
         if durations[-1] < 0.5:
             break
     assert min(durations) < 0.5, durations
-    assert len(scales) == 4 and all(math.isfinite(k) and k > 0 for k in scales.values())
+    assert len(scales) == 1 and all(math.isfinite(k) and k > 0 for k in scales.values())
+
+
+@pytest.mark.parametrize("name", ["demo", "plat", "col"])
+def test_one_scale_for_the_whole_field_keeps_the_profiles_apart(name):
+    """Choix du 15 novembre : une seule échelle par niveau, celle du rouleur. Le rouleur finit avec le cycliste
+    de référence ; au col, le grimpeur finit devant lui et le sprinteur derrière (il montait presque aussi vite
+    que le grimpeur quand chaque profil avait sa propre échelle)."""
+    route, segments = (DEMO, ()) if name == "demo" else SYNTHETIC[name]
+    bots = [ProfileBot(p, bot_id=p, params=RIDER.params, segments=segments, bike_mass_kg=BIKE) for p in PROFILES]
+    scales = calibrate_bots(bots, route, RIDER, 100.0, segments, BIKE)
+    assert len({b.scale for b in bots}) == 1 and set(scales) == {(CALIBRATION_PROFILE, 100.0)}
+    t_ref = reference_time(route)
+    t = {b.profile: finish_time(b, route) / t_ref for b in bots}
+    assert abs(t[CALIBRATION_PROFILE] - 1.0) < 0.005, t
+    assert t["sprinter"] > t["rouleur"], t
+    if name == "col":
+        assert t["climber"] < t["rouleur"] - 0.05 and t["sprinter"] > t["rouleur"] + 0.05, t
+    if name == "plat":
+        assert t["climber"] > t["rouleur"], t

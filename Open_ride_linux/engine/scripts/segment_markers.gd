@@ -19,7 +19,8 @@ extends Node3D
 ## d'une boucle) a une frise en damier sous le bandeau et une ligne en damier au sol ; tout départ, une
 ## ligne blanche. Bandeau imprimé des deux côtés (demi-tour, lot N17 : `back_lines`, le dos du départ d'un
 ## parcours en ligne annonce l'arrivée). Panneaux à gauche de la route, face au cycliste qui arrive (une seule
-## face : rien ne se chronomètre à rebours). Aucune ombre portée.
+## face : rien ne se chronomètre à rebours), plaque blanche cadrée de noir des panneaux du bord de route
+## (roadside_props.gd build_board, lot GP14 du 15/11 : remplace la caisse blanche). Aucune ombre portée.
 ## - Lot DS5 : `set_survivor_arches(arches)` pose les portiques d'élimination du Dernier survivant (style `elim` :
 ##   tube à bandes rouges et noires, bandeau rouge foncé « ÉLIMINATION », frise et ligne en damier), mis à jour
 ##   par `update` comme les autres marques ; un portique de segment confondu (moins de MERGE_M) n'est pas doublé.
@@ -29,6 +30,7 @@ extends Node3D
 ##   (banc 7bx : à-coups de ~130 ms au premier portique et à la première arrivée, 400 m avant eux).
 
 const Model := preload("res://scripts/segment_markers_model.gd")
+const Props := preload("res://scripts/roadside_props.gd")
 
 const ARCH_HEIGHT_M := 5.2           # axe du tube au sommet de l'arche
 const ARCH_CORNER_M := 1.6
@@ -46,8 +48,6 @@ const FLAG_OUT_M := 1.5              # drapeaux à 1,5 m à l'extérieur des pie
 const LINE_DEPTH_M := 0.5
 const FINISH_LINE_DEPTH_M := 1.0     # damier des arrivées, plus large pour se voir de loin
 const LINE_LIFT_M := 0.03            # au-dessus de la chaussée, contre le scintillement
-const PANEL_SIZE := Vector3(1.4, 0.8, 0.05)
-const PANEL_HEIGHT_M := 1.9
 const PANEL_OUT_M := 1.5
 const LETTER_HEIGHT_M := 0.14
 const COLORS := {
@@ -59,7 +59,6 @@ const COLORS := {
 	"arch": Color(0.55, 0.20, 0.85),
 	"post": Color(0.85, 0.85, 0.87),
 	"ballast": Color(0.25, 0.25, 0.27),
-	"panel": Color(0.96, 0.96, 0.94),
 	"line": Color(0.97, 0.97, 0.97),
 	"elim": Color(0.55, 0.05, 0.07),
 }
@@ -77,6 +76,7 @@ const STYLES := {
 }
 
 var road_width_m := 6.0
+var direction := 1                  # sens de la marche : -1 à rebours après un demi-tour (lots N17, N22)
 var marks: Array = []
 var _starts := PackedFloat64Array()
 var _route = null
@@ -85,6 +85,7 @@ var _box: ArrayMesh = null
 var _tube: ArrayMesh = null
 var _tube_width_m := -1.0
 var _mats: Dictionary = {}
+var _panel_meshes: Dictionary = {}  # plaques et poteaux des panneaux, par dimensions (roadside_props.gd)
 var _warm: Node3D = null            # exemplaires du préchauffage, retirés après WARM_FRAMES appels à update
 var _warm_frames := 0
 var _elim: Array = []               # portiques d'élimination du Dernier survivant : [{s (dans le tour), arch, lines}]
@@ -119,6 +120,8 @@ func _init() -> void:
 	_mats["finish_line"] = _textured(_checker_image(8, 4), Vector3(3.0, 2.0, 1.0))   # cases de 25 cm
 	for key in _mats:
 		(_mats[key] as StandardMaterial3D).roughness = 0.6   # toile enduite : léger reflet du ciel
+	_mats["segment"] = Props.board_material("segment")   # panneaux : matières de roadside_props.gd
+	_mats["sign_post"] = Props.post_material()
 
 
 static func _polka_image() -> Image:
@@ -240,7 +243,10 @@ func update(cam_s: float, arches_on: bool) -> void:
 	if _route == null or marks.is_empty():
 		return
 	var want := {}
-	for i in Model.window(_starts, cam_s, float(_route.length_m), _route.is_loop()):
+	# Fenêtre dans le sens de la marche (lot N22) : AHEAD_M devant et BEHIND_M derrière, devant = s décroissant à rebours
+	var up := Model.AHEAD_M if direction > 0 else Model.BEHIND_M
+	var down := Model.BEHIND_M if direction > 0 else Model.AHEAD_M
+	for i in Model.window(_starts, cam_s, float(_route.length_m), _route.is_loop(), up, down):
 		if marks[i]["kind"] == "arch" and not arches_on:
 			continue
 		if marks[i]["kind"] in ["start", "finish"] and _near_elim(float(marks[i]["s"])):
@@ -324,7 +330,7 @@ func _update_elim(cam_s: float) -> void:
 		return
 	for e in _elim:
 		var k := int(e["arch"])
-		var d := _ahead_of(float(e["s"]), cam_s)
+		var d := direction * _ahead_of(float(e["s"]), cam_s)   # dans le sens de la marche (lot N22)
 		var want := d >= -Model.BEHIND_M and d <= Model.AHEAD_M
 		if want and not _elim_nodes.has(k):
 			var node := build_mark(e)
@@ -434,13 +440,8 @@ func build_mark(mark: Dictionary) -> Node3D:
 	var root := Node3D.new()
 	var kind: String = mark["kind"]
 	root.name = "%s_%d" % [kind, int(mark["s"])]
-	if kind == "panel":
-		_mesh(root, "post", Vector3(0.0, PANEL_HEIGHT_M * 0.5, 0.0), Vector3(0.08, PANEL_HEIGHT_M, 0.08))
-		var board_y := PANEL_HEIGHT_M + PANEL_SIZE.y * 0.5
-		_mesh(root, "panel", Vector3(0.0, board_y, 0.0), PANEL_SIZE)
-		var text := _label(root, mark["lines"], Vector3(0.0, board_y, PANEL_SIZE.z * 0.5 + 0.005), PANEL_SIZE.x,
-			PANEL_SIZE.y, Color(0.1, 0.1, 0.1))
-		text.outline_size = 0
+	if kind == "panel":   # plaque cadrée des panneaux du bord de route (roadside_props.gd, lot GP14)
+		Props.build_board(root, "segment", mark["lines"], _panel_meshes, _mats["segment"], _mats["sign_post"], true, false)
 		return root
 	var style: Dictionary = STYLES.get(str(mark.get("style", "")), STYLES["arch"])
 	var half := arch_half_m()

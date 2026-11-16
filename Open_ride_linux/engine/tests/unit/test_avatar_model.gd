@@ -155,6 +155,14 @@ func _test_lods() -> void:
 		counts.append(n)
 		_check(n <= int(AvatarMesh.LOD_MAX_TRIANGLES[lod]) and n > 0, "niveau %d : %d triangles (≤ %d)" % [lod, n, AvatarMesh.LOD_MAX_TRIANGLES[lod]])
 	_check(counts[0] > counts[1] and counts[1] > counts[2], "chaque niveau est plus léger que le précédent")
+	# Retour du 15/11 : têtes « en hexagone » des bots. La tête reste ronde à tous les niveaux (au moins 10 côtés
+	# sur 5 rangs : 100 triangles) ; au niveau 2, la coque du casque est fondue dans la tête, sans pièce de plus.
+	for lod in range(3):
+		var parts := AvatarMesh.build(lod, d)
+		var head_tris := AvatarMesh.triangles_of(parts["head"]["mesh"])
+		_check(head_tris >= 100, "niveau %d : tête ronde (%d triangles)" % [lod, head_tris])
+	var p2 := AvatarMesh.build(2, d)
+	_check(not p2.has("helmet") and AvatarMesh.triangles_of(p2["head"]["mesh"]) >= 170, "niveau 2 : casque dans le maillage de la tête")
 	var tt := {"frame": "frame_tt", "wheels": "wheels_spoked", "helmet": "helmet_summit", "socks": "socks_striped"}
 	var n_tt := AvatarMesh.triangle_count(0, d, tt)
 	_check(n_tt <= int(AvatarMesh.LOD_MAX_TRIANGLES[0]), "niveau 0, équipement le plus lourd : %d triangles" % n_tt)
@@ -203,7 +211,7 @@ func _test_view() -> void:
 		and mesh.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON, "fin de l'Échappée : avatar opaque, ombre rendue")
 	v.set_lod(2)
 	var low: Dictionary = v.test_info()
-	_check(low["lod"] == 2 and low["triangles"] <= 300, "niveau 2 : %d triangles" % low["triangles"])
+	_check(low["lod"] == 2 and low["triangles"] <= int(AvatarMesh.LOD_MAX_TRIANGLES[2]), "niveau 2 : %d triangles" % low["triangles"])
 	v.configure(AvatarModel.parse_settings({"hair": 3, "skin": 5}), 0)
 	_check(v._list("hair")[0].visible, "cheveux visibles quand le style n'est pas 0")
 	var ms := PerfBudget.measure_ms(func():
