@@ -1,0 +1,27 @@
+== dernier_survivant_high (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home (elements=['survivor']) : « OpenRide » (engine muet 12.0 s)
+[OK] choisir « world » : écran « routes », focus « demo »
+[OK] écran routes (elements=['demo']) : « Parcours »
+[OK] choisir « demo » : écran « home », focus « world »
+[ÉCHEC] écran home (contient=['Parcours : demo']) : « Parcours : demo » absent (engine muet 2.5 s)
+[OK] choisir « survivor » : écran « ready », focus « start »
+[ÉCHEC] écran ready (titre='Prêt : Dernier survivant — demo', contient=['2 arches sur 2 km']) : titre « Prêt : Dernier survivant — Col du lacet »
+[OK] choisir « start » : écran « ready », focus « start »
+[OK] journal du core : « Dernier survivant : 2 adversaires » : Dernier survivant : 2 adversaires
+[OK] écran menu caché : « Prêt : Dernier survivant — Col du lacet »
+[OK] journal du engine : « Élimination : arche 1 » : Élimination : arche 1
+[OK] journal du engine : « Élimination : arche 2 » : Élimination : arche 2
+[OK] écran summary (titre='Fin de séance') : « Fin de séance »
+[OK] choisir « new_session » : écran « home », focus « coach »
+[OK] écran home : « OpenRide »
+[OK] qualité réellement appliquée à l'arrêt : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+dernier_survivant_high   clavier  2 ÉCHEC(S)     417 s
+Rapport : ~/mesures-2026-11-01-auto/rBT9/ds_high/rapport.html
+1 passage(s) en échec sur 1
