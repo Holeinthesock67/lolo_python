@@ -116,6 +116,42 @@ class RouteAxis:
         return np.hypot(px - cx, pz - cz), self.alt[a] + t * (self.alt[b] - self.alt[a])
 
 
+class PiecesAxis:
+    """Axe de la route hors ponts (lot EA4) : plusieurs morceaux de `RouteAxis`, distance au plus proche.
+
+    Sous un pont, le relief n'est pas fondu avec la route (même règle que `axis_pieces` du monde ouvert)."""
+
+    def __init__(self, x, z, alt, keep: np.ndarray) -> None:
+        x, z, alt = (np.asarray(v, dtype=float) for v in (x, z, alt))
+        self.pieces: list[RouteAxis] = []
+        start = None
+        for i, k in enumerate(np.append(np.asarray(keep, dtype=bool), False)):
+            if k and start is None:
+                start = i
+            elif not k and start is not None:
+                self.pieces.append(RouteAxis(x[start:i], z[start:i], alt[start:i]))
+                start = None
+
+    def nearest(self, px: np.ndarray, pz: np.ndarray, max_dist: float) -> tuple[np.ndarray, np.ndarray]:
+        px = np.asarray(px, dtype=float).ravel()
+        dist = np.full(px.shape, np.inf)
+        y = np.full(px.shape, np.nan)
+        for axis in self.pieces:
+            d, yy = axis.nearest(px, pz, max_dist)
+            better = d < dist
+            dist[better] = d[better]
+            y[better] = yy[better]
+        return dist, y
+
+
+def route_axis(route: dict, spans=None):
+    """Axe de fondu de la route : entier, ou hors des portions en pont `spans` (lot EA4)."""
+    if not spans:
+        return RouteAxis(route["x"], route["z"], route["alt_m"])
+    from .bridges import outside_spans, route_s
+    return PiecesAxis(route["x"], route["z"], route["alt_m"], outside_spans(route_s(route), spans))
+
+
 # --- tuiles -----------------------------------------------------------------------------------
 
 def select_tiles(x, z, level: Level) -> list[tuple[int, int]]:
@@ -172,11 +208,11 @@ def curvature_drop(route_tree: cKDTree, gx: np.ndarray, gz: np.ndarray) -> np.nd
 
 
 def build_level(route: dict, frame: LocalFrame, provider: ElevationProvider, level: Level,
-                log: Log = stderr_log) -> dict[tuple[int, int], np.ndarray]:
-    """Grilles float32 (101 × 101) de toutes les tuiles d'un niveau."""
+                log: Log = stderr_log, spans=None) -> dict[tuple[int, int], np.ndarray]:
+    """Grilles float32 (101 × 101) de toutes les tuiles d'un niveau ; pas de fondu sous les ponts `spans`."""
     x, z = np.asarray(route["x"], float), np.asarray(route["z"], float)
     keys = select_tiles(x, z, level)
-    axis = RouteAxis(x, z, route["alt_m"]) if level.blend else None
+    axis = route_axis(route, spans) if level.blend else None
     route_tree = cKDTree(np.column_stack((x, z))) if level.curvature else None
     log(f"terrain {level.name} : {len(keys)} tuile(s) de {level.tile_m} m, maille {level.cell_m} m")
     out: dict[tuple[int, int], np.ndarray] = {}
@@ -338,10 +374,11 @@ def _sync_edges(tiles: dict[tuple[int, int], np.ndarray]) -> None:
 
 
 def build_terrain(route: dict, frame: LocalFrame, provider: ElevationProvider,
-                  log: Log = stderr_log, horizon: bool = True) -> dict[str, dict[tuple[int, int], np.ndarray]]:
-    """Niveaux proche et lointain, plus l'horizon (lot JP4) sauf `horizon=False` (`--no-horizon`)."""
+                  log: Log = stderr_log, horizon: bool = True, spans=None) -> dict[str, dict[tuple[int, int], np.ndarray]]:
+    """Niveaux proche et lointain, plus l'horizon (lot JP4) sauf `horizon=False` (`--no-horizon`) ;
+    `spans` : portions en pont, sans fondu de la route (lot EA4)."""
     levels = ALL_LEVELS if horizon else LEVELS
-    return {level.name: build_level(route, frame, provider, level, log) for level in levels}
+    return {level.name: build_level(route, frame, provider, level, log, spans) for level in levels}
 
 
 def terrain_manifest(tiles: dict[str, dict[tuple[int, int], np.ndarray]],

@@ -1,0 +1,201 @@
+{
+  "description": "Lot EA4, recette sur le PC : monde ouvert lancé depuis Seyssel (ville coupée en deux par le Rhône, pont routier au centre, réseau), 5 minutes de balade avec une capture toutes les 30 s : tablier, garde-corps, piles, rivière sous le pont. Le premier carrefour décide si la route passe le pont : à juger sur les captures. À lancer en low, medium et high, sur la branche puis sur main (les carrés du cache se refont d'eux-mêmes : WORLDGEN_VERSION 3).",
+  "voies": [
+    "clavier"
+  ],
+  "reseau": true,
+  "caches_reels": true,
+  "etapes": [
+    {
+      "ecran": "home",
+      "delai": 15
+    },
+    {
+      "choisir": "open_world"
+    },
+    {
+      "monde": "globe",
+      "delai": 10
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "s"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "e"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "y"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "s"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "s"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "e"
+    },
+    {
+      "voies": [
+        "clavier"
+      ],
+      "touche": "l"
+    },
+    {
+      "note": "Recherche par nom de la ville (pont routier sur le Rhône au centre) : bases OSM du cache réel, sinon Nominatim ; aucune coordonnée dans le dépôt",
+      "monde": "search",
+      "contient": [
+        "Seyssel"
+      ],
+      "delai": 60
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "monde": "map",
+      "absent": [
+        "Chargement de la carte"
+      ],
+      "delai": 90
+    },
+    {
+      "capture": "carte"
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "monde": "setup",
+      "contient": [
+        "Cap :"
+      ]
+    },
+    {
+      "capture": "cap"
+    },
+    {
+      "touche": "Enter"
+    },
+    {
+      "monde": false,
+      "delai": 300
+    },
+    {
+      "note": "Monde ouvert préchargé : route engagée, séance prête",
+      "journal": "core",
+      "motif": "Monde ouvert prêt",
+      "delai": 600
+    },
+    {
+      "ecran": "home",
+      "delai": 30
+    },
+    {
+      "choisir": "ride"
+    },
+    {
+      "ecran": "ready",
+      "delai": 15
+    },
+    {
+      "choisir": "start"
+    },
+    {
+      "note": "Départ au pédalage : le cycliste simulé roule à 180 W",
+      "journal": "core",
+      "motif": "-> RUNNING",
+      "delai": 120
+    },
+    {
+      "attendre": 20
+    },
+    {
+      "capture": "pont_depart"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_1"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_2"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_3"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_4"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_5"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_6"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_7"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_8"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_9"
+    },
+    {
+      "attendre": 30
+    },
+    {
+      "capture": "pont_10"
+    },
+    {
+      "note": "Route prolongée par le générateur pendant la balade",
+      "journal": "engine",
+      "motif": "world_revision rev=",
+      "delai": 120
+    }
+  ]
+}

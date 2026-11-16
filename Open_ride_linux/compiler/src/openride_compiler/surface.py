@@ -69,19 +69,18 @@ def fetch_ways(client: Any, route: dict[str, Any], frame: LocalFrame,
     return [ways[k] for k in sorted(ways)]
 
 
-def _samples(ways: list[dict[str, Any]], frame: LocalFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
+def _samples(ways: list[dict[str, Any]], frame: LocalFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[int]]:
     """Points tous les 2 m le long des voies : positions (x, z), cap de leur segment (0–180°), direction
-    unitaire du segment, surface."""
+    unitaire du segment, indice de la voie dans `ways`."""
     pts: list[np.ndarray] = []
     caps: list[np.ndarray] = []
     dirs: list[np.ndarray] = []
-    surf: list[str] = []
-    for w in ways:
+    owner: list[int] = []
+    for w_index, w in enumerate(ways):
         geom = [g for g in w["geometry"] if isinstance(g, dict) and "lat" in g and "lon" in g]
         if len(geom) < 2:
             continue
         x, z = frame.to_xz(np.array([g["lat"] for g in geom], dtype=float), np.array([g["lon"] for g in geom], dtype=float))
-        s = way_surface(w.get("tags") or {})
         for k in range(len(x) - 1):
             dx, dz = x[k + 1] - x[k], z[k + 1] - z[k]
             seg = math.hypot(dx, dz)
@@ -92,18 +91,20 @@ def _samples(ways: list[dict[str, Any]], frame: LocalFrame) -> tuple[np.ndarray,
             pts.append(np.column_stack([x[k] + dx * t, z[k] + dz * t]))
             caps.append(np.full(m + 1, math.degrees(math.atan2(dx, -dz)) % 180.0))
             dirs.append(np.tile([dx / seg, dz / seg], (m + 1, 1)))
-            surf.extend([s] * (m + 1))
+            owner.extend([w_index] * (m + 1))
     if not pts:
         return np.zeros((0, 2)), np.zeros(0), np.zeros((0, 2)), []
-    return np.vstack(pts), np.concatenate(caps), np.vstack(dirs), surf
+    return np.vstack(pts), np.concatenate(caps), np.vstack(dirs), owner
 
 
-def match_surface(route: dict[str, Any], ways: list[dict[str, Any]], frame: LocalFrame) -> list[str]:
-    """Surface brute de chaque point : voie concordante la plus proche à moins de 15 m, sinon `paved`."""
+def match_ways(route: dict[str, Any], ways: list[dict[str, Any]], frame: LocalFrame) -> list[int | None]:
+    """Voie de chaque point de la route : indice dans `ways` de la voie concordante la plus proche à
+    moins de 15 m (cap à moins de 30°, point à côté de la voie), sinon None. Sert à la surface (U20) et
+    aux ponts (EA4) : une seule règle d'accrochage de la trace aux voies OSM."""
     n = int(route["n"])
-    out = ["paved"] * n
-    xy, caps, dirs, surf = _samples(ways, frame)
-    if not surf:
+    out: list[int | None] = [None] * n
+    xy, caps, dirs, owner = _samples(ways, frame)
+    if not owner:
         return out
     tree = cKDTree(xy)
     rx = np.asarray(route["x"], dtype=float)
@@ -112,7 +113,7 @@ def match_surface(route: dict[str, Any], ways: list[dict[str, Any]], frame: Loca
     near = tree.query_ball_point(np.column_stack([rx, rz]), r=CORRIDOR_M)
     for i, cand in enumerate(near):
         best, best_d = None, math.inf
-        for j in cand:
+        for j in sorted(cand):   # ordre fixe : à égalité de distance, la première voie (tirage reproductible)
             diff = abs(caps[j] - heading[i]) % 180.0
             if min(diff, 180.0 - diff) >= HEADING_TOL_DEG:
                 continue
@@ -120,11 +121,17 @@ def match_surface(route: dict[str, Any], ways: list[dict[str, Any]], frame: Loca
             if abs(ox * dirs[j, 0] + oz * dirs[j, 1]) > SAMPLE_M:   # point au-delà du bout de la voie
                 continue
             d = math.hypot(ox, oz)
-            if d < best_d:
+            if d < best_d - 1e-3:   # quasi-égalité (bout commun de deux voies) : la première garde le point
                 best, best_d = j, d
         if best is not None:
-            out[i] = surf[best]
+            out[i] = owner[best]
     return out
+
+
+def match_surface(route: dict[str, Any], ways: list[dict[str, Any]], frame: LocalFrame) -> list[str]:
+    """Surface brute de chaque point : voie concordante la plus proche à moins de 15 m, sinon `paved`."""
+    surf = [way_surface(w.get("tags") or {}) for w in ways]
+    return ["paved" if j is None else surf[j] for j in match_ways(route, ways, frame)]
 
 
 def _runs(values: list[str]) -> list[list[Any]]:
@@ -166,9 +173,14 @@ def route_surface(route: dict[str, Any], ways: list[dict[str, Any]], frame: Loca
     return values if any(v != "paved" for v in values) else None
 
 
-def apply_surface(route: dict[str, Any], manifest: dict[str, Any], client: Any, frame: LocalFrame) -> list[str] | None:
-    """Cherche la surface, écrit la colonne et `route.surface_source` si un point n'est pas revêtu."""
-    values = route_surface(route, fetch_ways(client, route, frame), frame)
+def apply_surface(route: dict[str, Any], manifest: dict[str, Any], client: Any, frame: LocalFrame,
+                  ways: list[dict[str, Any]] | None = None) -> list[str] | None:
+    """Cherche la surface, écrit la colonne et `route.surface_source` si un point n'est pas revêtu.
+
+    `ways` : voies du couloir déjà lues (lot EA4 : la même requête sert aux ponts)."""
+    if ways is None:
+        ways = fetch_ways(client, route, frame)
+    values = route_surface(route, ways, frame)
     if values is None:
         return None
     route["surface"] = values
@@ -185,4 +197,4 @@ def surface_summary(values: list[str] | None) -> str:
 
 
 __all__ = ["SURFACES", "CORRIDOR_M", "HEADING_TOL_DEG", "MIN_RUN_M", "way_surface", "build_surface_query",
-           "fetch_ways", "match_surface", "smooth", "route_surface", "apply_surface", "surface_summary"]
+           "fetch_ways", "match_ways", "match_surface", "smooth", "route_surface", "apply_surface", "surface_summary"]

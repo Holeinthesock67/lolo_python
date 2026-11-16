@@ -243,8 +243,8 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         world = next(work.glob("*.world"))
         shutil.copytree(world, routes / world.name, dirs_exist_ok=True)
         return world.stem
-    if kind in ("village", "osm"):
-        script = "make_sim_world.py" if kind == "village" else "make_osm_world.py"
+    if kind in ("village", "osm", "pont"):
+        script = {"village": "make_sim_world.py", "osm": "make_osm_world.py", "pont": "make_bridge_world.py"}[kind]
         problem = compiler_problem(world_layers(kind))
         if problem:
             print(f"ÉCHEC monde {kind} : {problem}", file=sys.stderr)
@@ -257,16 +257,18 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         return world.stem
     src = Path(kind).expanduser()
     if not (src / "manifest.json").is_file():
-        raise SystemExit(f"parcours introuvable : {kind} (demo, demo_long, village, osm, ouvert ou dossier .world)")
+        raise SystemExit(f"parcours introuvable : {kind} (demo, demo_long, village, osm, pont, ouvert ou dossier .world)")
     shutil.copytree(src, routes / src.name, dirs_exist_ok=True)
     return src.stem
 
 
 def world_layers(kind: str) -> tuple[str, ...]:
-    """Couches que le script du monde `village` ou `osm` demande au compilateur."""
+    """Couches que le script du monde `village`, `osm` ou `pont` (lot EA4) demande au compilateur."""
+    import make_bridge_world
     import make_osm_world
     import make_sim_world
-    return ("route", "terrain") + (make_sim_world.LAYERS if kind == "village" else make_osm_world.LAYERS)
+    return ("route", "terrain") + {"village": make_sim_world.LAYERS, "osm": make_osm_world.LAYERS,
+                                   "pont": make_bridge_world.LAYERS}[kind]
 
 
 def missing_layers(wanted: tuple[str, ...], known: tuple[str, ...]) -> list[str]:
@@ -1105,7 +1107,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
         "GODOT", Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     ap.add_argument("--scenario", action="append", help="scénario (répétable ; défaut : demo)")
-    ap.add_argument("--world", help="demo (défaut), demo_long (la démonstration étirée à 12 km, lot DS8), village (bâtiments, montée et descente), osm, ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
+    ap.add_argument("--world", help="demo (défaut), demo_long (la démonstration étirée à 12 km, lot DS8), village (bâtiments, montée et descente), osm, pont (ponts dessinés, lot EA4), ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
                     "l'emporte sur le monde du scénario")
     ap.add_argument("--biome", help="biome forcé sur tout le parcours (lot U17, ex. sand_desert) ; "
                     "l'emporte sur le biome du scénario (scénarios biome_*)")
