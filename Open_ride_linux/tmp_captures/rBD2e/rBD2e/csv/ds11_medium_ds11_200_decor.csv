@@ -1,0 +1,47 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+33.7;26;0;0;0;0;4;0;
+43.7;26;0;0;0;0;4;0;
+53.7;26;0;0;0;0;4;0;
+63.7;26;0;0;0;0;4;0;
+73.7;26;0;0;0;0;4;0;raptor_cry=1
+83.7;26;0;0;0;0;4;0;raptor_cry=1
+93.7;26;0;0;0;1;5;0;airliner_rumble=1 raptor_cry=1
+103.7;26;0;0;0;1;5;0;airliner_rumble=1 raptor_cry=2 voice_allez=1
+113.7;26;0;0;0;1;5;0;airliner_rumble=1 raptor_cry=2 voice_allez=1
+123.7;26;0;0;0;1;5;0;airliner_rumble=1 raptor_cry=2 voice_allez=1
+133.7;26;0;0;0;1;5;0;airliner_rumble=1 raptor_cry=2 voice_allez=1
+143.7;26;0;0;0;2;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=1
+153.7;26;0;0;0;1;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=1
+163.7;26;0;0;0;1;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=1
+173.7;26;0;0;0;1;6;0;airliner_rumble=2 raptor_cry=2 voice_allez=1
+183.7;26;0;0;0;3;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=1
+193.7;26;0;0;0;2;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=1
+203.7;26;0;0;0;2;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=1
+213.7;26;0;0;0;2;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=1
+223.7;26;0;0;0;2;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=1
+233.7;26;0;0;0;2;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=2
+243.7;26;0;0;0;2;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=2
+253.7;26;0;0;0;0;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=2
+263.7;26;0;0;0;0;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=2
+273.7;26;0;0;0;1;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=2
+283.7;26;0;0;0;1;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=2
+293.7;26;0;0;0;1;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=2
+303.7;26;0;0;0;1;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=2
+313.7;26;0;0;0;1;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=2
+323.7;26;0;0;0;2;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=2
+333.7;26;0;0;0;1;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=2
+343.7;26;0;0;0;1;6;0;airliner_rumble=2 crow_caw=1 raptor_cry=2 voice_allez=2
+353.7;26;0;0;0;1;7;0;airliner_rumble=2 crow_caw=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+363.7;26;0;0;0;1;7;0;airliner_rumble=2 crow_caw=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+373.7;26;0;0;0;3;7;0;airliner_rumble=2 crow_caw=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+383.7;26;0;0;0;3;7;0;airliner_rumble=2 crow_caw=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+393.7;26;0;0;0;3;7;0;airliner_rumble=2 crow_caw=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+403.7;26;0;0;0;3;8;0;airliner_rumble=2 crow_caw=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+413.7;26;0;0;0;3;8;0;airliner_rumble=2 crow_caw=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+423.7;18;0;0;0;6;8;0;airliner_rumble=2 crow_caw=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+433.7;18;0;0;0;4;8;0;airliner_rumble=2 crow_caw=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+443.7;18;0;0;0;4;8;0;airliner_rumble=3 crow_caw=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+453.7;18;0;0;0;3;8;0;airliner_rumble=3 crow_caw=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+463.7;18;0;0;0;3;8;0;airliner_rumble=3 crow_caw=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+473.7;18;0;0;0;3;8;0;airliner_rumble=3 crow_caw=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
+481.2;18;0;0;0;0;8;0;airliner_rumble=3 crow_caw=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 voice_allez=2
