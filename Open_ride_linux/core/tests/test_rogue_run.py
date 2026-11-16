@@ -61,8 +61,6 @@ class Rider:
             inp = RunInputs(power_w=power, cadence_rpm=self.cad, gear=self.gear, ftp_w=RIDER.ftp_w,
                             s_m=self.body.s if e.room is not None else 0.0, v_mps=self.body.v, buttons=buttons)
             out = e.step(DT, inp)
-            if out.force_gear:
-                self.gear = out.force_gear
             self.body.step(power, out.grade_enemy, 0.0, DT)
             if not self.phases or self.phases[-1] != out.phase:
                 self.phases.append(out.phase)
@@ -228,55 +226,56 @@ def test_roller_clips_at_6_and_holds_3_s():
     assert out.grade_enemy < 6.0
 
 
-def test_overdrive_effect_and_automatic_return():
+def _damage(e, power, s=1.0, gear=6):
+    hp = e.combat.enemy_hp
+    step_in_room(e, 300.0, gear=gear, power=power, n=round(s / DT))
+    return hp - e.combat.enemy_hp
+
+
+def test_overdrive_triggers_on_power_in_any_gear_then_cooldown():
+    # Lot R23 : plus de vitesse 12 ni de retour forcé en 6 ; la pente ne change pas.
+    plain = fight_engine()
     e = fight_engine(deck=("overdrive",))
-    base = step_in_room(e, 300.0, gear=11)
-    g0 = base.grade_enemy
-    out = step_in_room(e, 300.0, gear=12)
-    assert out.grade_enemy == pytest.approx(g0 + 4.0)
-    step_in_room(e, 300.0, gear=12)
-    out = step_in_room(e, 300.0, gear=12, n=round(8.2 / DT))
-    assert out.force_gear is None or out.force_gear == 6
-    step_in_room(e, 300.0, gear=12, n=round(1 / DT))
-    again = step_in_room(e, 300.0, gear=12)                           # recharge 45 s : pas de nouvel effet
-    assert again.grade_enemy == pytest.approx(g0)
+    for gear in (3, 9):
+        base = step_in_room(plain, 300.0, gear=gear, power=300.0)
+        out = step_in_room(e, 300.0, gear=gear, power=300.0)
+        assert out.grade_enemy == pytest.approx(base.grade_enemy) and e.overdrive_until == 0.0
+    d_plain = _damage(plain, 400.0)
+    step_in_room(e, 300.0, gear=3, power=400.0)                          # 160 % FTP : déclenché, en vitesse 3
+    assert e.overdrive_until > 0.0
+    out = step_in_room(e, 300.0, gear=3, power=400.0)
+    assert out.grade_enemy == pytest.approx(step_in_room(plain, 300.0, gear=3, power=400.0).grade_enemy)
+    assert _damage(e, 400.0, gear=3) / d_plain == pytest.approx(2.0, rel=0.05)
+    step_in_room(e, 300.0, gear=3, power=200.0, n=round(7.0 / DT))
+    assert e.overdrive_until == 0.0 and e.overdrive_ready_at > e.t_total
+    step_in_room(e, 300.0, gear=12, power=400.0)                         # recharge 45 s : pas de nouvel effet
+    assert e.overdrive_until == 0.0
+    assert not hasattr(out, "force_gear")
 
 
-def test_overdrive_force_gear_returned_once():
-    e = fight_engine(deck=("overdrive",))
-    forced = []
-    for _ in range(round(10 / DT)):
-        o = step_in_room(e, 300.0, gear=12)
-        if o.force_gear:
-            forced.append(o.force_gear)
-    assert forced == [6]
-
-
-def test_heal_only_in_gear_1_above_95_rpm():
+def test_heal_spins_light_in_any_gear():
     e = fight_engine(deck=("heal",))
     e.shield = 50.0
     e.combat = replace(e.combat, shield=50.0)
-    step_in_room(e, 300.0, gear=1, cadence=100.0, n=round(10 / DT))
+    step_in_room(e, 300.0, gear=7, cadence=100.0, power=120.0, n=round(10 / DT))   # 48 % FTP, vitesse 7
     assert e.shield == pytest.approx(60.0, abs=0.5)
-    step_in_room(e, 300.0, gear=2, cadence=100.0, n=round(5 / DT))
-    step_in_room(e, 300.0, gear=1, cadence=90.0, n=round(5 / DT))
+    step_in_room(e, 300.0, gear=1, cadence=100.0, power=200.0, n=round(5 / DT))   # 80 % FTP : trop fort
+    step_in_room(e, 300.0, gear=1, cadence=90.0, power=120.0, n=round(5 / DT))    # 90 rpm : trop lent
     assert e.shield == pytest.approx(60.0, abs=0.5)
 
 
 def test_cursed_boosts_damage_and_blocks_z():
     plain = fight_engine()
     cursed = fight_engine(deck=("cursed",))
-    for eng, gear in ((plain, 10), (cursed, 10)):
-        step_in_room(eng, 300.0, gear=gear, power=250.0, n=round(1 / DT))
-    d_plain = plain.combat.enemy_hp_max - plain.combat.enemy_hp
-    d_cursed = cursed.combat.enemy_hp_max - cursed.combat.enemy_hp
-    assert d_cursed / d_plain == pytest.approx(1.35, rel=0.01)
+    # Lot R23 : au-dessus de 100 % de la FTP, dans n'importe quelle vitesse.
+    assert _damage(cursed, 280.0, gear=3) / _damage(plain, 280.0, gear=3) == pytest.approx(1.35, rel=0.01)
+    assert _damage(cursed, 200.0, gear=10) / _damage(plain, 200.0, gear=10) == pytest.approx(1.0, rel=0.01)
     strike = fight_engine(first="grimpeur", deck=("cursed",))
     m = next(m for m in strike.room.markers if m.kind == "strike_target")
     strike.combat = replace(strike.combat, adrenaline=80.0)
-    out = step_in_room(strike, m.s_m, gear=10, buttons=("Z_SHORT",))
+    out = step_in_room(strike, m.s_m, gear=4, power=280.0, buttons=("Z_SHORT",))
     assert "hit" not in out.rogue["events"] and strike.combat.adrenaline >= 80.0
-    out = step_in_room(strike, m.s_m, gear=9, buttons=("Z_SHORT",))
+    out = step_in_room(strike, m.s_m, gear=10, power=200.0, buttons=("Z_SHORT",))
     assert "hit" in out.rogue["events"]
 
 
@@ -312,10 +311,11 @@ def test_springboard_after_descent():
     e = fight_engine(first="puncheur", objective="vo2max", deck=("springboard",))
     down = next(s for s, g in e.room.profile if g <= -1.0)
     up = next(s for s, g in e.room.profile if g > 3.0 and s > down)
-    step_in_room(e, down, gear=9, n=round(2.5 / DT))                  # posture Fluide installée
+    step_in_room(e, down, gear=4, n=round(2.5 / DT))                  # posture Fluide installée ; toute vitesse (R23)
     e.combat = replace(e.combat, adrenaline=0.0)
-    step_in_room(e, up, gear=9)
+    out = step_in_room(e, up, gear=4)
     assert e.combat.adrenaline >= 15.0 - 1.0
+    assert out.rogue["card_on"] == "springboard"                     # lot R23 : le tremplin se dit
     hp = e.combat.enemy_hp
     step_in_room(e, up, gear=9, power=250.0, n=round(1 / DT))
     boosted = hp - e.combat.enemy_hp

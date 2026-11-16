@@ -13,6 +13,7 @@ import pytest
 
 from openride_core import classic, fit_export, powerups, profile
 from openride_core.config import Config
+from openride_core.gearing import Gearing
 from openride_core.grandprix import effects as gp_effects
 from openride_core.input_providers import NullProvider
 from openride_core.mock_driver import MockDriver
@@ -189,7 +190,14 @@ def _trace(tmp: Path, monkeypatch: pytest.MonkeyPatch, mode: str, toml: str = ""
     (tmp / "powerups.toml").write_text(toml, encoding="utf-8")
     cfg = Config()
     cfg.powerups.mode = mode
-    cfg.gearing.ratio_min, cfg.gearing.ratio_max = 0.65, 2.00   # braquets des empreintes (avant le 14 novembre)
+    # Braquets des empreintes : loi multiplicative d'avant le 15 novembre, plage 0,65–2,00 (braquet 12 : 1,11).
+    r12 = 0.65 * (2.00 / 0.65) ** (11 / 23)
+
+    def old_law(self, terrain, difficulty=1.0, place=0.0):
+        g = ((terrain + 2.0) * r12 - 2.0) * difficulty
+        g = max(g, 0.0) if terrain > 0 else min(g, 0.0) if terrain < 0 else g
+        return min(max(g, self.grade_min), self.grade_max)
+    monkeypatch.setattr(Gearing, "effective_grade", old_law)
     cfg.ipc.port_state, cfg.ipc.port_commands = 7990, 7991
     s = CoreSession(cfg, driver=MockDriver(base_power_w=250.0, ramp_amplitude_w=0.0), inputs=[NullProvider()],
                     journal_dir=tmp / "j", routes_root=tmp / "r", workouts_dir=tmp / "w",
@@ -217,8 +225,11 @@ def _trace(tmp: Path, monkeypatch: pytest.MonkeyPatch, mode: str, toml: str = ""
 
 # Empreintes de la même séance rejouée avec le code de `main` du 8 novembre (e88969b7, avant TT1 et TT2) :
 # mode `off`, et mode `on` de la 2.0 avec `[lightweight] duration_s = 15` (`light` lu `feather`).
-GOLDEN_OFF = ("136ab72b667e12dce4c2d8556a4bf44cd269b6d08ca52cf59d68966224f9fe97", 4126.41948)
-GOLDEN_ON = ("0f1ffcefa789395f510b2fd33184400574cea4fcfde5467e0d91edf8aeb92412", 4140.599843)
+# Lot AS10 (15 novembre) : recalées pour les deux modes à la fois (le placement ne prend plus la roue d'un cycliste du
+# décor rattrapé vite : un peu moins d'abri, 0,5 m de moins en 10 min) ; avant : 136ab72b…, 4126.41948 et 0f1ffcef…,
+# 4140.599843.
+GOLDEN_OFF = ("dd659da180e37007f2fa0a1c7781ec40e411b3e1c6e80ece8ba92aec1bd5adb7", 4125.925359)
+GOLDEN_ON = ("40c4ebb55182c0d244521cd07b758b05ec5b62ac4352a266c868696e06412509", 4140.108)
 
 
 def test_off_session_identical_to_2_0(tmp_path, monkeypatch):

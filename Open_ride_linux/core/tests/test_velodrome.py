@@ -239,9 +239,9 @@ def test_lap_time_on_wood_shorter_than_paved() -> None:
 
 
 def test_config_section() -> None:
-    cfg = from_layers({"velodrome": {"factor_wood": 0.5, "temperature_c": 20.0, "gear_scale": 1.1}}, {}, "c", "p")
+    cfg = from_layers({"velodrome": {"factor_wood": 0.5, "temperature_c": 20.0, "gear_offset_pct": 1.0}}, {}, "c", "p")
     assert cfg.velodrome.factor_wood == 0.5 and cfg.velodrome.temperature_c == 20.0
-    assert cfg.velodrome.gear_scale == 1.1
+    assert cfg.velodrome.gear_offset_pct == 1.0
     with pytest.raises(ConfigError):
         from_layers({"velodrome": {"factor_wood": 1.5}}, {}, "c", "p")
 
@@ -279,14 +279,14 @@ def test_session_on_track(tmp_path, monkeypatch) -> None:
     assert s.physics.s > 250.0                                        # la boucle reboucle
 
 
-def test_session_track_gear_scale(tmp_path, monkeypatch) -> None:
-    """Braquets de la piste (14 novembre) : la pente envoyée est celle de la gamme × `gear_scale`, plus le bois."""
+def test_session_track_gear_offset(tmp_path, monkeypatch) -> None:
+    """Braquets de la piste (14 et 15 novembre) : la gamme décalée de `gear_offset_pct`, plus le bois."""
     s, _ = _session(tmp_path, monkeypatch, 7464)
     _run(s, 3000)
     k = s.gearing.k
-    expected = s.gearing.effective_grade(0.0, 1.0, s.cfg.velodrome.gear_scale) + s._gravel_sent
+    expected = s.gearing.effective_grade(0.0, 1.0, s.cfg.velodrome.gear_offset_pct) + s._gravel_sent
     assert s._grade_sent == pytest.approx(expected, abs=0.01)
-    assert s.gearing.effective_grade(0.0, 1.0, 1.25) > s.gearing.effective_grade(0.0)
+    assert s.gearing.effective_grade(0.0, 1.0, 0.5) > s.gearing.effective_grade(0.0)
     assert s.gearing.k == k
 
 

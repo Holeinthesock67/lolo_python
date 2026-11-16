@@ -122,8 +122,10 @@ def essai_calendrier(seed: int, profile: str) -> list[Report]:
             if_run = round(normalized_power(powers) / prof.ftp_w, 2)   # au centième, comme la fiche R14
             rep.add(low <= if_run <= high, f"IF de la run entre {low:.2f} et {high:.2f}", f"IF {if_run:.2f}")
             boss = marks.get("BOSS")
-            rep.add(boss is not None and abs(boss - plan["BOSS"]) <= CALENDAR_TOL_S,
-                    "boss atteint à ± 1 min du calendrier",
+            # Lot R23 : une avance (salle finie plus vite, carte Rouleau compresseur) est rendue au boss, qui
+            # remplit le temps restant ; seul un boss en retard de plus d'une minute est une faute de calendrier.
+            rep.add(boss is not None and boss - plan["BOSS"] <= CALENDAR_TOL_S,
+                    "boss atteint au plus 1 min après le calendrier",
                     f"boss à {_mmss(boss)} pour {_mmss(plan['BOSS'])} prévues")
             end = marks.get("RESULTS")
             rep.add(end is not None and abs(end - duration * 60.0) <= CALENDAR_TOL_S,
