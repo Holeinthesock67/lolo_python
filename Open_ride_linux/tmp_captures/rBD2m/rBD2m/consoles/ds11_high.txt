@@ -1,0 +1,5 @@
+>>> [1/1] Scénario ds11_200 (8:00)
+== ds11_200 : parcours demo-long, 480 s, SIM ==
+[OK] démarrage du core : « Core démarré » lu
+[OK] engine relié au core : hello_ack 15.8 s après le démarrage du core
+[OK] parcours chargé par l'engine : demo-long à 28.5 s
