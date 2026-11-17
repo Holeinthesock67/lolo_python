@@ -184,3 +184,35 @@ def test_arch_vectors_shared_with_the_engine(tmp_path: Path):
         except PowerUpError:
             every = DEFAULT_TABLE.arch_every_m       # fichier refusé : valeurs par défaut
         assert every == case["arch_every_m"], case
+
+
+def test_arches_crossed_backwards_after_u_turn():
+    """Lot N25 : à rebours après un demi-tour (N17), une arche se franchit aussi, au même point vu de l'autre côté."""
+    arches = ArchSchedule(5000.0, 23_000.0)
+    assert arches.crossed(5001.0, 5000.0) == 1
+    assert arches.crossed(5000.0, 4999.0) == 0
+    assert arches.crossed(23_000.0, 0.0) == 4
+    assert arches.passes(12_000.0, 9_000.0) == [(1, 0)]
+    loop = ArchSchedule(5000.0, 12_000.0, loop=True)
+    assert loop.crossed(36_000.0, 0.0) == 6
+    assert loop.passes(17_500.0, 11_000.0) == [(0, 1)]     # 17 000 = arche de 5 km du 2e tour
+    assert loop.passes(11_000.0, 17_500.0) == loop.passes(17_500.0, 11_000.0)
+    assert arches.crossed(5000.0, 5000.0) == 0
+
+
+def test_classic_race_pays_each_arch_once_in_either_direction(monkeypatch):
+    """Lot N25 : arches comptées à rebours, chacune une seule fois par tour (pas de bonus en faisant des allers-retours)."""
+    from openride_core import classic
+    race = classic.ClassicRace("demo", (), 23_000.0, powerups_on=True)
+    got: list[str] = []
+    monkeypatch.setattr(race.powerups, "award", lambda source, ctx=None: got.append(source))
+    race.start(0.0, 4900.0)
+    race.step(1.0, 0.1, 5100.0, 200.0, [])      # arche de 5 km, dans le sens du parcours
+    race.pause("user")                           # demi-tour depuis la pause
+    race.step(2.0, 0.1, 5100.0, 200.0, [])
+    race.step(3.0, 0.1, 4900.0, 200.0, [])      # même arche à rebours : déjà payée
+    assert got == ["arch"]
+    race.pause("user")
+    race.start(4.0, 10_200.0)
+    race.step(5.0, 0.1, 9_800.0, 200.0, [])     # arche de 10 km franchie d'abord à rebours : payée
+    assert got == ["arch", "arch"]
