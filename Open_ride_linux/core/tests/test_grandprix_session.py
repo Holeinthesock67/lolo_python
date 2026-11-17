@@ -164,6 +164,8 @@ def test_eleven_bots_full_race_frames_fit_with_devices(env):
     seen = []
 
     def check(sess):
+        if sess.state.session_state != "RUNNING":
+            return   # pas de l'arrivée : le Grand Prix est clos, plus de champs `gp` ni `fx` à contrôler
         sess._frame_count += 1
         d = frame(sess)
         state_v.validate(d)

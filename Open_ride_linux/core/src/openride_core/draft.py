@@ -445,7 +445,11 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
     if not lane.auto:
         return lane.home, False
     target, passing = lane.home, False
-    left_bound, right_bound = PASS_LANE_MIN_M, LANE_MAX_M
+    # Bornes de la chaussée pour la carrosserie, pas pour l'axe (bloc coureur et voiture d'équipe, lot GP4) : un
+    # coureur plus large qu'un vélo (`_wider`) garde ses bords là où ceux d'un vélo peuvent aller
+    w = _wider(lane)
+    pass_min, lane_min, lane_max = PASS_LANE_MIN_M + w, LANE_MIN_M + w, LANE_MAX_M - w
+    left_bound, right_bound = pass_min, lane_max
     lead: tuple[float, float, Lane, float] | None = None
     leads = False
     others = list(others)
@@ -522,13 +526,13 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
         if abs(shift) >= ECHELON_LEAD_SHIFT_M:
             target = LANE_MIN_M if shift > 0.0 else LANE_MAX_M      # la zone glisse à droite : vent de gauche
     if not passing:
-        target = max(target, LANE_MIN_M)
+        target = max(target, lane_min)
     if left_bound > right_bound:
         target = 0.5 * (left_bound + right_bound)
     else:
         target = min(max(target, left_bound), right_bound)
-    passing = passing or target < LANE_MIN_M
-    return min(max(target, PASS_LANE_MIN_M if passing else LANE_MIN_M), LANE_MAX_M), passing
+    passing = passing or target < lane_min
+    return min(max(target, pass_min if passing else lane_min), lane_max), passing
 
 
 def start_grid(bots: Iterable[Any], rider_s: float) -> None:
