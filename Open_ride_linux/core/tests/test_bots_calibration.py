@@ -22,7 +22,7 @@ import pytest
 from openride_core import settings
 from openride_core.bots import (CALIBRATION_DT, CALIBRATION_PROFILE, PROFILES, BotError, ConstantPowerBot,
                                 ProfileBot, RefRider,
-                                RouteProfile, bots_from_menu, calibrate, calibrate_bots, ride_time)
+                                RouteProfile, bots_from_menu, calibrate, calibrate_bots, effort_target, ride_time)
 from openride_core.config import Config
 from openride_core.demo_world import build_route
 from openride_core.physics import PhysicsParams
@@ -163,8 +163,12 @@ def test_session_calibrates_at_start_and_refuses_bad_level(tmp_path, monkeypatch
                                          {"kind": "profile", "profile": "climber", "level_pct": 110}]}, 4)
         assert s.state.session_state == "RUNNING"
         rider = RefRider(s.cfg.rider.ftp_w, PhysicsParams.from_config(s.cfg))
+        prof = RouteProfile(s.route)
         for b, level in zip(s.bots, (90.0, 110.0)):
-            assert b.scale == calibrate(CALIBRATION_PROFILE, s.route, level, rider, tuple(s._segments),
+            # Lot BT1 : niveau appliqué à l'effort tenable sur la course (courbe × objectif Tempo)
+            pct, _ = effort_target(prof, rider, level, s._bot_effort_now)
+            assert b.effort_target == pytest.approx((pct, b.effort_target[1]))
+            assert b.scale == calibrate(CALIBRATION_PROFILE, s.route, pct, rider, tuple(s._segments),
                                         s.cfg.bike.mass_kg)
             assert b.to_dict()["cp_w"] == round(b.cp_w, 1)
         assert s.bots[0].cp_w < s.bots[1].cp_w

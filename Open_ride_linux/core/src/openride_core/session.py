@@ -115,6 +115,10 @@ PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 SURVIVOR_RETIRED_MPS = 15.0 / 3.6   # bot éliminé : il se range à 15 km/h (lot DS2)
 SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
+# Bout d'un parcours en ligne (banc rgp10d du 16 novembre, Grand Prix à 11 adversaires) : les bots qui y arrivent
+# s'arrêtent en file, le k-ième (depuis 0) à k × END_GAP_M avant la fin, au lieu de s'empiler au même mètre.
+END_GAP_M = draft_mod.BIKE_LENGTH_M + 0.3
+GP_RUNOUT_M = 30.0   # Grand Prix sur un parcours en ligne : la file de 12 coureurs (11 × END_GAP_M) tient après la ligne
 SURVIVOR_OUT_LANE_M = 2.9         # m : écart à l'axe d'un bot éliminé, au bord de la chaussée (6 m ; `lane_m` borné à 3 m par le contrat)
 TRACK_START_GAP_M = 2.0           # m : coureurs d'une même équipe en file au départ arrêté (lot VD6)
 SURVIVOR_RETIRED_S = 10.0          # s : bot éliminé retiré de la séance
@@ -380,11 +384,13 @@ class CoreSession:
         self.wtf: WtfMode | None = None
         self.survivor: SurvivorRace | None = None   # mode « Dernier survivant » (lot DS2)
         self._survivor_out: dict[str, float] = {}   # bot éliminé → instant de l'élimination (il se range)
+        self._end_queue: list[str] = []   # bots arrêtés au bout d'un parcours en ligne, dans l'ordre d'arrivée
         self._survivor_end_pending = False
         self.grandprix_path: Path = grandprix_path or gp_items.GRANDPRIX_FILE   # objets et valeurs (lot GP2)
         self.grandprix: GrandPrixMode | None = None   # mode « Grand Prix des objets » (lot GP2)
         self.track_event: track_mod.TrackEvent | None = None   # épreuve de piste en cours (lot VD6)
         self._track_choice: tuple[str, dict] | None = None     # épreuve et réglages choisis au `start`
+        self._bot_effort_now: Any = None   # course des bots de la séance (`bot_effort.Effort`, lot BT1)
         self._track_plan: Any = None                            # consignes des bots de l'épreuve (lot VD7)
         self._race_field: bot_tactics.RaceField | None = None   # comportements de course (lot VD7)
         self._records_writable = True
@@ -669,7 +675,7 @@ class CoreSession:
         if game_mode == "wtf":
             self._start_wtf()
         self._new_race(classic=self.wtf is None and game_mode not in ("survivor", "grandprix", "track"),
-                       tactics=self._track_tactics() if game_mode == "track" else None)
+                       tactics=self._track_tactics() if game_mode == "track" else None, game_mode=game_mode)
         if game_mode == "survivor":
             self._start_survivor()
         if game_mode == "grandprix":
@@ -1369,7 +1375,8 @@ class CoreSession:
             attach_segments(profiled, self._segments)
             calibrate_bots(profiled, self.route, RefRider(self.cfg.rider.ftp_w, self._base_params),
                            self.cfg.bots.level_pct, self._segments, self.cfg.bike.mass_kg,
-                           bot_params=PhysicsParams.from_config(self.cfg))
+                           bot_params=PhysicsParams.from_config(self.cfg),
+                           effort=self._bot_effort_now or self._bot_effort(None))
             mode = self.bot_tactics_mode if self.race is not None else "none"
             seed = self.bot_tactics_seed if self.bot_tactics_seed is not None else bot_tactics.seed_from(time.time())
             bot_tactics.start_race(profiled, seed, mode)
@@ -1378,6 +1385,16 @@ class CoreSession:
         if self.wtf is not None:
             for b in fresh:
                 self.wtf.bot_skin(b.id)
+
+    def _log_bot_effort(self) -> None:
+        """Ligne du journal du core : objectif, durée estimée et puissance visée des bots (lot BT1)."""
+        eff = self._bot_effort_now
+        targets = sorted({b.effort_target for b in self.bots if getattr(b, "effort_target", None)})
+        if eff is None or not targets:
+            return
+        ftp = self.cfg.rider.ftp_w
+        log.info("Effort des bots (%s) : %s.", eff.objective, ", ".join(
+            f"{pct:.0f} % de la FTP ({ftp * pct / 100.0:.0f} W) sur ≈ {dur / 60.0:.0f} min" for pct, dur in targets))
 
     def _journal_bots(self, reason: str) -> None:
         """Ligne `bots` du journal (lot N18) : bots de la séance au départ (s'il y en a) et à chaque `set_bots`."""
@@ -2100,6 +2117,9 @@ class CoreSession:
         self.state.route_id = route_id
         self.state.route_length_m = world.route.length_m
         self.physics.place(0.0)
+        # la trame aussi : sinon, jusqu'au départ, elle gardait la position de la séance d'avant et l'engine
+        # préparait le décor là-bas (cycliste et décor figés à la 2e partie, 15 novembre)
+        self.state.t, self.state.s, self.state.v = 0.0, 0.0, 0.0
         self.state.dir = None
         self._set_session_clock(0.0)
         log.info("Parcours « %s » chargé : %.0f m, type %s", route_id, world.route.length_m,
@@ -2258,6 +2278,22 @@ class CoreSession:
         self.physics.u_turn(keep_speed=True)
         if self.race is not None:
             self.race.pause("user")   # passage de segment ou de sprint en cours annulé, comme à la pause
+        self._note_u_turn()
+        return True
+
+    def _u_turn_at_end(self, route: Route) -> bool:
+        """Bout d'un parcours en ligne pendant un entraînement ERG ou un test de FTP (lot N26) : demi-tour
+        automatique sans s'arrêter, comme Y maintenu, au lieu de couper l'entraînement à l'arrivée. Vrai si le
+        demi-tour est fait ; faux hors entraînement (entraînement fini, SIM, ERG libre) ou quand le demi-tour
+        est refusé (course à élimination, Grand Prix) : l'arrivée termine alors la séance."""
+        if not isinstance(self.erg, ErgController) or self._u_turn_refusal("RUNNING") is not None:
+            return False
+        self.physics.s = min(max(self.physics.s, 0.0), route.length_m)   # pas au-delà du bout de la route
+        self.physics.u_turn(keep_speed=True)
+        if self.race is not None:
+            self.race.pause("user")   # passage de segment ou de sprint en cours annulé, comme Y maintenu
+        log.info("Bout du parcours pendant l'entraînement « %s » : demi-tour automatique.",
+                 self.erg.workout.name)
         self._note_u_turn()
         return True
 
@@ -2933,7 +2969,8 @@ class CoreSession:
     def _grandprix_course(self) -> tuple[float, float | None]:
         """Longueur de la course et d'un tour (circuit) d'après `[grandprix]` ; `GrandPrixError` si le parcours
         ne s'y prête pas (monde ouvert, sans distance de course ; parcours en ligne de moins de 1 km). En ligne, la
-        course ne dépasse jamais le parcours (lot GP14, essai du 15 novembre) : `distance_km` ou ce qu'il en reste."""
+        course ne dépasse jamais le parcours (lot GP14, essai du 15 novembre) : `distance_km` ou ce qu'il en reste,
+        ligne posée au moins `GP_RUNOUT_M` avant le bout (lot GP10) : la file des bots arrivés y tient après la ligne."""
         gc = self.cfg.grandprix
         route = self.route
         if self.openworld is not None or route is None:
@@ -2942,7 +2979,7 @@ class CoreSession:
             return gc.laps * route.length_m, route.length_m
         from .grandprix.boxes import MIN_COURSE_M
 
-        length = min(gc.distance_km * 1000.0, route.length_m - self.physics.s)
+        length = min(gc.distance_km * 1000.0, route.length_m - self.physics.s - GP_RUNOUT_M)
         if length < MIN_COURSE_M - 1e-6:
             raise GrandPrixError(f"parcours trop court pour une course ({route.length_m / 1000.0:.1f} km, "
                                  f"{MIN_COURSE_M / 1000.0:.0f} km au moins)")
@@ -3186,13 +3223,33 @@ class CoreSession:
 
     # --- mode classique de la série T (lot T7) ------------------------------------------
 
-    def _new_race(self, classic: bool = True, tactics: str | None = None) -> None:
+    def _bot_effort(self, game_mode: str | None) -> Any:
+        """Course des bots (lot BT1, `bot_effort.Effort`) : objectif commun `bots.objective` et longueur de la
+        course du mode (Grand Prix : tours ou distance ; ailleurs un passage du parcours) ; au vélodrome,
+        objectif et longueur de l'épreuve (`bot_effort.track_effort`)."""
+        from . import bot_effort
+
+        if game_mode == "track" and self._track_choice is not None:
+            event, settings = self._track_choice
+            lap = self._track.length_m if self._track is not None else track_mod.LAP_M
+            return bot_effort.track_effort(event, settings, lap)
+        course_m = None
+        if game_mode == "grandprix":
+            try:
+                course_m = self._grandprix_course()[0]
+            except GrandPrixError:
+                course_m = None
+        return bot_effort.Effort(self.cfg.bots.objective, course_m)
+
+    def _new_race(self, classic: bool = True, tactics: str | None = None, game_mode: str | None = None) -> None:
         """Segments, records, bonus, maillots et écarts de la séance qui commence.
 
         `classic` faux (mode WTF) : pas de segments, de records ni de bonus, seulement les bots calibrés.
         `tactics` : ligne de `bot_tactics.MODE_TACTICS` imposée par le mode (épreuve de piste) ; None : celle
-        du mode classique, ou « none » hors du mode classique."""
+        du mode classique, ou « none » hors du mode classique. `game_mode` : mode de la séance, pour l'effort
+        des bots (`_bot_effort`, lot BT1)."""
         route = self.route
+        self._bot_effort_now = self._bot_effort(game_mode)
         self.race = None
         # Graine de la séance, tirée une fois : les bots, l'épreuve de piste et ses consignes la partagent.
         self._race_seed = (self.bot_tactics_seed if self.bot_tactics_seed is not None
@@ -3234,7 +3291,7 @@ class CoreSession:
         # Niveau des bots (lot T13) : cycliste équipé (lot V5), bots sans équipement (leur physique de séance).
         rider = RefRider(self.cfg.rider.ftp_w, self._base_params)
         scales = calibrate_bots(self.bots, route, rider, self.cfg.bots.level_pct, self._segments,
-                                self.cfg.bike.mass_kg, bot_params=plain)
+                                self.cfg.bike.mass_kg, bot_params=plain, effort=self._bot_effort_now)
         # Lot Y10 : tactique après le calibrage (forme du jour sur la CP calibrée), le mode classique seul
         seed = self._race_seed
         mode = tactics if tactics is not None else (self.bot_tactics_mode if classic else "none")
@@ -3245,6 +3302,7 @@ class CoreSession:
         if scales:
             log.info("Bots calibrés en %.0f ms : %s.", 1000.0 * (time.perf_counter() - t0),
                      ", ".join(f"{p} à {lv:g} % : CP × {k:.2f}" for (p, lv), k in scales.items()))
+            self._log_bot_effort()
         if self.race is None:
             return
         self.race.start(self._t_session, self.physics.s, self.bots)
@@ -3705,6 +3763,7 @@ class CoreSession:
             bot.step(dt, route)
             if bot_wind:
                 params.wind_mps -= bot_wind
+            self._queue_at_end(bot, route)
             if track is not None and getattr(bot, "physics", None) is not None:   # même règle de distance (VD3)
                 bot.physics.s = bot_s + (bot.physics.s - bot_s) * track.progress_factor(
                     bot_s, velodrome.height_on_track(draft_mod.lane_of(bot)))
@@ -3770,9 +3829,10 @@ class CoreSession:
 
         if route and not route.is_loop and self.openworld is None and \
                 (st.s >= route.length_m if d > 0 else st.s <= 0.0):   # ni une boucle, ni le monde ouvert
-            # à rebours (lot N17), le départ du parcours est l'arrivée
-            log.info("Arrivée atteinte%s.", "" if d > 0 else " (retour au départ après un demi-tour)")
-            self._finish(True)
+            if not self._u_turn_at_end(route):
+                # à rebours (lot N17), le départ du parcours est l'arrivée
+                log.info("Arrivée atteinte%s.", "" if d > 0 else " (retour au départ après un demi-tour)")
+                self._finish(True)
         elif self._survivor_end_pending:   # éliminé, réglage « terminer la séance » (lot DS2)
             self._survivor_end_pending = False
             self._finish(True)
@@ -3780,6 +3840,24 @@ class CoreSession:
             log.info("Grand Prix des objets : arrivée, %de sur %d.", self.grandprix.racers[GP_ME].finished,
                      len(self.grandprix.racers))
             self._finish(True)
+
+    def _queue_at_end(self, bot, route) -> None:
+        """Bout d'un parcours en ligne : le bot s'arrête à sa place dans la file d'arrivée (`END_GAP_M` entre deux
+        bots, le premier arrivé au bout), jamais sur un bot déjà arrêté. Le fantôme rejoue une séance : pas de file.
+        La file oublie un bot reparti (séance relancée, bots changés)."""
+        physics = getattr(bot, "physics", None)
+        if route is None or route.is_loop or physics is None or getattr(bot, "kind", "") == "ghost":
+            return
+        end = route.length_m
+        ids = {b.id for b in self.bots}
+        self._end_queue = [i for k, i in enumerate(self._end_queue)
+                           if i in ids and next(b for b in self.bots if b.id == i).s >= end - k * END_GAP_M - 0.5]
+        k = self._end_queue.index(bot.id) if bot.id in self._end_queue else len(self._end_queue)
+        stop = end - k * END_GAP_M
+        if physics.s >= stop:
+            physics.s, physics.v = stop, 0.0
+            if bot.id not in self._end_queue:
+                self._end_queue.append(bot.id)
 
     def _track_of(self, world) -> velodrome.TrackGeometry | None:
         """Piste du parcours (couche `venue` d'un vélodrome, lot VD3) ; None pour une route ou une couche illisible."""

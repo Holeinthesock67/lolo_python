@@ -209,6 +209,10 @@ class PowerupsConfig:
 class BotsConfig:
     """Bots à profil du mode classique (série T, lot T13) : calibrés au départ sur la FTP du cycliste."""
     level_pct: int = 100           # niveau des bots, en % de la FTP (50 à 150 ; 110 : plus forts que toi)
+    # objectif de la séance (lot BT1) : part de l'effort tenable sur la durée de la course visée par les bots
+    # (recovery 55 %, endurance 65 %, tempo 80 %, threshold 92 %, max 100 % : bot_effort.OBJECTIVES) ; au
+    # vélodrome, l'objectif suit l'épreuve
+    objective: str = "tempo"
 
 
 @dataclass
@@ -232,7 +236,7 @@ class SurvivorConfig:
 class GrandPrixConfig:
     """Mode « Grand Prix des objets » (série GP, lot GP2) : plateau, format de la course et objets.
     Les objets joués et leurs valeurs sont dans `~/OpenRide/grandprix.toml` (`grandprix.items`)."""
-    opponents: int = 4             # adversaires (2 à 4 ; 11 avec le lot GP10)
+    opponents: int = 4             # adversaires (2 à 11 depuis le lot GP10, peloton du lot PL1)
     laps: int = 3                  # circuit : nombre de tours (1 à 5)
     distance_km: int = 10          # parcours en ligne : distance de la course (5 à 30 km), au plus le parcours (lot GP14)
     chaos: str = "normal"          # force et fréquence des objets : soft (× 0,7), normal, wild (× 1,3)
@@ -394,7 +398,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("ride", "traffic_bench_s"): (0, 600),
     ("survivor", "opponents"): (2, 11),         # lot DS8 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
     ("survivor", "spacing_km"): (1, 3),
-    ("grandprix", "opponents"): (2, 4),         # lot GP2 ; 2 à 11 avec le lot GP10
+    ("grandprix", "opponents"): (2, 11),        # lot GP10 : le peloton du lot PL1 (bots.MAX_CONSTANT_BOTS)
     ("grandprix", "laps"): (1, 5),
     ("grandprix", "distance_km"): (5, 30),
     ("grandprix", "box_every_m"): (500, 3000),
@@ -451,6 +455,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("survivor", "after_out"): ("ride", "end"),
     ("coach", "objectif"): ("endurance", "courses", "grimpeur"),
     ("grandprix", "chaos"): ("soft", "normal", "wild"),
+    ("bots", "objective"): ("recovery", "endurance", "tempo", "threshold", "max"),   # bot_effort.OBJECTIVES
 }
 
 
@@ -462,7 +467,7 @@ PROFILE_KEYS: tuple[tuple[str, str], ...] = (
     ("trainer", "difficulty_pct"),
     ("gearing", "start_gear"),
     ("powerups", "mode"),
-    ("bots", "level_pct"),
+    ("bots", "level_pct"), ("bots", "objective"),
     ("gravel", "mode"),
     ("ride", "auto_draft"), ("ride", "vehicle_draft"),
     ("depart", "mode"), ("depart", "cadence_rpm"), ("depart", "duree_s"),

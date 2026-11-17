@@ -89,6 +89,9 @@ SETTINGS: tuple[Setting, ...] = (
                  "avec Enclume, Aspiration +, Échappée et Rouleau, tirés selon le terrain devant. "
                  "Z lance le bonus en réserve ; refusé en ERG."),
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
+    Setting("bots.objective", "Objectif des bots", "ride",   # lot BT1
+            help="Part de l'effort tenable sur la durée de la course que visent les bots : Tempo, une course "
+                 "qu'on peut gagner sans se mettre dans le rouge. Au vélodrome, l'objectif suit l'épreuve."),
     # Option « gravel » (lot U16, partie gravel) : coupée par défaut, roulement du core et rendu de l'engine
     Setting("gravel.mode", "Gravel", "ride",
             help="Coupé : bitume partout. Chemins réels : seules les portions non revêtues du parcours. "
