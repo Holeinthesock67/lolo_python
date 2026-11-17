@@ -1,0 +1,17 @@
+15:02:36 empreinte avant 4e82d943962d8e8ad22b331ade244277
+15:02:36 tête c40b044e5
+15:03:16 ml1 low
+15:07:17 fin rc=1
+15:07:17 lignes perf : 15
+15:07:17 sonde rc=1
+15:07:37 ml1 medium
+15:11:39 fin rc=1
+15:11:39 lignes perf : 15
+15:11:39 sonde rc=1
+15:11:59 ml1 high
+15:16:02 fin rc=1
+15:16:02 lignes perf : 15
+15:16:02 sonde rc=1
+15:16:24 empreinte après 4e82d943962d8e8ad22b331ade244277
+15:16:24 clone 214ad0b2b
+15:16:24 FIN
