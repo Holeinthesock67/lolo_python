@@ -1,0 +1,17 @@
+23:36:51 empreinte avant 50c8bec07ac24d03a30225630c5c9dba
+23:36:51 tête 0a2960f42
+23:37:31 banc sud low (~/mesures-2026-11-01-auto/rDB3bA/routes/demo-biomes-sud.world)
+23:54:16 fin rc=1
+23:54:16 banc sud medium (~/mesures-2026-11-01-auto/rDB3bA/routes/demo-biomes-sud.world)
+00:11:02 fin rc=1
+00:11:02 banc sud high (~/mesures-2026-11-01-auto/rDB3bA/routes/demo-biomes-sud.world)
+00:27:47 fin rc=0
+00:27:47 banc nord low (~/mesures-2026-11-01-auto/rDB3bA/routes/demo-biomes-nord.world)
+00:44:33 fin rc=1
+00:44:33 banc nord medium (~/mesures-2026-11-01-auto/rDB3bA/routes/demo-biomes-nord.world)
+01:01:19 fin rc=1
+01:01:19 banc nord high (~/mesures-2026-11-01-auto/rDB3bA/routes/demo-biomes-nord.world)
+01:18:04 fin rc=1
+01:18:06 empreinte après 50c8bec07ac24d03a30225630c5c9dba
+01:18:06 clone 214ad0b2b
+01:18:06 FIN

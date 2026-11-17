@@ -1,0 +1,67 @@
+t_s;birds;animals;vehicles;distant_vehicles;cyclists;aircraft;boats;sons
+35.0;0;0;0;0;0;0;0;
+50.0;2;80;0;0;0;0;0;
+65.0;2;80;0;0;0;0;0;
+80.0;2;80;0;0;1;0;0;voice_allez=1
+95.0;2;80;0;0;1;1;0;airliner_rumble=1 voice_allez=1
+110.0;2;80;0;0;2;1;0;airliner_rumble=1 voice_allez=1
+125.0;2;80;0;0;3;1;0;airliner_rumble=1 voice_allez=1
+140.0;2;80;0;0;3;2;0;airliner_rumble=2 voice_allez=1
+155.0;2;80;0;0;2;2;0;airliner_rumble=2 voice_allez=1
+170.0;2;80;0;0;3;2;0;airliner_rumble=2 voice_allez=2
+185.0;2;80;0;0;1;2;0;airliner_rumble=2 voice_allez=2
+200.0;2;80;1;0;2;2;0;airliner_rumble=2 vehicle_pass=1 voice_allez=2
+215.0;2;80;1;0;1;2;0;airliner_rumble=2 vehicle_pass=1 voice_allez=2
+230.0;12;80;1;0;1;2;0;airliner_rumble=2 vehicle_pass=1 voice_allez=2
+245.0;12;80;1;0;1;2;0;airliner_rumble=2 vehicle_pass=1 voice_allez=2
+260.0;12;80;1;0;1;2;0;airliner_rumble=2 vehicle_pass=1 voice_allez=2
+275.0;12;80;1;0;3;2;0;airliner_rumble=2 vehicle_pass=1 voice_allez=2
+290.0;12;80;1;0;3;2;0;airliner_rumble=2 vehicle_pass=1 voice_allez=2
+305.0;12;80;2;0;4;2;0;airliner_rumble=2 vehicle_pass=2 voice_allez=2
+320.0;18;80;1;0;4;2;0;airliner_rumble=2 vehicle_pass=2 voice_allez=2
+335.0;18;80;1;0;4;2;0;airliner_rumble=2 vehicle_pass=2 voice_allez=2
+350.0;18;80;1;0;4;3;0;airliner_rumble=2 paramotor_buzz=1 vehicle_pass=2 voice_allez=2
+365.0;18;80;1;0;4;3;0;airliner_rumble=2 paramotor_buzz=1 vehicle_pass=2 voice_allez=2
+380.0;18;80;1;0;4;3;0;airliner_rumble=2 paramotor_buzz=1 vehicle_pass=2 voice_allez=2
+395.0;18;80;1;0;4;3;0;airliner_rumble=2 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=2
+410.0;18;80;1;0;4;4;0;airliner_rumble=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=2
+425.0;18;80;1;0;5;4;0;airliner_rumble=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=2
+440.0;18;80;1;0;5;5;0;airliner_rumble=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=2
+455.0;18;80;1;0;5;4;0;airliner_rumble=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=2
+470.0;18;80;1;0;5;4;0;airliner_rumble=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=2
+485.0;18;80;1;0;5;4;0;airliner_rumble=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=2
+500.0;18;80;1;0;5;3;0;airliner_rumble=3 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=2
+515.0;18;80;1;0;5;2;0;airliner_rumble=3 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=2
+530.0;18;80;1;0;5;2;0;airliner_rumble=3 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=2
+545.0;18;80;1;0;6;2;0;airliner_rumble=3 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=2
+560.0;18;80;1;0;6;2;0;airliner_rumble=3 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+575.0;18;80;1;0;6;2;0;airliner_rumble=3 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+590.0;18;80;1;0;10;2;0;airliner_rumble=3 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+605.0;18;80;1;0;10;2;0;airliner_rumble=3 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+620.0;18;80;1;0;10;2;0;airliner_rumble=3 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+635.0;18;80;1;0;13;1;0;airliner_rumble=3 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+650.0;18;80;0;0;13;1;0;airliner_rumble=3 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+665.0;18;76;0;0;13;1;0;airliner_rumble=3 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+680.0;18;76;0;0;13;1;0;airliner_rumble=3 crowd_cheer=1 dog_bark=1 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+695.0;18;76;0;0;12;1;0;airliner_rumble=3 crowd_cheer=1 dog_bark=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+710.0;18;76;0;0;13;1;0;airliner_rumble=3 crowd_cheer=1 dog_bark=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+725.0;18;76;0;0;12;1;0;airliner_rumble=3 crowd_cheer=1 dog_bark=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+740.0;18;76;0;0;12;1;0;airliner_rumble=3 crowd_cheer=1 dog_bark=2 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+755.0;18;72;0;0;12;1;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+770.0;18;72;0;0;12;1;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=1 vehicle_pass=2 voice_allez=3
+785.0;18;72;0;0;13;1;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 vehicle_pass=2 voice_allez=3
+800.0;18;72;0;0;10;0;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 vehicle_pass=2 voice_allez=3
+815.0;18;72;0;0;10;0;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 vehicle_pass=2 voice_allez=3
+830.0;18;72;0;0;10;0;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 vehicle_pass=2 voice_allez=3
+845.0;18;56;0;0;12;0;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 vehicle_pass=2 voice_allez=3
+860.0;18;56;0;0;12;0;0;airliner_rumble=3 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 vehicle_pass=2 voice_allez=3
+875.0;18;56;0;0;13;1;0;airliner_rumble=4 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 vehicle_pass=2 voice_allez=3
+890.0;18;56;0;0;13;1;0;airliner_rumble=4 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 vehicle_pass=2 voice_allez=3
+905.0;18;56;0;0;13;2;0;airliner_rumble=5 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 vehicle_pass=2 voice_allez=3
+920.0;18;56;0;0;10;2;0;airliner_rumble=5 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 vehicle_pass=2 voice_allez=3
+935.0;18;39;0;0;12;2;0;airliner_rumble=5 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 vehicle_pass=2 voice_allez=3
+950.0;18;39;0;0;12;2;0;airliner_rumble=5 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=1 raptor_cry=2 vehicle_pass=2 voice_allez=3
+965.0;18;39;0;0;13;4;0;airliner_rumble=5 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=3 raptor_cry=3 vehicle_pass=2 voice_allez=3
+980.0;18;39;0;0;13;4;0;airliner_rumble=5 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=3 raptor_cry=3 vehicle_pass=2 voice_allez=3
+995.0;18;39;0;0;13;4;0;airliner_rumble=5 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=3 raptor_cry=3 vehicle_pass=2 voice_allez=3
+1001.6;18;39;1;0;13;4;0;airliner_rumble=5 crowd_cheer=1 dog_bark=3 helicopter_rotor=1 paramotor_buzz=3 raptor_cry=3 vehicle_pass=3 voice_allez=3
