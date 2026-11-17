@@ -845,6 +845,21 @@ func reset() -> void:
 	_open(HOME, false)
 
 
+## « Rejouer » de la fin de séance : même parcours, même mode et mêmes choix (bots, fantôme, épreuve, réglages
+## du mode, séance préparée) ; l'écran Prêt, l'accueil derrière lui (Retour y ramène). Sans parcours : l'accueil.
+func replay() -> void:
+	_stack.clear()
+	_focus_stack.clear()
+	_pending = {}
+	bot_choices = last_bots.duplicate()
+	ghost = last_ghost
+	peloton = last_peloton
+	_refresh_home()
+	_open(HOME, false)
+	if world_id != "":
+		_open(READY)
+
+
 ## Remplace les éléments d'une liste (parcours ou entraînements) : [{id, label, enabled, detail}].
 ## Un élément sans `enabled` est actif ; un parcours « à compiler » ou un entraînement invalide arrive
 ## avec enabled = false et son `detail`. Liste vide : un élément désactivé « Aucun … ».
@@ -1065,6 +1080,8 @@ func _back() -> Dictionary:
 			return _resume_action()   # retour depuis la pause = Reprendre
 		HOME:
 			return {}
+		"summary":   # fin de séance : retour = « Menu principal » (15 novembre : Y ne faisait rien, joueur bloqué)
+			return {"action": "item", "screen": "summary", "id": "new_session"}
 	if not _stack.is_empty():
 		_screen = _stack.pop_back()
 		var previous: int = _focus_stack.pop_back()

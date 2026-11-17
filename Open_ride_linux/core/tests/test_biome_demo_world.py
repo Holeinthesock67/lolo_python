@@ -8,7 +8,8 @@ de recette aux noms techniques, démonstrations d'avant le lot O37 remplacées �
 de démonstration (boucle fermée de 3 km) et une course du Grand Prix des objets en tours dessus. Lot SM1 : le récif
 sous la mer (boucle de 8 km, biome `reef`), sans circulation ni cyclistes du décor au core. Lot DB1 : le tour des
 nouveaux paysages (sept blocs, variante régionale par bloc) remplace au jeu de base le tour des six paysages, la route
-de la côte et la montée alpine, gardés en recette et jamais enlevés chez un joueur.
+de la côte et la montée alpine, gardés en recette et jamais enlevés chez un joueur. Lot DJ1 : la route des Érables,
+démonstration du biome Japon au jeu de base.
 """
 
 from __future__ import annotations
@@ -75,7 +76,8 @@ def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
     """Jeu de base : le tour des nouveaux paysages, le circuit, le récif et le volcan (lots O38, SM1, DB1 et DB2) ;
     recette : en plus les parcours sortis du jeu de base (tour gravel le 9 novembre ; tour, côte et alpin au lot DB1)."""
     names = sorted(p.name for p in demo_set.glob("*.world"))
-    assert names == ["demo-biomes-paysages.world", "demo-circuit.world", "demo-recif.world", "demo-volcan.world"]
+    assert names == ["demo-biomes-paysages.world", "demo-circuit.world", "demo-japon.world", "demo-recif.world",
+                     "demo-volcan.world"]
     retired = ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-gravel.world",
                "demo-biomes-tour.world"]
     assert sorted(p.name for p in recette_set.glob("*.world")) == sorted(names + retired)
@@ -144,8 +146,9 @@ def test_integer_degree_coordinates_in_repo(mbw) -> None:
 def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> None:
     """Lot O37 : nom de parcours au menu, aucun « Fictif » ni nom technique dans les fichiers livrés."""
     titles = {name: title for name, title, *_, base in mbw.DEMO_SET if base}
-    assert titles == {"demo-biomes-paysages": "Tour des nouveaux paysages", "demo-circuit": "Circuit des Prés",
-                      "demo-recif": "Récif des tortues", "demo-volcan": "Volcan en flammes"}
+    assert titles == {"demo-biomes-paysages": "Tour des nouveaux paysages", "demo-japon": "Route des Érables",
+                      "demo-circuit": "Circuit des Prés", "demo-recif": "Récif des tortues",
+                      "demo-volcan": "Volcan en flammes"}
     assert mbw.RETIRED_DEMOS == ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
     assert not any((demo_set / f"{n}.world").exists() for n in mbw.RETIRED_DEMOS)
     for name, title in titles.items():
@@ -204,7 +207,7 @@ def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path, rece
         kept[n] = f.read_bytes()
     assert biome_demo_outdated(routes / "demo-circuit.world") and not biome_demo_outdated(mine)
     written, note = contents.install_biome_demos(routes)
-    assert note == "" and sorted(written) == ["demo-circuit", "demo-recif", "demo-volcan"]
+    assert note == "" and sorted(written) == ["demo-circuit", "demo-japon", "demo-recif", "demo-volcan"]
     assert not gravel.exists()
     assert _json(old)["name"] == "Circuit des Prés"
     assert _json(mine / "manifest.json")["name"] == "Mes paysages"
@@ -234,7 +237,8 @@ def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert "demo-biomes-paysages (Tour des nouveaux paysages) : 14.2 km" in out and "demo-biomes-gravel" not in out
     assert "demo-circuit (Circuit des Prés) : " in out and "demo-recif (Récif des tortues) : " in out
     assert "demo-volcan (Volcan en flammes) : 8.0 km" in out and "demo-biomes-tour" not in out
-    assert len(list(tmp_path.glob("*.world"))) == 4
+    assert "demo-japon (Route des Érables) : 6.1 km" in out
+    assert len(list(tmp_path.glob("*.world"))) == 5
 
 
 def test_circuit_loop(demo_set: Path, mbw) -> None:
@@ -423,6 +427,34 @@ def test_decor_cyclists_never_touch(demo_set: Path, recette_set: Path) -> None:
                         assert not (abs(a["s"] - b["s"]) < 1.7 and abs(a["lane_m"] - b["lane_m"]) < 0.6), \
                             (world.name, kmh, round(s), a["id"], b["id"])
                 s += v * dt
+
+
+def test_japon_demo(demo_set: Path, mbw) -> None:
+    """Lot DJ1 : la route des Érables, 6 km dans le seul biome `japan` (trois blocs), sol et toits d'une vraie
+    route japonaise sur chaque tuile, montée douce (1 à 5 %, 150 à 260 m) jusqu'au « Col des Cèdres », villages et
+    belvédères nommés, aucune mer ; installée sur un jeu neuf comme les autres démonstrations du jeu de base."""
+    from openride_compiler.regional import variant_for
+
+    assert mbw.BIOME_VARIANTS["japan"] == variant_for(35.0, 138.0, {"japan": 100.0})   # zones japon_* du compilateur
+    world = demo_set / "demo-japon.world"
+    manifest = _json(world / "manifest.json")
+    assert manifest["name"] == "Route des Érables"
+    assert manifest["layers"]["biome"]["shares"] == {"japan": 100.0}
+    assert manifest["layers"]["biome"]["default_biome"] == "japan"
+    assert "coast" not in manifest["layers"]
+    tiles = [_json(f) for level in ("near", "far") for f in (world / "biome" / level).glob("tile_*.json")]
+    assert tiles and all(t["variant"] == mbw.BIOME_VARIANTS["japan"] for t in tiles)
+    route = _json(world / "route.json")
+    assert route["length_m"] == pytest.approx(3 * mbw.BLOCK_M, rel=0.02)
+    assert 0.5 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 5.5
+    alt = route["alt_m"]
+    assert 150.0 <= alt[-1] - alt[0] <= 260.0 and max(alt) == pytest.approx(alt[-1], abs=2.0)
+    pois = "".join(f.read_text(encoding="utf-8") for f in (world / "poi").glob("*.json"))
+    for name in (*mbw.PLACE_NAMES["japon"], *mbw.PLACE_NAMES["japon_vue"]):
+        assert name in pois, name
+    assert mbw.Plan(("japan",) * 3, False, False).place("japon_vue", 2) == "Col des Cèdres"
+    assert _json(demo_set / "demo-japon.json")["generated"]["buildings"] >= 30
+    assert "demo-japon" in mbw.GAME_DEMOS
 
 
 def test_recif_loop_under_the_sea(demo_set: Path, mbw) -> None:

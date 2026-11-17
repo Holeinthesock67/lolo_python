@@ -5,6 +5,10 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 
 ## Non publié
 
+### Une démonstration du Japon : la « Route des Érables » (lot DJ1)
+- Nouveau parcours de démonstration livré avec le jeu : 6 km de montée douce (1 à 5 %, 200 m) dans le biome Japon, entre forêts de cèdres et d'érables, trois villages aux toits de tuiles kawara, torii et lanternes, jusqu'au belvédère du « Col des Cèdres ». Trace, relief et décor sont entièrement inventés.
+- Il s'ajoute à la prochaine installation des contenus de départ, sans rien réécrire ; Hakone et le Fuji restent dans le pack Cols célèbres.
+
 ### Bots réglés sur la durée de la course et l'objectif (lot BT1)
 - Les bots visent ce qu'un cycliste tient sur la durée de la course : 120 % de la FTP sur 5 min, 100 % sur 1 h, 88 % sur 2 h, puis une part selon l'objectif.
 - Nouveau réglage « Objectif des bots » (récupération 55 %, endurance 65 %, tempo 80 % par défaut, seuil 92 %, à fond 100 %), commun à tous les modes et gardé d'une séance à l'autre ; aussi sur les écrans Prêt du Dernier survivant et du Grand Prix. « Niveau des bots » reste un réglage fin.
