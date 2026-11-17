@@ -1,0 +1,23 @@
+== w23_mer (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 12.5 s)
+[OK] choisir « open_world » : écran « home », focus « open_world »
+[OK] écran monde ouvert globe : « OpenRide »
+[OK] écran monde ouvert search (contient=['Biarritz']) : « OpenRide »
+[OK] écran monde ouvert map : « OpenRide »
+[OK] écran monde ouvert setup (contient=['Cap :']) : « OpenRide »
+[OK] écran monde ouvert False : « OpenRide »
+[OK] journal du core : « Monde ouvert prêt » : Monde ouvert prêt
+[OK] journal du core : « mer \( » : mer (
+[OK] journal du core : « Commande start  » : Commande start 
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] qualité réellement appliquée à l'arrêt : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+w23_mer                  clavier  OK             267 s
+Rapport : ~/mesures-2026-11-01-auto/r907/high/banc/rapport.html
+OK
