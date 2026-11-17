@@ -21,7 +21,7 @@ import signal
 import threading
 import time
 import zlib
-from collections import deque
+from collections import Counter, deque
 from dataclasses import replace
 from datetime import date, datetime
 from pathlib import Path
@@ -61,6 +61,7 @@ from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import bot_tactics
 from . import draft as draft_mod
 from . import road_cyclists as road_cyclists_mod
+from . import road_space as road_space_mod
 from . import traffic as traffic_mod
 from .wind import CALM, WindModel, apparent_yaw_deg, cross_component, grade_offset_pct, head_component, wind_frame
 from . import survivor as survivor_mod
@@ -364,6 +365,7 @@ class CoreSession:
         self._lane = self._rider_lane()   # écart à l'axe du cycliste (lot AS2)
         self.traffic: traffic_mod.Traffic | None = None   # circulation de la route (lot AS6)
         self.road_cyclists: road_cyclists_mod.RoadCyclists | None = None   # cyclistes du décor (lot AS7)
+        self.road_space_counts: Counter[str] = Counter()   # lot AS11 : places corrigées par le registre de la chaussée
         self._surface_widths: dict[str, float] | None = None   # largeurs des chemins du thème (option gravel)
         self._world_src: tuple[Route, Path, dict] | None = None   # route, dossier et manifeste du .world choisi
         self._suction = 0.0           # aspiration d'un véhicule qui double (lot AS6)
@@ -3927,6 +3929,7 @@ class CoreSession:
         near_m: list[traffic_mod.Vehicle] = []        # mêmes listes dans le repère de la circulation (lot N23)
         riders_m: list[road_cyclists_mod.Rider] = []
         rider_u = self.physics.s
+        cyclists: road_cyclists_mod.RoadCyclists | None = None
         if traffic is not None:
             # Lot N23 : à rebours, circulation et cyclistes du décor roulent sur le parcours retourné (u = L - s),
             # où le cycliste avance encore vers les u croissants, sur la droite de son sens de marche ; les bots,
@@ -4002,6 +4005,8 @@ class CoreSession:
             draft_mod.update_lanes(back, dt, length, is_loop, wind_on(traffic.route) if ws else None,
                                    (lambda u: half(traffic.model_s(u))) if half else None)
         escort_unblock(blocks)
+        # Lot AS11 : une seule règle pour tous les usagers de la chaussée, dans les deux voies, après les intentions
+        self._road_space_step(route, traffic, cyclists if traffic is not None else None)
 
         cross = cross_at(heading_deg)
         rider = None if reverse else \
@@ -4031,6 +4036,88 @@ class CoreSession:
             base = self._bot_cda.get(id(bot))
             if base is not None:
                 bot.params.cda_m2 = base * (1.0 - getattr(bot, "push", 0.0))
+
+    def _road_space_step(self, route: Route | None, traffic: traffic_mod.Traffic | None,
+                         cyclists: road_cyclists_mod.RoadCyclists | None) -> None:
+        """Registre de la chaussée (lot AS11) : cycliste, voitures d'équipe, bots, véhicules et groupes de cyclistes du
+        décor, dans les deux voies et dans le repère de la circulation (u = L − s à rebours, lot N23), placés par
+        `road_space.resolve` ; les places corrigées sont écrites dans les modèles et comptées (`road_space_counts`)."""
+        d = self.physics.direction
+        model = traffic.model_s if traffic is not None else (lambda x: x)
+        length = route.length_m if route else None
+        is_loop = bool(route and route.is_loop)
+        bodies: list[road_space_mod.Body] = []
+        owners: dict[str, Any] = {}
+        hw_bike = road_space_mod.BIKE_HALF_WIDTH_M
+        lo, hi = draft_mod.PASS_LANE_MIN_M, draft_mod.LANE_MAX_M
+        bike_lo, bike_hi = (lo, hi) if d > 0 else (-hi, -lo)
+        bodies.append(road_space_mod.Body("me", "rider", model(self.physics.s), self._lane.m, self.physics.v, 1,
+                                          move_s=False, group=GP_ME, name="cycliste"))
+        gp = self.grandprix
+        racers = list(gp.racers) if gp is not None else []
+        for e in self._escorts:
+            idx = int(e.id[2:]) if e.id[2:].isdigit() else -1
+            grp = racers[idx] if 0 <= idx < len(racers) else e.id
+            hl, hw = road_space_mod.gabarit(e.kind)
+            bodies.append(road_space_mod.Body(e.id, "escort", model(e.s), d * e.lateral, e.speed_mps, d, hl, hw,
+                                              move_s=False, group=grp, name=e.kind))
+        for b in self.bots:
+            lane = getattr(b, "lane", None)
+            if lane is None or getattr(b, "kind", "constant") != "constant":
+                continue   # fantôme : il passe à travers (comme pour le placement)
+            if length is not None and not is_loop and b.s >= length:
+                continue   # arrivé : arrêté sur la ligne, hors du jeu (lot PL1)
+            body = road_space_mod.Body(f"bot:{b.id}", "bot", model(b.s), d * lane.m, b.v, d, lat_min=bike_lo,
+                                       lat_max=bike_hi, move_s=False, group=b.id, name=f"bot {b.id}")
+            bodies.append(body)
+            owners[body.id] = lane
+        if traffic is not None:
+            for v in traffic.vehicles:
+                hl, hw = road_space_mod.gabarit(v.kind)
+                edge = road_space_mod.ROAD_HALF_M - hw
+                body = road_space_mod.Body(f"v:{v.id}", "vehicle", v.s, v.lateral, v.speed_mps, v.dir, hl, hw,
+                                           -edge, edge, name=v.kind)
+                bodies.append(body)
+                owners[body.id] = v
+        if cyclists is not None:
+            for g in cyclists.groups:
+                if not g.members:
+                    continue
+                ss = [g.s - g.dir * m.dl for m in g.members]
+                ls = [m.lateral for m in g.members]
+                mid_l = 0.5 * (min(ls) + max(ls))
+                half_l = 0.5 * (max(ls) - min(ls))
+                body = road_space_mod.Body(
+                    f"g:{g.id}", "cyclist", 0.5 * (min(ss) + max(ss)), mid_l,
+                    road_cyclists_mod._step_mps(g), g.dir, 0.5 * (max(ss) - min(ss)) + road_space_mod.BIKE_HALF_LEN_M,
+                    half_l + hw_bike, -road_space_mod.ROAD_HALF_M + half_l + hw_bike,
+                    road_space_mod.ROAD_HALF_M - half_l - hw_bike, name=g.case)
+                bodies.append(body)
+                owners[body.id] = g
+        if len(bodies) < 2:
+            return
+        rep = road_space_mod.resolve(bodies)
+        for c in rep.corrections:
+            key = f"{c.role}/{c.against_role}" if c.resolved else f"{c.role}/{c.against_role} (coincé)"
+            self.road_space_counts[key] += 1
+            if not c.resolved:
+                continue
+            owner = owners.get(c.id)
+            if isinstance(owner, draft_mod.Lane):
+                owner.m += d * c.dlat
+                owner.rate = 0.0
+            elif isinstance(owner, traffic_mod.Vehicle):
+                owner.s += c.ds
+                owner.lateral += c.dlat
+                owner.speed_mps = min(owner.speed_mps, c.v)
+            elif isinstance(owner, road_cyclists_mod.Group):
+                owner.s += c.ds
+                for m in owner.members:
+                    m.lateral += c.dlat
+                    m.lat_v = 0.0
+                if c.v < road_cyclists_mod._step_mps(owner):
+                    owner.speed_mps = c.v
+                    owner.step_mps = c.v
 
     def _fill_vehicles_frame(self) -> None:
         """Liste `vehicles` une trame sur trois (10 Hz, lot AS6) : au plus 4 véhicules à moins de 150 m, les
