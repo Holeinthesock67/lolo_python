@@ -1,0 +1,1 @@
+demo_biomes : ~/mesures-2026-11-01-auto/rDB3cA/routes/biomes-sud.world (mediterranean 16.7 %, steppe 16.6 %, sand_desert 16.6 %, savanna 16.6 %, jungle 16.7 %, wetland 16.8 %)

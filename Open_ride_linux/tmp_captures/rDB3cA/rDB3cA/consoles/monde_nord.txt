@@ -1,0 +1,1 @@
+demo_biomes : ~/mesures-2026-11-01-auto/rDB3cA/routes/biomes-nord.world (boreal_forest 40.1 %, tundra 40.0 %, polar 20.0 %)
