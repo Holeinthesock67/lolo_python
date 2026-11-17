@@ -1,0 +1,23 @@
+11:39:11 empreinte avant 2651c623ee43e76d6954f91d43a74198
+11:39:11 tête ce64eeebb
+11:39:21 pytest compiler
+11:44:12 fin rc=0
+11:44:12 tests engine
+12:10:27 fin rc=0
+12:10:28 monde pont rc=0
+12:10:28 monde : ~/mesures-2026-11-01-auto/scen/pont/pont-essai.world
+12:10:58 pont low_branche
+12:11:48 fin rc=0
+12:11:48 pont medium_branche
+12:12:37 fin rc=1
+12:12:37 pont high_branche
+12:13:26 fin rc=1
+12:13:26 ea4_pont low_branche
+12:30:42 fin rc=1
+12:31:43 ea4_pont medium_branche
+12:40:16 fin rc=1
+12:41:16 ea4_pont high_branche
+12:49:48 fin rc=1
+12:50:50 empreinte après 959e931b1fbeba73e7633b110be9a041
+12:50:50 clone 214ad0b2b
+12:50:50 FIN

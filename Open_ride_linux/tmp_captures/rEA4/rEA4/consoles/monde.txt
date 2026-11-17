@@ -1,0 +1,12 @@
+altitude de la route : synthetic
+requête Overpass (0d2a05c044…)…
+ponts : 2 portion(s), 62 point(s) du profil en ligne droite
+terrain near : 10 tuile(s) de 1000 m, maille 10 m
+terrain near : 628 sommet(s) abaissé(s) sous la chaussée (épingles, croisements)
+terrain far : 10 tuile(s) de 5000 m, maille 50 m
+requête Overpass (38f10b399c…)…
+requête Overpass (67bbae4d52…)…
+ponts : 2 (le plus long 400 m), 13 pile(s)
+surface : tout revêtu (colonne omise)
+~/mesures-2026-11-01-auto/scen/pont/pont-essai.world : 3.00 km, 301 points, type open, 16 point(s) limité(s) à ± 25 %, couches route,terrain,water,bridges (0.3 s)
+make_bridge_world : ~/mesures-2026-11-01-auto/scen/pont/pont-essai.world (2 pont(s), 13 pile(s), portions [[595.0, 615.0], [1305.0, 1705.0]])
