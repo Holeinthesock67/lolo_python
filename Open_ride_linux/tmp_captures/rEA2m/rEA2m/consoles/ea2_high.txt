@@ -1,0 +1,27 @@
+== ea2_lac_loin (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.4 s
+[OK] écran home : « OpenRide » (engine muet 12.0 s)
+[OK] choisir « open_world » : écran « home », focus « open_world »
+[OK] écran monde ouvert globe : « OpenRide »
+[OK] écran monde ouvert search (contient=['Montmin']) : « OpenRide »
+[OK] écran monde ouvert map : « OpenRide »
+[OK] écran monde ouvert setup (contient=['Cap :']) : « OpenRide »
+[OK] écran monde ouvert False : « OpenRide » (engine muet 1.5 s)
+[OK] journal du core : « Monde ouvert prêt » : Monde ouvert prêt
+[ÉCHEC] écran home : menu caché (engine muet 3.0 s)
+[ÉCHEC] choisir « ride » : écran « home », focus « open_world »
+[ÉCHEC] écran ready : menu caché; écran « home »
+[ÉCHEC] choisir « start » : écran « home », focus « open_world »
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[ÉCHEC] journal du engine : « world_revision rev= » : absent après 120 s
+[ÉCHEC] passage interrompu après 5 échecs : étape 38 sur 38
+[OK] qualité réellement appliquée à l'arrêt : high appliquée (fin du journal) ; dernière ligne : high (demandée high, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+ea2_lac_loin             clavier  6 ÉCHEC(S)     563 s
+Rapport : ~/mesures-2026-11-01-auto/rEA2m/ea2_high/rapport.html
+1 passage(s) en échec sur 1
