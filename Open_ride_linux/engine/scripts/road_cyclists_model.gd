@@ -83,6 +83,10 @@ const LANE_FREE_M := 100.0
 const MIN_CENTRE_M := MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M
 const GROUP_CLEAR_M := 30.0
 const VEHICLE_CLEAR_M := 60.0         # pas d'apparition à moins de 60 m d'un véhicule de traffic_model.gd (lot P32)
+## Lot DB3 (banc rDB3) : un groupe ne double jamais un véhicule du même sens ; il se cale sur sa vitesse de
+## VEHICLE_FOLLOW_M derrière jusqu'à VEHICLE_ALONGSIDE_M à sa hauteur (comme road_cyclists.py du core).
+const VEHICLE_FOLLOW_M := 25.0
+const VEHICLE_ALONGSIDE_M := 8.0
 const SIDE_SPEED_MPS := 1.5           # écart latéral : vitesse au plus, ...
 const SIDE_ACCEL_MPS2 := 2.0          # ... accélération au plus (on s'écarte et on se rabat sans à-coup, essai du 7/11)
 const SIDE_TAU_S := 0.5               # ... approche de la place visée,
@@ -645,6 +649,7 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 		elif blocking or not faster:
 			spd_now = minf(spd_now, slowest - FALL_BACK_MPS)
 	spd_now = _yield_to_core(g, spd_now, rider_s, bots)
+	spd_now = _behind_vehicles(g, spd_now)
 	g["s"] = float(g["s"]) + float(dir) * spd_now * dt_s
 	g["step_mps"] = spd_now
 	var rel := float(g["s"]) - rider_s
@@ -686,6 +691,21 @@ func _move(g: Dictionary, rider_s: float, rider_v: float, dt_s: float, bots: Arr
 ## visée) ou qu'il n'est pas encore sorti de la ligne, il roule à la vitesse du groupe du core quand celui-ci est
 ## à moins de CATCH_M. Il se rabat ensuite sans se poser sur lui (`_side_blocked`). Les groupes d'en face gardent
 ## leurs écarts. Rend la vitesse du pas.
+## Vitesse bornée par celle d'un véhicule du même sens juste devant ou à sa hauteur (lot DB3) : un groupe ne double
+## jamais la circulation (traffic_model.gd), ni à droite ni à gauche.
+func _behind_vehicles(g: Dictionary, spd_now: float) -> float:
+	if traffic == null:
+		return spd_now
+	var dir := int(g["dir"])
+	for v in traffic.vehicles:
+		if (1 if int(v.get("dir", dir)) >= 0 else -1) != dir:
+			continue
+		var gap := (float(v.get("s", INF)) - float(g["s"])) * float(dir)
+		if gap > -VEHICLE_ALONGSIDE_M and gap < VEHICLE_FOLLOW_M:
+			spd_now = minf(spd_now, maxf(float(v.get("speed_mps", spd_now)), 0.0))
+	return spd_now
+
+
 func _yield_to_core(g: Dictionary, spd_now: float, rider_s: float, bots: Array) -> float:
 	# Lot AS10 : un groupe que le core a donné (sorti de la liste, `_to_decor`) roule aussi chez le core, qui le voit
 	# et le fait doubler à sa vraie place : il garde sa vitesse au lieu de rouler à celle du groupe du core qui le double
