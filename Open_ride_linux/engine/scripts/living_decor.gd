@@ -45,6 +45,7 @@ const WeatherParticles := preload("res://scripts/weather_particles.gd")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 const WindTurbines := preload("res://scripts/wind_turbines.gd")
 const Flags := preload("res://scripts/flags.gd")
+const Wrecks := preload("res://scripts/wrecks.gd")
 const WaterMesh := preload("res://scripts/water_mesh.gd")
 const TrafficModel := preload("res://scripts/traffic_model.gd")
 const TrafficRenderer := preload("res://scripts/traffic_renderer.gd")
@@ -65,6 +66,7 @@ const StreetLights := preload("res://scripts/street_lights.gd")
 const CrowdModel := preload("res://scripts/crowd_model.gd")
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const PassersbyModel := preload("res://scripts/passersby_model.gd")
+const AtmosphereModel := preload("res://scripts/atmosphere_model.gd")
 const BgTasks := preload("res://scripts/bg_tasks.gd")
 
 const FOG_PERIOD_S := 0.5
@@ -89,6 +91,7 @@ var particles: Node3D = null
 var fauna: Node3D = null
 var turbines: Node3D = null
 var flags: Node3D = null
+var wrecks: Node3D = null   # épaves des points `wreck` (lot SM2)
 var traffic = TrafficModel.new()
 var traffic_view: Node3D = null
 var road_traffic = RoadTrafficModel.new()
@@ -105,8 +108,10 @@ var street_lights: Node3D = null   # luminaires publics des villages (lot P35)
 var crowd_all_climbs := false       # --crowd=all (bancs, lot Y21) : spectateurs sur toutes les montées
 var crowd = CrowdModel.new()
 var crowd_view: Node3D = null
+var _crowds: Array = []              # [aller, retour] (lot N24) : `crowd` est celle du sens de marche
 var passersby = PassersbyModel.new()
 var passersby_view: Node3D = null
+var underwater := false             # parcours sous l'eau (lot SM1, AtmosphereModel.route_underwater)
 
 var climbs: Array = []
 var pois: Array = []
@@ -128,6 +133,8 @@ var _road_width_m := RoadBuilder.ROAD_WIDTH_M
 var _rider_lane_m := RoadBuilder.RIDER_LATERAL_M   # écart à l'axe du cycliste de la dernière trame (lot AS2)
 var _cam_s := 0.0                  # dernière abscisse du cycliste reçue par step (placements des tests, lot P32)
 var _rider_v := 0.0
+var _model_s := 0.0                # abscisse du cycliste dans le repère de la circulation (u = L - s à rebours, lot N23)
+var _dir := 1                      # sens de marche de la dernière trame (lot N23 : `dir` de l'état, -1 après un demi-tour)
 var _cam_lateral := 0.0            # écart de la caméra à l'axe, mesuré (positif à droite), pour les tests
 const CONTACT_M := 300.0
 ## Demi-longueur d'un vélo pour le compte des contacts : celle du core (draft.BIKE_LENGTH_M = 1,7 m d'un vélo à
@@ -175,17 +182,19 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 	props.set_preset(QualityPresets.applied_name(preset))
 	street_lights.set_preset(QualityPresets.applied_name(preset))
 	turbines.set_preset(QualityPresets.applied_name(preset))
-	traffic.set_budget(int(living.get("vehicles", 0)))
+	wrecks.set_preset(QualityPresets.applied_name(preset))
+	traffic.set_budget(0 if underwater else int(living.get("vehicles", 0)))
 	road_traffic.set_budget(int(living.get("distant_vehicles", 0)))
 	road_traffic_view.set_budget(int(living.get("distant_vehicles", 0)))
-	cyclists.set_budget(int(living.get("cyclists", 0)))
+	cyclists.set_budget(0 if underwater else int(living.get("cyclists", 0)))
 	cyclists_view.set_quality(QualityPresets.applied_name(preset))
-	sky.set_budget(int(living.get("aircraft", 0)))
+	sky.set_budget(0 if underwater else int(living.get("aircraft", 0)))
 	boats.set_budget(int(living.get("boats", 0)))
 	_theme_sun_deg = float(ThemeRenderParams.sky_params(theme)["sun_elevation_deg"])
 	_sun_elevation_deg = _theme_sun_deg
 	turbines.visible = enabled
 	flags.visible = enabled
+	wrecks.visible = enabled
 	if world_streamer != null:
 		if world_streamer.has_method("set_road_markings"):
 			world_streamer.set_road_markings(enabled)
@@ -214,6 +223,9 @@ func _build_nodes() -> void:
 	flags = Flags.new()
 	flags.name = "Flags"
 	add_child(flags)
+	wrecks = Wrecks.new()
+	wrecks.name = "Wrecks"
+	add_child(wrecks)
 	traffic_view = TrafficRenderer.new()
 	traffic_view.name = "Traffic"
 	add_child(traffic_view)
@@ -274,6 +286,7 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 	_wait_job()
 	_generation += 1
 	_route = route
+	underwater = false
 	_road_width_m = road_width_m
 	props.road_width_m = road_width_m
 	street_lights.road_width_m = road_width_m
@@ -285,9 +298,11 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 	cyclists.configure(null, [], [], 0)
 	sky.configure(null, theme, [], 0)
 	crowd.configure(null, [])
+	_crowds = []
 	passersby.configure(null)
 	turbines.set_points([])
 	flags.set_points([])
+	wrecks.set_points([])
 	for k in _loaded_chunks.keys():
 		props.remove_chunk(k)
 	street_lights.clear()
@@ -304,6 +319,9 @@ func set_route(route, world_dir: String = "", road_width_m: float = RoadBuilder.
 		"road_width_m": road_width_m, "crowd_all_climbs": crowd_all_climbs, "result": {}}
 	var bm = _active_biome_model()   # torii et lanternes des montées du biome japan (lot JP5) ; tuiles lues sous verrou
 	job["biome_at"] = Callable(bm, "dominant_at") if bm != null else Callable()
+	# Parcours sous l'eau (lot SM1) : ni circulation, ni cyclistes du décor, ni spectateurs, passants ou objets du bord
+	underwater = AtmosphereModel.route_underwater(bm, route) >= AtmosphereModel.UNDERWATER_ROUTE
+	job["underwater"] = underwater
 	job["task"] = BgTasks.add(_prepare_job.bind(job), false, "décor du parcours")
 	_job = job
 
@@ -333,19 +351,26 @@ static func _prepare_job(job: Dictionary) -> void:
 				all_pois.append_array(p.get("items", []))
 	var road_w: float = job["road_width_m"]
 	var found: Array = climbs_of(r)
+	var uw := bool(job.get("underwater", false))   # sous l'eau (lot SM1) : ni spectateurs ni passants
+	# Lot N24 : montées du retour (après un demi-tour), panneaux d'approche et chiffres peints dans les deux sens
+	var back: Array = ClimbDetector.detect_back(r)
+	var people: Array = [] if uw else found
 	var cm = CrowdModel.new()
-	cm.configure(r, found, water, bool(job["crowd_all_climbs"]), 0, road_w)
+	cm.configure(r, people, water, bool(job["crowd_all_climbs"]) and not uw, 0, road_w)
+	var cm_back = CrowdModel.new()   # spectateurs des montées du retour, affichés après un demi-tour (N24)
+	cm_back.configure(r, [] if uw else back, water, bool(job["crowd_all_climbs"]) and not uw, 0, road_w)
 	var pm = PassersbyModel.new()
-	pm.configure(r, buildings, water, 0, road_w, PassersbyModel.crowd_zones(found, bool(job["crowd_all_climbs"])))
+	# Sous l'eau, aucun passant : ni au village ni en campagne (14/11 : un promeneur restait au bord du récif)
+	pm.configure(null if uw else r, buildings, water, 0, road_w, PassersbyModel.crowd_zones(people, bool(job["crowd_all_climbs"]) and not uw))
 	var marks := {}
-	for m in RoadsideModel.paint_marks(found):
+	for m in RoadsideModel.paint_marks(found + back):
 		var k := int(floor(float(m["s"]) / CHUNK_M))
 		if not marks.has(k):
 			marks[k] = []
 		marks[k].append(m)
 	job["result"] = {
-		"climbs": found, "pois": all_pois, "crowd": cm, "passersby": pm, "marks": marks,
-		"items": RoadsideModel.items(r, found, all_pois, water, road_w, job["biome_at"]),
+		"climbs": found, "climbs_back": back, "pois": all_pois, "crowd": cm, "crowd_back": cm_back, "passersby": pm, "marks": marks,
+		"items": [] if uw else RoadsideModel.items(r, found + back, all_pois, water, road_w, job["biome_at"]),
 	}
 
 
@@ -380,11 +405,12 @@ func _poll_job(wait: bool = false) -> void:
 	climbs = res["climbs"]
 	pois = res["pois"]
 	roadside_items = res["items"]
-	crowd = res["crowd"]
+	_crowds = [res["crowd"], res["crowd_back"]]
+	crowd = _crowds[1] if _dir < 0 else _crowds[0]
 	crowd_view.setup(crowd, sound_player)
 	passersby = res["passersby"]
 	passersby_view.setup_passersby(passersby, sound_player)
-	traffic.configure(_route, theme, pois, int(living.get("vehicles", 0)))
+	traffic.configure(_route, theme, pois, 0 if underwater else int(living.get("vehicles", 0)))
 	# Option gravel : seuls tracteurs et motos sur les chemins (surface effective de world_streamer)
 	traffic.unpaved_at = Callable()
 	if world_streamer != null and world_streamer.has_method("surface_at"):
@@ -393,11 +419,15 @@ func _poll_job(wait: bool = false) -> void:
 	var half_at := Callable()
 	if world_streamer != null and world_streamer.has_method("rideable_half"):
 		half_at = func(s: float) -> float: return world_streamer.rideable_half(s, _road_width_m)
-	cyclists.configure(_route, climbs, pois, int(living.get("cyclists", 0)), 0, _road_width_m, traffic, half_at)
+	cyclists.configure(_route, climbs, pois, 0 if underwater else int(living.get("cyclists", 0)), 0, _road_width_m, traffic, half_at)
+	cyclists.set_back_climbs(res["climbs_back"])   # montées du retour, celles des cyclistes du décor à rebours (N24)
 	sky.biome_model = _active_biome_model()
-	sky.configure(_route, theme, climbs, int(living.get("aircraft", 0)))
+	sky.configure(_route, theme, climbs, 0 if underwater else int(living.get("aircraft", 0)))
+	sky.set_back_climbs([] if underwater else res["climbs_back"])
+	sky.set_direction(_dir)
 	turbines.set_points(pois)
 	flags.set_points(pois)
+	wrecks.set_points(pois)
 	if world_streamer != null and world_streamer.has_method("set_road_marks"):
 		world_streamer.set_road_marks(res["marks"])
 	for k in _loaded_chunks:
@@ -487,6 +517,9 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	var rider_pos := cam_pos - Vector3(0.0, 1.4, 0.0)
 	# Météo (P8)
 	weather_eval = WeatherModel.evaluate(weather, alt_m, _valley_alt_at(cam_s), wind_eval)
+	if underwater:   # lot SM1 (14/11 : « pas de neige sous l'eau ») : ni pluie, ni neige, ni route mouillée
+		for key in ["rain", "snow", "wetness"]:
+			weather_eval[key] = 0.0
 	if living_world != null and living_world.get("volcano") != null:
 		weather_eval = living_world.volcano.melt_snow(weather_eval)   # pas de neige dans un paysage en feu (DB2)
 	particles.update(cam_pos, weather_eval)
@@ -498,9 +531,10 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	var wheel: Vector3 = _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * _rider_lane_m
 	particles.update_dust(wheel, back, 0.0 if paused else rider_v, surface_here)
 	# Feuilles qui tombent (saisons, lots P18 et P19) : près des forêts seulement, au vent
-	if season_falling_leaves > 0.0 or particles.get_emitter("leaves") != null and particles.get_emitter("leaves").emitting:
+	var falling := 0.0 if underwater else season_falling_leaves   # pas de feuilles qui tombent sous l'eau (SM1)
+	if falling > 0.0 or particles.get_emitter("leaves") != null and particles.get_emitter("leaves").emitting:
 		var forest_dist := float(living_world.neigh.get("forest_dist_m", INF)) if living_world != null else INF
-		particles.update_leaves(WeatherParticles.leaves_intensity(season_falling_leaves, forest_dist), wind_eval)
+		particles.update_leaves(WeatherParticles.leaves_intensity(falling, forest_dist), wind_eval)
 	if sound_player != null and sound_player.get("model") != null:
 		sound_player.model.set_surface(surface_here)
 	if world_streamer != null and world_streamer.has_method("set_road_wetness"):
@@ -521,6 +555,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	wave2_frames += 1
 	turbines.update(wind_eval, cam_pos, dt_s)
 	flags.update(wind_eval, dt_s)
+	wrecks.update(cam_pos)
 	if osm_streamer != null:
 		WaterMesh.update_shimmer(osm_streamer.water_material(), wind_eval, dt_s)
 	if not prepared:
@@ -534,20 +569,34 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	var t_wave2 := Time.get_ticks_usec()
 	# Cyclistes du décor (P28), figés en pause, qui laissent la place aux bots ; lot AS7 : cyclistes proches
 	# calculés par le core (liste `riders`, une trame sur trois)
+	# Lot N23 : à rebours, circulation et cyclistes du décor roulent sur le parcours retourné (u = L - s), où le
+	# cycliste avance encore vers les u croissants, comme dans le core ; listes du core et places des bots converties
+	var d = state.get("dir", 1)
+	_dir = -1 if (d is int or d is float) and float(d) < 0.0 else 1
+	traffic.set_direction(_dir)
+	sky.set_direction(_dir)
+	if _crowds.size() == 2 and crowd != _crowds[1 if _dir < 0 else 0]:   # foule des montées du sens suivi (N24)
+		crowd = _crowds[1 if _dir < 0 else 0]
+		crowd_view.setup(crowd, sound_player)
+	cyclists.set_direction(_dir, cam_s)
+	_model_s = traffic.model_s(cam_s)
+	var bots_m: Array = []
+	for b in bot_places:
+		bots_m.append({"s": traffic.model_s(float(b["s"])), "lateral": _dir * float(b["lateral"])})
 	if typeof(state.get("riders")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
-		cyclists.sync_core(state["riders"], int(state["seq"]), cam_s)
-	cyclists.update(cam_s, rider_v, dt_s, paused, bot_places)
-	cyclists_view.update(dt_s, paused, cam_s)
+		cyclists.sync_core(_core_list(state["riders"]), int(state["seq"]), _model_s)
+	cyclists.update(_model_s, rider_v, dt_s, paused, bots_m, _dir * _rider_lane_m)   # lot AS10 : à sa vraie place (repère du décor)
+	cyclists_view.update(dt_s, paused, _model_s)
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
 	headlights = TrafficModel.headlights(weather_eval, _sun_elevation_deg)
 	var others: Array = cyclists.riders()
-	for b in bot_places:
-		others.append({"s": float(b["s"]), "lateral": float(b["lateral"]), "dir": 1})
+	for b in bots_m:
+		others.append({"s": float(b["s"]), "lateral": float(b["lateral"]), "dir": _dir})
 	# Lot AS6 : véhicules proches calculés par le core (liste `vehicles`, une trame sur trois)
 	if typeof(state.get("vehicles")) == TYPE_ARRAY and typeof(state.get("seq")) in [TYPE_INT, TYPE_FLOAT]:
-		traffic.sync_core(state["vehicles"], int(state["seq"]), cam_s,
-				float(state["s"]) if typeof(state.get("s")) in [TYPE_INT, TYPE_FLOAT] else NAN)
-	traffic.update(cam_s, rider_v, dt_s, paused, others)
+		traffic.sync_core(_core_list(state["vehicles"]), int(state["seq"]), _model_s,
+				traffic.model_s(float(state["s"])) if typeof(state.get("s")) in [TYPE_INT, TYPE_FLOAT] else NAN)
+	traffic.update(_model_s, rider_v, dt_s, paused, others)
 	if not paused:
 		_count_contacts(others)
 	traffic_view.set_lights(headlights)
@@ -613,11 +662,11 @@ func test_place(spec: Dictionary) -> void:
 		return
 	if spec.get("vehicle") is Dictionary:
 		var v: Dictionary = spec["vehicle"]
-		traffic.place_for_test(_cam_s, _rider_v, str(v.get("kind", "car_a")), int(v.get("dir", -1)), float(v.get("rel_m", 60.0)),
+		traffic.place_for_test(_model_s, _rider_v, str(v.get("kind", "car_a")), int(v.get("dir", -1)), float(v.get("rel_m", 60.0)),
 			float(v.get("kmh", 50.0)))
 	if spec.get("cyclists") is Dictionary:
 		var c: Dictionary = spec["cyclists"]
-		cyclists.place_for_test(_cam_s, _rider_v, str(c.get("case", "ahead")), float(c.get("rel_m", 30.0)),
+		cyclists.place_for_test(_model_s, _rider_v, str(c.get("case", "ahead")), float(c.get("rel_m", 30.0)),
 			int(c.get("size", 1)), bool(c.get("abreast", false)))
 
 
@@ -625,25 +674,44 @@ func test_place(spec: Dictionary) -> void:
 ## cycliste), écart à l'axe (positif à droite du sens du parcours) et abscisse relative.
 func road_users(within_m: float = 300.0) -> Array:
 	var out := []
-	for v in traffic.vehicles:
-		var rel := float(v["s"]) - _cam_s
+	for v in traffic.vehicles:   # repère du parcours, à rebours aussi (lot N23)
+		var rel := traffic.model_s(float(v["s"])) - _cam_s
 		if absf(rel) <= within_m:
-			out.append({"what": "vehicle", "kind": str(v["kind"]), "dir": int(v["dir"]), "lateral": float(v["lateral"]),
+			out.append({"what": "vehicle", "kind": str(v["kind"]), "dir": _dir * int(v["dir"]), "lateral": _dir * float(v["lateral"]),
 				"half_width": float(TrafficModel.KINDS[v["kind"]]["half_width"]), "rel_m": rel})
 	for r in cyclists.riders():
-		var rel := float(r["s"]) - _cam_s
+		var rel := cyclists.model_s(float(r["s"])) - _cam_s
 		if absf(rel) <= within_m:
-			out.append({"what": "cyclist", "id": str(r["id"]), "kind": str(r["group"]["case"]), "dir": int(r["dir"]), "lateral": float(r["lateral"]),
+			out.append({"what": "cyclist", "id": str(r["id"]), "kind": str(r["group"]["case"]), "dir": _dir * int(r["dir"]), "lateral": _dir * float(r["lateral"]),
 				"half_width": RoadCyclistsModel.RIDER_HALF_WIDTH_M, "rel_m": rel})
 	return out
 
 
-## Véhicules de la route (dernière image), {s, dir}, pour que les bots serrent à droite à leur approche
-## (bots_view_model.gd, `vehicles`).
+## Véhicules de la route (dernière image), {s, dir} dans le repère du parcours, pour que les bots serrent à droite à
+## leur approche (bots_view_model.gd, `vehicles`).
 func vehicle_places() -> Array:
 	var out: Array = []
 	for v in traffic.vehicles:
-		out.append({"s": float(v["s"]), "dir": int(v["dir"])})
+		out.append({"s": traffic.model_s(float(v["s"])), "dir": _dir * int(v["dir"])})
+	return out
+
+
+## Lot N23 : liste `vehicles` ou `riders` du core (repère du parcours) dans le repère de la circulation : telle quelle
+## dans le sens du parcours ; à rebours, abscisse u = L - s, sens et écart à l'axe de signe opposé.
+func _core_list(list: Array) -> Array:
+	if _dir > 0:
+		return list
+	var out: Array = []
+	for item in list:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var c: Dictionary = item.duplicate()
+		if typeof(c.get("s")) in [TYPE_INT, TYPE_FLOAT]:
+			c["s"] = traffic.model_s(float(c["s"]))
+		c["dir"] = -1 if int(c.get("dir", 1)) >= 0 else 1
+		if typeof(c.get("lane_m")) in [TYPE_INT, TYPE_FLOAT]:
+			c["lane_m"] = -float(c["lane_m"])
+		out.append(c)
 	return out
 
 
@@ -653,13 +721,13 @@ func vehicle_places() -> Array:
 func _count_contacts(others: Array) -> void:
 	var items := []
 	for v in traffic.vehicles:
-		if absf(float(v["s"]) - _cam_s) <= CONTACT_M:
+		if absf(float(v["s"]) - _model_s) <= CONTACT_M:   # repère de la circulation (lot N23)
 			var k: Dictionary = TrafficModel.KINDS[v["kind"]]
 			items.append({"name": str(v["kind"]), "s": float(v["s"]), "lateral": float(v["lateral"]),
 				"half_len": float(k["length"]) * 0.5, "half_width": float(k["half_width"]), "group": v})
-	var you := {"s": _cam_s, "lateral": _rider_lane_m, "name": "cycliste"}
+	var you := {"s": _model_s, "lateral": _dir * _rider_lane_m, "name": "cycliste"}
 	for o in others + [you]:
-		if absf(float(o["s"]) - _cam_s) <= CONTACT_M:
+		if absf(float(o["s"]) - _model_s) <= CONTACT_M:
 			items.append({"name": str(o["group"]["case"]) if o.has("group") else str(o.get("name", "bot")),
 				"s": float(o["s"]), "lateral": float(o["lateral"]), "half_len": CONTACT_BIKE_HALF_M,
 				"half_width": TrafficModel.RIDER_HALF_WIDTH_M, "group": o.get("group", o)})
@@ -673,7 +741,7 @@ func _count_contacts(others: Array) -> void:
 					and absf(float(a["lateral"]) - float(b["lateral"])) < float(a["half_width"]) + float(b["half_width"]):
 				contacts += 1
 				last_contact = "%s / %s à %.0f m (écarts à l'axe %.1f et %.1f m)" % [a["name"], b["name"],
-					float(a["s"]) - _cam_s, float(a["lateral"]), float(b["lateral"])]
+					float(a["s"]) - _model_s, float(a["lateral"]), float(b["lateral"])]
 
 
 func test_info(cam: Camera3D) -> Dictionary:

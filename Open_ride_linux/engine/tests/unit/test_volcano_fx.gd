@@ -199,10 +199,10 @@ func _test_grass_and_sky(theme: Dictionary) -> void:
 	g.biome_model = fire_model
 	var empty := true
 	for slot in range(20):
-		empty = empty and g.dry_draw(1, slot, Vector3(30.0, 500.0, -100.0)) == -1
+		empty = empty and g.style_draw(1, slot, Vector3(30.0, 500.0, -100.0)) == -1
 	_check(empty, "paysage en feu : aucune touffe d'herbe")
 	g.biome_model = _model(theme, null)
-	_check(g.dry_draw(1, 0, Vector3(30.0, 500.0, -100.0)) == 0, "volcanique sans feu : herbe d'avant")
+	_check(g.style_draw(1, 0, Vector3(30.0, 500.0, -100.0)) == 0, "volcanique sans feu : herbe d'avant")
 	g.free()
 	var av = AtmosphereView.new()
 	av.set_fire(1.0, Color("#ff6a20"))

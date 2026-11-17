@@ -60,17 +60,25 @@ static func lane_lateral(lane: int) -> float:
 	return WHOLE_ROAD_M
 
 
-## Boîtes à poser : [{s, lateral, row}], trois par rangée, MAX_ROWS rangées au plus.
+## Boîtes à poser : [{s, lateral, row}], trois par rangée, MAX_ROWS rangées au plus ; une boîte prise et pas encore
+## reformée (`gp.boxes_gone`, [rang dans `boxes`, voie], lot GP14) n'est pas posée.
 static func boxes(gp) -> Array:
 	var out: Array = []
 	if not gp is Dictionary or not gp.get("boxes", null) is Array:
 		return out
+	var gone := {}
+	if gp.get("boxes_gone", null) is Array:
+		for g in gp["boxes_gone"]:
+			if g is Array and g.size() == 2:
+				gone[Vector2i(int(g[0]), int(g[1]))] = true
 	var row := 0
-	for s in gp["boxes"]:
+	for k in range(gp["boxes"].size()):
+		var s = gp["boxes"][k]
 		if not (s is float or s is int) or row >= MAX_ROWS:
 			continue
 		for lane in range(LANE_CENTRES_M.size()):
-			out.append({"s": float(s), "lateral": lane_lateral(lane), "row": row})
+			if not gone.has(Vector2i(k, lane)):
+				out.append({"s": float(s), "lateral": lane_lateral(lane), "row": row})
 		row += 1
 	return out
 

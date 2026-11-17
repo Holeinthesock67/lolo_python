@@ -45,7 +45,7 @@ Budgets (`quality_presets.gd`, `living`) :
 | --- | --- | --- | --- | --- |
 | low | 80 | 1 | 0 | 0 |
 | medium | 300 | 3 | 1 | 3 |
-| high | 800 | 6 | 2 | 6 |
+| high | 500 | 4 | 1 | 4 |
 
 La lave au sol (shader seul) est à toutes les qualités. Décor vivant coupé : ni lave ni particules.
 
@@ -74,5 +74,5 @@ La lave au sol (shader seul) est à toutes les qualités. Décor vivant coupé :
 ## Livraison
 
 - 13 novembre : PR #879 ouverte (partie de la branche de #866, DB1).
-- 14 novembre : pas de neige dans un paysage en feu.
+- 14 novembre : pas de neige dans un paysage en feu ; banc r879b : high allégé (800/6/2/6 → 500/4/1/4) après des images lentes.
 - Reste : recette PC et validation des captures.

@@ -5,9 +5,11 @@ Parts des biomes du tour (10 à 25 %), somme des poids 255 en chaque point, un t
 `--gravel`, côte et mer avec `--sea`, validité (`verify` du compilateur et schémas), coordonnées au degré
 entier, deux générations identiques au bit près. Lot O37 : noms de parcours et de lieux du jeu de base, variante
 de recette aux noms techniques, démonstrations d'avant le lot O37 remplacées à l'installation. Lot O38 : le circuit
-de démonstration (boucle fermée de 3 km) et une course du Grand Prix des objets en tours dessus. Lot DB1 : le
-tour des nouveaux paysages (sept blocs, variante régionale par bloc) remplace au jeu de base le tour des six
-paysages, la route de la côte et la montée alpine, gardés en recette et jamais enlevés chez un joueur.
+de démonstration (boucle fermée de 3 km) et une course du Grand Prix des objets en tours dessus. Lot SM1 : le récif
+sous la mer (boucle de 8 km, biome `reef`), sans circulation ni cyclistes du décor au core. Lot DB1 : le tour des
+nouveaux paysages (sept blocs, variante régionale par bloc) remplace au jeu de base le tour des six paysages, la route
+de la côte et la montée alpine, gardés en recette et jamais enlevés chez un joueur. Lot DJ1 : la route des Érables,
+démonstration du biome Japon au jeu de base.
 """
 
 from __future__ import annotations
@@ -71,11 +73,11 @@ def _json(path: Path) -> dict:
 
 
 def test_demo_set_valid_worlds(demo_set: Path, recette_set: Path) -> None:
-    """Jeu de base : le tour des nouveaux paysages et le circuit (lots O38 et DB1) ; recette : en plus les
-    parcours sortis du jeu de base (tour gravel le 9 novembre ; tour, côte et alpin au lot DB1)."""
+    """Jeu de base : le tour des nouveaux paysages, le circuit, le récif et le volcan (lots O38, SM1, DB1 et DB2) ;
+    recette : en plus les parcours sortis du jeu de base (tour gravel le 9 novembre ; tour, côte et alpin au lot DB1)."""
     names = sorted(p.name for p in demo_set.glob("*.world"))
     assert names == ["demo-biomes-nord.world", "demo-biomes-paysages.world", "demo-biomes-sud.world",
-                     "demo-circuit.world", "demo-volcan.world"]
+                     "demo-circuit.world", "demo-japon.world", "demo-recif.world", "demo-volcan.world"]
     retired = ["demo-biomes-alpin.world", "demo-biomes-cote.world", "demo-biomes-gravel.world",
                "demo-biomes-tour.world"]
     assert sorted(p.name for p in recette_set.glob("*.world")) == sorted(names + retired)
@@ -144,7 +146,8 @@ def test_integer_degree_coordinates_in_repo(mbw) -> None:
 def test_game_set_has_route_names_and_no_test_labels(demo_set: Path, mbw) -> None:
     """Lot O37 : nom de parcours au menu, aucun « Fictif » ni nom technique dans les fichiers livrés."""
     titles = {name: title for name, title, *_, base in mbw.DEMO_SET if base}
-    assert titles == {"demo-biomes-paysages": "Tour des nouveaux paysages", "demo-circuit": "Circuit des Prés",
+    assert titles == {"demo-biomes-paysages": "Tour des nouveaux paysages", "demo-japon": "Route des Érables",
+                      "demo-circuit": "Circuit des Prés", "demo-recif": "Récif des tortues",
                       "demo-volcan": "Volcan en flammes", "demo-biomes-sud": "Route du Sud",
                       "demo-biomes-nord": "Route du Grand Nord"}
     assert mbw.RETIRED_DEMOS == ("demo-biomes-tour", "demo-biomes-gravel", "demo-biomes-cote", "demo-biomes-alpin")
@@ -205,7 +208,8 @@ def test_outdated_demos_replaced_at_install(tmp_path: Path, demo_set: Path, rece
         kept[n] = f.read_bytes()
     assert biome_demo_outdated(routes / "demo-circuit.world") and not biome_demo_outdated(mine)
     written, note = contents.install_biome_demos(routes)
-    assert note == "" and written == ["demo-circuit", "demo-volcan", "demo-biomes-sud", "demo-biomes-nord"]
+    assert note == "" and sorted(written) == ["demo-biomes-nord", "demo-biomes-sud", "demo-circuit", "demo-japon",
+                                                 "demo-recif", "demo-volcan"]
     assert not gravel.exists()
     assert _json(old)["name"] == "Circuit des Prés"
     assert _json(mine / "manifest.json")["name"] == "Mes paysages"
@@ -233,11 +237,12 @@ def test_cli_demo_biomes(tmp_path: Path, capsys) -> None:
     assert main(["demo-biomes", "--out", str(tmp_path)]) == 0
     out = capsys.readouterr().out
     assert "demo-biomes-paysages (Tour des nouveaux paysages) : 14.2 km" in out and "demo-biomes-gravel" not in out
-    assert "demo-circuit (Circuit des Prés) : " in out and "demo-biomes-tour" not in out
-    assert "demo-volcan (Volcan en flammes) : 8.0 km" in out
+    assert "demo-circuit (Circuit des Prés) : " in out and "demo-recif (Récif des tortues) : " in out
+    assert "demo-volcan (Volcan en flammes) : 8.0 km" in out and "demo-biomes-tour" not in out
+    assert "demo-japon (Route des Érables) : 6.1 km" in out
     assert "demo-biomes-sud (Route du Sud) : 12.1 km" in out
     assert "demo-biomes-nord (Route du Grand Nord) : 10.0 km" in out
-    assert len(list(tmp_path.glob("*.world"))) == 5
+    assert len(list(tmp_path.glob("*.world"))) == 7
 
 
 def test_circuit_loop(demo_set: Path, mbw) -> None:
@@ -268,7 +273,7 @@ def test_circuit_loop(demo_set: Path, mbw) -> None:
 
 
 def test_volcan_loop(demo_set: Path, mbw) -> None:
-    """Volcan en flammes (13 novembre) : boucle fermée de 8 km dans le paysage `volcan_actif` (toutes les tuiles),
+    """Volcan en flammes (lot DB2) : boucle fermée de 8 km dans le paysage `volcan_actif` (toutes les tuiles),
     pente d'au plus 10 %, une montée de 200 à 240 m jusqu'à la crête du cratère à mi-boucle, cratère creusé à côté
     de la route (à l'intérieur de la boucle), relief borné jusqu'à l'horizon, pas de mur au départ."""
     import numpy as np
@@ -287,10 +292,10 @@ def test_volcan_loop(demo_set: Path, mbw) -> None:
     for level in ("near", "far"):
         for tile in (world / "biome" / level).glob("*.json"):
             assert _json(tile)["variant"] == mbw.VOLCAN_VARIANT, tile.name
-    plan = mbw.Plan(("volcanic",), False, False, circuit="volcan")
+    plan = mbw.Plan(("volcanic",), False, False, loop="volcan")
     terrain = mbw.make_terrain(plan)
     px, pz = plan.road.xz(plan.length_m / 2.0)
-    cx, cz = mbw.volcano_crater(plan.road)
+    cx, cz = mbw.volcano_crater()
     rim = float(terrain(np.array([px]), np.array([pz]))[0])
     crater = float(terrain(np.array([cx]), np.array([cz]))[0])
     assert crater < rim - 60.0, (crater, rim)
@@ -348,7 +353,8 @@ def test_paysages_tour(demo_set: Path, mbw) -> None:
     assert {"atlantic_heath", "japan", "high_plateau"} <= set(shares)
     assert all(v == pytest.approx(100.0 / 7, abs=0.6) for v in shares.values()), shares
     landscapes = {landscape for _, landscape, *_ in mbw.PAYSAGES if landscape}
-    assert landscapes == set(LANDSCAPES) - {"volcan_actif"}   # le volcan en feu a sa propre boucle
+    # les quatre paysages du lot U25 (le volcan actif du lot DB2 a sa propre boucle, `demo-volcan`)
+    assert landscapes == {"canyon", "fjord", "ile_volcanique", "rizieres"} and landscapes <= set(LANDSCAPES)
     seen = set()
     for f in (world / "biome" / "near").glob("tile_*.json"):
         tile = _json(f)
@@ -406,8 +412,12 @@ def test_decor_cyclists_never_touch(demo_set: Path, recette_set: Path) -> None:
     from openride_core import road_cyclists as rc
     from openride_core.route import load_world
 
+    from openride_core import traffic
+
     worlds = sorted(demo_set.glob("demo-*.world")) + sorted(recette_set.glob("demo-biomes-*.world"))
     for world in worlds:
+        if traffic.underwater_route(_json(world / "manifest.json")):
+            continue                                    # récif sous la mer : aucun cycliste du décor (lot SM1)
         route = load_world(world).route
         for kmh in (25.0, 40.0, 50.0):
             model = rc.RoadCyclists(route, rc.climbs_for(route, []), [], seed=rc.SEED)
@@ -423,6 +433,85 @@ def test_decor_cyclists_never_touch(demo_set: Path, recette_set: Path) -> None:
                         assert not (abs(a["s"] - b["s"]) < 1.7 and abs(a["lane_m"] - b["lane_m"]) < 0.6), \
                             (world.name, kmh, round(s), a["id"], b["id"])
                 s += v * dt
+
+
+def test_japon_demo(demo_set: Path, mbw) -> None:
+    """Lot DJ1 : la route des Érables, 6 km dans le seul biome `japan` (trois blocs), sol et toits d'une vraie
+    route japonaise sur chaque tuile, montée douce (1 à 5 %, 150 à 260 m) jusqu'au « Col des Cèdres », villages et
+    belvédères nommés, aucune mer ; installée sur un jeu neuf comme les autres démonstrations du jeu de base."""
+    from openride_compiler.regional import variant_for
+
+    assert mbw.BIOME_VARIANTS["japan"] == variant_for(35.0, 138.0, {"japan": 100.0})   # zones japon_* du compilateur
+    world = demo_set / "demo-japon.world"
+    manifest = _json(world / "manifest.json")
+    assert manifest["name"] == "Route des Érables"
+    assert manifest["layers"]["biome"]["shares"] == {"japan": 100.0}
+    assert manifest["layers"]["biome"]["default_biome"] == "japan"
+    assert "coast" not in manifest["layers"]
+    tiles = [_json(f) for level in ("near", "far") for f in (world / "biome" / level).glob("tile_*.json")]
+    assert tiles and all(t["variant"] == mbw.BIOME_VARIANTS["japan"] for t in tiles)
+    route = _json(world / "route.json")
+    assert route["length_m"] == pytest.approx(3 * mbw.BLOCK_M, rel=0.02)
+    assert 0.5 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 5.5
+    alt = route["alt_m"]
+    assert 150.0 <= alt[-1] - alt[0] <= 260.0 and max(alt) == pytest.approx(alt[-1], abs=2.0)
+    pois = "".join(f.read_text(encoding="utf-8") for f in (world / "poi").glob("*.json"))
+    for name in (*mbw.PLACE_NAMES["japon"], *mbw.PLACE_NAMES["japon_vue"]):
+        assert name in pois, name
+    assert mbw.Plan(("japan",) * 3, False, False).place("japon_vue", 2) == "Col des Cèdres"
+    assert _json(demo_set / "demo-japon.json")["generated"]["buildings"] >= 30
+    assert "demo-japon" in mbw.GAME_DEMOS
+
+
+def test_recif_loop_under_the_sea(demo_set: Path, mbw) -> None:
+    """Lot SM1 : boucle fermée de 8 km dans le seul biome `reef`, route de −30 à −10 m (sous la mer, pentes douces),
+    relief tout entier sous REEF_TOP_M (le récif ne sort jamais de l'eau), lieux nommés, aucune construction, et ni
+    circulation ni cyclistes du décor au core."""
+    import numpy as np
+    from openride_core import traffic
+    from openride_core.route import load_world
+
+    world = demo_set / "demo-recif.world"
+    route = _json(world / "route.json")
+    manifest = _json(world / "manifest.json")
+    assert route["type"] == "loop" and route["length_m"] == pytest.approx(mbw.REEF_M, abs=5.0)
+    assert manifest["layers"]["biome"]["shares"] == {"reef": 100.0}
+    assert -30.0 <= min(route["alt_m"]) and max(route["alt_m"]) <= -10.0
+    assert -4.0 <= min(route["grade_pct"]) and max(route["grade_pct"]) <= 4.0
+    assert (route["x"][0], route["z"][0], route["alt_m"][0]) == (route["x"][-1], route["z"][-1], route["alt_m"][-1])
+    info = _json(demo_set / "demo-recif.json")
+    assert info["generated"]["buildings"] == 0 and info["generated"]["poi"] == 5   # quatre lieux et l'épave (SM2)
+    plan = mbw.Plan(("reef",), False, False, loop="recif")
+    terrain = mbw.make_terrain(plan)
+    xs, zs = np.meshgrid(np.linspace(-3000.0, 3000.0, 121), np.linspace(-3000.0, 3000.0, 121))
+    assert float(np.max(terrain(xs, zs))) <= mbw.REEF_TOP_M
+    # La route garde l'altitude du relief : le plafond n'agit qu'au-dessus de REEF_TOP_M − REEF_SOFT_M
+    s = np.arange(0.0, mbw.REEF_M, 50.0)
+    x, z = zip(*(plan.road.xz(v) for v in s))
+    assert np.allclose(terrain(np.array(x), np.array(z)), mbw.reef_relief(np.array(x), np.array(z)), atol=0.05)
+    names = "".join(f.read_text(encoding="utf-8") for f in (world / "poi").glob("*.json"))
+    assert all(n in names for n in ("Lagon des Tortues", "Forêt des Laminaires", "Jardin de Corail", "Tombant Bleu"))
+    assert traffic.underwater_route(manifest) and not traffic.underwater_route(_json(demo_set / "demo-circuit.world" / "manifest.json"))
+    assert load_world(world).route.is_loop
+
+
+def test_recif_wreck_before_finish(demo_set: Path, mbw) -> None:
+    """Lot SM2 : une épave (`wreck`, longueur 42 m) couchée sur le sable avant l'arrivée du récif, à 45 m du bord
+    de la route, hors des forêts de laminaires, posée sur le fond, assez profond pour que le navire (moins de 8 m
+    au-dessus du fond, wrecks.gd) reste à plus de 2 m sous la surface ; nommée au menu du jeu de base."""
+    import math
+
+    world = demo_set / "demo-recif.world"
+    route = _json(world / "route.json")
+    points = [p for f in sorted((world / "poi").glob("chunk_*.json")) for p in _json(f)["points"]]
+    wrecks = [p for p in points if p["kind"] == "wreck"]
+    assert len(wrecks) == 1
+    w = wrecks[0]
+    assert w["name"] == "Épave de la Belle-Tortue" and w["length_m"] == 42.0 and w["radius_m"] == 400
+    i = round(mbw.REEF_WRECK_S / route["ds_m"])
+    assert math.dist((w["x"], w["z"]), (route["x"][i], route["z"][i])) == pytest.approx(mbw.REEF_WRECK_OFFSET_M, abs=1.0)
+    assert route["length_m"] - mbw.REEF_WRECK_S <= 200.0   # vue en approchant de l'arrivée
+    assert w["y"] + 8.0 < -2.0
 
 
 def test_every_biome_has_a_game_demo(mbw) -> None:
@@ -479,7 +568,7 @@ def test_nord_loop(demo_set: Path, mbw) -> None:
     # Départ dans la taïga : la tuile proche du départ (repère du .world, centré sur le départ) est boréale.
     start = [f for f in (world / "biome" / "near").glob("*.json") if f.stem == "tile_0_0" or f.stem == "tile_-1_0"]
     assert start and all("boreal_forest" in _json(f)["biomes"] for f in start)
-    plan = mbw.Plan(mbw.tour_blocks("nord")[0], False, False, circuit="nord")
+    plan = mbw.Plan(mbw.tour_blocks("nord")[0], False, False, loop="nord")
     terrain = mbw.make_terrain(plan)
     xs, zs = np.meshgrid(np.linspace(-2500.0, 2500.0, 126), np.linspace(-2500.0, 2500.0, 126))
     h = terrain(xs.ravel(), zs.ravel()).reshape(xs.shape)
@@ -490,4 +579,4 @@ def test_nord_loop(demo_set: Path, mbw) -> None:
 
 def test_loop_blocks_must_fill_the_loop(mbw) -> None:
     with pytest.raises(ValueError, match="2 km par bloc"):
-        mbw.Plan(("tundra", "polar"), False, False, circuit="nord")
+        mbw.Plan(("tundra", "polar"), False, False, loop="nord")

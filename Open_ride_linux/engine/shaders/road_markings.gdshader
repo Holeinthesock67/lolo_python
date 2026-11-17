@@ -6,7 +6,8 @@ shader_type spatial;
 // - Ligne médiane discontinue : dash_m peints sur period_m (3 m sur 13 m), largeur line_w_m.
 // - Bandes de rive continues à edge_inset_m du bord de la chaussée.
 // - Chiffres des kilomètres restants peints sur la voie de droite (marks : s, chiffre), lisibles par le
-//   cycliste qui arrive ; au plus 8 par tronçon.
+//   cycliste qui arrive ; au plus 8 par tronçon. Lot N24 : chiffre négatif = montée du retour (après un
+//   demi-tour), peint sur l'autre voie et tourné d'un demi-tour, lisible par le cycliste qui roule à rebours.
 // Anticrénelage par fwidth : pas de scintillement des traits au loin. `wear` éclaircit et casse la
 // peinture (0 : neuve).
 // Lot P17 : `wetness` (météo de P8, 0 à 1) assombrit la chaussée mouillée et la rend plus brillante.
@@ -90,9 +91,10 @@ void fragment() {
 	// Chiffres des kilomètres restants
 	for (int i = 0; i < 8; i++) {
 		if (i >= mark_count) break;
-		vec2 uv = vec2((lat - (digit_lane_m - digit_w_m * 0.5)) / digit_w_m, (s - marks[i].x) / digit_len_m);
+		float back = marks[i].y < 0.0 ? -1.0 : 1.0;   // -1 : montée du retour (lot N24), repère retourné
+		vec2 uv = vec2((back * lat - (digit_lane_m - digit_w_m * 0.5)) / digit_w_m, back * (s - marks[i].x) / digit_len_m);
 		if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
-			paint = max(paint, digit_mask(int(marks[i].y + 0.5), uv));
+			paint = max(paint, digit_mask(int(abs(marks[i].y) + 0.5), uv));
 		}
 	}
 	// Limite chaussée / bas-côté irrégulière (A4)
@@ -136,6 +138,8 @@ void fragment() {
 	float cobble = sd_noise(p / 0.12);
 	vec3 unpaved_col = lineaire(COLOR.rgb) * (1.0 + (grit.y - 0.5) * 0.3 * gravel_vis + (cobble - 0.5) * 0.12 + macro * 0.15);
 	asphalt = mix(asphalt, unpaved_col, unpaved);
+	// Aspect de la chaussée par biome (lot SM2, UV2.y = 1) : le bas-côté se fond dans la piste, un peu plus sombre
+	verge = mix(verge, unpaved_col * 0.92, clamp(UV2.y, 0.0, 1.0) * unpaved);
 	vec3 base = mix(verge, asphalt, on_road);
 	ALBEDO = mix(base, line_color, paint) * (1.0 - 0.45 * wetness);
 	float rough = mix(0.97, mix(0.9 - 0.14 * track + 0.06 * patch, 0.97, unpaved), on_road);

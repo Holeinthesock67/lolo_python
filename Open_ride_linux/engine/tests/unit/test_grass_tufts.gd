@@ -55,6 +55,29 @@ func _positions(g) -> PackedVector3Array:
 	return g.get_positions()
 
 
+## Lot N22 : à rebours après un demi-tour (N17), la fenêtre de tronçons est devant la caméra dans le sens de la marche.
+func _test_window_backwards() -> void:
+	var route = _route()
+	var g = GrassTufts.new()
+	root.add_child(g)
+	g.configure(QualityPresets.living("medium")["grass_tufts"], route)
+	var k := int(floor(1000.0 / GrassTufts.CHUNK_M))
+	g.update(1000.0)
+	var fwd := Array(g._slot_chunk)
+	fwd.sort()
+	_check(fwd == range(k - GrassTufts.CHUNKS_BEHIND, k + GrassTufts.CHUNKS_AHEAD + 1),
+		"sens du parcours : %d tronçon derrière, %d devant (%s)" % [GrassTufts.CHUNKS_BEHIND, GrassTufts.CHUNKS_AHEAD, str(fwd)])
+	g.direction = -1
+	g.update(1000.0)
+	var back := Array(g._slot_chunk)
+	back.sort()
+	_check(back == range(k - GrassTufts.CHUNKS_AHEAD, k + GrassTufts.CHUNKS_BEHIND + 1),
+		"à rebours : les %d tronçons d'avance vers le départ (%s)" % [GrassTufts.CHUNKS_AHEAD, str(back)])
+	_check(g._next_job(k) >= 0 and int(g._queue[g._next_job(k)][1]) <= k,
+		"à rebours : le tronçon rempli d'abord est celui de la caméra ou devant elle")
+	g.queue_free()
+
+
 func _test_budget_and_low() -> void:
 	var route = _route()
 	var low = GrassTufts.new()
@@ -425,17 +448,28 @@ class _DesertModel:
 		return {}   # pas de paysage en feu (biome_model.gd `fire_at`, DB2)
 
 
+class _ReefModel:
+	func active() -> bool:
+		return true
+
+	func weights_at(_x: float, _z: float) -> Dictionary:
+		return {"reef": 1.0}
+
+	func fire_at(_x: float, _z: float) -> Dictionary:
+		return {}   # pas de paysage en feu (biome_model.gd `fire_at`, DB2)
+
+
 ## Désert (03/11) : herbe sèche (teintes DRY_TINTS) et clairsemée ; hors désert ou sans modèle, herbe d'avant.
 func _test_desert() -> void:
 	var g = GrassTufts.new()
-	_check(g.dry_draw(0, 0, Vector3.ZERO) == 0, "sans modèle de biome : herbe d'avant")
+	_check(g.style_draw(0, 0, Vector3.ZERO) == 0, "sans modèle de biome : herbe d'avant")
 	var m := _DesertModel.new()
 	g.biome_model = m
 	var kept := 0
 	var green_in_desert := 0
 	var n := 400
 	for slot in range(n):
-		var d: int = g.dry_draw(3, slot, Vector3.ZERO)
+		var d: int = g.style_draw(3, slot, Vector3.ZERO)
 		green_in_desert += 1 if d == 0 else 0
 		kept += 1 if d == 1 else 0
 	_check(green_in_desert == 0, "désert pur : jamais d'herbe verte")
@@ -444,11 +478,25 @@ func _test_desert() -> void:
 	m.dry = 0.0
 	var green := 0
 	for slot in range(n):
-		green += 1 if g.dry_draw(3, slot, Vector3.ZERO) == 0 else 0
+		green += 1 if g.style_draw(3, slot, Vector3.ZERO) == 0 else 0
 	_check(green == n, "prairie : toutes les touffes d'avant")
 	for t in GrassTufts.DRY_TINTS:
 		var c: Color = t * Color(0.4, 0.56, 0.24)
 		_check(c.r > c.g and c.g > c.b, "teinte sèche %s : paille ou ocre (rouge > vert > bleu)" % c.to_html(false))
+	# Fond marin (lot SM1) : herbier sombre vert-bleu, clairsemé, jamais d'herbe des prés
+	var reef := _ReefModel.new()
+	g.biome_model = reef
+	var sea := 0
+	var meadow := 0
+	for slot in range(n):
+		var d: int = g.style_draw(3, slot, Vector3.ZERO)
+		sea += 1 if d == 2 else 0
+		meadow += 1 if d == 0 else 0
+	_check(meadow == 0 and absf(float(sea) / n - GrassTufts.SEA_KEEP) < 0.08,
+		"fond marin : herbier seulement, %.0f %% des places gardées (cible %.0f %%)" % [float(sea) / n * 100.0, GrassTufts.SEA_KEEP * 100.0])
+	for t in GrassTufts.SEA_TINTS:
+		var c: Color = t * Color(0.4, 0.56, 0.24)
+		_check(c.g > c.r and c.b > c.r and c.g < 0.5, "teinte d'herbier %s : sombre, vert-bleu" % c.to_html(false))
 	g.free()
 
 
@@ -475,7 +523,7 @@ func _test_snow() -> void:
 		var kept := 0
 		var green := 0
 		for slot in range(n):
-			var d: int = g.dry_draw(5, slot, Vector3.ZERO)
+			var d: int = g.style_draw(5, slot, Vector3.ZERO)
 			kept += 1 if d == 1 else 0
 			green += 1 if d == 0 else 0
 		_check(green == 0, "banquise %.0f %% : jamais d'herbe verte" % (p * 100.0))
@@ -490,7 +538,6 @@ func _init() -> void:
 	_test_blades_and_tints()
 	_test_far_lod()
 	_test_wide_band()
-	_test_snow()
 	_test_tree_materials()
 	_test_budget_and_low()
 	_test_determinism_and_exclusions()
@@ -498,5 +545,7 @@ func _init() -> void:
 	_test_fill_without_terrain()
 	_test_fill_priority_slow_terrain()
 	_test_desert()
+	_test_snow()
+	_test_window_backwards()
 	print("test_grass_tufts : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

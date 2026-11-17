@@ -170,12 +170,14 @@ const PEOPLE_LOD_M := {
 }
 const BOT_LOD_HYSTERESIS_M := 2.0
 ## Peloton (lot PL1) : bots au plus aux niveaux 0 et 1 (avec leur ombre), les plus proches de la caméra ; les
-## autres restent au niveau 2. Au moins les 5 bots d'avant le peloton : rien ne change jusqu'à 5 bots. Valeurs
-## à confirmer par les bancs du PC (budgets GPU 6, 12 et 14 ms) ; en repli, les baisser.
+## autres restent au niveau 2. Retour des essais du 15/11 (« à même distance, certains bots simplifiés si plus
+## de 4 bots ») : le quota couvre les 11 bots du peloton à tous les préréglages, seuls la distance (BOT_LOD_M)
+## et le fantôme en surnombre décident du niveau. Valeurs à confirmer au banc GPU à 11 bots (budgets 8, 13 et
+## 16 ms) ; en repli, les baisser.
 const BOT_DETAIL_MAX := {
-	"low": 5,
-	"medium": 6,
-	"high": 8,
+	"low": 11,
+	"medium": 11,
+	"high": 11,
 }
 
 
@@ -366,10 +368,10 @@ const LIVING := {
 	},
 	"high": {
 		"tree_sway": true,
-		"volcano_embers": 800,
-		"volcano_plumes": 6,
-		"volcano_fountains": 2,
-		"volcano_lights": 6,
+		"volcano_embers": 500,
+		"volcano_plumes": 4,
+		"volcano_fountains": 1,
+		"volcano_lights": 4,
 		"ground_rocks": 1200,
 		"ground_grass": 5000,
 		"ground_termites": 50,

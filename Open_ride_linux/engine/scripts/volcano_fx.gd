@@ -362,9 +362,13 @@ func update(cam_pos: Vector3, cam_s: float, dt_s: float) -> void:
 	_fire_started = true
 	if _embers != null:
 		_embers.position = cam_pos
-		_embers.emitting = fire_level > 0.05
-		_embers.visible = fire_level > 0.0
-		_embers.amount_ratio = fire_level
+		# Valeurs posées seulement quand elles changent (r879b : pas d'appel au serveur de rendu à chaque image)
+		if _embers.emitting != (fire_level > 0.05):
+			_embers.emitting = fire_level > 0.05
+		if _embers.visible != (fire_level > 0.0):
+			_embers.visible = fire_level > 0.0
+		if absf(_embers.amount_ratio - fire_level) > 0.02 or (fire_level == 1.0 and _embers.amount_ratio != 1.0):
+			_embers.amount_ratio = fire_level
 	if _clock - _pick_at >= PICK_PERIOD_S or _pick_at == -INF:
 		_pick_at = _clock
 		_place_pools(cam_pos)

@@ -11,9 +11,9 @@ extends SceneTree
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
-const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
+const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 
 ## Empreintes exactes (SHA-256 des octets de tous les arbres, case après case) relevées le 27 octobre
 ## avant l'optimisation du lot O1 (main a2a4994) : le résultat doit rester identique au bit près.
@@ -116,34 +116,9 @@ func _test_tree_generation_and_determinism() -> void:
 	_check(height_exact, "pied de chaque arbre à moins de 5 cm de la surface dessinée")
 	_check(below_treeline, "aucun arbre au-dessus de treeline_m")
 
-	# Instanciation sur la scène (fil principal). Banc rDB3 du 14/11 : 100 à 170 ms d'image pour une tuile dense de
-	# taïga ou de jungle quand add_tile remplissait les MultiMesh arbre par arbre ; tampons désormais préparés par
-	# prepare_tile dans le fil de travail.
-	var add_ms := PerfBudget.measure_ms(func(): renderer.add_tile(prep1), 3, 0)
-	_check(PerfBudget.check("tree_tile_add", add_ms), "pose d'une tuile de %d arbres sur le fil principal (%.2f ms)" % [total_trees, add_ms])
+	# Instanciation sur la scène
+	renderer.add_tile(prep1)
 	_check(renderer.get_active_tree_count() == total_trees, "arbres actifs = %d" % total_trees)
-
-	# Tampons du fil de travail = arbres de la case : position, orientation (hash de la position) et teinte grise.
-	var same_xf := true
-	for cell_idx in renderer._tiles[Vector2i(0, 0)].keys():
-		var trees_c: PackedVector4Array = cells1[cell_idx]
-		var mm: MultiMesh = renderer._tiles[Vector2i(0, 0)][cell_idx]["parts"][0]["lod0"].multimesh
-		var buf := mm.buffer   # rendu sans écran : get_instance_transform ne relit rien, le tampon oui
-		if mm.instance_count != trees_c.size() or buf.size() != 16 * trees_c.size():
-			same_xf = false
-			continue
-		for k in [0, trees_c.size() - 1]:
-			var t := trees_c[k]
-			var angle := float(VegetationPlacer.hash3(0x5EED, int(t.x), int(t.z)) & 0xFFFF) / 65536.0 * TAU
-			var b := Basis(Vector3.UP, angle).scaled(Vector3.ONE * t.w)
-			var want := [b.x.x, b.y.x, b.z.x, t.x, b.x.y, b.y.y, b.z.y, t.y, b.x.z, b.y.z, b.z.z, t.z]
-			for j in range(12):
-				if absf(buf[16 * k + j] - float(want[j])) > 1e-3:
-					same_xf = false
-			var c := buf[16 * k + 12]
-			if buf[16 * k + 13] != c or buf[16 * k + 14] != c or absf(c - 1.0) > 0.081 or buf[16 * k + 15] != 1.0:
-				same_xf = false
-	_check(same_xf, "tampons préparés dans le fil de travail : transformations et teintes de chaque arbre")
 
 	# Vérification des MultiMeshInstance3D et distances LOD
 	var cell_info: Dictionary = renderer._tiles[Vector2i(0, 0)]
@@ -317,5 +292,53 @@ func _init() -> void:
 	_test_tree_generation_and_determinism()
 	_test_budget_enforcement()
 	_test_shadow_limit()
+	_test_add_tile_main_thread()
 	print("test_tree_renderer : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## À-coups des tuiles proches (sonde rW17g du 15/11 : « arbres near:x:y » 100 à 157 ms en une image) : add_tile,
+## sur le fil principal, ne fait plus de calcul par arbre. Mêmes transformations et couleurs qu'avant (formule de
+## l'ancien _make_part recalculée ici), pour une tuile dense avec et sans carrés d'ombre.
+func _test_add_tile_main_thread() -> void:
+	var theme := {"vegetation": {"max_density_per_ha": 400.0}}
+	var heights := TerrainTiles.flat_heights(1000.0)
+	for shadow in [0.0, 100.0]:
+		var r = TreeRenderer.new()
+		r.shadow_end_m = shadow
+		root.add_child(r)
+		r.add_tile(r.prepare_tile(0, 0, heights, null, theme, 1.0))   # échauffement
+		var data: Dictionary = r.prepare_tile(1, 0, heights, null, theme, 1.0)
+		var add_ms := PerfBudget.measure_ms(func(): r.add_tile(data), 3, 0)
+		_check(PerfBudget.check("tree_add_tile", add_ms),
+			"add_tile d'une tuile dense (%d arbres, ombre %d m) dans le budget du fil principal (%.2f ms)" % [
+				r.get_active_tree_count() / 2, shadow, add_ms])
+		# Le rendu factice (sans écran) ne garde pas les tampons des MultiMesh : comparaison sur le tampon de build_part.
+		var same := true
+		var n := 0
+		var cells: Array = data["cells"]
+		for cell in data["built"]:
+			var cell_idx := int(cell["cell_idx"])
+			var trees: PackedVector4Array = cells[cell_idx]
+			var built_part: Dictionary = cell["parts"][0]
+			var buf: PackedFloat32Array = built_part["buf"]
+			var part: Dictionary = r._tiles[Vector2i(1, 0)][cell_idx]["parts"][0]
+			var mm0: MultiMesh = (part["lod0"] as MultiMeshInstance3D).multimesh
+			var mm1: MultiMesh = (part["lod1"] as MultiMeshInstance3D).multimesh
+			same = same and mm0.instance_count == trees.size() and mm1.instance_count == trees.size() \
+				and buf.size() == trees.size() * TreeRenderer.BUF_STRIDE
+			for i in range(0, trees.size(), 37):
+				var t := trees[i]
+				var angle := float(VegetationPlacer.hash3(0x5EED, int(t.x), int(t.z)) & 0xFFFF) / 65536.0 * TAU
+				var want := Transform3D(Basis(Vector3.UP, angle).scaled(Vector3.ONE * t.w), Vector3(t.x, t.y, t.z))
+				var tint := (float(VegetationPlacer.hash3(0xCAFE, int(t.x), int(t.z)) & 0xFF) / 255.0 - 0.5) * 0.16
+				var col := Color(1.0 + tint, 1.0 + tint, 1.0 + tint, 1.0)
+				var o := i * TreeRenderer.BUF_STRIDE
+				var got := Transform3D(Vector3(buf[o], buf[o + 4], buf[o + 8]), Vector3(buf[o + 1], buf[o + 5], buf[o + 9]),
+					Vector3(buf[o + 2], buf[o + 6], buf[o + 10]), Vector3(buf[o + 3], buf[o + 7], buf[o + 11]))
+				same = same and got.is_equal_approx(want) \
+					and Color(buf[o + 12], buf[o + 13], buf[o + 14], buf[o + 15]).is_equal_approx(col)
+				n += 1
+			same = same and (shadow > 0.0) == part.has("buckets")
+		_check(same and n > 0, "add_tile : transformations, couleurs et carrés d'ombre identiques (%d arbres comparés, ombre %d m)" % [n, shadow])
+		r.queue_free()

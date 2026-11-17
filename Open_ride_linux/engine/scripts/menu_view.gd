@@ -407,6 +407,12 @@ func _new_row() -> PanelContainer:
 
 
 func _set_row(p: PanelContainer, it: Dictionary, focused: bool) -> void:
+	# Rangée inchangée : rien n'est reposé. Chaque couleur ou style reposé fait remettre en forme les libellés
+	# (coupe et ellipsis du détail), et la liste des parcours y passait plusieurs millisecondes par mise à jour.
+	var sig := [it, focused, confirm_card.visible]
+	if p.has_meta("sig") and p.get_meta("sig") == sig:
+		return
+	p.set_meta("sig", sig)
 	var row: HBoxContainer = p.get_child(0)
 	var icon: Control = row.get_child(0)
 	var l: Label = row.get_child(1)

@@ -39,6 +39,7 @@ var wind_view = WindViewModel.new()
 var enabled := true
 var preset := "low"
 var living: Dictionary = {}
+var direction := 1                     # sens de la marche, -1 à rebours (lot N22) : donné à l'herbe et aux détails du sol
 var grass: Node3D = null
 var ground_details: Node3D = null     # rochers, herbes hautes, termitières des biomes (lot U8)
 var volcano: Node3D = null            # lave, braises, fumées des paysages en feu (démo « Volcan en flammes »)
@@ -150,11 +151,13 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	if grass != null:
 		var t_grass := Time.get_ticks_usec()
 		grass.set_apparent_wind(wind.apparent(rider_v, heading_deg))
+		grass.direction = direction
 		grass.update(cam_s)
 		PerfProbe.mark_since("herbe", "%d" % int(floor(cam_s)), t_grass)
 	if ground_details != null:
 		var t_ground := Time.get_ticks_usec()
 		ground_details.set_apparent_wind(wind.apparent(rider_v, heading_deg))
+		ground_details.direction = direction
 		ground_details.update(cam_s)
 		PerfProbe.mark_since("sol", "%d" % int(floor(cam_s)), t_ground)
 	if volcano != null:

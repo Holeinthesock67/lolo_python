@@ -41,8 +41,12 @@ const LINE_SPACING := 1.25
 const FONT_SIZE := 48
 ## Panneau de col : hauteur des lettres (le nom du col se lit à 25 m, 6 pixels sur 720 lignes au moins : visual_check.py),
 ## bas de la plaque au-dessus du sol, couleurs, marges et largeurs bornées.
+## Panneau de segment (« Sommet dans 500 m », « Sprint dans 1 km », lot GP14 du 15/11 : les caisses blanches
+## de segment_markers.gd jugées laides) : même plaque blanche cadrée de noir que les panneaux d'approche.
 const BOARD := {
 	"summit": {"letter_m": 0.32, "bottom_m": 2.0, "color": Color(0.42, 0.25, 0.12), "ink": Color(1, 1, 1)},
+	"segment": {"letter_m": 0.24, "bottom_m": 1.4, "color": Color(0.95, 0.95, 0.93), "ink": Color(0.08, 0.08, 0.09),
+		"border": Color(0.08, 0.08, 0.09)},
 }
 const BOARD_MARGIN_M := 0.1          # entre le texte et le liseré
 const BOARD_MIN_W := 0.9
@@ -91,8 +95,8 @@ var _mats: Dictionary = {}
 
 func _init() -> void:
 	for kind in BOARD:
-		_mats[kind] = _material(KIND_BOARD, BOARD[kind]["color"])
-	_mats["post"] = _material(KIND_POST, Color(0.6, 0.6, 0.62))
+		_mats[kind] = board_material(kind)
+	_mats["post"] = post_material()
 	_mats["km"] = _material(KIND_KM, Color(0.95, 0.95, 0.93))
 	(_mats["km"] as ShaderMaterial).set_shader_parameter("head_from_m", KM_PLINTH_H + KM_BODY_H)
 	_mats["approach_board"] = _material(KIND_BOARD, SIGN_WHITE)
@@ -102,6 +106,52 @@ func _init() -> void:
 	_mats["stone"] = _plain(Color(0.55, 0.54, 0.50), 0.95)
 	_mats["guardrail"] = _plain(Color(0.92, 0.92, 0.90), 0.45)   # glissières blanches des routes japonaises
 	(_mats["approach_board"] as ShaderMaterial).set_shader_parameter("border_color", INK_DARK)
+
+
+## Matière de la plaque d'un panneau de BOARD (liseré `border` s'il est donné).
+static func board_material(kind: String) -> ShaderMaterial:
+	var m := _material(KIND_BOARD, BOARD[kind]["color"])
+	if BOARD[kind].has("border"):
+		m.set_shader_parameter("border_color", BOARD[kind]["border"])
+	return m
+
+
+## Matière des poteaux.
+static func post_material() -> ShaderMaterial:
+	return _material(KIND_POST, Color(0.6, 0.6, 0.62))
+
+
+## Panneau de BOARD `kind` sur son ou ses poteaux, posé sous `root` (face vers +z) : plaque à la taille du texte
+## (board_layout), poteaux à colliers, texte. `meshes` garde les maillages partagés par dimensions ; matières de
+## la plaque et des poteaux données ; `shadows` faux : sans ombre portée. Rend le Label3D du texte.
+static func build_board(root: Node3D, kind: String, lines: Array, meshes: Dictionary, board_mat: Material, post_mat: Material,
+		bold: bool = false, shadows: bool = true) -> Label3D:
+	var spec: Dictionary = BOARD[kind]
+	var lay := board_layout(kind, lines)
+	var w: float = lay["w"]
+	var h: float = lay["h"]
+	var bottom: float = spec["bottom_m"]
+	var top := bottom + h
+	var xs := [-w * 0.3, w * 0.3] if w >= TWO_POSTS_FROM_M else [0.0]
+	var post_h := top - 0.04
+	var pk := "posts_%d_%d_%d" % [xs.size(), roundi(w * 100.0), roundi(post_h * 100.0)]
+	if not meshes.has(pk):
+		meshes[pk] = posts_mesh(xs, post_h, bottom)
+	var bk := "board_%d_%d" % [roundi(w * 100.0), roundi(h * 100.0)]
+	if not meshes.has(bk):
+		meshes[bk] = board_mesh(w, h)
+	var board_y := bottom + h * 0.5
+	for part in [[meshes[pk], post_mat, Vector3(0.0, post_h * 0.5, 0.0)], [meshes[bk], board_mat, Vector3(0.0, board_y, 0.0)]]:
+		var mi := MeshInstance3D.new()
+		mi.mesh = part[0]
+		mi.material_override = part[1]
+		mi.position = part[2]
+		if not shadows:
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(mi)
+	var label := _label("\n".join(lines), spec["ink"], lay["letter_m"], Vector3(0.0, board_y, BOARD_DEPTH_M * 0.5 + 0.004), bold)
+	root.add_child(label)
+	return label
 
 
 static func _plain(color: Color, roughness: float) -> StandardMaterial3D:
@@ -581,21 +631,7 @@ func build_prop(item: Dictionary) -> Node3D:
 		# Lot P35 : foyer qui s'allume la nuit (caché quand le jour et la nuit est coupé)
 		_mesh(root, _shared("lantern_light", lantern_light_mesh), NightLights.lamp_material(), Vector3.ZERO)
 	else:
-		var spec: Dictionary = BOARD[kind]
-		var lay := board_layout(kind, lines)
-		var w: float = lay["w"]
-		var h: float = lay["h"]
-		var bottom: float = spec["bottom_m"]
-		var top := bottom + h
-		var xs := [-w * 0.3, w * 0.3] if w >= TWO_POSTS_FROM_M else [0.0]
-		var post_h := top - 0.04
-		_mesh(root, _shared("posts_%d_%d_%d" % [xs.size(), roundi(w * 100.0), roundi(post_h * 100.0)],
-			posts_mesh.bind(xs, post_h, bottom)), _mats["post"], Vector3(0.0, post_h * 0.5, 0.0))
-		var board_y := bottom + h * 0.5
-		_mesh(root, _shared("board_%d_%d" % [roundi(w * 100.0), roundi(h * 100.0)], board_mesh.bind(w, h)),
-			_mats[kind], Vector3(0.0, board_y, 0.0))
-		label = _label("\n".join(lines), spec["ink"], lay["letter_m"], Vector3(0.0, board_y, BOARD_DEPTH_M * 0.5 + 0.004))
-		root.add_child(label)
+		label = build_board(root, kind, lines, _meshes, _mats[kind], _mats["post"])
 	root.set_meta("label", label)
 	return root
 

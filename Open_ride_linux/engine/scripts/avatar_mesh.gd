@@ -23,7 +23,7 @@ extends RefCounted
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
 
-const LOD_MAX_TRIANGLES := [6000, 1500, 300]
+const LOD_MAX_TRIANGLES := [6000, 1800, 480]
 const CRANK_R := 0.1725
 const BB := Vector3(0.0, 0.27, 0.0)          # boîtier de pédalier
 const FRONT_AXLE := Vector3(0.0, 0.34, -0.59)
@@ -355,9 +355,16 @@ static func _shorts(d: Dictionary, sides: int) -> Array:
 
 
 ## Tête (peau) centrée sur `head` : crâne, mâchoire, nez, oreilles ; face vers −Z.
-static func _head(d: Dictionary, sides: int, rings: int, skin: Color, fine: bool) -> Array:
+## `helmet` (niveau 2) : [couleur de la coque, helmet_spec] ; la coque est alors fondue dans le maillage de
+## la tête (même appel de dessin), à la place et à l'échelle que la vue donne au casque des autres niveaux.
+static func _head(d: Dictionary, sides: int, rings: int, skin: Color, fine: bool, helmet := []) -> Array:
 	var hs := float(d["hs"])
 	var g := Geo.new()
+	if not helmet.is_empty():
+		var spec: Dictionary = helmet[1]
+		var place := Transform3D(Basis.from_scale(spec["scale"]), spec["shift"] * hs)
+		_helmet_into(g, d, sides, maxi(rings - 1, 3), helmet[0], false, false, place)
+	g.xform = Transform3D.IDENTITY
 	g.color = skin
 	g.ellipsoid(Vector3(0.0, 0.01, 0.005) * hs, Vector3(0.078, 0.1, 0.092) * hs, sides, rings)
 	if fine:
@@ -371,11 +378,18 @@ static func _head(d: Dictionary, sides: int, rings: int, skin: Color, fine: bool
 ## Casque de route centré sur la tête : coque allongée vers l'arrière, aérations sombres d'avant en arrière,
 ## bord sombre, sangles sous le menton ; visière (casque « summit »). Couleur de la coque : `shell`.
 static func _helmet(d: Dictionary, sides: int, rings: int, shell: Color, visor: bool, fine: bool) -> Array:
+	var g := Geo.new()
+	_helmet_into(g, d, sides, rings, shell, visor, fine)
+	return g.commit()
+
+
+## Casque ajouté à `g`, placé par `place` (repère de la tête).
+static func _helmet_into(g: Geo, d: Dictionary, sides: int, rings: int, shell: Color, visor: bool, fine: bool,
+		place := Transform3D.IDENTITY) -> void:
 	var hs := float(d["hs"])
 	var c := Vector3(0.0, 0.032, 0.012) * hs
 	var r := Vector3(0.098, 0.093, 0.124) * hs
-	var g := Geo.new()
-	g.xform = Transform3D(Basis(Vector3.RIGHT, 0.22), Vector3.ZERO)   # arrière plus bas que l'avant
+	g.xform = place * Transform3D(Basis(Vector3.RIGHT, 0.22), Vector3.ZERO)   # arrière plus bas que l'avant
 	g.ellipsoid(c, r, sides, rings, -22.0, 90.0, func(n: Vector3) -> Color: return DARK if n.y < -0.18 else shell)
 	if fine:
 		g.color = DARK
@@ -394,7 +408,7 @@ static func _helmet(d: Dictionary, sides: int, rings: int, shell: Color, visor: 
 						[p0 - side, p1 + side, p1 - side], [p0 - side, p0 + side, p1 + side]]:   # deux faces
 					for v in q:
 						g.vert(v, n)
-	g.xform = Transform3D.IDENTITY
+	g.xform = place
 	g.color = DARK
 	if fine:
 		for sx in [-1.0, 1.0]:
@@ -402,7 +416,7 @@ static func _helmet(d: Dictionary, sides: int, rings: int, shell: Color, visor: 
 	if visor:
 		g.color = shell.darkened(0.3)
 		g.box(Vector3(0.0, 0.085, -0.11) * hs, Vector3(0.17, 0.01, 0.07) * hs)
-	return g.commit()
+	g.xform = Transform3D.IDENTITY
 
 
 ## Lunettes enveloppantes centrées sur la tête : bandeau courbe devant les yeux.
@@ -625,7 +639,10 @@ static func build_arrays(lod: int, d: Dictionary, looks := {}, colors := {}) -> 
 	parts["shin"] = {"mesh": _limb(float(d["shin"]), float(d["r_shin"]), shin_prof, radial, skin, caps), "count": 2}
 	parts["upper_arm"] = {"mesh": _limb(float(d["upper_arm"]), float(d["r_arm"]), upper_prof, maxi(radial - 2, 4), skin, caps), "count": 2}
 	parts["forearm"] = {"mesh": _limb(float(d["forearm"]), float(d["r_forearm"]), fore_prof, maxi(radial - 2, 4), skin, caps), "count": 2}
-	parts["head"] = {"mesh": _head(d, [12, 7, 4][lod], [7, 4, 2][lod], skin, fine), "count": 1}
+	# Tête et casque restent ronds à tous les niveaux (retour du 15/11 : têtes « en hexagone » des bots) ;
+	# au niveau 2, la coque du casque est fondue dans la tête.
+	var helmet_lod2 := [col["helmet"], EquipmentMeshes.helmet_spec(str(looks.get("helmet", "")))] if lod == 2 else []
+	parts["head"] = {"mesh": _head(d, [12, 12, 10][lod], [7, 6, 5][lod], skin, fine, helmet_lod2), "count": 1}
 	parts["shoe"] = {"mesh": _shoe([8, 4, 3][lod], lod), "count": 2}
 	parts["bike"] = {"mesh": _bike(lod, d, fs, col["primary"]), "count": 1}
 	parts["wheel"] = {"mesh": wheel_arrays(lod, ws), "count": 2}
@@ -639,7 +656,7 @@ static func build_arrays(lod: int, d: Dictionary, looks := {}, colors := {}) -> 
 		parts["hand"] = {"mesh": _hand([8, 4][lod], fine), "count": 2}
 		parts["crank"] = {"mesh": crank_arrays(lod), "count": 1}
 		var hs := EquipmentMeshes.helmet_spec(str(looks.get("helmet", "")))
-		parts["helmet"] = {"mesh": _helmet(d, [18, 8][lod], [7, 3][lod], col["helmet"], bool(hs["visor"]), fine), "count": 1}
+		parts["helmet"] = {"mesh": _helmet(d, [18, 14][lod], [7, 5][lod], col["helmet"], bool(hs["visor"]), fine), "count": 1}
 		var hair := Geo.new()
 		hair.color = col["hair"]
 		hair.ellipsoid(Vector3(0.0, 0.0, 0.006) * float(d["hs"]), Vector3(0.083, 0.102, 0.097) * float(d["hs"]), [10, 6][lod], [5, 2][lod], -40.0, 90.0, Callable(), 230.0)   # nuque et côtés, pas le visage

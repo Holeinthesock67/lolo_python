@@ -133,6 +133,8 @@ const BIOME_SPECIES := {
 	# Lot AT1 : moutons et poneys des landes, goélands des côtes ; les cerfs du rôle `deer` jouent les cerfs élaphes
 	"atlantic_heath": {"cow": "sheep", "vee": "gull"},
 	"high_plateau": {"cow": "yak", "sheep": "llama", "horse": "llama", "deer": "llama", "hare": ""},
+	# Lot SM1 : sous l'eau, aucune bête au sol ni oiseau ; bancs de poissons, tortues et raies (BIOME_GROUPS)
+	"reef": {"cow": "", "sheep": "", "horse": "", "deer": "", "hare": "", "birds": "", "crows": "", "vee": "", "raptor": ""},
 }
 ## Groupes propres à un biome ; `key` : densité du thème qui règle la chance `share` du groupe.
 const BIOME_GROUPS := {
@@ -184,6 +186,19 @@ const BIOME_GROUPS := {
 	"high_plateau": [
 		{"species": "llama", "kind": "herd", "n": Vector2i(4, 12), "road_m": Vector2(30.0, 240.0), "min_m": 20.0, "share": 0.8, "key": "livestock", "max_slope": 0.7},
 		{"species": "yak", "kind": "herd", "n": Vector2i(3, 8), "road_m": Vector2(50.0, 300.0), "min_m": 30.0, "share": 0.5, "key": "livestock", "max_slope": 0.6},
+	],
+	# Lot SM1 : bancs de poissons, tortues et raies qui tournent en cercle (trajectoires des bandes d'oiseaux) près
+	# du fond (`agl` : hauteur du centre au-dessus du sol, `min_agl` : écart au sol le plus haut sous l'orbite) et
+	# toujours sous la surface (`below_y` : niveau de la mer, 0) ; `radius` : rayon de l'orbite.
+	"reef": [
+		{"species": "fish", "kind": "birds", "n": Vector2i(14, 24), "road_m": Vector2(6.0, 30.0), "min_m": 0.0, "share": 1.0, "key": "birds",
+			"agl": Vector2(3.0, 6.0), "min_agl": 1.5, "below_y": 0.0, "radius": Vector2(6.0, 12.0)},
+		{"species": "fish_blue", "kind": "birds", "n": Vector2i(12, 20), "road_m": Vector2(8.0, 45.0), "min_m": 0.0, "share": 1.0, "key": "birds",
+			"agl": Vector2(4.0, 8.0), "min_agl": 1.5, "below_y": 0.0, "radius": Vector2(8.0, 16.0)},
+		{"species": "turtle", "kind": "birds", "n": Vector2i(1, 2), "road_m": Vector2(12.0, 50.0), "min_m": 0.0, "share": 0.8, "key": "deer",
+			"agl": Vector2(3.0, 6.0), "min_agl": 1.5, "below_y": 0.0, "radius": Vector2(10.0, 18.0)},
+		{"species": "ray", "kind": "birds", "n": Vector2i(1, 1), "road_m": Vector2(15.0, 60.0), "min_m": 0.0, "share": 0.6, "key": "deer",
+			"agl": Vector2(2.0, 4.0), "min_agl": 1.0, "below_y": 0.0, "radius": Vector2(14.0, 24.0)},
 	],
 }
 
@@ -422,9 +437,14 @@ static func place_chunk(chunk_index: int, vegetation_areas: Array, pois: Array, 
 
 ## Bande de `n` oiseaux de l'espèce `species` en cercle de `radius` autour de `c2`, de 25 à 45 m au-dessus du
 ## sol et à plus de BIRD_MIN_AGL_M du sol le plus haut sous l'orbite (tirages : `seed`, sels 8 et 200 + i).
-static func _flock(seed: int, id: String, c2: Vector2, radius: float, n: int, species: String, ex: Dictionary) -> Dictionary:
+## `spec` (lot SM1, facultatif) : `agl` remplace BIRD_CENTER_AGL_M, `min_agl` BIRD_MIN_AGL_M, et `below_y` garde
+## toute la bande sous ce niveau (poissons sous la surface), sans jamais descendre sous l'écart au sol.
+static func _flock(seed: int, id: String, c2: Vector2, radius: float, n: int, species: String, ex: Dictionary,
+		spec: Dictionary = {}) -> Dictionary:
 	var gy := _ground(ex, c2.x, c2.y, 0.0)
-	var agl := lerpf(BIRD_CENTER_AGL_M.x, BIRD_CENTER_AGL_M.y, _u(_h(seed, 8)))
+	var agl_range: Vector2 = spec.get("agl", BIRD_CENTER_AGL_M)
+	var min_agl := float(spec.get("min_agl", BIRD_MIN_AGL_M))
+	var agl := lerpf(agl_range.x, agl_range.y, _u(_h(seed, 8)))
 	var members := []
 	for i in range(n):
 		var hb := _h(seed, 200 + i)
@@ -441,7 +461,10 @@ static func _flock(seed: int, id: String, c2: Vector2, radius: float, n: int, sp
 		var ang := TAU * j / 16.0
 		for rr in [radius * 0.6, radius]:
 			top = maxf(top, _ground(ex, c2.x + cos(ang) * rr, c2.y + sin(ang) * rr, gy))
-	var cy := maxf(gy + agl, top + BIRD_MIN_AGL_M + 4.0 + BIRD_WAVE_M)
+	var floor_y := top + min_agl + 4.0 + BIRD_WAVE_M
+	var cy := maxf(gy + agl, floor_y)
+	if spec.has("below_y"):
+		cy = maxf(minf(cy, float(spec["below_y"]) - 4.0 - BIRD_WAVE_M - 0.5), floor_y)
 	return {"type": "birds", "id": id, "species": species, "center": Vector3(c2.x, cy, c2.y),
 		"ground_y": gy, "radius_m": radius, "members": members}
 
@@ -555,7 +578,8 @@ static func _biome_group(spec: Dictionary, id: String, seed: int, route, s_mid: 
 		if bool(spec.get("water", false)) and _water_dist(ex, c2.x, c2.y) > WATER_NEAR_M:
 			continue
 		if kind == "birds":
-			return [_flock(seed, id, c2, lerpf(15.0, 35.0, _u(VegetationPlacer._mix(hh + 2))), n, spec["species"], ex)]
+			var radius: Vector2 = spec.get("radius", Vector2(15.0, 35.0))
+			return [_flock(seed, id, c2, lerpf(radius.x, radius.y, _u(VegetationPlacer._mix(hh + 2))), n, spec["species"], ex, spec)]
 		var spread := CROW_SPREAD_M if kind == "crows" else BIOME_SPREAD_M
 		var land_d := lerpf(CROW_LAND_M.x, CROW_LAND_M.y, _u(VegetationPlacer._mix(hh + 3)))
 		var members := []

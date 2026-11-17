@@ -171,3 +171,22 @@ def test_x_input_method_warnings_of_the_desktop_are_tolerated():
         assert sb.GODOT_ISSUE.search(line) and sb.GODOT_TOLERATED.search(line)
         assert vc.GODOT_TOLERATED.search(line)
     assert not sb.GODOT_TOLERATED.search("WARNING: something else failed")
+
+
+# --- saisons du banc (rS1) ----------------------------------------------------------------------
+
+def test_render_section_is_one_table_with_the_requested_cycle_settings():
+    import tomllib
+    assert sb.render_section("medium") == '[render]\nquality = "medium"\n'
+    text = "[ipc]\nport_state = 1\n\n" + sb.render_section("high", "winter", "off", "november")
+    assert tomllib.loads(text)["render"] == {"quality": "high", "seasons": "winter", "day_night": "off",
+                                             "month": "november"}
+    assert sb.cycle_note(_args(seasons="autumn", day_night=None, month=None)) == ", saisons autumn"
+    assert sb.cycle_note(_args()) == ""
+
+
+def test_season_option_accepts_the_setting_choices_only():
+    from openride_core.config import CHOICES
+    assert set(CHOICES[("render", "seasons")]) >= {"off", "summer", "autumn", "winter"}
+    with pytest.raises(SystemExit):
+        sb.main(["--seasons", "monsoon", "--list"])

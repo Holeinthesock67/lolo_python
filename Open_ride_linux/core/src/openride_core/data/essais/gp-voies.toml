@@ -1,0 +1,48 @@
+# Grand Prix des objets sur le Circuit des Prés : voies, objets, effets lisibles (GP11, GP4, GP12).
+id = "gp-voies"
+but = "Grand Prix sur le Circuit des Prés : changer de voie, ramasser et utiliser des objets, effets lisibles"
+duree_max_s = 600
+commandes = [
+  { cmd = "select_route", args = { route_id = "demo-circuit" } },
+  { cmd = "start", args = { mode = "grandprix" } },
+]
+questions = [
+  "Grand Prix : plaisir et lisibilité des objets sur 5 ?",
+  "Changement de voie : fluide et lisible ? (oui/non + remarque)",
+]
+
+[config.grandprix]
+opponents = 4
+laps = 3
+chaos = "normal"
+box_every_m = 1000
+
+[[etapes]]
+quand = { kind = "event", event = "start" }
+dire = "C'est parti. Roule à {cible} watts, quatre adversaires."
+
+[[etapes]]
+quand = { kind = "record", "distance>=" = 300 }
+dire = "Change de voie : flèche gauche, puis flèche droite. La voie change-t-elle tout de suite ?"
+
+[[etapes]]
+quand = { kind = "gp", event = "box", rider = "me" }
+dire = "Objet ramassé. Utilise-le avec Z."
+attendu = { kind = "gp", event = "use", rider = "me" }
+rappel = "Appuie sur Z pour utiliser ton objet."
+
+[[etapes]]
+quand = { kind = "gp", event = "box", rider = "me" }
+dire = "Deuxième objet. Rapproche-toi d'un adversaire avant de l'utiliser."
+attendu = { kind = "gp", event = "use", rider = "me" }
+delai_s = 60
+rappel = "Z pour utiliser l'objet."
+
+[[etapes]]
+quand = { kind = "gp", event = "hit", rider = "me" }
+dire = "Tu viens d'être touché. L'effet est-il lisible, avec un son ?"
+attente_max_s = 240
+
+[[etapes]]
+quand = { kind = "record", "t>=" = 480 }
+dire = "Accélère deux minutes à {cible:120} watts jusqu'à la fin."
