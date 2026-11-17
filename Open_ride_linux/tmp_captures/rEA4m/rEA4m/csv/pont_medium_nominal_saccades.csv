@@ -1,0 +1,27 @@
+t_s;unix_s;frame_ms;distance_m;cause;steps
+6.574;1794916365.290;133.3;0.0;inconnue;
+19.021;1794916377.737;133.3;0.0;cyclistes;spectateurs préchauffage 0.1 | passants préchauffage 0.0 | cyclistes préchauffage 934.8
+23.449;1794916382.165;133.3;0.0;inconnue;tuile near:0:0 0.9 | arbres near:0:0 1.5
+26.215;1794916384.932;133.3;0.0;inconnue;fenetre  1.1 | herbe 0 8.5 | sol 0 0.0 | feu 0 0.0 | decor  4.9 | atmosphere  0.0 | arches  0.3 | tuile near:0:-1 1.2 | arbres near:0:-1 2.0 | tuile near:-1:0 1.2 | arbres near:-1:0 2.3 | osm 0 5.9 | osm 1 2.4
+27.499;1794916386.215;133.3;0.0;capture;fenetre  1.3 | herbe 0 5.1 | sol 0 0.0 | feu 0 0.0 | decor  1.5 | atmosphere  0.0 | arches  0.0 | tuile near:-1:-1 0.8 | arbres near:-1:-1 1.7 | route road:-1 1.3 | osm 2 1.8 | osm 3 1.9
+29.722;1794916388.438;149.2;0.0;capture;fenetre  1.5 | herbe 0 5.3 | sol 0 0.0 | feu 0 0.0 | spectateurs tri 490 9.7 | decor  15.5 | atmosphere  0.1 | arches  0.1 | route road:0 1.1 | route road:1 1.0
+29.889;1794916388.605;117.5;0.0;capture;fenetre  0.8 | herbe 0 5.1 | sol 0 0.0 | feu 0 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0 | route road:2 0.7 | route road:3 0.1
+29.942;1794916388.658;52.9;0.0;inconnue;fenetre  0.7 | herbe 0 3.7 | sol 0 0.0 | feu 0 0.0 | decor  0.6 | atmosphere  0.0 | arches  0.0 | tuile near:0:-2 0.9 | arbres near:0:-2 1.5 | tuile near:-1:-2 1.1 | arbres near:-1:-2 1.8
+30.035;1794916388.751;92.8;0.0;inconnue;fenetre  1.7 | herbe 0 6.1 | sol 0 0.0 | feu 0 0.0 | decor  0.9 | atmosphere  0.0 | arches  0.0 | tuile far:0:-1 1.2 | tuile far:0:0 1.0
+30.080;1794916388.796;44.9;0.0;inconnue;fenetre  0.9 | herbe 0 5.6 | sol 0 0.0 | feu 0 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0 | tuile far:-1:-1 1.2 | tuile far:-1:0 1.1
+30.131;1794916388.847;51.7;0.0;inconnue;fenetre  0.8 | herbe 0 5.4 | sol 0 0.0 | feu 0 0.0 | decor  0.9 | atmosphere  0.0 | arches  0.0 | tuile far:1:-1 1.1 | tuile far:1:0 1.1
+30.173;1794916388.889;40.9;0.0;inconnue;fenetre  0.6 | herbe 0 3.8 | sol 0 0.0 | feu 0 0.0 | decor  0.6 | atmosphere  0.0 | arches  0.0 | tuile far:-1:-2 1.0 | tuile far:-1:1 0.8
+30.199;1794916388.916;35.7;0.0;inconnue;fenetre  0.7 | herbe 0 3.6 | sol 0 0.0 | feu 0 0.0 | decor  0.7 | atmosphere  0.0 | arches  0.0 | tuile far:0:-2 0.8 | tuile far:0:1 0.7
+30.301;1794916389.017;75.9;0.0;inconnue;fenetre  0.8 | herbe 0 5.9 | sol 0 0.0 | feu 0 0.0 | decor  1.0 | atmosphere  0.0 | arches  0.0
+30.362;1794916389.078;71.7;0.0;inconnue;fenetre  0.7 | herbe 0 5.5 | sol 0 0.0 | feu 0 0.0 | decor  1.0 | atmosphere  0.0 | arches  0.0
+30.403;1794916389.120;48.0;0.0;inconnue;fenetre  0.9 | herbe 0 5.8 | sol 0 0.0 | feu 0 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0
+30.488;1794916389.205;37.5;0.0;inconnue;fenetre  1.0 | herbe 0 3.5 | sol 0 0.0 | feu 0 0.0 | decor  0.5 | atmosphere  0.0 | arches  0.0
+30.627;1794916389.343;43.5;0.0;inconnue;fenetre  0.5 | herbe 0 4.5 | sol 0 0.0 | feu 0 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0
+30.654;1794916389.370;33.3;0.0;inconnue;fenetre  0.8 | herbe 0 5.3 | sol 0 0.0 | feu 0 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0
+30.708;1794916389.424;33.3;0.0;inconnue;fenetre  0.8 | herbe 0 0.9 | sol 0 0.0 | feu 0 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0
+31.044;1794916389.760;67.5;0.0;inconnue;fenetre  0.8 | herbe 0 0.9 | sol 0 0.0 | feu 0 0.0 | decor  1.0 | atmosphere  0.0 | arches  0.0 | foret far:-1:-1 0.8
+31.082;1794916389.799;43.8;0.0;inconnue;fenetre  0.8 | herbe 0 0.9 | sol 0 0.0 | feu 0 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0
+31.117;1794916389.834;39.6;0.0;inconnue;fenetre  0.9 | herbe 0 0.9 | sol 0 0.0 | feu 0 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0
+33.944;1794916392.660;64.0;0.0;inconnue;fenetre  0.7 | herbe 0 3.0 | sol 0 0.0 | feu 0 0.0 | decor  0.6 | atmosphere  0.0 | arches  0.0
+35.206;1794916393.922;61.0;1.7;inconnue;fenetre  1.0 | herbe 1 0.1 | sol 1 0.0 | feu 1 0.0 | decor  1.2 | atmosphere  0.0 | arches  0.0
+36.272;1794916394.988;137.7;1.7;capture;fenetre  0.7 | herbe 1 0.0 | sol 1 0.0 | feu 1 0.0 | decor  0.8 | atmosphere  0.0 | arches  0.0
