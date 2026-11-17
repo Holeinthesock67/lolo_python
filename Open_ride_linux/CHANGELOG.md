@@ -133,6 +133,11 @@ Le numéro unique se trouve dans le fichier `VERSION` ; `scripts/bump-version.sh
 - Route qui disparaissait sous l'herbe dans les longues montées (forêt, montagne) : le terrain lointain est de nouveau creusé sous la chaussée avec le relief exagéré.
 - Parcours demo : le sol ne recouvre plus la chaussée au km 1,74, là où la pente passe de 1 % à 3,5 %. Le terrain de démonstration reçoit le même garde-fou que les parcours compilés et la démo du dossier des parcours est remplacée au prochain lancement.
 
+### Grand Prix des objets à 11 adversaires (lot GP10)
+- Le Grand Prix des objets accepte jusqu'à 11 adversaires (au lieu de 4) grâce au peloton (réglage « Adversaires » de l'écran Prêt du mode).
+- Au bout d'un parcours en ligne, les bots arrivés s'arrêtent en file au lieu de s'empiler au même endroit ; au Grand Prix, la ligne est posée 30 m avant le bout du parcours.
+- La trame qui porte l'état des appareils garde ses bots à 11 adversaires : seuls leurs objets et effets en partent pour cette trame-là, l'écran garde les derniers reçus.
+
 ### Dernier survivant à 11 adversaires (lot DS8)
 - Jusqu'à 11 adversaires (au lieu de 4) grâce au peloton : une arche par adversaire, donc un parcours d'au moins 11 km à 1 km d'écart, ou une boucle, ou le monde ouvert. Sur un parcours trop court, l'écran Prêt propose les réglages qui tiennent.
 - Un bot éliminé laisse passer le coureur à sa hauteur avant de se ranger sur le bas-côté (au lieu de lui couper la route).

@@ -115,6 +115,10 @@ PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 SURVIVOR_RETIRED_MPS = 15.0 / 3.6   # bot éliminé : il se range à 15 km/h (lot DS2)
 SURVIVOR_RETIRED_DECEL = 1.0       # m/s² : freinage du bot éliminé
+# Bout d'un parcours en ligne (banc rgp10d du 16 novembre, Grand Prix à 11 adversaires) : les bots qui y arrivent
+# s'arrêtent en file, le k-ième (depuis 0) à k × END_GAP_M avant la fin, au lieu de s'empiler au même mètre.
+END_GAP_M = draft_mod.BIKE_LENGTH_M + 0.3
+GP_RUNOUT_M = 30.0   # Grand Prix sur un parcours en ligne : la file de 12 coureurs (11 × END_GAP_M) tient après la ligne
 SURVIVOR_OUT_LANE_M = 2.9         # m : écart à l'axe d'un bot éliminé, au bord de la chaussée (6 m ; `lane_m` borné à 3 m par le contrat)
 TRACK_START_GAP_M = 2.0           # m : coureurs d'une même équipe en file au départ arrêté (lot VD6)
 SURVIVOR_RETIRED_S = 10.0          # s : bot éliminé retiré de la séance
@@ -380,6 +384,7 @@ class CoreSession:
         self.wtf: WtfMode | None = None
         self.survivor: SurvivorRace | None = None   # mode « Dernier survivant » (lot DS2)
         self._survivor_out: dict[str, float] = {}   # bot éliminé → instant de l'élimination (il se range)
+        self._end_queue: list[str] = []   # bots arrêtés au bout d'un parcours en ligne, dans l'ordre d'arrivée
         self._survivor_end_pending = False
         self.grandprix_path: Path = grandprix_path or gp_items.GRANDPRIX_FILE   # objets et valeurs (lot GP2)
         self.grandprix: GrandPrixMode | None = None   # mode « Grand Prix des objets » (lot GP2)
@@ -2964,7 +2969,8 @@ class CoreSession:
     def _grandprix_course(self) -> tuple[float, float | None]:
         """Longueur de la course et d'un tour (circuit) d'après `[grandprix]` ; `GrandPrixError` si le parcours
         ne s'y prête pas (monde ouvert, sans distance de course ; parcours en ligne de moins de 1 km). En ligne, la
-        course ne dépasse jamais le parcours (lot GP14, essai du 15 novembre) : `distance_km` ou ce qu'il en reste."""
+        course ne dépasse jamais le parcours (lot GP14, essai du 15 novembre) : `distance_km` ou ce qu'il en reste,
+        ligne posée au moins `GP_RUNOUT_M` avant le bout (lot GP10) : la file des bots arrivés y tient après la ligne."""
         gc = self.cfg.grandprix
         route = self.route
         if self.openworld is not None or route is None:
@@ -2973,7 +2979,7 @@ class CoreSession:
             return gc.laps * route.length_m, route.length_m
         from .grandprix.boxes import MIN_COURSE_M
 
-        length = min(gc.distance_km * 1000.0, route.length_m - self.physics.s)
+        length = min(gc.distance_km * 1000.0, route.length_m - self.physics.s - GP_RUNOUT_M)
         if length < MIN_COURSE_M - 1e-6:
             raise GrandPrixError(f"parcours trop court pour une course ({route.length_m / 1000.0:.1f} km, "
                                  f"{MIN_COURSE_M / 1000.0:.0f} km au moins)")
@@ -3757,6 +3763,7 @@ class CoreSession:
             bot.step(dt, route)
             if bot_wind:
                 params.wind_mps -= bot_wind
+            self._queue_at_end(bot, route)
             if track is not None and getattr(bot, "physics", None) is not None:   # même règle de distance (VD3)
                 bot.physics.s = bot_s + (bot.physics.s - bot_s) * track.progress_factor(
                     bot_s, velodrome.height_on_track(draft_mod.lane_of(bot)))
@@ -3833,6 +3840,24 @@ class CoreSession:
             log.info("Grand Prix des objets : arrivée, %de sur %d.", self.grandprix.racers[GP_ME].finished,
                      len(self.grandprix.racers))
             self._finish(True)
+
+    def _queue_at_end(self, bot, route) -> None:
+        """Bout d'un parcours en ligne : le bot s'arrête à sa place dans la file d'arrivée (`END_GAP_M` entre deux
+        bots, le premier arrivé au bout), jamais sur un bot déjà arrêté. Le fantôme rejoue une séance : pas de file.
+        La file oublie un bot reparti (séance relancée, bots changés)."""
+        physics = getattr(bot, "physics", None)
+        if route is None or route.is_loop or physics is None or getattr(bot, "kind", "") == "ghost":
+            return
+        end = route.length_m
+        ids = {b.id for b in self.bots}
+        self._end_queue = [i for k, i in enumerate(self._end_queue)
+                           if i in ids and next(b for b in self.bots if b.id == i).s >= end - k * END_GAP_M - 0.5]
+        k = self._end_queue.index(bot.id) if bot.id in self._end_queue else len(self._end_queue)
+        stop = end - k * END_GAP_M
+        if physics.s >= stop:
+            physics.s, physics.v = stop, 0.0
+            if bot.id not in self._end_queue:
+                self._end_queue.append(bot.id)
 
     def _track_of(self, world) -> velodrome.TrackGeometry | None:
         """Piste du parcours (couche `venue` d'un vélodrome, lot VD3) ; None pour une route ou une couche illisible."""
