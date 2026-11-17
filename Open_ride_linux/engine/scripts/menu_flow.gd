@@ -97,7 +97,8 @@ const SURVIVOR_OPPONENTS := [2, 11]     # bornes de survivor.opponents et surviv
 const SURVIVOR_SPACING_KM := [1, 3]
 ## Aide des touches sur une ligne de réglage de l'écran Prêt d'un mode (essai du 4 novembre).
 const MODE_EDIT_HELP := "Changer une ligne : A maintenu, puis − / + pour la valeur, A maintenu pour enregistrer, Y pour annuler."
-const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "survivor.spread", "survivor.after_out"]
+const SURVIVOR_KEYS := ["survivor.opponents", "survivor.spacing_km", "bots.level_pct", "bots.objective", "survivor.spread",
+	"survivor.after_out"]
 const SURVIVOR_PREFIX := "Survivant : "
 ## Course en ligne la plus courte du Grand Prix (lot GP14, `grandprix.boxes.MIN_COURSE_M` du core).
 const GP_MIN_COURSE_M := 1000.0
@@ -143,7 +144,7 @@ const FTP_TESTS := [
 	["ramp", "Rampe", "≈ 25 min : +20 W par minute jusqu'à ne plus tenir ; FTP = 75 % de la meilleure minute",
 		"test de FTP (rampe)"]]
 const FTP_HINT := "Sur une boucle : l'arrivée d'un parcours arrête le test"
-const SUMMARY_BASE_IDS := ["new_session", "details", "quit"]
+const SUMMARY_BASE_IDS := ["replay", "new_session", "details", "quit"]
 ## Ligne d'état de l'écran de pause selon `state.pause_reason` (contrat IPC) : le HUD est caché pendant
 ## un menu, la raison de la pause s'affiche donc sous le titre. Pause demandée (`user`) : rien.
 const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion en cours…",
@@ -1582,7 +1583,7 @@ static func grandprix_keys(route: Dictionary) -> Array:
 	var loop := str(route.get("route_type", "")) == "loop"
 	var course: Array = ["grandprix.laps"] if loop else (["grandprix.distance_km"] if not route.is_empty()
 		else ["grandprix.laps", "grandprix.distance_km"])
-	return ["grandprix.opponents"] + course + ["bots.level_pct", "grandprix.chaos", "grandprix.box_every_m"]
+	return ["grandprix.opponents"] + course + ["bots.level_pct", "bots.objective", "grandprix.chaos", "grandprix.box_every_m"]
 
 
 ## Ligne « Lancer » du Grand Prix : {enabled, detail, advice}. Circuit : tours et longueur de la course ; en
