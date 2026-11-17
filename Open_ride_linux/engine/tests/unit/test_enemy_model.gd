@@ -75,6 +75,13 @@ func _run() -> void:
 	_check(b.pose()["boss_effect"] == "shockwaves", "boss phase 2 : ondes de choc")
 	b.update(_rogue({"archetype": "boss", "phase": "BOSS", "boss_phase": 3}), 3, 0.0, 0.1)
 	_check(b.pose()["boss_effect"] == "scarlet" and b.pose()["boss_phase"] == 3, "boss phase 3 : rouge écarlate")
+	# Phase du boss gagnée : la trame qui annonce la phase suivante porte encore `room_won` de la précédente
+	var bp = EnemyModel.new()
+	bp.update(_rogue({"archetype": "boss", "phase": "BOSS", "boss_phase": 1, "room_id": 4, "enemy_hp": 10.0}), 1, 0.0, 0.1)
+	bp.update(_rogue({"archetype": "boss", "phase": "BOSS", "boss_phase": 2, "room_id": 5, "events": ["room_won"]}), 2, 0.0, 0.1)
+	bp.update(_rogue({"archetype": "boss", "phase": "BOSS", "boss_phase": 2, "room_id": 5}), 3, 0.0, 0.6)
+	_check(bp.pose()["visible"] and bp.pose()["state"] == "hold" and is_equal_approx(bp.pose()["alpha"], 1.0),
+		"phase suivante du boss : ennemi affiché malgré le room_won de la phase gagnée")
 
 	# Drapeaux par archétype
 	var f = EnemyModel.new()

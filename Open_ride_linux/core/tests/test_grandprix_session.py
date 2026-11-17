@@ -62,11 +62,12 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     (world / "route.json").write_text(json.dumps(loop_route()), encoding="utf-8")
 
     def make(port: int, opponents: int = 4, laps: int = 3, distance_km: int = 10, route_id: str = "anneau",
-             level_pct: int = 100) -> tuple[CoreSession, list, list]:
+             level_pct: int = 100, objective: str = "max") -> tuple[CoreSession, list, list]:
         cfg = Config()
         cfg.ipc.port_state, cfg.ipc.port_commands = port, port + 1
         cfg.grandprix.opponents, cfg.grandprix.laps, cfg.grandprix.distance_km = opponents, laps, distance_km
         cfg.bots.level_pct = level_pct
+        cfg.bots.objective = objective   # lot BT1 : scénarios écrits pour des bots à fond (puissances du cycliste)
         cfg.ride.vehicle_draft = "off"
         s = CoreSession(cfg, driver=MockDriver(base_power_w=POWER_W, ramp_amplitude_w=0.0),
                         inputs=[NullProvider()], journal_dir=tmp_path / "journal",
@@ -108,11 +109,13 @@ def test_three_laps_four_bots_frames_hits_and_bilan(env):
     assert [type(b) for b in s.bots] == [ProfileBot] * 4
     gp = s.grandprix
     assert gp.lap_m == pytest.approx(1500.0) and gp.length_m == pytest.approx(4500.0)
-    assert len(gp.boxes.rows) == 3                       # une rangée par tour, à 500 m de la ligne
+    assert gp.boxes.rows == [500.0, 1000.0, 2000.0, 2500.0, 3500.0, 4000.0]   # tous les 500 m (GP14), pas sur la ligne
     state_v = validator("state")
     seen: list[dict] = []
 
     def check(sess):
+        if sess.state.session_state != "RUNNING":   # arrivée pendant ce pas : plus de trame `gp` (bilan vérifié plus bas)
+            return
         d = frame(sess)
         state_v.validate(d)
         assert len(json.dumps(d, ensure_ascii=False).encode()) < STATE_LIMIT_BYTES
@@ -144,6 +147,80 @@ def test_three_laps_four_bots_frames_hits_and_bilan(env):
     assert "gp_start" in kinds and "gp" in kinds and kinds[-1] != "gp_start" and "gp_summary" in kinds
     assert s.state.summary["fit_path"] and Path(s.state.summary["fit_path"]).is_file()
     assert s.grandprix is None and s.state.gp is None
+
+
+def test_eleven_bots_full_race_frames_fit_with_devices(env):
+    """Lot GP10 : course de 3 tours à 11 adversaires sans erreur ; chaque trame est valide et tient dans
+    4 096 octets, y compris celle qui porte `devices` (une sur 30), qui garde ses 11 bots : seuls l'objet en
+    réserve et les effets des bots en partent si besoin (l'engine garde les derniers reçus)."""
+    from openride_core.ipc_budget import fit_state, size, worst_state
+
+    make, run, frame, _ = env
+    s, _, errors = make(6805, opponents=11)
+    s._on_command("start", {"mode": "grandprix"}, 2)
+    assert not errors and [type(b) for b in s.bots] == [ProfileBot] * 11
+    state_v = validator("state")
+    devices = worst_state("1.4")["devices"]               # appareils au plus lourd
+    seen = []
+
+    def check(sess):
+        sess._frame_count += 1
+        d = frame(sess)
+        state_v.validate(d)
+        assert size(d) <= STATE_LIMIT_BYTES               # trame ordinaire : rien à alléger
+        assert sum("fx" in b for b in d["bots"]) == 6     # 5 bots proches et un loin à tour de rôle
+        out, dropped = fit_state({**d, "devices": devices}, STATE_LIMIT_BYTES)
+        state_v.validate(out)
+        assert size(out) <= STATE_LIMIT_BYTES and len(out["bots"]) == 11 and "gp" in out
+        assert "bots (trame avec devices)" not in dropped
+        seen.append(d["gp"])
+        if d["gp"]["held"]:
+            sess._grandprix_press("Z_SHORT")
+
+    run(s, 1500, check)
+    assert s.state.session_state == "FINISHED" and not errors
+    assert {f["of"] for f in seen} == {12}
+    summary = s.state.summary["gp"]
+    assert 1 <= summary["place"] <= 12 and summary["of"] == 12 and summary["laps"] == 3
+
+
+def test_eleven_bots_on_a_line_route_no_contact_and_queue_after_the_line(env):
+    """Lot GP10, banc rgp10d du 16 novembre (35 contacts en low) : sur la démonstration de 5 km, course de 5 km à
+    11 adversaires, chaos fou, les bots arrivés avant le cycliste s'empilaient au même mètre au bout du parcours.
+    La ligne est posée `GP_RUNOUT_M` avant le bout, les bots arrivés s'arrêtent en file (`END_GAP_M`) après elle :
+    aucun contact de toute la course (règle du banc : moins de 1,7 m roue à roue et de 0,6 m en travers)."""
+    from openride_core.session import END_GAP_M, GP_RUNOUT_M
+
+    make, run, _, _ = env
+    s, _, errors = make(6806, opponents=11, route_id="demo", distance_km=5, level_pct=100)
+    s.cfg.grandprix.chaos, s.cfg.grandprix.box_every_m = "wild", 1000
+    s._on_command("start", {"mode": "grandprix"}, 2)
+    assert not errors
+    end = s.route.length_m
+    assert s.grandprix.length_m == pytest.approx(end - s.physics.s - GP_RUNOUT_M)
+    contacts: list[tuple] = []
+    queued: list[list[float]] = []
+
+    def check(sess):
+        if sess.state.session_state != "RUNNING":
+            return
+        riders = [("me", sess.physics.s, sess._lane.m)] + [(b.id, b.s, b.lane.m) for b in sess.bots]
+        for i, (na, sa, la) in enumerate(riders):
+            for nb, sb, lb in riders[i + 1:]:
+                if abs(sa - sb) < 1.7 and abs(la - lb) < 0.6:
+                    contacts.append((na, nb, round(sa, 2), round(sb, 2)))
+        stopped = sorted((b.s for b in sess.bots if b.s > end - GP_RUNOUT_M), reverse=True)
+        if stopped:
+            queued.append(stopped)
+        if sess.grandprix is not None and sess.grandprix.racers[ME].held:
+            sess._grandprix_press("Z_SHORT")
+
+    run(s, 1500, check, every=1)
+    assert s.state.session_state == "FINISHED" and not errors
+    assert not contacts, contacts[:5]
+    assert queued and max(len(q) for q in queued) >= 2       # des bots arrivés avant le cycliste
+    last = queued[-1]
+    assert all(a - b >= END_GAP_M - 1e-6 for a, b in zip(last, last[1:]))
 
 
 def test_grade_sent_ignores_objects(env, monkeypatch):
@@ -199,8 +276,9 @@ def test_grade_sent_ignores_objects(env, monkeypatch):
 def test_start_refusals_and_erg_refused(env):
     make, run, _, _ = env
     s, _, errors = make(6830, route_id="demo")           # parcours en ligne de 5 km, course de 10 km
-    s._on_command("start", {"mode": "grandprix"}, 2)
-    assert errors[-1][0] == "bad_args" and "trop court" in errors[-1][1] and s.state.session_state == "READY"
+    s._on_command("start", {"mode": "grandprix"}, 2)     # lot GP14 : la course suit le parcours
+    # lot GP10 : ligne posée 30 m avant le bout (file des bots arrivés)
+    assert not errors and s.state.session_state == "RUNNING" and s.grandprix.length_m == pytest.approx(4970.0)
     s, _, errors = make(6840)
     s._on_command("start", {"mode": "grandprix", "bots": []}, 2)
     assert errors[-1][0] == "bad_args" and s.state.session_state == "READY"
@@ -219,7 +297,7 @@ def test_start_refusals_and_erg_refused(env):
     assert errors[-1][0] == "busy" and s.state.mode == "SIM"
     s, _, errors = make(6850, route_id="demo", distance_km=5)
     s._on_command("start", {"mode": "grandprix"}, 2)
-    assert not errors and s.grandprix.lap_m is None and s.grandprix.length_m == 5000.0
+    assert not errors and s.grandprix.lap_m is None and s.grandprix.length_m == 4970.0   # lot GP10 : ligne 30 m avant le bout
 
 
 def test_lane_buttons_and_pause(env):
@@ -376,7 +454,7 @@ def test_settings_listed_and_mode_announced():
     assert not any(k[0] == "grandprix" for k in config_mod.PENDING_KEYS)
     assert "grandprix" in CORE_MODES and "grandprix" not in PENDING_MODES
     items = {it["key"]: it for it in settings.current(Config())}
-    assert (items["grandprix.opponents"]["min"], items["grandprix.opponents"]["max"]) == (2, 4)
+    assert (items["grandprix.opponents"]["min"], items["grandprix.opponents"]["max"]) == (2, 11)   # lot GP10 : peloton du lot PL1
     assert items["grandprix.chaos"]["choices"] == ["soft", "normal", "wild"]
-    assert items["grandprix.box_every_m"]["step"] == 500 and items["grandprix.box_every_m"]["value"] == 1500
+    assert items["grandprix.box_every_m"]["step"] == 500 and items["grandprix.box_every_m"]["value"] == 500
     assert items["grandprix.laps"]["value"] == 3 and items["grandprix.distance_km"]["value"] == 10

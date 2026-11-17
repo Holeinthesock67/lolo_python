@@ -184,6 +184,8 @@ def test_second_elimination_in_a_row_starts_from_scratch(env, caplog):
     s._on_command("end_session", {"save": True}, 3)
     assert s.state.session_state == "FINISHED" and s.state.track is None
     s._on_command("select_route", {"route_id": velodrome.TRACK_ID}, 4)
+    # 15 novembre : la trame de l'attente du départ repart de la ligne, pas de l'arrivée d'avant
+    assert s.state.session_state == "READY" and s.state.s == 0.0 and s.state.t == 0.0 and s.state.v == 0.0
     caplog.clear()
     with caplog.at_level("INFO"):
         s._on_command("start", args, 5)

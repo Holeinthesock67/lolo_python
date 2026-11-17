@@ -39,6 +39,9 @@ class Marker:
     param: float | str | None = None
 
 
+ROOM_PART_BYTES = 3500   # partie d'un message `room` : sous les 4 096 o du datagramme, avec de la marge
+
+
 @dataclass(frozen=True)
 class Stretch:
     """Tronçon [s0_m, s1_m) et fraction de FTP associée."""
@@ -60,17 +63,42 @@ class Room:
     firewall_plan: tuple        # Stretch : puissance du Firewall en fraction de FTP
     target_frac: tuple          # Stretch : cible de puissance du joueur (le rythme du Firewall)
 
+    def to_messages(self, room_id: int, max_bytes: int = ROOM_PART_BYTES) -> list:
+        """Message `room` en parties de `max_bytes` octets au plus (lot R23 : une phase de boss de 90 min ou une
+        salle de 5 min dépassait le datagramme de 4 096 o, qui était alors jeté). Profil et marqueurs sont coupés
+        en tranches égales ; l'en-tête est répété dans chaque partie (l'engine prend celui de la partie 1)."""
+        from ..ipc_budget import encode
+        whole = self.to_message(room_id)
+        n = 1
+        while True:
+            parts = []
+            prof, marks = whole["profile"], whole["markers"]
+            for k in range(n):
+                p0, p1 = len(prof) * k // n, len(prof) * (k + 1) // n
+                m0, m1 = len(marks) * k // n, len(marks) * (k + 1) // n
+                parts.append({**whole, "part": k + 1, "parts": n, "profile": prof[p0:p1], "markers": marks[m0:m1]})
+            if all(len(encode(m)) <= max_bytes for m in parts) or n >= 16:
+                return parts
+            n += 1
+
     def to_message(self, room_id: int, next_room: dict | None = None) -> dict:
         """Message `room` de l'IPC 1.4 (une seule partie ; le découpage est fait par l'envoi)."""
         return {
             "type": "room", "v": 1, "room_id": room_id, "part": 1, "parts": 1,
             "archetype": self.archetype, "variant": self.variant,
             "length_m": self.length_m, "nominal_s": self.nominal_s,
-            "profile": [[round(s, 1), round(g, 2)] for s, g in self.profile],
+            # abscisses entières écrites sans « .0 » (lot R23 : salle de 5 min sous les 4 096 o d'un datagramme)
+            "profile": [[_num(s, 1), _num(g, 2)] for s, g in self.profile],
             "markers": [{"kind": m.kind, "s_m": round(m.s_m, 1), "len_m": round(m.len_m, 1),
                          "param": m.param} for m in self.markers],
             "next": next_room,
         }
+
+
+def _num(x: float, digits: int) -> float | int:
+    """Arrondi à `digits` décimales, entier quand il tombe juste (`1230` et non `1230.0`, `0` et non `0.0`)."""
+    r = round(x, digits)
+    return int(r) if r == int(r) else r
 
 
 @dataclass

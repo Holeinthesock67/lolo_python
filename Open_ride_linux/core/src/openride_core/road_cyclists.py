@@ -70,6 +70,12 @@ LANE_FREE_M = 100.0
 MIN_CENTRE_M = MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M
 GROUP_CLEAR_M = 30.0
 VEHICLE_CLEAR_M = 60.0
+# Lot DB3 (banc rDB3, Route du Grand Nord : 53 à 106 contacts) : un groupe ne double jamais un véhicule du même sens.
+# Lancé dans une descente (60 km/h), il rattrapait un utilitaire à 54 km/h et le doublait par la droite, au bord de la
+# chaussée, à 1 m de sa carrosserie. Il se cale désormais sur sa vitesse, de VEHICLE_FOLLOW_M derrière jusqu'à
+# VEHICLE_ALONGSIDE_M à sa hauteur (moitié du plus long véhicule et une marge), comme derrière un groupe plus lent.
+VEHICLE_FOLLOW_M = 25.0
+VEHICLE_ALONGSIDE_M = 8.0
 SIDE_SPEED_MPS = 1.5      # écart latéral : vitesse au plus, ...
 SIDE_ACCEL_MPS2 = 2.0     # ... accélération au plus (on s'écarte et on se rabat sans à-coup, essai du 7/11)
 SIDE_TAU_S = 0.5          # ... et approche de la place visée,
@@ -77,6 +83,7 @@ SIDE_ARRIVE_MPS = 0.1     # ... à au moins 0,1 m/s jusqu'à y être
 DL_SPEED_MPS = 1.0        # passage de deux de front à la file (et retour) : recul ou retour d'un membre
 SIDE_LOOK_M = 2.5
 SIDE_CLEAR_M = 0.8
+SIDE_CROSS_S = MIN_CENTRE_M / SIDE_SPEED_MPS   # lot AS9 : temps d'un écart d'une place à la voisine
 SPEED_PERIOD_S = 1.0
 SALUT_EVERY = 3
 ROLL_N = 3.9
@@ -87,7 +94,7 @@ AIR_K = 0.21
 SEED = 0                  # graine de living_decor.gd (`cyclists.configure(…, 0, …)`)
 CORE_BUDGET = 16          # living(high).cyclists : les groupes proches ne dépendent plus du préréglage
 NEAR_M = 60.0             # cyclistes envoyés à l'engine dans `state` (devant ou derrière)
-STATE_MAX = 6
+STATE_MAX = 10            # lot AS10 : jusqu'à 10 à moins de 60 m (6 avant : liste pleine au cœur des groupes)
 SOURCE_ID_PREFIX = "rider:"   # `draft_bot` d'un cycliste du décor : « rider:<id> »
 APPEARANCE_MASK = 0xFFFFF     # `look` de la liste `riders` : 20 bits bas du tirage du cycliste
 
@@ -122,6 +129,11 @@ def _lerp(a: float, b: float, t: float) -> float:
 
 def _move_toward(a: float, b: float, delta: float) -> float:
     return b if abs(b - a) <= delta else a + math.copysign(delta, b - a)
+
+
+def _step_mps(g: Any) -> float:
+    """Vitesse du dernier pas d'un groupe (lot AS9), sa vitesse tant qu'il n'a pas roulé."""
+    return g.speed_mps if g.step_mps is None else g.step_mps
 
 
 def _sign(x: float) -> float:
@@ -299,6 +311,7 @@ class Group:
     bot: bool = False          # bot vu comme un groupe d'un cycliste (lot P32)
     held: bool = False         # lot AS7 : `overtake` rabattu qui garde sa vitesse
     half: float = 3.0          # demi-largeur roulable sous la tête du groupe (`_half_at`)
+    step_mps: float | None = None   # lot AS9 : vitesse du dernier pas (`_side_blocked`), sinon `speed_mps`
 
     @property
     def size(self) -> int:
@@ -412,6 +425,7 @@ class RoadCyclists:
         self._clock = 0.0
         self._bot_groups: list[Group] = []
         self._last_bots_s: list[float] = []
+        self.rider_lane = RIDER_LATERAL_M   # lot AS10 : vraie place du cycliste en travers (`lane_m`)
 
     def rider_count(self) -> int:
         return sum(g.size for g in self.groups)
@@ -484,9 +498,12 @@ class RoadCyclists:
         return half - EDGE_IN_M < RIDER_LATERAL_M + MIN_CENTRE_M - 1e-6
 
     def update(self, rider_s: float, rider_v: float, dt_s: float, paused: bool = False,
-               bots: Sequence[tuple[float, float]] = ()) -> None:
+               bots: Sequence[tuple[float, float]] = (), rider_lane: float | None = None) -> None:
         """Une image : `rider_s`, `rider_v` (m/s) du cycliste ; `bots` : places des bots `(s, lateral)`
-        (comme `bots_view_model.places()` de l'engine)."""
+        (comme `bots_view_model.places()` de l'engine) ; `rider_lane` : écart à l'axe du cycliste (`lane_m`, lot
+        AS2), RIDER_LATERAL_M sans placement. Lot AS10 : les groupes évitent le cycliste là où il est, pas à 1,2 m."""
+        if rider_lane is not None:
+            self.rider_lane = float(rider_lane)
         self.last_event = {}
         if paused:
             return
@@ -614,7 +631,7 @@ class RoadCyclists:
         if g.case == "oncoming":
             return -(edge + col)
         if g.case == "overtake" and g.side == "left":
-            return RIDER_LATERAL_M - MIN_CENTRE_M
+            return self.rider_lane - MIN_CENTRE_M
         if g.bot_near and not self._narrow(g.half):
             return max(edge, BOT_LATERAL_M + MIN_CENTRE_M)
         return edge + col
@@ -637,7 +654,7 @@ class RoadCyclists:
                     m.dl = _move_toward(m.dl, m.dl0, DL_SPEED_MPS * dt_s)
 
     def _side_step(self, g: Group, m: Member, dt_s: float, rider_s: float,
-                   bots: Sequence[tuple[float, float]]) -> None:
+                   bots: Sequence[tuple[float, float]], rider_v: float = 0.0) -> None:
         """Écart latéral vers sa place sans à-coup : vitesse au plus SIDE_SPEED_MPS, approche en SIDE_TAU_S,
         accélération et freinage au plus SIDE_ACCEL_MPS2 (arrêt sur la place, sans la dépasser)."""
         lat0 = m.lateral
@@ -649,7 +666,7 @@ class RoadCyclists:
         lat1 = lat0 + v1 * dt_s
         if (target - lat1) * d <= 0.0:   # arrivé : posé sur sa place
             lat1, v1 = target, 0.0
-        if self._side_blocked(g, g.s - g.dir * m.dl, lat0, lat1, rider_s, bots):
+        if self._side_blocked(g, g.s - g.dir * m.dl, lat0, lat1, rider_s, bots, rider_v):
             lat1, v1 = lat0, 0.0
         m.lateral, m.lat_v = lat1, v1
 
@@ -672,13 +689,21 @@ class RoadCyclists:
         rel_now = g.s - rider_s
         if case == "overtake":
             tail_now = rel_now - (g.size - 1) * FILE_GAP_M
-            if g.side == "right" and rel_now >= -PASS_START_M and tail_now < MERGE_AHEAD_M:
+            # Lot AS9 : il ne sort pour doubler que derrière le cycliste, à plus de SIDE_LOOK_M de sa roue (ralenti
+            # devant lui par un groupe lent, c'est le cycliste qui le double : il reste sur sa droite au lieu de
+            # traverser sa ligne)
+            if g.side == "right" and -PASS_START_M <= rel_now < -SIDE_LOOK_M and tail_now < MERGE_AHEAD_M:
                 if near:
                     spd_now = min(spd_now, rider_v)
                 else:
                     g.side = "left"
             elif g.side == "left" and tail_now > MERGE_AHEAD_M and not near:
                 g.side = "right"
+            # Lot AS9 : sorti tout près derrière le cycliste, il ne s'approche pas à moins de SIDE_LOOK_M de sa roue
+            # tant qu'il n'est pas hors de sa ligne
+            if (g.side == "left" and rel_now < 0.0 and dt_s > 0.0
+                    and abs(g.lateral() - self.rider_lane) < MIN_CENTRE_M - 1e-3):
+                spd_now = min(spd_now, max(0.0, -SIDE_LOOK_M - rel_now) / dt_s)
         # Lot P32 : un groupe qui en rattrape un autre du même sens le double vers l'axe (voir l'engine)
         g.pass_lat = None
         alongside = self._caught_groups(g)
@@ -698,8 +723,15 @@ class RoadCyclists:
                         pass_lat = h_lat - _sign(h_lat) * MIN_CENTRE_M
             slowest = math.inf
             blocking = False
+            # Lot AS10 (banc rAS10 du volcan) : devant lui, un groupe compte à la vitesse où il roule (`_step_mps`), pas
+            # à celle qu'il voudrait ; retenu derrière un autre, il roulait 4 m/s moins vite que sa vitesse voulue, et
+            # celui qui le rattrapait venait se poser à côté de lui (derrière, sa vitesse voulue : pas de ralentissement
+            # en cascade de deux groupes qui se règlent l'un sur l'autre)
+            def speed_of(h: Group) -> float:
+                return _step_mps(h) if (h.s - g.s) * direction > 0.0 else h.speed_mps
+
             for h in near_groups:
-                slowest = min(slowest, h.speed_mps)
+                slowest = min(slowest, speed_of(h))
                 # encore derrière lui, un de ses membres sur sa ligne (la queue se décale après la tête)
                 if (g.s - h.s) * direction < 0.0 and min(abs(m.lateral - h.lateral()) for m in members) < MIN_CENTRE_M - 0.05:
                     blocking = True
@@ -710,7 +742,7 @@ class RoadCyclists:
                 if through or (abs(pass_lat - h_lat) < MIN_CENTRE_M - 0.05
                                and abs(pass_lat - h_lat) < abs(cur - h_lat)):
                     crossing = True
-                    slowest = min(slowest, h.speed_mps)
+                    slowest = min(slowest, speed_of(h))
                     if (g.s - h.s) * direction < 0.0:
                         blocking = True
             faster = spd_now > slowest
@@ -719,7 +751,7 @@ class RoadCyclists:
                 if blocking:
                     spd_now = min(spd_now, slowest - FALL_BACK_MPS)
             elif faster and (out or self._lane_free_for(g, rider_s) and (
-                    direction == -1 or abs(pass_lat - RIDER_LATERAL_M) >= MIN_CENTRE_M
+                    direction == -1 or abs(pass_lat - self.rider_lane) >= MIN_CENTRE_M
                     or abs(g.s - rider_s) > PASS_START_M)):
                 if abs(pass_lat - own) > 1e-3:
                     g.pass_lat = pass_lat
@@ -727,14 +759,16 @@ class RoadCyclists:
                     spd_now = min(spd_now, slowest)
             elif blocking or not faster:
                 spd_now = min(spd_now, slowest - FALL_BACK_MPS)
+        spd_now = self._behind_vehicles(g, spd_now)
         g.s += direction * spd_now * dt_s
+        g.step_mps = spd_now
         rel = g.s - rider_s
         rel0 = rel if g.last_rel is None else g.last_rel
         g.last_rel = rel
         # En file près d'un bot (`ahead`, sur l'accotement) et sur un chemin étroit (tous les cas)
         self._formation(g, self._narrow(g.half) or (case == "ahead" and near), dt_s)
         for m in members:
-            self._side_step(g, m, dt_s, rider_s, bots)
+            self._side_step(g, m, dt_s, rider_s, bots, rider_v)
         if case == "ahead":
             tail = g.size * FILE_GAP_M
             if not g.passed and rel - tail < 0.0 <= rel0 - tail:
@@ -761,6 +795,17 @@ class RoadCyclists:
                 g.behind_t = 0.0
             g.best_rel = max(g.best_rel, rel)
 
+    def _behind_vehicles(self, g: Group, spd_now: float) -> float:
+        """Vitesse bornée par celle d'un véhicule du même sens juste devant ou à sa hauteur (lot DB3) : un groupe
+        ne double jamais la circulation, ni à droite ni à gauche."""
+        for v in self.vehicles:
+            if int(self._field(v, "dir", g.dir)) != g.dir:
+                continue
+            gap = (float(self._field(v, "s", math.inf)) - g.s) * g.dir
+            if -VEHICLE_ALONGSIDE_M < gap < VEHICLE_FOLLOW_M:
+                spd_now = min(spd_now, max(float(self._field(v, "speed_mps", spd_now)), 0.0))
+        return spd_now
+
     def _caught_groups(self, g: Group) -> list[Group]:
         direction = g.dir
         g_head = g.s * direction
@@ -777,20 +822,33 @@ class RoadCyclists:
         return out
 
     def _side_blocked(self, g: Group, s: float, lat0: float, lat1: float, rider_s: float,
-                      bots: Sequence[tuple[float, float]]) -> bool:
+                      bots: Sequence[tuple[float, float]], rider_v: float = 0.0) -> bool:
+        """Vrai si passer de `lat0` à `lat1` à l'abscisse `s` rapprocherait un membre de `g` à moins de
+        SIDE_CLEAR_M d'un cycliste d'un autre groupe, d'un bot ou du cycliste (lot P32). Lot AS9 : on regarde
+        à SIDE_LOOK_M, plus le chemin que l'autre et lui se rapprochent en SIDE_CROSS_S (à 65 km/h, un groupe
+        ralenti à 25 km/h voit le cycliste arriver de 10 m)."""
         if abs(lat1 - lat0) < 1e-6:
             return False
+        g_vel = g.dir * _step_mps(g)
+
+        def close(o_s: float, o_vel: float) -> bool:
+            ds = o_s - s
+            closing = (g_vel - o_vel) * (1.0 if ds >= 0.0 else -1.0)
+            return abs(ds) < SIDE_LOOK_M + max(0.0, closing) * SIDE_CROSS_S
+
         near = []
-        if abs(rider_s - s) < SIDE_LOOK_M:
-            near.append(RIDER_LATERAL_M)
-        for b, b_lat in bots:
-            if abs(float(b) - s) < SIDE_LOOK_M:
+        if close(rider_s, rider_v):
+            near.append(self.rider_lane)
+        for i, (b, b_lat) in enumerate(bots):
+            b_v = self._bot_groups[i].speed_mps if i < len(self._bot_groups) else rider_v
+            if close(float(b), b_v):
                 near.append(float(b_lat))
         for h in self.groups:
-            if h is g or abs(h.s - s) > SIDE_LOOK_M + h.size * FILE_GAP_M:
+            h_vel = h.dir * _step_mps(h)
+            if h is g or abs(h.s - s) > SIDE_LOOK_M + abs(g_vel - h_vel) * SIDE_CROSS_S + h.size * FILE_GAP_M:
                 continue
             for m in h.members:
-                if abs(h.s - h.dir * m.dl - s) < SIDE_LOOK_M:
+                if close(h.s - h.dir * m.dl, h_vel):
                     near.append(m.lateral)
         for o_lat in near:
             d1 = abs(lat1 - o_lat)
@@ -816,11 +874,13 @@ class RoadCyclists:
     # --- sorties du lot AS7 ----------------------------------------------------------------------------
 
     def riders(self) -> list[Rider]:
-        """Tous les cyclistes du décor, dans l'ordre des groupes puis des membres."""
+        """Tous les cyclistes du décor, dans l'ordre des groupes puis des membres. Lot AS10 : `v`, la vitesse où le
+        groupe roule (`_step_mps`), pas celle qu'il voudrait (retenu derrière un groupe lent, 4 m/s de moins au
+        banc rAS10 du volcan) : le placement du cycliste, l'abri et l'engine, qui l'extrapole, le voient où il va."""
         out = []
         for g in self.groups:
             for m in g.members:
-                out.append(Rider(id=f"{g.id}-{m.index}", s=g.s - g.dir * m.dl, v=g.speed_mps,
+                out.append(Rider(id=f"{g.id}-{m.index}", s=g.s - g.dir * m.dl, v=_step_mps(g),
                                  lane_m=m.lateral, dir=g.dir, look=m.look, jersey=m.jersey,
                                  group=g.id, case=g.case, appearance=m.appearance))
         return out

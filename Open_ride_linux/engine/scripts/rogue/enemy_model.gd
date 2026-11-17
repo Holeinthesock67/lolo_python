@@ -61,6 +61,10 @@ func update(rogue: Variant, seq: int, grade_pct: float, dt: float, effects_ok: b
 	var hp_max := float(rogue.get("enemy_hp_max", 0.0))
 	var hp_frac := 1.0 if hp_max <= 0.0 else clampf(float(rogue.get("enemy_hp", 0.0)) / hp_max, 0.0, 1.0)
 	var want := MIN_DIST_M + (MAX_DIST_M - MIN_DIST_M) * (1.0 - hp_frac)
+	# Les événements d'une trame sont ceux des pas du core depuis la trame précédente : une fin de salle
+	# (`room_won`…) peut arriver dans la trame qui porte déjà la salle suivante (passage d'une phase du boss à
+	# l'autre). Elle appartient alors à la salle d'avant et ne touche pas l'ennemi neuf.
+	var room_changed := rid != _room_id and _room_id != -1
 	if rid != _room_id:
 		_room_id = rid
 		_state = "hold"
@@ -71,9 +75,9 @@ func update(rogue: Variant, seq: int, grade_pct: float, dt: float, effects_ok: b
 	var events: Array = rogue.get("events", []) if fresh else []
 	for ev in events:
 		var e := String(ev)
-		if _state == "hold" and (e == "room_fled" or e == "room_skipped"):
+		if _state == "hold" and not room_changed and (e == "room_fled" or e == "room_skipped"):
 			_state = "fleeing"
-		elif _state == "hold" and e == "room_won":
+		elif _state == "hold" and not room_changed and e == "room_won":
 			_state = "dead"
 		if effects_ok and IMPACT_EVENTS.has(e):
 			_impacts.append({"crit": IMPACT_EVENTS[e], "flash_s": FLASH_S})

@@ -324,8 +324,17 @@ class Traffic:
         for v in self.vehicles:
             v.s, v.dir, v.lateral = flip_s(base.length_m, v.s), -v.dir, -v.lateral
             ahead = rider is not None and v.s > rider
-            v.slow, v.hold_s = False, None
-            v.passed = v.committed = v.dir == 1 and ahead   # déjà devant dans le même sens : il a fini de doubler
+            # Lot AS10 (banc rAS10b, « montees_retour » : tracteur croisé avant le demi-tour, « tractor / cycliste ») :
+            # devant dans le même sens, c'est un véhicule lent devant, comme celui que pose `place_for_test` (sa
+            # voie de droite, il ne double pas, il n'est doublé que par le cycliste) ; marqué « a fini de doubler »,
+            # il roulait sur la voie de gauche à moins de PASS_ZONE_M[1] devant le cycliste qui le doublait
+            v.slow, v.hold_s = v.dir == 1 and ahead, None
+            v.passed = v.committed = False
+            # Lot AS10 (banc rAS10b, « montees_retour » : camion qui le doublait, « truck / cycliste ») : celui qui doublait
+            # le cycliste sur l'autre voie vient maintenant en face sur la sienne ; il rejoint sa voie d'un coup, comme le
+            # cycliste qui change de côté au demi-tour, au lieu de la traverser devant lui
+            if v.dir == -1 and v.lateral > oncoming_lateral(v.kind):
+                v.lateral = oncoming_lateral(v.kind)
         self._last_rider_s = None   # cases suivantes tirées depuis la place du cycliste dans le nouveau repère
         return True
 

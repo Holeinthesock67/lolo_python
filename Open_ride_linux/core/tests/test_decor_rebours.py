@@ -12,6 +12,7 @@ from test_traffic import straight_route
 from test_u_turn import make_session, ride_until, u_turn
 
 from openride_core import road_cyclists as rc
+from openride_core import session as session_mod
 from openride_core import traffic as tr
 from openride_core.route_mirror import MirroredRoute, flip_s
 
@@ -47,8 +48,16 @@ def _traffic_out_and_back(seed: int, seen_dirs: set[int]) -> tuple[int, int]:
     before = [(v.id, v.s, v.dir, v.lateral) for v in t.vehicles]
     out = t.spawned_total
     assert t.set_direction(-1) and not t.set_direction(-1)
-    # Les véhicules déjà là ne bougent pas au demi-tour : mêmes places dans le repère du parcours
-    assert [(v.id, v.s, v.dir, v.lateral) for v in map(t.on_route, t.vehicles)] == pytest.approx(before)
+    # Les véhicules déjà là ne bougent pas au demi-tour : mêmes places dans le repère du parcours ; lot AS10 : celui
+    # qui doublait le cycliste vient en face et rejoint sa voie d'un coup, comme le cycliste
+    def place(vid: str, s: float, d: int, lat: float) -> tuple[str, int, float, float]:
+        kind = next(v.kind for v in t.vehicles if v.id == vid)
+        if d == 1 and -lat > tr.oncoming_lateral(kind):     # en face dans le repère du modèle retourné
+            lat = -tr.oncoming_lateral(kind)
+        return vid, d, round(s, 6), round(lat, 6)
+
+    after = [(v.id, v.dir, round(v.s, 6), round(v.lateral, 6)) for v in map(t.on_route, t.vehicles)]
+    assert after == [place(*b) for b in before]
 
     def back(s: float) -> None:
         t.update(t.model_s(s), 8.3, DT)
@@ -120,6 +129,7 @@ def test_session_shows_vehicles_and_cyclists_after_u_turn(tmp_path, monkeypatch)
     def look() -> bool:   # listes `vehicles` et `riders` d'une trame qui les porte, à chaque pas
         s._frame_count = 0
         s._fill_vehicles_frame()
+        s._frame_count = session_mod.RIDERS_FRAME_AT   # lot AS10 : `riders` dans la trame qui suit celle de `vehicles`
         s._fill_riders_frame()
         seen_v.extend({**v, "rel": v["s"] - s.physics.s} for v in s.state.vehicles or [])
         seen_r.extend({**r, "rel": r["s"] - s.physics.s} for r in s.state.riders or [])
@@ -157,6 +167,40 @@ def test_rider_passes_slow_tractor_after_u_turn(tmp_path, monkeypatch) -> None:
     ride_until(s, watch)
     assert worst < 99.0                               # il l'a bien longé
     assert worst > 0.3                                # sans le toucher
+
+
+
+@pytest.mark.parametrize("kind", ["tractor", "car_a", "truck"])
+def test_vehicles_met_before_u_turn_never_touch_the_rider_after_it(tmp_path, monkeypatch, kind: str) -> None:
+    """Lot AS10 (banc rAS10b, « montees_retour » : « tractor / cycliste » 30/27/14) : le véhicule croisé avant le
+    demi-tour roule ensuite devant le cycliste, dans son sens ; il était marqué « a fini de doubler » et prenait la
+    voie de gauche à moins de 30 m devant lui, où le cycliste plus rapide le doublait. Celui qui doublait le
+    cycliste vient en face, sur sa voie. Aucun ne touche le cycliste, qui double le plus lent à gauche."""
+    s, _ = make_session(tmp_path, monkeypatch, 7340 + 10 * ["tractor", "car_a", "truck"].index(kind))
+    ride_until(s, lambda: s.physics.s >= 3000.0, dt=DT)
+    t = s.traffic
+    t.budget = 0                                             # seulement les véhicules posés ici
+    t.vehicles.clear()
+    me = s.physics.s
+    t.place_for_test(me, kind, -1, -40.0, 25.0)              # croisé, 40 m derrière
+    over = t.place_for_test(me, "truck", 1, -3.0, 60.0, lateral=tr.lane_lateral("truck"))
+    over.committed = True                                    # il doublait le cycliste
+    u_turn(s)
+    worst, ahead_left = 99.0, 0
+
+    def look() -> bool:
+        nonlocal worst, ahead_left
+        u = t.model_s(s.physics.s)
+        for v in t.vehicles:
+            if abs(v.s - u) < v.length * 0.5 + 0.85:
+                worst = min(worst, abs(v.lateral - s._lane.m) - v.half_width - tr.RIDER_HALF_WIDTH_M)
+            if v.dir == 1 and 0.0 < v.s - u < tr.PASS_ZONE_M[1] and v.lateral < tr.RIGHT_LANE_M - 0.05:
+                ahead_left += 1                              # devant lui dans son sens, mais pas sur sa voie
+        return s.physics.s <= 1500.0
+
+    ride_until(s, look, dt=DT)
+    assert ahead_left == 0
+    assert worst > 0.0
 
 
 def test_cyclists_use_the_climbs_of_the_way_back() -> None:
