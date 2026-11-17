@@ -88,6 +88,14 @@ func _run() -> void:
 	var eat := _ev({"id": "chef", "phase": "eat", "dish": "jelly"})
 	_check(_kinds(eat) == {"dish_jelly": 1} and eat["tint"] == M.TINT_JELLY, "gelée mangée : voile vert, plus de chef")
 
+	# 15 novembre : gag des œufs joué sans aucun œuf à l'écran ; carton porté par le vélo, œufs cassés en flaque.
+	var eggs := _ev({"id": "eggs", "eggs": 4, "left_m": 600, "left_s": 90})
+	_check(_kinds(eggs) == {"eggs_4": 1} and eggs["props"][0]["rider"] and eggs["props"][0]["ds"] < 0.0,
+		"œufs : carton de 4 œufs intacts sur le porte-bagages, derrière la selle")
+	_check(_kinds(_ev({"id": "eggs", "eggs": 9}))  == {"eggs_6": 1} and _kinds(_ev({"id": "eggs", "eggs": -1})) == {"eggs_0": 1},
+		"œufs : nombre borné à 0–%d" % M.EGGS_TOTAL)
+	_check(cheese["props"][0]["roll_r"] == M.CHEESE_RADIUS_M and not cheese["props"][0]["rider"], "meule : roule sur la route")
+
 	var amb: Dictionary = M.view({"points": 0, "event": null, "kata": {"size": 3.0, "count": 4, "last": "cow",
 		"next": [[35.2, "car"], [110.0, "church"]]}, "skins": {"b1": "whale"}, "attack": "b1", "clock_h": 26.0,
 		"fish": true}, 1.0, "low")
@@ -96,6 +104,7 @@ func _run() -> void:
 	var ball: Dictionary = amb["props"].filter(func(p): return p["kind"] == "ball")[0]
 	_check(is_equal_approx(ball["scale"], 3.0) and is_equal_approx(ball["up"], 3.0 * M.KATA_BALL_M), "la boule grossit")
 	_check(ball["lateral"] > 0.0, "boule poussée à droite, hors du centre de l'image")
+	_check(is_equal_approx(ball["roll_r"], 3.0 * M.KATA_BALL_M), "la boule roule sur son rayon affiché")
 	var big: Dictionary = M.view({"points": 0, "event": null, "kata": {"size": 6.0}}, 0.0)["props"][0]
 	_check(is_equal_approx(big["scale"], M.KATA_SHOW_MAX), "la boule affichée cesse de grossir à × 3")
 	_check(k.get("fish", 0) == 6, "pluie de poissons : 6 en low")
@@ -116,6 +125,11 @@ func _run() -> void:
 	_check(info["active"] and info["props"] == {"cheese": 1}, "nœud : meule posée")
 	var wheel: Node3D = scene.find_child("Wtf_cheese", true, false)
 	_check(wheel != null and is_equal_approx(wheel.global_position.z, -(100.0 - M.CHEESE_SHOW_M)), "meule posée derrière le cycliste")
+	scene.direction = -1   # lot N22 : à rebours après un demi-tour, « derrière » = vers la fin du parcours
+	scene.step(cheese, route, 100.0, bots, sun)
+	_check(is_equal_approx(wheel.global_position.z, -(100.0 + M.CHEESE_SHOW_M)) and wheel.global_transform.basis.x.x < -0.99,
+		"à rebours : meule derrière le cycliste dans son sens de marche, tournée comme lui")
+	scene.direction = 1
 	scene.step(amb, route, 100.0, bots, sun)
 	info = scene.test_info()
 	_check(not info["props"].has("cheese") and info["props"].get("fish", 0) == 6, "objets du gag fini cachés, poissons posés")
@@ -124,6 +138,37 @@ func _run() -> void:
 	scene.step(M.view(null, 0.0), null, 0.0, Callable(), sun)
 	_check(not scene.is_active() and is_equal_approx(sun.rotation.x, -0.5) and scene.test_info()["props"].is_empty(),
 		"fin du mode : soleil rendu, tout caché")
+
+	# 15 novembre : la boule tournait à l'envers (t × 4). Elle roule sans glisser : en avançant de d m, elle tourne
+	# de d / r et son haut part vers l'avant (sens de la marche), dans un sens comme dans l'autre.
+	var kata_only: Dictionary = M.view({"points": 0, "event": null, "kata": {"size": 1.0}}, 0.0)
+	var r: float = M.KATA_BALL_M
+	for dir in [1, -1]:
+		var rs = WtfScene.new()
+		root.add_child(rs)
+		rs.direction = dir
+		rs.step(kata_only, route, 100.0, Callable(), sun)
+		var bnode: Node3D = rs.find_child("Wtf_ball", true, false)
+		var up0: Vector3 = bnode.global_transform.basis.y.normalized()
+		rs.step(kata_only, route, 100.0 + dir * 0.3, Callable(), sun)
+		var up1: Vector3 = bnode.global_transform.basis.y.normalized()
+		var fwd := Vector3(0.0, 0.0, -1.0 * dir)   # route droite vers −Z ; à rebours, marche vers +Z
+		_check(up1.dot(fwd) - up0.dot(fwd) > 0.0 and is_equal_approx(up0.angle_to(up1), 0.3 / r),
+			"boule (sens %d) : roule vers l'avant de 0,3 / r rad pour 0,3 m" % dir)
+		rs.step(kata_only, route, 100.0 + dir * 200.0, Callable(), sun)
+		_check(is_equal_approx(bnode.global_transform.basis.y.normalized().angle_to(up1), 0.0), "boule : un saut de 200 m ne la fait pas tourner")
+		rs.queue_free()
+	# Carton d'œufs dans le repère du vélo (voie, cap, penché), après step().
+	scene.step(eggs, route, 100.0, Callable(), sun)
+	var bike := Transform3D(Basis.from_euler(Vector3(0.0, -0.4, 0.2)), Vector3(1.7, 0.0, -100.0))
+	scene.follow_rider(bike)
+	var crate: Node3D = scene.find_child("Wtf_eggs_4", true, false)
+	_check(crate != null and crate.visible and crate.global_position.is_equal_approx(bike * Vector3(0.0, M.EGG_RACK_UP_M, M.EGG_RACK_BACK_M)),
+		"œufs : carton posé sur le porte-bagages du vélo affiché")
+	_check(crate.global_transform.basis.y.normalized().is_equal_approx(bike.basis.y.normalized()) and is_equal_approx(crate.global_transform.basis.y.length(), M.EGG_SCALE), "œufs : carton penché avec le vélo, à sa taille cartoon")
+	scene.step(_ev({"id": "eggs", "eggs": 3}), route, 101.0, Callable(), sun)
+	scene.follow_rider(bike)
+	_check(not crate.visible and scene.test_info()["props"] == {"eggs_3": 1}, "œuf cassé : carton à 3 œufs")
 
 	# Caméra : roulis et vue imposée amenés en 1 s.
 	var cam := Camera3D.new()
@@ -152,7 +197,7 @@ func _run() -> void:
 	cow_node.free()
 	# Lot WTF9 : chaque objet a sa forme et plusieurs couleurs (plus de cube ou de boule unis).
 	for kind in ["ball", "chunk", "void", "kata_apple", "kata_sign", "kata_cow", "kata_car", "kata_house", "kata_church",
-			"dish_spaghetti", "dish_jelly", "dish_musette", "dish_souffle", "dish_chili"]:
+			"dish_spaghetti", "dish_jelly", "dish_musette", "dish_souffle", "dish_chili", "eggs_6", "eggs_0"]:
 		var node: MeshInstance3D = WtfScene._make(kind)
 		var ok := node != null and node.mesh is ArrayMesh and node.mesh.get_surface_count() == 1
 		var colors := {}

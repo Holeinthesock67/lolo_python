@@ -25,7 +25,7 @@ import math
 import zlib
 from typing import Any, Callable, Iterable
 
-from .draft import LANE_MIN_M
+from .draft import BIKE_LENGTH_M, LANE_MIN_M
 
 # --- valeurs du cahier Y10 (§4) -------------------------------------------------------------------------
 
@@ -638,7 +638,9 @@ def update_field(field: Field, bots: list[Any], rider: tuple[float, float] | Non
                 del tac._gaps[gone]
             if tac.respond_to is not None:
                 target = next((r for r in runners if r[2] == tac.respond_to), None)
-                if target is None or (target[0] - pos[id(b)]) / max(v, 1.0) <= RESPONSE_CAUGHT_S:
+                # écart de roue à roue (comme la roue suivie du lot AS1) : d'axe à axe, 0,3 s valait moins d'une
+                # longueur de vélo sous 20 km/h, et la chasse ne se terminait jamais en montée (banc du col, 16/11)
+                if target is None or (target[0] - pos[id(b)] - BIKE_LENGTH_M) / max(v, 1.0) <= RESPONSE_CAUGHT_S:
                     tac.respond_to = None
         _relays(field, grp, t, grade_at)
 

@@ -89,6 +89,9 @@ SETTINGS: tuple[Setting, ...] = (
                  "avec Enclume, Aspiration +, Échappée et Rouleau, tirés selon le terrain devant. "
                  "Z lance le bonus en réserve ; refusé en ERG."),
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
+    Setting("bots.objective", "Objectif des bots", "ride",   # lot BT1
+            help="Part de l'effort tenable sur la durée de la course que visent les bots : Tempo, une course "
+                 "qu'on peut gagner sans se mettre dans le rouge. Au vélodrome, l'objectif suit l'épreuve."),
     # Option « gravel » (lot U16, partie gravel) : coupée par défaut, roulement du core et rendu de l'engine
     Setting("gravel.mode", "Gravel", "ride",
             help="Coupé : bitume partout. Chemins réels : seules les portions non revêtues du parcours. "
@@ -127,8 +130,8 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.draft_gauge", "Jauge d'abri des bots", "graphics", applies="now"),
     Setting("render.camera", "Vue de caméra", "graphics", applies="now"),
     Setting("render.biome", "Biome du décor", "graphics", applies="now",   # lot U16
-            help="Automatique : les biomes du parcours (prairie tempérée sans données). Un autre choix met "
-                 "ce biome sur tout le parcours : sol, végétation, faune et ciel."),
+            help="Automatique : les biomes du parcours, ou de la région en monde ouvert (prairie tempérée sans "
+                 "données). Un autre choix met ce biome sur tout le parcours : sol, végétation, faune et ciel."),
     # Jour et nuit, saisons (lot P19, décision du propriétaire du 8 novembre : coupables séparément, coupés par défaut)
     Setting("render.day_night", "Jour et nuit", "graphics", applies="now",
             help="Coupé : soleil fixe, comme avant. Heure du thème, heure du PC, ou une journée en une heure : "

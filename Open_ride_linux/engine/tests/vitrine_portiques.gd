@@ -32,7 +32,10 @@ const SEGMENTS := [
 const VIEWS := {"depart": 0.0, "sprint_depart": 100.0, "sprint_arrivee": 250.0, "montee": 350.0, "sommet": 500.0,
 	"bonus": 550.0, "arrivee": 600.0,
 	# À rebours (demi-tour, lot N17) : caméra 16 m après la marque, sur la voie de gauche, tournée vers le départ
-	"rebours_depart": -0.0, "rebours_sprint": -250.0, "rebours_sommet": -500.0}
+	"rebours_depart": -0.0, "rebours_sprint": -250.0, "rebours_sommet": -500.0,
+	# Lot N22 : portiques vus de loin (FAR_M), dans le sens du parcours et à rebours (fenêtre dans le sens de la marche)
+	"loin_sprint": 250.0, "rebours_loin_sprint": -100.0}
+const FAR_M := 150.0
 
 
 ## Route droite le long de -z (cap 0, comme route_data.gd) : seules les méthodes lues par segment_markers.gd.
@@ -83,8 +86,10 @@ func _run() -> void:
 			for view in _views:
 				var s: float = absf(VIEWS[view])
 				var dir := -1.0 if str(view).begins_with("rebours") else 1.0
-				markers.update(s - dir * 16.0, true)
-				cam.look_at_from_position(Vector3(dir * 1.0, 1.4, -(s - dir * 16.0)), Vector3(0.0, 2.6, -s))
+				var back := FAR_M if str(view).contains("loin") else 16.0
+				markers.set("direction", int(dir))
+				markers.update(s - dir * back, true)
+				cam.look_at_from_position(Vector3(dir * 1.0, 1.4, -(s - dir * back)), Vector3(0.0, 2.6, -s))
 				for f in range(SETTLE_FRAMES):
 					await process_frame
 				var path := _out_dir.path_join("%s_%s_%dx%d.png" % [view, preset, size.x, size.y])

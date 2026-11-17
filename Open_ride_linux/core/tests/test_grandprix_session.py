@@ -62,11 +62,12 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     (world / "route.json").write_text(json.dumps(loop_route()), encoding="utf-8")
 
     def make(port: int, opponents: int = 4, laps: int = 3, distance_km: int = 10, route_id: str = "anneau",
-             level_pct: int = 100) -> tuple[CoreSession, list, list]:
+             level_pct: int = 100, objective: str = "max") -> tuple[CoreSession, list, list]:
         cfg = Config()
         cfg.ipc.port_state, cfg.ipc.port_commands = port, port + 1
         cfg.grandprix.opponents, cfg.grandprix.laps, cfg.grandprix.distance_km = opponents, laps, distance_km
         cfg.bots.level_pct = level_pct
+        cfg.bots.objective = objective   # lot BT1 : scénarios écrits pour des bots à fond (puissances du cycliste)
         cfg.ride.vehicle_draft = "off"
         s = CoreSession(cfg, driver=MockDriver(base_power_w=POWER_W, ramp_amplitude_w=0.0),
                         inputs=[NullProvider()], journal_dir=tmp_path / "journal",
@@ -108,11 +109,13 @@ def test_three_laps_four_bots_frames_hits_and_bilan(env):
     assert [type(b) for b in s.bots] == [ProfileBot] * 4
     gp = s.grandprix
     assert gp.lap_m == pytest.approx(1500.0) and gp.length_m == pytest.approx(4500.0)
-    assert len(gp.boxes.rows) == 3                       # une rangée par tour, à 500 m de la ligne
+    assert gp.boxes.rows == [500.0, 1000.0, 2000.0, 2500.0, 3500.0, 4000.0]   # tous les 500 m (GP14), pas sur la ligne
     state_v = validator("state")
     seen: list[dict] = []
 
     def check(sess):
+        if sess.state.session_state != "RUNNING":   # arrivée pendant ce pas : plus de trame `gp` (bilan vérifié plus bas)
+            return
         d = frame(sess)
         state_v.validate(d)
         assert len(json.dumps(d, ensure_ascii=False).encode()) < STATE_LIMIT_BYTES
@@ -199,8 +202,8 @@ def test_grade_sent_ignores_objects(env, monkeypatch):
 def test_start_refusals_and_erg_refused(env):
     make, run, _, _ = env
     s, _, errors = make(6830, route_id="demo")           # parcours en ligne de 5 km, course de 10 km
-    s._on_command("start", {"mode": "grandprix"}, 2)
-    assert errors[-1][0] == "bad_args" and "trop court" in errors[-1][1] and s.state.session_state == "READY"
+    s._on_command("start", {"mode": "grandprix"}, 2)     # lot GP14 : la course suit le parcours
+    assert not errors and s.state.session_state == "RUNNING" and s.grandprix.length_m == pytest.approx(5000.0)
     s, _, errors = make(6840)
     s._on_command("start", {"mode": "grandprix", "bots": []}, 2)
     assert errors[-1][0] == "bad_args" and s.state.session_state == "READY"
@@ -378,5 +381,5 @@ def test_settings_listed_and_mode_announced():
     items = {it["key"]: it for it in settings.current(Config())}
     assert (items["grandprix.opponents"]["min"], items["grandprix.opponents"]["max"]) == (2, 4)
     assert items["grandprix.chaos"]["choices"] == ["soft", "normal", "wild"]
-    assert items["grandprix.box_every_m"]["step"] == 500 and items["grandprix.box_every_m"]["value"] == 1500
+    assert items["grandprix.box_every_m"]["step"] == 500 and items["grandprix.box_every_m"]["value"] == 500
     assert items["grandprix.laps"]["value"] == 3 and items["grandprix.distance_km"]["value"] == 10

@@ -158,6 +158,7 @@ def test_c5_hello_ack_reflects_config(tmp_path, monkeypatch):
     rogue = ack["config"].pop("rogue")            # bloc Cyber-Rogue (lot R8) : testé dans test_rogue_session
     assert rogue["cp_w"] == 280.0
     assert ack["config"].pop("track") == track_mod.menu_options()   # épreuves de piste (révision 1.7, lot VD10)
+    assert ack["config"].pop("mode_routes") == {"track": "velodrome", "grandprix": "grandprix"}   # lot GP13, 1.19
     assert ack["config"] == {"ftp_w": 280.0, "hr_max_bpm": 185, "gears_total": 22, "theme": "default", "chart": "reduced",
                              "difficulty_pct": 50, "gravel": "off", "biome": "auto",   # lot U16
                              "modes": ["ride", "erg", "open_world", "rogue", "wtf", "survivor", "track", "grandprix"],   # modes : révision 1.3, monde ouvert 1.5, Cyber-Rogue 1.4, WTF et survivant 1.5, piste et Grand Prix 1.7 (Grand Prix annoncé au lot GP9)

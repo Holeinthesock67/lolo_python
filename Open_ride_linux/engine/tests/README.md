@@ -160,6 +160,7 @@ PERF_LINES=/tmp/perf.txt engine/tests/run_engine_tests.sh && python3 engine/test
 | `test_summary_view_model.gd` | N4 | Modèle de l'écran de fin de séance (`summary_view_model.gd`) : 10 lignes du bilan enrichi dans l'ordre fixé, 3 lignes en v1, blocs ERG avec déviations et couleurs, fichier FIT seul, écran de menu avec confirmation de quitter, aucun nœud créé |
 | `test_devices_view_model.gd` | N5 | Modèle d'état des appareils (`devices_view_model.gd`) : lignes d'état en v1.1 et repli v1, alertes de perte/reconnexion et batterie sous 20 % / 10 %, `ready_to_ride`, aucun nœud créé |
 | `test_catalog_model.gd` | N3 | Modèle de catalogue (`catalog_model.gd`) : conversion des parcours et entraînements au format de menu, labels, tri, focus sautant les éléments désactivés, aucun nœud créé |
+| `test_live_cue.gd` | essai | Consigne en direct du guide des essais physiques (`live_cue.gd`, lot EP3) : `~/OpenRide/Essais/consigne_directe.json` relu au plus une fois par seconde, consigne nouvelle par `id`, fichier illisible ou texte vide ignorés, fichier d'un essai précédent pas affiché au lancement, aucun nœud créé |
 | `test_cue_model.gd` | essai | Consignes d'essai (`cue_model.gd`) : lecture et tri du fichier `~/OpenRide/Essais/<parcours>.consignes.json`, consignes invalides ignorées, chaque consigne donnée une seule fois à sa distance, réarmement après un nouveau départ, aucun nœud créé |
 | `test_osm_decor_route.gd` | – | Décor OSM et route : aucun arbre dans un bâtiment ni à moins de 3 m de ses murs (`tree_renderer.gd`, `exclude_buildings`), cours d'eau coupés au passage de la chaussée et ruisseau sur le bas-côté retiré (`osm_streamer.gd`, `cut_lines_at_road`) |
 | `test_far_terrain_carve.gd` | – | Terrain lointain abaissé sous la route (`terrain_tiles.gd`, `carve_under_route`) : vallée en V à 30 % et route en S à 7 %, dépassement de 8 m sans correctif, au moins 2 m sous la chaussée après, aucun sommet relevé, bord commun de deux tuiles identique |
@@ -297,6 +298,7 @@ GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_e2e
 | --- | --- |
 | hello puis hello_ack | moins de 3 s entre `Reçu 'hello'` (core) et `hello_ack reçu` (engine) |
 | trames state | au moins 25 par seconde sur 5 s (lignes `[test] state`), `seq` croissant |
+| départ de la séance | `Séance : … -> RUNNING` dans le journal du core (au plus 20 s : décor prêt puis 3 s de pédalage du départ au pédalage) ; le + n'est envoyé qu'après, sinon le core le relaie (bip) sans changer le braquet |
 | input_event relayé | commande `input_event` `PLUS_SHORT` (`cmd_id` 10 000) envoyée par le script : traitée par le core, `Bip : PLUS_SHORT` dans la sortie de l'engine |
 | perte de l'engine | engine arrêté : le script écoute le port d'état, `PAUSED` (`engine_lost`) en moins de 3 s |
 | braquet | `gear` passé de 12 à 13 dans les trames du core |
