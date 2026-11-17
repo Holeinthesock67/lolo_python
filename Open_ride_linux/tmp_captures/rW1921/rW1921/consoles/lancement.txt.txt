@@ -1,0 +1,17 @@
+13:23:44 empreinte avant b10e0ebfd4594d5614cad58386973145
+13:23:44 tête 20a5b62dd
+13:24:24 ow_w19_w21_boucle low
+13:49:10 fin rc=0
+13:49:10 rapport sonde rc=1
+13:49:10 verifs : 16 lignes
+13:50:40 ow_w19_w21_boucle medium
+14:15:26 fin rc=0
+14:15:26 rapport sonde rc=1
+14:15:26 verifs : 15 lignes
+14:16:56 ow_w19_w21_boucle high
+14:41:44 fin rc=0
+14:41:44 rapport sonde rc=1
+14:41:44 verifs : 16 lignes
+14:43:16 empreinte après 969fd234c935ef84cdeb8a1ec2b5e9b5
+14:43:16 clone 214ad0b2b
+14:43:16 FIN

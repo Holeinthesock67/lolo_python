@@ -1,0 +1,29 @@
+== ow_w19_w21_boucle (clavier) ==
+[OK] démarrage du core : « Core démarré »
+[OK] engine relié au core : hello_ack
+[OK] qualité réellement appliquée au départ : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) au départ : Vulkan, Forward+
+[OK] engine prêt (première réponse à menu_state) : 0.5 s
+[OK] écran home : « OpenRide » (engine muet 11.5 s)
+[OK] choisir « open_world » : écran « home », focus « open_world »
+[OK] écran monde ouvert globe : « OpenRide »
+[OK] écran monde ouvert search (contient=['Sarre-Union']) : « OpenRide »
+[OK] écran monde ouvert map : « OpenRide »
+[OK] écran monde ouvert setup (contient=['Cap :']) : « OpenRide »
+[OK] écran monde ouvert setup (contient=['Boucle', 'Longueur : 10 km']) : « OpenRide »
+[OK] écran monde ouvert False : « OpenRide »
+[OK] journal du core : « Monde ouvert prêt » : Monde ouvert prêt
+[OK] journal du core : « Commande start  » : Commande start 
+[OK] journal du core : « -> RUNNING » : -> RUNNING
+[OK] journal du core : « Monde ouvert : (montée|sprint) « .* » retenue » : Monde ouvert : sprint « Sprint n°1 » retenue
+[OK] journal du engine : « world_segments n=[1-9] » : world_segments n=1
+[OK] journal du engine : « segment_result id=ow[cs] » : segment_result id=ows
+[OK] journal du core : « Monde ouvert : arrivée atteinte \(loop » : Monde ouvert : arrivée atteinte (loop
+[OK] journal du core : « Balade enregistrée » : Balade enregistrée
+[OK] fichier ~/OpenRide/**/segments_monde_ouvert.json présent : OpenRide/segments_monde_ouvert.json
+[OK] qualité réellement appliquée à l'arrêt : low appliquée (fin du journal) ; dernière ligne : low (demandée low, source cli)
+[OK] rendu du jeu (Forward+) à l'arrêt : Vulkan, Forward+
+[OK] arrêt du core : code de sortie 0
+ow_w19_w21_boucle        clavier  OK            1486 s
+Rapport : ~/mesures-2026-11-01-auto/rW1921/low/banc/rapport.html
+OK
