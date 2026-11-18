@@ -24,6 +24,7 @@ func _check(cond: bool, msg: String) -> void:
 
 func _init() -> void:
 	_run()
+	_second_race_starts_from_its_line()
 	print("test_camera_follow_lag : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -126,3 +127,24 @@ func _bot_gap(late_ms: float) -> Dictionary:
 			out["min"] = minf(out["min"], float(view[0]["gap_m"]))
 			out["max"] = maxf(out["max"], float(view[0]["gap_m"]))
 	return out
+
+
+## 15 novembre (Grand Prix, 2e partie par « Nouvelle séance ») : attente du départ à la position de l'arrivée d'avant
+## (66,76 m), puis départ à 0 m : la position affichée repart de la ligne au lieu de rester à 66,76 m.
+func _second_race_starts_from_its_line() -> void:
+	var f = CameraFollow.new()
+	var t := 0
+	for i in 10:
+		f.push_frame(t, 66.76, 0.0, false)
+		f.update(t)
+		t += 33000
+	var shown := 0.0
+	for i in 60:
+		var s := 0.16 + 0.1 * i
+		f.push_frame(t, s, 3.0, true)
+		shown = f.update(t + 16000)
+		t += 33000
+	_check(shown < 10.0, "2e partie : position affichée repartie de la ligne (%.2f m)" % shown)
+	f.push_frame(t, 20.0, 0.0, false)   # pause puis reprise au même endroit : rien ne saute
+	f.push_frame(t + 33000, 20.0, 1.0, true)
+	_check(absf(f.update(t + 40000) - 20.0) < 0.1, "reprise : position du core")

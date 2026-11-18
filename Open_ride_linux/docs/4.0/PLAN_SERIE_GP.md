@@ -21,7 +21,7 @@ Sources lues : `core/src/openride_core/physics.py` (`RiderPhysics`, `steady_spee
 ### 2.1 Format
 
 - **Circuit** (1 à 5 tours) ou **parcours en ligne** (5 à 30 km, arrivée à la distance choisie), dans la liste habituelle des parcours. Le monde ouvert n'est pas proposé dans un premier temps (pas de distance de course fixe).
-- **Départ groupé** : 2 à 4 bots tant que le core en limite le nombre à 4, jusqu'à 11 avec le peloton prévu après le lot Y18 (lot GP10). Le fantôme est exclu : il rejoue une séance passée, il ne peut ni être touché ni réagir.
+- **Départ groupé** : 2 à 11 bots sur le peloton du lot PL1 (lot GP10 ; 2 à 4 avant lui). Le fantôme est exclu : il rejoue une séance passée, il ne peut ni être touché ni réagir.
 - **Plateau** : composé par le core comme pour DS (profils tournants grimpeur, rouleur, sprinteur, diesel ; niveaux autour du réglage existant « Niveau des bots », `bots.level_pct` ; calibrage T13).
 - **Classement** : à l'arrivée ; le bilan donne la place, les objets lancés, reçus, esquivés et le temps gagné ou perdu par objet.
 
@@ -120,7 +120,7 @@ Tout se règle dans le menu, sans ligne de commande (lot GP9) :
 
 | Réglage (section `[grandprix]` de `config.toml`) | Valeurs | Défaut |
 | --- | --- | --- |
-| Adversaires (`opponents`) | 2 à 4, puis 2 à 11 avec GP10 | 4 |
+| Adversaires (`opponents`) | 2 à 11 (2 à 4 avant GP10) | 4 |
 | Tours (`laps`) ou distance (`distance_km`) | 1 à 5 ; 5 à 30 km | 3 ; 10 km |
 | Niveau des bots (`bots.level_pct`, réglage existant) | 50 à 150 % de la FTP | inchangé |
 | Chaos (`chaos`) | doux, normal, fou : forces et fréquence des objets × 0,7, × 1, × 1,3 | normal |
